@@ -9,6 +9,8 @@ import os
 
 import bpy
 
+import j22_waterline
+
 TEX_DIR = os.environ.get("J22H_TEX", "/tmp/j22/hero/out/textures")
 # Lettering (sail numbers, insignia, sailmaker, the bow registration): Saira Condensed Bold, SIL OFL 1.1, staged with the
 # game's UI fonts. Never a system font: the glyphs ship as images and meshes (docs/licences/README.md item 1).
@@ -213,25 +215,28 @@ def gelcoat_hull(st):
         c = _mix(nt, _math(nt, "MULTIPLY", smudge, 0.6), c, _rgb("#5E5A52"))
     if h.get("boot_stripe_hex"):
         c = _mix(nt, _band(nt, z, 0.07, 0.095, 0.0015), c, _rgb(h["boot_stripe_hex"]))
-    rag = _math(nt, "MULTIPLY", _noise4(nt, vec, 18.0, W + 5, 4, 0.6), 0.04)
-    zz = _math(nt, "ADD", z, rag)
-    scum = _band(nt, zz, 0.005, h["scum_height_m"], 0.012)
-    c = _mix(nt, _math(nt, "MULTIPLY", scum, 0.25 + 0.65 * h["scum"]), c, _rgb("#7F7766"))
+    # the lake scum line is drawn after the bottom paint below (j22_waterline, texture loop)
     # chipped edges at the sheer, transom corners and stem: pointiness picks the convex edges
     chips = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", _edges(nt), 0.53 - 0.02 * h["edge_chips"]),
                   _math(nt, "GREATER_THAN", _noise4(nt, vec, 40, W + 7, 5, 0.7), 0.62 - 0.1 * h["edge_chips"]))
     c = _mix(nt, chips, c, _rgb("#9C927E"))
     under = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
-    under.inputs[1].default_value, under.inputs[2].default_value = 0.01, -0.03
+    # a taped paint line, crisp (texture loop, waterline: was a 4 cm blend that blurred the scum line into the paint)
+    under.inputs[1].default_value, under.inputs[2].default_value = 0.0, -0.003
     _l(nt, z, under.inputs[0])
     bottom = _rgb(h["bottom_hex"])
-    film = _mix(nt, _math(nt, "MULTIPLY", _noise4(nt, vec, 6.0, W + 9, 5, 0.6), h["bottom_slime"]), bottom, _rgb("#5F6648"))
-    c = _mix(nt, under.outputs[0], c, film)
+    c = _mix(nt, under.outputs[0], c, j22_waterline.bottom(st, nt, z, bottom, W))
+    c, wl_cover = j22_waterline.lake(st, nt, c, x, z, W)
     _l(nt, c, bsdf.inputs["Base Color"])
     r = _math(nt, "ADD", 0.14, _math(nt, "MULTIPLY", var, 0.1 + 0.3 * h["chalk"]))
     r = _math(nt, "ADD", r, _math(nt, "MULTIPLY", under.outputs[0], 0.45))
+    if not isinstance(wl_cover, float):   # stain and slime are matte
+        r = _math(nt, "ADD", r, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", 0.8, r), wl_cover))
     _l(nt, r, bsdf.inputs["Roughness"])
     bsdf.inputs["Coat Weight"].default_value = 0.3 * (1 - h["chalk"])
+    if not isinstance(wl_cover, float):   # the scum and slime are a matte film over the gelcoat: no clear coat to shine
+        _l(nt, _math(nt, "MULTIPLY", 0.3 * (1 - h["chalk"]), _math(nt, "SUBTRACT", 1.0, _math(nt, "MULTIPLY", wl_cover, 0.9))),
+           bsdf.inputs["Coat Weight"])
     bsdf.inputs["Coat Roughness"].default_value = 0.12
     _bump(nt, bsdf, _math(nt, "ADD", _noise(nt, vec, 1.2, 2, 0.4), _math(nt, "MULTIPLY", chips, -0.2)), 0.05, 0.01)
     m.diffuse_color = base
