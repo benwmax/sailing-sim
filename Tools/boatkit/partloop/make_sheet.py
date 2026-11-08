@@ -30,6 +30,8 @@ def font(size, bold=False):
 
 
 def tile(path, box=T, crop=1.0):
+    if not os.path.exists(path):                    # a round with no such view (the before part had no in-use dressing)
+        return Image.new("RGB", (box, box), BG)
     im = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
     if crop < 1.0:
         w, h = im.size
@@ -51,8 +53,12 @@ def card(score, label):
         if s["target"] is None:
             continue
         ok = s["pass"]
-        g = f"{s['got']:.2f}" if s["got"] < 5 else f"{s['got']:.0f} mm"
-        d.text((16, y), f"{'✓' if ok else '✗'} {s['name'][:34]}: {g} ({round(s['err'] * 100) + 0:+d}%)", fill=INK if ok else (190, 40, 30), font=font(15))
+        if s["got"] is None:
+            g, e = "-", "not on this model"
+        else:
+            g = f"{s['got']:.2f}" if s["got"] < 5 else f"{s['got']:.0f} mm"
+            e = f"{round(s['err'] * 100) + 0:+d}%"
+        d.text((16, y), f"{'✓' if ok else '✗'} {s['name'][:34]}: {g} ({e})", fill=INK if ok else (190, 40, 30), font=font(15))
         y += 24
     o = score.get("outline")
     if o:

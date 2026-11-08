@@ -93,7 +93,7 @@ def norm(b):
 
 def iou(a, b):
     a, b = norm(a), norm(b)
-    W = max(a.shape[1], b.shape[1]) + 4
+    W = 2 * max(a.shape[1], b.shape[1]) + 4       # room for an off-centre centroid (padding leaves the IoU as it is)
     def place(x):
         c = np.zeros((H_NORM, W), bool)
         cx = int(round(np.nonzero(x)[1].mean()))
@@ -140,14 +140,24 @@ def main():
         p = os.path.join(refs, f"{r['id']}.mask.png")
         if r.get("mask") and os.path.exists(p):
             rm = load_mask(p)
-            ref_props[r["id"]] = {**proportions(rm), **shape(rm)}
+            rw = whole(rm)
+            ref_props[r["id"]] = {**proportions(rm), **shape(rm), "top_aspect": rw.shape[0] / rw.shape[1]}
 
     out = {"part": card["part"], "round": os.path.basename(os.path.normpath(rnd)), "sizes": [], "features": []}
     # sizes
     rows = np.nonzero(side.any(1))[0]
     socks = stats["sockets"]
     sh = shape(side)
+    top_p = os.path.join(rnd, "outline_top.png")
+    top = load_mask(top_p) if os.path.exists(top_p) else None
+    if top is not None and whole(top).shape[0] > whole(top).shape[1]:
+        top = top.T                        # the straight-down camera's roll is arbitrary: lay the long side across
+    tw = whole(top) if top is not None else None
     measured = {
+        "across": tw.shape[1] * mm_px if tw is not None else None,         # top view, the long side
+        "depth": tw.shape[0] * mm_px if tw is not None else None,          # top view, the short side
+        "top_aspect": tw.shape[0] / tw.shape[1] if tw is not None else None,
+        "axles": abs(socks["AxleL"][1] - socks["AxleR"][1]) if "AxleL" in socks else None,
         "length": sh["w_full_px"] * mm_px,
         "height": sh["h_full_px"] * mm_px,
         "width": whole(edge).shape[1] * mm_px,
@@ -178,7 +188,12 @@ def main():
     if o and o["ref"] in ref_props:
         cut = whole if o.get("whole") else (lambda m: body(m)[0])
         ref_b = cut(load_mask(os.path.join(refs, f"{o['ref']}.mask.png")))
-        v, A, B = iou(cut(side), ref_b)
+        ours_m = {"side": side, "edge": edge, "top": top}[o.get("view", "side")]
+        v, A, B = iou(cut(ours_m), ref_b)
+        if o.get("flip"):                       # a view whose up/down is only the camera's convention (top views)
+            v2, A2, B2 = iou(cut(ours_m[::-1]), ref_b)
+            if v2 > v:
+                v, A, B = v2, A2, B2
         out["outline"] = {"ref": o["ref"], "iou": v, "pass": v >= o["pass"], "target": o["pass"]}
         vis = np.full(A.shape + (3,), 255, np.uint8)
         vis[A & ~B] = (40, 90, 220)      # ours only: blue
