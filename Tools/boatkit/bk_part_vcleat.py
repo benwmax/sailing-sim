@@ -67,7 +67,7 @@ def _v_section(half_bot, z_bot, k, z_top, grow=0.0):
 
 def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=1.0, v_k=0.40, ridges=6,
                   groove=(1.3, 1.2), lean=(20.0, 55.0), round_mm=0.6, voxel=0.17, tris=17500,
-                  floor_z=2.6, bulk_rake=34.0, eye_z=8.2, eye_tilt=6.0, draft=0.90, side_x=1.5):
+                  floor_z=2.6, bulk_rake=34.0, eye_z=8.2, eye_tilt=6.0, draft=0.90):
     pl, ss = P.M("BlackPlastic"), P.M("Stainless")
     xa = 7.0                      # aft screw, mm from the tail
     xf = xa + holes               # forward screw
@@ -98,19 +98,20 @@ def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=
     G.bake_xform(rake)
     G.boolean(body, rake)
 
-    # the V jaw: from the bulkhead to the nose wall, open on top
+    # the V jaw: from the bulkhead right out through the nose end (Bean, Nov 8: the V runs open through the end of the
+    # body), open on top
     zt = 40.0
-    jaw = _yz_solid("jaw", _v_section(v_half, v_bot, v_k, zt), xb1 - 4.0, L - 3.0, pl)
+    jaw = _yz_solid("jaw", _v_section(v_half, v_bot, v_k, zt), xb1 - 4.0, L + 6.0, pl)
     # the opening is an oval in plan (round ends), not a rectangle
-    jplan = G.prism("jplan", G.rrect((L - 7.0 - xb1) * MM, 14.0 * MM, 6.9 * MM, 10), -0.01, 0.05, pl)
-    jplan.location = ((xb1 + (L - 7.0 - xb1) / 2) * MM, 0, 0)
+    jplan = G.prism("jplan", G.rrect((L + 14.0 - xb1) * MM, 14.0 * MM, 6.9 * MM, 10), -0.01, 0.05, pl)
+    jplan.location = ((xb1 + (L + 14.0 - xb1) / 2) * MM, 0, 0)
     G.bake_xform(jplan)
     G.boolean(jaw, jplan, "INTERSECT")
     G.boolean(body, jaw)
     # raked ridges: grooves 0.7 mm into each V wall, leaning back toward the tail at the top (the line pulled down and
     # aft wedges into them)
     slabs = []
-    pitch = (L - 8.0 - xb1 - 2.0) / ridges
+    pitch = (L - 3.0 - xb1 - 2.0) / ridges
     for i in range(ridges + 1):
         x0 = xb1 + 2.0 + i * pitch
         # each groove sweeps back as it rises (steep at the bottom of the V, flatter near the top: the swirl)
@@ -124,7 +125,7 @@ def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=
         strip = [(px + hw, pz) for px, pz in path] + [(px - hw, pz) for px, pz in reversed(path)]
         slabs.append(_xz_solid(f"slab{i}", strip, 40.0, pl))
     grooves = G.join("grooves", slabs)
-    shell = _yz_solid("shell", _v_section(v_half, v_bot, v_k, zt, grow=groove[1]), xb1 - 1.0, L - 6.0, pl)
+    shell = _yz_solid("shell", _v_section(v_half, v_bot, v_k, zt, grow=groove[1]), xb1 - 1.0, L + 6.0, pl)
     G.boolean(grooves, shell, "INTERSECT")
     G.boolean(body, grooves)
     # the fairlead eye: an oval through the raked bulkhead, its axis along the line's lead up into the V
@@ -135,13 +136,6 @@ def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=
     e.matrix_world = Matrix.Translation((ex * MM, 0, ez * MM)) @ Matrix.Rotation(-math.radians(eye_tilt), 4, "Y")
     G.bake_xform(e)
     G.boolean(body, e)
-    # Bean, Nov 8: the sheet's cut runs right through the body on one side (the far, +Y side from the photo), so the eye
-    # is a window you see daylight through, and a line can be dropped in from the side
-    side = G.cyl("eye_side", (0, 0, 0), (0, 1, 0), 1.0, None, 40)
-    side.data.transform(Matrix.Diagonal((eye[0] / 2 * MM, 20 * MM, eye[1] / 2 * MM, 1.0)))
-    side.location = ((ex + side_x) * MM, 0, ez * MM)
-    G.bake_xform(side)
-    G.boolean(body, side)
 
     # moulded softness: one voxel remesh fuses every cut edge into a small radius, as a moulding has
     m = body.modifiers.new("mould", "REMESH")
@@ -193,18 +187,18 @@ def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=
     h = lambda x: (x - L / 2) * MM                                       # noqa: E731
     # a 6 mm line touches both V walls where the V's half-width is 3 mm / cos(half-angle)
     zj = v_bot + (3.0 / math.cos(math.atan(v_k)) - v_half) / v_k
-    socks = [("Jaw", (h(48.0), 0, zj * MM)), ("LineIn", (h(L - 6.0), 0, (_profile_top(L - 6.0, L) + 2.0) * MM)),
+    socks = [("Jaw", (h(48.0), 0, zj * MM)), ("LineIn", (h(L), 0, (zj + 0.5) * MM)),
              ("Eye", (h(ex), 0, ez * MM)), ("LineOut", (h(0.0), 0, ez * MM)),
              ("FixAft", (h(xa), 0, 0)), ("FixFwd", (h(xf), 0, 0))]
     return objs, socks
 
 
 def render_rope(socks):
-    """A 6 mm line made fast in the jaw for the loop's in-use stills (render-only): from the load, down over the nose
+    """A 6 mm line made fast in the jaw for the loop's in-use stills (render-only): from the load, in through the open nose
     into the V, along it and out through the eye to the tail, which hangs off toward the sailor (metres)."""
     j, li, ey, lo = (socks[k] for k in ("Jaw", "LineIn", "Eye", "LineOut"))
     s = 0.001
-    return [(li[0] * s + 0.10, 0, li[2] * s + 0.030), (li[0] * s + 0.035, 0, li[2] * s + 0.006), (li[0] * s, 0, li[2] * s),
+    return [(li[0] * s + 0.10, 0, li[2] * s + 0.012), (li[0] * s + 0.035, 0, li[2] * s + 0.003), (li[0] * s, 0, li[2] * s),
             (j[0] * s, 0, j[2] * s), (ey[0] * s, 0, ey[2] * s), (ey[0] * s - 0.008, 0, ey[2] * s + 0.0015),
             (lo[0] * s + 0.002, 0, 0.0135), (lo[0] * s - 0.02, -0.004, 0.022), (lo[0] * s - 0.07, -0.02, 0.036)], 0.003
 

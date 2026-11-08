@@ -22,7 +22,7 @@
  "outline": null,
  "features": [
   {"id": "moulding", "text": "One dark composite moulding, low at the tail and rising in a smooth line to a rounded nose, rounded in plan at both ends", "objects": ["moulding"], "manual": true},
-  {"id": "vjaw", "text": "V jaw open on top, narrowing to the bottom, closed by the nose wall", "manual": true},
+  {"id": "vjaw", "text": "V jaw open on top, narrowing to the bottom, running out open through the nose end", "manual": true},
   {"id": "ridges", "text": "Raked ridges on both V walls, leaning toward the tail", "manual": true},
   {"id": "eye", "text": "Oval fairlead eye through the bulkhead between the pocket and the jaw, with a solid bridge over it", "manual": true},
   {"id": "pocket", "text": "Tail pocket inside a rim, with the aft screw countersunk in its floor", "objects": ["screw_aft"], "manual": true},

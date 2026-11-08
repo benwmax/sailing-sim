@@ -14,11 +14,10 @@ dinghies and small keelboats). The line comes over the nose, is pulled down into
 grip it, and leads out aft through a fairlead eye, so it can't jump out of the jaw. From the tail:
 
 - a shallow pocket inside a rim, with the aft screw countersunk in its floor;
-- a raked bulkhead with an oval fairlead eye through it and a solid bridge over it; the eye's cut also runs right out
-  through one side of the body (Bean's review), so it is a window you can see daylight through;
-- the V jaw, an oval opening on top narrowing to the bottom, with swirled ridges (steep at the bottom, raking back
-  near the top) and the forward screw down at the bottom of the V;
-- a rounded nose wall.
+- a raked bulkhead with an oval fairlead eye through it and a solid bridge over it;
+- the V jaw, open on top and narrowing to the bottom, with swirled ridges (steep at the bottom, raking back near the
+  top) and the forward screw down at the bottom of the V; it runs open right out through the nose end, so the loaded
+  line comes straight in through the end of the body (Bean's review).
 
 ## Card, sizes and references
 
@@ -48,7 +47,7 @@ rate-limited there in any case; manufacturer pages are outside the cloud's netwo
 | r1 | 48 mm | 70 mm | 5/10 | 17,870, 3 slots (one empty) | first build: a stepped wedge with a rectangular slot and a hidden eye |
 | r5 | 48 mm | 70 mm | | 17,872, 2 slots | **lost**: won 1 of 3 against r1 (straight ridges, eye unreadable, rectangular jaw) |
 | r7 | 48 mm | 70 mm | 10/10 | 17,870, 2 slots | won 3 of 3 against r1 (confidence 5, 4, 4); nobody called it the wrong part |
-| r8 | 48 mm | 70 mm | 10/10 | 17,870, 2 slots | r7 plus Bean's one fix (Nov 8): the eye's cut runs right out through the far (+Y) side, so you see daylight through it as in the photo; no new blind vote for a change Bean asked for by eye |
+| r9 | 48 mm | 70 mm | 10/10 | 17,872, 2 slots | r7 with Bean's one fix (Nov 8, marked-up screenshot): the V jaw runs open right out through the nose end instead of stopping at a nose wall (r8 tried a side window through the eye, which was the wrong place, and is gone); no new blind vote for a change Bean asked for by eye |
 
 (r2 to r4 and r6 were working renders between scored rounds.) What r6/r7 changed after r5 lost: the ridges sweep back
 as they rise instead of being straight slats, the jaw opening is an oval in plan, the eye is bigger and its bulkhead
@@ -96,8 +95,8 @@ BEN-PC after Bean's "resume": `scripts\windows\make-boatkit.ps1 -Import`, then
 
 ## Running it
 
-    python3 Tools/boatkit/partloop/render_views.py VCleat Artifacts/partloop/VCleat/r8
-    python3 Tools/boatkit/partloop/score.py Tools/boatkit/partloop/parts/vcleat.json Data/Reference/raw/parts/VCleat Artifacts/partloop/VCleat/r8
-    python3 Tools/boatkit/partloop/make_sheet.py <reference crop> Artifacts/partloop/VCleat/r1 Artifacts/partloop/VCleat/r8 vcleat_before_after.jpg \
-        --title "V-cleat with fairlead" --in-use Artifacts/partloop/VCleat/r8/photo.png --in-use-label "Round 7 from the photo's angle" \
+    python3 Tools/boatkit/partloop/render_views.py VCleat Artifacts/partloop/VCleat/r9
+    python3 Tools/boatkit/partloop/score.py Tools/boatkit/partloop/parts/vcleat.json Data/Reference/raw/parts/VCleat Artifacts/partloop/VCleat/r9
+    python3 Tools/boatkit/partloop/make_sheet.py <reference crop> Artifacts/partloop/VCleat/r1 Artifacts/partloop/VCleat/r9 vcleat_before_after.jpg \
+        --title "V-cleat with fairlead" --in-use Artifacts/partloop/VCleat/r9/photo.png --in-use-label "Round 7 from the photo's angle" \
         --line "6 mm line" --zoom 0.7
