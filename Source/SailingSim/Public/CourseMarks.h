@@ -7,7 +7,7 @@ class UStaticMesh;
 /**
  * The course marks and the crew-overboard buoy (part detail loop, docs/part-detail-loop/marks.md): kit meshes built by
  * Tools/boatkit/bk_part_marks.py and imported with the rest of the kit to /Game/Boats/Kit (SM_Kit_RaceMark,
- * SM_Kit_LessonMark, SM_Kit_PinBuoy, SM_Kit_HorseshoeBuoy). Their origin is on the waterline and they carry their own
+ * SM_Kit_LessonMark, SM_Kit_PinBuoy, SM_Kit_HorseshoeBuoy, SM_Kit_MOBBuoy). Their origin is on the waterline and they carry their own
  * MI_Kit_* materials, so they are placed at the water's height at scale 1 with no colour override.
  */
 namespace CourseMarks

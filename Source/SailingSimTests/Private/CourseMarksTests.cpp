@@ -17,6 +17,7 @@ bool FVisualCourseMarksTest::RunTest(const FString& Parameters)
 		{ TEXT("LessonMark"), 61.0, 114.0, 35.0 },      // 0.61 x 1.22 m (4 ft), 0.15 m under
 		{ TEXT("PinBuoy"), 80.0, 134.0, 85.0 },         // 0.80 m ball, staff tip 1.34 m up, weight on the staff's foot
 		{ TEXT("HorseshoeBuoy"), 58.5, 7.0, 5.0 },      // 610 x 585 x 100 mm, floating flat about a third under
+		{ TEXT("MOBBuoy"), 139.0, 184.0, 70.0 },        // the drill's set: horseshoe, MOB pole 1.8 m out of the water 1.6 m off, line
 	};
 	int32 Found = 0;
 	for (const FWant& W : Wants)

@@ -37,6 +37,7 @@ PARTS = {
     "RaceMark":      ((7.0, 30.0), ("cyl", (1.6, 1.6, 2.2), 0.8, (1.0, 0.33, 0.02))),
     "PinBuoy":       ((7.0, 30.0), ("sph", (1.1, 1.1, 1.1), 0.3, (1.0, 0.33, 0.02))),
     "HorseshoeBuoy": ((4.0, 15.0), ("sph", (0.6, 0.6, 0.6), 0.1, (1.0, 0.85, 0.05))),
+    "MOBBuoy":       ((6.0, 50.0), ("sph", (0.6, 0.6, 0.6), 0.1, (1.0, 0.85, 0.05))),   # the set the drill throws
 }
 
 
@@ -136,10 +137,10 @@ def main():
         scene(samples)
         ob = placeholder(spec) if before else P.build(name)
         ob.rotation_euler.z = math.radians(25) if not before else 0.0
-        h = 0.10 if name == "HorseshoeBuoy" else 0.5
+        h = {"HorseshoeBuoy": 0.10, "MOBBuoy": 0.6}.get(name, 0.5)
         shoot(os.path.join(out, f"{name}_near.png"), (-near * 0.85, -near * 0.5, EYE), (0, 0, h), 50)
         shoot(os.path.join(out, f"{name}_far.png"), (-far * 0.9, -far * 0.42, EYE), (0, 0, h), 85)
-        q = 2.6 if name == "HorseshoeBuoy" else 4.0
+        q = {"HorseshoeBuoy": 2.6, "MOBBuoy": 5.0}.get(name, 4.0)
         shoot(os.path.join(out, f"{name}_quarter.png"), (-q * 0.7, q * 0.7, EYE + 0.9 if name == "HorseshoeBuoy" else EYE + 0.4),
               (0, 0, h * 0.8), 50)
         if not before:
