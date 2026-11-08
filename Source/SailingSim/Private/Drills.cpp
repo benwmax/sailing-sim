@@ -103,6 +103,14 @@ void FDrillRunner::Finish(const FString& InOutcome)
 	Status = FString::Printf(TEXT("Finished by the playthrough script (%s)."), *Outcome);
 }
 
+double FDrillRunner::ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg)
+{
+	const double Min = FMath::DegreesToRadians(MinTwaDeg);
+	const double Off = FMath::UnwindRadians(BearingRad - WindFromRad);   // the true wind angle she would sail at
+	if (FMath::Abs(Off) >= Min) return BearingRad;
+	return FMath::UnwindRadians(WindFromRad + (Off >= 0.0 ? Min : -Min));
+}
+
 TArray<FString> FDrillRunner::Outcomes(ESailingDrill Drill)
 {
 	switch (Drill)
