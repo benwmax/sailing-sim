@@ -264,12 +264,15 @@ def gooseneck(name, mast_aft, boom_z, M):
     return objs
 
 
-def vang(name, mast_base, boom_pt, M, rope_mat, cam=True):
-    """4:1 kicker: tang on the mast, swivel block with cam cleat at the bottom, fiddle block at the boom bail."""
+def vang(name, mast_base, boom_pt, M, rope_mat, cam=True, blocks=True):
+    """4:1 kicker: tang on the mast, swivel block with cam cleat at the bottom, fiddle block at the boom bail. blocks
+    False: the tang and its pin only (the hero J/22 hangs the boat kit's fiddles on j22_boomgear.boom_bail instead)."""
     a, b = Vector(mast_base), Vector(boom_pt)
     d = (b - a).normalized()
     objs = [box(f"{name}_tang", a.x - 0.012, a.x + 0.012, -0.01, 0.01, a.z - 0.03, a.z + 0.03, M["CastAlu"], bev=0.004)]
     objs += clevis(f"{name}_tangpin", (a.x - 0.01, 0, a.z), (0, 1, 0), M, 0.03, 0.003)
+    if not blocks:
+        return objs
     lo = a + d * 0.06
     hi = b - d * 0.06
     objs += block(f"{name}_lo", lo, (0, 1, 0), -d, M, 0.040, becket=True)
