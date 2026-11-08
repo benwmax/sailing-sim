@@ -75,6 +75,7 @@ private:
 	/** -SailingUIScript=Enter,Down,Wait,... : keys sent to the menus every 0.6 s (the front end's end-to-end check). */
 	virtual void Tick(float DeltaSeconds) override;
 	double NextScriptKey = 0.0;
+	double ScriptWaitStart = -1.0;   // the UI script's WaitFor: (playthrough)
 	/** The drill each briefing and quiz was shown for (ASailboatPawn::GetDrillSerial). */
 	int32 BriefedSerial = 0, QuizzedSerial = 0;
 	double DrillDoneAt = -1.0;

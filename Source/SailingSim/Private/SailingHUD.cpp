@@ -255,14 +255,36 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	// end screen, Loading, or Hud when the menus are closed), Shot:<name> saves the window with its UI to Saved/Bench, and
 	// Finish:<outcome> ends the running drill with that outcome through the drill's own finish (developer builds or
 	// developer tools only).
-	if (Token.StartsWith(TEXT("Expect:")))
+	auto ScreenNow = [this]() -> FString
 	{
 		static const TCHAR* const Names[] = { TEXT("Title"), TEXT("World"), TEXT("Launch"), TEXT("Boat"), TEXT("Conditions"), TEXT("Mode"),
 			TEXT("Pause"), TEXT("ConditionsInGame"), TEXT("Settings"), TEXT("Controls"), TEXT("Confirm"), TEXT("Briefing"), TEXT("Quiz"),
 			TEXT("Credits"), TEXT("Career"), TEXT("Gallery"), TEXT("Feedback"), TEXT("FirstLaunch") };
-		FString Now = TEXT("Hud");
-		if (FrontEnd.IsValid()) { const int32 I = int32(FrontEnd->Current()); Now = I < UE_ARRAY_COUNT(Names) ? Names[I] : TEXT("?"); }
-		else if (Loading.IsValid()) Now = TEXT("Loading");
+		if (FrontEnd.IsValid()) { const int32 I = int32(FrontEnd->Current()); return I < UE_ARRAY_COUNT(Names) ? Names[I] : TEXT("?"); }
+		return Loading.IsValid() ? TEXT("Loading") : TEXT("Hud");
+	};
+	// WaitFor:<screen> holds the script (up to two minutes) until that screen is up; WaitFor:LoadingDone until the loading
+	// screen has finished (it then waits for Enter) or gone. A slow load then doesn't put the steps out of step.
+	if (Token.StartsWith(TEXT("WaitFor:")))
+	{
+		const FString Want = Token.Mid(8);
+		const double Now = FPlatformTime::Seconds();
+		if (ScriptWaitStart < 0.0) ScriptWaitStart = Now;
+		FString Stage;
+		const bool bThere = Want == TEXT("LoadingDone") ? (!Loading.IsValid() || Loading->Progress(Stage) >= 0.999f) : ScreenNow() == Want;
+		if (!bThere && Now - ScriptWaitStart < 120.0)
+		{
+			Session->UIScript.Insert(Token, 0);
+			NextScriptKey = Now + 0.5;
+			return;
+		}
+		SAIL_LOG(Display, TEXT("UI script: wait for %s: %s after %.0f s"), *Want, bThere ? TEXT("ok") : TEXT("timed out"), Now - ScriptWaitStart);
+		ScriptWaitStart = -1.0;
+		return;
+	}
+	if (Token.StartsWith(TEXT("Expect:")))
+	{
+		const FString Now = ScreenNow();
 		const FString Want = Token.Mid(7);
 		SAIL_LOG(Display, TEXT("UI script: expect %s: %s"), *Want, Now == Want ? TEXT("ok") : *FString::Printf(TEXT("MISSING (on %s)"), *Now));
 		return;
@@ -274,12 +296,21 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		SAIL_LOG(Display, TEXT("UI script: shot %s"), *Path);
 		return;
 	}
+	if (Token.StartsWith(TEXT("Stage:")))
+	{
+		SAIL_LOG(Display, TEXT("UI script: stage %s"), *Token.Mid(6));
+		return;
+	}
+	if (Token.StartsWith(TEXT("Answer:")))
+	{
+		const bool bAllowed = SailingArgs::DevScriptStepsAllowed(UE_BUILD_SHIPPING != 0, USailingSettings::DeveloperTools());
+		const int32 N = bAllowed && FrontEnd.IsValid() ? FrontEnd->DevAnswerQuiz() : 0;
+		SAIL_LOG(Display, TEXT("UI script: answer %s: %s"), *Token.Mid(7), N > 0 ? *FString::Printf(TEXT("ok, %d answered"), N) : bAllowed ? TEXT("no question open") : TEXT("not in this build"));
+		return;
+	}
 	if (Token.StartsWith(TEXT("Finish:")))
 	{
-		bool bAllowed = USailingSettings::DeveloperTools();
-#if !UE_BUILD_SHIPPING
-		bAllowed = true;
-#endif
+		const bool bAllowed = SailingArgs::DevScriptStepsAllowed(UE_BUILD_SHIPPING != 0, USailingSettings::DeveloperTools());
 		ASailboatPawn* Pawn = bAllowed && PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
 		const bool bDone = Pawn && Pawn->DevFinishDrill(Token.Mid(7));
 		SAIL_LOG(Display, TEXT("UI script: finish %s: %s"), *Token.Mid(7), bDone ? TEXT("ok") : bAllowed ? TEXT("no drill running") : TEXT("not in this build"));

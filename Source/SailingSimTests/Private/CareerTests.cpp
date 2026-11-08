@@ -2,6 +2,7 @@
 #include "AutoTrim.h"
 #include "BoatModel.h"
 #include "Career.h"
+#include "BenchRunner.h"
 #include "Drills.h"
 #include "FixedStepper.h"
 #include "Learning.h"
@@ -754,6 +755,16 @@ bool FSailingCareerDrillFinishTest::RunTest(const FString&)
 	Odd.Start(ESailingDrill::LeaveTheDock, Boat, 0.0);
 	Odd.Finish(TEXT("nonsense"));
 	TestEqual(TEXT("An unknown outcome takes the drill's first"), Odd.GetOutcome(), FDrillRunner::Outcomes(ESailingDrill::LeaveTheDock)[0]);
+	return true;
+}
+
+/** #404: the playthrough's acting steps (Finish:, Answer:) are inert in Shipping unless developer tools are on. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerScriptStepsGateTest, "SailingSim.Career.ScriptStepsGate", CareerTestsLocal::CareerFlags)
+bool FSailingCareerScriptStepsGateTest::RunTest(const FString&)
+{
+	TestFalse(TEXT("Shipping without developer tools: inert"), SailingArgs::DevScriptStepsAllowed(true, false));
+	TestTrue(TEXT("Shipping with developer tools: allowed"), SailingArgs::DevScriptStepsAllowed(true, true));
+	TestTrue(TEXT("Development: allowed"), SailingArgs::DevScriptStepsAllowed(false, false));
 	return true;
 }
 
