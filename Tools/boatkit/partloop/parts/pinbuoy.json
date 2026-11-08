@@ -1,0 +1,72 @@
+{
+ "part": "PinBuoy",
+ "card": {
+  "what": "Start line pin end: a 0.80 m inflatable ball (two welded hemispheres, equator flange) on a fibreglass flag staff, 1.3 m of staff above the water with a 55 x 38 cm orange flag, a weight on the staff's foot",
+  "boats": "race course: the start line's pin (TrafficManager::StartRace)",
+  "distance": "seen from 10 to 200 m on the start; passed at 2 m",
+  "before": "Engine BasicShapes sphere 1.1 m, centre 0.3 m above the water"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Lalizas regatta marker buoy (1.5 m x 900 mm, 4 kg); Osculati 40709 cylindrical racing buoy (90 cm across, 150 cm tall); Crewsaver 3810 cylindrical buoys (4 ft: 1.22 x 0.61 m; 5 ft: 1.52 x 0.76 m); nautimarket 100 x 150 cm giant regatta buoy",
+   "note": "numbers only; no photo could be fetched from this container (Wikimedia's upload host is blocked), so the blind review judged against the reviewers' own knowledge of the objects"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "width",
+   "name": "Ball diameter, end-on (the flag stands out to the side)",
+   "target": 800.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "spherical regatta buoys 60 to 100 cm; 80 cm chosen"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "ball",
+   "text": "Inflated ball, slightly oblate, welded equator flange",
+   "objects": [
+    "ball",
+    "equator"
+   ],
+   "manual": true
+  },
+  {
+   "id": "staff",
+   "text": "Fibreglass staff through a top sleeve, a cap on its tip",
+   "objects": [
+    "staff",
+    "sleeve",
+    "staff_tip"
+   ],
+   "manual": true
+  },
+  {
+   "id": "flag",
+   "text": "Orange flag on two clips, a gentle wave in it",
+   "objects": [
+    "flag"
+   ],
+   "manual": true
+  },
+  {
+   "id": "weight",
+   "text": "Weight on the staff's foot under the water",
+   "objects": [
+    "weight"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

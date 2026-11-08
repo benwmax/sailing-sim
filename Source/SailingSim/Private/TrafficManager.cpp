@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "CourseMarks.h"
 #include "SailingFrame.h"
 #include "Career.h"
 #include "BenchRunner.h"
@@ -328,24 +329,33 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 	const_cast<ASailboatPawn*>(Player)->AddLogEvent(FString::Printf(TEXT("Race: start sequence begun, windward-leeward, %.0f m beats"), Beat));
 	SignalsSeen = 0;
 
-	// Marks: orange inflatable cylinders; the pin end a buoy with a flag.
+	// Marks: orange inflatable cylinders; the pin end a buoy with a flag. The kit's meshes (docs/part-detail-loop/marks.md:
+	// SM_Kit_RaceMark, SM_Kit_PinBuoy, origin on the waterline, their own materials) once imported; until then engine
+	// shapes in the marks' orange.
 	UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	UStaticMesh* KitMark = CourseMarks::Load(TEXT("RaceMark"));
+	UStaticMesh* KitPin = CourseMarks::Load(TEXT("PinBuoy"));
 	UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	auto Mark = [&](UStaticMesh* Mesh, double X, double Y, const FVector& Size, double Z)
+	auto Mark = [&](UStaticMesh* Mesh, double X, double Y, const FVector& Size, double Z, bool bKit)
 	{
 		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
 		C->SetupAttachment(RootComponent);
 		C->SetStaticMesh(Mesh);
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetAbsolute(true, true, true);
-		C->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), X, Y, Z));
-		C->SetWorldScale3D(Size);
+		C->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), X, Y, bKit ? 0.0 : Z));
+		// A kit mark keeps its own size and materials; turned so the seams and handles don't all face one way.
+		if (bKit) C->SetWorldRotation(FRotator(0.f, float(FMath::Fmod(X * 7.3 + Y * 3.1, 360.0)), 0.f));
+		else C->SetWorldScale3D(Size);
 		C->RegisterComponent();
-		if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Material, this))
+		if (!bKit)
 		{
-			Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.33f, 0.02f));
-			C->SetMaterial(0, Mid);
+			if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(Material, this))
+			{
+				Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.f, 0.33f, 0.02f));
+				C->SetMaterial(0, Mid);
+			}
 		}
 		MarkMeshes.Add(C);
 	};
@@ -354,9 +364,9 @@ void ATrafficManager::StartRace(int32 Boats, double SecondsToStart)
 		// Each lap's marks are the same buoys: lay each position once.
 		bool bDone = false;
 		for (const FRaceMark& Prev : Race.Course.Marks) { if (&Prev == &M) break; if (FMath::Abs(Prev.X - M.X) < 1.0 && FMath::Abs(Prev.Y - M.Y) < 1.0) bDone = true; }
-		if (!bDone) Mark(Cylinder, M.X, M.Y, FVector(1.6, 1.6, 2.2), 0.8);
+		if (!bDone) Mark(KitMark ? KitMark : Cylinder, M.X, M.Y, FVector(1.6, 1.6, 2.2), 0.8, KitMark != nullptr);
 	}
-	Mark(Sphere, Race.Course.PinX, Race.Course.PinY, FVector(1.1), 0.3);
+	Mark(KitPin ? KitPin : Sphere, Race.Course.PinX, Race.Course.PinY, FVector(1.1), 0.3, KitPin != nullptr);
 	Message(FString::Printf(TEXT("Race: windward-leeward, two laps, %.0f m beats. Start between the committee boat (starboard end) and the orange pin."), Beat));
 }
 

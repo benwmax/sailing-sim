@@ -405,6 +405,9 @@ private:
 	void UpdateLearning();
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> MarkMeshes;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> DummyMesh;
+	/** The drill marks / the crew-overboard dummy are the kit's meshes (origin on the waterline), not engine shapes. */
+	bool bKitDrillMarks = false;
+	bool bKitDummy = false;
 	void UpdateDrillVisuals();
 	void UpdateNavLights();
 	void UpdateLogbook(float DeltaSeconds);
