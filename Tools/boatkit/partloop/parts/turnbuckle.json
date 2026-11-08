@@ -1,0 +1,149 @@
+{
+ "part": "Turnbuckle",
+ "card": {
+  "what": "Open-body turnbuckle (rigging screw) for 3/16 in (5 mm) wire: jaw with a 1/4 in clevis pin on the chainplate, forged open body, swage stud crimped onto the shroud",
+  "boats": "Catalina 22 shrouds (Tools/blender/build_fleet.py c22_hardware, on the kit Chainplate's Pin socket); the J/22 hero has its own closed-body turnbuckles in boots (Inputs/j22-hero/j22_mastgear.py)",
+  "distance": "arm's reach on the side deck; the cockpit camera passes close when going forward",
+  "before": "kit Turnbuckle from bk_parts.turnbuckle (Oct 2026): two thin bars between round bosses, ring studs, a plain fork below the pin"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "outline and proportions (Bean's hardware sheet, bottom row: open body, jaw, swage stud; square-on, set near closed)",
+   "url": "project upload (Bean, Nov 8 2026: sailboat hardware reference sheet)",
+   "mask": "bean.mask.png",
+   "note": "a retailer's product shot: measuring only, kept out of the repo; scored at the photo's setting (partloop/render_kw.py exposed=0.008), see turnbuckle_photo.json"
+  },
+  {
+   "id": "ralfr38",
+   "kind": "photo",
+   "use": "forged open bodies on a dinghy's chainplates: window shape, centre bridge, cotter pins in the windows, studs",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-38.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "ralfr40",
+   "kind": "photo",
+   "use": "square-on and three-quarter open bodies, swage studs into the wire, toggles on deck plates",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-40.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "ralfr37",
+   "kind": "photo",
+   "use": "the same pair in place on the side deck (how far away the camera sees them)",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-37.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://www.westmarine.com/hayn-tubular-turnbuckle-jaw-to-swage-for-3-16inch-wire-1-4inch-pin-7415490.html",
+   "note": "Hayn 3/16 in jaw-to-swage: 1/4-28 thread, 1/4 in pin, closed 6-5/8 in (168 mm), open 9-3/8 in (238 mm), pin to swage end. Kit default 216 mm (the old part's wire end, about two thirds open)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "height",
+   "name": "Jaw's end to the swage's end (216 mm pin to swage end + the jaw's 9.5 mm round end below the pin)",
+   "target": 225.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: within 168 to 238 mm pin to end; the kit's wire end at 216 mm"
+  },
+  {
+   "id": "length",
+   "name": "Width of the jaw's forged head (side view, the widest part)",
+   "target": 20.5,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "photo: the jaw's head is 1.15 x the body"
+  },
+  {
+   "id": "width",
+   "name": "Across the pin head and split ring (edge view)",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "jaw",
+   "text": "Two-prong jaw with round ends straddling the chainplate, forged head necking down to the stud",
+   "objects": [
+    "jaw_prong",
+    "jaw_head"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pin",
+   "text": "Clevis pin with a domed head and a split ring through its end",
+   "objects": [
+    "pin",
+    "pin_head",
+    "pin_ring"
+   ]
+  },
+  {
+   "id": "body",
+   "text": "Forged open body: lens-shaped, wider than the studs, tapering to round end bosses",
+   "objects": [
+    "body"
+   ],
+   "manual": true
+  },
+  {
+   "id": "windows",
+   "text": "Two long windows with a centre bridge; the studs' threads show inside",
+   "manual": true
+  },
+  {
+   "id": "studs",
+   "text": "Threaded studs showing between the body and each end",
+   "objects": [
+    "stud_lower",
+    "stud_upper"
+   ],
+   "manual": true
+  },
+  {
+   "id": "cotter",
+   "text": "Cotter pins through the studs' ends inside the windows",
+   "objects": [
+    "cotter"
+   ],
+   "manual": true
+  },
+  {
+   "id": "swage",
+   "text": "Swage sleeve with a shoulder off the thread and a tapered end where the wire goes in",
+   "objects": [
+    "swage"
+   ],
+   "manual": true
+  },
+  {
+   "id": "metal",
+   "text": "All stainless, one slot",
+   "slots": [
+    "Stainless"
+   ]
+  },
+  {
+   "id": "clearance",
+   "text": "The gap between the prongs takes the kit Chainplate's 6 mm strap; the pin sits on its Pin socket",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
