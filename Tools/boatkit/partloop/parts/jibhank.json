@@ -1,0 +1,41 @@
+{
+ "part": "JibHank",
+ "card": {
+  "what": "Moulded nylon piston hank, 50 mm, for 6.4 mm (1/4 in) forestay wire: a J-shaped hook round the stay, a spring-loaded brass piston that closes its mouth, and a split tail screwed through the jib's luff",
+  "boats": "every hank-on jib: the J/22's jib on its forestay (about 8 to 9 hanks; class boats often carry bronze hanks), and later the fleet's small keelboats. Not placed by a layout yet: the jib is FSailCloth in the game",
+  "distance": "arm's reach on the foredeck when hoisting or dropping the jib; the cockpit camera sees them in a row up the stay",
+  "before": "the J/22 hero proof of concept's hank (Inputs/j22-hero/build_j22_hero.py): a plain 28 mm bronze cylinder with a 16 mm pin on it; the kit had no hank"
+ },
+ "references": [
+  {"id": "bean-sheet", "kind": "photo", "use": "the target look: white nylon body, brass piston and knob, two screws in a split tail (three-quarter view, so proportions only roughly)",
+   "url": "Bean's hardware reference sheet, Nov 8 2026 (project upload, middle row, fourth: 'Jib Sail Hank'); a third party's catalogue picture, for looking at only"},
+  {"id": "btr01", "kind": "photo", "use": "a moulded white hank on a luff: hook curl, rounded tip, screw through the tail, soft moulded edges",
+   "url": "https://commons.wikimedia.org/wiki/File:Stagreiter_01.jpg", "licence": "CC BY-SA 2.5, btr"},
+  {"id": "btr02", "kind": "photo", "use": "the same hank seen from the hook end with the sail flat: the hook's plane stands square to the sail, the screw goes through the sail",
+   "url": "https://commons.wikimedia.org/wiki/File:Stagreiter_02.jpg", "licence": "CC BY-SA 2.5, btr"},
+  {"id": "jeuwre", "kind": "photo", "use": "in use: a bronze piston hank on a forestay, the hook round the wire and the piston level with the luff",
+   "url": "https://commons.wikimedia.org/wiki/File:Stagreiter_03.jpg", "licence": "CC BY-SA 4.0, Jeuwre"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "https://defender.com/en_us/ronstan-pacific-piston-hank",
+   "note": "nylon piston hank for 6.4 mm (1/4 in) wire: 50 mm (2 in) long, UV-stabilised nylon body, brass piston, screws included, 8 g (Defender, Vela Sailing Supply listings)"}
+ ],
+ "sizes": [
+  {"id": "length", "name": "Overall length, hook front to tail", "target": 50.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 2 in for 1/4 in wire"},
+  {"id": "height", "name": "Height across the hook and body", "target": null, "unit": "mm", "tol": null, "source": "no square-on photo: reported only"},
+  {"id": "width", "name": "Length along the stay (the cheeks)", "target": null, "unit": "mm", "tol": null, "source": "no catalogue figure: reported only"}
+ ],
+ "outline": null,
+ "features": [
+  {"id": "hook", "text": "J-shaped hook curling round the stay to a rounded tip", "objects": ["body"], "manual": true},
+  {"id": "eye", "text": "The eye takes 6.4 mm wire with room to slide (inside at least 7.5 mm)", "manual": true},
+  {"id": "mouth", "text": "The mouth opens wider than the wire when the piston is back, and the piston closes it", "manual": true},
+  {"id": "piston", "text": "Brass piston across the mouth, seated in the tip", "objects": ["piston"]},
+  {"id": "knob", "text": "Brass thumb knob on the piston's aft end, a flat-topped cap a thumb can pull", "objects": ["knob"]},
+  {"id": "tail", "text": "Split tail: two cheeks with the luff in the slot between them", "manual": true},
+  {"id": "screws", "text": "Two screws through the cheeks, heads on one side and nuts on the other", "objects": ["screw"]},
+  {"id": "window", "text": "A rounded window in the body's flank where the brass piston shows", "objects": ["piston"], "manual": true},
+  {"id": "moulded", "text": "One moulding with soft fillets, no seams between hook, body and tail", "manual": true},
+  {"id": "materials", "text": "White nylon body, brass piston and knob, stainless screws", "slots": ["WhitePlastic", "Brass", "Stainless"]}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles. A jib carries 8 or 9: the light copy is what the game would draw up the stay"}
+}
