@@ -724,3 +724,35 @@ bool FSailingCareerMedalLinesTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("Checked %d runs over the career's lessons"), Checked), Checked >= 18);
 	return true;
 }
+
+/**
+ * #404's nightly playthrough: FDrillRunner::Finish ends a running drill with the given outcome (an unknown one takes the
+ * drill's first) and nothing else; the run then grades through MakeCareerRun and FCareerContent::Grade like a sailed
+ * finish. A runner that isn't running is left alone.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCareerDrillFinishTest, "SailingSim.Career.DrillFinish", CareerTestsLocal::CareerFlags)
+bool FSailingCareerDrillFinishTest::RunTest(const FString&)
+{
+	using namespace CareerTestsLocal;
+	const FCareerContent* Content = Load(*this);
+	if (!Content) return false;
+	FDrillRunner Idle;
+	Idle.Finish(TEXT("clean"));
+	TestFalse(TEXT("No drill: Finish does nothing"), Idle.IsComplete());
+	FBoatModel Boat;
+	FDrillRunner D;
+	D.Start(ESailingDrill::LeaveTheDock, Boat, 0.0);
+	TestTrue(TEXT("Leave the dock is running"), D.IsActive());
+	D.Finish(TEXT("clean"));
+	TestTrue(TEXT("Finished"), D.IsComplete() && !D.IsActive());
+	TestEqual(TEXT("With the given outcome"), D.GetOutcome(), FString(TEXT("clean")));
+	const FCareerRun R = MakeCareerRun(D, 0.0, 0, 0, Lake, TEXT("J22"));
+	TestTrue(TEXT("The run is complete"), R.bComplete);
+	const FCareerLesson* L = Content->Lesson(TEXT("day-sailor.leave-the-dock"));
+	if (TestNotNull(TEXT("Lesson 1"), L)) TestTrue(TEXT("A clean finish at once grades gold"), FCareerContent::Grade(*L, R) == ECareerMedal::Gold);
+	FDrillRunner Odd;
+	Odd.Start(ESailingDrill::LeaveTheDock, Boat, 0.0);
+	Odd.Finish(TEXT("nonsense"));
+	TestEqual(TEXT("An unknown outcome takes the drill's first"), Odd.GetOutcome(), FDrillRunner::Outcomes(ESailingDrill::LeaveTheDock)[0]);
+	return true;
+}

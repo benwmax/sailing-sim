@@ -116,6 +116,10 @@ public:
 	/** Starts a learning drill (positions the boat for docking drills). */
 	void StartDrill(ESailingDrill Drill);
 	const FDrillRunner& GetDrill() const { return DrillRunner; }
+	/** #404's nightly playthrough (the UI script's Finish:<outcome>, developer builds only): the running drill ends with
+	 *  that outcome on the next tick, inside the drill update, so grading, the save and the medal screen run as for a
+	 *  sailed finish. False when no drill is running. */
+	bool DevFinishDrill(const FString& Outcome);
 	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
 	int32 GetDrillSerial() const { return DrillSerial; }
 	double GetMaxContactKnots() const { return MaxContactKnots; }
@@ -394,6 +398,7 @@ private:
 	void UpdateStations(Sailing::FStationInput& OutInput);
 	bool bDrillEasy = false; // Easy mode's assists were on at any time during the drill (its medal is capped: career.json)
 	FCareerProgress::FAward CareerAward;
+	FString DevFinishOutcome;   // DevFinishDrill's outcome, used on the next drill update
 	FLearningCoach Learning;
 	size_t LearningTrafficEvents = 0;
 	double NextDockScan = 0.0, NearestDock = -1.0;
