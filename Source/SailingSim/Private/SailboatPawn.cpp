@@ -2734,7 +2734,9 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		else if (Drill == ESailingDrill::ReturnAndDock && GM->GetLake().LaunchSpots.Num() > 1)
 		{
 			const FLaunchSpot& Spot = GM->GetLake().LaunchSpots[1];
-			const double Heading = Main ? FMath::Atan2(Main->Points[0].Y - Spot.Y, Main->Points[0].X - Spot.X) : 0.0;
+			// #510: toward the dock, but never closer than a close reach to the wind (the dock can lie upwind).
+			const double Bearing = Main ? FMath::Atan2(Main->Points[0].Y - Spot.Y, Main->Points[0].X - Spot.X) : 0.0;
+			const double Heading = FDrillRunner::ReturnStartHeading(Bearing, WindFromRad);
 			Boat.Reset(Spot.X, Spot.Y, Heading, 2.0 * kKnot);
 			Boat.GetMutableState().Time = Time;
 			Boat.GetMooringLines().clear();
