@@ -396,7 +396,32 @@ namespace CareerLinesLocal
 		return FString::Printf(TEXT("%d:%02d"), S / 60, S % 60);
 	}
 	FString Times(int32 N, const TCHAR* One, const TCHAR* Many) { return FString::Printf(TEXT("%d %s"), N, N == 1 ? One : Many); }
-	FString Outcomes(const FCareerMedalRule& R) { return FString::Join(R.Outcomes, TEXT(" or ")); }
+	/** #511: a drill outcome id in plain words: what a medal asks for, and what this run did when it isn't that. */
+	FString OutcomeAsked(const FString& Id)
+	{
+		if (Id == TEXT("clean")) return TEXT("a clean departure");
+		if (Id == TEXT("proper")) return TEXT("a recovery by the method");
+		if (Id == TEXT("gentle")) return TEXT("a gentle landing");
+		if (Id == TEXT("done")) return TEXT("the job finished");
+		return Id;
+	}
+	FString OutcomeGot(const FString& Id)
+	{
+		if (Id == TEXT("contact")) return TEXT("this one touched on the way out");
+		if (Id == TEXT("improper")) return TEXT("this one didn't follow the method");
+		if (Id == TEXT("hard")) return TEXT("this one hit the dock too hard");
+		if (Id.IsEmpty()) return TEXT("this one didn't finish");
+		return FString::Printf(TEXT("this one was %s"), *OutcomeAsked(Id));
+	}
+	FString Outcomes(const FCareerMedalRule& R)
+	{
+		TArray<FString> Words;
+		for (const FString& O : R.Outcomes) Words.Add(OutcomeAsked(O));
+		return FString::Join(Words, TEXT(" or "));
+	}
+	FString Capital(const FString& S) { return S.Left(1).ToUpper() + S.Mid(1); }
+	/** Drills sailed among docks (leaving one, coming back to one): touches there are docks too. */
+	bool AtTheDock(ESailingDrill Drill) { return Drill == ESailingDrill::LeaveTheDock || Drill == ESailingDrill::ReturnAndDock; }
 }
 
 FCareerMedalLines CareerMedalLines(const FCareerLesson& Lesson, const FCareerRun& Run, ECareerMedal Medal)
@@ -422,9 +447,9 @@ FCareerMedalLines CareerMedalLines(const FCareerLesson& Lesson, const FCareerRun
 		double Worst = -1.0;
 		auto Miss = [&](bool bMissed, double By, const FString& Line) { if (bMissed && By > Worst) { Worst = By; Out.Improve = Line; } };
 		Miss(Bar.Outcomes.Num() && !Bar.Outcomes.Contains(Run.Outcome), 1.0,
-			FString::Printf(TEXT("%s needs a %s finish; this one was %s."), *Name, *Outcomes(Bar), Run.Outcome.IsEmpty() ? TEXT("not") : *Run.Outcome));
+			FString::Printf(TEXT("%s needs %s; %s."), *Name, *Outcomes(Bar), *OutcomeGot(Run.Outcome)));
 		Miss(Bar.MaxCollisions >= 0 && Run.Collisions > Bar.MaxCollisions, double(Run.Collisions - Bar.MaxCollisions) / double(Bar.MaxCollisions + 1),
-			FString::Printf(TEXT("%s with a dock or a boat: %s needs %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches")), *Name,
+			FString::Printf(TEXT("%s%s: %s needs %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches")), AtTheDock(Run.Drill) ? TEXT(" with a dock or a boat") : TEXT(""), *Name,
 				Bar.MaxCollisions == 0 ? TEXT("none") : *FString::Printf(TEXT("%d at most"), Bar.MaxCollisions)));
 		Miss(Bar.MaxContactKnots >= 0.0 && Run.MaxContactKnots > Bar.MaxContactKnots, (Run.MaxContactKnots - Bar.MaxContactKnots) / FMath::Max(Bar.MaxContactKnots, 0.5),
 			FString::Printf(TEXT("A touch at %.1f kn: %s allows %.1f kn at most. Come in slower."), Run.MaxContactKnots, *Name, Bar.MaxContactKnots));
@@ -441,10 +466,11 @@ FCareerMedalLines CareerMedalLines(const FCareerLesson& Lesson, const FCareerRun
 		double Best = -1.0;
 		auto Met = [&](bool bMet, double Spare, const FString& Line) { if (bMet && Spare > Best) { Best = Spare; Out.DidWell = Line; } };
 		Met(R.MaxCollisions >= 0 && Run.Collisions <= R.MaxCollisions, Run.Collisions == 0 ? 1.0 : 0.5, Run.Collisions == 0
-			? FString(TEXT("No touches: you kept clear of every dock and boat.")) : FString::Printf(TEXT("Only %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches"))));
+			? FString(AtTheDock(Run.Drill) ? TEXT("No touches: you kept clear of every dock and boat.") : TEXT("No touches: you kept clear of everything around you."))
+			: FString::Printf(TEXT("Only %s."), *Times(Run.Collisions, TEXT("touch"), TEXT("touches"))));
 		Met(R.MaxInfractions >= 0 && Run.Infractions <= R.MaxInfractions, Run.Infractions == 0 ? 0.95 : 0.45,
 			Run.Infractions == 0 ? FString(TEXT("No rules penalties: you gave way when you had to.")) : FString::Printf(TEXT("Only %s."), *Times(Run.Infractions, TEXT("rules penalty"), TEXT("rules penalties"))));
-		Met(R.Outcomes.Num() > 0 && R.Outcomes.Contains(Run.Outcome), 0.9, FString::Printf(TEXT("A %s finish, as the %s medal asks."), *Run.Outcome, *FCareerContent::MedalName(ECareerMedal(I + 1)).ToLower()));
+		Met(R.Outcomes.Num() > 0 && R.Outcomes.Contains(Run.Outcome), 0.9, FString::Printf(TEXT("%s, as the %s medal asks."), *Capital(OutcomeAsked(Run.Outcome)), *FCareerContent::MedalName(ECareerMedal(I + 1)).ToLower()));
 		Met(R.MaxContactKnots >= 0.0 && Run.MaxContactKnots <= R.MaxContactKnots, Run.MaxContactKnots <= 0.0 ? 0.85 : 0.4,
 			Run.MaxContactKnots <= 0.0 ? FString(TEXT("No touches at all.")) : FString::Printf(TEXT("Gentle: your hardest touch was %.1f kn."), Run.MaxContactKnots));
 		Met(R.MaxSeconds > 0.0 && Run.Seconds <= R.MaxSeconds, (R.MaxSeconds - Run.Seconds) / R.MaxSeconds,
