@@ -1,0 +1,32 @@
+{
+ "surface": "wood",
+ "what": "Boat wood in two finishes: varnished (tillers, the Sunfish's daggerboard and rudder, washboards) and bare teak (handrails, coaming caps, toe rails, grab rails)",
+ "kinds": {
+  "varnish": {"surface_id": 6, "library_slot": "Wood", "hero_materials": ["TeakVarnish", "AshVarnish", "PlywoodVarnish"]},
+  "teak": {"surface_id": 7, "library_slot": "Teak", "hero_materials": ["TeakWeathered"]}
+ },
+ "boats": {
+  "J/22": "tiller (laminated ash and mahogany, varnished: Wood), cabin-top handrails and coaming caps (bare teak: Teak), companionway hatch (varnished plywood), kit HandrailTeak",
+  "Sunfish": "daggerboard top and tiller (varnished: Wood); the rudder blade and daggerboard below deck on older boats; no bare teak",
+  "fleet": "build_fleet.py Wood and Teak slots (drop boards, eyebrows, handrails) share the same two kinds"
+ },
+ "closest_camera_m": 0.5,
+ "closest_camera_note": "the helm's eye over the tiller; the hand is on the tiller at 0.3-0.5 m",
+ "pattern_mm": {
+  "grain_line_spacing": "see targets.size: the spectral centroid of the grain across it, 1.5-20 mm band",
+  "detail_tile_mm": [300, 150]
+ },
+ "levels": ["L0", "L1", "L2", "L3", "L4"],
+ "levels_note": "All five. Varnish: L0 fresh, L1 hand-wear dulling at the grip, L2 club (amber film worn grey at the grip and edges, a few failed patches), L3 kept 30 years (wood darkened under fresh varnish, no peeling), L4 neglected (varnish peeled to grey wood, black water stains). Teak: L0 golden new, L1 starting to fade, L2 silver-grey with brown patches (Bean's lesson J/22), L3 cleaned and oiled (golden-brown, grain raised), L4 dark grey with black mildew and checks.",
+ "replaces": {
+  "shader": "scripts/make_materials.py BOAT_CODE surf 6 (varnish: yellows, then grey patches from ageK) and surf 7 (teak: lerp to grey with ageK); the Grain block",
+  "library": "BOAT_LIBRARY Wood (0.30, 0.17, 0.07) r0.30 coat1 and Teak (0.22, 0.19, 0.15) r0.85",
+  "detail_maps": "Inputs/boat-detail T_Detail_WoodVarnish_N/_M and T_Detail_TeakWeathered_N/_M (Tools/boats/make_detail_textures.py wood_varnish, teak)",
+  "hero": "Inputs/j22-hero/j22_materials.py teak() (baked; style teak.state and varnish.gloss/peel) - follow-up, needs a hero bake"
+ },
+ "budget": {
+  "medium": "no new maps: shader math only (Medium skips detail maps)",
+  "high": "reuse the two existing wood map pairs (4 maps, ~8 MB); at most one extra texture read per pixel",
+  "frame": "boats views no more than 2 fps slower than main on the Mac boats gate"
+ }
+}

@@ -9,12 +9,12 @@ baked detail map (T_<Boat>_<Group>_X: R non-skid, G teak, B smooth gelcoat), and
   T_Detail_NonSkid_N/_M     moulded non-skid, 100 mm tile: 45-degree ribs at 2.28 mm pitch with a faint cross texture
                             (measured, Tools/texloop/refs/nonskid.json); M: R cavity (where grime sits), G top polish (tops worn smooth), B height
   T_Detail_Gelcoat_N/_M     250 mm tile: orange peel (1-3 mm) and fine buffing scratches; M: R scratches, G roughness
-  T_Detail_TeakWeathered_N/_M  300 mm along the grain x 150 mm across: weathered teak, the soft early wood eroded
+  T_Detail_TeakWeathered_N/_M  250 mm along the grain x 125 mm across: weathered teak, the soft early wood eroded
                             between ridges of latewood, open checks; M: R grain luminance, G checks, B height
   T_Detail_Canvas_N         50 mm tile: plain-weave cushion and bag cloth
   Boat fidelity 1 (M_BoatSurface's shared library, box-projected in the boat's frame):
   T_Detail_Metal_N/_M       100 mm: brushed 316 and anodised extrusions; M: R streaks, G roughness, B pits
-  T_Detail_WoodVarnish_N/_M 300 x 150 mm: grain under varnish; M: R grain luminance, G pores, B film thickness
+  T_Detail_WoodVarnish_N/_M 250 x 125 mm: grain under varnish; M: R grain luminance, G pores, B film thickness
   T_Detail_Rubber_N         80 mm: moulded rubber and PVC stipple
   T_Detail_Braid_N          20 mm: sixteen-plait rope cover, flat
   T_Detail_Sailcloth_N      40 mm: woven Dacron with fold crinkles
@@ -135,13 +135,13 @@ def gelcoat():
 
 
 def teak():
-    tl, ta = 300.0, 150.0                       # along the grain (x), across it (y)
+    tl, ta = 250.0, 125.0                       # along the grain (x), across it (y); 4.1 px/mm at 1024 (texture loop: >= 4)
     resx, resy = RES, RES // 2
     y, x = np.meshgrid((np.arange(resy) + 0.5) / resy, (np.arange(resx) + 0.5) / resx, indexing="ij")
     # growth rings cut on the flat: lines across the board that wander, with a little figure
     wander = 0.012 * np.sin(2 * np.pi * (2 * x + 0.3)) + 0.008 * np.sin(2 * np.pi * (5 * x + 2 * y)) \
         + 0.05 * (periodic_noise(max(resx, resy), 6, 3, 0.5, 5)[::2, :] - 0.5)
-    rings = (y + wander) * 26                  # ~5.8 mm between rings
+    rings = (y + wander) * 29                  # ~4.3 mm between rings, Poly Haven teak_veneer (Tools/texloop/refs/wood.json)
     f = rings - np.floor(rings)
     late = np.clip(1 - np.abs(f - 0.15) / 0.12, 0, 1) ** 0.6             # hard latewood band
     early = 1 - late
@@ -212,14 +212,14 @@ def metal():
 
 
 def wood_varnish():
-    """Varnished ash or mahogany (tillers, hand rails, washboards), 300 x 150 mm: the grain sits under a glassy film,
+    """Varnished ash or mahogany (tillers, hand rails, washboards), 250 x 125 mm: the grain sits under a glassy film,
     so the colour carries it and the normal only shows the open pores and a faint brush ripple across it.
     M: R grain luminance, G pores, B film thickness (thin over the ridges, where the varnish fails first)."""
-    tl, ta = 300.0, 150.0
+    tl, ta = 250.0, 125.0                       # 4.1 px/mm at 1024 (texture loop: >= 4)
     resx, resy = RES, RES // 2
     y, x = np.meshgrid((np.arange(resy) + 0.5) / resy, (np.arange(resx) + 0.5) / resx, indexing="ij")
     wander = 0.02 * np.sin(2 * np.pi * (x + 0.2)) + 0.06 * (periodic_noise(max(resx, resy), 5, 3, 0.5, 41)[::2, :] - 0.5)
-    rings = (y + wander) * 18
+    rings = (y + wander) * 40                 # ~3.1 mm rings; with the shader's broad figure the grain measures ~3.6 mm, ash and sapele (Tools/texloop/refs/wood.json)
     f = rings - np.floor(rings)
     late = np.clip(1 - np.abs(f - 0.2) / 0.18, 0, 1) ** 0.8
     rng = np.random.default_rng(42)
