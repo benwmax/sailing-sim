@@ -1277,10 +1277,44 @@ float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 float fleck = saturate(vn * 3.0 - 1.9);
 col = lerp(col, col * lerp(0.72, 1.12, ring) * (1.0 - 0.25 * fleck), Grain);
 rough = lerp(rough, rough * lerp(0.85, 1.25, ring), Grain);
-// The waterline "mustache": a brown band from the waterline up a few centimetres, ragged, strongest forward.
-float scumBand = (1.0 - smoothstep(2.0, 6.0 + 4.0 * streak, zcm)) * smoothstep(-4.0, 0.0, zcm);
-float scum = wear.y * IsHull * scumBand * (0.6 + 0.4 * saturate(LP.x / 300.0 + 0.5));
-col = lerp(col, float3(0.24, 0.15, 0.07), 0.6 * scum);
+// Texture loop, waterline (Tools/texloop/waterline/waterline.py, the same table as the hero J/22 bake and the swatches):
+// the lake's scum line, slime and bottom film, from Dirt only (care scrubs it off). Measured on TX 7295 EC at Rush Creek:
+// a thin ragged grey line about 1.75 cm high, 89% as bright as the gelcoat beside it; a neglected boat's is a 5-8 cm
+// tan-brown clay band with olive slime below. Fresh water: no barnacles or mussel crust. Salt water keeps E1's band below.
+// Unset Age (player and AI boats): the livery's scum channel stands in. Colours are linear (waterline.py lists them in sRGB).
+float wlD = age >= 0.0 ? dirtK : wear.y;
+float wlK = (0.4 * pow(max(wlD, 1e-4), 0.3) + 0.3 * smoothstep(0.6, 1.0, wlD)) * step(1e-3, wlD);
+float wlClay = smoothstep(0.45, 0.9, wlD);
+float wlScale = seeded ? 0.7 + 0.6 * saturate((CD13 - 0.05) / 0.2) : 1.0;   // E1's Wet: how much this berth's water moves
+float wlH = (1.0 + 1.6 * wlD + 5.0 * smoothstep(0.55, 1.0, wlD)) * wlScale;
+float wlSlimeK = 0.85 * smoothstep(0.4, 0.95, wlD), wlDepth = 4.0 + 16.0 * smoothstep(0.4, 1.0, wlD);
+// 1D value noise along the hull: the wash's slow swell (23 cm), the ragged edge (1.5 cm), the run-off streaks (3.5 cm)
+float3 wlX = float3(LP.x / 23.0, LP.x / 1.5, (LP.x + 0.3 * zcm) / 3.5);
+float3 wlI = floor(wlX), wlF = frac(wlX);
+wlF = wlF * wlF * (3.0 - 2.0 * wlF);
+float3 wlN = lerp(frac(sin(wlI * 12.99 + float3(0.0, 7.1, 14.2)) * 43758.5), frac(sin((wlI + 1.0) * 12.99 + float3(0.0, 7.1, 14.2)) * 43758.5), wlF);
+float wlTop = wlH + (0.25 + 0.08 * wlH / wlScale) * (2.0 * (0.6 * wlN.x + 0.4 * wlN.y) - 1.0);
+float wlLine = smoothstep(-0.6, -0.1, zcm) * (1.0 - smoothstep(wlTop - 0.2 - 0.06 * wlH, wlTop, zcm));
+float wlU = saturate(zcm / max(wlTop, 0.1));
+float wlDens = 0.75 + 0.45 * wlClay + 0.35 * smoothstep(0.6, 0.95, wlU);   // a tide mark at the top
+wlLine *= clamp(wlDens * (1.0 + (1.0 - 0.85 * wlClay) * (0.6 * (wlN.z - 0.5) + 0.4 * (vn - 0.5))), 0.0, 1.3);   // a dirty band mottles less
+float wlFresh = IsHull * (1.0 - salt);
+float wlLineK = wlFresh * wlK * wlLine;
+col = lerp(col, lerp(float3(0.179, 0.171, 0.147), float3(0.171, 0.119, 0.04), wlClay), wlLineK);
+// below the water: a grey-olive film over the bottom paint, and blotches of olive slime hanging from the line
+float wlBelow = wlFresh * (1.0 - smoothstep(-1.0, 0.0, zcm));
+float wlFilm = wlBelow * 0.45 * wlD * (0.6 + 0.4 * vn);
+col = lerp(col, float3(0.171, 0.187, 0.133), wlFilm);
+// slime: smeared along the hull by the wash (14 x 3 cm cells), thickest at the line and thinning with depth
+float2 wlQ = float2(LP.x / 14.0, zcm / 3.0), wlQi = floor(wlQ), wlQf = smoothstep(0.0, 1.0, frac(wlQ));
+float wlBlot = 0.65 * lerp(lerp(frac(sin(dot(wlQi, float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wlQi + float2(1, 0), float2(12.99, 78.23))) * 43758.5), wlQf.x),
+                           lerp(frac(sin(dot(wlQi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wlQi + float2(1, 1), float2(12.99, 78.23))) * 43758.5), wlQf.x), wlQf.y) + 0.35 * vn;
+float wlDp = saturate(-zcm / wlDepth);
+float wlSlime = wlFresh * wlSlimeK * (1.0 - smoothstep(-0.5, 0.2, zcm)) * pow(1.0 - wlDp, 1.5) * smoothstep(0.3 + 0.25 * wlDp, 0.65, wlBlot);
+col = lerp(col, float3(0.073, 0.089, 0.025), wlSlime);
+float wlCover = saturate(wlLineK + wlSlime + 0.5 * wlFilm);
+rough = lerp(rough, 0.8, wlCover);
+coat *= 1.0 - 0.7 * wlCover;
 // Dock rash and fender marks: soft, sparse smudges in the fender band of the topsides (an ellipse per cell, faded
 // edges: hard-edged cells read as camouflage on a big hull).
 float2 cs = float2(LP.x / 45.0, zcm / 16.0);
@@ -1333,11 +1367,11 @@ float rwOn = step(1.0 - 0.6 * rwN, rwH);                    // at most 6 slots i
     rough = lerp(rough, 0.8, rwK);
     coat *= 1.0 - 0.7 * rwK;
 }
-// E1: the stain band a berthed hull carries above her waterline (Wet metres), heavier on an old, neglected boat: green-brown
-// algae on the lake, a tan band on salt water with a thin crust of dried salt along its top edge.
+// E1: the stain band a berthed hull carries above her waterline (Wet metres), heavier on an old, neglected boat: on salt
+// water a tan band with a thin crust of dried salt along its top edge (the lake's is the texture loop's waterline above).
 float wetCm = seeded ? max(CD13, 0.0) * 100.0 : 0.0;
 float bandTop = wetCm * (0.75 + 0.25 * streak);
-float stainBand = IsHull * step(abs(n.z), 0.8) * smoothstep(-2.0, 1.0, zcm) * (1.0 - smoothstep(bandTop - 3.0, bandTop, zcm)) * step(0.5, wetCm);
+float stainBand = IsHull * salt * step(abs(n.z), 0.8) * smoothstep(-2.0, 1.0, zcm) * (1.0 - smoothstep(bandTop - 3.0, bandTop, zcm)) * step(0.5, wetCm);
 float stainK = stainBand * (age >= 0.0 ? saturate(1.15 * dirtK) : 0.4) * (0.75 + 0.25 * vn);
 col = lerp(col, lerp(float3(0.16, 0.17, 0.08), float3(0.42, 0.36, 0.24), salt), 0.65 * stainK);
 float crust = salt * IsHull * stainK * exp(-pow((zcm - bandTop + 1.5) / 1.2, 2.0)) * step(0.5, frac(sin(floor(LP.x / 1.5) * 12.7) * 437.5) + 0.3);
