@@ -274,12 +274,21 @@ void ASailingHUD::Tick(float DeltaSeconds)
 		SAIL_LOG(Display, TEXT("UI script: shot %s"), *Path);
 		return;
 	}
+	if (Token.StartsWith(TEXT("Stage:")))
+	{
+		SAIL_LOG(Display, TEXT("UI script: stage %s"), *Token.Mid(6));
+		return;
+	}
+	if (Token.StartsWith(TEXT("Answer:")))
+	{
+		const bool bAllowed = SailingArgs::DevScriptStepsAllowed(UE_BUILD_SHIPPING != 0, USailingSettings::DeveloperTools());
+		const int32 N = bAllowed && FrontEnd.IsValid() ? FrontEnd->DevAnswerQuiz() : 0;
+		SAIL_LOG(Display, TEXT("UI script: answer %s: %s"), *Token.Mid(7), N > 0 ? *FString::Printf(TEXT("ok, %d answered"), N) : bAllowed ? TEXT("no question open") : TEXT("not in this build"));
+		return;
+	}
 	if (Token.StartsWith(TEXT("Finish:")))
 	{
-		bool bAllowed = USailingSettings::DeveloperTools();
-#if !UE_BUILD_SHIPPING
-		bAllowed = true;
-#endif
+		const bool bAllowed = SailingArgs::DevScriptStepsAllowed(UE_BUILD_SHIPPING != 0, USailingSettings::DeveloperTools());
 		ASailboatPawn* Pawn = bAllowed && PlayerOwner ? Cast<ASailboatPawn>(PlayerOwner->GetPawn()) : nullptr;
 		const bool bDone = Pawn && Pawn->DevFinishDrill(Token.Mid(7));
 		SAIL_LOG(Display, TEXT("UI script: finish %s: %s"), *Token.Mid(7), bDone ? TEXT("ok") : bAllowed ? TEXT("no drill running") : TEXT("not in this build"));

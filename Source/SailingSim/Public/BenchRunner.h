@@ -15,6 +15,9 @@ namespace SailingArgs
 	 *  capture, test and tuning switches (and -SailingExecAt's console commands) can't change a shipped game. Session
 	 *  choices from the front end don't go through it. */
 	SAILINGSIM_API const TCHAR* Dev();
+	/** The UI script's playthrough steps that act for the player (Finish:, Answer:): any build but Shipping, and Shipping
+	 *  only with developer tools on. Without the tokens nothing changes. */
+	inline bool DevScriptStepsAllowed(bool bShipping, bool bDeveloperTools) { return !bShipping || bDeveloperTools; }
 
 	/** The release smoke's switches out of a command line: empty unless it has -SailingShippingSmoke, then only
 	 *  -SailingUIScript, -SailingWorld, -SailingLaunch, -SailingShot and -SailingBench (at most 60 s) pass. Dev() returns this

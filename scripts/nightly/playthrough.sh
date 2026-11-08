@@ -6,17 +6,26 @@
 # that did not appear.
 # Usage: scripts/nightly/playthrough.sh <SailingSim.app> <out dir>    (or --self-test: the log check on stand-in logs)
 set -u
+# One lesson from its loading screen: the lesson ended by Finish:<outcome>, its medal screen, the quiz answered right
+# (Answer:all, through the quiz's own buttons), the score, then Enter on the score's first way (the next lesson).
+lesson() {   # <stage label> <outcome>
+	echo "Stage:$1,Wait,Wait,Expect:Loading,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait"
+	echo "Expect:Hud,Shot:$1-lesson,Finish:$2,Wait,Wait"
+	echo "Expect:Quiz,Shot:$1-medal,Answer:all,Wait"
+	echo "Expect:Quiz,Shot:$1-score"
+}
 FLOW_STEPS=(
-	"Wait,Wait,Expect:FirstLaunch,Shot:01-first-launch"
+	"Stage:start,Wait,Wait,Expect:FirstLaunch,Shot:01-first-launch"
 	"DOWN,ENTER,Wait,Expect:Title,Shot:02-title"
 	"DOWN,ENTER,Wait,Expect:Career,Shot:03-career"
-	"DOWN,RIGHT,Wait,Shot:04-lesson-1,ENTER,Wait,Wait,Expect:Loading,Shot:05-loading"
-	"Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait"
-	"Expect:Hud,Shot:06-lesson,Finish:clean,Wait,Wait"
-	"Expect:Quiz,Shot:07-medal,BACK,Wait,Wait"
-	"Expect:Hud,MENU,Wait,Expect:Pause,Shot:08-pause"
-	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,Shot:09-leave,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
-	"Expect:Title,Shot:10-title,Log,Quit"
+	"DOWN,RIGHT,Wait,Shot:04-lesson-1,ENTER"
+	$(lesson ds1 clean) "ENTER"
+	$(lesson ds2 done) "ENTER"
+	$(lesson ds3 done) "ENTER"
+	$(lesson ds4 proper) "ENTER"
+	$(lesson ds5 proper) "ENTER"
+	$(lesson ds6 gentle)
+	"Stage:explore,Log,Shot:90-after-ds6,ENTER,Wait,Wait,Log,Shot:91-after-enter,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
 	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
@@ -31,7 +40,10 @@ check() {
 	Want=$(grep -c "UI script: expect " "$Log" 2>/dev/null); Want=${Want:-0}
 	if [[ "$Want" == 0 ]]; then echo "FAIL the script never ran (no screen checks in the log)"; return 1; fi
 	Miss=$(grep -m1 "UI script: expect .*: MISSING" "$Log" | sed -E 's/.*UI script: expect ([A-Za-z]+): MISSING \(on ([A-Za-z?]+)\).*/\1 (on \2)/')
-	if [[ -n "$Miss" ]]; then echo "FAIL $Miss"; return 1; fi
+	if [[ -n "$Miss" ]]; then
+		local At; At=$(grep -E "UI script: (stage |expect .*: MISSING)" "$Log" | sed -n '/MISSING/q;p' | tail -1 | sed -E 's/.*UI script: stage //')
+		echo "FAIL $Miss${At:+ in $At}"; return 1
+	fi
 	if grep -q "UI script: finish .*: no drill running\|UI script: finish .*: not in this build" "$Log"; then echo "FAIL the lesson could not be finished ($(grep -m1 'UI script: finish' "$Log" | sed 's/.*UI script: //'))"; return 1; fi
 	local Need; Need=$(echo "${FLOW_STEPS[*]}" | grep -o "Expect:" | wc -l | tr -d ' ')
 	if [[ "$Want" -lt "$Need" ]]; then echo "FAIL the script stopped after $Want of $Need screen checks"; return 1; fi
@@ -43,17 +55,17 @@ if [[ "${1:-}" == "--self-test" ]]; then
 	N=$(echo "${FLOW_STEPS[*]}" | grep -o "Expect:" | wc -l | tr -d ' ')
 	for ((i = 0; i < N; i++)); do echo "LogSailing: Display: UI script: expect X: ok"; done > "$T/pass.log"
 	ok "every screen up passes" "$(check "$T/pass.log")" "PASS"
-	{ echo "UI script: expect FirstLaunch: ok"; echo "UI script: expect Career: MISSING (on Title)"; } > "$T/miss.log"
-	ok "a missing screen is named" "$(check "$T/miss.log")" "FAIL Career (on Title)"
+	{ echo "UI script: stage start"; echo "UI script: expect FirstLaunch: ok"; echo "UI script: stage ds3"; echo "UI script: expect Quiz: MISSING (on Hud)"; echo "UI script: stage ds4"; } > "$T/miss.log"
+	ok "a missing screen is named with its lesson" "$(check "$T/miss.log")" "FAIL Quiz (on Hud) in ds3"
 	echo "LogInit: nothing" > "$T/none.log"
 	ok "no checks at all fails" "$(check "$T/none.log")" "FAIL the script never ran"
-	{ echo "UI script: expect Hud: ok"; echo "UI script: finish clean: no drill running"; } > "$T/fin.log"
+	{ for ((i = 0; i < N; i++)); do echo "UI script: expect X: ok"; done; echo "UI script: finish clean: no drill running"; } > "$T/fin.log"
 	ok "an unfinished lesson fails" "$(check "$T/fin.log")" "FAIL the lesson could not be finished"
 	echo "UI script: expect FirstLaunch: ok" > "$T/short.log"
 	ok "a script cut short fails" "$(check "$T/short.log")" "FAIL the script stopped"
 	ok "the pad flow uses the pad's buttons" "$(flow pad | grep -o 'Gamepad_FaceButton_Bottom' | head -1)" "Gamepad_FaceButton_Bottom"
 	ok "the keys flow has no pad keys" "$(flow keys | grep -c Gamepad)" "0"
-	ok "the pad pauses with its Menu button (B is the backstay in game)" "$(flow pad | grep -o 'Gamepad_Special_Right' | head -1)" "Gamepad_Special_Right"
+	ok "every lesson is finished and its quiz answered" "$(flow keys | grep -o 'Finish:' | wc -l | tr -d ' ')/$(flow keys | grep -o 'Answer:all' | wc -l | tr -d ' ')" "6/6"
 	rm -rf "$T"; echo "self-test: $F failure(s)"; exit $(( F > 0 ))
 fi
 APP=$1; OUT=$2; mkdir -p "$OUT"

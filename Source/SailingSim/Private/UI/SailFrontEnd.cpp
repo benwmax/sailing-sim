@@ -2209,6 +2209,30 @@ void SSailFrontEnd::StartQuiz()
 	}
 }
 
+int32 SSailFrontEnd::DevAnswerQuiz()
+{
+	// The answer buttons' and Next's own handlers, in the order a player clicks them, until the score shows.
+	int32 Answered = 0;
+	for (int32 Guard = 0; Guard < 100 && Current() == ESailScreen::Quiz && Quiz.IsValidIndex(QuizIndex); ++Guard)
+	{
+		if (QuizChosen < 0)
+		{
+			const int32 Right = Quiz[QuizIndex].Answer;
+			if (!QuizOptionClicks.IsValidIndex(Right)) break;
+			const FSimpleDelegate Click = QuizOptionClicks[Right];   // a copy: the click rebuilds the screen
+			Click.ExecuteIfBound();
+			++Answered;
+		}
+		else if (QuizNextClick.IsBound())
+		{
+			const FSimpleDelegate Next = QuizNextClick;
+			Next.ExecuteIfBound();
+		}
+		else break;
+	}
+	return Answered;
+}
+
 SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 {
 	using namespace SailUI;
@@ -2216,6 +2240,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	FEntry E;
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Quiz); Show(Stack.Last(), true); };
 	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
+	QuizOptions.Reset();
+	QuizOptionClicks.Reset();
+	QuizNextClick.Unbind();
 	const bool bDone = QuizIndex >= Quiz.Num();
 	Box->AddSlot().AutoHeight()[ SailUI::Text(bDone ? FString::Printf(TEXT("Quiz · %s"), *QuizDrillName)
 		: FString::Printf(TEXT("Quiz · %s · question %d of %d"), *QuizDrillName, QuizIndex + 1, Quiz.Num()), EType::Eyebrow, Accent) ];
@@ -2287,14 +2314,16 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		{
 			const bool bRight = I == Q.Answer, bChosen = I == QuizChosen;
 			const FLinearColor Edge = !bAnswered ? FLinearColor::Transparent : (bRight ? Starboard : (bChosen ? Port : FLinearColor::Transparent));
+			const FSimpleDelegate Choose = FSimpleDelegate::CreateLambda([this, I, Rebuild]()
+			{
+				if (QuizChosen >= 0 || !Quiz.IsValidIndex(QuizIndex)) return;
+				QuizChosen = I;
+				if (I == Quiz[QuizIndex].Answer) ++QuizRight;
+				Rebuild();
+			});
+			QuizOptionClicks.Add(Choose);
 			TSharedRef<SSailButton> Opt = SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(16.f, 10.f)).IsEnabled(!bAnswered)
-				.OnClicked(FSimpleDelegate::CreateLambda([this, I, Rebuild]()
-				{
-					if (QuizChosen >= 0 || !Quiz.IsValidIndex(QuizIndex)) return;
-					QuizChosen = I;
-					if (I == Quiz[QuizIndex].Answer) ++QuizRight;
-					Rebuild();
-				}))
+				.OnClicked(Choose)
 			[
 				SNew(SBorder).BorderImage(Rounded(FLinearColor::Transparent, RadiusButton, Edge, 2.f)).Padding(FMargin(8.f, 4.f))
 				[
@@ -2304,13 +2333,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				]
 			];
 			Box->AddSlot().AutoHeight().Padding(0.f, 4.f)[ Opt ];
+			QuizOptions.Add(Opt);
 			if (!First.IsValid()) First = Opt;
 		}
 		if (bAnswered)
 		{
 			const bool bWasRight = QuizChosen == Q.Answer;
 			const bool bLast = QuizIndex + 1 >= Quiz.Num();
-			TSharedRef<SSailButton> Next = ActionButton(bLast ? TEXT("See the score") : TEXT("Next question"), FSimpleDelegate::CreateLambda([this, Rebuild]()
+			const FSimpleDelegate NextClick = FSimpleDelegate::CreateLambda([this, Rebuild]()
 			{
 				++QuizIndex;
 				QuizChosen = -1;
@@ -2340,7 +2370,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 					}
 				}
 				Rebuild();
-			}));
+			});
+			QuizNextClick = NextClick;
+			TSharedRef<SSailButton> Next = ActionButton(bLast ? TEXT("See the score") : TEXT("Next question"), NextClick);
 			Box->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ SailUI::Text(bWasRight ? TEXT("Correct") : TEXT("Not quite"), EType::CardTitleS, bWasRight ? Starboard : Port) ];
 			Box->AddSlot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(Q.Why, EType::Body, Fg, true) ];
 			Box->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ SNew(SBox).WidthOverride(320.f)[ Next ] ];

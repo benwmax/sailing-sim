@@ -68,6 +68,10 @@ public:
 	ESailScreen Current() const { return Stack.Num() ? Stack.Last().Screen : ESailScreen::Title; }
 	/** What FocusCurrent focuses on the current screen (tests). */
 	TSharedPtr<SWidget> FocusTarget() const { return Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>(); }
+	/** #404's nightly playthrough (the UI script's Answer:all): answers the open quiz right through its own answer and
+	 *  Next buttons' handlers, question by question, until the score shows (so the lesson's or checkride's quiz is
+	 *  recorded as a player's is). Returns how many questions it answered. */
+	int32 DevAnswerQuiz();
 
 private:
 	struct FEntry
@@ -154,6 +158,9 @@ private:
 	// The quiz: its questions, the one on screen, the option chosen (-1: not yet), the score and the debrief line.
 	TArray<FQuizQuestion> Quiz;
 	int32 QuizIndex = 0, QuizChosen = -1, QuizRight = 0;
+	TArray<TSharedPtr<SWidget>> QuizOptions;   // the open question's answer buttons, in order
+	TArray<FSimpleDelegate> QuizOptionClicks;   // their click handlers, and Next's (DevAnswerQuiz)
+	FSimpleDelegate QuizNextClick;
 	FString QuizDebrief, QuizDrillName;
 	// Career 1: the tier shown on the Career screen; the checkride whose quiz is running (empty: a drill's quiz); the
 	// lesson a drill's quiz closes; the career's line on the quiz's last page.
