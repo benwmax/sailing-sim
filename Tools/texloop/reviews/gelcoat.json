@@ -1,0 +1,25 @@
+{
+ "surface": "gelcoat",
+ "how": "three fresh blind reviewers per round (separate sessions, no access to the code or the answer key): the five levels shuffled and matched to their descriptions; then per level two unlabelled renders (this round and the last, order shuffled) beside the level's photos (L0, L2, L3) or its description (L1, L4). Sheets built from Artifacts/texloop/gelcoat/{before,after}.",
+ "round": 2,
+ "against": "before (the single ageK material on main)",
+ "ladder": [{"correct": 5}, {"correct": 5}, {"correct": 5}],
+ "ab": [
+  {"winner": "this", "levels": {"L0": "this", "L1": "this", "L2": "this", "L3": "this", "L4": "this"}, "wrong_material": false},
+  {"winner": "this", "levels": {"L0": "this", "L1": "this", "L2": "this", "L3": "this", "L4": "this"}, "wrong_material": false},
+  {"winner": "this", "levels": {"L0": "this", "L1": "this", "L2": "this", "L3": "this", "L4": "this"}, "wrong_material": false}
+ ],
+ "notes": [
+  "All three: the ends of the ladder are easy; L1 against L0 is the hardest call (one faint scuff), and the warm cast is what gives L3 away.",
+  "All three: the renders are very smooth (no orange peel, little gloss variation), the chalk barely shows, and the rain streaks are too straight and evenly spaced; one called the stacked fender smudges a ladder.",
+  "Nobody called it the wrong material, but two said it reads closer to smooth painted plastic than photographed gelcoat."
+ ],
+ "rejected": {
+  "3": {
+   "change": "12 cm streak lanes with each run off-centre and wandering as it falls, fewer runs at a given dirt; fender smudge rows staggered",
+   "ladder": [5, 5, 5],
+   "ab_against_round_2": [{"this": 1, "last": 2, "same": 2}, {"this": 1, "last": 2, "same": 2}, {"this": 2, "last": 2, "same": 1}],
+   "why": "lost the A/B to round 2 (L2 and L4 read as too clean with fewer runs; L3 was better) and the streaks still read as straight; reverted, so the shipped material is round 2"
+  }
+ }
+}

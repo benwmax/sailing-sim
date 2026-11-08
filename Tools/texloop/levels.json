@@ -1,0 +1,15 @@
+{
+ "_about": "The texture loop's five wear levels (docs/texture-loop). Each is a fixed E1 Age (years) and Care (0 neglected .. 1 kept), so every surface is judged at the same five points and the game can place any boat between them.",
+ "levels": [
+  {"id": "L0", "name": "Brand new", "age": 0.0, "care": 1.0,
+   "look": "mirror gelcoat, crisp non-skid, bright white rope, clean waterline, stiff white sails"},
+  {"id": "L1", "name": "A few months", "age": 0.3, "care": 0.9,
+   "look": "faint tan scum line, scuffs where people step aboard and under the tiller, dust in the non-skid, rope a little soft"},
+  {"id": "L2", "name": "Years in use (club boat)", "age": 6.0, "care": 0.5,
+   "look": "chalky topsides, grime trails on the foot paths, grey fuzzy rope, creased sails with tape repairs, tea stains, silver teak"},
+  {"id": "L3", "name": "Decades old, maintained", "age": 30.0, "care": 0.9,
+   "look": "polished but faded and slightly yellow gelcoat, hairline crazing near fittings, off-white repairs, new rope on an old boat"},
+  {"id": "L4", "name": "Neglected", "age": 20.0, "care": 0.1,
+   "look": "heavy chalk, black streaks under fittings, green slime at the waterline, mildew, white powder on aluminium, peeling varnish"}
+ ]
+}

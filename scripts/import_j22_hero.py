@@ -38,17 +38,22 @@ NormalOut = normalize(float3(N.xy + d.xy, N.z * d.z));      // whiteout blend ov
 // (more on the sun-facing tops), and the hull is wet up to the splash line and the deck with rain and spray (MPC_Boat):
 // darker by each surface's porosity (gelcoat 0.1, non-skid 0.5, teak 0.6), water standing in the non-skid's grooves,
 // glossy. (A sunlit white deck sits on the tone curve's shoulder, so these read smaller on screen than in albedo.)
-float ageK = Age >= 0.0 ? saturate(Age / 20.0) * (1.0 - 0.6 * saturate(Care)) : 0.5 * Wear.x;
+// Texture loop (docs/texture-loop, as M_BoatSurface and Tools/texloop/wear.py): timeK (the years: yellowing) and dirtK
+// (what care removes: chalk, grime, grey teak) from the same Age and Care; unset, both are half the livery's Wear.x.
+float timeK = Age >= 0.0 ? saturate(0.25 * (1.0 - exp(-Age / 0.75)) + 0.75 * (1.0 - exp(-Age / 18.0))) : 0.5 * Wear.x;
+float dirtK = Age >= 0.0 ? saturate((1.0 - exp(-Age)) * (0.15 + 0.85 * (1.0 - saturate(Care)))) : 0.5 * Wear.x;
 float3 nw = normalize(NW);
 nw *= dot(nw, V) < 0.0 ? -1.0 : 1.0;          // two-sided: the generated shells (the cockpit sole) aren't all wound outward
 float up = saturate((nw.z - 0.4) * 2.5);
 float gcAll = X.b * (1.0 - X.r) * (1.0 - X.g);
-float ox = ageK * gcAll * (0.55 + 0.45 * up);
+float ox = max(dirtK, 0.3 * timeK) * gcAll * (0.55 + 0.45 * up);
 float lum = dot(c, float3(0.3, 0.59, 0.11));
 c = lerp(c, lerp(float3(lum, lum, lum), float3(0.80, 0.77, 0.66), 0.6), 0.6 * ox);   // chalky and a little yellowed
+float whiteG = saturate((min(c.r, min(c.g, c.b)) - 0.45) * 4.0);
+c *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.965, 0.86), timeK * gcAll * whiteG * step(0.0, Age));   // the years yellow it, kept or not (unset: the bake's own colour)
 Rough = lerp(Rough, 0.75, ox);
-c *= 1.0 - 0.3 * ageK * X.r * up;                  // grime worked into the non-skid where feet go
-c *= 1.0 - 0.25 * ageK * X.g;                      // teak greys and darkens
+c *= 1.0 - 0.3 * dirtK * X.r * up;                  // grime worked into the non-skid where feet go
+c *= 1.0 - 0.25 * dirtK * X.g;                      // teak greys and darkens
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
 // (Clipping audit 2, as M_BoatSurface: at most 6 cm of ragged edge, half of it slow noise, softer as the band grows.)
 float wlx = WP.x / 110.0, wli = floor(wlx), wlf = frac(wlx);

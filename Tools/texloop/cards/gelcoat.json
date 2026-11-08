@@ -1,0 +1,18 @@
+{
+ "surface": "gelcoat",
+ "kind": 1,
+ "what": "Smooth white gelcoat: topsides, cabin sides, cockpit walls, side decks between the non-skid",
+ "boats": {"J22": "hero bake (M_J22HeroSurface: gelcoat mask X.b) and MI_Boat_Topsides/Deck on the fleet copy", "Sunfish": "MI_Boat_Topsides/Deck", "berthed fleet": "M_BoatSurface with E1 Age/Care per instance"},
+ "closest_camera_m": 0.5,
+ "pattern_mm": null,
+ "detail_map": {"maps": ["T_Detail_Gelcoat_N", "T_Detail_Gelcoat_M"], "tile_m": 0.25, "px": 1024},
+ "levels": ["L0", "L1", "L2", "L3", "L4"],
+ "effects": {
+  "chalk": "dirt: paler, flatter, the clear coat gone (sun-facing tops first)",
+  "yellowing": "time: white gelcoat warms with the years, kept or not",
+  "dock rash": "time: grey smudges in the fender band",
+  "black streaks": "dirt: rain runs from the toe rail down the topsides",
+  "crazing, repairs": "time: not yet in the material (L3 cues); next round, with orange peel and less even streaks"
+ },
+ "replaces": "M_BoatSurface's single-ageK gelcoat oxidation and the hero's ageK chalk"
+}
