@@ -1,0 +1,41 @@
+{
+ "part": "HornCleat",
+ "card": {
+  "what": "Cast aluminium open-base horn cleat, 6 in (150 mm): dock lines, the anchor rode and halyard tails on small keelboats",
+  "boats": "J/22 bow and stern cleats (layouts/j22.json), the Sunfish's 100 mm size (layouts/sunfish.json), build_fleet.py's cleats",
+  "distance": "arm's reach on the foredeck and dock; the camera passes close when docking",
+  "before": "kit HornCleat from horn_cleat (Oct 2026): a tapered box base and one swept arch"
+ },
+ "references": [
+  {"id": "tokman", "kind": "photo", "use": "outline and proportions (square-on side view of a cast open-base cleat on a dock; proportions only)",
+   "url": "https://commons.wikimedia.org/wiki/File:Boat_Cleat.jpg", "licence": "CC BY-SA 4.0, Roman Tokman", "mask": "tokman.mask.png"},
+  {"id": "kmj", "kind": "photo", "use": "three-quarter view of a solid-base cast cleat: knob ends, fillets, bolt heads",
+   "url": "https://commons.wikimedia.org/wiki/File:Klampe_01_KMJ.jpg", "licence": "CC BY-SA 3.0, KMJ"},
+  {"id": "bean-j22", "kind": "photo", "use": "the J/22's deck hardware at Rush Creek (cleats in the distance only)",
+   "url": "project upload 84310630 (Bean, J/22 at Rush Creek)"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "https://www.walmart.com/ip/44554600",
+   "note": "Sea-Dog 6 in open-base cleat: height 1.88 in (47.8 mm). Other 6 in cast aluminium cleats: Attwood 6 x 1-13/32 in (low closed base), bolt centres 1 to 2 in (sailboatparts.com, flagdesk.com)"}
+ ],
+ "sizes": [
+  {"id": "length", "name": "Overall length, horn tip to horn tip", "target": 152.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 6 in"},
+  {"id": "height", "name": "Height off the deck", "target": 47.8, "unit": "mm", "tol": 0.08, "source": "catalogue: Sea-Dog 6 in open-base, 1.88 in"},
+  {"id": "aspect_full", "name": "Height / length", "target": "ref:tokman", "unit": "ratio", "tol": 0.06, "source": "measured on the square-on photo"},
+  {"id": "foot", "name": "Foot length / length", "target": "ref:tokman", "unit": "ratio", "tol": 0.08, "source": "measured on the square-on photo"},
+  {"id": "waist", "name": "Pedestal waist / length", "target": "ref:tokman", "unit": "ratio", "tol": 0.10, "source": "measured on the square-on photo"},
+  {"id": "width", "name": "Width across the foot", "target": null, "unit": "mm", "tol": null, "source": "no end-on reference yet: reported only"}
+ ],
+ "outline": {"ref": "tokman", "pass": 0.90, "whole": true},
+ "features": [
+  {"id": "horns", "text": "Two horns tapering to rounded knob ends, a little upswept", "objects": ["casting"], "manual": true},
+  {"id": "top", "text": "Top nearly level, a shallow dip between the bolts", "manual": true},
+  {"id": "pedestal", "text": "Waisted pedestal flaring out to a long flat foot", "manual": true},
+  {"id": "hole", "text": "Round line hole through the pedestal", "manual": true},
+  {"id": "fillets", "text": "Soft cast fillets where the horns meet the pedestal: one casting, no seams", "manual": true},
+  {"id": "bolts", "text": "Two bolt heads on the top flat", "objects": ["bolt"]},
+  {"id": "metal", "text": "Cast aluminium body, stainless bolts", "slots": ["Aluminium", "Stainless"]},
+  {"id": "clearance", "text": "Room for a 12 mm line under each horn", "manual": true},
+  {"id": "flat", "text": "Flat underside, sits on the deck with no gap", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}
