@@ -1,0 +1,191 @@
+{
+ "part": "FiddleCam",
+ "card": {
+  "what": "40 mm fiddle block with swivel, becket and cam cleat: the lower block of a 4:1 vang or a small boat's mainsheet",
+  "boats": "J/22 vang (bottom block, at the mast base) and mainsheet (on the traveller car)",
+  "distance": "arm's reach in the cockpit and at the mast base",
+  "before": "kit FiddleCam from _block_parts (Oct 2026): really a side-by-side double with a cam"
+ },
+ "references": [
+  {
+   "id": "bean-j22-mainsheet",
+   "kind": "photo",
+   "use": "the look in use on our J/22: both fiddle blocks of the mainsheet, the lower one with an aluminium cam bracket, red cam jaws, becket and swivel on the traveller car",
+   "url": "project upload 84310630 (Bean, J/22 at Rush Creek)"
+  },
+  {
+   "id": "j22-layout",
+   "kind": "drawing",
+   "use": "where the vang and mainsheet blocks go on a J/22 (4:1 vang, fiddles with cam)",
+   "url": "project uploads 20109d18, c64b7434 (Harken J/22 layout, measuring only)"
+  },
+  {
+   "id": "sizes-2655",
+   "kind": "catalogue",
+   "use": "sizes: 40 mm fiddle with swivel, 115 mm long, 4 mm pin",
+   "url": "Harken 2655 retailer listings (numbers only)"
+  },
+  {
+   "id": "sizes-2658",
+   "kind": "catalogue",
+   "use": "sizes: 40 mm fiddle with swivel, becket and cam, 131 mm long, 4 mm pin",
+   "url": "https://www.roostersailing.com/products/128689"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "overall_all",
+   "name": "Overall length, top of the shackle to the bottom of the becket",
+   "target": 131.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue (2658): 131 mm"
+  },
+  {
+   "id": "sheave",
+   "name": "Big sheave diameter",
+   "target": 40.0,
+   "unit": "mm",
+   "tol": 0.02,
+   "source": "catalogue: 40 mm"
+  },
+  {
+   "id": "sheave2",
+   "name": "Small sheave diameter",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "not in the listings: reported only (ours 26 mm, so the big sheave's 10 mm lines clear the small cheeks)"
+  },
+  {
+   "id": "thick",
+   "name": "Thickness across the cheeks",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "no edge-on reference: reported only"
+  }
+ ],
+ "outline": null,
+ "outline_note": "No square-on photo of a modern fiddle with a licence we can use turned up (Commons was rate-limited from the cloud and maker sites are blocked); Bean's photo is at an angle. Outline is reported only; a square-on photo of the J/22's vang blocks would let it be checked.",
+ "features": [
+  {
+   "id": "fiddle",
+   "text": "Fiddle: the big sheave under the head and a smaller one in line below it, so the big sheave's lines pass outside the narrow lower cheeks",
+   "objects": [
+    "sheave",
+    "sheave2"
+   ],
+   "manual": true
+  },
+  {
+   "id": "teardrop",
+   "text": "Moulded cheeks: round round the big sheave, a flat head above, narrowing round the small sheave",
+   "manual": true
+  },
+  {
+   "id": "black",
+   "text": "Cheeks matte black plastic, metal parts bright stainless",
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ]
+  },
+  {
+   "id": "head-rivets",
+   "text": "Two rivets through the head",
+   "objects": [
+    "rivet"
+   ]
+  },
+  {
+   "id": "see-through",
+   "text": "Hollow centre on the big sheave: a stainless axle you can see through",
+   "objects": [
+    "axle"
+   ]
+  },
+  {
+   "id": "small-axle",
+   "text": "The small sheave on a riveted pin (a domed head on each cheek)",
+   "objects": [
+    "rivetaxle",
+    "axle2pin"
+   ]
+  },
+  {
+   "id": "lightening",
+   "text": "Lightening holes round both axles and shoulder windows, sheave showing through",
+   "manual": true
+  },
+  {
+   "id": "swivel",
+   "text": "Swivel post with a collar on the head",
+   "objects": [
+    "post",
+    "collar",
+    "eye"
+   ]
+  },
+  {
+   "id": "shackle",
+   "text": "Shackle with a pin and a pin head",
+   "objects": [
+    "bow",
+    "pin",
+    "pinhead"
+   ]
+  },
+  {
+   "id": "plate",
+   "text": "Maker's plate (made-up TERNWAY, never a real brand)",
+   "objects": [
+    "plate"
+   ]
+  },
+  {
+   "id": "becket",
+   "text": "Becket: a pin through a tail of the cheeks with a stainless loop",
+   "objects": [
+    "becket",
+    "becketpin",
+    "rivetbecket"
+   ]
+  },
+  {
+   "id": "bracket",
+   "text": "Aluminium cam bracket: a ring round the big hub with the cheek's holes through it and a trussed arm",
+   "objects": [
+    "cambracket"
+   ],
+   "slots": [
+    "Aluminium"
+   ],
+   "manual": true
+  },
+  {
+   "id": "cam",
+   "text": "Cam cleat beside the big sheave: two toothed cams with red jaws either side of the tail on a moulded base",
+   "objects": [
+    "cam",
+    "cammount"
+   ],
+   "slots": [
+    "Graphics"
+   ],
+   "manual": true
+  },
+  {
+   "id": "fairlead",
+   "text": "Fairlead hoop where the tail is pulled",
+   "objects": [
+    "camhoop"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 30000,
+  "slots": 8,
+  "note": "a fiddle with a cam is about 1.5 single blocks (Block40's 20k) plus a cam cleat; build_kit makes the light copy at a quarter"
+ }
+}

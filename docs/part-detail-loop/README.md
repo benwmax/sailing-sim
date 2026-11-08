@@ -138,8 +138,13 @@ runs the loop.
 No CC0 3D model of a modern block turned up (the October boat fidelity research and this round); one CC BY museum block
 from an 1805 wreck is the wrong era. 3D downloads would be for looking at only in any case.
 
+## Second test: the boom vang
+
+The J/22's 4:1 vang and its two 40 mm fiddle blocks (one with a cam cleat), judged as parts and in place on the boat:
+[vang.md](vang.md).
+
 ## Next parts
 
-In order of how close the camera gets on the J/22: the cam cleat, the jib winch, the tiller and extension, the
-mainsheet fiddle (the kit's `FiddleCam` is really a side-by-side double: worth a look) and the mast-base turning
-blocks. Each gets its own card, reference pack and rounds, and Bean's sheet before it ships.
+In order of how close the camera gets on the J/22: the cam cleat, the jib winch, the tiller and extension (the
+mainsheet fiddle is done: [vang.md](vang.md)) and the mast-base turning blocks. Each gets its own card, reference
+pack and rounds, and Bean's sheet before it ships.

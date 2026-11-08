@@ -5,7 +5,8 @@
 Reads the round's renders and stats.json (render_views.py) and, from <refs dir> (git-ignored: Data/Reference/raw/parts/<part>
 or the project files), each reference's outline mask (<id>.mask.png, black part on white). Writes <round dir>/score.json and
 prints the scorecard. Checks:
-  sizes     each size on the card against the model, measured on the orthographic outlines (and sockets for the sheave)
+  sizes     each size on the card against the model, measured on the orthographic outlines (and sockets for the sheave;
+            overall_all runs to the lowest point, such as a becket; sheave2 is a fiddle's small sheave)
   outline   the side outline's body (shackle and becket left off) against the reference outline, both scaled to the same
             height and centred: intersection over union
   features  the card's list: `objects` must all be among the joined objects, `slots` among the material slots, and
@@ -125,7 +126,9 @@ def main():
     socks = stats["sockets"]
     measured = {
         "overall": (ours["bot"] - rows.min() + 1) * mm_px,
+        "overall_all": (rows.max() - rows.min() + 1) * mm_px,        # top of the shackle to the lowest point (a becket)
         "sheave": abs(socks["LineIn"][0] - socks["LineOut"][0]) if "LineIn" in socks else None,
+        "sheave2": abs(socks["LineIn2"][0] - socks["LineOut2"][0]) if "LineIn2" in socks else None,   # a fiddle's small sheave
         "aspect": ours["aspect"],
         "head": ours["head"],
         "thick": body(edge)[0].shape[1] * mm_px,
@@ -172,7 +175,8 @@ def main():
     out["budget"] = {"tris": stats["tris"], "tris_max": b["tris"], "slots": len(stats["slots"]), "slots_max": b["slots"],
                      "pass": stats["tris"] <= b["tris"] and len(stats["slots"]) <= b["slots"] and "(empty)" not in stats["slots"]}
     out["review"] = review.get("blind")
-    out["pass"] = {"sizes": ok_sizes, "outline": bool(out["outline"] and out["outline"]["pass"]),
+    # a card without an outline reference ("outline": null) reports the outline as not checked (None), not failed
+    out["pass"] = {"sizes": ok_sizes, "outline": None if not o else bool(out["outline"] and out["outline"]["pass"]),
                    "features": n_ok == len(card["features"]), "budget": out["budget"]["pass"],
                    "blind": review.get("blind", {}).get("pass")}
     json.dump(out, open(os.path.join(rnd, "score.json"), "w"), indent=1, default=lambda v: v.item())
@@ -185,6 +189,8 @@ def main():
         print(f"  size  {s['id']:8s} got {g:>7s} target {t:>7s} {e:>7s}  {'PASS' if s['pass'] else 'fail' if s['pass'] is False else 'info'}")
     if out["outline"]:
         print(f"  outline vs {out['outline']['ref']}: {out['outline']['iou'] * 100:.1f}% overlap (pass {o['pass'] * 100:.0f}%)")
+    elif not o:
+        print("  outline not checked: the card has no square-on reference")
     print(f"  features {n_ok}/{len(card['features'])}: missing {[f['id'] for f in out['features'] if not f['pass']]}")
     print(f"  budget {stats['tris']} tris / {b['tris']}, {len(stats['slots'])} slots {stats['slots']}")
     print(f"  checks {out['pass']}")
