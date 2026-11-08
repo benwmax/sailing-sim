@@ -1,11 +1,11 @@
-"""Winch16: a size 16 self-tailing winch, and the J/22's small plain-top winch (part detail loop, Nov 2026:
-docs/part-detail-loop/winch.md).
+"""Winch16 and WinchPlain: the kit's two kinds of winch (part detail loop, Nov 2026: docs/part-detail-loop/winch.md).
 
-The default build follows Bean's reference photo (a modern self-tailer: a wide base, a bell flaring up into the drum, a
-black self-tailing ring with ribbed jaws round a dark top, a polished stripper arm reaching over the jaws and down the
-side, a star socket for the handle in the middle). Sizes are the catalogue size 16 self-tailer's: 121 mm base, 65.7 mm
-drum, 145.5 mm tall. The `plain` build is the catalogue size 6 plain-top winch (90 mm base, 60 mm drum, 82 mm tall:
-the J/22's cabin-top halyard winch on the class layouts): the same family without the self-tailer.
+Winch16 follows Bean's reference photo of a modern self-tailer: a wide base, a bell flaring up into the drum, a black
+self-tailing ring with ribbed jaws, a polished stripper arm reaching over the jaws and down the side, a glossy black
+sloped cap with the handle socket set down in it. Sizes are the catalogue size 16 self-tailer's: 121 mm base, 65.7 mm
+drum, 145.5 mm tall. WinchPlain is the same family without the self-tailer (a black flange stops the line instead):
+size 6 is the plain-top retailers list for the J/22 (90 mm base, 60 mm drum, 82 mm tall), size 16 the standard
+two-speed (120 mm base, 112 mm tall). Bean (Nov 8): keep both kinds so boats can differ.
 
 Proportions not in a catalogue (where the bell starts and ends, the jaws' heights, the arm's width) are measured on
 Bean's photo (measuring only, not in the repo). It lives in its own file so threads working on other parts don't touch
@@ -188,45 +188,89 @@ def _self_tailer(s=1.0):
     return objs, socks
 
 
-def _plain_top():
-    """Catalogue size 6 plain-top: 90 mm composite base, 60 mm drum, 82 mm tall, no self-tailer."""
+# Plain-top (non-self-tailing) winches by catalogue size: base radius, drum radius, height (metres) and the heights
+# where the base's straight side ends, the bell meets the drum and the drum meets its top flare. Size 6 is the plain-top
+# retailers list for the J/22 (90 mm base, 60 mm drum, 82 mm tall); size 16 the standard two-speed (120 mm base,
+# 112 mm tall, the size 16 self-tailer's 65.7 mm drum).
+_PLAIN = {
+    "6": dict(R=0.045, rd=0.030, H=0.082, zb=0.019, zbell=0.031, zd=0.060),
+    "16": dict(R=0.060, rd=0.03285, H=0.112, zb=0.031, zbell=0.054, zd=0.087),
+}
+
+
+def _plain_top(R, rd, H, zb, zbell, zd):
+    """A plain-top winch in the self-tailer's family: the same turned base, bell and drum (the drum with fine grip ribs,
+    as plain drums have), flaring at the top into a black flange that stops the line riding off, then the same black
+    sloped cap with the handle socket set down in it."""
     al, bp, ss = P.M("Aluminium"), P.M("BlackPlastic"), P.M("Stainless")
-    R = 0.045
-    base = [(0.0, 0.0), (R - 0.002, 0.0)] + _fillet((R - 0.002, 0.002), 0.002, 0.002, -90, 0, 3)
-    base += [(R, 0.012)] + _fillet((R - 0.004, 0.012), 0.004, 0.004, 0, 90, 4)
-    rd = 0.030
-    bell_c = (R - 0.004, 0.016 + 0.012)
+    k = R / 0.0605                                       # detail sizes scale with the base
+    # --- base and drum: plinth line, soft shoulder, concave bell, a faint waist, the flare up to the flange
+    prof = [(0.0, 0.0), (R - 0.0025 * k, 0.0)] + _fillet((R - 0.0025 * k, 0.0025 * k), 0.0025 * k, 0.0025 * k, -90, 0, 3)
+    prof += [(R, 0.0085 * k), (R - 0.0008 * k, 0.0095 * k), (R - 0.0008 * k, 0.0115 * k), (R, 0.0125 * k), (R, zb)]
+    sh = 0.004 * k
+    prof += _fillet((R - sh, zb), sh, sh, 0, 90, 4)
+    n_base = len(prof)                                   # the base (black composite, as small plain-tops have) ends here
+    bh = zbell - zb - sh
     for i in range(1, 9):
         t = math.radians(90 * i / 8)
-        base.append((bell_c[0] - (bell_c[0] - rd - 0.0015) * math.sin(t), bell_c[1] - 0.012 * math.cos(t)))
-    base += [(rd + 0.0015, 0.030), (0.0, 0.030)]
-    b = G.lathe("base", base, bp, 64)
-    G.finish(b, 0.0, sharp=40)
-    drum = [(0.0, 0.030), (rd, 0.030), (rd - 0.0004, 0.050), (rd, 0.068)]
-    drum += _fillet((rd + 0.006, 0.068), 0.006, 0.006, 180, 110, 4)
-    drum += [(0.0365, 0.0745), (0.0365, 0.0755), (0.0, 0.0755)]
-    d = G.lathe("drum", drum, al, 64)
-    G.finish(d, 0.0, sharp=40)
-    top = [(0.0, 0.0755), (0.0360, 0.0755), (0.0362, 0.0775)] + _fillet((0.0342, 0.0775), 0.002, 0.002, 0, 90, 3)
-    top += [(0.020, 0.0800), (0.0, 0.0802)]
-    t = G.lathe("top", top, bp, 64)
-    G.finish(t, 0.0, sharp=40)
-    boss = G.lathe("socket", [(0.0, 0.0795), (0.011, 0.0795), (0.011, 0.0815), (0.0095, 0.0820), (0.0, 0.0820)], ss, 40)
-    G.boolean(boss, _star("star", 0.0072, 0.0057, 0.0760, 0.0840, 10))
+        prof.append(((R - sh) - (R - sh - rd) * math.sin(t), zb + sh + bh - bh * math.cos(t)))
+    fl = 0.006 * k                                      # the top flare's radius
+    prof += [(rd - 0.0004 * k, (zbell + zd) / 2), (rd, zd)]
+    prof += _fillet((rd + fl, zd), fl, fl, 180, 115, 4)
+    zf = zd + fl * math.sin(math.radians(115)) + 0.0010 * k
+    rf = rd + 0.0105 * k                                # the flange's radius (the line's stop)
+    prof += [(rf - 0.0010 * k, zf), (0.0, zf)]
+    zs = prof[n_base - 1][1]
+    base = G.lathe("base", prof[:n_base] + [(0.0, zs)], bp, 64)
+    G.finish(base, 0.0, sharp=40)
+    body = G.lathe("drum", [(0.0, zs - 0.0005 * k), (prof[n_base - 1][0] - 0.0004 * k, zs - 0.0005 * k)] + prof[n_base:], al, 96)
+    _ribs(body, zbell + 0.003 * k, zd - 0.002 * k, 48, 0.0006 * k, rd * 0.9)    # the drum's grip ribs
+    G.finish(body, 0.0, sharp=40)
+    # --- the black flange and sloped cap, the socket set down in it
+    zc = H - 0.0017 * k                                 # the cap's peak, the socket ring standing about 1.5 mm proud
+    rc = 0.0300 * k                                     # the cap's foot
+    rs = 0.0125 * k                                     # the socket ring
+    # a rolled rim: a chamfer underneath, a deep band for the lettering, a rounded top edge
+    T = [(0.0, zf), (rf - 0.0020 * k, zf), (rf + 0.0006 * k, zf + 0.0022 * k), (rf + 0.0008 * k, zf + 0.0080 * k)]
+    T += _fillet((rf - 0.0027 * k, zf + 0.0080 * k), 0.0035 * k, 0.0035 * k, 0, 90, 4)
+    zt = zf + 0.0115 * k                                # the flange's top face
+    T += [(rc + 0.0010 * k, zt), (rc, zt + 0.0005 * k), (rc - 0.0012 * k, zt + 0.0012 * k)]
+    T += [(0.0200 * k, zc - 0.0030 * k), (0.0150 * k, zc - 0.0006 * k), (rs + 0.0003 * k, zc), (rs + 0.0001 * k, zc - 0.010 * k),
+          (0.0, zc - 0.010 * k)]
+    top = G.lathe("flange", T, bp, 96)
+    G.finish(top, 0.0, sharp=40)
+    boss = G.lathe("socket", [(0.0, zc - 0.011 * k), (rs, zc - 0.011 * k), (rs, H - 0.0009 * k), (rs - 0.0006 * k, H - 0.0002 * k),
+                              (rs - 0.0020 * k, H), (0.0, H)], ss, 30)
+    G.boolean(boss, _star("star", 0.0082 * k, 0.0066 * k, zc - 0.0095 * k, H + 0.002, 10))
     G.finish(boss, 0.0, sharp=40)
-    socks = [("Drum", (0, rd, 0.050)), ("Handle", (0, 0, 0.082)), ("Tail", (0, -rd, 0.060))]
-    return [b, d, t, boss], socks
+    floor = G.lathe("socketfloor", [(0.0, zc - 0.0094 * k), (0.008 * k, zc - 0.0094 * k), (0.008 * k, zc - 0.0093 * k),
+                                    (0.0, zc - 0.0093 * k)], bp, 20)
+    G.finish(floor, 0.0)
+    mark = _band_letters("lettering", _LETTERS, 0.0042 * k, rf + 0.0008 * k, zf + 0.0052 * k, -math.pi / 2, bp)
+    socks = [("Drum", (0, rd, (zbell + zd) / 2)), ("Handle", (0, 0, H)), ("Tail", (0, -rd, (zbell + zd) / 2))]
+    return [base, body, top, boss, floor, mark], socks
 
 
 @P.part("Winch16", "winch", "Size 16 self-tailing winch (121 mm base, 145 mm tall): bell base, drum, ribbed self-tailer, "
-        "stripper arm, star handle socket; size 6 is the J/22's plain-top")
-def winch16(scale=1.0, plain=False):
-    objs, socks = _plain_top() if plain else _self_tailer(scale)
-    return P.done("Winch16", objs, socks)
+        "stripper arm, black sloped cap with the handle socket set in it")
+def winch16(scale=1.0):
+    return P.done("Winch16", *_self_tailer(scale))
 
 
-# Size by catalogue: base diameter 90 (6, plain-top), 102 (8), 121 (16), 130 (20), 152 (30), 175 (40) mm.
-P.SIZES["Winch16"] = {"dim": "winch size (6 plain-top: 90 mm base; self-tailers 8 / 16 / 20 / 30 / 40: 102 / 121 / 130 / 152 / 175 mm)",
+@P.part("WinchPlain", "winch", "Plain-top (non-self-tailing) winch, size 6 (90 mm base, 82 mm tall; the J/22's): the self-tailer's "
+        "base, bell and drum with grip ribs, a black flange and sloped cap with the handle socket set in it; size 16 option")
+def winch_plain(size="6", scale=1.0):
+    d = dict(_PLAIN[size])
+    if scale != 1.0:
+        d = {key: v * scale for key, v in d.items()}
+    objs, socks = _plain_top(**d)
+    return P.done("WinchPlain", objs, socks)
+
+
+# Sizes by catalogue base diameter.
+P.SIZES["Winch16"] = {"dim": "winch size (self-tailers 8 / 16 / 20 / 30 / 40: 102 / 121 / 130 / 152 / 175 mm base)",
                       "default": "16",
-                      "kw": {"6": {"plain": True}, "8": {"scale": 102 / 121}, "16": {}, "20": {"scale": 130 / 121},
+                      "kw": {"8": {"scale": 102 / 121}, "16": {}, "20": {"scale": 130 / 121},
                              "30": {"scale": 152 / 121}, "40": {"scale": 175 / 121}}}
+P.SIZES["WinchPlain"] = {"dim": "winch size (plain-tops 6 / 8 / 16: 90 / 102 / 120 mm base)", "default": "6",
+                         "kw": {"6": {}, "8": {"size": "16", "scale": 102 / 120}, "16": {"size": "16"}}}

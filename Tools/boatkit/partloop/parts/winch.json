@@ -1,7 +1,7 @@
 {
  "part": "Winch16",
  "card": {
-  "what": "Size 16 self-tailing winch: a wide base, a bell flaring up into the drum, a black self-tailing ring with ribbed jaws round a dark top, a polished stripper arm over the jaws and down the side, a star handle socket. Size 6 (plain: true) is the small plain-top winch",
+  "what": "Size 16 self-tailing winch: a wide base, a bell flaring up into the drum, a black self-tailing ring with ribbed jaws, a polished stripper arm over the jaws and down the side, a glossy black sloped cap with the handle socket set down in it. The plain-top is its own part (winchplain.json)",
   "boats": "J/22 cabin-top halyard winches (two, Tools/boatkit/layouts/j22.json and the hero script; the class layouts use the small size 6 plain-top there), the fleet boats' sheet winches (Tools/blender/build_fleet.py picks 8 / 16 / 20 / 30 / 40 by base)",
   "distance": "arm's reach in the cockpit; the camera passes close when a crew member grinds a halyard",
   "before": "kit Winch16 from bk_parts.winch16 (Oct 2026): a 120 mm black disc base, a plain silver drum and a flat cap with five screws, 97 mm tall: no self-tailer, no stripper arm, 33% short for a size 16"
@@ -20,38 +20,143 @@
    "use": "sizes",
    "url": "size 16 one-speed self-tailing winch retailer tables (mauripro.com, fisheriessupply.com, lippert.com): base 121 mm (4 3/4 in), height 145.5 mm, drum 65.7 mm, line entry 58.7 mm, 8-12 mm line",
    "note": "the default build"
-  },
-  {
-   "id": "b6",
-   "kind": "catalogue",
-   "use": "sizes for plain: true",
-   "url": "size 6 plain-top classic winch retailer tables (defender.com, upffront.com, westcoastsailing.net, listed for the J/22): base 90 mm, drum 60 mm, height 82 mm, line entry 33 mm",
-   "note": "the J/22's halyard winch"
   }
  ],
  "sizes": [
-  {"id": "length", "name": "Base diameter, seen from the side", "target": 121.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 121 mm base"},
-  {"id": "width", "name": "Base diameter, seen end-on", "target": 121.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 121 mm base"},
-  {"id": "height", "name": "Height off the deck", "target": 145.5, "unit": "mm", "tol": 0.05, "source": "catalogue: 145.5 mm"},
-  {"id": "aspect_full", "name": "Height / base diameter", "target": 1.20, "unit": "ratio", "tol": 0.05, "source": "catalogue 145.5 / 121"}
+  {
+   "id": "length",
+   "name": "Base diameter, seen from the side",
+   "target": 121.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 121 mm base"
+  },
+  {
+   "id": "width",
+   "name": "Base diameter, seen end-on",
+   "target": 121.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 121 mm base"
+  },
+  {
+   "id": "height",
+   "name": "Height off the deck",
+   "target": 145.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 145.5 mm"
+  },
+  {
+   "id": "aspect_full",
+   "name": "Height / base diameter",
+   "target": 1.2,
+   "unit": "ratio",
+   "tol": 0.05,
+   "source": "catalogue 145.5 / 121"
+  }
  ],
  "photo_sizes": [
-  {"id": "drum", "name": "Drum / base diameter", "target": 0.543, "built": 0.543, "source": "catalogue 65.7 / 121; the photo reads 0.56 (181 of 325 px)"},
-  {"id": "tailer", "name": "Self-tailer ring / base diameter", "target": 0.84, "built": 0.836, "source": "Bean's photo, 273 of 325 px"},
-  {"id": "base_band", "name": "Base's straight side / base diameter", "target": 0.27, "built": 0.29, "source": "Bean's photo, 90 px of 325 at about 25 degrees above"},
-  {"id": "bell", "name": "Bell height / base diameter", "target": 0.22, "built": 0.22, "source": "Bean's photo, 70 px"}
+  {
+   "id": "drum",
+   "name": "Drum / base diameter",
+   "target": 0.543,
+   "built": 0.543,
+   "source": "catalogue 65.7 / 121; the photo reads 0.56 (181 of 325 px)"
+  },
+  {
+   "id": "tailer",
+   "name": "Self-tailer ring / base diameter",
+   "target": 0.84,
+   "built": 0.836,
+   "source": "Bean's photo, 273 of 325 px"
+  },
+  {
+   "id": "base_band",
+   "name": "Base's straight side / base diameter",
+   "target": 0.27,
+   "built": 0.29,
+   "source": "Bean's photo, 90 px of 325 at about 25 degrees above"
+  },
+  {
+   "id": "bell",
+   "name": "Bell height / base diameter",
+   "target": 0.22,
+   "built": 0.22,
+   "source": "Bean's photo, 70 px"
+  }
  ],
  "outline": null,
- "photo_outline": {"ref": "bean", "pass": 0.85, "note": "the photo is taken from a little above: photo_outline.py finds the best-matching angle and scores the overlap there"},
+ "photo_outline": {
+  "ref": "bean",
+  "pass": 0.85,
+  "note": "the photo is taken from a little above: photo_outline.py finds the best-matching angle and scores the overlap there"
+ },
  "features": [
-  {"id": "base", "text": "Wide round base with a straight side, a fine plinth line near the deck and a soft shoulder; no screws showing", "objects": ["drum"], "manual": true},
-  {"id": "bell", "text": "A concave bell flaring from the base's shoulder up into the drum", "manual": true},
-  {"id": "drum", "text": "A smooth drum about half the base's diameter, flaring at the top into the lower jaw", "manual": true},
-  {"id": "jaws", "text": "Self-tailing jaws: a V groove under a black ring wider than the drum", "objects": ["tailer"], "manual": true},
-  {"id": "band", "text": "The ring's outer band ribbed all round, with moulded lettering (made-up TERNWAY, no real brand)", "objects": ["lettering"], "manual": true},
-  {"id": "arm", "text": "A polished stripper arm: a crescent round the top, an arm over the jaws and down the side, its tip curling in under the ring", "objects": ["stripper_ring", "stripper_arm"], "manual": true},
-  {"id": "socket", "text": "A polished handle socket in the middle of a dark top, with a star-shaped hole", "objects": ["socket"], "manual": true},
-  {"id": "finish", "text": "Metal base and drum, black self-tailer and top, stainless arm and socket", "slots": ["Aluminium", "BlackPlastic", "Stainless"]}
+  {
+   "id": "base",
+   "text": "Wide round base with a straight side, a fine plinth line near the deck and a soft shoulder; no screws showing",
+   "objects": [
+    "drum"
+   ],
+   "manual": true
+  },
+  {
+   "id": "bell",
+   "text": "A concave bell flaring from the base's shoulder up into the drum",
+   "manual": true
+  },
+  {
+   "id": "drum",
+   "text": "A smooth drum about half the base's diameter, flaring at the top into the lower jaw",
+   "manual": true
+  },
+  {
+   "id": "jaws",
+   "text": "Self-tailing jaws: a V groove under a black ring wider than the drum",
+   "objects": [
+    "tailer"
+   ],
+   "manual": true
+  },
+  {
+   "id": "band",
+   "text": "The ring's outer band ribbed all round, with moulded lettering (made-up TERNWAY, no real brand)",
+   "objects": [
+    "lettering"
+   ],
+   "manual": true
+  },
+  {
+   "id": "arm",
+   "text": "A polished stripper arm: a crescent round the top, an arm over the jaws and down the side, its tip curling in under the ring",
+   "objects": [
+    "stripper_ring",
+    "stripper_arm"
+   ],
+   "manual": true
+  },
+  {
+   "id": "socket",
+   "text": "A polished handle socket in the middle of a dark top, with a star-shaped hole",
+   "objects": [
+    "socket"
+   ],
+   "manual": true
+  },
+  {
+   "id": "finish",
+   "text": "Metal base and drum, black self-tailer and top, stainless arm and socket",
+   "slots": [
+    "Aluminium",
+    "BlackPlastic",
+    "Stainless"
+   ]
+  }
  ],
- "budget": {"tris": 12000, "slots": 8, "note": "tighter than the loop's usual 20,000: the J/22 carries two and the fleet boats up to four (Windows gates Medium 60 / High 45 fps); build_kit makes the light copy at a quarter"}
+ "budget": {
+  "tris": 12000,
+  "slots": 8,
+  "note": "tighter than the loop's usual 20,000: the J/22 carries two and the fleet boats up to four (Windows gates Medium 60 / High 45 fps); build_kit makes the light copy at a quarter"
+ }
 }

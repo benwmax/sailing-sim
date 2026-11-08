@@ -26,9 +26,8 @@ imports it and its `@part` replaces the old one).
 - A glossy black cap rising as a cone from inside the stripper's crescent, with the polished handle socket set down in
   it nearly flush (about 1.5 mm proud) and a deep ten-point star hole (Bean's round 4).
 - Sockets: `Drum`, `Handle` (top of the socket), `Tail` (on the arm), `Jaws` (in the groove).
-- Sizes: `6` is a new plain-top build (90 mm base, 60 mm drum, 82 mm tall, no self-tailer: the size 6 plain-top that
-  retailers list for the J/22), `8`, `16` (default), `20`, `30`, `40` scale the self-tailer to the catalogue bases (102,
-  121, 130, 152, 175 mm), so `Tools/blender/build_fleet.py`'s size pick keeps working.
+- Sizes: `8`, `16` (default), `20`, `30`, `40` scale the self-tailer to the catalogue bases (102, 121, 130, 152,
+  175 mm), so `Tools/blender/build_fleet.py`'s size pick keeps working. The plain-top is its own part now (below).
 - Budget: 11,946 triangles and three slots (Aluminium, BlackPlastic, Stainless); the light copy about 3,000. The card's budget
   is 12,000, tighter than the loop's usual 20,000, because the J/22 carries two and the fleet boats up to four.
 
@@ -47,11 +46,36 @@ Sizes, features, budget and the blind review pass on r4. The outline can't be ch
 instead and r4 overlaps it 94%. That number says little here: any round winch shape scores high from above (the old
 spool managed 89%), so the sizes and the reviewers carry this part.
 
-Both kinds stay in the kit so boats can differ (Bean, Nov 8): the self-tailer (default) and the plain-top (`size="6"`).
-The J/22 question: the class layouts and retailers list a size 6 plain-top winch (no self-tailer) for the J/22's
-cabin-top halyard winches. The J/22 layouts still ask for the default `Winch16`, so they get the self-tailer from
-Bean's photo (145 mm tall, where the real one is 82). Switching the J/22 to `size="6"` is a one-word change in
-`Tools/boatkit/layouts/j22.json` and `Inputs/j22-hero/build_j22_hero.py`, left for Bean's call.
+## Which boats get which (Bean: "you choose, based on what's realistic")
+
+Both kinds stay in the kit so boats can differ:
+
+| Boat | Winches | Why |
+|---|---|---|
+| J/22 (hero and `layouts/j22.json`) | `WinchPlain` size 6, the two cabin-top halyard winches | the class layouts and retailers list a size 6 plain-top for the J/22; its jib sheets go to cam cleats, not winches |
+| Catalina 22 (fleet) | `WinchPlain` size 16, the jib sheet winches | the class's usual primaries are standard 16s; owners call self-tailers unnecessary on a boat this size |
+| Catalina 30, Corsair 880, Lagoon 42 (fleet) | `Winch16` self-tailers, sizes 30 / 16 / 40 by base | bigger or newer boats sailed short-handed |
+
+## The plain-top: `WinchPlain`
+
+The old size 6 build (a black disc base, a plain drum, a flat black top with the socket standing on it) rebuilt in the
+self-tailer's family: a black composite base (as small plain-tops have) with the plinth line and shoulder, an
+aluminium bell and drum with 48 fine grip ribs, the drum flaring into a black flange with a rolled rim and moulded
+TERNWAY lettering (where the line stops), and the same black sloped cap with the socket set down in it. Sizes: `6`
+(default: 90 mm base, 60 mm drum, 82 mm tall), `8` and `16` (the standard two-speed: 120 mm base, 112 mm tall). Card
+`partloop/parts/winchplain.json`; there is no plain-top photo yet, so the sizes are the catalogue's and the reviewers
+judged it against Bean's self-tailer for the family look.
+
+![Plain-top before and after](winchplain_before_after.jpg)
+
+| Round | Features | Triangles | Blind review |
+|---|---|---|---|
+| Before | 2/7 | 4,704 | |
+| r1 | 6/7 | 8,938 | won 2 of 3 against before (3, 4; one for before at 4: the all-silver base washed out) |
+| r2 | 7/7 | 8,490, 3 slots | won 3 of 3 against r1 (4, 4, 4): black composite base, deeper ribs, a rolled flange |
+
+Still different (reviewers on r2): the drum's ribs read faint in the white preview metal, the base could taper more
+into the bell, the cap and flange render grey in the preview (black in the game), the lettering could be larger.
 
 ## Still different from the photo (the reviewers' notes on r4)
 
@@ -67,7 +91,7 @@ Bean's photo (145 mm tall, where the real one is 82). Switching the J/22 to `siz
 
 Nothing is imported: `Inputs/boat-kit/kit.json` is left as it is (the PC's import copies the new one). On BEN-PC, after
 Bean's "resume": `scripts\windows\make-boatkit.ps1 -Import`, `scripts\windows\test.ps1 -Filter
-SailingSim.Visual.HardwareKit`, then rebuild the J/22 hero so its two cabin-top winches pick the new part up.
+SailingSim.Visual.HardwareKit`, then rebuild the J/22 hero (its two cabin-top winches become `WinchPlain`) and the fleet boats.
 
 ## Running it
 
