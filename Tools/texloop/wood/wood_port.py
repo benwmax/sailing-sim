@@ -123,11 +123,12 @@ def sample(t, u, v):
 K = dict(
     v_time_dark=(0.68, 0.56, 0.48),   # varnished wood under the film darkens and reddens with Time (L3)
     v_amber=(1.03, 0.97, 0.84),       # the film itself yellows with Time
-    v_bare=(0.125, 0.105, 0.08),       # failed film: the wood goes grey (linear)
+    v_bare=(0.125, 0.105, 0.08),       # failed film on a neglected boat: the wood goes grey (linear)
     v_stain=(0.035, 0.03, 0.025),     # black water stains wick along the grain from failed edges
     t_silver=(0.215, 0.205, 0.19),    # bare teak's silver-grey (linear, club teak sRGB ~ 140)
     t_dark=(0.055, 0.052, 0.046),     # mildewed, neglected teak (linear)
-    t_oil=0.70,                       # oiled teak: darker
+    t_oil=0.70,
+    v_bleach=(0.24, 0.21, 0.17),      # varnish worn through on a used boat: the wood bleaches pale grey-tan (linear)                       # oiled teak: darker
 )
 
 
@@ -151,30 +152,44 @@ def wood(kind, col, rough, coat, vn, LP, ring, td, wearx=0.3):
         satin = sat(T * 6.0) * (1.0 - recoat)
         # the film ambers
         col = col * lerp(np.ones(3), np.array(K["v_amber"]), 0.6 * T)
+        # the latewood darkens with the years, so an old part's grain stands out under the film
+        col = col * lerp(1.0, lerp(0.84, 1.05, ring), T)[..., None]
+        # dings: dents and scrapes along the grain, filled and recoated, gather with Time (dark where water got under)
+        dings = specks(LP[0] / 4.0, LP[1] / 0.4, 0.4 * sat(T * 1.5 - 0.3))
+        col = lerp(col, col * 0.5, (0.65 * dings)[..., None])
         # failed film: grows from (1 - care); patches along the grain plus the ring's soft early wood
         cover = 1.4 * sat(D - 0.24) ** 2.0                       # fraction of the surface failed
         # jagged, flaking edges: a 4 mm cell hash breaks the patch outline up
         fl = fine_noise(LP[0] / 0.5, LP[1] / 0.35)
         f = pn * 0.75 + 0.25 * (1 - ring) + 0.06 * (fl - 0.5)
         thr = 0.725 - 0.62 * cover + 0.14 * cover * cover  # f's quantile at 1 - cover (measured over a 1 m face)
-        fw = 0.03 + 0.08 * (1.0 - sat((D - 0.24) * 2.0))           # a soft worn-through edge early, a torn one late
+        fw = 0.05 + 0.10 * (1.0 - sat((D - 0.24) * 2.0))           # a soft worn-through edge early, a torn one late
         failed = smoothstep(thr - fw, thr + fw, f) * (cover > 0.001)
-        bare = lerp(col * 0.55 + np.array(K["v_bare"]) * 0.45, np.array(K["v_bare"]), sat(D * 1.2))[...]
+        # worn through on a used boat the wood bleaches to a pale grey-tan; only neglect turns it dark grey
+        bleach = col * 0.45 + np.array(K["v_bleach"]) * 0.55
+        bare = lerp(bleach, np.array(K["v_bare"]), sat((D - 0.5) * 2.5))
         # water stains: black along the grain at the failed patches' edges
         edge = sat(1.0 - np.abs(f - thr) * 9.0) * sat((D - 0.5) * 2.5)
         bare = lerp(bare, np.array(K["v_stain"]), (0.55 * edge * sat(0.6 + 0.4 * ring))[..., None])
         # the film's torn edge lifts and goes white (frosted) just inside the intact side
-        lift = smoothstep(thr - 0.07, thr - 0.03, f) * (1.0 - failed) * sat((D - 0.3) * 2.5)
-        col = lerp(col, col * 0.75 + 0.06, (0.35 * lift)[..., None])
-        # what film is left on a neglected boat has gone dark amber
-        col = col * lerp(np.ones(3), np.array([0.80, 0.68, 0.50]), sat((D - 0.6) * 2.5))
+        lift = smoothstep(thr - 0.07, thr - 0.03, f) * (1.0 - failed) * sat((D - 0.6) * 2.5)
+        col = lerp(col, col * 0.75 + 0.06, (0.2 * lift)[..., None])
+        # round the wear the film dulls first: a soft hazy halo, flatter and greyer, before it goes through
+        dull = smoothstep(thr - 0.22, thr, f) * (1.0 - failed) * sat((D - 0.3) * 3.0)
+        lumd = (col * np.array([0.3, 0.59, 0.11])).sum(-1, keepdims=True)
+        col = lerp(col, lumd * 1.1, (0.5 * dull)[..., None])
+        # what film is left on a neglected boat has gone dark amber and crazed
+        oldK = sat((D - 0.6) * 2.5)
+        col = col * lerp(np.ones(3), np.array([0.62, 0.50, 0.34]), oldK[..., None] if np.ndim(oldK) else oldK)
+        craze = 1.0 - smoothstep(0.0, 0.035, np.abs(fine_noise(LP[0] / 0.6, LP[1] / 0.6) - 0.5))
+        col = lerp(col, col * 0.4, (0.6 * craze * oldK)[..., None])
         col = lerp(col, bare, failed[..., None])
         # the intact film hazes with Dirt (fine scratches, dried spray, UV-bleached wood under it): greyer, flatter
         lumv = (col * np.array([0.3, 0.59, 0.11])).sum(-1, keepdims=True)
-        col = lerp(col, lumv * 1.05, 0.35 * sat((D - 0.2) * 2.0))
+        col = lerp(col, lumv * 1.18, 0.35 * sat((D - 0.2) * 2.0))
         # the intact film dulls with Dirt (fine scratches, dried spray)
-        rough = lerp(lerp(lerp(rough, 0.45, 0.8 * satin), 0.36, sat((D - 0.2) * 2.0)), 0.78, failed)
-        coat = coat * (1.0 - 0.25 * satin) * (1.0 - 0.2 * sat((D - 0.2) * 2.0)) * (1.0 - failed)
+        rough = lerp(lerp(lerp(lerp(rough, 0.45, 0.8 * satin), 0.36, sat((D - 0.2) * 2.0)), 0.55, dull), 0.78, failed)
+        coat = coat * (1.0 - 0.25 * satin) * (1.0 - 0.2 * sat((D - 0.2) * 2.0)) * (1.0 - 0.6 * dull) * (1.0 - 0.6 * oldK) * (1.0 - failed)
     else:
         # bare teak: silvers in the sun within the first year unless it is oiled (care, on an older boat)
         silver = sat(T * 3.0) * (1.0 - smoothstep(0.5, 0.9, careK) * sat(ageY / 3.0))
@@ -182,15 +197,19 @@ def wood(kind, col, rough, coat, vn, LP, ring, td, wearx=0.3):
         # not evenly: hands and spray keep some patches browner (Bean's lesson J/22)
         sv = 0.95 * silver * (0.72 + 0.28 * sat(pn * 2.0 - 0.3))
         col = lerp(col, np.array(K["t_silver"]) * (lum / 0.2) ** 0.5, sv[..., None])
+        # weathered teak is streaky along the grain, warm brown in the open early wood
+        sk = fine_noise(LP[0] / 8.0, LP[1] / 0.35)
+        col = col * lerp(1.0, lerp(0.70, 1.15, sk) * lerp(1.10, 0.86, ring), sv)[..., None]
+        col = lerp(col, col * np.array([1.12, 0.98, 0.82]), (0.4 * sv * (1.0 - ring))[..., None])
         # oiled: darker and a little glossier
         oil = smoothstep(0.5, 0.9, careK) * sat(ageY / 3.0) * (1.0 - silver)
         col = col * lerp(1.0, K["t_oil"], oil)
         # neglect: mildew darkens it in patches along the grain, black in the checks
         mil = sat((D - 0.45) * 2.0) * (0.68 + 0.2 * pn + 0.12 * (1.0 - ring))   # streaky along the grain
         col = lerp(col, np.array(K["t_dark"]), (0.95 * mil)[..., None])
-        # mildew specks: black dots, 5 mm cells, more of them the dirtier it is
-        dots = specks(LP[0] / 1.5, LP[1] / 0.6, 0.30 * sat((D - 0.6) * 3.0)) * (0.5 + 0.5 * fine_noise(LP[0] / 0.3, LP[1] / 0.3))
-        col = lerp(col, np.array(K["t_dark"]) * 0.4, (0.5 * dots)[..., None])
+        # mildew: dark streaks along the grain, diffuse at the ends, more of them the dirtier it is
+        ms = smoothstep(0.45, 0.8, fine_noise(LP[0] / 5.0, LP[1] / 0.25)) * (0.4 + 0.6 * fine_noise(LP[0] / 1.2, LP[1] / 1.2))
+        col = lerp(col, np.array(K["t_dark"]) * 0.4, (0.9 * ms * sat((D - 0.6) * 3.0))[..., None])
         failed = mil
         rough = lerp(rough, 0.86, sat(silver + 0.5 * D)) - 0.12 * oil
         coat = coat * 0.0
@@ -263,10 +282,10 @@ def shade(kind, age, care, size_m=(1.0, 0.25), px_per_mm=1.0, detail=True, origi
         if kind == "varnish":
             col = col * (lerp(0.82, 1.12, m[..., 0]) if not new else lerp(0.70, 1.16, m[..., 0]))[..., None]
             if new:   # bare, failed wood: its open pores and checks go dark
-                col = lerp(col, col * 0.45, (m[..., 1] * failed)[..., None])
+                col = lerp(col, col * 0.8, (m[..., 1] * failed)[..., None])
         else:
             sk = (sat(time_dirt(td_care[1], td_care[0])[0] * 3.0) if (new and td_care[1] >= 0) else 0.0)
-            col = col * lerp(0.72 - 0.20 * sk, 1.15 + 0.05 * sk, m[..., 0])[..., None]
+            col = col * lerp(0.72 - 0.10 * sk, 1.15 - 0.06 * sk, m[..., 0])[..., None]
             rough = sat(rough + 0.1 * m[..., 1])
         if new:
             col, rough = detail_new(kind, col, rough, m, failed, td_care)

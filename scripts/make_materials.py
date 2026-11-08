@@ -1359,34 +1359,57 @@ else if (surf == 6 || surf == 7)
         ps /= 4.1;
     }
     pn /= 1.05;
+    // one octave of value noise on a unit grid (wood_port.fine_noise): rounded blobs, not square cells
+    #define WOOD_VN(q_, out_) { float2 wq_ = (q_), wi_ = floor(wq_), wf_ = frac(wq_); wf_ = wf_ * wf_ * (3.0 - 2.0 * wf_); \
+        out_ = lerp(lerp(frac(sin(dot(wi_ + float2(3.1, 0), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi_ + float2(4.1, 0), float2(12.99, 78.23))) * 43758.5), wf_.x), \
+                    lerp(frac(sin(dot(wi_ + float2(3.1, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi_ + float2(4.1, 1), float2(12.99, 78.23))) * 43758.5), wf_.x), wf_.y); }
     if (surf == 6)      // varnish: the wood darkens and the film ambers with Time; it satins unless revarnished; with Dirt it hazes, then fails
     {
         col *= lerp(float3(1.0, 1.0, 1.0), float3(0.68, 0.56, 0.48), timeK * timeK);   // slow at first: decades, not years
         float satin = saturate(timeK * 6.0) * (1.0 - keptK);
         col *= lerp(float3(1.0, 1.0, 1.0), float3(1.03, 0.97, 0.84), 0.6 * timeK);
+        col *= lerp(1.0, lerp(0.84, 1.05, ring), timeK);   // the latewood darkens with the years: an old part's grain stands out
+        // dings: dents and scrapes along the grain, filled and recoated, gather with Time (an irregular dot in some 40 x 4 mm cells)
+        float2 sq = float2(LP.x / 4.0, LP.y / 0.4), si = floor(sq);
+        float sh0 = frac(sin(dot(si + float2(9.7, 1.3), float2(12.99, 78.23))) * 43758.5);
+        float2 so = float2(frac(sin(dot(si + float2(2.2, 5.5), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(si + float2(7.4, 0.6), float2(12.99, 78.23))) * 43758.5)) - 0.5;
+        float sr = 0.12 + 0.18 * frac(sin(dot(si + float2(0.3, 8.8), float2(12.99, 78.23))) * 43758.5);
+        float wob;
+        WOOD_VN(sq * 4.0, wob);
+        float sd = length((sq - si - 0.5 - 0.5 * so) * float2(1.0, 1.4)) * (0.8 + 0.4 * wob);
+        float dings = (1.0 - smoothstep(sr * 0.7, sr, sd)) * step(1.0 - 0.4 * saturate(timeK * 1.5 - 0.3), sh0);
+        col = lerp(col, col * 0.5, 0.65 * dings);
         float cover = 1.4 * pow(saturate(dirtK - 0.24), 2.0);      // the share of the surface whose film has failed
         // the failure's outline: the patches, the soft early wood, and a 4 mm noise that makes the edge flake
-        float2 fq = float2(LP.x / 0.5, LP.y / 0.35), fi = floor(fq), ff = frac(fq);
-        ff = ff * ff * (3.0 - 2.0 * ff);
-        float fl = lerp(lerp(frac(sin(dot(fi + float2(3.1, 0), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(fi + float2(4.1, 0), float2(12.99, 78.23))) * 43758.5), ff.x),
-                        lerp(frac(sin(dot(fi + float2(3.1, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(fi + float2(4.1, 1), float2(12.99, 78.23))) * 43758.5), ff.x), ff.y);
+        float fl;
+        WOOD_VN(float2(LP.x / 0.5, LP.y / 0.35), fl);
         float fv = pn * 0.75 + 0.25 * (1.0 - ring) + 0.06 * (fl - 0.5);
         float thr = 0.725 - 0.62 * cover + 0.14 * cover * cover;  // fv's quantile at 1 - cover (measured on a 1 m face)
-        float fw = 0.03 + 0.08 * (1.0 - saturate((dirtK - 0.24) * 2.0));   // a soft worn-through edge early, a torn one late
+        float fw = 0.05 + 0.10 * (1.0 - saturate((dirtK - 0.24) * 2.0));   // a soft worn-through edge early, a torn one late
         float wFail = cover > 0.001 ? smoothstep(thr - fw, thr + fw, fv) : 0.0;
-        float3 bare = lerp(col * 0.55 + float3(0.125, 0.105, 0.08) * 0.45, float3(0.125, 0.105, 0.08), saturate(dirtK * 1.2));
+        // worn through on a used boat the wood bleaches to a pale grey-tan; only neglect turns it dark grey
+        float3 bare = lerp(col * 0.45 + float3(0.24, 0.21, 0.17) * 0.55, float3(0.125, 0.105, 0.08), saturate((dirtK - 0.5) * 2.5));
         float stainE = saturate(1.0 - abs(fv - thr) * 9.0) * saturate((dirtK - 0.5) * 2.5);   // black water stains at the torn edge
         bare = lerp(bare, float3(0.035, 0.03, 0.025), 0.55 * stainE * saturate(0.6 + 0.4 * ring));
-        float lift = smoothstep(thr - 0.07, thr - 0.03, fv) * (1.0 - wFail) * saturate((dirtK - 0.3) * 2.5);   // the lifted film frosts
-        col = lerp(col, col * 0.75 + 0.06, 0.35 * lift);
-        col *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.68, 0.50), saturate((dirtK - 0.6) * 2.5));   // what film is left on a neglected boat is dark amber
+        float lift = smoothstep(thr - 0.07, thr - 0.03, fv) * (1.0 - wFail) * saturate((dirtK - 0.6) * 2.5);   // the lifted film frosts
+        col = lerp(col, col * 0.75 + 0.06, 0.2 * lift);
+        // round the wear the film dulls first: a soft hazy halo, flatter and greyer, before it goes through
+        float dull = smoothstep(thr - 0.22, thr, fv) * (1.0 - wFail) * saturate((dirtK - 0.3) * 3.0);
+        float lumD = dot(col, float3(0.3, 0.59, 0.11));
+        col = lerp(col, float3(lumD, lumD, lumD) * 1.1, 0.5 * dull);
+        // what film is left on a neglected boat has gone dark amber and crazed
+        float oldK = saturate((dirtK - 0.6) * 2.5);
+        col *= lerp(float3(1.0, 1.0, 1.0), float3(0.62, 0.50, 0.34), oldK);
+        float crz;
+        WOOD_VN(float2(LP.x / 0.6, LP.y / 0.6), crz);
+        col = lerp(col, col * 0.4, 0.6 * (1.0 - smoothstep(0.0, 0.035, abs(crz - 0.5))) * oldK);
         col = lerp(col, bare, wFail);
         woodFail = wFail;
         float hazeK = saturate((dirtK - 0.2) * 2.0);
         float lumV = dot(col, float3(0.3, 0.59, 0.11));
-        col = lerp(col, float3(lumV, lumV, lumV) * 1.05, 0.35 * hazeK);   // the film hazes: scratches, dried spray
-        rough = lerp(lerp(lerp(rough, 0.45, 0.8 * satin), 0.36, hazeK), 0.78, wFail);
-        coat *= (1.0 - 0.25 * satin) * (1.0 - 0.2 * hazeK) * (1.0 - wFail);
+        col = lerp(col, float3(lumV, lumV, lumV) * 1.18, 0.35 * hazeK);   // the film hazes: scratches, dried spray
+        rough = lerp(lerp(lerp(lerp(rough, 0.45, 0.8 * satin), 0.36, hazeK), 0.55, dull), 0.78, wFail);
+        coat *= (1.0 - 0.25 * satin) * (1.0 - 0.2 * hazeK) * (1.0 - 0.6 * dull) * (1.0 - 0.6 * oldK) * (1.0 - wFail);
     }
     else                // bare teak: silvers in the sun within the first year unless an owner oils it; neglect brings mildew
     {
@@ -1394,29 +1417,24 @@ else if (surf == 6 || surf == 7)
         float lumT = dot(col, float3(0.3, 0.59, 0.11));
         float sv = 0.95 * silver * (0.72 + 0.28 * saturate(pn * 2.0 - 0.3));    // patchy: hands keep some of it browner
         col = lerp(col, float3(0.215, 0.205, 0.19) * sqrt(lumT / 0.2), sv);
+        float tsk;   // weathered teak is streaky along the grain, warm brown in the open early wood
+        WOOD_VN(float2(LP.x / 8.0, LP.y / 0.35), tsk);
+        col *= lerp(1.0, lerp(0.70, 1.15, tsk) * lerp(1.10, 0.86, ring), sv);
+        col = lerp(col, col * float3(1.12, 0.98, 0.82), 0.4 * sv * (1.0 - ring));
         float oil = keptK * (1.0 - silver);
         col *= lerp(1.0, 0.70, oil);
         float mil = saturate((dirtK - 0.45) * 2.0) * (0.68 + 0.2 * pn + 0.12 * (1.0 - ring));   // streaky along the grain
         col = lerp(col, float3(0.055, 0.052, 0.046), 0.95 * mil);
-        // mildew specks: an irregular dot in some 15 x 6 mm cells, more of them the dirtier it is
-        float2 sq = float2(LP.x / 1.5, LP.y / 0.6), si = floor(sq);
-        float sh0 = frac(sin(dot(si + float2(9.7, 1.3), float2(12.99, 78.23))) * 43758.5);
-        float2 so = float2(frac(sin(dot(si + float2(2.2, 5.5), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(si + float2(7.4, 0.6), float2(12.99, 78.23))) * 43758.5)) - 0.5;
-        float sr = 0.12 + 0.18 * frac(sin(dot(si + float2(0.3, 8.8), float2(12.99, 78.23))) * 43758.5);
-        float2 wq = sq * 4.0, wi = floor(wq), wf = frac(wq);
-        wf = wf * wf * (3.0 - 2.0 * wf);
-        float wob = lerp(lerp(frac(sin(dot(wi + float2(3.1, 0), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi + float2(4.1, 0), float2(12.99, 78.23))) * 43758.5), wf.x),
-                         lerp(frac(sin(dot(wi + float2(3.1, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi + float2(4.1, 1), float2(12.99, 78.23))) * 43758.5), wf.x), wf.y);
-        float sd = length((sq - si - 0.5 - 0.5 * so) * float2(1.0, 1.4)) * (0.8 + 0.4 * wob);
-        float2 gq = LP.xy / 0.3, gi = floor(gq), gf = frac(gq);
-        gf = gf * gf * (3.0 - 2.0 * gf);
-        float gn = lerp(lerp(frac(sin(dot(gi + float2(3.1, 0), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(gi + float2(4.1, 0), float2(12.99, 78.23))) * 43758.5), gf.x),
-                        lerp(frac(sin(dot(gi + float2(3.1, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(gi + float2(4.1, 1), float2(12.99, 78.23))) * 43758.5), gf.x), gf.y);
-        float dots = (1.0 - smoothstep(sr * 0.7, sr, sd)) * step(1.0 - 0.30 * saturate((dirtK - 0.6) * 3.0), sh0) * (0.5 + 0.5 * gn);
-        col = lerp(col, float3(0.022, 0.0208, 0.0184), 0.5 * dots);
+        // mildew: dark streaks along the grain, diffuse at the ends, more of them the dirtier it is
+        float ms1, ms2;
+        WOOD_VN(float2(LP.x / 5.0, LP.y / 0.25), ms1);
+        WOOD_VN(float2(LP.x / 1.2, LP.y / 1.2), ms2);
+        float ms = smoothstep(0.45, 0.8, ms1) * (0.4 + 0.6 * ms2);
+        col = lerp(col, float3(0.022, 0.0208, 0.0184), 0.9 * ms * saturate((dirtK - 0.6) * 3.0));
         rough = lerp(rough, 0.86, saturate(silver + 0.5 * dirtK)) - 0.12 * oil;
         coat = 0.0;
     }
+    #undef WOOD_VN
 }
 else if (surf == 8)     // rubber and soft PVC: UV bloom, a grey chalky skin
 {
@@ -1480,13 +1498,13 @@ if (DetailOn > 0.5 && surf > 0)
     {
         cav = m.g * fadeD;
         col *= lerp(1.0, lerp(0.70, 1.16, m.r), fadeD);
-        col = lerp(col, col * 0.45, m.g * woodFail * fadeD);   // bare, failed wood: its open pores and checks go dark
+        col = lerp(col, col * 0.8, m.g * woodFail * fadeD);   // bare, failed wood: its open pores and checks go dark
     }
     else if (surf == 7)                  // weathered teak: pale latewood, dark checks (black as it's neglected)
     {
         cav = saturate(m.g + (1.0 - m.b) * 0.5) * fadeD;
         float skT = saturate(timeK * 3.0) * step(0.0, age);     // silvered teak: the latewood ridges stand out
-        col *= lerp(1.0, lerp(0.72 - 0.20 * skT, 1.15 + 0.05 * skT, m.r), fadeD);
+        col *= lerp(1.0, lerp(0.72 - 0.10 * skT, 1.15 - 0.06 * skT, m.r), fadeD);
         rough = saturate(rough + fadeD * 0.1 * m.g);
         col = lerp(col, float3(0.0275, 0.026, 0.023), m.g * saturate(0.3 + dirtK) * fadeD);
     }
@@ -1793,7 +1811,7 @@ BOAT_LIBRARY = {
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
     # Texture loop, wood (Tools/texloop/cards/wood.json): new wood's colour; BOAT_CODE ages both (varnish yellows and
     # fails, bare teak silvers) from the boat's Age and Care.
-    "Wood": ("M_BoatSurface", (0.334, 0.129, 0.048), 0.20, 0.0, 1.0, 0.0, 0.15),      # varnished ash and mahogany tiller
+    "Wood": ("M_BoatSurface", (0.330, 0.128, 0.042), 0.20, 0.0, 1.0, 0.0, 0.15),      # varnished ash and mahogany tiller
     "Teak": ("M_BoatSurface", (0.453, 0.234, 0.101), 0.62, 0.0, 0.0, 0.0, 0.5),       # bare teak, new (silvers with age)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
