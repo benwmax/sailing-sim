@@ -122,6 +122,12 @@ int32 USailingSettings::FreeSailArg()
 bool USailingSettings::IsFreeSail() const
 {
 	const int32 Arg = FreeSailArg();
+	return Arg >= 0 ? Arg != 0 : RunFreeSail >= 0 ? RunFreeSail != 0 : bFreeSail;
+}
+
+bool USailingSettings::IsFreeSailChoice() const
+{
+	const int32 Arg = FreeSailArg();
 	return Arg >= 0 ? Arg != 0 : bFreeSail;
 }
 

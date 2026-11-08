@@ -28,7 +28,8 @@ stays off there.
 
 ## The player's switch
 
-Settings > Gameplay > Privacy > **Send crash reports** (Off by default): `USailingSettings::bSendCrashReports`, saved
+Settings > Gameplay > Privacy > **Send crash reports** (On by default since Nov 7 2026, Bean's call for testers; the
+player can turn it off there): `USailingSettings::bSendCrashReports`, saved
 as `settings.privacy.sendCrashReports` (`docs/save/README.md`), handed to the SDK at every session start and when it
 changes (`ApplyCrashReports`: `GiveUserConsent` / `RevokeUserConsent`).
 

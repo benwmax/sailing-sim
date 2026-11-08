@@ -488,3 +488,28 @@ bool FSailingSaveIdsTest::RunTest(const FString&)
 	TestEqual(TEXT("Unknown spot: the first"), S->LaunchSpot, 0);
 	return true;
 }
+
+// Bean, Nov 7 2026: crash reports are on by default. A save without the field (a new player, or a file from before it)
+// reads as on; a save that has it keeps the player's value, off included.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSaveCrashReportsDefaultTest, "SailingSim.Save.CrashReportsDefault", SailSaveTestsLocal::SaveFlags)
+bool FSailingSaveCrashReportsDefaultTest::RunTest(const FString&)
+{
+	TestTrue(TEXT("A new save sends crash reports"), FSailSave().Settings.bSendCrashReports);
+	FSailSave Off;
+	Off.Settings.bSendCrashReports = false;
+	FSailSave Read;
+	TestEqual(TEXT("An explicit off reads"), int32(FSailSave::FromJson(Off.ToJson(), Read)), int32(FSailSave::EResult::Ok));
+	TestFalse(TEXT("An explicit off stays off"), Read.Settings.bSendCrashReports);
+	TSharedPtr<FJsonObject> Root;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Off.ToJson());
+	if (!TestTrue(TEXT("The save is JSON"), FJsonSerializer::Deserialize(Reader, Root) && Root.IsValid())) return false;
+	const TSharedPtr<FJsonObject>* Settings = nullptr;
+	if (Root->TryGetObjectField(TEXT("settings"), Settings)) (*Settings)->RemoveField(TEXT("privacy"));
+	FString Text;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Text);
+	FJsonSerializer::Serialize(Root.ToSharedRef(), Writer);
+	FSailSave Missing;
+	TestEqual(TEXT("A save without the field reads"), int32(FSailSave::FromJson(Text, Missing)), int32(FSailSave::EResult::Ok));
+	TestTrue(TEXT("A missing field reads as on"), Missing.Settings.bSendCrashReports);
+	return true;
+}

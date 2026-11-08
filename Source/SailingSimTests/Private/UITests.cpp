@@ -595,6 +595,39 @@ bool FSailingUIContinueKeepsItsDifficultyTest::RunTest(const FString&)
 	return true;
 }
 
+// Bean, Nov 7 2026: a Career lesson over a Free Sail choice sails as Career (medals count) without turning Free Sail off;
+// back on the title the player's choice is the mode again.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUILessonKeepsFreeSailTest, "SailingSim.UI.LessonKeepsFreeSail", UIFlags)
+bool FSailingUILessonKeepsFreeSailTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const int32 World = S->World, Spot = S->LaunchSpot, Traffic = S->TrafficLevel, Boat = S->BoatType, Run = S->RunFreeSail;
+	const ESailingWeather Weather = S->WeatherPreset;
+	const float Hour = S->StartHour;
+	const ESailingDifficulty Difficulty = S->Difficulty;
+	const bool bLearning = S->bLearningMode, bFree = S->bFreeSail;
+	ON_SCOPE_EXIT
+	{
+		S->World = World; S->LaunchSpot = Spot; S->TrafficLevel = Traffic; S->BoatType = Boat; S->WeatherPreset = Weather;
+		S->StartHour = Hour; S->Difficulty = Difficulty; S->bLearningMode = bLearning; S->bFreeSail = bFree; S->RunFreeSail = Run;
+		S->Save();
+	};
+	if (USailingSettings::FreeSailArg() >= 0) { AddWarning(TEXT("-SailingFreeSail on the command line decides the mode")); return true; }
+	S->bFreeSail = true;
+	S->RunFreeSail = -1;
+	const FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(TEXT("ray-hubbard"), TEXT("J22"), 1);
+	TestFalse(TEXT("The lesson's own config is Career"), Lesson.bFreeSail);
+	USailSessionSubsystem::ApplyToSettings(Lesson);
+	TestTrue(TEXT("The player's Free Sail choice is kept"), S->bFreeSail);
+	TestFalse(TEXT("The lesson sails as Career"), S->IsFreeSail());
+	TestTrue(TEXT("The choice reads Free Sail"), S->IsFreeSailChoice());
+	S->RunFreeSail = -1;   // the title clears the run's mode
+	TestTrue(TEXT("Back on the title the mode is Free Sail"), S->IsFreeSail());
+	// And a new session from the menus starts in the player's mode.
+	TestTrue(TEXT("A new session is Free Sail"), USailSessionSubsystem::MakeDefault().bFreeSail);
+	return true;
+}
+
 // #404, the first hour on a controller: every command the slice's lessons name in their text ({key:Command.direction}
 // in Content/Learning and the first job's script) has a controller button or axis by default, in that direction, and so
 // do the steering and mainsheet the first job asks for without naming them. A pad-only player is never told to press a

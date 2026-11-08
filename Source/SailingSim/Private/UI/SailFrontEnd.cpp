@@ -818,6 +818,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	USailingSettings::Get()->RunFreeSail = -1;   // back on the title: the player's own Mode choice again
 	const USailSessionSave* Save = USailSessionSave::Get();
 	TSharedRef<SVerticalBox> Menu = SNew(SVerticalBox);
 	TSharedPtr<SWidget> First;
@@ -1907,6 +1908,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 		P->UIBuildKeyRows();
 		const TArray<ASailboatPawn::FKeyRow>& Keys = P->GetKeyRows();
 		const bool bPadFirst = UsingGamepad();
+		// Bean, Nov 7: Restore the defaults sits at the top, above the rows (Up from the first row reaches it). The focus
+		// still starts on the first command, so a player opening the screen doesn't land on it.
+		TSharedPtr<SSailButton> Restore;
+		Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)
+		[
+			SAssignNew(Restore, SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f))
+			.OnClicked_Lambda([this]()
+			{
+				if (ASailboatPawn* RP = Pawn()) { RP->ResetKeys(); ControlsMessage = RP->GetKeysMessage(); }
+				ListeningRow = -1;
+				Stack.Last() = Build(ESailScreen::Controls);
+				Show(Stack.Last(), true);
+			})
+			.OnFocused_Lambda([this, N = Keys.Num()]() { FocusedControlRow = N; })
+			[ SailUI::Text(TEXT("Restore the defaults (keyboard and controller)"), EType::Ui, Fg) ]
+		];
 		Rows->AddSlot().AutoHeight().Padding(14.f, 0.f, 14.f, 8.f)
 		[
 			SNew(SHorizontalBox)
@@ -1933,19 +1950,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ B ];
 			if (!E.Focus.IsValid() || I == ListeningRow || (ListeningRow < 0 && I == FocusedControlRow)) E.Focus = B;
 		}
-		Rows->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
-		[
-			SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(14.f, 6.f))
-			.OnClicked_Lambda([this]()
-			{
-				if (ASailboatPawn* RP = Pawn()) { RP->ResetKeys(); ControlsMessage = RP->GetKeysMessage(); }
-				ListeningRow = -1;
-				Stack.Last() = Build(ESailScreen::Controls);
-				Show(Stack.Last(), true);
-			})
-			.OnFocused_Lambda([this, N = Keys.Num()]() { FocusedControlRow = N; })
-			[ SailUI::Text(TEXT("Restore the defaults (keyboard and controller)"), EType::Ui, Fg) ]
-		];
+		if (ListeningRow < 0 && FocusedControlRow == Keys.Num() && Restore.IsValid()) E.Focus = Restore;   // after a restore, stay on it
 	}
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Controls"), TEXT("Keys and buttons"), 0) ]
