@@ -1,0 +1,76 @@
+{
+ "surface": "plastic",
+ "_about": "CC0 scans from ambientCG (fetched to the git-ignored Data/Reference/raw/textures/BlackPlastic/), measured for colour and roughness. No CC0 or CC BY photo of sun-chalked black boat hardware was reachable from the cloud (Wikimedia's image host refuses it); L1-L4 targets are estimates until Bean's club close-ups with a grey card.",
+ "refs": [
+  {
+   "id": "Plastic012A",
+   "url": "https://ambientcg.com/a/Plastic012A",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0",
+   "what": "black moulded plastic, satin",
+   "albedo_lab": [
+    17.6,
+    0.0,
+    1.5
+   ],
+   "roughness": 0.39
+  },
+  {
+   "id": "Plastic012B",
+   "url": "https://ambientcg.com/a/Plastic012B",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L1-L2",
+   "what": "black plastic, scratched",
+   "albedo_lab": [
+    17.0,
+    0.0,
+    1.5
+   ],
+   "roughness": 0.45
+  },
+  {
+   "id": "Plastic006",
+   "url": "https://ambientcg.com/a/Plastic006",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0 (gloss bound)",
+   "what": "black plastic, shiny",
+   "albedo_lab": [
+    1.9,
+    0.0,
+    -0.8
+   ],
+   "roughness": 0.25
+  },
+  {
+   "id": "Plastic018B",
+   "url": "https://ambientcg.com/a/Plastic018B",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L4 (pale bound)",
+   "what": "grey plastic, dirty and scratched",
+   "albedo_lab": [
+    50.0,
+    0.0,
+    0.0
+   ],
+   "roughness": 0.43
+  },
+  {
+   "id": "Rubber004",
+   "url": "https://ambientcg.com/a/Rubber004",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "-",
+   "what": "black rubber (for the rubber pass)",
+   "albedo_lab": [
+    17.6,
+    0.6,
+    -3.4
+   ],
+   "roughness": 0.59
+  }
+ ]
+}
