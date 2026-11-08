@@ -1978,6 +1978,12 @@ BOAT_LIBRARY = {
     "Brass": ("M_BoatSurface", (0.78, 0.58, 0.28), 0.30, 1.0, 0.0, 0.0, 0.0),
     # Part detail loop (MastheadFly): red reflective film on wind indicators and reflector tabs
     "RedPlastic": ("M_BoatSurface", (0.62, 0.035, 0.03), 0.28, 0.0, 0.0, 0.0, 0.05),
+    # Part detail loop (marks, docs/part-detail-loop/marks.md): the course marks' sun-faded orange PVC (a soft vinyl sheen,
+    # not a gloss), the scummed band at their waterline (algae and lake silt over the orange), and the crew-overboard
+    # horseshoe's faded yellow vinyl.
+    "MarkVinyl": ("M_BoatSurface", (0.83, 0.11, 0.013), 0.40, 0.0, 0.30, 0.0, 0.05),
+    "MarkScum": ("M_BoatSurface", (0.11, 0.075, 0.025), 0.62, 0.0, 0.0, 0.0, 0.30),
+    "MOBVinyl": ("M_BoatSurface", (0.83, 0.55, 0.012), 0.42, 0.0, 0.25, 0.0, 0.05),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
