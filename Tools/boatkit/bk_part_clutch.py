@@ -23,12 +23,13 @@ import bk_parts as P
 MM = 0.001
 
 # side outline (x, z) in mm, counter-clockwise from the aft foot; the radius rounds that corner (0 = sharp)
-_SIDE = [((-62.5, 0.0), 0), ((60.0, 0.0), 0), ((62.5, 3.0), 1.5), ((62.5, 34.0), 3), ((57.0, 39.0), 5),
+_SIDE = [((-62.5, 0.0), 2), ((60.0, 0.0), 2), ((62.5, 3.0), 2.5), ((62.5, 34.0), 6), ((57.0, 39.0), 6),
          ((-42.0, 60.0), 8), ((-53.0, 59.5), 5), ((-62.5, 10.0), 3)]
 # round 2: the low end raised from 26 to 50 mm and the tall end raked back, after round 1's outline matched Bean's photo
 # only 81% (photo_outline.py; the old box clutch scored 89%): the photo's plates are nearly parallel-sided, the slope is
 # mostly the lever. Round 5: the low end back down to 39 mm, all three blind reviewers of round 4 asked for a clear
-# wedge (tallest at the grip end); the outline still passes
+# wedge (tallest at the grip end). Round 8: rounder corners at the low end and the feet (reviewers: plates looked cut
+# from sheet, the tail blunt)
 _W = 36.0          # across the plates (catalogues: 32 to 40 mm for a single; round 7: 38 measured 40.3 with the screw heads)
 _T_PLATE = 3.5     # side plate
 _T_RIM = 1.0       # the bright strip between each plate and the body
@@ -36,6 +37,8 @@ _RIM = 0.8         # how far the strip stands out past the plate's edge
 _LINE_Z = 11.5     # the line's centre above the deck (round 5: lower, reviewers saw it run mid-height)
 _LINE_R = 6.2      # the bore (10 mm line, 12 mm max)
 _HANDLE_T = 7.5    # lever thickness
+_BASE = 2.4        # round 8: a dark base strip the plates sit on (reviewers: no base, a bank wouldn't read as units)
+_PANEL = 0.5       # round 8: the plates' faces sunk this much inside a raised rim 2.2 mm wide
 _FIT = 0.974       # whole-part scale to the catalogue's 125 mm overall
 
 
@@ -101,6 +104,7 @@ def _clutch_parts():
     satin = P.M("CarbonMatte")
     objs = []
     side = _rounded(_SIDE)
+    plate_side = P._clip_above(side, _BASE)              # the plates stand on the base strip
     yi = _W / 2 - _T_PLATE - _T_RIM          # body half width (inner face of the strips)
     ys = yi + _T_RIM                          # strip outer face = plate inner face
     slope = math.atan2(_SIDE[5][0][1] - _SIDE[4][0][1], _SIDE[5][0][0] - _SIDE[4][0][0])   # top, rising to -X
@@ -114,10 +118,15 @@ def _clutch_parts():
     G.boolean(core, P._xz_prism("mouthcut", _mm(mouth), -(yi + 1) * MM, (yi + 1) * MM, plastic))
     objs.append(G.finish(core, 0.0012, segs=2))
 
-    # toothed cam in the mouth, pressing down on the line: ten deep teeth on its lower arc, set forward into the mouth so
+    # dark base strip the plates stand on, a little wider than them (round 8)
+    base = G.prism("base", G.rrect(124.0 * MM, (_W + 0.8) * MM, 3.0 * MM), 0, _BASE * MM, plastic)
+    objs.append(G.finish(base, 0.0006, segs=2))
+
+    # toothed cam in the mouth, pressing down on the line (round 9: 1.5 mm further out, teeth 3.6 mm deep, the red
+    # guide's flare trimmed so it no longer hides them): ten deep teeth on its lower arc, set forward into the mouth so
     # they show. Round 6: a black cam with bright teeth (all six reviewers of rounds 4 and 5 saw a smooth roller: round 4's
     # was all black, round 5's all stainless)
-    cam_c, cam_r = (-53.0, _LINE_Z + _LINE_R + 7.5), 8.0
+    cam_c, cam_r = (-54.5, _LINE_Z + _LINE_R + 7.0), 8.0
     cy = yi - 1.5
     cam = G.cyl("cam", (cam_c[0] * MM, -cy * MM, cam_c[1] * MM), (cam_c[0] * MM, cy * MM, cam_c[1] * MM), cam_r * MM, plastic, 32)
     objs.append(G.finish(cam, 0.0005, segs=2))
@@ -126,16 +135,18 @@ def _clutch_parts():
         a0 = math.radians(-170 + j * 16)
         da = math.radians(6.5)
         teeth.append((cam_c[0] + (cam_r - 0.2) * math.cos(a0 - da), cam_c[1] + (cam_r - 0.2) * math.sin(a0 - da)))
-        teeth.append((cam_c[0] + (cam_r + 3.0) * math.cos(a0), cam_c[1] + (cam_r + 3.0) * math.sin(a0)))
+        teeth.append((cam_c[0] + (cam_r + 3.6) * math.cos(a0), cam_c[1] + (cam_r + 3.6) * math.sin(a0)))
         teeth.append((cam_c[0] + (cam_r - 0.2) * math.cos(a0 + da), cam_c[1] + (cam_r - 0.2) * math.sin(a0 + da)))
     for j in range(10):
         tri = teeth[3 * j:3 * j + 3]
         objs.append(G.finish(P._xz_prism(f"camtooth{j}", _mm(tri), -(cy - 0.8) * MM, (cy - 0.8) * MM, steel), 0, weighted=False))
     # cam axle bosses on the plates' inner faces are hidden; its pin shows as a cap on each plate
     # line guides: a red flared bush at the mouth, a black one at the load end
-    for nm, x0, x1, mat in (("guide_tail", -58.0, -50.0, red), ("guide_load", 60.2, 55.0, plastic)):
+    # round 8: the red one a wide trumpet out at the mouth's face (reviewers: the photo's red entry is the first thing you
+    # see; round 7's was small and hidden)
+    for nm, x0, x1, mat, fl in (("guide_tail", -60.5, -50.0, red, 1.75), ("guide_load", 60.2, 55.0, plastic, 1.55)):
         s = 1 if x1 > x0 else -1
-        g = G.lathe(nm, [(_LINE_R * MM, 0), (_LINE_R * 1.55 * MM, 0), (_LINE_R * 1.35 * MM, 1.2 * MM), (_LINE_R * 1.1 * MM, abs(x1 - x0) * MM),
+        g = G.lathe(nm, [(_LINE_R * MM, 0), (_LINE_R * fl * MM, 0), (_LINE_R * (fl - 0.2) * MM, 1.2 * MM), (_LINE_R * 1.25 * MM, 3.5 * MM), (_LINE_R * 1.1 * MM, abs(x1 - x0) * MM),
                          (_LINE_R * 0.98 * MM, abs(x1 - x0) * MM), (_LINE_R * 0.98 * MM, 0.1 * MM)], mat, 32)
         g.matrix_world = G.along((x0 * MM, 0, _LINE_Z * MM), (s, 0, 0))
         G.bake_xform(g)
@@ -145,21 +156,36 @@ def _clutch_parts():
     # the lock window and four screw heads
     btn_c = (-36.0, 24.0)
     for sy in (-1, 1):
-        rim = P._xz_prism(f"strip{sy}", _mm([(x, max(z, 0.0)) for x, z in _offset(side, _RIM)]), (sy * yi if sy > 0 else -ys) * MM, (ys if sy > 0 else -yi) * MM, steel)
+        rim = P._xz_prism(f"strip{sy}", _mm(P._clip_above(_offset(side, _RIM), _BASE)), (sy * yi if sy > 0 else -ys) * MM, (ys if sy > 0 else -yi) * MM, steel)
         objs.append(G.finish(rim, 0.0003, segs=1))
         y0, y1 = (ys, ys + _T_PLATE) if sy > 0 else (-ys - _T_PLATE, -ys)
-        plate = P._xz_prism(f"sideplate{sy}", _mm(side), y0 * MM, y1 * MM, satin)
+        plate = P._xz_prism(f"sideplate{sy}", _mm(plate_side), y0 * MM, y1 * MM, satin)
         yo = (y1 if sy > 0 else y0)                          # outer face
-        dep = 1.6
+        # the face sunk inside a raised rim, so the plate reads as a moulding (round 8)
+        panel = _rounded(list(zip(_offset([c for c, _ in _SIDE], -2.2), [max(r - 2.2, 1.0) if r else 1.0 for _, r in _SIDE])))
+        panel = P._clip_above(panel, _BASE + 2.2)
+        py0, py1 = (yo - _PANEL, yo + 1) if sy > 0 else (yo - 1, yo + _PANEL)
+        G.boolean(plate, P._xz_prism(f"panel{sy}", _mm(panel), py0 * MM, py1 * MM, satin))
+        yo = yo - sy * _PANEL                                # the sunk face
+        dep = 1.2
         cy0, cy1 = (yo - dep, yo + 1) if sy > 0 else (yo - 1, yo + dep)
-        groove = P._capsule((-4.0, 15.0), (44.0, 29.0), 3.2, 6)
-        G.boolean(plate, P._xz_prism(f"groove{sy}", _mm(groove), cy0 * MM, cy1 * MM, alu))
+        # round 8: a broad shallow moulded channel (reviewers: round 7's was a thin cut slot)
+        groove = P._capsule((-2.0, 14.0), (42.0, 27.0), 4.2, 8)
+        G.boolean(plate, P._xz_prism(f"groove{sy}", _mm(groove), cy0 * MM, cy1 * MM, satin))
         # the button's recess and the lock window, set square to the sloping top
         for nm, c, w, h in (("btnwell", btn_c, 17.0, 8.5), ("lockwin", (-17.0, 29.0), 8.0, 5.0)):
             rr = [(c[0] + x * math.cos(slope) - z * math.sin(slope), c[1] + x * math.sin(slope) + z * math.cos(slope))
                   for x, z in G.rrect(w, h, h * 0.45, 4)]
-            G.boolean(plate, P._xz_prism(f"{nm}{sy}", _mm(rr), cy0 * MM, cy1 * MM, alu))
+            G.boolean(plate, P._xz_prism(f"{nm}{sy}", _mm(rr), cy0 * MM, cy1 * MM, satin))
         objs.append(G.finish(plate, 0.0007, segs=2))
+        # a raised frame round the lock window (round 8)
+        lc = (-17.0, 29.0)
+        fo = [(lc[0] + x * math.cos(slope) - z * math.sin(slope), lc[1] + x * math.sin(slope) + z * math.cos(slope)) for x, z in G.rrect(12.0, 8.0, 3.0, 4)]
+        fi = [(lc[0] + x * math.cos(slope) - z * math.sin(slope), lc[1] + x * math.sin(slope) + z * math.cos(slope)) for x, z in G.rrect(8.0, 5.0, 2.2, 4)]
+        fy0, fy1 = (yo - 0.2, yo + 0.9) if sy > 0 else (yo - 0.9, yo + 0.2)
+        frame = P._xz_prism(f"lockframe{sy}", _mm(fo), fy0 * MM, fy1 * MM, satin)
+        G.boolean(frame, P._xz_prism(f"lockframecut{sy}", _mm(fi), (fy0 - 1) * MM, (fy1 + 1) * MM, satin))
+        objs.append(G.finish(frame, 0.0003, segs=1))
         # red release button standing 0.8 mm proud of the face in its recess
         btn = [(btn_c[0] + x * math.cos(slope) - z * math.sin(slope), btn_c[1] + x * math.sin(slope) + z * math.cos(slope))
                for x, z in G.rrect(14.5, 6.2, 3.0, 5)]
@@ -192,21 +218,24 @@ def _clutch_parts():
              ((xg, zb(xv) - drop + 3.0), 1.0), ((xg, top_at(xg)), 3.0), ((xh + 4.0, top_at(xh + 4.0)), 3.0)]
     lever = _rounded(lever, 4)
     hw = _W / 2 - 0.4
+    # round 8: one moulding, the grip part of it, crowned by a deep rounded edge (reviewers: round 7's lever was a flat
+    # slab with a separate grille block stuck on the end). Round 9: light again, ribs dark: round 8's lever in the plates'
+    # grey lost 2 of 3 blind reviews (the body read as one closed box, the lever no longer a lever)
     lv = P._xz_prism("lever", _mm(lever), -hw * MM, hw * MM, alu)
-    objs.append(G.finish(lv, 0.0012, segs=2))
-    # grip block: round 5 caps the grip end in satin charcoal so it reads as a separate chunky grip (reviewers: too thin,
-    # too white), with ribs across its face and top
+    objs.append(G.finish(lv, 0.0024, segs=4))
+    # grip block: a satin charcoal cap over the grip end, so it reads as its own chunky grip on the light lever (round 5;
+    # round 10 brings it back: rounds 8 and 9 without it each lost 2 of 3 blind reviews to round 7, which had it)
     gb = [((xv + 3.0, zb(xv)), 1.0), ((xv + 3.0, zb(xv) - drop - 0.5), 0), ((xg - 0.6, zb(xv) - drop - 0.5), 1.5),
           ((xg - 0.6, top_at(xg) + 0.6), 2.5), ((xg + 16.0, top_at(xg + 16.0) + 0.6), 1.5), ((xg + 16.0, zb(xg + 16.0) + 1.0), 0)]
     gblk = P._xz_prism("gripblock", _mm(_rounded(gb, 3)), -(hw + 0.3) * MM, (hw + 0.3) * MM, satin)
-    objs.append(G.finish(gblk, 0.0010, segs=2))
+    objs.append(G.finish(gblk, 0.0012, segs=3))
     for k in range(5):
         z = zb(xv) - drop + 4.0 + k * 3.3
-        rib = G.cyl(f"rib{k}", ((xg - 0.8) * MM, -(hw - 1.5) * MM, z * MM), ((xg - 0.8) * MM, (hw - 1.5) * MM, z * MM), 1.05 * MM, satin, 10)
+        rib = G.cyl(f"rib{k}", ((xg - 0.8) * MM, -(hw - 3.0) * MM, z * MM), ((xg - 0.8) * MM, (hw - 3.0) * MM, z * MM), 1.05 * MM, satin, 10)
         objs.append(G.finish(rib, 0, weighted=False))
     for k in range(3):
         x = xg + 4.0 + k * 3.6
-        rib = G.cyl(f"ribtop{k}", (x * MM, -(hw - 1.5) * MM, (top_at(x) + 1.2) * MM), (x * MM, (hw - 1.5) * MM, (top_at(x) + 1.2) * MM),
+        rib = G.cyl(f"ribtop{k}", (x * MM, -(hw - 3.0) * MM, (top_at(x) + 1.2) * MM), (x * MM, (hw - 3.0) * MM, (top_at(x) + 1.2) * MM),
                     1.05 * MM, satin, 10)
         objs.append(G.finish(rib, 0, weighted=False))
     # hinge pin through the plates at the low end, with its caps on the plates
