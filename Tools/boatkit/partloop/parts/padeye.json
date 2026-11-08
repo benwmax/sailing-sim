@@ -1,0 +1,145 @@
+{
+ "part": "Padeye",
+ "card": {
+  "what": "Round stainless pad eye, 6 mm size: a 40 mm round base screwed down through four countersunk holes, with a round-bar loop for a shackle, a block or a line's end",
+  "boats": "kit part (not yet placed by a layout): jib sheet and vang anchor points, the J/22's foredeck and cockpit tie-downs, a Sunfish's mainsheet ratchet base",
+  "distance": "arm's reach on the deck; the camera passes close in the cockpit",
+  "before": "kit Padeye from bk_parts.padeye (Oct 2026): a U-bolt on a 50 x 30 mm rectangular plate with two nuts"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look Bean asked for: three-quarter product shot on white (round base, four big countersinks on the diagonals, round-bar loop between them, stamped mark); outline match by angle (photo_outline.py) and the proportions below",
+   "url": "Bean's hardware reference sheet, project upload Nov 8 2026 (the 'Pad Eye' tile; measuring and comparing only)",
+   "mask": "bean.mask.png"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "round 316 pad eye listings: US Stainless 6 mm x 40 mm and 8 mm x 50 mm, Five Oceans FO-2101 (5 mm, 33 mm base), S3i / QD round pad eye tables (6 mm: base 40, H 26, h 17, W 17)",
+   "note": "the catalogues' 5, 6 and 8 mm sizes have 33, 40 and 50 mm bases; H 26 mm for the 6 mm size"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Base diameter, seen from the side",
+   "target": 40.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 6 mm round pad eye, 40 mm base"
+  },
+  {
+   "id": "width",
+   "name": "Base diameter, seen end-on",
+   "target": 40.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 40 mm base"
+  },
+  {
+   "id": "height",
+   "name": "Height off the deck",
+   "target": 26.0,
+   "unit": "mm",
+   "tol": 0.08,
+   "source": "catalogue: H 26 mm"
+  },
+  {
+   "id": "aspect_full",
+   "name": "Height / base diameter",
+   "target": 0.65,
+   "unit": "ratio",
+   "tol": 0.08,
+   "source": "catalogue 26 / 40; the photo reads 0.66 to 0.70 allowing for the angle"
+  }
+ ],
+ "photo_sizes": [
+  {
+   "id": "rod",
+   "name": "Loop bar / base diameter",
+   "target": 0.1,
+   "built": 0.12,
+   "source": "measured across the near leg on Bean's photo (65 of 680 px); built heavier after two of three reviewers in r2 called the bar thin"
+  },
+  {
+   "id": "hole_r",
+   "name": "Screw-hole circle radius / base diameter",
+   "target": 0.325,
+   "built": 0.31,
+   "source": "Bean's photo, about 0.65 of the radius; built a little inboard so the countersinks don't break the rim"
+  },
+  {
+   "id": "csk",
+   "name": "Countersink / base diameter",
+   "target": 0.31,
+   "built": 0.3,
+   "source": "Bean's photo, front hole 210 of 680 px"
+  },
+  {
+   "id": "thick",
+   "name": "Plate thickness / base diameter",
+   "target": 0.09,
+   "built": 0.12,
+   "source": "Bean's photo, rim band allowing for a 37 degree view; built thicker after all three r2 reviewers called the base thin"
+  }
+ ],
+ "outline": null,
+ "photo_outline": {
+  "ref": "bean",
+  "pass": 0.85,
+  "note": "no square-on photo: photo_outline.py finds the best-matching angle on the three-quarter photo and scores the overlap there"
+ },
+ "features": [
+  {
+   "id": "base",
+   "text": "Round base with a rounded top edge and a flat underside",
+   "objects": [
+    "forging"
+   ],
+   "manual": true
+  },
+  {
+   "id": "holes",
+   "text": "Four big countersunk screw holes on the diagonals, reaching nearly to the rim",
+   "manual": true
+  },
+  {
+   "id": "loop",
+   "text": "Round-bar loop, a tall rounded arch whose legs land between the holes",
+   "manual": true
+  },
+  {
+   "id": "fillets",
+   "text": "Soft fillets where the loop meets the base: one forging, no seams or nuts",
+   "manual": true
+  },
+  {
+   "id": "opening",
+   "text": "Room through the loop for a 6 mm shackle pin or a 10 mm line (about 19 mm wide and 16 mm high inside; catalogue W 17, h 17)",
+   "manual": true
+  },
+  {
+   "id": "stamp",
+   "text": "A small maker's mark on the top face (made-up TERNWAY lettering, no real brand)",
+   "objects": [
+    "stamp"
+   ],
+   "manual": true
+  },
+  {
+   "id": "metal",
+   "text": "All polished stainless",
+   "slots": [
+    "Stainless"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

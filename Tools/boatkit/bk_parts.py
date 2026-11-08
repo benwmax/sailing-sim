@@ -1541,3 +1541,11 @@ def build(name, size=None, **kw):
             c.location = c.location * f
     ob.name = f"{ob.name}_{size}"
     return ob
+
+
+# Parts kept in their own files (bk_part_<name>.py) register themselves with @part when imported here.
+import glob as _glob  # noqa: E402
+import importlib as _importlib  # noqa: E402
+import os as _os  # noqa: E402
+for _f in sorted(_glob.glob(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "bk_part_*.py"))):
+    _importlib.import_module(_os.path.basename(_f)[:-3])
