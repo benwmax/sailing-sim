@@ -1,0 +1,40 @@
+{
+ "surface": "plastic",
+ "_about": "Albedo targets (Lab, linear albedo through sRGB) on sky-facing tops. L0 from Plastic012A's scan; L1-L4 are estimates (UV-chalked black acetal and nylon fades by roughly 10-25 L* over years; neglected hardware reads pale grey), not photo measurements.",
+ "levels": {
+  "L0": {
+   "L": 17.6,
+   "a": 0.0,
+   "b": 1.5,
+   "src": "Plastic012A"
+  },
+  "L1": {
+   "L": [
+    16,
+    20
+   ],
+   "src": "estimate"
+  },
+  "L2": {
+   "L": [
+    26,
+    34
+   ],
+   "src": "estimate"
+  },
+  "L3": {
+   "L": [
+    22,
+    32
+   ],
+   "src": "estimate"
+  },
+  "L4": {
+   "L": [
+    34,
+    46
+   ],
+   "src": "estimate"
+  }
+ }
+}
