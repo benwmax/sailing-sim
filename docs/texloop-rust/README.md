@@ -86,3 +86,28 @@ large soft clumps where real rust also has fine speckle and streaks.
 The measure scripts expect the CC0 downloads under `/home/user/refs/` (ambientCG `<id>_1K-JPG.zip` unzipped per asset,
 Poly Haven 1k diffuse jpgs); keep them in git-ignored `Data/Reference/raw/textures/Rust/` instead.
 `python3 scripts/render_round.py <out>` then `python3 scripts/score.py <out> scripts/targets.json`.
+
+## World steel (M_WorldSurface pattern 5)
+
+Docks, rails, lamp posts, trailers, platforms and barges used the old pattern 5: lanes 0.67 m wide washed brown from the
+top of every 2.9 m, whatever the part's size, so a 6 cm cleat was either all brown or clean. Now it follows the boats' kind
+12 on the world's own E1 wear seed (age, care, salt site):
+
+- Bare steel (slot Metallic over 0.4) dulls within three years, blooms white when left, then rusts in patches; painted
+  steel fades in the sun and holds the rust off a little longer.
+- Patches come from three octaves in the part's own metres (8, 2.2, 0.7 cm) over the 1.4 m blot. Past about 1.1 cm per
+  pixel the pattern gives way to its expected cover, so the mean rust stays within 4% from 1 mm to 10 cm per pixel (no
+  shimmer, no fading out with distance).
+- Thin weeps (1.2-3 cm, 0.2-0.7 m long) from seams, coloured with the boats' dye-and-deposit blend (a plain lerp went mauve).
+- The material's metallic now comes from the code (`Met`): rust, its halo and weeps are dielectric.
+
+| Check (`scripts/worldport.py`, `world_round.py`) | Result |
+|---|---|
+| Cover by level, bare | L0 0, L1 0, L2 1.5%, L3 2.7%, L4 27% (targets as hardware: 0.5-3, 1-4, 15-30) |
+| Cover by level, painted | L2 0.6%, L3 1.5%, L4 16% |
+| Distance | mean rust L4 bare 0.270 / 0.274 / 0.280 at 1 mm, 2 cm, 10 cm per pixel |
+| Blind A/B vs main (5 rows, 3 reviewers) | new won 15 of 15 ("old: flat fill with hard-edged bands") |
+| Ladder (bare, 4 ages) | 1 of 3 exact; 2 swapped L2 and L3 (the half-kept L2 blooms white, so reads older than the kept classic, as on the boats) |
+
+Still different: at 3 m a neglected part's rust reads too even and pixel-grainy; no streaks gathered under the patches,
+no pitting relief. Sheet: `world_before_after.jpg` (before and after, bare and painted, L0 to L4 at 25 cm).

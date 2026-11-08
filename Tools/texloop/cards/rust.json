@@ -52,5 +52,24 @@
   "drivers": "dull = saturate(Age / 3); rust stK = saturate((Age - 1) / 12) x (1 - 0.7 Care); bloom = dull x (1 - Care)",
   "not_mine": "stainless (surf 3) tea staining and aluminium (surf 4) belong to the metals thread (branch claude/project-thread-c8yazt)",
   "still_untagged": "the outboard bracket bolts are modelled as Stainless; trailers, dock chain and ships use M_WorldSurface (later world pass)"
+ },
+ "world": {
+  "material": "M_WorldSurface pattern 5 (scripts/make_materials.py WORLD_SURFACE_CODE), slots Steel, Lamp (bare, Metallic > 0.4), Trailer, PlatformPaint, Barge (painted)",
+  "drivers": "E1 wear seed age/care/site (FWearSeed or the 4 m plan hash), salt sites rust more",
+  "cover_targets_pct": {
+   "bare": {
+    "L2": 1.5,
+    "L3": 2.7,
+    "L4": "20-30"
+   },
+   "painted": {
+    "L2": 0.6,
+    "L3": 1.5,
+    "L4": "15-20"
+   }
+  },
+  "distance": "patch octave (2.2 cm) gives way to its expected cover past ~1.1 cm per pixel; mean rust within 4% from 1 mm to 10 cm per pixel",
+  "metallic": "new Met output: rust, halo and weeps are dielectric",
+  "not_mine": "ship topsides pattern 8, navaid paint, bridges keep their own rust"
  }
 }

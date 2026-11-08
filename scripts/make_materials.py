@@ -4860,6 +4860,7 @@ float2 i0 = floor(p), f0 = smoothstep(0.0, 1.0, frac(p));
 float h00 = frac(sin(dot(i0, float2(12.99, 78.23))) * 43758.5), h10 = frac(sin(dot(i0 + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
 float h01 = frac(sin(dot(i0 + float2(0, 1), float2(12.99, 78.23))) * 43758.5), h11 = frac(sin(dot(i0 + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float blot = lerp(lerp(h00, h10, f0.x), lerp(h01, h11, f0.x), f0.y);
+Met = Metal;     // the slot's metallic; rust takes it away (pattern 5)
 float3 bump = float3(0, 0, 0);  // tangent-space slope (x along U, y along V) from the patterns that have relief
 // Environment E1 (docs/environment-1): the structure's seeded wear (FWearSeed), per instance on the private docks and
 // boathouses (custom data 10-15). The baked kit tiles are one mesh per tile with no instance data, so they hash it per
@@ -5066,13 +5067,59 @@ else if (Pattern > 3.5 && Pattern < 4.15)
 }
 else if (Pattern > 4.5 && Pattern < 5.5)
 {
-    // Weathered painted steel: blotchy fading, and rust weeping down in streaks from seams.
-    float lane = floor(uv.x * 1.5);
-    float hl = frac(sin(lane * 91.7) * 4375.5);
-    // E1: more seams weep with age and near salt, and the paint fades where it faces the sun.
-    float weep = step(0.6 - 0.2 * salt - 0.2 * aged * (1.0 - care), hl) * saturate(1.0 - frac(uv.y * 0.35 + hl)) * 0.8;
-    c *= (0.9 + 0.2 * blot) * (1.0 + 0.12 * aged * sun);
-    c = lerp(c, float3(0.30, 0.14, 0.06), saturate((weep + 0.25 * saturate(blot - 0.6)) * (0.7 + 0.5 * aged)) * 0.6);
+    // Weathered steel (texture loop, rust lane: Tools/texloop/cards/rust.json "world"; port docs/texloop-rust/scripts/
+    // worldport.py). Bare steel (Metallic over 0.4: dock cleats, rails, ladders, lamp posts) dulls within three years and,
+    // on a left structure, blooms white; painted steel (trailers, platforms, barges) fades. Both then rust in patches with
+    // the years and the neglect (more on salt): bare about 1.5% at 6 years half kept, 3% on a kept 30-year-old, a quarter
+    // when left; paint holds a little longer (0.6%, 1.5%, 16%), the cover measured on CC0 rusty and painted-metal scans.
+    // The patches come from three octaves in the part's own metres (8, 2.2 and 0.7 cm) over the 1.4 m blot; where a pixel
+    // grows past the 2.2 cm octave the pattern gives way to its expected cover, so far steel holds its share of rust
+    // without shimmer. Thin weeps run down from seams every 0.67 m. Rust is no metal (Met).
+    bool wsBare = Metal > 0.4;
+    float wsK = saturate(saturate((age - 1.0) / 14.0) * (1.0 - 0.7 * care) * (1.0 + 0.5 * salt));
+    float wsFw = max(length(fwidth(uv)), 1e-6);                                // metres per pixel
+    float wsF1 = 1.0 - smoothstep(0.011, 0.033, wsFw), wsF2 = 1.0 - smoothstep(0.0035, 0.0105, wsFw);
+    float2 wq = uv / 0.08, wqi = floor(wq), wqf = smoothstep(0.0, 1.0, frac(wq));
+    float wsN0 = lerp(lerp(frac(sin(dot(wqi, float2(53.3, 19.1))) * 43758.5), frac(sin(dot(wqi + float2(1, 0), float2(53.3, 19.1))) * 43758.5), wqf.x),
+                      lerp(frac(sin(dot(wqi + float2(0, 1), float2(53.3, 19.1))) * 43758.5), frac(sin(dot(wqi + float2(1, 1), float2(53.3, 19.1))) * 43758.5), wqf.x), wqf.y);
+    wq = uv / 0.022; wqi = floor(wq); wqf = smoothstep(0.0, 1.0, frac(wq));
+    float wsN1 = lerp(lerp(frac(sin(dot(wqi, float2(27.1, 61.7))) * 43758.5), frac(sin(dot(wqi + float2(1, 0), float2(27.1, 61.7))) * 43758.5), wqf.x),
+                      lerp(frac(sin(dot(wqi + float2(0, 1), float2(27.1, 61.7))) * 43758.5), frac(sin(dot(wqi + float2(1, 1), float2(27.1, 61.7))) * 43758.5), wqf.x), wqf.y);
+    wq = float2(uv.x * 0.8 - uv.y * 0.6, uv.x * 0.6 + uv.y * 0.8) / 0.007; wqi = floor(wq); wqf = smoothstep(0.0, 1.0, frac(wq));
+    float wsN2 = lerp(lerp(frac(sin(dot(wqi, float2(41.3, 17.7))) * 43758.5), frac(sin(dot(wqi + float2(1, 0), float2(41.3, 17.7))) * 43758.5), wqf.x),
+                      lerp(frac(sin(dot(wqi + float2(0, 1), float2(41.3, 17.7))) * 43758.5), frac(sin(dot(wqi + float2(1, 1), float2(41.3, 17.7))) * 43758.5), wqf.x), wqf.y);
+    float wsF = 0.5 + 0.7 * (wsN0 - 0.5) + 0.35 * (wsN1 - 0.5) + 0.15 * (wsN2 - 0.5) * wsF2 + 0.25 * (blot - 0.5);
+    float wsT = wsBare ? 0.867 - 0.346 * pow(wsK, 1.5) : 0.961 - 0.359 * wsK;
+    float wsOn = step(0.02, wsK);
+    float wsRust = lerp(smoothstep(0.36, -0.47, wsT - 0.5 - 0.25 * (blot - 0.5)), smoothstep(wsT, wsT + 0.06, wsF), wsF1) * wsOn;
+    float wsHalo = smoothstep(wsT - 0.07, wsT, wsF) * (1.0 - wsRust) * wsOn * wsF1;
+    if (wsBare)
+    {
+        float wsDull = saturate(age / 3.0);
+        c = lerp(c, float3(0.30, 0.31, 0.31), 0.6 * wsDull);
+        c *= 0.93 + 0.14 * (0.6 * wsN1 + 0.4 * wsN2) * wsF1 + 0.07 * (1.0 - wsF1);
+        float wsBloom = wsDull * (1.0 - care) * saturate((0.6 * wsN0 + 0.4 * wsN1) * 3.0 - 1.7) * wsF1;
+        c = lerp(c, float3(0.55, 0.55, 0.53), 0.6 * wsBloom);
+        Met *= 1.0 - 0.8 * wsBloom;
+        r = lerp(r, 0.6, wsDull);
+    }
+    else
+    {
+        c *= (0.9 + 0.2 * blot) * (1.0 + 0.12 * aged * sun);      // E1: the paint fades where it faces the sun
+    }
+    float wsLane = floor(uv.x * 1.5);
+    float wsH = frac(sin(wsLane * 91.7) * 4375.5), wsH2 = frac(sin(wsLane * 17.3 + 7.0) * 4375.5);
+    float wsDx = (frac(uv.x * 1.5) - (0.3 + 0.4 * wsH2)) / 1.5, wsFy = frac(uv.y * 0.35 + wsH);
+    float wsW = 0.012 + 0.018 * wsH2, wsWe = sqrt(wsW * wsW + 2.25 * wsFw * wsFw);
+    float wsRun = step(1.0 - 0.5 * wsK - 0.15 * salt, wsH) * (wsW / wsWe) * exp(-wsDx * wsDx / (wsWe * wsWe))
+                * saturate(1.0 - wsFy / (0.2 + 0.5 * wsH2)) * smoothstep(0.0, 0.01, wsFy) * saturate(wsK * 2.0) * 0.8;
+    c = 0.5 * lerp(c, float3(0.11, 0.033, 0.011), wsRun) + 0.5 * c * pow(float3(0.149, 0.045, 0.017), wsRun);   // dye and deposit
+    c = lerp(c, float3(0.24, 0.12, 0.05), 0.45 * wsHalo);
+    float3 wsCol = lerp(float3(0.075, 0.024, 0.010), float3(0.256, 0.071, 0.020),
+                        saturate(1.3 - (wsF - wsT) / 0.18) * (0.4 + 0.6 * wsN2 * wsF1 + 0.3 * (1.0 - wsF1)));
+    c = lerp(c, wsCol, wsRust);
+    r = lerp(r, 0.85, max(wsRust, max(0.5 * wsHalo, wsRun)));
+    Met *= saturate(1.0 - wsRust - 0.4 * wsHalo - wsRun);
 }
 else if (Pattern > 7.5)
 {
@@ -5158,9 +5205,9 @@ def build_world_surface():
     night.set_editor_property("collection", world_collection())
     night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site", "UV1"] + [f"CD{k}" for k in range(10, 16)],
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site", "UV1", "Metal"] + [f"CD{k}" for k in range(10, 16)],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
-               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
+               extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Met", F1)])
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 800), "", c, "WP")
     connect(glow, "", c, "Glow")
     connect(night, "", c, "Night")
@@ -5180,7 +5227,8 @@ def build_world_surface():
     MEL.connect_material_property(c, "Out", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(c, "Emit", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.connect_material_property(c, "Nrm", unreal.MaterialProperty.MP_NORMAL)
-    MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
+    connect(metal, "", c, "Metal")
+    MEL.connect_material_property(c, "Met", unreal.MaterialProperty.MP_METALLIC)   # rust lane: rust is no metal
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     # Instances for the world kit's static meshes (slot name -> MI_World_<slot>); updated in place like the boat library.
