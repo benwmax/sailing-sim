@@ -1431,36 +1431,6 @@ def pushpit(width=1.50, depth=0.40, height=0.610):
     return _rail("Pushpit", path, feet, height, [("LifelineP", (0.0, -w, height)), ("LifelineS", (0.0, w, height)), ("Centre", (-depth, 0, height))])
 
 
-@part("Turnbuckle", "rig", "Open-body rigging screw with toggle, for 5 mm wire: forged body, two threaded studs, swage eye up, toggle fork down")
-def turnbuckle():
-    L = 0.110                                  # body length
-    objs = []
-    for s in (-1, 1):
-        bar = G.prism(f"bar{s}", G.rrect(0.006, 0.004, 0.0015), -L / 2, L / 2, M("Stainless"))
-        bar.matrix_world = Matrix.Translation((0, s * 0.008, 0.080))
-        G.bake_xform(bar)
-        objs.append(G.finish(bar, 0.0006))
-    for z in (0.080 - L / 2, 0.080 + L / 2):
-        objs.append(G.finish(G.lathe(f"boss{z:.3f}", [(0, -0.006), (0.010, -0.006), (0.010, 0.006), (0, 0.006)], M("Stainless"), 24), 0.0008))
-        objs[-1].location = (0, 0, z)
-        G.bake_xform(objs[-1])
-    lower = G.cyl("studL", (0, 0, 0.012), (0, 0, 0.080 - 0.010), 0.0035, M("Stainless"), 16)
-    upper = G.cyl("studU", (0, 0, 0.080 + 0.010), (0, 0, 0.165), 0.0035, M("Stainless"), 16)
-    objs += [G.finish(lower, 0.0003), G.finish(upper, 0.0003)]
-    # Thread: fine rings on the studs (the hero's close-up), and lock nuts at the body.
-    for z0, z1 in ((0.014, 0.060), (0.100, 0.150)):
-        n = int((z1 - z0) / 0.0018)
-        for k in range(n):
-            z = z0 + k * (z1 - z0) / n
-            objs.append(G.lathe(f"thr{z0}{k}", [(0.0034, z), (0.0040, z + 0.0005), (0.0034, z + 0.0010)], M("Stainless"), 12))
-    swage = G.lathe("swage", [(0, 0.165), (0.0045, 0.165), (0.0045, 0.205), (0.0030, 0.215), (0, 0.216)], M("Stainless"), 20)
-    objs.append(G.finish(swage, 0.0004))
-    fork = G.prism("fork", G.rrect(0.014, 0.020, 0.004), 0.0, 0.016, M("Stainless"))
-    objs.append(G.finish(fork, 0.0008))
-    objs.append(G.finish(G.cyl("pin", (0, -0.012, 0.004), (0, 0.012, 0.004), 0.0025, M("Stainless"), 14), 0.0003))
-    return done("Turnbuckle", objs, [("Toggle", (0, 0, 0.004)), ("Wire", (0, 0, 0.216))])
-
-
 @part("Clutch", "rope", "Single rope clutch for 6 to 10 mm line on a moulded base, handle closed, maker's plate")
 def clutch():
     base = G.prism("base", G.rrect(0.140, 0.050, 0.010), 0, 0.008, M("BlackPlastic"), taper=0.97)
@@ -1516,7 +1486,6 @@ SIZES = {
     "JibTrack":   {"dim": "track length mm", "default": "600", "kw": {"450": {"length": 0.45}, "600": {"length": 0.60}, "900": {"length": 0.90}}},
     "Traveler":   {"dim": "track length mm", "default": "900", "kw": {"600": {"length": 0.60}, "900": {"length": 0.90}, "1500": {"length": 1.50}}},
     "Chainplate": {"dim": "wire mm", "default": "5", "scale": {"4": 0.85, "5": 1.0, "6": 1.15}},
-    "Turnbuckle": {"dim": "wire mm", "default": "5", "scale": {"4": 0.85, "5": 1.0, "6": 1.18, "8": 1.5}},
     "Stanchion":  {"dim": "height mm", "default": "610", "kw": {"457": {"height": 0.457}, "610": {"height": 0.610}, "760": {"height": 0.760}}},
     "BowPulpit":  {"dim": "width mm", "default": "600", "kw": {"450": {"width": 0.45, "length": 0.35}, "600": {"width": 0.60}, "800": {"width": 0.80, "length": 0.60}}},
     "Pushpit":    {"dim": "width mm", "default": "1500", "kw": {"1200": {"width": 1.20}, "1500": {"width": 1.50}, "2000": {"width": 2.00, "depth": 0.50}}},

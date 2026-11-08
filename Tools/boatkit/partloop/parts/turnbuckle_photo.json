@@ -1,0 +1,76 @@
+{
+ "part": "Turnbuckle",
+ "card": {
+  "what": "Open-body turnbuckle (rigging screw) for 3/16 in (5 mm) wire: jaw with a 1/4 in clevis pin on the chainplate, forged open body, swage stud crimped onto the shroud -- scored at the reference photo's setting (studs screwed in, 8 mm of thread showing each end: partloop/render_kw.py exposed=0.008)",
+  "boats": "Catalina 22 shrouds (Tools/blender/build_fleet.py c22_hardware, on the kit Chainplate's Pin socket); the J/22 hero has its own closed-body turnbuckles in boots (Inputs/j22-hero/j22_mastgear.py)",
+  "distance": "arm's reach on the side deck; the cockpit camera passes close when going forward",
+  "before": "kit Turnbuckle from bk_parts.turnbuckle (Oct 2026): two thin bars between round bosses, ring studs, a plain fork below the pin"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "outline and proportions (Bean's hardware sheet, bottom row: open body, jaw, swage stud; square-on, set near closed)",
+   "url": "project upload (Bean, Nov 8 2026: sailboat hardware reference sheet)",
+   "mask": "bean.mask.png",
+   "note": "a retailer's product shot: measuring only, kept out of the repo; scored at the photo's setting (partloop/render_kw.py exposed=0.008), see turnbuckle_photo.json"
+  },
+  {
+   "id": "ralfr38",
+   "kind": "photo",
+   "use": "forged open bodies on a dinghy's chainplates: window shape, centre bridge, cotter pins in the windows, studs",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-38.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "ralfr40",
+   "kind": "photo",
+   "use": "square-on and three-quarter open bodies, swage studs into the wire, toggles on deck plates",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-40.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "ralfr37",
+   "kind": "photo",
+   "use": "the same pair in place on the side deck (how far away the camera sees them)",
+   "url": "https://commons.wikimedia.org/wiki/File:2009-11-28-bootsmesse-berlin-by-RalfR-37.jpg",
+   "licence": "CC BY-SA 3.0, Ralf Roletschek"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://www.westmarine.com/hayn-tubular-turnbuckle-jaw-to-swage-for-3-16inch-wire-1-4inch-pin-7415490.html",
+   "note": "Hayn 3/16 in jaw-to-swage: 1/4-28 thread, 1/4 in pin, closed 6-5/8 in (168 mm), open 9-3/8 in (238 mm), pin to swage end. Kit default 216 mm (the old part's wire end, about two thirds open)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "height",
+   "name": "Jaw's end to the swage's end, set near closed (168 mm closed length + the jaw's 9.5 mm)",
+   "target": 177.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: Hayn 3/16 in closed 6-5/8 in"
+  },
+  {
+   "id": "aspect_full",
+   "name": "Height / jaw width",
+   "target": "ref:bean",
+   "unit": "ratio",
+   "tol": 0.06,
+   "source": "measured on Bean's photo"
+  }
+ ],
+ "outline": {
+  "ref": "bean",
+  "pass": 0.9,
+  "whole": true
+ },
+ "features": [],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
