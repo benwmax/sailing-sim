@@ -1,0 +1,98 @@
+{
+ "part": "Gudgeon",
+ "card": {
+  "what": "Stainless strap gudgeon for a transom-hung rudder: a 25 x 5 mm strap wrapped round a bushed eye for a 1/2 in pin, its legs bent flat onto the transom and bolted through",
+  "boats": "J/22 (two per pintle, one above and one below it, 50 mm offset: kit option offset=0.05); Hobie 16 transoms (build_fleet, default 26 mm offset); dressed J/22 layout (GudgeonUpper/Lower)",
+  "distance": "arm's reach from the cockpit, looking aft over the transom",
+  "before": "kit Gudgeon from bk_parts.gudgeon (Oct 2026): a plain cylinder eye between two flat straps running into the hull"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look: Bean's J/22 photos tiller-transom-attachemnt and -2 (Rush Creek, Oct 2026), as already built into the hero J/22 (Inputs/j22-hero/j22_steering.py); private, never in the repo",
+   "url": "Bean's J/22 detail photos (BEN-PC); in-game hero renders docs/j22-detail/steering-pintle.jpg"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Schaefer 81-47 J/24 upper gudgeon (Vela Sailing Supply, Fisheries Supply, Sound Boatworks listings): pin 1/2 in, strap 1 x 3/16 in, strap length 3 5/16 in, four fasteners, 1 1/2 in rudder; gudgeon pin 81-49 3 7/8 in long",
+   "note": "numbers only (search snippets; the cloud can't open the shops' pages)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "height",
+   "name": "Strap width (side view, with the bush's lips)",
+   "target": 27.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue 1 in strap + 1 mm bush lip each side"
+  },
+  {
+   "id": "width",
+   "name": "Flange span across the transom",
+   "target": 138.0,
+   "unit": "mm",
+   "tol": 0.06,
+   "source": "the hero's gudgeon from Bean's photos (flanges to 69 mm each side)"
+  },
+  {
+   "id": "length",
+   "name": "Transom to the back of the eye",
+   "target": 39.3,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "26 mm pin offset (the old part's socket, kept) + bush 8.5 + strap 4.8"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "strap",
+   "text": "One bent strap: flange, bend, leg, wrapped eye, leg, bend, flange",
+   "objects": [
+    "strap"
+   ],
+   "manual": true
+  },
+  {
+   "id": "ends",
+   "text": "Round flange ends",
+   "objects": [
+    "strap_end"
+   ]
+  },
+  {
+   "id": "bush",
+   "text": "A black acetal bush in the eye with lips top and bottom",
+   "objects": [
+    "bush"
+   ],
+   "slots": [
+    "BlackPlastic"
+   ]
+  },
+  {
+   "id": "bolts",
+   "text": "Two hex bolts with washers through each flange",
+   "objects": [
+    "bolt"
+   ],
+   "manual": true
+  },
+  {
+   "id": "metal",
+   "text": "Polished stainless",
+   "slots": [
+    "Stainless"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 8000,
+  "slots": 8,
+  "note": "small part budget (hardware-fit plan: 8k hero, 2k light)"
+ }
+}
