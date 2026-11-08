@@ -222,33 +222,67 @@ def _cast_cleat_parts(name, L, foot_w=0.029, waist_w=0.017, top_w=0.0135, horn_w
     return [body] + bolts, socks
 
 
-@part("CamCleat", "cleat", "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead")
-def cam_cleat():
-    L, W = 0.075, 0.045
-    base = G.prism("base", G.rrect(L, W, 0.006), 0, 0.006, M("Aluminium"), taper=0.96)
-    G.finish(base, 0.0012)
-    objs = [base]
+@part("CamCleat", "cleat", "Composite cam cleat, 38 mm axle centres: two toothed teardrop cams on a moulded base")
+def cam_cleat(spacing=0.038):
+    """Part detail loop (Nov 2026, docs/part-detail-loop): a moulded composite cam cleat like Bean's reference photo.
+    The top-view proportions are the photo's (as fractions of the width across the cams), the axle centres the
+    catalogue's 38 mm class (M5 screws). The line runs along X between the cams; the cams' toothed tips point to -X,
+    the side the load comes from (the Lead socket)."""
+    S = spacing
+    W = S / 0.618                            # width across the cams (photo: axle centres are 0.618 of it)
+    al, bk, red, ss = M("Aluminium"), M("BlackPlastic"), M("Graphics"), M("Stainless")
+    zb, zc, zr, zs = 0.0050, 0.0160, 0.0174, 0.0186          # base top, cam top, bushing top, screw top
+    objs = []
+    # moulded base: a rounded slab across the line, its ends under the cams' backs
+    half = S / 2 + 0.205 * W
+    x0, x1 = -0.188 * W, 0.222 * W
+    base = G.prism("base", [(x + (x0 + x1) / 2, y) for x, y in G.rrect(x1 - x0, 2 * half, 0.2 * W, 8)], 0, zb, bk, taper=0.97)
+    objs.append(G.finish(base, 0.0012, segs=2))
     for side in (-1, 1):
-        # cam: a toothed disc on a vertical axle, eccentric toward the line
-        cy = side * 0.014
-        prof = []
-        teeth = 18
-        # pc/j22-detail assembly 5: raked teeth (a sawtooth: the line slides in, not out) on an eccentric lobe toward the line
-        for i in range(teeth * 3):
-            a = G.TAU * i / (teeth * 3)
-            r = 0.0108 + 0.0018 * max(0.0, math.cos(a + side * math.pi / 2)) + (0.0013, 0.0006, 0.0)[i % 3]
-            prof.append((r * math.cos(a), r * math.sin(a)))
-        cam = G.prism(f"cam{side}", prof, 0.006, 0.020, M("Aluminium"))
-        cam.location = (0.004, cy, 0)
-        G.bake_xform(cam)
-        objs.append(G.finish(cam, 0.0004, sharp=50))
-        axle = G.cyl(f"axle{side}", (0.004, cy, 0.020), (0.004, cy, 0.0225), 0.004, M("Stainless"), 16)
-        objs.append(G.finish(axle, 0.0006))
-    # the fairlead hoop at the aft end
-    hoop = G.tube("hoop", G.arc_pts((-L / 2 + 0.004, 0, 0.006), 0.012, 0, math.pi, 14, "yz"), 0.0026, M("Aluminium"), 12)
-    objs.append(G.finish(hoop))
-    objs += G.screw_heads("s", [(L / 2 - 0.007, 0, 0.006), (-L / 2 + 0.012, 0.016, 0.006), (-L / 2 + 0.012, -0.016, 0.006)], M("Stainless"))
-    return done("CamCleat", objs, [("Line", (0.004, 0, 0.014)), ("Lead", (-L / 2, 0, 0.012))])
+        ay = side * S / 2
+        inward = -side                        # toward the line
+        # teardrop: a round back about the axle and a toothed flank running out to the tip
+        rc = 0.20 * W
+        ring = [(rc * math.cos(G.TAU * i / 48), rc * math.sin(G.TAU * i / 48)) for i in range(48)]
+        tip, bulge, outer = (-0.36 * W, 0.0), (-0.21 * W, inward * 0.153 * W), (-0.21 * W, -inward * 0.096 * W)
+        hull = _hull2d(ring + [tip, bulge, outer])
+        # teeth: a raked sawtooth along the inner flank, from the tip back to where the flank meets the round back
+        out = []
+        for i, p in enumerate(hull):
+            q = hull[(i + 1) % len(hull)]
+            out.append(p)
+            mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+            if mid[1] * inward > 0.02 * W and mid[0] < -0.02 * W:          # inner flank only
+                dx, dy = q[0] - p[0], q[1] - p[1]
+                L = math.hypot(dx, dy)
+                n = max(1, int(L / 0.0021))           # fine raked teeth (round 2's bolder 3 mm teeth lost the blind review)
+                nx, ny = dy / L, -dx / L
+                if nx * (mid[0]) + ny * (mid[1]) < 0:
+                    nx, ny = -nx, -ny
+                for k in range(n):
+                    t0, t1 = k / n, (k + 0.7) / n
+                    out.append((p[0] + dx * t0 + nx * 0.0, p[1] + dy * t0))
+                    out.append((p[0] + dx * t1 + nx * 0.0011, p[1] + dy * t1 + ny * 0.0011))
+        cam = G.prism(f"cam{side}", [(x, y + ay) for x, y in out], zb - 0.0004, zc, bk)
+        objs.append(G.finish(cam, 0.0005, segs=2, angle=40, sharp=55))
+        # red bushing over the axle and its Phillips pan-head screw
+        bush = G.lathe(f"bushing{side}", [(0.0026, zc - 0.0002), (0.0062, zc - 0.0002), (0.0062, zr - 0.0004), (0.0058, zr),
+                                           (0.0026, zr)], red, 40)
+        bush.location = (0, ay, 0)
+        G.bake_xform(bush)
+        objs.append(G.finish(bush, 0, weighted=False))
+        scr = G.lathe(f"screw{side}", [(0, zr), (0.0030, zr), (0.0029, zr + 0.0005), (0.0024, zs - 0.0002), (0.0012, zs), (0, zs)], ss, 32)
+        scr.location = (0, ay, 0)
+        G.bake_xform(scr)
+        for ang in (0, 90):
+            cut = G.box("x", (0, 0, zs), (0.0034, 0.0007, 0.0016))
+            cut.matrix_world = Matrix.Translation((0, ay, 0)) @ Matrix.Rotation(math.radians(ang + 45), 4, "Z")
+            G.bake_xform(cut)
+            G.boolean(scr, cut)
+        objs.append(G.finish(scr, 0, weighted=False))
+    socks = [("Line", (0.0, 0, (zb + zc) / 2)), ("Lead", (-0.36 * W, 0, (zb + zc) / 2)),
+             ("AxleL", (0, -S / 2, zc)), ("AxleR", (0, S / 2, zc))]
+    return done("CamCleat", objs, socks)
 
 
 @part("CamRiser", "cleat", "Angled riser wedge under a cam cleat, 20 degrees")
@@ -1469,7 +1503,7 @@ SIZES = {
     "ShackleD":   {"dim": "pin diameter mm", "default": "5", "scale": {"4": 0.8, "5": 1.0, "6": 1.2, "8": 1.6, "10": 2.0}},
     "Padeye":     {"dim": "plate length mm", "default": "50", "scale": {"40": 0.8, "50": 1.0, "65": 1.3}},
     "HornCleat":  {"dim": "length mm", "default": "150", "kw": {"100": {"length": 0.100}, "150": {"length": 0.150}, "200": {"length": 0.200}, "250": {"length": 0.250}}},
-    "CamCleat":   {"dim": "length mm", "default": "75", "scale": {"38": 0.51, "75": 1.0, "102": 1.36}},
+    "CamCleat":   {"dim": "length mm (size label; the default is the 38 mm axle-centre class, 61 mm across)", "default": "75", "scale": {"38": 0.51, "75": 1.0, "102": 1.36}},
     "Fairlead":   {"dim": "outside diameter mm", "default": "32", "scale": {"25": 0.78, "32": 1.0, "44": 1.375}},
     "Block29":    {"dim": "sheave mm", "default": "29", "scale": {"22": 0.76, "29": 1.0}},
     "Block40":    {"dim": "sheave mm", "default": "40", "scale": {"40": 1.0, "57": 1.425}},

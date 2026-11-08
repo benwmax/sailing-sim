@@ -2,9 +2,9 @@
 
 Views: six turntable stills in the preview studio (side, edge, three-quarter high, three-quarter low from behind, the
 far side, from above), for blocks two "in use" stills (a 10 mm line over the sheave, render-only), for cleats two with a
-12 mm line made fast, one clay still
-(every slot a plain grey, so only shape shows) and two outlines (orthographic, transparent film, the alpha written as
-black on white) looking square at the side and at the edge. The outlines are
+12 mm line made fast, for cam cleats two with a 10 mm line between the cams, one clay still
+(every slot a plain grey, so only shape shows) and three outlines (orthographic, transparent film, the alpha written as
+black on white) looking square at the side, at the edge and down from above. The outlines are
 what score.py lays over the reference outline. It also writes stats.json: triangles, size, material slots, the
 objects the part was joined from (score.py reads its features from those names) and the sockets.
 
@@ -37,7 +37,7 @@ VIEWS = {
     "far_side":   ((0.15, 1.0, 0.1), 85),
     "above":      ((0.35, -0.45, 1.0), 85),
 }
-OUTLINES = {"outline_side": (0.0, -1.0, 0.0), "outline_edge": (1.0, 0.0, 0.0)}
+OUTLINES = {"outline_side": (0.0, -1.0, 0.0), "outline_edge": (1.0, 0.0, 0.0), "outline_top": (1e-4, 0.0, 1.0)}   # top (score.py lays the long side across)
 
 
 def args():
@@ -142,6 +142,24 @@ def main():
         bpy.data.objects.remove(rope, do_unlink=True)
     # cleats: a 12 mm dock line made fast with a cleat hitch (a turn round the base, two figure-eights over the top and a
     # locking hitch), render-only like the block's line
+    elif "AxleL" in socks and "Line" in socks:
+        # cam cleats: a 10 mm line led in from the load side between the cams and out over the back
+        z = socks["Line"][2] / 1000
+        x0 = socks["Lead"][0] / 1000
+        path = [(x0 - 0.12, 0.0, z + 0.004), (x0 - 0.03, 0.0, z), (0.0, 0.0, z), (0.03, 0.0, z + 0.002), (0.06, 0.0, z + 0.012),
+                (0.10, 0.012, z + 0.006), (0.14, 0.03, z - 0.004)]
+        rope = G.tube("RenderRope", path, 0.005, None, 16)
+        rm = bpy.data.materials.new("RenderRopeMat")
+        rm.use_nodes = True
+        rb_ = rm.node_tree.nodes["Principled BSDF"]
+        rb_.inputs["Base Color"].default_value = (0.25, 0.01, 0.01, 1)
+        rb_.inputs["Roughness"].default_value = 0.8
+        rope.data.materials.append(rm)
+        for view, d in (("in_use_side", (0.0, -1.0, 0.6)), ("in_use", (-1.0, -0.8, 0.9))):
+            c, size = studio(ob, 900, 900, samples)
+            R._camera(c + Vector(d).normalized() * size * 2.2 * 1.25, c, 85)
+            shoot(os.path.join(out, f"{view}.png"))
+        bpy.data.objects.remove(rope, do_unlink=True)
     elif "Wrap" in socks and "HornFwd" in socks:
         L_ = (socks["HornFwd"][0] - socks["HornAft"][0]) / 1000
         key = [(-1.3, -0.16, 0.05), (-0.6, -0.12, 0.07), (-0.05, -0.115, 0.09), (0.36, -0.11, 0.165), (0.53, 0.0, 0.165),

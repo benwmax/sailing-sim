@@ -193,8 +193,60 @@ Note for the next run: Wikimedia rate-limits the cloud's shared address; fetchin
 The J/22's 4:1 vang and its two 40 mm fiddle blocks (one with a cam cleat), judged as parts and in place on the boat:
 [vang.md](vang.md).
 
+## Fourth test: the cam cleat (Bean's C-cleat)
+
+Bean's "C-cleat" was the cam cleat, not the horn cleat: he sent a product photo of a black composite one (two toothed
+teardrop cams on red bushings, stainless screws, a low moulded base). The kit's `CamCleat` sits on the J/22's jib
+risers and three times a side on the ILCA. The old one was a machined aluminium plate with two ribbed drums and a
+fairlead loop, which the blind reviewers all took for a different part.
+
+![CamCleat before and after](camcleat_before_after.jpg)
+
+The repo's sheet leaves the reference tiles blank: Bean's photo is a maker's product photo, used for measuring only
+and kept out of the repo.
+
+Card: `Tools/boatkit/partloop/parts/camcleat.json`. Target: the common 38 mm axle-centre class (Selden, Allen A.676,
+Ronstan and Barton list 38 mm hole centres), about 61 mm across; the top view's depth/width (0.585) and the axle
+spacing (0.618 of the width) are measured on the photo.
+
+| Round | Axle centres | Across | Depth/width (top) | Top outline | Features | Triangles | Blind review |
+|---|---|---|---|---|---|---|---|
+| Before | none | 75 mm (+21%) | 0.69 (+19%) | 75% | 0/8 | 5,552, 2 slots | lost 3 of 3 to r1; called the wrong part |
+| r1 | 38 mm | 63 mm (+2%) | 0.57 (-2%) | 94% | 8/8 | 4,088, 3 slots | won 3 of 3 against before (confidence 5, 5, 5) |
+| r2 | 38 mm | 63 mm | 0.57 | 94% | 8/8 | 3,752 | lost 3 of 3 to r1 (confidence 3, 3, 3): lower cams and bolder 3 mm teeth looked cruder |
+
+r1 ships. A third try (thinner base plate, thicker moulded base, rounded cam tops) fell to 88% on the outline and was
+dropped without a review. Height (18.7 mm) is reported only: there is no side photo yet.
+
+How it is built (`cam_cleat`): a rounded moulded base; each cam is the hull of its axle circle and three points (the
+tip toward the lead, the inner bulge, the outer shoulder), with fine raked teeth on the inner flank only; a red
+bushing (`Graphics` slot) and a stainless pan-head Phillips screw on each axle. Sockets `Line` and `Lead` keep their
+names (`Line` sits 3.5 mm lower than before, between the cams), and `AxleL`/`AxleR` are new.
+
+`score.py` reads a top outline (`outline_top.png`, laid long side across), takes `"view": "top"` and `"flip": true` on
+the card's outline, and measures `across`, `depth`, `top_aspect` and `axles`; `render_views.py` renders the top outline
+and dresses cam cleats with a 10 mm line between the cams; `make_sheet.py` leaves a blank tile for a missing image and
+shows "-" for a size a round doesn't have. Block40's and HornCleat's numbers are unchanged.
+
+Still different from the photo (the reviewers' shared notes on r1, for a later round):
+
+- The cams are tall and slab-sided; real ones are lower, softly domed and blend into the base.
+- The base reads as a thin plate; the real one is a thicker moulding with a bridge between the cams.
+- The teeth should wrap the whole inner flank and cut deeper.
+- The bushings read pale pink and flat; real ones are deep red and recessed (partly the studio light: the black reads
+  grey under it too).
+- The gap between the cams looks a little wide.
+
+In the game: nothing changes until the PC's `make-boatkit.ps1 -Import`. The whole kit build passed in the cloud and
+only CamCleat differs from `Inputs/boat-kit/kit.json` besides the already-merged Block40, HornCleat and fiddle parts.
+
+| Reference | Used for | Licence |
+|---|---|---|
+| Bean's product photo (Nov 8, in the project thread) | top-view outline mask, proportions, features | measuring only, not in the repo |
+| [Selden cam cleats](https://pdf.nauticexpo.com/pdf/selden-mast/cam-cleats/21696-130258.html), [Rooster 130005](https://www.roostersailing.com/products/130005), [Barton K cam cleat](https://www.marinesuperstore.com/deck-hardware/cleats-and-fairleads/barton-k-cam-cleat) | 38 mm axle centres, overall size | numbers only |
+
 ## Next parts
 
-In order of how close the camera gets on the J/22 (the horn cleat and the mainsheet and vang fiddles are done above):
-the cam cleat, the jib winch, the tiller and extension and the mast-base turning blocks. Each gets its own card,
+In order of how close the camera gets on the J/22 (the horn cleat, the mainsheet and vang fiddles and the cam
+cleat are done above): the jib winch, the tiller and extension and the mast-base turning blocks. Each gets its own card,
 reference pack and rounds, and Bean's sheet before it ships.

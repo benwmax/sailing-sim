@@ -1,0 +1,35 @@
+{
+ "part": "CamCleat",
+ "card": {
+  "what": "Moulded composite cam cleat, 38 mm axle centres: control lines on dinghies and small keelboats (Bean's 'C-cleat')",
+  "boats": "ILCA 7 control lines (layouts/ilca7.json); the J/22's and Sunfish's control lines when their layouts place it",
+  "distance": "arm's reach: the hand that uncleats the line",
+  "before": "kit CamCleat from cam_cleat (Oct 2026): 75 mm aluminium base, two round toothed cams, a fairlead hoop"
+ },
+ "references": [
+  {"id": "bean", "kind": "photo", "use": "top-view outline and proportions (bottom-right cleat), cams, bushings and screws in the other three",
+   "url": "Bean's upload in the project thread, Nov 8 2026 (a product photo: measuring only, never in the repo)", "mask": "bean.mask.png"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "https://pdf.nauticexpo.com/pdf/selden-mast/cam-cleats/21696-130258.html",
+   "also": ["https://www.roostersailing.com/products/130005", "https://www.marinesuperstore.com/deck-hardware/cleats-and-fairleads/barton-k-cam-cleat"],
+   "note": "Selden composite 38 mm and Allen A.676 medium composite: 38 mm hole (axle) centres, M5 fixings, 4-10 mm line; Barton K: 30/40/50 mm centres"}
+ ],
+ "sizes": [
+  {"id": "axles", "name": "Axle centres (the fixing screws)", "target": 38.0, "unit": "mm", "tol": 0.03, "source": "catalogue: 38 mm hole spacing"},
+  {"id": "across", "name": "Width across the cams", "target": 61.5, "unit": "mm", "tol": 0.05, "source": "photo: axle centres are 0.618 of the width"},
+  {"id": "top_aspect", "name": "Depth along the line / width (top view)", "target": "ref:bean", "unit": "ratio", "tol": 0.06, "source": "measured on the top-view photo"},
+  {"id": "height", "name": "Height off the deck", "target": null, "unit": "mm", "tol": null, "source": "no side-on photo with a scale: reported only"}
+ ],
+ "outline": {"ref": "bean", "pass": 0.90, "whole": true, "view": "top", "flip": true},
+ "features": [
+  {"id": "black", "text": "Black moulded composite body and cams", "slots": ["BlackPlastic"]},
+  {"id": "cams", "text": "Two teardrop cams, round at the back, pointed toward the load", "objects": ["cam"], "manual": true},
+  {"id": "teeth", "text": "Raked teeth along each cam's inner flank", "manual": true},
+  {"id": "bushings", "text": "Red bushings over the axles", "objects": ["bushing"], "slots": ["Graphics"]},
+  {"id": "screws", "text": "Stainless Phillips pan-head screws through the axles", "objects": ["screw"], "manual": true},
+  {"id": "base", "text": "Low rounded base, a flat bridge between the cams", "objects": ["base"], "manual": true},
+  {"id": "gap", "text": "Gap between the cams takes a 4-10 mm line", "manual": true},
+  {"id": "clean", "text": "No fairlead hoop or anything sticking out past the base", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}
