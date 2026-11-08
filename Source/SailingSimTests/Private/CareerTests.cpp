@@ -775,7 +775,7 @@ bool FSailingCareerReturnStartTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("... on the side nearer the dock (%.0f)"), Deg(H)), Deg(H) > 100.0 && Deg(H) < 130.0);
 	TestTrue(TEXT("Dock to the other side of the wind: the other tack"), FMath::Abs(Deg(FDrillRunner::ReturnStartHeading(FMath::DegreesToRadians(-176.0), South)) + 120.0) < 0.5);
 	// A dock on a reach or downwind: straight at it.
-	for (const double D : { 90.0, -100.0, 0.0, 135.0 })
+	for (const double D : { 90.0, -100.0, 0.0, 100.0 })   // 80 to 180 degrees off the southerly
 	{
 		const double B = FMath::DegreesToRadians(D);
 		TestTrue(FString::Printf(TEXT("Dock at %.0f: straight at it"), D), FMath::IsNearlyEqual(Deg(FDrillRunner::ReturnStartHeading(B, South)), Deg(B), 1e-6));
