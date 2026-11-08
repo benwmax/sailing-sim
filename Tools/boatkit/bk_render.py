@@ -57,6 +57,7 @@ def _light(name, kind, loc, target, energy, size):
 def _camera(loc, target, lens=50):
     cd = bpy.data.cameras.new("Cam")
     cd.lens = lens
+    cd.clip_start = 0.001          # small parts (a 30 mm shackle) sit closer than the default 0.1 m clip
     co = bpy.data.objects.new("Cam", cd)
     bpy.context.scene.collection.objects.link(co)
     co.location = loc
