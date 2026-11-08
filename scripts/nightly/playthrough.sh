@@ -1,7 +1,9 @@
 #!/bin/bash
-# #404: the first hour's scripted playthrough on the packaged game, once on keys and once on the pad's buttons. A fresh
-# save: the first launch, Skip to the menu (the title), Career, Day Sailor's first lesson (its loading screen, the lesson
-# ended by the UI script's Finish:clean through the drill's own finish), its medal screen, the pause menu, Quit to title. Each screen the
+# #404/#399: the career's slice played through on the packaged game, once on keys and once on the pad's buttons. A fresh
+# save: the first launch, Skip to the menu (the title), Career, Day Sailor's six lessons (each from its loading screen,
+# ended by the UI script's Finish:<outcome> through the drill's own finish, to its medal screen, its quiz answered right
+# by Answer:all through the quiz's own buttons, its score), the Day Sailor checkride and certificate, Club Racer's four
+# Sunfish lessons the same way, its checkride and certificate, the title. Each screen the
 # flow reaches is checked (Expect:<screen>) and shot (Shot:<name>, the window with its UI). Fails naming the first screen
 # that did not appear.
 # Usage: scripts/nightly/playthrough.sh <SailingSim.app> <out dir>    (or --self-test: the log check on stand-in logs)
@@ -15,21 +17,45 @@ lesson() {   # <stage label> <outcome>
 	echo "Expect:Quiz,Shot:$1-medal,Answer:all,Wait"
 	echo "Expect:Quiz,Shot:$1-score"
 }
+# Back to the Career screen from a lesson's score (its ways are Sail it again and Back to sailing): Back to sailing, the
+# pause menu, Quit to title, Leave, the title (Career is focused for a returning player), Career.
+to_career() {   # <stage label>
+	echo "Stage:$1,DOWN,ENTER,Wait,Wait,Expect:Hud,MENU,Wait,Expect:Pause"
+	echo "DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
+	echo "Expect:Title,ENTER,Wait,Expect:Career"
+}
+# A tier's written checkride from the Career screen (the focus starts on the First job card): down to the tier's card,
+# into its lessons, down past them to Take the written checkride, its quiz answered right, the score with the
+# certificate, then Back to the career.
+checkride() {   # <stage label> <downs to the tier card> <lessons in the tier>
+	local Downs="" Past="" i
+	for ((i = 0; i < $2; i++)); do Downs+="DOWN,"; done
+	for ((i = 0; i < $3; i++)); do Past+="DOWN,"; done
+	echo "Stage:$1,${Downs}RIGHT,${Past}Wait,Shot:$1-card,ENTER,Wait"
+	echo "Expect:Quiz,Shot:$1-quiz,Answer:all,Wait"
+	echo "Expect:Quiz,Shot:$1-certificate,ENTER,Wait,Expect:Career,Shot:$1-career"
+}
 FLOW_STEPS=(
 	"Stage:start,Wait,Wait,Expect:FirstLaunch,Shot:01-first-launch"
 	"DOWN,ENTER,Wait,Expect:Title,Shot:02-title"
 	"DOWN,ENTER,Wait,Expect:Career,Shot:03-career"
-	"DOWN,RIGHT,Wait,Shot:04-lesson-1,ENTER"
+	"DOWN,RIGHT,Wait,ENTER"
 	$(lesson ds1 clean) "ENTER"
 	$(lesson ds2 done) "ENTER"
 	$(lesson ds3 done) "ENTER"
 	$(lesson ds4 proper) "ENTER"
 	$(lesson ds5 proper) "ENTER"
 	$(lesson ds6 gentle)
-	"Stage:to-career,DOWN,ENTER,Wait,Wait,Expect:Hud,MENU,Wait,Expect:Pause"
-	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
-	"Expect:Title,Shot:20-title-returning,ENTER,Wait,Expect:Career,Shot:21-career"
-	"Stage:explore,DOWN,Shot:e1,DOWN,Shot:e2,DOWN,Shot:e3,DOWN,Shot:e4,DOWN,Shot:e5,DOWN,Shot:e6,DOWN,Shot:e7,DOWN,Shot:e8,ENTER,Wait,Wait,Log,Shot:e9-enter,Quit"
+	$(to_career ds-to-career)
+	$(checkride ds-checkride 1 6)
+	"Stage:cr-start,BACK,Wait,Expect:Title,ENTER,Wait,Expect:Career,DOWN,DOWN,RIGHT,Wait,Shot:cr-lesson-1,ENTER"
+	$(lesson cr1 clean) "ENTER"
+	$(lesson cr2 done) "ENTER"
+	$(lesson cr3 proper) "ENTER"
+	$(lesson cr4 gentle)
+	$(to_career cr-to-career)
+	$(checkride cr-checkride 2 4)
+	"Stage:end,BACK,Wait,Expect:Title,Shot:99-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
 	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
@@ -69,7 +95,8 @@ if [[ "${1:-}" == "--self-test" ]]; then
 	ok "a script cut short fails" "$(check "$T/short.log")" "FAIL the script stopped"
 	ok "the pad flow uses the pad's buttons" "$(flow pad | grep -o 'Gamepad_FaceButton_Bottom' | head -1)" "Gamepad_FaceButton_Bottom"
 	ok "the keys flow has no pad keys" "$(flow keys | grep -c Gamepad)" "0"
-	ok "every lesson is finished and its quiz answered" "$(flow keys | grep -o 'Finish:' | wc -l | tr -d ' ')/$(flow keys | grep -o 'Answer:all' | wc -l | tr -d ' ')" "6/6"
+	ok "ten lessons finished, ten lesson quizzes and two checkrides answered" "$(flow keys | grep -o 'Finish:' | wc -l | tr -d ' ')/$(flow keys | grep -o 'Answer:all' | wc -l | tr -d ' ')" "10/12"
+	ok "the pad pauses with its Menu button (B is the backstay in game)" "$(flow pad | grep -o 'Gamepad_Special_Right' | head -1)" "Gamepad_Special_Right"
 	rm -rf "$T"; echo "self-test: $F failure(s)"; exit $(( F > 0 ))
 fi
 APP=$1; OUT=$2; mkdir -p "$OUT"
