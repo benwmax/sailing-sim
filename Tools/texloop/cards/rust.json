@@ -1,0 +1,30 @@
+{
+  "surface": "rust",
+  "name": "Rust weeps and streaks",
+  "kind": "weathering effect on gelcoat (surface kind 1), not a surface of its own",
+  "code": "scripts/make_materials.py, BOAT_CODE, the block starting 'Rust weeps (texture loop, rust lane'",
+  "boats": {
+    "j22": "topsides: the hull-deck joint and toe-rail bolts, deck-fitting backing bolts (chainplates, cleats) weep down the hull sides",
+    "sunfish": "none on the slice (no plain-steel fasteners in the hull sides); the shader still applies if a Sunfish is given Age and Care",
+    "berthed fleet": "every gelcoat hull with Age and Care (custom data 10 and 11)"
+  },
+  "slots": ["Topsides", "any gelcoat slot whose faces are steeper than 45 degrees (|n.z| < 0.7)"],
+  "closest_camera_m": 1.0,
+  "pattern_size_cm": {
+    "bolt_slot_spacing": 25,
+    "head_fwhm": [0.7, 1.6],
+    "run_length": [4, 42],
+    "source_height_above_waterline": [50, 78]
+  },
+  "levels_needed": {
+    "L0": "none: new boat, stainless fastenings",
+    "L1": "none: months old, nothing has had time to bleed (identical to L0 by design)",
+    "L2": "a couple of short weeps per 2 m, medium strength",
+    "L3": "ghosts: the old boat's many weeps were cleaned off; faint, long, no dark heads",
+    "L4": "many long dark weeps, a rust crust at each bolt, a finger splitting off some"
+  },
+  "drivers": "rwN (count and length) = saturate((Age - 1.5) / 12); rwA (strength) = 1 - 0.85 Care; unset Age: 0.5 and 0.8 x the livery's rust channel (Wear.w); salt water x1.5 count, x1.3 strength",
+  "replaces": "the old 'Rust streaks from fittings' lanes: driven only by the livery's rust channel, so a brand-new (Age 0) club-livery boat carried them and a 20-year neglected one looked the same; thin grey-brown lines that never reached rust colour",
+  "maps": "none: shader math only, Medium included (no texture reads)",
+  "out_of_scope": "docks, trailers, dock chain and steel ships use M_WorldSurface, not BOAT_CODE (a later world pass); the hero J/22's baked deck stains (Inputs/j22-hero/j22_materials.py) are unchanged"
+}

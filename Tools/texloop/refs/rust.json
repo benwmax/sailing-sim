@@ -1,0 +1,270 @@
+{
+ "surface": "rust",
+ "measured": "2026-11-08 with docs/texloop-rust/measure_core.py and measure_weep.py; the files stay out of git (Data/Reference/raw/textures/Rust/)",
+ "sources": [
+  {
+   "source": "ambientCG",
+   "id": "Metal020",
+   "url": "https://ambientcg.com/a/Metal020",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal021",
+   "url": "https://ambientcg.com/a/Metal021",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal022",
+   "url": "https://ambientcg.com/a/Metal022",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal023",
+   "url": "https://ambientcg.com/a/Metal023",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal024",
+   "url": "https://ambientcg.com/a/Metal024",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal025",
+   "url": "https://ambientcg.com/a/Metal025",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Metal026",
+   "url": "https://ambientcg.com/a/Metal026",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Rust001",
+   "url": "https://ambientcg.com/a/Rust001",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Rust004",
+   "url": "https://ambientcg.com/a/Rust004",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Rust009",
+   "url": "https://ambientcg.com/a/Rust009",
+   "licence": "CC0",
+   "use": "rust core colour (pixels with hue 35-75 deg, chroma > 18)"
+  },
+  {
+   "source": "Poly Haven",
+   "id": "rust_coarse_01",
+   "url": "https://polyhaven.com/a/rust_coarse_01",
+   "licence": "CC0",
+   "author": "Dimitrios Savva, Rico Cilliers",
+   "real_size_cm": [
+    220,
+    220
+   ],
+   "use": "rust core colour"
+  },
+  {
+   "source": "Poly Haven",
+   "id": "rusty_metal_03",
+   "url": "https://polyhaven.com/a/rusty_metal_03",
+   "licence": "CC0",
+   "author": "Amal Kumar",
+   "real_size_cm": [
+    135,
+    135
+   ],
+   "use": "rust core colour"
+  },
+  {
+   "source": "Poly Haven",
+   "id": "rusty_painted_metal",
+   "url": "https://polyhaven.com/a/rusty_painted_metal",
+   "licence": "CC0",
+   "author": "",
+   "real_size_cm": null,
+   "use": "rust core colour"
+  },
+  {
+   "source": "Poly Haven",
+   "id": "metal_plate_02",
+   "url": "https://polyhaven.com/a/metal_plate_02",
+   "licence": "CC0",
+   "author": "",
+   "real_size_cm": null,
+   "use": "checked: almost no rust pixels, not used"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal010",
+   "url": "https://ambientcg.com/a/PaintedMetal010",
+   "licence": "CC0",
+   "use": "white paint with rust: core colour and the pale stain round it"
+  },
+  {
+   "source": "ambientCG",
+   "id": "PaintedMetal012",
+   "url": "https://ambientcg.com/a/PaintedMetal012",
+   "licence": "CC0",
+   "use": "white paint with rust: core colour and the pale stain round it"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Leaking010A",
+   "url": "https://ambientcg.com/a/Leaking010A",
+   "licence": "CC0",
+   "use": "weep shape: one run from a bolt hole (opacity map)"
+  },
+  {
+   "source": "ambientCG",
+   "id": "Leaking011A",
+   "url": "https://ambientcg.com/a/Leaking011A",
+   "licence": "CC0",
+   "use": "weep shape: one run from a bolt hole (opacity map)"
+  }
+ ],
+ "measure_only_wanted": [
+  {
+   "source": "Wikimedia Commons",
+   "title": "File:Rust-streaked urinal (50853397467).png",
+   "licence": "CC BY-SA 2.0",
+   "note": "the cloud network blocks upload.wikimedia.org; measure only, never ship"
+  },
+  {
+   "source": "Wikimedia Commons",
+   "title": "File:A neglected bathtub displays rust-colored stains and outdated metal fixtures.jpg",
+   "licence": "CC BY 2.0",
+   "note": "the cloud network blocks upload.wikimedia.org; measure only, never ship"
+  },
+  {
+   "source": "Wikimedia Commons",
+   "title": "File:Rust Always Drips (8955509893).jpg",
+   "licence": "CC BY 2.0",
+   "note": "the cloud network blocks upload.wikimedia.org; measure only, never ship"
+  },
+  {
+   "source": "Wikimedia Commons",
+   "title": "File:Victoria abandoned sailboat asv2024-09.jpg",
+   "licence": "FAL",
+   "note": "the cloud network blocks upload.wikimedia.org; measure only, never ship"
+  },
+  {
+   "source": "Wikimedia Commons",
+   "title": "File:Stockage de bâteau, quai des Antilles, Nantes (7936182566).jpg",
+   "licence": "CC BY 2.0",
+   "note": "the cloud network blocks upload.wikimedia.org; measure only, never ship"
+  }
+ ],
+ "best_source_still_missing": "Bean's own close-ups (coin in frame) of rust weeps on an old boat in the Rush Creek yard; they would replace the stand-in counts and lengths below",
+ "targets": {
+  "core_colour": {
+   "lab": [
+    30.8,
+    18.4,
+    25.0
+   ],
+   "sd_L_within_photo": 5.3,
+   "from": "13 CC0 rust scans at 512 px; spread is the mean per-photo standard deviation of L",
+   "check": "L4 close-up, pixels L<50, chroma>18, hue 30-75: mean within dE 6, spread within 25%"
+  },
+  "stain_colour_on_white": {
+   "lab": [
+    62.9,
+    6.3,
+    10.0
+   ],
+   "sd_L": 8.8,
+   "white_paint_lab": [
+    89.1,
+    -0.8,
+    1.2
+   ],
+   "from": "PaintedMetal010/012, pixels L>50, chroma 8-30, hue 35-85 (the pale rust round each patch)",
+   "check": "L4 close-up, same mask: mean within dE 6"
+  },
+  "weep_shape": {
+   "head_fwhm_over_bolt": [
+    0.51,
+    0.6
+   ],
+   "tail_fwhm_over_bolt": [
+    0.36,
+    0.42
+   ],
+   "length_over_bolt": [
+    5.5,
+    14.7
+   ],
+   "from": "Leaking010A/011A opacity maps; the bolt disc is the scale object",
+   "scale": "a 19 mm (3/4 in) washer under a 1/4 in bolt: head 10-11 mm wide, runs 10-28 cm"
+  },
+  "per_level": {
+   "L0": {
+    "weeps_per_m": 0,
+    "coverage_pct": 0
+   },
+   "L1": {
+    "weeps_per_m": 0,
+    "coverage_pct": 0
+   },
+   "L2": {
+    "weeps_per_m": [
+     0.5,
+     1.5
+    ],
+    "length_cm": [
+     8,
+     20
+    ],
+    "heads": "medium, rust-brown"
+   },
+   "L3": {
+    "weeps_per_m": [
+     1.5,
+     3
+    ],
+    "length_cm": [
+     15,
+     35
+    ],
+    "heads": "faint ghosts, no core-coloured pixels"
+   },
+   "L4": {
+    "weeps_per_m": [
+     1.5,
+     3
+    ],
+    "length_cm": [
+     18,
+     42
+    ],
+    "heads": "core colour at the bolt"
+   },
+   "source": "stand-ins: shape from the leak decals, counts from the J/22's fastener spacing (bolts about every 15-30 cm, one in two to one in ten weeping); replace with club photos"
+  },
+  "roughness": {
+   "rust": 0.8,
+   "note": "the deposit is matt; clear coat cut by 70% under it"
+  }
+ }
+}

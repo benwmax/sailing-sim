@@ -1255,14 +1255,48 @@ float2 fs = frac(cs) - 0.5;
 float smudge = 1.0 - smoothstep(0.12, 0.45, length(fs * float2(1.0, 1.8)));
 float scuff = wear.z * IsHull * step(abs(n.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
 col = lerp(col, col * 0.78 + float3(0.01, 0.01, 0.008), scuff);
-// Rust streaks from fittings: thin, tapering runs down vertical faces, few and far between.
-float laneX = LP.x / 9.0 + LP.y / 23.0;
-float lane = frac(sin(floor(laneX) * 91.7) * 437.5);
-float thin = 1.0 - smoothstep(0.02, 0.10, abs(frac(laneX) - 0.5));
-float runLen = 20.0 + 60.0 * frac(lane * 7.3);
-float top = 60.0 + 40.0 * frac(lane * 3.1);
-float rust = wear.w * gel * step(abs(n.z), 0.7) * step(0.93 - 0.05 * salt, lane) * thin * saturate((zcm - (top - runLen)) / runLen) * step(zcm, top);
-col = lerp(col, float3(0.30, 0.13, 0.05), 0.5 * rust * (1.0 + 0.6 * salt));
+// Rust weeps (texture loop, rust lane: Tools/texloop/cards/rust.json, targets in Tools/texloop/refs/rust.json). Plain-steel
+// bolts in the hull-deck joint and under deck fittings bleed iron down the topsides: a dark crust at the bolt, then a run
+// that pales to a tan stain as the water carries it down (shape from CC0 leak decals: about half a washer wide at the
+// head, a third as strong by mid-run). rwN (how many, how long) grows with the years the steel has had; rwA (how strong)
+// with how little the boat is cleaned: none on a new or months-old boat, a couple of short ones on a club boat, faint
+// ghosts of cleaned stains on a kept classic, many long dark ones on a neglected boat. Unset Age: the livery's rust
+// channel drives both, as before, scaled so a club livery (0.3-0.7) reads like a club boat (L2). Salt water makes more.
+float rwN = age >= 0.0 ? saturate((age - 1.5) / 12.0) : 0.5 * wear.w;
+float rwA = age >= 0.0 ? 1.0 - 0.85 * saturate(care) : 0.8 * wear.w;
+rwN = saturate(rwN * (1.0 + 0.5 * salt));
+rwA = saturate(rwA * (1.0 + 0.3 * salt));
+float rwX = LP.x / 25.0 + LP.y / 61.0;                      // a bolt slot every 25 cm along the hull
+float rwI = floor(rwX);
+float rwH = frac(sin(rwI * 91.7) * 437.5), rwH2 = frac(sin(rwI * 23.3 + 1.7) * 4375.5), rwH3 = frac(sin(rwI * 7.9 + 5.1) * 43758.5);
+float rwOn = step(1.0 - 0.6 * rwN, rwH);                    // at most 6 slots in 10 weep: 2.4 a metre
+// Only a weeping slot's side faces pay for the rest (a dynamic branch: whole columns of pixels agree).
+[branch] if (rwOn * gel * step(abs(n.z), 0.7) > 0.0)
+{
+    float rwD = 50.0 + 28.0 * rwH2 - zcm;                       // cm below the bolt
+    float rwT = saturate(rwD / ((6.0 + 24.0 * rwN) * (0.6 + 0.8 * rwH3)));
+    float rwDx = (frac(rwX) - (0.3 + 0.4 * rwH3)) * 25.0 + 0.5 * sin(zcm * 0.31 + rwI * 2.1) * rwT;
+    // Filtered: each mark widens to at least a pixel (1.25e-3 Depth cm) and fades to match, so far boats don't shimmer.
+    float rwPx = max(Depth, 1.0) * 8.75e-4;
+    float rwW = (0.7 + 0.9 * frac(rwH * 13.1)) * (0.6 - 0.15 * rwT), rwWe = sqrt(rwW * rwW + rwPx * rwPx);
+    float rwZq = zcm / 3.0 + rwI * 7.0, rwZi = floor(rwZq), rwZf = smoothstep(0.0, 1.0, frac(rwZq));
+    float rwBlot = 0.7 + 0.6 * lerp(frac(sin(rwZi * 12.9) * 4375.5), frac(sin((rwZi + 1.0) * 12.9) * 4375.5), rwZf);
+    float rwRun = rwBlot * (rwW / rwWe) * exp(-rwDx * rwDx / (rwWe * rwWe)) * exp(-1.2 * rwT) * (1.0 - smoothstep(0.75, 1.0, rwT)) * step(0.0, rwD);
+    float rwFdx = rwDx - 0.9 - 0.6 * rwH, rwFw = sqrt(0.0324 + rwPx * rwPx);
+    float rwFg = (0.18 / rwFw) * exp(-rwFdx * rwFdx / (rwFw * rwFw)) * smoothstep(0.15, 0.35, rwT) * exp(-3.0 * rwT) * (1.0 - smoothstep(0.6, 0.9, rwT)) * step(0.5, rwH2);
+    float rwHr2 = 0.81 + rwPx * rwPx;
+    float rwHead = (0.81 / rwHr2) * exp(-(rwDx * rwDx + rwD * rwD) / rwHr2);
+    float rwK = saturate(rwA * (1.25 * max(rwRun, 0.6 * rwFg) + 1.6 * rwHead));
+    // The crust mottles (0.6 cm value noise); the stain is part dye (multiplies the gelcoat: tan, not grey, where it's thin)
+    // and part deposit (covers it), toward rust measured from CC0 scans: Lab 26, 17, 23 at its darkest.
+    float2 rwQ = float2(LP.x, zcm) / 0.6, rwQi = floor(rwQ), rwQf = smoothstep(0.0, 1.0, frac(rwQ));
+    float rwM = lerp(lerp(frac(sin(dot(rwQi, float2(27.1, 61.7))) * 4375.5), frac(sin(dot(rwQi + float2(1, 0), float2(27.1, 61.7))) * 4375.5), rwQf.x),
+                     lerp(frac(sin(dot(rwQi + float2(0, 1), float2(27.1, 61.7))) * 4375.5), frac(sin(dot(rwQi + float2(1, 1), float2(27.1, 61.7))) * 4375.5), rwQf.x), rwQf.y);
+    float rwV = 0.7 + 0.6 * rwM;
+    col = 0.5 * lerp(col, float3(0.11, 0.033, 0.011) * rwV, rwK) + 0.5 * col * pow(float3(0.149, 0.045, 0.017) * rwV, rwK);
+    rough = lerp(rough, 0.8, rwK);
+    coat *= 1.0 - 0.7 * rwK;
+}
 // E1: the stain band a berthed hull carries above her waterline (Wet metres), heavier on an old, neglected boat: green-brown
 // algae on the lake, a tan band on salt water with a thin crust of dried salt along its top edge.
 float wetCm = seeded ? max(CD13, 0.0) * 100.0 : 0.0;
