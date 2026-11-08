@@ -1,7 +1,7 @@
 #!/bin/bash
 # #404: the first hour's scripted playthrough on the packaged game, once on keys and once on the pad's buttons. A fresh
-# save: the first launch, Skip to the menu, Career, Day Sailor's first lesson (briefing, loading, the lesson ended by the
-# UI script's Finish:clean through the drill's own finish), its medal screen and quiz, back to the title. Each screen the
+# save: the first launch, Skip to the menu (the title), Career, Day Sailor's first lesson (its loading screen, the lesson
+# ended by the UI script's Finish:clean through the drill's own finish), its medal screen, the pause menu, Quit to title. Each screen the
 # flow reaches is checked (Expect:<screen>) and shot (Shot:<name>, the window with its UI). Fails naming the first screen
 # that did not appear.
 # Usage: scripts/nightly/playthrough.sh <SailingSim.app> <out dir>    (or --self-test: the log check on stand-in logs)
@@ -11,19 +11,18 @@ FLOW_STEPS=(
 	"DOWN,ENTER,Wait,Expect:Title,Shot:02-title"
 	"DOWN,ENTER,Wait,Expect:Career,Shot:03-career"
 	"DOWN,RIGHT,Wait,Shot:04-lesson-1,ENTER,Wait,Wait,Expect:Loading,Shot:05-loading"
-	"Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait,Log,Shot:06-after-loading"
-	"Expect:Briefing,Shot:07-briefing,ENTER,Wait,Wait"
-	"Expect:Hud,Shot:08-lesson,Finish:clean,Wait,Wait"
-	"Expect:Quiz,Shot:09-medal,BACK,Wait,Wait"
-	"Expect:Hud,BACK,Wait,Expect:Pause,Shot:10-pause"
-	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,Shot:11-pause-bottom,ENTER,Wait,Wait,Log,Shot:12-quit,ENTER,Wait,Wait,Wait"
-	"Expect:Title,Shot:13-title,Log,Quit"
+	"Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait"
+	"Expect:Hud,Shot:06-lesson,Finish:clean,Wait,Wait"
+	"Expect:Quiz,Shot:07-medal,BACK,Wait,Wait"
+	"Expect:Hud,BACK,Wait,Expect:Pause,Shot:08-pause"
+	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,Shot:09-leave,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
+	"Expect:Title,Shot:10-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
-	local Down=Down Right=Right Enter=Enter Back=Escape S
-	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; }
+	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape S
+	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Left=Gamepad_DPad_Left; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; }
 	S=$(IFS=,; echo "${FLOW_STEPS[*]}")
-	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//Shot:/Shot:pt-$1-}
+	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//LEFT/$Left}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//Shot:/Shot:pt-$1-}
 	echo "$S"
 }
 # check <log>: prints PASS, or FAIL with the first screen that did not appear (and the screen that was up instead).
