@@ -138,8 +138,58 @@ runs the loop.
 No CC0 3D model of a modern block turned up (the October boat fidelity research and this round); one CC BY museum block
 from an 1805 wreck is the wrong era. 3D downloads would be for looking at only in any case.
 
+## Second test: HornCleat (Nov 8, Mac lane)
+
+Bean asked for a second run on another common part ("something like a C-cleat"), read as the classic horn cleat: the
+kit's `HornCleat`, which sits on the J/22's bow and stern and (in its 100 mm size) on the Sunfish. It was built and
+scored in the cloud with the `bpy` module, like Block40, while the PC lane does the 4-sheave block and vang.
+
+![HornCleat before and after](horncleat_before_after.jpg)
+
+Card: `Tools/boatkit/partloop/parts/horncleat.json`. Target: a 6 in (152 mm) cast aluminium open-base cleat, 47.8 mm high
+(the catalogue's 1.88 in for a 6 in open-base cleat), side proportions from a square-on photo of the same style.
+
+| Round | Length | Height | Height/length | Foot | Waist | Outline | Features | Triangles | Blind review |
+|---|---|---|---|---|---|---|---|---|---|
+| Before | 154 mm | 42 mm (-12%) | 0.27 (-12%) | 0.38 (-16%) | 0.11 (-67%) | 61% | 3/9 | 1,584 | lost 0 of 3 to r1; all three called it the wrong part ("banana-shaped grab bar", "curved bracket on a plinth") |
+| r1 | 150 mm | 46 mm | 0.31 | 0.46 | 0.34 | 96% | 9/9 | 13,208 | won 3 of 3 against before (confidence 5, 5, 5) |
+| r2 | 150 mm | 46 mm | 0.31 | 0.46 | 0.34 | 96% | 9/9 | 16,994, 2 slots | won 3 of 3 against r1 (confidence 1, 2, 2: rounder knob ends, no step under the horn end-on) |
+
+Targets: height/length 0.311, foot 0.455 and waist 0.328 of the length (measured on the photo). The width across the foot
+(29 mm) is reported only: there is no end-on reference yet.
+
+How it is built (`_cast_cleat_parts`): a pedestal lofted from horizontal rounded-rectangle sections (its side outline
+is the photo's, as fractions of the length), one oval horn swept tip to tip with round knob ends, fused by a voxel
+remesh so the joins get a casting's soft fillets, then cut flat underneath, drilled with the line hole, reduced to the
+budget and given two stainless hex bolt heads in spot faces. r2 narrowed the pedestal's top under the horn (r1 showed a
+step end-on), rounded the knob ends and kept more triangles so they don't facet.
+
+`score.py` gained size ids for parts that aren't blocks (length, height, width, aspect_full, foot, waist, measured on
+the whole outline) and `"whole": true` on the card's outline; `render_views.py` dresses cleats with a 12 mm line in a
+cleat hitch; `make_sheet.py` takes `--zoom`, `--line` and `--in-use-label`. Block40's numbers are unchanged.
+
+Still different from the photos (the reviewers' shared notes on r2, for a later round):
+
+- The horns read slimmer than the photo's chunky horns; the top dips a little more than the near-level real one.
+- The bolt heads are small; real ones are broader and sit flush in recessed pads.
+- The line hole is a plain drilled hole; real ones sit in a softened, recessed boss.
+- The surface is perfectly smooth (no casting texture): a material job, not a shape one.
+
+In the game: nothing changes until the PC's `make-boatkit.ps1 -Import` (the whole kit build passed in the cloud and
+only HornCleat and Block40 differ from `Inputs/boat-kit/kit.json`). The new cleat is 4.6 mm taller; its sockets keep
+their names (`Wrap`, `HornFwd`, `HornAft`) and gain `Hole`.
+
+| Reference | Used for | Licence |
+|---|---|---|
+| [Boat Cleat](https://commons.wikimedia.org/wiki/File:Boat_Cleat.jpg) (Roman Tokman) | outline mask and proportions (square-on) | CC BY-SA 4.0 |
+| [Klampe 01 KMJ](https://commons.wikimedia.org/wiki/File:Klampe_01_KMJ.jpg) (KMJ) | knob ends, fillets, bolt heads (three-quarter) | CC BY-SA 3.0 |
+| Sea-Dog 6 in open-base cleat listing; 6 in cast aluminium cleat listings (sailboatparts.com, flagdesk.com) | 1.88 in height; bolt centres 1 to 2 in | numbers only |
+
+Note for the next run: Wikimedia rate-limits the cloud's shared address; fetching the standard 1280 px thumbnail
+(`/thumb/.../1280px-<name>`) one file at a time, 30 s apart, works.
+
 ## Next parts
 
-In order of how close the camera gets on the J/22: the cam cleat, the jib winch, the tiller and extension, the
+In order of how close the camera gets on the J/22 (the horn cleat is done above): the cam cleat, the jib winch, the tiller and extension, the
 mainsheet fiddle (the kit's `FiddleCam` is really a side-by-side double: worth a look) and the mast-base turning
 blocks. Each gets its own card, reference pack and rounds, and Bean's sheet before it ships.

@@ -6,8 +6,10 @@ Reads the round's renders and stats.json (render_views.py) and, from <refs dir> 
 or the project files), each reference's outline mask (<id>.mask.png, black part on white). Writes <round dir>/score.json and
 prints the scorecard. Checks:
   sizes     each size on the card against the model, measured on the orthographic outlines (and sockets for the sheave)
-  outline   the side outline's body (shackle and becket left off) against the reference outline, both scaled to the same
-            height and centred: intersection over union
+  outline   the side outline's body (shackle and becket left off; the whole outline with "whole": true on the card)
+            against the reference outline, both scaled to the same height and centred: intersection over union
+  Size ids: overall, sheave, aspect, head, thick (blocks); length, height, width, aspect_full, foot, waist (any part,
+            from the whole outlines: aspect_full is height / length, foot and waist are fractions of the length)
   features  the card's list: `objects` must all be among the joined objects, `slots` among the material slots, and
             `manual` ticks come from <round dir>/review.json ({"ticks": {"<id>": true|false}, "notes": ...}), filled in by
             whoever looked at the renders
@@ -60,6 +62,23 @@ def proportions(m):
     row = b[int(h * 0.04)]
     head = row.sum()
     return {"aspect": h / w, "head": head / w, "h_px": h, "w_px": w, "top": top, "bot": bot}
+
+
+def whole(m):
+    """The whole outline cropped to its bounding box (parts with no hanging shackle, such as cleats)."""
+    rows, cols = np.nonzero(m.any(1))[0], np.nonzero(m.any(0))[0]
+    return m[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
+
+
+def shape(m):
+    """Proportions of the whole outline as fractions of its length: height, foot (the bottom row's length) and waist
+    (the narrowest row in the lower half, where a cleat's pedestal pinches in)."""
+    b = whole(m)
+    h, w = b.shape
+    widths = b.sum(1)
+    foot = widths[max(0, h - 1 - max(1, h // 100)):].max()
+    waist = widths[h // 2:].min()
+    return {"aspect_full": h / w, "foot": foot / w, "waist": waist / w, "h_full_px": h, "w_full_px": w}
 
 
 def norm(b):
@@ -117,13 +136,21 @@ def main():
     for r in card["references"]:
         p = os.path.join(refs, f"{r['id']}.mask.png")
         if r.get("mask") and os.path.exists(p):
-            ref_props[r["id"]] = proportions(load_mask(p))
+            rm = load_mask(p)
+            ref_props[r["id"]] = {**proportions(rm), **shape(rm)}
 
     out = {"part": card["part"], "round": os.path.basename(os.path.normpath(rnd)), "sizes": [], "features": []}
     # sizes
     rows = np.nonzero(side.any(1))[0]
     socks = stats["sockets"]
+    sh = shape(side)
     measured = {
+        "length": sh["w_full_px"] * mm_px,
+        "height": sh["h_full_px"] * mm_px,
+        "width": whole(edge).shape[1] * mm_px,
+        "aspect_full": sh["aspect_full"],
+        "foot": sh["foot"],
+        "waist": sh["waist"],
         "overall": (ours["bot"] - rows.min() + 1) * mm_px,
         "sheave": abs(socks["LineIn"][0] - socks["LineOut"][0]) if "LineIn" in socks else None,
         "aspect": ours["aspect"],
@@ -144,8 +171,9 @@ def main():
     o = card.get("outline")
     out["outline"] = None
     if o and o["ref"] in ref_props:
-        ref_b = body(load_mask(os.path.join(refs, f"{o['ref']}.mask.png")))[0]
-        v, A, B = iou(body(side)[0], ref_b)
+        cut = whole if o.get("whole") else (lambda m: body(m)[0])
+        ref_b = cut(load_mask(os.path.join(refs, f"{o['ref']}.mask.png")))
+        v, A, B = iou(cut(side), ref_b)
         out["outline"] = {"ref": o["ref"], "iou": v, "pass": v >= o["pass"], "target": o["pass"]}
         vis = np.full(A.shape + (3,), 255, np.uint8)
         vis[A & ~B] = (40, 90, 220)      # ours only: blue

@@ -1,7 +1,8 @@
 """Part detail loop, step 5: render one kit part from the same views every round (docs/part-detail-loop).
 
 Views: six turntable stills in the preview studio (side, edge, three-quarter high, three-quarter low from behind, the
-far side, from above), for blocks two "in use" stills (a 10 mm line over the sheave, render-only), one clay still
+far side, from above), for blocks two "in use" stills (a 10 mm line over the sheave, render-only), for cleats two with a
+12 mm line made fast, one clay still
 (every slot a plain grey, so only shape shows) and two outlines (orthographic, transparent film, the alpha written as
 black on white) looking square at the side and at the edge. The outlines are
 what score.py lays over the reference outline. It also writes stats.json: triangles, size, material slots, the
@@ -120,6 +121,35 @@ def main():
         for view, d in (("in_use_side", (0.0, -1.0, 0.0)), ("in_use", (1.0, -1.0, 0.7))):
             c, size = studio(ob, 900, 900, samples)
             R._camera(c + Vector(d).normalized() * size * 2.2 * 1.7, c, 85)
+            shoot(os.path.join(out, f"{view}.png"))
+        bpy.data.objects.remove(rope, do_unlink=True)
+    # cleats: a 12 mm dock line made fast with a cleat hitch (a turn round the base, two figure-eights over the top and a
+    # locking hitch), render-only like the block's line
+    elif "Wrap" in socks and "HornFwd" in socks:
+        L_ = (socks["HornFwd"][0] - socks["HornAft"][0]) / 1000
+        key = [(-1.3, -0.16, 0.05), (-0.6, -0.12, 0.07), (-0.05, -0.115, 0.09), (0.36, -0.11, 0.165), (0.53, 0.0, 0.165),
+               (0.36, 0.11, 0.165), (0.0, 0.115, 0.10), (-0.36, 0.11, 0.165), (-0.53, 0.0, 0.17), (-0.36, -0.10, 0.25),
+               (0.0, 0.0, 0.33), (0.36, 0.10, 0.25), (0.53, 0.0, 0.215), (0.36, -0.10, 0.22), (0.0, 0.0, 0.37),
+               (-0.36, 0.10, 0.27), (-0.53, 0.0, 0.25), (-0.38, -0.06, 0.33), (-0.28, 0.02, 0.37), (-0.12, 0.16, 0.36),
+               (0.05, 0.32, 0.30)]
+        key = [Vector(k) * L_ for k in key]
+        path = []
+        for i in range(len(key) - 1):            # Catmull-Rom through the key points
+            p0, p1, p2, p3 = key[max(i - 1, 0)], key[i], key[i + 1], key[min(i + 2, len(key) - 1)]
+            for j in range(8):
+                t = j / 8
+                path.append(0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3))
+        path.append(key[-1])
+        rope = G.tube("RenderRope", [tuple(p) for p in path], 0.006, None, 16)
+        rm = bpy.data.materials.new("RenderRopeMat")
+        rm.use_nodes = True
+        rb_ = rm.node_tree.nodes["Principled BSDF"]
+        rb_.inputs["Base Color"].default_value = (0.02, 0.12, 0.25, 1)
+        rb_.inputs["Roughness"].default_value = 0.8
+        rope.data.materials.append(rm)
+        for view, d in (("in_use_side", (0.0, -1.0, 0.25)), ("in_use", (1.0, -1.0, 0.9))):
+            c, size = studio(ob, 900, 900, samples)
+            R._camera(c + Vector(d).normalized() * size * 2.2 * 1.25, c, 85)
             shoot(os.path.join(out, f"{view}.png"))
         bpy.data.objects.remove(rope, do_unlink=True)
 

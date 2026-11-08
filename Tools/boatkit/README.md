@@ -23,7 +23,7 @@ every part and the import into the game (`/Game/Boats/Kit`, `scripts/import_hard
 | `photomatch/match_blend.py` | Renders any saved .blend (the hero J/22) from a solved camera and writes the compare image |
 | `photomatch/profile_match.py` | Lays the hero's side outline over a square-on broadside photo from two picked points (stem top, transom top) and prints the picked stations in hero metres (`matches/<photo>.profile.json`) |
 | `photomatch/compare.py` | Photo, render, blend and outline overlay in one image |
-| `partloop/render_views.py` | Part detail loop: one part from the same views every round (six turntable, two in use for blocks, clay, two outlines) and its `stats.json` |
+| `partloop/render_views.py` | Part detail loop: one part from the same views every round (six turntable, two in use for blocks and cleats, clay, two outlines) and its `stats.json` |
 | `partloop/score.py` | Part detail loop: the scorecard (sizes, outline overlap, features, budget, blind review) against the part's card in `partloop/parts/<part>.json` |
 | `partloop/make_sheet.py` | Part detail loop: the before/after sheet for Bean (reference photo, both rounds' views, scorecards, outline overlap) |
 

@@ -11,6 +11,8 @@ published dimensions. Every part:
 """
 import math
 
+import bmesh
+
 from mathutils import Matrix, Vector
 
 import bk_geom as G
@@ -82,19 +84,142 @@ def padeye():
     return done("Padeye", [plate, loop] + nuts, [("Eye", (0, 0, 0.030))])
 
 
-@part("HornCleat", "cleat", "Cast aluminium horn cleat, 150 mm, two bolts")
+@part("HornCleat", "cleat", "Cast aluminium open-base horn cleat, 150 mm (6 in), line hole, two through-bolts")
 def horn_cleat(length=0.150):
-    L = length
-    h = L * 0.22
-    base = G.prism("base", G.rrect(L * 0.42, L * 0.20, L * 0.08), 0, h * 0.55, M("Aluminium"), taper=0.82)
-    G.finish(base, 0.003)
-    # one tapering horn from end to end, an ellipse section swept over an arch
-    path = G.bezier((-L / 2, 0, h * 0.62), (-L * 0.25, 0, h * 1.02), (L * 0.25, 0, h * 1.02), (L / 2, 0, h * 0.62), 24)
-    radii = [0.55 + 0.45 * math.sin(math.pi * i / (len(path) - 1)) ** 0.6 for i in range(len(path))]
-    horn = G.sweep("horn", path, G.ellipse(L * 0.055, L * 0.075, 20), M("Aluminium"), radii=radii, twist_up=(0, 0, 1))
-    G.finish(horn, 0.0, sharp=80)
-    bolts = G.screw_heads("b", [(-L * 0.12, 0, h * 0.55), (L * 0.12, 0, h * 0.55)], M("Stainless"), 0.0045, 0.002)
-    return done("HornCleat", [base, horn] + bolts, [("Wrap", (0, 0, h * 0.9)), ("HornFwd", (L / 2, 0, h * 0.62)), ("HornAft", (-L / 2, 0, h * 0.62))])
+    """Part detail loop round 1 (Nov 2026, docs/part-detail-loop): a cast open-base cleat. The side outline follows the
+    square-on reference photo's proportions (fractions of the length), the height the catalogue's 6 in open-base cleat
+    (1.88 in). Built as overlapping pedestal and horn shapes, fused by a voxel remesh so the joins get the soft fillets of
+    a casting, then cut flat underneath, drilled for the line hole and reduced to the budget."""
+    return done("HornCleat", *_cast_cleat_parts("HornCleat", length))
+
+
+# side profile of a cast open-base cleat as fractions of its length (measured on the square-on reference photo)
+_CLEAT_PED = [(0.000, 0.228), (0.010, 0.228), (0.020, 0.222), (0.030, 0.212), (0.040, 0.202), (0.050, 0.193),
+              (0.060, 0.187), (0.080, 0.178), (0.100, 0.171), (0.120, 0.169), (0.140, 0.176), (0.150, 0.185),
+              (0.160, 0.202), (0.170, 0.230), (0.180, 0.262), (0.190, 0.300), (0.200, 0.345), (0.210, 0.395)]
+#                (|x|, horn top, horn underside)
+_CLEAT_HORN = [(0.00, 0.263, None), (0.10, 0.266, None), (0.20, 0.272, 0.188), (0.25, 0.280, 0.183),
+               (0.30, 0.288, 0.193), (0.35, 0.294, 0.204), (0.40, 0.300, 0.214), (0.44, 0.305, 0.222),
+               (0.47, 0.307, 0.228), (0.50, 0.290, 0.248)]
+
+
+def _lerp_tab(tab, x, col=1):
+    for a, b in zip(tab, tab[1:]):
+        if a[0] <= x <= b[0]:
+            t = (x - a[0]) / (b[0] - a[0])
+            return a[col] + (b[col] - a[col]) * t
+    return tab[-1][col] if x > tab[-1][0] else tab[0][col]
+
+
+def _loft_z(name, rings, mat):
+    """Close a stack of same-length horizontal outlines [(z, [(x, y), ...]), ...] into a solid."""
+    bm = bmesh.new()
+    vs = [[bm.verts.new((x, y, z)) for x, y in pts] for z, pts in rings]
+    n = len(vs[0])
+    for a, b in zip(vs, vs[1:]):
+        for k in range(n):
+            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    bm.faces.new(list(reversed(vs[0])))
+    bm.faces.new(vs[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return G.mesh_obj(name, bm, mat)
+
+
+def _oval_sweep(name, path, half_w, half_h, mat, segs=24):
+    """A tube along a path in the XZ plane whose oval section is half_w across (Y) and half_h in the path's plane."""
+    bm = bmesh.new()
+    P_ = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(P_):
+        t = (P_[min(i + 1, len(P_) - 1)] - P_[max(i - 1, 0)]).normalized()
+        u = Vector((0, 1, 0))
+        v = t.cross(u).normalized()
+        if v.z < 0:
+            v = -v
+        rings.append([bm.verts.new(p + u * (half_w[i] * math.cos(G.TAU * k / segs)) + v * (half_h[i] * math.sin(G.TAU * k / segs)))
+                      for k in range(segs)])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            bm.faces.new((a[k], a[(k + 1) % segs], b[(k + 1) % segs], b[k]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return G.mesh_obj(name, bm, mat)
+
+
+def _cast_cleat_parts(name, L, foot_w=0.029, waist_w=0.017, top_w=0.0135, horn_w=0.016, tip_w=0.012, hole_d=0.087,
+                      voxel=0.0004, tris=15000):
+    al, ss = M("Aluminium"), M("Stainless")
+    # pedestal: horizontal rounded-rectangle sections from just under the deck up into the horns
+    rings = []
+    zs = [-0.004] + [z for z, _ in _CLEAT_PED]
+    for i, zf in enumerate(zs):
+        z = zf * L
+        a = _lerp_tab(_CLEAT_PED, max(zf, 0.0)) * L
+        t = min(1.0, max(0.0, zf / 0.10))
+        w = foot_w + (waist_w - foot_w) * (1 - (1 - t) ** 2)          # flares out to the foot like the length does
+        w -= (waist_w - top_w) * min(1.0, max(0.0, (zf - 0.12) / 0.08))  # and narrows under the horn so it doesn't step
+        rings.append((z, G.rrect(2 * a, w, min(w * 0.45, a), 6)))
+    ped = _loft_z("pedestal", rings, al)
+    # horns: one sweep tip to tip along the middle of the horn, an oval section scaled by the horn's thickness
+    xs = [i / 40.0 * 0.47 for i in range(41)]
+    xs = [-x for x in reversed(xs[1:])] + xs
+    path, radii = [], []
+    for xf in xs:
+        ax = abs(xf)
+        top = _lerp_tab(_CLEAT_HORN, ax)
+        bot = _lerp_tab([r for r in _CLEAT_HORN if r[2] is not None], ax, 2) if ax >= 0.20 else 0.188 + (0.20 - ax) * 0.0
+        th = (top - bot) * L
+        path.append((xf * L, 0.0, (top + bot) / 2 * L))
+        radii.append(th / 2)
+    hw = [horn_w / 2 + (tip_w / 2 - horn_w / 2) * min(1.0, abs(p[0]) / (0.47 * L)) for p in path]
+    horn = _oval_sweep("horn", path, hw, radii, al)
+    # round knob ends: an ellipsoid on each tip, a little fatter than the horn
+    knobs = []
+    for sgn in (-1, 1):
+        x = sgn * 0.47 * L
+        zc = (_lerp_tab(_CLEAT_HORN, 0.47) + _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L
+        rz = (_lerp_tab(_CLEAT_HORN, 0.47) - _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L * 1.05
+        k = G.lathe(f"knob{sgn}", [(math.sin(math.pi * i / 16), -math.cos(math.pi * i / 16)) for i in range(17)], al, 32)
+        k.data.transform(Matrix.Diagonal((0.03 * L, tip_w / 2 * 1.04, rz, 1.0)))
+        k.location = (x, 0, zc)
+        G.bake_xform(k)
+        knobs.append(k)
+    body = G.join("body", [ped, horn] + knobs)
+    # fuse: voxel remesh (one closed casting with filleted joins), a light smooth, then cut flat and drill
+    m = body.modifiers.new("fuse", "REMESH")
+    m.mode, m.voxel_size, m.adaptivity = "VOXEL", voxel, 0.0
+    sm = body.modifiers.new("soften", "SMOOTH")
+    sm.factor, sm.iterations = 0.5, 4
+    G.apply(body)
+    floor = G.box("floor", (0, 0, -0.05), (L * 2, L, 0.1))
+    G.boolean(body, floor)
+    zh = 0.126 * L
+    hole = G.cyl("hole", (0, -0.05, zh), (0, 0.05, zh), hole_d / 2 * L, None, 40)
+    G.boolean(body, hole)
+    d = body.modifiers.new("budget", "DECIMATE")
+    me = body.data
+    me.calc_loop_triangles()
+    d.ratio = min(1.0, tris / max(1, len(me.loop_triangles)))
+    G.apply(body)
+    G.finish(body, 0.0006, segs=2, angle=60, sharp=60)        # only the foot's edge and the hole's rim are sharp
+    body.name = "casting"
+    # two through-bolts on the top flat: hex heads in shallow spot faces
+    bolts = []
+    for sgn in (-1, 1):
+        x = sgn * 0.125 * L
+        zt = _lerp_tab(_CLEAT_HORN, 0.125) * L
+        hexo = [(0.0042 * math.cos(G.TAU * i / 6 + math.pi / 6), 0.0042 * math.sin(G.TAU * i / 6 + math.pi / 6)) for i in range(6)]
+        b = G.prism(f"bolt{sgn}", hexo, zt - 0.0012, zt + 0.0016, ss, taper=0.9)
+        b.location = (x, 0, 0)
+        G.bake_xform(b)
+        bolts.append(G.finish(b, 0.0004, segs=1))
+        face = G.cyl(f"spot{sgn}", (x, 0, zt - 0.0016), (x, 0, zt - 0.0011), 0.0062, al, 24)
+        bolts.append(G.finish(face, 0.0003, segs=1))
+    top = _lerp_tab(_CLEAT_HORN, 0.0) * L
+    tipz = (_lerp_tab(_CLEAT_HORN, 0.47) + _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L
+    socks = [("Wrap", (0, 0, top)), ("HornFwd", (L / 2, 0, tipz)), ("HornAft", (-L / 2, 0, tipz)), ("Hole", (0, 0, zh))]
+    return [body] + bolts, socks
 
 
 @part("CamCleat", "cleat", "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead")
