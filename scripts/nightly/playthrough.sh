@@ -14,15 +14,15 @@ FLOW_STEPS=(
 	"Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait"
 	"Expect:Hud,Shot:06-lesson,Finish:clean,Wait,Wait"
 	"Expect:Quiz,Shot:07-medal,BACK,Wait,Wait"
-	"Expect:Hud,BACK,Wait,Expect:Pause,Shot:08-pause"
+	"Expect:Hud,MENU,Wait,Expect:Pause,Shot:08-pause"
 	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,Shot:09-leave,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
 	"Expect:Title,Shot:10-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
-	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape S
-	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Left=Gamepad_DPad_Left; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; }
+	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
+	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Left=Gamepad_DPad_Left; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; Menu=Gamepad_Special_Right; }
 	S=$(IFS=,; echo "${FLOW_STEPS[*]}")
-	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//LEFT/$Left}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//Shot:/Shot:pt-$1-}
+	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//LEFT/$Left}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//MENU/$Menu}; S=${S//Shot:/Shot:pt-$1-}
 	echo "$S"
 }
 # check <log>: prints PASS, or FAIL with the first screen that did not appear (and the screen that was up instead).
@@ -53,6 +53,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 	ok "a script cut short fails" "$(check "$T/short.log")" "FAIL the script stopped"
 	ok "the pad flow uses the pad's buttons" "$(flow pad | grep -o 'Gamepad_FaceButton_Bottom' | head -1)" "Gamepad_FaceButton_Bottom"
 	ok "the keys flow has no pad keys" "$(flow keys | grep -c Gamepad)" "0"
+	ok "the pad pauses with its Menu button (B is the backstay in game)" "$(flow pad | grep -o 'Gamepad_Special_Right' | head -1)" "Gamepad_Special_Right"
 	rm -rf "$T"; echo "self-test: $F failure(s)"; exit $(( F > 0 ))
 fi
 APP=$1; OUT=$2; mkdir -p "$OUT"

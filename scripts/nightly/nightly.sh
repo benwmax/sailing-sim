@@ -112,12 +112,25 @@ if [[ -z "$FAILED" && $RC != 0 && -n "$RESULT" ]]; then
 		else BREAKS+=("$VIEW $Q: $FPS, rerun ${AGAIN:-none}, floor $FLOOR"); fi
 	done < <(grep -E " UNDER [0-9.]+$" "$N/$DAY.gate.txt")
 fi
+# #404: the first hour played through on the night's package, once on keys and once on the pad (playthrough.sh: a fresh
+# profile, the first launch to lesson 1's medal screen and back to the title); stills in <date>/playthrough/. It runs
+# whenever the gate packaged the game, under the lock, and a missing screen fails a night that would otherwise pass.
+PLAY=""; PLAYRC=0
+if [[ -d Packaged/Mac/SailingSim.app && -n "$RESULT" ]] && MAC_LOCK_WAIT=3600 bash scripts/mac-lock.sh take; then
+	PLAY=$(bash scripts/nightly/playthrough.sh "$W/Packaged/Mac/SailingSim.app" "$N/$DAY/playthrough" 2>&1 | grep -E "^(keys|pad): " | paste -sd ';' -)
+	[[ "$PLAY" == *FAIL* || -z "$PLAY" ]] && PLAYRC=1
+	bash scripts/mac-lock.sh drop
+	echo "playthrough: ${PLAY:-did not run}"
+fi
 # Every view the gate counted (under or lost) must be one rerun and passed for the night to pass.
 COUNTED=$(echo "$RESULT" | grep -oE "[0-9]+ view" | grep -oE "[0-9]+")
 if [[ -n "$FAILED" ]]; then summary "TESTS FAILED main $SHA: $FAILED ($N/$DAY.gate.txt)"
-elif [[ $RC == 0 ]]; then summary "PASS main $SHA: ${RESULT:-gate: pass} ($N/$DAY.csv)"
+elif [[ $RC == 0 && $PLAYRC != 0 ]]; then summary "PLAYTHROUGH FAILED main $SHA: ${PLAY:-it did not run} ($N/$DAY/playthrough)"
+elif [[ $RC == 0 ]]; then summary "PASS main $SHA: ${RESULT:-gate: pass}${PLAY:+, playthrough ok} ($N/$DAY.csv)"
 elif [[ -z "$RESULT" ]]; then summary "ERROR main $SHA: the gate stopped before the bench (exit $RC): $(grep -vE '^\[gate' "$N/$DAY.gate.txt" | tail -1)"
+elif [[ ${#BREAKS[@]} == 0 && ${#FLAPS[@]} -gt 0 && "${COUNTED:-0}" == "${#FLAPS[@]}" && $PLAYRC != 0 ]]; then
+	summary "PLAYTHROUGH FAILED main $SHA: ${PLAY:-it did not run} (flapping: $(IFS=';'; echo "${FLAPS[*]}")) ($N/$DAY/playthrough)"
 elif [[ ${#BREAKS[@]} == 0 && ${#FLAPS[@]} -gt 0 && "${COUNTED:-0}" == "${#FLAPS[@]}" ]]; then
-	summary "PASS main $SHA (flapping: $(IFS=';'; echo "${FLAPS[*]}")) ($N/$DAY.csv)"
+	summary "PASS main $SHA (flapping: $(IFS=';'; echo "${FLAPS[*]}"))${PLAY:+, playthrough ok} ($N/$DAY.csv)"
 else summary "FLOOR BREAK main $SHA: $RESULT ${UNDER:+[$UNDER]}${BREAKS:+ [reruns: $(IFS=';'; echo "${BREAKS[*]}")]} ($N/$DAY.csv)"; fi
 echo "nightly done $(date -u +%T) rc=$RC"
