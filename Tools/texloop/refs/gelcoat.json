@@ -1,0 +1,318 @@
+{
+ "surface": "gelcoat",
+ "_about": "Hull gelcoat references (docs/texture-loop). Photos live in the git-ignored Data/Reference/raw/textures/Gelcoat/<level>/<id>.jpg; boxes are fractions (x0, y0, x1, y1) of the 1280 px thumbnail: gel = lit white gelcoat, no lettering or reflections of other boats; neutral = something grey to white-balance on.",
+ "refs": [
+  {
+   "id": "shark-24-interboot-2020-friedrichshafen-ib200157",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Shark_24,_Interboot_2020,_Friedrichshafen_(IB200157).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Shark_24%2C_Interboot_2020%2C_Friedrichshafen_%28IB200157%29.jpg/1280px-Shark_24%2C_Interboot_2020%2C_Friedrichshafen_%28IB200157%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: red hull"
+  },
+  {
+   "id": "varianta-18-interboot-2020-friedrichshafen-ib200",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Varianta_18,_Interboot_2020,_Friedrichshafen_(IB200156).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/22/Varianta_18%2C_Interboot_2020%2C_Friedrichshafen_%28IB200156%29.jpg/1280px-Varianta_18%2C_Interboot_2020%2C_Friedrichshafen_%28IB200156%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": [
+    0.45,
+    0.755,
+    0.62,
+    0.8
+   ],
+   "neutral": [
+    0.02,
+    0.3,
+    0.12,
+    0.4
+   ],
+   "notes": "new boat at a boat show, hall light; neutral = grey wall"
+  },
+  {
+   "id": "bente-24-interboot-2020-friedrichshafen-ib200162",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Bente_24,_Interboot_2020,_Friedrichshafen_(IB200162).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Bente_24%2C_Interboot_2020%2C_Friedrichshafen_%28IB200162%29.jpg/1280px-Bente_24%2C_Interboot_2020%2C_Friedrichshafen_%28IB200162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: no clean lit hull patch"
+  },
+  {
+   "id": "daysailer-interboot-2020-friedrichshafen-ib20015",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Daysailer,_Interboot_2020,_Friedrichshafen_(IB200153).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/Daysailer%2C_Interboot_2020%2C_Friedrichshafen_%28IB200153%29.jpg/1280px-Daysailer%2C_Interboot_2020%2C_Friedrichshafen_%28IB200153%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: grey gelcoat"
+  },
+  {
+   "id": "se-27-leisure-interboot-2020-friedrichshafen-ib2",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:SE_27_Leisure,_Interboot_2020,_Friedrichshafen_(IB200318).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/SE_27_Leisure%2C_Interboot_2020%2C_Friedrichshafen_%28IB200318%29.jpg/1280px-SE_27_Leisure%2C_Interboot_2020%2C_Friedrichshafen_%28IB200318%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: cockpit view, no gelcoat"
+  },
+  {
+   "id": "maxus-24-evo-interboot-2020-friedrichshafen-ib20",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Maxus_24_Evo,_Interboot_2020,_Friedrichshafen_(IB200321).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Maxus_24_Evo%2C_Interboot_2020%2C_Friedrichshafen_%28IB200321%29.jpg/1280px-Maxus_24_Evo%2C_Interboot_2020%2C_Friedrichshafen_%28IB200321%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": [
+    0.15,
+    0.705,
+    0.45,
+    0.74
+   ],
+   "neutral": [
+    0.03,
+    0.42,
+    0.15,
+    0.5
+   ],
+   "notes": "new boat at a boat show, hall light; neutral = grey wall"
+  },
+  {
+   "id": "lis-6-0-interboot-2020-friedrichshafen-ib200170",
+   "level": "L0",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Lis_6.0,_Interboot_2020,_Friedrichshafen_(IB200170).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Lis_6.0%2C_Interboot_2020%2C_Friedrichshafen_%28IB200170%29.jpg/1280px-Lis_6.0%2C_Interboot_2020%2C_Friedrichshafen_%28IB200170%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY-SA 4.0",
+   "use": "measure",
+   "author": "Matti Blume",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: dark hull; cabin patch too small"
+  },
+  {
+   "id": "j22-sailboat-great-white-j-0563",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Great_White_J_0563.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9f/J22_sailboat_Great_White_J_0563.jpg/1280px-J22_sailboat_Great_White_J_0563.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": [
+    0.12,
+    0.44,
+    0.4,
+    0.5
+   ],
+   "neutral": [
+    0.58,
+    0.56,
+    0.72,
+    0.61
+   ],
+   "notes": "1980s J/22 kept racing (L3), sun; neutral = gravel"
+  },
+  {
+   "id": "j22-sailboat-great-white-j-4376",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Great_White_J_4376.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f4/J22_sailboat_Great_White_J_4376.jpg/1280px-J22_sailboat_Great_White_J_4376.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": [
+    0.2,
+    0.5,
+    0.5,
+    0.6
+   ],
+   "neutral": [
+    0.08,
+    0.78,
+    0.22,
+    0.84
+   ],
+   "notes": "same boat, topsides in shade of sky; neutral = concrete"
+  },
+  {
+   "id": "j22-sailboat-great-white-j-4378",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Great_White_J_4378.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/65/J22_sailboat_Great_White_J_4378.jpg/1280px-J22_sailboat_Great_White_J_4378.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": [
+    0.18,
+    0.69,
+    0.45,
+    0.77
+   ],
+   "neutral": [
+    0.02,
+    0.56,
+    0.14,
+    0.64
+   ],
+   "notes": "same boat, sunlit topsides; neutral = gravel"
+  },
+  {
+   "id": "j22-sailboat-great-white-j-4381",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Great_White_J_4381.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/J22_sailboat_Great_White_J_4381.jpg/1280px-J22_sailboat_Great_White_J_4381.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: logo and deck in every clean patch"
+  },
+  {
+   "id": "j22-sailboat-great-white-j-5205",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Great_White_J_5205.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/J22_sailboat_Great_White_J_5205.jpg/1280px-J22_sailboat_Great_White_J_5205.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": [
+    0.18,
+    0.56,
+    0.55,
+    0.66
+   ],
+   "neutral": [
+    0.9,
+    0.51,
+    0.99,
+    0.57
+   ],
+   "notes": "same boat as 0563 (L3), sun; neutral = gravel"
+  },
+  {
+   "id": "j22-sailboat-ookpik-0598",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Ookpik_0598.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/J22_sailboat_Ookpik_0598.jpg/1280px-J22_sailboat_Ookpik_0598.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: lifting slings across the topsides, no clean neutral"
+  },
+  {
+   "id": "j22-sailboat-on-crane-8040",
+   "level": "L2",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_on_crane_8040.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/J22_sailboat_on_crane_8040.jpg/1280px-J22_sailboat_on_crane_8040.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": [
+    0.25,
+    0.46,
+    0.75,
+    0.58
+   ],
+   "neutral": null,
+   "notes": "dull, scuffed club-style J/22 (L2), sun; no clean neutral in frame"
+  },
+  {
+   "id": "j22-sailboat-2528",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_2528.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/J22_sailboat_2528.jpg/1280px-J22_sailboat_2528.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: deck from above, mostly non-skid"
+  },
+  {
+   "id": "j22-sailboat-cheque-mate-4962",
+   "level": "L3",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_Cheque_Mate_4962.jpg",
+   "file": "https://upload.wikimedia.org/wikipedia/commons/1/1e/J22_sailboat_Cheque_Mate_4962.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "licence": "CC0",
+   "use": "ship",
+   "author": "Ahunt",
+   "box": null,
+   "neutral": null,
+   "notes": ""
+  },
+  {
+   "id": "victoria-abandoned-sailboat-asv2024-09",
+   "level": "L4",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Victoria_abandoned_sailboat_asv2024-09.jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Victoria_abandoned_sailboat_asv2024-09.jpg/1280px-Victoria_abandoned_sailboat_asv2024-09.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "FAL",
+   "use": "measure",
+   "author": "A.Savin<",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: a rusted steel hull, not gelcoat (rust lane material)"
+  },
+  {
+   "id": "abandoned-181435375",
+   "level": "L4",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Abandoned_(181435375).jpeg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/36/Abandoned_%28181435375%29.jpeg/1280px-Abandoned_%28181435375%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY 3.0",
+   "use": "measure",
+   "author": "\nLeon Jurtzik</di",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: heavy teal colour grading, so its colour cannot be trusted"
+  },
+  {
+   "id": "stockage-de-b-teau-quai-des-antilles-nantes-7936",
+   "level": "L4",
+   "source": "wikimedia",
+   "page": "https://commons.wikimedia.org/wiki/File:Stockage_de_b%C3%A2teau,_quai_des_Antilles,_Nantes_(7936182566).jpg",
+   "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/Stockage_de_b%C3%A2teau%2C_quai_des_Antilles%2C_Nantes_%287936182566%29.jpg/1280px-Stockage_de_b%C3%A2teau%2C_quai_des_Antilles%2C_Nantes_%287936182566%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "licence": "CC BY 2.0",
+   "use": "measure",
+   "author": "Guilhem Vellut from Annecy",
+   "box": null,
+   "neutral": null,
+   "notes": "skipped: blue painted hull, not white gelcoat"
+  }
+ ]
+}

@@ -791,9 +791,14 @@ def c22_hardware(H, top, mast_x, st, bw):
         kit_part("Scupper", st + 0.02, side * 0.25, H.sheer(st) - 0.3, -math.pi / 2)
 
 
-def winch(x, y, z, r=0.055):
-    """A sheet winch: the kit's at the catalogue size whose base is nearest 2r (it had been two stainless cylinders)."""
-    bases = {"8": 0.102, "16": 0.120, "20": 0.130, "30": 0.152, "40": 0.175}
+def winch(x, y, z, r=0.055, plain=False):
+    """A sheet winch: the kit's at the catalogue size whose base is nearest 2r (it had been two stainless cylinders).
+    plain: a plain-top (WinchPlain) instead of a self-tailer (Winch16), as on boats that came with standard winches."""
+    if plain:
+        bases = {"6": 0.090, "8": 0.102, "16": 0.120}
+        kit_part("WinchPlain", x, y, z, size=min(bases, key=lambda s: abs(bases[s] - 2 * r)))
+        return
+    bases = {"8": 0.102, "16": 0.121, "20": 0.130, "30": 0.152, "40": 0.175}
     kit_part("Winch16", x, y, z, size=min(bases, key=lambda s: abs(bases[s] - 2 * r)))
 
 
@@ -1335,7 +1340,8 @@ elif TAG in ("Catalina22", "Catalina30"):
     wx = SPEC["winch_x"]
     for side, tag in ((1, "S"), (-1, "P")):
         y = side * (ck[2] + 0.13)
-        winch(wx, y, MAIN.deck_z(wx, y), 0.076 if TAG == "Catalina30" else 0.06)   # (a 30 and a 16)
+        # the 30's self-tailing 30s; the 22's standard (plain-top) 16s, the class's usual primaries
+        winch(wx, y, MAIN.deck_z(wx, y), 0.076 if TAG == "Catalina30" else 0.06, plain=TAG == "Catalina22")
         socket(f"JibWinch_{tag}", (wx, y, MAIN.deck_z(wx, y) + 0.08))
         clew_x = jib[0]["luff_x"] - jib[0]["chord"]
         lx = clew_x - 0.15

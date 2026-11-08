@@ -33,7 +33,7 @@ cols = ["Reference photo", "Before: 20 cm, low sun", "After: 20 cm, low sun", "B
 W, H = 190 + CELL * 5 + 6 * 10, 90 + (CELL + 64) * 6
 sheet = Image.new("RGB", (W, H), (245, 244, 240))
 d = ImageDraw.Draw(sheet)
-d.text((16, 14), "Non-skid deck, five wear levels: today's main (before) and texture-loop round 4 (after, numpy stand-in for the shader)", font=FB, fill=(20, 20, 20))
+d.text((16, 14), "Non-skid deck, five wear levels: today's main (before) and texture loop round 5 (after: the new shader lines, numpy mirror)", font=FB, fill=(20, 20, 20))
 d.text((16, 42), "Pattern measured on Bean's J/22 photo: 2.3 mm diagonal ribs (before: 1.8 mm pyramids + 8 mm diamond). Colours vs a white gelcoat of sRGB 215.", font=F, fill=(60, 60, 60))
 for i, c in enumerate(cols):
     d.text((190 + 10 + i * (CELL + 10), 66), c, font=F, fill=(30, 30, 30))
