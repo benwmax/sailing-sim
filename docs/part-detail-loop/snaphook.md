@@ -5,7 +5,7 @@ Bean's hardware reference sheet (Nov 8) asked for each part on it to be modelled
 spinnaker sheets and dock lines. The kit had no snap hook before (the nearest stand-in was the 5 mm D-shackle), so it is
 a new kit part, `SnapHook`, built in its own file `Tools/boatkit/bk_part_snaphook.py`.
 
-![SnapHook round 4: side, three-quarter, edge-on, clay](snaphook_r4.jpg)
+![SnapHook round 5: side, three-quarter, edge-on, clay](snaphook_r5.jpg)
 
 Card: `Tools/boatkit/partloop/parts/snaphook.json`. Target: the 75 mm size (75 mm long, 67 g, forged 316 stainless);
 proportions from Bean's photo, which is close to square-on.
@@ -16,7 +16,8 @@ proportions from Bean's photo, which is close to square-on.
 | r1 | 74.7 mm | 2.11 | 95% | 8/8 | | 16,308, 1 slot | (not run: r2 followed straight on, see below) |
 | r2 | 74.7 mm | 2.11 | 94% | 8/8 | 49 g | 16,308 | won 3 of 3 against r1 (confidence 3, 3, 3) |
 | r3 | 74.7 mm | 2.09 | 94% | 8/8 | 64 g | 16,306 | won 3 of 3 against r2 (confidence 3, 3, 3) |
-| r4 | 74.7 mm | 2.08 | 93% | 8/8 | 67 g | 16,308, 1 slot | won 3 of 3 against r3, but confidence 1, 1, 1: all three called it close to a coin toss |
+| r4 | 74.7 mm | 2.08 | 93% | 8/8 | 67 g | 16,308 | won 3 of 3 against r3, but confidence 1, 1, 1: all three called it close to a coin toss |
+| r5 | 74.7 mm | 2.08 | 93% | 8/8 | 71 g | 16,308, 1 slot | not rerun: Bean's own change after looking at r4 |
 
 Target length/width 2.10 (measured on the photo). Weight is the model's volume at stainless steel's 7.98 g/cm³ against the
 catalogue's 67 g: a useful check on thickness, since there is no edge-on photo. All five checks pass from r2 on.
@@ -30,7 +31,10 @@ What changed round by round:
 - r3 (the reviewers' notes on r2): thicker forging (r2 weighed only 49 g), the square rivet sunk in the boss (it wasn't
   showing), a raised rounded rim round the eye, a rounder nose, the eye a little smaller and leaning more.
 - r4: heavier gate wire (2.3 mm, legs further apart), the eye leaning further, a slightly broader palm and longer nose lip;
-  the weight now matches the catalogue. The reviewers could barely tell r3 and r4 apart, so the loop stops here.
+  the weight now matches the catalogue. The reviewers could barely tell r3 and r4 apart, so the loop stopped there.
+- r5 (Bean, after r4): the ring round the eye was too thin on the gate side and bottom. The eye is smaller and moved
+  toward the spine, and the outline's bottom-left is a little fuller, so the ring is about twice as thick there. It now
+  weighs 71 g, 6% over the catalogue.
 
 How it is built: the body is one signed distance field, sampled on a 0.25 mm grid and meshed with surface nets (numpy
 only, which ships with Blender, so the PC's kit build needs nothing new). The field is the traced outline with the eye cut
@@ -44,7 +48,7 @@ Still different from the photo (the reviewers' shared notes on r4, for a later r
 
 - The gate still reads thin at arm's length; the real one is a heavier doubled loop with a clear pivot at the palm.
 - The nose should hook down harder, with a notch the gate tip seats in.
-- The eye should be a little bigger and tilt more steeply, with a thicker rim all round.
+- The reviewers wanted the eye bigger and tilted more; Bean preferred a thicker ring (r5), which wins.
 - The boss and rivet should be larger and prouder; the decimated square reads slightly hexagonal in three-quarter.
 - The back could bow out more (a banana shape) and the body look chunkier edge-on.
 - The cloud preview's stainless renders flat white, so the polished look is missing (the same for every part).
@@ -61,7 +65,7 @@ Loop changes made for this part (small, shared):
   main).
 
 In the game: nothing changes until the PC's `make-boatkit.ps1 -Import`. The whole kit build passes in the cloud with the
-new part: `SnapHook` 16,308 triangles (light copy 4,075), every other part as before. `Inputs/boat-kit/kit.json` is
+new part: `SnapHook` 16,308 triangles (light copy 4,076), every other part as before. `Inputs/boat-kit/kit.json` is
 left for the PC's import to replace, as for Block40 and HornCleat. Nothing places a snap hook on a boat yet: the next step
 is the halyard ends at the J/22's mast and the spinnaker sheets (a follow-up, with rope).
 
