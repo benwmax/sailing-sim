@@ -1,0 +1,35 @@
+{
+ "part": "MastheadFly",
+ "card": {
+  "what": "Masthead wind indicator for keelboats of about 20 to 40 ft, 15 in (381 mm) vane: a black socket screwed to the masthead, a stainless stalk, a vane turning on a bearing at its top (arrow and counterweight forward, a swept fin with reflective film aft) and two fixed reference tabs on wire arms set aft at the close-hauled angle. Size 10 is the 10 in dinghy model",
+  "boats": "the J/22 (game: SailboatPawn's MastheadFly, today two black boxes), the fleet's keelboats and catamarans (build_fleet.py draws a bare 0.35 m stick); not the Sunfish or ILCA, which carry none",
+  "distance": "looked up at from the cockpit 9 to 10 m below; the chase and photo cameras pass it at a few metres; the dock camera sees it against the sky",
+  "before": "the game's fly (SailboatPawn: FlyArrow, a 450 x 25 x 25 mm box, and FlyVane, a 120 x 10 x 100 mm box, floating 80 mm above the masthead with no stalk); the kit had no part"
+ },
+ "references": [
+  {"id": "bean-dock", "kind": "photo", "use": "in use: a keelboat's masthead fly at Rush Creek against an overcast sky (Bean's own photo IMG_9224, Oct 4 2026, a crop of a marina mast with no people): tall thin stalk, the vane dark against the sky with a swept tall fin aft, a tab arm out to the side, a bird spike above",
+   "url": "Bean's J/22 lesson photo IMG_9224 (project files, sailing-sim-ref/j22-lessons); measure and compare only, not in the repo"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "Davis Instruments WindTrak / Windex 15 #3150 listings (Lowe's, Landfall Navigation, iboats) and Windex 10 listings (Toplicht, Kildale Marine)",
+   "note": "15 in (381 mm) vane, 12.75 in (324 mm) tall, about 101 g; optional bird spike about 10 in (240 mm); 10 in model 254 mm long, 240 mm tall, 34 to 38 g, top or side mount. Assembly sheet: tabs set to the boat's angle from a template on the box, then turned on the shaft until symmetric aft; socket screwed to the masthead with #10 screws"},
+  {"id": "commons", "kind": "photo", "use": "not fetched: upload.wikimedia.org refused this cloud session all evening. Candidates for a later round: File:Széljelző.jpg (a fly under sail on Balaton), File:Verklicker Windex.png and File:Windex.png (drawings), File:Verklicker im Segelsport.jpg",
+   "url": "https://commons.wikimedia.org/w/index.php?search=windex+filetype%3Abitmap&ns6=1"}
+ ],
+ "sizes": [
+  {"id": "length", "name": "Vane length, arrow tip to fin's trailing edge", "target": 381.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 15 in vane"},
+  {"id": "height", "name": "Overall height, socket foot to fin top", "target": 324.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 12.75 in tall (no bird spike)"},
+  {"id": "width", "name": "Span across the reference tabs", "target": null, "unit": "mm", "tol": null, "source": "no catalogue figure: reported only"}
+ ],
+ "outline": null,
+ "features": [
+  {"id": "socket", "text": "Black flanged socket screwed to the masthead, a tapered boss and a lock collar gripping the stalk", "objects": ["socket", "socket_flange", "socket_screw", "lock_collar"]},
+  {"id": "stalk", "text": "Thin stainless stalk standing straight up", "objects": ["stalk"]},
+  {"id": "bearing", "text": "Bearing cap at the stalk's top, the vane's arm through its head", "objects": ["hub", "pin"]},
+  {"id": "arrow", "text": "Barbed arrowhead forward with red reflectors, a counterweight behind it", "objects": ["arrow", "arrow_reflector", "counterweight"]},
+  {"id": "fin", "text": "Tall fin aft with a swept leading edge, mostly black with reflective film both sides", "objects": ["fin", "fin_root", "fin_reflector_red", "fin_reflector_white"]},
+  {"id": "tabs", "text": "Two reference tabs on wire arms from a collar below the vane, set aft at about 34 degrees each side", "objects": ["tab_collar", "tab_armL", "tab_armR", "tabL", "tabR"]},
+  {"id": "turns", "text": "The vane is a separate part turning about the stalk (MastheadFlyVane + MastheadFlyMount for the game)", "manual": true},
+  {"id": "materials", "text": "Black plastic, stainless, red and white reflective film", "slots": ["BlackPlastic", "Stainless", "RedPlastic", "WhitePlastic"]}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; at 9 m up the light copy (a quarter) is what the game draws most of the time"}
+}

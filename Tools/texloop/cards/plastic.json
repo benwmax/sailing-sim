@@ -1,0 +1,47 @@
+{
+ "surface": "plastic",
+ "name": "Black moulded plastic hardware (acetal, glass-filled nylon)",
+ "kind": "surface kind 13 in BOAT_CODE (new); M_BoatKit's BlackPlastic slot through the same lines",
+ "code": "scripts/make_materials.py BOAT_CODE, the block between '// PLASTIC_WEAR >>>' and '// PLASTIC_WEAR <<<' (run when surf == 13); scripts/import_hardware_kit.py KIT_CODE copies it",
+ "boats": {
+  "j22": "hero J/22 slots BlackPlastic and CamBase (blocks, cam cleat bases, fairleads, clutches); MI_J22H_PackPlastic entries pick it up by Surface",
+  "sunfish": "BOAT_LIBRARY BlackPlastic (Ratchet57 cheeks, fairleads)",
+  "kit": "M_BoatKit MI_Kit_BlackPlastic (27 kit parts: CamRiser, Fairlead, Block29/40, Ratchet57, FiddleCam, ClutchBank, Clutch, TrackCar, ...)",
+  "berthed fleet": "every boat with Age and Care (custom data 10 and 11)"
+ },
+ "slots": [
+  "BlackPlastic",
+  "CamBase (hero J/22)"
+ ],
+ "closest_camera_m": 0.4,
+ "pattern_size_cm": {
+  "chalk_blotch": [
+   1.2,
+   0.39
+  ],
+  "scuff_length": [
+   0.5,
+   1.2
+  ],
+  "scuff_width_mm": [
+   0.6,
+   1.6
+  ],
+  "mildew_speck_mm": [
+   0.75,
+   1.2
+  ],
+  "edge_polish_radius_cm": "under 1.4 (full under 0.5)"
+ },
+ "levels_needed": {
+  "L0": "satin black, no wear",
+  "L1": "as new; one stray scuff on a part or two",
+  "L2": "sun-facing faces chalked to a blotchy grey (L* about 29 on top, 23 on the sides), a little lake dust, edges rubbed back to black, scuffs",
+  "L3": "as faded but wiped and treated: darker, even, satin; no dust or mildew; more scuffs",
+  "L4": "heavy blotchy pale chalk (L* about 38 on top), tan dust in the hollows and on the tops, sparse dark mildew specks"
+ },
+ "drivers": "chalk = timeK (0.25 + dirtK) x sky (0.5 + 0.5 n.z) x sun, blotch amplitude 0.4 + 1.2 dirtK, darker and satin with Care; dust = dirtK on up faces (and the kit sheet's cavities); polish = saturate(2 timeK) on sharp edges within 4 m; scuffs: a share of 1.5 cm cells growing with timeK and dirtK, within 4 m; mildew: dirtK over 0.6 and low Care. Age unset (-1): no change, as before.",
+ "replaces": "black plastic was surface kind 0: one flat colour with no weathering at any age",
+ "maps": "none: shader math only, Medium included; BOAT_CODE's detail-map block skips kind 13 (no gelcoat orange peel on plastic). M_BoatKit keeps its trim sheet",
+ "out_of_scope": "rubber (kind 8: Rubrail, Rubber, ExtensionBlack) is the 'webbing/rubber' item on the texture list; white and red plastic, the outboard's painted black cowl (OutboardBlack) and the crew's buckles stay kind 0"
+}

@@ -1,0 +1,108 @@
+{
+ "part": "Pintle",
+ "card": {
+  "what": "Stainless strap pintle: two 30 mm flat straps lying on both faces of the blade, four staggered through-bolts with nylocks, a bushed block round the pin at the leading edge, a 1/2 in pin with a domed head and a keeper ring",
+  "boats": "J/22 (two, at the hero's PINTLE_Z 0.47 and 0.05 m on RudderPivot); options blade (thickness), chord, length for other transom-hung rudders",
+  "distance": "arm's reach from the cockpit; the stern camera",
+  "before": "no kit part: the hero J/22 draws its own (j22_steering.build_pintles), rendered in place as the before"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look: Bean's J/22 photos tiller-transom-attachemnt and -2 (Rush Creek, Oct 2026), as already built into the hero J/22 (Inputs/j22-hero/j22_steering.py); private, never in the repo",
+   "url": "Bean's J/22 detail photos (BEN-PC); in-game hero renders docs/j22-detail/steering-pintle.jpg"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Schaefer 81-47 J/24 upper gudgeon (Vela Sailing Supply, Fisheries Supply, Sound Boatworks listings): pin 1/2 in, strap 1 x 3/16 in, strap length 3 5/16 in, four fasteners, 1 1/2 in rudder; gudgeon pin 81-49 3 7/8 in long",
+   "note": "numbers only (search snippets; the cloud can't open the shops' pages)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Nose of the block to the straps' round ends",
+   "target": 313.0,
+   "unit": "mm",
+   "tol": 0.06,
+   "source": "the hero's pintle from Bean's photos (13 mm ahead of the pin to 300 mm aft)"
+  },
+  {
+   "id": "height",
+   "name": "Pin, head to foot",
+   "target": 100.0,
+   "unit": "mm",
+   "tol": 0.08,
+   "source": "spans both 25 mm gudgeon lugs and the 29 mm block (catalogue pin 81-49: 98 mm)"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "straps",
+   "text": "Two flat straps following the blade's section, round-ended aft",
+   "objects": [
+    "strap-1",
+    "strap1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "block",
+   "text": "A block round the pin at the leading edge, bored for the pin",
+   "objects": [
+    "block"
+   ]
+  },
+  {
+   "id": "bolts",
+   "text": "Four staggered through-bolts: hex heads one side, nylocks the other",
+   "objects": [
+    "bolt",
+    "nut"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pin",
+   "text": "1/2 in pin with a domed head on top",
+   "objects": [
+    "pin",
+    "pinhead"
+   ]
+  },
+  {
+   "id": "keeper",
+   "text": "A keeper ring through the pin under the lower lug",
+   "objects": [
+    "keeper"
+   ],
+   "manual": true
+  },
+  {
+   "id": "bush",
+   "text": "Black bush lips where the gudgeon lugs bear",
+   "objects": [
+    "bushlip"
+   ],
+   "slots": [
+    "BlackPlastic"
+   ]
+  },
+  {
+   "id": "metal",
+   "text": "Polished stainless",
+   "slots": [
+    "Stainless"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 12000,
+  "slots": 8,
+  "note": "the hardware-fit plan's turnbuckle-class budget (12k hero, 3k light)"
+ }
+}
