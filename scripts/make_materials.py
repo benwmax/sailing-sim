@@ -1216,10 +1216,10 @@ float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - sa
 float ox = saturate(max(wear.x, max(dirtK, 0.3 * timeK)) * sunF) * gel * (0.55 + 0.45 * up);
 // Texture loop round 2 (docs/texture-loop): on a hull with an age, chalk comes in blotches (a 40 cm value noise) the way
 // a hull oxidises unevenly, not as an even film. (wear.py BLOT; unset boats as before.)
-float2 bq = LP.xz / 40.0 + LP.yy / 55.0, bqi = floor(bq), bqf = smoothstep(0.0, 1.0, frac(bq));
-float bl00 = frac(sin(dot(bqi, float2(12.99, 78.23))) * 43758.5), bl10 = frac(sin(dot(bqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
-float bl01 = frac(sin(dot(bqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), bl11 = frac(sin(dot(bqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
-ox = age >= 0.0 ? saturate(ox * (0.55 + 0.9 * lerp(lerp(bl00, bl10, bqf.x), lerp(bl01, bl11, bqf.x), bqf.y))) : ox;
+float2 blq = LP.xz / 40.0 + LP.yy / 55.0, blqi = floor(blq), blqf = smoothstep(0.0, 1.0, frac(blq));
+float bl00 = frac(sin(dot(blqi, float2(12.99, 78.23))) * 43758.5), bl10 = frac(sin(dot(blqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float bl01 = frac(sin(dot(blqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), bl11 = frac(sin(dot(blqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+ox = age >= 0.0 ? saturate(ox * (0.55 + 0.9 * lerp(lerp(bl00, bl10, blqf.x), lerp(bl01, bl11, blqf.x), blqf.y))) : ox;
 float lum = dot(col, float3(0.3, 0.59, 0.11));
 // Pale gelcoat goes toward chalk; dark paint (linear polyurethane, slower to chalk) only greys and loses depth.
 float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, col * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
