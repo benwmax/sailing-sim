@@ -44,6 +44,17 @@ Still different from a real one (the reviewers' shared notes on r4):
 - The handle and valve are hard to see from the helm; the pin's flag is stiff and edge-on from some angles.
 - The horseshoe is small and low from 15 m (true to size; a drill may want it easier to spot).
 
+## The crew-overboard set (Bean: make it easier to spot)
+
+The horseshoe is true to size, so from 15 m it is a small low shape. Real boats carry it with a MOB pole (dan buoy) on a
+floating line, and that is what the drill now throws: `MOBBuoy` is the horseshoe plus a 2.4 m fibreglass pole (1.8 m out of
+the water, foam float collar, weighted foot, two reflective bands, a 45 x 30 cm orange flag) 1.6 m away, joined by a yellow
+floating line; 9,188 triangles, 8 slots. The pole and flag show at 50 m where the horseshoe alone is a speck. The drill loads
+`MOBBuoy` first and falls back to `HorseshoeBuoy`, then the sphere. No blind round on this one: it adds a part to the
+horseshoe that already passed, it doesn't change it.
+
+![MOB set](mob_before_after.jpg)
+
 ## In the game
 
 `CourseMarks::Load(Part)` (Source/SailingSim) returns `/Game/Boats/Kit/SM_Kit_<Part>` when it has been imported, and

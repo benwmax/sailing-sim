@@ -2883,7 +2883,10 @@ void ASailboatPawn::UpdateDrillVisuals()
 		// The kit's inflatable lesson mark and Type IV horseshoe buoy (docs/part-detail-loop/marks.md) once imported; until
 		// then the engine shapes. Kit marks sit on the waterline at their own size and colours.
 		UStaticMesh* KitMark = CourseMarks::Load(TEXT("LessonMark"));
-		UStaticMesh* KitBuoy = CourseMarks::Load(TEXT("HorseshoeBuoy"));
+		// The crew-overboard set (horseshoe, MOB pole with its flag, floating line) reads from far off; the bare horseshoe
+		// is the fallback.
+		UStaticMesh* KitBuoy = CourseMarks::Load(TEXT("MOBBuoy"));
+		if (!KitBuoy) KitBuoy = CourseMarks::Load(TEXT("HorseshoeBuoy"));
 		auto MakeKit = [&](UStaticMesh* Mesh, float YawDeg)
 		{
 			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);

@@ -381,3 +381,61 @@ def _horseshoe_parts(W=0.610, L=0.585, T=0.100, band=0.150, float_depth=0.035):
 @P.part("HorseshoeBuoy", "safety", "US Type IV horseshoe buoy, 610 x 585 x 100 mm, faded yellow vinyl over foam, reflective patches, web strap and snap across the open end; floats flat, origin on the waterline")
 def horseshoe_buoy():
     return P.done("HorseshoeBuoy", *_horseshoe_parts())
+
+
+# ------------------------------------------------------------------ the crew-overboard set: horseshoe, MOB pole and line
+
+def _mob_pole_parts(x, y, above=1.80, below=0.60):
+    """A man-overboard pole (dan buoy) floating upright at (x, y): a 32 mm fibreglass pole through a foam float collar,
+    a lead weight on its foot, reflective bands and an orange flag at the top (the kind sold in a horseshoe-and-pole set,
+    about 2.4 m long with 1.8 m standing out of the water)."""
+    vinyl, flagmat, pole_mat = P.M("MOBVinyl"), P.M("MarkVinyl"), P.M("WhitePlastic")
+    refl, weight_mat = P.M("CrewReflective"), P.M("Rubber")
+    r = 0.016
+    pole = G.cyl("mob_pole", (x, y, -below), (x, y, above), r, pole_mat, 20)
+    # foam float collar: a soft barrel 0.24 m across, 0.36 m long, riding with a third under
+    prof = [(0.0, -0.12)] + [(0.11 + 0.010 * math.cos(math.pi * (i / 16 - 0.5)) ** 0.3, -0.12 + 0.36 * i / 16) for i in range(17)] + [(0.0, 0.24)]
+    collar = G.lathe("mob_float", prof, vinyl, 40)
+    collar.location = (x, y, 0.0)
+    G.bake_xform(collar)
+    G.finish(collar, 0)
+    bands = [G.lathe(f"mob_band{k}", [(0, 0), (r + 0.0012, 0), (r + 0.0012, 0.05), (0, 0.05)], refl, 20) for k in range(2)]
+    for k, b in enumerate(bands):
+        b.location = (x, y, above - 0.55 - 0.12 * k)
+        G.bake_xform(b)
+    weight = G.lathe("mob_weight", [(0, 0), (0.030, 0), (0.034, 0.03), (0.034, 0.16), (0.022, 0.19), (0.0, 0.19)], weight_mat, 24)
+    weight.location = (x, y, -below - 0.05)
+    G.bake_xform(weight)
+    tip = G.lathe("mob_tip", [(0, 0), (0.019, 0), (0.019, 0.03), (0.012, 0.045), (0.0, 0.048)], P.M("BlackPlastic"), 20)
+    tip.location = (x, y, above - 0.004)
+    G.bake_xform(tip)
+    flag = _flag("mob_flag", 0.0, above - 0.03, 0.45, 0.30, flagmat, waves=1.3, amp=0.035)
+    flag.location = (x + r, y, 0)
+    G.bake_xform(flag)
+    return [pole, collar] + bands + [weight, tip, flag]
+
+
+def _floating_line(name, p0, p1, sag=0.25, r=0.004, n=24):
+    """A floating polypropylene line lying on the water between two points, bowed sideways by `sag` (m)."""
+    p0, p1 = Vector(p0), Vector(p1)
+    d = (p1 - p0)
+    side = Vector((-d.y, d.x, 0)).normalized()
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        p = p0.lerp(p1, t) + side * (sag * math.sin(math.pi * t) + 0.03 * math.sin(3 * math.pi * t))
+        p.z = r * 0.4                                    # floats: mostly awash
+        pts.append(p)
+    pts[0].z, pts[-1].z = p0.z, p1.z
+    return G.tube(name, pts, r, P.M("MOBVinyl"), 10)
+
+
+@P.part("MOBBuoy", "safety", "Crew-overboard set as thrown in a drill: the Type IV horseshoe, a 2.4 m MOB pole (1.8 m out of the water, orange flag, reflective bands, foam float, weighted foot) 1.6 m away, joined by a floating yellow line; origin on the waterline at the horseshoe")
+def mob_buoy(pole_dist=1.60):
+    objs, socks = _horseshoe_parts()
+    px, py = -pole_dist * 0.8, pole_dist * 0.6          # the pole drifts off downwind of the horseshoe's open end
+    objs += _mob_pole_parts(px, py)
+    # the line runs from the horseshoe's bend (its lanyard ring) to the pole's float
+    objs.append(_floating_line("mob_line", (0.20, 0.0, 0.03), (px + 0.11, py, 0.02)))
+    socks = list(socks) + [("Pole", (px, py, 0.0)), ("PoleTop", (px, py, 1.85))]
+    return P.done("MOBBuoy", objs, socks)
