@@ -30,7 +30,7 @@ dark strips). The existing `Wood` stays the varnished ash.
 | Boat | Tiller | Extension | Why |
 |---|---|---|---|
 | J/22 (slice) | wooden `Tiller`, 47 in | `TillerExtension` 1000 | J/22 tillers are laminated ash and mahogany (Rudder Craft and H&L make them; Bean's lesson boat has one). The hero J/22 draws its own steering from Bean's photos (Inputs/j22-hero/j22_steering.py), so the kit tiller is for the layout copy and other keelboats. |
-| Sunfish (slice) | metal `TillerAlu`, 44 in | `TillerExtension` 914 (36 in) | The factory has shipped a 44 in aluminium tiller rigged with a 36 in extension since it moved from wood to aluminium and fibreglass foils. Older Sunfish (and many club boats) still have varnished wooden tillers; the build_fleet Sunfish draws a wooden one today. |
+| Sunfish (slice) | metal `TillerAlu`, 44 in | `TillerExtension` 914 (36 in) | The factory has shipped a 44 in aluminium tiller rigged with a 36 in extension since it moved from wood to aluminium and fibreglass foils. Older Sunfish (and many club boats) still have varnished wooden tillers; the build_fleet Sunfish draws a wooden one today. Bean chose metal (Nov 8). |
 | ILCA | metal `TillerAlu`, 990 mm | 1070 to 1220 mm | 32 mm aluminium is the class's standard tiller; carbon (`carbon=True`) is allowed. |
 | Catalina 22 (stretch) | wooden `Tiller` (size 1300) | 1000 | laminated wooden tillers are standard on small cruisers. |
 | Hobie 16 | metal (its own tiller arms and crossbar in build_fleet) | baked | aluminium tiller arms. |
@@ -72,7 +72,7 @@ Nothing is imported or placed yet. On BEN-PC after Bean's "resume":
    kit; the import copies kit.json).
 2. Placement, with the hardware fitting plan: the J/22 layout already places `Tiller` and `TillerExtension` at its
    rudder sockets (Tools/boatkit/layouts/j22.json); the Sunfish's metal tiller replaces the wooden bar build_fleet draws
-   in `sunfish_rudder_head` (and its baked extension) once Bean picks metal for the Sunfish. A fleet boat that places the
+   in `sunfish_rudder_head` (and its baked extension): Bean picked metal for the Sunfish on Nov 8. A fleet boat that places the
    wooden tiller through `place_kit` needs `WoodMahogany` appended to build_fleet's `SLOTS`.
 
 ## Running it
