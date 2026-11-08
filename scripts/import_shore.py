@@ -60,8 +60,32 @@ def texture(rel, kind):
     return t
 
 
+def flat_grey(name, level):
+    """A 4x4 texture of one grey level, linear (TC_GRAYSCALE, no sRGB): the default for the Linear Grayscale parameters."""
+    path = f"{TEX}/{name}"
+    if EAL.does_asset_exist(path):
+        return unreal.load_asset(path)
+    import struct, tempfile, zlib
+    raw = b"".join(b"\x00" + bytes([level]) * 4 for _ in range(4))
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 4, 4, 8, 0, 0, 0, 0)) + \
+        chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    file = os.path.join(tempfile.gettempdir(), name + ".png")
+    with open(file, "wb") as f:
+        f.write(png)
+    t = import_file(file, TEX, name)
+    t.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
+    t.set_editor_property("srgb", False)
+    EAL.save_loaded_asset(t)
+    return t
+
+
 def parent(name, foliage):
-    """M_ShorePBR / M_ShoreFoliage: texture parameters into base colour, normal and roughness (and the opacity mask)."""
+    """M_ShorePBR / M_ShoreFoliage: texture parameters into base colour, normal and roughness (and the opacity mask).
+    Each parameter's default texture must be of its own sampler type, or the parent fails to compile (Metal and D3D SM6
+    alike) and every instance draws the engine's default material (#542): the engine's flat normal for Normal, a linear
+    white for Roughness (matte) and Alpha (solid)."""
     path = f"{DEST}/{name}"
     if EAL.does_asset_exist(path):
         EAL.delete_asset(path)
@@ -69,19 +93,20 @@ def parent(name, foliage):
     if foliage:
         m.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
         m.set_editor_property("two_sided", True)
-    def sample(pname, sampler, y):
+    def sample(pname, sampler, default, y):
         e = MEL.create_material_expression(m, unreal.MaterialExpressionTextureSampleParameter2D, -500, y)
         e.set_editor_property("parameter_name", pname)
+        e.set_editor_property("texture", default)
         e.set_editor_property("sampler_type", sampler)
         return e
-    base = sample("BaseColor", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, -300)
-    normal = sample("Normal", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL, 0)
-    rough = sample("Roughness", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE, 300)
+    base = sample("BaseColor", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR, DEFAULTS["color"], -300)
+    normal = sample("Normal", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL, DEFAULTS["normal"], 0)
+    rough = sample("Roughness", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE, DEFAULTS["grey"], 300)
     MEL.connect_material_property(base, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(normal, "RGB", unreal.MaterialProperty.MP_NORMAL)
     MEL.connect_material_property(rough, "R", unreal.MaterialProperty.MP_ROUGHNESS)
     if foliage:
-        alpha = sample("Alpha", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE, 600)
+        alpha = sample("Alpha", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE, DEFAULTS["grey"], 600)
         MEL.connect_material_property(alpha, "R", unreal.MaterialProperty.MP_OPACITY_MASK)
     m.set_editor_property("used_with_nanite", True)
     m.set_editor_property("used_with_instanced_static_meshes", True)
@@ -91,6 +116,14 @@ def parent(name, foliage):
 
 
 manifest = json.load(open(os.path.join(MODELS, "shore.json")))
+DEFAULTS = {
+    "color": unreal.load_asset("/Engine/EngineResources/DefaultTexture"),
+    "normal": unreal.load_asset("/Engine/EngineMaterials/DefaultNormal"),
+    "grey": flat_grey("T_Shore_LinearWhite", 255),
+}
+for kind, t in DEFAULTS.items():
+    if not t:
+        raise RuntimeError(f"no default {kind} texture for the shore parents")
 pbr = parent("M_ShorePBR", False)
 foliage = parent("M_ShoreFoliage", True)
 instances = {}
