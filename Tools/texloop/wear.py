@@ -52,14 +52,18 @@ def chalk_k(age, care, wear_x=0.0):
 
 
 # Gelcoat yellowing with the years (white gelcoat only): the multiplier at time_k 1, per channel, linear.
-YELLOW = (1.0, 0.975, 0.90)
+YELLOW = (1.0, 0.965, 0.86)
+# Round 2: chalk comes in blotches. ox scales by BLOT[0] + BLOT[1] * (a 40 cm value noise, 0..1) on a boat with an age.
+BLOT = (0.55, 0.9)
 
 
-def gelcoat(col, rough, coat, age, care, up=0.0, sun=1.0, wear_x=0.0, split=True):
+def gelcoat(col, rough, coat, age, care, up=0.0, sun=1.0, wear_x=0.0, split=True, blot=None):
     """M_BoatSurface's gelcoat weathering for one linear RGB colour: returns (col, rough, coat).
 
-    up: 0 a topside .. 1 a deck or cabin top facing the sky (the tops chalk first); sun: E1's sunF (0.6..1.4).
-    split=False is the material before the texture loop (ageK)."""
+    up: 0 a topside .. 1 a deck or cabin top facing the sky (the tops chalk first); sun: E1's sunF (0.6..1.4);
+    blot: the 40 cm noise (0..1), scalar or array (None: no blotches, the mean look). up and blot may be numpy arrays,
+    then the results are arrays (col as (..., 3)). split=False is the material before the texture loop (ageK)."""
+    import numpy as np
     r, g, b = col
     if split:
         k = chalk_k(age, care, wear_x)
@@ -67,19 +71,26 @@ def gelcoat(col, rough, coat, age, care, up=0.0, sun=1.0, wear_x=0.0, split=True
     else:
         k = age_k(age, care, wear_x)
         t = 0.0
+    up = np.asarray(up, dtype=float)
     ox = saturate(max(wear_x, k) * sun) * (0.55 + 0.45 * up)
+    if split and blot is not None and age >= 0.0:
+        ox = np.clip(ox * (BLOT[0] + BLOT[1] * np.asarray(blot, dtype=float)), 0.0, 1.0)
+    ox = np.asarray(ox, dtype=float)
     lum = 0.3 * r + 0.59 * g + 0.11 * b
     dark = saturate(1.0 - lum * 2.5)
-    pale = [(lum * 0.5 + c * 0.5) * 1.02 for c in (0.82, 0.80, 0.74)]
-    deep = [c * 1.25 + lum * 0.35 + 0.01 for c in (r, g, b)]
-    chalk = [p + (d - p) * dark for p, d in zip(pale, deep)]
-    out = [c + (h - c) * 0.4 * ox for c, h in zip((r, g, b), chalk)]
-    white = saturate((min(r, g, b) - 0.45) * 4.0)
+    pale = np.array([(lum * 0.5 + c * 0.5) * 1.02 for c in (0.82, 0.80, 0.74)])
+    deep = np.array([c * 1.25 + lum * 0.35 + 0.01 for c in (r, g, b)])
+    chalk = pale + (deep - pale) * dark
+    base = np.array([r, g, b], dtype=float)
+    out = base + (chalk - base) * (0.4 * ox)[..., None]
+    white = np.clip((out.min(-1) - 0.45) * 4.0, 0.0, 1.0)
     yk = t * white * saturate(sun) * (1.0 if age >= 0.0 else 0.0)
-    out = [c * (1.0 + (y - 1.0) * yk) for c, y in zip(out, YELLOW)]
+    out = out * (1.0 + (np.array(YELLOW) - 1.0) * np.asarray(yk)[..., None])
     rough = rough + (0.72 - rough) * ox
     coat = coat * (1.0 - 0.85 * ox)
-    return tuple(out), rough, coat
+    if out.ndim == 1:
+        return tuple(float(x) for x in out), float(rough), float(coat)
+    return out, rough, coat
 
 
 def grime(age, care, wear_x=0.0, split=True):

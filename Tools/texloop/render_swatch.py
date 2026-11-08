@@ -4,7 +4,8 @@
 
 No Blender: a small image-based-lighting renderer in numpy, the same split-sum shading the engine uses (diffuse from
 the sky's irradiance, a prefiltered sky reflection per roughness, a 0.05 clear-coat lobe), under one neutral CC0 sky
-(Poly Haven's kloofendal_overcast, 1k HDR, fetched to the git-ignored Data/Reference/raw/textures/_env/). The swatch
+(Poly Haven's abandoned_slipway: overcast, with water and a slipway for the gloss to reflect; 1k HDR, fetched to the
+git-ignored Data/Reference/raw/textures/_env/). The swatch
 is a 1.2 m piece of white topsides and side deck seen from 1.5 m: deck on top (faces the sky), a rounded sheer, then
 the topsides curving away. An 18% grey card at the right is the neutral box measure.py balances on.
 
@@ -24,8 +25,8 @@ import wear
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
-ENV = os.path.join(REPO, "Data", "Reference", "raw", "textures", "_env", "kloofendal_overcast_1k.hdr")
-ENV_URL = "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_overcast_1k.hdr"
+ENV_DIR = os.path.join(REPO, "Data", "Reference", "raw", "textures", "_env")
+SKY = "abandoned_slipway"   # Poly Haven, CC0: overcast, water and a slipway to reflect (kloofendal_overcast: open field)
 DETAIL = os.path.join(REPO, "Inputs", "boat-detail")
 
 # ------------------------------------------------------------------ the sky
@@ -57,12 +58,13 @@ def read_hdr(path):
     return (out[..., :3] * scale[..., None]).astype(np.float32)
 
 
-def load_env():
-    if not os.path.exists(ENV):
+def load_env(name=SKY):
+    path = os.path.join(ENV_DIR, name + "_1k.hdr")
+    if not os.path.exists(path):
         import urllib.request
-        os.makedirs(os.path.dirname(ENV), exist_ok=True)
-        urllib.request.urlretrieve(ENV_URL, ENV)
-    return read_hdr(ENV)
+        os.makedirs(ENV_DIR, exist_ok=True)
+        urllib.request.urlretrieve("https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/%s_1k.hdr" % name, path)
+    return read_hdr(path)
 
 
 def dirs_of(h, w):
@@ -79,8 +81,7 @@ class Sky:
     def __init__(self, env):
         self.levels = {}
         self.src = []
-        for w in (256, 128, 64, 32):
-            img = Image.fromarray(np.zeros((1, 1), np.uint8))  # noqa: F841 (Pillow can't resize float RGB: do it by area)
+        for w in (256, 128, 64, 32):   # box-filtered copies (Pillow can't resize float RGB)
             fy, fx = env.shape[0] // (w // 2), env.shape[1] // w
             small = env[:fy * (w // 2), :fx * w].reshape(w // 2, fy, w, fx, 3).mean((1, 3))
             d, sw = dirs_of(w // 2, w)
@@ -91,10 +92,13 @@ class Sky:
         key = round(power, 1)
         if key in self.cache:
             return self.cache[key]
-        # a coarser source for a wider lobe
-        small, d, sw = self.src[0 if power > 2000 else 1 if power > 200 else 2 if power > 20 else 3]
+        if power > 5000:          # near-mirror: the sky itself at 256 x 128 (about 1.4 degrees a texel)
+            self.cache[key] = self.src[0][0]
+            return self.src[0][0]
+        # a coarser source and target for a wider lobe
+        small, d, sw = self.src[1 if power > 200 else 2 if power > 20 else 3]
         h, w = small.shape[:2]
-        tw, th = (64, 32)
+        tw, th = (128, 64) if power > 200 else (64, 32)
         dt, _ = dirs_of(th, tw)
         flat_d = d.reshape(-1, 3)
         rad = (small * sw[..., None]).reshape(-1, 3)
@@ -218,14 +222,14 @@ def gelcoat_maps(g, age, care, split=True, base=(0.80, 0.80, 0.77), rough0=0.22,
     lp, n, up = g["lp"], g["n"], g["up"]
     h, w = up.shape
     zcm = lp[..., 2]
-    col = np.empty((h, w, 3)); rough = np.empty((h, w)); coat = np.empty((h, w))
-    # wear.gelcoat is per colour; the inputs are uniform but `up` varies: evaluate on a small table of up values
-    ups = np.linspace(0, 1, 11)
-    tab = [wear.gelcoat(base, rough0, 1.0, age, care, up=u, sun=sun, split=split) for u in ups]
-    idx = np.clip(np.round(up * 10).astype(int), 0, 10)
-    for i, (c, r, k) in enumerate(tab):
-        m = idx == i
-        col[m] = c; rough[m] = r; coat[m] = k
+    # the 40 cm chalk blotches (round 2): M_BoatSurface's bq noise
+    bx, by = lp[..., 0] / 40.0 + lp[..., 1] / 55.0, lp[..., 2] / 40.0 + lp[..., 1] / 55.0
+    ix, iy = np.floor(bx), np.floor(by)
+    fx, fy = bx - ix, by - iy
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+    blot = (hash2(ix, iy) * (1 - fx) + hash2(ix + 1, iy) * fx) * (1 - fy) + (hash2(ix, iy + 1) * (1 - fx) + hash2(ix + 1, iy + 1) * fx) * fy
+    col, rough, coat = wear.gelcoat(base, rough0, 1.0, age, care, up=up, sun=sun, split=split, blot=blot)
+    rough = np.broadcast_to(rough, up.shape).copy(); coat = np.broadcast_to(coat, up.shape).copy()
     vn = value_noise(lp)
     # grime on the deck (deckish: up-facing, not the hull)
     dirt = wear.grime(age, care, split=split)
@@ -244,15 +248,15 @@ def gelcoat_maps(g, age, care, split=True, base=(0.80, 0.80, 0.77), rough0=0.22,
         fx, fz = csx - cx - 0.5, (csz - cz - 0.5) * 1.8
         smudge = 1 - np.clip((np.hypot(fx, fz) - 0.12) / 0.33, 0, 1)
         band = np.clip((zcm - 25) / 15, 0, 1) * (1 - np.clip((zcm - 70) / 25, 0, 1))
-        scuff = 0.7 * t * side * band * (patch > 0.82) * smudge
+        scuff = 0.7 * min(4.0 * t, 1.0) * side * band * (patch > 0.82) * smudge
         col = col + (col * 0.78 + 0.01 - col) * scuff[..., None]
     # black streaks under the sheer (after: dirtK; before: 0.25 + 0.9 wear.y, wear.y = 0 on a seeded boat)
     k = 1.15 * wear.dirt_k(age, care) if split else 0.25
     sx = lp[..., 0] / 6.0
     sh = hash2(np.floor(sx), 0, 57.31, 0); sh2 = hash2(np.floor(sx) * 13.7 / 57.31 + 3.0 / 57.31, 0, 57.31, 0)
-    sw = np.exp(-((sx - np.floor(sx) - 0.5) * (5 + 10 * sh2)) ** 2)
+    sw = np.exp(-((sx - np.floor(sx) - 0.5) * ((2.5 + 5 * sh2) if split else (5 + 10 * sh2))) ** 2)
     slen = 25 + 70 * sh; stop = 55 + 70 * sh2
-    blk = side * (sh > 0.45) * sw * np.clip((zcm - (stop - slen)) / slen, 0, 1) * np.clip((stop + 15 - zcm) / 20, 0, 1)
+    blk = side * (sh > ((0.85 - 0.5 * wear.dirt_k(age, care)) if split else 0.45)) * sw * np.clip((zcm - (stop - slen)) / slen, 0, 1) * np.clip((stop + 15 - zcm) / 20, 0, 1)
     col = col + (col * np.array([0.62, 0.61, 0.58]) - col) * np.clip(blk * k, 0, 1)[..., None]
     # large faint tone differences (+-3%)
     tone = hash2(np.floor(lp[..., 0] / 160), np.floor(lp[..., 2] / 160))
@@ -322,8 +326,9 @@ def main():
     ap.add_argument("--before", action="store_true")
     ap.add_argument("--out", default=os.path.join(REPO, "Artifacts", "texloop"))
     ap.add_argument("--size", type=int, default=900)
+    ap.add_argument("--sky", default=SKY, help="a Poly Haven HDRI name (CC0), fetched at 1k")
     a = ap.parse_args()
-    sky = Sky(load_env())
+    sky = Sky(load_env(a.sky))
     tag = "before" if a.before else "after"
     out = os.path.join(a.out, a.surface, tag)
     os.makedirs(out, exist_ok=True)

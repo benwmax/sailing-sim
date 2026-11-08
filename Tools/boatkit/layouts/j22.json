@@ -85,14 +85,14 @@
    }
   },
   {
-   "kit": "Winch16",
+   "kit": "WinchPlain",
    "mirror": true,
    "pos": [
     -0.43,
     -0.74,
     1.4
    ],
-   "note": "Cabin-top aft outboard corner, as in IMG_9224 and IMG_9272 (the hero carries the same kit winch there since boat kit phase 2)"
+   "note": "Cabin-top aft outboard corner, as in IMG_9224 and IMG_9272 (the hero carries the same kit winch there since boat kit phase 2); a size 6 plain-top, the halyard winch the J/22 class layouts list"
   },
   {
    "kit": "CamRiser",

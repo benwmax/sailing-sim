@@ -8,7 +8,7 @@ beam 2.44 m, draft 1.16 m, I = 7.56 m, mast at x = 0.65 (the class's J of 8.8 ft
 the dock photo match pointed the same way, docs/boatkit-2). Deck layout and hardware follow Bean's lesson photos of
 TX 7295 EC (Rush Creek, Oct 2026): open bow with no pulpits or lifelines, teak toe rails and coaming caps, cam
 cleats with fairleads on the coaming faces, jib tracks and winches on the cabin top (inboard leads; the boat kit's
-JibTrack and Winch16, Tools/boatkit), one chainplate a side carrying both shrouds, traveler on the cockpit
+JibTrack and WinchPlain, Tools/boatkit), one chainplate a side carrying both shrouds, traveler on the cockpit
 floor, transom-hung rudder, varnished tiller with extension, outboard bracket on the port quarter, split backstay.
 Dimensions that the photos and published numbers do not fix are marked GUESS and are what the club measurements
 will replace.
@@ -547,8 +547,9 @@ def build_hardware():
         parts += D.cam_cleat(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
         parts += kit_part(f"JibTrack_{side}", "JibTrack", (JIB_TRACK_X, side * (half_beam(JIB_TRACK_X) - 0.11)),
                           surface=lambda x, y: deck_z(x, y) - 0.002, length=0.60)
-        # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6; photos IMG_9224 and IMG_9272)
-        parts += kit_part(f"Winch_{side}", "Winch16", (CABIN_AFT + 0.12, side * 0.74), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
+        # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6, a size 6 plain-top; photos
+        # IMG_9224 and IMG_9272)
+        parts += kit_part(f"Winch_{side}", "WinchPlain", (CABIN_AFT + 0.12, side * 0.74), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
         # one chainplate a side on the side deck, upper shroud on its aft hole and lower on its forward one (photos)
         xc = CHAINPLATE_X
         yc = half_beam(xc) - 0.09

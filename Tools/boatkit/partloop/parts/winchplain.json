@@ -1,0 +1,120 @@
+{
+ "part": "WinchPlain",
+ "card": {
+  "what": "Plain-top (non-self-tailing) winch, size 6: the self-tailer's turned base, bell and drum (with fine grip ribs), a black flange where the drum's top flares out to stop the line, the same glossy black sloped cap with the handle socket set down in it. Size 16 (standard two-speed) and 8 options",
+  "boats": "J/22 cabin-top halyard winches (size 6, the size retailers list for the J/22); Catalina 22 jib sheet winches (size 16 plain-tops, the class's usual primaries)",
+  "distance": "arm's reach in the cockpit",
+  "before": "Winch16's plain build from round 1 of this PR (a black base disc, a plain drum, a flat black top with a raised socket): 90 mm base, 82 mm tall"
+ },
+ "references": [
+  {
+   "id": "b6",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "size 6 plain-top classic winch retailer tables (defender.com, upffront.com, westcoastsailing.net, listed for the J/22): base 90 mm, drum 60 mm, height 82 mm, line entry 33 mm"
+  },
+  {
+   "id": "p16",
+   "kind": "catalogue",
+   "use": "sizes for size 16",
+   "url": "size 16 two-speed standard (plain-top) winch listings (mauripro.com, asap-supplies.com): base 120 mm, height 112 mm"
+  },
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the family look (base, bell, drum, cap and socket) from Bean's self-tailer photo; no plain-top photo yet",
+   "url": "Bean's upload in the winch thread, Nov 8 2026 (measuring only)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Base diameter, seen from the side",
+   "target": 90.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 90 mm base"
+  },
+  {
+   "id": "width",
+   "name": "Base diameter, seen end-on",
+   "target": 90.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 90 mm base"
+  },
+  {
+   "id": "height",
+   "name": "Height off the deck",
+   "target": 82.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 82 mm"
+  },
+  {
+   "id": "aspect_full",
+   "name": "Height / base diameter",
+   "target": 0.911,
+   "unit": "ratio",
+   "tol": 0.05,
+   "source": "catalogue 82 / 90"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "base",
+   "text": "Round base with a straight side, a fine plinth line and a soft shoulder; no screws showing",
+   "objects": [
+    "drum"
+   ],
+   "manual": true
+  },
+  {
+   "id": "bell",
+   "text": "A concave bell from the base up into the drum",
+   "manual": true
+  },
+  {
+   "id": "drum",
+   "text": "A drum with fine vertical grip ribs, flaring at its top",
+   "manual": true
+  },
+  {
+   "id": "flange",
+   "text": "A black flange wider than the drum where the line stops, with moulded lettering (made-up TERNWAY)",
+   "objects": [
+    "flange",
+    "lettering"
+   ],
+   "manual": true
+  },
+  {
+   "id": "socket",
+   "text": "A polished star-hole handle socket set down in a black sloped cap",
+   "objects": [
+    "socket"
+   ],
+   "manual": true
+  },
+  {
+   "id": "plain",
+   "text": "No self-tailing jaws or stripper arm: plainly a plain-top",
+   "manual": true
+  },
+  {
+   "id": "finish",
+   "text": "Metal base and drum, black flange and cap, stainless socket",
+   "slots": [
+    "Aluminium",
+    "BlackPlastic",
+    "Stainless"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 9000,
+  "slots": 8,
+  "note": "a small part on small boats: the J/22 carries two, the Catalina 22 two"
+ }
+}
