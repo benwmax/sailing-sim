@@ -5,6 +5,7 @@
 # flow reaches is checked (Expect:<screen>) and shot (Shot:<name>, the window with its UI). Fails naming the first screen
 # that did not appear.
 # Usage: scripts/nightly/playthrough.sh <SailingSim.app> <out dir>    (or --self-test: the log check on stand-in logs)
+#   PLAYTHROUGH_FLOWS="keys" runs one input only (dry runs).
 set -u
 # One lesson from its loading screen: the lesson ended by Finish:<outcome>, its medal screen, the quiz answered right
 # (Answer:all, through the quiz's own buttons), the score, then Enter on the score's first way (the next lesson).
@@ -77,12 +78,15 @@ B=$(mktemp -d); mkdir -p "$SV/Config" "$SV/SaveGames"; cp -Rp "$SV/Config" "$B/C
 restore() { rm -rf "$SV/Config" "$SV/SaveGames"; cp -Rp "$B/Config" "$SV/Config"; cp -Rp "$B/SaveGames" "$SV/SaveGames"; }
 trap 'restore; rm -rf "$B"' EXIT
 RC=0
-for F in keys pad; do
+# Two minutes a stage (a lesson's loading, sailing and quiz take about one), plus a minute to start.
+STAGES=$(echo "${FLOW_STEPS[*]}" | grep -o "Stage:" | wc -l | tr -d ' ')
+LIMIT=$(( 60 + 120 * STAGES ))
+for F in ${PLAYTHROUGH_FLOWS:-keys pad}; do
 	rm -rf "$SV/Config" "$SV/SaveGames" "$SV/Bench/pt-$F-"*.png; mkdir -p "$SV/SaveGames"
 	open -n -a "$APP" --args -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingNoGpuSlices -SailingSlice=1 \
 		-SailingSave=SaveGames/playthrough.json "-SailingUIScript=$(flow $F)"
 	sleep 5
-	for ((i = 0; i < 300; i++)); do pgrep -qf "SailingSim.app/Contents/MacOS/SailingSim" || break; sleep 1; done
+	for ((i = 0; i < LIMIT; i++)); do pgrep -qf "SailingSim.app/Contents/MacOS/SailingSim" || break; sleep 1; done
 	if pgrep -qf "SailingSim.app/Contents/MacOS/SailingSim"; then osascript -e 'quit app "SailingSim"' 2>/dev/null; sleep 8; fi
 	cp "$SV/Bench/pt-$F-"*.png "$OUT/" 2>/dev/null; cp "$LOGF" "$OUT/$F.log" 2>/dev/null
 	R=$(check "$OUT/$F.log") || RC=1
