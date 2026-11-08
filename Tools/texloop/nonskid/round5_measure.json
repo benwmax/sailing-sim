@@ -1,29 +1,29 @@
 {
  "pigment_linear": [
-  0.7764,
-  0.7077,
-  0.5781
+  0.7482,
+  0.6819,
+  0.5571
  ],
  "before_L0": {
   "close": {
    "lab": [
-    72.9,
+    75.9,
     -0.4,
-    8.2
+    8.5
    ],
-   "L_std": 3.1,
+   "L_std": 1.5,
    "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    73.3,
+    76.3,
     -0.4,
-    8.3
+    8.6
    ],
-   "L_std": 0.9,
+   "L_std": 0.5,
    "dark_cover": 0.0
   },
-  "dE_swatch": 10.8,
+  "dE_swatch": 7.8,
   "time_k": 0.0,
   "dirt_k": 0.0,
   "age_k_today": 0.0
@@ -31,119 +31,119 @@
  "before_L1": {
   "close": {
    "lab": [
-    72.8,
+    75.8,
     -0.4,
-    8.2
+    8.5
    ],
-   "L_std": 3.1,
+   "L_std": 1.5,
    "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    73.2,
+    76.2,
     -0.4,
-    8.3
+    8.6
    ],
-   "L_std": 0.9,
+   "L_std": 0.5,
    "dark_cover": 0.0
   },
-  "dE_swatch": 9.4,
-  "time_k": 0.12,
-  "dirt_k": 0.046,
+  "dE_swatch": 6.4,
+  "time_k": 0.095,
+  "dirt_k": 0.061,
   "age_k_today": 0.007
  },
  "before_L2": {
   "close": {
    "lab": [
-    70.5,
+    73.5,
     -0.4,
-    8.0
+    8.3
    ],
-   "L_std": 3.4,
+   "L_std": 1.8,
    "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    71.1,
+    74.1,
     -0.4,
-    8.1
+    8.3
    ],
-   "L_std": 1.0,
+   "L_std": 0.6,
    "dark_cover": 0.0
   },
-  "dE_swatch": 6.7,
-  "time_k": 0.4,
-  "dirt_k": 0.431,
+  "dE_swatch": 4.1,
+  "time_k": 0.463,
+  "dirt_k": 0.574,
   "age_k_today": 0.21
  },
  "before_L3": {
   "close": {
    "lab": [
-    69.0,
+    72.0,
     -0.4,
-    7.8
+    8.1
    ],
-   "L_std": 3.5,
+   "L_std": 2.0,
    "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    69.7,
+    72.6,
     -0.4,
-    7.9
+    8.1
    ],
-   "L_std": 1.0,
+   "L_std": 0.7,
    "dark_cover": 0.0
   },
-  "dE_swatch": 12.1,
-  "time_k": 1.0,
+  "dE_swatch": 9.3,
+  "time_k": 0.858,
   "dirt_k": 0.235,
   "age_k_today": 0.46
  },
  "before_L4": {
   "close": {
    "lab": [
-    64.2,
-    -0.3,
-    7.3
+    67.0,
+    -0.4,
+    7.6
    ],
-   "L_std": 4.2,
-   "dark_cover": 0.014
+   "L_std": 2.8,
+   "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    65.3,
+    68.0,
     -0.4,
-    7.4
+    7.7
    ],
-   "L_std": 1.6,
+   "L_std": 1.4,
    "dark_cover": 0.0
   },
-  "dE_swatch": 2.0,
-  "time_k": 0.75,
+  "dE_swatch": 4.4,
+  "time_k": 0.753,
   "dirt_k": 0.915,
   "age_k_today": 0.94
  },
  "after_L0": {
   "close": {
    "lab": [
-    83.1,
+    83.2,
     0.0,
     9.9
    ],
-   "L_std": 3.0,
+   "L_std": 3.2,
    "dark_cover": 0.0
   },
   "swatch": {
    "lab": [
-    84.0,
+    83.9,
     0.0,
     10.0
    ],
-   "L_std": 1.3,
+   "L_std": 1.4,
    "dark_cover": 0.0
   },
-  "dE_swatch": 0.0,
+  "dE_swatch": 0.1,
   "time_k": 0.0,
   "dirt_k": 0.0,
   "age_k_today": 0.0
@@ -151,96 +151,96 @@
  "after_L1": {
   "close": {
    "lab": [
-    81.7,
+    81.4,
     -0.0,
-    9.9
+    9.8
    ],
-   "L_std": 4.4,
-   "dark_cover": 0.01
+   "L_std": 4.5,
+   "dark_cover": 0.012
   },
   "swatch": {
    "lab": [
-    82.5,
+    82.2,
     -0.0,
-    10.0
+    9.9
    ],
-   "L_std": 2.3,
-   "dark_cover": 0.014
+   "L_std": 2.5,
+   "dark_cover": 0.018
   },
   "dE_swatch": 0.5,
-  "time_k": 0.12,
-  "dirt_k": 0.046,
+  "time_k": 0.095,
+  "dirt_k": 0.061,
   "age_k_today": 0.007
  },
  "after_L2": {
   "close": {
    "lab": [
-    75.9,
+    71.7,
     -0.1,
-    9.4
+    8.6
    ],
-   "L_std": 8.0,
-   "dark_cover": 0.231
+   "L_std": 8.7,
+   "dark_cover": 0.232
   },
   "swatch": {
    "lab": [
-    77.3,
+    73.9,
     -0.1,
-    9.5
+    9.0
    ],
-   "L_std": 5.3,
-   "dark_cover": 0.13
+   "L_std": 6.3,
+   "dark_cover": 0.205
   },
-  "dE_swatch": 3.5,
-  "time_k": 0.4,
-  "dirt_k": 0.431,
+  "dE_swatch": 4.7,
+  "time_k": 0.463,
+  "dirt_k": 0.574,
   "age_k_today": 0.21
  },
  "after_L3": {
   "close": {
    "lab": [
-    79.4,
+    79.1,
     -0.1,
-    10.8
+    10.5
    ],
-   "L_std": 6.8,
-   "dark_cover": 0.219
+   "L_std": 6.5,
+   "dark_cover": 0.203
   },
   "swatch": {
    "lab": [
-    80.4,
+    80.3,
     -0.1,
-    10.9
+    10.7
    ],
-   "L_std": 4.1,
-   "dark_cover": 0.066
+   "L_std": 3.7,
+   "dark_cover": 0.054
   },
-  "dE_swatch": 1.4,
-  "time_k": 1.0,
+  "dE_swatch": 1.6,
+  "time_k": 0.858,
   "dirt_k": 0.235,
   "age_k_today": 0.46
  },
  "after_L4": {
   "close": {
    "lab": [
-    65.3,
+    65.0,
     -0.2,
-    7.7
+    7.6
    ],
-   "L_std": 12.5,
-   "dark_cover": 0.307
+   "L_std": 11.6,
+   "dark_cover": 0.297
   },
   "swatch": {
    "lab": [
-    68.1,
+    68.4,
     -0.2,
-    8.3
+    8.2
    ],
-   "L_std": 9.3,
-   "dark_cover": 0.298
+   "L_std": 8.4,
+   "dark_cover": 0.266
   },
-  "dE_swatch": 4.7,
-  "time_k": 0.75,
+  "dE_swatch": 4.9,
+  "time_k": 0.753,
   "dirt_k": 0.915,
   "age_k_today": 0.94
  }

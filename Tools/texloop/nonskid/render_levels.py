@@ -26,26 +26,28 @@ BEFORE = ARGS[ARGS.index("--before") + 1] if "--before" in ARGS else None
 REFS = json.load(open(os.path.join(ROOT, "Tools", "texloop", "refs", "nonskid.json")))
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
 TILE_MM = 100.0
-C_NONSKID = np.array([0.56, 0.52, 0.43])          # MI_Boat_NonSkid's colour (make_materials.py BOAT_MATERIALS)
+C_NONSKID = np.array([0.56, 0.52, 0.43])          # MI_Boat_NonSkid's colour before the texture loop (BOAT_LIBRARY)
 
 
 # ------------------------------------------------------------------ wear numbers
-def time_k(age):
-    """Provisional Time (care can't undo it); replaced by Tools/texloop/wear.py when the shared PR lands."""
-    return min(1.0, 0.25 * (1 - math.exp(-age / 0.5)) + 0.75 * min(age / 30.0, 1.0))
+sys.path.insert(0, os.path.join(ROOT, "Tools", "texloop"))
+import wear  # noqa: E402  (Tools/texloop/wear.py: the same formulas as BOAT_CODE)
+
+
+def time_k(age, care=1.0):
+    return wear.time_k(age, care)
 
 
 def dirt_k(age, care):
-    """Provisional Dirt (care removes it): mostly (1 - care), quick start in the first months."""
-    return (1 - 0.85 * care) * (1 - math.exp(-age / 0.4)) * min(1.0, 0.35 + age / 15.0)
+    return wear.dirt_k(age, care)
 
 
-def age_k(age, care):                              # today's single number
-    return min(age / 20.0, 1.0) * (1 - 0.6 * care)
+def age_k(age, care):                              # before the split
+    return wear.age_k(age, care)
 
 
-def dirt_today(age, care):                         # today's grime weight
-    return min(1.0, 0.15 + age / 18.0) * (1 - 0.65 * care)
+def dirt_today(age, care):                         # the grime weight before the split
+    return wear.grime(age, care, split=False)
 
 
 # ------------------------------------------------------------------ helpers
@@ -143,29 +145,37 @@ def pigment_from_target():
     return np.clip(m @ xyz, 0, 1)
 
 
-def shade_after(M, vn, scuff, spk, spk2, age, care):
-    """Albedo and roughness of the new non-skid lines (mirrors BOAT_CODE surf == 2 and the grime line)."""
+def shade_after(M, vn, scuff, spk, spk2, age, care, detail=True):
+    """Albedo and roughness of M_BoatSurface's non-skid after the texture loop: the same steps, in the same order, as
+    BOAT_CODE (shared grime line, the non-skid block after it, then the surf == 2 detail branch)."""
     tk, dk = time_k(age), dirt_k(age, care)
-    cav, polish = M[..., 0:1], M[..., 1:2]
-    col = AFTER["pigment"] * (1 + (np.array(AFTER["yellow"]) - 1) * 0.5 * tk)
-    # blotches where feet and water go: the shader's grime noise, wider and darker as Dirt grows
-    # plus a fine scuff mottle (1.5 cm) that only shows where the blotches are
-    blot = np.clip((vn[..., None] - 0.60 + 0.22 * dk) * 3.0, 0, 1) * smoothstep(0.2, 0.6, dk)
-    blot = blot * (0.35 + 1.3 * scuff[..., None])
-    col = col + (np.array(AFTER["dirt_col"]) - col) * np.clip((0.3 + 0.45 * dk) * blot, 0, 1)
-    # dust and grime packed in the grooves (cavity R: 0 deep in a groove)
-    groove = (1 - cav) * min(1.0, math.sqrt(dk))
-    col = col + (np.array(AFTER["dirt_col"]) - col) * 0.55 * groove
-    # Time polishes the rib tops: the grime wears off them and they go a touch lighter and smoother
-    top = polish * min(1.0, tk * 1.5)
-    col = col * (1 + 0.05 * top) - (col - AFTER["pigment"]) * 0.5 * top
-    # grit: dark specks of packed dirt (0.5-2 mm) caught in the grooves, more as Dirt grows
-    grit = (spk2[..., None] > 1 - 0.30 * dk) * (1 - cav * 0.6)
-    col = col + (np.array(AFTER["grit_col"]) - col) * 0.6 * grit
-    # neglect: black mildew specks in the grooves
-    mil = (spk[..., None] > 1 - 0.12 * max(0.0, dk * 2.2 - 1.2)) * (1 - cav)
-    col = col + (np.array(AFTER["mildew_col"]) - col) * 0.85 * mil
-    rough = np.clip(0.6 + 0.2 * dk * (1 - cav[..., 0]) + 0.1 * blot[..., 0] - 0.18 * top[..., 0], 0, 1)
+    pig = AFTER["pigment"]
+    dcol = np.array(AFTER["dirt_col"])
+    col = np.broadcast_to(pig, M.shape[:2] + (3,)).copy()
+    # shared grime (deckish 1, NonSkid 1), then the faint mottle
+    grime = np.clip(vn * 1.8 - 0.6, 0, 1)[..., None] * dk
+    col = col + (col * 0.76 + np.array([0.014, 0.011, 0.007]) - col) * grime
+    rough = 0.66 + (min(0.66 + 0.18, 0.9) - 0.66) * grime[..., 0]
+    col = col * (1 + 0.05 * (vn[..., None] - 0.5))
+    # non-skid block: yellowing, blotches with the scuff mottle, Medium's even dust
+    col = col * (1 + (np.array(AFTER["yellow"]) - 1) * 0.5 * tk)
+    blot = (np.clip((vn - 0.60 + 0.22 * dk) * 3.0, 0, 1) * smoothstep(0.2, 0.6, dk) * (0.35 + 1.3 * scuff))[..., None]
+    col = col + (dcol - col) * np.clip((0.3 + 0.45 * dk) * blot, 0, 1)
+    if not detail:
+        col = col + (dcol - col) * 0.55 * math.sqrt(dk) * 0.35
+    rough = rough + (np.minimum(rough + 0.1, 0.9) - rough) * blot[..., 0]
+    if detail:                                     # surf == 2 detail branch (fadeD 1 at these distances)
+        mr, mg = M[..., 0:1], M[..., 1:2]
+        cav = 1 - mr
+        col = col * (0.80 + 0.24 * mr)
+        col = col + (dcol - col) * 0.55 * math.sqrt(dk) * cav
+        grit = (spk2[..., None] > 1 - 0.30 * dk) * (1 - 0.6 * mr)
+        col = col + (np.array(AFTER["grit_col"]) - col) * 0.6 * grit
+        mil = (spk[..., None] > 1 - 0.12 * max(0.0, min(1.0, dk * 2.2 - 1.2))) * cav
+        col = col + (np.array(AFTER["mildew_col"]) - col) * 0.85 * mil
+        top = mg * min(1.0, tk * 1.5)
+        col = col + ((col + pig) * 0.5 * 1.05 - col) * top
+        rough = np.clip(rough + 0.12 * cav[..., 0] - 0.15 * mg[..., 0] + 0.2 * dk * cav[..., 0] - 0.18 * top[..., 0], 0, 1)
     return col, rough
 
 
@@ -194,7 +204,7 @@ def diamond8_normal(size_px, ppm):
 def light(nrm, cav, rough, sun):
     """Overcast: sky over the hemisphere with the grooves occluded. Sun: 20 degrees up, plus sky fill."""
     nz = np.clip(nrm[..., 2], 0, 1)
-    ao = 0.78 + 0.22 * cav
+    ao = 1.0                    # the game has no AO at this scale; the albedo carries the grooves' shade
     if not sun:
         return (0.55 + 0.45 * nz) * ao
     s = np.array([math.cos(math.radians(20)) * math.cos(math.radians(225)), math.cos(math.radians(20)) * math.sin(math.radians(225)), math.sin(math.radians(20))])
@@ -218,7 +228,7 @@ def render(level, ppm, size_px, maps, before=False, sun=False, seed=7):
         spk = hash2(np.floor(X * 10 / 1.2), np.floor(Y * 10 / 1.2), (19.3, 47.9))   # 1.2 mm speckle cells
         scuff = value_noise1(X / 1.5 + 11.0, Y / 1.5)            # one octave, 1.5 cm: scuff trails
         scuff = np.clip((scuff - 0.5) * 1.6 + 0.5, 0, 1)
-        spk2 = hash2(np.floor(X * 10 / 0.9) + 3.0, np.floor(Y * 10 / 0.9), (27.1, 61.7))  # 0.9 mm grit cells
+        spk2 = hash2(np.floor(X * 10 / 0.9), np.floor(Y * 10 / 0.9), (27.1, 61.7))  # 0.9 mm grit cells
         col, rough = shade_after(Ms, vn, scuff, spk, spk2, age, care)
     nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
     lit = col * light(nrm, Ms[..., 0], rough, sun)[..., None]
