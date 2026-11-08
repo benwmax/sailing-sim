@@ -1351,7 +1351,22 @@ else if (surf == 8)     // rubber and soft PVC: UV bloom, a grey chalky skin
     col = lerp(col, col + 0.05, ageK);
     rough = lerp(rough, 0.85, ageK);
 }
-else if (surf >= 9)     // rope, sailcloth, canvas: dingy, and on a neglected boat specks of mildew
+else if (surf == 9)     // rope (texture loop, docs/texture-loop/rope.md; as M_RigRope): timeK and dirtK at the rope's own
+{                       // age (kept boats replace their lines): sun fade, grime in the weave, mildew and a grey-green film
+    float cr = saturate(care);
+    float ra = age >= 0.0 ? min(age, 3.0 + 12.0 * (1.0 - cr)) : 0.0;
+    float rT = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-ra / 0.75)) + 0.75 * (1.0 - exp(-ra / 18.0))) : timeK;
+    float rD = age >= 0.0 ? saturate((1.0 - exp(-ra)) * (0.15 + 0.85 * (1.0 - cr))) : dirtK;
+    float lumR = dot(col, float3(0.2126, 0.7152, 0.0722));
+    col = lerp(col, saturate(lumR * 0.75 + 0.12) * float3(1.0, 0.985, 0.94), 0.55 * saturate(0.35 * rT + 0.1 * rD));
+    col = lerp(col, col * float3(0.52, 0.50, 0.45) + float3(0.012, 0.011, 0.008), saturate(0.8 * rD * (0.75 + 0.5 * vn)));
+    rough = lerp(rough, 0.85, saturate(0.45 * rT + 0.75 * rD) * 0.4);
+    float milK = max((rD - 0.6) / 0.4, 0.0) * (1.0 - cr);
+    float milCell = frac(sin(dot(floor(LP.xz / 0.6), float2(19.3, 47.9))) * 4375.5);
+    col = lerp(col, float3(0.035, 0.040, 0.028), 0.6 * milK * step(0.9, milCell) * saturate(vn * 2.5 - 1.0));
+    col = lerp(col, float3(0.19, 0.20, 0.16), 0.45 * milK);
+}
+else if (surf >= 9)     // sailcloth, canvas: dingy, and on a neglected boat specks of mildew
 {
     col = lerp(col, col * 0.8 + float3(0.035, 0.033, 0.026), ageK);
     float milCell = frac(sin(dot(floor(LP.xz / 0.6), float2(19.3, 47.9))) * 4375.5);

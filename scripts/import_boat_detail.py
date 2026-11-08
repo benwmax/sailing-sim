@@ -103,19 +103,62 @@ float3 tracer = pow(Texture2DSample(Lut, LutSampler, float2(u, 0.375)).rgb, 2.2)
 float3 pattern = Texture2DSample(Lut, LutSampler, float2(u, 0.625)).rgb;
 float mask = dot(pattern, m.gba);
 float3 c = lerp(base, tracer, mask);
-c = lerp(c, float3(0.62, 0.60, 0.55), 0.3 * Fade);             // sun fade toward chalky grey
 float deep = 1.0 - m.r;
-c = lerp(c, float3(0.11, 0.095, 0.07), saturate((deep * 1.2 + 0.3) * Dirt * 0.35));
+// Texture loop (docs/texture-loop/rope.md): wear from the boat's Age (years) and Care (0 neglected .. 1 kept), split into
+// time (sun fade: care can't undo it) and dirt (grime, fuzz, mildew: care removes it). Rope is a consumable: a kept boat
+// replaces her lines every few seasons, so the rope's own age is capped by care. Age < 0 (unset): the old look from the
+// Fade and Dirt parameters. Tools/rope/rope_wear.py is this code's numpy twin: change one, change the other.
+float fuzz = 0.4 * Fade;
+if (Age >= 0.0)
+{
+    float cr = saturate(Care);
+    float ra = min(Age, 3.0 + 12.0 * (1.0 - cr));       // the rope's own age: replaced every 3 years kept, 15 not
+    float tK = saturate(0.25 * (1.0 - exp(-ra / 0.75)) + 0.75 * (1.0 - exp(-ra / 18.0)));    // wear.py time_k
+    float dK = saturate((1.0 - exp(-ra)) * (0.15 + 0.85 * (1.0 - cr)));                        // wear.py dirt_k
+    float fade = saturate(0.35 * tK + 0.1 * dK);      // polyester dyes hold: a club boat's red is still red
+    fuzz = saturate(0.45 * tK + 0.75 * dK);
+    float mildew = max((dK - 0.6) / 0.4, 0.0) * (1.0 - cr);
+    // sun fade: dyes go pale and grey (red toward pink, blue toward slate, white toward ivory grey)
+    float lumR = dot(c, float3(0.2126, 0.7152, 0.0722));
+    c = lerp(c, saturate(lumR * 0.75 + 0.12) * float3(1.0, 0.985, 0.94), 0.55 * fade);
+    // grime: grey-brown in the whole cover, darker in the weave and in patches along the line (cleats, fairleads)
+    float2 pq = float2(UV.x * 0.9, 3.1 * look);
+    float2 pci = floor(pq), pf = frac(pq);
+    pf = pf * pf * (3.0 - 2.0 * pf);
+    float h00 = frac(sin(dot(pci, float2(12.9898, 78.233)) + 1.7) * 43758.5453), h10 = frac(sin(dot(pci + float2(1, 0), float2(12.9898, 78.233)) + 1.7) * 43758.5453);
+    float h01 = frac(sin(dot(pci + float2(0, 1), float2(12.9898, 78.233)) + 1.7) * 43758.5453), h11 = frac(sin(dot(pci + float2(1, 1), float2(12.9898, 78.233)) + 1.7) * 43758.5453);
+    float patch = lerp(lerp(h00, h10, pf.x), lerp(h01, h11, pf.x), pf.y);
+    float2 sq = float2(UV.x * 4.0, UV.y * 2.0 + 7.0 * look);                 // dark smudges a hand or cleat left
+    float2 si = floor(sq), sf = frac(sq);
+    sf = sf * sf * (3.0 - 2.0 * sf);
+    float s00 = frac(sin(dot(si, float2(12.9898, 78.233)) + 2.9) * 43758.5453), s10 = frac(sin(dot(si + float2(1, 0), float2(12.9898, 78.233)) + 2.9) * 43758.5453);
+    float s01 = frac(sin(dot(si + float2(0, 1), float2(12.9898, 78.233)) + 2.9) * 43758.5453), s11 = frac(sin(dot(si + float2(1, 1), float2(12.9898, 78.233)) + 2.9) * 43758.5453);
+    float smudge = saturate(lerp(lerp(s00, s10, sf.x), lerp(s01, s11, sf.x), sf.y) * 2.2 - 1.2);
+    float g = saturate(0.8 * dK * (0.45 + 0.6 * patch + 1.2 * smudge));
+    c = lerp(c, c * float3(0.52, 0.50, 0.45) + float3(0.012, 0.011, 0.008), g);
+    c *= 1.0 - 0.5 * sqrt(0.8 * dK) * deep;                // dirt in the weave first: visible after a few months
+    // mildew: dark grey-green specks in the weave of a neglected line
+    float sp = frac(sin(dot(floor(UV * float2(90.0, 60.0)), float2(12.9898, 78.233)) + 5.3) * 43758.5453);
+    float mil = mildew * step(0.93, sp) * saturate(deep * 2.0);
+    c = lerp(c, float3(0.035, 0.040, 0.028), 0.7 * mil);
+    c = lerp(c, float3(0.19, 0.20, 0.16), 0.45 * mildew);   // a grey-green film over a line left out for years
+}
+else
+{
+    c = lerp(c, float3(0.62, 0.60, 0.55), 0.3 * Fade);             // sun fade toward chalky grey
+    c = lerp(c, float3(0.11, 0.095, 0.07), saturate((deep * 1.2 + 0.3) * Dirt * 0.35));
+}
 // Boat fidelity 4 ("readable at arm's reach"): the yarns inside each carrier, fine streaks along the cover's two helices
 // (S and Z, a lay of U over 5 diameters, 24 carriers round), so a strand reads as twisted fibre and not a smooth ribbon.
 float sS = sin(6.2831853 * (UV.x * 36.0 + UV.y * 48.0)), sZ = sin(6.2831853 * (UV.x * 36.0 - UV.y * 48.0));
 float yarn = 0.5 + 0.5 * lerp(sS, sZ, step(0.5, frac(UV.x * 6.0 + UV.y * 12.0)));
 c *= 0.9 + 0.16 * yarn * (1.0 - deep);
-c = lerp(c, float3(0.023, 0.021, 0.018), deep * 0.62);        // shadow in the weave
+float wearOn = Age >= 0.0 ? 1.0 : 0.0;
+c = lerp(c, float3(0.023, 0.021, 0.018), deep * 0.62 * (1.0 - 0.45 * fuzz * wearOn));   // shadow in the weave (fuzz fills it)
 // Polyester fuzz: loose fibres stand off a used rope and catch the light along its silhouette.
 float rim = pow(1.0 - saturate(abs(dot(normalize(N), normalize(V)))), 3.0);
-c = lerp(c, c * 1.35 + 0.035, rim * (0.25 + 0.35 * Fade));
-Rough = 0.62 + 0.25 * deep - 0.06 * yarn * (1.0 - deep);
+c = lerp(c, c * 1.35 + 0.035, rim * lerp(0.25 + 0.35 * Fade, 0.12 + 0.6 * fuzz, wearOn));
+Rough = lerp(0.62, 0.5 + 0.3 * sqrt(fuzz), wearOn) + 0.25 * deep - 0.06 * yarn * (1.0 - deep);
 // pc/rig-lines ("a lay seen close up"): the cover's carriers as the eye reads them at arm's length, a diamond of S and Z
 // helices at 45 deg, 4 round (U runs 5 diameters, V once round: a period along the rope of 0.8 diameter), the carrier on
 // top alternating at each crossing. Ridged in colour and normal, faded where a carrier falls under about a pixel (its own
@@ -130,8 +173,11 @@ float onS = step(0.5, frac(0.5 * (floor(pS) + floor(pZ))));
 float ridge = lerp(abs(cos(3.14159265 * pZ)), abs(cos(3.14159265 * pS)), onS);
 c *= lerp(1.0, 0.7 + 0.36 * ridge, layK);
 Rough = lerp(Rough, Rough + 0.12 * (1.0 - ridge), layK);
+// Texture loop: fuzz veil: broken filaments stand off the cover and soften it, contrast and colour both
+c = lerp(c, 0.5 * c + 0.5 * float3(0.30, 0.295, 0.28), 0.3 * sqrt(fuzz) * wearOn * saturate(2.0 * dot(c, float3(0.2126, 0.7152, 0.0722))));   // pale carriers only
 float2 tilt = lerp(float2(0.85, 0.53) * sin(6.2831853 * pZ), float2(-0.85, 0.53) * sin(6.2831853 * pS), onS);
-NormalOut = normalize(float3(NM.xy - 0.35 * layK * tilt, NM.z));
+float nStr = 1.0 - 0.4 * fuzz * wearOn;                       // fuzz softens the weave's relief
+NormalOut = normalize(float3((NM.xy - 0.35 * layK * tilt) * nStr, NM.z));
 return c;
 """
 
@@ -144,16 +190,19 @@ def rope_material(tex):
     lut = node(mat, unreal.MaterialExpressionTextureObject, -900, 450, texture=tex["T_RopeColourways"])
     fade = node(mat, unreal.MaterialExpressionScalarParameter, -900, 600, parameter_name="Fade", default_value=0.4)
     dirt = node(mat, unreal.MaterialExpressionScalarParameter, -900, 700, parameter_name="Dirt", default_value=0.5)
+    # Texture loop: the boat's Age (years, -1 unset: Fade and Dirt above) and Care, as the hull's (BoatModelVisuals sets both).
+    age = node(mat, unreal.MaterialExpressionScalarParameter, -1100, 600, parameter_name="Age", default_value=-1.0)
+    care = node(mat, unreal.MaterialExpressionScalarParameter, -1100, 700, parameter_name="Care", default_value=0.5)
     nws = node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 800)
     cam = node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 900)
-    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt", "N", "V", "NM"],
+    c = custom(mat, ROPE_CODE, ["UV", "VC", "BraidM", "Lut", "Fade", "Dirt", "N", "V", "NM", "Age", "Care"],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -450, 200, [("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
                                                                          ("NormalOut", unreal.CustomMaterialOutputType.CMOT_FLOAT3)])
     nrm = node(mat, unreal.MaterialExpressionTextureSample, -700, 500, texture=tex["T_Rope_Braid24_N"],
                sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
     MEL.connect_material_expressions(uv, "", nrm, "UVs")
     for src, out, pin in ((uv, "", "UV"), (vc, "", "VC"), (tm, "", "BraidM"), (lut, "", "Lut"), (fade, "", "Fade"), (dirt, "", "Dirt"),
-                          (nws, "", "N"), (cam, "", "V"), (nrm, "RGB", "NM")):
+                          (nws, "", "N"), (cam, "", "V"), (nrm, "RGB", "NM"), (age, "", "Age"), (care, "", "Care")):
         MEL.connect_material_expressions(src, out, c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)

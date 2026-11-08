@@ -1,0 +1,35 @@
+{
+ "surface": "rope",
+ "kind": "polyester double braid (sheets, halyards, control lines); 16-carrier cover for dock and mooring lines",
+ "surface_id": 9,
+ "where": {
+  "live_lines": "M_RigRope (scripts/import_boat_detail.py ROPE_CODE) on FRigLine tubes and the hero J/22's coiled tails (BoatModelVisuals.cpp)",
+  "kit_parts": "BOAT_CODE surf == 9 in scripts/make_materials.py (rope on kit parts and fleet models)",
+  "hero_bake": "Inputs/j22-hero/j22_rope.py rope_material (stills and the J/22 hero bake)"
+ },
+ "boats": {
+  "J/22": "jib sheets 3/8 in (9.5 mm), mainsheet 3/8 in, halyards 5/16 in, vang and cunningham 1/4 in, backstay bridle, dock lines 1/2 in (Braid16)",
+  "Sunfish": "mainsheet 3/8 in, halyard 1/4 in, painter"
+ },
+ "closest_camera_m": 0.3,
+ "pattern": {
+  "braid24_lay_mm": "5 x diameter per turn of a carrier (45 mm on 9 mm line)",
+  "pick_mm": "measured from the L0 photos (Tools/texloop/refs/rope.json targets.pick_mm)",
+  "texel_rule": ">= 4 texture px per mm at 0.3 m: a 1024 px tile over 45 x 28 mm gives 23 px/mm along, 36 px/mm round"
+ },
+ "levels": ["L0", "L1", "L2", "L3", "L4"],
+ "level_notes": {
+  "L0": "new: bright white or saturated colour, crisp tight cover, slight sheen, no fuzz",
+  "L1": "a few months: cover a touch softer and duller, faint grey where it runs through cam cleats and fairleads",
+  "L2": "club boat, 6 yr: grey-beige, fuzzy cover (pilled fibres stand off), dark band where the cleat bites, colours faded",
+  "L3": "30-year boat, kept: lines are replaced every few seasons, so mostly L1 rope; a slight sun fade on halyards that stay up",
+  "L4": "neglected: grey-green, stiff, heavy fuzz, mildew specks and black dirt in the weave, red and blue faded toward pink and slate"
+ },
+ "time_vs_dirt": "Rope is consumable: care replaces it, so most of its look follows Dirt, not Time. Time only adds UV fade on lines that stay rigged (halyards).",
+ "replaces": {
+  "M_RigRope": "fixed Fade 0.4 and Dirt 0.5 on every boat (never set by the game), so a new boat's sheets look club-worn",
+  "BOAT_CODE": "surf >= 9 shared rope/sailcloth/canvas dinginess (col*0.8 grey) and mildew; rope gets its own branch",
+  "hero_bake": "style ropes.fade from wear and care, dirt from the deck grime"
+ },
+ "budget": "Medium: no new maps (shader math). High: at most one extra 1024 mask shared by every rope (fuzz/pilling) inside the +8 MB texture-loop allowance"
+}
