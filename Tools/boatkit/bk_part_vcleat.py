@@ -67,7 +67,7 @@ def _v_section(half_bot, z_bot, k, z_top, grow=0.0):
 
 def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=1.0, v_k=0.40, ridges=6,
                   groove=(1.3, 1.2), lean=(20.0, 55.0), round_mm=0.6, voxel=0.17, tris=17500,
-                  floor_z=2.6, bulk_rake=34.0, eye_z=8.2, eye_tilt=6.0, draft=0.90):
+                  floor_z=2.6, bulk_rake=34.0, eye_z=8.2, eye_tilt=6.0, draft=0.90, side_x=1.5):
     pl, ss = P.M("BlackPlastic"), P.M("Stainless")
     xa = 7.0                      # aft screw, mm from the tail
     xf = xa + holes               # forward screw
@@ -135,6 +135,13 @@ def _vcleat_parts(L=71.6, W=18.0, holes=48.0, eye=(8.6, 7.2), v_bot=4.5, v_half=
     e.matrix_world = Matrix.Translation((ex * MM, 0, ez * MM)) @ Matrix.Rotation(-math.radians(eye_tilt), 4, "Y")
     G.bake_xform(e)
     G.boolean(body, e)
+    # Bean, Nov 8: the sheet's cut runs right through the body on one side (the far, +Y side from the photo), so the eye
+    # is a window you see daylight through, and a line can be dropped in from the side
+    side = G.cyl("eye_side", (0, 0, 0), (0, 1, 0), 1.0, None, 40)
+    side.data.transform(Matrix.Diagonal((eye[0] / 2 * MM, 20 * MM, eye[1] / 2 * MM, 1.0)))
+    side.location = ((ex + side_x) * MM, 0, ez * MM)
+    G.bake_xform(side)
+    G.boolean(body, side)
 
     # moulded softness: one voxel remesh fuses every cut edge into a small radius, as a moulding has
     m = body.modifiers.new("mould", "REMESH")
