@@ -1420,13 +1420,13 @@ if (DetailOn > 0.5 && surf > 0)
         cav = (1.0 - m.r) * fadeD;
         col *= lerp(1.0, 0.80 + 0.24 * m.r, fadeD);                                   // the grooves' own shade
         col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * cav);
-        float gh = frac(sin(dot(floor(LP.xy / 0.09), float2(27.1, 61.7))) * 43758.5);    // 0.9 mm grit cells
-        col = lerp(col, float3(0.11, 0.105, 0.09), 0.6 * step(1.0 - 0.30 * dirt, gh) * (1.0 - 0.6 * m.r) * fadeD);
-        float mh = frac(sin(dot(floor(LP.xy / 0.12), float2(19.3, 47.9))) * 43758.5);    // 1.2 mm mildew cells
-        col = lerp(col, float3(0.025, 0.026, 0.022), 0.85 * step(1.0 - 0.12 * saturate(dirt * 2.2 - 1.2), mh) * cav);
-        float top = m.g * saturate(timeK * 1.5) * fadeD;
-        col = lerp(col, lerp(col, C.rgb, 0.5) * 1.05, top);
-        rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g) + 0.2 * dirt * cav - 0.18 * top);
+        float nsGh = frac(sin(dot(floor(LP.xy / 0.09), float2(27.1, 61.7))) * 43758.5);    // 0.9 mm grit cells
+        col = lerp(col, float3(0.11, 0.105, 0.09), 0.6 * step(1.0 - 0.30 * dirt, nsGh) * (1.0 - 0.6 * m.r) * fadeD);
+        float nsMh = frac(sin(dot(floor(LP.xy / 0.12), float2(19.3, 47.9))) * 43758.5);    // 1.2 mm mildew cells
+        col = lerp(col, float3(0.025, 0.026, 0.022), 0.85 * step(1.0 - 0.12 * saturate(dirt * 2.2 - 1.2), nsMh) * cav);
+        float nsTop = m.g * saturate(timeK * 1.5) * fadeD;
+        col = lerp(col, lerp(col, C.rgb, 0.5) * 1.05, nsTop);
+        rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g) + 0.2 * dirt * cav - 0.18 * nsTop);
     }
     else if (surf == 3 || surf == 4)     // brushing streaks in the gloss; stainless tea-stains in its pits first
     {
