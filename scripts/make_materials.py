@@ -1890,6 +1890,8 @@ BOAT_LIBRARY = {
     # Part detail loop (JibHank): UV-stabilised white nylon mouldings (hanks, plastic fittings) and the brass of their pistons
     "WhitePlastic": ("M_BoatSurface", (0.74, 0.72, 0.66), 0.32, 0.0, 0.0, 0.0, 0.10),
     "Brass": ("M_BoatSurface", (0.78, 0.58, 0.28), 0.30, 1.0, 0.0, 0.0, 0.0),
+    # Part detail loop (MastheadFly): red reflective film on wind indicators and reflector tabs
+    "RedPlastic": ("M_BoatSurface", (0.62, 0.035, 0.03), 0.28, 0.0, 0.0, 0.0, 0.05),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
