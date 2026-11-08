@@ -78,5 +78,29 @@ left); then 8-9.
 | `Tools/texloop/measure.py` | the colour and finish numbers, for photos and renders alike |
 | `Tools/texloop/render_swatch.py` | the swatch renderer |
 | `Tools/texloop/cards/`, `refs/`, `targets/` | one file per surface; each texture thread owns its own |
+| `Tools/texloop/score.py`, `make_sheet.py` | the six checks (`scores/<surface>.json`), and the before/after sheet |
+| `Tools/texloop/reviews/` | the blind reviewers' answers per surface (what `score.py` reads for the ladder and A/B) |
 
-Gelcoat's first run (card, references, targets, before/after renders and scores) follows in this PR.
+## Gelcoat, first run (Nov 8)
+
+![before and after](gelcoat_before_after.jpg)
+
+Card `cards/gelcoat.json`; 19 references in `refs/gelcoat.json` (CC0 J/22 photos from the yard for L2 and L3, CC BY-SA
+boat-show hulls for L0, measure only). No usable photo of a neglected *white gelcoat* hull turned up: the three L4
+candidates were a rusted steel hull, a heavily colour-graded shot and a blue painted hull, so L4 has no colour target.
+
+| Round | Change | Ladder (3 reviewers) | A/B |
+| --- | --- | --- | --- |
+| 1 | the time/dirt split alone | not run: the five levels looked nearly the same | - |
+| 2 | chalk in 40 cm blotches (`wear.BLOT`), stronger yellowing on white (`wear.YELLOW`), wider and more rain streaks on a dirty hull, dock rash early (most in the first year) | 5, 5, 5 of 5 | beat the old material at every level, 3 of 3; nobody called it the wrong material |
+| 3 | uneven, wandering streaks; staggered fender smudges | 5, 5, 5 | lost to round 2 (fewer runs read too clean at L2 and L4): reverted |
+
+The material in this PR is round 2. Checks: wear ladder, A/B, size (4.1 px/mm), tiling and budget (no new maps) pass;
+colour fails. The renders' white is b* +6 (the livery's warm white) while the photos' median is b* -7 (L0), -4 (L2) and
++1 (L3), but with one to four photos a level and no grey card the photo numbers spread by up to 20 (L3: -12 to +8), so
+the base white is not changed on that evidence. Club close-ups with a grey card (Bean's photos) will settle it.
+
+What the reviewers still see (next round's list): the surface is too smooth (no orange peel, little gloss change), the
+chalk hardly shows at swatch distance, and the rain streaks read as straight, even stripes. Crazing and repairs (L3
+cues) are not in the material yet. Steps 9 (PC import, `-SailingBoatAge` stills) and the Mac boats gate wait for the
+machines.

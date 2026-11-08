@@ -13,6 +13,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 TIME = "saturate(0.25 * (1.0 - exp(-{a} / 0.75)) + 0.75 * (1.0 - exp(-{a} / 18.0)))"
 DIRT = "saturate((1.0 - exp(-{a})) * (0.15 + 0.85 * (1.0 - saturate({c}))))"
 YELLOW = "float3(%.1f, %.3f, %.2f)" % wear.YELLOW
+BLOT = "(%.2f + %.1f * lerp(" % wear.BLOT
 
 
 def check_source(path, a, c):
@@ -20,7 +21,7 @@ def check_source(path, a, c):
     assert TIME.format(a=a) in s, path + ": timeK differs from wear.time_k"
     assert DIRT.format(a=a, c=c) in s, path + ": dirtK differs from wear.dirt_k"
     assert "max(dirtK, 0.3 * timeK)" in s, path + ": chalk differs from wear.chalk_k"
-    assert YELLOW.replace("0.900", "0.90") in s or YELLOW in s, path + ": yellowing differs from wear.YELLOW"
+    assert YELLOW in s, path + ": yellowing differs from wear.YELLOW"
 
 
 def check_levels():
@@ -47,6 +48,7 @@ def check_unset_unchanged():
 if __name__ == "__main__":
     check_source("scripts/make_materials.py", "age", "care")
     check_source("scripts/import_j22_hero.py", "Age", "Care")
+    assert BLOT in open(os.path.join(REPO, "scripts/make_materials.py")).read(), "chalk blotches differ from wear.BLOT"
     check_levels()
     check_unset_unchanged()
     print("wear formulas match: make_materials.py, import_j22_hero.py, wear.py")
