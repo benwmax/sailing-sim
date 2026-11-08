@@ -27,21 +27,23 @@ to_career() {   # <stage label>
 	echo "DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,WaitFor:Confirm,Expect:Confirm,LEFT,ENTER"
 	echo "WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career"
 }
+# Right into a tier's lessons puts the focus on its next lesson without a medal; TOP (Up, eight times) takes it to the
+# first lesson whatever that was, so the counts below are from lesson 1.
 # A tier's written checkride from the Career screen (the focus starts on the First job card): down to the tier's card,
-# into its lessons, down past them to Take the written checkride, its quiz answered right, the score with the
+# into its lessons, up to the first, down past them to Take the written checkride, its quiz answered right, the score with the
 # certificate, then Back to the career.
 checkride() {   # <stage label> <downs to the tier card> <lessons in the tier>
 	local Downs="" Past="" i
 	for ((i = 0; i < $2; i++)); do Downs+="DOWN,"; done
 	for ((i = 0; i < $3; i++)); do Past+="DOWN,"; done
-	echo "Stage:$1,Wait,${Downs}RIGHT,${Past}Wait,Shot:$1-card,ENTER,WaitFor:Quiz"
+	echo "Stage:$1,Wait,${Downs}RIGHT,TOP${Past}Wait,Shot:$1-card,ENTER,WaitFor:Quiz"
 	echo "Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,ENTER,WaitFor:Career,Expect:Career,Shot:$1-career"
 }
 FLOW_STEPS=(
 	"Stage:start,WaitFor:FirstLaunch,Expect:FirstLaunch,Wait,Shot:01-first-launch"
 	"DOWN,ENTER,WaitFor:Title,Expect:Title,Wait,Shot:02-title"
 	"DOWN,ENTER,WaitFor:Career,Expect:Career,Wait,Shot:03-career"
-	"DOWN,RIGHT,Wait,ENTER"
+	"DOWN,RIGHT,TOPWait,Shot:ds-lesson-1,ENTER"
 	$(lesson ds1 clean) "ENTER"
 	$(lesson ds2 done) "ENTER"
 	$(lesson ds3 done) "ENTER"
@@ -50,7 +52,7 @@ FLOW_STEPS=(
 	$(lesson ds6 gentle)
 	$(to_career ds-to-career)
 	$(checkride ds-checkride 1 6)
-	"Stage:cr-start,BACK,WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career,Wait,DOWN,DOWN,RIGHT,Wait,Shot:cr-lesson-1,ENTER"
+	"Stage:cr-start,BACK,WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career,Wait,DOWN,DOWN,RIGHT,TOPWait,Shot:cr-lesson-1,ENTER"
 	$(lesson cr1 clean) "ENTER"
 	$(lesson cr2 done) "ENTER"
 	$(lesson cr3 proper) "ENTER"
@@ -60,9 +62,10 @@ FLOW_STEPS=(
 	"Stage:end,BACK,WaitFor:Title,Expect:Title,Wait,Shot:99-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
-	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
-	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Left=Gamepad_DPad_Left; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; Menu=Gamepad_Special_Right; }
+	local Down=Down Up=Up Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
+	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Up=Gamepad_DPad_Up; Right=Gamepad_DPad_Right; Left=Gamepad_DPad_Left; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; Menu=Gamepad_Special_Right; }
 	S=$(IFS=,; echo "${FLOW_STEPS[*]}")
+	S=${S//TOP/UP,UP,UP,UP,UP,UP,UP,UP,}; S=${S//UP/$Up}
 	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//LEFT/$Left}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//MENU/$Menu}; S=${S//Shot:/Shot:pt-$1-}
 	echo "$S"
 }
