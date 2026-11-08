@@ -26,7 +26,10 @@ FLOW_STEPS=(
 	$(lesson ds4 proper) "ENTER"
 	$(lesson ds5 proper) "ENTER"
 	$(lesson ds6 gentle)
-	"Stage:explore,Log,Shot:90-after-ds6,ENTER,Wait,Wait,Log,Shot:91-after-enter,Quit"
+	"Stage:to-career,DOWN,ENTER,Wait,Wait,Expect:Hud,MENU,Wait,Expect:Pause"
+	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
+	"Expect:Title,Shot:20-title-returning,ENTER,Wait,Expect:Career,Shot:21-career"
+	"Stage:explore,DOWN,Shot:e1,DOWN,Shot:e2,DOWN,Shot:e3,DOWN,Shot:e4,DOWN,Shot:e5,DOWN,Shot:e6,DOWN,Shot:e7,DOWN,Shot:e8,ENTER,Wait,Wait,Log,Shot:e9-enter,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
 	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
