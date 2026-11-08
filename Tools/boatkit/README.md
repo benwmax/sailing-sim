@@ -23,6 +23,9 @@ every part and the import into the game (`/Game/Boats/Kit`, `scripts/import_hard
 | `photomatch/match_blend.py` | Renders any saved .blend (the hero J/22) from a solved camera and writes the compare image |
 | `photomatch/profile_match.py` | Lays the hero's side outline over a square-on broadside photo from two picked points (stem top, transom top) and prints the picked stations in hero metres (`matches/<photo>.profile.json`) |
 | `photomatch/compare.py` | Photo, render, blend and outline overlay in one image |
+| `partloop/render_views.py` | Part detail loop: one part from the same views every round (six turntable, two in use for blocks and cleats, clay, two outlines) and its `stats.json` |
+| `partloop/score.py` | Part detail loop: the scorecard (sizes, outline overlap, features, budget, blind review) against the part's card in `partloop/parts/<part>.json` |
+| `partloop/make_sheet.py` | Part detail loop: the before/after sheet for Bean (reference photo, both rounds' views, scorecards, outline overlap) |
 
 Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` module; about 10 s without renders).
 
@@ -48,3 +51,16 @@ Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` m
    that camera and writes `compare_<photo>.jpg`. For the hero hull itself, `blender -b -P
    Tools/boatkit/photomatch/match_blend.py -- <model.blend> <photo>.camera.json <photo.jpg> <out>`.
 4. Fix the layout or the hull where the outline and the photo disagree, and run it again.
+
+## The part detail loop
+
+One part at a time, to raise the hardware's detail against real references (docs/part-detail-loop, plan "Boat part detail
+loop", Nov 8 2026): a card per part (`partloop/parts/<part>.json`: references as links, sizes, the feature list, budget),
+the reference photos and their outline masks in a git-ignored folder (`Data/Reference/raw/parts/<Part>/`), then rounds of
+build, `render_views.py`, `score.py` and a blind side-by-side review until every check passes.
+
+    python3 Tools/boatkit/partloop/render_views.py Block40 Artifacts/partloop/Block40/r1      # or blender -b -P ... --
+    python3 Tools/boatkit/partloop/score.py Tools/boatkit/partloop/parts/block40.json Data/Reference/raw/parts/Block40 Artifacts/partloop/Block40/r1
+    python3 Tools/boatkit/partloop/make_sheet.py <ref photo> Artifacts/partloop/Block40/before Artifacts/partloop/Block40/r3 sheet.jpg --title "..." --credit "..."
+
+score.py and make_sheet.py need numpy, scipy and Pillow. Sheets that show a third party's photo stay out of the repo.

@@ -11,6 +11,8 @@ published dimensions. Every part:
 """
 import math
 
+import bmesh
+
 from mathutils import Matrix, Vector
 
 import bk_geom as G
@@ -32,7 +34,9 @@ def M(slot):
 
 
 def done(name, objs, sockets=()):
+    names = [o.name for o in objs if o is not None]
     ob = G.join(f"SM_Kit_{name}", objs)
+    ob["bk_parts"] = names                      # what it was joined from: the part loop's feature check reads these
     for s in sockets:
         G.socket(ob, *s)
     return ob
@@ -80,19 +84,142 @@ def padeye():
     return done("Padeye", [plate, loop] + nuts, [("Eye", (0, 0, 0.030))])
 
 
-@part("HornCleat", "cleat", "Cast aluminium horn cleat, 150 mm, two bolts")
+@part("HornCleat", "cleat", "Cast aluminium open-base horn cleat, 150 mm (6 in), line hole, two through-bolts")
 def horn_cleat(length=0.150):
-    L = length
-    h = L * 0.22
-    base = G.prism("base", G.rrect(L * 0.42, L * 0.20, L * 0.08), 0, h * 0.55, M("Aluminium"), taper=0.82)
-    G.finish(base, 0.003)
-    # one tapering horn from end to end, an ellipse section swept over an arch
-    path = G.bezier((-L / 2, 0, h * 0.62), (-L * 0.25, 0, h * 1.02), (L * 0.25, 0, h * 1.02), (L / 2, 0, h * 0.62), 24)
-    radii = [0.55 + 0.45 * math.sin(math.pi * i / (len(path) - 1)) ** 0.6 for i in range(len(path))]
-    horn = G.sweep("horn", path, G.ellipse(L * 0.055, L * 0.075, 20), M("Aluminium"), radii=radii, twist_up=(0, 0, 1))
-    G.finish(horn, 0.0, sharp=80)
-    bolts = G.screw_heads("b", [(-L * 0.12, 0, h * 0.55), (L * 0.12, 0, h * 0.55)], M("Stainless"), 0.0045, 0.002)
-    return done("HornCleat", [base, horn] + bolts, [("Wrap", (0, 0, h * 0.9)), ("HornFwd", (L / 2, 0, h * 0.62)), ("HornAft", (-L / 2, 0, h * 0.62))])
+    """Part detail loop round 1 (Nov 2026, docs/part-detail-loop): a cast open-base cleat. The side outline follows the
+    square-on reference photo's proportions (fractions of the length), the height the catalogue's 6 in open-base cleat
+    (1.88 in). Built as overlapping pedestal and horn shapes, fused by a voxel remesh so the joins get the soft fillets of
+    a casting, then cut flat underneath, drilled for the line hole and reduced to the budget."""
+    return done("HornCleat", *_cast_cleat_parts("HornCleat", length))
+
+
+# side profile of a cast open-base cleat as fractions of its length (measured on the square-on reference photo)
+_CLEAT_PED = [(0.000, 0.228), (0.010, 0.228), (0.020, 0.222), (0.030, 0.212), (0.040, 0.202), (0.050, 0.193),
+              (0.060, 0.187), (0.080, 0.178), (0.100, 0.171), (0.120, 0.169), (0.140, 0.176), (0.150, 0.185),
+              (0.160, 0.202), (0.170, 0.230), (0.180, 0.262), (0.190, 0.300), (0.200, 0.345), (0.210, 0.395)]
+#                (|x|, horn top, horn underside)
+_CLEAT_HORN = [(0.00, 0.263, None), (0.10, 0.266, None), (0.20, 0.272, 0.188), (0.25, 0.280, 0.183),
+               (0.30, 0.288, 0.193), (0.35, 0.294, 0.204), (0.40, 0.300, 0.214), (0.44, 0.305, 0.222),
+               (0.47, 0.307, 0.228), (0.50, 0.290, 0.248)]
+
+
+def _lerp_tab(tab, x, col=1):
+    for a, b in zip(tab, tab[1:]):
+        if a[0] <= x <= b[0]:
+            t = (x - a[0]) / (b[0] - a[0])
+            return a[col] + (b[col] - a[col]) * t
+    return tab[-1][col] if x > tab[-1][0] else tab[0][col]
+
+
+def _loft_z(name, rings, mat):
+    """Close a stack of same-length horizontal outlines [(z, [(x, y), ...]), ...] into a solid."""
+    bm = bmesh.new()
+    vs = [[bm.verts.new((x, y, z)) for x, y in pts] for z, pts in rings]
+    n = len(vs[0])
+    for a, b in zip(vs, vs[1:]):
+        for k in range(n):
+            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    bm.faces.new(list(reversed(vs[0])))
+    bm.faces.new(vs[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return G.mesh_obj(name, bm, mat)
+
+
+def _oval_sweep(name, path, half_w, half_h, mat, segs=24):
+    """A tube along a path in the XZ plane whose oval section is half_w across (Y) and half_h in the path's plane."""
+    bm = bmesh.new()
+    P_ = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(P_):
+        t = (P_[min(i + 1, len(P_) - 1)] - P_[max(i - 1, 0)]).normalized()
+        u = Vector((0, 1, 0))
+        v = t.cross(u).normalized()
+        if v.z < 0:
+            v = -v
+        rings.append([bm.verts.new(p + u * (half_w[i] * math.cos(G.TAU * k / segs)) + v * (half_h[i] * math.sin(G.TAU * k / segs)))
+                      for k in range(segs)])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segs):
+            bm.faces.new((a[k], a[(k + 1) % segs], b[(k + 1) % segs], b[k]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return G.mesh_obj(name, bm, mat)
+
+
+def _cast_cleat_parts(name, L, foot_w=0.029, waist_w=0.017, top_w=0.0135, horn_w=0.016, tip_w=0.012, hole_d=0.087,
+                      voxel=0.0004, tris=15000):
+    al, ss = M("Aluminium"), M("Stainless")
+    # pedestal: horizontal rounded-rectangle sections from just under the deck up into the horns
+    rings = []
+    zs = [-0.004] + [z for z, _ in _CLEAT_PED]
+    for i, zf in enumerate(zs):
+        z = zf * L
+        a = _lerp_tab(_CLEAT_PED, max(zf, 0.0)) * L
+        t = min(1.0, max(0.0, zf / 0.10))
+        w = foot_w + (waist_w - foot_w) * (1 - (1 - t) ** 2)          # flares out to the foot like the length does
+        w -= (waist_w - top_w) * min(1.0, max(0.0, (zf - 0.12) / 0.08))  # and narrows under the horn so it doesn't step
+        rings.append((z, G.rrect(2 * a, w, min(w * 0.45, a), 6)))
+    ped = _loft_z("pedestal", rings, al)
+    # horns: one sweep tip to tip along the middle of the horn, an oval section scaled by the horn's thickness
+    xs = [i / 40.0 * 0.47 for i in range(41)]
+    xs = [-x for x in reversed(xs[1:])] + xs
+    path, radii = [], []
+    for xf in xs:
+        ax = abs(xf)
+        top = _lerp_tab(_CLEAT_HORN, ax)
+        bot = _lerp_tab([r for r in _CLEAT_HORN if r[2] is not None], ax, 2) if ax >= 0.20 else 0.188 + (0.20 - ax) * 0.0
+        th = (top - bot) * L
+        path.append((xf * L, 0.0, (top + bot) / 2 * L))
+        radii.append(th / 2)
+    hw = [horn_w / 2 + (tip_w / 2 - horn_w / 2) * min(1.0, abs(p[0]) / (0.47 * L)) for p in path]
+    horn = _oval_sweep("horn", path, hw, radii, al)
+    # round knob ends: an ellipsoid on each tip, a little fatter than the horn
+    knobs = []
+    for sgn in (-1, 1):
+        x = sgn * 0.47 * L
+        zc = (_lerp_tab(_CLEAT_HORN, 0.47) + _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L
+        rz = (_lerp_tab(_CLEAT_HORN, 0.47) - _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L * 1.05
+        k = G.lathe(f"knob{sgn}", [(math.sin(math.pi * i / 16), -math.cos(math.pi * i / 16)) for i in range(17)], al, 32)
+        k.data.transform(Matrix.Diagonal((0.03 * L, tip_w / 2 * 1.04, rz, 1.0)))
+        k.location = (x, 0, zc)
+        G.bake_xform(k)
+        knobs.append(k)
+    body = G.join("body", [ped, horn] + knobs)
+    # fuse: voxel remesh (one closed casting with filleted joins), a light smooth, then cut flat and drill
+    m = body.modifiers.new("fuse", "REMESH")
+    m.mode, m.voxel_size, m.adaptivity = "VOXEL", voxel, 0.0
+    sm = body.modifiers.new("soften", "SMOOTH")
+    sm.factor, sm.iterations = 0.5, 4
+    G.apply(body)
+    floor = G.box("floor", (0, 0, -0.05), (L * 2, L, 0.1))
+    G.boolean(body, floor)
+    zh = 0.126 * L
+    hole = G.cyl("hole", (0, -0.05, zh), (0, 0.05, zh), hole_d / 2 * L, None, 40)
+    G.boolean(body, hole)
+    d = body.modifiers.new("budget", "DECIMATE")
+    me = body.data
+    me.calc_loop_triangles()
+    d.ratio = min(1.0, tris / max(1, len(me.loop_triangles)))
+    G.apply(body)
+    G.finish(body, 0.0006, segs=2, angle=60, sharp=60)        # only the foot's edge and the hole's rim are sharp
+    body.name = "casting"
+    # two through-bolts on the top flat: hex heads in shallow spot faces
+    bolts = []
+    for sgn in (-1, 1):
+        x = sgn * 0.125 * L
+        zt = _lerp_tab(_CLEAT_HORN, 0.125) * L
+        hexo = [(0.0042 * math.cos(G.TAU * i / 6 + math.pi / 6), 0.0042 * math.sin(G.TAU * i / 6 + math.pi / 6)) for i in range(6)]
+        b = G.prism(f"bolt{sgn}", hexo, zt - 0.0012, zt + 0.0016, ss, taper=0.9)
+        b.location = (x, 0, 0)
+        G.bake_xform(b)
+        bolts.append(G.finish(b, 0.0004, segs=1))
+        face = G.cyl(f"spot{sgn}", (x, 0, zt - 0.0016), (x, 0, zt - 0.0011), 0.0062, al, 24)
+        bolts.append(G.finish(face, 0.0003, segs=1))
+    top = _lerp_tab(_CLEAT_HORN, 0.0) * L
+    tipz = (_lerp_tab(_CLEAT_HORN, 0.47) + _lerp_tab(_CLEAT_HORN, 0.47, 2)) / 2 * L
+    socks = [("Wrap", (0, 0, top)), ("HornFwd", (L / 2, 0, tipz)), ("HornAft", (-L / 2, 0, tipz)), ("Hole", (0, 0, zh))]
+    return [body] + bolts, socks
 
 
 @part("CamCleat", "cleat", "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead")
@@ -204,6 +331,203 @@ def _block_parts(name, sheave_d, sheaves=1, cam=False, becket=False, ratchet=Fal
     return objs, socks
 
 
+def _xz_prism(name, outline_xz, y0, y1, mat):
+    """Extrude an outline drawn in the block's XZ plane (x forward, z up) across Y from y0 to y1."""
+    o = G.prism(name, outline_xz, -y1, -y0, mat)
+    o.matrix_world = Matrix.Rotation(math.radians(90), 4, "X")       # prism (x, v, e) -> (x, -e, v)
+    G.bake_xform(o)
+    return o
+
+
+def _hull2d(pts):
+    """Convex hull (monotone chain), counter-clockwise."""
+    pts = sorted(set((round(x, 7), round(y, 7)) for x, y in pts))
+    def half(ps):
+        out = []
+        for p in ps:
+            while len(out) >= 2 and ((out[-1][0] - out[-2][0]) * (p[1] - out[-2][1]) - (out[-1][1] - out[-2][1]) * (p[0] - out[-2][0])) <= 0:
+                out.pop()
+            out.append(p)
+        return out
+    lower, upper = half(pts), half(list(reversed(pts)))
+    return lower[:-1] + upper[:-1]
+
+
+def _clip_above(poly, z0):
+    """The part of a convex outline above the line z = z0 (2D points (x, z))."""
+    out = []
+    for i, p in enumerate(poly):
+        q = poly[(i + 1) % len(poly)]
+        pin, qin = p[1] >= z0, q[1] >= z0
+        if pin:
+            out.append(p)
+        if pin != qin:
+            t = (z0 - p[1]) / (q[1] - p[1])
+            out.append((p[0] + t * (q[0] - p[0]), z0))
+    return out
+
+
+def _capsule(a, b, r, segs=8):
+    """Outline of a slot with round ends from a to b (2D)."""
+    ax, ay = a
+    bx, by = b
+    ang = math.atan2(by - ay, bx - ax)
+    pts = []
+    for i in range(segs + 1):
+        t = ang - math.pi / 2 - math.pi * i / segs
+        pts.append((ax + r * math.cos(t), ay + r * math.sin(t)))
+    for i in range(segs + 1):
+        t = ang + math.pi / 2 - math.pi * i / segs
+        pts.append((bx + r * math.cos(t), by + r * math.sin(t)))
+    return pts
+
+
+def _modern_block_parts(name, sheave_d, becket=False, plate=None):
+    """Part detail loop round 1 (docs/part-detail-loop): a modern moulded-cheek swivel block, measured against a 40 mm
+    catalogue block (86 mm from the shackle pin to the foot, 4 mm pin, 10 mm line) and reference photos.
+
+    Generic TERNWAY design, not a copy of any maker's: teardrop cheeks (a circle round the sheave narrowing to a flat
+    head), a see-through hollow axle with its bearing balls showing, an open ring of lightening holes on the lower
+    cheek, two angled slots beside the head, two head rivets, a grooved sheave for 10 mm line, a swivel post with a
+    collar and eye, and a D-shackle with its pin along X at the origin. Hangs along -Z from the pin; axle along Y."""
+    k = sheave_d / 0.040
+    objs = []
+    R = sheave_d / 2
+    rb = R * 1.18                        # cheek radius round the axle
+    H = rb * 1.66                        # head top above the axle
+    hw, rc = rb * 0.44, rb * 0.17        # head half width, its corner radius
+    tc = 0.0034 * k                      # cheek thickness (round 2: moulded, not sheet)
+    ts = 0.0105 * k                      # sheave thickness (10 mm line at 40 mm)
+    gap = 0.0006 * k
+    yi = ts / 2 + gap                    # cheek inner face
+    yo = yi + tc                         # cheek outer face
+    cz = 0.002 * k - 0.086 * k + rb      # axle height: 86 mm from the top of the pin to the foot of the cheeks
+    zh = cz + H                          # head top
+    plastic, steel = M("BlackPlastic"), M("Stainless")
+
+    # cheek outline: hull of the round body and the head's rounded corners
+    pts = [(rb * math.cos(G.TAU * i / 56), cz + rb * math.sin(G.TAU * i / 56)) for i in range(56)]
+    for sx in (-1, 1):
+        cx_, cz_ = sx * (hw - rc), zh - rc
+        pts += [(cx_ + rc * math.cos(G.TAU * i / 16), cz_ + rc * math.sin(G.TAU * i / 16)) for i in range(16)]
+    outline = _hull2d(pts)
+    # the same outline 1.5 mm in: the floor of the shallow pocket that leaves a moulded rim round each cheek's face
+    lip = 0.0015 * k
+    pts_in = [(rb - lip) * math.cos(G.TAU * i / 56) for i in range(56)]
+    pts_in = [(x, cz + (rb - lip) * math.sin(G.TAU * i / 56)) for i, x in enumerate(pts_in)]
+    for sx in (-1, 1):
+        cx_, cz_ = sx * (hw - rc), zh - rc
+        pts_in += [(cx_ + (rc - lip) * math.cos(G.TAU * i / 16), cz_ + (rc - lip) * math.sin(G.TAU * i / 16)) for i in range(16)]
+    inner = _hull2d(pts_in)
+    pocket = 0.0005 * k
+
+    ro = rb * 0.44                       # central opening (see-through hub; round 2: bigger, shows sheave face and balls)
+    # round 3: a near-closed ring of small holes hugging the boss, skipping the shoulder windows (reviewers: round 2's
+    # lower crescent of big holes read as an industrial pulley)
+    ring_r, hole_r = rb * 0.68, rb * 0.052
+    win = [((sx * rb * 0.66, cz + rb * 0.36), (sx * rb * 0.42, cz + rb * 1.02)) for sx in (-1, 1)]
+
+    def _clear(px, pz):
+        for (ax_, az_), (bx_, bz_) in win:
+            dx, dz = bx_ - ax_, bz_ - az_
+            t = max(0.0, min(1.0, ((px - ax_) * dx + (pz - az_) * dz) / (dx * dx + dz * dz)))
+            if math.hypot(px - ax_ - t * dx, pz - az_ - t * dz) < rb * 0.12 + hole_r + rb * 0.05:
+                return False
+        return True
+    ring_angles = [a for a in (G.TAU * i / 24 for i in range(24)) if _clear(ring_r * math.cos(a), cz + ring_r * math.sin(a))]
+    for side in (-1, 1):
+        y0, y1 = (-yo, -yi) if side < 0 else (yi, yo)
+        cheek = _xz_prism(f"cheek{side}", outline, y0, y1, plastic)
+        well = _xz_prism(f"pocket{side}", inner, (yo - pocket) if side > 0 else -yo - 0.001, (yo + 0.001) if side > 0 else -(yo - pocket), plastic)
+        G.boolean(cheek, well)
+        # raised boss round the hub, level with the rim
+        boss = G.cyl(f"boss{side}", (0, side * (yo - pocket - 0.0002 * k), cz), (0, side * yo, cz), rb * 0.58, plastic, 48, r1=rb * 0.56)
+        G.boolean(cheek, boss, op="UNION")
+        # round the moulded edges before the holes go in (two segments), then only a small chamfer on the hole edges:
+        # rounding every hole with two segments cost 14k triangles for the pair of cheeks
+        G.finish(cheek, 0.0011 * k, segs=2, weighted=False)
+        cut = [G.cyl(f"open{side}", (0, -1, cz), (0, 1, cz), ro, plastic, 48)]
+        cut += [G.cyl(f"h{side}{i}", (ring_r * math.cos(a), -1, cz + ring_r * math.sin(a)), (ring_r * math.cos(a), 1, cz + ring_r * math.sin(a)),
+                      hole_r, plastic, 8) for i, a in enumerate(ring_angles)]
+        for sx in (-1, 1):
+            # shoulder windows: wide, angled with the cheek's side, low enough to show the sheave behind
+            cut.append(_xz_prism(f"slot{side}{sx}", _capsule((sx * rb * 0.66, cz + rb * 0.36), (sx * rb * 0.42, cz + rb * 1.02), rb * 0.12),
+                                 -1, 1, plastic))
+        G.boolean(cheek, G.join(f"cut{side}", cut))
+        objs.append(G.finish(cheek, 0.0004 * k, segs=1, angle=50.0))
+        # head rivets, domed, on each outer face
+        for sx in (-1, 1):
+            rv = G.lathe(f"rivet{side}{sx}", [(0, -0.0002 * k), (rb * 0.12, -0.0002 * k), (rb * 0.115, 0.0003 * k), (rb * 0.08, 0.0006 * k), (0, 0.0007 * k)], steel, 20)
+            rv.matrix_world = Matrix.Translation((sx * (hw - rb * 0.17), side * yo, zh - rb * 0.22)) @ Matrix.Rotation(math.radians(-90 * side), 4, "X")
+            G.bake_xform(rv)
+            objs.append(G.finish(rv, 0, weighted=False))
+    # spacer filling the head between the cheeks, above the sheave
+    # moulded crown filling the head between the cheeks above the sheave: the cheek outline itself, so edge-on the head
+    # reads as one rounded moulding (round 2; round 1 had a square spacer)
+    # it starts 7.6 mm above the sheave: room for a 10 mm line over the top of the sheave
+    crown = _xz_prism("headblock", _clip_above(outline, cz + R + 0.0076 * k), -yi - 0.0002 * k, yi + 0.0002 * k, plastic)
+    objs.append(G.finish(crown, 0.0011 * k, segs=2))
+
+    # sheave with a round groove for the line
+    rsi = rb * 0.395
+    groove = [(R - 0.0029 * k * math.sin(math.pi * i / 10), -ts / 2 + 0.0011 * k + (ts - 0.0022 * k) * i / 10) for i in range(11)]
+    prof = [(rsi, -ts / 2), (R - 0.0006 * k, -ts / 2), (R, -ts / 2 + 0.0006 * k)] + groove + [(R, ts / 2 - 0.0006 * k), (R - 0.0006 * k, ts / 2), (rsi, ts / 2)]
+    sh = G.lathe("sheave", prof, plastic, 40)
+    sh.matrix_world = Matrix.Translation((0, 0, cz)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+    G.bake_xform(sh)
+    G.boolean(sh, G.cyl("sheave_bore", (0, -0.05 * k, cz), (0, 0.05 * k, cz), rsi, plastic, 40))   # lathe caps its end rings
+    objs.append(G.finish(sh, 0, sharp=50))
+    # hollow stainless axle with a rolled lip on each face, round a stainless bearing race; the bore is cut through so
+    # you can see through the middle (round 2: round 1's balls between the lip and the sheave read as a cog)
+    # round 3: a large hollow axle (a thin stainless liner), so the centre reads as a big open hole (round 2's small
+    # boss read as a hardware-store pulley)
+    ra, ri = rb * 0.37, rb * 0.33
+    lipr = rb * 0.415
+    e = 0.0004 * k
+    ax = G.lathe("axle", [(0, -yo - 2 * e), (lipr - e, -yo - 2 * e), (lipr, -yo - e), (lipr, -yo + e), (ra, -yo + 2 * e),
+                          (ra, yo - 2 * e), (lipr, yo - e), (lipr, yo + e), (lipr - e, yo + 2 * e), (0, yo + 2 * e)], steel, 36)
+    race = G.lathe("race", [(0, -yi + e), (rsi + 0.0002 * k, -yi + e), (rsi + 0.0002 * k, yi - e), (0, yi - e)], steel, 36)
+    for o in (ax, race):
+        o.matrix_world = Matrix.Translation((0, 0, cz)) @ Matrix.Rotation(math.radians(-90), 4, "X")
+        G.bake_xform(o)
+        G.boolean(o, G.cyl(f"bore_{o.name}", (0, -0.05 * k, cz), (0, 0.05 * k, cz), ri, steel, 24))
+        objs.append(G.finish(o, 0.0002 * k, segs=1, sharp=50))
+
+    # swivel: collar on the head, post, eye (hole along Y)
+    collar = G.lathe("collar", [(0, -0.0006 * k), (rb * 0.27, -0.0006 * k), (rb * 0.27, 0.0012 * k), (rb * 0.22, 0.0024 * k), (0, 0.0024 * k)], steel, 28)
+    collar.location = (0, 0, zh)
+    G.bake_xform(collar)
+    objs.append(G.finish(collar, 0, sharp=50))
+    ez, er, emin = -0.013 * k, 0.0034 * k, 0.0014 * k
+    post = G.cyl("post", (0, 0, zh), (0, 0, ez - er + 0.0006 * k), 0.0040 * k, steel, 24, r1=0.0034 * k)
+    objs.append(G.finish(post, 0.0003 * k))
+    eye = G.tube("eye", G.arc_pts((0, 0, ez), er, 0, G.TAU, 24, "xz")[:-1], emin, steel, 10, closed=True)
+    objs.append(G.finish(eye))
+    # D-shackle: pin along X at the origin, bow through the eye
+    w, wr = 0.0046 * k, 0.0018 * k
+    bow = G.tube("bow", [(-w, 0, 0), (-w, 0, -0.0075 * k)] + G.arc_pts((0, 0, -0.0075 * k), w, math.pi, G.TAU, 14, "xz")[1:-1] + [(w, 0, -0.0075 * k), (w, 0, 0)], wr, steel, 10)
+    objs.append(G.finish(bow))
+    for sx in (-1, 1):
+        ear = G.cyl(f"ear{sx}", (sx * (w - 0.0014 * k), 0, 0), (sx * (w + 0.0014 * k), 0, 0), 0.0030 * k, steel, 16)
+        objs.append(G.finish(ear, 0.0003 * k))
+    pin = G.cyl("pin", (-w - 0.0016 * k, 0, 0), (w + 0.0019 * k, 0, 0), 0.0020 * k, steel, 14)
+    objs.append(G.finish(pin, 0.0002 * k))
+    phead = G.cyl("pinhead", (-w - 0.0016 * k, 0, 0), (-w - 0.0030 * k, 0, 0), 0.0032 * k, steel, 18)
+    objs.append(G.finish(phead, 0.0004 * k))
+    if becket:
+        bz = cz - rb - 0.0022 * k
+        bk = G.tube("becket", [(-0.0050 * k, 0, cz - R * 0.6)] + G.arc_pts((0, 0, bz), 0.0050 * k, math.pi, G.TAU, 14, "xz")[1:-1] + [(0.0050 * k, 0, cz - R * 0.6)],
+                    0.0021 * k, steel, 12)
+        objs.append(G.finish(bk))
+    if plate:
+        objs.append(badge("plate", plate, rb * 0.52, rb * 0.17,
+                          Matrix.Translation((0, -yo + pocket - 0.0002 * k, cz + rb * 0.98)) @ Matrix.Rotation(math.radians(90), 4, "X"), plastic))
+    socks = [("Head", (0, 0, 0)), ("Axle", (0, 0, cz)), ("LineIn", (R, 0, cz)), ("LineOut", (-R, 0, cz))]
+    if becket:
+        socks.append(("Becket", (0, 0, cz - rb - 0.0072 * k)))
+    return objs, socks
+
+
 @part("Block29", "block", "29 mm single block with swivel, sheets and control lines")
 def block29(becket=False):
     objs, socks = _block_parts("Block29", 0.029, becket=becket, plate="Plate29")
@@ -212,7 +536,7 @@ def block29(becket=False):
 
 @part("Block40", "block", "40 mm single block with swivel and becket")
 def block40():
-    objs, socks = _block_parts("Block40", 0.040, becket=True, plate="Plate40")
+    objs, socks = _modern_block_parts("Block40", 0.040, becket=True, plate="Plate40")
     return done("Block40", objs, socks)
 
 
