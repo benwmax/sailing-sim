@@ -67,14 +67,14 @@ def vnoise(x, y, k1=127.1, k2=311.7):
 
 def wear_split(age, care):
     """Time (care can't undo it) and Dirt (care removes it), from Age and Care. Mirrors Tools/texloop/wear.py when it
-    exists (the shared loop's formulas); this fallback follows the plan's description."""
+    exists (the shared loop's formulas); this fallback is the same formulas (wear.py, Nov 8 2026)."""
     try:
         sys.path.insert(0, HERE)
         import wear  # noqa: F401  (shared module from the gelcoat thread)
         return float(wear.time_k(age, care)), float(wear.dirt_k(age, care))
     except Exception:
-        t = sat(0.25 * (1 - math.exp(-age / 0.5)) + 0.75 * sat(age / 30.0))
-        d = sat((1 - care) * (0.3 + 0.7 * sat(age / 6.0)) + 0.1 * (1 - math.exp(-age / 0.3)))
+        t = sat(0.25 * (1 - math.exp(-age / 0.75)) + 0.75 * (1 - math.exp(-age / 18.0)))
+        d = sat((1 - math.exp(-age)) * (0.15 + 0.85 * (1 - sat(care))))
         return float(t), float(d)
 
 
