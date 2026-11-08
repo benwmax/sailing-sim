@@ -1,0 +1,34 @@
+{
+ "part": "SnapHook",
+ "card": {
+  "what": "Forged stainless snap hook, 75 mm: spliced to halyards, spinnaker sheets, flag halyards and dock lines to clip onto a sail's head, a ring or a padeye",
+  "boats": "new kit part: the J/22's jib and main halyards and spinnaker sheets carry one each; the Sunfish's halyard; dock lines at the club",
+  "distance": "arm's reach at the mast and on the foredeck when hoisting; the camera sees it in hand",
+  "before": "none: the kit had no snap hook (the nearest stand-in was the 5 mm D-shackle, ShackleD)"
+ },
+ "references": [
+  {"id": "bean", "kind": "photo", "use": "outline and proportions (square-on face view on white; turned so the long axis is vertical by mask_white_bg.py --rotate auto)",
+   "url": "project upload from Bean, Nov 8 2026 (sheet of sailboat hardware, top left 'Snap Hook'); a catalogue-style photo: measuring only, not in the repo", "mask": "bean.mask.png"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "https://www.bluemarinestore.com/wichard-safety-snap-hook/",
+   "note": "75 mm forged 316L snap hook of this style: length 75 mm, A 12 mm, B 10 mm, 67 g (also listed in 50 mm, A 8 / B 6, and 100 mm, A 16 / B 13). The listings don't say which letters are which: A read as the gate opening, B as the eye's width; both reported, not scored"}
+ ],
+ "sizes": [
+  {"id": "height", "name": "Overall length, crown to the bottom of the eye", "target": 75.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 75 mm"},
+  {"id": "aspect_full", "name": "Length / width (face view)", "target": "ref:bean", "unit": "ratio", "tol": 0.06, "source": "measured on the square-on photo (score.py's aspect_full is height / width of the outline)"},
+  {"id": "length", "name": "Width across the face, gate to spine", "target": null, "unit": "mm", "tol": null, "source": "reported only (the aspect checks it)"},
+  {"id": "width", "name": "Thickness of the forging (edge-on)", "target": null, "unit": "mm", "tol": null, "source": "no edge-on reference: reported only"}
+ ],
+ "outline": {"ref": "bean", "pass": 0.90, "whole": true},
+ "features": [
+  {"id": "forging", "text": "One forged teardrop body, flattened-oval sections, no seams", "objects": ["forging"], "manual": true},
+  {"id": "nose", "text": "Turned-down nose at the top of the gate side; the gate's tip tucks under it", "manual": true},
+  {"id": "gate", "text": "Wire spring gate: a narrow loop of stainless wire from the palm up to the nose", "objects": ["gate"], "manual": true},
+  {"id": "eye", "text": "Oval eye through the palm for the line, tilted along the body", "manual": true},
+  {"id": "boss", "text": "Round raised boss on the face beside the eye, with a square rivet in it", "manual": true},
+  {"id": "spine", "text": "The spine (back) is the beefiest part; the nose arm thinner", "manual": true},
+  {"id": "metal", "text": "Polished stainless throughout", "slots": ["Stainless"]},
+  {"id": "bite", "text": "Room in the bite for a 12 mm ring or a sail's head", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}
