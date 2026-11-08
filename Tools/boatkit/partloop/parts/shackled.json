@@ -1,0 +1,125 @@
+{
+ "part": "ShackleD",
+ "card": {
+  "what": "Forged stainless long D (dee) shackle, 5 mm pin with a flat key head, as on Bean's sheet: the shackle for a straight pull",
+  "boats": "J/22 jib sheets to the clew, the vang and mainsheet blocks to their bails, the spinnaker sheets; the Sunfish's mainsheet block",
+  "distance": "arm's reach in the cockpit and at the clew",
+  "before": "kit ShackleD (Oct 2026): one bent tube, a plain pin and a round head, 29 mm, pin along Y; used by no layout yet"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look: two key-pin D shackles at three-quarter view (not square-on: proportions not measured)",
+   "url": "Bean's hardware reference sheet (project upload, Nov 8 2026), bottom row 'Dee Shakles'",
+   "licence": "for measuring and look only; never committed or shared"
+  },
+  {
+   "id": "dsluiting",
+   "kind": "photo",
+   "use": "square-on D shackle with a key-head pin (a heavy galvanised lifting D, much fatter than a sailing one): the key head, ears and pin only, not proportions",
+   "url": "https://commons.wikimedia.org/wiki/File:D-sluiting.JPG",
+   "licence": "CC BY 3.0, S.J. de Waard"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://www.s3i.co.uk/wichard-self-locking-d-shackle.php",
+   "note": "5 mm forged stainless self-locking long D shackle (Wichard 1212 class, as on Bean's sheet): L 41 mm overall, A 29 mm inside length, B 10 mm opening, G 26 mm (S3i table). The standard D (1202) is 29 mm overall"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "height",
+   "name": "Overall length, ear to crown",
+   "target": 41.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: L 41 mm"
+  },
+  {
+   "id": "length",
+   "name": "Width with the key head",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only (20 mm across the legs plus the key head)"
+  },
+  {
+   "id": "width",
+   "name": "Thickness across the ears",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "no edge-on reference: reported only"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "crown",
+   "text": "Straight parallel legs and a half-round crown, long (inside length about three times the opening)",
+   "manual": true
+  },
+  {
+   "id": "body",
+   "text": "Forged 5 mm body with a flat section (flat faces, rounded edges), one piece with its ears",
+   "objects": [
+    "forging"
+   ],
+   "manual": true
+  },
+  {
+   "id": "ears",
+   "text": "Two flat round ears at the pin, growing out of the legs",
+   "manual": true
+  },
+  {
+   "id": "pin",
+   "text": "5 mm pin right through both ears",
+   "objects": [
+    "pin"
+   ]
+  },
+  {
+   "id": "keyhead",
+   "text": "Flat key head on one end of the pin, with a hole for seizing wire",
+   "objects": [
+    "pinhead"
+   ],
+   "manual": true
+  },
+  {
+   "id": "collar",
+   "text": "Collar between the key head and the ear",
+   "objects": [
+    "pincollar"
+   ]
+  },
+  {
+   "id": "pinend",
+   "text": "Rounded pin end just proud of the far ear",
+   "objects": [
+    "pinend"
+   ]
+  },
+  {
+   "id": "metal",
+   "text": "Polished stainless throughout",
+   "slots": [
+    "Stainless"
+   ]
+  },
+  {
+   "id": "opening",
+   "text": "10 mm opening between the ears (takes a 10 mm line's thimble or a block's eye)",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; a shackle is small, so the build aims at about 13k"
+ }
+}
