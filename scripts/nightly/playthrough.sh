@@ -8,19 +8,22 @@
 set -u
 FLOW_STEPS=(
 	"Wait,Wait,Expect:FirstLaunch,Shot:01-first-launch"
-	"DOWN,ENTER,Wait,Expect:Career,Shot:02-career"
-	"ENTER,Wait,Expect:Briefing,Shot:03-briefing"
-	"ENTER,Wait,Wait,Wait,Wait,Wait,Expect:Loading,Shot:04-loading,ENTER,Wait,Wait"
-	"Expect:Hud,Shot:05-lesson,Finish:clean,Wait,Wait"
-	"Expect:Quiz,Shot:06-medal,ENTER,Wait,ENTER,Wait,ENTER,Wait,ENTER,Wait,ENTER,Wait,ENTER,Wait"
-	"Expect:Quiz,Shot:07-quiz-done,BACK,Wait,BACK,Wait,BACK,Wait"
-	"Expect:Title,Shot:08-title,Log,Quit"
+	"DOWN,ENTER,Wait,Expect:Title,Shot:02-title"
+	"DOWN,ENTER,Wait,Expect:Career,Shot:03-career"
+	"DOWN,RIGHT,Wait,Shot:04-lesson-1,ENTER,Wait,Wait,Expect:Loading,Shot:05-loading"
+	"Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait,Log,Shot:06-after-loading"
+	"Expect:Briefing,Shot:07-briefing,ENTER,Wait,Wait"
+	"Expect:Hud,Shot:08-lesson,Finish:clean,Wait,Wait"
+	"Expect:Quiz,Shot:09-medal,BACK,Wait,Wait"
+	"Expect:Hud,BACK,Wait,Expect:Pause,Shot:10-pause"
+	"DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,Shot:11-pause-bottom,ENTER,Wait,Wait,Log,Shot:12-quit,ENTER,Wait,Wait,Wait"
+	"Expect:Title,Shot:13-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
-	local Down=Down Enter=Enter Back=Escape S
-	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; }
+	local Down=Down Right=Right Enter=Enter Back=Escape S
+	[[ "$1" == pad ]] && { Down=Gamepad_DPad_Down; Right=Gamepad_DPad_Right; Enter=Gamepad_FaceButton_Bottom; Back=Gamepad_FaceButton_Right; }
 	S=$(IFS=,; echo "${FLOW_STEPS[*]}")
-	S=${S//DOWN/$Down}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//Shot:/Shot:pt-$1-}
+	S=${S//DOWN/$Down}; S=${S//RIGHT/$Right}; S=${S//ENTER/$Enter}; S=${S//BACK/$Back}; S=${S//Shot:/Shot:pt-$1-}
 	echo "$S"
 }
 # check <log>: prints PASS, or FAIL with the first screen that did not appear (and the screen that was up instead).
@@ -56,13 +59,14 @@ fi
 APP=$1; OUT=$2; mkdir -p "$OUT"
 C="$HOME/Library/Containers/com.benwmax.SailingSim/Data/Library"
 SV="$C/Application Support/Epic/SailingSim/Saved"; LOGF="$C/Logs/SailingSim/SailingSim.log"
-# The player's own settings and saves are put back after each run (the first launch writes its choices).
+# A fresh profile for each run (no settings, no saves: the title's last session lives in the settings), and the
+# player's own settings and saves put back after it.
 B=$(mktemp -d); mkdir -p "$SV/Config" "$SV/SaveGames"; cp -Rp "$SV/Config" "$B/Config"; cp -Rp "$SV/SaveGames" "$B/SaveGames"
 restore() { rm -rf "$SV/Config" "$SV/SaveGames"; cp -Rp "$B/Config" "$SV/Config"; cp -Rp "$B/SaveGames" "$SV/SaveGames"; }
 trap 'restore; rm -rf "$B"' EXIT
 RC=0
 for F in keys pad; do
-	rm -f "$SV/SaveGames/playthrough.json" "$SV/Bench/pt-$F-"*.png
+	rm -rf "$SV/Config" "$SV/SaveGames" "$SV/Bench/pt-$F-"*.png; mkdir -p "$SV/SaveGames"
 	open -n -a "$APP" --args -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingNoGpuSlices -SailingSlice=1 \
 		-SailingSave=SaveGames/playthrough.json "-SailingUIScript=$(flow $F)"
 	sleep 5
