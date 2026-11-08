@@ -9,20 +9,21 @@
 # Usage: scripts/nightly/playthrough.sh <SailingSim.app> <out dir>    (or --self-test: the log check on stand-in logs)
 #   PLAYTHROUGH_FLOWS="keys" runs one input only (dry runs).
 set -u
+# Every step waits for the screen it expects (WaitFor:<screen>, at most two minutes) before checking it (Expect:), so a
+# slow load doesn't put the script out of step; the loading screen is left with Enter once it has finished.
 # One lesson from its loading screen: the lesson ended by Finish:<outcome>, its medal screen, the quiz answered right
-# (Answer:all, through the quiz's own buttons), the score, then Enter on the score's first way (the next lesson).
+# (Answer:all, through the quiz's own buttons), the score. The caller presses Enter on the score's first way (the next
+# lesson) or leaves for the Career screen.
 lesson() {   # <stage label> <outcome>
-	echo "Stage:$1,Wait,Wait,Expect:Loading,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,ENTER,Wait,Wait,ENTER,Wait,Wait"
-	echo "Expect:Hud,Shot:$1-lesson,Finish:$2,Wait,Wait"
-	echo "Expect:Quiz,Shot:$1-medal,Answer:all,Wait"
-	echo "Expect:Quiz,Shot:$1-score"
+	echo "Stage:$1,WaitFor:Loading,Expect:Loading,WaitFor:LoadingDone,Wait,ENTER,WaitFor:Hud,Expect:Hud,Wait,Shot:$1-lesson"
+	echo "Finish:$2,WaitFor:Quiz,Expect:Quiz,Shot:$1-medal,Answer:all,Wait,Expect:Quiz,Shot:$1-score"
 }
 # Back to the Career screen from a lesson's score (its ways are Sail it again and Back to sailing): Back to sailing, the
 # pause menu, Quit to title, Leave, the title (Career is focused for a returning player), Career.
 to_career() {   # <stage label>
-	echo "Stage:$1,DOWN,ENTER,Wait,Wait,Expect:Hud,MENU,Wait,Expect:Pause"
-	echo "DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,Wait,Expect:Confirm,LEFT,ENTER,Wait,Wait,Wait,Wait,Wait"
-	echo "Expect:Title,ENTER,Wait,Expect:Career"
+	echo "Stage:$1,DOWN,ENTER,WaitFor:Hud,Expect:Hud,MENU,WaitFor:Pause,Expect:Pause"
+	echo "DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,WaitFor:Confirm,Expect:Confirm,LEFT,ENTER"
+	echo "WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career"
 }
 # A tier's written checkride from the Career screen (the focus starts on the First job card): down to the tier's card,
 # into its lessons, down past them to Take the written checkride, its quiz answered right, the score with the
@@ -31,14 +32,13 @@ checkride() {   # <stage label> <downs to the tier card> <lessons in the tier>
 	local Downs="" Past="" i
 	for ((i = 0; i < $2; i++)); do Downs+="DOWN,"; done
 	for ((i = 0; i < $3; i++)); do Past+="DOWN,"; done
-	echo "Stage:$1,${Downs}RIGHT,${Past}Wait,Shot:$1-card,ENTER,Wait"
-	echo "Expect:Quiz,Shot:$1-quiz,Answer:all,Wait"
-	echo "Expect:Quiz,Shot:$1-certificate,ENTER,Wait,Expect:Career,Shot:$1-career"
+	echo "Stage:$1,Wait,${Downs}RIGHT,${Past}Wait,Shot:$1-card,ENTER,WaitFor:Quiz"
+	echo "Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,ENTER,WaitFor:Career,Expect:Career,Shot:$1-career"
 }
 FLOW_STEPS=(
-	"Stage:start,Wait,Wait,Expect:FirstLaunch,Shot:01-first-launch"
-	"DOWN,ENTER,Wait,Expect:Title,Shot:02-title"
-	"DOWN,ENTER,Wait,Expect:Career,Shot:03-career"
+	"Stage:start,WaitFor:FirstLaunch,Expect:FirstLaunch,Wait,Shot:01-first-launch"
+	"DOWN,ENTER,WaitFor:Title,Expect:Title,Wait,Shot:02-title"
+	"DOWN,ENTER,WaitFor:Career,Expect:Career,Wait,Shot:03-career"
 	"DOWN,RIGHT,Wait,ENTER"
 	$(lesson ds1 clean) "ENTER"
 	$(lesson ds2 done) "ENTER"
@@ -48,14 +48,14 @@ FLOW_STEPS=(
 	$(lesson ds6 gentle)
 	$(to_career ds-to-career)
 	$(checkride ds-checkride 1 6)
-	"Stage:cr-start,BACK,Wait,Expect:Title,ENTER,Wait,Expect:Career,DOWN,DOWN,RIGHT,Wait,Shot:cr-lesson-1,ENTER"
+	"Stage:cr-start,BACK,WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career,Wait,DOWN,DOWN,RIGHT,Wait,Shot:cr-lesson-1,ENTER"
 	$(lesson cr1 clean) "ENTER"
 	$(lesson cr2 done) "ENTER"
 	$(lesson cr3 proper) "ENTER"
 	$(lesson cr4 gentle)
 	$(to_career cr-to-career)
 	$(checkride cr-checkride 2 4)
-	"Stage:end,BACK,Wait,Expect:Title,Shot:99-title,Log,Quit"
+	"Stage:end,BACK,WaitFor:Title,Expect:Title,Wait,Shot:99-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
 	local Down=Down Right=Right Left=Left Enter=Enter Back=Escape Menu=Escape S
