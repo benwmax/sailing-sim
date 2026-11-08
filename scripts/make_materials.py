@@ -1154,10 +1154,12 @@ BOAT_CODE = r"""
 // Visual V2 boat surfaces: gelcoat (clear coat), antifouling, non-skid, metals, plastic, varnished wood.
 // LP: local position (cm, boat frame), WP: world position (cm), N: world normal, LX/LY: world axes of the boat's X/Y.
 float3 n = normalize(N);
-// Non-skid: a raised diamond pattern anchored to the boat (8 mm pitch), only where NonSkid > 0.
-float k = 6.2831853 / 0.8;
-float gx = cos(LP.x * k) * sin(LP.y * k), gy = sin(LP.x * k) * cos(LP.y * k);
-float3 grad = (gx * LX + gy * LY) * 0.35 * NonSkid;
+// Non-skid: moulded ribs anchored to the boat, only where NonSkid > 0. Texture loop (docs/texloop-nonskid): Bean's J/22
+// photo measures fine diagonal ribs at 2.3 mm, about 45 degrees to the boat's axis (was an 8 mm diamond). Without the
+// detail maps (Medium) this draws them, fading out by 1.8 m before they alias; with them (High, Ultra) the map does.
+float nsPh = (LP.x + LP.y) * (6.2831853 / (1.41421356 * 0.228));
+float nsFade = (DetailOn > 0.5 ? 0.0f : 1.0f) * (1.0 - saturate((Depth - 60.0) / 120.0));
+float3 grad = (LX + LY) * (0.7071068 * 0.35 * sin(nsPh) * NonSkid * nsFade);
 // Wet below the splash line: the water level plus the band the waves and heel throw spray to; a ragged, dripping
 // edge (streaks along the hull) rather than a ruled line.
 float streak = 0.5 + 0.5 * sin(LP.x * 0.21 + sin(LP.x * 0.047) * 3.0);
@@ -1223,8 +1225,8 @@ float whiteG = saturate((min(col.r, min(col.g, col.b)) - 0.45) * 4.0);
 col *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.975, 0.90), timeK * gel * whiteG * saturate(sunF) * step(0.0, age));   // wear.py YELLOW; unset: as before
 rough = lerp(rough, 0.72, ox);
 coat *= 1.0 - 0.85 * ox;
-// Worn, grimy non-skid.
-col = lerp(col, col * 0.78 + 0.02, wear.x * saturate(NonSkid) * 0.7);
+// Worn, grimy non-skid: unset Age only (the livery's oxidation channel); with Age the texture loop's lines below do it.
+col = lerp(col, col * 0.78 + 0.02, (age >= 0.0 ? 0.0 : wear.x) * saturate(NonSkid) * 0.7);
 // Round 12 ("lack of texture on surfaces", "no wear and tear"): three octaves of value noise anchored to the boat (37 cm,
 // 9 cm, 2.2 cm) for grime ground into decks and non-skid where feet and water go, and a faint mottle in every gelcoat.
 float vn = 0.0, amp = 0.6, sc = 37.0;
@@ -1248,6 +1250,21 @@ col = lerp(col, col * 0.76 + float3(0.014, 0.011, 0.007), grime);
 rough = lerp(rough, min(rough + 0.18, 0.9), grime);
 coat *= 1.0 - 0.6 * grime;
 col *= 1.0 + 0.05 * (vn - 0.5) * (1.0 - Metal) * (1.0 - Grain);
+// Texture loop, non-skid (docs/texloop-nonskid; Tools/texloop/nonskid/render_levels.py mirrors these lines): the years
+// yellow the moulding a little; dirt gathers in grey-tan blotches with a 1.5 cm scuff mottle where feet go, and on
+// Medium (no cavity map) as an even dust in the pattern.
+float nsK = saturate(NonSkid) * up * (1.0 - Metal);
+col *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.975, 0.90), 0.5 * timeK * nsK * step(0.0, age));
+float2 sq = LP.xy / 1.5 + float2(11.0, 0.0), sqi = floor(sq), sqf = frac(sq);
+sqf = sqf * sqf * (3.0 - 2.0 * sqf);
+float sc00 = frac(sin(dot(sqi, float2(12.99, 78.23))) * 43758.5), sc10 = frac(sin(dot(sqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float sc01 = frac(sin(dot(sqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), sc11 = frac(sin(dot(sqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float nsScuff = saturate((lerp(lerp(sc00, sc10, sqf.x), lerp(sc01, sc11, sqf.x), sqf.y) - 0.5) * 1.6 + 0.5);
+float nsBlot = saturate((vn - 0.60 + 0.22 * dirt) * 3.0) * smoothstep(0.2, 0.6, dirt) * (0.35 + 1.3 * nsScuff);
+const float3 nsDirt = float3(0.205, 0.198, 0.178);       // grey-tan lake dust and clay (Bean's foredeck photo)
+col = lerp(col, nsDirt, saturate((0.3 + 0.45 * dirt) * nsBlot) * nsK);
+col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0.0f : 1.0f) * nsK);
+rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
 float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
@@ -1391,11 +1408,18 @@ if (DetailOn > 0.5 && surf > 0)
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
     float2 d0 = (n0.xy * 2.0 - 1.0) * strength, d1 = (n1.xy * 2.0 - 1.0) * strength, d2 = (n2.xy * 2.0 - 1.0) * strength;
     grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * LX + d2.y * LY);
-    if (surf == 2)                       // non-skid: grime in the grooves (as dirty as the boat), tops worn smooth
+    if (surf == 2)                       // non-skid (texture loop): dust packed in the grooves, grit, mildew; the years polish the tops
     {
         cav = (1.0 - m.r) * fadeD;
-        col *= lerp(1.0, lerp(0.70 + 0.2 * (1.0 - dirt), 1.06, m.r), fadeD);
-        rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g));
+        col *= lerp(1.0, 0.80 + 0.24 * m.r, fadeD);                                   // the grooves' own shade
+        col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * cav);
+        float gh = frac(sin(dot(floor(LP.xy / 0.09), float2(27.1, 61.7))) * 43758.5);    // 0.9 mm grit cells
+        col = lerp(col, float3(0.11, 0.105, 0.09), 0.6 * step(1.0 - 0.30 * dirt, gh) * (1.0 - 0.6 * m.r) * fadeD);
+        float mh = frac(sin(dot(floor(LP.xy / 0.12), float2(19.3, 47.9))) * 43758.5);    // 1.2 mm mildew cells
+        col = lerp(col, float3(0.025, 0.026, 0.022), 0.85 * step(1.0 - 0.12 * saturate(dirt * 2.2 - 1.2), mh) * cav);
+        float top = m.g * saturate(timeK * 1.5) * fadeD;
+        col = lerp(col, lerp(col, C.rgb, 0.5) * 1.05, top);
+        rough = saturate(rough + fadeD * (0.12 * (1.0 - m.r) - 0.15 * m.g) + 0.2 * dirt * cav - 0.18 * top);
     }
     else if (surf == 3 || surf == 4)     // brushing streaks in the gloss; stainless tea-stains in its pits first
     {
@@ -1706,8 +1730,9 @@ def build_boat_surface(name, bend, packed=False):
 BOAT_LIBRARY = {
     "Topsides": ("M_BoatSurface", (0.80, 0.80, 0.77), 0.22, 0.0, 1.0, 0.0, 0.10),     # white gelcoat (docs/gelcoat: 0.30 read matte)
     "Deck": ("M_BoatSurface", (0.80, 0.80, 0.76), 0.28, 0.0, 1.0, 0.0, 0.10),
-    # Graphics G6: the club J/22s' non-skid is beige with grime worked into it (Bean's lesson photos), not white.
-    "NonSkid": ("M_BoatSurface", (0.56, 0.52, 0.43), 0.66, 0.0, 0.0, 1.0, 0.35),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
+    # Graphics G6: the club J/22s' non-skid is beige, not white (Bean's lesson photos). Texture loop (docs/texloop-nonskid):
+    # this is the clean moulding (L0, measured beside a white gelcoat of sRGB 215); Age and Care now work the grime in.
+    "NonSkid": ("M_BoatSurface", (0.75, 0.68, 0.56), 0.66, 0.0, 0.0, 1.0, 0.35),  # the raised pattern breaks up any clear-coat gloss: a mirror lobe read as water in shaded cockpits
     "Bootstripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),  # navy gelcoat stripes
     "CoveStripe": ("M_BoatSurface", (0.010, 0.018, 0.080), 0.25, 0.0, 1.0, 0.0, 0.05),
     "Antifouling": ("M_BoatSurface", (0.015, 0.022, 0.050), 0.80, 0.0, 0.0, 0.0, 0.60),  # ablative bottom paint
