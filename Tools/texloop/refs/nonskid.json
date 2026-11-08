@@ -1,0 +1,222 @@
+{
+ "surface": "nonskid",
+ "measured_by": "Tools/texloop/nonskid/measure_photos.py",
+ "photo_store": "git-ignored Data/Reference/raw/textures/NonSkid/<level>/ (crops); originals Data/Reference/raw/j22-lessons/ on the Mac. They show people, so they never go in this public repo.",
+ "photos": [
+  {
+   "id": "IMG_9272",
+   "level": "L2",
+   "boat": "J/22 TX 7295 EC, North Texas Sailing School, Rush Creek, Lake Ray Hubbard",
+   "taken": "2026-10-11 09:58, low clear sun",
+   "licence": "Bean's own (measure and ship)",
+   "scale": "cam cleat axle spacing 38 mm = 128 px at the coaming",
+   "use": "pitch, rib direction, seat colour in sun"
+  },
+  {
+   "id": "1000032822",
+   "level": "L2",
+   "boat": "same J/22",
+   "taken": "2026-10-04 10:14, overcast",
+   "licence": "Bean's own",
+   "scale": "none (shoe)",
+   "use": "foredeck colour, clean side and the foot path"
+  },
+  {
+   "id": "IMG_9224",
+   "level": "L2",
+   "boat": "same J/22 on its lift",
+   "taken": "2026-10-04 09:04, overcast",
+   "licence": "Bean's own",
+   "scale": "none",
+   "use": "side deck and cabin top colour from 3 m"
+  }
+ ],
+ "white_reference": "each photo's nearby white gelcoat set neutral at sRGB 215; colours below are relative to that",
+ "measured": {
+  "pitch_mm": {
+   "values": [
+    2.29,
+    2.1,
+    2.68,
+    2.04
+   ],
+   "mean": 2.28,
+   "note": "FFT of four 256 px patches on the cockpit seat; the second peak is the rib's own harmonic except one patch (a cross texture at a quarter of the rib's power)"
+  },
+  "rib_direction_deg_to_fore_aft": 46,
+  "colour_L2": [
+   {
+    "what": "foredeck, clean side, overcast",
+    "lab": [
+     81.2,
+     1.1,
+     4.3
+    ],
+    "L_std": 12.5,
+    "dark_cover": 0.112,
+    "lum_ratio_to_white": 0.904
+   },
+   {
+    "what": "foredeck, foot path, overcast",
+    "lab": [
+     73.5,
+     -0.8,
+     7.9
+    ],
+    "L_std": 14.8,
+    "dark_cover": 0.209,
+    "lum_ratio_to_white": 0.724
+   },
+   {
+    "what": "side deck from the dock, overcast (patch catches a line and the toe rail edge)",
+    "lab": [
+     74.9,
+     -0.3,
+     1.5
+    ],
+    "L_std": 26.7,
+    "dark_cover": 0.326,
+    "lum_ratio_to_white": 0.872,
+    "weight": "low"
+   },
+   {
+    "what": "cockpit seat, low sun (white ref in shade, so b is warm)",
+    "lab": [
+     97.2,
+     -4.5,
+     13.4
+    ],
+    "L_std": 6.4,
+    "dark_cover": 0.1,
+    "weight": "hue only"
+   }
+  ],
+  "hero_style_existing": {
+   "deck.nonskid_hex": "#CDC5AE",
+   "lab": [
+    79.6,
+    -1.1,
+    12.5
+   ],
+   "note": "the J/22 hero's club preset, read by eye from the same photos earlier"
+  }
+ },
+ "targets": {
+  "note": "Lab relative to a white gelcoat of sRGB 215. L2 is measured; L0, L1, L3 and L4 are derived from L2 and the plan's descriptions until Bean's club photos arrive.",
+  "L0": {
+   "age_care": [
+    0,
+    1.0
+   ],
+   "lab": [
+    84,
+    0,
+    10
+   ],
+   "L_std_max": 3,
+   "dark_cover_max": 0.03,
+   "rib_top_flatten": 0.0,
+   "rough": [
+    0.55,
+    0.65
+   ],
+   "source": "derived: pigment from the seat's hue and the hero preset, no grime"
+  },
+  "L1": {
+   "age_care": [
+    0.3,
+    0.9
+   ],
+   "lab": [
+    82.5,
+    0,
+    9.5
+   ],
+   "L_std": 4,
+   "dark_cover": 0.06,
+   "rib_top_flatten": 0.0,
+   "rough": [
+    0.58,
+    0.68
+   ],
+   "source": "derived: dust in the grooves only, paths a little greyer"
+  },
+  "L2": {
+   "age_care": [
+    6,
+    0.5
+   ],
+   "lab": [
+    77.5,
+    0,
+    6
+   ],
+   "L_std": 10.4,
+   "dark_cover": 0.16,
+   "dark_cover_paths": 0.21,
+   "rib_top_flatten": 0.15,
+   "rough": [
+    0.6,
+    0.78
+   ],
+   "source": "measured: mean of the clean side and the foot path (photo 1000032822)",
+   "L_std_note": "measured on 15 cm photo patches after removing the lighting gradient (raw 12.5-14.8)"
+  },
+  "L3": {
+   "age_care": [
+    30,
+    0.9
+   ],
+   "lab": [
+    81,
+    0.5,
+    12
+   ],
+   "L_std": 5,
+   "dark_cover": 0.05,
+   "rib_top_flatten": 0.3,
+   "rough": [
+    0.45,
+    0.65
+   ],
+   "source": "derived: clean, tops polished in the paths, gelcoat yellowed"
+  },
+  "L4": {
+   "age_care": [
+    20,
+    0.1
+   ],
+   "lab": [
+    64,
+    0,
+    6
+   ],
+   "L_std": 15,
+   "dark_cover": 0.4,
+   "mildew_specks": {
+    "size_mm": [
+     0.5,
+     2.0
+    ],
+    "cover": 0.07
+   },
+   "rib_top_flatten": 0.2,
+   "rough": [
+    0.75,
+    0.88
+   ],
+   "source": "derived: grey grime throughout, black mildew specks in the grooves"
+  },
+  "tolerance": {
+   "lab_dE": 6,
+   "spread_pct": 25,
+   "pitch_pct": 10
+  }
+ },
+ "open_items": [
+  "Coin-in-frame close-up of a lesson J/22's non-skid (square-on, shade) to confirm the 2.3 mm pitch and whether a cross rib exists; the low sun in IMG_9272 may hide one direction.",
+  "Photos of a new (L0) and an old neglected (L4) deck at the club; until then those targets are derived.",
+  "Sunfish moulded pattern: no photo; it uses the J/22 map for now.",
+  "Web photo sites are blocked by the cloud network and Wikimedia answered 429 on Nov 8, so no third-party photos are in the pack."
+ ]
+}
