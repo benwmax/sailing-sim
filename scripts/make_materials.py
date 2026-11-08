@@ -1749,6 +1749,9 @@ BOAT_LIBRARY = {
     "PaintedAluminium": ("M_BoatSurface", (0.80, 0.80, 0.78), 0.35, 0.0, 0.6, 0.0, 0.05),  # white two-pack on spars, stanchions
     "Rubber": ("M_BoatSurface", (0.025, 0.025, 0.026), 0.70, 0.0, 0.0, 0.0, 0.10),         # EPDM gaskets, PVC rub strake, hiking-strap backing
     "Sailcloth": ("M_BoatSurface", (0.80, 0.79, 0.74), 0.50, 0.0, 0.0, 0.0, 0.30),        # resinated Dacron on furled and flaked sails
+    # Part detail loop (JibHank): UV-stabilised white nylon mouldings (hanks, plastic fittings) and the brass of their pistons
+    "WhitePlastic": ("M_BoatSurface", (0.74, 0.72, 0.66), 0.32, 0.0, 0.0, 0.0, 0.10),
+    "Brass": ("M_BoatSurface", (0.78, 0.58, 0.28), 0.30, 1.0, 0.0, 0.0, 0.0),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
@@ -1849,6 +1852,13 @@ float fres = 0.045 + 0.955 * pow(1.0 - cosV, 5.0);
 float cover = Detail > 0.5 ? saturate(fres + 0.04) : 0.12;
 return 1.0 - (1.0 - cover) * win;"""
 
+
+# Texture loop, sailcloth (docs/texloop-sailcloth/): the cloth's Time and Dirt from Age and Care, the same split as
+# Tools/texloop/sailcloth_swatch.py's wear_split (the CPU swatches the loop scores), which mirrors the shared loop's
+# Tools/texloop/wear.py (time_k, dirt_k): Time rises fast in the first year, then slowly over decades; Dirt is mostly
+# (1 - Care), quick in the first year.
+SAIL_WEAR_SPLIT = """sTime = saturate(0.25 * (1.0 - exp(-Age / 0.75)) + 0.75 * (1.0 - exp(-Age / 18.0)));
+    sDirt = saturate((1.0 - exp(-Age)) * (0.15 + 0.85 * (1.0 - saturate(Care))));"""
 
 SAIL_CODE = r"""
 // Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
@@ -1991,15 +2001,66 @@ float n11 = frac(sin(dot(gi + float2(1.0, 1.0), float2(127.1, 311.7))) * 43758.5
 float mott = lerp(lerp(n00, n10, gf.x), lerp(n01, n11, gf.x), gf.y);
 float whiteish = saturate((min(base.r, min(base.g, base.b)) - 0.4) * 4.0);
 float age = saturate(0.3 + 0.45 * exp(-UV2.x / 0.6) + 0.25 * UV1.y + 0.35 * (panel - 0.5) + 0.15 * (mott - 0.5));
-cloth *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.95, 0.83), age * 0.6 * whiteish);
 float foot = (1.0 - smoothstep(0.05, 0.55 + 0.3 * mott, UV0.y)) * (0.6 + 0.4 * mott);
-// Boat fidelity 4: how grimy the foot is follows the boat's age and care where it has one (E1's Age, -1 = unset: as before).
-float dirtK = Age >= 0.0 ? saturate(0.15 + Age / 15.0) * (1.0 - 0.6 * saturate(Care)) * 2.0 : 1.0;
-cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.78, 0.72), saturate(foot * 0.5 * dirtK) * whiteish);
 float2 sp = UV0 / 0.045;
 float sr = frac(sin(dot(floor(sp), float2(41.3, 289.1))) * 15731.7);
-float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
-cloth *= 1.0 - 0.35 * speck * whiteish;
+// Texture loop, sailcloth (Tools/texloop/cards/sailcloth.json; docs/texloop-sailcloth/): with the boat's Age and Care set,
+// the white cloth wears by two numbers. sTime (care can't undo it): the brightener goes, the sun yellows the cloth (most
+// at the leech and head), the resin breaks (crinkle, matt) and repairs collect. sDirt (care removes it): dinge, tan
+// clay smudges, foot grime, and on a dirty boat clusters of 1-4 mm mildew dots. Age unset (-1: the player's and AI
+// boats) keeps the look from before, unchanged.
+float sTime = 0.0, sDirt = 0.0, sTape = 0.0;
+if (Age >= 0.0)
+{
+    //@SAIL_WEAR_SPLIT@
+    cloth *= 1.0 + 0.10 * (1.0 - sTime) * whiteish;
+    cloth *= 1.0 + float3(-0.012, -0.004, 0.02) * (1.0 - sTime) * whiteish;
+    float yel = sTime * (0.45 + 0.55 * age);
+    cloth *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.92, 0.76), 0.85 * yel * whiteish);
+    float dinge = 0.22 * sDirt * whiteish;
+    cloth = cloth * (1.0 - 0.22 * dinge) + float3(0.034, 0.027, 0.015) * dinge;
+    // Tan smudges: two octaves of value noise turned off the cloth's axes (a lone octave reads as square blocks from the dock).
+    float blot = 0.06;
+    for (int ob = 0; ob < 2; ob++)
+    {
+        float2 bq = ob == 0 ? float2(0.866 * UV0.x - 0.5 * UV0.y, 0.5 * UV0.x + 0.866 * UV0.y) / 0.22 + float2(5.3, 1.7)
+                            : float2(0.5 * UV0.x + 0.866 * UV0.y, -0.866 * UV0.x + 0.5 * UV0.y) / 0.08 + float2(2.9, 7.7);
+        float2 bi = floor(bq), bf = frac(bq);
+        bf = bf * bf * (3.0 - 2.0 * bf);
+        float b00 = frac(sin(dot(bi, float2(269.5, 183.3))) * 43758.5), b10 = frac(sin(dot(bi + float2(1, 0), float2(269.5, 183.3))) * 43758.5);
+        float b01 = frac(sin(dot(bi + float2(0, 1), float2(269.5, 183.3))) * 43758.5), b11 = frac(sin(dot(bi + float2(1, 1), float2(269.5, 183.3))) * 43758.5);
+        blot += (ob == 0 ? 0.72f : 0.28f) * lerp(lerp(b00, b10, bf.x), lerp(b01, b11, bf.x), bf.y);
+    }
+    float smudge = smoothstep(0.66 - 0.3 * sDirt, 0.88 - 0.15 * sDirt, blot) * sDirt * (0.5 + 0.5 * (1.0 - smoothstep(0.3, 2.0, UV0.y)));
+    cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.84, 0.81, 0.72), 0.9 * smudge * whiteish);
+    cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.76, 0.66), saturate(foot * 0.45 * sDirt) * whiteish);
+    // Mildew: a 1.2 cm speck grid, each dot jittered in its cell and its own size, thinned by a slow cluster noise.
+    float mil = smoothstep(0.5, 0.95, sDirt);
+    float2 fq = UV0 / 0.012, fi = floor(fq);
+    float fr = frac(sin(dot(fi, float2(41.3, 289.1))) * 15731.7);
+    float2 fj = float2(frac(sin(dot(fi, float2(12.7, 77.3))) * 43758.5), frac(sin(dot(fi, float2(63.1, 21.9))) * 43758.5)) - 0.5;
+    float fin = step(length(frac(fq) - 0.5 - 0.6 * fj), 0.08 + (fr - 0.8));
+    float2 cq = UV0 / 0.18 + float2(9.1, 4.4);
+    float2 ci = floor(cq), cf = frac(cq);
+    cf = cf * cf * (3.0 - 2.0 * cf);
+    float c00 = frac(sin(dot(ci, float2(269.5, 183.3))) * 43758.5), c10 = frac(sin(dot(ci + float2(1, 0), float2(269.5, 183.3))) * 43758.5);
+    float c01 = frac(sin(dot(ci + float2(0, 1), float2(269.5, 183.3))) * 43758.5), c11 = frac(sin(dot(ci + float2(1, 1), float2(269.5, 183.3))) * 43758.5);
+    float clus = lerp(lerp(c00, c10, cf.x), lerp(c01, c11, cf.x), cf.y);
+    float speckM = step(1.0 - 0.2 * mil * smoothstep(0.6, 0.9, clus), fr) * (1.0 - smoothstep(0.0, 0.8 + 2.2 * sDirt, UV0.y)) * fin * whiteish;
+    cloth = lerp(cloth, cloth * 0.45 * 0.7 + float3(0.006, 0.0066, 0.0045), speckM);
+    // Sail tape: a few white rectangles (10 x 7 cm) on a used sail, glossier than the cloth.
+    float2 tq = UV0 / float2(1.1, 0.9), ti = floor(tq), tf = frac(tq);
+    float th = frac(sin(dot(ti, float2(17.3, 91.1))) * 43758.5);
+    sTape = step(th, 0.22 * sTime * (0.4 + sDirt)) * step(abs(tf.x - 0.5), 0.06) * step(abs(tf.y - 0.45), 0.04) * whiteish;
+    cloth = lerp(cloth, C.rgb * 1.12, sTape);
+}
+else
+{
+    cloth *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.95, 0.83), age * 0.6 * whiteish);
+    cloth *= lerp(float3(1.0, 1.0, 1.0), float3(0.80, 0.78, 0.72), saturate(foot * 0.5) * whiteish);
+    float speck = step(0.993, sr) * (1.0 - smoothstep(0.0, 2.5, UV0.y)) * step(length(frac(sp) - 0.5), 0.3);
+    cloth *= 1.0 - 0.35 * speck * whiteish;
+}
 float fibre = 0.0;
 if (Layout > 3.5 && Layout < 4.5)
 {
@@ -2202,14 +2263,14 @@ float crinkle = 0.0;
 if (Detail > 0.5 && Layout < 3.5)
 {
     float pxC = max(Depth, 1.0) * 1.25e-5;
-    float ageC = Age >= 0.0 ? saturate(0.3 + Age / 12.0) * (1.0 - 0.5 * saturate(Care)) : 0.5;
+    float ageC = Age >= 0.0 ? sTime : 0.5f;   // texture loop: the resin breaks with use and years, which care can't undo
     float2 qp = UV0 / 0.4 + float2(3.7, 1.9);
     float2 qpi = floor(qp), qpf = frac(qp), spm = qpf * qpf * (3.0 - 2.0 * qpf);
     float p00 = frac(sin(dot(qpi, float2(269.5, 183.3))) * 43758.5), p10 = frac(sin(dot(qpi + float2(1, 0), float2(269.5, 183.3))) * 43758.5);
     float p01 = frac(sin(dot(qpi + float2(0, 1), float2(269.5, 183.3))) * 43758.5), p11 = frac(sin(dot(qpi + float2(1, 1), float2(269.5, 183.3))) * 43758.5);
     float patch = lerp(lerp(p00, p10, spm.x), lerp(p01, p11, spm.x), spm.y);
     float thC = 0.78 - 0.40 * ageC;   // patches over about a fifth of a new sail, a third at the default, two thirds of an old one
-    float cover = smoothstep(thC - 0.12, thC + 0.12, patch);
+    float cover = smoothstep(thC - 0.12, thC + 0.12, patch) * (Age >= 0.0 ? saturate(sTime * 5.0) : 1.0f);   // none on a new sail
     float sAmp = 0.08 * (0.5 + ageC);   // the fold's peak slope (radians): 3.9 deg at the default age, 6 at an old sail's (0.11 still read embossed in a patch)
     float wd = 0.045;                    // the fold's half width in noise units: under a tenth of a cell (0.06 read as rounded bumps)
     float2 cg = float2(0.0, 0.0);
@@ -2253,10 +2314,11 @@ float fold = exp(-dy * dy / (w * w)) * abs(strength) / 0.0018;
 col *= 1.0 - 0.05 * fold * whiteish * (1.0 - mark);
 Rough = lerp(lerp(R, 0.75, 0.5 * fold), 0.28, mark);
 Rough = min(Rough + 0.08 * crinkle, 0.9);                          // the resin broken along a crinkle line: duller there
+Rough = Age >= 0.0 ? lerp(saturate(Rough + 0.17 * sTime + 0.06 * sDirt - 0.12 * (1.0 - sTime)), 0.3, sTape) : Rough;   // texture loop: new resin's sheen, then matt
 if (Layout > 3.5 && Layout < 4.5) Rough = lerp(0.3, 0.42, fibre) + 0.1 * fold;     // the film's gloss; the fibres stand proud of it
 Rough = lerp(Rough, Detail > 0.5 ? 0.04 : 0.08, win);              // the window's vinyl (its creases are the cloth's, in the normal)
 return col;
-""".replace("//@JIB_WINDOW@", JIB_WINDOW)
+""".replace("//@JIB_WINDOW@", JIB_WINDOW).replace("//@SAIL_WEAR_SPLIT@", SAIL_WEAR_SPLIT)
 
 
 def sail_marks_texture():

@@ -1,0 +1,42 @@
+{
+ "surface": "nonskid",
+ "name": "Non-skid deck (moulded)",
+ "surface_kind": 2,
+ "plan": "https://claude.ai/artifact/Bq6JXirCL49khtgLL76h3q",
+ "boats": {
+  "J22": "deck, cabin top, cockpit seats and sole (hero bake detail mask R; M_BoatSurface NonSkid > 0)",
+  "Sunfish": "deck moulded pattern (same surface kind; its own pattern is not measured yet, see refs open items)"
+ },
+ "closest_camera_m": 0.4,
+ "closest_camera_note": "helm eye looking down at the seat and sole; the feet sit on it",
+ "pattern": {
+  "kind": "moulded diagonal ribs (twill-like), one dominant direction at about 45 degrees to the boat's fore-aft axis, a faint cross texture",
+  "pitch_mm": 2.3,
+  "pitch_tolerance_pct": 10,
+  "relief_mm": 0.45,
+  "texels_per_mm_needed": 4,
+  "source": "Tools/texloop/refs/nonskid.json (measured on Bean's IMG_9272)"
+ },
+ "wear_levels": ["L0", "L1", "L2", "L3", "L4"],
+ "wear_reads": {
+  "time": "rib tops polished flat in foot paths, slight yellowing, sanded scuffs",
+  "dirt": "grey-tan grime in the grooves and in blotches along foot paths, black mildew specks on a neglected boat"
+ },
+ "replaces": [
+  "Tools/boats/make_detail_textures.py nonskid(): 45-degree grid of rounded pyramids, 2.5 mm pitch, both diagonals equal (High and Ultra only)",
+  "scripts/make_materials.py BOAT_CODE: the 8 mm analytic diamond (k = 2 pi / 0.8 cm) every tier draws where NonSkid > 0, 3.5x the measured pitch",
+  "scripts/make_materials.py BOAT_CODE surf == 2 detail branch: grime in the grooves from one dirt number"
+ ],
+ "budget": {
+  "medium": "no new maps; shader math only",
+  "high": "keep the one 1024 px N/M pair (100 mm tile) at the same memory; no extra texture reads",
+  "ultra": "optional 2048 px pair later (plan allows it for non-skid)"
+ },
+ "owner_files": [
+  "Tools/texloop/cards/nonskid.json",
+  "Tools/texloop/refs/nonskid.json",
+  "Tools/texloop/nonskid/",
+  "Tools/boats/make_detail_textures.py nonskid()",
+  "scripts/make_materials.py BOAT_CODE surf == 2 detail branch and the non-skid grime line"
+ ]
+}

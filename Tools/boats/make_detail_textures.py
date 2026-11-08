@@ -6,8 +6,8 @@ The baked hero maps carry the boat's own colour, wear and dirt at a few millimet
 a helm's-eye camera that sits half a metre over the cockpit. These tile at true scale on top of them, masked by the
 baked detail map (T_<Boat>_<Group>_X: R non-skid, G teak, B smooth gelcoat), and fade out with distance:
 
-  T_Detail_NonSkid_N/_M     moulded non-skid, 100 mm tile: a 45-degree grid of rounded pyramids at 2.5 mm pitch with
-                            sanding scatter; M: R cavity (where grime sits), G top polish (tops worn smooth), B height
+  T_Detail_NonSkid_N/_M     moulded non-skid, 100 mm tile: 45-degree ribs at 2.28 mm pitch with a faint cross texture
+                            (measured, Tools/texloop/refs/nonskid.json); M: R cavity (where grime sits), G top polish (tops worn smooth), B height
   T_Detail_Gelcoat_N/_M     250 mm tile: orange peel (1-3 mm) and fine buffing scratches; M: R scratches, G roughness
   T_Detail_TeakWeathered_N/_M  300 mm along the grain x 150 mm across: weathered teak, the soft early wood eroded
                             between ridges of latewood, open checks; M: R grain luminance, G checks, B height
@@ -85,22 +85,25 @@ def save_rgb(a, path):
 
 
 def nonskid():
+    """Texture loop (Tools/texloop/refs/nonskid.json): the J/22's moulded non-skid is fine diagonal ribs, not pyramids.
+    Measured on Bean's IMG_9272: 2.3 mm pitch (FFT, cam cleat for scale), ribs about 45 degrees to the boat's axis, one
+    direction dominant with a faint cross texture. 31 ribs across the 100 mm tile's diagonal wrap it at 2.28 mm."""
     tile = 100.0
-    pitch = 2.5
-    n = int(round(tile / pitch))              # 40 bumps across the tile, so it wraps
+    n = 31                                    # u = (x + y) * n: rib period tile / (n * sqrt 2) = 2.28 mm
     y, x = np.meshgrid((np.arange(RES) + 0.5) / RES, (np.arange(RES) + 0.5) / RES, indexing="ij")
-    u = (x + y) * n
-    v = (x - y) * n
+    wob = periodic_noise(RES, 16, 3, 0.5, 5) - 0.5            # moulds are hand-laid sheet: the ribs wander a little
+    u = (x + y) * n + 0.35 * wob
+    v = (x - y) * 2 * n                       # the cross texture, half the rib's period
     fu, fv = u - np.floor(u), v - np.floor(v)
-    pyr = np.minimum(1 - np.abs(2 * fu - 1), 1 - np.abs(2 * fv - 1))     # 0 at the grooves, 1 at a bump's top
-    h = np.clip(pyr, 0, 1) ** 0.7
-    h = np.minimum(h, 0.82) / 0.82                                        # flattened tops (moulded, then worn)
-    scatter = periodic_noise(RES, 64, 3, 0.5, 1)
-    h = h * (0.9 + 0.1 * scatter) + 0.05 * periodic_noise(RES, 256, 2, 0.5, 2)
+    rib = np.sin(np.pi * fu) ** 1.6                                           # rounded rib, narrow groove
+    cross = 0.5 + 0.5 * np.cos(2 * np.pi * fv)
+    h = rib * (0.82 + 0.18 * cross)                                           # cross texture at about a quarter
+    h = np.minimum(h, 0.9) / 0.9                                              # moulded tops slightly flat
+    h = h * (0.92 + 0.08 * periodic_noise(RES, 64, 3, 0.5, 1)) + 0.04 * periodic_noise(RES, 256, 2, 0.5, 2)
     h = np.clip(h, 0, 1)
-    cav = np.clip(1 - (1 - h) ** 1.5 * 1.2, 0, 1)
-    polish = np.clip((h - 0.8) / 0.2, 0, 1)
-    save_rgb(normal_map(h, 0.35, tile), os.path.join(OUT, "T_Detail_NonSkid_N.png"))
+    cav = np.clip(1 - (1 - h) ** 1.5 * 1.25, 0, 1)                           # R: 0 deep in a groove (grime sits there)
+    polish = np.clip((h - 0.78) / 0.22, 0, 1)                                 # G: rib tops, worn smooth first
+    save_rgb(normal_map(h, 0.45, tile), os.path.join(OUT, "T_Detail_NonSkid_N.png"))
     save_rgb(np.stack([cav, polish, h], -1), os.path.join(OUT, "T_Detail_NonSkid_M.png"))
     return tile
 
