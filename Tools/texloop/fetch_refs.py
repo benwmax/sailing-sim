@@ -62,7 +62,11 @@ def main():
         if os.path.exists(path):
             continue
         print("fetch", r["id"])
-        if fetch(r["file"], path):
+        url = r["file"].split("?")[0]
+        # Wikimedia won't scale a thumbnail past the original's width: then take the original itself
+        orig = url.replace("thumb.wikimedia.org", "upload.wikimedia.org").replace("/thumb/", "/").rsplit("/", 1)[0] \
+            if "/thumb/" in url else None
+        if fetch(url, path, tries=2) or (orig and fetch(orig, path, tries=3)):
             got += 1
             time.sleep(a.pace if "wikimedia" in r["file"] else 1.0)
     print("fetched", got)

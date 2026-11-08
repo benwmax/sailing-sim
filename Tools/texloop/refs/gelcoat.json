@@ -13,7 +13,7 @@
    "author": "Matti Blume",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: red hull"
   },
   {
    "id": "varianta-18-interboot-2020-friedrichshafen-ib200",
@@ -24,9 +24,19 @@
    "licence": "CC BY-SA 4.0",
    "use": "measure",
    "author": "Matti Blume",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.45,
+    0.755,
+    0.62,
+    0.8
+   ],
+   "neutral": [
+    0.02,
+    0.3,
+    0.12,
+    0.4
+   ],
+   "notes": "new boat at a boat show, hall light; neutral = grey wall"
   },
   {
    "id": "bente-24-interboot-2020-friedrichshafen-ib200162",
@@ -39,7 +49,7 @@
    "author": "Matti Blume",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: no clean lit hull patch"
   },
   {
    "id": "daysailer-interboot-2020-friedrichshafen-ib20015",
@@ -52,7 +62,7 @@
    "author": "Matti Blume",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: grey gelcoat"
   },
   {
    "id": "se-27-leisure-interboot-2020-friedrichshafen-ib2",
@@ -65,7 +75,7 @@
    "author": "Matti Blume",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: cockpit view, no gelcoat"
   },
   {
    "id": "maxus-24-evo-interboot-2020-friedrichshafen-ib20",
@@ -76,9 +86,19 @@
    "licence": "CC BY-SA 4.0",
    "use": "measure",
    "author": "Matti Blume",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.15,
+    0.705,
+    0.45,
+    0.74
+   ],
+   "neutral": [
+    0.03,
+    0.42,
+    0.15,
+    0.5
+   ],
+   "notes": "new boat at a boat show, hall light; neutral = grey wall"
   },
   {
    "id": "lis-6-0-interboot-2020-friedrichshafen-ib200170",
@@ -91,7 +111,7 @@
    "author": "Matti Blume",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: dark hull; cabin patch too small"
   },
   {
    "id": "j22-sailboat-great-white-j-0563",
@@ -102,9 +122,19 @@
    "licence": "CC0",
    "use": "ship",
    "author": "Ahunt",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.12,
+    0.44,
+    0.4,
+    0.5
+   ],
+   "neutral": [
+    0.58,
+    0.56,
+    0.72,
+    0.61
+   ],
+   "notes": "1980s J/22 kept racing (L3), sun; neutral = gravel"
   },
   {
    "id": "j22-sailboat-great-white-j-4376",
@@ -115,9 +145,19 @@
    "licence": "CC0",
    "use": "ship",
    "author": "Ahunt",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.2,
+    0.5,
+    0.5,
+    0.6
+   ],
+   "neutral": [
+    0.08,
+    0.78,
+    0.22,
+    0.84
+   ],
+   "notes": "same boat, topsides in shade of sky; neutral = concrete"
   },
   {
    "id": "j22-sailboat-great-white-j-4378",
@@ -128,9 +168,19 @@
    "licence": "CC0",
    "use": "ship",
    "author": "Ahunt",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.18,
+    0.69,
+    0.45,
+    0.77
+   ],
+   "neutral": [
+    0.02,
+    0.56,
+    0.14,
+    0.64
+   ],
+   "notes": "same boat, sunlit topsides; neutral = gravel"
   },
   {
    "id": "j22-sailboat-great-white-j-4381",
@@ -143,7 +193,7 @@
    "author": "Ahunt",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: logo and deck in every clean patch"
   },
   {
    "id": "j22-sailboat-great-white-j-5205",
@@ -154,9 +204,19 @@
    "licence": "CC0",
    "use": "ship",
    "author": "Ahunt",
-   "box": null,
-   "neutral": null,
-   "notes": ""
+   "box": [
+    0.18,
+    0.56,
+    0.55,
+    0.66
+   ],
+   "neutral": [
+    0.9,
+    0.51,
+    0.99,
+    0.57
+   ],
+   "notes": "same boat as 0563 (L3), sun; neutral = gravel"
   },
   {
    "id": "j22-sailboat-ookpik-0598",
@@ -169,20 +229,25 @@
    "author": "Ahunt",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: lifting slings across the topsides, no clean neutral"
   },
   {
    "id": "j22-sailboat-on-crane-8040",
-   "level": "L3",
+   "level": "L2",
    "source": "wikimedia",
    "page": "https://commons.wikimedia.org/wiki/File:J22_sailboat_on_crane_8040.jpg",
    "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ea/J22_sailboat_on_crane_8040.jpg/1280px-J22_sailboat_on_crane_8040.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
    "licence": "CC0",
    "use": "ship",
    "author": "Ahunt",
-   "box": null,
+   "box": [
+    0.25,
+    0.46,
+    0.75,
+    0.58
+   ],
    "neutral": null,
-   "notes": ""
+   "notes": "dull, scuffed club-style J/22 (L2), sun; no clean neutral in frame"
   },
   {
    "id": "j22-sailboat-2528",
@@ -195,7 +260,7 @@
    "author": "Ahunt",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: deck from above, mostly non-skid"
   },
   {
    "id": "j22-sailboat-cheque-mate-4962",
@@ -221,7 +286,7 @@
    "author": "A.Savin<",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: a rusted steel hull, not gelcoat (rust lane material)"
   },
   {
    "id": "abandoned-181435375",
@@ -234,7 +299,7 @@
    "author": "\nLeon Jurtzik</di",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: heavy teal colour grading, so its colour cannot be trusted"
   },
   {
    "id": "stockage-de-b-teau-quai-des-antilles-nantes-7936",
@@ -247,7 +312,7 @@
    "author": "Guilhem Vellut from Annecy",
    "box": null,
    "neutral": null,
-   "notes": ""
+   "notes": "skipped: blue painted hull, not white gelcoat"
   }
  ]
 }
