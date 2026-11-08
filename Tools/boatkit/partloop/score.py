@@ -12,7 +12,7 @@ prints the scorecard. Checks:
             with "outline": null has no square-on reference and reports the outline as not checked
   Size ids: overall, overall_all, sheave, sheave2, aspect, head, thick (blocks); length, height, width, aspect_full, foot,
             waist (any part, from the whole outlines: aspect_full is height / length, foot and waist are fractions of the
-            length)
+            length); fixings (screw hole centres, from the FixAft and FixFwd sockets)
   features  the card's list: `objects` must all be among the joined objects, `slots` among the material slots, and
             `manual` ticks come from <round dir>/review.json ({"ticks": {"<id>": true|false}, "notes": ...}), filled in by
             whoever looked at the renders
@@ -168,6 +168,8 @@ def main():
         "overall_all": (rows.max() - rows.min() + 1) * mm_px,        # top of the shackle to the lowest point (a becket)
         "sheave": abs(socks["LineIn"][0] - socks["LineOut"][0]) if "LineIn" in socks else None,
         "sheave2": abs(socks["LineIn2"][0] - socks["LineOut2"][0]) if "LineIn2" in socks else None,   # a fiddle's small sheave
+        # screw hole centres: the distance between a part's FixAft and FixFwd sockets (mm)
+        "fixings": (sum((a - b) ** 2 for a, b in zip(socks["FixAft"], socks["FixFwd"])) ** 0.5) if "FixAft" in socks and "FixFwd" in socks else None,
         "aspect": ours["aspect"],
         "head": ours["head"],
         "thick": body(edge)[0].shape[1] * mm_px,

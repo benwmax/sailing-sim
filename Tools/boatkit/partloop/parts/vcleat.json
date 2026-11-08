@@ -1,0 +1,36 @@
+{
+ "part": "VCleat",
+ "card": {
+  "what": "Small moulded composite V-cleat with a fairlead eye, for 3-6 mm control lines (cunningham, outhaul, vang tail, jib cars, centreboard and kicker lines on dinghies)",
+  "boats": "Not placed yet. Candidates: the Sunfish's outhaul and cunningham tails (layouts/sunfish.json) and the J/22's small control-line tails (cunningham, jib car adjusters) where a cam cleat is too big",
+  "distance": "arm's reach in the cockpit; the camera passes close when the player trims a control line",
+  "before": "none: the kit had no V-cleat; control lines used CamCleat"
+ },
+ "references": [
+  {"id": "bean-sheet", "kind": "photo", "use": "three-quarter view from above: the moulding's shape, tail pocket, fairlead eye, raked ridges in the V, nose (crop of Bean's hardware reference sheet, Nov 8 2026; a retailer photo: for looking at only, never shipped)",
+   "url": "project upload 6f6c87c1 (Bean, 'V Cleat', bottom right)"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "https://www.premiumropes.com/v-cleat-3-6mm-1-8-1-4-fairlead-rf5101",
+   "note": "Small V-cleat with fairlead, 3-6 mm line: 4 mm fasteners on 48 mm hole centres, 11 g (Premium Ropes, Eastmarine Asia listings); the open version without the eye is 36 mm centres, 9 g. No retailer lists the overall length or height: 70 x 18 x 21.5 mm is read off the photo against the 48 mm centres"}
+ ],
+ "sizes": [
+  {"id": "fixings", "name": "Screw hole centres", "target": 48.0, "unit": "mm", "tol": 0.02, "source": "catalogue: 48 mm hole centres"},
+  {"id": "length", "name": "Overall length", "target": 70.0, "unit": "mm", "tol": 0.08, "source": "photo estimate against the 48 mm centres (no catalogue figure)"},
+  {"id": "height", "name": "Height at the nose", "target": null, "unit": "mm", "tol": null, "source": "no square-on reference: reported only"},
+  {"id": "width", "name": "Width", "target": null, "unit": "mm", "tol": null, "source": "no end-on reference: reported only"}
+ ],
+ "outline": null,
+ "features": [
+  {"id": "moulding", "text": "One dark composite moulding, low at the tail and rising in a smooth line to a rounded nose, rounded in plan at both ends", "objects": ["moulding"], "manual": true},
+  {"id": "vjaw", "text": "V jaw open on top, narrowing to the bottom, running out open through the nose end", "manual": true},
+  {"id": "ridges", "text": "Raked ridges on both V walls, leaning toward the tail", "manual": true},
+  {"id": "eye", "text": "Oval fairlead eye through the bulkhead between the pocket and the jaw, with a solid bridge over it", "manual": true},
+  {"id": "pocket", "text": "Tail pocket inside a rim, with the aft screw countersunk in its floor", "objects": ["screw_aft"], "manual": true},
+  {"id": "fwdscrew", "text": "Forward screw down at the bottom of the V", "objects": ["screw_fwd"]},
+  {"id": "linefit", "text": "A 6 mm line sits in the V below the top edges and runs out through the eye", "manual": true},
+  {"id": "plate", "text": "Maker's mark on the outboard cheek (made-up TERNWAY plate, no real logo)", "objects": ["plate"]},
+  {"id": "materials", "text": "Black plastic moulding, stainless screws", "slots": ["BlackPlastic", "Stainless"]},
+  {"id": "flat", "text": "Flat underside, sits on the deck with no gap", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}

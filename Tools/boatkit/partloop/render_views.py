@@ -103,6 +103,13 @@ def main():
         R._camera(c + Vector(d).normalized() * size * 2.2 * (lens / 50), c, lens)
         shoot(os.path.join(out, f"{view}.png"))
 
+    # a part may name the angle its reference photo was taken from (its builder's photo_view): one more still, "photo"
+    pv = getattr(P.PARTS[name][0], "photo_view", None)
+    if pv is not None:
+        c, size = studio(ob, 900, 900, samples)
+        R._camera(c + Vector(pv).normalized() * size * 2.2 * (85 / 50), c, 85)
+        shoot(os.path.join(out, "photo.png"))
+
     # in use: a 10 mm line over the sheave with both tails hanging, as blocks are photographed (render-only dressing,
     # never exported; blocks only: it needs the LineIn and Axle sockets)
     socks = stats["sockets"]
@@ -176,6 +183,32 @@ def main():
                 path.append(0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3))
         path.append(key[-1])
         rope = G.tube("RenderRope", [tuple(p) for p in path], 0.006, None, 16)
+        rm = bpy.data.materials.new("RenderRopeMat")
+        rm.use_nodes = True
+        rb_ = rm.node_tree.nodes["Principled BSDF"]
+        rb_.inputs["Base Color"].default_value = (0.02, 0.12, 0.25, 1)
+        rb_.inputs["Roughness"].default_value = 0.8
+        rope.data.materials.append(rm)
+        for view, d in (("in_use_side", (0.0, -1.0, 0.25)), ("in_use", (1.0, -1.0, 0.9))):
+            c, size = studio(ob, 900, 900, samples)
+            R._camera(c + Vector(d).normalized() * size * 2.2 * 1.25, c, 85)
+            shoot(os.path.join(out, f"{view}.png"))
+        bpy.data.objects.remove(rope, do_unlink=True)
+
+    # parts that say how their line runs (the builder's render_rope: sockets in mm -> (path in metres, radius)), such as
+    # the V-cleat: the line made fast, render-only like the others
+    rope_fn = getattr(P.PARTS[name][0], "render_rope", None)
+    if rope_fn is not None:
+        path, rr = rope_fn(socks)
+        pts = [Vector(p) for p in path]
+        smooth = []
+        for i in range(len(pts) - 1):            # Catmull-Rom through the points
+            p0, p1, p2, p3 = pts[max(i - 1, 0)], pts[i], pts[i + 1], pts[min(i + 2, len(pts) - 1)]
+            for j in range(8):
+                t = j / 8
+                smooth.append(0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t ** 3))
+        smooth.append(pts[-1])
+        rope = G.tube("RenderRope", [tuple(p) for p in smooth], rr, None, 16)
         rm = bpy.data.materials.new("RenderRopeMat")
         rm.use_nodes = True
         rb_ = rm.node_tree.nodes["Principled BSDF"]
