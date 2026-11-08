@@ -1,0 +1,44 @@
+{
+ "part": "Clutch",
+ "card": {
+  "what": "Single lever rope clutch for 6 to 12 mm line (Bean's 'Rope Jammer'): holds a halyard or control line on the cabin top so its winch can be freed; lift the lever to let the line run",
+  "boats": "kit part, not yet placed by a layout: halyard and reef-line clutches on a cabin top (a J/22's halyards often lead to clutches or cam cleats aft of the mast; Catalina 22 and bigger boats); ClutchBank is the multi-line version",
+  "distance": "arm's reach in the cockpit and on the cabin top; the camera passes close when you work the halyards",
+  "before": "kit Clutch from bk_parts.clutch (Oct 2026): a tapered black box on a flat base with a flat aluminium handle and a maker's plate"
+ },
+ "references": [
+  {"id": "bean", "kind": "photo",
+   "use": "the look Bean asked for: three-quarter product shot on white (the 'Rope Jammer' tile): grey side plates with a bright edge, a hood-like lever with a ribbed grip over the mouth, red line guide, red release button, lock window, screw heads, a diagonal groove; outline match by angle (photo_outline.py)",
+   "url": "Bean's hardware reference sheet, project upload Nov 8 2026 (measuring and comparing only)", "mask": "bean.mask.png"},
+  {"id": "deck", "kind": "photo",
+   "use": "in use: a bank of five clutches on a small yacht's cabin top, halyards led aft from the mast foot through them",
+   "url": "https://commons.wikimedia.org/wiki/File:Umgelenkte_Fallen.JPG", "licence": "CC BY 3.0, PaterMcFly"},
+  {"id": "inside", "kind": "photo",
+   "use": "the mechanism (cam, jaws, lever) of a disassembled halyard stopper; not downloaded this round (the image host refused the cloud's requests)",
+   "url": "https://commons.wikimedia.org/wiki/File:Fallenstopper_zerlegt.JPG", "licence": "CC BY 3.0, PaterMcFly"},
+  {"id": "sizes", "kind": "catalogue", "use": "sizes",
+   "url": "Spinlock XAS 6-12 mm single (125 x 40 x 62 mm, 79 mm fixing centres; Lindemann KG table via search), Lewmar D1 single (126 x 32 x 72 mm; Lewmar spec drawing and Force4, West Marine listings via search)",
+   "note": "retail and maker sites are blocked from the cloud: numbers read from search results; two makers agree on 125-126 mm long, 62-72 mm high, 32-40 mm wide"}
+ ],
+ "sizes": [
+  {"id": "length", "name": "Overall length", "target": 125.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 125 mm (Spinlock XAS 6-12), 126 mm (Lewmar D1)"},
+  {"id": "height", "name": "Height off the deck", "target": 66.0, "unit": "mm", "tol": 0.10, "source": "catalogue: 62 mm (XAS) to 72 mm (D1)"},
+  {"id": "width", "name": "Width across the plates", "target": 36.0, "unit": "mm", "tol": 0.12, "source": "catalogue: 40 mm (XAS) to 32 mm (D1)"}
+ ],
+ "outline": null,
+ "photo_outline": {"ref": "bean", "pass": 0.85, "note": "no square-on photo: photo_outline.py finds the best-matching angle on the three-quarter photo and scores the overlap there"},
+ "features": [
+  {"id": "plates", "text": "Two side plates, tallest at the grip end, the top sloping down to the hinge end", "objects": ["sideplate"], "manual": true},
+  {"id": "strip", "text": "A bright strip edging each plate", "objects": ["strip"]},
+  {"id": "lever", "text": "Lever along the top, hinged at the low end, its ribbed grip turned down over the mouth", "objects": ["lever", "rib", "hinge"], "manual": true},
+  {"id": "mouth", "text": "Open mouth at the tail end showing the toothed cam", "objects": ["cam", "camtooth"], "manual": true},
+  {"id": "guide", "text": "Red flared line guide in the mouth", "objects": ["guide_tail"], "slots": ["Graphics"]},
+  {"id": "release", "text": "Red release button in a recess on each plate", "objects": ["release"]},
+  {"id": "lock", "text": "Lock window with two tick marks", "objects": ["tick"]},
+  {"id": "screws", "text": "Four socket screw heads on each plate", "objects": ["screw", "hex"]},
+  {"id": "groove", "text": "Moulded diagonal groove on each plate", "manual": true},
+  {"id": "line", "text": "Line runs straight through low down, in at the hinge end and out under the grip", "manual": true},
+  {"id": "plate", "text": "Maker's plate on the lever (made-up TERNWAY)", "objects": ["plate"]}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"}
+}
