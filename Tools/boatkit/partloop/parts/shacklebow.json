@@ -1,0 +1,138 @@
+{
+ "part": "ShackleBow",
+ "card": {
+  "what": "Forged stainless bow (lyre) shackle, 5 mm pin with a flat key head: the shackle for loads that pull at an angle",
+  "boats": "J/22 jib tack at the stemhead, halyard shackles on the sail heads, blocks on padeyes; the Sunfish's halyard to the upper spar",
+  "distance": "arm's reach on the foredeck and at the mast; the camera passes close when rigging",
+  "before": "none: the kit had no bow shackle; the old ShackleD (a bent tube and a loose pin) stood in for every shackle"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "outline and proportions (square-on catalogue photo of a forged 5 mm-class bow shackle with a key-head pin)",
+   "url": "Bean's hardware reference sheet (project upload, Nov 8 2026), top row 'Bow Shackle'",
+   "licence": "for measuring and look only; never committed or shared",
+   "mask": "bean.mask.png"
+  },
+  {
+   "id": "commons-cc0",
+   "kind": "photo",
+   "use": "a bow shackle in the hand (lifting-style, rounder): body and pin read only",
+   "url": "https://commons.wikimedia.org/wiki/File:Bow_Shackle.jpg",
+   "licence": "CC0, Eunosfire986"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://www.s3i.co.uk/wichard-self-locking-bow-shackle.php",
+   "note": "5 mm forged stainless self-locking bow shackle: L 36 mm overall, A 23 mm inside length, B 10 mm opening, M 25 mm across the bow; matching inch figures at mealeymarine.com (A 29/32, B 25/64, M 63/64 in). Other 5 mm bows: opening 9-10 mm, inside length 17.5-23 mm (S3i essential range, GS Products, Hunt Office)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "height",
+   "name": "Overall length, ear to crown",
+   "target": 36.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: L 36 mm"
+  },
+  {
+   "id": "aspect_full",
+   "name": "Height / width (square-on)",
+   "target": "ref:bean",
+   "unit": "ratio",
+   "tol": 0.06,
+   "source": "measured on the square-on photo"
+  },
+  {
+   "id": "length",
+   "name": "Width with the key head",
+   "target": 27.9,
+   "unit": "mm",
+   "tol": 0.06,
+   "source": "square-on photo scaled to the catalogue's 36 mm (220 x 284 px): bow 25 mm across plus the key head"
+  },
+  {
+   "id": "width",
+   "name": "Thickness across the ears",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "no edge-on reference: reported only"
+  }
+ ],
+ "outline": {
+  "ref": "bean",
+  "pass": 0.9,
+  "whole": true
+ },
+ "features": [
+  {
+   "id": "crown",
+   "text": "Round crown swelling wider than the opening (the lyre shape), legs pinching in to the ears",
+   "manual": true
+  },
+  {
+   "id": "body",
+   "text": "Round 5 mm forged body, one piece with its ears (no seams where the legs meet the ears)",
+   "objects": [
+    "forging"
+   ],
+   "manual": true
+  },
+  {
+   "id": "ears",
+   "text": "Two flat round ears at the pin, growing out of the legs",
+   "manual": true
+  },
+  {
+   "id": "pin",
+   "text": "5 mm pin right through both ears",
+   "objects": [
+    "pin"
+   ]
+  },
+  {
+   "id": "keyhead",
+   "text": "Flat key head on one end of the pin, with a hole for seizing wire",
+   "objects": [
+    "pinhead"
+   ],
+   "manual": true
+  },
+  {
+   "id": "collar",
+   "text": "Collar between the key head and the ear",
+   "objects": [
+    "pincollar"
+   ]
+  },
+  {
+   "id": "pinend",
+   "text": "Rounded pin end just proud of the far ear",
+   "objects": [
+    "pinend"
+   ]
+  },
+  {
+   "id": "metal",
+   "text": "Polished stainless throughout",
+   "slots": [
+    "Stainless"
+   ]
+  },
+  {
+   "id": "opening",
+   "text": "10 mm opening between the ears (takes a 10 mm line's thimble or a block's eye)",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; a shackle is small, so the build aims at about 13k"
+ }
+}
