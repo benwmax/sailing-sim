@@ -11,11 +11,13 @@
 set -u
 # Every step waits for the screen it expects (WaitFor:<screen>, at most two minutes) before checking it (Expect:), so a
 # slow load doesn't put the script out of step; the loading screen is left with Enter once it has finished.
-# One lesson from its loading screen: the lesson ended by Finish:<outcome>, its medal screen, the quiz answered right
+# One lesson from its loading screen: its briefing (learning mode shows it once the lesson has loaded), the lesson ended by
+# Finish:<outcome>, its medal screen, the quiz answered right
 # (Answer:all, through the quiz's own buttons), the score. The caller presses Enter on the score's first way (the next
 # lesson) or leaves for the Career screen.
 lesson() {   # <stage label> <outcome>
-	echo "Stage:$1,WaitFor:Loading,Expect:Loading,WaitFor:LoadingDone,Wait,ENTER,WaitFor:Hud,Expect:Hud,Wait,Shot:$1-lesson"
+	echo "Stage:$1,WaitFor:Loading,Expect:Loading,WaitFor:LoadingDone,Wait,ENTER,WaitFor:Briefing,Expect:Briefing,Shot:$1-briefing"
+	echo "ENTER,WaitFor:Hud,Expect:Hud,Wait,Shot:$1-lesson"
 	echo "Finish:$2,WaitFor:Quiz,Expect:Quiz,Shot:$1-medal,Answer:all,Wait,Expect:Quiz,Shot:$1-score"
 }
 # Back to the Career screen from a lesson's score (its ways are Sail it again and Back to sailing): Back to sailing, the
