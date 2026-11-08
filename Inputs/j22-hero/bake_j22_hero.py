@@ -123,7 +123,9 @@ lt = _curve_end("Lower_1")
 sock("LowerTang", Vector((lt.x, 0, lt.z)))
 sock("MastheadAft", _c("Masthead_bstang"))
 sock("MastBase", _c("Vang_tang"))
-sock("Boom_Vang", _c("Vang_bail"))
+# the vang's bail is j22_boomgear.boom_bail now: the socket stays where the October bail's centre was (anchor_Boom_Vang)
+_bv = bpy.data.objects.get("anchor_Boom_Vang")
+sock("Boom_Vang", _bv.matrix_world.translation.copy() if _bv else _c("Vang_bail"))
 sock("Boom_Mainsheet", _c("MainsheetHigh_sheave"))
 sock("Boom_Clew", _c("BoomEnd_outhaul"))
 glo, ghi = _bb("Gooseneck_vpin")
@@ -218,7 +220,7 @@ PIVOTS = {"SM_J22H_Hull": Vector((0, 0, 0)), "SM_J22H_Interior": Vector((0, 0, 0
 ROPE_LIKE = ("Halyard", "HalTail", "MainTail", "Mainsheet_", "JibSheet", "JibTail", "Bridle", "Backstay", "Forestay",
              "Upper_", "Lower_", "Vang_", "BS_cascade", "JibBowline")
 BOOM_PARTS = ("Boom", "BoomEnd", "MainBail", "MainsheetHigh", "Gooseneck_boomcap", "Gooseneck_fork", "Gooseneck_hpin",
-              "Gooseneck_cunnhook", "Gooseneck_reefhook", "VangBlock")
+              "Gooseneck_cunnhook", "Gooseneck_reefhook", "Gooseneck_knuckle", "VangBlock")   # the toggle swings with the boom
 
 
 GLASS_MATS = ("PortlightAcrylic", "HatchAcrylic", "WaterBilge")
