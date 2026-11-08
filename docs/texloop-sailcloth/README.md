@@ -24,8 +24,8 @@ boats) the cloth is exactly as before.
 - Medium and Low get all of it: colour and roughness math, no new textures, no texture reads. The crinkle part is
   High/Ultra only, as before.
 
-`SAIL_WEAR_SPLIT` holds the Time/Dirt formulas. They are provisional until the shared loop's `Tools/texloop/wear.py`
-(the gelcoat thread) lands; then they are mirrored from it. `sailcloth_swatch.py` already uses `wear.py` when present.
+`SAIL_WEAR_SPLIT` holds the Time/Dirt formulas, mirrored from the shared loop's `Tools/texloop/wear.py`
+(time_k, dirt_k; PR #535). `sailcloth_swatch.py` imports `wear.py` when present and falls back to the same formulas.
 
 ## Look (CPU swatches, not the engine)
 
@@ -44,7 +44,7 @@ the belly and wrinkle shading and the light through the cloth, so the swatches r
 
 | Check | Before | After |
 | --- | --- | --- |
-| Colour (clew, ΔE to target, pass ≤ 6) | L0 6.3 fail; L1 4.7, L2 2.2, L3 4.0, L4 5.2 | 1.9, 1.4, 1.8, 1.5, 1.1 |
+| Colour (clew, ΔE to target, pass ≤ 6) | L0 6.3 fail; L1 4.7, L2 2.2, L3 4.0, L4 5.2 | 1.9, 1.1, 1.9, 1.7, 1.6 |
 | Size | weave 0.6 mm, panels 0.9 m: unchanged | unchanged |
 | Tiling | procedural, no tiles | procedural; smudges de-gridded |
 | Wear ladder (3 fresh reviewers) | no clear order; most neighbours "can't tell" | round 1: 3 of 3 exact; round 2: 1 exact, 2 with one neighbour swap (rank ≥ 0.9) |

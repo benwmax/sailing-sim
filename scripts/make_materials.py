@@ -1855,10 +1855,10 @@ return 1.0 - (1.0 - cover) * win;"""
 
 # Texture loop, sailcloth (docs/texloop-sailcloth/): the cloth's Time and Dirt from Age and Care, the same split as
 # Tools/texloop/sailcloth_swatch.py's wear_split (the CPU swatches the loop scores), which mirrors the shared loop's
-# Tools/texloop/wear.py. Time rises fast in the first year, then slowly to 30 years; Dirt is mostly (1 - Care), quick
-# in the first months.
-SAIL_WEAR_SPLIT = """sTime = saturate(0.25 * (1.0 - exp(-Age / 0.5)) + 0.75 * saturate(Age / 30.0));
-    sDirt = saturate((1.0 - saturate(Care)) * (0.3 + 0.7 * saturate(Age / 6.0)) + 0.1 * (1.0 - exp(-Age / 0.3)));"""
+# Tools/texloop/wear.py (time_k, dirt_k): Time rises fast in the first year, then slowly over decades; Dirt is mostly
+# (1 - Care), quick in the first year.
+SAIL_WEAR_SPLIT = """sTime = saturate(0.25 * (1.0 - exp(-Age / 0.75)) + 0.75 * (1.0 - exp(-Age / 18.0)));
+    sDirt = saturate((1.0 - exp(-Age)) * (0.15 + 0.85 * (1.0 - saturate(Care))));"""
 
 SAIL_CODE = r"""
 // Visual V3 sail cloth. UV0: metres (x along the chord from the luff, y up from the foot); UV1: normalized planform;
