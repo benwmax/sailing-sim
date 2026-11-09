@@ -142,7 +142,7 @@ def clean_bake(style):
     loop's L2 club boat), so -SailingBoatAge=0 is a new boat and 15,0 a neglected one. Ropes, sails and the cabin keep
     the style's own wear (they are not in these groups)."""
     s = json.loads(json.dumps(style))
-    s["hull"].update(streaks=0.0, chalk=0.0, scum=0.0, edge_chips=0.0, fender_marks=[], repairs=[], bottom_slime=0.0)
+    s["hull"].update(clean=True, streaks=0.0, chalk=0.0, scum=0.0, edge_chips=0.0, fender_marks=[], repairs=[], bottom_slime=0.0)
     s["deck"].update(grime=0.0, wear_paths=0.0, stains=0)
     s["teak"].update(state="bare", wear=0.0)
     s["dirt"], s["time"] = 0.0, 0.0      # j22_waterline: no scum line, slime, film or paint fade

@@ -408,20 +408,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			UStaticMeshComponent* GlassPart = AddModelPart(Model.Glass, BoatRoot, FVector::ZeroVector);
 			GlassPart->SetCastShadow(false);
 			// Texture loop, acrylic (docs/texloop-acrylic): -SailingBoatAge ages the panes too (M_J22HeroGlass's Age and
-			// Care; its bilge water ignores them). Unset in play: the glass as before.
-			FString AgeArg, AgeStr, CareStr;
-			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false))
-			{
-				if (!AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
-				for (int32 I = 0; I < GlassPart->GetNumMaterials(); ++I)
-				{
-					if (UMaterialInstanceDynamic* Mid = GlassPart->CreateDynamicMaterialInstance(I))
-					{
-						Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
-						Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
-					}
-				}
-			}
+			// Care; its bilge water ignores them; hero ageing: the same AgeDevPart as every part). Unset in play: as before.
+			AgeDevPart(GlassPart);
 		}
 	}
 	ModelMast = AddModelPart(Model.Mast, BoatRoot, ModelHull->GetSocketTransform(TEXT("MastStep"), RTS_Component).GetLocation());

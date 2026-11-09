@@ -16,21 +16,26 @@ showed `-SailingBoatAge=0`, `5,0.5` and `15,0` barely changing the player's J/22
 
 - **Clean bake.** `build_j22_hero.py --clean-bake` bakes the hull, deck mould, rudder and teak from
   `j22_style.clean_bake(style)`: the same boat with no streaks, chalk, chips, fender marks, repairs, scum, slime,
-  grime, stains, and fresh bare teak. Ropes, sails, flat hardware and the cabin keep the style's wear. Renders and
+  grime, stains, and fresh bare teak (the style's `clean` flag also drops the streaks', lip wash's and chips' floors).
+  Ropes, sails, flat hardware and the cabin keep the style's wear (the cabin's companionway step now has its own
+  `TeakInterior` material from the worn style). Renders and
   stills that want the worn look build without the flag.
 - **The fleet's lines on the hero.** DETAIL_CODE now carries M_BoatSurface's gelcoat chalk with its 40 cm blotches,
   yellowing, deck grime, non-skid blotches and scuffs, the lake waterline (scum line, slime, bottom film, from
   `Tools/texloop/waterline`), dock rash, and silvering teak, all from the shared timeK and dirtK
   (`Tools/texloop/wear.py`; `test_wear.py` checks them). It takes the part's local position (new `LP` pin) so the
-  wear stays on the boat. Two new scalars: `Waterline` (1 on the Hull and Rudder instances: the lake's line) and
-  `Exterior` (0 on the Interior instance: the cabin keeps its baked dirt and takes no weather).
+  wear stays on the boat. Three new scalars: `Waterline` (1 on the Hull and Rudder instances: the lake's line),
+  `IsHull` (1 on the Hull instance: dock rash on the topsides only, no deck grime there) and `Exterior` (0 on the
+  Interior instance: the cabin keeps its baked dirt and takes no weather).
 - **Unset Age in play is the club boat.** With no `-SailingBoatAge` (the player's boat in play) the hero weathers as
   the texture loop's L2 club boat (6 years, Care 0.5), so the clean bake still looks like the school boat she was.
   The livery's `Wear` no longer drives the hero's textured groups.
 - **Every part ages for stills.** `-SailingBoatAge` now also reaches the rudder blades, boom and mast (dev argument
   only; nothing changes in play).
 
-Not ported: rust weeps (the hero has no bolt-line data for them yet) and salt-water stains (lake only).
+Not ported: rust weeps (the hero has no bolt-line data for them yet), salt-water stains (lake only) and the bottom
+paint's fade with time (the clean bake drops it; the bottom paint stays new at every Age). The close-up detail layer
+(non-skid groove shading, weathered teak checks within 6 m) does not follow Age yet.
 
 ## Before merge
 

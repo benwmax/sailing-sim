@@ -44,7 +44,7 @@ NormalOut = normalize(float3(N.xy + d.xy, N.z * d.z));      // whiteout blend ov
 // game's bake is now clean (build_j22_hero.py --clean-bake) and every bit of wear comes from here, by the fleet's lines.
 // Unset (Age -1, the player's boat in play) she is the club boat she was baked as: the texture loop's L2 (6 years, Care 0.5).
 // The cabin interior (Exterior 0) keeps its own baked dirt and mildew and takes no weather; only the hull and the rudder
-// (Waterline 1) carry the lake's line.
+// (Waterline 1) carry the lake's line, and only the hull's topsides (IsHull 1) the dock rash.
 float hAge = Exterior < 0.5 ? 0.0 : Age >= 0.0 ? Age : 6.0, hCare = Age >= 0.0 ? Care : 0.5;
 float timeK = saturate(0.25 * (1.0 - exp(-hAge / 0.75)) + 0.75 * (1.0 - exp(-hAge / 18.0)));
 float dirtK = saturate((1.0 - exp(-hAge)) * (0.15 + 0.85 * (1.0 - saturate(hCare))));
@@ -80,7 +80,7 @@ for (int o = 0; o < 3; ++o)
     sc /= 4.1;
 }
 vn /= 1.05;
-float deckish = up * (1.0 - X.g);
+float deckish = up * (1.0 - X.g) * (1.0 - IsHull);
 float grime = saturate(vn * 1.8 - 0.6) * deckish * dirtK * (0.45 + 0.55 * X.r);
 c = lerp(c, c * 0.76 + float3(0.014, 0.011, 0.007), grime);
 Rough = lerp(Rough, min(Rough + 0.18, 0.9), grime);
@@ -143,7 +143,7 @@ float2 cs = float2(LP.x / 45.0, zcm / 16.0);
 float patchS = frac(sin(dot(floor(cs), float2(41.3, 17.7))) * 4375.5);
 float2 fs = frac(cs) - 0.5;
 float smudge = 1.0 - smoothstep(0.12, 0.45, length(fs * float2(1.0, 1.8)));
-float scuff = 0.7 * saturate(4.0 * timeK) * gcAll * step(abs(nw.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
+float scuff = 0.7 * saturate(4.0 * timeK) * IsHull * gcAll * step(abs(nw.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
 c = lerp(c, c * 0.78 + float3(0.01, 0.01, 0.008), scuff);
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
 // (Clipping audit 2, as M_BoatSurface: at most 6 cm of ragged edge, half of it slow noise, softer as the band grows.)
@@ -354,7 +354,7 @@ def hero_material(defaults):
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -900, 1100)
     # Boat fidelity 1: the wear (the pawn's per-boat Wear on every hull slot, Age and Care) and MPC_Boat's wetness.
     extra = {}
-    for pname, default, y in (("Age", -1.0, 1900), ("Care", 0.5, 1980), ("Exterior", 1.0, 1700), ("Waterline", 0.0, 1780)):
+    for pname, default, y in (("Age", -1.0, 1900), ("Care", 0.5, 1980), ("Exterior", 1.0, 1700), ("Waterline", 0.0, 1780), ("IsHull", 0.0, 1620)):
         p = node(mat, unreal.MaterialExpressionScalarParameter, -900, y)
         p.set_editor_property("parameter_name", pname)
         p.set_editor_property("default_value", default)
@@ -554,6 +554,7 @@ def materials():
         # Hero ageing (docs/hero-ageing): the lake's line on the hull and the rudder only; the cabin takes no weather.
         MEL.set_material_instance_scalar_parameter_value(mi, "Waterline", 1.0 if group in ("Hull", "Rudder") else 0.0)
         MEL.set_material_instance_scalar_parameter_value(mi, "Exterior", 0.0 if group == "Interior" else 1.0)
+        MEL.set_material_instance_scalar_parameter_value(mi, "IsHull", 1.0 if group == "Hull" else 0.0)   # topsides: dock rash, no deck grime
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[group] = mi
