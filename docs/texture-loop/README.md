@@ -112,7 +112,7 @@ Materials (`make_materials.py`), the detail maps (`import_boat_detail.py`: non-s
 main b5c20498 and shot uncooked at 1920x1080 (`ingame/`, Ultra and High; 15:00, 10 kn, TWA 60, crew still):
 
 - The ageing ladder `-SailingBoatAge=0`, `5,0.5` and `15,0`: at helm-eye (`age*-helm`), a 1.5 m cockpit close-up
-  (`age*-close`), the waterline from a low chase view (`age*-waterline`), the teak handrail (`age*-teak`) and the tiller
+  (`age*-close`), the waterline from a low chase view (`age*-waterline`), the teak handrail (`age*-teak`; 0 and 15 only) and the tiller
   (`age*-tiller`; 0 and 15 only). The three ages look almost the same in these stills (the cockpit close-ups
   side by side show no visible change), so it is worth checking that `-SailingBoatAge` reaches the hero's materials.
 - The club docks on High: `dock-floats` (the floats around the J/22's slip) and `dock-ramp`. The ramp camera ended
