@@ -97,15 +97,19 @@ for tag, side in (("S", -1), ("P", 1)):
     sock(f"ChainplateLower_{tag}", _top(f"Chainplate_{side}_strap") + Vector((0.02, 0, 0)))
     # Bean's feedback 3 (the Harken layout): the sheet runs from the side-deck lead to the cam on the cockpit's side wall,
     # not a winch: JibWinch is the cam's fairlead, JibTailer its jaws (the tail leaves there)
-    cam = (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2
-    sock(f"JibWinch_{tag}", _c(f"Cam_{side}_0_lead"))
-    sock(f"JibTailer_{tag}", cam)
+    if f"Cam_{side}_0" in bpy.data.objects:      # hardware-fit wave 1: the kit's CamCleat (j22_kitfit.py)
+        sock(f"JibWinch_{tag}", _kit_sock(f"Cam_{side}_0", "Lead"))
+        sock(f"JibTailer_{tag}", _kit_sock(f"Cam_{side}_0", "Line"))
+    else:                                          # --old-hardware: the hero's own cam cleat
+        sock(f"JibWinch_{tag}", _c(f"Cam_{side}_0_lead"))
+        sock(f"JibTailer_{tag}", (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2)
     sock(f"JibLead_{tag}", _kit_sock(f"JibTrack_{side}", "Sheave"))
     # where the tail lies when no hand holds it: on the seat by the cam, where build_j22_hero coils it (JibTail*)
     sock(f"JibTailRest_{tag}", Vector((-1.45, side * (0.40 + 0.18), 0.40 + 0.008)))
     sock(f"SpreaderTip_{tag}", _c(f"SprTip_{side}_end"))
 sock("ForestayTack", _c("StemPin_pin"))
-bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]
+# the bridle's ends: the kit bow shackles' bows (hardware-fit wave 1), or the hero's own pad eyes' loops (--old-hardware)
+bs = [_kit_sock(f"BS_sh_{s}", "Bow") if f"BS_sh_{s}" in bpy.data.objects else _c(f"BS_eye_{s}_loop") for s in (1, -1)]
 sock("BackstayPlate", (bs[0] + bs[1]) / 2)
 sock("BowCleat", _top("BowCleat_horn"))              # the starboard of the two bow cleats (boat fidelity 3)
 sock("BowCleatPort", _top("BowCleat_P_horn"))
@@ -114,7 +118,7 @@ sock("Traveler_C", Vector(((tlo.x + thi.x) / 2, 0, thi.z + 0.02)))
 sock("Traveler_S", Vector(((tlo.x + thi.x) / 2, tlo.y + 0.05, thi.z + 0.02)))
 sock("Traveler_P", Vector(((tlo.x + thi.x) / 2, thi.y - 0.05, thi.z + 0.02)))
 # Bean's feedback 1: the mainsheet's lower block stands on the car (j22_mainsheet.py); the tackle ends at its sheave
-sock("MainsheetBlock", _c("MainsheetLow_sheave"))
+sock("MainsheetBlock", _kit_sock("MainsheetLow", "Axle") if "MainsheetLow" in bpy.data.objects else _c("MainsheetLow_sheave"))
 # the lazy sheet's pass over the cabin top: a little above the cabin, a hand's width aft of the mast
 clo, chi = _bb("Cabin")
 sock("LazySheetVia", Vector((mast_x - 0.35, 0, chi.z + 0.06)))
@@ -152,7 +156,8 @@ else:
     ux_lo, ux_hi = _bb("TillerExt")
     sock("TillerExtTip", Vector((ux_lo.x, 0, (ux_lo.z + ux_hi.z) / 2)) if ux_lo.x < tl_lo.x + 0.4 else Vector((ux_hi.x, 0, ux_hi.z)))
     sock("TillerExtUJ", _c("ExtUJ"))
-sock("MainsheetCam", (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
+# the kit's FiddleCam on the traveler car (part detail loop, docs/part-detail-loop/traveler.md): its jaws
+sock("MainsheetCam", _kit_sock("MainsheetLow", "Cam") if "MainsheetLow" in bpy.data.objects else (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
 for tag, side in (("S", -1), ("P", 1)):
     sock(f"HandholdCabin_{tag}", _top(f"Handrail_{side}"))
     sock(f"HandholdCoaming_{tag}", _top(f"CoamingCap_{side}"))
@@ -241,7 +246,7 @@ def game_part(o):
     if "Rudder" in cols:
         return "SM_J22H_Rudder"
     if "Rig" in cols:
-        if n.startswith(("TB_", "BS_eye")):
+        if n.startswith(("TB_", "BS_eye", "BS_sh")):
             return "SM_J22H_Hull"
         return "SM_J22H_Boom" if n.startswith(BOOM_PARTS) else "SM_J22H_Mast"
     return "SM_J22H_Hull"
@@ -462,6 +467,12 @@ for m in bpy.data.materials:
         report["flat_materials"][m.name] = {"base_color_linear": [round(c, 4) for c in b.inputs["Base Color"].default_value[:3]],
                                             "roughness": round(b.inputs["Roughness"].default_value, 3),
                                             "metallic": round(b.inputs["Metallic"].default_value, 3)}
+# rope materials (j22_rope: image textures, so not flat) that stay on a game part's mesh as a fixed length of line (the
+# jib tack strop since #561, the interior's sail bag tie): their colourway's base colour, so the import can give the slot
+# MI_J22H_<name> on M_BoatSurface's rope kind. The game's live ropes (FRigLine) never use these slots.
+for m in bpy.data.materials:
+    if m.name.startswith("Rope") and m.name not in report["flat_materials"] and m.users:
+        report["flat_materials"][m.name] = {"base_color_linear": [round(c, 4) for c in m.diffuse_color[:3]], "roughness": 0.75, "metallic": 0.0}
 
 # export for the game: SM_J22H_Hull/Mast/Boom/Rudder about their pivots plus J22H_sockets.json, the same layout as
 # Tools/blender/build_j22.py, so scripts/import_boats.py imports them as tag "J22H". Ropes, wires, sails and the vang

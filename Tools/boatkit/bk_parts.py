@@ -441,13 +441,16 @@ def _mb_cheek(side, outline, inner, yi, yo, pocket, bosses, cuts, k, plastic):
     return G.finish(cheek, 0.0004 * k, segs=1, angle=50.0)
 
 
-def _mb_sheave(name, R, ts, rsi, cz, k, plastic, segs=40):
-    """A sheave in the XZ plane at height cz with a round groove for the line, bored to rsi."""
+def _mb_sheave(name, R, ts, rsi, cz, k, plastic, segs=40, shape=None):
+    """A sheave in the XZ plane at height cz with a round groove for the line, bored to rsi; `shape(mesh)` reshapes the
+    turned sheave before the bore (the ratchet's flats)."""
     groove = [(R - 0.0029 * k * math.sin(math.pi * i / 10), -ts / 2 + 0.0011 * k + (ts - 0.0022 * k) * i / 10) for i in range(11)]
     prof = [(rsi, -ts / 2), (R - 0.0006 * k, -ts / 2), (R, -ts / 2 + 0.0006 * k)] + groove + [(R, ts / 2 - 0.0006 * k), (R - 0.0006 * k, ts / 2), (rsi, ts / 2)]
     sh = G.lathe(name, prof, plastic, segs)
     sh.matrix_world = Matrix.Translation((0, 0, cz)) @ Matrix.Rotation(math.radians(-90), 4, "X")
     G.bake_xform(sh)
+    if shape:
+        shape(sh.data)
     G.boolean(sh, G.cyl(f"{name}_bore", (0, -0.05 * k, cz), (0, 0.05 * k, cz), rsi, plastic, segs))   # lathe caps its end rings
     return G.finish(sh, 0, sharp=50)
 
@@ -469,19 +472,21 @@ def _mb_hub(sfx, rb, yi, yo, rsi, cz, k, steel):
     return out
 
 
-def _mb_swivel_shackle(zh, rb, k, steel):
-    """Swivel collar on the head at zh, post, eye (hole along Y) and a D-shackle with its pin along X at the origin."""
+def _mb_swivel_shackle(zh, rb, k, steel, neck=1.0):
+    """Swivel collar on the head at zh, post, eye (hole along Y) and a D-shackle with its pin along X at the origin.
+    `neck` thickens the post, the eye's wire and the collar (Ratchet57: Bean, Nov 9 2026, the neck read thin edge-on)."""
     objs = []
-    collar = G.lathe("collar", [(0, -0.0006 * k), (rb * 0.27, -0.0006 * k), (rb * 0.27, 0.0012 * k), (rb * 0.22, 0.0024 * k), (0, 0.0024 * k)], steel, 28)
+    cr = rb * 0.27 * (1 + (neck - 1) * 0.35)
+    collar = G.lathe("collar", [(0, -0.0006 * k), (cr, -0.0006 * k), (cr, 0.0012 * k * neck), (cr * 0.22 / 0.27, 0.0024 * k * neck), (0, 0.0024 * k * neck)], steel, 28)
     collar.location = (0, 0, zh)
     G.bake_xform(collar)
     objs.append(G.finish(collar, 0, sharp=50))
-    ez, er, emin = -0.013 * k, 0.0034 * k, 0.0014 * k
-    post = G.cyl("post", (0, 0, zh), (0, 0, ez - er + 0.0006 * k), 0.0040 * k, steel, 24, r1=0.0034 * k)
+    ez, er, emin = -0.013 * k, 0.0034 * k * (1 + (neck - 1) * 0.3), 0.0014 * k * neck
+    post = G.cyl("post", (0, 0, zh), (0, 0, ez - er + 0.0006 * k), 0.0040 * k * neck, steel, 24, r1=0.0034 * k * neck)
     objs.append(G.finish(post, 0.0003 * k))
     eye = G.tube("eye", G.arc_pts((0, 0, ez), er, 0, G.TAU, 24, "xz")[:-1], emin, steel, 10, closed=True)
     objs.append(G.finish(eye))
-    w, wr = 0.0046 * k, 0.0018 * k
+    w, wr = 0.0046 * k * (1 + (neck - 1) * 0.3), 0.0018 * k * (1 + (neck - 1) * 0.8)
     bow = G.tube("bow", [(-w, 0, 0), (-w, 0, -0.0075 * k)] + G.arc_pts((0, 0, -0.0075 * k), w, math.pi, G.TAU, 14, "xz")[1:-1] + [(w, 0, -0.0075 * k), (w, 0, 0)], wr, steel, 10)
     objs.append(G.finish(bow))
     for sx in (-1, 1):
@@ -494,7 +499,25 @@ def _mb_swivel_shackle(zh, rb, k, steel):
     return objs
 
 
-def _modern_block_parts(name, sheave_d, becket=False, plate=None):
+def _mb_ratchet_sheave(name, R, ts, rsi, cz, k, mat, facets=12, segs=96):
+    """A ratchet sheave: the round-grooved sheave with its groove floor pressed into flats (`facets` round), the faceted
+    drum that grips the line one way, and the flanges left round (Sunfish deck gear, Nov 2026)."""
+    band = ts / 2 - 0.0010 * k
+    seg = G.TAU / facets
+
+    def flats(me):
+        for v in me.vertices:
+            x, y, z = v.co.x, v.co.y, v.co.z - cz
+            if math.hypot(x, z) < R - 0.0034 * k or abs(y) > band:
+                continue
+            a = math.atan2(z, x) % seg - seg / 2
+            f = math.cos(seg / 2) / math.cos(a)        # the groove floor pulled in to the polygon's flats
+            v.co.x, v.co.z = x * f, z * f + cz
+    return _mb_sheave(name, R, ts, rsi, cz, k, mat, segs=segs, shape=flats)
+
+
+def _modern_block_parts(name, sheave_d, becket=False, plate=None, overall=None, head=1.66, hk=None, ratchet=False,
+                        holes=True, neck=1.0):
     """Part detail loop round 1 (docs/part-detail-loop): a modern moulded-cheek swivel block, measured against a 40 mm
     catalogue block (86 mm from the shackle pin to the foot, 4 mm pin, 10 mm line) and reference photos.
 
@@ -503,17 +526,19 @@ def _modern_block_parts(name, sheave_d, becket=False, plate=None):
     cheek, two angled slots beside the head, two head rivets, a grooved sheave for 10 mm line, a swivel post with a
     collar and eye, and a D-shackle with its pin along X at the origin. Hangs along -Z from the pin; axle along Y."""
     k = sheave_d / 0.040
+    hk = hk or k                         # the swivel and shackle's scale (a 57 mm ratchet keeps 6 mm hardware)
+    overall = overall or 0.086 * k
     objs = []
     R = sheave_d / 2
     rb = R * 1.18                        # cheek radius round the axle
-    H = rb * 1.66                        # head top above the axle
+    H = rb * head                        # head top above the axle
     hw, rc = rb * 0.44, rb * 0.17        # head half width, its corner radius
     tc = 0.0034 * k                      # cheek thickness (round 2: moulded, not sheet)
     ts = 0.0105 * k                      # sheave thickness (10 mm line at 40 mm)
     gap = 0.0006 * k
     yi = ts / 2 + gap                    # cheek inner face
     yo = yi + tc                         # cheek outer face
-    cz = 0.002 * k - 0.086 * k + rb      # axle height: 86 mm from the top of the pin to the foot of the cheeks
+    cz = 0.002 * hk - overall + rb      # axle height: `overall` (86 mm at 40) from the top of the pin to the foot of the cheeks
     zh = cz + H                          # head top
     plastic, steel = M("BlackPlastic"), M("Stainless")
 
@@ -547,6 +572,8 @@ def _modern_block_parts(name, sheave_d, becket=False, plate=None):
                 return False
         return True
     ring_angles = [a for a in (G.TAU * i / 24 for i in range(24)) if _clear(ring_r * math.cos(a), cz + ring_r * math.sin(a))]
+    if not holes:
+        ring_angles = []
     def cuts(side):
         cut = [G.cyl(f"open{side}", (0, -1, cz), (0, 1, cz), ro, plastic, 48)]
         cut += [G.cyl(f"h{side}{i}", (ring_r * math.cos(a), -1, cz + ring_r * math.sin(a)), (ring_r * math.cos(a), 1, cz + ring_r * math.sin(a)),
@@ -571,14 +598,24 @@ def _modern_block_parts(name, sheave_d, becket=False, plate=None):
 
     # sheave with a round groove for the line
     rsi = rb * 0.395
-    objs.append(_mb_sheave("sheave", R, ts, rsi, cz, k, plastic))
+    if ratchet:
+        objs.append(_mb_ratchet_sheave("sheave", R, ts, rsi, cz, k, M("Aluminium")))
+        # the ratchet's on/off switch on each cheek below the hub: a moulded boss and its lever, ON pointing at the head
+        for side in (-1, 1):
+            sw = G.cyl(f"switch{side}", (0, side * (yo - 0.0002 * k), cz - rb * 0.6), (0, side * (yo + 0.0016 * k), cz - rb * 0.6),
+                       rb * 0.2, plastic, 28, r1=rb * 0.18)
+            objs.append(G.finish(sw, 0.0004 * k, segs=1))
+            lv = G.box(f"lever{side}", (0, side * (yo + 0.0022 * k), cz - rb * 0.6), (rb * 0.09, 0.0016 * k, rb * 0.34), M("Aluminium"))
+            objs.append(G.finish(lv, 0.0005 * k, segs=1))
+    else:
+        objs.append(_mb_sheave("sheave", R, ts, rsi, cz, k, plastic))
     # hollow stainless axle with a rolled lip on each face, round a stainless bearing race; the bore is cut through so
     # you can see through the middle (round 2: round 1's balls between the lip and the sheave read as a cog)
     # round 3: a large hollow axle (a thin stainless liner), so the centre reads as a big open hole (round 2's small
     # boss read as a hardware-store pulley)
     objs += _mb_hub("", rb, yi, yo, rsi, cz, k, steel)
     # swivel: collar on the head, post, eye (hole along Y); D-shackle: pin along X at the origin, bow through the eye
-    objs += _mb_swivel_shackle(zh, rb, k, steel)
+    objs += _mb_swivel_shackle(zh, rb, hk, steel, neck)
     if becket:
         bz = cz - rb - 0.0022 * k
         bk = G.tube("becket", [(-0.0050 * k, 0, cz - R * 0.6)] + G.arc_pts((0, 0, bz), 0.0050 * k, math.pi, G.TAU, 14, "xz")[1:-1] + [(0.0050 * k, 0, cz - R * 0.6)],
@@ -845,10 +882,18 @@ def block40():
     return done("Block40", objs, socks)
 
 
-@part("Ratchet57", "block", "57 mm ratchet block for the jib sheet or mainsheet")
-def ratchet57():
-    objs, socks = _block_parts("Ratchet57", 0.057, ratchet=True, plate="Plate57")
-    return done("Ratchet57", objs, socks)
+@part("Ratchet57", "block", "57 mm swivel ratchet block, on/off switch, 10 mm line: the Sunfish's and ILCA's mainsheet block")
+def ratchet57(standup=False):
+    """Sunfish deck gear (Nov 2026, docs/part-detail-loop/sunfish.md): the moulded-cheek swivel block at the catalogue's
+    57 mm ratchet size (103 mm overall, 10 mm line), a faceted ratchet sheave, an on/off switch on each cheek and a 6 mm
+    swivel shackle. `standup`: a stand-up spring round the shackle and swivel, so the block stands on its deck eye."""
+    objs, socks = _modern_block_parts("Ratchet57", 0.057, plate="Plate57", overall=0.103, head=1.32, hk=1.2, ratchet=True, holes=False, neck=1.6)
+    if standup:
+        zh = socks[1][1][2] + 0.0336 * 1.32          # the head's top (Axle + H)
+        n, r, z0 = 9, 0.0095, -0.0015
+        pts = [(r * math.cos(G.TAU * t / 16), r * math.sin(G.TAU * t / 16), z0 + (zh + 0.0012 - z0) * t / (16 * n)) for t in range(16 * n + 1)]
+        objs.append(G.finish(G.tube("spring", pts, 0.0011, M("Stainless"), 6)))
+    return done("Ratchet57" + ("S" if standup else ""), objs, socks)
 
 
 @part("Fiddle40", "block", "40 mm fiddle block with swivel: a big and a small sheave in line (the vang's and mainsheet's upper block)")
@@ -1224,45 +1269,6 @@ def handrail(length=0.90, loops=4):
 
 # ------------------------------------------------------------------ steering and outboard
 
-@part("Tiller", "steering", "Laminated ash tiller, 1.05 m, tapered, with a rudder-head socket and an extension pivot")
-def tiller(length=1.05):
-    path = [(0, 0, 0), (-0.25, 0, 0.03), (-0.6, 0, 0.07), (-length, 0, 0.10)]
-    path = G.bezier(path[0], path[1], path[2], path[3], 30)
-    radii = [1.0 - 0.35 * (i / 30) for i in range(31)]
-    body = G.sweep("tiller", path, [(p[0] * 0.018, p[1] * 0.024) for p in G.rrect(2, 2, 0.6, 4)], M("Wood"), radii=radii)
-    G.finish(body, 0)
-    head = G.prism("head", G.rrect(0.10, 0.048, 0.008), -0.032, 0.032, M("Aluminium"))
-    head.matrix_world = Matrix.Translation((0.03, 0, 0))
-    G.bake_xform(head)
-    G.finish(head, 0.002)
-    knob = G.lathe("knob", [(0, 0), (0.012, 0), (0.014, 0.008), (0.010, 0.016), (0, 0.017)], M("BlackPlastic"), 24)
-    knob.matrix_world = Matrix.Translation((-length + 0.02, 0, 0.115))
-    G.bake_xform(knob)
-    G.finish(knob, 0)
-    return done("Tiller", [body, head, knob], [("Stock", (0.03, 0, 0)), ("ExtPivot", (-length + 0.02, 0, 0.13)), ("Hand", (-length * 0.8, 0, 0.09))])
-
-
-@part("TillerExtension", "steering", "1.0 m tiller extension: aluminium tube, rubber universal joint, foam grip, end knob")
-def tiller_extension(length=1.0):
-    tube = G.cyl("tube", (0, 0, 0.03), (length, 0, 0.03), 0.0095, M("Aluminium"), 24)
-    tube.matrix_world = Matrix.Identity(4)
-    G.finish(tube, 0.0006)
-    uj = G.lathe("uj", [(0, 0), (0.012, 0), (0.016, 0.010), (0.012, 0.022), (0.012, 0.03), (0, 0.03)], M("BlackPlastic"), 24)
-    for v in uj.data.vertices:          # moulded rubber ribs
-        if 0.004 < v.co.z < 0.02:
-            k = 1 + 0.06 * math.cos(v.co.z * 900)
-            v.co.x *= k
-            v.co.y *= k
-    G.finish(uj, 0)
-    grip = G.cyl("grip", (length * 0.55, 0, 0.03), (length - 0.03, 0, 0.03), 0.0135, M("BlackPlastic"), 24)
-    BT.mark(G.finish(grip, 0.003), band="grip")
-    knob = G.lathe("knob", [(0, 0), (0.016, 0), (0.019, 0.012), (0.012, 0.028), (0, 0.030)], M("BlackPlastic"), 24)
-    knob.matrix_world = G.along((length - 0.03, 0, 0.03), (1, 0, 0))
-    G.bake_xform(knob)
-    G.finish(knob, 0)
-    return done("TillerExtension", [tube, uj, grip, knob], [("UJ", (0, 0, 0)), ("Grip", (length * 0.8, 0, 0.03)), ("Tip", (length, 0, 0.03))])
-
-
 @part("OutboardBracket", "outboard", "Two-position transom outboard bracket with a spring lift and lock pin")
 def outboard_bracket():
     objs = []
@@ -1490,7 +1496,6 @@ SIZES = {
     "BowPulpit":  {"dim": "width mm", "default": "600", "kw": {"450": {"width": 0.45, "length": 0.35}, "600": {"width": 0.60}, "800": {"width": 0.80, "length": 0.60}}},
     "Pushpit":    {"dim": "width mm", "default": "1500", "kw": {"1200": {"width": 1.20}, "1500": {"width": 1.50}, "2000": {"width": 2.00, "depth": 0.50}}},
     "Clutch":     {"dim": "line mm", "default": "10", "scale": {"8": 0.85, "10": 1.0, "14": 1.3}},
-    "TillerExtension": {"dim": "length mm", "default": "1000", "kw": {"610": {"length": 0.61}, "1000": {"length": 1.0}, "1220": {"length": 1.22}}},
 }
 
 

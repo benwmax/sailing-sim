@@ -336,8 +336,39 @@ def hero_material(defaults):
     return mat
 
 
+GLASS_CODE = r"""
+// Texture loop, acrylic (docs/texloop-acrylic): the smoked portlights and fore hatch weather with the boat's Age and Care
+// by BOAT_CODE's ACRYLIC_WEAR lines (copied from make_materials.py at import), and haze makes them less see-through.
+// Age unset (-1, the player's boat in play) or the bilge water (Acrylic 0): as before.
+float3 n = normalize(N);
+float3 col = C.rgb;
+float rough = 0.04, coat = 0.0, acHaze = 0.0;
+float age = Acrylic > 0.5 ? Age : -1.0, care = Care;
+float timeK = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-age / 0.75)) + 0.75 * (1.0 - exp(-age / 18.0))) : 0.0;
+float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - saturate(care)))) : 0.0;
+float sunF = 1.0;
+float3 lnA = abs(LN);
+float2 acP = lnA.z >= max(lnA.x, lnA.y) ? LP.xy : lnA.y >= lnA.x ? LP.xz : LP.yz;
+@ACRYLIC_WEAR@
+Rough = rough;
+Op = lerp(Opacity, 0.97, acHaze);
+return col;
+"""
+
+
+def acrylic_wear():
+    """BOAT_CODE's smoked acrylic lines (between the ACRYLIC_WEAR markers), so the hero's glass and the fleet's portlights
+    weather alike."""
+    import ast
+    tree = ast.parse(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_materials.py")).read())
+    code = next(ast.literal_eval(n.value) for n in tree.body
+                if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "BOAT_CODE")
+    return code[code.index("// ACRYLIC_WEAR >>>"):code.index("// ACRYLIC_WEAR <<<")]
+
+
 def glass_material():
-    """M_J22HeroGlass: smoked acrylic portlights and hatch, and the bilge water (translucent, lit at the surface)."""
+    """M_J22HeroGlass: smoked acrylic portlights and hatch, and the bilge water (translucent, lit at the surface).
+    Texture loop, acrylic: Age, Care (Age -1 = unset) and Acrylic (1 the panes, 0 the bilge water) drive GLASS_CODE."""
     path = f"{DEST}/M_J22HeroGlass"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         unreal.EditorAssetLibrary.delete_asset(path)
@@ -345,17 +376,44 @@ def glass_material():
     mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
     mat.set_editor_property("two_sided", True)
-    col = node(mat, unreal.MaterialExpressionVectorParameter, -500, 0)
+    col = node(mat, unreal.MaterialExpressionVectorParameter, -900, 0)
     col.set_editor_property("parameter_name", "Color")
     col.set_editor_property("default_value", unreal.LinearColor(0.03, 0.028, 0.025, 1.0))
-    op = node(mat, unreal.MaterialExpressionScalarParameter, -500, 200)
-    op.set_editor_property("parameter_name", "Opacity")
-    op.set_editor_property("default_value", 0.55)
-    rough = node(mat, unreal.MaterialExpressionConstant, -500, 300)
-    rough.set_editor_property("r", 0.04)
-    MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(op, "", unreal.MaterialProperty.MP_OPACITY)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    scalars = {}
+    for i, (pname, default) in enumerate((("Opacity", 0.55), ("Age", -1.0), ("Care", 0.5), ("Acrylic", 1.0))):
+        sp = node(mat, unreal.MaterialExpressionScalarParameter, -900, 200 + 80 * i)
+        sp.set_editor_property("parameter_name", pname)
+        sp.set_editor_property("default_value", default)
+        scalars[pname] = sp
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1100, 600)
+    to_local = node(mat, unreal.MaterialExpressionTransform, -900, 600)
+    to_local.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+    to_local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_LOCAL)
+    MEL.connect_material_expressions(nrm, "", to_local, "")
+    geo = {"C": col, "N": nrm, "LN": to_local, "LP": node(mat, unreal.MaterialExpressionLocalPosition, -900, 700),
+           "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 780), "Depth": node(mat, unreal.MaterialExpressionPixelDepth, -900, 860)}
+    geo.update(scalars)
+    c = node(mat, unreal.MaterialExpressionCustom, -500, 0)
+    c.set_editor_property("code", GLASS_CODE.replace("@ACRYLIC_WEAR@", acrylic_wear()))
+    c.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    ins = []
+    for pin in geo:
+        i = unreal.CustomInput()
+        i.set_editor_property("input_name", pin)
+        ins.append(i)
+    c.set_editor_property("inputs", ins)
+    outs = []
+    for oname in ("Rough", "Op"):
+        o = unreal.CustomOutput()
+        o.set_editor_property("output_name", oname)
+        o.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
+        outs.append(o)
+    c.set_editor_property("additional_outputs", outs)
+    for pin, src in geo.items():
+        MEL.connect_material_expressions(src, "", c, pin)
+    MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, "Op", unreal.MaterialProperty.MP_OPACITY)
+    MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.recompile_material(mat)
     unreal.EditorAssetLibrary.save_loaded_asset(mat)
     return mat
@@ -363,15 +421,15 @@ def glass_material():
 
 # Boat fidelity 1: the flat materials' kinds in M_BoatSurface's shared library (make_materials.py BOAT_SURFACE: 1 gelcoat,
 # 3 stainless, 4 anodised aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 10 sailcloth, 11 canvas, 12 galvanised or
-# plain steel, 13 black moulded plastic; 0 none), and how
+# plain steel, 13 black moulded plastic, 14 woven webbing; 0 none), and how
 # much each darkens wet.
 HERO_SURFACE = {
     "Gelcoat": 1, "GelcoatHull": 1, "CabinGelcoat": 1, "InteriorLiner": 1, "InteriorSole": 1,
     "Stainless": 3, "Chrome": 3, "Galvanised": 12, "KeelBoltSteel": 12, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
     "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10, "BlackPlastic": 13, "CamBase": 13,
-    "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 11,
+    "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 14,
 }
-HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05}
+HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05, 14: 0.5}
 
 
 def instance(name, parent):
@@ -380,6 +438,9 @@ def instance(name, parent):
         ASSETS.create_asset(name, DEST, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     MEL.set_material_instance_parent(mi, parent)
     return mi
+
+
+flat_instance = None   # set by materials(): MI_J22H_<name> on M_BoatSurface from the bake's flat values (main() uses it too)
 
 
 def materials():
@@ -406,6 +467,7 @@ def materials():
         MEL.set_material_instance_scalar_parameter_value(mi, "Opacity", opacity)
         if name == "WaterBilge":
             MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(0.06, 0.055, 0.03, 1.0))
+            MEL.set_material_instance_scalar_parameter_value(mi, "Acrylic", 0.0)     # water: no acrylic wear
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[name] = mi
@@ -417,18 +479,20 @@ def materials():
     def flat_values(name):
         # A pack entry whose material no longer reaches the bake (RigTape since the mast gear's turnbuckles took over
         # from j22_details', #550) keeps its pack index with a plain grey: the packs' indices are baked into the meshes.
+        # A rope slot the bake did not report (an older bake) gets a plain grey line.
         v = META["flat_materials"].get(name)
         if v is None:
-            unreal.log_warning(f"import_j22_hero: {name} is in J22H_packs.json but not in the bake's flat materials; plain grey")
-            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.5, "metallic": 0.0}
+            unreal.log_warning(f"import_j22_hero: {name} is not in the bake's flat materials; plain grey")
+            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.75 if name.startswith("Rope") else 0.5, "metallic": 0.0}
         gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish", "PlywoodVarnish", "AshVarnish")
+        kind = HERO_SURFACE.get(name, 9 if name.startswith("Rope") else 0)   # fixed lengths of line (the tack strop) are rope
         return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
-                                        "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,
-                                        "Surface": float(HERO_SURFACE.get(name, 0)), "Grain": 1.0 if name in wood else 0.0}
+                                        "Porosity": HERO_POROSITY.get(kind, 0.1), "IsHull": 0.0,
+                                        "Surface": float(kind), "Grain": 1.0 if name in wood else 0.0}
 
-    for name in META["flat_materials"]:
-        if name in out:
-            continue
+    global flat_instance
+
+    def flat_instance(name):
         mi = instance(f"MI_J22H_{name}", surface)
         c, values = flat_values(name)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1.0))
@@ -436,7 +500,12 @@ def materials():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
-        out[name] = mi
+        return mi
+
+    for name in META["flat_materials"]:
+        if name in out:
+            continue
+        out[name] = flat_instance(name)
     # pc/boat-slots: the flat slots folded into packs (J22H_packs.json, pack_j22_hero.py): MI_J22H_<Pack> on M_BoatPacked
     # carries each entry's values as P<k>C, P<k>A (roughness, metallic, clear coat, non-skid), P<k>B (porosity, surface,
     # hull, grain), as make_materials.py builds MI_Boat_<Pack>.
@@ -504,6 +573,11 @@ def main():
             mi = mast_alu if (part == "Mast" and slot == "Aluminium") else mats.get(key)
             if mi is None:
                 mi = unreal.load_asset(f"/Game/Boats/Materials/MI_Boat_{slot}")
+            if mi is None and key.startswith("Rope"):
+                # Fixed lengths of line on a game part (#561's jib tack strop, the interior's sail bag tie) keep their rope
+                # material's slot; the game's live ropes never reach it. bake_j22_hero.py reports rope materials with the
+                # others since Nov 9 2026; an older bake gets a plain grey line here rather than a failed import.
+                mi = mats[key] = flat_instance(key)
             if mi is None:
                 missing.add(slot)
                 continue

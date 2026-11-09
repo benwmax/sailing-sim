@@ -1,0 +1,83 @@
+{
+ "surface": "acrylic",
+ "_about": "CC0 imperfection scans from ambientCG (fetched to the git-ignored Data/Reference/raw/textures/Acrylic/), used to size and shape the marks; none ships. No CC0 or CC BY photo of weathered smoked boat portlights was reachable from the cloud (Wikimedia's image host refuses it), so the level looks are estimates until close-ups of the club J/22's portlights and fore hatch (overcast, with a coin for scale).",
+ "refs": [
+  {
+   "id": "Scratches001",
+   "url": "https://ambientcg.com/a/Scratches001",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "straight parallel hairlines (wiping in one direction)"
+  },
+  {
+   "id": "Scratches002",
+   "url": "https://ambientcg.com/a/Scratches002",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "curved random scratches: the shape of the wipe arcs"
+  },
+  {
+   "id": "Scratches003",
+   "url": "https://ambientcg.com/a/Scratches003",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "mixed curved scratches, sparse"
+  },
+  {
+   "id": "Scratches004",
+   "url": "https://ambientcg.com/a/Scratches004",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "dense fine hairlines"
+  },
+  {
+   "id": "Scratches005",
+   "url": "https://ambientcg.com/a/Scratches005",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "fine scratches with a light direction"
+  },
+  {
+   "id": "Smear001",
+   "url": "https://ambientcg.com/a/Smear001",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "a wiped smear"
+  },
+  {
+   "id": "Smear004",
+   "url": "https://ambientcg.com/a/Smear004",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "a wiped smear, streaky"
+  },
+  {
+   "id": "SurfaceImperfections001",
+   "url": "https://ambientcg.com/a/SurfaceImperfections001",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "round dried water spots, 1-5 mm: size and ring shape"
+  },
+  {
+   "id": "SurfaceImperfections003",
+   "url": "https://ambientcg.com/a/SurfaceImperfections003",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "streaky grime film"
+  },
+  {
+   "id": "SurfaceImperfections008",
+   "url": "https://ambientcg.com/a/SurfaceImperfections008",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "blotchy haze film"
+  },
+  {
+   "id": "Fingerprints002",
+   "url": "https://ambientcg.com/a/Fingerprints002",
+   "licence": "CC0",
+   "use": "measure",
+   "what": "clustered prints: where hands touch"
+  }
+ ]
+}

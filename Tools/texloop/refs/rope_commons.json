@@ -1,0 +1,131 @@
+{
+ "note": "Wikimedia Commons candidates (measure only, never shipped; BY-SA never ships). Not downloaded yet: upload.wikimedia.org refused the cloud on Nov 8 2026.",
+ "candidates": [
+  {
+   "level": "L0",
+   "file": "The mooring rope. (16291085142).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:The_mooring_rope._(16291085142).jpg",
+   "licence": "CC0",
+   "why": "new polyester rope, colour and sheen"
+  },
+  {
+   "level": "L0",
+   "file": "LIROS XTR Dyneema.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:LIROS_XTR_Dyneema.jpg",
+   "licence": "CC BY-SA 3.0",
+   "why": "new racing double braid: crisp cover, tight picks"
+  },
+  {
+   "level": "L0",
+   "file": "Rope Braid.JPG",
+   "page": "https://commons.wikimedia.org/wiki/File:Rope_Braid.JPG",
+   "licence": "CC BY-SA 3.0",
+   "why": "new braid cover pattern"
+  },
+  {
+   "level": "L0",
+   "file": "Rope Braid Detail.JPG",
+   "page": "https://commons.wikimedia.org/wiki/File:Rope_Braid_Detail.JPG",
+   "licence": "CC BY-SA 3.0",
+   "why": "braid close-up: pick size"
+  },
+  {
+   "level": "L0",
+   "file": "Frayed.png",
+   "page": "https://commons.wikimedia.org/wiki/File:Frayed.png",
+   "licence": "CC BY-SA 3.0",
+   "why": "double braid cut end: cover vs core, new"
+  },
+  {
+   "level": "L1",
+   "file": "Turquoise rope on a jetty in Norra Grundsund.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Turquoise_rope_on_a_jetty_in_Norra_Grundsund.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "lightly used line on a jetty"
+  },
+  {
+   "level": "L1",
+   "file": "002 Chrome steel boat cleat with tied mooring rope - nautical vessel equipment detail, yacht cleat.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:002_Chrome_steel_boat_cleat_with_tied_mooring_rope_-_nautical_vessel_equipment_detail,_yacht_cleat.jpg",
+   "licence": "CC BY 3.0",
+   "why": "lightly used mooring braid on a cleat"
+  },
+  {
+   "level": "L1",
+   "file": "Rope and hand sanitizer on schooner \u00c4lva.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Rope_and_hand_sanitizer_on_schooner_%C3%84lva.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "kept boat, coiled line"
+  },
+  {
+   "level": "L2",
+   "file": "US Yachts US 22 sailboat Vesper mainsheet 1179.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:US_Yachts_US_22_sailboat_Vesper_mainsheet_1179.jpg",
+   "licence": "CC0",
+   "why": "22 ft club boat mainsheet in use"
+  },
+  {
+   "level": "L2",
+   "file": "US Yachts US 22 sailboat Vesper jib sheet 1177.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:US_Yachts_US_22_sailboat_Vesper_jib_sheet_1177.jpg",
+   "licence": "CC0",
+   "why": "22 ft club boat jib sheet in use"
+  },
+  {
+   "level": "L2",
+   "file": "Cam cleat.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Cam_cleat.jpg",
+   "licence": "CC BY-SA 3.0",
+   "why": "mainsheet in a cam cleat: dark band where the cam bites"
+  },
+  {
+   "level": "L2",
+   "file": "Jack Holt's Enterprise Dinghy 'E2' Jib sheet 6369.JPG",
+   "page": "https://commons.wikimedia.org/wiki/File:Jack_Holt%27s_Enterprise_Dinghy_%27E2%27_Jib_sheet_6369.JPG",
+   "licence": "CC BY-SA 3.0",
+   "why": "dinghy jib sheet, years of use"
+  },
+  {
+   "level": "L2",
+   "file": "Uni-Jolle auf dem Zeuthener See.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Uni-Jolle_auf_dem_Zeuthener_See.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "lake dinghy lines (fresh water)"
+  },
+  {
+   "level": "L4",
+   "file": "DFC 1141 Close-up of a weathered blue cleat with a rusted metal ring and frayed rope on an old boat sunlit and textured.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:DFC_1141_Close-up_of_a_weathered_blue_cleat_with_a_rusted_metal_ring_and_frayed_rope_on_an_old_boat_sunlit_and_textured.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "neglected boat rope"
+  },
+  {
+   "level": "L4",
+   "file": "Old rope and moss, Charlestown harbour - geograph.org.uk - 1845688.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Old_rope_and_moss,_Charlestown_harbour_-_geograph.org.uk_-_1845688.jpg",
+   "licence": "CC BY-SA 2.0",
+   "why": "neglected rope, green growth"
+  },
+  {
+   "level": "L4",
+   "file": "Frayed rope (Unsplash).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Frayed_rope_(Unsplash).jpg",
+   "licence": "CC0",
+   "why": "weathered, frayed line"
+  },
+  {
+   "level": "L4",
+   "file": "Coiled Rope by the Shore.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Coiled_Rope_by_the_Shore.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "weathered rope left outdoors"
+  },
+  {
+   "level": "L4",
+   "file": "Ropes on a pipe in Holl\u00e4ndar\u00f6d.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Ropes_on_a_pipe_in_Holl%C3%A4ndar%C3%B6d.jpg",
+   "licence": "CC BY-SA 4.0",
+   "why": "old ropes left out for years"
+  }
+ ]
+}
