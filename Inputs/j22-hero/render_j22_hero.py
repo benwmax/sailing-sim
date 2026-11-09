@@ -200,6 +200,14 @@ VIEWS = {
                        pos=(0.20, -0.30, 0.55), tgt=(0.68, 0.02, -0.14), lens=22),
     "cabin_aft": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0, ev=3.0,
                       pos=(1.30, 0.10, 0.62), tgt=(-0.6, -0.05, 0.25), lens=14),
+    # the cabin top (cabin-top pass, docs/part-detail-loop/cabintop.md): handrails, organisers and the fore hatch from
+    # the port quarter, then the fore hatch and the starboard organiser close
+    "cu_cabintop": dict(sky="overcast", water=False, sails=False, heel=0, lift=0.0,
+                        pos=(-1.75, -1.25, 1.95), tgt=(0.25, 0.05, 1.02), lens=30),
+    "cu_forehatch": dict(sky="overcast", water=False, sails=False, heel=0, lift=0.0,
+                         pos=(0.05, -0.85, 1.62), tgt=(0.80, 0.02, 1.06), lens=34),
+    "cu_organiser": dict(sky="overcast", water=False, sails=False, heel=0, lift=0.0,
+                         pos=(-0.30, 0.48, 1.38), tgt=(0.20, 0.12, 1.08), lens=45),
     "cu_transom": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
                        pos=(-5.2, 1.9, 1.25), tgt=(-3.3, 0.3, 0.5), lens=32),
 }
