@@ -69,7 +69,9 @@ def fender_pair(rng):
     out = []
     for k in range(2):
         f = P.build("Fender")
-        f.data.transform(Matrix.Translation((0.30 * k + rng.uniform(-0.03, 0.03), 0.17 * k, 0.076)) @ Matrix.Rotation(math.radians(90), 4, "Y"))
+        # the Fender hangs from its top eye (origin there, 0.559 m long, 165 mm across): centre it, then lay it down
+        f.data.transform(Matrix.Translation((0.30 * k + rng.uniform(-0.03, 0.03), 0.17 * k, 0.085)) @ Matrix.Rotation(math.radians(90), 4, "Y")
+                         @ Matrix.Translation((0, 0, 0.271)))
         for c in list(f.children):
             G.bpy.data.objects.remove(c, do_unlink=True)
         out.append(f)

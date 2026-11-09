@@ -667,6 +667,17 @@ void AMarinaActor::BuildShore(const FMarina& Marina, const FLakeTerrain* Terrain
 	SAIL_LOG(Display, TEXT("Marina shore: %d pieces in %d meshes (lake level offset %.2f m)"), Instances, Shore.Num(), Terrain->GetLevelBelowPool());
 }
 
+// Fenders and dock lines pass: where a berth's bow lines are made fast, two cleats on the row's edge ahead of her bow,
+// 0.9 m either side of her centreline and 0.15 m in from the edge (FMarina::Load puts her centre 0.5 * finger + 0.4 m out
+// from the edge). build_berthed.py's ROW_CLEATS is the same point in the boat's frame: keep the two in step.
+static TArray<FVector2D, TInlineAllocator<2>> RowCleatPoints(const FMarinaSlip& Slip, const FMarinaRow& R)
+{
+	const FVector2D Out = (Slip.FingerB - Slip.FingerA).GetSafeNormal();
+	const FVector2D Along(Out.Y, -Out.X);
+	const FVector2D Edge = Slip.Center - Out * (0.5 * R.FingerLength + 0.4 + 0.15);
+	return { Edge + Along * 0.9, Edge - Along * 0.9 };
+}
+
 const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)
 {
 	static const TCHAR* Names[] = { TEXT("Cleat"), TEXT("Pedestal"), TEXT("Box"), TEXT("PilingCap"), TEXT("Hoop"), TEXT("Ladder"), TEXT("Float"), TEXT("Extinguisher") };
@@ -733,6 +744,10 @@ void AMarinaActor::DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(co
 		{
 			Add(EDockKit::Cleat, FMath::Lerp(Slip.FingerA, Slip.FingerB, T), Deck - 0.02f, Out2);
 		}
+		// Fenders and dock lines pass: two cleats on the row's edge ahead of each berth for her bow lines, 0.9 m either side
+		// of her centreline and 0.15 m in from the edge, along the row (build_berthed.py makes the dress's bow lines fast
+		// on them; RowCleatPoints).
+		for (const FVector2D& C : RowCleatPoints(Slip, R)) Add(EDockKit::Cleat, C, Deck - 0.02f, Along);
 		Add(EDockKit::PilingCap, Slip.FingerB + Along * 0.45, 1.5f, Out2);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		if (MRand(Seed) < 0.35f) Add(EDockKit::Box, Slip.FingerA + Out2 * 0.6, Deck - 0.02f, Out2);
@@ -988,6 +1003,12 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				const FVector2D P = FMath::Lerp(Slip.FingerA, Slip.FingerB, T);
 				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.01f), FVector(0.06f, 0.035f, 0.03f), FingerYaw);
 				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.065f), FVector(0.16f, 0.022f, 0.016f), FingerYaw);
+			}
+			// The bow lines' cleats on the row's edge (DockKitPlacements), along the row.
+			for (const FVector2D& P : RowCleatPoints(Slip, R))
+			{
+				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.01f), FVector(0.06f, 0.035f, 0.03f), FingerYaw + 90.f);
+				G[EKitLook::Metal].Box(FVector(P.X, P.Y, Deck + 0.065f), FVector(0.16f, 0.022f, 0.016f), FingerYaw + 90.f);
 			}
 		}
 		const FVector2D Tip(Slip.FingerB.X + Along.X * 0.45, Slip.FingerB.Y + Along.Y * 0.45);

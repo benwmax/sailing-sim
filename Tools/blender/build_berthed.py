@@ -145,21 +145,195 @@ def half_beam(x):
 
 
 sheer = H["sheer_z"]
-fr = 0.09 if CFG["loa"] > 8 else 0.07
-FENDER_X = {1: (H["max_beam_x"] + 0.3,), 2: (H["max_beam_x"] + 0.9, H["max_beam_x"] - 0.6),
-            3: (H["max_beam_x"] + 1.3, H["max_beam_x"] + 0.2, H["max_beam_x"] - 0.9)}
+# ---------------------------------------------------------------- fenders and dock lines (Nov 2026)
+# docs/part-detail-loop/docklines.md: twin-eye ribbed fenders (6.5 x 22 in; 8.5 x 27 in on the 30 footer) hung on
+# their lines, and three-strand dock lines with a spliced eye round the boat's cleat and a cleat hitch on the dock's.
+# In a slip (J/22, Catalina 22: FMarina::Load's berth, bow in) the lines go to real cleats: the bow lines to the two
+# on the row's edge ahead of her (MarinaActor RowCleatPoints), the starboard stern line to the starboard finger's end
+# cleat and the port quarter's spring to the port finger's middle one, so two neighbours sharing a finger never make
+# fast on the same cleat. The Catalina 30 lies alongside a pier the dress can't see: her lines keep their old ends.
+# Ropework maths: Tools/boatkit/bk_ropework.py (shared with the kit's DockLineEye, CleatHitch, EyeOnCleat, Fender).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "boatkit"))
+import bk_ropework as RW  # noqa: E402
+
+SLIP = TAG in ("J22", "Catalina22")
+LINE_D = 0.0127 if CFG["loa"] > 8 else 0.0095
+FENDER = (0.216, 0.686) if CFG["loa"] > 8 else (0.165, 0.559)       # diameter, length incl. the eye lugs
+DOCK_Z = 0.45 - 0.02                                                 # MarinaActor FloatingDeckHeight; cleat base
+DOCK_CLEAT = dict(L=0.254, h_under=0.047, h_top=0.070, half_w=0.012, foot_x=0.056)   # SM_Dock_Cleat (build_docks.py)
+BOAT_CLEAT = dict(L=0.130, h_under=0.026, h_top=0.038, half_w=0.008, foot_x=0.024)   # the J/22's 130 mm horn cleats
+# Berth geometry in her own frame (Unreal axes, metres), from FMarina::Load and AMarinaActor::DockKitPlacements:
+# the row's edge 0.5 * finger + 0.4 m ahead of her middle, the fingers 0.5 * slip width either side.
+ROW_EDGE_X, FINGER_Y, FINGER_LEN = 0.5 * 7.3 + 0.4, 0.5 * 3.6, 7.3
+ROW_CLEATS = {s_: Vector((ROW_EDGE_X + 0.15, s_ * 0.9, DOCK_Z)) for s_ in (1, -1)}
+FINGER_CLEAT = {1: Vector((ROW_EDGE_X - 0.95 * FINGER_LEN, FINGER_Y, DOCK_Z)), -1: Vector((ROW_EDGE_X - 0.45 * FINGER_LEN, -FINGER_Y, DOCK_Z))}
+
+
+def deck_z(x):
+    """The deck's edge height along her (the hero J/22's moulding for the J/22, which the player's boat is)."""
+    if TAG == "J22":
+        tab = [(-3.45, 0.79), (-2.5, 0.74), (-1.0, 0.70), (0.5, 0.69), (2.0, 0.73), (3.0, 0.80), (3.45, 0.84)]
+        for (x0, z0), (x1, z1) in zip(tab, tab[1:]):
+            if x0 <= x <= x1:
+                return z0 + (z1 - z0) * (x - x0) / (x1 - x0)
+        return tab[0][1] if x < tab[0][0] else tab[-1][1]
+    rise = H["sheer_rise"] * max(0.0, (x - H["sheer_rise_from_x"]) / max(0.1, H["bow_x"] - H["sheer_rise_from_x"])) ** 2
+    return sheer + rise
+
+
+def boat_cleats():
+    """side -> (bow cleat, stern cleat, stern cleat yaw) in her frame (Unreal axes)."""
+    if TAG == "J22":   # the hero's sockets (Inputs/j22-hero/J22H_sockets.json) and kit layout (Tools/boatkit/layouts/j22.json)
+        return {s_: (Vector((3.03, s_ * 0.13, 0.8474)), Vector((-3.05, s_ * 0.92, 0.80)), s_ * math.radians(25)) for s_ in (1, -1)}
+    bx, sx = H["bow_x"] - 0.40, H["stern_x"] + 0.25
+    return {s_: (Vector((bx, s_ * 0.12, deck_z(bx) + 0.01)), Vector((sx, s_ * (half_beam(sx) - 0.12), deck_z(sx) + 0.01)), s_ * math.radians(20))
+            for s_ in (1, -1)}
+
+
+def rope_strands(path, d, sides=4, phase=0.0, swell=None):
+    """Three-strand rope (strand tubes) along a path given in her frame."""
+    sts, sr = RW.strands([Vector(P(p)) for p in path], d, phase=phase, step=3.3 * d / 8, swell=swell)
+    for pts in sts:
+        tube_b(pts, sr, "Rope", sides)
+
+
+def rope_plain(path, d):
+    tube(RW.resample(path, 0.04), d / 2, "Rope", 8)
+
+
+def tube_b(path, radius, slot, sides=6, radii=None):
+    """tube() for a path already in Blender's axes (so a right-hand lay stays right-handed)."""
+    pts = [Vector(p) for p in path]
+    F = RW.frames(pts)
+    m = SLOTS.index(slot)
+    rings = []
+    for i, (p, (t, u, w)) in enumerate(zip(pts, F)):
+        r = radii[i] if radii else radius
+        rings.append([bm.verts.new(p + (u * math.cos(2 * math.pi * k / sides) + w * math.sin(2 * math.pi * k / sides)) * r) for k in range(sides)])
+    for a_, b_ in zip(rings, rings[1:]):
+        for k in range(sides):
+            f = bm.faces.new((a_[k], a_[(k + 1) % sides], b_[(k + 1) % sides], b_[k]))
+            f.material_index = m
+    for ring, rev in ((rings[0], True), (rings[-1], False)):
+        f = bm.faces.new(list(reversed(ring)) if rev else ring)
+        f.material_index = m
+
+
+def to_frame(pts, origin, yaw):
+    """Cleat-frame points (X along the horns) into her frame."""
+    c, s_ = math.cos(yaw), math.sin(yaw)
+    return [Vector((origin.x + p[0] * c - p[1] * s_, origin.y + p[0] * s_ + p[1] * c, origin.z + p[2])) for p in pts]
+
+
+def from_frame(v, yaw):
+    c, s_ = math.cos(yaw), math.sin(yaw)
+    return (v[0] * c + v[1] * s_, -v[0] * s_ + v[1] * c)
+
+
+def fender(top, dia, length, slot, covered):
+    """A twin-eye fender hanging from its top eye at `top` (her frame): ribbed lathe body, an eye lug at each end."""
+    R_ = dia / 2
+    prof = RW.fender_profile(dia, length, 0.045, 28)
+    segs = 10 if covered else 36
+    ribs = 0 if covered else 12
+    m = SLOTS.index(slot)
+    rings = []
+    z0 = top.z - (length - 0.017)
+    for z, r in prof:
+        full = (r / R_) ** 4
+        ring = []
+        for k in range(segs):
+            a = 2 * math.pi * k / segs
+            rr = r * (1.06 if covered else 1.0) * (1 + (0.03 * (0.5 + 0.5 * math.cos(ribs * a)) ** 6 * full if ribs else 0))
+            ring.append(bm.verts.new(P((top.x + rr * math.cos(a), top.y + rr * math.sin(a), z0 + z))))
+        rings.append(ring)
+    for a_, b_ in zip(rings, rings[1:]):
+        for k in range(segs):
+            f = bm.faces.new((a_[k], a_[(k + 1) % segs], b_[(k + 1) % segs], b_[k]))
+            f.material_index = m
+    for ring, rev in ((rings[0], True), (rings[-1], False)):
+        f = bm.faces.new(list(reversed(ring)) if rev else ring)
+        f.material_index = m
+    for zc in (top.z, z0 + 0.017):      # the eye lugs: a moulded ring round the rope hole, in the fender's XZ plane
+        ring = [Vector((top.x + 0.014 * math.cos(2 * math.pi * k / 12), top.y, zc + 0.014 * math.sin(2 * math.pi * k / 12))) for k in range(13)]
+        tube(ring, 0.0065, slot, 6)
+
+
+FX = {1: (H["max_beam_x"] + 0.3,), 2: (H["max_beam_x"] + 0.9, H["max_beam_x"] - 0.6),
+      3: (H["max_beam_x"] + 1.3, H["max_beam_x"] + 0.2, H["max_beam_x"] - 0.9)}
+if TAG == "J22":   # forward one on the lower shroud's chainplate (its line is hitched to the shroud), the aft one by the jib track
+    FX = {1: (0.52,), 2: (0.52, -1.05), 3: (1.4, 0.52, -1.05)}
+low_tang = S.get("LowerTang")
 for side in (1, -1):
-    for i, x in enumerate(FENDER_X[VAR["fenders"]]):
-        drop = 0.25 + (0.08 * ((V + i) % 3) if V else 0.0)   # tied at different heights on the variants
-        y = side * (half_beam(x) + fr + 0.01)
-        tube([Vector((x, y, sheer - drop - 0.5)), Vector((x, y, sheer - drop))], fr * (1.15 if VAR["fcover"] else 1.0), "FenderBlue" if VAR["fcover"] else "Deck", 10)
-        tube([Vector((x, side * (half_beam(x) - 0.05), sheer + 0.02)), Vector((x, y, sheer - drop))], 0.004, "Rope", 4)
-# Dock lines: bow lines forward and out to the dock's cleats, stern lines aft to the finger ends, all with a little sag.
-bow, stern = H["bow_x"], H["stern_x"]
-for side in (1, -1):
-    tube(sag((bow - 0.25, side * 0.2, sheer + 0.06), (bow + 0.7, side * 1.25, 0.5), 0.12), 0.006, "Rope", 5)
-    tube(sag((stern + 0.3, side * (half_beam(stern + 0.3) - 0.08), sheer + 0.05), (stern - 0.35, side * 1.75, 0.5), 0.1), 0.006, "Rope", 5)
-    tube(sag((bow - 0.6, side * (half_beam(bow - 0.6) - 0.05), sheer + 0.08), (stern + 1.2, side * 1.75, 0.5), 0.15, 12), 0.006, "Rope", 5)  # spring
+    for i, x in enumerate(FX[VAR["fenders"]]):
+        drop = 0.10 + (0.06 * ((V + i) % 3) if V else 0.0)   # tied at different heights on the variants
+        dz = deck_z(x)
+        hb = half_beam(x)
+        top = Vector((x, side * (hb + FENDER[0] / 2 + 0.008), dz - drop))
+        fender(top, FENDER[0], FENDER[1], "FenderBlue" if VAR["fcover"] else "Deck", VAR["fcover"])
+        rail = Vector((x, side * (hb + 0.004), dz + LINE_D / 2))
+        chain = S.get("ChainplateLower_S" if side > 0 else "ChainplateLower_P")
+        if TAG == "J22":
+            chain = Vector((0.52, side * 1.0856, 0.686))       # the hero's lower chainplate (J22H_sockets.json)
+        if TAG == "J22" and abs(x - 0.52) < 0.01 and chain is not None and low_tang is not None:
+            # a clove hitch on the lower shroud, a hand's width above the turnbuckle
+            ax = (Vector((low_tang.x, low_tang.y * side if low_tang.y else 0.0, low_tang.z)) - chain).normalized()
+            hc = chain + ax * 0.30
+            hitch = RW.clove_hitch(hc, ax, 0.0024, LINE_D * 0.85, rail + Vector((0, -side * 0.02, 0.05)), tail=0.10)
+            rope_strands(hitch, LINE_D * 0.85)
+            rope_plain([hitch[0], rail, rail + Vector((0, side * 0.01, -0.02)), top + Vector((0, 0, 0.012))], LINE_D * 0.85)
+        else:
+            # hitched round a deck fitting inboard (the jib track's end on the J/22, a stanchion base on the others)
+            inb = Vector((x + 0.02, side * (hb - 0.10), dz + 0.012))
+            hitch = RW.clove_hitch(inb, (1, 0, 0), 0.010, LINE_D * 0.85, rail, tail=0.05)
+            rope_strands(hitch, LINE_D * 0.85)
+            rope_plain([hitch[0], rail, rail + Vector((0, side * 0.01, -0.02)), top + Vector((0, 0, 0.012))], LINE_D * 0.85)
+
+
+def dock_line(cleat, yaw, dock, dock_yaw, droop, eye_len=0.305):
+    """A dock line: its spliced eye round her cleat, over the rail, a little slack, and a cleat hitch on the dock's."""
+    d = LINE_D
+    rail_x = cleat.x + (0.15 if cleat.x < 0 else 0.25)
+    rail = Vector((rail_x, math.copysign(half_beam(rail_x) + 0.01, cleat.y if abs(cleat.y) > 0.01 else dock.y), deck_z(rail_x) + d))
+    if cleat.x < 0:
+        rail = Vector((cleat.x + 0.1, math.copysign(half_beam(cleat.x + 0.1) + 0.01, cleat.y), deck_z(cleat.x + 0.1) + d))
+    # the hitch on the dock's cleat, the line leading off towards her rail
+    lead_d = from_frame(rail - dock, dock_yaw)
+    h = RW.cleat_hitch(DOCK_CLEAT["L"], d, lead_d, DOCK_CLEAT["h_under"], DOCK_CLEAT["h_top"], DOCK_CLEAT["half_w"], DOCK_CLEAT["foot_x"])
+    h = to_frame(h, dock, dock_yaw)
+    # the eye round her cleat, the throat towards the rail
+    lead_b = from_frame(rail - cleat, yaw)
+    loop, throat = RW.eye_on_cleat(BOAT_CLEAT["L"], d, lead_b, eye_len, under=d / 2 + 0.001)
+    loop = to_frame(loop, cleat, yaw)
+    throat = to_frame([throat], cleat, yaw)[0]
+    rope_strands(loop, d)
+    ld = (rail - throat).normalized()
+    splice = 5 * 3.3 * d
+    stand_near = RW.smooth([throat, throat + ld * min(0.5 * (rail - throat).length, splice + 0.05)], d * 0.4)
+    sl = min(splice, RW.length(stand_near) - 0.01)
+    rope_strands(stand_near, d, swell=(0.0, sl))
+    for pts, radii in RW.tucks([Vector(P(p)) for p in stand_near], d, 0.0, sl):
+        if len(pts) > 2:
+            tube_b(pts, 1.0, "Rope", 4, radii=radii)
+    # the span: from the splice's end over the rail and down to the hitch's lead (0.5 m out from the dock cleat)
+    rope_plain([stand_near[-1], rail] + RW.sag(rail, h[0], droop, 16)[1:], d)
+    near = RW.resample(h, 0.004)
+    rope_strands(near, d, phase=2.0)
+
+
+cleats = boat_cleats()
+if SLIP:
+    for side in (1, -1):
+        bow_c, stern_c, syaw = cleats[side]
+        dock_line(bow_c, 0.0, ROW_CLEATS[side], math.pi / 2, 0.06)              # bow lines to the row's edge
+        dock_line(stern_c, syaw, FINGER_CLEAT[side], 0.0, 0.10 if side > 0 else 0.16)   # stern line / quarter spring
+else:
+    bow, stern = H["bow_x"], H["stern_x"]
+    for side in (1, -1):
+        for a_, b_, dr in (((bow - 0.25, side * 0.2, deck_z(bow - 0.25) + 0.06), (bow + 0.7, side * 1.25, 0.5), 0.12),
+                           ((stern + 0.3, side * (half_beam(stern + 0.3) - 0.08), deck_z(stern + 0.3) + 0.05), (stern - 0.35, side * 1.75, 0.5), 0.1),
+                           ((bow - 0.6, side * (half_beam(bow - 0.6) - 0.05), deck_z(bow - 0.6) + 0.08), (stern + 1.2, side * 1.75, 0.5), 0.15)):
+            rope_plain(RW.sag(a_, b_, dr, 14), LINE_D)
 
 # ---------------------------------------------------------------- Graphics G6: the variants' dress and gear
 # The cockpit per class: aft and forward ends, half width, sole height (build_j22.py, build_fleet.py SPECS); the cabin top.
