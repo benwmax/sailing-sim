@@ -1,0 +1,40 @@
+{
+ "surface": "rubber",
+ "_about": "Albedo targets (Lab) on sky-facing tops of black rubber. L0 from Rubber004's scan; L1-L4 estimates (EPDM and PVC bloom grey-brown by roughly 10-20 L* over years in Texas sun; protectant keeps a kept boat's darker). Webbing: black polyester fades toward a brownish charcoal (estimate).",
+ "levels": {
+  "L0": {
+   "L": 17.6,
+   "a": 0.6,
+   "b": -3.4,
+   "src": "Rubber004"
+  },
+  "L1": {
+   "L": [
+    17,
+    22
+   ],
+   "src": "estimate"
+  },
+  "L2": {
+   "L": [
+    26,
+    34
+   ],
+   "src": "estimate"
+  },
+  "L3": {
+   "L": [
+    22,
+    30
+   ],
+   "src": "estimate"
+  },
+  "L4": {
+   "L": [
+    33,
+    42
+   ],
+   "src": "estimate"
+  }
+ }
+}

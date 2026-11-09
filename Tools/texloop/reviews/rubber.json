@@ -1,0 +1,52 @@
+{
+ "surface": "rubber",
+ "method": "three fresh blind reviewers per round (Claude subagents), five shuffled levels to match to the level descriptions; A/B: this round vs the last at L2 and L4, sides randomised",
+ "rounds": [
+  {
+   "round": 1,
+   "change": "first build: bloom, ozone cracks as noise contours then short dashes, dock rash, dust, mildew; webbing fade, fuzz, grit, fray, mildew",
+   "ladder": [
+    3,
+    5,
+    1
+   ],
+   "ab": "vs main: not run (main's levels differ only by a grey lift)",
+   "notes": "cracks read as bark or a barcode, also on a kept boat (L3 looked worse than L2); webbing read as a flat slab; L0/L1 hard to tell"
+  },
+  {
+   "round": 2,
+   "change": "cracks fewer, kinked, slanted, mostly on a left boat and on black rubber; thinner matt dock-rash streaks; warp ribs on the webbing; browner fade, paler fuzz",
+   "ladder": [
+    3,
+    3,
+    3
+   ],
+   "ab": {
+    "L2": "won 3 of 3",
+    "L4": "won 3 of 3"
+   },
+   "notes": "every reviewer swapped L2 and L3 (the hazy club boat read as the kept one)"
+  },
+  {
+   "round": 3,
+   "change": "dock rash and dust follow dirt (care cleans the marks off), a kept boat's rubber satin from protectant (roughness 0.45), the webbing's weft crossing the ribs",
+   "ladder": [
+    5,
+    3,
+    5
+   ],
+   "ab": {
+    "L2": "0 of 3 (all called the pair nearly identical)",
+    "L4": "3 of 3"
+   },
+   "kept": true,
+   "notes": "L2/L3 now right for all three; the one miss is an L0/L1 swap"
+  }
+ ],
+ "material": "rub rail: rubber for most reviewers at L0-L2, 'bark or cork' at L4; grey PVC rail: yes; webbing strap: no in every round (a ribbed plank or mat: no thickness, no stitching or selvedge in the swatch)",
+ "least_real": [
+  "the L4 cracks and mildew specks read as a decal repeated over all three parts",
+  "the strap reads as a flat ribbed sheet",
+  "the sky's reflections on the rail read as decals (the renderer's crisp environment lobes)"
+ ]
+}
