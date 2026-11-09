@@ -1,0 +1,32 @@
+{
+ "part": "Outboard (J/22 hero)",
+ "card": {
+  "what": "The lesson boat's kicker: a 4-6 hp single-cylinder long-shaft four-stroke on a parallel-arm transom bracket, tiller arm folded up while sailing, red coiled kill cord",
+  "boats": "J/22 hero (Inputs/j22-hero/j22_outboard.py, part of the hull); the fleet's kit Outboard35 (C22, Corsair, berthed) is a later pass",
+  "distance": "a metre or two from the helm, looking aft and down over the port quarter",
+  "before": "the October hero build: a squat domed cowl, the tiller arm lying forward over the aft deck, a glossy black finish, a 0.62 m shaft and a stainless bracket"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look and proportions: Bean's lesson photos IMG_9273 (the motor from the helm, crop with no people), IMG_9266 and 1000032829 (Rush Creek, Oct 2026); private, never in the repo",
+   "url": "project files sailing-sim-ref/j22-lessons (and Data/Reference/raw/j22-lessons on the Mac)"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "5 hp FourStroke long-shaft listings (svb24.com F5 MLH: 50.8 cm transom height; marindepan.se: 27 kg; onlineoutboards / campingworld: 20 in shaft, 58 lb)",
+   "note": "numbers only (search snippets; the cloud can't open the maker's spec sheets)"
+  }
+ ],
+ "sizes": [
+  {"id": "shaft", "name": "Clamp top to cavitation plate", "target": 508.0, "unit": "mm", "tol": 0.03, "source": "20 in long shaft"},
+  {"id": "cowl_w", "name": "Cowl width", "target": 290.0, "unit": "mm", "tol": 0.08, "source": "estimate from IMG_9273 against the 508 mm shaft class"},
+  {"id": "prop", "name": "Prop diameter", "target": 198.0, "unit": "mm", "tol": 0.05, "source": "7.8 in, the class's stock prop"}
+ ],
+ "features": ["tall cowl with a sloped front face", "knurled fuel cap on the front slope", "carry handle at the back of the top", "choke knob on the front face", "pan with shift lever", "kill switch with red coiled lanyard", "tiller arm folded up with a ribbed twist grip", "clamp bracket with T-handle screws", "parallel-arm transom bracket on a pad", "cavitation plate, gearcase, skeg, three-blade prop", "made-up maker's name and horsepower on the sides"],
+ "outline": null,
+ "budget": {"tris": 30000, "slots": 10}
+}

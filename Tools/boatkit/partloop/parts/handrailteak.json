@@ -1,0 +1,105 @@
+{
+ "part": "HandrailTeak",
+ "card": {
+  "what": "Teak cabin-top grab rail cut from one plank: arched hand holes open to the deck between tall feet, sloped ends, a rounded grip, teak bungs over the bolts",
+  "boats": "J/22 hero and light J/22 (three holes, 0.84 m), Catalina 22, Corsair 880 and Catalina 30 (build_fleet.py, four or more holes)",
+  "distance": "arm's reach; the crew grabs it going forward",
+  "before": "kit HandrailTeak from bk_parts (Oct 2026): a flat bar on square feet; on the J/22 hero a 1.09 m bar on five blocks"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the J/22's rails: three hand holes a side (the aft end is half hidden by a line, so a fourth is possible), tall broad feet, arched holes, long sloped ends, dark weathered teak (IMG_9224, project files only)",
+   "url": "Bean's lesson photos, Oct 4 2026"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Whitecap / West Marine teak handrails: 3 loops 33 in, 4 loops 43 in, 2-3/8 in high, 1 in across, holes 10-1/16 in apart",
+   "note": "numbers only; the J/22's rail reads chunkier than the catalogue's"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Length, J/22 build",
+   "target": 838.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue three-loop rail, 33 in"
+  },
+  {
+   "id": "height",
+   "name": "Height",
+   "target": 72.0,
+   "unit": "mm",
+   "tol": 0.15,
+   "source": "Bean's photo reads taller than the catalogue's 60 mm; the blind reviewers asked for it each round"
+  },
+  {
+   "id": "width",
+   "name": "Across",
+   "target": 30.0,
+   "unit": "mm",
+   "tol": 0.2,
+   "source": "catalogue 25 mm, built 30 (photo)"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "holes",
+   "text": "Arched hand holes open to the deck, about 46 mm tall",
+   "objects": [
+    "rail"
+   ],
+   "manual": true
+  },
+  {
+   "id": "feet",
+   "text": "Broad feet flaring into the deck",
+   "objects": [
+    "rail"
+   ],
+   "manual": true
+  },
+  {
+   "id": "ends",
+   "text": "Long sloped ends down to the deck",
+   "objects": [
+    "rail"
+   ],
+   "manual": true
+  },
+  {
+   "id": "grip",
+   "text": "Rounded grip section",
+   "objects": [
+    "rail"
+   ],
+   "manual": true
+  },
+  {
+   "id": "bungs",
+   "text": "Teak bungs over the through-bolts",
+   "objects": [
+    "bung0"
+   ],
+   "manual": true
+  },
+  {
+   "id": "teak",
+   "text": "Teak",
+   "slots": [
+    "Teak"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
