@@ -104,3 +104,17 @@ What the reviewers still see (next round's list): the surface is too smooth (no 
 chalk hardly shows at swatch distance, and the rain streaks read as straight, even stripes. Crazing and repairs (L3
 cues) are not in the material yet. Steps 9 (PC import, `-SailingBoatAge` stills) and the Mac boats gate wait for the
 machines.
+
+## In game on the PC (Nov 9 2026, branch pc/content-import-nov8)
+
+Materials (`make_materials.py`), the detail maps (`import_boat_detail.py`: non-skid, teak, varnish, rope), the dock kit
+(`build_docks.py`, `import_world.py` ONLY=SM_Dock) and the Ray Hubbard marina tiles were regenerated on Bean's PC from
+main b5c20498 and shot uncooked at 1920x1080 (`ingame/`, Ultra and High; 15:00, 10 kn, TWA 60, crew still):
+
+- The ageing ladder `-SailingBoatAge=0`, `5,0.5` and `15,0`: at helm-eye (`age*-helm`), a 1.5 m cockpit close-up
+  (`age*-close`), the waterline from a low chase view (`age*-waterline`), the teak handrail (`age*-teak`) and the tiller
+  (`age*-tiller`; 0 and 15 only). The three ages look almost the same in these stills (the cockpit close-ups
+  side by side show no visible change), so it is worth checking that `-SailingBoatAge` reaches the hero's materials.
+- The club docks on High: `dock-floats` (the floats around the J/22's slip) and `dock-ramp`. The ramp camera ended
+  up under a walkway, and that frame shows a hard-edged square patch of water near the shore that looks like a bug.
+- The hero J/22 here is main's committed one (the Mac's rebuild); the PC's hero rebuild waits on #567.

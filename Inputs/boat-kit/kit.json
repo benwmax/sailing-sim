@@ -879,16 +879,16 @@
  },
  "JibTrack": {
   "category": "track",
-  "note": "T-track 25 mm with a jib lead car (sheave, plunger stop); length option",
-  "tris": 2396,
+  "note": "22 mm small-boat pinstop track with end stops and a jib lead car (sheave, pinstop, eye strap); length option",
+  "tris": 13602,
   "size_m": [
-   0.6,
-   0.0394,
+   0.604,
+   0.0348,
    0.064
   ],
   "min_m": [
-   -0.3,
-   -0.0197,
+   -0.302,
+   -0.0174,
    0.0
   ],
   "slots": [
@@ -902,10 +902,25 @@
     0.0,
     0.026
    ],
+   "Lead": [
+    0.01,
+    0.0,
+    0.0205
+   ],
+   "Plunger": [
+    0.057,
+    0.0,
+    0.0423
+   ],
    "Sheave": [
     0.01,
     0.0,
     0.045
+   ],
+   "SheetEye": [
+    0.041,
+    0.0,
+    0.0305
    ],
    "TrackEnd": [
     0.3,
@@ -914,7 +929,7 @@
    ]
   },
   "light": {
-   "tris": 598,
+   "tris": 3400,
    "slots": [
     "Aluminium",
     "Stainless",
@@ -922,7 +937,10 @@
    ],
    "sockets": [
     "CarFwd",
+    "Lead",
+    "Plunger",
     "Sheave",
+    "SheetEye",
     "TrackEnd"
    ]
   },
@@ -1405,41 +1423,47 @@
  },
  "Stemhead": {
   "category": "rig",
-  "note": "Bow stem fitting with forestay tang, tack shackle hole and bow roller cheeks",
-  "tris": 1072,
+  "note": "Forestay chainplate: a stainless bar edge-on down the stem, through-bolted, its top a tang above the deck for the forestay toggle",
+  "tris": 3204,
   "size_m": [
-   0.1694,
-   0.0439,
-   0.0786
+   0.1376,
+   0.0138,
+   0.351
   ],
   "min_m": [
-   -0.1,
-   -0.0219,
-   0.0
+   -0.1282,
+   -0.0056,
+   -0.3041
   ],
   "slots": [
    "Stainless"
   ],
   "sockets": {
-   "Forestay": [
-    0.03,
+   "Base": [
     0.0,
-    0.06
+    0.0,
+    0.0
    ],
-   "Tack": [
-    0.012,
+   "Forestay": [
+    -0.012,
     0.0,
-    0.035
+    0.034
+   ],
+   "StemFoot": [
+    -0.1094,
+    0.0,
+    -0.3007
    ]
   },
   "light": {
-   "tris": 268,
+   "tris": 800,
    "slots": [
     "Stainless"
    ],
    "sockets": [
+    "Base",
     "Forestay",
-    "Tack"
+    "StemFoot"
    ]
   },
   "sizes": null
@@ -1495,53 +1519,59 @@
  },
  "HatchFwd": {
   "category": "hatch",
-  "note": "Low-profile acrylic deck hatch, 500 x 500 mm: frame, smoked lid, hinges, two handles",
-  "tris": 3024,
+  "note": "Low-profile aluminium deck hatch: flanged frame, gasket, smoked acrylic lid in an aluminium band, hinges with pins, two handles under the pane; w along X, d along Y",
+  "tris": 10000,
   "size_m": [
-   0.5044,
-   0.4988,
-   0.0461
+   0.5075,
+   0.5,
+   0.0363
   ],
   "min_m": [
-   -0.255,
-   -0.2494,
+   -0.2575,
+   -0.25,
    0.0
   ],
   "slots": [
    "Aluminium",
-   "CabinWindow",
    "BlackPlastic",
+   "CabinWindow",
    "Stainless"
   ],
   "sockets": {
    "HandleP": [
-    0.2,
+    0.21,
     -0.125,
-    0.04
+    0.02
    ],
    "HandleS": [
-    0.2,
+    0.21,
     0.125,
-    0.04
+    0.02
    ],
    "Hinge": [
-    -0.25,
+    -0.2505,
     0.0,
-    0.02
+    0.0262
+   ],
+   "Pane": [
+    0.0,
+    0.0,
+    0.036
    ]
   },
   "light": {
-   "tris": 756,
+   "tris": 2500,
    "slots": [
     "Aluminium",
-    "CabinWindow",
     "BlackPlastic",
+    "CabinWindow",
     "Stainless"
    ],
    "sockets": [
     "HandleP",
     "HandleS",
-    "Hinge"
+    "Hinge",
+    "Pane"
    ]
   },
   "sizes": null
@@ -1635,45 +1665,45 @@
  },
  "HandrailTeak": {
   "category": "trim",
-  "note": "Teak cabin-top handrail with N loops; length option",
-  "tris": 2744,
+  "note": "Teak cabin-top handrail cut from one plank: arched hand holes open to the deck, tall feet, sloped ends, rounded grip, bungs over the bolts; length and loops options (60 x 25 mm section)",
+  "tris": 4120,
   "size_m": [
-   0.9,
+   0.8989,
    0.03,
-   0.0605
+   0.0726
   ],
   "min_m": [
    -0.45,
    -0.015,
-   0.0
+   -0.0
   ],
   "slots": [
    "Teak"
   ],
   "sockets": {
    "Grip0": [
-    -0.3375,
+    -0.2512,
     0.0,
-    0.048
+    0.059
    ],
    "Grip1": [
-    -0.1125,
+    -0.0838,
     0.0,
-    0.048
+    0.059
    ],
    "Grip2": [
-    0.1125,
+    0.0838,
     0.0,
-    0.048
+    0.059
    ],
    "Grip3": [
-    0.3375,
+    0.2512,
     0.0,
-    0.048
+    0.059
    ]
   },
   "light": {
-   "tris": 686,
+   "tris": 1030,
    "slots": [
     "Teak"
    ],
@@ -1685,120 +1715,6 @@
    ]
   },
   "sizes": null
- },
- "Tiller": {
-  "category": "steering",
-  "note": "Laminated ash tiller, 1.05 m, tapered, with a rudder-head socket and an extension pivot",
-  "tris": 1824,
-  "size_m": [
-   1.1311,
-   0.048,
-   0.164
-  ],
-  "min_m": [
-   -1.0511,
-   -0.024,
-   -0.032
-  ],
-  "slots": [
-   "Wood",
-   "Aluminium",
-   "BlackPlastic"
-  ],
-  "sockets": {
-   "ExtPivot": [
-    -1.03,
-    0.0,
-    0.13
-   ],
-   "Hand": [
-    -0.84,
-    0.0,
-    0.09
-   ],
-   "Stock": [
-    0.03,
-    0.0,
-    0.0
-   ]
-  },
-  "light": {
-   "tris": 456,
-   "slots": [
-    "Wood",
-    "Aluminium",
-    "BlackPlastic"
-   ],
-   "sockets": [
-    "ExtPivot",
-    "Hand",
-    "Stock"
-   ]
-  },
-  "sizes": null
- },
- "TillerExtension": {
-  "category": "steering",
-  "note": "1.0 m tiller extension: aluminium tube, rubber universal joint, foam grip, end knob",
-  "tris": 1104,
-  "size_m": [
-   1.0151,
-   0.038,
-   0.049
-  ],
-  "min_m": [
-   -0.0151,
-   -0.019,
-   0.0
-  ],
-  "slots": [
-   "Aluminium",
-   "BlackPlastic"
-  ],
-  "sockets": {
-   "Grip": [
-    0.8,
-    0.0,
-    0.03
-   ],
-   "Tip": [
-    1.0,
-    0.0,
-    0.03
-   ],
-   "UJ": [
-    0.0,
-    0.0,
-    0.0
-   ]
-  },
-  "light": {
-   "tris": 276,
-   "slots": [
-    "Aluminium",
-    "BlackPlastic"
-   ],
-   "sockets": [
-    "Grip",
-    "Tip",
-    "UJ"
-   ]
-  },
-  "sizes": {
-   "dim": "length mm",
-   "default": "1000",
-   "kw": {
-    "610": {
-     "length": 0.61
-    },
-    "1000": {
-     "length": 1.0
-    },
-    "1220": {
-     "length": 1.22
-    }
-   }
-  }
  },
  "OutboardBracket": {
   "category": "outboard",
@@ -1963,34 +1879,40 @@
  },
  "BowEye": {
   "category": "hull",
-  "note": "Stainless U-bolt bow eye on the stem below the sheer, for the trailer winch",
-  "tris": 916,
+  "note": "Stainless U-bolt bow eye, 3/8 in rod, legs 36.5 mm apart, 37 mm proud of an oval plate; for the trailer winch",
+  "tris": 2392,
   "size_m": [
-   0.04,
-   0.06,
-   0.0365
+   0.0235,
+   0.0631,
+   0.037
   ],
   "min_m": [
-   -0.02,
-   -0.03,
+   -0.0118,
+   -0.0316,
    0.0
   ],
   "slots": [
    "Stainless"
   ],
   "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
    "Eye": [
     0.0,
     0.0,
-    0.032
+    0.0322
    ]
   },
   "light": {
-   "tris": 228,
+   "tris": 598,
    "slots": [
     "Stainless"
    ],
    "sockets": [
+    "Base",
     "Eye"
    ]
   },
@@ -2333,17 +2255,17 @@
  },
  "TrackCar": {
   "category": "track",
-  "note": "T-track car for 25 mm track: a sheave between stainless cheeks and a plunger stop (the jib lead car alone)",
-  "tris": 1584,
+  "note": "Jib lead car for 22 mm track alone: a sheave between stainless cheeks, pinstop, eye strap",
+  "tris": 9996,
   "size_m": [
-   0.0888,
-   0.0394,
-   0.056
+   0.0969,
+   0.0348,
+   0.0605
   ],
   "min_m": [
-   -0.0444,
-   -0.0197,
-   0.0
+   -0.0264,
+   -0.0174,
+   -0.0075
   ],
   "slots": [
    "Aluminium",
@@ -2351,15 +2273,25 @@
    "Stainless"
   ],
   "sockets": {
-   "Plunger": [
-    -0.034,
+   "Lead": [
+    0.01,
     0.0,
-    0.034
+    0.0095
+   ],
+   "Plunger": [
+    0.057,
+    0.0,
+    0.0313
    ],
    "Sheave": [
     0.01,
     0.0,
-    0.037
+    0.034
+   ],
+   "SheetEye": [
+    0.041,
+    0.0,
+    0.0195
    ],
    "Track": [
     0.0,
@@ -2368,19 +2300,168 @@
    ]
   },
   "light": {
-   "tris": 396,
+   "tris": 2498,
    "slots": [
     "Aluminium",
     "BlackPlastic",
     "Stainless"
    ],
    "sockets": [
+    "Lead",
     "Plunger",
     "Sheave",
+    "SheetEye",
     "Track"
    ]
   },
   "sizes": null
+ },
+ "TackEye": {
+  "category": "fastener",
+  "note": "Jib tack fitting: a stainless U-bail standing fore and aft on a 66 x 28 mm plate, four screws",
+  "tris": 2112,
+  "size_m": [
+   0.0652,
+   0.0277,
+   0.03
+  ],
+  "min_m": [
+   -0.0326,
+   -0.0138,
+   0.0
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Eye": [
+    0.0,
+    0.0,
+    0.026
+   ]
+  },
+  "light": {
+   "tris": 528,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Base",
+    "Eye"
+   ]
+  },
+  "sizes": null
+ },
+ "BowHandle": {
+  "category": "hull",
+  "note": "Sunfish bow handle: cast aluminium grip arched over two oval feet, one oval-head screw each, 150 mm",
+  "tris": 11244,
+  "size_m": [
+   0.1516,
+   0.0257,
+   0.033
+  ],
+  "min_m": [
+   -0.0758,
+   -0.0129,
+   -0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Grip": [
+    0.0,
+    0.0,
+    0.026
+   ]
+  },
+  "light": {
+   "tris": 2810,
+   "slots": [
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Base",
+    "Grip"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "150",
+   "scale": {
+    "130": 0.8666666666666667,
+    "150": 1.0
+   }
+  }
+ },
+ "DeckOrganizer": {
+  "category": "block",
+  "note": "Composite deck organiser, 40 mm sheaves side by side on upright axles (2 by default), dog-bone plates, screw tab each end: 104 x 46 x 24 mm for two",
+  "tris": 8324,
+  "size_m": [
+   0.0467,
+   0.1032,
+   0.0241
+  ],
+  "min_m": [
+   -0.0233,
+   -0.0516,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Line0": [
+    0.0,
+    -0.022,
+    0.0112
+   ],
+   "Line1": [
+    0.0,
+    0.022,
+    0.0112
+   ]
+  },
+  "light": {
+   "tris": 2080,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Base",
+    "Line0",
+    "Line1"
+   ]
+  },
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "40",
+   "scale": {
+    "40": 1.0,
+    "50": 1.25
+   }
+  }
  },
  "JibHank": {
   "category": "rigging",
@@ -3174,6 +3255,211 @@
     "50": 0.714,
     "70": 1.0,
     "90": 1.286
+   }
+  }
+ },
+ "Tiller": {
+  "category": "steering",
+  "note": "Laminated ash and mahogany tiller, 47 in (J/22), rising from stainless side straps on the rudder head's pivot bolt to a rounded grip",
+  "tris": 6324,
+  "size_m": [
+   1.2986,
+   0.0741,
+   0.1645
+  ],
+  "min_m": [
+   -1.2776,
+   -0.0391,
+   -0.0254
+  ],
+  "slots": [
+   "Wood",
+   "WoodMahogany",
+   "Stainless"
+  ],
+  "sockets": {
+   "Butt": [
+    -0.085,
+    0.0,
+    0.0
+   ],
+   "ExtPivot": [
+    -1.209,
+    0.0,
+    0.1365
+   ],
+   "Hand": [
+    -1.129,
+    0.0,
+    0.121
+   ],
+   "Stock": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 1580,
+   "slots": [
+    "Wood",
+    "WoodMahogany",
+    "Stainless"
+   ],
+   "sockets": [
+    "Butt",
+    "ExtPivot",
+    "Hand",
+    "Stock"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "1194",
+   "kw": {
+    "1050": {
+     "length": 1.05
+    },
+    "1194": {
+     "length": 1.194
+    },
+    "1300": {
+     "length": 1.3
+    }
+   }
+  }
+ },
+ "TillerAlu": {
+  "category": "steering",
+  "note": "Dinghy tiller: 32 mm anodised aluminium tube (Sunfish 44 in, ILCA 990 mm), moulded nose insert with retaining pin, rubber grip, end cap; carbon=True for a carbon tube",
+  "tris": 9928,
+  "size_m": [
+   1.118,
+   0.0372,
+   0.0665
+  ],
+  "min_m": [
+   -1.085,
+   -0.0186,
+   -0.026
+  ],
+  "slots": [
+   "Aluminium",
+   "Stainless",
+   "Rubber",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "ExtPivot": [
+    -1.0065,
+    0.0,
+    0.0186
+   ],
+   "Hand": [
+    -0.9165,
+    0.0,
+    0.0
+   ],
+   "Stock": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 2482,
+   "slots": [
+    "Aluminium",
+    "Stainless",
+    "Rubber",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "ExtPivot",
+    "Hand",
+    "Stock"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "1118",
+   "kw": {
+    "990": {
+     "length": 0.99
+    },
+    "1118": {
+     "length": 1.118
+    }
+   }
+  }
+ },
+ "TillerExtension": {
+  "category": "steering",
+  "note": "Tiller extension: ribbed urethane universal joint on a screwed plate, 19 mm anodised tube, textured grip, rubber end knob",
+  "tris": 7016,
+  "size_m": [
+   1.0,
+   0.039,
+   0.0495
+  ],
+  "min_m": [
+   -0.026,
+   -0.0195,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "Aluminium",
+   "Rubber"
+  ],
+  "sockets": {
+   "Grip": [
+    0.8,
+    0.0,
+    0.03
+   ],
+   "Tip": [
+    1.0,
+    0.0,
+    0.03
+   ],
+   "UJ": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 1754,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "Aluminium",
+    "Rubber"
+   ],
+   "sockets": [
+    "Grip",
+    "Tip",
+    "UJ"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "1000",
+   "kw": {
+    "610": {
+     "length": 0.61
+    },
+    "914": {
+     "length": 0.914
+    },
+    "1000": {
+     "length": 1.0
+    },
+    "1220": {
+     "length": 1.22
+    }
    }
   }
  },
