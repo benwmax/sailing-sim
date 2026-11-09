@@ -2251,11 +2251,13 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	if (bDone)
 	{
 		const bool bCheckride = !CheckrideTierId.IsEmpty();
-		const bool bFromCareer = bCheckride || !QuizRetakeLessonId.IsEmpty();
+		// #518: a checkride taken from a lesson's score screen is alone on the stack, like the lesson's quiz: its way out is
+		// back to sailing, not a Pop to the Career screen it never came from.
+		const bool bFromCareer = (bCheckride || !QuizRetakeLessonId.IsEmpty()) && Stack.Num() > 1;
 		TSharedRef<SSailButton> Done = ActionButton(bFromCareer ? TEXT("Back to the career") : TEXT("Back to sailing"), FSimpleDelegate::CreateLambda([this, bFromCareer]()
 		{
 			if (bFromCareer) { QuizRetakeLessonId.Reset(); Pop(); }
-			else { Quiz.Reset(); Close(); }
+			else { Quiz.Reset(); CheckrideTierId.Reset(); QuizRetakeLessonId.Reset(); Close(); }
 		}), !bFromCareer && QuizLessonId.IsEmpty());
 		Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 6.f)[ SailUI::Text(FString::Printf(TEXT("%d of %d right"), QuizRight, Quiz.Num()), EType::ScreenTitle, QuizRight == Quiz.Num() ? Starboard : Fg) ];
 		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? TEXT("All correct. On to the next drill.") : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
@@ -2277,18 +2279,34 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				if (!FirstWay.IsValid()) FirstWay = B;
 			};
 			const FString LessonId = L->Id;
+			// #518: the tier's last lesson closed with its checkride ready: take the written checkride from here, instead of
+			// the route through the pause menu, the title and the tier's card. The ways below follow it.
+			const FCareerProgress Career = SailCareer::Progress();
+			const bool bRideReady = T && !SailCareer::IsFreeSail() && Career.IsCheckrideReady(T->Id) && !Career.HasCertificate(T->CertificateId);
+			if (bRideReady)
+			{
+				const FString TierId = T->Id;
+				Way(TEXT("Take the checkride"), FSimpleDelegate::CreateLambda([this, TierId, Rebuild]()
+				{
+					CheckrideTierId = TierId;
+					QuizRetakeLessonId.Reset();
+					Quiz.Reset();
+					StartQuiz();
+					Rebuild();
+				}), true);
+			}
 			if (NextL)
 			{
 				const FString NextId = NextL->Id;
 				Way(FString::Printf(TEXT("Next lesson: %s"), *NextL->Title), FSimpleDelegate::CreateLambda([this, NextId]()
 				{
 					if (const FCareerLesson* N = FCareerContent::Get().Lesson(NextId)) StartLesson(*N);
-				}), true);
+				}), !bRideReady);
 			}
 			Way(TEXT("Sail it again"), FSimpleDelegate::CreateLambda([this, LessonId]()
 			{
 				if (const FCareerLesson* X = FCareerContent::Get().Lesson(LessonId)) StartLesson(*X);
-			}), !NextL);
+			}), !NextL && !bRideReady);
 			if (!(R && R->bQuizPassed))
 			{
 				Way(TEXT("Retake the quiz"), FSimpleDelegate::CreateLambda([this, LessonId, Rebuild]()

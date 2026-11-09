@@ -20,24 +20,43 @@ lesson() {   # <stage label> <outcome>
 	echo "ENTER,WaitFor:Hud,Expect:Hud,Wait,Shot:$1-lesson"
 	echo "Finish:$2,WaitFor:Quiz,Expect:Quiz,Shot:$1-medal,Answer:all,Wait,Expect:Quiz,Shot:$1-score"
 }
-# Back to the Career screen from a lesson's score (its ways are Sail it again and Back to sailing): Back to sailing, the
-# pause menu, Quit to title, Leave, the title (Career is focused for a returning player), Career.
+# #518: a tier's last lesson closed with its checkride ready puts Take the checkride first on the score: Enter opens the
+# written checkride, answered right, the score with the certificate, then Back to sailing (the only way: the checkride
+# came from the boat, not the Career screen).
+score_checkride() {   # <stage label>
+	echo "Stage:$1,ENTER,Wait,Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,ENTER,WaitFor:Hud,Expect:Hud"
+}
+# From the boat to the Career screen: the pause menu, Quit to title, Leave, the title (Career is focused for a returning
+# player), Career.
 to_career() {   # <stage label>
-	echo "Stage:$1,DOWN,ENTER,WaitFor:Hud,Expect:Hud,MENU,WaitFor:Pause,Expect:Pause"
+	echo "Stage:$1,MENU,WaitFor:Pause,Expect:Pause"
 	echo "DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,DOWN,ENTER,WaitFor:Confirm,Expect:Confirm,LEFT,ENTER"
-	echo "WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career"
+	echo "WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career,Shot:$1-career"
 }
 # Right into a tier's lessons puts the focus on its next lesson without a medal; TOP (Up, eight times) takes it to the
 # first lesson whatever that was, so the counts below are from lesson 1.
 # A tier's written checkride from the Career screen (the focus starts on the First job card): down to the tier's card,
 # into its lessons, up to the first, down past them to Take the written checkride, its quiz answered right, the score with the
-# certificate, then Back to the career.
+# certificate, then Back to the career. The nightly takes the score screen's own button (score_checkride) since #518; this
+# route stays for the Career card (PLAYTHROUGH_CARD=1 runs it instead).
 checkride() {   # <stage label> <downs to the tier card> <lessons in the tier>
 	local Downs="" Past="" i
 	for ((i = 0; i < $2; i++)); do Downs+="DOWN,"; done
 	for ((i = 0; i < $3; i++)); do Past+="DOWN,"; done
 	echo "Stage:$1,Wait,${Downs}RIGHT,TOP${Past}Wait,Shot:$1-card,ENTER,WaitFor:Quiz"
 	echo "Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,ENTER,WaitFor:Career,Expect:Career,Shot:$1-career"
+}
+# The tier's checkride after its last lesson's score, ending on the Career screen: the score's button (#518), or with
+# PLAYTHROUGH_CARD=1 the old route (Back to sailing, the Career screen, the tier's card).
+tier_checkride() {   # <ds|cr> <downs to the tier card> <lessons in the tier>
+	if [[ "${PLAYTHROUGH_CARD:-0}" == 1 ]]; then
+		echo "Stage:$1-to-career,DOWN,DOWN,ENTER,WaitFor:Hud,Expect:Hud"
+		to_career $1-to-career
+		checkride $1-checkride $2 $3
+	else
+		score_checkride $1-checkride
+		to_career $1-to-career
+	fi
 }
 FLOW_STEPS=(
 	"Stage:start,WaitFor:FirstLaunch,Expect:FirstLaunch,Wait,Shot:01-first-launch"
@@ -50,15 +69,13 @@ FLOW_STEPS=(
 	$(lesson ds4 proper) "ENTER"
 	$(lesson ds5 proper) "ENTER"
 	$(lesson ds6 gentle)
-	$(to_career ds-to-career)
-	$(checkride ds-checkride 1 6)
-	"Stage:cr-start,BACK,WaitFor:Title,Expect:Title,Wait,ENTER,WaitFor:Career,Expect:Career,Wait,DOWN,DOWN,RIGHT,TOPWait,Shot:cr-lesson-1,ENTER"
+	$(tier_checkride ds 1 6)
+	"Stage:cr-start,Wait,DOWN,DOWN,RIGHT,TOPWait,Shot:cr-lesson-1,ENTER"
 	$(lesson cr1 clean) "ENTER"
 	$(lesson cr2 done) "ENTER"
 	$(lesson cr3 proper) "ENTER"
 	$(lesson cr4 gentle)
-	$(to_career cr-to-career)
-	$(checkride cr-checkride 2 4)
+	$(tier_checkride cr 2 4)
 	"Stage:end,BACK,WaitFor:Title,Expect:Title,Wait,Shot:99-title,Log,Quit"
 )
 flow() {   # <keys|pad>: the script with that input's keys
