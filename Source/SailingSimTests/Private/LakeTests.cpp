@@ -996,8 +996,10 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 	if (!TestEqual(TEXT("One launch ramp"), Lake.Marina.Ramps.Num(), 1)) return false;
 	const FMarinaRamp& R = Lake.Marina.Ramps[0];
 	const FVector2D Head = 0.5 * (R.In + R.Out);
-	constexpr int32 Res = 96;
-	constexpr float Cell = 1.f;   // the game's (kShoreCellM)
+	// A quarter of the game's 1 m cells (kShoreCellM): a step of 0.2 m between cells is one the stamps' 0.6 m a metre
+	// can't make, where at 1 m the old square's 0.62 m edge passed for a slope.
+	constexpr int32 Res = 384;
+	constexpr float Cell = 0.25f;
 	const FVector2D Origin(FMath::GridSnap(Head.X - 0.5 * Res * Cell, 16.0), FMath::GridSnap(Head.Y - 0.5 * Res * Cell, 16.0));
 	TArray<float> Depth, Bare;
 	AWaterSurface::BuildShoreDepth(Lake, Lake.Terrain, Origin, Res, Cell, Depth);
