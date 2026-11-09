@@ -1,0 +1,129 @@
+{
+ "part": "HatchFwd",
+ "card": {
+  "what": "Low-profile aluminium-framed deck hatch: flanged frame screwed to the deck, black gasket, smoked acrylic pane in an aluminium lid band, hinge knuckles with pins on one edge, two lever handles under the pane",
+  "boats": "J/22 hero fore hatch (360 x 560 mm, hinge forward); light J/22 layout; Catalina 22, Corsair 880 and Catalina 30 (build_fleet.py)",
+  "distance": "arm's reach from the cabin top; the cabin-top camera passes over it",
+  "before": "kit HatchFwd from bk_parts (Oct 2026): a flat frame slab, a lid slab, two block hinges and two loop handles standing on top of the lid; on the J/22 hero, two boxes"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes and layout",
+   "url": "low-profile hatch listings (Lewmar Low Profile and Ocean, Vetus Magnus, Bomar): 30-40 mm overall height, flanged extruded aluminium frame, smoked acrylic 10-12 mm, handles inside, hinges on one edge",
+   "note": "numbers only; no square-on photo used, so no outline check"
+  },
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the J/22's cabin top (IMG_9224, Bean's dock photo, project files only: it shows people elsewhere in the frame)",
+   "url": "Bean's lesson photos, Oct 4 2026",
+   "note": "the hatch's position is still a GUESS: the photo shows a raised white panel aft of the mast and no clear hatch ahead of it"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Length along X (hinge to handle edge) for the J/22 build",
+   "target": 367.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "J/22 hero opening 0.32 m plus 40 mm frame, plus the hinge knuckles (GUESS on the hatch size)"
+  },
+  {
+   "id": "width",
+   "name": "Width across, J/22 build",
+   "target": 560.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "J/22 hero (GUESS)"
+  },
+  {
+   "id": "height",
+   "name": "Overall height off the deck",
+   "target": 36.0,
+   "unit": "mm",
+   "tol": 0.12,
+   "source": "low-profile hatch catalogues, 30-40 mm"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "flange",
+   "text": "Screwed-down flange with a rolled edge, countersunk screws every 85 mm",
+   "objects": [
+    "frame",
+    "screw0"
+   ],
+   "manual": true
+  },
+  {
+   "id": "wall",
+   "text": "Sloping extruded wall up to a gasket seat",
+   "objects": [
+    "frame"
+   ],
+   "manual": true
+  },
+  {
+   "id": "gasket",
+   "text": "Black gasket line between frame and lid",
+   "objects": [
+    "gasket"
+   ],
+   "manual": true
+  },
+  {
+   "id": "band",
+   "text": "Aluminium lid band round the pane, about 14 mm across the top",
+   "objects": [
+    "lid"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pane",
+   "text": "Thick smoked acrylic pane standing a few mm proud",
+   "objects": [
+    "pane"
+   ],
+   "slots": [
+    "CabinWindow"
+   ],
+   "manual": true
+  },
+  {
+   "id": "hinges",
+   "text": "Two hinge knuckles with pins on one short edge, standing past the frame",
+   "objects": [
+    "hinge_pin-1",
+    "hinge_pin1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "handles",
+   "text": "Two lever handles with bosses and cam tongues under the pane (seen through the smoke and from below)",
+   "objects": [
+    "handle-1",
+    "handle1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "plate",
+   "text": "Made-up maker's plate on the band (TERNWAY, no real brand)",
+   "objects": [
+    "plate"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

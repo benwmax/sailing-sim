@@ -1,0 +1,59 @@
+{
+ "surface": "dock",
+ "name": "Club dock surfaces: deck boards and screws, black polyethylene floats and rub strips, wooden pilings, the launch ramp",
+ "kind": "M_WorldSurface patterns 1 (deck), 9 (pilings), 11 (black polyethylene, new) and the concrete pattern 4 with UV1 flag 4 (the ramp)",
+ "code": "scripts/make_materials.py WORLD_SURFACE_CODE; dkT/dkD lines after `float zw`",
+ "scenes": {
+  "rush creek": "AMarinaActor (Ray Hubbard): floating rows and fingers, fixed walkways and piers, pilings, the launch ramps; baked marina tiles hash Age/Care per 4 m of plan, placed kit parts carry E1 custom data 10-15",
+  "coast": "ACoastMarinasActor's floating docks use the same Decking and Floats looks",
+  "kit": "SM_Dock_Float (Tools/blender/build_docks.py) moves from the Dark slot (MI_World_Tyre) to Floats"
+ },
+ "slots": [
+  "MI_World_Decking",
+  "MI_World_Pilings",
+  "MI_World_Floats",
+  "MI_World_Concrete (ramp slab only)"
+ ],
+ "closest_camera_m": 1.5,
+ "pattern_size_cm": {
+  "board": "14 wide + 1 gap (5/4 x 6 decking)",
+  "screw_head_mm": [
+   8,
+   18
+  ],
+  "iron_stain_along_grain": [
+   2.4,
+   12
+  ],
+  "mildew_cluster": 25,
+  "mildew_speck_mm": [
+   3,
+   9
+  ],
+  "dropping": [
+   7,
+   18
+  ],
+  "rub_strip_scuff": [
+   5,
+   40
+  ],
+  "float_slime_band": [
+   4,
+   21
+  ],
+  "ramp_groove": 6,
+  "tyre_lane_width": 44
+ },
+ "levels_needed": {
+  "L0": "honey-tan fresh treated pine, bright zinc screws, satin black floats, green-tan piling with tight cracks, clean grooved ramp",
+  "L1": "pine starting to dull, first slime line on floats and ramp, a scuff or two on the rub strip",
+  "L2": "silver-grey boards with brown left in places, dulled screws with black iron stains, mildew clusters, grey chalky floats with a green-brown slime band, cracked silver piling with a dark wet band, green slick at the ramp's water",
+  "L3": "silver, sound and clean, replaced brown boards among them, wide checks, iron stains; floats chalked but clean; little slime",
+  "L4": "dark, mildewed boards with green at the gaps and gull droppings; pale chalky floats with a thick slime band and silt; piling dark with algae; ramp green and silted"
+ },
+ "drivers": "dkT = wear.time_k(age), dkD = wear.dirt_k(age, care) from E1 Age/Care (baked tiles: age 0-25 and care hashed per 4 m)",
+ "replaces": "deck: silvering on age/4 and dark boards on aged x (1-care); pilings: aged; floats: one flat 0.05 black (pattern 0); ramp: plain concrete, no grooves (despite the comment)",
+ "maps": "none: shader math only, Medium included",
+ "out_of_scope": "dock boxes and pedestals (pattern 10), galvanized hardware (Metal, pattern 0), steel (pattern 5, the rust lane's), the rest of the world's concrete"
+}

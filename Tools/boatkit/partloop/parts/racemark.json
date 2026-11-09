@@ -1,0 +1,95 @@
+{
+ "part": "RaceMark",
+ "card": {
+  "what": "Inflatable cylindrical racing mark, 0.90 m across and 1.50 m tall overall: faded orange PVC tube, two welded vertical seams, domed welded end caps, webbing lifting handle and valve on top, webbing loop and stainless ring for the anchor line underneath",
+  "boats": "race course: windward and leeward marks (TrafficManager::StartRace)",
+  "distance": "rounded at 2 to 5 m; seen from 300 m up the beat",
+  "before": "Engine BasicShapes cylinder scaled 1.6 x 1.6 x 2.2 m in BasicShapeMaterial orange, centre 0.8 m above the water"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Lalizas regatta marker buoy (1.5 m x 900 mm, 4 kg); Osculati 40709 cylindrical racing buoy (90 cm across, 150 cm tall); Crewsaver 3810 cylindrical buoys (4 ft: 1.22 x 0.61 m; 5 ft: 1.52 x 0.76 m); nautimarket 100 x 150 cm giant regatta buoy",
+   "note": "numbers only; no photo could be fetched from this container (Wikimedia's upload host is blocked), so the blind review judged against the reviewers' own knowledge of the objects"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Diameter, seen from the side",
+   "target": 900.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 90 cm"
+  },
+  {
+   "id": "width",
+   "name": "Diameter, end-on",
+   "target": 900.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 90 cm"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "tube",
+   "text": "Inflated tube bowing out slightly at mid height, rounded shoulders, domed end caps",
+   "objects": [
+    "tube"
+   ],
+   "manual": true
+  },
+  {
+   "id": "seams",
+   "text": "Two welded vertical seams and a welded flange round each cap",
+   "objects": [
+    "seam0",
+    "seam1",
+    "flange_top",
+    "flange_bot"
+   ],
+   "manual": true
+  },
+  {
+   "id": "handle",
+   "text": "Webbing lifting handle on a welded patch on top",
+   "objects": [
+    "handle",
+    "handle_patch"
+   ],
+   "manual": true
+  },
+  {
+   "id": "valve",
+   "text": "Inflation valve on the top cap",
+   "objects": [
+    "valve"
+   ],
+   "manual": true
+  },
+  {
+   "id": "anchor",
+   "text": "Webbing loop and stainless ring underneath for the anchor line",
+   "objects": [
+    "anchor_loop",
+    "anchor_ring"
+   ],
+   "manual": true
+  },
+  {
+   "id": "scum",
+   "text": "Scummed band at the waterline (slot MarkScum)",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
