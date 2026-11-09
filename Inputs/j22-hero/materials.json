@@ -12,7 +12,7 @@
    "R": "T_J22H_DeckMould_R.png",
    "N": "T_J22H_DeckMould_N.png",
    "X": "T_J22H_DeckMould_X.png",
-   "uv_m": 8.9737
+   "uv_m": 9.0629
   },
   "Rudder": {
    "D": "T_J22H_Rudder_D.png",
@@ -26,7 +26,7 @@
    "R": "T_J22H_Teak_R.png",
    "N": "T_J22H_Teak_N.png",
    "X": "T_J22H_Teak_X.png",
-   "uv_m": 6.9933
+   "uv_m": 6.9932
   },
   "Interior": {
    "D": "T_J22H_Interior_D.png",
@@ -44,6 +44,15 @@
     0.624
    ],
    "roughness": 0.5,
+   "metallic": 1.0
+  },
+  "Aluminium.001": {
+   "base_color_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.32,
    "metallic": 1.0
   },
   "AshVarnish": {
@@ -69,6 +78,15 @@
     0.0075,
     0.0075,
     0.0075
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0
+  },
+  "BlackPlastic.001": {
+   "base_color_linear": [
+    0.8,
+    0.8,
+    0.8
    ],
    "roughness": 0.45,
    "metallic": 0.0
@@ -298,15 +316,6 @@
    "roughness": 0.4,
    "metallic": 0.0
   },
-  "RigTape": {
-   "base_color_linear": [
-    0.8879,
-    0.8879,
-    0.8714
-   ],
-   "roughness": 0.55,
-   "metallic": 0.0
-  },
   "RubRail": {
    "base_color_linear": [
     0.1022,
@@ -343,6 +352,15 @@
    "roughness": 0.5,
    "metallic": 1.0
   },
+  "Stainless.001": {
+   "base_color_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.3,
+   "metallic": 1.0
+  },
   "Sticker": {
    "base_color_linear": [
     0.0284,
@@ -350,6 +368,15 @@
     0.0423
    ],
    "roughness": 0.3,
+   "metallic": 0.0
+  },
+  "TeakInterior": {
+   "base_color_linear": [
+    0.2623,
+    0.2307,
+    0.1878
+   ],
+   "roughness": 0.5,
    "metallic": 0.0
   },
   "TeakVarnish": {
@@ -363,9 +390,9 @@
   },
   "TeakWeathered": {
    "base_color_linear": [
-    0.2747,
-    0.2582,
-    0.2232
+    0.2086,
+    0.0844,
+    0.0296
    ],
    "roughness": 0.5,
    "metallic": 0.0
@@ -386,6 +413,15 @@
     0.0116
    ],
    "roughness": 0.6,
+   "metallic": 0.0
+  },
+  "TravLine": {
+   "base_color_linear": [
+    0.4851,
+    0.3968,
+    0.0037
+   ],
+   "roughness": 0.8,
    "metallic": 0.0
   },
   "WaterBilge": {
@@ -414,7 +450,70 @@
    ],
    "roughness": 0.4,
    "metallic": 0.0
+  },
+  "RopeBackstay": {
+   "base_color_linear": [
+    0.7677,
+    0.6675,
+    0.6228
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeHalyard": {
+   "base_color_linear": [
+    0.68,
+    0.6746,
+    0.6756
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeJibPort": {
+   "base_color_linear": [
+    0.53,
+    0.1777,
+    0.1639
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeJibStbd": {
+   "base_color_linear": [
+    0.1686,
+    0.2478,
+    0.1726
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeMain": {
+   "base_color_linear": [
+    0.7677,
+    0.6675,
+    0.6228
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeMooring": {
+   "base_color_linear": [
+    0.016,
+    0.0612,
+    0.2747
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
+  },
+  "RopeVang": {
+   "base_color_linear": [
+    0.53,
+    0.1777,
+    0.1639
+   ],
+   "roughness": 0.75,
+   "metallic": 0.0
   }
  },
- "glb_bytes": 18777248
+ "glb_bytes": 45054408
 }
