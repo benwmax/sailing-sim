@@ -1,0 +1,11 @@
+{
+ "surface": "crewfabric",
+ "_about": "Albedo targets (Lab) for the royal blue vest's camera-facing panel. L2 is measured from Bean's lesson photo (white balance corrected on the grey webbing); L0 is the school's royal blue as the render has it new (no photo of a new vest reachable); L1, L3, L4 are estimates (nylon dyes in the Texas sun lose chroma over seasons; a kept old vest is as faded but clean; a neglected one darker with grime).",
+ "levels": {
+  "L0": {"C": [58, 64], "src": "estimate (new royal blue nylon)"},
+  "L1": {"C": [56, 62], "src": "estimate"},
+  "L2": {"L": 37.3, "a": 16.0, "b": -47.0, "C": 53, "tolerance_dE": 6, "src": "IMG_9227 front panel"},
+  "L3": {"C": [40, 52], "src": "estimate"},
+  "L4": {"C": [36, 50], "L": [33, 42], "src": "estimate"}
+ }
+}
