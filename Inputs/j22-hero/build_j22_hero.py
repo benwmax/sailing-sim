@@ -462,16 +462,16 @@ def coaming_cap(side):
     return ob
 
 
+HANDRAIL = (CABIN_AFT + 0.22, 0.84, 3)    # aft end, length, hand holes
+
+
 def handrail(side):
-    """Teak grab rail on the cabin top: a bar on loops."""
-    x0, x1 = CABIN_AFT + 0.26, CABIN_AFT + 1.35          # starts forward of the jib winch on the cabin top's aft corner
-    y = side * 0.46
-    zt = lambda x: deck_z(x, 0) + (CABIN_H0 - 0.06 * (x - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)) - 0.02  # noqa: E731
-    parts = [box(f"HR_bar_{side}", x0, x1, y - 0.016, y + 0.016, zt(x0) + 0.045, zt(x0) + 0.07, MAT["TeakWeathered"], bev=0.006)]
-    for i in range(5):
-        x = x0 + 0.06 + (x1 - x0 - 0.12) * i / 4
-        parts.append(box(f"HR_leg_{side}_{i}", x - 0.03, x + 0.03, y - 0.016, y + 0.016, zt(x) - 0.01, zt(x) + 0.05, MAT["TeakWeathered"], bev=0.006))
-    return join(f"Handrail_{side}", parts)
+    """Teak grab rail on the cabin top (cabin-top pass, Nov 2026: docs/part-detail-loop/cabintop.md): the kit's
+    HandrailTeak, one plank with three arched hand holes open to the deck and sloped ends, as on TX 7295 (Bean's dock
+    photo IMG_9224); the catalogue's three-hole rail, 33 in (0.84 m) long. It had been a bar on five blocks, 1.09 m."""
+    x0, length, loops = HANDRAIL
+    return kit_part(f"Handrail_{side}", "HandrailTeak", (x0 + length / 2, side * 0.46),
+                    surface=lambda x, y: cabin_top_z(x, y) - 0.002, length=length, loops=loops)[0]
 
 
 KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic",
@@ -616,8 +616,11 @@ def build_hardware():
     hx0, hx1 = FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)
     zt = deck_z(hxc, 0) + CABIN_H0 - 0.06 * (hxc - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
-    parts.append(box("FwdHatch", hx0, hx1, -0.26, 0.26, zt - 0.02, zt + 0.035, MAT["HatchAcrylic"], bev=0.015))
-    parts.append(box("FwdHatchFrame", hx0 - 0.02, hx1 + 0.02, -0.28, 0.28, zt - 0.03, zt + 0.02, MAT["Aluminium"], bev=0.008))
+    # cabin-top pass (Nov 2026): the kit's low-profile hatch, flanged aluminium frame, gasket, smoked acrylic in an
+    # aluminium band, hinges on its forward edge, handles under the pane; it had been two boxes. Its frame's opening
+    # (w and d less 60 mm) covers the cut j22_interior makes under it.
+    parts += kit_part("FwdHatch", "HatchFwd", (hxc, 0.0), yaw=math.pi, surface=lambda x, y: cabin_top_z(x, y) - 0.002,
+                      w=hx1 - hx0 + 0.04, d=0.56)
     # sliding companionway hatch and its rails
     za = deck_z(CABIN_AFT, 0) + CABIN_H0
     # #235 gaps (photos companionway-1, companionway-lookinto, companionway-rail-port): the hatch is varnished marine
@@ -639,7 +642,9 @@ def build_hardware():
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
         zo = cabin_top_z(xo, side * 0.12)
-        parts.append(box(f"Organiser_{side}", xo - 0.04, xo + 0.04, side * 0.12 - 0.06, side * 0.12 + 0.06, zo - 0.005, zo + 0.03, MAT["BlackPlastic"], bev=0.006))
+        # cabin-top pass (Nov 2026): the kit's two-sheave deck organiser (40 mm sheaves on upright axles, 104 mm long),
+        # long side across the boat so each halyard runs over its own sheave; it had been an 80 x 120 x 35 mm box
+        parts += kit_part(f"Organiser_{side}", "DeckOrganizer", (xo, side * 0.12), surface=lambda x, y: cabin_top_z(x, y) - 0.001)
         for k in range(2):
             # Bean's feedback 2 (the Harken layout): the halyards' cam cleats just forward of the cabin-top winch, two a side
             # (they had been three a side beside the hatch)
@@ -651,7 +656,7 @@ def build_hardware():
     xt = TRAVELER_X
     trav, car = MS.traveler(xt, half_beam(xt) - SIDE_DECK - 0.035, SEAT_Z, SEAT_IN, MAT)
     parts += trav
-    parts += MS.lower_block(car, MAT)
+    parts += MS.lower_block(car, MAT, kit_part)
     # aft deck: inspection port
     xp = (STERN + COCKPIT_AFT) / 2 - 0.02
     parts.append(cyl("DeckPlate", (xp, 0.30, deck_z(xp, 0.3) - 0.002), (xp, 0.30, deck_z(xp, 0.3) + 0.012), 0.075, MAT["WhitePlastic"], 32))
@@ -802,8 +807,10 @@ def build_rig():
     blk_hi = top - Vector((0, 0, 0.07))
     parts += D.block("MainsheetHigh", blk_hi, (1, 0, 0), (0, 0, 1), MAT, 0.057)
     low = Vector((TRAVELER_X, 0.0, SEAT_Z + 0.115))      # the fiddle's big sheave on the traveler car (j22_mainsheet.py)
-    for k, dx in enumerate((-0.010, -0.0035, 0.0035, 0.010)):
-        part = DRAPE.line([tuple(blk_hi + Vector((dx, 0, -0.02))), tuple(low + Vector((dx, 0, 0.03)))], 0.0015, 0.004)
+    # both blocks' axles run fore and aft, so the four parts of the sheet are spread athwartships: the outer two onto the
+    # sides of the lower fiddle's big sheave, the inner two onto its top (traveler pass: they had been spread fore and aft)
+    for k, (dy, dz) in enumerate(((-0.026, 0.0), (-0.008, 0.026), (0.008, 0.026), (0.026, 0.0))):
+        part = DRAPE.line([tuple(blk_hi + Vector((0, dy * 0.6, -0.02))), tuple(low + Vector((0, dy, dz)))], 0.0015, 0.004)
         wires.append(tube(f"Mainsheet_{k}", part, 0.004, MAT["RopeMain"], smooth_path=True))
     # mainsheet tail from the ratchet block's cam, coiled on the cockpit floor
     parts += D.coil("MainTail", (-2.30, 0.05, FLOOR_Z), 0.13, 3.2, MAT["RopeMain"], seed=STYLE["seed"], flat_z=FLOOR_Z,
@@ -813,10 +820,14 @@ def build_rig():
     for k, (side, dy) in enumerate(((1, 0.0085), (-1, -0.0085), (1, 0.03))):
         yc = side * (HAL_CAM_Y + 0.08 * (k // 2))
         xo, xc = CABIN_AFT + 0.75, CABIN_AFT + 0.30
+        # cabin-top pass: each halyard runs in its own organiser sheave's groove, against the sheave's inboard side (the
+        # line turns outboard round it); the outer cam's halyard takes the outer sheave
+        yo = side * (0.12 + (0.022 if k // 2 else -0.022) - 0.0175)
         path = [(MAST_X - 0.064, dy, zm + 0.061), (MAST_X - 0.09, dy, zm + 0.035), (MAST_X - 0.20, dy * 4.0, cabin_top_z(MAST_X - 0.20, dy * 4.0) + 0.02),
-                (xo, side * 0.12, cabin_top_z(xo, side * 0.12) + 0.018), (xo - 0.20, yc * 0.85, cabin_top_z(xo - 0.20, yc * 0.85) + 0.012),
+                (xo + 0.012, yo - side * 0.002, cabin_top_z(xo, yo) + 0.011), (xo - 0.012, yo + side * 0.001, cabin_top_z(xo, yo) + 0.011),
+                (xo - 0.20, yc * 0.85, cabin_top_z(xo - 0.20, yc * 0.85) + 0.012),
                 (xc + 0.03, yc, cabin_top_z(xc, yc) + 0.022)]
-        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.003, 0.002], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
+        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.0, 0.003, 0.002], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
         # tails coiled and dropped on the cabin top outboard of the hatch, between the cleats and the aft edge
         cx, cy = CABIN_AFT + 0.13 + 0.17 * (k // 2), side * 0.44
         parts += D.coil(f"HalTail_{k}", (cx, cy, 0), 0.05, 2.2, MAT["RopeHalyard"], r=0.0042,
@@ -942,16 +953,19 @@ def build_sails():
     xc = JIB_CAM_X
     yf = half_beam(xc) - SIDE_DECK - 0.025 - 0.03
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))),
+    # the sheet runs under the car's sheave (kit JibTrack: 38 mm sheave centred 45 mm up, the line's gap under it),
+    # coming down onto its forward side from the clew and leaving aft over the car's body
+    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
+                      tuple(car + Vector((-0.05, 0, -0.022))),
                       (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
                       (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.01, 0.0, 0.0], 0.0045)
+                     [0.002, 0.0, 0.0, 0.01, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
                    tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
     wcar = Vector((car.x, -car.y, car.z))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar),
+    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, -0.012))), tuple(wcar + Vector((0.0, 0, -0.0235))),
                        (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)],
                       [0.22, 0.0, 0.03, 0.0], 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
@@ -1018,6 +1032,14 @@ def build_registration():
 hull = build_hull()
 deck = build_deck()
 cockpit = build_cockpit()
+# the traveler's indentation (Bean, Nov 9 2026: "the track is in an indention in the cockpit seats"): a moulded trough
+# across each seat top, open to the well, its floor where the track's foot sits (j22_mainsheet.TRACK_H under its top)
+import j22_mainsheet as _MS  # noqa: E402
+import bk_geom as _BG  # noqa: E402
+for _side in (1, -1):
+    _y0, _y1 = sorted((_side * (SEAT_IN - 0.05), _side * (half_beam(TRAVELER_X) - SIDE_DECK - 0.035 + _MS.TROUGH_END)))
+    _BG.boolean(cockpit, box("TravTroughCut", TRAVELER_X - _MS.TROUGH_W / 2, TRAVELER_X + _MS.TROUGH_W / 2, _y0, _y1,
+                             SEAT_Z + 0.004 - _MS.TRACK_H, SEAT_Z + 0.05, bev=0.006))
 cabin = build_cabin()
 import types  # noqa: E402
 import j22_interior as INTERIOR  # noqa: E402

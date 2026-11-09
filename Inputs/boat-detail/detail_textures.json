@@ -23,8 +23,8 @@
  },
  "TeakWeathered": {
   "tile_m": [
-   0.3,
-   0.15
+   0.25,
+   0.125
   ],
   "normal_strength": 1.0,
   "fade_m": [
@@ -56,8 +56,8 @@
  },
  "WoodVarnish": {
   "tile_m": [
-   0.3,
-   0.15
+   0.25,
+   0.125
   ],
   "normal_strength": 1.0,
   "fade_m": [

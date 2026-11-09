@@ -1269,45 +1269,6 @@ def handrail(length=0.90, loops=4):
 
 # ------------------------------------------------------------------ steering and outboard
 
-@part("Tiller", "steering", "Laminated ash tiller, 1.05 m, tapered, with a rudder-head socket and an extension pivot")
-def tiller(length=1.05):
-    path = [(0, 0, 0), (-0.25, 0, 0.03), (-0.6, 0, 0.07), (-length, 0, 0.10)]
-    path = G.bezier(path[0], path[1], path[2], path[3], 30)
-    radii = [1.0 - 0.35 * (i / 30) for i in range(31)]
-    body = G.sweep("tiller", path, [(p[0] * 0.018, p[1] * 0.024) for p in G.rrect(2, 2, 0.6, 4)], M("Wood"), radii=radii)
-    G.finish(body, 0)
-    head = G.prism("head", G.rrect(0.10, 0.048, 0.008), -0.032, 0.032, M("Aluminium"))
-    head.matrix_world = Matrix.Translation((0.03, 0, 0))
-    G.bake_xform(head)
-    G.finish(head, 0.002)
-    knob = G.lathe("knob", [(0, 0), (0.012, 0), (0.014, 0.008), (0.010, 0.016), (0, 0.017)], M("BlackPlastic"), 24)
-    knob.matrix_world = Matrix.Translation((-length + 0.02, 0, 0.115))
-    G.bake_xform(knob)
-    G.finish(knob, 0)
-    return done("Tiller", [body, head, knob], [("Stock", (0.03, 0, 0)), ("ExtPivot", (-length + 0.02, 0, 0.13)), ("Hand", (-length * 0.8, 0, 0.09))])
-
-
-@part("TillerExtension", "steering", "1.0 m tiller extension: aluminium tube, rubber universal joint, foam grip, end knob")
-def tiller_extension(length=1.0):
-    tube = G.cyl("tube", (0, 0, 0.03), (length, 0, 0.03), 0.0095, M("Aluminium"), 24)
-    tube.matrix_world = Matrix.Identity(4)
-    G.finish(tube, 0.0006)
-    uj = G.lathe("uj", [(0, 0), (0.012, 0), (0.016, 0.010), (0.012, 0.022), (0.012, 0.03), (0, 0.03)], M("BlackPlastic"), 24)
-    for v in uj.data.vertices:          # moulded rubber ribs
-        if 0.004 < v.co.z < 0.02:
-            k = 1 + 0.06 * math.cos(v.co.z * 900)
-            v.co.x *= k
-            v.co.y *= k
-    G.finish(uj, 0)
-    grip = G.cyl("grip", (length * 0.55, 0, 0.03), (length - 0.03, 0, 0.03), 0.0135, M("BlackPlastic"), 24)
-    BT.mark(G.finish(grip, 0.003), band="grip")
-    knob = G.lathe("knob", [(0, 0), (0.016, 0), (0.019, 0.012), (0.012, 0.028), (0, 0.030)], M("BlackPlastic"), 24)
-    knob.matrix_world = G.along((length - 0.03, 0, 0.03), (1, 0, 0))
-    G.bake_xform(knob)
-    G.finish(knob, 0)
-    return done("TillerExtension", [tube, uj, grip, knob], [("UJ", (0, 0, 0)), ("Grip", (length * 0.8, 0, 0.03)), ("Tip", (length, 0, 0.03))])
-
-
 @part("OutboardBracket", "outboard", "Two-position transom outboard bracket with a spring lift and lock pin")
 def outboard_bracket():
     objs = []
@@ -1535,7 +1496,6 @@ SIZES = {
     "BowPulpit":  {"dim": "width mm", "default": "600", "kw": {"450": {"width": 0.45, "length": 0.35}, "600": {"width": 0.60}, "800": {"width": 0.80, "length": 0.60}}},
     "Pushpit":    {"dim": "width mm", "default": "1500", "kw": {"1200": {"width": 1.20}, "1500": {"width": 1.50}, "2000": {"width": 2.00, "depth": 0.50}}},
     "Clutch":     {"dim": "line mm", "default": "10", "scale": {"8": 0.85, "10": 1.0, "14": 1.3}},
-    "TillerExtension": {"dim": "length mm", "default": "1000", "kw": {"610": {"length": 0.61}, "1000": {"length": 1.0}, "1220": {"length": 1.22}}},
 }
 
 

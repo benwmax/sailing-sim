@@ -1,0 +1,62 @@
+{
+ "surface": "wood",
+ "note": "Raw files live in git-ignored Data/Reference/raw/textures/Wood/<level>/ (CC0 scans also re-downloadable from the links). Colours are albedo in CIE Lab (D65) and sRGB 0-255. Photos were white-balanced on white gelcoat in the same frame, taken as sRGB 215 neutral (docs: gelcoat albedo 200-225), so their lightness is +-5 L*; hue and chroma are the firmer numbers. 'derived' marks a target worked out from measured ones where no photo of that state was available yet.",
+ "references": [
+  {"id": "ph-teak", "kind": "scan", "licence": "CC0", "source": "Poly Haven teak_veneer", "url": "https://polyhaven.com/a/teak_veneer", "size_mm": [1000, 1000],
+   "levels": ["teak L0"], "measured": {"lab": [57.8, 12.3, 30.2], "srgb": [176, 130, 87], "L_sd": 3.4, "rough": 0.65, "grain_centroid_mm": 4.3}},
+  {"id": "ph-ash", "kind": "scan", "licence": "CC0", "source": "Poly Haven ash_veneer", "url": "https://polyhaven.com/a/ash_veneer", "size_mm": [1000, 1000],
+   "levels": ["varnish: the tiller's ash laminations, unfinished"], "measured": {"lab": [62.9, 5.2, 15.6], "srgb": [172, 149, 125], "rough": 0.62, "grain_centroid_mm": 3.68}},
+  {"id": "ph-sapele", "kind": "scan", "licence": "CC0", "source": "Poly Haven sapele_veneer (a mahogany)", "url": "https://polyhaven.com/a/sapele_veneer", "size_mm": [500, 500],
+   "levels": ["varnish: the tiller's mahogany laminations and Sunfish foils, unfinished"], "measured": {"lab": [60.1, 22.7, 32.5], "srgb": [198, 129, 89], "rough": 0.68, "grain_centroid_mm": 3.45}},
+  {"id": "ph-okoume", "kind": "scan", "licence": "CC0", "source": "Poly Haven okoume_veneer (marine plywood face)", "url": "https://polyhaven.com/a/okoume_veneer", "size_mm": [1000, 1000],
+   "levels": ["varnish: plywood hatch and washboards, unfinished"], "measured": {"lab": [70.5, 12.5, 23.5], "srgb": [209, 163, 131], "grain_centroid_mm": 3.93}},
+  {"id": "ph-lacquered-cherry", "kind": "scan", "licence": "CC0", "source": "Poly Haven lacquered_cherry_wood", "url": "https://polyhaven.com/a/lacquered_cherry_wood", "size_mm": [1000, 1000],
+   "levels": ["varnish gloss range"], "measured": {"lab": [12.4, 7.5, 11.9], "rough": 0.25}, "use": "roughness of a lacquered film only (it is a dark stained finish, too dark for colour)"},
+  {"id": "ph-coated-pine", "kind": "scan", "licence": "CC0", "source": "Poly Haven coated_pine", "url": "https://polyhaven.com/a/coated_pine", "size_mm": [740, 740],
+   "levels": ["varnish gloss range"], "measured": {"lab": [29.1, 17.3, 36.4], "rough": 0.31}, "use": "roughness and the amber cast of a fresh clear coat"},
+  {"id": "ph-rough-wood", "kind": "scan", "licence": "CC0", "source": "Poly Haven rough_wood", "url": "https://polyhaven.com/a/rough_wood", "size_mm": [500, 500],
+   "levels": ["varnish L4 bare patches", "teak L4"], "measured": {"lab": [41.8, 1.4, 7.3], "srgb": [109, 100, 89], "L_sd": 8.6, "rough": 0.51, "grain_centroid_mm": 3.22}},
+  {"id": "ph-planks-grey", "kind": "scan", "licence": "CC0", "source": "Poly Haven wood_planks_grey", "url": "https://polyhaven.com/a/wood_planks_grey", "size_mm": [1500, 1500],
+   "levels": ["teak L4"], "measured": {"lab": [28.8, -0.2, 3.1], "srgb": [71, 70, 65], "L_sd": 6.1, "rough": 0.84}},
+  {"id": "ph-weathered-planks", "kind": "scan", "licence": "CC0", "source": "Poly Haven weathered_planks", "url": "https://polyhaven.com/a/weathered_planks", "size_mm": [2000, 2000],
+   "levels": ["teak L4"], "measured": {"lab": [29.5, 3.7, 7.3], "srgb": [81, 68, 59], "L_sd": 4.7}},
+  {"id": "ph-washed-oak", "kind": "scan", "licence": "CC0", "source": "Poly Haven washed_grey_oak_veneer", "url": "https://polyhaven.com/a/washed_grey_oak_veneer", "size_mm": [1000, 1000],
+   "levels": ["grain size only"], "measured": {"grain_centroid_mm": 3.83}},
+  {"id": "acg-wood033", "kind": "scan", "licence": "CC0", "source": "ambientCG Wood033 (sun-bleached, checked)", "url": "https://ambientcg.com/view?id=Wood033",
+   "levels": ["teak L4, the sun side's palest limit"], "measured": {"lab": [69.1, -0.3, 1.0]}},
+  {"id": "acg-wood035", "kind": "scan", "licence": "CC0", "source": "ambientCG Wood035 (old, stained)", "url": "https://ambientcg.com/view?id=Wood035",
+   "levels": ["water stains and dark weathering"], "measured": {"lab": [33.0, 6.9, 12.6], "L_sd": 9.6}},
+  {"id": "bean-9272", "kind": "photo", "licence": "Bean's own (shows feet only; keep off public pages)", "source": "Bean's J/22 lesson photo IMG_9272, Oct 11 2026, TX 7295 EC at Rush Creek, low sun",
+   "url": "project file sailing-sim-ref/j22-lessons/IMG_9272.jpg", "levels": ["teak L2"],
+   "measured": {"coaming_cap": {"lab": [50.4, 1.6, 3.9], "srgb": [143, 136, 128], "L_sd": 18.5}, "sole_handhold_shade": {"lab": [39.5, 0.8, 0.7]}},
+   "features": ["silver-grey with warm brown patches", "dark open checks along the grain", "the grain itself faint", "stainless Phillips screws, not plugs", "the lower edge dark (dirt, water)"]},
+  {"id": "bean-9273", "kind": "photo", "licence": "Bean's own (shows a classmate; never publish)", "source": "Bean's J/22 lesson photo IMG_9273, Oct 11 2026, the club tiller in hand",
+   "url": "project file sailing-sim-ref/j22-lessons/IMG_9273.jpg", "levels": ["varnish L2", "teak L2"],
+   "measured": {"tiller_head_mahogany_sun": {"lab": [45.0, 21.3, 29.9], "srgb": [152, 95, 66]}, "tiller_side_ash_skylit": {"lab": [52.7, 7.9, 16.1]},
+                "tiller_grip_worn": {"lab": [42.9, 5.2, 3.0]}, "coaming_cap": {"lab": [50.1, 1.7, 3.4]}},
+   "features": ["glossy amber film intact over most of the tiller", "the grip end dull and grey where hands wear the film", "ash and mahogany laminations visible as pale and red stripes"]}
+ ],
+ "wanted": [
+  "Bean at Rush Creek, coin in frame: the lesson J/22's tiller top and grip, a cabin-top handrail, the oldest boat's wood",
+  "Wikimedia Commons (measure only), queued but rate-limited from the cloud: Tiller1.jpg, Varnish peeling off.jpg, 'Vernis degrade par ultraviolets ecailles Varnish.JPG', Sunfishdinghy closeup.jpg, Teakdeck.JPG, 1953 wooden Sunfish sailboat.jpg"
+ ],
+ "targets": {
+  "varnish": {
+   "L0": {"lab": [46, 18, 30], "dE": 6, "rough": [0.10, 0.25], "coat": [0.9, 1.0], "failed": [0.0, 0.0], "how": "bean-9273 intact film, sunlit side (mahogany head 45/21/30; the sky-lit ash side reads greyer). Round 3 used 48/15/26 and all three blind reviewers called it pink and pale against the photo (derived)"},
+   "L1": {"lab": [46, 17, 29], "dE": 6, "rough": [0.18, 0.32], "coat": [0.7, 0.95], "failed": [0.0, 0.02], "how": "L0 with the grip just dulled (derived)"},
+   "L2": {"lab": [49, 10, 16], "dE": 6, "rough": [0.20, 0.45], "coat": [0.5, 0.85], "failed": [0.08, 0.25], "how": "bean-9273 whole tiller: amber film, grey worn grip"},
+   "L3": {"lab": [37, 19, 27], "dE": 6, "rough": [0.10, 0.25], "coat": [0.9, 1.0], "failed": [0.0, 0.03], "how": "L0 wood darkened by 30 years of light under a fresh coat: -9 L*, a little less yellow (derived; round 5 at -5 L* was told apart from new by none of three blind reviewers)"},
+   "L4": {"lab": [40, 4, 9], "dE": 6, "rough": [0.55, 0.85], "coat": [0.0, 0.3], "failed": [0.5, 0.85], "how": "ph-rough-wood bare grey wood with ph-acg-wood035 water stains and a few amber flakes left"}
+  },
+  "teak": {
+   "L0": {"lab": [56, 12, 29], "dE": 6, "rough": [0.55, 0.70], "how": "ph-teak (freshly sanded teak)"},
+   "L1": {"lab": [54, 8, 20], "dE": 6, "rough": [0.60, 0.75], "how": "teak greys within months in the sun: a third of the way from L0 to L2 (derived)"},
+   "L2": {"lab": [50, 2, 4], "dE": 6, "rough": [0.70, 0.88], "how": "bean-9272 and bean-9273 coaming caps (two photos agree within 0.6 dE)"},
+   "L3": {"lab": [47, 11, 24], "dE": 6, "rough": [0.50, 0.70], "how": "kept teak is scrubbed and oiled: L0 darkened about 9 L* by the oil, as the club tiller's finished ash is against ph-ash (derived)"},
+   "L4": {"lab": [33, 2, 6], "dE": 6, "rough": [0.75, 0.92], "how": "mean of ph-planks-grey, ph-weathered-planks and ph-rough-wood: dark grey with mildew"}
+  },
+  "size": {"varnish_grain_centroid_mm": [3.57, 0.10], "teak_grain_centroid_mm": [4.3, 0.10], "min_px_per_mm": 4.0,
+           "how": "spectral centroid of the grain across it, 1.5-20 mm band (ash 3.68 and sapele 3.45 for the varnished tiller; teak 4.3), +-10%"},
+  "ladder": "Both kinds: L0 < L1 < L2 < L4 in wear, L3 clearly old but kept (not between L2 and L4 on dirt)"
+ }
+}
