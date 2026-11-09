@@ -11,10 +11,10 @@ J/22's glass (`M_J22HeroGlass`).
 
 ## What changed
 
-- **Surface kind 14, smoked acrylic glazing** (`scripts/make_materials.py` `BOAT_SURFACE`): the `CabinWindow` slot.
-  With an Age, kind 14 no longer counts as gelcoat (`gel` is zeroed), and BOAT_CODE's detail-map block skips it (no
+- **Surface kind 15, smoked acrylic glazing** (`scripts/make_materials.py` `BOAT_SURFACE`): the `CabinWindow` slot.
+  With an Age, kind 15 no longer counts as gelcoat (`gel` is zeroed), and BOAT_CODE's detail-map block skips it (no
   gelcoat orange peel on acrylic).
-- **The wear lines** sit in `BOAT_CODE` between `// ACRYLIC_WEAR >>>` and `// ACRYLIC_WEAR <<<`, run when `surf == 14`:
+- **The wear lines** sit in `BOAT_CODE` between `// ACRYLIC_WEAR >>>` and `// ACRYLIC_WEAR <<<`, run when `surf == 15`:
   - *bleach*: the smoke dye fades a little toward bronze on faces that see the sky (`0.6 timeK`);
   - *haze*: a milky scatter over the smoke, the gloss and clear coat going, by `timeK (0.12 + 0.55 dirtK)`, halved
     by polishing (Care), in 2.5 and 0.8 cm patches;
@@ -27,7 +27,7 @@ J/22's glass (`M_J22HeroGlass`).
   The cracks, scratches and ring edges are filtered to the pixel (`fwidth` of the pane's projection) and fade out
   between 1.5 and 4 m, so far boats don't shimmer.
 - **Age unset (-1: the player's and the AI boats in play): exactly as before.** Every line is gated on `age >= 0`.
-- **M_BoatKit** (`scripts/import_hardware_kit.py`) runs the same lines for kind 14 (the `Portlight` panes and the
+- **M_BoatKit** (`scripts/import_hardware_kit.py`) runs the same lines for kind 15 (the `Portlight` panes and the
   `HatchFwd` lid), copied out of `BOAT_CODE` at import time, as it does the black plastic.
 - **M_J22HeroGlass** (`scripts/import_j22_hero.py`) gains `Age`, `Care` and `Acrylic` (0 on the bilge water) and runs
   the same lines; the haze, crazing, dust and spots also make the pane less see-through (opacity toward 0.97).
@@ -68,7 +68,7 @@ numpy renderer has no screen-space reflections) and no rim. In-game stills on th
 
 `python Tools/texloop/acrylic/test_acrylic.py` (HLSL, kit, hero glass and port agree; Age unset and new unchanged;
 ladder order), `python Tools/texloop/test_wear.py`. `SailingSim.Visual.BoatLibrary` now also checks
-`MI_Boat_CabinWindow` is kind 14. Still to run on the machines: the Mac shader compile and boats gate (a 3 x 3 Voronoi
+`MI_Boat_CabinWindow` is kind 15. Still to run on the machines: the Mac shader compile and boats gate (a 3 x 3 Voronoi
 loop inside a near-camera branch is the one new cost), then PC import (`make-content`, `import_hardware_kit.py`,
 `import_j22_hero.py` with `HERO_MATERIALS_ONLY=1`) and `-SailingBoatAge` stills of the J/22's portlights.
 

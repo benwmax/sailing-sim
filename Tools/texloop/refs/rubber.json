@@ -1,0 +1,52 @@
+{
+ "surface": "rubber",
+ "_about": "CC0 scans from ambientCG (fetched to the git-ignored Data/Reference/raw/textures/Rubber/), measured for colour and roughness; Bean's J/22 lesson photos (project files, not in git) checked for the hull-deck strip. No CC0 or CC BY photo of sun-bloomed rubber or faded black webbing was reachable from the cloud (Wikimedia's image host refuses it); L1-L4 are estimates until close-ups at the club with a grey card.",
+ "refs": [
+  {
+   "id": "Rubber004",
+   "url": "https://ambientcg.com/a/Rubber004",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0",
+   "what": "black rubber",
+   "albedo_lab": [
+    17.6,
+    0.6,
+    -3.4
+   ],
+   "roughness": 0.59
+  },
+  {
+   "id": "Rubber001",
+   "url": "https://ambientcg.com/a/Rubber001",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0-L1",
+   "what": "rubber, textured"
+  },
+  {
+   "id": "Rubber002",
+   "url": "https://ambientcg.com/a/Rubber002",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0-L1",
+   "what": "rubber, textured"
+  },
+  {
+   "id": "Rubber003",
+   "url": "https://ambientcg.com/a/Rubber003",
+   "licence": "CC0",
+   "use": "measure",
+   "level": "L0-L1",
+   "what": "rubber, textured"
+  },
+  {
+   "id": "IMG_9224",
+   "url": "project files sailing-sim-ref/j22-lessons (Bean's own photo, not in git: faces)",
+   "licence": "Own photo",
+   "use": "measure",
+   "level": "L2",
+   "what": "TX 7295 EC at the dock: the hull-deck joint is hidden under the teak toe rail at this distance; no rub strake to measure"
+  }
+ ]
+}

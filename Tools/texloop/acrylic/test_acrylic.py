@@ -30,8 +30,8 @@ def constant(path, name):
 def block():
     code = constant("scripts/make_materials.py", "BOAT_CODE")
     assert code.count("// ACRYLIC_WEAR >>>") == 1 and code.count("// ACRYLIC_WEAR <<<") == 1, "one ACRYLIC_WEAR block"
-    assert "gel *= (age >= 0.0 && abs(Surface - 14.0) < 0.5) ? 0.0f : 1.0f;" in code, "aged acrylic must not chalk as gelcoat"
-    assert "surf != 13 && surf != 14" in code, "the detail-map block skips acrylic (no gelcoat orange peel)"
+    assert "gel *= (age >= 0.0 && abs(Surface - 15.0) < 0.5) ? 0.0f : 1.0f;" in code, "aged acrylic must not chalk as gelcoat"
+    assert "surf != 13 && surf != 15" in code, "the detail-map block skips acrylic (no gelcoat orange peel)"
     return code[code.index("// ACRYLIC_WEAR >>>"):code.index("// ACRYLIC_WEAR <<<")]
 
 
@@ -60,9 +60,9 @@ def check_constants(b):
 
 def check_wiring():
     kinds = constant("scripts/make_materials.py", "BOAT_SURFACE")
-    assert kinds["CabinWindow"] == 14 and list(kinds.values()).count(14) == 1, "CabinWindow is kind 14, and only it"
+    assert kinds["CabinWindow"] == 15 and list(kinds.values()).count(15) == 1, "CabinWindow is kind 15, and only it"
     kit = open(os.path.join(REPO, "scripts/import_hardware_kit.py")).read()
-    assert "@ACRYLIC_WEAR@" in kit and "acrylic_wear()" in kit and "if (surf == 14)" in kit, "M_BoatKit copies BOAT_CODE's block"
+    assert "@ACRYLIC_WEAR@" in kit and "acrylic_wear()" in kit and "if (surf == 15)" in kit, "M_BoatKit copies BOAT_CODE's block"
     assert test_wear.TIME.format(a="age") in kit and test_wear.DIRT.format(a="age", c="care") in kit, "M_BoatKit's timeK/dirtK differ"
     hero = open(os.path.join(REPO, "scripts/import_j22_hero.py")).read()
     glass = constant("scripts/import_j22_hero.py", "GLASS_CODE")

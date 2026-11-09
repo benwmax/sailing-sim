@@ -1,8 +1,8 @@
 {
  "surface": "acrylic",
  "name": "Smoked cast acrylic glazing (PMMA): portlights and hatch lids",
- "kind": "surface kind 14 in BOAT_CODE (new); M_BoatKit (kit Portlight panes, HatchFwd lid) and the hero J/22's M_J22HeroGlass through the same lines",
- "code": "scripts/make_materials.py BOAT_CODE, the block between '// ACRYLIC_WEAR >>>' and '// ACRYLIC_WEAR <<<' (run when surf == 14); scripts/import_hardware_kit.py KIT_CODE and scripts/import_j22_hero.py GLASS_CODE copy it",
+ "kind": "surface kind 15 in BOAT_CODE (new); M_BoatKit (kit Portlight panes, HatchFwd lid) and the hero J/22's M_J22HeroGlass through the same lines",
+ "code": "scripts/make_materials.py BOAT_CODE, the block between '// ACRYLIC_WEAR >>>' and '// ACRYLIC_WEAR <<<' (run when surf == 15); scripts/import_hardware_kit.py KIT_CODE and scripts/import_j22_hero.py GLASS_CODE copy it",
  "boats": {
   "j22": "hero J/22 PortlightAcrylic and HatchAcrylic (M_J22HeroGlass, translucent: haze also cuts the see-through); the classic J/22's CabinWindow",
   "fleet": "every fleet and berthed boat's CabinWindow slot (BOAT_LIBRARY, and the Deck pack in M_BoatPacked)",
@@ -45,6 +45,6 @@
  },
  "drivers": "bleach = 0.6 timeK sky; haze = timeK (0.12 + 0.55 dirtK)(1 - 0.5 Care), patchy; dust = dirtK on up faces; crazing = saturate((timeK - 0.3)/0.5)(0.45 + 0.55 (1 - Care)) in 6 cm patches; scratches = 0.08 sat(4 timeK) + 0.45 timeK + 0.15 dirtK of 1.2 cm cells (two layers); water spots = 0.18 dirtK of 5 mm cells, mostly tops; mildew dirtK > 0.6 and low Care. Thin lines filtered to the pixel (fwidth). Age unset (-1): no change, as before.",
  "replaces": "CabinWindow had Coat 1, so on an aged boat it took the gelcoat's chalk, yellowing and rust weeps (barely visible on a near-black pane); no acrylic wear at all",
- "maps": "none: shader math only, Medium included; BOAT_CODE's detail-map block skips kind 14 (no gelcoat orange peel on acrylic)",
+ "maps": "none: shader math only, Medium included; BOAT_CODE's detail-map block skips kind 15 (no gelcoat orange peel on acrylic)",
  "out_of_scope": "the portlight rim and its sealant/gasket (kit rim is BlackPlastic, kind 13), the crew's glasses (CrewGlasses stays 0), clear PVC jib windows (SAIL_CODE)"
 }
