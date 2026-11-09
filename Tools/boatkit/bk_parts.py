@@ -477,7 +477,7 @@ def _mb_swivel_shackle(zh, rb, k, steel, neck=1.0):
     `neck` thickens the post, the eye's wire and the collar (Ratchet57: Bean, Nov 9 2026, the neck read thin edge-on)."""
     objs = []
     cr = rb * 0.27 * (1 + (neck - 1) * 0.35)
-    collar = G.lathe("collar", [(0, -0.0006 * k), (cr, -0.0006 * k), (cr, 0.0012 * k * neck), (cr * 0.82, 0.0024 * k * neck), (0, 0.0024 * k * neck)], steel, 28)
+    collar = G.lathe("collar", [(0, -0.0006 * k), (cr, -0.0006 * k), (cr, 0.0012 * k * neck), (cr * 0.22 / 0.27, 0.0024 * k * neck), (0, 0.0024 * k * neck)], steel, 28)
     collar.location = (0, 0, zh)
     G.bake_xform(collar)
     objs.append(G.finish(collar, 0, sharp=50))
