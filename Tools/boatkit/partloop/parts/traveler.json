@@ -1,0 +1,68 @@
+{
+ "part": "Traveler (J/22 hero)",
+ "card": {
+  "what": "The J/22's mainsheet traveler: a 22 mm high-beam track spanning the cockpit seat to seat, its end stops, a 73 mm ball-bearing car with a pivoting shackle and control tangs, and a 2:1 control line each side to a cam cleat",
+  "boats": "J/22 hero (Inputs/j22-hero/j22_mainsheet.py, part of SM_J22H_Hull). The light J/22 (Tools/blender/build_j22.py) keeps its own simple track",
+  "distance": "the helm camera sees it every second; the crew's legs cross it",
+  "before": "j22_mainsheet.traveler (Oct 2026, Bean's feedback 1): a 32 mm T-section track, a flat box car with two sideways sheaves, black end caps with a sheave, blue control lines to separate cam cleats on the seats"
+ },
+ "references": [
+  {
+   "id": "bean-j22-mainsheet",
+   "kind": "photo",
+   "use": "the look on our club's J/22: black track across the cockpit with the crew's white index marks, black square end stops, a small black car with the lower block on a swivel, yellow-and-black control line in two parts each side out to the seat",
+   "url": "project upload 84310630 (Bean, J/22 at Rush Creek)"
+  },
+  {
+   "id": "j22-layout",
+   "kind": "drawing",
+   "use": "which parts: 2721 22 mm high-beam track, 2754 car; the control's cam on the seat (measuring only)",
+   "url": "project uploads 20109d18, c64b7434 (Harken J/22 layout)"
+  },
+  {
+   "id": "car-2754",
+   "kind": "catalogue",
+   "use": "22 mm car with pivoting shackle and control tangs: 2 7/8 x 2 1/4 in (73 x 57 mm); retailers list it for the J/22",
+   "url": "https://www.mauripro.com/collections/harken-traveler-cars/products/har2754 (numbers only)"
+  },
+  {
+   "id": "track-22-high-beam",
+   "kind": "catalogue",
+   "use": "22 mm high-beam track for spanning a cockpit, 100 mm hole spacing, 5 mm flat-head screws, 586 g/m (1 m, 586 g; 1.5 m, 879 g), 6061-T6 hardcoat",
+   "url": "https://fisheriessupply.com/harken-22-mm-small-boat-cb-track-high-beam-with-variable-hole-spacing (numbers only)"
+  },
+  {
+   "id": "end-control-guide",
+   "kind": "catalogue",
+   "use": "control purchase: 2:1 for sail area under 140 sq ft (the J/22's main is under that)",
+   "url": "Harken 2740 small boat end control listings (numbers only)"
+  }
+ ],
+ "sizes": [
+  {"id": "track_w", "name": "Track width", "target": 22.0, "unit": "mm", "tol": 0.05, "source": "catalogue: 22 mm track"},
+  {"id": "car_l", "name": "Car length along the track", "target": 73.0, "unit": "mm", "tol": 0.05, "source": "catalogue (2754): 2 7/8 in"},
+  {"id": "car_w", "name": "Car width", "target": 57.0, "unit": "mm", "tol": 0.05, "source": "catalogue (2754): 2 1/4 in"},
+  {"id": "section", "name": "Track section area", "target": 217.0, "unit": "mm2", "tol": 0.10, "source": "catalogue weight 586 g/m over aluminium's 2.70 g/cm3"},
+  {"id": "track_h", "name": "Track height", "target": null, "unit": "mm", "tol": null, "source": "not in the listings: reported only (ours 19 mm)"},
+  {"id": "screws", "name": "Screw spacing", "target": 100.0, "unit": "mm", "tol": 0.02, "source": "catalogue: 100 mm hole spacing"}
+ ],
+ "outline": null,
+ "outline_note": "No square-on photo of the track's section or the car. Bean's photo is at an angle; a photo of the car from the side and the track's end would let the outline check run.",
+ "features": [
+  {"id": "span", "text": "One track from seat to seat, let into each seat and bridging the well with no support under it", "objects": ["TravelerBar", "TravSlot"]},
+  {"id": "high-beam", "text": "High-beam section: a 22 mm head with ball races under its edges on a deeper stem and foot", "manual": true},
+  {"id": "marks", "text": "The crew's white index marks and numbers on the track over the well", "objects": ["TravMark", "TravNum"]},
+  {"id": "screws", "text": "Flat-head screws along the track where it lies on the seats", "objects": ["TravS_"]},
+  {"id": "stops", "text": "A black square end stop over each end of the track, two screws on top", "objects": ["TravStop"]},
+  {"id": "car", "text": "A small black car wrapping the track's head, with moulded end caps", "objects": ["TravCar", "TravCarEnd"]},
+  {"id": "shackle", "text": "A pivoting shackle base on the car under the lower block's swivel", "objects": ["TravCarBoss", "TravCarEar", "TravCarPin"]},
+  {"id": "tangs", "text": "A control tang at each end of the car with a small block on it", "objects": ["TravTang", "TravBlock"]},
+  {"id": "control", "text": "2:1 control each side: dead end on an eye strap, in to the car's block and back out to a cam cleat on a swivel base", "objects": ["TravEye", "TravCam", "TravLine"]},
+  {"id": "line", "text": "Yellow control line (black flecks in the photo; flat yellow in the game's hull material)", "slots": ["TravLine"]}
+ ],
+ "budget": {
+  "tris": 30000,
+  "slots": 8,
+  "note": "an assembly: track, car, two blocks, two cam cleats, lines; the hull's whole cap is 1.2M"
+ }
+}

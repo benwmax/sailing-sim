@@ -265,3 +265,8 @@ extension, in their own file `bk_part_tiller.py`; long parts get their own rende
 In order of how close the camera gets on the J/22 (the horn cleat, the mainsheet and vang fiddles and the cam
 cleat are done above): the jib winch, the tiller and extension and the mast-base turning blocks. Each gets its own card,
 reference pack and rounds, and Bean's sheet before it ships.
+
+## Course marks and the crew-overboard buoy
+
+The drills' and races' engine-shape placeholders replaced with kit parts that float (origin on the waterline):
+`RaceMark`, `LessonMark`, `PinBuoy`, `HorseshoeBuoy`, and the game's loader for them: [marks.md](marks.md).

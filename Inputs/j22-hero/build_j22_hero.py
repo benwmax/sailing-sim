@@ -474,7 +474,8 @@ def handrail(side):
     return join(f"Handrail_{side}", parts)
 
 
-KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic"}
+KIT_MATS = {"Teak": "TeakWeathered", "Wood": "TeakVarnish", "Deck": "Gelcoat", "CabinWindow": "HatchAcrylic",
+            "Graphics": "RedPlastic"}       # the kit's red slot: the cams of FiddleCam
 
 
 def kit_part(name, part, at, yaw=0.0, surface=None, **kw):
@@ -650,7 +651,7 @@ def build_hardware():
     xt = TRAVELER_X
     trav, car = MS.traveler(xt, half_beam(xt) - SIDE_DECK - 0.035, SEAT_Z, SEAT_IN, MAT)
     parts += trav
-    parts += MS.lower_block(car, MAT)
+    parts += MS.lower_block(car, MAT, kit_part)
     # aft deck: inspection port
     xp = (STERN + COCKPIT_AFT) / 2 - 0.02
     parts.append(cyl("DeckPlate", (xp, 0.30, deck_z(xp, 0.3) - 0.002), (xp, 0.30, deck_z(xp, 0.3) + 0.012), 0.075, MAT["WhitePlastic"], 32))
@@ -767,13 +768,33 @@ def build_rig():
     parts += BG.boom_end("BoomEnd", b1, MAT)
     xo = b0.x - 0.95             # (aft of the vang's bail)
     parts += BG.outhaul_cleat("BoomOuthaulCleat", (xo, 0, BOOM_Z + 0.03 * (b0.x - xo) / (b0.x - b1.x) - 0.0375), MAT)
-    parts += D.vang("Vang", (MAST_X - 0.06, 0, zm + 0.10), (MAST_X - 0.80, 0, BOOM_Z - 0.03), MAT, MAT["RopeVang"])
+    # the vang (part detail loop, docs/part-detail-loop/boomgear.md): the tang on the mast step, a strap bail through-bolted
+    # on the boom, the kit's Fiddle40 hanging from it (on the boom: bake BOOM_PARTS) and its FiddleCam on the tang, cam up,
+    # the line reeved 4:1 (stills only: "Vang_" is live rope in the game)
     va, vb = Vector((MAST_X - 0.06, 0, zm + 0.10)), Vector((MAST_X - 0.80, 0, BOOM_Z - 0.03))
     vd = (vb - va).normalized()
-    for o in [o for o in parts if o.name.startswith("Vang_hi")]:     # the upper block: the big one from the photo
-        parts.remove(o)
-        bpy.data.objects.remove(o, do_unlink=True)
-    parts += BG.big_block("VangBlock", vb - vd * 0.075, vd, MAT)   # on the boom (bake BOOM_PARTS): "Vang_" is live rope
+    parts += D.vang("Vang", tuple(va), tuple(vb), MAT, MAT["RopeVang"], blocks=False)
+    zc_v = BOOM_Z + 0.03 * (b0.x - vb.x) / (b0.x - b1.x)
+    bail, pin = BG.boom_bail("VangBlock_bail", vb.x, zc_v, MAT)
+    parts += bail
+    anchor = bpy.data.objects.new("anchor_Boom_Vang", None)     # the socket where the October bail's centre was
+    anchor.location = (vb.x, 0.0, vb.z - 0.0015)
+    link(anchor)
+
+    def kit_frame(head, z_axis, flip=False):
+        z = Vector(z_axis).normalized()
+        y = Vector((0, -1 if flip else 1, 0))
+        m = Matrix((y.cross(z).normalized(), y, z)).transposed().to_4x4()
+        m.translation = head
+        return m
+    top = kit_part("VangBlock", "Fiddle40", (0, 0, 0))[0]
+    top.matrix_world = kit_frame(pin + Vector((0, 0, 0.0035)), vd)
+    bot = kit_part("Vang_lowblock", "FiddleCam", (0, 0, 0))[0]
+    bot.matrix_world = kit_frame(va + vd * 0.012, -vd, flip=True)
+    parts += [top, bot]
+    socks = lambda ob: {k[5:]: Vector(ob[k]) for k in ob.keys() if k.startswith("sock_")}  # noqa: E731
+    wires.append(BG.vang_line("Vang_rope", top.matrix_world.copy(), bot.matrix_world.copy(), socks(top), socks(bot), MAT["RopeVang"],
+                              cabin_top_z))
     # end-boom sheeting (Bean's feedback 1, the Harken layout): the bail and upper block over the traveler, near the end cap
     top = Vector((TRAVELER_X, 0, BOOM_Z + 0.03 * (b0.x - TRAVELER_X) / (b0.x - b1.x) - 0.03))
     parts.append(D.tube("MainBail", [(top.x - 0.03, -0.03, top.z + 0.03), (top.x - 0.03, -0.03, top.z - 0.005), (top.x, 0, top.z - 0.02),
@@ -781,8 +802,10 @@ def build_rig():
     blk_hi = top - Vector((0, 0, 0.07))
     parts += D.block("MainsheetHigh", blk_hi, (1, 0, 0), (0, 0, 1), MAT, 0.057)
     low = Vector((TRAVELER_X, 0.0, SEAT_Z + 0.115))      # the fiddle's big sheave on the traveler car (j22_mainsheet.py)
-    for k, dx in enumerate((-0.010, -0.0035, 0.0035, 0.010)):
-        part = DRAPE.line([tuple(blk_hi + Vector((dx, 0, -0.02))), tuple(low + Vector((dx, 0, 0.03)))], 0.0015, 0.004)
+    # both blocks' axles run fore and aft, so the four parts of the sheet are spread athwartships: the outer two onto the
+    # sides of the lower fiddle's big sheave, the inner two onto its top (traveler pass: they had been spread fore and aft)
+    for k, (dy, dz) in enumerate(((-0.026, 0.0), (-0.008, 0.026), (0.008, 0.026), (0.026, 0.0))):
+        part = DRAPE.line([tuple(blk_hi + Vector((0, dy * 0.6, -0.02))), tuple(low + Vector((0, dy, dz)))], 0.0015, 0.004)
         wires.append(tube(f"Mainsheet_{k}", part, 0.004, MAT["RopeMain"], smooth_path=True))
     # mainsheet tail from the ratchet block's cam, coiled on the cockpit floor
     parts += D.coil("MainTail", (-2.30, 0.05, FLOOR_Z), 0.13, 3.2, MAT["RopeMain"], seed=STYLE["seed"], flat_z=FLOOR_Z,
@@ -921,16 +944,19 @@ def build_sails():
     xc = JIB_CAM_X
     yf = half_beam(xc) - SIDE_DECK - 0.025 - 0.03
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))),
+    # the sheet runs under the car's sheave (kit JibTrack: 38 mm sheave centred 45 mm up, the line's gap under it),
+    # coming down onto its forward side from the clew and leaving aft over the car's body
+    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
+                      tuple(car + Vector((-0.05, 0, -0.022))),
                       (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
                       (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.01, 0.0, 0.0], 0.0045)
+                     [0.002, 0.0, 0.0, 0.01, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
                    tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
     wcar = Vector((car.x, -car.y, car.z))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar),
+    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, -0.012))), tuple(wcar + Vector((0.0, 0, -0.0235))),
                        (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)],
                       [0.22, 0.0, 0.03, 0.0], 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
@@ -997,6 +1023,14 @@ def build_registration():
 hull = build_hull()
 deck = build_deck()
 cockpit = build_cockpit()
+# the traveler's indentation (Bean, Nov 9 2026: "the track is in an indention in the cockpit seats"): a moulded trough
+# across each seat top, open to the well, its floor where the track's foot sits (j22_mainsheet.TRACK_H under its top)
+import j22_mainsheet as _MS  # noqa: E402
+import bk_geom as _BG  # noqa: E402
+for _side in (1, -1):
+    _y0, _y1 = sorted((_side * (SEAT_IN - 0.05), _side * (half_beam(TRAVELER_X) - SIDE_DECK - 0.035 + _MS.TROUGH_END)))
+    _BG.boolean(cockpit, box("TravTroughCut", TRAVELER_X - _MS.TROUGH_W / 2, TRAVELER_X + _MS.TROUGH_W / 2, _y0, _y1,
+                             SEAT_Z + 0.004 - _MS.TRACK_H, SEAT_Z + 0.05, bev=0.006))
 cabin = build_cabin()
 import types  # noqa: E402
 import j22_interior as INTERIOR  # noqa: E402

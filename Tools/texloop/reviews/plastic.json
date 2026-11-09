@@ -1,0 +1,64 @@
+{
+ "surface": "plastic",
+ "method": "three fresh blind reviewers per round (Claude subagents), five shuffled levels to match to the level descriptions; A/B: this round vs the last at L2 and L4, sides randomised",
+ "rounds": [
+  {
+   "round": 1,
+   "change": "first build",
+   "ladder": [
+    5,
+    3,
+    5
+   ],
+   "ab": "vs main (flat black): not run, every main level is identical",
+   "notes": "scuffs read as stamped hairlines; the swap was L2/L3"
+  },
+  {
+   "round": 2,
+   "change": "tapered, bent scuffs; a kept boat's chalk darker and satin (protectant); fewer mildew specks",
+   "ladder": [
+    5,
+    3,
+    5
+   ],
+   "ab": {
+    "L2": "won 3 of 3",
+    "L4": "lost 0 of 3 (fewer specks read milder)"
+   }
+  },
+  {
+   "round": 3,
+   "change": "chalk grows faster with dirt (L2 paler than L3), chalk weight 0.85 - 0.45 Care, round 1's mildew density back",
+   "ladder": [
+    5,
+    5,
+    3
+   ],
+   "ab": {
+    "L2": "1 of 3",
+    "L4": "2 of 3"
+   },
+   "kept": true
+  },
+  {
+   "round": 4,
+   "change": "chalk only on sky-facing faces (sides a sixth)",
+   "ladder": [
+    3,
+    5,
+    5
+   ],
+   "ab": {
+    "L2": "lost 0 of 3",
+    "L4": "lost 0 of 3"
+   },
+   "notes": "reverted: reviewers wanted the sides chalked too"
+  }
+ ],
+ "material": "all reviewers in every round: yes, black moulded plastic; worn levels drift toward grey stone or rubber",
+ "least_real": [
+  "chalk blotches read as cloud noise, not following the moulding",
+  "scuffs too thin, straight and even",
+  "no tan dust visible at swatch distance"
+ ]
+}

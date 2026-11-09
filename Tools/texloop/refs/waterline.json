@@ -1,0 +1,143 @@
+{
+  "surface": "waterline",
+  "method": "Tools/texloop/waterline/measure_waterline.py: the line is traced along the hull and compared with the clean gelcoat 0.6-1.6 cm above it, so the numbers are relative (CIE Y ratio and Lab difference) and hold under any light. Heights use a known-size object in frame. Round 3: the line's colour is the mean over its full width at half depth, and the targets are judged on the hero render (score_render.py), lit and tone-mapped like the photo; the swatches (flat albedo) are a quick proxy and read darker.",
+  "photos": [
+    {
+      "id": "bean-IMG_9224",
+      "level": "L2",
+      "what": "TX 7295 EC (J/22, North Texas Sailing School) on a drive-on lift at Rush Creek Yacht Club, Lake Ray Hubbard, Oct 4 2026, overcast",
+      "licence": "Bean's own photo; measure only, never committed (shows people elsewhere in the frame)",
+      "local_path": "Data/Reference/raw/textures/Waterline/L2/IMG_9224.jpg",
+      "shared_copy": "project files sailing-sim-ref/j22-lessons/IMG_9224.jpg",
+      "scale": "Texas registration letters, 3 in (7.6 cm) = 105 px -> 13.8 px/cm at the bow quarter",
+      "crop": [
+        2713,
+        3084,
+        4141,
+        3598
+      ],
+      "line": [
+        300,
+        350,
+        840,
+        494
+      ],
+      "measured": {
+        "samples": 25,
+        "line_Y_ratio": 0.894,
+        "line_dLab": [
+          -2.32,
+          0.09,
+          0.27
+        ],
+        "line_dE_at_L43": 2.4,
+        "line_height_cm": 1.75,
+        "below_Y_ratio": 0.761,
+        "notes": "A thin, ragged, nearly neutral grey line (not brown), with faint grey drip streaks above it. The bottom below reads darker partly because the hull turns away from the sky there, so below_Y_ratio is an upper bound on the film.",
+        "method_note": "line colour = mean over the line's full width at half depth (round 3; round 1 used the 3 darkest rows: 0.811)"
+      }
+    },
+    {
+      "id": "bean-IMG_9224-slips",
+      "level": "L2-L3",
+      "what": "Same photo, the slip-kept cruisers behind (DALLAS TX transom and its neighbour): only a faint dark line at the water, no brown band or slime visible at about 15 m",
+      "licence": "Bean's own photo; measure only",
+      "measured": "too far for numbers; supports 'kept boats on this lake are clean'"
+    }
+  ],
+  "sources_text": [
+    {
+      "what": "Fresh-water waterline stains are tea-coloured from tannins and silt; oxalic-acid cleaners remove them; lifts and waxing prevent them",
+      "url": "https://www.practical-sailor.com/boat-maintenance/ps-advisor-waterline-stains-revisited/"
+    },
+    {
+      "what": "Growth starts as a green slime film of single-celled algae, strongest at the waterline where the light is",
+      "url": "https://windcheckmagazine.com/article/a_foray_in_slimology"
+    },
+    {
+      "what": "Lake Ray Hubbard is fresh water and only 'suspect' for zebra mussels: no shells or crust",
+      "url": "texture loop plan, Lake not sea"
+    }
+  ],
+  "still_wanted": "Close-ups with a coin in frame at Rush Creek: a slip-kept (not lift-kept) boat's waterline, and the dirtiest boat in the yard (L4). Until then L1, L3 and L4 targets are estimates anchored to the L2 measurement.",
+  "targets": {
+    "L0": {
+      "line_Y_ratio": [
+        0.98,
+        1.0
+      ],
+      "line_height_cm": [
+        0,
+        0
+      ],
+      "bottom": "clean grey paint",
+      "source": "by definition",
+      "render_Y_ratio": [
+        0.985,
+        1.01
+      ]
+    },
+    "L1": {
+      "line_height_cm": [
+        0.5,
+        1.2
+      ],
+      "line_dLab_max_chroma": 2,
+      "source": "estimate: a few months on a lift, fainter than L2",
+      "render_Y_ratio": [
+        0.93,
+        0.97
+      ]
+    },
+    "L2": {
+      "line_height_cm": [
+        1.2,
+        2.2
+      ],
+      "line_dLab_max_chroma": 2,
+      "below_Y_ratio": [
+        0.82,
+        1.0
+      ],
+      "source": "measured, bean-IMG_9224: 0.894",
+      "render_Y_ratio": [
+        0.86,
+        0.93
+      ]
+    },
+    "L3": {
+      "line_height_cm": [
+        0.6,
+        1.5
+      ],
+      "line_dLab_max_chroma": 2,
+      "source": "estimate: kept and scrubbed, so fainter than L2; the bottom paint fresh",
+      "render_Y_ratio": [
+        0.89,
+        0.95
+      ]
+    },
+    "L4": {
+      "line_Y_ratio": [
+        0.3,
+        0.5
+      ],
+      "line_height_cm": [
+        5,
+        8
+      ],
+      "line_dLab_chroma": [
+        8,
+        20
+      ],
+      "line_hue": "tan-brown (a 2..6, b 8..18)",
+      "slime_below_cm": [
+        8,
+        20
+      ],
+      "slime_hue": "olive (a -6..-1, b 6..16)",
+      "source": "estimate from text sources; replace with club photos",
+      "render_note": "band taller than the render window: judged on the swatch (line_Y_ratio, chroma) and by the reviewers"
+    }
+  }
+}

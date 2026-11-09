@@ -1,0 +1,151 @@
+{
+ "part": "JibTrack",
+ "card": {
+  "what": "The jib lead: a 22 mm small-boat pinstop track with an end stop at each end, and a slider car carrying the lead sheave, a pinstop and an eye strap",
+  "boats": "J/22 (600 mm, a side deck each side beside the cockpit's forward end; the hero places it); fleet builds use 450 and 900 mm",
+  "distance": "arm's reach from the helm and the trimmer's seat; the sheet runs through it on every tack",
+  "before": "October kit JibTrack: a 25 mm T-track with raised round screw heads, a tapered block for a car, a sheave between flat stainless cheeks, a plain black plunger post; no end stops or holes"
+ },
+ "references": [
+  {
+   "id": "harken-j22",
+   "kind": "layout",
+   "use": "what the J/22 carries: 22 mm small-boat track and a 22 mm car on each side deck",
+   "url": "Harken J/22 one-design deck layout (harken.com, search-result text; the site is blocked from the cloud)"
+  },
+  {
+   "id": "track-2751",
+   "kind": "catalogue",
+   "use": "sizes: 22 mm low-beam pinstop track, 600 mm = 252 g, 5 mm flat-head fasteners every 100 mm, 6061-T6 hard-anodised",
+   "url": "Harken 2751 retailer listings (sailingservices.com, fisheriessupply.com; numbers only)"
+  },
+  {
+   "id": "car-g226s",
+   "kind": "catalogue",
+   "use": "sizes: 22 mm pinstop slider car with sheave, 95 mm long, 35 mm wide, 38 mm sheave, line to 12 mm (replaces the older 393 cars)",
+   "url": "Harken G226S listings (sailingservices.com, velasailingsupply.com; numbers only)"
+  },
+  {
+   "id": "car-2750",
+   "kind": "catalogue",
+   "use": "the pinstop eye-strap car: 88 mm long, 33 mm wide (the eye the J/22's 2:1 sheet ties to)",
+   "url": "Harken 2750 listings (westcoastsailing.net, defender.com; numbers only)"
+  },
+  {
+   "id": "j22-rigging",
+   "kind": "text",
+   "use": "how it is used: the sheet runs from the clew to the car's sheave; the J/22 2:1 sheet ties to the car's eye; standard lead in line with the mast and chainplates, aft a hole or two in a breeze",
+   "url": "North Sails J/22 tuning guide; UCI J/22 sailing manual; West Coast Sailing J/22 2:1 jib sheet listing"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Track length with its end stops",
+   "target": 604.0,
+   "unit": "mm",
+   "tol": 0.02,
+   "source": "catalogue 600 mm track; the stops lip 2 mm past each end"
+  },
+  {
+   "id": "width",
+   "name": "Width across the car",
+   "target": 35.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 35 mm car"
+  },
+  {
+   "id": "height",
+   "name": "Height to the sheave's top",
+   "target": 64.0,
+   "unit": "mm",
+   "tol": 0.08,
+   "source": "estimate: 38 mm sheave over the line's gap on the car (no catalogue height); reported mostly"
+  }
+ ],
+ "outline": null,
+ "outline_note": "No square-on photo with a licence we can use (Commons was rate-limited from the cloud and maker sites are blocked); the reviewers judge the look from the catalogue description.",
+ "features": [
+  {
+   "id": "track",
+   "text": "A low 22 mm T-section track with a waist under its head (the car's lips run under it), not a flat bar",
+   "objects": [
+    "track"
+   ],
+   "manual": true
+  },
+  {
+   "id": "holes",
+   "text": "A row of pinstop holes along the track's top",
+   "manual": true
+  },
+  {
+   "id": "screws",
+   "text": "Countersunk flat-head screws every 100 mm, flush with the top",
+   "objects": [
+    "screw0"
+   ],
+   "manual": true
+  },
+  {
+   "id": "stops",
+   "text": "An end stop at each end of the track",
+   "objects": [
+    "endstop-1",
+    "endstop1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "car",
+   "text": "A slider car with rounded ends and black slide liners, wider than the track",
+   "objects": [
+    "car_body",
+    "liner-1",
+    "liner1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "sheave",
+   "text": "A grooved sheave held high between two stainless cheeks, its rim showing above them, with room under it for the sheet",
+   "objects": [
+    "sheave",
+    "cheek-1",
+    "cheek1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pinstop",
+   "text": "A spring pinstop with a pull knob at the car's aft end",
+   "objects": [
+    "plunger_knob"
+   ],
+   "manual": true
+  },
+  {
+   "id": "eye",
+   "text": "An eye strap at the car's forward end (the 2:1 sheet's standing end)",
+   "objects": [
+    "eyestrap"
+   ],
+   "manual": true
+  },
+  {
+   "id": "finish",
+   "text": "Aluminium track and car, stainless cheeks and fasteners, black sheave, stops and knob",
+   "slots": [
+    "Aluminium",
+    "Stainless",
+    "BlackPlastic"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "two on the J/22; 900 mm fleet tracks have more holes"
+ }
+}
