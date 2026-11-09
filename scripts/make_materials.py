@@ -1479,8 +1479,23 @@ else if (surf == 4)     // clear anodising: time fades it to a greyer, matt sati
 #undef MET_VN3
 else if (surf == 5)     // painted aluminium: the paint chalks (as dark gelcoat does, above) and chips to grey metal
 {
-    float chipCell = frac(sin(dot(floor(LP.xz / 1.3), float2(27.1, 61.7))) * 4375.5);
-    float chip = ageK * step(0.86 - 0.12 * ageK, chipCell) * saturate(vn * 2.0 - 0.5);
+    // Chips are small, sparse flakes (mast close-up, Nov 2026: one hashed 1.3 cm cell per chip drew square, stair-stepped
+    // blocks on a berthed neighbour's white mast a few centimetres from the lens; the rust lane's 1.3 cm noise then read as
+    // camouflage that close). Two octaves of rotated value noise at 0.5 and 0.17 cm across the face (hwP), cut at a narrow
+    // band: 3% of the paint at ageK 0.2, 5% at 0.5, 10% at 1 (numpy port, docs/mast-closeup). Past a metre or two a flake is
+    // under a pixel, so the term fades to its mean cover by 3 m and stays put instead of shimmering.
+    float2 cpQ = hwP / 0.5 + 3.7;
+    float cpN = 0.0;
+    for (int cpO = 0; cpO < 2; ++cpO)
+    {
+        float2 cpI = floor(cpQ), cpF = smoothstep(0.0, 1.0, frac(cpQ));
+        cpN += (cpO == 0 ? 0.65f : 0.35f) * lerp(lerp(frac(sin(dot(cpI, float2(27.1, 61.7))) * 4375.5), frac(sin(dot(cpI + float2(1, 0), float2(27.1, 61.7))) * 4375.5), cpF.x),
+                                              lerp(frac(sin(dot(cpI + float2(0, 1), float2(27.1, 61.7))) * 4375.5), frac(sin(dot(cpI + float2(1, 1), float2(27.1, 61.7))) * 4375.5), cpF.x), cpF.y);
+        cpQ = float2(cpQ.x * 0.8 - cpQ.y * 0.6, cpQ.x * 0.6 + cpQ.y * 0.8) * 2.9 + 5.3;
+    }
+    float chipT = 0.80 - 0.10 * ageK;
+    float chipNear = lerp(smoothstep(chipT, chipT + 0.02, cpN), 0.01 + 0.085 * ageK, smoothstep(100.0, 300.0, Depth));
+    float chip = ageK * chipNear * saturate(vn * 2.0 - 0.5);
     col = lerp(col, float3(0.42, 0.43, 0.44), chip);
     rough = lerp(rough, 0.45, chip);
     coat *= 1.0 - chip;
