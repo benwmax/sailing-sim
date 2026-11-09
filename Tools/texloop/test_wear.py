@@ -47,8 +47,9 @@ def check_unset_unchanged():
 
 if __name__ == "__main__":
     check_source("scripts/make_materials.py", "age", "care")
-    check_source("scripts/import_j22_hero.py", "Age", "Care")
+    check_source("scripts/import_j22_hero.py", "hAge", "hCare")   # hero: unset Age is L2 (docs/hero-ageing)
     assert BLOT in open(os.path.join(REPO, "scripts/make_materials.py")).read(), "chalk blotches differ from wear.BLOT"
+    assert BLOT in open(os.path.join(REPO, "scripts/import_j22_hero.py")).read(), "hero chalk blotches differ from wear.BLOT"
     check_levels()
     check_unset_unchanged()
     print("wear formulas match: make_materials.py, import_j22_hero.py, wear.py")

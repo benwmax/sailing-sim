@@ -586,18 +586,21 @@ def draw_sail_textures(st, kind, out_dir, size=(2048, 4096)):
     return cpath, hpath
 
 
-def build_all(st):
+def build_all(st, surf=None):
+    """surf: the style for the baked gelcoat, deck mould and weathered teak (build_j22_hero.py --clean-bake passes
+    j22_style.clean_bake(st), docs/hero-ageing); None uses st."""
     from j22_style import rope_pair
+    surf = surf or st
     from j22_rope import rope_material, wire_material
     os.makedirs(TEX_DIR, exist_ok=True)
     lam = st["sails"]["cloth"] == "grey_laminate"
     fade = st["ropes"]["fade"]
     dirt = min(1.0, st["wear"] * (1.2 - st["care"]))
     mats = {
-        "Gelcoat": deck_mould(st, "Gelcoat"),
-        "GelcoatHull": gelcoat_hull(st),
-        "CabinGelcoat": deck_mould(st, "CabinGelcoat"),      # real portlights since the interior pass
-        "TeakWeathered": teak(st, "TeakWeathered"),
+        "Gelcoat": deck_mould(surf, "Gelcoat"),
+        "GelcoatHull": gelcoat_hull(surf),
+        "CabinGelcoat": deck_mould(surf, "CabinGelcoat"),      # real portlights since the interior pass
+        "TeakWeathered": teak(surf, "TeakWeathered"),
         "TeakVarnish": teak(st, "TeakVarnish", varnish=True),
         # #235 gaps (photo companionway-1): the sliding hatch is pale varnished marine plywood, not moulded gelcoat
         "PlywoodVarnish": simple("PlywoodVarnish", "#B48A5C", 0.32, coat=0.6),
@@ -646,7 +649,7 @@ def build_all(st):
     def _mixhex(a, b, t):
         ca, cb = _rgb(a), _rgb(b)
         return tuple(ca[i] * (1 - t) + cb[i] * t for i in range(3))
-    teak_hex = "#8F8B82" if st["teak"]["state"] == "silvered" else "#7E5230"
+    teak_hex = "#8F8B82" if surf["teak"]["state"] == "silvered" else "#7E5230"
     flat = {"Aluminium": _rgb("#C9CCCF"), "CastAlu": _rgb("#B7BABD"), "Chrome": _rgb("#E4E6E8"),
             "Stainless": _rgb("#C8CACC"), "Wire": _rgb("#B9BCBF"), "TeakWeathered": _rgb(teak_hex),
             "TeakVarnish": _rgb("#7A4520"), "Gelcoat": _rgb(st["deck"]["nonskid_hex"]),

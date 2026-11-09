@@ -135,6 +135,20 @@ def make_style(seed=0, preset="club", boat=None, overrides=None):
     return s
 
 
+def clean_bake(style):
+    """The style for the game's bake of the hero's textured groups (Hull, DeckMould, Rudder, Teak): the same boat with
+    none of the wear the shader now adds from Age and Care (docs/hero-ageing): no streaks, chalk, chips, fender marks,
+    repairs, scum line, slime or grime, and fresh bare teak. M_J22HeroSurface weathers it back (unset Age: the texture
+    loop's L2 club boat), so -SailingBoatAge=0 is a new boat and 15,0 a neglected one. Ropes, sails and the cabin keep
+    the style's own wear (they are not in these groups)."""
+    s = json.loads(json.dumps(style))
+    s["hull"].update(streaks=0.0, chalk=0.0, scum=0.0, edge_chips=0.0, fender_marks=[], repairs=[], bottom_slime=0.0)
+    s["deck"].update(grime=0.0, wear_paths=0.0, stains=0)
+    s["teak"].update(state="bare", wear=0.0)
+    s["dirt"], s["time"] = 0.0, 0.0      # j22_waterline: no scum line, slime, film or paint fade
+    return s
+
+
 def rope_pair(style, role):
     return ROPE_COLOURS[style["ropes"][role]]
 
