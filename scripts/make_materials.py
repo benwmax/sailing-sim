@@ -1213,6 +1213,9 @@ float ageK = age >= 0.0 ? saturate(age / 20.0) * (1.0 - 0.6 * saturate(care)) : 
 // other surfaces move over as each goes through the loop.
 float timeK = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-age / 0.75)) + 0.75 * (1.0 - exp(-age / 18.0))) : wear.x;
 float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - saturate(care)))) : wear.x;
+// Texture loop, acrylic (docs/texloop-acrylic): the smoked portlights and hatches (kind 15) carry a clear coat for their
+// gloss, which made them gelcoat to the chalk, the yellowing and the rust weeps; with an Age they weather by their own lines.
+gel *= (age >= 0.0 && abs(Surface - 15.0) < 0.5) ? 0.0f : 1.0f;
 // Oxidation: gelcoat chalks under the Texas sun, decks and tops first: paler, flatter, the clear coat gone. Mostly dirt
 // (compound and wax take it off), but a kept old hull never polishes back to new.
 float ox = saturate(max(wear.x, max(dirtK, 0.3 * timeK)) * sunF) * gel * (0.55 + 0.45 * up);
@@ -1405,7 +1408,7 @@ float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * 
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
 // 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
-// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing, 15 smoked acrylic): first its weathering with ageK (anchored to the boat by the grime's noise), then,
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
@@ -1697,6 +1700,102 @@ float bpMil = bpOn * saturate((dirtK - 0.6) / 0.4) * (1.0 - saturate(care)) * st
 col = lerp(col, float3(0.02, 0.024, 0.016), 0.7 * bpMil);
 // PLASTIC_WEAR <<<
 }
+if (surf == 15)        // smoked acrylic glazing (texture loop, acrylic): see the block below, shared with M_BoatKit and M_J22HeroGlass
+{
+float2 acP = hwP;      // cm, the projection across the pane
+float acHaze = 0.0;
+// ACRYLIC_WEAR >>> (texture loop, acrylic: docs/texloop-acrylic; Tools/texloop/acrylic/port.py mirrors these lines, and
+// scripts/import_hardware_kit.py and scripts/import_j22_hero.py copy them). Smoked cast acrylic (PMMA) in portlights and
+// hatches: the sun bleaches the tint a little and the years haze the face (a milky scatter, the gloss going; polishing
+// takes some back), wiping leaves fine curved scratches, old panes craze in patches (a net of hairline cracks a few mm
+// apart, silvery), lake water dries to rings of white mineral on the tops, and a left boat's panes carry a film of tan
+// dust and dark mildew specks. Age unset: as before (no weathering).
+float acOn = step(0.0, age);
+float acNz = dot(n, V) < 0.0 ? -n.z : n.z;
+float acSky = saturate(0.5 + 0.5 * acNz);
+float acNear = 1.0 - smoothstep(150.0, 400.0, Depth);
+float acPx = max(length(fwidth(acP)), 0.002);                    // cm a pixel spans across the pane
+float2 acQ = acP / 2.5;
+float acN = 0.0;
+for (int acO = 0; acO < 2; ++acO)                                // 2.5 and 0.8 cm value noise: haze and dust come in wiped patches
+{
+    float2 acI = floor(acQ), acF = smoothstep(0.0, 1.0, frac(acQ));
+    acN += (acO == 0 ? 0.65f : 0.35f) * lerp(lerp(frac(sin(dot(acI, float2(23.3, 71.9))) * 4375.5), frac(sin(dot(acI + float2(1, 0), float2(23.3, 71.9))) * 4375.5), acF.x),
+                                           lerp(frac(sin(dot(acI + float2(0, 1), float2(23.3, 71.9))) * 4375.5), frac(sin(dot(acI + float2(1, 1), float2(23.3, 71.9))) * 4375.5), acF.x), acF.y);
+    acQ = float2(acQ.x * 0.8 - acQ.y * 0.6, acQ.x * 0.6 + acQ.y * 0.8) * 3.1 + 4.1;
+}
+col *= lerp(float3(1.0, 1.0, 1.0), float3(1.5, 1.35, 1.15), acOn * 0.6 * timeK * acSky * sunF);   // the smoke dye bleaches toward bronze
+acHaze = acOn * saturate(timeK * (0.12 + 0.55 * dirtK) * (1.0 - 0.5 * saturate(care)) * (0.6 + 0.4 * acSky) * sunF * (0.75 + 0.5 * acN));
+col = lerp(col, float3(0.20, 0.205, 0.21), 0.55 * acHaze);      // haze: a milky scatter over the smoke
+rough = lerp(rough, 0.32, acHaze);
+coat *= 1.0 - 0.8 * acHaze;
+float acDust = acOn * dirtK * saturate(acNz * 1.5) * (0.35 + 0.65 * acN);
+col = lerp(col, float3(0.13, 0.105, 0.075), 0.45 * acDust);     // the lake's tan clay dust, on the tops
+rough = lerp(rough, 0.7, 0.6 * acDust);
+coat *= 1.0 - 0.7 * acDust;
+// Crazing: a broken net of hairline cracks (cells about 2.5 mm) in patches (a 6 cm noise) that spread with the years, more on a
+// left boat (no UV protectant, the wrong cleaners); the cracks scatter light, silvery, and the patch hazes with them.
+float2 acZq = acP / 6.0, acZi = floor(acZq), acZf = smoothstep(0.0, 1.0, frac(acZq));
+float acZn = lerp(lerp(frac(sin(dot(acZi, float2(53.1, 17.3))) * 4375.5), frac(sin(dot(acZi + float2(1, 0), float2(53.1, 17.3))) * 4375.5), acZf.x),
+                  lerp(frac(sin(dot(acZi + float2(0, 1), float2(53.1, 17.3))) * 4375.5), frac(sin(dot(acZi + float2(1, 1), float2(53.1, 17.3))) * 4375.5), acZf.x), acZf.y);
+float acCr = acOn * saturate((timeK - 0.3) / 0.5) * (0.45 + 0.55 * (1.0 - saturate(care)));
+float acCrA = acCr * smoothstep(1.0 - acCr, 1.45 - acCr, acZn);
+float acCrack = 0.0;
+if (acCrA * acNear > 0.0)
+{
+    float2 acV = acP / 0.25, acVi = floor(acV), acVf = frac(acV);
+    float acF1 = 8.0, acF2 = 8.0;
+    for (int acY = -1; acY <= 1; ++acY)
+        for (int acX = -1; acX <= 1; ++acX)
+        {
+            float2 acC = acVi + float2(acX, acY);
+            float2 acJ = float2(frac(sin(dot(acC, float2(12.7, 31.1))) * 43758.5), frac(sin(dot(acC, float2(26.9, 18.3))) * 43758.5));
+            float acD = length(float2(acX, acY) + acJ - acVf);
+            acF2 = acD < acF1 ? acF1 : min(acF2, acD);
+            acF1 = min(acF1, acD);
+        }
+    float acW = 0.006 / 0.25, acPw = acPx / 0.25;                    // 60 micron cracks, filtered to a pixel; a broken net
+    acCrack = acCrA * acNear * (1.0 - smoothstep(0.0, max(acW, acPw), acF2 - acF1)) * min(1.0, acW / acPw * 2.5) * smoothstep(0.3, 0.7, acN);
+}
+col = lerp(col, float3(0.20, 0.205, 0.21), 0.35 * acCrA);
+col = lerp(col, float3(0.42, 0.42, 0.41), 0.5 * acCrack);
+rough = lerp(rough, 0.45, 0.4 * acCrA + 0.5 * acCrack);
+coat *= 1.0 - 0.5 * acCrA;
+// Wiping scratches: fine curved hairlines, 0.6 to 1.7 cm, one in a growing share of 1.2 cm cells (two offset layers).
+float acScrK = acOn * acNear * (0.08 * saturate(4.0 * timeK) + 0.45 * timeK + 0.15 * dirtK);
+float acScr = 0.0;
+for (int acL = 0; acL < 2; ++acL)
+{
+    float2 acS = (acL == 0 ? acP : float2(acP.x * 0.6 - acP.y * 0.8, acP.x * 0.8 + acP.y * 0.6) + 0.6) / 1.2, acSf = frac(acS) - 0.5;
+    float acH = frac(sin(dot(floor(acS), float2(17.9 + 3.0 * acL, 83.3))) * 43758.5);
+    float2 acDir = float2(cos(acH * 31.4159), sin(acH * 31.4159));
+    float acAl = dot(acSf, acDir) * 1.2, acAc = dot(acSf, float2(-acDir.y, acDir.x)) * 1.2;
+    float acLen = 0.3 + 0.4 * frac(acH * 7.3), acT = saturate(1.0 - abs(acAl) / acLen);
+    acAc += (frac(acH * 5.9) - 0.5) * 0.8 * acAl * acAl;           // bent: a wiping hand's arc
+    float acSw = 0.006 * sqrt(acT);
+    acScr = max(acScr, step(1.0 - acScrK, frac(acH * 3.1)) * step(0.001, acT) * (1.0 - smoothstep(0.0, max(acSw, acPx), abs(acAc)))
+        * min(1.0, acSw / acPx * 2.5) * (0.4 + 0.6 * frac(acH * 11.3)));
+}
+col = lerp(col, float3(0.36, 0.36, 0.35), 0.45 * acScr);
+rough = lerp(rough, 0.4, acScr);
+// Water spots: lake water is hard and dries to rings of white mineral, 1 to 2.4 mm, where drops sit (tops, then sides).
+float2 acWq = acP / 0.5, acWf = frac(acWq) - 0.5;
+float acWh = frac(sin(dot(floor(acWq), float2(41.3, 29.9))) * 43758.5);
+float acWr = 0.05 + 0.07 * frac(acWh * 7.7), acWd = length(acWf - (float2(frac(acWh * 3.3), frac(acWh * 5.1)) - 0.5) * 0.2) * 0.5;
+float acWw = max(0.012, acPx);
+float acSpot = acOn * step(1.0 - 0.18 * dirtK * (0.2 + 0.8 * saturate(acNz * 2.0)), acWh)
+    * max(exp(-pow((acWd - acWr) / acWw, 2.0)) * min(1.0, 0.012 / acPx * 2.0), 0.12 * smoothstep(acWr, acWr - acWw, acWd));
+col = lerp(col, float3(0.42, 0.41, 0.38), 0.5 * acSpot);
+rough = lerp(rough, 0.6, acSpot);
+// Mildew: dark specks in the dust on a left boat.
+float2 acMc = acP / 0.15;
+float acM = frac(sin(dot(floor(acMc), float2(19.3, 47.9))) * 4375.5);
+float acMil = acOn * saturate((dirtK - 0.6) / 0.4) * (1.0 - saturate(care)) * step(0.95, acM) * saturate(acN * 2.0 - 0.6)
+    * (1.0 - smoothstep(0.25, 0.4, length(frac(acMc) - 0.5)));
+col = lerp(col, float3(0.02, 0.024, 0.016), 0.7 * acMil);
+acHaze = saturate(acHaze + 0.5 * acCrA + 0.6 * acDust + 0.3 * acSpot);   // M_J22HeroGlass: how much less see-through
+// ACRYLIC_WEAR <<<
+}
 if (surf == 8 && age >= 0.0)    // rubber and soft PVC with an age (texture loop, webbing and rubber): the block below, shared with M_BoatKit
 {
 float2 rbP = hwP;      // cm, the hardware's projection across the face (rust lane): x runs along a rub rail
@@ -1803,7 +1902,7 @@ col = lerp(col, float3(0.018, 0.022, 0.014), 0.85 * wbMil);
 // WEBBING_WEAR <<<
 }
 float cav = 0.0;        // the detail's cavities: grime and standing water collect there
-if (DetailOn > 0.5 && surf > 0 && surf != 13)
+if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 {
     float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
     float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
@@ -2243,11 +2342,12 @@ BOAT_LIBRARY = {
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
 # 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas,
 # 12 galvanised or plain steel, 13 black moulded plastic (texture loop: weathering only, no detail map), 14 woven webbing
-# (texture loop, webbing and rubber: the canvas weave at 2 cm); unlisted slots
-# (crew, other plastics, glass, antifouling) are 0: no detail map, no extra weathering.
+# (texture loop, webbing and rubber: the canvas weave at 2 cm), 15 smoked acrylic glazing (texture loop: weathering only,
+# no detail map); unlisted slots (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
     "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "WoodMahogany": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
+    "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
 }
