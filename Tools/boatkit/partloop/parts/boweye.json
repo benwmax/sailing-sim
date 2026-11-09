@@ -1,0 +1,70 @@
+{
+ "part": "BowEye",
+ "card": {
+  "what": "Stainless U-bolt bow eye on the stem for the trailer winch: 3/8 in rod on an oval plate",
+  "boats": "kit only (layouts/j22.json's dress path; no bow eye shows on TX 7295 EC's upper stem, so the hero has none)",
+  "distance": "dock and trailer views",
+  "before": "kit BowEye from bk_parts.bow_eye (Oct 2026): about two thirds size, a thin half-round loop on a square plate"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Hardin Marine 3/8 x 2 1/2 in bow eye (rod 3/8 in, 1 7/16 in centres, 1 1/16 in inside); Marine Fasteners 1011179 (1 1/2 in centres)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "rod",
+   "name": "Rod",
+   "target": 9.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue 3/8 in"
+  },
+  {
+   "id": "width",
+   "name": "Legs on centres",
+   "target": 36.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue 1 7/16 in"
+  },
+  {
+   "id": "height",
+   "name": "Eye proud of the plate",
+   "target": 37.0,
+   "unit": "mm",
+   "tol": 0.08,
+   "source": "catalogue 3 15/16 in overall less 2 1/2 in thread"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "loop",
+   "text": "Round-bar U standing out of the stem, rounded top",
+   "manual": true,
+   "objects": [
+    "loop"
+   ]
+  },
+  {
+   "id": "plate",
+   "text": "Oval stainless plate under it",
+   "manual": true
+  },
+  {
+   "id": "collars",
+   "text": "Rounded shoulders where the legs meet the plate",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 8000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

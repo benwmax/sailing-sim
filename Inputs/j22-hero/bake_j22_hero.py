@@ -97,15 +97,19 @@ for tag, side in (("S", -1), ("P", 1)):
     sock(f"ChainplateLower_{tag}", _top(f"Chainplate_{side}_strap") + Vector((0.02, 0, 0)))
     # Bean's feedback 3 (the Harken layout): the sheet runs from the side-deck lead to the cam on the cockpit's side wall,
     # not a winch: JibWinch is the cam's fairlead, JibTailer its jaws (the tail leaves there)
-    cam = (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2
-    sock(f"JibWinch_{tag}", _c(f"Cam_{side}_0_lead"))
-    sock(f"JibTailer_{tag}", cam)
+    if f"Cam_{side}_0" in bpy.data.objects:      # hardware-fit wave 1: the kit's CamCleat (j22_kitfit.py)
+        sock(f"JibWinch_{tag}", _kit_sock(f"Cam_{side}_0", "Lead"))
+        sock(f"JibTailer_{tag}", _kit_sock(f"Cam_{side}_0", "Line"))
+    else:                                          # --old-hardware: the hero's own cam cleat
+        sock(f"JibWinch_{tag}", _c(f"Cam_{side}_0_lead"))
+        sock(f"JibTailer_{tag}", (_c(f"Cam_{side}_0_cam-1") + _c(f"Cam_{side}_0_cam1")) / 2)
     sock(f"JibLead_{tag}", _kit_sock(f"JibTrack_{side}", "Sheave"))
     # where the tail lies when no hand holds it: on the seat by the cam, where build_j22_hero coils it (JibTail*)
     sock(f"JibTailRest_{tag}", Vector((-1.45, side * (0.40 + 0.18), 0.40 + 0.008)))
     sock(f"SpreaderTip_{tag}", _c(f"SprTip_{side}_end"))
 sock("ForestayTack", _c("StemPin_pin"))
-bs = [_c(n) for n in ("BS_eye_1_loop", "BS_eye_-1_loop")]
+# the bridle's ends: the kit bow shackles' bows (hardware-fit wave 1), or the hero's own pad eyes' loops (--old-hardware)
+bs = [_kit_sock(f"BS_sh_{s}", "Bow") if f"BS_sh_{s}" in bpy.data.objects else _c(f"BS_eye_{s}_loop") for s in (1, -1)]
 sock("BackstayPlate", (bs[0] + bs[1]) / 2)
 sock("BowCleat", _top("BowCleat_horn"))              # the starboard of the two bow cleats (boat fidelity 3)
 sock("BowCleatPort", _top("BowCleat_P_horn"))
@@ -242,7 +246,7 @@ def game_part(o):
     if "Rudder" in cols:
         return "SM_J22H_Rudder"
     if "Rig" in cols:
-        if n.startswith(("TB_", "BS_eye")):
+        if n.startswith(("TB_", "BS_eye", "BS_sh")):
             return "SM_J22H_Hull"
         return "SM_J22H_Boom" if n.startswith(BOOM_PARTS) else "SM_J22H_Mast"
     return "SM_J22H_Hull"
