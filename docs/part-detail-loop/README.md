@@ -264,3 +264,8 @@ reference pack and rounds, and Bean's sheet before it ships.
 
 The drills' and races' engine-shape placeholders replaced with kit parts that float (origin on the waterline):
 `RaceMark`, `LessonMark`, `PinBuoy`, `HorseshoeBuoy`, and the game's loader for them: [marks.md](marks.md).
+
+## Sunfish deck gear
+
+The Sunfish's mainsheet ratchet block (kit `Ratchet57` rebuilt), its boom blocks, the snap hook on the bridle, the
+eye-bolt joint at the tack and 38 mm spars, from the class rigging manuals: [sunfish.md](sunfish.md).

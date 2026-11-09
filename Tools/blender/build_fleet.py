@@ -467,6 +467,7 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         tube(hull, rail, 0.011 if H.h["sheer_z"] < 0.8 else 0.02, "Rubrail", 8)
 
 
+SUNFISH_SPAR_R = 0.019  # Sunfish deck gear: the boom's and yard's 1 1/2 in (38 mm) tube
 WELL_CORNER = 0.10      # the Sunfish well's moulded corner radius, metres (pc/sunfish-hero-2)
 
 
@@ -611,17 +612,25 @@ KIT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 KIT_LAYOUT = os.path.join(KIT_DIR, "layouts", f"{TAG.lower()}.json")
 
 
-def kit_part(name, x, y, z, yaw=0.0, flip=False, size=None, m=None, **kw):
+def kit_part(name, x, y, z, yaw=0.0, flip=False, size=None, m=None, xf=None, **kw):
     """One shared-kit fitting (Tools/boatkit/bk_parts.py, the hero quality the J/22 carries) merged into the mesh `m` (the
     hull) before it is finished, so it shares the box UVs, smoothing and packs. Body frame metres, yaw radians about Z;
-    flip turns it over (the kit's blocks are built hanging from their head: one standing on deck is flipped)."""
+    flip turns it over (the kit's blocks are built hanging from their head: one standing on deck is flipped). `xf`, a
+    Blender-frame matrix, places it instead (a fitting on a sloping spar). Returns the part's sockets, body frame metres."""
     m = m or hull
     sys.path.insert(0, KIT_DIR)
     import bk_parts as KP   # noqa: E402 (needs bpy)
     ob = KP.build(name, size=size, **kw)
-    xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
-    if flip:
-        xf = xf @ Matrix.Rotation(math.pi, 4, "X")
+    if xf is None:
+        xf = Matrix.Translation((x, -y, z)) @ Matrix.Rotation(-yaw, 4, "Z")
+        if flip:
+            xf = xf @ Matrix.Rotation(math.pi, 4, "X")
+    socks = {}
+    for c in list(ob.children):
+        if c.name.startswith("SOCKET_"):
+            p = xf @ (ob.matrix_world @ c.location)
+            socks[c.name[7:].split(".")[0]] = (p.x, -p.y, p.z)
+        bpy.data.objects.remove(c)
     me = ob.data
     me.transform(ob.matrix_world)
     me.transform(xf)
@@ -635,6 +644,7 @@ def kit_part(name, x, y, z, yaw=0.0, flip=False, size=None, m=None, **kw):
         f.material_index = SLOTS.index(names[f.material_index])
         f.smooth = True
     bpy.data.objects.remove(ob)
+    return socks
 
 
 def cleat(x, y, z, yaw=0.0, length=0.2):
@@ -656,7 +666,9 @@ def place_kit(m):
             Hh = min(HS, key=lambda h: abs(h.cy - y))
             z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
             yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
-            kit_part(e["part"], x, y, z + e.get("dz", 0.0), yaw, e.get("flip", False), e.get("size"), m, **e.get("kw", {}))
+            socks = kit_part(e["part"], x, y, z + e.get("dz", 0.0), yaw, e.get("flip", False), e.get("size"), m, **e.get("kw", {}))
+            if "socket" in e:      # ["<the model's socket>", "<the part's socket it sits at>"]
+                socket(e["socket"][0], socks[e["socket"][1]])
             n += 1
     return n
 
@@ -960,14 +972,8 @@ def sunfish_bridle(H, traveler):
         tube(hull, [(tx, s * (tw - 0.012), tz), (tx, s * tw, dz + 0.015)], 0.0024, "Stainless", 6)
         tube(hull, [(tx, s * (tw - 0.045), tz), (tx, s * (tw - 0.02), tz)], 0.0042, "Stainless", 8)
     tube(hull, [(tx, -(tw - 0.012), tz), (tx, tw - 0.012, tz)], 0.0022, "Stainless", 6)
-    # the mainsheet's lower block on the wire: a hook over it, two cheeks and the sheave between them
-    bz = tz + 0.032
-    for k in (-1, 1):
-        slab(hull, rounded(tx - 0.019, bz - 0.019, tx + 0.019, bz + 0.019, 0.017, 4), k * 0.007, 0.003, "BlackPlastic")
-    ring(hull, (tx, 0.0, bz), (0, 1, 0), 0.0125, 0.0045, "BlackPlastic", 14, 6)
-    tube(hull, [(tx, -0.011, bz), (tx, 0.011, bz)], 0.003, "Stainless", 8)
-    hook = [(tx, 0.0, bz - 0.018)] + [(tx + 0.006 * math.sin(math.pi * k / 6), 0.0, tz + 0.006 * math.cos(math.pi * k / 6)) for k in range(7)]
-    tube(hull, hook, 0.0022, "Stainless", 6, cap=False)
+    # Sunfish deck gear (docs/part-detail-loop/sunfish.md): no block on the wire. The class rigs the mainsheet's end to a
+    # snap hook clipped over the bridle; the game draws it (the kit's SnapHook) riding the wire with the sheet.
 
 
 def ilca_traveller(H, traveler):
@@ -1646,15 +1652,28 @@ def build_boom():
     gx, gz = RIG["main_luff_x"], RIG["boom_z"]
     length = RIG["main_foot_chord"] + 0.08
     r = 0.025 + 0.012 * min(length, 6.0) / 3.0
+    ry = 0.75 * r
+    if TAG == "Sunfish":
+        # Sunfish deck gear: the class's spars are 1 1/2 in (38 mm) round tube (they had been a 79 x 60 mm oval)
+        r = ry = SUNFISH_SPAR_R
     xs = [gx - length * k / 16 for k in range(17)]
-    rings = [[(x, 0.75 * r * math.sin(2 * math.pi * k / 16), gz - 0.02 + r * math.cos(2 * math.pi * k / 16)) for k in range(17)] for x in xs]
+    rings = [[(x, ry * math.sin(2 * math.pi * k / 16), gz - 0.02 + r * math.cos(2 * math.pi * k / 16)) for k in range(17)] for x in xs]
     m.grid(rings, "Aluminium", flip=True)
     m.face(rings[0][:-1], "Aluminium")
     m.face(list(reversed(rings[-1][:-1])), "Aluminium")
     sheet_x = traveler[0] if traveler else gx - 0.85 * length
     sheet_x = min(max(sheet_x, gx - length + 0.05), gx - 0.3)
-    box(m, (sheet_x, 0, gz - 0.02 - r), (0.06, 0.03, 0.03), "Stainless")
-    socket("Boom_Mainsheet", (sheet_x, 0, gz - 0.03 - r), "Boom")
+    if TAG == "Sunfish":
+        # Sunfish deck gear: the mainsheet's two boom blocks (the end block over the bridle and the middle block over the
+        # front of the cockpit, where the sheet goes down to the ratchet block), each the kit's 40 mm block hanging from
+        # an eye strap across the boom. The sockets are their axles.
+        for sname, bx_ in (("Boom_Mainsheet", sheet_x), ("Boom_MidBlock", SPEC["cockpit"][1])):
+            strap = kit_part("SparStrap", bx_, 0.0, gz - 0.02, flip=True, m=m, tube_d=2 * r)
+            blk = kit_part("Block40", bx_, 0.0, strap["Eye"][2], m=m)
+            socket(sname, blk["Axle"], "Boom")
+    else:
+        box(m, (sheet_x, 0, gz - 0.02 - r), (0.06, 0.03, 0.03), "Stainless")
+        socket("Boom_Mainsheet", (sheet_x, 0, gz - 0.03 - r), "Boom")
     socket("Boom_Clew", (gx - length + 0.06, 0, gz + 0.04), "Boom")
     if SPEC.get("vang", SPEC["rig"] in ("masthead", "tri", "cruisingcat")):
         socket("Boom_Vang", (gx - 0.55, 0, gz - 0.03 - r), "Boom")
@@ -1671,30 +1690,59 @@ def build_boom():
         lx0, z0 = main[0]["luff_x"], main[0]["z_bottom"]
         lx1, z1 = main[-1]["luff_x"], main[-1]["z_top"]
         a, b = Vector((lx0 + 0.05, 0, z0 - 0.01)), Vector((lx1, 0, z1))
-        tube(m, [tuple(a), tuple(b)], 0.024, "Aluminium", 10)
-        # Fleet hero: black end caps, the yard's halyard eye a third of the way up, and the gooseneck jaw where yard and
-        # boom meet at the tack (stainless, through-bolted).
+        ry_ = SUNFISH_SPAR_R
+        # Sunfish deck gear (docs/part-detail-loop/sunfish.md), from the class rigging manuals: the yard and the boom are
+        # joined at the tack by two interlocking eye bolts (it had been a pair of stainless jaw cheeks on a bolt, a fitting
+        # the Sunfish doesn't have), and the sail's tack hooks to the boom's eye bolt with an S-hook. The boom's eye bolt
+        # stands on its top 4 cm aft of where the yard's end had been; the yard's eye bolt hangs from its underside, its
+        # eye turned square to the boom's so the two link, and the yard's foot is raised (5 cm) to sit on them.
+        ex = a.x + 0.04
+        bolt = kit_part("EyeBolt", ex, 0.0, gz - 0.02, m=m, tube_d=2 * r)
+        ac = Vector(bolt["Eye"])
+        rho, ez = 0.0068, bolt["Eye"][2] - (gz - 0.02)          # the eye's centreline radius; its centre above the axis
+        for _ in range(3):
+            u = (b - a).normalized()
+            dn = (Vector((0, 0, -1)) + u * u.z).normalized()          # from the yard's axis square down toward the boom
+            bc = ac - dn * rho                                          # the yard's eye: on the boom eye's ring, through its hole
+            yp = bc - dn * ez                                           # the yard's axis over its eye bolt
+            u = (b - yp).normalized()
+            a = yp - u * 0.028
+        dnb = Vector((dn.x, -dn.y, dn.z))
+        xl, zl = Vector((0, 1, 0)), dnb                                 # Blender frame: the eye's plane holds Y and dn
+        yl = zl.cross(xl)
+        xf = Matrix((xl, yl, zl)).transposed().to_4x4()
+        xf.translation = Vector((yp.x, -yp.y, yp.z))
+        kit_part("EyeBolt", 0, 0, 0, m=m, xf=xf, tube_d=2 * ry_)
+        # the S-hook through the boom's eye, up and aft to the sail's tack grommet
+        hd = Vector((-0.55, 0, 0.83)).normalized()
+        top = ac + hd * (rho - 0.0052)
+        zl = -hd
+        xl = Vector((0, 1, 0))
+        yl = zl.cross(xl)
+        xf = Matrix((xl, yl, zl)).transposed().to_4x4()
+        xf.translation = Vector((top.x, -top.y, top.z))
+        kit_part("SHook", 0, 0, 0, m=m, xf=xf)
+        tube(m, [tuple(a), tuple(b)], ry_, "Aluminium", 12)
+        # Fleet hero: black end caps, the yard's halyard eye a third of the way up.
         u = (b - a).normalized()
-        tube(m, [tuple(b), tuple(b + u * 0.03)], 0.026, "BlackPlastic", 10)
-        tube(m, [tuple(a - u * 0.03), tuple(a)], 0.026, "BlackPlastic", 10)
+        tube(m, [tuple(b), tuple(b + u * 0.025)], ry_ + 0.0015, "BlackPlastic", 12)
+        tube(m, [tuple(a - u * 0.012), tuple(a)], ry_ + 0.0015, "BlackPlastic", 12)
         eye = a + (b - a) * 0.36
         # pc/sunfish-fidelity, from class photos: the halyard's clamp round the yard (a band and its eye, where the
-        # halyard's clip takes it); the tack's jaw, two stainless cheeks over the spars' ends on a bolt with nuts; black
-        # plugs in the boom's ends; and the sail laced to both spars with small line ties every 30 cm.
-        ring(m, tuple(eye), tuple(u), 0.0265, 0.004, "Stainless", 14, 5)
-        ring(m, tuple(eye + Vector((0.0, 0.0, 0.034))), (0, 1, 0), 0.008, 0.0022, "Stainless", 10, 4)
-        tube(m, [tuple(eye + Vector((0.0, 0.0, 0.024))), tuple(eye + Vector((0.0, 0.0, 0.028)))], 0.006, "Stainless", 8)
-        jx, jz = gx - 0.02, gz + 0.02
-        for s in (1, -1):
-            slab(m, rounded(jx - 0.06, jz - 0.05, jx + 0.04, jz + 0.05, 0.018, 3), s * 0.029, 0.004, "Stainless")
-        tube(m, [(jx, -0.036, jz), (jx, 0.036, jz)], 0.005, "Stainless", 8)
-        for s in (1, -1):
-            tube(m, [(jx, s * 0.031, jz), (jx, s * 0.037, jz)], 0.0095, "Stainless", 6)
-        tube(m, [(gx + 0.002, 0, gz - 0.02), (gx + 0.03, 0, gz - 0.02)], r + 0.002, "BlackPlastic", 16)
-        tube(m, [(gx - length - 0.03, 0, gz - 0.02), (gx - length + 0.002, 0, gz - 0.02)], r + 0.002, "BlackPlastic", 16)
+        # halyard's clip takes it); black plugs in the boom's ends; and the sail laced to both spars with small line ties
+        # every 30 cm.
+        ring(m, tuple(eye), tuple(u), ry_ + 0.0025, 0.004, "Stainless", 14, 5)
+        ring(m, tuple(eye + Vector((0.0, 0.0, ry_ + 0.010))), (0, 1, 0), 0.008, 0.0022, "Stainless", 10, 4)
+        tube(m, [tuple(eye + Vector((0.0, 0.0, ry_))), tuple(eye + Vector((0.0, 0.0, ry_ + 0.004)))], 0.006, "Stainless", 8)
+        # the tack's ties: a line twice round each spar beside the joint (the manuals' "corner ties")
+        for k in (0.0, 0.007):
+            ring(m, (ex - 0.035 - k, 0, gz - 0.02), (1, 0, 0), r + 0.0025, 0.0022, "Rope", 16, 5)
+            ring(m, tuple(a + u * (0.10 + k)), tuple(u), ry_ + 0.0025, 0.0022, "Rope", 16, 5)
+        tube(m, [(gx + 0.002, 0, gz - 0.02), (gx + 0.025, 0, gz - 0.02)], r + 0.0015, "BlackPlastic", 16)
+        tube(m, [(gx - length - 0.025, 0, gz - 0.02), (gx - length + 0.002, 0, gz - 0.02)], r + 0.0015, "BlackPlastic", 16)
         n_y = max(int((b - a).length / 0.3), 2)
         for k in range(1, n_y):
-            ring(m, tuple(a + (b - a) * (k / n_y) - Vector((0, 0, 0.004))), tuple(u), 0.0275, 0.0022, "Rope", 16, 5)
+            ring(m, tuple(a + (b - a) * (k / n_y) - Vector((0, 0, 0.002))), tuple(u), ry_ + 0.0035, 0.0022, "Rope", 16, 5)
         n_b = max(int((length - 0.25) / 0.3), 2)
         for k in range(1, n_b):
             ring(m, (gx - 0.08 - (length - 0.25) * k / n_b, 0, gz - 0.02 + 0.003), (1, 0, 0), r + 0.003, 0.0022, "Rope", 16, 5)
