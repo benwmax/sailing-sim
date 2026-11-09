@@ -1,0 +1,49 @@
+{
+ "surface": "dock",
+ "method": "three fresh blind reviewers a round (general-purpose agents, images only); ladder = five shuffled levels matched to the level descriptions; A/B = this round against the last at L2 and L4",
+ "rounds": [
+  {
+   "round": 1,
+   "change": "first build",
+   "ladder": [
+    5,
+    5,
+    5
+   ],
+   "ab": {
+    "L2": "new beat main 3/3",
+    "L4": "new beat main 3/3"
+   },
+   "notes": "main read as the wrong material (white composite) at L2 and L4; float waterline scalloped with white squiggles; mildew read as pepper; ramp featureless"
+  },
+  {
+   "round": 2,
+   "change": "straighter, duller, fewer rub-strip scuffs; fuzzy slime edge; fewer, bigger mildew specks inside darker clusters; ramp grooves fade where they don't resolve, damp band above the water; piling grain less regular, soft slime top",
+   "ladder": [
+    5,
+    5,
+    5
+   ],
+   "ab": {
+    "L2": "r2 beat r1 3/3",
+    "L4": "r2 beat r1 3/3"
+   },
+   "notes": "L4 float's chalk read as beige by all three (wrong material risk); ramp still flat; piling reads as a pipe; droppings look like confetti"
+  },
+  {
+   "round": 3,
+   "change": "float chalk capped and greyer, less silt; fewer, duller droppings; ramp aggregate and darker grime",
+   "ladder": [
+    5,
+    5,
+    5
+   ],
+   "ab": {
+    "L2": "r2 beat r3 3/3",
+    "L4": "r3 won 1/3"
+   },
+   "notes": "lost: the darker ramp read green-grey all over at L2, and two of three preferred the chalkier L4 float. Reverted: the PR is round 2"
+  }
+ ],
+ "kept": 2
+}

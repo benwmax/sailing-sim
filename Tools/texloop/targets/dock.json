@@ -1,0 +1,284 @@
+{
+ "refs": {
+  "raw_plank_wall": {
+   "surface": "deck",
+   "level": "L0",
+   "L": 56.3,
+   "a": 8.5,
+   "b": 28.5,
+   "L_sd": 8.5,
+   "mottle": 6.3,
+   "dark_share": 0.084,
+   "pitch_cm": 26.7
+  },
+  "wood_planks": {
+   "surface": "deck",
+   "level": "L0-L1",
+   "L": 40.1,
+   "a": 9.2,
+   "b": 23.3,
+   "L_sd": 4.7,
+   "mottle": 4.1,
+   "dark_share": 0.017,
+   "pitch_cm": 50.0
+  },
+  "wooden_planks": {
+   "surface": "deck",
+   "level": "L1",
+   "L": 44.8,
+   "a": 6.4,
+   "b": 15.6,
+   "L_sd": 4.3,
+   "mottle": 3.8,
+   "dark_share": 0.004,
+   "pitch_cm": 50.0
+  },
+  "plank_flooring_03": {
+   "surface": "deck",
+   "level": "L1-L2",
+   "L": 45.3,
+   "a": 3.8,
+   "b": 15.5,
+   "L_sd": 16.4,
+   "mottle": 15.2,
+   "dark_share": 0.126,
+   "pitch_cm": 16.1
+  },
+  "weathered_brown_planks": {
+   "surface": "deck",
+   "level": "L2",
+   "L": 33.5,
+   "a": 6.1,
+   "b": 14.1,
+   "L_sd": 6.9,
+   "mottle": 5.9,
+   "dark_share": 0.022,
+   "pitch_cm": 6.9
+  },
+  "weathered_planks": {
+   "surface": "deck",
+   "level": "L2-L3",
+   "L": 29.5,
+   "a": 3.7,
+   "b": 7.3,
+   "L_sd": 4.7,
+   "mottle": 4.4,
+   "dark_share": 0.023,
+   "pitch_cm": 11.1
+  },
+  "wood_planks_grey": {
+   "surface": "deck",
+   "level": "L3",
+   "L": 28.8,
+   "a": -0.2,
+   "b": 3.1,
+   "L_sd": 6.1,
+   "mottle": 5.6,
+   "dark_share": 0.02,
+   "pitch_cm": 6.0
+  },
+  "old_wood_floor": {
+   "surface": "deck",
+   "level": "L4",
+   "L": 31.9,
+   "a": 4.0,
+   "b": 8.4,
+   "L_sd": 4.2,
+   "mottle": 3.9,
+   "dark_share": 0.0,
+   "pitch_cm": 10.3
+  },
+  "worn_planks": {
+   "surface": "deck",
+   "level": "L4",
+   "L": 41.5,
+   "a": 5.7,
+   "b": 12.3,
+   "L_sd": 9.4,
+   "mottle": 7.6,
+   "dark_share": 0.049,
+   "pitch_cm": 46.7
+  },
+  "rough_wood": {
+   "surface": "piling",
+   "level": "L2-L3",
+   "L": 41.8,
+   "a": 1.5,
+   "b": 7.3,
+   "L_sd": 8.6,
+   "mottle": 7.4,
+   "dark_share": 0.045
+  },
+  "moss_wood": {
+   "surface": "piling",
+   "level": "L4",
+   "L": 44.0,
+   "a": -16.0,
+   "b": 37.3,
+   "L_sd": 9.6,
+   "mottle": 8.5,
+   "dark_share": 0.047
+  },
+  "wooden_rough_planks": {
+   "surface": "piling",
+   "level": "L4",
+   "L": 42.8,
+   "a": -5.8,
+   "b": 30.7,
+   "L_sd": 10.8,
+   "mottle": 8.5,
+   "dark_share": 0.067
+  },
+  "brushed_concrete_03": {
+   "surface": "concrete",
+   "level": "L0-L1",
+   "L": 40.4,
+   "a": 2.6,
+   "b": 11.6,
+   "L_sd": 5.0,
+   "mottle": 5.0,
+   "dark_share": 0.0
+  },
+  "grooved_concrete_driveway": {
+   "surface": "concrete",
+   "level": "L1",
+   "L": 49.7,
+   "a": 11.7,
+   "b": 22.0,
+   "L_sd": 8.4,
+   "mottle": 8.1,
+   "dark_share": 0.062
+  },
+  "dirty_concrete": {
+   "surface": "concrete",
+   "level": "L2",
+   "L": 54.8,
+   "a": 0.1,
+   "b": 7.0,
+   "L_sd": 7.7,
+   "mottle": 6.0,
+   "dark_share": 0.054
+  },
+  "concrete_moss": {
+   "surface": "concrete",
+   "level": "L4",
+   "L": 36.1,
+   "a": -8.1,
+   "b": 32.3,
+   "L_sd": 3.1,
+   "mottle": 2.3,
+   "dark_share": 0.0
+  },
+  "rubber_tiles": {
+   "surface": "float",
+   "level": "L0",
+   "L": 12.7,
+   "a": 0.6,
+   "b": -2.8,
+   "L_sd": 1.1,
+   "mottle": 1.0,
+   "dark_share": 0.0
+  }
+ },
+ "targets": {
+  "concrete": {
+   "L0": {
+    "L": 40.4,
+    "a": 2.6,
+    "b": 11.6,
+    "mottle": 5.0,
+    "n": 1
+   },
+   "L1": {
+    "L": 45.0,
+    "a": 7.1,
+    "b": 16.8,
+    "mottle": 6.5,
+    "n": 2
+   },
+   "L2": {
+    "L": 54.8,
+    "a": 0.1,
+    "b": 7.0,
+    "mottle": 6.0,
+    "n": 1
+   },
+   "L4": {
+    "L": 36.1,
+    "a": -8.1,
+    "b": 32.3,
+    "mottle": 2.3,
+    "n": 1
+   }
+  },
+  "deck": {
+   "L0": {
+    "L": 48.2,
+    "a": 8.8,
+    "b": 25.9,
+    "mottle": 5.2,
+    "n": 2
+   },
+   "L1": {
+    "L": 44.8,
+    "a": 6.4,
+    "b": 15.6,
+    "mottle": 4.1,
+    "n": 3
+   },
+   "L2": {
+    "L": 33.5,
+    "a": 3.8,
+    "b": 14.1,
+    "mottle": 5.9,
+    "n": 3
+   },
+   "L3": {
+    "L": 29.1,
+    "a": 1.8,
+    "b": 5.2,
+    "mottle": 5.0,
+    "n": 2
+   },
+   "L4": {
+    "L": 36.7,
+    "a": 4.8,
+    "b": 10.4,
+    "mottle": 5.8,
+    "n": 2
+   }
+  },
+  "float": {
+   "L0": {
+    "L": 12.7,
+    "a": 0.6,
+    "b": -2.8,
+    "mottle": 1.0,
+    "n": 1
+   }
+  },
+  "piling": {
+   "L2": {
+    "L": 41.8,
+    "a": 1.5,
+    "b": 7.3,
+    "mottle": 7.4,
+    "n": 1
+   },
+   "L3": {
+    "L": 41.8,
+    "a": 1.5,
+    "b": 7.3,
+    "mottle": 7.4,
+    "n": 1
+   },
+   "L4": {
+    "L": 43.4,
+    "a": -10.9,
+    "b": 34.0,
+    "mottle": 8.5,
+    "n": 2
+   }
+  }
+ }
+}
