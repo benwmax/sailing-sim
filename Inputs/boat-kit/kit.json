@@ -1,17 +1,17 @@
 {
  "ShackleD": {
   "category": "fastener",
-  "note": "5 mm stainless D-shackle, pin along Y, bow up",
-  "tris": 776,
+  "note": "5 mm forged stainless D shackle, key-head pin along X, bow up (41 mm overall, a long D)",
+  "tris": 12822,
   "size_m": [
-   0.0095,
-   0.0255,
-   0.0292
+   0.0294,
+   0.0101,
+   0.041
   ],
   "min_m": [
-   -0.0047,
-   -0.0145,
-   -0.0047
+   -0.0116,
+   -0.0051,
+   -0.005
   ],
   "slots": [
    "Stainless"
@@ -20,7 +20,12 @@
    "Bow": [
     0.0,
     0.0,
-    0.022
+    0.031
+   ],
+   "Head": [
+    0.0143,
+    0.0,
+    0.0
    ],
    "Pin": [
     0.0,
@@ -29,12 +34,13 @@
    ]
   },
   "light": {
-   "tris": 194,
+   "tris": 3204,
    "slots": [
     "Stainless"
    ],
    "sockets": [
     "Bow",
+    "Head",
     "Pin"
    ]
   },
@@ -52,89 +58,125 @@
  },
  "Padeye": {
   "category": "fastener",
-  "note": "Stainless U-bolt padeye on a 50 x 30 mm backing plate",
-  "tris": 1060,
+  "note": "Round stainless pad eye, 40 mm base, four countersunk screw holes, round-bar loop (6 mm size)",
+  "tris": 16604,
   "size_m": [
-   0.0494,
-   0.0296,
-   0.0334
+   0.04,
+   0.04,
+   0.026
   ],
   "min_m": [
-   -0.0247,
-   -0.0148,
-   0.0
+   -0.02,
+   -0.02,
+   -0.0
   ],
   "slots": [
    "Stainless"
   ],
   "sockets": {
+   "Base": [
+    0.0,
+    0.0,
+    0.0
+   ],
    "Eye": [
     0.0,
     0.0,
-    0.03
+    0.0212
+   ],
+   "Screw1": [
+    0.0088,
+    0.0088,
+    0.001
+   ],
+   "Screw2": [
+    -0.0088,
+    0.0088,
+    0.001
+   ],
+   "Screw3": [
+    -0.0088,
+    -0.0088,
+    0.001
+   ],
+   "Screw4": [
+    0.0088,
+    -0.0088,
+    0.001
    ]
   },
   "light": {
-   "tris": 264,
+   "tris": 4151,
    "slots": [
     "Stainless"
    ],
    "sockets": [
-    "Eye"
+    "Base",
+    "Eye",
+    "Screw1",
+    "Screw2",
+    "Screw3",
+    "Screw4"
    ]
   },
   "sizes": {
-   "dim": "plate length mm",
-   "default": "50",
+   "dim": "base diameter mm",
+   "default": "40",
    "scale": {
-    "40": 0.8,
-    "50": 1.0,
-    "65": 1.3
+    "33": 0.825,
+    "40": 1.0,
+    "50": 1.25
    }
   }
  },
  "HornCleat": {
   "category": "cleat",
-  "note": "Cast aluminium horn cleat, 150 mm, two bolts",
-  "tris": 1584,
+  "note": "Cast aluminium open-base horn cleat, 150 mm (6 in), line hole, two through-bolts",
+  "tris": 17148,
   "size_m": [
-   0.1538,
-   0.0291,
-   0.0416
+   0.1499,
+   0.0289,
+   0.0463
   ],
   "min_m": [
-   -0.0769,
-   -0.0146,
-   0.0
+   -0.075,
+   -0.0144,
+   -0.0
   ],
   "slots": [
    "Aluminium",
    "Stainless"
   ],
   "sockets": {
+   "Hole": [
+    0.0,
+    0.0,
+    0.0189
+   ],
    "HornAft": [
     -0.075,
     0.0,
-    0.0205
+    0.0401
    ],
    "HornFwd": [
     0.075,
     0.0,
-    0.0205
+    0.0401
    ],
    "Wrap": [
     0.0,
     0.0,
-    0.0297
+    0.0395
    ]
   },
   "light": {
-   "tris": 396,
+   "tris": 4286,
    "slots": [
     "Aluminium",
     "Stainless"
    ],
    "sockets": [
+    "Hole",
     "HornAft",
     "HornFwd",
     "Wrap"
@@ -161,47 +203,61 @@
  },
  "CamCleat": {
   "category": "cleat",
-  "note": "Aluminium cam cleat, 75 mm, two toothed cams on a base with a fairlead",
-  "tris": 5552,
+  "note": "Composite cam cleat, 38 mm axle centres: two toothed teardrop cams on a moulded base",
+  "tris": 8864,
   "size_m": [
-   0.0744,
-   0.0516,
-   0.0225
+   0.0363,
+   0.0626,
+   0.0192
   ],
   "min_m": [
-   -0.0372,
-   -0.0258,
+   -0.0227,
+   -0.0313,
    0.0
   ],
   "slots": [
-   "Aluminium",
+   "BlackPlastic",
+   "Graphics",
    "Stainless"
   ],
   "sockets": {
-   "Lead": [
-    -0.0375,
+   "AxleL": [
     0.0,
-    0.012
+    -0.019,
+    0.016
+   ],
+   "AxleR": [
+    0.0,
+    0.019,
+    0.016
+   ],
+   "Lead": [
+    -0.0221,
+    0.0,
+    0.0108
    ],
    "Line": [
-    0.004,
     0.0,
-    0.014
+    0.0,
+    0.0108
    ]
   },
   "light": {
-   "tris": 1388,
+   "tris": 6306,
    "slots": [
-    "Aluminium",
+    "BlackPlastic",
+    "Graphics",
     "Stainless"
    ],
    "sockets": [
+    "AxleL",
+    "AxleR",
     "Lead",
     "Line"
    ]
   },
   "sizes": {
-   "dim": "length mm",
+   "dim": "length mm (size label; the default is the 38 mm axle-centre class, 61 mm across)",
    "default": "75",
    "scale": {
     "38": 0.51,
@@ -355,16 +411,16 @@
  "Block40": {
   "category": "block",
   "note": "40 mm single block with swivel and becket",
-  "tris": 6924,
+  "tris": 15014,
   "size_m": [
-   0.052,
-   0.0646,
-   0.0767
+   0.0472,
+   0.0201,
+   0.0965
   ],
   "min_m": [
-   -0.026,
-   -0.0323,
-   -0.0767
+   -0.0236,
+   -0.0101,
+   -0.0933
   ],
   "slots": [
    "BlackPlastic",
@@ -374,12 +430,12 @@
    "Axle": [
     0.0,
     0.0,
-    -0.036
+    -0.0604
    ],
    "Becket": [
     0.0,
     0.0,
-    -0.075
+    -0.0912
    ],
    "Head": [
     0.0,
@@ -389,16 +445,16 @@
    "LineIn": [
     0.02,
     0.0,
-    -0.036
+    -0.0604
    ],
    "LineOut": [
     -0.02,
     0.0,
-    -0.036
+    -0.0604
    ]
   },
   "light": {
-   "tris": 1730,
+   "tris": 3752,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -484,35 +540,34 @@
    }
   }
  },
- "FiddleCam": {
+ "Fiddle40": {
   "category": "block",
-  "note": "40 mm fiddle block with a cam cleat arm: the mainsheet's bottom block",
-  "tris": 8688,
+  "note": "40 mm fiddle block with swivel: a big and a small sheave in line (the vang's and mainsheet's upper block)",
+  "tris": 19974,
   "size_m": [
-   0.056,
-   0.065,
-   0.0767
+   0.0472,
+   0.0201,
+   0.1162
   ],
   "min_m": [
-   -0.026,
-   -0.0325,
-   -0.0767
+   -0.0236,
+   -0.0101,
+   -0.113
   ],
   "slots": [
    "BlackPlastic",
-   "Stainless",
-   "Aluminium"
+   "Stainless"
   ],
   "sockets": {
    "Axle": [
     0.0,
     0.0,
-    -0.036
+    -0.0604
    ],
-   "Becket": [
+   "Axle2": [
     0.0,
     0.0,
-    -0.075
+    -0.0965
    ],
    "Head": [
     0.0,
@@ -522,89 +577,223 @@
    "LineIn": [
     0.02,
     0.0,
-    -0.036
+    -0.0604
+   ],
+   "LineIn2": [
+    0.013,
+    0.0,
+    -0.0965
    ],
    "LineOut": [
     -0.02,
     0.0,
-    -0.036
+    -0.0604
+   ],
+   "LineOut2": [
+    -0.013,
+    0.0,
+    -0.0965
    ]
   },
   "light": {
-   "tris": 2172,
+   "tris": 4992,
    "slots": [
     "BlackPlastic",
-    "Stainless",
-    "Aluminium"
+    "Stainless"
    ],
    "sockets": [
     "Axle",
-    "Becket",
+    "Axle2",
     "Head",
     "LineIn",
-    "LineOut"
+    "LineIn2",
+    "LineOut",
+    "LineOut2"
    ]
   },
-  "sizes": null
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "40",
+   "scale": {
+    "40": 1.0,
+    "57": 1.425
+   }
+  }
  },
- "Winch16": {
-  "category": "winch",
-  "note": "Two-speed self-tailing-free winch, size 16: base flange, drum with grip band, top cap",
-  "tris": 5912,
+ "FiddleCam": {
+  "category": "block",
+  "note": "40 mm fiddle block with becket and cam cleat: the vang's and mainsheet's lower block",
+  "tris": 28762,
   "size_m": [
-   0.12,
-   0.12,
-   0.097
+   0.0724,
+   0.03,
+   0.1327
   ],
   "min_m": [
-   -0.06,
-   -0.06,
-   0.0
+   -0.0236,
+   -0.015,
+   -0.1296
   ],
   "slots": [
    "BlackPlastic",
+   "Stainless",
    "Aluminium",
+   "Graphics"
+  ],
+  "sockets": {
+   "Axle": [
+    0.0,
+    0.0,
+    -0.0604
+   ],
+   "Axle2": [
+    0.0,
+    0.0,
+    -0.0965
+   ],
+   "Becket": [
+    0.0,
+    0.0,
+    -0.1292
+   ],
+   "Cam": [
+    0.0374,
+    0.0,
+    -0.0592
+   ],
+   "CamLead": [
+    0.0412,
+    0.0,
+    -0.0685
+   ],
+   "Head": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "LineIn": [
+    0.02,
+    0.0,
+    -0.0604
+   ],
+   "LineIn2": [
+    0.013,
+    0.0,
+    -0.0965
+   ],
+   "LineOut": [
+    -0.02,
+    0.0,
+    -0.0604
+   ],
+   "LineOut2": [
+    -0.013,
+    0.0,
+    -0.0965
+   ]
+  },
+  "light": {
+   "tris": 7190,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "Aluminium",
+    "Graphics"
+   ],
+   "sockets": [
+    "Axle",
+    "Axle2",
+    "Becket",
+    "Cam",
+    "CamLead",
+    "Head",
+    "LineIn",
+    "LineIn2",
+    "LineOut",
+    "LineOut2"
+   ]
+  },
+  "sizes": {
+   "dim": "sheave mm",
+   "default": "40",
+   "scale": {
+    "40": 1.0,
+    "57": 1.425
+   }
+  }
+ },
+ "Winch16": {
+  "category": "winch",
+  "note": "Size 16 self-tailing winch (121 mm base, 145 mm tall): bell base, drum, ribbed self-tailer, stripper arm, black sloped cap with the handle socket set in it",
+  "tris": 11946,
+  "size_m": [
+   0.121,
+   0.121,
+   0.1455
+  ],
+  "min_m": [
+   -0.0605,
+   -0.0605,
+   0.0
+  ],
+  "slots": [
+   "Aluminium",
+   "BlackPlastic",
    "Stainless"
   ],
   "sockets": {
    "Drum": [
     0.0,
-    0.032,
-    0.05
+    0.033,
+    0.075
    ],
    "Handle": [
     0.0,
     0.0,
-    0.097
+    0.1455
+   ],
+   "Jaws": [
+    0.0,
+    0.038,
+    0.11
    ],
    "Tail": [
     0.0,
-    -0.034,
-    0.075
+    -0.054,
+    0.11
    ]
   },
   "light": {
-   "tris": 1478,
+   "tris": 2986,
    "slots": [
-    "BlackPlastic",
     "Aluminium",
+    "BlackPlastic",
     "Stainless"
    ],
    "sockets": [
     "Drum",
     "Handle",
+    "Jaws",
     "Tail"
    ]
   },
   "sizes": {
-   "dim": "winch size (base diameter 102 / 120 / 130 / 152 / 175 mm)",
+   "dim": "winch size (self-tailers 8 / 16 / 20 / 30 / 40: 102 / 121 / 130 / 152 / 175 mm base)",
    "default": "16",
-   "scale": {
-    "8": 0.85,
-    "16": 1.0,
-    "20": 1.083,
-    "30": 1.267,
-    "40": 1.458
+   "kw": {
+    "8": {
+     "scale": 0.8429752066115702
+    },
+    "16": {},
+    "20": {
+     "scale": 1.0743801652892562
+    },
+    "30": {
+     "scale": 1.256198347107438
+    },
+    "40": {
+     "scale": 1.4462809917355373
+    }
    }
   }
  },
@@ -1713,22 +1902,43 @@
  },
  "Gudgeon": {
   "category": "steering",
-  "note": "Transom-hung rudder gudgeon (cast strap with a bushed eye)",
-  "tris": 916,
+  "note": "Stainless strap gudgeon for a transom-hung rudder: 25 x 5 mm strap round a bushed eye for a 1/2 in pin, flanges bolted to the transom",
+  "tris": 3290,
   "size_m": [
-   0.14,
-   0.045,
-   0.032
+   0.0385,
+   0.144,
+   0.027
   ],
   "min_m": [
-   -0.1,
-   -0.0225,
-   -0.016
+   -0.0,
+   -0.072,
+   -0.0135
   ],
   "slots": [
-   "Stainless"
+   "Stainless",
+   "BlackPlastic"
   ],
   "sockets": {
+   "Bolt1": [
+    0.004,
+    -0.034,
+    0.0
+   ],
+   "Bolt2": [
+    0.004,
+    -0.0595,
+    0.0
+   ],
+   "Bolt3": [
+    0.004,
+    0.034,
+    0.0
+   ],
+   "Bolt4": [
+    0.004,
+    0.0595,
+    0.0
+   ],
    "Pin": [
     0.026,
     0.0,
@@ -1736,11 +1946,16 @@
    ]
   },
   "light": {
-   "tris": 228,
+   "tris": 821,
    "slots": [
-    "Stainless"
+    "Stainless",
+    "BlackPlastic"
    ],
    "sockets": [
+    "Bolt1",
+    "Bolt2",
+    "Bolt3",
+    "Bolt4",
     "Pin"
    ]
   },
@@ -2035,95 +2250,73 @@
    }
   }
  },
- "Turnbuckle": {
-  "category": "rig",
-  "note": "Open-body rigging screw with toggle, for 5 mm wire: forged body, two threaded studs, swage eye up, toggle fork down",
-  "tris": 6732,
-  "size_m": [
-   0.02,
-   0.024,
-   0.216
-  ],
-  "min_m": [
-   -0.01,
-   -0.012,
-   0.0
-  ],
-  "slots": [
-   "Stainless"
-  ],
-  "sockets": {
-   "Toggle": [
-    0.0,
-    0.0,
-    0.004
-   ],
-   "Wire": [
-    0.0,
-    0.0,
-    0.216
-   ]
-  },
-  "light": {
-   "tris": 1682,
-   "slots": [
-    "Stainless"
-   ],
-   "sockets": [
-    "Toggle",
-    "Wire"
-   ]
-  },
-  "sizes": {
-   "dim": "wire mm",
-   "default": "5",
-   "scale": {
-    "4": 0.85,
-    "5": 1.0,
-    "6": 1.18,
-    "8": 1.5
-   }
-  }
- },
  "Clutch": {
   "category": "rope",
-  "note": "Single rope clutch for 6 to 10 mm line on a moulded base, handle closed, maker's plate",
-  "tris": 1584,
+  "note": "Single lever rope clutch for 6 to 12 mm line: side plates with a bright edge, lever with a ribbed grip, toothed cam and red line guide in the mouth, red release button",
+  "tris": 10902,
   "size_m": [
-   0.139,
-   0.0496,
-   0.0666
+   0.1263,
+   0.0373,
+   0.0719
   ],
   "min_m": [
-   -0.0695,
-   -0.0248,
+   -0.0646,
+   -0.0187,
    0.0
   ],
   "slots": [
    "BlackPlastic",
-   "Aluminium",
-   "Stainless"
+   "Stainless",
+   "Graphics",
+   "CarbonMatte",
+   "Aluminium"
   ],
   "sockets": {
-   "LineIn": [
-    -0.07,
+   "BoltAft": [
+    -0.0385,
     0.0,
-    0.032
+    0.0
+   ],
+   "BoltFwd": [
+    0.0385,
+    0.0,
+    0.0
+   ],
+   "Grip": [
+    -0.0628,
+    0.0,
+    0.0708
+   ],
+   "Hinge": [
+    0.0487,
+    0.0,
+    0.0393
+   ],
+   "LineIn": [
+    0.0609,
+    0.0,
+    0.0112
    ],
    "LineOut": [
-    0.07,
+    -0.0609,
     0.0,
-    0.032
+    0.0112
    ]
   },
   "light": {
-   "tris": 396,
+   "tris": 2724,
    "slots": [
     "BlackPlastic",
-    "Aluminium",
-    "Stainless"
+    "Stainless",
+    "Graphics",
+    "CarbonMatte",
+    "Aluminium"
    ],
    "sockets": [
+    "BoltAft",
+    "BoltFwd",
+    "Grip",
+    "Hinge",
     "LineIn",
     "LineOut"
    ]
@@ -2188,5 +2381,988 @@
    ]
   },
   "sizes": null
+ },
+ "JibHank": {
+  "category": "rigging",
+  "note": "Nylon piston hank, 50 mm, for 6.4 mm (1/4 in) forestay wire: brass piston and knob, screwed through the luff",
+  "tris": 16036,
+  "size_m": [
+   0.051,
+   0.014,
+   0.026
+  ],
+  "min_m": [
+   -0.0402,
+   -0.007,
+   -0.0128
+  ],
+  "slots": [
+   "WhitePlastic",
+   "Brass",
+   "Stainless"
+  ],
+  "sockets": {
+   "Knob": [
+    -0.0338,
+    0.0,
+    0.0074
+   ],
+   "Luff": [
+    -0.0341,
+    0.0,
+    -0.0034
+   ],
+   "Piston": [
+    -0.0024,
+    0.0,
+    0.0074
+   ],
+   "Stay": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 4008,
+   "slots": [
+    "WhitePlastic",
+    "Brass",
+    "Stainless"
+   ],
+   "sockets": [
+    "Knob",
+    "Luff",
+    "Piston",
+    "Stay"
+   ]
+  },
+  "sizes": null
+ },
+ "RaceMark": {
+  "category": "course",
+  "note": "Inflatable cylindrical racing mark, 0.90 m x 1.50 m, faded orange PVC, welded seams, lifting handle, anchor ring underneath; origin on the waterline",
+  "tris": 14524,
+  "size_m": [
+   0.9162,
+   0.9192,
+   1.6765
+  ],
+  "min_m": [
+   -0.4581,
+   -0.4611,
+   -0.3
+  ],
+  "slots": [
+   "MarkVinyl",
+   "MarkScum",
+   "CrewStraps",
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Anchor": [
+    0.0,
+    0.0,
+    -0.3
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    1.375
+   ],
+   "Waterline": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 3630,
+   "slots": [
+    "MarkVinyl",
+    "MarkScum",
+    "CrewStraps",
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Anchor",
+    "Top",
+    "Waterline"
+   ]
+  },
+  "sizes": null
+ },
+ "LessonMark": {
+  "category": "course",
+  "note": "Inflatable cylindrical drill mark, 0.61 m x 1.22 m (4 ft), faded orange PVC, welded seams, lifting handle, anchor ring underneath; origin on the waterline",
+  "tris": 14524,
+  "size_m": [
+   0.621,
+   0.624,
+   1.3965
+  ],
+  "min_m": [
+   -0.3105,
+   -0.3135,
+   -0.25
+  ],
+  "slots": [
+   "MarkVinyl",
+   "MarkScum",
+   "CrewStraps",
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Anchor": [
+    0.0,
+    0.0,
+    -0.25
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    1.145
+   ],
+   "Waterline": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 3630,
+   "slots": [
+    "MarkVinyl",
+    "MarkScum",
+    "CrewStraps",
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Anchor",
+    "Top",
+    "Waterline"
+   ]
+  },
+  "sizes": null
+ },
+ "PinBuoy": {
+  "category": "course",
+  "note": "Start line pin end: 0.80 m inflatable orange ball with a fibreglass flag staff (1.3 m above the water) and an orange flag; origin on the waterline",
+  "tris": 12636,
+  "size_m": [
+   0.8685,
+   0.812,
+   2.106
+  ],
+  "min_m": [
+   -0.406,
+   -0.406,
+   -0.768
+  ],
+  "slots": [
+   "MarkVinyl",
+   "MarkScum",
+   "WhitePlastic",
+   "BlackPlastic",
+   "Rubber",
+   "Stainless"
+  ],
+  "sockets": {
+   "Anchor": [
+    0.0,
+    0.0,
+    -0.768
+   ],
+   "Flag": [
+    0.225,
+    0.0,
+    1.12
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    1.34
+   ],
+   "Waterline": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 3158,
+   "slots": [
+    "MarkVinyl",
+    "MarkScum",
+    "WhitePlastic",
+    "BlackPlastic",
+    "Rubber",
+    "Stainless"
+   ],
+   "sockets": [
+    "Anchor",
+    "Flag",
+    "Top",
+    "Waterline"
+   ]
+  },
+  "sizes": null
+ },
+ "HorseshoeBuoy": {
+  "category": "safety",
+  "note": "US Type IV horseshoe buoy, 610 x 585 x 100 mm, faded yellow vinyl over foam, reflective patches, web strap and snap across the open end; floats flat, origin on the waterline",
+  "tris": 6308,
+  "size_m": [
+   0.5795,
+   0.6145,
+   0.106
+  ],
+  "min_m": [
+   -0.285,
+   -0.3072,
+   -0.038
+  ],
+  "slots": [
+   "MOBVinyl",
+   "CrewReflective",
+   "CrewStraps",
+   "CrewBuckle"
+  ],
+  "sockets": {
+   "Bend": [
+    0.2925,
+    0.0,
+    0.015
+   ],
+   "Strap": [
+    -0.1825,
+    0.0,
+    0.027
+   ],
+   "Waterline": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 1577,
+   "slots": [
+    "MOBVinyl",
+    "CrewReflective",
+    "CrewStraps",
+    "CrewBuckle"
+   ],
+   "sockets": [
+    "Bend",
+    "Strap",
+    "Waterline"
+   ]
+  },
+  "sizes": null
+ },
+ "MOBBuoy": {
+  "category": "safety",
+  "note": "Crew-overboard set as thrown in a drill: the Type IV horseshoe, a 2.4 m MOB pole (1.8 m out of the water, orange flag, reflective bands, foam float, weighted foot) 1.6 m away, joined by a floating yellow line; origin on the waterline at the horseshoe",
+  "tris": 9188,
+  "size_m": [
+   1.6945,
+   1.3872,
+   2.494
+  ],
+  "min_m": [
+   -1.4,
+   -0.3072,
+   -0.65
+  ],
+  "slots": [
+   "MOBVinyl",
+   "CrewReflective",
+   "CrewStraps",
+   "CrewBuckle",
+   "WhitePlastic",
+   "Rubber",
+   "BlackPlastic",
+   "MarkVinyl"
+  ],
+  "sockets": {
+   "Bend": [
+    0.2925,
+    0.0,
+    0.015
+   ],
+   "Pole": [
+    -1.28,
+    0.96,
+    0.0
+   ],
+   "PoleTop": [
+    -1.28,
+    0.96,
+    1.85
+   ],
+   "Strap": [
+    -0.1825,
+    0.0,
+    0.027
+   ],
+   "Waterline": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 2297,
+   "slots": [
+    "MOBVinyl",
+    "CrewReflective",
+    "CrewStraps",
+    "CrewBuckle",
+    "WhitePlastic",
+    "Rubber",
+    "BlackPlastic",
+    "MarkVinyl"
+   ],
+   "sockets": [
+    "Bend",
+    "Pole",
+    "PoleTop",
+    "Strap",
+    "Waterline"
+   ]
+  },
+  "sizes": null
+ },
+ "MastheadFly": {
+  "category": "rigging",
+  "note": "Masthead wind indicator, 15 in (381 mm) vane on a 324 mm stalk: arrow and counterweight, swept fin with reflectors, two reference tabs",
+  "tris": 3216,
+  "size_m": [
+   0.3806,
+   0.1731,
+   0.324
+  ],
+  "min_m": [
+   -0.263,
+   -0.0865,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "RedPlastic",
+   "WhitePlastic"
+  ],
+  "sockets": {
+   "Mount": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Pivot": [
+    0.0,
+    0.0,
+    0.23
+   ],
+   "TabL": [
+    -0.1161,
+    0.0783,
+    0.174
+   ],
+   "TabR": [
+    -0.1161,
+    -0.0783,
+    0.174
+   ],
+   "VaneTip": [
+    0.118,
+    0.0,
+    0.23
+   ]
+  },
+  "light": {
+   "tris": 804,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "RedPlastic",
+    "WhitePlastic"
+   ],
+   "sockets": [
+    "Mount",
+    "Pivot",
+    "TabL",
+    "TabR",
+    "VaneTip"
+   ]
+  },
+  "sizes": {
+   "dim": "vane in",
+   "default": "15",
+   "kw": {
+    "10": {
+     "length": 0.254,
+     "height": 0.24
+    },
+    "15": {}
+   }
+  }
+ },
+ "MastheadFlyVane": {
+  "category": "rigging",
+  "note": "The masthead fly's turning vane alone, origin at the pivot (the game turns it to the apparent wind)",
+  "tris": 1372,
+  "size_m": [
+   0.3806,
+   0.0136,
+   0.11
+  ],
+  "min_m": [
+   -0.263,
+   -0.0068,
+   -0.016
+  ],
+  "slots": [
+   "BlackPlastic",
+   "RedPlastic",
+   "WhitePlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Pivot": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "VaneTip": [
+    0.118,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 342,
+   "slots": [
+    "BlackPlastic",
+    "RedPlastic",
+    "WhitePlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Pivot",
+    "VaneTip"
+   ]
+  },
+  "sizes": {
+   "dim": "vane in",
+   "default": "15",
+   "kw": {
+    "10": {
+     "length": 0.254,
+     "height": 0.24
+    },
+    "15": {}
+   }
+  }
+ },
+ "MastheadFlyMount": {
+  "category": "rigging",
+  "note": "The masthead fly's fixed part: socket, stalk and reference tabs (the vane goes on its Pivot socket)",
+  "tris": 1844,
+  "size_m": [
+   0.1469,
+   0.1731,
+   0.216
+  ],
+  "min_m": [
+   -0.1279,
+   -0.0865,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "RedPlastic"
+  ],
+  "sockets": {
+   "Mount": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Pivot": [
+    0.0,
+    0.0,
+    0.23
+   ],
+   "TabL": [
+    -0.1161,
+    0.0783,
+    0.174
+   ],
+   "TabR": [
+    -0.1161,
+    -0.0783,
+    0.174
+   ]
+  },
+  "light": {
+   "tris": 460,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "RedPlastic"
+   ],
+   "sockets": [
+    "Mount",
+    "Pivot",
+    "TabL",
+    "TabR"
+   ]
+  },
+  "sizes": {
+   "dim": "vane in",
+   "default": "15",
+   "kw": {
+    "10": {
+     "length": 0.254,
+     "height": 0.24
+    },
+    "15": {}
+   }
+  }
+ },
+ "Pintle": {
+  "category": "steering",
+  "note": "Stainless strap pintle for a transom-hung rudder: two 30 mm straps through-bolted on the blade, a bushed block at the leading edge, 1/2 in pin with head and keeper",
+  "tris": 5958,
+  "size_m": [
+   0.2975,
+   0.0607,
+   0.1077
+  ],
+  "min_m": [
+   -0.0125,
+   -0.0324,
+   -0.0587
+  ],
+  "slots": [
+   "Stainless",
+   "BlackPlastic"
+  ],
+  "sockets": {
+   "LugLower": [
+    0.0,
+    0.0,
+    -0.028
+   ],
+   "LugUpper": [
+    0.0,
+    0.0,
+    0.028
+   ],
+   "Pin": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "PinTop": [
+    0.0,
+    0.0,
+    0.0475
+   ]
+  },
+  "light": {
+   "tris": 1488,
+   "slots": [
+    "Stainless",
+    "BlackPlastic"
+   ],
+   "sockets": [
+    "LugLower",
+    "LugUpper",
+    "Pin",
+    "PinTop"
+   ]
+  },
+  "sizes": null
+ },
+ "ShackleBow": {
+  "category": "fastener",
+  "note": "5 mm forged stainless bow shackle, key-head pin along X, bow up (36 mm overall)",
+  "tris": 12834,
+  "size_m": [
+   0.0294,
+   0.0101,
+   0.0363
+  ],
+  "min_m": [
+   -0.0125,
+   -0.0051,
+   -0.005
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bow": [
+    0.0,
+    0.0,
+    0.0263
+   ],
+   "Head": [
+    0.0134,
+    0.0,
+    0.0
+   ],
+   "Pin": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 3208,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bow",
+    "Head",
+    "Pin"
+   ]
+  },
+  "sizes": {
+   "dim": "pin diameter mm",
+   "default": "5",
+   "scale": {
+    "4": 0.8,
+    "5": 1.0,
+    "6": 1.2,
+    "8": 1.6,
+    "10": 2.0
+   }
+  }
+ },
+ "SnapHook": {
+  "category": "fastener",
+  "note": "Forged stainless snap hook, 75 mm, wire spring gate under a turned-down nose, oval eye",
+  "tris": 16308,
+  "size_m": [
+   0.0358,
+   0.0096,
+   0.0747
+  ],
+  "min_m": [
+   -0.0198,
+   -0.0055,
+   -0.0128
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bite": [
+    -0.0011,
+    0.0,
+    0.0535
+   ],
+   "Eye": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Gate": [
+    -0.0138,
+    0.0,
+    0.0196
+   ],
+   "Nose": [
+    -0.0173,
+    0.0,
+    0.0379
+   ]
+  },
+  "light": {
+   "tris": 4076,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bite",
+    "Eye",
+    "Gate",
+    "Nose"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "75",
+   "scale": {
+    "50": 0.667,
+    "75": 1.0,
+    "100": 1.333
+   }
+  }
+ },
+ "SnapShackle": {
+  "category": "fastener",
+  "note": "70 mm stainless snap shackle: fixed eye, hinged bail, plunger with pull ring",
+  "tris": 17184,
+  "size_m": [
+   0.0536,
+   0.0124,
+   0.0706
+  ],
+  "min_m": [
+   -0.0317,
+   -0.0062,
+   -0.0615
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bail": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Eye": [
+    -0.0054,
+    0.0,
+    -0.054
+   ],
+   "Hinge": [
+    0.016,
+    0.0,
+    -0.0415
+   ],
+   "Latch": [
+    -0.0139,
+    0.0,
+    -0.0036
+   ],
+   "Ring": [
+    -0.0262,
+    0.0,
+    -0.0218
+   ]
+  },
+  "light": {
+   "tris": 4296,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bail",
+    "Eye",
+    "Hinge",
+    "Latch",
+    "Ring"
+   ]
+  },
+  "sizes": {
+   "dim": "length mm",
+   "default": "70",
+   "scale": {
+    "50": 0.714,
+    "70": 1.0,
+    "90": 1.286
+   }
+  }
+ },
+ "Turnbuckle": {
+  "category": "rig",
+  "note": "Open-body rigging screw for 3/16 in (5 mm) wire: jaw with clevis pin and split ring on the chainplate, forged open body with two windows, threaded studs with cotter pins, swage stud up",
+  "tris": 18060,
+  "size_m": [
+   0.0205,
+   0.0224,
+   0.2268
+  ],
+  "min_m": [
+   -0.0103,
+   -0.0112,
+   -0.0108
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Toggle": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Wire": [
+    0.0,
+    0.0,
+    0.216
+   ]
+  },
+  "light": {
+   "tris": 4514,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Toggle",
+    "Wire"
+   ]
+  },
+  "sizes": {
+   "dim": "wire mm",
+   "default": "5",
+   "scale": {
+    "4": 0.85,
+    "5": 1.0,
+    "6": 1.18,
+    "8": 1.5
+   }
+  }
+ },
+ "VCleat": {
+  "category": "cleat",
+  "note": "Moulded V-cleat with fairlead eye for 3-6 mm control lines, 70 mm, screws on 48 mm centres",
+  "tris": 17872,
+  "size_m": [
+   0.0701,
+   0.018,
+   0.0213
+  ],
+  "min_m": [
+   -0.035,
+   -0.0092,
+   -0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless"
+  ],
+  "sockets": {
+   "Eye": [
+    -0.011,
+    0.0,
+    0.0082
+   ],
+   "FixAft": [
+    -0.0288,
+    0.0,
+    0.0
+   ],
+   "FixFwd": [
+    0.0192,
+    0.0,
+    0.0
+   ],
+   "Jaw": [
+    0.0122,
+    0.0,
+    0.0101
+   ],
+   "LineIn": [
+    0.0358,
+    0.0,
+    0.0106
+   ],
+   "LineOut": [
+    -0.0358,
+    0.0,
+    0.0082
+   ]
+  },
+  "light": {
+   "tris": 4468,
+   "slots": [
+    "BlackPlastic",
+    "Stainless"
+   ],
+   "sockets": [
+    "Eye",
+    "FixAft",
+    "FixFwd",
+    "Jaw",
+    "LineIn",
+    "LineOut"
+   ]
+  },
+  "sizes": {
+   "dim": "line mm (hole centres 48 / 64 mm)",
+   "default": "3-6",
+   "scale": {
+    "3-6": 1.0,
+    "6-10": 1.33
+   }
+  }
+ },
+ "WinchPlain": {
+  "category": "winch",
+  "note": "Plain-top (non-self-tailing) winch, size 6 (90 mm base, 82 mm tall; the J/22's): the self-tailer's base, bell and drum with grip ribs, a black flange and sloped cap with the handle socket set in it; size 16 option",
+  "tris": 8490,
+  "size_m": [
+   0.09,
+   0.09,
+   0.082
+  ],
+  "min_m": [
+   -0.045,
+   -0.045,
+   0.0
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Aluminium",
+   "Stainless"
+  ],
+  "sockets": {
+   "Drum": [
+    0.0,
+    0.03,
+    0.0455
+   ],
+   "Handle": [
+    0.0,
+    0.0,
+    0.082
+   ],
+   "Tail": [
+    0.0,
+    -0.03,
+    0.0455
+   ]
+  },
+  "light": {
+   "tris": 2122,
+   "slots": [
+    "BlackPlastic",
+    "Aluminium",
+    "Stainless"
+   ],
+   "sockets": [
+    "Drum",
+    "Handle",
+    "Tail"
+   ]
+  },
+  "sizes": {
+   "dim": "winch size (plain-tops 6 / 8 / 16: 90 / 102 / 120 mm base)",
+   "default": "6",
+   "kw": {
+    "6": {},
+    "8": {
+     "size": "16",
+     "scale": 0.85
+    },
+    "16": {
+     "size": "16"
+    }
+   }
+  }
  }
 }
