@@ -6454,6 +6454,72 @@ if (ChanPeriod > 0.0)
 }
 RoughOut = saturate(lerp(RoughBase, R, 0.6 * fade + 0.2));
 FuzzOut = Sheen;
+// FABRIC_WEAR >>> (texture loop, crew fabric: docs/texloop-crewfabric; Tools/texloop/crewfabric/port.py mirrors these
+// lines). The crew's gear wears with Age and Care (the pawn sets them from -SailingCrewAge or -SailingBoatAge) through the
+// loop's Time/Dirt split. Kind picks the cloth (0 none: webbing, leather; 1 coated nylon shell, the life jackets; 2 knit,
+// the polo; 3 cotton twill cap; 4 cotton twill shorts). Everything is laid out in the garment's own UVs (UVm metres a UV
+// unit), so it rides with the sailor. Age unset (-1): exactly as before.
+float fwOn = step(0.0, Age) * step(0.5, Kind);
+float fwAge = max(Age, 0.0);
+float fwTime = fwOn * saturate(0.25 * (1.0 - exp(-fwAge / 0.75)) + 0.75 * (1.0 - exp(-fwAge / 18.0)));
+float fwDirt = fwOn * saturate((1.0 - exp(-fwAge)) * (0.15 + 0.85 * (1.0 - saturate(Care))));
+int fk = (int)(Kind + 0.5);
+// Per cloth: (sun fade, grime, mildew, pilling) and (sweat and salt tide marks, coating loss).
+float4 fwW = fk == 1 ? float4(0.50, 1.00, 1.00, 0.00) : fk == 2 ? float4(0.40, 0.75, 0.00, 1.00) : fk == 3 ? float4(0.75, 0.85, 0.60, 0.25) : float4(0.50, 0.80, 0.30, 0.35);
+float2 fwW2 = fk == 1 ? float2(0.00, 1.00) : fk == 2 ? float2(0.00, 0.00) : fk == 3 ? float2(1.00, 0.00) : float2(0.00, 0.00);
+float2 fwP = UV0 * UVm * 100.0;     // cm along the garment
+// one octave of value noise on a unit grid, rounded (no square cells)
+#define FW_VN(q_, out_) { float2 fq_ = (q_), fi_ = floor(fq_), ff_ = frac(fq_); ff_ = ff_ * ff_ * (3.0 - 2.0 * ff_); \
+    out_ = lerp(lerp(frac(sin(dot(fi_, float2(27.1, 61.7))) * 4375.5), frac(sin(dot(fi_ + float2(1, 0), float2(27.1, 61.7))) * 4375.5), ff_.x), \
+                lerp(frac(sin(dot(fi_ + float2(0, 1), float2(27.1, 61.7))) * 4375.5), frac(sin(dot(fi_ + float2(1, 1), float2(27.1, 61.7))) * 4375.5), ff_.x), ff_.y); }
+float fwA, fwB, fwC, fwD;
+FW_VN(fwP / 9.0, fwA);                                               // 9 cm: where the sun and the folds left it lighter
+FW_VN(float2(fwP.x * 0.8 - fwP.y * 0.6, fwP.x * 0.6 + fwP.y * 0.8) / 3.1 + 5.3, fwB);
+float fwBlot = 0.65 * fwA + 0.35 * fwB;
+FW_VN(fwP / 14.0 + 11.7, fwC);                                       // 14 cm: grime where hands, laps and the deck rub
+FW_VN(float2(fwP.x * 0.6 - fwP.y * 0.8, fwP.x * 0.8 + fwP.y * 0.6) / 4.3 + 2.9, fwD);
+float fwGrimeN = 0.65 * fwC + 0.35 * fwD;
+float fwSky = saturate(0.5 + 0.5 * Nw.z);                           // UV dose: shoulders and the cap's crown, little underneath
+float fwNear = 1.0 - smoothstep(60.0, 150.0, Depth);     // millimetre detail: within arm's reach only
+// Sun fade: the dye loses chroma and lifts toward a warm pale grey (royal blue to powder blue, red to salmon, yellow to
+// cream); most on the faces that see the sky, patchy with the folds, and on the knit's raised loops.
+float fwLum = dot(AlbedoOut, float3(0.3, 0.59, 0.11));
+float3 fwFaded = lerp(AlbedoOut, float3(fwLum, fwLum, fwLum), 0.55) + 0.07 * (1.0 - fwLum) * float3(1.0, 0.98, 0.94);
+float fwFade = saturate(pow(fwTime, 0.7) * fwW.x * (0.35 + 0.65 * fwSky) * (0.8 + 0.4 * fwBlot) * lerp(1.0, saturate(detail), 0.3));
+AlbedoOut = lerp(AlbedoOut, fwFaded, fwFade);
+// The nylon's polyurethane coat wears off: matt, and a little fuzzier at grazing angles.
+RoughOut = lerp(RoughOut, 0.88, 0.6 * fwTime * fwW2.y);
+// Grime: an even dinge and blotches of grey-tan (sweat, sunscreen, the lake's clay dust), most where it doesn't see the sky.
+float fwGrime = fwDirt * fwW.y * saturate(0.2 + 0.8 * smoothstep(0.4, 0.7, fwGrimeN) * (0.5 + 0.5 * (1.0 - fwSky)));
+AlbedoOut = lerp(AlbedoOut, AlbedoOut * 0.6 + float3(0.045, 0.038, 0.026), fwGrime);
+RoughOut = lerp(RoughOut, 0.9, 0.4 * fwGrime);
+// Pilling: the knit's fibres ball up in a share of 1.2 mm cells that grows with wear, pale and fuzzy (close up only).
+float2 fwPc = fwP / 0.12;
+float fwPh = frac(sin(dot(floor(fwPc), float2(17.9, 83.3))) * 43758.5);
+float fwPill = fwNear * fwW.w * step(1.0 - 0.30 * fwTime - 0.15 * fwDirt, fwPh) * (1.0 - smoothstep(0.22, 0.38, length(frac(fwPc) - 0.5)));
+float fwLum2 = dot(AlbedoOut, float3(0.3, 0.59, 0.11));
+AlbedoOut = lerp(AlbedoOut, lerp(AlbedoOut, float3(fwLum2, fwLum2, fwLum2), 0.5) * 1.15 + 0.03, 0.7 * fwPill);
+FuzzOut = saturate(FuzzOut + 0.35 * fwTime * fwW.w);
+// Tide marks: dried sweat (and, on salt water, salt) leaves wavering pale lines with a darker edge above them, stacked
+// round the cap's sweatband (its crown's lowest 4 cm: UV0.y under 0.35 of the unit mesh), 1.6 cm apart.
+float fwRing = abs(frac((fwP.y + 1.5 * fwBlot) / 1.6) - 0.5);
+float fwTideK = saturate((fwDirt - 0.2) / 0.5) * fwW2.x * (1.0 - smoothstep(0.1, 0.35, UV0.y)) * (0.5 + 0.5 * fwB);
+float fwTide = fwTideK * smoothstep(0.44, 0.48, fwRing);
+float fwTideIn = fwTideK * smoothstep(0.34, 0.42, fwRing) * (1.0 - smoothstep(0.42, 0.45, fwRing));
+AlbedoOut = lerp(AlbedoOut, AlbedoOut * 0.8, 0.5 * fwTideIn);
+AlbedoOut = lerp(AlbedoOut, float3(0.62, 0.60, 0.55), 0.3 * fwTide);
+// Mildew: clusters of dark grey-green specks on gear put away wet (dirt past half, low Care): from afar the clusters as a
+// shadow, close up the specks themselves.
+float fwM;
+FW_VN(fwP / 5.0 + 3.3, fwM);
+float2 fwMc = fwP / 0.18;
+float fwMh = frac(sin(dot(floor(fwMc), float2(19.3, 47.9))) * 4375.5);
+float2 fwMo = float2(frac(fwMh * 7.1), frac(fwMh * 13.7)) * 0.5 - 0.25;   // each speck off its cell's centre
+float fwSpeck = step(0.75, fwMh) * (1.0 - smoothstep(0.12, 0.25, length(frac(fwMc) - 0.5 - fwMo)));
+float fwMil = fwW.z * saturate((fwDirt - 0.5) / 0.4) * (1.0 - saturate(Care)) * smoothstep(0.6, 0.8, fwM);
+AlbedoOut = lerp(AlbedoOut, float3(0.030, 0.035, 0.025), fwMil * lerp(0.25, 0.9 * fwSpeck, fwNear));
+#undef FW_VN
+// FABRIC_WEAR <<<
 return tn;
 """
 
@@ -6505,6 +6571,14 @@ return L * (N * flap + trail + lag) * 100.0;
 """
 
 
+# Texture loop, crew fabric (FABRIC_WEAR, docs/texloop-crewfabric): each instance's cloth kind and metres per UV unit. The
+# vest's and the polo's UVs are in metres (build_vest.py, build_polo.py; the MetaHuman shorts about that); the cap's are in
+# its unit mesh, placed at about 0.106 of it (SailboatPawn: a 11 cm head radius). Webbing and leather are left out (kind 0):
+# the webbing is the webbing/rubber pass's.
+FABRIC_WEAR_KIND = {"MI_Crew_PFDShell": (1, 1.0), "MI_Crew_Polo": (2, 1.0), "MI_Crew_PoloRib": (2, 1.0),
+                    "MI_Crew_CapCloth": (3, 0.106), "MI_Crew_Shorts": (4, 1.0)}
+
+
 def build_crew_fabric():
     """M_CrewFabric and its instances: the crew's polo, collar and cuffs, life jacket shell and cap."""
     if not all(os.path.isdir(os.path.join(FABRIC_RAW, k)) for k in FABRIC_SETS):
@@ -6538,7 +6612,7 @@ def build_crew_fabric():
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1450, 600)
     wp = node(mat, unreal.MaterialExpressionWorldPosition, -1450, 700)
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, FABRIC_CODE, ["C", "A", "Nt", "R", "AvgLum", "DetailAmount", "Strength", "RoughBase", "Sheen", "Depth", "WP", "UV0", "ChanPeriod", "ChanFront"], F3, -900, 100,
+    c = custom(mat, FABRIC_CODE, ["C", "A", "Nt", "R", "AvgLum", "DetailAmount", "Strength", "RoughBase", "Sheen", "Depth", "WP", "UV0", "ChanPeriod", "ChanFront", "Age", "Care", "Kind", "UVm", "Nw"], F3, -900, 100,
                extra_outputs=[("AlbedoOut", F3), ("RoughOut", F1), ("FuzzOut", F1)])
     connect(color, "RGBA", c, "C")
     connect(ta, "RGB", c, "A")
@@ -6551,6 +6625,11 @@ def build_crew_fabric():
     connect(uv0, "", c, "UV0")
     connect(scalar(mat, "ChanPeriod", 0.0, -1200, 1300), "", c, "ChanPeriod")
     connect(scalar(mat, "ChanFront", 0.19, -1200, 1390), "", c, "ChanFront")
+    # Texture loop, crew fabric (FABRIC_WEAR): the gear's Age (-1 unset: no wear) and Care, its cloth Kind, metres per UV unit;
+    # the vertex normal for the sun's dose.
+    for i, (pname, default) in enumerate((("Age", -1.0), ("Care", 0.5), ("Kind", 0.0), ("UVm", 1.0))):
+        connect(scalar(mat, pname, default, -1200, 1480 + 90 * i), "", c, pname)
+    connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -1200, 1840), "", c, "Nw")
     slab = node(mat, unreal.MaterialExpressionSubstrateSlabBSDF, -400, 100)
     connect(c, "AlbedoOut", slab, "Diffuse Albedo")
     connect(node(mat, unreal.MaterialExpressionConstant3Vector, -700, 400, constant=unreal.LinearColor(0.04, 0.04, 0.04, 1)), "", slab, "F0")
@@ -6588,7 +6667,9 @@ def build_crew_fabric():
         MEL.set_material_instance_parent(mi, mat)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         chan = 0.10 if name == "MI_Crew_PFDShell" else 0.0   # Graphics G8: the vest's foam channels (its UVs are in metres round the torso)
-        for pname, value in (("Tiling", tile), ("Strength", strength), ("RoughBase", rough), ("Sheen", sheen), ("AvgLum", FABRIC_SETS[k]), ("ChanPeriod", chan)):
+        kind, uvm = FABRIC_WEAR_KIND.get(name, (0, 1.0))
+        for pname, value in (("Tiling", tile), ("Strength", strength), ("RoughBase", rough), ("Sheen", sheen), ("AvgLum", FABRIC_SETS[k]), ("ChanPeriod", chan),
+                             ("Kind", kind), ("UVm", uvm)):
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         for pname, t in zip(("AlbedoMap", "NormalMap", "RoughMap"), texs[k]):
             MEL.set_material_instance_texture_parameter_value(mi, pname, t)
