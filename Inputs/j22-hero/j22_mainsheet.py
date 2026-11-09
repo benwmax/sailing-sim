@@ -14,7 +14,7 @@ photo; traveler-deck-mount, mainsail-sheet-traveler). Replaces build_j22_hero's 
 build_j22_hero.py; the traveler's sizes from the catalogue (traveler.md), the fiddle's GUESS from the photos (57 mm)."""
 import math
 
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 import j22_details as D
 from j22_boomgear import countersunk, plate_xy, rounded
@@ -29,6 +29,8 @@ TRACK_W = 0.022          # catalogue: 22 mm track
 TRACK_H = 0.019          # GUESS: high-beam section, its area (about 220 mm2) checked against the catalogue weight (586 g/m)
 CAR_L, CAR_W = 0.073, 0.057   # catalogue (the 22 mm car with pivoting shackle and control tangs): 2 7/8 x 2 1/4 in
 STOP_L, STOP_W = 0.030, 0.032  # GUESS from Bean's photo: a square block a little wider than the track
+TROUGH_W = 0.056         # GUESS from Bean's photo: the seats' moulded indentation the track lies in, its width ...
+TROUGH_END = 0.012       # ... and how far it runs past the track's end (build_j22_hero cuts it into the cockpit liner)
 
 # seven-segment numerals painted on the track (the crew's own marks in Bean's photo): segments as (x0, y0, x1, y1) in a
 # 1 x 2 cell, x across the digit, y up it
@@ -78,14 +80,10 @@ def traveler(xt, y_end, seat_z, seat_in, M):
     bar = plate("TravelerBar", prof, -y_end, y_end, M["CamBase"], bev=0.0004)
     bar["section_mm2"] = round(_poly_area(prof) * 1e6, 1)
     out.append(bar)
-    # the slot in each seat: a dark shadow line either side of the head, and the track's flat-head screws every 100 mm
+    # the track lies in the seats' indentation (cut by build_j22_hero), its foot on the trough's floor; flat-head screws
+    # every 100 mm where it lies on the seats
     for sgn in (1, -1):
         y0, y1 = sorted((sgn * (seat_in + 0.012), sgn * (y_end - STOP_L - 0.004)))
-        for side in (1, -1):
-            x0 = xt + side * (TRACK_W / 2 + 0.0002)
-            x1 = xt + side * (TRACK_W / 2 + 0.0032)
-            out.append(plate_xy(f"TravSlot_{sgn}_{side}", rounded(min(x0, x1), max(x0, x1), y0, y1, 0.0012, 2),
-                                seat_z - 0.0004, seat_z + 0.0003, M["DecalBlack"], bev=0.0))
         n = int((y1 - y0) / 0.1)
         for k in range(n + 1):
             y = sgn * (seat_in + 0.05 + 0.1 * k)
@@ -108,7 +106,7 @@ def traveler(xt, y_end, seat_z, seat_in, M):
     # the end stops: a black block over each end of the track, two screws on top
     for sgn in (1, -1):
         y0, y1 = sorted((sgn * (y_end - STOP_L), sgn * (y_end + 0.002)))
-        out.append(plate("TravStop_" + str(sgn), rounded(xt - STOP_W / 2, xt + STOP_W / 2, seat_z - 0.0005, top + 0.018, 0.0025),
+        out.append(plate("TravStop_" + str(sgn), rounded(xt - STOP_W / 2, xt + STOP_W / 2, top - TRACK_H, top + 0.018, 0.0025),
                          y0, y1, M["BlackPlastic"], bev=0.0015))
         for k, dx in enumerate((-0.008, 0.008)):
             out += countersunk(f"TravStopS_{sgn}_{k}", Vector((xt + dx, sgn * (y_end - STOP_L / 2), top + 0.018)), (0, 0, 1), 0.0060, M["Stainless"])
@@ -200,43 +198,30 @@ def plate_yz_tang(name, xt, yt, z0, sgn, M):
 
 
 
-def lower_block(car, M):
-    """The mainsheet's lower block on the car (photo mainsail-sheet-traveler): a spring over the swivel, the fiddle block
-    standing up from it (57 mm sheave over a 40 mm one, axle fore and aft so the sheet runs athwartships into it), its
-    stainless side plates perforated, a becket, and the cam cleat on its swivelling arm. MainCam's cams keep their names
-    (the MainsheetCam socket reads them)."""
-    out = []
+def lower_block(car, M, kit_part):
+    """The mainsheet's lower block on the car (Bean's photo; part detail loop, docs/part-detail-loop/traveler.md): the
+    boat kit's FiddleCam at its 57 mm size (made from the same photo: black moulded cheeks, the cam cleat with red jaws on
+    an aluminium bracket round the big hub, a becket), standing head down on the car's pivoting shackle, its axles fore
+    and aft so the sheet comes down athwartships into it, a coil spring round the swivel holding it upright. Its big
+    sheave's centre stays where the old block's was (MainsheetBlock); MainsheetCam is its jaws (the kit's Cam socket)."""
     c = Vector(car)
-    # the swivel post and the spring round it
-    out.append(lathe("MainSwivel", [(0.0, 0.0), (0.012, 0.0), (0.012, 0.006), (0.006, 0.008), (0.006, 0.040), (0.0, 0.040)], c, (0, 0, 1), M["Stainless"], 20))
-    out.append(tube("MainSpring", [(c.x + 0.011 * math.cos(t * 0.5), c.y + 0.011 * math.sin(t * 0.5), c.z + 0.006 + t * 0.0009) for t in range(36)],
-                    0.0012, M["Stainless"], smooth_path=True))
-    # the fiddle: the big sheave (the sheet's two parts from the boom) over the small one
-    big = c + Vector((0, 0, 0.040 + 0.045))
-    out += D.block("MainsheetLow", big, (1, 0, 0), (0, 0, 1), M, 0.057, becket=False, with_shackle=False)
-    small = c + Vector((0, 0, 0.040 + 0.006))
-    out += D.block("MainsheetLow2", small, (1, 0, 0), (0, 0, 1), M, 0.040, with_shackle=False)
-    # the stainless side plates over the cheeks, a long diamond, perforated (shown by grey dots)
-    for sgn in (1, -1):
-        xs = c.x + sgn * 0.022
-        prof = [(0.0, 0.0), (0.028, 0.030), (0.020, 0.110), (0.0, 0.125), (-0.020, 0.110), (-0.028, 0.030)]
-        out.append(plate(f"MainPlate_{sgn}", [(c.y + p, c.z + 0.025 + q) for p, q in prof], min(xs, xs + sgn * 0.002), max(xs, xs + sgn * 0.002),
-                         M["Stainless"], bev=0.0005))
-        # (plate() extrudes an (x, z) outline across y: turn it to lie across x)
-        o = out[-1]
-        for v in o.data.vertices:
-            v.co.x, v.co.y = v.co.y, v.co.x
-        for k in range(6):
-            zk = c.z + 0.045 + 0.014 * k
-            out.append(cyl(f"MainPlateHole_{sgn}_{k}", (xs + sgn * 0.0021, c.y - 0.008, zk), (xs + sgn * 0.0024, c.y - 0.008, zk), 0.0035, M["SheaveGrey"], 10))
-            out.append(cyl(f"MainPlateHoleB_{sgn}_{k}", (xs + sgn * 0.0021, c.y + 0.008, zk), (xs + sgn * 0.0024, c.y + 0.008, zk), 0.0035, M["SheaveGrey"], 10))
-    # the becket at the top (the sheet's dead end)
-    bk = D.torus("MainBecket", 0.007, 0.0018, M["Stainless"], 16, 6)
-    bk.matrix_world = D.frame(c + Vector((0, 0, 0.160)), (1, 0, 0), (0, 1, 0))
-    out.append(bk)
-    # the cam cleat on its arm, swung aft of the block, the line's lead toward the block's small sheave
-    arm0 = c + Vector((-0.012, 0, 0.060))
-    arm1 = c + Vector((-0.070, 0, 0.085))
-    out.append(tube("MainCamArm", [tuple(arm0), tuple(arm0 + Vector((-0.03, 0, 0.004))), tuple(arm1)], 0.004, M["Stainless"], smooth_path=True))
-    out += D.cam_cleat("MainCam", arm1, (-0.35, 0, 1), (0.9, 0, 0.4), M, 0.055)
+    ob = kit_part("MainsheetLow", "FiddleCam", (0, 0, 0), size="57")[0]
+    axle = Vector(ob["sock_Axle"])
+    # part X (the cam's side) to port, part Y (the axles) forward, part Z (up the block toward its head) down
+    rot = Matrix(((0, 1, 0), (1, 0, 0), (0, 0, -1))).to_4x4()
+    target = c + Vector((0, 0, 0.085))                    # the old block's big sheave (build_j22_hero's mainsheet ends here)
+    rot.translation = target - rot.to_3x3() @ axle
+    ob.matrix_world = rot
+    out = [ob]
+    head = rot.translation
+    # from the car's shackle pin up to the block's own swivel: a stainless post and a coil spring round it
+    base = c - Vector((0, 0, 0.006))
+    if head.z > base.z + 0.004:
+        out.append(lathe("MainSwivel", [(0.0, 0.0), (0.0045, 0.0), (0.0045, head.z - base.z + 0.002), (0.0, head.z - base.z + 0.002)],
+                         base, (0, 0, 1), M["Stainless"], 16))
+        h = head.z - base.z
+        turns = max(3, int(h / 0.0045))
+        n = turns * 10
+        out.append(tube("MainSpring", [(c.x + 0.0095 * math.cos(2 * math.pi * t / 10), c.y + 0.0095 * math.sin(2 * math.pi * t / 10),
+                                        base.z + 0.002 + h * 0.9 * t / n) for t in range(n + 1)], 0.0011, M["Stainless"], res=6, smooth_path=True))
     return out

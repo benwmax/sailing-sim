@@ -7,7 +7,7 @@ after compare like for like:
 
 Views: photo (from the port quarter, aft and above, looking forward to starboard across the cockpit: the angle of
 Bean's photo), car (the car and the foot of the lower block, close), end (the starboard end of the track: end stop,
-eye strap, cam cleat), section (the track where it spans the well, from forward and a little below: its depth), top (the starboard half from
+eye strap, cam cleat), block (the mainsheet's lower block on the car, from aft), section (the track where it spans the well, from forward and a little below: its depth), top (the starboard half from
 above), clay (photo, shape only). Writes stats.json: triangles and object count per group."""
 import json
 import os
@@ -23,7 +23,7 @@ from mathutils import Vector  # noqa: E402
 import bk_render as R  # noqa: E402
 from render_boomgear import args, centre, lights  # noqa: E402
 
-GROUPS = ("TravelerBar", "TravSlot", "TravChannel", "TravS_", "TravMark", "TravNum", "TravStop", "TravEnd", "TravCar",
+GROUPS = ("MainsheetLow", "MainSwivel", "MainSpring", "MainCam", "MainPlate", "MainBecket", "TravelerBar", "TravSlot", "TravChannel", "TravS_", "TravMark", "TravNum", "TravStop", "TravEnd", "TravCar",
           "TravTang", "TravBlock", "TravEye", "TravCam", "TravLine", "TravTail")
 
 
@@ -69,6 +69,7 @@ def main():
         "end":     (stb + Vector((-0.01, 0.02, 0.01)), (0.9, 0.7, 0.85), 0.30, 70),
         "section": (Vector((tb.x, -0.30, top - 0.008)), (1.0, -0.45, -0.08), 0.13, 70),
         "top":     (Vector((tb.x - 0.02, -0.45, top)), (-0.25, 0.0, 1.0), 0.55, 50),
+        "block":   (Vector((tb.x, 0.0, top + 0.10)), (-1.0, -0.75, 0.45), 0.36, 70),
     }
     only = [a[len("--views="):].split(",") for a in sys.argv if a.startswith("--views=")]
     for view, (c, d, dist, lens) in views.items():

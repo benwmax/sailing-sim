@@ -651,7 +651,7 @@ def build_hardware():
     xt = TRAVELER_X
     trav, car = MS.traveler(xt, half_beam(xt) - SIDE_DECK - 0.035, SEAT_Z, SEAT_IN, MAT)
     parts += trav
-    parts += MS.lower_block(car, MAT)
+    parts += MS.lower_block(car, MAT, kit_part)
     # aft deck: inspection port
     xp = (STERN + COCKPIT_AFT) / 2 - 0.02
     parts.append(cyl("DeckPlate", (xp, 0.30, deck_z(xp, 0.3) - 0.002), (xp, 0.30, deck_z(xp, 0.3) + 0.012), 0.075, MAT["WhitePlastic"], 32))
@@ -802,8 +802,10 @@ def build_rig():
     blk_hi = top - Vector((0, 0, 0.07))
     parts += D.block("MainsheetHigh", blk_hi, (1, 0, 0), (0, 0, 1), MAT, 0.057)
     low = Vector((TRAVELER_X, 0.0, SEAT_Z + 0.115))      # the fiddle's big sheave on the traveler car (j22_mainsheet.py)
-    for k, dx in enumerate((-0.010, -0.0035, 0.0035, 0.010)):
-        part = DRAPE.line([tuple(blk_hi + Vector((dx, 0, -0.02))), tuple(low + Vector((dx, 0, 0.03)))], 0.0015, 0.004)
+    # both blocks' axles run fore and aft, so the four parts of the sheet are spread athwartships: the outer two onto the
+    # sides of the lower fiddle's big sheave, the inner two onto its top (traveler pass: they had been spread fore and aft)
+    for k, (dy, dz) in enumerate(((-0.026, 0.0), (-0.008, 0.026), (0.008, 0.026), (0.026, 0.0))):
+        part = DRAPE.line([tuple(blk_hi + Vector((0, dy * 0.6, -0.02))), tuple(low + Vector((0, dy, dz)))], 0.0015, 0.004)
         wires.append(tube(f"Mainsheet_{k}", part, 0.004, MAT["RopeMain"], smooth_path=True))
     # mainsheet tail from the ratchet block's cam, coiled on the cockpit floor
     parts += D.coil("MainTail", (-2.30, 0.05, FLOOR_Z), 0.13, 3.2, MAT["RopeMain"], seed=STYLE["seed"], flat_z=FLOOR_Z,
@@ -1018,6 +1020,14 @@ def build_registration():
 hull = build_hull()
 deck = build_deck()
 cockpit = build_cockpit()
+# the traveler's indentation (Bean, Nov 9 2026: "the track is in an indention in the cockpit seats"): a moulded trough
+# across each seat top, open to the well, its floor where the track's foot sits (j22_mainsheet.TRACK_H under its top)
+import j22_mainsheet as _MS  # noqa: E402
+import bk_geom as _BG  # noqa: E402
+for _side in (1, -1):
+    _y0, _y1 = sorted((_side * (SEAT_IN - 0.05), _side * (half_beam(TRAVELER_X) - SIDE_DECK - 0.035 + _MS.TROUGH_END)))
+    _BG.boolean(cockpit, box("TravTroughCut", TRAVELER_X - _MS.TROUGH_W / 2, TRAVELER_X + _MS.TROUGH_W / 2, _y0, _y1,
+                             SEAT_Z + 0.004 - _MS.TRACK_H, SEAT_Z + 0.05, bev=0.006))
 cabin = build_cabin()
 import types  # noqa: E402
 import j22_interior as INTERIOR  # noqa: E402
