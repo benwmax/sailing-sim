@@ -522,6 +522,7 @@ HERO_SURFACE = {
     "Stainless": 3, "Chrome": 3, "Galvanised": 12, "KeelBoltSteel": 12, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
     "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10, "BlackPlastic": 13, "CamBase": 13,
     "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 14,
+    "HatchAcrylic": 15, "TravLine": 9,   # packed with the woods since hero ageing (J22H_packs.json)
 }
 HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05, 14: 0.5}
 
