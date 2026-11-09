@@ -11,7 +11,9 @@ scripts/make-boatkit.sh or scripts\\windows\\make-boatkit.ps1 into Artifacts/boa
                         and its kind (BOAT_SURFACE). Texture loop, black plastic (docs/texloop-plastic): kind 13 (the
                         BlackPlastic slot: blocks, cam cleats, fairleads, ratchets, clutches) weathers with the boat's Age
                         and Care (parameters, or per-instance custom data 10 and 11 as on M_BoatSurface; Age -1 = unset,
-                        the look as before) by BOAT_CODE's own PLASTIC_WEAR lines, copied from make_materials.py
+                        the look as before) by BOAT_CODE's own PLASTIC_WEAR lines, copied from make_materials.py.
+                        Texture loop, acrylic (docs/texloop-acrylic): kind 14 (CabinWindow: the hatch lids, the
+                        portlight panes) the same way, by BOAT_CODE's ACRYLIC_WEAR lines
 
 Sockets come from the FBX's SOCKET_* empties; any the importer missed are added from kit.json. Inputs/boat-kit/kit.json
 (copied from the build) is what SailingSim.Visual.HardwareKit checks the import against. Nothing is placed on a boat yet:
@@ -49,12 +51,22 @@ def boat_library():
     return materials_constant("BOAT_LIBRARY")
 
 
-def plastic_wear():
-    """BOAT_CODE's black plastic lines (between the PLASTIC_WEAR markers), so the kit and the boats weather alike."""
+def boat_code_block(marker):
+    """BOAT_CODE's lines between `// <marker> >>>` and `// <marker> <<<`, so the kit and the boats weather alike."""
     code = materials_constant("BOAT_CODE")
-    a = code.index("// PLASTIC_WEAR >>>")
-    b = code.index("// PLASTIC_WEAR <<<")
+    a = code.index("// %s >>>" % marker)
+    b = code.index("// %s <<<" % marker)
     return code[a:b]
+
+
+def plastic_wear():
+    """BOAT_CODE's black plastic lines (between the PLASTIC_WEAR markers)."""
+    return boat_code_block("PLASTIC_WEAR")
+
+
+def acrylic_wear():
+    """BOAT_CODE's smoked acrylic lines (between the ACRYLIC_WEAR markers: docs/texloop-acrylic)."""
+    return boat_code_block("ACRYLIC_WEAR")
 
 
 def import_texture(path, kind):
@@ -114,6 +126,23 @@ if (surf == 13)
     c = col;
     Rough = rough;
 }
+// Texture loop, acrylic (docs/texloop-acrylic): kind 14, the smoked lids and portlight panes, by BOAT_CODE's ACRYLIC_WEAR
+// lines (the kit has no clear coat: the coat they dull is dropped). Age unset: as before.
+if (surf == 14)
+{
+    float3 n = normalize(N);
+    float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
+    float timeK = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-age / 0.75)) + 0.75 * (1.0 - exp(-age / 18.0))) : 0.0;
+    float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - saturate(care)))) : 0.0;
+    float sunF = 1.0;
+    float3 col = c;
+    float rough = Rough, coat = 0.0, acHaze = 0.0;
+    float3 lnA = abs(LN);
+    float2 acP = lnA.z >= max(lnA.x, lnA.y) ? LP.xy : lnA.y >= lnA.x ? LP.xz : LP.yz;
+@ACRYLIC_WEAR@
+    c = col;
+    Rough = rough;
+}
 return c;
 """
 
@@ -147,7 +176,7 @@ def kit_material(normal, mask):
            "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 1380), "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 1460),
            "Depth": node(mat, unreal.MaterialExpressionPixelDepth, -900, 1540), "Surface": surface, "Age": age, "Care": care,
            "CD10": cd[0], "CD11": cd[1]}
-    code = KIT_CODE.replace("@PLASTIC_WEAR@", plastic_wear())
+    code = KIT_CODE.replace("@PLASTIC_WEAR@", plastic_wear()).replace("@ACRYLIC_WEAR@", acrylic_wear())
     c = node(mat, unreal.MaterialExpressionCustom, -500, 0, code=code, output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT3)
     ins = []
     for pn in ("C", "R", "M") + tuple(geo):
