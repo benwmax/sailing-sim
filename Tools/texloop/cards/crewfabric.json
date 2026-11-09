@@ -1,0 +1,34 @@
+{
+ "surface": "crewfabric",
+ "name": "Crew gear cloth: life jacket nylon shells, the knit polo, the cotton cap and shorts",
+ "kind": "M_CrewFabric (scripts/make_materials.py build_crew_fabric), not a BOAT_SURFACE kind: the instances' new Kind parameter picks the cloth (1 coated nylon shell, 2 knit, 3 twill cap, 4 twill shorts; 0 none)",
+ "code": "scripts/make_materials.py FABRIC_CODE, the block between '// FABRIC_WEAR >>>' and '// FABRIC_WEAR <<<'; Tools/texloop/crewfabric/port.py mirrors it",
+ "slots": {
+  "MI_Crew_PFDShell": "kind 1: the tailored vests (SKM_<Role>_Vest slot PFD) and the rigid fallback SM_CrewPFD; recoloured per sailor (CrewOutfit.cpp)",
+  "MI_Crew_Polo, MI_Crew_PoloRib": "kind 2",
+  "MI_Crew_CapCloth": "kind 3 (UVm 0.106: the cap's UVs are in its unit mesh)",
+  "MI_Crew_Shorts": "kind 4",
+  "MI_Crew_Webbing, MI_Crew_ShoeLeather": "kind 0, unchanged (webbing is the webbing/rubber pass's)"
+ },
+ "driver": "Age and Care on the material (default -1: no wear). The pawn sets them on the crew's dynamic instances from -SailingCrewAge=<years>[,<care>] or -SailingBoatAge (player's boat only); nothing sets them in normal play yet",
+ "closest_camera_m": 0.6,
+ "pattern_size_cm": {
+  "fade_blotch": [9.0, 3.1],
+  "grime_blotch": [14.0, 4.3],
+  "pill_cell": 0.12,
+  "mildew_cluster": 5.0,
+  "mildew_speck_cell": 0.18,
+  "tide_line_spacing": 1.6
+ },
+ "levels_needed": {
+  "L0": "as the material is today",
+  "L1": "a touch of sun on the shoulders, the odd pill on the polo",
+  "L2": "school vest after several seasons: chroma down about a sixth (Bean's lesson photo: royal blue C 53 against about 61 new), lighter on the shoulders, grey-tan grime patches, a faint sweat line round the cap's band",
+  "L3": "kept but old: faded more, matt nylon, clean",
+  "L4": "left wet in a locker: faded, heavy grime, mildew clusters, sweat lines on the cap"
+ },
+ "drivers": "fade = timeK^0.7 x kind weight x sky dose (0.35 + 0.65 (0.5 + 0.5 n.z)) x 9 cm blotch: chroma to 45% toward grey plus a warm lift; nylon roughness to 0.88 by 0.6 timeK (the PU coat goes); grime = dirtK x (0.2 + 0.8 blotch x more where it doesn't see the sky); pilling: 1.2 mm cells, share 0.3 timeK + 0.15 dirtK, within 1.5 m; tide lines round the cap's band once dirtK passes 0.2; mildew: dirtK over 0.5 and low Care, 5 cm clusters of 1.8 mm-cell specks (from afar a shadow)",
+ "replaces": "M_CrewFabric had no wear: every crew's gear looked new",
+ "maps": "none: shader math only (no new textures, Medium included)",
+ "out_of_scope": "webbing and buckles (webbing/rubber pass), leather shoes, the MetaHuman default T-shirts, straps and seams on the vest (modelling), foul-weather jackets (no crew wears one in the slice)"
+}

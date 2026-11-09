@@ -45,6 +45,7 @@
 #include "FreeCamera.h"
 #include "Engine/AssetManager.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "ProceduralMeshComponent.h"
@@ -4359,6 +4360,28 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 	const FCrewRig& Rig = MetaCrewRigs[CrewRole];
 	USkeletalMeshComponent* Body = NewCrewBody(BodyMesh, CrewRole);
 	BoatParts.Add(Body);
+	// Texture loop, crew fabric (docs/texloop-crewfabric): -SailingCrewAge=<years>[,<care 0..1>] wears this boat's crew gear
+	// (M_CrewFabric's Age and Care: sun fade, grime, pilling, sweat marks, mildew); -SailingBoatAge does the same, so a
+	// boat's stills show its crew at the same age. Unset: Age stays -1 and the cloth is exactly as before.
+	float GearAge = -1.f, GearCare = 0.5f;
+	{
+		FString GearArg;
+		if (!bTrafficBoat && (FParse::Value(SailingArgs::Dev(), TEXT("SailingCrewAge="), GearArg, false) || FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), GearArg, false)))
+		{
+			FString AgeStr, CareStr;
+			if (!GearArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = GearArg; CareStr = TEXT("0.5"); }
+			GearAge = FCString::Atof(*AgeStr);
+			GearCare = FMath::Clamp(FCString::Atof(*CareStr), 0.f, 1.f);
+		}
+	}
+	// Only on the crew cloth (M_CrewFabric): the boat library's materials read Age as the hull's.
+	const auto WearGear = [GearAge, GearCare](UMaterialInstanceDynamic* Mid)
+	{
+		const UMaterial* Base = Mid ? Mid->GetMaterial() : nullptr;
+		if (GearAge < 0.f || !Base || Base->GetName() != TEXT("M_CrewFabric")) return;
+		Mid->SetScalarParameterValue(TEXT("Age"), GearAge);
+		Mid->SetScalarParameterValue(TEXT("Care"), GearCare);
+	};
 	// The face and the clothes follow the body's bones (the face's own joints rest: no expressions).
 	USkeletalMeshComponent* FacePart = nullptr;
 	for (int32 K = 1; K <= 2; ++K)
@@ -4389,6 +4412,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 				{
 					UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(ShortsCloth, this);
 					Mid->SetVectorParameterValue(TEXT("Color"), Col);
+					WearGear(Mid);
 					Part->SetMaterial(M, Mid);
 					continue;
 				}
@@ -4435,6 +4459,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 					if (UMaterialInstanceDynamic* Mid = Polo->CreateDynamicMaterialInstance(M))
 					{
 						Mid->SetVectorParameterValue(TEXT("Color"), M == Polo->GetMaterialIndex(TEXT("Rib")) ? Col * 0.92f : Col);
+						WearGear(Mid);
 						// Ultra audit item 7: its hem and cuffs move in the wind (UpdateCrewFigures feeds them).
 						static SailingArgs::FCachedFlag StiffClothArg(TEXT("SailingStiffCrewCloth"));
 						if (!StiffClothArg.Get()) CrewClothMids.Add(Mid);
@@ -4526,7 +4551,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Vest->RegisterComponent();
 		Vest->SetLeaderPoseComponent(Body);
 		const int32 Shell = Vest->GetMaterialIndex(TEXT("PFD"));
-		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) Mid->SetVectorParameterValue(TEXT("Color"), VestColour);
+		if (UMaterialInstanceDynamic* Mid = Shell >= 0 ? Vest->CreateDynamicMaterialInstance(Shell) : nullptr) { Mid->SetVectorParameterValue(TEXT("Color"), VestColour); WearGear(Mid); }
 		BoatParts.Add(Vest);
 	}
 	else if (CrewPFDMesh && Span > 10.f && Top > Waist)
@@ -4542,7 +4567,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Pfd->SetRelativeTransform(Place.GetRelativeTransform(Rig.Rest(BodyMesh, TEXT("spine_04"))));
 		Pfd->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Pfd->RegisterComponent();
-		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), VestColour);
+		if (UMaterialInstanceDynamic* Mid = Pfd->CreateDynamicMaterialInstance(0)) { Mid->SetVectorParameterValue(TEXT("Color"), VestColour); WearGear(Mid); }
 		BoatParts.Add(Pfd);
 	}
 	// The helm goes bare-headed (his hair and the trimmer's and bow's caps: crews are mixed).
@@ -4558,7 +4583,7 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		Cap->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Cap->RegisterComponent();
 		static const FLinearColor Caps[] = { FLinearColor(0.8f, 0.8f, 0.78f), FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.3f, 0.2f) };
-		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) Mid->SetVectorParameterValue(TEXT("Color"), Caps[CrewRole % UE_ARRAY_COUNT(Caps)]);
+		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) { Mid->SetVectorParameterValue(TEXT("Color"), Caps[CrewRole % UE_ARRAY_COUNT(Caps)]); WearGear(Mid); }
 		BoatParts.Add(Cap);
 	}
 	return Body;
