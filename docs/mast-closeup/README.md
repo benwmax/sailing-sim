@@ -35,5 +35,9 @@ Cost: a two-octave noise on painted spars only (surface kind 5), a few dozen ALU
 
 ## Check
 
+The PC's rerun on the flakes (`slip-diag-15-pr580.jpg`, head 4fbebebc) shows small scattered chips, about a tenth of
+the face; pulled back to CamDist 12 the berthed masts read clean white.
+
+
 Rerun the slip still on High. The mast in the left foreground should show soft-edged flakes, not squares.
 `scripts/gate.sh --scope world` covers the marina views.
