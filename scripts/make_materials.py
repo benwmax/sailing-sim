@@ -1190,7 +1190,7 @@ float wetAll = saturate(max(wet, deckWet * 0.8));
 float4 wear = CD0 >= 0.0 ? float4(CD0, CD1, CD2, CD3) : Wear;
 float3 col = (IsHull > 0.5 && CD4 >= 0.0) ? float3(CD4, CD5, CD6) : C.rgb;
 float zcm = LP.z;
-float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid));
+float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid)) * (1.0 - Grain);   // texture loop, wood: varnish isn't gelcoat (it chalked)
 float rough = R, coat = Coat;
 // E1 (docs/environment-1): the rest of the berthed boats' wear seed, per instance (custom data 12-15; -1 = none, as on
 // the player's and the AI boats, which keep the look above). Sun 0-1 (a south-west-facing hull bleaches), Wet = metres
@@ -1275,7 +1275,10 @@ rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 float fleck = saturate(vn * 3.0 - 1.9);
-col = lerp(col, col * lerp(0.72, 1.12, ring) * (1.0 - 0.25 * fleck), Grain);
+// Texture loop, wood: close up on High the varnish's detail map carries the fine grain, so this broad figure steps back
+// there (the grain then measures 3.4 mm across, as ash and sapele do: Tools/texloop/refs/wood.json).
+float fig = (DetailOn > 0.5 && abs(Surface - 6.0) < 0.5) ? lerp(1.0, 0.5, 1.0 - saturate((Depth - 150.0) / 450.0)) : 1.0;
+col = lerp(col, col * lerp(1.0 - 0.28 * fig, 1.0 + 0.12 * fig, ring) * (1.0 - 0.25 * fleck), Grain);
 rough = lerp(rough, rough * lerp(0.85, 1.25, ring), Grain);
 // Texture loop, waterline (Tools/texloop/waterline/waterline.py, the same table as the hero J/22 bake and the swatches):
 // the lake's scum line, slime and bottom film, from Dirt only (care scrubs it off). Measured on TX 7295 EC at Rush Creek:
@@ -1406,6 +1409,7 @@ grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
+float woodFail = 0.0;   // texture loop, wood: the varnish's failed share here (the detail map darkens its pores)
 float metalOut = Metal;    // rust is no metal: what it covers loses its metallic response (texture loop, rust lane)
 // Texture loop, rust lane (Tools/texloop/cards/rust.json): rust on the hardware itself. A 0.5 cm value noise (two octaves,
 // 1.3 and 0.45 cm) breaks it into patches on parts too small for the grime's noise; the rust is the colour measured from
@@ -1444,17 +1448,103 @@ else if (surf == 5)     // painted aluminium: the paint chalks (as dark gelcoat 
     rough = lerp(rough, 0.45, chip);
     coat *= 1.0 - chip;
 }
-else if (surf == 6)     // varnish: yellows, then breaks down in patches to grey wood with its gloss gone
+else if (surf == 6 || surf == 7)
 {
-    float fail = ageK * saturate(vn * 2.2 - 0.6 + ageK * 0.6);
-    col = lerp(col * lerp(float3(1.0, 1.0, 1.0), float3(1.06, 0.98, 0.82), ageK), float3(0.30, 0.28, 0.25), 0.7 * fail);
-    rough = lerp(rough, 0.75, fail);
-    coat *= 1.0 - fail;
-}
-else if (surf == 7)     // bare teak: weathers silver grey
-{
-    col = lerp(col, float3(0.30, 0.29, 0.27), 0.6 * ageK);
-    rough = lerp(rough, 0.9, 0.5 * ageK);
+    // Texture loop, wood (Tools/texloop/cards/wood.json, scored by Tools/texloop/wood/score_wood.py; wood_port.py mirrors this
+    // block line for line, keep them in step): Time (timeK: the wood darkens, varnish ambers, teak silvers) and Dirt (dirtK:
+    // failed varnish, water stains, mildew). A kept older boat (Care 0.5-0.9 and up, three years on) is revarnished and oiled.
+    float wCare = age >= 0.0 ? saturate(care) : 0.5, wAge = age >= 0.0 ? age : 6.0;
+    float keptK = smoothstep(0.5, 0.9, wCare) * saturate(wAge / 3.0);
+    // A field of patches stretched along the grain: vn's three octaves at 2.5x across the part.
+    float pn = 0.0, pa = 0.6, ps = 37.0;
+    for (int po = 0; po < 3; ++po)
+    {
+        float2 q = (float2(LP.x, LP.y * 2.5) + LP.zz * float2(0.6, -0.4)) / ps + po * 17.3;
+        float2 qi = floor(q), qf = frac(q);
+        qf = qf * qf * (3.0 - 2.0 * qf);
+        float b00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), b10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+        float b01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), b11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+        pn += pa * lerp(lerp(b00, b10, qf.x), lerp(b01, b11, qf.x), qf.y);
+        pa *= 0.5;
+        ps /= 4.1;
+    }
+    pn /= 1.05;
+    // one octave of value noise on a unit grid (wood_port.fine_noise): rounded blobs, not square cells
+    #define WOOD_VN(q_, out_) { float2 wq_ = (q_), wi_ = floor(wq_), wf_ = frac(wq_); wf_ = wf_ * wf_ * (3.0 - 2.0 * wf_); \
+        out_ = lerp(lerp(frac(sin(dot(wi_ + float2(3.1, 0), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi_ + float2(4.1, 0), float2(12.99, 78.23))) * 43758.5), wf_.x), \
+                    lerp(frac(sin(dot(wi_ + float2(3.1, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wi_ + float2(4.1, 1), float2(12.99, 78.23))) * 43758.5), wf_.x), wf_.y); }
+    if (surf == 6)      // varnish: the wood darkens and the film ambers with Time; it satins unless revarnished; with Dirt it hazes, then fails
+    {
+        col *= lerp(float3(1.0, 1.0, 1.0), float3(0.68, 0.56, 0.48), timeK * timeK);   // slow at first: decades, not years
+        float satin = saturate(timeK * 6.0) * (1.0 - keptK);
+        col *= lerp(float3(1.0, 1.0, 1.0), float3(1.03, 0.97, 0.84), 0.6 * timeK);
+        col *= lerp(1.0, lerp(0.84, 1.05, ring), timeK);   // the latewood darkens with the years: an old part's grain stands out
+        // dings: dents and scrapes along the grain, filled and recoated, gather with Time (an irregular dot in some 40 x 4 mm cells)
+        float2 wdq = float2(LP.x / 4.0, LP.y / 0.4), wdi = floor(wdq);
+        float sh0 = frac(sin(dot(wdi + float2(9.7, 1.3), float2(12.99, 78.23))) * 43758.5);
+        float2 so = float2(frac(sin(dot(wdi + float2(2.2, 5.5), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wdi + float2(7.4, 0.6), float2(12.99, 78.23))) * 43758.5)) - 0.5;
+        float sr = 0.12 + 0.18 * frac(sin(dot(wdi + float2(0.3, 8.8), float2(12.99, 78.23))) * 43758.5);
+        float wob;
+        WOOD_VN(wdq * 4.0, wob);
+        float sd = length((wdq - wdi - 0.5 - 0.5 * so) * float2(1.0, 1.4)) * (0.8 + 0.4 * wob);
+        float dings = (1.0 - smoothstep(sr * 0.7, sr, sd)) * step(1.0 - 0.4 * saturate(timeK * 1.5 - 0.3), sh0);
+        col = lerp(col, col * 0.5, 0.65 * dings);
+        float cover = 1.4 * pow(saturate(dirtK - 0.24), 2.0);      // the share of the surface whose film has failed
+        // the failure's outline: the patches, the soft early wood, and a 4 mm noise that makes the edge flake
+        float fl;
+        WOOD_VN(float2(LP.x / 0.5, LP.y / 0.35), fl);
+        float fv = pn * 0.75 + 0.25 * (1.0 - ring) + 0.06 * (fl - 0.5);
+        float thr = 0.725 - 0.62 * cover + 0.14 * cover * cover;  // fv's quantile at 1 - cover (measured on a 1 m face)
+        float fw = 0.05 + 0.10 * (1.0 - saturate((dirtK - 0.24) * 2.0));   // a soft worn-through edge early, a torn one late
+        float wFail = cover > 0.001 ? smoothstep(thr - fw, thr + fw, fv) : 0.0;
+        // worn through on a used boat the wood bleaches to a pale grey-tan; only neglect turns it dark grey
+        float3 bare = lerp(col * 0.45 + float3(0.24, 0.21, 0.17) * 0.55, float3(0.125, 0.105, 0.08), saturate((dirtK - 0.5) * 2.5));
+        float stainE = saturate(1.0 - abs(fv - thr) * 9.0) * saturate((dirtK - 0.5) * 2.5);   // black water stains at the torn edge
+        bare = lerp(bare, float3(0.035, 0.03, 0.025), 0.55 * stainE * saturate(0.6 + 0.4 * ring));
+        float lift = smoothstep(thr - 0.07, thr - 0.03, fv) * (1.0 - wFail) * saturate((dirtK - 0.6) * 2.5);   // the lifted film frosts
+        col = lerp(col, col * 0.75 + 0.06, 0.2 * lift);
+        // round the wear the film dulls first: a soft hazy halo, flatter and greyer, before it goes through
+        float dull = smoothstep(thr - 0.22, thr, fv) * (1.0 - wFail) * saturate((dirtK - 0.3) * 3.0);
+        float lumD = dot(col, float3(0.3, 0.59, 0.11));
+        col = lerp(col, float3(lumD, lumD, lumD) * 1.1, 0.5 * dull);
+        // what film is left on a neglected boat has gone dark amber and crazed
+        float oldK = saturate((dirtK - 0.6) * 2.5);
+        col *= lerp(float3(1.0, 1.0, 1.0), float3(0.62, 0.50, 0.34), oldK);
+        float crz;
+        WOOD_VN(float2(LP.x / 0.6, LP.y / 0.6), crz);
+        col = lerp(col, col * 0.4, 0.6 * (1.0 - smoothstep(0.0, 0.035, abs(crz - 0.5))) * oldK);
+        col = lerp(col, bare, wFail);
+        woodFail = wFail;
+        float hazeK = saturate((dirtK - 0.2) * 2.0);
+        float lumV = dot(col, float3(0.3, 0.59, 0.11));
+        col = lerp(col, float3(lumV, lumV, lumV) * 1.18, 0.35 * hazeK);   // the film hazes: scratches, dried spray
+        rough = lerp(lerp(lerp(lerp(rough, 0.45, 0.8 * satin), 0.36, hazeK), 0.55, dull), 0.78, wFail);
+        coat *= (1.0 - 0.25 * satin) * (1.0 - 0.2 * hazeK) * (1.0 - 0.6 * dull) * (1.0 - 0.6 * oldK) * (1.0 - wFail);
+    }
+    else                // bare teak: silvers in the sun within the first year unless an owner oils it; neglect brings mildew
+    {
+        float silver = saturate(timeK * 3.0) * (1.0 - keptK);
+        float lumT = dot(col, float3(0.3, 0.59, 0.11));
+        float sv = 0.95 * silver * (0.72 + 0.28 * saturate(pn * 2.0 - 0.3));    // patchy: hands keep some of it browner
+        col = lerp(col, float3(0.215, 0.205, 0.19) * sqrt(lumT / 0.2), sv);
+        float tsk;   // weathered teak is streaky along the grain, warm brown in the open early wood
+        WOOD_VN(float2(LP.x / 8.0, LP.y / 0.35), tsk);
+        col *= lerp(1.0, lerp(0.70, 1.15, tsk) * lerp(1.10, 0.86, ring), sv);
+        col = lerp(col, col * float3(1.12, 0.98, 0.82), 0.4 * sv * (1.0 - ring));
+        float oil = keptK * (1.0 - silver);
+        col *= lerp(1.0, 0.70, oil);
+        float mil = saturate((dirtK - 0.45) * 2.0) * (0.68 + 0.2 * pn + 0.12 * (1.0 - ring));   // streaky along the grain
+        col = lerp(col, float3(0.055, 0.052, 0.046), 0.95 * mil);
+        // mildew: dark streaks along the grain, diffuse at the ends, more of them the dirtier it is
+        float ms1, ms2;
+        WOOD_VN(float2(LP.x / 5.0, LP.y / 0.25), ms1);
+        WOOD_VN(float2(LP.x / 1.2, LP.y / 1.2), ms2);
+        float ms = smoothstep(0.45, 0.8, ms1) * (0.4 + 0.6 * ms2);
+        col = lerp(col, float3(0.022, 0.0208, 0.0184), 0.9 * ms * saturate((dirtK - 0.6) * 3.0));
+        rough = lerp(rough, 0.86, saturate(silver + 0.5 * dirtK)) - 0.12 * oil;
+        coat = 0.0;
+    }
+    #undef WOOD_VN
 }
 else if (surf == 8)     // rubber and soft PVC: UV bloom, a grey chalky skin
 {
@@ -1562,7 +1652,7 @@ float cav = 0.0;        // the detail's cavities: grime and standing water colle
 if (DetailOn > 0.5 && surf > 0 && surf != 13)
 {
     float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
-    float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.3, 0.15)
+    float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
@@ -1617,13 +1707,16 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13)
     else if (surf == 6)                  // varnished wood: the figure under the film, open pores
     {
         cav = m.g * fadeD;
-        col *= lerp(1.0, lerp(0.82, 1.12, m.r), fadeD);
+        col *= lerp(1.0, lerp(0.70, 1.16, m.r), fadeD);
+        col = lerp(col, col * 0.8, m.g * woodFail * fadeD);   // bare, failed wood: its open pores and checks go dark
     }
-    else if (surf == 7)                  // weathered teak: pale latewood, dark checks
+    else if (surf == 7)                  // weathered teak: pale latewood, dark checks (black as it's neglected)
     {
         cav = saturate(m.g + (1.0 - m.b) * 0.5) * fadeD;
-        col *= lerp(1.0, lerp(0.72, 1.15, m.r), fadeD);
+        float skT = saturate(timeK * 3.0) * step(0.0, age);     // silvered teak: the latewood ridges stand out
+        col *= lerp(1.0, lerp(0.72 - 0.10 * skT, 1.15 - 0.06 * skT, m.r), fadeD);
         rough = saturate(rough + fadeD * 0.1 * m.g);
+        col = lerp(col, float3(0.0275, 0.026, 0.023), m.g * saturate(0.3 + dirtK) * fadeD);
     }
     else if (surf == 1 || surf == 5)     // gelcoat and paint: orange peel, buffing scratches catching the light
     {
@@ -1927,8 +2020,10 @@ BOAT_LIBRARY = {
     "Stainless": ("M_BoatSurface", (0.62, 0.62, 0.63), 0.30, 1.0, 0.0, 0.0, 0.0),        # round 12: weathered 316, not chrome
     "Aluminium": ("M_BoatSurface", (0.78, 0.79, 0.81), 0.32, 1.0, 0.0, 0.0, 0.0),        # clear anodized spars
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
-    "Wood": ("M_BoatSurface", (0.30, 0.17, 0.07), 0.30, 0.0, 1.0, 0.0, 0.15),           # varnished ash tiller
-    "Teak": ("M_BoatSurface", (0.22, 0.19, 0.15), 0.85, 0.0, 0.0, 0.0, 0.5),           # weathered grey teak toe rails (G6)
+    # Texture loop, wood (Tools/texloop/cards/wood.json): new wood's colour; BOAT_CODE ages both (varnish yellows and
+    # fails, bare teak silvers) from the boat's Age and Care.
+    "Wood": ("M_BoatSurface", (0.330, 0.128, 0.042), 0.20, 0.0, 1.0, 0.0, 0.15),      # varnished ash and mahogany tiller
+    "Teak": ("M_BoatSurface", (0.453, 0.234, 0.101), 0.62, 0.0, 0.0, 0.0, 0.5),       # bare teak, new (silvers with age)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
     # The maxi (Tools/boats/maxi): clear-coated carbon (spars, wheels, pedestals) and the satin carbon of its deck gear.
