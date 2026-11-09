@@ -1,0 +1,36 @@
+{
+ "part": "CrewVest",
+ "card": {
+  "what": "The club's royal blue foam Type III life vest (lesson boats, North Texas Sailing School style): two thick foam front panels, three grey 38 mm webbing straps with black side-release buckles, one vertical strap on the right panel, long loose strap tails, lighter blue lining turned over the armholes and shoulders",
+  "boats": "every crew member on every boat (SKM_<Role>_Vest, tailored over each MetaHuman sailor's polo by Tools/blender/build_vest.py, skinned like the polo by scripts/import_crew_clothes.py)",
+  "distance": "the cockpit camera at 1 to 2 m; the helm's chest fills the frame in close-ups and photo mode",
+  "before": "Graphics G8 / round 11 vest: two vertical straps on each panel (a ladder), bands bunched low, 46 x 32 mm buckles, 2.2 cm foam with a flat edge wall, light blue piping on every edge, 4 cm shoulder straps, short tails from the far side"
+ },
+ "standin": "Tools/boatkit/partloop/vest_standin.py: a faceless 1.78 m mannequin in a polo (the MetaHuman polos are in the private crew pack); every size below is measured on it",
+ "references": [
+  {"id": "bean", "kind": "photo", "use": "layout, strap and buckle positions, tails, binding, proportions (three-quarter, seated)",
+   "url": "Bean's lesson photo IMG_9227 (Oct 4 2026, project files sailing-sim-ref/j22-lessons): shows people, measuring only, never in the repo"},
+  {"id": "buckle", "kind": "catalogue", "use": "sizes", "url": "https://www.upholsterysupplyonline.com/buckles-and-webbing/1-5-buckle-set-male-and-female-",
+   "note": "1.5 in side-release buckle set: 3 in (76 mm) long overall, 1.75 in (44 mm) wide, 0.5 in (13 mm) thick; 1.5 in webbing is 38 mm"}
+ ],
+ "sizes": [
+  {"id": "webbing", "name": "Webbing width", "target": 38.0, "unit": "mm", "tol": 0.05, "source": "1.5 in webbing"},
+  {"id": "buckle_len", "name": "Buckle, female + visible male, along the strap", "target": 76.0, "unit": "mm", "tol": 0.1, "source": "catalogue 3 in"},
+  {"id": "buckle_h", "name": "Buckle height across the strap", "target": 44.0, "unit": "mm", "tol": 0.1, "source": "catalogue 1.75 in"},
+  {"id": "front_foam", "name": "Front foam, shirt to shell, at the chest", "target": 30.0, "unit": "mm", "tol": 0.15, "source": "estimate from the photo's rolled armhole edge (no listing gives it): reported, loose tolerance"},
+  {"id": "band_fracs", "name": "Strap heights up from the hem, fraction of the vest's front height", "target": [0.19, 0.38, 0.64], "unit": "fraction", "tol": 0.04, "source": "measured on the photo"}
+ ],
+ "outline": null,
+ "features": [
+  {"id": "panels", "text": "Two thick, flat foam front panels meeting closed at the front", "manual": true},
+  {"id": "straps", "text": "Three grey webbing straps across the front, the top one at the armpits", "manual": true},
+  {"id": "buckles", "text": "Black side-release buckles beside the opening on the wearer's left panel, the male tongue crossing the opening", "slots": ["Buckle"], "manual": true},
+  {"id": "vertical", "text": "One vertical strap on the wearer's right panel only, crossing the lower two bands", "manual": true},
+  {"id": "tails", "text": "Loose strap ends from the opening: a short tab from the top strap, two long tails hanging down past the hem", "manual": true},
+  {"id": "binding", "text": "Lighter blue lining turned over the armholes and shoulders; hem and opening the shell's own blue", "slots": ["Piping"], "manual": true},
+  {"id": "edges", "text": "Rolled, rounded foam edges (not a thin lip)", "manual": true},
+  {"id": "shoulders", "text": "Wide shoulder straps over the top of the shoulder, a shallow V neckline at the front", "manual": true},
+  {"id": "nologo", "text": "No maker's logo or school letters (the photo's X2O / NTSS marks are left off: not ours to copy)", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 4, "note": "skinned garment; the G8 vest was 15k on the stand-in"}
+}
