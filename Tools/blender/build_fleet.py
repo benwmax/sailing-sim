@@ -798,7 +798,8 @@ def c22_hardware(H, top, mast_x, st, bw):
             kit_part("Turnbuckle", x, y, z + 0.035, math.pi / 2)
     kit_part("MastStep", mast_x, 0.0, top(mast_x))
     # (bow fittings pass, Nov 2026: the kit's Stemhead is now a forestay chainplate down the stem, set at the stem's top)
-    kit_part("Stemhead", bw - 0.003, 0.0, H.deck_z(bw - 0.003, 0.0))
+    sk = kit_part("Stemhead", bw - 0.003, 0.0, H.deck_z(bw - 0.003, 0.0))
+    socket("ForestayTack", sk["Forestay"])    # the forestay pins through the tang's hole (the hull-wide default is the old stem)
     for y in (-0.16, 0.16):
         kit_part("VentMushroom", mast_x + 0.45, y, top(mast_x + 0.45))
     for side in (1, -1):
@@ -1564,7 +1565,7 @@ socket("MastStep", (mast_x, 0, mast_step_z))
 if traveler:
     socket("Traveler_C", (traveler[0], 0, traveler[1]))
     socket("Traveler_S", (traveler[0], traveler[2], traveler[1]))
-if SPEC["rig"] in ("masthead", "tri"):
+if SPEC["rig"] in ("masthead", "tri") and "ForestayTack" not in SOCKETS:    # (the 22's comes off its Stemhead's tang)
     bw = MAIN.h["bow_x"]
     socket("ForestayTack", (bw - 0.04, 0, MAIN.deck_z(bw - 0.04, 0) + 0.02))
 if SPEC["rig"] == "masthead":
