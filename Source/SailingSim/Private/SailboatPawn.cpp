@@ -791,6 +791,18 @@ void ASailboatPawn::BeginPlay()
 		if (UMaterialInterface* R = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Boats/Rope/M_RigRope.M_RigRope"), nullptr, LOAD_NoWarn | LOAD_Quiet)))
 		{
 			RopeMaterial = R;
+			// Texture loop (docs/texture-loop/rope.md): -SailingBoatAge=<years>[,<care>] ages the lines with the hull.
+			FString AgeArg, AgeStr, CareStr;
+			if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false))
+			{
+				if (!AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
+				if (UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(R, this))
+				{
+					Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
+					Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
+					RopeMaterial = Mid;
+				}
+			}
 		}
 		if (UMaterialInterface* W = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, TEXT("/Game/Boats/Rope/M_RigWire.M_RigWire"), nullptr, LOAD_NoWarn | LOAD_Quiet)))
 		{
