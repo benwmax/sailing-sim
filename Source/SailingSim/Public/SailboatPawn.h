@@ -612,6 +612,9 @@ private:
 	bool bSailsStowed = false;
 	bool bStowedShown = false;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> TravelerCar;
+	// Sunfish deck gear: TravelerCar is the kit's snap hook on the bridle (its bite this far above its eye), not a car.
+	bool bTravelerHook = false;
+	static constexpr float TravelerHookBiteCm = 5.35f;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> MastMaterial;
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Drips;   // rain deck: falling drips (M_Spray quads)
