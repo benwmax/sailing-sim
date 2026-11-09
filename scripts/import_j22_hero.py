@@ -415,7 +415,12 @@ def materials():
     wood = ("PlywoodVarnish", "AshVarnish", "TeakVarnish", "TeakWeathered")
 
     def flat_values(name):
-        v = META["flat_materials"][name]
+        # A pack entry whose material no longer reaches the bake (RigTape since the mast gear's turnbuckles took over
+        # from j22_details', #550) keeps its pack index with a plain grey: the packs' indices are baked into the meshes.
+        v = META["flat_materials"].get(name)
+        if v is None:
+            unreal.log_warning(f"import_j22_hero: {name} is in J22H_packs.json but not in the bake's flat materials; plain grey")
+            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.5, "metallic": 0.0}
         gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish", "PlywoodVarnish", "AshVarnish")
         return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
                                         "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,
