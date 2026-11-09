@@ -1,0 +1,76 @@
+{
+  "surface": "metal",
+  "title": "Aluminium and stainless (spars and fittings)",
+  "plan": "https://claude.ai/artifact/Bq6JXirCL49khtgLL76h3q",
+  "kinds": {
+    "stainless": {
+      "surface_id": 3,
+      "slots": [
+        "Stainless"
+      ],
+      "what": "316 castings and tube: stanchions, pulpits, chainplates, shackles, cleat bases, turnbuckles"
+    },
+    "aluminium": {
+      "surface_id": 4,
+      "slots": [
+        "Aluminium",
+        "MastAluminium"
+      ],
+      "what": "clear-anodised extrusions: J/22 mast and boom, Sunfish spars, tiller extension"
+    }
+  },
+  "boats": {
+    "J22": [
+      "stainless",
+      "aluminium"
+    ],
+    "Sunfish": [
+      "aluminium",
+      "stainless (few small fittings)"
+    ]
+  },
+  "closest_camera_m": {
+    "stainless": 0.3,
+    "aluminium": 0.8
+  },
+  "pattern_mm": {
+    "detail_tile": 100,
+    "brushing_streak_width": [
+      0.05,
+      0.3
+    ],
+    "tea_stain_patch": [
+      2,
+      30
+    ],
+    "oxide_pit_bloom": [
+      1,
+      8
+    ],
+    "grime_run_width": [
+      3,
+      15
+    ]
+  },
+  "levels_needed": [
+    "L0",
+    "L2",
+    "L4"
+  ],
+  "wear_split": "Shared timeK/dirtK (PR #535): timeK dulls polished stainless and fades anodising; dirtK brings the film, tea stain, grime and oxide powder",
+  "replaces": "BOAT_CODE surf 3 and 4 weathering: one ageK fade/tea stain (L1 = L0, L3 looked half neglected)",
+  "lake": "Fresh water: tea staining and oxide bloom at about a third of the salt-water amount (salt flag doubles them later for Galveston)",
+  "budget": {
+    "new_maps": 0,
+    "medium": "shader math only (the freckles and spots are math, not maps)",
+    "extra_texture_reads": 0,
+    "alu_ops": "about 60 extra on stainless/aluminium pixels only (three 8-corner value noises)"
+  },
+  "levels_scored": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4"
+  ]
+}

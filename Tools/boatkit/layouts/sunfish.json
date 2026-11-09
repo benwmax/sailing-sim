@@ -1,7 +1,8 @@
 {
-  "_about": "Shared kit parts on the Sunfish (Tools/boatkit/bk_parts.py), placed by build_fleet.py's place_kit. Body frame metres (+y starboard); on: deck, sole (the cockpit well's floor) or z; mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks are built hanging from their head: flip stands one on deck). Replaces the hand-built halyard cleat and mainsheet block (Boats 11).",
+  "_about": "Shared kit parts on the Sunfish (Tools/boatkit/bk_parts.py), placed by build_fleet.py's place_kit. Body frame metres (+y starboard); on: deck, sole (the cockpit well's floor) or z; mirror: also at -y; yaw degrees about Z; flip: turned over (the kit's blocks are built hanging from their head: flip stands one on deck); socket: [the model's socket, the part's socket it sits at]. Replaces the hand-built halyard cleat and mainsheet block (Boats 11). Sunfish deck gear (docs/part-detail-loop/sunfish.md): the mainsheet's ratchet block stands on an eye on the deck forward of the cockpit and aft of the daggerboard trunk, as the class rigs it (it had been a 29 mm block on the after deck, where the Sunfish has none).",
   "parts": [
     {"part": "HornCleat", "size": "100", "x": -0.47, "y": -0.18, "on": "deck"},
-    {"part": "Block29", "x": -1.24, "y": 0.0, "on": "deck", "flip": true}
+    {"part": "Padeye", "x": -0.40, "y": 0.0, "on": "deck", "yaw": 90},
+    {"part": "Ratchet57", "x": -0.40, "y": 0.0, "on": "deck", "dz": 0.0188, "flip": true, "kw": {"standup": true}, "socket": ["MainsheetRatchet", "Axle"]}
   ]
 }

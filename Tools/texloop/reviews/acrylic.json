@@ -1,0 +1,40 @@
+{
+ "surface": "acrylic",
+ "method": "three fresh blind reviewers per round (Claude subagents), five shuffled levels to match to the level descriptions; A/B: this round vs the last at L2 and L4, sides randomised",
+ "rounds": [
+  {
+   "round": 1,
+   "change": "first build: kind 14, haze, dust, crazing, wipe scratches, water spots, mildew",
+   "ladder": [
+    5,
+    5,
+    5
+   ],
+   "ab": {
+    "vs": "main (the gelcoat chalk only)",
+    "L2": "won 3 of 3",
+    "L4": "won 3 of 3"
+   },
+   "kept": true
+  },
+  {
+   "round": 2,
+   "change": "scratches gathered where hands wipe, water spots in drying patches",
+   "ladder": [
+    5,
+    5,
+    5
+   ],
+   "ab": {
+    "L2": "1 of 3",
+    "L4": "2 of 3"
+   },
+   "notes": "reverted: reviewers called the two rounds very close; not 2 of 3 at both levels"
+  }
+ ],
+ "material": "every reviewer, both rounds: yes, smoked acrylic (also read as tinted glass or polycarbonate)",
+ "least_real": [
+  "water spots read as stamped round dots, scratches as short random dashes, not wipe arcs",
+  "the swatch panes show little reflection (the numpy renderer has no screen reflections; the side pane faces the dark slipway) and no rim or gasket: in-game stills are the better judge"
+ ]
+}

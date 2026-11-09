@@ -1,0 +1,14 @@
+{
+ "surface": "crewfabric",
+ "_about": "Bean's own lesson photos (Rush Creek, Oct 2026; project files sailing-sim-ref/j22-lessons, git-ignored on the Mac under Data/Reference/raw/j22-lessons) are the only worn-gear photos reachable: they show people, so they are measured only and never committed. The CC0 scans give the cloth's weave. Wikimedia's image host refused the cloud (HTTP 400), so no other faded life-jacket photos; L1, L3 and L4 are estimates.",
+ "refs": [
+  {"id": "IMG_9227", "src": "Bean's lesson photo, Oct 4 2026, overcast", "licence": "own photo (people: measure only)", "use": "measure", "level": "L2",
+   "what": "North Texas Sailing School royal blue foam Type III vest after several seasons; front panel clear of webbing, overcast light",
+   "albedo_lab_photo": [37.3, 16.0, -50.6], "note": "camera white balance slightly blue (the overcast sky reads b* -6.4, the grey webbing -2): corrected b* about -47; chroma about 53"},
+  {"id": "IMG_9266", "src": "Bean's lesson photo, Oct 11 2026, sun", "licence": "own photo (people: measure only)", "use": "measure", "level": "L2",
+   "what": "three of the same vests in sun; caps (a white school cap, a navy cap)", "note": "sunlit and backlit: used to check the look, not measured"},
+  {"id": "Fabric048", "url": "https://ambientcg.com/a/Fabric048", "licence": "CC0", "use": "ship", "level": "all", "what": "polyester vest weave (the PFD shell's scan, already in the game)"},
+  {"id": "Fabric070", "url": "https://ambientcg.com/a/Fabric070", "licence": "CC0", "use": "ship", "level": "all", "what": "sportswear knit (the polo's scan)"},
+  {"id": "Fabric036", "url": "https://ambientcg.com/a/Fabric036", "licence": "CC0", "use": "ship", "level": "all", "what": "smooth woven cotton (the cap's and shorts' scan)"}
+ ]
+}

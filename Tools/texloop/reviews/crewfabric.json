@@ -1,0 +1,16 @@
+{
+ "surface": "crewfabric",
+ "method": "three fresh blind reviewers per round (Claude subagents): the five levels shuffled, to match to the level descriptions; A/B against the last round (round 1 against main) beside Bean's L2 lesson photo, sides randomised",
+ "rounds": [
+  {"round": 1, "change": "first build: fade, coating loss, grime, pilling, tide marks (noise contours), mildew",
+   "ladder": [5, 3, 5], "ab": {"L2": "beat main 3 of 3; nobody called it the wrong material"},
+   "notes": "the swap was L0/L1; all three: the cap's tide marks read as drawn squiggles"},
+  {"round": 2, "change": "tide marks only round the cap's sweatband, stacked wavering lines 1.6 cm apart; none on the nylon; fade by timeK^0.7 (L1 shows a touch) with lower weights; stronger grime blotches; sparser, jittered mildew specks within 1.5 m only",
+   "ladder": [5, 5, 5], "ab": {"L2": "won 3 of 3 (round 1's cap lines looked painted on)", "L4": "won 1 of 3 (two preferred round 1's heavier look)"},
+   "notes": "kept: this is the PR"},
+  {"round": 3, "change": "denser, larger mildew clusters, darker from afar",
+   "ladder": [5, 5, 3], "ab": {"L4": "won 1 of 3 vs round 2 (specks read as pixel dust)"},
+   "notes": "lost: reverted to round 2"}
+ ],
+ "standing_complaints": "the CPU test shapes have no seams, straps or creases (in game the vest has them); the Fabric048 scan's fine grid shows at 50 cm in the swatches (it is the existing material's, unchanged here); wear could gather more at edges and straps (no edge mask in the garments' UVs yet)"
+}
