@@ -901,7 +901,9 @@ void ASailboatPawn::BeginPlay()
 		// Reset has not stepped the physics yet, so work out the starting tack from the wind and heading.
 		const Vec3 W = GetWind().VelocityAt(Vec3(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, 10.0), Boat.GetState().Time);
 		DemoFirstSign = WrapAngle(std::atan2(-W.Y, -W.X) - FMath::DegreesToRadians(StartYaw)) >= 0.0 ? 1.0 : -1.0;
-		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : HoldTwa * DemoFirstSign;
+		// A positive -SailingHoldTWA holds whichever tack she starts on; a negative one is port, as -SailingTWA's sign
+		// is (it had been flipped again by the port start's sign: TWA -60 with HoldTWA -60 tacked onto starboard).
+		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : (HoldTwa < 0.f ? double(HoldTwa) : HoldTwa * DemoFirstSign);
 		DemoPilot.MaxTiller = 0.8;
 		CameraYaw = bDemoTacks ? 150.f : 210.f;
 		CameraPitch = -14.f;

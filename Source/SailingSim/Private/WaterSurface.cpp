@@ -1330,6 +1330,83 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 	bWakePending = true;
 }
 
+void AWaterSurface::BuildShoreDepth(const FLakeData& Lake, const Sailing::FLakeTerrain& Terrain, const FVector2D& Origin, int32 Res, float CellM,
+	TArray<float>& OutDepth)
+{
+	OutDepth.SetNumUninitialized(Res * Res);
+	ParallelFor(Res, [&](int32 R)
+	{
+		for (int32 C = 0; C < Res; ++C)
+		{
+			OutDepth[R * Res + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * CellM, Origin.Y + (C + 0.5) * CellM));
+		}
+	});
+	// The cells within Reach of a footprint's box (clamped to the map), each given Depth(P) where that is shallower.
+	auto Stamp = [&](FVector2D Lo, FVector2D Hi, double Reach, TFunctionRef<float(const FVector2D&)> Depth)
+	{
+		Lo -= FVector2D(Reach, Reach);
+		Hi += FVector2D(Reach, Reach);
+		const int32 R0 = FMath::Max(0, FMath::FloorToInt((Lo.X - Origin.X) / CellM)), R1 = FMath::Min(Res - 1, FMath::CeilToInt((Hi.X - Origin.X) / CellM));
+		const int32 C0 = FMath::Max(0, FMath::FloorToInt((Lo.Y - Origin.Y) / CellM)), C1 = FMath::Min(Res - 1, FMath::CeilToInt((Hi.Y - Origin.Y) / CellM));
+		for (int32 R = R0; R <= R1; ++R)
+		{
+			for (int32 C = C0; C <= C1; ++C)
+			{
+				float& D = OutDepth[R * Res + C];
+				D = FMath::Min(D, Depth(FVector2D(Origin.X + (R + 0.5) * CellM, Origin.Y + (C + 0.5) * CellM)));
+			}
+		}
+	};
+	// A launch ramp's dry part is an obstacle (FMarina::ForEachObstacleLine) but its slab runs on under the water: the
+	// ramp is stamped as the slab below, not as a structure standing in the water (its capsule's round end lay 2.65 m
+	// past the waterline, over the slab, as a disc of lapping foam).
+	const TArray<FMarinaRamp>& Ramps = Lake.Marina.Ramps;
+	auto IsRamp = [&Ramps](const Sailing::FObstacleSegment& S)
+	{
+		for (const FMarinaRamp& Ramp : Ramps)
+		{
+			const FVector2D Head = 0.5 * (Ramp.In + Ramp.Out), Wet = Head + Ramp.Dir * Ramp.DryLength();
+			if (FVector2D::Distance(FVector2D(S.AX, S.AY), Head) < 0.01 && FVector2D::Distance(FVector2D(S.BX, S.BY), Wet) < 0.01) return true;
+		}
+		return false;
+	};
+	// Docks, piers and breakwaters standing in the water: the waves lap against them too. Out to ShoreReachM past the
+	// radius the stamp is 2 m deep, where the shading stops reading the depth (shoal), so it meets the terrain's
+	// without a step. (It stopped 2 m past the segment's ends: inside the ramp's 2.65 m half width, a hard-edged square.)
+	for (const Sailing::FObstacleSegment& S : Lake.Obstacles)
+	{
+		if (S.Bottom > 0.0) continue; // bridge decks overhead
+		if (IsRamp(S)) continue;
+		const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
+		const FVector2D AB = B - A;
+		const double Len2 = AB.SizeSquared();
+		Stamp(FVector2D(FMath::Min(A.X, B.X), FMath::Min(A.Y, B.Y)), FVector2D(FMath::Max(A.X, B.X), FMath::Max(A.Y, B.Y)), S.Radius + ShoreReachM,
+			[&](const FVector2D& P)
+			{
+				const double T = Len2 > 1e-6 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.0, 1.0) : 0.0;
+				const float Gap = float(FMath::Max(0.0, FVector2D::Distance(P, A + AB * T) - S.Radius));
+				return 0.05f + 0.6f * Gap;
+			});
+	}
+	// The ramps: the water over the slab (0.05 m where it stands out of the water, so the waves lap up it at the
+	// waterline), and beside and past it the slab's own depth there plus 0.6 m a metre out, as for a dock.
+	for (const FMarinaRamp& Ramp : Ramps)
+	{
+		const FVector2D Head = 0.5 * (Ramp.In + Ramp.Out), Side(-Ramp.Dir.Y, Ramp.Dir.X);
+		const FVector2D Corners[] = { Ramp.In, Ramp.Out, Ramp.In + Ramp.Dir * FMarinaRamp::Length, Ramp.Out + Ramp.Dir * FMarinaRamp::Length };
+		FBox2D Box(ForceInit);
+		for (const FVector2D& K : Corners) Box += K;
+		Stamp(Box.Min, Box.Max, ShoreReachM, [&](const FVector2D& P)
+		{
+			const double T = FVector2D::DotProduct(P - Head, Ramp.Dir), Across = FMath::Abs(FVector2D::DotProduct(P - Head, Side));
+			const double Along = FMath::Clamp(T, 0.0, double(FMarinaRamp::Length));
+			const double Z = Ramp.Top + (FMarinaRamp::Foot - Ramp.Top) * Along / FMarinaRamp::Length;
+			const double Gap = FVector2D(FMath::Max(0.0, Across - 0.5 * FMarinaRamp::Width), FMath::Max(0.0, -T) + FMath::Max(0.0, T - FMarinaRamp::Length)).Size();
+			return float(FMath::Max(0.05, -Z) + 0.6 * Gap);
+		});
+	}
+}
+
 void AWaterSurface::UpdateShoreMap()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1366,35 +1443,7 @@ void AWaterSurface::UpdateShoreMap()
 		FShoreFrame Out;
 		Out.Origin = Origin;
 		Out.Level = Level;
-		Out.Depth.SetNumUninitialized(kShoreRes * kShoreRes);
-		ParallelFor(kShoreRes, [&](int32 R)
-		{
-			for (int32 C = 0; C < kShoreRes; ++C)
-			{
-				Out.Depth[R * kShoreRes + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM));
-			}
-		});
-		// Docks, piers and breakwaters standing in the water: the waves lap against them too.
-		for (const FObstacleSegment& S : Lake->Obstacles)
-		{
-			if (S.Bottom > 0.0) continue; // bridge decks overhead
-			const FVector2D A(S.AX, S.AY), B(S.BX, S.BY);
-			const FVector2D Lo(FMath::Min(A.X, B.X) - 2.0, FMath::Min(A.Y, B.Y) - 2.0), Hi(FMath::Max(A.X, B.X) + 2.0, FMath::Max(A.Y, B.Y) + 2.0);
-			const int32 R0 = FMath::Max(0, FMath::FloorToInt((Lo.X - Origin.X) / kShoreCellM)), R1 = FMath::Min(kShoreRes - 1, FMath::CeilToInt((Hi.X - Origin.X) / kShoreCellM));
-			const int32 C0 = FMath::Max(0, FMath::FloorToInt((Lo.Y - Origin.Y) / kShoreCellM)), C1 = FMath::Min(kShoreRes - 1, FMath::CeilToInt((Hi.Y - Origin.Y) / kShoreCellM));
-			for (int32 R = R0; R <= R1; ++R)
-			{
-				for (int32 C = C0; C <= C1; ++C)
-				{
-					const FVector2D P(Origin.X + (R + 0.5) * kShoreCellM, Origin.Y + (C + 0.5) * kShoreCellM);
-					const FVector2D AB = B - A;
-					const double T = AB.SizeSquared() > 1e-6 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / AB.SizeSquared(), 0.0, 1.0) : 0.0;
-					const float Gap = float(FMath::Max(0.0, FVector2D::Distance(P, A + AB * T) - S.Radius));
-					float& D = Out.Depth[R * kShoreRes + C];
-					D = FMath::Min(D, 0.05f + 0.6f * Gap);
-				}
-			}
-		}
+		BuildShoreDepth(*Lake, Terrain, Origin, kShoreRes, kShoreCellM, Out.Depth);
 		return Out;
 	});
 	bShorePending = true;
