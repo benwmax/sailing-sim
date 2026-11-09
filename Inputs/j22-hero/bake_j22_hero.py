@@ -467,6 +467,12 @@ for m in bpy.data.materials:
         report["flat_materials"][m.name] = {"base_color_linear": [round(c, 4) for c in b.inputs["Base Color"].default_value[:3]],
                                             "roughness": round(b.inputs["Roughness"].default_value, 3),
                                             "metallic": round(b.inputs["Metallic"].default_value, 3)}
+# rope materials (j22_rope: image textures, so not flat) that stay on a game part's mesh as a fixed length of line (the
+# jib tack strop since #561, the interior's sail bag tie): their colourway's base colour, so the import can give the slot
+# MI_J22H_<name> on M_BoatSurface's rope kind. The game's live ropes (FRigLine) never use these slots.
+for m in bpy.data.materials:
+    if m.name.startswith("Rope") and m.name not in report["flat_materials"] and m.users:
+        report["flat_materials"][m.name] = {"base_color_linear": [round(c, 4) for c in m.diffuse_color[:3]], "roughness": 0.75, "metallic": 0.0}
 
 # export for the game: SM_J22H_Hull/Mast/Boom/Rudder about their pivots plus J22H_sockets.json, the same layout as
 # Tools/blender/build_j22.py, so scripts/import_boats.py imports them as tag "J22H". Ropes, wires, sails and the vang

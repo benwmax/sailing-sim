@@ -1431,18 +1431,52 @@ for (int ho = 0; ho < 2; ++ho)
 }
 float hwMt = abs(frac(hwN * 3.5) * 2.0 - 1.0);   // a continuous mottle (no contour steps): dark crust to orange
 float3 hwRust = lerp(float3(0.075, 0.024, 0.010), float3(0.256, 0.071, 0.020), hwMt);
-if (surf == 3)          // 316 stainless: tea-staining, a brown bloom round welds and crevices, worse on salt water
-{
-    float tea = ageK * (0.35 + 0.65 * salt) * saturate(vn * 1.6 - 0.35);
-    col = lerp(col, float3(0.28, 0.17, 0.09), 0.45 * tea);
-    rough = lerp(rough, 0.55, tea);
+// Metal texture loop (Tools/texloop/cards/metal.json): stainless and anodising read the shared split above. timeK (care
+// can't undo it): fine scratches dull the polish, anodising fades to a greyer matt satin. dirtK (care removes it): a
+// grey-brown film, tea stain, grime, white oxide powder. metChalk: how much of the pixel is that powder, which is not
+// metal (the outputs below give it a diffuse albedo instead of F0).
+float metChalk = 0.0;
+// One octave of smooth 3D value noise at S cm (round freckles on any face, no hash blocks): 8 corners.
+#define MET_VN3(S, K, OUT) { float3 mq = LP / (S), mi = floor(mq), mf = frac(mq); mf = mf * mf * (3.0 - 2.0 * mf); \
+    float c000 = frac(sin(dot(mi, K)) * 43758.5), c100 = frac(sin(dot(mi + float3(1, 0, 0), K)) * 43758.5); \
+    float c010 = frac(sin(dot(mi + float3(0, 1, 0), K)) * 43758.5), c110 = frac(sin(dot(mi + float3(1, 1, 0), K)) * 43758.5); \
+    float c001 = frac(sin(dot(mi + float3(0, 0, 1), K)) * 43758.5), c101 = frac(sin(dot(mi + float3(1, 0, 1), K)) * 43758.5); \
+    float c011 = frac(sin(dot(mi + float3(0, 1, 1), K)) * 43758.5), c111 = frac(sin(dot(mi + float3(1, 1, 1), K)) * 43758.5); \
+    OUT = lerp(lerp(lerp(c000, c100, mf.x), lerp(c010, c110, mf.x), mf.y), lerp(lerp(c001, c101, mf.x), lerp(c011, c111, mf.x), mf.y), mf.z); }
+if (surf == 3)          // 316 stainless: polished new (R x 0.6), dulled by fine scratches with time and a grey-brown film with dirt;
+{                       // tea-staining: golden-brown translucent freckles, then patches (lake L2 ~2% of the area, L4 ~13%; a kept L3 none)
+    float teaK = dirtK * (0.45 + 0.55 * salt);
+    float tz1 = 0.0, tz2 = 0.0;
+    MET_VN3(0.25, float3(41.3, 17.7, 37.1), tz1);
+    MET_VN3(0.11, float3(19.1, 53.3, 37.1), tz2);
+    float tz = 0.65 * tz1 + 0.35 * tz2;
+    float freckThr = 0.786 - 0.45 * teaK, teaThr = 0.851 - 0.49 * teaK;
+    float freck = smoothstep(freckThr, freckThr + 0.16, tz) * smoothstep(0.48, 0.62, vn) * smoothstep(0.12, 0.22, teaK);
+    float tea = max(freck, smoothstep(teaThr, teaThr + 0.03, vn) * saturate(tz * 1.8 - 0.25)) * (0.5 + 0.5 * saturate(teaK * 2.5));
+    rough = rough * (0.6 + 0.7 * timeK) + 0.15 * dirtK;
+    col = lerp(col, col * float3(0.92, 0.89, 0.84), 0.8 * dirtK);
+    col = lerp(col, col * float3(0.84, 0.64, 0.44), 0.85 * tea);   // a translucent film: the metal shows through
+    rough = lerp(rough, 0.5, tea);
 }
-else if (surf == 4)     // clear anodising: fades to a chalky matt grey
-{
+else if (surf == 4)     // clear anodising: time fades it to a greyer, matt satin; dirt brings a grime film and white oxide powder,
+{                       // scattered spots first, then mottled patches (lake L2 ~1% of the area, L4 ~7%, kept L3 none; salt more)
     float lumA = dot(col, float3(0.3, 0.59, 0.11));
-    col = lerp(col, float3(lumA, lumA, lumA) * 0.92 + 0.03, 0.5 * ageK);
-    rough = lerp(rough, 0.55, ageK * (0.5 + 0.5 * vn));
+    col = lerp(col, float3(lumA, lumA, lumA) * 0.85, 0.6 * timeK);
+    rough = lerp(rough, 0.55, timeK * (0.7 + 0.3 * vn));
+    float grimeA = 0.8 * dirtK * saturate(vn * 2.5 - 0.8);
+    col *= (1.0 - 0.25 * grimeA) * lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.98, 0.95), grimeA);
+    rough += 0.08 * dirtK;
+    float oxK = dirtK * (0.4 + 0.6 * salt);
+    float oz = 0.0;
+    MET_VN3(0.3, float3(27.1, 61.7, 37.1), oz);
+    float oxThr = 0.807 - 0.40 * oxK, spotThr = 0.96 - 0.30 * oxK;
+    float spots = smoothstep(spotThr, spotThr + 0.04, oz) * smoothstep(0.45, 0.60, vn) * smoothstep(0.10, 0.18, oxK);
+    float oxA = max(spots, smoothstep(oxThr, oxThr + 0.04, vn) * saturate(oz * 2.2 - 0.7));
+    col = lerp(col, float3(0.80, 0.80, 0.78), 0.85 * oxA);
+    rough = saturate(lerp(rough, 0.9, oxA));
+    metChalk = 0.9 * oxA;
 }
+#undef MET_VN3
 else if (surf == 5)     // painted aluminium: the paint chalks (as dark gelcoat does, above) and chips to grey metal
 {
     float chipCell = frac(sin(dot(floor(LP.xz / 1.3), float2(27.1, 61.7))) * 4375.5);
@@ -1860,7 +1894,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : surf == 14 ? float2(0.02, 0.02) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
-    float strength = (surf == 4 ? 0.5f : surf == 5 ? 0.7f : (surf == 11 || surf == 14) ? 0.8f : 1.0f) * fadeD;
+    float strength = (surf == 3 ? 0.35f + 0.65f * timeK : surf == 4 ? 0.5f : surf == 5 ? 0.7f : (surf == 11 || surf == 14) ? 0.8f : 1.0f) * fadeD;   // polished stainless: brushing shows with time
     float3 LZ = cross(LX, LY);
     float3 bw = pow(abs(float3(dot(n, LX), dot(n, LY), dot(n, LZ))), 4.0);
     bw /= bw.x + bw.y + bw.z + 1e-5;
@@ -1901,9 +1935,11 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     else if (surf == 3 || surf == 4 || surf == 12)     // brushing streaks in the gloss; stainless tea-stains in its pits first
     {
         cav = m.b * fadeD;
-        col *= lerp(1.0, lerp(0.94, 1.04, m.r), fadeD);
-        rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
-        col = lerp(col, float3(0.28, 0.17, 0.09), (surf == 3 ? 0.6f : 0.0f) * cav * ageK * (0.4 + 0.6 * salt));
+        col *= lerp(1.0, lerp(0.94 - 0.04 * timeK, 1.04 + 0.02 * timeK, m.r), fadeD);   // scratches show more with time
+        rough = saturate(rough + fadeD * (m.g - 0.5) * (0.2 + 0.25 * timeK));
+        float pitK = cav * dirtK * (0.45 + 0.55 * salt);     // tea stain (stainless) or oxide powder (aluminium) in the pits first
+        col = surf == 3 ? lerp(col, col * float3(0.84, 0.64, 0.44), 0.7 * pitK) : lerp(col, float3(0.80, 0.80, 0.78), 0.6 * pitK);
+        metChalk = surf == 4 ? saturate(metChalk + 0.6 * pitK) : metChalk;
         float pit = surf == 12 ? saturate(cav * (age >= 0.0 ? saturate((age - 1.0) / 12.0) * (1.0 - 0.7 * saturate(care)) : ageK)) : 0.0f;
         col = lerp(col, hwRust, pit);     // steel rusts in its pits first
         metalOut *= 1.0 - pit;
@@ -2011,8 +2047,8 @@ float AO = 1.0;
 float cornerK = (1.0 - AO) * (1.0 - smoothstep(400.0, 800.0, Depth)) * (1.0 - Metal) * (1.0 - Grain);
 col *= 1.0 - 0.45 * cornerK;
 float3 base = col * lerp(1.0, 1.0 - 0.55 * Porosity, wetAll);
-AlbedoOut = base * (1.0 - metalOut);
-F0Out = lerp(float3(0.04, 0.04, 0.04), base, metalOut);
+AlbedoOut = base * (1.0 - metalOut * (1.0 - metChalk));   // metChalk: oxide powder on aluminium is a white dielectric
+F0Out = lerp(float3(0.04, 0.04, 0.04), base, metalOut * (1.0 - metChalk));
 RoughOut = lerp(rough, lerp(0.06, rough, 0.25 + 0.4 * saturate(NonSkid)), wetAll * (1.0 - Metal)); // wet non-skid stays satin
 // A water film is a clear coat of its own: the second (gloss) lobe grows where the surface is wet.
 // Rain deck: a puddle is a mirror (sharper on High and Ultra); rain on metal tightens its gloss between the beads.
