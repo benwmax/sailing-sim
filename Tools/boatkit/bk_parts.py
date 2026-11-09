@@ -472,19 +472,21 @@ def _mb_hub(sfx, rb, yi, yo, rsi, cz, k, steel):
     return out
 
 
-def _mb_swivel_shackle(zh, rb, k, steel):
-    """Swivel collar on the head at zh, post, eye (hole along Y) and a D-shackle with its pin along X at the origin."""
+def _mb_swivel_shackle(zh, rb, k, steel, neck=1.0):
+    """Swivel collar on the head at zh, post, eye (hole along Y) and a D-shackle with its pin along X at the origin.
+    `neck` thickens the post, the eye's wire and the collar (Ratchet57: Bean, Nov 9 2026, the neck read thin edge-on)."""
     objs = []
-    collar = G.lathe("collar", [(0, -0.0006 * k), (rb * 0.27, -0.0006 * k), (rb * 0.27, 0.0012 * k), (rb * 0.22, 0.0024 * k), (0, 0.0024 * k)], steel, 28)
+    cr = rb * 0.27 * (1 + (neck - 1) * 0.35)
+    collar = G.lathe("collar", [(0, -0.0006 * k), (cr, -0.0006 * k), (cr, 0.0012 * k * neck), (cr * 0.82, 0.0024 * k * neck), (0, 0.0024 * k * neck)], steel, 28)
     collar.location = (0, 0, zh)
     G.bake_xform(collar)
     objs.append(G.finish(collar, 0, sharp=50))
-    ez, er, emin = -0.013 * k, 0.0034 * k, 0.0014 * k
-    post = G.cyl("post", (0, 0, zh), (0, 0, ez - er + 0.0006 * k), 0.0040 * k, steel, 24, r1=0.0034 * k)
+    ez, er, emin = -0.013 * k, 0.0034 * k * (1 + (neck - 1) * 0.3), 0.0014 * k * neck
+    post = G.cyl("post", (0, 0, zh), (0, 0, ez - er + 0.0006 * k), 0.0040 * k * neck, steel, 24, r1=0.0034 * k * neck)
     objs.append(G.finish(post, 0.0003 * k))
     eye = G.tube("eye", G.arc_pts((0, 0, ez), er, 0, G.TAU, 24, "xz")[:-1], emin, steel, 10, closed=True)
     objs.append(G.finish(eye))
-    w, wr = 0.0046 * k, 0.0018 * k
+    w, wr = 0.0046 * k * (1 + (neck - 1) * 0.3), 0.0018 * k * (1 + (neck - 1) * 0.8)
     bow = G.tube("bow", [(-w, 0, 0), (-w, 0, -0.0075 * k)] + G.arc_pts((0, 0, -0.0075 * k), w, math.pi, G.TAU, 14, "xz")[1:-1] + [(w, 0, -0.0075 * k), (w, 0, 0)], wr, steel, 10)
     objs.append(G.finish(bow))
     for sx in (-1, 1):
@@ -515,7 +517,7 @@ def _mb_ratchet_sheave(name, R, ts, rsi, cz, k, mat, facets=12, segs=96):
 
 
 def _modern_block_parts(name, sheave_d, becket=False, plate=None, overall=None, head=1.66, hk=None, ratchet=False,
-                        holes=True):
+                        holes=True, neck=1.0):
     """Part detail loop round 1 (docs/part-detail-loop): a modern moulded-cheek swivel block, measured against a 40 mm
     catalogue block (86 mm from the shackle pin to the foot, 4 mm pin, 10 mm line) and reference photos.
 
@@ -613,7 +615,7 @@ def _modern_block_parts(name, sheave_d, becket=False, plate=None, overall=None, 
     # boss read as a hardware-store pulley)
     objs += _mb_hub("", rb, yi, yo, rsi, cz, k, steel)
     # swivel: collar on the head, post, eye (hole along Y); D-shackle: pin along X at the origin, bow through the eye
-    objs += _mb_swivel_shackle(zh, rb, hk, steel)
+    objs += _mb_swivel_shackle(zh, rb, hk, steel, neck)
     if becket:
         bz = cz - rb - 0.0022 * k
         bk = G.tube("becket", [(-0.0050 * k, 0, cz - R * 0.6)] + G.arc_pts((0, 0, bz), 0.0050 * k, math.pi, G.TAU, 14, "xz")[1:-1] + [(0.0050 * k, 0, cz - R * 0.6)],
@@ -885,7 +887,7 @@ def ratchet57(standup=False):
     """Sunfish deck gear (Nov 2026, docs/part-detail-loop/sunfish.md): the moulded-cheek swivel block at the catalogue's
     57 mm ratchet size (103 mm overall, 10 mm line), a faceted ratchet sheave, an on/off switch on each cheek and a 6 mm
     swivel shackle. `standup`: a stand-up spring round the shackle and swivel, so the block stands on its deck eye."""
-    objs, socks = _modern_block_parts("Ratchet57", 0.057, plate="Plate57", overall=0.103, head=1.32, hk=1.2, ratchet=True, holes=False)
+    objs, socks = _modern_block_parts("Ratchet57", 0.057, plate="Plate57", overall=0.103, head=1.32, hk=1.2, ratchet=True, holes=False, neck=1.6)
     if standup:
         zh = socks[1][1][2] + 0.0336 * 1.32          # the head's top (Axle + H)
         n, r, z0 = 9, 0.0095, -0.0015

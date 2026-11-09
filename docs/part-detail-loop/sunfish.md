@@ -50,6 +50,12 @@ drum), an on/off switch on each cheek, a 6 mm swivel shackle and, for the Sunfis
 |---|---|---|---|---|---|
 | Before | 80.5 mm (-22%) | 57 mm | 3/9 | 6,716, 3 slots | lost 3 of 3; all three: wrong part ("film reel", "perforated disc") |
 | r1 | 102.2 mm (-1%) | 57 mm | 9/9 | 15,224 (16,960 with the spring), 3 slots | won 3 of 3 (confidence 5, 5, 5) |
+| r2 | 102.2 mm (-1%) | 57 mm | 9/9 | 15,224, 3 slots | Bean's note on r1 |
+
+r2 (Bean, Nov 9: "a very thin connection part in the profile"): edge-on, the swivel between the head and the shackle
+read as a thin stalk. `_mb_swivel_shackle` takes `neck` (default 1, so Block40 and the fiddles are unchanged); Ratchet57
+uses 1.6: the post 1.6 times thicker, the eye's wire 1.6, the collar a fifth wider, the shackle's bow wire half as thick
+again and its legs a little wider apart.
 
 Outline: not checked. The square-on reference (the Harken 57C photo on Wikimedia Commons, used for Block40) could not be
 fetched: Wikimedia answered the cloud with HTTP 429 all session. The blind reviewers judged from the catalogue's
