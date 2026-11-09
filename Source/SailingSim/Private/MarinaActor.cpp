@@ -680,7 +680,8 @@ static TArray<FVector2D, TInlineAllocator<2>> RowCleatPoints(const FMarinaSlip& 
 
 const TCHAR* AMarinaActor::DockKitName(EDockKit Kit)
 {
-	static const TCHAR* Names[] = { TEXT("Cleat"), TEXT("Pedestal"), TEXT("Box"), TEXT("PilingCap"), TEXT("Hoop"), TEXT("Ladder"), TEXT("Float"), TEXT("Extinguisher") };
+	static const TCHAR* Names[] = { TEXT("Cleat"), TEXT("Pedestal"), TEXT("Box"), TEXT("PilingCap"), TEXT("Hoop"), TEXT("Ladder"), TEXT("Float"), TEXT("Extinguisher"), TEXT("Bumper") };
+	static_assert(UE_ARRAY_COUNT(Names) == int32(EDockKit::Count), "a name per dock kit mesh");
 	return Names[int32(Kit)];
 }
 
@@ -694,7 +695,8 @@ bool AMarinaActor::HasDockKit()
 {
 	for (int32 K = 0; K < int32(EDockKit::Count); ++K)
 	{
-		if (!LoadDockKit(EDockKit(K))) return false;
+		// The finger-end bumper came later (dock hardware pass): content without it still uses the kit, minus bumpers.
+		if (EDockKit(K) != EDockKit::Bumper && !LoadDockKit(EDockKit(K))) return false;
 	}
 	return true;
 }
@@ -749,6 +751,8 @@ void AMarinaActor::DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(co
 		// on them; RowCleatPoints).
 		for (const FVector2D& C : RowCleatPoints(Slip, R)) Add(EDockKit::Cleat, C, Deck - 0.02f, Along);
 		Add(EDockKit::PilingCap, Slip.FingerB + Along * 0.45, 1.5f, Out2);
+		// A rubber bumper round the finger's tip, over the rub strips' ends (dock hardware pass).
+		Add(EDockKit::Bumper, Slip.FingerB, Deck - 0.02f, Out2);
 		const uint32 Seed = uint32(Slip.Row * 1000 + Slip.Index * 2 + (Slip.Side > 0 ? 0 : 1));
 		if (MRand(Seed) < 0.35f) Add(EDockKit::Box, Slip.FingerA + Out2 * 0.6, Deck - 0.02f, Out2);
 		if (Slip.Index % 2 == 0)
