@@ -531,6 +531,42 @@ def cleat(name, at, along_x=True, size=0.15):
     return parts
 
 
+def forestay_pin():
+    """Where the forestay's toggle pins through the stem chainplate's tang (bow fittings pass, Nov 2026; Bean's photo
+    IMG_9224 of TX 7295 EC: right over the stem's edge, a few centimetres above the deck). It had been 7 cm aft of the
+    stem on a deck box. The ForestayTack socket is this pin (bake_j22_hero reads StemPin_pin)."""
+    return Vector((BOW + STEM_PIN[0], 0.0, deck_z(BOW, 0.0) + STEM_PIN[1]))
+
+
+STEM_PIN = (-0.012, 0.034)       # the kit Stemhead's forestay hole from the deck edge at the stem (bk_part_bow._PIN)
+TACK_EYE_X = BOW - 0.09          # GUESS from IMG_9224: the jib's tack bail a hand's width aft of the forestay
+
+
+def stem_fitting():
+    """The kit's Stemhead and TackEye on the bow (bow fittings pass, Nov 2026, docs/part-detail-loop/bow.md), as Bean's
+    photo IMG_9224 shows them on TX 7295 EC: a stainless bar edge-on down the stem's leading edge, through-bolted, its top
+    a tang over the deck for the forestay's toggle; the jib tacks to a U-bail on a plate just aft of it, by a grey
+    Dyneema strop up to the jib's tack shackle (the hero's jib tack stands 11 cm up; GUESS on the strop)."""
+    z0 = deck_z(BOW, 0.0)
+    # the stem's leading edge from the deck edge down: plumb to keel_z(BOW) (0.68), then raked along the overhang
+    stem = [(0.0, 0.0), (0.0, keel_z(BOW) - z0)]
+    for z in (0.62, 0.55, 0.48):
+        x = WL_MID + WL_HALF + z / 1.12                               # keel_z's overhang: z = 1.12 (x - WL end)
+        stem.append((x - BOW, z - z0))
+    ob = kit_part("StemFitting", "Stemhead", (BOW, 0.0, z0), stem=stem)
+    eye = kit_part("TackEye", "TackEye", (TACK_EYE_X, 0.0), surface=lambda x, y: deck_z(x, y) - 0.0005)
+    e = eye[0].matrix_world @ Vector(eye[0]["sock_Eye"])
+    tx = BOW - 0.12
+    top = Vector((tx, 0, sheer_z(tx) + 0.14 - 0.03))                # JibTackSh's pin (build_sails)
+    strop = []
+    for s in (-1, 1):
+        a, b = e + Vector((0, s * 0.0062, -0.002)), top + Vector((0, s * 0.006, 0))
+        strop.append(tube(f"TackStrop_{s}", [tuple(a), tuple(a.lerp(b, 0.5) + Vector((0.002, 0, 0))), tuple(b)], 0.0022, MAT["RopeHalyard"]))
+    strop.append(tube("TackStrop_0", [tuple(e + Vector((0, -0.0062, -0.002))), tuple(e + Vector((0, 0, -0.0075))),
+                                       tuple(e + Vector((0, 0.0062, -0.002)))], 0.0022, MAT["RopeHalyard"]))
+    return ob + eye + strop
+
+
 def build_hardware():
     parts = []
     for side in (1, -1):
@@ -563,9 +599,10 @@ def build_hardware():
                          sheer_z(STERN) - 0.005, sheer_z(STERN) + 0.06, MAT["Stainless"], bev=0.003))
     # bow: stem fitting for the forestay, mooring cleat
     sx = BOW - 0.07
-    parts.append(box("StemFitting", sx - 0.06, sx + 0.06, -0.005, 0.005, sheer_z(sx) - 0.01, sheer_z(sx) + 0.08, MAT["Stainless"], bev=0.004))
-    parts += D.clevis("StemPin", (sx, 0, sheer_z(sx) + 0.06), (0, 1, 0), MAT, 0.02, 0.003)
-    parts += D.screws("StemS", [(sx + dx, 0, deck_z(sx + dx, 0) + 0.001) for dx in (-0.05, 0.05)], (0, 0, 1), MAT)
+    # Bow fittings pass (Nov 2026, docs/part-detail-loop/bow.md): the kit's Stemhead (the forestay's chainplate down the
+    # stem) and TackEye instead of a box on the deck; the forestay's pin moves to the tang over the stem's edge
+    parts += stem_fitting()
+    parts += D.clevis("StemPin", tuple(forestay_pin()), (0, 1, 0), MAT, 0.02, 0.003)
     # Boat fidelity 3 (Bean's J/22 photos, bow-hardware): two horn cleats abreast near the bow, not one on the centreline.
     # The starboard one keeps the name (its horn is the BowCleat socket).
     for side, nm in ((-1, "BowCleat"), (1, "BowCleat_P")):
@@ -742,8 +779,7 @@ def build_rig():
         tb, top = MG.turnbuckle(f"TB_lo_{side}", (xa, ya, deck_z(xa, abs(ya)) + 0.055), lo_top - Vector((xa, ya, deck_z(xa, abs(ya)) + 0.055)), MAT)
         parts += tb
         wires.append(tube(f"Lower_{side}", [tuple(top), tuple(lo_top)], 0.002, MAT["Wire"]))
-    sx = BOW - 0.07
-    fs_base = Vector((sx, 0, sheer_z(sx) + 0.06))
+    fs_base = forestay_pin()                       # bow fittings pass: the stem chainplate's tang (was BOW - 0.07, 6 cm up)
     fs_top = Vector((rake(HOUNDS) + 0.045, 0, HOUNDS - 0.03))
     tb, top = MG.turnbuckle("TB_fore", fs_base, fs_top - fs_base, MAT)
     parts += tb
