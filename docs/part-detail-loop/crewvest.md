@@ -32,6 +32,23 @@ The armhole below the shoulder, where round 11 fixed the seated tear, is unchang
 | r2 | 38 mm | 74 x 46 mm (catalogue 76 x 44) | 33 mm (estimate 30) | 18/40/66% (photo 19/38/64) | 9/9 | 19,077 | won 3 of 3 against before (confidence 3, 3, 3 of 3) |
 | r3 | | | | | | 19,299 | **lost**: won 1 of 3 against r2 (deeper V, taller vertical strap read as a hash mark); dropped |
 
+### Tails through the buckles (Bean, Nov 9)
+
+Bean: "the tails should run through the buckles realistically. right now they appear to just be added on". Each tail is
+now one ribbon from inside the male half's ladder lock (the male half is 32 mm long now), folded down in a 45 degree
+mitred crease. The top and bottom creases lie under the male half, so those tails come out from under its lower edge.
+The middle one folds at the male half's outer end and hangs straight down beside the bottom buckle.
+
+| Round | Tails | Blind review against r2 |
+|---|---|---|
+| r4 | 4.5 cm doubled run on the strap, then the fold | won 1 of 3 (looked offset from the buckles) |
+| r5 | fold right at the buckle's end | won 1 of 3 (middle tail diagonal over the bottom buckle) |
+| r6 | fold under a longer male half | won 1 of 3 (same diagonal) |
+| r7 | as r6, the middle one folding at the male's end, straight down | won 1 of 3 |
+
+The reviewers split, and at this render size they could not see threading in either version. r7 is on the PR because it
+is what Bean asked for; r2's tails are one commit back if he prefers them.
+
 Remaining differences the reviewers named: the photo's tails hang to the thigh (ours stop 4 cm past the hem, so a
 seated sailor's lap doesn't take them through the legs); the foam in the photo is lumpier; the buckles' moulded detail.
 
