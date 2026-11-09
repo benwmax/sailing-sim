@@ -1359,22 +1359,7 @@ def scupper():
     return done("Scupper", [fl] + bars, [])
 
 
-@part("Fender", "loose", "Ribbed vinyl fender, 150 x 500 mm, eyes at both ends")
-def fender(colour="BlackPlastic"):
-    prof = [(0, 0)]
-    for i in range(41):
-        z = 0.5 * i / 40
-        r = 0.075 * math.sin(math.pi * min(1.0, 0.18 + 0.64 * i / 40)) ** 0.25
-        r *= 1 + 0.015 * math.cos(G.TAU * i / 5)
-        prof.append((r, z))
-    prof.append((0, 0.5))
-    body = G.lathe("body", prof, M(colour), 40)
-    G.finish(body, 0)
-    eyes = []
-    for z, s in ((0.5, 1), (0, -1)):
-        e = G.tube(f"eye{s}", G.arc_pts((0, 0, z + s * 0.012), 0.012, 0, G.TAU, 14, "xz"), 0.004, M(colour), 10, closed=True)
-        eyes.append(G.finish(e))
-    return done("Fender", [body] + eyes, [("Top", (0, 0, 0.524)), ("Bottom", (0, 0, -0.024))])
+# Fender: bk_part_docking.py (fenders and dock lines pass, Nov 2026)
 
 
 # ------------------------------------------------------------------ boat fidelity 2: lifelines, rigging screws, clutches, cars

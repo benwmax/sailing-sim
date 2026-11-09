@@ -1,0 +1,31 @@
+{
+ "part": "Fender, DockLineEye, CleatHitch, EyeOnCleat",
+ "card": {
+  "what": "Twin-eye ribbed vinyl fender (6.5 x 22 in) and 3/8 in three-strand nylon dock lines: a 12 in spliced eye round the boat's cleat, a cleat hitch on the dock's 10 in cleat",
+  "boats": "every keelboat's in-slip dress (build_berthed.py: J/22, Catalina 22 in slips; Catalina 30 alongside); kit parts for touches and later live lines",
+  "distance": "from the finger and the cockpit when she is tied up in her slip at the start of a session; the marina's neighbours from the water",
+  "before": "berthed dress: 10-sided tube fenders, 5-sided 12 mm lines ending at fixed points 0.5 m up; kit Fender 150 x 500 mm with ring ribs"
+ },
+ "references": [
+  {"id": "fender-size", "kind": "catalogue", "use": "size", "url": "https://www.marineengine.com/boat-accessories/anchor-dock/63-267-743", "note": "Polyform G-4 class twin-eye fender 6.5 x 22 in, for 20-30 ft boats"},
+  {"id": "line-size", "kind": "guide", "use": "line diameter", "url": "https://boatus.com/expert-advice/expert-advice-archive/2019/march/choosing-docklines", "note": "3/8 in for boats to about 27 ft (also West Marine, betterboat dock line charts)"},
+  {"id": "eye", "kind": "catalogue", "use": "eye length", "url": "https://www.fisheriessupply.com/sea-dog-line-dock-lines-3-strand-twisted-nylon", "note": "3/8 in x 15 ft three-strand nylon, 12 in eye"}
+ ],
+ "sizes": [
+  {"id": "fender_d", "name": "Fender diameter", "target": 165.0, "unit": "mm", "tol": 0.05, "source": "catalogue 6.5 in"},
+  {"id": "fender_l", "name": "Fender length incl. eyes", "target": 559.0, "unit": "mm", "tol": 0.05, "source": "catalogue 22 in"},
+  {"id": "line_d", "name": "Line diameter", "target": 9.5, "unit": "mm", "tol": 0.05, "source": "3/8 in"},
+  {"id": "eye_l", "name": "Eye length", "target": 305.0, "unit": "mm", "tol": 0.1, "source": "12 in"}
+ ],
+ "outline": null,
+ "features": [
+  {"id": "ribs", "text": "Lengthwise ribs on the fender body, fading on the shoulders", "manual": true},
+  {"id": "lugs", "text": "Moulded eye lug with a rope hole at each fender end", "objects": ["lug1", "lug-1"]},
+  {"id": "valve", "text": "Inflation valve on the top shoulder", "objects": ["valve"]},
+  {"id": "lay", "text": "Three-strand right-hand lay visible on every line", "manual": true},
+  {"id": "splice", "text": "Spliced eye: the tucked strands fatten the standing part and taper off", "objects": ["tuck0", "tuck1", "tuck2"]},
+  {"id": "hitch", "text": "Cleat hitch: turn round the base, figure eight over the top, locking hitch, tail on the dock", "manual": true},
+  {"id": "eye_cleat", "text": "The eye goes round the boat cleat's base under both horns", "manual": true}
+ ],
+ "budget": {"tris": 20000, "slots": 8, "note": "kit parts each under 20k; the berthed dress is one Nanite mesh per variant"}
+}
