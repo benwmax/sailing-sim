@@ -254,6 +254,12 @@ only CamCleat differs from `Inputs/boat-kit/kit.json` besides the already-merged
 | Bean's product photo (Nov 8, in the project thread) | top-view outline mask, proportions, features | measuring only, not in the repo |
 | [Selden cam cleats](https://pdf.nauticexpo.com/pdf/selden-mast/cam-cleats/21696-130258.html), [Rooster 130005](https://www.roostersailing.com/products/130005), [Barton K cam cleat](https://www.marinesuperstore.com/deck-hardware/cleats-and-fairleads/barton-k-cam-cleat) | 38 mm axle centres, overall size | numbers only |
 
+## Tillers and the tiller extension
+
+A wooden tiller (laminated ash and mahogany, the J/22's), a new metal one (aluminium, the Sunfish's and ILCA's) and the
+extension, in their own file `bk_part_tiller.py`; long parts get their own renders (`render_long.py`) and sheet
+(`make_long_sheet.py`): [tiller.md](tiller.md).
+
 ## Next parts
 
 In order of how close the camera gets on the J/22 (the horn cleat, the mainsheet and vang fiddles and the cam
