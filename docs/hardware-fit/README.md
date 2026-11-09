@@ -78,13 +78,20 @@ Wave 2 puts the kit parts that follow the wind or the sail on the boats, and fin
 | Where | Before | Now | Drawn by |
 |---|---|---|---|
 | Masthead fly, every boat that carries one (not the Sunfish or the ILCA) | two black boxes 8 cm above the masthead (and the hero's own fixed windex) | the kit's `MastheadFlyVane` turned to the apparent wind on `MastheadFly`; the fixed half, `MastheadFlyMount`, on the masthead | game (`BoatKitFittings.cpp`); the hero builds the mount into its mast and exports `FlyPivot`, other boats get the mount from the game at `MastheadZ` (bent with `M_BoatMast`) |
-| J/22 jib luff | nothing (the jib floated beside the forestay) | 8 kit `JibHank`s, evenly up the cloth's luff, each with its `Luff` socket on the luff point, stay up the luff and the sail aft | game, every frame from `FSailCloth::PointAt(0, v)` |
+| J/22 jib luff | nothing | 8 kit `JibHank`s clipped on the forestay wire (the model's `ForestayTack` to `Hounds`, as the rig lines draw it), each at the height of its point on the cloth's luff (evenly up it) with the sail toward that point | game, every frame from `FSailCloth::PointAt(0, v)` |
 | J/22 jib head | nothing | the kit `SnapShackle`, bail on the head, eye up the halyard | game |
 | Traveller cams (`TravCam_*`), cunningham cam (`Cunn_cam`), tiller cam (`TCam`) | `j22_details.cam_cleat` (55 mm) | the kit `CamCleat` at its micro size `38` (32 mm across) | hero (`j22_kitfit.cam_cleat`, set into `j22_mainsheet`, `j22_mastgear` and `j22_steering` unless `--old-hardware`) |
 
-AI boats and the ghost draw the parts' light copies (`SM_Kit_<Part>_Light`); the hanks and the shackle hide with the jib
+AI boats and the ghost draw the parts' light copies (`SM_Kit_<Part>_Light`), the hanks and shackle only within 50 m and
+the fly within 400 m, and an AI boat off screen leaves its hanks where they were. The fly hides with the mast when the
+sails are stowed in the slip. The hanks and the shackle hide with the jib
 (stowed, sails down). Each part is skipped while its `SM_Kit_` mesh isn't imported, so the boat looks as before.
 `KitFittings.h` holds the placement math; `SailingSim.Visual.KitFittings` checks it.
+
+Known gap (QA review): the jib's cloth luff is the physics luff, (3.40, 0.75) to (0.85, 8.25) m, and the hero's forestay
+runs (3.38, 0.85) to (0.68, 7.83) m, so up high the cloth stands up to about 30 cm ahead of the wire and its head is 42
+cm above the hounds. The hanks are on the wire, pointing at the cloth; the head shackle stays on the cloth's head.
+Bringing the drawn luff onto the forestay is a sails follow-up.
 
 Checks (cloud, bpy 5.1.2): the hero is 1,195,768 triangles in Blender (wave 1 alone 1,171,568; the in-game count was
 773,010 for wave 1, the sails and lines being live); the cap is 3 million (Bean, Nov 9). `--old-hardware` builds main's

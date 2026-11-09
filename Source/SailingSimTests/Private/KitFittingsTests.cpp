@@ -34,6 +34,21 @@ bool FVisualKitFittingsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Its eye is above the head, up the halyard"), FVector::DotProduct(Eye - Head, Up) > 5.0);
 	TestTrue(TEXT("It lies in the sail's plane (local X forward)"), FVector::DotProduct(S.TransformVectorNoScale(FVector::XAxisVector), -Aft) > 0.95);
 
+	// On the wire: the J/22's forestay (ForestayTack to Hounds) with the cloth's luff 15 cm ahead of it at mid height.
+	const FVector Tack(338.0, 0.0, 85.0), Hounds(68.1, 0.0, 783.1);
+	const FVector Mid = Tack + (Hounds - Tack) * 0.5;
+	const FVector ClothLuff = Mid + FVector(15.0, 0.0, 0.0);
+	const FTransform W = KitFittings::HankOnStay(Tack, Hounds, ClothLuff);
+	const FVector WireDir = (Hounds - Tack).GetSafeNormal();
+	const FVector OnWire = W.GetLocation() - Tack;
+	TestTrue(TEXT("A hank on the stay sits on the wire"), (OnWire - WireDir * FVector::DotProduct(OnWire, WireDir)).Size() < 0.01);
+	TestTrue(TEXT("At the luff point's height"), FMath::Abs(W.GetLocation().Z - ClothLuff.Z) < 0.01);
+	TestTrue(TEXT("Its Y along the wire"), FMath::Abs(FVector::DotProduct(W.TransformVectorNoScale(FVector::YAxisVector), WireDir)) > 0.999);
+	const FVector ToSail = (ClothLuff - W.GetLocation()) - WireDir * FVector::DotProduct(ClothLuff - W.GetLocation(), WireDir);
+	TestTrue(TEXT("Its sail (local -X) toward the cloth's luff"), FVector::DotProduct(W.TransformVectorNoScale(-FVector::XAxisVector), ToSail.GetSafeNormal()) > 0.999);
+	const FTransform W0 = KitFittings::HankOnStay(Tack, Hounds, Tack + (Hounds - Tack) * 0.3);
+	TestTrue(TEXT("A luff on the wire: the sail aft"), FVector::DotProduct(W0.TransformVectorNoScale(-FVector::XAxisVector), FVector(-1.0, 0.0, 0.0)) > 0.9);
+
 	TestTrue(TEXT("Hanks spread from near the tack to near the head"),
 		FMath::IsNearlyEqual(KitFittings::HankV(0, 8), 0.0625f) && FMath::IsNearlyEqual(KitFittings::HankV(7, 8), 0.9375f));
 	return true;

@@ -44,6 +44,7 @@ void ASailboatPawn::BuildKitFittings()
 		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Part->SetCanEverAffectNavigation(false);
 		Part->bCastDynamicShadow = !bTrafficBoat;   // a few centimetres of plastic: no shadow from AI boats
+		Part->bAffectDistanceFieldLighting = false;
 		Part->RegisterComponent();
 		BoatParts.Add(Part);
 		return Part;
@@ -63,6 +64,11 @@ void ASailboatPawn::BuildKitFittings()
 		{
 			FlyKitMount = Add(Mount, nullptr);
 		}
+		if (bTrafficBoat)
+		{
+			FlyKitVane->SetCullDistance(40000.f);
+			if (FlyKitMount) FlyKitMount->SetCullDistance(40000.f);
+		}
 	}
 	else
 	{
@@ -80,39 +86,51 @@ void ASailboatPawn::BuildKitFittings()
 		{
 			JibHeadShackle = Add(Shackle, nullptr);
 		}
+		// An AI boat's hanks and shackle (a few centimetres each) are drawn only within 50 m, its fly within 400 m.
+		if (bTrafficBoat)
+		{
+			for (UStaticMeshComponent* Hank : JibHanks) Hank->SetCullDistance(5000.f);
+			if (JibHeadShackle) JibHeadShackle->SetCullDistance(5000.f);
+		}
 	}
 	UpdateKitFittings();
 }
 
 void ASailboatPawn::UpdateKitFittings()
 {
-	// The fly: on the hero's FlyPivot socket (it bends with the mast), else on a mount at the masthead.
-	if (FlyKitVane)
+	// The fly: on the hero's FlyPivot socket (it bends with the mast; the boxes go there too when the kit vane isn't
+	// imported), else on a kit mount at the masthead. Tied up with the sails stowed the mast is the dress's: no fly.
+	const FBoatConfig& C = Boat.GetConfig();
+	if (ModelMast && ModelMast->DoesSocketExist(TEXT("FlyPivot")))
 	{
-		const FBoatConfig& C = Boat.GetConfig();
-		if (ModelMast && ModelMast->DoesSocketExist(TEXT("FlyPivot")))
-		{
-			MastheadFly->SetRelativeLocation(RigPoint(ModelMast, TEXT("FlyPivot")));
-		}
-		else if (FlyKitMount)
-		{
-			FVector Top(C.MastX * 100.0, 0.0, C.MastheadZ * 100.0);
-			if (ModelMast)
-			{
-				// M_BoatMast's bend (RigPoint) at the masthead.
-				const float T = FMath::Clamp(float(Top.Z - ModelMast->GetRelativeLocation().Z) / MastBendHeightCm, 0.f, 1.f);
-				Top.X += MastBendCm * (FMath::Sin(PI * T) - 0.35f * T * T);
-			}
-			FlyKitMount->SetRelativeLocation(Top);
-			MastheadFly->SetRelativeLocation(Top + KitFitSocketCm(FlyKitMount->GetStaticMesh(), TEXT("Pivot"), FVector(0.0, 0.0, 23.0)));
-		}
+		MastheadFly->SetRelativeLocation(RigPoint(ModelMast, TEXT("FlyPivot")));
 	}
+	else if (FlyKitMount)
+	{
+		FVector Top(C.MastX * 100.0, 0.0, C.MastheadZ * 100.0);
+		if (ModelMast)
+		{
+			// M_BoatMast's bend (RigPoint) at the masthead.
+			const float T = FMath::Clamp(float(Top.Z - ModelMast->GetRelativeLocation().Z) / MastBendHeightCm, 0.f, 1.f);
+			Top.X += MastBendCm * (FMath::Sin(PI * T) - 0.35f * T * T);
+		}
+		FlyKitMount->SetRelativeLocation(Top);
+		MastheadFly->SetRelativeLocation(Top + KitFitSocketCm(FlyKitMount->GetStaticMesh(), TEXT("Pivot"), FVector(0.0, 0.0, 23.0)));
+	}
+	const bool bMastUp = !ModelMast || ModelMast->IsVisible();
+	if (FlyKitVane) FlyKitVane->SetVisibility(bMastUp);
+	if (FlyKitMount) FlyKitMount->SetVisibility(bMastUp);
 
-	// The hanks and the head shackle ride the jib's cloth (boat frame, cm).
+	// The hanks and the head shackle go with the jib (boat frame, cm).
 	const bool bJib = JibSail && JibSail->IsVisible() && JibCloth.IsValid();
 	if (JibHeadShackle) JibHeadShackle->SetVisibility(bJib);
 	for (UStaticMeshComponent* Hank : JibHanks) if (Hank) Hank->SetVisibility(bJib);
 	if (!bJib || (JibHanks.Num() == 0 && !JibHeadShackle))
+	{
+		return;
+	}
+	// An AI boat's off screen: leave them where they were (the rig lines are paced the same way).
+	if (bTrafficBoat && !JibSail->WasRecentlyRendered(0.25f))
 	{
 		return;
 	}
@@ -124,11 +142,19 @@ void ASailboatPawn::UpdateKitFittings()
 	};
 	if (JibHanks.Num() > 0)
 	{
+		// Each hank clips onto the forestay wire (the model's ForestayTack to Hounds, as the rig lines draw it) at the height
+		// of its point on the cloth's luff, the sail toward that point; a boat without the sockets hangs them on the luff.
+		const bool bStay = ModelHull && ModelMast && ModelHull->DoesSocketExist(TEXT("ForestayTack")) && ModelMast->DoesSocketExist(TEXT("Hounds"));
+		const FVector Tack = bStay ? RigPoint(ModelHull, TEXT("ForestayTack")) : FVector::ZeroVector;
+		const FVector Hounds = bStay ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
 		const FVector LuffSocket = KitFitSocketCm(JibHanks[0]->GetStaticMesh(), TEXT("Luff"), FVector(-3.41, 0.0, -0.34));
 		for (int32 I = 0; I < JibHanks.Num(); ++I)
 		{
 			const float V = KitFittings::HankV(I, JibHanks.Num());
-			JibHanks[I]->SetRelativeTransform(KitFittings::HankTransform(JibCloth.PointAt(0.f, V), Up(V), JibCloth.ChordTangentAt(0.f, V), LuffSocket));
+			const FVector Luff = JibCloth.PointAt(0.f, V);
+			JibHanks[I]->SetRelativeTransform(bStay
+				? KitFittings::HankOnStay(Tack, Hounds, Luff)
+				: KitFittings::HankTransform(Luff, Up(V), JibCloth.ChordTangentAt(0.f, V), LuffSocket));
 		}
 	}
 	if (JibHeadShackle)

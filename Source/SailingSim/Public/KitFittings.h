@@ -24,6 +24,19 @@ namespace KitFittings
 		return FTransform(Q, LuffPoint - Q.RotateVector(LuffSocket));
 	}
 
+	/** A hank clipped on the forestay wire (Tack to Hounds): its stay socket (the mesh origin) on the wire at the height of
+	 *  the cloth's luff point (Luff), its Y along the wire and its sail (local -X) toward that point. */
+	inline FTransform HankOnStay(const FVector& Tack, const FVector& Hounds, const FVector& Luff)
+	{
+		const FVector Wire = Hounds - Tack;
+		const double T = FMath::Clamp(FMath::Abs(Wire.Z) > 1.0 ? (Luff.Z - Tack.Z) / Wire.Z : 0.5, 0.0, 1.0);
+		const FVector Stay = Tack + Wire * T;
+		FVector ToSail = Luff - Stay;
+		ToSail -= Wire.GetSafeNormal() * FVector::DotProduct(ToSail, Wire.GetSafeNormal());
+		if (ToSail.SizeSquared() < 1e-4) ToSail = FVector(-1.0, 0.0, 0.0);   // the luff on the wire: the sail aft
+		return FTransform(FQuat(FRotationMatrix::MakeFromYX(Wire, -ToSail)), Stay);
+	}
+
 	/** The jib halyard's snap shackle on the head: the kit SnapShackle's bail is its origin and the part hangs along its -Z
 	 *  (the eye 54 mm from the bail), so on a halyard its -Z points up the luff, the eye toward the halyard, and its X lies
 	 *  forward in the sail's plane. */
