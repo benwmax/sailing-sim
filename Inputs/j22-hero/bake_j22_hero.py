@@ -126,6 +126,8 @@ sock("Hounds", _curve_end("Forestay"))
 lt = _curve_end("Lower_1")
 sock("LowerTang", Vector((lt.x, 0, lt.z)))
 sock("MastheadAft", _c("Masthead_bstang"))
+if "Masthead_fly" in bpy.data.objects:          # hardware-fit wave 2: the game's kit fly vane turns here
+    sock("FlyPivot", _kit_sock("Masthead_fly", "Pivot"))
 sock("MastBase", _c("Vang_tang"))
 # the vang's bail is j22_boomgear.boom_bail now: the socket stays where the October bail's centre was (anchor_Boom_Vang)
 _bv = bpy.data.objects.get("anchor_Boom_Vang")
@@ -204,7 +206,7 @@ sock("Boom_LowOverCockpit", Vector((xm, 0, blo.z)))
 
 
 def owner(n):
-    if n in ("Hounds", "LowerTang", "MastheadAft", "MastBase") or n.startswith("SpreaderTip"):
+    if n in ("Hounds", "LowerTang", "MastheadAft", "MastBase", "FlyPivot") or n.startswith("SpreaderTip"):
         return "SM_J22H_Mast"
     if n.startswith("Boom_"):
         return "SM_J22H_Boom"

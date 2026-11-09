@@ -70,3 +70,28 @@ Nothing changes in the game until the hero is rebuilt and imported on BEN-PC, af
 boats (with and without `--old-hardware`) and render each:
 
     blender -b -P Inputs/j22-hero/render_j22_hero.py -- out/j22_hero.blend out/renders cu_jibcam cu_quarter cu_mastbase cu_rudder
+
+# Wave 2: the things that move (Nov 9 2026)
+
+Wave 2 puts the kit parts that follow the wind or the sail on the boats, and finishes the hero's deck swaps.
+
+| Where | Before | Now | Drawn by |
+|---|---|---|---|
+| Masthead fly, every boat that carries one (not the Sunfish or the ILCA) | two black boxes 8 cm above the masthead (and the hero's own fixed windex) | the kit's `MastheadFlyVane` turned to the apparent wind on `MastheadFly`; the fixed half, `MastheadFlyMount`, on the masthead | game (`BoatKitFittings.cpp`); the hero builds the mount into its mast and exports `FlyPivot`, other boats get the mount from the game at `MastheadZ` (bent with `M_BoatMast`) |
+| J/22 jib luff | nothing (the jib floated beside the forestay) | 8 kit `JibHank`s, evenly up the cloth's luff, each with its `Luff` socket on the luff point, stay up the luff and the sail aft | game, every frame from `FSailCloth::PointAt(0, v)` |
+| J/22 jib head | nothing | the kit `SnapShackle`, bail on the head, eye up the halyard | game |
+| Traveller cams (`TravCam_*`), cunningham cam (`Cunn_cam`), tiller cam (`TCam`) | `j22_details.cam_cleat` (55 mm) | the kit `CamCleat` at its micro size `38` (32 mm across) | hero (`j22_kitfit.cam_cleat`, set into `j22_mainsheet`, `j22_mastgear` and `j22_steering` unless `--old-hardware`) |
+
+AI boats and the ghost draw the parts' light copies (`SM_Kit_<Part>_Light`); the hanks and the shackle hide with the jib
+(stowed, sails down). Each part is skipped while its `SM_Kit_` mesh isn't imported, so the boat looks as before.
+`KitFittings.h` holds the placement math; `SailingSim.Visual.KitFittings` checks it.
+
+Checks (cloud, bpy 5.1.2): the hero is 1,195,768 triangles in Blender (wave 1 alone 1,171,568; the in-game count was
+773,010 for wave 1, the sails and lines being live); the cap is 3 million (Bean, Nov 9). `--old-hardware` builds main's
+boat exactly (841,508 triangles, same sockets). New socket `FlyPivot` (63.0, 0, 948.5) cm on `SM_J22H_Mast`; no other
+socket moves.
+
+In the game: the Mac builds and runs the tests and the boats gate (Medium 60, High 45); the PC rebakes the hero
+(`build_j22_hero.py -- out --sails`, `bake_j22_hero.py`, `import_j22_hero.py`) for the mount, the `FlyPivot` socket and
+the micro cams, then takes close-ups of the masthead, the jib's luff and the cams. Until that rebake the hero keeps its
+drawn windex and the game puts the kit vane and mount at the physics masthead.

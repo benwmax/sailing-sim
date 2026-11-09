@@ -17,6 +17,8 @@ import math
 from mathutils import Matrix, Vector
 
 import j22_details as D
+
+CAM = D.cam_cleat   # build_j22_hero sets the kit's (j22_kitfit.cam_cleat) unless --old-hardware
 from j22_boomgear import countersunk, plate_xy, rounded
 from j22_geom import cyl, tube
 from j22_steering import lathe, plate
@@ -165,7 +167,7 @@ def traveler(xt, y_end, seat_z, seat_in, M):
         out.append(cyl(f"TravCamBase_{sgn}", (cam_at.x, cam_at.y, seat_z), (cam_at.x, cam_at.y, seat_z + 0.009), 0.024, M["BlackPlastic"], 28))
         out.append(cyl(f"TravCamBaseRing_{sgn}", (cam_at.x, cam_at.y, seat_z + 0.009), (cam_at.x, cam_at.y, seat_z + 0.0098), 0.0205, M["Stainless"], 28))
         lead = (Vector((xt, blocks[sgn].y, 0)) - Vector((cam_at.x, cam_at.y, 0))).normalized()
-        out += D.cam_cleat(f"TravCam_{sgn}", cam_at, (0, 0, 1), tuple(lead), M, 0.055)
+        out += CAM(f"TravCam_{sgn}", cam_at, (0, 0, 1), tuple(lead), M, 0.055)
         bc = blocks[sgn]
         r = 0.0095
         # in from the eye strap's loop to the block's forward side, round the sheave, and out from its aft side

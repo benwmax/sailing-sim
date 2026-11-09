@@ -40,6 +40,9 @@ import j22_kitfit as KF  # noqa: E402
 # hardware-fit wave 1 (j22_kitfit.py): the deck hardware from the boat kit; --old-hardware builds the hero's own copies
 KITFIT = "--old-hardware" not in ARGS
 CAM = KF.cam_cleat if KITFIT else D.cam_cleat      # same arguments: name, at, out of the surface, toward the fairlead, MAT
+if KITFIT:   # hardware-fit wave 2: the traveller, cunningham and tiller cams are the kit's too (its micro size)
+    import j22_mainsheet as _MS_CAM, j22_mastgear as _MG_CAM, j22_steering as _ST_CAM  # noqa: E402
+    _MS_CAM.CAM = _MG_CAM.CAM = _ST_CAM.CAM = KF.cam_cleat
 
 # style: --style file.json, or --seed N --preset club|race|new|neglected [--tx7295]
 if "--style" in ARGS:
@@ -777,7 +780,11 @@ def build_rig():
     parts = [mast]
     rake = lambda z: MAST_X - 0.02 * (z - zm) / (MAST_TOP - zm)  # noqa: E731
     aft_face = lambda z: rake(z) - 0.049  # noqa: E731
-    parts += D.masthead("Masthead", (rake(MAST_TOP), 0, MAST_TOP), MAT, windex=STYLE["details"]["windex"])
+    # hardware-fit wave 2: the kit's masthead fly. Its fixed half (socket, stalk, tabs) stands on the cap here; the game
+    # turns the kit's vane to the apparent wind on its Pivot (the FlyPivot socket). --old-hardware keeps the drawn windex.
+    parts += D.masthead("Masthead", (rake(MAST_TOP), 0, MAST_TOP), MAT, windex=STYLE["details"]["windex"] and not KITFIT)
+    if KITFIT:
+        parts.append(KF.place("Masthead_fly", "MastheadFlyMount", Matrix.Translation((rake(MAST_TOP), 0, MAST_TOP + 0.005)), MAT))
     parts += D.hounds_tang("Hounds", (rake(HOUNDS), 0, HOUNDS), MAT)
     # pc/j22-detail assembly 4 (j22_mastgear.py): the cunningham and the tape at the gooseneck (the step casting is the
     # hull's: build_hardware). Bean's feedback 2: no exit boxes up the mast, the halyards leave at the step's sheaves.

@@ -23,6 +23,8 @@ import bmesh
 from mathutils import Vector
 
 import j22_details as D
+
+CAM = D.cam_cleat   # build_j22_hero sets the kit's (j22_kitfit.cam_cleat) unless --old-hardware
 from j22_boomgear import countersunk, plate_xy, rounded
 from j22_geom import cyl, mesh_obj, tube
 from j22_steering import hex_head, lathe, nylock, plate
@@ -294,7 +296,7 @@ def cunningham(mast_x, zm, boom_z, aft_face, M):
             out.append(_pan(f"Cunn_scr{dz:+.3f}{dx:+.3f}", Vector((xp + dx, side * 0.0365, zc + dz)), (0, side, 0), M["Stainless"], 0.0065))
     # the fairlead block over the cam, its axle along the mast's side face's normal (the line runs up and down)
     out += D.block("Cunn_lead", (xp, side * 0.047, zc + 0.030), (0, side, 0), (0, 0, 1), M, 0.029, with_shackle=False)
-    out += D.cam_cleat("Cunn_cam", (xp, side * 0.0365, zc - 0.030), (0, side, 0), (0, 0, 1), M, 0.055)
+    out += CAM("Cunn_cam", (xp, side * 0.0365, zc - 0.030), (0, side, 0), (0, 0, 1), M, 0.055)
     # the block hung under the gooseneck from a strop round the tang
     hb = Vector((aft_face(boom_z) - 0.040, 0.010, boom_z - 0.16))
     out += D.block("Cunn_block", hb, (0, 1, 0), (0, 0, 1), M, 0.029)
