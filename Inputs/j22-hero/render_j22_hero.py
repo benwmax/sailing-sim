@@ -200,6 +200,15 @@ VIEWS = {
                        pos=(0.20, -0.30, 0.55), tgt=(0.68, 0.02, -0.14), lens=22),
     "cabin_aft": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0, ev=3.0,
                       pos=(1.30, 0.10, 0.62), tgt=(-0.6, -0.05, 0.25), lens=14),
+    # hardware-fit wave 1 (j22_kitfit.py): the kit fittings in place, for the before/after with --old-hardware
+    "cu_quarter": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
+                       pos=(-2.25, -1.55, 1.30), tgt=(-3.15, -0.78, 0.62), lens=38),
+    "cu_mastbase": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
+                        pos=(-1.25, -0.55, 1.65), tgt=(0.25, 0.0, 1.0), lens=32),
+    "cu_jibcam": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
+                      pos=(-1.55, -0.35, 0.95), tgt=(-1.03, -0.92, 0.57), lens=50),
+    "cu_rudder": dict(sky="sun", water=False, sails=False, heel=0, lift=0.0,
+                      pos=(-4.35, -0.95, 0.75), tgt=(-3.45, 0.0, 0.28), lens=40),
     # the cabin top (cabin-top pass, docs/part-detail-loop/cabintop.md): handrails, organisers and the fore hatch from
     # the port quarter, then the fore hatch and the starboard organiser close
     "cu_cabintop": dict(sky="overcast", water=False, sails=False, heel=0, lift=0.0,
