@@ -36,6 +36,10 @@ from j22_fabric import Drape, Wrinkles  # noqa: E402
 from j22_style import TX7295, make_style  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", "..", "Tools", "boatkit"))
 import bk_parts as KIT  # noqa: E402
+import j22_kitfit as KF  # noqa: E402
+# hardware-fit wave 1 (j22_kitfit.py): the deck hardware from the boat kit; --old-hardware builds the hero's own copies
+KITFIT = "--old-hardware" not in ARGS
+CAM = KF.cam_cleat if KITFIT else D.cam_cleat      # same arguments: name, at, out of the surface, toward the fairlead, MAT
 
 # style: --style file.json, or --seed N --preset club|race|new|neglected [--tx7295]
 if "--style" in ARGS:
@@ -531,6 +535,42 @@ def cleat(name, at, along_x=True, size=0.15):
     return parts
 
 
+def forestay_pin():
+    """Where the forestay's toggle pins through the stem chainplate's tang (bow fittings pass, Nov 2026; Bean's photo
+    IMG_9224 of TX 7295 EC: right over the stem's edge, a few centimetres above the deck). It had been 7 cm aft of the
+    stem on a deck box. The ForestayTack socket is this pin (bake_j22_hero reads StemPin_pin)."""
+    return Vector((BOW + STEM_PIN[0], 0.0, deck_z(BOW, 0.0) + STEM_PIN[1]))
+
+
+STEM_PIN = (-0.012, 0.034)       # the kit Stemhead's forestay hole from the deck edge at the stem (bk_part_bow._PIN)
+TACK_EYE_X = BOW - 0.09          # GUESS from IMG_9224: the jib's tack bail a hand's width aft of the forestay
+
+
+def stem_fitting():
+    """The kit's Stemhead and TackEye on the bow (bow fittings pass, Nov 2026, docs/part-detail-loop/bow.md), as Bean's
+    photo IMG_9224 shows them on TX 7295 EC: a stainless bar edge-on down the stem's leading edge, through-bolted, its top
+    a tang over the deck for the forestay's toggle; the jib tacks to a U-bail on a plate just aft of it, by a grey
+    Dyneema strop up to the jib's tack shackle (the hero's jib tack stands 11 cm up; GUESS on the strop)."""
+    z0 = deck_z(BOW, 0.0)
+    # the stem's leading edge from the deck edge down: plumb to keel_z(BOW) (0.68), then raked along the overhang
+    stem = [(0.0, 0.0), (0.0, keel_z(BOW) - z0)]
+    for z in (0.62, 0.55, 0.48):
+        x = WL_MID + WL_HALF + z / 1.12                               # keel_z's overhang: z = 1.12 (x - WL end)
+        stem.append((x - BOW, z - z0))
+    ob = kit_part("StemFitting", "Stemhead", (BOW, 0.0, z0), stem=stem)
+    eye = kit_part("TackEye", "TackEye", (TACK_EYE_X, 0.0), surface=lambda x, y: deck_z(x, y) - 0.0005)
+    e = eye[0].matrix_world @ Vector(eye[0]["sock_Eye"])
+    tx = BOW - 0.12
+    top = Vector((tx, 0, sheer_z(tx) + 0.14 - 0.03))                # JibTackSh's pin (build_sails)
+    strop = []
+    for s in (-1, 1):
+        a, b = e + Vector((0, s * 0.0062, -0.002)), top + Vector((0, s * 0.006, 0))
+        strop.append(tube(f"TackStrop_{s}", [tuple(a), tuple(a.lerp(b, 0.5) + Vector((0.002, 0, 0))), tuple(b)], 0.0022, MAT["RopeHalyard"]))
+    strop.append(tube("TackStrop_0", [tuple(e + Vector((0, -0.0062, -0.002))), tuple(e + Vector((0, 0, -0.0075))),
+                                       tuple(e + Vector((0, 0.0062, -0.002)))], 0.0022, MAT["RopeHalyard"]))
+    return ob + eye + strop
+
+
 def build_hardware():
     parts = []
     for side in (1, -1):
@@ -545,7 +585,7 @@ def build_hardware():
         x = JIB_CAM_X
         yw = half_beam(x) - SIDE_DECK - 0.025
         zc = (SEAT_Z + deck_z(x, yw)) / 2 + 0.05
-        parts += D.cam_cleat(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
+        parts += CAM(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
         parts += kit_part(f"JibTrack_{side}", "JibTrack", (JIB_TRACK_X, side * (half_beam(JIB_TRACK_X) - 0.11)),
                           surface=lambda x, y: deck_z(x, y) - 0.002, length=0.60)
         # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6, a size 6 plain-top; photos
@@ -559,13 +599,15 @@ def build_hardware():
         xs = STERN + 0.20
         ys = half_beam(xs) - 0.14
         parts += cleat(f"SternCleat_{side}", (xs, side * ys, deck_z(xs, ys)))
-        parts.append(box(f"BS_plate_{side}", STERN + 0.03, STERN + 0.09, side * (half_beam(STERN) - 0.10) - 0.004, side * (half_beam(STERN) - 0.10) + 0.004,
-                         sheer_z(STERN) - 0.005, sheer_z(STERN) + 0.06, MAT["Stainless"], bev=0.003))
+        if not KITFIT:   # hardware-fit wave 1: the bridle's kit pad eye and shackle stand here instead (build_rig)
+            parts.append(box(f"BS_plate_{side}", STERN + 0.03, STERN + 0.09, side * (half_beam(STERN) - 0.10) - 0.004, side * (half_beam(STERN) - 0.10) + 0.004,
+                             sheer_z(STERN) - 0.005, sheer_z(STERN) + 0.06, MAT["Stainless"], bev=0.003))
     # bow: stem fitting for the forestay, mooring cleat
     sx = BOW - 0.07
-    parts.append(box("StemFitting", sx - 0.06, sx + 0.06, -0.005, 0.005, sheer_z(sx) - 0.01, sheer_z(sx) + 0.08, MAT["Stainless"], bev=0.004))
-    parts += D.clevis("StemPin", (sx, 0, sheer_z(sx) + 0.06), (0, 1, 0), MAT, 0.02, 0.003)
-    parts += D.screws("StemS", [(sx + dx, 0, deck_z(sx + dx, 0) + 0.001) for dx in (-0.05, 0.05)], (0, 0, 1), MAT)
+    # Bow fittings pass (Nov 2026, docs/part-detail-loop/bow.md): the kit's Stemhead (the forestay's chainplate down the
+    # stem) and TackEye instead of a box on the deck; the forestay's pin moves to the tang over the stem's edge
+    parts += stem_fitting()
+    parts += D.clevis("StemPin", tuple(forestay_pin()), (0, 1, 0), MAT, 0.02, 0.003)
     # Boat fidelity 3 (Bean's J/22 photos, bow-hardware): two horn cleats abreast near the bow, not one on the centreline.
     # The starboard one keeps the name (its horn is the BowCleat socket).
     for side, nm in ((-1, "BowCleat"), (1, "BowCleat_P")):
@@ -588,8 +630,11 @@ def build_hardware():
         xa = STERN + 0.30
         ya = half_beam(xa) - 0.13
         za = deck_z(xa, ya)
-        parts += MG.cheek_block(f"SpinAft_{side}", (xa, side * ya, za + 0.045), (0, side, 0), (0, 0, -1), MAT, 0.040,
-                                padeye=((xa, side * ya, za), (0, 0, 1)))
+        if KITFIT:
+            parts += KF.block_on_padeye(f"SpinAft_{side}", (xa, side * ya, za), (0, 0, 1), (0, side, 0), MAT, 0.040)
+        else:
+            parts += MG.cheek_block(f"SpinAft_{side}", (xa, side * ya, za + 0.045), (0, side, 0), (0, 0, -1), MAT, 0.040,
+                                    padeye=((xa, side * ya, za), (0, 0, 1)))
         xl = -1.75
         yl = half_beam(xl) - SIDE_DECK * 0.45
         zl = deck_z(xl, yl)
@@ -598,20 +643,29 @@ def build_hardware():
             t = D.torus(f"SpinSpring_{side}_{k}", 0.008, 0.0012, MAT["Stainless"], 14, 6)
             t.matrix_world = Matrix.Translation((xl, side * yl, zl + 0.005 + 0.006 * k))
             parts.append(t)
-        parts += MG.cheek_block(f"SpinLead_{side}", (xl, side * yl, zl + 0.062), (0, side, 0), (0, 0, -1), MAT, 0.040)
+        if KITFIT:       # the block stands on its spring's stand
+            parts += [KF.standing_block(f"SpinLead_{side}", (xl, side * yl, zl + 0.036), (0, 0, 1), (0, side, 0), MAT, 0.040)]
+        else:
+            parts += MG.cheek_block(f"SpinLead_{side}", (xl, side * yl, zl + 0.062), (0, side, 0), (0, 0, -1), MAT, 0.040)
         xc2 = xl + 0.16
         yc2 = half_beam(xc2) - SIDE_DECK * 0.45
         parts.append(box(f"SpinCamPad_{side}", xc2 - 0.05, xc2 + 0.05, side * yc2 - 0.025, side * yc2 + 0.025, deck_z(xc2, yc2) - 0.002,
                          deck_z(xc2, yc2) + 0.006, MAT["BlackPlastic"], bev=0.002))
-        parts += D.cam_cleat(f"SpinCam_{side}", (xc2, side * yc2, deck_z(xc2, yc2) + 0.006), (0, 0, 1), (-1, 0, 0), MAT)
+        parts += CAM(f"SpinCam_{side}", (xc2, side * yc2, deck_z(xc2, yc2) + 0.006), (0, 0, 1), (-1, 0, 0), MAT)
         xt = CHAINPLATE_X - 0.30
         yt = half_beam(xt) - 0.16
         zt = deck_z(xt, yt)
-        parts += MG.cheek_block(f"SpinTwing_{side}", (xt, side * yt, zt + 0.040), (0, side, 0), (0, 0, -1), MAT, 0.029,
-                                padeye=((xt, side * yt, zt), (0, 0, 1)))
+        if KITFIT:
+            parts += KF.block_on_padeye(f"SpinTwing_{side}", (xt, side * yt, zt), (0, 0, 1), (0, side, 0), MAT, 0.029)
+        else:
+            parts += MG.cheek_block(f"SpinTwing_{side}", (xt, side * yt, zt + 0.040), (0, side, 0), (0, 0, -1), MAT, 0.029,
+                                    padeye=((xt, side * yt, zt), (0, 0, 1)))
     xp = CABIN_FWD + 0.25                 # on the foredeck, forward of the cabin (the fore hatch fills the top ahead of the mast)
     zp = deck_z(xp, 0.0) if xp > CABIN_FWD else cabin_top_z(xp, 0.0)
-    parts += MG.cheek_block("PoleDownhaul", (xp, 0.0, zp + 0.040), (1, 0, 0), (0, 0, -1), MAT, 0.029, padeye=((xp, 0.0, zp), (0, 0, 1)))
+    if KITFIT:
+        parts += KF.block_on_padeye("PoleDownhaul", (xp, 0.0, zp), (0, 0, 1), (1, 0, 0), MAT, 0.029)
+    else:
+        parts += MG.cheek_block("PoleDownhaul", (xp, 0.0, zp + 0.040), (1, 0, 0), (0, 0, -1), MAT, 0.029, padeye=((xp, 0.0, zp), (0, 0, 1)))
     # fore hatch (GUESS on its size): on the flat of the cabin top between the mast step and the raked face
     hx0, hx1 = FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)
@@ -638,7 +692,11 @@ def build_hardware():
     # pc/j22-detail assembly 4 (j22_mastgear.py): the step casting (the halyards turn aft on its two sheaves) and, Bean's
     # feedback 2 (the Harken layout), two turning blocks beside it for the control lines (it had been six)
     parts += MG.mast_step(MAST_X, zm, MAT)
-    parts += MG.turning_blocks(MAST_X, zm, MAT)
+    if KITFIT:           # j22_mastgear.turning_blocks' two blocks (35 mm) on their pad eyes, beside the step's aft side
+        for k, dy in enumerate((-0.11, 0.11)):
+            parts += KF.block_on_padeye(f"Turn_{k}", (MAST_X - 0.12, dy, zm), (0, 0, 1), (1, 0, 0), MAT, 0.035)
+    else:
+        parts += MG.turning_blocks(MAST_X, zm, MAT)
     for side in (1, -1):
         xo = CABIN_AFT + 0.75
         zo = cabin_top_z(xo, side * 0.12)
@@ -649,7 +707,7 @@ def build_hardware():
             # Bean's feedback 2 (the Harken layout): the halyards' cam cleats just forward of the cabin-top winch, two a side
             # (they had been three a side beside the hatch)
             yc = side * (HAL_CAM_Y + 0.08 * k)
-            parts += D.cam_cleat(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
+            parts += CAM(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
     # Bean's feedback 1 (j22_mainsheet.py): the traveler spans the cockpit from seat to seat, let into the seat tops and
     # open over the well, with the mainsheet's fiddle and cam on its car (it had lain on the cockpit sole)
     import j22_mainsheet as MS  # noqa: E402
@@ -747,8 +805,7 @@ def build_rig():
         tb, top = MG.turnbuckle(f"TB_lo_{side}", (xa, ya, deck_z(xa, abs(ya)) + 0.055), lo_top - Vector((xa, ya, deck_z(xa, abs(ya)) + 0.055)), MAT)
         parts += tb
         wires.append(tube(f"Lower_{side}", [tuple(top), tuple(lo_top)], 0.002, MAT["Wire"]))
-    sx = BOW - 0.07
-    fs_base = Vector((sx, 0, sheer_z(sx) + 0.06))
+    fs_base = forestay_pin()                       # bow fittings pass: the stem chainplate's tang (was BOW - 0.07, 6 cm up)
     fs_top = Vector((rake(HOUNDS) + 0.045, 0, HOUNDS - 0.03))
     tb, top = MG.turnbuckle("TB_fore", fs_base, fs_top - fs_base, MAT)
     parts += tb
@@ -758,10 +815,19 @@ def build_rig():
     apex = Vector((STERN + 0.45, 0, 2.20))
     for side in (1, -1):
         base = Vector((STERN + 0.06, side * yb, sheer_z(STERN) + 0.01))
-        parts += D.padeye(f"BS_eye_{side}", base, (0, 0, 1), MAT)
-        wires.append(tube(f"Bridle_{side}", DRAPE.line([tuple(base + Vector((0, 0, 0.012))), tuple(apex - Vector((0, 0, 0.05)))], 0.002, 0.003),
+        if KITFIT:       # the kit's pad eye and a bow shackle through it; the bridle ties to the shackle's bow
+            eye = KF.bridle_eye(side, base, apex - Vector((0, 0, 0.05)), MAT)
+            parts += eye
+            start = KF.sock(eye[1], "Bow")
+        else:
+            parts += D.padeye(f"BS_eye_{side}", base, (0, 0, 1), MAT)
+            start = base + Vector((0, 0, 0.012))
+        wires.append(tube(f"Bridle_{side}", DRAPE.line([tuple(start), tuple(apex - Vector((0, 0, 0.05)))], 0.002, 0.003),
                           0.003, MAT["RopeBackstay"], smooth_path=True))
-    parts += D.block("BS_cascade", apex - Vector((0, 0, 0.03)), (1, 0, 0), (0, 0, 1), MAT, 0.040)
+    if KITFIT:
+        parts += KF.hanging_block("BS_cascade", apex - Vector((0, 0, 0.03)), (0, 0, 1), (1, 0, 0), MAT, 0.040)
+    else:
+        parts += D.block("BS_cascade", apex - Vector((0, 0, 0.03)), (1, 0, 0), (0, 0, 1), MAT, 0.040)
     wires.append(tube("Backstay", [tuple(apex + Vector((0, 0, 0.04))), (rake(MAST_TOP) - 0.195, 0, MAST_TOP - 0.06)], 0.002, MAT["Wire"]))
     # boom: gooseneck at the mast's aft face, outhaul end, vang, mainsheet bails
     # pc/j22-detail assembly 3 (j22_boomgear.py): the gooseneck, the boom end, the outhaul cleat and the vang's upper block
@@ -1051,6 +1117,14 @@ keel = build_keel()
 import j22_steering as STEER  # noqa: E402
 import j22_mastgear as MG  # noqa: E402
 rudder, gudgeons = STEER.build(MAT, D)
+if KITFIT:
+    # hardware-fit wave 1: the kit's Pintle and strap Gudgeons (docs/part-detail-loop/rudder.md) in place of the hero's own
+    old = [o for o in rudder if o.name.startswith("Pintle")] + gudgeons
+    rudder = [o for o in rudder if not o.name.startswith("Pintle")]
+    for o in old:
+        bpy.data.objects.remove(o, do_unlink=True)
+    pintles, gudgeons = KF.rudder_fittings(MAT, STEER)
+    rudder += pintles
 hw = build_hardware() + gudgeons
 if STYLE.get("interior", {}).get("drop_board_stowed", True):
     # under way the drop board lives below, flat on the port bench, so the companionway shows the cabin

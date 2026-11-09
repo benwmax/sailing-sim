@@ -1,0 +1,73 @@
+{
+ "part": "Stemhead",
+ "card": {
+  "what": "Forestay chainplate: a stainless flat bar set edge-on along the stem's leading edge, through-bolted side to side, its top a tang above the deck the forestay's toggle pins through",
+  "boats": "J/22 hero (build_j22_hero.stem_fitting, along the hero's own stem line); Catalina 22 (build_fleet c22_hardware, the generic 70 degree stem)",
+  "distance": "arm's reach from the foredeck; the dock camera passes the bow",
+  "before": "kit Stemhead from bk_parts.stemhead (Oct 2026): a flat deck plate with a sail-shaped tang and two pins; the hero drew a 12 x 9 cm stainless box on the foredeck 7 cm aft of the stem"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look and layout: TX 7295 EC's bow on its lift from the dock off the starboard bow (forestay chainplate edge-on down the stem, toggle on its tang, jib tack bail just aft on the foredeck)",
+   "url": "Bean's lesson photo IMG_9224 (Oct 4 2026, project files sailing-sim-ref/j22-lessons; shows people elsewhere in the frame, so never committed)"
+  },
+  {
+   "id": "rigrite",
+   "kind": "catalogue",
+   "use": "pin size",
+   "url": "https://rigrite.com/Spars/A_spec_classes/H_J22_mast.php (J/22 stemhead RR 79-J22 for a 3/8 in pin)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "thick",
+   "name": "Bar thickness",
+   "target": 6.0,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "GUESS: the hero's forestay toggle cheeks straddle 6.4 mm"
+  },
+  {
+   "id": "pin",
+   "name": "Forestay hole",
+   "target": 10.5,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "3/8 in pin (Rigrite RR 79-J22) with clearance"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "bar",
+   "text": "Flat bar edge-on along the stem's leading edge, standing proud of it",
+   "manual": true,
+   "objects": [
+    "chainplate"
+   ]
+  },
+  {
+   "id": "tang",
+   "text": "Tang above the deck at the stem's top with one round hole for the forestay toggle's pin",
+   "manual": true
+  },
+  {
+   "id": "bolts",
+   "text": "Through-bolts side to side down the stem: dome heads one side, acorn nuts the other",
+   "manual": true
+  },
+  {
+   "id": "metal",
+   "text": "All polished stainless",
+   "manual": false
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
