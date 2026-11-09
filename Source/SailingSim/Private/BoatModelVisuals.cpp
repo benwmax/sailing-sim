@@ -341,14 +341,29 @@ UStaticMeshComponent* ASailboatPawn::AddModelPart(UStaticMesh* Mesh, USceneCompo
 void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 {
 	ModelHull = AddModelPart(Model.Hull, BoatRoot, FVector::ZeroVector);
+	// Boat fidelity 1 stills: -SailingBoatAge=<years>[,<care 0..1>] ages this boat's hull slots as E1 ages a berthed one.
+	// Hero ageing (docs/hero-ageing): and the rudder's, the boom's and the mast's (AgeDevPart below), whose tiller, blade,
+	// varnish and fittings stayed new in the Nov 9 ageing stills. Unset in play: nothing changes.
+	FString AgeArg;
+	const bool bAge = !bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false);
+	FString AgeStr, CareStr;
+	if (bAge && !AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
+	auto AgeDevPart = [&](UStaticMeshComponent* Part)
+	{
+		if (!bAge || !Part) return;
+		for (int32 I = 0; I < Part->GetNumMaterials(); ++I)
+		{
+			// (An existing dynamic instance, such as the mast's bend material, is returned as it is.)
+			if (UMaterialInstanceDynamic* Mid = Part->CreateDynamicMaterialInstance(I))
+			{
+				Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
+				Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
+			}
+		}
+	};
 	// Graphics G3: this boat's livery and wear (sampled in RebuildBoatVisuals) on each hull slot.
 	{
 		const FBoatLivery& L = Livery;
-		// Boat fidelity 1 stills: -SailingBoatAge=<years>[,<care 0..1>] ages this boat's hull slots as E1 ages a berthed one.
-		FString AgeArg;
-		const bool bAge = !bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false);
-		FString AgeStr, CareStr;
-		if (bAge && !AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
 		// -SailingDeckWet=<0..1> starts the deck that wet (it dries over about five minutes: UpdateBoatWetness).
 		float StartWet = 0.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingDeckWet="), StartWet)) DeckWetness = FMath::Clamp(StartWet, 0.f, 1.f);
@@ -393,20 +408,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			UStaticMeshComponent* GlassPart = AddModelPart(Model.Glass, BoatRoot, FVector::ZeroVector);
 			GlassPart->SetCastShadow(false);
 			// Texture loop, acrylic (docs/texloop-acrylic): -SailingBoatAge ages the panes too (M_J22HeroGlass's Age and
-			// Care; its bilge water ignores them). Unset in play: the glass as before.
-			FString AgeArg, AgeStr, CareStr;
-			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false))
-			{
-				if (!AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
-				for (int32 I = 0; I < GlassPart->GetNumMaterials(); ++I)
-				{
-					if (UMaterialInstanceDynamic* Mid = GlassPart->CreateDynamicMaterialInstance(I))
-					{
-						Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
-						Mid->SetScalarParameterValue(TEXT("Care"), FCString::Atof(*CareStr));
-					}
-				}
-			}
+			// Care; its bilge water ignores them; hero ageing: the same AgeDevPart as every part). Unset in play: as before.
+			AgeDevPart(GlassPart);
 		}
 	}
 	ModelMast = AddModelPart(Model.Mast, BoatRoot, ModelHull->GetSocketTransform(TEXT("MastStep"), RTS_Component).GetLocation());
@@ -431,7 +434,10 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
 		if (K > 0 && Model.bMirrorTwinRudder) Blade->SetRelativeScale3D(FVector(1.f, -1.f, 1.f)); // canted outboard each side
 		if (K == 0) ModelRudder = Blade;
+		AgeDevPart(Blade);
 	}
+	AgeDevPart(ModelMast);
+	AgeDevPart(ModelBoom);
 	// Graphics G6: the berthed dress for the player's keelboat tied up in her slip (the marina's neighbours wear the same).
 	StowedDress = nullptr;
 	bStowedShown = false;

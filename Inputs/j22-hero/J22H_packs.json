@@ -1,6 +1,6 @@
 {
-  "_comment": "pc/boat-slots: the hero J/22's flat hardware materials (materials.json flat_materials, M_BoatSurface) folded into packs of up to 8, one slot each; the entry is in UV1.x and MI_J22H_<Pack> on M_BoatPacked holds the entries' values (scripts/import_j22_hero.py). The baked groups (J22H_<group>, M_J22HeroSurface), the glass and the mast's aluminium (M_BoatMast) keep their own slots. Append, never reorder.",
+  "_comment": "pc/boat-slots: the hero J/22's flat hardware materials (materials.json flat_materials, M_BoatSurface) folded into packs of up to 8, one slot each; the entry is in UV1.x and MI_J22H_<Pack> on M_BoatPacked holds the entries' values (scripts/import_j22_hero.py). The baked groups (J22H_<group>, M_J22HeroSurface), the glass and the mast's aluminium (M_BoatMast) keep their own slots. Append, never reorder. The wood pack also takes the small slots later passes added to the hull (hero ageing, Nov 9 2026: the hatch acrylic, traveler line, decals, telltale yarn and the tack strop's halyard rope), so SM_J22H_Hull stays inside BoatBudget's 6 slots; a new hull material needs a pack entry too.",
   "J22H_PackMetal": ["Stainless", "Chrome", "CastAlu", "Aluminium", "SheaveGrey", "RigTape", "TeakVarnish", "Gelcoat"],
   "J22H_PackPlastic": ["BlackPlastic", "RedPlastic", "WhitePlastic", "CamBase", "RubRail", "OutboardBlack", "ExtensionBlack", "CunnLine"],
-  "J22H_PackWood": ["PlywoodVarnish", "TeakWeathered", "AshVarnish"]
+  "J22H_PackWood": ["PlywoodVarnish", "TeakWeathered", "AshVarnish", "HatchAcrylic", "TravLine", "DecalBlack", "TelltaleRed", "RopeHalyard"]
 }
