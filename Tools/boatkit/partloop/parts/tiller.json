@@ -1,0 +1,121 @@
+{
+ "part": "Tiller",
+ "card": {
+  "what": "Laminated wooden tiller of a small keelboat: varnished ash and mahogany laminations, rectangular with eased edges, rising from the rudder head to a rounded grip, carried on the rudder head's pivot bolt by two stainless side straps",
+  "boats": "J/22 (Tools/boatkit/layouts/j22.json at RudderStock; the hero J/22 draws its own in Inputs/j22-hero/j22_steering.py from the same photos), Catalina 22 and other small keelboats with a wooden tiller",
+  "distance": "arm's reach: the helm holds it, and the cockpit camera looks straight down it",
+  "before": "kit Tiller from bk_parts.tiller (Oct 2026): one swept bar in a single varnish, a plain aluminium box for a head, a black knob on the end"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look in use on the J/22 Bean sails at Rush Creek: deep varnished butt between silver straps, broad pale ash with darker strips, a gentle S rising off the head, rounded grip end",
+   "url": "Bean's lesson photos (Data/Reference/raw/j22-lessons/IMG_9271, IMG_9273; people in frame, so never in a sheet) and his tiller photos used for Inputs/j22-hero/j22_steering.py (LAMS)",
+   "note": "ours; measuring and comparing only"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://mauripro.com/products/rud-jbo-22-til",
+   "note": "Rudder Craft J/22 tiller (style B): 47 in long, butt 2 in high by 1.5 in wide, 4.75 in rise; style A 43 in with 9.75 in rise. H&L J/22 tiller: butt 2.25 in, alternating 1/4 in mahogany and ash strips (owner report, sailboatowners.com)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Overall, the straps' round front to the grip's end (strap end 21 mm + 85 mm to the butt + the 47 in tiller)",
+   "target": 1300.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue 1194 mm tiller; strap reach as the hero J/22's (STRAP_IN 85 mm)"
+  },
+  {
+   "id": "height",
+   "name": "Side view, lowest to highest point",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only (the rise, 121 mm, plus the section)"
+  },
+  {
+   "id": "width",
+   "name": "Across the bolt head and nut",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "laminations",
+   "text": "Laminations show as stripes along the sides: broad pale ash between darker strips",
+   "slots": [
+    "Wood",
+    "WoodMahogany"
+   ],
+   "manual": true
+  },
+  {
+   "id": "section",
+   "text": "Rectangular section with eased edges, deeper than wide at the butt (2 x 1.5 in), tapering to the grip",
+   "objects": [
+    "tiller_body"
+   ],
+   "manual": true
+  },
+  {
+   "id": "rise",
+   "text": "Flat through the straps, then rising about 4.75 in in a gentle S",
+   "manual": true
+  },
+  {
+   "id": "grip",
+   "text": "Rounded grip end, no fitting on it",
+   "manual": true
+  },
+  {
+   "id": "straps",
+   "text": "Two stainless side straps, round-ended round the pivot, running into the butt's sides",
+   "objects": [
+    "strap_p",
+    "strap_s"
+   ]
+  },
+  {
+   "id": "pivot",
+   "text": "Pivot bolt with a hex head and washer one side, a nylock the other",
+   "objects": [
+    "pivot_bolt",
+    "pivot_head",
+    "pivot_nut"
+   ]
+  },
+  {
+   "id": "bolts",
+   "text": "Three carriage bolts through straps and butt: domed heads one side, nylocks the other",
+   "objects": [
+    "carriage_head0",
+    "carriage_head1",
+    "carriage_head2",
+    "carriage_nut0"
+   ]
+  },
+  {
+   "id": "finish",
+   "text": "Varnished wood and stainless only: no aluminium box, no plastic knob",
+   "slots": [
+    "Stainless"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

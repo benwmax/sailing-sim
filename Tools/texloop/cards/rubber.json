@@ -1,0 +1,47 @@
+{
+ "surface": "rubber",
+ "name": "Rubber and soft PVC (kind 8) and woven webbing (kind 14, new)",
+ "kind": "surface kind 8 in BOAT_CODE (RUBBER_WEAR block, with an Age; unset as before) and new kind 14 (WEBBING_WEAR block); M_BoatKit's Rubrail slot through the same rubber lines",
+ "code": "scripts/make_materials.py BOAT_CODE, the blocks between '// RUBBER_WEAR >>>' / '<<<' and '// WEBBING_WEAR >>>' / '<<<'; scripts/import_hardware_kit.py KIT_CODE copies RUBBER_WEAR",
+ "boats": {
+  "j22": "hero J/22 RubRail (grey PVC hull-deck strip) and ExtensionBlack (tiller extension grip) kind 8; spare vests' straps Webbing now kind 14 (was 11, canvas)",
+  "sunfish, ilca": "the hiking strap moves from the Rubber slot to the new Webbing slot (kind 14, its own slot: every pack is full); the daggerboard gasket and the extension's joint stay Rubber",
+  "fleet": "library Rubrail and Rubber on every built boat with Age and Care (custom data 10 and 11)",
+  "kit": "M_BoatKit MI_Kit_Rubrail (the ratchet's sheave)"
+ },
+ "slots": [
+  "Rubrail",
+  "Rubber",
+  "Webbing (new)",
+  "hero RubRail, ExtensionBlack, Webbing"
+ ],
+ "closest_camera_m": 0.4,
+ "pattern_size_cm": {
+  "bloom_blotch": [
+   2.0,
+   0.65
+  ],
+  "ozone_crack": "0.35 cm apart along the part, up to 0.8 cm long, 0.2-0.6 mm wide",
+  "dock_rash": "6 cm cells along the part, 0.35 cm high, streak 20-90% of the cell",
+  "mildew_speck_mm": [
+   1.0,
+   1.5
+  ],
+  "webbing_weave": "the canvas detail normal at 2 cm (High; no new map)",
+  "webbing_blotch": [
+   3.0,
+   1.0
+  ]
+ },
+ "levels_needed": {
+  "L0": "satin black rubber, black woven webbing, clean grey PVC",
+  "L1": "as new; a stray dock scuff on the rail",
+  "L2": "a waxy grey-brown bloom on the sun side (rail top L* about 30), dock rash streaks, dust; the strap faded to charcoal, fuzzy, gritty",
+  "L3": "kept: darker satin bloom wiped with protectant, fine ozone cracks across the rubber, no dust or mildew; the strap replaced every 8 years, so only part-faded",
+  "L4": "heavy pale bloom (L* about 37), more cracks, tan dust, mildew specks; the strap bleached brown-grey, fuzzy, frayed at the edges, black mildew clusters"
+ },
+ "drivers": "rubber: bloom = timeK (0.3 + 1.2 dirtK) x sky x sun, weight 0.85 - 0.6 Care, rough to 0.92 (left) or 0.62 (kept); cracks smoothstep(0.45, 0.85, timeK) x (1 - 0.6 Care); dock rash share 0.6 saturate(3 timeK) + 0.1 dirtK on upright faces; dust and mildew on dirtK. webbing: wbTime = timeK x (1 - 0.5 kept x saturate(age/8)); fade, fuzz, grit, frayed edges (curvature), mildew. Age unset (-1): the old lines exactly.",
+ "replaces": "kind 8 had one line (col + 0.05 ageK, rough to 0.85); webbing had no kind of its own (the dinghy strap was Rubber, the hero's vest straps canvas)",
+ "maps": "none new: shader math; kind 8 keeps T_Detail_Rubber_N, kind 14 reuses T_Detail_Canvas_N at a 2 cm tile on High",
+ "out_of_scope": "the crew's vest webbing (MI_Crew_Webbing, CrewStraps) is the crew gear fabric pass; the marks' webbing handles (CrewStraps) and the Lagoon's tender tubes stay as they are; fenders and dock lines are their own pass"
+}

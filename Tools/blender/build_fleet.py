@@ -40,7 +40,8 @@ DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
          "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope",   # Rope last: the earlier slots keep their indices
-         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte"]   # the shared kit's other library slots (place_kit)
+         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte",   # the shared kit's other library slots (place_kit)
+         "Webbing"]   # texture loop, webbing and rubber: the dinghies' hiking strap (kind 14; its own slot, in no pack)
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -784,7 +785,8 @@ def c22_hardware(H, top, mast_x, st, bw):
             kit_part("Chainplate", x, y, z, math.pi / 2)
             kit_part("Turnbuckle", x, y, z + 0.035, math.pi / 2)
     kit_part("MastStep", mast_x, 0.0, top(mast_x))
-    kit_part("Stemhead", bw - 0.12, 0.0, H.deck_z(bw - 0.12, 0.0))
+    # (bow fittings pass, Nov 2026: the kit's Stemhead is now a forestay chainplate down the stem, set at the stem's top)
+    kit_part("Stemhead", bw - 0.003, 0.0, H.deck_z(bw - 0.003, 0.0))
     for y in (-0.16, 0.16):
         kit_part("VentMushroom", mast_x + 0.45, y, top(mast_x + 0.45))
     for side in (1, -1):
@@ -886,7 +888,7 @@ def dinghy_hiking_strap(H, ck):
         x = xa + (xb - xa) * t
         path.append((x, 0.0, sole(x) + end_h - (end_h - mid_h) * 4.0 * t * (1.0 - t) - 0.0015))
         secs.append((0.05, 0.003))
-    bar(hull, path, secs, "Rubber")
+    bar(hull, path, secs, "Webbing")   # texture loop (docs/texloop-rubber): woven webbing, not the rubber slot it had been
     for x, s in ((x0, 1), (x1, -1)):
         z = sole(x) + end_h
         box(hull, (x + s * 0.003, 0.0, z - 0.004), (0.004, 0.066, 0.03), "Stainless")
@@ -1071,8 +1073,13 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
         tube(hull, line, 0.003, "Rope", 4, cap=False)
     # bow handle (inside the stem so LOA is untouched) and the transom drain plug
     bwx = H.h["bow_x"] - 0.22
-    tube(hull, [(bwx - 0.06, 0, H.deck_z(bwx - 0.06, 0)), (bwx - 0.03, 0, H.deck_z(bwx, 0) + 0.04),
-                (bwx + 0.05, 0, H.deck_z(bwx, 0) + 0.04), (bwx + 0.08, 0, H.deck_z(bwx + 0.08, 0))], 0.007, "Stainless", 6, cap=False)
+    if TAG == "Sunfish":
+        # bow fittings pass (Nov 2026, docs/part-detail-loop/bow.md): the kit's cast aluminium BowHandle (it had been a
+        # six-sided bent tube); its feet straddle the old tube's ends
+        kit_part("BowHandle", bwx + 0.01, 0.0, H.deck_z(bwx + 0.01, 0))
+    else:
+        tube(hull, [(bwx - 0.06, 0, H.deck_z(bwx - 0.06, 0)), (bwx - 0.03, 0, H.deck_z(bwx, 0) + 0.04),
+                    (bwx + 0.05, 0, H.deck_z(bwx, 0) + 0.04), (bwx + 0.08, 0, H.deck_z(bwx + 0.08, 0))], 0.007, "Stainless", 6, cap=False)
     st = H.h["stern_x"]
     tube(hull, [(st + 0.004, 0.0, H.sheer(st) - 0.06), (st - 0.006, 0.0, H.sheer(st) - 0.06)], 0.014, "BlackPlastic", 8)
 

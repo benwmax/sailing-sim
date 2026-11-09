@@ -1,0 +1,118 @@
+{
+ "part": "DeckOrganizer",
+ "card": {
+  "what": "Moulded composite two-sheave deck organiser: 40 mm sheaves side by side on upright axles between dog-bone base and top plates, a screw tab at each end, stainless axle heads",
+  "boats": "J/22 hero, one a side on the cabin top aft of the mast, turning the halyards outboard to their cam cleats",
+  "distance": "arm's reach; the crew handles the halyards beside it",
+  "before": "on the J/22 hero an 80 x 120 x 35 mm black box (no kit part)"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "40 mm composite two-sheave organiser listings (marinestore.co.uk, mauripro.com, theboatwarehouse.com.au): 104 mm long, 24 mm high, 70 g; 50 mm model 135 x 31 mm",
+   "note": "numbers only"
+  },
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look: black halyard hardware on TX 7295's cabin top aft of the mast (IMG_9224, project files only)",
+   "url": "Bean's lesson photos, Oct 4 2026"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "width",
+   "name": "Length across the lines (edge view)",
+   "target": 104.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 104 mm"
+  },
+  {
+   "id": "height",
+   "name": "Height",
+   "target": 24.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 24 mm"
+  },
+  {
+   "id": "length",
+   "name": "Depth along the lines",
+   "target": 46.0,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "not listed; a 40 mm sheave plus the plate's rim (GUESS)"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "sheaves",
+   "text": "Two grooved sheaves side by side on upright axles",
+   "objects": [
+    "sheave0",
+    "sheave1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "plates",
+   "text": "Dog-bone base and top plates, round over each sheave with a waist between",
+   "objects": [
+    "base",
+    "top"
+   ],
+   "manual": true
+  },
+  {
+   "id": "tabs",
+   "text": "A screw tab at each end of the base with a countersunk screw",
+   "objects": [
+    "screw-1",
+    "screw1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "axles",
+   "text": "Stainless axle heads with hex sockets on top, stainless bushings",
+   "objects": [
+    "axle0",
+    "axle1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "web",
+   "text": "A web joining the plates at the waist",
+   "objects": [
+    "web0"
+   ],
+   "manual": true
+  },
+  {
+   "id": "crown",
+   "text": "A raised rim round the top plate",
+   "objects": [
+    "crown"
+   ],
+   "manual": true
+  },
+  {
+   "id": "plate",
+   "text": "Made-up maker's plate at the waist",
+   "objects": [
+    "plate"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

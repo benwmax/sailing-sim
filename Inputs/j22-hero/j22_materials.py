@@ -604,6 +604,8 @@ def build_all(st):
         # pc/j22-detail (photos tiller, tiller-2): the tiller's pale ash laminations between the mahogany ones
         "AshVarnish": simple("AshVarnish", "#C9A36E", 0.30, coat=0.6),
         "CunnLine": simple("CunnLine", "#2C62A6", 0.78),       # pc/j22-detail: the cunningham's blue line, baked on the mast
+        # traveler part loop (Nov 8 2026, Bean's photo): the traveler's control line, a yellow braid with black flecks, baked on the hull
+        "TravLine": simple("TravLine", "#B9A90C", 0.8),
         "Aluminium": anodised(st),
         "CastAlu": anodised(st, "CastAlu", "#B7BABD"),
         "Chrome": stainless(st, "Chrome", "#E4E6E8", 0.10),
@@ -615,7 +617,7 @@ def build_all(st):
         "SheaveGrey": simple("SheaveGrey", "#3A3C3F", 0.4),
         "RedPlastic": simple("RedPlastic", "#8E1B17", 0.4),
         "WhitePlastic": simple("WhitePlastic", "#E7E5E0", 0.4),
-        "OutboardBlack": simple("OutboardBlack", "#111214", 0.28, coat=0.6),
+        "OutboardBlack": simple("OutboardBlack", "#111214", 0.42, coat=0.25),   # satin painted cowl (part loop Nov 9: the photos are not glossy)
         "ExtensionBlack": simple("ExtensionBlack", "#1A1A1A", 0.6),
         "KeelLead": simple("KeelLead", st["hull"]["bottom_hex"], 0.6),
         "HatchAcrylic": acrylic("HatchAcrylic"),

@@ -87,3 +87,9 @@ the guesses; there is no shoot planned for now.
 Sails and ropes in the stills are one pose; in the game they stay live (see above). No spinnaker gear, no LODs yet (Nanite covers the rigid parts). The cabin trunk's front is rounder than the real one and its window
 outline is estimated. The interior layout is from typical J/22 photos and the class plan, not measured on TX 7295 EC: a phone video of
 its cabin would settle the berth heights, the sole and the locker openings.
+
+## Kit hardware (hardware-fit wave 1, Nov 8 2026)
+
+The deck hardware now comes from the shared boat kit (`j22_kitfit.py`, docs/hardware-fit): the cam cleats, the turning
+blocks on their pad eyes, the backstay's cascade block and bridle shackles, and the rudder's pintles and gudgeons. Add
+`--old-hardware` to `build_j22_hero.py` to build the hero's own copies as before (for before/after renders).

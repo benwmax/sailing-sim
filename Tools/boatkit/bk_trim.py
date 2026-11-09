@@ -27,7 +27,7 @@ BAND_H = TRIM["band_h_px"]
 SLOT_BAND = {
     "Stainless": "brushed", "Aluminium": "anodised", "MastAluminium": "anodised", "BlackPlastic": "textured",
     "Rubrail": "grip", "Carbon": "carbon", "CarbonMatte": "carbon", "CarbonMast": "carbon",
-    "CabinWindow": "smooth", "Deck": "smooth", "Topsides": "smooth", "Teak": "smooth", "Wood": "smooth",
+    "CabinWindow": "smooth", "Deck": "smooth", "Topsides": "smooth", "Teak": "smooth", "Wood": "smooth", "WoodMahogany": "smooth",
 }
 
 
