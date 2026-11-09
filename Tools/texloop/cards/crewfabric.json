@@ -10,7 +10,7 @@
   "MI_Crew_Shorts": "kind 4",
   "MI_Crew_Webbing, MI_Crew_ShoeLeather": "kind 0, unchanged (webbing is the webbing/rubber pass's)"
  },
- "driver": "Age and Care on the material (default -1: no wear). The pawn sets them on the crew's dynamic instances from -SailingCrewAge=<years>[,<care>] or -SailingBoatAge (player's boat only); nothing sets them in normal play yet",
+ "driver": "Age and Care on the material (default -1: no wear). The pawn sets them on the player's crew's instances: L2 (6, 0.5) by default (Bean, Nov 9), or -SailingCrewAge=<years>[,<care>] / -SailingBoatAge; a negative age shows new gear",
  "closest_camera_m": 0.6,
  "pattern_size_cm": {
   "fade_blotch": [9.0, 3.1],

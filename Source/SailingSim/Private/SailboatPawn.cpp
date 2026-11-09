@@ -4354,16 +4354,24 @@ USkeletalMeshComponent* ASailboatPawn::NewCrewBody(USkeletalMesh* Mesh, int32 Ri
 	return Body;
 }
 
+namespace
+{
+	// The club's crew gear by default: the texture loop's L2 (docs/texture-loop: 6 years, Care 0.5).
+	constexpr float kClubGearAge = 6.f;
+	constexpr float kClubGearCare = 0.5f;
+}
+
 USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 Index)
 {
 	USkeletalMesh* BodyMesh = MetaCrewMeshes[3 * CrewRole];
 	const FCrewRig& Rig = MetaCrewRigs[CrewRole];
 	USkeletalMeshComponent* Body = NewCrewBody(BodyMesh, CrewRole);
 	BoatParts.Add(Body);
-	// Texture loop, crew fabric (docs/texloop-crewfabric): -SailingCrewAge=<years>[,<care 0..1>] wears this boat's crew gear
-	// (M_CrewFabric's Age and Care: sun fade, grime, pilling, sweat marks, mildew); -SailingBoatAge does the same, so a
-	// boat's stills show its crew at the same age. Unset: Age stays -1 and the cloth is exactly as before.
-	float GearAge = -1.f, GearCare = 0.5f;
+	// Texture loop, crew fabric (docs/texloop-crewfabric): the crew gear's wear (M_CrewFabric's Age and Care: sun fade,
+	// grime, pilling, sweat marks, mildew). By default the player's crew wear the club's gear at the loop's L2, several
+	// seasons in use (Bean, Nov 9 2026: like the sailing school's vests); -SailingCrewAge=<years>[,<care 0..1>] sets it
+	// (a negative age: new, as before), and -SailingBoatAge does the same, so a boat's stills show her crew at her age.
+	float GearAge = bTrafficBoat ? -1.f : kClubGearAge, GearCare = kClubGearCare;
 	{
 		FString GearArg;
 		if (!bTrafficBoat && (FParse::Value(SailingArgs::Dev(), TEXT("SailingCrewAge="), GearArg, false) || FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), GearArg, false)))

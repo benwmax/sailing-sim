@@ -66,6 +66,8 @@ def check_wiring():
         assert '"%s"' % name in src[src.index("def build_crew_fabric"):], name + " not wired into M_CrewFabric"
     pawn = open(os.path.join(REPO, "Source/SailingSim/Private/SailboatPawn.cpp")).read()
     assert "SailingCrewAge=" in pawn and pawn.count("WearGear(Mid)") >= 5, "the pawn sets the crew gear's Age"
+    lv = {l["id"]: l for l in wear.levels()}
+    assert "kClubGearAge = %g.f" % lv["L2"]["age"] in pawn and "kClubGearCare = %gf" % lv["L2"]["care"] in pawn, "club gear defaults to L2"
 
 
 def check_ladder():

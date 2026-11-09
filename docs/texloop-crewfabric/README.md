@@ -27,10 +27,10 @@ wear: every sailor's gear looked new on every boat. It now wears with an Age and
   PFD shell 1, polo and rib 2, cap 3 (UVm 0.106: its UVs are in the unit mesh), shorts 4. Webbing and shoe leather stay
   kind 0 (the webbing is the webbing/rubber pass's).
 - **The pawn** (`SailboatPawn::AddMetaHumanFigure`) sets Age and Care on the crew's cloth instances (shorts, polo, vest,
-  the fallback vest, cap) from `-SailingCrewAge=<years>[,<care>]`, or from `-SailingBoatAge` on the player's boat, only
-  where the instance's material is `M_CrewFabric`.
-- **Age unset: exactly as before.** Nothing sets it in normal play yet. No new textures, no extra texture reads:
-  Medium included.
+  the fallback vest, cap), only where the instance's material is `M_CrewFabric`. **By default the player's crew wear the
+  club's gear at L2** (6 years, Care 0.5: Bean's choice, Nov 9, like the sailing school's vests); `-SailingCrewAge=<years>[,<care>]`
+  or `-SailingBoatAge` set it, and a negative age (`-SailingCrewAge=-1`) shows the gear new, as before.
+- **Age unset on the material: exactly as before.** No new textures, no extra texture reads: Medium included.
 
 ## Checks (round 2, the PR)
 
@@ -62,4 +62,4 @@ scan's fine grid shows at 50 cm; wear could gather at edges, straps and creases 
 
 - Mac: `scripts/make-content.sh` (rebuilds M_CrewFabric and its instances), the build (SailboatPawn.cpp), `-SailingCrewAge`
   stills, the crew gate. The PC has nothing to do: the crew cloth is built by make_materials.py on the Mac.
-- Bean's call: whether club crews wear L2 gear by default in play (the school's vests are several seasons old).
+- Bean chose L2 gear for club crews by default (Nov 9). A per-boat or per-sailor spread (some newer vests) could follow.
