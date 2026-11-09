@@ -495,7 +495,7 @@ def build(H, cabin, deck, cockpit, hull):
         bool_op(wall, box(f"wall_lock_{side}", xw - 0.05, xw + 0.05, side * 0.42 - 0.17, side * 0.42 + 0.17, BENCH_Z + 0.03, H.SEAT_Z - 0.04))
     objs.append(wall)
     # companionway step: a teak box on the sole
-    objs.append(box("CompStep", xa + 0.02, xa + 0.26, -0.20, 0.20, SOLE_Z, SOLE_Z + 0.24, H.MAT["TeakWeathered"], bev=0.01))
+    objs.append(box("CompStep", xa + 0.02, xa + 0.26, -0.20, 0.20, SOLE_Z, SOLE_Z + 0.24, H.MAT["TeakInterior"], bev=0.01))
     # mast compression post: aluminium tube from the sole to the headliner under the step (GUESS)
     zt = H.deck_z(H.MAST_X, 0) + H.CABIN_H0 - 0.06 * (H.MAST_X - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT) - 0.028
     objs.append(cyl("CompressionPost", (H.MAST_X, 0, SOLE_Z), (H.MAST_X, 0, zt), 0.032, H.MAT["Aluminium"], 24))

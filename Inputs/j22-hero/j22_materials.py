@@ -178,6 +178,7 @@ def gelcoat_hull(st):
     """Topsides, bottom and transom from the style: rain streaks, chalking, scum line, fender rub marks, colour-matched
     repairs that never quite match, chipped edges, grey bottom with lake slime."""
     h = st["hull"]
+    clean = bool(h.get("clean"))     # docs/hero-ageing: the game's clean bake drops even the streaks' and chips' floors
     W = st["seed"] * 0.137 % 100
     m, nt, bsdf, _ = _new("GelcoatHull")
     vec, tc = _coords(nt)
@@ -198,15 +199,15 @@ def gelcoat_hull(st):
         src = _band(nt, x, sx - sw, sx + sw, sw * 0.6)
         run = _math(nt, "GREATER_THAN", _noise4(nt, svec, 1.6, W + 30 + i, 2, 0.5), 0.45)
         st_ = _math(nt, "MAXIMUM", st_, _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", src, run), 0.9))
-    streak = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", st_, fade.outputs[0]), 0.25 + 0.5 * h["streaks"], True)
+    streak = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", st_, fade.outputs[0]), (0.0 if clean else 0.25) + 0.5 * h["streaks"], True)
     c = _mix(nt, streak, base, _rgb("#A8A293"))
     # a grey wash just under the hull-deck joint where the toe rail drips
     lip = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
     lip.inputs[1].default_value, lip.inputs[2].default_value = 0.42, 0.66
     _l(nt, z, lip.inputs[0])
-    c = _mix(nt, _math(nt, "MULTIPLY", lip.outputs[0], 0.10 + 0.25 * h["streaks"]), c, _rgb("#B4AE9F"))
+    c = _mix(nt, _math(nt, "MULTIPLY", lip.outputs[0], (0.0 if clean else 0.10) + 0.25 * h["streaks"]), c, _rgb("#B4AE9F"))
     var = _noise4(nt, vec, 3.0, W + 3, 3, 0.5)
-    c = _mix(nt, _math(nt, "MULTIPLY", var, 0.10 + 0.25 * h["chalk"]), c, _rgb("#DCD7CA"))
+    c = _mix(nt, _math(nt, "MULTIPLY", var, (0.04 if clean else 0.10) + 0.25 * h["chalk"]), c, _rgb("#DCD7CA"))
     for i, r in enumerate(h["repairs"]):
         mask = _math(nt, "MULTIPLY", _rect(nt, x, z, r["x"], r["z"], r["w"], r["h"], 0.015), 0.9)
         c = _mix(nt, mask, c, _rgb(h["gelcoat_hex"]) if False else tuple(min(1, max(0, v * (1 + r["tint"] * 6))) for v in base[:3]) + (1,))
@@ -219,6 +220,8 @@ def gelcoat_hull(st):
     # chipped edges at the sheer, transom corners and stem: pointiness picks the convex edges
     chips = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", _edges(nt), 0.53 - 0.02 * h["edge_chips"]),
                   _math(nt, "GREATER_THAN", _noise4(nt, vec, 40, W + 7, 5, 0.7), 0.62 - 0.1 * h["edge_chips"]))
+    if clean:
+        chips = _math(nt, "MULTIPLY", chips, 0.0)
     c = _mix(nt, chips, c, _rgb("#9C927E"))
     under = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
     # a taped paint line, crisp (texture loop, waterline: was a 4 cm blend that blurred the scum line into the paint)
@@ -586,18 +589,23 @@ def draw_sail_textures(st, kind, out_dir, size=(2048, 4096)):
     return cpath, hpath
 
 
-def build_all(st):
+def build_all(st, surf=None):
+    """surf: the style for the baked gelcoat, deck mould and weathered teak (build_j22_hero.py --clean-bake passes
+    j22_style.clean_bake(st), docs/hero-ageing); None uses st."""
     from j22_style import rope_pair
+    surf = surf or st
     from j22_rope import rope_material, wire_material
     os.makedirs(TEX_DIR, exist_ok=True)
     lam = st["sails"]["cloth"] == "grey_laminate"
     fade = st["ropes"]["fade"]
     dirt = min(1.0, st["wear"] * (1.2 - st["care"]))
     mats = {
-        "Gelcoat": deck_mould(st, "Gelcoat"),
-        "GelcoatHull": gelcoat_hull(st),
-        "CabinGelcoat": deck_mould(st, "CabinGelcoat"),      # real portlights since the interior pass
-        "TeakWeathered": teak(st, "TeakWeathered"),
+        "Gelcoat": deck_mould(surf, "Gelcoat"),
+        "GelcoatHull": gelcoat_hull(surf),
+        "CabinGelcoat": deck_mould(surf, "CabinGelcoat"),      # real portlights since the interior pass
+        "TeakWeathered": teak(surf, "TeakWeathered"),
+        # the cabin's companionway step is baked into the Interior group, which takes no weather in the game: it keeps st's teak
+        "TeakInterior": teak(st, "TeakInterior") if surf is not st else None,
         "TeakVarnish": teak(st, "TeakVarnish", varnish=True),
         # #235 gaps (photo companionway-1): the sliding hatch is pale varnished marine plywood, not moulded gelcoat
         "PlywoodVarnish": simple("PlywoodVarnish", "#B48A5C", 0.32, coat=0.6),
@@ -637,6 +645,8 @@ def build_all(st):
         "RopeBackstay": rope_material("RopeBackstay", st["ropes"]["backstay"], fade, dirt * 0.6, seed=st["seed"] + 6),
         "RopeMooring": rope_material("RopeMooring", "blue_solid", fade * 1.2, dirt * 1.3, kind="Braid16", seed=st["seed"] + 7),
     }
+    if mats["TeakInterior"] is None:
+        mats["TeakInterior"] = mats["TeakWeathered"]
     # aliases used by older call sites
     mats["RopeRedWhite"] = mats["RopeMain"]
     mats["RopeBlue"] = mats["RopeHalyard"]
@@ -646,7 +656,7 @@ def build_all(st):
     def _mixhex(a, b, t):
         ca, cb = _rgb(a), _rgb(b)
         return tuple(ca[i] * (1 - t) + cb[i] * t for i in range(3))
-    teak_hex = "#8F8B82" if st["teak"]["state"] == "silvered" else "#7E5230"
+    teak_hex = "#8F8B82" if surf["teak"]["state"] == "silvered" else "#7E5230"
     flat = {"Aluminium": _rgb("#C9CCCF"), "CastAlu": _rgb("#B7BABD"), "Chrome": _rgb("#E4E6E8"),
             "Stainless": _rgb("#C8CACC"), "Wire": _rgb("#B9BCBF"), "TeakWeathered": _rgb(teak_hex),
             "TeakVarnish": _rgb("#7A4520"), "Gelcoat": _rgb(st["deck"]["nonskid_hex"]),
