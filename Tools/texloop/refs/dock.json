@@ -1,0 +1,217 @@
+{
+ "surface": "dock",
+ "_about": "CC0 albedo scans from Poly Haven (fetched by Tools/texloop/dock/measure_refs.py to the git-ignored Data/Reference/raw/textures/Dock/), measured for colour, mottle and board pitch. Real photos of the club's docks (Bean's, with a grey card) would replace the level guesses; Wikimedia's image host is blocked from the cloud.",
+ "refs": [
+  {
+   "id": "raw_plank_wall",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/raw_plank_wall",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L0",
+   "what": "fresh sawn pine boards, unweathered",
+   "size_mm": 1870,
+   "board_axis": 0
+  },
+  {
+   "id": "wood_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/wood_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L0-L1",
+   "what": "new brown boards, light use",
+   "size_mm": 1500,
+   "board_axis": 0
+  },
+  {
+   "id": "wooden_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/wooden_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L1",
+   "what": "boards a season out, starting to dry",
+   "size_mm": 2000,
+   "board_axis": 0
+  },
+  {
+   "id": "plank_flooring_03",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/plank_flooring_03",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L1-L2",
+   "what": "outdoor plank floor, foot-worn",
+   "size_mm": 2250,
+   "board_axis": 0
+  },
+  {
+   "id": "weathered_brown_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/weathered_brown_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L2",
+   "what": "weathered brown boards, part silvered, dirt at the joints",
+   "size_mm": 1800,
+   "board_axis": 0
+  },
+  {
+   "id": "weathered_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/weathered_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L2-L3",
+   "what": "grey-brown weathered planks with checks",
+   "size_mm": 2000,
+   "board_axis": 1
+  },
+  {
+   "id": "wood_planks_grey",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/wood_planks_grey",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L3",
+   "what": "silver-grey boards, sound, years in the sun",
+   "size_mm": 1500,
+   "board_axis": 1
+  },
+  {
+   "id": "old_wood_floor",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/old_wood_floor",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L4",
+   "what": "dark, dirty, worn outdoor floor boards",
+   "size_mm": 3000,
+   "board_axis": 0
+  },
+  {
+   "id": "worn_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/worn_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "deck",
+   "level": "L4",
+   "what": "dark weathered boards, split, black in the joints",
+   "size_mm": 1400,
+   "board_axis": 1
+  },
+  {
+   "id": "rough_wood",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/rough_wood",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "piling",
+   "level": "L2-L3",
+   "what": "silver-grey weathered timber end grain side, deep checks",
+   "size_mm": 500
+  },
+  {
+   "id": "moss_wood",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/moss_wood",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "piling",
+   "level": "L4",
+   "what": "wet timber under green algae",
+   "size_mm": 1000
+  },
+  {
+   "id": "wooden_rough_planks",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/wooden_rough_planks",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "piling",
+   "level": "L4",
+   "what": "round logs with moss and algae",
+   "size_mm": 2000
+  },
+  {
+   "id": "brushed_concrete_03",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/brushed_concrete_03",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "concrete",
+   "level": "L0-L1",
+   "what": "new broom-finished outdoor concrete",
+   "size_mm": 2000
+  },
+  {
+   "id": "grooved_concrete_driveway",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/grooved_concrete_driveway",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "concrete",
+   "level": "L1",
+   "what": "grooved concrete slab",
+   "size_mm": 1800
+  },
+  {
+   "id": "dirty_concrete",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/dirty_concrete",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "concrete",
+   "level": "L2",
+   "what": "outdoor concrete with mud and grime",
+   "size_mm": 3000
+  },
+  {
+   "id": "concrete_moss",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/concrete_moss",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "concrete",
+   "level": "L4",
+   "what": "concrete under green algae and moss",
+   "size_mm": 3000
+  },
+  {
+   "id": "rubber_tiles",
+   "source": "polyhaven",
+   "url": "https://polyhaven.com/a/rubber_tiles",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "float",
+   "level": "L0",
+   "what": "black rubber/plastic tiles",
+   "size_mm": 2000
+  },
+  {
+   "id": "Plastic012A",
+   "source": "ambientcg",
+   "url": "https://ambientcg.com/a/Plastic012A",
+   "licence": "CC0",
+   "use": "measure",
+   "surface": "float",
+   "level": "L0",
+   "what": "black moulded plastic, satin (measured in refs/plastic.json)",
+   "albedo_lab": [
+    17.6,
+    0.0,
+    1.5
+   ]
+  }
+ ]
+}
