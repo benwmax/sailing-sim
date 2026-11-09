@@ -1,0 +1,179 @@
+{
+ "surface": "rope",
+ "measured_by": "Tools/rope/rope_wear.py (renders) and the crown-colour check in docs/texture-loop/rope.md; photo numbers measured by hand-placed boxes on IMG_9272",
+ "photo_store": "git-ignored Data/Reference/raw/textures/Rope/<level>/ (crops); the original lesson photos show people, so they never go in this public repo",
+ "photos": [
+  {
+   "id": "IMG_9272",
+   "level": "L2",
+   "boat": "J/22 TX 7295 EC, North Texas Sailing School, Rush Creek, Lake Ray Hubbard",
+   "taken": "2026-10-11 09:58, low clear sun",
+   "licence": "Bean's own (measure and ship)",
+   "crops": [
+    "L2/bean_j22_mainsheet_coil.jpg (white/red fleck mainsheet coiled on the cockpit floor)",
+    "L2/bean_j22_jibsheets_cleats.jpg (red/white and green/white jib sheets in the cam cleats)"
+   ],
+   "use": "club-boat rope colour against the white coaming, braid pick and fleck repeat"
+  }
+ ],
+ "cc0": [
+  {
+   "id": "ambientCG Rope001-003",
+   "url": "https://ambientcg.com/a/Rope001",
+   "licence": "CC0",
+   "use": "roughness range only: these are laid natural-fibre ropes, not polyester braid, so not used for colour or pattern"
+  }
+ ],
+ "wanted": [
+  {
+   "level": "L0",
+   "what": "a new white/red double braid sheet beside white gelcoat, coin in frame (chandlery or club)"
+  },
+  {
+   "level": "L1",
+   "what": "the same line after a season"
+  },
+  {
+   "level": "L4",
+   "what": "a neglected boat's lines left rigged for years (grey-green, mildew)"
+  },
+  {
+   "note": "Wikimedia Commons candidates are listed in Tools/texloop/refs/rope_commons.json; upload.wikimedia.org dropped every download from the cloud on Nov 8 2026, so none were measured yet"
+  }
+ ],
+ "white_reference": "the coaming's white gelcoat in the same photo: rope crowns compared with it in CIE L*; gelcoat albedo taken as sRGB ~210 (L* 84), per the plan's PBR limits",
+ "measured": {
+  "pick_over_diameter": {
+   "value": 0.4,
+   "range": [
+    0.38,
+    0.43
+   ],
+   "note": "braid crossing pitch along the line on the visible face, 21 px against a 48-55 px diameter (FFT of the luminance along the straight run of the coil). Game: 5 d lay / 12 = 0.42 d. Within 10%: pass"
+  },
+  "fleck_repeat_over_diameter": {
+   "value": 1.3,
+   "note": "red fleck groups along the line, 63 px; game ~1.25 d"
+  },
+  "L2_white_crown": {
+   "L": 86.0,
+   "a": 0.5,
+   "b": 6.0,
+   "note": "rope crown p90 L* 71.3 vs gelcoat p90 69.7 in the same light: the rope's bright fibres are about as light as the gelcoat (L* ~86 after WB) and ~5.6 b* warmer (ivory-beige)"
+  },
+  "L2_red": {
+   "note": "red tracer still a strong red (hue ~23 deg, chroma high); reviewers in rounds 1-3 all said it must stay saturated: dyes barely fade on a club boat"
+  }
+ },
+ "targets_white_crown_Lab": {
+  "L0": [
+   92.6,
+   -0.7,
+   4.1
+  ],
+  "L1": [
+   91.5,
+   -0.5,
+   4.5
+  ],
+  "L2": [
+   86.0,
+   0.5,
+   6.0
+  ],
+  "L3": [
+   89.0,
+   -0.5,
+   5.0
+  ],
+  "L4": [
+   70.0,
+   -2.0,
+   7.0
+  ]
+ },
+ "target_status": {
+  "L0": "catalogue base colour (colourways.json, Oct 2026)",
+  "L1": "estimated",
+  "L2": "measured (IMG_9272)",
+  "L3": "estimated: a kept boat replaces her lines every ~3 years",
+  "L4": "estimated from the plan's description; needs a photo"
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "change": "Age/Care through the shared time_k/dirt_k at the rope's own age (capped by care), fade + weave grime + fuzz + mildew film",
+   "ab_vs_before": "3 of 3 for the new look (confidence 1, 2, 2); no 'wrong material'",
+   "ladder": "L0, L3, L1 near-identical; L2 and L4 clear (all three reviewers)",
+   "notes": "faded red reads pink: keep dyes saturated; real dirt is uneven (smudges, cleat zones); grime in the creases"
+  },
+  {
+   "round": 2,
+   "change": "dye fade cut (0.35 t + 0.1 d), patchy smudges, sqrt-shaped dirt in the weave, fuzz veil on pale carriers only, rougher with fuzz",
+   "ab_vs_round1": "2 of 3 (confidence 1, 1, 2)",
+   "ladder": "same: L0/L1/L3 not separable, L2 and L4 clear",
+   "kept": true
+  },
+  {
+   "round": 3,
+   "change": "rope dirt 3x faster than a hull, lighter crown grime, fibre specks (dropped: sub-pixel at play distance)",
+   "ab_vs_round2": "1 of 3: lost, reverted to round 2",
+   "ladder": "same"
+  }
+ ],
+ "scores_round2": {
+  "colour": {
+   "L0": {
+    "before_dE": 7.9,
+    "after_dE": 3.9,
+    "after_Lab": [
+     88.7,
+     -0.7,
+     3.9
+    ]
+   },
+   "L1": {
+    "before_dE": 6.9,
+    "after_dE": 5.1,
+    "after_Lab": [
+     86.4,
+     -0.7,
+     3.9
+    ]
+   },
+   "L2": {
+    "before_dE": 2.7,
+    "after_dE": 7.5,
+    "after_Lab": [
+     78.7,
+     -0.6,
+     4.4
+    ]
+   },
+   "L3": {
+    "before_dE": 4.5,
+    "after_dE": 5.9,
+    "after_Lab": [
+     83.2,
+     -0.6,
+     4.0
+    ]
+   },
+   "L4": {
+    "before_dE": 15.0,
+    "after_dE": 2.4,
+    "after_Lab": [
+     68.8,
+     -1.1,
+     5.1
+    ]
+   }
+  },
+  "colour_pass": "4 of 5 within dE 6; L2 (the one measured level) is 7.5, darker than the photo, while reviewers asked for it greyer: open",
+  "size": "pass (pick 0.42 d vs 0.38-0.43 d measured; 23-36 px/mm at 0.3 m, rule >= 4)",
+  "tiling": "unchanged braid maps (wrap by construction); new noise is per-UV and periodic-free along the line, so no tile repeat added",
+  "wear_ladder": "FAIL: L0, L1 and L3 can't be told apart (true of real rope on a kept boat, but the check wants it)",
+  "blind_ab": "pass vs before (3/3); round 2 beat round 1 (2/3)",
+  "budget": "pass: no new textures (0 MB on every tier); about 30 shader instructions in M_RigRope"
+ }
+}
