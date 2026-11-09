@@ -2226,7 +2226,8 @@ BOAT_LIBRARY = {
     "BlackPlastic": ("M_BoatSurface", (0.018, 0.018, 0.020), 0.45, 0.0, 0.0, 0.0, 0.05),
     # Texture loop, wood (Tools/texloop/cards/wood.json): new wood's colour; BOAT_CODE ages both (varnish yellows and
     # fails, bare teak silvers) from the boat's Age and Care.
-    "Wood": ("M_BoatSurface", (0.330, 0.128, 0.042), 0.20, 0.0, 1.0, 0.0, 0.15),      # varnished ash and mahogany tiller
+    "Wood": ("M_BoatSurface", (0.330, 0.128, 0.042), 0.20, 0.0, 1.0, 0.0, 0.15),      # varnished ash tiller (the laminations' pale strips)
+    "WoodMahogany": ("M_BoatSurface", (0.12, 0.042, 0.018), 0.20, 0.0, 1.0, 0.0, 0.15),  # varnished mahogany: a laminated tiller's dark strips (part loop, Nov 2026)
     "Teak": ("M_BoatSurface", (0.453, 0.234, 0.101), 0.62, 0.0, 0.0, 0.0, 0.5),       # bare teak, new (silvers with age)
     "Graphics": ("M_BoatSurface", (0.45, 0.015, 0.02), 0.28, 0.0, 1.0, 0.0, 0.05),
     "Rubrail": ("M_BoatSurface", (0.03, 0.03, 0.03), 0.5, 0.0, 0.0, 0.0, 0.1),
@@ -2294,7 +2295,7 @@ BOAT_LIBRARY = {
 # no detail map); unlisted slots (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
-    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
+    "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "WoodMahogany": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
     "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
@@ -2321,7 +2322,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "Teak") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 

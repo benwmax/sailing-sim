@@ -1,0 +1,138 @@
+{
+ "part": "Ratchet57",
+ "card": {
+  "what": "57 mm swivel ratchet block with on/off switches, 10 mm line: the mainsheet's last block on the Sunfish (standing on a deck eye forward of the cockpit) and the ILCA (on its post)",
+  "boats": "Sunfish (layouts/sunfish.json, with the stand-up spring), ILCA 7 (layouts/ilca7.json)",
+  "distance": "arm's reach: the helm's hand is on the sheet that runs out of it",
+  "before": "kit Ratchet57 from _block_parts (Oct 2026): round flat cheeks with six holes, a wire strap over the top, no shackle, 83 mm"
+ },
+ "references": [
+  {
+   "id": "harken57c",
+   "kind": "photo",
+   "use": "outline and proportions (square-on side view of a 57 mm moulded-cheek block; proportions only). Not fetched this round: Wikimedia refused the cloud (HTTP 429), so the outline and aspect checks wait for it",
+   "url": "https://commons.wikimedia.org/wiki/File:Harken_57C_block.jpg",
+   "mask": "Harken_57C_block.mask.png"
+  },
+  {
+   "id": "sunfish-closeup",
+   "kind": "photo",
+   "use": "the mainsheet led from the boom down to the front of the cockpit (in use, measuring only: people in the photo)",
+   "url": "https://commons.wikimedia.org/wiki/File:Sunfishdinghy_closeup.jpg"
+  },
+  {
+   "id": "rigging",
+   "kind": "manual",
+   "use": "where it goes: the mainsheet eyestrap on the deck forward of the cockpit, aft of the daggerboard well; the switch's on/off",
+   "url": "Sunfish rigging manuals (LaserPerformance 2018, SERO 2025 SOL); SERO's ratchet block listing (interchangeable with Sunfish part 91333)"
+  },
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "Harken 2135 57 mm Carbo ratchet block with swivel: Rooster Sailing 128613 and Sound Boatworks list 103 mm (4 1/16 in) overall; Defender lists 10 mm max line, 85 g"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "overall",
+   "name": "Overall length, top of the shackle to the foot of the cheeks",
+   "target": 103.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue: 103 mm (4 1/16 in)"
+  },
+  {
+   "id": "sheave",
+   "name": "Sheave diameter",
+   "target": 57.0,
+   "unit": "mm",
+   "tol": 0.02,
+   "source": "catalogue: 57 mm"
+  },
+  {
+   "id": "thick",
+   "name": "Thickness across the cheeks",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "no edge-on reference: reported only"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "teardrop",
+   "text": "Moulded teardrop cheeks, round round the sheave, a short flat head",
+   "manual": true
+  },
+  {
+   "id": "black",
+   "text": "Cheeks matte black plastic, the sheave grey aluminium, fittings bright stainless",
+   "slots": [
+    "BlackPlastic",
+    "Aluminium",
+    "Stainless"
+   ]
+  },
+  {
+   "id": "ratchet",
+   "text": "Faceted ratchet sheave (flats in the groove floor) with a round groove for 10 mm line",
+   "objects": [
+    "sheave"
+   ],
+   "manual": true
+  },
+  {
+   "id": "switch",
+   "text": "An on/off switch on each cheek",
+   "objects": [
+    "switch",
+    "lever"
+   ]
+  },
+  {
+   "id": "see-through",
+   "text": "Hollow centre with a stainless axle liner and bearing race",
+   "objects": [
+    "axle",
+    "race"
+   ]
+  },
+  {
+   "id": "swivel",
+   "text": "Swivel post with a collar on the head",
+   "objects": [
+    "post",
+    "collar",
+    "eye"
+   ]
+  },
+  {
+   "id": "shackle",
+   "text": "Shackle with its pin and pin head",
+   "objects": [
+    "bow",
+    "pin",
+    "pinhead"
+   ]
+  },
+  {
+   "id": "plate",
+   "text": "Maker's plate (made-up TERNWAY)",
+   "objects": [
+    "plate"
+   ]
+  },
+  {
+   "id": "spring",
+   "text": "Stand-up spring round the shackle and swivel (the Sunfish's, standup=True)",
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

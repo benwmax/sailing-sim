@@ -1,0 +1,62 @@
+{
+ "part": "TackEye",
+ "card": {
+  "what": "Jib tack fitting: a stainless U-bail standing fore and aft on a rounded rectangular plate, four screws",
+  "boats": "J/22 hero's foredeck, 9 cm aft of the stem on the centreline (the jib's tack strop runs up from it)",
+  "distance": "arm's reach from the foredeck",
+  "before": "nothing: the hero's jib tack shackle hung in the air 11 cm above a deck box"
+ },
+ "references": [
+  {
+   "id": "bean",
+   "kind": "photo",
+   "use": "the look and layout: TX 7295 EC's bow on its lift from the dock off the starboard bow (forestay chainplate edge-on down the stem, toggle on its tang, jib tack bail just aft on the foredeck)",
+   "url": "Bean's lesson photo IMG_9224 (Oct 4 2026, project files sailing-sim-ref/j22-lessons; shows people elsewhere in the frame, so never committed)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Plate length",
+   "target": 66.0,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "GUESS off IMG_9224 against the toggle"
+  },
+  {
+   "id": "height",
+   "name": "Bail height",
+   "target": 30.0,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "GUESS off IMG_9224"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "plate",
+   "text": "Rounded rectangular plate with four screws",
+   "manual": true
+  },
+  {
+   "id": "bail",
+   "text": "Round-bar U-bail standing fore and aft, legs in collars",
+   "manual": true,
+   "objects": [
+    "bail"
+   ]
+  },
+  {
+   "id": "metal",
+   "text": "All polished stainless",
+   "manual": false
+  }
+ ],
+ "budget": {
+  "tris": 8000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

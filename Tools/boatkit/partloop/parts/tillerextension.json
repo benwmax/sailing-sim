@@ -1,0 +1,104 @@
+{
+ "part": "TillerExtension",
+ "card": {
+  "what": "Tiller extension (hiking stick): a ribbed urethane universal joint on a plate screwed to the tiller, a ferrule into a 19 mm anodised tube, a textured grip at the far end and a rubber end knob",
+  "boats": "J/22 (Tools/boatkit/layouts/j22.json at TillerExtUJ, 1000 mm), Sunfish (914 mm, the factory's 36 in), ILCA (1070-1220 mm); the game draws the live one from the TillerEnd socket",
+  "distance": "in the helm's hand: the closest thing to the cockpit camera",
+  "before": "kit TillerExtension from bk_parts.tiller_extension (Oct 2026): aluminium tube on a lathed rubber joint with no plate, a smooth black grip, a plain knob"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes and parts",
+   "url": "https://www.westmarine.com/ronstan-41inch-aluminum-lightweight-battlestick-554105.html",
+   "note": "Ronstan Battlestick: anodised aluminium 5/8 or 3/4 in tube, urethane universal joint RF3133 with a snap-on cover plate, grip at the outboard end; lengths 24 to 49 in. Harken length guide: 42 in Sunfish/Laser recreation, 48 in Laser racing; Sunfish factory 36 in"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Overall, the joint plate's front to the knob's end",
+   "target": 1000.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "kit default (J/22)"
+  },
+  {
+   "id": "height",
+   "name": "Side view",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only"
+  },
+  {
+   "id": "width",
+   "name": "Across the knob",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "plate",
+   "text": "Joint plate screwed to the tiller (two screws)",
+   "objects": [
+    "uj_plate",
+    "uj_screwa",
+    "uj_screwb"
+   ]
+  },
+  {
+   "id": "uj",
+   "text": "Ribbed urethane universal joint",
+   "objects": [
+    "uj"
+   ],
+   "manual": true
+  },
+  {
+   "id": "ferrule",
+   "text": "Ferrule from the joint into the tube",
+   "objects": [
+    "ferrule"
+   ]
+  },
+  {
+   "id": "tube",
+   "text": "19 mm anodised tube",
+   "objects": [
+    "tube"
+   ],
+   "slots": [
+    "Aluminium"
+   ]
+  },
+  {
+   "id": "grip",
+   "text": "Textured grip at the far end",
+   "objects": [
+    "grip"
+   ],
+   "slots": [
+    "Rubber"
+   ],
+   "manual": true
+  },
+  {
+   "id": "knob",
+   "text": "Rubber end knob",
+   "objects": [
+    "knob"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

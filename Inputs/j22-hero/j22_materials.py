@@ -617,7 +617,7 @@ def build_all(st):
         "SheaveGrey": simple("SheaveGrey", "#3A3C3F", 0.4),
         "RedPlastic": simple("RedPlastic", "#8E1B17", 0.4),
         "WhitePlastic": simple("WhitePlastic", "#E7E5E0", 0.4),
-        "OutboardBlack": simple("OutboardBlack", "#111214", 0.28, coat=0.6),
+        "OutboardBlack": simple("OutboardBlack", "#111214", 0.42, coat=0.25),   # satin painted cowl (part loop Nov 9: the photos are not glossy)
         "ExtensionBlack": simple("ExtensionBlack", "#1A1A1A", 0.6),
         "KeelLead": simple("KeelLead", st["hull"]["bottom_hex"], 0.6),
         "HatchAcrylic": acrylic("HatchAcrylic"),

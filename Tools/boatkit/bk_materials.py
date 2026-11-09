@@ -112,7 +112,7 @@ def get(slot):
         rr.inputs["To Max"].default_value = rough * 1.5
         nt.links.new(noise.outputs["Fac"], rr.inputs["Value"])
         nt.links.new(rr.outputs["Result"], b.inputs["Roughness"])
-    elif slot in ("Wood", "Teak"):
+    elif slot in ("Wood", "WoodMahogany", "Teak"):
         mp.inputs["Scale"].default_value = (6, 120, 120)      # grain along X
         noise.inputs["Scale"].default_value = 3.0
         noise.inputs["Detail"].default_value = 8
