@@ -4,7 +4,8 @@ computes (AMarinaActor::DockKitPlacements); without them it draws the kit's boxe
 
 Each mesh: X along its finger or out from the dock's edge, Z up, the origin on the deck (or on the piling's axis at deck
 height for the hoop, on its top for the cap). Slots name MI_World_* looks (import_world.py's WORLD_SLOTS): White
-(weathered moulded plastic), Steel, Dark (black rubber and plastic), LampGlow, SafetyRed. UVs are box-projected in
+(weathered moulded plastic), Steel, Dark (black rubber and plastic), Floats (the float drums' polyethylene), LampGlow,
+SafetyRed. UVs are box-projected in
 metres. Prints "Docks: <name> <tris>".
 Usage: blender -b --factory-startup -P build_docks.py -- <out dir>
 """
@@ -213,9 +214,9 @@ def float_drum():
     """A polyethylene dock float, unit size (1 m long, 1 m wide, 1 m deep; the marina scales it per module): rounded
     body with moulded ribs round it."""
     p = Part("SM_Dock_Float")
-    p.box("Dark", (0, 0, -0.5), (0.5, 0.5, 0.5), bevel=0.06)
+    p.box("Floats", (0, 0, -0.5), (0.5, 0.5, 0.5), bevel=0.06)   # texture loop: black polyethylene with its waterline (pattern 11)
     for x in (-0.3, -0.1, 0.1, 0.3):
-        p.box("Dark", (x, 0, -0.42), (0.025, 0.51, 0.4), bevel=0.012)
+        p.box("Floats", (x, 0, -0.42), (0.025, 0.51, 0.4), bevel=0.012)
     p.export()
 
 

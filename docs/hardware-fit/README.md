@@ -31,13 +31,13 @@ own booted ones: docs/part-detail-loop/turnbuckle.md) and anything that rides th
 
 The code is `Inputs/j22-hero/j22_kitfit.py`: one function per old call, with the same arguments where it can
 (`cam_cleat`), and the kit sockets kept as `sock_<Name>` properties like `kit_part`. `build_j22_hero.py -- out --sails
---old-hardware` builds the boat exactly as before: same triangles and a `J22H_sockets.json` identical to the committed one.
+--old-hardware` builds the boat exactly as before: the same triangles and sockets as main's own build.
 
 ## Checks (cloud, bpy 5.1.2)
 
 | | Before | After |
 |---|---|---|
-| Whole boat, sails included (main with the new gooseneck and vang, 740c690) | 737,132 triangles, 1,449 objects | 1,067,192 triangles, 995 objects |
+| Whole boat, sails included (main 4d9350d, with the cabin top, bow fittings and outboard) | 841,508 triangles, 1,522 objects | 1,171,568 triangles, 1,068 objects |
 | Materials per group (Hardware, Rig, Rudder) | 12, 12, 8 | the same 12, 12, 8: no new slot (the kit's `Graphics` slot takes the hero's `RedPlastic`) |
 | Canoe volume and centre of buoyancy | 1.0879 m³, (-0.226, -0.074) | unchanged |
 
@@ -49,8 +49,8 @@ Sockets that moved (`J22H_sockets.json`, cm, body frame):
 | `JibTailer_S/P` | (-105.6, ±91.74, 56.64) | (-105.0, ±92.17, 56.64) | the kit cam's jaws (`Line`) |
 | `BackstayPlate` | (-335.0, 0, 58.26) | (-334.43, 0, 62.17) | the bridle now ends on the shackle's bow, 4 cm above the pad eye |
 
-The hero is now about 1.07 million triangles against the plan's cap of 1.2 million (the hull, deck and hardware are
-Nanite). Whether the frame rate holds is the PC's and the Mac's gate (below).
+The hero is now about 1.17 million triangles against the plan's cap of 1.2 million (the hull, deck and hardware are
+Nanite): wave 2 needs lighter copies of the repeated small parts, or a higher cap, before it adds more. Whether the frame rate holds is the PC's and the Mac's gate (below).
 
 ## In the game (waits for the PC)
 

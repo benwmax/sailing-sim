@@ -118,7 +118,7 @@ sock("Traveler_C", Vector(((tlo.x + thi.x) / 2, 0, thi.z + 0.02)))
 sock("Traveler_S", Vector(((tlo.x + thi.x) / 2, tlo.y + 0.05, thi.z + 0.02)))
 sock("Traveler_P", Vector(((tlo.x + thi.x) / 2, thi.y - 0.05, thi.z + 0.02)))
 # Bean's feedback 1: the mainsheet's lower block stands on the car (j22_mainsheet.py); the tackle ends at its sheave
-sock("MainsheetBlock", _c("MainsheetLow_sheave"))
+sock("MainsheetBlock", _kit_sock("MainsheetLow", "Axle") if "MainsheetLow" in bpy.data.objects else _c("MainsheetLow_sheave"))
 # the lazy sheet's pass over the cabin top: a little above the cabin, a hand's width aft of the mast
 clo, chi = _bb("Cabin")
 sock("LazySheetVia", Vector((mast_x - 0.35, 0, chi.z + 0.06)))
@@ -156,7 +156,8 @@ else:
     ux_lo, ux_hi = _bb("TillerExt")
     sock("TillerExtTip", Vector((ux_lo.x, 0, (ux_lo.z + ux_hi.z) / 2)) if ux_lo.x < tl_lo.x + 0.4 else Vector((ux_hi.x, 0, ux_hi.z)))
     sock("TillerExtUJ", _c("ExtUJ"))
-sock("MainsheetCam", (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
+# the kit's FiddleCam on the traveler car (part detail loop, docs/part-detail-loop/traveler.md): its jaws
+sock("MainsheetCam", _kit_sock("MainsheetLow", "Cam") if "MainsheetLow" in bpy.data.objects else (_c("MainCam_cam-1") + _c("MainCam_cam1")) / 2)
 for tag, side in (("S", -1), ("P", 1)):
     sock(f"HandholdCabin_{tag}", _top(f"Handrail_{side}"))
     sock(f"HandholdCoaming_{tag}", _top(f"CoamingCap_{side}"))

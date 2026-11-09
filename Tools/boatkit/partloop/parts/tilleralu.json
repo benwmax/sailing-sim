@@ -1,0 +1,123 @@
+{
+ "part": "TillerAlu",
+ "card": {
+  "what": "Dinghy's metal tiller: a round anodised aluminium tube, 32 mm, a moulded anodised insert in its rudder end with the retaining pin, a textured rubber grip over the hand end, a plastic end cap (carbon=True: the same in carbon)",
+  "boats": "Sunfish (the current factory tiller: 44 in aluminium, rigged with a 36 in extension), ILCA (990 mm, 32 mm), Hobie 16 tiller arms; carbon for racing dinghies",
+  "distance": "arm's reach: the helm holds the extension and the tiller's end",
+  "before": "no metal tiller in the kit: the Sunfish and ILCA bake their own in Tools/blender/build_fleet.py (sunfish_rudder_head: a varnished wooden bar on the Sunfish, a 28 mm tube with a black end on the ILCA)"
+ },
+ "references": [
+  {
+   "id": "sizes",
+   "kind": "catalogue",
+   "use": "sizes",
+   "url": "https://seroinnovation.com/product/sunfish-44-rigged-aluminum-tiller-with-36-extension",
+   "note": "Sunfish 44 in rigged aluminium tiller with 36 in extension, 'the standard size rigged tiller' (interchangeable with Sunfish part 85210; Murray's sells the same); numbers from search snippets: the cloud can't open the shop pages"
+  },
+  {
+   "id": "ilca",
+   "kind": "catalogue",
+   "use": "diameter, end fittings, grip",
+   "url": "https://duvoisinnautique.ch/laser/724-tiller-standard-for-laser.html",
+   "note": "ILCA standard tiller: 32 mm aluminium, silver anodised, no chafe plate, no cleat; moulded anodised aluminium insert at the rudder end, plastic cap at the hand end; textured grip; RWO set 31.5 mm x 990 mm with a 1070 mm extension"
+  },
+  {
+   "id": "retainer",
+   "kind": "catalogue",
+   "use": "the retaining pin",
+   "url": "https://europe.roostersailing.com/products/130630",
+   "note": "ILCA tiller retainer pin through the rudder head and the tiller's insert"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Overall, the insert's nose to the end cap (Sunfish 44 in)",
+   "target": 1117.6,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue"
+  },
+  {
+   "id": "height",
+   "name": "Side view, the tube's depth with the pin",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only"
+  },
+  {
+   "id": "width",
+   "name": "Across the grip",
+   "target": null,
+   "unit": "mm",
+   "tol": null,
+   "source": "reported only (32 mm tube + grip)"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "tube",
+   "text": "Straight round anodised tube, 32 mm",
+   "objects": [
+    "tube"
+   ],
+   "slots": [
+    "Aluminium"
+   ]
+  },
+  {
+   "id": "insert",
+   "text": "Moulded insert: a shoulder the tube's size and a rounded tongue for the rudder head's box",
+   "objects": [
+    "insert_collar",
+    "insert_tongue"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pin",
+   "text": "Retaining pin through the tongue with a pull ring",
+   "objects": [
+    "retaining_pin",
+    "retaining_pin_head",
+    "retaining_ring"
+   ]
+  },
+  {
+   "id": "rivets",
+   "text": "Pop rivets holding the insert in the tube",
+   "objects": [
+    "rivet_t",
+    "rivet_b"
+   ]
+  },
+  {
+   "id": "grip",
+   "text": "Textured rubber grip over the hand end",
+   "objects": [
+    "grip"
+   ],
+   "slots": [
+    "Rubber"
+   ],
+   "manual": true
+  },
+  {
+   "id": "cap",
+   "text": "Plastic end cap, domed",
+   "objects": [
+    "end_cap"
+   ],
+   "slots": [
+    "BlackPlastic"
+   ]
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}

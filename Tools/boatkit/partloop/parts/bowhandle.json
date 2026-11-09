@@ -1,0 +1,73 @@
+{
+ "part": "BowHandle",
+ "card": {
+  "what": "Sunfish bow handle: a cast aluminium grip arched low over two oval feet on the foredeck's centreline, one oval-head screw each",
+  "boats": "Sunfish (build_fleet dinghy_detail, 21 cm aft of the bow); the ILCA keeps its own tube",
+  "distance": "arm's reach launching, the dock camera",
+  "before": "a six-sided bent stainless tube (build_fleet.py)"
+ },
+ "references": [
+  {
+   "id": "class",
+   "kind": "catalogue",
+   "use": "what the part is",
+   "url": "ISCA-approved Sunfish bow handle, Zim 48102 / West Coast Sailing 20915 (no drawing public)"
+  },
+  {
+   "id": "photo",
+   "kind": "photo",
+   "use": "size and height on the boat",
+   "url": "https://commons.wikimedia.org/wiki/File:Sunfish_rigged_for_sailing.jpg (see the Commons page for the licence; 960 px thumbnail, the handle is a few pixels)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Overall length",
+   "target": 150.0,
+   "unit": "mm",
+   "tol": 0.1,
+   "source": "GUESS from class photos"
+  },
+  {
+   "id": "height",
+   "name": "Height off the deck",
+   "target": 32.0,
+   "unit": "mm",
+   "tol": 0.15,
+   "source": "GUESS: low, as the class photos show it"
+  }
+ ],
+ "photo_sizes": [],
+ "outline": null,
+ "features": [
+  {
+   "id": "grip",
+   "text": "Flattened oval grip arched low between the feet",
+   "manual": true,
+   "objects": [
+    "casting"
+   ]
+  },
+  {
+   "id": "feet",
+   "text": "Oval feet flaring out of the grip like a casting",
+   "manual": true
+  },
+  {
+   "id": "screws",
+   "text": "An oval-head screw in each foot",
+   "manual": true
+  },
+  {
+   "id": "metal",
+   "text": "Cast aluminium",
+   "manual": false
+  }
+ ],
+ "budget": {
+  "tris": 20000,
+  "slots": 8,
+  "note": "hero is a Nanite part; build_kit makes the light copy at a quarter of the triangles"
+ }
+}
