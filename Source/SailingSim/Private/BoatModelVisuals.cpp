@@ -7,6 +7,7 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "CourseMarks.h"
 #include "SailingFrame.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "BenchRunner.h"
@@ -432,8 +433,20 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	// The traveler car slides along the bar with the trim.
 	if (Model.Hull->FindSocket(TEXT("Traveler_C")))
 	{
-		TravelerCar = AddBoatPart(CubeMesh, ModelHull->GetSocketTransform(TEXT("Traveler_C"), RTS_Component).GetLocation(), FVector(8.f, 7.f, 3.f), FLinearColor(0.02f, 0.02f, 0.02f));
-		if (CarMaterial) TravelerCar->SetMaterial(0, CarMaterial);
+		// Sunfish deck gear (docs/part-detail-loop/sunfish.md): the Sunfish has no car, the mainsheet's snap hook rides the
+		// bridle: the kit's SnapHook once imported (turned over: its eye up to the sheet, the wire in its bite).
+		UStaticMesh* Hook = Boat.GetConfig().Type == EBoatType::Sunfish ? CourseMarks::Load(TEXT("SnapHook")) : nullptr;
+		if (Hook)
+		{
+			TravelerCar = AddModelPart(Hook, BoatRoot, ModelHull->GetSocketTransform(TEXT("Traveler_C"), RTS_Component).GetLocation());
+			TravelerCar->SetRelativeRotation(FRotator(0.f, 0.f, 180.f));
+			bTravelerHook = true;
+		}
+		else
+		{
+			TravelerCar = AddBoatPart(CubeMesh, ModelHull->GetSocketTransform(TEXT("Traveler_C"), RTS_Component).GetLocation(), FVector(8.f, 7.f, 3.f), FLinearColor(0.02f, 0.02f, 0.02f));
+			if (CarMaterial) TravelerCar->SetMaterial(0, CarMaterial);
+		}
 	}
 }
 
@@ -499,7 +512,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const FVector Along = TravS - TravC;
 		const double Half = Along.Size();
 		Car = TravC + Along.GetSafeNormal() * FMath::Clamp(Out, -Half, Half) * BoomSide;
-		TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, 1.5f));
+		// (the snap hook's bite, 5.35 cm from its eye, sits on the wire)
+		TravelerCar->SetRelativeLocation(Car + FVector(0.f, 0.f, bTravelerHook ? TravelerHookBiteCm : 1.5f));
 	}
 
 	// Which side is to leeward: the side the boom (the sails) are on; the windward rig takes the load.
@@ -670,12 +684,24 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		// Rig clearance: the Sunfish's sheet runs from the bridle up to the boom's end block, forward along the boom to a block
 		// over the cockpit and down to the hand (its tail ran from the bridle along the deck under the sailor's hips).
+		// Sunfish deck gear: the model's own middle block (Boom_MidBlock) and, as the class rigs it, down through the ratchet
+		// block on the deck forward of the cockpit (MainsheetRatchet) to the hand; older models keep the computed block.
 		const FVector SheetLocal = ModelBoom->GetSocketTransform(TEXT("Boom_Mainsheet"), RTS_Component).GetLocation();
 		const double Over = Well.X1 * CmPerMeter;
 		const double Along = FMath::Clamp((Boat.GetConfig().MainLuffX * CmPerMeter - Over) / FMath::Max(FMath::Abs(SheetLocal.X), 1.0), 0.1, 1.0);
-		const FVector MidBlock = BoatRoot->GetComponentTransform().InverseTransformPosition(ModelBoom->GetComponentTransform().TransformPosition(SheetLocal * Along));
+		const FVector MidBlock = Has(ModelBoom, TEXT("Boom_MidBlock")) ? RigPoint(ModelBoom, TEXT("Boom_MidBlock"))
+			: BoatRoot->GetComponentTransform().InverseTransformPosition(ModelBoom->GetComponentTransform().TransformPosition(SheetLocal * Along));
 		Ropes.Add({ BoomBlock, MidBlock, 0.4f, 0.f });
-		Ropes.Add({ MidBlock, MainGripCm ? *MainGripCm : MidBlock + FVector(-10.f, 0.f, -45.f), 0.4f, MainGripCm ? 0.01f : 0.05f });
+		if (Has(ModelHull, TEXT("MainsheetRatchet")))
+		{
+			const FVector Ratchet = RigPoint(ModelHull, TEXT("MainsheetRatchet"));
+			Ropes.Add({ MidBlock, Ratchet, 0.4f, MainSlack });
+			Ropes.Add({ Ratchet, MainGripCm ? *MainGripCm : Ratchet + FVector(-30.f, 8.f, -4.f), 0.4f, MainGripCm ? 0.01f : 0.03f });
+		}
+		else
+		{
+			Ropes.Add({ MidBlock, MainGripCm ? *MainGripCm : MidBlock + FVector(-10.f, 0.f, -45.f), 0.4f, MainGripCm ? 0.01f : 0.05f });
+		}
 	}
 	else
 	{
@@ -690,9 +716,13 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	{
 		LowBlock = Car + RigPoint(ModelHull, TEXT("MainsheetBlock")) - RigPoint(ModelHull, TEXT("Traveler_C"));
 	}
-	for (int32 K = 0; K < 4; ++K)
+	// Sunfish deck gear: the Sunfish's sheet is one part from the snap hook on the bridle to the boom's end block, its end
+	// spliced round the hook's eye (the others a 4:1 tackle).
+	const bool bSingle = Boat.GetConfig().Type == EBoatType::Sunfish;
+	if (bTravelerHook) LowBlock = Car + FVector(0.f, 0.f, TravelerHookBiteCm + 0.6f);
+	for (int32 K = 0; K < (bSingle ? 1 : 4); ++K)
 	{
-		const FVector Off(0.f, (K - 1.5f) * 1.2f, 0.f);
+		const FVector Off(0.f, bSingle ? 0.f : (K - 1.5f) * 1.2f, 0.f);
 		Ropes.Add({ BoomBlock + Off, LowBlock + Off, 0.35f, MainSlack });
 	}
 	Label(Ropes, TEXT("mainsheet"));

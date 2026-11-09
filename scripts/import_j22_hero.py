@@ -382,6 +382,9 @@ def instance(name, parent):
     return mi
 
 
+flat_instance = None   # set by materials(): MI_J22H_<name> on M_BoatSurface from the bake's flat values (main() uses it too)
+
+
 def materials():
     names = {"D": "BaseColor", "R": "Roughness", "N": "Normal", "X": "DetailMask"}
     # HERO_MATERIALS_ONLY=1 rebuilds the materials over the textures already imported (no mesh or texture reimport).
@@ -417,18 +420,20 @@ def materials():
     def flat_values(name):
         # A pack entry whose material no longer reaches the bake (RigTape since the mast gear's turnbuckles took over
         # from j22_details', #550) keeps its pack index with a plain grey: the packs' indices are baked into the meshes.
+        # A rope slot the bake did not report (an older bake) gets a plain grey line.
         v = META["flat_materials"].get(name)
         if v is None:
-            unreal.log_warning(f"import_j22_hero: {name} is in J22H_packs.json but not in the bake's flat materials; plain grey")
-            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.5, "metallic": 0.0}
+            unreal.log_warning(f"import_j22_hero: {name} is not in the bake's flat materials; plain grey")
+            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.75 if name.startswith("Rope") else 0.5, "metallic": 0.0}
         gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish", "PlywoodVarnish", "AshVarnish")
+        kind = HERO_SURFACE.get(name, 9 if name.startswith("Rope") else 0)   # fixed lengths of line (the tack strop) are rope
         return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
-                                        "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,
-                                        "Surface": float(HERO_SURFACE.get(name, 0)), "Grain": 1.0 if name in wood else 0.0}
+                                        "Porosity": HERO_POROSITY.get(kind, 0.1), "IsHull": 0.0,
+                                        "Surface": float(kind), "Grain": 1.0 if name in wood else 0.0}
 
-    for name in META["flat_materials"]:
-        if name in out:
-            continue
+    global flat_instance
+
+    def flat_instance(name):
         mi = instance(f"MI_J22H_{name}", surface)
         c, values = flat_values(name)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(c[0], c[1], c[2], 1.0))
@@ -436,7 +441,12 @@ def materials():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
-        out[name] = mi
+        return mi
+
+    for name in META["flat_materials"]:
+        if name in out:
+            continue
+        out[name] = flat_instance(name)
     # pc/boat-slots: the flat slots folded into packs (J22H_packs.json, pack_j22_hero.py): MI_J22H_<Pack> on M_BoatPacked
     # carries each entry's values as P<k>C, P<k>A (roughness, metallic, clear coat, non-skid), P<k>B (porosity, surface,
     # hull, grain), as make_materials.py builds MI_Boat_<Pack>.
@@ -504,6 +514,11 @@ def main():
             mi = mast_alu if (part == "Mast" and slot == "Aluminium") else mats.get(key)
             if mi is None:
                 mi = unreal.load_asset(f"/Game/Boats/Materials/MI_Boat_{slot}")
+            if mi is None and key.startswith("Rope"):
+                # Fixed lengths of line on a game part (#561's jib tack strop, the interior's sail bag tie) keep their rope
+                # material's slot; the game's live ropes never reach it. bake_j22_hero.py reports rope materials with the
+                # others since Nov 9 2026; an older bake gets a plain grey line here rather than a failed import.
+                mi = mats[key] = flat_instance(key)
             if mi is None:
                 missing.add(slot)
                 continue
