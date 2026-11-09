@@ -313,8 +313,8 @@ n_buckles = 0
 for b in bands:
     # (along the strap from the opening, half length, half height, half thickness, bevel)
     # Detail pass: full-size 38 mm side-release buckles (the female 46 mm tall and 50 mm long on the wearer's left panel
-    # from the opening, the male tongue 38 mm across the opening; they were 46 x 32 and read as small dark squares).
-    for x, hl, hh, ht, bev in ((LEFT * 0.031, 0.025, 0.023, 0.0055, 0.0035), (-LEFT * 0.004, 0.012, 0.019, 0.004, 0.0028)):
+    # from the opening, the male half with its ladder lock 32 mm across the opening; they were 46 x 32 and read as small dark squares).
+    for x, hl, hh, ht, bev in ((LEFT * 0.031, 0.025, 0.023, 0.0055, 0.0035), (-LEFT * 0.008, 0.016, 0.019, 0.004, 0.0028)):
         hit = tree.ray_cast(Vector((x, FRONT * 1.0, b)), Vector((0, -FRONT, 0)), 2.0)
         if hit[0] is None:
             continue
@@ -326,62 +326,91 @@ for b in bands:
         n_buckles += 1
 
 
-def tail(x0, z0, length, lean, lift=0.0):
-    """Round 11: the strap's loose end out of the buckle's adjuster, hanging down over the foam (a 38 mm ribbon, 2 mm
-    thick, standing a little further off the vest as it falls: webbing is stiff). Detail pass: past the vest's hem it
-    carries straight on down for up to TAIL_PAST (the photo's tails hang well below the hem; more would reach the lap
-    of a seated sailor)."""
+def surface(x, z, last):
+    """The vest's face (with its straps) at (x, z), and its normal. Off the face (the rolled hem, a strap's wall, past
+    the hem) it carries straight on from the last point on the face, never following the roll in toward the shirt."""
+    hit = tree.ray_cast(Vector((x, FRONT * 1.0, z)), Vector((0, -FRONT, 0)), 2.0)
+    if hit[0] is not None and abs(hit[1].normalized().z) < 0.5:
+        return hit[0], hit[1].normalized()
+    if last is None:
+        return (hit[0], hit[1].normalized()) if hit[0] is not None else None
+    if last[0].z - z > TAIL_PAST + 0.03:
+        return None
+    return Vector((x, last[0].y, z)), last[1]
+
+
+def tail(b, x_in, x_fold, length, lean, lift=0.0):
+    """The strap's loose end (round 11; Bean Nov 9: "the tails should run through the buckles"). A side-release buckle
+    is adjusted at the male half's ladder lock: the strap from the right panel runs into it, round its bar, and the free
+    end comes back out of it lying doubled on the incoming strap. So the ribbon starts inside the male half (x_in, on the
+    band's line), runs out over the strap to x_fold, folds down across itself in a 45 degree crease (the ribbon's
+    mitred corner) and hangs down over the foam, past the hem by up to TAIL_PAST (a 38 mm ribbon, 2 mm thick, standing a
+    little further off the vest as it falls: webbing is stiff)."""
+    out = 1.0 if x_fold > x_in else -1.0
+    # The centre line: along the band, then the fold's corner, then down. The corner sits HALF_STRAP in from x_fold, so
+    # the doubled end's outer edge stops at x_fold.
+    # The doubled run stops at the crease's inner end (2 half widths in from x_fold), so its lower edge never folds back
+    # past the corner; it needs x_fold at least 2 half widths out from x_in.
+    xc = x_fold - out * HALF_STRAP
+    x_stop = xc - out * HALF_STRAP
+    path = [(x_in + (x_stop - x_in) * k / 3, b, 0.0) for k in range(4)] + [(xc, b, 0.0)]
     steps = 10
-    rows = []
+    path += [(xc + lean * (k / steps), b - (HALF_STRAP + (length - HALF_STRAP) * k / steps) if k else b - HALF_STRAP, k / steps)
+             for k in range(1, steps + 1)]
+    pts = []
     last = None
-    for i in range(steps + 1):
-        t = i / steps
-        x, z = x0 + lean * t, z0 - length * t
-        hit = tree.ray_cast(Vector((x, FRONT * 1.0, z)), Vector((0, -FRONT, 0)), 2.0)
-        if hit[0] is not None and abs(hit[1].normalized().z) < 0.5:
+    for x, z, t in path:
+        hit = surface(x, z, last)
+        if hit is None:
+            break
+        if abs(hit[1].z) < 0.5:
             last = hit
-        elif last is None:
-            if hit[0] is None:
-                break
+        # (the doubled layer lies on the strap: 2.5 mm over it; the hanging part stands off more as it falls)
+        pts.append((hit[0] + hit[1] * (0.0025 + lift * min(1.0, 3.0 * t) + 0.012 * t * t), hit[1]))   # (lift: off the strap once hanging)
+    if len(pts) < 7:
+        return False
+    rows = []
+    for i, (c, n) in enumerate(pts):
+        prev = pts[max(i - 1, 0)][0]
+        nxt = pts[min(i + 1, len(pts) - 1)][0]
+        if i == 4:
+            # The crease: the corner's cross-section runs along the 45 degree fold, sqrt 2 times the half width.
+            d_in = (c - prev).normalized()
+            d_out = (nxt - c).normalized()
+            across = (n.cross(d_in) + n.cross(d_out)).normalized() * (HALF_STRAP * math.sqrt(2.0))
         else:
-            # Off the foam's face (the rolled hem, a strap's wall, or past the hem): the end hangs straight on down from
-            # the last point on the face, never following the roll in toward the shirt.
-            if last[0].z - z > TAIL_PAST + 0.03:
-                break
-            hit = (Vector((x, last[0].y, z)), last[1])
-        n = hit[1].normalized()
-        across = Vector((0, 0, 1)).cross(n).normalized()
-        c = hit[0] + n * (WEB + 0.002 + lift + 0.012 * t * t)
-        rows.append([c - across * HALF_STRAP - n * 0.001, c + across * HALF_STRAP - n * 0.001, c + across * HALF_STRAP + n * 0.001, c - across * HALF_STRAP + n * 0.001])
+            across = n.cross((nxt - prev).normalized()).normalized() * HALF_STRAP
+        rows.append([c - across - n * 0.001, c + across - n * 0.001, c + across + n * 0.001, c - across + n * 0.001])
     vs = [[bm.verts.new(p) for p in r] for r in rows]
-    for a, b in zip(vs, vs[1:]):
+    for ra, rb in zip(vs, vs[1:]):
         for k in range(4):
-            f = bm.faces.new((a[k], a[(k + 1) % 4], b[(k + 1) % 4], b[k]))
+            f = bm.faces.new((ra[k], ra[(k + 1) % 4], rb[(k + 1) % 4], rb[k]))
             f.material_index = STRAPS
-    if vs:
-        bm.faces.new(vs[0]).material_index = STRAPS
-    if len(vs) > 1:
-        # Round 12: the end cut as webbing is, a hot-knife point (14 mm), not a square slab: its corners fold in to a tip
-        # on the strap's line, both faces of the ribbon meeting the two cut edges.
-        a, b = [sum((v.co for v in r), Vector()) / 4 for r in (vs[-2], vs[-1])]
-        d = (b - a).normalized()
-        lb, rb, rf, lf = vs[-1]
-        n = (lf.co - lb.co).normalized() * 0.001
-        tb, tf = bm.verts.new(b + d * 0.014 - n), bm.verts.new(b + d * 0.014 + n)
-        for f in ((lb, rb, tb), (lf, tf, rf), (rb, rf, tf, tb), (lb, tb, tf, lf)):
-            bm.faces.new(f).material_index = STRAPS
-    return len(vs) > 1
+    bm.faces.new(vs[0]).material_index = STRAPS          # (inside the buckle)
+    # Round 12: the end cut as webbing is, a hot-knife point (14 mm), not a square slab: its corners fold in to a tip
+    # on the strap's line, both faces of the ribbon meeting the two cut edges.
+    ca, cb = [sum((v.co for v in r), Vector()) / 4 for r in (vs[-2], vs[-1])]
+    d = (cb - ca).normalized()
+    lb, rb_, rf, lf = vs[-1]
+    nn = (lf.co - lb.co).normalized() * 0.001
+    tb, tf = bm.verts.new(cb + d * 0.014 - nn), bm.verts.new(cb + d * 0.014 + nn)
+    for f in ((lb, rb_, tb), (lf, tf, rf), (rb_, rf, tf, tb), (lb, tb, tf, lf)):
+        bm.faces.new(f).material_index = STRAPS
+    return True
 
 
 n_tails = 0
 TAIL_PAST = 0.04
 for i, b in enumerate(bands):
-    # Detail pass (the photo): the loose ends come out of the male side's adjuster at the opening and hang down across it
-    # toward the wearer's left; the top one is a short tab, the lower two run down past the hem. (They hung from the female
-    # buckle's far end, 15 to 20 cm.)
-    # The middle one hangs over the bottom buckle's strap and the bottom tail (lifted 5 mm clear of both), drifting to the
-    # right; the bottom one drifts left beneath it.
-    n_tails += tail(-LEFT * 0.014, b - 0.016, (0.20, 0.24, 0.08)[i], LEFT * (0.025, -0.03, 0.006)[i], (0.0, 0.005, 0.0)[i])
+    # Detail pass (the photo; Bean Nov 9: the tails run through the buckles): each loose end comes back out of the male
+    # half's ladder lock and folds down: the top one a short tab, the lower two long tails past the hem. (They hung from the female buckle's far end, pasted on.)
+    # (The top and bottom creases lie under the male half, so those tails come out from under the buckle's lower edge.
+    # The middle one folds at the male half's outer end and hangs straight down beside the bottom buckle, flat on the
+    # bottom band as it crosses it, as in the photo: a diagonal tail floating over the bottom buckle read as pasted on.)
+    male_out = -LEFT * 0.024
+    x_in = (LEFT * 0.006, male_out + LEFT * 0.004, LEFT * 0.006)[i]
+    n_tails += tail(b, x_in, x_in - LEFT * 2.0 * HALF_STRAP, (0.20, 0.24, 0.08)[i], LEFT * (0.01, -0.006, 0.0)[i],
+                    (0.0, 0.002, 0.0)[i])
 tree_bm.free()
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
 
