@@ -1,0 +1,84 @@
+{
+ "part": "TrackCar",
+ "card": {
+  "what": "The jib lead car alone (for the 22 mm track): slider, sheave between cheeks, pinstop, eye strap",
+  "boats": "spare kit part (placed on its own where a layout has its own track)",
+  "distance": "arm's reach",
+  "before": "October kit TrackCar: the old JibTrack car alone"
+ },
+ "references": [
+  {
+   "id": "track-2751",
+   "kind": "catalogue",
+   "use": "sizes: 22 mm low-beam pinstop track, 600 mm = 252 g, 5 mm flat-head fasteners every 100 mm, 6061-T6 hard-anodised",
+   "url": "Harken 2751 retailer listings (sailingservices.com, fisheriessupply.com; numbers only)"
+  },
+  {
+   "id": "car-g226s",
+   "kind": "catalogue",
+   "use": "sizes: 22 mm pinstop slider car with sheave, 95 mm long, 35 mm wide, 38 mm sheave, line to 12 mm (replaces the older 393 cars)",
+   "url": "Harken G226S listings (sailingservices.com, velasailingsupply.com; numbers only)"
+  }
+ ],
+ "sizes": [
+  {
+   "id": "length",
+   "name": "Car length",
+   "target": 95.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue G226S: 95 mm"
+  },
+  {
+   "id": "width",
+   "name": "Car width",
+   "target": 35.0,
+   "unit": "mm",
+   "tol": 0.05,
+   "source": "catalogue G226S: 35 mm"
+  }
+ ],
+ "outline": null,
+ "features": [
+  {
+   "id": "car",
+   "text": "A slider car with rounded ends and black slide liners, wider than the track",
+   "objects": [
+    "car_body",
+    "liner-1",
+    "liner1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "sheave",
+   "text": "A grooved sheave held high between two stainless cheeks, its rim showing above them, with room under it for the sheet",
+   "objects": [
+    "sheave",
+    "cheek-1",
+    "cheek1"
+   ],
+   "manual": true
+  },
+  {
+   "id": "pinstop",
+   "text": "A spring pinstop with a pull knob at the car's aft end",
+   "objects": [
+    "plunger_knob"
+   ],
+   "manual": true
+  },
+  {
+   "id": "eye",
+   "text": "An eye strap at the car's forward end (the 2:1 sheet's standing end)",
+   "objects": [
+    "eyestrap"
+   ],
+   "manual": true
+  }
+ ],
+ "budget": {
+  "tris": 12000,
+  "slots": 8
+ }
+}

@@ -942,16 +942,19 @@ def build_sails():
     xc = JIB_CAM_X
     yf = half_beam(xc) - SIDE_DECK - 0.025 - 0.03
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0, 0, 0.01))), tuple(car + Vector((-0.05, 0, -0.01))),
+    # the sheet runs under the car's sheave (kit JibTrack: 38 mm sheave centred 45 mm up, the line's gap under it),
+    # coming down onto its forward side from the clew and leaving aft over the car's body
+    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
+                      tuple(car + Vector((-0.05, 0, -0.022))),
                       (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
                       (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.01, 0.0, 0.0], 0.0045)
+                     [0.002, 0.0, 0.0, 0.01, 0.0, 0.0], 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
                    tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
     wcar = Vector((car.x, -car.y, car.z))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, 0.01))), tuple(wcar),
+    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, -0.012))), tuple(wcar + Vector((0.0, 0, -0.0235))),
                        (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)],
                       [0.22, 0.0, 0.03, 0.0], 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
