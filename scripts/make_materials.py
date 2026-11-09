@@ -1420,6 +1420,7 @@ float metalOut = Metal;    // rust is no metal: what it covers loses its metalli
 // Projected on the two boat axes across the face (the grime's slanted projection streaks on small upright parts).
 float3 hwAn = abs(float3(dot(n, LX), dot(n, LY), dot(n, cross(LX, LY))));
 float2 hwP = hwAn.z >= max(hwAn.x, hwAn.y) ? LP.xy : hwAn.y >= hwAn.x ? LP.xz : LP.yz;
+float hwPx = length(fwidth(hwP));   // cm a pixel spans across the face (taken here, outside the surface branches)
 float2 hwQ = hwP / 1.3;
 float hwN = 0.0;
 for (int ho = 0; ho < 2; ++ho)
@@ -1494,7 +1495,9 @@ else if (surf == 5)     // painted aluminium: the paint chalks (as dark gelcoat 
         cpQ = float2(cpQ.x * 0.8 - cpQ.y * 0.6, cpQ.x * 0.6 + cpQ.y * 0.8) * 2.9 + 5.3;
     }
     float chipT = 0.80 - 0.10 * ageK;
-    float chipNear = lerp(smoothstep(chipT, chipT + 0.02, cpN), 0.01 + 0.085 * ageK, smoothstep(100.0, 300.0, Depth));
+    // The cut widens to the noise's change across a pixel (about 3.4 a cm), so flake edges stay soft where they near a pixel.
+    float cpW = max(0.01, 1.7 * hwPx);
+    float chipNear = lerp(smoothstep(chipT + 0.01 - cpW, chipT + 0.01 + cpW, cpN), 0.01 + 0.085 * ageK, smoothstep(100.0, 300.0, Depth));
     float chip = ageK * chipNear * saturate(vn * 2.0 - 0.5);
     col = lerp(col, float3(0.42, 0.43, 0.44), chip);
     rough = lerp(rough, 0.45, chip);
