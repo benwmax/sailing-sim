@@ -1007,7 +1007,7 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("MPC_Boat has Detail"), Mpc->GetScalarParameterByName(TEXT("Detail")));
 	const TPair<const TCHAR*, int32> Kinds[] = { { TEXT("Topsides"), 1 }, { TEXT("NonSkid"), 2 }, { TEXT("Stainless"), 3 }, { TEXT("Aluminium"), 4 },
 		{ TEXT("PaintedAluminium"), 5 }, { TEXT("Wood"), 6 }, { TEXT("Teak"), 7 }, { TEXT("Rubrail"), 8 }, { TEXT("Rope"), 9 },
-		{ TEXT("Sailcloth"), 10 }, { TEXT("SailCover"), 11 }, { TEXT("MastAluminium"), 4 }, { TEXT("CrewSkin"), 0 } };
+		{ TEXT("Sailcloth"), 10 }, { TEXT("SailCover"), 11 }, { TEXT("MastAluminium"), 4 }, { TEXT("BlackPlastic"), 13 }, { TEXT("Webbing"), 14 }, { TEXT("CrewSkin"), 0 } };
 	for (const TPair<const TCHAR*, int32>& K : Kinds)
 	{
 		const FString Path = FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), K.Key, K.Key);

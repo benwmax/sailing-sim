@@ -188,6 +188,9 @@ VIEWS = {
                        pos=(-0.1, 1.7, 1.35), tgt=(0.6, 0.8, 0.9), lens=38),
     "cu_cleats": dict(sky="sun", water=True, sails=True, heel=0, lift=0.0,
                       pos=(-0.55, 0.25, 1.1), tgt=(-1.3, -0.9, 0.5), lens=28),
+    # the starboard jib lead: track, car and the sheet under its sheave (jib lead pass, docs/part-detail-loop/jibtrack.md)
+    "cu_jiblead": dict(sky="sun", water=True, sails=True, heel=0, lift=0.0,
+                       pos=(-1.10, -0.75, 1.02), tgt=(-0.53, -1.11, 0.66), lens=40),
     # below decks (interior pass): down the companionway, from the step looking forward, the keel bolts
     "cabin_companionway": dict(sky="sun", water=True, sails=False, heel=0, lift=0.0,
                                pos=(-1.45, 0.05, 1.05), tgt=(0.9, -0.05, 0.15), lens=20),

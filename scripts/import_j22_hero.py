@@ -363,15 +363,15 @@ def glass_material():
 
 # Boat fidelity 1: the flat materials' kinds in M_BoatSurface's shared library (make_materials.py BOAT_SURFACE: 1 gelcoat,
 # 3 stainless, 4 anodised aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 10 sailcloth, 11 canvas, 12 galvanised or
-# plain steel; 0 none), and how
+# plain steel, 13 black moulded plastic, 14 woven webbing; 0 none), and how
 # much each darkens wet.
 HERO_SURFACE = {
     "Gelcoat": 1, "GelcoatHull": 1, "CabinGelcoat": 1, "InteriorLiner": 1, "InteriorSole": 1,
     "Stainless": 3, "Chrome": 3, "Galvanised": 12, "KeelBoltSteel": 12, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
-    "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10,
-    "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 11,
+    "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10, "BlackPlastic": 13, "CamBase": 13,
+    "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 14,
 }
-HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0}
+HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05, 14: 0.5}
 
 
 def instance(name, parent):
@@ -415,7 +415,12 @@ def materials():
     wood = ("PlywoodVarnish", "AshVarnish", "TeakVarnish", "TeakWeathered")
 
     def flat_values(name):
-        v = META["flat_materials"][name]
+        # A pack entry whose material no longer reaches the bake (RigTape since the mast gear's turnbuckles took over
+        # from j22_details', #550) keeps its pack index with a plain grey: the packs' indices are baked into the meshes.
+        v = META["flat_materials"].get(name)
+        if v is None:
+            unreal.log_warning(f"import_j22_hero: {name} is in J22H_packs.json but not in the bake's flat materials; plain grey")
+            v = {"base_color_linear": [0.5, 0.5, 0.5], "roughness": 0.5, "metallic": 0.0}
         gel = "Gelcoat" in name or name in ("HatchAcrylic", "TeakVarnish", "PlywoodVarnish", "AshVarnish")
         return v["base_color_linear"], {"Roughness": v["roughness"], "Metallic": v["metallic"], "ClearCoat": 1.0 if gel else 0.0, "NonSkid": 0.0,
                                         "Porosity": HERO_POROSITY.get(HERO_SURFACE.get(name, 0), 0.1), "IsHull": 0.0,

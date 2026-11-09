@@ -1,0 +1,33 @@
+{
+  "surface": "waterline",
+  "name": "Lake waterline and bottom (Lake Ray Hubbard, fresh water)",
+  "kind": "gelcoat band + bottom film (shader math, no new maps)",
+  "boats": {
+    "J22 hero": "Inputs/j22-hero/j22_materials.py gelcoat_hull() -> j22_waterline.py (baked into T_J22H_Hull_D/R)",
+    "fleet and berthed boats": "scripts/make_materials.py BOAT_CODE, the lake waterline block (IsHull, LP.z = cm above the design waterline)",
+    "Sunfish": "dry-sailed on a dolly: L0-L2 show nothing, L4 only a faint line (same BOAT_CODE block, scaled by its smaller Wet)"
+  },
+  "closest_camera_m": 2.0,
+  "views": ["from the dock, 2 m", "heeled 20 degrees, windward side shows the line and the bottom, 3 m", "replay and photo mode, 8 m"],
+  "real_size_cm": {
+    "line_height_L2": 1.6,
+    "line_height_L4": [5, 8],
+    "slime_below_line_L4": 15,
+    "note": "measured from Bean's TX 7295 EC photo with the 3 inch (7.6 cm) Texas registration letters as the scale"
+  },
+  "levels": ["L0", "L1", "L2", "L3", "L4"],
+  "level_notes": {
+    "L0": "clean: no line, fresh grey bottom paint",
+    "L1": "a few months: a hairline grey film where the water sits, hard to see beyond 3 m",
+    "L2": "club boat (TX 7295 EC): a thin ragged grey-tan line about 1.6 cm high, the bottom a little greyer below it",
+    "L3": "old but kept: the owner scrubs the line, so it is fainter than L2; fresh bottom paint",
+    "L4": "neglected: a tan-brown clay band 5-8 cm high with olive slime at and below it, blotchy green-grey film over the bottom"
+  },
+  "wear_inputs": "Dirt only (care removes it); Time only darkens the bottom paint slightly. No barnacles or mussel crust: Lake Ray Hubbard is fresh water and only 'suspect' for zebra mussels. The salt-water band and crust (Site bay/Gulf) stay as they are.",
+  "budget": "no new textures on any tier; a few ALU ops in BOAT_CODE",
+  "replaces": [
+    "BOAT_CODE 'mustache' scum band driven by the livery's wear.y",
+    "BOAT_CODE E1 lake stain band driven by age/care (green-brown up to 25 cm on every berthed boat)",
+    "J/22 hero scum band (#7F7766, 3-8 cm) and bottom slime"
+  ]
+}

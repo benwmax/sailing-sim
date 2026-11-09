@@ -40,7 +40,8 @@ DRAFT = CFG["draft"]
 
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Deck", "NonSkid", "CabinWindow",
          "Stainless", "Aluminium", "BlackPlastic", "Wood", "Graphics", "Rubrail", "SailCover", "Rope",   # Rope last: the earlier slots keep their indices
-         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte"]   # the shared kit's other library slots (place_kit)
+         "Rubber", "PaintedAluminium", "Teak", "Carbon", "CarbonMatte",   # the shared kit's other library slots (place_kit)
+         "Webbing"]   # texture loop, webbing and rubber: the dinghies' hiking strap (kind 14; its own slot, in no pack)
 CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   # (packed: boat_packs.json's PackCanoe is exactly these)
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
@@ -886,7 +887,7 @@ def dinghy_hiking_strap(H, ck):
         x = xa + (xb - xa) * t
         path.append((x, 0.0, sole(x) + end_h - (end_h - mid_h) * 4.0 * t * (1.0 - t) - 0.0015))
         secs.append((0.05, 0.003))
-    bar(hull, path, secs, "Rubber")
+    bar(hull, path, secs, "Webbing")   # texture loop (docs/texloop-rubber): woven webbing, not the rubber slot it had been
     for x, s in ((x0, 1), (x1, -1)):
         z = sole(x) + end_h
         box(hull, (x + s * 0.003, 0.0, z - 0.004), (0.004, 0.066, 0.03), "Stainless")

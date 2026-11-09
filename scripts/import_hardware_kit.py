@@ -8,6 +8,12 @@ scripts/make-boatkit.sh or scripts\\windows\\make-boatkit.ps1 into Artifacts/boa
                         TERNWAY plates), roughness nudged by the sheet, the sheet's normal
   MI_Kit_<Slot>         one instance per slot name the kit uses, with that slot's colour, roughness and metalness from
                         make_materials.py's BOAT_LIBRARY (phase 1's surface kinds)
+                        and its kind (BOAT_SURFACE). Texture loop, black plastic (docs/texloop-plastic): kind 13 (the
+                        BlackPlastic slot: blocks, cam cleats, fairleads, ratchets, clutches) weathers with the boat's Age
+                        and Care (parameters, or per-instance custom data 10 and 11 as on M_BoatSurface; Age -1 = unset,
+                        the look as before) by BOAT_CODE's own PLASTIC_WEAR lines, copied from make_materials.py
+                        (texture loop, webbing and rubber, docs/texloop-rubber: kind 8, the Rubrail slot, by its
+                        RUBBER_WEAR lines the same way)
 
 Sockets come from the FBX's SOCKET_* empties; any the importer missed are added from kit.json. Inputs/boat-kit/kit.json
 (copied from the build) is what SailingSim.Visual.HardwareKit checks the import against. Nothing is placed on a boat yet:
@@ -33,12 +39,34 @@ MEL = unreal.MaterialEditingLibrary
 ONLY = [n for n in os.environ.get("KIT_ONLY", "").split(",") if n]
 
 
-def boat_library():
+def materials_constant(name):
     tree = ast.parse(open(os.path.join(REPO, "scripts", "make_materials.py")).read())
     for node in tree.body:
-        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "BOAT_LIBRARY":
+        if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == name:
             return ast.literal_eval(node.value)
-    raise RuntimeError("BOAT_LIBRARY not found in make_materials.py")
+    raise RuntimeError(f"{name} not found in make_materials.py")
+
+
+def boat_library():
+    return materials_constant("BOAT_LIBRARY")
+
+
+def wear_block(name="PLASTIC"):
+    """BOAT_CODE's lines between the <name>_WEAR markers, so the kit and the boats weather alike."""
+    code = materials_constant("BOAT_CODE")
+    a = code.index(f"// {name}_WEAR >>>")
+    b = code.index(f"// {name}_WEAR <<<")
+    return code[a:b]
+
+
+def plastic_wear():
+    """BOAT_CODE's black plastic lines (between the PLASTIC_WEAR markers)."""
+    return wear_block("PLASTIC")
+
+
+def rubber_wear():
+    """BOAT_CODE's rubber lines (texture loop, webbing and rubber: the ratchet's sheave, the kit's Rubrail slot)."""
+    return wear_block("RUBBER")
 
 
 def import_texture(path, kind):
@@ -79,6 +107,35 @@ KIT_CODE = r"""
 float3 c = C.rgb * lerp(1.0, M.r, 0.6);
 c = lerp(c, float3(0.85, 0.85, 0.82), M.b);
 Rough = saturate(R + (M.g - 0.5) * 0.5);
+// Texture loop, black plastic (docs/texloop-plastic): kind 13 weathers with Age and Care as on M_BoatSurface (the same
+// timeK and dirtK, the same PLASTIC_WEAR lines; the trim sheet's cavities hold the dust). Age unset: as before.
+// Texture loop, webbing and rubber (docs/texloop-rubber): kind 8 (the Rubrail slot: the ratchet's sheave) by the same
+// RUBBER_WEAR lines as the boats. Age unset: as before.
+int surf = (int)(Surface + 0.5);
+if (surf == 13 || surf == 8)
+{
+    float3 n = normalize(N);
+    float age = CD10 >= 0.0 ? CD10 : Age, care = CD10 >= 0.0 ? CD11 : Care;
+    float timeK = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-age / 0.75)) + 0.75 * (1.0 - exp(-age / 18.0))) : 0.0;
+    float dirtK = age >= 0.0 ? saturate((1.0 - exp(-age)) * (0.15 + 0.85 * (1.0 - saturate(care)))) : 0.0;
+    float sunF = 1.0;
+    float3 col = c;
+    float rough = Rough;
+    float bpCav = 1.0 - M.r;
+    float3 lnA = abs(LN);
+    float2 bpP = lnA.z >= max(lnA.x, lnA.y) ? LP.xy : lnA.y >= lnA.x ? LP.xz : LP.yz;
+    if (surf == 13)
+    {
+@PLASTIC_WEAR@
+    }
+    else if (age >= 0.0)
+    {
+    float2 rbP = bpP;
+@RUBBER_WEAR@
+    }
+    c = col;
+    Rough = rough;
+}
 return c;
 """
 
@@ -90,6 +147,7 @@ def kit_material(normal, mask):
     mat = ASSETS.create_asset("M_BoatKit", DEST, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("two_sided", True)       # like M_BoatSurface: a few kit shells are open (the handle pocket)
     mat.set_editor_property("used_with_nanite", True)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)   # berthed boats' kit takes E1's age per instance
     col = node(mat, unreal.MaterialExpressionVectorParameter, -900, -100, parameter_name="Color", default_value=unreal.LinearColor(0.6, 0.6, 0.62, 1))
     rough = node(mat, unreal.MaterialExpressionScalarParameter, -900, 50, parameter_name="Roughness", default_value=0.35)
     metal = node(mat, unreal.MaterialExpressionScalarParameter, -900, 150, parameter_name="Metallic", default_value=0.0)
@@ -97,9 +155,24 @@ def kit_material(normal, mask):
               sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
     tm = node(mat, unreal.MaterialExpressionTextureSampleParameter2D, -900, 560, parameter_name="TrimMask", texture=mask,
               sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
-    c = node(mat, unreal.MaterialExpressionCustom, -500, 0, code=KIT_CODE, output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    surface = node(mat, unreal.MaterialExpressionScalarParameter, -900, 800, parameter_name="Surface", default_value=0.0)
+    age = node(mat, unreal.MaterialExpressionScalarParameter, -900, 880, parameter_name="Age", default_value=-1.0)
+    care = node(mat, unreal.MaterialExpressionScalarParameter, -900, 960, parameter_name="Care", default_value=0.5)
+    cd = [node(mat, unreal.MaterialExpressionPerInstanceCustomData, -900, 1040 + 60 * i, data_index=k, const_default_value=-1.0)
+          for i, k in enumerate((10, 11))]
+    nrm = node(mat, unreal.MaterialExpressionVertexNormalWS, -1100, 1200)
+    to_local = node(mat, unreal.MaterialExpressionTransform, -900, 1200)
+    to_local.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+    to_local.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_LOCAL)
+    connect(nrm, "", to_local, "")
+    geo = {"N": nrm, "LN": to_local, "LP": node(mat, unreal.MaterialExpressionLocalPosition, -900, 1300),
+           "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 1380), "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 1460),
+           "Depth": node(mat, unreal.MaterialExpressionPixelDepth, -900, 1540), "Surface": surface, "Age": age, "Care": care,
+           "CD10": cd[0], "CD11": cd[1]}
+    code = KIT_CODE.replace("@PLASTIC_WEAR@", plastic_wear()).replace("@RUBBER_WEAR@", rubber_wear())
+    c = node(mat, unreal.MaterialExpressionCustom, -500, 0, code=code, output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT3)
     ins = []
-    for pn in ("C", "R", "M"):
+    for pn in ("C", "R", "M") + tuple(geo):
         i = unreal.CustomInput()
         i.set_editor_property("input_name", pn)
         ins.append(i)
@@ -111,6 +184,8 @@ def kit_material(normal, mask):
     connect(col, "RGBA", c, "C")
     connect(rough, "", c, "R")
     connect(tm, "RGBA", c, "M")
+    for pin, src in geo.items():
+        connect(src, "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Rough", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(metal, "", unreal.MaterialProperty.MP_METALLIC)
@@ -122,6 +197,7 @@ def kit_material(normal, mask):
 
 def kit_instances(parent, slots):
     lib = boat_library()
+    kinds = materials_constant("BOAT_SURFACE")
     out = {}
     for slot in sorted(slots):
         _, col, rough, metal, _, _, _ = lib[slot]
@@ -133,6 +209,7 @@ def kit_instances(parent, slots):
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         MEL.set_material_instance_scalar_parameter_value(mi, "Roughness", rough)
         MEL.set_material_instance_scalar_parameter_value(mi, "Metallic", metal)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Surface", float(kinds.get(slot, 0)))
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[slot] = mi

@@ -26,6 +26,7 @@ every part and the import into the game (`/Game/Boats/Kit`, `scripts/import_hard
 | `partloop/render_views.py` | Part detail loop: one part from the same views every round (six turntable, two in use for blocks and cleats, clay, side, edge and top outlines) and its `stats.json` |
 | `partloop/score.py` | Part detail loop: the scorecard (sizes, outline overlap, features, budget, blind review) against the part's card in `partloop/parts/<part>.json` |
 | `partloop/render_assembly.py` | Part detail loop: parts in place on the J/22 before and after (the 4:1 vang: Fiddle40, FiddleCam, the line reeved through them) |
+| `partloop/render_marks.py` | Part detail loop: the course marks and the crew-overboard buoy floating on a lake from a helm's eye, before (the game's engine shapes) and after |
 | `partloop/make_sheet.py` | Part detail loop: the before/after sheet for Bean (reference photo, both rounds' views, scorecards, outline overlap) |
 
 Run everything with `scripts/make-boatkit.sh [--render]` (Blender or the `bpy` module; about 10 s without renders).
