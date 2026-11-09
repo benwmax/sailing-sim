@@ -71,6 +71,13 @@ boats (with and without `--old-hardware`) and render each:
 
     blender -b -P Inputs/j22-hero/render_j22_hero.py -- out/j22_hero.blend out/renders cu_jibcam cu_quarter cu_mastbase cu_rudder
 
+## In the game (Nov 9, BEN-PC, main 170323cb with #569's rebake)
+
+The hero imported clean: 773,010 triangles over `SM_J22H_*` (Nanite source; 33,689 in the fallback meshes), far under
+the J/22's 3 million cap (raised Nov 9; Bean wants high quality). Blender's 1.17 million counts the still sails, lines
+and coils, which the game draws live. Ultra close-ups, uncooked (`ingame/`): the port quarter (quarter block on its pad
+eye, cam cleats), the mast base (turning blocks on their pad eyes) and the rudder from forward. The jib cam shot was
+blocked by the crew; there is no argument to hide them yet. Counts: `ingame/hero-tris.txt`.
 # Wave 2: the things that move (Nov 9 2026)
 
 Wave 2 puts the kit parts that follow the wind or the sail on the boats, and finishes the hero's deck swaps.
