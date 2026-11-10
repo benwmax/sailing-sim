@@ -1,7 +1,9 @@
 # Builds, cooks, stages and archives a standalone Windows game with RunUAT BuildCookRun. Windows twin of
 # scripts/package-mac.sh (same steps: -build -cook -stage -pak -iostore -package -archive).
 # Usage: scripts\windows\package-win.ps1 [-Config Development|Shipping] [-Full] [-Into <folder under Packaged>]
-#   Output: Packaged\Windows\SailingSim.exe (or Packaged\<Into>\Windows\SailingSim.exe)     Log: Artifacts\package.log
+#   Output: Packaged\Windows\SailingSim.exe; with -Into, Packaged\<Into>\SailingSim.exe or Packaged\<Into>\Windows\SailingSim.exe   Log: Artifacts\package.log
+#   (UAT adds the Windows\ folder only when the path doesn't already name it: -Into Windows-<sha> gets none, Shipping-<sha> gets one).
+#   The bench scripts take the folder: bench-win.ps1 -Package <Into> (they find the exe either way).
 #   -Into archives into a folder of its own (friday.ps1's Packaged\Shipping-<commit>); it refuses one that exists.
 #   The cook is incremental (-cookincremental: the Zen store keeps the last cook, and only what changed and what depends
 #   on it is cooked again); -Full cooks everything. Timings: docs/windows/README.md, "Build times". gate.ps1 skips the
@@ -26,7 +28,7 @@ $Start = Get-Date
 $Code = Invoke-Tool $RunUAT $ArgLine (Join-Path $Artifacts 'package.log')
 if ($Code -eq 0) {
 	Write-Host ("Packaged game ({0:N0} s, {1} cook):" -f ((Get-Date) - $Start).TotalSeconds, $(if ($Full) { 'full' } else { 'incremental' }))
-	Get-ChildItem -Path (Join-Path $Archive 'Windows') -Filter 'SailingSim*.exe' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.FullName)" }
+	Get-ChildItem -Path $Archive, (Join-Path $Archive 'Windows') -Filter 'SailingSim*.exe' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.FullName)" }
 } else {
 	Write-Host "Packaging failed (exit $Code). See Artifacts\package.log" -ForegroundColor Red
 }
