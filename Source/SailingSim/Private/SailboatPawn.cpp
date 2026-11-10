@@ -286,6 +286,8 @@ void ASailboatPawn::SetBoat(int32 Type)
 	const double StartSeconds = FPlatformTime::Seconds();
 	const EBoatType BoatType = EBoatType(FMath::Clamp(Type, 0, int32(EBoatType::Count) - 1));
 	const double Time = Boat.GetState().Time;
+	TillerExtensionHingeCm.Reset();   // the extension as drawn is the next boat's
+	TillerExtensionTipCm.Reset();
 	FBoatConfig Config = FBoatConfig::Make(BoatType);
 	float CrewKg = 0.f;
 	if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingCrewKg="), CrewKg) && CrewKg > 0.f)

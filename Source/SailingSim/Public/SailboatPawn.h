@@ -656,10 +656,12 @@ private:
 	void UpdateCrewGroomLOD();
 	FVector MainsheetCarCm = FVector::ZeroVector;
 	bool TillerEndCm(FVector& Out) const;
-	/** The tiller extension stowed, nobody holding it (Settings > Show crew off, or no hand on it): folded back along the
-	 *  top of the tiller toward the rudder head, as a J/22's is left: the hero's TillerExtUJ to TillerExtTip sockets, else
-	 *  85 cm along the tiller from its end. Boat frame, cm. */
+	/** The tiller extension stowed, nobody holding it (Settings > Show crew off, the cockpit view, or no hand on it). A model
+	 *  that bakes its own stowed extension (BakesStowedExtension: the hero J/22, the Sunfish) draws it: the live line
+	 *  collapses to a point inside the tiller's end (kept drawn: the rig mesh has a fixed vertex count). Elsewhere it lies
+	 *  85 cm back along the tiller from its end toward the rudder head. Boat frame, cm. */
 	void StowedExtensionCm(const FVector& End, FVector& OutHinge, FVector& OutTip) const;
+	bool BakesStowedExtension() const;
 	TOptional<FVector> TillerExtensionHingeCm, TillerExtensionTipCm;   // the extension as last drawn (boat frame, cm; tests)
 	float MastBendCm = 0.f;
 	float MastBendHeightCm = 800.f;

@@ -67,8 +67,9 @@ bool FSailingShowCrewTest::RunTest(const FString&)
 	return true;
 }
 
-// #612 follow-up: with the crew hidden, the tiller extension is stowed back along the tiller (the hero J/22's TillerExtUJ to
-// TillerExtTip), not left posed for the hidden helm's hand; shown, it goes to the helm's hand.
+// #612 follow-up: with the crew hidden (or in the cockpit view, where the helm is you), the tiller extension is not posed for
+// a hidden hand. On the hero J/22 and the Sunfish, whose models bake the extension folded along the tiller, the live one
+// collapses to a point inside the tiller's end; shown (chase view), it goes to the helm's hand.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStowExtensionTest, "SailingSim.Smoke.StowExtension", ShowCrewFlags)
 bool FSailingStowExtensionTest::RunTest(const FString&)
 {
@@ -77,21 +78,29 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 	W.World->SpawnActor<AWaterSurface>(FVector::ZeroVector, FRotator::ZeroRotator);
 	ASailboatPawn* Boat = W.World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
 	if (!TestNotNull(TEXT("A boat"), Boat)) return false;
+	auto Check = [this, Boat](const TCHAR* What, bool bCollapsed)
+	{
+		const TOptional<FVector> Hinge = Boat->GetTillerExtensionHingeCm(), Tip = Boat->GetTillerExtensionTipCm();
+		if (!TestTrue(FString::Printf(TEXT("%s: an extension drawn"), What), Hinge.IsSet() && Tip.IsSet())) return FVector::ZeroVector;
+		AddInfo(FString::Printf(TEXT("%s: extension from (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f) cm"), What, Hinge->X, Hinge->Y, Hinge->Z, Tip->X, Tip->Y, Tip->Z));
+		if (bCollapsed) TestTrue(FString::Printf(TEXT("%s: the live extension collapsed into the tiller's end (the model's own shows)"), What), FVector::Dist(*Hinge, *Tip) < 2.0);
+		return *Tip;
+	};
 	W.Tick(60);
-	const TOptional<FVector> Hinge = Boat->GetTillerExtensionHingeCm(), Tip = Boat->GetTillerExtensionTipCm();
-	if (!TestTrue(TEXT("The J/22 draws a tiller extension"), Hinge.IsSet() && Tip.IsSet())) return false;
-	AddInfo(FString::Printf(TEXT("Crew hidden: extension from (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f) cm"), Hinge->X, Hinge->Y, Hinge->Z, Tip->X, Tip->Y, Tip->Z));
 	TestFalse(TEXT("Crew hidden"), Boat->IsCrewShownNow());
-	TestTrue(TEXT("... the extension folded back toward the rudder head (its free end aft of the hinge)"), Tip->X < Hinge->X - 40.0);
-	TestTrue(TEXT("... lying along the tiller, not raised (within 15 cm of the hinge's height)"), FMath::Abs(Tip->Z - Hinge->Z) < 15.0);
-	TestTrue(TEXT("... on the centreline, inside the boat"), FMath::Abs(Tip->Y) < 40.0);
-	TestTrue(TEXT("... and about the extension's length"), FVector::Dist(*Hinge, *Tip) > 50.0 && FVector::Dist(*Hinge, *Tip) < 120.0);
+	const FVector Stowed = Check(TEXT("J/22, crew hidden"), true);
 	USailingSettings::Get()->bShowCrew = true;
 	W.Tick(30);
-	const TOptional<FVector> Held = Boat->GetTillerExtensionTipCm();
-	if (!TestTrue(TEXT("Shown: still drawn"), Held.IsSet())) return false;
-	AddInfo(FString::Printf(TEXT("Crew shown: the free end at (%.0f, %.0f, %.0f) cm"), Held->X, Held->Y, Held->Z));
-	TestTrue(TEXT("Shown: the extension goes to the helm's hand (not the stowed end)"), FVector::Dist(*Held, *Tip) > 15.0);
+	const FVector Held = Check(TEXT("J/22, crew shown"), false);
+	TestTrue(TEXT("Shown: the extension goes to the helm's hand"), FVector::Dist(Held, Stowed) > 15.0);
+	Boat->SetCockpitView(true);
+	W.Tick(30);
+	Check(TEXT("J/22, cockpit view (crew shown)"), true);
+	Boat->SetCockpitView(false);
+	USailingSettings::Get()->bShowCrew = false;
+	Boat->SetBoat(int32(Sailing::EBoatType::Sunfish));
+	W.Tick(60);
+	Check(TEXT("Sunfish, crew hidden"), true);
 	return true;
 }
 

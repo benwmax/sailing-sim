@@ -669,8 +669,9 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	// (A wheel boat's TillerEnd is a point on the wheel's rim: no extension there.)
 	if (TillerEndCm(End) && Boat.GetConfig().WheelHardOverSeconds <= 0.0)
 	{
-		// In the helm's hand (only a shown helm's: Settings > Show crew), else stowed along the tiller (StowedExtensionCm).
-		const TOptional<FVector> Hand = !bCrewShownApplied ? TOptional<FVector>()
+		// In the helm's hand (only a shown helm's: Settings > Show crew; never in the cockpit view, where the helm is you and
+		// hidden), else stowed (StowedExtensionCm).
+		const TOptional<FVector> Hand = !bCrewShownApplied || bCockpit ? TOptional<FVector>()
 			: HelmGripCm ? HelmGripCm : (NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>());
 		FVector Hinge, Grip;
 		if (Hand && FVector::Dist(*Hand, End) < 140.f)
@@ -1697,19 +1698,26 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	}
 }
 
+bool ASailboatPawn::BakesStowedExtension() const
+{
+	// The hero J/22 (j22_steering.py: TillerExtUJ, TillerExtTip) and the Sunfish (build_fleet.py: pc/sunfish-hero) model the
+	// extension folded back along the tiller; the ILCA, Catalina 22 and Corsair don't (Boats & models 9).
+	return (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtTip"))) || Boat.GetConfig().Type == EBoatType::Sunfish;
+}
+
 void ASailboatPawn::StowedExtensionCm(const FVector& End, FVector& OutHinge, FVector& OutTip) const
 {
-	// The hero J/22 models the stowed extension: its universal joint over the tiller's end and its tip on the tiller near the
-	// rudder head (sockets on the rudder, so they swing with the helm).
-	if (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtUJ")) && ModelRudder->DoesSocketExist(TEXT("TillerExtTip")))
+	// (TillerEndCm, which gave End, needs ModelRudder.)
+	if (BakesStowedExtension())
 	{
-		OutHinge = RigPoint(ModelRudder, TEXT("TillerExtUJ"));
-		OutTip = RigPoint(ModelRudder, TEXT("TillerExtTip"));
+		// The model's own extension shows: the live one a point just inside the tiller's end.
+		OutHinge = End - FVector(0.f, 0.f, 1.f);
+		OutTip = End - FVector(0.3f, 0.f, 1.f);
 		return;
 	}
-	// Elsewhere back along the tiller from its end toward the rudder head, lying on it (the tiller's end is its top).
-	const FVector Stock = ModelRudder && ModelRudder->DoesSocketExist(TEXT("RudderStock")) ? RigPoint(ModelRudder, TEXT("RudderStock"))
-		: (ModelRudder ? BoatRoot->GetComponentTransform().InverseTransformPosition(ModelRudder->GetComponentLocation()) + FVector(0.f, 0.f, End.Z) : End - FVector(85.f, 0.f, 0.f));
+	// Back along the tiller from its end toward the rudder head, lying on it (the tiller's end is its top).
+	const FVector Stock = ModelRudder->DoesSocketExist(TEXT("RudderStock")) ? RigPoint(ModelRudder, TEXT("RudderStock"))
+		: BoatRoot->GetComponentTransform().InverseTransformPosition(ModelRudder->GetComponentLocation()) + FVector(0.f, 0.f, End.Z);
 	const FVector Along = (Stock - End).GetSafeNormal();
 	OutHinge = End + FVector(0.f, 0.f, 2.f);
 	OutTip = End + Along * FMath::Min(85.f, float(FVector::Dist(Stock, End)) - 8.f) + FVector(0.f, 0.f, 2.f);
