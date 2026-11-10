@@ -311,7 +311,7 @@ SIDE_DECK = 0.36                    # side deck width alongside the cabin and co
 CAMBER = 0.05                       # deck crown
 SOLE_Z = 0.30                       # cockpit sole (self-draining, above the waterline)
 SEAT_Z = 0.47
-SEAT_W = 0.30                       # shape wave 1: the class deck narrows aft; keep in step with CrewCockpitWell's SeatW
+SEAT_W = 0.36
 COAMING_H = 0.09
 
 

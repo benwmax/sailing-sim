@@ -347,6 +347,25 @@ namespace CrewSolver
 	/** Crew pose fix: each foot the stance put inside the boat goes onto the floor above it, or, off the deck's plan
 	 *  (through the topsides), inboard to the well (or the deck) first; the leg reaches it by two-bone IK. Sitting in a
 	 *  cockpit, a foot hanging over the well's sole goes down onto it. */
+	/** Shape wave 1: how far a foot's sole points (boat frame, m) reach in under the cockpit seat's front, by the front at each
+	 *  point's own x, plus a 4 cm margin (so levelling the foot about the ankle keeps both ends over the sole), or 0. The
+	 *  class J/22's deck narrows aft, so the seat's front runs inboard toward the stern and the helm's heel, aft of the toe,
+	 *  came down under it. Only up to 12 cm under (further in, the foot is on the seat). */
+	double SeatFrontOverlap(const Sailing::FBoatConfig& C, const FCrewCockpitWell& W, const FVector (&B)[2])
+	{
+		const Sailing::FHullShape& H = C.Hulls[0];
+		if (W.SeatZ <= 0.0) return 0.0;
+		double Under = 0.0;
+		for (const FVector& P : B)
+		{
+			if (P.X <= W.X0 || P.X >= W.X1) continue;
+			const double HalfHere = W.SideDeck > 0.0 ? H.DeckHalfBeam(P.X) - W.SideDeck : W.HalfWidth;
+			const double Front = W.SeatIn > 0.0 ? FMath::Min(W.SeatIn, HalfHere) : HalfHere - W.SeatW;
+			Under = FMath::Max(Under, FMath::Abs(P.Y - H.CenterY) - (Front - 0.04));
+		}
+		return Under < 0.12 ? Under : 0.0;
+	}
+
 	bool PlantFeet(const FReferenceSkeleton& Ref, const TArray<FTransform>& Rest, const TArray<FTransform>& CS, const TArray<FQuat>& D, const FQuat& Frame,
 		const FCrewGround& G, TMap<FName, FQuat>& Joints)
 	{
@@ -371,6 +390,14 @@ namespace CrewSolver
 				// ankle's 45 deg in LevelFeet can't lay it flat), so it is left hanging.
 				FCrewCockpitWell Well;
 				if (!G.bFeetDown || !CrewCockpitWell(C, Well, G.bTravelerBridge)) continue;
+				// (Shape wave 1: a foot hanging across the seat's front, mostly over the sole, goes in over the sole first, the
+				// way one under the front does below; left across it, it dropped or not as an idle clip moved it, 20 cm.)
+				double SeatShiftY = 0.0;
+				if (C.Hulls.size() == 1 && FMath::Min(B[0].Z, B[1].Z) < Well.SeatZ + 0.32)
+				{
+					SeatShiftY = (0.5 * (B[0].Y + B[1].Y) >= C.Hulls[0].CenterY ? -1.0 : 1.0) * SeatFrontOverlap(C, Well, B);
+					for (FVector& P : B) P.Y += SeatShiftY;
+				}
 				const double FootLevel = CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge);
 				const bool bWellLevel = FMath::Abs(FootLevel - Well.SoleZ) <= 0.01 || (Well.SeatZ > 0.0 && FMath::Abs(FootLevel - Well.SeatZ) <= 0.01);
 				if (!bWellLevel || FMath::Abs(CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge) - FootLevel) > 0.01) continue;
@@ -379,7 +406,7 @@ namespace CrewSolver
 				const double Hang = FMath::Min(B[0].Z, B[1].Z) - FootLevel;
 				const double DownWeight = FMath::Clamp((0.32 - Hang) / 0.07, 0.0, 1.0);
 				if (Hang < 0.01 || DownWeight <= 0.0) continue;
-				const FVector Down(0.0, 0.0, -(Hang - 0.005) * DownWeight);
+				const FVector Down(0.0, SeatShiftY * DownWeight, -(Hang - 0.005) * DownWeight);
 				const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Down / M);
 				ReachArm(Ref, CS, D, Foot, Target, Joints);
 				bMoved = true;
@@ -399,6 +426,14 @@ namespace CrewSolver
 			const FHullShape& H = C.Hulls[Near];
 			FCrewCockpitWell W;
 			const bool bWell = Near == 0 && CrewCockpitWell(C, W, G.bTravelerBridge) && Mid.X > W.X0 && Mid.X < W.X1;
+			// Shape wave 1: a foot on the sole only just in under a seat's front goes inboard onto the sole (SeatFrontOverlap),
+			// not 17 cm up onto the seat (which the leg couldn't reach: the foot jumped 21 cm and the heel stayed in the seat).
+			double SeatShiftY = 0.0;
+			if (bWell && FMath::Min(B[0].Z, B[1].Z) < W.SeatZ - 0.05)
+			{
+				SeatShiftY = (Mid.Y >= H.CenterY ? -1.0 : 1.0) * SeatFrontOverlap(C, W, B);
+				for (FVector& P : B) P.Y += SeatShiftY;
+			}
 			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
 			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
 			// docs/crew-hull-clip/: a foot only just into the deck (within 12 cm of its surface: a crown, a pose resting a
@@ -417,6 +452,7 @@ namespace CrewSolver
 			const double Floor = FMath::Max(CrewFloorZ(C, B[0].X, B[0].Y, G.bTravelerBridge), CrewFloorZ(C, B[1].X, B[1].Y, G.bTravelerBridge));
 			if (Floor < Off) continue;
 			Shift.Z = Floor + 0.005 - FMath::Min(B[0].Z, B[1].Z);
+			Shift.Y += SeatShiftY;
 			const FVector Target = G.ToBoat.InverseTransformPosition(G.ToBoat.TransformPosition(CS[Foot].GetLocation()) + Shift / M);
 			ReachArm(Ref, CS, D, Foot, Target, Joints);
 			bMoved = true;
@@ -943,9 +979,7 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 			return true;
 		}
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
-		// Shape wave 1: the class hull's deck narrows aft faster than the old stand-in's, so a 0.36 m seat left the helm's sole
-		// only 0.35 m wide each side at x -1.91 and his heel came down inside the seat front; 0.30 keeps the well's width.
-		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.30; W.SoleZ = 0.30;
+		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
 		// Its traveler (pc/j22-feedback: at the boom's end, x -2.06, as on the hero): a 32 mm track from seat to seat, its top
 		// 0.474 m up, open below (round 12's 16 cm bridge at x -1.75, which the helm's forward foot stood on, is gone).
 		W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.458; W.TrackZ1 = 0.474; W.TrackHalfY = 1.0;
