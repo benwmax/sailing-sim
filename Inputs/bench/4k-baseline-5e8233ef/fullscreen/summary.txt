@@ -1,0 +1,40 @@
+TRUE 4K: main 5e8233ef, Ultra, 3840x2160, window mode 1 (borderless fullscreen, -fullscreen; bench.json "resolution"
+3840x2160 on all 21 runs, each launch logged "3840x2160 (window mode 1)"). render_pct 100 on every run: no upscaler.
+How: the game is not DPI aware (Config sets no bAllowHighDPIInGameMode), so on Bean's 4K desktop at 150% scaling it sees a
+2560x1440 desktop; each run here had a temporary user Engine.ini in its Saved with
+[/Script/Engine.UserInterfaceSettings] bAllowHighDPIInGameMode=True (removed after). A first B pass ran at 2560x1440 (the
+Development game rewrites that ini on exit) and was discarded; B was rerun re-seeding it before every view.
+Foreground: the game was in front for the first launch of each part; bench.json "foreground" reads 0 on most runs
+(it is the fraction of the measured window with focus; fullscreen covered the screen, nobody used the PC).
+1% low = 1000 / p99_ms. gpu = gpu.total_ms (Development) or gpu_frame_ms (Shipping). render_th = render thread ms.
+B: Development package (Packaged\Windows-5e8233e), bench-visual-win -Tiers Ultra, 16 views, 12 s each, demo autopilot.
+A: Shipping zip game (Packaged\Shipping-5e8233ef), -SailingShippingSmoke -SailingWorld=Lake -SailingLaunch=0..4 -SailingBench=60.
+Development spends about 11-15 ms on the game thread and 16-20 ms on the render thread against about 9 and 10 ms in
+Shipping: Development's checks and stats. At 4K Shipping is GPU bound (17.7-19.2 ms GPU).
+
+B
+run                 fps  1%low    gpu    game render_th  cloth  rpct   fgnd resolution
+beam8              47.8   38.5  15.97   14.19     20.91   2.34   100      1 3840x2160
+beat15             48.2   38.7  15.64   13.72     20.75  2.086   100      1 3840x2160
+bridge             49.2   37.2  15.06   14.44     20.32  2.377   100      1 3840x2160
+coast-day          44.8   31.7  17.31   16.44     22.33   2.41   100      1 3840x2160
+coast-night          45   31.3  17.72   17.27     22.19  2.478   100      1 3840x2160
+crew               40.6     33  17.96   16.03      24.6  2.588   100      1 3840x2160
+far-coast-night    57.2   38.4  12.46      14     17.48  2.048   100      1 3840x2160
+far-coast          47.9     32  15.13   16.26     20.85  2.286   100      1 3840x2160
+gulf-sea           50.2   37.5  15.03   15.12      19.9  2.274   100      1 3840x2160
+helm-eye             49   32.8  15.08   14.13     20.19  2.401   100      1 3840x2160
+marina-night       45.7   38.3  18.57   14.44     21.86  1.613   100      1 3840x2160
+marina             47.4   35.9   15.7   13.19     20.95  2.235   100      1 3840x2160
+marseille-port     45.2   27.9  17.23   15.83     22.14  2.176   100      1 3840x2160
+slip               44.8   36.2  17.87    13.9     22.17  1.462   100      1 3840x2160
+storm              38.3     23  18.76   14.93     25.99  2.238   100      1 3840x2160
+stream-run           38   30.4  19.88   18.61     26.29   2.59   100      1 3840x2160
+
+A
+run                 fps  1%low    gpu    game render_th  cloth  rpct   fgnd resolution
+launch0            52.3   46.4  18.59    9.19      9.97  1.223   100      0 3840x2160
+launch1              52   45.2  18.71    9.15      9.76  1.138   100      0 3840x2160
+launch2            52.9   45.8  18.35    9.21      9.96  1.188   100      0 3840x2160
+launch3            54.7   47.3   17.7    8.97      9.87  1.171   100  0.285 3840x2160
+launch4            50.6   44.1  19.19    9.25     10.02  1.195   100      0 3840x2160
