@@ -34,7 +34,10 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	NextMark = 0;
 	bDummy = false;
 	TacksOrGybes = 0;
-	LastSide = Boat.GetTelemetry().TrueWindAngle >= 0.0 ? 1 : -1;
+	// #603: the side is learned on the first Update with the wind off the bow. Read here, from a boat just Reset (as the
+	// pawn starts a drill), the telemetry is the last run's or zero: a port-tack start counted a tack on its first step and
+	// quick-stop's list opened with steps 1 and 2 ticked.
+	LastSide = 0;
 	Start2D = BoatXY(Boat);
 	const FVector2D Up(FMath::Cos(WindFromRad), FMath::Sin(WindFromRad)); // toward where the wind comes from
 	const FVector2D Across(-Up.Y, Up.X);
@@ -134,7 +137,14 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	const double Knots = T.BoatSpeed / kKnot;
 	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
 	const int32 Side = TwaDeg >= 0.0 ? 1 : -1;
-	if (Side != LastSide && FMath::Abs(TwaDeg) > 10.0) { ++TacksOrGybes; LastSide = Side; }
+	if (FMath::Abs(TwaDeg) > 10.0)
+	{
+		if (LastSide == 0) LastSide = Side;
+		else if (Side != LastSide) { ++TacksOrGybes; LastSide = Side; }
+	}
+	// #603: a step once reached stays reached (the panel never un-ticks one: quick-stop fell back from "approach" to
+	// "keep turning" as the person drifted past 15 m).
+	const int32 Reached = Step;
 
 	switch (Drill)
 	{
@@ -209,6 +219,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	default:
 		break;
 	}
+	if (!bComplete) Step = FMath::Max(Step, Reached);
 	return !bComplete;
 }
 

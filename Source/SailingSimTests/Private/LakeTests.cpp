@@ -598,6 +598,28 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 {
 	// Quick-stop: head up, circle back and stop alongside, steered by a scripted helmsman.
 	const FWindField Wind = WindFrom(10.0, 0.0);
+	// #603: started on a boat just Reset (as the pawn does), on either tack, three seconds of sailing straight on count
+	// no tack: the list stays on its first step (the audit's port start opened on step 3 with 1 and 2 ticked).
+	for (const double HeadingDeg : { -100.0, 100.0, -60.0, 60.0 })
+	for (const ESailingDrill Kind : { ESailingDrill::CrewOverboardQuickStop, ESailingDrill::CrewOverboardFigureEight })
+	{
+		FBoatModel Straight;
+		Straight.Reset(0.0, 0.0, HeadingDeg * kDegToRad, 5.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(Kind, Straight, 0.0);
+		FAutoTrim StraightTrim = ScriptedTrim();
+		FBoatControls SC;
+		int32 MaxStep = 0;
+		for (int32 I = 0; I < int32(2.5 * PhysicsHz); ++I)
+		{
+			SC = StraightTrim.Update(Straight, SC, PhysicsDt);
+			SC.Tiller = 0.0;
+			Straight.Step(PhysicsDt, SC, Wind);
+			Run.Update(Straight, FDrillContext(), PhysicsDt);
+			MaxStep = FMath::Max(MaxStep, Run.GetStep());
+		}
+		TestEqual(FString::Printf(TEXT("%s from a heading of %.0f: no tack counted, still on the first step"), DrillName(Kind), HeadingDeg), MaxStep, 0);
+	}
 	FBoatModel Boat;
 	Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 5.0 * kKnot);
 	FDrillRunner Drill;
@@ -606,7 +628,8 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 	FAutopilot Pilot;
 	Pilot.MaxTiller = 0.7;
 	FBoatControls C;
-	bool bBelow = false;
+	bool bBelow = false, bStepBack = false;
+	TArray<int32> StepsSeen;
 	double T = 0.0;
 	for (int32 I = 0; I < int32(240 * PhysicsHz) && Drill.IsActive(); ++I, T += PhysicsDt)
 	{
@@ -635,9 +658,15 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 		if (bBelow && Dist < 40.0 && Boat.GetTelemetry().BoatSpeed > ApproachSpeed(Dist)) { C.MainSheet = 1.0; C.JibSheet = 1.0; }
 		C.Tiller = Pilot.Update(Boat);
 		Boat.Step(PhysicsDt, C, Wind);
+		const int32 Before = Drill.GetStep();
 		Drill.Update(Boat, FDrillContext(), PhysicsDt);
+		// #603: the list never goes back (the person drifting past 15 m had put "approach" back to "keep turning").
+		if (Drill.IsActive() && Drill.GetStep() < Before) { bStepBack = true; }
+		StepsSeen.AddUnique(Drill.GetStep());
 	}
 	AddInfo(Drill.GetStatus());
+	TestFalse(TEXT("The step list never went back"), bStepBack);
+	TestTrue(TEXT("Every step was shown on the way"), StepsSeen.Contains(0) && StepsSeen.Contains(1) && StepsSeen.Contains(2));
 	TestTrue(TEXT("Recovered the person overboard (stopped within 3 m)"), Drill.IsComplete());
 	return true;
 }
