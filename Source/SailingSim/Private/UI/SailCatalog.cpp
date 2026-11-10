@@ -96,6 +96,7 @@ namespace SailCatalog
 				// cloud: storm-lake.camera.json is a Chase shot of her), the Sunfish, the Catalina 22. The lake has no boat-free still,
 				// so its other boats load on the plain screen.
 				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
+				W.LoadingStormy = { 2 };   // #595: storm-lake (the shelf cloud) only when the session has storms
 				for (int32 I = 0; I < W.LoadingBoats.Num(); ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
@@ -236,17 +237,22 @@ namespace SailCatalog
 		for (const FWorld& W : Worlds()) if (W.Index == Want) return W;
 		return Worlds()[0];
 	}
-	TArray<FString> LoadingStills(const FWorld& W, int32 BoatType)
+	TArray<FString> LoadingStills(const FWorld& W, int32 BoatType, bool bStormy)
 	{
-		TArray<FString> Own, Neutral;
+		TArray<FString> Own, Neutral, Storm;
 		for (int32 I = 0; I < W.LoadingTextures.Num(); ++I)
 		{
 			if (!W.LoadingBoats.IsValidIndex(I)) continue;   // untagged: could show any boat, so never shown
 			const int32 Shows = W.LoadingBoats[I];
+			if (W.LoadingStormy.Contains(I))
+			{
+				if (bStormy && (Shows == BoatType || Shows == FWorld::NoBoat)) Storm.Add(W.LoadingTextures[I]);
+				continue;   // a storm still on a fair day: never
+			}
 			if (Shows == BoatType) Own.Add(W.LoadingTextures[I]);
 			else if (Shows == FWorld::NoBoat) Neutral.Add(W.LoadingTextures[I]);
 		}
-		return Own.Num() ? Own : Neutral;
+		return Storm.Num() ? Storm : (Own.Num() ? Own : Neutral);
 	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
 	{

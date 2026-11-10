@@ -29,6 +29,14 @@ public:
 	bool IsReady() const;
 	/** The loading still shown (null: the plain screen). */
 	const UObject* ShownStill() const;
+	/** The tip shown (0-based), and how many there are. */
+	int32 ShownTip() const { return Tip; }
+	static int32 NumTips();
+	/** #595: the first tip for a session: its lesson's own (leaving a slip, heaving to, crew overboard, points of sail for
+	 *  the triangle and docking), the thunderstorm tip when it has storms, otherwise tip 1. */
+	static int32 FirstTip(const struct FSailSessionConfig& Config);
+	/** #595: the session has storms (its sky, or the Thunderstorm preset): only then a storm still. */
+	static bool IsStormy(const struct FSailSessionConfig& Config);
 
 private:
 	TWeakObjectPtr<UWorld> World;

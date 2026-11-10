@@ -38,6 +38,33 @@ namespace
 	};
 }
 
+int32 SSailLoading::NumTips() { return int32(UE_ARRAY_COUNT(Tips)); }
+
+bool SSailLoading::IsStormy(const FSailSessionConfig& C)
+{
+	return C.Conditions.Sky == ESailSky::Storms || C.Conditions.PresetId.ToString().Contains(TEXT("Storm"));
+}
+
+int32 SSailLoading::FirstTip(const FSailSessionConfig& C)
+{
+	// Tips[]: 0 points of sail, 1 no-go zone, 2 right of way, 3 leaving a slip, 4 heaving to, 5 crew overboard, 6 reefing,
+	// 7 reading gusts, 8 thunderstorms.
+	if (C.Mode == ESailMode::Drill && C.SceneId.IsEmpty())
+	{
+		switch (ESailingDrill(C.DrillIndex + 1))
+		{
+		case ESailingDrill::LeaveTheDock: return 3;
+		case ESailingDrill::SailATriangle: return 0;
+		case ESailingDrill::HeaveTo: return 4;
+		case ESailingDrill::CrewOverboardFigureEight:
+		case ESailingDrill::CrewOverboardQuickStop: return 5;
+		case ESailingDrill::ReturnAndDock: return 3;
+		default: break;
+		}
+	}
+	return IsStormy(C) ? 8 : 0;
+}
+
 void SSailLoading::Construct(const FArguments& A)
 {
 	using namespace SailUI;
@@ -58,9 +85,10 @@ void SSailLoading::Construct(const FArguments& A)
 	const USailSessionSubsystem* Session = World.IsValid() ? USailSessionSubsystem::Get(World.Get()) : nullptr;
 	const FSailSessionConfig C = A._Config.IsSet() ? A._Config.GetValue() : (Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault());
 	const SailCatalog::FWorld& W = SailCatalog::World(C.World);
-	Tip = int32(FMath::Rand() % UE_ARRAY_COUNT(Tips));
-	// #490: a still of the session's own boat (or none at all), never another boat's.
-	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat);
+	// #595: the lesson's own tip first (or tip 1), not a random one: the first job opened on "9 of 9, thunderstorms".
+	Tip = FirstTip(C);
+	// #490: a still of the session's own boat (or none at all), never another boat's; #595: the storm still only in storms.
+	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat, IsStormy(C));
 	UTexture2D* Tex = Stills.Num() ? SailUI::KeptTexture(Stills[FMath::Rand() % Stills.Num()]) : nullptr;
 	Image = MakeShared<FSlateBrush>();
 	if (Tex) { Image->SetResourceObject(Tex); Image->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
