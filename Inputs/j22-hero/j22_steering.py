@@ -30,6 +30,7 @@ TILLER_END = (-2.1597, 0.839)   # TillerEnd: the grip end (the tiller's top is 2
 EXT_UJ = (-2.16, 0.87)          # TillerExtUJ
 EXT_TIP = (-3.1815, 0.8175)     # TillerExtTip: the extension folded aft
 TRANSOM_X = -3.41
+CAM = None   # build_j22_hero sets the kit's cam cleat (j22_kitfit.cam_cleat) unless --old-hardware; None draws D's
 PINTLE_Z = (0.47, 0.05)
 HEAD_TOP = 0.80
 LE_X = PIVOT_X - 0.016     # the blade's leading edge behind the pintle barrels
@@ -281,7 +282,7 @@ def build_tiller(MAT, D):
     # the mainsheet... no: the tiller's own cam cleat (for the extension's lanyard) on top, two thirds along
     i = int(len(pts) * 0.70)
     tc, sc, uc = frame(pts, i)
-    out += D.cam_cleat("TCam", pts[i] + uc * (section(i / (len(pts) - 1))[1] / 2), tuple(uc), tuple(tc), MAT, 0.055)
+    out += (CAM or D.cam_cleat)("TCam", pts[i] + uc * (section(i / (len(pts) - 1))[1] / 2), tuple(uc), tuple(tc), MAT, 0.055)
     # the straps from the pivot into the tiller's root, under three carriage bolts
     t0, s0, u0 = frame(pts, 0)
     piv = pts[0] - t0 * STRAP_IN

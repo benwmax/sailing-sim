@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Sail.h"
+#include "ProceduralMeshComponent.h"
 
 /**
  * Visual V3: the sails as cloth.
@@ -85,6 +86,43 @@ SAILINGSIM_API float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm,
 /** The fan's wavelength (m) and amplitude (m) at r metres from a corner carrying F newtons over an angle Beta (radians). */
 SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& OutLambda, double& OutAmp);
 
+/**
+ * docs/sail-wrinkles-cost/: SailWrinkleCm worked out for a whole render grid, frame after frame, at a fraction of its cost.
+ * Everything in it but the loads is fixed once the sail is made (the corners' angles, each vertex's distance and angle from
+ * them, the fades, the cell across each crest), so Build keeps that per vertex, only for the vertices a wrinkle can reach;
+ * a frame then costs two square roots and a sine per touched vertex. SailWrinkleCm's numbers to within a micron (the tests
+ * hold them to it); the wavelength's (B r^2 / T)^(1/4) is split as (B r^2)^(1/4) kept times T^(-1/4) each frame.
+ */
+struct SAILINGSIM_API FSailWrinkleCache
+{
+	/** Bits for the three kinds: the clew's fan, the head's, the luff's. */
+	static constexpr uint8 ClewBit = 1;
+	static constexpr uint8 HeadBit = 2;
+	static constexpr uint8 LuffBit = 4;
+	struct FFan { int32 I; float Arc, Fade, Cell, InvBetaR, LambdaR; };
+	struct FLuff { int32 I; float Y, Fade, Cell; };
+	/** A vertex whose 3 x 3 neighbourhood a wrinkle kind can move (its normal is taken again), and which kinds. */
+	struct FNear { int32 I; uint8 Bits; };
+
+	/** Grid: the render grid's UV0 and cells (u, v, cell along u, cell along v; metres), Rows x Cols row-major. */
+	void Build(const FSailWrinkles& W, const TArray<FVector4f>& Grid, int32 Rows, int32 Cols);
+	bool IsBuilt() const { return NumVerts > 0; }
+	void Reset() { *this = FSailWrinkleCache(); }
+	/** This frame's offsets along the normal (metres) into Offset (zero where nothing moves); returns the kinds at work (0: none,
+	 *  and Offset is left as it was). */
+	uint8 Offsets(const FSailWrinkles& W);
+
+	TArray<FFan> Fans[2];
+	TArray<FLuff> Luff;
+	TArray<FNear> Near;
+	TArray<double> Offset;
+	/** Scratch for the renderer: the unwrinkled surface's normal at each Near vertex. */
+	TArray<FVector> SmoothNormal;
+	int32 NumVerts = 0;
+	/** Whether the renderer drew the wrinkles last frame (its on/off distance has a margin). */
+	bool bShownLast = false;
+};
+
 class SAILINGSIM_API FSailCloth
 {
 public:
@@ -127,9 +165,18 @@ public:
 	FVector NormalAt(float U, float V) const;
 	FVector ChordTangentAt(float U, float V) const;
 
-	/** The render grid's UV0 and cell sizes (u, v, cell along u, cell along v; metres) for the wrinkles: they never change
-	 *  after Init, so SailVisuals fills this once. */
-	mutable TArray<FVector4f> WrinkleGrid;
+	/** The wrinkles' fixed part on the render grid (FSailWrinkleCache): it never changes after Init, so SailVisuals builds it
+	 *  once and only the sail's own task touches it. */
+	mutable FSailWrinkleCache Wrinkles;
+	/** docs/sail-wrinkles-cost/: the renderer's per-frame arrays for this sail (cloth normals and tangents, the render grid's
+	 *  positions, normals and tangents, and its scratch), kept between frames: made fresh each frame they were a dozen
+	 *  allocations of 50-110 KB per sail, past the small-block allocator. Only this sail's task touches them. */
+	struct FRenderScratch
+	{
+		TArray<FVector> Normals, RPos, RNormals, RowCurve, TanX;
+		TArray<FProcMeshTangent> Tangents, RTangents;
+	};
+	mutable FRenderScratch Render;
 	ESailKind GetKind() const { return Kind; }
 	const Sailing::FSailGeometry& Geometry() const { return Geo; }
 	int32 GetNumStrips() const { return NumStrips; }

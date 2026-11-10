@@ -33,27 +33,118 @@ d = lerp(d, NSN, ns);
 d = lerp(d, GCN, gc);
 d = lerp(d, TKN, tk);
 NormalOut = normalize(float3(N.xy + d.xy, N.z * d.z));      // whiteout blend over the baked normal
-// Boat fidelity 1 (docs/boat-fidelity-1), as M_BoatSurface does it: the boat's age and care (Age -1 = unset: the livery's
-// oxidation channel, Wear.x, at half weight, since the bake carries the club boat's own wear) chalk the smooth gelcoat
-// (more on the sun-facing tops), and the hull is wet up to the splash line and the deck with rain and spray (MPC_Boat):
+// Boat fidelity 1 (docs/boat-fidelity-1), as M_BoatSurface does it: the boat's age and care (below) weather the surfaces,
+// and the hull is wet up to the splash line and the deck with rain and spray (MPC_Boat):
 // darker by each surface's porosity (gelcoat 0.1, non-skid 0.5, teak 0.6), water standing in the non-skid's grooves,
 // glossy. (A sunlit white deck sits on the tone curve's shoulder, so these read smaller on screen than in albedo.)
-// Texture loop (docs/texture-loop, as M_BoatSurface and Tools/texloop/wear.py): timeK (the years: yellowing) and dirtK
-// (what care removes: chalk, grime, grey teak) from the same Age and Care; unset, both are half the livery's Wear.x.
-float timeK = Age >= 0.0 ? saturate(0.25 * (1.0 - exp(-Age / 0.75)) + 0.75 * (1.0 - exp(-Age / 18.0))) : 0.5 * Wear.x;
-float dirtK = Age >= 0.0 ? saturate((1.0 - exp(-Age)) * (0.15 + 0.85 * (1.0 - saturate(Care)))) : 0.5 * Wear.x;
+// Texture loop (docs/texture-loop, as M_BoatSurface and Tools/texloop/wear.py): timeK (the years: yellowing, dock rash)
+// and dirtK (what care removes: chalk, grime, scum, grey teak) from the same Age and Care.
+// Hero ageing (docs/hero-ageing, Nov 9 2026): the bake used to carry the club boat's own wear (streaks, scum line, grimy
+// non-skid, silvered teak), so -SailingBoatAge=0 could not make her new and Age 15 only added a little chalk on top. The
+// game's bake is now clean (build_j22_hero.py --clean-bake) and every bit of wear comes from here, by the fleet's lines.
+// Unset (Age -1, the player's boat in play) she is the club boat she was baked as: the texture loop's L2 (6 years, Care 0.5).
+// The cabin interior (Exterior 0) keeps its own baked dirt and mildew and takes no weather; only the hull and the rudder
+// (Waterline 1) carry the lake's line, and only the hull's topsides (IsHull 1) the dock rash.
+float hAge = Exterior < 0.5 ? 0.0 : Age >= 0.0 ? Age : 6.0, hCare = Age >= 0.0 ? Care : 0.5;
+float timeK = saturate(0.25 * (1.0 - exp(-hAge / 0.75)) + 0.75 * (1.0 - exp(-hAge / 18.0)));
+float dirtK = saturate((1.0 - exp(-hAge)) * (0.15 + 0.85 * (1.0 - saturate(hCare))));
 float3 nw = normalize(NW);
 nw *= dot(nw, V) < 0.0 ? -1.0 : 1.0;          // two-sided: the generated shells (the cockpit sole) aren't all wound outward
 float up = saturate((nw.z - 0.4) * 2.5);
 float gcAll = X.b * (1.0 - X.r) * (1.0 - X.g);
+float zcm = LP.z;                             // the hull's and the rudder's pivots sit on the design waterline
+// Chalk, as M_BoatSurface: the tops first, in 40 cm blotches (wear.BLOT), pale gelcoat toward chalk.
 float ox = max(dirtK, 0.3 * timeK) * gcAll * (0.55 + 0.45 * up);
+float2 blq = LP.xz / 40.0 + LP.yy / 55.0, blqi = floor(blq), blqf = smoothstep(0.0, 1.0, frac(blq));
+float bl00 = frac(sin(dot(blqi, float2(12.99, 78.23))) * 43758.5), bl10 = frac(sin(dot(blqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float bl01 = frac(sin(dot(blqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), bl11 = frac(sin(dot(blqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+ox = saturate(ox * (0.55 + 0.9 * lerp(lerp(bl00, bl10, blqf.x), lerp(bl01, bl11, blqf.x), blqf.y)));
 float lum = dot(c, float3(0.3, 0.59, 0.11));
-c = lerp(c, lerp(float3(lum, lum, lum), float3(0.80, 0.77, 0.66), 0.6), 0.6 * ox);   // chalky and a little yellowed
+float3 chalk = lerp(lerp(float3(lum, lum, lum), float3(0.82, 0.80, 0.74), 0.5) * 1.02, c * 1.25 + lum * 0.35 + 0.01, saturate(1.0 - lum * 2.5));
+c = lerp(c, chalk, 0.4 * ox);
 float whiteG = saturate((min(c.r, min(c.g, c.b)) - 0.45) * 4.0);
-c *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.965, 0.86), timeK * gcAll * whiteG * step(0.0, Age));   // the years yellow it, kept or not (unset: the bake's own colour)
-Rough = lerp(Rough, 0.75, ox);
-c *= 1.0 - 0.3 * dirtK * X.r * up;                  // grime worked into the non-skid where feet go
-c *= 1.0 - 0.25 * dirtK * X.g;                      // teak greys and darkens
+c *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.965, 0.86), timeK * gcAll * whiteG);   // the years yellow it, kept or not
+Rough = lerp(Rough, 0.72, ox);
+// Grime, as M_BoatSurface: three octaves of value noise on the boat (37, 9 and 2.2 cm) ground into the decks where feet
+// and water go, and a faint mottle in all the gelcoat.
+float vn = 0.0, amp = 0.6, sc = 37.0;
+for (int o = 0; o < 3; ++o)
+{
+    float2 q = (LP.xy + LP.zz * float2(0.6, -0.4)) / sc + o * 17.3;
+    float2 qi = floor(q), qf = frac(q);
+    qf = qf * qf * (3.0 - 2.0 * qf);
+    float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+    float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+    vn += amp * lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
+    amp *= 0.5;
+    sc /= 4.1;
+}
+vn /= 1.05;
+float deckish = up * (1.0 - X.g) * (1.0 - IsHull);
+float grime = saturate(vn * 1.8 - 0.6) * deckish * dirtK * (0.45 + 0.55 * X.r);
+c = lerp(c, c * 0.76 + float3(0.014, 0.011, 0.007), grime);
+Rough = lerp(Rough, min(Rough + 0.18, 0.9), grime);
+c *= 1.0 + 0.05 * (vn - 0.5) * (1.0 - X.g);
+// Non-skid, as M_BoatSurface (docs/texloop-nonskid): the years yellow the moulding a little; dirt gathers in grey-tan
+// blotches with a 1.5 cm scuff mottle where feet go, and past the detail layer's reach as an even dust in the pattern.
+float nsK = X.r * up;
+c *= lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.975, 0.90), 0.5 * timeK * nsK);
+float2 sq = LP.xy / 1.5 + float2(11.0, 0.0), sqi = floor(sq), sqf = frac(sq);
+sqf = sqf * sqf * (3.0 - 2.0 * sqf);
+float sc00 = frac(sin(dot(sqi, float2(12.99, 78.23))) * 43758.5), sc10 = frac(sin(dot(sqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+float sc01 = frac(sin(dot(sqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), sc11 = frac(sin(dot(sqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+float nsScuff = saturate((lerp(lerp(sc00, sc10, sqf.x), lerp(sc01, sc11, sqf.x), sqf.y) - 0.5) * 1.6 + 0.5);
+float nsBlot = saturate((vn - 0.60 + 0.22 * dirtK) * 3.0) * smoothstep(0.2, 0.6, dirtK) * (0.35 + 1.3 * nsScuff);
+const float3 nsDirt = float3(0.205, 0.198, 0.178);       // grey-tan lake dust and clay (Bean's foredeck photo)
+c = lerp(c, nsDirt, saturate((0.3 + 0.45 * dirtK) * nsBlot) * nsK);
+c = lerp(c, nsDirt, 0.55 * sqrt(dirtK) * 0.35 * (1.0 - fade) * nsK);
+Rough = lerp(Rough, min(Rough + 0.1, 0.9), nsBlot * nsK);
+// Teak (the bake is fresh bare teak now): it silvers as it's left, and darkens in the grain; oiling brings it back, so
+// mostly dirt, but years of sun grey even a kept rail a little.
+float tkGrey = saturate(max(dirtK, 0.35 * timeK)) * X.g;
+float tkLum = dot(c, float3(0.3, 0.59, 0.11));
+c = lerp(c, float3(tkLum, tkLum, tkLum) * float3(0.98, 0.97, 0.93) * 1.05, 0.85 * tkGrey);
+c *= 1.0 - 0.2 * dirtK * X.g;
+Rough = lerp(Rough, max(Rough, 0.62), tkGrey);
+// Lake waterline, as M_BoatSurface (Tools/texloop/waterline/waterline.py): the scum line, the olive slime and the bottom
+// film, from Dirt only (care scrubs it off). Fresh water: no barnacles. Below the deck only (up < 1), so a level sole
+// never takes it.
+float wlD = dirtK;
+float wlK = (0.4 * pow(max(wlD, 1e-4), 0.3) + 0.3 * smoothstep(0.6, 1.0, wlD)) * step(1e-3, wlD);
+float wlClay = smoothstep(0.45, 0.9, wlD);
+float wlH = 1.0 + 1.6 * wlD + 5.0 * smoothstep(0.55, 1.0, wlD);
+float wlSlimeK = 0.85 * smoothstep(0.4, 0.95, wlD), wlDepth = 4.0 + 16.0 * smoothstep(0.4, 1.0, wlD);
+float3 wlX = float3(LP.x / 23.0, LP.x / 1.5, (LP.x + 0.3 * zcm) / 3.5);
+float3 wlI = floor(wlX), wlF = frac(wlX);
+wlF = wlF * wlF * (3.0 - 2.0 * wlF);
+float3 wlN = lerp(frac(sin(wlI * 12.99 + float3(0.0, 7.1, 14.2)) * 43758.5), frac(sin((wlI + 1.0) * 12.99 + float3(0.0, 7.1, 14.2)) * 43758.5), wlF);
+float wlTop = wlH + (0.25 + 0.08 * wlH) * (2.0 * (0.6 * wlN.x + 0.4 * wlN.y) - 1.0);
+float wlLine = smoothstep(-0.6, -0.1, zcm) * (1.0 - smoothstep(wlTop - 0.2 - 0.06 * wlH, wlTop, zcm));
+float wlU = saturate(zcm / max(wlTop, 0.1));
+float wlDens = 0.75 + 0.45 * wlClay + 0.35 * smoothstep(0.6, 0.95, wlU);
+wlLine *= clamp(wlDens * (1.0 + (1.0 - 0.85 * wlClay) * (0.6 * (wlN.z - 0.5) + 0.4 * (vn - 0.5))), 0.0, 1.3);
+float wlFresh = Waterline * (1.0 - up);
+float wlLineK = wlFresh * wlK * wlLine;
+c = lerp(c, lerp(float3(0.179, 0.171, 0.147), float3(0.171, 0.119, 0.04), wlClay), wlLineK);
+float wlBelow = wlFresh * (1.0 - smoothstep(-1.0, 0.0, zcm));
+float wlFilm = wlBelow * 0.45 * wlD * (0.6 + 0.4 * vn);
+c = lerp(c, float3(0.171, 0.187, 0.133), wlFilm);
+float2 wlQ = float2(LP.x / 14.0, zcm / 3.0), wlQi = floor(wlQ), wlQf = smoothstep(0.0, 1.0, frac(wlQ));
+float wlBlot = 0.65 * lerp(lerp(frac(sin(dot(wlQi, float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wlQi + float2(1, 0), float2(12.99, 78.23))) * 43758.5), wlQf.x),
+                           lerp(frac(sin(dot(wlQi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), frac(sin(dot(wlQi + float2(1, 1), float2(12.99, 78.23))) * 43758.5), wlQf.x), wlQf.y) + 0.35 * vn;
+float wlDp = saturate(-zcm / wlDepth);
+float wlSlime = wlFresh * wlSlimeK * (1.0 - smoothstep(-0.5, 0.2, zcm)) * pow(1.0 - wlDp, 1.5) * smoothstep(0.3 + 0.25 * wlDp, 0.65, wlBlot);
+c = lerp(c, float3(0.073, 0.089, 0.025), wlSlime);
+float wlCover = saturate(wlLineK + wlSlime + 0.5 * wlFilm);
+Rough = lerp(Rough, 0.8, wlCover);
+// Dock rash and fender marks, as M_BoatSurface: soft sparse smudges in the topsides' fender band, most of them in the
+// first year of use (timeK); care can't polish them out.
+float2 cs = float2(LP.x / 45.0, zcm / 16.0);
+float patchS = frac(sin(dot(floor(cs), float2(41.3, 17.7))) * 4375.5);
+float2 fs = frac(cs) - 0.5;
+float smudge = 1.0 - smoothstep(0.12, 0.45, length(fs * float2(1.0, 1.8)));
+float scuff = 0.7 * saturate(4.0 * timeK) * IsHull * gcAll * step(abs(nw.z), 0.6) * smoothstep(25.0, 40.0, zcm) * (1.0 - smoothstep(70.0, 95.0, zcm)) * step(0.82, patchS) * smudge;
+c = lerp(c, c * 0.78 + float3(0.01, 0.01, 0.008), scuff);
 float streak = 0.5 + 0.5 * sin(WP.x * 0.21 + sin(WP.x * 0.047) * 3.0);
 // (Clipping audit 2, as M_BoatSurface: at most 6 cm of ragged edge, half of it slow noise, softer as the band grows.)
 float wlx = WP.x / 110.0, wli = floor(wlx), wlf = frac(wlx);
@@ -122,7 +213,7 @@ Rough = lerp(Rough, 0.02, bead);                                  // a bead is a
 // Gelcoat (docs/gelcoat), as M_BoatSurface: the smooth gelcoat's clear coat (0.05; folded into the one lobe at the end), so the hull
 // and deck mirror the sky and the shore; chalk and wet film as in M_BoatSurface. The rounded sheer and other convex
 // edges (curvature from the normal's screen derivatives: under ~3 cm radius) take a crisp highlight.
-float Coat = saturate(0.85 * gcAll * (1.0 - ox) + 0.5 * wetAll + 0.4 * pudK);
+float Coat = saturate(0.85 * gcAll * (1.0 - ox) * (1.0 - 0.7 * wlCover) * (1.0 - 0.6 * grime) + 0.5 * wetAll + 0.4 * pudK);   // hero ageing: scum and grime are matte
 // docs/gelcoat-cost: the curvature and the corner grime below are close-up detail, so Lumen's surface-cache capture and the
 // ray-traced hits (LUMEN_CARD_CAPTURE, RAYHITGROUPSHADER) skip them, and the base pass works them out only within reach.
 float edgeK = 0.0;
@@ -263,7 +354,7 @@ def hero_material(defaults):
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -900, 1100)
     # Boat fidelity 1: the wear (the pawn's per-boat Wear on every hull slot, Age and Care) and MPC_Boat's wetness.
     extra = {}
-    for pname, default, y in (("Age", -1.0, 1900), ("Care", 0.5, 1980)):
+    for pname, default, y in (("Age", -1.0, 1900), ("Care", 0.5, 1980), ("Exterior", 1.0, 1700), ("Waterline", 0.0, 1780), ("IsHull", 0.0, 1620)):
         p = node(mat, unreal.MaterialExpressionScalarParameter, -900, y)
         p.set_editor_property("parameter_name", pname)
         p.set_editor_property("default_value", default)
@@ -272,6 +363,9 @@ def hero_material(defaults):
     wear.set_editor_property("parameter_name", "Wear")
     wear.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
     extra["Wear"] = (wear, "RGBA")
+    # Hero ageing (docs/hero-ageing): the waterline, blotches and grime are anchored to the part (cm; the hull's and the
+    # rudder's pivots sit on the design waterline), as M_BoatSurface's LP.
+    extra["LP"] = (node(mat, unreal.MaterialExpressionLocalPosition, -900, 2120), "")
     mpc = unreal.load_asset("/Game/Boats/MPC_Boat")
     for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet", "Rain", "Puddle")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 2160 + i * 80)
@@ -428,6 +522,7 @@ HERO_SURFACE = {
     "Stainless": 3, "Chrome": 3, "Galvanised": 12, "KeelBoltSteel": 12, "Bronze": 3, "Aluminium": 4, "CastAlu": 4,
     "TeakVarnish": 6, "PlywoodVarnish": 6, "AshVarnish": 6, "CunnLine": 9, "TeakWeathered": 7, "RubRail": 8, "ExtensionBlack": 8, "RigTape": 10, "BlackPlastic": 13, "CamBase": 13,
     "Cushion": 11, "SailBag": 11, "PFDNylon": 11, "Webbing": 14,
+    "HatchAcrylic": 15, "TravLine": 9,   # packed with the woods since hero ageing (J22H_packs.json)
 }
 HERO_POROSITY = {6: 0.2, 7: 0.5, 8: 0.05, 10: 0.3, 11: 0.6, 3: 0.0, 4: 0.0, 12: 0.0, 13: 0.05, 14: 0.5}
 
@@ -457,6 +552,10 @@ def materials():
         for pname, tex in textures[group].items():
             MEL.set_material_instance_texture_parameter_value(mi, pname, tex)
         MEL.set_material_instance_scalar_parameter_value(mi, "UVMetres", META["groups"][group].get("uv_m", 1.0))
+        # Hero ageing (docs/hero-ageing): the lake's line on the hull and the rudder only; the cabin takes no weather.
+        MEL.set_material_instance_scalar_parameter_value(mi, "Waterline", 1.0 if group in ("Hull", "Rudder") else 0.0)
+        MEL.set_material_instance_scalar_parameter_value(mi, "Exterior", 0.0 if group == "Interior" else 1.0)
+        MEL.set_material_instance_scalar_parameter_value(mi, "IsHull", 1.0 if group == "Hull" else 0.0)   # topsides: dock rash, no deck grime
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         out[group] = mi
@@ -503,7 +602,9 @@ def materials():
         return mi
 
     for name in META["flat_materials"]:
-        if name in out:
+        # A bake before Nov 9 2026 also listed Blender's duplicates (Aluminium.001): their faces export as the base name's
+        # slot, and a '.' in an asset name fails the save (the import exited 1), so they are skipped.
+        if name in out or "." in name:
             continue
         out[name] = flat_instance(name)
     # pc/boat-slots: the flat slots folded into packs (J22H_packs.json, pack_j22_hero.py): MI_J22H_<Pack> on M_BoatPacked

@@ -89,11 +89,25 @@ function Get-InputsHash([string[]]$Paths) {
 	} finally { Pop-Location }
 }
 
-# The folder the packaged game writes Saved\ to: next to the game in Development and Test builds, under
-# %LOCALAPPDATA% in some Shipping setups. Returns every candidate; callers use the one that has the file.
-function Get-SavedDirs {
+# The packaged game's SailingSim.exe from a package folder: '' is the default Packaged\Windows; a bare name is a folder
+# under Packaged (package-win.ps1 -Into's, e.g. Windows-806a4291 or Shipping-8b8c786a); a full path is taken as it is.
+# UAT puts the game straight in the archive folder or in a Windows\ under it (Packaged\Shipping-<commit>\Windows, but
+# Packaged\Windows-<commit>\SailingSim.exe: it adds the platform folder only when the path doesn't already name it), so
+# both are tried. Throws, naming the paths it tried, when neither has the game.
+function Resolve-PackagedGame([string]$Package = '') {
+	$Folder = if (-not $Package) { Join-Path $Packaged 'Windows' } elseif ([System.IO.Path]::IsPathRooted($Package)) { $Package } else { Join-Path $Packaged $Package }
+	$Tried = @((Join-Path $Folder 'SailingSim.exe'), (Join-Path $Folder 'Windows\SailingSim.exe'))
+	foreach ($T in $Tried) { if (Test-Path $T) { return (Resolve-Path $T).Path } }
+	throw "No packaged game in $Folder (tried $($Tried -join ' and ')); run scripts\windows\package-win.ps1 first, or pass -Package <folder>"
+}
+
+# The folder the packaged game writes Saved\ to: next to the game in Development and Test builds (-GameDir: the folder
+# that holds SailingSim.exe; default Packaged\Windows), under %LOCALAPPDATA% in some Shipping setups. Returns every
+# candidate; callers use the one that has the file.
+function Get-SavedDirs([string]$GameDir = '') {
+	if (-not $GameDir) { $GameDir = Join-Path $Packaged 'Windows' }
 	@(
-		(Join-Path $Packaged 'Windows\SailingSim\Saved'),
+		(Join-Path $GameDir 'SailingSim\Saved'),
 		(Join-Path $env:LOCALAPPDATA 'SailingSim\Saved')
 	)
 }

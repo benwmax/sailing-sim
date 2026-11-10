@@ -3,7 +3,7 @@
 # screenshot there as <view>-<tier>.png.
 # Usage: scripts\windows\bench-visual-win.ps1 [-Seconds 12] [-Label pc] [-Tiers High,Ultra] [-ResX 3840 -ResY 2160]
 #   -Only storm,helm-eye runs just those views (gate.ps1 picks them by scope; ONLY= on the Mac); -Extra adds arguments
-#   to every view (BENCH_EXTRA=). One launch per view.
+#   to every view (BENCH_EXTRA=). One launch per view. -Package <folder> runs another package (bench-win.ps1's -Package).
 param(
 	[int]$Seconds = 12,
 	[string]$Label = 'pc',
@@ -12,7 +12,8 @@ param(
 	[int]$ResY = 1080,
 	[string]$Docs = '',
 	[string]$Only = '',
-	[string]$Extra = ''
+	[string]$Extra = '',
+	[string]$Package = ''
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
 # From cmd (powershell -File) a list arrives as one string: High,Ultra
@@ -30,7 +31,7 @@ foreach ($Name in @($Views.Keys | Where-Object { -not $Picked -or $Picked -conta
 		$BenchJson = Join-Path $Artifacts 'bench.json'
 		foreach ($Try in 1, 2) {
 			Remove-Item -Force -ErrorAction SilentlyContinue $BenchJson
-			& (Join-Path $PSScriptRoot 'bench-win.ps1') -Seconds $Seconds -ResX $ResX -ResY $ResY -Quality $Q -Shot $Shot -GameArgs "$($Views[$Name]) $Extra" -Demo | Out-Null
+			& (Join-Path $PSScriptRoot 'bench-win.ps1') -Seconds $Seconds -ResX $ResX -ResY $ResY -Quality $Q -Shot $Shot -GameArgs "$($Views[$Name]) $Extra" -Demo -Package $Package | Out-Null
 			if (Test-Path $BenchJson) { break }
 		}
 		if (Test-Path $BenchJson) {

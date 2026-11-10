@@ -1,0 +1,28 @@
+Ultra visual bench on the packaged Development game, main 7ba823db (Nov 9 2026 content), Bean's RTX 4090, 1920x1080, 12 s per view.
+Baseline: Artifacts\visual-bench-main-813d5ed0-ultra.csv (Oct 20 2026, main 813d5ed0; last full Ultra run on this PC).
+
+view                  fps      p99      gpu     base    lumen    water |    d_fps    d_p99    d_gpu
+beam8                44.2    48.66     7.76     2.77     0.55     0.56 |    -30.5   +31.66    +1.71
+beat15               55.4    23.48        7     2.82     0.56     0.55 |    -24.0    +6.99    +0.97
+storm                53.1    28.24     8.47     2.76     0.59     0.55 |    -22.4    +9.36    +0.85
+marina               53.5    23.36     7.72     2.86     0.63     0.48 |    -22.3    +5.74    +1.23
+coast-day              53    24.65     8.01      3.4     0.72     0.53 |    -22.7    +6.39    +0.99
+coast-night          55.7    24.56     7.37     3.06     0.87     0.45 |    -24.4    +7.83    +0.77
+gulf-sea             58.2    24.15     6.59     2.48     0.58     0.53 |    -22.7    +6.60    +0.14
+helm-eye               61    22.13     6.84     2.84     0.78     0.35 |    -15.1    +4.11    +0.83
+slip                 65.5    19.35     8.14     3.48     0.83     0.42 |     -7.2    +0.52    +1.26
+bridge                 62    20.33     6.77     2.74     0.59     0.46 |    -12.8    +2.64    +0.82
+crew                 54.6    22.55     8.97     3.89     0.97     0.42 |    -17.9    +4.93    +2.69
+marina-night         67.8    18.54      7.6     3.26      0.9     0.42 |    -10.5    +1.50    +0.88
+far-coast            54.9    23.63     7.53     2.99     0.62      0.5 |    -14.5    +3.35    +1.14
+far-coast-night      60.1    23.47     5.82     1.95      0.6     0.43 |    -20.8    +7.01    +0.75
+marseille-port       59.8    24.32     8.33     2.89     0.67     0.55 |    -19.3    +6.94    +1.94
+stream-run           54.7    25.16     9.32     3.28      0.8     0.62 |    -19.1    +4.83    +2.55
+
+bench-win.ps1 (default view, Ultra, 20 s): Bench: {"frames":1100,"seconds":19.16,"avg_fps":57.4,"avg_ms":17.42,"p99_ms":24.52,"max_ms":102.53,"rhi":"D3D12","resolution":"1920x1080","quality":"Ultra","weather":"Afternoon breeze","hour":15.0,"cloth_cpu_ms":3.527,"water_cpu_ms":1.384,"windmap_cpu_ms":0.639,"farcap_cpu_ms":0.047,"farcap_slots":6124,"world":{"streamed":false,"tiles_resident":15,"tile_mb":0.0,"tile_loads":0,"tile_drops":0,"loader_longest_ms":0.000,"recentres":0,"recentre_longest_ms":0.00,"window_marches":0,"chunks":4246,"chunks_made":4246,"chunks_dropped":0,"far_dropped":0,"boat_n":2,"boat_e":-96},"game_ms":13.05,"game_p99_ms":21.62,"render_ms":17.22,"rhi_ms":8.54,"gpu_frame_ms":9.38,"gt":{"boat_physics":0.041,"boat_visuals":6.464,"sails":5.178,"crew":0.264,"rig_lines":0.698,"telltales":0.135,"boat_sound":0.024,"boat_capture":0.000,"boat_learning":0.023,"water":1.976,"water_uploads":0.446,"terrain":1.016,"trees":0.002,"traffic":1.340,"traffic_step":1.278,"hud":0.009,"streaming":0.002},"gpu":{"frames":4,"total_ms":7.28,"base_ms":2.85,"lumen_ms":0.59,"water_ms":0.61,"clouds_fog_ms":0.87,"niagara_ms":0.01,"post_ms":0.82,"other_ms":1.53},"gpu_skipped_frames":48,"easy":false,"heel_cap_deg":0.0,"max_heel_deg":0.0,"crude_tack":false,"tacked":false,"final_twa_deg":-32.0,"final_kn":5.34,"render_pct":100,"foreground":0.000,"mem_used_mb":3429,"mem_peak_mb":4116,"tex_mem_mb":3368} / Screenshot: D:\dev\ss-fix\Artifacts\content-nov9-fps.png / 57.4 fps average, p99 24.52 ms, Ultra on D3D12 at 1920x1080
+Visual tests on 7ba823db: 74 passed, 0 failed, 74 total
+
+Reading these numbers (added after the run):
+- The fps drop is CPU-side, not GPU: gpu_ms rose only 0.1 to 2.7 ms (frames of 6-9 ms would allow well over 100 fps). The fps run shows game_ms 13.05 with boat_visuals 6.46 ms, of which sails 5.18 ms.
+- Sail cloth CPU (cloth_cpu_ms) is up about 13x in every view: 0.08-0.32 ms on Oct 20, 2.2-4.5 ms now. Water CPU (water_cpu_ms) is up about 2x (0.67-1.49 ms then, 1.3-3.4 ms now).
+- Caveat: the fps run's bench.json says "foreground": 0.000, so its window was not in front (hidden windows run slower on this PC too), and the Windows visual-bench CSV has no foreground column, so the twelve views may also have run behind. That could account for a broad ~2x like water's, but not for cloth's 13x: the cloth cost looks like a real regression between 813d5ed0 (Oct 20) and 7ba823db. Worth a rerun with the window in front, and a look at FSailCloth's cost since Oct 20.

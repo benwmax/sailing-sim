@@ -275,3 +275,23 @@ The drills' and races' engine-shape placeholders replaced with kit parts that fl
 
 The Sunfish's mainsheet ratchet block (kit `Ratchet57` rebuilt), its boom blocks, the snap hook on the bridle, the
 eye-bolt joint at the tack and 38 mm spars, from the class rigging manuals: [sunfish.md](sunfish.md).
+
+## In game on the PC (Nov 9 2026, branch pc/content-import-nov8)
+
+The kit was regenerated and imported on Bean's PC from main b5c20498 (`make-boatkit.ps1 -Import`, 60 parts plus the
+three course marks) and shot uncooked at 1920x1080 on Ultra and High (`ingame/part-<view>-<tier>.jpg`, 15:00, 10 kn, TWA 60,
+crew still). The hero J/22 in these stills is main's committed hero (the Mac's rebuild): the PC's hero rebuild waits on
+#567. Close-ups:
+
+- Good: the masthead fly (`part-masthead`), traveler (`part-traveler`), stern with tiller, outboard and gudgeons (`part-stern`),
+  the WinchPlain and cam cleats on the cabin top (`part-winch`, `part-jibtrack`), and the gooseneck at the mast foot (`part-gooseneck`).
+- Missed: `part-jibcam` is blocked by the windward crew's hat; `part-boomend` frames the cockpit because the boom is
+  eased out to leeward; `part-bow` shows the foredeck but not the stemhead and horn cleats up close. Asking for port
+  tack (`-SailingTWA=-60`) did not move the crew or boom.
+
+GPU (Ultra, `gpu.total_ms`, two 20 s runs each): helm-eye 8.90 / 8.57 on main's content before, 8.48 / 8.48 after;
+the 1.5 m cockpit close-up 8.45 / 8.82 before, 8.57 / 8.62 after. No change outside noise.
+
+Kit refresh and fleet rebuild on the PC (Nov 9 2026): `ingame/kit-ratchet-*` and `ingame/kit-slip-*` (#576, the kit on main 170323cb), and `ingame/fleet-sunfish-ratchet-high`, `ingame/fleet-sunfish-ratchet2-high` and `ingame/fleet-slip-fenders-high` (the fleet hulls and berthed dresses rebuilt: #553's Sunfish deck gear, #562's fenders and dock lines).
+
+Sunfish and ILCA rebuilt, crew vest (#572, Nov 9 2026): `ingame/sunfish-deck-high`/`-ultra` and `ingame/sunfish-cockpit-high`/`-ultra` (the Sunfish's ratchet block on its spring, the boom blocks and the tack joint, [sunfish.md](sunfish.md)), and `ingame/crew-vest-high`/`-ultra` (the tailored vests over the polos, [crewvest.md](crewvest.md)). All uncooked at 1920x1080 on the PC.

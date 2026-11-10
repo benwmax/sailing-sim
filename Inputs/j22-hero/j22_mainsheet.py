@@ -17,6 +17,8 @@ import math
 from mathutils import Matrix, Vector
 
 import j22_details as D
+
+CAM = D.cam_cleat   # build_j22_hero sets the kit's (j22_kitfit.cam_cleat) unless --old-hardware
 from j22_boomgear import countersunk, plate_xy, rounded
 from j22_geom import cyl, tube
 from j22_steering import lathe, plate
@@ -165,7 +167,8 @@ def traveler(xt, y_end, seat_z, seat_in, M):
         out.append(cyl(f"TravCamBase_{sgn}", (cam_at.x, cam_at.y, seat_z), (cam_at.x, cam_at.y, seat_z + 0.009), 0.024, M["BlackPlastic"], 28))
         out.append(cyl(f"TravCamBaseRing_{sgn}", (cam_at.x, cam_at.y, seat_z + 0.009), (cam_at.x, cam_at.y, seat_z + 0.0098), 0.0205, M["Stainless"], 28))
         lead = (Vector((xt, blocks[sgn].y, 0)) - Vector((cam_at.x, cam_at.y, 0))).normalized()
-        out += D.cam_cleat(f"TravCam_{sgn}", cam_at, (0, 0, 1), tuple(lead), M, 0.055)
+        cam = CAM(f"TravCam_{sgn}", cam_at, (0, 0, 1), tuple(lead), M, 0.055)
+        out += cam
         bc = blocks[sgn]
         r = 0.0095
         # in from the eye strap's loop to the block's forward side, round the sheave, and out from its aft side
@@ -177,9 +180,19 @@ def traveler(xt, y_end, seat_z, seat_in, M):
         lead_in = cam_at + lead * 0.034 + Vector((0, 0, 0.016))
         out.append(tube(f"TravLine_{sgn}a", [tuple(a), tuple(a.lerp(b, 0.5) + Vector((0, 0, 0.004))), tuple(b)], 0.0025, M["TravLine"], smooth_path=False))
         out.append(tube(f"TravLine_{sgn}w", wrap, 0.0025, M["TravLine"], smooth_path=True))
-        out.append(tube(f"TravLine_{sgn}b", [tuple(c), tuple(c.lerp(lead_in, 0.5) + Vector((0, 0, 0.004))), tuple(lead_in), tuple(jaw)],
-                        0.0025, M["TravLine"], smooth_path=False))
         tail0 = cam_at - lead * 0.032 + Vector((0, 0, 0.012))
+        through = [tuple(lead_in), tuple(jaw)]
+        if "sock_Line" in cam[0]:
+            # the kit's cam (hardware-fit wave 2): in through its fairlead, between the cams' jaws, out behind them, each at
+            # the line's own height over the base (the old points floated a centimetre over the micro cam)
+            ob = cam[0]
+            fair = ob.matrix_world @ Vector(ob["sock_Lead"])
+            jaw = ob.matrix_world @ Vector(ob["sock_Line"])
+            lead_in = fair + lead * 0.022
+            tail0 = jaw - lead * 0.024
+            through = [tuple(lead_in), tuple(fair), tuple(jaw)]
+        out.append(tube(f"TravLine_{sgn}b", [tuple(c), tuple(c.lerp(lead_in, 0.5) + Vector((0, 0, 0.004)))] + through,
+                        0.0025, M["TravLine"], smooth_path=False))
         out.append(tube(f"TravTail_{sgn}", [tuple(jaw), tuple(tail0), tuple(tail0 + Vector((-0.05, sgn * 0.012, -0.012))),
                                             (cam_at.x - 0.16, cam_at.y - sgn * 0.03, seat_z + 0.0026),
                                             (cam_at.x - 0.24, cam_at.y - sgn * 0.09, seat_z + 0.0026),

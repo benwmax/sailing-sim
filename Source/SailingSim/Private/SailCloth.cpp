@@ -28,7 +28,7 @@ ETelltaleState LeechTelltaleState(const FSailStripState& St)
 void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 {
 	bClearCached = false;
-	WrinkleGrid.Reset();
+	Wrinkles.Reset();
 	Geo = InGeo;
 	Kind = InKind;
 	NumStrips = Geo.NumStrips;
@@ -732,4 +732,108 @@ float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm, float CellU, f
 		Offset += Amp * Fade * Resolved(Lambda, FVector2D(0.0, 1.0)) * FMath::Sin(2.0 * UE_DOUBLE_PI * UVm.Y / Lambda);
 	}
 	return float(Offset * Sailing::CmPerMeter);
+}
+
+void FSailWrinkleCache::Build(const FSailWrinkles& W, const TArray<FVector4f>& Grid, int32 Rows, int32 Cols)
+{
+	Reset();
+	check(Grid.Num() == Rows * Cols);
+	NumVerts = Grid.Num();
+	Offset.SetNumZeroed(NumVerts);
+	TArray<uint8> Own;
+	Own.SetNumZeroed(NumVerts);
+	// SailWrinkleCm's Fan, its fixed part kept per vertex.
+	const double Foot = FVector2D::Distance(W.Tack, W.Clew);
+	const double RMax = 0.33 * Foot;
+	auto Fan = [&](int32 K, const FVector2D& Corner, const FVector2D& EdgeA, const FVector2D& EdgeB)
+	{
+		const FVector2D A = (EdgeA - Corner).GetSafeNormal(), B = (EdgeB - Corner).GetSafeNormal();
+		const double Beta = FMath::Acos(FMath::Clamp(FVector2D::DotProduct(A, B), -1.0, 1.0));
+		const FVector2D Mid = (A + B).GetSafeNormal();
+		for (int32 I = 0; I < NumVerts; ++I)
+		{
+			const FVector4f& G = Grid[I];
+			const FVector2D D = FVector2D(G.X, G.Y) - Corner;
+			const double R = D.Size();
+			if (R < 0.12 || R > RMax) continue;
+			const FVector2D Dir = D / R;
+			const double Theta = FMath::Atan2(FVector2D::CrossProduct(Mid, Dir), FVector2D::DotProduct(Mid, Dir));
+			const double Edge = FMath::Clamp(1.0 - FMath::Abs(Theta) / (0.5 * Beta), 0.0, 1.0);
+			if (Edge <= 0.0) continue;
+			const double Fade = FMath::SmoothStep(0.12, 0.2, R) * (1.0 - FMath::SmoothStep(0.6 * RMax, RMax, R)) * FMath::Sin(0.5 * UE_DOUBLE_PI * Edge);
+			if (Fade <= 0.0) continue;
+			// The cell across the crests (along the arc), as Resolved measures it.
+			const double Cell = FMath::Max(FMath::Sqrt(FMath::Square(G.Z * -Dir.Y) + FMath::Square(G.W * Dir.X)), 1e-3);
+			FFan E;
+			E.I = I;
+			E.Arc = float(Theta * R);
+			E.Fade = float(Fade);
+			E.Cell = float(Cell);
+			E.InvBetaR = float(1.0 / (FMath::Max(Beta, 0.2) * FMath::Max(R, 0.05)));
+			E.LambdaR = float(2.0 * UE_DOUBLE_PI * FMath::Pow(FSailWrinkles::BendingStiffness * R * R, 0.25));
+			Fans[K].Add(E);
+			Own[I] = uint8(Own[I] | (1 << K));
+		}
+	};
+	Fan(0, W.Clew, W.Tack, W.Head);
+	Fan(1, W.Head, W.Tack, W.Clew);
+	// The luff's first 60 cm.
+	for (int32 I = 0; I < NumVerts; ++I)
+	{
+		const FVector4f& G = Grid[I];
+		if (G.X >= 0.6f) continue;
+		const double Fade = 1.0 - FMath::SmoothStep(0.15, 0.6, double(G.X));
+		if (Fade <= 0.0) continue;
+		Luff.Add({ I, G.Y, float(Fade), float(FMath::Max(FMath::Sqrt(FMath::Square(double(G.W))), 1e-3)) });
+		Own[I] = uint8(Own[I] | LuffBit);
+	}
+	for (int32 R = 0; R < Rows; ++R)
+	{
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			uint8 Bits = 0;
+			for (int32 Dr = -1; Dr <= 1; ++Dr)
+				for (int32 Dc = -1; Dc <= 1; ++Dc)
+					Bits = uint8(Bits | Own[FMath::Clamp(R + Dr, 0, Rows - 1) * Cols + FMath::Clamp(C + Dc, 0, Cols - 1)]);
+			if (Bits) Near.Add({ R * Cols + C, Bits });
+		}
+	}
+}
+
+uint8 FSailWrinkleCache::Offsets(const FSailWrinkles& W)
+{
+	if (!W.bOn || !IsBuilt()) return 0;
+	const uint8 WrinkleKinds = uint8((W.SheetN > 0.0 ? ClewBit : 0) | (W.HalyardN > 0.0 ? HeadBit : 0) | (W.LuffStrain > 0.0 ? LuffBit : 0));
+	if (!WrinkleKinds) return 0;
+	// Summed in metres in SailWrinkleCm's order (clew, head, luff).
+	TArray<double>& Sum = Offset;
+	FMemory::Memzero(Sum.GetData(), Sum.Num() * sizeof(double));
+	const double F[2] = { W.SheetN, W.HalyardN };
+	for (int32 K = 0; K < 2; ++K)
+	{
+		if (!(WrinkleKinds & (1 << K))) continue;
+		for (const FFan& E : Fans[K])
+		{
+			const double Tr = F[K] * E.InvBetaR;
+			const double Strain = FMath::Min(FSailWrinkles::Poisson * Tr / FSailWrinkles::BiasStiffness, 0.01);
+			const double Lambda = E.LambdaR / FMath::Sqrt(FMath::Sqrt(FMath::Max(Tr, 1.0)));
+			const double Resolved = FMath::Clamp((Lambda / E.Cell - 2.5) / 1.5, 0.0, 1.0);
+			if (Resolved <= 0.0) continue;
+			const double Amp = Lambda / UE_DOUBLE_PI * FMath::Sqrt(Strain);
+			Sum[E.I] += Amp * E.Fade * Resolved * FMath::Sin(2.0 * UE_DOUBLE_PI * E.Arc / Lambda);
+		}
+	}
+	if (WrinkleKinds & LuffBit)
+	{
+		const double L = 0.3;
+		const double Lambda = 2.0 * UE_DOUBLE_PI * FMath::Pow(FSailWrinkles::BendingStiffness * L * L / W.LuffTension, 0.25);
+		const double Amp = Lambda / UE_DOUBLE_PI * FMath::Sqrt(W.LuffStrain);
+		for (const FLuff& E : Luff)
+		{
+			const double Resolved = FMath::Clamp((Lambda / E.Cell - 2.5) / 1.5, 0.0, 1.0);
+			if (Resolved <= 0.0) continue;
+			Sum[E.I] += Amp * E.Fade * Resolved * FMath::Sin(2.0 * UE_DOUBLE_PI * E.Y / Lambda);
+		}
+	}
+	return WrinkleKinds;
 }

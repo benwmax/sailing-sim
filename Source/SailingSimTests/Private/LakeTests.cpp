@@ -6,6 +6,7 @@
 #include "LakeData.h"
 #include "LakeTerrain.h"
 #include "Marina.h"
+#include "WaterSurface.h"
 #include "WorldKit.h"
 #include "EasyAssists.h"
 #include "Waves.h"
@@ -980,6 +981,66 @@ bool FSailingMarinaTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Lines reach the fingers"), Boat.GetMooringLines().size() >= 2);
 	TestFalse(TEXT("Lies quietly in the home slip"), bHit);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShoreMapRampTest, "SailingSim.Lake.ShoreMapAtRamp", Flags)
+bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
+{
+	// docs/ramp-water-patch/: the water's shore map round the club's launch ramp and its pier. The docks' and the ramp's
+	// stamps meet the lake's own depth without a step (a hard-edged square of lapping foam sat off the ramp's waterline
+	// where the stamp's box stopped inside the ramp's half width), the waves lap at the waterline across the slab, and
+	// over the submerged slab the map holds the water over it.
+	FLakeData Lake;
+	if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+	if (!TestEqual(TEXT("One launch ramp"), Lake.Marina.Ramps.Num(), 1)) return false;
+	const FMarinaRamp& R = Lake.Marina.Ramps[0];
+	const FVector2D Head = 0.5 * (R.In + R.Out);
+	// A quarter of the game's 1 m cells (kShoreCellM): a step of 0.2 m between cells is one the stamps' 0.6 m a metre
+	// can't make, where at 1 m the old square's 0.62 m edge passed for a slope.
+	constexpr int32 Res = 384;
+	constexpr float Cell = 0.25f;
+	const FVector2D Origin(FMath::GridSnap(Head.X - 0.5 * Res * Cell, 16.0), FMath::GridSnap(Head.Y - 0.5 * Res * Cell, 16.0));
+	TArray<float> Depth, Bare;
+	AWaterSurface::BuildShoreDepth(Lake, Lake.Terrain, Origin, Res, Cell, Depth);
+	Bare.SetNumUninitialized(Res * Res);
+	for (int32 I = 0; I < Res; ++I)
+		for (int32 J = 0; J < Res; ++J) Bare[I * Res + J] = float(Lake.Terrain.DepthAt(Origin.X + (I + 0.5) * Cell, Origin.Y + (J + 0.5) * Cell));
+	// M_WaterV4 reads the map up to 2 m (shoal, swash, the slopes' and the long waves' scale are all flat past it).
+	auto Seen = [](float D) { return FMath::Min(D, 2.f); };
+	int32 Steps = 0;
+	float Worst = 0.f;
+	for (int32 I = 0; I < Res; ++I)
+	{
+		for (int32 J = 0; J < Res; ++J)
+		{
+			for (const FIntPoint N : { FIntPoint(I + 1, J), FIntPoint(I, J + 1) })
+			{
+				if (N.X >= Res || N.Y >= Res) continue;
+				const float Step = FMath::Abs(Seen(Depth[I * Res + J]) - Seen(Depth[N.X * Res + N.Y]));
+				const float Own = FMath::Abs(Seen(Bare[I * Res + J]) - Seen(Bare[N.X * Res + N.Y]));
+				// A stamp rises 0.6 m a metre; the lake's own bed rises as it does.
+				if (Step > FMath::Max(Own, 0.6f * Cell) + 0.05f) { ++Steps; Worst = FMath::Max(Worst, Step); }
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("Ramp head (%.1f, %.1f), %.2f m up, dry for %.1f m; steps in the shore map: %d (worst %.2f m)"),
+		Head.X, Head.Y, R.Top, R.DryLength(), Steps, Worst));
+	TestEqual(TEXT("The shore map has no step the bed doesn't"), Steps, 0);
+	auto At = [&](const FVector2D& P)
+	{
+		const int32 I = FMath::FloorToInt((P.X - Origin.X) / Cell), J = FMath::FloorToInt((P.Y - Origin.Y) / Cell);
+		return (I >= 0 && J >= 0 && I < Res && J < Res) ? Depth[I * Res + J] : -1.f;
+	};
+	// Just below the waterline on the slab's centre line: shallow enough to lap (M_WaterV4's swash, under 0.35 m).
+	const float Lap = At(Head + R.Dir * (R.DryLength() + 0.5));
+	TestTrue(FString::Printf(TEXT("The waves lap at the ramp's waterline (%.2f m)"), Lap), Lap >= 0.f && Lap < 0.35f);
+	// Ten metres down the slab: the water over it (or less, where the bed is higher), never the bed's depth beside it.
+	const double T = 10.0;
+	const double SlabZ = R.Top + (FMarinaRamp::Foot - R.Top) * T / FMarinaRamp::Length;
+	const float OverSlab = At(Head + R.Dir * T);
+	TestTrue(FString::Printf(TEXT("Over the slab, the water over it (%.2f m, slab %.2f m down)"), OverSlab, -SlabZ),
+		OverSlab >= 0.f && OverSlab <= float(-SlabZ) + 0.15f);
 	return true;
 }
 

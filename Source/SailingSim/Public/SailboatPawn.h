@@ -336,6 +336,11 @@ private:
 	/** A rig point in the boat frame (cm) from a socket on one of the model's parts; mast points follow its bend. */
 	FVector RigPoint(const UStaticMeshComponent* Part, FName Socket) const;
 	void UpdateModelRig(float DeltaSeconds);
+	/** Hardware fit wave 2 (BoatKitFittings.cpp, docs/hardware-fit/): the kit's masthead fly (its vane turned to the
+	 *  apparent wind) in place of the two stand-in boxes, the jib's piston hanks riding the cloth's luff and the jib
+	 *  halyard's snap shackle at the head. Each is skipped while its SM_Kit_ mesh isn't imported. */
+	void BuildKitFittings();
+	void UpdateKitFittings();
 	void UpdateBoatWetness(float DeltaSeconds);
 	/** Rain deck (docs/rain-deck): drips falling from the boom's underside and the sheer while the boat is wet. */
 	void UpdateDrips(float DeltaSeconds);
@@ -354,6 +359,8 @@ private:
 public:
 	/** Seconds spent simulating sail cloth, all boats, since the game started (the bench reports it per frame). */
 	static double ClothCpuSeconds;
+	/** Of that, the sails' wrinkles (docs/sail-wrinkles-cost/), summed over the sails' tasks (bench.json wrinkle_cpu_ms). */
+	static double WrinkleCpuSeconds;
 private:
 	void UpdateTelltales();
 	void CreateInput();
@@ -695,6 +702,11 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FlyBoxes;     // the stand-in fly (hidden under the kit's)
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> FlyKitMount;         // the kit fly's socket and stalk, when the mast lacks one
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> FlyKitVane;          // the kit fly's vane, turned with MastheadFly
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibHanks;    // piston hanks up the jib's luff
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> JibHeadShackle;      // the jib halyard's snap shackle
 	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMeshComponent>> Crew;
 	/** Ultra audit item 7: the polos' instances whose loose cloth moves with the wind and the boat (WindWS, AccelWS). */
 	UPROPERTY(Transient) TArray<TObjectPtr<class UMaterialInstanceDynamic>> CrewClothMids;
