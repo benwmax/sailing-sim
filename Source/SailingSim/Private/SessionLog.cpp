@@ -1,4 +1,5 @@
 #include "SessionLog.h"
+#include "SailingSim.h"
 #include "CrashReports.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformFileManager.h"
