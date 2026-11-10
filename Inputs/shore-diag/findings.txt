@@ -1,0 +1,10 @@
+Clubhouse grey rectangle (Mac frame docs/ramp-water/mac/club-shore-props.jpg), checked on the PC, Nov 10 2026, main 52f0a770 (no Source change since 260ea54a, so the 260ea54a binaries).
+Uncooked run-game.ps1, High, 1280x720, -SailingCapture=Drone (80 deg lens) or ShoreTele (15 deg) with -SailingCaptureAbsolute and -SailingCamWorld=<north>,<east>,<up>,<heading>,<pitch> relative to the boat's start (-SailingLaunch=0: map 5.5,-37.5; camera.json's camera_m gives map metres).
+
+Verdict: it is the clubhouse's porch double door, drawn on purpose but as a bare slab. MarinaActor.cpp (BuildClubGrounds, about line 833): G[EKitLook::Metal].Box(At(L(-7.0, HY + 0.03), Floor + 1.1f), FVector(0.9f, 0.04f, 1.1f)) - a 1.8 x 2.2 m box on the front wall, with a Trim lintel above it. EKitLook::Metal loads /Game/World/MI_World_Metal (WorldKit.cpp:112), whose WORLD_LIBRARY entry is colour (0.75, 0.76, 0.78), roughness 0.3, pattern 0, metallic 1: a flat light-grey metal plate. So: not a slot that fell back to a default material, but a door with no frame, glazing, panels or handle. The same Metal box is used for the north-east end door and the back door to the pool.
+
+Frames:
+- club-door-8m.jpg: Drone, camera map (67.1, 90.6), 3.4 m up, heading 302 (facing the door square, 8 m off). The grey door sits between the windows under its lintel, above the porch steps.
+- club-front-25m.jpg: Drone, camera map (64.1, 108.8), 4.5 m up, heading 302. The clubhouse is inland: 25 m off its front is the lawn, and a lawn tree blocks most of the front from here. There is no 25 m view from the water.
+- top400.jpg: ShoreTele straight down from 400 m over the clubhouse (camera map 82.5, 79.1): clubhouse, pool, lot, the lawn and its trees.
+Also seen in the 8 m frame: the concrete walk slabs overlap with visible steps where they meet in front of the porch steps.
