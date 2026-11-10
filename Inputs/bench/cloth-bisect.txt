@@ -1,0 +1,19 @@
+Sail cloth CPU by commit: uncooked editor game (run-game.ps1 -SailingBench=10), Ultra, 1920x1080, -SailingNoGpuSlices, Bean's RTX 4090 PC, Nov 10 2026.
+Views: default (bench-win's view, no demo) and beat15 (views.ps1, with the demo autopilot). Columns per view: cloth_cpu_ms, game_ms, gt.boat_visuals, gt.sails, avg_fps.
+
+sha       title                                                          | default: cloth game visuals sails fps    | beat15: cloth game visuals sails fps    
+7ba823db  Merge pull request #572 from benwmax/pc/content-import-nov9b   |  3.052  14.67   5.148   4.02  57.1       |  2.885  13.91   5.036  3.883  59.5      
+813d5ed0  Merge pull request #185 from benwmax/claude/project-thread-... |  0.296   10.7   1.196  0.549  64.6       |  0.289  10.64   1.234  0.543  63.9      
+2dd9d05d  Merge pull request #195 from benwmax/boat-fidelity-1           |  0.299   9.96   1.124  0.523  71.5       |  0.259   9.06   1.056  0.471  77.2      
+7e0f6175  Sails 1: no more crumpling in a seaway or leech creases; tr... |  0.477   9.42   1.252  0.683  75.6       |   0.46   9.32   1.286   0.67    81      
+0e98266d  Rig clearance: sheets drape over the boat, sails keep off t... |  0.886   9.89   1.814  1.061  75.6       |  0.914  10.11   1.907  1.101  74.1      
+de2f904b  Sail cloth: the main's target dents round a wire it still p... |  1.002   9.87   1.931   1.17    77       |  0.991   9.97   1.987  1.167  80.6      
+c1c6bd43  Sail cloth: the main's dent checks each wire half a row eit... |  1.201  10.12   2.149   1.36  80.9       |  1.214  10.18   2.197  1.374    79      
+ff3663d5  Sail wrinkles: corner fans and soft-luff wrinkles from tens... |  3.114  13.57   5.068  4.027  65.1       |   3.17   14.7   5.295   4.18  58.3      
+3c7f303c  Sail spreaders: a running main lies over its spreaders (Kee... |  3.117  13.11   5.016  3.968  65.9       |  2.951  13.19   4.918  3.838    66      
+53851f90  Sail dent: the main turns off the rig as far as its wires n... |   3.06  13.15   4.981  3.928  66.3       |   2.94  13.18   4.902  3.828  65.9      
+dfe803b5  Sail clearance kept: the main's KeepClear on its target is ... |  3.033  13.74   5.143   4.02  61.9       |  2.773  13.02   4.854  3.726  64.7      
+
+First commit that more than doubles cloth_cpu_ms: ff3663d5 "Sail wrinkles: corner fans and soft-luff wrinkles from tension field theory (Ultra audit 5)" - 1.20 -> 3.11 ms (x2.6) default view, 1.21 -> 3.17 (x2.6) beat15; sails 1.36 -> 4.03 ms, game_ms 10.1 -> 13.6. Nothing after it adds cost.
+Before it the cost climbs in smaller steps, 0.30 -> 1.20 ms over four commits: 7e0f6175 Sails 1 (x1.6), 0e98266d Rig clearance (x1.9), de2f904b (x1.1), c1c6bd43 (x1.2).
+Note: the final build on main a007f94f (after the walk) FAILED on MSVC: SailingSim.h(8) error C2375 'SailSessionLogLine': redefinition; different linkage (SessionLog.cpp:162 defines it without SAILINGSIM_API; unity-build order puts the definition ahead of the header's declaration). The PC's editor binaries are from dfe803b5's build until main builds again.
