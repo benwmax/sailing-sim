@@ -271,7 +271,7 @@ namespace SliceFirstHour
 		{
 			const int32 Before = Counter.Collisions;
 			const Vec3 O = Boat.OriginPosition();
-			Counter.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y));
+			Counter.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y), PhysicsDt);
 			Run.Collisions += Counter.Collisions - Before;
 			Run.MaxContactKn = FMath::Max(Run.MaxContactKn, Counter.MaxKnots);
 		}
@@ -660,6 +660,13 @@ bool FSailingSliceFirstHourTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s sailed to the end"), *L.Id), Run.Drill.IsComplete());
 		TestEqual(FString::Printf(TEXT("%s counts for its lesson"), *L.Id), A.LessonId, L.Id);
 		TestTrue(FString::Printf(TEXT("%s at silver or better"), *L.Id), A.Medal >= ECareerMedal::Silver);
+		if (L.Drill == ESailingDrill::LeaveTheDock)
+		{
+			// #604: backing out she rubs the finger once (counted: past the cast-off grace, under 1 kn), and that keeps
+			// the departure clean.
+			TestEqual(TEXT("Leaving the slip: one touch counted"), Run.Collisions, 1);
+			TestEqual(TEXT("... and still a clean departure"), Run.Drill.GetOutcome(), FString(TEXT("clean")));
+		}
 		FRandomStream Rng(5);
 		const int32 Of = Learning.MakeQuiz(L.QuizDrill, Rng).Num();
 		TestTrue(FString::Printf(TEXT("%s quiz passes at %d of %d"), *L.Id, Of - 1, Of), Career.RecordLessonQuiz(L.Id, Of - 1, Of));

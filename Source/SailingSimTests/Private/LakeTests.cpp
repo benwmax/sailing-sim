@@ -700,30 +700,48 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
 	{
 		// #604: tied up nothing counts; just cast off, the rub carried on and the flicker of lying alongside don't count until
-		// she makes 0.5 kn or moves 1.5 m; a rub carried on past that (scraping out at 1-2 kn) counts once and sets the hardest.
-		const FVector2D Dock(0.0, 0.0);
-		FDrillContacts Rub;
-		for (int32 I = 0; I < 50; ++I) Rub.Update(I % 2 == 0 || I > 40, true, 0.5, Dock);
-		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Rub.Collisions, 0);
-		for (int32 I = 0; I < 30; ++I) Rub.Update(I % 3 != 0, false, 0.3, Dock + FVector2D(0.02 * I, 0.0));
-		TestEqual(TEXT("Cast off, luffing alongside: the flicker counts nothing"), Rub.Collisions, 0);
-		Rub.Update(true, false, 1.2, Dock + FVector2D(0.7, 0.0));
-		Rub.Update(true, false, 1.6, Dock + FVector2D(0.8, 0.0));
-		Rub.Update(false, false, 1.8, Dock + FVector2D(1.0, 0.0));
-		TestEqual(TEXT("Scraping out at 1.2-1.6 kn: the carried rub counts once"), Rub.Collisions, 1);
-		TestEqual(TEXT("... and sets the hardest"), Rub.MaxKnots, 1.6);
-		FDrillContacts Away;
-		Away.Update(false, true, 0.0, Dock);
-		for (int32 I = 0; I < 20; ++I) Away.Update(I % 2 == 0, false, 0.2, Dock + FVector2D(0.05 * I, 0.0));
-		for (int32 I = 0; I < 40; ++I) Away.Update(false, false, 3.0, Dock + FVector2D(2.0 + I, 0.0));
-		Away.Update(true, false, 1.5, Dock + FVector2D(50.0, 0.0));
-		Away.Update(true, false, 1.5, Dock + FVector2D(50.1, 0.0));
-		Away.Update(false, false, 1.0, Dock + FVector2D(50.2, 0.0));
-		TestEqual(TEXT("Off the dock: a new touch at 1.5 kn counts once"), Away.Collisions, 1);
-		TestEqual(TEXT("... and it is the hardest"), Away.MaxKnots, 1.5);
-		FDrillContacts Underway;   // a drill that starts under way (no cast-off): the first touch counts
-		Underway.Update(true, false, 0.4, Dock);
-		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.Collisions, 1);
+		// she is 1.5 m from where she cast off; past that a touch counts once she is making 0.3 kn over the ground, flicker
+		// within a second is the same touch, and a carried rub (scraping out at 1-2 kn) counts once and sets the hardest.
+		// Frames at 60 Hz moving along +X at a speed (knots), so the counter's own speed over the ground is that speed.
+		const double Dt = 1.0 / 60.0;
+		struct FMover { FDrillContacts C; FVector2D P = FVector2D::ZeroVector; };
+		auto Run = [Dt](FMover& M, int32 Frames, double Kn, bool bTied, TFunctionRef<bool(int32)> Touch)
+		{
+			for (int32 I = 0; I < Frames; ++I) { M.P.X += Kn * kKnot * Dt; M.C.Update(Touch(I), bTied, Kn, M.P, Dt); }
+		};
+		FMover Rub;
+		Run(Rub, 50, 0.0, true, [](int32 I) { return I % 2 == 0 || I > 40; });
+		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Rub.C.Collisions, 0);
+		Run(Rub, 60, 0.3, false, [](int32 I) { return I % 3 != 0; });
+		TestEqual(TEXT("Cast off, creeping along the dock at 0.3 kn (grace): the flicker counts nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 40, 2.0, false, [](int32) { return true; });   // a lurch at 2 kn, 0.7 m: still the grace
+		TestEqual(TEXT("A 0.7 m lurch against the dock in the grace: nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 150, 1.5, false, [](int32) { return true; });
+		Run(Rub, 30, 1.5, false, [](int32) { return false; });
+		TestEqual(TEXT("Scraping out at 1.5 kn: the carried rub counts once"), Rub.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... and sets the hardest (%.2f)"), Rub.C.MaxKnots), FMath::IsNearlyEqual(Rub.C.MaxKnots, 1.5, 0.05));
+		FMover Slide;   // past the grace (moved 1.5 m), sliding along a finger at 0.35 kn with the contact flickering: one touch
+		Run(Slide, 1, 0.0, true, [](int32) { return false; });
+		Run(Slide, 600, 0.35, false, [](int32) { return false; });
+		Run(Slide, 600, 0.35, false, [](int32 I) { return I % 7 < 3; });
+		TestEqual(TEXT("Sliding along a finger, contact flickering for 10 s: one touch"), Slide.C.Collisions, 1);
+		FMover Drift;   // past the grace (1.9 m off), then drifting at 0.2 kn against the dock: nothing
+		Run(Drift, 1, 0.0, true, [](int32) { return false; });
+		Run(Drift, 360, 0.6, false, [](int32) { return false; });
+		Run(Drift, 120, 0.2, false, [](int32) { return false; });
+		Run(Drift, 600, 0.2, false, [](int32 I) { return I % 5 < 2; });
+		TestEqual(TEXT("Drifting against the dock at 0.2 kn: no touch"), Drift.C.Collisions, 0);
+		FMover Away;
+		Run(Away, 1, 0.0, true, [](int32) { return false; });
+		Run(Away, 120, 3.0, false, [](int32) { return false; });
+		Run(Away, 30, 1.5, false, [](int32) { return true; });
+		Run(Away, 120, 1.0, false, [](int32) { return false; });
+		Run(Away, 30, 0.8, false, [](int32) { return true; });
+		TestEqual(TEXT("Off the dock: a 1.5 kn touch, then another after 2 s clear: two"), Away.C.Collisions, 2);
+		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
+		FMover Underway;   // a drill that starts under way (no cast-off): the first touch counts
+		Run(Underway, 60, 0.6, false, [](int32 I) { return I >= 40; });
+		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.C.Collisions, 1);
 	}
 	{
 		// #604: the Sunfish's leave-the-dock berth at Rush Creek, as the pawn picks it (FindBerth with her config), puts
@@ -766,20 +784,27 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 			{
 				Boat.Step(PhysicsDt, C, Wind);
 				const Vec3 O = Boat.OriginPosition();
-				Contacts.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y));
+				Contacts.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y), PhysicsDt);
 			};
 			for (int32 I = 0; I < int32(60 * PhysicsHz); ++I) { StepOnce(); RawFrames += Boat.GetTelemetry().bCollision; }
 			const int32 TiedCount = Contacts.Collisions;
-			// Lines off, still luffing alongside for 10 s (the crew hasn't sheeted in): the flicker counts nothing.
+			// Lines off, still luffing alongside for 30 s (the crew hasn't sheeted in), the wind onto the dock or along it:
+			// the flicker and the slow drift along the face count nothing.
 			Boat.GetMooringLines().clear();
-			for (int32 I = 0; I < int32(10 * PhysicsHz); ++I) { StepOnce(); LooseFrames += Boat.GetTelemetry().bCollision; }
-			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 10 s cast off and luffing, %d counted, %.1f m from the berth"),
-				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
+			double LooseMaxKn = 0.0;
+			for (int32 I = 0; I < int32(30 * PhysicsHz); ++I)
+			{
+				StepOnce();
+				LooseFrames += Boat.GetTelemetry().bCollision;
+				if (Boat.GetTelemetry().bCollision) LooseMaxKn = FMath::Max(LooseMaxKn, Contacts.NetKnots());
+			}
+			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 30 s cast off and luffing (net over 2 s at most %.2f kn), %d counted, %.1f m from the berth"),
+				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, LooseMaxKn, Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
 			TestTrue(TEXT("The berth puts the hull outside the dock"), Clear >= 0.0);
 			TestTrue(TEXT("Her lines reach the dock"), Lines >= 2);
 			TestTrue(TEXT("She does lie against the dock tied up (the case being tested)"), RawFrames > 0);
 			TestEqual(TEXT("Tied up at her berth for a minute: no touch counted"), TiedCount, 0);
-			TestEqual(TEXT("Cast off and luffing alongside 10 s: no touch counted"), Contacts.Collisions, 0);
+			TestEqual(TEXT("Cast off and luffing alongside 30 s: no touch counted"), Contacts.Collisions, 0);
 		}
 	}
 	{

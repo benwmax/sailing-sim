@@ -93,8 +93,22 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
-void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position)
+void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position, double Dt)
 {
+	Time += Dt;
+	const int32 Last = (NextSample + SampleCount - 1) % SampleCount;
+	if (Samples == 0 || Time - SampleTime[Last] >= NetSeconds / (SampleCount - 1))
+	{
+		SamplePosition[NextSample] = Position;
+		SampleTime[NextSample] = Time;
+		NextSample = (NextSample + 1) % SampleCount;
+		Samples = FMath::Min(Samples + 1, SampleCount);
+	}
+	const int32 Oldest = Samples < SampleCount ? 0 : NextSample;
+	const double Span = Time - SampleTime[Oldest];
+	LastNetKnots = Span >= 0.5 ? FVector2D::Distance(Position, SamplePosition[Oldest]) / Span / Sailing::kKnot : Knots;
+	Clear = bCollision ? 0.0 : Clear + Dt;
+	if (Clear >= RejoinSeconds) bCounted = false;   // clear long enough: the next contact is a new touch
 	if (bTiedUp)
 	{
 		CastOffAt = Position;
@@ -102,14 +116,13 @@ void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const F
 		bCounted = false;
 		return;
 	}
-	if (!bGraceOver && (Knots >= GraceKnots || FVector2D::Distance(Position, CastOffAt) > GraceMeters)) bGraceOver = true;
-	if (!bGraceOver) return;
-	if (bCollision && !bCounted)
+	if (!bGraceOver && FVector2D::Distance(Position, CastOffAt) > GraceMeters) bGraceOver = true;
+	if (!bGraceOver || !bCollision) return;
+	if (!bCounted && LastNetKnots >= TouchKnots)
 	{
 		++Collisions;
 		bCounted = true;
 	}
-	if (!bCollision) bCounted = false;
 	if (bCounted) MaxKnots = FMath::Max(MaxKnots, Knots);
 }
 

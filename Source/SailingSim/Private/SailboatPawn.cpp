@@ -1330,7 +1330,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	// (#604: touches while tied up, the boat working against her own dock, and just cast off are not counted or graded)
 	{
 		const Vec3 Here = Boat.OriginPosition();
-		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y));
+		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y), DeltaSeconds);
 		DrillCollisions = DrillContacts.Collisions;
 		MaxContactKnots = DrillContacts.MaxKnots;
 	}
@@ -2771,7 +2771,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	MaxContactKnots = 0.0;
 	DrillCollisions = DrillInfractions = 0;
 	DrillContacts = FDrillContacts();
-	bDrillTouching = bDrillGraded = false;
+	bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
