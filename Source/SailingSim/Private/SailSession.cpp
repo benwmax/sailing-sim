@@ -197,7 +197,9 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;
 	Save->Last = Active;
-	Save->Last.SceneId.Reset();   // Continue sails the same place freely, not the scene again
+	// Continue sails the same place freely, not the scene again; #599: except the first job, which it resumes until it is
+	// done (the title's Continue checks).
+	if (Save->Last.SceneId != TEXT("first-job")) Save->Last.SceneId.Reset();
 	Save->Commit();
 	ApplyToSettings(Active);
 	if (WorldContext)

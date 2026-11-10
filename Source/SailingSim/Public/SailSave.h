@@ -94,6 +94,7 @@ struct SAILINGSIM_API FSailSave
 		float WindFromDeg = 180.f, WindKn = 10.f, GustKn = 13.f, LocalHour = 10.f, AirTempF = 74.f, LakeLevelFt = 0.f;
 		int32 Month = 4, Day = 18;
 		FString RealDay;
+		FString SceneId;                     // #599: "first-job" while Continue resumes the first job; empty otherwise ("scene")
 	};
 
 	/** A career lesson (docs/career): its best medal and time, and its quiz. Medal is a string id (bronze, silver, gold). */
