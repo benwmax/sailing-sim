@@ -1645,6 +1645,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 
 // ---------------------------------------------------------------- 5.9 Pause
 
+bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart)
+{
+	if (Scene && Scene->IsLoaded() && !Scene->IsComplete())
+	{
+		OutTitle = Scene->GetTitle().empty() ? USailSessionSubsystem::ModeName(Mode) : FString(UTF8_TO_TCHAR(Scene->GetTitle().c_str()));
+		OutRestart = TEXT("Restart from checkpoint");
+		return true;
+	}
+	OutTitle = USailSessionSubsystem::ModeName(Mode);
+	OutRestart = Mode == ESailMode::Drill ? TEXT("Restart drill") : (Mode == ESailMode::Race ? TEXT("Restart race") : TEXT("Restart from launch spot"));
+	return false;
+}
+
 SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 {
 	using namespace SailUI;
@@ -1666,8 +1679,21 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 	};
 	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(Player.Get());
 	const ESailMode Mode = Session && Session->bHasActive ? Session->Active.Mode : ESailMode::Free;
+	// #599: a scripted scene (the first job) is its own session: its title, and a restart from its last checkpoint (the R
+	// key's: ResetBoat puts her at the checkpoint's pose and the scene goes back to it), not the free sail's launch spot.
+	const ASailingGameMode* GM = Player.IsValid() && Player->GetWorld() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	const Sailing::FScriptedScene* Scene = GM ? GM->GetScene() : nullptr;
+	FString Title, RestartLabel;
+	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel);
 	Item(TEXT("Resume"), FString(), FSimpleDelegate::CreateLambda([this]() { Close(); }));
-	Item(Mode == ESailMode::Drill ? TEXT("Restart drill") : (Mode == ESailMode::Race ? TEXT("Restart race") : TEXT("Restart from launch spot")), FString(),
+	if (bScene)
+	{
+		Item(RestartLabel, TEXT("R"), FSimpleDelegate::CreateLambda([this]()
+		{
+			Confirm(TEXT("Go back to the last checkpoint?"), TEXT("Restart"), [this]() { if (ASailboatPawn* B = Pawn()) B->ResetBoat(); Close(); });
+		}));
+	}
+	else Item(RestartLabel, FString(),
 		FSimpleDelegate::CreateLambda([this, Mode]()
 		{
 			Confirm(TEXT("Restart? Your logbook entry is kept."), TEXT("Restart"), [this, Mode]()
@@ -1707,13 +1733,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Label, Muted) ], FMargin(18.f, 12.f));
 	};
 	FString Coach = TEXT("Free sailing: practise your points of sail and tacks.");
-	if (P && P->GetDrill().IsActive()) Coach = FString::Printf(TEXT("%s: %s"), DrillName(P->GetDrill().GetDrill()), P->GetDrill().GetSteps().IsValidIndex(P->GetDrill().GetStep()) ? *P->GetDrill().GetSteps()[P->GetDrill().GetStep()] : *P->GetDrill().GetStatus());
+	if (bScene) Coach = TEXT("Follow the instructor's calls. Restart takes you back to the last checkpoint.");
+	else if (P && P->GetDrill().IsActive()) Coach = FString::Printf(TEXT("%s: %s"), DrillName(P->GetDrill().GetDrill()), P->GetDrill().GetSteps().IsValidIndex(P->GetDrill().GetStep()) ? *P->GetDrill().GetSteps()[P->GetDrill().GetStep()] : *P->GetDrill().GetStatus());
 	E.Content = SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Paused · %.0f min on the water"), Minutes), EType::Eyebrow, Accent) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 24.f)[ SailUI::Text(USailSessionSubsystem::ModeName(Mode), EType::ScreenTitle, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 24.f)[ SailUI::Text(Title, EType::ScreenTitle, Fg) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]

@@ -8,6 +8,7 @@
 #include "Learning.h"
 #include "Showroom.h"
 #include "Gallery.h"
+namespace Sailing { class FScriptedScene; }
 
 class SBox;
 class APlayerController;
@@ -63,6 +64,9 @@ public:
 	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
 	/** #599: the title's Continue goes back to the first job: the last session was the first job and it isn't done. */
 	static bool ResumesFirstJob(const struct FSailSessionConfig& Last, const FSailSave::FProgress& Progress);
+	/** #599: the pause menu's title and restart item. A scripted scene running (the first job) gives its own title and
+	 *  "Restart from checkpoint" (true); else the mode's name and its restart (drill, race, or the launch spot). */
+	static bool PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has
