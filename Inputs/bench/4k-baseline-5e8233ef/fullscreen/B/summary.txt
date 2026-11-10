@@ -4,8 +4,8 @@ How: the game is not DPI aware (Config sets no bAllowHighDPIInGameMode), so on B
 2560x1440 desktop; each run here had a temporary user Engine.ini in its Saved with
 [/Script/Engine.UserInterfaceSettings] bAllowHighDPIInGameMode=True (removed after). A first B pass ran at 2560x1440 (the
 Development game rewrites that ini on exit) and was discarded; B was rerun re-seeding it before every view.
-Foreground: the game was in front for the first launch of each part; bench.json "foreground" reads 0 on most runs
-(it is the fraction of the measured window with focus; fullscreen covered the screen, nobody used the PC).
+Foreground: B 1.0 on all 16 views (in front); A 0 on four launches and 0.285 on launch 3 (a Shipping launch did not take focus
+though its borderless window covered the screen; nobody used the PC).
 1% low = 1000 / p99_ms. gpu = gpu.total_ms (Development) or gpu_frame_ms (Shipping). render_th = render thread ms.
 B: Development package (Packaged\Windows-5e8233e), bench-visual-win -Tiers Ultra, 16 views, 12 s each, demo autopilot.
 A: Shipping zip game (Packaged\Shipping-5e8233ef), -SailingShippingSmoke -SailingWorld=Lake -SailingLaunch=0..4 -SailingBench=60.
