@@ -587,6 +587,36 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 		AddInfo(FString::Printf(TEXT("Jib released: %.1f kn, step %d"), Knots, StepAfter));
 		TestTrue(TEXT("Jib released and sailing past 3 kn: the list goes back to backing the jib"), Knots > 3.0 && StepAfter <= 1);
 	}
+	{
+		// #603: return and dock's step is her speed far from the dock: slowed under 1.5 kn (step 1, "luff to slow down"),
+		// then sailing on past 1.5 kn again, the list goes back to step 0 (the approach), not latched on step 1.
+		FBoatModel Dock;
+		Dock.Reset(0.0, 0.0, 90.0 * kDegToRad, 4.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(ESailingDrill::ReturnAndDock, Dock, 0.0);
+		FAutopilot Hold;
+		Hold.TargetTWADeg = 90.0;
+		FAutoTrim Sheets = ScriptedTrim();
+		FBoatControls DC;
+		auto Sail = [&](bool bLetFly, TFunctionRef<bool(double)> Until)
+		{
+			for (int32 I = 0; I < int32(90 * PhysicsHz); ++I)
+			{
+				DC = Sheets.Update(Dock, DC, PhysicsDt);
+				if (bLetFly) DC.MainSheet = DC.JibSheet = 1.0;
+				Hold.TargetTWADeg = bLetFly ? 15.0 : 90.0;   // shoot up toward the wind to stop, bear away to go
+				DC.Tiller = Hold.Update(Dock);
+				Dock.Step(PhysicsDt, DC, Wind);
+				Run.Update(Dock, FDrillContext(), PhysicsDt);
+				if (Until(Dock.GetTelemetry().BoatSpeed / kKnot)) return true;
+			}
+			return false;
+		};
+		TestTrue(TEXT("Return and dock: shot up with the sheets free, she slows under 1.5 kn"), Sail(true, [](double Kn) { return Kn < 1.2; }));
+		TestEqual(TEXT("... on step 1 (slowed)"), Run.GetStep(), 1);
+		TestTrue(TEXT("... borne away and sheeted in, she is back over 1.5 kn"), Sail(false, [](double Kn) { return Kn > 2.0; }));
+		TestEqual(TEXT("... and the list is back on step 0 (the approach)"), Run.GetStep(), 0);
+	}
 	return true;
 }
 

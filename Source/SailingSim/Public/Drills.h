@@ -71,6 +71,9 @@ public:
 	/** How a finished drill went, as the briefing's debrief keys: clean/contact, done, proper/improper, gentle/hard. */
 	const FString& GetOutcome() const { return Outcome; }
 	static TArray<FString> Outcomes(ESailingDrill Drill);
+	/** #603: drills whose step is the state she is in now (heave-to: backed, slow, held; return and dock: under way, slowed,
+	 *  tied up), so it may go back; every other drill's step, once reached, stays reached. */
+	static bool StepsDescribeState(ESailingDrill Drill) { return Drill == ESailingDrill::HeaveTo || Drill == ESailingDrill::ReturnAndDock; }
 
 	/** Marks to sail around (world XY, meters) and the next one to round. */
 	const TArray<FVector2D>& GetMarks() const { return Marks; }
