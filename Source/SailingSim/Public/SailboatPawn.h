@@ -477,9 +477,15 @@ private:
 	float PhotoFocusM = 20.f;
 	uint64 PhotoCleanFrame = 0;
 	bool bPhotoHidMine = false, bPhotoHidCrew = false;
+	bool bCrewShownApplied = true;   // UpdateCrewShown: what the figures were last set to, and for which crew
+	TWeakObjectPtr<class USkeletalMeshComponent> CrewShownFor;
 	TArray<TWeakObjectPtr<AActor>> PhotoHidden;
 	void StepPhotoPanel(FName Action);
 	void ApplyPhotoScene(bool bOn);
+	/** Settings > Show crew (USailingSettings::IsShowCrew): your boat's figures drawn; other boats always show theirs. */
+	bool CrewShown() const;
+	/** Hides or shows your boat's crew figures when the setting (or photo mode's Crew row) changes, or the crew is rebuilt. */
+	void UpdateCrewShown();
 	void UpdatePhotoHullClip();
 	// The showroom: its stage, the spot (map m) and heading she is held on, the current that takes out her way over the
 	// ground, the side she sails on, the helm, and the async load of a boat being swapped in (the shown boat's stays

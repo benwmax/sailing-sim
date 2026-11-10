@@ -33,6 +33,7 @@ struct SAILINGSIM_API FSailSave
 		bool bLearningMode = true;
 		bool bTrimAssist = true;
 		bool bShowHud = true;
+		bool bShowCrew = false;   // "showCrew" (added in version 1: an older file has none and reads off)
 		float Volume = 0.8f;
 		int32 ResolutionScale = 0;
 		int32 FrameCap = 0;

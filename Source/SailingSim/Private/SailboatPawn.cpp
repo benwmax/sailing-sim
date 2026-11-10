@@ -2136,8 +2136,9 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 	{
 		if (Crew.Num() > 0 && Crew.Last())
 		{
-			Crew.Last()->SetVisibility(true, true);
-			Crew.Last()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+			// (out of the cockpit the helm shows again, if the crew is shown: Settings > Show crew)
+			Crew.Last()->SetVisibility(bCrewShownApplied, true);
+			Crew.Last()->VisibilityBasedAnimTickOption = bCrewShownApplied ? EVisibilityBasedAnimTickOption::AlwaysTickPose : EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 		}
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
@@ -2322,6 +2323,36 @@ void ASailboatPawn::StepPhotoPanel(FName Action)
 	}
 }
 
+bool ASailboatPawn::CrewShown() const
+{
+	return bTrafficBoat || bGhost || USailingSettings::Get()->IsShowCrew();
+}
+
+void ASailboatPawn::UpdateCrewShown()
+{
+	// Hide, never delete: the figures keep sailing the boat (the physics' crew weight, hiking, trim and stations never
+	// read them), so switching back mid-sail just draws them again. Hidden, the helm stays posed (the cockpit view and the
+	// onboard capture camera read its head bone) while the others skip their animation; crew falls stand down.
+	if (bTrafficBoat || bGhost) return;
+	const bool bShow = CrewShown() && !bPhotoHidCrew;
+	USkeletalMeshComponent* Signature = Crew.Num() > 0 ? Crew.Last().Get() : nullptr;
+	if (bShow == bCrewShownApplied && Signature == CrewShownFor.Get()) return;
+	const bool bWasHidden = !bCrewShownApplied;
+	bCrewShownApplied = bShow;
+	CrewShownFor = Signature;
+	for (int32 I = 0; I < Crew.Num(); ++I)
+	{
+		USkeletalMeshComponent* Figure = Crew[I];
+		if (!Figure) continue;
+		const bool bHelm = I == Crew.Num() - 1;
+		if (!(bCockpit && bHelm)) Figure->SetVisibility(bShow, true);   // (the cockpit view hides the helm itself)
+		if (!bShow) Figure->VisibilityBasedAnimTickOption = bHelm ? EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones : EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+		else if (bWasHidden) Figure->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+	}
+	if (!bShow && bCrewFalls) SetCrewPhysicsActive(false);
+	SAIL_LOG(Display, TEXT("Crew figures %s (%d)"), bShow ? TEXT("shown") : TEXT("hidden"), Crew.Num());
+}
+
 void ASailboatPawn::ApplyPhotoScene(bool bOn)
 {
 	// The panel's Scene page: my boat, the other boats, the crew hidden, and the time of day drawn. All of it drops on
@@ -2331,7 +2362,7 @@ void ASailboatPawn::ApplyPhotoScene(bool bOn)
 	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
 	const bool bHideMine = bOn && S.bHideMyBoat, bHideOthers = bOn && S.bHideOthers, bHideCrew = bOn && (S.bHideCrew || S.bHideMyBoat);
 	if (bHideMine != bPhotoHidMine) SetActorHiddenInGame(bHideMine || HideBoatArg.Get());
-	if (bHideCrew != bPhotoHidCrew) for (const TObjectPtr<USkeletalMeshComponent>& C : Crew) if (C) C->SetVisibility(!bHideCrew, true);
+	if (bHideCrew != bPhotoHidCrew) for (const TObjectPtr<USkeletalMeshComponent>& C : Crew) if (C) C->SetVisibility(!bHideCrew && CrewShown(), true);
 	if (bHideOthers && PhotoHidden.IsEmpty())
 	{
 		auto Hide = [this](AActor* A) { if (A != this && !A->IsHidden()) { A->SetActorHiddenInGame(true); PhotoHidden.Add(A); } };
@@ -3235,7 +3266,15 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	{ SAILING_PERF_SCOPE(Crew); UpdateCrewFigures(DeltaSeconds); UpdateCrewFalls(DeltaSeconds); UpdateCrewGroomLOD(); }
+	{
+		SAILING_PERF_SCOPE(Crew);
+		UpdateCrewShown();
+		UpdateCrewFigures(DeltaSeconds);
+		// Hidden figures hold nothing: the tiller extension, mainsheet and jib tail lie where they rest.
+		if (!bCrewShownApplied) { HelmGripCm.Reset(); MainGripCm.Reset(); JibGripCm.Reset(); }
+		UpdateCrewFalls(DeltaSeconds);
+		UpdateCrewGroomLOD();
+	}
 
 	if (ModelHull)
 	{

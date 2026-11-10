@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "BareTestWorld.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "Wind.h"
@@ -78,6 +79,7 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBoatAccelerationTest, "SailingSim.Physics.BoatAcceleration", CrewMotionFlags)
 bool FSailingBoatAccelerationTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	{
 		FWindParams Calm;
@@ -122,6 +124,7 @@ bool FSailingBoatAccelerationTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewBalanceStepTest, "SailingSim.Visual.CrewBalanceStep", CrewMotionFlags)
 bool FVisualCrewBalanceStepTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	for (const float Hz : { 60.f, 15.f })
 	{
 		for (const float Lag : { 0.1f, 0.3f })
@@ -170,6 +173,7 @@ bool FVisualCrewBalanceStepTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewHeadLevelTest, "SailingSim.Visual.CrewHeadLevel", CrewMotionFlags)
 bool FVisualCrewHeadLevelTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	TArray<FCrewBody> Bodies;
 	CrewBodies(*this, Bodies);
@@ -254,6 +258,7 @@ bool FVisualCrewHeadLevelTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewMotionFeetTest, "SailingSim.Visual.CrewMotionFeet", CrewMotionFlags)
 bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	TArray<FCrewBody> Bodies;
 	CrewBodies(*this, Bodies);
@@ -352,6 +357,7 @@ bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipLimitsTest, "SailingSim.Visual.CrewClipLimits", CrewMotionFlags)
 bool FVisualCrewClipLimitsTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	TestTrue(TEXT("There are clips"), CrewClips::Num() >= 6);
 	int32 Frames = 0, Onsets = 0, OnsetsRight = 0;
@@ -491,6 +497,7 @@ bool FVisualCrewClipLimitsTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipTackTest, "SailingSim.Visual.CrewClipTack", CrewMotionFlags)
 bool FVisualCrewClipTackTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	for (uint32 Seed = 0; Seed < 6; ++Seed)
 	{
@@ -588,6 +595,7 @@ bool FVisualCrewClipTackTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSmokeCrewAnimationTest, "SailingSim.Smoke.CrewAnimation", CrewMotionFlags)
 bool FSmokeCrewAnimationTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingCrewWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
@@ -638,6 +646,7 @@ bool FSmokeCrewAnimationTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualMultihullCrewSeatTest, "SailingSim.Visual.MultihullCrewSeat", CrewMotionFlags)
 bool FVisualMultihullCrewSeatTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	// The Corsair's crew had sat over the water aft of her after aka and her helm on the windward ama, out of reach of the
 	// tiller, every multihull sailor at the main hull's sheer plus 0.1 m. Each sailor on a multihull sits on what is under
 	// them (a hull's deck, the net, trampoline or bridgedeck), apart, the trimaran's helm in her cockpit.
@@ -696,6 +705,7 @@ bool FVisualMultihullCrewSeatTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewHullClearanceTest, "SailingSim.Visual.CrewHullClearance", CrewMotionFlags)
 bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	TArray<FCrewBody> Bodies;
 	CrewBodies(*this, Bodies);
@@ -851,6 +861,7 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewHeldLineTest, "SailingSim.Visual.CrewHeldLine", CrewMotionFlags)
 bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	// The crew's spacing.
 	int32 Pairs = 0;
@@ -1012,6 +1023,7 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewClipVarietyTest, "SailingSim.Visual.CrewClipVariety", CrewMotionFlags)
 bool FVisualCrewClipVarietyTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	constexpr int32 Sailors = 3, Hz = 10, Seconds = 180, Window = 4 * Hz, Gap = 5 * Hz;
 	TArray<FVector> Motion[Sailors];
 	for (int32 I = 0; I < Sailors; ++I)
@@ -1093,6 +1105,7 @@ bool FVisualCrewClipVarietyTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualDinghyStrapTest, "SailingSim.Visual.DinghyStrap", CrewMotionFlags)
 bool FVisualDinghyStrapTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	TArray<FCrewBody> Bodies;
 	CrewBodies(*this, Bodies);
@@ -1201,6 +1214,7 @@ bool FVisualDinghyStrapTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewTackTest, "SailingSim.Visual.CrewTack", CrewMotionFlags)
 bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	const FBoatConfig Cfg = FBoatConfig::Make(EBoatType::J22);
 	const FBoatModel Model(Cfg);
@@ -1390,6 +1404,7 @@ bool FVisualCrewTackTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCockpitEyeTest, "SailingSim.Visual.CockpitEye", CrewMotionFlags)
 bool FVisualCockpitEyeTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	const FBoatConfig Cfg = FBoatConfig::Make(EBoatType::J22);
 	const FBoatModel Model(Cfg);

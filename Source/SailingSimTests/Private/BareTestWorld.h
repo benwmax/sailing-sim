@@ -5,6 +5,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/WorldSettings.h"
+#include "SailingSettings.h"
 
 /**
  * A bare game world for the tests that spawn and tick actors in one, torn down the way the game tears its own down.
@@ -60,4 +61,16 @@ struct FBareTestWorld
 			World->Tick(LEVELTICK_All, 1.f / 60.f);
 		}
 	}
+};
+
+/** Settings > Show crew for a test's length (off by default: the tests that look at the player's crew figures, their poses,
+ *  hands and the lines in them, turn it on; the setting is put back after). */
+struct FScopedShowCrew
+{
+	explicit FScopedShowCrew(bool bShow = true) : bWas(USailingSettings::Get()->bShowCrew) { USailingSettings::Get()->bShowCrew = bShow; }
+	~FScopedShowCrew() { USailingSettings::Get()->bShowCrew = bWas; }
+	FScopedShowCrew(const FScopedShowCrew&) = delete;
+	FScopedShowCrew& operator=(const FScopedShowCrew&) = delete;
+private:
+	bool bWas;
 };

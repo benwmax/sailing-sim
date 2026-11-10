@@ -152,7 +152,7 @@ void ASailboatPawn::UpdateCrewFalls(float DeltaSeconds)
 		bKnockdownDone = true;
 		UE_LOG(LogTemp, Display, TEXT("Crew falls: knockdown at %.1f s (laid over %.0f deg)"), S.Time, KnockdownRate);
 	}
-	if (!bCrewFalls || !CrewControl) return;
+	if (!bCrewFalls || !CrewControl || !bCrewShownApplied) return;   // (no falls while the crew is hidden: Settings > Show crew)
 
 	using namespace CrewFallsTuning;
 	const Sailing::FBoatTelemetry& T = Boat.GetTelemetry();
