@@ -546,6 +546,78 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 	}
 	AddInfo(Drill.GetStatus());
 	TestTrue(TEXT("Hove to within 90 s and held it 20 s"), Drill.IsComplete());
+	{
+		// #603: heave-to's steps follow her state. Hove to (step 4), then the jib let go and the sheets trimmed: past 3 kn
+		// the list is back on backing the jib, not latched on "Stay hove to".
+		FBoatModel Again;
+		Again.Reset(0.0, 0.0, -45.0 * kDegToRad, 4.0 * kKnot);
+		FAutopilot Helm;
+		Helm.TargetTWADeg = 45.0;
+		FAutoTrim T2 = ScriptedTrim();
+		FBoatControls C2;
+		C2.MainSheet = C2.JibSheet = 0.2;
+		for (int32 I = 0; I < int32(30 * PhysicsHz); ++I) { C2 = T2.Update(Again, C2, PhysicsDt); C2.Tiller = Helm.Update(Again); Again.Step(PhysicsDt, C2, Wind); }
+		FDrillRunner Hove;
+		Hove.Start(ESailingDrill::HeaveTo, Again, 0.0);
+		C2.bBackJib = true; C2.JibSheet = 0.1; C2.MainSheet = 0.8; C2.Tiller = 0.0;
+		FDrillContext Backed;
+		Backed.bBackJib = true;
+		bool bHeld = false;
+		for (int32 I = 0; I < int32(60 * PhysicsHz) && !bHeld; ++I)
+		{
+			if (I == int32(6 * PhysicsHz)) C2.Tiller = 0.3;
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Backed, PhysicsDt);
+			bHeld = Hove.GetStep() == 4;
+		}
+		TestTrue(TEXT("Hove to: on \"Stay hove to\""), bHeld);
+		C2.bBackJib = false;
+		FDrillContext Released;
+		double Knots = 0.0;
+		int32 StepAfter = 4;
+		for (int32 I = 0; I < int32(40 * PhysicsHz) && Hove.IsActive(); ++I)
+		{
+			C2 = T2.Update(Again, C2, PhysicsDt);
+			C2.Tiller = Helm.Update(Again);
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Released, PhysicsDt);
+			Knots = Again.GetTelemetry().BoatSpeed / kKnot;
+			StepAfter = Hove.GetStep();
+			if (Knots > 3.0) break;
+		}
+		AddInfo(FString::Printf(TEXT("Jib released: %.1f kn, step %d"), Knots, StepAfter));
+		TestTrue(TEXT("Jib released and sailing past 3 kn: the list goes back to backing the jib"), Knots > 3.0 && StepAfter <= 1);
+	}
+	{
+		// #603: return and dock's step is her speed far from the dock: slowed under 1.5 kn (step 1, "luff to slow down"),
+		// then sailing on past 1.5 kn again, the list goes back to step 0 (the approach), not latched on step 1.
+		FBoatModel Dock;
+		Dock.Reset(0.0, 0.0, 90.0 * kDegToRad, 4.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(ESailingDrill::ReturnAndDock, Dock, 0.0);
+		FAutopilot Hold;
+		Hold.TargetTWADeg = 90.0;
+		FAutoTrim Sheets = ScriptedTrim();
+		FBoatControls DC;
+		auto Sail = [&](bool bLetFly, TFunctionRef<bool(double)> Until)
+		{
+			for (int32 I = 0; I < int32(90 * PhysicsHz); ++I)
+			{
+				DC = Sheets.Update(Dock, DC, PhysicsDt);
+				if (bLetFly) DC.MainSheet = DC.JibSheet = 1.0;
+				Hold.TargetTWADeg = bLetFly ? 15.0 : 90.0;   // shoot up toward the wind to stop, bear away to go
+				DC.Tiller = Hold.Update(Dock);
+				Dock.Step(PhysicsDt, DC, Wind);
+				Run.Update(Dock, FDrillContext(), PhysicsDt);
+				if (Until(Dock.GetTelemetry().BoatSpeed / kKnot)) return true;
+			}
+			return false;
+		};
+		TestTrue(TEXT("Return and dock: shot up with the sheets free, she slows under 1.5 kn"), Sail(true, [](double Kn) { return Kn < 1.2; }));
+		TestEqual(TEXT("... on step 1 (slowed)"), Run.GetStep(), 1);
+		TestTrue(TEXT("... borne away and sheeted in, she is back over 1.5 kn"), Sail(false, [](double Kn) { return Kn > 2.0; }));
+		TestEqual(TEXT("... and the list is back on step 0 (the approach)"), Run.GetStep(), 0);
+	}
 	return true;
 }
 
@@ -599,6 +671,28 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 {
 	// Quick-stop: head up, circle back and stop alongside, steered by a scripted helmsman.
 	const FWindField Wind = WindFrom(10.0, 0.0);
+	// #603: started on a boat just Reset (as the pawn does), on either tack, two and a half seconds of sailing straight on count
+	// no tack: the list stays on its first step (the audit's port start opened on step 3 with 1 and 2 ticked).
+	for (const double HeadingDeg : { -100.0, 100.0, -60.0, 60.0 })
+	for (const ESailingDrill Kind : { ESailingDrill::CrewOverboardQuickStop, ESailingDrill::CrewOverboardFigureEight })
+	{
+		FBoatModel Straight;
+		Straight.Reset(0.0, 0.0, HeadingDeg * kDegToRad, 5.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(Kind, Straight, 0.0);
+		FAutoTrim StraightTrim = ScriptedTrim();
+		FBoatControls SC;
+		int32 MaxStep = 0;
+		for (int32 I = 0; I < int32(2.5 * PhysicsHz); ++I)
+		{
+			SC = StraightTrim.Update(Straight, SC, PhysicsDt);
+			SC.Tiller = 0.0;
+			Straight.Step(PhysicsDt, SC, Wind);
+			Run.Update(Straight, FDrillContext(), PhysicsDt);
+			MaxStep = FMath::Max(MaxStep, Run.GetStep());
+		}
+		TestEqual(FString::Printf(TEXT("%s from a heading of %.0f: no tack counted, still on the first step"), DrillName(Kind), HeadingDeg), MaxStep, 0);
+	}
 	FBoatModel Boat;
 	Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 5.0 * kKnot);
 	FDrillRunner Drill;
@@ -607,7 +701,8 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 	FAutopilot Pilot;
 	Pilot.MaxTiller = 0.7;
 	FBoatControls C;
-	bool bBelow = false;
+	bool bBelow = false, bStepBack = false;
+	TArray<int32> StepsSeen;
 	double T = 0.0;
 	for (int32 I = 0; I < int32(240 * PhysicsHz) && Drill.IsActive(); ++I, T += PhysicsDt)
 	{
@@ -636,9 +731,15 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 		if (bBelow && Dist < 40.0 && Boat.GetTelemetry().BoatSpeed > ApproachSpeed(Dist)) { C.MainSheet = 1.0; C.JibSheet = 1.0; }
 		C.Tiller = Pilot.Update(Boat);
 		Boat.Step(PhysicsDt, C, Wind);
+		const int32 Before = Drill.GetStep();
 		Drill.Update(Boat, FDrillContext(), PhysicsDt);
+		// #603: the list never goes back (the person drifting past 15 m had put "approach" back to "keep turning").
+		if (Drill.IsActive() && Drill.GetStep() < Before) { bStepBack = true; }
+		StepsSeen.AddUnique(Drill.GetStep());
 	}
 	AddInfo(Drill.GetStatus());
+	TestFalse(TEXT("The step list never went back"), bStepBack);
+	TestTrue(TEXT("Every step was shown on the way"), StepsSeen.Contains(0) && StepsSeen.Contains(1) && StepsSeen.Contains(2));
 	TestTrue(TEXT("Recovered the person overboard (stopped within 3 m)"), Drill.IsComplete());
 	return true;
 }
