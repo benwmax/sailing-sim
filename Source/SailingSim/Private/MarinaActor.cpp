@@ -828,13 +828,51 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	// end wall toward the lot, one at the back toward the pool.
 	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.35), Floor - 0.07f), FVector(1.1f, 0.35f, 0.07f), B.HeadingDeg);
 	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.75), GZ(L(-7.0, HY + PD + 0.75)) + 0.02f), FVector(1.1f, 0.3f, 0.07f), B.HeadingDeg);
-	G[EKitLook::Metal].Box(At(L(-7.0, HY + 0.03), Floor + 1.1f), FVector(0.9f, 0.04f, 1.1f), B.HeadingDeg);
-	G[EKitLook::Trim].Box(At(L(-7.0, HY + 0.05), Floor + 2.27f), FVector(1.05f, 0.05f, 0.07f), B.HeadingDeg);
-	G[EKitLook::Metal].Box(At(L(HX + 0.03, 0.0), Floor + 1.05f), FVector(0.04f, 0.5f, 1.05f), B.HeadingDeg);
-	G[EKitLook::Metal].Box(At(L(-11.0, -HY - 0.03), Floor + 1.05f), FVector(0.5f, 0.04f, 1.05f), B.HeadingDeg);
+	// A door W wide (one leaf or a pair) in the wall face through local (CX, CY): along X (a long wall) or along Y (an end
+	// wall), opening toward OutSign. A trim frame and head, an aluminium threshold; each leaf in the Door look with raised
+	// stiles and rails (the lower panel and the glass light in the upper one sit 2.4 cm behind them) and a pull handle on
+	// standoffs (docs/club-door: it was a bare Metal slab, a flat grey rectangle from the water).
+	auto DoorAt = [&](double CX, double CY, bool bAlongX, double OutSign, int32 Leaves, float W)
+	{
+		auto P = [&](double A, double O) { return bAlongX ? L(CX + A, CY + OutSign * O) : L(CX + OutSign * O, CY + A); };
+		auto E = [&](float A, float O, float Z) { return bAlongX ? FVector(A, O, Z) : FVector(O, A, Z); };
+		constexpr float H = 2.18f, SW = 0.075f, Face = 0.062f;
+		const float HW = 0.5f * W, LW = W / Leaves;
+		for (const float S : { -1.f, 1.f }) G[EKitLook::Trim].Box(At(P(S * (HW + 0.06f), 0.04), Floor + 0.5f * (H + 0.08f)), E(0.06f, 0.05f, 0.5f * (H + 0.08f)), B.HeadingDeg);
+		G[EKitLook::Trim].Box(At(P(0.0, 0.05), Floor + H + 0.09f), E(HW + 0.13f, 0.05f, 0.07f), B.HeadingDeg);
+		G[EKitLook::Metal].Box(At(P(0.0, 0.05), Floor + 0.01f), E(HW, 0.06f, 0.012f), B.HeadingDeg);
+		for (int32 I = 0; I < Leaves; ++I)
+		{
+			const double LC = -HW + LW * (I + 0.5);
+			const float LH = 0.5f * LW - 0.005f;
+			G[EKitLook::Door].Box(At(P(LC, 0.025), Floor + 0.01f + 0.5f * H), E(LH, 0.025f, 0.5f * H), B.HeadingDeg);
+			for (const float S : { -1.f, 1.f }) G[EKitLook::Door].Box(At(P(LC + S * (LH - SW), Face), Floor + 0.01f + 0.5f * H), E(SW, 0.012f, 0.5f * H), B.HeadingDeg);
+			for (const TPair<float, float>& R : { TPair<float, float>(0.13f, 0.12f), TPair<float, float>(1.02f, 0.07f), TPair<float, float>(H - 0.05f, 0.06f) })
+				G[EKitLook::Door].Box(At(P(LC, Face), Floor + R.Key), E(LH, 0.012f, R.Value), B.HeadingDeg);
+			const float Z0 = Floor + 1.09f, Z1 = Floor + H - 0.11f;
+			G[EKitLook::Glass].Box(At(P(LC, 0.053), 0.5f * (Z0 + Z1)), E(LH - 2.f * SW - 0.03f, 0.004f, 0.5f * (Z1 - Z0) - 0.04f), B.HeadingDeg);
+			const double HX2 = Leaves == 2 ? (I == 0 ? LC + LH - 0.12 : LC - LH + 0.12) : LC + LH - 0.10;
+			G[EKitLook::Metal].Cylinder(At(P(HX2, 0.11), Floor + 0.85f), 0.014f, 0.36f, 8);
+			for (const float Z : { 0.9f, 1.16f }) G[EKitLook::Metal].Box(At(P(HX2, 0.085), Floor + Z), E(0.012f, 0.028f, 0.012f), B.HeadingDeg);
+		}
+	};
+	DoorAt(-7.0, HY, true, 1.0, 2, 1.8f);      // the double doors onto the porch
+	DoorAt(HX, 0.0, false, 1.0, 1, 1.0f);      // the north-east end, toward the lot
+	DoorAt(-11.0, -HY, true, -1.0, 1, 1.0f);   // the back, toward the pool
 
-	// Walks from the steps to the nearest end of the shore walkway and to the ramp pier's landward end, with bollards.
+	// Walks from the steps to the nearest end of the shore walkway and to the ramp pier's landward end, with bollards. A
+	// level landing at the foot of the steps (1 cm over the walks, its edge sunk into the ground where it falls away) takes
+	// both walks' first slabs under it: they used to start on the same spot at their own slopes and overlap there in
+	// visible steps (docs/club-door).
 	const FVector2D Steps = L(-7.0, HY + PD + 1.1);
+	{
+		constexpr float PadHX = 1.3f, PadHY = 1.15f, PadHZ = 0.1f;
+		const FVector2D PadC = L(-7.0, HY + PD + 1.05 + PadHY);
+		float Top = GZ(PadC);
+		for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) Top = FMath::Max(Top, GZ(L(-7.0 + SX * PadHX, HY + PD + 1.05 + PadHY + SY * PadHY)));
+		Top += 0.05f;
+		G[EKitLook::Concrete].Box(At(PadC, Top - PadHZ), FVector(PadHX, PadHY, PadHZ), B.HeadingDeg);
+	}
 	auto Nearest = [&](const TArray<FVector2D>& Pts) { FVector2D Best = Pts[0]; for (const FVector2D& Q : Pts) if (FVector2D::Distance(Q, Steps) < FVector2D::Distance(Best, Steps)) Best = Q; return Best; };
 	for (const FMarinaLine& W : Marina.Walkways) if (W.Points.Num()) { const FVector2D E = Nearest(W.Points); Walk(Steps, E, 1.8f); Bollards(Steps, E); }
 	for (const FMarinaLine& P : Marina.Piers)
