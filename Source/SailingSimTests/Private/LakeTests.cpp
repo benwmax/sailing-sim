@@ -545,6 +545,48 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 	}
 	AddInfo(Drill.GetStatus());
 	TestTrue(TEXT("Hove to within 90 s and held it 20 s"), Drill.IsComplete());
+	{
+		// #603: heave-to's steps follow her state. Hove to (step 4), then the jib let go and the sheets trimmed: past 3 kn
+		// the list is back on backing the jib, not latched on "Stay hove to".
+		FBoatModel Again;
+		Again.Reset(0.0, 0.0, -45.0 * kDegToRad, 4.0 * kKnot);
+		FAutopilot Helm;
+		Helm.TargetTWADeg = 45.0;
+		FAutoTrim T2 = ScriptedTrim();
+		FBoatControls C2;
+		C2.MainSheet = C2.JibSheet = 0.2;
+		for (int32 I = 0; I < int32(30 * PhysicsHz); ++I) { C2 = T2.Update(Again, C2, PhysicsDt); C2.Tiller = Helm.Update(Again); Again.Step(PhysicsDt, C2, Wind); }
+		FDrillRunner Hove;
+		Hove.Start(ESailingDrill::HeaveTo, Again, 0.0);
+		C2.bBackJib = true; C2.JibSheet = 0.1; C2.MainSheet = 0.8; C2.Tiller = 0.0;
+		FDrillContext Backed;
+		Backed.bBackJib = true;
+		bool bHeld = false;
+		for (int32 I = 0; I < int32(60 * PhysicsHz) && !bHeld; ++I)
+		{
+			if (I == int32(6 * PhysicsHz)) C2.Tiller = 0.3;
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Backed, PhysicsDt);
+			bHeld = Hove.GetStep() == 4;
+		}
+		TestTrue(TEXT("Hove to: on \"Stay hove to\""), bHeld);
+		C2.bBackJib = false;
+		FDrillContext Released;
+		double Knots = 0.0;
+		int32 StepAfter = 4;
+		for (int32 I = 0; I < int32(40 * PhysicsHz) && Hove.IsActive(); ++I)
+		{
+			C2 = T2.Update(Again, C2, PhysicsDt);
+			C2.Tiller = Helm.Update(Again);
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Released, PhysicsDt);
+			Knots = Again.GetTelemetry().BoatSpeed / kKnot;
+			StepAfter = Hove.GetStep();
+			if (Knots > 3.0) break;
+		}
+		AddInfo(FString::Printf(TEXT("Jib released: %.1f kn, step %d"), Knots, StepAfter));
+		TestTrue(TEXT("Jib released and sailing past 3 kn: the list goes back to backing the jib"), Knots > 3.0 && StepAfter <= 1);
+	}
 	return true;
 }
 
@@ -598,7 +640,7 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 {
 	// Quick-stop: head up, circle back and stop alongside, steered by a scripted helmsman.
 	const FWindField Wind = WindFrom(10.0, 0.0);
-	// #603: started on a boat just Reset (as the pawn does), on either tack, three seconds of sailing straight on count
+	// #603: started on a boat just Reset (as the pawn does), on either tack, two and a half seconds of sailing straight on count
 	// no tack: the list stays on its first step (the audit's port start opened on step 3 with 1 and 2 ticked).
 	for (const double HeadingDeg : { -100.0, 100.0, -60.0, 60.0 })
 	for (const ESailingDrill Kind : { ESailingDrill::CrewOverboardQuickStop, ESailingDrill::CrewOverboardFigureEight })

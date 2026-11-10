@@ -143,7 +143,8 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 		else if (Side != LastSide) { ++TacksOrGybes; LastSide = Side; }
 	}
 	// #603: a step once reached stays reached (the panel never un-ticks one: quick-stop fell back from "approach" to
-	// "keep turning" as the person drifted past 15 m).
+	// "keep turning" as the person drifted past 15 m). Not heave-to: its steps are the state she is in (backed, slow, held),
+	// and a boat that sails off again has to back the jib again.
 	const int32 Reached = Step;
 
 	switch (Drill)
@@ -219,7 +220,7 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	default:
 		break;
 	}
-	if (!bComplete) Step = FMath::Max(Step, Reached);
+	if (!bComplete && Drill != ESailingDrill::HeaveTo) Step = FMath::Max(Step, Reached);
 	return !bComplete;
 }
 
