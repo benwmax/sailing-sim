@@ -841,12 +841,13 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		FMover Away;   // off the dock (9 m): a 1.5 kn ram, then 2 s clear and a 0.8 kn touch on the net: two
 		Run(Away, 1, 0.0, true, Never);
 		Run(Away, 360, 3.0, false, Never);
+		Run(Away, 30, 1.5, false, Never);   // slowed to 1.5 kn before the dock
 		Run(Away, 30, 1.5, false, Always);
 		Run(Away, 120, 1.0, false, Never);
 		Run(Away, 30, 0.8, false, Always);
 		TestEqual(TEXT("Off the dock: two touches 2 s apart"), Away.C.Collisions, 2);
 		TestTrue(FString::Printf(TEXT("... the hardest the ram's 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
-		FMover Ram;   // in the grace: reversed off, then driven into the dock at 1.5 kn (net over 2 s near zero): a ram
+		FMover Ram;   // in the grace: reversed off, then driven into the dock at 1.5 kn (net over 2 s near zero): a ram on its approach
 		Run(Ram, 1, 0.0, true, Never);
 		Run(Ram, 120, 0.0, false, Never);
 		Run(Ram, 60, -1.0, false, Never);
@@ -859,6 +860,7 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		Run(Head, 1, 0.0, true, Always);
 		Run(Head, 120, 0.3, false, Never);
 		TestFalse(TEXT("Still in the grace (0.6 m off)"), Head.C.IsGraceOver());
+		Run(Head, 30, 1.2, false, Never);
 		Run(Head, 20, 1.2, false, Always);
 		TestEqual(TEXT("... and driving into the slip's head at 1.2 kn counts"), Head.C.Collisions, 1);
 		FMover Lying;   // under way: a touch on the net at 1 kn, then lying alongside, the hull speed spiking to 2.4 kn
@@ -867,6 +869,27 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		for (int32 I = 0; I < 300; ++I) { Lying.C.Update(true, false, I % 10 == 0 ? 2.4 : 0.1, Lying.P, Dt); }
 		TestEqual(TEXT("Lying alongside after a touch: still one"), Lying.C.Collisions, 1);
 		TestTrue(FString::Printf(TEXT("... its hardest the net speed, not the 2.4 kn spikes in its first 0.5 s (%.2f)"), Lying.C.MaxKnots), Lying.C.MaxKnots > 0.5 && Lying.C.MaxKnots < 1.1);
+		FMover Spike;   // a fresh touch at 0.3 kn after 1 s clear, the spring's 2.4 kn spike on its third frame: no ram
+		Run(Spike, 1, 0.0, true, Never);
+		Run(Spike, 90, 0.3, false, Never);
+		Run(Spike, 2, 0.3, false, Always);
+		Spike.C.Update(true, false, 2.4, Spike.P, Dt);
+		Run(Spike, 20, 0.3, false, Always);
+		TestEqual(TEXT("A 0.3 kn touch with a 2.4 kn spring spike, in the grace: not a ram"), Spike.C.Collisions, 0);
+		FMover SpikePast;   // the same past the grace: counted on the net (or not), its hardest under 1 kn
+		Run(SpikePast, 1, 0.0, true, Never);
+		Run(SpikePast, 1300, 0.6, false, Never);
+		Run(SpikePast, 120, 0.3, false, Never);
+		Run(SpikePast, 2, 0.3, false, Always);
+		SpikePast.C.Update(true, false, 2.4, SpikePast.P, Dt);
+		Run(SpikePast, 20, 0.3, false, Always);
+		TestTrue(FString::Printf(TEXT("... past the grace its hardest is under 1 kn (%.2f)"), SpikePast.C.MaxKnots), SpikePast.C.MaxKnots < 1.0);
+		FMover Minute;   // cast off and lying alongside 70 s (past the 60 s timeout, but never clear), then 1 kn along the face 2 s
+		Run(Minute, 1, 0.0, true, Always);
+		Run(Minute, 70 * 60, 0.0, false, Always);
+		TestFalse(TEXT("Lying alongside 70 s: still the grace (never clear)"), Minute.C.IsGraceOver());
+		Run(Minute, 120, 1.0, false, Always);
+		TestEqual(TEXT("... then sliding along the face at 1 kn for 2 s: nothing"), Minute.C.Collisions, 0);
 		FMover Underway;   // a drill that starts under way (no cast-off): the first touch counts
 		Run(Underway, 60, 0.6, false, [](int32 I) { return I >= 40; });
 		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.C.Collisions, 1);

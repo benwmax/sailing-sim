@@ -118,22 +118,26 @@ void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const F
 		bGraceOver = false;
 		bCounted = bFresh = false;
 		Clear = 0.0;   // tied up is lying against the dock: a touch carried on from it is never fresh
+		LastKnots = Knots;
 		return;
 	}
 	SinceCastOff += Dt;
-	if (!bGraceOver && (FVector2D::Distance(Position, CastOffAt) > GraceMeters || SinceCastOff >= GraceSeconds)) bGraceOver = true;
+	if (!bGraceOver && (FVector2D::Distance(Position, CastOffAt) > GraceMeters || (SinceCastOff >= GraceSeconds && Clear >= RejoinSeconds))) bGraceOver = true;
 	// A new touch begins with contact after RejoinSeconds clear (fresh); until then it is the same touch.
-	if (bCollision && Clear >= RejoinSeconds) { bCounted = bRam = false; bFresh = true; TouchAge = 0.0; }
+	const double Approach = LastKnots;
+	LastKnots = Knots;
+	const bool bOnset = bCollision && Clear >= RejoinSeconds;
+	if (bOnset) { bCounted = bRam = false; bFresh = true; TouchAge = 0.0; }
 	else if (bCollision) TouchAge += Dt;
 	Clear = bCollision ? 0.0 : Clear + Dt;
 	if (!bCollision) return;
 	if (bCounted) CountedAge += Dt;
-	else if (bFresh && TouchAge <= OnsetSeconds && Knots >= RamKnots)
+	else if (bOnset && Approach >= RamKnots)
 	{
 		++Collisions;
 		bCounted = bRam = true;
 		CountedAge = 0.0;
-		MaxKnots = FMath::Max(MaxKnots, Knots);   // the ram's speed at first contact
+		MaxKnots = FMath::Max(MaxKnots, Approach);   // the ram's approach, the step before the contact
 		return;
 	}
 	else if (bGraceOver && LastNetKnots >= TouchKnots)

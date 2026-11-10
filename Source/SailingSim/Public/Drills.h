@@ -34,9 +34,11 @@ struct FDrillContext
  *   berth leaves her 0.1 m past the contact margin and her lines 0.2 m of slack: she logged 43 touches before cast-off).
  * - Just cast off she lies there, the contact flickering as she luffs alongside and swinging against the dock (a 20
  *   degree pivot moved the Sunfish's origin 0.7 m in a second): the grace lasts until she is GraceMeters (about a hull
- *   length: the caller sets it) from where she cast off, or GraceSeconds have passed. In it only a ram counts.
- * - A ram: a fresh touch (after RejoinSeconds clear) at a hull speed of RamKnots in its first OnsetSeconds (reversed
- *   off and driven back in, or driven ahead into the slip's head). Its hardest is that hull speed.
+ *   length: the caller sets it) from where she cast off, or GraceSeconds have passed with her clear of the dock (lying
+ *   alongside a minute is still the grace). In it only a ram counts.
+ * - A ram: a fresh touch (after RejoinSeconds clear) with an approach of RamKnots: the hull speed of the step before
+ *   the contact (the contact spring acts in the step that sets it). Reversed off and driven back in, or driven ahead into
+ *   the slip's head. Its hardest is that approach speed.
  * - Past the grace a touch also counts once she is getting somewhere: TouchKnots net over the last NetSeconds (at a dock
  *   the contact spring bounces her: hull speed spiked to 2.4 kn while she moved 0.6 m in 30 s). Its hardest is that
  *   net speed, the most it reaches in the OnsetSeconds after it counts.
@@ -76,6 +78,7 @@ private:
 	double Clear = 1e9;       // seconds since the last contact (tied up counts as contact)
 	double TouchAge = 0.0;    // seconds since the touch under way began
 	double CountedAge = 0.0;  // seconds since the touch under way was counted
+	double LastKnots = 0.0;   // the hull speed at the previous Update (a fresh touch's approach)
 };
 
 /**
