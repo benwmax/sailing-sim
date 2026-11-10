@@ -605,6 +605,8 @@ private:
 	void SetupCrewFalls();
 	void UpdateCrewFalls(float DeltaSeconds);
 	void SetCrewPhysicsActive(bool bActive);
+	/** Crew falls' recovery: the bodies back on their animation (kinematic, controls off, physics off). */
+	void StandCrewUp();
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
 	float ShownCrewOffset = 0.f, ShownCrewOffsetV = 0.f; bool bShownCrewOffset = false; // round 10: a dinghy sailor's offset, smoothed

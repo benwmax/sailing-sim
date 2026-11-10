@@ -44,6 +44,7 @@ namespace SailSaveTestsLocal
 		T.bLearningMode = false;
 		T.bTrimAssist = false;
 		T.bShowHud = false;
+		T.bShowCrew = true;   // (the default is off)
 		T.Volume = 0.35f;
 		T.ResolutionScale = 75;
 		T.FrameCap = 60;
@@ -152,6 +153,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("learning mode"), Y.bLearningMode, X.bLearningMode);
 	TestEqual(TEXT("trim assist"), Y.bTrimAssist, X.bTrimAssist);
 	TestEqual(TEXT("show hud"), Y.bShowHud, X.bShowHud);
+	TestEqual(TEXT("show crew"), Y.bShowCrew, X.bShowCrew);
 	TestEqual(TEXT("volume"), Y.Volume, X.Volume);
 	TestEqual(TEXT("resolution"), Y.ResolutionScale, X.ResolutionScale);
 	TestEqual(TEXT("frame cap"), Y.FrameCap, X.FrameCap);
@@ -328,6 +330,7 @@ bool FSailingSaveMigrationTest::RunTest(const FString&)
 	FString Message;
 	TestEqual(TEXT("Current version reads as is"), int32(FSailSave::FromJson(Fixture, Save, &Message)), int32(FSailSave::EResult::Ok));
 	TestTrue(TEXT("Ultra"), Save.Settings.Quality == ESailingQuality::Ultra);
+	TestFalse(TEXT("No showCrew key (an older file): off"), Save.Settings.bShowCrew);
 	TestEqual(TEXT("mph"), Save.Settings.SpeedUnits, FString(TEXT("mph")));
 	TestEqual(TEXT("Wind"), Save.Last.WindKn, 22.f);
 	TestEqual(TEXT("Both drills kept"), Save.Progress.DrillsPassed.Num(), 2);

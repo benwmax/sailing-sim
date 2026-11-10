@@ -1485,7 +1485,7 @@ void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const 
 	const ENoGoCue Cue = NoGoCueFor(T, Easy);
 	if (bEasyRecovering)
 	{
-		Tips.Add({ TEXT("In irons: the jib is backed and the tiller held over to push the bow off. Next time do it yourself: tiller toward the boom, jib held out on the side the bow should go."), 2 });
+		Tips.Add({ TEXT("In irons: the jib is backed to push the bow off. Next time do it yourself: hold the jib out on the side the wind comes from (opposite where the bow should go), and as she drifts back push the tiller toward the side you want the bow to go."), 2 });
 	}
 	else if (T.bInIrons)
 	{

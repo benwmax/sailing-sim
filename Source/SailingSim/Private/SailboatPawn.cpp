@@ -2191,7 +2191,8 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 		const FTransform Root = BoatRoot->GetComponentTransform();
 		for (int32 K = 0; K + 1 < Crew.Num(); ++K)
 		{
-			if (Crew[K] && Crew[K]->GetBoneIndex(TEXT("head")) != INDEX_NONE) EI.Heads.Add(Root.InverseTransformPositionNoScale(Crew[K]->GetBoneLocation(TEXT("head"))));
+			// (a hidden crew's heads are not in the way: Settings > Show crew)
+			if (Crew[K] && Crew[K]->IsVisible() && Crew[K]->GetBoneIndex(TEXT("head")) != INDEX_NONE) EI.Heads.Add(Root.InverseTransformPositionNoScale(Crew[K]->GetBoneLocation(TEXT("head"))));
 		}
 		// The boom over the eye: within 30 cm across of its line from the gooseneck, along its foot.
 		const double Along = (C.MainLuffX * CmPerMeter - Eye.X) / FMath::Max(FMath::Cos(S.BoomAngle), 0.2);
@@ -2357,7 +2358,8 @@ void ASailboatPawn::UpdateCrewShown()
 		if (!bShow) Figure->VisibilityBasedAnimTickOption = bHelm ? EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones : EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
 		else if (bWasHidden) Figure->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
 	}
-	if (!bShow && bCrewFalls) SetCrewPhysicsActive(false);
+	// Hidden mid-fall: the recovery path (bodies back on their animation) and the fall forgotten.
+	if (!bShow && bCrewFalls) { StandCrewUp(); CrewFalls.Reset(); }
 	SAIL_LOG(Display, TEXT("Crew figures %s (%d)"), bShow ? TEXT("shown") : TEXT("hidden"), Crew.Num());
 }
 
@@ -4217,7 +4219,8 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 				// round the camera alone cost 1.1 ms of GPU on High (perf-2).
 				// The helm's own figure always (the eye is in its head, docs/helm-eye/): its origin is the boat's, so the
 				// distance alone left its legs and tiller arm across the view.
-				if (Figure) Figure->SetVisibility(Figure != Crew.Last() && FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
+				// (and never shows a crew Settings > Show crew hides)
+				if (Figure) Figure->SetVisibility(bCrewShownApplied && Figure != Crew.Last() && FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
 			}
 		}
 	}

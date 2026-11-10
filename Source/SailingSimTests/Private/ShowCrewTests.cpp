@@ -49,6 +49,7 @@ bool FSailingShowCrewTest::RunTest(const FString&)
 	TestTrue(TEXT("... the helm still posed (its head is the cockpit eye)"),
 		Crew.Last()->VisibilityBasedAnimTickOption == EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones);
 	TestTrue(TEXT("... the others resting"), Crew[0]->VisibilityBasedAnimTickOption == EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered);
+	TestTrue(TEXT("The AI boat has crew"), Ai->GetCrewMeshes().Num() > 0);
 	TestEqual(TEXT("The AI boat keeps its crew"), Shown(Ai->GetCrewMeshes(), Visible), Ai->GetCrewMeshes().Num());
 	USailingSettings::Get()->bShowCrew = true;
 	W.Tick(2);
