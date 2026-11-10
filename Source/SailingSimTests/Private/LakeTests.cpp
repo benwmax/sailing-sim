@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "AutoTrim.h"
 #include "Drills.h"
+#include "SailingHUD.h"
 #include "FixedStepper.h"
 #include "LakeData.h"
 #include "LakeTerrain.h"
@@ -1150,6 +1151,79 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 	const float OverSlab = At(Head + R.Dir * T);
 	TestTrue(FString::Printf(TEXT("Over the slab, the water over it (%.2f m, slab %.2f m down)"), OverSlab, -SlabZ),
 		OverSlab >= 0.f && OverSlab <= float(-SlabZ) + 0.15f);
+	return true;
+}
+
+/**
+ * #598: a lesson's start is not in the no-go zone, and nobody on the helm she doesn't get there before the player has had
+ * time to take it: from Return and dock's start (FDrillRunner::ReturnStartMinTwaDeg off the wind at worst; Easy, trim
+ * assist on, the tiller centred, as a new player starts), the first SailingNoGoTipHoldSeconds keep the true wind outside
+ * Easy's warning band, for the J/22 and the Sunfish (weather helm rounds both up: from the old 60 degrees the J/22 was at 52
+ * after 10 s, the Sunfish at 42). And the no-go tips wait for that hold, while irons still shows at once.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStartNotPinchingTest, "SailingSim.Drills.StartNotPinching", Flags)
+bool FSailingStartNotPinchingTest::RunTest(const FString& Parameters)
+{
+	for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish })
+	for (const double StartTwa : { FDrillRunner::ReturnStartMinTwaDeg, -FDrillRunner::ReturnStartMinTwaDeg, 120.0 })
+	{
+		FBoatModel Boat(FBoatConfig::Make(Type));
+		FEasyAssists Easy;
+		Easy.bEnabled = true;
+		Easy.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+		FAutoTrim Trim;
+		Easy.ApplyTo(Trim.Settings);
+		FEasyHelm Helm;
+		const FWindField Wind = WindFrom(10.0, 0.0);
+		Boat.Reset(0.0, 0.0, StartTwa * kDegToRad, 2.0 * kKnot);   // the drill's start: 2 kn, sheets at 0.6, tiller centred
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.6;
+		double MinTwa = 180.0;
+		for (int32 I = 0; I < int32(SailingNoGoTipHoldSeconds * PhysicsHz); ++I)
+		{
+			const FBoatControls Before = C;
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Before.Tiller;
+			Boat.Step(PhysicsDt, Helm.Update(Boat, C, Easy, PhysicsDt), Wind);
+			MinTwa = FMath::Min(MinTwa, FMath::Abs(Boat.GetTelemetry().TrueWindAngle) * kRadToDeg);
+		}
+		const FString Name = FString::Printf(TEXT("%s from TWA %.0f"), Type == EBoatType::J22 ? TEXT("J/22") : TEXT("Sunfish"), StartTwa);
+		AddInfo(FString::Printf(TEXT("%s: lowest TWA %.0f in the first %.0f s"), *Name, MinTwa, SailingNoGoTipHoldSeconds));
+		TestTrue(FString::Printf(TEXT("%s: outside Easy's warning band (%.0f) for the hold"), *Name, Easy.NoGoWarnDeg()), MinTwa >= Easy.NoGoWarnDeg());
+	}
+	// The tips: pinching just after the start, nothing about the no-go zone; after the hold, the cue; in irons at once.
+	FEasyAssists Easy;
+	Easy.bEnabled = true;
+	FBoatControls C;
+	FBoatTelemetry T;
+	T.TrueWindAngle = 30.0 * kDegToRad;
+	auto Has = [](const TArray<TPair<FString, int32>>& Out, const TCHAR* S) { return Out.ContainsByPredicate([S](const TPair<FString, int32>& P) { return P.Key.Contains(S); }); };
+	TArray<TPair<FString, int32>> Held, After, Irons;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Held, true);
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, After, false);
+	TestFalse(TEXT("Held: no \"Too close to the wind\""), Has(Held, TEXT("Too close to the wind")));
+	TestTrue(TEXT("After the hold: \"Too close to the wind\""), Has(After, TEXT("Too close to the wind")));
+	T.bInIrons = true;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Irons, true);
+	TestTrue(TEXT("In irons shows during the hold"), Has(Irons, TEXT("head to wind")));
+	// The pawn's clock for the hold (FSailStartClock, ASailboatPawn::GetSecondsSinceStart): a reset anchors it on the boat
+	// clock as it carries on (100 s in), time held by the UI (loading, briefing) is left out, and a reset while held starts
+	// counting only when the UI lets her go.
+	FSailStartClock Clock;
+	Clock.Reset(100.0);
+	TestEqual(TEXT("Just reset"), Clock.Seconds(100.0), 0.0);
+	TestEqual(TEXT("4 s later"), Clock.Seconds(104.0), 4.0);
+	Clock.Hold(true, 104.0);
+	TestEqual(TEXT("Held 20 s (a menu): the clock stops"), Clock.Seconds(124.0), 4.0);
+	Clock.Hold(false, 124.0);
+	TestEqual(TEXT("Released, 3 s on: 7"), Clock.Seconds(127.0), 7.0);
+	Clock.Hold(true, 130.0);
+	Clock.Reset(130.0);   // a lesson starts behind its loading screen and briefing
+	TestEqual(TEXT("Reset while held: 0 through the loading"), Clock.Seconds(160.0), 0.0);
+	Clock.Hold(false, 160.0);
+	TestEqual(TEXT("Let go after 30 s of loading: 0, then counting"), Clock.Seconds(160.0), 0.0);
+	TestTrue(TEXT("... 9 s after it is still in the hold"), Clock.Seconds(169.0) < SailingNoGoTipHoldSeconds);
+	TestTrue(TEXT("... 11 s after it is past"), Clock.Seconds(171.0) > SailingNoGoTipHoldSeconds);
 	return true;
 }
 

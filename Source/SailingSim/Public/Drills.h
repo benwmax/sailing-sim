@@ -80,9 +80,12 @@ public:
 	static TArray<FString> DinghySteps(ESailingDrill Drill);
 
 	/** Return and dock's start heading (#510): toward the dock (BearingRad, map frame, as FMath::Atan2(dY, dX)) unless
-	 *  that is within MinTwaDeg of the wind (WindFromRad), then a close reach on the side nearer the dock, so the lesson
-	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. */
-	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = 60.0);
+	 *  that is within MinTwaDeg of the wind (WindFromRad), then a beam reach on the side nearer the dock, so the lesson
+	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. #598: 80 degrees,
+	 *  not 60: with the tiller centred her weather helm rounds her up, and from 60 the J/22 was in Easy's warning band
+	 *  inside ten seconds (the Sunfish in the no-go zone); from 80 both stay clear for ten (SailingSim.Drills.StartNotPinching). */
+	static constexpr double ReturnStartMinTwaDeg = 80.0;
+	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = ReturnStartMinTwaDeg);
 
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);
