@@ -1,0 +1,5 @@
+2026-11-10 13:39:15 on-1080-windowed: dpi-aware line True; session 1920x1080 (window mode 2); [2026.11.10-19.37.48:283][  0]LogWindows:     resolution: 3840x2160, work area: (0, 0) -> (3840, 2088), device: '\\.\DISPLAY1' [PRIMARY]; png True
+2026-11-10 13:39:59 off-1080-windowed: dpi-aware line False; session 1920x1080 (window mode 2); [2026.11.10-19.39.18:310][  0]LogWindows:     resolution: 2560x1440, work area: (0, 0) -> (2560, 1392), device: '\\.\DISPLAY1' [PRIMARY]; png True
+2026-11-10 13:40:43 on-4k-fullscreen: dpi-aware line True; session 3840x2160 (window mode 1); [2026.11.10-19.40.01:852][  0]LogWindows:     resolution: 3840x2160, work area: (0, 0) -> (3840, 2088), device: '\\.\DISPLAY1' [PRIMARY]; png True
+2026-11-10 13:41:27 on-4k-windowed: dpi-aware line True; session 3840x2160 (window mode 2); [2026.11.10-19.40.46:379][  0]LogWindows:     resolution: 3840x2160, work area: (0, 0) -> (3840, 2088), device: '\\.\DISPLAY1' [PRIMARY]; png True
+2026-11-10 13:41:27 DPI DONE
