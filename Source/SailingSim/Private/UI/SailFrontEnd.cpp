@@ -9,6 +9,8 @@
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/Console.h"
+#include "Widgets/SViewport.h"
 #include "Widgets/SWindow.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
@@ -368,7 +370,41 @@ EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 		}
 	}
 	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, bConditions ? Blend : Pending.Conditions, Time);
+	KeepFocusInMenus();
 	return EActiveTimerReturnType::Continue;
+}
+
+void SSailFrontEnd::KeepFocusInMenus()
+{
+	if (!FSlateApplication::IsInitialized()) return;
+	FSlateApplication& App = FSlateApplication::Get();
+	const TSharedPtr<SWidget> Now = App.GetUserFocusedWidget(0);
+	const TSharedRef<SWidget> Self = AsShared();
+	if (Now.Get() == &Self.Get()) return;
+	if (Now.IsValid() && HasUserFocusedDescendants(0))
+	{
+		LastFocused = Now;
+		return;
+	}
+	if (bTravelling || !App.IsActive()) return;
+	// Only take it back from the game's viewport, its window or nobody: a console or another window keeps it.
+	const TSharedPtr<SWindow> Window = App.FindWidgetWindow(Self);
+	if (!Window.IsValid()) return;
+	UGameViewportClient* const Client = GEngine ? GEngine->GameViewport : nullptr;
+	if (Client && Client->ViewportConsole && Client->ViewportConsole->ConsoleActive()) return;
+	const TSharedPtr<SViewport> GameViewport = Client ? Client->GetGameViewportWidget() : TSharedPtr<SViewport>();
+	const SWidget* const NowPtr = Now.Get();
+	const bool bReclaim = !NowPtr || NowPtr == static_cast<const SWidget*>(Window.Get()) || (GameViewport.IsValid() && NowPtr == static_cast<const SWidget*>(GameViewport.Get()));
+	if (!bReclaim) return;
+	// At most four tries a second (a target that can't take focus yet would otherwise be retried, and logged, every frame).
+	const double Time = FPlatformTime::Seconds();
+	if (Time < FocusReclaimAt) return;
+	FocusReclaimAt = Time + 0.25;
+	const TSharedPtr<SWidget> Last = LastFocused.Pin();
+	SAIL_LOG(Display, TEXT("Menus: focus was on %s; back to %s"), NowPtr ? *NowPtr->GetTypeAsString() : TEXT("nothing"), Last.IsValid() ? TEXT("the last focused item") : TEXT("the screen's default"));
+	if (Last.IsValid() && App.SetUserFocus(0, Last, EFocusCause::SetDirectly)) return;
+	LastFocused.Reset();
+	FocusCurrent();
 }
 
 ASailboatPawn* SSailFrontEnd::Pawn() const
@@ -444,6 +480,7 @@ void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 	using namespace SailFrontEndImpl;
 	Body->SetContent(E.Content.ToSharedRef());
 	Footer->SetContent(E.Footer.IsValid() ? E.Footer.ToSharedRef() : SNullWidget::NullWidget);
+	LastFocused.Reset();   // the old screen's items are gone; the focus guard falls back to this screen's default
 	bTransitionForward = bForward;
 	TransitionStart = FSlateApplication::Get().GetCurrentTime();
 	if (!IsLow()) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::AnimateTransition));

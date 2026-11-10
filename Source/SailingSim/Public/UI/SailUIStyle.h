@@ -41,8 +41,8 @@ namespace SailUI
 	bool IsLow();
 	/** The player last used a gamepad (glyphs follow the device). */
 	bool UsingGamepad();
-	/** The mouse moved more recently than a key or the pad was used: only then does hovering move focus (a screen that
-	 *  opens under a still cursor keeps its default focus). */
+	/** The mouse moved more recently than a key or the pad was used, and within the last half second: only then does
+	 *  hovering move focus (a screen, or the window, that opens under a still cursor keeps its default focus). */
 	bool MouseIsActive();
 	void RegisterInputTracker();
 }
