@@ -71,7 +71,8 @@
   "TB_",
   "Trav*",
   "VBerth",
-  "VCushion_"
+  "VCushion_",
+  "OB*"
  ],
  "tris_max": null,
  "mac_wiring": false,
@@ -83,7 +84,7 @@
   "cockpit",
   "transom_bow"
  ],
- "moves_ok_note": "The deck, rails, cabin, cockpit and transom pieces are built on sheer_z/half_beam/deck_z, and the keel's root on keel_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4). Outside the sections, only the parts placed from half_beam or the canoe depth may move, named one rule each: chainplates, knees, shrouds and turnbuckles 4-8 cm inboard; backstay plates, bridle, stern cleats and spinnaker aft blocks 17-34 cm; traveller ends 11 cm; the other spinnaker gear 5-7 cm; bow cleat 1 cm; anchor 6 cm; V-berth and cushions 3-8 cm; keel bolts and bilge water 7 mm down with the deeper canoe body. Anything else that moves (the rig, the rudder and its fittings, the rest of the interior) fails. score.md lists every move by name group.",
+ "moves_ok_note": "The deck, rails, cabin, cockpit and transom pieces are built on sheer_z/half_beam/deck_z, and the keel's root on keel_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4). Outside the sections, only the parts placed from half_beam or the canoe depth may move, named one rule each: chainplates, knees, shrouds and turnbuckles 4-8 cm inboard; backstay plates, bridle, stern cleats and spinnaker aft blocks 17-34 cm; traveller ends 11 cm; the other spinnaker gear 5-7 cm; bow cleat 1 cm; anchor 6 cm; V-berth and cushions 3-8 cm; keel bolts and bilge water 7 mm down with the deeper canoe body. The outboard bracket and motor 13 cm inboard (at 0.55 m out the bracket ran past the new transom's corner). Anything else that moves (the rig, the rudder and its fittings, the rest of the interior) fails. score.md lists every move by name group.",
  "removes_ok": [
   "TravS_1_3",
   "TravS_-1_3"

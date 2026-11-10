@@ -136,7 +136,17 @@ else:
 H = CFG["hulls"][0]
 
 
+ST = CFG.get("hull_stations")   # a hull drawn by its sections (the J/22 since docs/shape-loop wave 1): its deck line
+
+
 def half_beam(x):
+    if ST:
+        L = ST["list"]
+        if x <= L[0]["x"] or x >= L[-1]["x"]:
+            return max(L[0 if x <= L[0]["x"] else -1]["y"][-1], 0.02)
+        i = max(k for k in range(len(L) - 1) if L[k]["x"] <= x)
+        t = (x - L[i]["x"]) / (L[i + 1]["x"] - L[i]["x"])
+        return max(L[i]["y"][-1] + (L[i + 1]["y"][-1] - L[i]["y"][-1]) * t, 0.02)
     if x > H["max_beam_x"]:
         u = (x - H["max_beam_x"]) / (H["bow_x"] - H["max_beam_x"] + 0.02)
         return H["max_half_beam"] * math.sqrt(max(0.0, 1 - u * u))
@@ -184,7 +194,7 @@ def deck_z(x):
 def boat_cleats():
     """side -> (bow cleat, stern cleat, stern cleat yaw) in her frame (Unreal axes)."""
     if TAG == "J22":   # the hero's sockets (Inputs/j22-hero/J22H_sockets.json) and kit layout (Tools/boatkit/layouts/j22.json)
-        return {s_: (Vector((3.03, s_ * 0.13, 0.8474)), Vector((-3.05, s_ * 0.92, 0.80)), s_ * math.radians(25)) for s_ in (1, -1)}
+        return {s_: (Vector((3.03, s_ * 0.13, 0.8474)), Vector((-3.05, s_ * 0.614, 0.80)), s_ * math.radians(25)) for s_ in (1, -1)}
     bx, sx = H["bow_x"] - 0.40, H["stern_x"] + 0.25
     return {s_: (Vector((bx, s_ * 0.12, deck_z(bx) + 0.01)), Vector((sx, s_ * (half_beam(sx) - 0.12), deck_z(sx) + 0.01)), s_ * math.radians(20))
             for s_ in (1, -1)}
