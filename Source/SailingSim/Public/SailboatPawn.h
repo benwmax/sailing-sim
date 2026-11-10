@@ -332,7 +332,7 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
@@ -627,6 +627,10 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelMast;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelBoom;
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelRudder;
+	/** #618: the model's stowed tiller extension as a part of its own (SM_<Tag>_TillerExt, SM_J22H_TillerExt), turning with
+	 *  the rudder: shown while stowed, hidden while the live one is in the helm's hand. Null where it is baked into the rudder
+	 *  or not modelled. */
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelTillerExt;
 	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
 	 *  shown instead of the sails, mast and running rig while bSailsStowed. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> StowedDress;
@@ -662,6 +666,11 @@ private:
 	 *  85 cm back along the tiller from its end toward the rudder head. Boat frame, cm. */
 	void StowedExtensionCm(const FVector& End, FVector& OutHinge, FVector& OutTip) const;
 	bool BakesStowedExtension() const;
+public:
+	/** #618: the model's own stowed extension part (null if none) and whether it shows now. */
+	const UStaticMeshComponent* GetModelTillerExt() const { return ModelTillerExt; }
+	bool IsModelTillerExtShown() const;
+private:
 	TOptional<FVector> TillerExtensionHingeCm, TillerExtensionTipCm;   // the extension as last drawn (boat frame, cm; tests)
 	float MastBendCm = 0.f;
 	float MastBendHeightCm = 800.f;

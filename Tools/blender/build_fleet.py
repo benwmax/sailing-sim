@@ -1812,6 +1812,10 @@ def sunfish_gudgeon(Hh, stock_x, cy, st, z0=0.10):
             tube(hull, [(st - 0.004, cy + y, z), (st - 0.0058, cy + y, z)], 0.004, "Stainless", 8)
 
 
+ext_mesh = None        # #618: the Sunfish's stowed tiller extension, its own part (build_rudder)
+ext_origin = [0.0, 0.0, 0.0]
+
+
 def build_rudder():
     rudders = [f for f in CFG["foils"] if f["role"] == "rudder"]
     f = rudders[0]
@@ -1854,10 +1858,15 @@ def build_rudder():
         if TAG == "Sunfish":
             # pc/sunfish-hero: the tiller extension, as on the TurboSquid 1460907 reference: a black tube on a rubber
             # universal joint at the tiller's end, stowed back along its top (the crew's hand stays on TillerEnd).
+            # #618: its own mesh (SM_Sunfish_TillerExt, about the rudder's stock like the blade), so the game shows it only
+            # while stowed: with the helm holding the live extension, the baked one had shown as a second.
+            global ext_mesh
+            ext_mesh = Mesh(f"SM_{TAG}_TillerExt")
             ex, ez = stock_x + tl - 0.012, tz + 0.085
-            tube(m, [(ex + 0.004, cy, ez - 0.012), (ex, cy, ez + 0.012)], 0.009, "Rubber", 8)
-            tube(m, [(ex, cy + 0.004, ez + 0.012), (ex - 0.64, cy + 0.024, tz + 0.058)], 0.0085, "BlackPlastic", 10)
-            tube(m, [(ex - 0.56, cy + 0.0215, tz + 0.0617), (ex - 0.645, cy + 0.0242, tz + 0.0578)], 0.0115, "BlackPlastic", 10)   # its grip
+            tube(ext_mesh, [(ex + 0.004, cy, ez - 0.012), (ex, cy, ez + 0.012)], 0.009, "Rubber", 8)
+            tube(ext_mesh, [(ex, cy + 0.004, ez + 0.012), (ex - 0.64, cy + 0.024, tz + 0.058)], 0.0085, "BlackPlastic", 10)
+            tube(ext_mesh, [(ex - 0.56, cy + 0.0215, tz + 0.0617), (ex - 0.645, cy + 0.0242, tz + 0.0578)], 0.0115, "BlackPlastic", 10)   # its grip
+            ext_origin[:] = [stock_x, cy, 0]
         socket("TillerEnd", (stock_x + tl, cy, tz + 0.08), owner="Rudder")
     elif transom and tillered and TAG == "Hobie16":
         # pc/hobie-fidelity: each rudder in its cast aluminium head (the Sunfish's: cheeks on a through-bolt, the pintle's
@@ -1894,6 +1903,7 @@ def build_rudder():
 mast_obj = build_mast()
 boom_obj = build_boom()
 rudder_obj = build_rudder()
+ext_obj = ext_mesh.finish(smooth_angle=45.0, origin=tuple(ext_origin)) if ext_mesh else None
 print(f"{TAG}: {place_kit(hull)} kit parts")   # the shared kit's fittings (Tools/boatkit/layouts/<tag>.json)
 hull_obj = hull.finish(smooth_angle=35.0, origin=(0, 0, 0))
 
@@ -1944,11 +1954,11 @@ print(f"{TAG}: LOA {size.x:.3f} m (physics {CFG['loa']:.3f}), beam {size.y:.3f} 
 print(f"{TAG}: triangles hull {sum(len(p.vertices) - 2 for p in hull_obj.data.polygons)}, mast {len(mast_obj.data.polygons)}, "
       f"boom {len(boom_obj.data.polygons)}, rudder {len(rudder_obj.data.polygons)}")
 ORIGINS = {o.name: [round(o.location.x * 100, 2), round(-o.location.y * 100, 2), round(o.location.z * 100, 2)]
-           for o in (hull_obj, mast_obj, boom_obj, rudder_obj)}
+           for o in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj else ())}
 json.dump({"sockets": SOCKETS, "owner": OWNER, "origins": ORIGINS, "measures": {"loa": size.x, "beam": size.y, "canoe_volume": vol, "cb": [cb.x, cb.y, cb.z]}},
           open(os.path.join(OUT, f"{TAG}_sockets.json"), "w"), indent=1)
 
-for obj in (hull_obj, mast_obj, boom_obj, rudder_obj):
+for obj in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj else ()):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
