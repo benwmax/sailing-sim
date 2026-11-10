@@ -1,0 +1,184 @@
+{
+ "boat": "J22H",
+ "build": "Inputs/j22-hero/build_j22_hero.py",
+ "note": "Sections follow the boat's real mouldings (docs/shape-loop). The hull is never sliced lengthwise. An entry ending in '_' or '*' is a name prefix ('*' is dropped), any other entry is an exact name (Blender's .001 duplicates match their base). The first matching section wins; anything unmatched is 'other' (rig, sails, hardware, interior) and is still measured and diffed.",
+ "sections": {
+  "hull_shell": {
+   "objects": [
+    "Hull",
+    "HullInner",
+    "Reg_",
+    "Sticker_"
+   ],
+   "owns": [
+    "keel_z",
+    "sheer_z",
+    "half_beam",
+    "section",
+    "stations",
+    "build_hull",
+    "hull_volume_below",
+    "build_registration"
+   ],
+   "shared": [
+    "sheer_z",
+    "half_beam",
+    "section"
+   ],
+   "borders": [
+    "joint_rails",
+    "deck",
+    "transom_bow",
+    "keel_rudder"
+   ]
+  },
+  "joint_rails": {
+   "objects": [
+    "Joint_",
+    "ToeRail_"
+   ],
+   "owns": [
+    "hull_joint",
+    "toe_rail"
+   ],
+   "borders": [
+    "hull_shell",
+    "deck",
+    "transom_bow"
+   ]
+  },
+  "deck": {
+   "objects": [
+    "Deck",
+    "DeckPlate"
+   ],
+   "owns": [
+    "deck_z",
+    "build_deck"
+   ],
+   "shared": [
+    "deck_z"
+   ],
+   "borders": [
+    "hull_shell",
+    "joint_rails",
+    "cabin",
+    "cockpit",
+    "transom_bow"
+   ]
+  },
+  "cabin": {
+   "objects": [
+    "Cabin",
+    "FwdHatch",
+    "SlideHatch",
+    "Portlight_",
+    "Handrail_",
+    "Organiser_",
+    "DropBoard"
+   ],
+   "owns": [
+    "cabin_ring",
+    "cabin_top_z",
+    "build_cabin",
+    "handrail"
+   ],
+   "shared": [
+    "cabin_top_z"
+   ],
+   "borders": [
+    "deck",
+    "cockpit"
+   ]
+  },
+  "cockpit": {
+   "objects": [
+    "Cockpit",
+    "CoamingCap_"
+   ],
+   "owns": [
+    "cockpit_prism",
+    "_fillet",
+    "build_cockpit",
+    "coaming_cap"
+   ],
+   "borders": [
+    "deck",
+    "cabin",
+    "transom_bow"
+   ]
+  },
+  "transom_bow": {
+   "objects": [
+    "TransomTeak",
+    "StemFitting",
+    "TackEye",
+    "DrainFlange_",
+    "DrainBore_",
+    "Gudgeon_"
+   ],
+   "owns": [
+    "stem_fitting",
+    "forestay_pin"
+   ],
+   "borders": [
+    "hull_shell",
+    "deck",
+    "joint_rails",
+    "cockpit",
+    "keel_rudder"
+   ]
+  },
+  "keel_rudder": {
+   "objects": [
+    "Keel",
+    "Rudder",
+    "RudderHead",
+    "RudderHead_strap",
+    "Pintle_"
+   ],
+   "owns": [
+    "naca",
+    "foil",
+    "keel_edges",
+    "build_keel",
+    "Inputs/j22-hero/j22_steering.py"
+   ],
+   "borders": [
+    "hull_shell",
+    "transom_bow"
+   ],
+   "physics": "underwater shape stays matched to the physics hull (Bean, Nov 10)"
+  }
+ },
+ "joins": [
+  [
+   "Hull",
+   "Deck"
+  ],
+  [
+   "Hull",
+   "Joint_"
+  ],
+  [
+   "Deck",
+   "ToeRail_"
+  ],
+  [
+   "Deck",
+   "Cabin"
+  ],
+  [
+   "Deck",
+   "Cockpit"
+  ],
+  [
+   "Cabin",
+   "Cockpit"
+  ],
+  [
+   "Hull",
+   "Keel"
+  ]
+ ]
+}
