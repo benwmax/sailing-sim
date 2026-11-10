@@ -1446,7 +1446,7 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 	using namespace SailingHUDLocal;
 	const FBoatModel& Model = Boat.GetBoatModel();
 	SailingCollectBoatTips(Model.GetTelemetry(), Model.GetState().WindwardSide, Boat.GetControls(), Boat.GetEasyAssists(),
-		Boat.IsEasyRecovering(), Boat.IsTiedUp(), Tips);
+		Boat.IsEasyRecovering(), Boat.IsTiedUp(), Tips, Boat.GetSecondsSinceStart() < SailingNoGoTipHoldSeconds);
 	if (const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr)
 	{
 		const FWeatherState& W = GM->GetWeatherState();
@@ -1466,7 +1466,7 @@ void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* World, TArray<T
 }
 
 void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const FBoatControls& C, const FEasyAssists& Easy,
-	bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips)
+	bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips, bool bHoldNoGo)
 {
 	using namespace SailingHUDLocal;
 	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
@@ -1491,6 +1491,10 @@ void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const 
 	{
 		Tips.Add({ TEXT("Stuck head to wind. Push the tiller toward the boom and hold the jib out to the side the bow should go (backing it)."), 2 });
 		Tips.Add({ TEXT("You will drift backward first; the bow falls off, then trim in and sail away."), 0 });
+	}
+	else if (bHoldNoGo)
+	{
+		// #598: just put at her start, nobody has had the helm yet.
 	}
 	else if (Cue == ENoGoCue::Inside)
 	{

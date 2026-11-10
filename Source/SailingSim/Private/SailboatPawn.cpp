@@ -1044,6 +1044,7 @@ void ASailboatPawn::ResetBoat()
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
+	StartClock.Reset(Time);   // #598: after the clock is put back (Reset zeroes it)
 	if (bMooring)
 	{
 		const double Heading = FMath::DegreesToRadians(StartYaw);
@@ -2765,6 +2766,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
+	StartClock.Reset(Boat.GetState().Time);
 	DrillCollisions = DrillInfractions = 0;
 	bDrillTouching = bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
