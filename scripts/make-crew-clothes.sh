@@ -12,7 +12,7 @@ if [[ "${SKIP_EXPORT:-0}" != 1 ]]; then
 	# The export ends the editor with os._exit, which can cut the log before its "Crew bodies" lines, so the FBX files
 	# written after this stamp are the proof of the export (a missing grep match would end the script under pipefail).
 	touch "$CREW/.export-start"
-	"$APP" "$PROJECT" -EnablePlugins=MetaHumanCharacter -ExecCmds="py $REPO_ROOT/scripts/export_crew_bodies.py" -nosplash -NoP4 -stdout \
+	"$APP" "$PROJECT" -nocrashreports -EnablePlugins=MetaHumanCharacter -ExecCmds="py $REPO_ROOT/scripts/export_crew_bodies.py" -nosplash -NoP4 -stdout \
 		-unattended > "$ARTIFACTS/crew-export.log" 2>&1 || true
 	for role in Helm Trimmer Bow; do
 		for part in Body Outfit; do

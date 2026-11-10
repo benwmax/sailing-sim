@@ -45,6 +45,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
    `Saved/Bench/<shot>.png`: the fast loop for visual tuning. Game args: `-SailingWeather=Thunderstorm -SailingHour=16
    -SailingWeatherTime=120 -SailingWind=8 -SailingTWA=90 -SailingHoldTWA=90 -SailingCamYaw=0 -SailingCamPitch=-10
    -SailingQuality=High -SailingShot=name -SailingDebugGust=1|2 -SailingDumpGust -SailingProfileGPU`.
+   It passes `-nocrashreports`: each uncooked run hits one engine ensure (distance-field transform precision, frame 2), and
+   the CrashReportClientEditor launched to report it crashed on exit (one macOS "quit unexpectedly" dialog per run).
 9. `scripts/bench-phase2.sh [seconds]` measures three reference conditions on each quality tier (packaged build) and
    copies the High screenshots to `docs/phase-2/`. Leave the windows visible: macOS throttles hidden ones.
 7. `DEMO=1 RECORD=15 scripts/bench-mac.sh 17` runs the packaged game with the autopilot tacking (`-SailingDemo`) and

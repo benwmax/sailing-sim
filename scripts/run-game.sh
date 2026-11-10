@@ -10,7 +10,9 @@ rm -f "$REPO_ROOT/Saved/Bench/bench.json"
 DEFAULTS=()
 [[ " $* " == *" -SailingBoat="* ]] || DEFAULTS+=(-SailingBoat=J22)
 [[ " $* " == *" -SailingWorld="* ]] || DEFAULTS+=(-SailingWorld=Lake)
-open -n -W -a "$APP" --args "$PROJECT" -game -windowed -ResX="${RESX:-1440}" -ResY="${RESY:-1080}" -SailingBench="$SECONDS_TO_RUN" -SailingDemo ${DEFAULTS[@]+"${DEFAULTS[@]}"} "$@" &
+# -nocrashreports: an ensure (once per run, the distance-field transform one) launched CrashReportClientEditor to report
+# it, which then crashed on its own exit: one macOS "quit unexpectedly" dialog per run. The ensure stays in the log.
+open -n -W -a "$APP" --args "$PROJECT" -game -nocrashreports -windowed -ResX="${RESX:-1440}" -ResY="${RESY:-1080}" -SailingBench="$SECONDS_TO_RUN" -SailingDemo ${DEFAULTS[@]+"${DEFAULTS[@]}"} "$@" &
 PID=$!
 for ((i = 0; i < SECONDS_TO_RUN + 240; i++)); do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
 kill -0 "$PID" 2>/dev/null && { echo "timed out (or crashed: see ~/Library/Logs/SailingSim)" >&2; pkill -9 -f "$PROJECT -game" || true; }
