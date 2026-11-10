@@ -51,21 +51,6 @@ namespace
 		return (At(R, C) * (1.f - Tc) + At(R, C + 1) * Tc) * (1.f - Tr) + (At(R + 1, C) * (1.f - Tc) + At(R + 1, C + 1) * Tc) * Tr;
 	}
 
-	FVector SailCubic(const TArray<FVector>& G, int32 R, int32 C, float Tr, float Tc)
-	{
-		auto At = [&](int32 Ri, int32 Ci) -> const FVector&
-		{
-			return G[FMath::Clamp(Ri, 0, FSailCloth::Rows - 1) * FSailCloth::Cols + FMath::Clamp(Ci, 0, FSailCloth::Cols - 1)];
-		};
-		FVector Row[4];
-		for (int32 K = 0; K < 4; ++K)
-		{
-			const int32 Ri = R - 1 + K;
-			Row[K] = CatmullRom(At(Ri, C - 1), At(Ri, C), At(Ri, C + 1), At(Ri, C + 2), Tc);
-		}
-		return CatmullRom(Row[0], Row[1], Row[2], Row[3], Tr);
-	}
-
 	template <typename T> void RefineSailUV(const TArray<T>& G, TArray<T>& Out);
 
 	/**
@@ -137,7 +122,7 @@ namespace
 
 	/**
 	 * The render grid from the cloth's. docs/sail-wrinkles-cost/: the Catmull-Rom is done in two passes, along each of the
-	 * cloth's rows at every render column first (RowCurve), then up the render rows through those: SailCubic's exact sums
+	 * cloth's rows at every render column first (RowCurve), then up the render rows through those: the old SailCubic's exact sums (git history)
 	 * (the same four row curves, the same clamps), about a quarter of its work.
 	 */
 	void RefineSail(const FSailCloth& Cloth, const TArray<FVector>& Normals, const TArray<FProcMeshTangent>& Tangents,

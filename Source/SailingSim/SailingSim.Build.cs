@@ -7,11 +7,12 @@ public class SailingSim : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
-			"Core", "CoreUObject", "Engine", "RenderCore", "InputCore", "EnhancedInput", "SailingPhysics"
+			"Core", "CoreUObject", "Engine", "RenderCore", "InputCore", "EnhancedInput", "SailingPhysics",
+			"ProceduralMeshComponent" // SailCloth.h keeps FProcMeshTangent arrays (docs/sail-wrinkles-cost/)
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"RHI", "SailingShaders", "ProceduralMeshComponent", "AudioExtensions", "Json", "MeshDescription", "StaticMeshDescription", "HairStrandsCore", "Slate", "SlateCore", "ApplicationCore", "PhysicsControl", "PhysicsCore", "AssetRegistry", "ImageWrapper", "HTTP"
+			"RHI", "SailingShaders", "AudioExtensions", "Json", "MeshDescription", "StaticMeshDescription", "HairStrandsCore", "Slate", "SlateCore", "ApplicationCore", "PhysicsControl", "PhysicsCore", "AssetRegistry", "ImageWrapper", "HTTP"
 		});
 
 		// The credits screen reads CREDITS.md at runtime (SailCatalog::Credits): stage the repo's own file into the pak,
