@@ -134,11 +134,9 @@ private:
 	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
 	int32 ShowroomArg = -1;
 	EActiveTimerReturnType TickShowroom(double Time, float Delta);
-	/** Keeps keyboard focus in the menus while they are up: when it lands on the game's viewport or on nothing (the
-	 *  window activating after the screen was built hands it to the viewport, or the first focus came before layout),
-	 *  it goes back to the item that last had it on this screen, else the screen's default (the Nov 10 nightly). */
+	/** Keeps keyboard focus in the menus while they are up: when the game's viewport takes it (the window activating
+	 *  after the screen was built), it goes back to the screen's default. */
 	void KeepFocusInMenus();
-	TWeakPtr<SWidget> LastFocused;
 	double FocusReclaimAt = 0.0;
 	/** The wipe over the reload, then the travel (a frame later, so the wipe is drawn). */
 	void TravelToWorld(ESailScreen Resume);

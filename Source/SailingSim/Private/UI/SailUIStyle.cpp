@@ -1,4 +1,5 @@
 #include "UI/SailUIStyle.h"
+#include "SailingSim.h"
 #include "SailingSettings.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
@@ -190,6 +191,20 @@ namespace SailUI
 
 	bool UsingGamepad() { return GGamepad; }
 	bool MouseIsActive() { return GMouseActive && FPlatformTime::Seconds() - GMouseMovedAt < MouseHoverWindowSeconds; }
+
+	void FocusByHover(const TSharedRef<SWidget>& Widget)
+	{
+		FSlateApplication& App = FSlateApplication::Get();
+		static int32 Logged = 0;   // the first few only: enough for a launch's first screens, quiet after
+		if (Logged < 20)
+		{
+			++Logged;
+			const FVector2D Cursor(App.GetCursorPos());
+			SAIL_LOG(Display, TEXT("Menus: hover focus to %s '%s' (cursor %.0f,%.0f; %.2f s after a mouse move)"), *Widget->GetTypeAsString(),
+				*Widget->GetTag().ToString(), Cursor.X, Cursor.Y, FPlatformTime::Seconds() - GMouseMovedAt);
+		}
+		App.SetUserFocus(0, Widget, EFocusCause::Mouse);
+	}
 
 	void RegisterInputTracker()
 	{
