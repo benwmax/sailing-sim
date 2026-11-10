@@ -182,8 +182,11 @@ namespace Sailing
 #include "J22HullData.inl"
 
 		/** The J/22's hull: the hero model's sections (kJ22Sections), drawn as they are, so the boat that floats is the
-		 *  boat the player sees (docs/shape-loop, Nov 10 2026: the class rules' Plan E). The parameters are the stand-in
-		 *  fit the water's hull clip and BoatExport read: widest 1.223 m a side at x -0.66, 0.61 at the transom. */
+		 *  boat the player sees (docs/shape-loop, Nov 10 2026: the class rules' Plan E). The parameters below are only
+		 *  the stand-in that BoatExport, the classic and berthed J/22 models and the water's hull clip still read: they
+		 *  match the stations aft (widest 1.223 m a side at x -0.66, 0.61 at the transom), but their half-ellipse is
+		 *  fuller than the real bow (0.94 against 0.61 a side at x 2 m). Until those readers take the stations, a rerun
+		 *  of make-boat-models.sh gives the classic J/22 that fuller bow. */
 		FHullShape J22Hull()
 		{
 			FHullShape H;

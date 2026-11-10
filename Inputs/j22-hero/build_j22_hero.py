@@ -75,8 +75,9 @@ SC.unit_settings.system = "METRIC"
 BOW, STERN = 3.45, -3.41
 # The sheer in plan (the deck edge seen from above), and with it every section's breadth: Plan E of the class rules
 # (tier A, docs/shape-loop). A natural cubic spline through these half-breadths, least-squares fitted to the traced
-# drawing with a bending penalty (5 mm rms; no inflection; the curvature is continuous, so the waterlines stay fair):
-# beam 2.447 m (class 2.438), widest 0.66 m aft of amidships, transom 1.23 m across at the deck (Plan E 1.18). The
+# drawing with a bending penalty (5 mm rms; the curvature is continuous, so the waterlines stay fair; it changes sign only across a slight hollow near
+# x 2.1 m, below the fairness check's threshold):
+# beam 2.447 m (class 2.438), widest 0.66 m aft of amidships, transom 1.23 m across at the deck (Plan E 1.22). The
 # physics floats the same sections (Bean, Nov 10: the underwater bow follows the drawing too, so the physics hull
 # follows the hero: Tools/boats/j22/make_j22_hull.py writes SailingPhysics' J22HullData.inl from these functions).
 HB_KNOTS_X = [-3.41, -2.6395, -1.8881, -1.1573, -0.449, 0.2343, 0.8897, 1.5129, 2.098, 2.6355, 3.1076, 3.45]

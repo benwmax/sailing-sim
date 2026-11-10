@@ -107,7 +107,7 @@ Main at `46d23774` (Nov 10 2026), built in the cloud with pip bpy 5.2:
 | Shape sections | hull 61,164; joint and rails 43,184; deck 20,226; cabin 43,494; cockpit 20,216; transom and bow 19,434; keel and rudder 19,908 |
 | Hull LOA, beam | 6.860 m, 2.448 m (class 6.858, 2.438) |
 | Freeboard at bow, stern | 0.782 m, 0.569 m (ORC 0.774 at its point, 0.568) |
-| Canoe body volume, CB | 1.088 m³ at (-0.226, -0.074); the physics floats 1.052 m³ at (-0.195, -0.080): the hero already displaces 3.4% more than the physics. The physics check holds every round to this baseline so the loop never widens the gap; closing it is a physics calibration job (frozen), not a shape PR. |
+| Canoe body volume, CB | 1.088 m³ at (-0.226, -0.074); the physics floats 1.052 m³ at (-0.195, -0.080): the hero already displaces 3.4% more than the physics. Wave 1 closed the gap: the J/22 physics now floats the hero's own sections (see below). |
 | Fairness | 19 lines, 0 inflections, 22 kinks (19 on the four lowest waterlines near the keel root and bow, 3 on stations); 29 by the wave 1 count (curvature peaks and dips) |
 
 Tests run on copies of the baseline (QA review, Nov 10):

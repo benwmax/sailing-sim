@@ -27,6 +27,7 @@ Needs numpy, scipy and Pillow (Blender's pip-bpy venv has them; any Python with 
 """
 import json
 import math
+import re
 import os
 import sys
 
@@ -152,9 +153,13 @@ if need("fairness", bf, rf):
         if n is None:
             worse.append(f"{k} missing in the round")
         # hysteresis: a round's line fails on kinks that stand out by 0.7 rad/m (kinks_firm) beyond the baseline's count
-        # at 0.5, so a wiggle sitting at the threshold doesn't flip a line either way; a real bump clears both
-        elif n["inflections"] > v["inflections"] or n.get("kinks_firm", n["kinks"]) > v["kinks"]:
-            worse.append(f"{k} +{n['inflections'] - v['inflections']} infl/+{n.get('kinks_firm', n['kinks']) - v['kinks']} kinks")
+        # at 0.5, so a wiggle sitting at the threshold doesn't flip a line either way; a real bump clears both. And it
+        # may gain at most one firm kink over the baseline's own firm count, so a line whose baseline has several soft
+        # wiggles can't hide new creases in that headroom.
+        else:
+            nf, bf_ = n.get("kinks_firm", n["kinks"]), v.get("kinks_firm", v["kinks"])
+            if n["inflections"] > v["inflections"] or nf > v["kinks"] or nf > bf_ + 1:
+                worse.append(f"{k} infl {v['inflections']}→{n['inflections']}, firm kinks {bf_}→{nf} (baseline soft {v['kinks']})")
     row("fairness", f"inflections {bf['total_inflections']}→{rf['total_inflections']}, kinks {bf['total_kinks']}→{rf['total_kinks']}",
         not worse and rf.get("object") == bf.get("object"), hard=True, note="; ".join(worse))
 
@@ -198,8 +203,18 @@ if need("physics (j22_hero_report)", bp, rp):
         dv = (rp["canoe_volume_m3"] - bp["canoe_volume_m3"]) / bp["canoe_volume_m3"]
         dcb = math.hypot(rp["cb_x"] - bp["cb_x"], rp["cb_z"] - bp["cb_z"])
         what = f"volume {dv * 100:+.2f}%, CB moved {dcb * 100:.1f} cm"
-    row("physics", what, abs(dv) <= 0.01 and dcb <= 0.02, hard=True,
-        note=f"round {rp['canoe_volume_m3']} m³ CB ({rp['cb_x']}, {rp['cb_z']}); {phys}")
+    ok = abs(dv) <= 0.01 and dcb <= 0.02
+    note = f"round {rp['canoe_volume_m3']} m³ CB ({rp['cb_x']}, {rp['cb_z']}); {phys}"
+    gen = CARD.get("physics_table")
+    if gen:
+        # the physics' station table must be the one this build script generates (a round that changes the hull and
+        # forgets to regenerate it would leave the physics floating the old shape)
+        import subprocess  # noqa: E402
+        root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+        chk = subprocess.run([sys.executable, os.path.join(root, gen), "--check"], capture_output=True, text=True)
+        ok = ok and chk.returncode == 0
+        note += "; physics table " + ("matches the build" if chk.returncode == 0 else "STALE: " + (chk.stderr or chk.stdout).strip())
+    row("physics", what, ok, hard=True, note=note)
 
 # moved, added, removed --------------------------------------------------
 # Objects in the card's own sections may move, appear and go. Outside them: a section listed in "moves_ok_sections"
@@ -213,7 +228,7 @@ _spec.loader.exec_module(R)
 mine = set(CARD.get("sections", []))
 ok_secs = set(CARD.get("moves_ok_sections", []))
 ok_rules = CARD.get("moves_ok", [])
-moved, foreign = [], []
+moved, foreign, groups = [], [], {}
 for name, o in rs["objects"].items():
     b = bs["objects"].get(name)
     if not b:
@@ -221,6 +236,7 @@ for name, o in rs["objects"].items():
     d = math.dist(o["centre"], b["centre"])
     if d > 0.005:
         moved.append(f"{name} {d * 1000:.0f} mm")
+        groups.setdefault(re.match(r"[A-Za-z]*", name).group(0) or name, []).append(round(d * 1000))
         if o["section"] not in mine | ok_secs and not any(R.matches(name, r) for r in ok_rules):
             foreign.append(name)
 added = sorted(set(rs["objects"]) - set(bs["objects"]))
@@ -240,7 +256,7 @@ row("moved", f"{len(moved)} moved, {len(added)} added, {len(removed)} removed", 
     note=("moved outside this card's sections: " + ", ".join(foreign[:20]) + ". ") * bool(foreign) +
          ("shape objects added outside its sections: " + ", ".join(bad_add[:20]) + ". ") * bool(bad_add) +
          ("shape objects removed outside its sections: " + ", ".join(bad_rm[:20]) + ". ") * bool(bad_rm) +
-         "; ".join(moved[:40]) + (f"; added {', '.join(added[:20])}" if added else "") +
+         "; ".join(f"{g} ×{len(v)} {min(v)}-{max(v)} mm" if len(v) > 1 else f"{g} {v[0]} mm" for g, v in sorted(groups.items())) + (f"; added {', '.join(added[:20])}" if added else "") +
          (f"; removed {', '.join(removed[:20])}" if removed else ""))
 
 # budget ---------------------------------------------------------------
