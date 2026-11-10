@@ -8,3 +8,10 @@ The player's J/22 draws the hero model (built on the old hull); FHullClipMap rea
 - At the bow's waterline, small bright notches (zoom_beam, zoom_stbd) and a lighter band under the forefoot (zoom_port):
   the clip dropping the surface a few cm outside the hull, showing its underside. Small; worth a look after the hero
   rebake, when model and clip share the new hull.
+
+## On the rebaked hero (9ed06690)
+
+`hullclip_hero_*`: the same setup on 9ed06690 (the PC's hero rebake on the class hull). Still no water inside. At the
+bow's waterline the bright notches remain on the beam view, about as before; the port bow view shows the bow wave's
+curl hugging the stem with no gap. So the notches don't come from the hero being built on the old hull. The clip
+(FHullClipMap, the parametric stand-in, fuller forward) is the likelier source.
