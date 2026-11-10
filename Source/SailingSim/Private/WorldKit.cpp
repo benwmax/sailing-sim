@@ -102,6 +102,8 @@ const FKitLookDesc& KitLook(EKitLook Look)
 		{ TEXT("Riprap"), FLinearColor(0.50f, 0.47f, 0.42f), 0.9f, 7.f, 0.f, 0.f },     // granite and limestone riprap
 		{ TEXT("HouseWall"), FLinearColor(0.7f, 0.66f, 0.58f), 0.8f, 0.f, 0.f, 0.f },   // M_HouseKitWall: colour and finish per vertex
 		{ TEXT("HouseRoof"), FLinearColor(0.2f, 0.2f, 0.2f), 0.85f, 0.f, 0.f, 0.f },    // M_HouseKitRoof: NAIP roof colour per vertex
+		{ TEXT("Door"), FLinearColor(0.30f, 0.10f, 0.06f), 0.45f, 0.f, 0.f, 0.f },      // painted door leaves (WORLD_LIBRARY "Door")
+		{ TEXT("Glass"), FLinearColor(0.03f, 0.035f, 0.04f), 0.06f, 0.f, 0.f, 0.f },    // door lights (WORLD_LIBRARY "Glass")
 	};
 	return Looks[int32(Look)];
 }
