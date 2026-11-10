@@ -28,6 +28,27 @@ struct FDrillContext
 };
 
 /**
+ * A drill's touches with docks and boats (#604), one Update a frame: how many, and the hardest (knots). Tied up, a boat
+ * working at her lines against the dock she is tied to is not the sailor's touch (the Sunfish's berth leaves her 0.1 m
+ * past the contact margin and her lines 0.2 m of slack: she lay against the dock and logged 43 touches before the player
+ * had cast off). Just cast off she still lies there, the contact flickering as she luffs alongside: nothing counts until
+ * she makes GraceKnots or has moved GraceMeters from where she cast off. From then every touch counts once, a rub carried
+ * on from the dock included (scraping the finger backing out at 1-2 kn), and sets the hardest while it lasts.
+ */
+struct SAILINGSIM_API FDrillContacts
+{
+	static constexpr double GraceKnots = 0.5;
+	static constexpr double GraceMeters = 1.5;
+	int32 Collisions = 0;
+	double MaxKnots = 0.0;
+	void Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position);
+private:
+	FVector2D CastOffAt = FVector2D::ZeroVector;
+	bool bGraceOver = true;   // a drill that starts under way has no grace
+	bool bCounted = false;    // the touch under way has been counted
+};
+
+/**
  * Runs one drill: sets up marks or a crew-overboard dummy, follows the boat and the crew's actions, and decides
  * when the drill is done. Pure logic over the physics state, so tests can drive it headless.
  */
@@ -45,13 +66,6 @@ public:
 	 *  that is within MinTwaDeg of the wind (WindFromRad), then a close reach on the side nearer the dock, so the lesson
 	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. */
 	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = 60.0);
-
-	/** One frame of a drill's touch count (#604): a touch counts (once) and sets the hardest touch only if it began with
-	 *  her off the dock. Tied up, a boat working at her lines against the dock she is tied to is not the sailor's touch
-	 *  (the Sunfish's berth leaves her 0.1 m off the contact margin and her lines 0.2 m of slack: she lay against the
-	 *  dock and logged 43 touches before the player had cast off), nor is the same rub carried on after the lines come off.
-	 *  bTouching is the contact of the frame before, bCounted whether that touch counts. */
-	static void CountContact(bool bCollision, bool bTiedUp, double Knots, bool& bTouching, bool& bCounted, int32& Collisions, double& MaxKnots);
 
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);

@@ -263,15 +263,17 @@ namespace SliceFirstHour
 	}
 
 	/** Counts contacts begun and the hardest one (kn), as the pawn does for a lesson. */
+	// The game's own count (FDrillContacts, as ASailboatPawn keeps it, #604): nothing tied up or just cast off and alongside.
 	struct FContacts
 	{
-		bool bTouching = false;
+		FDrillContacts Counter;
 		void Update(const FBoatModel& Boat, FLessonRun& Run)
 		{
-			const bool bNow = Boat.GetTelemetry().bCollision;
-			if (bNow) Run.MaxContactKn = FMath::Max(Run.MaxContactKn, Boat.GetTelemetry().BoatSpeed / kKnot);
-			Run.Collisions += bNow && !bTouching;
-			bTouching = bNow;
+			const int32 Before = Counter.Collisions;
+			const Vec3 O = Boat.OriginPosition();
+			Counter.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y));
+			Run.Collisions += Counter.Collisions - Before;
+			Run.MaxContactKn = FMath::Max(Run.MaxContactKn, Counter.MaxKnots);
 		}
 	};
 

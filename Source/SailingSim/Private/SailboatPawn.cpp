@@ -1327,8 +1327,13 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
-	// (#604: touches while tied up, the boat working against her own dock, are not counted or graded)
-	FDrillRunner::CountContact(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, bDrillTouching, bDrillTouchCounted, DrillCollisions, MaxContactKnots);
+	// (#604: touches while tied up, the boat working against her own dock, and just cast off are not counted or graded)
+	{
+		const Vec3 Here = Boat.OriginPosition();
+		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y));
+		DrillCollisions = DrillContacts.Collisions;
+		MaxContactKnots = DrillContacts.MaxKnots;
+	}
 	if (DrillRunner.IsActive())
 	{
 		FDrillContext Ctx;
@@ -2765,7 +2770,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	}
 	MaxContactKnots = 0.0;
 	DrillCollisions = DrillInfractions = 0;
-	bDrillTouchCounted = false;
+	DrillContacts = FDrillContacts();
 	bDrillTouching = bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();

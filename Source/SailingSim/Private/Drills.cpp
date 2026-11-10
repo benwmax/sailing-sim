@@ -93,16 +93,24 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
-void FDrillRunner::CountContact(bool bCollision, bool bTiedUp, double Knots, bool& bTouching, bool& bCounted, int32& Collisions, double& MaxKnots)
+void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position)
 {
-	if (bCollision && !bTouching)
+	if (bTiedUp)
 	{
-		bCounted = !bTiedUp;
-		Collisions += bCounted;
+		CastOffAt = Position;
+		bGraceOver = false;
+		bCounted = false;
+		return;
+	}
+	if (!bGraceOver && (Knots >= GraceKnots || FVector2D::Distance(Position, CastOffAt) > GraceMeters)) bGraceOver = true;
+	if (!bGraceOver) return;
+	if (bCollision && !bCounted)
+	{
+		++Collisions;
+		bCounted = true;
 	}
 	if (!bCollision) bCounted = false;
 	if (bCounted) MaxKnots = FMath::Max(MaxKnots, Knots);
-	bTouching = bCollision;
 }
 
 void FDrillRunner::Finish(const FString& InOutcome)

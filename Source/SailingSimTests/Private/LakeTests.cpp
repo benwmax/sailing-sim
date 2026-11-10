@@ -699,24 +699,31 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
 	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
 	{
-		// #604: a touch counts only if it began with her off the dock, once per touch, and only a counted touch sets the
-		// hardest; the rub she lay in at the dock doesn't count when the lines come off mid-touch.
-		bool bTouching = false, bCounted = false;
-		int32 Touches = 0;
-		double Hardest = 0.0;
-		for (int32 I = 0; I < 50; ++I) FDrillRunner::CountContact(I % 2 == 0 || I > 40, true, 0.5, bTouching, bCounted, Touches, Hardest);
-		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Touches, 0);
-		FDrillRunner::CountContact(true, false, 0.6, bTouching, bCounted, Touches, Hardest);
-		FDrillRunner::CountContact(true, false, 0.6, bTouching, bCounted, Touches, Hardest);
-		TestEqual(TEXT("Cast off mid-rub: the same touch still doesn't count"), Touches, 0);
-		TestEqual(TEXT("Nothing counted: no hardest touch"), Hardest, 0.0);
-		FDrillRunner::CountContact(false, false, 1.0, bTouching, bCounted, Touches, Hardest);
-		FDrillRunner::CountContact(true, false, 0.8, bTouching, bCounted, Touches, Hardest);
-		FDrillRunner::CountContact(true, false, 1.2, bTouching, bCounted, Touches, Hardest);
-		FDrillRunner::CountContact(false, false, 0.0, bTouching, bCounted, Touches, Hardest);
-		FDrillRunner::CountContact(true, false, 0.3, bTouching, bCounted, Touches, Hardest);
-		TestEqual(TEXT("Off the dock: two touches (one held over two frames)"), Touches, 2);
-		TestEqual(TEXT("Off the dock: the hardest is 1.2 kn"), Hardest, 1.2);
+		// #604: tied up nothing counts; just cast off, the rub carried on and the flicker of lying alongside don't count until
+		// she makes 0.5 kn or moves 1.5 m; a rub carried on past that (scraping out at 1-2 kn) counts once and sets the hardest.
+		const FVector2D Dock(0.0, 0.0);
+		FDrillContacts Rub;
+		for (int32 I = 0; I < 50; ++I) Rub.Update(I % 2 == 0 || I > 40, true, 0.5, Dock);
+		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Rub.Collisions, 0);
+		for (int32 I = 0; I < 30; ++I) Rub.Update(I % 3 != 0, false, 0.3, Dock + FVector2D(0.02 * I, 0.0));
+		TestEqual(TEXT("Cast off, luffing alongside: the flicker counts nothing"), Rub.Collisions, 0);
+		Rub.Update(true, false, 1.2, Dock + FVector2D(0.7, 0.0));
+		Rub.Update(true, false, 1.6, Dock + FVector2D(0.8, 0.0));
+		Rub.Update(false, false, 1.8, Dock + FVector2D(1.0, 0.0));
+		TestEqual(TEXT("Scraping out at 1.2-1.6 kn: the carried rub counts once"), Rub.Collisions, 1);
+		TestEqual(TEXT("... and sets the hardest"), Rub.MaxKnots, 1.6);
+		FDrillContacts Away;
+		Away.Update(false, true, 0.0, Dock);
+		for (int32 I = 0; I < 20; ++I) Away.Update(I % 2 == 0, false, 0.2, Dock + FVector2D(0.05 * I, 0.0));
+		for (int32 I = 0; I < 40; ++I) Away.Update(false, false, 3.0, Dock + FVector2D(2.0 + I, 0.0));
+		Away.Update(true, false, 1.5, Dock + FVector2D(50.0, 0.0));
+		Away.Update(true, false, 1.5, Dock + FVector2D(50.1, 0.0));
+		Away.Update(false, false, 1.0, Dock + FVector2D(50.2, 0.0));
+		TestEqual(TEXT("Off the dock: a new touch at 1.5 kn counts once"), Away.Collisions, 1);
+		TestEqual(TEXT("... and it is the hardest"), Away.MaxKnots, 1.5);
+		FDrillContacts Underway;   // a drill that starts under way (no cast-off): the first touch counts
+		Underway.Update(true, false, 0.4, Dock);
+		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.Collisions, 1);
 	}
 	{
 		// #604: the Sunfish's leave-the-dock berth at Rush Creek, as the pawn picks it (FindBerth with her config), puts
@@ -752,20 +759,27 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 			FBoatControls C;
 			C.MainSheet = 1.0;   // let fly, luffing at the dock as the lesson starts
 			const FWindField Wind = WindFrom(10.0, WindDeg);
-			bool bTouching = false, bCounted = false;
-			int32 Counted = 0, RawFrames = 0;
-			double Hardest = 0.0;
-			for (int32 I = 0; I < int32(60 * PhysicsHz); ++I)
+			FDrillContacts Contacts;
+			int32 RawFrames = 0, LooseFrames = 0;
+			const int32 Lines = int32(Boat.GetMooringLines().size());
+			auto StepOnce = [&]()
 			{
 				Boat.Step(PhysicsDt, C, Wind);
-				RawFrames += Boat.GetTelemetry().bCollision;
-				FDrillRunner::CountContact(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, bTouching, bCounted, Counted, Hardest);
-			}
-			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d counted"),
-				WindDeg, Berth.X, Berth.Y, Clear, int32(Boat.GetMooringLines().size()), RawFrames, Counted));
+				const Vec3 O = Boat.OriginPosition();
+				Contacts.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y));
+			};
+			for (int32 I = 0; I < int32(60 * PhysicsHz); ++I) { StepOnce(); RawFrames += Boat.GetTelemetry().bCollision; }
+			const int32 TiedCount = Contacts.Collisions;
+			// Lines off, still luffing alongside for 10 s (the crew hasn't sheeted in): the flicker counts nothing.
+			Boat.GetMooringLines().clear();
+			for (int32 I = 0; I < int32(10 * PhysicsHz); ++I) { StepOnce(); LooseFrames += Boat.GetTelemetry().bCollision; }
+			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 10 s cast off and luffing, %d counted, %.1f m from the berth"),
+				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
 			TestTrue(TEXT("The berth puts the hull outside the dock"), Clear >= 0.0);
-			TestTrue(TEXT("Her lines reach the dock"), Boat.GetMooringLines().size() >= 2);
-			TestEqual(TEXT("Tied up at her berth for a minute: no touch counted"), Counted, 0);
+			TestTrue(TEXT("Her lines reach the dock"), Lines >= 2);
+			TestTrue(TEXT("She does lie against the dock tied up (the case being tested)"), RawFrames > 0);
+			TestEqual(TEXT("Tied up at her berth for a minute: no touch counted"), TiedCount, 0);
+			TestEqual(TEXT("Cast off and luffing alongside 10 s: no touch counted"), Contacts.Collisions, 0);
 		}
 	}
 	{
