@@ -13,7 +13,11 @@ SAILINGSIM_API void SailingCollectTips(const ASailboatPawn& Boat, const UWorld* 
 /** The boat's own tips (no weather), for the tests. Tied up, there is only the first line: no trim, irons or heel
  *  tips while the lines hold her (feedback #488). */
 SAILINGSIM_API void SailingCollectBoatTips(const Sailing::FBoatTelemetry& T, double WindwardSide, const Sailing::FBoatControls& C,
-	const Sailing::FEasyAssists& Easy, bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips);
+	const Sailing::FEasyAssists& Easy, bool bEasyRecovering, bool bTiedUp, TArray<TPair<FString, int32>>& Tips, bool bHoldNoGo = false);
+/** #598: the no-go tips ("Too close to the wind", "Close to the no-go zone") wait this long after she is put at her start:
+ *  nobody on the helm, a boat's weather helm rounds her up toward the wind, and the first tip shouldn't blame the player
+ *  for the game's own start. In irons and the Easy crew's recovery still show at once. */
+constexpr double SailingNoGoTipHoldSeconds = 10.0;
 SAILINGSIM_API FString SailingPointOfSail(double TwaDeg, bool bInIrons);
 
 /**

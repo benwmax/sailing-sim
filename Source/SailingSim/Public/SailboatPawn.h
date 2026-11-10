@@ -123,6 +123,8 @@ public:
 	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
 	int32 GetDrillSerial() const { return DrillSerial; }
 	double GetMaxContactKnots() const { return MaxContactKnots; }
+	/** Seconds since she was put at her start (a reset, a lesson's start): #598 holds the no-go tips for the first ten. */
+	double GetSecondsSinceStart() const { return Boat.GetState().Time - SailStartTime; }
 	/** Career 1: the last drill's medal for its lesson (invalid when the run counted for no lesson). */
 	const FCareerProgress::FAward& GetCareerAward() const { return CareerAward; }
 	/** The rules coach scored the boat (TrafficManager): a penalty during a drill counts against its medal. */
@@ -391,6 +393,7 @@ private:
 	FDrillRunner DrillRunner;
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
+	double SailStartTime = 0.0;   // the boat clock when she was put at her start (ResetBoat, StartDrill)
 	int32 DrillSerial = 0;
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;

@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "AutoTrim.h"
 #include "Drills.h"
+#include "SailingHUD.h"
 #include "FixedStepper.h"
 #include "LakeData.h"
 #include "LakeTerrain.h"
@@ -1045,3 +1046,58 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+/**
+ * #598: a lesson's start is not in the no-go zone, and nobody on the helm she doesn't get there before the player has had
+ * time to take it: from Return and dock's start (FDrillRunner::ReturnStartMinTwaDeg off the wind at worst; Easy, trim
+ * assist on, the tiller centred, as a new player starts), the first SailingNoGoTipHoldSeconds keep the true wind outside
+ * Easy's warning band, for the J/22 and the Sunfish (weather helm rounds both up: from the old 60 degrees the J/22 was at 52
+ * after 10 s, the Sunfish at 42). And the no-go tips wait for that hold, while irons still shows at once.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStartNotPinchingTest, "SailingSim.Drills.StartNotPinching", Flags)
+bool FSailingStartNotPinchingTest::RunTest(const FString& Parameters)
+{
+	for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish })
+	for (const double StartTwa : { FDrillRunner::ReturnStartMinTwaDeg, -FDrillRunner::ReturnStartMinTwaDeg, 120.0 })
+	{
+		FBoatModel Boat(FBoatConfig::Make(Type));
+		FEasyAssists Easy;
+		Easy.bEnabled = true;
+		Easy.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+		FAutoTrim Trim;
+		Easy.ApplyTo(Trim.Settings);
+		FEasyHelm Helm;
+		const FWindField Wind = WindFrom(10.0, 0.0);
+		Boat.Reset(0.0, 0.0, StartTwa * kDegToRad, 2.0 * kKnot);   // the drill's start: 2 kn, sheets at 0.6, tiller centred
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.6;
+		double MinTwa = 180.0;
+		for (int32 I = 0; I < int32(SailingNoGoTipHoldSeconds * PhysicsHz); ++I)
+		{
+			const FBoatControls Before = C;
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Before.Tiller;
+			Boat.Step(PhysicsDt, Helm.Update(Boat, C, Easy, PhysicsDt), Wind);
+			MinTwa = FMath::Min(MinTwa, FMath::Abs(Boat.GetTelemetry().TrueWindAngle) * kRadToDeg);
+		}
+		const FString Name = FString::Printf(TEXT("%s from TWA %.0f"), Type == EBoatType::J22 ? TEXT("J/22") : TEXT("Sunfish"), StartTwa);
+		AddInfo(FString::Printf(TEXT("%s: lowest TWA %.0f in the first %.0f s"), *Name, MinTwa, SailingNoGoTipHoldSeconds));
+		TestTrue(FString::Printf(TEXT("%s: outside Easy's warning band (%.0f) for the hold"), *Name, Easy.NoGoWarnDeg()), MinTwa >= Easy.NoGoWarnDeg());
+	}
+	// The tips: pinching just after the start, nothing about the no-go zone; after the hold, the cue; in irons at once.
+	FEasyAssists Easy;
+	Easy.bEnabled = true;
+	FBoatControls C;
+	FBoatTelemetry T;
+	T.TrueWindAngle = 30.0 * kDegToRad;
+	auto Has = [](const TArray<TPair<FString, int32>>& Out, const TCHAR* S) { return Out.ContainsByPredicate([S](const TPair<FString, int32>& P) { return P.Key.Contains(S); }); };
+	TArray<TPair<FString, int32>> Held, After, Irons;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Held, true);
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, After, false);
+	TestFalse(TEXT("Held: no \"Too close to the wind\""), Has(Held, TEXT("Too close to the wind")));
+	TestTrue(TEXT("After the hold: \"Too close to the wind\""), Has(After, TEXT("Too close to the wind")));
+	T.bInIrons = true;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Irons, true);
+	TestTrue(TEXT("In irons shows during the hold"), Has(Irons, TEXT("head to wind")));
+	return true;
+}

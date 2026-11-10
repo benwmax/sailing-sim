@@ -1043,6 +1043,7 @@ void ASailboatPawn::ResetBoat()
 	// Keep the clock running through a reset: the weather, wind and waves all run on it.
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
+	SailStartTime = Boat.GetState().Time;
 	Boat.GetMutableState().Time = Time;
 	if (bMooring)
 	{
@@ -2765,6 +2766,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
+	SailStartTime = Boat.GetState().Time;
 	DrillCollisions = DrillInfractions = 0;
 	bDrillTouching = bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
