@@ -56,6 +56,10 @@ namespace KitFittings
 	 *  the cloth's luff point (Luff), its Y along the wire and its sail (local -X) toward that point. */
 	inline FTransform HankOnStay(const FVector& Tack, const FVector& Hounds, const FVector& Luff)
 	{
+		if (Luff.ContainsNaN())
+		{
+			return FTransform(FQuat::Identity, Luff);   // no luff point: not placeable (the pawn hides it), not at the hounds
+		}
 		const FVector Wire = Hounds - Tack;
 		const double T = FMath::Clamp(FMath::Abs(Wire.Z) > 1.0 ? (Luff.Z - Tack.Z) / Wire.Z : 0.5, 0.0, 1.0);
 		const FVector Stay = Tack + Wire * T;
