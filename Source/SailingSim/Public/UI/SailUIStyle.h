@@ -5,6 +5,8 @@
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
 
+class SWidget;
+
 /**
  * Graphics G4: the front end's and HUD's look (Inputs/g4/ui-spec.md section 3), in code: colour tokens, the three type
  * families (Saira Condensed, Saira Semi Condensed, Source Sans 3; SIL OFL, Content/UI/Fonts, staged as loose files),
@@ -41,8 +43,11 @@ namespace SailUI
 	bool IsLow();
 	/** The player last used a gamepad (glyphs follow the device). */
 	bool UsingGamepad();
-	/** The mouse moved more recently than a key or the pad was used: only then does hovering move focus (a screen that
-	 *  opens under a still cursor keeps its default focus). */
+	/** The mouse moved more recently than a key or the pad was used, and within the last half second: only then does
+	 *  hovering move focus (a screen, or the window, that opens under a still cursor keeps its default focus). */
 	bool MouseIsActive();
+	/** Hover's focus move (the widgets' OnMouseEnter, when MouseIsActive): sets it and logs the first few, with the cursor
+	 *  and the time since the last real move, so a nightly log shows when hover took the focus. */
+	void FocusByHover(const TSharedRef<SWidget>& Widget);
 	void RegisterInputTracker();
 }

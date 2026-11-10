@@ -9,6 +9,8 @@
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/Console.h"
+#include "Widgets/SViewport.h"
 #include "Widgets/SWindow.h"
 #include "SailboatPawn.h"
 #include "SailingGameMode.h"
@@ -211,7 +213,7 @@ namespace SailFrontEndImpl
 		virtual FReply OnMouseButtonDown(const FGeometry& G, const FPointerEvent& E) override { bDrag = true; SetFrom(G, E); return FReply::Handled().CaptureMouse(SharedThis(this)).SetUserFocus(SharedThis(this), EFocusCause::Mouse); }
 		virtual FReply OnMouseMove(const FGeometry& G, const FPointerEvent& E) override { if (bDrag) SetFrom(G, E); return bDrag ? FReply::Handled() : FReply::Unhandled(); }
 		virtual FReply OnMouseButtonUp(const FGeometry&, const FPointerEvent&) override { bDrag = false; return FReply::Handled().ReleaseMouseCapture(); }
-		virtual void OnMouseEnter(const FGeometry& G, const FPointerEvent& E) override { SLeafWidget::OnMouseEnter(G, E); if (SailUI::MouseIsActive()) FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse); }
+		virtual void OnMouseEnter(const FGeometry& G, const FPointerEvent& E) override { SLeafWidget::OnMouseEnter(G, E); if (SailUI::MouseIsActive()) SailUI::FocusByHover(SharedThis(this)); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle& Style, bool) const override
 		{
 			const FVector2D S = G.GetLocalSize();
@@ -368,7 +370,34 @@ EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 		}
 	}
 	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, bConditions ? Blend : Pending.Conditions, Time);
+	KeepFocusInMenus();
 	return EActiveTimerReturnType::Continue;
+}
+
+void SSailFrontEnd::KeepFocusInMenus()
+{
+	if (bTravelling || !FSlateApplication::IsInitialized()) return;
+	FSlateApplication& App = FSlateApplication::Get();
+	if (!App.IsActive()) return;
+	// Only the game's viewport (or its window) is taken back from: the window activating hands it focus. Nothing focused
+	// (a text box's commit clears it), a console, another window or anything in the menus keep it.
+	const TSharedPtr<SWidget> Now = App.GetUserFocusedWidget(0);
+	if (!Now.IsValid()) return;
+	UGameViewportClient* const Client = GEngine ? GEngine->GameViewport : nullptr;
+	if (!Client || (Client->ViewportConsole && Client->ViewportConsole->ConsoleActive())) return;
+	const TSharedPtr<SViewport> GameViewport = Client->GetGameViewportWidget();
+	const TSharedPtr<SWindow> GameWindow = Client->GetWindow();
+	const bool bViewport = (GameViewport.IsValid() && Now.Get() == static_cast<const SWidget*>(GameViewport.Get()))
+		|| (GameWindow.IsValid() && Now.Get() == static_cast<const SWidget*>(GameWindow.Get()));
+	if (!bViewport) return;
+	// At most four tries a second (a screen that can't take focus yet would otherwise be retried, and logged, every frame).
+	const double Time = FPlatformTime::Seconds();
+	if (Time < FocusReclaimAt) return;
+	FocusReclaimAt = Time + 0.25;
+	// Back to the screen's default, never to what had it before: that may be what a still cursor's hover took.
+	SAIL_LOG(Display, TEXT("Menus: focus was on the game viewport (%s); back to the screen's default"), *Now->GetTypeAsString());
+	// The menus themselves when the default can't take it (hidden, say), so the keys still reach them and this stops.
+	if (!FocusCurrent()) App.SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
 }
 
 ASailboatPawn* SSailFrontEnd::Pawn() const
@@ -447,8 +476,22 @@ void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 	bTransitionForward = bForward;
 	TransitionStart = FSlateApplication::Get().GetCurrentTime();
 	if (!IsLow()) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::AnimateTransition));
-	// Focus once the new screen has been laid out (a widget that has never been arranged has no path to focus).
-	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateLambda([this](double, float) { FocusCurrent(); return EActiveTimerReturnType::Stop; }));
+	// Focus once the new screen has been laid out (a widget that has never been arranged has no path to focus): tried each
+	// frame until it takes, for up to a second (a screen rebuilt several times in one frame, like the quiz's score after
+	// Answer:all, may not have a path on the first try).
+	const double FocusUntil = FSlateApplication::Get().GetCurrentTime() + 1.0;
+	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateLambda([this, FocusUntil](double Time, float)
+	{
+		if (FocusCurrent()) return EActiveTimerReturnType::Stop;
+		// A disabled default can't take focus (Slate gives it to the first focusable parent): that answer is final, and
+		// trying again would pull the player's own moves back each frame.
+		const TSharedPtr<SWidget> Target = FocusTarget();
+		if (!Target.IsValid() || !Target->SupportsKeyboardFocus()) return EActiveTimerReturnType::Stop;
+		if (Time <= FocusUntil) return EActiveTimerReturnType::Continue;
+		const TSharedPtr<SWidget> Now = FSlateApplication::Get().GetUserFocusedWidget(0);
+		SAIL_LOG(Display, TEXT("Menus: the screen's default never took focus (it is on %s)"), Now.IsValid() ? *Now->GetTypeAsString() : TEXT("nothing"));
+		return EActiveTimerReturnType::Stop;
+	}));
 }
 
 EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
@@ -462,12 +505,18 @@ EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
 	return T < 1.f ? EActiveTimerReturnType::Continue : EActiveTimerReturnType::Stop;
 }
 
-void SSailFrontEnd::FocusCurrent()
+bool SSailFrontEnd::FocusCurrent()
 {
-	using namespace SailUI;
-	using namespace SailFrontEndImpl;
-	if (Stack.Num() && Stack.Last().Focus.IsValid()) FSlateApplication::Get().SetUserFocus(0, Stack.Last().Focus, EFocusCause::SetDirectly);
-	else FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
+	FSlateApplication& App = FSlateApplication::Get();
+	const TSharedPtr<SWidget> Target = Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>();
+	if (!Target.IsValid())
+	{
+		App.SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
+		return true;
+	}
+	// Judged by where the focus is afterwards, not SetUserFocus's answer (already focused, or a path not found yet).
+	if (App.GetUserFocusedWidget(0) != Target) App.SetUserFocus(0, Target, EFocusCause::SetDirectly);
+	return App.GetUserFocusedWidget(0) == Target;
 }
 
 FReply SSailFrontEnd::OnPreviewKeyDown(const FGeometry&, const FKeyEvent& E)

@@ -378,7 +378,9 @@ void ASailingHUD::OpenFrontEnd(ESailScreen Screen)
 	if (ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn()); Pawn && Screen != ESailScreen::Pause) Pawn->SetHeldByUI(true);
 	Loading.Reset();
 	FrontEnd = SNew(SSailFrontEnd).Start(Screen).Player(PlayerOwner).OnClose(FSimpleDelegate::CreateUObject(this, &ASailingHUD::CloseFrontEnd));
-	ShowWidget(FrontEnd.ToSharedRef(), FrontEnd);
+	// The input mode's focus lands later than the menus' own: aim it at the screen's default too, not the menus' root.
+	const TSharedPtr<SWidget> DefaultFocus = FrontEnd->FocusTarget();
+	ShowWidget(FrontEnd.ToSharedRef(), DefaultFocus.IsValid() ? DefaultFocus : TSharedPtr<SWidget>(FrontEnd));
 	FrontEnd->FocusCurrent();
 }
 

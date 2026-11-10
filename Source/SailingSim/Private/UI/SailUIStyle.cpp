@@ -1,10 +1,12 @@
 #include "UI/SailUIStyle.h"
+#include "SailingSim.h"
 #include "SailingSettings.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Fonts/CompositeFont.h"
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
+#include "HAL/PlatformTime.h"
 #include "Misc/Paths.h"
 #include "Engine/Texture2D.h"
 #include "UObject/GCObject.h"
@@ -144,13 +146,36 @@ namespace SailUI
 	{
 		bool GGamepad = false;
 		bool GMouseActive = false;   // the mouse was used more recently than the keys or the pad
+		double GMouseMovedAt = -1.0;   // when the mouse last really moved (FPlatformTime seconds)
+		// Hover may move focus only this soon after a real move: a screen (or the window) that appears under a still
+		// cursor keeps its default focus, even when the mouse was the last thing used (the suspected cause of the Nov 10
+		// nightly's first-launch screen opening with the focus on Picture quality instead of Start your first job).
+		constexpr double MouseHoverWindowSeconds = 0.5;
 
 		class FDeviceTracker : public IInputProcessor
 		{
 		public:
-			virtual void Tick(const float, FSlateApplication&, TSharedRef<ICursor>) override {}
+			virtual void Tick(const float, FSlateApplication& App, TSharedRef<ICursor>) override
+			{
+				// While the app is in the background the cursor's position means nothing to us: the first move after it
+				// comes back only sets where the cursor is (macOS reports a jump from wherever it last saw it).
+				if (!App.IsActive()) bHaveCursor = false;
+			}
 			virtual bool HandleKeyDownEvent(FSlateApplication&, const FKeyEvent& E) override { GGamepad = E.GetKey().IsGamepadKey(); GMouseActive = false; return false; }
-			virtual bool HandleMouseMoveEvent(FSlateApplication&, const FPointerEvent& E) override { if (E.GetCursorDelta().SizeSquared() > 4.f) GMouseActive = true; return false; }
+			virtual bool HandleMouseMoveEvent(FSlateApplication&, const FPointerEvent& E) override
+			{
+				// A real move is one measured from a position we saw ourselves: the window's first mouse event after it
+				// opens or comes to the front carries a delta from an old or unknown position, and is only a baseline.
+				const FVector2D At(E.GetScreenSpacePosition());
+				if (bHaveCursor && E.GetCursorDelta().SizeSquared() > 4.f && FVector2D::DistSquared(At, LastCursor) > 4.0)
+				{
+					GMouseActive = true;
+					GMouseMovedAt = FPlatformTime::Seconds();
+				}
+				LastCursor = At;
+				bHaveCursor = true;
+				return false;
+			}
 			virtual bool HandleAnalogInputEvent(FSlateApplication&, const FAnalogInputEvent& E) override
 			{
 				if (FMath::Abs(E.GetAnalogValue()) > 0.5f) { GGamepad = true; GMouseActive = false; }
@@ -158,11 +183,28 @@ namespace SailUI
 			}
 			virtual bool HandleMouseButtonDownEvent(FSlateApplication&, const FPointerEvent&) override { GGamepad = false; return false; }
 			virtual const TCHAR* GetDebugName() const override { return TEXT("SailUIDeviceTracker"); }
+		private:
+			FVector2D LastCursor = FVector2D::ZeroVector;
+			bool bHaveCursor = false;
 		};
 	}
 
 	bool UsingGamepad() { return GGamepad; }
-	bool MouseIsActive() { return GMouseActive; }
+	bool MouseIsActive() { return GMouseActive && FPlatformTime::Seconds() - GMouseMovedAt < MouseHoverWindowSeconds; }
+
+	void FocusByHover(const TSharedRef<SWidget>& Widget)
+	{
+		FSlateApplication& App = FSlateApplication::Get();
+		static int32 Logged = 0;   // the first few only: enough for a launch's first screens, quiet after
+		if (Logged < 20)
+		{
+			++Logged;
+			const FVector2D Cursor(App.GetCursorPos());
+			SAIL_LOG(Display, TEXT("Menus: hover focus to %s '%s' (cursor %.0f,%.0f; %.2f s after a mouse move)"), *Widget->GetTypeAsString(),
+				*Widget->GetTag().ToString(), Cursor.X, Cursor.Y, FPlatformTime::Seconds() - GMouseMovedAt);
+		}
+		App.SetUserFocus(0, Widget, EFocusCause::Mouse);
+	}
 
 	void RegisterInputTracker()
 	{

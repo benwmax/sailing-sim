@@ -196,7 +196,7 @@ void SSailButton::OnMouseEnter(const FGeometry& G, const FPointerEvent& E)
 {
 	SCompoundWidget::OnMouseEnter(G, E);
 	// The mouse moves focus, so there is only ever one highlighted item.
-	if (IsEnabledNow() && !HasKeyboardFocus() && SailUI::MouseIsActive()) FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse);
+	if (IsEnabledNow() && !HasKeyboardFocus() && SailUI::MouseIsActive()) SailUI::FocusByHover(SharedThis(this));
 }
 
 FReply SSailButton::OnFocusReceived(const FGeometry& G, const FFocusEvent& E)
@@ -325,7 +325,7 @@ FReply SSailSlider::OnMouseButtonUp(const FGeometry&, const FPointerEvent&)
 void SSailSlider::OnMouseEnter(const FGeometry& G, const FPointerEvent& E)
 {
 	SCompoundWidget::OnMouseEnter(G, E);
-	if (Enabled.Get(true) && !HasKeyboardFocus() && SailUI::MouseIsActive()) FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse);
+	if (Enabled.Get(true) && !HasKeyboardFocus() && SailUI::MouseIsActive()) SailUI::FocusByHover(SharedThis(this));
 }
 
 int32 SSailSlider::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSlateRect& Culling, FSlateWindowElementList& Out, int32 Layer,
@@ -391,7 +391,7 @@ FReply SSailChoice::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 void SSailChoice::OnMouseEnter(const FGeometry& G, const FPointerEvent& E)
 {
 	SCompoundWidget::OnMouseEnter(G, E);
-	if (Enabled.Get(true) && !HasKeyboardFocus() && SailUI::MouseIsActive()) FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::Mouse);
+	if (Enabled.Get(true) && !HasKeyboardFocus() && SailUI::MouseIsActive()) SailUI::FocusByHover(SharedThis(this));
 }
 
 int32 SSailChoice::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSlateRect& Culling, FSlateWindowElementList& Out, int32 Layer,

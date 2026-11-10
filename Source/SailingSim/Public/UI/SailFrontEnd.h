@@ -63,8 +63,9 @@ public:
 	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
-	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport). */
-	void FocusCurrent();
+	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has
+	 *  it (or the screen has none and the menus took it). */
+	bool FocusCurrent();
 	ESailScreen Current() const { return Stack.Num() ? Stack.Last().Screen : ESailScreen::Title; }
 	/** What FocusCurrent focuses on the current screen (tests). */
 	TSharedPtr<SWidget> FocusTarget() const { return Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>(); }
@@ -134,6 +135,10 @@ private:
 	/** Stills: -SailingShowroom=<boat type> shows that boat on the Boat screen (-1: the focused one). */
 	int32 ShowroomArg = -1;
 	EActiveTimerReturnType TickShowroom(double Time, float Delta);
+	/** Keeps keyboard focus in the menus while they are up: when the game's viewport takes it (the window activating
+	 *  after the screen was built), it goes back to the screen's default. */
+	void KeepFocusInMenus();
+	double FocusReclaimAt = 0.0;
 	/** The wipe over the reload, then the travel (a frame later, so the wipe is drawn). */
 	void TravelToWorld(ESailScreen Resume);
 	bool bTravelling = false;

@@ -398,7 +398,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   the player's resolution, frame cap and focus pause (`USailingSettings::IsMeasuring`). Pitfalls: no file-scope
   `using namespace` (unity build); `FSlateDrawElement::MakeBox` ignores the brush tint (multiply it in); never cache
   UObjects in statics (they dangle after the reload); keep brush textures alive with `SailUI::KeptTexture`; set focus
-  from an active timer (not before layout). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
+  from an active timer (not before layout); `SSailFrontEnd::KeepFocusInMenus` takes focus back from the game viewport to the
+  screen's default; hover moves focus only within 0.5 s of a real mouse move (`SailUI::MouseIsActive`, `FocusByHover` logs it). Test: `SailingSim.UI.SessionFlow`. The Credits screen parses CREDITS.md at
   runtime (`SailCatalog::Credits`; staged by `RuntimeDependencies` in `SailingSim.Build.cs`): edit CREDITS.md, not code.
 - Menus over the picked world (`docs/showroom-world/`): leaving the World screen for another world loads it behind the menus
   (`SSailFrontEnd::TravelsOnPush`, a wipe, `USailSessionSubsystem::TravelBehindMenus`: the map reloads, the HUD walks the
