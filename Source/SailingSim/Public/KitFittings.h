@@ -36,6 +36,13 @@ namespace KitFittings
 		return Q;
 	}
 
+	/** Whether a fitting's transform may be handed to its component (USceneComponent::SetRelativeTransform ensures
+	 *  otherwise): finite, unit rotation, no zero scale. */
+	inline bool Placeable(const FTransform& X)
+	{
+		return X.IsValid() && !X.GetScale3D().IsNearlyZero();
+	}
+
 	/** A hank on the luff: the kit JibHank's stay runs along its Y and the sail lies aft along its -X, so Y follows the luff
 	 *  up (UpLuff) and -X the sail's chord (Aft), and the hank's `Luff` socket (LuffSocket, mesh cm) lands on the cloth's
 	 *  luff point (LuffPoint). */
