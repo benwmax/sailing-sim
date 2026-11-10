@@ -313,6 +313,7 @@ private:
 	int32 GpuProfileSkipped = 0;
 	FString GpuSlicesJson;
 	double ClothSecondsAtStart = -1.0;
+	double WrinkleSecondsAtStart = -1.0; // the sails' wrinkles (bench.json wrinkle_cpu_ms)
 	double WaterSecondsAtStart = -1.0;
 	double WindMapSecondsAtStart = -1.0; // W2: the two-level wind map (bench.json windmap_cpu_ms)
 	double FarCapSecondsAtStart = -1.0; // far-cap sprites (bench.json farcap_cpu_ms)

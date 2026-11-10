@@ -1135,6 +1135,68 @@ bool FVisualSailWrinklesTest::RunTest(const FString& Parameters)
 }
 
 /**
+ * docs/sail-wrinkles-cost/: FSailWrinkleCache, the per-frame wrinkles on a whole render grid with their fixed part kept,
+ * gives SailWrinkleCm's numbers at every vertex (a J/22 main's 73 x 46 grid; light and heavy loads, a soft and a tight
+ * halyard, no load), and visits only the vertices a wrinkle can reach.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailWrinkleCacheTest, "SailingSim.Visual.SailWrinkleCache", VisualFlags)
+bool FVisualSailWrinkleCacheTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Rows = 73, Cols = 46;
+	auto UVAt = [](int32 R, int32 C)
+	{
+		const double Y = 8.5 * R / (Rows - 1);
+		const double Chord = 2.9 * (1.0 - Y / 8.5) + 0.1;
+		return FVector2D(Chord * C / (Cols - 1), Y);
+	};
+	TArray<FVector4f> Grid;
+	Grid.SetNumUninitialized(Rows * Cols);
+	for (int32 R = 0; R < Rows; ++R)
+	{
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			const FVector2D U = UVAt(R, C);
+			const double Du = 0.5 * (FVector2D::Distance(U, UVAt(R, FMath::Min(C + 1, Cols - 1))) + FVector2D::Distance(U, UVAt(R, FMath::Max(C - 1, 0))));
+			const double Dv = 0.5 * (FVector2D::Distance(U, UVAt(FMath::Min(R + 1, Rows - 1), C)) + FVector2D::Distance(U, UVAt(FMath::Max(R - 1, 0), C)));
+			Grid[R * Cols + C] = FVector4f(float(U.X), float(U.Y), float(Du), float(Dv));
+		}
+	}
+	FSailWrinkles W;
+	W.Tack = FVector2D(Grid[0].X, Grid[0].Y);
+	W.Clew = FVector2D(Grid[Cols - 1].X, Grid[Cols - 1].Y);
+	W.Head = FVector2D(Grid[(Rows - 1) * Cols].X, Grid[(Rows - 1) * Cols].Y);
+	FSailWrinkleCache Cache;
+	Cache.Build(W, Grid, Rows, Cols);
+	const int32 Reached = Cache.Fans[0].Num() + Cache.Fans[1].Num() + Cache.Luff.Num();
+	AddInfo(FString::Printf(TEXT("Of %d vertices: clew fan %d, head fan %d, luff %d, normals retaken at %d"), Grid.Num(), Cache.Fans[0].Num(), Cache.Fans[1].Num(), Cache.Luff.Num(), Cache.Near.Num()));
+	TestTrue(TEXT("Each kind reaches some vertices"), Cache.Fans[0].Num() > 0 && Cache.Fans[1].Num() > 0 && Cache.Luff.Num() > 0);
+	TestTrue(TEXT("Not the whole sail"), Reached < Grid.Num() && Cache.Near.Num() < Grid.Num());
+	const double Loads[][3] = { { 200.0, 200.0, 0.004 }, { 600.0, 300.0, 0.002 }, { 50.0, 50.0, 0.0 }, { 0.0, 0.0, 0.004 }, { 2000.0, 2000.0, 0.004 }, { 0.4, 0.4, 0.0 } };
+	for (const auto& L : Loads)
+	{
+		W.SheetN = L[0];
+		W.HalyardN = L[1];
+		W.LuffStrain = L[2];
+		W.LuffTension = 100.0;
+		W.bOn = W.SheetN + W.HalyardN > 1.0 || W.LuffStrain > 0.0;
+		const uint8 WrinkleKinds = Cache.Offsets(W);
+		double MaxDiff = 0.0, Peak = 0.0;
+		for (int32 I = 0; I < Grid.Num(); ++I)
+		{
+			const FVector4f& G = Grid[I];
+			const float Ref = SailWrinkleCm(W, FVector2D(G.X, G.Y), G.Z, G.W);
+			const float Got = WrinkleKinds ? float(Cache.Offset[I] * Sailing::CmPerMeter) : 0.f;
+			MaxDiff = FMath::Max(MaxDiff, double(FMath::Abs(Ref - Got)));
+			Peak = FMath::Max(Peak, double(FMath::Abs(Ref)));
+		}
+		AddInfo(FString::Printf(TEXT("Sheet %.0f N, halyard %.0f N, luff %.3f: peak %.3f cm, largest difference %.2g cm"), L[0], L[1], L[2], Peak, MaxDiff));
+		TestTrue(TEXT("The kept wrinkles are SailWrinkleCm's (within a micron)"), MaxDiff < 1e-4);
+	}
+	TestTrue(TEXT("Nothing on with no load and a tight halyard"), Cache.Offsets(FSailWrinkles()) == 0);
+	return true;
+}
+
+/**
  * Ultra audit item 7: the polos' looseness (Tools/blender/crew_looseness.py, imported as vertex colour red) is where a
  * shirt hangs free: the hem below the life jacket and the cuffs. A few tenths of the polo is loose, its lowest band is
  * loose and its collar isn't, so M_CrewFabric's wind flutter and lag move only those (a white colour set would flap the
