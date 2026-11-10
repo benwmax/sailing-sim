@@ -782,6 +782,9 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 	// Decided, not an accident: the Catalina 22 on Galveston Bay (no still of her there, none without a boat) loads on the
 	// plain screen.
 	TestEqual(TEXT("Galveston, Catalina 22: the plain screen"), SailCatalog::LoadingStills(SailCatalog::World(1), int32(EBoatType::Catalina22)).Num(), 0);
+	// #595: the lake's storm still (2, the J/22 under the shelf cloud) only in a stormy session.
+	TestFalse(TEXT("Lake, J/22, fair: no storm still"), SailCatalog::LoadingStills(SailCatalog::World(0), int32(EBoatType::J22)).Contains(TEXT("/Game/UI/T_Load_RayHubbard_2.T_Load_RayHubbard_2")));
+	TestTrue(TEXT("Lake, J/22, stormy: the storm still"), SailCatalog::LoadingStills(SailCatalog::World(0), int32(EBoatType::J22), true) == TArray<FString>({ TEXT("/Game/UI/T_Load_RayHubbard_2.T_Load_RayHubbard_2") }));
 	// The loading screen itself, for a Sunfish session on the lake: the Sunfish still (no world needed: the session is given).
 	if (FSlateApplication::IsInitialized())
 	{
@@ -796,6 +799,52 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 		C.Boat = int32(EBoatType::Catalina22);
 		TSharedRef<SSailLoading> Plain = SNew(SSailLoading).Config(C);
 		TestTrue(TEXT("A Catalina 22 session on the bay: the plain screen"), Plain->ShownStill() == nullptr);
+		// #595: a J/22 lesson on a fair day never loads under the storm still (twenty tries), and opens on its own tip; the
+		// first job opens on tip 1; a stormy session gets the storm still and the thunderstorm tip.
+		C.World = 0;
+		C.Boat = int32(EBoatType::J22);
+		C.Mode = ESailMode::Drill;
+		C.DrillIndex = int32(ESailingDrill::HeaveTo) - 1;
+		C.Conditions.Sky = ESailSky::Fair;
+		C.Conditions.PresetId = TEXT("Lesson");
+		bool bStormStill = false;
+		for (int32 I = 0; I < 20; ++I)
+		{
+			TSharedRef<SSailLoading> Fair = SNew(SSailLoading).Config(C);
+			bStormStill |= Fair->ShownStill() && Fair->ShownStill()->GetName() == TEXT("T_Load_RayHubbard_2");
+			if (I == 0) TestEqual(TEXT("Heave to, fair: its own tip first"), FString(SSailLoading::TipHeading(Fair->ShownTip())), FString(TEXT("Heaving to")));
+		}
+		TestFalse(TEXT("A fair day: never the storm still"), bStormStill);
+		FSailSessionConfig Job = C;
+		Job.Mode = ESailMode::Free;
+		Job.SceneId = TEXT("first-job");
+		TestEqual(TEXT("The first job: tip 1"), SSailLoading::FirstTip(Job), 0);
+		TestEqual(TEXT("... Points of sail"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Job))), FString(TEXT("Points of sail")));
+		FSailSessionConfig Dock = C;
+		Dock.DrillIndex = int32(ESailingDrill::ReturnAndDock) - 1;
+		TestEqual(TEXT("Return and dock: Docking"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Dock))), FString(TEXT("Docking")));
+		FSailSessionConfig Leave = C;
+		Leave.DrillIndex = int32(ESailingDrill::LeaveTheDock) - 1;
+		TestEqual(TEXT("Leave the dock: Leaving a slip"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Leave))), FString(TEXT("Leaving a slip")));
+		FSailSessionConfig Free = C;
+		Free.Mode = ESailMode::Free;
+		TestEqual(TEXT("A free sail, fair: no set first tip"), SSailLoading::FirstTip(Free), int32(INDEX_NONE));
+		bool bStormTip = false;
+		for (int32 I = 0; I < 30; ++I)
+		{
+			TSharedRef<SSailLoading> Screen = SNew(SSailLoading).Config(Free);
+			bStormTip |= FString(SSailLoading::TipHeading(Screen->ShownTip())) == TEXT("Thunderstorms on Texas lakes");
+		}
+		TestFalse(TEXT("... and never the thunderstorm tip on a fair day (thirty screens)"), bStormTip);
+		FSailSessionConfig Preset = Free;
+		Preset.Conditions.PresetId = TEXT("Thunderstorm");
+		TestFalse(TEXT("Stormy is the sky's, not a preset's name"), SSailLoading::IsStormy(Preset));
+		FSailSessionConfig Storm = C;
+		Storm.Mode = ESailMode::Free;
+		Storm.Conditions.Sky = ESailSky::Storms;
+		TSharedRef<SSailLoading> Stormy = SNew(SSailLoading).Config(Storm);
+		TestTrue(TEXT("A stormy session: the storm still"), Stormy->ShownStill() && Stormy->ShownStill()->GetName() == TEXT("T_Load_RayHubbard_2"));
+		TestEqual(TEXT("... and the thunderstorm tip"), FString(SSailLoading::TipHeading(Stormy->ShownTip())), FString(TEXT("Thunderstorms on Texas lakes")));
 	}
 	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
 	return true;
