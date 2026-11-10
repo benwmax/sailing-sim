@@ -644,12 +644,25 @@ private:
 	// Graphics G8: where the crew's hands hold the tiller extension, the mainsheet and the jib sheet (boat frame, cm), set
 	// by UpdateCrewFigures for the rig lines; the mainsheet's block on the car from the last UpdateModelRig.
 	TOptional<FVector> HelmGripCm, MainGripCm, JibGripCm;
+public:
+	/** #612 follow-up: the tiller extension's hinge and free end as last drawn (boat frame, cm), unset with none. */
+	TOptional<FVector> GetTillerExtensionTipCm() const { return TillerExtensionTipCm; }
+	TOptional<FVector> GetTillerExtensionHingeCm() const { return TillerExtensionHingeCm; }
+	bool IsCrewShownNow() const { return bCrewShownApplied; }
+private:
 	// Graphics G8: the crew's grooms with their coarsest card LOD: past that the MetaHuman's hair LODs are helmet meshes
 	// this build doesn't have, so a sailor 10 m off went bald (game-05). Held on the cards beyond a few metres.
 	TArray<TPair<TWeakObjectPtr<class UGroomComponent>, int32>> CrewGrooms;
 	void UpdateCrewGroomLOD();
 	FVector MainsheetCarCm = FVector::ZeroVector;
 	bool TillerEndCm(FVector& Out) const;
+	/** The tiller extension stowed, nobody holding it (Settings > Show crew off, the cockpit view, or no hand on it). A model
+	 *  that bakes its own stowed extension (BakesStowedExtension: the hero J/22, the Sunfish) draws it: the live line
+	 *  collapses to a point inside the tiller's end (kept drawn: the rig mesh has a fixed vertex count). Elsewhere it lies
+	 *  85 cm back along the tiller from its end toward the rudder head. Boat frame, cm. */
+	void StowedExtensionCm(const FVector& End, FVector& OutHinge, FVector& OutTip) const;
+	bool BakesStowedExtension() const;
+	TOptional<FVector> TillerExtensionHingeCm, TillerExtensionTipCm;   // the extension as last drawn (boat frame, cm; tests)
 	float MastBendCm = 0.f;
 	float MastBendHeightCm = 800.f;
 	double WetLineZ = -1e9;   // world cm: the highest recent water at the hull, drying back down
