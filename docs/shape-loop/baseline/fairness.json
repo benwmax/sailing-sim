@@ -1,0 +1,159 @@
+{
+ "object": "Hull",
+ "lines": {
+  "wl_0": {
+   "z": -0.121,
+   "length_m": 4.764,
+   "inflections": 0,
+   "kinks": 7,
+   "k_max": 5.283,
+   "k_step_median": 0.0132
+  },
+  "wl_1": {
+   "z": -0.028,
+   "length_m": 6.186,
+   "inflections": 0,
+   "kinks": 1,
+   "k_max": 3.216,
+   "k_step_median": 0.013
+  },
+  "wl_2": {
+   "z": 0.064,
+   "length_m": 6.777,
+   "inflections": 0,
+   "kinks": 5,
+   "k_max": 4.283,
+   "k_step_median": 0.0106
+  },
+  "wl_3": {
+   "z": 0.156,
+   "length_m": 6.997,
+   "inflections": 0,
+   "kinks": 4,
+   "k_max": 3.233,
+   "k_step_median": 0.0074
+  },
+  "wl_4": {
+   "z": 0.249,
+   "length_m": 6.996,
+   "inflections": 0,
+   "kinks": 2,
+   "k_max": 1.989,
+   "k_step_median": 0.0052
+  },
+  "wl_5": {
+   "z": 0.341,
+   "length_m": 6.917,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.495,
+   "k_step_median": 0.004
+  },
+  "wl_6": {
+   "z": 0.434,
+   "length_m": 6.979,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.266,
+   "k_step_median": 0.003
+  },
+  "wl_7": {
+   "z": 0.526,
+   "length_m": 7.025,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 0.929,
+   "k_step_median": 0.0023
+  },
+  "wl_8": {
+   "z": 0.618,
+   "length_m": 4.104,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 0.568,
+   "k_step_median": 0.0041
+  },
+  "st_0": {
+   "x": -2.998,
+   "length_m": 1.334,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 2.955,
+   "k_step_median": 0.0756
+  },
+  "st_1": {
+   "x": -2.328,
+   "length_m": 1.523,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 2.294,
+   "k_step_median": 0.0757
+  },
+  "st_2": {
+   "x": -1.657,
+   "length_m": 1.626,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 2.127,
+   "k_step_median": 0.0663
+  },
+  "st_3": {
+   "x": -0.986,
+   "length_m": 1.688,
+   "inflections": 0,
+   "kinks": 1,
+   "k_max": 2.017,
+   "k_step_median": 0.0572
+  },
+  "st_4": {
+   "x": -0.315,
+   "length_m": 1.728,
+   "inflections": 0,
+   "kinks": 1,
+   "k_max": 1.949,
+   "k_step_median": 0.0658
+  },
+  "st_5": {
+   "x": 0.355,
+   "length_m": 1.697,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.96,
+   "k_step_median": 0.0574
+  },
+  "st_6": {
+   "x": 1.026,
+   "length_m": 1.606,
+   "inflections": 0,
+   "kinks": 1,
+   "k_max": 1.941,
+   "k_step_median": 0.0654
+  },
+  "st_7": {
+   "x": 1.697,
+   "length_m": 1.455,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.868,
+   "k_step_median": 0.0592
+  },
+  "st_8": {
+   "x": 2.368,
+   "length_m": 1.234,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.843,
+   "k_step_median": 0.0464
+  },
+  "st_9": {
+   "x": 3.038,
+   "length_m": 0.728,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 3.087,
+   "k_step_median": 0.1386
+  }
+ },
+ "total_inflections": 0,
+ "total_kinks": 22
+}
