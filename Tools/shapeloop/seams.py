@@ -5,7 +5,7 @@
 For each join on the sections file (pairs of object-name rules), samples the first part's surface every centimetre
 within 2 cm of the second part and measures each sample's distance to the second part's surface, then builds the
 join's gap profile: along the join's longest axis, in 5 cm bins, the closest the two parts come. Parts that touch or
-overlap come within 0.5 mm in a bin; a bin whose closest approach is 0.5-20 mm is "open", a hairline gap the lower
+overlap come within 0.5 mm in a bin (a sample under the second part's surface counts as touching); a bin whose closest approach is 0.5-20 mm is "open", a hairline gap the lower
 tiers' separate simplification can widen; parts more than 2 cm apart leave the profile altogether, which the score
 reads as lost contact. Sampling the surface rather than the vertices keeps the profile independent of mesh density.
 Writes <out>/seams.json (per join: bins, span, open bins, open fraction, where, widest gap). The score compares
@@ -73,7 +73,10 @@ for a, b in SEC.get("joins", []):
                 v = pa + (pb - pa) * (i / n) + (pc - pa) * (j / n)
                 hit = tree.find_nearest(v, NEAR)
                 if hit[0] is not None:
-                    near.append((tuple(v), hit[3]))
+                    # a sample under the second part's surface (the parts interpenetrate there, as a keel root in
+                    # the hull or a cabin sunk into the deck) is in contact: 0, not its distance back out
+                    inside = (v - hit[0]).dot(hit[1]) < -0.001      # 1 mm deep, so edges and corners don't flicker
+                    near.append((tuple(v), 0.0 if inside else hit[3]))
     if not near:
         out[f"{a}|{b}"] = {"near": 0, "bins": 0, "open_bins": 0, "widest_mm": 0.0}
         continue
@@ -89,7 +92,8 @@ for a, b in SEC.get("joins", []):
     out[f"{a}|{b}"] = {"near": len(near), "axis": "xyz"[ax], "bins": len(bins), "open_bins": len(opened),
                        "open_frac": round(len(opened) / len(bins), 3), "span": [round(min(bins) * BIN, 2), round((max(bins) + 1) * BIN, 2)],
                        "widest_mm": round(max(opened.values(), default=0.0) * 1000, 2),
-                       "open_at": sorted(round(k * BIN, 2) for k in opened)[:40]}
+                       "open_at": sorted(round(k * BIN, 2) for k in opened),
+                       "bin_mm": {f"{k * BIN:.2f}": round(d * 1000, 2) for k, d in sorted(bins.items())}}
 json.dump(out, open(os.path.join(OUT, "seams.json"), "w"), indent=1)
 for k, v in out.items():
     print("shapeloop seams", k, v)

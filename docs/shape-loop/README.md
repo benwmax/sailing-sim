@@ -81,7 +81,7 @@ python Tools/shapeloop/score.py Tools/shapeloop/cards/j22-hull_shell.json $B <wo
 | --- | --- | --- |
 | `measure.py` | `stats.json`: objects with section, triangles, bounds, centre; triangles per section; hull LOA, beam, freeboards and 21 station cuts; the build's canoe volume and CB | size, budget, moved, physics |
 | `fairness.py` | `fairness.json`: 10 waterline and 10 station cuts of the hull, resampled every 2 cm; inflections (sign changes of the 30 cm curvature) and kinks (bumps against the 50 cm average) per line; the ends and the transom face are left out | fairness (no line may get worse or go missing) |
-| `seams.py` | `seams.json`: per join, the first part's surface sampled every 1 cm within 2 cm of the second; in 5 cm bins the closest approach; bins 0.5-20 mm apart are open | seams (no join may lose contact, open a larger share or get a wider gap) |
+| `seams.py` | `seams.json`: per join, the first part's surface sampled every 1 cm within 2 cm of the second; in 5 cm bins the closest approach (a sample more than 1 mm inside the second part counts as touching); bins 0.5-20 mm apart are open | seams (no join may lose contact, open a bin that touched (now over 3 mm) or get a gap 0.5 mm wider) |
 | `render_set.py` | silhouettes (profile, plan, bow, stern; bow on the left; `sil_scale.json` gives metres per pixel), clay renders (those plus 3/4, bow and stern 3/4, helm eye), zebra stripes | outline, fairness by eye, blind A/B, sheet |
 | `score.py` | `score.json`, `score.md` (goes in the PR) | all of the above; exits 1 on a hard fail |
 
@@ -113,10 +113,13 @@ Tests run on copies of the baseline (QA review, Nov 10):
 
 | Copy | Expected | Result |
 | --- | --- | --- |
-| Hull subdivided once (same shape, 4x the mesh) | pass | pass: fairness 22 → 22 kinks, seams no worse |
+| Hull subdivided once (same shape, 4x the mesh); hull, deck, cabin and keel subdivided | pass | pass: fairness 22 → 22 kinks, no seam bin opened |
 | 12 mm bump on the port topside, cabin raised 10 mm | fail | fail: fairness (waterline 5 and station 6 gain a kink), seams (deck-cabin gap 6.8 → 8.2 mm, cabin-cockpit 2.2 → 12.1 mm) |
 | Cabin raised 80 mm | fail | fail: seams, deck-cabin and cabin-cockpit lose contact |
 | Hull renamed | fail | fail: measure.py stops, score reports the missing stats |
+| Keel lowered 50 mm | fail | fail: seams, the keel root opens (widest gap 0 → 7.5 mm) |
+| Cabin raised 25 mm | fail | fail: seams, 14 deck-cabin bins that touched now open |
+| A new object inside the boat whose name is in no section | listed | the "unsectioned" row names it for the QA review |
 
 The physics check reads the build's own report, so it only sees real builds.
 

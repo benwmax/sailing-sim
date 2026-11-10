@@ -11,7 +11,8 @@ Checks (docs/shape-loop/README.md):
             <view>.mask.json {"m_per_px": ...} from the drawing's scale), both resampled to 5 mm per pixel so size
             counts, bottom-aligned (and bow-aligned on profile and plan): intersection over union, pass 0.92
   fairness  no line gains inflections or kinks or goes missing against the baseline (hard)
-  seams     no join loses contact (10% fewer bins), opens a larger share of its bins or gets a gap 0.5 mm wider (hard)
+  seams     no join loses contact (10% fewer bins), opens a bin that touched in the baseline (now over 3 mm) or gets a gap 0.5 mm
+            wider (hard)
   A check whose file is missing (a tool crashed, the hull was renamed) is a hard fail, never a silent pass.
   physics   canoe volume within 1% and centre of buoyancy within 2 cm of the baseline (hard; the underwater shape
             stays matched to the physics, Bean Nov 10), also printed against the physics' own numbers
@@ -45,8 +46,13 @@ def load(d, f):
 bs, rs = load(BASE, "stats.json"), load(ROUND, "stats.json")
 rows, hard_fail = [], False
 if bs is None or rs is None:
-    print(f"| stats (hard) | missing stats.json in the {'round' if rs is None else 'baseline'} | NO | measure.py failed "
-          "(a renamed hull or a failed build) |")
+    line = (f"| stats (hard) | missing stats.json in the {'round' if rs is None else 'baseline'} | NO | measure.py failed "
+            "(a renamed hull or a failed build) |")
+    os.makedirs(ROUND, exist_ok=True)
+    json.dump({"card": CARD.get("id"), "rows": [{"check": "stats", "pass": False, "hard": True}], "hard_fail": True},
+              open(os.path.join(ROUND, "score.json"), "w"), indent=1)
+    open(os.path.join(ROUND, "score.md"), "w").write("| Check | Result | Pass | Note |\n| --- | --- | --- | --- |\n" + line + "\n")
+    print(line)
     sys.exit(1)
 
 
@@ -162,8 +168,14 @@ if need("seams", bj, rj):
             continue
         if v["bins"] < 0.9 * b["bins"]:
             worse.append(f"{k}: contact lost, {b['bins']}→{v['bins']} bins within 2 cm")
-        if v.get("open_frac", 0) > b.get("open_frac", 0) + 0.03 and v["open_bins"] > b["open_bins"]:
-            worse.append(f"{k}: open {b['open_bins']}/{b['bins']}→{v['open_bins']}/{v['bins']} bins")
+        # bin by bin: a stretch of the join that touched in the baseline and is open now (a denser mesh can only close
+        # bins, so totals could hide new gaps; the bins themselves can't)
+        # (touching = within 0.5 mm in the baseline, opened = more than 3 mm now: the margin keeps a re-triangulated
+        # surface of the same shape, a millimetre or two off on a curved bilge, from reading as a gap)
+        bb, vb = b.get("bin_mm", {}), v.get("bin_mm", {})
+        newly = sorted(x for x, d in vb.items() if x in bb and bb[x] <= 0.5 and 3.0 < d < 20)
+        if newly:
+            worse.append(f"{k}: {len(newly)} bins opened at {', '.join(newly[:12])} m")
         if v["widest_mm"] > b["widest_mm"] + 0.5:
             worse.append(f"{k}: widest gap {b['widest_mm']}→{v['widest_mm']} mm")
     row("seams", f"{len(rj)} joins", not worse, hard=True, note="; ".join(worse))
@@ -203,6 +215,15 @@ added = sorted(set(rs["objects"]) - set(bs["objects"]))
 removed = sorted(set(bs["objects"]) - set(rs["objects"]))
 bad_add = [n for n in added if rs["objects"][n]["section"] not in mine | {"other"}]
 bad_rm = [n for n in removed if bs["objects"][n]["section"] not in mine | {"other"} and n not in CARD.get("removes_ok", [])]
+shape = [o for o in rs["objects"].values() if o["section"] != "other"]
+lo3 = [min(o["min"][i] for o in shape) for i in range(3)]
+hi3 = [max(o["max"][i] for o in shape) for i in range(3)]
+inside = [n for n in added if rs["objects"][n]["section"] == "other" and
+          all(rs["objects"][n]["max"][i] >= lo3[i] and rs["objects"][n]["min"][i] <= hi3[i] for i in range(3))]
+if inside:
+    row("unsectioned", f"{len(inside)} new objects in no section, inside the hull's bounds", False,
+        note="add them to sections_j22.json if they are part of a moulding (they are hidden from the shape renders): "
+             + ", ".join(inside[:20]))
 row("moved", f"{len(moved)} moved, {len(added)} added, {len(removed)} removed", not (foreign or bad_add or bad_rm), hard=True,
     note=("moved outside this card's sections: " + ", ".join(foreign[:20]) + ". ") * bool(foreign) +
          ("shape objects added outside its sections: " + ", ".join(bad_add[:20]) + ". ") * bool(bad_add) +

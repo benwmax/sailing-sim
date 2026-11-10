@@ -66,19 +66,18 @@ hull = {}
 ob = bpy.data.objects.get(HULL)
 if ob is None:
     sys.exit(f"shapeloop measure: no object named {HULL!r}: the hull was renamed or the build failed")
-if True:
-    h = objects[ob.name]
-    x0, x1 = h["min"][0], h["max"][0]
-    hull = {"loa": r(x1 - x0), "beam": r(h["max"][1] - h["min"][1]), "x_stern": x0, "x_bow": x1, "stations": []}
-    for i in range(21):
-        x = x0 + (x1 - x0) * (0.005 + 0.99 * i / 20)
-        c = hull_cut(ob, x)
-        if c:
-            hull["stations"].append({"x": r(x), "half_beam": r(c[0]), "sheer_z": r(c[1]), "keel_z": r(c[2])})
-    st = hull["stations"]
-    if st:
-        hull["freeboard_bow"] = st[-2]["sheer_z"]
-        hull["freeboard_stern"] = st[0]["sheer_z"]
+h = objects[ob.name]
+x0, x1 = h["min"][0], h["max"][0]
+hull = {"loa": r(x1 - x0), "beam": r(h["max"][1] - h["min"][1]), "x_stern": x0, "x_bow": x1, "stations": []}
+for i in range(21):
+    x = x0 + (x1 - x0) * (0.005 + 0.99 * i / 20)
+    c = hull_cut(ob, x)
+    if c:
+        hull["stations"].append({"x": r(x), "half_beam": r(c[0]), "sheer_z": r(c[1]), "keel_z": r(c[2])})
+st = hull["stations"]
+if st:
+    hull["freeboard_bow"] = st[-2]["sheer_z"]
+    hull["freeboard_stern"] = st[0]["sheer_z"]
 
 physics = {}
 rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), "j22_hero_report.json")

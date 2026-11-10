@@ -45,7 +45,9 @@
   "rounded bilge, flat run aft"
  ],
  "references": "links and numbers only; drawings in git-ignored Data/Reference/raw/boats/J22/shape/",
- "moves_ok": [],
+ "moves_ok": [
+  "Keel"
+ ],
  "tris_max": null,
  "mac_wiring": false,
  "photo_needed": "no (tiers A, B, D first)",
@@ -54,9 +56,8 @@
   "deck",
   "cabin",
   "cockpit",
-  "transom_bow",
-  "keel_rudder"
+  "transom_bow"
  ],
- "moves_ok_note": "the deck, rails, cabin and cockpit are built on sheer_z/half_beam/deck_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4)",
+ "moves_ok_note": "the deck, rails, cabin, cockpit and transom pieces are built on sheer_z/half_beam/deck_z, and the keel's root on keel_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4). The rudder and its fittings are not built on the hull curves and must not move.",
  "removes_ok": []
 }
