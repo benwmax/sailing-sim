@@ -185,6 +185,7 @@ FString FSailSave::ToJson() const
 	Set->SetBoolField(TEXT("learningMode"), S.bLearningMode);
 	Set->SetBoolField(TEXT("trimAssist"), S.bTrimAssist);
 	Set->SetBoolField(TEXT("showHud"), S.bShowHud);
+	Set->SetBoolField(TEXT("showCrew"), S.bShowCrew);
 	TSharedRef<FJsonObject> Audio = Obj();
 	Audio->SetNumberField(TEXT("volume"), S.Volume);
 	Set->SetObjectField(TEXT("audio"), Audio);
@@ -251,6 +252,7 @@ FString FSailSave::ToJson() const
 		Sess->SetBoolField(TEXT("learningTips"), L.bLearningTips);
 		Sess->SetBoolField(TEXT("freeSail"), L.bFreeSail);
 		Sess->SetNumberField(TEXT("traffic"), L.Traffic);
+		if (!L.SceneId.IsEmpty()) Sess->SetStringField(TEXT("scene"), L.SceneId);
 		Sess->SetStringField(TEXT("savedAt"), L.SavedAt.ToIso8601());
 		TSharedRef<FJsonObject> C = Obj();
 		C->SetStringField(TEXT("preset"), L.PresetId);
@@ -417,6 +419,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Set, TEXT("learningMode"), S.bLearningMode);
 		Read(*Set, TEXT("trimAssist"), S.bTrimAssist);
 		Read(*Set, TEXT("showHud"), S.bShowHud);
+		Read(*Set, TEXT("showCrew"), S.bShowCrew);
 		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio"))) Read(*A, TEXT("volume"), S.Volume);
 		if (const TSharedPtr<FJsonObject> G = Child(*Set, TEXT("graphics")))
 		{
@@ -483,6 +486,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Sess, TEXT("learningTips"), L.bLearningTips);
 		Read(*Sess, TEXT("freeSail"), L.bFreeSail);
 		Read(*Sess, TEXT("traffic"), L.Traffic);
+		Read(*Sess, TEXT("scene"), L.SceneId);
 		Read(*Sess, TEXT("savedAt"), L.SavedAt);
 		if (const TSharedPtr<FJsonObject> C = Child(*Sess, TEXT("conditions")))
 		{
@@ -623,6 +627,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bLearningMode = In.bLearningMode;
 	S.bTrimAssist = In.bTrimAssist;
 	S.bShowHud = In.bShowHud;
+	S.bShowCrew = In.bShowCrew;
 	S.Volume = In.Volume;
 	S.ResolutionScale = In.ResolutionScale;
 	S.FrameCap = In.FrameCap;
@@ -684,6 +689,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	L.AirTempF = C.Conditions.AirTempF;
 	L.LakeLevelFt = C.Conditions.LakeLevelFt;
 	L.RealDay = C.Conditions.RealDay;
+	L.SceneId = C.SceneId == TEXT("first-job") ? C.SceneId : FString();   // #599: only the first job is resumed
 
 	// Drills passed: the game's, plus any id this version can't name (a later game's drill) kept from the file.
 	TArray<FString> Drills;
@@ -702,6 +708,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bLearningMode = S.bLearningMode;
 	Out.bTrimAssist = S.bTrimAssist;
 	Out.bShowHud = S.bShowHud;
+	Out.bShowCrew = S.bShowCrew;
 	Out.Volume = FMath::Clamp(S.Volume, 0.f, 1.f);
 	Out.ResolutionScale = S.ResolutionScale;
 	Out.FrameCap = S.FrameCap;
@@ -776,6 +783,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 		C.Conditions.AirTempF = L.AirTempF;
 		C.Conditions.LakeLevelFt = L.LakeLevelFt;
 		C.Conditions.RealDay = L.RealDay;
+		C.SceneId = L.SceneId == TEXT("first-job") ? L.SceneId : FString();
 	}
 	OutSession.DrillsPassed.Reset();
 	for (const FString& D : Progress.DrillsPassed)

@@ -15,7 +15,9 @@ class UMaterialInterface;
  * loads those. Without a bake (or for a tile it lacks) it draws the same geometry as static procedural meshes.
  */
 enum class EKitLook : uint8 { Decking, Floats, Pilings, Metal, White, Siding, Roof, Concrete, PoolWater, Trim, Lamp, Asphalt, Steel, LampGlow, Riprap,
-	HouseWall, HouseRoof, Count };   // Graphics G6: the houses' walls and roofs, coloured per vertex (FKitSection::Paint)
+	HouseWall, HouseRoof,   // Graphics G6: the houses' walls and roofs, coloured per vertex (FKitSection::Paint)
+	Door, Glass,            // the clubhouse's doors (docs/club-door): WORLD_LIBRARY's existing Door and Glass instances
+	Count };
 
 struct FKitLookDesc
 {

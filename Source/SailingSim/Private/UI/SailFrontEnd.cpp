@@ -890,8 +890,16 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	if (Save->bHasLast)
 	{
 		const FString Spot = LastWorld.Spots.IsValidIndex(Save->Last.LaunchSpot) ? LastWorld.Spots[Save->Last.LaunchSpot].Name : FString();
-		Item(TEXT("Continue"), SailCatalog::Boat(Save->Last.Boat).Name + TEXT(" · ") + Spot,
-			FSimpleDelegate::CreateLambda([this, Save]() { Pending = Save->Last; CastOff(); }));
+		// #599: left in the middle of the first job, Continue goes back to it (it had loaded a free sail).
+		const bool bFirstJob = ResumesFirstJob(Save->Last, SailSaveStore::Progress());
+		Item(TEXT("Continue"), bFirstJob ? FString(TEXT("Your first job · ")) + Spot : SailCatalog::Boat(Save->Last.Boat).Name + TEXT(" · ") + Spot,
+			FSimpleDelegate::CreateLambda([this, Save, bFirstJob]()
+			{
+				if (bFirstJob) { StartFirstJob(Save->Last.bEasy); return; }
+				Pending = Save->Last;
+				Pending.SceneId.Reset();
+				CastOff();
+			}));
 	}
 	Item(TEXT("Sail"), TEXT("Pick world, boat and weather"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Push(ESailScreen::World); }));
 	{
@@ -943,7 +951,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		[
 			PanelBox(SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Last session · %s · %s"), *ShortDate(L.SavedAt), L.bFreeSail ? TEXT("Free Sail") : TEXT("Career")), EType::Eyebrow, Accent) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f)[ SailUI::Text(SailCatalog::Boat(L.Boat).Name + TEXT(" on ") + LastWorld.Name, EType::CardTitleS, Fg) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f)[ SailUI::Text((ResumesFirstJob(L, SailSaveStore::Progress()) ? FString(TEXT("Your first job: ")) : FString())
+					+ SailCatalog::Boat(L.Boat).Name + TEXT(" on ") + LastWorld.Name, EType::CardTitleS, Fg) ]
 				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Detail, EType::Small, Muted, true) ])
 		];
 	}
@@ -1879,6 +1888,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->bLearningMode = I == 0; S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("Trim assist")).Options({ TEXT("On"), TEXT("Off") }).Index_Lambda([S]() { return S->bTrimAssist ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->bTrimAssist = I == 0; S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Show crew")).Options({ TEXT("On"), TEXT("Off") }).Index_Lambda([S]() { return S->bShowCrew ? 0 : 1; })
+			.OnChanged_Lambda([S](int32 I) { S->bShowCrew = I == 0; S->Save(); })
+			.Note(TEXT("Your boat's crew figures. Hidden, they still sail with you: their weight, hiking and trimming are the same.")));
 		Add(SNew(SSailChoice).Label(TEXT("Controls")).Options({ TEXT("Simple"), TEXT("Full") }).Index_Lambda([S]() { return S->ControlLayout == ESailingControlLayout::Simple ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->ControlLayout = I == 0 ? ESailingControlLayout::Simple : ESailingControlLayout::Full; S->Save(); })
 			.Note(TEXT("Easy always uses Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest.")));
@@ -2500,7 +2512,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("First job"), EType::CardTitleS, Fg) ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(TEXT("Waiting"), false) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 24.f, 0.f)[ Pill(TEXT("Not sailed"), false) ]   // #599 (was "Waiting")
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(TEXT("Take the J/22 across to the lesson dock with your instructor aboard."), EType::Small, Muted, true) ]
 		];
@@ -2741,7 +2753,15 @@ bool SSailFrontEnd::ShowsFirstJob(const FSailSave::FProgress& Progress)
 SSailFrontEnd::ECareerFocus SSailFrontEnd::CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked)
 {
 	if (bTierPicked) return ECareerFocus::TierCard;
-	return ShowsFirstJob(Progress) ? ECareerFocus::FirstJob : ECareerFocus::NextLesson;
+	// #599: the first job has the focus only until a lesson has been sailed (it had kept it with both tiers certified).
+	// Free Sail records no lessons, so there the card keeps the focus while the first job is unsailed: on purpose (the
+	// first job is still the way in).
+	return ShowsFirstJob(Progress) && Progress.Lessons.Num() == 0 ? ECareerFocus::FirstJob : ECareerFocus::NextLesson;
+}
+
+bool SSailFrontEnd::ResumesFirstJob(const FSailSessionConfig& Last, const FSailSave::FProgress& Progress)
+{
+	return Last.SceneId == TEXT("first-job") && !Progress.IsSceneDone(TEXT("first-job"));
 }
 
 void SSailFrontEnd::StartFirstJob(bool bEasy)

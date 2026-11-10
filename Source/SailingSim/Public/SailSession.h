@@ -51,8 +51,9 @@ struct FSailSessionConfig
 	UPROPERTY(config) bool bLearningTips = true;
 	UPROPERTY(config) bool bFreeSail = false;      // the play mode (docs/free-sail): Free Sail, or Career
 	UPROPERTY(config) int32 Traffic = 1;           // 0 off, 1 light, 2 busy
-	/** #402: a scripted scene this session sails ("first-job", Content/FirstSail): set by the first-launch screen, never
-	 *  saved (Continue sails free). Empty: none. */
+	/** #402: a scripted scene this session sails ("first-job", Content/FirstSail): set by the first-launch screen. Only
+	 *  the first job goes into the save's last session (#599: the title's Continue resumes it until it is done); any other
+	 *  scene is cleared there (Continue sails free: LastSessionFor). Empty: none. */
 	UPROPERTY() FString SceneId;
 	UPROPERTY(config) FDateTime SavedAt;
 };
@@ -108,6 +109,8 @@ public:
 	/** Reads the save file (SailSaveStore::LoadOnce) before anything reads the settings. */
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	/** Starts a session: saves it for Continue, applies the settings it overrides, and reloads the map. */
+	/** #599: what a started session leaves as the last session (Continue): the session, its scene kept only for the first job. */
+	static FSailSessionConfig LastSessionFor(const FSailSessionConfig& Active);
 	void StartSession(const FSailSessionConfig& Config, UObject* WorldContext);
 	/** Bench-fast: back to a new process's state (no session, nothing pending, no UI script); a bench list's next view. */
 	void ResetForRun();

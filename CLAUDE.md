@@ -561,6 +561,12 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   `FCrewPoseParams::bFlatDeck` sits a rail sailor knees up with the feet on the deck where there is no well in front;
   lifeline boats (`CrewHasLifelines`) sit their rail crew 0.32 m in. `SailingSim.Visual.CrewHullClearance` holds every
   boat, crew and stance clear of the boat (2.5 cm past the flesh's give; crossings listed, not failed).
+- Show crew (Settings > Show crew, `USailingSettings::bShowCrew`, save `settings.showCrew`, off by default; `-SailingShowCrew=0|1`
+  beats it): off, `ASailboatPawn::UpdateCrewShown` hides your boat's figures (never deletes them; AI boats keep theirs), the
+  helm stays posed (`AlwaysTickPoseAndRefreshBones`: the cockpit view and onboard camera read its head), the others skip
+  their animation, crew falls stand down, the hands hold no lines. The physics' crew (weight, hiking, trim, stations) is
+  unchanged. Tests that look at your figures use `FScopedShowCrew` (`BareTestWorld.h`); the bench's `crew` view passes
+  `-SailingShowCrew=1`. Test: `SailingSim.Smoke.ShowCrew`.
 - Crew falls (C5, `docs/crew-5/`): `FCrewFalls` (`CrewFalls.h`, plain logic) throws the crew past 55 deg of heel,
   capsized or over 1 g, and brings them back once the boat is steady; `CrewFallsVisuals.cpp` makes the MetaHuman bodies
   active ragdolls with the Physics Control plugin (`CrewControl`; world-space controls relative to `CrewDeck`, a

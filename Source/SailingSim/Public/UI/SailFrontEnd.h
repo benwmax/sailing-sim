@@ -61,6 +61,8 @@ public:
 	enum class ECareerFocus : uint8 { FirstJob, NextLesson, TierCard };
 	static bool ShowsFirstJob(const FSailSave::FProgress& Progress);
 	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
+	/** #599: the title's Continue goes back to the first job: the last session was the first job and it isn't done. */
+	static bool ResumesFirstJob(const struct FSailSessionConfig& Last, const FSailSave::FProgress& Progress);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has

@@ -129,6 +129,14 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 		TestTrue(TEXT("Skipped: the First job card shows"), SSailFrontEnd::ShowsFirstJob(P));
 		TestTrue(TEXT("... and has the focus, not Leave the dock"), SSailFrontEnd::CareerFocus(P, false) == EFocus::FirstJob);
 		TestTrue(TEXT("... until the player picks a tier"), SSailFrontEnd::CareerFocus(P, true) == EFocus::TierCard);
+		// #599: once a lesson has been sailed, the next lesson has the focus (the card stays, Not sailed).
+		FSailSave::FProgress Sailed = P;
+		FSailSave::FLessonRecord L1;
+		L1.Id = TEXT("day-sailor.leave-the-dock");
+		L1.Medal = TEXT("silver");
+		Sailed.Lessons.Add(L1);
+		TestTrue(TEXT("A lesson sailed: the card still shows"), SSailFrontEnd::ShowsFirstJob(Sailed));
+		TestTrue(TEXT("... but the next lesson has the focus"), SSailFrontEnd::CareerFocus(Sailed, false) == EFocus::NextLesson);
 		FSailSave::FSceneRecord Done;
 		Done.Id = TEXT("first-job");
 		Done.bDone = true;
@@ -137,7 +145,8 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 		TestTrue(TEXT("... and focus on the next lesson again"), SSailFrontEnd::CareerFocus(P, false) == EFocus::NextLesson);
 	}
 
-	// The first job's session: its scene id goes with the session but never into the save's last session.
+	// The first job's session: its scene id goes into the save's last session (#599: Continue resumes it until it is done);
+	// any other scene's never does.
 	FSailSessionConfig Job = USailSessionSubsystem::MakeDefault();
 	Job.SceneId = TEXT("first-job");
 	USailingSettings* Settings = NewObject<USailingSettings>();
@@ -147,7 +156,29 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 	FSailSave WithLast;
 	WithLast.Capture(*Settings, *Session);
 	TestTrue(TEXT("The last session is captured"), WithLast.bHasLast);
-	TestFalse(TEXT("... without the scene (Continue sails freely)"), WithLast.ToJson().Contains(TEXT("first-job")));
+	TestTrue(TEXT("... with the first job's scene"), WithLast.ToJson().Contains(TEXT("first-job")));
+	FSailSave ReadBack;
+	TestEqual(TEXT("... which reads back"), int32(FSailSave::FromJson(WithLast.ToJson(), ReadBack)), int32(FSailSave::EResult::Ok));
+	USailingSettings* Settings2 = NewObject<USailingSettings>();
+	USailSessionSave* Session2 = NewObject<USailSessionSave>();
+	ReadBack.Apply(*Settings2, *Session2);
+	FSailSave::FProgress NewPlayer;
+	NewPlayer.FirstLaunch.bSeen = true;
+	TestTrue(TEXT("Continue resumes the first job while it isn't done"), SSailFrontEnd::ResumesFirstJob(Session2->Last, NewPlayer));
+	FSailSave::FSceneRecord Finished;
+	Finished.Id = TEXT("first-job");
+	Finished.bDone = true;
+	NewPlayer.Scenes.Add(Finished);
+	TestFalse(TEXT("... and sails freely once it is"), SSailFrontEnd::ResumesFirstJob(Session2->Last, NewPlayer));
+	FSailSessionConfig Other = Job;
+	Other.SceneId = TEXT("prologue");
+	Session->Last = Other;
+	FSailSave WithOther;
+	WithOther.Capture(*Settings, *Session);
+	TestFalse(TEXT("Another scene never goes into the save"), WithOther.ToJson().Contains(TEXT("prologue")));
+	// StartSession's last session (LastSessionFor): the first job kept, any other scene cleared.
+	TestEqual(TEXT("A started first job stays the last session's scene"), USailSessionSubsystem::LastSessionFor(Job).SceneId, FString(TEXT("first-job")));
+	TestTrue(TEXT("... another scene is cleared"), USailSessionSubsystem::LastSessionFor(Other).SceneId.IsEmpty());
 	return true;
 }
 

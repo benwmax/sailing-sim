@@ -34,6 +34,8 @@ namespace SailCatalog
 		TArray<FString> LoadingTextures;
 		/** #490: the boat each loading still shows (EBoatType), NoBoat for a sky or water still; parallel to LoadingTextures. */
 		TArray<int32> LoadingBoats;
+		/** #595: the stills that show a storm (the shelf cloud): only for a stormy session, never on a fair day. */
+		TArray<int32> LoadingStormy;
 		static constexpr int32 NoBoat = -1;
 	};
 
@@ -52,8 +54,9 @@ namespace SailCatalog
 	SAILINGSIM_API const TArray<FWorld>& Worlds();
 	SAILINGSIM_API const FWorld& World(int32 Index);
 	/** #490: the world's loading stills that suit a session's boat: those showing that boat, else those showing none; empty
-	 *  when there is neither (the loading screen goes plain rather than show another boat). */
-	SAILINGSIM_API TArray<FString> LoadingStills(const FWorld& World, int32 BoatType);
+	 *  when there is neither (the loading screen goes plain rather than show another boat). #595: a storm still only when the
+	 *  session is stormy (bStormy), and then it is the one shown if it has the boat. */
+	SAILINGSIM_API TArray<FString> LoadingStills(const FWorld& World, int32 BoatType, bool bStormy = false);
 	/** The slice build's menus (USailingSettings::SliceOnly): true for what they show; always true outside a slice build. */
 	SAILINGSIM_API bool InSliceWorld(int32 Index);
 	SAILINGSIM_API bool InSliceBoat(int32 Type);

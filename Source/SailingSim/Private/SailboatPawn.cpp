@@ -1044,6 +1044,7 @@ void ASailboatPawn::ResetBoat()
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(StartLocation.X / CmPerMeter, StartLocation.Y / CmPerMeter, FMath::DegreesToRadians(StartYaw), bMooring ? 0.0 : ResetSpeedKnots * kKnot);
 	Boat.GetMutableState().Time = Time;
+	StartClock.Reset(Time);   // #598: after the clock is put back (Reset zeroes it)
 	if (bMooring)
 	{
 		const double Heading = FMath::DegreesToRadians(StartYaw);
@@ -1327,16 +1328,24 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
-	if (Tel.bCollision) MaxContactKnots = FMath::Max(MaxContactKnots, Tel.BoatSpeed / kKnot);
+	// (#604: touches while tied up, the boat working against her own dock, and just cast off are not counted or graded)
+	{
+		const Vec3 Here = Boat.OriginPosition();
+		// (on the boat's clock: the physics time that passed, not the frame's)
+		const double Now = Boat.GetState().Time;
+		const double ContactDt = FMath::Clamp(Now - LastContactClock, 0.0, 1.0);
+		LastContactClock = Now;
+		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y), ContactDt);
+		DrillCollisions = DrillContacts.Collisions;
+		MaxContactKnots = DrillContacts.MaxKnots;
+	}
 	if (DrillRunner.IsActive())
 	{
 		FDrillContext Ctx;
 		Ctx.bTiedUp = IsTiedUp();
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
-		DrillCollisions += Tel.bCollision && !bDrillTouching;
 		bDrillEasy |= EasyAssists.bEnabled;
-		bDrillTouching = Tel.bCollision;
 		if (!DevFinishOutcome.IsEmpty()) { DrillRunner.Finish(DevFinishOutcome); DevFinishOutcome.Reset(); }
 		else DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
@@ -2135,8 +2144,9 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 	{
 		if (Crew.Num() > 0 && Crew.Last())
 		{
-			Crew.Last()->SetVisibility(true, true);
-			Crew.Last()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+			// (out of the cockpit the helm shows again, if the crew is shown: Settings > Show crew)
+			Crew.Last()->SetVisibility(bCrewShownApplied, true);
+			Crew.Last()->VisibilityBasedAnimTickOption = bCrewShownApplied ? EVisibilityBasedAnimTickOption::AlwaysTickPose : EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 		}
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
@@ -2181,7 +2191,8 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 		const FTransform Root = BoatRoot->GetComponentTransform();
 		for (int32 K = 0; K + 1 < Crew.Num(); ++K)
 		{
-			if (Crew[K] && Crew[K]->GetBoneIndex(TEXT("head")) != INDEX_NONE) EI.Heads.Add(Root.InverseTransformPositionNoScale(Crew[K]->GetBoneLocation(TEXT("head"))));
+			// (a hidden crew's heads are not in the way: Settings > Show crew)
+			if (Crew[K] && Crew[K]->IsVisible() && Crew[K]->GetBoneIndex(TEXT("head")) != INDEX_NONE) EI.Heads.Add(Root.InverseTransformPositionNoScale(Crew[K]->GetBoneLocation(TEXT("head"))));
 		}
 		// The boom over the eye: within 30 cm across of its line from the gooseneck, along its foot.
 		const double Along = (C.MainLuffX * CmPerMeter - Eye.X) / FMath::Max(FMath::Cos(S.BoomAngle), 0.2);
@@ -2321,6 +2332,37 @@ void ASailboatPawn::StepPhotoPanel(FName Action)
 	}
 }
 
+bool ASailboatPawn::CrewShown() const
+{
+	return bTrafficBoat || bGhost || USailingSettings::Get()->IsShowCrew();
+}
+
+void ASailboatPawn::UpdateCrewShown()
+{
+	// Hide, never delete: the figures keep sailing the boat (the physics' crew weight, hiking, trim and stations never
+	// read them), so switching back mid-sail just draws them again. Hidden, the helm stays posed (the cockpit view and the
+	// onboard capture camera read its head bone) while the others skip their animation; crew falls stand down.
+	if (bTrafficBoat || bGhost) return;
+	const bool bShow = CrewShown() && !bPhotoHidCrew;
+	USkeletalMeshComponent* Signature = Crew.Num() > 0 ? Crew.Last().Get() : nullptr;
+	if (bShow == bCrewShownApplied && Signature == CrewShownFor.Get()) return;
+	const bool bWasHidden = !bCrewShownApplied;
+	bCrewShownApplied = bShow;
+	CrewShownFor = Signature;
+	for (int32 I = 0; I < Crew.Num(); ++I)
+	{
+		USkeletalMeshComponent* Figure = Crew[I];
+		if (!Figure) continue;
+		const bool bHelm = I == Crew.Num() - 1;
+		if (!(bCockpit && bHelm)) Figure->SetVisibility(bShow, true);   // (the cockpit view hides the helm itself)
+		if (!bShow) Figure->VisibilityBasedAnimTickOption = bHelm ? EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones : EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+		else if (bWasHidden) Figure->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+	}
+	// Hidden mid-fall: the recovery path (bodies back on their animation) and the fall forgotten.
+	if (!bShow && bCrewFalls) { StandCrewUp(); CrewFalls.Reset(); }
+	SAIL_LOG(Display, TEXT("Crew figures %s (%d)"), bShow ? TEXT("shown") : TEXT("hidden"), Crew.Num());
+}
+
 void ASailboatPawn::ApplyPhotoScene(bool bOn)
 {
 	// The panel's Scene page: my boat, the other boats, the crew hidden, and the time of day drawn. All of it drops on
@@ -2330,7 +2372,7 @@ void ASailboatPawn::ApplyPhotoScene(bool bOn)
 	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
 	const bool bHideMine = bOn && S.bHideMyBoat, bHideOthers = bOn && S.bHideOthers, bHideCrew = bOn && (S.bHideCrew || S.bHideMyBoat);
 	if (bHideMine != bPhotoHidMine) SetActorHiddenInGame(bHideMine || HideBoatArg.Get());
-	if (bHideCrew != bPhotoHidCrew) for (const TObjectPtr<USkeletalMeshComponent>& C : Crew) if (C) C->SetVisibility(!bHideCrew, true);
+	if (bHideCrew != bPhotoHidCrew) for (const TObjectPtr<USkeletalMeshComponent>& C : Crew) if (C) C->SetVisibility(!bHideCrew && CrewShown(), true);
 	if (bHideOthers && PhotoHidden.IsEmpty())
 	{
 		auto Hide = [this](AActor* A) { if (A != this && !A->IsHidden()) { A->SetActorHiddenInGame(true); PhotoHidden.Add(A); } };
@@ -2765,8 +2807,11 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		ApplyStateToTransform();
 	}
 	MaxContactKnots = 0.0;
+	StartClock.Reset(Boat.GetState().Time);
 	DrillCollisions = DrillInfractions = 0;
-	bDrillTouching = bDrillGraded = false;
+	DrillContacts = FDrillContacts();
+	DrillContacts.GraceMeters = Boat.GetConfig().LengthOverall;   // out of the slip: about a hull length
+	bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();
 	const double WindFrom = GM ? GM->GetWeatherState().Wind.FromDegrees * kDegToRad : 0.0;
@@ -3233,7 +3278,15 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
 	const FBoatConfig& Cfg = Boat.GetConfig();
-	{ SAILING_PERF_SCOPE(Crew); UpdateCrewFigures(DeltaSeconds); UpdateCrewFalls(DeltaSeconds); UpdateCrewGroomLOD(); }
+	{
+		SAILING_PERF_SCOPE(Crew);
+		UpdateCrewShown();
+		UpdateCrewFigures(DeltaSeconds);
+		// Hidden figures hold nothing: the tiller extension, mainsheet and jib tail lie where they rest.
+		if (!bCrewShownApplied) { HelmGripCm.Reset(); MainGripCm.Reset(); JibGripCm.Reset(); }
+		UpdateCrewFalls(DeltaSeconds);
+		UpdateCrewGroomLOD();
+	}
 
 	if (ModelHull)
 	{
@@ -4166,7 +4219,8 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 				// round the camera alone cost 1.1 ms of GPU on High (perf-2).
 				// The helm's own figure always (the eye is in its head, docs/helm-eye/): its origin is the boat's, so the
 				// distance alone left its legs and tiller arm across the view.
-				if (Figure) Figure->SetVisibility(Figure != Crew.Last() && FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
+				// (and never shows a crew Settings > Show crew hides)
+				if (Figure) Figure->SetVisibility(bCrewShownApplied && Figure != Crew.Last() && FVector::Dist(Figure->GetComponentLocation(), CaptureCamera->GetComponentLocation()) > 2.2f * CmPerMeter, true);
 			}
 		}
 	}

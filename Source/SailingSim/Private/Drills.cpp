@@ -34,7 +34,10 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	NextMark = 0;
 	bDummy = false;
 	TacksOrGybes = 0;
-	LastSide = Boat.GetTelemetry().TrueWindAngle >= 0.0 ? 1 : -1;
+	// #603: the side is learned on the first Update with the wind off the bow. Read here, from a boat just Reset (as the
+	// pawn starts a drill), the telemetry is the last run's or zero: a port-tack start counted a tack on its first step and
+	// quick-stop's list opened with steps 1 and 2 ticked.
+	LastSide = 0;
 	Start2D = BoatXY(Boat);
 	const FVector2D Up(FMath::Cos(WindFromRad), FMath::Sin(WindFromRad)); // toward where the wind comes from
 	const FVector2D Across(-Up.Y, Up.X);
@@ -93,6 +96,60 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
+void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position, double Dt)
+{
+	Time += Dt;
+	const int32 Last = (NextSample + SampleCount - 1) % SampleCount;
+	if (Samples > 0 && FVector2D::Distance(Position, SamplePosition[Last]) > JumpMeters) Samples = NextSample = 0;   // reset
+	if (Samples == 0 || Time - SampleTime[Last] >= NetSeconds / (SampleCount - 1))
+	{
+		SamplePosition[NextSample] = Position;
+		SampleTime[NextSample] = Time;
+		NextSample = (NextSample + 1) % SampleCount;
+		Samples = FMath::Min(Samples + 1, SampleCount);
+	}
+	const int32 Oldest = Samples < SampleCount ? 0 : NextSample;
+	const double Span = Time - SampleTime[Oldest];
+	LastNetKnots = Span >= 0.5 ? FVector2D::Distance(Position, SamplePosition[Oldest]) / Span / Sailing::kKnot : Knots;
+	if (bTiedUp)
+	{
+		CastOffAt = Position;
+		SinceCastOff = 0.0;
+		bGraceOver = false;
+		bCounted = bFresh = false;
+		Clear = 0.0;   // tied up is lying against the dock: a touch carried on from it is never fresh
+		LastKnots = Knots;
+		return;
+	}
+	SinceCastOff += Dt;
+	if (!bGraceOver && (FVector2D::Distance(Position, CastOffAt) > GraceMeters || (SinceCastOff >= GraceSeconds && Clear >= RejoinSeconds))) bGraceOver = true;
+	// A new touch begins with contact after RejoinSeconds clear (fresh); until then it is the same touch.
+	const double Approach = LastKnots;
+	LastKnots = Knots;
+	const bool bOnset = bCollision && Clear >= RejoinSeconds;
+	if (bOnset) { bCounted = bRam = false; bFresh = true; TouchAge = 0.0; }
+	else if (bCollision) TouchAge += Dt;
+	Clear = bCollision ? 0.0 : Clear + Dt;
+	if (!bCollision) return;
+	if (bCounted) CountedAge += Dt;
+	else if (bOnset && Approach >= RamKnots)
+	{
+		++Collisions;
+		bCounted = bRam = true;
+		CountedAge = 0.0;
+		MaxKnots = FMath::Max(MaxKnots, Approach);   // the ram's approach, the step before the contact
+		return;
+	}
+	else if (bGraceOver && LastNetKnots >= TouchKnots)
+	{
+		++Collisions;
+		bCounted = true;
+		bRam = false;
+		CountedAge = 0.0;
+	}
+	if (bCounted && !bRam && CountedAge <= OnsetSeconds) MaxKnots = FMath::Max(MaxKnots, LastNetKnots);
+}
+
 void FDrillRunner::Finish(const FString& InOutcome)
 {
 	if (!IsActive()) return;
@@ -134,7 +191,12 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	const double Knots = T.BoatSpeed / kKnot;
 	const double TwaDeg = FMath::RadiansToDegrees(T.TrueWindAngle);
 	const int32 Side = TwaDeg >= 0.0 ? 1 : -1;
-	if (Side != LastSide && FMath::Abs(TwaDeg) > 10.0) { ++TacksOrGybes; LastSide = Side; }
+	if (FMath::Abs(TwaDeg) > 10.0)
+	{
+		if (LastSide == 0) LastSide = Side;
+		else if (Side != LastSide) { ++TacksOrGybes; LastSide = Side; }
+	}
+	const int32 Reached = Step;
 
 	switch (Drill)
 	{
@@ -209,6 +271,9 @@ bool FDrillRunner::Update(const FBoatModel& Boat, const FDrillContext& Context, 
 	default:
 		break;
 	}
+	// #603: a step once reached stays reached (the panel never un-ticks one: quick-stop fell back from "approach" to
+	// "keep turning" as the person drifted past 15 m), except where the steps are her state (StepsDescribeState).
+	if (!bComplete && !StepsDescribeState(Drill)) Step = FMath::Max(Step, Reached);
 	return !bComplete;
 }
 

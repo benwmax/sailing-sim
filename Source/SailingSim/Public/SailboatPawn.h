@@ -9,6 +9,7 @@
 #include "FixedStepper.h"
 #include "InputActionValue.h"
 #include "Drills.h"
+#include "SailStartClock.h"
 #include "Learning.h"
 #include "Career.h"
 #include "Navigation.h"
@@ -123,6 +124,8 @@ public:
 	/** Graphics G7: counts drill starts (the HUD opens the briefing and, once it is done, the quiz for each). */
 	int32 GetDrillSerial() const { return DrillSerial; }
 	double GetMaxContactKnots() const { return MaxContactKnots; }
+	/** Seconds since she was put at her start (a reset, a lesson's start): #598 holds the no-go tips for the first ten. */
+	double GetSecondsSinceStart() const { return StartClock.Seconds(Boat.GetState().Time); }
 	/** Career 1: the last drill's medal for its lesson (invalid when the run counted for no lesson). */
 	const FCareerProgress::FAward& GetCareerAward() const { return CareerAward; }
 	/** The rules coach scored the boat (TrafficManager): a penalty during a drill counts against its medal. */
@@ -197,7 +200,7 @@ public:
 	const TArray<FString>& GetSessionPhotos() const { return SessionPhotos; }
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
-	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
+	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; StartClock.Hold(bHeld, Boat.GetState().Time); }
 	/**
 	 * The showroom (docs/showroom-wiring/): on a stage the boat is afloat and sailing on her spot (the trim assist trims
 	 * for a close reach, the helm holds it, her way over the ground is taken out) and the free camera orbits her in the
@@ -391,10 +394,13 @@ private:
 	FDrillRunner DrillRunner;
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
+	FSailStartClock StartClock;   // #598: since she was put at her start (ResetBoat, StartDrill), held time left out
 	int32 DrillSerial = 0;
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
-	bool bDrillTouching = false, bDrillGraded = false;
+	bool bDrillGraded = false;
+	double LastContactClock = 0.0;   // the boat clock at DrillContacts' last update
+	FDrillContacts DrillContacts;   // #604: touches counted off the dock (DrillCollisions and MaxContactKnots mirror it)
 	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
 	// Prologue step 2: the player's crew station and the rest of the crew (docs/prologue/README.md). Active only while a
 	// scene runs; the scene's station orders arrive by serial, the station key and the grind taps between frames.
@@ -473,9 +479,15 @@ private:
 	float PhotoFocusM = 20.f;
 	uint64 PhotoCleanFrame = 0;
 	bool bPhotoHidMine = false, bPhotoHidCrew = false;
+	bool bCrewShownApplied = true;   // UpdateCrewShown: what the figures were last set to, and for which crew
+	TWeakObjectPtr<class USkeletalMeshComponent> CrewShownFor;
 	TArray<TWeakObjectPtr<AActor>> PhotoHidden;
 	void StepPhotoPanel(FName Action);
 	void ApplyPhotoScene(bool bOn);
+	/** Settings > Show crew (USailingSettings::IsShowCrew): your boat's figures drawn; other boats always show theirs. */
+	bool CrewShown() const;
+	/** Hides or shows your boat's crew figures when the setting (or photo mode's Crew row) changes, or the crew is rebuilt. */
+	void UpdateCrewShown();
 	void UpdatePhotoHullClip();
 	// The showroom: its stage, the spot (map m) and heading she is held on, the current that takes out her way over the
 	// ground, the side she sails on, the helm, and the async load of a boat being swapped in (the shown boat's stays
@@ -593,6 +605,8 @@ private:
 	void SetupCrewFalls();
 	void UpdateCrewFalls(float DeltaSeconds);
 	void SetCrewPhysicsActive(bool bActive);
+	/** Crew falls' recovery: the bodies back on their animation (kinematic, controls off, physics off). */
+	void StandCrewUp();
 	TArray<FCrewFigure> CrewFigures;
 	double PrevCrewOffset = 0.0;
 	float ShownCrewOffset = 0.f, ShownCrewOffsetV = 0.f; bool bShownCrewOffset = false; // round 10: a dinghy sailor's offset, smoothed

@@ -28,6 +28,60 @@ struct FDrillContext
 };
 
 /**
+ * A drill's touches with docks and boats (#604), updated each frame with the physics time that passed: how many, and
+ * the hardest (knots).
+ * - Tied up nothing counts: a boat working at her lines against her own dock is not the sailor's touch (the Sunfish's
+ *   berth leaves her 0.1 m past the contact margin and her lines 0.2 m of slack: she logged 43 touches before cast-off).
+ * - Just cast off she lies there, the contact flickering as she luffs alongside and swinging against the dock (a 20
+ *   degree pivot moved the Sunfish's origin 0.7 m in a second): the grace lasts until she is GraceMeters (about a hull
+ *   length: the caller sets it) from where she cast off, or GraceSeconds have passed with her clear of the dock (lying
+ *   alongside a minute is still the grace). In it only a ram counts.
+ * - A ram: a fresh touch (after RejoinSeconds clear) with an approach of RamKnots: the hull speed of the step before
+ *   the contact (the contact spring acts in the step that sets it). Reversed off and driven back in, or driven ahead into
+ *   the slip's head. Its hardest is that approach speed.
+ * - Past the grace a touch also counts once she is getting somewhere: TouchKnots net over the last NetSeconds (at a dock
+ *   the contact spring bounces her: hull speed spiked to 2.4 kn while she moved 0.6 m in 30 s). Its hardest is that
+ *   net speed, the most it reaches in the OnsetSeconds after it counts.
+ * - It stays one touch until she has been clear RejoinSeconds. A jump of more than JumpMeters (a reset) restarts the track.
+ */
+struct SAILINGSIM_API FDrillContacts
+{
+	static constexpr double GraceSeconds = 60.0;
+	static constexpr double TouchKnots = 0.3;
+	static constexpr double RamKnots = 1.0;
+	static constexpr double RejoinSeconds = 1.0;
+	static constexpr double OnsetSeconds = 0.5;
+	static constexpr double NetSeconds = 2.0;
+	static constexpr double JumpMeters = 5.0;
+	double GraceMeters = 5.0;   // about a hull length (ASailboatPawn sets the boat's length overall)
+	int32 Collisions = 0;
+	double MaxKnots = 0.0;
+	void Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position, double Dt);
+	/** Her net speed over the ground across the last NetSeconds (the hull's speed until there is half a second of track). */
+	double NetKnots() const { return LastNetKnots; }
+	/** Whether the cast-off grace is over (for the tests). */
+	bool IsGraceOver() const { return bGraceOver; }
+private:
+	static constexpr int32 SampleCount = 21;   // one every NetSeconds / 20
+	FVector2D SamplePosition[SampleCount];
+	double SampleTime[SampleCount] = {};
+	int32 Samples = 0;
+	int32 NextSample = 0;
+	double Time = 0.0;
+	double LastNetKnots = 0.0;
+	FVector2D CastOffAt = FVector2D::ZeroVector;
+	double SinceCastOff = 0.0;
+	bool bGraceOver = true;   // a drill that starts under way has no grace
+	bool bCounted = false;    // the touch under way has been counted
+	bool bRam = false;        // ... and it was counted as a ram
+	bool bFresh = false;      // the touch under way began after RejoinSeconds clear, off the dock
+	double Clear = 1e9;       // seconds since the last contact (tied up counts as contact)
+	double TouchAge = 0.0;    // seconds since the touch under way began
+	double CountedAge = 0.0;  // seconds since the touch under way was counted
+	double LastKnots = 0.0;   // the hull speed at the previous Update (a fresh touch's approach)
+};
+
+/**
  * Runs one drill: sets up marks or a crew-overboard dummy, follows the boat and the crew's actions, and decides
  * when the drill is done. Pure logic over the physics state, so tests can drive it headless.
  */
@@ -42,9 +96,12 @@ public:
 	static TArray<FString> DinghySteps(ESailingDrill Drill);
 
 	/** Return and dock's start heading (#510): toward the dock (BearingRad, map frame, as FMath::Atan2(dY, dX)) unless
-	 *  that is within MinTwaDeg of the wind (WindFromRad), then a close reach on the side nearer the dock, so the lesson
-	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. */
-	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = 60.0);
+	 *  that is within MinTwaDeg of the wind (WindFromRad), then a beam reach on the side nearer the dock, so the lesson
+	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. #598: 80 degrees,
+	 *  not 60: with the tiller centred her weather helm rounds her up, and from 60 the J/22 was in Easy's warning band
+	 *  inside ten seconds (the Sunfish in the no-go zone); from 80 both stay clear for ten (SailingSim.Drills.StartNotPinching). */
+	static constexpr double ReturnStartMinTwaDeg = 80.0;
+	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = ReturnStartMinTwaDeg);
 
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);
@@ -71,6 +128,9 @@ public:
 	/** How a finished drill went, as the briefing's debrief keys: clean/contact, done, proper/improper, gentle/hard. */
 	const FString& GetOutcome() const { return Outcome; }
 	static TArray<FString> Outcomes(ESailingDrill Drill);
+	/** #603: drills whose step is the state she is in now (heave-to: backed, slow, held; return and dock: under way, slowed,
+	 *  tied up), so it may go back; every other drill's step, once reached, stays reached. */
+	static bool StepsDescribeState(ESailingDrill Drill) { return Drill == ESailingDrill::HeaveTo || Drill == ESailingDrill::ReturnAndDock; }
 
 	/** Marks to sail around (world XY, meters) and the next one to round. */
 	const TArray<FVector2D>& GetMarks() const { return Marks; }

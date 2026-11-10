@@ -2,6 +2,7 @@
 #include "BoatModel.h"
 #include "AutoTrim.h"
 #include "Drills.h"
+#include "SailingHUD.h"
 #include "FixedStepper.h"
 #include "LakeData.h"
 #include "LakeTerrain.h"
@@ -545,6 +546,78 @@ bool FSailingHeaveToTest::RunTest(const FString& Parameters)
 	}
 	AddInfo(Drill.GetStatus());
 	TestTrue(TEXT("Hove to within 90 s and held it 20 s"), Drill.IsComplete());
+	{
+		// #603: heave-to's steps follow her state. Hove to (step 4), then the jib let go and the sheets trimmed: past 3 kn
+		// the list is back on backing the jib, not latched on "Stay hove to".
+		FBoatModel Again;
+		Again.Reset(0.0, 0.0, -45.0 * kDegToRad, 4.0 * kKnot);
+		FAutopilot Helm;
+		Helm.TargetTWADeg = 45.0;
+		FAutoTrim T2 = ScriptedTrim();
+		FBoatControls C2;
+		C2.MainSheet = C2.JibSheet = 0.2;
+		for (int32 I = 0; I < int32(30 * PhysicsHz); ++I) { C2 = T2.Update(Again, C2, PhysicsDt); C2.Tiller = Helm.Update(Again); Again.Step(PhysicsDt, C2, Wind); }
+		FDrillRunner Hove;
+		Hove.Start(ESailingDrill::HeaveTo, Again, 0.0);
+		C2.bBackJib = true; C2.JibSheet = 0.1; C2.MainSheet = 0.8; C2.Tiller = 0.0;
+		FDrillContext Backed;
+		Backed.bBackJib = true;
+		bool bHeld = false;
+		for (int32 I = 0; I < int32(60 * PhysicsHz) && !bHeld; ++I)
+		{
+			if (I == int32(6 * PhysicsHz)) C2.Tiller = 0.3;
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Backed, PhysicsDt);
+			bHeld = Hove.GetStep() == 4;
+		}
+		TestTrue(TEXT("Hove to: on \"Stay hove to\""), bHeld);
+		C2.bBackJib = false;
+		FDrillContext Released;
+		double Knots = 0.0;
+		int32 StepAfter = 4;
+		for (int32 I = 0; I < int32(40 * PhysicsHz) && Hove.IsActive(); ++I)
+		{
+			C2 = T2.Update(Again, C2, PhysicsDt);
+			C2.Tiller = Helm.Update(Again);
+			Again.Step(PhysicsDt, C2, Wind);
+			Hove.Update(Again, Released, PhysicsDt);
+			Knots = Again.GetTelemetry().BoatSpeed / kKnot;
+			StepAfter = Hove.GetStep();
+			if (Knots > 3.0) break;
+		}
+		AddInfo(FString::Printf(TEXT("Jib released: %.1f kn, step %d"), Knots, StepAfter));
+		TestTrue(TEXT("Jib released and sailing past 3 kn: the list goes back to backing the jib"), Knots > 3.0 && StepAfter <= 1);
+	}
+	{
+		// #603: return and dock's step is her speed far from the dock: slowed under 1.5 kn (step 1, "luff to slow down"),
+		// then sailing on past 1.5 kn again, the list goes back to step 0 (the approach), not latched on step 1.
+		FBoatModel Dock;
+		Dock.Reset(0.0, 0.0, 90.0 * kDegToRad, 4.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(ESailingDrill::ReturnAndDock, Dock, 0.0);
+		FAutopilot Hold;
+		Hold.TargetTWADeg = 90.0;
+		FAutoTrim Sheets = ScriptedTrim();
+		FBoatControls DC;
+		auto Sail = [&](bool bLetFly, TFunctionRef<bool(double)> Until)
+		{
+			for (int32 I = 0; I < int32(90 * PhysicsHz); ++I)
+			{
+				DC = Sheets.Update(Dock, DC, PhysicsDt);
+				if (bLetFly) DC.MainSheet = DC.JibSheet = 1.0;
+				Hold.TargetTWADeg = bLetFly ? 15.0 : 90.0;   // shoot up toward the wind to stop, bear away to go
+				DC.Tiller = Hold.Update(Dock);
+				Dock.Step(PhysicsDt, DC, Wind);
+				Run.Update(Dock, FDrillContext(), PhysicsDt);
+				if (Until(Dock.GetTelemetry().BoatSpeed / kKnot)) return true;
+			}
+			return false;
+		};
+		TestTrue(TEXT("Return and dock: shot up with the sheets free, she slows under 1.5 kn"), Sail(true, [](double Kn) { return Kn < 1.2; }));
+		TestEqual(TEXT("... on step 1 (slowed)"), Run.GetStep(), 1);
+		TestTrue(TEXT("... borne away and sheeted in, she is back over 1.5 kn"), Sail(false, [](double Kn) { return Kn > 2.0; }));
+		TestEqual(TEXT("... and the list is back on step 0 (the approach)"), Run.GetStep(), 0);
+	}
 	return true;
 }
 
@@ -598,6 +671,28 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 {
 	// Quick-stop: head up, circle back and stop alongside, steered by a scripted helmsman.
 	const FWindField Wind = WindFrom(10.0, 0.0);
+	// #603: started on a boat just Reset (as the pawn does), on either tack, two and a half seconds of sailing straight on count
+	// no tack: the list stays on its first step (the audit's port start opened on step 3 with 1 and 2 ticked).
+	for (const double HeadingDeg : { -100.0, 100.0, -60.0, 60.0 })
+	for (const ESailingDrill Kind : { ESailingDrill::CrewOverboardQuickStop, ESailingDrill::CrewOverboardFigureEight })
+	{
+		FBoatModel Straight;
+		Straight.Reset(0.0, 0.0, HeadingDeg * kDegToRad, 5.0 * kKnot);
+		FDrillRunner Run;
+		Run.Start(Kind, Straight, 0.0);
+		FAutoTrim StraightTrim = ScriptedTrim();
+		FBoatControls SC;
+		int32 MaxStep = 0;
+		for (int32 I = 0; I < int32(2.5 * PhysicsHz); ++I)
+		{
+			SC = StraightTrim.Update(Straight, SC, PhysicsDt);
+			SC.Tiller = 0.0;
+			Straight.Step(PhysicsDt, SC, Wind);
+			Run.Update(Straight, FDrillContext(), PhysicsDt);
+			MaxStep = FMath::Max(MaxStep, Run.GetStep());
+		}
+		TestEqual(FString::Printf(TEXT("%s from a heading of %.0f: no tack counted, still on the first step"), DrillName(Kind), HeadingDeg), MaxStep, 0);
+	}
 	FBoatModel Boat;
 	Boat.Reset(0.0, 0.0, -100.0 * kDegToRad, 5.0 * kKnot);
 	FDrillRunner Drill;
@@ -606,7 +701,8 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 	FAutopilot Pilot;
 	Pilot.MaxTiller = 0.7;
 	FBoatControls C;
-	bool bBelow = false;
+	bool bBelow = false, bStepBack = false;
+	TArray<int32> StepsSeen;
 	double T = 0.0;
 	for (int32 I = 0; I < int32(240 * PhysicsHz) && Drill.IsActive(); ++I, T += PhysicsDt)
 	{
@@ -635,9 +731,15 @@ bool FSailingOverboardTest::RunTest(const FString& Parameters)
 		if (bBelow && Dist < 40.0 && Boat.GetTelemetry().BoatSpeed > ApproachSpeed(Dist)) { C.MainSheet = 1.0; C.JibSheet = 1.0; }
 		C.Tiller = Pilot.Update(Boat);
 		Boat.Step(PhysicsDt, C, Wind);
+		const int32 Before = Drill.GetStep();
 		Drill.Update(Boat, FDrillContext(), PhysicsDt);
+		// #603: the list never goes back (the person drifting past 15 m had put "approach" back to "keep turning").
+		if (Drill.IsActive() && Drill.GetStep() < Before) { bStepBack = true; }
+		StepsSeen.AddUnique(Drill.GetStep());
 	}
 	AddInfo(Drill.GetStatus());
+	TestFalse(TEXT("The step list never went back"), bStepBack);
+	TestTrue(TEXT("Every step was shown on the way"), StepsSeen.Contains(0) && StepsSeen.Contains(1) && StepsSeen.Contains(2));
 	TestTrue(TEXT("Recovered the person overboard (stopped within 3 m)"), Drill.IsComplete());
 	return true;
 }
@@ -698,6 +800,165 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 {
 	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
 	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
+	{
+		// #604 (FDrillContacts, GraceMeters 5 m here): tied up nothing counts; in the cast-off grace (until 5 m off) only a
+		// ram counts (a fresh touch after 1 s clear at 1 kn or more); past it a touch counts once she makes 0.3 kn net over
+		// 2 s, flicker within a second is one touch; a ram's hardest is its hull speed, a net touch's its net speed.
+		const double Dt = 1.0 / 60.0;
+		struct FMover { FDrillContacts C; FVector2D P = FVector2D::ZeroVector; };
+		auto Run = [Dt](FMover& M, int32 Frames, double Kn, bool bTied, TFunctionRef<bool(int32)> Touch)
+		{
+			for (int32 I = 0; I < Frames; ++I) { M.P.X += Kn * kKnot * Dt; M.C.Update(Touch(I), bTied, Kn, M.P, Dt); }
+		};
+		auto Never = [](int32) { return false; };
+		auto Always = [](int32) { return true; };
+		FMover Rub;
+		Run(Rub, 50, 0.0, true, [](int32 I) { return I % 2 == 0 || I > 40; });
+		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Rub.C.Collisions, 0);
+		Run(Rub, 60, 0.3, false, [](int32 I) { return I % 3 != 0; });
+		TestEqual(TEXT("Cast off, creeping along the dock: the flicker counts nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 40, 2.0, false, Always);   // a lurch at 2 kn, carried on from the dock (not fresh): still the grace
+		TestEqual(TEXT("A lurch against the dock in the grace: nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 400, 1.5, false, Always);
+		Run(Rub, 30, 1.5, false, Never);
+		TestTrue(TEXT("Scraped on out of the slip at 1.5 kn: past 5 m"), Rub.C.IsGraceOver());
+		TestEqual(TEXT("... the carried rub counts once"), Rub.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... its hardest the net 1.5 (%.2f)"), Rub.C.MaxKnots), FMath::IsNearlyEqual(Rub.C.MaxKnots, 1.5, 0.1));
+		FMover Back;   // cast off, drifted clear 6 m (past the grace), then back onto the dock at 0.4 kn: one touch
+		Run(Back, 1, 0.0, true, Always);
+		Run(Back, 1700, 0.4, false, Never);
+		TestTrue(TEXT("Drifted 6 m clear: the grace is over"), Back.C.IsGraceOver());
+		Run(Back, 400, -0.4, false, [](int32 I) { return I >= 300; });
+		TestEqual(TEXT("... drifting back onto the dock at 0.4 kn: one touch"), Back.C.Collisions, 1);
+		FMover Slide;   // under way, sliding along a finger at 0.35 kn with the contact flickering for 10 s: one touch
+		Run(Slide, 300, 0.35, false, Never);
+		Run(Slide, 600, 0.35, false, [](int32 I) { return I % 7 < 3; });
+		TestEqual(TEXT("Sliding along a finger, contact flickering for 10 s: one touch"), Slide.C.Collisions, 1);
+		FMover Drift;   // drifting at 0.2 kn against the dock: nothing
+		Run(Drift, 240, 0.2, false, Never);
+		Run(Drift, 600, 0.2, false, [](int32 I) { return I % 5 < 2; });
+		TestEqual(TEXT("Drifting against the dock at 0.2 kn: no touch"), Drift.C.Collisions, 0);
+		FMover Away;   // off the dock (9 m): a 1.5 kn ram, then 2 s clear and a 0.8 kn touch on the net: two
+		Run(Away, 1, 0.0, true, Never);
+		Run(Away, 360, 3.0, false, Never);
+		Run(Away, 30, 1.5, false, Never);   // slowed to 1.5 kn before the dock
+		Run(Away, 30, 1.5, false, Always);
+		Run(Away, 120, 1.0, false, Never);
+		Run(Away, 30, 0.8, false, Always);
+		TestEqual(TEXT("Off the dock: two touches 2 s apart"), Away.C.Collisions, 2);
+		TestTrue(FString::Printf(TEXT("... the hardest the ram's 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
+		FMover Ram;   // in the grace: reversed off, then driven into the dock at 1.5 kn (net over 2 s near zero): a ram on its approach
+		Run(Ram, 1, 0.0, true, Never);
+		Run(Ram, 120, 0.0, false, Never);
+		Run(Ram, 60, -1.0, false, Never);
+		Run(Ram, 50, 1.5, false, Never);
+		TestTrue(FString::Printf(TEXT("Ram: the net over 2 s is low (%.2f kn)"), Ram.C.NetKnots()), Ram.C.NetKnots() < FDrillContacts::TouchKnots);
+		Run(Ram, 20, 1.5, false, Always);
+		TestEqual(TEXT("Reversed, then rammed at 1.5 kn in the grace: one touch"), Ram.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Ram.C.MaxKnots), FMath::IsNearlyEqual(Ram.C.MaxKnots, 1.5, 0.05));
+		FMover Head;   // cast off and driven ahead into the slip's head at 1.2 kn after 2 s clear: a ram in the grace
+		Run(Head, 1, 0.0, true, Always);
+		Run(Head, 120, 0.3, false, Never);
+		TestFalse(TEXT("Still in the grace (0.6 m off)"), Head.C.IsGraceOver());
+		Run(Head, 30, 1.2, false, Never);
+		Run(Head, 20, 1.2, false, Always);
+		TestEqual(TEXT("... and driving into the slip's head at 1.2 kn counts"), Head.C.Collisions, 1);
+		FMover Lying;   // under way: a touch on the net at 1 kn, then lying alongside, the hull speed spiking to 2.4 kn
+		Run(Lying, 120, 1.0, false, Never);
+		Run(Lying, 1, 0.8, false, Always);
+		for (int32 I = 0; I < 300; ++I) { Lying.C.Update(true, false, I % 10 == 0 ? 2.4 : 0.1, Lying.P, Dt); }
+		TestEqual(TEXT("Lying alongside after a touch: still one"), Lying.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... its hardest the net speed, not the 2.4 kn spikes in its first 0.5 s (%.2f)"), Lying.C.MaxKnots), Lying.C.MaxKnots > 0.5 && Lying.C.MaxKnots < 1.1);
+		FMover Spike;   // a fresh touch at 0.3 kn after 1 s clear, the spring's 2.4 kn spike on its third frame: no ram
+		Run(Spike, 1, 0.0, true, Never);
+		Run(Spike, 90, 0.3, false, Never);
+		Run(Spike, 2, 0.3, false, Always);
+		Spike.C.Update(true, false, 2.4, Spike.P, Dt);
+		Run(Spike, 20, 0.3, false, Always);
+		TestEqual(TEXT("A 0.3 kn touch with a 2.4 kn spring spike, in the grace: not a ram"), Spike.C.Collisions, 0);
+		FMover SpikePast;   // the same past the grace: counted on the net (or not), its hardest under 1 kn
+		Run(SpikePast, 1, 0.0, true, Never);
+		Run(SpikePast, 1300, 0.6, false, Never);
+		Run(SpikePast, 120, 0.3, false, Never);
+		Run(SpikePast, 2, 0.3, false, Always);
+		SpikePast.C.Update(true, false, 2.4, SpikePast.P, Dt);
+		Run(SpikePast, 20, 0.3, false, Always);
+		TestTrue(FString::Printf(TEXT("... past the grace its hardest is under 1 kn (%.2f)"), SpikePast.C.MaxKnots), SpikePast.C.MaxKnots < 1.0);
+		FMover Minute;   // cast off and lying alongside 70 s (past the 60 s timeout, but never clear), then 1 kn along the face 2 s
+		Run(Minute, 1, 0.0, true, Always);
+		Run(Minute, 70 * 60, 0.0, false, Always);
+		TestFalse(TEXT("Lying alongside 70 s: still the grace (never clear)"), Minute.C.IsGraceOver());
+		Run(Minute, 120, 1.0, false, Always);
+		TestEqual(TEXT("... then sliding along the face at 1 kn for 2 s: nothing"), Minute.C.Collisions, 0);
+		FMover Underway;   // a drill that starts under way (no cast-off): the first touch counts
+		Run(Underway, 60, 0.6, false, [](int32 I) { return I >= 40; });
+		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.C.Collisions, 1);
+	}
+	{
+		// #604: the Sunfish's leave-the-dock berth at Rush Creek, as the pawn picks it (FindBerth with her config), puts
+		// her hull outside the dock (0.2 m off its face; her lines' 0.2 m of slack lets her lie against it, which is why
+		// the rub must not count), and tied up with her sail luffing for a minute she counts no touch.
+		FLakeData Lake;
+		if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+		for (const double WindDeg : { 180.0, 0.0, 90.0, 270.0 })
+		{
+			FVector2D Berth;
+			double Heading = 0.0;
+			if (!TestTrue(TEXT("A Sunfish berth near the club"), FindBerth(Lake.Terrain, Lake.Obstacles, FVector2D::ZeroVector, 600.0, WindDeg * kDegToRad, Berth, Heading, Sunfish))) return false;
+			FBoatModel Boat(Sunfish);
+			Boat.SetTerrain(&Lake.Terrain);
+			Boat.SetObstacles(&Lake.Obstacles);
+			Boat.Reset(Berth.X, Berth.Y, Heading, 0.0);
+			Boat.GetMooringLines() = FindDockLines(Boat, Lake.Obstacles);
+			// The hull's footprint against the nearest dock face (its segment's radius included): never inside it.
+			double Clear = 1e9;
+			const FVector2D Fwd(FMath::Cos(Heading), FMath::Sin(Heading)), Side(-Fwd.Y, Fwd.X);
+			for (const FObstacleSegment& O : Lake.Obstacles)
+			{
+				if (O.Top > 1.5) continue;
+				const FVector2D A(O.AX, O.AY), B(O.BX, O.BY), AB = B - A;
+				for (double U = -0.5; U <= 0.5; U += 0.25)
+				for (const double V : { -0.5, 0.5 })
+				{
+					const FVector2D P = Berth + Fwd * (U * Sunfish.LengthOverall) + Side * (V * Sunfish.Beam);
+					const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1e-9), 0.0, 1.0);
+					Clear = FMath::Min(Clear, FVector2D::Distance(P, A + AB * T) - O.Radius);
+				}
+			}
+			FBoatControls C;
+			C.MainSheet = 1.0;   // let fly, luffing at the dock as the lesson starts
+			const FWindField Wind = WindFrom(10.0, WindDeg);
+			FDrillContacts Contacts;
+			Contacts.GraceMeters = Sunfish.LengthOverall;
+			int32 RawFrames = 0, LooseFrames = 0;
+			const int32 Lines = int32(Boat.GetMooringLines().size());
+			auto StepOnce = [&]()
+			{
+				Boat.Step(PhysicsDt, C, Wind);
+				const Vec3 O = Boat.OriginPosition();
+				Contacts.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y), PhysicsDt);
+			};
+			for (int32 I = 0; I < int32(60 * PhysicsHz); ++I) { StepOnce(); RawFrames += Boat.GetTelemetry().bCollision; }
+			const int32 TiedCount = Contacts.Collisions;
+			// Lines off, still luffing alongside for 30 s (the crew hasn't sheeted in), the wind onto the dock or along it:
+			// the flicker and the slow drift along the face count nothing.
+			Boat.GetMooringLines().clear();
+			double LooseMaxKn = 0.0;
+			for (int32 I = 0; I < int32(30 * PhysicsHz); ++I)
+			{
+				StepOnce();
+				LooseFrames += Boat.GetTelemetry().bCollision;
+				if (Boat.GetTelemetry().bCollision) LooseMaxKn = FMath::Max(LooseMaxKn, Contacts.NetKnots());
+			}
+			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 30 s cast off and luffing (net over 2 s at most %.2f kn), grace %s, %d counted, %.1f m from the berth"),
+				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, LooseMaxKn, Contacts.IsGraceOver() ? TEXT("over") : TEXT("still on"), Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
+			TestTrue(TEXT("The berth puts the hull outside the dock"), Clear >= 0.0);
+			TestTrue(TEXT("Her lines reach the dock"), Lines >= 2);
+			TestTrue(TEXT("She does lie against the dock tied up (the case being tested)"), RawFrames > 0);
+			TestEqual(TEXT("Tied up at her berth for a minute: no touch counted"), TiedCount, 0);
+			TestEqual(TEXT("Cast off and luffing alongside 30 s: no touch counted"), Contacts.Collisions, 0);
+		}
+	}
 	{
 		const FWindField Wind = WindFrom(10.0, 0.0);
 		FBoatModel Boat(Sunfish);
@@ -1041,6 +1302,79 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 	const float OverSlab = At(Head + R.Dir * T);
 	TestTrue(FString::Printf(TEXT("Over the slab, the water over it (%.2f m, slab %.2f m down)"), OverSlab, -SlabZ),
 		OverSlab >= 0.f && OverSlab <= float(-SlabZ) + 0.15f);
+	return true;
+}
+
+/**
+ * #598: a lesson's start is not in the no-go zone, and nobody on the helm she doesn't get there before the player has had
+ * time to take it: from Return and dock's start (FDrillRunner::ReturnStartMinTwaDeg off the wind at worst; Easy, trim
+ * assist on, the tiller centred, as a new player starts), the first SailingNoGoTipHoldSeconds keep the true wind outside
+ * Easy's warning band, for the J/22 and the Sunfish (weather helm rounds both up: from the old 60 degrees the J/22 was at 52
+ * after 10 s, the Sunfish at 42). And the no-go tips wait for that hold, while irons still shows at once.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStartNotPinchingTest, "SailingSim.Drills.StartNotPinching", Flags)
+bool FSailingStartNotPinchingTest::RunTest(const FString& Parameters)
+{
+	for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish })
+	for (const double StartTwa : { FDrillRunner::ReturnStartMinTwaDeg, -FDrillRunner::ReturnStartMinTwaDeg, 120.0 })
+	{
+		FBoatModel Boat(FBoatConfig::Make(Type));
+		FEasyAssists Easy;
+		Easy.bEnabled = true;
+		Easy.ApplyTo(Boat.GetMutableConfig(), Boat.TotalMass());
+		FAutoTrim Trim;
+		Easy.ApplyTo(Trim.Settings);
+		FEasyHelm Helm;
+		const FWindField Wind = WindFrom(10.0, 0.0);
+		Boat.Reset(0.0, 0.0, StartTwa * kDegToRad, 2.0 * kKnot);   // the drill's start: 2 kn, sheets at 0.6, tiller centred
+		FBoatControls C;
+		C.MainSheet = C.JibSheet = 0.6;
+		double MinTwa = 180.0;
+		for (int32 I = 0; I < int32(SailingNoGoTipHoldSeconds * PhysicsHz); ++I)
+		{
+			const FBoatControls Before = C;
+			C = Trim.Update(Boat, C, PhysicsDt);
+			C.Tiller = Before.Tiller;
+			Boat.Step(PhysicsDt, Helm.Update(Boat, C, Easy, PhysicsDt), Wind);
+			MinTwa = FMath::Min(MinTwa, FMath::Abs(Boat.GetTelemetry().TrueWindAngle) * kRadToDeg);
+		}
+		const FString Name = FString::Printf(TEXT("%s from TWA %.0f"), Type == EBoatType::J22 ? TEXT("J/22") : TEXT("Sunfish"), StartTwa);
+		AddInfo(FString::Printf(TEXT("%s: lowest TWA %.0f in the first %.0f s"), *Name, MinTwa, SailingNoGoTipHoldSeconds));
+		TestTrue(FString::Printf(TEXT("%s: outside Easy's warning band (%.0f) for the hold"), *Name, Easy.NoGoWarnDeg()), MinTwa >= Easy.NoGoWarnDeg());
+	}
+	// The tips: pinching just after the start, nothing about the no-go zone; after the hold, the cue; in irons at once.
+	FEasyAssists Easy;
+	Easy.bEnabled = true;
+	FBoatControls C;
+	FBoatTelemetry T;
+	T.TrueWindAngle = 30.0 * kDegToRad;
+	auto Has = [](const TArray<TPair<FString, int32>>& Out, const TCHAR* S) { return Out.ContainsByPredicate([S](const TPair<FString, int32>& P) { return P.Key.Contains(S); }); };
+	TArray<TPair<FString, int32>> Held, After, Irons;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Held, true);
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, After, false);
+	TestFalse(TEXT("Held: no \"Too close to the wind\""), Has(Held, TEXT("Too close to the wind")));
+	TestTrue(TEXT("After the hold: \"Too close to the wind\""), Has(After, TEXT("Too close to the wind")));
+	T.bInIrons = true;
+	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Irons, true);
+	TestTrue(TEXT("In irons shows during the hold"), Has(Irons, TEXT("head to wind")));
+	// The pawn's clock for the hold (FSailStartClock, ASailboatPawn::GetSecondsSinceStart): a reset anchors it on the boat
+	// clock as it carries on (100 s in), time held by the UI (loading, briefing) is left out, and a reset while held starts
+	// counting only when the UI lets her go.
+	FSailStartClock Clock;
+	Clock.Reset(100.0);
+	TestEqual(TEXT("Just reset"), Clock.Seconds(100.0), 0.0);
+	TestEqual(TEXT("4 s later"), Clock.Seconds(104.0), 4.0);
+	Clock.Hold(true, 104.0);
+	TestEqual(TEXT("Held 20 s (a menu): the clock stops"), Clock.Seconds(124.0), 4.0);
+	Clock.Hold(false, 124.0);
+	TestEqual(TEXT("Released, 3 s on: 7"), Clock.Seconds(127.0), 7.0);
+	Clock.Hold(true, 130.0);
+	Clock.Reset(130.0);   // a lesson starts behind its loading screen and briefing
+	TestEqual(TEXT("Reset while held: 0 through the loading"), Clock.Seconds(160.0), 0.0);
+	Clock.Hold(false, 160.0);
+	TestEqual(TEXT("Let go after 30 s of loading: 0, then counting"), Clock.Seconds(160.0), 0.0);
+	TestTrue(TEXT("... 9 s after it is still in the hold"), Clock.Seconds(169.0) < SailingNoGoTipHoldSeconds);
+	TestTrue(TEXT("... 11 s after it is past"), Clock.Seconds(171.0) > SailingNoGoTipHoldSeconds);
 	return true;
 }
 

@@ -79,6 +79,15 @@ FSailSessionConfig USailSessionSubsystem::MakeDefault()
 	return C;
 }
 
+FSailSessionConfig USailSessionSubsystem::LastSessionFor(const FSailSessionConfig& Active)
+{
+	// Continue sails the same place freely, not the scene again; #599: except the first job, which it resumes until it is
+	// done (the title's Continue checks: SSailFrontEnd::ResumesFirstJob).
+	FSailSessionConfig Last = Active;
+	if (Last.SceneId != TEXT("first-job")) Last.SceneId.Reset();
+	return Last;
+}
+
 FSailSessionConfig USailSessionSubsystem::MakeLesson(const FString& WorldId, const FString& BoatId, int32 DrillIndex, const FString& PresetId, int32 Traffic)
 {
 	FSailSessionConfig C = MakeDefault();   // the lesson-day conditions, unless the lesson names others
@@ -196,8 +205,7 @@ void USailSessionSubsystem::StartSession(const FSailSessionConfig& Config, UObje
 	bStarted = false;
 	USailSessionSave* Save = USailSessionSave::Get();
 	Save->bHasLast = true;
-	Save->Last = Active;
-	Save->Last.SceneId.Reset();   // Continue sails the same place freely, not the scene again
+	Save->Last = LastSessionFor(Active);
 	Save->Commit();
 	ApplyToSettings(Active);
 	if (WorldContext)
