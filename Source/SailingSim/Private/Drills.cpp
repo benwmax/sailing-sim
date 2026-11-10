@@ -96,6 +96,60 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
+void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position, double Dt)
+{
+	Time += Dt;
+	const int32 Last = (NextSample + SampleCount - 1) % SampleCount;
+	if (Samples > 0 && FVector2D::Distance(Position, SamplePosition[Last]) > JumpMeters) Samples = NextSample = 0;   // reset
+	if (Samples == 0 || Time - SampleTime[Last] >= NetSeconds / (SampleCount - 1))
+	{
+		SamplePosition[NextSample] = Position;
+		SampleTime[NextSample] = Time;
+		NextSample = (NextSample + 1) % SampleCount;
+		Samples = FMath::Min(Samples + 1, SampleCount);
+	}
+	const int32 Oldest = Samples < SampleCount ? 0 : NextSample;
+	const double Span = Time - SampleTime[Oldest];
+	LastNetKnots = Span >= 0.5 ? FVector2D::Distance(Position, SamplePosition[Oldest]) / Span / Sailing::kKnot : Knots;
+	if (bTiedUp)
+	{
+		CastOffAt = Position;
+		SinceCastOff = 0.0;
+		bGraceOver = false;
+		bCounted = bFresh = false;
+		Clear = 0.0;   // tied up is lying against the dock: a touch carried on from it is never fresh
+		LastKnots = Knots;
+		return;
+	}
+	SinceCastOff += Dt;
+	if (!bGraceOver && (FVector2D::Distance(Position, CastOffAt) > GraceMeters || (SinceCastOff >= GraceSeconds && Clear >= RejoinSeconds))) bGraceOver = true;
+	// A new touch begins with contact after RejoinSeconds clear (fresh); until then it is the same touch.
+	const double Approach = LastKnots;
+	LastKnots = Knots;
+	const bool bOnset = bCollision && Clear >= RejoinSeconds;
+	if (bOnset) { bCounted = bRam = false; bFresh = true; TouchAge = 0.0; }
+	else if (bCollision) TouchAge += Dt;
+	Clear = bCollision ? 0.0 : Clear + Dt;
+	if (!bCollision) return;
+	if (bCounted) CountedAge += Dt;
+	else if (bOnset && Approach >= RamKnots)
+	{
+		++Collisions;
+		bCounted = bRam = true;
+		CountedAge = 0.0;
+		MaxKnots = FMath::Max(MaxKnots, Approach);   // the ram's approach, the step before the contact
+		return;
+	}
+	else if (bGraceOver && LastNetKnots >= TouchKnots)
+	{
+		++Collisions;
+		bCounted = true;
+		bRam = false;
+		CountedAge = 0.0;
+	}
+	if (bCounted && !bRam && CountedAge <= OnsetSeconds) MaxKnots = FMath::Max(MaxKnots, LastNetKnots);
+}
+
 void FDrillRunner::Finish(const FString& InOutcome)
 {
 	if (!IsActive()) return;
