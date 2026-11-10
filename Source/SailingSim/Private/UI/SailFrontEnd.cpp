@@ -483,6 +483,10 @@ void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateLambda([this, FocusUntil](double Time, float)
 	{
 		if (FocusCurrent()) return EActiveTimerReturnType::Stop;
+		// A disabled default can't take focus (Slate gives it to the first focusable parent): that answer is final, and
+		// trying again would pull the player's own moves back each frame.
+		const TSharedPtr<SWidget> Target = FocusTarget();
+		if (!Target.IsValid() || !Target->SupportsKeyboardFocus()) return EActiveTimerReturnType::Stop;
 		if (Time <= FocusUntil) return EActiveTimerReturnType::Continue;
 		const TSharedPtr<SWidget> Now = FSlateApplication::Get().GetUserFocusedWidget(0);
 		SAIL_LOG(Display, TEXT("Menus: the screen's default never took focus (it is on %s)"), Now.IsValid() ? *Now->GetTypeAsString() : TEXT("nothing"));
