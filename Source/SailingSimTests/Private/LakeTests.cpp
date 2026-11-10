@@ -699,6 +699,76 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
 	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
 	{
+		// #604: a touch counts only if it began with her off the dock, once per touch, and only a counted touch sets the
+		// hardest; the rub she lay in at the dock doesn't count when the lines come off mid-touch.
+		bool bTouching = false, bCounted = false;
+		int32 Touches = 0;
+		double Hardest = 0.0;
+		for (int32 I = 0; I < 50; ++I) FDrillRunner::CountContact(I % 2 == 0 || I > 40, true, 0.5, bTouching, bCounted, Touches, Hardest);
+		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Touches, 0);
+		FDrillRunner::CountContact(true, false, 0.6, bTouching, bCounted, Touches, Hardest);
+		FDrillRunner::CountContact(true, false, 0.6, bTouching, bCounted, Touches, Hardest);
+		TestEqual(TEXT("Cast off mid-rub: the same touch still doesn't count"), Touches, 0);
+		TestEqual(TEXT("Nothing counted: no hardest touch"), Hardest, 0.0);
+		FDrillRunner::CountContact(false, false, 1.0, bTouching, bCounted, Touches, Hardest);
+		FDrillRunner::CountContact(true, false, 0.8, bTouching, bCounted, Touches, Hardest);
+		FDrillRunner::CountContact(true, false, 1.2, bTouching, bCounted, Touches, Hardest);
+		FDrillRunner::CountContact(false, false, 0.0, bTouching, bCounted, Touches, Hardest);
+		FDrillRunner::CountContact(true, false, 0.3, bTouching, bCounted, Touches, Hardest);
+		TestEqual(TEXT("Off the dock: two touches (one held over two frames)"), Touches, 2);
+		TestEqual(TEXT("Off the dock: the hardest is 1.2 kn"), Hardest, 1.2);
+	}
+	{
+		// #604: the Sunfish's leave-the-dock berth at Rush Creek, as the pawn picks it (FindBerth with her config), puts
+		// her hull outside the dock (0.2 m off its face; her lines' 0.2 m of slack lets her lie against it, which is why
+		// the rub must not count), and tied up with her sail luffing for a minute she counts no touch.
+		FLakeData Lake;
+		if (!TestTrue(TEXT("Lake data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
+		for (const double WindDeg : { 180.0, 0.0, 90.0, 270.0 })
+		{
+			FVector2D Berth;
+			double Heading = 0.0;
+			if (!TestTrue(TEXT("A Sunfish berth near the club"), FindBerth(Lake.Terrain, Lake.Obstacles, FVector2D::ZeroVector, 600.0, WindDeg * kDegToRad, Berth, Heading, Sunfish))) return false;
+			FBoatModel Boat(Sunfish);
+			Boat.SetTerrain(&Lake.Terrain);
+			Boat.SetObstacles(&Lake.Obstacles);
+			Boat.Reset(Berth.X, Berth.Y, Heading, 0.0);
+			Boat.GetMooringLines() = FindDockLines(Boat, Lake.Obstacles);
+			// The hull's footprint against the nearest dock face (its segment's radius included): never inside it.
+			double Clear = 1e9;
+			const FVector2D Fwd(FMath::Cos(Heading), FMath::Sin(Heading)), Side(-Fwd.Y, Fwd.X);
+			for (const FObstacleSegment& O : Lake.Obstacles)
+			{
+				if (O.Top > 1.5) continue;
+				const FVector2D A(O.AX, O.AY), B(O.BX, O.BY), AB = B - A;
+				for (double U = -0.5; U <= 0.5; U += 0.25)
+				for (const double V : { -0.5, 0.5 })
+				{
+					const FVector2D P = Berth + Fwd * (U * Sunfish.LengthOverall) + Side * (V * Sunfish.Beam);
+					const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / FMath::Max(AB.SizeSquared(), 1e-9), 0.0, 1.0);
+					Clear = FMath::Min(Clear, FVector2D::Distance(P, A + AB * T) - O.Radius);
+				}
+			}
+			FBoatControls C;
+			C.MainSheet = 1.0;   // let fly, luffing at the dock as the lesson starts
+			const FWindField Wind = WindFrom(10.0, WindDeg);
+			bool bTouching = false, bCounted = false;
+			int32 Counted = 0, RawFrames = 0;
+			double Hardest = 0.0;
+			for (int32 I = 0; I < int32(60 * PhysicsHz); ++I)
+			{
+				Boat.Step(PhysicsDt, C, Wind);
+				RawFrames += Boat.GetTelemetry().bCollision;
+				FDrillRunner::CountContact(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, bTouching, bCounted, Counted, Hardest);
+			}
+			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d counted"),
+				WindDeg, Berth.X, Berth.Y, Clear, int32(Boat.GetMooringLines().size()), RawFrames, Counted));
+			TestTrue(TEXT("The berth puts the hull outside the dock"), Clear >= 0.0);
+			TestTrue(TEXT("Her lines reach the dock"), Boat.GetMooringLines().size() >= 2);
+			TestEqual(TEXT("Tied up at her berth for a minute: no touch counted"), Counted, 0);
+		}
+	}
+	{
 		const FWindField Wind = WindFrom(10.0, 0.0);
 		FBoatModel Boat(Sunfish);
 		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 3.0 * kKnot);

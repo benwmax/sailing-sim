@@ -395,6 +395,7 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillTouching = false, bDrillGraded = false;
+	bool bDrillTouchCounted = false;   // #604: the touch under way began off the dock (FDrillRunner::CountContact)
 	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
 	// Prologue step 2: the player's crew station and the rest of the crew (docs/prologue/README.md). Active only while a
 	// scene runs; the scene's station orders arrive by serial, the station key and the grind taps between frames.

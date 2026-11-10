@@ -46,6 +46,13 @@ public:
 	 *  doesn't open head to wind with "Too close to the wind" before the player has touched anything. */
 	static double ReturnStartHeading(double BearingRad, double WindFromRad, double MinTwaDeg = 60.0);
 
+	/** One frame of a drill's touch count (#604): a touch counts (once) and sets the hardest touch only if it began with
+	 *  her off the dock. Tied up, a boat working at her lines against the dock she is tied to is not the sailor's touch
+	 *  (the Sunfish's berth leaves her 0.1 m off the contact margin and her lines 0.2 m of slack: she lay against the
+	 *  dock and logged 43 touches before the player had cast off), nor is the same rub carried on after the lines come off.
+	 *  bTouching is the contact of the frame before, bCounted whether that touch counts. */
+	static void CountContact(bool bCollision, bool bTiedUp, double Knots, bool& bTouching, bool& bCounted, int32& Collisions, double& MaxKnots);
+
 	/** Starts a drill for a boat at its current position, with the true wind coming from WindFromRad. */
 	void Start(ESailingDrill InDrill, const Sailing::FBoatModel& Boat, double WindFromRad);
 	void Stop() { Drill = ESailingDrill::None; }

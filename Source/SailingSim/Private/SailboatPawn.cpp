@@ -1327,16 +1327,15 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 
 	// Drills: follow the boat and the crew's actions.
 	const FBoatTelemetry& Tel = Boat.GetTelemetry();
-	if (Tel.bCollision) MaxContactKnots = FMath::Max(MaxContactKnots, Tel.BoatSpeed / kKnot);
+	// (#604: touches while tied up, the boat working against her own dock, are not counted or graded)
+	FDrillRunner::CountContact(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, bDrillTouching, bDrillTouchCounted, DrillCollisions, MaxContactKnots);
 	if (DrillRunner.IsActive())
 	{
 		FDrillContext Ctx;
 		Ctx.bTiedUp = IsTiedUp();
 		Ctx.bBackJib = Controls.bBackJib;
 		Ctx.MaxContactSpeed = MaxContactKnots;
-		DrillCollisions += Tel.bCollision && !bDrillTouching;
 		bDrillEasy |= EasyAssists.bEnabled;
-		bDrillTouching = Tel.bCollision;
 		if (!DevFinishOutcome.IsEmpty()) { DrillRunner.Finish(DevFinishOutcome); DevFinishOutcome.Reset(); }
 		else DrillRunner.Update(Boat, Ctx, DeltaSeconds);
 		// Graphics G4: a passed drill is remembered for the front end ("6 drills, N passed").
@@ -2766,6 +2765,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	}
 	MaxContactKnots = 0.0;
 	DrillCollisions = DrillInfractions = 0;
+	bDrillTouchCounted = false;
 	bDrillTouching = bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();

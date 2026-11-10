@@ -93,6 +93,18 @@ void FDrillRunner::Start(ESailingDrill InDrill, const FBoatModel& Boat, double W
 	}
 }
 
+void FDrillRunner::CountContact(bool bCollision, bool bTiedUp, double Knots, bool& bTouching, bool& bCounted, int32& Collisions, double& MaxKnots)
+{
+	if (bCollision && !bTouching)
+	{
+		bCounted = !bTiedUp;
+		Collisions += bCounted;
+	}
+	if (!bCollision) bCounted = false;
+	if (bCounted) MaxKnots = FMath::Max(MaxKnots, Knots);
+	bTouching = bCollision;
+}
+
 void FDrillRunner::Finish(const FString& InOutcome)
 {
 	if (!IsActive()) return;
