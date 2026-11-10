@@ -1,4 +1,5 @@
 #include "UI/SailPhotoPanel.h"
+#include "BenchRunner.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailUIStyle.h"
 #include "SailboatPawn.h"
@@ -84,7 +85,8 @@ void SSailPhotoPanel::Construct(const FArguments& InArgs)
 	{
 		const ASailboatPawn* P = Pawn();
 		const ASailingHUD* Hud = Player.IsValid() ? Cast<ASailingHUD>(Player->GetHUD()) : nullptr;
-		const bool bOn = P && P->IsPhotoMode() && P->GetFreeCamera() && !P->ArePhotoHintsHidden() && !(Hud && Hud->IsFrontEndOpen());
+		static SailingArgs::FCachedFlag NoHudArg(TEXT("SailingNoHud"));
+		const bool bOn = P && ShouldShow(P->IsPhotoMode(), P->GetFreeCamera() != nullptr, P->ArePhotoHintsHidden(), Hud && Hud->IsFrontEndOpen(), NoHudArg.Get());
 		return bOn ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
 	};
 	auto Settings = [this]() { const ASailboatPawn* P = Pawn(); return P ? P->GetPhotoSettings() : FPhotoSettings(); };

@@ -21,6 +21,12 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	/** Whether the panel and guides show: in photo mode with its camera, not hidden with H, no menu open, and never in a
+	 *  clean still (-SailingNoHud, which also hides the HUD and its hints). */
+	static bool ShouldShow(bool bPhotoMode, bool bHasFreeCamera, bool bHintsHidden, bool bFrontEndOpen, bool bNoHudArg)
+	{
+		return bPhotoMode && bHasFreeCamera && !bHintsHidden && !bFrontEndOpen && !bNoHudArg;
+	}
 	ASailboatPawn* Pawn() const;
 
 private:

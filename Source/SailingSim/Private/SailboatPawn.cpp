@@ -915,13 +915,13 @@ void ASailboatPawn::BeginPlay()
 	{
 		float PhotoSeconds = -1.f;
 		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingPhoto="), PhotoSeconds)) PhotoAt = PhotoSeconds;
-		FParse::Value(SailingArgs::Dev(), TEXT("SailingPhotoCam="), PhotoCamArg, false);
+		SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingPhotoCam="), PhotoCamArg);
 	}
 	// Benchmarks and screenshots: camera angle (degrees) and distance (meters), and a drill to start in.
-	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamYaw="), CameraYaw);
-	FParse::Value(SailingArgs::Dev(), TEXT("SailingCamPitch="), CameraPitch);
+	SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingCamYaw="), CameraYaw); // the last one given wins (a still's own override)
+	SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingCamPitch="), CameraPitch);
 	float CamMeters = 0.f;
-	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamDist="), CamMeters))
+	if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingCamDist="), CamMeters))
 	{
 		CameraDistance = CamMeters * CmPerMeter;
 		CameraBoom->TargetArmLength = CameraDistance;
@@ -936,7 +936,7 @@ void ASailboatPawn::BeginPlay()
 	// Stills of the boat's details (crew, fittings): -SailingCamTarget=<forward>,<starboard>,<up> m in the boat frame is
 	// what the camera turns about, instead of 3 m over the hull's origin.
 	FString CamTarget;
-	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCamTarget="), CamTarget, false))
+	if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingCamTarget="), CamTarget))
 	{
 		TArray<FString> P;
 		CamTarget.ParseIntoArray(P, TEXT(","));
