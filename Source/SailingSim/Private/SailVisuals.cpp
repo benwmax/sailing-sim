@@ -5,6 +5,7 @@
 #include "ProceduralMeshComponent.h"
 #include "BenchRunner.h"
 #include "Async/ParallelFor.h"
+#include "Misc/App.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -128,7 +129,7 @@ namespace
 			if (!(Near[K].Bits & Kinds)) continue;
 			const int32 I = Near[K].I;
 			FVector Nw = FdNormal(I), Ns = Smooth[K];
-			if (Nw.IsNearlyZero() || Ns.IsNearlyZero()) continue;
+			if (Nw == Ns || Nw.IsNearlyZero() || Ns.IsNearlyZero()) continue; // (no neighbour moved: as the old pass left it)
 			if (FVector::DotProduct(Ns, Normals[I]) < 0.f) { Nw = -Nw; Ns = -Ns; }
 			Normals[I] = (Normals[I] + (Nw - Ns)).GetSafeNormal();
 		}
@@ -221,10 +222,12 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 	TArray<FWork, TInlineAllocator<3>> Work;
 	Work.SetNum(Sails.Num());
 	// docs/sail-wrinkles-cost/: the wrinkles only where they can show: a sail drawn in the last moments, and near enough that
-	// a 20 cm wrinkle (about the shortest the render grid keeps) spans 2 pixels or more. Off screen or far off, the sail
-	// is drawn smooth, as it would look there anyway.
+	// a 20 cm wrinkle (about the shortest the render grid keeps) spans a pixel or more (on again at 1.2 px, so a sail at the
+	// edge doesn't flicker between the two). Off screen or far off, the sail is drawn smooth, as it would look there anyway.
+	// Automation (no renderer, no player: SailingSim.Visual.SailShrouds checks the wrinkles against the wires) always wrinkles.
 	if (!bNoWrinkles && !bClassicGrid)
 	{
+		const bool bAlways = GIsAutomationTesting || !FApp::CanEverRender();
 		FVector Eye = FVector::ZeroVector;
 		float PxAngle = 0.f;
 		const APlayerController* ViewPC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
@@ -235,16 +238,19 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 			PxAngle = 2.f * FMath::Tan(FMath::DegreesToRadians(ViewPC->PlayerCameraManager->GetFOVAngle() * 0.5f)) / FMath::Max(ViewSize.X, 1.0);
 			Eye = ViewPC->PlayerCameraManager->GetCameraLocation();
 		}
-		constexpr float kWrinkleCm = 20.f, kMinPx = 2.f;
+		constexpr float kWrinkleCm = 20.f, kOffPx = 1.f, kOnPx = 1.2f;
 		for (int32 K = 0; K < Sails.Num(); ++K)
 		{
 			const UProceduralMeshComponent* Mesh = Sails[K].Mesh;
-			bool bShow = Mesh && Mesh->WasRecentlyRendered(0.25f);
-			if (bShow && PxAngle > 0.f)
+			FSailWrinkleCache& Cache = Sails[K].Cloth->Wrinkles;
+			bool bShow = bAlways || (Mesh && Mesh->WasRecentlyRendered(0.25f));
+			if (!bAlways && bShow && PxAngle > 0.f)
 			{
-				const float Dist = FMath::Max(float(FVector::Dist(Eye, Mesh->Bounds.Origin)) - Mesh->Bounds.SphereRadius, 0.f);
-				bShow = kWrinkleCm >= kMinPx * Dist * PxAngle;
+				const float Dist = FMath::Max(float(FVector::Dist(Eye, Mesh->Bounds.Origin) - Mesh->Bounds.SphereRadius), 0.f);
+				const float Px = kWrinkleCm / FMath::Max(Dist * PxAngle, 1e-6f);
+				bShow = Px >= (Cache.bShownLast ? kOffPx : kOnPx);
 			}
+			Cache.bShownLast = bShow;
 			Work[K].bWrinkle = bShow;
 		}
 	}

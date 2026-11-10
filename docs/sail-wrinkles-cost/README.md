@@ -2,7 +2,7 @@
 
 The PC's Ultra bench bisect (`Inputs/bench/cloth-bisect.txt` on the inputs branch, Nov 10 2026) put the biggest step in
 `cloth_cpu_ms` on ff3663d5, the sail wrinkles (docs/sail-wrinkles/): 1.20 -> 3.11 ms a frame, sails 1.36 -> 4.03 ms,
-Windows Ultra 7-30 fps down per view since Oct 20. Same look, less work:
+Windows Ultra 7-30 fps down per view since Oct 20. The same look (within a micron), less work:
 
 - **The fixed part is kept.** `SailWrinkleCm` worked everything out at every render vertex every frame: the corners' angle
   (an `acos`), each vertex's angle from them (`atan2`), the fades, a `pow` for the wavelength, for all 3,358 vertices of
@@ -13,10 +13,11 @@ Windows Ultra 7-30 fps down per view since Oct 20. Same look, less work:
   neighbours; it now visits the vertices next to a wrinkle (kept as `Near`, by kind), taking the smooth normal there
   before the move.
 - **Only where they can show.** A sail not drawn in the last 0.25 s (cockpit view looking aft, off screen), or so far off
-  that a 20 cm wrinkle spans under 2 pixels (about 100 m at 90 deg on 1080p), is drawn smooth.
+  that a 20 cm wrinkle spans under a pixel (about 190 m at 90 deg on 1080p; on again at 1.2 px, so no flicker at the
+  edge), is drawn smooth. Automation runs (no renderer) always wrinkle, so `SailingSim.Visual.SailShrouds` still checks them.
 
-Same numbers: `SailingSim.Visual.SailWrinkleCache` holds the cache to `SailWrinkleCm` at every vertex of a J/22 main's grid
-under six loads (largest difference under a micron; 1e-7 cm in a standalone build). `SailWrinkleCm` stays as the
+Within a micron: `SailingSim.Visual.SailWrinkleCache` holds the cache to `SailWrinkleCm` at every vertex of a J/22 main's grid
+under six loads (largest difference 1e-7 cm in a standalone build of this code). `SailWrinkleCm` stays as the
 reference. Standalone (Linux, -O2, one J/22 main): the offsets 0.13-0.21 ms -> 0.03 ms; the whole wrinkle pass with its
 normals 0.26 -> 0.10 ms.
 

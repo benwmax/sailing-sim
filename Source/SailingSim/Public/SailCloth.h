@@ -89,8 +89,8 @@ SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& O
  * docs/sail-wrinkles-cost/: SailWrinkleCm worked out for a whole render grid, frame after frame, at a fraction of its cost.
  * Everything in it but the loads is fixed once the sail is made (the corners' angles, each vertex's distance and angle from
  * them, the fades, the cell across each crest), so Build keeps that per vertex, only for the vertices a wrinkle can reach;
- * a frame then costs two square roots and a sine per touched vertex. Same numbers as SailWrinkleCm (the tests hold them
- * to it); the wavelength's (B r^2 / T)^(1/4) is split as (B r^2)^(1/4) kept times T^(-1/4) each frame.
+ * a frame then costs two square roots and a sine per touched vertex. SailWrinkleCm's numbers to within a micron (the tests
+ * hold them to it); the wavelength's (B r^2 / T)^(1/4) is split as (B r^2)^(1/4) kept times T^(-1/4) each frame.
  */
 struct SAILINGSIM_API FSailWrinkleCache
 {
@@ -118,6 +118,8 @@ struct SAILINGSIM_API FSailWrinkleCache
 	/** Scratch for the renderer: the unwrinkled surface's normal at each Near vertex. */
 	TArray<FVector> SmoothNormal;
 	int32 NumVerts = 0;
+	/** Whether the renderer drew the wrinkles last frame (its on/off distance has a margin). */
+	bool bShownLast = false;
 };
 
 class SAILINGSIM_API FSailCloth
