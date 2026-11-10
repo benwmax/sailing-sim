@@ -5,7 +5,7 @@
 # About 6 minutes. Log: Artifacts/metahumans.log. Then scripts/build.sh is not needed; repackage.
 source "$(dirname "$0")/env.sh"
 APP="$UE_ROOT/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor"
-"$APP" "$PROJECT" -EnablePlugins=MetaHumanCharacter -ExecCmds="py $REPO_ROOT/scripts/make_metahumans.py" -nosplash -NoP4 -stdout \
+"$APP" "$PROJECT" -nocrashreports -EnablePlugins=MetaHumanCharacter -ExecCmds="py $REPO_ROOT/scripts/make_metahumans.py" -nosplash -NoP4 -stdout \
 	-FullStdOutLogOutput > "$ARTIFACTS/metahumans.log" 2>&1
 grep "MetaHumans:" "$ARTIFACTS/metahumans.log" | sed 's/.*LogPython: //'
 grep -q "MetaHumans: done" "$ARTIFACTS/metahumans.log"
