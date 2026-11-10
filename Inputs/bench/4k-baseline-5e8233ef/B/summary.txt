@@ -1,0 +1,31 @@
+READ FIRST: these are NOT 4K numbers.
+Main 5e8233ef, Ultra, 1920x1080 WINDOWED. The runs asked for -ResX=3840 -ResY=2160 windowed, but Bean's display is
+3840x2160 at 150% Windows scaling (a 2560x1440 desktop), so a 3840x2160 window does not fit and the engine fell back to a
+1920x1080 window (logs: "1920x1080 (window mode 2)"; bench.json "resolution" 1920x1080 on every run). A true 4K run
+needs fullscreen; that waits on Bean.
+Game not in front (bench.json "foreground" 0 on all runs but one, at 0.095). No upscaler: render_pct 100 on every run.
+1% low = 1000 / p99_ms. gpu = gpu.total_ms where present (Development), else gpu_frame_ms (Shipping).
+Development vs Shipping: the Development package (B) spends about 12-14.5 ms on the game thread against about 9 ms in
+Shipping (A). That is Development's checks and stats, not the GPU (GPU 6-10 ms in both). B and A are different views too
+(B: the 16 bench-visual scenes, 12 s each, demo autopilot; A: the Lake launch spots 0-4, 60 s each).
+Bottleneck: the render thread in both (render_th about 17-25 ms in B, about 11-12 ms in A, against GPU 6-10 ms).
+
+B: Development package of main 5e8233ef (Packaged\Windows-5e8233e): bench-visual-win -Tiers Ultra -ResX 3840 -ResY 2160 -Package Windows-5e8233e, 12 s per view.
+
+run                 fps  1%low    gpu    game render_th  cloth  rpct   fgnd resolution
+beam8              40.1   19.9   8.18   18.73     24.58   2.87   100      0 1920x1080
+beat15             57.1   45.6   8.15   12.18     17.39  1.991   100      0 1920x1080
+bridge             54.8   41.2   7.23   12.97     18.24  2.241   100      0 1920x1080
+coast-day          55.3   44.4   8.54   13.46     18.08  2.228   100      0 1920x1080
+coast-night          55   39.8   8.04   14.45     18.07  2.202   100      0 1920x1080
+crew               47.5   37.7   9.04   14.08      20.8  2.427   100      0 1920x1080
+far-coast-night    58.9   45.2    6.2   13.81     16.76  2.068   100      0 1920x1080
+far-coast          54.1   39.6   8.09   14.29     18.48  2.183   100      0 1920x1080
+gulf-sea           57.9     43   7.03   13.81     17.24  2.209   100      0 1920x1080
+helm-eye           59.2   41.3   7.42   12.15     16.66   2.18   100      0 1920x1080
+marina-night       57.1   37.5   7.61   12.93     17.47   1.51   100      0 1920x1080
+marina             53.5   39.3   8.43   12.63      18.7  2.192   100      0 1920x1080
+marseille-port     59.2   39.1   8.72   13.01      16.9  2.014   100      0 1920x1080
+slip               59.8   44.1   8.75    11.9     16.55  1.325   100      0 1920x1080
+storm              56.5     42   9.34   12.94     17.68  2.063   100      0 1920x1080
+stream-run         53.1   40.7   9.74   14.47     18.82  2.283   100      0 1920x1080
