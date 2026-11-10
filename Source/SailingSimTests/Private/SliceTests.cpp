@@ -269,6 +269,7 @@ namespace SliceFirstHour
 		FDrillContacts Counter;
 		void Update(const FBoatModel& Boat, FLessonRun& Run)
 		{
+			Counter.GraceMeters = Boat.GetConfig().LengthOverall;
 			const int32 Before = Counter.Collisions;
 			const Vec3 O = Boat.OriginPosition();
 			Counter.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y), PhysicsDt);
@@ -662,11 +663,11 @@ bool FSailingSliceFirstHourTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s at silver or better"), *L.Id), A.Medal >= ECareerMedal::Silver);
 		if (L.Drill == ESailingDrill::LeaveTheDock)
 		{
-			// #604: backing out she rubs the finger twice, 3 s apart (counted: clear 1.5 s after the lines came off, the
-			// grace is over; 0.4 and 0.5 kn, under the 1 kn that costs it), and the departure stays clean.
-			TestEqual(TEXT("Leaving the slip: two touches counted"), Run.Collisions, 2);
-			TestTrue(FString::Printf(TEXT("... both gentle (hardest %.1f kn)"), Run.MaxContactKn), Run.MaxContactKn < 1.0);
-			TestEqual(TEXT("... and still a clean departure"), Run.Drill.GetOutcome(), FString(TEXT("clean")));
+			// #604: backing out she rubs the finger she lay against (0.4-0.5 kn, inside her first hull length, no ram):
+			// not counted, a clean departure and gold.
+			TestEqual(TEXT("Leaving the slip: no touch counted"), Run.Collisions, 0);
+			TestEqual(TEXT("... a clean departure"), Run.Drill.GetOutcome(), FString(TEXT("clean")));
+			TestEqual(TEXT("... and gold"), A.Medal, ECareerMedal::Gold);
 		}
 		FRandomStream Rng(5);
 		const int32 Of = Learning.MakeQuiz(L.QuizDrill, Rng).Num();

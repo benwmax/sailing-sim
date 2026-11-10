@@ -801,68 +801,72 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 	const FBoatConfig Sunfish = FBoatConfig::Make(EBoatType::Sunfish);
 	double TriangleSeconds = 0.0, QuickStopSeconds = 0.0;
 	{
-		// #604: tied up nothing counts; just cast off, the rub carried on and the flicker of lying alongside don't count until
-		// she is 1.5 m from where she cast off; past that a touch counts once she is making 0.3 kn over the ground, flicker
-		// within a second is the same touch, and a carried rub (scraping out at 1-2 kn) counts once and sets the hardest.
-		// Frames at 60 Hz moving along +X at a speed (knots), so the counter's own speed over the ground is that speed.
+		// #604 (FDrillContacts, GraceMeters 5 m here): tied up nothing counts; in the cast-off grace (until 5 m off) only a
+		// ram counts (a fresh touch after 1 s clear at 1 kn or more); past it a touch counts once she makes 0.3 kn net over
+		// 2 s, flicker within a second is one touch; a ram's hardest is its hull speed, a net touch's its net speed.
 		const double Dt = 1.0 / 60.0;
 		struct FMover { FDrillContacts C; FVector2D P = FVector2D::ZeroVector; };
 		auto Run = [Dt](FMover& M, int32 Frames, double Kn, bool bTied, TFunctionRef<bool(int32)> Touch)
 		{
 			for (int32 I = 0; I < Frames; ++I) { M.P.X += Kn * kKnot * Dt; M.C.Update(Touch(I), bTied, Kn, M.P, Dt); }
 		};
+		auto Never = [](int32) { return false; };
+		auto Always = [](int32) { return true; };
 		FMover Rub;
 		Run(Rub, 50, 0.0, true, [](int32 I) { return I % 2 == 0 || I > 40; });
 		TestEqual(TEXT("Tied up: fifty frames of rubbing count no touch"), Rub.C.Collisions, 0);
 		Run(Rub, 60, 0.3, false, [](int32 I) { return I % 3 != 0; });
-		TestEqual(TEXT("Cast off, creeping along the dock at 0.3 kn (grace): the flicker counts nothing"), Rub.C.Collisions, 0);
-		Run(Rub, 40, 2.0, false, [](int32) { return true; });   // a lurch at 2 kn, 0.7 m: still the grace
-		TestEqual(TEXT("A 0.7 m lurch against the dock in the grace: nothing"), Rub.C.Collisions, 0);
-		Run(Rub, 150, 1.5, false, [](int32) { return true; });
-		Run(Rub, 30, 1.5, false, [](int32) { return false; });
-		TestEqual(TEXT("Scraping out at 1.5 kn: the carried rub counts once"), Rub.C.Collisions, 1);
-		TestTrue(FString::Printf(TEXT("... and sets the hardest (%.2f)"), Rub.C.MaxKnots), FMath::IsNearlyEqual(Rub.C.MaxKnots, 1.5, 0.05));
-		FMover Slide;   // past the grace (moved 1.5 m), sliding along a finger at 0.35 kn with the contact flickering: one touch
-		Run(Slide, 1, 0.0, true, [](int32) { return false; });
-		Run(Slide, 600, 0.35, false, [](int32) { return false; });
+		TestEqual(TEXT("Cast off, creeping along the dock: the flicker counts nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 40, 2.0, false, Always);   // a lurch at 2 kn, carried on from the dock (not fresh): still the grace
+		TestEqual(TEXT("A lurch against the dock in the grace: nothing"), Rub.C.Collisions, 0);
+		Run(Rub, 400, 1.5, false, Always);
+		Run(Rub, 30, 1.5, false, Never);
+		TestTrue(TEXT("Scraped on out of the slip at 1.5 kn: past 5 m"), Rub.C.IsGraceOver());
+		TestEqual(TEXT("... the carried rub counts once"), Rub.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... its hardest the net 1.5 (%.2f)"), Rub.C.MaxKnots), FMath::IsNearlyEqual(Rub.C.MaxKnots, 1.5, 0.1));
+		FMover Back;   // cast off, drifted clear 6 m (past the grace), then back onto the dock at 0.4 kn: one touch
+		Run(Back, 1, 0.0, true, Always);
+		Run(Back, 1700, 0.4, false, Never);
+		TestTrue(TEXT("Drifted 6 m clear: the grace is over"), Back.C.IsGraceOver());
+		Run(Back, 400, -0.4, false, [](int32 I) { return I >= 300; });
+		TestEqual(TEXT("... drifting back onto the dock at 0.4 kn: one touch"), Back.C.Collisions, 1);
+		FMover Slide;   // under way, sliding along a finger at 0.35 kn with the contact flickering for 10 s: one touch
+		Run(Slide, 300, 0.35, false, Never);
 		Run(Slide, 600, 0.35, false, [](int32 I) { return I % 7 < 3; });
 		TestEqual(TEXT("Sliding along a finger, contact flickering for 10 s: one touch"), Slide.C.Collisions, 1);
-		FMover Drift;   // past the grace (1.9 m off), then drifting at 0.2 kn against the dock: nothing
-		Run(Drift, 1, 0.0, true, [](int32) { return false; });
-		Run(Drift, 360, 0.6, false, [](int32) { return false; });
-		Run(Drift, 120, 0.2, false, [](int32) { return false; });
+		FMover Drift;   // drifting at 0.2 kn against the dock: nothing
+		Run(Drift, 240, 0.2, false, Never);
 		Run(Drift, 600, 0.2, false, [](int32 I) { return I % 5 < 2; });
 		TestEqual(TEXT("Drifting against the dock at 0.2 kn: no touch"), Drift.C.Collisions, 0);
-		FMover Away;
-		Run(Away, 1, 0.0, true, [](int32) { return false; });
-		Run(Away, 120, 3.0, false, [](int32) { return false; });
-		Run(Away, 30, 1.5, false, [](int32) { return true; });
-		Run(Away, 120, 1.0, false, [](int32) { return false; });
-		Run(Away, 30, 0.8, false, [](int32) { return true; });
-		TestEqual(TEXT("Off the dock: a 1.5 kn touch, then another after 2 s clear: two"), Away.C.Collisions, 2);
-		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
-		FMover Ram;   // reversed off, then driven into the dock at 1.5 kn: net over 2 s near zero, the hull's speed counts it
-		Run(Ram, 1, 0.0, true, [](int32) { return false; });
-		Run(Ram, 180, 1.0, false, [](int32) { return false; });     // off the dock, past the grace
-		Run(Ram, 120, 0.0, false, [](int32) { return false; });     // stopped
-		Run(Ram, 60, -1.0, false, [](int32) { return false; });
-		Run(Ram, 50, 1.5, false, [](int32) { return false; });
+		FMover Away;   // off the dock (9 m): a 1.5 kn ram, then 2 s clear and a 0.8 kn touch on the net: two
+		Run(Away, 1, 0.0, true, Never);
+		Run(Away, 360, 3.0, false, Never);
+		Run(Away, 30, 1.5, false, Always);
+		Run(Away, 120, 1.0, false, Never);
+		Run(Away, 30, 0.8, false, Always);
+		TestEqual(TEXT("Off the dock: two touches 2 s apart"), Away.C.Collisions, 2);
+		TestTrue(FString::Printf(TEXT("... the hardest the ram's 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
+		FMover Ram;   // in the grace: reversed off, then driven into the dock at 1.5 kn (net over 2 s near zero): a ram
+		Run(Ram, 1, 0.0, true, Never);
+		Run(Ram, 120, 0.0, false, Never);
+		Run(Ram, 60, -1.0, false, Never);
+		Run(Ram, 50, 1.5, false, Never);
 		TestTrue(FString::Printf(TEXT("Ram: the net over 2 s is low (%.2f kn)"), Ram.C.NetKnots()), Ram.C.NetKnots() < FDrillContacts::TouchKnots);
-		Run(Ram, 20, 1.5, false, [](int32) { return true; });
-		TestEqual(TEXT("Reversed, then rammed at 1.5 kn: one touch"), Ram.C.Collisions, 1);
+		Run(Ram, 20, 1.5, false, Always);
+		TestEqual(TEXT("Reversed, then rammed at 1.5 kn in the grace: one touch"), Ram.C.Collisions, 1);
 		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Ram.C.MaxKnots), FMath::IsNearlyEqual(Ram.C.MaxKnots, 1.5, 0.05));
-		FMover Head;   // cast off and driven ahead into the slip's head: within 1.5 m, but clear 2 s first: the grace is over
-		Run(Head, 1, 0.0, true, [](int32) { return true; });
-		Run(Head, 120, 0.3, false, [](int32) { return false; });
-		TestTrue(TEXT("Clear 2 s after cast-off: the grace is over"), Head.C.IsGraceOver());
-		Run(Head, 20, 1.2, false, [](int32) { return true; });
+		FMover Head;   // cast off and driven ahead into the slip's head at 1.2 kn after 2 s clear: a ram in the grace
+		Run(Head, 1, 0.0, true, Always);
+		Run(Head, 120, 0.3, false, Never);
+		TestFalse(TEXT("Still in the grace (0.6 m off)"), Head.C.IsGraceOver());
+		Run(Head, 20, 1.2, false, Always);
 		TestEqual(TEXT("... and driving into the slip's head at 1.2 kn counts"), Head.C.Collisions, 1);
-		FMover Lying;   // a counted touch, then lying alongside with the hull speed spiking: the hardest is the onset's
-		Run(Lying, 120, 1.0, false, [](int32) { return false; });
-		Run(Lying, 20, 0.8, false, [](int32) { return true; });
-		for (int32 I = 0; I < 300; ++I) { Lying.C.Update(true, false, I >= 30 && I % 10 == 0 ? 2.4 : 0.1, Lying.P, Dt); }
+		FMover Lying;   // under way: a touch on the net at 1 kn, then lying alongside, the hull speed spiking to 2.4 kn
+		Run(Lying, 120, 1.0, false, Never);
+		Run(Lying, 1, 0.8, false, Always);
+		for (int32 I = 0; I < 300; ++I) { Lying.C.Update(true, false, I % 10 == 0 ? 2.4 : 0.1, Lying.P, Dt); }
 		TestEqual(TEXT("Lying alongside after a touch: still one"), Lying.C.Collisions, 1);
-		TestTrue(FString::Printf(TEXT("... the hardest is the onset's 0.8, not the spikes (%.2f)"), Lying.C.MaxKnots), FMath::IsNearlyEqual(Lying.C.MaxKnots, 0.8, 0.05));
+		TestTrue(FString::Printf(TEXT("... its hardest the net speed, not the 2.4 kn spikes in its first 0.5 s (%.2f)"), Lying.C.MaxKnots), Lying.C.MaxKnots > 0.5 && Lying.C.MaxKnots < 1.1);
 		FMover Underway;   // a drill that starts under way (no cast-off): the first touch counts
 		Run(Underway, 60, 0.6, false, [](int32 I) { return I >= 40; });
 		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.C.Collisions, 1);
@@ -902,6 +906,7 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 			C.MainSheet = 1.0;   // let fly, luffing at the dock as the lesson starts
 			const FWindField Wind = WindFrom(10.0, WindDeg);
 			FDrillContacts Contacts;
+			Contacts.GraceMeters = Sunfish.LengthOverall;
 			int32 RawFrames = 0, LooseFrames = 0;
 			const int32 Lines = int32(Boat.GetMooringLines().size());
 			auto StepOnce = [&]()

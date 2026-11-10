@@ -28,29 +28,30 @@ struct FDrillContext
 };
 
 /**
- * A drill's touches with docks and boats (#604), one Update a physics step: how many, and the hardest (knots).
+ * A drill's touches with docks and boats (#604), updated each frame with the physics time that passed: how many, and
+ * the hardest (knots).
  * - Tied up nothing counts: a boat working at her lines against her own dock is not the sailor's touch (the Sunfish's
  *   berth leaves her 0.1 m past the contact margin and her lines 0.2 m of slack: she logged 43 touches before cast-off).
- * - Just cast off, nothing counts until she is GraceMeters from where she cast off, or has been clear of any contact for
- *   GraceClearSeconds: she lies there, the contact flickering as she luffs alongside and swinging against the dock (a
- *   20 degree pivot moved the Sunfish's origin 0.7 m in a second).
- * - Then a touch counts once she is getting somewhere: TouchKnots net over the last NetSeconds (at a dock the contact
- *   spring bounces her: hull speed spiked to 2.4 kn while she moved 0.6 m in 30 s), or, at a fresh touch after
- *   RejoinSeconds clear, a hull speed of RamKnots (reversed, then driven into the dock: the net over 2 s is near zero).
- * - It stays one touch until she has been clear RejoinSeconds; its hardest is the hull speed in the OnsetSeconds after it
- *   counts (a touch lying alongside afterwards bounces the hull speed, not her).
- * A jump of more than JumpMeters in a step (a reset) starts the track again.
+ * - Just cast off she lies there, the contact flickering as she luffs alongside and swinging against the dock (a 20
+ *   degree pivot moved the Sunfish's origin 0.7 m in a second): the grace lasts until she is GraceMeters (about a hull
+ *   length: the caller sets it) from where she cast off, or GraceSeconds have passed. In it only a ram counts.
+ * - A ram: a fresh touch (after RejoinSeconds clear) at a hull speed of RamKnots in its first OnsetSeconds (reversed
+ *   off and driven back in, or driven ahead into the slip's head). Its hardest is that hull speed.
+ * - Past the grace a touch also counts once she is getting somewhere: TouchKnots net over the last NetSeconds (at a dock
+ *   the contact spring bounces her: hull speed spiked to 2.4 kn while she moved 0.6 m in 30 s). Its hardest is that
+ *   net speed, the most it reaches in the OnsetSeconds after it counts.
+ * - It stays one touch until she has been clear RejoinSeconds. A jump of more than JumpMeters (a reset) restarts the track.
  */
 struct SAILINGSIM_API FDrillContacts
 {
-	static constexpr double GraceMeters = 1.5;
-	static constexpr double GraceClearSeconds = 1.5;
+	static constexpr double GraceSeconds = 60.0;
 	static constexpr double TouchKnots = 0.3;
 	static constexpr double RamKnots = 1.0;
 	static constexpr double RejoinSeconds = 1.0;
 	static constexpr double OnsetSeconds = 0.5;
 	static constexpr double NetSeconds = 2.0;
 	static constexpr double JumpMeters = 5.0;
+	double GraceMeters = 5.0;   // about a hull length (ASailboatPawn sets the boat's length overall)
 	int32 Collisions = 0;
 	double MaxKnots = 0.0;
 	void Update(bool bCollision, bool bTiedUp, double Knots, const FVector2D& Position, double Dt);
@@ -67,10 +68,12 @@ private:
 	double Time = 0.0;
 	double LastNetKnots = 0.0;
 	FVector2D CastOffAt = FVector2D::ZeroVector;
+	double SinceCastOff = 0.0;
 	bool bGraceOver = true;   // a drill that starts under way has no grace
 	bool bCounted = false;    // the touch under way has been counted
-	bool bFresh = false;      // the touch under way began after RejoinSeconds clear
-	double Clear = 1e9;       // seconds since the last contact
+	bool bRam = false;        // ... and it was counted as a ram
+	bool bFresh = false;      // the touch under way began after RejoinSeconds clear, off the dock
+	double Clear = 1e9;       // seconds since the last contact (tied up counts as contact)
 	double TouchAge = 0.0;    // seconds since the touch under way began
 	double CountedAge = 0.0;  // seconds since the touch under way was counted
 };

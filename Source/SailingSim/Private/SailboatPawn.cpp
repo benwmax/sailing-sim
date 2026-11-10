@@ -2777,6 +2777,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 	StartClock.Reset(Boat.GetState().Time);
 	DrillCollisions = DrillInfractions = 0;
 	DrillContacts = FDrillContacts();
+	DrillContacts.GraceMeters = Boat.GetConfig().LengthOverall;   // out of the slip: about a hull length
 	bDrillGraded = false;
 	bDrillEasy = EasyAssists.bEnabled;
 	CareerAward = FCareerProgress::FAward();
