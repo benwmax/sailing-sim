@@ -1,0 +1,52 @@
+{
+ "id": "j22-hull_shell",
+ "boat": "J22H",
+ "sections": [
+  "hull_shell"
+ ],
+ "status": "wave 1, not started",
+ "feature": "Hull lines: sheer, stem rake and bow flare, transom rake and corners, topside flare, bilge",
+ "targets": {
+  "loa": {
+   "value": 6.858,
+   "tol_m": 0.03,
+   "tier": "A",
+   "source": "J/22 class: LOA 22 ft 6 in"
+  },
+  "beam": {
+   "value": 2.438,
+   "tol_m": 0.02,
+   "tier": "A",
+   "source": "J/22 class: beam 8 ft 0 in"
+  },
+  "freeboard_bow": {
+   "value": 0.79,
+   "tol_m": 0.02,
+   "tier": "A",
+   "source": "ORC certificate FF 774 mm (build_j22_hero.sheer_z)"
+  },
+  "freeboard_stern": {
+   "value": 0.568,
+   "tol_m": 0.02,
+   "tier": "A",
+   "source": "ORC certificate FA 568 mm"
+  }
+ },
+ "outline_views": [
+  "profile",
+  "plan",
+  "stern"
+ ],
+ "features": [
+  "fair sheer with no flat at the cabin",
+  "crisp stem with the class rake",
+  "transom rake and corner radius",
+  "topside flare as on the class drawing",
+  "rounded bilge, flat run aft"
+ ],
+ "references": "links and numbers only; drawings in git-ignored Data/Reference/raw/boats/J22/shape/",
+ "moves_ok": [],
+ "tris_max": null,
+ "mac_wiring": false,
+ "photo_needed": "no (tiers A, B, D first)"
+}

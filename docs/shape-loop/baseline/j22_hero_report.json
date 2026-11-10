@@ -1,0 +1,12 @@
+{
+ "canoe_volume_m3": 1.0879,
+ "physics_volume_m3": 1.052,
+ "cb_x": -0.226,
+ "cb_z": -0.074,
+ "physics_cb": [
+  -0.195,
+  -0.08
+ ],
+ "triangles": 1080328,
+ "objects": 937
+}
