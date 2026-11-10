@@ -91,6 +91,7 @@ namespace SailSaveTestsLocal
 		L.WindFromDeg = 140.f; L.WindKn = 14.f; L.GustKn = 18.f; L.LocalHour = 15.25f; L.AirTempF = 88.f; L.LakeLevelFt = -1.5f;
 		L.Month = 6; L.Day = 20;
 		L.RealDay = TEXT("2025-06-01");
+		L.SceneId = TEXT("first-job");
 		S.Progress.DrillsPassed = { TEXT("LeaveTheDock"), TEXT("SailATriangle") };
 		S.Progress.RacesSailed = 4;
 		S.Progress.RacesWon = 1;
@@ -202,6 +203,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("month"), M.Month, L.Month);
 	TestEqual(TEXT("day"), M.Day, L.Day);
 	TestEqual(TEXT("real day"), M.RealDay, L.RealDay);
+	TestEqual(TEXT("scene (#599: the first job)"), M.SceneId, L.SceneId);
 	TestEqual(TEXT("drills passed"), B.Progress.DrillsPassed, A.Progress.DrillsPassed);
 	TestEqual(TEXT("races sailed"), B.Progress.RacesSailed, A.Progress.RacesSailed);
 	TestEqual(TEXT("races won"), B.Progress.RacesWon, A.Progress.RacesWon);

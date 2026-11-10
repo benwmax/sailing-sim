@@ -47,7 +47,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
   "lastSession": {
     "world": "galveston-bay", "launchSpot": "kemah-channel-outbound", "launchSpotAt": { "lat": 29.54180281, "lon": -95.00795119 },
     "boat": "Hobie16", "mode": "Free",
-    "drill": "LeaveTheDock", "learningMode": true, "easy": true, "learningTips": true, "freeSail": false, "traffic": 1,
+    "drill": "LeaveTheDock", "learningMode": true, "easy": true, "learningTips": true, "freeSail": false, "traffic": 1, "scene": "first-job",
     "savedAt": "2026-10-18T12:04:55.000Z",
     "conditions": { "preset": "Lesson", "sky": "Fair", "windFromDeg": 180, "windKn": 10, "gustKn": 13, "localHour": 10,
                     "month": 4, "day": 18, "airTempF": 74, "lakeLevelFt": 0, "realDay": "" }
@@ -85,6 +85,9 @@ lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's 
 
 `settings.showCrew` is Settings > Show crew (your boat's crew figures drawn), added in version 1 without a version change:
 an older file has none and reads off, the default (`-SailingShowCrew=0|1` beats it).
+
+`lastSession.scene` (optional, added in version 1 without a version change, #599) is `"first-job"` when the last session was
+the first job: the title's Continue resumes it until it is done. No other scene is saved; a file without it sails freely.
 
 `settings.privacy.sendCrashReports` is the player's consent to crash reports (`docs/sentry/README.md`), added in version 1
 without a version change. Since Nov 7 2026 (Bean) the default is **on**: the default applies when the key is missing; a stored choice is never
