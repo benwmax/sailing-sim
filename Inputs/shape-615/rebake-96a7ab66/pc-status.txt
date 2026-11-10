@@ -1,0 +1,19 @@
+2026-11-10 15:46:33 on claude/shape-j22-hull-wave1 96a7ab66; local pc/shape-615 dropped
+2026-11-10 15:48:26 hero build exit 0; warning lines: 
+2026-11-10 15:53:06 hero bake (res 4096) exit 0; warning lines: 15:52:59 | WARNING: Mesh SM_J22H_Hull.001 is not valid, and may be exported wrongly | Warning: No mesh data to join
+2026-11-10 15:53:36 MSVC build: Result: Succeeded
+2026-11-10 15:54:51 import exit 0; warning lines 39, error lines 0, compile errors 0
+2026-11-10 16:06:35 SailingSim.Visual: succeeded 70, failed 2, warnings 4
+2026-11-10 16:06:35   test Fail: SailingSim.Visual.CrewClipLimits: Expected 'J/22, Helm crew 2 (stance 1, hike 0.1, side -1): the right foot moves 7.8 cm at most (within 3)' to be true.
+2026-11-10 16:06:35   test Fail: SailingSim.Visual.CrewFeet: J/22, Helm crew 2 (stance 1, port tack, hike 1.0): right foot stands on the floor tilted: heel 0.14 m, toe 0.23 m
+2026-11-10 16:07:20 still profile-high True
+2026-11-10 16:08:03 still plan-high True
+2026-11-10 16:08:47 still bow34-high True
+2026-11-10 16:09:30 still stern34-high True
+2026-11-10 16:10:14 still helm-eye-high True
+2026-11-10 16:10:57 still transom-port-high True
+2026-11-10 16:11:41 still transom-stbd-high True
+2026-11-10 16:12:24 still chainplate-port-high True
+2026-11-10 16:13:07 still chainplate-stbd-high True
+2026-11-10 16:13:08 changed paths: 119
+2026-11-10 16:13:08 RB615 DONE

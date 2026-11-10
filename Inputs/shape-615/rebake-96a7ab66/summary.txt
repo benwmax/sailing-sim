@@ -1,0 +1,12 @@
+#615 hero rebake on Bean's PC: claude/shape-j22-hull-wave1 at 96a7ab66 -> pushed 60cd1808 (hero assets and sockets only:
+Content/Boats/J22Hero, Inputs/j22-hero fbx, textures, J22H_sockets.json, materials.json; 114 files).
+build_j22_hero --sails --clean-bake: exit 0, no warnings. bake_j22_hero (4096): exit 0, 2 warnings:
+"Mesh SM_J22H_Hull.001 is not valid, and may be exported wrongly" and "No mesh data to join" (both also in the earlier run).
+MSVC build OK. import_j22_hero: exit 0, 0 errors, 0 shader compile errors, 39 warnings (PNG eXIf duplicate x20, "Error
+opening file" for the replaced SM_J22H_* parts, editor noise).
+SailingSim.Visual: 70 passed, 2 failed (72):
+  CrewClipLimits: J/22 helm (crew 2, stance 1, hike 0.1, side -1) right foot moves 7.8 cm (limit 3); was 21.2 cm
+  CrewFeet: J/22 helm (crew 2, stance 1, port tack, hike 1.0) right foot stands on the floor tilted, heel 0.14 m, toe 0.23 m
+  (the earlier run's J22Mesh, CockpitEye and CrewMotionFeet failures are gone.)
+Stills: the nine views at High, 1920x1080, run-game, same args as the first #615 run (sails stay up: -SailingSailsDown
+needs -SailingMooring). The outboard and its bracket now sit close inboard beside the rudder (transom-port, transom-stbd).
