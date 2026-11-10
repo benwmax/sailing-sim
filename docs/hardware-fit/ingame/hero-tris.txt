@@ -1,0 +1,7 @@
+SM_J22H_Boom: lod0 1705, tags {'Triangles': '1737', 'NaniteTriangles': '41112'}, nanite True
+SM_J22H_Glass: lod0 164, tags {'Triangles': '164', 'NaniteTriangles': '0'}, nanite False
+SM_J22H_Hull: lod0 2781, tags {'Triangles': '2766', 'NaniteTriangles': '638180'}, nanite True
+SM_J22H_Interior: lod0 1171, tags {'Triangles': '1165', 'NaniteTriangles': '62140'}, nanite True
+SM_J22H_Mast: lod0 25568, tags {'Triangles': '25568', 'NaniteTriangles': '0'}, nanite False
+SM_J22H_Rudder: lod0 2300, tags {'Triangles': '2082', 'NaniteTriangles': '31578'}, nanite True
+total: lod0 33689, tag sum 773010

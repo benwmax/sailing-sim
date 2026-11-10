@@ -602,7 +602,9 @@ def materials():
         return mi
 
     for name in META["flat_materials"]:
-        if name in out:
+        # A bake before Nov 9 2026 also listed Blender's duplicates (Aluminium.001): their faces export as the base name's
+        # slot, and a '.' in an asset name fails the save (the import exited 1), so they are skipped.
+        if name in out or "." in name:
             continue
         out[name] = flat_instance(name)
     # pc/boat-slots: the flat slots folded into packs (J22H_packs.json, pack_j22_hero.py): MI_J22H_<Pack> on M_BoatPacked
