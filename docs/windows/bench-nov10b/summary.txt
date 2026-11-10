@@ -21,5 +21,5 @@ stream-run           56   26.97    9.1  2.218 |    +0.6   -0.08   +0.14   -1.37 
 
 cloth_cpu_ms (#583): mean over the views 2.05 ms now vs 3.49 ms at 806a4291 (-1.44 ms, 41% less); range now 1.23-2.66 ms.
 bench-win.ps1 -Package Windows-260ea54 (default view, Ultra, 20 s): 59.8 fps average, p99 21.78 ms, Ultra on D3D12 at 1920x1080 ("foreground":0.000; the scripts have no non-input way to bring the window to the front)
-Visual tests on 260ea54a: 
+Visual tests on 260ea54a: 76 passed, 0 failed, 76 total (from W's first run, before its package check stopped it; the rerun reused that build and package).
 Package: Packaged\Windows-260ea54 (Development).
