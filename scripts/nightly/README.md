@@ -40,7 +40,9 @@ once on the keyboard and once on the pad's buttons, through `-SailingUIScript`:
 Every step waits for its screen (`WaitFor:<screen>`, at most two minutes) and checks it (`Expect:<screen>`), and a still
 of each goes to `Artifacts/nightly/<date>/playthrough/` (72 screens an input). A screen that doesn't appear turns a
 passing night into `PLAYTHROUGH FAILED main <sha>: keys: FAIL Quiz (on Hud) in ds3; pad: ...`: the first missing screen,
-the one that was up, and the lesson (`Stage:` label: ds1-ds6, ds-checkride, cr1-cr4, cr-checkride). `Finish:` and
+the one that was up, and the lesson (`Stage:` label: ds1-ds6, ds-checkride, ds-to-career, cr1-cr4, cr-checkride,
+cr-to-career). Since #518 the checkride is taken from the last lesson's score screen (its first way); `PLAYTHROUGH_CARD=1`
+walks the old route through the Career card instead. `Finish:` and
 `Answer:` act only outside Shipping or with developer tools on. The two inputs take about 22 minutes, so a whole night
 runs about 1 h 15 min: **keep the Mac lock free from 08:55 to 11:00 UTC.** `PLAYTHROUGH_FLOWS=keys` runs one input;
 `playthrough.sh --self-test` checks the log reading and the flow without the game.
