@@ -2754,6 +2754,8 @@ SSailFrontEnd::ECareerFocus SSailFrontEnd::CareerFocus(const FSailSave::FProgres
 {
 	if (bTierPicked) return ECareerFocus::TierCard;
 	// #599: the first job has the focus only until a lesson has been sailed (it had kept it with both tiers certified).
+	// Free Sail records no lessons, so there the card keeps the focus while the first job is unsailed: on purpose (the
+	// first job is still the way in).
 	return ShowsFirstJob(Progress) && Progress.Lessons.Num() == 0 ? ECareerFocus::FirstJob : ECareerFocus::NextLesson;
 }
 

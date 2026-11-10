@@ -176,6 +176,9 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 	FSailSave WithOther;
 	WithOther.Capture(*Settings, *Session);
 	TestFalse(TEXT("Another scene never goes into the save"), WithOther.ToJson().Contains(TEXT("prologue")));
+	// StartSession's last session (LastSessionFor): the first job kept, any other scene cleared.
+	TestEqual(TEXT("A started first job stays the last session's scene"), USailSessionSubsystem::LastSessionFor(Job).SceneId, FString(TEXT("first-job")));
+	TestTrue(TEXT("... another scene is cleared"), USailSessionSubsystem::LastSessionFor(Other).SceneId.IsEmpty());
 	return true;
 }
 
