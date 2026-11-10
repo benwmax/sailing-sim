@@ -478,28 +478,28 @@
  },
  "Ratchet57": {
   "category": "block",
-  "note": "57 mm ratchet block for the jib sheet or mainsheet",
-  "tris": 6716,
+  "note": "57 mm swivel ratchet block, on/off switch, 10 mm line: the Sunfish's and ILCA's mainsheet block",
+  "tris": 15216,
   "size_m": [
-   0.069,
-   0.0813,
-   0.083
+   0.0673,
+   0.0349,
+   0.1044
   ],
   "min_m": [
-   -0.0345,
-   -0.0406,
-   -0.083
+   -0.0336,
+   -0.0175,
+   -0.1006
   ],
   "slots": [
    "BlackPlastic",
-   "Rubrail",
-   "Stainless"
+   "Stainless",
+   "Aluminium"
   ],
   "sockets": {
    "Axle": [
     0.0,
     0.0,
-    -0.0445
+    -0.067
    ],
    "Head": [
     0.0,
@@ -509,20 +509,20 @@
    "LineIn": [
     0.0285,
     0.0,
-    -0.0445
+    -0.067
    ],
    "LineOut": [
     -0.0285,
     0.0,
-    -0.0445
+    -0.067
    ]
   },
   "light": {
-   "tris": 1678,
+   "tris": 3804,
    "slots": [
     "BlackPlastic",
-    "Rubrail",
-    "Stainless"
+    "Stainless",
+    "Aluminium"
    ],
    "sockets": [
     "Axle",
@@ -1945,47 +1945,6 @@
   },
   "sizes": null
  },
- "Fender": {
-  "category": "loose",
-  "note": "Ribbed vinyl fender, 150 x 500 mm, eyes at both ends",
-  "tris": 3880,
-  "size_m": [
-   0.1523,
-   0.1523,
-   0.5548
-  ],
-  "min_m": [
-   -0.0761,
-   -0.0761,
-   -0.0274
-  ],
-  "slots": [
-   "BlackPlastic"
-  ],
-  "sockets": {
-   "Bottom": [
-    0.0,
-    0.0,
-    -0.024
-   ],
-   "Top": [
-    0.0,
-    0.0,
-    0.524
-   ]
-  },
-  "light": {
-   "tris": 970,
-   "slots": [
-    "BlackPlastic"
-   ],
-   "sockets": [
-    "Bottom",
-    "Top"
-   ]
-  },
-  "sizes": null
- },
  "Stanchion": {
   "category": "lifeline",
   "note": "25 mm stainless stanchion in a cast base, 610 mm (24 in), with a mid and a top lifeline eye; height option",
@@ -2462,6 +2421,170 @@
     "50": 1.25
    }
   }
+ },
+ "Fender": {
+  "category": "loose",
+  "note": "Twin-eye ribbed vinyl fender, 6.5 x 22 in (165 x 559 mm), eye lugs at both ends",
+  "tris": 8432,
+  "size_m": [
+   0.1699,
+   0.1699,
+   0.559
+  ],
+  "min_m": [
+   -0.085,
+   -0.085,
+   -0.542
+  ],
+  "slots": [
+   "WhitePlastic"
+  ],
+  "sockets": {
+   "Bottom": [
+    0.0,
+    0.0,
+    -0.525
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    -0.0
+   ]
+  },
+  "light": {
+   "tris": 2108,
+   "slots": [
+    "WhitePlastic"
+   ],
+   "sockets": [
+    "Bottom",
+    "Top"
+   ]
+  },
+  "sizes": null
+ },
+ "DockLineEye": {
+  "category": "loose",
+  "note": "3/8 in three-strand dock line end with a 12 in soft eye splice (five tucks)",
+  "tris": 14524,
+  "size_m": [
+   0.9107,
+   0.1431,
+   0.0119
+  ],
+  "min_m": [
+   -0.6011,
+   -0.0715,
+   -0.0012
+  ],
+  "slots": [
+   "Rope"
+  ],
+  "sockets": {
+   "Crown": [
+    0.305,
+    0.0,
+    0.0047
+   ],
+   "Standing": [
+    -0.6,
+    0.0,
+    0.0047
+   ],
+   "Throat": [
+    0.0,
+    0.0,
+    0.0047
+   ]
+  },
+  "light": {
+   "tris": 3630,
+   "slots": [
+    "Rope"
+   ],
+   "sockets": [
+    "Crown",
+    "Standing",
+    "Throat"
+   ]
+  },
+  "sizes": null
+ },
+ "CleatHitch": {
+  "category": "loose",
+  "note": "3/8 in dock line made fast on a 10 in dock cleat: turn, figure eight, locking hitch",
+  "tris": 17928,
+  "size_m": [
+   0.4921,
+   0.5864,
+   0.0902
+  ],
+  "min_m": [
+   -0.3585,
+   -0.5028,
+   0.0009
+  ],
+  "slots": [
+   "Rope"
+  ],
+  "sockets": {
+   "Lead": [
+    0.1305,
+    -0.501,
+    0.0373
+   ]
+  },
+  "light": {
+   "tris": 4482,
+   "slots": [
+    "Rope"
+   ],
+   "sockets": [
+    "Lead"
+   ]
+  },
+  "sizes": null
+ },
+ "EyeOnCleat": {
+  "category": "loose",
+  "note": "Dock line eye dropped round a 130 mm horn cleat, under both horns",
+  "tris": 12734,
+  "size_m": [
+   0.2672,
+   0.7022,
+   0.0637
+  ],
+  "min_m": [
+   -0.061,
+   -0.6749,
+   -0.0038
+  ],
+  "slots": [
+   "Rope"
+  ],
+  "sockets": {
+   "Standing": [
+    0.2019,
+    -0.6731,
+    0.0558
+   ],
+   "Throat": [
+    0.0583,
+    -0.1942,
+    0.0058
+   ]
+  },
+  "light": {
+   "tris": 3182,
+   "slots": [
+    "Rope"
+   ],
+   "sockets": [
+    "Standing",
+    "Throat"
+   ]
+  },
+  "sizes": null
  },
  "JibHank": {
   "category": "rigging",
@@ -3257,6 +3380,135 @@
     "90": 1.286
    }
   }
+ },
+ "EyeBolt": {
+  "category": "fastener",
+  "note": "1/4 in stainless eye bolt through a 38 mm spar: forged eye, washer, acorn nut",
+  "tris": 1496,
+  "size_m": [
+   0.02,
+   0.016,
+   0.0734
+  ],
+  "min_m": [
+   -0.01,
+   -0.008,
+   -0.0304
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Eye": [
+    0.0,
+    0.0,
+    0.033
+   ],
+   "Nut": [
+    0.0,
+    0.0,
+    -0.0255
+   ],
+   "Skin": [
+    0.0,
+    0.0,
+    0.019
+   ]
+  },
+  "light": {
+   "tris": 374,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Eye",
+    "Nut",
+    "Skin"
+   ]
+  },
+  "sizes": null
+ },
+ "SHook": {
+  "category": "fastener",
+  "note": "2 in stainless S-hook, 4 mm wire, for a sail's tack",
+  "tris": 736,
+  "size_m": [
+   0.0286,
+   0.004,
+   0.0538
+  ],
+  "min_m": [
+   -0.0143,
+   -0.002,
+   -0.0519
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Bottom": [
+    0.0,
+    0.0,
+    -0.05
+   ],
+   "Top": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 184,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Bottom",
+    "Top"
+   ]
+  },
+  "sizes": null
+ },
+ "SparStrap": {
+  "category": "fastener",
+  "note": "Stainless eye strap across a 38 mm spar, two screws, the loop's hole along X",
+  "tris": 684,
+  "size_m": [
+   0.012,
+   0.0346,
+   0.0183
+  ],
+  "min_m": [
+   -0.006,
+   -0.0173,
+   0.0102
+  ],
+  "slots": [
+   "Stainless"
+  ],
+  "sockets": {
+   "Eye": [
+    0.0,
+    0.0,
+    0.0213
+   ],
+   "Skin": [
+    0.0,
+    0.0,
+    0.019
+   ]
+  },
+  "light": {
+   "tris": 170,
+   "slots": [
+    "Stainless"
+   ],
+   "sockets": [
+    "Eye",
+    "Skin"
+   ]
+  },
+  "sizes": null
  },
  "Tiller": {
   "category": "steering",
