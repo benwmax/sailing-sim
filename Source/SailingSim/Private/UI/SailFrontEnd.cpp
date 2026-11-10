@@ -1888,6 +1888,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([S](int32 I) { S->bLearningMode = I == 0; S->Save(); }));
 		Add(SNew(SSailChoice).Label(TEXT("Trim assist")).Options({ TEXT("On"), TEXT("Off") }).Index_Lambda([S]() { return S->bTrimAssist ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->bTrimAssist = I == 0; S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Show crew")).Options({ TEXT("On"), TEXT("Off") }).Index_Lambda([S]() { return S->bShowCrew ? 0 : 1; })
+			.OnChanged_Lambda([S](int32 I) { S->bShowCrew = I == 0; S->Save(); })
+			.Note(TEXT("Your boat's crew figures. Hidden, they still sail with you: their weight, hiking and trimming are the same.")));
 		Add(SNew(SSailChoice).Label(TEXT("Controls")).Options({ TEXT("Simple"), TEXT("Full") }).Index_Lambda([S]() { return S->ControlLayout == ESailingControlLayout::Simple ? 0 : 1; })
 			.OnChanged_Lambda([S](int32 I) { S->ControlLayout = I == 0 ? ESailingControlLayout::Simple : ESailingControlLayout::Full; S->Save(); })
 			.Note(TEXT("Easy always uses Simple: tiller, mainsheet, jib sheet and hiking; the crew handles the rest.")));

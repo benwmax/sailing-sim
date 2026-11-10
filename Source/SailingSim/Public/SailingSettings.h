@@ -76,6 +76,11 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bTrimAssist = true;
 
+	/** The crew figures on your own boat (Settings > Show crew, off by default: the slice's MVP hides them). Only drawn: the
+	 *  crew's weight, hiking, trim and stations sail the boat either way; other boats keep theirs. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	bool bShowCrew = false;
+
 	UPROPERTY(config, EditAnywhere, Category = "Weather")
 	ESailingWeather WeatherPreset = ESailingWeather::AfternoonBreeze;
 
@@ -246,6 +251,10 @@ public:
 	bool IsEasy() const;
 	/** -SailingEasy=0|1, or -1 when the command line doesn't say. */
 	static int32 EasyArg();
+	/** Your boat's crew figures are drawn: -SailingShowCrew=0|1 decides, otherwise bShowCrew. */
+	bool IsShowCrew() const;
+	/** -SailingShowCrew=0|1, or -1 when the command line doesn't say. */
+	static int32 ShowCrewArg();
 	/** The run is in Free Sail mode: -SailingFreeSail=0|1 decides, then the running session's mode (RunFreeSail), otherwise
 	 *  bFreeSail (docs/free-sail). */
 	bool IsFreeSail() const;

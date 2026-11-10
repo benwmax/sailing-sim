@@ -49,6 +49,8 @@ public:
 	bool JustFell() const { return bJustFell; }
 	bool JustRecovered() const { return bJustRecovered; }
 	int32 FallCount() const { return Falls; }
+	/** Back to posed with no fall under way (the crew hidden mid-fall: Settings > Show crew); the fall count is kept. */
+	void Reset() { Current = ECrewFallPhase::Posed; ControlStrength = 1.f; FallFloor = 0.f; SinceFall = Steady = Gathered = 0.f; bJustFell = bJustRecovered = false; }
 
 private:
 	FCrewFallParams P;
