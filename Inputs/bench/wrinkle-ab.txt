@@ -11,3 +11,24 @@ Branch: PR #583's head had moved to b7e00837 by run time. It fails on MSVC twice
   Source/SailingSim/Private/SailCloth.cpp(806,14): error C4459: declaration of 'Kinds' hides global declaration
 (shadowing warnings are errors on MSVC; CLAUDE.md, "MSVC portability"). So no branch numbers and no wrinkle-clew-583 still; rename that local and rerun once the branch builds.
 Note on main: -SailingNoSailWrinkles saves only 0.24-0.37 ms of cloth_cpu_ms (3.07 -> 2.70 default, 2.83 -> 2.60 beat15), far less than the ~1.9 ms ff3663d5 added, so most of that commit's cost is not behind the toggle.
+
+P2 and P3 (Nov 10, same setup):
+branch = dfac90c851d8 (PR #583: main 321b7d94 merged in, 'Kinds' renamed WrinkleKinds)
+583      default  wrinkles    |  1.946    0.348  3.093  13.55  58.1
+583      default  nowrinkles  |  1.654        0  2.721  12.51  63.1
+583      beat15   wrinkles    |  1.702    0.089  2.774  12.59  63.3
+583      beat15   nowrinkles  |  1.636        0  2.694  12.47  63.6
+main = 321b7d94, with -SailingClassicSailGrid (the cloth's own grid instead of 81d44a23's 3x finer render grid)
+main     default  classicgrid |  0.675      n/a  0.784  10.58  71.9
+main     beat15   classicgrid |  0.665      n/a  0.775  10.87  71.9
+branch = 409958af602a (PR #583, supersedes dfac90c8)
+583      default  wrinkles    |  1.815    0.325  2.867  12.43  63.4
+583      default  nowrinkles  |  1.639        0  2.707  12.31  63.8
+583      beat15   wrinkles    |  1.678    0.086  2.719  12.77  62.8
+583      beat15   nowrinkles  |  1.709        0  2.766  13.04    60
+
+Reading:
+- The 3x finer render grid (81d44a23) is the main cost: main with -SailingClassicSailGrid drops cloth_cpu_ms 3.07 -> 0.68 and sails 4.09 -> 0.78 (default view), game_ms 14.5 -> 10.6, fps 60 -> 72.
+- The wrinkles themselves are small: wrinkle_cpu_ms 0.33-0.35 (default) and 0.09 (beat15) on the branch.
+- PR #583 cuts cloth_cpu_ms from 3.07 to 1.82 (409958af) / 1.95 (dfac90c8) in the default view and 2.83 -> 1.68 in beat15 - still well above the classic grid's 0.68.
+- Clew stills (same camera on all three: wrinkle-clew-main, -583-dfac90c8, -583 = 409958af) do NOT frame the clew: at TWA 60 the boom is eased out to leeward and the camera shows the cockpit and crew with the main only at the left edge. Not usable to judge wrinkles; a camera aimed at the boom end on the leeward side is needed.
