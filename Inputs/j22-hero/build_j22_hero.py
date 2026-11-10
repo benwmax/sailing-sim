@@ -33,7 +33,7 @@ sys.path.insert(0, HERE)
 import j22_materials as M  # noqa: E402
 import j22_details as D
 from j22_fabric import Drape, Wrinkles  # noqa: E402
-from j22_style import TX7295, make_style  # noqa: E402
+from j22_style import TX7295, clean_bake, make_style  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", "..", "Tools", "boatkit"))
 import bk_parts as KIT  # noqa: E402
 import j22_kitfit as KF  # noqa: E402
@@ -129,7 +129,10 @@ from j22_geom import (apply_mods, bevel, boolean, box, cyl, join, link, mesh_obj
 
 # ------------------------------------------------------------------ materials
 
-MAT = M.build_all(STYLE)
+# Hero ageing (docs/hero-ageing): --clean-bake gives the baked gelcoat, deck and teak no wear of their own (the game's
+# bake: M_J22HeroSurface adds it all from Age and Care); without it they carry the style's wear, as the stills want.
+CLEAN_BAKE = "--clean-bake" in ARGS
+MAT = M.build_all(STYLE, surf=clean_bake(STYLE) if CLEAN_BAKE else None)
 
 # ------------------------------------------------------------------ hull shell
 

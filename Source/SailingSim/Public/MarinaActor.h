@@ -77,10 +77,11 @@ public:
 	static void BuildGeometry(const FMarina& Marina, const Sailing::FLakeTerrain* Terrain, TFunctionRef<bool(const FString&)> Generated, FKitGeometry& Out,
 		bool bDockKitMeshes = false);
 
-	/** Club docks (#405 pass 2): the floating docks' hardware as meshes (Tools/blender/build_docks.py, /Game/World/Docks). */
-	enum class EDockKit : uint8 { Cleat, Pedestal, Box, PilingCap, Hoop, Ladder, Float, Extinguisher, Count };
+	/** Club docks (#405 pass 2): the floating docks' hardware as meshes (Tools/blender/build_docks.py, /Game/World/Docks).
+	 *  Bumper (the finger-end bumper, dock hardware pass Nov 2026) is optional: drawn when imported, never required. */
+	enum class EDockKit : uint8 { Cleat, Pedestal, Box, PilingCap, Hoop, Ladder, Float, Extinguisher, Bumper, Count };
 	static const TCHAR* DockKitName(EDockKit Kit);
-	/** Whether every dock kit mesh is in the content (then the bake and the actor use them). */
+	/** Whether every required dock kit mesh is in the content (then the bake and the actor use them). */
 	static bool HasDockKit();
 	/** Each kit mesh's instances (map frame, cm), from the same rows and slips BuildGeometry draws. */
 	static void DockKitPlacements(const FMarina& Marina, TFunctionRef<bool(const FString&)> Generated, TArray<FTransform> (&Out)[int32(EDockKit::Count)]);

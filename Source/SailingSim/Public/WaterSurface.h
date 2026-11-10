@@ -8,6 +8,9 @@
 #include "HullClip.h"
 #include "WaterSurface.generated.h"
 
+struct FLakeData;
+namespace Sailing { class FLakeTerrain; }
+
 class UProceduralMeshComponent;
 class UInstancedStaticMeshComponent;
 class UStaticMeshComponent;
@@ -129,6 +132,15 @@ public:
 	static void CapTable(float MeanKnots, float WaterScale, float& OutFirst, float& OutStep);
 	static float CapTableEntry(float J, int32 K, float First, float Step);
 	static float CapCover(const float Table[4], float Threshold, float MeanKnots, float Mip, float First, float Step);
+	/** The shore map (M_WaterV4's ShoreMap: shoaling, swash, calmer water by the docks): water depth (m) on a Res x Res
+	 *  grid of CellM cells from Origin (row = north, column = east). The terrain's depth, shallower within a few metres of
+	 *  every dock, pier, breakwater and berthed boat standing in the water (0.05 m at its edge, 0.6 m deeper per metre
+	 *  out, so the waves lap against it), and over a launch ramp the water over its slab. Each structure reaches until it
+	 *  is 2 m deep (ShoreReachM out), past where the material reads the map: docs/ramp-water-patch/ (a square of lapping
+	 *  foam by the club ramp, where the stamp stopped at a box inside the ramp's own half width). */
+	static void BuildShoreDepth(const FLakeData& Lake, const Sailing::FLakeTerrain& Terrain, const FVector2D& Origin, int32 Res, float CellM,
+		TArray<float>& OutDepth);
+	static constexpr float ShoreReachM = 3.25f;
 	/** Game-thread time spent on the water each frame (the FFT blend and upload, the wake grid), summed: bench.json. */
 	static double WaterCpuSeconds;
 	/** W2: game-thread time spent on the two-level wind map (bench.json windmap_cpu_ms). */
