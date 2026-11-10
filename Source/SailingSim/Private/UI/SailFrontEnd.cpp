@@ -396,7 +396,8 @@ void SSailFrontEnd::KeepFocusInMenus()
 	FocusReclaimAt = Time + 0.25;
 	// Back to the screen's default, never to what had it before: that may be what a still cursor's hover took.
 	SAIL_LOG(Display, TEXT("Menus: focus was on the game viewport (%s); back to the screen's default"), *Now->GetTypeAsString());
-	FocusCurrent();
+	// The menus themselves when the default can't take it (hidden, say), so the keys still reach them and this stops.
+	if (!FocusCurrent()) App.SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
 }
 
 ASailboatPawn* SSailFrontEnd::Pawn() const
@@ -475,8 +476,18 @@ void SSailFrontEnd::Show(const FEntry& E, bool bForward)
 	bTransitionForward = bForward;
 	TransitionStart = FSlateApplication::Get().GetCurrentTime();
 	if (!IsLow()) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::AnimateTransition));
-	// Focus once the new screen has been laid out (a widget that has never been arranged has no path to focus).
-	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateLambda([this](double, float) { FocusCurrent(); return EActiveTimerReturnType::Stop; }));
+	// Focus once the new screen has been laid out (a widget that has never been arranged has no path to focus): tried each
+	// frame until it takes, for up to a second (a screen rebuilt several times in one frame, like the quiz's score after
+	// Answer:all, may not have a path on the first try).
+	const double FocusUntil = FSlateApplication::Get().GetCurrentTime() + 1.0;
+	RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateLambda([this, FocusUntil](double Time, float)
+	{
+		if (FocusCurrent()) return EActiveTimerReturnType::Stop;
+		if (Time <= FocusUntil) return EActiveTimerReturnType::Continue;
+		const TSharedPtr<SWidget> Now = FSlateApplication::Get().GetUserFocusedWidget(0);
+		SAIL_LOG(Display, TEXT("Menus: the screen's default never took focus (it is on %s)"), Now.IsValid() ? *Now->GetTypeAsString() : TEXT("nothing"));
+		return EActiveTimerReturnType::Stop;
+	}));
 }
 
 EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
@@ -490,13 +501,18 @@ EActiveTimerReturnType SSailFrontEnd::AnimateTransition(double Time, float)
 	return T < 1.f ? EActiveTimerReturnType::Continue : EActiveTimerReturnType::Stop;
 }
 
-void SSailFrontEnd::FocusCurrent()
+bool SSailFrontEnd::FocusCurrent()
 {
-	using namespace SailUI;
-	using namespace SailFrontEndImpl;
-	// The menus themselves when the default can't take it (not laid out yet, or hidden), so the keys still reach them.
-	if (Stack.Num() && Stack.Last().Focus.IsValid() && FSlateApplication::Get().SetUserFocus(0, Stack.Last().Focus, EFocusCause::SetDirectly)) return;
-	FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
+	FSlateApplication& App = FSlateApplication::Get();
+	const TSharedPtr<SWidget> Target = Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>();
+	if (!Target.IsValid())
+	{
+		App.SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
+		return true;
+	}
+	// Judged by where the focus is afterwards, not SetUserFocus's answer (already focused, or a path not found yet).
+	if (App.GetUserFocusedWidget(0) != Target) App.SetUserFocus(0, Target, EFocusCause::SetDirectly);
+	return App.GetUserFocusedWidget(0) == Target;
 }
 
 FReply SSailFrontEnd::OnPreviewKeyDown(const FGeometry&, const FKeyEvent& E)

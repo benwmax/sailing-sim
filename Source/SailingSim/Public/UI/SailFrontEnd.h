@@ -63,8 +63,9 @@ public:
 	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
-	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport). */
-	void FocusCurrent();
+	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has
+	 *  it (or the screen has none and the menus took it). */
+	bool FocusCurrent();
 	ESailScreen Current() const { return Stack.Num() ? Stack.Last().Screen : ESailScreen::Title; }
 	/** What FocusCurrent focuses on the current screen (tests). */
 	TSharedPtr<SWidget> FocusTarget() const { return Stack.Num() ? Stack.Last().Focus : TSharedPtr<SWidget>(); }
