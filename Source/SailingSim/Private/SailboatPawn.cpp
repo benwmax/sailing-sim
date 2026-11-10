@@ -152,8 +152,8 @@ ASailboatPawn::ASailboatPawn()
 	MastheadFly = CreateDefaultSubobject<USceneComponent>(TEXT("MastheadFly"));
 	MastheadFly->SetupAttachment(BoatRoot);
 	MastheadFly->SetRelativeLocation(FVector(100.f, 0.f, 935.f));
-	AddPart(TEXT("FlyArrow"), Cube, FVector(18.f, 0.f, 0.f), FVector(45.f, 2.5f, 2.5f), FRotator::ZeroRotator, MastheadFly);
-	AddPart(TEXT("FlyVane"), Cube, FVector(-8.f, 0.f, 0.f), FVector(12.f, 1.f, 10.f), FRotator::ZeroRotator, MastheadFly);
+	FlyBoxes.Add(AddPart(TEXT("FlyArrow"), Cube, FVector(18.f, 0.f, 0.f), FVector(45.f, 2.5f, 2.5f), FRotator::ZeroRotator, MastheadFly));
+	FlyBoxes.Add(AddPart(TEXT("FlyVane"), Cube, FVector(-8.f, 0.f, 0.f), FVector(12.f, 1.f, 10.f), FRotator::ZeroRotator, MastheadFly));
 
 	MainSail = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("MainSail"));
 	MainSail->SetupAttachment(BoatRoot);
@@ -483,6 +483,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// pc/sunfish-fidelity: a Sunfish carries no masthead fly (class photos); her halyard cap is the model's. pc/ilca-fidelity:
 	// nor does an ILCA, whose sail's sleeve goes over the masthead.
 	MastheadFly->SetVisibility(C.Type != EBoatType::Sunfish && C.Type != EBoatType::ILCA7, true);
+	BuildKitFittings();
 
 	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
 	const double Loa = C.LengthOverall;
@@ -3252,6 +3253,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
+		UpdateKitFittings(); // the hanks and the head shackle go with the jib
 		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
 		return;
 	}
@@ -3272,6 +3274,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (T.NumSpinStrips > 0) SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
 	if (Cfg.HasJib()) JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
+	UpdateKitFittings();
 	SAILING_PERF_SCOPE_END(Sails);
 	{ SAILING_PERF_SCOPE(Telltales); UpdateTelltaleRibbons(); }
 	if (ModelHull)

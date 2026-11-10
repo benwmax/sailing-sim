@@ -52,10 +52,12 @@ def sock(ob, s):
     return ob.matrix_world @ Vector(ob[f"sock_{s}"])
 
 
-def cam_cleat(name, at, out_normal, along, MAT):
+def cam_cleat(name, at, out_normal, along, MAT, length=None):
     """The kit's CamCleat (cam cleat with its fairlead) where j22_details.cam_cleat put the old one: base on `at`, out of
-    `out_normal`, its fairlead toward `along` (the kit's lead is its -X end)."""
-    return [place(name, "CamCleat", basis(at, -Vector(along), out_normal), MAT)]
+    `out_normal`, its fairlead toward `along` (the kit's lead is its -X end). The old cleat's small sizes (`length` under
+    6 cm: the traveller, cunningham and tiller cams) take the kit's micro size, 38 (32 mm across); the rest its default."""
+    size = "38" if length is not None and length < 0.06 else None
+    return [place(name, "CamCleat", basis(at, -Vector(along), out_normal), MAT, size=size)]
 
 
 def padeye(name, at, normal, MAT, along=None):
