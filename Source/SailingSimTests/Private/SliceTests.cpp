@@ -263,15 +263,18 @@ namespace SliceFirstHour
 	}
 
 	/** Counts contacts begun and the hardest one (kn), as the pawn does for a lesson. */
+	// The game's own count (FDrillContacts, as ASailboatPawn keeps it, #604): nothing tied up or just cast off and alongside.
 	struct FContacts
 	{
-		bool bTouching = false;
+		FDrillContacts Counter;
 		void Update(const FBoatModel& Boat, FLessonRun& Run)
 		{
-			const bool bNow = Boat.GetTelemetry().bCollision;
-			if (bNow) Run.MaxContactKn = FMath::Max(Run.MaxContactKn, Boat.GetTelemetry().BoatSpeed / kKnot);
-			Run.Collisions += bNow && !bTouching;
-			bTouching = bNow;
+			Counter.GraceMeters = Boat.GetConfig().LengthOverall;
+			const int32 Before = Counter.Collisions;
+			const Vec3 O = Boat.OriginPosition();
+			Counter.Update(Boat.GetTelemetry().bCollision, Boat.GetMooringLines().size() > 0, Boat.GetTelemetry().BoatSpeed / kKnot, FVector2D(O.X, O.Y), PhysicsDt);
+			Run.Collisions += Counter.Collisions - Before;
+			Run.MaxContactKn = FMath::Max(Run.MaxContactKn, Counter.MaxKnots);
 		}
 	};
 
@@ -658,6 +661,14 @@ bool FSailingSliceFirstHourTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s sailed to the end"), *L.Id), Run.Drill.IsComplete());
 		TestEqual(FString::Printf(TEXT("%s counts for its lesson"), *L.Id), A.LessonId, L.Id);
 		TestTrue(FString::Printf(TEXT("%s at silver or better"), *L.Id), A.Medal >= ECareerMedal::Silver);
+		if (L.Drill == ESailingDrill::LeaveTheDock)
+		{
+			// #604: backing out she rubs the finger she lay against (0.4-0.5 kn, inside her first hull length, no ram):
+			// not counted, a clean departure and gold.
+			TestEqual(TEXT("Leaving the slip: no touch counted"), Run.Collisions, 0);
+			TestEqual(TEXT("... a clean departure"), Run.Drill.GetOutcome(), FString(TEXT("clean")));
+			TestEqual(TEXT("... and gold"), A.Medal, ECareerMedal::Gold);
+		}
 		FRandomStream Rng(5);
 		const int32 Of = Learning.MakeQuiz(L.QuizDrill, Rng).Num();
 		TestTrue(FString::Printf(TEXT("%s quiz passes at %d of %d"), *L.Id, Of - 1, Of), Career.RecordLessonQuiz(L.Id, Of - 1, Of));
