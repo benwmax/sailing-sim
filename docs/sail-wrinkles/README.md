@@ -31,6 +31,7 @@ The cloth simulation, the telltales and the clew stay on the cloth's grid; nothi
 `-SailingNoSailWrinkles` compares.
 
 Cost: the sails' game-thread time on the lake beat (High) is 0.907 ms against 0.853 without (+0.05 ms).
+On the PC's Ultra it was more: see docs/sail-wrinkles-cost/ (the per-frame work cut, same numbers).
 
 Test: `SailingSim.Visual.SailWrinkles` (the fan's wavelength and amplitude, the amplitude taking up exactly the squeeze,
 growth with load and distance, nothing with no load and a tight halyard, a too-coarse grid drawn smooth).

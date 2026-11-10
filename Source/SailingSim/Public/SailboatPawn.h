@@ -354,6 +354,8 @@ private:
 public:
 	/** Seconds spent simulating sail cloth, all boats, since the game started (the bench reports it per frame). */
 	static double ClothCpuSeconds;
+	/** Of that, the sails' wrinkles (docs/sail-wrinkles-cost/), summed over the sails' tasks (bench.json wrinkle_cpu_ms). */
+	static double WrinkleCpuSeconds;
 private:
 	void UpdateTelltales();
 	void CreateInput();
