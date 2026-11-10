@@ -943,7 +943,9 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 			return true;
 		}
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
-		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.36; W.SoleZ = 0.30;
+		// Shape wave 1: the class hull's deck narrows aft faster than the old stand-in's, so a 0.36 m seat left the helm's sole
+		// only 0.35 m wide each side at x -1.91 and his heel came down inside the seat front; 0.30 keeps the well's width.
+		W.X0 = H.SternX + 0.14; W.X1 = -0.72; W.SideDeck = 0.36; W.SeatZ = 0.47; W.SeatW = 0.30; W.SoleZ = 0.30;
 		// Its traveler (pc/j22-feedback: at the boom's end, x -2.06, as on the hero): a 32 mm track from seat to seat, its top
 		// 0.474 m up, open below (round 12's 16 cm bridge at x -1.75, which the helm's forward foot stood on, is gone).
 		W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.458; W.TrackZ1 = 0.474; W.TrackHalfY = 1.0;
