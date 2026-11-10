@@ -1,0 +1,17 @@
+PR #612 Show crew (mac/show-crew-setting 25c496c1; main 21e1bd7d already merged in, no local merge), on Bean's PC, Nov 10 2026.
+Build (MSVC): OK. SailingSim.Smoke.ShowCrew: passed with 1 warning. Smoke (uncooked): title menu loads, 0 error lines;
+30 s autopilot sail on the Lake, 66.8 fps, 4.6 kn, 0 error lines.
+
+Bench: Development package Packaged\Windows-612-25c496c, bench-visual-win -Tiers Ultra, 1920x1080 windowed, 12 s per view;
+crew off = default, crew on = -Extra -SailingShowCrew=1. bench-off-vs-on.csv has fps, 1% low (1000/p99), game, gpu, render ms.
+Mean of 15 views (beam8 left out: the first launch of the off pass, a warm-up outlier at 39 fps): fps 60.0 off / 60.4 on,
+game thread 12.29 / 12.01 ms, GPU 7.73 / 8.01 ms. Per-view swings of +-5 fps go both ways: noise at this length.
+Only the close crew view shows the figures' cost: GPU 8.03 ms off vs 9.43 ms on.
+Note: scripts/windows/views.ps1's crew view lacks the -SailingShowCrew=1 the PR adds to scripts/bench-visual.sh, so on
+Windows the bench's crew view shows no crew by default.
+
+Stills (stills/): hero J/22 cockpit, crew OFF (-SailingShowCrew=0), dock (LeavetheDock), starboard beat (TWA 45),
+port beat (TWA -45); "over" from above and behind, "side" from the port quarter; High and Ultra, 1920x1080.
+Finding: the tiller extension ends in mid-air in every state: the tiller rises from the rudder head and the black
+extension points forward and up, stopping roughly half a metre above the seat, posed for a hand that is not drawn.
+The jib sheet tails are fine: coiled flat on the seats.
