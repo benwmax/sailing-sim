@@ -1,6 +1,8 @@
 #include "Misc/AutomationTest.h"
 #include "KitFittings.h"
 
+#include <limits>
+
 namespace
 {
 	constexpr EAutomationTestFlags KitFittingsFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
@@ -58,6 +60,15 @@ bool FVisualKitFittingsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Chord along the luff"), Unit(KitFittings::HankTransform(Luff, Up, Up, LuffSocket)));
 	TestTrue(TEXT("Shackle with no frame"), Unit(KitFittings::HeadShackleTransform(Head, FVector::ZeroVector, FVector::ZeroVector)));
 	TestTrue(TEXT("Shackle with the chord up the luff"), Unit(KitFittings::HeadShackleTransform(Head, Up, -Up)));
+
+	// A cloth not yet built (NaN points) gives a transform the pawn must not place: Placeable says so, and the pawn hides
+	// the part (the Mac's RigClearance run on the rebaked hero, Nov 10). Good frames are placeable.
+	const FVector Nan(std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0);
+	TestFalse(TEXT("A NaN stay socket isn't placeable"), KitFittings::Placeable(KitFittings::HankOnStay(Nan, Hounds, ClothLuff)));
+	TestFalse(TEXT("A NaN luff point isn't placeable (on the stay: not stacked at the hounds)"), KitFittings::Placeable(KitFittings::HankOnStay(Tack, Hounds, Nan)));
+	TestFalse(TEXT("A NaN luff point isn't placeable (on the luff)"), KitFittings::Placeable(KitFittings::HankTransform(Nan, Up, Aft, LuffSocket)));
+	TestFalse(TEXT("A NaN head isn't placeable"), KitFittings::Placeable(KitFittings::HeadShackleTransform(Nan, Up, Aft)));
+	TestTrue(TEXT("Good frames are placeable"), KitFittings::Placeable(H) && KitFittings::Placeable(S) && KitFittings::Placeable(W));
 
 	TestTrue(TEXT("Hanks spread from near the tack to near the head"),
 		FMath::IsNearlyEqual(KitFittings::HankV(0, 8), 0.0625f) && FMath::IsNearlyEqual(KitFittings::HankV(7, 8), 0.9375f));

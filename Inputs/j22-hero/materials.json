@@ -46,15 +46,6 @@
    "roughness": 0.5,
    "metallic": 1.0
   },
-  "Aluminium.001": {
-   "base_color_linear": [
-    0.8,
-    0.8,
-    0.8
-   ],
-   "roughness": 0.32,
-   "metallic": 1.0
-  },
   "AshVarnish": {
    "base_color_linear": [
     0.5841,
@@ -78,15 +69,6 @@
     0.0075,
     0.0075,
     0.0075
-   ],
-   "roughness": 0.45,
-   "metallic": 0.0
-  },
-  "BlackPlastic.001": {
-   "base_color_linear": [
-    0.8,
-    0.8,
-    0.8
    ],
    "roughness": 0.45,
    "metallic": 0.0
@@ -352,15 +334,6 @@
    "roughness": 0.5,
    "metallic": 1.0
   },
-  "Stainless.001": {
-   "base_color_linear": [
-    0.8,
-    0.8,
-    0.8
-   ],
-   "roughness": 0.3,
-   "metallic": 1.0
-  },
   "Sticker": {
    "base_color_linear": [
     0.0284,
@@ -368,15 +341,6 @@
     0.0423
    ],
    "roughness": 0.3,
-   "metallic": 0.0
-  },
-  "TeakInterior": {
-   "base_color_linear": [
-    0.2623,
-    0.2307,
-    0.1878
-   ],
-   "roughness": 0.5,
    "metallic": 0.0
   },
   "TeakVarnish": {
@@ -390,9 +354,9 @@
   },
   "TeakWeathered": {
    "base_color_linear": [
-    0.2086,
-    0.0844,
-    0.0296
+    0.2747,
+    0.2582,
+    0.2232
    ],
    "roughness": 0.5,
    "metallic": 0.0
@@ -515,5 +479,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 45054408
+ "glb_bytes": 47459192
 }

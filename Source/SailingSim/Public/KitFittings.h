@@ -36,6 +36,13 @@ namespace KitFittings
 		return Q;
 	}
 
+	/** Whether a fitting's transform may be handed to its component (USceneComponent::SetRelativeTransform ensures
+	 *  otherwise): finite, unit rotation, no zero scale. */
+	inline bool Placeable(const FTransform& X)
+	{
+		return X.IsValid() && !X.GetScale3D().IsNearlyZero();
+	}
+
 	/** A hank on the luff: the kit JibHank's stay runs along its Y and the sail lies aft along its -X, so Y follows the luff
 	 *  up (UpLuff) and -X the sail's chord (Aft), and the hank's `Luff` socket (LuffSocket, mesh cm) lands on the cloth's
 	 *  luff point (LuffPoint). */
@@ -49,6 +56,10 @@ namespace KitFittings
 	 *  the cloth's luff point (Luff), its Y along the wire and its sail (local -X) toward that point. */
 	inline FTransform HankOnStay(const FVector& Tack, const FVector& Hounds, const FVector& Luff)
 	{
+		if (Luff.ContainsNaN())
+		{
+			return FTransform(FQuat::Identity, Luff);   // no luff point: not placeable (the pawn hides it), not at the hounds
+		}
 		const FVector Wire = Hounds - Tack;
 		const double T = FMath::Clamp(FMath::Abs(Wire.Z) > 1.0 ? (Luff.Z - Tack.Z) / Wire.Z : 0.5, 0.0, 1.0);
 		const FVector Stay = Tack + Wire * T;

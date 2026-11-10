@@ -103,7 +103,8 @@ void ASailboatPawn::UpdateKitFittings()
 	const FBoatConfig& C = Boat.GetConfig();
 	if (ModelMast && ModelMast->DoesSocketExist(TEXT("FlyPivot")))
 	{
-		MastheadFly->SetRelativeLocation(RigPoint(ModelMast, TEXT("FlyPivot")));
+		const FVector Pivot = RigPoint(ModelMast, TEXT("FlyPivot"));
+		if (!Pivot.ContainsNaN()) MastheadFly->SetRelativeLocation(Pivot);
 	}
 	else if (FlyKitMount)
 	{
@@ -134,6 +135,20 @@ void ASailboatPawn::UpdateKitFittings()
 	{
 		return;
 	}
+	// A fitting whose frame can't be built this frame (the cloth not yet built for a boat being swapped in, a NaN in the
+	// rig: the Mac's RigClearance run on the rebaked hero, Nov 10) is hidden until it can, never handed to the scene
+	// component (SetRelativeTransform ensures on an invalid transform).
+	auto Place = [](UStaticMeshComponent* Part, const FTransform& X)
+	{
+		if (KitFittings::Placeable(X))
+		{
+			Part->SetRelativeTransform(X);
+		}
+		else
+		{
+			Part->SetVisibility(false);
+		}
+	};
 	auto Up = [this](float V)
 	{
 		const float D = 0.02f;
@@ -152,13 +167,13 @@ void ASailboatPawn::UpdateKitFittings()
 		{
 			const float V = KitFittings::HankV(I, JibHanks.Num());
 			const FVector Luff = JibCloth.PointAt(0.f, V);
-			JibHanks[I]->SetRelativeTransform(bStay
+			Place(JibHanks[I], bStay
 				? KitFittings::HankOnStay(Tack, Hounds, Luff)
 				: KitFittings::HankTransform(Luff, Up(V), JibCloth.ChordTangentAt(0.f, V), LuffSocket));
 		}
 	}
 	if (JibHeadShackle)
 	{
-		JibHeadShackle->SetRelativeTransform(KitFittings::HeadShackleTransform(JibCloth.PointAt(0.f, 1.f), Up(1.f), JibCloth.ChordTangentAt(0.f, 1.f)));
+		Place(JibHeadShackle, KitFittings::HeadShackleTransform(JibCloth.PointAt(0.f, 1.f), Up(1.f), JibCloth.ChordTangentAt(0.f, 1.f)));
 	}
 }
