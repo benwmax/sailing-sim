@@ -1,0 +1,8 @@
+#617 check: the 12 crew-off cockpit stills of the #612 check, re-shot on main aa165b8e (detached, clean, MSVC build OK),
+same args (-SailingShowCrew=0; dock = LeavetheDock, starboard beat TWA 45, port beat TWA -45; over = from above and
+behind, side = port quarter; High and Ultra, 1920x1080, uncooked run-game).
+Tiller extension: now stowed. It lies folded back along the top of the tiller, from the rudder head to the tiller's tip,
+in all three states; it no longer points up and forward into the air. The tiller itself still rises from the rudder
+head as before (its own rest, not floating).
+Jib sheet tails: still fine, coiled flat on the seats (red to port, green to starboard), a third coil on the sole.
+Nothing else seen hanging in mid-air; the mainsheet runs boom to traveller as before.
