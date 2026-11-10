@@ -67,4 +67,32 @@ bool FSailingShowCrewTest::RunTest(const FString&)
 	return true;
 }
 
+// #612 follow-up: with the crew hidden, the tiller extension is stowed back along the tiller (the hero J/22's TillerExtUJ to
+// TillerExtTip), not left posed for the hidden helm's hand; shown, it goes to the helm's hand.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStowExtensionTest, "SailingSim.Smoke.StowExtension", ShowCrewFlags)
+bool FSailingStowExtensionTest::RunTest(const FString&)
+{
+	FScopedShowCrew Setting(false);
+	FShowCrewWorld W;
+	W.World->SpawnActor<AWaterSurface>(FVector::ZeroVector, FRotator::ZeroRotator);
+	ASailboatPawn* Boat = W.World->SpawnActor<ASailboatPawn>(FVector(1000.f, 0.f, 0.f), FRotator(0.f, 90.f, 0.f));
+	if (!TestNotNull(TEXT("A boat"), Boat)) return false;
+	W.Tick(60);
+	const TOptional<FVector> Hinge = Boat->GetTillerExtensionHingeCm(), Tip = Boat->GetTillerExtensionTipCm();
+	if (!TestTrue(TEXT("The J/22 draws a tiller extension"), Hinge.IsSet() && Tip.IsSet())) return false;
+	AddInfo(FString::Printf(TEXT("Crew hidden: extension from (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f) cm"), Hinge->X, Hinge->Y, Hinge->Z, Tip->X, Tip->Y, Tip->Z));
+	TestFalse(TEXT("Crew hidden"), Boat->IsCrewShownNow());
+	TestTrue(TEXT("... the extension folded back toward the rudder head (its free end aft of the hinge)"), Tip->X < Hinge->X - 40.0);
+	TestTrue(TEXT("... lying along the tiller, not raised (within 15 cm of the hinge's height)"), FMath::Abs(Tip->Z - Hinge->Z) < 15.0);
+	TestTrue(TEXT("... on the centreline, inside the boat"), FMath::Abs(Tip->Y) < 40.0);
+	TestTrue(TEXT("... and about the extension's length"), FVector::Dist(*Hinge, *Tip) > 50.0 && FVector::Dist(*Hinge, *Tip) < 120.0);
+	USailingSettings::Get()->bShowCrew = true;
+	W.Tick(30);
+	const TOptional<FVector> Held = Boat->GetTillerExtensionTipCm();
+	if (!TestTrue(TEXT("Shown: still drawn"), Held.IsSet())) return false;
+	AddInfo(FString::Printf(TEXT("Crew shown: the free end at (%.0f, %.0f, %.0f) cm"), Held->X, Held->Y, Held->Z));
+	TestTrue(TEXT("Shown: the extension goes to the helm's hand (not the stowed end)"), FVector::Dist(*Held, *Tip) > 15.0);
+	return true;
+}
+
 #endif
