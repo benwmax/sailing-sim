@@ -4,9 +4,11 @@
 #                                      [-GameArgs "-SailingWeather=Thunderstorm -SailingHour=16"] [-Demo] [-Record 15]
 #   -Quality: Low, Medium, High or Ultra (default: the game's setting, Ultra on Windows).
 #   -Demo lets the autopilot sail and tack (-SailingDemo); -Record <s> also saves frames (Saved\Bench\rec).
+#   -Package <folder>: the package to run (default Packaged\Windows; a bare name is a folder under Packaged, as
+#   package-win.ps1 -Into makes, e.g. -Package Windows-806a4291; or a full path). -WhatIf prints the game it would run.
 # Needs a logged-in desktop that stays awake: it opens a window. Leave it in front; hidden windows run slower.
 param(
-	[int]$Seconds = 20,
+	[Parameter(Position = 0)][int]$Seconds = 20,
 	[int]$ResX = 1920,
 	[int]$ResY = 1080,
 	[string]$Quality = '',
@@ -14,14 +16,17 @@ param(
 	[string]$GameArgs = '',
 	[switch]$Demo,
 	[int]$Record = 0,
-	[int]$StartupAllowance = 180
+	[int]$StartupAllowance = 180,
+	[string]$Package = '',
+	[switch]$WhatIf
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
 
-$Game = Join-Path $Packaged 'Windows\SailingSim.exe'
-if (-not (Test-Path $Game)) { throw "No packaged game at $Game; run scripts\windows\package-win.ps1 first" }
+$Game = Resolve-PackagedGame $Package
+Write-Host "Game: $Game"
+if ($WhatIf) { return }
 
-$SavedDirs = Get-SavedDirs
+$SavedDirs = Get-SavedDirs (Split-Path $Game)
 foreach ($D in $SavedDirs) {
 	$B = Join-Path $D 'Bench'
 	Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $D 'Logs\SailingSim.log'), (Join-Path $B 'bench.json'),

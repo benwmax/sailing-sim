@@ -1283,6 +1283,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	else if (Elapsed > BenchWarmup && Elapsed <= BenchWarmup + BenchSeconds)
 	{
 		if (ClothSecondsAtStart < 0.0) ClothSecondsAtStart = ASailboatPawn::ClothCpuSeconds;
+		if (WrinkleSecondsAtStart < 0.0) WrinkleSecondsAtStart = ASailboatPawn::WrinkleCpuSeconds;
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
 		if (WindMapSecondsAtStart < 0.0) WindMapSecondsAtStart = AWaterSurface::WindMapCpuSeconds;
 		if (FarCapSecondsAtStart < 0.0) FarCapSecondsAtStart = AWaterSurface::FarCapCpuSeconds;
@@ -1408,6 +1409,9 @@ void ASailingGameMode::FinishBenchmark()
 	if (N > 0 && ClothSecondsAtStart >= 0.0)
 	{
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"cloth_cpu_ms\":%.3f}"), (ASailboatPawn::ClothCpuSeconds - ClothSecondsAtStart) * 1000.0 / N);
+		// docs/sail-wrinkles-cost/: the wrinkles' share, summed over the sails' tasks (they run side by side, so it can pass the
+		// wall time above).
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"wrinkle_cpu_ms\":%.3f}"), (ASailboatPawn::WrinkleCpuSeconds - WrinkleSecondsAtStart) * 1000.0 / N);
 	}
 	// Visual V4: the water's game-thread work (FFT frames blended and uploaded, the wake grid stepped).
 	if (N > 0 && WaterSecondsAtStart >= 0.0)

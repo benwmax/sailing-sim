@@ -291,3 +291,7 @@ crew still). The hero J/22 in these stills is main's committed hero (the Mac's r
 
 GPU (Ultra, `gpu.total_ms`, two 20 s runs each): helm-eye 8.90 / 8.57 on main's content before, 8.48 / 8.48 after;
 the 1.5 m cockpit close-up 8.45 / 8.82 before, 8.57 / 8.62 after. No change outside noise.
+
+Kit refresh and fleet rebuild on the PC (Nov 9 2026): `ingame/kit-ratchet-*` and `ingame/kit-slip-*` (#576, the kit on main 170323cb), and `ingame/fleet-sunfish-ratchet-high`, `ingame/fleet-sunfish-ratchet2-high` and `ingame/fleet-slip-fenders-high` (the fleet hulls and berthed dresses rebuilt: #553's Sunfish deck gear, #562's fenders and dock lines).
+
+Sunfish and ILCA rebuilt, crew vest (#572, Nov 9 2026): `ingame/sunfish-deck-high`/`-ultra` and `ingame/sunfish-cockpit-high`/`-ultra` (the Sunfish's ratchet block on its spring, the boom blocks and the tack joint, [sunfish.md](sunfish.md)), and `ingame/crew-vest-high`/`-ultra` (the tailored vests over the polos, [crewvest.md](crewvest.md)). All uncooked at 1920x1080 on the PC.
