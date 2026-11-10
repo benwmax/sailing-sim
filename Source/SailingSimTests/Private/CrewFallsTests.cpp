@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "BareTestWorld.h"
 #include "CrewFalls.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -26,6 +27,7 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualCrewFallsTest, "SailingSim.Visual.CrewFalls", FallsFlags)
 bool FVisualCrewFallsTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // falls are off while the crew is hidden (Settings > Show crew is off by default)
 	const FCrewFallParams P;
 	{
 		FCrewFalls F(P);

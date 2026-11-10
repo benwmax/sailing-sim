@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "BareTestWorld.h"
 #include "BoatModel.h"
 #include "CrewPose.h"
 #include "SailboatPawn.h"
@@ -91,6 +92,7 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualRigClearanceTest, "SailingSim.Visual.RigClearance", RigClearanceFlags)
 bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingRigClearanceWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -350,6 +352,7 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSailShroudsTest, "SailingSim.Visual.SailShrouds", RigClearanceFlags)
 bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingSailShroudsWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -501,6 +504,7 @@ bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualTrimmerTailsJibTest, "SailingSim.Visual.TrimmerTailsJib", RigClearanceFlags)
 bool FVisualTrimmerTailsJibTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingTrimmerWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
@@ -545,6 +549,7 @@ bool FVisualTrimmerTailsJibTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSheetClearanceTest, "SailingSim.Visual.SheetClearance", RigClearanceFlags)
 bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	using namespace Sailing;
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingSheetClearanceWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);

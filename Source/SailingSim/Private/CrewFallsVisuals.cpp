@@ -125,6 +125,17 @@ void ASailboatPawn::SetupCrewFalls()
 	UE_LOG(LogTemp, Display, TEXT("Crew falls: on (%d crew, deck box at %.2f m)"), Crew.Num(), DeckZ - 0.15);
 }
 
+void ASailboatPawn::StandCrewUp()
+{
+	if (CrewControl)
+	{
+		CrewControl->ResetBodyModifiersInSetToCachedBoneTransforms(TEXT("All"));
+		CrewControl->SetBodyModifiersInSetMovementType(TEXT("All"), EPhysicsMovementType::Kinematic);
+		CrewControl->SetControlsInSetEnabled(TEXT("All"), false);
+	}
+	SetCrewPhysicsActive(false);
+}
+
 void ASailboatPawn::SetCrewPhysicsActive(bool bActive)
 {
 	// Posed, the crew's bodies have no collision (so the physics scene doesn't move dozens of kinematic bodies with them every
@@ -152,7 +163,7 @@ void ASailboatPawn::UpdateCrewFalls(float DeltaSeconds)
 		bKnockdownDone = true;
 		UE_LOG(LogTemp, Display, TEXT("Crew falls: knockdown at %.1f s (laid over %.0f deg)"), S.Time, KnockdownRate);
 	}
-	if (!bCrewFalls || !CrewControl) return;
+	if (!bCrewFalls || !CrewControl || !bCrewShownApplied) return;   // (no falls while the crew is hidden: Settings > Show crew)
 
 	using namespace CrewFallsTuning;
 	const Sailing::FBoatTelemetry& T = Boat.GetTelemetry();
@@ -169,10 +180,7 @@ void ASailboatPawn::UpdateCrewFalls(float DeltaSeconds)
 	}
 	if (CrewFalls.JustRecovered())
 	{
-		CrewControl->ResetBodyModifiersInSetToCachedBoneTransforms(TEXT("All"));
-		CrewControl->SetBodyModifiersInSetMovementType(TEXT("All"), EPhysicsMovementType::Kinematic);
-		CrewControl->SetControlsInSetEnabled(TEXT("All"), false);
-		SetCrewPhysicsActive(false);
+		StandCrewUp();
 		UE_LOG(LogTemp, Display, TEXT("Crew falls: back on their feet at %.1f s"), S.Time);
 		return;
 	}

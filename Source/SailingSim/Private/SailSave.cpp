@@ -185,6 +185,7 @@ FString FSailSave::ToJson() const
 	Set->SetBoolField(TEXT("learningMode"), S.bLearningMode);
 	Set->SetBoolField(TEXT("trimAssist"), S.bTrimAssist);
 	Set->SetBoolField(TEXT("showHud"), S.bShowHud);
+	Set->SetBoolField(TEXT("showCrew"), S.bShowCrew);
 	TSharedRef<FJsonObject> Audio = Obj();
 	Audio->SetNumberField(TEXT("volume"), S.Volume);
 	Set->SetObjectField(TEXT("audio"), Audio);
@@ -417,6 +418,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Set, TEXT("learningMode"), S.bLearningMode);
 		Read(*Set, TEXT("trimAssist"), S.bTrimAssist);
 		Read(*Set, TEXT("showHud"), S.bShowHud);
+		Read(*Set, TEXT("showCrew"), S.bShowCrew);
 		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio"))) Read(*A, TEXT("volume"), S.Volume);
 		if (const TSharedPtr<FJsonObject> G = Child(*Set, TEXT("graphics")))
 		{
@@ -623,6 +625,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bLearningMode = In.bLearningMode;
 	S.bTrimAssist = In.bTrimAssist;
 	S.bShowHud = In.bShowHud;
+	S.bShowCrew = In.bShowCrew;
 	S.Volume = In.Volume;
 	S.ResolutionScale = In.ResolutionScale;
 	S.FrameCap = In.FrameCap;
@@ -702,6 +705,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bLearningMode = S.bLearningMode;
 	Out.bTrimAssist = S.bTrimAssist;
 	Out.bShowHud = S.bShowHud;
+	Out.bShowCrew = S.bShowCrew;
 	Out.Volume = FMath::Clamp(S.Volume, 0.f, 1.f);
 	Out.ResolutionScale = S.ResolutionScale;
 	Out.FrameCap = S.FrameCap;

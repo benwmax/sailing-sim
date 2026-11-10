@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "BareTestWorld.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "Wind.h"
@@ -588,6 +589,7 @@ bool FVisualCrewClipTackTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSmokeCrewAnimationTest, "SailingSim.Smoke.CrewAnimation", CrewMotionFlags)
 bool FSmokeCrewAnimationTest::RunTest(const FString& Parameters)
 {
+	const FScopedShowCrew ShowCrewOn;   // the figures drawn and posed (Settings > Show crew is off by default)
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingCrewWorld"));
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
