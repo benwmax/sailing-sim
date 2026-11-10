@@ -1,0 +1,41 @@
+2026-11-10 14:16:40 PR head 4751fb68; main 425f2c0f
+2026-11-10 14:16:43 merged main locally: 94b904fb
+2026-11-10 14:18:41 hero build exit 0; warnings 0 lines
+2026-11-10 14:23:19 hero bake (res 4096) exit 0; warnings 2 lines
+2026-11-10 14:24:26 MSVC build: Result: Succeeded
+2026-11-10 14:25:41 import exit 0; warning lines 39, error lines 0, compile errors 0
+2026-11-10 14:35:39 SailingSim.Visual: succeeded 68, failed 5, warnings 3
+2026-11-10 14:35:39   test Fail: SailingSim.Visual.CockpitEye
+2026-11-10 14:35:39   test Fail: SailingSim.Visual.CrewClipLimits
+2026-11-10 14:35:39   test Fail: SailingSim.Visual.CrewFeet
+2026-11-10 14:35:39   test Fail: SailingSim.Visual.CrewMotionFeet
+2026-11-10 14:35:39   test Fail: SailingSim.Visual.J22Mesh
+2026-11-10 14:36:24 still profile-high True
+2026-11-10 14:37:08 still profile-ultra True
+2026-11-10 14:37:52 still plan-high True
+2026-11-10 14:38:35 still plan-ultra True
+2026-11-10 14:39:21 still bow34-high True
+2026-11-10 14:40:06 still bow34-ultra True
+2026-11-10 14:40:51 still stern34-high True
+2026-11-10 14:41:34 still stern34-ultra True
+2026-11-10 14:42:18 still helm-eye-high True
+2026-11-10 14:43:01 still helm-eye-ultra True
+2026-11-10 14:43:45 still transom-port-high True
+2026-11-10 14:44:28 still transom-port-ultra True
+2026-11-10 14:45:12 still transom-stbd-high True
+2026-11-10 14:45:57 still transom-stbd-ultra True
+2026-11-10 14:46:43 still chainplate-port-high True
+2026-11-10 14:47:28 still chainplate-port-ultra True
+2026-11-10 14:48:11 still chainplate-stbd-high True
+2026-11-10 14:48:55 still chainplate-stbd-ultra True
+2026-11-10 14:48:55 changed paths (not committed): 114
+2026-11-10 14:51:25 Shipping package: True D:\dev\ss-fix\Packaged\Shipping-615-94b904fb\Windows\SailingSim.exe
+2026-11-10 14:51:25 SH615 DONE
+2026-11-10 14:52:14 4K: Bean's Saved held
+2026-11-10 14:54:08 4K launch 0 ok (3840x2160, ?, dpi-aware False)
+2026-11-10 14:55:28 4K launch 1 ok (3840x2160, ?, dpi-aware False)
+2026-11-10 14:56:46 4K launch 2 ok (3840x2160, ?, dpi-aware False)
+2026-11-10 14:58:07 4K launch 3 ok (3840x2160, ?, dpi-aware False)
+2026-11-10 14:59:25 4K launch 4 ok (3840x2160, ?, dpi-aware False)
+2026-11-10 14:59:27 4K: Bean's Saved restored (F6458EAB)
+2026-11-10 14:59:27 4K DONE

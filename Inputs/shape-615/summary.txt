@@ -1,0 +1,29 @@
+PR #615 shape-loop wave 1 on Bean's PC, Nov 10 2026. Local branch pc/shape-615 = PR head 4751fb68 + main 425f2c0f merged
+locally (94b904fb, not pushed; the hero rebuild outputs are not committed either).
+Hero J/22: build_j22_hero --sails --clean-bake exit 0, 0 warning lines; bake (4096) exit 0 with 2 warnings:
+"Mesh SM_J22H_Hull.001 is not valid, and may be exported wrongly" and "No mesh data to join".
+MSVC build OK. import_j22_hero exit 0: 0 errors, 0 shader compile errors, 39 warnings (20x PNG eXIf duplicate, 6x
+"Error opening file" for the SM_J22H_* parts it replaces, the rest editor noise).
+SailingSim.Visual: 68 passed, 5 failed (73):
+  CockpitEye: "Tack: 35 cm from every other head" false
+  CrewClipLimits: J/22 helm (crew 2) right foot moves 21.2 cm (limit 3)
+  CrewFeet / CrewMotionFeet: J/22 helm (crew 2) left heel inside the boat at about (-1.91, 0.36, 0.28) m, starboard rail
+  J22Mesh: centre of buoyancy (-0.196, 0, -0.080) not within 2 cm of the physics (-0.277, 0, -0.077): 8 cm apart fore-aft
+  (main's Visual was 73/73 on this PC today).
+
+Stills (stills/): hero J/22, run-game 1920x1080 windowed, High and Ultra, wind 3 kn, no demo. -SailingSailsDown was
+given but the sails stayed up. Seen: a red (and a green) line trails from the bow over the port side into the water
+(chainplate-port, profile); the rudder blade stands mostly above the waterline in both transom close-ups.
+
+4K Ultra Shipping bench (bench-4k/): Packaged\Shipping-615-94b904fb, fullscreen 3840x2160 (all 5 bench.json; main's DPI
+line in the package), -SailingShippingSmoke -SailingWorld=Lake -SailingLaunch=N -SailingBench=60, render_pct 100 (no
+upscaler), foreground 1 on all five. Baseline: 5e8233ef fullscreen A (Inputs/bench/4k-baseline-5e8233ef/fullscreen/A),
+whose foreground was 0 on four spots. The deltas mix #615 with everything on main since 5e8233ef and the focus change;
+they are not the hull alone. Launch 0's game thread (13.8 ms) is the first launch after packaging.
+
+spot      fps  1%low    gpu   game render |  b.fps  b.gpu b.game |   dfps   dgpu  dgame
+0        54.8   42.6  17.39  13.82  13.41 |   52.3  18.59   9.19 |   +2.5  -1.20  +4.63
+1          57   50.5  16.87   8.68   9.51 |     52  18.71   9.15 |   +5.0  -1.84  -0.47
+2        58.8   52.3  16.34   8.66   9.66 |   52.9  18.35   9.21 |   +5.9  -2.01  -0.55
+3        59.2   53.3  16.19   8.58   9.57 |   54.7   17.7   8.97 |   +4.5  -1.51  -0.39
+4        54.6   48.8  17.63   8.69   9.44 |   50.6  19.19   9.25 |   +4.0  -1.56  -0.56
