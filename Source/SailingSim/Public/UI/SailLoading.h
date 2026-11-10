@@ -32,10 +32,14 @@ public:
 	/** The tip shown (0-based), and how many there are. */
 	int32 ShownTip() const { return Tip; }
 	static int32 NumTips();
-	/** #595: the first tip for a session: its lesson's own (leaving a slip, heaving to, crew overboard, points of sail for
-	 *  the triangle and docking), the thunderstorm tip when it has storms, otherwise tip 1. */
+	/** A tip's heading, and the tip with a heading (INDEX_NONE if none has it). */
+	static const TCHAR* TipHeading(int32 Index);
+	static int32 TipIndex(const TCHAR* Heading);
+	/** #595: the first tip for a session: a lesson's own (Leaving a slip for leaving the dock, Docking for return and dock,
+	 *  Points of sail for the triangle, Heaving to, Crew overboard), Points of sail for the first job, Thunderstorms when the
+	 *  session has storms; otherwise INDEX_NONE: a random tip that isn't the thunderstorm one. */
 	static int32 FirstTip(const struct FSailSessionConfig& Config);
-	/** #595: the session has storms (its sky, or the Thunderstorm preset): only then a storm still. */
+	/** #595: the session has storms (its sky is Storms): only then the storm still and tip. */
 	static bool IsStormy(const struct FSailSessionConfig& Config);
 
 private:

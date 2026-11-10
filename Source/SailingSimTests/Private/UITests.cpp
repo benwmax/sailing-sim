@@ -812,19 +812,39 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 		{
 			TSharedRef<SSailLoading> Fair = SNew(SSailLoading).Config(C);
 			bStormStill |= Fair->ShownStill() && Fair->ShownStill()->GetName() == TEXT("T_Load_RayHubbard_2");
-			if (I == 0) TestEqual(TEXT("Heave to, fair: its own tip first (Heaving to, 5 of 9)"), Fair->ShownTip(), 4);
+			if (I == 0) TestEqual(TEXT("Heave to, fair: its own tip first"), FString(SSailLoading::TipHeading(Fair->ShownTip())), FString(TEXT("Heaving to")));
 		}
 		TestFalse(TEXT("A fair day: never the storm still"), bStormStill);
 		FSailSessionConfig Job = C;
 		Job.Mode = ESailMode::Free;
 		Job.SceneId = TEXT("first-job");
-		TestEqual(TEXT("The first job: tip 1 (points of sail)"), SSailLoading::FirstTip(Job), 0);
+		TestEqual(TEXT("The first job: tip 1"), SSailLoading::FirstTip(Job), 0);
+		TestEqual(TEXT("... Points of sail"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Job))), FString(TEXT("Points of sail")));
+		FSailSessionConfig Dock = C;
+		Dock.DrillIndex = int32(ESailingDrill::ReturnAndDock) - 1;
+		TestEqual(TEXT("Return and dock: Docking"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Dock))), FString(TEXT("Docking")));
+		FSailSessionConfig Leave = C;
+		Leave.DrillIndex = int32(ESailingDrill::LeaveTheDock) - 1;
+		TestEqual(TEXT("Leave the dock: Leaving a slip"), FString(SSailLoading::TipHeading(SSailLoading::FirstTip(Leave))), FString(TEXT("Leaving a slip")));
+		FSailSessionConfig Free = C;
+		Free.Mode = ESailMode::Free;
+		TestEqual(TEXT("A free sail, fair: no set first tip"), SSailLoading::FirstTip(Free), int32(INDEX_NONE));
+		bool bStormTip = false;
+		for (int32 I = 0; I < 30; ++I)
+		{
+			TSharedRef<SSailLoading> Screen = SNew(SSailLoading).Config(Free);
+			bStormTip |= FString(SSailLoading::TipHeading(Screen->ShownTip())) == TEXT("Thunderstorms on Texas lakes");
+		}
+		TestFalse(TEXT("... and never the thunderstorm tip on a fair day (thirty screens)"), bStormTip);
+		FSailSessionConfig Preset = Free;
+		Preset.Conditions.PresetId = TEXT("Thunderstorm");
+		TestFalse(TEXT("Stormy is the sky's, not a preset's name"), SSailLoading::IsStormy(Preset));
 		FSailSessionConfig Storm = C;
 		Storm.Mode = ESailMode::Free;
 		Storm.Conditions.Sky = ESailSky::Storms;
 		TSharedRef<SSailLoading> Stormy = SNew(SSailLoading).Config(Storm);
 		TestTrue(TEXT("A stormy session: the storm still"), Stormy->ShownStill() && Stormy->ShownStill()->GetName() == TEXT("T_Load_RayHubbard_2"));
-		TestEqual(TEXT("... and the thunderstorm tip"), Stormy->ShownTip(), SSailLoading::NumTips() - 1);
+		TestEqual(TEXT("... and the thunderstorm tip"), FString(SSailLoading::TipHeading(Stormy->ShownTip())), FString(TEXT("Thunderstorms on Texas lakes")));
 	}
 	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
 	return true;

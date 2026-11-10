@@ -30,6 +30,7 @@ namespace
 		{ TEXT("The no-go zone"), TEXT("About 45 degrees either side of the wind, no sail will drive the boat. To get upwind, tack back and forth across it.") },
 		{ TEXT("Right of way"), TEXT("Port tack keeps clear of starboard tack. On the same tack, the windward boat keeps clear. An overtaking boat keeps clear of the one ahead.") },
 		{ TEXT("Leaving a slip"), TEXT("Plan your exit before you cast off: which lines go first, where the wind will push the bow, and where you'll have room to turn.") },
+		{ TEXT("Docking"), TEXT("Come in slowly on a close reach, luff the sails to stop alongside, and have a line ready to step off with.") },
 		{ TEXT("Heaving to"), TEXT("Tack without releasing the jib, then put the tiller to leeward: the boat settles, nearly stopped, with the jib backed. A way to take a break or reef.") },
 		{ TEXT("Crew overboard"), TEXT("Shout, point and keep pointing, throw something that floats. Then the quick-stop: turn head to wind at once and circle back under control.") },
 		{ TEXT("Reefing"), TEXT("Reef when you first think of it. A smaller main keeps the boat on its feet in gusts and the helm light.") },
@@ -40,29 +41,37 @@ namespace
 
 int32 SSailLoading::NumTips() { return int32(UE_ARRAY_COUNT(Tips)); }
 
+const TCHAR* SSailLoading::TipHeading(int32 Index) { return Index >= 0 && Index < NumTips() ? Tips[Index].Heading : TEXT(""); }
+
+int32 SSailLoading::TipIndex(const TCHAR* Heading)
+{
+	for (int32 I = 0; I < NumTips(); ++I) if (FCString::Strcmp(Tips[I].Heading, Heading) == 0) return I;
+	return INDEX_NONE;
+}
+
 bool SSailLoading::IsStormy(const FSailSessionConfig& C)
 {
-	return C.Conditions.Sky == ESailSky::Storms || C.Conditions.PresetId.ToString().Contains(TEXT("Storm"));
+	return C.Conditions.Sky == ESailSky::Storms;
 }
 
 int32 SSailLoading::FirstTip(const FSailSessionConfig& C)
 {
-	// Tips[]: 0 points of sail, 1 no-go zone, 2 right of way, 3 leaving a slip, 4 heaving to, 5 crew overboard, 6 reefing,
-	// 7 reading gusts, 8 thunderstorms.
-	if (C.Mode == ESailMode::Drill && C.SceneId.IsEmpty())
+	if (C.SceneId == TEXT("first-job")) return TipIndex(TEXT("Points of sail"));
+	if (IsStormy(C)) return TipIndex(TEXT("Thunderstorms on Texas lakes"));
+	if (C.Mode == ESailMode::Drill)
 	{
 		switch (ESailingDrill(C.DrillIndex + 1))
 		{
-		case ESailingDrill::LeaveTheDock: return 3;
-		case ESailingDrill::SailATriangle: return 0;
-		case ESailingDrill::HeaveTo: return 4;
+		case ESailingDrill::LeaveTheDock: return TipIndex(TEXT("Leaving a slip"));
+		case ESailingDrill::SailATriangle: return TipIndex(TEXT("Points of sail"));
+		case ESailingDrill::HeaveTo: return TipIndex(TEXT("Heaving to"));
 		case ESailingDrill::CrewOverboardFigureEight:
-		case ESailingDrill::CrewOverboardQuickStop: return 5;
-		case ESailingDrill::ReturnAndDock: return 3;
+		case ESailingDrill::CrewOverboardQuickStop: return TipIndex(TEXT("Crew overboard"));
+		case ESailingDrill::ReturnAndDock: return TipIndex(TEXT("Docking"));
 		default: break;
 		}
 	}
-	return IsStormy(C) ? 8 : 0;
+	return INDEX_NONE;
 }
 
 void SSailLoading::Construct(const FArguments& A)
@@ -85,8 +94,14 @@ void SSailLoading::Construct(const FArguments& A)
 	const USailSessionSubsystem* Session = World.IsValid() ? USailSessionSubsystem::Get(World.Get()) : nullptr;
 	const FSailSessionConfig C = A._Config.IsSet() ? A._Config.GetValue() : (Session && Session->bHasActive ? Session->Active : USailSessionSubsystem::MakeDefault());
 	const SailCatalog::FWorld& W = SailCatalog::World(C.World);
-	// #595: the lesson's own tip first (or tip 1), not a random one: the first job opened on "9 of 9, thunderstorms".
+	// #595: the lesson's own tip first (the first job: tip 1), else a random one that isn't the thunderstorm's: the first job
+	// opened on "9 of 9, thunderstorms" on a fair day.
 	Tip = FirstTip(C);
+	if (Tip == INDEX_NONE)
+	{
+		const int32 Storm = TipIndex(TEXT("Thunderstorms on Texas lakes"));
+		do { Tip = int32(FMath::Rand() % NumTips()); } while (Tip == Storm && NumTips() > 1);
+	}
 	// #490: a still of the session's own boat (or none at all), never another boat's; #595: the storm still only in storms.
 	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat, IsStormy(C));
 	UTexture2D* Tex = Stills.Num() ? SailUI::KeptTexture(Stills[FMath::Rand() % Stills.Num()]) : nullptr;
