@@ -40,6 +40,19 @@ import j22_kitfit as KF  # noqa: E402
 # hardware-fit wave 1 (j22_kitfit.py): the deck hardware from the boat kit; --old-hardware builds the hero's own copies
 KITFIT = "--old-hardware" not in ARGS
 CAM = KF.cam_cleat if KITFIT else D.cam_cleat      # same arguments: name, at, out of the surface, toward the fairlead, MAT
+
+
+def cam_path(name, approach=0.025, out=0.024):
+    """Hardware-fit wave 2: where a line runs through a placed kit cam (j22_kitfit.cam_cleat): a point `approach` in front
+    of its fairlead, the fairlead, the jaws between the cams and a point `out` behind them where the tail leaves, each at
+    the line's height over the base. None for --old-hardware (the hero's own cleat keeps its old line ends)."""
+    ob = bpy.data.objects.get(name)
+    if ob is None or "sock_Line" not in ob:
+        return None
+    fair = ob.matrix_world @ Vector(ob["sock_Lead"])
+    jaw = ob.matrix_world @ Vector(ob["sock_Line"])
+    d = (fair - jaw).normalized()
+    return [fair + d * approach, fair, jaw, jaw - d * out]
 if KITFIT:   # hardware-fit wave 2: the traveller, cunningham and tiller cams are the kit's too (its micro size)
     import j22_mainsheet as _MS_CAM, j22_mastgear as _MG_CAM, j22_steering as _ST_CAM  # noqa: E402
     _MS_CAM.CAM = _MG_CAM.CAM = _ST_CAM.CAM = KF.cam_cleat
@@ -591,7 +604,10 @@ def build_hardware():
         x = JIB_CAM_X
         yw = half_beam(x) - SIDE_DECK - 0.025
         zc = (SEAT_Z + deck_z(x, yw)) / 2 + 0.05
-        parts += CAM(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), (1, 0, 0), MAT)
+        # kit: the cam turned in the wall's plane so its fairlead faces the sheet coming over the coaming edge (the sheet's
+        # lee_pts in build_sails), the way a cam is fitted on its lead; the old cleat stays fore and aft
+        lead = Vector((0.06, 0, deck_z(x, yw + 0.02) + 0.02 - zc)).normalized() if KITFIT else Vector((1, 0, 0))
+        parts += CAM(f"Cam_{side}_0", (x, side * yw, zc), (0, -side, 0), tuple(lead), MAT)
         parts += kit_part(f"JibTrack_{side}", "JibTrack", (JIB_TRACK_X, side * (half_beam(JIB_TRACK_X) - 0.11)),
                           surface=lambda x, y: deck_z(x, y) - 0.002, length=0.60)
         # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6, a size 6 plain-top; photos
@@ -713,7 +729,10 @@ def build_hardware():
             # Bean's feedback 2 (the Harken layout): the halyards' cam cleats just forward of the cabin-top winch, two a side
             # (they had been three a side beside the hatch)
             yc = side * (HAL_CAM_Y + 0.08 * k)
-            parts += CAM(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1), (-1, 0, 0), MAT)
+            # hardware-fit wave 2: the kit cam's fairlead faces forward, toward the organiser the halyard comes from (the old
+            # cleat's lead end faced aft, so the halyard would have met its tail end)
+            parts += CAM(f"HalCam_{side}_{k}", (CABIN_AFT + 0.30, yc, cabin_top_z(CABIN_AFT + 0.30, yc)), (0, 0, 1),
+                         (1, 0, 0) if KITFIT else (-1, 0, 0), MAT)
     # Bean's feedback 1 (j22_mainsheet.py): the traveler spans the cockpit from seat to seat, let into the seat tops and
     # open over the well, with the mainsheet's fiddle and cam on its car (it had lain on the cockpit sole)
     import j22_mainsheet as MS  # noqa: E402
@@ -832,13 +851,26 @@ def build_rig():
         else:
             parts += D.padeye(f"BS_eye_{side}", base, (0, 0, 1), MAT)
             start = base + Vector((0, 0, 0.012))
+        if KITFIT:       # one bridle reeved over the cascade block's sheave: each leg leaves the groove on its tangent
+            sheave, r = apex - Vector((0, 0, 0.03)), 0.0185          # Block40's sheave, the rope's centre in the groove
+            d = Vector((0, start.y - sheave.y, start.z - sheave.z)).normalized()
+            n = Vector((0, -d.z, d.y)) if side * d.z < 0 else Vector((0, d.z, -d.y))
+            if n.z < 0:
+                n = -n
+            a0 = math.atan2(n.z, n.y)
+            arc = [sheave + Vector((0, r * math.cos(a), r * math.sin(a)))
+                   for a in (a0 + (math.pi / 2 - a0) * t / 4 for t in range(5))]
+            wires.append(tube(f"Bridle_{side}", DRAPE.line([tuple(start), tuple(arc[0])], 0.002, 0.003)
+                              + [tuple(q) for q in arc[1:]], 0.003, MAT["RopeBackstay"], smooth_path=True))
+            continue
         wires.append(tube(f"Bridle_{side}", DRAPE.line([tuple(start), tuple(apex - Vector((0, 0, 0.05)))], 0.002, 0.003),
                           0.003, MAT["RopeBackstay"], smooth_path=True))
     if KITFIT:
         parts += KF.hanging_block("BS_cascade", apex - Vector((0, 0, 0.03)), (0, 0, 1), (1, 0, 0), MAT, 0.040)
     else:
         parts += D.block("BS_cascade", apex - Vector((0, 0, 0.03)), (1, 0, 0), (0, 0, 1), MAT, 0.040)
-    wires.append(tube("Backstay", [tuple(apex + Vector((0, 0, 0.04))), (rake(MAST_TOP) - 0.195, 0, MAST_TOP - 0.06)], 0.002, MAT["Wire"]))
+    bs_low = apex + Vector((0, 0, 0.0304 + 0.004)) if KITFIT else apex + Vector((0, 0, 0.04))   # kit: the swivel's Head
+    wires.append(tube("Backstay", [tuple(bs_low), (rake(MAST_TOP) - 0.195, 0, MAST_TOP - 0.06)], 0.002, MAT["Wire"]))
     # boom: gooseneck at the mast's aft face, outhaul end, vang, mainsheet bails
     # pc/j22-detail assembly 3 (j22_boomgear.py): the gooseneck, the boom end, the outhaul cleat and the vang's upper block
     import j22_boomgear as BG  # noqa: E402
@@ -903,11 +935,20 @@ def build_rig():
                 (xo + 0.012, yo - side * 0.002, cabin_top_z(xo, yo) + 0.011), (xo - 0.012, yo + side * 0.001, cabin_top_z(xo, yo) + 0.011),
                 (xo - 0.20, yc * 0.85, cabin_top_z(xo - 0.20, yc * 0.85) + 0.012),
                 (xc + 0.03, yc, cabin_top_z(xc, yc) + 0.022)]
-        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, [0.0, 0.0, 0.004, 0.0, 0.003, 0.002], 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
+        sags = [0.0, 0.0, 0.004, 0.0, 0.003, 0.002]
+        through = cam_path(f"HalCam_{side}_{k // 2}")
+        if through:      # hardware-fit wave 2: in at the kit cam's fairlead, out of its jaws
+            path = path[:-1] + [tuple(p) for p in through]
+            sags = sags + [0.0, 0.0, 0.0]
+        wires.append(tube(f"Halyard_{k}", DRAPE.line(path, sags, 0.0042), 0.0042, MAT["RopeHalyard"], smooth_path=True))
         # tails coiled and dropped on the cabin top outboard of the hatch, between the cleats and the aft edge
         cx, cy = CABIN_AFT + 0.13 + 0.17 * (k // 2), side * 0.44
+        tail = None
+        if through:      # the tail runs from the cam back to its coil
+            e = through[-1]
+            tail = [(e.x - 0.07, e.y - side * 0.03, cabin_top_z(e.x - 0.07, e.y) + 0.0045), tuple(e)]
         parts += D.coil(f"HalTail_{k}", (cx, cy, 0), 0.05, 2.2, MAT["RopeHalyard"], r=0.0042,
-                        seed=STYLE["seed"] + k, flat_z=cabin_top_z(cx, cy))
+                        seed=STYLE["seed"] + k, flat_z=cabin_top_z(cx, cy), tail=tail)
     return parts, wires
 
 
@@ -1031,22 +1072,34 @@ def build_sails():
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
     # the sheet runs under the car's sheave (kit JibTrack: 38 mm sheave centred 45 mm up, the line's gap under it),
     # coming down onto its forward side from the clew and leaving aft over the car's body
-    lee = DRAPE.line([tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
-                      tuple(car + Vector((-0.05, 0, -0.022))),
-                      (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
-                      (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)],
-                     [0.002, 0.0, 0.0, 0.01, 0.0, 0.0], 0.0045)
+    lee_pts = [tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
+               tuple(car + Vector((-0.05, 0, -0.022))),
+               (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
+               (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)]
+    lee_sags = [0.002, 0.0, 0.0, 0.01, 0.0, 0.0]
+    lee_cam = cam_path(f"Cam_{side}_0", 0.03)
+    if lee_cam:          # hardware-fit wave 2: in at the kit cam's fairlead, between its jaws, out aft
+        lee_pts = lee_pts[:-2] + [tuple(p) for p in lee_cam]
+        lee_sags = lee_sags[:-1] + [0.0, 0.0, 0.0, 0.0]
+    lee = DRAPE.line(lee_pts, lee_sags, 0.0045)
     lines.append(tube("JibSheetLee", lee, 0.0045, MAT["RopeJibPort"], smooth_path=True))
     objs += D.coil("JibTailLee", (-1.45, side * (SEAT_IN + 0.18), SEAT_Z), 0.12, 2.6, MAT["RopeJibPort"], seed=STYLE["seed"] + 3, flat_z=SEAT_Z,
-                   tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
+                   tail=[(-1.2, side * (yf - 0.02), SEAT_Z + 0.03),
+                         tuple(lee_cam[-1]) if lee_cam else (xc - 0.07, side * (yf + 0.005), zc - 0.03)])
     # lazy (windward) sheet: slack over the foredeck, round the mast, back to its own car and cleat
     wcar = Vector((car.x, -car.y, car.z))
-    lazy = DRAPE.line([tuple(jclew), tuple(wcar + Vector((0.05, 0, -0.012))), tuple(wcar + Vector((0.0, 0, -0.0235))),
-                       (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)],
-                      [0.22, 0.0, 0.03, 0.0], 0.0045)
+    lazy_pts = [tuple(jclew), tuple(wcar + Vector((0.05, 0, -0.012))), tuple(wcar + Vector((0.0, 0, -0.0235))),
+                (xc + 0.06, -side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02), (xc, -side * (yf + 0.012), zc)]
+    lazy_sags = [0.22, 0.0, 0.03, 0.0]
+    lazy_cam = cam_path(f"Cam_{-side}_0", 0.03)
+    if lazy_cam:
+        lazy_pts = lazy_pts[:-1] + [tuple(p) for p in lazy_cam]
+        lazy_sags = lazy_sags + [0.0, 0.0, 0.0]
+    lazy = DRAPE.line(lazy_pts, lazy_sags, 0.0045)
     lines.append(tube("JibSheetLazy", lazy, 0.0045, MAT["RopeJibStbd"], smooth_path=True))
     objs += D.coil("JibTailLazy", (-1.50, -side * (SEAT_IN + 0.18), SEAT_Z), 0.11, 2.2, MAT["RopeJibStbd"], seed=STYLE["seed"] + 4, flat_z=SEAT_Z,
-                   tail=[(-1.2, -side * (yf - 0.02), SEAT_Z + 0.03), (xc - 0.07, -side * (yf + 0.005), zc - 0.03)])
+                   tail=[(-1.2, -side * (yf - 0.02), SEAT_Z + 0.03),
+                         tuple(lazy_cam[-1]) if lazy_cam else (xc - 0.07, -side * (yf + 0.005), zc - 0.03)])
     # telltales: main leech at each batten, jib luff at three heights on both sides
     if STYLE["details"]["telltales"]:
         for k in range(1, 5):

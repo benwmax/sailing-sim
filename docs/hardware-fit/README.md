@@ -90,6 +90,18 @@ Wave 2 puts the kit parts that follow the wind or the sail on the boats, and fin
 | J/22 jib head | nothing | the kit `SnapShackle`, bail on the head, eye up the halyard | game |
 | Traveller cams (`TravCam_*`), cunningham cam (`Cunn_cam`), tiller cam (`TCam`) | `j22_details.cam_cleat` (55 mm) | the kit `CamCleat` at its micro size `38` (32 mm across) | hero (`j22_kitfit.cam_cleat`, set into `j22_mainsheet`, `j22_mastgear` and `j22_steering` unless `--old-hardware`) |
 
+Lines through the kit cams (Bean, Nov 10: "make sure sheets fully connect as they pass through block and cleat
+elements"): in kit mode every line the hero draws into a cam now runs in at its fairlead (`Lead`), between the jaws
+(`Line`) and out behind them, at the line's own height (`build_j22_hero.cam_path`): the traveller lines, the cunningham
+(one line from its tail up through the cam and the lead block's rim; it had stopped at the block and restarted below the
+plate), the three halyards (their cams turned to face forward, toward the organisers the halyards come from; the old
+cleats' lead ends faced aft) and both jib sheets. The halyard and jib tails' coils (live rope in the game) start at the
+cams' exits: `J22H_coils.json` and `J22CoilData.inl` are regenerated for those five coils. The jib cams are turned in the cockpit wall's
+plane to face the sheet coming over the coaming (it had dropped straight down and kinked sideways into a fore-and-aft
+fairlead). The backstay wire now ends on the cascade block's swivel (`Head`; it had stopped a centimetre short) and the
+bridle is one line reeved over the sheave, each leg leaving the groove on its tangent, not two ends meeting under the
+block. Kit build 1,220,468 triangles; `--old-hardware` unchanged at 841,508.
+
 AI boats and the ghost draw the parts' light copies (`SM_Kit_<Part>_Light`), the hanks and shackle only within 50 m and
 the fly within 400 m, and an AI boat off screen leaves its hanks where they were. The fly hides with the mast when the
 sails are stowed in the slip. The hanks and the shackle hide with the jib

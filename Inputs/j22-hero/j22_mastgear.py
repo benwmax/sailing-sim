@@ -296,7 +296,8 @@ def cunningham(mast_x, zm, boom_z, aft_face, M):
             out.append(_pan(f"Cunn_scr{dz:+.3f}{dx:+.3f}", Vector((xp + dx, side * 0.0365, zc + dz)), (0, side, 0), M["Stainless"], 0.0065))
     # the fairlead block over the cam, its axle along the mast's side face's normal (the line runs up and down)
     out += D.block("Cunn_lead", (xp, side * 0.047, zc + 0.030), (0, side, 0), (0, 0, 1), M, 0.029, with_shackle=False)
-    out += CAM("Cunn_cam", (xp, side * 0.0365, zc - 0.030), (0, side, 0), (0, 0, 1), M, 0.055)
+    cam = CAM("Cunn_cam", (xp, side * 0.0365, zc - 0.030), (0, side, 0), (0, 0, 1), M, 0.055)
+    out += cam
     # the block hung under the gooseneck from a strop round the tang
     hb = Vector((aft_face(boom_z) - 0.040, 0.010, boom_z - 0.16))
     out += D.block("Cunn_block", hb, (0, 1, 0), (0, 0, 1), M, 0.029)
@@ -304,11 +305,24 @@ def cunningham(mast_x, zm, boom_z, aft_face, M):
     lines.append(tube("Cunn_strop", [tuple(hb + Vector((0, 0, 0.035))), tuple(strop_top + Vector((-0.004, 0.006, -0.03))), tuple(strop_top)], 0.003, M["SheaveGrey"], smooth_path=True))
     # the line: from the cam's tail up through the lead to the hanging block, round it, back down to the plate's dead end
     lead_top = Vector((xp, side * 0.047, zc + 0.030 + 0.016))
+    kit_cam = "sock_Line" in cam[0]
+    if kit_cam:
+        # hardware-fit wave 2: one line from the tail up between the kit cam's jaws, out of its fairlead and up the lead
+        # block's forward rim (it had stopped at the block and started again below the plate, missing the cam)
+        ob = cam[0]
+        fair = ob.matrix_world @ Vector(ob["sock_Lead"])
+        jaw = ob.matrix_world @ Vector(ob["sock_Line"])
+        rim = Vector((xp + 0.018, side * 0.047, zc + 0.030))
+        lead_top = rim + Vector((0, 0, 0.012))
+        tail0 = jaw - (fair - jaw).normalized() * 0.024
+        lines.append(tube("Cunn_lineup", [tuple(tail0), tuple(jaw), tuple(fair), tuple(rim - Vector((0, 0, 0.012))), tuple(rim),
+                                           tuple(lead_top)], 0.0035, M["CunnLine"], smooth_path=False))
     for k, dy in enumerate((-0.006, 0.006)):
         top = hb + Vector((0, dy, -0.018))
         lo = lead_top if k == 0 else Vector((xp + 0.008, side * 0.040, zc + 0.062))
         lines.append(tube(f"Cunn_line{k}", [tuple(lo), tuple(lo + (top - lo) * 0.5 + Vector((0.004, 0.0, 0.0))), tuple(top)], 0.0035, M["CunnLine"], smooth_path=True))
-    tail0 = Vector((xp, side * 0.040, zc - 0.060))
+    if not kit_cam:
+        tail0 = Vector((xp, side * 0.040, zc - 0.060))
     lines.append(tube("Cunn_tail", [tuple(tail0), tuple(tail0 + Vector((0.02, side * 0.03, -0.10))), tuple(tail0 + Vector((0.05, side * 0.08, -0.17)))],
                       0.0035, M["CunnLine"], smooth_path=True))
     return out + lines
