@@ -24,5 +24,19 @@ normals 0.26 -> 0.10 ms.
 Measuring: bench.json has `wrinkle_cpu_ms` (the wrinkles' share of the sails' tasks, summed over the sails, which run side
 by side). `-SailingNoSailWrinkles` still draws them smooth for an A/B.
 
-Note: the standalone figures are smaller than the bisect's 1.9 ms step, so the PC A/B (main with and without
-`-SailingNoSailWrinkles`, then this branch, with `wrinkle_cpu_ms`) is what says how much of that step this recovers.
+## What the step really was (PC A/B, Nov 10)
+
+On main, `-SailingNoSailWrinkles` saves only 0.24-0.37 ms of `cloth_cpu_ms` (default 3.07 -> 2.70, beat15 2.83 -> 2.60):
+the wrinkles were a small part of the bisect's 1.9 ms. The bisect walked only the sail-cloth commits; between c1c6bd43
+and ff3663d5 sit 81d44a23 (the sails drawn on a grid three times finer: 3,358 vertices a sail instead of 400) and
+8b9d7cd1 (the sails in parallel, each with fresh arrays every frame). The render grid's cost is the rest:
+
+- **Two-pass Catmull-Rom.** `RefineSail`'s `SailCubic` did five Catmull-Rom curves per render vertex (four along cloth
+  rows, one up through them), and the four row curves were the same for every render row in a cloth cell. Now each cloth
+  row is curved once at every render column (`RowCurve`, 25 x 46), and each render vertex takes one curve up through four
+  of those: the same sums with the same clamps, so the same numbers bit for bit, about a quarter of the work.
+- **Arrays kept.** Each sail's per-frame arrays (cloth normals and tangents, the render grid's positions, normals and
+  tangents, the row curves) were made fresh every frame, about a dozen blocks of 50-110 KB per sail, beyond the
+  small-block allocator. They live on the cloth now (`FSailCloth::FRenderScratch`) and are reused.
+
+Standalone (Linux, -O2): the render grid for one sail 0.34 -> 0.10 ms with identical output.

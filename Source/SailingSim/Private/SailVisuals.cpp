@@ -96,8 +96,8 @@ namespace
 			}
 			Cache.Build(W, Grid, SailRenderRows, SailRenderCols);
 		}
-		const uint8 Kinds = Cache.Offsets(W);
-		if (!Kinds) return;
+		const uint8 WrinkleKinds = Cache.Offsets(W);
+		if (!WrinkleKinds) return;
 		// The wrinkles' own turn of the normal (the wrinkled surface's against the same surface unwrinkled, both by central
 		// differences) added to the cloth's normals: no seam where the wrinkles end. Only vertices with a moved neighbour can
 		// turn (elsewhere both are the same numbers), so the smooth ones are taken first, at the Near vertices alone.
@@ -113,7 +113,7 @@ namespace
 		Smooth.SetNumUninitialized(Near.Num());
 		for (int32 K = 0; K < Near.Num(); ++K)
 		{
-			if (Near[K].Bits & Kinds) Smooth[K] = FdNormal(Near[K].I);
+			if (Near[K].Bits & WrinkleKinds) Smooth[K] = FdNormal(Near[K].I);
 		}
 		bool bAny = false;
 		for (int32 I = 0; I < Cache.NumVerts; ++I)
@@ -126,7 +126,7 @@ namespace
 		if (!bAny) return;
 		for (int32 K = 0; K < Near.Num(); ++K)
 		{
-			if (!(Near[K].Bits & Kinds)) continue;
+			if (!(Near[K].Bits & WrinkleKinds)) continue;
 			const int32 I = Near[K].I;
 			FVector Nw = FdNormal(I), Ns = Smooth[K];
 			if (Nw == Ns || Nw.IsNearlyZero() || Ns.IsNearlyZero()) continue; // (no neighbour moved: as the old pass left it)
@@ -135,26 +135,47 @@ namespace
 		}
 	}
 
+	/**
+	 * The render grid from the cloth's. docs/sail-wrinkles-cost/: the Catmull-Rom is done in two passes, along each of the
+	 * cloth's rows at every render column first (RowCurve), then up the render rows through those: SailCubic's exact sums
+	 * (the same four row curves, the same clamps), about a quarter of its work.
+	 */
 	void RefineSail(const FSailCloth& Cloth, const TArray<FVector>& Normals, const TArray<FProcMeshTangent>& Tangents,
-		TArray<FVector>& OutPos, TArray<FVector>& OutNormals, TArray<FProcMeshTangent>& OutTangents)
+		TArray<FVector>& OutPos, TArray<FVector>& OutNormals, TArray<FProcMeshTangent>& OutTangents, TArray<FVector>& RowCurve, TArray<FVector>& TanX)
 	{
 		const int32 N = SailRenderRows * SailRenderCols;
 		OutPos.SetNumUninitialized(N);
 		OutNormals.SetNumUninitialized(N);
 		OutTangents.SetNumUninitialized(N);
 		const TArray<FVector>& P = Cloth.Positions();
-		TArray<FVector> TanX;
 		TanX.SetNumUninitialized(Tangents.Num());
 		for (int32 I = 0; I < Tangents.Num(); ++I) TanX[I] = Tangents[I].TangentX;
+		RowCurve.SetNumUninitialized(FSailCloth::Rows * SailRenderCols);
+		for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
+		{
+			int32 R, C;
+			float Tr, Tc;
+			SailRenderCell(0, Rc, R, C, Tr, Tc);
+			auto At = [&P](int32 Ri, int32 Ci) -> const FVector& { return P[Ri * FSailCloth::Cols + FMath::Clamp(Ci, 0, FSailCloth::Cols - 1)]; };
+			for (int32 Ri = 0; Ri < FSailCloth::Rows; ++Ri)
+			{
+				RowCurve[Ri * SailRenderCols + Rc] = CatmullRom(At(Ri, C - 1), At(Ri, C), At(Ri, C + 1), At(Ri, C + 2), Tc);
+			}
+		}
 		for (int32 Rr = 0; Rr < SailRenderRows; ++Rr)
 		{
+			int32 R, C;
+			float Tr, Tc;
+			SailRenderCell(Rr, 0, R, C, Tr, Tc);
+			const FVector* H0 = &RowCurve[FMath::Max(R - 1, 0) * SailRenderCols];
+			const FVector* H1 = &RowCurve[R * SailRenderCols];
+			const FVector* H2 = &RowCurve[(R + 1) * SailRenderCols];
+			const FVector* H3 = &RowCurve[FMath::Min(R + 2, FSailCloth::Rows - 1) * SailRenderCols];
 			for (int32 Rc = 0; Rc < SailRenderCols; ++Rc)
 			{
-				int32 R, C;
-				float Tr, Tc;
 				SailRenderCell(Rr, Rc, R, C, Tr, Tc);
 				const int32 I = Rr * SailRenderCols + Rc;
-				OutPos[I] = SailCubic(P, R, C, Tr, Tc);
+				OutPos[I] = CatmullRom(H0[Rc], H1[Rc], H2[Rc], H3[Rc], Tr);
 				OutNormals[I] = SailBilinear(Normals, R, C, Tr, Tc).GetSafeNormal();
 				OutTangents[I] = FProcMeshTangent(SailBilinear(TanX, R, C, Tr, Tc).GetSafeNormal(), Tangents[R * FSailCloth::Cols + C].bFlipTangentY);
 			}
@@ -218,7 +239,8 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 	static SailingArgs::FCachedFlag NoWrinklesArg(TEXT("SailingNoSailWrinkles"));
 	// (High and Ultra: millimetre wrinkles are lost at Medium's resolution, and the frame there is the tightest.)
 	const bool bNoWrinkles = NoWrinklesArg.Get() || USailingSettings::Get()->Quality < ESailingQuality::High;
-	struct FWork { TArray<FVector> Normals, RPos, RNormals; TArray<FProcMeshTangent> Tangents, RTangents; bool bWrinkle = false; double WrinkleSeconds = 0.0; };
+	// docs/sail-wrinkles-cost/: each sail's arrays are its cloth's, kept between frames (FSailCloth::FRenderScratch).
+	struct FWork { bool bWrinkle = false; double WrinkleSeconds = 0.0; };
 	TArray<FWork, TInlineAllocator<3>> Work;
 	Work.SetNum(Sails.Num());
 	// docs/sail-wrinkles-cost/: the wrinkles only where they can show: a sail drawn in the last moments, and near enough that
@@ -265,16 +287,17 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 		FSailCloth& Cloth = *U.Cloth;
 		if (!Cloth.IsValid()) return;
 		FWork& W = Work[K];
+		FSailCloth::FRenderScratch& S = Cloth.Render;
 		Cloth.Step(U.Strips, U.Side, Drive);
-		Cloth.ComputeNormals(W.Normals);
-		Cloth.ComputeTangents(W.Tangents);
+		Cloth.ComputeNormals(S.Normals);
+		Cloth.ComputeTangents(S.Tangents);
 		if (!bClassicGrid)
 		{
-			RefineSail(Cloth, W.Normals, W.Tangents, W.RPos, W.RNormals, W.RTangents);
+			RefineSail(Cloth, S.Normals, S.Tangents, S.RPos, S.RNormals, S.RTangents, S.RowCurve, S.TanX);
 			if (W.bWrinkle)
 			{
 				const double WrinkleStart = FPlatformTime::Seconds();
-				WrinkleSail(Cloth, SailWrinklesFor(Cloth, U.Strips, Drive), W.RPos, W.RNormals);
+				WrinkleSail(Cloth, SailWrinklesFor(Cloth, U.Strips, Drive), S.RPos, S.RNormals);
 				W.WrinkleSeconds = FPlatformTime::Seconds() - WrinkleStart;
 			}
 		}
@@ -286,7 +309,7 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 		UProceduralMeshComponent* Mesh = Sails[K].Mesh;
 		const FSailCloth& Cloth = *Sails[K].Cloth;
 		if (!Cloth.IsValid()) continue;
-		FWork& W = Work[K];
+		const FSailCloth::FRenderScratch& W = Cloth.Render;
 		if (bClassicGrid)
 		{
 			if (Mesh->GetNumSections() == 0)

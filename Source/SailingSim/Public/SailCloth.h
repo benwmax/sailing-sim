@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Sail.h"
+#include "ProceduralMeshComponent.h"
 
 /**
  * Visual V3: the sails as cloth.
@@ -167,6 +168,15 @@ public:
 	/** The wrinkles' fixed part on the render grid (FSailWrinkleCache): it never changes after Init, so SailVisuals builds it
 	 *  once and only the sail's own task touches it. */
 	mutable FSailWrinkleCache Wrinkles;
+	/** docs/sail-wrinkles-cost/: the renderer's per-frame arrays for this sail (cloth normals and tangents, the render grid's
+	 *  positions, normals and tangents, and its scratch), kept between frames: made fresh each frame they were a dozen
+	 *  allocations of 50-110 KB per sail, past the small-block allocator. Only this sail's task touches them. */
+	struct FRenderScratch
+	{
+		TArray<FVector> Normals, RPos, RNormals, RowCurve, TanX;
+		TArray<FProcMeshTangent> Tangents, RTangents;
+	};
+	mutable FRenderScratch Render;
 	ESailKind GetKind() const { return Kind; }
 	const Sailing::FSailGeometry& Geometry() const { return Geo; }
 	int32 GetNumStrips() const { return NumStrips; }

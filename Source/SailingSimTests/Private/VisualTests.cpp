@@ -1179,13 +1179,13 @@ bool FVisualSailWrinkleCacheTest::RunTest(const FString& Parameters)
 		W.LuffStrain = L[2];
 		W.LuffTension = 100.0;
 		W.bOn = W.SheetN + W.HalyardN > 1.0 || W.LuffStrain > 0.0;
-		const uint8 Kinds = Cache.Offsets(W);
+		const uint8 WrinkleKinds = Cache.Offsets(W);
 		double MaxDiff = 0.0, Peak = 0.0;
 		for (int32 I = 0; I < Grid.Num(); ++I)
 		{
 			const FVector4f& G = Grid[I];
 			const float Ref = SailWrinkleCm(W, FVector2D(G.X, G.Y), G.Z, G.W);
-			const float Got = Kinds ? float(Cache.Offset[I] * Sailing::CmPerMeter) : 0.f;
+			const float Got = WrinkleKinds ? float(Cache.Offset[I] * Sailing::CmPerMeter) : 0.f;
 			MaxDiff = FMath::Max(MaxDiff, double(FMath::Abs(Ref - Got)));
 			Peak = FMath::Max(Peak, double(FMath::Abs(Ref)));
 		}

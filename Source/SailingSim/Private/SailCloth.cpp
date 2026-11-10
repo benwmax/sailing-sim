@@ -803,15 +803,15 @@ void FSailWrinkleCache::Build(const FSailWrinkles& W, const TArray<FVector4f>& G
 uint8 FSailWrinkleCache::Offsets(const FSailWrinkles& W)
 {
 	if (!W.bOn || !IsBuilt()) return 0;
-	const uint8 Kinds = uint8((W.SheetN > 0.0 ? ClewBit : 0) | (W.HalyardN > 0.0 ? HeadBit : 0) | (W.LuffStrain > 0.0 ? LuffBit : 0));
-	if (!Kinds) return 0;
+	const uint8 WrinkleKinds = uint8((W.SheetN > 0.0 ? ClewBit : 0) | (W.HalyardN > 0.0 ? HeadBit : 0) | (W.LuffStrain > 0.0 ? LuffBit : 0));
+	if (!WrinkleKinds) return 0;
 	// Summed in metres in SailWrinkleCm's order (clew, head, luff).
 	TArray<double>& Sum = Offset;
 	FMemory::Memzero(Sum.GetData(), Sum.Num() * sizeof(double));
 	const double F[2] = { W.SheetN, W.HalyardN };
 	for (int32 K = 0; K < 2; ++K)
 	{
-		if (!(Kinds & (1 << K))) continue;
+		if (!(WrinkleKinds & (1 << K))) continue;
 		for (const FFan& E : Fans[K])
 		{
 			const double Tr = F[K] * E.InvBetaR;
@@ -823,7 +823,7 @@ uint8 FSailWrinkleCache::Offsets(const FSailWrinkles& W)
 			Sum[E.I] += Amp * E.Fade * Resolved * FMath::Sin(2.0 * UE_DOUBLE_PI * E.Arc / Lambda);
 		}
 	}
-	if (Kinds & LuffBit)
+	if (WrinkleKinds & LuffBit)
 	{
 		const double L = 0.3;
 		const double Lambda = 2.0 * UE_DOUBLE_PI * FMath::Pow(FSailWrinkles::BendingStiffness * L * L / W.LuffTension, 0.25);
@@ -835,5 +835,5 @@ uint8 FSailWrinkleCache::Offsets(const FSailWrinkles& W)
 			Sum[E.I] += Amp * E.Fade * Resolved * FMath::Sin(2.0 * UE_DOUBLE_PI * E.Y / Lambda);
 		}
 	}
-	return Kinds;
+	return WrinkleKinds;
 }
