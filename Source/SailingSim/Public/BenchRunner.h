@@ -24,6 +24,12 @@ namespace SailingArgs
 	 *  in Shipping: it lets the release smoke load each world and take a screenshot, and nothing a player can't do. */
 	SAILINGSIM_API FString ShippingSmokeArgs(const TCHAR* CommandLine);
 
+	/** The value of the LAST -<Key><value> token on a command line (Key like TEXT("SailingCamDist=")), quotes stripped;
+	 *  false if there is none. FParse::Value takes the first, so a still's own override appended after a shared set of
+	 *  camera arguments was silently ignored (Nov 2026: every -SailingCamTarget close-up kept the shared 8 m distance). */
+	SAILINGSIM_API bool LastValue(const TCHAR* CommandLine, const TCHAR* Key, FString& Out);
+	SAILINGSIM_API bool LastValue(const TCHAR* CommandLine, const TCHAR* Key, float& Out);
+
 	SAILINGSIM_API uint32 Generation();
 	/** Replaces the command line (FCommandLine::Set) and moves the generation on. */
 	SAILINGSIM_API void SetCommandLine(const FString& CommandLine);

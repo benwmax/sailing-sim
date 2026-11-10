@@ -32,6 +32,35 @@ namespace SailingArgs
 		GGeneration.fetch_add(1, std::memory_order_acq_rel);
 	}
 
+	bool LastValue(const TCHAR* CommandLine, const TCHAR* Key, FString& Out)
+	{
+		if (!CommandLine || !Key) return false;
+		const FString Want = FString(TEXT("-")) + Key;
+		TArray<FString> Tokens;
+		FString(CommandLine).ParseIntoArrayWS(Tokens);
+		bool bFound = false;
+		for (const FString& T : Tokens)
+		{
+			FString Tok = T;
+			Tok.RemoveFromStart(TEXT("\""));
+			if (!Tok.StartsWith(Want, ESearchCase::IgnoreCase)) continue;
+			FString V = Tok.RightChop(Want.Len());
+			V.TrimQuotesInline();
+			V.RemoveFromEnd(TEXT("\""));
+			Out = V;
+			bFound = true;
+		}
+		return bFound;
+	}
+
+	bool LastValue(const TCHAR* CommandLine, const TCHAR* Key, float& Out)
+	{
+		FString V;
+		if (!LastValue(CommandLine, Key, V) || V.IsEmpty()) return false;
+		Out = FCString::Atof(*V);
+		return true;
+	}
+
 	FString ShippingSmokeArgs(const TCHAR* CommandLine)
 	{
 		if (!CommandLine || !FParse::Param(CommandLine, TEXT("SailingShippingSmoke"))) return FString();
