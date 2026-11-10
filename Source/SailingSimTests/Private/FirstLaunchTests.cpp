@@ -182,4 +182,25 @@ bool FSailingUIFirstLaunchTest::RunTest(const FString&)
 	return true;
 }
 
+// #599 follow-up: the first job's pause menu has the job's title and a restart from its checkpoint (the R key's), not the
+// free sail's "Free sail" and "Restart from launch spot"; other sessions keep their mode's title and restart.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIJobPauseTest, "SailingSim.UI.JobPause", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIJobPauseTest::RunTest(const FString&)
+{
+	FString Title, Restart;
+	TestFalse(TEXT("A free sail is no scene"), SSailFrontEnd::PauseHeading(nullptr, ESailMode::Free, Title, Restart));
+	TestEqual(TEXT("Free sail title"), Title, USailSessionSubsystem::ModeName(ESailMode::Free));
+	TestEqual(TEXT("Free sail restart"), Restart, FString(TEXT("Restart from launch spot")));
+	SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
+	TestEqual(TEXT("A drill restarts the drill"), Restart, FString(TEXT("Restart drill")));
+	Sailing::FScriptedScene Job;
+	FString Error;
+	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
+	TestTrue(TEXT("The first job is a scene"), SSailFrontEnd::PauseHeading(&Job, ESailMode::Free, Title, Restart));
+	TestEqual(TEXT("... titled as the job"), Title, FString(UTF8_TO_TCHAR(Job.GetTitle().c_str())));
+	TestEqual(TEXT("... \"Your first job\""), Title, FString(TEXT("Your first job")));
+	TestEqual(TEXT("... restarting from its checkpoint"), Restart, FString(TEXT("Restart from checkpoint")));
+	return true;
+}
+
 #endif
