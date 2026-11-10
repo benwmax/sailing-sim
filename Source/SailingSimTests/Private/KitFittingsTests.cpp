@@ -49,6 +49,16 @@ bool FVisualKitFittingsTest::RunTest(const FString& Parameters)
 	const FTransform W0 = KitFittings::HankOnStay(Tack, Hounds, Tack + (Hounds - Tack) * 0.3);
 	TestTrue(TEXT("A luff on the wire: the sail aft"), FVector::DotProduct(W0.TransformVectorNoScale(-FVector::XAxisVector), FVector(-1.0, 0.0, 0.0)) > 0.9);
 
+	// Degenerate inputs (a boat switching mid-build: the stay's sockets on one point, a collapsed cloth) give a unit,
+	// unscaled rotation, never FQuat(FMatrix)'s ensure (the Mac's RigClearance run, Nov 10).
+	auto Unit = [](const FTransform& X) { return X.GetRotation().IsNormalized() && !X.ContainsNaN(); };
+	TestTrue(TEXT("A zero-length stay"), Unit(KitFittings::HankOnStay(Tack, Tack, ClothLuff)));
+	TestTrue(TEXT("A luff along the stay"), Unit(KitFittings::HankOnStay(FVector::ZeroVector, FVector(0.0, 0.0, 500.0), FVector(0.0, 0.0, 250.0))));
+	TestTrue(TEXT("A collapsed cloth"), Unit(KitFittings::HankTransform(Luff, FVector::ZeroVector, FVector::ZeroVector, LuffSocket)));
+	TestTrue(TEXT("Chord along the luff"), Unit(KitFittings::HankTransform(Luff, Up, Up, LuffSocket)));
+	TestTrue(TEXT("Shackle with no frame"), Unit(KitFittings::HeadShackleTransform(Head, FVector::ZeroVector, FVector::ZeroVector)));
+	TestTrue(TEXT("Shackle with the chord up the luff"), Unit(KitFittings::HeadShackleTransform(Head, Up, -Up)));
+
 	TestTrue(TEXT("Hanks spread from near the tack to near the head"),
 		FMath::IsNearlyEqual(KitFittings::HankV(0, 8), 0.0625f) && FMath::IsNearlyEqual(KitFittings::HankV(7, 8), 0.9375f));
 	return true;

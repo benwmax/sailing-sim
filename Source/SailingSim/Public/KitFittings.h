@@ -15,12 +15,33 @@ namespace KitFittings
 	/** Height (0 tack .. 1 head) of hank I of N on the luff: evenly spaced, half a gap from either end. */
 	inline float HankV(int32 I, int32 N) { return (float(I) + 0.5f) / float(FMath::Max(N, 1)); }
 
+	/** A rotation with its Y along `Y` and its X as near `X` as Y allows. Degenerate inputs (zero length, NaN, X along Y:
+	 *  a boat switching mid-build, a collapsed cloth) fall back to Z up and any X square to Y, never a scaled matrix
+	 *  (FQuat(FMatrix) ensures on one). */
+	inline FQuat SafeRotationYX(const FVector& Y, const FVector& X)
+	{
+		FVector Yn = Y.ContainsNaN() ? FVector::ZeroVector : Y.GetSafeNormal();
+		if (Yn.IsNearlyZero()) Yn = FVector::UpVector;
+		FVector Xp = X.ContainsNaN() ? FVector::ZeroVector : X - Yn * FVector::DotProduct(X, Yn);
+		if (Xp.SizeSquared() < 1e-8)
+		{
+			FVector A, B;
+			Yn.FindBestAxisVectors(A, B);
+			Xp = A;
+		}
+		const FVector Xn = Xp.GetSafeNormal();
+		const FVector Zn = FVector::CrossProduct(Xn, Yn).GetSafeNormal();
+		FQuat Q(FMatrix(Xn, Yn, Zn, FVector::ZeroVector));
+		Q.Normalize();
+		return Q;
+	}
+
 	/** A hank on the luff: the kit JibHank's stay runs along its Y and the sail lies aft along its -X, so Y follows the luff
 	 *  up (UpLuff) and -X the sail's chord (Aft), and the hank's `Luff` socket (LuffSocket, mesh cm) lands on the cloth's
 	 *  luff point (LuffPoint). */
 	inline FTransform HankTransform(const FVector& LuffPoint, const FVector& UpLuff, const FVector& Aft, const FVector& LuffSocket)
 	{
-		const FQuat Q(FRotationMatrix::MakeFromYX(UpLuff, -Aft));
+		const FQuat Q = SafeRotationYX(UpLuff, -Aft);
 		return FTransform(Q, LuffPoint - Q.RotateVector(LuffSocket));
 	}
 
@@ -34,7 +55,7 @@ namespace KitFittings
 		FVector ToSail = Luff - Stay;
 		ToSail -= Wire.GetSafeNormal() * FVector::DotProduct(ToSail, Wire.GetSafeNormal());
 		if (ToSail.SizeSquared() < 1e-4) ToSail = FVector(-1.0, 0.0, 0.0);   // the luff on the wire: the sail aft
-		return FTransform(FQuat(FRotationMatrix::MakeFromYX(Wire, -ToSail)), Stay);
+		return FTransform(SafeRotationYX(Wire, -ToSail), Stay.ContainsNaN() ? Tack : Stay);
 	}
 
 	/** The jib halyard's snap shackle on the head: the kit SnapShackle's bail is its origin and the part hangs along its -Z
@@ -42,6 +63,9 @@ namespace KitFittings
 	 *  forward in the sail's plane. */
 	inline FTransform HeadShackleTransform(const FVector& Head, const FVector& UpLuff, const FVector& Aft)
 	{
-		return FTransform(FQuat(FRotationMatrix::MakeFromZX(-UpLuff, -Aft)), Head);
+		// Z = -UpLuff exactly and X = -Aft square to it; Y = Z x X (FRotationMatrix::MakeFromZX's frame, built safely)
+		const FVector Z = UpLuff.IsNearlyZero() || UpLuff.ContainsNaN() ? -FVector::UpVector : -UpLuff.GetSafeNormal();
+		const FVector X = Aft.ContainsNaN() ? FVector::ZeroVector : -Aft - Z * FVector::DotProduct(-Aft, Z);
+		return FTransform(SafeRotationYX(FVector::CrossProduct(Z, X), X), Head);
 	}
 }
