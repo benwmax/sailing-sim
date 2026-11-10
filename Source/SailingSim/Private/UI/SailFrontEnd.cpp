@@ -494,8 +494,9 @@ void SSailFrontEnd::FocusCurrent()
 {
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
-	if (Stack.Num() && Stack.Last().Focus.IsValid()) FSlateApplication::Get().SetUserFocus(0, Stack.Last().Focus, EFocusCause::SetDirectly);
-	else FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
+	// The menus themselves when the default can't take it (not laid out yet, or hidden), so the keys still reach them.
+	if (Stack.Num() && Stack.Last().Focus.IsValid() && FSlateApplication::Get().SetUserFocus(0, Stack.Last().Focus, EFocusCause::SetDirectly)) return;
+	FSlateApplication::Get().SetUserFocus(0, SharedThis(this), EFocusCause::SetDirectly);
 }
 
 FReply SSailFrontEnd::OnPreviewKeyDown(const FGeometry&, const FKeyEvent& E)

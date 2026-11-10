@@ -148,8 +148,8 @@ namespace SailUI
 		bool GMouseActive = false;   // the mouse was used more recently than the keys or the pad
 		double GMouseMovedAt = -1.0;   // when the mouse last really moved (FPlatformTime seconds)
 		// Hover may move focus only this soon after a real move: a screen (or the window) that appears under a still
-		// cursor keeps its default focus, even when the mouse was the last thing used (the Nov 10 nightly's first-launch
-		// screen opened with the focus on the hovered Picture quality instead of Start your first job).
+		// cursor keeps its default focus, even when the mouse was the last thing used (the suspected cause of the Nov 10
+		// nightly's first-launch screen opening with the focus on Picture quality instead of Start your first job).
 		constexpr double MouseHoverWindowSeconds = 0.5;
 
 		class FDeviceTracker : public IInputProcessor
