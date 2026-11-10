@@ -1045,8 +1045,6 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-#endif
-
 /**
  * #598: a lesson's start is not in the no-go zone, and nobody on the helm she doesn't get there before the player has had
  * time to take it: from Return and dock's start (FDrillRunner::ReturnStartMinTwaDeg off the wind at worst; Easy, trim
@@ -1099,5 +1097,25 @@ bool FSailingStartNotPinchingTest::RunTest(const FString& Parameters)
 	T.bInIrons = true;
 	SailingCollectBoatTips(T, 1.0, C, Easy, false, false, Irons, true);
 	TestTrue(TEXT("In irons shows during the hold"), Has(Irons, TEXT("head to wind")));
+	// The pawn's clock for the hold (FSailStartClock, ASailboatPawn::GetSecondsSinceStart): a reset anchors it on the boat
+	// clock as it carries on (100 s in), time held by the UI (loading, briefing) is left out, and a reset while held starts
+	// counting only when the UI lets her go.
+	FSailStartClock Clock;
+	Clock.Reset(100.0);
+	TestEqual(TEXT("Just reset"), Clock.Seconds(100.0), 0.0);
+	TestEqual(TEXT("4 s later"), Clock.Seconds(104.0), 4.0);
+	Clock.Hold(true, 104.0);
+	TestEqual(TEXT("Held 20 s (a menu): the clock stops"), Clock.Seconds(124.0), 4.0);
+	Clock.Hold(false, 124.0);
+	TestEqual(TEXT("Released, 3 s on: 7"), Clock.Seconds(127.0), 7.0);
+	Clock.Hold(true, 130.0);
+	Clock.Reset(130.0);   // a lesson starts behind its loading screen and briefing
+	TestEqual(TEXT("Reset while held: 0 through the loading"), Clock.Seconds(160.0), 0.0);
+	Clock.Hold(false, 160.0);
+	TestEqual(TEXT("Let go after 30 s of loading: 0, then counting"), Clock.Seconds(160.0), 0.0);
+	TestTrue(TEXT("... 9 s after it is still in the hold"), Clock.Seconds(169.0) < SailingNoGoTipHoldSeconds);
+	TestTrue(TEXT("... 11 s after it is past"), Clock.Seconds(171.0) > SailingNoGoTipHoldSeconds);
 	return true;
 }
+
+#endif

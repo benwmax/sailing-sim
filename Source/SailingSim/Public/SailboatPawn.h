@@ -9,6 +9,7 @@
 #include "FixedStepper.h"
 #include "InputActionValue.h"
 #include "Drills.h"
+#include "SailingHUD.h"
 #include "Learning.h"
 #include "Career.h"
 #include "Navigation.h"
@@ -124,7 +125,7 @@ public:
 	int32 GetDrillSerial() const { return DrillSerial; }
 	double GetMaxContactKnots() const { return MaxContactKnots; }
 	/** Seconds since she was put at her start (a reset, a lesson's start): #598 holds the no-go tips for the first ten. */
-	double GetSecondsSinceStart() const { return Boat.GetState().Time - SailStartTime; }
+	double GetSecondsSinceStart() const { return StartClock.Seconds(Boat.GetState().Time); }
 	/** Career 1: the last drill's medal for its lesson (invalid when the run counted for no lesson). */
 	const FCareerProgress::FAward& GetCareerAward() const { return CareerAward; }
 	/** The rules coach scored the boat (TrafficManager): a penalty during a drill counts against its medal. */
@@ -199,7 +200,7 @@ public:
 	const TArray<FString>& GetSessionPhotos() const { return SessionPhotos; }
 	bool IsLogOpen() const { return bLogOpen; }
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
-	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; }
+	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; StartClock.Hold(bHeld, Boat.GetState().Time); }
 	/**
 	 * The showroom (docs/showroom-wiring/): on a stage the boat is afloat and sailing on her spot (the trim assist trims
 	 * for a close reach, the helm holds it, her way over the ground is taken out) and the free camera orbits her in the
@@ -393,7 +394,7 @@ private:
 	FDrillRunner DrillRunner;
 	ESailingDrill MenuDrill = ESailingDrill::None;
 	double MaxContactKnots = 0.0;
-	double SailStartTime = 0.0;   // the boat clock when she was put at her start (ResetBoat, StartDrill)
+	FSailStartClock StartClock;   // #598: since she was put at her start (ResetBoat, StartDrill), held time left out
 	int32 DrillSerial = 0;
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
