@@ -8,9 +8,11 @@ Renders the same views every round, so before and after line up pixel for pixel:
   zebra_34, zebra_profile, zebra_bow34          stripes reflected in the hull and deck: a fair surface shows smooth
                                                 bands, a bump or flat bends or breaks them
 Only the boat's shape sections are drawn (rig, sails, ropes, hardware and the interior are hidden) unless --with-other.
-Cameras sit on the hull's own bounds, so a boat that grows keeps the same framing rule. Cycles on the CPU with a
+Orthographic views frame everything drawn (sil_scale.json records metres per pixel for the outline check);
+the perspective views sit on the hull's bounds. Cycles on the CPU with a
 material override (no GPU needed), no textures. Needs Blender's Python (pip bpy).
 """
+import json
 import math
 import os
 import sys
@@ -35,14 +37,19 @@ for o in list(SC.objects):
         hide = C.section_of(o.name, SEC) == "other" and not OTHER
         o.hide_render = hide
         o.hide_viewport = hide
-    elif o.type in ("CAMERA", "LIGHT"):
+    else:                    # cameras, lights, and empties that might instance geometry
         o.hide_render = True
 
-pts = [HULL.matrix_world @ Vector(c) for c in HULL.bound_box]
+# frame on everything drawn (hull, keel, rudder, cabin...), not the hull alone, so nothing runs off the edge
+pts = [o.matrix_world @ Vector(c) for o in SC.objects if o.type in ("MESH", "CURVE", "FONT") and not o.hide_render
+       for c in o.bound_box]
 lo = Vector([min(p[i] for p in pts) for i in range(3)])
 hi = Vector([max(p[i] for p in pts) for i in range(3)])
 mid = (lo + hi) / 2
 size = hi - lo
+hpts = [HULL.matrix_world @ Vector(c) for c in HULL.bound_box]
+hlo = Vector([min(p[i] for p in hpts) for i in range(3)])
+hhi = Vector([max(p[i] for p in hpts) for i in range(3)])
 
 sc = SC
 # Cycles on the CPU: the cloud and CI have no GPU or EGL for Workbench. Few samples: shape, not looks.
@@ -165,28 +172,31 @@ def shot(name, kind):
     bpy.ops.render.render(write_still=True)
 
 
-L = size.x * 1.08
+ASPECT = 2.0             # frames are RES x RES/2; Blender's ortho scale spans the frame's width
 far = 30.0
-views = {
-    "profile": ((mid.x, mid.y + far, mid.z), mid, L),            # port side, square on
-    "plan": ((mid.x, mid.y, mid.z + far), mid, L),
-    "bow": ((mid.x + far, mid.y, mid.z), mid, L / 2),
-    "stern": ((mid.x - far, mid.y, mid.z), mid, L / 2),
+views = {   # name: camera, target, frame width (m) fitting the boat's width and height in that view, with 6% margin
+    "profile": ((mid.x, mid.y + far, mid.z), mid, 1.06 * max(size.x, size.z * ASPECT)),   # port side: bow on the left
+    "plan": ((mid.x, mid.y, mid.z + far), mid, 1.06 * max(size.x, size.y * ASPECT)),      # from above: bow on the left
+    "bow": ((mid.x + far, mid.y, mid.z), mid, 1.06 * max(size.y, size.z * ASPECT)),
+    "stern": ((mid.x - far, mid.y, mid.z), mid, 1.06 * max(size.y, size.z * ASPECT)),
 }
+scales = {}
 for v, (loc, tgt, scale) in views.items():
     look(loc, tgt, ortho=scale)
     if v == "plan":
-        cam.rotation_euler = (0, 0, 0)          # straight down, bow to the right as in the profile
+        cam.rotation_euler = (0, 0, math.pi)       # straight down, bow on the left as in the profile
+    scales[v] = {"m_per_px": scale / RES, "frame_m": [scale, scale / ASPECT]}
     shot(f"sil_{v}", "sil")
     shot(f"shade_{v}", "shade")
     if v == "profile":
         shot("zebra_profile", "zebra")
+json.dump(scales, open(os.path.join(OUT, "sil_scale.json"), "w"), indent=1)
 
 persp = {
     "34": ((mid.x + size.x * 0.75, mid.y + size.x * 0.95, mid.z + size.x * 0.45), (mid.x, mid.y, mid.z + 0.2), 40),
-    "bow34": ((hi.x + 1.6, mid.y + 1.9, mid.z + 1.0), (hi.x - 1.4, mid.y, mid.z + 0.4), 35),
-    "stern34": ((lo.x - 1.8, mid.y + 1.9, mid.z + 1.2), (lo.x + 1.4, mid.y, mid.z + 0.4), 35),
-    "cockpit": ((lo.x + 0.45, mid.y, hi.z + 0.75), (lo.x + 3.2, mid.y, hi.z + 0.10), 24),   # helm eye looking forward
+    "bow34": ((hhi.x + 1.6, mid.y + 1.9, mid.z + 1.0), (hhi.x - 1.4, mid.y, mid.z + 0.4), 35),
+    "stern34": ((hlo.x - 1.8, mid.y + 1.9, mid.z + 1.2), (hlo.x + 1.4, mid.y, mid.z + 0.4), 35),
+    "cockpit": ((hlo.x + 0.45, mid.y, hhi.z + 0.75), (hlo.x + 3.2, mid.y, hhi.z + 0.10), 24),   # helm eye looking forward
 }
 for v, (loc, tgt, lens) in persp.items():
     look(loc, tgt, lens=lens)

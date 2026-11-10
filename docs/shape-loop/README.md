@@ -64,7 +64,8 @@ little gain. Hero shape PRs go one at a time.
 
 ## Tools
 
-All in `Tools/shapeloop`, run with Blender's Python (pip `bpy`) except `score.py`.
+All in `Tools/shapeloop`, run with Blender's Python (pip `bpy`); `score.py` and `make_sheet.py` need only numpy, scipy
+and Pillow (the pip-bpy venv has them).
 
 ```
 B=<work>/base
@@ -73,19 +74,24 @@ python Tools/shapeloop/measure.py   $B/j22_hero.blend Tools/shapeloop/sections_j
 python Tools/shapeloop/fairness.py  $B/j22_hero.blend $B
 python Tools/shapeloop/seams.py     $B/j22_hero.blend Tools/shapeloop/sections_j22.json $B
 python Tools/shapeloop/render_set.py $B/j22_hero.blend Tools/shapeloop/sections_j22.json $B
-python3 Tools/shapeloop/score.py Tools/shapeloop/cards/j22-hull_shell.json $B <work>/r1 --refs <traced masks>
+python Tools/shapeloop/score.py Tools/shapeloop/cards/j22-hull_shell.json $B <work>/r1 --refs <traced masks>
 ```
 
 | Tool | Writes | Check |
 | --- | --- | --- |
 | `measure.py` | `stats.json`: objects with section, triangles, bounds, centre; triangles per section; hull LOA, beam, freeboards and 21 station cuts; the build's canoe volume and CB | size, budget, moved, physics |
-| `fairness.py` | `fairness.json`: 10 waterline and 10 station cuts of the hull, inflections and kinks per line | fairness (no line may get worse) |
-| `seams.py` | `seams.json`: per join, vertices near it, how many sit 0.5-15 mm off the neighbour, widest gap | seams (no join may get worse) |
-| `render_set.py` | silhouettes (profile, plan, bow, stern), clay renders (those plus 3/4, bow and stern 3/4, helm eye), zebra stripes | outline, fairness by eye, blind A/B, sheet |
+| `fairness.py` | `fairness.json`: 10 waterline and 10 station cuts of the hull, resampled every 2 cm; inflections (sign changes of the 30 cm curvature) and kinks (bumps against the 50 cm average) per line; the ends and the transom face are left out | fairness (no line may get worse or go missing) |
+| `seams.py` | `seams.json`: per join, the first part's surface sampled every 1 cm within 2 cm of the second; in 5 cm bins the closest approach; bins 0.5-20 mm apart are open | seams (no join may lose contact, open a larger share or get a wider gap) |
+| `render_set.py` | silhouettes (profile, plan, bow, stern; bow on the left; `sil_scale.json` gives metres per pixel), clay renders (those plus 3/4, bow and stern 3/4, helm eye), zebra stripes | outline, fairness by eye, blind A/B, sheet |
 | `score.py` | `score.json`, `score.md` (goes in the PR) | all of the above; exits 1 on a hard fail |
 
 Hard checks: fairness, seams, physics (canoe volume within 1% and CB within 2 cm of the baseline) and moved (nothing
-outside the card's sections moves unless the card lists it).
+outside the card's sections moves, appears or goes unless the card lists it; the hull card lists the sections built
+on its curves). A missing tool output (a crash, a renamed hull) is a hard fail, never a silent pass. Outline masks
+traced from a drawing go in the refs folder with `<view>.mask.json` giving the drawing's metres per pixel, so a boat
+the wrong size scores lower.
+
+Section rules in `sections_j22.json`: an entry ending in `_` or `*` is a name prefix, anything else an exact name.
 
 ## Baseline
 
@@ -101,11 +107,18 @@ Main at `46d23774` (Nov 10 2026), built in the cloud with pip bpy 5.2:
 | Hull LOA, beam | 6.860 m, 2.448 m (class 6.858, 2.438) |
 | Freeboard at bow, stern | 0.782 m, 0.569 m (ORC 0.774 at its point, 0.568) |
 | Canoe body volume, CB | 1.088 m³ at (-0.226, -0.074); the physics floats 1.052 m³ at (-0.195, -0.080): the hero already displaces 3.4% more than the physics. The physics check holds every round to this baseline so the loop never widens the gap; closing it is a physics calibration job (frozen), not a shape PR. |
-| Fairness | 19 lines, 13 inflections (stem and transom corners), 59 kinks (mostly the lowest waterlines near the keel root) |
+| Fairness | 19 lines, 0 inflections, 22 kinks (19 on the four lowest waterlines near the keel root and bow, 3 on stations) |
 
-Self-test: a copy of the baseline with a 12 mm bump on the port topside and the cabin raised 10 mm fails three hard
-checks: fairness (waterline 5 gains 4 inflections), seams (deck to cabin opens 29 more bins) and moved (the cabin
-moved outside the hull card's section). The physics check reads the build's own report, so it only sees real builds.
+Tests run on copies of the baseline (QA review, Nov 10):
+
+| Copy | Expected | Result |
+| --- | --- | --- |
+| Hull subdivided once (same shape, 4x the mesh) | pass | pass: fairness 22 → 22 kinks, seams no worse |
+| 12 mm bump on the port topside, cabin raised 10 mm | fail | fail: fairness (waterline 5 and station 6 gain a kink), seams (deck-cabin gap 6.8 → 8.2 mm, cabin-cockpit 2.2 → 12.1 mm) |
+| Cabin raised 80 mm | fail | fail: seams, deck-cabin and cabin-cockpit lose contact |
+| Hull renamed | fail | fail: measure.py stops, score reports the missing stats |
+
+The physics check reads the build's own report, so it only sees real builds.
 
 ## Sunfish
 

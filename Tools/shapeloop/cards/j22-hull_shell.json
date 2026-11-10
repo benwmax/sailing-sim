@@ -23,7 +23,7 @@
    "value": 0.79,
    "tol_m": 0.02,
    "tier": "A",
-   "source": "ORC certificate FF 774 mm (build_j22_hero.sheer_z)"
+   "source": "sheer height at the stem, build_j22_hero.sheer_z (0.79 m); the ORC certificate's FF 774 mm is taken a little aft of the stem. measure.py reads it at 94.5% of LOA from the stern"
   },
   "freeboard_stern": {
    "value": 0.568,
@@ -48,5 +48,15 @@
  "moves_ok": [],
  "tris_max": null,
  "mac_wiring": false,
- "photo_needed": "no (tiers A, B, D first)"
+ "photo_needed": "no (tiers A, B, D first)",
+ "moves_ok_sections": [
+  "joint_rails",
+  "deck",
+  "cabin",
+  "cockpit",
+  "transom_bow",
+  "keel_rudder"
+ ],
+ "moves_ok_note": "the deck, rails, cabin and cockpit are built on sheer_z/half_beam/deck_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4)",
+ "removes_ok": []
 }

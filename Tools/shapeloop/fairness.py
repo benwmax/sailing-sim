@@ -4,9 +4,11 @@
 
 Cuts the hull's outer skin with 10 waterline planes (z) and 10 station planes (x), orders each cut into a polyline and
 measures its curvature (turning angle per metre). A fair line bends one way, smoothly: the report counts
-  inflections  sign changes of curvature (ignoring bends under the noise floor), a ripple shows as extra pairs
-  kinks        samples whose curvature (over a 10 cm chord) jumps more than 4x the line's median step and 0.5 rad/m:
-               a facet, crease or bump
+  inflections  sign changes of the curvature smoothed over 30 cm (bends under 0.15 rad/m ignored): a ripple shows
+               as extra pairs
+  kinks        runs where the 10 cm chord curvature leaves its 50 cm average by more than 0.5 rad/m: a crease, a
+               facet or a bump of a few millimetres; 15 cm at each end of a line (stem, transom corner) is left out
+Both are measured on 2 cm resampled cuts, so a denser mesh of the same shape gives the same counts.
 per line, and writes <out>/fairness.json. The check compares against the baseline: a round must not add inflections
 or kinks to any line (a line the drawing bends both ways, such as a reverse sheer, keeps its own count).
 Needs Blender's Python (pip bpy) and numpy.
@@ -66,9 +68,13 @@ def cut(no, co):
     return np.array(best)
 
 
-def port_run(p):
-    """The longest contiguous run of a cut on the port side (y >= 0), so a closed loop isn't cut into a jump."""
+def port_run(p, off_transom=False):
+    """The longest contiguous run of a cut on the port side (y >= 0), so a closed loop isn't cut into a jump. With
+    off_transom, points on the transom face (within 5 mm of the cut's aftmost x) are left out too: whether a cut runs
+    on across the transom depends on how the transom face is triangulated, not on the shape."""
     side = p[:, 1] >= 0
+    if off_transom:
+        side &= p[:, 0] > p[:, 0].min() + 0.005
     if side.all() or not side.any():
         return p
     start = int(np.argmin(side))                    # roll so the run doesn't wrap past the array's end
@@ -104,13 +110,25 @@ def fairness(p, axes):
     b = q[2 * w:] - q[w:-w]
     ang = np.arctan2(a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0], (a * b).sum(axis=1))
     k = ang / (w * s[-1] / (n - 1))                 # rad per metre
-    floor = max(0.05, 0.05 * np.max(np.abs(k)))
-    sig = np.sign(np.where(np.abs(k) > floor, k, 0))
+    # inflections: sign changes of the curvature smoothed over 30 cm, ignoring bends under 0.15 rad/m (a 6.7 m radius)
+    # or a tenth of the line's sharpest bend; bumps: runs where the 10 cm curvature leaves its own 50 cm average by
+    # more than 0.5 rad/m (a bump of a few millimetres over 20 cm). Both are measured on the surface, not the mesh: a denser mesh
+    # of the same shape gives the same counts (docs/shape-loop, density test).
+    def smooth(v, m):
+        m = max(1, min(m, len(v) // 2 * 2 - 1))
+        return np.convolve(np.pad(v, m // 2, mode="edge"), np.ones(m) / m, mode="valid")[:len(v)]
+
+    # the line's ends (the stem, the transom corner, the keel root) are corners by design: leave 15 cm off each end
+    e = min(len(k) // 4, 7)
+    k = k[e:len(k) - e] if e else k
+    ks = smooth(k, 15)
+    floor = 0.15
+    sig = np.sign(np.where(np.abs(ks) > floor, ks, 0))
     nz = sig[sig != 0]
     infl = int(np.sum(nz[1:] != nz[:-1])) if len(nz) > 1 else 0
-    dk = np.abs(np.diff(k))
-    med = float(np.median(dk)) + 1e-6
-    kinks = int(np.sum(dk > max(4 * med, 0.5)))
+    res = np.abs(k - smooth(k, 25)) > 0.5
+    kinks = int(np.sum(res[1:] & ~res[:-1]) + (1 if len(res) and res[0] else 0))
+    med = float(np.median(np.abs(np.diff(k)))) if len(k) > 1 else 0.0
     return {"length_m": round(float(s[-1]), 3), "inflections": infl, "kinks": kinks,
             "k_max": round(float(np.max(np.abs(k))), 3), "k_step_median": round(med, 4)}
 
@@ -122,7 +140,7 @@ for i in range(10):
     z = lo[2] + (hi[2] - lo[2]) * (0.08 + 0.84 * i / 9)
     p = cut((0, 0, 1), (0, 0, z))
     if p is not None:
-        f = fairness(port_run(p), [0, 1])
+        f = fairness(port_run(p, off_transom=True), [0, 1])
         if f:
             lines[f"wl_{i}"] = dict(z=round(z, 3), **f)
 for i in range(10):

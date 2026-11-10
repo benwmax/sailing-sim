@@ -2,13 +2,14 @@
 
     python seams.py <j22_hero.blend | fbx dir> <sections.json> <out dir>
 
-For each join on the sections file (pairs of object-name prefixes), takes the first part's vertices within 2 cm of
-the second part and measures their distance to its surface, then builds the join's gap profile: along the join's
-longest axis, in 5 cm bins, the closest the two parts come. Parts that touch or overlap come within 0.5 mm in every
-bin; a bin whose closest approach is 0.5-15 mm is "open", a hairline gap the lower tiers' separate simplification can
-widen. The profile does not depend on mesh density, so a denser rebuild doesn't read as more gaps. Writes
-<out>/seams.json (per join: bins, open bins and where, widest gap). The check compares against the baseline: a round
-must not open more bins or widen the widest gap at any join.
+For each join on the sections file (pairs of object-name rules), samples the first part's surface every centimetre
+within 2 cm of the second part and measures each sample's distance to the second part's surface, then builds the
+join's gap profile: along the join's longest axis, in 5 cm bins, the closest the two parts come. Parts that touch or
+overlap come within 0.5 mm in a bin; a bin whose closest approach is 0.5-20 mm is "open", a hairline gap the lower
+tiers' separate simplification can widen; parts more than 2 cm apart leave the profile altogether, which the score
+reads as lost contact. Sampling the surface rather than the vertices keeps the profile independent of mesh density.
+Writes <out>/seams.json (per join: bins, span, open bins, open fraction, where, widest gap). The score compares
+against the baseline: a join must not lose contact (fewer bins), open a larger fraction of its bins or get a wider gap.
 Needs Blender's Python (pip bpy).
 """
 import json
@@ -28,9 +29,10 @@ os.makedirs(OUT, exist_ok=True)
 SC = C.load_scene(SRC)
 SEC = C.load_sections(SECTIONS)
 DG = bpy.context.evaluated_depsgraph_get()
-OPEN = (0.0005, 0.015)
+OPEN = (0.0005, 0.02)
 NEAR = 0.02
 BIN = 0.05
+STEP = 0.01
 
 cache = {}
 
@@ -50,7 +52,7 @@ def geo(prefix):
 
 out = {}
 for a, b in SEC.get("joins", []):
-    va, _ = geo(a)
+    va, ta = geo(a)
     vb, tb = geo(b)
     if not va or not vb:
         out[f"{a}|{b}"] = {"missing": True}
@@ -58,13 +60,20 @@ for a, b in SEC.get("joins", []):
     lo = [min(v[i] for v in vb) - NEAR for i in range(3)]
     hi = [max(v[i] for v in vb) + NEAR for i in range(3)]
     tree = BVHTree.FromPolygons([Vector(v) for v in vb], tb)
+    # sample the first part's surface every centimetre (not its vertices), so a denser mesh of the same shape
+    # samples the same places
     near = []
-    for v in va:
-        if not all(lo[i] <= v[i] <= hi[i] for i in range(3)):
+    for t in ta:
+        pa, pb, pc = (Vector(va[i]) for i in t)
+        if not any(all(lo[i] <= p[i] <= hi[i] for i in range(3)) for p in (pa, pb, pc)):
             continue
-        hit = tree.find_nearest(Vector(v), NEAR)
-        if hit[0] is not None:
-            near.append((v, hit[3]))
+        n = max(1, min(40, int(max((pa - pb).length, (pb - pc).length, (pc - pa).length) / STEP) + 1))
+        for i in range(n + 1):
+            for j in range(n + 1 - i):
+                v = pa + (pb - pa) * (i / n) + (pc - pa) * (j / n)
+                hit = tree.find_nearest(v, NEAR)
+                if hit[0] is not None:
+                    near.append((tuple(v), hit[3]))
     if not near:
         out[f"{a}|{b}"] = {"near": 0, "bins": 0, "open_bins": 0, "widest_mm": 0.0}
         continue
@@ -78,6 +87,7 @@ for a, b in SEC.get("joins", []):
         bins[k] = min(bins.get(k, 1.0), d)
     opened = {k: d for k, d in bins.items() if OPEN[0] < d < OPEN[1]}
     out[f"{a}|{b}"] = {"near": len(near), "axis": "xyz"[ax], "bins": len(bins), "open_bins": len(opened),
+                       "open_frac": round(len(opened) / len(bins), 3), "span": [round(min(bins) * BIN, 2), round((max(bins) + 1) * BIN, 2)],
                        "widest_mm": round(max(opened.values(), default=0.0) * 1000, 2),
                        "open_at": sorted(round(k * BIN, 2) for k in opened)[:40]}
 json.dump(out, open(os.path.join(OUT, "seams.json"), "w"), indent=1)

@@ -64,7 +64,9 @@ def hull_cut(ob, x):
 
 hull = {}
 ob = bpy.data.objects.get(HULL)
-if ob is not None:
+if ob is None:
+    sys.exit(f"shapeloop measure: no object named {HULL!r}: the hull was renamed or the build failed")
+if True:
     h = objects[ob.name]
     x0, x1 = h["min"][0], h["max"][0]
     hull = {"loa": r(x1 - x0), "beam": r(h["max"][1] - h["min"][1]), "x_stern": x0, "x_bow": x1, "stations": []}

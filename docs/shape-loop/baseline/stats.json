@@ -16304,7 +16304,7 @@
    ]
   },
   "Portlight_1": {
-   "section": "other",
+   "section": "cabin",
    "tris": 76,
    "min": [
     -0.3,
@@ -16323,7 +16323,7 @@
    ]
   },
   "Portlight_-1": {
-   "section": "other",
+   "section": "cabin",
    "tris": 76,
    "min": [
     -0.3,
@@ -16361,7 +16361,7 @@
    ]
   },
   "CabinSole": {
-   "section": "cabin",
+   "section": "other",
    "tris": 280,
    "min": [
     -0.51,
@@ -16456,7 +16456,7 @@
    ]
   },
   "KeelPlate_0_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.435,
@@ -16475,7 +16475,7 @@
    ]
   },
   "KeelNut_0_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.4661,
@@ -16494,7 +16494,7 @@
    ]
   },
   "KeelStud_0_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.4705,
@@ -16513,7 +16513,7 @@
    ]
   },
   "KeelPlate_0_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.435,
@@ -16532,7 +16532,7 @@
    ]
   },
   "KeelNut_0_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.4661,
@@ -16551,7 +16551,7 @@
    ]
   },
   "KeelStud_0_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.4705,
@@ -16570,7 +16570,7 @@
    ]
   },
   "KeelPlate_1_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.615,
@@ -16589,7 +16589,7 @@
    ]
   },
   "KeelNut_1_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.6461,
@@ -16608,7 +16608,7 @@
    ]
   },
   "KeelStud_1_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.6505,
@@ -16627,7 +16627,7 @@
    ]
   },
   "KeelPlate_1_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.615,
@@ -16646,7 +16646,7 @@
    ]
   },
   "KeelNut_1_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.6461,
@@ -16665,7 +16665,7 @@
    ]
   },
   "KeelStud_1_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.6505,
@@ -16684,7 +16684,7 @@
    ]
   },
   "KeelPlate_2_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.795,
@@ -16703,7 +16703,7 @@
    ]
   },
   "KeelNut_2_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.8261,
@@ -16722,7 +16722,7 @@
    ]
   },
   "KeelStud_2_-0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.8305,
@@ -16741,7 +16741,7 @@
    ]
   },
   "KeelPlate_2_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 188,
    "min": [
     0.795,
@@ -16760,7 +16760,7 @@
    ]
   },
   "KeelNut_2_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 20,
    "min": [
     0.8261,
@@ -16779,7 +16779,7 @@
    ]
   },
   "KeelStud_2_0.06": {
-   "section": "keel_rudder",
+   "section": "other",
    "tris": 44,
    "min": [
     0.8305,
@@ -17697,8 +17697,8 @@
    "objects": 6
   },
   "keel_rudder": {
-   "tris": 19908,
-   "objects": 24
+   "tris": 18396,
+   "objects": 6
   },
   "deck": {
    "tris": 20226,
@@ -17709,16 +17709,16 @@
    "objects": 3
   },
   "cabin": {
-   "tris": 43494,
-   "objects": 9
+   "tris": 43366,
+   "objects": 10
   },
   "joint_rails": {
    "tris": 43184,
    "objects": 4
   },
   "other": {
-   "tris": 852702,
-   "objects": 872
+   "tris": 854342,
+   "objects": 889
   },
   "transom_bow": {
    "tris": 19434,

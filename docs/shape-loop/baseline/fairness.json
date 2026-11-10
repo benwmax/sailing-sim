@@ -3,75 +3,75 @@
  "lines": {
   "wl_0": {
    "z": -0.121,
-   "length_m": 4.806,
+   "length_m": 4.764,
    "inflections": 0,
-   "kinks": 17,
-   "k_max": 5.377,
-   "k_step_median": 0.0123
+   "kinks": 7,
+   "k_max": 5.283,
+   "k_step_median": 0.0132
   },
   "wl_1": {
    "z": -0.028,
-   "length_m": 6.347,
-   "inflections": 2,
-   "kinks": 11,
-   "k_max": 3.952,
-   "k_step_median": 0.0164
+   "length_m": 6.186,
+   "inflections": 0,
+   "kinks": 1,
+   "k_max": 3.216,
+   "k_step_median": 0.013
   },
   "wl_2": {
    "z": 0.064,
-   "length_m": 6.911,
-   "inflections": 2,
-   "kinks": 13,
-   "k_max": 4.835,
-   "k_step_median": 0.0102
+   "length_m": 6.777,
+   "inflections": 0,
+   "kinks": 5,
+   "k_max": 4.283,
+   "k_step_median": 0.0106
   },
   "wl_3": {
    "z": 0.156,
-   "length_m": 7.26,
-   "inflections": 2,
-   "kinks": 7,
-   "k_max": 3.257,
+   "length_m": 6.997,
+   "inflections": 0,
+   "kinks": 4,
+   "k_max": 3.233,
    "k_step_median": 0.0074
   },
   "wl_4": {
    "z": 0.249,
-   "length_m": 7.052,
-   "inflections": 2,
-   "kinks": 0,
-   "k_max": 2.832,
-   "k_step_median": 0.0056
+   "length_m": 6.996,
+   "inflections": 0,
+   "kinks": 2,
+   "k_max": 1.989,
+   "k_step_median": 0.0052
   },
   "wl_5": {
    "z": 0.341,
-   "length_m": 6.945,
-   "inflections": 2,
+   "length_m": 6.917,
+   "inflections": 0,
    "kinks": 0,
-   "k_max": 3.132,
-   "k_step_median": 0.0043
+   "k_max": 1.495,
+   "k_step_median": 0.004
   },
   "wl_6": {
    "z": 0.434,
-   "length_m": 6.99,
-   "inflections": 2,
-   "kinks": 1,
-   "k_max": 3.41,
-   "k_step_median": 0.0036
+   "length_m": 6.979,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 1.266,
+   "k_step_median": 0.003
   },
   "wl_7": {
    "z": 0.526,
-   "length_m": 7.049,
-   "inflections": 1,
-   "kinks": 2,
-   "k_max": 3.388,
-   "k_step_median": 0.0024
+   "length_m": 7.025,
+   "inflections": 0,
+   "kinks": 0,
+   "k_max": 0.929,
+   "k_step_median": 0.0023
   },
   "wl_8": {
    "z": 0.618,
-   "length_m": 4.164,
+   "length_m": 4.104,
    "inflections": 0,
-   "kinks": 2,
-   "k_max": 2.324,
-   "k_step_median": 0.0047
+   "kinks": 0,
+   "k_max": 0.568,
+   "k_step_median": 0.0041
   },
   "st_0": {
    "x": -2.998,
@@ -101,7 +101,7 @@
    "x": -0.986,
    "length_m": 1.688,
    "inflections": 0,
-   "kinks": 0,
+   "kinks": 1,
    "k_max": 2.017,
    "k_step_median": 0.0572
   },
@@ -117,7 +117,7 @@
    "x": 0.355,
    "length_m": 1.697,
    "inflections": 0,
-   "kinks": 1,
+   "kinks": 0,
    "k_max": 1.96,
    "k_step_median": 0.0574
   },
@@ -133,27 +133,27 @@
    "x": 1.697,
    "length_m": 1.455,
    "inflections": 0,
-   "kinks": 1,
+   "kinks": 0,
    "k_max": 1.868,
-   "k_step_median": 0.0709
+   "k_step_median": 0.0592
   },
   "st_8": {
    "x": 2.368,
    "length_m": 1.234,
    "inflections": 0,
-   "kinks": 1,
+   "kinks": 0,
    "k_max": 1.843,
-   "k_step_median": 0.0553
+   "k_step_median": 0.0464
   },
   "st_9": {
    "x": 3.038,
    "length_m": 0.728,
    "inflections": 0,
-   "kinks": 1,
-   "k_max": 3.721,
-   "k_step_median": 0.1368
+   "kinks": 0,
+   "k_max": 3.087,
+   "k_step_median": 0.1386
   }
  },
- "total_inflections": 13,
- "total_kinks": 59
+ "total_inflections": 0,
+ "total_kinks": 22
 }

@@ -1,8 +1,11 @@
 """Shared helpers for the shape loop (docs/shape-loop). Runs inside Blender's Python (pip bpy or blender -b -P)."""
 import json
 import os
+import sys
 
 import bpy
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def load_scene(path):
@@ -22,22 +25,19 @@ def load_sections(path):
     return json.load(open(path))
 
 
+from rules import base_name, matches  # noqa: E402,F401  (shared with the plain-Python tools)
+
+
 def section_of(name, sections):
-    """First section whose object prefixes match the name; Blender's '.001' duplicates match their base name."""
-    base = name.split(".")[0]
+    """First section whose object rules match the name, else 'other'."""
     for sec, spec in sections["sections"].items():
-        if any(base == p or base.startswith(p) for p in spec["objects"]):
+        if any(matches(name, r) for r in spec["objects"]):
             return sec
     return "other"
 
 
-def matches(name, prefix):
-    base = name.split(".")[0]
-    return base == prefix or base.startswith(prefix)
-
-
 def mesh_objects(scene):
-    return [o for o in scene.objects if o.type in ("MESH", "CURVE", "FONT") and o.visible_get() is not None]
+    return [o for o in scene.objects if o.type in ("MESH", "CURVE", "FONT")]
 
 
 def evaluated_mesh(o, dg):
