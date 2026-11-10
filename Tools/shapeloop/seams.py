@@ -84,10 +84,18 @@ for a, b in SEC.get("joins", []):
     # touch or overlap come within 0.5 mm somewhere in every bin; a bin whose closest approach is wider is open.
     ext = [max(p[0][i] for p in near) - min(p[0][i] for p in near) for i in range(3)]
     ax = ext.index(max(ext))
+    # only where both parts are: past the second part's end along the axis (ahead of a cabin's nose, aft of its back)
+    # a sample measures the way to that end face, not a gap, and its distance moves with the first part's triangles
+    b_lo, b_hi = min(v[ax] for v in vb), max(v[ax] for v in vb)
     bins = {}
     for v, d in near:
         k = int(v[ax] // BIN)
+        if (k + 1) * BIN <= b_lo + 1e-6 or k * BIN >= b_hi - 1e-6:
+            continue
         bins[k] = min(bins.get(k, 1.0), d)
+    if not bins:
+        out[f"{a}|{b}"] = {"near": len(near), "bins": 0, "open_bins": 0, "widest_mm": 0.0}
+        continue
     opened = {k: d for k, d in bins.items() if OPEN[0] < d < OPEN[1]}
     out[f"{a}|{b}"] = {"near": len(near), "axis": "xyz"[ax], "bins": len(bins), "open_bins": len(opened),
                        "open_frac": round(len(opened) / len(bins), 3), "span": [round(min(bins) * BIN, 2), round((max(bins) + 1) * BIN, 2)],

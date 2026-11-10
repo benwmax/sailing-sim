@@ -10,7 +10,8 @@ Checks (docs/shape-loop/README.md):
   outline   sil_<view>.png against <refs>/<view>.mask.png (a traced drawing, black boat on white, git-ignored, with
             <view>.mask.json {"m_per_px": ...} from the drawing's scale), both resampled to 5 mm per pixel so size
             counts, bottom-aligned (and bow-aligned on profile and plan): intersection over union, pass 0.92
-  fairness  no line gains inflections or kinks or goes missing against the baseline (hard)
+  fairness  no line gains inflections or kinks (firm ones, prominence 0.7, against the baseline's at 0.5) or goes
+            missing against the baseline (hard)
   seams     no join loses contact (10% fewer bins), opens a bin that touched in the baseline (now over 3 mm) or gets a gap 0.5 mm
             wider (hard)
   A check whose file is missing (a tool crashed, the hull was renamed) is a hard fail, never a silent pass.
@@ -150,8 +151,10 @@ if need("fairness", bf, rf):
         n = rf["lines"].get(k)
         if n is None:
             worse.append(f"{k} missing in the round")
-        elif n["inflections"] > v["inflections"] or n["kinks"] > v["kinks"]:
-            worse.append(f"{k} +{n['inflections'] - v['inflections']} infl/+{n['kinks'] - v['kinks']} kinks")
+        # hysteresis: a round's line fails on kinks that stand out by 0.7 rad/m (kinks_firm) beyond the baseline's count
+        # at 0.5, so a wiggle sitting at the threshold doesn't flip a line either way; a real bump clears both
+        elif n["inflections"] > v["inflections"] or n.get("kinks_firm", n["kinks"]) > v["kinks"]:
+            worse.append(f"{k} +{n['inflections'] - v['inflections']} infl/+{n.get('kinks_firm', n['kinks']) - v['kinks']} kinks")
     row("fairness", f"inflections {bf['total_inflections']}→{rf['total_inflections']}, kinks {bf['total_kinks']}→{rf['total_kinks']}",
         not worse and rf.get("object") == bf.get("object"), hard=True, note="; ".join(worse))
 
@@ -183,10 +186,19 @@ if need("seams", bj, rj):
 # physics ------------------------------------------------------------
 bp, rp = bs.get("physics") or None, rs.get("physics") or None
 if need("physics (j22_hero_report)", bp, rp):
-    dv = (rp["canoe_volume_m3"] - bp["canoe_volume_m3"]) / bp["canoe_volume_m3"]
-    dcb = math.hypot(rp["cb_x"] - bp["cb_x"], rp["cb_z"] - bp["cb_z"])
     phys = f"physics {rp.get('physics_volume_m3')} m³, CB {rp.get('physics_cb')}"
-    row("physics", f"volume {dv * 100:+.2f}%, CB moved {dcb * 100:.1f} cm", abs(dv) <= 0.01 and dcb <= 0.02, hard=True,
+    if CARD.get("physics_reference") == "physics":
+        # a card that changes the physics hull with the hero (the J/22 hull card, Bean Nov 10): the round must match
+        # the physics it ships with, the numbers the build's report carries from SailingPhysics' own export
+        pv, pcb = rp["physics_volume_m3"], rp["physics_cb"]
+        dv = (rp["canoe_volume_m3"] - pv) / pv
+        dcb = math.hypot(rp["cb_x"] - pcb[0], rp["cb_z"] - pcb[1])
+        what = f"against the physics: volume {dv * 100:+.2f}%, CB {dcb * 100:.1f} cm apart"
+    else:
+        dv = (rp["canoe_volume_m3"] - bp["canoe_volume_m3"]) / bp["canoe_volume_m3"]
+        dcb = math.hypot(rp["cb_x"] - bp["cb_x"], rp["cb_z"] - bp["cb_z"])
+        what = f"volume {dv * 100:+.2f}%, CB moved {dcb * 100:.1f} cm"
+    row("physics", what, abs(dv) <= 0.01 and dcb <= 0.02, hard=True,
         note=f"round {rp['canoe_volume_m3']} m³ CB ({rp['cb_x']}, {rp['cb_z']}); {phys}")
 
 # moved, added, removed --------------------------------------------------

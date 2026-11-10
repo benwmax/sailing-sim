@@ -4,8 +4,8 @@
  "sections": [
   "hull_shell"
  ],
- "status": "wave 1, not started",
- "feature": "Hull lines: sheer, stem rake and bow flare, transom rake and corners, topside flare, bilge",
+ "status": "wave 1, round 6",
+ "feature": "Hull lines: the plan (deck line and every section's breadth) to the class rules' Plan E; the physics floats the same hull",
  "targets": {
   "loa": {
    "value": 6.858,
@@ -30,11 +30,17 @@
    "tol_m": 0.02,
    "tier": "A",
    "source": "ORC certificate FA 568 mm"
+  },
+  "transom_width": {
+   "value": 1.242,
+   "tol_m": 0.03,
+   "tier": "A",
+   "source": "Plan E, across the deck 3.4 cm forward of the transom (where measure.py reads it; 1.22 at the transom face)"
   }
  },
  "outline_views": [
-  "profile",
   "plan",
+  "profile",
   "stern"
  ],
  "features": [
@@ -56,8 +62,34 @@
   "deck",
   "cabin",
   "cockpit",
-  "transom_bow"
+  "transom_bow",
+  "other"
  ],
- "moves_ok_note": "the deck, rails, cabin, cockpit and transom pieces are built on sheer_z/half_beam/deck_z, and the keel's root on keel_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4). The rudder and its fittings are not built on the hull curves and must not move.",
- "removes_ok": []
+ "moves_ok_note": "The deck, rails, cabin, cockpit and transom pieces are built on sheer_z/half_beam/deck_z, and the keel's root on keel_z, so a hull change moves them; each of those sections re-runs its checks (docs/shape-loop rule 4). This card changes the plan itself, so the deck hardware, rigging ends and interior placed from half_beam move with it ('other': chainplates and shrouds 4-8 cm inboard, stern cleats and backstay plates 31-34 cm, traveller ends 11 cm, keel bolts 7 mm down with the deeper canoe body); score.md lists every move for the review. The rudder and its fittings are not built on the hull curves and must not move.",
+ "removes_ok": [
+  "TravS_1_3",
+  "TravS_-1_3"
+ ],
+ "outline_refs": {
+  "plan": {
+   "tier": "A",
+   "source": "International J/22 Class Rules 2025, H.1 Plan E deck layout (j22.org/wp-content/uploads/2025/04/J22-Class-Rules-2025-1.pdf p.41). Traced as plan.mask.png, bow turned to the left; scaled so stem to transom = LOA 6.858 m, which gives beam 2.445 m (class 2.438), so the drawing is true to scale within 0.3%. Plan F (interior layout, same page) is stretched (L/B 2.89 against the class 2.81) and is not used."
+  },
+  "profile": {
+   "tier": "-",
+   "source": "none yet: the class plans show only the stem and transom corners (Plan A). Commons has broadside photos out of the water (File:J-22 sailboat Jay2PLay on trailer.jpg, CC BY-SA 3.0; File:J22 sailboat on crane 8040.jpg) but upload.wikimedia.org refuses downloads from the cloud (HTTP 429); trace them on BEN-PC. Until then the profile is held by the ORC freeboards and the class LOA."
+  },
+  "stern": {
+   "tier": "-",
+   "source": "none yet; the transom's width at the deck comes from Plan E (1.18 m)"
+  }
+ },
+ "findings": [
+  "Baseline against Plan E: plan IoU 0.860; the deck line was up to 0.34 m a side too wide at the transom and 0.2 m at the forward quarter (rms 150 mm).",
+  "Round 1 kept the old body under the water and narrowed only the topsides: the bow sections had to turn upright just above the waterline (a crease). Bean chose (Nov 10) to narrow the underwater bow too and move the physics hull with it.",
+  "Round 5: the plan is a natural cubic spline fitted to the drawing (5 mm rms, no inflection); canoe depth 0.2072 m floats the physics' 1.052 m^3 (the old hero displaced 3.4% more than the physics: closed). CB moves 8 cm aft of the old physics hull's; the physics trims to it."
+ ],
+ "physics_reference": "physics",
+ "physics_note": "Bean, Nov 10 (decision card): the underwater bow follows the drawing too, so the J/22's physics hull is now the hero's own sections (Tools/boats/j22/make_j22_hull.py writes SailingPhysics' J22HullData.inl), and the check holds the hero to the physics it ships with (BoatExport j22: 1.052 m^3, CB x -0.277 z -0.077) instead of to the old hero.",
+ "removes_ok_note": "the traveller track is shorter across the narrower cockpit, so it has one screw fewer a side"
 }

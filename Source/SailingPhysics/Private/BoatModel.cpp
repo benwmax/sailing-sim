@@ -177,10 +177,34 @@ namespace Sailing
 		return false;
 	}
 
+	namespace
+	{
+#include "J22HullData.inl"
+
+		/** The J/22's hull: the hero model's sections (kJ22Sections), drawn as they are, so the boat that floats is the
+		 *  boat the player sees (docs/shape-loop, Nov 10 2026: the class rules' Plan E). The parameters are the stand-in
+		 *  fit the water's hull clip and BoatExport read: widest 1.223 m a side at x -0.66, 0.61 at the transom. */
+		FHullShape J22Hull()
+		{
+			FHullShape H;
+			for (const FJ22Section& S : kJ22Sections)
+			{
+				FHullShape::FStation St;
+				St.X = S.X; St.Sheer = S.Sheer;
+				St.Y.assign(S.Y, S.Y + kJ22SectionPoints);
+				St.Z.assign(S.Z, S.Z + kJ22SectionPoints);
+				H.StationDepth = std::max(H.StationDepth, -S.Z[0]);
+				H.Stations.push_back(St);
+			}
+			H.MaxHalfBeam = 1.223; H.MaxBeamX = -0.66; H.AftLength = 2.75; H.TransomBeamLoss = 0.61;
+			return H;
+		}
+	}
+
 	FBoatConfig::FBoatConfig()
 	{
 		// J/22: LOA 22 ft 6 in, LWL 19 ft, beam 8 ft, 1,790 lb, 700 lb ballast. One hull, fin keel, transom rudder.
-		Hulls.push_back(FHullShape());
+		Hulls.push_back(J22Hull());
 
 		// Residuary resistance per unit weight against Froude number. Shape follows the Delft series for a
 		// light-displacement keelboat; tuned against the J/22 polar.

@@ -78,6 +78,7 @@ st = hull["stations"]
 if st:
     hull["freeboard_bow"] = st[-2]["sheer_z"]
     hull["freeboard_stern"] = st[0]["sheer_z"]
+    hull["transom_width"] = r(2 * st[0]["half_beam"])     # across the hull 3 cm forward of the transom
 
 physics = {}
 rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), "j22_hero_report.json")

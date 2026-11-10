@@ -80,12 +80,13 @@ python Tools/shapeloop/score.py Tools/shapeloop/cards/j22-hull_shell.json $B <wo
 | Tool | Writes | Check |
 | --- | --- | --- |
 | `measure.py` | `stats.json`: objects with section, triangles, bounds, centre; triangles per section; hull LOA, beam, freeboards and 21 station cuts; the build's canoe volume and CB | size, budget, moved, physics |
-| `fairness.py` | `fairness.json`: 10 waterline and 10 station cuts of the hull, resampled every 2 cm; inflections (sign changes of the 30 cm curvature) and kinks (bumps against the 50 cm average) per line; the ends and the transom face are left out | fairness (no line may get worse or go missing) |
+| `fairness.py` | `fairness.json`: 10 waterline and 10 station cuts of the hull, resampled every 2 cm; inflections (sign changes of the 30 cm curvature) and kinks (peaks and dips of the 10 cm curvature standing out by 0.5 rad/m; `kinks_firm` at 0.7) per line; the ends and the transom face are left out | fairness (no line may gain inflections or firm kinks over the baseline's kinks, or go missing) |
 | `seams.py` | `seams.json`: per join, the first part's surface sampled every 1 cm within 2 cm of the second; in 5 cm bins the closest approach (a sample more than 1 mm inside the second part counts as touching); bins 0.5-20 mm apart are open | seams (no join may lose contact, open a bin that touched (now over 3 mm) or get a gap 0.5 mm wider) |
 | `render_set.py` | silhouettes (profile, plan, bow, stern; bow on the left; `sil_scale.json` gives metres per pixel), clay renders (those plus 3/4, bow and stern 3/4, helm eye), zebra stripes | outline, fairness by eye, blind A/B, sheet |
 | `score.py` | `score.json`, `score.md` (goes in the PR) | all of the above; exits 1 on a hard fail |
 
-Hard checks: fairness, seams, physics (canoe volume within 1% and CB within 2 cm of the baseline) and moved (nothing
+Hard checks: fairness, seams, physics (canoe volume within 1% and CB within 2 cm of the baseline; a card with
+`"physics_reference": "physics"` holds the round to the physics it ships with instead) and moved (nothing
 outside the card's sections moves, appears or goes unless the card lists it; the hull card lists the sections built
 on its curves). A missing tool output (a crash, a renamed hull) is a hard fail, never a silent pass. Outline masks
 traced from a drawing go in the refs folder with `<view>.mask.json` giving the drawing's metres per pixel, so a boat
@@ -107,7 +108,7 @@ Main at `46d23774` (Nov 10 2026), built in the cloud with pip bpy 5.2:
 | Hull LOA, beam | 6.860 m, 2.448 m (class 6.858, 2.438) |
 | Freeboard at bow, stern | 0.782 m, 0.569 m (ORC 0.774 at its point, 0.568) |
 | Canoe body volume, CB | 1.088 m³ at (-0.226, -0.074); the physics floats 1.052 m³ at (-0.195, -0.080): the hero already displaces 3.4% more than the physics. The physics check holds every round to this baseline so the loop never widens the gap; closing it is a physics calibration job (frozen), not a shape PR. |
-| Fairness | 19 lines, 0 inflections, 22 kinks (19 on the four lowest waterlines near the keel root and bow, 3 on stations) |
+| Fairness | 19 lines, 0 inflections, 22 kinks (19 on the four lowest waterlines near the keel root and bow, 3 on stations); 29 by the wave 1 count (curvature peaks and dips) |
 
 Tests run on copies of the baseline (QA review, Nov 10):
 
@@ -129,3 +130,16 @@ The fleet build (`Tools/blender/build_fleet.py`) joins each boat into one hull m
 section split by object name doesn't apply to it yet. Wave 5 adds an option to save the pre-join scene as a .blend
 (no change to the fbx), then a `sections_sunfish.json` (hull and deck, cockpit well, board and trunk, rudder, small
 fittings). The Sunfish's underwater hull is the physics hull exactly, so its physics check is exact.
+
+## Wave 1 changes to the tools (Nov 10)
+
+- Fairness counts peaks and dips of the curvature instead of departures from its 50 cm average: making a bend tighter on
+  purpose (the bilge when the plan narrows) no longer reads as a kink, a bump still does. Rechecked on the baseline
+  copies: subdivided hull 29 → 29; the 12 mm bump fails (waterline 5 gains 2 firm kinks). A round is judged on firm
+  kinks (0.7 rad/m) against the baseline's at 0.5, so a wiggle at the threshold doesn't flip a line either way.
+- Seams skip bins past the second part's end along the join (the deck ahead of the cabin's nose measured the way to its
+  face, not a gap). Hull|Deck is replaced by Joint_|Deck: the deck's top sits 0.4 mm over the hull's rim, so Hull|Deck
+  read 47 of 138 bins open on the baseline and flickered with any change; the joint overlaps both and is the seam.
+- The J/22's physics hull is now the hero's own sections (`Tools/boats/j22/make_j22_hull.py` writes
+  `Source/SailingPhysics/Private/J22HullData.inl`), so the hull card checks the hero against the physics it ships with.
+  Rerun the script whenever `keel_z`, `sheer_z`, `half_beam`, `section` or `CANOE_D` change.
