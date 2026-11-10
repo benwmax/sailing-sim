@@ -1,0 +1,12 @@
+Main-compare for #615: clean detached main 425f2c0f (MSVC build OK), the #615 run's profile, transom-stbd and
+chainplate-port stills at High with the same arguments:
+  run-game.ps1 -Seconds 8 -ResX 1920 -ResY 1080 -NoDemo, GameArgs "-SailingQuality=High -SailingBoat=J22 -SailingWorld=Lake
+  -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingHour=15 -SailingWind=3 -SailingNoHud -SailingSailsDown
+  -SailingShowCrew=0" plus the view's -SailingCamTarget/-SailingCamYaw/-SailingCamPitch/-SailingCamDist.
+compare-main-vs-615.jpg: main left, #615 right.
+
+1. Rudder blade mostly above water / stern high: PRESENT ON MAIN (same look; not new with #615).
+2. Red and green lines trailing off the bow over the port side into the water: PRESENT ON MAIN (not new with #615).
+3. Sails-down ignored: PRESENT ON MAIN. It is the argument, not a regression: SailboatPawn.cpp strikes the sails only when
+   the boat has mooring lines ("-SailingSailsDown with -SailingMooring", bSailsDown = !bTrafficBoat &&
+   !Boat.GetMooringLines().empty() && SailsDownArg), and these runs were free-floating with no -SailingMooring.
