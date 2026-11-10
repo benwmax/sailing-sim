@@ -100,6 +100,7 @@ void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const F
 {
 	Time += Dt;
 	const int32 Last = (NextSample + SampleCount - 1) % SampleCount;
+	if (Samples > 0 && FVector2D::Distance(Position, SamplePosition[Last]) > JumpMeters) Samples = NextSample = 0;   // reset
 	if (Samples == 0 || Time - SampleTime[Last] >= NetSeconds / (SampleCount - 1))
 	{
 		SamplePosition[NextSample] = Position;
@@ -110,23 +111,29 @@ void FDrillContacts::Update(bool bCollision, bool bTiedUp, double Knots, const F
 	const int32 Oldest = Samples < SampleCount ? 0 : NextSample;
 	const double Span = Time - SampleTime[Oldest];
 	LastNetKnots = Span >= 0.5 ? FVector2D::Distance(Position, SamplePosition[Oldest]) / Span / Sailing::kKnot : Knots;
+	// A new touch begins with contact after RejoinSeconds clear (then it may be fresh); until then it is the same touch.
+	const bool bNewTouch = bCollision && Clear >= RejoinSeconds;
+	if (bNewTouch) { bCounted = false; bFresh = true; TouchAge = 0.0; }
+	else if (bCollision) TouchAge += Dt;
 	Clear = bCollision ? 0.0 : Clear + Dt;
-	if (Clear >= RejoinSeconds) bCounted = false;   // clear long enough: the next contact is a new touch
 	if (bTiedUp)
 	{
 		CastOffAt = Position;
 		bGraceOver = false;
 		bCounted = false;
+		bFresh = false;   // a touch begun tied up is never fresh
 		return;
 	}
-	if (!bGraceOver && FVector2D::Distance(Position, CastOffAt) > GraceMeters) bGraceOver = true;
+	if (!bGraceOver && (FVector2D::Distance(Position, CastOffAt) > GraceMeters || Clear >= GraceClearSeconds)) bGraceOver = true;
 	if (!bGraceOver || !bCollision) return;
-	if (!bCounted && LastNetKnots >= TouchKnots)
+	if (!bCounted && (LastNetKnots >= TouchKnots || (bFresh && TouchAge <= OnsetSeconds && Knots >= RamKnots)))
 	{
 		++Collisions;
 		bCounted = true;
+		CountedAge = 0.0;
 	}
-	if (bCounted) MaxKnots = FMath::Max(MaxKnots, Knots);
+	else if (bCounted) CountedAge += Dt;
+	if (bCounted && CountedAge <= OnsetSeconds) MaxKnots = FMath::Max(MaxKnots, Knots);
 }
 
 void FDrillRunner::Finish(const FString& InOutcome)

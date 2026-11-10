@@ -841,6 +841,28 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		Run(Away, 30, 0.8, false, [](int32) { return true; });
 		TestEqual(TEXT("Off the dock: a 1.5 kn touch, then another after 2 s clear: two"), Away.C.Collisions, 2);
 		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Away.C.MaxKnots), FMath::IsNearlyEqual(Away.C.MaxKnots, 1.5, 0.05));
+		FMover Ram;   // reversed off, then driven into the dock at 1.5 kn: net over 2 s near zero, the hull's speed counts it
+		Run(Ram, 1, 0.0, true, [](int32) { return false; });
+		Run(Ram, 180, 1.0, false, [](int32) { return false; });     // off the dock, past the grace
+		Run(Ram, 120, 0.0, false, [](int32) { return false; });     // stopped
+		Run(Ram, 60, -1.0, false, [](int32) { return false; });
+		Run(Ram, 50, 1.5, false, [](int32) { return false; });
+		TestTrue(FString::Printf(TEXT("Ram: the net over 2 s is low (%.2f kn)"), Ram.C.NetKnots()), Ram.C.NetKnots() < FDrillContacts::TouchKnots);
+		Run(Ram, 20, 1.5, false, [](int32) { return true; });
+		TestEqual(TEXT("Reversed, then rammed at 1.5 kn: one touch"), Ram.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... the hardest 1.5 (%.2f)"), Ram.C.MaxKnots), FMath::IsNearlyEqual(Ram.C.MaxKnots, 1.5, 0.05));
+		FMover Head;   // cast off and driven ahead into the slip's head: within 1.5 m, but clear 2 s first: the grace is over
+		Run(Head, 1, 0.0, true, [](int32) { return true; });
+		Run(Head, 120, 0.3, false, [](int32) { return false; });
+		TestTrue(TEXT("Clear 2 s after cast-off: the grace is over"), Head.C.IsGraceOver());
+		Run(Head, 20, 1.2, false, [](int32) { return true; });
+		TestEqual(TEXT("... and driving into the slip's head at 1.2 kn counts"), Head.C.Collisions, 1);
+		FMover Lying;   // a counted touch, then lying alongside with the hull speed spiking: the hardest is the onset's
+		Run(Lying, 120, 1.0, false, [](int32) { return false; });
+		Run(Lying, 20, 0.8, false, [](int32) { return true; });
+		for (int32 I = 0; I < 300; ++I) { Lying.C.Update(true, false, I >= 30 && I % 10 == 0 ? 2.4 : 0.1, Lying.P, Dt); }
+		TestEqual(TEXT("Lying alongside after a touch: still one"), Lying.C.Collisions, 1);
+		TestTrue(FString::Printf(TEXT("... the hardest is the onset's 0.8, not the spikes (%.2f)"), Lying.C.MaxKnots), FMath::IsNearlyEqual(Lying.C.MaxKnots, 0.8, 0.05));
 		FMover Underway;   // a drill that starts under way (no cast-off): the first touch counts
 		Run(Underway, 60, 0.6, false, [](int32 I) { return I >= 40; });
 		TestEqual(TEXT("Under way from the start: a touch counts at once"), Underway.C.Collisions, 1);
@@ -900,8 +922,8 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 				LooseFrames += Boat.GetTelemetry().bCollision;
 				if (Boat.GetTelemetry().bCollision) LooseMaxKn = FMath::Max(LooseMaxKn, Contacts.NetKnots());
 			}
-			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 30 s cast off and luffing (net over 2 s at most %.2f kn), %d counted, %.1f m from the berth"),
-				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, LooseMaxKn, Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
+			AddInfo(FString::Printf(TEXT("Wind from %.0f: Sunfish berth (%.1f, %.1f), hull %.2f m clear of the dock, %d lines, %d contact frames in a minute tied up, %d in 30 s cast off and luffing (net over 2 s at most %.2f kn), grace %s, %d counted, %.1f m from the berth"),
+				WindDeg, Berth.X, Berth.Y, Clear, Lines, RawFrames, LooseFrames, LooseMaxKn, Contacts.IsGraceOver() ? TEXT("over") : TEXT("still on"), Contacts.Collisions, FVector2D::Distance(FVector2D(Boat.OriginPosition().X, Boat.OriginPosition().Y), Berth)));
 			TestTrue(TEXT("The berth puts the hull outside the dock"), Clear >= 0.0);
 			TestTrue(TEXT("Her lines reach the dock"), Lines >= 2);
 			TestTrue(TEXT("She does lie against the dock tied up (the case being tested)"), RawFrames > 0);

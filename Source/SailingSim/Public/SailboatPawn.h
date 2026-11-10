@@ -399,6 +399,7 @@ private:
 	// Career 1: what the boat counted during the drill (contacts begun, rules penalties) and its graded result.
 	int32 DrillCollisions = 0, DrillInfractions = 0;
 	bool bDrillGraded = false;
+	double LastContactClock = 0.0;   // the boat clock at DrillContacts' last update
 	FDrillContacts DrillContacts;   // #604: touches counted off the dock (DrillCollisions and MaxContactKnots mirror it)
 	bool bCrewActionPressed = false;   // Prologue step 1: the crew-action button since the scene last stepped
 	// Prologue step 2: the player's crew station and the rest of the crew (docs/prologue/README.md). Active only while a

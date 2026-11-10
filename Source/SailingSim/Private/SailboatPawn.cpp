@@ -1331,7 +1331,11 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	// (#604: touches while tied up, the boat working against her own dock, and just cast off are not counted or graded)
 	{
 		const Vec3 Here = Boat.OriginPosition();
-		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y), DeltaSeconds);
+		// (on the boat's clock: the physics time that passed, not the frame's)
+		const double Now = Boat.GetState().Time;
+		const double ContactDt = FMath::Clamp(Now - LastContactClock, 0.0, 1.0);
+		LastContactClock = Now;
+		DrillContacts.Update(Tel.bCollision, IsTiedUp(), Tel.BoatSpeed / kKnot, FVector2D(Here.X, Here.Y), ContactDt);
 		DrillCollisions = DrillContacts.Collisions;
 		MaxContactKnots = DrillContacts.MaxKnots;
 	}

@@ -662,9 +662,10 @@ bool FSailingSliceFirstHourTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s at silver or better"), *L.Id), A.Medal >= ECareerMedal::Silver);
 		if (L.Drill == ESailingDrill::LeaveTheDock)
 		{
-			// #604: backing out she rubs the finger once (counted: past the cast-off grace, under 1 kn), and that keeps
-			// the departure clean.
-			TestEqual(TEXT("Leaving the slip: one touch counted"), Run.Collisions, 1);
+			// #604: backing out she rubs the finger twice, 3 s apart (counted: clear 1.5 s after the lines came off, the
+			// grace is over; 0.4 and 0.5 kn, under the 1 kn that costs it), and the departure stays clean.
+			TestEqual(TEXT("Leaving the slip: two touches counted"), Run.Collisions, 2);
+			TestTrue(FString::Printf(TEXT("... both gentle (hardest %.1f kn)"), Run.MaxContactKn), Run.MaxContactKn < 1.0);
 			TestEqual(TEXT("... and still a clean departure"), Run.Drill.GetOutcome(), FString(TEXT("clean")));
 		}
 		FRandomStream Rng(5);
