@@ -7,6 +7,7 @@
 // wind (its material's world position offset; the rig points on it follow the same curve), the traveler car moves
 // with the trim, and the hull's wet line and the deck's wetness come from the waves, spray and rain (MPC_Boat).
 #include "SailboatPawn.h"
+#include "Misc/PackageName.h"
 #include "CourseMarks.h"
 #include "SailingFrame.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -255,6 +256,8 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 		{
 			Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/J22Hero/SM_J22H_%s.SM_J22H_%s"), Part, Part)));
 		}
+		// #618: its stowed tiller extension, once the hero has it as a part of its own.
+		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt"))) Paths.Add(FSoftObjectPath(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt")));
 		return Paths;
 	}
 	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
@@ -264,6 +267,9 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 	{
 		Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
 	}
+	// #618: a stowed tiller extension of its own (the Sunfish's), where the class has one.
+	const FString Ext = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt"), Tag, Tag);
+	if (FPackageName::DoesPackageExist(Ext)) Paths.Add(FSoftObjectPath(Ext + FString::Printf(TEXT(".SM_%s_TillerExt"), Tag)));
 	return Paths;
 }
 
@@ -287,6 +293,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Interior.SM_J22H_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
 		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		// #618: the stowed tiller extension as a part of its own (optional: until the hero is split it is baked into the rudder).
+		M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		M.bOwnOutboard = true; // on its bracket on the port quarter (build_j22_hero.py)
 		M.bTravelerBridge = false; // its traveler track lies on the cockpit sole
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
@@ -314,6 +322,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	M.Boom = Load(TEXT("Boom"));
 	M.Rudder = Load(TEXT("Rudder"));
 	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) return FBoatModelMeshes();
+	// #618: the stowed tiller extension, a part of its own where the class has one (build_fleet.py: the Sunfish).
+	M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt.SM_%s_TillerExt"), Tag, Tag, Tag), nullptr, LOAD_NoWarn | LOAD_Quiet));
 	if (Type == EBoatType::Maxi)
 	{
 		M.bOwnOutboard = true;
@@ -435,6 +445,12 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		if (K > 0 && Model.bMirrorTwinRudder) Blade->SetRelativeScale3D(FVector(1.f, -1.f, 1.f)); // canted outboard each side
 		if (K == 0) ModelRudder = Blade;
 		AgeDevPart(Blade);
+		// #618: the stowed tiller extension, built about the same stock, turns with the (first) blade.
+		if (K == 0 && Model.TillerExt)
+		{
+			ModelTillerExt = AddModelPart(Model.TillerExt, Pivot, FVector::ZeroVector);
+			AgeDevPart(ModelTillerExt);
+		}
 	}
 	AgeDevPart(ModelMast);
 	AgeDevPart(ModelBoom);
@@ -674,7 +690,10 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const TOptional<FVector> Hand = !bCrewShownApplied || bCockpit ? TOptional<FVector>()
 			: HelmGripCm ? HelmGripCm : (NumCrew >= 1 ? HandNear(NumCrew - 1, End) : TOptional<FVector>());
 		FVector Hinge, Grip;
-		if (Hand && FVector::Dist(*Hand, End) < 140.f)
+		const bool bHeld = Hand && FVector::Dist(*Hand, End) < 140.f;
+		// #618: the model's own stowed extension shows only while nobody holds the live one (it had shown as a second).
+		if (ModelTillerExt && ModelTillerExt->IsVisible() == bHeld) ModelTillerExt->SetVisibility(!bHeld);
+		if (bHeld)
 		{
 			Hinge = End + FVector(0.f, 0.f, 4.5f);
 			Grip = *Hand;
@@ -1698,11 +1717,18 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 	}
 }
 
+bool ASailboatPawn::IsModelTillerExtShown() const
+{
+	return ModelTillerExt && ModelTillerExt->IsVisible();
+}
+
 bool ASailboatPawn::BakesStowedExtension() const
 {
 	// The hero J/22 (j22_steering.py: TillerExtUJ, TillerExtTip) and the Sunfish (build_fleet.py: pc/sunfish-hero) model the
 	// extension folded back along the tiller; the ILCA, Catalina 22 and Corsair don't (Boats & models 9).
-	return (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtTip"))) || Boat.GetConfig().Type == EBoatType::Sunfish;
+	// #618: as a part of its own (ModelTillerExt), hidden while the live one is held; the hero's is still in its rudder mesh
+	// (TillerExtTip), shown with the held one too until the PC splits it out as SM_J22H_TillerExt.
+	return ModelTillerExt || (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtTip"))) || Boat.GetConfig().Type == EBoatType::Sunfish;
 }
 
 void ASailboatPawn::StowedExtensionCm(const FVector& End, FVector& OutHinge, FVector& OutTip) const

@@ -405,6 +405,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	Crew.Reset();
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
+	ModelTillerExt = nullptr;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();

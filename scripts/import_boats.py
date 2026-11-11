@@ -89,6 +89,13 @@ def import_boat(tag, dest, lods=False, berthed=True):
         setup(mesh, nanite, {"Aluminium": "MastAluminium"} if name.endswith("Mast") else {}, sockets)
         b = mesh.get_bounding_box()
         unreal.log(f"Imported {name}: {len(sockets)} sockets, Nanite {nanite}, bounds {b.min} .. {b.max}")
+    # #618: a stowed tiller extension of its own (the Sunfish's: build_fleet.py), shown by the game only while stowed. Only
+    # when this build made one (its origin in the sockets json), never from a stale FBX left in Artifacts/models.
+    ext = f"SM_{tag}_TillerExt"
+    if ext in meta["origins"]:
+        mesh = import_fbx(os.path.join(MODELS, ext + ".fbx"), dest, ext)
+        setup(mesh, True, {}, {})
+        unreal.log(f"Imported {ext}")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
     if berthed:
         import_berthed(tag, dest)

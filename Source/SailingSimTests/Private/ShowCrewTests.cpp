@@ -101,6 +101,20 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 	Boat->SetBoat(int32(Sailing::EBoatType::Sunfish));
 	W.Tick(60);
 	Check(TEXT("Sunfish, crew hidden"), true);
+	// #618: the Sunfish's stowed extension is a part of its own (SM_Sunfish_TillerExt): shown while stowed, hidden while the
+	// helm holds the live one (they had shown both).
+	if (TestNotNull(TEXT("Sunfish: the stowed extension is its own part"), Boat->GetModelTillerExt()))
+	{
+		TestTrue(TEXT("Sunfish, crew hidden: the stowed extension shows"), Boat->IsModelTillerExtShown());
+		USailingSettings::Get()->bShowCrew = true;
+		W.Tick(30);
+		Check(TEXT("Sunfish, crew shown"), false);
+		TestFalse(TEXT("Sunfish, crew shown: the stowed one is hidden while the helm holds the live one"), Boat->IsModelTillerExtShown());
+		USailingSettings::Get()->bShowCrew = false;
+		W.Tick(30);
+		Check(TEXT("Sunfish, crew hidden again"), true);
+		TestTrue(TEXT("Sunfish, crew hidden again: the stowed one shows"), Boat->IsModelTillerExtShown());
+	}
 	return true;
 }
 
