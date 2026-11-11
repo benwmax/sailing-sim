@@ -1008,6 +1008,9 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			G[EKitLook::Floats].Span(A + O, B + O, 0.06f, Top - 0.16f, Top - 0.02f);
 		}
 	};
+	// Where a gangway lands on a walkway, the walkway's rails leave an opening on that side (Fixed, below).
+	struct FRailGap { const FMarinaLine* Line; FVector2D At, Out; double Half; };
+	TArray<FRailGap> RailGaps;
 	// Dock rows: floating deck on black floats, pilings every 9 m alternating sides, finger piers, cleats, boxes, power.
 	for (int32 RI = 0; RI < Marina.Rows.Num(); ++RI)
 	{
@@ -1054,6 +1057,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			const float Len = float(Run.Size()), Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Run.Y, Run.X)));
 			const float Pitch = float(FMath::RadiansToDegrees(FMath::Atan2(Z1 - Z0, Len)));
 			const float HW = FMath::Min(0.6f, 0.45f * R.Width);
+			RailGaps.Add({ Shore, Q, Out, double(HW) + 0.15 });
 			// A box turned by pitch and yaw (FKitSection::Box's faces with a pitch): C its centre, E its half extents.
 			auto Pitched = [&](EKitLook Look, const FVector& C, const FVector& E)
 			{
@@ -1229,26 +1233,55 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				const FVector2D C = A + Dir * X;
 				G[EKitLook::Pilings].Span(C - Left * (0.5 * L.Width), C + Left * (0.5 * L.Width), 0.2f, L.Height - 0.42f, L.Height - 0.15f);
 			}
+			// The rails' runs on each side: the whole length, less an opening where a gangway lands on that side (#405).
+			auto Runs = [&](double Side)
+			{
+				TArray<TPair<double, double>> Out2 = { { 0.0, double(Len) } };
+				for (const FRailGap& Gp : RailGaps)
+				{
+					if (Gp.Line != &L || FVector2D::DotProduct(Gp.Out, Left) * Side <= 0.0) continue;
+					const double T = FVector2D::DotProduct(Gp.At - A, Dir), G0 = T - Gp.Half, G1 = T + Gp.Half;
+					TArray<TPair<double, double>> Cut;
+					for (const TPair<double, double>& Rn : Out2)
+					{
+						if (G1 <= Rn.Key || G0 >= Rn.Value) { Cut.Add(Rn); continue; }
+						if (G0 > Rn.Key) Cut.Add({ Rn.Key, G0 });
+						if (G1 < Rn.Value) Cut.Add({ G1, Rn.Value });
+					}
+					Out2 = MoveTemp(Cut);
+				}
+				return Out2;
+			};
 			// The stringers along both edges under the deck, and the rails' middle course.
 			for (const double Side : { -1.0, 1.0 })
 			{
 				const FVector2D O = Left * (Side * (0.5 * L.Width - 0.04));
 				G[EKitLook::Pilings].Span(A + O, B + O, 0.08f, L.Height - 0.38f, L.Height - 0.15f);
 				const FVector2D R = Left * (Side * (0.5 * L.Width - 0.05));
-				G[EKitLook::Trim].Span(A + R, B + R, 0.05f, L.Height + 0.48f, L.Height + 0.54f);
+				for (const TPair<double, double>& Rn : Runs(Side))
+					G[EKitLook::Trim].Span(A + Dir * Rn.Key + R, A + Dir * Rn.Value + R, 0.05f, L.Height + 0.48f, L.Height + 0.54f);
 			}
-			// Hand rails along fixed piers, on posts every 2 m.
-			for (float X = 0.f; X <= Len; X += 2.f)
+			// Hand rails along fixed piers, on posts every 2 m, and a post at each side of an opening.
+			for (const double Side : { -1.0, 1.0 })
 			{
-				for (const double Side : { -1.0, 1.0 })
+				const TArray<TPair<double, double>> RunsHere = Runs(Side);
+				auto Post = [&](double X)
 				{
 					const FVector2D P = A + Dir * X + Left * (Side * (0.5 * L.Width - 0.05));
 					G[EKitLook::Trim].Box(FVector(P.X, P.Y, L.Height + 0.5f), FVector(0.04f, 0.04f, 0.5f), 0.f);
+				};
+				for (float X = 0.f; X <= Len; X += 2.f)
+				{
+					bool bIn = false;
+					for (const TPair<double, double>& Rn : RunsHere) bIn |= X >= Rn.Key - 1e-3 && X <= Rn.Value + 1e-3;
+					if (bIn) Post(X);
 				}
-			}
-			for (const double Side : { -1.0, 1.0 })
-			{
-				G[EKitLook::Trim].Span(A + Left * (Side * (0.5 * L.Width - 0.05)), B + Left * (Side * (0.5 * L.Width - 0.05)), 0.08f, L.Height + 0.95f, L.Height + 1.05f);
+				for (const TPair<double, double>& Rn : RunsHere)
+				{
+					if (Rn.Key > 1e-3) Post(Rn.Key);
+					if (Rn.Value < Len - 1e-3) Post(Rn.Value);
+					G[EKitLook::Trim].Span(A + Dir * Rn.Key + Left * (Side * (0.5 * L.Width - 0.05)), A + Dir * Rn.Value + Left * (Side * (0.5 * L.Width - 0.05)), 0.08f, L.Height + 0.95f, L.Height + 1.05f);
+				}
 			}
 		}
 	};
