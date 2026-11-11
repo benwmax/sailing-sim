@@ -16,6 +16,9 @@
 #include "AssetCompilingManager.h"
 #include "DistanceFieldAtlas.h"
 #include "MeshCardBuild.h"
+#include "Misc/SecureHash.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #endif
 
 namespace
@@ -709,6 +712,69 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
 	return Out;
 }
 
+#if WITH_EDITOR
+// docs/bake-hash-skip: what a baked tile is made of, hashed so a bake can tell an unchanged tile from a changed one. SHA-1
+// over each look's name and its vertices (positions to 0.1 mm, normals, tangents and UVs to 1e-4, colours as bytes) and
+// triangles, quantised so the Mac's and the PC's floating point agree. Bump TileHashVersion when BakeMesh builds a mesh
+// differently from the same geometry (build settings, attributes, materials), so every tile is baked again once.
+static constexpr int32 TileHashVersion = 1;
+
+static FString TileGeometryHash(const FKitGeometry& G)
+{
+	FSHA1 Sha;
+	auto Int = [&Sha](int64 V) { Sha.Update(reinterpret_cast<const uint8*>(&V), sizeof(V)); };
+	auto Q = [&Int](double V, double Step) { Int(FMath::RoundToInt64(V / Step)); };
+	Int(TileHashVersion);
+	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
+	{
+		const FKitSection& S = G.Sections[K];
+		if (S.V.Num() == 0) continue;
+		const FTCHARToUTF8 Name(KitLook(EKitLook(K)).Name);
+		Sha.Update(reinterpret_cast<const uint8*>(Name.Get()), Name.Length());
+		Int(S.V.Num());
+		Int(S.T.Num());
+		for (int32 I = 0; I < S.V.Num(); ++I)
+		{
+			for (int32 A = 0; A < 3; ++A) Q(S.V[I][A], 0.01);   // cm: 0.1 mm
+			for (int32 A = 0; A < 3; ++A) Q(S.N[I][A], 1e-4);
+			for (int32 A = 0; A < 3; ++A) Q(S.Tan[I].TangentX[A], 1e-4);
+			Q(S.UV[I].X, 1e-4); Q(S.UV[I].Y, 1e-4);
+			Q(S.UV1[I].X, 1e-4); Q(S.UV1[I].Y, 1e-4);
+			Int(int64(S.Col[I].DWColor()));
+		}
+		for (const int32 Ix : S.T) Int(Ix);
+	}
+	Sha.Final();
+	uint8 Digest[FSHA1::DigestSize];
+	Sha.GetHash(Digest);
+	return BytesToHex(Digest, FSHA1::DigestSize).ToLower();
+}
+
+// The sidecar: "version <n>" then one "<tile> <hash>" line per tile, sorted, LF endings (.gitattributes keeps them).
+static TMap<FString, FString> ReadTileHashes(const FString& File)
+{
+	TMap<FString, FString> Out;
+	TArray<FString> Lines;
+	if (!FFileHelper::LoadFileToStringArray(Lines, *File) || Lines.Num() == 0 || Lines[0] != FString::Printf(TEXT("version %d"), TileHashVersion)) return Out;
+	for (int32 I = 1; I < Lines.Num(); ++I)
+	{
+		FString Name, Hash;
+		if (Lines[I].Split(TEXT(" "), &Name, &Hash)) Out.Add(Name, Hash);
+	}
+	return Out;
+}
+
+static void WriteTileHashes(const FString& File, TMap<FString, FString> Hashes)
+{
+	Hashes.KeySort([](const FString& A, const FString& B) { return A < B; });
+	FString Text = FString::Printf(TEXT("version %d\n"), TileHashVersion);
+	for (const auto& KV : Hashes) Text += KV.Key + TEXT(" ") + KV.Value + TEXT("\n");
+	FString Old;
+	if (FFileHelper::LoadFileToString(Old, *File) && Old == Text) return;
+	FFileHelper::SaveStringToFile(Text, *File, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+#endif
+
 TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 {
 	TArray<UStaticMesh*> Out;
@@ -719,11 +785,26 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 	AMarinaActor::BuildGeometry(Lake.Marina, &Lake.Terrain, [](const FString&) { return true; }, All, AMarinaActor::HasDockKit());
 	TMap<FIntPoint, FKitGeometry> Tiles;
 	All.SplitTiles(TileM, Tiles);
+	// docs/bake-hash-skip: a tile whose geometry hashes as the sidecar says, and whose asset exists, is returned as loaded
+	// (not dirty: the callers save only dirty packages), so an unchanged tile isn't re-saved with a new LFS object.
+	const FString Sidecar = FPaths::ProjectContentDir() / TEXT("World/Baked/Marina.tilehash");
+	const TMap<FString, FString> Before = ReadTileHashes(Sidecar);
+	TMap<FString, FString> After;
+	int32 Skipped = 0;
 	for (const auto& KV : Tiles)
 	{
-		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key))) Out.Add(M);
+		const FString Name = FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key);
+		const FString Path = TEXT("/Game/World/Baked/") + Name;
+		const FString Hash = TileGeometryHash(KV.Value);
+		After.Add(Name, Hash);
+		const FString* Was = Before.Find(Name);
+		UStaticMesh* Kept = Was && *Was == Hash && FPackageName::DoesPackageExist(Path)
+			? LoadObject<UStaticMesh>(nullptr, *(Path + TEXT(".") + Name)) : nullptr;
+		if (Kept) { Out.Add(Kept); ++Skipped; continue; }
+		if (UStaticMesh* M = BakeMesh(KV.Value, Path)) Out.Add(M);
 	}
-	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
+	WriteTileHashes(Sidecar, After);
+	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles (%d unchanged, kept as saved)"), *LakeName, All.NumQuads(), Out.Num(), Skipped);
 #endif
 	return Out;
 }
