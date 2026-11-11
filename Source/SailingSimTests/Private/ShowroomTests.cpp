@@ -200,6 +200,49 @@ bool FSailingShowroomLiveTest::RunTest(const FString&)
 }
 
 
+// #623 follow-up: backing out of Change conditions puts the weather back as it was. In a thunderstorm 30 s in, a previewed
+// change starts a new timeline (as before); EndPreview(false) restores the inputs and keeps the weather's clock, so the
+// storm front is as far off as it was and the weather time runs on from where it stood.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingConditionsKeepTimeTest, "SailingSim.Smoke.ConditionsKeepTime", ShowroomFlags)
+bool FSailingConditionsKeepTimeTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const ESailingWeather WasPreset = S->WeatherPreset;
+	const float WasHour = S->StartHour;
+	FBareWorld W;
+	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
+	auto Frames = [&](int32 N) { for (int32 I = 0; I < N; ++I) { ++GFrameCounter; GM->AdvanceClock(1.f / 60.f); } };
+	FSailConditions Storm;
+	Storm.Sky = ESailSky::Storms;
+	Storm.WindKn = 10.f;
+	Storm.GustKn = 14.f;
+	Storm.LocalHour = 15.f;
+	GM->ApplyConditions(Storm);
+	TestEqual(TEXT("A thunderstorm"), int32(S->WeatherPreset), USailSessionSubsystem::WeatherPresetFor(ESailSky::Storms));
+	Frames(30 * 60);
+	const double Tw = GM->GetWeatherTime();
+	const double Km = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
+	TestTrue(FString::Printf(TEXT("30 s of weather (%.2f s)"), Tw), FMath::Abs(Tw - 30.0) < 0.1);
+	FSailConditions Fair = Storm;
+	Fair.Sky = ESailSky::Fair;
+	Fair.WindKn = 8.f;
+	Fair.GustKn = 11.f;
+	GM->PreviewConditions(Fair);
+	TestTrue(TEXT("Previewing"), GM->IsPreviewing());
+	TestTrue(FString::Printf(TEXT("A previewed change starts the weather over (%.2f s)"), GM->GetWeatherTime()), GM->GetWeatherTime() < 0.1);
+	Frames(2 * 60);
+	GM->EndPreview(false);
+	TestEqual(TEXT("Put back: the thunderstorm"), int32(S->WeatherPreset), USailSessionSubsystem::WeatherPresetFor(ESailSky::Storms));
+	TestEqual(TEXT("Put back: the weather time runs on from where it stood"), GM->GetWeatherTime(), Tw + 2.0, 1.0 / 30.0);
+	const double KmAfter = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
+	TestEqual(FString::Printf(TEXT("Put back: the front where it was (%.3f km)"), Km), KmAfter, Km, 1e-6);
+	AddInfo(FString::Printf(TEXT("Front %.3f km off at %.1f s; after the preview and Back, %.1f s of weather"), Km, Tw, GM->GetWeatherTime()));
+	S->WeatherPreset = WasPreset;
+	S->StartHour = WasHour;
+	return true;
+}
+
 // docs/showroom-world/: the picked world loads behind the menus. Leaving the World screen for Launch with another world
 // travels (not in game, not for the world already loaded); the session carries the choices and the screen to come back to,
 // and the settings' world and spot are the picked ones (nothing saved).
