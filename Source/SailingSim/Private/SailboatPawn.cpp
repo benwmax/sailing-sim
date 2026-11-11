@@ -3084,7 +3084,7 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	PrevJibSheet = Controls.JibSheet;
 	P.Volume = USailingSettings::Get()->Volume;
 	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice.
-	if (!bTrafficBoat) SailingSound::UpdateMix();
+	if (!bTrafficBoat) { SailingSound::UpdateMix(); SailingSound::TickAudioRecording(this); }
 	P.GainBoat = SailingSound::GroupShare(SailingSound::EGroup::Boat);
 	P.GainWeather = SailingSound::GroupShare(SailingSound::EGroup::Weather);
 	P.GainSignals = SailingSound::GroupShare(SailingSound::EGroup::Signals);

@@ -8,7 +8,11 @@
 #include "SailingEnvironment.h"
 #include "SailingFrame.h"
 #include "BenchRunner.h"
+#include "SailingSim.h"
 #include "Engine/World.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+#include "Misc/Parse.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "AudioMixerBlueprintLibrary.h"
@@ -98,6 +102,41 @@ FVector SailingSound::AroundListener(const FVector& ListenerCm, double DirNorth,
 	FVector2D D(DirNorth, DirEast);
 	if (!D.Normalize()) D = FVector2D(1.0, 0.0);
 	return ListenerCm + FVector(D.X, D.Y, 0.0) * DistanceM * 100.0 + FVector(0.0, 0.0, UpM * 100.0);
+}
+
+void SailingSound::TickAudioRecording(UObject* WorldContext)
+{
+	// Read once per command line (a bench list swaps it); one recording per run of the switch.
+	static uint32 Gen = MAX_uint32;
+	static float Seconds = 0.f, Warmup = 3.f;
+	static int32 State = 0;   // 0 waiting, 1 recording, 2 written
+	static double StartedAt = 0.0;
+	static FString Shot;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Seconds = 0.f; Warmup = 3.f; State = 0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecordAudio="), Seconds);
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingBenchWarmup="), Warmup);
+		if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), Shot)) Shot = TEXT("audio");
+	}
+	if (Seconds <= 0.f || State == 2 || !WorldContext || !WorldContext->GetWorld()) return;
+	const double Now = WorldContext->GetWorld()->GetTimeSeconds();
+	if (State == 0 && Now >= Warmup)
+	{
+		UAudioMixerBlueprintLibrary::StartRecordingOutput(WorldContext, Seconds);
+		StartedAt = Now;
+		State = 1;
+		SAIL_LOG(Display, TEXT("Sound: recording the master mix for %.1f s"), Seconds);
+	}
+	else if (State == 1 && Now - StartedAt >= Seconds)
+	{
+		const FString Dir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Bench"));
+		IFileManager::Get().MakeDirectory(*Dir, true);
+		UAudioMixerBlueprintLibrary::StopRecordingOutput(WorldContext, EAudioRecordingExportType::WavFile, Shot + TEXT(".audio"), Dir);
+		State = 2;
+		SAIL_LOG(Display, TEXT("Sound: wrote %s/%s.audio.wav"), *Dir, *Shot);
+	}
 }
 
 void SailingSound::EnsureMasterLimiter(UObject* WorldContext)

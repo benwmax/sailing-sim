@@ -213,6 +213,10 @@ namespace SailingSound
 	/** Where a direction-only sound sits: DistanceM from the listener toward the map-frame bearing of (DirNorth, DirEast),
 	 *  UpM above it (Unreal world cm). Wind from upwind, thunder from the strike. */
 	SAILINGSIM_API FVector AroundListener(const FVector& ListenerCm, double DirNorth, double DirEast, float DistanceM, float UpM);
+	/** Loudness check (scripts/loudness-check.sh): -SailingRecordAudio=<seconds> records the master mix from the end of the
+	 *  bench's warm-up (-SailingBenchWarmup, 3 s) for that long and writes Saved/Bench/<shot>.audio.wav (-SailingShot, or
+	 *  "audio"). The player's pawn calls this each frame; nothing happens without the switch. */
+	SAILINGSIM_API void TickAudioRecording(UObject* WorldContext);
 	/** A peak limiter at the end of the master mix (once per process), so a loud moment never clips the output. */
 	SAILINGSIM_API void EnsureMasterLimiter(UObject* WorldContext);
 
