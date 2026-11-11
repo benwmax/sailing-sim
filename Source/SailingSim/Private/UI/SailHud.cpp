@@ -633,7 +633,7 @@ void SSailHud::Refresh()
 		TipBody = FText::FromString(Dot > 0 ? Best->Key.Mid(Dot + 1).TrimStart() : Best->Key);
 	}
 	if (P->IsTiedUp() && !Learned) LastTip.Reset();   // feedback #488: no sailing tip left on the card at the dock
-	bTip = bTipsOn && !LastTip.IsEmpty();
+	bTip = bTipsOn && !LastTip.IsEmpty() && !TipsMutedByScene(GM->GetScene());
 	// Toasts: the boat's status line, the states that matter (aground, capsized, contact).
 	FString Toast = P->GetStatusMessage();
 	FLinearColor Col = Starboard;
@@ -700,6 +700,12 @@ void SSailHud::Refresh()
 	Hints.Add((SailUI::UsingGamepad() ? KeyName(TEXT("Menu"), false) : FString(TEXT("Esc"))) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+bool SSailHud::TipsMutedByScene(const Sailing::FScriptedScene* Scene)
+{
+	// (Until it is done: once the scene completes, as the first job hands over to its lesson, the tips come back.)
+	return Scene && Scene->IsLoaded() && !Scene->IsComplete();
 }
 
 void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)

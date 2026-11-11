@@ -6,6 +6,7 @@
 
 class APlayerController;
 class ASailboatPawn;
+namespace Sailing { class FScriptedScene; }
 
 /**
  * Graphics G4: the in-game HUD (ui-spec.md 5.8) in Slate, replacing the canvas instruments: the environment strip,
@@ -24,6 +25,9 @@ public:
 	virtual void Tick(const FGeometry& Geometry, const double CurrentTime, const float DeltaTime) override;
 	/** 0 full, 1 minimal (cluster, compass, drill panel, toasts), 2 off (toasts only). */
 	static int32 Mode;
+	/** #596: the learning tip card stays down while a scripted scene runs (the first job's instructor is the coach there;
+	 *  the two had talked at once with different instructions). */
+	static bool TipsMutedByScene(const Sailing::FScriptedScene* Scene);
 
 	ASailboatPawn* Pawn() const;
 

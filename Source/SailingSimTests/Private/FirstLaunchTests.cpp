@@ -12,6 +12,7 @@
 #include "SailingSettings.h"
 #include "FirstJobPlayer.h"
 #include "UI/SailFrontEnd.h"
+#include "UI/SailHud.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -200,6 +201,21 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	TestEqual(TEXT("... titled as the job"), Title, FString(UTF8_TO_TCHAR(Job.GetTitle().c_str())));
 	TestEqual(TEXT("... \"Your first job\""), Title, FString(TEXT("Your first job")));
 	TestEqual(TEXT("... restarting from its checkpoint"), Restart, FString(TEXT("Restart from checkpoint")));
+	return true;
+}
+
+// #596 (the #400 audit): in the first job the learning tip card and the instructor spoke at once with different
+// instructions. The tip card stays down while a scripted scene runs; outside one (or once it is done) it shows as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIOneCoachTest, "SailingSim.UI.OneCoach", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIOneCoachTest::RunTest(const FString&)
+{
+	TestFalse(TEXT("No scene: tips show"), SSailHud::TipsMutedByScene(nullptr));
+	Sailing::FScriptedScene Job;
+	FString Error;
+	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
+	TestTrue(TEXT("The first job running: the instructor alone speaks"), SSailHud::TipsMutedByScene(&Job));
+	Sailing::FScriptedScene Empty;
+	TestFalse(TEXT("An empty scene mutes nothing"), SSailHud::TipsMutedByScene(&Empty));
 	return true;
 }
 
