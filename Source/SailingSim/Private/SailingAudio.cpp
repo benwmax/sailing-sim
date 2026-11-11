@@ -5,6 +5,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
+#include "SailingEnvironment.h"
+#include "SailingFrame.h"
+#include "BenchRunner.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "AudioMixerBlueprintLibrary.h"
 #include "SubmixEffects/AudioMixerSubmixEffectDynamicsProcessor.h"
 
@@ -131,7 +137,7 @@ bool SailingSound::HasSheetWinches(Sailing::EBoatType Type)
 
 const TCHAR* WorldSoundName(EWorldSound Kind)
 {
-	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel"), TEXT("Horn"), TEXT("Thunder") };
+	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel"), TEXT("Horn"), TEXT("Thunder"), TEXT("ShoreLife") };
 	static_assert(UE_ARRAY_COUNT(Names) == int32(EWorldSound::Count), "a name for every world sound");
 	return Names[FMath::Clamp(int32(Kind), 0, int32(EWorldSound::Count) - 1)];
 }
@@ -407,6 +413,9 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 			OutLevel = 1.f;
 			break;
 		}
+		case EWorldSound::ShoreLife:
+			Mix = ShoreLifeSample(Sr);
+			break;
 		default: break;
 		}
 		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
@@ -577,5 +586,234 @@ void USailingWorldSamples::TickComponent(float DeltaTime, ELevelTick TickType, F
 			CallVoice->SetVolumeMultiplier(Level);
 			CallVoice->Play();
 		}
+	}
+}
+
+// ---------------------------------------------------------------- Slice sound pass: the lake's soundscape
+
+namespace
+{
+	/** 0 below A, 1 above B (or the other way round when A > B), smooth between. */
+	float LifeRamp(double X, double A, double B)
+	{
+		const double T = FMath::Clamp((X - A) / (B - A), 0.0, 1.0);
+		return float(T * T * (3.0 - 2.0 * T));
+	}
+	/** 1 from day Start to day End of the year, fading over Fade days either side. */
+	float LifeSeason(int32 Day, int32 Start, int32 End, int32 Fade)
+	{
+		return LifeRamp(Day, Start - Fade, Start) * LifeRamp(Day, End + Fade, End);
+	}
+}
+
+SailingSound::FShoreLife SailingSound::ShoreLifeFor(double SunElevationDeg, bool bMorning, int32 DayOfYear, float Rain, float WindMs)
+{
+	FShoreLife L;
+	const double E = SunElevationDeg;
+	// Birds: the dawn chorus from civil twilight to the sun well up, a thinner song by day, a little at dusk; none at night.
+	const float Dawn = LifeRamp(E, -8.0, -4.0) * LifeRamp(E, 30.0, 15.0);
+	const float Day = 0.45f * LifeRamp(E, -2.0, 4.0);
+	const float Dusk = 0.6f * LifeRamp(E, -6.0, -2.0) * LifeRamp(E, 10.0, 4.0);
+	L.Birds = FMath::Max(bMorning ? Dawn : Dusk, Day) * (0.65f + 0.35f * LifeSeason(DayOfYear, 60, 180, 30));
+	// Cicadas: the heat of a summer's day (June to September).
+	L.Cicadas = LifeRamp(E, 6.0, 18.0) * LifeSeason(DayOfYear, 160, 255, 20);
+	// Crickets and katydids: from dusk through the night, April to early November.
+	L.Crickets = LifeRamp(E, 3.0, -4.0) * LifeSeason(DayOfYear, 105, 300, 20);
+	// Frogs: chorus frogs from February, cricket frogs and bullfrogs through the summer; at night.
+	L.Frogs = LifeRamp(E, 2.0, -4.0) * LifeSeason(DayOfYear, 45, 245, 20);
+	// Rain quiets the birds and the insects and wakes the frogs; a breeze thins every chorus (and covers it).
+	const float R = FMath::Clamp(Rain, 0.f, 1.f);
+	L.Birds *= 1.f - 0.85f * R;
+	L.Cicadas *= 1.f - 0.85f * R;
+	L.Crickets *= 1.f - 0.6f * R;
+	L.Frogs = FMath::Min(1.f, L.Frogs * (1.f + 0.5f * R));
+	const float Breeze = FMath::Clamp(1.f - (WindMs - 5.f) / 10.f, 0.25f, 1.f);
+	L.Birds *= Breeze; L.Cicadas *= Breeze; L.Crickets *= Breeze; L.Frogs *= Breeze;
+	return L;
+}
+
+float USailingWorldSynth::ShoreLifeSample(float Sr)
+{
+	FLife& L = Life;
+	const float Dt = 1.f / Sr;
+	if (!L.bSeeded)
+	{
+		// Each voice its own insects and birds: a cricket's chirp rate, where the calls start.
+		L.bSeeded = true;
+		L.CrkPeriod = 0.5f + 0.25f * FMath::Abs(Noise());
+		L.CrkT2 = L.CrkPeriod * FMath::Abs(Noise());
+		L.CicSwell = FMath::Abs(Noise());
+		L.BirdWait = 0.3f + 2.f * FMath::Abs(Noise());
+		L.FrogWait = 0.2f + FMath::Abs(Noise());
+	}
+	const float K = 0.0002f;   // the weights move over about 0.1 s
+	L.SBirds += (Birds.load() - L.SBirds) * K;
+	L.SCicadas += (Cicadas.load() - L.SCicadas) * K;
+	L.SCrickets += (Crickets.load() - L.SCrickets) * K;
+	L.SFrogs += (Frogs.load() - L.SFrogs) * K;
+	float Out = 0.f;
+
+	// Cicadas: a buzz of noise near 5 kHz pulsed at about 210 Hz, swelling and fading over nine seconds.
+	if (L.SCicadas > 1e-3f)
+	{
+		L.CicAm += 210.f * Dt; L.CicAm -= FMath::FloorToFloat(L.CicAm);
+		L.CicSwell += Dt / 9.f; L.CicSwell -= FMath::FloorToFloat(L.CicSwell);
+		const float High = Noise() - L.CicLow - 0.5f * L.CicBand;   // band-pass, f = 2 sin(pi 5000 / 48000)
+		L.CicBand += 0.64f * High; L.CicLow += 0.64f * L.CicBand;
+		const float Am = FMath::Square(0.5f + 0.5f * FMath::Sin(2.f * PI * L.CicAm));
+		const float Swell = 0.3f + 0.7f * (0.5f - 0.5f * FMath::Cos(2.f * PI * L.CicSwell));
+		Out += L.CicBand * Am * Swell * 0.22f * L.SCicadas;
+	}
+	// Crickets: two field crickets, each a chirp of four 33 ms pulses of a 4.2-4.6 kHz tone every half second or so.
+	if (L.SCrickets > 1e-3f)
+	{
+		auto Chirp = [](float T)
+		{
+			if (T >= 4.f * 0.033f) return 0.f;
+			const float F = FMath::Fmod(T, 0.033f) / 0.033f;
+			return F < 0.6f ? FMath::Sin(PI * F / 0.6f) : 0.f;
+		};
+		L.CrkT += Dt; if (L.CrkT >= L.CrkPeriod) L.CrkT -= L.CrkPeriod;
+		L.CrkT2 += Dt; if (L.CrkT2 >= L.CrkPeriod * 1.17f) L.CrkT2 -= L.CrkPeriod * 1.17f;
+		L.CrkPhase += 4600.f * Dt; L.CrkPhase -= FMath::FloorToFloat(L.CrkPhase);
+		L.CrkPhase2 += 4200.f * Dt; L.CrkPhase2 -= FMath::FloorToFloat(L.CrkPhase2);
+		Out += (FMath::Sin(2.f * PI * L.CrkPhase) * Chirp(L.CrkT) + 0.7f * FMath::Sin(2.f * PI * L.CrkPhase2) * Chirp(L.CrkT2)) * 0.12f * L.SCrickets;
+	}
+	// Frogs: a chorus frog's rising "crreek", like a thumb run along a comb: pulses quickening over 0.6 s, again and again.
+	if (L.SFrogs > 1e-3f)
+	{
+		if (L.FrogT <= 0.f)
+		{
+			L.FrogWait -= Dt * (0.3f + L.SFrogs);
+			if (L.FrogWait <= 0.f) { L.FrogT = Dt; L.FrogPulse = 0.f; }
+		}
+		else
+		{
+			const float Dur = 0.6f;
+			L.FrogT += Dt;
+			const float U = L.FrogT / Dur;
+			L.FrogPulse += (16.f + 14.f * U) * Dt;
+			L.FrogPhase += (2500.f + 500.f * U) * Dt; L.FrogPhase -= FMath::FloorToFloat(L.FrogPhase);
+			const float Pulse = FMath::Pow(FMath::Max(0.f, FMath::Sin(PI * (L.FrogPulse - FMath::FloorToFloat(L.FrogPulse)))), 4.f);
+			const float A = 2.f * PI * L.FrogPhase;
+			Out += (FMath::Sin(A) + 0.4f * FMath::Sin(2.f * A)) * Pulse * FMath::Sin(PI * FMath::Min(U, 1.f)) * 0.12f * L.SFrogs;
+			if (L.FrogT >= Dur) { L.FrogT = 0.f; L.FrogWait = 0.5f + 1.5f * FMath::Abs(Noise()); }
+		}
+	}
+	// Songbirds: phrases of three to seven swept notes (2-6 kHz, 60-150 ms) with short gaps, a few seconds apart.
+	if (L.SBirds > 1e-3f)
+	{
+		auto NewNote = [this, &L]()
+		{
+			L.BirdT = 0.f;
+			L.BirdDur = 0.06f + 0.09f * FMath::Abs(Noise());
+			L.BirdF0 = 2200.f + 3500.f * FMath::Abs(Noise());
+			L.BirdF1 = FMath::Clamp(L.BirdF0 * (0.65f + 0.7f * FMath::Abs(Noise())), 1800.f, 7000.f);
+		};
+		if (L.BirdNotes == 0)
+		{
+			L.BirdWait -= Dt;
+			if (L.BirdWait <= 0.f) { L.BirdNotes = 3 + int32(FMath::Abs(Noise()) * 4.99f); L.BirdGap = 0.f; NewNote(); }
+		}
+		else if (L.BirdGap > 0.f)
+		{
+			L.BirdGap -= Dt;
+			if (L.BirdGap <= 0.f) NewNote();
+		}
+		else
+		{
+			L.BirdT += Dt;
+			const float U = FMath::Min(L.BirdT / L.BirdDur, 1.f);
+			L.BirdPhase += FMath::Lerp(L.BirdF0, L.BirdF1, U) * Dt; L.BirdPhase -= FMath::FloorToFloat(L.BirdPhase);
+			Out += FMath::Sin(2.f * PI * L.BirdPhase) * FMath::Sin(PI * U) * 0.16f * L.SBirds;
+			if (U >= 1.f)
+			{
+				if (--L.BirdNotes > 0) L.BirdGap = 0.03f + 0.06f * FMath::Abs(Noise());
+				else L.BirdWait = (1.5f + 3.5f * FMath::Abs(Noise())) / FMath::Max(L.SBirds, 0.25f);
+			}
+		}
+	}
+	return Out;
+}
+
+USailingSoundscape::USailingSoundscape()
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.TickInterval = 0.25f;
+}
+
+void USailingSoundscape::BeginPlay()
+{
+	Super::BeginPlay();
+	AActor* Owner = GetOwner();
+	if (!Owner || !Owner->GetRootComponent()) return;
+	for (int32 K = 0; K < 4; ++K)
+	{
+		USceneComponent* At = NewObject<USceneComponent>(Owner);
+		At->SetupAttachment(Owner->GetRootComponent());
+		At->SetUsingAbsoluteLocation(true);
+		At->SetUsingAbsoluteRotation(true);
+		At->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		// Heard across a cove (natural falloff to 600 m, none inside 30 m), dulled by distance.
+		SailingSound::MakeWorldSound(Owner, At, EWorldSound::ShoreLife, 600.f, Voice);
+		if (Voice) Voice->Level = 0.f;
+		Points.Add(At);
+		Voices.Add(Voice);
+	}
+}
+
+void USailingSoundscape::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	static SailingArgs::FCachedFlag NoShoreLife(TEXT("SailingNoShoreLife"));
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	const bool bOn = GM && GM->GetLake().IsLoaded() && !GM->GetLake().IsCoast() && !NoShoreLife.Get();
+	if (!bOn)
+	{
+		for (USailingWorldSynth* V : Voices) if (V) V->Level = 0.f;
+		return;
+	}
+	const FLakeData& Lake = GM->GetLake();
+	double Elevation = 0.0, Azimuth = 0.0;
+	ASailingEnvironment::SunPosition(GM->GetDrawnHour(), GM->GetDayOfYear(), Lake.Latitude, Lake.Longitude, GM->GetUtcOffsetHours(), Elevation, Azimuth);
+	FVector Listener = GetOwner()->GetActorLocation();
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController(); PC && PC->PlayerCameraManager) Listener = PC->PlayerCameraManager->GetCameraLocation();
+	const FVector2D Here = SailingFrame::ToMap(GetWorld(), Listener);
+	const float WindMs = float(GM->GetWind().MeanSpeedAtHeight(10.0));
+	const SailingSound::FShoreLife Who = SailingSound::ShoreLifeFor(Elevation, Azimuth < 180.0, GM->GetDayOfYear(), float(GM->GetWeatherState().Rain), WindMs);
+
+	// Place the four voices on the nearest shore toward the north-east, south-east, south-west and north-west: marching
+	// out in 15 m steps to 900 m until the ground is half a metre above the pool, then 25 m inland, in the trees.
+	// Again every 3 s once she has moved 30 m.
+	const double Now = GetWorld()->GetTimeSeconds();
+	const bool bPlace = Now >= NextPlace && FVector2D::Distance(Here, PlacedFrom) > 30.0;
+	if (bPlace)
+	{
+		NextPlace = Now + 3.0;
+		PlacedFrom = Here;
+	}
+	for (int32 K = 0; K < Voices.Num(); ++K)
+	{
+		USailingWorldSynth* V = Voices[K];
+		if (!V || !Points[K]) continue;
+		if (bPlace)
+		{
+			const double B = FMath::DegreesToRadians(45.0 + 90.0 * K);
+			const FVector2D D(FMath::Cos(B), FMath::Sin(B));
+			double Found = -1.0;
+			for (double R = 15.0; R <= 900.0; R += 15.0)
+			{
+				const FVector2D P = Here + D * R;
+				if (Lake.Terrain.HasGroundAt(P.X, P.Y) && Lake.Terrain.HeightAt(P.X, P.Y) > 0.5) { Found = R + 25.0; break; }
+			}
+			if (Found > 0.0)
+			{
+				const FVector2D P = Here + D * Found;
+				Points[K]->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), P.X, P.Y, Lake.Terrain.HeightAt(P.X, P.Y) + 2.0));
+			}
+			V->Level = Found > 0.0 ? 1.f : 0.f;   // open water that way: nothing calling from it
+		}
+		V->Birds = Who.Birds; V->Cicadas = Who.Cicadas; V->Crickets = Who.Crickets; V->Frogs = Who.Frogs;
 	}
 }

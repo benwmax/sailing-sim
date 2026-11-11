@@ -3204,6 +3204,9 @@ void ASailboatPawn::StartPlacedSounds()
 	WindAt->SetUsingAbsoluteRotation(true);
 	WindAt->RegisterComponent();
 	OnBoardAttenuation = SailingSound::MakeAttenuation(this, 80.f, 40.f, 4.f, 1.f);
+	// The lake's soundscape around the player (lake worlds only; it checks each tick).
+	Soundscape = NewObject<USailingSoundscape>(this, TEXT("Soundscape"));
+	Soundscape->RegisterComponent();
 }
 
 void ASailboatPawn::UpdatePlacedSounds(float ThunderLevel, float Crack, FVector2D StrikeDir)

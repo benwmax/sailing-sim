@@ -47,9 +47,9 @@ enum class ESailingCue : uint8
 SAILINGSIM_API const TCHAR* SailingCueName(ESailingCue Cue);
 
 /** The kinds of spatialised source in the world (each its own procedural voice at its place). Slice sound pass: another
- *  vessel's whistle or the committee's horn (Level, Hz) and thunder from the strike's direction (Level the rumble,
- *  Rate the crack). */
-enum class EWorldSound : uint8 { MarinaHalyards, Gulls, Outboard, Diesel, Horn, Thunder, Count };
+ *  vessel's whistle or the committee's horn (Level, Hz), thunder from the strike's direction (Level the rumble, Rate
+ *  the crack) and the life along the shore (birds, cicadas, crickets, frogs: USailingSoundscape). */
+enum class EWorldSound : uint8 { MarinaHalyards, Gulls, Outboard, Diesel, Horn, Thunder, ShoreLife, Count };
 SAILINGSIM_API const TCHAR* WorldSoundName(EWorldSound Kind);
 
 /**
@@ -120,6 +120,8 @@ public:
 	std::atomic<float> Rate{ 0.5f };   // 0..1: the wind for halyards, throttle for engines
 	std::atomic<bool> bMuted{ false }; // Graphics G7: recorded samples play this source instead (USailingWorldSamples)
 	std::atomic<float> Hz{ 400.f };    // Horn: the whistle's pitch (about 110 Hz for a ship, 420 for a small boat)
+	// ShoreLife: who is calling, 0..1 each (SailingSound::ShoreLifeFor; USailingSoundscape sets them).
+	std::atomic<float> Birds{ 1.f }, Cicadas{ 1.f }, Crickets{ 1.f }, Frogs{ 1.f };
 	uint32 Seed = 1;
 
 private:
@@ -128,6 +130,18 @@ private:
 	float SLevel = 0.f, SRate = 0.5f;
 	float Phase = 0.f, Phase2 = 0.f, Env = 0.f, Env2 = 0.f, F1 = 1800.f, F2 = 2700.f, P1 = 0.f, P2 = 0.f, Glide = 0.f, Call = 0.f, Low = 0.f, Low2 = 0.f;
 	float BandLow = 0.f, Band = 0.f;   // Thunder: the crack's band-pass
+	/** ShoreLife's generators. */
+	struct FLife
+	{
+		float SBirds = 0.f, SCicadas = 0.f, SCrickets = 0.f, SFrogs = 0.f;
+		float CicLow = 0.f, CicBand = 0.f, CicAm = 0.f, CicSwell = 0.f;
+		float CrkT = 0.f, CrkT2 = 0.3f, CrkPhase = 0.f, CrkPhase2 = 0.f, CrkPeriod = 0.6f;
+		float FrogT = 0.f, FrogWait = 0.5f, FrogPulse = 0.f, FrogPhase = 0.f;
+		float BirdT = 0.f, BirdDur = 0.f, BirdGap = 0.f, BirdWait = 0.8f, BirdF0 = 3000.f, BirdF1 = 3000.f, BirdPhase = 0.f;
+		int32 BirdNotes = 0;
+		bool bSeeded = false;
+	} Life;
+	float ShoreLifeSample(float Sr);
 };
 
 class UAudioComponent;
@@ -206,6 +220,38 @@ namespace SailingSound
 	 *  blocks (the Sunfish, the ILCA and the Hobie): a dinghy never clicks a winch, its sheet runs through blocks both ways. */
 	SAILINGSIM_API bool HasSheetWinches(Sailing::EBoatType Type);
 
+	/** Slice sound pass: who is calling along a North Texas lake's shore, 0..1 each, from the sun's elevation (deg) and
+	 *  whether it is morning (the sun in the east), the day of the year, the rain (0..1) and the wind (m/s). Birds sing
+	 *  at dawn (the chorus), less by day, a little at dusk; cicadas in the summer's heat of the day; crickets and katydids
+	 *  from dusk through the night, spring to autumn; frogs at night from late winter to the end of summer, more in rain.
+	 *  Rain quiets the birds and insects, a breeze thins every chorus. */
+	struct FShoreLife { float Birds = 0.f, Cicadas = 0.f, Crickets = 0.f, Frogs = 0.f; };
+	SAILINGSIM_API FShoreLife ShoreLifeFor(double SunElevationDeg, bool bMorning, int32 DayOfYear, float Rain, float WindMs);
+
 	/** A looping spatialised voice of the given kind attached to Parent, falling off over about FalloffM. */
 	SAILINGSIM_API UAudioComponent* MakeWorldSound(UObject* Owner, USceneComponent* Parent, EWorldSound Kind, float FalloffM, USailingWorldSynth*& OutSynth);
 }
+
+/**
+ * Slice sound pass: the lake's soundscape (v1, synthesized): four voices of shore life (birds, cicadas, crickets, frogs
+ * by the time of day and the season: SailingSound::ShoreLifeFor) placed on the nearest shore in four directions around
+ * the listener, moved as she sails. Lake worlds only; -SailingNoShoreLife turns it off. Recorded CC0 and our own club
+ * recordings replace the synth voices later (docs: the sound plan).
+ */
+UCLASS()
+class SAILINGSIM_API USailingSoundscape : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	USailingSoundscape();
+	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> Points;
+	UPROPERTY(Transient) TArray<TObjectPtr<USailingWorldSynth>> Voices;
+
+private:
+	FVector2D PlacedFrom = FVector2D(1e12, 1e12);
+	double NextPlace = 0.0;
+};

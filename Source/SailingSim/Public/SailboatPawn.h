@@ -774,6 +774,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class USailingWorldSynth> ThunderVoice;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> WindAt;
 	UPROPERTY(Transient) TObjectPtr<class USoundAttenuation> OnBoardAttenuation;
+	UPROPERTY(Transient) TObjectPtr<class USailingSoundscape> Soundscape;   // the shore's birds, insects and frogs
 	void StartPlacedSounds();
 	void UpdatePlacedSounds(float ThunderLevel, float Crack, FVector2D StrikeDir);
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;

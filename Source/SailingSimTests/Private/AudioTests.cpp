@@ -171,3 +171,64 @@ bool FSailingPlacedSoundsTest::RunTest(const FString& Parameters)
 	UpdateMix();
 	return true;
 }
+
+/** Slice sound pass: the lake's shore life follows the sun and the season, the rain and the wind. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShoreLifeTest, "SailingSim.Audio.ShoreLife", AudioFlags)
+bool FSailingShoreLifeTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	const FShoreLife MayDawn = ShoreLifeFor(2.0, true, 130, 0.f, 2.f);
+	TestTrue(TEXT("May dawn: the birds' chorus"), MayDawn.Birds > 0.8f);
+	TestEqual(TEXT("May dawn: no cicadas"), MayDawn.Cicadas, 0.f);
+	const FShoreLife JulyNoon = ShoreLifeFor(70.0, false, 200, 0.f, 2.f);
+	TestEqual(TEXT("July noon: cicadas"), JulyNoon.Cicadas, 1.f);
+	TestTrue(TEXT("July noon: a thinner birdsong than dawn"), JulyNoon.Birds > 0.2f && JulyNoon.Birds < MayDawn.Birds);
+	TestEqual(TEXT("July noon: no crickets"), JulyNoon.Crickets, 0.f);
+	TestEqual(TEXT("July noon: no frogs"), JulyNoon.Frogs, 0.f);
+	const FShoreLife JulyNight = ShoreLifeFor(-20.0, false, 200, 0.f, 2.f);
+	TestEqual(TEXT("July night: crickets"), JulyNight.Crickets, 1.f);
+	TestEqual(TEXT("July night: frogs"), JulyNight.Frogs, 1.f);
+	TestEqual(TEXT("July night: no birds"), JulyNight.Birds, 0.f);
+	TestEqual(TEXT("July night: no cicadas"), JulyNight.Cicadas, 0.f);
+	const FShoreLife JanNight = ShoreLifeFor(-20.0, false, 15, 0.f, 2.f);
+	TestEqual(TEXT("January night: no crickets"), JanNight.Crickets, 0.f);
+	TestEqual(TEXT("January night: no frogs"), JanNight.Frogs, 0.f);
+	const FShoreLife WetNight = ShoreLifeFor(-20.0, false, 120, 1.f, 2.f);
+	const FShoreLife DryNight = ShoreLifeFor(-20.0, false, 120, 0.f, 2.f);
+	TestTrue(TEXT("Rain: the frogs at least as loud"), WetNight.Frogs >= DryNight.Frogs && DryNight.Frogs > 0.f);
+	TestTrue(TEXT("Rain: fewer crickets"), WetNight.Crickets < DryNight.Crickets);
+	const FShoreLife Windy = ShoreLifeFor(-20.0, false, 200, 0.f, 15.f);
+	TestEqual(TEXT("A strong breeze thins the chorus"), Windy.Crickets, 0.25f, 1e-4f);
+
+	auto Rms = [](USoundWaveProcedural* W, int32 N)
+	{
+		TArray<uint8> Buf;
+		double Sum = 0.0;
+		for (int32 Block = 0; Block < 8; ++Block)
+		{
+			W->OnGeneratePCMAudio(Buf, N);
+			const int16* S = reinterpret_cast<const int16*>(Buf.GetData());
+			for (int32 I = 0; I < N; ++I) Sum += double(S[I]) * S[I];
+		}
+		return FMath::Sqrt(Sum / (8.0 * N)) / 32768.0;
+	};
+	USailingSettings* S = USailingSettings::Get();
+	const float Keep[] = { S->Volume, S->VolumeWorld };
+	S->Volume = 1.f; S->VolumeWorld = 1.f;
+	UpdateMix();
+	for (int32 K = 0; K < 5; ++K)
+	{
+		USailingWorldSynth* W = NewObject<USailingWorldSynth>();
+		W->Kind = EWorldSound::ShoreLife;
+		W->Level = K == 4 ? 0.f : 1.f;
+		W->Birds = K == 0 ? 1.f : 0.f; W->Cicadas = K == 1 ? 1.f : 0.f; W->Crickets = K == 2 ? 1.f : 0.f; W->Frogs = K == 3 ? 1.f : 0.f;
+		const double R = Rms(W, 48000);
+		static const TCHAR* Who[] = { TEXT("Birds"), TEXT("Cicadas"), TEXT("Crickets"), TEXT("Frogs"), TEXT("Nothing at level 0") };
+		AddInfo(FString::Printf(TEXT("%s: %.4f"), Who[K], R));
+		if (K < 4) TestTrue(FString::Printf(TEXT("%s are heard"), Who[K]), R > 0.002);
+		else TestTrue(Who[K], R < 1e-4);
+	}
+	S->Volume = Keep[0]; S->VolumeWorld = Keep[1];
+	UpdateMix();
+	return true;
+}
