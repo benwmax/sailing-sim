@@ -660,9 +660,9 @@ def main():
     mast_alu = unreal.load_asset("/Game/Boats/Materials/MI_Boat_MastAluminium")
     meta = json.load(open(os.path.join(SRC, "J22H_sockets.json")))
     missing = set()
-    for part, nanite in (("Hull", True), ("Mast", False), ("Boom", True), ("Rudder", True), ("Interior", True), ("Glass", False)):
+    for part, nanite in (("Hull", True), ("Mast", False), ("Boom", True), ("Rudder", True), ("Interior", True), ("Glass", False), ("TillerExt", True)):
         name = f"SM_J22H_{part}"
-        if part in ("Interior", "Glass") and not os.path.exists(os.path.join(SRC, "fbx", name + ".fbx")):
+        if part in ("Interior", "Glass", "TillerExt") and not os.path.exists(os.path.join(SRC, "fbx", name + ".fbx")):
             continue                     # an import from before the detail pass
         mesh = import_fbx(os.path.join(SRC, "fbx", name + ".fbx"), name)
         ns = mesh.get_editor_property("nanite_settings")
