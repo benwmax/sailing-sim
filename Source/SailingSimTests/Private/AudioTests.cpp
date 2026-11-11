@@ -55,3 +55,16 @@ bool FSailingSamplePackTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
+
+/** Slice sound pass: a dinghy trims by hand through blocks, so the Sunfish, the ILCA and the Hobie never click a winch. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSheetWinchesTest, "SailingSim.Audio.SheetWinches", AudioFlags)
+bool FSailingSheetWinchesTest::RunTest(const FString& Parameters)
+{
+	using Sailing::EBoatType;
+	TestFalse(TEXT("Sunfish has no winches"), SailingSound::HasSheetWinches(EBoatType::Sunfish));
+	TestFalse(TEXT("ILCA has no winches"), SailingSound::HasSheetWinches(EBoatType::ILCA7));
+	TestFalse(TEXT("Hobie has no winches"), SailingSound::HasSheetWinches(EBoatType::Hobie16));
+	TestTrue(TEXT("J/22 has winches"), SailingSound::HasSheetWinches(EBoatType::J22));
+	TestTrue(TEXT("Catalina 22 has winches"), SailingSound::HasSheetWinches(EBoatType::Catalina22));
+	return true;
+}

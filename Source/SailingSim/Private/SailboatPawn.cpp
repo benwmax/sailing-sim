@@ -3065,6 +3065,8 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	PrevMainSheet = Controls.MainSheet;
 	PrevJibSheet = Controls.JibSheet;
 	P.Volume = USailingSettings::Get()->Volume;
+	const bool bWinches = SailingSound::HasSheetWinches(Boat.GetConfig().Type);
+	P.Winches = bWinches ? 1.f : 0.f;
 
 	float Rain = 0.f, Thunder = 0.f, Crack = 0.f;
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
@@ -3117,8 +3119,8 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 			P.Telltales.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.5f) * 0.3f,                                            // Telltales
 			FMath::Pow(FMath::Clamp(float(T.BoatSpeed) / 3.f, 0.f, 1.5f), 1.5f),                                       // BowWave
 			FMath::Max(P.Moored.load() * 0.5f, P.BowSlam.load()),                                                      // HullSlap
-			FMath::Clamp(P.TrimRate.load(), 0.f, 1.f),                                                                 // Winch
-			FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f),                                                                // SheetBlock
+			bWinches ? FMath::Clamp(P.TrimRate.load(), 0.f, 1.f) : 0.f,                                                // Winch (none on a dinghy)
+			bWinches ? FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f) : FMath::Clamp(FMath::Abs(P.TrimRate.load()), 0.f, 1.f), // SheetBlock
 			P.Moored.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.f),                                                       // HalyardSlap
 			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
 		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
@@ -3191,13 +3193,16 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol);
 		LuffHighAt = -100.0;
 	}
-	// Winch clicks for small trims; a sheet running out through its block when easing starts.
-	if (Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
+	// Winch clicks for small trims; a sheet running out through its block when easing starts. A dinghy has no winch
+	// (SailingSound::HasSheetWinches): its sheet runs through the blocks when it is pulled in too.
+	const bool bWinches = HasSheetWinches(Boat.GetConfig().Type);
+	if (bWinches && Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
 	{
 		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol);
 		NextWinchClick = Now + 0.14;
 	}
 	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol);
+	if (!bWinches && Trim > 0.3f && PrevTrimRate <= 0.3f) PlayPackShot(uint8(EPackShot::SheetEaseSlow), 0.5f * Vol);
 	PrevTrimRate = Trim;
 	// In the slip: the lines creak and the fenders squeak as she surges.
 	if (Tied > 0.f && Now >= NextDockShot)

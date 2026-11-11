@@ -12,6 +12,12 @@ const TCHAR* SailingCueName(ESailingCue Cue)
 	return Names[FMath::Clamp(int32(Cue), 0, int32(ESailingCue::Count) - 1)];
 }
 
+bool SailingSound::HasSheetWinches(Sailing::EBoatType Type)
+{
+	using Sailing::EBoatType;
+	return !(Type == EBoatType::Sunfish || Type == EBoatType::ILCA7 || Type == EBoatType::Hobie16);
+}
+
 const TCHAR* WorldSoundName(EWorldSound Kind)
 {
 	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel") };
@@ -49,6 +55,7 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 	const float THorn = Params.HornLevel.load(), HornFreq = FMath::Max(Params.HornHz.load(), 40.f);
 	const float TGust = Params.GustRatio.load(), TShadow = Params.WindShadow.load(), TMoored = Params.Moored.load();
 	const float TRainDeck = Params.RainDeck.load(), TRainWater = Params.RainWater.load(), TSquall = Params.Squall.load();
+	const float Winches = FMath::Clamp(Params.Winches.load(), 0.f, 1.f);
 	// A recorded sample plays instead of a muted voice (the pawn's sample layer).
 	const uint32 Mask = Params.SampledMask.load();
 	auto On = [Mask](ESailingCue C) { return (Mask & (1u << uint32(C))) ? 0.f : 1.f; };
@@ -134,8 +141,10 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 			if (ClickPhase > 1.f) { ClickPhase -= 1.f; ClickEnv = 1.f; }
 		}
 		ClickEnv *= 0.992f;
-		Mix += ClickBand.Process(WhiteN * ClickEnv, 0.38f, 0.15f) * 0.5f * MWinch;
-		Mix += ZipBand.Process(WhiteN, 0.15f, 0.3f) * 0.08f * FMath::Clamp(-Tr, 0.f, 1.f) * MSheet;
+		Mix += ClickBand.Process(WhiteN * ClickEnv, 0.38f, 0.15f) * 0.5f * MWinch * Winches;
+		// Without winches (a dinghy) the sheet runs through its blocks both ways: trimming in sounds like easing.
+		const float SheetRun = FMath::Clamp(-Tr, 0.f, 1.f) + (1.f - Winches) * FMath::Clamp(Tr, 0.f, 1.f);
+		Mix += ZipBand.Process(WhiteN, 0.15f, 0.3f) * 0.08f * SheetRun * MSheet;
 		// The sheet through its block: a squeak pitched by how fast it runs.
 		SheetPhase += (600.f + 900.f * FMath::Abs(Tr)) / Sr;
 		SheetPhase -= FMath::FloorToFloat(SheetPhase);

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Sound/SoundWaveProcedural.h"
 #include "Components/ActorComponent.h"
+#include "BoatModel.h"
 #include <atomic>
 #include "SailingAudio.generated.h"
 
@@ -30,6 +31,7 @@ struct FSailingSoundParams
 	std::atomic<float> RainWater{ 0.f };     // 0..1 the hiss of rain on the water around
 	std::atomic<float> Squall{ 0.f };        // 0..1 the hiss of a squall's rain and wind coming across the water
 	std::atomic<uint32> SampledMask{ 0 };    // cues a recorded sample plays instead (ESailingCue bits)
+	std::atomic<float> Winches{ 1.f };       // 1 the boat trims on sheet winches, 0 by hand through blocks (a dinghy)
 };
 
 /** The synth's voices a recorded sample can replace (Content/Audio/Samples/<Name>.wav -> /Game/Audio/Samples/S_<Name>). */
@@ -159,6 +161,10 @@ namespace SailingSound
 	/** The pack's one-shots, chosen at random with a +-5% pitch spread. */
 	enum class EPackShot : uint8 { HalyardSlap, SailFill, WinchClick, SheetEaseFast, SheetEaseSlow, DockCreak, FenderSqueak, Count };
 	SAILINGSIM_API TArray<FString> PackShots(EPackShot Shot);
+
+	/** Whether the boat trims its sheets on winches (keelboats, the trimaran and the cat cruiser) or by hand through
+	 *  blocks (the Sunfish, the ILCA and the Hobie): a dinghy never clicks a winch, its sheet runs through blocks both ways. */
+	SAILINGSIM_API bool HasSheetWinches(Sailing::EBoatType Type);
 
 	/** A looping spatialised voice of the given kind attached to Parent, falling off over about FalloffM. */
 	SAILINGSIM_API UAudioComponent* MakeWorldSound(UObject* Owner, USceneComponent* Parent, EWorldSound Kind, float FalloffM, USailingWorldSynth*& OutSynth);
