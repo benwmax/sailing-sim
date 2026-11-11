@@ -547,9 +547,17 @@ void ASailingGameMode::UpdateShelter()
 
 void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 {
+	// #624 QA: Apply on the session's own conditions (unchanged, or changed and changed back) keeps the weather as it was:
+	// its clock from before any preview. A real change starts the timeline over, as a new session does.
+	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+	TOptional<double> Keep;
+	if (Session && Session->bHasActive && SailShowroom::SameConditions(C, Session->Active.Conditions))
+	{
+		Keep = bPreviewing ? PreviewRestore.WeatherStartTime : WeatherStartTime;
+	}
 	bPreviewing = false; // the preview, if any, is now the session's
-	ApplyConditionsLocal(C);
-	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
+	ApplyConditionsLocal(C, Keep);
+	if (USailSessionSubsystem* Active = USailSessionSubsystem::Get(this)) Active->Active.Conditions = C;
 }
 
 void ASailingGameMode::PreviewConditions(const FSailConditions& C)
@@ -732,7 +740,8 @@ void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTi
 		Weather.SetSunset(SunsetHour);
 		SAIL_LOG(Display, TEXT("Sunset %02d:%02d local (day %d)"), int32(SunsetHour), int32(FMath::Fmod(SunsetHour, 1.0) * 60.0), DayOfYear);
 	}
-	ClockBase = GetSimTime() - WeatherOffset;
+	// #624 QA: the day's clock (sun, HUD, tide) runs from the weather's start, so a kept weather time keeps the hour too.
+	ClockBase = WeatherStartTime;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
 
 	// Scale the preset's wind to an explicit base speed when asked (benchmarks).
