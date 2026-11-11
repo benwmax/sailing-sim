@@ -5,7 +5,7 @@
 #   -Quality: Low, Medium, High or Ultra (default: the game's setting, Ultra on Windows).
 #   -Demo lets the autopilot sail and tack (-SailingDemo); -Record <s> also saves frames (Saved\Bench\rec).
 #   -Package <folder>: the package to run (default Packaged\Windows; a bare name is a folder under Packaged, as
-#   package-win.ps1 -Into makes, e.g. -Package Windows-806a4291; or a full path). -WhatIf prints the game it would run.
+#   package-win.ps1 -Into makes, e.g. -Package Windows-806a4291; or a full path). -WhatIf prints the game and the arguments it would run.
 # Needs a logged-in desktop that stays awake: it opens a window. Leave it in front; hidden windows run slower.
 param(
 	[Parameter(Position = 0)][int]$Seconds = 20,
@@ -24,6 +24,17 @@ param(
 
 $Game = Resolve-PackagedGame $Package
 Write-Host "Game: $Game"
+$ArgLine = "-SailingBench=$Seconds -windowed -ResX=$ResX -ResY=$ResY -SailingShot=$Shot"
+# Bench at 4K (docs/windows/README.md): the engine fits a window inside the desktop, so a size that reaches the
+# desktop's (physical pixels: the game is DPI aware) gets -ForceRes, or a 3840x2160 window on a 4K screen is cut down.
+$Desk = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.CurrentHorizontalResolution } |
+	Sort-Object CurrentHorizontalResolution -Descending | Select-Object -First 1
+if ($Desk -and ($ResX -ge $Desk.CurrentHorizontalResolution -or $ResY -ge $Desk.CurrentVerticalResolution)) { $ArgLine += ' -ForceRes' }
+if ($Quality) { $ArgLine += " -SailingQuality=$Quality" }
+if ($Demo) { $ArgLine += ' -SailingDemo' }
+if ($Record -gt 0) { $ArgLine += " -SailingRecord=$Record" }
+if ($GameArgs) { $ArgLine += " $GameArgs" }
+Write-Host "SailingSim.exe $ArgLine"
 if ($WhatIf) { return }
 
 $SavedDirs = Get-SavedDirs (Split-Path $Game)
@@ -34,12 +45,6 @@ foreach ($D in $SavedDirs) {
 	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $B 'rec')
 }
 
-$ArgLine = "-SailingBench=$Seconds -windowed -ResX=$ResX -ResY=$ResY -SailingShot=$Shot"
-if ($Quality) { $ArgLine += " -SailingQuality=$Quality" }
-if ($Demo) { $ArgLine += ' -SailingDemo' }
-if ($Record -gt 0) { $ArgLine += " -SailingRecord=$Record" }
-if ($GameArgs) { $ArgLine += " $GameArgs" }
-Write-Host "SailingSim.exe $ArgLine"
 
 $P = Start-Process -FilePath $Game -ArgumentList $ArgLine -PassThru
 # Warm-up + measurement + a generous startup allowance (more on the first launch: -StartupAllowance 900).

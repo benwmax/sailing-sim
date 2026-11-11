@@ -223,7 +223,8 @@ def owner(n):
 
 PIVOTS = {"SM_J22H_Hull": Vector((0, 0, 0)), "SM_J22H_Interior": Vector((0, 0, 0)), "SM_J22H_Glass": Vector((0, 0, 0)),
           "SM_J22H_Mast": Vector((mast_x, 0, mast_lo.z)),
-          "SM_J22H_Boom": Vector((GOOSE.x, 0, GOOSE.z)), "SM_J22H_Rudder": Vector((stock_x, 0, 0))}
+          "SM_J22H_Boom": Vector((GOOSE.x, 0, GOOSE.z)), "SM_J22H_Rudder": Vector((stock_x, 0, 0)),
+          "SM_J22H_TillerExt": Vector((stock_x, 0, 0))}   # #618: the rudder's pivot and origin, so it lands where it was
 
 # which game part each built object belongs to; None = live in the game (ropes, wires, sails, vang) or loose dressing
 ROPE_LIKE = ("Halyard", "HalTail", "MainTail", "Mainsheet_", "JibSheet", "JibTail", "Bridle", "Backstay", "Forestay",
@@ -247,6 +248,8 @@ def game_part(o):
         return None
     if n.startswith("Gudgeon"):                       # transom fittings stay put while the rudder turns
         return "SM_J22H_Hull"
+    if n.startswith("TillerExt"):                    # #618: the stowed extension (j22_steering.py) is its own part,
+        return "SM_J22H_TillerExt"                # about the rudder's pivot: the pawn hides it while the helm holds the live one
     if "Rudder" in cols:
         return "SM_J22H_Rudder"
     if "Rig" in cols:

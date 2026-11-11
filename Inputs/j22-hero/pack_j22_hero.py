@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "Tools",
 from boat_packs import load_packs, pack_slots  # noqa: E402
 
 PACKS = load_packs(os.path.join(HERE, "J22H_packs.json"))
-PARTS = ("SM_J22H_Hull", "SM_J22H_Rudder", "SM_J22H_Boom", "SM_J22H_Mast")
+PARTS = ("SM_J22H_Hull", "SM_J22H_Rudder", "SM_J22H_Boom", "SM_J22H_Mast", "SM_J22H_TillerExt")
 # As bake_j22_hero.py exports the game parts.
 EXPORT = dict(use_selection=True, axis_forward="X", axis_up="Z", apply_unit_scale=True, apply_scale_options="FBX_SCALE_UNITS",
               mesh_smooth_type="FACE", use_mesh_modifiers=True, add_leaf_bones=False, bake_space_transform=True, path_mode="STRIP")

@@ -1250,12 +1250,32 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			const float Rise = FMath::Sin(0.5f * PI * FMath::Min(Tt / 0.15f, 1.f)) * FMath::Exp(-2.6f * FMath::Max(Tt - 0.12f, 0.f));
 			const float H = Head * Rise;
 			// The root: where this station's side meets the sea as she heels and pitches now (heeled, the lee waterline lies
-			// well outboard of the upright half-beam: rooted there the sheet lay on her topsides). The side is taken as a wall
-			// at the deck's half-beam; along it the world height is linear in body z, so one step solves for the sea.
-			const double YHull = Hull.CenterY + S * FMath::Max(Hull.DeckHalfBeam(X), 0.02);
-			const Vec3 Z0 = Boat.BodyToWorld(Vec3(X, YHull, 0.0)), Z1 = Boat.BodyToWorld(Vec3(X, YHull, 1.0));
-			const double Sea0 = Waves.Height(Z0.X, Z0.Y, Time);
-			const double Zb = FMath::Abs(Z1.Z - Z0.Z) > 1e-3 ? FMath::Clamp((Sea0 - Z0.Z) / (Z1.Z - Z0.Z), -1.5, 1.5) : 0.0;
+			// well outboard of the upright half-beam: rooted there the sheet lay on her topsides). The side is first taken as
+			// a wall at the deck's half-beam; along it the world height is linear in body z, so one step solves for the sea.
+			double YHull = Hull.CenterY + S * FMath::Max(Hull.DeckHalfBeam(X), 0.02);
+			auto SeaZ = [&](double Y)
+			{
+				const Vec3 Z0 = Boat.BodyToWorld(Vec3(X, Y, 0.0)), Z1 = Boat.BodyToWorld(Vec3(X, Y, 1.0));
+				const double Sea0 = Waves.Height(Z0.X, Z0.Y, Time);
+				return FMath::Abs(Z1.Z - Z0.Z) > 1e-3 ? FMath::Clamp((Sea0 - Z0.Z) / (Z1.Z - Z0.Z), -1.5, 1.5) : 0.0;
+			};
+			double Zb = SeaZ(YHull);
+			// bowwave-stem: then in to the skin at that height. A fine, flared entry is much narrower at the water than at the
+			// deck (the J/22's 0.3 m against 0.6 a side, 0.6 m aft of the stem): rooted at the deck's edge the sheet stood out on
+			// open water, its crest a flat white band off the stem. The half-beam where the hull's surface (FHullShape::BottomZ)
+			// reaches the sea's height, by bisection, then the sea's height there again.
+			const double Deck = FMath::Max(Hull.DeckHalfBeam(X), 0.02);
+			if (Zb < Hull.SheerHeight(X) && Hull.BottomZ(X, 0.0, Boat.HullDepth()) < Zb)
+			{
+				double Lo = 0.0, Hi = Deck;
+				for (int32 K = 0; K < 16; ++K)
+				{
+					const double Mid = 0.5 * (Lo + Hi);
+					(Hull.BottomZ(X, Mid, Boat.HullDepth()) < Zb ? Lo : Hi) = Mid;
+				}
+				YHull = Hull.CenterY + S * FMath::Max(Hi, 0.02);
+				Zb = SeaZ(YHull);
+			}
 			const Vec3 Root = Boat.BodyToWorld(Vec3(X, YHull, Zb));
 			const Vec3 Off = Boat.BodyToWorld(Vec3(X, YHull + S, Zb));
 			FVector2D Out(Off.X - Root.X, Off.Y - Root.Y);
@@ -1276,7 +1296,10 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 				UV.Add(FVector2D(U, Tt));
 				// Fades: in from the stem, out aft, into the sea at the outer edge (the material) and softly at the root.
 				const float Ends = FMath::SmoothStep(0.f, 0.18f, Tt) * (1.f - Tt * Tt);
-				Col.Add(FLinearColor(Lip, Rise, Fine, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
+				// bowwave-stem: M_BowWave's crest is a band across the sheet's width (in u), so over the first stations, where
+				// the sheet is only 15-30 cm wide, it whitened the whole of it: a flat white blob at the stem in a chop. The crest
+				// (G) builds in over the first third, where the sheet has widened (the curl tops over a little aft of the stem).
+				Col.Add(FLinearColor(Lip, Rise * FMath::SmoothStep(0.1f, 0.35f, Tt), Fine, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
 			}
 		}
 		for (int32 I = 0; I + 1 < NS; ++I)
@@ -1730,8 +1753,8 @@ bool ASailboatPawn::BakesStowedExtension() const
 {
 	// The hero J/22 (j22_steering.py: TillerExtUJ, TillerExtTip) and the Sunfish (build_fleet.py: pc/sunfish-hero) model the
 	// extension folded back along the tiller; the ILCA, Catalina 22 and Corsair don't (Boats & models 9).
-	// #618: as a part of its own (ModelTillerExt), hidden while the live one is held; the hero's is still in its rudder mesh
-	// (TillerExtTip), shown with the held one too until the PC splits it out as SM_J22H_TillerExt.
+	// #618: both have it as a part of their own (ModelTillerExt: SM_J22H_TillerExt, SM_Sunfish_TillerExt), hidden while the
+	// live one is held. The rudder's TillerExtTip socket covers a model that bakes the extension into its rudder mesh.
 	return ModelTillerExt || (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtTip"))) || Boat.GetConfig().Type == EBoatType::Sunfish;
 }
 

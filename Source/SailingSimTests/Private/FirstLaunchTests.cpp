@@ -12,6 +12,7 @@
 #include "SailingSettings.h"
 #include "FirstJobPlayer.h"
 #include "UI/SailFrontEnd.h"
+#include "UI/SailHud.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -193,6 +194,34 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	TestEqual(TEXT("Free sail restart"), Restart, FString(TEXT("Restart from launch spot")));
 	SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
 	TestEqual(TEXT("A drill restarts the drill"), Restart, FString(TEXT("Restart drill")));
+	// #605 and #636: a lesson's pause menu is titled as the session's lesson, not DRILLS. Lessons in different tiers share
+	// drills, so it goes by the lesson's id; with no lesson (a drill from the Mode screen, Free Sail, or the lesson's drill
+	// after it finished) the drill's own name.
+	const FCareerContent& Content = FCareerContent::Get();
+	const FCareerTier* Day = Content.Tier(TEXT("day-sailor"));
+	const FCareerTier* Club = Content.Tier(TEXT("club-racer"));
+	if (TestTrue(TEXT("Day Sailor and Club Racer have lessons"), Day && Club && Day->Lessons.Num() > 0 && Club->Lessons.Num() > 0))
+	{
+		const FCareerLesson& First = Day->Lessons[0];
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill, First.Id);
+		TestEqual(FString::Printf(TEXT("A lesson's pause is titled as the lesson (%s)"), *First.Title), Title, First.Title);
+		// A Club Racer lesson on a drill Day Sailor also sails: its own title, not the first match's.
+		const FCareerLesson* Shared = Club->Lessons.FindByPredicate([Day](const FCareerLesson& L)
+			{ return Day->Lessons.ContainsByPredicate([&L](const FCareerLesson& D) { return D.Drill == L.Drill; }); });
+		if (TestNotNull(TEXT("Club Racer shares a drill with Day Sailor"), Shared))
+		{
+			SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, Shared->Drill, Shared->Id);
+			TestEqual(FString::Printf(TEXT("Club Racer's lesson keeps its own title (%s)"), *Shared->Title), Title, Shared->Title);
+		}
+		// No lesson: a drill picked from the Mode screen, in Career or Free Sail, or a lesson's drill once it finished. (The
+		// menus clear Pending.LessonId when the world, boat, mode or drill is picked by hand: in game Pending starts as the
+		// active session, so a drill picked from Pause > Mode had kept the old lesson's title. Those clicks are Slate's; this
+		// is the title they lead to.)
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill, FString());
+		TestEqual(TEXT("A drill with no lesson: the drill's own name"), Title, FString(DrillName(First.Drill)));
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
+		TestEqual(TEXT("No drill set: the mode's name"), Title, USailSessionSubsystem::ModeName(ESailMode::Drill));
+	}
 	Sailing::FScriptedScene Job;
 	FString Error;
 	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
@@ -200,6 +229,84 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	TestEqual(TEXT("... titled as the job"), Title, FString(UTF8_TO_TCHAR(Job.GetTitle().c_str())));
 	TestEqual(TEXT("... \"Your first job\""), Title, FString(TEXT("Your first job")));
 	TestEqual(TEXT("... restarting from its checkpoint"), Restart, FString(TEXT("Restart from checkpoint")));
+	return true;
+}
+
+// #601 (the #400 audit): the Day Sailor certificate opened "Club Racer, Coastal Cruiser", and Coastal Cruiser then read
+// COMING on the Career screen. Only tiers with lessons are named as open.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUICertificateOpensTest, "SailingSim.UI.CertificateOpens", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUICertificateOpensTest::RunTest(const FString&)
+{
+	const FCareerContent& Content = FCareerContent::Get();
+	const FCareerTier* Day = Content.Tier(TEXT("day-sailor"));
+	if (!TestNotNull(TEXT("Day Sailor"), Day)) return false;
+	const TArray<FString> Opens = SSailFrontEnd::TiersOpenedBy(*Day);
+	AddInfo(FString::Printf(TEXT("Day Sailor opens: %s"), *FString::Join(Opens, TEXT(", "))));
+	for (const FString& Id : Day->Unlocks.Tiers)
+	{
+		const FCareerTier* X = Content.Tier(Id);
+		if (!X) continue;
+		TestEqual(FString::Printf(TEXT("%s listed only if it has lessons (%d)"), *X->Name, X->Lessons.Num()), Opens.Contains(X->Name), X->Lessons.Num() > 0);
+	}
+	// #637's QA: by id, as career.json has them today: Club Racer (lessons) opens, Coastal Cruiser (a stub) does not.
+	const FCareerTier* Club = Content.Tier(TEXT("club-racer"));
+	const FCareerTier* Coastal = Content.Tier(TEXT("coastal-cruiser"));
+	if (TestNotNull(TEXT("Club Racer"), Club)) TestTrue(TEXT("Club Racer is named as open"), Opens.Contains(Club->Name));
+	if (TestNotNull(TEXT("Coastal Cruiser"), Coastal)) TestFalse(TEXT("Coastal Cruiser (no lessons yet) is not"), Opens.Contains(Coastal->Name));
+	return true;
+}
+
+// #596 (the #400 audit): in the first job the learning tip card and the instructor spoke at once with different
+// instructions. The tip card stays down while a scripted scene runs; outside one (or once it is done) it shows as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIOneCoachTest, "SailingSim.UI.OneCoach", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIOneCoachTest::RunTest(const FString&)
+{
+	TestFalse(TEXT("No scene: tips show"), SSailHud::TipsMutedByScene(nullptr));
+	Sailing::FScriptedScene Job;
+	FString Error;
+	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
+	TestTrue(TEXT("The first job running: the instructor alone speaks"), SSailHud::TipsMutedByScene(&Job));
+	TestTrue(TEXT("... and with its handover pending"), SSailHud::TipsMutedByScene(&Job, true));
+	Sailing::FScriptedScene Empty;
+	TestFalse(TEXT("An empty scene mutes nothing"), SSailHud::TipsMutedByScene(&Empty));
+	// #634's QA: a finished scene keeps the mute only while its handover is pending. A one-step scene whose trigger fires
+	// at once and whose call needs nothing done finishes in its first seconds.
+	Sailing::FScriptedScene Short;
+	std::string ShortError;
+	const bool bShort = Short.LoadText(R"({"schema_version": 1, "id": "t", "title": "T", "setting": {"boat": "J22", "wind_kn": 10},
+		"steps": [{"id": "a", "trigger": {"type": "time", "at_s": 0}, "call": {"id": "instructor.a", "caption": "Hi"},
+		"expect": {"type": "none", "seconds": 0.5}}]})", &ShortError);
+	if (TestTrue(FString::Printf(TEXT("The short test scene loads (%hs)"), ShortError.c_str()), bShort))
+	{
+		const Sailing::FBoatModel Boat;
+		Short.Start(Boat, 10.0);
+		for (int32 K = 0; K < 1200 && !Short.IsComplete(); ++K) Short.Update(Boat, Sailing::FSceneInput(), 1.0 / 60.0);
+		if (TestTrue(TEXT("The short scene finishes"), Short.IsComplete()))
+		{
+			TestTrue(TEXT("Done, handover pending: still muted"), SSailHud::TipsMutedByScene(&Short, true));
+			TestFalse(TEXT("Done, no handover pending: tips back"), SSailHud::TipsMutedByScene(&Short, false));
+		}
+	}
+	return true;
+}
+
+// #602 (the #400 audit): a triangle's marks and the person in the water were on no map. The minimap places them north up
+// around the boat, and one off the map on its edge so its direction shows.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIMiniMapMarksTest, "SailingSim.UI.MiniMapMarks", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIMiniMapMarksTest::RunTest(const FString&)
+{
+	const FVector2f Origin(4.f, 4.f), Size(200.f, 200.f), Centre = Origin + Size * 0.5f;
+	const FVector2D Boat(1000.0, 2000.0);
+	bool bClamped = true;
+	const FVector2f North = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(250.0, 0.0), 3000.0, Origin, Size, bClamped);
+	TestFalse(TEXT("A mark 250 m north is on the map"), bClamped);
+	TestTrue(FString::Printf(TEXT("... above the boat (%.1f, %.1f)"), North.X, North.Y), FMath::IsNearlyEqual(North.X, Centre.X, 0.01f) && North.Y < Centre.Y - 10.f);
+	const FVector2f East = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(0.0, 300.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(FString::Printf(TEXT("A mark 300 m east is right of the boat, 20 px (%.1f)"), East.X - Centre.X), FMath::IsNearlyEqual(East.X - Centre.X, 20.f, 0.01f));
+	const FVector2f Far = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(-5000.0, -5000.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(TEXT("One 7 km off is pulled onto the edge"), bClamped);
+	TestTrue(FString::Printf(TEXT("... inside the square, down and left (%.1f, %.1f)"), Far.X, Far.Y),
+		Far.X >= Origin.X && Far.X < Centre.X && Far.Y > Centre.Y && Far.Y <= Origin.Y + Size.Y);
 	return true;
 }
 

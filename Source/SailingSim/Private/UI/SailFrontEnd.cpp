@@ -780,6 +780,7 @@ void SSailFrontEnd::StartLesson(const FCareerLesson& Lesson)
 	Quiz.Reset();
 	QuizRetakeLessonId.Reset();
 	Pending = USailSessionSubsystem::MakeLesson(T->WorldId, T->Boats.Num() ? T->Boats[0] : FString(TEXT("J22")), int32(Lesson.Drill) - 1, Lesson.Conditions, Lesson.Traffic);
+	Pending.LessonId = Lesson.Id;
 	CastOff();
 }
 
@@ -1038,7 +1039,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 		TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(3.f, 3.f)).ScrollBarPadding(FMargin(4.f, 0.f, 0.f, 0.f))
 			+ SScrollBox::Slot().Padding(0.f, 0.f, 8.f, 0.f)[ SailUI::Text(Locked.IsEmpty() ? W.Description : Locked, EType::Body, Locked.IsEmpty() ? Muted : Fg, true) ];
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(0.f)).IsEnabled(Locked.IsEmpty()).IsSelected_Lambda([this, Index]() { return Pending.World == Index; })
-			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
+			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; Pending.LessonId.Reset(); if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
@@ -1200,7 +1201,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			{
 				// A click shows her; a click on the boat shown moves on (as Enter does), unless she is locked.
 				if (FocusedBoat != T) { FocusedBoat = T; return; }
-				if (Locked.IsEmpty()) { Pending.Boat = T; Push(ESailScreen::Conditions); }
+				if (Locked.IsEmpty()) { if (Pending.Boat != T) Pending.LessonId.Reset(); Pending.Boat = T; Push(ESailScreen::Conditions); }
 			})
 		[
 			SNew(SVerticalBox)
@@ -1292,6 +1293,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	TSharedRef<SSailButton> Next = ActionButton(TEXT("Next: conditions"), FSimpleDelegate::CreateLambda([this, LockOf]()
 	{
 		if (!LockOf(FocusedBoat).IsEmpty()) return;
+		if (Pending.Boat != FocusedBoat) Pending.LessonId.Reset();   // #636: hand-picked: no longer the lesson
 		Pending.Boat = FocusedBoat;
 		Push(ESailScreen::Conditions);
 	}));
@@ -1562,7 +1564,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 		const FString ModeLine = (M.Mode == ESailMode::Passage && Pending.World == 3) ? FString(TEXT("Vieux-Port to Cassis by the Calanques")) : FString(M.Line);
 		const ESailMode Mode = M.Mode;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(18.f, 16.f)).IsEnabled(bOk).IsSelected_Lambda([this, Mode]() { return Pending.Mode == Mode; })
-			.OnClicked_Lambda([this, Mode]() { Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
+			.OnClicked_Lambda([this, Mode]() { if (Pending.Mode != Mode) Pending.LessonId.Reset(); Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(M.Name, EType::CardTitleS, Fg) ]
@@ -1587,7 +1589,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 			Drills->AddSlot(Cell % 3, Cell / 3)
 			[
 				SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(14.f, 10.f)).IsSelected_Lambda([this, I]() { return Pending.DrillIndex == I; })
-				.OnClicked_Lambda([this, I]() { Pending.DrillIndex = I; })
+				.OnClicked_Lambda([this, I]() { if (Pending.DrillIndex != I) Pending.LessonId.Reset(); Pending.DrillIndex = I; })
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(FString::Printf(TEXT("%d. %s"), I + 1, DrillName(ESailingDrill(I + 1))), EType::Ui, Fg) ]
@@ -1645,7 +1647,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 
 // ---------------------------------------------------------------- 5.9 Pause
 
-bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart)
+bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart, ESailingDrill Drill,
+	const FString& LessonId)
 {
 	if (Scene && Scene->IsLoaded() && !Scene->IsComplete())
 	{
@@ -1654,8 +1657,30 @@ bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode
 		return true;
 	}
 	OutTitle = USailSessionSubsystem::ModeName(Mode);
+	// #605 (the #400 audit): a lesson's pause menu read DRILLS. #636's QA: by the session's lesson (Club Racer's lessons share
+	// Day Sailor's drills), else, with a drill set (running or finished), the drill's own name.
+	if (const FCareerLesson* Lesson = LessonId.IsEmpty() ? nullptr : FCareerContent::Get().Lesson(LessonId); Lesson && !Lesson->Title.IsEmpty())
+	{
+		OutTitle = Lesson->Title;
+	}
+	else if (Drill != ESailingDrill::None)
+	{
+		OutTitle = DrillName(Drill);
+	}
 	OutRestart = Mode == ESailMode::Drill ? TEXT("Restart drill") : (Mode == ESailMode::Race ? TEXT("Restart race") : TEXT("Restart from launch spot"));
 	return false;
+}
+
+TArray<FString> SSailFrontEnd::TiersOpenedBy(const FCareerTier& Tier)
+{
+	// #601 (the #400 audit): only tiers with lessons are open to sail. Coastal Cruiser was listed on the certificate, then
+	// read COMING, "Lessons to come", on the Career screen.
+	TArray<FString> Opens;
+	for (const FString& Id : Tier.Unlocks.Tiers)
+	{
+		if (const FCareerTier* X = FCareerContent::Get().Tier(Id); X && X->Lessons.Num() > 0) Opens.Add(X->Name);
+	}
+	return Opens;
 }
 
 SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
@@ -1684,7 +1709,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 	const ASailingGameMode* GM = Player.IsValid() && Player->GetWorld() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
 	const Sailing::FScriptedScene* Scene = GM ? GM->GetScene() : nullptr;
 	FString Title, RestartLabel;
-	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel);
+	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel, P ? P->GetDrill().GetDrill() : ESailingDrill::None,
+		Session && Session->bHasActive ? Session->Active.LessonId : FString());
 	Item(TEXT("Resume"), FString(), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (bScene)
 	{
@@ -2406,6 +2432,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				}), false);
 			}
 		}
+		// #601 (the #400 audit): a checkride taken from a lesson's score screen ended with only Back to sailing, into the
+		// finished lesson (its panel all done, nothing to do). Its way on is the Career screen (over the pause menu, so Back
+		// from there resumes); Back to sailing stays.
+		if (bCheckride && !bFromCareer)
+		{
+			TSharedRef<SSailButton> ToCareer = ActionButton(TEXT("Career"), FSimpleDelegate::CreateLambda([this]()
+			{
+				Quiz.Reset();
+				CheckrideTierId.Reset();
+				QuizRetakeLessonId.Reset();
+				Stack.Last() = Build(ESailScreen::Pause);
+				Push(ESailScreen::Career);
+			}), true);
+			Ways->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ SNew(SBox).WidthOverride(320.f)[ ToCareer ] ];
+			if (!FirstWay.IsValid()) FirstWay = ToCareer;
+		}
 		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ Ways ];
 		Box->AddSlot().AutoHeight()[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
 		E.Focus = FirstWay.IsValid() ? FirstWay : TSharedPtr<SWidget>(Done);
@@ -2460,8 +2502,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 						const bool bAwarded = SailCareer::RecordCheckrideQuiz(T->Id, QuizRight, Quiz.Num());
 						if (bAwarded)
 						{
-							TArray<FString> Opens;
-							for (const FString& Id : T->Unlocks.Tiers) if (const FCareerTier* X = Content.Tier(Id)) Opens.Add(X->Name);
+							const TArray<FString> Opens = TiersOpenedBy(*T);
 							QuizCareerLine = T->CertificateName + TEXT(" earned.") + (Opens.Num() ? FString::Printf(TEXT(" Open now: %s."), *FString::Join(Opens, TEXT(", "))) : FString());
 						}
 						else if (T->Checkride.Quiz.Passes(QuizRight, Quiz.Num())) QuizCareerLine = FString::Printf(TEXT("Passed. The %s is already yours."), *T->CertificateName);
@@ -2610,11 +2651,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			const ESailingDrill Drill = L.Drill;
 			const FString TierWorld = T.WorldId, TierBoat = T.Boats.Num() ? T.Boats[0] : FString(TEXT("J22"));
 			TSharedRef<SSailButton> Row = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOpen)
-				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat, LessonConditions = L.Conditions, LessonTraffic = L.Traffic]()
+				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat, LessonConditions = L.Conditions, LessonTraffic = L.Traffic, LessonId = L.Id]()
 				{
 					// #402: Start lesson: its drill in the tier's world and first boat, cast off at once (the briefing opens
 					// as it loads); the lesson's conditions are the lesson day, traffic off.
 					Pending = USailSessionSubsystem::MakeLesson(TierWorld, TierBoat, int32(Drill) - 1, LessonConditions, LessonTraffic);
+					Pending.LessonId = LessonId;
 					CastOff();
 				})
 			[

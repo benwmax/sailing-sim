@@ -500,6 +500,13 @@ bool FSailingTackLookAheadTest::RunTest(const FString&)
 		OwnTotal += Own.Last();
 		LookTotal += Look.Last();
 		Lost += B.Seconds <= 0.0;
+		// The nightly's watchdog ends a run that logs nothing for 20 min, and these 72 seeds take about 25 (Nov 11 2026: it
+		// stopped the nightly here). A line every six seeds, flushed, shows it working (and a real hang still trips it).
+		if (Seed % 6 == 0)
+		{
+			UE_LOG(LogTemp, Display, TEXT("TackLookAhead seed %u/72 (%.0f s reacting, %.0f s reading the sea so far)"), Seed, OwnTotal, LookTotal);
+			if (GLog) GLog->Flush();
+		}
 	}
 	const double OwnP90 = P90(Own), LookP90 = P90(Look);
 	AddInfo(FString::Printf(TEXT("J/22 gale tacks, 72 seeds: %.1f s in all reacting, %.1f s reading the sea ahead; 90th percentile %.1f and %.1f s"),
