@@ -1,0 +1,51 @@
+{
+ "id": "j22-cockpit",
+ "boat": "J22H",
+ "sections": [
+  "cockpit"
+ ],
+ "status": "wave 2, round 1 (blind A/B 3 of 3 for the narrower footwell)",
+ "feature": "Cockpit: the footwell between the seat fronts to the class deck plan and the overhead photo; seat and sole heights, cockpit ends and the aft deck checked",
+ "targets": {
+  "footwell_width": {
+   "value": 0.63,
+   "tol_m": 0.04,
+   "tier": "B",
+   "source": "j22.org deck plan ('The boat', class association), 5.61 mm/px scaled to LOA: 0.62 m between the seat fronts; Commons overhead photo (j22-above-deck-cockpit, CC0 Ahunt; inputs 386cbbfa Inputs/shape-refs/j22/): 0.29 of the deck beam at mid-cockpit = 0.64 m. Measured by measure.py at the cockpit's middle, between the seat fronts' inner faces 10 cm over the sole's top."
+  },
+  "aft_deck": {
+   "value": 0.46,
+   "tol_m": 0.05,
+   "tier": "B",
+   "source": "j22.org deck plan: transom to the cockpit's aft end 0.46 m"
+  }
+ },
+ "outline_views": [
+  "plan"
+ ],
+ "features": [
+  "seat fronts square to the sole with a small fillet",
+  "teak seat-front strips",
+  "traveller across the cockpit at the seats",
+  "aft deck with the inspection port (class rule)"
+ ],
+ "references": "links and numbers only; photos in git-ignored Data/Reference/raw/boats/J22/shape/ on BEN-PC and inputs 386cbbfa",
+ "moves_ok": [
+  "Trav*",
+  "JibTail*",
+  "Coil*"
+ ],
+ "moves_ok_sections": [],
+ "moves_ok_note": "The traveller's inner ends and the jib tails' coils sit from SEAT_IN, so they follow the seat fronts inboard.",
+ "tris_max": null,
+ "mac_wiring": true,
+ "mac_note": "CrewPose.cpp's hero well (SeatIn) follows SEAT_IN: the Mac runs --scope crew as well as boats.",
+ "photo_needed": "no (tier B deck plan and tier D photos agree within 2 cm)",
+ "physics_reference": "physics",
+ "physics_table": "Tools/boats/j22/make_j22_hull.py",
+ "findings": [
+  "The cockpit's fore end (the cabin's aft face) is at x -0.52 on the hero, -0.59 on the class deck plan (2.82 m from the transom): 7 cm, past the plan's reading tolerance. It moves the cabin and the companionway, so it belongs to wave 3 (companionway), not this card.",
+  "One blind reviewer measured the whole cockpit at 0.77 of the deck beam on the hero against about 0.68 in the overhead photo (side decks 0.25 m, SIDE_DECK from Bean's photo IMG_9272; the light J/22 uses 0.36). To check in round 2 with a camera solve before changing: it moves the coaming, the jib tracks and the crew's rail.",
+  "A reviewer noted the real footwell starts a little aft of the companionway (a short step at its fore end); the hero's runs straight to the bulkhead. Round 2 or wave 3."
+ ]
+}

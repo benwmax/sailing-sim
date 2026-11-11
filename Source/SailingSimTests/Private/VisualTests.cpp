@@ -801,9 +801,12 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("J/22: beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-2.03, 0.0, 0.466)));
 		TestEqual(TEXT("J/22: forward of the track the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0), 0.30, 1e-6);
 		// The hero (the player's boat since round 12) has its own cockpit (build_j22_hero.py, J22H_sockets.json): a sole at
-		// 0.136 m, seats at 0.40 m inboard to 0.40 m, the track across the well at x -2.06 (top 0.404 m).
+		// 0.136 m, seats at 0.40 m inboard to 0.31 m (0.40 before shape wave 2), the track across the well at x -2.06
+		// (top 0.404 m).
 		TestEqual(TEXT("Hero J/22: the floor under the track is the sole"), CrewFloorZ(J22, -2.06, 0.0, false), 0.136, 1e-6);
 		TestEqual(TEXT("Hero J/22: the seat outboard of 0.40 m"), CrewFloorZ(J22, -1.73, 0.44, false), 0.40, 1e-6);
+		TestEqual(TEXT("Hero J/22: the seat from 0.31 m out (shape wave 2)"), CrewFloorZ(J22, -1.73, 0.35, false), 0.40, 1e-6);
+		TestEqual(TEXT("Hero J/22: the sole inboard of 0.31 m"), CrewFloorZ(J22, -1.73, 0.28, false), 0.136, 1e-6);
 		TestTrue(TEXT("Hero J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.396), false));
 		TestFalse(TEXT("Hero J/22: over the sole beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-1.75, 0.0, 0.40), false));
 	}

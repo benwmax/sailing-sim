@@ -93,7 +93,8 @@ COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272)
 SEAT_Z, FLOOR_Z = 0.40, 0.13                # GUESS: seat and self-bailing floor heights above the waterline
-SEAT_IN = 0.40                              # seat inboard edge, half-width
+SEAT_IN = 0.31                              # seat fronts, half-width: footwell 0.62-0.64 m (j22.org deck plan; Commons
+                                            # overhead photo, docs/shape-loop wave 2)
 
 
 def smooth(t):
@@ -1277,4 +1278,6 @@ json.dump(report, open(os.path.join(OUT, "j22_hero_report.json"), "w"), indent=1
 # Boat fidelity 4: the coiled tails the game draws as live rope (Blender frame, metres; the game flips Y).
 json.dump({"frame": "Blender: X forward, Y to port, Z up, metres, the hull's origin", "coils": D.COILS},
           open(os.path.join(OUT, "J22H_coils.json"), "w"), indent=1)
+# the seats' height and inboard edge for bake_j22_hero (JibTailRest lies on the seat by the coils, SEAT_IN + 0.18 out)
+SC["j22h_seat_z"], SC["j22h_seat_in"] = SEAT_Z, SEAT_IN
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "j22_hero.blend"))

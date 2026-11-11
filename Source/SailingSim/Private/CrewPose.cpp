@@ -936,10 +936,11 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 		if (!bTravelerBridge)
 		{
 			// The hero (build_j22_hero.py COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_IN; the sole from J22H_sockets.json
-			// CockpitSole): a deeper well, seats inboard to 0.40 m. Its traveler (pc/j22-feedback, Bean's Harken layout) is a
-			// 32 mm track from seat to seat at the boom's end, x -2.06, its top 0.404 m up (Traveler_S/P 0.69 m out on the class
+			// CockpitSole): a deeper well, seats inboard to 0.31 m (0.40 before shape wave 2: the footwell is 0.62-0.64 m on the
+			// class deck plan and the overhead photo). Its traveler (pc/j22-feedback, Bean's Harken layout) is a 32 mm track
+			// from seat to seat at the boom's end, x -2.06, its top 0.404 m up (Traveler_S/P 0.69 m out on the class
 			// hull since shape wave 1's rebake, 0.80 before; the rest unchanged by it).
-			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.25; W.SeatZ = 0.40; W.SeatIn = 0.40; W.SoleZ = 0.136;
+			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.25; W.SeatZ = 0.40; W.SeatIn = 0.31; W.SoleZ = 0.136;
 			W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.388; W.TrackZ1 = 0.404; W.TrackHalfY = 0.73;
 			return true;
 		}

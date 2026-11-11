@@ -75,7 +75,8 @@ def value_of(stats, key):
         ext = [b - a for a, b in zip(o["min"], o["max"])]
         return {"length": ext[0], "width": ext[1], "height": ext[2], "top": o["max"][2], "fwd": o["max"][0],
                 "aft": o["min"][0]}.get(what)
-    return stats["hull"].get(key)
+    v = stats["hull"].get(key)
+    return v if v is not None else stats.get("features", {}).get(key)
 
 
 for key, t in CARD.get("targets", {}).items():
