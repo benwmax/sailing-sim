@@ -1039,7 +1039,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 		TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(3.f, 3.f)).ScrollBarPadding(FMargin(4.f, 0.f, 0.f, 0.f))
 			+ SScrollBox::Slot().Padding(0.f, 0.f, 8.f, 0.f)[ SailUI::Text(Locked.IsEmpty() ? W.Description : Locked, EType::Body, Locked.IsEmpty() ? Muted : Fg, true) ];
 		TSharedRef<SSailButton> Card = SNew(SSailButton).Padding(FMargin(0.f)).IsEnabled(Locked.IsEmpty()).IsSelected_Lambda([this, Index]() { return Pending.World == Index; })
-			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
+			.OnClicked_Lambda([this, Index]() { if (Pending.World != Index) { Pending.World = Index; Pending.LaunchSpot = 0; Pending.LessonId.Reset(); if (Index == 0 && Pending.Mode == ESailMode::Passage) Pending.Mode = ESailMode::Free; } Push(ESailScreen::Launch); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
@@ -1201,7 +1201,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			{
 				// A click shows her; a click on the boat shown moves on (as Enter does), unless she is locked.
 				if (FocusedBoat != T) { FocusedBoat = T; return; }
-				if (Locked.IsEmpty()) { Pending.Boat = T; Push(ESailScreen::Conditions); }
+				if (Locked.IsEmpty()) { if (Pending.Boat != T) Pending.LessonId.Reset(); Pending.Boat = T; Push(ESailScreen::Conditions); }
 			})
 		[
 			SNew(SVerticalBox)
@@ -1293,6 +1293,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	TSharedRef<SSailButton> Next = ActionButton(TEXT("Next: conditions"), FSimpleDelegate::CreateLambda([this, LockOf]()
 	{
 		if (!LockOf(FocusedBoat).IsEmpty()) return;
+		if (Pending.Boat != FocusedBoat) Pending.LessonId.Reset();   // #636: hand-picked: no longer the lesson
 		Pending.Boat = FocusedBoat;
 		Push(ESailScreen::Conditions);
 	}));
@@ -1563,7 +1564,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 		const FString ModeLine = (M.Mode == ESailMode::Passage && Pending.World == 3) ? FString(TEXT("Vieux-Port to Cassis by the Calanques")) : FString(M.Line);
 		const ESailMode Mode = M.Mode;
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(18.f, 16.f)).IsEnabled(bOk).IsSelected_Lambda([this, Mode]() { return Pending.Mode == Mode; })
-			.OnClicked_Lambda([this, Mode]() { Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
+			.OnClicked_Lambda([this, Mode]() { if (Pending.Mode != Mode) Pending.LessonId.Reset(); Pending.Mode = Mode; Stack.Last() = Build(ESailScreen::Mode); Show(Stack.Last(), true); })
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(M.Name, EType::CardTitleS, Fg) ]
@@ -1588,7 +1589,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 			Drills->AddSlot(Cell % 3, Cell / 3)
 			[
 				SNew(SSailButton).Look(EButtonLook::Card).Padding(FMargin(14.f, 10.f)).IsSelected_Lambda([this, I]() { return Pending.DrillIndex == I; })
-				.OnClicked_Lambda([this, I]() { Pending.DrillIndex = I; })
+				.OnClicked_Lambda([this, I]() { if (Pending.DrillIndex != I) Pending.LessonId.Reset(); Pending.DrillIndex = I; })
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(FString::Printf(TEXT("%d. %s"), I + 1, DrillName(ESailingDrill(I + 1))), EType::Ui, Fg) ]

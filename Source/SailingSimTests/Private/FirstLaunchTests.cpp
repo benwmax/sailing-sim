@@ -213,7 +213,10 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 			SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, Shared->Drill, Shared->Id);
 			TestEqual(FString::Printf(TEXT("Club Racer's lesson keeps its own title (%s)"), *Shared->Title), Title, Shared->Title);
 		}
-		// No lesson: a drill picked from the Mode screen, in Career or Free Sail, or a lesson's drill once it finished.
+		// No lesson: a drill picked from the Mode screen, in Career or Free Sail, or a lesson's drill once it finished. (The
+		// menus clear Pending.LessonId when the world, boat, mode or drill is picked by hand: in game Pending starts as the
+		// active session, so a drill picked from Pause > Mode had kept the old lesson's title. Those clicks are Slate's; this
+		// is the title they lead to.)
 		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill, FString());
 		TestEqual(TEXT("A drill with no lesson: the drill's own name"), Title, FString(DrillName(First.Drill)));
 		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
