@@ -50,13 +50,21 @@ void FBoatStepJob::Run() const
 	for (int32 I = 0; I < Steps; ++I)
 	{
 		const FBoatControls Before = *Controls;
-		const bool bAssist = bTrimAssist && Boat->GetState().Time - LastManualTrimTime > TrimIdleSeconds;
-		if (bAssist || bSimple)
+		const double Now = Boat->GetState().Time;
+		const bool bAssist = bTrimAssist && Now - LastManualTrimTime > TrimIdleSeconds;
+		// The assist waiting after the player's sheet: the crew's body still answers the boat (see LastManualHikeTime).
+		const bool bReflex = bTrimAssist && !bAssist && Now - LastManualHikeTime > TrimIdleSeconds;
+		if (bAssist || bSimple || bReflex)
 		{
 			const FBoatControls Assisted = Trim->Update(*Boat, *Controls, StepDt);
 			if (bAssist)
 			{
 				*Controls = Assisted;
+			}
+			else if (!bSimple)
+			{
+				Controls->Hike = Assisted.Hike;
+				Controls->CrewAft = Assisted.CrewAft;
 			}
 			else
 			{
@@ -66,6 +74,11 @@ void FBoatStepJob::Run() const
 				Controls->Cunningham = Assisted.Cunningham;
 				Controls->Outhaul = Assisted.Outhaul;
 				Controls->Backstay = Assisted.Backstay;
+				if (bReflex)
+				{
+					Controls->Hike = Assisted.Hike;
+					Controls->CrewAft = Assisted.CrewAft;
+				}
 			}
 			Controls->Tiller = Before.Tiller;
 			Controls->bWingOnWing = Before.bWingOnWing;

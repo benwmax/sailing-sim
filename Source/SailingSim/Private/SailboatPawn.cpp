@@ -1254,6 +1254,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.StepDt = Stepper.GetStepDt();
 	Job.bTrimAssist = EasyAssists.bEnabled || USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
 	Job.LastManualTrimTime = LastManualTrimTime;
+	Job.LastManualHikeTime = LastManualHikeTime;
 	if (ShowroomStage != EShowroomStage::None && !bTrafficBoat)
 	{
 		Job.bTrimAssist = true; // the showroom trims her sails (the player's hands are on the menus)
@@ -3570,6 +3571,7 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 	Adjust(Controls.Traveler, NAME_Traveler, 0.8, -1.0, 1.0);
 	// (Hike is yours in both layouts.)
 	Adjust(Controls.Hike, NAME_Hike, 0.8, -1.0, 1.0);
+	if (Held(NAME_Hike) != 0.f) LastManualHikeTime = Boat.GetState().Time;
 	Adjust(Controls.Vang, NAME_Vang, 0.5, 0.0, 1.0);
 	Adjust(Controls.Cunningham, NAME_Cunningham, 0.5, 0.0, 1.0);
 	Adjust(Controls.Outhaul, NAME_Outhaul, 0.5, 0.0, 1.0);

@@ -424,6 +424,7 @@ namespace Sailing
 	{
 		BottomPoints.clear();
 		OutlinePoints.clear();
+		OutlineEdges.clear();
 		// Foil tips (leading and trailing edge) and points along each hull's keel line.
 		for (const FFoilDef& F : Config.Foils)
 		{
@@ -443,6 +444,7 @@ namespace Sailing
 				BottomPoints.push_back(Vec3(X, H.CenterY, -H.KeelLineDepth(X, CanoeDepth)));
 			}
 			// Deck edge at the rail: bow, three stations each side, the transom corners and middle.
+			const int First = int(OutlinePoints.size());
 			const double Len = H.BowX - H.SternX;
 			OutlinePoints.push_back(Vec3(H.BowX - 0.05, H.CenterY, H.SheerHeight(H.BowX) - 0.2));
 			for (double U : { 0.8, 0.55, 0.25 })
@@ -456,6 +458,27 @@ namespace Sailing
 			OutlinePoints.push_back(Vec3(H.SternX + 0.05, H.CenterY + BT, H.SheerZ - 0.2));
 			OutlinePoints.push_back(Vec3(H.SternX + 0.05, H.CenterY - BT, H.SheerZ - 0.2));
 			OutlinePoints.push_back(Vec3(H.SternX, H.CenterY, H.SheerZ - 0.2));
+			// The edges round the deck, bow to stern down the starboard side and back up the port side (indices from
+			// First: 0 bow, 1/3/5 starboard and 2/4/6 port stations, 7/8 transom corners, 9 the transom's middle).
+			const double MidX = 0.5 * (H.BowX + H.SternX);
+			const double HalfBeam = H.DeckHalfBeam(H.MaxBeamX);
+			static const int Ring[] = { 0, 1, 3, 5, 7, 9, 8, 6, 4, 2 };
+			const int NRing = int(sizeof(Ring) / sizeof(Ring[0]));
+			for (int I = 0; I < NRing; ++I)
+			{
+				FOutlineEdge Edge;
+				Edge.A = First + Ring[I];
+				Edge.B = First + Ring[(I + 1) % NRing];
+				const Vec3& PA = OutlinePoints[size_t(Edge.A)];
+				const Vec3& PB = OutlinePoints[size_t(Edge.B)];
+				Vec3 N(PB.Y - PA.Y, -(PB.X - PA.X), 0.0);
+				const Vec3 Mid = (PA + PB) * 0.5;
+				if (N.X * (Mid.X - MidX) + N.Y * (Mid.Y - H.CenterY) < 0.0) N = N * -1.0; // away from the hull's middle
+				if (N.LengthXY() < 1e-6) continue;
+				Edge.Out = N.Normalized();
+				Edge.HalfBeam = HalfBeam;
+				OutlineEdges.push_back(Edge);
+			}
 		}
 		// The mast as a spar, not just its head: a bridge deck is a slab a few metres thick, and a deck lower than the
 		// masthead but with its top below it (a 5 m deck under a 9.2 m mast) must still stop her (#503). The spar runs
@@ -1207,6 +1230,76 @@ namespace Sailing
 						// capsule: eased out like the mast, not fired out. Docks and piles (Bottom below the water) as before.
 						Contact(P, Vec3(DX / Dist, DY / Dist, 0.0), Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), S.Bottom > 0.0 ? kDeckOutSpeed : 0.0);
 						Telemetry.bCollision = true;
+					}
+				}
+			}
+			// A pier end or a pile between two outline points (#3 of the Nov 11 physics review: a 0.5 m pier end went 1.8 m
+			// into the J/22's side between stations 2 m apart): each end of a segment that leaves the side at more than 30
+			// deg meets the deck edge where it projects onto it, pushed along the edge's outward normal. Only what the two
+			// points' own contacts with that segment don't already give (so near a point the push is the point's, and
+			// alongside a dock, where no end comes in, nothing changes). An end deeper than half the beam inside belongs to
+			// the other side's edge.
+			for (const FOutlineEdge& Edge : OutlineEdges)
+			{
+				const Vec3 PA = Origin + Q.Rotate(OutlinePoints[size_t(Edge.A)]);
+				const Vec3 PB = Origin + Q.Rotate(OutlinePoints[size_t(Edge.B)]);
+				Vec3 Out = Q.Rotate(Edge.Out);
+				Out.Z = 0.0;
+				if (Out.LengthXY() < 0.5) continue; // the edge lies near flat (on her side): the points do the work
+				Out = Out.Normalized();
+				const double EX = PB.X - PA.X, EY = PB.Y - PA.Y;
+				const double ELen2 = EX * EX + EY * EY;
+				if (ELen2 < 1e-6) continue;
+				// The segments in the cells of the edge's two ends (an edge is a couple of metres, a cell 32: at most two cells,
+				// and a bucket lists its segments in ascending order, so the second cell skips the first's by a binary search).
+				auto CellOf = [&](const Vec3& P) -> const std::vector<int>*
+				{
+					const int BR = int(std::floor((P.X - ObstacleX0) / ObstacleCell)), BC = int(std::floor((P.Y - ObstacleY0) / ObstacleCell));
+					if (BR < 0 || BC < 0 || BR >= ObstacleRows || BC >= ObstacleCols) return nullptr;
+					return &ObstacleBuckets[size_t(BR) * ObstacleCols + BC];
+				};
+				const std::vector<int>* CellA = CellOf(PA);
+				const std::vector<int>* CellB = CellOf(PB);
+				if (CellB == CellA) CellB = nullptr;
+				for (const std::vector<int>* Cell : { CellA, CellB })
+				{
+					if (!Cell) continue;
+					for (const int SegmentIndex : *Cell)
+					{
+						if (Cell == CellB && CellA && std::binary_search(CellA->begin(), CellA->end(), SegmentIndex)) continue;
+						const FObstacleSegment& S = (*Obstacles)[SegmentIndex];
+						const double SX = S.BX - S.AX, SY = S.BY - S.AY;
+						const double SLen = std::sqrt(SX * SX + SY * SY);
+						// A point's own contact with this segment (as above), to leave out of the edge's.
+						auto PointPen = [&](const Vec3& P)
+						{
+							if (P.Z < S.Bottom || P.Z > S.Top) return 0.0;
+							const double T = SLen > 1e-9 ? Clamp(((P.X - S.AX) * SX + (P.Y - S.AY) * SY) / (SLen * SLen), 0.0, 1.0) : 0.0;
+							const double DX = P.X - (S.AX + SX * T), DY = P.Y - (S.AY + SY * T);
+							return std::max(S.Radius + 0.1 - std::sqrt(DX * DX + DY * DY), 0.0);
+						};
+						for (int End = 0; End < (SLen > 1e-6 ? 2 : 1); ++End)
+						{
+							const double CX = End == 0 ? S.AX : S.BX, CY = End == 0 ? S.AY : S.BY;
+							// The segment must run away from the side from this end (a pile has no direction).
+							if (SLen > 1e-6)
+							{
+								const double Away = ((End == 0 ? SX : -SX) * Out.X + (End == 0 ? SY : -SY) * Out.Y) / SLen;
+								if (Away < 0.5) continue;
+							}
+							const double U = ((CX - PA.X) * EX + (CY - PA.Y) * EY) / ELen2;
+							if (U <= 0.0 || U >= 1.0) continue;
+							const Vec3 P = PA + (PB - PA) * U;
+							if (P.Z < S.Bottom || P.Z > S.Top) continue;
+							const double Outside = (CX - P.X) * Out.X + (CY - P.Y) * Out.Y; // the end's distance out from the edge
+							if (Outside < -0.5 * Edge.HalfBeam) continue;
+							const double Pen = S.Radius + 0.1 - Outside - std::max(PointPen(PA), PointPen(PB));
+							if (Pen > 0.0)
+							{
+								Contact(P, Out * -1.0, Pen, 1.5e5 * ContactScale, 2.0e4 * ContactScale, 0.3, Vec3(), S.Bottom > 0.0 ? kDeckOutSpeed : 0.0);
+								Telemetry.bCollision = true;
+							}
+						}
 					}
 				}
 			}
