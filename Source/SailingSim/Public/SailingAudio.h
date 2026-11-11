@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Sound/SoundWaveProcedural.h"
 #include "Components/ActorComponent.h"
+#include "Sound/SoundAttenuation.h"
 #include "BoatModel.h"
 #include <atomic>
 #include "SailingAudio.generated.h"
@@ -45,8 +46,10 @@ enum class ESailingCue : uint8
 };
 SAILINGSIM_API const TCHAR* SailingCueName(ESailingCue Cue);
 
-/** The kinds of spatialised source in the world (each its own procedural voice at its place). */
-enum class EWorldSound : uint8 { MarinaHalyards, Gulls, Outboard, Diesel, Count };
+/** The kinds of spatialised source in the world (each its own procedural voice at its place). Slice sound pass: another
+ *  vessel's whistle or the committee's horn (Level, Hz) and thunder from the strike's direction (Level the rumble,
+ *  Rate the crack). */
+enum class EWorldSound : uint8 { MarinaHalyards, Gulls, Outboard, Diesel, Horn, Thunder, Count };
 SAILINGSIM_API const TCHAR* WorldSoundName(EWorldSound Kind);
 
 /**
@@ -116,6 +119,7 @@ public:
 	std::atomic<float> Level{ 0.f };   // 0..1
 	std::atomic<float> Rate{ 0.5f };   // 0..1: the wind for halyards, throttle for engines
 	std::atomic<bool> bMuted{ false }; // Graphics G7: recorded samples play this source instead (USailingWorldSamples)
+	std::atomic<float> Hz{ 400.f };    // Horn: the whistle's pitch (about 110 Hz for a ship, 420 for a small boat)
 	uint32 Seed = 1;
 
 private:
@@ -123,6 +127,7 @@ private:
 	uint32 Rng = 0x9E3779B9u;
 	float SLevel = 0.f, SRate = 0.5f;
 	float Phase = 0.f, Phase2 = 0.f, Env = 0.f, Env2 = 0.f, F1 = 1800.f, F2 = 2700.f, P1 = 0.f, P2 = 0.f, Glide = 0.f, Call = 0.f, Low = 0.f, Low2 = 0.f;
+	float BandLow = 0.f, Band = 0.f;   // Thunder: the crack's band-pass
 };
 
 class UAudioComponent;
@@ -184,6 +189,16 @@ namespace SailingSound
 	/** Makes A a placed sound in the world: natural distance falloff over FalloffM, air absorption past a tenth of it,
 	 *  panned by direction (centred when IsMono). */
 	SAILINGSIM_API void SetSpatial(UAudioComponent* A, float FalloffM);
+	/** The settings SetSpatial uses, with two more knobs. InnerM: no distance falloff inside it (default a twentieth of
+	 *  FalloffM). BlendStartM/BlendEndM: inside BlendStartM a sound turns from placed toward both ears, all the way at
+	 *  BlendEndM (0 = always placed): a sound on board or wrapped round the listener (wind, thunder) leans toward its side
+	 *  without jumping to one ear. */
+	SAILINGSIM_API FSoundAttenuationSettings SpatialSettings(float FalloffM, float InnerM = -1.f, float BlendStartM = 0.f, float BlendEndM = 0.f);
+	/** SpatialSettings as an attenuation object (for one-shots spawned at a place: UGameplayStatics::SpawnSoundAttached). */
+	SAILINGSIM_API USoundAttenuation* MakeAttenuation(UObject* Outer, float FalloffM, float InnerM = -1.f, float BlendStartM = 0.f, float BlendEndM = 0.f);
+	/** Where a direction-only sound sits: DistanceM from the listener toward the map-frame bearing of (DirNorth, DirEast),
+	 *  UpM above it (Unreal world cm). Wind from upwind, thunder from the strike. */
+	SAILINGSIM_API FVector AroundListener(const FVector& ListenerCm, double DirNorth, double DirEast, float DistanceM, float UpM);
 	/** A peak limiter at the end of the master mix (once per process), so a loud moment never clips the output. */
 	SAILINGSIM_API void EnsureMasterLimiter(UObject* WorldContext);
 

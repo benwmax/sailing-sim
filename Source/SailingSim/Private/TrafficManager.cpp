@@ -1,5 +1,6 @@
 #include "TrafficManager.h"
 #include "SoundCaptions.h"
+#include "SailingAudio.h"
 #include "CourseMarks.h"
 #include "SailingFrame.h"
 #include "Career.h"
@@ -417,16 +418,37 @@ void ATrafficManager::Message(const FString& Text)
 
 void ATrafficManager::UpdateHorns(double Now)
 {
-	float Level = 0.f, Hz = 400.f;
+	// Slice sound pass: the loudest blast sounding now plays from its vessel (or the committee boat), a placed voice in
+	// the world: the player hears which side it came from, and the distance in its level and its dulled top end.
+	const FBlast* Loudest = nullptr;
 	for (const FBlast& B : Blasts)
 	{
-		if (Now >= B.Start && Now < B.End && B.Level > Level) { Level = B.Level; Hz = B.Hz; }
+		if (Now >= B.Start && Now < B.End && (!Loudest || B.Level > Loudest->Level)) Loudest = &B;
+	}
+	if (Loudest && !HornVoice)
+	{
+		HornAt = NewObject<USceneComponent>(this, TEXT("HornAt"));
+		HornAt->SetupAttachment(RootComponent);
+		HornAt->SetUsingAbsoluteLocation(true);
+		HornAt->RegisterComponent();
+		USailingWorldSynth* Voice = nullptr;
+		// Heard to about 3 km (a ship's whistle carries 2 nautical miles, Annex III); no falloff inside 150 m.
+		SailingSound::MakeWorldSound(this, HornAt, EWorldSound::Horn, 3000.f, Voice);
+		HornVoice = Voice;
+	}
+	if (HornVoice)
+	{
+		if (Loudest)
+		{
+			double X = Loudest->X, Y = Loudest->Y;
+			if (const FTrafficVessel* V = Loudest->Vessel >= 0 ? Sim.Find(Loudest->Vessel) : nullptr) { X = V->Snapshot().X; Y = V->Snapshot().Y; }
+			HornAt->SetWorldLocation(SailingFrame::ToWorld(GetWorld(), X, Y, Loudest->UpM));
+			HornVoice->Hz = Loudest->Hz;
+			HornVoice->Level = Loudest->Level;
+		}
+		else HornVoice->Level = 0.f;
 	}
 	Blasts.RemoveAll([&](const FBlast& B) { return B.End < Now; });
-	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
-	{
-		if (ASailboatPawn* P = Cast<ASailboatPawn>(PC->GetPawn())) P->SetHorn(Level, Hz);
-	}
 }
 
 void ATrafficManager::Tick(float DeltaSeconds)
@@ -499,9 +521,15 @@ void ATrafficManager::Tick(float DeltaSeconds)
 				if (!Said.Split(TEXT(":"), &HowMany, nullptr)) HowMany = Said;
 				Captions->AddFrom(V->Kind == ETrafficKind::Ship ? TEXT("Ship's whistle") : TEXT("Horn"), FVector2D(V->Snapshot().X, V->Snapshot().Y), HowMany.ToLower(), 6.0);
 			}
-			// A short blast is about one second, with a second between blasts (Rule 32).
-			const float Loud = FMath::Clamp(1.f - float(Range) / 3000.f, 0.08f, 1.f);
-			for (int32 B = 0; B < SoundSignalBlasts(E.Sound); ++B) Blasts.Add({ Sim.GetTime() + B * 2.0, Sim.GetTime() + B * 2.0 + 1.0, HornHz(V->Kind), Loud });
+			// A short blast is about one second, with a second between blasts (Rule 32). The distance is the placed
+			// voice's (UpdateHorns): a ship's whistle is the loudest, high on her funnel.
+			const bool bShip = V->Kind == ETrafficKind::Ship;
+			for (int32 B = 0; B < SoundSignalBlasts(E.Sound); ++B)
+			{
+				FBlast Blast{ Sim.GetTime() + B * 2.0, Sim.GetTime() + B * 2.0 + 1.0, HornHz(V->Kind), bShip ? 1.f : 0.75f };
+				Blast.X = V->Snapshot().X; Blast.Y = V->Snapshot().Y; Blast.UpM = bShip ? 25.f : 3.f; Blast.Vessel = E.Vessel;
+				Blasts.Add(Blast);
+			}
 		}
 		else if ((E.Type == FTrafficEvent::GiveWay || E.Type == FTrafficEvent::StandOnAction || E.Type == FTrafficEvent::Collision) && (bMine || Range < 600.0))
 		{
@@ -518,7 +546,12 @@ void ATrafficManager::Tick(float DeltaSeconds)
 			const FString Text = UTF8_TO_TCHAR(Race.Signals[SignalsSeen].second.c_str());
 			Message(Text);
 			const bool bLong = Text.Contains(TEXT("long sound"));
-			if (Text.Contains(TEXT("sound"))) Blasts.Add({ Sim.GetTime(), Sim.GetTime() + (bLong ? 3.0 : 1.0), 330.f, 0.9f });
+			if (Text.Contains(TEXT("sound")))
+			{
+				FBlast Blast{ Sim.GetTime(), Sim.GetTime() + (bLong ? 3.0 : 1.0), 330.f, 0.9f };
+				Blast.X = Race.Course.CommitteeX; Blast.Y = Race.Course.CommitteeY; Blast.UpM = 2.f; Blast.Vessel = CommitteeId;
+				Blasts.Add(Blast);
+			}
 			if (Text.Contains(TEXT("sound")))
 			{
 				if (USoundCaptions* Captions = USoundCaptions::Get(this))

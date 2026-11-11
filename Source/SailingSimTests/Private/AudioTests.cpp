@@ -112,3 +112,62 @@ bool FSailingCaptionDirectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Wraps past 180"), FString(RelativeDirection(-230.0)), FString(TEXT("off the starboard quarter")));
 	return true;
 }
+
+/**
+ * Slice sound pass: placed sounds. A direction-only source (wind, thunder) sits at the given distance toward its bearing
+ * in the map frame; the settings carry the inner radius and the blend toward both ears; the horn and thunder voices
+ * are silent at rest, the horn sounds when blown, and a close strike's crack is heard before its rumble rises.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPlacedSoundsTest, "SailingSim.Audio.PlacedSounds", AudioFlags)
+bool FSailingPlacedSoundsTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	const FVector North = AroundListener(FVector(100.0, 200.0, 300.0), 10.0, 0.0, 50.f, 1.f);
+	TestTrue(TEXT("50 m north, 1 m up"), North.Equals(FVector(5100.0, 200.0, 400.0), 0.01));
+	const FVector East = AroundListener(FVector::ZeroVector, 0.0, 3.0, 5.f, 0.f);
+	TestTrue(TEXT("5 m east"), East.Equals(FVector(0.0, 500.0, 0.0), 0.01));
+	TestTrue(TEXT("No direction: north"), AroundListener(FVector::ZeroVector, 0.0, 0.0, 1.f, 0.f).Equals(FVector(100.0, 0.0, 0.0), 0.01));
+
+	const FSoundAttenuationSettings Wind = SpatialSettings(100.f, 40.f, 10.f, 1.f);
+	TestEqual(TEXT("Inner radius"), double(Wind.AttenuationShapeExtents.X), 4000.0, 0.01);
+	TestEqual(TEXT("Falloff"), double(Wind.FalloffDistance), 10000.0, 0.01);
+	TestEqual(TEXT("Blend from 10 m"), double(Wind.NonSpatializedRadiusStart), 1000.0, 0.01);
+	TestEqual(TEXT("Both ears at 1 m"), double(Wind.NonSpatializedRadiusEnd), 100.0, 0.01);
+	TestEqual(TEXT("Placed unless mono"), bool(Wind.bSpatialize), !IsMono());
+	TestEqual(TEXT("Default inner radius: a twentieth"), double(SpatialSettings(3000.f).AttenuationShapeExtents.X), 15000.0, 0.01);
+
+	auto Rms = [](USoundWaveProcedural* W, int32 N)
+	{
+		TArray<uint8> Buf;
+		double Sum = 0.0;
+		for (int32 Block = 0; Block < 4; ++Block)
+		{
+			W->OnGeneratePCMAudio(Buf, N);
+			const int16* S = reinterpret_cast<const int16*>(Buf.GetData());
+			for (int32 I = 0; I < N; ++I) Sum += double(S[I]) * S[I];
+		}
+		return FMath::Sqrt(Sum / (4.0 * N)) / 32768.0;
+	};
+	auto Voice = [](EWorldSound Kind, float Level, float Rate)
+	{
+		USailingWorldSynth* W = NewObject<USailingWorldSynth>();
+		W->Kind = Kind; W->Level = Level; W->Rate = Rate; W->Hz = 110.f;
+		return W;
+	};
+	// The mix's groups at full for the duration (restored after).
+	USailingSettings* S = USailingSettings::Get();
+	const float Keep[] = { S->Volume, S->VolumeWeather, S->VolumeSignals };
+	S->Volume = 1.f; S->VolumeWeather = 1.f; S->VolumeSignals = 1.f;
+	UpdateMix();
+	TestTrue(TEXT("A horn at rest is silent"), Rms(Voice(EWorldSound::Horn, 0.f, 0.f), 12000) < 1e-4);
+	TestTrue(TEXT("A ship's whistle sounds"), Rms(Voice(EWorldSound::Horn, 1.f, 0.f), 12000) > 0.01);
+	TestTrue(TEXT("No thunder, no sound"), Rms(Voice(EWorldSound::Thunder, 0.f, 0.f), 12000) < 1e-4);
+	TestTrue(TEXT("A close strike's crack leads its rumble"), Rms(Voice(EWorldSound::Thunder, 0.f, 1.f), 12000) > 0.01);
+	TestTrue(TEXT("The rumble"), Rms(Voice(EWorldSound::Thunder, 1.f, 0.f), 24000) > 0.003);
+	S->VolumeSignals = 0.f;
+	UpdateMix();
+	TestTrue(TEXT("Horns and voices at 0: the whistle is silent"), Rms(Voice(EWorldSound::Horn, 1.f, 0.f), 12000) < 1e-4);
+	S->Volume = Keep[0]; S->VolumeWeather = Keep[1]; S->VolumeSignals = Keep[2];
+	UpdateMix();
+	return true;
+}

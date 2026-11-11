@@ -50,20 +50,48 @@ SailingSound::EGroup SailingSound::CueGroup(ESailingCue Cue)
 		? EGroup::Weather : EGroup::Boat;
 }
 
+FSoundAttenuationSettings SailingSound::SpatialSettings(float FalloffM, float InnerM, float BlendStartM, float BlendEndM)
+{
+	FSoundAttenuationSettings S;
+	S.bAttenuate = true;
+	S.bSpatialize = !IsMono();
+	S.AttenuationShape = EAttenuationShape::Sphere;
+	S.AttenuationShapeExtents = FVector((InnerM >= 0.f ? InnerM : FalloffM * 0.05f) * 100.f);
+	S.FalloffDistance = FalloffM * 100.f;
+	S.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
+	S.bAttenuateWithLPF = true;
+	S.LPFRadiusMin = FalloffM * 10.f;
+	S.LPFRadiusMax = FalloffM * 100.f;
+	if (BlendStartM > 0.f)
+	{
+		S.NonSpatializedRadiusStart = BlendStartM * 100.f;
+		S.NonSpatializedRadiusEnd = FMath::Min(BlendEndM, BlendStartM) * 100.f;
+	}
+	return S;
+}
+
 void SailingSound::SetSpatial(UAudioComponent* A, float FalloffM)
 {
 	if (!A) return;
 	A->bAllowSpatialization = true;
 	A->bOverrideAttenuation = true;
-	A->AttenuationOverrides.bAttenuate = true;
-	A->AttenuationOverrides.bSpatialize = !IsMono();
-	A->AttenuationOverrides.AttenuationShape = EAttenuationShape::Sphere;
-	A->AttenuationOverrides.AttenuationShapeExtents = FVector(FalloffM * 0.05f * 100.f);
-	A->AttenuationOverrides.FalloffDistance = FalloffM * 100.f;
-	A->AttenuationOverrides.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
-	A->AttenuationOverrides.bAttenuateWithLPF = true;
-	A->AttenuationOverrides.LPFRadiusMin = FalloffM * 10.f;
-	A->AttenuationOverrides.LPFRadiusMax = FalloffM * 100.f;
+	A->AttenuationOverrides = SpatialSettings(FalloffM);
+}
+
+USoundAttenuation* SailingSound::MakeAttenuation(UObject* Outer, float FalloffM, float InnerM, float BlendStartM, float BlendEndM)
+{
+	USoundAttenuation* A = NewObject<USoundAttenuation>(Outer);
+	A->Attenuation = SpatialSettings(FalloffM, InnerM, BlendStartM, BlendEndM);
+	return A;
+}
+
+FVector SailingSound::AroundListener(const FVector& ListenerCm, double DirNorth, double DirEast, float DistanceM, float UpM)
+{
+	// The map frame and Unreal's world share their axes (+X north, +Y east): only the render origin differs, and a
+	// direction does not see it.
+	FVector2D D(DirNorth, DirEast);
+	if (!D.Normalize()) D = FVector2D(1.0, 0.0);
+	return ListenerCm + FVector(D.X, D.Y, 0.0) * DistanceM * 100.0 + FVector(0.0, 0.0, UpM * 100.0);
 }
 
 void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
@@ -103,7 +131,8 @@ bool SailingSound::HasSheetWinches(Sailing::EBoatType Type)
 
 const TCHAR* WorldSoundName(EWorldSound Kind)
 {
-	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel") };
+	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel"), TEXT("Horn"), TEXT("Thunder") };
+	static_assert(UE_ARRAY_COUNT(Names) == int32(EWorldSound::Count), "a name for every world sound");
 	return Names[FMath::Clamp(int32(Kind), 0, int32(EWorldSound::Count) - 1)];
 }
 
@@ -295,13 +324,16 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 	const float Sr = 48000.f;
 	if (Rng == 0x9E3779B9u) Rng ^= Seed * 2654435761u;
 	const float TLevel = Level.load(), TRate = Rate.load();
-	// The player's mix: the marina, gulls and engines are the lake and shore group.
-	const float Gain = SailingSound::GroupGain(SailingSound::EGroup::World);
+	// The player's mix: the marina, gulls and engines are the lake and shore group; a horn is a signal, thunder weather.
+	const float Gain = SailingSound::GroupGain(Kind == EWorldSound::Horn ? SailingSound::EGroup::Signals
+		: Kind == EWorldSound::Thunder ? SailingSound::EGroup::Weather : SailingSound::EGroup::World);
+	const float THz = FMath::Max(Hz.load(), 40.f);
 	for (int32 I = 0; I < NumSamples; ++I)
 	{
 		SLevel += (TLevel - SLevel) * 0.0005f;
 		SRate += (TRate - SRate) * 0.0005f;
 		float Mix = 0.f;
+		float OutLevel = SLevel;
 		switch (Kind)
 		{
 		case EWorldSound::MarinaHalyards:
@@ -353,9 +385,31 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 			Mix = 0.35f * (FMath::Sin(2.f * PI * Phase) * 0.6f + FMath::Sin(2.f * PI * Phase2) * 0.25f + Low * 4.f) * (0.7f + 0.3f * FMath::Sin(2.f * PI * Phase * 0.5f));
 			break;
 		}
+		case EWorldSound::Horn:
+		{
+			// A whistle (the boat synth's old voice, now at the vessel): a reedy tone, odd and even harmonics, a little
+			// vibrato. Level fades it in and out over about 40 ms.
+			Phase2 += 5.5f / Sr; Phase2 -= FMath::FloorToFloat(Phase2);
+			Phase += THz * (1.f + 0.004f * FMath::Sin(2.f * PI * Phase2)) / Sr; Phase -= FMath::FloorToFloat(Phase);
+			const float A = 2.f * PI * Phase;
+			Mix = (FMath::Sin(A) + 0.5f * FMath::Sin(2.f * A) + 0.33f * FMath::Sin(3.f * A) + 0.18f * FMath::Sin(5.f * A)) * 0.3f;
+			break;
+		}
+		case EWorldSound::Thunder:
+		{
+			// Thunder from the strike: a rolling low rumble (Level) and, for a close strike, a crack (Rate). The levels
+			// come from ASailingEnvironment's thunder envelopes; the source sits toward the strike.
+			Low2 += 0.02f * (Noise() - Low2);                       // brown noise
+			Low += (2.f * PI * 70.f / Sr) * (Low2 * 8.f - Low);     // under 70 Hz
+			const float High = Noise() - BandLow - 0.6f * Band;     // the crack's band-pass (about 600 Hz, wide)
+			Band += 0.08f * High; BandLow += 0.08f * Band;
+			Mix = Low * 1.2f * SLevel + Band * 0.6f * SRate;   // the crack can lead the rumble's rise
+			OutLevel = 1.f;
+			break;
+		}
 		default: break;
 		}
-		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * SLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
+		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
 	}
 	return NumSamples;
 }
