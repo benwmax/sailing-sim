@@ -204,6 +204,40 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	return true;
 }
 
+// #596 (the #400 audit): in the first job the learning tip card and the instructor spoke at once with different
+// instructions. The tip card stays down while a scripted scene runs; outside one (or once it is done) it shows as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIOneCoachTest, "SailingSim.UI.OneCoach", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIOneCoachTest::RunTest(const FString&)
+{
+	TestFalse(TEXT("No scene: tips show"), SSailHud::TipsMutedByScene(nullptr));
+	Sailing::FScriptedScene Job;
+	FString Error;
+	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
+	TestTrue(TEXT("The first job running: the instructor alone speaks"), SSailHud::TipsMutedByScene(&Job));
+	TestTrue(TEXT("... and with its handover pending"), SSailHud::TipsMutedByScene(&Job, true));
+	Sailing::FScriptedScene Empty;
+	TestFalse(TEXT("An empty scene mutes nothing"), SSailHud::TipsMutedByScene(&Empty));
+	// #634's QA: a finished scene keeps the mute only while its handover is pending. A one-step scene whose trigger fires
+	// at once and whose call needs nothing done finishes in its first seconds.
+	Sailing::FScriptedScene Short;
+	std::string ShortError;
+	const bool bShort = Short.LoadText(R"({"schema_version": 1, "id": "t", "title": "T", "setting": {"boat": "J22", "wind_kn": 10},
+		"steps": [{"id": "a", "trigger": {"type": "time", "at_s": 0}, "call": {"id": "instructor.a", "caption": "Hi"},
+		"expect": {"type": "none", "seconds": 0.5}}]})", &ShortError);
+	if (TestTrue(FString::Printf(TEXT("The short test scene loads (%hs)"), ShortError.c_str()), bShort))
+	{
+		const Sailing::FBoatModel Boat;
+		Short.Start(Boat, 10.0);
+		for (int32 K = 0; K < 1200 && !Short.IsComplete(); ++K) Short.Update(Boat, Sailing::FSceneInput(), 1.0 / 60.0);
+		if (TestTrue(TEXT("The short scene finishes"), Short.IsComplete()))
+		{
+			TestTrue(TEXT("Done, handover pending: still muted"), SSailHud::TipsMutedByScene(&Short, true));
+			TestFalse(TEXT("Done, no handover pending: tips back"), SSailHud::TipsMutedByScene(&Short, false));
+		}
+	}
+	return true;
+}
+
 // #602 (the #400 audit): a triangle's marks and the person in the water were on no map. The minimap places them north up
 // around the boat, and one off the map on its edge so its direction shows.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIMiniMapMarksTest, "SailingSim.UI.MiniMapMarks", FirstLaunchTestsLocal::FirstLaunchFlags)

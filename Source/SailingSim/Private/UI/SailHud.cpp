@@ -653,7 +653,11 @@ void SSailHud::Refresh()
 		TipBody = FText::FromString(Dot > 0 ? Best->Key.Mid(Dot + 1).TrimStart() : Best->Key);
 	}
 	if (P->IsTiedUp() && !Learned) LastTip.Reset();   // feedback #488: no sailing tip left on the card at the dock
-	bTip = bTipsOn && !LastTip.IsEmpty();
+	// (While muted the coach's tips are consumed unseen: the card's last tip is cleared, so none from the scene's time shows
+	// once it lifts.)
+	const bool bMuted = TipsMutedByScene(GM->GetScene(), GM->IsSceneHandoverPending());
+	if (bMuted) LastTip.Reset();
+	bTip = bTipsOn && !LastTip.IsEmpty() && !bMuted;
 	// Toasts: the boat's status line, the states that matter (aground, capsized, contact).
 	FString Toast = P->GetStatusMessage();
 	FLinearColor Col = Starboard;
@@ -720,6 +724,13 @@ void SSailHud::Refresh()
 	Hints.Add((SailUI::UsingGamepad() ? KeyName(TEXT("Menu"), false) : FString(TEXT("Esc"))) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+bool SSailHud::TipsMutedByScene(const Sailing::FScriptedScene* Scene, bool bHandoverPending)
+{
+	// Until it is done and handed over: #634's QA, the tips came back the moment the scene was done, beside the instructor's
+	// last line, while the cut to the lesson was still to come.
+	return Scene && Scene->IsLoaded() && (!Scene->IsComplete() || bHandoverPending);
 }
 
 FVector2f SSailHud::MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped)
