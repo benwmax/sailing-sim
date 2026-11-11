@@ -424,7 +424,7 @@ namespace Sailing
 		/** Hydrostatic righting moment (N m) at a fixed heel, boat level in pitch and floating at its waterline. For tests. */
 		double RightingMomentAt(double HeelRad) const;
 		/** Tilt past which she counts as capsized once held there two seconds (rad): 70 deg for dinghies and multihulls; a
-		 *  ballasted monohull only within 10 deg of her own angle of vanishing stability (a knockdown is not a capsize). */
+		 *  ballasted monohull only past her own angle of vanishing stability (a knockdown is not a capsize). */
 		double CapsizeTilt() const { return CapsizeTiltRad; }
 
 		/** Cleats for dock lines (body frame): bow, both quarters and both midship springs. */

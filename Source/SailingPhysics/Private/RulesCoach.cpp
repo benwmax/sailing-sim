@@ -92,8 +92,11 @@ namespace Sailing
 		{
 			const FTrafficVessel* Other = Sim.Find(S.Other);
 			const bool bReacting = Other && (Other->Avoiding == FTrafficSim::PlayerId || (Other->bStandOnAction && Other->ActingFor == FTrafficSim::PlayerId));
-			// Still keeping clear once past and opening is the tail of an encounter already scored, not a new one.
-			if (!S.Risk.bRisk && (!bReacting || S.Risk.Tcpa < 0.0)) continue;
+			if (!S.Risk.bRisk && !bReacting) continue;
+			// A vessel still keeping clear as she passes and opens is the tail of the encounter just scored, not a new
+			// one: her reaction alone reopens nothing for 60 s after (a fresh risk of collision still does).
+			const auto Recent = std::find_if(RecentlyClosed.begin(), RecentlyClosed.end(), [&](const std::pair<int, double>& R) { return R.first == S.Other; });
+			if (!S.Risk.bRisk && Recent != RecentlyClosed.end() && Now - Recent->second < 60.0) continue;
 			if (std::any_of(Open.begin(), Open.end(), [&](const FEncounter& E) { return E.Other == S.Other; })) continue;
 			FEncounter E;
 			E.Other = S.Other;
@@ -192,6 +195,8 @@ namespace Sailing
 			else { S.Points = 5; S.Text = "Held your course as the stand-on vessel while " + Who + " kept clear (Rule 17)"; }
 		}
 		Score += S.Points;
+		RecentlyClosed.erase(std::remove_if(RecentlyClosed.begin(), RecentlyClosed.end(), [&](const std::pair<int, double>& R) { return R.first == E.Other || Now - R.second > 60.0; }), RecentlyClosed.end());
+		RecentlyClosed.emplace_back(E.Other, Now);
 		Scores.push_back(S);
 		if (Scores.size() > 50) Scores.erase(Scores.begin());
 	}

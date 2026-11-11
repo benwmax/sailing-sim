@@ -315,16 +315,22 @@ namespace Sailing
 		Reset(0.0, 0.0, 0.0, 0.0);
 
 		// A ballasted keelboat knocked flat still rights herself while her righting moment is positive (the J/22 to about
-		// 107 deg crewed; her ORC certificate gives 104 light): only near that angle is she capsized. Dinghies and
-		// multihulls lying past 70 deg are over.
+		// 107 deg crewed; her ORC certificate gives 104 light): only past that angle is she capsized. Cleated in a gale on
+		// flat water she lies at up to 97 deg and comes back when the sheets go. Dinghies and multihulls past 70 deg are over.
 		if (!Config.bMultihull && Config.BallastMass > 0.0)
 		{
-			double Vanish = 180.0;
-			for (double Deg = 70.0; Deg <= 180.0; Deg += 1.0)
+			double Lo = 70.0, Hi = 180.0; // 5 deg scan, then bisect to a tenth (about 30 righting-moment solves)
+			for (double Deg = 75.0; Deg <= 180.0; Deg += 5.0)
 			{
-				if (RightingMomentAt(Deg * kDegToRad) <= 0.0) { Vanish = Deg; break; }
+				if (RightingMomentAt(Deg * kDegToRad) <= 0.0) { Hi = Deg; break; }
+				Lo = Deg;
 			}
-			CapsizeTiltRad = std::max(70.0, Vanish - 10.0) * kDegToRad;
+			while (Hi - Lo > 0.1)
+			{
+				const double Mid = 0.5 * (Lo + Hi);
+				(RightingMomentAt(Mid * kDegToRad) > 0.0 ? Lo : Hi) = Mid;
+			}
+			CapsizeTiltRad = Clamp(Lo, 70.0, 175.0) * kDegToRad; // self-righting to 180 (the maxi): turtled still counts
 		}
 	}
 

@@ -162,16 +162,16 @@ bool FSailingKeelboatKnockdownTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCapsizeTiltTest, "SailingSim.Fleet.KnockdownIsNotACapsize", Flags)
 bool FSailingCapsizeTiltTest::RunTest(const FString& Parameters)
 {
-	// A ballasted keelboat counts as capsized only within 10 deg of her angle of vanishing stability (the J/22's ORC
-	// certificate gives 104 deg light); dinghies and multihulls past 70 deg are over.
+	// A ballasted keelboat counts as capsized only past her angle of vanishing stability (the J/22's ORC certificate
+	// gives 104 deg light); dinghies and multihulls past 70 deg are over.
 	for (EBoatType Type : { EBoatType::J22, EBoatType::Catalina22, EBoatType::Catalina30 })
 	{
 		const FBoatModel Boat(FBoatConfig::Make(Type));
 		const double Deg = Boat.CapsizeTilt() * kRadToDeg;
 		AddInfo(FString::Printf(TEXT("%hs: capsized past %.0f deg"), BoatTypeName(Type), Deg));
-		TestTrue(FString::Printf(TEXT("%hs: a knockdown to 80 deg is not a capsize"), BoatTypeName(Type)), Deg > 80.0);
+		TestTrue(FString::Printf(TEXT("%hs: a knockdown to 100 deg is not a capsize"), BoatTypeName(Type)), Deg > 100.0);
 		TestTrue(FString::Printf(TEXT("%hs: still positive righting moment at the capsize tilt"), BoatTypeName(Type)), Boat.RightingMomentAt(Boat.CapsizeTilt()) > 0.0);
-		TestTrue(FString::Printf(TEXT("%hs: gone 10 deg past it"), BoatTypeName(Type)), Boat.RightingMomentAt(Boat.CapsizeTilt() + 11.0 * kDegToRad) <= 0.0);
+		TestTrue(FString::Printf(TEXT("%hs: gone just past it"), BoatTypeName(Type)), Boat.RightingMomentAt(Boat.CapsizeTilt() + 0.2 * kDegToRad) <= 0.0);
 	}
 	for (EBoatType Type : { EBoatType::Sunfish, EBoatType::ILCA7, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
 	{

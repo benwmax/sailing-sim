@@ -4,6 +4,7 @@
 #include "Rules.h"
 #include "Traffic.h"
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Sailing
@@ -68,6 +69,7 @@ namespace Sailing
 		};
 
 		void Close(const FEncounter& E, double Now);
+		std::vector<std::pair<int, double>> RecentlyClosed; // vessel, when her last encounter with the player was scored
 
 		std::vector<FEncounter> Open;
 		std::vector<FScore> Scores;
