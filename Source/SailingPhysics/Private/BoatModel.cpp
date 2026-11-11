@@ -1293,8 +1293,8 @@ namespace Sailing
 							if (P.Z < S.Bottom || P.Z > S.Top) continue;
 							const double Outside = (CX - P.X) * Out.X + (CY - P.Y) * Out.Y; // the end's distance out from the edge
 							// Half her beam where it meets the edge (at a fine bow a fixed half of the widest beam reached past the
-						// other side: a pile off the port bow was pushed into her by the starboard edge, QA on #641).
-						if (Outside < -0.5 * (Edge.HalfA + (Edge.HalfB - Edge.HalfA) * U)) continue;
+							// other side: a pile off the port bow was pushed into her by the starboard edge, QA on #641).
+							if (Outside < -0.5 * (Edge.HalfA + (Edge.HalfB - Edge.HalfA) * U)) continue;
 							const double Pen = S.Radius + 0.1 - Outside - std::max(PointPen(PA), PointPen(PB));
 							if (Pen > 0.0)
 							{
