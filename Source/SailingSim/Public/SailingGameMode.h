@@ -129,8 +129,9 @@ public:
 	void ApplyWeatherSettings(TOptional<double> KeepWeatherStartTime = TOptional<double>());
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
 	void ApplyQualitySettings();
-	/** Kept for the difficulty toggle: gusts are softer on easy. */
-	void ApplyDifficultyToWind() { ApplyWeatherSettings(); }
+	/** Kept for the difficulty toggle: gusts are softer on easy. The weather keeps its clock (a storm's front stays where it
+	 *  was: #623 follow-up). */
+	void ApplyDifficultyToWind() { ApplyWeatherSettings(WeatherStartTime); }
 
 	/** World streaming (docs/world-streaming): the world's height tiles around the boat. */
 	const FWorldStreamer& GetStreamer() const { return Streamer; }

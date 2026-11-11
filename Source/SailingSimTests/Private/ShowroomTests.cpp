@@ -238,6 +238,18 @@ bool FSailingConditionsKeepTimeTest::RunTest(const FString&)
 	const double KmAfter = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
 	TestEqual(FString::Printf(TEXT("Put back: the front where it was (%.3f km)"), Km), KmAfter, Km, 1e-6);
 	AddInfo(FString::Printf(TEXT("Front %.3f km off at %.1f s; after the preview and Back, %.1f s of weather"), Km, Tw, GM->GetWeatherTime()));
+	// The difficulty toggle (Easy and back to Realistic) re-applies the wind, keeping the weather's clock too.
+	const ESailingDifficulty WasDifficulty = S->Difficulty;
+	const double Before = GM->GetWeatherTime();
+	const double KmBefore = GM->GetWeather().Evaluate(Before).StormDistanceKm;
+	for (const ESailingDifficulty D : { ESailingDifficulty::Easy, ESailingDifficulty::Realistic })
+	{
+		S->Difficulty = D;
+		GM->ApplyDifficultyToWind();
+		TestEqual(FString::Printf(TEXT("Difficulty %s: the weather time as it was"), D == ESailingDifficulty::Easy ? TEXT("Easy") : TEXT("Realistic")), GM->GetWeatherTime(), Before, 1e-6);
+		TestEqual(TEXT("... and the front"), GM->GetWeather().Evaluate(GM->GetWeatherTime()).StormDistanceKm, KmBefore, 1e-6);
+	}
+	S->Difficulty = WasDifficulty;
 	S->WeatherPreset = WasPreset;
 	S->StartHour = WasHour;
 	return true;
