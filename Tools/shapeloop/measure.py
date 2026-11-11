@@ -80,13 +80,65 @@ if st:
     hull["freeboard_stern"] = st[0]["sheer_z"]
     hull["transom_width"] = r(2 * st[0]["half_beam"])     # across the hull 0.5% of LOA (3.4 cm) forward of the transom
 
+
+def footwell(ob, x, dz=0.10):
+    """The cockpit's footwell at station x: the gap between the seat fronts' inner faces dz over the sole's top (the
+    sole's top is the cut's highest point within 10 cm of the centreline; the liner's underside lies 2 cm under it), and
+    the sole top's height. With dz over the seats (0.35: seats 0.27 m over the sole on the hero), the gap between the
+    cockpit's side walls."""
+    bm = bmesh.new()
+    bm.from_object(ob, DG)
+    bm.transform(ob.matrix_world)
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(x, 0, 0), plane_no=(1, 0, 0), clear_inner=False, clear_outer=False)
+    cut = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+    mid = [v.co.z for e in cut for v in e.verts if abs(v.co.y) < 0.10]
+    if not mid:
+        bm.free()
+        return None
+    sole = max(mid)
+    h = sole + dz
+    ys = []
+    for e in cut:
+        a, b = e.verts[0].co, e.verts[1].co
+        if (a.z - h) * (b.z - h) <= 0 and a.z != b.z:
+            ys.append(a.y + (b.y - a.y) * (h - a.z) / (b.z - a.z))
+    bm.free()
+    port, stbd = [y for y in ys if y > 0], [-y for y in ys if y < 0]
+    if not port or not stbd:
+        return None
+    return min(port) + min(stbd), sole
+
+
+features = {}
+ck = bpy.data.objects.get("Cockpit")
+if ck is not None and ck.name in objects:
+    c = objects[ck.name]
+    xs = [c["min"][0] + (c["max"][0] - c["min"][0]) * f for f in (0.3, 0.5, 0.7)]
+    cuts = [footwell(ck, x) for x in xs]
+    if cuts[1]:                                       # the cockpit's middle
+        features["footwell_width"] = r(cuts[1][0])
+    walls = [footwell(ck, x, 0.35) for x in xs]
+    for key, w in zip(("cockpit_width_aft", "cockpit_width", "cockpit_width_fwd"), walls):   # at 30, 50, 70%
+        if w:
+            features[key] = r(w[0])
+    features["cockpit_walls"] = [{"x": r(x), "width": r(w[0])} for x, w in zip(xs, walls) if w]
+    cuts = [(x, w) for x, w in zip(xs, cuts) if w]
+    if cuts:
+        features["footwell_cuts"] = [{"x": r(x), "width": r(w[0]), "sole_z": r(w[1])} for x, w in cuts]
+    features["cockpit_aft"] = c["min"][0]
+    if "x_stern" in hull:
+        features["aft_deck"] = r(c["min"][0] - hull["x_stern"])
+
 physics = {}
 rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), "j22_hero_report.json")
 if os.path.exists(rep):
     physics = json.load(open(rep))
 
 stats = {"source": os.path.basename(SRC), "objects": objects, "sections": per_section,
-         "triangles": sum(s["tris"] for s in per_section.values()), "hull": hull, "physics": physics}
+         "triangles": sum(s["tris"] for s in per_section.values()), "hull": hull, "features": features,
+         "physics": physics}
 json.dump(stats, open(os.path.join(OUT, "stats.json"), "w"), indent=1)
 print(f"shapeloop measure: {len(objects)} objects, {stats['triangles']:,} tris;",
-      {k: v["tris"] for k, v in sorted(per_section.items())}, "hull", {k: v for k, v in hull.items() if k != "stations"})
+      {k: v["tris"] for k, v in sorted(per_section.items())}, "hull", {k: v for k, v in hull.items() if k != "stations"},
+      "features", {k: v for k, v in features.items() if k != "footwell_cuts"})

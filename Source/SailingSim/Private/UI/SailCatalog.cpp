@@ -349,7 +349,7 @@ namespace SailCatalog
 		return 20.f;
 	}
 
-	FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 WorldIndex)
+	FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 WorldIndex, bool bRealDay)
 	{
 		const FBoat& B = Boat(BoatType);
 		FString S = FString::Printf(TEXT("%.0f kn, gusting %.0f. "), WindKn, GustKn);
@@ -358,7 +358,10 @@ namespace SailCatalog
 		else if (GustKn <= B.ReefKn) S += FString::Printf(TEXT("Fresh. %s "), B.bDinghy ? *FString::Printf(TEXT("Hike hard and ease in the gusts on the %s."), *B.Name)
 			: *FString::Printf(TEXT("Consider a reef on the %s."), *B.Name));
 		else S += FString::Printf(TEXT("Strong. Realistic mode will %s the %s without a reef. "), B.bDinghy ? TEXT("capsize") : TEXT("overpower"), *B.Name);
-		if (Sky == 3) S += TEXT("A storm cell builds through the afternoon, with a gust front of 35 kn or more. ");
+		// Nov 11 2026 review: the storms preset's gust front reaches the start about 2.5 minutes in and has passed by about 10
+		// (FWeatherSystem::kFrontArrives, kClear); a real day's storm comes when it reached the lake that day.
+		if (Sky == 3) S += bRealDay ? TEXT("A thunderstorm comes through when it did that day, with a gust front of 35 kn or more. ")
+			: TEXT("A thunderstorm arrives within minutes: its gust front brings 40 kn or more, then it clears in about ten minutes. ");
 		if (Sky == 5) S += TEXT("Steady rain all day: the deck is wet and slippery, and visibility is down to about 2 miles. ");
 		if (Sky == 4) S += WorldIndex == 1 ? TEXT("Visibility under half a mile; sound signals and radar matter. ") : TEXT("Low cloud and poor visibility. ");
 		S += FString::Printf(TEXT("Sunset %s."), *ClockText(SunsetHour(Month, Day, WorldIndex)));

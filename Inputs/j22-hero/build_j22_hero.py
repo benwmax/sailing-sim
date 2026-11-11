@@ -91,9 +91,13 @@ CABIN_AFT, CABIN_FWD = -0.55, 1.65          # trunk ends: aft GUESS from the bow
 CABIN_H0 = 0.30                             # GUESS: trunk height over the deck at its aft end, on the centreline
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
-SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272)
+SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272), beside the cabin
+COAMING_HALF = (0.64, 0.73)                 # the cockpit's sides, half-width at its aft and forward ends: straight, a
+COAMING_AFT_DECK = 0.12                     # slight taper (j22.org deck plan 0.62-0.72 m; Commons overhead and bow
+                                            # photos), no closer than this to the sheer (docs/shape-loop wave 2)
 SEAT_Z, FLOOR_Z = 0.40, 0.13                # GUESS: seat and self-bailing floor heights above the waterline
-SEAT_IN = 0.40                              # seat inboard edge, half-width
+SEAT_IN = 0.31                              # seat fronts, half-width: footwell 0.62-0.64 m (j22.org deck plan; Commons
+                                            # overhead photo, docs/shape-loop wave 2)
 
 
 def smooth(t):
@@ -241,6 +245,12 @@ def hull_volume_below(z_cut=0.0, n=400, m=200):
 
 # ------------------------------------------------------------------ deck mould
 
+def coaming_y(x):
+    """The cockpit side's inner face at x, half-width: straight, widening a little forward, kept off the sheer."""
+    t = min(max((x - COCKPIT_AFT) / (CABIN_AFT - COCKPIT_AFT), 0.0), 1.0)
+    return min(COAMING_HALF[0] + (COAMING_HALF[1] - COAMING_HALF[0]) * t, half_beam(x) - COAMING_AFT_DECK)
+
+
 def deck_z(x, y):
     hb = max(half_beam(x), 1e-3)
     v = min(abs(y) / hb, 1.0)
@@ -255,7 +265,7 @@ def build_deck():
     top, bot = [], []
     for x in xs:
         hb = half_beam(x) - 0.004
-        yb = max(hb - min(SIDE_DECK, 0.3 * hb), 0.0)
+        yb = max(hb - min(SIDE_DECK, 0.3 * hb), 0.0) if x > CABIN_AFT else coaming_y(x) - 0.004
         ys = [yb * j / n_in for j in range(-n_in, n_in + 1)]
         ys = [-(yb + (hb - yb) * k / n_out) for k in range(n_out, 0, -1)] + ys + [yb + (hb - yb) * k / n_out for k in range(1, n_out + 1)]
         rt = [bm.verts.new((x, y, deck_z(x, y))) for y in ys]
@@ -336,7 +346,7 @@ def build_cockpit():
     rings = []
     for i in range(n + 1):
         x = xf + (xa - xf) * i / n
-        w = half_beam(x) - SIDE_DECK
+        w = coaming_y(x)
         top = deck_z(x, w) + 0.012
         half = [(w + 0.03, top), (w, top), (w, SEAT_Z), (SEAT_IN, SEAT_Z), (SEAT_IN, FLOOR_Z), (0.0, FLOOR_Z + 0.006)]
         inner = _fillet(half, 0.035)
@@ -358,7 +368,7 @@ def build_cockpit():
     parts = [liner]
     # aft bulkhead under the aft deck and forward bulkhead under the companionway
     for x0, x1 in ((xa - t, xa + 0.001), (xf - 0.001, xf + t)):
-        wv = half_beam((x0 + x1) / 2) - SIDE_DECK
+        wv = coaming_y((x0 + x1) / 2)
         parts.append(box("Bulkhead", x0, x1, -wv, wv, FLOOR_Z - t, deck_z((x0 + x1) / 2, wv) + 0.01, MAT["Gelcoat"]))
     ob = join("Cockpit", parts)
     return ob
@@ -509,7 +519,7 @@ def coaming_cap(side):
     pts = []
     for i in range(40):
         x = CABIN_AFT - 0.02 + (COCKPIT_AFT + 0.08 - CABIN_AFT) * i / 39
-        y = half_beam(x) - SIDE_DECK + 0.04
+        y = coaming_y(x) + 0.04
         pts.append((x, side * y, deck_z(x, y) + 0.012))
     ob = tube(f"CoamingCap_{side}", pts, 0.022, MAT["TeakWeathered"], smooth_path=True)
     ob.data.bevel_resolution = 1
@@ -633,7 +643,7 @@ def build_hardware():
         # cockpit's side wall just aft of the track (it had led to a cabin-top track and winch, with two cams and blocks on
         # the coaming). The cam stays where the first one was (JibCam0, the tail coils on the seats lead to it).
         x = JIB_CAM_X
-        yw = half_beam(x) - SIDE_DECK - 0.025
+        yw = coaming_y(x) - 0.025
         zc = (SEAT_Z + deck_z(x, yw)) / 2 + 0.05
         # kit: the cam turned in the wall's plane so its fairlead faces the sheet coming over the coaming edge (the sheet's
         # lee_pts in build_sails), the way a cam is fitted on its lead; the old cleat stays fore and aft
@@ -768,7 +778,7 @@ def build_hardware():
     # open over the well, with the mainsheet's fiddle and cam on its car (it had lain on the cockpit sole)
     import j22_mainsheet as MS  # noqa: E402
     xt = TRAVELER_X
-    trav, car = MS.traveler(xt, half_beam(xt) - SIDE_DECK - 0.035, SEAT_Z, SEAT_IN, MAT)
+    trav, car = MS.traveler(xt, coaming_y(xt) - 0.035, SEAT_Z, SEAT_IN, MAT)
     parts += trav
     parts += MS.lower_block(car, MAT, kit_part)
     # aft deck: inspection port
@@ -1099,7 +1109,7 @@ def build_sails():
     yt = half_beam(JIB_TRACK_X) - 0.11
     car = Vector((JIB_TRACK_X + 0.01, side * yt, deck_z(JIB_TRACK_X, yt) + 0.045))
     xc = JIB_CAM_X
-    yf = half_beam(xc) - SIDE_DECK - 0.025 - 0.03
+    yf = coaming_y(xc) - 0.025 - 0.03
     zc = (SEAT_Z + deck_z(xc, yf + 0.03)) / 2 + 0.05
     # the sheet runs under the car's sheave (kit JibTrack: 38 mm sheave centred 45 mm up, the line's gap under it),
     # coming down onto its forward side from the clew and leaving aft over the car's body
@@ -1197,7 +1207,7 @@ cockpit = build_cockpit()
 import j22_mainsheet as _MS  # noqa: E402
 import bk_geom as _BG  # noqa: E402
 for _side in (1, -1):
-    _y0, _y1 = sorted((_side * (SEAT_IN - 0.05), _side * (half_beam(TRAVELER_X) - SIDE_DECK - 0.035 + _MS.TROUGH_END)))
+    _y0, _y1 = sorted((_side * (SEAT_IN - 0.05), _side * (coaming_y(TRAVELER_X) - 0.035 + _MS.TROUGH_END)))
     _BG.boolean(cockpit, box("TravTroughCut", TRAVELER_X - _MS.TROUGH_W / 2, TRAVELER_X + _MS.TROUGH_W / 2, _y0, _y1,
                              SEAT_Z + 0.004 - _MS.TRACK_H, SEAT_Z + 0.05, bev=0.006))
 cabin = build_cabin()
@@ -1277,4 +1287,6 @@ json.dump(report, open(os.path.join(OUT, "j22_hero_report.json"), "w"), indent=1
 # Boat fidelity 4: the coiled tails the game draws as live rope (Blender frame, metres; the game flips Y).
 json.dump({"frame": "Blender: X forward, Y to port, Z up, metres, the hull's origin", "coils": D.COILS},
           open(os.path.join(OUT, "J22H_coils.json"), "w"), indent=1)
+# the seats' height and inboard edge for bake_j22_hero (JibTailRest lies on the seat by the coils, SEAT_IN + 0.18 out)
+SC["j22h_seat_z"], SC["j22h_seat_in"] = SEAT_Z, SEAT_IN
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "j22_hero.blend"))

@@ -42,3 +42,5 @@
 # Sentry plugin (Plugins/Sentry, MIT): prebuilt libraries and helpers
 Plugins/Sentry/Source/ThirdParty/*/*/bin/** filter=lfs diff=lfs merge=lfs -text
 Plugins/Sentry/Source/ThirdParty/*/*/lib/** filter=lfs diff=lfs merge=lfs -text
+# The marina bake's tile hashes (docs/bake-hash-skip): byte-identical on the Mac and the PC
+*.tilehash text eol=lf

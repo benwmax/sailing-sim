@@ -96,7 +96,7 @@ def traveler(xt, y_end, seat_z, seat_in, M):
     for sgn in (1, -1):
         for k in range(1, 20):
             y = sgn * 0.025 * k
-            if abs(y) > seat_in - 0.01:
+            if abs(y) > seat_in - 0.01 + 1e-6:      # (0.025 * 12 is a hair over 0.30: keep the mark 1 cm in)
                 break
             long_ = k % 4 == 0
             w = 0.016 if long_ else 0.008

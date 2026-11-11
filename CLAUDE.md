@@ -622,6 +622,10 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
   moves. Reference-check peaks are GPS-like one-second means.
+- Session weather (`docs/session-weather/`): a session's "10 gusting 13" is the sailor's gust (nine ten-minute stretches in
+  ten top out at it: `SailorGustScale`, the game mode's `GustLabelScale`), not the stations' factor (`-SailingGust=` and the
+  prologue keep that); a chosen wind is held (`FWeatherSystem::SetHoldWind`). `scripts/gust-check.sh` measures both
+  standalone; `SailingSim.Physics.WindSailorGusts`.
 - Easy mode (`docs/easy-mode/`): one switch (`USailingSettings::IsEasy`, `-SailingEasy=0|1`; off when measuring, capturing, in automation, traffic, ghost) applies `FEasyAssists` (`EasyAssists.h`: helm, heel cap, trim, no-go cue, `FEasyHelm` irons/bear-away on a copy of the controls); Realistic is the boat's own.
   Easy medals cap at career.json's `easy_max_medal` (`FCareerRun::bEasy`, save `medalEasy`); `scripts/polar.sh --easy`, `-SailingCrudeTackAt=<s>` (demo) for the gate runs.
 - Prologue (`docs/prologue/`): scripted scenes are data (`Content/Prologue/prologue.json`, staged loose; `python3

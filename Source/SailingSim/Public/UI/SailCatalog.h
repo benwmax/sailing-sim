@@ -79,7 +79,7 @@ namespace SailCatalog
 	SAILINGSIM_API const FBoat& Boat(int32 Type);
 	SAILINGSIM_API FString FeetInches(double Meters);
 	/** "What to expect" for the conditions panel (ui-spec.md 5.5). */
-	SAILINGSIM_API FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 World);
+	SAILINGSIM_API FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 World, bool bRealDay = false);
 	/** Sunset (local clock hour) for a date at a world's latitude. */
 	SAILINGSIM_API float SunsetHour(int32 Month, int32 Day, int32 World);
 	SAILINGSIM_API FString ClockText(float Hour);
