@@ -715,9 +715,13 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
 #if WITH_EDITOR
 // docs/bake-hash-skip: what a baked tile is made of, hashed so a bake can tell an unchanged tile from a changed one. SHA-1
 // over each look's name and its vertices (positions to 0.1 mm, normals, tangents and UVs to 1e-4, colours as bytes) and
-// triangles, quantised so the Mac's and the PC's floating point agree. Bump TileHashVersion when BakeMesh builds a mesh
-// differently from the same geometry (build settings, attributes, materials), so every tile is baked again once.
-static constexpr int32 TileHashVersion = 1;
+// triangles, quantised. Bump TileHashVersion when BakeMesh builds a mesh differently from the same geometry (build
+// settings, attributes, materials), so every tile is checked against its saved mesh again.
+// The hash alone can't decide across machines: MSVC and clang differ in the last bit of a float (#632: the Mac's bake
+// of three tiles moved vertices by up to 0.01 mm, X and Y only, same counts), and any rounding grid has edges such noise
+// lands on. So a tile whose hash differs is compared with its saved mesh within a tolerance (TileMatchesSaved) before
+// it is baked again, and a kept tile keeps the hash the sidecar records.
+static constexpr int32 TileHashVersion = 2;
 
 static FString TileGeometryHash(const FKitGeometry& G)
 {
@@ -748,6 +752,58 @@ static FString TileGeometryHash(const FKitGeometry& G)
 	uint8 Digest[FSHA1::DigestSize];
 	Sha.GetHash(Digest);
 	return BytesToHex(Digest, FSHA1::DigestSize).ToLower();
+}
+
+// Whether the saved mesh is the geometry BakeMesh would build from G, within 0.1 mm for positions and 1e-3 for normals,
+// tangents, UVs and colours: same looks in the same order, same vertex and triangle counts, the same triangles.
+// BakeMesh makes one polygon group per non-empty look, then one vertex and one vertex instance per kit vertex and one
+// triangle per three indices, in order, so the saved description's compact IDs line up with the kit's arrays.
+static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
+{
+	const FMeshDescription* MD = Mesh ? Mesh->GetMeshDescription(0) : nullptr;
+	if (!MD) return false;
+	int32 NumV = 0, NumTris = 0, NumGroups = 0;
+	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
+	{
+		const FKitSection& S = G.Sections[K];
+		if (S.V.Num() == 0) continue;
+		++NumGroups;
+		NumV += S.V.Num();
+		NumTris += S.T.Num() / 3;
+	}
+	if (MD->Vertices().Num() != NumV || MD->VertexInstances().Num() != NumV || MD->Triangles().Num() != NumTris || MD->PolygonGroups().Num() != NumGroups) return false;
+	FStaticMeshConstAttributes Attr(*MD);
+	const TVertexAttributesConstRef<FVector3f> Positions = Attr.GetVertexPositions();
+	const TVertexInstanceAttributesConstRef<FVector3f> Normals = Attr.GetVertexInstanceNormals();
+	const TVertexInstanceAttributesConstRef<FVector3f> Tangents = Attr.GetVertexInstanceTangents();
+	const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
+	const TVertexInstanceAttributesConstRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
+	const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+	if (UVs.GetNumChannels() < 2) return false;
+	auto Near3 = [](const FVector3f& A, const FVector& B, float Tol) { return FMath::Abs(A.X - float(B.X)) <= Tol && FMath::Abs(A.Y - float(B.Y)) <= Tol && FMath::Abs(A.Z - float(B.Z)) <= Tol; };
+	auto Near2 = [](const FVector2f& A, const FVector2D& B) { return FMath::Abs(A.X - float(B.X)) <= 1e-3f && FMath::Abs(A.Y - float(B.Y)) <= 1e-3f; };
+	int32 Base = 0, Group = 0, Tri = 0;
+	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
+	{
+		const FKitSection& S = G.Sections[K];
+		if (S.V.Num() == 0) continue;
+		if (Slots[FPolygonGroupID(Group++)] != FName(KitLook(EKitLook(K)).Name)) return false;
+		for (int32 I = 0; I < S.V.Num(); ++I)
+		{
+			const FVertexInstanceID VI(Base + I);
+			const FVector4f C = Colors[VI], Want = FVector4f(FLinearColor::FromSRGBColor(S.Col[I]));
+			if (!Near3(Positions[FVertexID(Base + I)], S.V[I], 0.01f) || !Near3(Normals[VI], S.N[I], 1e-3f) || !Near3(Tangents[VI], S.Tan[I].TangentX, 1e-3f)
+				|| !Near2(UVs.Get(VI, 0), S.UV[I]) || !Near2(UVs.Get(VI, 1), S.UV1[I])
+				|| FMath::Abs(C.X - Want.X) > 1e-3f || FMath::Abs(C.Y - Want.Y) > 1e-3f || FMath::Abs(C.Z - Want.Z) > 1e-3f || FMath::Abs(C.W - Want.W) > 1e-3f) return false;
+		}
+		for (int32 I = 0; I + 2 < S.T.Num(); I += 3, ++Tri)
+		{
+			const TArrayView<const FVertexInstanceID> Corners = MD->GetTriangleVertexInstances(FTriangleID(Tri));
+			if (Corners[0].GetValue() != Base + S.T[I] || Corners[1].GetValue() != Base + S.T[I + 1] || Corners[2].GetValue() != Base + S.T[I + 2]) return false;
+		}
+		Base += S.V.Num();
+	}
+	return true;
 }
 
 // The sidecar: "version <n>" then one "<tile> <hash>" line per tile, sorted, LF endings (.gitattributes keeps them).
@@ -790,21 +846,29 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 	const FString Sidecar = FPaths::ProjectContentDir() / TEXT("World/Baked/Marina.tilehash");
 	const TMap<FString, FString> Before = ReadTileHashes(Sidecar);
 	TMap<FString, FString> After;
-	int32 Skipped = 0;
+	int32 Skipped = 0, Matched = 0;
 	for (const auto& KV : Tiles)
 	{
 		const FString Name = FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key);
 		const FString Path = TEXT("/Game/World/Baked/") + Name;
 		const FString Hash = TileGeometryHash(KV.Value);
-		After.Add(Name, Hash);
+		After.Add(Name, Hash);   // replaced below by the recorded hash for a tile kept within tolerance
 		const FString* Was = Before.Find(Name);
-		UStaticMesh* Kept = Was && *Was == Hash && FPackageName::DoesPackageExist(Path)
-			? LoadObject<UStaticMesh>(nullptr, *(Path + TEXT(".") + Name)) : nullptr;
-		if (Kept) { Out.Add(Kept); ++Skipped; continue; }
+		UStaticMesh* Saved = FPackageName::DoesPackageExist(Path) ? LoadObject<UStaticMesh>(nullptr, *(Path + TEXT(".") + Name)) : nullptr;
+		const bool bSameHash = Saved && Was && *Was == Hash;
+		if (Saved && (bSameHash || TileMatchesSaved(KV.Value, Saved)))
+		{
+			// kept as saved; a tile matched within tolerance keeps the sidecar's hash (another machine's float noise)
+			if (Was) After.Add(Name, *Was);
+			Out.Add(Saved);
+			++Skipped;
+			if (!bSameHash) ++Matched;
+			continue;
+		}
 		if (UStaticMesh* M = BakeMesh(KV.Value, Path)) Out.Add(M);
 	}
 	WriteTileHashes(Sidecar, After);
-	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles (%d unchanged, kept as saved)"), *LakeName, All.NumQuads(), Out.Num(), Skipped);
+	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles (%d unchanged, kept as saved; %d of them matched within tolerance)"), *LakeName, All.NumQuads(), Out.Num(), Skipped, Matched);
 #endif
 	return Out;
 }

@@ -18,8 +18,16 @@ every bake used to change the LFS object of all 24 tiles (22 of them for nothing
   with `save_loaded_asset`, which only saves dirty packages, so it is not written; returning it also keeps
   `import_world.py` from deleting it as a stale tile. Any other tile is baked and saved as before, and the sidecar is
   rewritten (only when its text changes).
-- `TileHashVersion` is part of every hash and the sidecar's first line: bump it when `BakeMesh` builds a mesh differently
-  from the same geometry (build settings, attributes, materials), and every tile is baked once more.
+- The hash alone can't decide across machines (#632): MSVC and clang differ in the last bit of a float, and the Mac's
+  bake of three tiles moved vertices by up to 0.01 mm (X and Y only; the same vertex, triangle and group counts), which
+  crossed the 0.1 mm rounding step in a few positions and, in two tiles, in normals or tangents. No rounding grid is safe
+  from noise that lands on its edges. So a tile whose hash differs is compared with its saved mesh before it is baked
+  again (`TileMatchesSaved`: the same looks in order, vertex and triangle counts and triangles; positions within 0.1 mm;
+  normals, tangents, UVs and colours within 1e-3). If it matches, it is kept unsaved and the sidecar keeps the hash it
+  already records, so another machine's float noise changes neither the tile nor the sidecar.
+- `TileHashVersion` (2 since #632) is part of every hash and the sidecar's first line: bump it when `BakeMesh` builds a
+  mesh differently from the same geometry (build settings, attributes, materials); every tile is then checked against
+  its saved mesh again (and baked if that differs).
 
 ## Checked on the PC (Nov 11 2026)
 
@@ -28,5 +36,9 @@ re-saved only the clubhouse's tiles (`SM_Marina_1_2`, `SM_Marina_2_2`; 22 kept);
 When proving it, touch a restored source file before building: a copy that keeps its old timestamp is not recompiled, and the
 bake then hashes the stale build's geometry. The log line says how many tiles were
 kept: `Baked the RayHubbard marina: ... quads in 24 tiles (24 unchanged, kept as saved)`.
+
+Cross-machine check (#632, PC, Nov 11): with the Mac's three re-saved tiles and the Mac's hashes for them put in place,
+a PC bake kept all three by the tolerance check (`24 unchanged, kept as saved; 3 of them matched within tolerance`), left
+the Mac's files as they were and did not touch the sidecar.
 
 Bridges, shore and houses tiles still re-save on every bake; the same two helpers would cover them.
