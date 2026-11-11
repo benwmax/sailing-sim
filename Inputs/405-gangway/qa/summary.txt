@@ -1,0 +1,1 @@
+#638 QA follow-ups (pc/405-gangway): before = b93bc241, after = the QA head. dockc-junction: 6 m off dock C's gangway, side on: before only the white plate stub at the row's root over open water; after a 10.6 m gangway from the walkway's west end (rails on posts every 2 m). close: dock B's gangway, unchanged in look. World 1/1, Visual 73/73, Lake 17/17.
