@@ -52,8 +52,9 @@ void FBoatStepJob::Run() const
 		const FBoatControls Before = *Controls;
 		const double Now = Boat->GetState().Time;
 		const bool bAssist = bTrimAssist && Now - LastManualTrimTime > TrimIdleSeconds;
-		// The assist waiting after the player's sheet: the crew's body still answers the boat (see LastManualHikeTime).
-		const bool bReflex = bTrimAssist && !bAssist && Now - LastManualHikeTime > TrimIdleSeconds;
+		// The assist waiting after the player's sheet, or turned off: the crew's body still answers the boat (see
+		// LastManualHikeTime; Bean, Nov 11: the sailor moves in by reflex whatever the Trim assist setting).
+		const bool bReflex = !bAssist && Now - LastManualHikeTime > TrimIdleSeconds;
 		if (bAssist || bSimple || bReflex)
 		{
 			const FBoatControls Assisted = Trim->Update(*Boat, *Controls, StepDt);

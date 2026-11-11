@@ -35,9 +35,10 @@ struct SAILINGSIM_API FBoatStepJob
 	bool bTrimAssist = false;          // the setting
 	double LastManualTrimTime = 0.0;   // the assist trims once the boat's time is TrimIdleSeconds past the last manual trim
 	double TrimIdleSeconds = 1e300;
-	/** The player's last hike key (boat time). While the assist waits after a sheet press, the crew still move in and out
-	 *  by reflex (FAutoTrim's hike), unless the player hiked within TrimIdleSeconds: hands on the sheet are not the body
-	 *  frozen out on the rail (the Sunfish rolled over on top of her sailor when the sail stopped pulling, Nov 11 review). */
+	/** The player's last hike key (boat time). While the assist waits after a sheet press, or is turned off, the crew still
+	 *  move in and out by reflex (FAutoTrim's hike), unless the player hiked within TrimIdleSeconds: hands on the sheet are
+	 *  not the body frozen out on the rail (the Sunfish rolled over on top of her sailor when the sail stopped pulling,
+	 *  Nov 11 review). */
 	double LastManualHikeTime = -1e300;
 	bool bSimple = false;              // the simple layout: the crew handles traveler and sail shape
 	const Sailing::FEasyAssists* Easy = nullptr; // Easy mode: its helm steps the boat on a copy of the controls

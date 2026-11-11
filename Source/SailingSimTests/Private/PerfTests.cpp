@@ -131,7 +131,7 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 			{
 				const FBoatControls Before = Ref.Controls;
 				const bool bAssist = bAssistOn && Ref.Boat.GetState().Time - LastManual > Idle;
-				const bool bReflex = bAssistOn && !bAssist && Ref.Boat.GetState().Time - LastManualHike > Idle; // the crew's body while the assist waits
+				const bool bReflex = !bAssist && Ref.Boat.GetState().Time - LastManualHike > Idle; // the crew's body while the assist waits or is off
 				if (bAssist || bSimple || bReflex)
 				{
 					const FBoatControls Assisted = Ref.Trim.Update(Ref.Boat, Ref.Controls, Ref.Stepper.GetStepDt());
@@ -193,6 +193,8 @@ bool FSailingCrewReflexTest::RunTest(const FString& Parameters)
 	// Nov 11 physics review #2: on Realistic a sheet press pauses the trim assist for 4 s, and the pause froze the sailor's
 	// body on the windward rail too. A Sunfish whose sheet the player eases right out (and keeps hold of) then rolled over
 	// on top of her sailor to windward in a few seconds. The crew's reflex keeps moving them in while the hands wait.
+	// With the trim assist turned off in Settings the reflex runs too (Bean's choice, Nov 11).
+	for (const bool bAssistSetting : { true, false })
 	for (const double Knots : { 10.0, 14.0 })
 	{
 		FWindParams WP;
@@ -214,7 +216,7 @@ bool FSailingCrewReflexTest::RunTest(const FString& Parameters)
 		Job.Trim = &Trim;
 		Job.Wind = &Wind;
 		Job.Steps = 1;
-		Job.bTrimAssist = true;
+		Job.bTrimAssist = true; // the assist sails her for the first 20 s either way, then the setting is what it is
 		Job.TrimIdleSeconds = 4.0;
 		Job.LastManualTrimTime = -100.0;
 		double MostWindwardDeg = 0.0, Settled = 0.0;
@@ -227,6 +229,7 @@ bool FSailingCrewReflexTest::RunTest(const FString& Parameters)
 				// The player eases the sheet right out and keeps a hand on it: the assist waits the whole time.
 				Controls.MainSheet = FMath::Min(1.0, Controls.MainSheet + 0.35 / 120.0);
 				Job.LastManualTrimTime = Now;
+				Job.bTrimAssist = bAssistSetting;
 			}
 			Controls.Tiller = Helm.Update(Boat);
 			Job.Run();
@@ -237,10 +240,10 @@ bool FSailingCrewReflexTest::RunTest(const FString& Parameters)
 			}
 			if (Now > 55.0) Settled = Controls.Hike;
 		}
-		AddInfo(FString::Printf(TEXT("%.0f kn: most windward heel %.1f deg, hike %.2f with the sail let go"), Knots, MostWindwardDeg, Settled));
-		TestFalse(FString::Printf(TEXT("%.0f kn: no capsize with the sheet eased and held"), Knots), bCapsized);
-		TestTrue(FString::Printf(TEXT("%.0f kn: she never rolls 25 deg to windward (%.1f)"), Knots, MostWindwardDeg), MostWindwardDeg > -25.0);
-		TestTrue(FString::Printf(TEXT("%.0f kn: the sailor came in off the rail (hike %.2f)"), Knots, Settled), Settled < 0.0);
+		AddInfo(FString::Printf(TEXT("Assist %d, %.0f kn: most windward heel %.1f deg, hike %.2f with the sail let go"), int32(bAssistSetting), Knots, MostWindwardDeg, Settled));
+		TestFalse(FString::Printf(TEXT("Assist %d, %.0f kn: no capsize with the sheet eased and held"), int32(bAssistSetting), Knots), bCapsized);
+		TestTrue(FString::Printf(TEXT("Assist %d, %.0f kn: she never rolls 25 deg to windward (%.1f)"), int32(bAssistSetting), Knots, MostWindwardDeg), MostWindwardDeg > -25.0);
+		TestTrue(FString::Printf(TEXT("Assist %d, %.0f kn: the sailor came in off the rail (hike %.2f)"), int32(bAssistSetting), Knots, Settled), Settled < 0.0);
 	}
 	{
 		// The player's own hike key still wins: held out, the reflex leaves the hike alone for the idle time after it.
