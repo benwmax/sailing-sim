@@ -1238,10 +1238,10 @@ coat *= 1.0 - 0.85 * ox;
 col = lerp(col, col * 0.78 + 0.02, (age >= 0.0 ? 0.0 : wear.x) * saturate(NonSkid) * 0.7);
 // Round 12 ("lack of texture on surfaces", "no wear and tear"): three octaves of value noise anchored to the boat (37 cm,
 // 9 cm, 2.2 cm) for grime ground into decks and non-skid where feet and water go, and a faint mottle in every gelcoat.
-// #405 (docs/405-audit): each octave's lattice is turned (37, 74, 111 deg) and smoothed quintically, so the thresholded
+// #405 (Inputs/405-audit on the inputs branch): each octave's lattice is turned (37, 74, 111 deg) and smoothed quintically, so the thresholded
 // grime below has no square, stair-stepped edges; WearScale (per class, BoatModelVisuals: 0.7 on the dinghies) sizes it
 // to the boat.
-float vn = 0.0, amp = 0.6, sc = 37.0 * WearScale;
+float vn = 0.0, amp = 0.6, sc = 37.0 * max(WearScale, 0.05);   // a zero scale would put NaN in every deck
 for (int o = 0; o < 3; ++o)
 {
     float ang = 0.6458 * (o + 1);

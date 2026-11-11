@@ -76,17 +76,21 @@ def hash2(ix, iy, k=(12.99, 78.23)):
     return np.modf(np.abs(np.sin(ix * k[0] + iy * k[1]) * 43758.5))[0]
 
 
-def value_noise(xcm, ycm, wear_scale=1.0):
+def value_noise(xcm, ycm, wear_scale=1.0, turned=True):
     """The shader's grime noise: three octaves at 37, 9 and 2.2 cm (BOAT_CODE, vn). #405: each octave's lattice is turned
-    (37, 74, 111 deg) and smoothed quintically, and WearScale sizes it to the boat (0.7 on the dinghies)."""
+    (37, 74, 111 deg) and smoothed quintically, and WearScale sizes it to the boat (0.7 on the dinghies); turned=False is
+    the axis-aligned, cubic noise of main before #405 (the --before render)."""
     vn, amp, sc = 0.0, 0.6, 37.0 * wear_scale
     for o in range(3):
-        ang = 0.6458 * (o + 1)
+        ang = 0.6458 * (o + 1) if turned else 0.0
         rx, ry = xcm * math.cos(ang) - ycm * math.sin(ang), xcm * math.sin(ang) + ycm * math.cos(ang)
         qx, qy = rx / sc + o * 17.3, ry / sc + o * 17.3
         ix, iy = np.floor(qx), np.floor(qy)
         fx, fy = qx - ix, qy - iy
-        fx, fy = fx * fx * fx * (fx * (fx * 6 - 15) + 10), fy * fy * fy * (fy * (fy * 6 - 15) + 10)
+        if turned:
+            fx, fy = fx * fx * fx * (fx * (fx * 6 - 15) + 10), fy * fy * fy * (fy * (fy * 6 - 15) + 10)
+        else:
+            fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
         a00, a10, a01, a11 = hash2(ix, iy), hash2(ix + 1, iy), hash2(ix, iy + 1), hash2(ix + 1, iy + 1)
         vn = vn + amp * ((a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy)
         amp *= 0.5
@@ -221,7 +225,7 @@ def render(level, ppm, size_px, maps, before=False, sun=False, seed=7):
     Ns, Ms = sample(N, ppm, size_px), sample(M, ppm, size_px)
     xcm = (np.arange(size_px) + 0.5) / ppm / 10.0 + 120.0
     X, Y = np.meshgrid(xcm, xcm + 40.0)
-    vn = value_noise(X, Y)
+    vn = value_noise(X, Y, turned=not before)
     nrm = Ns * 2 - 1
     if before:
         dx, dy = diamond8_normal(size_px, ppm)
