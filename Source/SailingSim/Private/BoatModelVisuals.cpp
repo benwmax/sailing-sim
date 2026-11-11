@@ -1753,8 +1753,8 @@ bool ASailboatPawn::BakesStowedExtension() const
 {
 	// The hero J/22 (j22_steering.py: TillerExtUJ, TillerExtTip) and the Sunfish (build_fleet.py: pc/sunfish-hero) model the
 	// extension folded back along the tiller; the ILCA, Catalina 22 and Corsair don't (Boats & models 9).
-	// #618: as a part of its own (ModelTillerExt), hidden while the live one is held; the hero's is still in its rudder mesh
-	// (TillerExtTip), shown with the held one too until the PC splits it out as SM_J22H_TillerExt.
+	// #618: both have it as a part of their own (ModelTillerExt: SM_J22H_TillerExt, SM_Sunfish_TillerExt), hidden while the
+	// live one is held. The rudder's TillerExtTip socket covers a model that bakes the extension into its rudder mesh.
 	return ModelTillerExt || (ModelRudder && ModelRudder->DoesSocketExist(TEXT("TillerExtTip"))) || Boat.GetConfig().Type == EBoatType::Sunfish;
 }
 

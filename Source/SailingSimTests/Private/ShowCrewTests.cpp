@@ -97,17 +97,20 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 	};
 	W.Tick(60);
 	TestFalse(TEXT("Crew hidden"), Boat->IsCrewShownNow());
-	// #620 follow-up: the hero J/22's stowed extension is still in its rudder mesh (the PC splits it out as SM_J22H_TillerExt
-	// after #615): no part of its own yet. When it lands, this flips and the Sunfish's checks below apply to it too.
-	TestNull(TEXT("J/22 hero: no stowed-extension part yet (SM_J22H_TillerExt)"), Boat->GetModelTillerExt());
+	// #618: the hero J/22's stowed extension is its own part (SM_J22H_TillerExt, split out of its rudder mesh): shown while
+	// stowed, hidden while the helm holds the live one, as the Sunfish's below.
+	const bool bHeroExt = TestNotNull(TEXT("J/22 hero: the stowed extension is its own part (SM_J22H_TillerExt)"), Boat->GetModelTillerExt());
+	if (bHeroExt) TestTrue(TEXT("J/22, crew hidden: the stowed extension shows"), Boat->IsModelTillerExtShown());
 	const FVector Stowed = Check(TEXT("J/22, crew hidden"), true);
 	USailingSettings::Get()->bShowCrew = true;
 	W.Tick(30);
 	const FVector Held = Check(TEXT("J/22, crew shown"), false);
+	if (bHeroExt) TestFalse(TEXT("J/22, crew shown: the stowed one is hidden while the helm holds the live one"), Boat->IsModelTillerExtShown());
 	TestTrue(TEXT("Shown: the extension goes to the helm's hand"), FVector::Dist(Held, Stowed) > 15.0);
 	Boat->SetCockpitView(true);
 	W.Tick(30);
 	Check(TEXT("J/22, cockpit view (crew shown)"), true);
+	if (bHeroExt) TestTrue(TEXT("J/22, cockpit view: the stowed one shows"), Boat->IsModelTillerExtShown());
 	Boat->SetCockpitView(false);
 	USailingSettings::Get()->bShowCrew = false;
 	Boat->SetBoat(int32(Sailing::EBoatType::Sunfish));
