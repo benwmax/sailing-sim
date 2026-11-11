@@ -64,6 +64,8 @@ public:
 	static ECareerFocus CareerFocus(const FSailSave::FProgress& Progress, bool bTierPicked);
 	/** #599: the title's Continue goes back to the first job: the last session was the first job and it isn't done. */
 	static bool ResumesFirstJob(const struct FSailSessionConfig& Last, const FSailSave::FProgress& Progress);
+	/** #601: the tiers a certificate opens that have lessons to sail (the names for its "Open now" line). */
+	static TArray<FString> TiersOpenedBy(const struct FCareerTier& Tier);
 	/** #599: the pause menu's title and restart item. A scripted scene running (the first job) gives its own title and
 	 *  "Restart from checkpoint" (true); else the mode's name and its restart (drill, race, or the launch spot). */
 	static bool PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart);
