@@ -780,6 +780,7 @@ void SSailFrontEnd::StartLesson(const FCareerLesson& Lesson)
 	Quiz.Reset();
 	QuizRetakeLessonId.Reset();
 	Pending = USailSessionSubsystem::MakeLesson(T->WorldId, T->Boats.Num() ? T->Boats[0] : FString(TEXT("J22")), int32(Lesson.Drill) - 1, Lesson.Conditions, Lesson.Traffic);
+	Pending.LessonId = Lesson.Id;
 	CastOff();
 }
 
@@ -1645,7 +1646,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 
 // ---------------------------------------------------------------- 5.9 Pause
 
-bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart, ESailingDrill ActiveDrill)
+bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart, ESailingDrill Drill,
+	const FString& LessonId)
 {
 	if (Scene && Scene->IsLoaded() && !Scene->IsComplete())
 	{
@@ -1654,16 +1656,15 @@ bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode
 		return true;
 	}
 	OutTitle = USailSessionSubsystem::ModeName(Mode);
-	// #605 (the #400 audit): a lesson's pause menu read DRILLS. In a drill, the career lesson that sails it (its title, as
-	// the briefing and the Career screen give it), else the drill's own name.
-	if (Mode == ESailMode::Drill && ActiveDrill != ESailingDrill::None)
+	// #605 (the #400 audit): a lesson's pause menu read DRILLS. #636's QA: by the session's lesson (Club Racer's lessons share
+	// Day Sailor's drills), else, with a drill set (running or finished), the drill's own name.
+	if (const FCareerLesson* Lesson = LessonId.IsEmpty() ? nullptr : FCareerContent::Get().Lesson(LessonId); Lesson && !Lesson->Title.IsEmpty())
 	{
-		const FCareerLesson* Lesson = nullptr;
-		for (const FCareerTier& T : FCareerContent::Get().Tiers)
-		{
-			if (!Lesson) Lesson = T.Lessons.FindByPredicate([ActiveDrill](const FCareerLesson& X) { return X.Drill == ActiveDrill; });
-		}
-		OutTitle = Lesson && !Lesson->Title.IsEmpty() ? Lesson->Title : FString(DrillName(ActiveDrill));
+		OutTitle = Lesson->Title;
+	}
+	else if (Drill != ESailingDrill::None)
+	{
+		OutTitle = DrillName(Drill);
 	}
 	OutRestart = Mode == ESailMode::Drill ? TEXT("Restart drill") : (Mode == ESailMode::Race ? TEXT("Restart race") : TEXT("Restart from launch spot"));
 	return false;
@@ -1695,7 +1696,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 	const ASailingGameMode* GM = Player.IsValid() && Player->GetWorld() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
 	const Sailing::FScriptedScene* Scene = GM ? GM->GetScene() : nullptr;
 	FString Title, RestartLabel;
-	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel, P && P->GetDrill().IsActive() ? P->GetDrill().GetDrill() : ESailingDrill::None);
+	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel, P ? P->GetDrill().GetDrill() : ESailingDrill::None,
+		Session && Session->bHasActive ? Session->Active.LessonId : FString());
 	Item(TEXT("Resume"), FString(), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (bScene)
 	{
@@ -2621,11 +2623,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			const ESailingDrill Drill = L.Drill;
 			const FString TierWorld = T.WorldId, TierBoat = T.Boats.Num() ? T.Boats[0] : FString(TEXT("J22"));
 			TSharedRef<SSailButton> Row = SNew(SSailButton).Padding(FMargin(14.f, 8.f)).IsEnabled(bOpen)
-				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat, LessonConditions = L.Conditions, LessonTraffic = L.Traffic]()
+				.OnClicked_Lambda([this, Drill, TierWorld, TierBoat, LessonConditions = L.Conditions, LessonTraffic = L.Traffic, LessonId = L.Id]()
 				{
 					// #402: Start lesson: its drill in the tier's world and first boat, cast off at once (the briefing opens
 					// as it loads); the lesson's conditions are the lesson day, traffic off.
 					Pending = USailSessionSubsystem::MakeLesson(TierWorld, TierBoat, int32(Drill) - 1, LessonConditions, LessonTraffic);
+					Pending.LessonId = LessonId;
 					CastOff();
 				})
 			[

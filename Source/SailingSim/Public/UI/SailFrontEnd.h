@@ -65,11 +65,11 @@ public:
 	/** #599: the title's Continue goes back to the first job: the last session was the first job and it isn't done. */
 	static bool ResumesFirstJob(const struct FSailSessionConfig& Last, const FSailSave::FProgress& Progress);
 	/** #599: the pause menu's title and restart item. A scripted scene running (the first job) gives its own title and
-	 *  "Restart from checkpoint" (true); else the mode's name and its restart (drill, race, or the launch spot). */
-	/** #605: in a drill the title is the lesson's (the career lesson that sails ActiveDrill), else the drill's own name, not
-	 *  the mode's "Drills". */
+	 *  "Restart from checkpoint" (true). Otherwise the restart is the mode's (drill, race, or the launch spot), and the title
+	 *  (#605, #636) is the session's career lesson (LessonId), else with a drill set (running or finished) the drill's own
+	 *  name, else the mode's name. */
 	static bool PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart,
-		ESailingDrill ActiveDrill = ESailingDrill::None);
+		ESailingDrill Drill = ESailingDrill::None, const FString& LessonId = FString());
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has

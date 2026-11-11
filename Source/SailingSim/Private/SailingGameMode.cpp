@@ -1602,8 +1602,9 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 			const FCareerTier* Tier = FCareerContent::Get().Tier(UTF8_TO_TCHAR(Set.ThenTier.c_str()));
 			if (Tier && Tier->Lessons.Num())
 			{
-				const FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(Tier->WorldId, Tier->Boats.Num() ? Tier->Boats[0] : FString(TEXT("J22")),
+				FSailSessionConfig Lesson = USailSessionSubsystem::MakeLesson(Tier->WorldId, Tier->Boats.Num() ? Tier->Boats[0] : FString(TEXT("J22")),
 					int32(Tier->Lessons[0].Drill) - 1, Tier->Lessons[0].Conditions, Tier->Lessons[0].Traffic);
+				Lesson.LessonId = Tier->Lessons[0].Id;   // #636: the pause menu is titled by it
 				FTimerHandle Later;
 				GetWorldTimerManager().SetTimer(Later, FTimerDelegate::CreateWeakLambda(this, [this, Lesson]()
 				{

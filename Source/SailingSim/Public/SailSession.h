@@ -55,6 +55,9 @@ struct FSailSessionConfig
 	 *  the first job goes into the save's last session (#599: the title's Continue resumes it until it is done); any other
 	 *  scene is cleared there (Continue sails free: LastSessionFor). Empty: none. */
 	UPROPERTY() FString SceneId;
+	/** #636: the career lesson this session sails (FCareerLesson::Id), set wherever a lesson starts; the pause menu is titled
+	 *  by it (lessons in different tiers share drills). Empty: a drill picked from the Mode screen, a free sail. Not saved. */
+	UPROPERTY() FString LessonId;
 	UPROPERTY(config) FDateTime SavedAt;
 };
 
