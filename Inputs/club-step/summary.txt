@@ -1,0 +1,7 @@
+Club porch step (pc/club-step, from main 6ad633a4). High, 1280x720, Drone lens, the door-8m and front-30m views of docs/club-door.
+before: main: two fixed 14 cm concrete slabs; where the lawn falls away toward the docks they floated over it.
+after-a9f8c9d7-wall: first try, each slab seated on the ground: the top one stood as a 0.75 m concrete wall (superseded).
+after-e43a22ba: a flight from the porch floor down to the landing (risers of 18 cm or less over the 1.05 m to the landing,
+the landing's height computed first), each step reaching 10 cm under the lowest ground below it. 24 SM_Marina tiles
+rebaked; SailingSim.World 1/1 and SailingSim.Lake 17/17 passed.
+Seen, not changed: the porch deck's open underside shows dark where the lawn drops away (no skirt).
