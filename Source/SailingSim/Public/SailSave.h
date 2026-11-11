@@ -35,6 +35,10 @@ struct SAILINGSIM_API FSailSave
 		bool bShowHud = true;
 		bool bShowCrew = false;   // "showCrew" (added in version 1: an older file has none and reads off)
 		float Volume = 0.8f;
+		// "audio" (added in version 1 without a version change: an older file reads the defaults).
+		float VolumeBoat = 1.f, VolumeWorld = 1.f, VolumeWeather = 1.f, VolumeSignals = 1.f;
+		bool bMonoAudio = false;
+		bool bSoundCaptions = true;
 		int32 ResolutionScale = 0;
 		int32 FrameCap = 0;
 		bool bCinematicLook = false;

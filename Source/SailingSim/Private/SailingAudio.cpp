@@ -4,6 +4,89 @@
 #include "Sound/SoundBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "SailingGameMode.h"
+#include "SailingSettings.h"
+#include "AudioMixerBlueprintLibrary.h"
+#include "SubmixEffects/AudioMixerSubmixEffectDynamicsProcessor.h"
+
+namespace SailingAudioLocal
+{
+	// Settings > Audio, copied by SailingSound::UpdateMix on the game thread for the audio thread.
+	std::atomic<float> GMaster{ 0.8f };
+	std::atomic<float> GShare[int32(SailingSound::EGroup::Count)] = { { 1.f }, { 1.f }, { 1.f }, { 1.f } };
+	std::atomic<bool> GMono{ false };
+}
+
+void SailingSound::UpdateMix()
+{
+	using namespace SailingAudioLocal;
+	const USailingSettings* S = USailingSettings::Get();
+	if (!S) return;
+	GMaster = FMath::Clamp(S->Volume, 0.f, 1.f);
+	GShare[int32(EGroup::Boat)] = FMath::Clamp(S->VolumeBoat, 0.f, 1.f);
+	GShare[int32(EGroup::World)] = FMath::Clamp(S->VolumeWorld, 0.f, 1.f);
+	GShare[int32(EGroup::Weather)] = FMath::Clamp(S->VolumeWeather, 0.f, 1.f);
+	GShare[int32(EGroup::Signals)] = FMath::Clamp(S->VolumeSignals, 0.f, 1.f);
+	GMono = S->bMonoAudio;
+}
+
+float SailingSound::GroupShare(EGroup Group)
+{
+	return SailingAudioLocal::GShare[FMath::Clamp(int32(Group), 0, int32(EGroup::Count) - 1)].load();
+}
+
+float SailingSound::GroupGain(EGroup Group)
+{
+	return SailingAudioLocal::GMaster.load() * GroupShare(Group);
+}
+
+bool SailingSound::IsMono()
+{
+	return SailingAudioLocal::GMono.load();
+}
+
+SailingSound::EGroup SailingSound::CueGroup(ESailingCue Cue)
+{
+	return Cue == ESailingCue::RainDeck || Cue == ESailingCue::RainWater || Cue == ESailingCue::SquallHiss || Cue == ESailingCue::Thunder
+		? EGroup::Weather : EGroup::Boat;
+}
+
+void SailingSound::SetSpatial(UAudioComponent* A, float FalloffM)
+{
+	if (!A) return;
+	A->bAllowSpatialization = true;
+	A->bOverrideAttenuation = true;
+	A->AttenuationOverrides.bAttenuate = true;
+	A->AttenuationOverrides.bSpatialize = !IsMono();
+	A->AttenuationOverrides.AttenuationShape = EAttenuationShape::Sphere;
+	A->AttenuationOverrides.AttenuationShapeExtents = FVector(FalloffM * 0.05f * 100.f);
+	A->AttenuationOverrides.FalloffDistance = FalloffM * 100.f;
+	A->AttenuationOverrides.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
+	A->AttenuationOverrides.bAttenuateWithLPF = true;
+	A->AttenuationOverrides.LPFRadiusMin = FalloffM * 10.f;
+	A->AttenuationOverrides.LPFRadiusMax = FalloffM * 100.f;
+}
+
+void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
+{
+	// Once per process: the master submix outlives the map reloads. The preset is rooted so the mixer keeps it.
+	static bool bAdded = false;
+	if (bAdded || !WorldContext || !GEngine || GEngine->UseSound() == false) return;
+	USubmixEffectDynamicsProcessorPreset* Limiter = NewObject<USubmixEffectDynamicsProcessorPreset>(GetTransientPackage(), TEXT("SailingMasterLimiter"));
+	FSubmixEffectDynamicsProcessorSettings L;
+	L.DynamicsProcessorType = ESubmixEffectDynamicsProcessorType::Limiter;
+	L.PeakMode = ESubmixEffectDynamicsPeakMode::Peak;
+	L.LookAheadMsec = 3.f;
+	L.AttackTimeMsec = 1.f;
+	L.ReleaseTimeMsec = 150.f;
+	L.ThresholdDb = -1.5f;   // under the -1 dBTP ceiling (docs: the sound plan's loudness target)
+	L.KneeBandwidthDb = 3.f;
+	L.InputGainDb = 0.f;
+	L.OutputGainDb = 0.f;
+	Limiter->SetSettings(L);
+	Limiter->AddToRoot();
+	UAudioMixerBlueprintLibrary::AddMasterSubmixEffect(WorldContext, Limiter);
+	bAdded = true;
+}
 
 const TCHAR* SailingCueName(ESailingCue Cue)
 {
@@ -56,6 +139,8 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 	const float TGust = Params.GustRatio.load(), TShadow = Params.WindShadow.load(), TMoored = Params.Moored.load();
 	const float TRainDeck = Params.RainDeck.load(), TRainWater = Params.RainWater.load(), TSquall = Params.Squall.load();
 	const float Winches = FMath::Clamp(Params.Winches.load(), 0.f, 1.f);
+	const float TGainBoat = Params.GainBoat.load(), TGainWeather = Params.GainWeather.load(), TGainSignals = Params.GainSignals.load();
+	const float LimiterRelease = FMath::Exp(-1.f / (0.15f * Sr));
 	// A recorded sample plays instead of a muted voice (the pawn's sample layer).
 	const uint32 Mask = Params.SampledMask.load();
 	auto On = [Mask](ESailingCue C) { return (Mask & (1u << uint32(C))) ? 0.f : 1.f; };
@@ -85,7 +170,7 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		Brown = (Brown + 0.02f * WhiteN) * 0.996f;
 		const float BrownN = Brown * 3.5f;
 
-		float Mix = 0.f;
+		float Mix = 0.f, MixWeather = 0.f, MixSignals = 0.f;   // on board, weather, horns (the player's groups)
 
 		// Wind in the rigging: a breathy band that rises in pitch and level with apparent wind, slowly gusting.
 		GustPhase += 0.23f / Sr;
@@ -152,16 +237,16 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 
 		// Rain: hiss on the water and drops on the deck.
 		// Rain: the hiss on the water around and the drops on the deck and sails, as separate layers.
-		Mix += (WhiteN - RainHigh.Low(WhiteN, 0.08f)) * 0.06f * FMath::Max(Rw, Rn * 0.0f) * MWater;
+		MixWeather += (WhiteN - RainHigh.Low(WhiteN, 0.08f)) * 0.06f * FMath::Max(Rw, Rn * 0.0f) * MWater;
 		if (Noise() > 1.f - 0.004f * Rd) DropEnv = 1.f;
 		DropEnv *= 0.99f;
-		Mix += DropBand.Process(WhiteN * DropEnv, 0.5f, 0.3f) * 0.2f * Rd * MDeck;
+		MixWeather += DropBand.Process(WhiteN * DropEnv, 0.5f, 0.3f) * 0.2f * Rd * MDeck;
 		// A squall coming across the water: a broad hiss, the rain and the wind's roar, rising as it nears.
-		Mix += (SquallBand.Process(WhiteN, 2.f * PI * 3500.f / Sr, 0.9f) * 0.05f + SquallBand2.Process(PinkN, 2.f * PI * 600.f / Sr, 0.8f) * 0.08f) * Sq * Sq * MSquall;
+		MixWeather += (SquallBand.Process(WhiteN, 2.f * PI * 3500.f / Sr, 0.9f) * 0.05f + SquallBand2.Process(PinkN, 2.f * PI * 600.f / Sr, 0.8f) * 0.08f) * Sq * Sq * MSquall;
 
 		// Thunder: a rolling low rumble, and a crack for a close strike.
-		Mix += ThunderLow.Low(BrownN, 2.f * PI * 70.f / Sr) * 2.2f * Th * MThunder;
-		Mix += CrackBand.Process(WhiteN, 0.08f, 0.6f) * 0.8f * Cr * MThunder;
+		MixWeather += ThunderLow.Low(BrownN, 2.f * PI * 70.f / Sr) * 2.2f * Th * MThunder;
+		MixWeather += CrackBand.Process(WhiteN, 0.08f, 0.6f) * 0.8f * Cr * MThunder;
 
 		// A whistle: a reedy tone (odd and even harmonics) with a little vibrato, fading in and out over 30 ms.
 		const float Hn = Smooth(SHorn, THorn, Rate * 1.6f);
@@ -171,10 +256,16 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 			HornPhase += HornFreq * (1.f + 0.004f * FMath::Sin(2.f * PI * HornVib)) / Sr;
 			HornPhase -= FMath::FloorToFloat(HornPhase);
 			const float A = 2.f * PI * HornPhase;
-			Mix += (FMath::Sin(A) + 0.5f * FMath::Sin(2.f * A) + 0.33f * FMath::Sin(3.f * A) + 0.18f * FMath::Sin(5.f * A)) * 0.35f * Hn;
+			MixSignals += (FMath::Sin(A) + 0.5f * FMath::Sin(2.f * A) + 0.33f * FMath::Sin(3.f * A) + 0.18f * FMath::Sin(5.f * A)) * 0.35f * Hn;
 		}
 
-		const float Sample = FMath::Clamp(FMath::Tanh(Mix * Vol * 1.4f), -1.f, 1.f);
+		// The groups at the player's levels, then a peak limiter (instant attack, 150 ms release) in place of the old tanh
+		// clip: a loud layer turns the whole voice down a little instead of distorting everything under it.
+		const float Gb = Smooth(SGainBoat, TGainBoat, Rate), Gw = Smooth(SGainWeather, TGainWeather, Rate), Gs = Smooth(SGainSignals, TGainSignals, Rate);
+		const float Pre = (Mix * Gb + MixWeather * Gw + MixSignals * Gs) * Vol * 1.4f;
+		const float Peak = FMath::Abs(Pre);
+		LimiterEnv = Peak > LimiterEnv ? Peak : LimiterEnv * LimiterRelease;
+		const float Sample = FMath::Clamp(Pre * (LimiterEnv > 0.9f ? 0.9f / LimiterEnv : 1.f), -1.f, 1.f);
 		Out[I] = int16(Sample * 32000.f);
 	}
 	return NumSamples;
@@ -204,6 +295,8 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 	const float Sr = 48000.f;
 	if (Rng == 0x9E3779B9u) Rng ^= Seed * 2654435761u;
 	const float TLevel = Level.load(), TRate = Rate.load();
+	// The player's mix: the marina, gulls and engines are the lake and shore group.
+	const float Gain = SailingSound::GroupGain(SailingSound::EGroup::World);
 	for (int32 I = 0; I < NumSamples; ++I)
 	{
 		SLevel += (TLevel - SLevel) * 0.0005f;
@@ -262,7 +355,7 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 		}
 		default: break;
 		}
-		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * SLevel * 1.5f), -1.f, 1.f) * 30000.f);
+		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * SLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
 	}
 	return NumSamples;
 }
@@ -275,17 +368,7 @@ UAudioComponent* SailingSound::MakeWorldSound(UObject* Owner, USceneComponent* P
 	UAudioComponent* A = NewObject<UAudioComponent>(Owner);
 	A->SetupAttachment(Parent);
 	A->bAutoActivate = false;
-	A->bAllowSpatialization = true;
-	A->bOverrideAttenuation = true;
-	A->AttenuationOverrides.bAttenuate = true;
-	A->AttenuationOverrides.bSpatialize = true;
-	A->AttenuationOverrides.AttenuationShape = EAttenuationShape::Sphere;
-	A->AttenuationOverrides.AttenuationShapeExtents = FVector(FalloffM * 0.05f * 100.f);
-	A->AttenuationOverrides.FalloffDistance = FalloffM * 100.f;
-	A->AttenuationOverrides.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
-	A->AttenuationOverrides.bAttenuateWithLPF = true;
-	A->AttenuationOverrides.LPFRadiusMin = FalloffM * 10.f;
-	A->AttenuationOverrides.LPFRadiusMax = FalloffM * 100.f;
+	SetSpatial(A, FalloffM);
 	A->SetSound(OutSynth);
 	A->RegisterComponent();
 	A->Play();
@@ -396,17 +479,7 @@ bool USailingWorldSamples::Init(USailingWorldSynth* InSynth, USceneComponent* Pa
 		UAudioComponent* A = NewObject<UAudioComponent>(GetOwner());
 		A->SetupAttachment(Parent);
 		A->bAutoActivate = false;
-		A->bAllowSpatialization = true;
-		A->bOverrideAttenuation = true;
-		A->AttenuationOverrides.bAttenuate = true;
-		A->AttenuationOverrides.bSpatialize = true;
-		A->AttenuationOverrides.AttenuationShape = EAttenuationShape::Sphere;
-		A->AttenuationOverrides.AttenuationShapeExtents = FVector(FalloffM * 0.05f * 100.f);
-		A->AttenuationOverrides.FalloffDistance = FalloffM * 100.f;
-		A->AttenuationOverrides.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
-		A->AttenuationOverrides.bAttenuateWithLPF = true;
-		A->AttenuationOverrides.LPFRadiusMin = FalloffM * 10.f;
-		A->AttenuationOverrides.LPFRadiusMax = FalloffM * 100.f;
+		SailingSound::SetSpatial(A, FalloffM);
 		A->SetSound(Sound);
 		A->SetVolumeMultiplier(0.f);
 		A->RegisterComponent();
@@ -430,7 +503,7 @@ void USailingWorldSamples::TickComponent(float DeltaTime, ELevelTick TickType, F
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (!Synth) return;
-	const float Level = Synth->Level.load(), Rate = Synth->Rate.load();
+	const float Level = Synth->Level.load() * SailingSound::GroupGain(SailingSound::EGroup::World), Rate = Synth->Rate.load();
 	if (Loops.Num())
 	{
 		float W[4] = {};

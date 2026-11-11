@@ -46,6 +46,12 @@ namespace SailSaveTestsLocal
 		T.bShowHud = false;
 		T.bShowCrew = true;   // (the default is off)
 		T.Volume = 0.35f;
+		T.VolumeBoat = 0.6f;
+		T.VolumeWorld = 0.4f;
+		T.VolumeWeather = 0.25f;
+		T.VolumeSignals = 0.9f;
+		T.bMonoAudio = true;
+		T.bSoundCaptions = false;
 		T.ResolutionScale = 75;
 		T.FrameCap = 60;
 		T.bCinematicLook = true;
@@ -156,6 +162,12 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("show hud"), Y.bShowHud, X.bShowHud);
 	TestEqual(TEXT("show crew"), Y.bShowCrew, X.bShowCrew);
 	TestEqual(TEXT("volume"), Y.Volume, X.Volume);
+	TestEqual(TEXT("volume boat"), Y.VolumeBoat, X.VolumeBoat);
+	TestEqual(TEXT("volume world"), Y.VolumeWorld, X.VolumeWorld);
+	TestEqual(TEXT("volume weather"), Y.VolumeWeather, X.VolumeWeather);
+	TestEqual(TEXT("volume signals"), Y.VolumeSignals, X.VolumeSignals);
+	TestEqual(TEXT("mono"), Y.bMonoAudio, X.bMonoAudio);
+	TestEqual(TEXT("captions"), Y.bSoundCaptions, X.bSoundCaptions);
 	TestEqual(TEXT("resolution"), Y.ResolutionScale, X.ResolutionScale);
 	TestEqual(TEXT("frame cap"), Y.FrameCap, X.FrameCap);
 	TestEqual(TEXT("cinematic"), Y.bCinematicLook, X.bCinematicLook);

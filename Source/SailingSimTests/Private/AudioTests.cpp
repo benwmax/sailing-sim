@@ -6,6 +6,7 @@
 #include "Serialization/JsonSerializer.h"
 #include "Sound/SoundWave.h"
 #include "SailingAudio.h"
+#include "SailingSettings.h"
 
 namespace
 {
@@ -66,5 +67,31 @@ bool FSailingSheetWinchesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Hobie has no winches"), SailingSound::HasSheetWinches(EBoatType::Hobie16));
 	TestTrue(TEXT("J/22 has winches"), SailingSound::HasSheetWinches(EBoatType::J22));
 	TestTrue(TEXT("Catalina 22 has winches"), SailingSound::HasSheetWinches(EBoatType::Catalina22));
+	return true;
+}
+
+/** Slice sound pass: Settings > Audio's groups. Each group's gain is the master times its own slider; rain, the squall and
+ *  thunder are weather, every other boat cue is on board. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingAudioMixTest, "SailingSim.Audio.Mix", AudioFlags)
+bool FSailingAudioMixTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	USailingSettings* S = USailingSettings::Get();
+	const float Keep[] = { S->Volume, S->VolumeBoat, S->VolumeWorld, S->VolumeWeather, S->VolumeSignals };
+	const bool bKeepMono = S->bMonoAudio;
+	S->Volume = 0.5f; S->VolumeBoat = 0.8f; S->VolumeWorld = 0.4f; S->VolumeWeather = 0.f; S->VolumeSignals = 1.f; S->bMonoAudio = true;
+	UpdateMix();
+	TestEqual(TEXT("On board = master x slider"), GroupGain(EGroup::Boat), 0.4f, 1e-5f);
+	TestEqual(TEXT("Lake and shore = master x slider"), GroupGain(EGroup::World), 0.2f, 1e-5f);
+	TestEqual(TEXT("Weather muted"), GroupGain(EGroup::Weather), 0.f, 1e-5f);
+	TestEqual(TEXT("Signals at the master"), GroupGain(EGroup::Signals), 0.5f, 1e-5f);
+	TestEqual(TEXT("Share leaves the master out"), GroupShare(EGroup::Boat), 0.8f, 1e-5f);
+	TestTrue(TEXT("Mono read"), IsMono());
+	TestTrue(TEXT("Thunder is weather"), CueGroup(ESailingCue::Thunder) == EGroup::Weather);
+	TestTrue(TEXT("Rain on deck is weather"), CueGroup(ESailingCue::RainDeck) == EGroup::Weather);
+	TestTrue(TEXT("The winch is on board"), CueGroup(ESailingCue::Winch) == EGroup::Boat);
+	TestTrue(TEXT("Wind is on board"), CueGroup(ESailingCue::Wind) == EGroup::Boat);
+	S->Volume = Keep[0]; S->VolumeBoat = Keep[1]; S->VolumeWorld = Keep[2]; S->VolumeWeather = Keep[3]; S->VolumeSignals = Keep[4]; S->bMonoAudio = bKeepMono;
+	UpdateMix();
 	return true;
 }

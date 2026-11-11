@@ -895,6 +895,7 @@ void ASailboatPawn::BeginPlay()
 	SoundComponent->RegisterComponent();
 	SoundComponent->Play();
 	StartSampleLayer();
+	if (!bTrafficBoat) SailingSound::EnsureMasterLimiter(this);
 
 	bDemo = FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"));
 	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit"))) SetCockpitView(true);
@@ -3065,6 +3066,11 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	PrevMainSheet = Controls.MainSheet;
 	PrevJibSheet = Controls.JibSheet;
 	P.Volume = USailingSettings::Get()->Volume;
+	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice.
+	if (!bTrafficBoat) SailingSound::UpdateMix();
+	P.GainBoat = SailingSound::GroupShare(SailingSound::EGroup::Boat);
+	P.GainWeather = SailingSound::GroupShare(SailingSound::EGroup::Weather);
+	P.GainSignals = SailingSound::GroupShare(SailingSound::EGroup::Signals);
 	const bool bWinches = SailingSound::HasSheetWinches(Boat.GetConfig().Type);
 	P.Winches = bWinches ? 1.f : 0.f;
 
@@ -3125,7 +3131,7 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
 		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
 		{
-			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
+			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load() * SailingSound::GroupShare(SailingSound::CueGroup(ESailingCue(K))));
 		}
 		UpdatePackSound(P, Aws, Levels);
 	}
@@ -3145,7 +3151,8 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 	// band's crossfade weight over the parameter manifest.json names for it.
 	using namespace SailingSound;
 	const FBoatTelemetry& T = Boat.GetTelemetry();
-	const float Vol = P.Volume.load();
+	const float Master = P.Volume.load();
+	const float Vol = Master * GroupShare(EGroup::Boat);   // the one-shots are all on board
 	const float Luff = P.Luff.load(), Speed = P.BoatSpeed.load(), Trim = P.TrimRate.load(), Slam = P.BowSlam.load(), Moored = P.Moored.load();
 	const float Tied = IsTiedUp() ? 1.f : 0.f;
 	const float Chop = FMath::Clamp((float(T.TrueWindSpeed) - 5.f) / 5.f, 0.f, 1.f);
@@ -3175,7 +3182,7 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		case ESailingCue::Winch: W = Winch[B]; break;
 		default: break;
 		}
-		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Vol);
+		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Master * GroupShare(CueGroup(L.Cue)));
 	}
 	if (PackShotSounds.Num() == 0) return;
 	const double Now = GetWorld()->GetTimeSeconds();

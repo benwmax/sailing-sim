@@ -31,7 +31,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
   "settings": {
     "quality": "Medium", "difficulty": "Easy", "controlLayout": "Simple",
     "learningMode": true, "trimAssist": true, "showHud": true, "showCrew": false,
-    "audio": { "volume": 0.8 },
+    "audio": { "volume": 0.8, "boat": 1, "world": 1, "weather": 1, "signals": 1, "mono": false, "captions": true },
     "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "hudScale": 100, "textScale": 100,
                  "speedUnits": "kn", "depthUnits": "ft", "headingsTrue": false, "autoStart": false, "pauseOnFocusLoss": false },
     "graphics": { "antiAliasing": -1, "shadowQuality": -1, "lightingQuality": -1, "reflectionQuality": -1, "cloudQuality": -1,
@@ -108,6 +108,10 @@ skipped from then on), plays, the quickest finish and the last finish's counts; 
 `lastSession.freeSail` the mode Continue sails in. These were added in version 1 without a version change: an older
 version-1 file reads them as empty. Career 1 wrote `settings.career.openEverything` (Settings > Gameplay > Open
 everything); Free Sail replaced it, so a file without `freeSail` reads that field as the mode, and the next write drops it.
+
+`settings.audio`'s `boat`, `world`, `weather` and `signals` (the mix by group under `volume`), `mono` and `captions`
+(sound captions) were added in version 1 without a version change (slice sound pass, Nov 2026): a file without them
+reads 1, 1, 1, 1, off and on.
 
 ## Versions and migration
 

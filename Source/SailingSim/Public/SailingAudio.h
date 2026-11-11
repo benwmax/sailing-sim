@@ -32,6 +32,10 @@ struct FSailingSoundParams
 	std::atomic<float> Squall{ 0.f };        // 0..1 the hiss of a squall's rain and wind coming across the water
 	std::atomic<uint32> SampledMask{ 0 };    // cues a recorded sample plays instead (ESailingCue bits)
 	std::atomic<float> Winches{ 1.f };       // 1 the boat trims on sheet winches, 0 by hand through blocks (a dinghy)
+	// Slice sound pass: the player's mix by group under Volume (Settings > Audio; SailingSound::EGroup).
+	std::atomic<float> GainBoat{ 1.f };      // everything on board
+	std::atomic<float> GainWeather{ 1.f };   // rain, squall, thunder
+	std::atomic<float> GainSignals{ 1.f };   // horns and whistles
 };
 
 /** The synth's voices a recorded sample can replace (Content/Audio/Samples/<Name>.wav -> /Game/Audio/Samples/S_<Name>). */
@@ -90,6 +94,8 @@ private:
 	FOnePole GustLow, LapLow;
 	FBandPass LapBand, SquallBand, SquallBand2, SheetBand;
 	float LapEnv = 0.f, HalyardEnv = 0.f, HalyardF1 = 0.f, HalyardF2 = 0.f, HalyardP1 = 0.f, HalyardP2 = 0.f, SheetPhase = 0.f;
+	// Slice sound pass: smoothed group gains and the output limiter's envelope (in place of the old tanh clip).
+	float SGainBoat = 1.f, SGainWeather = 1.f, SGainSignals = 1.f, LimiterEnv = 0.f;
 };
 
 /**
@@ -161,6 +167,25 @@ namespace SailingSound
 	/** The pack's one-shots, chosen at random with a +-5% pitch spread. */
 	enum class EPackShot : uint8 { HalyardSlap, SailFill, WinchClick, SheetEaseFast, SheetEaseSlow, DockCreak, FenderSqueak, Count };
 	SAILINGSIM_API TArray<FString> PackShots(EPackShot Shot);
+
+	/** Slice sound pass: the player's mix. Every sound belongs to one group; its level is Settings > Audio's master times
+	 *  the group's slider. */
+	enum class EGroup : uint8 { Boat, World, Weather, Signals, Count };
+	/** Reads Settings > Audio into the gains the synths read on the audio thread (the player's pawn calls it each frame). */
+	SAILINGSIM_API void UpdateMix();
+	/** Master x group, 0..1; safe on any thread. */
+	SAILINGSIM_API float GroupGain(EGroup Group);
+	/** The group's own slider, without the master; safe on any thread. */
+	SAILINGSIM_API float GroupShare(EGroup Group);
+	/** Settings > Accessibility > Mono audio: placed sounds keep their distance but are centred in both ears. */
+	SAILINGSIM_API bool IsMono();
+	/** The group of a boat cue (rain, the squall and thunder are weather; the rest is on board). */
+	SAILINGSIM_API EGroup CueGroup(ESailingCue Cue);
+	/** Makes A a placed sound in the world: natural distance falloff over FalloffM, air absorption past a tenth of it,
+	 *  panned by direction (centred when IsMono). */
+	SAILINGSIM_API void SetSpatial(UAudioComponent* A, float FalloffM);
+	/** A peak limiter at the end of the master mix (once per process), so a loud moment never clips the output. */
+	SAILINGSIM_API void EnsureMasterLimiter(UObject* WorldContext);
 
 	/** Whether the boat trims its sheets on winches (keelboats, the trimaran and the cat cruiser) or by hand through
 	 *  blocks (the Sunfish, the ILCA and the Hobie): a dinghy never clicks a winch, its sheet runs through blocks both ways. */
