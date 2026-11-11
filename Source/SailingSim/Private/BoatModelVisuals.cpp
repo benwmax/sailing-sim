@@ -294,7 +294,11 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		// and its glass: the smoked portlights and fore hatch over the cabin, and the bilge water (translucent, M_J22HeroGlass).
 		M.Glass = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_Glass.SM_J22H_Glass"), nullptr, LOAD_NoWarn | LOAD_Quiet));
 		// #618: the stowed tiller extension as a part of its own (optional: until the hero is split it is baked into the rudder).
-		M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		// (Only when the package exists, as ModelAssetPaths checks: a missing one is a failed load every time a boat is built.)
+		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt")))
+		{
+			M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		}
 		M.bOwnOutboard = true; // on its bracket on the port quarter (build_j22_hero.py)
 		M.bTravelerBridge = false; // its traveler track lies on the cockpit sole
 		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;

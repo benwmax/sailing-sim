@@ -1968,4 +1968,4 @@ for obj in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj e
                              axis_up="Z", apply_unit_scale=True, apply_scale_options="FBX_SCALE_UNITS",
                              mesh_smooth_type="FACE", use_mesh_modifiers=True, add_leaf_bones=False, bake_space_transform=True)
     obj.location = loc
-print(f"{TAG}: exported", ", ".join(o.name for o in (hull_obj, mast_obj, boom_obj, rudder_obj)))
+print(f"{TAG}: exported", ", ".join(o.name for o in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj else ())))

@@ -84,10 +84,22 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 		if (!TestTrue(FString::Printf(TEXT("%s: an extension drawn"), What), Hinge.IsSet() && Tip.IsSet())) return FVector::ZeroVector;
 		AddInfo(FString::Printf(TEXT("%s: extension from (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f) cm"), What, Hinge->X, Hinge->Y, Hinge->Z, Tip->X, Tip->Y, Tip->Z));
 		if (bCollapsed) TestTrue(FString::Printf(TEXT("%s: the live extension collapsed into the tiller's end (the model's own shows)"), What), FVector::Dist(*Hinge, *Tip) < 2.0);
+		else
+		{
+			// #620 follow-up: held, the live line reaches the helm's hand (a dinghy's runs a hand's width, 12 cm, past the grip).
+			const TOptional<FVector> Grip = Boat->GetHelmGripCm();
+			if (TestTrue(FString::Printf(TEXT("%s: the helm's hand holds the extension"), What), Grip.IsSet()))
+			{
+				TestTrue(FString::Printf(TEXT("%s: the live extension reaches the helm's hand (%.1f cm off)"), What, FVector::Dist(*Grip, *Tip)), FVector::Dist(*Grip, *Tip) <= 13.0);
+			}
+		}
 		return *Tip;
 	};
 	W.Tick(60);
 	TestFalse(TEXT("Crew hidden"), Boat->IsCrewShownNow());
+	// #620 follow-up: the hero J/22's stowed extension is still in its rudder mesh (the PC splits it out as SM_J22H_TillerExt
+	// after #615): no part of its own yet. When it lands, this flips and the Sunfish's checks below apply to it too.
+	TestNull(TEXT("J/22 hero: no stowed-extension part yet (SM_J22H_TillerExt)"), Boat->GetModelTillerExt());
 	const FVector Stowed = Check(TEXT("J/22, crew hidden"), true);
 	USailingSettings::Get()->bShowCrew = true;
 	W.Tick(30);
@@ -110,6 +122,13 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 		W.Tick(30);
 		Check(TEXT("Sunfish, crew shown"), false);
 		TestFalse(TEXT("Sunfish, crew shown: the stowed one is hidden while the helm holds the live one"), Boat->IsModelTillerExtShown());
+		// The cockpit view (the helm is you, hidden): stowed, the model's own part shows, the live one collapses.
+		Boat->SetCockpitView(true);
+		W.Tick(30);
+		Check(TEXT("Sunfish, cockpit view (crew shown)"), true);
+		TestTrue(TEXT("Sunfish, cockpit view: the stowed one shows"), Boat->IsModelTillerExtShown());
+		Boat->SetCockpitView(false);
+		W.Tick(30);
 		USailingSettings::Get()->bShowCrew = false;
 		W.Tick(30);
 		Check(TEXT("Sunfish, crew hidden again"), true);

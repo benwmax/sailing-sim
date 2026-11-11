@@ -669,6 +669,8 @@ private:
 public:
 	/** #618: the model's own stowed extension part (null if none) and whether it shows now. */
 	const UStaticMeshComponent* GetModelTillerExt() const { return ModelTillerExt; }
+	/** #620 follow-up: where the helm's hand holds the tiller extension (boat frame, cm), unset when no shown helm holds it. */
+	TOptional<FVector> GetHelmGripCm() const { return HelmGripCm; }
 	bool IsModelTillerExtShown() const;
 private:
 	TOptional<FVector> TillerExtensionHingeCm, TillerExtensionTipCm;   // the extension as last drawn (boat frame, cm; tests)
