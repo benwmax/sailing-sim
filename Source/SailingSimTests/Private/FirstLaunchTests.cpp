@@ -203,4 +203,24 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	return true;
 }
 
+// #601 (the #400 audit): the Day Sailor certificate opened "Club Racer, Coastal Cruiser", and Coastal Cruiser then read
+// COMING on the Career screen. Only tiers with lessons are named as open.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUICertificateOpensTest, "SailingSim.UI.CertificateOpens", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUICertificateOpensTest::RunTest(const FString&)
+{
+	const FCareerContent& Content = FCareerContent::Get();
+	const FCareerTier* Day = Content.Tier(TEXT("day-sailor"));
+	if (!TestNotNull(TEXT("Day Sailor"), Day)) return false;
+	const TArray<FString> Opens = SSailFrontEnd::TiersOpenedBy(*Day);
+	AddInfo(FString::Printf(TEXT("Day Sailor opens: %s"), *FString::Join(Opens, TEXT(", "))));
+	for (const FString& Id : Day->Unlocks.Tiers)
+	{
+		const FCareerTier* X = Content.Tier(Id);
+		if (!X) continue;
+		TestEqual(FString::Printf(TEXT("%s listed only if it has lessons (%d)"), *X->Name, X->Lessons.Num()), Opens.Contains(X->Name), X->Lessons.Num() > 0);
+	}
+	TestTrue(TEXT("Club Racer is open"), Opens.Num() >= 1);
+	return true;
+}
+
 #endif
