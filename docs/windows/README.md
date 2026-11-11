@@ -123,7 +123,9 @@ Each mirrors a Mac script and writes the same logs to `Artifacts\`. Run from the
 The game arguments in `CLAUDE.md` (`-SailingWeather=Thunderstorm`, `-SailingWorld=1`, `-SailingCapture=HelmEye`, ...)
 work the same way through `-GameArgs`. To play, run `Packaged\Windows\SailingSim.exe`.
 
-`bench-win.ps1`, `bench-visual-win.ps1` and `capture-scenes-win.ps1` take `-Package <folder>` (a folder under `Packaged`, e.g. `-Package Windows-806a4291` from `package-win.ps1 -Into`, or a full path; default `Packaged\Windows`); `bench-win.ps1 -WhatIf` prints the game it would run.
+`bench-win.ps1`, `bench-visual-win.ps1` and `capture-scenes-win.ps1` take `-Package <folder>` (a folder under `Packaged`, e.g. `-Package Windows-806a4291` from `package-win.ps1 -Into`, or a full path; default `Packaged\Windows`); `bench-win.ps1 -WhatIf` prints the game and the arguments it would run.
+
+Bench at 4K: `bench-win.ps1 -ResX 3840 -ResY 2160` (and `bench-visual-win.ps1`, which calls it) adds `-ForceRes` when the size reaches the desktop's in physical pixels, so the window really is 3840x2160 on a 4K screen (the engine otherwise fits it inside the desktop); check `resolution` in `bench.json`. The game is DPI aware (`Config/Windows/WindowsEngine.ini`), so a scaled desktop no longer hides its pixels.
 With `-Into` the exe is at `Packaged\<Into>\SailingSim.exe`, or under `Packaged\<Into>\Windows\` when the name doesn't contain "Windows" (UAT adds the platform folder only then); `Resolve-PackagedGame` in `env.ps1` tries both.
 
 The other `scripts/*.sh` (content generation, Blender models, MetaHumans, phase benches) stay Mac-only; the content
