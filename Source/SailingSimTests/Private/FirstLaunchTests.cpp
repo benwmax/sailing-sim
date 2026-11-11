@@ -214,8 +214,47 @@ bool FSailingUIOneCoachTest::RunTest(const FString&)
 	FString Error;
 	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }
 	TestTrue(TEXT("The first job running: the instructor alone speaks"), SSailHud::TipsMutedByScene(&Job));
+	TestTrue(TEXT("... and with its handover pending"), SSailHud::TipsMutedByScene(&Job, true));
 	Sailing::FScriptedScene Empty;
 	TestFalse(TEXT("An empty scene mutes nothing"), SSailHud::TipsMutedByScene(&Empty));
+	// #634's QA: a finished scene keeps the mute only while its handover is pending. A one-step scene whose trigger fires
+	// at once and whose call needs nothing done finishes in its first seconds.
+	Sailing::FScriptedScene Short;
+	std::string ShortError;
+	const bool bShort = Short.LoadText(R"({"schema_version": 1, "id": "t", "title": "T", "setting": {"boat": "J22", "wind_kn": 10},
+		"steps": [{"id": "a", "trigger": {"type": "time", "at_s": 0}, "call": {"id": "instructor.a", "caption": "Hi"},
+		"expect": {"type": "none", "seconds": 0.5}}]})", &ShortError);
+	if (TestTrue(FString::Printf(TEXT("The short test scene loads (%hs)"), ShortError.c_str()), bShort))
+	{
+		const Sailing::FBoatModel Boat;
+		Short.Start(Boat, 10.0);
+		for (int32 K = 0; K < 1200 && !Short.IsComplete(); ++K) Short.Update(Boat, Sailing::FSceneInput(), 1.0 / 60.0);
+		if (TestTrue(TEXT("The short scene finishes"), Short.IsComplete()))
+		{
+			TestTrue(TEXT("Done, handover pending: still muted"), SSailHud::TipsMutedByScene(&Short, true));
+			TestFalse(TEXT("Done, no handover pending: tips back"), SSailHud::TipsMutedByScene(&Short, false));
+		}
+	}
+	return true;
+}
+
+// #602 (the #400 audit): a triangle's marks and the person in the water were on no map. The minimap places them north up
+// around the boat, and one off the map on its edge so its direction shows.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIMiniMapMarksTest, "SailingSim.UI.MiniMapMarks", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIMiniMapMarksTest::RunTest(const FString&)
+{
+	const FVector2f Origin(4.f, 4.f), Size(200.f, 200.f), Centre = Origin + Size * 0.5f;
+	const FVector2D Boat(1000.0, 2000.0);
+	bool bClamped = true;
+	const FVector2f North = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(250.0, 0.0), 3000.0, Origin, Size, bClamped);
+	TestFalse(TEXT("A mark 250 m north is on the map"), bClamped);
+	TestTrue(FString::Printf(TEXT("... above the boat (%.1f, %.1f)"), North.X, North.Y), FMath::IsNearlyEqual(North.X, Centre.X, 0.01f) && North.Y < Centre.Y - 10.f);
+	const FVector2f East = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(0.0, 300.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(FString::Printf(TEXT("A mark 300 m east is right of the boat, 20 px (%.1f)"), East.X - Centre.X), FMath::IsNearlyEqual(East.X - Centre.X, 20.f, 0.01f));
+	const FVector2f Far = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(-5000.0, -5000.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(TEXT("One 7 km off is pulled onto the edge"), bClamped);
+	TestTrue(FString::Printf(TEXT("... inside the square, down and left (%.1f, %.1f)"), Far.X, Far.Y),
+		Far.X >= Origin.X && Far.X < Centre.X && Far.Y > Centre.Y && Far.Y <= Origin.Y + Size.Y);
 	return true;
 }
 

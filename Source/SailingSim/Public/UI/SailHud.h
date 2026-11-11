@@ -26,8 +26,13 @@ public:
 	/** 0 full, 1 minimal (cluster, compass, drill panel, toasts), 2 off (toasts only). */
 	static int32 Mode;
 	/** #596: the learning tip card stays down while a scripted scene runs (the first job's instructor is the coach there;
-	 *  the two had talked at once with different instructions). */
-	static bool TipsMutedByScene(const Sailing::FScriptedScene* Scene);
+	 *  the two had talked at once with different instructions), and through a finished scene's handover to its lesson
+	 *  (bHandoverPending: the instructor's last line is still up). */
+	static bool TipsMutedByScene(const Sailing::FScriptedScene* Scene, bool bHandoverPending = false);
+	/** #602: where a map point (north, east m) falls on the minimap (north up, the boat at the centre, SpanM across the
+	 *  drawn square of Size px at Origin). One beyond the square's edge is pulled in onto it (bClamped), so its direction
+	 *  still shows. */
+	static FVector2f MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped);
 
 	ASailboatPawn* Pawn() const;
 
