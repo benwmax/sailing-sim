@@ -1,0 +1,8 @@
+#618 hero half on Bean's PC: pc/hero-tillerext 49570b47 (from main 6ad633a4; 102 files).
+The stowed extension (TillerExt, TillerExtGrip, TillerExtCap: 3 objects, 618 faces) is SM_J22H_TillerExt, exported about
+the rudder's pivot; SM_J22H_Rudder keeps 49 objects. TillerExtTip/TillerExtUJ sockets stay on the rudder.
+Visual 73 passed, 0 failed (3 with warnings); Smoke.ShowCrew passed (1 warning), with the J/22 now required to have the
+part, shown while stowed and hidden while held. Bake warnings as before ("SM_J22H_Hull.001 is not valid", "No mesh data
+to join"); import 0 errors, 0 shader compile errors, 39 routine warnings; licence check exit 0.
+Stills (High, starboard beat, stern from the port quarter): crew shown = the helm holds the live extension, no stowed one
+on the tiller; crew hidden = the black stowed extension lies along the tiller.

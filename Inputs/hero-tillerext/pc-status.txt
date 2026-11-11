@@ -1,0 +1,15 @@
+2026-11-11 00:22:57 pc/hero-tillerext from main 6ad633a4
+2026-11-11 00:22:57 edits applied: bake routing + pivot, pack PARTS, import part, ShowCrewTests flip
+2026-11-11 00:24:47 hero build exit 0; warnings: 
+2026-11-11 00:29:12 hero bake (res 4096) exit 0; warnings: 00:29:06 | WARNING: Mesh SM_J22H_Hull.001 is not valid, and may be exported wrongly | Warning: No mesh data to join
+2026-11-11 00:29:12 exported: exported SM_J22H_Rudder 49 objects, 18362 faces | exported SM_J22H_TillerExt 3 objects, 618 faces
+2026-11-11 00:30:12 MSVC build: Result: Succeeded
+2026-11-11 00:31:15 import exit 0; warning lines 39, error lines 0, compile errors 0; TillerExt asset True
+2026-11-11 00:40:58 SailingSim.Visual: succeeded 73, failed 0, warnings 3
+2026-11-11 00:41:19 SailingSim.Smoke.ShowCrew: succeeded 0, failed 0, warnings 1
+2026-11-11 00:42:09 still stern-crew-shown-high True
+2026-11-11 00:42:57 still stern-crew-hidden-high True
+2026-11-11 00:42:59 licence check exit 0
+2026-11-11 00:43:02 commit 49570b47 (102 files)
+2026-11-11 00:43:17 pushed pc/hero-tillerext 49570b47
+2026-11-11 00:43:17 HX DONE
