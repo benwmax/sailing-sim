@@ -4,8 +4,8 @@
  "sections": [
   "cockpit"
  ],
- "status": "wave 2, round 1 (blind A/B 3 of 3 for the narrower footwell)",
- "feature": "Cockpit: the footwell between the seat fronts to the class deck plan and the overhead photo; seat and sole heights, cockpit ends and the aft deck checked",
+ "status": "wave 2, round 2 (round 1: footwell, blind A/B 3 of 3)",
+ "feature": "Cockpit: the footwell between the seat fronts and the cockpit's side walls to the class deck plan and the overhead photo; seat and sole heights, cockpit ends and the aft deck checked",
  "targets": {
   "footwell_width": {
    "value": 0.63,
@@ -18,6 +18,24 @@
    "tol_m": 0.05,
    "tier": "B",
    "source": "j22.org deck plan: transom to the cockpit's aft end 0.46 m"
+  },
+  "cockpit_width_aft": {
+   "value": 1.32,
+   "tol_m": 0.08,
+   "tier": "B",
+   "source": "j22.org deck plan: the cockpit's side walls straight with a slight taper, inner coaming lines (22 mm/px; Commons overhead and bow photos show the same straight walls and wide side decks). Measured by measure.py between the side walls 35 cm over the sole, 30% along the cockpit from aft (x -2.21)."
+  },
+  "cockpit_width": {
+   "value": 1.38,
+   "tol_m": 0.08,
+   "tier": "B",
+   "source": "j22.org deck plan: the cockpit's side walls straight with a slight taper, inner coaming lines (22 mm/px; Commons overhead and bow photos show the same straight walls and wide side decks). Measured by measure.py between the side walls 35 cm over the sole, at the cockpit's middle (x -1.73)."
+  },
+  "cockpit_width_fwd": {
+   "value": 1.42,
+   "tol_m": 0.08,
+   "tier": "B",
+   "source": "j22.org deck plan: the cockpit's side walls straight with a slight taper, inner coaming lines (22 mm/px; Commons overhead and bow photos show the same straight walls and wide side decks). Measured by measure.py between the side walls 35 cm over the sole, 70% along (x -1.25)."
   }
  },
  "outline_views": [
@@ -33,10 +51,13 @@
  "moves_ok": [
   "Trav*",
   "JibTail*",
-  "Coil*"
+  "Coil*",
+  "Cam_*",
+  "CoamingCap_*",
+  "JibSheet*"
  ],
  "moves_ok_sections": [],
- "moves_ok_note": "The traveller's inner ends and the jib tails' coils sit from SEAT_IN, so they follow the seat fronts inboard.",
+ "moves_ok_note": "The traveller's inner ends and the jib tails' coils sit from SEAT_IN; the traveller's ends, the jib cams and their sheets and the coaming caps from the cockpit's side walls (coaming_y).",
  "tris_max": null,
  "mac_wiring": true,
  "mac_note": "CrewPose.cpp's hero well (SeatIn) follows SEAT_IN: the Mac runs --scope crew as well as boats.",
@@ -45,7 +66,14 @@
  "physics_table": "Tools/boats/j22/make_j22_hull.py",
  "findings": [
   "The cockpit's fore end (the cabin's aft face) is at x -0.52 on the hero, -0.59 on the class deck plan (2.82 m from the transom): 7 cm, past the plan's reading tolerance. It moves the cabin and the companionway, so it belongs to wave 3 (companionway), not this card.",
-  "One blind reviewer measured the whole cockpit at 0.77 of the deck beam on the hero against about 0.68 in the overhead photo (side decks 0.25 m, SIDE_DECK from Bean's photo IMG_9272; the light J/22 uses 0.36). To check in round 2 with a camera solve before changing: it moves the coaming, the jib tracks and the crew's rail.",
-  "A reviewer noted the real footwell starts a little aft of the companionway (a short step at its fore end); the hero's runs straight to the bulkhead. Round 2 or wave 3."
- ]
+  "Round 2: the hero's cockpit walls followed the sheer 0.25 m in (SIDE_DECK), so the cockpit widened forward to 1.92 m at the cabin; the deck plan and photos show straight walls with a slight taper, about 1.3-1.45 m apart. Now COAMING_HALF 0.64 aft to 0.73 forward, 0.12 m from the sheer at most. Blind A/B 3 of 3. The cabin trunk still follows SIDE_DECK (about 0.79 of the beam at its aft end against the plan's ~0.69): wave 3.",
+  "A reviewer noted the real footwell starts a little aft of the companionway (a short step at its fore end); the hero's runs straight to the bulkhead. Round 2 or wave 3.",
+  "QA, round 2, before this PR and left as they were: CrewMotion.cpp's CrewCockpitWell callers at ~184 and ~233 read W.HalfWidth, 0 on both J/22s (WallHalf would give the wall); the derived FootBrace on the hero ignores SeatIn; the lee jib sheet passes through the coaming cap near x -0.95 (Drape doesn't collide with the caps)."
+ ],
+ "seams_shorter": {
+  "Cabin|Cockpit": {
+   "why": "round 2: the cockpit's walls 0.73 m out at the cabin, its aft face still 0.96, so the face's outer ends stand on the deck (Deck|Cabin), not on the cockpit",
+   "min_bins": 18
+  }
+ }
 }

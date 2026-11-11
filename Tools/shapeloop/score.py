@@ -12,8 +12,9 @@ Checks (docs/shape-loop/README.md):
             counts, bottom-aligned (and bow-aligned on profile and plan): intersection over union, pass 0.92
   fairness  no line gains inflections or kinks (firm ones, prominence 0.7, against the baseline's at 0.5) or goes
             missing against the baseline (hard)
-  seams     no join loses contact (10% fewer bins), opens a bin that touched in the baseline (now over 3 mm) or gets a gap 0.5 mm
-            wider (hard)
+  seams     no join loses contact (10% fewer bins; a card's "seams_shorter" names a join made shorter on purpose,
+            with a why and the fewest bins it may keep, still held to every other seam rule), opens a bin that touched in the baseline (now over 3 mm) or gets a
+            gap 0.5 mm wider (hard)
   A check whose file is missing (a tool crashed, the hull was renamed) is a hard fail, never a silent pass.
   physics   canoe volume within 1% and centre of buoyancy within 2 cm of the baseline (hard; the underwater shape
             stays matched to the physics, Bean Nov 10), also printed against the physics' own numbers
@@ -175,8 +176,11 @@ if need("seams", bj, rj):
             continue
         if b.get("missing") or not b.get("bins"):
             continue
-        if v["bins"] < 0.9 * b["bins"]:
+        short = CARD.get("seams_shorter", {}).get(k)
+        if v["bins"] < 0.9 * b["bins"] and not short:
             worse.append(f"{k}: contact lost, {b['bins']}→{v['bins']} bins within 2 cm")
+        if short and v["bins"] < short["min_bins"]:      # (a seam pulled over 2 cm apart drops its bins, never "opens")
+            worse.append(f"{k}: {v['bins']} bins within 2 cm, under the card's {short['min_bins']}")
         # bin by bin: a stretch of the join that touched in the baseline and is open now (a denser mesh can only close
         # bins, so totals could hide new gaps; the bins themselves can't)
         # (touching = within 0.5 mm in the baseline, opened = more than 3 mm now: the margin keeps a re-triangulated
@@ -187,7 +191,9 @@ if need("seams", bj, rj):
             worse.append(f"{k}: {len(newly)} bins opened at {', '.join(newly[:12])} m")
         if v["widest_mm"] > b["widest_mm"] + 0.5:
             worse.append(f"{k}: widest gap {b['widest_mm']}→{v['widest_mm']} mm")
-    row("seams", f"{len(rj)} joins", not worse, hard=True, note="; ".join(worse))
+    shorter = [f"{k} {bj[k]['bins']}→{rj[k]['bins']} bins (card: {c['why']})" for k, c in CARD.get("seams_shorter", {}).items()
+               if k in bj and k in rj and rj[k].get("bins", 0) < bj[k].get("bins", 0)]
+    row("seams", f"{len(rj)} joins", not worse, hard=True, note="; ".join(worse + shorter))
 
 # physics ------------------------------------------------------------
 bp, rp = bs.get("physics") or None, rs.get("physics") or None

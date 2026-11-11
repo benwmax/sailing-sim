@@ -807,6 +807,8 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Hero J/22: the seat outboard of 0.40 m"), CrewFloorZ(J22, -1.73, 0.44, false), 0.40, 1e-6);
 		TestEqual(TEXT("Hero J/22: the seat from 0.31 m out (shape wave 2)"), CrewFloorZ(J22, -1.73, 0.35, false), 0.40, 1e-6);
 		TestEqual(TEXT("Hero J/22: the sole inboard of 0.31 m"), CrewFloorZ(J22, -1.73, 0.28, false), 0.136, 1e-6);
+		// Its walls are straight, 0.64-0.73 m out (shape wave 2): 0.8 m out abreast the cam is side deck, not seat.
+		TestTrue(TEXT("Hero J/22: side deck outboard of the straight walls"), CrewFloorZ(J22, -1.05, 0.80, false) > 0.5);
 		TestTrue(TEXT("Hero J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.396), false));
 		TestFalse(TEXT("Hero J/22: over the sole beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-1.75, 0.0, 0.40), false));
 	}

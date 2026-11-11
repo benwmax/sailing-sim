@@ -155,6 +155,15 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
   (`SeatIn`) with it, so the crew's feet stand on the sole the mesh draws. The build stores `SEAT_Z` and `SEAT_IN` on
   the scene for `bake_j22_hero.py` (`JibTailRest`); the PC reruns `make_coil_data.py` after the rebake (the jib tails'
   coils move inboard with the seat fronts). Blind A/B 3 of 3 for the narrower footwell.
+- Round 2: the cockpit's side walls. They followed the sheer 0.25 m in (`SIDE_DECK`), so the cockpit widened forward
+  to 1.92 m at the cabin; the deck plan and both overhead photos show straight walls with a slight taper and wide side
+  decks. `coaming_y(x)` (`COAMING_HALF` 0.64 aft to 0.73 forward, at least `COAMING_AFT_DECK` 0.12 m from the sheer)
+  now places the deck's cockpit hole, the liner, the coaming caps, the jib cams and leads and the traveller's ends;
+  the cabin trunk still follows `SIDE_DECK` (wave 3). The crew's well gets `MaxHalfAft`/`MaxHalf` and `WallHalf()`.
+  Cockpit 1.33 / 1.37 / 1.41 m at 30 / 50 / 70% (was 1.47 / 1.71 / 1.87). Blind A/B 3 of 3. `measure.py` adds
+  `cockpit_width_aft`, `cockpit_width`, `cockpit_width_fwd`; a card's `seams_shorter` lets a join get shorter on
+  purpose (with a reason and the fewest bins it may keep): Cabin|Cockpit, whose cabin face now stands on the deck
+  outboard of the walls.
 - Findings left for later rounds are in the card: the cabin's aft face 7 cm forward of the deck plan's (wave 3), the
   whole cockpit perhaps too wide (side decks 0.25 m; check with a camera solve), the short step at the footwell's
   fore end.

@@ -81,10 +81,11 @@ if st:
     hull["transom_width"] = r(2 * st[0]["half_beam"])     # across the hull 0.5% of LOA (3.4 cm) forward of the transom
 
 
-def footwell(ob, x):
-    """The cockpit's footwell at station x: the gap between the seat fronts' inner faces 10 cm over the sole's top (the
+def footwell(ob, x, dz=0.10):
+    """The cockpit's footwell at station x: the gap between the seat fronts' inner faces dz over the sole's top (the
     sole's top is the cut's highest point within 10 cm of the centreline; the liner's underside lies 2 cm under it), and
-    the sole top's height."""
+    the sole top's height. With dz over the seats (0.35: seats 0.27 m over the sole on the hero), the gap between the
+    cockpit's side walls."""
     bm = bmesh.new()
     bm.from_object(ob, DG)
     bm.transform(ob.matrix_world)
@@ -96,7 +97,7 @@ def footwell(ob, x):
         bm.free()
         return None
     sole = max(mid)
-    h = sole + 0.10
+    h = sole + dz
     ys = []
     for e in cut:
         a, b = e.verts[0].co, e.verts[1].co
@@ -117,6 +118,11 @@ if ck is not None and ck.name in objects:
     cuts = [footwell(ck, x) for x in xs]
     if cuts[1]:                                       # the cockpit's middle
         features["footwell_width"] = r(cuts[1][0])
+    walls = [footwell(ck, x, 0.35) for x in xs]
+    for key, w in zip(("cockpit_width_aft", "cockpit_width", "cockpit_width_fwd"), walls):   # at 30, 50, 70%
+        if w:
+            features[key] = r(w[0])
+    features["cockpit_walls"] = [{"x": r(x), "width": r(w[0])} for x, w in zip(xs, walls) if w]
     cuts = [(x, w) for x, w in zip(xs, cuts) if w]
     if cuts:
         features["footwell_cuts"] = [{"x": r(x), "width": r(w[0]), "sole_z": r(w[1])} for x, w in cuts]
