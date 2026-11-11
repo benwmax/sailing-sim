@@ -826,8 +826,16 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	for (const float X : { -4.5f, 4.5f }) G.Lights.Add({ At(L(X, HY + 0.5 * PD), Floor + PostH - 0.2f), 1 });
 	// Steps down from the porch's west end, and the doors: double doors onto the porch by the steps, one in the north-east
 	// end wall toward the lot, one at the back toward the pool.
-	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.35), Floor - 0.07f), FVector(1.1f, 0.35f, 0.07f), B.HeadingDeg);
-	G[EKitLook::Concrete].Box(At(L(-7.0, HY + PD + 0.75), GZ(L(-7.0, HY + PD + 0.75)) + 0.02f), FVector(1.1f, 0.3f, 0.07f), B.HeadingDeg);
+	// Each step reaches down to 10 cm under the lowest ground below its corners (docs/club-step: they were 14 cm slabs at
+	// fixed heights, and where the lawn falls away toward the docks they floated over it).
+	auto StepAt = [&](double CY, float HalfY, float Top)
+	{
+		float Low = Top - 0.14f;
+		for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) Low = FMath::Min(Low, GZ(L(-7.0 + SX * 1.1, CY + SY * HalfY)) - 0.1f);
+		G[EKitLook::Concrete].Box(At(L(-7.0, CY), 0.5f * (Top + Low)), FVector(1.1f, HalfY, 0.5f * (Top - Low)), B.HeadingDeg);
+	};
+	StepAt(HY + PD + 0.35, 0.35f, Floor);
+	StepAt(HY + PD + 0.75, 0.3f, GZ(L(-7.0, HY + PD + 0.75)) + 0.09f);
 	// A door W wide (one leaf or a pair) in the wall face through local (CX, CY): along X (a long wall) or along Y (an end
 	// wall), opening toward OutSign. A trim frame and head, an aluminium threshold; each leaf in the Door look with raised
 	// stiles and rails (the lower panel and the glass light in the upper one sit 2.4 cm behind them) and a pull handle on
