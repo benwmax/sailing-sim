@@ -443,7 +443,8 @@ namespace Sailing
 		FWeatherState W;
 		W.HourOfDay = StartHour + T / 3600.0;
 		W.Wind.Seed = Seed;
-		const double Daily = Diurnal(W.HourOfDay);
+		// The breeze's daily build, or held at the start's (SetHoldWind: a session's chosen wind).
+		const double Daily = Diurnal(bHoldWind ? StartHour : W.HourOfDay);
 
 		EWeatherPreset P = Preset == EWeatherPreset::RandomDay ? RandomBase : Preset;
 		// W1: the preset scales the calibrated gustiness (WindClimate.h) and nudges the stability and the mixed layer.

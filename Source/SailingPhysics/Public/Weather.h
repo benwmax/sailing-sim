@@ -142,6 +142,15 @@ namespace Sailing
 		/** The mistral's direction where the world is a stand-in (the Gulf: its open water to the south, so the sea has its
 		 *  fetch and the swell reaches the boat). NaN: the preset's own, from the northwest. */
 		void SetPrevailingFrom(double Degrees) { PrevailingFromDeg = Degrees; }
+		/**
+		 * Hold the day's wind at its start (Nov 11 2026 review, Bean: "fix to hold"): the calm-morning and afternoon-breeze
+		 * presets keep the breeze of their start hour instead of following the lake's daily cycle (Diurnal), so a session's
+		 * chosen wind stays the chosen wind (a 10 kn lesson at 10:00 had built to 18.5 kn by noon). Clouds, air and the
+		 * gusts' calibration still follow the clock. The game holds it whenever the wind is chosen (a session, -SailingWind=,
+		 * the prologue's stand-in).
+		 */
+		void SetHoldWind(bool bHold) { bHoldWind = bHold; }
+		bool GetHoldWind() const { return bHoldWind; }
 
 		/** Applies the state to a wind field without making gust patterns jump. */
 		static void ApplyToWind(const FWeatherState& State, FWindField& Wind, double T, double AnchorX = 0.0, double AnchorY = 0.0);
@@ -197,5 +206,6 @@ namespace Sailing
 		double SquallArrives = kSquallArrives, ClearingStarts = kSquallClears;
 		double SquallX = 0.0, SquallY = 0.0;
 		double PrevailingFromDeg = std::numeric_limits<double>::quiet_NaN();
+		bool bHoldWind = false;
 	};
 }

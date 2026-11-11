@@ -242,7 +242,7 @@ private:
 		uint8 Preset = 0;
 		float StartHour = 10.f, WindOverrideKnots = 0.f, WindFromOverride = 0.f, GustOverride = 0.f;
 		FString RealDayDate;
-		bool bRealDayHour = false, bSessionDate = false, bWindArgsRead = false;
+		bool bRealDayHour = false, bSessionDate = false, bWindArgsRead = false, bGustLabel = false;
 		FDateTime SessionDate;
 		double WeatherStartTime = 0.0;   // the weather's clock before the preview, kept when it is put back
 		bool bSessionConditions = false; FSailConditions SessionConditions;   // the session's own conditions, if there is a session
@@ -256,6 +256,12 @@ private:
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.
 	float WindFromOverride = NAN, GustOverride = NAN;
+	// Nov 11 2026 review: GustOverride is a day's label ("10 gusting 13", the session's), read the way a sailor reads it
+	// (Sailing::ApplySailorGust: the usual strongest gust is the label), not the stations' gust factor (-SailingGust=,
+	// the reference captures, and the prologue's stand-in keep that). GustLabelScale is its scale on the calibrated
+	// gustiness, found once when the weather is set (like WindScale).
+	bool bGustLabel = false;
+	double GustLabelScale = 1.0;
 	// W5b: a real day (session or -SailingDay=YYYY-MM-DD) and whether its start hour was given (-SailingHour, the session).
 	FString RealDayDate;
 	bool bRealDayHour = false;

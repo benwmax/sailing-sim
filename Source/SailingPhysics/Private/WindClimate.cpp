@@ -132,6 +132,86 @@ namespace Sailing
 		return std::max(GustFactor - 1.0, 0.0) / kPeak;
 	}
 
+	double SailorGustScale(const FWindParams& Calibrated, double SailorFactor)
+	{
+		// Nine ten-minute stretches in ten top out at or under about kSailorPeak combined standard deviations (the fine
+		// turbulence and the puffs, the field's own derived spreads) over the mean; the average stretch's strongest gust sits
+		// near 2.65 and the very strongest near 4.9. Fitted with MeasureSailorGusts over the lake days the sessions use (Fair
+		// in April, July and November, the July afternoon before its storm, Overcast in November and January, Rain: 3.2 to
+		// 3.9, the same at 0.6 to 1.6 times the calibrated gustiness; scripts/gust-check.sh holds it). The spreads are capped
+		// inside the field, so the scale is found in a few steps.
+		constexpr double kSailorPeak = 3.55;
+		const double Want = std::max(SailorFactor - 1.0, 0.0);
+		if (Want <= 0.0) return 0.0;
+		double Scale = 1.0;
+		for (int Iter = 0; Iter < 4; ++Iter)
+		{
+			FWindParams P = Calibrated;
+			P.GustIntensity = Calibrated.GustIntensity * Scale;
+			if (Calibrated.PuffIntensity >= 0.0) P.PuffIntensity = Calibrated.PuffIntensity * Scale;
+			const FWindField::FDerived& D = FWindField(P).GetDerived();
+			const double Sigma = std::sqrt(D.FineSigma * D.FineSigma + D.PuffSigma * D.PuffSigma);
+			if (Sigma <= 1e-6) return 0.0;
+			Scale *= Want / (kSailorPeak * Sigma);
+			Scale = Clamp(Scale, 0.0, 4.0);
+		}
+		return Scale;
+	}
+
+	void ApplySailorGust(FWindParams& Params, double SailorFactor)
+	{
+		const double Scale = SailorGustScale(Params, SailorFactor);
+		Params.GustIntensity *= Scale;
+		if (Params.PuffIntensity >= 0.0) Params.PuffIntensity *= Scale;
+	}
+
+	FSailorGustStats MeasureSailorGusts(const FWindField& Wind, double Hours, int Points)
+	{
+		FSailorGustStats Out;
+		constexpr int Hz = 4, Run = 3 * Hz, Block = 600 * Hz;
+		const int N = int(Hours * 3600.0) * Hz;
+		if (N < Block) return Out;
+		double Sum = 0.0, Max = 0.0;
+		std::vector<double> All;
+		for (int P = 0; P < Points; ++P)
+		{
+			// Points 2.7 km apart across the wind (MeasureGustStats' spacing), so they see different puffs.
+			const double Ang = Wind.GetParams().FromDegrees * kDegToRad + 0.5 * kPi;
+			const double X = std::cos(Ang) * 2737.0 * P, Y = std::sin(Ang) * 2737.0 * P;
+			std::vector<double> S(N), R(N);
+			double Acc = 0.0;
+			for (int I = 0; I < N; ++I)
+			{
+				S[I] = Wind.VelocityAt(Vec3(X, Y, 10.0), double(I) / Hz).LengthXY();
+				Acc += S[I] - (I >= Run ? S[I - Run] : 0.0);
+				R[I] = Acc / Run;
+			}
+			for (int B = 0; (B + 1) * Block <= N; ++B)
+			{
+				double Mean = 0.0, Peak = 0.0;
+				for (int I = B * Block; I < (B + 1) * Block; ++I)
+				{
+					Mean += S[I];
+					if (I - B * Block >= Run - 1) Peak = std::max(Peak, R[I]);
+				}
+				Mean /= Block;
+				if (Mean <= 0.0) continue;
+				Sum += Peak / Mean;
+				Max = std::max(Max, Peak / Mean);
+				All.push_back(Peak / Mean);
+				++Out.Blocks;
+			}
+		}
+		if (Out.Blocks > 0)
+		{
+			Out.MeanFactor = Sum / Out.Blocks;
+			Out.MaxFactor = Max;
+			std::sort(All.begin(), All.end());
+			Out.P90Factor = All[size_t(0.9 * double(All.size() - 1) + 0.5)];
+		}
+		return Out;
+	}
+
 	FGustStats MeasureGustStats(const FWindField& Wind, double Hours, int Points)
 	{
 		FGustStats Out;
