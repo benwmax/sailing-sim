@@ -112,7 +112,20 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double X0 = 0.0, X1 = 0.0;   // aft and forward ends
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
+	// the hero J/22: its walls no further out than MaxHalfAft at X0 to MaxHalf at X1, straight between (shape wave 2);
+	// MaxHalf 0 for none
+	double MaxHalfAft = 0.0, MaxHalf = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	/** The well's half-width at X, where the deck's half-beam is DeckHalfBeam. */
+	double WallHalf(double X, double DeckHalfBeam) const
+	{
+		if (SideDeck <= 0.0) return HalfWidth;
+		const double Half = DeckHalfBeam - SideDeck;
+		if (MaxHalf <= 0.0) return Half;
+		const double T = X1 > X0 ? (X < X0 ? 0.0 : X > X1 ? 1.0 : (X - X0) / (X1 - X0)) : 1.0;
+		const double Max = MaxHalfAft + (MaxHalf - MaxHalfAft) * T;
+		return Max < Half ? Max : Half;
+	}
 	double SeatIn = 0.0;         // the hero J/22: the seats' inboard edge at this half-width (else the well's edge less SeatW)
 	// pc/j22-feedback: the J/22's traveler, a track across the well from seat to seat (both models; round 12's bridge under
 	// it is gone): solid between TrackZ0 and TrackZ1 within TrackHalfX of TrackX and TrackHalfY of the centreline, never a

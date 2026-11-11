@@ -399,7 +399,7 @@ namespace CrewSolver
 			const FHullShape& H = C.Hulls[Near];
 			FCrewCockpitWell W;
 			const bool bWell = Near == 0 && CrewCockpitWell(C, W, G.bTravelerBridge) && Mid.X > W.X0 && Mid.X < W.X1;
-			const double Limit = (bWell ? (W.SideDeck > 0.0 ? H.DeckHalfBeam(Mid.X) - W.SideDeck : W.HalfWidth) : H.DeckHalfBeam(Mid.X)) - 0.08;
+			const double Limit = (bWell ? W.WallHalf(Mid.X, H.DeckHalfBeam(Mid.X)) : H.DeckHalfBeam(Mid.X)) - 0.08;
 			const double Y = FMath::Max(FMath::Abs(B[0].Y - H.CenterY), FMath::Abs(B[1].Y - H.CenterY));
 			// docs/crew-hull-clip/: a foot only just into the deck (within 12 cm of its surface: a crown, a pose resting a
 			// heel on it) is lifted onto the deck where it is; only one deep under a side deck goes into the well. The
@@ -935,12 +935,15 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 	case EBoatType::J22:
 		if (!bTravelerBridge)
 		{
-			// The hero (build_j22_hero.py COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_IN; the sole from J22H_sockets.json
-			// CockpitSole): a deeper well, seats inboard to 0.40 m. Its traveler (pc/j22-feedback, Bean's Harken layout) is a
-			// 32 mm track from seat to seat at the boom's end, x -2.06, its top 0.404 m up (Traveler_S/P 0.69 m out on the class
-			// hull since shape wave 1's rebake, 0.80 before; the rest unchanged by it).
-			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.25; W.SeatZ = 0.40; W.SeatIn = 0.40; W.SoleZ = 0.136;
-			W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.388; W.TrackZ1 = 0.404; W.TrackHalfY = 0.73;
+			// The hero (build_j22_hero.py COCKPIT_AFT, CABIN_AFT, coaming_y, SEAT_Z, SEAT_IN; the sole from J22H_sockets.json
+			// CockpitSole): a deeper well, seats inboard to 0.31 m (0.40 before shape wave 2: the footwell is 0.62-0.64 m on the
+			// class deck plan and the overhead photo), its walls straight from 0.64 m out aft to 0.73 at the cabin
+			// (COAMING_HALF), 0.12 m in from the sheer at most (shape wave 2; they followed the sheer 0.25 m in before, 0.96 m
+			// out at the cabin). Its traveler (pc/j22-feedback, Bean's Harken layout) is a 32 mm track from seat to seat at
+			// the boom's end, x -2.06, its top 0.404 m up, its ends 0.64 m out (0.75 before shape wave 2).
+			W.X0 = -2.92; W.X1 = -0.55; W.SideDeck = 0.12; W.MaxHalfAft = 0.64; W.MaxHalf = 0.73;
+			W.SeatZ = 0.40; W.SeatIn = 0.31; W.SoleZ = 0.136;
+			W.TrackX = -2.06; W.TrackHalfX = 0.016; W.TrackZ0 = 0.388; W.TrackZ1 = 0.404; W.TrackHalfY = 0.62;
 			return true;
 		}
 		// build_j22.py: COCKPIT_AFT, CABIN_AFT, SIDE_DECK, SEAT_Z, SEAT_W, SOLE_Z.
@@ -987,7 +990,7 @@ namespace
 	bool InWell(const Sailing::FBoatConfig& C, const FCrewCockpitWell& W, double X, double Y, double& Floor)
 	{
 		if (X <= W.X0 || X >= W.X1) return false;
-		const double Half = W.SideDeck > 0.0 ? C.Hulls[0].DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
+		const double Half = W.WallHalf(X, C.Hulls[0].DeckHalfBeam(X));
 		if (Y >= Half) return false;
 		const double SeatEdge = W.SeatIn > 0.0 ? FMath::Min(W.SeatIn, Half) : Half - W.SeatW;
 		Floor = W.SeatZ > 0.0 && Y > SeatEdge ? W.SeatZ : W.SoleZ;
