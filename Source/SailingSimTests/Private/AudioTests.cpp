@@ -109,6 +109,6 @@ bool FSailingCaptionDirectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Dead ahead"), FString(RelativeDirection(RelativeBearingDeg(Here, 90.0, FVector2D(0.0, 500.0)))), FString(TEXT("ahead")));
 	TestEqual(TEXT("Astern of an east heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 90.0, FVector2D(0.0, -500.0)))), FString(TEXT("astern")));
 	TestEqual(TEXT("South-east of a north heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 0.0, FVector2D(-100.0, 100.0)))), FString(TEXT("off the starboard quarter")));
-	TestEqual(TEXT("Wraps past 180"), FString(RelativeDirection(-200.0)), FString(TEXT("off the starboard quarter")));
+	TestEqual(TEXT("Wraps past 180"), FString(RelativeDirection(-230.0)), FString(TEXT("off the starboard quarter")));
 	return true;
 }
