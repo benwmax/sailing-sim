@@ -1,0 +1,15 @@
+Shape wave 2 (#633) hero rebake on Bean's PC: claude/shape-j22-cockpit-wave2 b8ef0cb -> pushed ab2e8f89 (107 files:
+Content/Boats/J22Hero, Inputs/j22-hero fbx and textures, J22H_sockets.json, J22H_coils.json, materials.json,
+Source/SailingSim/Private/J22CoilData.inl). build_j22_hero --sails --clean-bake exit 0; bake exit 0 with the usual two
+warnings ("SM_J22H_Hull.001 is not valid", "No mesh data to join"); a J22H_COILS_ONLY=1 run gave the same
+J22H_coils.json as the full build; make_coil_data.py rewrote J22CoilData.inl; MSVC build OK; import_j22_hero 0 errors,
+0 shader compile errors; licence check OK. SailingSim.Visual 73/73, SailingSim.World 1/1.
+
+Stills (High, 1920x1080, crew shown, starboard beat in 10 kn): cockpit-close, helm-eye (capture HelmEye), plan (from
+above). The straight cockpit walls, wider side decks, the traveller ends inboard and the coiled tails on the seats show.
+
+Photomatch: Bean's IMG_9224 (and his cockpit photos, IMG_9272) are not on the PC (only the solved camera,
+Tools/boatkit/photomatch/matches/IMG_9224.camera.json), and Blender's Python here has no PIL for compare.py. So
+match_IMG_9224_render-only.png is the rebaked hero rendered from that solved camera (match_blend.py, sails hidden,
+transparent background, 1600x1200 for the photo's 5712x4284): lay it over IMG_9224 on the Mac (compare.py) to judge the
+cockpit edges. No photo is in this folder.
