@@ -92,7 +92,8 @@ namespace Sailing
 		{
 			const FTrafficVessel* Other = Sim.Find(S.Other);
 			const bool bReacting = Other && (Other->Avoiding == FTrafficSim::PlayerId || (Other->bStandOnAction && Other->ActingFor == FTrafficSim::PlayerId));
-			if (!S.Risk.bRisk && !bReacting) continue;
+			// Still keeping clear once past and opening is the tail of an encounter already scored, not a new one.
+			if (!S.Risk.bRisk && (!bReacting || S.Risk.Tcpa < 0.0)) continue;
 			if (std::any_of(Open.begin(), Open.end(), [&](const FEncounter& E) { return E.Other == S.Other; })) continue;
 			FEncounter E;
 			E.Other = S.Other;
