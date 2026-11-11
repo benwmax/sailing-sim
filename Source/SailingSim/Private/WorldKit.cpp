@@ -268,6 +268,11 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 			C->SetMobility(Mobility);
 			Place(C);
 			C->SetStaticMesh(Mesh);
+			// #594: a tile is baked in the map frame, its pivot at the map's origin. The distance-field scene keeps each
+			// object's transform relative to its bounds' centre in floats, to 2^21 cm (CheckMatrixPrecision): the Ray Hubbard
+			// houses' 42_* tiles, 21.1 km out, tripped its ensure on every uncooked run. Tiles that far from their pivot stay
+			// out of it (20 km of the boat's start; Lumen's distance fields reach a few hundred metres).
+			if (Mesh->GetBoundingBox().GetCenter().GetAbsMax() > KitTileDistanceFieldReachCm) C->bAffectDistanceFieldLighting = false;
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			C->RegisterComponent();
