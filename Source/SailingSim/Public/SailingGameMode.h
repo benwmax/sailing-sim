@@ -123,12 +123,15 @@ public:
 	bool IsSceneStandIn() const { return bScene && bSceneStandIn; }
 	int32 GetSceneReefs() const { return bScene ? SceneReefs : 0; }
 
-	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather. */
-	void ApplyWeatherSettings();
+	/** Re-reads the weather picker, time of day and seed from settings and restarts the weather: its clock starts over now,
+	 *  unless KeepWeatherStartTime gives the start it had
+	 *  (#623 follow-up: backing out of Change conditions keeps the weather time and the front where they were). */
+	void ApplyWeatherSettings(TOptional<double> KeepWeatherStartTime = TOptional<double>());
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
 	void ApplyQualitySettings();
-	/** Kept for the difficulty toggle: gusts are softer on easy. */
-	void ApplyDifficultyToWind() { ApplyWeatherSettings(); }
+	/** Kept for the difficulty toggle: gusts are softer on easy. The weather keeps its clock (a storm's front stays where it
+	 *  was: #623 follow-up). */
+	void ApplyDifficultyToWind() { ApplyWeatherSettings(WeatherStartTime); }
 
 	/** World streaming (docs/world-streaming): the world's height tiles around the boat. */
 	const FWorldStreamer& GetStreamer() const { return Streamer; }
@@ -239,12 +242,14 @@ private:
 		FString RealDayDate;
 		bool bRealDayHour = false, bSessionDate = false, bWindArgsRead = false;
 		FDateTime SessionDate;
+		double WeatherStartTime = 0.0;   // the weather's clock before the preview, kept when it is put back
+		bool bSessionConditions = false; FSailConditions SessionConditions;   // the session's own conditions, if there is a session
 	};
 	FWeatherInputs PreviewRestore;
 	FSailConditions LastPreviewed;
 	double PreviewMsMax = 0.0, NextPreviewLog = 0.0;
 	int32 PreviewCount = 0;
-	void ApplyConditionsLocal(const struct FSailConditions& Conditions);
+	void ApplyConditionsLocal(const struct FSailConditions& Conditions, TOptional<double> KeepWeatherStartTime = TOptional<double>());
 	float WindOverrideKnots = 0.f;
 	double WindScale = 1.0;
 	// Graphics G4: the wind direction (true, from) and gust intensity a session or the command line fixes; NaN = the preset's.

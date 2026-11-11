@@ -200,6 +200,113 @@ bool FSailingShowroomLiveTest::RunTest(const FString&)
 }
 
 
+// #623 follow-up: backing out of Change conditions puts the weather back as it was. In a thunderstorm 30 s in, a previewed
+// change starts a new timeline (as before); EndPreview(false) restores the inputs and keeps the weather's clock, so the
+// storm front is as far off as it was and the weather time runs on from where it stood.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingConditionsKeepTimeTest, "SailingSim.Smoke.ConditionsKeepTime", ShowroomFlags)
+bool FSailingConditionsKeepTimeTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const ESailingWeather WasPreset = S->WeatherPreset;
+	const float WasHour = S->StartHour;
+	FBareWorld W;
+	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
+	auto Frames = [&](int32 N) { for (int32 I = 0; I < N; ++I) { ++GFrameCounter; GM->AdvanceClock(1.f / 60.f); } };
+	FSailConditions Storm;
+	Storm.Sky = ESailSky::Storms;
+	Storm.WindKn = 10.f;
+	Storm.GustKn = 14.f;
+	Storm.LocalHour = 15.f;
+	GM->ApplyConditions(Storm);
+	TestEqual(TEXT("A thunderstorm"), int32(S->WeatherPreset), USailSessionSubsystem::WeatherPresetFor(ESailSky::Storms));
+	Frames(30 * 60);
+	const double Tw = GM->GetWeatherTime();
+	const double Km = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
+	const double Hour = GM->GetLocalHour();
+	TestTrue(FString::Printf(TEXT("30 s of weather (%.2f s)"), Tw), FMath::Abs(Tw - 30.0) < 0.1);
+	FSailConditions Fair = Storm;
+	Fair.Sky = ESailSky::Fair;
+	Fair.WindKn = 8.f;
+	Fair.GustKn = 11.f;
+	GM->PreviewConditions(Fair);
+	TestTrue(TEXT("Previewing"), GM->IsPreviewing());
+	TestTrue(FString::Printf(TEXT("A previewed change starts the weather over (%.2f s)"), GM->GetWeatherTime()), GM->GetWeatherTime() < 0.1);
+	Frames(2 * 60);
+	GM->EndPreview(false);
+	TestEqual(TEXT("Put back: the thunderstorm"), int32(S->WeatherPreset), USailSessionSubsystem::WeatherPresetFor(ESailSky::Storms));
+	TestEqual(TEXT("Put back: the weather time runs on from where it stood"), GM->GetWeatherTime(), Tw + 2.0, 1.0 / 30.0);
+	const double KmAfter = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
+	TestEqual(FString::Printf(TEXT("Put back: the front where it was (%.3f km)"), Km), KmAfter, Km, 1e-6);
+	// #624 QA: the day's clock (sun, HUD, tide) runs on with the weather's, not back to the start hour.
+	TestEqual(TEXT("Put back: the local hour runs on"), GM->GetLocalHour(), Hour + 2.0 / 3600.0, 1.0 / 3600.0);
+	AddInfo(FString::Printf(TEXT("Front %.3f km off at %.1f s; after the preview and Back, %.1f s of weather"), Km, Tw, GM->GetWeatherTime()));
+	// The difficulty toggle (Easy and back to Realistic) re-applies the wind, keeping the weather's clock too.
+	const ESailingDifficulty WasDifficulty = S->Difficulty;
+	const double Before = GM->GetWeatherTime();
+	const double KmBefore = GM->GetWeather().Evaluate(Before).StormDistanceKm;
+	const double HourBefore = GM->GetLocalHour();
+	for (const ESailingDifficulty D : { ESailingDifficulty::Easy, ESailingDifficulty::Realistic })
+	{
+		S->Difficulty = D;
+		GM->ApplyDifficultyToWind();
+		TestEqual(FString::Printf(TEXT("Difficulty %s: the weather time as it was"), D == ESailingDifficulty::Easy ? TEXT("Easy") : TEXT("Realistic")), GM->GetWeatherTime(), Before, 1e-6);
+		TestEqual(TEXT("... and the front"), GM->GetWeather().Evaluate(GM->GetWeatherTime()).StormDistanceKm, KmBefore, 1e-6);
+		TestEqual(TEXT("... and the local hour"), GM->GetLocalHour(), HourBefore, 1e-6);
+	}
+	S->Difficulty = WasDifficulty;
+	S->WeatherPreset = WasPreset;
+	S->StartHour = WasHour;
+	return true;
+}
+
+// #624 QA: with a session running, a preview that lands back on its own conditions puts the weather back as it was (the
+// screen's slider moved and moved back), and Apply on its own conditions keeps the weather's clock; a real Apply starts over.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingConditionsKeepTimeSessionTest, "SailingSim.Smoke.ConditionsKeepTimeSession", ShowroomFlags)
+bool FSailingConditionsKeepTimeSessionTest::RunTest(const FString&)
+{
+	USailingSettings* S = USailingSettings::Get();
+	const ESailingWeather WasPreset = S->WeatherPreset;
+	const float WasHour = S->StartHour;
+	FBareWorld W;
+	UGameInstance* GI = W.UseGameInstance();
+	GI->Init();   // its subsystems: the session
+	ASailingGameMode* GM = W.World->SpawnActor<ASailingGameMode>();
+	if (!TestNotNull(TEXT("A game mode"), GM)) return false;
+	USailSessionSubsystem* Session = USailSessionSubsystem::Get(GM);
+	if (!TestNotNull(TEXT("A session subsystem"), Session)) { GI->Shutdown(); return false; }
+	auto Frames = [&](int32 N) { for (int32 I = 0; I < N; ++I) { ++GFrameCounter; GM->AdvanceClock(1.f / 60.f); } };
+	FSailConditions Storm;
+	Storm.Sky = ESailSky::Storms;
+	Storm.WindKn = 10.f;
+	Storm.GustKn = 14.f;
+	Storm.LocalHour = 15.f;
+	Session->bHasActive = true;
+	Session->Active.Conditions = Storm;
+	GM->ApplyConditions(Storm);
+	Frames(20 * 60);
+	const double Tw = GM->GetWeatherTime(), Hour = GM->GetLocalHour();
+	FSailConditions Fair = Storm;
+	Fair.Sky = ESailSky::Fair;
+	GM->PreviewConditions(Fair);
+	TestTrue(TEXT("A previewed change starts over"), GM->GetWeatherTime() < 0.1);
+	GM->PreviewConditions(Storm);   // the slider back where it was
+	TestEqual(TEXT("Previewed back on the session's own: the weather time as it was"), GM->GetWeatherTime(), Tw, 1e-6);
+	TestEqual(TEXT("... and the hour"), GM->GetLocalHour(), Hour, 1e-6);
+	GM->ApplyConditions(Storm);
+	TestEqual(TEXT("Apply on the session's own conditions: the weather time kept"), GM->GetWeatherTime(), Tw, 1e-6);
+	Frames(60);
+	GM->ApplyConditions(Storm);
+	TestEqual(TEXT("Apply unchanged, no preview: kept"), GM->GetWeatherTime(), Tw + 1.0, 1.0 / 30.0);
+	GM->ApplyConditions(Fair);
+	TestTrue(TEXT("A real change applied starts over"), GM->GetWeatherTime() < 0.1);
+	Session->bHasActive = false;
+	GI->Shutdown();
+	S->WeatherPreset = WasPreset;
+	S->StartHour = WasHour;
+	return true;
+}
+
 // docs/showroom-world/: the picked world loads behind the menus. Leaving the World screen for Launch with another world
 // travels (not in game, not for the world already loaded); the session carries the choices and the screen to come back to,
 // and the settings' world and spot are the picked ones (nothing saved).

@@ -547,9 +547,17 @@ void ASailingGameMode::UpdateShelter()
 
 void ASailingGameMode::ApplyConditions(const FSailConditions& C)
 {
+	// #624 QA: Apply on the session's own conditions (unchanged, or changed and changed back) keeps the weather as it was:
+	// its clock from before any preview. A real change starts the timeline over, as a new session does.
+	const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+	TOptional<double> Keep;
+	if (Session && Session->bHasActive && SailShowroom::SameConditions(C, Session->Active.Conditions))
+	{
+		Keep = bPreviewing ? PreviewRestore.WeatherStartTime : WeatherStartTime;
+	}
 	bPreviewing = false; // the preview, if any, is now the session's
-	ApplyConditionsLocal(C);
-	if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->Active.Conditions = C;
+	ApplyConditionsLocal(C, Keep);
+	if (USailSessionSubsystem* Active = USailSessionSubsystem::Get(this)) Active->Active.Conditions = C;
 }
 
 void ASailingGameMode::PreviewConditions(const FSailConditions& C)
@@ -572,9 +580,16 @@ void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 		R.SessionDate = SessionDate;
 		R.bSessionDate = bSessionDate;
 		R.bWindArgsRead = bWindArgsRead;
+		R.WeatherStartTime = WeatherStartTime;
+		const USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
+		R.bSessionConditions = Session && Session->bHasActive;
+		if (R.bSessionConditions) R.SessionConditions = Session->Active.Conditions;
 	}
 	const double Start = FPlatformTime::Seconds();
-	ApplyConditionsLocal(C);
+	// #623 follow-up: a preview that lands back on the session's own conditions puts the weather back as it was, its clock
+	// and the front with it (a real change still starts the weather's timeline over, as a new session would).
+	const bool bBack = PreviewRestore.bSessionConditions && SailShowroom::SameConditions(C, PreviewRestore.SessionConditions);
+	ApplyConditionsLocal(C, bBack ? TOptional<double>(PreviewRestore.WeatherStartTime) : TOptional<double>());
 	UE_LOG(LogSailing, Verbose, TEXT("Preview conditions: %.2f ms"), (FPlatformTime::Seconds() - Start) * 1000.0);
 	PreviewMsMax = FMath::Max(PreviewMsMax, (FPlatformTime::Seconds() - Start) * 1000.0);
 	++PreviewCount;
@@ -606,10 +621,11 @@ void ASailingGameMode::EndPreview(bool bKeep)
 	SessionDate = R.SessionDate;
 	bSessionDate = R.bSessionDate;
 	bWindArgsRead = R.bWindArgsRead;
-	ApplyWeatherSettings();
+	// #623 follow-up: put back, the weather keeps its clock (the front where it was), not a timeline started over.
+	ApplyWeatherSettings(R.WeatherStartTime);
 }
 
-void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C)
+void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C, TOptional<double> KeepWeatherStartTime)
 {
 	// The same weather path as a new session, without the reload: preset by sky, start hour, wind speed, direction, gusts.
 	USailingSettings* Settings = USailingSettings::Get();
@@ -623,7 +639,7 @@ void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C)
 	SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), 1) + FTimespan::FromDays(FMath::Max(C.Day, 1) - 1);
 	bSessionDate = true;
 	bWindArgsRead = true;   // the session's values stand
-	ApplyWeatherSettings();
+	ApplyWeatherSettings(KeepWeatherStartTime);
 }
 
 std::shared_ptr<const FWeatherDay> ASailingGameMode::LoadRealDay(const FString& Date)
@@ -641,12 +657,12 @@ std::shared_ptr<const FWeatherDay> ASailingGameMode::LoadRealDay(const FString& 
 	return Day;
 }
 
-void ASailingGameMode::ApplyWeatherSettings()
+void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTime)
 {
 	const USailingSettings* Settings = USailingSettings::Get();
 	float WeatherOffset = 0.f;
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
-	WeatherStartTime = GetSimTime() - WeatherOffset;
+	WeatherStartTime = KeepWeatherStartTime ? *KeepWeatherStartTime : GetSimTime() - WeatherOffset;
 	// The storm's timeline is set for the boat's start (the gust front reaches it at kFrontArrives); before Visual V5 it
 	// was the map origin, so a start away from the club met the front a minute or more early.
 	FLaunchSpot Start;
@@ -724,7 +740,8 @@ void ASailingGameMode::ApplyWeatherSettings()
 		Weather.SetSunset(SunsetHour);
 		SAIL_LOG(Display, TEXT("Sunset %02d:%02d local (day %d)"), int32(SunsetHour), int32(FMath::Fmod(SunsetHour, 1.0) * 60.0), DayOfYear);
 	}
-	ClockBase = GetSimTime() - WeatherOffset;
+	// #624 QA: the day's clock (sun, HUD, tide) runs from the weather's start, so a kept weather time keeps the hour too.
+	ClockBase = WeatherStartTime;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
 
 	// Scale the preset's wind to an explicit base speed when asked (benchmarks).
