@@ -12,6 +12,7 @@
 #include "SailingSettings.h"
 #include "FirstJobPlayer.h"
 #include "UI/SailFrontEnd.h"
+#include "UI/SailHud.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -219,7 +220,31 @@ bool FSailingUICertificateOpensTest::RunTest(const FString&)
 		if (!X) continue;
 		TestEqual(FString::Printf(TEXT("%s listed only if it has lessons (%d)"), *X->Name, X->Lessons.Num()), Opens.Contains(X->Name), X->Lessons.Num() > 0);
 	}
-	TestTrue(TEXT("Club Racer is open"), Opens.Num() >= 1);
+	// #637's QA: by id, as career.json has them today: Club Racer (lessons) opens, Coastal Cruiser (a stub) does not.
+	const FCareerTier* Club = Content.Tier(TEXT("club-racer"));
+	const FCareerTier* Coastal = Content.Tier(TEXT("coastal-cruiser"));
+	if (TestNotNull(TEXT("Club Racer"), Club)) TestTrue(TEXT("Club Racer is named as open"), Opens.Contains(Club->Name));
+	if (TestNotNull(TEXT("Coastal Cruiser"), Coastal)) TestFalse(TEXT("Coastal Cruiser (no lessons yet) is not"), Opens.Contains(Coastal->Name));
+	return true;
+}
+
+// #602 (the #400 audit): a triangle's marks and the person in the water were on no map. The minimap places them north up
+// around the boat, and one off the map on its edge so its direction shows.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIMiniMapMarksTest, "SailingSim.UI.MiniMapMarks", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUIMiniMapMarksTest::RunTest(const FString&)
+{
+	const FVector2f Origin(4.f, 4.f), Size(200.f, 200.f), Centre = Origin + Size * 0.5f;
+	const FVector2D Boat(1000.0, 2000.0);
+	bool bClamped = true;
+	const FVector2f North = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(250.0, 0.0), 3000.0, Origin, Size, bClamped);
+	TestFalse(TEXT("A mark 250 m north is on the map"), bClamped);
+	TestTrue(FString::Printf(TEXT("... above the boat (%.1f, %.1f)"), North.X, North.Y), FMath::IsNearlyEqual(North.X, Centre.X, 0.01f) && North.Y < Centre.Y - 10.f);
+	const FVector2f East = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(0.0, 300.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(FString::Printf(TEXT("A mark 300 m east is right of the boat, 20 px (%.1f)"), East.X - Centre.X), FMath::IsNearlyEqual(East.X - Centre.X, 20.f, 0.01f));
+	const FVector2f Far = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(-5000.0, -5000.0), 3000.0, Origin, Size, bClamped);
+	TestTrue(TEXT("One 7 km off is pulled onto the edge"), bClamped);
+	TestTrue(FString::Printf(TEXT("... inside the square, down and left (%.1f, %.1f)"), Far.X, Far.Y),
+		Far.X >= Origin.X && Far.X < Centre.X && Far.Y > Centre.Y && Far.Y <= Origin.Y + Size.Y);
 	return true;
 }
 
