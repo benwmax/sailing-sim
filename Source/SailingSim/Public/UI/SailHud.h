@@ -33,6 +33,8 @@ public:
 	 *  drawn square of Size px at Origin). One beyond the square's edge is pulled in onto it (bClamped), so its direction
 	 *  still shows. */
 	static FVector2f MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped);
+	/** #602 polish: an edge-clamped dot moved along its edge out of the Keep boxes (the N label, the wind arrow), Radius clear. */
+	static FVector2f MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size);
 
 	ASailboatPawn* Pawn() const;
 
