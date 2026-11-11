@@ -32,6 +32,12 @@ The peak constant (`kSailorPeak` 3.55 combined standard deviations for the 9-in-
 July and November, the July afternoon, Overcast in November and January and Rain, at 0.6 to 1.6 times the calibrated
 gustiness: 3.2 to 3.9. A storm's gust front has its own outflow gusts and is not scaled.
 
+Known limits (QA, Nov 11): the scale is set once at the start, so as the clock moves the day's calibrated gustiness
+drifts it a little (the norther's 9-in-10 gust 27.8 to 29.7 kn over three hours, the lesson 12.9 to 13.5). Light air
+reads under its label (the glassy morning's "2 gusting 4" tops out near 3.2; it was 5.7), outside the fit. On the July
+storm day the label holds until the front; behind it the gentler 7 kn outflow is gustier by nature (about 18 kn, it was
+22.6). `SailingSim.Physics.WindSailorGusts` tests the mapping, not the game mode's wiring of it.
+
 ## The chosen wind holds
 
 The calm-morning and afternoon-breeze presets multiply the wind by the lake's daily cycle (`Diurnal` in `Weather.cpp`);

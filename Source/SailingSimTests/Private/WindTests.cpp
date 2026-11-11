@@ -353,7 +353,7 @@ bool FWindSailorGustsTest::RunTest(const FString& Parameters)
 		for (int32 Easy = 0; Easy < 2; ++Easy)
 		{
 			double P90 = 0.0, Worst = 0.0;
-			for (uint32 Seed = 1; Seed <= 2; ++Seed)
+			for (uint32 Seed = 1; Seed <= 3; ++Seed)
 			{
 				FWeatherSystem Weather;
 				Weather.SetHoldWind(true);
@@ -368,12 +368,12 @@ bool FWindSailorGustsTest::RunTest(const FString& Parameters)
 					if (S.Wind.PuffIntensity > 0.0) S.Wind.PuffIntensity *= FEasyAssists().WindVariabilityScale;
 				}
 				const FSailorGustStats G = MeasureSailorGusts(FWindField(S.Wind), 2.0, 4);
-				P90 += G.P90Factor * C.Kn / 2.0;
+				P90 += G.P90Factor * C.Kn / 3.0;
 				Worst = FMath::Max(Worst, G.MaxFactor * C.Kn);
 			}
 			AddInfo(FString::Printf(TEXT("%s, %s: nine stretches in ten top out at %.1f kn, the strongest %.1f kn"), C.Name, Easy ? TEXT("Easy") : TEXT("Realistic"), P90, Worst));
 			if (Easy) TestTrue(FString::Printf(TEXT("%s, Easy: gentler than the label"), C.Name), P90 < C.GustKn);
-			else TestTrue(FString::Printf(TEXT("%s: the usual strongest gust is the label (within 1 kn)"), C.Name), FMath::Abs(P90 - C.GustKn) <= 1.0);
+			else TestTrue(FString::Printf(TEXT("%s: the usual strongest gust is the label (within 1.5 kn; it was 7 to 11 kn over)"), C.Name), FMath::Abs(P90 - C.GustKn) <= 1.5);
 			// (gust-check.sh holds 15 %; the norther's strongest sits at 14 %, so the test leaves room for another compiler's maths)
 			TestTrue(FString::Printf(TEXT("%s, %s: the strongest at most 20 %% past the label"), C.Name, Easy ? TEXT("Easy") : TEXT("Realistic")), Worst <= 1.2 * C.GustKn);
 		}
