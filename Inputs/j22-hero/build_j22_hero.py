@@ -73,9 +73,17 @@ SC.unit_settings.system = "METRIC"
 # ------------------------------------------------------------------ principal numbers
 
 BOW, STERN = 3.45, -3.41
-MAX_HB, MAX_HB_X = 1.22, -0.40
-TRANSOM_LOSS = 0.27
-WL_MID, WL_HALF, CANOE_D = -0.06, 2.90, 0.20
+# The sheer in plan (the deck edge seen from above), and with it every section's breadth: Plan E of the class rules
+# (tier A, docs/shape-loop). A natural cubic spline through these half-breadths, least-squares fitted to the traced
+# drawing with a bending penalty (5 mm rms; the curvature is continuous, so the waterlines stay fair; it changes sign only across a slight hollow near
+# x 2.1 m, below the fairness check's threshold):
+# beam 2.447 m (class 2.438), widest 0.66 m aft of amidships, transom 1.23 m across at the deck (Plan E 1.22). The
+# physics floats the same sections (Bean, Nov 10: the underwater bow follows the drawing too, so the physics hull
+# follows the hero: Tools/boats/j22/make_j22_hull.py writes SailingPhysics' J22HullData.inl from these functions).
+HB_KNOTS_X = [-3.41, -2.6395, -1.8881, -1.1573, -0.449, 0.2343, 0.8897, 1.5129, 2.098, 2.6355, 3.1076, 3.45]
+HB_KNOTS_Y = [0.6135, 0.8599, 1.0683, 1.1969, 1.2188, 1.1436, 0.9968, 0.7944, 0.5716, 0.3639, 0.1674, 0.004]
+WL_MID, WL_HALF = -0.06, 2.90
+CANOE_D = 0.2072                            # canoe body depth: 1.052 m^3 below the DWL, the physics' displacement
 MAST_X = 0.65                               # J 8.8 ft (2.68 m) aft of the forestay tack to the mast's front face (class)
 CHAINPLATE_X = MAST_X - 0.15                # one plate a side carries both shrouds; GUESS: a little aft of the mast (photos)
 CABIN_AFT, CABIN_FWD = -0.55, 1.65          # trunk ends: aft GUESS from the bow photo; the raked face's foot from the
@@ -110,12 +118,35 @@ def sheer_z(x):
     return 0.62 + fwd - aft
 
 
+def _spline_moments(xs, ys):
+    """Second derivatives of the natural cubic spline through (xs, ys) (tridiagonal solve)."""
+    n = len(xs)
+    h = [xs[i + 1] - xs[i] for i in range(n - 1)]
+    m = [0.0] * n
+    c, d = [0.0] * n, [0.0] * n
+    for i in range(1, n - 1):
+        r = 6 * ((ys[i + 1] - ys[i]) / h[i] - (ys[i] - ys[i - 1]) / h[i - 1])
+        piv = 2 * (h[i - 1] + h[i]) - h[i - 1] * c[i - 1]
+        c[i] = h[i] / piv
+        d[i] = (r - h[i - 1] * d[i - 1]) / piv
+    for i in range(n - 2, 0, -1):
+        m[i] = d[i] - c[i] * m[i + 1]
+    return m
+
+
+_HB_M = _spline_moments(HB_KNOTS_X, HB_KNOTS_Y)
+
+
 def half_beam(x):
-    if x > MAX_HB_X:
-        u = (x - MAX_HB_X) / (BOW - MAX_HB_X)
-        return MAX_HB * max(0.0, 1 - u ** 2.15) ** 0.90 + 0.004
-    u = (MAX_HB_X - x) / (MAX_HB_X - STERN)
-    return MAX_HB - TRANSOM_LOSS * u * u
+    """Half-breadth of the sheer at station x: the class plan (HB_KNOTS)."""
+    xs, ys, m = HB_KNOTS_X, HB_KNOTS_Y, _HB_M
+    x = min(max(x, xs[0]), xs[-1])
+    i = 0
+    while i < len(xs) - 2 and xs[i + 1] < x:
+        i += 1
+    h = xs[i + 1] - xs[i]
+    a, b = (xs[i + 1] - x) / h, (x - xs[i]) / h
+    return max(a * ys[i] + b * ys[i + 1] + ((a ** 3 - a) * m[i] + (b ** 3 - b) * m[i + 1]) * h * h / 6, 0.004)
 
 
 def section(x, f):
@@ -1238,8 +1269,9 @@ for o in SC.objects:
         me.calc_loop_triangles()
         tris += len(me.loop_triangles)
         o.evaluated_get(dg).to_mesh_clear()
-report = {"canoe_volume_m3": round(vol, 4), "physics_volume_m3": 1.052, "cb_x": round(cbx, 3), "cb_z": round(cbz, 3),
-          "physics_cb": [-0.195, -0.080], "triangles": tris, "objects": len(SC.objects)}
+report = {"canoe_volume_m3": round(vol, 4), "physics_volume_m3": 1.052,  # SailingPhysics BoatExport j22: design volume and CB
+           "cb_x": round(cbx, 3), "cb_z": round(cbz, 3),
+          "physics_cb": [-0.277, -0.077], "triangles": tris, "objects": len(SC.objects)}
 print("J22H:", json.dumps(report))
 json.dump(report, open(os.path.join(OUT, "j22_hero_report.json"), "w"), indent=1)
 # Boat fidelity 4: the coiled tails the game draws as live rope (Blender frame, metres; the game flips Y).

@@ -6,12 +6,14 @@ Cuts the hull's outer skin with 10 waterline planes (z) and 10 station planes (x
 measures its curvature (turning angle per metre). A fair line bends one way, smoothly: the report counts
   inflections  sign changes of the curvature smoothed over 30 cm (bends under 0.15 rad/m ignored): a ripple shows
                as extra pairs
-  kinks        runs where the 10 cm chord curvature leaves its 50 cm average by more than 0.5 rad/m: a crease, a
-               facet or a bump of a few millimetres; 15 cm at each end of a line (stem, transom corner) is left out
+  kinks        peaks and dips of the 10 cm chord curvature that stand out by more than 0.5 rad/m (their
+               prominence; kinks_firm: 0.7): a bump, a flat or a crease adds a peak and a dip, while a bend made
+               tighter or gentler on purpose keeps one peak; 15 cm at each end of a line (stem, transom corner) is
+               left out
 Both are measured on 2 cm resampled cuts, so a denser mesh of the same shape gives the same counts.
 per line, and writes <out>/fairness.json. The check compares against the baseline: a round must not add inflections
 or kinks to any line (a line the drawing bends both ways, such as a reverse sheer, keeps its own count).
-Needs Blender's Python (pip bpy) and numpy.
+Needs Blender's Python (pip bpy), numpy and scipy.
 """
 import json
 import math
@@ -21,6 +23,7 @@ import sys
 import bpy  # noqa: F401  (pip bpy: bpy must load before bmesh)
 import bmesh
 import numpy as np
+from scipy.signal import find_peaks
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import common as C  # noqa: E402
@@ -110,10 +113,9 @@ def fairness(p, axes):
     b = q[2 * w:] - q[w:-w]
     ang = np.arctan2(a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0], (a * b).sum(axis=1))
     k = ang / (w * s[-1] / (n - 1))                 # rad per metre
-    # inflections: sign changes of the curvature smoothed over 30 cm, ignoring bends under 0.15 rad/m (a 6.7 m radius)
-    # or a tenth of the line's sharpest bend; bumps: runs where the 10 cm curvature leaves its own 50 cm average by
-    # more than 0.5 rad/m (a bump of a few millimetres over 20 cm). Both are measured on the surface, not the mesh: a denser mesh
-    # of the same shape gives the same counts (docs/shape-loop, density test).
+    # inflections: sign changes of the curvature smoothed over 30 cm, ignoring bends under 0.15 rad/m (a 6.7 m radius).
+    # Both counts are measured on the surface, not the mesh: a denser mesh of the same shape gives the same counts
+    # (docs/shape-loop, density test).
     def smooth(v, m):
         m = max(1, min(m, len(v) // 2 * 2 - 1))
         return np.convolve(np.pad(v, m // 2, mode="edge"), np.ones(m) / m, mode="valid")[:len(v)]
@@ -126,10 +128,14 @@ def fairness(p, axes):
     sig = np.sign(np.where(np.abs(ks) > floor, ks, 0))
     nz = sig[sig != 0]
     infl = int(np.sum(nz[1:] != nz[:-1])) if len(nz) > 1 else 0
-    res = np.abs(k - smooth(k, 25)) > 0.5
-    kinks = int(np.sum(res[1:] & ~res[:-1]) + (1 if len(res) and res[0] else 0))
+    # kinks: extra wiggles in the curvature. A fair line's curvature rises and falls smoothly, with one peak per bend
+    # (the bilge, the turn at the stem); a bump, a flat or a crease adds a peak and a dip next to it. Count the peaks
+    # and dips of the 10 cm curvature that stand out by more than 0.5 rad/m (their prominence), so a bend made
+    # tighter or gentler on purpose keeps its count and a ripple of a few millimetres over 20 cm does not.
+    kinks = len(find_peaks(k, prominence=0.5)[0]) + len(find_peaks(-k, prominence=0.5)[0])
+    firm = len(find_peaks(k, prominence=0.7)[0]) + len(find_peaks(-k, prominence=0.7)[0])   # score.py's hysteresis
     med = float(np.median(np.abs(np.diff(k)))) if len(k) > 1 else 0.0
-    return {"length_m": round(float(s[-1]), 3), "inflections": infl, "kinks": kinks,
+    return {"length_m": round(float(s[-1]), 3), "inflections": infl, "kinks": kinks, "kinks_firm": firm,
             "k_max": round(float(np.max(np.abs(k))), 3), "k_step_median": round(med, 4)}
 
 

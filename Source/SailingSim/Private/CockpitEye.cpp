@@ -54,7 +54,7 @@ FVector FCockpitEye::Step(const FCockpitEyeInput& In, float Dt, float& OutLeadDe
 	Eye = FVector(X, Y, Z);
 	EyeV = FVector(Vx, Vy, Vz);
 	// A gap to the heads ahead or beside: nearer than 45 cm (not behind the eye), it eases aft by enough to be 45 cm away
-	// (in over 0.15 s, out over 0.5 s); where the cockpit's end stops it, it lifts the rest, up to 10 cm.
+	// (in over 0.1 s, out over 0.5 s; shape wave 1: at 0.15 s the class J/22's trimmer, crossing in her narrower cockpit, came within 34.7 cm on a tack); where the cockpit's end stops it, it lifts the rest, up to 10 cm.
 	float Short = 0.f;
 	for (const FVector& H : In.Heads)
 	{
@@ -66,7 +66,7 @@ FVector FCockpitEye::Step(const FCockpitEyeInput& In, float Dt, float& OutLeadDe
 		Short = FMath::Max(Short, float(FMath::Sqrt(Rest) - D.X));
 	}
 	Short = FMath::Max(Short, 0.f);
-	Gap += (Short - Gap) * FMath::Clamp(Dt / (Short > Gap ? 0.15f : 0.5f), 0.f, 1.f);
+	Gap += (Short - Gap) * FMath::Clamp(Dt / (Short > Gap ? 0.1f : 0.5f), 0.f, 1.f);
 	FVector Out = Eye - FVector(Gap, 0.f, 0.f);
 	const double Stop = FMath::Max(In.MinX, Out.X);
 	const float Unmet = float(Stop - Out.X);

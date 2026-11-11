@@ -67,8 +67,10 @@ Ropes and sails must move like rope and cloth, so the game parts carry no frozen
 
 ## Checks
 
-- Canoe body below the design waterline: 1.08 m^3 against the physics' 1.052 m^3 (+3%), centre of buoyancy
-  x -0.22 m, z -0.07 m against the physics' -0.195 m, -0.080 m. The physics stays the source of truth.
+- Canoe body below the design waterline: 1.052 m^3, centre of buoyancy x -0.277 m, z -0.077 m. Since Nov 10 2026 the
+  physics floats this hull's own sections (`Tools/boats/j22/make_j22_hull.py` writes
+  `Source/SailingPhysics/Private/J22HullData.inl`; rerun it whenever `keel_z`, `sheer_z`, `half_beam`, `section` or
+  `CANOE_D` change, and `Tools/shapeloop/score.py` fails a round whose table is stale).
 - About 380,000 triangles for the whole boat with sails and every fitting (the fittings are small and suit Nanite or a lower LOD); hull, deck and hardware are meant for Nanite.
 - Each textured group also bakes `T_J22H_<group>_X`, the detail mask (R non-skid, G teak, B smooth gelcoat), so
   `M_J22HeroSurface` can lay true-scale close-up texture (`Inputs/boat-detail`) on top within a few metres.

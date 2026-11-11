@@ -24,7 +24,8 @@ from j22_geom import apply_mods, cyl, link, mesh_obj, tube
 from j22_steering import hex_head, lathe, nylock, plate
 
 STERN = -3.41
-Y = 0.55                  # the bracket's centre across the transom (the port quarter, as before)
+Y = 0.42                  # the bracket's centre across the transom, on the port quarter (0.55 until the hull took Plan E's
+                          # 1.23 m transom, docs/shape-loop wave 1: there the plate ran 2.5 cm past the corner)
 CAV_Z = -0.10             # the anti-cavitation plate (unchanged from the October build)
 CLAMP_Z = CAV_Z + 0.508   # the clamp's top on the bracket's pad: a 20 in shaft
 AXIS_X = STERN - 0.205    # the motor's steering axis (the swivel bracket's tube)

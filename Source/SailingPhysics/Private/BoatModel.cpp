@@ -177,10 +177,37 @@ namespace Sailing
 		return false;
 	}
 
+	namespace
+	{
+#include "J22HullData.inl"
+
+		/** The J/22's hull: the hero model's sections (kJ22Sections), drawn as they are, so the boat that floats is the
+		 *  boat the player sees (docs/shape-loop, Nov 10 2026: the class rules' Plan E). Physics, the water's hull clip
+		 *  and (through BoatExport's hull_stations) the classic and berthed J/22 models all read the stations. The
+		 *  parameters below are only the parametric fallback BoatExport also writes: they match the stations aft (widest
+		 *  1.223 m a side at x -0.66, 0.61 at the transom), but their half-ellipse is fuller than the real bow (0.94
+		 *  against 0.61 a side at x 2 m). */
+		FHullShape J22Hull()
+		{
+			FHullShape H;
+			for (const FJ22Section& S : kJ22Sections)
+			{
+				FHullShape::FStation St;
+				St.X = S.X; St.Sheer = S.Sheer;
+				St.Y.assign(S.Y, S.Y + kJ22SectionPoints);
+				St.Z.assign(S.Z, S.Z + kJ22SectionPoints);
+				H.StationDepth = std::max(H.StationDepth, -S.Z[0]);
+				H.Stations.push_back(St);
+			}
+			H.MaxHalfBeam = 1.223; H.MaxBeamX = -0.66; H.AftLength = 2.75; H.TransomBeamLoss = 0.61;
+			return H;
+		}
+	}
+
 	FBoatConfig::FBoatConfig()
 	{
 		// J/22: LOA 22 ft 6 in, LWL 19 ft, beam 8 ft, 1,790 lb, 700 lb ballast. One hull, fin keel, transom rudder.
-		Hulls.push_back(FHullShape());
+		Hulls.push_back(J22Hull());
 
 		// Residuary resistance per unit weight against Froude number. Shape follows the Delft series for a
 		// light-displacement keelboat; tuned against the J/22 polar.
@@ -286,6 +313,25 @@ namespace Sailing
 		BuildHull();
 		BuildContactPoints();
 		Reset(0.0, 0.0, 0.0, 0.0);
+
+		// A ballasted keelboat knocked flat still rights herself while her righting moment is positive (the J/22 to about
+		// 107 deg crewed; her ORC certificate gives 104 light): only past that angle is she capsized. Cleated in a gale on
+		// flat water she lies at up to 97 deg and comes back when the sheets go. Dinghies and multihulls past 70 deg are over.
+		if (!Config.bMultihull && Config.BallastMass > 0.0)
+		{
+			double Lo = 70.0, Hi = 180.0; // 5 deg scan, then bisect to a tenth (about 30 righting-moment solves)
+			for (double Deg = 75.0; Deg <= 180.0; Deg += 5.0)
+			{
+				if (RightingMomentAt(Deg * kDegToRad) <= 0.0) { Hi = Deg; break; }
+				Lo = Deg;
+			}
+			while (Hi - Lo > 0.1)
+			{
+				const double Mid = 0.5 * (Lo + Hi);
+				(RightingMomentAt(Mid * kDegToRad) > 0.0 ? Lo : Hi) = Mid;
+			}
+			CapsizeTiltRad = Clamp(Lo, 70.0, 175.0) * kDegToRad; // self-righting to 180 (the maxi): turtled still counts
+		}
 	}
 
 	namespace
@@ -1369,7 +1415,7 @@ namespace Sailing
 			}
 		}
 		// Lying on her side or turned turtle (the heel alone reads near zero upside down).
-		State.CapsizedTime = Q.Tilt() > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
+		State.CapsizedTime = Q.Tilt() > CapsizeTiltRad ? State.CapsizedTime + Dt : 0.0;
 		T.bCapsized = State.CapsizedTime > 2.0;
 
 		// Windward side with hysteresis, from the apparent wind over the moving boat at masthead height. Not from the

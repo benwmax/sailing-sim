@@ -92,6 +92,77 @@ def r_at_z(x, z):
     return t ** (1.0 / H["bilge_power"])
 
 
+# ---------------------------------------------------------------- a hull drawn by its sections
+
+# docs/shape-loop wave 1 (Nov 10 2026): the J/22's physics hull is the hero model's own sections (FHullShape::Stations,
+# Source/SailingPhysics/Private/J22HullData.inl), which BoatExport writes as "hull_stations". When they are there the
+# model is built on them exactly as the physics reads them (straight between stations and between a section's points,
+# sunk by canoe_depth - station_depth), so its canoe body is the physics' to the millimetre; the formulas above are the
+# parametric stand-in for a hull without sections.
+ST = CFG.get("hull_stations")
+if ST:
+    _SX = [s["x"] for s in ST["list"]]
+    _SINK = DEPTH - ST["station_depth"]
+    _NP = len(ST["list"][0]["y"])
+
+    def _at(x):
+        x = min(max(x, _SX[0]), _SX[-1])
+        i = 0
+        while i < len(_SX) - 2 and x > _SX[i + 1]:
+            i += 1
+        return ST["list"][i], ST["list"][i + 1], (x - _SX[i]) / max(_SX[i + 1] - _SX[i], 1e-9)
+
+    def _yz(x, u):
+        """The section at station x, u from 0 on the keel to 1 at the sheer (along its points), as (y, z)."""
+        a, b, t = _at(x)
+        k = min(max(u, 0.0), 1.0) * (_NP - 1)
+        j = min(int(k), _NP - 2)
+        f = k - j
+        ya = a["y"][j] + (a["y"][j + 1] - a["y"][j]) * f
+        yb = b["y"][j] + (b["y"][j + 1] - b["y"][j]) * f
+        za = a["z"][j] + (a["z"][j + 1] - a["z"][j]) * f
+        zb = b["z"][j] + (b["z"][j + 1] - b["z"][j]) * f
+        return ya + (yb - ya) * t, za + (zb - za) * t - _SINK
+
+    def deck_half_beam(x):  # noqa: F811
+        if x < _SX[0] or x > _SX[-1]:
+            return 0.02
+        return max(_yz(x, 1.0)[0], 0.02)
+
+    def sheer(x):  # noqa: F811
+        a, b, t = _at(x)
+        return a["sheer"] + (b["sheer"] - a["sheer"]) * t
+
+    def keel_line_depth(x):  # noqa: F811
+        return -_yz(x, 0.0)[1]
+
+    def sharp_half_beam(x):  # noqa: F811
+        return deck_half_beam(x)        # the sections are the real boat's fine entry already
+
+    def r_at_z(x, z):  # noqa: F811
+        lo, hi = 0.0, 1.0
+        if z <= _yz(x, 0.0)[1]:
+            return 0.0
+        if z >= _yz(x, 1.0)[1]:
+            return 1.0
+        for _ in range(40):
+            m = 0.5 * (lo + hi)
+            if _yz(x, m)[1] < z:
+                lo = m
+            else:
+                hi = m
+        return 0.5 * (lo + hi)
+
+    def section_point(x, r):  # noqa: F811
+        y, z = _yz(x, r)
+        return (x, y, z)
+
+    def half_beam(x, z):  # noqa: F811
+        """So that half_beam(x, z) * r_at_z(x, z) is the section's half breadth at z, as with the formulas."""
+        u = r_at_z(x, z)
+        return _yz(x, u)[0] / max(u, 1e-6)
+
+
 # ---------------------------------------------------------------- mesh building
 
 class Mesh:

@@ -154,11 +154,11 @@
  "joins": [
   [
    "Hull",
-   "Deck"
+   "Joint_"
   ],
   [
-   "Hull",
-   "Joint_"
+   "Joint_",
+   "Deck"
   ],
   [
    "Deck",
@@ -180,5 +180,6 @@
    "Hull",
    "Keel"
   ]
- ]
+ ],
+ "joins_note": "The hull and the deck meet under the hull-deck joint (Joint_), which overlaps both: Hull|Joint_ and Joint_|Deck are the seam. Hull|Deck itself only grazes (the deck's top sits 0.4 mm over the hull's rim), so it read 47 of 138 bins open on the baseline and flickered with any change; it was dropped in wave 1."
 }

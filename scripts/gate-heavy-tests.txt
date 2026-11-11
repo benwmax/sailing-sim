@@ -5,3 +5,4 @@ SailingSim.Fleet.Polar.
 SailingSim.Physics.ReferenceChecks
 SailingSim.Physics.PolarGate
 SailingSim.Race.AiFleetRace
+SailingSim.Physics.TackLookAhead

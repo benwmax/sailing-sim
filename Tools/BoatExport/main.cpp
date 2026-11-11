@@ -58,6 +58,23 @@ int main(int Argc, char** Argv)
 		"\"sheer_rise\": %.4f, \"sheer_rise_from_x\": %.4f, \"bow_overhang_slope\": %.4f, \"stern_overhang_slope\": %.4f, \"bilge_power\": %.4f},\n",
 		H.BowX, H.SternX, H.WaterlineMidX, H.WaterlineHalfLength, H.MaxHalfBeam, H.MaxBeamX, H.AftLength, H.TransomBeamLoss,
 		H.SheerZ, H.SheerRise, H.SheerRiseFromX, H.BowOverhangSlope, H.SternOverhangSlope, H.BilgePower);
+	// A hull drawn by its sections (the J/22 since docs/shape-loop wave 1, the maxi): every station transom to stem, its
+	// sheer and its half section keel to sheer (body frame, metres), and the sections' own keel depth, so the models are
+	// built on the hull the physics floats (KeelLineDepth sinks the sections by canoe_depth - station_depth).
+	if (H.HasStations())
+	{
+		std::fprintf(F, "  \"hull_stations\": {\"station_depth\": %.5f, \"list\": [", H.StationDepth);
+		for (size_t I = 0; I < H.Stations.size(); ++I)
+		{
+			const FHullShape::FStation& S = H.Stations[I];
+			std::fprintf(F, "%s\n    {\"x\": %.5f, \"sheer\": %.5f, \"y\": [", I ? "," : "", S.X, S.Sheer);
+			for (size_t K = 0; K < S.Y.size(); ++K) std::fprintf(F, "%s%.5f", K ? ", " : "", S.Y[K]);
+			std::fprintf(F, "], \"z\": [");
+			for (size_t K = 0; K < S.Z.size(); ++K) std::fprintf(F, "%s%.5f", K ? ", " : "", S.Z[K]);
+			std::fprintf(F, "]}");
+		}
+		std::fprintf(F, "]},\n");
+	}
 	// Every hull (Visual V7: the cats and the trimaran), the same fields plus its lateral place and depth.
 	std::fprintf(F, "  \"multihull\": %s, \"hulls\": [", C.bMultihull ? "true" : "false");
 	for (size_t I = 0; I < C.Hulls.size(); ++I)

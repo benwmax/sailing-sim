@@ -488,6 +488,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		P.Stance = ECrewStance::Helm;
 		Out.Pelvis = FVector(X, Side * FMath::Max(Rail - 0.18, 0.3), Sheer + 0.07);
+		// Shape wave 1: the class J/22's deck narrows fast aft (its half-beam is 14 cm more half a metre ahead of the helm,
+		// where the feet are; 5 cm on the old stand-in), so 18 cm in from the rail where the helm sits put the feet on the
+		// seat's front edge, landing on the seat or the sole as an idle clip moved them (22 cm: CrewClipLimits). The J/22's
+		// helm keeps 18 cm in from the deck's edge where the feet are, and at least 6 cm in from it where they sit.
+		if (Cfg.Type == EBoatType::J22) Out.Pelvis.Y = Side * FMath::Max(FMath::Min(Hull.DeckHalfBeam(X + 0.5) - 0.18, Rail - 0.06), 0.3);
 		// docs/crew-hull-clip/: the maxi's helm aft of the windward wheel (ref.json "wheels": x -13.0, 2.15 m out), on the
 		// cockpit's edge with the legs in it; at x -9 on the rail their legs went down through 1.1 m of deck.
 		if (Cfg.Type == EBoatType::Maxi) Out.Pelvis = FVector(-13.7, Side * 2.55, CrewSeatSurfaceZ(Cfg, -13.7, Side * 2.55) + 0.07);

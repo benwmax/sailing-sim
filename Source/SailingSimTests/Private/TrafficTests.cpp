@@ -323,6 +323,7 @@ bool FRulesCoachTest::RunTest(const FString& Parameters)
 	P.SpeedKnots = 12.0;
 	P.FromDegrees = 0.0;
 	const FWindField Wind(P);
+	int32 Encounters = 0;
 	auto Run = [&](bool bPlayerPort, bool bPlayerActs, int32& OutScore, FString& OutText)
 	{
 		FTrafficSim Sim;
@@ -346,6 +347,7 @@ bool FRulesCoachTest::RunTest(const FString& Parameters)
 			Coach.Update(Sim.GetTime(), Me, Sim);
 		}
 		OutScore = Coach.GetScore();
+		Encounters = int32(Coach.GetScores().size());
 		OutText = Coach.GetScores().empty() ? FString(TEXT("(none)")) : FString(UTF8_TO_TCHAR(Coach.GetScores().back().Text.c_str()));
 	};
 	int32 Score = 0;
@@ -359,6 +361,8 @@ bool FRulesCoachTest::RunTest(const FString& Parameters)
 	Run(false, false, Score, Text);
 	AddInfo(FString::Printf(TEXT("Starboard tack, holds course: %+d (%s)"), Score, *Text));
 	TestEqual(TEXT("Stand on and hold your course: +5"), Score, 5);
+	// The AI still bearing away as they pass and open is the same encounter, scored once.
+	TestEqual(TEXT("One crossing, one score"), Encounters, 1);
 	return true;
 }
 

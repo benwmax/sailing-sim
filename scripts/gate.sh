@@ -105,10 +105,11 @@ else
 fi
 # The heavy tests (scripts/gate-heavy-tests.txt) read only the physics, the tests and the terrain bake (and the few
 # game files the test sources include): when none of those changed since they last passed, the rest run alone.
-# The heavy tests live in these five test files: an edit to any other test file leaves them be.
+# The heavy tests live in these six test files: an edit to any other test file leaves them be.
 HEAVY_INPUTS=(Source/SailingPhysics Source/SailingSimTests/SailingSimTests.Build.cs Source/SailingSimTests/Private/OceanTests.cpp
 	Source/SailingSimTests/Private/FleetTests.cpp Source/SailingSimTests/Private/ReferenceTests.cpp
-	Source/SailingSimTests/Private/PhysicsTests.cpp Source/SailingSimTests/Private/TrafficTests.cpp Content/TerrainData Source/SailingSim/Public/LakeData.h
+	Source/SailingSimTests/Private/PhysicsTests.cpp Source/SailingSimTests/Private/TrafficTests.cpp Source/SailingSimTests/Private/WavePhysicsTests.cpp
+	Content/TerrainData Source/SailingSim/Public/LakeData.h
 	Source/SailingSim/Private/LakeData.cpp Source/SailingSim/Public/Chart.h Source/SailingSim/Private/Chart.cpp
 	Source/SailingSim/Public/Navigation.h Source/SailingSim/Private/Navigation.cpp Source/SailingSim/Public/ReferenceCapture.h
 	Source/SailingSim/Private/ReferenceCapture.cpp)
