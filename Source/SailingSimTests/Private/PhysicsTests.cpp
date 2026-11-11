@@ -534,6 +534,46 @@ bool FSailingPierEndContactTest::RunTest(const FString& Parameters)
 		}
 	}
 	{
+		// A pile off the J/22's fine bow: the deck edge on the far (starboard) side must not reach across and push her
+		// into it (QA on #641: with half the widest beam as the reach, she was thrown off it at 2 m/s, spinning).
+		const FBoatConfig Cfg;
+		const FHullShape& H = Cfg.Hulls[0];
+		for (const double X : { 2.9, 3.05, 3.2 })
+		{
+			std::vector<FObstacleSegment> Pile(1);
+			const double R = 0.15;
+			Pile[0].AX = Pile[0].BX = X;
+			Pile[0].AY = Pile[0].BY = -(H.DeckHalfBeam(X) + R + 0.5);
+			Pile[0].Radius = R;
+			Pile[0].Bottom = -2.0;
+			Pile[0].Top = 1.5;
+			FBoatModel Boat(Cfg);
+			Boat.Reset(0.0, 0.0, 0.0, 0.0);
+			FWindParams WP;
+			WP.SpeedKnots = 0.0;
+			const FWindField Wind(WP);
+			FBoatControls C;
+			C.bSailsDown = true;
+			C.Hike = -0.5;
+			for (int32 I = 0; I < 240; ++I) Boat.Step(1.0 / 120.0, C, Wind);
+			Boat.GetMutableState().Velocity = Vec3(0.0, -0.3, 0.0);
+			Boat.GetMutableState().AngularVelocity = Vec3();
+			Boat.SetObstacles(&Pile);
+			double MaxSpeed = 0.0, MaxYawRate = 0.0;
+			bool bContact = false;
+			for (int32 I = 0; I < 8 * 120; ++I)
+			{
+				Boat.Step(1.0 / 120.0, C, Wind);
+				bContact |= Boat.GetTelemetry().bCollision;
+				MaxSpeed = FMath::Max(MaxSpeed, Boat.GetState().Velocity.Length());
+				MaxYawRate = FMath::Max(MaxYawRate, FMath::Abs(Boat.GetState().AngularVelocity.Z));
+			}
+			const FString Case = FString::Printf(TEXT("J/22 drifting 0.3 m/s onto a pile off her port bow at %.2f m"), X);
+			TestTrue(Case + TEXT(": contact"), bContact);
+			TestTrue(FString::Printf(TEXT("%s: not thrown off it (%.2f m/s, %.2f rad/s)"), *Case, MaxSpeed, MaxYawRate), MaxSpeed < 0.4 && MaxYawRate < 0.3);
+		}
+	}
+	{
 		// Alongside a dock (no end coming in) nothing changes: she comes to rest at the dock's face, not pushed off by the
 		// deck edge, and the edge's push is left out where the points already push (no doubled spring at a station).
 		FBoatModel Boat;

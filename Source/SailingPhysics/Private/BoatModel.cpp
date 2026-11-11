@@ -461,7 +461,6 @@ namespace Sailing
 			// The edges round the deck, bow to stern down the starboard side and back up the port side (indices from
 			// First: 0 bow, 1/3/5 starboard and 2/4/6 port stations, 7/8 transom corners, 9 the transom's middle).
 			const double MidX = 0.5 * (H.BowX + H.SternX);
-			const double HalfBeam = H.DeckHalfBeam(H.MaxBeamX);
 			static const int Ring[] = { 0, 1, 3, 5, 7, 9, 8, 6, 4, 2 };
 			const int NRing = int(sizeof(Ring) / sizeof(Ring[0]));
 			for (int I = 0; I < NRing; ++I)
@@ -476,7 +475,8 @@ namespace Sailing
 				if (N.X * (Mid.X - MidX) + N.Y * (Mid.Y - H.CenterY) < 0.0) N = N * -1.0; // away from the hull's middle
 				if (N.LengthXY() < 1e-6) continue;
 				Edge.Out = N.Normalized();
-				Edge.HalfBeam = HalfBeam;
+				Edge.HalfA = std::fabs(PA.Y - H.CenterY);
+				Edge.HalfB = std::fabs(PB.Y - H.CenterY);
 				OutlineEdges.push_back(Edge);
 			}
 		}
@@ -1292,7 +1292,9 @@ namespace Sailing
 							const Vec3 P = PA + (PB - PA) * U;
 							if (P.Z < S.Bottom || P.Z > S.Top) continue;
 							const double Outside = (CX - P.X) * Out.X + (CY - P.Y) * Out.Y; // the end's distance out from the edge
-							if (Outside < -0.5 * Edge.HalfBeam) continue;
+							// Half her beam where it meets the edge (at a fine bow a fixed half of the widest beam reached past the
+						// other side: a pile off the port bow was pushed into her by the starboard edge, QA on #641).
+						if (Outside < -0.5 * (Edge.HalfA + (Edge.HalfB - Edge.HalfA) * U)) continue;
 							const double Pen = S.Radius + 0.1 - Outside - std::max(PointPen(PA), PointPen(PB));
 							if (Pen > 0.0)
 							{

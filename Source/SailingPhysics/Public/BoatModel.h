@@ -466,7 +466,7 @@ namespace Sailing
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)
 		/** The deck edge between neighbouring outline points, with its outward normal (body frame, horizontal): a pier end
 		 *  or a pile that comes in between two points meets the side here (OutlinePoints alone are up to 2 m apart). */
-		struct FOutlineEdge { int A = 0, B = 0; Vec3 Out; double HalfBeam = 0.0; };
+		struct FOutlineEdge { int A = 0, B = 0; Vec3 Out; double HalfA = 0.0, HalfB = 0.0; }; // Half: each end's distance off the hull's centreline
 		std::vector<FOutlineEdge> OutlineEdges;
 		std::vector<Vec3> MastPoints;                  // along the spar, 2 m to the masthead: bridge decks (body frame)
 		std::vector<int> MastSegments;                 // scratch: the decks near the spar this step

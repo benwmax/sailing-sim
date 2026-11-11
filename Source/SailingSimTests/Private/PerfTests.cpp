@@ -87,7 +87,7 @@ namespace
 			Controls.JibSheet = 0.3;
 			Controls.Tiller = 0.05;
 		}
-		FBoatStepJob Job(const FSea& Sea, int32 Steps, bool bSimple)
+		FBoatStepJob Job(const FSea& Sea, int32 Steps, bool bSimple, bool bAssistOn)
 		{
 			FBoatStepJob J;
 			J.Boat = &Boat;
@@ -97,7 +97,7 @@ namespace
 			J.Waves = &Sea.Waves;
 			J.Steps = Steps;
 			J.StepDt = Stepper.GetStepDt();
-			J.bTrimAssist = !bSimple;
+			J.bTrimAssist = bAssistOn;
 			J.LastManualTrimTime = 3.0; // the assist takes over 4 s after it, partway through
 			J.TrimIdleSeconds = 4.0;
 			J.bSimple = bSimple;
@@ -109,12 +109,15 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTaskStepTest, "SailingSim.Physics.TaskStep", PerfFlags)
 bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 {
-	for (const bool bSimple : { false, true })
+	// The full assist, the simple layout without it, and the simple layout with it (the default settings).
+	for (const int32 Mode : { 0, 1, 2 })
 	{
+		const bool bSimple = Mode != 0, bAssistOn = Mode != 1;
 		FSea Sea;
 		// The pawn's loop as it was before Perf 1 (ASailboatPawn::Tick), on this thread.
 		FSailor Ref;
 		const double LastManual = 3.0, Idle = 4.0;
+		const double LastManualHike = 1.0; // the hike key, pressed before the sheet: the reflex starts 4 s after it
 		// The same steps as a job on a task, as the pawn launches them now.
 		FSailor Task;
 		int32 RefSteps = 0, TaskSteps = 0;
@@ -127,8 +130,8 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 			for (int32 I = 0; I < Steps; ++I)
 			{
 				const FBoatControls Before = Ref.Controls;
-				const bool bAssist = !bSimple && Ref.Boat.GetState().Time - LastManual > Idle;
-				const bool bReflex = !bSimple && !bAssist; // the crew's body while the assist waits (no hike key pressed)
+				const bool bAssist = bAssistOn && Ref.Boat.GetState().Time - LastManual > Idle;
+				const bool bReflex = bAssistOn && !bAssist && Ref.Boat.GetState().Time - LastManualHike > Idle; // the crew's body while the assist waits
 				if (bAssist || bSimple || bReflex)
 				{
 					const FBoatControls Assisted = Ref.Trim.Update(Ref.Boat, Ref.Controls, Ref.Stepper.GetStepDt());
@@ -145,6 +148,11 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 						Ref.Controls.Cunningham = Assisted.Cunningham;
 						Ref.Controls.Outhaul = Assisted.Outhaul;
 						Ref.Controls.Backstay = Assisted.Backstay;
+						if (bReflex)
+						{
+							Ref.Controls.Hike = Assisted.Hike;
+							Ref.Controls.CrewAft = Assisted.CrewAft;
+						}
 					}
 					Ref.Controls.Tiller = Before.Tiller;
 					Ref.Controls.bWingOnWing = Before.bWingOnWing;
@@ -155,13 +163,14 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 
 			const int32 TaskFrameSteps = Task.Stepper.Advance(Dt);
 			TestEqual(TEXT("The same steps each frame"), TaskFrameSteps, Steps);
-			const FBoatStepJob Job = Task.Job(Sea, TaskFrameSteps, bSimple);
+			FBoatStepJob Job = Task.Job(Sea, TaskFrameSteps, bSimple, bAssistOn);
+			Job.LastManualHikeTime = LastManualHike;
 			UE::Tasks::Launch(TEXT("TaskStepTest"), [Job]() { Job.Run(); }).Wait();
 			TaskSteps += TaskFrameSteps;
 			// The world between frames (on the game thread, as the game mode does): the sea builds.
 			Sea.Waves.Update(Dt);
 		}
-		TestTrue(FString::Printf(TEXT("Task and inline steps leave the boat identical (simple %d)"), bSimple), Same(Ref.Boat.GetState(), Task.Boat.GetState()));
+		TestTrue(FString::Printf(TEXT("Task and inline steps leave the boat identical (mode %d)"), Mode), Same(Ref.Boat.GetState(), Task.Boat.GetState()));
 		const FBoatControls& RC = Ref.Controls;
 		const FBoatControls& TC = Task.Controls;
 		TestTrue(TEXT("Controls identical (the assist trimmed the same)"), RC.MainSheet == TC.MainSheet && RC.JibSheet == TC.JibSheet && RC.Traveler == TC.Traveler
@@ -273,11 +282,11 @@ bool FSailingParallelBoatsTest::RunTest(const FString& Parameters)
 	for (int32 F = 0; F < 480; ++F)
 	{
 		const double Dt = FrameDt(F);
-		for (int32 K = 0; K < N; ++K) Alone[K]->Job(SeaA, Alone[K]->Stepper.Advance(Dt), false).Run();
+		for (int32 K = 0; K < N; ++K) Alone[K]->Job(SeaA, Alone[K]->Stepper.Advance(Dt), false, true).Run();
 		TArray<UE::Tasks::FTask> Tasks;
 		for (int32 K = 0; K < N; ++K)
 		{
-			const FBoatStepJob Job = Together[K]->Job(SeaB, Together[K]->Stepper.Advance(Dt), false);
+			const FBoatStepJob Job = Together[K]->Job(SeaB, Together[K]->Stepper.Advance(Dt), false, true);
 			Tasks.Add(UE::Tasks::Launch(TEXT("ParallelBoatsTest"), [Job]() { Job.Run(); }));
 		}
 		UE::Tasks::Wait(Tasks);
