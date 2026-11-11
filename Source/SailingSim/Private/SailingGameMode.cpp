@@ -1609,6 +1609,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 				{
 					if (USailSessionSubsystem* Session = USailSessionSubsystem::Get(this)) Session->StartSession(Lesson, this);
 				}), 6.f, false);
+				bSceneHandover = true;
 				SAIL_LOG(Display, TEXT("Next: %s's first lesson, %s, loads in 6 s"), *Tier->Name, *Tier->Lessons[0].Title);
 			}
 		}
