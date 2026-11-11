@@ -198,7 +198,27 @@ namespace SailHudImpl
 			const FVector2f Tip = FVector2f(S.X - 28.f, 28.f);
 			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, WindTrue, true, 3.f);
 			FSlateDrawElement::MakeText(Out, Layer + 2, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, Ink);
-			return Layer + 2;
+			// #602 (the #400 audit): a drill's marks still to round and the person in the water, on the map: a triangle's marks
+			// could only be found by the panel's distance, and an overboard drill is about keeping them in sight. The next
+			// mark larger; one off the map sits on its edge, so its direction shows.
+			const FDrillRunner& D = Boat->GetDrill();
+			if (D.IsActive())
+			{
+				const FVector2f MapOrigin(4.f, 4.f), MapSize(S.X - 8.f, S.Y - 8.f);
+				auto Dot = [&](const FVector2D& At, float R, const FLinearColor& Col)
+				{
+					bool bClamped = false;
+					const FVector2f Q = SSailHud::MiniMapPoint(P, At, W.SpanM, MapOrigin, MapSize, bClamped);
+					const float Rd = bClamped ? R * 0.75f : R;
+					TArray<FVector2f> Ring;
+					for (int32 K = 0; K <= 12; ++K) Ring.Add(Q + FVector2f(FMath::Cos(K * UE_TWO_PI / 12.f), FMath::Sin(K * UE_TWO_PI / 12.f)) * Rd);
+					FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Ring, ESlateDrawEffect::None, Col, true, Rd);
+				};
+				const TArray<FVector2D>& Marks = D.GetMarks();
+				for (int32 K = D.GetNextMark(); K < Marks.Num(); ++K) Dot(Marks[K], K == D.GetNextMark() ? 4.5f : 3.f, Warn);
+				if (D.HasDummy()) Dot(D.GetDummy(), 4.5f, Port);
+			}
+			return Layer + 3;
 		}
 	private:
 		TWeakObjectPtr<APlayerController> Player;
@@ -700,6 +720,18 @@ void SSailHud::Refresh()
 	Hints.Add((SailUI::UsingGamepad() ? KeyName(TEXT("Menu"), false) : FString(TEXT("Esc"))) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+FVector2f SSailHud::MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped)
+{
+	// Map frame: X north, Y east; the minimap is north up, so east is +x on screen and north is -y.
+	const double Span = FMath::Max(SpanM, 1.0);
+	FVector2f D(float((TargetMap.Y - BoatMap.Y) / Span) * Size.X, float(-(TargetMap.X - BoatMap.X) / Span) * Size.Y);
+	const FVector2f Half = Size * 0.5f - FVector2f(6.f, 6.f);
+	const float K = FMath::Max(FMath::Abs(D.X) / FMath::Max(Half.X, 1.f), FMath::Abs(D.Y) / FMath::Max(Half.Y, 1.f));
+	bClamped = K > 1.f;
+	if (bClamped) D /= K;
+	return Origin + Size * 0.5f + D;
 }
 
 void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)
