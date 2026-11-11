@@ -105,6 +105,8 @@ public:
 	/** Prologue step 1 (docs/prologue/README.md): the scripted crew scene this session runs, or null. A prologue session is
 	 *  -SailingPrologue=1 for now (the first-launch flow comes later); it sails the scene's stand-in boat and wind. */
 	const Sailing::FScriptedScene* GetScene() const { return bScene ? &Scene : nullptr; }
+	/** #596: a finished scene hands over to its next session in a few seconds (the first job to its lesson). */
+	bool IsSceneHandoverPending() const { return bScene && bSceneHandover; }
 	static bool IsPrologueRun();
 	/** The boat the scene follows hands it her state and the crew's input once a frame, after her physics (the pawn).
 	 *  The scene steps on the sim clock (her physics time). */
@@ -266,6 +268,7 @@ private:
 	// Prologue step 1: the scene, its clock (the boat's physics time when it last stepped) and the last call voiced.
 	Sailing::FScriptedScene Scene;
 	bool bScene = false, bSceneStarted = false, bSceneRecorded = false, bSceneStandIn = false;
+	bool bSceneHandover = false;   // #596: a finished scene's cut to its lesson (setting.then) is on its way
 	int32 SceneReefs = 0;
 	double SceneTime = 0.0;
 	int32 SceneCallSerial = 0;
