@@ -826,16 +826,27 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	for (const float X : { -4.5f, 4.5f }) G.Lights.Add({ At(L(X, HY + 0.5 * PD), Floor + PostH - 0.2f), 1 });
 	// Steps down from the porch's west end, and the doors: double doors onto the porch by the steps, one in the north-east
 	// end wall toward the lot, one at the back toward the pool.
-	// Each step reaches down to 10 cm under the lowest ground below its corners (docs/club-step: they were 14 cm slabs at
-	// fixed heights, and where the lawn falls away toward the docks they floated over it).
-	auto StepAt = [&](double CY, float HalfY, float Top)
+	// A flight from the porch floor down to the landing's top (below): risers of 18 cm or less over the 1.05 m between the
+	// porch's edge and the landing, each step reaching 10 cm under the lowest ground below its corners. (docs/club-step: two
+	// fixed 14 cm slabs floated where the lawn falls away toward the docks, and a slab seated there became a wall.)
+	constexpr float PadHX = 1.3f, PadHY = 1.15f, PadHZ = 0.1f, StepRun = 1.05f;
+	const FVector2D PadC = L(-7.0, HY + PD + StepRun + PadHY);
+	float PadTop = GZ(PadC);
+	for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) PadTop = FMath::Max(PadTop, GZ(L(-7.0 + SX * PadHX, HY + PD + StepRun + PadHY + SY * PadHY)));
+	PadTop += 0.05f;
 	{
-		float Low = Top - 0.14f;
-		for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) Low = FMath::Min(Low, GZ(L(-7.0 + SX * 1.1, CY + SY * HalfY)) - 0.1f);
-		G[EKitLook::Concrete].Box(At(L(-7.0, CY), 0.5f * (Top + Low)), FVector(1.1f, HalfY, 0.5f * (Top - Low)), B.HeadingDeg);
-	};
-	StepAt(HY + PD + 0.35, 0.35f, Floor);
-	StepAt(HY + PD + 0.75, 0.3f, GZ(L(-7.0, HY + PD + 0.75)) + 0.09f);
+		const float Drop = FMath::Max(Floor - PadTop, 0.f);
+		const int32 N = FMath::Max(1, FMath::CeilToInt32(Drop / 0.18f));   // risers; the landing is the last tread
+		const float Riser = Drop / N, Tread = N > 1 ? StepRun / (N - 1) : StepRun;
+		for (int32 I = 1; I < N; ++I)
+		{
+			const double CY = HY + PD + (I - 0.5) * Tread;
+			const float Top = Floor - I * Riser;
+			float Low = Top - 0.14f;
+			for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) Low = FMath::Min(Low, GZ(L(-7.0 + SX * 1.1, CY + SY * 0.5 * Tread)) - 0.1f);
+			G[EKitLook::Concrete].Box(At(L(-7.0, CY), 0.5f * (Top + Low)), FVector(1.1f, 0.5f * Tread, 0.5f * (Top - Low)), B.HeadingDeg);
+		}
+	}
 	// A door W wide (one leaf or a pair) in the wall face through local (CX, CY): along X (a long wall) or along Y (an end
 	// wall), opening toward OutSign. A trim frame and head, an aluminium threshold; each leaf in the Door look with raised
 	// stiles and rails (the lower panel and the glass light in the upper one sit 2.4 cm behind them) and a pull handle on
@@ -874,12 +885,7 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	// visible steps (docs/club-door).
 	const FVector2D Steps = L(-7.0, HY + PD + 1.1);
 	{
-		constexpr float PadHX = 1.3f, PadHY = 1.15f, PadHZ = 0.1f;
-		const FVector2D PadC = L(-7.0, HY + PD + 1.05 + PadHY);
-		float Top = GZ(PadC);
-		for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) Top = FMath::Max(Top, GZ(L(-7.0 + SX * PadHX, HY + PD + 1.05 + PadHY + SY * PadHY)));
-		Top += 0.05f;
-		G[EKitLook::Concrete].Box(At(PadC, Top - PadHZ), FVector(PadHX, PadHY, PadHZ), B.HeadingDeg);
+		G[EKitLook::Concrete].Box(At(PadC, PadTop - PadHZ), FVector(PadHX, PadHY, PadHZ), B.HeadingDeg);   // PadTop: above, with the steps
 	}
 	auto Nearest = [&](const TArray<FVector2D>& Pts) { FVector2D Best = Pts[0]; for (const FVector2D& Q : Pts) if (FVector2D::Distance(Q, Steps) < FVector2D::Distance(Best, Steps)) Best = Q; return Best; };
 	for (const FMarinaLine& W : Marina.Walkways) if (W.Points.Num()) { const FVector2D E = Nearest(W.Points); Walk(Steps, E, 1.8f); Bollards(Steps, E); }
