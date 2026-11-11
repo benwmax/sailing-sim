@@ -21,13 +21,16 @@ every bake used to change the LFS object of all 24 tiles (22 of them for nothing
 - The hash alone can't decide across machines (#632): MSVC and clang differ in the last bit of a float, and the Mac's
   bake of three tiles moved vertices by up to 0.01 mm (X and Y only; the same vertex, triangle and group counts), which
   crossed the 0.1 mm rounding step in a few positions and, in two tiles, in normals or tangents. No rounding grid is safe
-  from noise that lands on its edges. So a tile whose hash differs is compared with its saved mesh before it is baked
-  again (`TileMatchesSaved`: the same looks in order, vertex and triangle counts and triangles; positions within 0.1 mm;
-  normals, tangents, UVs and colours within 1e-3). If it matches, it is kept unsaved and the sidecar keeps the hash it
-  already records, so another machine's float noise changes neither the tile nor the sidecar.
-- `TileHashVersion` (2 since #632) is part of every hash and the sidecar's first line: bump it when `BakeMesh` builds a
-  mesh differently from the same geometry (build settings, attributes, materials); every tile is then checked against
-  its saved mesh again (and baked if that differs).
+  from noise that lands on its edges. So a tile whose recorded hash differs is compared with its saved mesh before it is
+  baked again (`TileMatchesSaved`: the same looks in order, vertex and triangle counts and triangles; positions within
+  0.1 mm, compared in double; normals, tangents, UVs and colours within 1e-3). If it matches, it is kept unsaved and the
+  sidecar keeps the hash it already records, so another machine's float noise changes neither the tile nor the sidecar.
+  A genuine change under that tolerance (under 0.1 mm, a normal turned under 0.06 deg) is kept too: no generator moves
+  anything by so little.
+- The tolerance compare runs only against a recorded hash. A tile with no line in the sidecar (a new tile, a missing
+  sidecar or line) is baked, and so is every tile after a `TileHashVersion` bump (2 since #632; it is part of every hash
+  and the sidecar's first line): bump it when `BakeMesh` builds a mesh differently from the same geometry (build
+  settings, attributes, Nanite settings, materials), and everything re-bakes once.
 
 ## Checked on the PC (Nov 11 2026)
 

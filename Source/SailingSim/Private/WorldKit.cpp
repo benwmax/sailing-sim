@@ -719,8 +719,9 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
 // settings, attributes, materials), so every tile is checked against its saved mesh again.
 // The hash alone can't decide across machines: MSVC and clang differ in the last bit of a float (#632: the Mac's bake
 // of three tiles moved vertices by up to 0.01 mm, X and Y only, same counts), and any rounding grid has edges such noise
-// lands on. So a tile whose hash differs is compared with its saved mesh within a tolerance (TileMatchesSaved) before
-// it is baked again, and a kept tile keeps the hash the sidecar records.
+// lands on. So a tile whose recorded hash differs is compared with its saved mesh within a tolerance (TileMatchesSaved)
+// before it is baked again, and a kept tile keeps the hash the sidecar records. A tile with no recorded hash (a new tile,
+// a missing sidecar or line, a TileHashVersion bump) always bakes.
 static constexpr int32 TileHashVersion = 2;
 
 static FString TileGeometryHash(const FKitGeometry& G)
@@ -757,7 +758,8 @@ static FString TileGeometryHash(const FKitGeometry& G)
 // Whether the saved mesh is the geometry BakeMesh would build from G, within 0.1 mm for positions and 1e-3 for normals,
 // tangents, UVs and colours: same looks in the same order, same vertex and triangle counts, the same triangles.
 // BakeMesh makes one polygon group per non-empty look, then one vertex and one vertex instance per kit vertex and one
-// triangle per three indices, in order, so the saved description's compact IDs line up with the kit's arrays.
+// triangle per three indices, in order, so the saved description's compact IDs line up with the kit's arrays (only
+// because BakeMesh builds a fresh description and never deletes elements from it).
 static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 {
 	const FMeshDescription* MD = Mesh ? Mesh->GetMeshDescription(0) : nullptr;
@@ -780,7 +782,8 @@ static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 	const TVertexInstanceAttributesConstRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
 	const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
 	if (UVs.GetNumChannels() < 2) return false;
-	auto Near3 = [](const FVector3f& A, const FVector& B, float Tol) { return FMath::Abs(A.X - float(B.X)) <= Tol && FMath::Abs(A.Y - float(B.Y)) <= Tol && FMath::Abs(A.Z - float(B.Z)) <= Tol; };
+	// in double: one float step past 1.3 km from the origin is 0.016 cm, more than the 0.01 cm tolerance (bridge and shore tiles)
+	auto Near3 = [](const FVector3f& A, const FVector& B, double Tol) { return FMath::Abs(double(A.X) - B.X) <= Tol && FMath::Abs(double(A.Y) - B.Y) <= Tol && FMath::Abs(double(A.Z) - B.Z) <= Tol; };
 	auto Near2 = [](const FVector2f& A, const FVector2D& B) { return FMath::Abs(A.X - float(B.X)) <= 1e-3f && FMath::Abs(A.Y - float(B.Y)) <= 1e-3f; };
 	int32 Base = 0, Group = 0, Tri = 0;
 	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
@@ -792,7 +795,7 @@ static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 		{
 			const FVertexInstanceID VI(Base + I);
 			const FVector4f C = Colors[VI], Want = FVector4f(FLinearColor::FromSRGBColor(S.Col[I]));
-			if (!Near3(Positions[FVertexID(Base + I)], S.V[I], 0.01f) || !Near3(Normals[VI], S.N[I], 1e-3f) || !Near3(Tangents[VI], S.Tan[I].TangentX, 1e-3f)
+			if (!Near3(Positions[FVertexID(Base + I)], S.V[I], 0.01) || !Near3(Normals[VI], S.N[I], 1e-3) || !Near3(Tangents[VI], S.Tan[I].TangentX, 1e-3)
 				|| !Near2(UVs.Get(VI, 0), S.UV[I]) || !Near2(UVs.Get(VI, 1), S.UV1[I])
 				|| FMath::Abs(C.X - Want.X) > 1e-3f || FMath::Abs(C.Y - Want.Y) > 1e-3f || FMath::Abs(C.Z - Want.Z) > 1e-3f || FMath::Abs(C.W - Want.W) > 1e-3f) return false;
 		}
@@ -855,11 +858,13 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 		After.Add(Name, Hash);   // replaced below by the recorded hash for a tile kept within tolerance
 		const FString* Was = Before.Find(Name);
 		UStaticMesh* Saved = FPackageName::DoesPackageExist(Path) ? LoadObject<UStaticMesh>(nullptr, *(Path + TEXT(".") + Name)) : nullptr;
+		// Only a tile the sidecar records can be kept: a TileHashVersion bump, a missing line or a new tile bakes once. Its
+		// saved mesh may differ from this machine's geometry only by float noise (TileMatchesSaved).
 		const bool bSameHash = Saved && Was && *Was == Hash;
-		if (Saved && (bSameHash || TileMatchesSaved(KV.Value, Saved)))
+		if (Saved && Was && (bSameHash || TileMatchesSaved(KV.Value, Saved)))
 		{
 			// kept as saved; a tile matched within tolerance keeps the sidecar's hash (another machine's float noise)
-			if (Was) After.Add(Name, *Was);
+			After.Add(Name, *Was);
 			Out.Add(Saved);
 			++Skipped;
 			if (!bSameHash) ++Matched;
