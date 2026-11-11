@@ -193,6 +193,15 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	TestEqual(TEXT("Free sail restart"), Restart, FString(TEXT("Restart from launch spot")));
 	SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
 	TestEqual(TEXT("A drill restarts the drill"), Restart, FString(TEXT("Restart drill")));
+	// #605: a lesson's pause menu is titled as the lesson, not DRILLS.
+	const FCareerContent& Content = FCareerContent::Get();
+	if (TestTrue(TEXT("The career has lessons"), Content.Tiers.Num() > 0 && Content.Tiers[0].Lessons.Num() > 0))
+	{
+		const FCareerLesson& First = Content.Tiers[0].Lessons[0];
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill);
+		TestEqual(FString::Printf(TEXT("A lesson's pause is titled as the lesson (%s)"), *First.Title), Title, First.Title);
+		TestNotEqual(TEXT("... not the mode's name"), Title, USailSessionSubsystem::ModeName(ESailMode::Drill));
+	}
 	Sailing::FScriptedScene Job;
 	FString Error;
 	if (!TestTrue(TEXT("The first job loads"), ASailingGameMode::LoadFirstJob(Job, &Error))) { AddError(Error); return false; }

@@ -1645,7 +1645,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildMode()
 
 // ---------------------------------------------------------------- 5.9 Pause
 
-bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart)
+bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart, ESailingDrill ActiveDrill)
 {
 	if (Scene && Scene->IsLoaded() && !Scene->IsComplete())
 	{
@@ -1654,6 +1654,17 @@ bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode
 		return true;
 	}
 	OutTitle = USailSessionSubsystem::ModeName(Mode);
+	// #605 (the #400 audit): a lesson's pause menu read DRILLS. In a drill, the career lesson that sails it (its title, as
+	// the briefing and the Career screen give it), else the drill's own name.
+	if (Mode == ESailMode::Drill && ActiveDrill != ESailingDrill::None)
+	{
+		const FCareerLesson* Lesson = nullptr;
+		for (const FCareerTier& T : FCareerContent::Get().Tiers)
+		{
+			if (!Lesson) Lesson = T.Lessons.FindByPredicate([ActiveDrill](const FCareerLesson& X) { return X.Drill == ActiveDrill; });
+		}
+		OutTitle = Lesson && !Lesson->Title.IsEmpty() ? Lesson->Title : FString(DrillName(ActiveDrill));
+	}
 	OutRestart = Mode == ESailMode::Drill ? TEXT("Restart drill") : (Mode == ESailMode::Race ? TEXT("Restart race") : TEXT("Restart from launch spot"));
 	return false;
 }
@@ -1684,7 +1695,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 	const ASailingGameMode* GM = Player.IsValid() && Player->GetWorld() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
 	const Sailing::FScriptedScene* Scene = GM ? GM->GetScene() : nullptr;
 	FString Title, RestartLabel;
-	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel);
+	const bool bScene = PauseHeading(Scene, Mode, Title, RestartLabel, P && P->GetDrill().IsActive() ? P->GetDrill().GetDrill() : ESailingDrill::None);
 	Item(TEXT("Resume"), FString(), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (bScene)
 	{
