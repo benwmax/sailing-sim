@@ -1,0 +1,6 @@
+Club porch, second pass (pc/club-step-2 from pc/club-step e43a22ba; #628 follow-ups). High, 1280x720, Drone lens:
+door-8m and front-30m as docs/club-door; porch-low is new, 2.9 m over the water, looking along the porch front where the
+lawn drops away. before = e43a22ba (the flight of steps); after = the landing seated on its lowest corner, the one-riser
+case as a single tread (not hit at this club: the drop here takes three treads), and white Trim skirting under the deck
+on its open sides (front either side of the steps, both ends), from the deck's underside to 10 cm under the ground.
+SailingSim.World 1/1, SailingSim.Lake 17/17. The first pass's stills: Inputs/club-step/ (13a086e7).
