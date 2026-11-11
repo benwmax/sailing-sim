@@ -1028,18 +1028,95 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 			G[EKitLook::Floats].Span(A + Dir * F0, A + Dir * F1, R.Width * 0.85f, -0.35f, Deck - 0.12f);
 		}
 		RubStrips(A, B, R.Width, Deck);
-		// A hinged transition plate where the row meets the fixed walkway, with its side rails; a swim ladder at the row's end.
-		G[EKitLook::Metal].Span(A - Dir * 0.9, A + Dir * 0.2, R.Width * 0.9f, Deck + 0.01f, Deck + 0.04f);
-		for (const double S : { -1.0, 1.0 })
+		// The gangway where the row meets the fixed walkway (docs/405-gangway), from the walkway's edge down onto the floating
+		// deck: a weathered aluminium ramp (the Steel look) with cross cleats every 30 cm for footing, channel edges, a hinge
+		// plate with its knuckles on the walkway, a toe lip lying on the row's deck, and rails following the slope. It was a
+		// flat bright Metal slab at the row's height (#405: a glaring white plate with no tread, hinge or edge). A row with no
+		// walkway within 6 m keeps the flat plate.
+		const FMarinaLine* Shore = nullptr;
+		FVector2D Q = A;
+		double Best = 6.0;
+		for (const FMarinaLine& W : Marina.Walkways)
 		{
-			const FVector2D O = Left * (S * 0.45 * R.Width);
-			G[EKitLook::Trim].Span(A - Dir * 0.9 + O, A + Dir * 0.2 + O, 0.04f, Deck + 0.85f, Deck + 0.9f);
-			for (const float T : { -0.85f, 0.15f })
+			for (int32 I = 1; I < W.Points.Num(); ++I)
 			{
-				const FVector2D P = A + Dir * T + O;
-				G[EKitLook::Trim].Box(FVector(P.X, P.Y, Deck + 0.47f), FVector(0.025f, 0.025f, 0.43f), 0.f);
+				const FVector2D C = FMath::ClosestPointOnSegment2D(A, W.Points[I - 1], W.Points[I]);
+				const double D = FVector2D::Distance(C, A) - 0.5 * W.Width;
+				if (D < Best) { Best = D; Q = C; Shore = &W; }
 			}
 		}
+		if (Shore && Best > 0.05)
+		{
+			const FVector2D Out = (A - Q).GetSafeNormal();
+			const FVector2D P0 = Q + Out * (0.5 * Shore->Width - 0.15), P1 = A + Dir * 0.45;   // 15 cm onto the walkway, 45 cm onto the row
+			const float Z0 = Shore->Height + 0.025f, Z1 = Deck + 0.035f;                         // the deck plate's top at each end
+			const FVector2D Run = P1 - P0, Along = Run.GetSafeNormal(), Side(-Along.Y, Along.X);
+			const float Len = float(Run.Size()), Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Run.Y, Run.X)));
+			const float Pitch = float(FMath::RadiansToDegrees(FMath::Atan2(Z1 - Z0, Len)));
+			const float HW = FMath::Min(0.6f, 0.45f * R.Width);
+			// A box turned by pitch and yaw (FKitSection::Box's faces with a pitch): C its centre, E its half extents.
+			auto Pitched = [&](EKitLook Look, const FVector& C, const FVector& E)
+			{
+				const FRotator Rot(Pitch, Yaw, 0.f);
+				auto P = [&](float X, float Y, float Z) { return C + Rot.RotateVector(FVector(X * E.X, Y * E.Y, Z * E.Z)); };
+				const float LX = 2.f * E.X, LY = 2.f * E.Y, LZ = 2.f * E.Z;
+				FKitSection& S = G[Look];
+				S.Quad(P(-1, -1, 1), P(-1, 1, 1), P(1, 1, 1), P(1, -1, 1), { 0, 0 }, { LY, 0 }, { LY, LX }, { 0, LX });
+				S.Quad(P(-1, -1, -1), P(1, -1, -1), P(1, 1, -1), P(-1, 1, -1), { 0, 0 }, { LX, 0 }, { LX, LY }, { 0, LY });
+				S.Quad(P(-1, -1, -1), P(-1, 1, -1), P(-1, 1, 1), P(-1, -1, 1), { 0, 0 }, { LY, 0 }, { LY, LZ }, { 0, LZ });
+				S.Quad(P(1, 1, -1), P(1, -1, -1), P(1, -1, 1), P(1, 1, 1), { 0, 0 }, { LY, 0 }, { LY, LZ }, { 0, LZ });
+				S.Quad(P(1, -1, -1), P(-1, -1, -1), P(-1, -1, 1), P(1, -1, 1), { 0, 0 }, { LX, 0 }, { LX, LZ }, { 0, LZ });
+				S.Quad(P(-1, 1, -1), P(1, 1, -1), P(1, 1, 1), P(-1, 1, 1), { 0, 0 }, { LX, 0 }, { LX, LZ }, { 0, LZ });
+			};
+			// a point on the ramp's top at distance X from P0 and Y to its side, Up over the deck plate
+			auto On = [&](float X, float Y, float Up) { const FVector2D Q2 = P0 + Along * X + Side * Y; return FVector(Q2.X, Q2.Y, Z0 + (Z1 - Z0) * X / Len + Up); };
+			const FVector Up3 = FRotator(Pitch, Yaw, 0.f).RotateVector(FVector(0, 0, 1));
+			Pitched(EKitLook::Steel, On(0.5f * Len, 0.f, 0.f) - Up3 * 0.03f, FVector(0.5f * Len, HW, 0.03f));   // the deck plate
+			for (float X = 0.25f; X < Len - 0.2f; X += 0.3f)                                                     // cleats
+				Pitched(EKitLook::Steel, On(X, 0.f, 0.f) + Up3 * 0.009f, FVector(0.018f, HW - 0.06f, 0.009f));
+			for (const float S : { -1.f, 1.f })                                                                  // channel edges
+				Pitched(EKitLook::Steel, On(0.5f * Len, S * (HW + 0.025f), 0.f) + Up3 * 0.02f, FVector(0.5f * Len, 0.025f, 0.07f));
+			// The hinge at the walkway: a plate screwed to its deck and five knuckles, alternating plate and ramp, along the joint.
+			const FVector2D H = P0 - Along * 0.14;
+			G[EKitLook::Steel].Box(FVector(H.X, H.Y, Shore->Height + 0.006f), FVector(0.14f, HW, 0.006f), Yaw);
+			for (int32 K = 0; K < 5; ++K)
+			{
+				const FVector2D Kn = P0 + Side * (-HW + (2.f * HW) * (K + 0.5f) / 5.f);
+				G[EKitLook::Metal].Box(FVector(Kn.X, Kn.Y, Shore->Height + 0.02f), FVector(0.025f, 0.38f * HW / 2.5f, 0.02f), Yaw);
+			}
+			// The toe lip on the row's deck, chamfered by stepping down in two plates.
+			for (int32 K = 0; K < 2; ++K)
+			{
+				const FVector2D L0 = P1 + Along * (0.06 + 0.1 * K);
+				G[EKitLook::Steel].Box(FVector(L0.X, L0.Y, Deck + 0.008f - 0.004f * K), FVector(0.06f, HW, 0.008f - 0.004f * K), Yaw);
+			}
+			// Rails: a post at each end of each side and the top and middle rails along the slope.
+			for (const float S : { -1.f, 1.f })
+			{
+				for (const float X : { 0.06f, Len - 0.06f })
+				{
+					const FVector B3 = On(X, S * (HW + 0.025f), 0.07f);
+					G[EKitLook::Trim].Box(B3 + FVector(0, 0, 0.42f), FVector(0.025f, 0.025f, 0.42f), Yaw);
+				}
+				for (const float Hh : { 0.9f, 0.5f })
+					Pitched(EKitLook::Trim, On(0.5f * Len, S * (HW + 0.025f), Hh), FVector(0.5f * Len + 0.03f, 0.022f, 0.022f));
+			}
+		}
+		else
+		{
+			G[EKitLook::Metal].Span(A - Dir * 0.9, A + Dir * 0.2, R.Width * 0.9f, Deck + 0.01f, Deck + 0.04f);
+			for (const double S : { -1.0, 1.0 })
+			{
+				const FVector2D O = Left * (S * 0.45 * R.Width);
+				G[EKitLook::Trim].Span(A - Dir * 0.9 + O, A + Dir * 0.2 + O, 0.04f, Deck + 0.85f, Deck + 0.9f);
+				for (const float T : { -0.85f, 0.15f })
+				{
+					const FVector2D P = A + Dir * T + O;
+					G[EKitLook::Trim].Box(FVector(P.X, P.Y, Deck + 0.47f), FVector(0.025f, 0.025f, 0.43f), 0.f);
+				}
+			}
+		}
+		// A swim ladder at the row's end.
 		if (!bDockKitMeshes)
 		{
 			const FVector2D L0 = B - Left * 0.22, L1 = B + Left * 0.22;
