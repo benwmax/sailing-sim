@@ -1,0 +1,74 @@
+[
+  {
+    "file": "J-22 sailboat Jay2PLay on trailer",
+    "author": "Thomas Gutenstein",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ-22_sailboat_Jay2PLay_on_trailer.jpg",
+    "local": "Inputs/shape-refs/j22/j22-broadside-trailer.jpg"
+  },
+  {
+    "file": "J22 sailboat 2528",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_2528.jpg",
+    "local": "Inputs/shape-refs/j22/j22-above-deck-cockpit.jpg"
+  },
+  {
+    "file": "J22 sailboat Great White J 0563",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_0563.jpg",
+    "local": "Inputs/shape-refs/j22/j22-broadside-crane-stern.jpg"
+  },
+  {
+    "file": "J22 sailboat Great White J 4378",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_4378.jpg",
+    "local": "Inputs/shape-refs/j22/j22-above-bow-deck.jpg"
+  },
+  {
+    "file": "J22 sailboat Great White J 4381",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_4381.jpg",
+    "local": "Inputs/shape-refs/j22/j22-above-aft-cockpit-transom.jpg"
+  },
+  {
+    "file": "J22 sailboat Great White J 4430",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_4430.jpg",
+    "local": "Inputs/shape-refs/j22/j22-broadside-cabin-portlights.jpg"
+  },
+  {
+    "file": "J22 sailboat Great White J 5205",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_Great_White_J_5205.jpg",
+    "local": "Inputs/shape-refs/j22/j22-broadside-crane-cabin.jpg"
+  },
+  {
+    "file": "J22 sailboat NSC Beagle III 8187",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_NSC_Beagle_III_8187.jpg",
+    "local": "Inputs/shape-refs/j22/j22-broadside-cabin-dock.jpg"
+  },
+  {
+    "file": "J22 sailboat StranJe Brew 4429",
+    "author": "Ahunt",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "page": "https://commons.wikimedia.org/wiki/File%3AJ22_sailboat_StranJe_Brew_4429.jpg",
+    "local": "Inputs/shape-refs/j22/j22-above-bow-cockpit.jpg"
+  }
+]
