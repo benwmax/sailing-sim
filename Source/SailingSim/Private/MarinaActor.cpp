@@ -1034,11 +1034,13 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		// The gangway where the row meets the fixed walkway (docs/405-gangway), from the walkway's edge down onto the floating
 		// deck: a weathered aluminium ramp (the Steel look) with cross cleats every 30 cm for footing, channel edges, a hinge
 		// plate with its knuckles on the walkway, a toe lip lying on the row's deck, and rails following the slope. It was a
-		// flat bright Metal slab at the row's height (#405: a glaring white plate with no tread, hinge or edge). A row with no
-		// walkway within 6 m keeps the flat plate.
+		// flat bright Metal slab at the row's height (#405: a glaring white plate with no tread, hinge or edge). A walkway up to
+		// 12 m off still gets one (dock C's is 10.6 m: long aluminium gangways are usual); a row with none, or a gangway under
+		// 0.5 m, keeps the flat plate.
+		{
 		const FMarinaLine* Shore = nullptr;
 		FVector2D Q = A;
-		double Best = 6.0;
+		double Best = 12.0;
 		for (const FMarinaLine& W : Marina.Walkways)
 		{
 			for (int32 I = 1; I < W.Points.Num(); ++I)
@@ -1048,10 +1050,10 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				if (D < Best) { Best = D; Q = C; Shore = &W; }
 			}
 		}
-		if (Shore && Best > 0.05)
+		const FVector2D Out = (A - Q).GetSafeNormal();
+		const FVector2D P0 = Shore ? Q + Out * (0.5 * Shore->Width - 0.15) : A, P1 = A + Dir * 0.45;   // 15 cm onto the walkway, 45 cm onto the row
+		if (Shore && Best > 0.05 && FVector2D::Distance(P0, P1) >= 0.5)
 		{
-			const FVector2D Out = (A - Q).GetSafeNormal();
-			const FVector2D P0 = Q + Out * (0.5 * Shore->Width - 0.15), P1 = A + Dir * 0.45;   // 15 cm onto the walkway, 45 cm onto the row
 			const float Z0 = Shore->Height + 0.025f, Z1 = Deck + 0.035f;                         // the deck plate's top at each end
 			const FVector2D Run = P1 - P0, Along = Run.GetSafeNormal(), Side(-Along.Y, Along.X);
 			const float Len = float(Run.Size()), Yaw = float(FMath::RadiansToDegrees(FMath::Atan2(Run.Y, Run.X)));
@@ -1094,12 +1096,14 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				const FVector2D L0 = P1 + Along * (0.06 + 0.1 * K);
 				G[EKitLook::Steel].Box(FVector(L0.X, L0.Y, Deck + 0.008f - 0.004f * K), FVector(0.06f, HW, 0.008f - 0.004f * K), Yaw);
 			}
-			// Rails: a post at each end of each side and the top and middle rails along the slope.
+			// Rails: posts at each end of each side and about every 2 m between (dock C's gangway is 10 m), and the top and
+			// middle rails along the slope.
+			const int32 Bays = FMath::Max(1, FMath::CeilToInt32((Len - 0.12f) / 2.f));
 			for (const float S : { -1.f, 1.f })
 			{
-				for (const float X : { 0.06f, Len - 0.06f })
+				for (int32 K = 0; K <= Bays; ++K)
 				{
-					const FVector B3 = On(X, S * (HW + 0.025f), 0.07f);
+					const FVector B3 = On(0.06f + (Len - 0.12f) * K / Bays, S * (HW + 0.025f), 0.07f);
 					G[EKitLook::Trim].Box(B3 + FVector(0, 0, 0.42f), FVector(0.025f, 0.025f, 0.42f), Yaw);
 				}
 				for (const float Hh : { 0.9f, 0.5f })
@@ -1119,6 +1123,7 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 					G[EKitLook::Trim].Box(FVector(P.X, P.Y, Deck + 0.47f), FVector(0.025f, 0.025f, 0.43f), 0.f);
 				}
 			}
+		}
 		}
 		// A swim ladder at the row's end.
 		if (!bDockKitMeshes)
@@ -1240,6 +1245,8 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 				for (const FRailGap& Gp : RailGaps)
 				{
 					if (Gp.Line != &L || FVector2D::DotProduct(Gp.Out, Left) * Side <= 0.0) continue;
+					// only the segment the gangway lands on: at a bend the next segment's projection would cut its first metres
+					if (FVector2D::Distance(Gp.At, FMath::ClosestPointOnSegment2D(Gp.At, A, B)) > 0.5 * L.Width + 0.05) continue;
 					const double T = FVector2D::DotProduct(Gp.At - A, Dir), G0 = T - Gp.Half, G1 = T + Gp.Half;
 					TArray<TPair<double, double>> Cut;
 					for (const TPair<double, double>& Rn : Out2)
