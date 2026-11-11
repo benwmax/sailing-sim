@@ -307,7 +307,7 @@ namespace Sailing
 		int SpinSide = 1;
 		int Reef = 0;               // reefs in the main as currently built
 		double EngineThrust[4] = { 0, 0, 0, 0 }; // N, each engine, lagging the throttle
-		double CapsizedTime = 0.0;  // s spent past 70 degrees of heel
+		double CapsizedTime = 0.0;  // s spent past the capsize tilt (FBoatModel::CapsizeTilt)
 		int WindwardSide = 1;       // +1 = wind from starboard (starboard tack), -1 = from port
 		double Time = 0.0;
 	};
@@ -423,6 +423,9 @@ namespace Sailing
 
 		/** Hydrostatic righting moment (N m) at a fixed heel, boat level in pitch and floating at its waterline. For tests. */
 		double RightingMomentAt(double HeelRad) const;
+		/** Tilt past which she counts as capsized once held there two seconds (rad): 70 deg for dinghies and multihulls; a
+		 *  ballasted monohull only within 10 deg of her own angle of vanishing stability (a knockdown is not a capsize). */
+		double CapsizeTilt() const { return CapsizeTiltRad; }
 
 		/** Cleats for dock lines (body frame): bow, both quarters and both midship springs. */
 		std::vector<Vec3> CleatPoints() const;
@@ -457,6 +460,7 @@ namespace Sailing
 		Vec3 CenterOfGravity;
 		Vec3 Inertia, EffectiveInertia, EffectiveMass;
 		double CanoeDepth = 0.25;
+		double CapsizeTiltRad = 70.0 * kDegToRad;
 		std::vector<double> DesignHullVolume; // m^3 each hull displaces floating upright at rest
 		double DesignVolume = 0.0;
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)

@@ -313,6 +313,19 @@ namespace Sailing
 		BuildHull();
 		BuildContactPoints();
 		Reset(0.0, 0.0, 0.0, 0.0);
+
+		// A ballasted keelboat knocked flat still rights herself while her righting moment is positive (the J/22 to about
+		// 107 deg crewed; her ORC certificate gives 104 light): only near that angle is she capsized. Dinghies and
+		// multihulls lying past 70 deg are over.
+		if (!Config.bMultihull && Config.BallastMass > 0.0)
+		{
+			double Vanish = 180.0;
+			for (double Deg = 70.0; Deg <= 180.0; Deg += 1.0)
+			{
+				if (RightingMomentAt(Deg * kDegToRad) <= 0.0) { Vanish = Deg; break; }
+			}
+			CapsizeTiltRad = std::max(70.0, Vanish - 10.0) * kDegToRad;
+		}
 	}
 
 	namespace
@@ -1396,7 +1409,7 @@ namespace Sailing
 			}
 		}
 		// Lying on her side or turned turtle (the heel alone reads near zero upside down).
-		State.CapsizedTime = Q.Tilt() > 70.0 * kDegToRad ? State.CapsizedTime + Dt : 0.0;
+		State.CapsizedTime = Q.Tilt() > CapsizeTiltRad ? State.CapsizedTime + Dt : 0.0;
 		T.bCapsized = State.CapsizedTime > 2.0;
 
 		// Windward side with hysteresis, from the apparent wind over the moving boat at masthead height. Not from the
