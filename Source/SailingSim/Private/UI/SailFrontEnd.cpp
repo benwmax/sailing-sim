@@ -1670,6 +1670,18 @@ bool SSailFrontEnd::PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode
 	return false;
 }
 
+TArray<FString> SSailFrontEnd::TiersOpenedBy(const FCareerTier& Tier)
+{
+	// #601 (the #400 audit): only tiers with lessons are open to sail. Coastal Cruiser was listed on the certificate, then
+	// read COMING, "Lessons to come", on the Career screen.
+	TArray<FString> Opens;
+	for (const FString& Id : Tier.Unlocks.Tiers)
+	{
+		if (const FCareerTier* X = FCareerContent::Get().Tier(Id); X && X->Lessons.Num() > 0) Opens.Add(X->Name);
+	}
+	return Opens;
+}
+
 SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 {
 	using namespace SailUI;
@@ -2419,6 +2431,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				}), false);
 			}
 		}
+		// #601 (the #400 audit): a checkride taken from a lesson's score screen ended with only Back to sailing, into the
+		// finished lesson (its panel all done, nothing to do). Its way on is the Career screen (over the pause menu, so Back
+		// from there resumes); Back to sailing stays.
+		if (bCheckride && !bFromCareer)
+		{
+			TSharedRef<SSailButton> ToCareer = ActionButton(TEXT("Career"), FSimpleDelegate::CreateLambda([this]()
+			{
+				Quiz.Reset();
+				CheckrideTierId.Reset();
+				QuizRetakeLessonId.Reset();
+				Stack.Last() = Build(ESailScreen::Pause);
+				Push(ESailScreen::Career);
+			}), true);
+			Ways->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ SNew(SBox).WidthOverride(320.f)[ ToCareer ] ];
+			if (!FirstWay.IsValid()) FirstWay = ToCareer;
+		}
 		Box->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ Ways ];
 		Box->AddSlot().AutoHeight()[ SNew(SBox).WidthOverride(320.f)[ Done ] ];
 		E.Focus = FirstWay.IsValid() ? FirstWay : TSharedPtr<SWidget>(Done);
@@ -2473,8 +2501,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 						const bool bAwarded = SailCareer::RecordCheckrideQuiz(T->Id, QuizRight, Quiz.Num());
 						if (bAwarded)
 						{
-							TArray<FString> Opens;
-							for (const FString& Id : T->Unlocks.Tiers) if (const FCareerTier* X = Content.Tier(Id)) Opens.Add(X->Name);
+							const TArray<FString> Opens = TiersOpenedBy(*T);
 							QuizCareerLine = T->CertificateName + TEXT(" earned.") + (Opens.Num() ? FString::Printf(TEXT(" Open now: %s."), *FString::Join(Opens, TEXT(", "))) : FString());
 						}
 						else if (T->Checkride.Quiz.Passes(QuizRight, Quiz.Num())) QuizCareerLine = FString::Printf(TEXT("Passed. The %s is already yours."), *T->CertificateName);

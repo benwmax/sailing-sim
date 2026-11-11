@@ -213,6 +213,30 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	return true;
 }
 
+// #601 (the #400 audit): the Day Sailor certificate opened "Club Racer, Coastal Cruiser", and Coastal Cruiser then read
+// COMING on the Career screen. Only tiers with lessons are named as open.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUICertificateOpensTest, "SailingSim.UI.CertificateOpens", FirstLaunchTestsLocal::FirstLaunchFlags)
+bool FSailingUICertificateOpensTest::RunTest(const FString&)
+{
+	const FCareerContent& Content = FCareerContent::Get();
+	const FCareerTier* Day = Content.Tier(TEXT("day-sailor"));
+	if (!TestNotNull(TEXT("Day Sailor"), Day)) return false;
+	const TArray<FString> Opens = SSailFrontEnd::TiersOpenedBy(*Day);
+	AddInfo(FString::Printf(TEXT("Day Sailor opens: %s"), *FString::Join(Opens, TEXT(", "))));
+	for (const FString& Id : Day->Unlocks.Tiers)
+	{
+		const FCareerTier* X = Content.Tier(Id);
+		if (!X) continue;
+		TestEqual(FString::Printf(TEXT("%s listed only if it has lessons (%d)"), *X->Name, X->Lessons.Num()), Opens.Contains(X->Name), X->Lessons.Num() > 0);
+	}
+	// #637's QA: by id, as career.json has them today: Club Racer (lessons) opens, Coastal Cruiser (a stub) does not.
+	const FCareerTier* Club = Content.Tier(TEXT("club-racer"));
+	const FCareerTier* Coastal = Content.Tier(TEXT("coastal-cruiser"));
+	if (TestNotNull(TEXT("Club Racer"), Club)) TestTrue(TEXT("Club Racer is named as open"), Opens.Contains(Club->Name));
+	if (TestNotNull(TEXT("Coastal Cruiser"), Coastal)) TestFalse(TEXT("Coastal Cruiser (no lessons yet) is not"), Opens.Contains(Coastal->Name));
+	return true;
+}
+
 // #596 (the #400 audit): in the first job the learning tip card and the instructor spoke at once with different
 // instructions. The tip card stays down while a scripted scene runs; outside one (or once it is done) it shows as before.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIOneCoachTest, "SailingSim.UI.OneCoach", FirstLaunchTestsLocal::FirstLaunchFlags)
