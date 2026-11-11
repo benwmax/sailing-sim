@@ -194,14 +194,30 @@ bool FSailingUIJobPauseTest::RunTest(const FString&)
 	TestEqual(TEXT("Free sail restart"), Restart, FString(TEXT("Restart from launch spot")));
 	SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
 	TestEqual(TEXT("A drill restarts the drill"), Restart, FString(TEXT("Restart drill")));
-	// #605: a lesson's pause menu is titled as the lesson, not DRILLS.
+	// #605 and #636: a lesson's pause menu is titled as the session's lesson, not DRILLS. Lessons in different tiers share
+	// drills, so it goes by the lesson's id; with no lesson (a drill from the Mode screen, Free Sail, or the lesson's drill
+	// after it finished) the drill's own name.
 	const FCareerContent& Content = FCareerContent::Get();
-	if (TestTrue(TEXT("The career has lessons"), Content.Tiers.Num() > 0 && Content.Tiers[0].Lessons.Num() > 0))
+	const FCareerTier* Day = Content.Tier(TEXT("day-sailor"));
+	const FCareerTier* Club = Content.Tier(TEXT("club-racer"));
+	if (TestTrue(TEXT("Day Sailor and Club Racer have lessons"), Day && Club && Day->Lessons.Num() > 0 && Club->Lessons.Num() > 0))
 	{
-		const FCareerLesson& First = Content.Tiers[0].Lessons[0];
-		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill);
+		const FCareerLesson& First = Day->Lessons[0];
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill, First.Id);
 		TestEqual(FString::Printf(TEXT("A lesson's pause is titled as the lesson (%s)"), *First.Title), Title, First.Title);
-		TestNotEqual(TEXT("... not the mode's name"), Title, USailSessionSubsystem::ModeName(ESailMode::Drill));
+		// A Club Racer lesson on a drill Day Sailor also sails: its own title, not the first match's.
+		const FCareerLesson* Shared = Club->Lessons.FindByPredicate([Day](const FCareerLesson& L)
+			{ return Day->Lessons.ContainsByPredicate([&L](const FCareerLesson& D) { return D.Drill == L.Drill; }); });
+		if (TestNotNull(TEXT("Club Racer shares a drill with Day Sailor"), Shared))
+		{
+			SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, Shared->Drill, Shared->Id);
+			TestEqual(FString::Printf(TEXT("Club Racer's lesson keeps its own title (%s)"), *Shared->Title), Title, Shared->Title);
+		}
+		// No lesson: a drill picked from the Mode screen, in Career or Free Sail, or a lesson's drill once it finished.
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart, First.Drill, FString());
+		TestEqual(TEXT("A drill with no lesson: the drill's own name"), Title, FString(DrillName(First.Drill)));
+		SSailFrontEnd::PauseHeading(nullptr, ESailMode::Drill, Title, Restart);
+		TestEqual(TEXT("No drill set: the mode's name"), Title, USailSessionSubsystem::ModeName(ESailMode::Drill));
 	}
 	Sailing::FScriptedScene Job;
 	FString Error;
