@@ -59,6 +59,9 @@ private:
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
 	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;
+	// Sound captions (USoundCaptions), refreshed with the rest at 10 Hz.
+	bool bCaptions = false;
+	FText CaptionsText;
 	FText CoachWho, CoachRole, CoachReason, CoachAction, CoachCpa, SignalsText, ScoreText, RaceHead, RaceTask, RaceLine, RaceResults, NavText, NextText;
 	FLinearColor CoachRoleColor = FLinearColor::White, CoachCpaColor = FLinearColor::White, RaceHeadColor = FLinearColor::White, RaceTaskColor = FLinearColor::White,
 		RaceLineColor = FLinearColor::White, ScoreColor = FLinearColor::White;

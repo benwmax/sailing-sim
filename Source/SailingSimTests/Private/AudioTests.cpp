@@ -7,6 +7,7 @@
 #include "Sound/SoundWave.h"
 #include "SailingAudio.h"
 #include "SailingSettings.h"
+#include "SoundCaptions.h"
 
 namespace
 {
@@ -93,5 +94,21 @@ bool FSailingAudioMixTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Wind is on board"), CueGroup(ESailingCue::Wind) == EGroup::Boat);
 	S->Volume = Keep[0]; S->VolumeBoat = Keep[1]; S->VolumeWorld = Keep[2]; S->VolumeWeather = Keep[3]; S->VolumeSignals = Keep[4]; S->bMonoAudio = bKeepMono;
 	UpdateMix();
+	return true;
+}
+
+/** Slice sound pass: sound captions name where a sound came from in a sailor's words, from the boat's heading. */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCaptionDirectionTest, "SailingSim.Audio.CaptionDirection", AudioFlags)
+bool FSailingCaptionDirectionTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	const FVector2D Here(0.0, 0.0);
+	// Heading north (0 deg): a source to the east (+Y) is abeam to starboard, one to the north-west off the port bow.
+	TestEqual(TEXT("East of a north heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 0.0, FVector2D(0.0, 100.0)))), FString(TEXT("abeam to starboard")));
+	TestEqual(TEXT("North-west of a north heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 0.0, FVector2D(100.0, -100.0)))), FString(TEXT("off the port bow")));
+	TestEqual(TEXT("Dead ahead"), FString(RelativeDirection(RelativeBearingDeg(Here, 90.0, FVector2D(0.0, 500.0)))), FString(TEXT("ahead")));
+	TestEqual(TEXT("Astern of an east heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 90.0, FVector2D(0.0, -500.0)))), FString(TEXT("astern")));
+	TestEqual(TEXT("South-east of a north heading"), FString(RelativeDirection(RelativeBearingDeg(Here, 0.0, FVector2D(-100.0, 100.0)))), FString(TEXT("off the starboard quarter")));
+	TestEqual(TEXT("Wraps past 180"), FString(RelativeDirection(-200.0)), FString(TEXT("off the starboard quarter")));
 	return true;
 }

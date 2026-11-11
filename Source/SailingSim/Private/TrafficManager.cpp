@@ -1,4 +1,5 @@
 #include "TrafficManager.h"
+#include "SoundCaptions.h"
 #include "CourseMarks.h"
 #include "SailingFrame.h"
 #include "Career.h"
@@ -490,6 +491,14 @@ void ATrafficManager::Tick(float DeltaSeconds)
 		if (E.Type == FTrafficEvent::Signal && V && Range < 3000.0)
 		{
 			Message(UTF8_TO_TCHAR(E.Text.c_str()));
+			// Sound captions: the blasts and where they came from ("Horn, off the port bow: one short blast").
+			if (USoundCaptions* Captions = USoundCaptions::Get(this))
+			{
+				const FString Said = UTF8_TO_TCHAR(E.Text.c_str());
+				FString HowMany;
+				if (!Said.Split(TEXT(":"), &HowMany, nullptr)) HowMany = Said;
+				Captions->AddFrom(V->Kind == ETrafficKind::Ship ? TEXT("Ship's whistle") : TEXT("Horn"), FVector2D(V->Snapshot().X, V->Snapshot().Y), HowMany.ToLower(), 6.0);
+			}
 			// A short blast is about one second, with a second between blasts (Rule 32).
 			const float Loud = FMath::Clamp(1.f - float(Range) / 3000.f, 0.08f, 1.f);
 			for (int32 B = 0; B < SoundSignalBlasts(E.Sound); ++B) Blasts.Add({ Sim.GetTime() + B * 2.0, Sim.GetTime() + B * 2.0 + 1.0, HornHz(V->Kind), Loud });
@@ -510,6 +519,13 @@ void ATrafficManager::Tick(float DeltaSeconds)
 			Message(Text);
 			const bool bLong = Text.Contains(TEXT("long sound"));
 			if (Text.Contains(TEXT("sound"))) Blasts.Add({ Sim.GetTime(), Sim.GetTime() + (bLong ? 3.0 : 1.0), 330.f, 0.9f });
+			if (Text.Contains(TEXT("sound")))
+			{
+				if (USoundCaptions* Captions = USoundCaptions::Get(this))
+				{
+					Captions->AddFrom(TEXT("Committee boat horn"), FVector2D(Race.Course.CommitteeX, Race.Course.CommitteeY), bLong ? TEXT("one long sound") : TEXT("one sound"), 5.0);
+				}
+			}
 			++SignalsSeen;
 		}
 	}
