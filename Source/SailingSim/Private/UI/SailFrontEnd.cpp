@@ -1523,7 +1523,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 				TextAttr(TAttribute<FText>::CreateLambda([this]()
 				{
 					const FSailConditions& K = Pending.Conditions;
-					return FText::FromString(SailCatalog::Expect(K.WindKn, K.GustKn, int32(K.Sky), K.LocalHour, K.Month, K.Day, Pending.Boat, Pending.World));
+					return FText::FromString(SailCatalog::Expect(K.WindKn, K.GustKn, int32(K.Sky), K.LocalHour, K.Month, K.Day, Pending.Boat, Pending.World, !K.RealDay.IsEmpty()));
 				}), EType::Body, FSlateColor(Fg), true)
 			], FMargin(16.f))
 	];
