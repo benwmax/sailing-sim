@@ -824,6 +824,29 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 		G[EKitLook::Trim].Span(FVector2D(Bq), FVector2D(Cq), 0.05f, ZOut - 0.22f, ZOut);
 	}
 	for (const float X : { -4.5f, 4.5f }) G.Lights.Add({ At(L(X, HY + 0.5 * PD), Floor + PostH - 0.2f), 1 });
+	// Skirting (docs/club-step): white boards (the rail's Trim) 3 cm in from the deck's edge, from its underside down to 10 cm
+	// under the lowest ground, in runs of about a metre so they follow the lawn, along the front and both ends; open where
+	// the steps come down. The deck stood on nothing where the lawn falls away toward the docks: a dark gap under it.
+	{
+		const float Under = Floor - 0.2f;
+		auto Skirt = [&](double X0, double Y0, double X1, double Y1)
+		{
+			const double Len = FVector2D::Distance(FVector2D(X0, Y0), FVector2D(X1, Y1));
+			const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 1.0));
+			for (int32 I = 0; I < N; ++I)
+			{
+				const double A = double(I) / N, Bt = double(I + 1) / N;
+				const FVector2D P0 = L(X0 + (X1 - X0) * A, Y0 + (Y1 - Y0) * A), P1 = L(X0 + (X1 - X0) * Bt, Y0 + (Y1 - Y0) * Bt);
+				const float Low = FMath::Min(GZ(P0), GZ(P1)) - 0.1f;
+				if (Low < Under) G[EKitLook::Trim].Span(P0, P1, 0.03f, Low, Under);
+			}
+		};
+		const double SY = HY + PD - 0.03, SX = PX - 0.03;
+		Skirt(-SX, SY, -7.0 - 1.1, SY);   // the front, west of the steps
+		Skirt(-7.0 + 1.1, SY, SX, SY);    // and east of them
+		Skirt(-SX, HY, -SX, SY);          // the west end
+		Skirt(SX, HY, SX, SY);            // the east end
+	}
 	// Steps down from the porch's west end, and the doors: double doors onto the porch by the steps, one in the north-east
 	// end wall toward the lot, one at the back toward the pool.
 	// A flight from the porch floor down to the landing's top (below): risers of 18 cm or less over the 1.05 m between the
@@ -831,14 +854,22 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	// fixed 14 cm slabs floated where the lawn falls away toward the docks, and a slab seated there became a wall.)
 	constexpr float PadHX = 1.3f, PadHY = 1.15f, PadHZ = 0.1f, StepRun = 1.05f;
 	const FVector2D PadC = L(-7.0, HY + PD + StepRun + PadHY);
-	float PadTop = GZ(PadC);
-	for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f }) PadTop = FMath::Max(PadTop, GZ(L(-7.0 + SX * PadHX, HY + PD + StepRun + PadHY + SY * PadHY)));
-	PadTop += 0.05f;
+	float PadTop = GZ(PadC), PadLow = PadTop;
+	for (const float SX : { -1.f, 1.f }) for (const float SY : { -1.f, 1.f })
+	{
+		const float Z = GZ(L(-7.0 + SX * PadHX, HY + PD + StepRun + PadHY + SY * PadHY));
+		PadTop = FMath::Max(PadTop, Z);
+		PadLow = FMath::Min(PadLow, Z);
+	}
+	PadTop += 0.05f;                                     // 5 cm over its highest corner
+	PadLow = FMath::Min(PadTop - 2.f * PadHZ, PadLow - 0.1f);   // and down to 10 cm under its lowest, like the steps
 	{
 		const float Drop = FMath::Max(Floor - PadTop, 0.f);
 		const int32 N = FMath::Max(1, FMath::CeilToInt32(Drop / 0.18f));   // risers; the landing is the last tread
-		const float Riser = Drop / N, Tread = N > 1 ? StepRun / (N - 1) : StepRun;
-		for (int32 I = 1; I < N; ++I)
+		// N - 1 treads over the run; a flat site (one riser, N = 1) gets one tread at the landing's height across the run.
+		const int32 Treads = FMath::Max(N - 1, 1);
+		const float Riser = Drop / N, Tread = StepRun / Treads;
+		for (int32 I = 1; I <= Treads; ++I)
 		{
 			const double CY = HY + PD + (I - 0.5) * Tread;
 			const float Top = Floor - I * Riser;
@@ -885,7 +916,7 @@ static void BuildClubGrounds(const FMarinaBuilding& B, float Ground, const FLake
 	// visible steps (docs/club-door).
 	const FVector2D Steps = L(-7.0, HY + PD + 1.1);
 	{
-		G[EKitLook::Concrete].Box(At(PadC, PadTop - PadHZ), FVector(PadHX, PadHY, PadHZ), B.HeadingDeg);   // PadTop: above, with the steps
+		G[EKitLook::Concrete].Box(At(PadC, 0.5f * (PadTop + PadLow)), FVector(PadHX, PadHY, 0.5f * (PadTop - PadLow)), B.HeadingDeg);   // PadTop, PadLow: above
 	}
 	auto Nearest = [&](const TArray<FVector2D>& Pts) { FVector2D Best = Pts[0]; for (const FVector2D& Q : Pts) if (FVector2D::Distance(Q, Steps) < FVector2D::Distance(Best, Steps)) Best = Q; return Best; };
 	for (const FMarinaLine& W : Marina.Walkways) if (W.Points.Num()) { const FVector2D E = Nearest(W.Points); Walk(Steps, E, 1.8f); Bollards(Steps, E); }
