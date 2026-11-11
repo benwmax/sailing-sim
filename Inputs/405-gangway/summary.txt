@@ -1,0 +1,9 @@
+#405 gap 1, the gangway where dock B meets the shore walkway (pc/405-gangway). Ultra 1920x1080, Drone lens, fixed map
+cameras (-SailingCamWorld): close = 4 m along the row looking back at it; from-walkway = on the walkway beside the
+junction; from-slip = on the row by the J/22's home slip looking back toward the walkway (the gangway is too far to
+read there). before = main 4317b6ec: a flat bright Metal slab with two thin rail frames, the walkway's rail running
+straight across its head. after: a sloped gangway from 15 cm onto the walkway down to 45 cm onto the floating row (the
+walkway deck is 0.6 m, the row 0.45 m), weathered aluminium (the existing Steel look, pattern 5), cross cleats every
+30 cm, channel edges, a hinge plate with five knuckles on the walkway, a stepped toe lip on the row, rails on posts
+following the slope; the walkway's rails open over its width with a post each side. All three rows' junctions changed.
+SailingSim.World 1/1, Visual 73/73, Lake 17/17.
