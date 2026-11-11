@@ -110,6 +110,7 @@ bool FSailingStowExtensionTest::RunTest(const FString&)
 	Boat->SetCockpitView(true);
 	W.Tick(30);
 	Check(TEXT("J/22, cockpit view (crew shown)"), true);
+	if (bHeroExt) TestTrue(TEXT("J/22, cockpit view: the stowed one shows"), Boat->IsModelTillerExtShown());
 	Boat->SetCockpitView(false);
 	USailingSettings::Get()->bShowCrew = false;
 	Boat->SetBoat(int32(Sailing::EBoatType::Sunfish));

@@ -14,7 +14,7 @@ namespace
 	const FBudget Budgets[] = {
 		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Hull"), 6 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Rudder"), 4 },
 		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Boom"), 2 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Mast"), 3 },
-		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Interior"), 1 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Glass"), 3 },
+		{ TEXT("/Game/Boats/J22Hero/SM_J22H_Interior"), 1 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_Glass"), 3 }, { TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt"), 1 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Hull"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Rudder"), 2 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Boom"), 1 }, { TEXT("/Game/Boats/J22/SM_J22_Mast"), 2 },
 		{ TEXT("/Game/Boats/J22/SM_J22_Berthed"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_1"), 3 }, { TEXT("/Game/Boats/J22/SM_J22_Berthed_2"), 3 },
@@ -27,7 +27,7 @@ namespace
 		{ TEXT("/Game/Boats/Hobie16/SM_Hobie16_Hull"), 3 }, { TEXT("/Game/Boats/Corsair880/SM_Corsair880_Hull"), 3 },
 		{ TEXT("/Game/Boats/Lagoon42/SM_Lagoon42_Hull"), 4 }, { TEXT("/Game/Boats/Maxi/SM_Maxi_Hull"), 3 },
 		{ TEXT("/Game/Boats/Maxi/SM_Maxi_Rudder"), 1 }, { TEXT("/Game/Boats/Maxi/SM_Maxi_Boom"), 1 }, { TEXT("/Game/Boats/Maxi/SM_Maxi_Mast"), 1 },
-		{ TEXT("/Game/Boats/Sunfish/SM_Sunfish_Rudder"), 2 }, { TEXT("/Game/Boats/Sunfish/SM_Sunfish_Boom"), 1 }, { TEXT("/Game/Boats/Sunfish/SM_Sunfish_Mast"), 2 },
+		{ TEXT("/Game/Boats/Sunfish/SM_Sunfish_Rudder"), 2 }, { TEXT("/Game/Boats/Sunfish/SM_Sunfish_Boom"), 1 }, { TEXT("/Game/Boats/Sunfish/SM_Sunfish_Mast"), 2 }, { TEXT("/Game/Boats/Sunfish/SM_Sunfish_TillerExt"), 1 },
 		{ TEXT("/Game/Boats/ILCA7/SM_ILCA7_Rudder"), 2 }, { TEXT("/Game/Boats/ILCA7/SM_ILCA7_Boom"), 2 }, { TEXT("/Game/Boats/ILCA7/SM_ILCA7_Mast"), 2 },
 		{ TEXT("/Game/Boats/Catalina22/SM_Catalina22_Rudder"), 2 }, { TEXT("/Game/Boats/Catalina22/SM_Catalina22_Boom"), 1 }, { TEXT("/Game/Boats/Catalina22/SM_Catalina22_Mast"), 2 },
 		{ TEXT("/Game/Boats/Catalina30/SM_Catalina30_Rudder"), 1 }, { TEXT("/Game/Boats/Catalina30/SM_Catalina30_Boom"), 1 }, { TEXT("/Game/Boats/Catalina30/SM_Catalina30_Mast"), 2 },
