@@ -64,6 +64,7 @@ jobs:
             --jq '.[] | {event, created_at, label: (.label.name // null)}' > "$T/timeline.jsonl"
           python3 -I - "$T" <<'PY'
           import json, os, subprocess, sys, urllib.parse
+          from datetime import datetime
 
           T = sys.argv[1]
           env = os.environ
@@ -79,8 +80,8 @@ jobs:
           def last_push_time():
               """When the current head commit reached GitHub (the server's clock,
               from the repository activity log), or None if it can't be shown."""
-              q = urllib.parse.urlencode({"ref": "refs/heads/" + env["HEAD_REF"],
-                                          "activity_type": "push", "per_page": 5})
+              # Any kind: a new branch's first push is "branch_creation", a force push "force_push".
+              q = urllib.parse.urlencode({"ref": "refs/heads/" + env["HEAD_REF"], "per_page": 10})
               out = gh(f"repos/{env['HEAD_REPO']}/activity?{q}", capture=True)
               try:
                   pushes = json.loads(out or "[]")
@@ -90,8 +91,14 @@ jobs:
                   return None
               for p in pushes:                       # newest first
                   if isinstance(p, dict) and p.get("after") == head:
-                      return p.get("timestamp")
+                      return when(p.get("timestamp"))
               return None
+
+          def when(text):
+              try:
+                  return datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+              except ValueError:
+                  return None
 
           def approved_now():
               """Bean's label was added after the head commit was pushed and after
@@ -100,14 +107,17 @@ jobs:
               labeled, changed = None, []
               for line in open(f"{T}/timeline.jsonl"):
                   ev = json.loads(line)
-                  if ev.get("event") == "labeled" and ev.get("label") == label:
-                      labeled = max(labeled or "", ev.get("created_at") or "")
+                  at = when(ev.get("created_at"))
+                  if ev.get("event") == "labeled" and ev.get("label") == label and at:
+                      labeled = max(labeled, at) if labeled else at
                   elif ev.get("event") in ("head_ref_force_pushed", "head_ref_restored",
                                            "base_ref_changed", "base_ref_force_pushed"):
-                      changed.append(ev.get("created_at") or "9999")
+                      if not at:
+                          return "unknown"
+                      changed.append(at)
               pushed = last_push_time()
               if not labeled or not pushed:          # can't show it: not approved
-                  return False
+                  return "unknown"
               return all(labeled > c for c in changed + [pushed])
 
           # Never fine without Bean, wherever they are.
@@ -151,9 +161,14 @@ jobs:
               say(f"Waiting for Bean: he adds the `{label}` label after reading these files. "
                   "Agents never add it.")
               sys.exit(1)
-          if approved_now():
+          verdict = approved_now()
+          if verdict is True:
               say(f"Approved as of {head[:8]}.")
               sys.exit(0)
+          if verdict == "unknown":
+              say("Couldn't confirm from GitHub's records that the label came after the last push, "
+                  "so it doesn't count yet. Re-run this check in a minute, or add the label again.")
+              sys.exit(1)
           gh("-X", "DELETE", f"repos/{env['REPO']}/issues/{env['PR']}/labels/{label}")
           say(f"The pull request changed since `{label}` was added (new commits or a new base branch), "
               "so the label was taken off. Bean adds it again after looking.")
