@@ -645,7 +645,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 		FString Digits;
 		for (TCHAR Ch : Livery.SailNumber) if (FChar::IsDigit(Ch)) Digits.AppendChar(Ch);
 		Digits = Digits.Right(6);
-		Mid->SetScalarParameterValue(TEXT("Marks"), C.Type == EBoatType::J22 ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
+		// #405 gap 4: the Sunfish carries the emblem too (the class's sails put it in the upper sail, the number centred
+		// under it: Inputs/g3/boat-catalogue.json), the made-up one from make_sail_marks.py.
+		const bool bEmblem = C.Type == EBoatType::J22 || C.Type == EBoatType::Sunfish;
+		Mid->SetScalarParameterValue(TEXT("Marks"), bEmblem ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
 		Mid->SetScalarParameterValue(TEXT("SailDigits"), float(Digits.Len()));
 		Mid->SetScalarParameterValue(TEXT("SailNum"), Digits.IsEmpty() ? 0.f : float(FCString::Atoi(*Digits)));
 		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
@@ -657,6 +660,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Mid->SetScalarParameterValue(TEXT("LeechLean"), LeechLean(C.Main));
 		Mid->SetScalarParameterValue(TEXT("PanelWidth"), Lay.PanelWidth);
 		Mid->SetScalarParameterValue(TEXT("Window"), 0.f);
+		// #405 gap 4: the Sunfish's dyed Dacron bands let less light through than the white keelboat cloth (the audit: it
+		// read as thin plastic, the far side's number showing through); MI_Sail_Main's 0.34 for the rest (set each time:
+		// the showroom swaps boats on the same material).
+		Mid->SetScalarParameterValue(TEXT("Translucency"), C.Type == EBoatType::Sunfish ? 0.2f : 0.34f);
 	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
