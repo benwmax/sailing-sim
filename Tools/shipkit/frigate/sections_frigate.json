@@ -2,54 +2,43 @@
  "boat": "Frigate",
  "build": "Tools/shipkit/frigate/build_frigate.py",
  "hull_object": "Hull",
- "note": "The frigate's shape sections for the shape loop tools (docs/shipkit-1). Slice 1 has the moulded hull (both sides and the wing transom's underside, one surface), the transom (its own object: it meets the sides at a hard corner), the backbone, and a placeholder deck that slice 7 replaces.",
+ "note": "The frigate's shape sections for the shape loop tools (docs/shipkit-1, docs/shipkit-2). \"Hull\" is the moulded hull (slice 1), kept as the measured reference: it is in no section, so render_set.py hides it, and the planked skin over it is what renders. The decks and bulkheads are placeholders for slices 7 and 9-14.",
  "sections": {
-  "hull_shell": {
-   "objects": [
-    "Hull"
-   ],
-   "owns": [
-    "loft.py",
-    "offsets.json"
-   ],
+  "planking": {
+   "objects": ["Skin", "GunWall", "BulwarkIn", "BulwarkTop", "PortLinings", "Lid_"],
+   "owns": ["skin.py", "specs_1795.json", "offsets.json skin"],
    "shared": [],
-   "borders": [
-    "backbone"
-   ]
+   "borders": ["backbone", "transom", "rails"]
+  },
+  "rails": {
+   "objects": ["RailCap", "Moulding", "Channels", "EntrySteps"],
+   "owns": ["rail_caps", "moulding", "channels", "entry_steps"],
+   "shared": [],
+   "borders": ["planking"]
   },
   "backbone": {
-   "objects": [
-    "Backbone"
-   ],
-   "owns": [
-    "backbone_outline"
-   ],
+   "objects": ["Backbone"],
+   "owns": ["backbone_outline", "Skin.backbone"],
    "shared": [],
-   "borders": [
-    "hull_shell"
-   ]
+   "borders": ["planking", "rudder"]
   },
-  "deck_placeholder": {
-   "objects": [
-    "DeckPlaceholder"
-   ],
-   "owns": [],
+  "rudder": {
+   "objects": ["Rudder", "RudderIrons"],
+   "owns": ["Skin.rudder"],
    "shared": [],
-   "borders": [
-    "hull_shell"
-   ]
+   "borders": ["backbone"]
   },
   "transom": {
-   "objects": [
-    "Transom"
-   ],
-   "owns": [
-    "transom"
-   ],
+   "objects": ["Transom", "TransomTop"],
+   "owns": ["transom", "Skin.stern_top"],
    "shared": [],
-   "borders": [
-    "hull_shell"
-   ]
+   "borders": ["planking"]
+  },
+  "deck_placeholders": {
+   "objects": ["GunDeck", "SparDeck", "Bulkheads"],
+   "owns": ["Skin.decks", "Skin.bulkheads"],
+   "shared": [],
+   "borders": ["planking"]
   }
  },
  "joins": []

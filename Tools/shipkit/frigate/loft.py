@@ -43,7 +43,6 @@ as a plate of the keel's siding, its inner edge traced along the side's own boun
 triangulated because the outline is concave).
 """
 import json
-import math
 import os
 import sys
 
@@ -203,6 +202,13 @@ class Lines:
         bow = T["bow"]
         self.r_2295 = pchip(*zip(*bow["row_2295_ratio"]))
         self.hb_2340 = pchip(*zip(*bow["row_2340_hb"]))
+        # slice 2's bow refit: more flare above A forward of station 1, added after the stations' fit (not put into it)
+        # and eased in from station 1. The shape is only sampled on the rows, so it lands in full on the 2295.5 row and
+        # as a trace (2%) on the 2205 row. The level battens are splines through every row, so they carry a little of
+        # it aft: up to 2 px (2 in) near the sheer between x 2100 and station 1, under 0.5 px aft of 2100, nothing aft
+        # of 1800 (docs/shipkit-2)
+        fl = bow.get("flare_2295")
+        self.flare_2295 = pchip(*zip(*fl)) if fl else (lambda z: 0.0)
         self.build_levels()
 
     # --- profile ---------------------------------------------------------------------------------------------------
@@ -221,9 +227,14 @@ class Lines:
         Fa, Ff = self.wl_ends["F"]
         if Fa <= x <= Ff:
             return self.z_bot(x)
+        top = self.fwd_branch[-1][1]
         if x < Fa:
+            if x <= self.x_aft(KNUCKLE):          # aft of the post (a normal's difference step): the wing transom
+                return KNUCKLE
             return self._root(lambda z: self.x_aft(z) - x, self.keel_join[1], KNUCKLE)
-        return self._root(lambda z: self.x_fwd(z) - x, self.wl_z["F"], self.fwd_branch[-1][1])
+        if x >= self.x_fwd(top):                  # past the stem's head (the bulwark's ends above it): its top
+            return top
+        return self._root(lambda z: self.x_fwd(z) - x, self.wl_z["F"], top)
 
     def W(self, z):
         return float(self._W(z))
@@ -249,7 +260,14 @@ class Lines:
         if x <= xs[0]:
             return float(self.st_r[0](z))
         if x >= 2295.5:
-            return float(self.r_2295(z))
+            return float(self.r_2295(z)) + float(self.flare_2295(z))
+        if x > xs[-1]:
+            t = (x - xs[-1]) / (2295.5 - xs[-1])
+            return self._shape_fit(x, z) + t * t * (3 - 2 * t) * float(self.flare_2295(z))
+        return self._shape_fit(x, z)
+
+    def _shape_fit(self, x, z):
+        xs = self.st_x
         # across the stations at this height the ratio is itself faired in x (about 0.8 px RMS from each station's
         # reading), so the level curves made from it are fair too: a straight-line blend between stations puts a corner
         # in every level at every station, and the body plan's readings carry a pixel of noise
@@ -493,15 +511,15 @@ def grid_quads(nI, nJ, flip=False, offset=0):
     return q
 
 
-def backbone_outline(L):
+def backbone_outline(L, top=None):
     """Keel, deadwood, sternpost and stem in profile (x, z px), counter-clockwise: the outer face, then back along the
-    rabbet where the planking lands."""
+    rabbet where the planking lands. top: the stem head's height (default: the stem rabbet's top reading)."""
     P = L.P
     post = sorted(P["sternpost_aft_face_px"], key=lambda p: -p[1])        # top down
     keel = P["keel_bottom_z_px"]
     stem = P["stem_outer_px"]
     stem_lo = [p for p in stem if p[1] <= 32]
-    top = L.fwd_branch[-1][1]
+    top = L.fwd_branch[-1][1] if top is None else top
     # above 32 px the drawing's fore line is the knee of the head (slice 9): the stem itself keeps its width at A
     # (the band between the rabbet and the fore face, 40 px) up to its head
     band = float(np.interp(0.0, [p[1] for p in stem], [p[0] for p in stem])) - float(L.x_fwd(0.0))

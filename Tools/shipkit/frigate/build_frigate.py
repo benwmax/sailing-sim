@@ -1,11 +1,17 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1). Slice 1: the moulded hull, the transom and the
-backbone (keel, deadwood, sternpost, stem), plus a flat placeholder deck at the sheer so renders read as a ship.
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1, docs/shipkit-2).
+
+Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
+to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
+ports with their linings and lids, the rail cap, the plankshear moulding, the channels, the entry steps, the rudder
+and its irons, and placeholder decks and bulkheads for the later slices.
 
     python build_frigate.py <out dir>        (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
-Writes <out>/frigate.blend, <out>/frigate.obj (every object, for lines_check.py) and <out>/build.json (triangles per
-object, main dimensions, displacement). Units are metres in Unreal's body frame (X forward, Y starboard, Z up), origin
-on the centreline at midships on the load waterline. Edit loft.py and offsets.json, never the .blend.
+Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py) and
+<out>/build.json (triangles per object, main dimensions, displacement). Units are metres in Unreal's body frame
+(X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
+the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
+specs_1795.json, never the .blend.
 """
 import json
 import math
@@ -14,11 +20,13 @@ import sys
 
 import bpy
 import bmesh
+from mathutils import Matrix
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import loft  # noqa: E402
+import skin  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -67,12 +75,52 @@ def smooth(ob, angle=30):
 L = loft.Lines()
 H = loft.Hull(L).build()
 parts = loft.mesh(L, H)
-CLAY = material("Clay_Hull", (0.55, 0.53, 0.5))
-WOOD = material("Clay_Backbone", (0.42, 0.36, 0.3))
-DECK = material("Clay_DeckPlaceholder", (0.62, 0.6, 0.55))
 
-# the hull: both sides and the wing transom's underside as one welded surface; the transom meets it at a hard corner
-# and stays its own object (the stern windows and carvings go on it in slice 9)
+# paint as built (1797): a black side with an ochre band along the gun ports and black lids (the chequer of the
+# period), copper to the main wale, red inside the bulwarks and ports. Plain colours: textures are the texture loop's
+PAINT = {
+    "Copper": ((0.62, 0.36, 0.22), 0.35, 1.0),
+    "HullBlack": ((0.03, 0.028, 0.026), 0.55, 0.0),
+    "HullOchre": ((0.60, 0.44, 0.17), 0.6, 0.0),
+    "HullRed": ((0.40, 0.07, 0.045), 0.6, 0.0),
+    "Interior": ((0.66, 0.60, 0.50), 0.7, 0.0),
+    "Deck": ((0.58, 0.52, 0.42), 0.75, 0.0),
+    "Iron": ((0.05, 0.05, 0.05), 0.5, 0.6),
+    "Bronze": ((0.55, 0.40, 0.22), 0.35, 1.0),
+}
+MATS = {}
+for name, (rgb, rough, metal) in PAINT.items():
+    m = material(name, rgb, rough)
+    m.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = metal
+    MATS[name] = m
+CLAY = material("Clay_Hull", (0.55, 0.53, 0.5))
+
+
+def make_painted(name, V, F, M):
+    """One object, a material slot per paint used, each face on its paint's slot."""
+    names = sorted(set(M))
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(map(float, v)) for v in V], [], [list(map(int, f)) for f in F])
+    for n in names:
+        me.materials.append(MATS[n])
+    idx = {n: i for i, n in enumerate(names)}
+    me.polygons.foreach_set("material_index", [idx[m] for m in M])
+    me.validate()
+    ob = bpy.data.objects.new(name, me)
+    SC.collection.objects.link(ob)
+    return ob
+
+
+def mirrored(V, F, M):
+    """A starboard part and its port twin as one mesh (y flipped, faces turned so they still face out)."""
+    V = np.asarray(V, float)
+    Vp = V * np.array([1.0, -1.0, 1.0])
+    n = len(V)
+    return np.concatenate([V, Vp]), list(F) + [tuple(n + i for i in f[::-1]) for f in F], list(M) + list(M)
+
+
+# the moulded hull: both sides and the wing transom's underside as one welded surface. It is the drawing's line and
+# what lines_check and the shape tools measure; the planking covers it, so it is hidden from renders
 objs = [make(n, *parts[n], CLAY) for n in ("Hull_Stbd", "Hull_Port")]
 bpy.ops.object.select_all(action="DESELECT")
 for o in objs:
@@ -83,38 +131,52 @@ hull = bpy.context.view_layer.objects.active
 hull.name = hull.data.name = "Hull"
 weld(hull)
 smooth(hull)
+hull.hide_render = True
+hull.hide_set(True)
 
-transom = make("Transom", *parts["Transom"], CLAY)
+# the transom (moulded, black; the stern windows and carvings go on it in slice 9)
+transom = make("Transom", *parts["Transom"], MATS["HullBlack"])
 weld(transom)
 smooth(transom)
 
-bb = make("Backbone", *parts["Backbone"], WOOD)
-weld(bb)
-smooth(bb, 40)
+# the planked ship
+SK = skin.Skin(L).build()
+SKIN = SK.parts()
+LIDS = []
+for name, (V, F, M, side) in SKIN.items():
+    if name.startswith("Lid_"):
+        LIDS.append(name)
+        continue
+    if side == "stbd":
+        V, F, M = mirrored(V, F, M)
+    ob = make_painted(name, V, F, M)
+    smooth(ob, 40 if name in ("Backbone", "Rudder") else 30)
 
-# placeholder deck: straight across between the two sheers (the decks are slice 7)
-top = H.Up[:, -1]
-x, y, z = L.to_m(top[:, 0], top[:, 1], top[:, 2])
-n = 16
-V, F = [], []
-for i in range(len(x)):
-    for j in range(n + 1):
-        t = -1 + 2 * j / n
-        V.append((x[i], y[i] * t, z[i] - 0.02))
-for i in range(len(x) - 1):
-    for j in range(n):
-        a, b = i * (n + 1) + j, (i + 1) * (n + 1) + j
-        F.append((a, b, b + 1, a + 1))          # normal up
-deck = make("DeckPlaceholder", np.array(V), F, DECK)
-weld(deck)
+# the gun port lids: an object each side, its origin on the hinge axis (through the knuckles) with X along it and Z out
+# of the side, so on either side a positive turn about the lid's own X opens it outward. Port lids are the starboard
+# ones mirrored; their X points aft so the frame stays right-handed and opens the same way (Y points down on both)
+for name in LIDS:
+    V, F, M, _ = SKIN[name]
+    o, xa, za = SK.lid_frame(name)
+    for suffix, sgn in (("S", 1.0), ("P", -1.0)):
+        flip = np.array([1.0, sgn, 1.0])
+        oo, xx, zz = o * flip, xa * flip * sgn, za * flip
+        yy = np.cross(zz, xx)
+        R = np.stack([xx, yy, zz], 1)                 # columns: the lid's axes in the ship
+        Vw = np.asarray(V, float) * flip
+        Vl = (Vw - oo) @ R
+        Fs = list(F) if sgn > 0 else [f[::-1] for f in F]
+        ob = make_painted(f"{name}_{suffix}", Vl, Fs, M)
+        ob.matrix_world = Matrix(((*R[0], oo[0]), (*R[1], oo[1]), (*R[2], oo[2]), (0, 0, 0, 1)))
+        smooth(ob, 30)
 
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "frigate.blend"))
-bpy.ops.wm.obj_export(filepath=os.path.join(OUT, "frigate.obj"), export_selected_objects=False, forward_axis="NEGATIVE_Z",
-                      up_axis="Y", apply_modifiers=True, export_materials=False, export_normals=False, export_uv=False)
+# the lines check reads the moulded surfaces only: the drawing's lines are the frames' outside, not the planking
+loft.write_obj(os.path.join(OUT, "frigate.obj"), {n: parts[n] for n in ("Hull_Stbd", "Hull_Port", "Transom", "Backbone")})
 
 
 def tris(ob):
@@ -148,9 +210,15 @@ def displacement(L):
     return vol_px / (L.ppf * L.ppf_y ** 2) * loft.FT ** 3     # x across the sheet, half-breadths and heights down it
 
 
+REFERENCE = {"Hull"}           # measured, never drawn
 stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects if o.type == "MESH"}}
-stats["triangles_total"] = sum(v["triangles"] for v in stats["objects"].values())
+stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items() if k not in REFERENCE)
+stats["triangles_reference"] = sum(v["triangles"] for k, v in stats["objects"].items() if k in REFERENCE)
 stats["dimensions"] = loft.summary(L, H)
+sk_ob = SC.objects["Skin"]
+P = np.array([v.co for v in sk_ob.data.vertices])
+stats["dimensions"]["extreme_breadth_planked_ft"] = round(float(2 * P[:, 1].max()) / loft.FT, 2)
+stats["dimensions"]["extreme_breadth_note"] = "outside the main wales: the moulded 43 ft 5 in plus two 7 in wales (specs_1795.json)"
 vol = displacement(L)
 stats["displacement"] = {"moulded_volume_m3": round(vol, 1), "seawater_tonnes": round(vol * 1.025, 0),
                          "long_tons": round(vol * 1.025 / 1.016, 0),
