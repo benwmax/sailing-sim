@@ -192,28 +192,31 @@ namespace SailHudImpl
 			const FVector2f C(S.X * 0.5f, S.Y * 0.5f);
 			const float H = FMath::DegreesToRadians(float(Boat->GetHeadingTrueDeg()));
 			const FVector2f F(FMath::Sin(H), -FMath::Cos(H)), Sd(-F.Y, F.X);
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
 				ESlateDrawEffect::None, Accent, true, 3.f);
 			const float Wd = FMath::DegreesToRadians(float(GM->GetWeatherState().Wind.FromDegrees));
 			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd));
 			const FVector2f Tip = FVector2f(S.X - 28.f, 28.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, WindTrue, true, 3.f);
-			FSlateDrawElement::MakeText(Out, Layer + 2, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, Ink);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, WindTrue, true, 3.f);
+			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, Ink);
 			// #602 (the #400 audit): a drill's marks still to round and the person in the water, on the map: a triangle's marks
 			// could only be found by the panel's distance, and an overboard drill is about keeping them in sight. The next
-			// mark larger; one off the map sits on its edge, so its direction shows.
+			// mark larger; one off the map sits on its edge, so its direction shows. Filled dots under the boat (her arrow
+			// and the wind and N labels draw on Layer + 3), so a dummy just astern stays visible past her; an edge dot slides
+			// along the edge clear of the N label (top left) and the wind arrow (top right).
 			const FDrillRunner& D = Boat->GetDrill();
 			if (D.IsActive())
 			{
 				const FVector2f MapOrigin(4.f, 4.f), MapSize(S.X - 8.f, S.Y - 8.f);
+				const FBox2f Keep[2] = { FBox2f(FVector2f(0.f, 0.f), FVector2f(34.f, 34.f)), FBox2f(FVector2f(float(S.X) - 50.f, 0.f), FVector2f(float(S.X), 50.f)) };
 				auto Dot = [&](const FVector2D& At, float R, const FLinearColor& Col)
 				{
 					bool bClamped = false;
-					const FVector2f Q = SSailHud::MiniMapPoint(P, At, W.SpanM, MapOrigin, MapSize, bClamped);
+					FVector2f Q = SSailHud::MiniMapPoint(P, At, W.SpanM, MapOrigin, MapSize, bClamped);
 					const float Rd = bClamped ? R * 0.75f : R;
-					TArray<FVector2f> Ring;
-					for (int32 K = 0; K <= 12; ++K) Ring.Add(Q + FVector2f(FMath::Cos(K * UE_TWO_PI / 12.f), FMath::Sin(K * UE_TWO_PI / 12.f)) * Rd);
-					FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Ring, ESlateDrawEffect::None, Col, true, Rd);
+					if (bClamped) Q = SSailHud::MiniMapClearOf(Q, Rd, Keep, MapOrigin, MapSize);
+					FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(2.f * Rd, 2.f * Rd), FSlateLayoutTransform(Q - FVector2f(Rd, Rd))),
+						Rounded(Col, Rd), ESlateDrawEffect::None, Col);
 				};
 				const TArray<FVector2D>& Marks = D.GetMarks();
 				for (int32 K = D.GetNextMark(); K < Marks.Num(); ++K) Dot(Marks[K], K == D.GetNextMark() ? 4.5f : 3.f, Warn);
@@ -757,6 +760,23 @@ FVector2f SSailHud::MiniMapPoint(const FVector2D& BoatMap, const FVector2D& Targ
 	bClamped = K > 1.f;
 	if (bClamped) D /= K;
 	return Origin + Size * 0.5f + D;
+}
+
+FVector2f SSailHud::MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size)
+{
+	// An edge dot inside a kept corner slides along its edge until it clears it: on the top or bottom edge sideways (to the
+	// side of the box nearer the map's middle), on the left or right edge down or up the same way.
+	const float Edge = 7.f;
+	const bool bTopBottom = Q.Y <= Origin.Y + Edge || Q.Y >= Origin.Y + Size.Y - Edge;
+	const float MidX = Origin.X + Size.X * 0.5f, MidY = Origin.Y + Size.Y * 0.5f;
+	FVector2f Out = Q;
+	for (const FBox2f& B : Keep)
+	{
+		if (Out.X + Radius <= B.Min.X || Out.X - Radius >= B.Max.X || Out.Y + Radius <= B.Min.Y || Out.Y - Radius >= B.Max.Y) continue;
+		if (bTopBottom) Out.X = (B.GetCenter().X < MidX) ? B.Max.X + Radius : B.Min.X - Radius;
+		else Out.Y = (B.GetCenter().Y < MidY) ? B.Max.Y + Radius : B.Min.Y - Radius;
+	}
+	return Out;
 }
 
 void SSailHud::RefreshScene(const ASailboatPawn& P, const ASailingGameMode& GM)

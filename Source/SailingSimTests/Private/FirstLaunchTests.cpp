@@ -307,6 +307,18 @@ bool FSailingUIMiniMapMarksTest::RunTest(const FString&)
 	TestTrue(TEXT("One 7 km off is pulled onto the edge"), bClamped);
 	TestTrue(FString::Printf(TEXT("... inside the square, down and left (%.1f, %.1f)"), Far.X, Far.Y),
 		Far.X >= Origin.X && Far.X < Centre.X && Far.Y > Centre.Y && Far.Y <= Origin.Y + Size.Y);
+	// #602 polish: one clamped into a kept corner (the N label, the wind arrow) slides along its edge out of it.
+	const FBox2f Keep[2] = { FBox2f(FVector2f(0.f, 0.f), FVector2f(34.f, 34.f)), FBox2f(FVector2f(158.f, 0.f), FVector2f(208.f, 50.f)) };
+	const FVector2f NorthWest = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(5000.0, -4800.0), 3000.0, Origin, Size, bClamped);
+	const FVector2f NwClear = SSailHud::MiniMapClearOf(NorthWest, 3.f, Keep, Origin, Size);
+	TestTrue(FString::Printf(TEXT("A far north-west mark on the top edge (%.1f, %.1f) moves right of the N label (%.1f)"), NorthWest.X, NorthWest.Y, NwClear.X),
+		NwClear.X >= 37.f && FMath::IsNearlyEqual(NwClear.Y, NorthWest.Y));
+	const FVector2f NorthEast = SSailHud::MiniMapPoint(Boat, Boat + FVector2D(4000.0, 5000.0), 3000.0, Origin, Size, bClamped);
+	const FVector2f NeClear = SSailHud::MiniMapClearOf(NorthEast, 3.f, Keep, Origin, Size);
+	TestTrue(FString::Printf(TEXT("A far north-east mark on the right edge (%.1f, %.1f) moves below the wind arrow (%.1f)"), NorthEast.X, NorthEast.Y, NeClear.Y),
+		NeClear.Y >= 53.f && FMath::IsNearlyEqual(NeClear.X, NorthEast.X));
+	const FVector2f Untouched = SSailHud::MiniMapClearOf(Far, 3.f, Keep, Origin, Size);
+	TestTrue(TEXT("A dot clear of both corners stays put"), Untouched.Equals(Far));
 	return true;
 }
 
