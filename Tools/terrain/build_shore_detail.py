@@ -55,10 +55,13 @@ band5 = (~water5 & (land_dist <= LAND_BAND)) | (water5 & (water_dist <= WATER_BA
 
 # Tiles that the band touches (tile (i, j) spans rows north X0 + 64 i .. + 64, columns east Y0 + 64 j .. + 64).
 TR, TC = int(math.ceil((NY - 1) * CELL / TILE)), int(math.ceil((NX - 1) * CELL / TILE))
-per = int(TILE / CELL)
-pad = np.zeros((TR * per + 1, TC * per + 1), bool)
-pad[:NY, :NX] = band5[:TR * per + 1, :TC * per + 1]
-sel = pad[:TR * per, :TC * per].reshape(TR, per, TC, per).any(axis=(1, 3))
+# Each tile by its own 64 m extent: a band node at (r, c) is X0 + 5 r north, Y0 + 5 c east, so it falls in tile
+# (floor(5 r / 64), floor(5 c / 64)). (The old selection reshaped the grid in int(64 / 5) = 12-node blocks, 60 m, for
+# 64 m tiles, so tile (i, j) was chosen by the band 4 m x i south and 4 m x j west of it: 708 m off at the club.)
+rr, cc = np.nonzero(band5)
+sel = np.zeros((TR + 1, TC + 1), bool)
+sel[np.floor(rr * CELL / TILE).astype(int), np.floor(cc * CELL / TILE).astype(int)] = True
+sel = sel[:TR, :TC]
 
 # ---------------------------------------------------------------- the lidar mosaic (UTM 14N, NAD83)
 to_utm = Transformer.from_crs(LOCAL, "EPSG:26914", always_xy=True)

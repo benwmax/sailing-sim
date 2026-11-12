@@ -150,6 +150,29 @@ bool FSailingShoreDetailTest::RunTest(const FString& Parameters)
 	const FLakeTerrain& T = Lake.Terrain;
 	if (!TestTrue(TEXT("Shore detail loaded"), T.HasDetail())) return false;
 	TestTrue(TEXT("Detail covers the shore within 2 km of the club"), T.HasDetailIn(-2000.0, -2000.0, 2000.0, 2000.0));
+	// The band sits on the shore (#club-detail: build_shore_detail.py chose tiles in 60 m blocks for 64 m tiles, which slid
+	// the band 6% of the distance from the grid origin; the club's ramp had none). The ramp, and almost every point where
+	// the 5 m grid crosses the shoreline, has detail.
+	double RampH;
+	TestTrue(TEXT("The club's ramp (map 40, 138) has 1 m detail"), T.DetailHeightAt(40.0, 138.0, RampH));
+	{
+		FRandomStream ShoreRng(11);
+		int32 Shore = 0, Covered = 0;
+		for (int32 K = 0; K < 1000000 && Shore < 2000; ++K)
+		{
+			const double X = ShoreRng.FRandRange(-8000.0, 8000.0), Y = ShoreRng.FRandRange(-8000.0, 8000.0);
+			const int32 R0 = FMath::FloorToInt((X - T.GetOriginX()) / T.GetCell()), C0 = FMath::FloorToInt((Y - T.GetOriginY()) / T.GetCell());
+			const double H00 = T.NodeHeight(R0, C0), H01 = T.NodeHeight(R0, C0 + 1), H10 = T.NodeHeight(R0 + 1, C0), H11 = T.NodeHeight(R0 + 1, C0 + 1);
+			const bool bWet = FMath::Min(FMath::Min(H00, H01), FMath::Min(H10, H11)) < 0.0, bDry = FMath::Max(FMath::Max(H00, H01), FMath::Max(H10, H11)) > 0.0;
+			if (!bWet || !bDry) continue;   // not a shoreline cell of the 5 m grid
+			++Shore;
+			double Hd;
+			Covered += T.DetailHeightAt(X, Y, Hd);
+		}
+		const double Share = Shore ? double(Covered) / Shore : 0.0;
+		AddInfo(FString::Printf(TEXT("%d shoreline points of the 5 m grid, %.1f%% with 1 m detail"), Shore, Share * 100.0));
+		TestTrue(FString::Printf(TEXT("The band follows the shoreline (%.1f%% of %d shoreline points have detail)"), Share * 100.0, Shore), Shore > 500 && Share > 0.97);
+	}
 	TArray<double> LandDiff;
 	int32 Steps = 0, BigSteps = 0, Edges = 0;
 	double WorstSeam = 0.0;
