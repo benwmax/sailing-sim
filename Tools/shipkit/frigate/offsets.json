@@ -964,7 +964,7 @@
    }
   },
   "bow": {
-   "note": "Forward of station 1 the body plan has no sections. The side flares toward the rail line: ratio at the top 1.25 at x=2295.5, and an extra row at x=2340. These were set for a 14 px rail overhang, what stations 1 and 2 measured before the scan's two scales; with them the side meets the rail line within 2 px at stations 1 and 2 but runs 3-17 px inside it from x=2240 to 2360 (a known gap, refitted with the bulwarks in slice 2).",
+   "note": "Forward of station 1 the body plan has no sections. The side flares toward the rail line: the ratios at x=2295.5 (row_2295_ratio, set in slice 1 for a 14 px rail overhang) plus flare_2295 above A (slice 2; eased in from station 1, so in full on the 2295.5 row and 2% on the 2205 row), and an extra row at x=2340. The level battens run through every row, so the refit reaches a little aft of station 1: up to 2 px near the sheer between x=2100 and station 1, under 0.5 px aft of that. With them the planked side at the rail is 2-5 px outboard of the half-breadth plan's RAIL line from x=2296 to 2340, as it is 5-8 px aft of station 1 (the body plan's tops are that much wider than the RAIL line all along); slice 1 left it 3-17 px inside the line there.",
    "row_2295_ratio": [
     [
      0,
@@ -987,6 +987,7 @@
      1.255
     ]
    ],
+   "flare_2295": [[0, 0], [60, 0], [120, 0.03], [180, 0.09], [240, 0.16]],
    "row_2340_hb": [
     [
      0,
@@ -1002,11 +1003,11 @@
     ],
     [
      160,
-     75
+     81
     ],
     [
      250,
-     86
+     98
     ]
    ]
   },
@@ -1541,5 +1542,315 @@
    "z_bottom": -251
   },
   "note": "Sheer plan readings: [scan x, height above A in px]; loft.py maps x into the ship's frame (frame.views)."
+ },
+ "skin": {
+  "note": "Slice 2 (docs/shipkit-2): the hull's outside above the lines, read off the same 1927 sheer plan: scan x of the sheer plan (mapped into the ship's frame by the registration, like the profile readings) and heights above its waterline A, in px. Ports are read at the centre of their ink (sill and head are the opening's lower and upper edges). The strakes between them come from the midship section (specs_1795.json).",
+  "gun_ports": {
+   "note": "gun deck ports, starboard side as drawn, aft to forward: [x aft edge, x fore edge, z sill, z head]. 14 broadside ports plus the bridle port at the bow (drawn slanted; built square). The scan's opening at x 483-522 aft of the first port is a cabin window (slice 9), not a port. 15 a side is the 30 long 24-pounders of 1797.",
+   "ports": [
+    [
+     605,
+     643,
+     108,
+     139
+    ],
+    [
+     720,
+     755,
+     107,
+     137
+    ],
+    [
+     846,
+     884,
+     104.5,
+     136.5
+    ],
+    [
+     965,
+     1002,
+     100.9,
+     133.9
+    ],
+    [
+     1088,
+     1126,
+     99.6,
+     130.6
+    ],
+    [
+     1213,
+     1252,
+     98.8,
+     128.8
+    ],
+    [
+     1336,
+     1372,
+     97.9,
+     127.9
+    ],
+    [
+     1452,
+     1488,
+     96.6,
+     126.6
+    ],
+    [
+     1573,
+     1608,
+     96.4,
+     127.4
+    ],
+    [
+     1693,
+     1730,
+     97.2,
+     128.2
+    ],
+    [
+     1810,
+     1846,
+     100.6,
+     131.6
+    ],
+    [
+     1932,
+     1969,
+     104.0,
+     136.0
+    ],
+    [
+     2051,
+     2085,
+     110.2,
+     141.2
+    ],
+    [
+     2177,
+     2208,
+     117.8,
+     146.8
+    ]
+   ],
+   "bridle": [
+    2277,
+    2302,
+    123,
+    153
+   ]
+  },
+  "spar_ports": {
+   "note": "quarterdeck and forecastle ports in the bulwark: [x aft edge, x fore edge]. Their sills run 41-47 px under the sheer (70 px above the gun port sill line) and their heads are at the sheer line, which is the waist's top; the bulwark above them runs to the rail line. The waist (the entry to the forecastle break) has none.",
+   "quarterdeck": [
+    [
+     397,
+     429
+    ],
+    [
+     501,
+     533
+    ],
+    [
+     613,
+     647
+    ],
+    [
+     752,
+     791
+    ],
+    [
+     867,
+     903
+    ],
+    [
+     983,
+     1017
+    ],
+    [
+     1098,
+     1131
+    ],
+    [
+     1211,
+     1245
+    ]
+   ],
+   "forecastle": [
+    [
+     1834,
+     1868
+    ],
+    [
+     1943,
+     1977
+    ],
+    [
+     2043,
+     2077
+    ],
+    [
+     2104,
+     2154
+    ]
+   ],
+   "sill_above_gun_sill_px": 70
+  },
+  "rail": {
+   "note": "the bulwark's top (the rail's underside), traced between the ports. A thinner line 8-12 px above it is the hammock rail (a later slice). In the waist the side's top is the sheer line.",
+   "quarterdeck": [
+    [
+     320,
+     249
+    ],
+    [
+     420,
+     243
+    ],
+    [
+     580,
+     243
+    ],
+    [
+     720,
+     240
+    ],
+    [
+     865,
+     237.5
+    ],
+    [
+     1015,
+     230.5
+    ],
+    [
+     1170,
+     232
+    ],
+    [
+     1272,
+     231.5
+    ]
+   ],
+   "forecastle": [
+    [
+     1905,
+     235.5
+    ],
+    [
+     2010,
+     238.5
+    ],
+    [
+     2095,
+     242.5
+    ],
+    [
+     2180,
+     247
+    ],
+    [
+     2250,
+     251
+    ],
+    [
+     2300,
+     253
+    ]
+   ]
+  },
+  "breaks": {
+   "note": "scan x: the quarterdeck bulwark ends at the entry port's aft post; the entry is open from the spar deck's plankshear up; the forecastle bulwark starts at its break",
+   "quarterdeck_end": 1288,
+   "entry": [
+    1290,
+    1325
+   ],
+   "forecastle_start": 1805
+  },
+  "plankshear_px": {
+   "note": "the spar deck's plankshear (the waist's line between the channel wale and the bulwark), height above A: 62 px over the gun port sill line",
+   "pts": [
+    [
+     1355,
+     160
+    ],
+    [
+     1515,
+     160
+    ],
+    [
+     1715,
+     161
+    ]
+   ],
+   "above_gun_sill_px": 62
+  },
+  "channels": {
+   "note": "the chains' channels: [x aft end, x fore end, z top at the aft end, z top at the fore end], 5-7 px deep in the drawing. Their tops sit at or just under the spar port sill line; skin.py follows the sill line moved to these heights, never above the sills, and starts the fore channel at the forecastle break (the 1927 plan runs it about 6 ft further aft, along what was then a solid waist). How far they stand out is not on the drawing (specs_1795.json).",
+   "mizzen": [
+    445,
+    672,
+    179,
+    179
+   ],
+   "main": [
+    800,
+    1225,
+    172,
+    172
+   ],
+   "fore": [
+    1742,
+    2097,
+    166.5,
+    179.5
+   ]
+  },
+  "rudder_irons": {
+   "note": "the rudder's straps: height above A where they cross the post's aft face, and how far forward the hull's arm (the gudgeon) runs: [z, x arm end, z arm end]. The lowest follows the keel's rise. Above them a plain band with an eye aft for the rudder pendants: [z, x aft end].",
+   "straps": [
+    [
+     -3.5,
+     437,
+     -3.5
+    ],
+    [
+     -56.5,
+     462,
+     -56.5
+    ],
+    [
+     -111.5,
+     482,
+     -111.5
+    ],
+    [
+     -165.5,
+     500,
+     -165.5
+    ],
+    [
+     -217.0,
+     525,
+     -207.0
+    ]
+   ],
+   "pendant_band": [
+    28.0,
+    335
+   ],
+   "rudder_bottom_z": -245.5
+  },
+  "entry_steps": {
+   "note": "battens up the side under the entry port: scan x range, the top and bottom steps' heights and the count",
+   "x": [
+    1282,
+    1320
+   ],
+   "z_top": 152,
+   "z_bottom": 7,
+   "count": 11
+  }
  }
 }
