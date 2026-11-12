@@ -2,7 +2,7 @@ name: Physics (standalone)
 
 # Builds Source/SailingPhysics without Unreal, the way scripts/polar.sh, traffic.sh and reference-checks.sh do on
 # the Mac, and runs the three standalone checks: the J/22 polar gate (--quick), the Navigation Rules scenarios and
-# an AI race, and the Phase 8 reference checks (--quick). Clang on Linux mirrors the Mac; MSVC catches the Windows
+# an AI race, the Phase 8 reference checks (--quick) and the rope lay's checks (scripts/rope-check.sh). Clang on Linux mirrors the Mac; MSVC catches the Windows
 # breaks (C4458/C4459 shadowing, C2487 comma-separated static constexpr) before the PC does. No Unreal, no LFS
 # content except the 262 KB Mann tile the standalone tools load from Content/TerrainData/Wind.mann.
 
@@ -14,6 +14,8 @@ on:
       - "Tools/PolarSweep/**"
       - "Tools/TrafficScenarios/**"
       - "Tools/ReferenceChecks/**"
+      - "Tools/RopeLayCheck/**"
+      - "scripts/rope-check.sh"
       - "Content/TerrainData/Wind.mann"
       - ".github/workflows/physics.yml"
   pull_request:
@@ -22,6 +24,8 @@ on:
       - "Tools/PolarSweep/**"
       - "Tools/TrafficScenarios/**"
       - "Tools/ReferenceChecks/**"
+      - "Tools/RopeLayCheck/**"
+      - "scripts/rope-check.sh"
       - "Content/TerrainData/Wind.mann"
       - ".github/workflows/physics.yml"
   workflow_dispatch:
@@ -48,6 +52,8 @@ jobs:
         run: scripts/traffic.sh
       - name: Reference checks
         run: scripts/reference-checks.sh --quick
+      - name: Rope lay and knots
+        run: scripts/rope-check.sh
 
   msvc:
     name: MSVC (Windows)
@@ -76,6 +82,7 @@ jobs:
           cl %FLAGS% !SOURCES! Tools\PolarSweep\main.cpp /Fe:Artifacts\polar-sweep.exe /FoArtifacts\ || exit /b 1
           cl %FLAGS% !SOURCES! Tools\TrafficScenarios\main.cpp /Fe:Artifacts\traffic-scenarios.exe /FoArtifacts\ || exit /b 1
           cl %FLAGS% !SOURCES! Tools\ReferenceChecks\main.cpp /Fe:Artifacts\reference-checks.exe /FoArtifacts\ || exit /b 1
+          cl %FLAGS% !SOURCES! Tools\RopeLayCheck\main.cpp /Fe:Artifacts\rope-check.exe /FoArtifacts\ || exit /b 1
       - name: Polar gate
         shell: cmd
         run: Artifacts\polar-sweep.exe --quick
@@ -85,3 +92,6 @@ jobs:
       - name: Reference checks
         shell: cmd
         run: Artifacts\reference-checks.exe --quick
+      - name: Rope lay and knots
+        shell: cmd
+        run: Artifacts\rope-check.exe
