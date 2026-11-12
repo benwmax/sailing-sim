@@ -53,18 +53,3 @@ change writes the three new sidecars (every tile has no recorded hash, so it bak
 with the tiles; from then on an unchanged tile is kept as saved. `scripts/make-houses.sh` and `scripts/bake-shore.sh`
 need no change: they save dirty packages only, as `import_world.py` does. The log line of each bake says how many tiles
 were kept and how many matched within tolerance.
-
-## Mac and PC disagree on bridge and house tiles (Nov 12 2026)
-
-The PC's first bake with the three new sidecars re-saved 617 of the 665 committed bridge, shore and house tiles (last
-baked 27 Oct): stale geometry (the clubhouse doors, club docks and terrain attach changes since then), not noise. A Mac
-bake on those Windows tiles then kept the shore (19 of 19) and the marina (24, 14 by tolerance) but re-saved 32 of 93
-bridge tiles and 136 of 553 house tiles, none rescued by the tolerance; a second Mac pass kept everything, so each machine
-is self-consistent. The two machines differ by more than float noise on those tiles, which means a count or a triangle
-differs, not a position. The likely cause: those generators turn continuous values into counts and choices
-(`int32((L - 1.6) / 3.2)`, `RoundToInt((EaveH - 0.3) / 2.9)`, `CeilToInt32(L / 2.4)`, thresholds on `HeightAt`), and the
-footprints' lengths sit on round numbers, so the quotient lands exactly on an integer and the last bit (clang on arm64
-fuses a multiply and add, MSVC does not) decides which side it falls. The shore and the marina make fewer such decisions
-from such inputs. Until the discrete decisions snap their inputs first (follow-up issue), the Mac's bake is the
-reference: tiles and sidecars committed to the repo come from the Mac, and a PC bake's re-saved bridge and house tiles
-are discarded, not committed.
