@@ -50,6 +50,9 @@ namespace Sailing
 		/** 432 lays of a mainsheet across a lifeline's two wires (the Mac's RigClearance: a Catalina 22's through one): no point
 		 *  of the rope in one, looked at every millimetre. */
 		SAILINGPHYSICS_API FRopeLayCheck OverALifeline();
+		/** Phase 2: the baked knots (RopeKnots.h): no part through another, rings close enough for their bends, the live rope
+		 *  joining on the knot's tangent, a bowline's loop round the clew, the same points every time. */
+		SAILINGPHYSICS_API FRopeLayCheck Knots();
 
 		SAILINGPHYSICS_API std::vector<FRopeLayCheck> All();
 	}

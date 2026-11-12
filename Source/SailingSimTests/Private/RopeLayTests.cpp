@@ -30,6 +30,7 @@ ROPE_LAY_TEST(WinchTurns)
 ROPE_LAY_TEST(ManyCases)
 ROPE_LAY_TEST(OverASailor)
 ROPE_LAY_TEST(OverALifeline)
+ROPE_LAY_TEST(Knots)
 
 #undef ROPE_LAY_TEST
 

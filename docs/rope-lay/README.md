@@ -57,8 +57,31 @@ sheet was still 3.3 cm into the sailor's back: a steep span over the shoulders w
 needed, a few millimetres a pass, and six passes ran out. A span now goes up by the most any of its points needs, a line
 near a sailor has its spans checked every 2 cm, and the passes run on to 24 (they stop as soon as nothing moves).
 
+## Phase 2: knots
+
+The knots ASA 101 shows on a J/22's sheets, baked tight and drawn as part of the live rope (the plan's K0 + K1):
+
+- **Bowline** at the jib's clew, one for each sheet, side by side on the cringle. The sheet starts where the knot's
+  standing part leaves it, on its tangent; the braid runs on from the bowline's tail.
+- **Figure eight** (stopper) in a sheet's tail end: the J/22's tail where it lies, the winch boats' tail on the deck. In a
+  hand the tail runs on past the fist, so the knot shrinks to a speck inside it.
+
+`Tools/rope/make_knot_data.py` ties each knot loose from a hand-laid path and pulls it tight with a small position-based
+solver (the rope inextensible, its parts kept a diameter apart, the standing part pulled, the bowline's loop round the
+clew's bar). It writes `Source/SailingPhysics/Public/RopeKnotData.inl` (centrelines in rope diameters; edit the script,
+never the .inl). `RopeKnots.h` places them; `SailingSim.Visual.RopeLay.Knots` checks that no part runs through another,
+the rope meets each knot on its tangent and the bowline clears the clew. No new meshes, so nothing to import.
+
+Cost (High crew view, the Mac): the first cut (a point every 0.32 diameters, the knots in the ropes' mesh section) cost
+0.9 fps, all game thread. Now the points are 0.45 diameters apart (113 for a bowline, 69 for a stopper), the knots are a
+mesh section of their own (section 3) that uploads only when a knot moves 1.5 mm (a stopper on deck never does; the ropes'
+uploads no longer carry the knots), and a knot shrunk to a speck has two rings.
+
+Not drawn: the mainsheet's dead end (its 4:1 is still four straight parts) and cleat hitches (the J/22's sheets are in
+cams; the dock lines' hitches are in the berthed dress, `bk_ropework.py`).
+
 ## Known limits
 
 - The lift is straight up (in the boat's frame). A rope climbing a vertical face can come up to its radius from the face
   (the 0.44 cm above, inside the rope's 0.45 cm radius); the old drape had the same limit.
-- Phase 2 (knots at the sockets) is separate; phase 3 (rope physics) is after the slice.
+- Phase 3 (rope physics) is after the slice.

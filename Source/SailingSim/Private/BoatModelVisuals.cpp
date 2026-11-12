@@ -39,6 +39,7 @@
 #include "Engine/GameViewportClient.h"
 #include "CrewPose.h"
 #include "RopeLay.h"
+#include "RopeKnots.h"
 
 using namespace Sailing;
 
@@ -76,6 +77,8 @@ namespace
 		// (a winch's turns).
 		float EndBendCm = 0.f;
 		TArray<FVector> Path;
+		// Rope realism 2: the Path's points are the rings themselves (a knot, baked with its own spacing): Path.Num() rings.
+		bool bPathRings = false;
 	};
 
 	/** Rope lay (docs/rope-lay): the player's boat's ropes. Every rope there has kRopeRings + 1 rings of kRopeSides sides
@@ -274,6 +277,9 @@ namespace
 		}
 	}
 
+	/** Rope lay: how many rings a line of the player's boat has (fixed for the line, so the mesh keeps its vertex count). */
+	int32 RopeRingCount(const FRigLine& L) { return L.bPathRings ? L.Path.Num() : kRopeRings + 1; }
+
 	/** Rope lay (docs/rope-lay): a rope through its laid rings (kRopeSides round), carried along by parallel transport so
 	 *  the braid doesn't twist. U = (UStartCm + arc) over one lay of the cover, so where a sheet runs on from one line to
 	 *  the next (through a block) its braid does too, and trimming moves it; the start is kept to its fraction (the texture
@@ -416,7 +422,15 @@ namespace
 			double Along = 0.0;
 			for (const int32 K : Order)
 			{
-				RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
+				if (Ropes[K].bPathRings)
+				{
+					Rings[K].clear();
+					for (const FVector& P : Ropes[K].Path) Rings[K].push_back(ToVec3(P));
+				}
+				else
+				{
+					RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
+				}
 				// (a line that touched nothing, near no sailor and clear of the lifelines has no span to check)
 				if (Laid[K] && (Lifted[K] || Near[K].Num() > 0 || Reaches[K]))
 				{
@@ -440,8 +454,10 @@ namespace
 		// (a ring of lines, which no rig makes) is placed on its own, unrounded.
 		for (int32 K = 0; K < N; ++K)
 		{
-			if (int32(Rings[K].size()) == kRopeRings + 1) continue;
-			RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
+			if (int32(Rings[K].size()) == RopeRingCount(Ropes[K])) continue;
+			Rings[K].clear();
+			if (Ropes[K].bPathRings) for (const FVector& P : Ropes[K].Path) Rings[K].push_back(ToVec3(P));
+			else RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
 			Prev[K] = INDEX_NONE;
 		}
 		PrevOut = MoveTemp(Prev);
@@ -839,6 +855,30 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 	}
 
+	// Rope realism 2 (docs/rope-lay/, RopeKnots.h): a knot drawn as a line of the rope it is tied in (its rings are the baked
+	// centreline, so it keeps its bends; same look and radius, so knot and sheet read as one rope). Returns where the live
+	// rope joins it. bCollapse (a stopper in a hand, which holds the tail on past it; a self-tacker's second bowline): a speck
+	// of two rings, its ends' (a knot that comes and goes changes only the knots' layout, rebuilt then).
+	auto AddKnot = [&Ropes](RopeKnots::EKnot Knot, const FVector& Origin, const FVector& Along, float RadiusCm, uint8 KnotLook, bool bCollapse) -> FVector
+	{
+		const double Diameter = bCollapse ? 0.01 : 2.0 * RadiusCm;
+		std::vector<Vec3> KnotPts;
+		RopeKnots::Place(Knot, ToVec3(Origin), ToVec3(Along), Vec3(0.0, 0.0, 1.0), Diameter, KnotPts);
+		FRigLine& KL = Ropes.AddDefaulted_GetRef();
+		if (bCollapse) KL.Path = { ToFVector(KnotPts.front()), ToFVector(KnotPts.back()) };
+		else for (const Vec3& P : KnotPts) KL.Path.Add(ToFVector(P));
+		KL.A = KL.Path[0];
+		KL.B = KL.Path.Last();
+		KL.RadiusCm = bCollapse ? 0.01f : RadiusCm;
+		KL.Slack = 0.f;
+		KL.Look = KnotLook;
+		KL.bPathRings = true;
+		KL.EndBendCm = Knot == RopeKnots::EKnot::Bowline ? 0.01f : 0.f;   // a bowline runs on into its sheet
+		return ToFVector(RopeKnots::Exit(Knot, ToVec3(Origin), ToVec3(Along), Vec3(0.0, 0.0, 1.0), Diameter));
+	};
+	// (a stopper lies on along the tail, level: the tail's end rests on the deck or the cabin top)
+	auto Level = [](const FVector& V) { const FVector Flat(V.X, V.Y, 0.0); return Flat.IsNearlyZero() ? V : Flat; };
+
 	// Jib sheets: the working sheet (leeward) from the clew through its lead to the winch, nearly straight under load;
 	// the lazy sheet over the cabin top to the windward lead, drooping.
 	// A self-tacking jib (the Lagoon's) has one sheet, from the clew down to its car on the track and aft to the leeward
@@ -853,20 +893,34 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			const uint8 Look = Side[0] == TEXT('S') ? RopeLook::JibStbd : RopeLook::JibPort;
 			const FVector Lead = RigPoint(ModelHull, *FString::Printf(TEXT("JibLead_%s"), Side));
 			const FVector Winch = RigPoint(ModelHull, *FString::Printf(TEXT("JibWinch_%s"), Side));
+			// Rope realism 2: each sheet is tied to the clew with a bowline (ASA 101), the two side by side on the cringle;
+			// the sheet starts where the knot's standing part leaves it.
+			// (The lazy sheet's way over the cabin top, below: the knot leads where the sheet goes. A self-tacker's second set of
+			// lines lies on the first: its knot a speck, not a second bowline through the first.)
+			FVector LazyVia = RigPoint(ModelHull, TEXT("LazySheetVia"));
+			if (JibClewCm.X < LazyVia.X) LazyVia = FVector(JibClewCm.X, 0.f, LazyVia.Z);
+			FVector ClewEnd = JibClewCm;
+			if (bFineRopes)
+			{
+				const FVector To = bWorking ? Lead : LazyVia;
+				Vec3 KX, KY, KZ;
+				RopeKnots::Frame(ToVec3(To - JibClewCm), Vec3(0.0, 0.0, 1.0), KX, KY, KZ);
+				const FVector Beside = bSelfTacker ? FVector::ZeroVector : ToFVector(KZ) * ((Tag[0] == TEXT('S') ? 1.0 : -1.0) * 0.8 * 0.9);
+				ClewEnd = AddKnot(RopeKnots::EKnot::Bowline, JibClewCm + Beside, To - JibClewCm, 0.45f, Look, bSelfTacker && Tag[0] == TEXT('P'));
+			}
 			if (bWorking)
 			{
-				Ropes.Add({ JibClewCm, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
+				Ropes.Add({ ClewEnd, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
 				Ropes.Last().EndBendCm = 2.5f;   // round the lead block's sheave
 			}
 			else
 			{
-				FVector Via = RigPoint(ModelHull, TEXT("LazySheetVia"));
 				// (Over the cabin top forward of the mast only while the clew is forward of it too: an overlapping genoa's clew,
 				// aft of the mast through a tack, took the sheet forward round the via and back through the mast,
 				// SailingSim.Visual.SheetClearance. Then it crosses over the cabin top aft of the mast, at the via's height on the
-				// centreline level with the clew, still in two pieces.)
-				if (JibClewCm.X < Via.X) Via = FVector(JibClewCm.X, 0.f, Via.Z);
-				Ropes.Add({ JibClewCm, Via, 0.45f, 0.03f, Look });
+				// centreline level with the clew, still in two pieces: LazyVia, above.)
+				const FVector Via = LazyVia;
+				Ropes.Add({ ClewEnd, Via, 0.45f, 0.03f, Look });
 				Ropes.Last().EndBendCm = 10.f;   // over the cabin top
 				Ropes.Add({ Via, Lead, 0.45f, 0.05f, Look });
 				Ropes.Last().EndBendCm = 2.5f;
@@ -904,8 +958,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const FVector Top = ToFVector(Turns.back());
 				const double ThetaE = FMath::Atan2(Top.Y - Winch.Y, Top.X - Winch.X);
 				const FVector Off = FVector(-FMath::Sin(ThetaE), FMath::Cos(ThetaE), 0.0) * 14.0;
-				Ropes.Add({ Top, FVector(Top.X + Off.X, Top.Y + Off.Y, Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type) + 0.45), 0.45f, 0.03f, Look });
-				Ropes.Last().EndBendCm = 0.f;
+				// (its end high enough for the stopper in it to clear the deck: the knot is 0.93 diameters deep below its axis)
+				const FVector TailEnd(Top.X + Off.X, Top.Y + Off.Y, Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type) + 0.95 * 0.9);
+				Ropes.Add({ Top, TailEnd, 0.45f, 0.03f, Look });
+				// (and a figure eight in its end, so it can't run out through the lead: rope realism 2)
+				Ropes.Last().EndBendCm = 0.01f;
+				AddKnot(RopeKnots::EKnot::FigureEight, TailEnd, Level(Top - TailEnd), 0.45f, Look, false);
 				Label(Ropes, TEXT("jib sheet tail"));
 			}
 		}
@@ -933,6 +991,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
 			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
 		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
+		if (bFineRopes)
+		{
+			// Rope realism 2: a figure eight in the tail's end where it lies; in a hand the tail runs on past the fist (the
+			// knot a speck inside it).
+			const bool bInHand = Hand && FVector::Dist(*Hand, Tailer) < 160.f;
+			Ropes.Last().EndBendCm = 0.01f;
+			AddKnot(RopeKnots::EKnot::FigureEight, Tail, Level(Tailer - Tail), 0.45f, Ropes.Last().Look, bInHand);
+		}
 		Label(Ropes, TEXT("jib sheet tail"));
 	}
 	FVector End;
@@ -1327,16 +1393,25 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 
 	// Gravity in the boat frame (the boat heels and pitches).
 	const FVector Down = BoatRoot->GetComponentTransform().InverseTransformVectorNoScale(FVector(0.f, 0.f, -1.f));
-	for (int32 Section = 0; Section < 2; ++Section)
+	// Three sets: the wires (mesh section 0), the ropes (1) and, on the player's boat, the knots in them (3; 2 is the coils).
+	// The knots are a set of their own (rope realism 2, #649): drawn in the ropes' section, every rope's upload carried their
+	// rings too, and a stopper lying on deck never moves. A knot is rigid, so it waits for its fitting to move 1.5 mm (the
+	// jib's clew stirs with the cloth every frame; the live sheet still starts at the knot's exit).
+	for (int32 Set = 0; Set < 3; ++Set)
 	{
-		const TArray<FRigLine>& Lines = Section == 0 ? Wires : Ropes;
+		const int32 Section = Set < 2 ? Set : 3;
+		const TArray<FRigLine>& Lines = Set == 0 ? Wires : Ropes;
 		// A section none of whose lines moved more than half a millimetre (ends, sag or radius) since its last upload, and none of
 		// whose rings stepped its on-screen widening, is left as it is: the standing rig at rest, a sheet made fast.
-		const bool bFineSection = Section == 1 && bFineRopes && FineRings.Num() == Lines.Num();
+		const bool bFineSection = Set >= 1 && bFineRopes && FineRings.Num() == Lines.Num();
+		if (Set == 2 && !bFineSection) continue;
+		// (the fine ropes' lines in this set: a knot's rings are its baked path, bPathRings)
+		auto InSet = [&](int32 K) { return !bFineSection || Lines[K].bPathRings == (Set == 2); };
 		TArray<FVector> Keys;
 		Keys.Reserve(Lines.Num() * (bFineSection ? kRopeRings + 2 : 5));
 		for (int32 K = 0; bFineSection && K < Lines.Num(); ++K)
 		{
+			if (!InSet(K)) continue;
 			// Rope lay: every ring (a lift confined to a few of them, a tail over a moving knee, must still upload), its
 			// widening steps and where its braid starts (trimming scrolls it).
 			const std::vector<Vec3>& Laid = FineRings[K];
@@ -1356,27 +1431,39 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// triangles and colours, sent only at a build, are built again.
 		TArray<uint32> Layout;
 		Layout.Reserve(Lines.Num());
-		for (int32 K = 0; K < Lines.Num(); ++K) Layout.Add(uint32(Lines[K].Look) | (uint32(bFineSection ? FineRings[K].size() : size_t(kLineSegments + 1)) << 8));
-		const bool bBuild = !bRigLinesBuilt || Layout != RigLineLayout[Section];
-		TArray<FVector>& Last = RigLineKeys[Section];
+		for (int32 K = 0; K < Lines.Num(); ++K)
+		{
+			if (InSet(K)) Layout.Add(uint32(Lines[K].Look) | (uint32(bFineSection ? FineRings[K].size() : size_t(kLineSegments + 1)) << 8));
+		}
+		if (Set == 2 && Layout.Num() == 0) continue;   // (a boat with no knots)
+		const bool bBuild = !bRigLinesBuilt || Layout != RigLineLayout[Set] || RigLines->GetNumSections() <= Section;
+		TArray<FVector>& Last = RigLineKeys[Set];
 		bool bMoved = bBuild || Last.Num() != Keys.Num();
-		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;
+		const float Still = Set == 2 ? 0.15f : 0.05f;
+		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > Still * Still;
 		if (!bMoved) continue;
 		Last = MoveTemp(Keys);
-		RigLineLayout[Section] = MoveTemp(Layout);
+		RigLineLayout[Set] = MoveTemp(Layout);
 		FTubeStreams Out;
 		// Reserved up front, and no colours after the build: the per-frame update converted every vertex's linear colour
 		// to sRGB and doubled the rig lines' game-thread time (0.65 -> 1.4 ms on the PC).
-		const int32 NumVerts = bFineSection ? Lines.Num() * (kRopeRings + 1) * (kRopeSides + 1) : Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
+		int32 NumVerts = Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
+		if (bFineSection)
+		{
+			NumVerts = 0;
+			for (int32 K = 0; K < Lines.Num(); ++K) if (InSet(K)) NumVerts += RopeRingCount(Lines[K]) * (kRopeSides + 1);
+		}
 		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
 		if (bBuild) Out.Colors.Reserve(NumVerts);
 		TArray<FVector> Frames;
 		if (bFineSection) Frames.Init(FVector::ZeroVector, Lines.Num());
 		for (int32 K = 0; K < Lines.Num(); ++K)
 		{
+			if (!InSet(K)) continue;
 			if (bFineSection)
 			{
-				// (lines are in rig order, a chain's lines one after another: the previous one's frame is already there)
+				// (lines are in rig order, a chain's lines one after another: the previous one's frame is already there; a line
+				// running on from a line in the other set starts a frame of its own, the same every frame)
 				FVector Frame = FinePrev.IsValidIndex(K) && FinePrev[K] != INDEX_NONE && FinePrev[K] < K ? Frames[FinePrev[K]] : FVector::ZeroVector;
 				AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, bBuild, &Frame);
 				Frames[K] = Frame;
@@ -1394,6 +1481,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			Out = FTubeStreams();
 			for (int32 K = 0; K < Lines.Num(); ++K)
 			{
+				if (!InSet(K)) continue;
 				if (bFineSection) AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, true);
 				else AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, true);
 			}
@@ -1403,7 +1491,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		if (bBuild)
 		{
 			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
-			RigLines->SetMaterial(Section, Section == 0 ? WireMaterial.Get() : RopeMaterial.Get());
+			RigLines->SetMaterial(Section, Set == 0 ? WireMaterial.Get() : RopeMaterial.Get());
 		}
 		else
 		{
