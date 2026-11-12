@@ -338,6 +338,14 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   (`scripts/import-audio.sh`, credits in `Audio/Samples/CREDITS.md`). Water below 2 kn goes glassy (`glass` in
   `M_WaterV4`). Cockpit view: `\` or `-SailingCockpit` (`UpdateCockpitCamera`); photo mode has depth of field and the
   V1 lens profile.
+- Sound slice pass (PR #644, plan: the Claude Doc "Ready About: sound plan"): every sound is in one group (`SailingSound::EGroup`
+  Boat, World, Weather, Signals: Settings > Audio's sliders under the master; `UpdateMix`/`GroupGain`), a peak limiter on the
+  master submix (`EnsureMasterLimiter`), mono and sound captions (`USoundCaptions`, HUD) under Accessibility. Placed sounds use
+  `SpatialSettings` (inner radius, blend toward both ears): horns from the vessel (`ATrafficManager::UpdateHorns`, `EWorldSound::Horn`),
+  thunder toward the strike and the wind's loops to windward (`UpdatePlacedSounds`), one-shots at their boat part (`PlayPackShot`).
+  `USailingSoundscape`: shore life on the nearest shore by sun and season (`ShoreLifeFor`; lake only, `-SailingNoShoreLife`).
+  Dinghies have no winches (`HasSheetWinches`). Loudness: `scripts/loudness-check.sh [seconds] [breeze storm race dusk]`
+  (`-SailingRecordAudio=<s>` writes `Saved/Bench/<shot>.audio.wav`; `scripts/loudness_check.py --self-test`), -18 LUFS +-3, -1 dBTP.
 - MetaHuman crew (Visual V7): `scripts/make-metahumans.sh` builds the helm, trimmer and bow (presets Bruce, Ada, Omari)
   into `/Game/Crew/MetaHumans` in the full editor (git-ignored: about 0.5 GB, and the licence covers use, not
   redistribution). It needs the engine's MetaHuman optional content and an Epic sign-in for the cloud auto-rig (device

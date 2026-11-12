@@ -60,7 +60,7 @@ public:
 	static void MoonPosition(double ClockHour, double DayOfYear, double AgeDays, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth);
 
 	/** A thunderclap reaching the listener: loudness 0..1 (distance) and how long ago it started. */
-	struct FThunder { float Loudness; float Age; float Duration; };
+	struct FThunder { float Loudness; float Age; float Duration; float X = 0.f; float Y = 0.f; };   // X, Y: the strike (map m)
 	const TArray<FThunder>& GetActiveThunder() const { return Thunder; }
 	/** The direct sun reaching the camera through the clouds (0..1) and the physical camera's EV100, for the capture metadata. */
 	float GetCloudShade() const { return LastCloudShade; }
@@ -199,7 +199,7 @@ private:
 	float Flash = 0.f;
 	float BoltTime = -1.f;
 	TArray<FThunder> Thunder;
-	struct FPendingThunder { float Delay; float Loudness; };
+	struct FPendingThunder { float Delay; float Loudness; float X = 0.f; float Y = 0.f; float Distance = 0.f; };
 	TArray<FPendingThunder> PendingThunder;
 	float SunIntensity = 10.f;
 	float SkyIntensity = 1.f;

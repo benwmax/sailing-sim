@@ -188,6 +188,12 @@ FString FSailSave::ToJson() const
 	Set->SetBoolField(TEXT("showCrew"), S.bShowCrew);
 	TSharedRef<FJsonObject> Audio = Obj();
 	Audio->SetNumberField(TEXT("volume"), S.Volume);
+	Audio->SetNumberField(TEXT("boat"), S.VolumeBoat);
+	Audio->SetNumberField(TEXT("world"), S.VolumeWorld);
+	Audio->SetNumberField(TEXT("weather"), S.VolumeWeather);
+	Audio->SetNumberField(TEXT("signals"), S.VolumeSignals);
+	Audio->SetBoolField(TEXT("mono"), S.bMonoAudio);
+	Audio->SetBoolField(TEXT("captions"), S.bSoundCaptions);
 	Set->SetObjectField(TEXT("audio"), Audio);
 	TSharedRef<FJsonObject> Display = Obj();
 	Display->SetNumberField(TEXT("resolutionScale"), S.ResolutionScale);
@@ -420,7 +426,16 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Set, TEXT("trimAssist"), S.bTrimAssist);
 		Read(*Set, TEXT("showHud"), S.bShowHud);
 		Read(*Set, TEXT("showCrew"), S.bShowCrew);
-		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio"))) Read(*A, TEXT("volume"), S.Volume);
+		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio")))
+		{
+			Read(*A, TEXT("volume"), S.Volume);
+			Read(*A, TEXT("boat"), S.VolumeBoat);
+			Read(*A, TEXT("world"), S.VolumeWorld);
+			Read(*A, TEXT("weather"), S.VolumeWeather);
+			Read(*A, TEXT("signals"), S.VolumeSignals);
+			Read(*A, TEXT("mono"), S.bMonoAudio);
+			Read(*A, TEXT("captions"), S.bSoundCaptions);
+		}
 		if (const TSharedPtr<FJsonObject> G = Child(*Set, TEXT("graphics")))
 		{
 			Read(*G, TEXT("antiAliasing"), S.AntiAliasing);
@@ -629,6 +644,12 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bShowHud = In.bShowHud;
 	S.bShowCrew = In.bShowCrew;
 	S.Volume = In.Volume;
+	S.VolumeBoat = In.VolumeBoat;
+	S.VolumeWorld = In.VolumeWorld;
+	S.VolumeWeather = In.VolumeWeather;
+	S.VolumeSignals = In.VolumeSignals;
+	S.bMonoAudio = In.bMonoAudio;
+	S.bSoundCaptions = In.bSoundCaptions;
 	S.ResolutionScale = In.ResolutionScale;
 	S.FrameCap = In.FrameCap;
 	S.bCinematicLook = In.bCinematicLook;
@@ -710,6 +731,12 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bShowHud = S.bShowHud;
 	Out.bShowCrew = S.bShowCrew;
 	Out.Volume = FMath::Clamp(S.Volume, 0.f, 1.f);
+	Out.VolumeBoat = FMath::Clamp(S.VolumeBoat, 0.f, 1.f);
+	Out.VolumeWorld = FMath::Clamp(S.VolumeWorld, 0.f, 1.f);
+	Out.VolumeWeather = FMath::Clamp(S.VolumeWeather, 0.f, 1.f);
+	Out.VolumeSignals = FMath::Clamp(S.VolumeSignals, 0.f, 1.f);
+	Out.bMonoAudio = S.bMonoAudio;
+	Out.bSoundCaptions = S.bSoundCaptions;
 	Out.ResolutionScale = S.ResolutionScale;
 	Out.FrameCap = S.FrameCap;
 	Out.bCinematicLook = S.bCinematicLook;

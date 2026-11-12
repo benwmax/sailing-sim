@@ -1929,8 +1929,19 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	case 2:
 		Add(SNew(SSailSlider).Label(TEXT("Master volume")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->Volume * 100.f; })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->Volume * 100.f); }).OnChanged_Lambda([S](float V) { S->Volume = V / 100.f; S->Save(); }));
+		// Slice sound pass: the mix by group, each under the master (SailingSound::EGroup).
+		Add(SNew(SSailSlider).Label(TEXT("On board")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->VolumeBoat * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->VolumeBoat * 100.f); }).OnChanged_Lambda([S](float V) { S->VolumeBoat = V / 100.f; S->Save(); }));
+		Add(SNew(SSailSlider).Label(TEXT("Lake and shore")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->VolumeWorld * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->VolumeWorld * 100.f); }).OnChanged_Lambda([S](float V) { S->VolumeWorld = V / 100.f; S->Save(); }));
+		Add(SNew(SSailSlider).Label(TEXT("Weather")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->VolumeWeather * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->VolumeWeather * 100.f); }).OnChanged_Lambda([S](float V) { S->VolumeWeather = V / 100.f; S->Save(); }));
+		Add(SNew(SSailSlider).Label(TEXT("Horns and voices")).Min(0.f).Max(100.f).Step(5.f).Value_Lambda([S]() { return S->VolumeSignals * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%.0f"), S->VolumeSignals * 100.f); }).OnChanged_Lambda([S](float V) { S->VolumeSignals = V / 100.f; S->Save(); }));
 		// "Larus atricilla" is CC BY 3.0: the game must credit it (docs/licences, CREDITS.md).
-		Help = TEXT("Every sound is synthesised from the wind, water and boat, with a few recorded samples from Wikimedia Commons: "
+		Help = TEXT("On board is the wind in your ears and the rig, the sails, the hull and the gear; Lake and shore the birds, the marina "
+			"and other boats; Horns and voices the sound signals and calls. Mono audio and sound captions are under Accessibility.\n\n"
+			"Every sound is synthesised from the wind, water and boat, with a few recorded samples from Wikimedia Commons: "
 			"\"Larus atricilla\" by Tony Phillips (CC BY 3.0); \"Gull 1\" by avphillips and \"Rain on a veranda\" by ezwa (public domain).");
 		break;
 	case 3:
@@ -1982,6 +1993,13 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		KeepFocus(E, TEXT("TextSize"), TextSize);
 		Add(SNew(SSailChoice).Label(TEXT("Port and starboard colours")).Options({ TEXT("Red and green") }).Index(0)
 			.Note(TEXT("The HUD pairs every side colour with a letter (P and S) or a word, so it never relies on colour alone.")));
+		// Slice sound pass (the sound plan's accessibility rows).
+		Add(SNew(SSailChoice).Label(TEXT("Sound captions")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bSoundCaptions ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bSoundCaptions = I == 1; S->Save(); })
+			.Note(TEXT("Horn signals with their meaning, thunder and crew calls, with the side they come from.")));
+		Add(SNew(SSailChoice).Label(TEXT("Mono audio")).Options({ TEXT("Off"), TEXT("On") }).Index_Lambda([S]() { return S->bMonoAudio ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bMonoAudio = I == 1; S->Save(); })
+			.Note(TEXT("Every sound in both ears, for hearing on one side or a single speaker. Applies from the next session.")));
 		Help = TEXT("Every screen works with the keyboard, a controller or the mouse; the prompts follow whichever you used last.");
 		break;
 	}

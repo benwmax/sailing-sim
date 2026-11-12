@@ -1602,7 +1602,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		SceneCallSerial = Scene.GetCallSerial();
 		const FString CallId = UTF8_TO_TCHAR(Scene.GetCallId().c_str());
 		const FString Cue = CallId.Replace(TEXT("."), TEXT("_")).Replace(TEXT("-"), TEXT("_"));
-		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice);
+		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice, SailingSound::GroupGain(SailingSound::EGroup::Signals));
 		SAIL_LOG(Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
 	}
 	// The sim judged the scene finished: the save keeps it by id (rule 7), unless this run never writes the save.
