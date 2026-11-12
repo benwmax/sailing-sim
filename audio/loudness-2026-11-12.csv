@@ -1,0 +1,5 @@
+file,lufs,lra,short_max,sample_peak_db,true_peak_db,clipped,channels,seconds,pass
+Saved/Bench/loud-breeze.audio.wav,-20.25,16.40,-17.58,-8.10,-8.10,0,2,30.0,1
+Saved/Bench/loud-storm.audio.wav,-22.63,10.84,-18.44,-8.78,-8.68,0,2,30.0,0
+Saved/Bench/loud-race.audio.wav,-26.85,8.79,-22.32,-12.80,-12.62,0,2,30.0,0
+Saved/Bench/loud-dusk.audio.wav,-23.90,23.48,-19.35,-9.46,-9.34,0,2,30.0,0
