@@ -221,3 +221,15 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
 - Crew: the hero's `PlanHalf`/`PlanTop` table ends 0.540 / 0.496 / 0.440 / 0.370 (measure.py's cut) and 0.163 / 0.123 / 0.095 / 0.072 at
   x 1.36 / 1.45 / 1.52 / 1.57 (measured on the build). The raked face's slope now falls entirely in the deck mould's
   `flat` (non-skid) band; the rebake regenerates the mould.
+
+## Cockpit leftovers (Nov 12): the teak coaming cap
+
+- The cabin's aft face was checked against both class deck plans (the class rules' Plan E, page 41, and j22.org's):
+  both put it at 41% of LOA from the transom (x -0.58 to -0.60) and the trunk's front at 72-73% (1.55-1.58), so the
+  hero's -0.55 / 1.57 stay; the trailer broadside's -0.46 was the coaming hiding the trunk's aft corner. The step where
+  the trunk stands 11 cm outboard of the cockpit wall is in both plans too.
+- `coaming_cap` was a 44 mm round dowel. It is now a flat board lying on the deck along the cockpit's edge (`CAP_W` 0.065
+  wide, `CAP_T` 0.016 proud, its inner edge 4 mm over the coaming's lip, rounded edges), from the cabin's aft face to
+  the aft deck in one piece (Commons j22-above-deck-cockpit). Blind A/B 3 of 3; their notes (thinner, wider, one piece
+  to the aft deck) are in. The jib sheet's baked lead runs over the board's inner edge with no sag into it.
+- The footwell's fore step already reads as in the photos; left as is.

@@ -68,7 +68,8 @@
   "The cockpit's fore end (the cabin's aft face) is at x -0.52 on the hero, -0.59 on the class deck plan (2.82 m from the transom): 7 cm, past the plan's reading tolerance. It moves the cabin and the companionway, so it belongs to wave 3 (companionway), not this card.",
   "Round 2: the hero's cockpit walls followed the sheer 0.25 m in (SIDE_DECK), so the cockpit widened forward to 1.92 m at the cabin; the deck plan and photos show straight walls with a slight taper, about 1.3-1.45 m apart. Now COAMING_HALF 0.64 aft to 0.73 forward, 0.12 m from the sheer at most. Blind A/B 3 of 3. The cabin trunk still follows SIDE_DECK (about 0.79 of the beam at its aft end against the plan's ~0.69): wave 3.",
   "A reviewer noted the real footwell starts a little aft of the companionway (a short step at its fore end); the hero's runs straight to the bulkhead. Round 2 or wave 3.",
-  "QA, round 2, before this PR and left as they were: CrewMotion.cpp's CrewCockpitWell callers at ~184 and ~233 read W.HalfWidth, 0 on both J/22s (WallHalf would give the wall); the derived FootBrace on the hero ignores SeatIn; the lee jib sheet passes through the coaming cap near x -0.95 (Drape doesn't collide with the caps)."
+  "QA, round 2, before this PR and left as they were: CrewMotion.cpp's CrewCockpitWell callers at ~184 and ~233 read W.HalfWidth, 0 on both J/22s (WallHalf would give the wall); the derived FootBrace on the hero ignores SeatIn; the lee jib sheet passes through the coaming cap near x -0.95 (Drape doesn't collide with the caps).",
+  "Cockpit leftovers (Nov 12): the coaming cap is a flat teak board (0.065 x 0.016, cabin to aft deck), blind 3 of 3. The cabin's aft face checked against Plan E and j22.org: -0.58 to -0.60 against the hero's -0.55, kept."
  ],
  "seams_shorter": {
   "Cabin|Cockpit": {
