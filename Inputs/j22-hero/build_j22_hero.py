@@ -89,6 +89,12 @@ CHAINPLATE_X = MAST_X - 0.15                # one plate a side carries both shro
 CABIN_AFT, CABIN_FWD = -0.55, 1.65          # trunk ends: aft GUESS from the bow photo; the raked face's foot from the
                                             # broadside photo (1.51-1.63 m, docs/boatkit-3)
 CABIN_H0 = 0.30                             # GUESS: trunk height over the deck at its aft end, on the centreline
+# the trunk's foot, half-width (j22.org deck plan, column scans at 22 mm/px, and the Harken J/22 layout drawing Bean
+# sent Nov 11 2026: 0.81-0.85 at the aft face; docs/shape-loop wave 3). The plan scan reads 0.73 at x 0.4 and 0.60 at
+# 1.0, the Harken drawing (7.3 mm/px) about 0.75 and 0.70, so the table runs between them; it keeps the side convex
+# (each step narrows faster than the one aft of it: the scan's own points gave a waist that three blind reviewers saw)
+CABIN_PLAN = ((-0.60, 0.83), (-0.06, 0.80), (0.40, 0.755), (0.83, 0.69), (1.01, 0.645), (1.19, 0.595),
+              (1.36, 0.54), (1.65, 0.43))
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272), beside the cabin
@@ -251,6 +257,17 @@ def coaming_y(x):
     return min(COAMING_HALF[0] + (COAMING_HALF[1] - COAMING_HALF[0]) * t, half_beam(x) - COAMING_AFT_DECK)
 
 
+def cabin_foot(x):
+    """The trunk side's foot at x, half-width, from the deck plan (CABIN_PLAN)."""
+    pts = CABIN_PLAN
+    if x <= pts[0][0]:
+        return pts[0][1]
+    for (xa, ya), (xb, yb) in zip(pts, pts[1:]):
+        if x <= xb:
+            return ya + (yb - ya) * (x - xa) / (xb - xa)
+    return pts[-1][1]
+
+
 def deck_z(x, y):
     hb = max(half_beam(x), 1e-3)
     v = min(abs(y) / hb, 1.0)
@@ -379,7 +396,8 @@ def cabin_ring(t, inset=0.0, z_floor=None, top_extra=0.0):
     thick (the cabin's headliner), dropped to z_floor below the deck so it can cut the deck open too."""
     x = CABIN_AFT + (CABIN_FWD - CABIN_AFT) * t
     # plan half-width at the deck: inboard edge of the side deck, rounding in to the nose over the last fifth
-    side_line = half_beam(x) - SIDE_DECK - 0.015
+    # (the subdivision pulls the foot about 2 cm inboard, so the plan's line goes in as it is: the built foot lands on it)
+    side_line = min(cabin_foot(x), half_beam(x) - SIDE_DECK)
     nose = smooth((t - 0.80) / 0.20)
     w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
     hgt = CABIN_H0 - 0.06 * t                          # trunk height above the deck at the centreline
@@ -419,7 +437,10 @@ def build_cabin():
     down to the foredeck ahead of the mast."""
     n = 72
     bm = bmesh.new()
-    rings = [[bm.verts.new(pt) for pt in cabin_ring(i / n)] for i in range(n + 1)]
+    # an extra section 1 cm from the aft face keeps its corners tight under the subdivision: without it the aft
+    # corners round 3 cm aft and 6 cm in, off the cockpit coaming's lip (seam gap 4.9 mm once the trunk narrowed)
+    ts = [0.0, 0.01 / (CABIN_FWD - CABIN_AFT)] + [i / n for i in range(1, n + 1)]
+    rings = [[bm.verts.new(pt) for pt in cabin_ring(t)] for t in ts]
     for a_, b_ in zip(rings[:-1], rings[1:]):
         # the last face is the trunk's bottom, hidden under the deck: it closes the solid so the interior's booleans are clean
         for j in range(len(a_)):
@@ -653,7 +674,9 @@ def build_hardware():
                           surface=lambda x, y: deck_z(x, y) - 0.002, length=0.60)
         # the halyard winch on the cabin top's aft outboard corner (the Harken layout's B6, a size 6 plain-top; photos
         # IMG_9224 and IMG_9272)
-        parts += kit_part(f"Winch_{side}", "WinchPlain", (CABIN_AFT + 0.12, side * 0.74), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
+        # (shape wave 3: 0.58 m out, 12 cm forward of the aft face, on the narrower trunk: the Harken layout drawing's B6;
+        # it was 0.74 on the wider trunk)
+        parts += kit_part(f"Winch_{side}", "WinchPlain", (CABIN_AFT + 0.12, side * 0.58), surface=lambda x, y: cabin_top_z(x, y) - 0.002)
         # one chainplate a side on the side deck, upper shroud on its aft hole and lower on its forward one (photos)
         xc = CHAINPLATE_X
         yc = half_beam(xc) - 0.09
@@ -742,7 +765,7 @@ def build_hardware():
     za = deck_z(CABIN_AFT, 0) + CABIN_H0
     # #235 gaps (photos companionway-1, companionway-lookinto, companionway-rail-port): the hatch is varnished marine
     # plywood; teak trims run along both sides of the opening beside the closed hatch and frame its aft face either side
-    # of the drop board (clear of the halyard cams at 0.335 m out).
+    # of the drop board (clear of the halyard cams, HAL_CAM_Y and out).
     parts.append(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["PlywoodVarnish"], bev=0.012))
     parts.append(box("DropBoard", CABIN_AFT - 0.012, CABIN_AFT + 0.012, -0.24, 0.24, SEAT_Z + 0.02, za - 0.02, MAT["TeakWeathered"], bev=0.004))
     for side in (1, -1):
@@ -804,7 +827,9 @@ BOOM_Z = 1.45
 BOOM_LEN = 2.70          # GUESS: E
 JIB_TRACK_X = -0.55      # Bean's feedback 3: the jib lead track on the side deck beside the cockpit's forward end
 JIB_CAM_X = -1.05        # its cam on the cockpit's side wall, just aft of the track
-HAL_CAM_Y = 0.58         # Bean's feedback 2: the halyard cams forward of the cabin-top winch (0.74 out)
+HAL_CAM_Y = 0.54         # Bean's feedback 2: the halyard cams just forward of the cabin-top winch (shape wave 3, the Harken
+                         # drawing's 2633s: 0.54 and 0.62 out, either side of the 0.58 winch; 0.58 and 0.66 beside the
+                         # 0.74 winch before)
 TRAVELER_X = -2.06       # under the boom's end (its cap at about -2.14): end-boom sheeting, the light J/22's TRAV_X too
 
 

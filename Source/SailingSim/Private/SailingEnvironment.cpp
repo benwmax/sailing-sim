@@ -1,4 +1,5 @@
 #include "SailingEnvironment.h"
+#include "SoundCaptions.h"
 #include "SailingFrame.h"
 #include "SailingProbeCopy.h"
 #include "BenchRunner.h"
@@ -1271,7 +1272,8 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		// Light from the strike's direction.
 		const FVector Dir = (FVector(Listener.X - S.X, Listener.Y - S.Y, -1500.f)).GetSafeNormal();
 		FlashLight->SetWorldRotation(Dir.Rotation());
-		PendingThunder.Add({ float(FWeatherSystem::ThunderDelaySeconds(S, Listener.X, Listener.Y)), FMath::Clamp(2500.f / FMath::Max(Distance, 300.f), 0.1f, 1.f) });
+		PendingThunder.Add({ float(FWeatherSystem::ThunderDelaySeconds(S, Listener.X, Listener.Y)), FMath::Clamp(2500.f / FMath::Max(Distance, 300.f), 0.1f, 1.f),
+			float(S.X), float(S.Y), Distance });
 	}
 
 	// Stills (docs/storm-lumen/): -SailingFlashHold holds the storm's first strike at full flash, so a still shows the
@@ -1317,7 +1319,14 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		PendingThunder[I].Delay -= DeltaSeconds;
 		if (PendingThunder[I].Delay <= 0.f)
 		{
-			Thunder.Add({ PendingThunder[I].Loudness, 0.f, 3.f + 4.f * (1.f - PendingThunder[I].Loudness) });
+			const FPendingThunder& Pt = PendingThunder[I];
+			Thunder.Add({ Pt.Loudness, 0.f, 3.f + 4.f * (1.f - Pt.Loudness), Pt.X, Pt.Y });
+			// Sound captions: what was heard and where from (close under 2 km, distant past 8 km).
+			if (USoundCaptions* Captions = USoundCaptions::Get(this))
+			{
+				Captions->AddFrom(Pt.Distance < 2000.f ? TEXT("Thunder, close") : (Pt.Distance > 8000.f ? TEXT("Thunder, distant") : TEXT("Thunder")),
+					FVector2D(Pt.X, Pt.Y), FString(), 4.0);
+			}
 			PendingThunder.RemoveAt(I);
 		}
 	}

@@ -167,3 +167,23 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
 - Findings left for later rounds are in the card: the cabin's aft face 7 cm forward of the deck plan's (wave 3), the
   whole cockpit perhaps too wide (side decks 0.25 m; check with a camera solve), the short step at the footwell's
   fore end.
+
+## Wave 3 changes (Nov 11): the cabin trunk
+
+- The trunk followed the sheer 0.25 m in (`SIDE_DECK`): 1.92 m wide at its aft end, about 0.79 of the beam. Its foot
+  now follows `CABIN_PLAN` (`cabin_foot(x)` in `build_j22_hero.py`): 0.83 m out aft, 0.755 at x 0.4, 0.645 at x 1.0,
+  between the j22.org deck plan's column scans and the Harken J/22 deck layout Bean sent (0.80-0.85 aft, about 0.75 and
+  0.70 forward), kept convex: the scan's own points gave the side a waist that 3 of 3 blind reviewers marked down.
+  The plan's line goes in as it is (the subdivision takes about 2 cm off the foot); an extra section 1 cm behind the
+  aft face keeps its corners on the cockpit coaming's lip (they rounded 3 cm aft and 6 cm in, a 4.9 mm seam gap).
+- The halyard winches sit on the roof's aft corners (0.58 m out, as in the Harken drawing; the pods of the first try
+  are gone), the cams just forward (`HAL_CAM_Y` 0.54); the portlights and headliner follow `cabin_ring`.
+- Card `cards/j22-cabin.json`: widths 12 cm under the top at x -0.45 / 0.40 / 1.00, 1.60 / 1.45 / 1.23 m; built
+  1.59 / 1.46 / 1.25. `measure.py` adds `outer_width` and `cabin_width_aft/mid/fwd`. Blind A/B 3 of 3 (round 2).
+- Crew: `FCrewCabinTrunk` takes a plan table (`PlanX`/`PlanHalf`, `HalfAt()`); the hero's mirrors `CABIN_PLAN` and
+  the built nose, so `CrewFloorZ`/`CrewInsideBoat` with the hero's flag put feet on the side deck beside the trunk
+  (`SailingSim.Visual` checks at x -0.30 and 0.83). CrewMotion's own placement still reads the light J/22's trunk.
+- The rebake regenerates `J22H_coils.json` and `J22CoilData.inl` (the halyard tails move with the cams).
+- Findings for later: the trunk's front reads blunt and pointed next to the Harken drawing; a small notch where each
+  coaming end meets the trunk side; the trunk's height and aft face position against IMG_9224 (its top 120-150 px high
+  in the overlay).

@@ -1238,12 +1238,17 @@ coat *= 1.0 - 0.85 * ox;
 col = lerp(col, col * 0.78 + 0.02, (age >= 0.0 ? 0.0 : wear.x) * saturate(NonSkid) * 0.7);
 // Round 12 ("lack of texture on surfaces", "no wear and tear"): three octaves of value noise anchored to the boat (37 cm,
 // 9 cm, 2.2 cm) for grime ground into decks and non-skid where feet and water go, and a faint mottle in every gelcoat.
-float vn = 0.0, amp = 0.6, sc = 37.0;
+// #405 (Inputs/405-audit on the inputs branch): each octave's lattice is turned (37, 74, 111 deg) and smoothed quintically, so the thresholded
+// grime below has no square, stair-stepped edges; WearScale (per class, BoatModelVisuals: 0.7 on the dinghies) sizes it
+// to the boat.
+float vn = 0.0, amp = 0.6, sc = 37.0 * max(WearScale, 0.05);   // a zero scale would put NaN in every deck
 for (int o = 0; o < 3; ++o)
 {
-    float2 q = (LP.xy + LP.zz * float2(0.6, -0.4)) / sc + o * 17.3;
+    float ang = 0.6458 * (o + 1);
+    float2 pr = LP.xy + LP.zz * float2(0.6, -0.4);
+    float2 q = float2(dot(pr, float2(cos(ang), -sin(ang))), dot(pr, float2(sin(ang), cos(ang)))) / sc + o * 17.3;
     float2 qi = floor(q), qf = frac(q);
-    qf = qf * qf * (3.0 - 2.0 * qf);
+    qf = qf * qf * qf * (qf * (qf * 6.0 - 15.0) + 10.0);
     float a00 = frac(sin(dot(qi, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(qi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
     float a01 = frac(sin(dot(qi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(qi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
     vn += amp * lerp(lerp(a00, a10, qf.x), lerp(a01, a11, qf.x), qf.y);
@@ -1254,7 +1259,7 @@ vn /= 1.05;
 float deckish = up * (1.0 - Metal) * (1.0 - IsHull) * (1.0 - Grain);
 // How dirty: from the age and care above, else the livery's oxidation channel.
 float dirt = age >= 0.0 ? dirtK : 0.3 + 0.7 * wear.x;     // texture loop: care removes it
-float grime = saturate(vn * 1.8 - 0.6) * deckish * dirt * (0.45 + 0.55 * saturate(NonSkid));
+float grime = saturate(vn * 1.4 - 0.4) * deckish * dirt * (0.45 + 0.55 * saturate(NonSkid));   // #405: a softer edge (was x1.8)
 col = lerp(col, col * 0.76 + float3(0.014, 0.011, 0.007), grime);
 rough = lerp(rough, min(rough + 0.18, 0.9), grime);
 coat *= 1.0 - 0.6 * grime;
@@ -1269,7 +1274,7 @@ sqf = sqf * sqf * (3.0 - 2.0 * sqf);
 float sc00 = frac(sin(dot(sqi, float2(12.99, 78.23))) * 43758.5), sc10 = frac(sin(dot(sqi + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
 float sc01 = frac(sin(dot(sqi + float2(0, 1), float2(12.99, 78.23))) * 43758.5), sc11 = frac(sin(dot(sqi + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
 float nsScuff = saturate((lerp(lerp(sc00, sc10, sqf.x), lerp(sc01, sc11, sqf.x), sqf.y) - 0.5) * 1.6 + 0.5);
-float nsBlot = saturate((vn - 0.60 + 0.22 * dirt) * 3.0) * smoothstep(0.2, 0.6, dirt) * (0.35 + 1.3 * nsScuff);
+float nsBlot = saturate((vn - 0.60 + 0.22 * dirt) * 1.8) * smoothstep(0.2, 0.6, dirt) * (0.35 + 1.3 * nsScuff);   // #405: feathered (was x3.0)
 const float3 nsDirt = float3(0.205, 0.198, 0.178);       // grey-tan lake dust and clay (Bean's foredeck photo)
 col = lerp(col, nsDirt, saturate((0.3 + 0.45 * dirt) * nsBlot) * nsK);
 col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0.0f : 1.0f) * nsK);
@@ -2224,7 +2229,7 @@ def build_boat_surface(name, bend, packed=False):
         ins["C"] = (sel, "")
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
-                                "Wear", "IsHull"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
+                                "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
@@ -2238,6 +2243,7 @@ def build_boat_surface(name, bend, packed=False):
         connect(t, "", c, pin)
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
+    connect(scalar(mat, "WearScale", 1.0, -1400, 1530), "", c, "WearScale")   # #405: the wear noise's size per class
     for k in list(range(7)) + list(range(10, 16)):   # E1's seed: 10 age, 11 care, 12 sun, 13 wet, 14 site, 15 variant (FWearSeed, docs/environment-1)
         cd = node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1400, 1650 + 60 * k)
         cd.set_editor_property("data_index", k)

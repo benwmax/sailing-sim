@@ -894,7 +894,9 @@ void ASailboatPawn::BeginPlay()
 	SoundComponent->SetSound(Synth);
 	SoundComponent->RegisterComponent();
 	SoundComponent->Play();
+	StartPlacedSounds();
 	StartSampleLayer();
+	if (!bTrafficBoat) SailingSound::EnsureMasterLimiter(this);
 
 	bDemo = FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"));
 	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit"))) SetCockpitView(true);
@@ -2990,14 +2992,31 @@ void ASailboatPawn::StartSampleLayer()
 	// plays in place of that synth voice, looping, its level driven by the same physics as the voice it replaces.
 	SampleCues.SetNum(int32(ESailingCue::Count));
 	uint32 Mask = 0;
+	// Slice sound pass: the wind in the rigging plays from WindAt, a little to windward of the listener, half placed
+	// (inside 10 m it turns toward both ears): the windward ear hears more of it, as on the water. The rest of the
+	// boat's loops are all around the listener (unplaced).
+	auto PlaceCueVoice = [this](UAudioComponent* A, ESailingCue Cue)
+	{
+		if (Cue == ESailingCue::Wind && WindAt)
+		{
+			A->SetupAttachment(WindAt);
+			A->bAllowSpatialization = true;
+			A->bOverrideAttenuation = true;
+			A->AttenuationOverrides = SailingSound::SpatialSettings(100.f, 40.f, 10.f, 1.f);
+		}
+		else
+		{
+			A->SetupAttachment(BoatRoot);
+			A->bAllowSpatialization = false;
+		}
+	};
 	for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
 	{
 		const FString Name = SailingCueName(ESailingCue(K));
 		USoundBase* Wave = LoadObject<USoundBase>(nullptr, *FString::Printf(TEXT("/Game/Audio/Samples/S_%s.S_%s"), *Name, *Name));
 		if (!Wave || bTrafficBoat) continue;
 		UAudioComponent* A = NewObject<UAudioComponent>(this);
-		A->SetupAttachment(BoatRoot);
-		A->bAllowSpatialization = false;
+		PlaceCueVoice(A, ESailingCue(K));
 		A->bAutoActivate = false;
 		A->SetSound(Wave);
 		A->SetVolumeMultiplier(0.f);
@@ -3016,8 +3035,7 @@ void ASailboatPawn::StartSampleLayer()
 			USoundBase* Wave = SailingSound::LoadPack(Loops[I].Asset);
 			if (!Wave) continue;
 			UAudioComponent* A = NewObject<UAudioComponent>(this);
-			A->SetupAttachment(BoatRoot);
-			A->bAllowSpatialization = false;
+			PlaceCueVoice(A, Loops[I].Cue);
 			A->bAutoActivate = false;
 			A->SetSound(Wave);
 			A->SetVolumeMultiplier(0.f);
@@ -3065,8 +3083,17 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	PrevMainSheet = Controls.MainSheet;
 	PrevJibSheet = Controls.JibSheet;
 	P.Volume = USailingSettings::Get()->Volume;
+	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice.
+	if (!bTrafficBoat) { SailingSound::UpdateMix(); SailingSound::TickAudioRecording(this); }
+	P.GainBoat = SailingSound::GroupShare(SailingSound::EGroup::Boat);
+	P.GainWeather = SailingSound::GroupShare(SailingSound::EGroup::Weather);
+	P.GainSignals = SailingSound::GroupShare(SailingSound::EGroup::Signals);
+	const bool bWinches = SailingSound::HasSheetWinches(Boat.GetConfig().Type);
+	P.Winches = bWinches ? 1.f : 0.f;
 
 	float Rain = 0.f, Thunder = 0.f, Crack = 0.f;
+	FVector2D StrikeDir(1.0, 0.0);
+	float Loudest = -1.f;
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
 		Rain = float(GM->GetWeatherState().Rain);
@@ -3079,11 +3106,20 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 			const float Env = FMath::Clamp(Th.Age / 0.15f, 0.f, 1.f) * FMath::Exp(-Th.Age / (0.35f * Th.Duration)) * (0.7f + 0.3f * FMath::Sin(Th.Age * 7.f + Th.Duration));
 			Thunder = FMath::Max(Thunder, Th.Loudness * Env);
 			if (Th.Loudness > 0.6f && Th.Age < 0.25f) Crack = FMath::Max(Crack, Th.Loudness * (1.f - Th.Age / 0.25f));
+			// The loudest peal now says where the thunder comes from.
+			if (Th.Loudness * Env > Loudest)
+			{
+				Loudest = Th.Loudness * Env;
+				const Vec3 O = Boat.OriginPosition();
+				StrikeDir = FVector2D(Th.X - O.X, Th.Y - O.Y);
+			}
 		}
 	}
 	P.Rain = Rain;
-	P.Thunder = Thunder;
-	P.ThunderCrack = Crack;
+	// Slice sound pass: the player's thunder plays from the strike (ThunderVoice), not in the boat's voice.
+	P.Thunder = ThunderVoice ? 0.f : Thunder;
+	P.ThunderCrack = ThunderVoice ? 0.f : Crack;
+	UpdatePlacedSounds(Thunder, Crack, StrikeDir);
 
 	// Visual V7: the wind's gusts and shelter at the boat, at rest in a slip, and a squall coming across the water.
 	float Squall = 0.f;
@@ -3117,24 +3153,82 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 			P.Telltales.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.5f) * 0.3f,                                            // Telltales
 			FMath::Pow(FMath::Clamp(float(T.BoatSpeed) / 3.f, 0.f, 1.5f), 1.5f),                                       // BowWave
 			FMath::Max(P.Moored.load() * 0.5f, P.BowSlam.load()),                                                      // HullSlap
-			FMath::Clamp(P.TrimRate.load(), 0.f, 1.f),                                                                 // Winch
-			FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f),                                                                // SheetBlock
+			bWinches ? FMath::Clamp(P.TrimRate.load(), 0.f, 1.f) : 0.f,                                                // Winch (none on a dinghy)
+			bWinches ? FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f) : FMath::Clamp(FMath::Abs(P.TrimRate.load()), 0.f, 1.f), // SheetBlock
 			P.Moored.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.f),                                                       // HalyardSlap
 			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
 		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
 		{
-			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load());
+			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load() * SailingSound::GroupShare(SailingSound::CueGroup(ESailingCue(K))));
 		}
 		UpdatePackSound(P, Aws, Levels);
 	}
 }
 
-void ASailboatPawn::PlayPackShot(uint8 Kind, float Volume)
+void ASailboatPawn::PlayPackShot(uint8 Kind, float Volume, const FVector& AtCm)
 {
 	TArray<int32> Choices;
 	for (int32 I = 0; I < PackShotKinds.Num(); ++I) if (PackShotKinds[I] == Kind) Choices.Add(I);
 	if (Choices.Num() == 0 || Volume <= 0.01f) return;
-	UGameplayStatics::PlaySound2D(this, PackShotSounds[Choices[FMath::RandRange(0, Choices.Num() - 1)]], Volume, FMath::FRandRange(0.95f, 1.05f));
+	USoundBase* Sound = PackShotSounds[Choices[FMath::RandRange(0, Choices.Num() - 1)]];
+	// Slice sound pass: at its part of the boat, carried with her (no falloff inside 40 m, so the chase camera hears it
+	// as the cockpit does; within a few metres it turns toward both ears rather than jumping to one).
+	if (OnBoardAttenuation && BoatRoot)
+	{
+		UGameplayStatics::SpawnSoundAttached(Sound, BoatRoot, NAME_None, AtCm, EAttachLocation::KeepRelativeOffset, false, Volume,
+			FMath::FRandRange(0.95f, 1.05f), 0.f, OnBoardAttenuation);
+	}
+	else UGameplayStatics::PlaySound2D(this, Sound, Volume, FMath::FRandRange(0.95f, 1.05f));
+}
+
+void ASailboatPawn::StartPlacedSounds()
+{
+	if (bTrafficBoat) return;
+	// Thunder: its own voice, moved each frame toward the strike (UpdatePlacedSounds). Inside 120 m it turns toward
+	// both ears, so a rumble from the west leans west without leaving the east ear silent.
+	ThunderAt = NewObject<USceneComponent>(this, TEXT("ThunderAt"));
+	ThunderAt->SetupAttachment(BoatRoot);
+	ThunderAt->SetUsingAbsoluteLocation(true);
+	ThunderAt->SetUsingAbsoluteRotation(true);
+	ThunderAt->RegisterComponent();
+	USailingWorldSynth* Voice = nullptr;
+	if (UAudioComponent* A = SailingSound::MakeWorldSound(this, ThunderAt, EWorldSound::Thunder, 2000.f, Voice))
+	{
+		A->AdjustAttenuation(SailingSound::SpatialSettings(2000.f, 200.f, 120.f, 30.f));
+	}
+	ThunderVoice = Voice;
+	// The wind in the rigging's loops attach here (StartSampleLayer).
+	WindAt = NewObject<USceneComponent>(this, TEXT("WindAt"));
+	WindAt->SetupAttachment(BoatRoot);
+	WindAt->SetUsingAbsoluteLocation(true);
+	WindAt->SetUsingAbsoluteRotation(true);
+	WindAt->RegisterComponent();
+	OnBoardAttenuation = SailingSound::MakeAttenuation(this, 80.f, 40.f, 4.f, 1.f);
+	// The lake's soundscape around the player (lake worlds only; it checks each tick).
+	Soundscape = NewObject<USailingSoundscape>(this, TEXT("Soundscape"));
+	Soundscape->RegisterComponent();
+}
+
+void ASailboatPawn::UpdatePlacedSounds(float ThunderLevel, float Crack, FVector2D StrikeDir)
+{
+	FVector Listener = BoatRoot ? BoatRoot->GetComponentLocation() : GetActorLocation();
+	if (const APlayerController* PC = Cast<APlayerController>(GetController()); PC && PC->PlayerCameraManager)
+	{
+		Listener = PC->PlayerCameraManager->GetCameraLocation();
+	}
+	if (ThunderVoice && ThunderAt)
+	{
+		ThunderVoice->Level = ThunderLevel;
+		ThunderVoice->Rate = Crack;
+		if (ThunderLevel > 0.f || Crack > 0.f) ThunderAt->SetWorldLocation(SailingSound::AroundListener(Listener, StrikeDir.X, StrikeDir.Y, 80.f, 30.f));
+	}
+	if (WindAt && BoatRoot)
+	{
+		// To windward: the boat's heading (Unreal yaw is the compass heading: +X north, +Y east) plus the apparent wind's
+		// angle (+ from starboard).
+		const double Dir = FMath::DegreesToRadians(BoatRoot->GetComponentRotation().Yaw) + Boat.GetTelemetry().ApparentWindAngle;
+		WindAt->SetWorldLocation(SailingSound::AroundListener(Listener, FMath::Cos(Dir), FMath::Sin(Dir), 5.f, 1.f));
+	}
 }
 
 void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, const float* CueLevels)
@@ -3143,7 +3237,8 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 	// band's crossfade weight over the parameter manifest.json names for it.
 	using namespace SailingSound;
 	const FBoatTelemetry& T = Boat.GetTelemetry();
-	const float Vol = P.Volume.load();
+	const float Master = P.Volume.load();
+	const float Vol = Master * GroupShare(EGroup::Boat);   // the one-shots are all on board
 	const float Luff = P.Luff.load(), Speed = P.BoatSpeed.load(), Trim = P.TrimRate.load(), Slam = P.BowSlam.load(), Moored = P.Moored.load();
 	const float Tied = IsTiedUp() ? 1.f : 0.f;
 	const float Chop = FMath::Clamp((float(T.TrueWindSpeed) - 5.f) / 5.f, 0.f, 1.f);
@@ -3173,37 +3268,54 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		case ESailingCue::Winch: W = Winch[B]; break;
 		default: break;
 		}
-		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Vol);
+		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Master * GroupShare(CueGroup(L.Cue)));
 	}
 	if (PackShotSounds.Num() == 0) return;
 	const double Now = GetWorld()->GetTimeSeconds();
+	// Slice sound pass: where each one-shot happens on the boat (cm in BoatRoot's frame).
+	const FBoatConfig& C = Boat.GetConfig();
+	const FHullShape& Hull = C.Hulls[0];
+	const double Lee = T.ApparentWindAngle >= 0.0 ? -1.0 : 1.0;   // wind from starboard: the leeward side is port (-Y)
+	const FVector HalyardCm = ToCm(C.MastX, 0.0, Hull.SheerZ + 0.5 * (C.MastheadZ - Hull.SheerZ));
+	const FVector SailCm = ToCm(C.MastX - 1.0, 0.0, C.BoomZ + 0.3 * (C.MastheadZ - C.BoomZ));
+	const double CockpitX = Hull.SternX + 0.35 * (C.MastX - Hull.SternX);
+	const FVector WinchCm = ToCm(CockpitX, Lee * 0.8 * Hull.DeckHalfBeam(CockpitX), Hull.SheerHeight(CockpitX) + 0.2);
 	// The halyard on the mast, at rest or head to wind in a breeze.
 	const float Slap = FMath::Max(Moored, T.bInIrons ? 1.f : 0.f) * FMath::Clamp(Aws / 8.f, 0.f, 1.f);
 	if (Slap > 0.05f && Now >= NextHalyardShot)
 	{
-		PlayPackShot(uint8(EPackShot::HalyardSlap), Slap * 0.8f * Vol);
+		PlayPackShot(uint8(EPackShot::HalyardSlap), Slap * 0.8f * Vol, HalyardCm);
 		NextHalyardShot = Now + FMath::FRandRange(0.7, 3.0) / FMath::Max(Slap, 0.3f);
 	}
 	// A sail filling with a snap as a tack or jibe completes (luff from over 0.6 to under 0.2).
 	if (Luff > 0.6f) LuffHighAt = Now;
 	if (Luff < 0.2f && Now - LuffHighAt < 1.5 && LuffHighAt > 0.0)
 	{
-		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol);
+		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol, SailCm);
 		LuffHighAt = -100.0;
 	}
-	// Winch clicks for small trims; a sheet running out through its block when easing starts.
-	if (Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
+	// Winch clicks for small trims; a sheet running out through its block when easing starts. A dinghy has no winch
+	// (SailingSound::HasSheetWinches): its sheet runs through the blocks when it is pulled in too.
+	const bool bWinches = HasSheetWinches(Boat.GetConfig().Type);
+	if (bWinches && Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
 	{
-		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol);
+		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol, WinchCm);
 		NextWinchClick = Now + 0.14;
 	}
-	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol);
+	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol, WinchCm);
+	if (!bWinches && Trim > 0.3f && PrevTrimRate <= 0.3f) PlayPackShot(uint8(EPackShot::SheetEaseSlow), 0.5f * Vol, WinchCm);
 	PrevTrimRate = Trim;
 	// In the slip: the lines creak and the fenders squeak as she surges.
 	if (Tied > 0.f && Now >= NextDockShot)
 	{
 		const float Surge = FMath::Clamp(float(Boat.GetState().Velocity.Length()) * 4.f + Chop * 0.5f + Aws / 20.f, 0.f, 1.f);
-		if (NextDockShot > 0.0) PlayPackShot(uint8(FMath::RandBool() ? EPackShot::DockCreak : EPackShot::FenderSqueak), (0.3f + 0.5f * Surge) * Vol);
+		if (NextDockShot > 0.0)
+		{
+			// Somewhere along her side, at the fenders and the cleats.
+			const double X = FMath::FRandRange(0.6 * Hull.SternX, 0.6 * Hull.BowX);
+			const FVector SideCm = ToCm(X, Hull.CenterY + (FMath::RandBool() ? 1.0 : -1.0) * Hull.DeckHalfBeam(X), 0.6 * Hull.SheerHeight(X));
+			PlayPackShot(uint8(FMath::RandBool() ? EPackShot::DockCreak : EPackShot::FenderSqueak), (0.3f + 0.5f * Surge) * Vol, SideCm);
+		}
 		NextDockShot = Now + FMath::FRandRange(2.5, 8.0) / (0.4f + Surge);
 	}
 }

@@ -76,14 +76,21 @@ def hash2(ix, iy, k=(12.99, 78.23)):
     return np.modf(np.abs(np.sin(ix * k[0] + iy * k[1]) * 43758.5))[0]
 
 
-def value_noise(xcm, ycm):
-    """The shader's grime noise: three octaves at 37, 9 and 2.2 cm (BOAT_CODE, vn)."""
-    vn, amp, sc = 0.0, 0.6, 37.0
+def value_noise(xcm, ycm, wear_scale=1.0, turned=True):
+    """The shader's grime noise: three octaves at 37, 9 and 2.2 cm (BOAT_CODE, vn). #405: each octave's lattice is turned
+    (37, 74, 111 deg) and smoothed quintically, and WearScale sizes it to the boat (0.7 on the dinghies); turned=False is
+    the axis-aligned, cubic noise of main before #405 (the --before render)."""
+    vn, amp, sc = 0.0, 0.6, 37.0 * wear_scale
     for o in range(3):
-        qx, qy = xcm / sc + o * 17.3, ycm / sc + o * 17.3
+        ang = 0.6458 * (o + 1) if turned else 0.0
+        rx, ry = xcm * math.cos(ang) - ycm * math.sin(ang), xcm * math.sin(ang) + ycm * math.cos(ang)
+        qx, qy = rx / sc + o * 17.3, ry / sc + o * 17.3
         ix, iy = np.floor(qx), np.floor(qy)
         fx, fy = qx - ix, qy - iy
-        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        if turned:
+            fx, fy = fx * fx * fx * (fx * (fx * 6 - 15) + 10), fy * fy * fy * (fy * (fy * 6 - 15) + 10)
+        else:
+            fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
         a00, a10, a01, a11 = hash2(ix, iy), hash2(ix + 1, iy), hash2(ix, iy + 1), hash2(ix + 1, iy + 1)
         vn = vn + amp * ((a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy)
         amp *= 0.5
@@ -153,13 +160,13 @@ def shade_after(M, vn, scuff, spk, spk2, age, care, detail=True):
     dcol = np.array(AFTER["dirt_col"])
     col = np.broadcast_to(pig, M.shape[:2] + (3,)).copy()
     # shared grime (deckish 1, NonSkid 1), then the faint mottle
-    grime = np.clip(vn * 1.8 - 0.6, 0, 1)[..., None] * dk
+    grime = np.clip(vn * 1.4 - 0.4, 0, 1)[..., None] * dk      # #405: softer edge (was x1.8 - 0.6)
     col = col + (col * 0.76 + np.array([0.014, 0.011, 0.007]) - col) * grime
     rough = 0.66 + (min(0.66 + 0.18, 0.9) - 0.66) * grime[..., 0]
     col = col * (1 + 0.05 * (vn[..., None] - 0.5))
     # non-skid block: yellowing, blotches with the scuff mottle, Medium's even dust
     col = col * (1 + (np.array(AFTER["yellow"]) - 1) * 0.5 * tk)
-    blot = (np.clip((vn - 0.60 + 0.22 * dk) * 3.0, 0, 1) * smoothstep(0.2, 0.6, dk) * (0.35 + 1.3 * scuff))[..., None]
+    blot = (np.clip((vn - 0.60 + 0.22 * dk) * 1.8, 0, 1) * smoothstep(0.2, 0.6, dk) * (0.35 + 1.3 * scuff))[..., None]
     col = col + (dcol - col) * np.clip((0.3 + 0.45 * dk) * blot, 0, 1)
     if not detail:
         col = col + (dcol - col) * 0.55 * math.sqrt(dk) * 0.35
@@ -218,7 +225,7 @@ def render(level, ppm, size_px, maps, before=False, sun=False, seed=7):
     Ns, Ms = sample(N, ppm, size_px), sample(M, ppm, size_px)
     xcm = (np.arange(size_px) + 0.5) / ppm / 10.0 + 120.0
     X, Y = np.meshgrid(xcm, xcm + 40.0)
-    vn = value_noise(X, Y)
+    vn = value_noise(X, Y, turned=not before)
     nrm = Ns * 2 - 1
     if before:
         dx, dy = diamond8_normal(size_px, ppm)

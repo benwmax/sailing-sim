@@ -390,6 +390,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			UMaterialInstanceDynamic* Mid = ModelHull->CreateDynamicMaterialInstance(I);
 			if (!Mid) continue;
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
+			// #405: the wear noise sized to the boat (M_BoatSurface's WearScale): the dinghies' 4 m decks take a finer grime.
+			Mid->SetScalarParameterValue(TEXT("WearScale"), (Boat.GetConfig().Type == EBoatType::Sunfish || Boat.GetConfig().Type == EBoatType::ILCA7) ? 0.7f : 1.f);
 			if (bAge)
 			{
 				Mid->SetScalarParameterValue(TEXT("Age"), FCString::Atof(*AgeStr));
