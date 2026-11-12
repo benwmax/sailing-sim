@@ -539,7 +539,7 @@ namespace Sailing
 			// No part of the knot through another (its parts a diameter apart, centre to centre, less 5%), no step longer
 			// than half a diameter (12 sides round), the same points every time.
 			double Closest = 1e9, Step = 0.0, Length = 0.0;
-			const size_t Gap = size_t(std::ceil(1.6 / 0.32)) + 1;
+			const size_t Gap = size_t(std::ceil(1.6 / 0.45)) + 1;   // (the bake's step, OUT_STEP)
 			for (size_t I = 0; I < P.size(); ++I)
 			{
 				if (I > 0) { Step = std::max(Step, (P[I] - P[I - 1]).Length()); Length += (P[I] - P[I - 1]).Length(); }

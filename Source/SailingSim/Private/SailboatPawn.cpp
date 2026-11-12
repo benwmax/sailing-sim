@@ -412,6 +412,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	bRigLinesBuilt = false;
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
+	RigLineKeys[2].Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{

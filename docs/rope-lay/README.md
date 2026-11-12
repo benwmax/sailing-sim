@@ -72,6 +72,11 @@ clew's bar). It writes `Source/SailingPhysics/Public/RopeKnotData.inl` (centreli
 never the .inl). `RopeKnots.h` places them; `SailingSim.Visual.RopeLay.Knots` checks that no part runs through another,
 the rope meets each knot on its tangent and the bowline clears the clew. No new meshes, so nothing to import.
 
+Cost (High crew view, the Mac): the first cut (a point every 0.32 diameters, the knots in the ropes' mesh section) cost
+0.9 fps, all game thread. Now the points are 0.45 diameters apart (113 for a bowline, 69 for a stopper), the knots are a
+mesh section of their own (section 3) that uploads only when a knot moves 1.5 mm (a stopper on deck never does; the ropes'
+uploads no longer carry the knots), and a knot shrunk to a speck has two rings.
+
 Not drawn: the mainsheet's dead end (its 4:1 is still four straight parts) and cleat hitches (the J/22's sheets are in
 cams; the dock lines' hitches are in the berthed dress, `bk_ropework.py`).
 
@@ -79,4 +84,4 @@ cams; the dock lines' hitches are in the berthed dress, `bk_ropework.py`).
 
 - The lift is straight up (in the boat's frame). A rope climbing a vertical face can come up to its radius from the face
   (the 0.44 cm above, inside the rope's 0.45 cm radius); the old drape had the same limit.
-- Phase 2 (knots at the sockets) is separate; phase 3 (rope physics) is after the slice.
+- Phase 3 (rope physics) is after the slice.

@@ -26,7 +26,7 @@ OUT = os.path.join(ROOT, "Source", "SailingPhysics", "Public", "RopeKnotData.inl
 
 H = 0.2            # solver spacing (diameters)
 CONTACT = 1.0      # parts of the rope kept a diameter apart (centre to centre)
-OUT_STEP = 0.32    # the baked points' spacing (12 sides round a 1-diameter rope: a ring about every third of it)
+OUT_STEP = 0.45    # the baked points' spacing (12 sides round a 1-diameter rope; 0.32 cost the High crew view 0.2 ms of game thread, #649)
 
 
 def catmull(ctrl, step):
