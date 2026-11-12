@@ -424,7 +424,7 @@ namespace
 					auto InLine = [&](const Vec3& P) { return Blocked(L, Near[K], Reaches[K], ToFVector(P)); };
 					// (a line across the lifelines every 0.9 cm against the wires grown by half a centimetre: no piece that short
 					// steps over one, SailingSim.Visual.RopeLay.OverALifeline)
-					RopeLay::ClearSpans(Rings[K], L.RadiusCm, Up, Set, InLine, 6, Reaches[K] ? 0.9 : 0.0);
+					RopeLay::ClearSpans(Rings[K], L.RadiusCm, Up, Set, InLine, 24, Reaches[K] ? 0.9 : Near[K].Num() > 0 ? 2.0 : 0.0);
 				}
 				UStartCm[K] = Along;
 				Along += RopeLay::Length(Rings[K]);

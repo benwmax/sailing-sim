@@ -427,19 +427,25 @@ namespace Sailing
 					// can step over, a lifeline's 3 cm wire crossed at its corner)
 					int Parts = 4;
 					if (MaxStep > 0.0) Parts = std::clamp(int(std::ceil((Rings[I + 1] - Rings[I]).Length() / MaxStep)), 4, 64);
+					// (the lift is the most any of its points needs: lifting by the first one found climbed a steep span over a
+					// sailor's shoulder a few millimetres a pass)
+					const bool bFree0 = I > 0, bFree1 = I + 1 < N - 1;
+					double Lift = 0.0;
 					for (int QI = 0; QI < Parts; ++QI)
 					{
 						if (QI > 0 && 2 * QI == Parts) continue;
 						const double Q = QI == 0 ? 0.5 : double(QI) / Parts;
 						const double Need = LiftToClear(Rings[I] + (Rings[I + 1] - Rings[I]) * Q, Up, Radius, Set, Blocked);
 						if (Need <= 0.0) continue;
-						const bool bFree0 = I > 0, bFree1 = I + 1 < N - 1;
-						if (bFree0 && bFree1) { Rings[I] += Up * Need; Rings[I + 1] += Up * Need; }
-						else if (bFree1) Rings[I + 1] += Up * (Need / Q);
-						else if (bFree0) Rings[I] += Up * (Need / (1.0 - Q));
+						// (next to an end held at its fitting, the free ring goes up enough to raise the point that much)
+						Lift = std::max(Lift, bFree0 && bFree1 ? Need : bFree1 ? Need / Q : bFree0 ? Need / (1.0 - Q) : 0.0);
+					}
+					if (Lift > 0.0)
+					{
+						if (bFree0) Rings[I] += Up * Lift;
+						if (bFree1) Rings[I + 1] += Up * Lift;
 						++Lifted;
 						bAny = true;
-						break;
 					}
 				}
 				if (!bAny) break;

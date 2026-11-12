@@ -344,56 +344,60 @@ namespace Sailing
 	FRopeLayCheck RopeLayChecks::OverASailor()
 	{
 		FRopeLayCheck R{ "OverASailor", true, {} };
-		// A sheet along the side deck under a sailor sitting on it (hips, a back leaning over the sheet's way, shoulders and
-		// head: capsules), the deck below, so the lay keeps a line on the body and out of it whatever the posture (the Mac's
-		// RigClearance found a Catalina 22's lazy sheet 2.8 cm into a crew's back: the rig gave the back as one straight
-		// segment, now bone by bone). Leans and places across the sitter, taut to lazy.
+		// A sheet along the side deck under and over a sailor sitting on it (hips, a back leaning over the sheet's way,
+		// shoulders and head: capsules), the deck below, laid as the rig lays a line near the crew (Lay, rounded, rings, the
+		// spans checked every 2 cm over up to 24 passes): the lay keeps it on the body and out of it whatever the posture.
+		// (The Mac's RigClearance found a Catalina 22's lazy sheet 2.8, then 3.3 cm into a crew's back: the rig gave the back
+		// as one straight segment, and a steep span over the shoulders climbed a few millimetres a pass.) Leans, hikes,
+		// places across the sitter and heights of the ends, taut to lazy.
 		struct FCapsule { Vec3 A, B; double R; };
-		double Deepest = 0.0, Worst[3] = { 0.0, 0.0, 0.0 };
+		double Deepest = 0.0, Worst[4] = { 0.0, 0.0, 0.0, 0.0 };
 		int Lays = 0;
 		for (const double Lean : { -0.6, -0.3, 0.0, 0.3, 0.6 })
-		for (const double Hike : { 0.0, 0.5 })
+		for (const double Hike : { 0.0, 0.3, 0.5, 0.8 })
+		for (const double Y : { -20.0, -12.0, -6.0, 0.0, 6.0, 12.0, 20.0 })
+		for (const double Slack : { 0.0, 0.02, 0.05 })
+		for (const double Z0 : { 2.0, 14.0, 25.0 })
+		for (const double Z1 : { 2.0, 20.0 })
 		{
-			for (const double Y : { -12.0, -6.0, 0.0, 6.0, 12.0 })
+			// (Hike: the back leaning out across the sheet's way, as a sailor on the rail does)
+			const Vec3 Hip(0.0, 0.0, 14.0);
+			const Vec3 Along(-std::sin(Lean), std::sin(Hike), std::cos(Lean) * std::cos(Hike));
+			const Vec3 Chest = Hip + Along * 55.0, Head = Chest + Along * 22.0;
+			const FCapsule Body[] = {
+				{ Hip + Vec3(-10.0, 0.0, 0.0), Hip + Vec3(30.0, 0.0, 0.0), 13.0 },               // seat and thighs
+				{ Hip, Chest, 15.0 },                                                       // the back
+				{ Chest + Vec3(0.0, -22.0, 0.0), Chest + Vec3(0.0, 22.0, 0.0), 8.0 },          // shoulders
+				{ Head, Head, 11.0 },
+				{ Chest + Vec3(0.0, -20.0, 0.0), Hip + Vec3(38.0, -12.0, 22.0), 5.0 },          // arms, the hands on the knees:
+				{ Chest + Vec3(0.0, 20.0, 0.0), Hip + Vec3(38.0, 12.0, 22.0), 5.0 },           // over the thighs, a pocket under them
+			};
+			auto Depth = [&](const Vec3& P)
 			{
-				for (const double Slack : { 0.0, 0.02, 0.05 })
+				double D = -P.Z;   // the deck at 0 (signed: negative clear of everything)
+				for (const FCapsule& C : Body)
 				{
-					// (Hike: the back leaning out across the sheet's way, as a sailor on the rail does)
-					const Vec3 Hip(0.0, 0.0, 14.0), Chest = Hip + Vec3(-std::sin(Lean) * 55.0, std::sin(Hike) * 55.0, std::cos(Lean) * std::cos(Hike) * 55.0);
-					const FCapsule Body[] = {
-						{ Hip + Vec3(-10.0, 0.0, 0.0), Hip + Vec3(30.0, 0.0, 0.0), 13.0 },               // seat and thighs
-						{ Hip, Chest, 15.0 },                                                       // the back
-						{ Chest + Vec3(0.0, -22.0, 0.0), Chest + Vec3(0.0, 22.0, 0.0), 8.0 },          // shoulders
-						{ Chest + Vec3(-std::sin(Lean) * 22.0, 0.0, std::cos(Lean) * 22.0), Chest + Vec3(-std::sin(Lean) * 22.0, 0.0, std::cos(Lean) * 22.0), 11.0 },
-						{ Chest + Vec3(0.0, -20.0, 0.0), Hip + Vec3(38.0, -12.0, 22.0), 5.0 },          // arms, the hands on the knees:
-						{ Chest + Vec3(0.0, 20.0, 0.0), Hip + Vec3(38.0, 12.0, 22.0), 5.0 },           // over the thighs, a pocket under them
-					};
-					auto Depth = [&](const Vec3& P)
-					{
-						double D = -P.Z;   // the deck at 0 (signed: negative clear of everything)
-						for (const FCapsule& C : Body)
-						{
-							const Vec3 AB = C.B - C.A;
-							const double T = AB.Dot(AB) > 1e-9 ? std::clamp((P - C.A).Dot(AB) / AB.Dot(AB), 0.0, 1.0) : 0.0;
-							D = std::max(D, C.R - (P - (C.A + AB * T)).Length());
-						}
-						return D;
-					};
-					auto Blocked = [&](const Vec3& P) { return Depth(P) > -kRadius; };
-					const Vec3 A(-160.0, Y, 2.0), B(170.0, Y, 2.0);
-					std::vector<FPoint> Scratch;
-					std::vector<Vec3> Rings;
-					LayRings(A, B, SagOf(A, B, Slack), kRadius, kUp, FSettings(), Blocked, kRings, 6.0 * kRadius, kBend, true, Scratch, Rings);
-					++Lays;
-					for (size_t I = 0; I + 1 < Rings.size(); ++I)
-					{
-						for (int K = 0; K < 16; ++K)
-						{
-							const Vec3 P = Rings[I] + (Rings[I + 1] - Rings[I]) * (K / 16.0);
-							const double D = Depth(P);
-							if (D > Deepest) { Deepest = D; Worst[0] = Lean; Worst[1] = Y; Worst[2] = Slack; }
-						}
-					}
+					const Vec3 AB = C.B - C.A;
+					const double T = AB.Dot(AB) > 1e-9 ? std::clamp((P - C.A).Dot(AB) / AB.Dot(AB), 0.0, 1.0) : 0.0;
+					D = std::max(D, C.R - (P - (C.A + AB * T)).Length());
+				}
+				return D;
+			};
+			auto Blocked = [&](const Vec3& P) { return Depth(P) > -kRadius; };
+			const Vec3 A(-160.0, Y, Z0), B(170.0, Y, Z1);
+			if (Blocked(A) || Blocked(B)) continue;
+			std::vector<FPoint> Dense;
+			std::vector<Vec3> Rings;
+			if (Lay(A, B, SagOf(A, B, Slack), kRadius, kUp, FSettings(), Blocked, Dense)) RoundCorners(Dense, 6.0 * kRadius, 4, kDipShare * kRadius);
+			PlaceRings(Dense, kRings, kBend, Rings);
+			ClearSpans(Rings, kRadius, kUp, FSettings(), Blocked, 24, 2.0);
+			++Lays;
+			for (size_t I = 0; I + 1 < Rings.size(); ++I)
+			{
+				for (int K = 0; K < 16; ++K)
+				{
+					const double D = Depth(Rings[I] + (Rings[I + 1] - Rings[I]) * (K / 16.0));
+					if (D > Deepest) { Deepest = D; Worst[0] = Lean; Worst[1] = Hike; Worst[2] = Y; Worst[3] = Slack; }
 				}
 			}
 		}
@@ -401,7 +405,7 @@ namespace Sailing
 		// ManyCases holds the trunk: its surface touches, the flesh gives)
 		R.bPass = Deepest < (1.0 + kDipShare) * kRadius;
 		R.Lines.push_back(Fmt("%.0f lays over a sitting sailor: the rope's centre at most %.2f cm into the body", double(Lays), Deepest)
-			+ Fmt(" (lean %.1f rad, ", Worst[0]) + Fmt("%.0f cm across, ", Worst[1]) + Fmt("slack %.2f)", Worst[2]));
+			+ Fmt(" (lean %.1f rad, ", Worst[0]) + Fmt("hike %.1f rad, ", Worst[1]) + Fmt("%.0f cm across, ", Worst[2]) + Fmt("slack %.2f)", Worst[3]));
 		return R;
 	}
 
@@ -410,7 +414,7 @@ namespace Sailing
 		FRopeLayCheck R{ "OverALifeline", true, {} };
 		// A mainsheet from a boom eased over the side down to the quarter, across a lifeline's two wires (3 cm thick bands at
 		// half and full height over the deck, a hull's half beam less 5 cm out, as RigClearance has them), laid as the rig
-		// lays it (Lay, rounded, rings, the spans checked every 0.9 cm over six passes): the Mac found a Catalina 22's mainsheet
+		// lays it (Lay, rounded, rings, the spans checked every 0.9 cm over up to 24 passes): the Mac found a Catalina 22's mainsheet
 		// through one. No point of the drawn rope, every millimetre along it, may be in a wire.
 		// The rig lays against the wires grown by kLifelineMargin (BoatModelVisuals.cpp), its spans checked every 0.9 cm:
 		// a straight piece between two points clear of the grown wire reaches the wire itself only if it is longer than
@@ -439,7 +443,7 @@ namespace Sailing
 			const bool bLift = Lay(A, B, SagOf(A, B, 0.01), kRadius, kUp, FSettings(), Blocked, Dense);
 			if (bLift) RoundCorners(Dense, 6.0 * kRadius, 4, kDipShare * kRadius);
 			PlaceRings(Dense, kRings, kBend, Rings);
-			ClearSpans(Rings, kRadius, kUp, FSettings(), Blocked, 6, 0.9);
+			ClearSpans(Rings, kRadius, kUp, FSettings(), Blocked, 24, 0.9);
 			++Lays;
 			bool bIn = false;
 			for (size_t I = 0; I + 1 < Rings.size() && !bIn; ++I)
