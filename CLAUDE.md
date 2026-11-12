@@ -611,6 +611,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   the clew); `scripts/rope-check.sh` and `SailingSim.Visual.RopeLay.*`. Each rope section keeps a fixed vertex count: every
   line in it has `kRopeRings + 1` rings and the set of lines never changes frame to frame. AI boats, the ghost and
   `-SailingClassicRopes` keep the old drape. Winch turns show only on jib-winch boats; the J/22's `JibWinch` is a cam's fairlead.
+  Knots (rope realism 2): bowlines at the jib clew and figure-eight stoppers in the tails are rig lines with
+  `bPathRings` (their rings are the baked centreline, `RopeKnots.h`); rebake with `python3 Tools/rope/make_knot_data.py`.
 - Spray hull (`docs/spray-hull/`): `UpdateBoatWetness` mirrors `UpdateSpray`'s bow-wave and slam tests into
   `MPC_Boat.SprayWet` (raises the splash band; the topsides' film, beads, drips and spatter in `BOAT_CODE` and the hero's
   `DETAIL_CODE`); `UpdateBowWave` draws the bow wave's curl (`M_BowWave`, world-space sheet on the waves, not on Low;

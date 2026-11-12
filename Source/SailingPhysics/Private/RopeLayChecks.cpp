@@ -1,5 +1,6 @@
 #include "RopeLayChecks.h"
 #include "RopeLay.h"
+#include "RopeKnots.h"
 
 #include <algorithm>
 #include <cmath>
@@ -523,8 +524,54 @@ namespace Sailing
 		return R;
 	}
 
+	FRopeLayCheck RopeLayChecks::Knots()
+	{
+		FRopeLayCheck R{ "Knots", true, {} };
+		using namespace RopeKnots;
+		const double D = 0.9;   // the J/22's jib sheet
+		const Vec3 Origin(100.0, 50.0, 120.0), Along(0.6, -0.3, -0.74), Up(0.0, 0.0, 1.0);
+		for (const EKnot K : { EKnot::Bowline, EKnot::FigureEight })
+		{
+			const char* Name = K == EKnot::Bowline ? "bowline" : "figure eight";
+			std::vector<Vec3> P, Q;
+			Place(K, Origin, Along, Up, D, P);
+			Place(K, Origin, Along, Up, D, Q);
+			// No part of the knot through another (its parts a diameter apart, centre to centre, less 5%), no step longer
+			// than half a diameter (12 sides round), the same points every time.
+			double Closest = 1e9, Step = 0.0, Length = 0.0;
+			const size_t Gap = size_t(std::ceil(1.6 / 0.32)) + 1;
+			for (size_t I = 0; I < P.size(); ++I)
+			{
+				if (I > 0) { Step = std::max(Step, (P[I] - P[I - 1]).Length()); Length += (P[I] - P[I - 1]).Length(); }
+				for (size_t J = I + Gap; J < P.size(); ++J) Closest = std::min(Closest, (P[I] - P[J]).Length());
+			}
+			bool bSame = P.size() == Q.size() && int(P.size()) == Count(K);
+			for (size_t I = 0; bSame && I < P.size(); ++I) bSame = P[I].X == Q[I].X && P[I].Y == Q[I].Y && P[I].Z == Q[I].Z;
+			// The live rope meets it on its tangent: a bowline's standing part leaves along Along, a stopper's starts against it.
+			const Vec3 X = Along.Normalized();
+			const Vec3 Out = K == EKnot::Bowline ? (P[P.size() - 1] - P[P.size() - 3]).Normalized() : (P[0] - P[2]).Normalized();
+			const double Off = std::acos(std::clamp(Out.Dot(X), -1.0, 1.0)) * 180.0 / 3.14159265358979;
+			const double ExitGap = ((K == EKnot::Bowline ? P.back() : P.front()) - Exit(K, Origin, Along, Up, D)).Length();
+			// A bowline's loop clears the clew's bar (a rope's radius plus the bar's, 0.6 diameters).
+			double Bar = 1e9;
+			if (K == EKnot::Bowline)
+			{
+				Vec3 Xf, Yf, Zf;
+				Frame(Along, Up, Xf, Yf, Zf);
+				for (const Vec3& V : P) { const Vec3 L = V - Origin; const Vec3 Rad = L - Zf * L.Dot(Zf); Bar = std::min(Bar, Rad.Length() / D); }
+			}
+			const bool bOk = bSame && Closest > 0.95 * D && Step < 0.5 * D && Off < 3.0 && ExitGap < 1e-9 && (K != EKnot::Bowline || Bar > 1.05);
+			R.bPass = R.bPass && bOk;
+			R.Lines.push_back(std::string(Name) + Fmt(": parts at least %.2f diameters apart, longest step %.2f diameters, %.1f diameters of rope", Closest / D, Step / D, Length / D));
+			R.Lines.push_back(Fmt("    the live rope meets it %.2f deg off its tangent, %.4f cm from its join", Off, ExitGap));
+			if (K == EKnot::Bowline) R.Lines.back() += Fmt("; the loop clear of the clew's bar by %.2f diameters", Bar);
+			R.Lines.push_back(bSame ? "    placed twice: the same points to the bit" : "    placed twice: different points");
+		}
+		return R;
+	}
+
 	std::vector<FRopeLayCheck> RopeLayChecks::All()
 	{
-		return { FreeLine(), DrapeOverTrunk(), NoShimmer(), Deterministic(), BlockTangent(), WinchTurns(), ManyCases(), OverASailor(), OverALifeline() };
+		return { FreeLine(), DrapeOverTrunk(), NoShimmer(), Deterministic(), BlockTangent(), WinchTurns(), ManyCases(), OverASailor(), OverALifeline(), Knots() };
 	}
 }
