@@ -88,6 +88,7 @@ namespace
 	 *  kit's Winch16 drum, 3.2 cm, scaled to the catalogue size), 0 for none (the J/22's cam cleat, the Hobie's cars). */
 	float JibWinchDrumCm(EBoatType Type)
 	{
+		// (the sockets: JibWinch_ is 8 cm over the winch's base on the monohulls and the Corsair, 6 cm on the Lagoon's roof)
 		switch (Type)
 		{
 		case EBoatType::Catalina22: case EBoatType::Corsair880: return 3.2f;   // size 16
@@ -96,6 +97,9 @@ namespace
 		default: return 0.f;
 		}
 	}
+
+	/** Rope lay: how far the JibWinch_ socket is over the winch's base (build_fleet.py: deck + 8 cm, the Lagoon's roof + 6). */
+	double WinchBaseDropCm(EBoatType Type) { return Type == EBoatType::Lagoon42 ? 6.0 : 8.0; }
 
 	inline Vec3 ToVec3(const FVector& V) { return Vec3(V.X, V.Y, V.Z); }
 	inline FVector ToFVector(const Vec3& V) { return FVector(V.X, V.Y, V.Z); }
@@ -275,7 +279,7 @@ namespace
 	 *  the next (through a block) its braid does too, and trimming moves it; the start is kept to its fraction (the texture
 	 *  repeats every lay). Widened to the on-screen minimum ring by ring as AppendTube does. */
 	void AppendRingTube(const std::vector<Vec3>& Rings, float RadiusCm, double UStartCm, float LayDiameters, uint8 Look,
-		const FLineWidening& Widen, FTubeStreams& Out, bool bTris)
+		const FLineWidening& Widen, FTubeStreams& Out, bool bTris, FVector* InOutFrame = nullptr)
 	{
 		struct FSides
 		{
@@ -297,7 +301,9 @@ namespace
 		const double U0 = FMath::Frac(UStartCm / Lay);
 		FVector Along = N >= 2 ? (ToFVector(Rings[1]) - ToFVector(Rings[0])).GetSafeNormal() : FVector::ForwardVector;
 		if (Along.IsNearlyZero()) Along = FVector::ForwardVector;
-		FVector U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9 ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
+		// (InOutFrame: the last ring's frame of the line this one runs on from, so the braid's seam doesn't jump at a block)
+		FVector U = InOutFrame && !InOutFrame->IsNearlyZero() ? (*InOutFrame - FVector::DotProduct(*InOutFrame, Along) * Along).GetSafeNormal() : FVector::ZeroVector;
+		if (U.IsNearlyZero()) U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9 ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
 		double Arc = 0.0;
 		for (int32 I = 0; I < N; ++I)
 		{
@@ -322,6 +328,7 @@ namespace
 				Out.Tangents.Add(Tangent);
 			}
 		}
+		if (InOutFrame) *InOutFrame = U;
 		if (!bTris) return;
 		constexpr int32 RingVerts = kRopeSides + 1;
 		for (int32 I = 0; I + 1 < N; ++I)
@@ -343,7 +350,7 @@ namespace
 	 *  block; the mainsheet tackle's parts follow one another round its sheaves). */
 	template <typename FNearFleshT, typename ContextFn, typename BlockedFn>
 	void LayFineRopes(const TArray<FRigLine>& Ropes, const FVector& Down, const ContextFn& Context, const BlockedFn& Blocked,
-		TArray<std::vector<Vec3>>& Rings, TArray<double>& UStartCm)
+		TArray<std::vector<Vec3>>& Rings, TArray<double>& UStartCm, TArray<int32>& PrevOut)
 	{
 		const int32 N = Ropes.Num();
 		Rings.SetNum(N);
@@ -410,7 +417,8 @@ namespace
 			for (const int32 K : Order)
 			{
 				RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
-				if (Laid[K])
+				// (a line that touched nothing, near no sailor and clear of the lifelines has no span to check)
+				if (Laid[K] && (Lifted[K] || Near[K].Num() > 0 || Reaches[K]))
 				{
 					const FRigLine& L = Ropes[K];
 					auto InLine = [&](const Vec3& P) { return Blocked(L, Near[K], Reaches[K], ToFVector(P)); };
@@ -426,6 +434,15 @@ namespace
 				Tackle += RopeLay::Length(Rings[Head]);
 			}
 		}
+		// 4. Every line has exactly kRopeRings + 1 rings (the section's vertex count is fixed): one a chain never reached
+		// (a ring of lines, which no rig makes) is placed on its own, unrounded.
+		for (int32 K = 0; K < N; ++K)
+		{
+			if (int32(Rings[K].size()) == kRopeRings + 1) continue;
+			RopeLay::PlaceRings(Dense[K], kRopeRings, 0.35, Rings[K]);
+			Prev[K] = INDEX_NONE;
+		}
+		PrevOut = MoveTemp(Prev);
 	}
 
 #include "J22CoilData.inl"
@@ -857,8 +874,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			std::vector<Vec3> Turns;
 			if (Drum > 0.f)
 			{
-				// (the socket is 8 cm over the deck at the drum's top; the drum's band from 3.4 to 6.6 cm up, by size)
-				const double Size = Drum / 3.2, Deck = Winch.Z - 8.0;
+				// (the socket is over the winch's base, WinchBaseDropCm; the drum's band from 3.4 to 6.6 cm up, by size)
+				const double Size = Drum / 3.2, Deck = Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type);
 				RopeLay::WinchWraps(ToVec3(Lead), ToVec3(Winch), Drum + 0.45, Deck + 3.4 * Size, Deck + 6.6 * Size, 3.0, 16, 0.0, 0.0, Turns);
 			}
 			Ropes.Add({ Lead, Turns.empty() ? Winch : ToFVector(Turns[0]), 0.45f, bWorking ? 0.f : 0.02f, Look });
@@ -883,7 +900,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const FVector Top = ToFVector(Turns.back());
 				const double ThetaE = FMath::Atan2(Top.Y - Winch.Y, Top.X - Winch.X);
 				const FVector Off = FVector(-FMath::Sin(ThetaE), FMath::Cos(ThetaE), 0.0) * 14.0;
-				Ropes.Add({ Top, FVector(Top.X + Off.X, Top.Y + Off.Y, Winch.Z - 8.0 + 0.45), 0.45f, 0.03f, Look });
+				Ropes.Add({ Top, FVector(Top.X + Off.X, Top.Y + Off.Y, Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type) + 0.45), 0.45f, 0.03f, Look });
 				Ropes.Last().EndBendCm = 0.f;
 				Label(Ropes, TEXT("jib sheet tail"));
 			}
@@ -1025,6 +1042,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	// Rope lay (bFineRopes): the player's boat's ropes' rings and where along its rope each line starts.
 	TArray<std::vector<Vec3>> FineRings;
 	TArray<double> FineUStartCm;
+	TArray<int32> FinePrev;
 	TArray<FRigLine> NoLines;
 	// Rig clearance: the ropes lie over the boat, not through it. Where a sheet's curve passes inside the solid boat
 	// (CrewInsideBoat: deck, cabin trunk, coachroof), its rings are lifted onto the surface: the lazy sheet draped over the
@@ -1115,7 +1133,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		{
 			LayFineRopes<FNearFlesh>(Ropes, DownD, [&](const FRigLine& L, const FVector& Sag, FNearFlesh& NearFlesh) { return LineContext(L, Sag, NearFlesh); },
 				[&](const FRigLine& L, const FNearFlesh& NearFlesh, bool bReaches, const FVector& C) { return BlockedFor(L, NearFlesh, bReaches, C); },
-				FineRings, FineUStartCm);
+				FineRings, FineUStartCm, FinePrev);
 		}
 		for (FRigLine& L : (bFineRopes ? NoLines : Ropes))
 		{
@@ -1292,16 +1310,15 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// whose rings stepped its on-screen widening, is left as it is: the standing rig at rest, a sheet made fast.
 		const bool bFineSection = Section == 1 && bFineRopes && FineRings.Num() == Lines.Num();
 		TArray<FVector> Keys;
-		Keys.Reserve(Lines.Num() * 5);
+		Keys.Reserve(Lines.Num() * (bFineSection ? kRopeRings + 2 : 5));
 		for (int32 K = 0; bFineSection && K < Lines.Num(); ++K)
 		{
-			// Rope lay: four of its rings, its widening steps and where its braid starts (trimming scrolls it).
+			// Rope lay: every ring (a lift confined to a few of them, a tail over a moving knee, must still upload), its
+			// widening steps and where its braid starts (trimming scrolls it).
 			const std::vector<Vec3>& Laid = FineRings[K];
 			int32 Steps = 0;
-			for (const Vec3& P : Laid) RingRadius(Lines[K].RadiusCm, ToFVector(P), Widen, &Steps);
-			const auto At = [&](size_t I) { return Laid.empty() ? FVector::ZeroVector : ToFVector(Laid[FMath::Min(I, Laid.size() - 1)]); };
-			Keys.Append({ At(0), At(kRopeRings / 4), At(kRopeRings / 2), At(3 * kRopeRings / 4),
-				FVector(float(Steps), float(FineUStartCm[K]), At(kRopeRings).X + At(kRopeRings).Y + At(kRopeRings).Z) });
+			for (const Vec3& P : Laid) { RingRadius(Lines[K].RadiusCm, ToFVector(P), Widen, &Steps); Keys.Add(ToFVector(P)); }
+			Keys.Add(FVector(float(Steps), float(FineUStartCm[K]), 0.f));
 		}
 		for (const FRigLine& L : (bFineSection ? NoLines : Lines))
 		{
@@ -1322,10 +1339,35 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const int32 NumVerts = bFineSection ? Lines.Num() * (kRopeRings + 1) * (kRopeSides + 1) : Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
 		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
 		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
+		TArray<FVector> Frames;
+		if (bFineSection) Frames.Init(FVector::ZeroVector, Lines.Num());
 		for (int32 K = 0; K < Lines.Num(); ++K)
 		{
-			if (bFineSection) AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, !bRigLinesBuilt);
-			else AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, !bRigLinesBuilt);
+			if (bFineSection)
+			{
+				// (lines are in rig order, a chain's lines one after another: the previous one's frame is already there)
+				FVector Frame = FinePrev.IsValidIndex(K) && FinePrev[K] != INDEX_NONE && FinePrev[K] < K ? Frames[FinePrev[K]] : FVector::ZeroVector;
+				AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, !bRigLinesBuilt, &Frame);
+				Frames[K] = Frame;
+			}
+			else
+			{
+				AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, !bRigLinesBuilt);
+			}
+		}
+		// (never an update of a different size: rebuilt whole, which no rig should need)
+		const FProcMeshSection* Built = bRigLinesBuilt ? RigLines->GetProcMeshSection(Section) : nullptr;
+		if (Built && Built->ProcVertexBuffer.Num() != Out.Verts.Num())
+		{
+			ensureMsgf(false, TEXT("Rig line section %d changed size (%d -> %d vertices)"), Section, Built->ProcVertexBuffer.Num(), Out.Verts.Num());
+			Out = FTubeStreams();
+			for (int32 K = 0; K < Lines.Num(); ++K)
+			{
+				if (bFineSection) AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, true);
+				else AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, true);
+			}
+			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
+			continue;
 		}
 		if (!bRigLinesBuilt)
 		{
