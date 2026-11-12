@@ -598,6 +598,11 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
   (`Tools/boats/make_coil_data.py` <- `Inputs/j22-hero/J22H_coils.json` <- `build_j22_hero.py`, `J22H_COILS_ONLY=1`);
   every rig line keeps 0.8 px on screen. Args `-SailingNoSailDetail`, `-SailingNoCoils`, `-SailingNoMinLineWidth`.
+- Rope lay (rope realism 1, `docs/rope-lay/`): the player's boat's ropes are laid by `RopeLay.h` (plain: continuous lift,
+  hull, circular-arc bends, rounded across a rope's lines by `FRigLine::EndBendCm`, 24 rings x 12 sides, braid U runs on from
+  the clew); `scripts/rope-check.sh` and `SailingSim.Visual.RopeLay.*`. Each rope section keeps a fixed vertex count: every
+  line in it has `kRopeRings + 1` rings and the set of lines never changes frame to frame. AI boats, the ghost and
+  `-SailingClassicRopes` keep the old drape. Winch turns show only on jib-winch boats; the J/22's `JibWinch` is a cam's fairlead.
 - Spray hull (`docs/spray-hull/`): `UpdateBoatWetness` mirrors `UpdateSpray`'s bow-wave and slam tests into
   `MPC_Boat.SprayWet` (raises the splash band; the topsides' film, beads, drips and spatter in `BOAT_CODE` and the hero's
   `DETAIL_CODE`); `UpdateBowWave` draws the bow wave's curl (`M_BowWave`, world-space sheet on the waves, not on Low;
