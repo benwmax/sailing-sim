@@ -153,7 +153,10 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	L.ReleaseTimeMsec = 150.f;
 	L.ThresholdDb = -1.5f;   // under the -1 dBTP ceiling (docs: the sound plan's loudness target)
 	L.KneeBandwidthDb = 3.f;
-	L.InputGainDb = 0.f;
+	// Make-up gain (loudness check Nov 12, scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under
+	// the plan's -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP,
+	// so +4 dB lifts it with 3 dB to spare before the limiter. The quiet scenes stay quieter than the breeze on purpose.
+	L.InputGainDb = 4.f;
 	L.OutputGainDb = 0.f;
 	Limiter->SetSettings(L);
 	Limiter->AddToRoot();
