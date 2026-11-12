@@ -128,6 +128,7 @@ private:
 	float Noise();
 	uint32 Rng = 0x9E3779B9u;
 	float SLevel = 0.f, SRate = 0.5f;
+	bool bRateSet = false;   // the first block starts the rate at its target (a fresh thunder voice must not crack)
 	float Phase = 0.f, Phase2 = 0.f, Env = 0.f, Env2 = 0.f, F1 = 1800.f, F2 = 2700.f, P1 = 0.f, P2 = 0.f, Glide = 0.f, Call = 0.f, Low = 0.f, Low2 = 0.f;
 	float BandLow = 0.f, Band = 0.f;   // Thunder: the crack's band-pass
 	/** ShoreLife's generators. */

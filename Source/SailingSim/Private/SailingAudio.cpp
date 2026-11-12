@@ -369,6 +369,8 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 	const float Sr = 48000.f;
 	if (Rng == 0x9E3779B9u) Rng ^= Seed * 2654435761u;
 	const float TLevel = Level.load(), TRate = Rate.load();
+	// The rate is a setting (wind, throttle, the crack), not a level: no glide from the default on the first block.
+	if (!bRateSet) { SRate = TRate; bRateSet = true; }
 	// The player's mix: the marina, gulls and engines are the lake and shore group; a horn is a signal, thunder weather.
 	const float Gain = SailingSound::GroupGain(Kind == EWorldSound::Horn ? SailingSound::EGroup::Signals
 		: Kind == EWorldSound::Thunder ? SailingSound::EGroup::Weather : SailingSound::EGroup::World);
