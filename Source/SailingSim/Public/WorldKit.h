@@ -147,6 +147,10 @@ SAILINGSIM_API void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int
 /** The houses' walls, roofs, eaves and (full detail) windows, doors and chimneys (HouseKit.cpp). */
 SAILINGSIM_API void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Houses, FKitGeometry& Out);
 
+/** #594: how far (cm, on any axis) a baked tile's geometry may lie from its pivot and still be in the distance-field scene:
+ *  under the 2^21 cm its float transform keeps to the bounds' centre (DoubleFloat.cpp CheckMatrixPrecision), with margin. */
+constexpr double KitTileDistanceFieldReachCm = 2.0e6;
+
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
 SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
