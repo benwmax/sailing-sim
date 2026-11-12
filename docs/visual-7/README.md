@@ -44,7 +44,7 @@ Three configs disagree with their own published dimensions. The test reports the
 
 ### The marina opening frame
 
-- **Occupancy:** 90% of the slips are full.
+- **Occupancy:** 90% of the slips were full here; since Nov 12 2026 about 60% (`"occupancy": 0.6` in `RayHubbard.marina.json`: Bean, Rush Creek normally fills about 60%).
 - **Mix:** J/22s and Catalina 22s in the slips (60/40), Catalina 30s alongside the piers wherever the water is deep enough.
 - **Berthed dress** (`build_berthed.py`): each neighbour has standing rigging, a furled jib, a navy sail cover, halyards, fenders, and bow, stern and spring lines.
 - **Mast:** a static Nanite mast is baked into the berthed mesh.
