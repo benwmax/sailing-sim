@@ -95,12 +95,15 @@ CABIN_BRK = 1.29                            # the top's forward edge, where the 
 # 0.29-0.30 m over the sheer aft and 0.17-0.19 at the raked face (the deck's camber is 0.055 and the top's 0.014 of that);
 # it was 0.30 over the deck (0.36 over the sheer) falling 6 cm, and the Mac's overlay on IMG_9224 read it 120-150 px high
 CABIN_H_AFT, CABIN_H_BRK = 0.23, 0.12
+CABIN_FRONT_DROP = 0.95                     # of CABIN_H_BRK the raked face drops: it runs down onto the foredeck (a lip read as a step)
 # the trunk's foot, half-width (j22.org deck plan, column scans at 22 mm/px, and the Harken J/22 layout drawing Bean
 # sent Nov 11 2026: 0.81-0.85 at the aft face; docs/shape-loop wave 3). The plan scan reads 0.73 at x 0.4 and 0.60 at
 # 1.0, the Harken drawing (7.3 mm/px) about 0.75 and 0.70, so the table runs between them; it keeps the side convex
 # (each step narrows faster than the one aft of it: the scan's own points gave a waist that three blind reviewers saw)
 CABIN_PLAN = ((-0.60, 0.83), (-0.06, 0.80), (0.40, 0.755), (0.83, 0.69), (1.01, 0.645), (1.19, 0.595),
-              (1.30, 0.56), (1.45, 0.49), (1.57, 0.43))   # a blunt front, as both plans draw it (shape wave 3b)
+              (1.30, 0.56), (1.45, 0.49), (1.51, 0.46), (1.57, 0.38))
+# a blunt front, as both plans draw it (shape wave 3b), its corners cut on a short chamfer (wave 3c: the j22.org plan
+# and the Harken drawing square the front off with angled corners; the blind reviewers read the round ones as soft)
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272), beside the cabin
@@ -411,8 +414,10 @@ def cabin_ring(t, inset=0.0, z_floor=None, top_extra=0.0):
     # (the subdivision pulls the foot about 2 cm inboard, so the plan's line goes in as it is: the built foot lands on it)
     side_line = min(cabin_foot(x), half_beam(x) - SIDE_DECK)
     w = side_line + 0.02
-    front = smooth((x - CABIN_BRK) / (CABIN_FWD - CABIN_BRK))   # the short raked forward face
-    hgt = cabin_hgt(x) * (1 - 0.90 * front)
+    # the raked forward face: a straight panel (wave 3c; smoothstep had rounded both of its edges into one long ramp)
+    # creased at CABIN_BRK and running straight down onto the foredeck, as on the trailer broadside
+    front = min(max((x - CABIN_BRK) / (CABIN_FWD - CABIN_BRK), 0.0), 1.0)
+    hgt = cabin_hgt(x) * (1 - CABIN_FRONT_DROP * front)
     zb = deck_z(x, 0) - 0.06
     zt = deck_z(x, 0) + hgt
     zs = deck_z(x, min(w, half_beam(x) - 0.05)) + 0.005
@@ -443,13 +448,18 @@ def cabin_top_z(x, y=0.0):
 
 def build_cabin():
     """Cabin trunk as on TX 7295 EC (dock photo IMG_9224): low and wide, its sides almost upright and standing just
-    inboard of the side decks, a flat lightly cambered top with tight corner radii, and a long raked front that runs
-    down to the foredeck ahead of the mast."""
+    inboard of the side decks, a flat lightly cambered top with tight corner radii, and a short, straight raked front that
+    runs down to the foredeck ahead of the mast."""
     n = 72
     bm = bmesh.new()
     # an extra section 1 cm from the aft face keeps its corners tight under the subdivision: without it the aft
     # corners round 3 cm aft and 6 cm in, off the cockpit coaming's lip (seam gap 4.9 mm once the trunk narrowed)
     ts = [0.0, 0.01 / (CABIN_FWD - CABIN_AFT)] + [i / n for i in range(1, n + 1)]
+    # wave 3c: sections pinned either side of the raked face's top crease and at the plan's chamfer, so the subdivision
+    # keeps a crease and an angled corner (on the even spacing alone it rounded both off)
+    ts = sorted(set(ts) | {(x - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+                           for x in (CABIN_BRK - 0.008, CABIN_BRK + 0.008, 1.45, 1.51, 1.55, CABIN_FWD - 0.006)})
+    ts = [t for k, t in enumerate(ts) if k == 0 or t - ts[k - 1] > 0.002]
     rings = [[bm.verts.new(pt) for pt in cabin_ring(t)] for t in ts]
     for a_, b_ in zip(rings[:-1], rings[1:]):
         # the last face is the trunk's bottom, hidden under the deck: it closes the solid so the interior's booleans are clean

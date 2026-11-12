@@ -63,6 +63,7 @@
  "findings": [
   "Bean's cockpit photo IMG_9272 read on the Mac: the winch sits on a raised part beside the companionway; the Harken drawing and the class plan put it on the trunk top's aft corners, so the trunk top it is. Bean may send a photo from the cockpit looking forward.",
   "The Mac's overlay on IMG_9224: the trunk's top outline sits high and its aft end aft of the photo's (wave 3b lowered the top to CABIN_H_AFT 0.23 / CABIN_H_BRK 0.12 per the trailer broadside and squared the front at 1.57).",
-  "Open (wave 3b): the aft face sits at -0.55; the trailer broadside reads -0.44 to -0.48 and j22.org about -0.50. Moving it couples the cockpit's forward end, the companionway and the crew wells, so it is its own round."
+  "Open (wave 3b): the aft face sits at -0.55; the trailer broadside reads -0.44 to -0.48 and j22.org about -0.50. Moving it couples the cockpit's forward end, the companionway and the crew wells, so it is its own round.",
+  "Wave 3c: the raked front is a straight panel (linear, CABIN_FRONT_DROP 0.95) creased at CABIN_BRK, and the plan's front corners are chamfered (1.45 0.49, 1.51 0.46, 1.57 0.38), with pinned sections so the subdivision keeps both. A first try with a 25% lip at the foredeck lost the blind A/B 0 of 3: it read as a step."
  ]
 }

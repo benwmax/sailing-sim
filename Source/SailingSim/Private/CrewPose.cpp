@@ -1146,14 +1146,14 @@ bool CrewCabinTrunk(const Sailing::FBoatConfig& C, FCrewCabinTrunk& Out, bool bT
 	{
 	case EBoatType::J22:
 		if (bTravelerBridge) { Out.X0 = -0.72; Out.X1 = 1.60; Out.SideDeck = 0.36; Out.Height = 0.31; }
-		// the hero: its trunk as built (shape waves 3 and 3b: build_j22_hero.py CABIN_PLAN, cabin_hgt, measured on the
+		// the hero: its trunk as built (shape waves 3, 3b and 3c: build_j22_hero.py CABIN_PLAN, cabin_hgt, measured on the
 		// build): the foot's half width 5 cm over the sheer and the top's crown over the sheer, falling from 0.30 at the
-		// aft face to 0.19 at the short raked front (x 1.29) and the deck at 1.57
+		// aft face to 0.19 at the short raked front (x 1.29) and straight down to the deck at 1.57
 		else
 		{
 			static constexpr double PX[] = {-0.55, -0.06, 0.40, 0.83, 1.01, 1.19, 1.29, 1.36, 1.45, 1.52, 1.57};
-			static constexpr double PH[] = {0.84, 0.814, 0.769, 0.696, 0.659, 0.609, 0.576, 0.552, 0.506, 0.478, 0.38};
-			static constexpr double PZ[] = {0.30, 0.271, 0.243, 0.21, 0.20, 0.19, 0.187, 0.173, 0.122, 0.089, 0.071};
+			static constexpr double PH[] = {0.84, 0.814, 0.769, 0.696, 0.659, 0.609, 0.576, 0.540, 0.496, 0.440, 0.370};
+			static constexpr double PZ[] = {0.30, 0.271, 0.243, 0.21, 0.20, 0.19, 0.187, 0.163, 0.123, 0.095, 0.072};
 			static_assert(UE_ARRAY_COUNT(PX) == UE_ARRAY_COUNT(PH) && UE_ARRAY_COUNT(PX) == UE_ARRAY_COUNT(PZ)
 				&& UE_ARRAY_COUNT(PX) <= FCrewCabinTrunk::MaxPlan, "hero trunk plan");
 			Out.X0 = -0.55; Out.X1 = 1.57; Out.HalfWidth = 0.0; Out.Height = 0.30;

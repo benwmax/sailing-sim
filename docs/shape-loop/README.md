@@ -208,3 +208,16 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
   `CrewFloorZ`/`CrewInsideBoat` use it (other boats keep the fixed `Height`).
 - Open: the aft face at -0.55 against the photo's -0.44 to -0.48 (j22.org -0.50): moving it couples the cockpit's
   forward end, the companionway and the crew wells, so it is its own round.
+
+## Wave 3c changes (Nov 12): the trunk's raked front
+
+- The raked front was a smoothstep falloff from `CABIN_BRK` to `CABIN_FWD`, which rounded both of its edges into one
+  long soft ramp (three blind reviewers on wave 3b). It is now a straight panel: `front` is linear, the top drops
+  `CABIN_FRONT_DROP` 0.95 of its height to the foredeck. A first try left a 25% lip there and lost the blind A/B 0 of 3
+  (the lip read as a step; the photos run the face straight onto the deck).
+- The plan's front corners are chamfered, as both plans draw them: `CABIN_PLAN` ends (1.45, 0.49), (1.51, 0.46),
+  (1.57, 0.38), still convex. `build_cabin` pins sections either side of the crease at `CABIN_BRK` and at 1.45, 1.51,
+  1.55 and the front: on the even 2.9 cm spacing alone the subdivision rounded the chamfer and the crease away.
+- Crew: the hero's `PlanHalf`/`PlanTop` table ends 0.540 / 0.496 / 0.440 / 0.370 (measure.py's cut) and 0.163 / 0.123 / 0.095 / 0.072 at
+  x 1.36 / 1.45 / 1.52 / 1.57 (measured on the build). The raked face's slope now falls entirely in the deck mould's
+  `flat` (non-skid) band; the rebake regenerates the mould.
