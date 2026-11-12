@@ -5,6 +5,7 @@
 #include "Weather.h"
 #include "Wind.h"
 #include "WindClimate.h"
+#include "EasyAssists.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -333,6 +334,62 @@ bool FWindShelterBandTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("100 m downwind of the bank: %.2f bare, %.2f behind houses"), Open.LeeAt(1100.0, 100.0), Houses.LeeAt(1100.0, 100.0)));
 	TestTrue(TEXT("A bare bank barely shelters 100 m out"), Open.LeeAt(1100.0, 100.0) > 0.98);
 	TestTrue(TEXT("Houses do"), Houses.LeeAt(1100.0, 100.0) < 0.7);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWindSailorGustsTest, "SailingSim.Physics.WindSailorGusts", WindTestFlags)
+bool FWindSailorGustsTest::RunTest(const FString& Parameters)
+{
+	// Nov 11 2026 review: a session's label ("10 gusting 13") read the way a sailor reads it. Built as the game mode builds a
+	// session's wind (the preset scaled to the chosen wind and held, ApplySailorGust, Easy at half), measured near the shore
+	// (no shelter map: the gusts at full strength). Before the fix "10 gusting 13" met 20 kn every ten minutes and 25 at worst,
+	// "20 gusting 28" 39 and 54. scripts/gust-check.sh runs more days standalone.
+	TestNotNull(TEXT("The Mann tile is loaded (Content/TerrainData/Wind.mann)"), FTurbulenceTile::Shared());
+	struct FCase { EWeatherPreset Preset; int Month; double Hour, Kn, GustKn; const TCHAR* Name; };
+	const FCase Cases[] = { { EWeatherPreset::AfternoonBreeze, 4, 10.0, 10.0, 13.0, TEXT("Lesson day, 10 gusting 13") },
+		{ EWeatherPreset::Overcast, 11, 11.0, 20.0, 28.0, TEXT("Blue norther, 20 gusting 28") } };
+	for (const FCase& C : Cases)
+	{
+		for (int32 Easy = 0; Easy < 2; ++Easy)
+		{
+			double P90 = 0.0, Worst = 0.0;
+			for (uint32 Seed = 1; Seed <= 3; ++Seed)
+			{
+				FWeatherSystem Weather;
+				Weather.SetHoldWind(true);
+				Weather.Configure(C.Preset, Seed * 7919u, C.Hour);
+				Weather.SetClimate(C.Month, false);
+				FWeatherState S = Weather.Evaluate(0.0);
+				S.Wind.SpeedKnots = C.Kn;
+				ApplySailorGust(S.Wind, C.GustKn / C.Kn);
+				if (Easy)
+				{
+					S.Wind.GustIntensity *= FEasyAssists().WindVariabilityScale;
+					if (S.Wind.PuffIntensity > 0.0) S.Wind.PuffIntensity *= FEasyAssists().WindVariabilityScale;
+				}
+				const FSailorGustStats G = MeasureSailorGusts(FWindField(S.Wind), 2.0, 4);
+				P90 += G.P90Factor * C.Kn / 3.0;
+				Worst = FMath::Max(Worst, G.MaxFactor * C.Kn);
+			}
+			AddInfo(FString::Printf(TEXT("%s, %s: nine stretches in ten top out at %.1f kn, the strongest %.1f kn"), C.Name, Easy ? TEXT("Easy") : TEXT("Realistic"), P90, Worst));
+			if (Easy) TestTrue(FString::Printf(TEXT("%s, Easy: gentler than the label"), C.Name), P90 < C.GustKn);
+			else TestTrue(FString::Printf(TEXT("%s: the usual strongest gust is the label (within 1.5 kn; it was 7 to 11 kn over)"), C.Name), FMath::Abs(P90 - C.GustKn) <= 1.5);
+			// (gust-check.sh holds 15 %; the norther's strongest sits at 14 %, so the test leaves room for another compiler's maths)
+			TestTrue(FString::Printf(TEXT("%s, %s: the strongest at most 20 %% past the label"), C.Name, Easy ? TEXT("Easy") : TEXT("Realistic")), Worst <= 1.2 * C.GustKn);
+		}
+	}
+	// The chosen wind holds: a 10 kn lesson started at 10:00 stays 10 kn (it had built to 18.5 by noon). Without the hold the
+	// preset still follows the day (the presets and real days the game does not scale).
+	FWeatherSystem Held;
+	Held.SetHoldWind(true);
+	Held.Configure(EWeatherPreset::AfternoonBreeze, 1, 10.0);
+	Held.SetClimate(4, false);
+	const double Start = Held.Evaluate(0.0).Wind.SpeedKnots;
+	TestEqual(TEXT("Held: the same breeze two hours on"), Held.Evaluate(7200.0).Wind.SpeedKnots, Start, 1e-9);
+	FWeatherSystem Free;
+	Free.Configure(EWeatherPreset::AfternoonBreeze, 1, 10.0);
+	Free.SetClimate(4, false);
+	TestTrue(TEXT("Not held: the afternoon breeze builds"), Free.Evaluate(7200.0).Wind.SpeedKnots > 1.5 * Free.Evaluate(0.0).Wind.SpeedKnots);
 	return true;
 }
 

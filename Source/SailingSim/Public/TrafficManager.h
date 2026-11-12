@@ -11,6 +11,7 @@
 class ASailboatPawn;
 class APowerVesselActor;
 class UStaticMeshComponent;
+class USailingWorldSynth;
 
 /**
  * The other vessels on the water and the races. Spawns the traffic around the player (Settings: Traffic off, light or
@@ -79,9 +80,13 @@ private:
 	double LastEventTime = -1.0;
 	int32 SignalsSeen = 0;
 
-	/** Whistle blasts queued: start, end (game seconds), pitch (Hz), loudness (0..1). */
-	struct FBlast { double Start, End; float Hz, Level; };
+	/** Whistle blasts queued: start, end (game seconds), pitch (Hz), loudness (0..1), and where they sound from (map m;
+	 *  a vessel's blasts follow her). */
+	struct FBlast { double Start, End; float Hz, Level; double X = 0.0, Y = 0.0; float UpM = 3.f; int32 Vessel = -1; };
 	TArray<FBlast> Blasts;
+	/** Slice sound pass: the whistle sounds from the vessel blowing it, a placed voice the loudest blast moves to. */
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> HornAt;
+	UPROPERTY(Transient) TObjectPtr<USailingWorldSynth> HornVoice;
 	double CoachTime = 0.0;
 	int32 PopulatedLevel = -1;
 	/** Perf 1: the game's clock (unix seconds) for the tidal current, read once a frame on the game thread. */

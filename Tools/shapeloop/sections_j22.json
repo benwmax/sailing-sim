@@ -81,7 +81,8 @@
     "cabin_ring",
     "cabin_top_z",
     "build_cabin",
-    "handrail"
+    "handrail",
+    "cabin_foot"
    ],
    "shared": [
     "cabin_top_z"

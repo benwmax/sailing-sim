@@ -202,15 +202,21 @@ def hash2(a, b, k1=12.99, k2=78.23):
     return np.modf(np.abs(np.sin(a * k1 + b * k2) * 43758.5))[0]
 
 
-def value_noise(lp):
-    """M_BoatSurface's grime noise: three octaves of value noise anchored to the boat (37, 9, 2.2 cm)."""
+def value_noise(lp, turned=True):
+    """M_BoatSurface's grime noise: three octaves of value noise anchored to the boat (37, 9, 2.2 cm). #405: each octave's
+    lattice is turned (37, 74, 111 deg) and smoothed quintically; turned=False is main before #405 (--before)."""
     vn = np.zeros(lp.shape[:2]); amp = 0.6; sc = 37.0
     for o in range(3):
-        qx = (lp[..., 0] + lp[..., 2] * 0.6) / sc + o * 17.3
-        qy = (lp[..., 1] - lp[..., 2] * 0.4) / sc + o * 17.3
+        px, py = lp[..., 0] + lp[..., 2] * 0.6, lp[..., 1] - lp[..., 2] * 0.4
+        ang = 0.6458 * (o + 1) if turned else 0.0
+        qx = (px * np.cos(ang) - py * np.sin(ang)) / sc + o * 17.3
+        qy = (px * np.sin(ang) + py * np.cos(ang)) / sc + o * 17.3
         ix, iy = np.floor(qx), np.floor(qy)
         fx, fy = qx - ix, qy - iy
-        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+        if turned:
+            fx = fx * fx * fx * (fx * (fx * 6 - 15) + 10); fy = fy * fy * fy * (fy * (fy * 6 - 15) + 10)
+        else:
+            fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
         a00, a10, a01, a11 = hash2(ix, iy), hash2(ix + 1, iy), hash2(ix, iy + 1), hash2(ix + 1, iy + 1)
         vn += amp * ((a00 * (1 - fx) + a10 * fx) * (1 - fy) + (a01 * (1 - fx) + a11 * fx) * fy)
         amp *= 0.5; sc /= 4.1
@@ -230,10 +236,10 @@ def gelcoat_maps(g, age, care, split=True, base=(0.80, 0.80, 0.77), rough0=0.22,
     blot = (hash2(ix, iy) * (1 - fx) + hash2(ix + 1, iy) * fx) * (1 - fy) + (hash2(ix, iy + 1) * (1 - fx) + hash2(ix + 1, iy + 1) * fx) * fy
     col, rough, coat = wear.gelcoat(base, rough0, 1.0, age, care, up=up, sun=sun, split=split, blot=blot)
     rough = np.broadcast_to(rough, up.shape).copy(); coat = np.broadcast_to(coat, up.shape).copy()
-    vn = value_noise(lp)
-    # grime on the deck (deckish: up-facing, not the hull)
+    vn = value_noise(lp, turned=split)
+    # grime on the deck (deckish: up-facing, not the hull); #405: the softer edge x1.4 - 0.4 (before: x1.8 - 0.6)
     dirt = wear.grime(age, care, split=split)
-    grime = np.clip(vn * 1.8 - 0.6, 0, 1) * up * dirt * 0.45
+    grime = (np.clip(vn * 1.4 - 0.4, 0, 1) if split else np.clip(vn * 1.8 - 0.6, 0, 1)) * up * dirt * 0.45
     col = col + (col * 0.76 + np.array([0.014, 0.011, 0.007]) - col) * grime[..., None]
     rough = rough + (np.minimum(rough + 0.18, 0.9) - rough) * grime
     coat *= 1 - 0.6 * grime

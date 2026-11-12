@@ -181,6 +181,7 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = FMath::Max(C.WindKn, 0.5f);
 			WindFromOverride = C.WindFromDeg;
 			GustOverride = FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f);
+			bGustLabel = true;
 		}
 		SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), FMath::Clamp(C.Day, 1, FDateTime::DaysInMonth(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12))));
 		bSessionDate = true;
@@ -201,7 +202,10 @@ void ASailingGameMode::InitGame(const FString& MapName, const FString& Options, 
 			const double Gust = bStandInWind ? Set.StandInGustKn : Set.GustKn;
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWind="), Value)) WindOverrideKnots = float(Kn);
 			if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), Value) && (bStandInWind || !bScenePreset))
+			{
 				GustOverride = float(FMath::Clamp(Gust / FMath::Max(Kn, 1.0) - 1.0, 0.0, 1.0));
+				bGustLabel = false;   // the prologue's stand-in keeps the stations' gust factor it was tuned in
+			}
 			SAIL_LOG(Display, TEXT("Prologue: \"%s\", %d steps, %s%s in %.0f kn gusting %.0f, %d reefs"), UTF8_TO_TCHAR(Scene.GetTitle().c_str()),
 				int32(Scene.GetSteps().size()), UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(Settings->BoatType))), bSceneStandIn ? TEXT(" (stand-in)") : TEXT(""),
 				Kn, Gust, SceneReefs);
@@ -575,6 +579,7 @@ void ASailingGameMode::PreviewConditions(const FSailConditions& C)
 		R.WindOverrideKnots = WindOverrideKnots;
 		R.WindFromOverride = WindFromOverride;
 		R.GustOverride = GustOverride;
+		R.bGustLabel = bGustLabel;
 		R.RealDayDate = RealDayDate;
 		R.bRealDayHour = bRealDayHour;
 		R.SessionDate = SessionDate;
@@ -616,6 +621,7 @@ void ASailingGameMode::EndPreview(bool bKeep)
 	WindOverrideKnots = R.WindOverrideKnots;
 	WindFromOverride = R.WindFromOverride;
 	GustOverride = R.GustOverride;
+	bGustLabel = R.bGustLabel;
 	RealDayDate = R.RealDayDate;
 	bRealDayHour = R.bRealDayHour;
 	SessionDate = R.SessionDate;
@@ -636,6 +642,7 @@ void ASailingGameMode::ApplyConditionsLocal(const FSailConditions& C, TOptional<
 	WindOverrideKnots = C.RealDay.IsEmpty() ? FMath::Max(C.WindKn, 0.5f) : 0.f;
 	WindFromOverride = C.RealDay.IsEmpty() ? C.WindFromDeg : NAN;
 	GustOverride = C.RealDay.IsEmpty() ? FMath::Clamp(C.GustKn / FMath::Max(C.WindKn, 1.f) - 1.f, 0.f, 1.f) : NAN;
+	bGustLabel = C.RealDay.IsEmpty();
 	SessionDate = FDateTime(FDateTime::Now().GetYear(), FMath::Clamp(C.Month, 1, 12), 1) + FTimespan::FromDays(FMath::Max(C.Day, 1) - 1);
 	bSessionDate = true;
 	bWindArgsRead = true;   // the session's values stand
@@ -744,12 +751,21 @@ void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTi
 	ClockBase = WeatherStartTime;
 	StartUnix = Sailing::UnixSecondsUtc(Date.GetYear(), Date.GetMonth(), Date.GetDay(), 0, 0) + (StartHour - UtcOffsetHours) * 3600.0;
 
-	// Scale the preset's wind to an explicit base speed when asked (benchmarks).
+	// Scale the preset's wind to an explicit base speed when asked (benchmarks, and every session's chosen wind). Nov 11
+	// 2026 review (Bean: "fix to hold"): a chosen wind is held, not built through the day by the preset's daily cycle.
 	WindScale = 1.0;
-	const FWeatherState Now = Weather.Evaluate(WeatherOffset);
+	Weather.SetHoldWind(WindOverrideKnots > 0.f);
+	FWeatherState Now = Weather.Evaluate(WeatherOffset);
 	if (WindOverrideKnots > 0.f && Now.Wind.SpeedKnots > 0.1)
 	{
 		WindScale = WindOverrideKnots / Now.Wind.SpeedKnots;
+	}
+	// The label's gusts, the sailor's way (bGustLabel), on the start's calibrated gustiness at the chosen wind.
+	GustLabelScale = 1.0;
+	if (bGustLabel && !FMath::IsNaN(GustOverride))
+	{
+		Now.Wind.SpeedKnots *= WindScale;
+		GustLabelScale = Sailing::SailorGustScale(Now.Wind, 1.0 + GustOverride);
 	}
 	UpdateWeather(0.f);
 	Waves.SnapToTarget();
@@ -913,13 +929,19 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 	{
 		bWindArgsRead = true;
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingWindFrom="), WindFromOverride);
-		FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), GustOverride);
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingGust="), GustOverride)) bGustLabel = false;
 	}
 	if (!FMath::IsNaN(WindFromOverride)) WeatherState.Wind.FromDegrees = WindFromOverride;
-	if (!FMath::IsNaN(GustOverride))
+	if (!FMath::IsNaN(GustOverride) && bGustLabel)
 	{
-		// The override is the gusts over the mean (a gust factor less one): the fine turbulence for that factor, the puffs
-		// scaled with it (W1).
+		// A session's label: the calibrated gusts and puffs scaled together so the usual strongest gust is the label's.
+		WeatherState.Wind.GustIntensity *= GustLabelScale;
+		if (WeatherState.Wind.PuffIntensity > 0.0) WeatherState.Wind.PuffIntensity *= GustLabelScale;
+	}
+	else if (!FMath::IsNaN(GustOverride))
+	{
+		// The override is the gusts over the mean (a gust factor less one, the stations' measure): the fine turbulence for
+		// that factor, the puffs scaled with it (W1).
 		const double Fine = Sailing::GustIntensityForFactor(1.0 + GustOverride);
 		const double Scale = WeatherState.Wind.GustIntensity > 1e-6 ? Fine / WeatherState.Wind.GustIntensity : 1.0;
 		WeatherState.Wind.GustIntensity = Fine;
@@ -1580,7 +1602,7 @@ void ASailingGameMode::UpdateScene(const Sailing::FBoatModel& Boat, const Sailin
 		SceneCallSerial = Scene.GetCallSerial();
 		const FString CallId = UTF8_TO_TCHAR(Scene.GetCallId().c_str());
 		const FString Cue = CallId.Replace(TEXT("."), TEXT("_")).Replace(TEXT("-"), TEXT("_"));
-		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice);
+		if (USoundBase* Voice = Cue.IsEmpty() ? nullptr : SailingSound::LoadPack(TEXT("Voice/") + Cue)) UGameplayStatics::PlaySound2D(this, Voice, SailingSound::GroupGain(SailingSound::EGroup::Signals));
 		SAIL_LOG(Display, TEXT("Prologue %.1f s: %s (repeat %d)"), Scene.GetElapsed(), *CallId, Scene.GetCallRepeats());
 	}
 	// The sim judged the scene finished: the save keeps it by id (rule 7), unless this run never writes the save.

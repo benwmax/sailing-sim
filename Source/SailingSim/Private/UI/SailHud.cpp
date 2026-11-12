@@ -18,6 +18,7 @@
 #include "RulesCoach.h"
 #include "Tides.h"
 #include "TrafficManager.h"
+#include "SoundCaptions.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
 #include "Rendering/DrawElements.h"
@@ -483,6 +484,12 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
 			[
+				// Sound captions show even with the HUD off (Mode 2): they stand in for what a player can't hear.
+				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bCaptions ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				[ PanelBox(TextAttr(Attr(CaptionsText), EType::Small, FSlateColor(Fg), true), FMargin(14.f, 8.f), 4.f) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
+			[
 				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[ PanelBox(TextAttr(Attr(SignalsText), EType::Small, FSlateColor(WindTrue), true), FMargin(14.f, 8.f), 4.f) ]
 			]
@@ -708,6 +715,13 @@ void SSailHud::Refresh()
 				];
 			}
 		}
+	}
+	// Sound captions (Settings > Accessibility): what was heard and from where, in brackets as captions are.
+	{
+		const USoundCaptions* Captions = USoundCaptions::Get(P);
+		const TArray<FString> Heard = Captions && U->bSoundCaptions ? Captions->Active() : TArray<FString>();
+		bCaptions = Heard.Num() > 0;
+		CaptionsText = bCaptions ? FText::FromString(TEXT("[") + FString::Join(Heard, TEXT("]\n[")) + TEXT("]")) : FText::GetEmpty();
 	}
 	RefreshScene(*P, *GM);
 	RefreshTraffic(*P, *GM);

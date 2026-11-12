@@ -723,6 +723,7 @@ private:
 	TMap<FName, float> HeldAxes;
 	float KeyboardTiller = 0.f;
 	double LastManualTrimTime = -100.0;
+	double LastManualHikeTime = -100.0; // the player's own hike key: the crew's reflex leaves the hike alone this long after it
 	float CameraYaw = 0.f;
 	float CameraPitch = -14.f;
 	float CameraDistance = 1600.f;
@@ -764,7 +765,18 @@ private:
 	double NextHalyardShot = 0.0, NextDockShot = 0.0, NextWinchClick = 0.0, LuffHighAt = -100.0;
 	float PrevTrimRate = 0.f;
 	void UpdatePackSound(const struct FSailingSoundParams& P, float Aws, const float* CueLevels);
-	void PlayPackShot(uint8 Kind, float Volume);
+	/** Plays one of the pack's one-shots at a place on the boat (cm in BoatRoot's frame): the halyard at the mast, the
+	 *  winch in the cockpit, the fender at her side. */
+	void PlayPackShot(uint8 Kind, float Volume, const FVector& AtCm);
+	// Slice sound pass: placed sounds around the player. Thunder plays from the strike's direction, the wind in the
+	// rigging leans to the windward ear; the one-shots spawn at their boat part with OnBoardAttenuation.
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> ThunderAt;
+	UPROPERTY(Transient) TObjectPtr<class USailingWorldSynth> ThunderVoice;
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> WindAt;
+	UPROPERTY(Transient) TObjectPtr<class USoundAttenuation> OnBoardAttenuation;
+	UPROPERTY(Transient) TObjectPtr<class USailingSoundscape> Soundscape;   // the shore's birds, insects and frogs
+	void StartPlacedSounds();
+	void UpdatePlacedSounds(float ThunderLevel, float Crack, FVector2D StrikeDir);
 	UPROPERTY(Transient) TObjectPtr<AWaterSurface> Water;
 
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> MappingContext;

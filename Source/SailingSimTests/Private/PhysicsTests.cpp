@@ -474,4 +474,135 @@ bool FSailingPortableRandomTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPierEndContactTest, "SailingSim.Physics.PierEndContact", PhysicsTestFlags)
+bool FSailingPierEndContactTest::RunTest(const FString& Parameters)
+{
+	// Nov 11 physics review #3: the hull met docks only at its outline points, 1.3 to 2 m apart along each side, so a
+	// narrow pier end (or a pile) drifting in between two of them went 1.4 to 2.2 m into the J/22 with no contact at all.
+	// The deck edge between the points now meets it. Each case: the boat lying still, then drifting sideways onto the end
+	// of a pier that runs out square from her starboard side, between two outline points and at one.
+	for (const EBoatType Type : { EBoatType::J22, EBoatType::Sunfish })
+	{
+		const FBoatConfig Cfg = FBoatConfig::Make(Type);
+		const FHullShape& H = Cfg.Hulls[0];
+		const double Len = H.BowX - H.SternX;
+		// Outline stations at 0.8, 0.55 and 0.25 of her length from the stern (BuildContactPoints).
+		for (const double U : { 0.675, 0.4, 0.55 })
+		{
+			const double EndX = H.SternX + U * Len;
+			for (const double HalfWidth : { 0.15, 0.5, 1.0 })
+			{
+				for (const double Drift : { 0.5, 1.0 })
+				{
+					FBoatModel Boat(Cfg);
+					const double HalfBeam = H.DeckHalfBeam(EndX);
+					std::vector<FObstacleSegment> Pier(1);
+					Pier[0].AX = EndX;
+					Pier[0].AY = HalfBeam + HalfWidth + 0.5;
+					Pier[0].BX = EndX;
+					Pier[0].BY = HalfBeam + 20.0;
+					Pier[0].Radius = HalfWidth;
+					Pier[0].Bottom = -1.0;
+					Pier[0].Top = 1.5;
+					Boat.SetObstacles(&Pier);
+					Boat.Reset(0.0, 0.0, 0.0, 0.0);
+					FWindParams WP;
+					WP.SpeedKnots = 0.0;
+					const FWindField Wind(WP);
+					FBoatControls C;
+					C.bSailsDown = true;
+					C.Hike = -0.5; // crew in the middle: a Sunfish's sailor on the rail with no wind would roll her over
+					for (int32 I = 0; I < 240; ++I) Boat.Step(1.0 / 120.0, C, Wind);
+					Boat.GetMutableState().Velocity = Vec3(0.0, Drift, 0.0);
+					Boat.GetMutableState().AngularVelocity = Vec3();
+					bool bContact = false;
+					double Deepest = -1e9;
+					for (int32 I = 0; I < 8 * 120; ++I)
+					{
+						Boat.Step(1.0 / 120.0, C, Wind);
+						bContact |= Boat.GetTelemetry().bCollision;
+						// The pier end's face in her frame, against her deck's half-beam there.
+						const Vec3 Origin = Boat.OriginPosition();
+						const Vec3 Rel = Boat.GetState().Orientation.Unrotate(Vec3(Pier[0].AX, Pier[0].AY, Origin.Z) - Origin);
+						Deepest = FMath::Max(Deepest, H.DeckHalfBeam(Rel.X) - (Rel.Y - HalfWidth));
+					}
+					const FString Case = FString::Printf(TEXT("%s, pier end %.2f m wide at %.2f m, drifting %.1f m/s"), ANSI_TO_TCHAR(BoatTypeName(Type)), 2.0 * HalfWidth, EndX, Drift);
+					TestTrue(Case + TEXT(": contact"), bContact);
+					TestTrue(FString::Printf(TEXT("%s: stopped at her side (%.2f m in)"), *Case, Deepest), Deepest < 0.15);
+				}
+			}
+		}
+	}
+	{
+		// A pile off the J/22's fine bow: the deck edge on the far (starboard) side must not reach across and push her
+		// into it (QA on #641: with half the widest beam as the reach, she was thrown off it at 2 m/s, spinning).
+		const FBoatConfig Cfg;
+		const FHullShape& H = Cfg.Hulls[0];
+		for (const double X : { 2.9, 3.05, 3.2 })
+		{
+			std::vector<FObstacleSegment> Pile(1);
+			const double R = 0.15;
+			Pile[0].AX = Pile[0].BX = X;
+			Pile[0].AY = Pile[0].BY = -(H.DeckHalfBeam(X) + R + 0.5);
+			Pile[0].Radius = R;
+			Pile[0].Bottom = -2.0;
+			Pile[0].Top = 1.5;
+			FBoatModel Boat(Cfg);
+			Boat.Reset(0.0, 0.0, 0.0, 0.0);
+			FWindParams WP;
+			WP.SpeedKnots = 0.0;
+			const FWindField Wind(WP);
+			FBoatControls C;
+			C.bSailsDown = true;
+			C.Hike = -0.5;
+			for (int32 I = 0; I < 240; ++I) Boat.Step(1.0 / 120.0, C, Wind);
+			Boat.GetMutableState().Velocity = Vec3(0.0, -0.3, 0.0);
+			Boat.GetMutableState().AngularVelocity = Vec3();
+			Boat.SetObstacles(&Pile);
+			double MaxSpeed = 0.0, MaxYawRate = 0.0;
+			bool bContact = false;
+			for (int32 I = 0; I < 8 * 120; ++I)
+			{
+				Boat.Step(1.0 / 120.0, C, Wind);
+				bContact |= Boat.GetTelemetry().bCollision;
+				MaxSpeed = FMath::Max(MaxSpeed, Boat.GetState().Velocity.Length());
+				MaxYawRate = FMath::Max(MaxYawRate, FMath::Abs(Boat.GetState().AngularVelocity.Z));
+			}
+			const FString Case = FString::Printf(TEXT("J/22 drifting 0.3 m/s onto a pile off her port bow at %.2f m"), X);
+			TestTrue(Case + TEXT(": contact"), bContact);
+			TestTrue(FString::Printf(TEXT("%s: not thrown off it (%.2f m/s, %.2f rad/s)"), *Case, MaxSpeed, MaxYawRate), MaxSpeed < 0.4 && MaxYawRate < 0.3);
+		}
+	}
+	{
+		// Alongside a dock (no end coming in) nothing changes: she comes to rest at the dock's face, not pushed off by the
+		// deck edge, and the edge's push is left out where the points already push (no doubled spring at a station).
+		FBoatModel Boat;
+		const FHullShape& H = Boat.GetConfig().Hulls[0];
+		std::vector<FObstacleSegment> Dock(1);
+		const double Face = H.DeckHalfBeam(H.MaxBeamX) + 0.6;
+		Dock[0].AX = -10.0;
+		Dock[0].BX = 10.0;
+		Dock[0].AY = Dock[0].BY = Face + 0.5;
+		Dock[0].Radius = 0.5;
+		Boat.SetObstacles(&Dock);
+		Boat.Reset(0.0, 0.0, 0.0, 0.0);
+		FWindParams WP;
+		WP.SpeedKnots = 0.0;
+		const FWindField Wind(WP);
+		FBoatControls C;
+		C.bSailsDown = true;
+		for (int32 I = 0; I < 240; ++I) Boat.Step(1.0 / 120.0, C, Wind);
+		Boat.GetMutableState().Velocity = Vec3(0.0, 0.5, 0.0);
+		double MaxBack = 0.0;
+		for (int32 I = 0; I < 8 * 120; ++I)
+		{
+			Boat.Step(1.0 / 120.0, C, Wind);
+			MaxBack = FMath::Min(MaxBack, Boat.GetState().Velocity.Y);
+		}
+		AddInfo(FString::Printf(TEXT("Alongside at 0.5 m/s: bounced back at %.2f m/s at most"), -MaxBack));
+		TestTrue(TEXT("Alongside: she doesn't bounce off harder than she came in"), MaxBack > -0.5);
+	}
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

@@ -112,7 +112,20 @@ struct SAILINGSIM_API FCrewCockpitWell
 	double X0 = 0.0, X1 = 0.0;   // aft and forward ends
 	double SideDeck = -1.0;      // the J/22: the well runs to the deck edge less this; else HalfWidth
 	double HalfWidth = 0.0;
+	// the hero J/22: its walls no further out than MaxHalfAft at X0 to MaxHalf at X1, straight between (shape wave 2);
+	// MaxHalf 0 for none
+	double MaxHalfAft = 0.0, MaxHalf = 0.0;
 	double SeatZ = -1.0, SeatW = 0.0, SoleZ = 0.0;
+	/** The well's half-width at X, where the deck's half-beam is DeckHalfBeam. */
+	double WallHalf(double X, double DeckHalfBeam) const
+	{
+		if (SideDeck <= 0.0) return HalfWidth;
+		const double Half = DeckHalfBeam - SideDeck;
+		if (MaxHalf <= 0.0) return Half;
+		const double T = X1 > X0 ? (X < X0 ? 0.0 : X > X1 ? 1.0 : (X - X0) / (X1 - X0)) : 1.0;
+		const double Max = MaxHalfAft + (MaxHalf - MaxHalfAft) * T;
+		return Max < Half ? Max : Half;
+	}
 	double SeatIn = 0.0;         // the hero J/22: the seats' inboard edge at this half-width (else the well's edge less SeatW)
 	// pc/j22-feedback: the J/22's traveler, a track across the well from seat to seat (both models; round 12's bridge under
 	// it is gone): solid between TrackZ0 and TrackZ1 within TrackHalfX of TrackX and TrackHalfY of the centreline, never a
@@ -142,13 +155,29 @@ SAILINGSIM_API bool CrewNetSpan(const Sailing::FBoatConfig& Config, double& AftX
  *  stances' offsets apply), else the surface between the hulls, else the nearest hull's deck at its centreline. */
 SAILINGSIM_API double CrewSeatSurfaceZ(const Sailing::FBoatConfig& Config, double X, double Y);
 /** A keelboat's cabin trunk (m, boat frame): from X0 to X1, Height over the sheer, its sides HalfWidth out (or the deck
- *  edge less SideDeck). False where the drawn model has none. */
+ *  edge less SideDeck, or the plan table PlanX/PlanHalf when PlanN > 0). False where the drawn model has none. */
 struct SAILINGSIM_API FCrewCabinTrunk
 {
 	double X0 = 0.0, X1 = 0.0;
 	double HalfWidth = 0.0;
 	double SideDeck = -1.0;
 	double Height = 0.0;
+	static constexpr int32 MaxPlan = 12;
+	double PlanX[MaxPlan] = {};
+	double PlanHalf[MaxPlan] = {};
+	int32 PlanN = 0;
+	/** The sides' half width at X, given the deck's half beam there. */
+	double HalfAt(double X, double DeckHalfBeam) const
+	{
+		if (SideDeck > 0.0) return DeckHalfBeam - SideDeck;
+		if (PlanN <= 0) return HalfWidth;
+		if (X <= PlanX[0]) return PlanHalf[0];
+		for (int32 I = 1; I < PlanN; ++I)
+		{
+			if (X <= PlanX[I]) return PlanHalf[I - 1] + (PlanHalf[I] - PlanHalf[I - 1]) * (X - PlanX[I - 1]) / (PlanX[I] - PlanX[I - 1]);
+		}
+		return PlanHalf[PlanN - 1];
+	}
 };
 /** The boats whose drawn models carry lifelines (build_fleet.py lifelines(): the Catalinas, the Corsair's main hull). */
 SAILINGSIM_API bool CrewHasLifelines(const Sailing::FBoatConfig& Config);

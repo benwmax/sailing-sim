@@ -613,11 +613,13 @@ void CrewDerivedAttachPoints(const Sailing::FBoatConfig& C, double X, FCrewAttac
 	if (!CrewCockpitWell(C, W)) return;
 	const Sailing::FHullShape& H = C.Hulls[0];
 	X = FMath::Clamp(X, W.X0 + 0.1, W.X1 - 0.1);
-	const double Half = W.SideDeck > 0.0 ? H.DeckHalfBeam(X) - W.SideDeck : W.HalfWidth;
+	const double Half = W.WallHalf(X, H.DeckHalfBeam(X));
 	const double SeatZ = W.SeatZ > 0.0 ? W.SeatZ : W.SoleZ;
 	const double SeatY = W.SeatZ > 0.0 ? Half - 0.5 * W.SeatW : Half - 0.1;
 	const double CabinX = W.X1 + 0.35;
-	const double CabinHalf = FMath::Max(0.2, H.DeckHalfBeam(CabinX) - (W.SideDeck > 0.0 ? W.SideDeck : 0.25) - 0.16);
+	// (an approximate trunk side 0.25 m in from the sheer; for the hero its well's SideDeck is the straight walls' aft limit,
+	// and its trunk's real plan is FCrewCabinTrunk::HalfAt)
+	const double CabinHalf = FMath::Max(0.2, H.DeckHalfBeam(CabinX) - (W.SideDeck > 0.0 && W.MaxHalf <= 0.0 ? W.SideDeck : 0.25) - 0.16);
 	for (int32 S = 0; S < 2; ++S)
 	{
 		const double Y = S == 0 ? 1.0 : -1.0;

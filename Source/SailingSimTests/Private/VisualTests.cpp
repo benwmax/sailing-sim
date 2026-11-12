@@ -801,9 +801,24 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("J/22: beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-2.03, 0.0, 0.466)));
 		TestEqual(TEXT("J/22: forward of the track the floor is the sole"), CrewFloorZ(J22, -1.75, 0.0), 0.30, 1e-6);
 		// The hero (the player's boat since round 12) has its own cockpit (build_j22_hero.py, J22H_sockets.json): a sole at
-		// 0.136 m, seats at 0.40 m inboard to 0.40 m, the track across the well at x -2.06 (top 0.404 m).
+		// 0.136 m, seats at 0.40 m inboard to 0.31 m (0.40 before shape wave 2), the track across the well at x -2.06
+		// (top 0.404 m).
 		TestEqual(TEXT("Hero J/22: the floor under the track is the sole"), CrewFloorZ(J22, -2.06, 0.0, false), 0.136, 1e-6);
 		TestEqual(TEXT("Hero J/22: the seat outboard of 0.40 m"), CrewFloorZ(J22, -1.73, 0.44, false), 0.40, 1e-6);
+		TestEqual(TEXT("Hero J/22: the seat from 0.31 m out (shape wave 2)"), CrewFloorZ(J22, -1.73, 0.35, false), 0.40, 1e-6);
+		TestEqual(TEXT("Hero J/22: the sole inboard of 0.31 m"), CrewFloorZ(J22, -1.73, 0.28, false), 0.136, 1e-6);
+		// Its walls are straight, 0.64-0.73 m out (shape wave 2): 0.8 m out abreast the cam is side deck, not seat.
+		TestTrue(TEXT("Hero J/22: side deck outboard of the straight walls"), CrewFloorZ(J22, -1.05, 0.80, false) > 0.5);
+		// Its cabin trunk follows the class plan (shape wave 3, CABIN_PLAN): 0.83 m out aft, 0.69 at x 0.83, so 0.75 m out
+		// is trunk top beside the companionway and side deck forward of the mast.
+		{
+			FCrewCabinTrunk Trunk;
+			TestTrue(TEXT("Hero J/22: has a trunk"), CrewCabinTrunk(J22, Trunk, false));
+			const double SheerAft = J22.Hulls[0].SheerHeight(-0.30), SheerFwd = J22.Hulls[0].SheerHeight(0.83);
+			TestEqual(TEXT("Hero J/22: trunk top 0.75 m out beside the companionway"), CrewFloorZ(J22, -0.30, 0.75, false), SheerAft + Trunk.Height, 1e-6);
+			TestTrue(TEXT("Hero J/22: side deck 0.75 m out at x 0.83"), CrewFloorZ(J22, 0.83, 0.75, false) < SheerFwd + 0.5 * Trunk.Height);
+			TestEqual(TEXT("Hero J/22: trunk half width at x 0.83"), Trunk.HalfAt(0.83, 1.2), 0.69, 1e-9);
+		}
 		TestTrue(TEXT("Hero J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.396), false));
 		TestFalse(TEXT("Hero J/22: over the sole beside the track is open"), CrewInsideBoat(J22, Depth, FVector(-1.75, 0.0, 0.40), false));
 	}

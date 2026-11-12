@@ -143,3 +143,47 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
 - The J/22's physics hull is now the hero's own sections (`Tools/boats/j22/make_j22_hull.py` writes
   `Source/SailingPhysics/Private/J22HullData.inl`), so the hull card checks the hero against the physics it ships with.
   Rerun the script whenever `keel_z`, `sheer_z`, `half_beam`, `section` or `CANOE_D` change.
+
+## Wave 2 changes (Nov 11): the cockpit's footwell
+
+- `measure.py` writes `features` to `stats.json`: the footwell's width (between the seat fronts' inner faces 10 cm over
+  the sole's top, cut at 30, 50 and 70% of the Cockpit's length; the card reads the middle cut), the sole's height,
+  the cockpit's aft end and the aft deck (transom to the cockpit). A card target may name any of them; `score.py` looks
+  in `hull`, then `features`.
+- Card `cards/j22-cockpit.json`: footwell 0.63 m ±0.04 (j22.org deck plan 0.62, the Commons overhead photo 0.29 of the
+  deck beam = 0.64); the hero had 0.80. `SEAT_IN` 0.40 → 0.31 in `build_j22_hero.py`, and `CrewPose.cpp`'s hero well
+  (`SeatIn`) with it, so the crew's feet stand on the sole the mesh draws. The build stores `SEAT_Z` and `SEAT_IN` on
+  the scene for `bake_j22_hero.py` (`JibTailRest`); the PC reruns `make_coil_data.py` after the rebake (the jib tails'
+  coils move inboard with the seat fronts). Blind A/B 3 of 3 for the narrower footwell.
+- Round 2: the cockpit's side walls. They followed the sheer 0.25 m in (`SIDE_DECK`), so the cockpit widened forward
+  to 1.92 m at the cabin; the deck plan and both overhead photos show straight walls with a slight taper and wide side
+  decks. `coaming_y(x)` (`COAMING_HALF` 0.64 aft to 0.73 forward, at least `COAMING_AFT_DECK` 0.12 m from the sheer)
+  now places the deck's cockpit hole, the liner, the coaming caps, the jib cams and leads and the traveller's ends;
+  the cabin trunk still follows `SIDE_DECK` (wave 3). The crew's well gets `MaxHalfAft`/`MaxHalf` and `WallHalf()`.
+  Cockpit 1.33 / 1.37 / 1.41 m at 30 / 50 / 70% (was 1.47 / 1.71 / 1.87). Blind A/B 3 of 3. `measure.py` adds
+  `cockpit_width_aft`, `cockpit_width`, `cockpit_width_fwd`; a card's `seams_shorter` lets a join get shorter on
+  purpose (with a reason and the fewest bins it may keep): Cabin|Cockpit, whose cabin face now stands on the deck
+  outboard of the walls.
+- Findings left for later rounds are in the card: the cabin's aft face 7 cm forward of the deck plan's (wave 3), the
+  whole cockpit perhaps too wide (side decks 0.25 m; check with a camera solve), the short step at the footwell's
+  fore end.
+
+## Wave 3 changes (Nov 11): the cabin trunk
+
+- The trunk followed the sheer 0.25 m in (`SIDE_DECK`): 1.92 m wide at its aft end, about 0.79 of the beam. Its foot
+  now follows `CABIN_PLAN` (`cabin_foot(x)` in `build_j22_hero.py`): 0.83 m out aft, 0.755 at x 0.4, 0.645 at x 1.0,
+  between the j22.org deck plan's column scans and the Harken J/22 deck layout Bean sent (0.80-0.85 aft, about 0.75 and
+  0.70 forward), kept convex: the scan's own points gave the side a waist that 3 of 3 blind reviewers marked down.
+  The plan's line goes in as it is (the subdivision takes about 2 cm off the foot); an extra section 1 cm behind the
+  aft face keeps its corners on the cockpit coaming's lip (they rounded 3 cm aft and 6 cm in, a 4.9 mm seam gap).
+- The halyard winches sit on the roof's aft corners (0.58 m out, as in the Harken drawing; the pods of the first try
+  are gone), the cams just forward (`HAL_CAM_Y` 0.54); the portlights and headliner follow `cabin_ring`.
+- Card `cards/j22-cabin.json`: widths 12 cm under the top at x -0.45 / 0.40 / 1.00, 1.60 / 1.45 / 1.23 m; built
+  1.59 / 1.46 / 1.25. `measure.py` adds `outer_width` and `cabin_width_aft/mid/fwd`. Blind A/B 3 of 3 (round 2).
+- Crew: `FCrewCabinTrunk` takes a plan table (`PlanX`/`PlanHalf`, `HalfAt()`); the hero's mirrors `CABIN_PLAN` and
+  the built nose, so `CrewFloorZ`/`CrewInsideBoat` with the hero's flag put feet on the side deck beside the trunk
+  (`SailingSim.Visual` checks at x -0.30 and 0.83). CrewMotion's own placement still reads the light J/22's trunk.
+- The rebake regenerates `J22H_coils.json` and `J22CoilData.inl` (the halyard tails move with the cams).
+- Findings for later: the trunk's front reads blunt and pointed next to the Harken drawing; a small notch where each
+  coaming end meets the trunk side; the trunk's height and aft face position against IMG_9224 (its top 120-150 px high
+  in the overlay).

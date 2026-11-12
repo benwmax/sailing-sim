@@ -338,6 +338,14 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   (`scripts/import-audio.sh`, credits in `Audio/Samples/CREDITS.md`). Water below 2 kn goes glassy (`glass` in
   `M_WaterV4`). Cockpit view: `\` or `-SailingCockpit` (`UpdateCockpitCamera`); photo mode has depth of field and the
   V1 lens profile.
+- Sound slice pass (PR #644, plan: the Claude Doc "Ready About: sound plan"): every sound is in one group (`SailingSound::EGroup`
+  Boat, World, Weather, Signals: Settings > Audio's sliders under the master; `UpdateMix`/`GroupGain`), a peak limiter on the
+  master submix (`EnsureMasterLimiter`), mono and sound captions (`USoundCaptions`, HUD) under Accessibility. Placed sounds use
+  `SpatialSettings` (inner radius, blend toward both ears): horns from the vessel (`ATrafficManager::UpdateHorns`, `EWorldSound::Horn`),
+  thunder toward the strike and the wind's loops to windward (`UpdatePlacedSounds`), one-shots at their boat part (`PlayPackShot`).
+  `USailingSoundscape`: shore life on the nearest shore by sun and season (`ShoreLifeFor`; lake only, `-SailingNoShoreLife`).
+  Dinghies have no winches (`HasSheetWinches`). Loudness: `scripts/loudness-check.sh [seconds] [breeze storm race dusk]`
+  (`-SailingRecordAudio=<s>` writes `Saved/Bench/<shot>.audio.wav`; `scripts/loudness_check.py --self-test`), -18 LUFS +-3, -1 dBTP.
 - MetaHuman crew (Visual V7): `scripts/make-metahumans.sh` builds the helm, trimmer and bow (presets Bruce, Ada, Omari)
   into `/Game/Crew/MetaHumans` in the full editor (git-ignored: about 0.5 GB, and the licence covers use, not
   redistribution). It needs the engine's MetaHuman optional content and an Epic sign-in for the cloud auto-rig (device
@@ -622,6 +630,10 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   dinghy flat with the sheet in the hand and sit back on the plane (`FBoatControls::CrewAft`); the dinghy sailor also eases
   on a puff itself (felt 0.4 s late, 20% over the last half minute's wind; physics-gaps), since hiked flat the heel hardly
   moves. Reference-check peaks are GPS-like one-second means.
+- Session weather (`docs/session-weather/`): a session's "10 gusting 13" is the sailor's gust (nine ten-minute stretches in
+  ten top out at it: `SailorGustScale`, the game mode's `GustLabelScale`), not the stations' factor (`-SailingGust=` and the
+  prologue keep that); a chosen wind is held (`FWeatherSystem::SetHoldWind`). `scripts/gust-check.sh` measures both
+  standalone; `SailingSim.Physics.WindSailorGusts`.
 - Easy mode (`docs/easy-mode/`): one switch (`USailingSettings::IsEasy`, `-SailingEasy=0|1`; off when measuring, capturing, in automation, traffic, ghost) applies `FEasyAssists` (`EasyAssists.h`: helm, heel cap, trim, no-go cue, `FEasyHelm` irons/bear-away on a copy of the controls); Realistic is the boat's own.
   Easy medals cap at career.json's `easy_max_medal` (`FCareerRun::bEasy`, save `medalEasy`); `scripts/polar.sh --easy`, `-SailingCrudeTackAt=<s>` (demo) for the gate runs.
 - Prologue (`docs/prologue/`): scripted scenes are data (`Content/Prologue/prologue.json`, staged loose; `python3

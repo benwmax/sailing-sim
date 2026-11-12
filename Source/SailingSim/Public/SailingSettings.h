@@ -118,6 +118,26 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float Volume = 0.8f;
 
+	// Slice sound pass: the mix by group, each under the master (SailingSound::EGroup, SailingSound::UpdateMix).
+	/** On board: wind in your ears and the rig, the sails, the hull in the water, winches, sheets, the slip. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VolumeBoat = 1.f;
+	/** Lake and shore: birds, insects, frogs, the marina's halyards, other boats' engines, distant traffic. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VolumeWorld = 1.f;
+	/** Weather: rain, the squall, thunder. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VolumeWeather = 1.f;
+	/** Horns and voices: sound signals, the race committee, the captain and crew calls. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VolumeSignals = 1.f;
+	/** Every sound centred in both ears (hearing on one side, one speaker). Takes effect at the next session. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio")
+	bool bMonoAudio = false;
+	/** Captions for the sounds that matter (horn signals, thunder, crew calls), with where they come from. */
+	UPROPERTY(config, EditAnywhere, Category = "Audio")
+	bool bSoundCaptions = true;
+
 	// Graphics G4: the Settings screen's rows (ui-spec.md 5.10).
 	/** Render resolution: 0 = the tier's own (and High's governor), otherwise a fixed percentage. */
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")

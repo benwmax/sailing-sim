@@ -28,6 +28,31 @@ namespace Sailing
 	/** The turbulence intensity (FWindParams::GustIntensity) that gives a gust factor in FWindField. */
 	SAILINGPHYSICS_API double GustIntensityForFactor(double GustFactor);
 
+	/**
+	 * A day's label read the way a sailor reads it: "10 gusting 13" means the strongest gusts you meet are about 13.
+	 * Measured as the highest 3-second wind in each ten minutes over that ten minutes' mean (MeasureSailorGusts). The stations'
+	 * gust factor (GustIntensityForFactor) is a smaller thing, a minute's 5-second peak over the 2-minute mean: a field built
+	 * to that label met gusts half as strong again as the label (the Nov 11 2026 review: "10 gusting 13" peaked near 20).
+	 *
+	 * SailorGustScale returns the one factor that scales the calibrated gustiness (GustIntensity and, when set,
+	 * PuffIntensity: the fine turbulence and the puffs together, so the day keeps its own mix) so that nine ten-minute
+	 * stretches in ten top out at or under SailorFactor times the mean (the label is the top of the usual gusts, as a
+	 * forecast's gust is). ApplySailorGust applies it. The average stretch tops out about a quarter of the way below the
+	 * label's gust over the mean (12.2 on "10 gusting 13"), the rare strongest about 10 % past the label.
+	 */
+	SAILINGPHYSICS_API double SailorGustScale(const FWindParams& Calibrated, double SailorFactor);
+	SAILINGPHYSICS_API void ApplySailorGust(FWindParams& Params, double SailorFactor);
+
+	/** The sailor's measure (10 m, fixed points): per ten minutes, the highest 3 s mean over the ten-minute mean. */
+	struct FSailorGustStats
+	{
+		double MeanFactor = 1.0;    // the typical strongest gust over the mean (average over the ten-minute blocks)
+		double P90Factor = 1.0;     // nine ten-minute stretches in ten top out at or under this
+		double MaxFactor = 1.0;     // the strongest of them all
+		int Blocks = 0;
+	};
+	SAILINGPHYSICS_API FSailorGustStats MeasureSailorGusts(const FWindField& Wind, double Hours, int Points = 4);
+
 	/** A field's gust statistics measured the way the stations measure them (10 m, fixed points). */
 	struct FGustStats
 	{
