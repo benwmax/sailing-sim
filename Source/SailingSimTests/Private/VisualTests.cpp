@@ -820,10 +820,10 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 			// shape wave 3b: the top falls forward (the trailer broadside: 0.29-0.30 m over the sheer aft, 0.17-0.19 at the raked face)
 			TestTrue(TEXT("Hero J/22: the trunk top falls forward"), Trunk.HeightAt(-0.30) > 0.28 && Trunk.HeightAt(1.20) < 0.20);
 			TestEqual(TEXT("Hero J/22: trunk half width at x 0.83"), Trunk.HalfAt(0.83, 1.2), 0.696, 1e-9);
-			// pinned to the built crown over the sheer (build_j22_hero.py cabin_hgt + camber): 0.30 aft, 0.21 at x 0.83, 0.071 at the front
+			// pinned to the built crown over the sheer (build_j22_hero.py cabin_hgt + camber): 0.30 aft, 0.21 at x 0.83, 0.072 at the front
 			TestEqual(TEXT("Hero J/22: trunk crown aft"), Trunk.HeightAt(-0.55), 0.30, 1e-9);
 			TestEqual(TEXT("Hero J/22: trunk crown at x 0.83"), Trunk.HeightAt(0.83), 0.21, 1e-9);
-			TestEqual(TEXT("Hero J/22: trunk crown at the front"), Trunk.HeightAt(1.57), 0.071, 1e-9);
+			TestEqual(TEXT("Hero J/22: trunk crown at the front"), Trunk.HeightAt(1.57), 0.072, 1e-9);
 			TestTrue(TEXT("Hero J/22: forward of the trunk is foredeck"), CrewFloorZ(J22, 1.65, 0.0, false) < J22.Hulls[0].SheerHeight(1.65) + 0.08);
 		}
 		TestTrue(TEXT("Hero J/22: the traveler track is solid"), CrewInsideBoat(J22, Depth, FVector(-2.06, 0.0, 0.396), false));
