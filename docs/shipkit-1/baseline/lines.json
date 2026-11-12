@@ -1,0 +1,135 @@
+{
+ "lines": {
+  "wl_A": {
+   "samples": 1050,
+   "median_px": 0.0,
+   "p90_px": 1.0,
+   "on_line": 0.985,
+   "length_ft": 187.8
+  },
+  "wl_B": {
+   "samples": 1025,
+   "median_px": 0.0,
+   "p90_px": 1.41,
+   "on_line": 0.992,
+   "length_ft": 183.5
+  },
+  "wl_C": {
+   "samples": 999,
+   "median_px": 0.0,
+   "p90_px": 2.83,
+   "on_line": 0.861,
+   "length_ft": 178.9
+  },
+  "wl_D": {
+   "samples": 972,
+   "median_px": 0.0,
+   "p90_px": 1.0,
+   "on_line": 0.994,
+   "length_ft": 174.2
+  },
+  "wl_E": {
+   "samples": 941,
+   "median_px": 0.0,
+   "p90_px": 1.41,
+   "on_line": 0.963,
+   "length_ft": 168.9
+  },
+  "wl_F": {
+   "samples": 869,
+   "median_px": 0.0,
+   "p90_px": 2.0,
+   "on_line": 0.947,
+   "length_ft": 156.2
+  },
+  "st_1": {
+   "samples": 239,
+   "median_px": 0.0,
+   "p90_px": 1.0,
+   "on_line": 1.0,
+   "length_ft": 41.2
+  },
+  "st_2": {
+   "samples": 268,
+   "median_px": 0.0,
+   "p90_px": 2.88,
+   "on_line": 0.869,
+   "length_ft": 46.4
+  },
+  "st_3": {
+   "samples": 281,
+   "median_px": 1.0,
+   "p90_px": 2.0,
+   "on_line": 0.968,
+   "length_ft": 48.8
+  },
+  "st_4": {
+   "samples": 282,
+   "median_px": 0.0,
+   "p90_px": 1.41,
+   "on_line": 0.957,
+   "length_ft": 49.0
+  },
+  "st_5": {
+   "samples": 279,
+   "median_px": 1.0,
+   "p90_px": 3.61,
+   "on_line": 0.835,
+   "length_ft": 48.5
+  },
+  "st_6": {
+   "samples": 273,
+   "median_px": 1.0,
+   "p90_px": 2.24,
+   "on_line": 0.886,
+   "length_ft": 47.4
+  },
+  "st_7": {
+   "samples": 266,
+   "median_px": 0.0,
+   "p90_px": 1.41,
+   "on_line": 0.932,
+   "length_ft": 46.1
+  },
+  "st_8": {
+   "samples": 257,
+   "median_px": 0.0,
+   "p90_px": 2.0,
+   "on_line": 0.918,
+   "length_ft": 44.7
+  },
+  "st_9": {
+   "samples": 245,
+   "median_px": 1.0,
+   "p90_px": 2.0,
+   "on_line": 0.927,
+   "length_ft": 42.2
+  },
+  "buttock_92.6_0": {
+   "samples": 656,
+   "median_px": 1.0,
+   "p90_px": 2.83,
+   "on_line": 0.84,
+   "length_ft": 117.2
+  },
+  "buttock_185.0_0": {
+   "samples": 462,
+   "median_px": 1.0,
+   "p90_px": 2.83,
+   "on_line": 0.807,
+   "length_ft": 82.5
+  },
+  "profile_outline": {
+   "samples": 2599,
+   "median_px": 0.0,
+   "p90_px": 1.0,
+   "on_line": 0.962,
+   "length_ft": 456.3
+  }
+ },
+ "all": {
+  "median_px": 0.0,
+  "on_line": 0.939,
+  "samples": 11963
+ }
+}

@@ -1,0 +1,187 @@
+{
+ "object": "Hull",
+ "lines": {
+  "wl_0": {
+   "z": -4.895,
+   "length_m": 45.369,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.16,
+   "k_step_median": 0.0004
+  },
+  "wl_1": {
+   "z": -3.753,
+   "length_m": 50.921,
+   "inflections": 1,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 3.151,
+   "k_step_median": 0.0007
+  },
+  "wl_2": {
+   "z": -2.61,
+   "length_m": 53.269,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.213,
+   "k_step_median": 0.0011
+  },
+  "wl_3": {
+   "z": -1.468,
+   "length_m": 55.029,
+   "inflections": 1,
+   "kinks": 3,
+   "kinks_firm": 2,
+   "k_max": 0.909,
+   "k_step_median": 0.0011
+  },
+  "wl_4": {
+   "z": -0.325,
+   "length_m": 56.842,
+   "inflections": 0,
+   "kinks": 3,
+   "kinks_firm": 1,
+   "k_max": 1.375,
+   "k_step_median": 0.0008
+  },
+  "wl_5": {
+   "z": 0.817,
+   "length_m": 57.836,
+   "inflections": 1,
+   "kinks": 1,
+   "kinks_firm": 0,
+   "k_max": 0.392,
+   "k_step_median": 0.0006
+  },
+  "wl_6": {
+   "z": 1.96,
+   "length_m": 56.409,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.242,
+   "k_step_median": 0.0003
+  },
+  "wl_7": {
+   "z": 3.102,
+   "length_m": 57.774,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.216,
+   "k_step_median": 0.0002
+  },
+  "wl_8": {
+   "z": 4.244,
+   "length_m": 58.346,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.323,
+   "k_step_median": 0.0002
+  },
+  "wl_9": {
+   "z": 5.387,
+   "length_m": 58.931,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.425,
+   "k_step_median": 0.0002
+  },
+  "st_0": {
+   "x": -26.978,
+   "length_m": 9.666,
+   "inflections": 2,
+   "kinks": 4,
+   "kinks_firm": 4,
+   "k_max": 13.017,
+   "k_step_median": 0.0016
+  },
+  "st_1": {
+   "x": -21.376,
+   "length_m": 13.038,
+   "inflections": 1,
+   "kinks": 1,
+   "kinks_firm": 1,
+   "k_max": 0.554,
+   "k_step_median": 0.0053
+  },
+  "st_2": {
+   "x": -15.773,
+   "length_m": 13.721,
+   "inflections": 2,
+   "kinks": 1,
+   "kinks_firm": 0,
+   "k_max": 0.443,
+   "k_step_median": 0.003
+  },
+  "st_3": {
+   "x": -10.17,
+   "length_m": 14.125,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.365,
+   "k_step_median": 0.0025
+  },
+  "st_4": {
+   "x": -4.567,
+   "length_m": 14.532,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.396,
+   "k_step_median": 0.003
+  },
+  "st_5": {
+   "x": 1.036,
+   "length_m": 14.848,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.436,
+   "k_step_median": 0.004
+  },
+  "st_6": {
+   "x": 6.638,
+   "length_m": 14.988,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.411,
+   "k_step_median": 0.0042
+  },
+  "st_7": {
+   "x": 12.241,
+   "length_m": 14.823,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.458,
+   "k_step_median": 0.0037
+  },
+  "st_8": {
+   "x": 17.844,
+   "length_m": 13.875,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.313,
+   "k_step_median": 0.0026
+  },
+  "st_9": {
+   "x": 23.447,
+   "length_m": 11.232,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.385,
+   "k_step_median": 0.0029
+  }
+ },
+ "total_inflections": 13,
+ "total_kinks": 15
+}

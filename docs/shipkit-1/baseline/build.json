@@ -1,0 +1,79 @@
+{
+ "objects": {
+  "Hull": {
+   "triangles": 564748,
+   "bounds_m": [
+    [
+     -30.416000366210938,
+     -6.613999843597412,
+     -5.874000072479248
+    ],
+    [
+     26.885000228881836,
+     6.613999843597412,
+     6.366000175476074
+    ]
+   ]
+  },
+  "Transom": {
+   "triangles": 6912,
+   "bounds_m": [
+    [
+     -30.525999069213867,
+     -4.550000190734863,
+     1.7209999561309814
+    ],
+    [
+     -27.231000900268555,
+     4.550000190734863,
+     6.091000080108643
+    ]
+   ]
+  },
+  "Backbone": {
+   "triangles": 1484,
+   "bounds_m": [
+    [
+     -27.614999771118164,
+     -0.18299999833106995,
+     -6.544000148773193
+    ],
+    [
+     27.990999221801758,
+     0.18299999833106995,
+     6.414000034332275
+    ]
+   ]
+  },
+  "DeckPlaceholder": {
+   "triangles": 23040,
+   "bounds_m": [
+    [
+     -30.416000366210938,
+     -5.710000038146973,
+     5.48199987411499
+    ],
+    [
+     26.885000228881836,
+     5.710000038146973,
+     6.3460001945495605
+    ]
+   ]
+  }
+ },
+ "triangles_total": 596184,
+ "dimensions": {
+  "lwl_ft": 174.35,
+  "moulded_beam_ft": 43.4,
+  "beam_at_A_ft": 43.36,
+  "depth_rabbet_to_A_ft": 18.08,
+  "draft_keel_bottom_aft_ft": 21.47,
+  "length_on_sheer_ft": 188.0
+ },
+ "displacement": {
+  "moulded_volume_m3": 2076.3,
+  "seawater_tonnes": 2128.0,
+  "long_tons": 2095.0,
+  "note": "moulded (inside the planking); the planking and copper add about 3-4%. Constitution: about 2,200 long tons at 21 ft (designed)"
+ }
+}

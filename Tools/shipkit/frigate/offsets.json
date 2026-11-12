@@ -1,0 +1,1545 @@
+{
+ "about": "Frigate Commonwealth (invented 44-gun heavy frigate, 1797 look), hull lines. Measured from the 1927 lines plan of USS Constitution (US National Archives 75841374, 'Plan VIII', F. Alexander Magoun, MIT; public domain, Wikimedia Commons scan 3840 px wide). All numbers are pixels on that 3840 px scan unless named _ft: each reading is in its own view's frame as it was taken (see 'registration'). Read by Tools/shipkit/frigate/loft.py.",
+ "source": {
+  "file": "USS_Constitution-_Sheer_Plan_-_Body_Plan_-_Lines_-_NARA_-_75841374.jpg",
+  "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Sheer_Plan_-_Body_Plan_-_Lines_-_NARA_-_75841374.jpg",
+  "nara_id": 75841374,
+  "licence": "Public domain (US Navy record; the 1927 drawing's copyright has expired)",
+  "scan_width_px": 3840
+ },
+ "registration": "drawing_1927.json",
+ "scale": {
+  "px_per_ft": 11.1,
+  "px_per_ft_down": 11.69,
+  "how": "Drawing's own scale bar (0 to 18 ft = 200 px) and two checks: moulded beam 2 x 242 px = 43.6 ft (published 43 ft 6 in) and the load waterline's ends 420 to 2355 px = 174.3 ft (published 175 ft). That is across the sheet: down it the scan has 11.69 px to the foot (drawing_1927.json scale_note), so half-breadths read in the half-breadth plan and every height use px_per_ft_down, and the body plan's half-breadths (read across) are scaled by 11.69 / 11.1 into the same units."
+ },
+ "frame": {
+  "x": "forward along the half-breadth plan; x_ft = (x_px - ap_px) / px_per_ft, ap_px = station 10 (after perpendicular)",
+  "ap_px": 401.5,
+  "stations_px": {
+   "10": 401.5,
+   "9": 602,
+   "8": 803,
+   "7": 1002,
+   "6": 1201,
+   "5": 1401,
+   "4": 1601,
+   "3": 1800,
+   "2": 1997,
+   "1": 2196,
+   "0": 2395
+  },
+  "z": "up from the load waterline A; z_ft = z_px / px_per_ft_down",
+  "y": "half-breadth from the centreline, moulded; y_ft = y_px / px_per_ft_down",
+  "views": "The ship's frame is the half-breadth plan's. Profile readings are the sheer plan's own scan x with the height above its waterline A table; body plan readings are half-breadths and heights against the nominal centre and waterline in topsides.body_plan. loft.py maps both into the ship's frame through drawing_1927.json (Tools/shipkit/scanreg.py): the sheer plan sits 8-15 px aft of the half-breadth plan and the body plan is turned 0.85 deg on the scan."
+ },
+ "waterlines_z_px": {
+  "A": 0.0,
+  "B": -34.1,
+  "C": -68.2,
+  "D": -102.3,
+  "E": -136.4,
+  "F": -170.5
+ },
+ "keel_half_siding_px": 7,
+ "half_breadths_px": {
+  "note": "Read where each curve crosses the column x (8-9 px off the dashed station line), against the dash-dot centreline; stations 3-5 B from the body plan, because there the half-breadth plan runs it into A or C (midship_rows). 'ends_fwd' is where each waterline meets the stem rabbet (half-breadth = keel half siding). The aft ends are where the sheer plan's sternpost rabbet (profile.stern_rabbet_px) crosses each waterline, mapped into this frame: the half-breadth plan's lines meet the post at a grazing angle and agree with them within 2-3 px. keel_join_x_px: where the deadwood's bearding line meets the keel rabbet, a sheer plan x (mapped like the profile).",
+  "keel_join_x_px": 760,
+  "midship_rows": {"x_px": [1401, 1601, 1800], "note": "stations 5, 4 and 3, where the half-breadth plan bunches B-D among the deck lines. A, C, D, E and F are the half-breadth plan's own lines, read at their centres either side of the dashed station line (the straight line at 184-185 px is the 16 ft buttock, not E). B runs into A or C there, so it is the body plan's section (station 5 on its left; on its right the outer curve, station 4), traced at the line centres and mapped through the registration, as a ratio to the section's own width at A times the half-breadth plan's A, the way the topsides are made. The body plan's sections at A: 248.8 (station 5) and 253.9 (station 4), against the half-breadth plan's 246.6 and 252.6"},
+  "ends_fwd": {
+   "A": 2355,
+   "B": 2340,
+   "C": 2320,
+   "D": 2297,
+   "E": 2267,
+   "F": 2212
+  },
+  "rows": [
+   {
+    "x": 501.8,
+    "A": 124,
+    "B": 76,
+    "C": 38,
+    "D": 20,
+    "E": 11,
+    "F": 8
+   },
+   {
+    "x": 611.0,
+    "A": 170,
+    "B": 133,
+    "C": 85,
+    "D": 57,
+    "E": 30,
+    "F": 15
+   },
+   {
+    "x": 702.5,
+    "A": 185,
+    "B": 164,
+    "C": 120,
+    "D": 80,
+    "E": 49,
+    "F": 23
+   },
+   {
+    "x": 812.0,
+    "A": 204,
+    "B": 190,
+    "C": 158,
+    "D": 116,
+    "E": 76,
+    "F": 37
+   },
+   {
+    "x": 902.5,
+    "A": 215,
+    "B": 205,
+    "C": 182,
+    "D": 143,
+    "E": 99,
+    "F": 50
+   },
+   {
+    "x": 1011.0,
+    "A": 226,
+    "B": 219,
+    "C": 202,
+    "D": 171,
+    "E": 127,
+    "F": 69
+   },
+   {
+    "x": 1210.0,
+    "A": 239,
+    "B": 234,
+    "C": 222,
+    "D": 203,
+    "E": 166,
+    "F": 101
+   },
+   {"x": 1401.0, "A": 246.6, "B": 244.6, "C": 237.8, "D": 224.0, "E": 190.0, "F": 125.2},
+   {"x": 1601.0, "A": 252.6, "B": 251.3, "C": 244.3, "D": 231.8, "E": 198.4, "F": 132.1},
+   {"x": 1800.0, "A": 250.2, "B": 248.9, "C": 242.9, "D": 224.0, "E": 190.8, "F": 122.0},
+   {
+    "x": 2006.0,
+    "A": 230,
+    "B": 221,
+    "C": 208,
+    "D": 186,
+    "E": 146,
+    "F": 82
+   },
+   {
+    "x": 2096.5,
+    "A": 208,
+    "B": 198,
+    "C": 183,
+    "D": 154,
+    "E": 110,
+    "F": 54
+   },
+   {
+    "x": 2205.0,
+    "A": 168,
+    "B": 152,
+    "C": 128,
+    "D": 92,
+    "E": 52,
+    "F": 11
+   },
+   {
+    "x": 2295.5,
+    "A": 102,
+    "B": 79,
+    "C": 44,
+    "D": 8,
+    "E": 7,
+    "F": 7
+   }
+  ]
+ },
+ "topsides": {
+  "note": "Above the load waterline. Each station's section is read from the body plan (traced ridge, 1 px rows; stations 5-9 on its left, 1-3 on its right; 3 and 4 are drawn as one curve there). The loft uses each section's shape as a ratio to its own half-breadth at A (extrapolated from its two lowest readings), times the half-breadth plan's A at that station, so the two views meet at A; going up it eases to the body plan's own widths at the top of its sections. Station 9 above z=80 px is hidden by the stern's drawing: one reading at the top (z=230) holds it, and the loft gives 1.12 of A at z=80-100 easing to 1.08 at the top. Station 1 runs along the 16 ft buttock line and is read as that line (within 3 px). The half-breadth plan's line labelled RAIL is the top of the bulwark, above the sheer (topsides.rail_hb_px), so it is not used for the side.",
+  "body_plan": {
+   "centreline_x_px": 3132,
+   "waterline_A_y_px": 1135.5,
+   "stations": {
+    "9": {
+     "x_px": 602,
+     "hb": [
+      [
+       5,
+       166.7
+      ],
+      [
+       10,
+       168.8
+      ],
+      [
+       20,
+       173.0
+      ],
+      [
+       30,
+       176.0
+      ],
+      [
+       40,
+       179.0
+      ],
+      [
+       50,
+       181.3
+      ],
+      [
+       60,
+       182.3
+      ],
+      [
+       66,
+       182.7
+      ],
+      [
+       80,
+       182.6
+      ],
+      [
+       100,
+       181.5
+      ],
+      [
+       150,
+       179.0
+      ],
+      [
+       200,
+       176.5
+      ],
+      [
+       230,
+       175.0
+      ]
+     ]
+    },
+    "8": {
+     "x_px": 803,
+     "hb": [
+      [
+       5,
+       197.3
+      ],
+      [
+       10,
+       198.1
+      ],
+      [
+       20,
+       199.6
+      ],
+      [
+       30,
+       200.7
+      ],
+      [
+       40,
+       201.0
+      ],
+      [
+       50,
+       201.1
+      ],
+      [
+       60,
+       200.8
+      ],
+      [
+       66,
+       200.7
+      ],
+      [
+       70,
+       200.4
+      ],
+      [
+       80,
+       199.4
+      ],
+      [
+       90,
+       197.7
+      ],
+      [
+       100,
+       195.9
+      ],
+      [
+       110,
+       193.8
+      ],
+      [
+       120,
+       192.0
+      ],
+      [
+       130,
+       190.6
+      ],
+      [
+       140,
+       189.3
+      ],
+      [
+       150,
+       187.8
+      ],
+      [
+       160,
+       187.1
+      ],
+      [
+       170,
+       185.7
+      ],
+      [
+       180,
+       184.7
+      ],
+      [
+       190,
+       184.1
+      ],
+      [
+       200,
+       183.5
+      ],
+      [
+       210,
+       183.5
+      ],
+      [
+       220,
+       183.8
+      ],
+      [
+       230,
+       184.6
+      ]
+     ]
+    },
+    "7": {
+     "x_px": 1002,
+     "hb": [
+      [
+       5,
+       216.2
+      ],
+      [
+       10,
+       216.3
+      ],
+      [
+       20,
+       217.0
+      ],
+      [
+       30,
+       217.0
+      ],
+      [
+       40,
+       216.8
+      ],
+      [
+       50,
+       216.0
+      ],
+      [
+       60,
+       214.6
+      ],
+      [
+       66,
+       213.9
+      ],
+      [
+       70,
+       213.1
+      ],
+      [
+       80,
+       211.4
+      ],
+      [
+       90,
+       209.7
+      ],
+      [
+       100,
+       207.7
+      ],
+      [
+       110,
+       206.0
+      ],
+      [
+       120,
+       204.2
+      ],
+      [
+       130,
+       202.5
+      ],
+      [
+       140,
+       201.3
+      ],
+      [
+       150,
+       199.6
+      ],
+      [
+       160,
+       198.6
+      ],
+      [
+       170,
+       197.5
+      ],
+      [
+       180,
+       196.5
+      ],
+      [
+       190,
+       195.4
+      ],
+      [
+       200,
+       194.7
+      ],
+      [
+       210,
+       194.0
+      ],
+      [
+       220,
+       193.7
+      ],
+      [
+       230,
+       193.5
+      ]
+     ]
+    },
+    "6": {
+     "x_px": 1201,
+     "hb": [
+      [
+       5,
+       229.0
+      ],
+      [
+       10,
+       229.1
+      ],
+      [
+       20,
+       229.4
+      ],
+      [
+       30,
+       229.6
+      ],
+      [
+       40,
+       229.5
+      ],
+      [
+       50,
+       228.9
+      ],
+      [
+       60,
+       228.0
+      ],
+      [
+       66,
+       227.3
+      ],
+      [
+       70,
+       226.6
+      ],
+      [
+       80,
+       224.8
+      ],
+      [
+       90,
+       222.5
+      ],
+      [
+       100,
+       220.0
+      ],
+      [
+       110,
+       217.6
+      ],
+      [
+       120,
+       215.0
+      ],
+      [
+       130,
+       212.2
+      ],
+      [
+       140,
+       209.4
+      ],
+      [
+       150,
+       207.3
+      ],
+      [
+       160,
+       205.4
+      ],
+      [
+       170,
+       203.9
+      ],
+      [
+       180,
+       202.9
+      ],
+      [
+       190,
+       201.6
+      ],
+      [
+       200,
+       200.5
+      ],
+      [
+       210,
+       199.6
+      ],
+      [
+       220,
+       199.1
+      ],
+      [
+       230,
+       198.8
+      ]
+     ]
+    },
+    "5": {
+     "x_px": 1401,
+     "hb": [
+      [
+       5,
+       239.4
+      ],
+      [
+       10,
+       239.5
+      ],
+      [
+       20,
+       239.7
+      ],
+      [
+       30,
+       239.5
+      ],
+      [
+       40,
+       239.5
+      ],
+      [
+       50,
+       239.2
+      ],
+      [
+       60,
+       238.3
+      ],
+      [
+       66,
+       237.4
+      ],
+      [
+       70,
+       237.0
+      ],
+      [
+       80,
+       236.3
+      ],
+      [
+       90,
+       234.1
+      ],
+      [
+       100,
+       231.8
+      ],
+      [
+       110,
+       229.8
+      ],
+      [
+       120,
+       226.4
+      ],
+      [
+       130,
+       221.4
+      ],
+      [
+       140,
+       218.4
+      ],
+      [
+       150,
+       215.1
+      ],
+      [
+       160,
+       211.6
+      ],
+      [
+       170,
+       209.6
+      ],
+      [
+       180,
+       208.5
+      ],
+      [
+       190,
+       208.0
+      ],
+      [
+       200,
+       207.6
+      ],
+      [
+       210,
+       206.8
+      ],
+      [
+       220,
+       206.1
+      ],
+      [
+       230,
+       205.6
+      ]
+     ]
+    },
+    "4": {
+     "x_px": 1601,
+     "hb": "3"
+    },
+    "3": {
+     "x_px": 1800,
+     "hb": [
+      [
+       5,
+       239.7
+      ],
+      [
+       10,
+       239.5
+      ],
+      [
+       20,
+       239.4
+      ],
+      [
+       30,
+       238.3
+      ],
+      [
+       40,
+       238.0
+      ],
+      [
+       50,
+       237.2
+      ],
+      [
+       60,
+       236.0
+      ],
+      [
+       66,
+       235.1
+      ],
+      [
+       70,
+       234.3
+      ],
+      [
+       80,
+       232.8
+      ],
+      [
+       90,
+       230.2
+      ],
+      [
+       100,
+       227.3
+      ],
+      [
+       110,
+       224.6
+      ],
+      [
+       120,
+       221.3
+      ],
+      [
+       130,
+       217.7
+      ],
+      [
+       140,
+       215.1
+      ],
+      [
+       150,
+       212.6
+      ],
+      [
+       160,
+       210.0
+      ],
+      [
+       170,
+       208.6
+      ],
+      [
+       180,
+       207.3
+      ],
+      [
+       190,
+       206.1
+      ],
+      [
+       200,
+       204.9
+      ],
+      [
+       210,
+       203.7
+      ],
+      [
+       220,
+       202.8
+      ],
+      [
+       230,
+       202.0
+      ]
+     ]
+    },
+    "2": {
+     "x_px": 1997,
+     "hb": [
+      [
+       5,
+       218.6
+      ],
+      [
+       10,
+       218.7
+      ],
+      [
+       20,
+       218.0
+      ],
+      [
+       30,
+       217.3
+      ],
+      [
+       40,
+       216.1
+      ],
+      [
+       50,
+       214.3
+      ],
+      [
+       60,
+       212.9
+      ],
+      [
+       66,
+       211.8
+      ],
+      [
+       70,
+       211.0
+      ],
+      [
+       80,
+       209.0
+      ],
+      [
+       90,
+       207.3
+      ],
+      [
+       100,
+       205.5
+      ],
+      [
+       110,
+       203.9
+      ],
+      [
+       120,
+       202.5
+      ],
+      [
+       130,
+       200.9
+      ],
+      [
+       140,
+       199.9
+      ],
+      [
+       150,
+       198.7
+      ],
+      [
+       160,
+       197.4
+      ],
+      [
+       170,
+       195.9
+      ],
+      [
+       180,
+       195.2
+      ],
+      [
+       190,
+       194.6
+      ],
+      [
+       200,
+       193.9
+      ],
+      [
+       210,
+       193.0
+      ],
+      [
+       220,
+       192.5
+      ],
+      [
+       230,
+       192.0
+      ]
+     ]
+    },
+    "1": {
+     "x_px": 2196,
+     "hb": [
+      [
+       5,
+       164.7
+      ],
+      [
+       10,
+       165.6
+      ],
+      [
+       20,
+       167.9
+      ],
+      [
+       30,
+       170.3
+      ],
+      [
+       40,
+       173.3
+      ],
+      [
+       50,
+       173.6
+      ],
+      [
+       60,
+       174.0
+      ],
+      [
+       66,
+       173.8
+      ],
+      [
+       70,
+       174.1
+      ],
+      [
+       80,
+       174.1
+      ],
+      [
+       90,
+       173.5
+      ],
+      [
+       100,
+       172.5
+      ],
+      [
+       110,
+       172.6
+      ],
+      [
+       120,
+       172.3
+      ],
+      [
+       130,
+       172.0
+      ],
+      [
+       140,
+       171.8
+      ],
+      [
+       150,
+       171.3
+      ],
+      [
+       160,
+       171.3
+      ],
+      [
+       170,
+       171.0
+      ],
+      [
+       180,
+       171.2
+      ],
+      [
+       190,
+       171.2
+      ],
+      [
+       200,
+       171.2
+      ],
+      [
+       210,
+       171.9
+      ],
+      [
+       220,
+       172.9
+      ],
+      [
+       230,
+       173.8
+      ]
+     ]
+    }
+   }
+  },
+  "bow": {
+   "note": "Forward of station 1 the body plan has no sections. The side flares toward the rail line: ratio at the top 1.25 at x=2295.5, and an extra row at x=2340. These were set for a 14 px rail overhang, what stations 1 and 2 measured before the scan's two scales; with them the side meets the rail line within 2 px at stations 1 and 2 but runs 3-17 px inside it from x=2240 to 2360 (a known gap, refitted with the bulwarks in slice 2).",
+   "row_2295_ratio": [
+    [
+     0,
+     1.0
+    ],
+    [
+     40,
+     1.05
+    ],
+    [
+     100,
+     1.13
+    ],
+    [
+     160,
+     1.2
+    ],
+    [
+     240,
+     1.255
+    ]
+   ],
+   "row_2340_hb": [
+    [
+     0,
+     33
+    ],
+    [
+     40,
+     46
+    ],
+    [
+     100,
+     62
+    ],
+    [
+     160,
+     75
+    ],
+    [
+     250,
+     86
+    ]
+   ]
+  },
+  "stern": {
+   "note": "Above the wing transom (z 66 px) the side runs aft to the stern face; W is the stern's half-width there (body plan left, the stern outline's crossings). Below it the waterlines close on the sternpost (a round tuck); the wing transom's underside is the flat between the two at z 66 px.",
+   "stern_half_width_px": [
+    [
+     66,
+     166
+    ],
+    [
+     80,
+     168
+    ],
+    [
+     110,
+     169
+    ],
+    [
+     150,
+     166
+    ],
+    [
+     190,
+     162
+    ],
+    [
+     220,
+     158.5
+    ],
+    [
+     235,
+     155
+    ],
+    [
+     250,
+     152
+    ]
+   ],
+   "transom_round_up_px": 4
+  },
+  "rail_hb_px": {
+   "note": "half-breadth plan's line labelled RAIL: the top of the bulwarks, above the sheer. The topsides keep tumbling home up to it, so from the stern to station 1 the side at the sheer is between 2 px inside it and 7 px outboard of it; forward of that it runs outboard of the side (docs/shipkit-1: a known gap). For slice 2, not used by the loft",
+   "pts": [
+    [
+     402,
+     168
+    ],
+    [
+     500,
+     175
+    ],
+    [
+     611,
+     177
+    ],
+    [
+     702,
+     180
+    ],
+    [
+     812,
+     185
+    ],
+    [
+     1011,
+     197
+    ],
+    [
+     1210,
+     208
+    ],
+    [
+     1410,
+     211
+    ],
+    [
+     1610,
+     212
+    ],
+    [
+     1809,
+     211
+    ],
+    [
+     2006,
+     207
+    ],
+    [
+     2096,
+     203
+    ],
+    [
+     2205,
+     186
+    ],
+    [
+     2296,
+     142
+    ],
+    [
+     2340,
+     100
+    ],
+    [
+     2375,
+     30
+    ]
+   ]
+  }
+ },
+ "profile": {
+  "sheer_z_px": {
+   "note": "plank sheer at the side (top of the side before bulwarks), sheer plan, height above A",
+   "pts": [
+    [
+     350,
+     231
+    ],
+    [
+     560,
+     224
+    ],
+    [
+     900,
+     217
+    ],
+    [
+     1250,
+     212
+    ],
+    [
+     1450,
+     211
+    ],
+    [
+     1650,
+     212
+    ],
+    [
+     1850,
+     219
+    ],
+    [
+     2050,
+     224
+    ],
+    [
+     2250,
+     234
+    ],
+    [
+     2340,
+     242
+    ],
+    [
+     2375,
+     246
+    ]
+   ]
+  },
+  "bulwark_top_z_px": {
+   "note": "quarterdeck and forecastle rail tops (slice 2)",
+   "aft": [
+    [
+     300,
+     249
+    ],
+    [
+     1250,
+     229
+    ]
+   ],
+   "fwd": [
+    [
+     1850,
+     234
+    ],
+    [
+     2050,
+     241
+    ],
+    [
+     2300,
+     253
+    ]
+   ]
+  },
+  "keel_rabbet_z_px": {
+   "note": "sheer plan's thin line above the keel, height above A",
+   "pts": [
+    [
+     611,
+     -226.7
+    ],
+    [
+     812,
+     -224.8
+    ],
+    [
+     1011,
+     -221.7
+    ],
+    [
+     1210,
+     -217.8
+    ],
+    [
+     1410,
+     -211.0
+    ],
+    [
+     1610,
+     -207.2
+    ],
+    [
+     1809,
+     -203.2
+    ],
+    [
+     2006,
+     -201.8
+    ],
+    [
+     2100,
+     -199.2
+    ]
+   ]
+  },
+  "keel_bottom_z_px": {
+   "pts": [
+    [
+     440,
+     -251
+    ],
+    [
+     611,
+     -248.7
+    ],
+    [
+     1011,
+     -241.5
+    ],
+    [
+     1410,
+     -234.0
+    ],
+    [
+     1809,
+     -227.8
+    ],
+    [
+     2006,
+     -225.5
+    ],
+    [
+     2150,
+     -222.2
+    ],
+    [
+     2190,
+     -221.2
+    ]
+   ]
+  },
+  "stem_outer_px": {
+   "note": "fore face of the stem and forefoot (x, z above A)",
+   "pts": [
+    [
+     2190,
+     -221.2
+    ],
+    [
+     2230,
+     -206.6
+    ],
+    [
+     2260,
+     -185.6
+    ],
+    [
+     2300,
+     -139.8
+    ],
+    [
+     2340,
+     -70.8
+    ],
+    [
+     2370,
+     -17.6
+    ],
+    [
+     2379.5,
+     1.5
+    ],
+    [
+     2402,
+     32
+    ],
+    [
+     2415,
+     47
+    ],
+    [
+     2430,
+     62
+    ]
+   ]
+  },
+  "stem_rabbet_px": {
+   "note": "the sheer plan's inner stem line (where the planking lands) above A, traced every 10 px: hidden by the trail boards from 70 to 125 px and carried up plumb above 130 (the line that curves aft there is the head rail's, slice 9); plus where the keel's rabbet turns up into the forefoot. Below A the stem rabbet is the waterlines' own ends (half_breadths_px.ends_fwd)",
+   "pts": [
+    [
+     2150,
+     -199
+    ],
+    [
+     2344.0,
+     10
+    ],
+    [
+     2347.6,
+     20
+    ],
+    [
+     2350.6,
+     30
+    ],
+    [
+     2353.5,
+     40
+    ],
+    [
+     2356.1,
+     50
+    ],
+    [
+     2358.6,
+     60
+    ],
+    [
+     2359.6,
+     130
+    ],
+    [
+     2359.6,
+     246
+    ]
+   ]
+  },
+  "stern_rabbet_px": {
+   "note": "the sternpost's rabbet (sheer plan, the line forward of the post's aft face) from the wing transom down to E, then the deadwood's bearding line through F's end to the keel rabbet",
+   "pts": [
+    [
+     398,
+     66
+    ],
+    [
+     401,
+     50
+    ],
+    [
+     404,
+     36
+    ],
+    [
+     406,
+     20
+    ],
+    [
+     409,
+     10
+    ],
+    [
+     411,
+     0
+    ],
+    [
+     417,
+     -34.1
+    ],
+    [
+     424.5,
+     -68.2
+    ],
+    [
+     432,
+     -102.3
+    ],
+    [
+     439,
+     -136.4
+    ],
+    [
+     490,
+     -170.5
+    ],
+    [
+     760,
+     -226
+    ]
+   ]
+  },
+  "sternpost_aft_face_px": {
+   "note": "aft face of the sternpost (the rudder hangs on it), sheer plan",
+   "pts": [
+    [
+     386,
+     66
+    ],
+    [
+     388,
+     50
+    ],
+    [
+     388,
+     36
+    ],
+    [
+     388.5,
+     20
+    ],
+    [
+     390.5,
+     10
+    ],
+    [
+     391,
+     -10
+    ],
+    [
+     391,
+     -20
+    ],
+    [
+     396,
+     -50
+    ],
+    [
+     401,
+     -85
+    ],
+    [
+     406,
+     -120
+    ],
+    [
+     409,
+     -150
+    ],
+    [
+     414.5,
+     -185
+    ],
+    [
+     416.5,
+     -200
+    ],
+    [
+     420,
+     -230
+    ],
+    [
+     422,
+     -251
+    ]
+   ]
+  },
+  "wing_transom_z_px": 66,
+  "stern_face_px": {
+   "note": "aft face of the counter and stern from the wing transom (just aft of the post's rabbet) up, sheer plan (x, z above A)",
+   "pts": [
+    [
+     400,
+     66
+    ],
+    [
+     384,
+     81
+    ],
+    [
+     366,
+     96
+    ],
+    [
+     342,
+     111
+    ],
+    [
+     335,
+     126
+    ],
+    [
+     329,
+     141
+    ],
+    [
+     323,
+     156
+    ],
+    [
+     318,
+     171
+    ],
+    [
+     308,
+     186
+    ],
+    [
+     301,
+     201
+    ],
+    [
+     295,
+     216
+    ],
+    [
+     287,
+     231
+    ],
+    [
+     270,
+     248
+    ]
+   ]
+  },
+  "rudder_aft_edge_px": {
+   "note": "slice 2 (the rudder): its aft edge, vertical",
+   "x": 358.5,
+   "z_top": 66,
+   "z_bottom": -251
+  },
+  "note": "Sheer plan readings: [scan x, height above A in px]; loft.py maps x into the ship's frame (frame.views)."
+ }
+}
