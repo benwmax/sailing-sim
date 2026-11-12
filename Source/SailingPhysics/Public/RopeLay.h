@@ -403,10 +403,11 @@ namespace Sailing
 		}
 
 		/** Step 5: a straight span between two rings can still cut a corner the curve went round: each span is checked at its
-		 *  quarters, and a point inside lifts the span's free rings (the ends stay at their fittings) until it clears.
-		 *  Returns the rings lifted. */
+		 *  quarters (and no further apart than MaxStep along it, when given), and a point inside lifts the span's free rings
+		 *  (the ends stay at their fittings) until it clears. Returns the rings lifted. */
 		template <typename BlockedFn>
-		int ClearSpans(std::vector<Vec3>& Rings, double Radius, const Vec3& Up, const FSettings& Set, const BlockedFn& Blocked, int Passes = 3)
+		int ClearSpans(std::vector<Vec3>& Rings, double Radius, const Vec3& Up, const FSettings& Set, const BlockedFn& Blocked, int Passes = 3,
+			double MaxStep = 0.0)
 		{
 			int Lifted = 0;
 			const int N = int(Rings.size());
@@ -422,8 +423,14 @@ namespace Sailing
 				}
 				for (int I = 0; I + 1 < N; ++I)
 				{
-					for (const double Q : { 0.5, 0.25, 0.75 })
+					// (its middle first, then the rest of its parts: quarters, or finer for a thin thing a quarter-span check
+					// can step over, a lifeline's 3 cm wire crossed at its corner)
+					int Parts = 4;
+					if (MaxStep > 0.0) Parts = std::clamp(int(std::ceil((Rings[I + 1] - Rings[I]).Length() / MaxStep)), 4, 64);
+					for (int QI = 0; QI < Parts; ++QI)
 					{
+						if (QI > 0 && 2 * QI == Parts) continue;
+						const double Q = QI == 0 ? 0.5 : double(QI) / Parts;
 						const double Need = LiftToClear(Rings[I] + (Rings[I + 1] - Rings[I]) * Q, Up, Radius, Set, Blocked);
 						if (Need <= 0.0) continue;
 						const bool bFree0 = I > 0, bFree1 = I + 1 < N - 1;

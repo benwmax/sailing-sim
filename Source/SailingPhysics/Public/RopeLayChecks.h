@@ -44,6 +44,13 @@ namespace Sailing
 		 *  inside the trunk past a third of the rope's radius (the shortest way out). */
 		SAILINGPHYSICS_API FRopeLayCheck ManyCases();
 
+		/** 150 lays of a sheet under a sailor sitting on it (back leaning over it, shoulders, head): the rope's centre never more
+		 *  than its radius and a bend's dip into the body. */
+		SAILINGPHYSICS_API FRopeLayCheck OverASailor();
+		/** 432 lays of a mainsheet across a lifeline's two wires (the Mac's RigClearance: a Catalina 22's through one): no point
+		 *  of the rope in one, looked at every millimetre. */
+		SAILINGPHYSICS_API FRopeLayCheck OverALifeline();
+
 		SAILINGPHYSICS_API std::vector<FRopeLayCheck> All();
 	}
 }

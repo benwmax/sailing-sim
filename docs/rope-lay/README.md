@@ -35,7 +35,8 @@ boat the old way, to compare.
 `scripts/rope-check.sh` (standalone, about a second) and `SailingSim.Visual.RopeLay.*` run the same checks
 (`RopeLayChecks.h`): a free line on its parabola, the lazy sheet over a model trunk (resting on the roof, no steep step, no
 tight bend), no shimmer as the clew moves a millimetre at a time, determinism to the bit, the tangent round a block, the
-winch turns from either side, and 2,592 lays all round the trunk. Results on Nov 12:
+winch turns from either side, 2,592 lays all round the trunk, 150 lays of a sheet under a sitting sailor and 432 of a
+mainsheet across a lifeline's wires. Results on Nov 12:
 
 | Check | New | Old drape |
 |---|---|---|
@@ -43,8 +44,15 @@ winch turns from either side, and 2,592 lays all round the trunk. Results on Nov
 | Steepest step between rings | 0.67 | 1.36 |
 | Shimmer, clew moved 1 mm | 0.09 cm | 1.95 cm |
 | Deepest centre into the trunk, 2,592 lays | 0.44 cm | 0.33 cm |
+| Deepest centre into a sailor, 150 lays | 0.53 cm | |
+| Lays with a point in a lifeline wire, 432 | 0 | |
 
-`SailingSim.Visual.RigClearance` still holds the boat's own lines against the hull, crew and lifelines.
+`SailingSim.Visual.RigClearance` still holds the boat's own lines against the hull, crew and lifelines. Two things it
+found on the first Mac run (a Catalina 22): the lay's sailors had their back as one straight piece from pelvis to chest,
+and a lazy sheet laid over it went 2.8 cm into the curved spine; they now have the MetaHuman's trunk bone by bone, its
+neck, head and collarbones, as the test does. And a mainsheet crossed a lifeline's wire at its corner between two of a
+span's quarter checks: a line that reaches the lifelines now has its spans checked every 0.9 cm against the wires grown
+by 0.5 cm, so no piece between two checks can reach the wire itself (`OverALifeline`).
 
 ## Known limits
 

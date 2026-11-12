@@ -422,7 +422,9 @@ namespace
 				{
 					const FRigLine& L = Ropes[K];
 					auto InLine = [&](const Vec3& P) { return Blocked(L, Near[K], Reaches[K], ToFVector(P)); };
-					RopeLay::ClearSpans(Rings[K], L.RadiusCm, Up, Set, InLine);
+					// (a line across the lifelines every 0.9 cm against the wires grown by half a centimetre: no piece that short
+					// steps over one, SailingSim.Visual.RopeLay.OverALifeline)
+					RopeLay::ClearSpans(Rings[K], L.RadiusCm, Up, Set, InLine, 6, Reaches[K] ? 0.9 : 0.0);
 				}
 				UStartCm[K] = Along;
 				Along += RopeLay::Length(Rings[K]);
@@ -1055,20 +1057,36 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// Sails and sheets: the crew's legs and trunk (boat frame, cm, with RigClearance's flesh radii), so a sheet or tail
 		// lies over a sailor's thigh instead of through it (the Catalina 22's lazy sheet, the J/22's mainsheet tail).
 		struct FFlesh { FVector A, B; float R; FVector Hand = FVector(1e9); };
-		TArray<FFlesh, TInlineAllocator<24>> Flesh;
+		TArray<FFlesh, TInlineAllocator<72>> Flesh;
 		{
 			const FTransform& Root = BoatRoot->GetComponentTransform();
 			static const FName Pelvis(TEXT("pelvis")), Spine3(TEXT("spine_03")), Spine5(TEXT("spine_05"));
 			static const FName Thigh[2] = { FName(TEXT("thigh_l")), FName(TEXT("thigh_r")) }, Calf[2] = { FName(TEXT("calf_l")), FName(TEXT("calf_r")) },
 				Foot[2] = { FName(TEXT("foot_l")), FName(TEXT("foot_r")) };
 			static const FName UpperArm[2] = { FName(TEXT("upperarm_l")), FName(TEXT("upperarm_r")) }, LowerArm[2] = { FName(TEXT("lowerarm_l")), FName(TEXT("lowerarm_r")) },
-				HandBone[2] = { FName(TEXT("hand_l")), FName(TEXT("hand_r")) };
+				HandBone[2] = { FName(TEXT("hand_l")), FName(TEXT("hand_r")) }, Clavicle[2] = { FName(TEXT("clavicle_l")), FName(TEXT("clavicle_r")) };
 			for (const TObjectPtr<USkeletalMeshComponent>& M : Crew)
 			{
 				if (!M || !M->IsVisible() || M->GetBoneIndex(Pelvis) == INDEX_NONE) continue;
 				auto At = [&](const FName& Bone) { return Root.InverseTransformPosition(M->GetBoneLocation(Bone, EBoneSpaces::WorldSpace)); };
 				const FName& Chest = M->GetBoneIndex(Spine5) != INDEX_NONE ? Spine5 : Spine3;
 				if (M->GetBoneIndex(Chest) != INDEX_NONE) Flesh.Add({ At(Pelvis), At(Chest), 10.f });
+				// A MetaHuman's trunk bone by bone, its neck, head and collarbones (RigClearance's flesh: a leaning back
+				// bows off the pelvis-to-chest chord, and a lazy sheet laid over the chord went 2.8 cm into spine_02).
+				{
+					static const FName Chain[][2] = {
+						{ FName(TEXT("pelvis")), FName(TEXT("spine_01")) }, { FName(TEXT("spine_01")), FName(TEXT("spine_02")) },
+						{ FName(TEXT("spine_02")), FName(TEXT("spine_03")) }, { FName(TEXT("spine_03")), FName(TEXT("spine_04")) },
+						{ FName(TEXT("spine_04")), FName(TEXT("spine_05")) }, { FName(TEXT("spine_05")), FName(TEXT("neck_01")) },
+						{ FName(TEXT("neck_01")), FName(TEXT("neck_02")) }, { FName(TEXT("neck_02")), FName(TEXT("head")) },
+						{ FName(TEXT("spine_05")), FName(TEXT("clavicle_l")) }, { FName(TEXT("spine_05")), FName(TEXT("clavicle_r")) } };
+					static const float ChainR[] = { 10.f, 10.f, 10.f, 10.f, 10.f, 5.f, 5.f, 9.f, 5.f, 5.f };
+					for (int32 Link = 0; Link < int32(UE_ARRAY_COUNT(ChainR)); ++Link)
+					{
+						if (M->GetBoneIndex(Chain[Link][0]) == INDEX_NONE || M->GetBoneIndex(Chain[Link][1]) == INDEX_NONE) continue;
+						Flesh.Add({ At(Chain[Link][0]), At(Chain[Link][1]), ChainR[Link] });
+					}
+				}
 				for (int32 Sd = 0; Sd < 2; ++Sd)
 				{
 					if (M->GetBoneIndex(Thigh[Sd]) == INDEX_NONE || M->GetBoneIndex(Calf[Sd]) == INDEX_NONE || M->GetBoneIndex(Foot[Sd]) == INDEX_NONE) continue;
@@ -1081,6 +1099,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				{
 					if (M->GetBoneIndex(UpperArm[Sd]) == INDEX_NONE || M->GetBoneIndex(LowerArm[Sd]) == INDEX_NONE || M->GetBoneIndex(HandBone[Sd]) == INDEX_NONE) continue;
 					const FVector Hand = At(HandBone[Sd]);
+					if (M->GetBoneIndex(Clavicle[Sd]) != INDEX_NONE) Flesh.Add({ At(Clavicle[Sd]), At(UpperArm[Sd]), 4.5f, Hand });
 					Flesh.Add({ At(UpperArm[Sd]), At(LowerArm[Sd]), 4.5f, Hand });
 					Flesh.Add({ At(LowerArm[Sd]), Hand, 3.5f, Hand });
 				}
@@ -1090,9 +1109,10 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// deck at the stanchions, a hull's half beam less 5 cm out.
 		const bool bLifelines = CrewHasLifelines(Cfg);
 		const double LifelineHgt = Cfg.Hulls[0].SheerZ < 0.9 ? 60.0 : 68.0;
+		constexpr double LifelineMargin = 0.5;
 		// The flesh a line could touch (within its sag, the most a drape lifts and a hand's width of its chord; not the hand
 		// that holds it), and whether it reaches the lifelines at all: the checks run for every ring and span.
-		using FNearFlesh = TArray<const FFlesh*, TInlineAllocator<24>>;
+		using FNearFlesh = TArray<const FFlesh*, TInlineAllocator<72>>;
 		auto LineContext = [&](const FRigLine& L, const FVector& Sag, FNearFlesh& NearFlesh) -> bool
 		{
 			auto HeldBy = [&L](const FFlesh& F) { return FVector::DistSquared(F.Hand, L.A) < 625.0 || FVector::DistSquared(F.Hand, L.B) < 625.0; };
@@ -1118,12 +1138,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			if (bReachesLifelines)
 			{
 				const double Fence = (Cfg.Hulls[0].DeckHalfBeam(C.X / CmPerMeter) - 0.05) * CmPerMeter;
-				if (FMath::Abs(FMath::Abs(C.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence) < 1.0 + L.RadiusCm)
+				// (grown by LifelineMargin for the fine lay: its spans are checked every 0.9 cm, OverALifeline)
+				const double WireClear = 1.0 + L.RadiusCm + (bFineRopes ? LifelineMargin : 0.0);
+				if (FMath::Abs(FMath::Abs(C.Y - Cfg.Hulls[0].CenterY * CmPerMeter) - Fence) < WireClear)
 				{
 					const double Deck = CrewFloorZ(Cfg, C.X / CmPerMeter, FMath::Sign(C.Y) * (Fence - 5.0) / CmPerMeter, bModelTravelerBridge) * CmPerMeter;
 					for (const double Wire : { 0.5 * LifelineHgt, LifelineHgt })
 					{
-						if (Deck > -1e6 && FMath::Abs(C.Z - (Deck + Wire)) < 1.0 + L.RadiusCm) return true;
+						if (Deck > -1e6 && FMath::Abs(C.Z - (Deck + Wire)) < WireClear) return true;
 					}
 				}
 			}
@@ -1264,7 +1286,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				Rec.A = ToFVector(Laid.front());
 				Rec.B = ToFVector(Laid.back());
 				const double Total = RopeLay::Length(Laid);
-				constexpr int32 kRecPoints = 48;
+				constexpr int32 kRecPoints = 192;
 				size_t Seg = 0;
 				double SegStart = 0.0;
 				for (int32 I = 0; I <= kRecPoints; ++I)

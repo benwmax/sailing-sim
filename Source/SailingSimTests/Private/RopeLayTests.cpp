@@ -28,6 +28,8 @@ ROPE_LAY_TEST(Deterministic)
 ROPE_LAY_TEST(BlockTangent)
 ROPE_LAY_TEST(WinchTurns)
 ROPE_LAY_TEST(ManyCases)
+ROPE_LAY_TEST(OverASailor)
+ROPE_LAY_TEST(OverALifeline)
 
 #undef ROPE_LAY_TEST
 
