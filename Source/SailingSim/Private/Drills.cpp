@@ -345,9 +345,11 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 	// The berth must lie quietly (club shore detail, SailingSim.Lake.ClubBerth's own rule): tied up with her lines and sheets
 	// out, 20 s in 12 kn from each quarter of the compass, she never touches the dock above half a knot. With the 1 m shore at
 	// the club a face nearer the club gained water under the keel, and the boat ground along it. Nearest first, so usually
-	// the first candidate settles and the check costs four short runs.
-	for (const FCandidate& C : Candidates)
+	// the first candidate settles and the check costs four short runs; if none settles, the nearest.
+	// At most the 64 nearest are settled, so a boat none of them suits (a dinghy) falls back after a bounded search.
+	for (size_t Ci = 0; Ci < Candidates.size() && Ci < 64; ++Ci)
 	{
+		const FCandidate& C = Candidates[Ci];
 		bool bQuiet = true;
 		for (const double FromDeg : { 0.0, 90.0, 180.0, 270.0 })
 		{
@@ -374,7 +376,12 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 		OutHeading = HeadingFor(C.Along, WindFromRad);
 		return true;
 	}
-	return false;
+	// None lies quietly (a dinghy with her sheets out sails into any dock in 12 kn, and lies against it on her slack lines
+	// by design: SailingSim.Drills.SunfishLessons): the nearest berth, as before the check.
+	if (Candidates.empty()) return false;
+	OutPosition = Candidates[0].P;
+	OutHeading = HeadingFor(Candidates[0].Along, WindFromRad);
+	return true;
 }
 
 std::vector<FMooringLine> FindDockLines(const FBoatModel& Boat, const std::vector<FObstacleSegment>& Obstacles, double Reach)
