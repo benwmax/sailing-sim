@@ -87,7 +87,7 @@ namespace
 			Controls.JibSheet = 0.3;
 			Controls.Tiller = 0.05;
 		}
-		FBoatStepJob Job(const FSea& Sea, int32 Steps, bool bSimple)
+		FBoatStepJob Job(const FSea& Sea, int32 Steps, bool bSimple, bool bAssistOn)
 		{
 			FBoatStepJob J;
 			J.Boat = &Boat;
@@ -97,7 +97,7 @@ namespace
 			J.Waves = &Sea.Waves;
 			J.Steps = Steps;
 			J.StepDt = Stepper.GetStepDt();
-			J.bTrimAssist = !bSimple;
+			J.bTrimAssist = bAssistOn;
 			J.LastManualTrimTime = 3.0; // the assist takes over 4 s after it, partway through
 			J.TrimIdleSeconds = 4.0;
 			J.bSimple = bSimple;
@@ -109,12 +109,15 @@ namespace
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTaskStepTest, "SailingSim.Physics.TaskStep", PerfFlags)
 bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 {
-	for (const bool bSimple : { false, true })
+	// The full assist, the simple layout without it, and the simple layout with it (the default settings).
+	for (const int32 Mode : { 0, 1, 2 })
 	{
+		const bool bSimple = Mode != 0, bAssistOn = Mode != 1;
 		FSea Sea;
 		// The pawn's loop as it was before Perf 1 (ASailboatPawn::Tick), on this thread.
 		FSailor Ref;
 		const double LastManual = 3.0, Idle = 4.0;
+		const double LastManualHike = 1.0; // the hike key, pressed before the sheet: the reflex starts 4 s after it
 		// The same steps as a job on a task, as the pawn launches them now.
 		FSailor Task;
 		int32 RefSteps = 0, TaskSteps = 0;
@@ -127,11 +130,17 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 			for (int32 I = 0; I < Steps; ++I)
 			{
 				const FBoatControls Before = Ref.Controls;
-				const bool bAssist = !bSimple && Ref.Boat.GetState().Time - LastManual > Idle;
-				if (bAssist || bSimple)
+				const bool bAssist = bAssistOn && Ref.Boat.GetState().Time - LastManual > Idle;
+				const bool bReflex = !bAssist && Ref.Boat.GetState().Time - LastManualHike > Idle; // the crew's body while the assist waits or is off
+				if (bAssist || bSimple || bReflex)
 				{
 					const FBoatControls Assisted = Ref.Trim.Update(Ref.Boat, Ref.Controls, Ref.Stepper.GetStepDt());
 					if (bAssist) Ref.Controls = Assisted;
+					else if (!bSimple)
+					{
+						Ref.Controls.Hike = Assisted.Hike;
+						Ref.Controls.CrewAft = Assisted.CrewAft;
+					}
 					else
 					{
 						Ref.Controls.Traveler = Assisted.Traveler;
@@ -139,6 +148,11 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 						Ref.Controls.Cunningham = Assisted.Cunningham;
 						Ref.Controls.Outhaul = Assisted.Outhaul;
 						Ref.Controls.Backstay = Assisted.Backstay;
+						if (bReflex)
+						{
+							Ref.Controls.Hike = Assisted.Hike;
+							Ref.Controls.CrewAft = Assisted.CrewAft;
+						}
 					}
 					Ref.Controls.Tiller = Before.Tiller;
 					Ref.Controls.bWingOnWing = Before.bWingOnWing;
@@ -149,17 +163,19 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 
 			const int32 TaskFrameSteps = Task.Stepper.Advance(Dt);
 			TestEqual(TEXT("The same steps each frame"), TaskFrameSteps, Steps);
-			const FBoatStepJob Job = Task.Job(Sea, TaskFrameSteps, bSimple);
+			FBoatStepJob Job = Task.Job(Sea, TaskFrameSteps, bSimple, bAssistOn);
+			Job.LastManualHikeTime = LastManualHike;
 			UE::Tasks::Launch(TEXT("TaskStepTest"), [Job]() { Job.Run(); }).Wait();
 			TaskSteps += TaskFrameSteps;
 			// The world between frames (on the game thread, as the game mode does): the sea builds.
 			Sea.Waves.Update(Dt);
 		}
-		TestTrue(FString::Printf(TEXT("Task and inline steps leave the boat identical (simple %d)"), bSimple), Same(Ref.Boat.GetState(), Task.Boat.GetState()));
+		TestTrue(FString::Printf(TEXT("Task and inline steps leave the boat identical (mode %d)"), Mode), Same(Ref.Boat.GetState(), Task.Boat.GetState()));
 		const FBoatControls& RC = Ref.Controls;
 		const FBoatControls& TC = Task.Controls;
 		TestTrue(TEXT("Controls identical (the assist trimmed the same)"), RC.MainSheet == TC.MainSheet && RC.JibSheet == TC.JibSheet && RC.Traveler == TC.Traveler
-			&& RC.Vang == TC.Vang && RC.Cunningham == TC.Cunningham && RC.Outhaul == TC.Outhaul && RC.Backstay == TC.Backstay && RC.Tiller == TC.Tiller);
+			&& RC.Vang == TC.Vang && RC.Cunningham == TC.Cunningham && RC.Outhaul == TC.Outhaul && RC.Backstay == TC.Backstay && RC.Tiller == TC.Tiller
+			&& RC.Hike == TC.Hike && RC.CrewAft == TC.CrewAft);
 		TestEqual(TEXT("Same number of steps"), TaskSteps, RefSteps);
 		TestEqual(TEXT("Still 120 Hz"), Task.Stepper.GetStepDt(), 1.0 / 120.0);
 		// The hitch frames (0.09 s) are under the 12-step cap, so every step of the elapsed time ran.
@@ -167,6 +183,92 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 		// (Not frozen: on her fixed tiller she rounds up into irons, sooner or later as the swell takes her; since
 		// docs/wave-physics/ its slope pushes her too, and 20 m was the edge.)
 		TestTrue(FString::Printf(TEXT("She sailed (%.1f m)"), Task.Boat.GetState().Position.LengthXY()), Task.Boat.GetState().Position.LengthXY() > 10.0);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCrewReflexTest, "SailingSim.Physics.CrewReflex", PerfFlags)
+bool FSailingCrewReflexTest::RunTest(const FString& Parameters)
+{
+	// Nov 11 physics review #2: on Realistic a sheet press pauses the trim assist for 4 s, and the pause froze the sailor's
+	// body on the windward rail too. A Sunfish whose sheet the player eases right out (and keeps hold of) then rolled over
+	// on top of her sailor to windward in a few seconds. The crew's reflex keeps moving them in while the hands wait.
+	// With the trim assist turned off in Settings the reflex runs too (Bean's choice, Nov 11).
+	for (const bool bAssistSetting : { true, false })
+	for (const double Knots : { 10.0, 14.0 })
+	{
+		FWindParams WP;
+		WP.SpeedKnots = Knots;
+		WP.FromDegrees = 0.0;
+		WP.GustIntensity = 0.0;
+		WP.PuffIntensity = 0.0; // steady: the roll comes from the sailor, not a lull
+		const FWindField Wind(WP);
+		FBoatModel Boat(FBoatConfig::Make(EBoatType::Sunfish));
+		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 2.0); // close reach, wind from starboard
+		FBoatControls Controls;
+		Controls.MainSheet = 0.4;
+		FAutoTrim Trim;
+		FAutopilot Helm;
+		Helm.TargetTWADeg = 60.0;
+		FBoatStepJob Job;
+		Job.Boat = &Boat;
+		Job.Controls = &Controls;
+		Job.Trim = &Trim;
+		Job.Wind = &Wind;
+		Job.Steps = 1;
+		Job.bTrimAssist = true; // the assist sails her for the first 20 s either way, then the setting is what it is
+		Job.TrimIdleSeconds = 4.0;
+		Job.LastManualTrimTime = -100.0;
+		double MostWindwardDeg = 0.0, Settled = 0.0;
+		bool bCapsized = false;
+		for (int32 I = 0; I < 60 * 120; ++I)
+		{
+			const double Now = Boat.GetState().Time;
+			if (Now > 20.0)
+			{
+				// The player eases the sheet right out and keeps a hand on it: the assist waits the whole time.
+				Controls.MainSheet = FMath::Min(1.0, Controls.MainSheet + 0.35 / 120.0);
+				Job.LastManualTrimTime = Now;
+				Job.bTrimAssist = bAssistSetting;
+			}
+			Controls.Tiller = Helm.Update(Boat);
+			Job.Run();
+			if (Now > 20.0)
+			{
+				MostWindwardDeg = FMath::Min(MostWindwardDeg, Boat.GetTelemetry().Heel / kDegToRad); // negative heel: to windward here
+				bCapsized |= Boat.GetTelemetry().bCapsized;
+			}
+			if (Now > 55.0) Settled = Controls.Hike;
+		}
+		AddInfo(FString::Printf(TEXT("Assist %d, %.0f kn: most windward heel %.1f deg, hike %.2f with the sail let go"), int32(bAssistSetting), Knots, MostWindwardDeg, Settled));
+		TestFalse(FString::Printf(TEXT("Assist %d, %.0f kn: no capsize with the sheet eased and held"), int32(bAssistSetting), Knots), bCapsized);
+		TestTrue(FString::Printf(TEXT("Assist %d, %.0f kn: she never rolls 25 deg to windward (%.1f)"), int32(bAssistSetting), Knots, MostWindwardDeg), MostWindwardDeg > -25.0);
+		TestTrue(FString::Printf(TEXT("Assist %d, %.0f kn: the sailor came in off the rail (hike %.2f)"), int32(bAssistSetting), Knots, Settled), Settled < 0.0);
+	}
+	{
+		// The player's own hike key still wins: held out, the reflex leaves the hike alone for the idle time after it.
+		FWindParams WP;
+		WP.SpeedKnots = 10.0;
+		WP.PuffIntensity = 0.0;
+		const FWindField Wind(WP);
+		FBoatModel Boat(FBoatConfig::Make(EBoatType::Sunfish));
+		Boat.Reset(0.0, 0.0, -60.0 * kDegToRad, 2.0);
+		FBoatControls Controls;
+		Controls.MainSheet = 1.0;
+		Controls.Hike = 1.0;
+		FAutoTrim Trim;
+		FBoatStepJob Job;
+		Job.Boat = &Boat;
+		Job.Controls = &Controls;
+		Job.Trim = &Trim;
+		Job.Wind = &Wind;
+		Job.Steps = 120;
+		Job.bTrimAssist = true;
+		Job.TrimIdleSeconds = 4.0;
+		Job.LastManualTrimTime = 0.0;
+		Job.LastManualHikeTime = 0.0;
+		Job.Run();
+		TestEqual(TEXT("The player's hike is theirs within the idle time"), Controls.Hike, 1.0);
 	}
 	return true;
 }
@@ -183,11 +285,11 @@ bool FSailingParallelBoatsTest::RunTest(const FString& Parameters)
 	for (int32 F = 0; F < 480; ++F)
 	{
 		const double Dt = FrameDt(F);
-		for (int32 K = 0; K < N; ++K) Alone[K]->Job(SeaA, Alone[K]->Stepper.Advance(Dt), false).Run();
+		for (int32 K = 0; K < N; ++K) Alone[K]->Job(SeaA, Alone[K]->Stepper.Advance(Dt), false, true).Run();
 		TArray<UE::Tasks::FTask> Tasks;
 		for (int32 K = 0; K < N; ++K)
 		{
-			const FBoatStepJob Job = Together[K]->Job(SeaB, Together[K]->Stepper.Advance(Dt), false);
+			const FBoatStepJob Job = Together[K]->Job(SeaB, Together[K]->Stepper.Advance(Dt), false, true);
 			Tasks.Add(UE::Tasks::Launch(TEXT("ParallelBoatsTest"), [Job]() { Job.Run(); }));
 		}
 		UE::Tasks::Wait(Tasks);

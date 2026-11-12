@@ -723,6 +723,7 @@ private:
 	TMap<FName, float> HeldAxes;
 	float KeyboardTiller = 0.f;
 	double LastManualTrimTime = -100.0;
+	double LastManualHikeTime = -100.0; // the player's own hike key: the crew's reflex leaves the hike alone this long after it
 	float CameraYaw = 0.f;
 	float CameraPitch = -14.f;
 	float CameraDistance = 1600.f;

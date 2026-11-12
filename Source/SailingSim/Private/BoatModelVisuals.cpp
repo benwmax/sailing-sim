@@ -1516,7 +1516,9 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// docs/crew-tack/: each sailor's crossing on a tack or gybe, scripted against the boom.
 		Place.Crossing = I < CrewFigures.Num() ? &CrewFigures[I].Crossing : nullptr;
 		Place.TrueWindSpeed = T.TrueWindSpeed;
-		Place.bTackCalled = TrimAssist.IsHoldingForTack();
+		// Only while the assist trims: with it waiting or off, the crew's reflex steps the trimmer for the hike alone and
+		// the player's sheet does the work (#641).
+		Place.bTackCalled = TrimAssist.IsHoldingForTack() && (bTrafficBoat || bGhost || ShowroomStage != EShowroomStage::None || IsTrimAssistActive());
 		Place.Dt = DeltaSeconds;
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
