@@ -1328,17 +1328,24 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			Keys.Append({ L.A, L.B, Sag, FVector(L.RadiusCm, L.Lift[kLineSegments / 2], L.Lift[kLineSegments / 4] + L.Lift[3 * kLineSegments / 4]),
 				FVector(float(Steps), 0.f, 0.f) });
 		}
+		// Its layout (each line's look and ring count): when it changes (a tack moves the working side's lines), the
+		// triangles and colours, sent only at a build, are built again.
+		TArray<uint32> Layout;
+		Layout.Reserve(Lines.Num());
+		for (int32 K = 0; K < Lines.Num(); ++K) Layout.Add(uint32(Lines[K].Look) | (uint32(bFineSection ? FineRings[K].size() : size_t(kLineSegments + 1)) << 8));
+		const bool bBuild = !bRigLinesBuilt || Layout != RigLineLayout[Section];
 		TArray<FVector>& Last = RigLineKeys[Section];
-		bool bMoved = !bRigLinesBuilt || Last.Num() != Keys.Num();
+		bool bMoved = bBuild || Last.Num() != Keys.Num();
 		for (int32 K = 0; !bMoved && K < Keys.Num(); ++K) bMoved = FVector::DistSquared(Keys[K], Last[K]) > 0.05f * 0.05f;
 		if (!bMoved) continue;
 		Last = MoveTemp(Keys);
+		RigLineLayout[Section] = MoveTemp(Layout);
 		FTubeStreams Out;
 		// Reserved up front, and no colours after the build: the per-frame update converted every vertex's linear colour
 		// to sRGB and doubled the rig lines' game-thread time (0.65 -> 1.4 ms on the PC).
 		const int32 NumVerts = bFineSection ? Lines.Num() * (kRopeRings + 1) * (kRopeSides + 1) : Lines.Num() * (kLineSegments + 1) * (kLineSides + 1);
 		Out.Verts.Reserve(NumVerts); Out.Normals.Reserve(NumVerts); Out.UV0.Reserve(NumVerts); Out.Tangents.Reserve(NumVerts);
-		if (!bRigLinesBuilt) Out.Colors.Reserve(NumVerts);
+		if (bBuild) Out.Colors.Reserve(NumVerts);
 		TArray<FVector> Frames;
 		if (bFineSection) Frames.Init(FVector::ZeroVector, Lines.Num());
 		for (int32 K = 0; K < Lines.Num(); ++K)
@@ -1347,16 +1354,16 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			{
 				// (lines are in rig order, a chain's lines one after another: the previous one's frame is already there)
 				FVector Frame = FinePrev.IsValidIndex(K) && FinePrev[K] != INDEX_NONE && FinePrev[K] < K ? Frames[FinePrev[K]] : FVector::ZeroVector;
-				AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, !bRigLinesBuilt, &Frame);
+				AppendRingTube(FineRings[K], Lines[K].RadiusCm, FineUStartCm[K], 5.f, Lines[K].Look, Widen, Out, bBuild, &Frame);
 				Frames[K] = Frame;
 			}
 			else
 			{
-				AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, !bRigLinesBuilt);
+				AppendTube(Lines[K], Last[5 * K + 2], Section == 0 ? 11.f : 5.f, Widen, Out, bBuild);
 			}
 		}
 		// (never an update of a different size: rebuilt whole, which no rig should need)
-		const FProcMeshSection* Built = bRigLinesBuilt ? RigLines->GetProcMeshSection(Section) : nullptr;
+		const FProcMeshSection* Built = !bBuild ? RigLines->GetProcMeshSection(Section) : nullptr;
 		if (Built && Built->ProcVertexBuffer.Num() != Out.Verts.Num())
 		{
 			ensureMsgf(false, TEXT("Rig line section %d changed size (%d -> %d vertices)"), Section, Built->ProcVertexBuffer.Num(), Out.Verts.Num());
@@ -1369,7 +1376,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 			continue;
 		}
-		if (!bRigLinesBuilt)
+		if (bBuild)
 		{
 			RigLines->CreateMeshSection_LinearColor(Section, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 			RigLines->SetMaterial(Section, Section == 0 ? WireMaterial.Get() : RopeMaterial.Get());
