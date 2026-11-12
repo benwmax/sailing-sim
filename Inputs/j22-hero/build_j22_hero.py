@@ -110,6 +110,7 @@ SIDE_DECK = 0.25                            # side deck width inboard of the she
 COAMING_HALF = (0.64, 0.73)                 # the cockpit's sides, half-width at its aft and forward ends: straight, a
 COAMING_AFT_DECK = 0.12                     # slight taper (j22.org deck plan 0.62-0.72 m; Commons overhead and bow
                                             # photos), no closer than this to the sheer (docs/shape-loop wave 2)
+CAP_W, CAP_T = 0.065, 0.016                 # the teak coaming cap's width and height over the deck (a thin wide board)
 SEAT_Z, FLOOR_Z = 0.40, 0.13                # GUESS: seat and self-bailing floor heights above the waterline
 SEAT_IN = 0.31                              # seat fronts, half-width: footwell 0.62-0.64 m (j22.org deck plan; Commons
                                             # overhead photo, docs/shape-loop wave 2)
@@ -557,13 +558,32 @@ def hull_joint(side):
 
 
 def coaming_cap(side):
-    pts = []
-    for i in range(40):
-        x = CABIN_AFT - 0.02 + (COCKPIT_AFT + 0.08 - CABIN_AFT) * i / 39
-        y = coaming_y(x) + 0.04
-        pts.append((x, side * y, deck_z(x, y) + 0.012))
-    ob = tube(f"CoamingCap_{side}", pts, 0.022, MAT["TeakWeathered"], smooth_path=True)
-    ob.data.bevel_resolution = 1
+    """The teak cap along the cockpit's edge: a flat board lying on the deck (Commons j22-above-deck-cockpit and Bean's
+    IMG_9224 show a thin strip about 6.5 cm wide and 1.6 cm proud, its inner edge just over the coaming's lip, running from the
+    cabin's aft face to the cockpit's aft end). It had been a 44 mm round dowel (cockpit leftovers, Nov 12)."""
+    x0, x1, n = CABIN_AFT - 0.02, COCKPIT_AFT - 0.02, 40      # to the aft deck's edge, in one piece
+    lo, hi, th, rr = -0.004, CAP_W - 0.004, CAP_T, 0.006     # across from the coaming's face, thickness, edge round
+    bm = bmesh.new()
+    rings = []
+    for i in range(n):
+        x = x0 + (x1 - x0) * i / (n - 1)
+        yc = coaming_y(x)
+        sec = []
+        for dy, dz in ((lo, -0.006), (lo, th - rr), (lo + rr * 0.3, th - rr * 0.3), (lo + rr, th),
+                       (hi - rr, th), (hi - rr * 0.3, th - rr * 0.3), (hi, th - rr), (hi, -0.006)):
+            y = yc + dy
+            z = deck_z(x, max(y, yc + 0.002)) + dz       # the lip's inner overhang keeps the deck's height at the edge
+            sec.append(bm.verts.new((x, side * y, z)))
+        rings.append(sec)
+    for a, b in zip(rings[:-1], rings[1:]):
+        for j in range(len(a)):
+            k = (j + 1) % len(a)
+            bm.faces.new((a[j], a[k], b[k], b[j]))
+    bm.faces.new(rings[0])
+    bm.faces.new(list(reversed(rings[-1])))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = mesh_obj(f"CoamingCap_{side}", bm, MAT["TeakWeathered"])
+    bevel(ob, 0.004, 2)                                   # the board's rounded ends
     return ob
 
 
@@ -1168,9 +1188,9 @@ def build_sails():
     # coming down onto its forward side from the clew and leaving aft over the car's body
     lee_pts = [tuple(jclew), tuple(car + Vector((0.017, 0, -0.012))), tuple(car + Vector((0.0, 0, -0.0235))),
                tuple(car + Vector((-0.05, 0, -0.022))),
-               (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + 0.02),
+               (xc + 0.06, side * (yf + 0.05), deck_z(xc, yf + 0.05) + CAP_T + 0.0065),   # over the teak cap's inner edge
                (xc, side * (yf + 0.012), zc), (xc - 0.06, side * (yf + 0.01), zc - 0.02)]
-    lee_sags = [0.002, 0.0, 0.0, 0.01, 0.0, 0.0]
+    lee_sags = [0.002, 0.0, 0.0, 0.0, 0.0, 0.0]          # no sag onto the coaming cap (it dipped into the board)
     lee_cam = cam_path(f"Cam_{side}_0", 0.03)
     if lee_cam:          # hardware-fit wave 2: in at the kit cam's fairlead, between its jaws, out aft
         lee_pts = lee_pts[:-2] + [tuple(p) for p in lee_cam]
