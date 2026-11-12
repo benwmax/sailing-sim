@@ -1,9 +1,8 @@
-# Boat skins (v1, step 1: the skin file, the loader and the built-in skins)
+# Boat skins (v1: the skin file, the loader, the built-in skins and the Customize screen)
 
 Plan: the Claude Doc "Ready About: boat skins plan". A skin is how a boat looks, as one small file a player can load
-and unload: paint, wear, sails and rope colours. This step is the data and the boat's side of it. The Customize screen
-(the Boat screen's new page, on the showroom) is the next step; until then a skin is put on with `-SailingSkin=<id>` or
-the save's `boats` field.
+and unload: paint, wear, sails and rope colours. The Customize screen (from the Boat screen, on the showroom) edits
+one; `-SailingSkin=<id>` puts one on for stills.
 
 Nothing here touches the physics, a material, a script or an asset: skins move parameters the materials already have.
 
@@ -66,9 +65,30 @@ red-stripe and blue-stripe schemes differ only in the sail's stripes, which a li
 Online-readiness: skins are cosmetic and never reach SailingPhysics (rule 1); any vessel can wear one, nothing asks for
 "the player" beyond choosing whose saved skin to read (rule 2); the file is versioned with string ids (rule 7).
 
+## The Customize screen
+
+Boat screen > Customize (C, or Y on the pad; not for a locked boat). `ESailScreen::Customize`, `UI/SailCustomize.cpp`;
+the editing itself is `FSkinEditor` (`SkinEditor.h`, plain logic: the draft, undo and redo, what saving does), so the
+tests drive it without Slate. The showroom stays up (`SailShowroom::StageFor`): the boat on the right wears the draft as
+it changes (`ASailboatPawn::SetSkinPreview`, at most eight times a second while a slider is dragged).
+
+- Tabs (Q/E, LB/RB): **Skins** (the class look, the built-ins, your own; rename, delete), **Paint** (eight parts; sixteen
+  real-boat swatches or your own colour by hue, strength and lightness, capped short of neon), **Sails** (cloth, number,
+  class mark), **Lines** (a colourway per rope; Left and Right), **Wear** (the five levels).
+- Always there: Use this look (saves and goes back), Save as new, Surprise me (R / Menu), Undo and Redo (Z, Y / X, Y),
+  Before (T / L3: her saved look, to compare).
+- Nothing is saved until Use this look or Save as new. Back with changes says so once; Back again leaves without saving.
+- Saving (`FSkinEditor::SavePlan`): an empty draft takes the skin off; an unchanged skin is named in the save; a changed
+  skin of the player's is written over; a changed built-in becomes a new file ("My navy").
+- One switch: `-SailingNoCustomize` takes the button and the key off the Boat screen (`SSailFrontEnd::CustomizeEnabled`).
+- Stills: `-SailingFrontEnd=Customize -SailingCustomTab=<0..4>`.
+
+Not in this version: a camera framing per tab, a name typed from the pad (the pad gets "My navy", "My navy 2"), sail
+stripes and designs, lettering and stickers.
+
 ## Tests
 
-`scripts/test.sh SailingSim.Skin`: RoundTrip, BadFiles, Apply, BuiltIn, RopeColourways, SaveField, Ids.
+`scripts/test.sh SailingSim.Skin`: RoundTrip, BadFiles, Apply, BuiltIn, RopeColourways, SaveField, Ids, Editor, Screen.
 
 ## Not yet checked on the Mac
 
@@ -81,6 +101,9 @@ This step was written without a compiler. To confirm there:
 3. Whether a wear level reads as doubled on the hero (the livery's wear channels and Age/Care both move).
 4. A skin with `lines` set: the sheets, their knots and coils take the colourway and the wires do not change.
 5. No skin: stills identical to main, and the boats and crew gates hold.
+6. The Customize screen: stills of each tab (`-SailingFrontEnd=Customize -SailingCustomTab=0..4`) at 1920x1080 and
+   1280x720; a keys run with `-SailingUIScript` (C on the Boat screen, E through the tabs, R, Enter on Use this look);
+   that the panel does not cover the boat, and that a preview's rebuild of the boat's look is not a visible hitch.
 
 ## Later (the plan's v2 on)
 

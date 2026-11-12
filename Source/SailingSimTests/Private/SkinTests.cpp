@@ -3,6 +3,10 @@
 #include "BoatLivery.h"
 #include "BoatModel.h"
 #include "SailSave.h"
+#include "SkinEditor.h"
+#include "UI/SailFrontEnd.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Input/Events.h"
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
@@ -384,5 +388,151 @@ bool FSailingSkinIdsTest::RunTest(const FString&)
 	TestFalse(TEXT("Eight digits"), FBoatSkin::ParseHex(TEXT("#1C2A44FF"), C));
 	TestFalse(TEXT("Empty"), FBoatSkin::ParseHex(TEXT(""), C));
 	TestTrue(TEXT("Lower case"), FBoatSkin::ParseHex(TEXT("#1c2a44"), C));
+	return true;
+}
+
+// The Customize screen's editing (SkinEditor.h): a draft over the class's look, every change undoable, a dragged value one
+// step, and what Use would do with it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSkinEditorTest, "SailingSim.Skin.Editor", SailSkinTestsLocal::SkinFlags)
+bool FSailingSkinEditorTest::RunTest(const FString&)
+{
+	const int32 J22 = int32(Sailing::EBoatType::J22);
+	FSkinEditor Ed;
+	Ed.OpenWith(J22, nullptr);
+	TestFalse(TEXT("The class look is not dirty"), Ed.IsDirty());
+	TestFalse(TEXT("Nothing to undo at the start"), Ed.CanUndo());
+	TestEqual(TEXT("The class look saves as no skin"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::ClassLook));
+	TestEqual(TEXT("Made for the J/22"), Ed.GetDraft().BoatId, FString(TEXT("J22")));
+
+	FLinearColor Navy, Red;
+	FBoatSkin::ParseHex(TEXT("#1C2A44"), Navy);
+	FBoatSkin::ParseHex(TEXT("#B3201B"), Red);
+	const uint32 Rev0 = Ed.GetRevision();
+	Ed.SetPartColour(FSkinEditor::EPart::Hull, Navy);
+	TestTrue(TEXT("A change moves the revision"), Ed.GetRevision() != Rev0);
+	TestTrue(TEXT("Dirty after a change"), Ed.IsDirty());
+	TestEqual(TEXT("Hull"), FBoatSkin::ToHex(Ed.PartColour(FSkinEditor::EPart::Hull).Get(FLinearColor::White)), FString(TEXT("#1C2A44")));
+	TestEqual(TEXT("A look made from nothing is a new file"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::NewFile));
+	TestEqual(TEXT("Its name"), Ed.NewName(), FString(TEXT("My look")));
+
+	// A dragged slider (the same part again and again) is one undo step; another part is another.
+	for (int32 K = 0; K < 20; ++K) Ed.SetPartColour(FSkinEditor::EPart::Hull, FLinearColor(0.01f * K, 0.1f, 0.2f));
+	Ed.SetPartColour(FSkinEditor::EPart::Boot, Red);
+	TestTrue(TEXT("The boot stripe is on"), Ed.GetDraft().Paint.bBoot.Get(false));
+	TestTrue(TEXT("Undo the boot stripe"), Ed.Undo());
+	TestFalse(TEXT("Boot back to the class's"), Ed.PartColour(FSkinEditor::EPart::Boot).IsSet());
+	TestTrue(TEXT("Undo the hull"), Ed.Undo());
+	TestFalse(TEXT("Hull back to the class's in one step"), Ed.PartColour(FSkinEditor::EPart::Hull).IsSet());
+	TestFalse(TEXT("Nothing more to undo"), Ed.CanUndo());
+	TestFalse(TEXT("Clean again"), Ed.IsDirty());
+	TestTrue(TEXT("Redo the hull"), Ed.Redo());
+	TestTrue(TEXT("Redo the boot"), Ed.Redo());
+	TestFalse(TEXT("Nothing more to redo"), Ed.CanRedo());
+	// A change after an undo drops what was undone.
+	Ed.Undo();
+	Ed.SetWearLevel(4);
+	TestFalse(TEXT("No redo after a new change"), Ed.CanRedo());
+	TestEqual(TEXT("Wear"), Ed.GetDraft().Wear.Level, 4);
+
+	// Off and clear.
+	Ed.SetPartOff(FSkinEditor::EPart::Boot);
+	TestTrue(TEXT("Boot off"), Ed.IsPartOff(FSkinEditor::EPart::Boot));
+	Ed.SetPartOff(FSkinEditor::EPart::Hull);
+	TestFalse(TEXT("A hull can't be off"), Ed.IsPartOff(FSkinEditor::EPart::Hull));
+	Ed.ClearPart(FSkinEditor::EPart::Boot);
+	TestFalse(TEXT("Boot cleared"), Ed.IsPartOff(FSkinEditor::EPart::Boot) || Ed.GetDraft().Paint.bBoot.IsSet());
+	// Sails and lines.
+	Ed.SetSailNumber(FString(TEXT("USA 1288 x")));
+	TestEqual(TEXT("Digits only"), Ed.GetDraft().Sails.Number.Get(FString()), FString(TEXT("1288")));
+	Ed.SetSailNumber(TOptional<FString>());
+	TestFalse(TEXT("Class number again"), Ed.GetDraft().Sails.Number.IsSet());
+	Ed.SetLine(FBoatSkin::ELine::Mainsheet, 7);
+	Ed.SetLine(FBoatSkin::ELine::Control, 99);
+	TestEqual(TEXT("Mainsheet colourway"), Ed.GetDraft().Lines.Column[0], 7);
+	TestEqual(TEXT("A colourway out of range is the boat's own"), Ed.GetDraft().Lines.Column[3], -1);
+	// The undo stack is bounded.
+	for (int32 K = 0; K < 3 * FSkinEditor::MaxUndo; ++K) Ed.SetWearLevel(K % 5);
+	int32 Undone = 0;
+	while (Ed.Undo()) ++Undone;
+	TestEqual(TEXT("Undo is capped"), Undone, FSkinEditor::MaxUndo);
+
+	// From a built-in: unchanged it is named in the save; changed it becomes the player's own file, named after it.
+	FBoatSkin NavySkin;
+	if (TestTrue(TEXT("The navy built-in"), BoatSkinStore::Find(J22, TEXT("builtin-j22-navy"), NavySkin)))
+	{
+		Ed.OpenWith(J22, &NavySkin);
+		TestEqual(TEXT("Unchanged built-in"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::Existing));
+		TestTrue(TEXT("Loaded is built in"), Ed.IsLoadedBuiltIn());
+		Ed.SetLine(FBoatSkin::ELine::Mainsheet, 7);
+		TestEqual(TEXT("Changed built-in"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::NewFile));
+		TestEqual(TEXT("Named after it"), Ed.NewName(), FString(TEXT("My navy")));
+		// One of the player's own, changed, is written over.
+		FBoatSkin Mine = NavySkin;
+		Mine.bBuiltIn = false;
+		Mine.Id = TEXT("my-navy");
+		Mine.Name = TEXT("My navy");
+		Ed.OpenWith(J22, &Mine);
+		TestEqual(TEXT("Unchanged own skin"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::Existing));
+		Ed.SetWearLevel(0);
+		TestEqual(TEXT("Changed own skin"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::Overwrite));
+		// Loading the class look over it: everything off.
+		Ed.Load(nullptr);
+		TestEqual(TEXT("Class look"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::ClassLook));
+		TestTrue(TEXT("Loading is undoable"), Ed.Undo() && Ed.GetDraft().Wear.Level == 0);
+	}
+	// Surprise me: a real scheme's paint, a wear level short of neglected, ropes in range; one undo step.
+	FRandomStream Random(1288);
+	for (int32 K = 0; K < 50; ++K)
+	{
+		Ed.OpenWith(J22, nullptr);
+		Ed.Surprise(Random);
+		const FBoatSkin& D = Ed.GetDraft();
+		TestTrue(TEXT("Surprise: a hull colour"), D.Paint.Hull.IsSet());
+		TestTrue(TEXT("Surprise: wear short of neglected"), D.Wear.Level >= 0 && D.Wear.Level <= 3);
+		for (int32 L = 0; L < int32(FBoatSkin::ELine::Count); ++L) TestTrue(TEXT("Surprise: a colourway"), D.Lines.Column[L] >= 0 && D.Lines.Column[L] < FBoatSkin::NumRopeColourways());
+		TestTrue(TEXT("Surprise is one step"), Ed.Undo() && !Ed.CanUndo() && !Ed.IsDirty());
+	}
+	// The rope names cover the colourways.
+	for (int32 C = 0; C < FBoatSkin::NumRopeColourways(); ++C) TestFalse(FString::Printf(TEXT("Colourway %d has a name"), C), FSkinEditor::RopeName(C) == FSkinEditor::RopeName(-1));
+	return true;
+}
+
+// The Customize screen builds on every tab without a player, its keys work (tabs, Surprise me, undo), and Back with
+// changes asks once before it leaves without saving.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSkinScreenTest, "SailingSim.Skin.Screen", SailSkinTestsLocal::SkinFlags)
+bool FSailingSkinScreenTest::RunTest(const FString&)
+{
+	if (!FSlateApplication::IsInitialized()) { AddWarning(TEXT("No Slate application")); return true; }
+	auto Key = [](const FKey& K) { return FKeyEvent(K, FModifierKeysState(), 0, false, 0, 0); };
+	TSharedRef<SSailFrontEnd> F = SNew(SSailFrontEnd).Start(ESailScreen::Title);
+	F->Push(ESailScreen::Boat);
+	F->OpenCustomize(int32(Sailing::EBoatType::J22));
+	TestTrue(TEXT("Customize opens from the Boat screen"), F->Current() == ESailScreen::Customize);
+	TestTrue(TEXT("It has a default focus"), F->FocusTarget().IsValid());
+	for (int32 Tab = 0; Tab < 5; ++Tab)
+	{
+		TestTrue(FString::Printf(TEXT("E moves to the next tab (%d)"), Tab), F->OnKeyDown(FGeometry(), Key(EKeys::E)).IsEventHandled());
+		TestTrue(FString::Printf(TEXT("Tab %d builds with a focus"), Tab), F->Current() == ESailScreen::Customize && F->FocusTarget().IsValid());
+	}
+	TestTrue(TEXT("Q moves back a tab"), F->OnKeyDown(FGeometry(), Key(EKeys::Q)).IsEventHandled());
+	TestFalse(TEXT("Clean at the start"), F->GetSkinEditor().IsDirty());
+	TestTrue(TEXT("R is Surprise me"), F->OnKeyDown(FGeometry(), Key(EKeys::R)).IsEventHandled());
+	TestTrue(TEXT("Surprise me changed the draft"), F->GetSkinEditor().IsDirty());
+	// Back with changes: once to be told, again to leave.
+	TestTrue(TEXT("Back is taken"), F->OnKeyDown(FGeometry(), Key(EKeys::Escape)).IsEventHandled());
+	TestTrue(TEXT("Still on Customize after the first Back"), F->Current() == ESailScreen::Customize);
+	TestTrue(TEXT("Z undoes"), F->OnKeyDown(FGeometry(), Key(EKeys::Z)).IsEventHandled());
+	TestFalse(TEXT("Clean after the undo"), F->GetSkinEditor().IsDirty());
+	TestTrue(TEXT("Y redoes"), F->OnKeyDown(FGeometry(), Key(EKeys::Y)).IsEventHandled());
+	TestTrue(TEXT("Dirty after the redo"), F->GetSkinEditor().IsDirty());
+	F->OnKeyDown(FGeometry(), Key(EKeys::Escape));
+	TestTrue(TEXT("The first Back after a change stays"), F->Current() == ESailScreen::Customize);
+	F->OnKeyDown(FGeometry(), Key(EKeys::Escape));
+	TestTrue(TEXT("The second Back leaves for the Boat screen"), F->Current() == ESailScreen::Boat);
+	// Clean, Back leaves at once.
+	F->OpenCustomize(int32(Sailing::EBoatType::Sunfish));
+	TestTrue(TEXT("Opens for the Sunfish"), F->Current() == ESailScreen::Customize && F->GetSkinEditor().GetBoatType() == int32(Sailing::EBoatType::Sunfish));
+	F->OnKeyDown(FGeometry(), Key(EKeys::Escape));
+	TestTrue(TEXT("Back leaves a clean screen at once"), F->Current() == ESailScreen::Boat);
 	return true;
 }

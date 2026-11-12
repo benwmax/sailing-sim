@@ -8,6 +8,7 @@
 #include "Learning.h"
 #include "Showroom.h"
 #include "Gallery.h"
+#include "SkinEditor.h"
 namespace Sailing { class FScriptedScene; }
 
 class SBox;
@@ -19,7 +20,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch, Customize };
 
 struct FCareerLesson;
 
@@ -72,6 +73,11 @@ public:
 	 *  name, else the mode's name. */
 	static bool PauseHeading(const Sailing::FScriptedScene* Scene, ESailMode Mode, FString& OutTitle, FString& OutRestart,
 		ESailingDrill Drill = ESailingDrill::None, const FString& LessonId = FString());
+	/** Boat skins (docs/skins): the Customize screen for a class's boat, over the showroom (from the Boat screen). */
+	void OpenCustomize(int32 BoatType);
+	/** Whether the Boat screen offers Customize (-SailingNoCustomize takes it away: the one switch if it must wait). */
+	static bool CustomizeEnabled();
+	const FSkinEditor& GetSkinEditor() const { return SkinEdit; }
 	/** Back: pops a screen; on the root it does what that root's Back means (Pause: resume). */
 	void Pop();
 	/** Puts keyboard focus on the current screen's default target (after the widget is in the viewport); true when it has
@@ -219,6 +225,30 @@ private:
 	FSailConditions Blend;
 	bool bBlendLive = false;
 	double BlendAppliedAt = 0.0, BlendTickAt = 0.0;
+	// Boat skins (UI/SailCustomize.cpp, docs/skins): the Customize screen. The draft and its undo are FSkinEditor's; here
+	// are the tab, the part and the colour the sliders hold (hue, strength, lightness: a grey has no hue of its own), the
+	// before/after switch, the revision last shown on the boat (a dragged slider is shown at most eight times a second), the
+	// two-press guards (leaving with changes, deleting) and the text boxes (typing must not reach the screen's keys).
+	FSkinEditor SkinEdit;
+	int32 CustomTab = 0, CustomPart = 0;
+	FVector CustomHsv = FVector(210.0, 0.5, 0.5);
+	bool bCustomBefore = false, bCustomBeforeShown = false, bCustomLeaveArmed = false, bCustomDeleteArmed = false;
+	uint32 CustomShownRevision = 0;
+	uint32 CustomLeaveRevision = 0;   // the draft's revision when Back was first pressed: a change since asks again
+	double CustomPreviewAt = 0.0;
+	FString CustomMessage;
+	TArray<TSharedPtr<SWidget>> CustomTextBoxes;
+	FEntry BuildCustomize();
+	void SetCustomTab(int32 Tab);
+	/** The screen's own keys (tabs, undo and redo, before/after, Surprise me, the guarded Back); Handled when it took one. */
+	FReply CustomizeKeyDown(const FKeyEvent& Event);
+	/** Each frame on the screen: the draft on the showroom's boat when it changed (or her saved look for Before). */
+	void TickCustomize(double Time);
+	/** Leaving the screen (Back, or the menus closing): the boat wears her saved look again. */
+	void EndCustomize();
+	void CustomUse();
+	/** The sliders' colour from the part's (or the cloth's) own, when the part changes. */
+	void CustomSyncHsv();
 	/** Moves along the strip (LB/RB, Q/E): the next boat is shown and focused. */
 	void StepBoat(int32 Dir);
 	EActiveTimerReturnType TickOrbitStick(double Time, float Delta);
