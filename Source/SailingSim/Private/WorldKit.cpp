@@ -696,8 +696,10 @@ static FString TileGeometryHash(const FKitGeometry& G)
 	return BytesToHex(Digest, FSHA1::DigestSize).ToLower();
 }
 
-// Whether the saved mesh is the geometry BakeMesh would build from G, within 0.1 mm for positions and 1e-3 for normals,
-// tangents, UVs and colours: same looks in the same order, same vertex and triangle counts, the same triangles.
+// Whether the saved mesh is the geometry BakeMesh would build from G, within 0.1 mm plus one float step at the
+// coordinate's size for positions (#653: the saved positions are floats, the bake's are doubles; past about 1.3 km half a
+// float step is more than 0.1 mm, 0.0625 cm at 11 km, so with 0.1 mm alone no far tile matched, even its own machine's)
+// and 1e-3 for normals, tangents, UVs and colours: same looks in the same order, same vertex and triangle counts, the same triangles.
 // BakeMesh makes one polygon group per non-empty look, then one vertex and one vertex instance per kit vertex and one
 // triangle per three indices, in order, so the saved description's compact IDs line up with the kit's arrays (only
 // because BakeMesh builds a fresh description and never deletes elements from it).
@@ -705,6 +707,8 @@ static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 {
 	const FMeshDescription* MD = Mesh ? Mesh->GetMeshDescription(0) : nullptr;
 	if (!MD) return false;
+	// #653: why a tile misses (Log verbosity): the counts, or the look and first vertex or triangle that differs.
+	const FString Tile = Mesh->GetName();
 	int32 NumV = 0, NumTris = 0, NumGroups = 0;
 	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
 	{
@@ -714,7 +718,12 @@ static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 		NumV += S.V.Num();
 		NumTris += S.T.Num() / 3;
 	}
-	if (MD->Vertices().Num() != NumV || MD->VertexInstances().Num() != NumV || MD->Triangles().Num() != NumTris || MD->PolygonGroups().Num() != NumGroups) return false;
+	if (MD->Vertices().Num() != NumV || MD->VertexInstances().Num() != NumV || MD->Triangles().Num() != NumTris || MD->PolygonGroups().Num() != NumGroups)
+	{
+		SAIL_LOG(Log, TEXT("Tile %s differs in counts: saved %d vertices, %d triangles, %d looks; baked %d, %d, %d"), *Tile,
+			MD->Vertices().Num(), MD->Triangles().Num(), MD->PolygonGroups().Num(), NumV, NumTris, NumGroups);
+		return false;
+	}
 	FStaticMeshConstAttributes Attr(*MD);
 	const TVertexAttributesConstRef<FVector3f> Positions = Attr.GetVertexPositions();
 	const TVertexInstanceAttributesConstRef<FVector3f> Normals = Attr.GetVertexInstanceNormals();
@@ -722,28 +731,46 @@ static bool TileMatchesSaved(const FKitGeometry& G, UStaticMesh* Mesh)
 	const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
 	const TVertexInstanceAttributesConstRef<FVector4f> Colors = Attr.GetVertexInstanceColors();
 	const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
-	if (UVs.GetNumChannels() < 2) return false;
+	if (UVs.GetNumChannels() < 2) { SAIL_LOG(Log, TEXT("Tile %s differs: %d UV channels saved"), *Tile, UVs.GetNumChannels()); return false; }
 	// in double: one float step past 1.3 km from the origin is 0.016 cm, more than the 0.01 cm tolerance (bridge and shore tiles)
 	auto Near3 = [](const FVector3f& A, const FVector& B, double Tol) { return FMath::Abs(double(A.X) - B.X) <= Tol && FMath::Abs(double(A.Y) - B.Y) <= Tol && FMath::Abs(double(A.Z) - B.Z) <= Tol; };
+	// #653: a saved position is the bake's double rounded to the nearest float, up to half a step away, and another
+	// machine's last-bit difference can round to the neighbouring step: allow one float step at its size on top of 0.01 cm.
+	auto NearPos = [](const FVector3f& A, const FVector& B)
+	{
+		auto Ok = [](float Saved, double Baked) { return FMath::Abs(double(Saved) - Baked) <= 0.01 + FMath::Abs(Baked) * double(FLT_EPSILON); };
+		return Ok(A.X, B.X) && Ok(A.Y, B.Y) && Ok(A.Z, B.Z);
+	};
 	auto Near2 = [](const FVector2f& A, const FVector2D& B) { return FMath::Abs(A.X - float(B.X)) <= 1e-3f && FMath::Abs(A.Y - float(B.Y)) <= 1e-3f; };
 	int32 Base = 0, Group = 0, Tri = 0;
 	for (int32 K = 0; K < int32(EKitLook::Count); ++K)
 	{
 		const FKitSection& S = G.Sections[K];
 		if (S.V.Num() == 0) continue;
-		if (Slots[FPolygonGroupID(Group++)] != FName(KitLook(EKitLook(K)).Name)) return false;
+		const TCHAR* Look = KitLook(EKitLook(K)).Name;
+		if (Slots[FPolygonGroupID(Group++)] != FName(Look)) { SAIL_LOG(Log, TEXT("Tile %s differs: look %d is %s, saved %s"), *Tile, Group - 1, Look, *Slots[FPolygonGroupID(Group - 1)].ToString()); return false; }
 		for (int32 I = 0; I < S.V.Num(); ++I)
 		{
 			const FVertexInstanceID VI(Base + I);
 			const FVector4f C = Colors[VI], Want = FVector4f(FLinearColor::FromSRGBColor(S.Col[I]));
-			if (!Near3(Positions[FVertexID(Base + I)], S.V[I], 0.01) || !Near3(Normals[VI], S.N[I], 1e-3) || !Near3(Tangents[VI], S.Tan[I].TangentX, 1e-3)
+			if (!NearPos(Positions[FVertexID(Base + I)], S.V[I]) || !Near3(Normals[VI], S.N[I], 1e-3) || !Near3(Tangents[VI], S.Tan[I].TangentX, 1e-3)
 				|| !Near2(UVs.Get(VI, 0), S.UV[I]) || !Near2(UVs.Get(VI, 1), S.UV1[I])
-				|| FMath::Abs(C.X - Want.X) > 1e-3f || FMath::Abs(C.Y - Want.Y) > 1e-3f || FMath::Abs(C.Z - Want.Z) > 1e-3f || FMath::Abs(C.W - Want.W) > 1e-3f) return false;
+				|| FMath::Abs(C.X - Want.X) > 1e-3f || FMath::Abs(C.Y - Want.Y) > 1e-3f || FMath::Abs(C.Z - Want.Z) > 1e-3f || FMath::Abs(C.W - Want.W) > 1e-3f)
+			{
+				const FVector3f Ps = Positions[FVertexID(Base + I)];
+				SAIL_LOG(Log, TEXT("Tile %s differs: look %s, vertex %d of %d: position delta (%.4f, %.4f, %.4f) cm, normal delta %.4f, tangent delta %.4f"), *Tile, Look, I, S.V.Num(),
+					double(Ps.X) - S.V[I].X, double(Ps.Y) - S.V[I].Y, double(Ps.Z) - S.V[I].Z, (FVector(Normals[VI]) - S.N[I]).Size(), (FVector(Tangents[VI]) - S.Tan[I].TangentX).Size());
+				return false;
+			}
 		}
 		for (int32 I = 0; I + 2 < S.T.Num(); I += 3, ++Tri)
 		{
 			const TArrayView<const FVertexInstanceID> Corners = MD->GetTriangleVertexInstances(FTriangleID(Tri));
-			if (Corners[0].GetValue() != Base + S.T[I] || Corners[1].GetValue() != Base + S.T[I + 1] || Corners[2].GetValue() != Base + S.T[I + 2]) return false;
+			if (Corners[0].GetValue() != Base + S.T[I] || Corners[1].GetValue() != Base + S.T[I + 1] || Corners[2].GetValue() != Base + S.T[I + 2])
+			{
+				SAIL_LOG(Log, TEXT("Tile %s differs: look %s, triangle %d"), *Tile, Look, Tri);
+				return false;
+			}
 		}
 		Base += S.V.Num();
 	}

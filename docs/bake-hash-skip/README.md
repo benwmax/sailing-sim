@@ -53,3 +53,23 @@ change writes the three new sidecars (every tile has no recorded hash, so it bak
 with the tiles; from then on an unchanged tile is kept as saved. `scripts/make-houses.sh` and `scripts/bake-shore.sh`
 need no change: they save dirty packages only, as `import_world.py` does. The log line of each bake says how many tiles
 were kept and how many matched within tolerance.
+
+## Far tiles and the tolerance (#653, Nov 12 2026)
+
+A tile's saved positions are floats; the bake's are doubles. The saved value is the double rounded to the nearest float,
+up to half a float step away: 0.0625 cm at 11 km from the origin, where the bridge tiles are. The old 0.01 cm tolerance was
+under that, so a far bridge or house tile never matched its saved mesh, on another machine or its own. The reason log
+(`TileMatchesSaved`, Log verbosity) showed it: the same counts, normals and tangents, positions off by 0.02 to 0.055 cm.
+The "617 stale tiles" the PC re-saved on #642 were not stale, and the Mac's 32 bridge and 136 house re-saves were the same
+artefact. The fix: a position may be off by 0.01 cm plus one float step at its size (`|x| * FLT_EPSILON` per axis).
+
+PC bakes compared with the Mac's tiles (#642 at 719b91ff, sidecar hashes replaced by dummies so every tile is compared):
+
+| Run | Bridges matched | Houses matched |
+|---|---|---|
+| A: as was (0.01 cm) | 2 / 93 | 46 / 553 |
+| B: discrete decisions snapped to 1e-6 m (not kept) | 2 / 93 | 31 / 553 (133 tiles' counts moved: 4,607,825 quads, not 4,602,425) |
+| C: the tolerance | 93 / 93 | 553 / 553 |
+
+So the Mac and the PC build the same geometry (4,602,425 house quads, 45,928 bridge quads on both); snapping the decisions
+would only re-bake tiles. With this tolerance a PC bake against the Mac's #642 sidecars keeps every tile.
