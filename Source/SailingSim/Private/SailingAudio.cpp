@@ -23,7 +23,7 @@
 namespace SailingAudioLocal
 {
 	// Settings > Audio, copied by SailingSound::UpdateMix on the game thread for the audio thread.
-	std::atomic<float> GMaster{ 0.8f };
+	std::atomic<float> GMaster{ 0.8f * 1.585f };   // the default master with the default make-up, until UpdateMix
 	std::atomic<float> GShare[int32(SailingSound::EGroup::Count)] = { { 1.f }, { 1.f }, { 1.f }, { 1.f } };
 	std::atomic<bool> GMono{ false };
 }
@@ -427,6 +427,17 @@ float USailingWorldSynth::Noise()
 	return (Rng & 0xFFFFFF) / float(0x7FFFFF) - 1.f;
 }
 
+namespace SailingAudioLocal
+{
+	// Linear to 0.8, then a smooth knee that never passes 1: the master's make-up gain (up to about 1.6) would otherwise
+	// hard-clip the world voices' loudest peaks (a close strike's rumble shapes to 0.95 before the gain).
+	static float SoftCeiling(float X)
+	{
+		const float A = FMath::Abs(X);
+		return A <= 0.8f ? X : FMath::Sign(X) * (0.8f + 0.2f * FMath::Tanh((A - 0.8f) / 0.2f));
+	}
+}
+
 int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples)
 {
 	OutAudio.SetNumUninitialized(NumSamples * 2);
@@ -524,7 +535,7 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 			break;
 		default: break;
 		}
-		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f) * Gain, -1.f, 1.f) * 30000.f);
+		Out[I] = bMuted.load() ? int16(0) : int16(SailingAudioLocal::SoftCeiling(FMath::Tanh(Mix * OutLevel * 1.5f) * Gain) * 30000.f);
 	}
 	return NumSamples;
 }

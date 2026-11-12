@@ -197,7 +197,7 @@ namespace SailingSound
 	SAILINGSIM_API float GroupGain(EGroup Group);
 	/** The master as the voices apply it: Settings > Audio's master times the make-up gain (MakeupGainDb). */
 	SAILINGSIM_API float MasterGain();
-	/** Make-up gain in dB applied at every voice (default 4: the loudness check, docs/sound; -SailingMakeupDb=<dB>). */
+	/** Make-up gain in dB applied at every voice (default 4: the loudness check; -SailingMakeupDb=<dB>). Game thread only. */
 	SAILINGSIM_API float MakeupGainDb();
 	/** The group's own slider, without the master; safe on any thread. */
 	SAILINGSIM_API float GroupShare(EGroup Group);
