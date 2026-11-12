@@ -1,0 +1,14 @@
+#405 gap 4: Sunfish sail (pc/405-sunfish-sail, from main 52f2a912). Uncooked editor build on the PC (RTX 4090), Ultra,
+1920x1080, Lake, AfternoonBreeze, 15:00, 7 kn, TWA 60, crew hidden. before = main, after = the branch.
+
+Change (SailboatPawn.cpp only, no material edits): the Sunfish's main gets Marks 1 (the made-up emblem from
+make_sail_marks.py above the number, as the class puts its emblem in the upper sail) and Translucency 0.2 (MI_Sail_Main's
+0.34 for every other class, set each time for the showroom's boat swaps).
+
+Seams: M_SailCloth already draws them along the colour bands (PanelWidth 0.42, Detail on High/Ultra): dark seam lines,
+leech and foot tabling and the clew patch show in audit-clew; nothing to change there.
+Backlit side (port, quarter): about 16% and 12% darker on the band at the same pixels; the sunlit side unchanged.
+The other side's number still shows faintly against the light (the shader's show-through, as on real Dacron).
+
+Views: stbd/port (7.5 m broadside), stbd-close (head and number), quarter (from astern, backlit), and the #405 audit's
+cameras audit-clew, audit-mast-goose, audit-side (a405.ps1).
