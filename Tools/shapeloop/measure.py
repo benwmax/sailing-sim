@@ -110,6 +110,27 @@ def footwell(ob, x, dz=0.10):
     return min(port) + min(stbd), sole
 
 
+def outer_width(ob, x, below_top):
+    """Width of ob's cut at station x, below_top under the cut's highest point (a trunk's sides, out to out)."""
+    bm = bmesh.new()
+    bm.from_object(ob, DG)
+    bm.transform(ob.matrix_world)
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(x, 0, 0), plane_no=(1, 0, 0), clear_inner=False, clear_outer=False)
+    cut = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+    if not cut:
+        bm.free()
+        return None
+    h = max(v.co.z for e in cut for v in e.verts) - below_top
+    ys = []
+    for e in cut:
+        a, b = e.verts[0].co, e.verts[1].co
+        if (a.z - h) * (b.z - h) <= 0 and a.z != b.z:
+            ys.append(a.y + (b.y - a.y) * (h - a.z) / (b.z - a.z))
+    bm.free()
+    return max(ys) - min(ys) if ys else None
+
+
 features = {}
 ck = bpy.data.objects.get("Cockpit")
 if ck is not None and ck.name in objects:
@@ -129,6 +150,14 @@ if ck is not None and ck.name in objects:
     features["cockpit_aft"] = c["min"][0]
     if "x_stern" in hull:
         features["aft_deck"] = r(c["min"][0] - hull["x_stern"])
+
+cb = bpy.data.objects.get("Cabin")
+if cb is not None and cb.name in objects:
+    # the trunk's width 12 cm under its top at three stations (wave 3's card; x in the hero's frame)
+    for key, x in (("cabin_width_aft", -0.45), ("cabin_width_mid", 0.40), ("cabin_width_fwd", 1.00)):
+        w = outer_width(cb, x, 0.12)
+        if w:
+            features[key] = r(w)
 
 physics = {}
 rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), "j22_hero_report.json")

@@ -1057,7 +1057,7 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTrave
 		// docs/crew-hull-clip/: on a cabin trunk, its top (feet planted on the deck under it went through it).
 		FCrewCabinTrunk Trunk;
 		if (K == 0 && CrewCabinTrunk(C, Trunk, bTravelerBridge) && X > Trunk.X0 && X < Trunk.X1
-			&& Yh < (Trunk.SideDeck > 0.0 ? H.DeckHalfBeam(X) - Trunk.SideDeck : Trunk.HalfWidth))
+			&& Yh < Trunk.HalfAt(X, H.DeckHalfBeam(X)))
 		{
 			return H.SheerHeight(X) + Trunk.Height;
 		}
@@ -1146,7 +1146,18 @@ bool CrewCabinTrunk(const Sailing::FBoatConfig& C, FCrewCabinTrunk& Out, bool bT
 	{
 	case EBoatType::J22:
 		if (bTravelerBridge) { Out.X0 = -0.72; Out.X1 = 1.60; Out.SideDeck = 0.36; Out.Height = 0.31; }
-		else { Out.X0 = -0.55; Out.X1 = 1.65; Out.SideDeck = 0.25; Out.Height = 0.30; }
+		// the hero: its trunk's foot along its length (shape wave 3: build_j22_hero.py CABIN_PLAN, which the built foot follows
+		// within 2 cm; it followed the sheer 0.25 m in before, 0.96 out aft), closing to its nose past x 1.2
+		else
+		{
+			// (past x 1.36 the built nose: cabin_ring's rounding closes it to nothing at the raked face's foot)
+			static constexpr double PX[] = {-0.55, -0.06, 0.40, 0.83, 1.01, 1.19, 1.36, 1.45, 1.55, 1.60, 1.65};
+			static constexpr double PH[] = {0.83, 0.80, 0.755, 0.69, 0.645, 0.595, 0.54, 0.47, 0.32, 0.18, 0.02};
+			static_assert(UE_ARRAY_COUNT(PX) == UE_ARRAY_COUNT(PH) && UE_ARRAY_COUNT(PX) <= FCrewCabinTrunk::MaxPlan, "hero trunk plan");
+			Out.X0 = -0.55; Out.X1 = 1.65; Out.HalfWidth = 0.0; Out.Height = 0.30;
+			Out.PlanN = int32(UE_ARRAY_COUNT(PX));
+			for (int32 I = 0; I < Out.PlanN; ++I) { Out.PlanX[I] = PX[I]; Out.PlanHalf[I] = PH[I]; }
+		}
 		return true;
 	case EBoatType::Catalina22: Out.X0 = -0.78; Out.X1 = 1.70; Out.HalfWidth = 0.62; Out.Height = 0.42; return true;
 	case EBoatType::Catalina30: Out.X0 = -1.32; Out.X1 = 2.85; Out.HalfWidth = 0.92; Out.Height = 0.60; return true;
@@ -1174,7 +1185,7 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 		if (P.X < H.SternX || P.X > H.BowX || Y >= Half) continue;
 		// docs/crew-hull-clip/: the cabin trunk on the main hull, and the deck's crown (the maxi's 12 cm).
 		const double Sheer = H.SheerHeight(P.X);
-		if (K == 0 && bTrunk && P.X > Trunk.X0 && P.X < Trunk.X1 && Y < (Trunk.SideDeck > 0.0 ? Half - Trunk.SideDeck : Trunk.HalfWidth)
+		if (K == 0 && bTrunk && P.X > Trunk.X0 && P.X < Trunk.X1 && Y < Trunk.HalfAt(P.X, Half)
 			&& P.Z < Sheer + Trunk.Height && P.Z > Sheer - 0.05)
 		{
 			return true;
