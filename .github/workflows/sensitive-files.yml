@@ -1,0 +1,176 @@
+name: Sensitive files
+
+# A pull request may change only game code under Source/ (not the *.cs build
+# rules) and pages under docs/ without Bean. Anything else (scripts, CI,
+# Config, Plugins, Tools, Content, Inputs, CLAUDE.md, the .uproject, any
+# .sh/.ps1/.py/.bat ...) can run on Bean's Mac or PC or steer the agents, so
+# this check fails until Bean adds the `bean-approved` label. The label counts
+# only if GitHub's own clock shows it was added after the head commit was
+# pushed (repository activity log) and after any change of base branch (PR
+# timeline); otherwise the check fails and takes the label off. A pull request
+# from a fork can't be approved this way (its pushes aren't in this repo's
+# log): Bean takes those over by hand. Security review, 11 Nov 2026.
+#
+# pull_request_target runs THIS file as it is on main, so a pull request can't
+# switch the check off by editing it. It never checks out or runs the pull
+# request's code: it only reads the list of changed file names.
+#
+# What it can't do: agents push and label as benwmax too, so GitHub can't tell
+# Bean's label from an agent's. The label is a rule for agents (never add it)
+# and a hard stop for anyone else. The check only blocks merges once main's branch protection requires it, with
+# "Do not allow bypassing the above settings" on.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: read
+  issues: write          # create the label once, remove a stale label
+  pull-requests: write
+
+concurrency:
+  group: sensitive-files-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Sensitive files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: bean-approved
+        run: |
+          set -euo pipefail
+          gh label create "$LABEL" --repo "$REPO" --color 0E8A16 \
+            --description "Bean approved the sensitive files in this PR" 2>/dev/null || true
+          T="$RUNNER_TEMP"
+          gh api "repos/$REPO/pulls/$PR" --jq '.head.sha, .changed_files, .base.ref' > "$T/pr.txt"
+          # New and old names (a rename out of scripts/ counts too), one per line.
+          gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" \
+            --jq '.[] | .filename, (.previous_filename // empty)' > "$T/files.txt"
+          gh api "repos/$REPO/issues/$PR/labels?per_page=100" --jq '.[].name' > "$T/labels.txt"
+          # The pull request's history in order: label adds, commits, base changes.
+          gh api --paginate "repos/$REPO/issues/$PR/timeline?per_page=100" \
+            --jq '.[] | {event, created_at, label: (.label.name // null)}' > "$T/timeline.jsonl"
+          python3 -I - "$T" <<'PY'
+          import json, os, subprocess, sys, urllib.parse
+          from datetime import datetime
+
+          T = sys.argv[1]
+          env = os.environ
+          head_now, changed, base = (open(f"{T}/pr.txt").read().split() + ["", "0", ""])[:3]
+          files = [l for l in open(f"{T}/files.txt").read().splitlines() if l]
+          labels = set(open(f"{T}/labels.txt").read().splitlines())
+          head, label = env["HEAD_SHA"], env["LABEL"]
+
+          def gh(*args, capture=False):
+              r = subprocess.run(["gh", "api", *args], check=False, text=True, capture_output=capture)
+              return r.stdout if capture else None
+
+          def last_push_time():
+              """When the current head commit reached GitHub (the server's clock,
+              from the repository activity log), or None if it can't be shown."""
+              # Any kind: a new branch's first push is "branch_creation", a force push "force_push".
+              q = urllib.parse.urlencode({"ref": "refs/heads/" + env["HEAD_REF"], "per_page": 10})
+              out = gh(f"repos/{env['HEAD_REPO']}/activity?{q}", capture=True)
+              try:
+                  pushes = json.loads(out or "[]")
+              except ValueError:
+                  return None
+              if not isinstance(pushes, list):
+                  return None
+              for p in pushes:                       # newest first
+                  if isinstance(p, dict) and p.get("after") == head:
+                      return when(p.get("timestamp"))
+              return None
+
+          def when(text):
+              try:
+                  return datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+              except ValueError:
+                  return None
+
+          def approved_now():
+              """Bean's label was added after the head commit was pushed and after
+              the last change of base branch, by GitHub's own times. Commit dates
+              are never used: whoever commits sets them."""
+              labeled, changed = None, []
+              for line in open(f"{T}/timeline.jsonl"):
+                  ev = json.loads(line)
+                  at = when(ev.get("created_at"))
+                  if ev.get("event") == "labeled" and ev.get("label") == label and at:
+                      labeled = max(labeled, at) if labeled else at
+                  elif ev.get("event") in ("head_ref_force_pushed", "head_ref_restored",
+                                           "base_ref_changed", "base_ref_force_pushed"):
+                      if not at:
+                          return "unknown"
+                      changed.append(at)
+              pushed = last_push_time()
+              if not labeled or not pushed:          # can't show it: not approved
+                  return "unknown"
+              return all(labeled > c for c in changed + [pushed])
+
+          # Never fine without Bean, wherever they are.
+          RUNS = (".ps1", ".psm1", ".psd1", ".sh", ".bash", ".zsh", ".command", ".py", ".bat", ".cmd",
+                  ".cs", ".csproj", ".sln", ".props", ".targets", ".pbxproj", ".uproject", ".uplugin",
+                  ".exe", ".dll", ".dylib", ".so", ".jar", ".js", ".vbs", ".reg", ".lnk", ".plist",
+                  ".applescript", ".scpt", ".ini", ".json", ".yml", ".yaml", ".toml", ".md")
+          DOC_OK = (".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".csv", ".txt", ".html",
+                    ".json", ".pdf", ".out")
+
+          def allowed(path):
+              low = path.lower()
+              parts = low.split("/")
+              if any(p.startswith(".") for p in parts):          # .claude/, .github/, .mcp.json ...
+                  return False
+              if path.startswith("Source/"):
+                  return not low.endswith(RUNS)
+              if path.startswith("docs/"):
+                  return low.endswith(DOC_OK) and parts[-1] not in ("claude.md", "agents.md")
+              return False
+
+          hits = sorted({f for f in files if not allowed(f)})
+          if int(changed or 0) > 3000:   # the files API lists at most 3000
+              hits.append("(more than 3000 files changed: not all could be checked)")
+          summary = open(env["GITHUB_STEP_SUMMARY"], "a")
+          def say(line):
+              print(line)
+              summary.write(line + "\n")
+
+          if head_now and head_now != head:
+              say(f"The pull request moved on to {head_now[:8]}; the run for that commit decides.")
+              sys.exit(1)
+          if not hits:
+              say(f"All {len(files)} changed files are game code under Source/ or pages under docs/.")
+              sys.exit(0)
+          say("Files that need Bean's approval:")
+          for h in hits:
+              say(f"- `{h}`")
+
+          if label not in labels:
+              say(f"Waiting for Bean: he adds the `{label}` label after reading these files. "
+                  "Agents never add it.")
+              sys.exit(1)
+          verdict = approved_now()
+          if verdict is True:
+              say(f"Approved as of {head[:8]}.")
+              sys.exit(0)
+          if verdict == "unknown":
+              say("Couldn't confirm from GitHub's records that the label came after the last push, "
+                  "so it doesn't count yet. Re-run this check in a minute, or add the label again.")
+              sys.exit(1)
+          gh("-X", "DELETE", f"repos/{env['REPO']}/issues/{env['PR']}/labels/{label}")
+          say(f"The pull request changed since `{label}` was added (new commits or a new base branch), "
+              "so the label was taken off. Bean adds it again after looking.")
+          sys.exit(1)
+          PY
