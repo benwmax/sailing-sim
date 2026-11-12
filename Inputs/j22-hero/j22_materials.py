@@ -298,9 +298,13 @@ def deck_mould(st, name="Gelcoat", windows=False):
         side = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
         side.inputs[1].default_value, side.inputs[2].default_value = 0.35, 0.55
         _l(nt, _math(nt, "ABSOLUTE", ny), side.inputs[0])
-        zb = _band(nt, z, 0.745, 0.835, 0.003)
-        fwd = _math(nt, "SUBTRACT", 1.10, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", z, 0.745), 3.0))
-        xb = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", x, -0.30), _math(nt, "LESS_THAN", x, fwd))
+        import j22_interior as IN       # the portlights' band (it falls forward with the trunk's top)
+        dx = _math(nt, "SUBTRACT", x, IN.WIN_AFT)
+        zr = _math(nt, "SUBTRACT", z, _math(nt, "MULTIPLY", dx, IN.WIN_BOT_SLOPE))       # z over the bottom edge's line
+        zr2 = _math(nt, "SUBTRACT", zr, _math(nt, "MULTIPLY", dx, IN.WIN_TOP_SLOPE - IN.WIN_BOT_SLOPE))
+        zb = _math(nt, "MULTIPLY", _band(nt, zr, IN.WIN_BOT, 9.0, 0.003), _band(nt, zr2, -9.0, IN.WIN_TOP, 0.003))
+        fwd = _math(nt, "SUBTRACT", IN.WIN_FWD, _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", zr, IN.WIN_BOT), 3.0))
+        xb = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", x, IN.WIN_AFT), _math(nt, "LESS_THAN", x, fwd))
         win = _math(nt, "MULTIPLY", _math(nt, "MULTIPLY", side.outputs[0], zb), xb)
         c = _mix(nt, win, c, _rgb("#141619"))
         rough = _math(nt, "SUBTRACT", rough, _math(nt, "MULTIPLY", win, 0.18), True)
