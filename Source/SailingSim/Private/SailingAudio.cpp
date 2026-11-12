@@ -17,6 +17,8 @@
 #include "Camera/PlayerCameraManager.h"
 #include "AudioMixerBlueprintLibrary.h"
 #include "SubmixEffects/AudioMixerSubmixEffectDynamicsProcessor.h"
+#include "Sound/AudioSettings.h"
+#include "Sound/SoundSubmix.h"
 
 namespace SailingAudioLocal
 {
@@ -144,6 +146,19 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	// Once per process: the master submix outlives the map reloads. The preset is rooted so the mixer keeps it.
 	static bool bAdded = false;
 	if (bAdded || !WorldContext || !GEngine || GEngine->UseSound() == false) return;
+	bAdded = true;
+	// Measuring (the loudness check, Nov 12: +4 dB of input gain did not show in the recording): -SailingNoMasterLimiter
+	// leaves the master untouched, -SailingMasterGainDb=<dB> and -SailingMasterOutDb=<dB> replace the input and output
+	// gains, -SailingMasterChain=override puts it on by a chain override, so a few runs of one scene say whether the
+	// effect is in the recorded path, which way onto the master works and which gain reaches the output.
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoMasterLimiter")))
+	{
+		SAIL_LOG(Display, TEXT("Sound: master limiter off (-SailingNoMasterLimiter)"));
+		return;
+	}
+	float InDb = 4.f, OutDb = 0.f;
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterGainDb="), InDb);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterOutDb="), OutDb);
 	USubmixEffectDynamicsProcessorPreset* Limiter = NewObject<USubmixEffectDynamicsProcessorPreset>(GetTransientPackage(), TEXT("SailingMasterLimiter"));
 	FSubmixEffectDynamicsProcessorSettings L;
 	L.DynamicsProcessorType = ESubmixEffectDynamicsProcessorType::Limiter;
@@ -156,12 +171,35 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	// Make-up gain (loudness check Nov 12, scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under
 	// the plan's -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP,
 	// so +4 dB lifts it with 3 dB to spare before the limiter. The quiet scenes stay quieter than the breeze on purpose.
-	L.InputGainDb = 4.f;
-	L.OutputGainDb = 0.f;
+	L.InputGainDb = InDb;
+	L.OutputGainDb = OutDb;
 	Limiter->SetSettings(L);
 	Limiter->AddToRoot();
-	UAudioMixerBlueprintLibrary::AddMasterSubmixEffect(WorldContext, Limiter);
-	bAdded = true;
+	// Two ways onto the master (-SailingMasterChain=append|override). Append is AddMasterSubmixEffect, which adds to the
+	// submix's first effect chain; UE-104414 reports effects added at runtime doing nothing, and the engine's default
+	// master submix has no chain of its own. Override sets a whole chain on the main submix object, which the mixer
+	// builds as a new chain of its own.
+	FString Chain = TEXT("append");
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterChain="), Chain);
+	USoundSubmix* Main = nullptr;
+	if (Chain == TEXT("override"))
+	{
+		Main = Cast<USoundSubmix>(GetDefault<UAudioSettings>()->MasterSubmix.TryLoad());
+		if (Main)
+		{
+			Main->AddToRoot();
+			TArray<USoundEffectSubmixPreset*> Presets;
+			Presets.Add(Limiter);
+			UAudioMixerBlueprintLibrary::SetSubmixEffectChainOverride(WorldContext, Main, Presets, 0.f);
+		}
+		else
+		{
+			SAIL_LOG(Warning, TEXT("Sound: no main submix object for the override chain; appending instead"));
+		}
+	}
+	if (!Main) UAudioMixerBlueprintLibrary::AddMasterSubmixEffect(WorldContext, Limiter);
+	SAIL_LOG(Display, TEXT("Sound: master limiter added by %s (submix %s; input %+.1f dB, output %+.1f dB, threshold %.1f dB)"),
+		Main ? TEXT("override") : TEXT("append"), Main ? *Main->GetPathName() : TEXT("master"), InDb, OutDb, L.ThresholdDb);
 }
 
 const TCHAR* SailingCueName(ESailingCue Cue)
