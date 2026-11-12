@@ -21,10 +21,10 @@ lesson() {   # <stage label> <outcome>
 	echo "Finish:$2,WaitFor:Quiz,Expect:Quiz,Shot:$1-medal,Answer:all,Wait,Expect:Quiz,Shot:$1-score"
 }
 # #518: a tier's last lesson closed with its checkride ready puts Take the checkride first on the score: Enter opens the
-# written checkride, answered right, the score with the certificate, then Back to sailing (the only way: the checkride
-# came from the boat, not the Career screen).
+# written checkride, answered right, the score with the certificate, then Back to sailing. Since #637 the certificate's
+# score has Career first (focused) and Back to sailing under it, so Down then Enter.
 score_checkride() {   # <stage label>
-	echo "Stage:$1,ENTER,Wait,Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,ENTER,WaitFor:Hud,Expect:Hud"
+	echo "Stage:$1,ENTER,Wait,Expect:Quiz,Shot:$1-quiz,Answer:all,Wait,Expect:Quiz,Shot:$1-certificate,DOWN,ENTER,WaitFor:Hud,Expect:Hud"
 }
 # From the boat to the Career screen: the pause menu, Quit to title, Leave, the title (Career is focused for a returning
 # player), Career.
