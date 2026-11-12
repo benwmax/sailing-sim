@@ -12,7 +12,7 @@
    "R": "T_J22H_DeckMould_R.png",
    "N": "T_J22H_DeckMould_N.png",
    "X": "T_J22H_DeckMould_X.png",
-   "uv_m": 8.382
+   "uv_m": 8.3841
   },
   "Rudder": {
    "D": "T_J22H_Rudder_D.png",
@@ -488,5 +488,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 46305472
+ "glb_bytes": 46328208
 }
