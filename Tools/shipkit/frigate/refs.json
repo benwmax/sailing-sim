@@ -1,0 +1,340 @@
+{
+ "about": "Reference pack for the frigate Commonwealth (invented; based on the Humphreys 44-gun frigates). All drawings are US National Archives records on Wikimedia Commons, public domain: free to use commercially, nothing to credit (we credit NARA anyway). Files are not committed: Tools/shipkit/fetch_refs.py downloads them to git-ignored Data/Reference/raw/ships/Commonwealth/. Measured, never imported.",
+ "drawings": [
+  {
+   "file": "A Draft of the U.S. Frigate Constitution - NARA - 102278445.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_U.S._Frigate_Constitution_-_NARA_-_102278445.jpg",
+   "nara_id": "102278445",
+   "kind": "draft_1817",
+   "use": "slices 1, 3: the original 1817 draught (sail plan by Ware); 1797 look checks",
+   "size_px": [
+    13172,
+    8529
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "A Draft of the US Frigate Constitution - NARA - 75841383 (page 1).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_US_Frigate_Constitution_-_NARA_-_75841383_(page_1).jpg",
+   "nara_id": "75841383",
+   "kind": "draft_pages",
+   "use": "slices 1-3: draught sheets",
+   "size_px": [
+    7248,
+    5376
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": false
+  },
+  {
+   "file": "A Draft of the US Frigate Constitution - NARA - 75841383 (page 2).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_US_Frigate_Constitution_-_NARA_-_75841383_(page_2).jpg",
+   "nara_id": "75841383",
+   "kind": "draft_pages",
+   "use": "slices 1-3: draught sheets",
+   "size_px": [
+    7239,
+    5376
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "A Draft of the US Frigate Constitution - NARA - 75841383 (page 3).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_US_Frigate_Constitution_-_NARA_-_75841383_(page_3).jpg",
+   "nara_id": "75841383",
+   "kind": "draft_pages",
+   "use": "slices 1-3: draught sheets",
+   "size_px": [
+    7252,
+    5408
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "A Draft of the US Frigate Constitution - NARA - 75841383 (page 4).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_US_Frigate_Constitution_-_NARA_-_75841383_(page_4).jpg",
+   "nara_id": "75841383",
+   "kind": "draft_pages",
+   "use": "slices 1-3: draught sheets",
+   "size_px": [
+    7263,
+    5376
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "Plans for the USS Constitution - NARA - 75841370.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Plans_for_the_USS_Constitution_-_NARA_-_75841370.jpg",
+   "nara_id": "75841370",
+   "kind": "plans",
+   "use": "slices 2, 7-9: general plans",
+   "size_px": [
+    12348,
+    7744
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": false
+  },
+  {
+   "file": "Plans for the USS Constitution - NARA - 75841372.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Plans_for_the_USS_Constitution_-_NARA_-_75841372.jpg",
+   "nara_id": "75841372",
+   "kind": "plans",
+   "use": "slices 2, 7-9: general plans",
+   "size_px": [
+    11199,
+    8192
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "Plans for the USS Constitution - NARA - 75841376.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Plans_for_the_USS_Constitution_-_NARA_-_75841376.jpg",
+   "nara_id": "75841376",
+   "kind": "plans",
+   "use": "slices 2, 7-9: general plans",
+   "size_px": [
+    6602,
+    5024
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Profile and Inboard Plan - NARA - 75841356.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Profile_and_Inboard_Plan_-_NARA_-_75841356.jpg",
+   "nara_id": "75841356",
+   "kind": "profile_inboard",
+   "use": "slices 7-9, 12-14: profile and inboard arrangement",
+   "size_px": [
+    14573,
+    4736
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": false
+  },
+  {
+   "file": "USS Constitution- Sheer Plan - Body Plan - Lines - NARA - 75841374.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Sheer_Plan_-_Body_Plan_-_Lines_-_NARA_-_75841374.jpg",
+   "nara_id": "75841374",
+   "kind": "lines",
+   "use": "slices 1-2: the hull's lines (sheer, half-breadth and body plans). 1927 MIT redrawing (F. A. Magoun) of the official plans; US copyright expired",
+   "size_px": [
+    6478,
+    4928
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "18170000-US NAI 102278445-draft uss constitution (cropped).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:18170000-US_NAI_102278445-draft_uss_constitution_(cropped).jpg",
+   "nara_id": "102278445",
+   "kind": "draft_1817",
+   "use": "slices 1, 3: the original 1817 draught (sail plan by Ware); 1797 look checks",
+   "size_px": [
+    12768,
+    8144
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Berth Deck - NARA - 75841366.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Berth_Deck_-_NARA_-_75841366.jpg",
+   "nara_id": "75841366",
+   "kind": "berth_deck",
+   "use": "slice 13: berth deck",
+   "size_px": [
+    14565,
+    3968
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": false
+  },
+  {
+   "file": "USS Constitution- Gun Deck - NARA - 75841364.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Gun_Deck_-_NARA_-_75841364.jpg",
+   "nara_id": "75841364",
+   "kind": "gun_deck",
+   "use": "slice 12: gun deck",
+   "size_px": [
+    14575,
+    4000
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Magazines and Hold - NARA - 75841358.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Magazines_and_Hold_-_NARA_-_75841358.jpg",
+   "nara_id": "75841358",
+   "kind": "hold",
+   "use": "slice 14: magazines and hold",
+   "size_px": [
+    13262,
+    3904
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Midship Section - NARA - 75841385.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Midship_Section_-_NARA_-_75841385.jpg",
+   "nara_id": "75841385",
+   "kind": "midship_section",
+   "use": "slices 2, 12-14: framing and deck heights at midships",
+   "size_px": [
+    11416,
+    9281
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Midship Section Starboard Side Looking Forward - NARA - 75841360.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Midship_Section_Starboard_Side_Looking_Forward_-_NARA_-_75841360.jpg",
+   "nara_id": "75841360",
+   "kind": "midship_section_stbd",
+   "use": "slices 2, 12-14: midship section looking forward",
+   "size_px": [
+    12028,
+    9152
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Orlop Decks - NARA - 75841362.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Orlop_Decks_-_NARA_-_75841362.jpg",
+   "nara_id": "75841362",
+   "kind": "orlop",
+   "use": "slice 14: orlop decks",
+   "size_px": [
+    14422,
+    3776
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Paneling Under Spar Deck - NARA - 87208913.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Paneling_Under_Spar_Deck_-_NARA_-_87208913.jpg",
+   "nara_id": "87208913",
+   "kind": "paneling",
+   "use": "slices 12-13: panelling under the spar deck",
+   "size_px": [
+    9982,
+    9184
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Spar Deck - NARA - 75841368.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Spar_Deck_-_NARA_-_75841368.jpg",
+   "nara_id": "75841368",
+   "kind": "spar_deck",
+   "use": "slices 7-8: spar deck",
+   "size_px": [
+    14759,
+    4512
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- View - Fore & aft - Main Deck - Berth Deck. - NARA - 75841352.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_View_-_Fore_&_aft_-_Main_Deck_-_Berth_Deck._-_NARA_-_75841352.jpg",
+   "nara_id": "75841352",
+   "kind": "view_main_berth",
+   "use": "slices 12-13: fore-and-aft views, main and berth decks",
+   "size_px": [
+    3584,
+    4034
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": false
+  },
+  {
+   "file": "18170000-US NAI 102278445-draft uss constitution.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:18170000-US_NAI_102278445-draft_uss_constitution.jpg",
+   "nara_id": "102278445",
+   "kind": "draft_1817",
+   "use": "slices 1, 3: the original 1817 draught (sail plan by Ware); 1797 look checks",
+   "size_px": [
+    14060,
+    9465
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  },
+  {
+   "file": "USS Constitution- Belaying Pin Arrangement at the Port Rail - Fife Rails - Section at Mainmast Looking Forward - NARA - 75841381.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Belaying_Pin_Arrangement_at_the_Port_Rail_-_Fife_Rails_-_Section_at_Mainmast_Looking_Forward_-_NARA_-_75841381.jpg",
+   "nara_id": "75841381",
+   "kind": "belaying_pins",
+   "use": "slices 6, 8: belaying pins, fife rails, section at the mainmast",
+   "size_px": [
+    6242,
+    4576
+   ],
+   "licence": "Public domain (US Navy / National Archives record)",
+   "commercial": true,
+   "cloud_copy_3840px": true
+  }
+ ],
+ "elsewhere": [
+  {
+   "what": "USS Constitution Museum modeler resources and T. G. Martin's 'Close Up' notes",
+   "licence": "museum copyright: read and measure only",
+   "status": "site blocked from the cloud; fetch on the Mac or PC"
+  },
+  {
+   "what": "Marquardt, Anatomy of the Ship: The 44-gun Frigate USS Constitution (Osprey 2017, ISBN 9781472832580)",
+   "licence": "paid book, measure only",
+   "status": "Bean buys if he wants (about $39)"
+  },
+  {
+   "what": "Steel, The Elements and Practice of Rigging and Seamanship (1794)",
+   "licence": "public domain",
+   "status": "slices 4-6"
+  },
+  {
+   "what": "HMS Trincomalee (1817) Matterport tour",
+   "licence": "look only",
+   "status": "slices 12-14 below decks feel"
+  },
+  {
+   "what": "Smithsonian gunboat Philadelphia 3D (CC0)",
+   "licence": "CC0",
+   "status": "slice 8: period guns and joinery"
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+ "boat": "Frigate",
+ "build": "Tools/shipkit/frigate/build_frigate.py",
+ "hull_object": "Hull",
+ "note": "The frigate's shape sections for the shape loop tools (docs/shipkit-1). Slice 1 has the moulded hull (both sides and the wing transom's underside, one surface), the transom (its own object: it meets the sides at a hard corner), the backbone, and a placeholder deck that slice 7 replaces.",
+ "sections": {
+  "hull_shell": {
+   "objects": [
+    "Hull"
+   ],
+   "owns": [
+    "loft.py",
+    "offsets.json"
+   ],
+   "shared": [],
+   "borders": [
+    "backbone"
+   ]
+  },
+  "backbone": {
+   "objects": [
+    "Backbone"
+   ],
+   "owns": [
+    "backbone_outline"
+   ],
+   "shared": [],
+   "borders": [
+    "hull_shell"
+   ]
+  },
+  "deck_placeholder": {
+   "objects": [
+    "DeckPlaceholder"
+   ],
+   "owns": [],
+   "shared": [],
+   "borders": [
+    "hull_shell"
+   ]
+  },
+  "transom": {
+   "objects": [
+    "Transom"
+   ],
+   "owns": [
+    "transom"
+   ],
+   "shared": [],
+   "borders": [
+    "hull_shell"
+   ]
+  }
+ },
+ "joins": []
+}

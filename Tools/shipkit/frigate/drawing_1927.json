@@ -1,0 +1,57 @@
+{
+ "about": "Registration of the 1927 lines plan scan (Commons 3840 px thumbnail of NARA 75841374): where each view's reference lines lie on the scan, read by Tools/shipkit/scanreg.py for loft.py and lines_check.py. The ship's frame is the half-breadth plan's (x in its scan pixels, half-breadths from its centreline). The paper is not flat and the views are not square to each other: the half-breadth plan's centreline is read every 50 px, the sheer plan's load waterline every 150 px and its station lines where they cross A (the sheer plan is drawn 8-15 px aft of the half-breadth plan, more toward the bow), and the body plan is turned about 0.85 deg.",
+ "scan": "USS_Constitution-_Sheer_Plan_-_Body_Plan_-_Lines_-_NARA_-_75841374.jpg",
+ "scan_width_px": 3840,
+ "px_per_ft": 11.1,
+ "px_per_ft_down": 11.69,
+ "scale_note": "The scan is 5.3% taller than it is wide: 11.1 px to the foot across the sheet (the scale bar, the body plan's beam, the load waterline's length) and 11.69 down it. The half-breadth plan draws the 8 and 16 ft buttocks 92.6 and 185.0 px from its centreline (down the sheet), the body plan 87.8 and 175.5 px from its own (across); 27 crossings of waterlines A-E with stations 1, 2 and 6-9 give the same 1.05 (median). Half-breadths in the half-breadth plan and every height are down the sheet; lengths and the body plan's half-breadths are across it.",
+ "midship_x_px": 1401,
+ "waterlines_z_px": {
+  "A": 0.0,
+  "B": -34.1,
+  "C": -68.2,
+  "D": -102.3,
+  "E": -136.4,
+  "F": -170.5
+ },
+ "stations_px": {
+  "1": 2196,
+  "2": 1997,
+  "3": 1800,
+  "4": 1601,
+  "5": 1401,
+  "6": 1201,
+  "7": 1002,
+  "8": 803,
+  "9": 602
+ },
+ "buttocks_px": [92.6, 185.0],
+ "buttocks_undrawn_x_px": [1201, 1800],
+ "buttocks_undrawn_note": "the sheer plan draws both buttocks only aft of station 6 and forward of station 3 (ship frame x); between them they run flat along the floor and are left out, so the lines check skips that stretch (any ink it finds there is a waterline or the keel)",
+ "views": {
+  "half_breadth": {
+   "crop": [230, 1820, 2560, 2150],
+   "zoom": 1,
+   "centreline_y": [[260, 2136.9], [310, 2135.5], [360, 2134.3], [410, 2133.4], [460, 2132.6], [510, 2131.7], [560, 2130.7], [610, 2130.2], [660, 2129.3], [710, 2128.9], [760, 2128.6], [810, 2128.0], [860, 2127.6], [960, 2126.9], [1010, 2126.0], [1060, 2125.4], [1110, 2124.6], [1160, 2124.2], [1210, 2123.4], [1260, 2122.5], [1310, 2121.4], [1360, 2120.1], [1410, 2119.6], [1460, 2118.6], [1510, 2117.8], [1560, 2116.9], [1610, 2116.0], [1660, 2115.1], [1710, 2114.4], [1760, 2113.5], [1810, 2112.8], [1910, 2111.4], [1960, 2110.5], [2010, 2109.5], [2060, 2108.9], [2110, 2108.1], [2160, 2106.8], [2210, 2105.5], [2260, 2104.2], [2310, 2103.5], [2360, 2102.9], [2410, 2101.9], [2450, 2101.0]],
+   "note": "centreline_y: the dash-dot centreline's ink centre every 50 px (the line 6.6 px above it is the keel's siding). Until Nov 2026 the table read the siding line at 450, which put the quarter's waterlines 5 px outboard in the check"
+  },
+  "body": {
+   "crop": [2860, 840, 3400, 1360],
+   "zoom": 2,
+   "origin_px": [3130.65, 1136.95],
+   "waterline_slope": -0.01479,
+   "centreline_slope": 0.0129,
+   "nominal": [3132, 1135.5],
+   "note": "origin_px: where the centreline crosses the load waterline; waterline_slope: A's dy/dx fitted across both halves (0.85 deg); centreline_slope: the centreline's dx/dy from 1080 to 1320. nominal: the centre and waterline the body plan readings in offsets.json were taken against (a square frame)"
+  },
+  "sheer": {
+   "crop": [180, 840, 2560, 1440],
+   "zoom": 1,
+   "waterline_A_y": [[450, 1166], [600, 1165], [750, 1165], [900, 1163], [1050, 1161], [1200, 1160], [1350, 1159], [1500, 1156], [1650, 1155], [1800, 1153], [1950, 1151], [2100, 1150], [2250, 1148]],
+   "x_registration": {
+    "note": "each sheer plan station line fitted from just below A to the keel: [its scan x at A, its tilt in scan x per px down, the station in the ship's frame (the half-breadth plan's station lines)]. Past station 9 and station 1 x is carried on straight",
+    "stations": [[593.4, 0.0096, 602], [794.5, 0.0106, 803], [994.0, 0.0098, 1002], [1192.7, 0.0124, 1201], [1392.7, 0.0163, 1401], [1592.1, 0.0143, 1601], [1788.9, 0.0195, 1800], [1984.3, 0.0228, 1997], [2181.4, 0.0168, 2196]]
+   }
+  }
+ }
+}
