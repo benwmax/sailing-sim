@@ -734,8 +734,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
 - `origin` is `github.com/benwmax/sailing-sim`. Push as the `benwmax` GitHub account (the Mac's gh CLI also has
   `Benrebelling` logged in, which only has read access).
 - One branch and pull request per phase (`phase-0`, `phase-1`, ...). Do not touch `benwmax/sailing-study` (the web sim).
-- Sensitive files (`.github/workflows/sensitive-files.yml`, security review Nov 11 2026): a pull request that changes
-  scripts, `.github/`, `Config/`, `Plugins/`, `Tools/`, build rules (`*.cs`), any `.sh`/`.ps1`/`.py`/`.bat`, `CLAUDE.md`
-  or the `.uproject` fails the "Sensitive files" check until Bean adds the `bean-approved` label; new commits remove it.
-  Agents never add or re-add that label and never merge a pull request whose checks are red. Fixes from bug reports merge
-  without Bean only when every file is under `Source/` (sailing-feedback `docs/triage.md`).
+- Sensitive files (`.github/workflows/sensitive-files.yml`, security review Nov 11 2026): a pull request may change
+  only game code under `Source/` (not the `*.cs` build rules) and pages under `docs/` without Bean. Anything else
+  (scripts, `.github/`, `Config/`, `Plugins/`, `Tools/`, `Content/`, `Inputs/`, any `.sh`/`.ps1`/`.py`/`.bat`, `CLAUDE.md`,
+  the `.uproject`) fails the "Sensitive files" check until Bean adds the `bean-approved` label, which approves that commit
+  only. Agents never add or re-add that label and never merge a pull request whose checks are red.

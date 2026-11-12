@@ -1,33 +1,37 @@
 name: Sensitive files
 
-# Fails a pull request that changes a file which runs on Bean's Mac or PC, or
-# steers the agents (scripts, CI, config, plugins, tools, build rules,
-# CLAUDE.md, the .uproject), until Bean adds the `bean-approved` label.
-# New commits after the label remove it again, so the approval covers what
-# Bean saw. Everything else (Source/ game code, docs/, Content/, Inputs/ data)
-# passes. Security review, 11 Nov 2026.
+# A pull request may change only game code under Source/ (not the *.cs build
+# rules) and pages under docs/ without Bean. Anything else (scripts, CI,
+# Config, Plugins, Tools, Content, Inputs, CLAUDE.md, the .uproject, any
+# .sh/.ps1/.py/.bat ...) can run on Bean's Mac or PC or steer the agents, so
+# this check fails until Bean adds the `bean-approved` label. Adding the label
+# approves the commit the pull request is on at that moment (the check posts
+# a comment naming it); new commits after that fail the check and take the
+# label off. Security review, 11 Nov 2026.
 #
-# pull_request_target runs THIS file as it is on main, so a pull request
-# cannot switch the check off by editing it. It never checks out or runs the
-# pull request's code: it only reads the list of changed file names.
+# pull_request_target runs THIS file as it is on main, so a pull request can't
+# switch the check off by editing it. It never checks out or runs the pull
+# request's code: it only reads the list of changed file names.
 #
-# What it can't do: agents push and label as benwmax too, so GitHub cannot
-# tell Bean's label from an agent's. The label is a rule for agents (never add
-# it) and a hard stop for anyone else. It only blocks merges once main's
-# branch protection requires this check, with "Do not allow bypassing" on.
+# What it can't do: agents push and label as benwmax too, so GitHub can't tell
+# Bean's label from an agent's. The label is a rule for agents (never add it)
+# and a hard stop for anyone else. The approval comments come from
+# github-actions[bot], which neither agents nor outsiders can post as. The
+# check only blocks merges once main's branch protection requires it, with
+# "Do not allow bypassing the above settings" on.
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review]
 
 permissions:
   contents: read
-  issues: write          # create the label once, remove it after new commits
+  issues: write          # create the label once, post approvals, remove a stale label
   pull-requests: write
 
 concurrency:
   group: sensitive-files-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -40,39 +44,55 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ACTION: ${{ github.event.action }}
-          CHANGED: ${{ github.event.pull_request.changed_files }}
+          EVENT_LABEL: ${{ github.event.label.name }}
           LABEL: bean-approved
         run: |
           set -euo pipefail
           gh label create "$LABEL" --repo "$REPO" --color 0E8A16 \
             --description "Bean approved the sensitive files in this PR" 2>/dev/null || true
+          T="$RUNNER_TEMP"
+          gh api "repos/$REPO/pulls/$PR" --jq '.head.sha, .changed_files' > "$T/pr.txt"
           # New and old names (a rename out of scripts/ counts too), one per line.
           gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" \
-            --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/files.txt"
-          gh api "repos/$REPO/issues/$PR/labels?per_page=100" --jq '.[].name' > "$RUNNER_TEMP/labels.txt"
-          python3 -I - "$RUNNER_TEMP/files.txt" "$RUNNER_TEMP/labels.txt" <<'PY'
-          import os, subprocess, sys
+            --jq '.[] | .filename, (.previous_filename // empty)' > "$T/files.txt"
+          gh api "repos/$REPO/issues/$PR/labels?per_page=100" --jq '.[].name' > "$T/labels.txt"
+          gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
+            --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$T/bot.txt"
+          python3 -I - "$T" <<'PY'
+          import os, re, subprocess, sys
 
-          PREFIXES = ("scripts/", ".github/", "Config/", "Plugins/", "Tools/", ".claude/", ".vscode/")
-          NAMES = {"claude.md", "claude.local.md", "agents.md", ".gitmodules", ".gitattributes",
-                   ".lfsconfig", "makefile"}
-          EXTS = (".ps1", ".psm1", ".psd1", ".sh", ".bash", ".zsh", ".command", ".py", ".bat", ".cmd",
-                  ".cs", ".uproject", ".uplugin", ".exe", ".dll", ".dylib", ".so", ".jar",
-                  ".plist", ".applescript", ".scpt")
-
-          def sensitive(path):
-              low = path.lower()
-              base = low.rsplit("/", 1)[-1]
-              return (path.startswith(PREFIXES) or base in NAMES or low.endswith(EXTS)
-                      or "/.claude/" in "/" + low)
-
-          files = [l for l in open(sys.argv[1]).read().splitlines() if l]
-          labels = set(open(sys.argv[2]).read().splitlines())
+          T = sys.argv[1]
           env = os.environ
-          hits = sorted({f for f in files if sensitive(f)})
-          # The files API lists at most 3000 files; past that, assume the worst.
-          if int(env.get("CHANGED") or 0) > 3000:
+          head_now, changed = (open(f"{T}/pr.txt").read().split() + ["", "0"])[:2]
+          files = [l for l in open(f"{T}/files.txt").read().splitlines() if l]
+          labels = set(open(f"{T}/labels.txt").read().splitlines())
+          approved = set(re.findall(r"<!-- sensitive-files-approved:([0-9a-f]{40}) -->",
+                                    open(f"{T}/bot.txt").read()))
+          head, label = env["HEAD_SHA"], env["LABEL"]
+
+          # Never fine without Bean, wherever they are.
+          RUNS = (".ps1", ".psm1", ".psd1", ".sh", ".bash", ".zsh", ".command", ".py", ".bat", ".cmd",
+                  ".cs", ".csproj", ".sln", ".props", ".targets", ".pbxproj", ".uproject", ".uplugin",
+                  ".exe", ".dll", ".dylib", ".so", ".jar", ".js", ".vbs", ".reg", ".lnk", ".plist",
+                  ".applescript", ".scpt", ".ini", ".json", ".yml", ".yaml", ".toml", ".md")
+          DOC_OK = (".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".csv", ".txt", ".html",
+                    ".json", ".pdf", ".out")
+
+          def allowed(path):
+              low = path.lower()
+              parts = low.split("/")
+              if any(p.startswith(".") for p in parts):          # .claude/, .github/, .mcp.json ...
+                  return False
+              if path.startswith("Source/"):
+                  return not low.endswith(RUNS)
+              if path.startswith("docs/"):
+                  return low.endswith(DOC_OK) and parts[-1] not in ("claude.md", "agents.md")
+              return False
+
+          hits = sorted({f for f in files if not allowed(f)})
+          if int(changed or 0) > 3000:   # the files API lists at most 3000
               hits.append("(more than 3000 files changed: not all could be checked)")
 
           summary = open(env["GITHUB_STEP_SUMMARY"], "a")
@@ -80,23 +100,36 @@ jobs:
               print(line)
               summary.write(line + "\n")
 
+          if head_now and head_now != head:
+              say(f"The pull request moved on to {head_now[:8]}; the run for that commit decides.")
+              sys.exit(1)
           if not hits:
-              say(f"No sensitive files among {len(files)} changed.")
+              say(f"All {len(files)} changed files are game code under Source/ or pages under docs/.")
               sys.exit(0)
-          say("Sensitive files in this pull request:")
+          say("Files that need Bean's approval:")
           for h in hits:
               say(f"- `{h}`")
-          approved = env["LABEL"] in labels
-          if approved and env["ACTION"] == "synchronize":
-              subprocess.run(["gh", "api", "-X", "DELETE",
-                              f"repos/{env['REPO']}/issues/{env['PR']}/labels/{env['LABEL']}"], check=False)
-              say(f"New commits since `{env['LABEL']}` was added, so the label was removed. "
-                  "Bean adds it again after looking at the new commits.")
+
+          def gh(*args):
+              subprocess.run(["gh", "api", *args], check=False)
+
+          if label not in labels:
+              say(f"Waiting for Bean: he adds the `{label}` label after reading these files. "
+                  "Agents never add it.")
               sys.exit(1)
-          if approved:
-              say(f"`{env['LABEL']}` is on: Bean approved these.")
+          if env["ACTION"] == "labeled" and env.get("EVENT_LABEL") == label:
+              if head not in approved:
+                  gh("-X", "POST", f"repos/{env['REPO']}/issues/{env['PR']}/comments", "-f",
+                     f"body=<!-- sensitive-files-approved:{head} -->\n"
+                     f"`{label}` added: the files above are approved as of commit {head[:8]}. "
+                     "New commits need the label again.")
+              say(f"Approved as of {head[:8]}.")
               sys.exit(0)
-          say(f"Waiting for Bean: he adds the `{env['LABEL']}` label after reading these files. "
-              "Agents never add it.")
+          if head in approved:
+              say(f"Approved as of {head[:8]}.")
+              sys.exit(0)
+          gh("-X", "DELETE", f"repos/{env['REPO']}/issues/{env['PR']}/labels/{label}")
+          say(f"New commits since `{label}` was added, so the label was taken off. "
+              "Bean adds it again after looking at them.")
           sys.exit(1)
           PY
