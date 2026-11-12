@@ -1,4 +1,4 @@
-# Marina bake: skip unchanged tiles
+# World bakes: skip unchanged tiles
 
 `UWorldKitLibrary::BakeMarina` (`Source/SailingSim/Private/WorldKit.cpp`) builds the marina's geometry, splits it into
 40 m tiles and bakes each into a Nanite mesh, `/Game/World/Baked/SM_Marina_<x>_<y>`; the caller saves them
@@ -44,7 +44,15 @@ Cross-machine check (#632, PC, Nov 11): with the Mac's three re-saved tiles and 
 a PC bake kept all three by the tolerance check (`24 unchanged, kept as saved; 3 of them matched within tolerance`), left
 the Mac's files as they were and did not touch the sidecar.
 
-Bridges, shore and houses tiles still re-save on every bake; the same two helpers would cover them.
+## Bridges, shore and houses (follow-up to #632)
+
+The same check now runs for every tile bake (`BakeOrKeepTiles`, shared by `BakeMarina`, `BakeBridges`, `BakeShore` and
+`BakeHouses`): each kind keeps its own sidecar beside its tiles, `Marina.tilehash`, `Bridges_<Lake>.tilehash`,
+`Shore_<Lake>.tilehash` and `Houses_<Lake>.tilehash`, since those asset names carry the lake. The first bake after this
+change writes the three new sidecars (every tile has no recorded hash, so it bakes once as before) and they are committed
+with the tiles; from then on an unchanged tile is kept as saved. `scripts/make-houses.sh` and `scripts/bake-shore.sh`
+need no change: they save dirty packages only, as `import_world.py` does. The log line of each bake says how many tiles
+were kept and how many matched within tolerance.
 
 ## Far tiles and the tolerance (#653, Nov 12 2026)
 

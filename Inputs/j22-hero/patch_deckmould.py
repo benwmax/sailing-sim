@@ -15,7 +15,7 @@ import numpy as np
 
 ARGS = sys.argv[sys.argv.index("--") + 1:]
 FBX, OLD, NEW, OUT = ARGS[:4]
-CABIN_AFT, CABIN_FWD = -0.55, 1.65   # build_j22_hero.py
+CABIN_AFT, CABIN_FWD = -0.55, 1.57   # build_j22_hero.py
 DILATE = 3                           # px into the gutter (the bake's margin is 12)
 
 

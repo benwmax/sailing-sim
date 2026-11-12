@@ -17,11 +17,13 @@
 #include "Camera/PlayerCameraManager.h"
 #include "AudioMixerBlueprintLibrary.h"
 #include "SubmixEffects/AudioMixerSubmixEffectDynamicsProcessor.h"
+#include "Sound/AudioSettings.h"
+#include "Sound/SoundSubmix.h"
 
 namespace SailingAudioLocal
 {
 	// Settings > Audio, copied by SailingSound::UpdateMix on the game thread for the audio thread.
-	std::atomic<float> GMaster{ 0.8f };
+	std::atomic<float> GMaster{ 0.8f * 1.585f };   // the default master with the default make-up, until UpdateMix
 	std::atomic<float> GShare[int32(SailingSound::EGroup::Count)] = { { 1.f }, { 1.f }, { 1.f }, { 1.f } };
 	std::atomic<bool> GMono{ false };
 }
@@ -31,7 +33,7 @@ void SailingSound::UpdateMix()
 	using namespace SailingAudioLocal;
 	const USailingSettings* S = USailingSettings::Get();
 	if (!S) return;
-	GMaster = FMath::Clamp(S->Volume, 0.f, 1.f);
+	GMaster = FMath::Clamp(S->Volume, 0.f, 1.f) * FMath::Pow(10.f, MakeupGainDb() / 20.f);
 	GShare[int32(EGroup::Boat)] = FMath::Clamp(S->VolumeBoat, 0.f, 1.f);
 	GShare[int32(EGroup::World)] = FMath::Clamp(S->VolumeWorld, 0.f, 1.f);
 	GShare[int32(EGroup::Weather)] = FMath::Clamp(S->VolumeWeather, 0.f, 1.f);
@@ -47,6 +49,31 @@ float SailingSound::GroupShare(EGroup Group)
 float SailingSound::GroupGain(EGroup Group)
 {
 	return SailingAudioLocal::GMaster.load() * GroupShare(Group);
+}
+
+float SailingSound::MasterGain()
+{
+	return SailingAudioLocal::GMaster.load();
+}
+
+float SailingSound::MakeupGainDb()
+{
+	// Loudness check Nov 12 (scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under the plan's
+	// -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP, so +4 dB
+	// lifts it with 3 dB to spare. It is applied at the voices, not on the master submix: a gain or limiter added to the
+	// master at runtime (AddMasterSubmixEffect or a chain override, +12 dB in or out) moved the recording by 0.2 LU at
+	// most (the five-way check on f22849ff), so it never reached the recorded mix. The quiet scenes stay quieter than
+	// the breeze on purpose. Read again when a bench list swaps the command line.
+	static uint32 Gen = MAX_uint32;
+	static float Db = 4.f;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Db = 4.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingMakeupDb="), Db);
+		Db = FMath::Clamp(Db, -24.f, 12.f);
+	}
+	return Db;
 }
 
 bool SailingSound::IsMono()
@@ -144,6 +171,19 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	// Once per process: the master submix outlives the map reloads. The preset is rooted so the mixer keeps it.
 	static bool bAdded = false;
 	if (bAdded || !WorldContext || !GEngine || GEngine->UseSound() == false) return;
+	bAdded = true;
+	// Measuring (the loudness check, Nov 12: +4 dB of input gain did not show in the recording): -SailingNoMasterLimiter
+	// leaves the master untouched, -SailingMasterGainDb=<dB> and -SailingMasterOutDb=<dB> replace the input and output
+	// gains, -SailingMasterChain=override puts it on by a chain override, so a few runs of one scene say whether the
+	// effect is in the recorded path, which way onto the master works and which gain reaches the output.
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoMasterLimiter")))
+	{
+		SAIL_LOG(Display, TEXT("Sound: master limiter off (-SailingNoMasterLimiter)"));
+		return;
+	}
+	float InDb = 0.f, OutDb = 0.f;
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterGainDb="), InDb);
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterOutDb="), OutDb);
 	USubmixEffectDynamicsProcessorPreset* Limiter = NewObject<USubmixEffectDynamicsProcessorPreset>(GetTransientPackage(), TEXT("SailingMasterLimiter"));
 	FSubmixEffectDynamicsProcessorSettings L;
 	L.DynamicsProcessorType = ESubmixEffectDynamicsProcessorType::Limiter;
@@ -153,15 +193,37 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	L.ReleaseTimeMsec = 150.f;
 	L.ThresholdDb = -1.5f;   // under the -1 dBTP ceiling (docs: the sound plan's loudness target)
 	L.KneeBandwidthDb = 3.f;
-	// Make-up gain (loudness check Nov 12, scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under
-	// the plan's -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP,
-	// so +4 dB lifts it with 3 dB to spare before the limiter. The quiet scenes stay quieter than the breeze on purpose.
-	L.InputGainDb = 4.f;
-	L.OutputGainDb = 0.f;
+	// The make-up gain is at the voices (SailingSound::MakeupGainDb): the five-way check found no gain here reaching the
+	// recorded mix. The limiter stays as a ceiling in case it does process on some device.
+	L.InputGainDb = InDb;
+	L.OutputGainDb = OutDb;
 	Limiter->SetSettings(L);
 	Limiter->AddToRoot();
-	UAudioMixerBlueprintLibrary::AddMasterSubmixEffect(WorldContext, Limiter);
-	bAdded = true;
+	// Two ways onto the master (-SailingMasterChain=append|override). Append is AddMasterSubmixEffect, which adds to the
+	// submix's first effect chain; UE-104414 reports effects added at runtime doing nothing, and the engine's default
+	// master submix has no chain of its own. Override sets a whole chain on the main submix object, which the mixer
+	// builds as a new chain of its own.
+	FString Chain = TEXT("append");
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterChain="), Chain);
+	USoundSubmix* Main = nullptr;
+	if (Chain == TEXT("override"))
+	{
+		Main = Cast<USoundSubmix>(GetDefault<UAudioSettings>()->MasterSubmix.TryLoad());
+		if (Main)
+		{
+			Main->AddToRoot();
+			TArray<USoundEffectSubmixPreset*> Presets;
+			Presets.Add(Limiter);
+			UAudioMixerBlueprintLibrary::SetSubmixEffectChainOverride(WorldContext, Main, Presets, 0.f);
+		}
+		else
+		{
+			SAIL_LOG(Warning, TEXT("Sound: no main submix object for the override chain; appending instead"));
+		}
+	}
+	if (!Main) UAudioMixerBlueprintLibrary::AddMasterSubmixEffect(WorldContext, Limiter);
+	SAIL_LOG(Display, TEXT("Sound: master limiter added by %s (submix %s; input %+.1f dB, output %+.1f dB, threshold %.1f dB)"),
+		Main ? TEXT("override") : TEXT("append"), Main ? *Main->GetPathName() : TEXT("master"), InDb, OutDb, L.ThresholdDb);
 }
 
 const TCHAR* SailingCueName(ESailingCue Cue)
@@ -365,6 +427,17 @@ float USailingWorldSynth::Noise()
 	return (Rng & 0xFFFFFF) / float(0x7FFFFF) - 1.f;
 }
 
+namespace SailingAudioLocal
+{
+	// Linear to 0.8, then a smooth knee that never passes 1: the master's make-up gain (up to about 1.6) would otherwise
+	// hard-clip the world voices' loudest peaks (a close strike's rumble shapes to 0.95 before the gain).
+	static float SoftCeiling(float X)
+	{
+		const float A = FMath::Abs(X);
+		return A <= 0.8f ? X : FMath::Sign(X) * (0.8f + 0.2f * FMath::Tanh((A - 0.8f) / 0.2f));
+	}
+}
+
 int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSamples)
 {
 	OutAudio.SetNumUninitialized(NumSamples * 2);
@@ -462,7 +535,7 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 			break;
 		default: break;
 		}
-		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
+		Out[I] = bMuted.load() ? int16(0) : int16(SailingAudioLocal::SoftCeiling(FMath::Tanh(Mix * OutLevel * 1.5f) * Gain) * 30000.f);
 	}
 	return NumSamples;
 }

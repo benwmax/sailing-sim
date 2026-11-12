@@ -187,3 +187,24 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
 - Findings for later: the trunk's front reads blunt and pointed next to the Harken drawing; a small notch where each
   coaming end meets the trunk side; the trunk's height and aft face position against IMG_9224 (its top 120-150 px high
   in the overlay).
+
+## Wave 3b changes (Nov 12): the trunk's height and front
+
+- The roof stood a fixed 0.30 m over the sheer (`CABIN_H0`). The trailer broadside photo (Commons
+  `j22-broadside-trailer`, scaled 6.22 mm/px from the stem and the keel's leading edge) gives the crown 0.29 m over the
+  sheer aft and 0.17-0.19 at the top of the raked front, which the Mac's IMG_9224 overlay agreed with (the top read
+  120-150 px high). `cabin_hgt(x)` now falls from `CABIN_H_AFT` 0.23 at the aft face to `CABIN_H_BRK` 0.12 at
+  `CABIN_BRK` 1.29 (the side's height; the camber adds 0.055 at the centreline), and the raked front drops from there.
+- The front was pointed at 1.65; the photo puts its foot at about 1.55, j22.org's plan blunt at 1.57 (0.41 half
+  width), Harken 1.5-1.6. `CABIN_FWD` 1.57 and `CABIN_PLAN` ends square at half width 0.43 (no nose taper).
+- The portlights stay inside the trunk's lower sides: `win_top(x)`/`win_bot(x)` in `j22_interior.py` slope with the
+  roof, the forward end is raked, and the build stops if a window would cross the shoulder or the foot. The deck
+  mould's window mask in `j22_materials.py` follows the same lines.
+- Everything on the roof or at the mast foot follows it down: hatches, handrails, winches and cams, the mast step
+  (the mast's foot drops 109 mm, its top stays), turning blocks, cunningham, vang, compression post.
+- Card: the widths are now the foot out to out 5 cm over the sheer (12 cm under the top crossed the windows once the
+  roof came down): targets 1.66 / 1.49 / 1.30 m at x -0.45 / 0.40 / 1.00; built 1.66 / 1.54 / 1.32.
+- Crew: `FCrewCabinTrunk` gains `PlanTop` and `HeightAt(X)`; the hero's table mirrors the built top, and
+  `CrewFloorZ`/`CrewInsideBoat` use it (other boats keep the fixed `Height`).
+- Open: the aft face at -0.55 against the photo's -0.44 to -0.48 (j22.org -0.50): moving it couples the cockpit's
+  forward end, the companionway and the crew wells, so it is its own round.

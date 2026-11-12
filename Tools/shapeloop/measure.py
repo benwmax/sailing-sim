@@ -110,8 +110,9 @@ def footwell(ob, x, dz=0.10):
     return min(port) + min(stbd), sole
 
 
-def outer_width(ob, x, below_top):
-    """Width of ob's cut at station x, below_top under the cut's highest point (a trunk's sides, out to out)."""
+def outer_width(ob, x, below_top=None, at_z=None):
+    """Width of ob's cut at station x, below_top under the cut's highest point or at height at_z (a trunk's sides, out
+    to out)."""
     bm = bmesh.new()
     bm.from_object(ob, DG)
     bm.transform(ob.matrix_world)
@@ -121,7 +122,7 @@ def outer_width(ob, x, below_top):
     if not cut:
         bm.free()
         return None
-    h = max(v.co.z for e in cut for v in e.verts) - below_top
+    h = at_z if at_z is not None else max(v.co.z for e in cut for v in e.verts) - below_top
     ys = []
     for e in cut:
         a, b = e.verts[0].co, e.verts[1].co
@@ -153,9 +154,20 @@ if ck is not None and ck.name in objects:
 
 cb = bpy.data.objects.get("Cabin")
 if cb is not None and cb.name in objects:
-    # the trunk's width 12 cm under its top at three stations (wave 3's card; x in the hero's frame)
+    # the trunk's foot, out to out, 5 cm over the sheer at three stations (wave 3's card; x in the hero's frame): the
+    # plans draw the foot, and that height stays under the portlights (12 cm under the top, before wave 3b lowered the
+    # trunk, cut through them)
+    dk = bpy.data.objects.get("Deck")
     for key, x in (("cabin_width_aft", -0.45), ("cabin_width_mid", 0.40), ("cabin_width_fwd", 1.00)):
-        w = outer_width(cb, x, 0.12)
+        if dk is None:
+            break
+        dv = [dk.matrix_world @ v.co for v in dk.data.vertices]
+        near = [v for v in dv if abs(v.x - x) < 0.03]
+        if not near:
+            continue
+        ymax = max(abs(v.y) for v in near)
+        sheer = max(v.z for v in near if abs(v.y) > ymax - 0.03)
+        w = outer_width(cb, x, at_z=sheer + 0.05)
         if w:
             features[key] = r(w)
 

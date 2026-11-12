@@ -653,65 +653,6 @@ void BuildBridgeGeometry(const FLakeData& Lake, FKitGeometry& G)
 	}
 }
 
-TArray<UStaticMesh*> UWorldKitLibrary::BakeBridges(const FString& LakeName)
-{
-	TArray<UStaticMesh*> Out;
-#if WITH_EDITOR
-	FLakeData Lake;
-	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
-	FKitGeometry All;
-	BuildBridgeGeometry(Lake, All);
-	TMap<FIntPoint, FKitGeometry> Tiles;
-	All.SplitTiles(BridgeTileM, Tiles);
-	for (const auto& KV : Tiles)
-	{
-		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Bridges_") + LakeName, KV.Key))) Out.Add(M);
-	}
-	SAIL_LOG(Display, TEXT("Baked the %s bridges: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
-#endif
-	return Out;
-}
-
-TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
-{
-	TArray<UStaticMesh*> Out;
-#if WITH_EDITOR
-	FLakeData Lake;
-	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
-	FKitGeometry All;
-	BuildShoreGeometry(Lake, All);
-	TMap<FIntPoint, FKitGeometry> Tiles;
-	All.SplitTiles(ShoreTileM, Tiles);
-	for (const auto& KV : Tiles)
-	{
-		if (UStaticMesh* M = BakeMesh(KV.Value, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Shore_") + LakeName, KV.Key))) Out.Add(M);
-	}
-	SAIL_LOG(Display, TEXT("Baked the %s shore: %d quads in %d tiles"), *LakeName, All.NumQuads(), Out.Num());
-#endif
-	return Out;
-}
-
-TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
-{
-	TArray<UStaticMesh*> Out;
-#if WITH_EDITOR
-	FLakeData Lake;
-	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || Lake.Houses.Num() == 0) return Out;
-	TMap<FIntPoint, TArray<int32>> Tiles;
-	HouseTiles(Lake, Tiles);
-	int64 Quads = 0;
-	for (const auto& KV : Tiles)
-	{
-		FKitGeometry G;
-		BuildHouseGeometry(Lake, KV.Value, G);
-		Quads += G.NumQuads();
-		if (UStaticMesh* M = BakeMesh(G, TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(TEXT("Houses_") + LakeName, KV.Key))) Out.Add(M);
-	}
-	SAIL_LOG(Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles"), *LakeName, Lake.Houses.Num(), Quads, Out.Num());
-#endif
-	return Out;
-}
-
 #if WITH_EDITOR
 // docs/bake-hash-skip: what a baked tile is made of, hashed so a bake can tell an unchanged tile from a changed one. SHA-1
 // over each look's name and its vertices (positions to 0.1 mm, normals, tangents and UVs to 1e-4, colours as bytes) and
@@ -859,27 +800,20 @@ static void WriteTileHashes(const FString& File, TMap<FString, FString> Hashes)
 	if (FFileHelper::LoadFileToString(Old, *File) && Old == Text) return;
 	FFileHelper::SaveStringToFile(Text, *File, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 }
-#endif
 
-TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
+// Bakes each tile, or keeps it as saved when the sidecar Content/World/Baked/<SidecarName>.tilehash records its geometry
+// (docs/bake-hash-skip). A kept tile is returned loaded and not dirty, so the callers (which save only dirty packages) leave
+// its .uasset alone and import_world.py does not delete it as stale. Prefix names the assets: SM_<Prefix>_<x>_<y>.
+static void BakeOrKeepTiles(const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, const FString& SidecarName, TArray<UStaticMesh*>& Out, int32& Skipped, int32& Matched)
 {
-	TArray<UStaticMesh*> Out;
-#if WITH_EDITOR
-	FLakeData Lake;
-	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || !Lake.Marina.IsLoaded()) return Out;
-	FKitGeometry All;
-	AMarinaActor::BuildGeometry(Lake.Marina, &Lake.Terrain, [](const FString&) { return true; }, All, AMarinaActor::HasDockKit());
-	TMap<FIntPoint, FKitGeometry> Tiles;
-	All.SplitTiles(TileM, Tiles);
-	// docs/bake-hash-skip: a tile whose geometry hashes as the sidecar says, and whose asset exists, is returned as loaded
-	// (not dirty: the callers save only dirty packages), so an unchanged tile isn't re-saved with a new LFS object.
-	const FString Sidecar = FPaths::ProjectContentDir() / TEXT("World/Baked/Marina.tilehash");
+	const FString Sidecar = FPaths::ProjectContentDir() / TEXT("World/Baked") / SidecarName + TEXT(".tilehash");
 	const TMap<FString, FString> Before = ReadTileHashes(Sidecar);
 	TMap<FString, FString> After;
-	int32 Skipped = 0, Matched = 0;
+	Skipped = 0;
+	Matched = 0;
 	for (const auto& KV : Tiles)
 	{
-		const FString Name = FKitGeometry::TileAssetName(TEXT("Marina"), KV.Key);
+		const FString Name = FKitGeometry::TileAssetName(Prefix, KV.Key);
 		const FString Path = TEXT("/Game/World/Baked/") + Name;
 		const FString Hash = TileGeometryHash(KV.Value);
 		After.Add(Name, Hash);   // replaced below by the recorded hash for a tile kept within tolerance
@@ -897,9 +831,83 @@ TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
 			if (!bSameHash) ++Matched;
 			continue;
 		}
-		if (UStaticMesh* M = BakeMesh(KV.Value, Path)) Out.Add(M);
+		if (UStaticMesh* M = UWorldKitLibrary::BakeMesh(KV.Value, Path)) Out.Add(M);
 	}
 	WriteTileHashes(Sidecar, After);
+}
+#endif
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeBridges(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
+	FKitGeometry All;
+	BuildBridgeGeometry(Lake, All);
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	All.SplitTiles(BridgeTileM, Tiles);
+	int32 Skipped = 0, Matched = 0;
+	BakeOrKeepTiles(Tiles, TEXT("Bridges_") + LakeName, TEXT("Bridges_") + LakeName, Out, Skipped, Matched);
+	SAIL_LOG(Display, TEXT("Baked the %s bridges: %d quads in %d tiles (%d unchanged, kept as saved; %d of them matched within tolerance)"), *LakeName, All.NumQuads(), Out.Num(), Skipped, Matched);
+#endif
+	return Out;
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeShore(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName)) return Out;
+	FKitGeometry All;
+	BuildShoreGeometry(Lake, All);
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	All.SplitTiles(ShoreTileM, Tiles);
+	int32 Skipped = 0, Matched = 0;
+	BakeOrKeepTiles(Tiles, TEXT("Shore_") + LakeName, TEXT("Shore_") + LakeName, Out, Skipped, Matched);
+	SAIL_LOG(Display, TEXT("Baked the %s shore: %d quads in %d tiles (%d unchanged, kept as saved; %d of them matched within tolerance)"), *LakeName, All.NumQuads(), Out.Num(), Skipped, Matched);
+#endif
+	return Out;
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeHouses(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || Lake.Houses.Num() == 0) return Out;
+	TMap<FIntPoint, TArray<int32>> Tiles;
+	HouseTiles(Lake, Tiles);
+	int64 Quads = 0;
+	TMap<FIntPoint, FKitGeometry> Geometry;
+	for (const auto& KV : Tiles)
+	{
+		FKitGeometry& G = Geometry.Add(KV.Key);
+		BuildHouseGeometry(Lake, KV.Value, G);
+		Quads += G.NumQuads();
+	}
+	int32 Skipped = 0, Matched = 0;
+	BakeOrKeepTiles(Geometry, TEXT("Houses_") + LakeName, TEXT("Houses_") + LakeName, Out, Skipped, Matched);
+	SAIL_LOG(Display, TEXT("Baked the %s houses: %d houses, %lld quads in %d tiles (%d unchanged, kept as saved; %d of them matched within tolerance)"), *LakeName, Lake.Houses.Num(), Quads, Out.Num(), Skipped, Matched);
+#endif
+	return Out;
+}
+
+TArray<UStaticMesh*> UWorldKitLibrary::BakeMarina(const FString& LakeName)
+{
+	TArray<UStaticMesh*> Out;
+#if WITH_EDITOR
+	FLakeData Lake;
+	if (!Lake.Load(FLakeData::DefaultDirectory(), LakeName) || !Lake.Marina.IsLoaded()) return Out;
+	FKitGeometry All;
+	AMarinaActor::BuildGeometry(Lake.Marina, &Lake.Terrain, [](const FString&) { return true; }, All, AMarinaActor::HasDockKit());
+	TMap<FIntPoint, FKitGeometry> Tiles;
+	All.SplitTiles(TileM, Tiles);
+	// docs/bake-hash-skip: a tile whose geometry the sidecar records, and whose asset exists, is returned as loaded (not
+	// dirty: the callers save only dirty packages), so an unchanged tile isn't re-saved with a new LFS object.
+	int32 Skipped = 0, Matched = 0;
+	BakeOrKeepTiles(Tiles, TEXT("Marina"), TEXT("Marina"), Out, Skipped, Matched);
 	SAIL_LOG(Display, TEXT("Baked the %s marina: %d quads in %d tiles (%d unchanged, kept as saved; %d of them matched within tolerance)"), *LakeName, All.NumQuads(), Out.Num(), Skipped, Matched);
 #endif
 	return Out;
