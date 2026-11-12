@@ -4,10 +4,10 @@ name: Sensitive files
 # rules) and pages under docs/ without Bean. Anything else (scripts, CI,
 # Config, Plugins, Tools, Content, Inputs, CLAUDE.md, the .uproject, any
 # .sh/.ps1/.py/.bat ...) can run on Bean's Mac or PC or steer the agents, so
-# this check fails until Bean adds the `bean-approved` label. Adding the label
-# approves the commit the pull request is on at that moment (the check posts
-# a comment naming it); new commits after that fail the check and take the
-# label off, and so does a new base branch. Security review, 11 Nov 2026.
+# this check fails until Bean adds the `bean-approved` label. The label counts
+# only if it was added after the pull request's last commit and last change
+# of base branch (read from its timeline); otherwise the check fails and takes
+# the label off. Security review, 11 Nov 2026.
 #
 # pull_request_target runs THIS file as it is on main, so a pull request can't
 # switch the check off by editing it. It never checks out or runs the pull
@@ -15,10 +15,7 @@ name: Sensitive files
 #
 # What it can't do: agents push and label as benwmax too, so GitHub can't tell
 # Bean's label from an agent's. The label is a rule for agents (never add it)
-# and a hard stop for anyone else. Approvals are this check's own unedited
-# github-actions[bot] comments, each naming the run that posted it, which is
-# confirmed to be this file on pull_request_target. The
-# check only blocks merges once main's branch protection requires it, with
+# and a hard stop for anyone else. The check only blocks merges once main's branch protection requires it, with
 # "Do not allow bypassing the above settings" on.
 
 on:
@@ -26,9 +23,8 @@ on:
     types: [opened, synchronize, reopened, edited, labeled, unlabeled, ready_for_review]
 
 permissions:
-  actions: read          # confirm which run posted an approval
   contents: read
-  issues: write          # create the label once, post approvals, remove a stale label
+  issues: write          # create the label once, remove a stale label
   pull-requests: write
 
 concurrency:
@@ -48,9 +44,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           ACTION: ${{ github.event.action }}
-          EVENT_LABEL: ${{ github.event.label.name }}
           LABEL: bean-approved
-          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           gh label create "$LABEL" --repo "$REPO" --color 0E8A16 \
@@ -61,12 +55,11 @@ jobs:
           gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" \
             --jq '.[] | .filename, (.previous_filename // empty)' > "$T/files.txt"
           gh api "repos/$REPO/issues/$PR/labels?per_page=100" --jq '.[].name' > "$T/labels.txt"
-          # Approvals this check posted: never edited since, one JSON object per line.
-          gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and .created_at == .updated_at)
-                  | {body}' > "$T/bot.jsonl"
+          # The pull request's history in order: label adds, commits, base changes.
+          gh api --paginate "repos/$REPO/issues/$PR/timeline?per_page=100" \
+            --jq '.[] | {event, label: (.label.name // null)}' > "$T/timeline.jsonl"
           python3 -I - "$T" <<'PY'
-          import hashlib, json, os, re, subprocess, sys
+          import json, os, subprocess, sys
 
           T = sys.argv[1]
           env = os.environ
@@ -74,20 +67,22 @@ jobs:
           files = [l for l in open(f"{T}/files.txt").read().splitlines() if l]
           labels = set(open(f"{T}/labels.txt").read().splitlines())
           head, label = env["HEAD_SHA"], env["LABEL"]
-          APPROVAL = re.compile(r"<!-- sensitive-files-approved:([0-9a-f]{40}):([0-9a-f]{16}):(\d+) -->")
 
-          def gh(*args, capture=False):
-              r = subprocess.run(["gh", "api", *args], check=False, text=True,
-                                 capture_output=capture)
-              return r.stdout if capture else None
+          def gh(*args):
+              subprocess.run(["gh", "api", *args], check=False)
 
-          def posted_by_this_check(run_id):
-              """The comment came from a run of this file on main, not from some
-              other workflow posting as github-actions[bot]."""
-              out = gh(f"repos/{env['REPO']}/actions/runs/{run_id}", "--jq", ".path, .event", capture=True)
-              got = (out or "").split()
-              return (len(got) == 2 and got[0].split("@")[0] == ".github/workflows/sensitive-files.yml"
-                      and got[1] == "pull_request_target")
+          def approved_now():
+              """Bean's label was added after the last commit and the last change
+              of base branch. Only a real label add makes a `labeled` event."""
+              last_label, last_change = -1, -1
+              for i, line in enumerate(open(f"{T}/timeline.jsonl")):
+                  ev = json.loads(line)
+                  if ev.get("event") == "labeled" and ev.get("label") == label:
+                      last_label = i
+                  elif ev.get("event") in ("committed", "head_ref_force_pushed", "head_ref_restored",
+                                           "base_ref_changed", "base_ref_force_pushed"):
+                      last_change = i
+              return last_label > last_change
 
           # Never fine without Bean, wherever they are.
           RUNS = (".ps1", ".psm1", ".psd1", ".sh", ".bash", ".zsh", ".command", ".py", ".bat", ".cmd",
@@ -111,16 +106,6 @@ jobs:
           hits = sorted({f for f in files if not allowed(f)})
           if int(changed or 0) > 3000:   # the files API lists at most 3000
               hits.append("(more than 3000 files changed: not all could be checked)")
-          # What Bean approves: this commit, onto this base branch, with these files.
-          what = hashlib.sha256("\n".join([base] + hits).encode()).hexdigest()[:16]
-
-          def approved_now():
-              for line in open(f"{T}/bot.jsonl"):
-                  for sha, h, run_id in APPROVAL.findall(json.loads(line).get("body") or ""):
-                      if sha == head and h == what and posted_by_this_check(run_id):
-                          return True
-              return False
-
           summary = open(env["GITHUB_STEP_SUMMARY"], "a")
           def say(line):
               print(line)
@@ -140,15 +125,6 @@ jobs:
               say(f"Waiting for Bean: he adds the `{label}` label after reading these files. "
                   "Agents never add it.")
               sys.exit(1)
-          if env["ACTION"] == "labeled" and env.get("EVENT_LABEL") == label:
-              if not approved_now():
-                  gh("-X", "POST", f"repos/{env['REPO']}/issues/{env['PR']}/comments", "-f",
-                     f"body=<!-- sensitive-files-approved:{head}:{what}:{env['RUN_ID']} -->\n"
-                     f"`{label}` added: {len(hits)} sensitive file(s) approved as of commit "
-                     f"{head[:8]} into `{base}`. New commits, a new base branch or an edit to "
-                     "this comment need the label again.")
-              say(f"Approved as of {head[:8]}.")
-              sys.exit(0)
           if approved_now():
               say(f"Approved as of {head[:8]}.")
               sys.exit(0)
