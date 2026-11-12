@@ -193,8 +193,12 @@ namespace SailingSound
 	enum class EGroup : uint8 { Boat, World, Weather, Signals, Count };
 	/** Reads Settings > Audio into the gains the synths read on the audio thread (the player's pawn calls it each frame). */
 	SAILINGSIM_API void UpdateMix();
-	/** Master x group, 0..1; safe on any thread. */
+	/** Master (with the make-up gain, so up to about 1.6) x group; safe on any thread. */
 	SAILINGSIM_API float GroupGain(EGroup Group);
+	/** The master as the voices apply it: Settings > Audio's master times the make-up gain (MakeupGainDb). */
+	SAILINGSIM_API float MasterGain();
+	/** Make-up gain in dB applied at every voice (default 4: the loudness check, docs/sound; -SailingMakeupDb=<dB>). */
+	SAILINGSIM_API float MakeupGainDb();
 	/** The group's own slider, without the master; safe on any thread. */
 	SAILINGSIM_API float GroupShare(EGroup Group);
 	/** Settings > Accessibility > Mono audio: placed sounds keep their distance but are centred in both ears. */

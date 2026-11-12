@@ -3082,9 +3082,10 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	P.TrimRate = FMath::Clamp(float(-((Controls.MainSheet - PrevMainSheet) + (Controls.JibSheet - PrevJibSheet)) / Dt) * 2.f, -1.f, 1.f);
 	PrevMainSheet = Controls.MainSheet;
 	PrevJibSheet = Controls.JibSheet;
-	P.Volume = USailingSettings::Get()->Volume;
-	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice.
+	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice. P.Volume carries the
+	// make-up gain (SailingSound::MasterGain) like every other voice.
 	if (!bTrafficBoat) { SailingSound::UpdateMix(); SailingSound::TickAudioRecording(this); }
+	P.Volume = SailingSound::MasterGain();
 	P.GainBoat = SailingSound::GroupShare(SailingSound::EGroup::Boat);
 	P.GainWeather = SailingSound::GroupShare(SailingSound::EGroup::Weather);
 	P.GainSignals = SailingSound::GroupShare(SailingSound::EGroup::Signals);

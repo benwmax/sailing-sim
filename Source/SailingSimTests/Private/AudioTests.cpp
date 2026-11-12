@@ -1,11 +1,13 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/Parse.h"
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "Sound/SoundWave.h"
 #include "SailingAudio.h"
+#include "BenchRunner.h"
 #include "SailingSettings.h"
 #include "SoundCaptions.h"
 
@@ -82,10 +84,15 @@ bool FSailingAudioMixTest::RunTest(const FString& Parameters)
 	const bool bKeepMono = S->bMonoAudio;
 	S->Volume = 0.5f; S->VolumeBoat = 0.8f; S->VolumeWorld = 0.4f; S->VolumeWeather = 0.f; S->VolumeSignals = 1.f; S->bMonoAudio = true;
 	UpdateMix();
-	TestEqual(TEXT("On board = master x slider"), GroupGain(EGroup::Boat), 0.4f, 1e-5f);
-	TestEqual(TEXT("Lake and shore = master x slider"), GroupGain(EGroup::World), 0.2f, 1e-5f);
+	// Every voice carries the make-up gain (4 dB unless -SailingMakeupDb= says otherwise).
+	const float Up = FMath::Pow(10.f, MakeupGainDb() / 20.f);
+	FString Given;
+	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingMakeupDb="), Given)) TestEqual(TEXT("Make-up gain is 4 dB by default"), MakeupGainDb(), 4.f, 1e-5f);
+	TestEqual(TEXT("Master carries the make-up"), MasterGain(), 0.5f * Up, 1e-5f);
+	TestEqual(TEXT("On board = master x slider"), GroupGain(EGroup::Boat), 0.4f * Up, 1e-5f);
+	TestEqual(TEXT("Lake and shore = master x slider"), GroupGain(EGroup::World), 0.2f * Up, 1e-5f);
 	TestEqual(TEXT("Weather muted"), GroupGain(EGroup::Weather), 0.f, 1e-5f);
-	TestEqual(TEXT("Signals at the master"), GroupGain(EGroup::Signals), 0.5f, 1e-5f);
+	TestEqual(TEXT("Signals at the master"), GroupGain(EGroup::Signals), 0.5f * Up, 1e-5f);
 	TestEqual(TEXT("Share leaves the master out"), GroupShare(EGroup::Boat), 0.8f, 1e-5f);
 	TestTrue(TEXT("Mono read"), IsMono());
 	TestTrue(TEXT("Thunder is weather"), CueGroup(ESailingCue::Thunder) == EGroup::Weather);

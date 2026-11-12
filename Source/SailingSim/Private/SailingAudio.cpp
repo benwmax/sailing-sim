@@ -33,7 +33,7 @@ void SailingSound::UpdateMix()
 	using namespace SailingAudioLocal;
 	const USailingSettings* S = USailingSettings::Get();
 	if (!S) return;
-	GMaster = FMath::Clamp(S->Volume, 0.f, 1.f);
+	GMaster = FMath::Clamp(S->Volume, 0.f, 1.f) * FMath::Pow(10.f, MakeupGainDb() / 20.f);
 	GShare[int32(EGroup::Boat)] = FMath::Clamp(S->VolumeBoat, 0.f, 1.f);
 	GShare[int32(EGroup::World)] = FMath::Clamp(S->VolumeWorld, 0.f, 1.f);
 	GShare[int32(EGroup::Weather)] = FMath::Clamp(S->VolumeWeather, 0.f, 1.f);
@@ -49,6 +49,31 @@ float SailingSound::GroupShare(EGroup Group)
 float SailingSound::GroupGain(EGroup Group)
 {
 	return SailingAudioLocal::GMaster.load() * GroupShare(Group);
+}
+
+float SailingSound::MasterGain()
+{
+	return SailingAudioLocal::GMaster.load();
+}
+
+float SailingSound::MakeupGainDb()
+{
+	// Loudness check Nov 12 (scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under the plan's
+	// -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP, so +4 dB
+	// lifts it with 3 dB to spare. It is applied at the voices, not on the master submix: a gain or limiter added to the
+	// master at runtime (AddMasterSubmixEffect or a chain override, +12 dB in or out) moved the recording by 0.2 LU at
+	// most (the five-way check on f22849ff), so it never reached the recorded mix. The quiet scenes stay quieter than
+	// the breeze on purpose. Read again when a bench list swaps the command line.
+	static uint32 Gen = MAX_uint32;
+	static float Db = 4.f;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Db = 4.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingMakeupDb="), Db);
+		Db = FMath::Clamp(Db, -24.f, 12.f);
+	}
+	return Db;
 }
 
 bool SailingSound::IsMono()
@@ -156,7 +181,7 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 		SAIL_LOG(Display, TEXT("Sound: master limiter off (-SailingNoMasterLimiter)"));
 		return;
 	}
-	float InDb = 4.f, OutDb = 0.f;
+	float InDb = 0.f, OutDb = 0.f;
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterGainDb="), InDb);
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingMasterOutDb="), OutDb);
 	USubmixEffectDynamicsProcessorPreset* Limiter = NewObject<USubmixEffectDynamicsProcessorPreset>(GetTransientPackage(), TEXT("SailingMasterLimiter"));
@@ -168,9 +193,8 @@ void SailingSound::EnsureMasterLimiter(UObject* WorldContext)
 	L.ReleaseTimeMsec = 150.f;
 	L.ThresholdDb = -1.5f;   // under the -1 dBTP ceiling (docs: the sound plan's loudness target)
 	L.KneeBandwidthDb = 3.f;
-	// Make-up gain (loudness check Nov 12, scripts/loudness-check.sh on main bc7e8801): the mix measured 4 to 9 LU under
-	// the plan's -18 LUFS (breeze -20.2, storm -22.6, race -26.8, dusk -23.9) with true peaks no higher than -8.1 dBTP,
-	// so +4 dB lifts it with 3 dB to spare before the limiter. The quiet scenes stay quieter than the breeze on purpose.
+	// The make-up gain is at the voices (SailingSound::MakeupGainDb): the five-way check found no gain here reaching the
+	// recorded mix. The limiter stays as a ceiling in case it does process on some device.
 	L.InputGainDb = InDb;
 	L.OutputGainDb = OutDb;
 	Limiter->SetSettings(L);
@@ -500,7 +524,7 @@ int32 USailingWorldSynth::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumS
 			break;
 		default: break;
 		}
-		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f), -1.f, 1.f) * 30000.f * Gain);
+		Out[I] = bMuted.load() ? int16(0) : int16(FMath::Clamp(FMath::Tanh(Mix * OutLevel * 1.5f) * Gain, -1.f, 1.f) * 30000.f);
 	}
 	return NumSamples;
 }
