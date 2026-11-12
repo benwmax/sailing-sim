@@ -5,7 +5,6 @@
 # records the master mix after the 3 s warm-up to Saved/Bench/loud-<scene>.audio.wav; then scripts/loudness_check.py
 # measures each file (integrated LUFS, loudness range, true peak, clipping) against -18 LUFS +-3 and -1 dBTP
 # (LOUD_ARGS="--target -16 --tolerance 2" to change) and writes Artifacts/loudness.csv. Exit 1 when a scene fails.
-# EXTRA="<game args>" adds arguments to every scene (e.g. EXTRA=-SailingNoMasterLimiter); TAG=<name> suffixes the shots.
 # The recording is what the Mac's output device gets (stereo here; 5.1/7.1 when the Mac sends that).
 source "$(dirname "$0")/env.sh"
 REC="${1:-30}"; shift || true
@@ -22,17 +21,16 @@ args_for() {
 FILES=()
 for S in "${SCENES[@]}"; do
   A=$(args_for "$S")
-  SHOT="loud-$S${TAG:+-$TAG}"
-  OUT="$REPO_ROOT/Saved/Bench/$SHOT.audio.wav"
-  rm -f "$OUT" "$REPO_ROOT/Saved/BouncedWavFiles/$SHOT.audio.wav"
+  OUT="$REPO_ROOT/Saved/Bench/loud-$S.audio.wav"
+  rm -f "$OUT" "$REPO_ROOT/Saved/BouncedWavFiles/loud-$S.audio.wav"
   echo "== $S: $A"
   # shellcheck disable=SC2086
-  "$REPO_ROOT/scripts/run-game.sh" $((REC + 8)) $A ${EXTRA:-} -SailingShot="$SHOT" -SailingRecordAudio="$REC" -SailingNoGpuSlices >/dev/null
-  [[ -f "$OUT" ]] || OUT="$REPO_ROOT/Saved/BouncedWavFiles/$SHOT.audio.wav"
+  "$REPO_ROOT/scripts/run-game.sh" $((REC + 8)) $A -SailingShot="loud-$S" -SailingRecordAudio="$REC" -SailingNoGpuSlices >/dev/null
+  [[ -f "$OUT" ]] || OUT="$REPO_ROOT/Saved/BouncedWavFiles/loud-$S.audio.wav"
   if [[ -f "$OUT" ]]; then FILES+=("$OUT"); else echo "$S: no recording (see the game log for 'Sound: recording')" >&2; fi
 done
 [[ ${#FILES[@]} -gt 0 ]] || { echo "no recordings" >&2; exit 1; }
 PY="$REPO_ROOT/Tools/venv/bin/python"; [[ -x "$PY" ]] || PY=python3
 mkdir -p "$REPO_ROOT/Artifacts"
 # shellcheck disable=SC2086
-"$PY" -I "$REPO_ROOT/scripts/loudness_check.py" "${FILES[@]}" --csv "$REPO_ROOT/Artifacts/loudness${TAG:+-$TAG}.csv" ${LOUD_ARGS:-}
+"$PY" -I "$REPO_ROOT/scripts/loudness_check.py" "${FILES[@]}" --csv "$REPO_ROOT/Artifacts/loudness.csv" ${LOUD_ARGS:-}
