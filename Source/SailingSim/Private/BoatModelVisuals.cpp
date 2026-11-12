@@ -60,6 +60,12 @@ namespace
 		constexpr uint8 Plain = 255;
 	}
 
+	/** Boat skins (docs/skins): the colourway column each look draws with on the boat whose lines are being built (set
+	 *  at the top of UpdateModelRig, on the game thread; null: each look's own column). The look still names the rope:
+	 *  only the colour sent to M_RigRope changes. */
+	const uint8* GSkinRopeColumns = nullptr;
+	inline float LookRed(uint8 Look) { return float(GSkinRopeColumns ? GSkinRopeColumns[Look] : Look) / 255.f; }
+
 	/** One drawn line: from A to B (boat frame, cm), its radius, its slack (extra length as a fraction) and its look. */
 	struct FRigLine
 	{
@@ -186,7 +192,7 @@ namespace
 		const FVector W = FVector::CrossProduct(Dir, U);
 		const int32 Base = Out.Verts.Num();
 		const float Lay = FMath::Max(LayDiameters * 2.f * L.RadiusCm, 0.01f);
-		const FLinearColor Look(float(L.Look) / 255.f, 0.f, 0.f, 1.f);
+		const FLinearColor Look(LookRed(L.Look), 0.f, 0.f, 1.f);
 		float Arc = 0.f;
 		FVector Prev = L.A;
 		for (int32 I = 0; I <= kLineSegments; ++I)
@@ -243,7 +249,7 @@ namespace
 		C.Add(P.Last());
 		const int32 Base = Out.Verts.Num();
 		const float Lay = 5.f * 2.f * RadiusCm;
-		const FLinearColor Col(float(Look) / 255.f, 0.f, 0.f, 1.f);
+		const FLinearColor Col(LookRed(Look), 0.f, 0.f, 1.f);
 		FVector Along = (C[1] - C[0]).GetSafeNormal();
 		FVector U = FVector::CrossProduct(Along, FMath::Abs(Along.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector).GetSafeNormal();
 		float Arc = 0.f;
@@ -303,7 +309,7 @@ namespace
 		const int32 N = int32(Rings.size());
 		const int32 Base = Out.Verts.Num();
 		const double Lay = FMath::Max(double(LayDiameters) * 2.0 * RadiusCm, 0.01);
-		const FLinearColor Col(float(Look) / 255.f, 0.f, 0.f, 1.f);
+		const FLinearColor Col(LookRed(Look), 0.f, 0.f, 1.f);
 		const double U0 = FMath::Frac(UStartCm / Lay);
 		FVector Along = N >= 2 ? (ToFVector(Rings[1]) - ToFVector(Rings[0])).GetSafeNormal() : FVector::ForwardVector;
 		if (Along.IsNearlyZero()) Along = FVector::ForwardVector;
@@ -581,9 +587,18 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	// Hero ageing (docs/hero-ageing): and the rudder's, the boom's and the mast's (AgeDevPart below), whose tiller, blade,
 	// varnish and fittings stayed new in the Nov 9 ageing stills. Unset in play: nothing changes.
 	FString AgeArg;
-	const bool bAge = !bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false);
+	bool bAge = !bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingBoatAge="), AgeArg, false);
 	FString AgeStr, CareStr;
 	if (bAge && !AgeArg.Split(TEXT(","), &AgeStr, &CareStr)) { AgeStr = AgeArg; CareStr = TEXT("0.5"); }
+	// Boat skins (docs/skins): a skin's wear ages her the same way (the stills' switch beats it; the club level and no
+	// skin leave Age unset, as before).
+	float SkinAge = 0.f, SkinCare = 0.5f;
+	if (!bAge && bHasSkin && Skin.AgeCare(SkinAge, SkinCare))
+	{
+		bAge = true;
+		AgeStr = FString::SanitizeFloat(SkinAge);
+		CareStr = FString::SanitizeFloat(SkinCare);
+	}
 	auto AgeDevPart = [&](UStaticMeshComponent* Part)
 	{
 		if (!bAge || !Part) return;
@@ -729,6 +744,8 @@ FVector ASailboatPawn::RigPoint(const UStaticMeshComponent* Part, FName Socket) 
 
 void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 {
+	// Boat skins: no boat's rope colours until this one's rope sections are built below (never left pointing at a boat).
+	GSkinRopeColumns = nullptr;
 	// Rig lines pacing (the PC's Ultra bench had the rig lines at 0.9 ms of boat_visuals' 2.0, most of it AI boats'): an AI
 	// boat's rig is rebuilt every frame within 30 m of the camera, every 2nd to 150 m, 4th to 600 m, 8th beyond, and every
 	// 15th while it is off screen, staggered by boat. Between rebuilds the lines stay drawn where they were, in the boat's
@@ -1400,6 +1417,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	for (int32 Set = 0; Set < 3; ++Set)
 	{
 		const int32 Section = Set < 2 ? Set : 3;
+		// Boat skins: this boat's rope colours on her rope sections; the wire section (0) keeps its own look.
+		GSkinRopeColumns = bHasSkin && Section != 0 ? SkinRopeColumns : nullptr;
 		const TArray<FRigLine>& Lines = Set == 0 ? Wires : Ropes;
 		// A section none of whose lines moved more than half a millimetre (ends, sag or radius) since its last upload, and none of
 		// whose rings stepped its on-screen widening, is left as it is: the standing rig at rest, a sheet made fast.
@@ -1504,6 +1523,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	if (!bRigLinesBuilt && !bTrafficBoat && !bGhost && !NoCoilsArg.Get() && ModelHull && ModelHull->GetStaticMesh()
 		&& ModelHull->GetStaticMesh()->GetName() == TEXT("SM_J22H_Hull"))
 	{
+		GSkinRopeColumns = bHasSkin ? SkinRopeColumns : nullptr; // the coils are her sheets' tails: the skin's colours
 		FTubeStreams Out;
 		TArray<FVector> Pts;
 		for (const FJ22Coil& Coil : GJ22Coils)
@@ -1519,6 +1539,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		RigLines->CreateMeshSection_LinearColor(2, Out.Verts, Out.Tris, Out.Normals, Out.UV0, Out.Colors, Out.Tangents, false);
 		RigLines->SetMaterial(2, RopeMaterial.Get());
 	}
+	GSkinRopeColumns = nullptr;
 	bRigLinesBuilt = true;
 }
 

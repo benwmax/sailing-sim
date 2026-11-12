@@ -50,5 +50,11 @@ SAILINGSIM_API FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed);
  *  entry) as the livery's painted spars: the library's PaintedAluminium values in the livery's colour. Nothing for
  *  anodised spars. Works on an instanced component too (one finish for all its instances). */
 SAILINGSIM_API void PaintSpars(class UMeshComponent* Part, const FBoatLivery& L);
+/** Boat skins (docs/skins): the player's livery (seed 0: club wear, her number, her spars) wearing another of the class's
+ *  colour schemes. A scheme out of range is scheme 0. */
+SAILINGSIM_API FBoatLivery LiveryForScheme(int32 BoatType, int32 Scheme);
+/** Boat skins: the four wear channels and the sails' fade as a share K (0..1) of the top of the class's club ranges
+ *  (0: a new boat; 1: the most worn club boat the catalogue describes). */
+SAILINGSIM_API void SetLiveryWear(FBoatLivery& L, int32 BoatType, float K);
 /** Number of colour schemes the catalogue lists for a class (tests). */
 SAILINGSIM_API int32 NumLiverySchemes(int32 BoatType);
