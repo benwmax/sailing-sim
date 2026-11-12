@@ -165,6 +165,7 @@ struct SAILINGSIM_API FCrewCabinTrunk
 	static constexpr int32 MaxPlan = 12;
 	double PlanX[MaxPlan] = {};
 	double PlanHalf[MaxPlan] = {};
+	double PlanTop[MaxPlan] = {};     // the top's crown over the sheer at PlanX (0 = Height throughout)
 	int32 PlanN = 0;
 	/** The sides' half width at X, given the deck's half beam there. */
 	double HalfAt(double X, double DeckHalfBeam) const
@@ -177,6 +178,17 @@ struct SAILINGSIM_API FCrewCabinTrunk
 			if (X <= PlanX[I]) return PlanHalf[I - 1] + (PlanHalf[I] - PlanHalf[I - 1]) * (X - PlanX[I - 1]) / (PlanX[I] - PlanX[I - 1]);
 		}
 		return PlanHalf[PlanN - 1];
+	}
+	/** The top's height over the sheer at X. */
+	double HeightAt(double X) const
+	{
+		if (PlanN <= 0 || PlanTop[0] <= 0.0) return Height;
+		if (X <= PlanX[0]) return PlanTop[0];
+		for (int32 I = 1; I < PlanN; ++I)
+		{
+			if (X <= PlanX[I]) return PlanTop[I - 1] + (PlanTop[I] - PlanTop[I - 1]) * (X - PlanX[I - 1]) / (PlanX[I] - PlanX[I - 1]);
+		}
+		return PlanTop[PlanN - 1];
 	}
 };
 /** The boats whose drawn models carry lifelines (build_fleet.py lifelines(): the Catalinas, the Corsair's main hull). */

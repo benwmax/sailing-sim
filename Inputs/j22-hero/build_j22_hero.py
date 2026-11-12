@@ -86,15 +86,21 @@ WL_MID, WL_HALF = -0.06, 2.90
 CANOE_D = 0.2072                            # canoe body depth: 1.052 m^3 below the DWL, the physics' displacement
 MAST_X = 0.65                               # J 8.8 ft (2.68 m) aft of the forestay tack to the mast's front face (class)
 CHAINPLATE_X = MAST_X - 0.15                # one plate a side carries both shrouds; GUESS: a little aft of the mast (photos)
-CABIN_AFT, CABIN_FWD = -0.55, 1.65          # trunk ends: aft GUESS from the bow photo; the raked face's foot from the
-                                            # broadside photo (1.51-1.63 m, docs/boatkit-3)
-CABIN_H0 = 0.30                             # GUESS: trunk height over the deck at its aft end, on the centreline
+CABIN_AFT, CABIN_FWD = -0.55, 1.57          # trunk ends: aft GUESS from the bow photo; the raked face's foot from the
+                                            # trailer broadside (Commons j22-broadside-trailer, 6.2 mm/px from the stem
+                                            # and the keel's leading edge: 1.55), the j22.org plan (1.57) and the Harken
+                                            # drawing (about 1.5-1.6); it was 1.65 with a pointed nose (shape wave 3b)
+CABIN_BRK = 1.29                            # the top's forward edge, where the short raked face starts (trailer broadside)
+# the top's height over the deck on the centreline, at the aft face and at CABIN_BRK: the trailer broadside puts its crown
+# 0.29-0.30 m over the sheer aft and 0.17-0.19 at the raked face (the deck's camber is 0.055 and the top's 0.014 of that);
+# it was 0.30 over the deck (0.36 over the sheer) falling 6 cm, and the Mac's overlay on IMG_9224 read it 120-150 px high
+CABIN_H_AFT, CABIN_H_BRK = 0.23, 0.12
 # the trunk's foot, half-width (j22.org deck plan, column scans at 22 mm/px, and the Harken J/22 layout drawing Bean
 # sent Nov 11 2026: 0.81-0.85 at the aft face; docs/shape-loop wave 3). The plan scan reads 0.73 at x 0.4 and 0.60 at
 # 1.0, the Harken drawing (7.3 mm/px) about 0.75 and 0.70, so the table runs between them; it keeps the side convex
 # (each step narrows faster than the one aft of it: the scan's own points gave a waist that three blind reviewers saw)
 CABIN_PLAN = ((-0.60, 0.83), (-0.06, 0.80), (0.40, 0.755), (0.83, 0.69), (1.01, 0.645), (1.19, 0.595),
-              (1.36, 0.54), (1.65, 0.43))
+              (1.30, 0.56), (1.45, 0.49), (1.57, 0.43))   # a blunt front, as both plans draw it (shape wave 3b)
 COCKPIT_AFT = -2.92                         # GUESS: aft deck starts here
 FWD_HATCH = (0.80, 1.12)                    # fore hatch fore and aft edges
 SIDE_DECK = 0.25                            # side deck width inboard of the sheer (photo IMG_9272), beside the cabin
@@ -391,18 +397,22 @@ def build_cockpit():
     return ob
 
 
+def cabin_hgt(x):
+    """The trunk top's height over the deck on the centreline at x, aft of its raked face (the crown adds 0.014)."""
+    f = min(max((x - CABIN_AFT) / (CABIN_BRK - CABIN_AFT), 0.0), 1.0)
+    return CABIN_H_AFT + (CABIN_H_BRK - CABIN_H_AFT) * f
+
+
 def cabin_ring(t, inset=0.0, z_floor=None, top_extra=0.0):
     """One section of the cabin trunk at fraction t from its aft end. inset > 0 gives the inside of a trunk wall that
     thick (the cabin's headliner), dropped to z_floor below the deck so it can cut the deck open too."""
     x = CABIN_AFT + (CABIN_FWD - CABIN_AFT) * t
-    # plan half-width at the deck: inboard edge of the side deck, rounding in to the nose over the last fifth
+    # plan half-width at the deck: inboard edge of the side deck, closing to a blunt front (CABIN_PLAN)
     # (the subdivision pulls the foot about 2 cm inboard, so the plan's line goes in as it is: the built foot lands on it)
     side_line = min(cabin_foot(x), half_beam(x) - SIDE_DECK)
-    nose = smooth((t - 0.80) / 0.20)
-    w = max(side_line * math.sqrt(max(1 - nose ** 2.4, 0.0)), 0.0) + 0.02
-    hgt = CABIN_H0 - 0.06 * t                          # trunk height above the deck at the centreline
-    front = smooth((t - 0.74) / 0.26)                   # long raked forward face
-    hgt *= (1 - 0.90 * front)
+    w = side_line + 0.02
+    front = smooth((x - CABIN_BRK) / (CABIN_FWD - CABIN_BRK))   # the short raked forward face
+    hgt = cabin_hgt(x) * (1 - 0.90 * front)
     zb = deck_z(x, 0) - 0.06
     zt = deck_z(x, 0) + hgt
     zs = deck_z(x, min(w, half_beam(x) - 0.05)) + 0.005
@@ -755,26 +765,34 @@ def build_hardware():
     # fore hatch (GUESS on its size): on the flat of the cabin top between the mast step and the raked face
     hx0, hx1 = FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)
-    zt = deck_z(hxc, 0) + CABIN_H0 - 0.06 * (hxc - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
     # cabin-top pass (Nov 2026): the kit's low-profile hatch, flanged aluminium frame, gasket, smoked acrylic in an
     # aluminium band, hinges on its forward edge, handles under the pane; it had been two boxes. Its frame's opening
     # (w and d less 60 mm) covers the cut j22_interior makes under it.
     parts += kit_part("FwdHatch", "HatchFwd", (hxc, 0.0), yaw=math.pi, surface=lambda x, y: cabin_top_z(x, y) - 0.002,
                       w=hx1 - hx0 + 0.04, d=0.56)
     # sliding companionway hatch and its rails
-    za = deck_z(CABIN_AFT, 0) + CABIN_H0
+    za = deck_z(CABIN_AFT, 0) + cabin_hgt(CABIN_AFT)
     # #235 gaps (photos companionway-1, companionway-lookinto, companionway-rail-port): the hatch is varnished marine
     # plywood; teak trims run along both sides of the opening beside the closed hatch and frame its aft face either side
     # of the drop board (clear of the halyard cams, HAL_CAM_Y and out).
-    parts.append(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["PlywoodVarnish"], bev=0.012))
+    # wave 3b: the roof falls forward (cabin_hgt), so the hatch and its trims lie along it, pivoting on the aft face
+    xa1 = CABIN_AFT + 0.62
+    pitch = math.atan2(za - (deck_z(xa1, 0) + cabin_hgt(xa1)), xa1 - CABIN_AFT)
+    lay = Matrix.Translation((CABIN_AFT, 0, za)) @ Matrix.Rotation(pitch, 4, "Y") @ Matrix.Translation((-CABIN_AFT, 0, -za))
+
+    def along_roof(ob):
+        ob.data.transform(lay)
+        ob.data.update()
+        return ob
+    parts.append(along_roof(box("SlideHatch", CABIN_AFT - 0.02, CABIN_AFT + 0.62, -0.30, 0.30, za + 0.005, za + 0.035, MAT["PlywoodVarnish"], bev=0.012)))
     parts.append(box("DropBoard", CABIN_AFT - 0.012, CABIN_AFT + 0.012, -0.24, 0.24, SEAT_Z + 0.02, za - 0.02, MAT["TeakWeathered"], bev=0.004))
     for side in (1, -1):
-        parts.append(box(f"CompTrim_{side}", CABIN_AFT - 0.02, CABIN_AFT + 0.55, side * 0.301, side * 0.316, za - 0.002, za + 0.028,
-                         MAT["TeakWeathered"], bev=0.004))
+        parts.append(along_roof(box(f"CompTrim_{side}", CABIN_AFT - 0.02, CABIN_AFT + 0.55, side * 0.301, side * 0.316, za - 0.002,
+                                    za + 0.028, MAT["TeakWeathered"], bev=0.004)))
         parts.append(box(f"CompPost_{side}", CABIN_AFT - 0.022, CABIN_AFT - 0.002, side * 0.240, side * 0.280, SEAT_Z + 0.02, za + 0.004,
                          MAT["TeakWeathered"], bev=0.004))
     # mast step, halyard turning blocks, organisers and cam cleats on the cabin top
-    zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    zm = deck_z(MAST_X, 0) + cabin_hgt(MAST_X)
     # pc/j22-detail assembly 4 (j22_mastgear.py): the step casting (the halyards turn aft on its two sheaves) and, Bean's
     # feedback 2 (the Harken layout), two turning blocks beside it for the control lines (it had been six)
     parts += MG.mast_step(MAST_X, zm, MAT)
@@ -860,7 +878,7 @@ def spar(name, p0, p1, w_fa, w_at, mat, taper_top=0.0, n=28):
 
 
 def build_rig():
-    zm = deck_z(MAST_X, 0) + CABIN_H0 - 0.06 * (MAST_X - CABIN_AFT) / (CABIN_FWD - CABIN_AFT)
+    zm = deck_z(MAST_X, 0) + cabin_hgt(MAST_X)
     mast = spar("Mast", (MAST_X, 0, zm), (MAST_X - 0.02, 0, MAST_TOP), 0.098, 0.068, MAT["Aluminium"], taper_top=0.35)
     parts = [mast]
     rake = lambda z: MAST_X - 0.02 * (z - zm) / (MAST_TOP - zm)  # noqa: E731

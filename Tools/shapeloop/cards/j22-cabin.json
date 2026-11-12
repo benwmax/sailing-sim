@@ -8,22 +8,22 @@
  "feature": "Cabin trunk: its plan width to the class deck plan and the Harken layout drawing (it followed the sheer 0.25 m in, 0.96 m out aft); the halyard winches and their cams moved inboard onto the narrower top (the drawing's B6 and 2633s)",
  "targets": {
   "cabin_width_aft": {
-   "value": 1.6,
+   "value": 1.66,
    "tol_m": 0.08,
    "tier": "B",
-   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. The hero's sides lean in about 3.5 cm a side by 12 cm under the top. Measured by measure.py across the trunk 12 cm under its top, at x -0.45."
+   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. Measured by measure.py: the trunk's foot out to out, 5 cm over the sheer, at x -0.45."
   },
   "cabin_width_mid": {
-   "value": 1.45,
+   "value": 1.49,
    "tol_m": 0.08,
    "tier": "B",
-   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. The hero's sides lean in about 3.5 cm a side by 12 cm under the top. Measured by measure.py across the trunk 12 cm under its top, at x 0.40."
+   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. Measured by measure.py: the trunk's foot out to out, 5 cm over the sheer, at x 0.40."
   },
   "cabin_width_fwd": {
-   "value": 1.23,
+   "value": 1.3,
    "tol_m": 0.1,
    "tier": "B",
-   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. The hero's sides lean in about 3.5 cm a side by 12 cm under the top. Measured by measure.py across the trunk 12 cm under its top, at x 1.00."
+   "source": "j22.org deck plan (column scans at 22 mm/px: the trunk's foot 0.81-0.83 m out aft, 0.73 at x 0.4, 0.60 at x 1.0) and the Harken J/22 deck layout drawing Bean sent Nov 11 2026 (7.3 mm/px: 0.80-0.85 aft, about 0.75 at x 0.4, 0.70 at x 1.0); where they differ the target is between them. Measured by measure.py: the trunk's foot out to out, 5 cm over the sheer, at x 1.00."
   }
  },
  "outline_views": [
@@ -40,10 +40,20 @@
   "Winch_*",
   "HalCam_*",
   "Halyard*",
-  "HalTail*"
+  "HalTail*",
+  "MastStep*",
+  "Comp*",
+  "PoleDownhaul*",
+  "Mast",
+  "Turn_*",
+  "Cunn_*",
+  "Vang*",
+  "Organiser*",
+  "PostHead",
+  "CompressionPost"
  ],
  "moves_ok_sections": [],
- "moves_ok_note": "Everything on or in the trunk follows its sides: the winches, cams and halyard tails, the portlights (cut from cabin_ring), the handrails (on cabin_top_z), the interior's shell.",
+ "moves_ok_note": "Everything on or in the trunk follows its sides: the winches, cams and halyard tails, the portlights (cut from cabin_ring), the handrails (on cabin_top_z), the interior's shell. Wave 3b lowered the roof, so the mast step and everything at the mast foot (the mast, turning blocks, cunningham, vang, organisers, post head) drop with it.",
  "tris_max": null,
  "mac_wiring": true,
  "mac_note": "CrewCabinTrunk's hero trunk: a plan table (FCrewCabinTrunk::HalfAt) mirroring CABIN_PLAN (it was the sheer less 0.25; CrewMotion's own placement still reads the classic trunk): the Mac runs --scope crew as well as boats. The rebake must regenerate J22H_coils.json and J22CoilData.inl (the halyard tails follow the cams; the cloud build has no jib tails, so its coils file is not usable).",
@@ -52,6 +62,7 @@
  "physics_table": "Tools/boats/j22/make_j22_hull.py",
  "findings": [
   "Bean's cockpit photo IMG_9272 read on the Mac: the winch sits on a raised part beside the companionway; the Harken drawing and the class plan put it on the trunk top's aft corners, so the trunk top it is. Bean may send a photo from the cockpit looking forward.",
-  "The Mac's overlay on IMG_9224: the trunk's top outline sits high and its aft end aft of the photo's (lead for round 2: trunk height CABIN_H0 0.30 and CABIN_AFT -0.55 vs the plan's -0.59)."
+  "The Mac's overlay on IMG_9224: the trunk's top outline sits high and its aft end aft of the photo's (wave 3b lowered the top to CABIN_H_AFT 0.23 / CABIN_H_BRK 0.12 per the trailer broadside and squared the front at 1.57).",
+  "Open (wave 3b): the aft face sits at -0.55; the trailer broadside reads -0.44 to -0.48 and j22.org about -0.50. Moving it couples the cockpit's forward end, the companionway and the crew wells, so it is its own round."
  ]
 }

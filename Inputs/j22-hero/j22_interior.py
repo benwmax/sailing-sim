@@ -34,7 +34,20 @@ BENCH_IN = 0.28           # bench fronts, half-width
 VBERTH_Z = 0.30           # GUESS: V-berth top
 VBERTH_AFT = 1.12         # V-berth face
 LINER_T = 0.012
-WIN_FWD = 1.10           # portlights' forward end at their foot, clear of the trunk's rounded nose (j22_materials.py too)
+WIN_AFT = -0.30          # portlights' aft end (the long low windows of Bean's dock photo IMG_9224)
+WIN_FWD = 0.95           # their forward end at the foot (1.10 before shape wave 3b lowered the trunk's front)
+# their top and bottom edges, z = Z0 + SLOPE * (x - WIN_AFT): 3 cm under the trunk's shoulder, which falls forward with
+# the top, and at least 1.5 cm over the side deck (open_up checks both); j22_materials.py draws the same band
+WIN_TOP, WIN_TOP_SLOPE = 0.804, -0.050
+WIN_BOT, WIN_BOT_SLOPE = 0.724, -0.030
+
+
+def win_top(x):
+    return WIN_TOP + WIN_TOP_SLOPE * (x - WIN_AFT)
+
+
+def win_bot(x):
+    return WIN_BOT + WIN_BOT_SLOPE * (x - WIN_AFT)
 SKIN = 0.016              # the liner stands this far inside the hull's outer surface (12 mm shell + a gap)
 
 
@@ -298,10 +311,12 @@ def open_up(H, cabin, deck, cockpit, mats):
         bool_op(ob, box("comp_cut", H.CABIN_AFT - 0.05, H.CABIN_AFT + 0.10, -0.235, 0.235, H.SEAT_Z, 1.3), tolerant=ob is not cabin)
     # portlights: the long low windows of the dock photo (IMG_9224), slanted at the forward end
     out = []
-    zb, zt = 0.745, 0.835
-    win = []
-    for (x, z) in ((-0.30, zb), (WIN_FWD, zb), (WIN_FWD - (zt - zb) * 3.0, zt), (-0.30, zt)):
-        win.append((x, z))
+    for x in (WIN_AFT, 0.5 * (WIN_AFT + WIN_FWD), WIN_FWD):
+        ring = H.cabin_ring((x - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT))
+        if win_top(x) > ring[-3][2] - 0.02 or win_bot(x) < ring[-2][2] + 0.015:
+            raise RuntimeError(f"J22H interior: the portlights leave the trunk's side at x {x:.2f}")
+    xs = WIN_FWD - (win_top(WIN_FWD) - win_bot(WIN_FWD)) * 3.0    # the slanted forward end
+    win = [(WIN_AFT, win_bot(WIN_AFT)), (WIN_FWD, win_bot(WIN_FWD)), (xs, win_top(xs)), (WIN_AFT, win_top(WIN_AFT))]
     win = _fillet_closed(win, 0.025)
     cutter = _prism_y("win_cut", win, -1.6, 1.6)
     bool_op(cabin, cutter, tolerant=False)
@@ -325,7 +340,7 @@ def open_up(H, cabin, deck, cockpit, mats):
     # fore hatch: open the trunk top under the acrylic so daylight falls on the V-berth
     hx0, hx1 = H.FWD_HATCH
     hxc = 0.5 * (hx0 + hx1)
-    zt_h = H.deck_z(hxc, 0) + H.CABIN_H0 - 0.06 * (hxc - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT)
+    zt_h = H.deck_z(hxc, 0) + H.cabin_hgt(hxc)
     bool_op(cabin, box("hatch_cut", hx0 + 0.03, hx1 - 0.03, -0.23, 0.23, zt_h - 0.2, zt_h + 0.1), tolerant=False)
     if not cabin.data.polygons:
         raise RuntimeError("J22H interior: the trunk booleans left no faces")
@@ -497,7 +512,7 @@ def build(H, cabin, deck, cockpit, hull):
     # companionway step: a teak box on the sole
     objs.append(box("CompStep", xa + 0.02, xa + 0.26, -0.20, 0.20, SOLE_Z, SOLE_Z + 0.24, H.MAT["TeakInterior"], bev=0.01))
     # mast compression post: aluminium tube from the sole to the headliner under the step (GUESS)
-    zt = H.deck_z(H.MAST_X, 0) + H.CABIN_H0 - 0.06 * (H.MAST_X - H.CABIN_AFT) / (H.CABIN_FWD - H.CABIN_AFT) - 0.028
+    zt = H.deck_z(H.MAST_X, 0) + H.cabin_hgt(H.MAST_X) - 0.028
     objs.append(cyl("CompressionPost", (H.MAST_X, 0, SOLE_Z), (H.MAST_X, 0, zt), 0.032, H.MAT["Aluminium"], 24))
     objs.append(box("PostFoot", H.MAST_X - 0.06, H.MAST_X + 0.06, -0.06, 0.06, SOLE_Z, SOLE_Z + 0.01, H.MAT["CastAlu"], bev=0.003))
     objs.append(box("PostHead", H.MAST_X - 0.07, H.MAST_X + 0.07, -0.07, 0.07, zt - 0.01, zt, H.MAT["CastAlu"], bev=0.003))
