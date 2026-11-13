@@ -33,10 +33,12 @@ struct SAILINGSIM_API FBoatSkin
 		TOptional<FLinearColor> Hull, Deck, NonSkid, Bottom, Boot, Cove, Trim, Spars;
 		TOptional<bool> bBoot;         // "boot": "none" takes the stripe off (it takes the hull's colour)
 		TOptional<bool> bSparsPainted; // "spars": "bare" leaves the anodised aluminium
+		TOptional<bool> bCove;         // "cove": "none" takes the cove stripe off
+		TOptional<bool> bTrim;         // "trim": "none": no teak (the rails take the deck's colour)
 		bool IsEmpty() const
 		{
 			return !Hull.IsSet() && !Deck.IsSet() && !NonSkid.IsSet() && !Bottom.IsSet() && !Boot.IsSet() && !Cove.IsSet() && !Trim.IsSet()
-				&& !Spars.IsSet() && !bBoot.IsSet() && !bSparsPainted.IsSet();
+				&& !Spars.IsSet() && !bBoot.IsSet() && !bSparsPainted.IsSet() && !bCove.IsSet() && !bTrim.IsSet();
 		}
 	};
 	struct FWear
@@ -97,7 +99,7 @@ struct SAILINGSIM_API FBoatSkin
 	static FString ToHex(const FLinearColor& Linear);
 	/** An id made safe: lower case, [a-z0-9-], at most MaxIdChars; empty if nothing is left. */
 	static FString CleanId(const FString& In);
-	/** Typed text made safe for a name: letters, digits, spaces and . , ' & - at most MaxNameChars. */
+	/** Typed text made safe for a name: letters, digits, spaces and . , ' & - / at most MaxNameChars. */
 	static FString CleanName(const FString& In);
 };
 

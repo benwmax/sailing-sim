@@ -18,11 +18,9 @@ namespace SkinEditorLocal
 
 	// What an edit changes, for folding a dragged value's steps into one (0 is never folded).
 	constexpr int32 EditPart = 100;    // + the part
-	constexpr int32 EditCloth = 200;
-	constexpr int32 EditNumber = 201;
-	constexpr int32 EditName = 202;
 
-	bool SameText(const FBoatSkin& A, const FBoatSkin& B) { return A.ToJson() == B.ToJson(); }
+	// (case counts: "my navy" renamed "My Navy" is a change)
+	bool SameText(const FBoatSkin& A, const FBoatSkin& B) { return A.ToJson().Equals(B.ToJson(), ESearchCase::CaseSensitive); }
 }
 
 const TCHAR* FSkinEditor::PartName(EPart Part)
@@ -53,31 +51,56 @@ void FSkinEditor::Open(int32 InBoatType)
 void FSkinEditor::OpenWith(int32 InBoatType, const FBoatSkin* Worn)
 {
 	BoatType = InBoatType;
-	History.Reset();
-	At = 0;
 	Load(Worn);
-	// (the skin she came in with is where undo stops)
+	WornId = Baseline.Id;
+	ResetHistory();
+}
+
+void FSkinEditor::ResetHistory()
+{
+	// (where the draft stands is where undo stops)
 	History.Reset();
+	Bases.Reset();
 	History.Add(Draft);
+	Bases.Add(Baseline);
 	At = 0;
 	LastEdit = 0;
 }
 
 bool FSkinEditor::IsDirty() const
 {
-	return !SkinEditorLocal::SameText(Draft, Baseline);
+	// (asked several times a frame by the screen: the answer is kept until the draft or what it is compared to changes)
+	if (DirtyAt != Revision || !bDirtyKnown)
+	{
+		bDirtyCached = !SkinEditorLocal::SameText(Draft, Baseline);
+		DirtyAt = Revision;
+		bDirtyKnown = true;
+	}
+	return bDirtyCached;
 }
 
 void FSkinEditor::Record(int32 Edit)
 {
 	++Revision;
 	// Anything after where we stand is gone (a change after an undo); a dragged value replaces its own last step.
+	// Each step keeps what the draft was compared to as well, so undoing a load brings back the skin loaded before it
+	// (and Use then writes that skin's file, not the later one's).
 	History.SetNum(FMath::Min(At + 1, History.Num()));
-	if (Edit != 0 && Edit == LastEdit && History.Num() > 1) History.Last() = Draft;
+	Bases.SetNum(History.Num());
+	if (Edit != 0 && Edit == LastEdit && History.Num() > 1)
+	{
+		History.Last() = Draft;
+		Bases.Last() = Baseline;
+	}
 	else
 	{
 		History.Add(Draft);
-		if (History.Num() > MaxUndo + 1) History.RemoveAt(0);
+		Bases.Add(Baseline);
+		if (History.Num() > MaxUndo + 1)
+		{
+			History.RemoveAt(0);
+			Bases.RemoveAt(0);
+		}
 	}
 	At = History.Num() - 1;
 	LastEdit = Edit;
@@ -121,15 +144,19 @@ bool FSkinEditor::IsPartOff(EPart Part) const
 {
 	if (Part == EPart::Boot) return Draft.Paint.bBoot.IsSet() && !Draft.Paint.bBoot.GetValue();
 	if (Part == EPart::Spars) return Draft.Paint.bSparsPainted.IsSet() && !Draft.Paint.bSparsPainted.GetValue();
+	if (Part == EPart::Cove) return Draft.Paint.bCove.IsSet() && !Draft.Paint.bCove.GetValue();
+	if (Part == EPart::Trim) return Draft.Paint.bTrim.IsSet() && !Draft.Paint.bTrim.GetValue();
 	return false;
 }
 
-void FSkinEditor::SetPartColour(EPart Part, const FLinearColor& Colour)
+void FSkinEditor::SetPartColour(EPart Part, const FLinearColor& Colour, bool bDragged)
 {
 	PartRef(Part) = FLinearColor(FMath::Clamp(Colour.R, 0.f, 1.f), FMath::Clamp(Colour.G, 0.f, 1.f), FMath::Clamp(Colour.B, 0.f, 1.f));
 	if (Part == EPart::Boot) Draft.Paint.bBoot = true;
 	if (Part == EPart::Spars) Draft.Paint.bSparsPainted = true;
-	Record(SkinEditorLocal::EditPart + int32(Part));
+	if (Part == EPart::Cove) Draft.Paint.bCove = true;
+	if (Part == EPart::Trim) Draft.Paint.bTrim = true;
+	Record(bDragged ? SkinEditorLocal::EditPart + int32(Part) : 0);
 }
 
 void FSkinEditor::ClearPart(EPart Part)
@@ -137,6 +164,8 @@ void FSkinEditor::ClearPart(EPart Part)
 	PartRef(Part).Reset();
 	if (Part == EPart::Boot) Draft.Paint.bBoot.Reset();
 	if (Part == EPart::Spars) Draft.Paint.bSparsPainted.Reset();
+	if (Part == EPart::Cove) Draft.Paint.bCove.Reset();
+	if (Part == EPart::Trim) Draft.Paint.bTrim.Reset();
 	Record(0);
 }
 
@@ -146,6 +175,8 @@ void FSkinEditor::SetPartOff(EPart Part)
 	PartRef(Part).Reset();
 	if (Part == EPart::Boot) Draft.Paint.bBoot = false;
 	if (Part == EPart::Spars) Draft.Paint.bSparsPainted = false;
+	if (Part == EPart::Cove) Draft.Paint.bCove = false;
+	if (Part == EPart::Trim) Draft.Paint.bTrim = false;
 	Record(0);
 }
 
@@ -160,7 +191,7 @@ void FSkinEditor::SetWearLevel(int32 Level)
 void FSkinEditor::SetSailCloth(const TOptional<FLinearColor>& Cloth)
 {
 	Draft.Sails.Cloth = Cloth;
-	Record(Cloth.IsSet() ? SkinEditorLocal::EditCloth : 0);
+	Record(0);
 }
 
 void FSkinEditor::SetSailNumber(const TOptional<FString>& Number)
@@ -172,7 +203,7 @@ void FSkinEditor::SetSailNumber(const TOptional<FString>& Number)
 		Draft.Sails.Number = Digits;
 	}
 	else Draft.Sails.Number.Reset();
-	Record(Number.IsSet() ? SkinEditorLocal::EditNumber : 0);
+	Record(0);
 }
 
 void FSkinEditor::SetClassMark(const TOptional<bool>& bMark)
@@ -192,7 +223,7 @@ void FSkinEditor::SetLine(FBoatSkin::ELine Line, int32 Column)
 void FSkinEditor::SetName(const FString& Name)
 {
 	Draft.Name = FBoatSkin::CleanName(Name);
-	Record(SkinEditorLocal::EditName);
+	Record(0);
 }
 
 void FSkinEditor::Surprise(FRandomStream& Random)
@@ -216,6 +247,7 @@ bool FSkinEditor::Undo()
 {
 	if (!CanUndo()) return false;
 	Draft = History[--At];
+	Baseline = Bases[At];
 	LastEdit = 0;
 	++Revision;
 	return true;
@@ -225,6 +257,7 @@ bool FSkinEditor::Redo()
 {
 	if (!CanRedo()) return false;
 	Draft = History[++At];
+	Baseline = Bases[At];
 	LastEdit = 0;
 	++Revision;
 	return true;
@@ -257,6 +290,9 @@ bool FSkinEditor::WriteAs(const FString& Id, const FString& Name)
 	if (!BoatSkinStore::Save(Out)) return false;
 	Draft = Out;
 	Baseline = Out;
+	bDirtyKnown = false;
+	// (the step undo stands on is now the saved skin: undoing past it and using that writes this file again)
+	if (History.IsValidIndex(At)) { History[At] = Draft; Bases[At] = Baseline; }
 	return true;
 }
 
@@ -270,6 +306,7 @@ bool FSkinEditor::Use()
 		Draft.Id.Reset();
 		Draft.Name.Reset();
 		Baseline = Draft;
+		bDirtyKnown = false;
 		break;
 	case ESavePlan::Existing:
 		SailSaveStore::SetBoatSkin(Boat, Baseline.Id);
@@ -285,6 +322,7 @@ bool FSkinEditor::Use()
 		return SaveAsNew();
 	}
 	SailSaveStore::Commit();
+	WornId = Baseline.Id;
 	++Revision;
 	return true;
 }
@@ -299,6 +337,7 @@ bool FSkinEditor::SaveAsNew()
 	if (!WriteAs(Id, Shown)) return false;
 	SailSaveStore::SetBoatSkin(FSailSave::BoatId(BoatType), Id);
 	SailSaveStore::Commit();
+	WornId = Baseline.Id;
 	++Revision;
 	return true;
 }
@@ -314,6 +353,9 @@ bool FSkinEditor::DeleteLoaded()
 		SailSaveStore::SetBoatSkin(Boat, FString());
 		SailSaveStore::Commit();
 	}
+	if (WornId == Id) WornId.Reset();
 	Load(nullptr);
+	// (no undo back to a skin whose file is gone)
+	ResetHistory();
 	return true;
 }

@@ -76,7 +76,8 @@ namespace SailCustomizeImpl
 
 	bool SameColour(const FLinearColor& A, const FLinearColor& B)
 	{
-		return FBoatSkin::ToHex(A) == FBoatSkin::ToHex(B);
+		// (as a skin's file holds them: eight bits a channel)
+		return A.GetClamped().ToFColorSRGB() == B.GetClamped().ToFColorSRGB();
 	}
 
 	/** A paint colour's name: the swatch it is, or "Custom #RRGGBB". */
@@ -107,7 +108,7 @@ namespace SailCustomizeImpl
 		case FSkinEditor::EPart::Bottom: return L.Bottom;
 		case FSkinEditor::EPart::Boot: return L.bBoot ? L.Boot : L.Hull;
 		case FSkinEditor::EPart::Cove: return L.bCove ? L.Cove : L.Hull;
-		case FSkinEditor::EPart::Trim: return L.Teak;
+		case FSkinEditor::EPart::Trim: return L.bTeak ? L.Teak : L.Deck;
 		default: return L.Spar;
 		}
 	}
@@ -135,11 +136,18 @@ void SSailFrontEnd::OpenCustomize(int32 BoatType)
 	bCustomBeforeShown = false;
 	bCustomLeaveArmed = false;
 	bCustomDeleteArmed = false;
-	CustomMessage.Reset();
+	SetCustomMessage(FString());
 	CustomShownRevision = SkinEdit.GetRevision();   // she already wears it
 	CustomPreviewAt = 0.0;
 	CustomSyncHsv();
 	Push(ESailScreen::Customize);
+}
+
+void SSailFrontEnd::SetCustomMessage(const FString& Message)
+{
+	// A message is about the draft as it stood: the next change of it takes the message away.
+	CustomMessage = Message;
+	CustomMessageRevision = SkinEdit.GetRevision();
 }
 
 void SSailFrontEnd::SetCustomTab(int32 Tab)
@@ -204,7 +212,7 @@ void SSailFrontEnd::CustomUse()
 {
 	if (!SkinEdit.Use())
 	{
-		CustomMessage = TEXT("The skin's file could not be written. Nothing was changed.");
+		SetCustomMessage(TEXT("The skin's file could not be written. Nothing was changed."));
 		return;
 	}
 	if (ASailboatPawn* P = Pawn()) P->RefreshSkin();
@@ -220,7 +228,8 @@ FReply SSailFrontEnd::CustomizeKeyDown(const FKeyEvent& Event)
 	for (const TSharedPtr<SWidget>& Field : CustomTextBoxes)
 	{
 		if (!Field.IsValid() || !(Field->HasKeyboardFocus() || Field->HasFocusedDescendants())) continue;
-		if (K == EKeys::Escape) { FocusCurrent(); return FReply::Handled(); }
+		// (the pad's Back too: it leaves the box, not the screen, so the unsaved-changes question is still asked)
+		if (K == EKeys::Escape || (K.IsGamepadKey() && SailUI::IsBackKey(K))) { FocusCurrent(); return FReply::Handled(); }
 		if (K == EKeys::Up || K == EKeys::Down || K == EKeys::Tab || K.IsGamepadKey()) return FReply::Unhandled();
 		return FReply::Handled();
 	}
@@ -237,11 +246,11 @@ FReply SSailFrontEnd::CustomizeKeyDown(const FKeyEvent& Event)
 		CustomSyncHsv();
 		return FReply::Handled();
 	}
-	if (SailUI::IsBackKey(K) && SkinEdit.IsDirty() && !(bCustomLeaveArmed && CustomLeaveRevision == SkinEdit.GetRevision()))
+	if (SailUI::IsBackKey(K) && SkinEdit.IsUnsaved() && !(bCustomLeaveArmed && CustomLeaveRevision == SkinEdit.GetRevision()))
 	{
 		bCustomLeaveArmed = true;
 		CustomLeaveRevision = SkinEdit.GetRevision();
-		CustomMessage = TEXT("Not saved yet. Back again leaves without saving; Use this look keeps it.");
+		SetCustomMessage(TEXT("Not saved yet. Back again leaves without saving; Use this look keeps it."));
 		return FReply::Handled();
 	}
 	return FReply::Unhandled();
@@ -325,7 +334,6 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 				{
 					SkinEdit.Load(Copy.IsSet() ? &Copy.GetValue() : nullptr);
 					bCustomDeleteArmed = false;
-					CustomMessage.Reset();
 					CustomSyncHsv();
 				})
 			[
@@ -350,7 +358,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		Section(TEXT("Name"));
 		TSharedRef<SEditableTextBox> NameBox = SNew(SEditableTextBox).Font(Font(EType::Body)).HintText(FText::FromString(TEXT("A name for this look")))
 			.Text_Lambda([this]() { return FText::FromString(SkinEdit.GetDraft().Name); })
-			.OnTextCommitted_Lambda([this](const FText& T, ETextCommit::Type) { if (FBoatSkin::CleanName(T.ToString()) != SkinEdit.GetDraft().Name) SkinEdit.SetName(T.ToString()); });
+			.ClearKeyboardFocusOnCommit(false)   // (Enter keeps the focus: with none, the keys and the pad have nowhere to go)
+			.OnTextCommitted_Lambda([this](const FText& T, ETextCommit::Type) { if (!FBoatSkin::CleanName(T.ToString()).Equals(SkinEdit.GetDraft().Name, ESearchCase::CaseSensitive)) SkinEdit.SetName(T.ToString()); });
 		CustomTextBoxes.Add(NameBox);
 		Add(SNew(SBox).HeightOverride(40.f)[ NameBox ], 10.f);
 		Add(SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(12.f, 7.f))
@@ -359,9 +368,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 			{
 				if (!bCustomDeleteArmed) { bCustomDeleteArmed = true; return; }
 				bCustomDeleteArmed = false;
-				CustomMessage = SkinEdit.DeleteLoaded() ? FString(TEXT("Deleted.")) : FString(TEXT("That skin's file could not be deleted."));
-				if (ASailboatPawn* P = Pawn()) P->RefreshSkin();
-				CustomShownRevision = SkinEdit.GetRevision();
+				// (the draft is now the class's look; the next tick shows it on the boat, as any change of the draft)
+				const bool bDeleted = SkinEdit.DeleteLoaded();
+				SetCustomMessage(bDeleted ? FString(TEXT("Deleted.")) : FString(TEXT("That skin's file could not be deleted.")));
 				SetCustomTab(0);
 			})
 			[ SNew(SBox).HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return FText::FromString(bCustomDeleteArmed ? TEXT("Press again to delete this skin") : TEXT("Delete this skin")); }), EType::Label, FSlateColor(Fg)) ] ]);
@@ -405,7 +414,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 				SNew(SSailButton).Look(EButtonLook::Secondary).Padding(FMargin(12.f, 7.f))
 					.IsEnabled_Lambda([CurPart]() { return FSkinEditor::PartCanBeOff(CurPart()); })
 					.OnClicked_Lambda([this, CurPart]() { SkinEdit.SetPartOff(CurPart()); })
-				[ SNew(SBox).HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([CurPart]() { return FText::FromString(CurPart() == FSkinEditor::EPart::Spars ? TEXT("Bare aluminium") : TEXT("No stripe")); }), EType::Label, FSlateColor(Fg)) ] ]
+				[ SNew(SBox).HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([CurPart]() { return FText::FromString(CurPart() == FSkinEditor::EPart::Spars ? TEXT("Bare aluminium") : CurPart() == FSkinEditor::EPart::Trim ? TEXT("No trim") : TEXT("No stripe")); }), EType::Label, FSlateColor(Fg)) ] ]
 			], 8.f);
 		Section(TEXT("Your own colour"));
 		auto Slide = [&](const FString& Label, int32 Axis, float Lo, float Hi, float Step, const TCHAR* Unit)
@@ -416,7 +425,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 				.OnChanged_Lambda([this, Axis, CurPart](float V)
 				{
 					if (Axis == 0) CustomHsv.X = V; else CustomHsv[Axis] = V / 100.0;
-					SkinEdit.SetPartColour(CurPart(), FromHsv(CustomHsv));
+					SkinEdit.SetPartColour(CurPart(), FromHsv(CustomHsv), true);
 				}), 2.f);
 		};
 		Slide(TEXT("Hue"), 0, 0.f, 355.f, 5.f, TEXT("°"));
@@ -442,6 +451,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 				const TOptional<FString>& N = SkinEdit.GetDraft().Sails.Number;
 				return FText::FromString(N.IsSet() ? N.GetValue() : ClassLivery.SailNumber);
 			})
+			.ClearKeyboardFocusOnCommit(false)
 			.OnTextCommitted_Lambda([this, ClassLivery](const FText& T, ETextCommit::Type)
 			{
 				const TOptional<FString>& N = SkinEdit.GetDraft().Sails.Number;
@@ -525,9 +535,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		[
 			TextAttr(TAttribute<FText>::CreateLambda([this]()
 			{
-				if (!CustomMessage.IsEmpty() && (bCustomLeaveArmed || !SkinEdit.IsDirty())) return FText::FromString(CustomMessage);
+				if (!CustomMessage.IsEmpty() && CustomMessageRevision == SkinEdit.GetRevision()) return FText::FromString(CustomMessage);
 				if (bCustomBefore) return FText::FromString(TEXT("Showing her saved look. T or the left stick's click shows your changes again."));
-				return FText::FromString(SkinEdit.IsDirty() ? TEXT("Changes not saved yet.") : TEXT(""));
+				return FText::FromString(SkinEdit.IsDirty() ? TEXT("Changes not saved yet.") : SkinEdit.IsUnsaved() ? TEXT("Not on your boat yet: Use this look puts it on.") : TEXT(""));
 			}), EType::Small, TAttribute<FSlateColor>::CreateLambda([this]() { return FSlateColor(bCustomLeaveArmed ? Warn : Muted); }), true)
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ Use ]
@@ -539,7 +549,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 				SmallButton(TEXT("Save as new"), [this]()
 				{
 					const bool bSaved = SkinEdit.SaveAsNew();
-					CustomMessage = bSaved ? FString::Printf(TEXT("Saved as \"%s\" and put on your boat."), *SkinEdit.GetDraft().Name) : FString(TEXT("The skin's file could not be written."));
+					SetCustomMessage(bSaved ? FString::Printf(TEXT("Saved as \"%s\" and put on your boat."), *SkinEdit.GetDraft().Name) : FString(TEXT("The skin's file could not be written.")));
 					if (ASailboatPawn* P = Pawn()) { if (bSaved) P->RefreshSkin(); }
 					if (bSaved) CustomShownRevision = SkinEdit.GetRevision();
 					SetCustomTab(CustomTab);

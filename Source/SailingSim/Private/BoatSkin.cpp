@@ -77,7 +77,10 @@ namespace BoatSkinLocal
 		S.Paint.Hull = L.Hull; S.Paint.Deck = L.Deck; S.Paint.NonSkid = L.NonSkid; S.Paint.Bottom = L.Bottom;
 		S.Paint.bBoot = L.bBoot;
 		if (L.bBoot) S.Paint.Boot = L.Boot;
+		// (said either way: a scheme without a cove stripe or teak takes them off a class whose own look has them)
+		S.Paint.bCove = L.bCove;
 		if (L.bCove) S.Paint.Cove = L.Cove;
+		S.Paint.bTrim = L.bTeak;
 		if (L.bTeak) S.Paint.Trim = L.Teak;
 		S.Wear.Level = WearLevel;
 		return S;
@@ -215,9 +218,17 @@ FBoatSkin::EResult FBoatSkin::FromJson(const FString& Text, FBoatSkin& Out, FStr
 		ReadColour(*P, TEXT("deck"), Out.Paint.Deck);
 		ReadColour(*P, TEXT("nonSkid"), Out.Paint.NonSkid);
 		ReadColour(*P, TEXT("bottom"), Out.Paint.Bottom);
-		ReadColour(*P, TEXT("cove"), Out.Paint.Cove);
-		ReadColour(*P, TEXT("trim"), Out.Paint.Trim);
-		FString Boot, Spars;
+		FString Boot, Spars, Cove, Trim;
+		if (P->TryGetStringField(TEXT("cove"), Cove))
+		{
+			if (Cove == TEXT("none")) Out.Paint.bCove = false;
+			else { ReadColour(*P, TEXT("cove"), Out.Paint.Cove); if (Out.Paint.Cove.IsSet()) Out.Paint.bCove = true; }
+		}
+		if (P->TryGetStringField(TEXT("trim"), Trim))
+		{
+			if (Trim == TEXT("none")) Out.Paint.bTrim = false;
+			else { ReadColour(*P, TEXT("trim"), Out.Paint.Trim); if (Out.Paint.Trim.IsSet()) Out.Paint.bTrim = true; }
+		}
 		if (P->TryGetStringField(TEXT("boot"), Boot))
 		{
 			if (Boot == TEXT("none")) Out.Paint.bBoot = false;
@@ -283,8 +294,10 @@ FString FBoatSkin::ToJson() const
 		WriteColour(*P, TEXT("bottom"), Paint.Bottom);
 		if (Paint.bBoot.IsSet() && !Paint.bBoot.GetValue()) P->SetStringField(TEXT("boot"), TEXT("none"));
 		else WriteColour(*P, TEXT("boot"), Paint.Boot);
-		WriteColour(*P, TEXT("cove"), Paint.Cove);
-		WriteColour(*P, TEXT("trim"), Paint.Trim);
+		if (Paint.bCove.IsSet() && !Paint.bCove.GetValue()) P->SetStringField(TEXT("cove"), TEXT("none"));
+		else WriteColour(*P, TEXT("cove"), Paint.Cove);
+		if (Paint.bTrim.IsSet() && !Paint.bTrim.GetValue()) P->SetStringField(TEXT("trim"), TEXT("none"));
+		else WriteColour(*P, TEXT("trim"), Paint.Trim);
 		if (Paint.bSparsPainted.IsSet() && !Paint.bSparsPainted.GetValue()) P->SetStringField(TEXT("spars"), TEXT("bare"));
 		else WriteColour(*P, TEXT("spars"), Paint.Spars);
 		Root->SetObjectField(TEXT("paint"), P);
@@ -334,9 +347,11 @@ void FBoatSkin::ApplyTo(FBoatLivery& L, int32 BoatType) const
 	if (Paint.bBoot.IsSet()) L.bBoot = Paint.bBoot.GetValue();
 	if (Paint.Boot.IsSet()) L.Boot = Paint.Boot.GetValue();
 	if (!L.bBoot) L.Boot = L.Hull;          // as SampleBoatLivery: no stripe is the hull's own colour
-	if (Paint.Cove.IsSet()) { L.bCove = true; L.Cove = Paint.Cove.GetValue(); }
+	if (Paint.bCove.IsSet()) L.bCove = Paint.bCove.GetValue();
+	if (Paint.Cove.IsSet() && !(Paint.bCove.IsSet() && !Paint.bCove.GetValue())) { L.bCove = true; L.Cove = Paint.Cove.GetValue(); }
 	if (!L.bCove) L.Cove = L.Hull;
-	if (Paint.Trim.IsSet()) { L.bTeak = true; L.Teak = Paint.Trim.GetValue(); }
+	if (Paint.bTrim.IsSet()) L.bTeak = Paint.bTrim.GetValue();   // (no trim: the rails take the deck's colour)
+	if (Paint.Trim.IsSet() && !(Paint.bTrim.IsSet() && !Paint.bTrim.GetValue())) { L.bTeak = true; L.Teak = Paint.Trim.GetValue(); }
 	if (Paint.bSparsPainted.IsSet()) L.bSparPainted = Paint.bSparsPainted.GetValue();
 	if (Paint.Spars.IsSet()) L.Spar = Paint.Spars.GetValue();
 	// The wear: the exact pair as M_BoatSurface's own ageing share (sat(Age / 20) x (1 - 0.6 Care): make_materials.py
@@ -441,18 +456,25 @@ TArray<FBoatSkin> BoatSkinStore::Mine(int32 BoatType)
 		const FString Path = Dir() / File;
 		if (IFileManager::Get().FileSize(*Path) > FBoatSkin::MaxFileBytes)
 		{
-			SAIL_LOG(Warning, TEXT("Skins: %s is over the size cap, skipped"), *File);
+			SAIL_LOG(Log, TEXT("Skins: %s is over the size cap, skipped"), *File);
 			continue;
 		}
 		FString Text, Message;
 		FBoatSkin S;
 		if (!FFileHelper::LoadFileToString(Text, *Path) || FBoatSkin::FromJson(Text, S, &Message) != FBoatSkin::EResult::Ok)
 		{
-			SAIL_LOG(Warning, TEXT("Skins: %s skipped (%s)"), *File, *Message);
+			SAIL_LOG(Log, TEXT("Skins: %s skipped (%s)"), *File, *Message);
 			continue;
 		}
-		// The file's name is its id (a renamed or copied file is still one skin).
-		S.Id = FBoatSkin::CleanId(File.LeftChop(FCString::Strlen(BoatSkinLocal::FileSuffix)));
+		// The file's name is its id (a renamed or copied file is still one skin). A name that is not an id as it stands
+		// ("My_Navy") is left out: the skin could be listed but never found, saved over or deleted by that id.
+		const FString Base = File.LeftChop(FCString::Strlen(BoatSkinLocal::FileSuffix));
+		S.Id = FBoatSkin::CleanId(Base);
+		if (!S.Id.Equals(Base, ESearchCase::CaseSensitive))
+		{
+			SAIL_LOG(Log, TEXT("Skins: %s skipped (name the file in lower-case letters, digits and hyphens)"), *File);
+			continue;
+		}
 		if (S.Id.IsEmpty() || S.Id.StartsWith(BoatSkinLocal::BuiltInPrefix)) continue;
 		if (!S.BoatId.IsEmpty() && S.BoatId != Boat) continue;
 		Out.Add(MoveTemp(S));
@@ -503,6 +525,9 @@ FString BoatSkinStore::FreeId(const FString& Name)
 {
 	FString Base = FBoatSkin::CleanId(Name);
 	if (Base.IsEmpty() || Base.StartsWith(BoatSkinLocal::BuiltInPrefix)) Base = TEXT("skin");
+	// Windows keeps some names for devices whatever follows the dot ("con.skin.json" cannot be written).
+	for (const TCHAR* Device : { TEXT("con"), TEXT("prn"), TEXT("aux"), TEXT("nul") }) if (Base == Device) Base = TEXT("skin-") + Base;
+	if (Base.Len() == 4 && (Base.StartsWith(TEXT("com")) || Base.StartsWith(TEXT("lpt"))) && FChar::IsDigit(Base[3])) Base = TEXT("skin-") + Base;
 	Base.LeftInline(FBoatSkin::MaxIdChars - 4);
 	FString Id = Base;
 	for (int32 N = 2; N < 1000 && IFileManager::Get().FileExists(*BoatSkinLocal::FileOf(Id)); ++N) Id = FString::Printf(TEXT("%s-%d"), *Base, N);

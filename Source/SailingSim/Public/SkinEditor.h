@@ -29,20 +29,23 @@ struct SAILINGSIM_API FSkinEditor
 	bool IsLoadedBuiltIn() const { return Baseline.bBuiltIn; }
 	/** The draft differs from what it started from. */
 	bool IsDirty() const;
+	/** Leaving now would lose something: the draft is changed, or the skin picked is not the one the boat wears. */
+	bool IsUnsaved() const { return IsDirty() || !Baseline.Id.Equals(WornId, ESearchCase::CaseSensitive); }
 	/** Counts every change of the draft (edits, loads, undo and redo): the screen previews when it moves. */
 	uint32 GetRevision() const { return Revision; }
 
-	// Edits. Each is one undo step, except that repeated changes of one value (a slider dragged) fold into one.
+	// Edits. Each is one undo step, except that a dragged slider's changes of one part's colour fold into one.
 	/** Takes a whole skin as the draft (null: the class's own look) and makes it what the draft is compared to. */
 	void Load(const FBoatSkin* Skin);
-	void SetPartColour(EPart Part, const FLinearColor& Colour);
+	void SetPartColour(EPart Part, const FLinearColor& Colour, bool bDragged = false);
 	/** Back to the class's own colour for that part. */
 	void ClearPart(EPart Part);
-	/** The boot stripe off, or the spars left bare aluminium (the other parts: as ClearPart). */
+	/** The boot or cove stripe off, no trim (it takes the deck's colour), or the spars left bare aluminium (the other
+	 *  parts: as ClearPart). */
 	void SetPartOff(EPart Part);
 	TOptional<FLinearColor> PartColour(EPart Part) const;
 	bool IsPartOff(EPart Part) const;
-	static bool PartCanBeOff(EPart Part) { return Part == EPart::Boot || Part == EPart::Spars; }
+	static bool PartCanBeOff(EPart Part) { return Part == EPart::Boot || Part == EPart::Cove || Part == EPart::Trim || Part == EPart::Spars; }
 	static const TCHAR* PartName(EPart Part);
 	/** A wear level (FBoatSkin's ladder), or -1 for the class's own. */
 	void SetWearLevel(int32 Level);
@@ -90,7 +93,15 @@ struct SAILINGSIM_API FSkinEditor
 private:
 	int32 BoatType = 0;
 	FBoatSkin Draft, Baseline;
+	/** The skin the boat wears in the save (empty: none), as far as this editor has set or found it. */
+	FString WornId;
+	/** The undo steps: the draft at each, and what it was compared to then. */
 	TArray<FBoatSkin> History;
+	TArray<FBoatSkin> Bases;
+	mutable bool bDirtyCached = false;
+	mutable bool bDirtyKnown = false;
+	mutable uint32 DirtyAt = 0;
+	void ResetHistory();
 	int32 At = 0;
 	int32 LastEdit = 0;
 	uint32 Revision = 0;

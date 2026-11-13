@@ -235,10 +235,12 @@ private:
 	bool bCustomBefore = false, bCustomBeforeShown = false, bCustomLeaveArmed = false, bCustomDeleteArmed = false;
 	uint32 CustomShownRevision = 0;
 	uint32 CustomLeaveRevision = 0;   // the draft's revision when Back was first pressed: a change since asks again
+	uint32 CustomMessageRevision = 0;
 	double CustomPreviewAt = 0.0;
 	FString CustomMessage;
 	TArray<TSharedPtr<SWidget>> CustomTextBoxes;
 	FEntry BuildCustomize();
+	void SetCustomMessage(const FString& Message);
 	void SetCustomTab(int32 Tab);
 	/** The screen's own keys (tabs, undo and redo, before/after, Surprise me, the guarded Back); Handled when it took one. */
 	FReply CustomizeKeyDown(const FKeyEvent& Event);

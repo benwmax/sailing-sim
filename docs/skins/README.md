@@ -28,7 +28,10 @@ missing leaves the boat as her class has her, so a skin can change only the sail
 }
 ```
 
-- Colours are `#RRGGBB` (sRGB). `"boot": "none"` takes the boot stripe off; `"spars": "bare"` leaves the anodised aluminium.
+- Colours are `#RRGGBB` (sRGB). `"boot": "none"` and `"cove": "none"` take a stripe off; `"trim": "none"` is no teak (the
+  rails take the deck's colour); `"spars": "bare"` leaves the anodised aluminium.
+- The file's name is its id: `<id>.skin.json`, lower-case letters, digits and hyphens. A file named any other way is not
+  listed (a log line says so).
 - `wear.level`: `new`, `months`, `club` (the boat every class already is; changes nothing), `classic` (decades, well
   kept), `neglected`. Or the exact pair `"ageYears"` (0 to 60) and `"care"` (0 to 1), which beats the level. These are
   the texture loop's Age and Care.
@@ -80,7 +83,11 @@ it changes (`ASailboatPawn::SetSkinPreview`, at most eight times a second while 
 - Nothing is saved until Use this look or Save as new. Back with changes says so once; Back again leaves without saving.
 - Saving (`FSkinEditor::SavePlan`): an empty draft takes the skin off; an unchanged skin is named in the save; a changed
   skin of the player's is written over; a changed built-in becomes a new file ("My navy").
+- Back also asks when a skin picked on the Skins tab is not the one on the boat (`FSkinEditor::IsUnsaved`). Undo takes
+  back a pick too, with the skin it was compared to, so Use never writes one skin's look into another's file.
+- Undo steps: every pick is one; only a dragged slider's changes fold into one.
 - One switch: `-SailingNoCustomize` takes the button and the key off the Boat screen (`SSailFrontEnd::CustomizeEnabled`).
+  Like every dev switch it does nothing in a Shipping build.
 - Stills: `-SailingFrontEnd=Customize -SailingCustomTab=<0..4>`.
 
 Not in this version: a camera framing per tab, a name typed from the pad (the pad gets "My navy", "My navy 2"), sail
@@ -104,6 +111,14 @@ This step was written without a compiler. To confirm there:
 6. The Customize screen: stills of each tab (`-SailingFrontEnd=Customize -SailingCustomTab=0..4`) at 1920x1080 and
    1280x720; a keys run with `-SailingUIScript` (C on the Boat screen, E through the tabs, R, Enter on Use this look);
    that the panel does not cover the boat, and that a preview's rebuild of the boat's look is not a visible hitch.
+   Each preview is a whole `RebuildBoatVisuals` (parts, crew and sail cloth made again, so the sails start from rest):
+   if a dragged slider stutters or the sails twitch, the fix is a skin-only path that sets the livery and sail
+   parameters on the materials she already has.
+7. Typing: Enter in the name and number boxes keeps the focus there (`ClearKeyboardFocusOnCommit(false)`); Escape, or B
+   on the pad, gives it back to the screen.
+
+Known and left: the wear ladder is not in order of oxidation (a well-kept classic is less chalky than the club boat, by
+design of Age and Care); a file of deeply nested brackets under the size cap is parsed like any JSON (as the save is).
 
 ## Later (the plan's v2 on)
 

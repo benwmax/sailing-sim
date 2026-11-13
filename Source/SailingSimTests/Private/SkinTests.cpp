@@ -416,17 +416,25 @@ bool FSailingSkinEditorTest::RunTest(const FString&)
 	TestEqual(TEXT("Its name"), Ed.NewName(), FString(TEXT("My look")));
 
 	// A dragged slider (the same part again and again) is one undo step; another part is another.
-	for (int32 K = 0; K < 20; ++K) Ed.SetPartColour(FSkinEditor::EPart::Hull, FLinearColor(0.01f * K, 0.1f, 0.2f));
+	for (int32 K = 0; K < 20; ++K) Ed.SetPartColour(FSkinEditor::EPart::Hull, FLinearColor(0.01f * K, 0.1f, 0.2f), true);
 	Ed.SetPartColour(FSkinEditor::EPart::Boot, Red);
 	TestTrue(TEXT("The boot stripe is on"), Ed.GetDraft().Paint.bBoot.Get(false));
 	TestTrue(TEXT("Undo the boot stripe"), Ed.Undo());
 	TestFalse(TEXT("Boot back to the class's"), Ed.PartColour(FSkinEditor::EPart::Boot).IsSet());
-	TestTrue(TEXT("Undo the hull"), Ed.Undo());
-	TestFalse(TEXT("Hull back to the class's in one step"), Ed.PartColour(FSkinEditor::EPart::Hull).IsSet());
+	TestTrue(TEXT("Undo the drag"), Ed.Undo());
+	TestEqual(TEXT("The drag is one step: the hull is the swatch again"), FBoatSkin::ToHex(Ed.PartColour(FSkinEditor::EPart::Hull).Get(FLinearColor::White)), FString(TEXT("#1C2A44")));
+	TestTrue(TEXT("Undo the swatch"), Ed.Undo());
+	TestFalse(TEXT("Hull back to the class's"), Ed.PartColour(FSkinEditor::EPart::Hull).IsSet());
 	TestFalse(TEXT("Nothing more to undo"), Ed.CanUndo());
 	TestFalse(TEXT("Clean again"), Ed.IsDirty());
-	TestTrue(TEXT("Redo the hull"), Ed.Redo());
-	TestTrue(TEXT("Redo the boot"), Ed.Redo());
+	// Two picks of a swatch for one part are two steps (only a drag folds).
+	Ed.SetPartColour(FSkinEditor::EPart::Deck, Navy);
+	Ed.SetPartColour(FSkinEditor::EPart::Deck, Red);
+	TestTrue(TEXT("Undo the second pick"), Ed.Undo());
+	TestEqual(TEXT("The first pick is back"), FBoatSkin::ToHex(Ed.PartColour(FSkinEditor::EPart::Deck).Get(FLinearColor::White)), FString(TEXT("#1C2A44")));
+	TestTrue(TEXT("Undo the first pick"), Ed.Undo());
+	TestTrue(TEXT("Redo the first pick"), Ed.Redo());
+	TestTrue(TEXT("Redo the second pick"), Ed.Redo());
 	TestFalse(TEXT("Nothing more to redo"), Ed.CanRedo());
 	// A change after an undo drops what was undone.
 	Ed.Undo();
@@ -479,6 +487,39 @@ bool FSailingSkinEditorTest::RunTest(const FString&)
 		Ed.Load(nullptr);
 		TestEqual(TEXT("Class look"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::ClassLook));
 		TestTrue(TEXT("Loading is undoable"), Ed.Undo() && Ed.GetDraft().Wear.Level == 0);
+		TestEqual(TEXT("Undoing a load brings back the skin loaded before it"), Ed.GetLoadedId(), FString(TEXT("my-navy")));
+		TestEqual(TEXT("and Use would write that skin"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::Overwrite));
+		// Picking another skin and undoing it: Use must not write the first look into the second's file.
+		Ed.OpenWith(J22, &NavySkin);
+		TestFalse(TEXT("The worn skin, unchanged, has nothing to save"), Ed.IsUnsaved());
+		Ed.Load(&Mine);
+		TestTrue(TEXT("A picked skin is not on the boat until Use"), !Ed.IsDirty() && Ed.IsUnsaved());
+		Ed.Undo();
+		TestEqual(TEXT("Undo: the built-in again"), Ed.GetLoadedId(), NavySkin.Id);
+		TestEqual(TEXT("Undo: nothing to write"), int32(Ed.SavePlan()), int32(FSkinEditor::ESavePlan::Existing));
+		TestFalse(TEXT("Undo: nothing to save"), Ed.IsUnsaved());
+		// No trim, no cove stripe: said in the file, kept through it, and taken off a class look that has them.
+		Ed.OpenWith(J22, nullptr);
+		Ed.SetPartOff(FSkinEditor::EPart::Trim);
+		Ed.SetPartOff(FSkinEditor::EPart::Cove);
+		FBoatSkin Back;
+		TestTrue(TEXT("No trim reads back"), FBoatSkin::FromJson(Ed.GetDraft().ToJson(), Back) == FBoatSkin::EResult::Ok
+			&& Back.Paint.bTrim.IsSet() && !Back.Paint.bTrim.GetValue() && Back.Paint.bCove.IsSet() && !Back.Paint.bCove.GetValue());
+		FBoatLivery Teak = SampleBoatLivery(J22, 0);
+		Teak.bTeak = true;
+		Teak.bCove = true;
+		Back.ApplyTo(Teak, J22);
+		TestTrue(TEXT("No trim and no cove on the boat"), !Teak.bTeak && !Teak.bCove && Teak.Cove.Equals(Teak.Hull));
+		Ed.SetPartColour(FSkinEditor::EPart::Trim, Red);
+		TestFalse(TEXT("A colour puts the trim back"), Ed.IsPartOff(FSkinEditor::EPart::Trim));
+		// Every built-in shows its own scheme's trim and stripes over the class's look.
+		for (const FBoatSkin& B : BoatSkinStore::BuiltIn(J22))
+		{
+			FBoatLivery L = SampleBoatLivery(J22, 0);
+			B.ApplyTo(L, J22);
+			TestEqual(*FString::Printf(TEXT("%s: trim as its paint says"), *B.Id), L.bTeak, B.Paint.bTrim.Get(false));
+			TestEqual(*FString::Printf(TEXT("%s: cove as its paint says"), *B.Id), L.bCove, B.Paint.bCove.Get(false));
+		}
 	}
 	// Surprise me: a real scheme's paint, a wear level short of neglected, ropes in range; one undo step.
 	FRandomStream Random(1288);
