@@ -1299,22 +1299,60 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 	for (const FMarinaRamp& R : Marina.Ramps)
 	{
 		if (!Generated(R.PierId)) continue;
-		constexpr float W = FMarinaRamp::Width, Foot = FMarinaRamp::Foot;
+		constexpr float W = FMarinaRamp::Width;
+		// The slab is fixed to the bank (PlaceRamps ran at load, with the pool's level): the live build draws it at the
+		// water's current level like the terrain actor draws the ground. (The baked tile is fixed, as the whole marina is.)
+		const float Level = Terrain ? float(Terrain->GetLevelBelowPool()) : 0.f;
+		const float Top = R.Top + Level, Foot = FMarinaRamp::Foot + Level;
 		const float Len = R.Length;
 		const FVector2D In = R.In, Out2 = R.Out, InFar = In + R.Dir * Len, OutFar = Out2 + R.Dir * Len;
 		// (the slab faces up: A->D along the ramp, A->B across it). Tagged for M_WorldSurface (UV1.y -1004: the ramp's
 		// grooves, tyre lanes, slime and silt; docs/texloop-dock); the kerbs stay plain concrete.
 		G[EKitLook::Concrete].Tag = FVector2D(0.0, -1004.0);
-		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, R.Top), FVector(Out2.X, Out2.Y, R.Top), FVector(OutFar.X, OutFar.Y, Foot), FVector(InFar.X, InFar.Y, Foot),
+		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, Top), FVector(Out2.X, Out2.Y, Top), FVector(OutFar.X, OutFar.Y, Foot), FVector(InFar.X, InFar.Y, Foot),
 			{ 0.f, 0.f }, { 0.f, W }, { Len, W }, { Len, 0.f });
 		G[EKitLook::Concrete].Tag = FVector2D::ZeroVector;
-		// its kerbs' outer faces along both sides (the pier side faces away from the slab, the far side out)
+		// its low kerbs along both edges (docs/ramp-cut): KerbWidth wide and KerbHeight tall, the inner face up from the
+		// slab, the top, and the outer face down to the ground patch's level (the pier side's stands against the cut bank,
+		// the far side's over the fill).
+		constexpr float KW = FMarinaRamp::KerbWidth, KH = FMarinaRamp::KerbHeight;
+		const FVector2D Side(-R.Dir.Y, R.Dir.X);
 		for (const double S : { -1.0, 1.0 })
 		{
-			const FVector2D E = S < 0 ? In : Out2, EFar = E + R.Dir * Len;
-			const FVector T0(E.X, E.Y, R.Top + 0.15f), T1(EFar.X, EFar.Y, Foot + 0.15f), B1(EFar.X, EFar.Y, Foot), B0(E.X, E.Y, R.Top);
-			if (S < 0) G[EKitLook::Concrete].Quad(T0, T1, B1, B0, { 0.f, 0.15f }, { Len, 0.15f }, { Len, 0.f }, { 0.f, 0.f });
-			else G[EKitLook::Concrete].Quad(T1, T0, B0, B1, { Len, 0.15f }, { 0.f, 0.15f }, { 0.f, 0.f }, { Len, 0.f });
+			const FVector2D E = S < 0 ? In : Out2, EFar = E + R.Dir * Len;           // the kerb's inner edge
+			const FVector2D O = E + Side * (S * KW), OFar = O + R.Dir * Len;        // its outer edge
+			const FVector I0(E.X, E.Y, Top), I1(EFar.X, EFar.Y, Foot);
+			const FVector IT0(E.X, E.Y, Top + KH), IT1(EFar.X, EFar.Y, Foot + KH);
+			const FVector OT0(O.X, O.Y, Top + KH), OT1(OFar.X, OFar.Y, Foot + KH);
+			const FVector O0(O.X, O.Y, Top - 0.05f), O1(OFar.X, OFar.Y, Foot - 0.05f);
+			// (Quad's normal is (D - A) x (B - A): the slab's own quad, A->B across to +Side and A->D down the ramp, faces up,
+			// so A->D up with A->B down the ramp faces +Side, and A->D down with A->B down the ramp faces -Side.)
+			if (S < 0)
+			{
+				G[EKitLook::Concrete].Quad(I0, I1, IT1, IT0, { 0.f, 0.f }, { Len, 0.f }, { Len, KH }, { 0.f, KH });   // inner face, toward the slab (+Side)
+				G[EKitLook::Concrete].Quad(OT0, IT0, IT1, OT1, { 0.f, 0.f }, { 0.f, KW }, { Len, KW }, { Len, 0.f }); // top
+				G[EKitLook::Concrete].Quad(OT0, OT1, O1, O0, { 0.f, KH }, { Len, KH }, { Len, 0.f }, { 0.f, 0.f });   // outer face, against the cut bank (-Side)
+			}
+			else
+			{
+				G[EKitLook::Concrete].Quad(I1, I0, IT0, IT1, { Len, 0.f }, { 0.f, 0.f }, { 0.f, KH }, { Len, KH });   // inner face (-Side)
+				G[EKitLook::Concrete].Quad(IT0, OT0, OT1, IT1, { 0.f, 0.f }, { 0.f, KW }, { Len, KW }, { Len, 0.f }); // top
+				G[EKitLook::Concrete].Quad(OT1, OT0, O0, O1, { Len, KH }, { 0.f, KH }, { 0.f, 0.f }, { Len, 0.f });   // outer face, over the fill (+Side)
+			}
+			// Its ends, so the kerb reads solid at the head (facing up the bank, -Dir: A->D up, A->B toward +Side) and at the
+			// foot (+Dir: A->B toward -Side).
+			const FVector& HeadIn = I0; const FVector& HeadOut = O0; const FVector& HeadTopIn = IT0; const FVector& HeadTopOut = OT0;
+			const FVector& FootIn = I1; const FVector& FootOut = O1; const FVector& FootTopIn = IT1; const FVector& FootTopOut = OT1;
+			if (S < 0)
+			{
+				G[EKitLook::Concrete].Quad(HeadOut, HeadIn, HeadTopIn, HeadTopOut, { 0.f, 0.f }, { KW, 0.f }, { KW, KH }, { 0.f, KH });
+				G[EKitLook::Concrete].Quad(FootIn, FootOut, FootTopOut, FootTopIn, { 0.f, 0.f }, { KW, 0.f }, { KW, KH }, { 0.f, KH });
+			}
+			else
+			{
+				G[EKitLook::Concrete].Quad(HeadIn, HeadOut, HeadTopOut, HeadTopIn, { 0.f, 0.f }, { KW, 0.f }, { KW, KH }, { 0.f, KH });
+				G[EKitLook::Concrete].Quad(FootOut, FootIn, FootTopIn, FootTopOut, { 0.f, 0.f }, { KW, 0.f }, { KW, KH }, { 0.f, KH });
+			}
 		}
 	}
 

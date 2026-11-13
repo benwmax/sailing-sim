@@ -58,6 +58,25 @@ namespace Sailing
 	};
 
 	/**
+	 * Club docks (docs/ramp-cut): a slab laid into the ground, the launch ramp's. Inside its plan the ground is the slab's
+	 * plane (cut down where the bank is higher, filled where it is lower), a little under the slab so the two don't fight;
+	 * over Margin metres beyond its edges the ground returns to its own height. Plain data, copied with the terrain.
+	 */
+	struct SAILINGPHYSICS_API FGroundPatch
+	{
+		double HeadX = 0.0, HeadY = 0.0;  // the slab's head, the middle of its top edge (map m)
+		double DirX = 1.0, DirY = 0.0;    // unit, down the slab
+		double Length = 10.0;             // m
+		double HalfWidth = 2.5;           // m, kerbs included
+		double Z0 = 0.0, Z1 = -1.0;       // the ground's height under the head and under the foot (m above the POOL: the slab
+		                                  // is concrete, fixed to the bank; the water moves against it with the lake level)
+		double Margin = 1.5;              // m past the edges over which the ground returns to its own
+		/** The patched height at (X, Y) whose own ground is Ground (water-relative, LevelBelowPool included), the water
+		 *  standing Level below the pool. Cheap off the patch: a box test before any square root. */
+		double Apply(double X, double Y, double Ground, double Level) const;
+	};
+
+	/**
 	 * Lake bed and surrounding land as a height grid (meters, Z = 0 at the conservation pool), baked by
 	 * Tools/terrain/build_rayhubbard.py from USGS 3DEP, TWDB bathymetry and the OpenStreetMap shoreline.
 	 * Rows run north (+X), columns east (+Y).
@@ -107,8 +126,15 @@ namespace Sailing
 
 		bool IsValid() const { return Rows > 0; }
 
-		/** Ground height (m, relative to pool) at a world XY, bilinear; far outside the grid returns high land. */
+		/** Ground height (m, relative to pool) at a world XY, bilinear; far outside the grid returns high land. Ground
+		 *  patches (AddGroundPatch) are applied: under a launch ramp this is the slab's bed, not the bank's. */
 		double HeightAt(double X, double Y) const;
+		/** HeightAt without the ground patches: the bank as the bake has it. */
+		double NaturalHeightAt(double X, double Y) const;
+		/** Lays a slab into the ground (the launch ramps: FLakeData after FMarina::PlaceRamps). Copies of this terrain made
+		 *  before the call don't see it; the lake adds its patches at load, before anything copies the terrain. */
+		void AddGroundPatch(const FGroundPatch& Patch);
+		const std::vector<FGroundPatch>* GetGroundPatches() const { return Patches.get(); }
 		/** True where HeightAt reads real ground: on the grid (or a resident streamed tile, or the shore detail), not its
 		 *  off-the-map land, no-terrain water or non-finite stand-ins. */
 		bool HasGroundAt(double X, double Y) const;
@@ -165,6 +191,7 @@ namespace Sailing
 		std::shared_ptr<const FTileSet> Tiles;
 		std::shared_ptr<const FTrees> Trees;
 		std::shared_ptr<const FDetail> Detail;
+		std::shared_ptr<const std::vector<FGroundPatch>> Patches;   // null when none
 		int DetailTileAt(double X, double Y, double& U, double& V) const;
 		double GridNode(int Row, int Col) const;
 		double GroundAt(double X, double Y) const;
