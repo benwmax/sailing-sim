@@ -1,0 +1,15 @@
+pc/ramp-cut at 2ddcc72e (the launch ramp cut into the bank), on the PC: MSVC editor build Succeeded, 0 errors, 0 warnings in
+our Source. Stills: uncooked editor build, -SailingProceduralWorld (the marina tile not rebaked), Ultra 1920x1080, 15:00,
+Drone absolute: ramp = 37.2,170.4,3.4,107,-18; ramp-top = 30.0,166.0,22,107,-62; ramp-low = 25.7,192.0,1.0,287,-6 (from the
+water about 8 m off the slab's foot, 1 m up, looking back up it).
+Tests: SailingSim.Lake 16/1 (fail: Lake.HeightAtNonFinite, "A non-finite or far-off position reads as land: expected 50, was
+nan"), SailingSim.World 1/0, SailingSim.Drills 10/0 (SunfishLessons passes), SailingSim.Physics.GroundPatch 1/0.
+Lake.Marina: "Ramp head 0.54 m up at (37.8, 133.5), dry for 3.9 of 14 m"; "Ramp slab 13.9 m at 14.0 %: bed at most 0.00 m
+over it, 0.05 m under it; cut 0.39 m into the bank, fill 1.13 m; 0.000 m off the bank 3 m out".
+Lake.ShoreMapAtRamp (pass): "Ramp head (37.8, 133.5), 0.54 m up, dry for 3.9 m; steps in the shore map: 0 (worst 0.00 m)".
+Lake.ClubBerth (pass): J/22 berth at (35, 165), 1.2 m under the keel for every wind.
+Looks: the slab now runs down into the water at a gentle grade between two kerbs (ramp-low: a straight concrete ramp
+between kerb walls entering the water, its head at the lawn); from above it is a full rectangle, no longer clipped by the
+bank. The pier-side kerb stands against a cut face of the bank (a grey wedge of terrain beside it in ramp-top); the far
+side's fill slopes down from the kerb to the lake bed. No z-fighting between the slab and the terrain in these views, and
+no hole or step in the terrain along the kerbs that shows at this distance.
