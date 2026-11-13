@@ -97,7 +97,10 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	Out.LuffX = Geo.Strips[0].LuffX + LuffSlope * (Out.Z - LuffZ0);
 	if (bHeadPoint)
 	{
-		Out.Z = ZFoot + (HeadZ - ZFoot) * R / (Rows - 1);
+		// Over a jib whose head is below this one, the rows under the head end at the jib's head height, so the last
+		// panel (to the head) is all above the jib: its luff never cuts back through the jib's top.
+		const bool bOverJib = bAheadOf && AheadZTop < HeadZ && AheadZTop > ZFoot + 0.5;
+		Out.Z = R == Rows - 1 ? HeadZ : (bOverJib ? ZFoot + (AheadZTop - ZFoot) * R / (Rows - 2) : ZFoot + (HeadZ - ZFoot) * R / (Rows - 1));
 		Out.LuffX = LuffXAt(Out.Z, R);
 	}
 	Out.Chord = RowChord[R];
@@ -176,7 +179,10 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 	// Over the jib's head: its luff comes down ahead of the jib's (FSailCloth::SetHeadPoint), not through it.
 	if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
 	Z = FMath::Min(Z, C.MastheadZ - 0.1);
-	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? MastFrontCm->X : (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	// The model's socket carries the mast's bend, but never inside the config's mast (the maxi's Hounds is near her mast's
+	// centre line).
+	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? FMath::Max(MastFrontCm->X, ConfigFront) : ConfigFront;
 	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);
 }
 

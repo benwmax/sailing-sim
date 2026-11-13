@@ -89,8 +89,8 @@ SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& O
 namespace Sailing { struct FBoatConfig; }
 /**
  * Feedback #20: where a boat's spinnaker (or gennaker) head is drawn (boat frame, cm): on the front of the mast, a swivel's
- * length ahead of it (MastFrontCm: the model mast's Hounds socket, the forestay's tang on its front face; nullptr: the
- * config's mast), at the sail's own head height, or over the jib's head when the jib's is higher (so the spinnaker's luff
+ * length ahead of it (MastFrontCm: the model mast's Hounds socket, the forestay's tang on its front face, never aft of the
+ * config's mast front; nullptr: the config's mast), at the sail's own head height, or over the jib's head when the jib's is higher (so the spinnaker's luff
  * comes over it), and under the masthead.
  */
 SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm);
@@ -151,8 +151,9 @@ public:
 	 * spinnaker's luff out ahead of the mast (its centre of effort), which drew the head floating in the air, a metre or two
 	 * forward of the mast and short of its halyard. Set, the luff runs from the tack up to this point and the head comes to
 	 * a point there (the head corner is pinned to it); the physics is unchanged. KeepAheadOf (the jib, both on the
-	 * centreline) holds every row's luff below the jib's head at least kAheadOfJibM ahead of the jib's luff, so the luff
-	 * comes over the jib's head to the mast instead of through its cloth. Init clears it.
+	 * centreline) holds every row's luff below the jib's head at least kAheadOfJibM ahead of the jib's luff, and ends the
+	 * rows under the head at the jib's head height, so the luff comes over the jib's head to the mast instead of through its
+	 * cloth. Init clears it.
 	 */
 	void SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometry* KeepAheadOf = nullptr);
 	static constexpr double kAheadOfJibM = 0.15;

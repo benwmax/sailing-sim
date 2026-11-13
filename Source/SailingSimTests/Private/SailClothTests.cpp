@@ -233,12 +233,15 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 		TArray<FCase> Cases;
 		Cases.Add({ TEXT("no model"), SpinnakerHeadCm(C, nullptr), false });
 		if (C.Type == EBoatType::J22) Cases.Add({ TEXT("hero Hounds"), SpinnakerHeadCm(C, &HeroHounds), true });
+		// A model whose socket is on the mast's centre line (the maxi's): the head still outside the mast.
+		const FVector OnCentre(C.MastX * CmPerMeter, 0.0, SailHeadCm);
+		Cases.Add({ TEXT("socket on the mast's centre"), SpinnakerHeadCm(C, &OnCentre), false });
 
 		// The halyard point: at the mast, not where the physics put the head; high enough; under the masthead.
 		for (const FCase& K : Cases)
 		{
 			const FString What = FString::Printf(TEXT("%s (%s)"), *BoatName, K.What);
-			const double Front = K.bHero ? HeroHounds.X : MastFrontCm;
+			const double Front = K.bHero ? FMath::Max(HeroHounds.X, MastFrontCm) : MastFrontCm;
 			TestTrue(FString::Printf(TEXT("%s: the head just ahead of the mast's front, x %.0f cm (front %.0f)"), *What, K.Head.X, Front),
 				K.Head.X > Front && K.Head.X <= Front + 10.0);
 			TestEqual(FString::Printf(TEXT("%s: the head on the centreline"), *What), K.Head.Y, 0.0, 0.01);
@@ -326,6 +329,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 		if (C.HasJib())
 		{
 			struct FTrim { double Jib, Spin; };
+			for (const FCase& K : Cases)
 			for (const FTrim Trim : { FTrim{ 45.0, 70.0 }, FTrim{ 80.0, 60.0 }, FTrim{ 30.0, 20.0 } })
 			{
 				for (const int32 Side : { 1, -1 })
@@ -348,7 +352,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 					Jib.Init(C.Jib, ESailKind::Jib);
 					Jib.Step(JibStrips, Side, Drawn);
 					Spin.Init(C.Spinnaker, ESailKind::Spinnaker);
-					Spin.SetHeadPoint(Cases.Last().Head, &C.Jib);
+					Spin.SetHeadPoint(K.Head, &C.Jib);
 					Spin.Step(Strips, Side, Drawn);
 					const TArray<FVector>& J = Jib.Positions();
 					const TArray<FVector>& S = Spin.Positions();
@@ -379,8 +383,8 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 							}
 						}
 					}
-					TestEqual(FString::Printf(TEXT("%s: jib %.0f, spinnaker %.0f deg, side %d: spinnaker edges through the jib (first at %s)"),
-						*BoatName, Trim.Jib, Trim.Spin, Side, *First.ToString()), Crossings, 0);
+					TestEqual(FString::Printf(TEXT("%s (%s): jib %.0f, spinnaker %.0f deg, side %d: spinnaker edges through the jib (first at %s)"),
+						*BoatName, K.What, Trim.Jib, Trim.Spin, Side, *First.ToString()), Crossings, 0);
 				}
 			}
 		}
