@@ -60,7 +60,8 @@ public:
 	static void MoonPosition(double ClockHour, double DayOfYear, double AgeDays, double LatitudeDeg, double LongitudeDeg, double UtcOffsetHours, double& OutElevation, double& OutAzimuth);
 
 	/** A thunderclap reaching the listener: loudness 0..1 (distance) and how long ago it started. */
-	struct FThunder { float Loudness; float Age; float Duration; float X = 0.f; float Y = 0.f; };   // X, Y: the strike (map m)
+	// X, Y: the strike (map m). Rise: seconds to full rumble (a distant, unseen roll swells in slowly: feedback #19).
+	struct FThunder { float Loudness; float Age; float Duration; float X = 0.f; float Y = 0.f; float Rise = 0.15f; };
 	const TArray<FThunder>& GetActiveThunder() const { return Thunder; }
 	/** The direct sun reaching the camera through the clouds (0..1) and the physical camera's EV100, for the capture metadata. */
 	float GetCloudShade() const { return LastCloudShade; }
@@ -201,6 +202,9 @@ private:
 	TArray<FThunder> Thunder;
 	struct FPendingThunder { float Delay; float Loudness; float X = 0.f; float Y = 0.f; float Distance = 0.f; };
 	TArray<FPendingThunder> PendingThunder;
+	double NextRumble = -1.0;   // feedback #19: weather time of the next distant, unseen rumble (-1: not scheduled)
+	double LastRumbleCaption = -1e9;   // weather time of the last "Thunder, distant" caption for a rumble
+	FRandomStream RumbleRng = FRandomStream(0x5EED7A);   // the rumbles' own draws (the global stream stays reproducible)
 	float SunIntensity = 10.f;
 	float SkyIntensity = 1.f;
 	float FogBaseDensity = 0.02f;

@@ -3109,6 +3109,27 @@ void ASailboatPawn::StartSampleLayer()
 	if (Mask) SAIL_LOG(Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
 }
 
+bool ASailboatPawn::IsPlayerTrimming()
+{
+	// Feedback #18: the player's own hand on a sheet (keys or stick held), not the trim assist or the crew.
+	static const FName NAME_Grind(TEXT("Grind"));
+	const double Now = Boat.GetState().Time;
+	// A tapped grind keeps grinding after the key is up (GrindTapSeconds): hear it while the sheet still comes in.
+	const double GrindM = Stations.IsActive() ? Stations.GetPlayerGrindM() : 0.0;
+	if (GrindM > LastGrindM + 1e-4) LastGrindTime = Now;
+	LastGrindM = GrindM;
+	auto Held = [this](FName Action) { const float* V = HeldAxes.Find(Action); return V ? *V : 0.f; };
+	SailingSound::FPlayerTrimInput In;
+	In.bBlocked = bMenuOpen || bTrafficBoat || bGhost;
+	In.Station = int32(Stations.GetStation());
+	In.SecondsSinceManualTrim = Now - LastManualTrimTime;
+	In.JibSheetHeld = Held(NAME_JibSheet);
+	In.GrindHeld = Held(NAME_Grind);
+	In.MainSheetHeld = Held(NAME_MainSheet);
+	In.SecondsSinceGrind = Now - LastGrindTime;
+	return SailingSound::IsPlayerTrimming(In);
+}
+
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
 {
 	if (!Synth)
@@ -3129,7 +3150,7 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	// Bow slamming: the boat pitching quickly while making way.
 	P.BowSlam = FMath::Clamp(float(FMath::Abs(Boat.GetState().AngularVelocity.Y)) * 3.f * FMath::Clamp(float(T.BoatSpeed) / 2.5f, 0.f, 1.f), 0.f, 1.f);
 	const float Dt = FMath::Max(DeltaSeconds, 1e-3f);
-	P.TrimRate = FMath::Clamp(float(-((Controls.MainSheet - PrevMainSheet) + (Controls.JibSheet - PrevJibSheet)) / Dt) * 2.f, -1.f, 1.f);
+	const float SheetRate = FMath::Clamp(float(-((Controls.MainSheet - PrevMainSheet) + (Controls.JibSheet - PrevJibSheet)) / Dt) * 2.f, -1.f, 1.f);
 	PrevMainSheet = Controls.MainSheet;
 	PrevJibSheet = Controls.JibSheet;
 	// The player's mix (Settings > Audio): read once a frame for every synth and sample voice. P.Volume carries the
@@ -3141,6 +3162,8 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	P.GainSignals = SailingSound::GroupShare(SailingSound::EGroup::Signals);
 	const bool bWinches = SailingSound::HasSheetWinches(Boat.GetConfig().Type);
 	P.Winches = bWinches ? 1.f : 0.f;
+	// Feedback #18: the winch clicks only when the player winches a sheet in, never for the crew's own small trims.
+	P.TrimRate = SailingSound::AudibleTrimRate(SheetRate, bWinches, IsPlayerTrimming());
 
 	float Rain = 0.f, Thunder = 0.f, Crack = 0.f;
 	FVector2D StrikeDir(1.0, 0.0);
@@ -3154,7 +3177,7 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 		for (const ASailingEnvironment::FThunder& Th : It->GetActiveThunder())
 		{
 			// Rolling envelope: quick rise, long irregular decay.
-			const float Env = FMath::Clamp(Th.Age / 0.15f, 0.f, 1.f) * FMath::Exp(-Th.Age / (0.35f * Th.Duration)) * (0.7f + 0.3f * FMath::Sin(Th.Age * 7.f + Th.Duration));
+			const float Env = FMath::Clamp(Th.Age / FMath::Max(Th.Rise, 0.01f), 0.f, 1.f) * FMath::Exp(-Th.Age / (0.35f * Th.Duration)) * (0.7f + 0.3f * FMath::Sin(Th.Age * 7.f + Th.Duration));
 			Thunder = FMath::Max(Thunder, Th.Loudness * Env);
 			if (Th.Loudness > 0.6f && Th.Age < 0.25f) Crack = FMath::Max(Crack, Th.Loudness * (1.f - Th.Age / 0.25f));
 			// The loudest peal now says where the thunder comes from.
@@ -3190,24 +3213,32 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 		}
 	}
 	P.Moored = FMath::Clamp(1.f - float(T.BoatSpeed) / 0.4f, 0.f, 1.f);
-	P.RainDeck = Rain;
-	P.RainWater = Rain;
+	// Feedback #19: a storm is not one steady loop. Rain comes in waves, the wind roars and lulls, wavelets slap the hull.
+	const double SoundNow = GetWorld()->GetTimeSeconds();
+	const float RainNow = FMath::Min(Rain * SailingSound::RainSwell(SoundNow, Rain), 1.2f);
+	const SailingSound::FWindBuffet Buffet = SailingSound::WindBuffet(SoundNow, SailingSound::Storminess(float(T.ApparentWindSpeed), Rain, Squall));
+	WindPitch = Buffet.Pitch;
+	P.Buffet = Buffet.Level;
+	P.Chop = SailingSound::ChopFor(float(T.TrueWindSpeed));
+	P.RainDeck = RainNow;
+	P.RainWater = RainNow;
+	P.SailRain = bSailsStowed ? 0.f : RainNow;
 	P.Squall = Squall;
 	// The sample layer follows the same levels as the voices it replaces.
 	if (SampleCues.Num() == int32(ESailingCue::Count))
 	{
 		const float Aws = float(T.ApparentWindSpeed) * (1.f - 0.55f * P.WindShadow.load());
 		const float Levels[] = {
-			FMath::Pow(FMath::Clamp(Aws / 12.f, 0.f, 1.5f), 1.5f),                                                    // Wind
+			FMath::Pow(FMath::Clamp(Aws / 12.f, 0.f, 1.5f), 1.5f) * Buffet.Level,                                     // Wind (roar and lull)
 			FMath::Clamp((P.GustRatio.load() - 1.f) * 2.5f, 0.f, 1.f) * FMath::Clamp(Aws / 7.f, 0.f, 1.5f),            // GustRumble
 			P.Luff.load() * FMath::Clamp(Aws / 8.f, 0.f, 2.f),                                                         // SailFlog
 			P.Telltales.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.5f) * 0.3f,                                            // Telltales
 			FMath::Pow(FMath::Clamp(float(T.BoatSpeed) / 3.f, 0.f, 1.5f), 1.5f),                                       // BowWave
-			FMath::Max(P.Moored.load() * 0.5f, P.BowSlam.load()),                                                      // HullSlap
+			FMath::Max3(P.Moored.load() * 0.5f, P.BowSlam.load(), 0.35f * P.Chop.load() * (1.f - P.Moored.load())),  // HullSlap (and a chop under way)
 			bWinches ? FMath::Clamp(P.TrimRate.load(), 0.f, 1.f) : 0.f,                                                // Winch (none on a dinghy)
 			bWinches ? FMath::Clamp(-P.TrimRate.load(), 0.f, 1.f) : FMath::Clamp(FMath::Abs(P.TrimRate.load()), 0.f, 1.f), // SheetBlock
 			P.Moored.load() * FMath::Clamp(Aws / 8.f, 0.f, 1.f),                                                       // HalyardSlap
-			Rain, Rain, Squall * Squall, Thunder };                                                                    // RainDeck, RainWater, SquallHiss, Thunder
+			RainNow, RainNow, Squall * Squall, Thunder };                                                              // RainDeck, RainWater, SquallHiss, Thunder
 		for (int32 K = 0; K < int32(ESailingCue::Count); ++K)
 		{
 			if (SampleCues[K]) SampleCues[K]->SetVolumeMultiplier(Levels[K] * P.Volume.load() * SailingSound::GroupShare(SailingSound::CueGroup(ESailingCue(K))));
@@ -3301,10 +3332,13 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 	Crossfade(Speed, WashC, 4, Wash);
 	Wash[3] = FMath::Max(Wash[3], FMath::Clamp((P.HullSpeedRatio.load() - 0.9f) * 5.f, 0.f, 1.f));
 	Crossfade(Trim, WinchC, 2, Winch);
-	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max(Chop * Moored, Slam) };
+	// Feedback #18: under way in a chop (the wind's sea, P.Chop, as HullSlap's level) the choppy lapping carries the
+	// wavelets at the hull, not only at rest.
+	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max3(Chop * Moored, Slam, P.Chop.load() * (1.f - Moored)) };
 	const float LapSum = FMath::Max(Lap[0] + Lap[1] + Lap[2], 1e-3f);
 	for (float& L : Lap) L /= LapSum;
 	const TConstArrayView<FPackLoop> Loops = PackLoops();
+	const bool bSendPitch = FMath::Abs(WindPitch - WindPitchSet) > 0.002f;
 	for (int32 I = 0; I < PackLoopComps.Num(); ++I)
 	{
 		const FPackLoop& L = Loops[PackLoopDefs[I]];
@@ -3320,7 +3354,11 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		default: break;
 		}
 		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Master * GroupShare(CueGroup(L.Cue)));
+		// Feedback #19: the wind's loops rise in pitch with a surge and drop in a lull (UpdateSound's WindBuffet); sent only
+		// when it has moved.
+		if (L.Cue == ESailingCue::Wind && bSendPitch) PackLoopComps[I]->SetPitchMultiplier(WindPitch);
 	}
+	if (bSendPitch) WindPitchSet = WindPitch;
 	if (PackShotSounds.Num() == 0) return;
 	const double Now = GetWorld()->GetTimeSeconds();
 	// Slice sound pass: where each one-shot happens on the boat (cm in BoatRoot's frame).
@@ -3345,12 +3383,13 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		PlayPackShot(uint8(EPackShot::SailFill), FMath::Clamp(Aws / 8.f, 0.2f, 1.f) * Vol, SailCm);
 		LuffHighAt = -100.0;
 	}
-	// Winch clicks for small trims; a sheet running out through its block when easing starts. A dinghy has no winch
-	// (SailingSound::HasSheetWinches): its sheet runs through the blocks when it is pulled in too.
+	// Winch clicks while the player winches in (Trim is already silent for the crew's own trims: AudibleTrimRate); a sheet
+	// running out through its block when easing starts. A dinghy has no winch (SailingSound::HasSheetWinches): its sheet
+	// runs through the blocks when it is pulled in too.
 	const bool bWinches = HasSheetWinches(Boat.GetConfig().Type);
 	if (bWinches && Trim > 0.03f && Trim < 0.3f && Now >= NextWinchClick)
 	{
-		PlayPackShot(uint8(EPackShot::WinchClick), 0.6f * Vol, WinchCm);
+		PlayPackShot(uint8(EPackShot::WinchClick), 0.45f * Vol, WinchCm);
 		NextWinchClick = Now + 0.14;
 	}
 	if (Trim < -0.3f && PrevTrimRate >= -0.3f) PlayPackShot(uint8(Trim < -0.6f ? EPackShot::SheetEaseFast : EPackShot::SheetEaseSlow), 0.7f * Vol, WinchCm);

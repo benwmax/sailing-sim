@@ -239,3 +239,174 @@ bool FSailingShoreLifeTest::RunTest(const FString& Parameters)
 	UpdateMix();
 	return true;
 }
+
+/**
+ * Feedback #18: the winch clicks only when the player winches a sheet in. The crew's own trims and small eases (trim
+ * assist, Easy mode, the trimmer's hands) on a winch boat are silent; a sheet let run is heard; a dinghy's sheet still
+ * runs through its blocks both ways. Who counts as the player trimming, at the boat's own sheets and at each station.
+ * (The pawn's wiring, ASailboatPawn::IsPlayerTrimming, fills FPlayerTrimInput from its held keys and grind.)
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCrewTrimSilentTest, "SailingSim.Audio.CrewTrimSilent", AudioFlags)
+bool FSailingCrewTrimSilentTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	TestEqual(TEXT("The crew trimming in on a J/22: no click"), AudibleTrimRate(0.15f, true, false), 0.f);
+	TestEqual(TEXT("The player winching in on a J/22: clicks"), AudibleTrimRate(0.15f, true, true), 0.15f);
+	TestEqual(TEXT("The crew letting a sheet run on a J/22: heard"), AudibleTrimRate(-0.4f, true, false), -0.4f);
+	TestEqual(TEXT("The crew's small ease on a J/22: silent"), AudibleTrimRate(-0.2f, true, false), 0.f);
+	TestEqual(TEXT("The player's small ease: heard"), AudibleTrimRate(-0.2f, true, true), -0.2f);
+	TestEqual(TEXT("The crew trimming a Sunfish: the sheet runs through its blocks"), AudibleTrimRate(0.4f, false, false), 0.4f);
+	TestEqual(TEXT("Nothing moving"), AudibleTrimRate(0.f, true, false), 0.f);
+
+	// Who is trimming: the boat's own sheets within 0.25 s of a key; at a station only that station's keys (taps grind on).
+	FPlayerTrimInput In;
+	In.SecondsSinceManualTrim = 0.1;
+	TestTrue(TEXT("A sheet key just moved a sheet"), IsPlayerTrimming(In));
+	In.SecondsSinceManualTrim = 2.0;
+	TestFalse(TEXT("The trim assist's turn"), IsPlayerTrimming(In));
+	In.SecondsSinceManualTrim = 0.1; In.bBlocked = true;
+	TestFalse(TEXT("A menu open"), IsPlayerTrimming(In));
+	In = FPlayerTrimInput(); In.Station = 2;
+	TestFalse(TEXT("Jib station, hands off"), IsPlayerTrimming(In));
+	In.GrindHeld = 1.f;
+	TestTrue(TEXT("Jib station, grinding"), IsPlayerTrimming(In));
+	In.GrindHeld = 0.f; In.SecondsSinceGrind = 0.1;
+	TestTrue(TEXT("Jib station, a tapped grind still bringing sheet in"), IsPlayerTrimming(In));
+	In.SecondsSinceGrind = 1e9; In.MainSheetHeld = 1.f;
+	TestFalse(TEXT("Jib station, the mainsheet key does nothing there"), IsPlayerTrimming(In));
+	In.Station = 3;
+	TestTrue(TEXT("Main station, the mainsheet"), IsPlayerTrimming(In));
+	In.Station = 1; In.JibSheetHeld = 1.f; In.GrindHeld = 1.f;
+	TestFalse(TEXT("The helm works the wheel"), IsPlayerTrimming(In));
+
+	// The boat's voice with only the winch layer able to sound (no wind, no speed): a crew trim is silent, the player's clicks.
+	auto Rms = [](USailingSynthWave* W, int32 N)
+	{
+		TArray<uint8> Buf;
+		double Sum = 0.0;
+		for (int32 Block = 0; Block < 4; ++Block)
+		{
+			W->OnGeneratePCMAudio(Buf, N);
+			const int16* S = reinterpret_cast<const int16*>(Buf.GetData());
+			for (int32 I = 0; I < N; ++I) Sum += double(S[I]) * S[I];
+		}
+		return FMath::Sqrt(Sum / (4.0 * N)) / 32768.0;
+	};
+	USailingSynthWave* Quiet = NewObject<USailingSynthWave>();
+	Quiet->Params.TrimRate = AudibleTrimRate(0.2f, true, false);
+	TestTrue(TEXT("The crew's trim makes no sound"), Rms(Quiet, 12000) < 1e-4);
+	USailingSynthWave* Winching = NewObject<USailingSynthWave>();
+	Winching->Params.TrimRate = AudibleTrimRate(0.2f, true, true);
+	TestTrue(TEXT("The player's winching clicks"), Rms(Winching, 12000) > 1e-3);
+	return true;
+}
+
+/**
+ * Feedback #19: a storm is not one steady loop. In a blow the wind roars and lulls (never steady, never a short
+ * repeating pattern), rain comes in waves, and both are exactly unchanged in a light breeze without rain. Distant,
+ * unseen rumbles come more often under the cell.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStormVarietyTest, "SailingSim.Audio.StormVariety", AudioFlags)
+bool FSailingStormVarietyTest::RunTest(const FString& Parameters)
+{
+	using namespace SailingSound;
+	TestEqual(TEXT("A light breeze, no rain: not stormy"), Storminess(3.f, 0.f, 0.f), 0.f);
+	TestTrue(TEXT("Rain makes it stormy"), Storminess(4.f, 0.8f, 0.f) >= 0.8f);
+	TestEqual(TEXT("An ordinary afternoon's beat (16 kn apparent): unchanged"), Storminess(8.f, 0.f, 0.f), 0.f);
+	TestTrue(TEXT("29 kn apparent is a blow"), Storminess(15.f, 0.f, 0.f) >= 0.99f);
+	TestTrue(TEXT("A squall coming"), Storminess(4.f, 0.f, 0.6f) >= 0.6f);
+
+	for (double T = 0.0; T < 60.0; T += 0.37)
+	{
+		const FWindBuffet Calm = WindBuffet(T, 0.f);
+		if (Calm.Level != 1.f || Calm.Pitch != 1.f) { AddError(FString::Printf(TEXT("Calm wind buffeted at %.2f s"), T)); break; }
+		if (RainSwell(T, 0.f) != 1.f) { AddError(FString::Printf(TEXT("No rain, yet a swell at %.2f s"), T)); break; }
+	}
+
+	// Two minutes of a thunderstorm's wind, sampled at 20 Hz.
+	float MinL = 10.f, MaxL = 0.f, MinP = 10.f, MaxP = 0.f;
+	int32 Surges = 0;
+	bool bHigh = false;
+	float LongestSteady = 0.f, Steady = 0.f, Prev = 1.f;
+	for (int32 I = 0; I < 2400; ++I)
+	{
+		const double T = 100.0 + I * 0.05;
+		const FWindBuffet B = WindBuffet(T, 1.f);
+		MinL = FMath::Min(MinL, B.Level); MaxL = FMath::Max(MaxL, B.Level);
+		MinP = FMath::Min(MinP, B.Pitch); MaxP = FMath::Max(MaxP, B.Pitch);
+		if (!bHigh && B.Level > 1.2f) { ++Surges; bHigh = true; }
+		if (B.Level < 1.05f) bHigh = false;
+		// "Steady": the level moving less than 1% per second.
+		Steady = FMath::Abs(B.Level - Prev) < 0.0005f ? Steady + 0.05f : 0.f;
+		LongestSteady = FMath::Max(LongestSteady, Steady);
+		Prev = B.Level;
+	}
+	TestTrue(FString::Printf(TEXT("Lulls (min %.2f)"), MinL), MinL < 0.75f && MinL >= 0.549f);
+	TestTrue(FString::Printf(TEXT("Surges (max %.2f)"), MaxL), MaxL > 1.25f && MaxL <= 1.451f);
+	TestTrue(FString::Printf(TEXT("Pitch within 0.94..1.08 (%.3f..%.3f)"), MinP, MaxP), MinP >= 0.939f && MaxP <= 1.081f && MaxP - MinP > 0.05f);
+	TestTrue(FString::Printf(TEXT("A surge every few seconds (%d in 2 min)"), Surges), Surges >= 10 && Surges <= 50);
+	TestTrue(FString::Printf(TEXT("Never steady for more than 1.5 s (%.2f s)"), LongestSteady), LongestSteady <= 1.5f);
+
+	// Rain in waves, about its mean.
+	double Sum = 0.0;
+	float MinR = 10.f, MaxR = 0.f;
+	for (int32 I = 0; I < 6000; ++I)
+	{
+		const float R = RainSwell(I * 0.1, 1.f);
+		Sum += R; MinR = FMath::Min(MinR, R); MaxR = FMath::Max(MaxR, R);
+	}
+	TestTrue(FString::Printf(TEXT("Rain swell within 0.6..1.3 (%.2f..%.2f)"), MinR, MaxR), MinR >= 0.599f && MaxR <= 1.301f && MaxR - MinR > 0.4f);
+	TestTrue(FString::Printf(TEXT("Rain swell means about 1 (%.3f)"), Sum / 6000.0), FMath::Abs(Sum / 6000.0 - 1.0) < 0.1);
+
+	// The wind's sea and the distant rumbles.
+	TestEqual(TEXT("No chop in a calm"), ChopFor(2.f), 0.f);
+	TestEqual(TEXT("A full chop by 20 kn"), ChopFor(10.5f), 1.f);
+	TestTrue(TEXT("Rumbles come more often under the cell"), DistantRumbleGap(1.f, 0.5f) < DistantRumbleGap(0.2f, 0.5f));
+	TestTrue(TEXT("Under the cell: 7 to 21 s"), DistantRumbleGap(1.f, 0.f) >= 7.f && DistantRumbleGap(1.f, 1.f) <= 21.f);
+	TestTrue(TEXT("At the edge: 14 to 42 s"), DistantRumbleGap(0.f, 0.f) >= 14.f && DistantRumbleGap(0.f, 1.f) <= 42.f);
+	return true;
+}
+
+/**
+ * Feedback #18/#19: the boat's voice carries the water and the rain even where a recording replaces the cue: wavelets
+ * slap the hull under way (more in a chop, none at rest) and rain drums on the sails with the deck's rain recorded.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingNaturalLayersTest, "SailingSim.Audio.NaturalLayers", AudioFlags)
+bool FSailingNaturalLayersTest::RunTest(const FString& Parameters)
+{
+	auto Rms = [](USailingSynthWave* W, int32 Blocks)
+	{
+		TArray<uint8> Buf;
+		double Sum = 0.0;
+		for (int32 Block = 0; Block < Blocks; ++Block)
+		{
+			W->OnGeneratePCMAudio(Buf, 12000);
+			const int16* S = reinterpret_cast<const int16*>(Buf.GetData());
+			for (int32 I = 0; I < 12000; ++I) Sum += double(S[I]) * S[I];
+		}
+		return FMath::Sqrt(Sum / (double(Blocks) * 12000.0)) / 32768.0;
+	};
+	// Every other voice that moving water would sound through is a recording here (the sample pack plays it).
+	const uint32 Recorded = (1u << uint32(ESailingCue::BowWave)) | (1u << uint32(ESailingCue::HullSlap)) | (1u << uint32(ESailingCue::RainDeck))
+		| (1u << uint32(ESailingCue::RainWater)) | (1u << uint32(ESailingCue::Wind)) | (1u << uint32(ESailingCue::GustRumble));
+	auto Boat = [Recorded](float Speed, float Chop, float Rain)
+	{
+		USailingSynthWave* W = NewObject<USailingSynthWave>();
+		W->Params.SampledMask = Recorded;
+		W->Params.BoatSpeed = Speed; W->Params.Chop = Chop; W->Params.RainDeck = Rain; W->Params.RainWater = Rain; W->Params.SailRain = Rain;
+		return W;
+	};
+	// Eight seconds each (the slaps come at random, a few a second).
+	const double AtRest = Rms(Boat(0.f, 1.f, 0.f), 32);
+	const double Light = Rms(Boat(3.f, 0.f, 0.f), 32);
+	const double Choppy = Rms(Boat(3.f, 1.f, 0.f), 32);
+	TestTrue(FString::Printf(TEXT("No wavelets at rest (%.5f)"), AtRest), AtRest < 1e-4);
+	TestTrue(FString::Printf(TEXT("Wavelets under way in a light breeze (%.5f)"), Light), Light > 2e-4);
+	TestTrue(FString::Printf(TEXT("More in a chop (%.5f > %.5f)"), Choppy, Light), Choppy > 1.5 * Light);
+	const double Raining = Rms(Boat(0.f, 0.f, 1.f), 16);
+	TestTrue(FString::Printf(TEXT("Rain drums on the sails (%.5f)"), Raining), Raining > 2e-4);
+	USailingSynthWave* Stowed = Boat(0.f, 0.f, 1.f);
+	Stowed->Params.SailRain = 0.f;
+	TestTrue(TEXT("Sails stowed: no drumming on them"), Rms(Stowed, 8) < 1e-4);
+	return true;
+}
