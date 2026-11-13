@@ -1247,24 +1247,46 @@ bool FSailingMarinaTest::RunTest(const FString& Parameters)
 		const FMarinaRamp& R = M.Ramps[0];
 		const FVector2D Head = 0.5 * (R.In + R.Out), Wet = Head + R.Dir * (R.DryLength() + 3.0);
 		AddInfo(FString::Printf(TEXT("Ramp head %.2f m up at (%.1f, %.1f), dry for %.1f of %.0f m"), R.Top, Head.X, Head.Y, R.DryLength(), R.Length));
-		TestTrue(TEXT("The ramp's head is on dry ground"), Lake.Terrain.HeightAt(Head.X, Head.Y) > 0.3);
+		TestTrue(TEXT("The ramp's head is on dry ground"), Lake.Terrain.HeightAt(Head.X, Head.Y) > 0.25);  // the slab's bed, 5 cm under a Top of 0.35 m at least
 		TestTrue(TEXT("The ramp runs down into the water"), R.DryLength() > 1.0 && R.DryLength() < R.Length);
 		TestTrue(TEXT("The ramp's dry part is an obstacle"), Covered(Head + R.Dir * (0.5 * R.DryLength()), 0.0));
 		TestFalse(TEXT("The submerged slab is not"), Covered(Wet, 0.0));
-		// #405 gap 2 (the 1 m club shore): the slab lies on the bank down into the water. Along its centre line it is never
-		// more than 0.5 m over the ground there (an 18 m slab on the steeper shore stood 1.6 m over the bed, a deck out over
-		// the water) and never under it (buried). (Across it the bank falls about 0.8 m from the pier side: cut in level.)
-		double Over = 0.0, Under = 0.0;
-		for (double D = 0.0; D <= R.Length; D += 0.5)
+		// docs/ramp-cut (Bean, Nov 13 2026): a real grade, the slab level across its width and the ground cut or filled to
+		// it. Along its centre line and both edges the ground is the slab's bed (5 cm under the concrete, FLakeData's ground
+		// patch), never over the slab (a corner buried in the bank) and never far under it (a deck out over the water); past
+		// the kerbs and the patch's margin the bank is its own. The bank's own height tells how deep the cut and fill go.
+		const FVector2D Side(-R.Dir.Y, R.Dir.X);
+		const double Grade = (R.Top - FMarinaRamp::Foot) / R.Length;
+		TestTrue(FString::Printf(TEXT("The ramp's grade is a real one (%.1f %%)"), 100.0 * Grade), Grade > 0.115 && Grade < 0.155);
+		double Over = 0.0, Under = 0.0, Cut = 0.0, Fill = 0.0, Spread = 0.0;
+		for (const double S : { -0.5 * FMarinaRamp::Width, 0.0, 0.5 * FMarinaRamp::Width })
 		{
-			const FVector2D P = Head + R.Dir * D;
-			const double Mid = Lake.Terrain.HeightAt(P.X, P.Y), Z = R.ZAt(D);
-			Over = FMath::Max(Over, Z - Mid);
-			Under = FMath::Max(Under, Mid - Z);
+			for (double D = 0.0; D <= R.Length; D += 0.5)
+			{
+				const FVector2D P = Head + R.Dir * D + Side * S;
+				const double Bed = Lake.Terrain.HeightAt(P.X, P.Y), Bank = Lake.Terrain.NaturalHeightAt(P.X, P.Y), Z = R.ZAt(D);
+				Over = FMath::Max(Over, Bed - Z);
+				Under = FMath::Max(Under, Z - Bed);
+				Cut = FMath::Max(Cut, Bank - Z);
+				Fill = FMath::Max(Fill, Z - Bank);
+			}
 		}
-		AddInfo(FString::Printf(TEXT("Ramp slab %.1f m long: at most %.2f m over the ground on its centre line, %.2f m under it"), R.Length, Over, Under));
-		TestTrue(TEXT("The ramp slab lies on the bank (never 0.5 m over the ground)"), Over < 0.5);
-		TestTrue(TEXT("The ramp slab is not buried (the ground never 0.15 m over its centre line)"), Under < 0.15);
+		// Three metres out from either kerb (past the 1.5 m margin) the ground is the bank's.
+		for (const double S : { -0.5 * FMarinaRamp::Width - FMarinaRamp::KerbWidth - 3.0, 0.5 * FMarinaRamp::Width + FMarinaRamp::KerbWidth + 3.0 })
+		{
+			for (double D = 0.0; D <= R.Length; D += 1.0)
+			{
+				const FVector2D P = Head + R.Dir * D + Side * S;
+				Spread = FMath::Max(Spread, FMath::Abs(Lake.Terrain.HeightAt(P.X, P.Y) - Lake.Terrain.NaturalHeightAt(P.X, P.Y)));
+			}
+		}
+		AddInfo(FString::Printf(TEXT("Ramp slab %.1f m at %.1f %%: bed at most %.2f m over it, %.2f m under it; cut %.2f m into the bank, fill %.2f m; %.3f m off the bank 3 m out"),
+			R.Length, 100.0 * Grade, Over, Under, Cut, Fill, Spread));
+		TestTrue(TEXT("The ground never covers the slab (centre line and both edges)"), Over < 0.02);
+		TestTrue(TEXT("The slab lies on its bed (never 0.1 m over the ground)"), Under < 0.1);
+		TestTrue(TEXT("The slab is cut into the bank somewhere"), Cut > 0.1);
+		TestTrue(TEXT("The cut and the fill stay modest (under 2 m)"), Cut < 2.0 && Fill < 2.0);
+		TestTrue(TEXT("The patch doesn't reach 3 m past the kerbs"), Spread < 0.001);
 	}
 	// Moored in the home slip, the boat lies between its fingers without touching them.
 	FBoatModel Boat;

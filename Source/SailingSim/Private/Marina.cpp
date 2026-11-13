@@ -191,21 +191,13 @@ void FMarina::PlaceRamps(TFunctionRef<double(double, double)> HeightAt)
 		Head -= R.Dir;
 		R.In = Head - Side * (0.5 * FMarinaRamp::Width);
 		R.Out = Head + Side * (0.5 * FMarinaRamp::Width);
-		R.Top = float(FMath::Max3(HeightAt(R.In.X, R.In.Y), HeightAt(R.Out.X, R.Out.Y), 0.3)) + 0.05f;
-		// The foot where the ground on the slab's centre line first reaches Foot: a straight slab from the head to there
-		// follows the bank down into the water, cut in level across it (the 1 m club shore drops 2 m in 7 m, where an 18 m
-		// slab stood up to 0.6 m out of the water for 5 m past the shore; it also falls about 0.8 m across the slab's 5 m,
-		// from the pier side, so the bank covers that edge a little and the far kerb stands out of it).
-		R.Length = FMarinaRamp::MaxLength;
-		for (double Along = FMarinaRamp::MinLength; Along <= FMarinaRamp::MaxLength; Along += 0.25)
-		{
-			const FVector2D Mid = 0.5 * (R.In + R.Out) + R.Dir * Along;
-			if (HeightAt(Mid.X, Mid.Y) <= FMarinaRamp::Foot)
-			{
-				R.Length = float(Along);
-				break;
-			}
-		}
+		// Level across its width at the mean of the head corners' ground (the 1 m club shore falls about 0.8 m across the
+		// slab's 5 m from the pier side: the slab is cut 0.4 m into the bank on that side and stands 0.4 m on fill on the
+		// other, the ground patch making both), never under 0.35 m above the water.
+		R.Top = FMath::Max(0.5f * float(HeightAt(R.In.X, R.In.Y) + HeightAt(R.Out.X, R.Out.Y)), 0.35f);
+		// A real ramp's grade from the head down to Foot (docs/ramp-cut): 2 m of fall at 14 % is 15 m. The bank's own shape
+		// no longer sets the length; the ground under the slab is cut or filled to it.
+		R.Length = FMath::Clamp((R.Top - FMarinaRamp::Foot) / FMarinaRamp::Grade, FMarinaRamp::MinLength, FMarinaRamp::MaxLength);
 		Ramps.Add(R);
 	}
 }

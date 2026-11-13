@@ -277,7 +277,28 @@ namespace Sailing
 		return !(R < -1.0 || C < -1.0 || R > GridRows || C > GridCols);
 	}
 
-	double FLakeTerrain::HeightAt(double X, double Y) const
+	double FGroundPatch::Apply(double X, double Y, double Ground) const
+	{
+		const double PX = X - HeadX, PY = Y - HeadY;
+		const double Along = PX * DirX + PY * DirY, Across = std::fabs(-PX * DirY + PY * DirX);
+		const double OutAlong = std::max(0.0, std::max(-Along, Along - Length)), OutAcross = std::max(0.0, Across - HalfWidth);
+		const double Gap = std::sqrt(OutAlong * OutAlong + OutAcross * OutAcross);
+		if (Gap >= Margin) return Ground;
+		const double Slab = Z0 + (Z1 - Z0) * Clamp(Along / Length, 0.0, 1.0);
+		// Inside the slab's plan its plane; across the margin a smooth return to the bank (a cut face or a fill slope).
+		const double T = Gap / Margin, W = 1.0 - T * T * (3.0 - 2.0 * T);
+		return Ground + (Slab - Ground) * W;
+	}
+
+	void FLakeTerrain::AddGroundPatch(const FGroundPatch& Patch)
+	{
+		auto Next = std::make_shared<std::vector<FGroundPatch>>();
+		if (Patches) *Next = *Patches;
+		Next->push_back(Patch);
+		Patches = Next;
+	}
+
+	double FLakeTerrain::NaturalHeightAt(double X, double Y) const
 	{
 		if (Rows == 0 && !Heights && !Tiles) return -1000.0; // no terrain: open water everywhere
 		// A non-finite position reads as land rather than indexing the grid and tiles with int(NaN) (crash-01, a diverged
@@ -286,6 +307,16 @@ namespace Sailing
 		double Fine;
 		if (DetailHeightAt(X, Y, Fine)) return Fine;
 		return GroundAt(X, Y);
+	}
+
+	double FLakeTerrain::HeightAt(double X, double Y) const
+	{
+		double H = NaturalHeightAt(X, Y);
+		if (Patches)
+		{
+			for (const FGroundPatch& P : *Patches) H = P.Apply(X, Y, H);
+		}
+		return H;
 	}
 
 	double FLakeTerrain::CanopyAt(double X, double Y) const

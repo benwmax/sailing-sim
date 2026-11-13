@@ -50,11 +50,18 @@ struct FMarinaRamp
 	FVector2D In = FVector2D::ZeroVector, Out = FVector2D::ZeroVector;  // the slab's head corners, pier side first
 	FVector2D Dir = FVector2D(1.0, 0.0);                                // down the ramp, toward the water
 	float Top = 0.35f;                                                  // the head's height above the water (m)
-	static constexpr float Width = 5.f, MaxLength = 18.f, Foot = -1.4f;
+	static constexpr float Width = 5.f;
+	static constexpr float MaxLength = 18.f;
+	static constexpr float Foot = -1.4f;
 	static constexpr float MinLength = 4.f;
-	/** The slab's length (m): it ends where the ground across it reaches Foot (PlaceRamps), MinLength to MaxLength, so a steep
-	 *  bank (the 1 m club shore) gets a short steep slab down into the water instead of a deck standing out over it. */
+	/** The slab's grade (rise over run): real launch ramps are 12 to 15 % (docs/ramp-cut; Bean, Nov 13 2026). */
+	static constexpr float Grade = 0.14f;
+	/** The slab's length (m): Top to Foot at Grade, MinLength to MaxLength. The slab is level across its width and cut
+	 *  into the bank where that is higher, on fill where it is lower (FLakeTerrain's ground patch, laid by FLakeData). */
 	float Length = MaxLength;
+	/** The ground patch's extra half width past the slab: the kerbs (m). */
+	static constexpr float KerbWidth = 0.2f;
+	static constexpr float KerbHeight = 0.15f;
 	/** The slab's height (m above the water) at Along metres from the head. */
 	float ZAt(double Along) const { return Top + (Foot - Top) * float(FMath::Clamp(Along / Length, 0.0, 1.0)); }
 	/** How far down the slab it stays above the water (m): the part a boat can run into. */
@@ -87,7 +94,9 @@ struct SAILINGSIM_API FMarina
 	bool Load(const FString& Path);
 	/** Visual V7: Catalina 30s alongside the fixed piers, on whichever side has the water for them (and no launch ramp: PlaceRamps first). */
 	void PlaceAlongside(TFunctionRef<double(double, double)> DepthAt);
-	/** Club docks pass 3: the launch ramps beside the `*.ramp` piers, their heads walked up the beach to dry ground. */
+	/** Club docks pass 3: the launch ramps beside the `*.ramp` piers, their heads walked up the beach to dry ground, each a
+	 *  graded slab (FMarinaRamp::Grade) from there down to Foot. The caller then lays FLakeTerrain ground patches under
+	 *  them (FLakeData::Load), so the bank is cut or filled to the slab. */
 	void PlaceRamps(TFunctionRef<double(double, double)> HeightAt);
 	/** Every deck, breakwater, berthed boat and the dry part of each ramp as polylines for the obstacles: (points, kind, half-width). */
 	void ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, const FString&, float)> Visit) const;

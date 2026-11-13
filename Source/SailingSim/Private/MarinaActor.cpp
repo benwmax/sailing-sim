@@ -1308,13 +1308,33 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 		G[EKitLook::Concrete].Quad(FVector(In.X, In.Y, R.Top), FVector(Out2.X, Out2.Y, R.Top), FVector(OutFar.X, OutFar.Y, Foot), FVector(InFar.X, InFar.Y, Foot),
 			{ 0.f, 0.f }, { 0.f, W }, { Len, W }, { Len, 0.f });
 		G[EKitLook::Concrete].Tag = FVector2D::ZeroVector;
-		// its kerbs' outer faces along both sides (the pier side faces away from the slab, the far side out)
+		// its low kerbs along both edges (docs/ramp-cut): KerbWidth wide and KerbHeight tall, the inner face up from the
+		// slab, the top, and the outer face down to the ground patch's level (the pier side's stands against the cut bank,
+		// the far side's over the fill).
+		constexpr float KW = FMarinaRamp::KerbWidth, KH = FMarinaRamp::KerbHeight;
+		const FVector2D Side(-R.Dir.Y, R.Dir.X);
 		for (const double S : { -1.0, 1.0 })
 		{
-			const FVector2D E = S < 0 ? In : Out2, EFar = E + R.Dir * Len;
-			const FVector T0(E.X, E.Y, R.Top + 0.15f), T1(EFar.X, EFar.Y, Foot + 0.15f), B1(EFar.X, EFar.Y, Foot), B0(E.X, E.Y, R.Top);
-			if (S < 0) G[EKitLook::Concrete].Quad(T0, T1, B1, B0, { 0.f, 0.15f }, { Len, 0.15f }, { Len, 0.f }, { 0.f, 0.f });
-			else G[EKitLook::Concrete].Quad(T1, T0, B0, B1, { Len, 0.15f }, { 0.f, 0.15f }, { 0.f, 0.f }, { Len, 0.f });
+			const FVector2D E = S < 0 ? In : Out2, EFar = E + R.Dir * Len;           // the kerb's inner edge
+			const FVector2D O = E + Side * (S * KW), OFar = O + R.Dir * Len;        // its outer edge
+			const FVector I0(E.X, E.Y, R.Top), I1(EFar.X, EFar.Y, Foot);
+			const FVector IT0(E.X, E.Y, R.Top + KH), IT1(EFar.X, EFar.Y, Foot + KH);
+			const FVector OT0(O.X, O.Y, R.Top + KH), OT1(OFar.X, OFar.Y, Foot + KH);
+			const FVector O0(O.X, O.Y, R.Top - 0.05f), O1(OFar.X, OFar.Y, Foot - 0.05f);
+			// (Quad's normal is (D - A) x (B - A): the slab's own quad, A->B across to +Side and A->D down the ramp, faces up,
+			// so A->D up with A->B down the ramp faces +Side, and A->D down with A->B down the ramp faces -Side.)
+			if (S < 0)
+			{
+				G[EKitLook::Concrete].Quad(I0, I1, IT1, IT0, { 0.f, 0.f }, { Len, 0.f }, { Len, KH }, { 0.f, KH });   // inner face, toward the slab (+Side)
+				G[EKitLook::Concrete].Quad(OT0, IT0, IT1, OT1, { 0.f, 0.f }, { 0.f, KW }, { Len, KW }, { Len, 0.f }); // top
+				G[EKitLook::Concrete].Quad(OT0, OT1, O1, O0, { 0.f, KH }, { Len, KH }, { Len, 0.f }, { 0.f, 0.f });   // outer face, against the cut bank (-Side)
+			}
+			else
+			{
+				G[EKitLook::Concrete].Quad(I1, I0, IT0, IT1, { Len, 0.f }, { 0.f, 0.f }, { 0.f, KH }, { Len, KH });   // inner face (-Side)
+				G[EKitLook::Concrete].Quad(IT0, OT0, OT1, IT1, { 0.f, 0.f }, { 0.f, KW }, { Len, KW }, { Len, 0.f }); // top
+				G[EKitLook::Concrete].Quad(OT1, OT0, O0, O1, { Len, KH }, { 0.f, KH }, { 0.f, 0.f }, { Len, 0.f });   // outer face, over the fill (+Side)
+			}
 		}
 	}
 
