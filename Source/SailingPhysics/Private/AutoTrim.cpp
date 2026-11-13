@@ -44,6 +44,13 @@ namespace Sailing
 		HeldEaseSide = Boat.GetState().MainSide;
 	}
 
+	void FAutoTrim::CheckHeldEase(const FBoatModel& Boat)
+	{
+		if (!bEaseHeld) return;
+		const double AwaDeg = std::fabs(Boat.GetTelemetry().ApparentWindAngle) * kRadToDeg;
+		if (Boat.GetState().MainSide != HeldEaseSide || AwaDeg < HeldEaseAwaDeg - EaseHoldReleaseDeg) bEaseHeld = false;
+	}
+
 	FBoatControls FAutoTrim::Update(const FBoatModel& Boat, const FBoatControls& Current, double Dt)
 	{
 		const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -199,12 +206,10 @@ namespace Sailing
 			else Out.MainSheet = Work(MainHand, Current.MainSheet, Sheet, Cfg.MainMaxEaseDeg, MainOut, MainIn, Dt);
 			// Feedback #23: the player's own ease stays (PlayerEasedMain) until they trim, she tacks or gybes, or the wind
 			// comes forward; never against the crew holding the main for a tack or a dinghy sheeting in against a windward roll.
-			if (bEaseHeld)
-			{
-				const double AwaDeg = std::fabs(T.ApparentWindAngle) * kRadToDeg;
-				if (bHold || S.MainSide != HeldEaseSide || AwaDeg < HeldEaseAwaDeg - EaseHoldReleaseDeg) bEaseHeld = false;
-				else if (Windward <= 0.0) Out.MainSheet = std::max(Out.MainSheet, HeldEase);
-			}
+			// The floor is let out at the sheet's own rate, never in one step (after a dinghy's windward sheet-in, say).
+			if (bHold) bEaseHeld = false;
+			CheckHeldEase(Boat);
+			if (bEaseHeld && Windward <= 0.0) Out.MainSheet = std::max(Out.MainSheet, MoveToward(Current.MainSheet, HeldEase, MainOut * Dt));
 		}
 		if (Set.bTrimJib && T.NumJibStrips > 0)
 		{

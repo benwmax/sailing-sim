@@ -85,6 +85,9 @@ namespace Sailing
 		 */
 		void PlayerEasedMain(const FBoatModel& Boat, double Sheet);
 		void PlayerTrimmedMain() { bEaseHeld = false; }
+		/** Ends the held ease if the main has changed sides or the apparent wind has come forward. Update runs it; the step
+		 *  job also runs it on the steps where the assist is waiting, so a tack made meanwhile is not forgotten. */
+		void CheckHeldEase(const FBoatModel& Boat);
 		/** The sheet the player's ease holds the main at, or a negative number when none is held (for the HUD and tests). */
 		double GetHeldEase() const { return bEaseHeld ? HeldEase : -1.0; }
 		static constexpr double EaseHoldReleaseDeg = 15.0;

@@ -96,7 +96,7 @@ bool FSailingCrewTackTest::RunTest(const FString&)
  * Feedback #23: the trim assist keeps the player's own ease. The J/22 on a beam reach in 9 kn (TWA 76): the assist trims the
  * boom to about 28 deg; eased by hand it went out to about 60 and the assist hauled it back 4 s later. Now it stays out until
  * the player trims by hand, she heads up (the apparent wind 15 deg forward) or the main changes sides. Her boom still stops
- * at the shroud (80 deg, docs/boom-stop/).
+ * at the shroud (80 deg, docs/boom-stop/), and the eased sheet goes out at the sheet's own rate.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTrimAssistKeepsEaseTest, "SailingSim.Physics.TrimAssistKeepsEase",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
@@ -135,13 +135,29 @@ bool FSailingTrimAssistKeepsEaseTest::RunTest(const FString&)
 	Pilot.TargetTWADeg = 45.0;
 	const double HeadedUp = Run(25.0);
 	const bool bReleasedHeadingUp = Trim.GetHeldEase() < 0.0;
+	// The floor is let out at the sheet's rate, not in one step.
+	const double SheetBefore = C.MainSheet;
+	Trim.PlayerEasedMain(Boat, 1.0);
+	C = Trim.Update(Boat, C, PhysicsDt);
+	const double OneStep = C.MainSheet - SheetBefore;
 	Pilot.TargetTWADeg = 150.0;
-	C.MainSheet = 0.9;
-	Trim.PlayerEasedMain(Boat, 0.9);
-	const double Running = Run(20.0);
+	const double Running = Run(30.0);
+	C.MainSheet = 1.0;
+	Trim.PlayerEasedMain(Boat, 1.0);
 	Pilot.TargetTWADeg = -150.0;
-	Run(25.0);
+	// The gybe made while the assist waits (only CheckHeldEase each step, as the step job does) still ends the hold.
+	for (int32 I = 0; I < int32(25.0 * PhysicsHz); ++I)
+	{
+		Trim.CheckHeldEase(Boat);
+		C.Tiller = Pilot.Update(Boat);
+		Boat.Step(PhysicsDt, C, Wind);
+	}
 	const bool bReleasedGybing = Trim.GetHeldEase() < 0.0;
+	// Re-placed (a drill's start): the reset boat's still air ends a hold.
+	Trim.PlayerEasedMain(Boat, 1.0);
+	Boat.Reset(0.0, 0.0, -70.0 * kDegToRad, 2.0 * kKnot);
+	Trim.CheckHeldEase(Boat);
+	const bool bReleasedReset = Trim.GetHeldEase() < 0.0;
 	AddInfo(FString::Printf(TEXT("Boom: assist %.1f, eased %.1f, trimmed by hand %.1f, headed up to 45 %.1f, running eased %.1f deg"),
 		Trimmed, Eased, Retrimmed, HeadedUp, Running));
 	TestTrue(TEXT("The assist trims a beam reach to its own angle (20-35 deg)"), Trimmed > 20.0 && Trimmed < 35.0);
@@ -149,7 +165,9 @@ bool FSailingTrimAssistKeepsEaseTest::RunTest(const FString&)
 	TestTrue(TEXT("A trim by hand gives the main back to the assist"), FMath::Abs(Retrimmed - Trimmed) < 5.0);
 	TestTrue(TEXT("Heading up 30 deg lets the assist trim in again"), bReleasedHeadingUp && HeadedUp < 25.0);
 	TestTrue(TEXT("Running, the boom still stops at the shroud (80 deg)"), Running <= 80.0 + 0.01 && Running > 75.0);
-	TestTrue(TEXT("A gybe ends the hold"), bReleasedGybing);
+	TestTrue(FString::Printf(TEXT("The floor lets the sheet out at its rate (%.3f in one step)"), OneStep), OneStep > 0.0 && OneStep < 0.02);
+	TestTrue(TEXT("A gybe ends the hold, even while the assist waits"), bReleasedGybing);
+	TestTrue(TEXT("Re-placing the boat ends the hold"), bReleasedReset);
 	return true;
 }
 
