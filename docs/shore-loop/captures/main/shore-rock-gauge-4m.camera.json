@@ -1,6 +1,6 @@
 {
-  "preset": "ShoreTele",
-  "hfov_deg": 15.0,
+  "preset": "Drone",
+  "hfov_deg": 80.0,
   "barrel_distortion": false,
   "exposure": "auto, frozen at 2.5 s",
   "camera_m": [-24.90, 57.30, 1.50],
