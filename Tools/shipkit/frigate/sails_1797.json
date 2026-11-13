@@ -1,0 +1,124 @@
+{
+ "about": "The frigate's sails (docs/shipkit-5): twenty sails of plain sail, each in three states (set, clewed up or hauled down, furled), built by sails.py on the yards, stays, boom and gaff of slices 3 and 4. Lengths in feet, rope by its circumference in inches, shares of a length as fractions. Each number says where it comes from: 'draught' is the 1817 sail plan (NARA 102278445, read on the 3840 px copy through the slice 3 registration), 'rule' a proportion of the period applied to our spars, 'estimate' a reasoned value with no table to hand (to check against Steel's sail tables or Marquardt when we have them).",
+ "sources": {
+  "draught": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_U.S._Frigate_Constitution_-_NARA_-_102278445.jpg",
+  "steel": "David Steel, The Elements and Practice of Rigging and Seamanship (London, 1794): the period's sailmaking (cloths of 24 in canvas, 1 1/2 in seams, bolt ropes sewn on the after side of square sails, reef bands and points on the fore side). Not read for this slice: its tables would replace the estimates below"
+ },
+ "sail_list": {
+  "note": "1797 plain sail: courses on the fore and main (the crossjack yard spreads the mizzen topsail's foot and carries no sail, as the draught draws it), a topsail, topgallant and royal on each mast, three headsails, five staysails between the masts and the spanker. Not built: the 1817 draught's skysails (not in 1797), its studding sails, ringtail and royal staysails, the spritsail under the bowsprit and the mizzen topgallant staysail (its stay rises forward)",
+  "square": ["fore_course", "fore_topsail", "fore_topgallant", "fore_royal", "main_course", "main_topsail", "main_topgallant", "main_royal", "mizzen_topsail", "mizzen_topgallant", "mizzen_royal"],
+  "headsails": ["fore_topmast_staysail", "jib", "flying_jib"],
+  "staysails": ["main_staysail", "main_topmast_staysail", "main_topgallant_staysail", "mizzen_staysail", "mizzen_topmast_staysail"],
+  "spanker": ["spanker"]
+ },
+ "canvas": {
+  "cloth_in": 24.0,
+  "seam_in": 1.5,
+  "thick_in": 0.045,
+  "colour_note": "unbleached hemp and flax duck, a warm grey-buff (the Blender render's colour only: in the game the cloth is M_SailCloth's)",
+  "src": "Steel: canvas 24 in wide, seams 1 1/2 in; No. 1 canvas about 1 mm thick (estimate)"
+ },
+ "square": {
+  "note": "Each square sail hangs from its yard: its head bent along the yard's fore side by robands (one a cloth) between the head earings, lashed just outside the yardarm's stop cleats; its clews at the sheaves in the arms of the yard below (the courses' clews over the rail). The leeches run straight from earing to clew (the gores), the foot is roached up in the middle. Reef bands across the fore side at shares of the depth from the head, a reef point at each cloth hanging on both faces",
+  "head_outside_cleat_in": 1.0,
+  "head_rope_deg": 10.0,
+  "roband_in": 2.25,
+  "head_note": "the head earings' turns start head_outside_cleat_in outside the yardarm's stop cleats; the head rope lies head_rope_deg up from the yard's fore side, lifted over the fore stop cleat and the studding sail booms' irons; a roband (roband_in rope) in the middle of each cloth, round the yard, the head rope and the boom where it lies on the yard (none at a cleat or an iron). Estimate",
+  "sheave_in_yardarm": {"topsail": 0.5, "topgallant": 0.85, "royal": 0.5, "note": "where the sheet comes up through the yard below, as a share of that yard's yardarm from its stop cleat (estimate: the topgallant sheet through the end of the topsail yardarm, outside the reef earings)"},
+  "clew_over_yard_in": 3.0,
+  "course": {"clew_over_rail_ft": 5.0, "foot_of_head": 1.13, "clew_fwd_of_yard_ft": 2.0, "clew_out_of_side_ft": 2.0, "foot_belly": 0.9, "src": "draught: the main course's clews 4.4 ft over its rail (26.8 ft above the load line) and its foot 51.6 ft from the mast against its head's 45.6 ft, as cut (a sail plan draws the sails flat); 5 ft over our rail. Set (estimate), the tack and sheet haul each clew in to the ship's side, clew_out_of_side_ft outside the rail and clew_fwd_of_yard_ft ahead of the yard (clear of the foremost shrouds), as high as the leech lets it hang; the foot's slack bellies it forward (foot_belly, a share of the sail's belly, for the courses)"},
+  "roach_of_foot": {"course": 0.01, "topsail": 0.035, "topgallant": 0.03, "royal": 0.03, "src": "estimate: the least roach, a share of the foot (the draught's flat sail plan doesn't show it clearly); sails.py cuts it deeper where the set sail would meet a stay or the head of the mast below"},
+  "roach_clear_in": 6.0,
+  "roach_max_of_foot": 0.17,
+  "roach_note": "a square sail's foot is roached (cut up in a curve) so the set sail clears the stays and the top or crosstrees under it: with the yards square and the sail full, everything within its radius and roach_clear_in of the cloth goes under the foot by that much (at most roach_max_of_foot of the foot)",
+  "reefs": {"course": [0.215, 0.41], "topsail": [0.1, 0.205, 0.326, 0.466], "topgallant": [0.16], "royal": [], "src": "draught: the main topsail's four bands 63, 130, 207 and 296 px under its yard (of 635 to the main yard), the main course's two at 93 and 178 px (of 433), one on the topgallants at 62 px (of 382), none on the royals. In 1797 a topsail may have had three"},
+  "reef_point_ft": 2.5,
+  "reef_point_in": 1.25,
+  "reef_band_in": 6.0,
+  "belly_of_width": 0.1,
+  "foot_belly": 0.55,
+  "leech_bow": 0.22,
+  "belly_note": "set and drawing with the yards square and the wind aft (estimate): the deepest belly a tenth of the sail's mean width, 45% down from the head; the foot bellies to 0.55 of it, the leeches bow forward to 0.22 of it",
+  "bolt_rope_in": {
+   "course": {"head": 3.0, "leech": 5.0, "foot": 5.0},
+   "topsail": {"head": 3.0, "leech": 4.5, "foot": 4.5},
+   "topgallant": {"head": 2.0, "leech": 3.0, "foot": 3.0},
+   "royal": {"head": 1.5, "leech": 2.0, "foot": 2.0},
+   "src": "estimate (a frigate's sails by the usual proportions): the leech and foot ropes heavier than the head rope"
+  },
+  "clewed": {
+   "note": "clewed up and the buntlines hauled (the sail hanging in its gear): the clews hauled up under the yard by the clewlines (the courses' clew garnets) at the clew blocks, the foot hauled up to the yard by the buntlines, and the cloth between hanging in bags",
+   "clew_block_of_head": 0.55,
+   "buntlines": {"course": [0.22, 0.58], "topsail": [0.25, 0.62], "topgallant": [0.38], "royal": [0.38]},
+   "under_yard_in": 8.0,
+   "foot_ahead_in": 10.0,
+   "fold_in": 6.0,
+   "src": "estimate: the clew blocks about the quarter of the yard, buntlines as shares of the half foot from the middle"
+  },
+  "furled": {
+   "note": "furled: skinned up and rolled on the yard's top and fore side, the bunt gathered in the middle, lashed with gaskets",
+   "packing": 5.0,
+   "bunt_of_half": 0.17,
+   "bunt_factor": 2.5,
+   "gasket_every_ft": 4.0,
+   "gasket_in": 1.5,
+   "roll_deg": 50.0,
+   "bunt_deg": 80.0,
+   "clear_in": 3.0,
+   "roll_note": "the roll's centre lies roll_deg up from the yard's fore side along the arms and bunt_deg (on top, against the mast) at the bunt; it is packed tighter where a stay or the masthead would be in it, to clear them by clear_in, with the yard lowered (topsails, topgallants and royals are furled with their yards down on the caps)",
+   "src": "estimate: the roll's section from the cloth's area at each station, packed five times its thickness (a furled sail is folds with air between); the bunt about a sixth of the yard (bunt_of_half of each half, to where it thins), two and a half times the arms' bulk"
+  },
+  "sails": {
+   "fore_course": {"yard": "Yard_Fore", "kind": "course"},
+   "fore_topsail": {"yard": "Yard_ForeTopsail", "kind": "topsail", "sheets_to": "Yard_Fore"},
+   "fore_topgallant": {"yard": "Yard_ForeTopgallant", "kind": "topgallant", "sheets_to": "Yard_ForeTopsail"},
+   "fore_royal": {"yard": "Yard_ForeRoyal", "kind": "royal", "sheets_to": "Yard_ForeTopgallant"},
+   "main_course": {"yard": "Yard_Main", "kind": "course"},
+   "main_topsail": {"yard": "Yard_MainTopsail", "kind": "topsail", "sheets_to": "Yard_Main"},
+   "main_topgallant": {"yard": "Yard_MainTopgallant", "kind": "topgallant", "sheets_to": "Yard_MainTopsail"},
+   "main_royal": {"yard": "Yard_MainRoyal", "kind": "royal", "sheets_to": "Yard_MainTopgallant"},
+   "mizzen_topsail": {"yard": "Yard_MizzenTopsail", "kind": "topsail", "sheets_to": "Yard_Crossjack"},
+   "mizzen_topgallant": {"yard": "Yard_MizzenTopgallant", "kind": "topgallant", "sheets_to": "Yard_MizzenTopsail"},
+   "mizzen_royal": {"yard": "Yard_MizzenRoyal", "kind": "royal", "sheets_to": "Yard_MizzenTopgallant"}
+  }
+ },
+ "fore_and_aft": {
+  "note": "Headsails and staysails are hanked to their stays (slice 4) along the luff, triangles drawn the period's way: a headsail's clew aft and down from its tack, a staysail's leech hanging nearly plumb from its head and its foot running aft from the tack, as the draught draws them between the masts. Set on the port tack: the clew to starboard and the belly to starboard (the starboard tack is its mirror about the centreline)",
+  "belly_of_chord": 0.08,
+  "clew_to_lee_of_foot": 0.12,
+  "hank_every_ft": 3.0,
+  "headsails": {
+   "note": "the tack a little up the stay from where it is set up; the head up the stay by the luff's share of the stay's free run; the clew at (along, out) shares of the luff from the tack (draught: the outer headsail's luff, foot and leech about 100, 40 and 84 ft)",
+   "fore_topmast_staysail": {"stay": "fore topmast stay", "tack_up_ft": 3.0, "luff_of_stay": 0.62, "clew": [0.2, 0.36], "lee_of_foot": 0.12, "stow_ft": 13.0, "side_deg": -75.0},
+   "jib": {"stay": "fore topgallant stay", "tack_up_ft": 3.0, "luff_of_stay": 0.66, "clew": [0.22, 0.33], "lee_of_foot": 0.14, "stow_ft": 19.0, "side_deg": -25.0},
+   "flying_jib": {"stay": "fore royal stay", "tack_up_ft": 3.0, "luff_of_stay": 0.62, "clew": [0.22, 0.31], "lee_of_foot": 0.24, "stow_ft": 13.5, "side_deg": 0.0},
+   "stow_note": "lee_of_foot: how far the clew lies to leeward, a share of the foot (the outer jibs' further, so each sheet leads outside the sail inside it); stow_ft: how far the hauled-down or stowed heap runs in from the tack along its spar (the fore topmast staysail's to the fore stay's collars, the jib's to the bowsprit cap, the flying jib's to the jibboom's end), from 1 1/2 ft in from the tack; side_deg: where on the spar it lies, from the top (negative to port: the jibboom lies on the bowsprit's top and the flying jibboom to starboard of the jibboom)",
+   "src": "estimate from the draught's headsails (their stays run higher than ours), with each head kept clear of the fore topsail's and topgallant's bellies"
+  },
+  "staysails": {
+   "note": "the head where its stay is head_fwd_ft forward of the mast it is stayed from, the tack where the stay is tack_aft_ft aft of the next mast, the clew under the head at clew_z_ft above the load line (the draught's plumb leeches)",
+   "main_staysail": {"stay": "main preventer stay", "from": "main", "to": "fore", "head_fwd_ft": 22.0, "tack_aft_ft": 11.0, "clew_z_ft": 34.0, "stay_note": "estimate: hanked to the preventer stay, the lower of the pair (the stay passes the foremast to starboard, the preventer to port): hanked to the stay it would lie on the preventer on the starboard tack"},
+   "main_topmast_staysail": {"stay": "main topmast stay", "from": "main", "to": "fore", "head_fwd_ft": 22.0, "tack_aft_ft": 8.0, "clew_z_ft": 79.0},
+   "main_topgallant_staysail": {"stay": "main topgallant stay", "from": "main", "to": "fore", "head_fwd_ft": 25.0, "tack_aft_ft": 8.0, "clew_z_ft": 124.0},
+   "mizzen_staysail": {"stay": "mizzen stay", "from": "mizzen", "to": "main", "head_fwd_ft": 18.0, "tack_aft_ft": 8.0, "clew_z_ft": 28.0},
+   "mizzen_topmast_staysail": {"stay": "mizzen topmast stay", "from": "mizzen", "to": "main", "head_fwd_ft": 18.0, "tack_aft_ft": 8.0, "clew_z_ft": 75.0},
+   "src": "estimate from the draught's staysails (plumb leeches, feet near level), placed clear of the square sails' bellies"
+  },
+  "bolt_rope_in": {"luff": 3.5, "leech": 2.5, "foot": 2.5, "src": "estimate"},
+  "hauled_down": {"note": "hauled down: the hanks run down the stay, the cloth lies in a loose heap along the stay's foot, share_of_luff of the luff long (a headsail's on its spar, stow_ft long); loose is how much more room it takes than furled (estimate)", "share_of_luff": 0.3, "loose": 2.6},
+  "furled": {"note": "stowed: a headsail rolled and stopped along its boom, a staysail along its stay's foot", "packing": 3.5, "gasket_every_ft": 5.0, "gasket_in": 1.25}
+ },
+ "spanker": {
+  "note": "the spanker (the driver): its luff laced to the mizzen mast between the boom's and the gaff's jaws, its head laced along the gaff, its foot loose along the boom to its clew near the boom's end (the 1817 draught's lines across it are its brails, slice 6, not reef bands). Set to starboard (the port tack, boom and gaff amidships here); brailed up and furled: gathered in to the gaff and the mast",
+  "luff_over_boom_ft": 2.0,
+  "luff_off_mast_in": 1.5,
+  "head_short_of_peak_ft": 2.5,
+  "clew_short_of_end_ft": 4.0,
+  "belly_of_chord": 0.07,
+  "bolt_rope_in": {"luff": 3.5, "head": 2.5, "leech": 3.0, "foot": 3.0},
+  "luff_lacing_every_ft": 3.0,
+  "head_lacing_every_ft": 2.0,
+  "lacing_in": 2.75,
+  "src": "draught: the spanker between the boom and gaff, its clew near the boom's end; the rest estimate"
+ }
+}

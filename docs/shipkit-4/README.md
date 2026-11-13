@@ -4,8 +4,8 @@ Slice 4 of the frigate *Commonwealth* (plan: <https://claude.ai/artifact/8y6hW8v
 `docs/shipkit-1` to `docs/shipkit-3`). Slice 3 masted her. This slice stays the masts: the ropes that hold them up and
 never move. The shrouds hold each mast from the sides, the stays from forward and the backstays from aft. The ratlines
 are the rope rungs the crew climbs. The deadeyes are the round wooden blocks, three holes each, whose lanyards set the
-shrouds up taut. All of it is baked as fixed meshes. The running rigging (the ropes that move the yards and sails) is
-slice 5. Nothing here is imported into Unreal or wired into the game yet.
+shrouds up taut. All of it is baked as fixed meshes. The sails are slice 5 and the running rigging (the ropes that
+move the yards and sails) slice 6. Nothing here is imported into Unreal or wired into the game yet.
 
 ![Bow three-quarter](baseline/rig4_bow34.jpg)
 
@@ -269,7 +269,7 @@ chain plates in the wales, the main stay's collar in the stem head). Then three 
 * **Sizes by rule:** the 1797 rigging list is unchecked (above). Rope sizes are rule-of-thumb proportions of the
   1799 main shrouds.
 * **One side drawn on the draught check:** the overlay is the starboard side, as the draught.
-* **The running rigging** (lifts, braces, halyards, sheets, blocks) is slice 5, the sails slice 6.
+* **The sails** are slice 5 and **the running rigging** (lifts, braces, halyards, sheets, blocks) slice 6.
 
 ## Files
 
