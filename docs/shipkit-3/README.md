@@ -3,8 +3,8 @@
 Slice 3 of the frigate *Commonwealth* (plan: <https://claude.ai/artifact/8y6hW8vHjjUPJRovJEuxY7>; slices 0-2 are in
 `docs/shipkit-1` and `docs/shipkit-2`). Slice 2 gave her a planked, painted side. This slice masts her: the three
 lower masts with their tops and caps, the topmasts, topgallant masts and royal poles, every yard, the spanker boom and
-gaff, and the bowsprit with its jibbooms. The standing and running rigging is slices 4 and 5. It is still post-slice
-art: nothing here is imported into Unreal or wired into the game.
+gaff, and the bowsprit with its jibbooms. The standing rigging is slice 4, the sails slice 5 and the running rigging
+slice 6. It is still post-slice art: nothing here is imported into Unreal or wired into the game.
 
 ![Bow three-quarter](baseline/rig_bow34.jpg)
 

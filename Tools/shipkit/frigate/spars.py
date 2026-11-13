@@ -202,6 +202,11 @@ def unit(v):
     return v / np.linalg.norm(v)
 
 
+# each yardarm (outside its stop cleats) as a share of the half yard: 1/20 of the length for the lower yards, 1/9 for the
+# topsail yards (the reef earings), 1/12 above (spars_1795.json)
+YARDARM = {"lower": 1 / 10, "topmast": 2 / 9, "topgallant": 1 / 6, "pole": 1 / 6}
+
+
 def taper(ratios):
     """A smooth diameter ratio along 0..1 through the quarter points."""
     xs = np.linspace(0, 1, len(ratios))
@@ -221,6 +226,8 @@ class Rig:
         self.parts_ = {}
         self.meta = {}
         self.masts = {}
+        self.yard_geom = {}               # each yard's centre line, diameter and yardarms (yards())
+        self.spanker_geom = {}            # the boom's and gaff's axis in their own frames (spanker())
         f = self.sp["fittings"]
         self.fit = f
         self.mat_wood, self.mat_black, self.mat_iron = (self.sp["paint"][k] for k in ("wood", "black", "iron"))
@@ -580,15 +587,28 @@ class Rig:
         return np.concatenate([[[xa, -hb]], arc, [[xa, hb]]])
 
     # ---- yards -----------------------------------------------------------------------------------------------------
-    def yard_mesh(self, name, length, d, x_off, oct_mid, booms):
+    def yard_mesh(self, name, length, d, x_off, oct_mid, booms, geom=None):
         """A yard along local Y, its centre at local X = x_off: octagonal in the middle third (lower and topsail
         yards), round outside it, tapering by quarters to the yardarms, with sling and stop cleats and its studding sail
-        booms."""
+        booms. geom, if given, gets the stop cleats', irons' and booms' places (for the sails) and "solids": everything
+        on the yard that stands off its round, as built (boxes {c, axes (rows), half} and cylinders {a, b, r} in the
+        yard's frame, each with its "what": sling cleat, stop cleat, boom or iron), so a sail's head, robands and
+        furled roll can go over them."""
+        geom = {} if geom is None else geom
+        solids = []
+
+        def rec_box(what, c, ax, ay, az, hx, hy, hz):
+            solids.append({"what": what, "kind": "box", "c": np.asarray(c, float),
+                           "axes": np.stack([ax, ay, az]).astype(float), "half": np.array([hx, hy, hz], float)})
+
+        def rec_cyl(what, a, b, r):
+            solids.append({"what": what, "kind": "cyl", "a": np.asarray(a, float), "b": np.asarray(b, float),
+                           "r": float(r)})
         M = Mesh()
         Ys = self.sp["yards"]
         yt = taper(self.sp["taper"]["yard"])
         half = length / 2
-        arm = half * {"lower": 1 / 10, "topmast": 2 / 9, "topgallant": 1 / 6, "pole": 1 / 6}[oct_mid[1]]
+        arm = half * YARDARM[oct_mid[1]]
         n = self.nseg(d)
         o = np.array([x_off, 0.0, 0.0])
         R = lambda yy: d / 2 * float(yt(min(1.0, abs(yy) / half)))
@@ -611,11 +631,15 @@ class Rig:
         for yy in (-0.06 * length, 0.06 * length):
             c = o + yy * Y + np.array([0, 0, R(yy) + cl / 2 - 0.004])
             box(M, c, np.array([1.0, 0, 0]), Y, np.array([0, 0, 1.0]), cl * 0.6, cl * 1.2, cl / 2, B)
+            rec_box("sling cleat", c, np.array([1.0, 0, 0]), Y, np.array([0, 0, 1.0]), cl * 0.6, cl * 1.2, cl / 2)
+        geom.update({"cleat_y": half - arm, "cleat_half": cl * 0.9, "cleat_out": cl, "cleat_z_half": cl * 0.6,
+                     "irons": [], "boom": None, "solids": solids})
         for sgn in (1, -1):
             yy = sgn * (half - arm)
             for fx in (1, -1):
                 c = o + yy * Y + np.array([fx * (R(yy) + cl / 2 - 0.004), 0, 0])
                 box(M, c, np.array([1.0, 0, 0]), Y, np.array([0, 0, 1.0]), cl / 2, cl * 0.9, cl * 0.6, B)
+                rec_box("stop cleat", c, np.array([1.0, 0, 0]), Y, np.array([0, 0, 1.0]), cl / 2, cl * 0.9, cl * 0.6)
         # studding sail booms on the yard's top, fore side: each lies on its own half of the yard, its heel lashed
         # beside the slings, through an iron at the yardarm and another a third of the way in, its end a little past
         # the yardarm. The boom is straight, so it is laid to clear the yard (octagon and taper) all along
@@ -634,23 +658,30 @@ class Rig:
                 c1 = o + sgn * y_iron * Y + h1 * dirn
                 ub = unit(c1 - c0)
                 aa = np.array([0, 0, 1.0]) - (np.array([0, 0, 1.0]) @ ub) * ub
+                geom["boom"] = {"y0": y0, "y1": y_iron, "h0": h0, "h1": h1, "r": bd / 2, "deg": 55.0}
                 spar(M, c0, ub, aa, [(0.0, bd * 0.42), (0.06 * bl, bd / 2), (0.85 * bl, bd / 2 * 0.9), (bl, bd / 2 * 0.7)],
                      self.mat_wood, nb)
+                rec_cyl("boom", c0, c0 + bl * ub, bd / 2)
                 for frac in (1.0, 1.0 / 3.0):                    # the yardarm iron, the inner iron
                     yy = y0 + frac * (y_iron - y0)
                     t = (yy - y0) / (y_iron - y0)
                     hb = h0 + t * (h1 - h0)
                     r_y = R_hull(yy)
                     ring_band(M, o, sgn * Y, np.array([0, 0, 1.0]), yy, r_y, 3 * IN, 0.6 * IN, self.mat_iron, n)
+                    rec_cyl("iron", o + sgn * (yy - 1.5 * IN) * Y, o + sgn * (yy + 1.5 * IN) * Y, r_y + 0.6 * IN)
+                    if sgn > 0:
+                        geom["irons"].append({"y": yy, "half": 1.5 * IN, "out": 0.6 * IN})
                     cb = c0 + (yy - y0) / (ub @ (sgn * Y)) * ub
-                    ring_band(M, cb, ub, aa, 0.0, (bd / 2) * (0.9 if frac == 1.0 else 1.0), 3 * IN, 0.5 * IN,
-                              self.mat_iron, nb)
+                    rb = (bd / 2) * (0.9 if frac == 1.0 else 1.0)
+                    ring_band(M, cb, ub, aa, 0.0, rb, 3 * IN, 0.5 * IN, self.mat_iron, nb)
+                    rec_cyl("iron", cb - 1.5 * IN * ub, cb + 1.5 * IN * ub, rb + 0.5 * IN)
                     # the iron's neck from the yard's band to the boom's ring
                     nl0, nl1 = r_y + 0.3 * IN, hb - bd / 2
                     if nl1 > nl0:
                         cn = o + sgn * yy * Y + (nl0 + nl1) / 2 * dirn
                         box(M, cn, dirn, Y, np.cross(dirn, Y), (nl1 - nl0) / 2 + 0.4 * IN, 1.5 * IN, 0.75 * IN,
                             self.mat_iron)
+                        rec_box("iron", cn, dirn, Y, np.cross(dirn, Y), (nl1 - nl0) / 2 + 0.4 * IN, 1.5 * IN, 0.75 * IN)
         return M
 
     def yards(self):
@@ -686,11 +717,15 @@ class Rig:
                 Rmax = m["R_tg"](m["s_stop"] + 1e-6)
                 lowered = (m["s_stop"] + d / 2 + 0.25 * FT) - s
             x_off = Rmax + d / 2 + gap
-            mesh = self.yard_mesh(name, length, d, x_off, (on in ("lower", "topmast"), on), name in booms)
+            fit = {}
+            mesh = self.yard_mesh(name, length, d, x_off, (on in ("lower", "topmast"), on), name in booms, fit)
             pname = "Yard_" + "".join(w.capitalize() for w in name.replace("_yard", "").split("_"))
             o = O + s * u
             Rm = np.stack([f, Y, u], 1)
             self.parts_[pname] = {"mesh": mesh, "frame": (o, Rm)}
+            # its shape in its own frame, for the sails (sails.py): the centre line at local X = x_off, Z = 0
+            self.yard_geom[pname] = {"x_off": x_off, "d": d, "half": length / 2, "arm": length / 2 * YARDARM[on],
+                                     "octagon": on in ("lower", "topmast"), "mast": Yd["mast"], "on": on, **fit}
             parent = {"lower": "Mast_", "topmast": "Topmast_"}.get(on, "Topgallant_") + Yd["mast"].capitalize()
             self.meta[pname] = {"turns_about": f"{Yd['mast']} {('lower mast' if on == 'lower' else on)} axis",
                                 "parent": parent, "port_tack_sign": 1,
@@ -698,6 +733,17 @@ class Rig:
                                 "hoist_m": [round(float(lowered), 3), 0.0] if lowered else [0.0, 0.0],
                                 "brace_deg": [-35.0, 35.0], "length_ft": Yd["length_ft"],
                                 "diam_in": round(d / IN, 1), "z_ft": round(float(o[2] / FT), 2)}
+
+    def yard_radius(self, pname, y):
+        """A yard's outer radius (m) at y from its centre along it (to the octagon's corners in its middle third)."""
+        g = self.yard_geom[pname]
+        y = np.abs(np.asarray(y, float))
+        if not hasattr(self, "_yard_taper"):
+            self._yard_taper = taper(self.sp["taper"]["yard"])
+        r = g["d"] / 2 * self._yard_taper(np.minimum(1.0, y / g["half"]))
+        if g["octagon"]:
+            r = np.where(y < g["half"] / 3, r / math.cos(math.pi / 8), r)
+        return r
 
     # ---- spanker boom and gaff ---------------------------------------------------------------------------------------
     def spanker(self):
@@ -743,6 +789,7 @@ class Rig:
                 loft_solid(M, rings, self.mat_black)
             pname = "Spanker" + which.capitalize()
             o = O + s * u
+            self.spanker_geom[pname] = {"heel": o0, "axis": ub, "length": length, "d": d, "r_mast": R}
             self.parts_[pname] = {"mesh": M, "frame": (o, np.stack([f, Y, u], 1))}
             self.meta[pname] = {"turns_about": "mizzen lower mast axis", "parent": "Mast_Mizzen", "port_tack_sign": -1,
                                 "origin_m": np.round(o, 4).tolist(),

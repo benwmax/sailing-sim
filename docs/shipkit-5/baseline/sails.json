@@ -1,0 +1,1704 @@
+{
+ "note": "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and a Head shown in every state (square sails and the spanker). parent: the spar the objects ride on (their origin and axes are its own: they hoist with it), or null (in the ship's frame). Set is full of wind with the yards square and the wind aft (square sails) and on the port tack (the others). The starboard tack is the Set mirrored about info's starboard_tack_mirror plane (point_m, normal; in the ship's frame, or the named frame's): the vertical plane through the sail's stay, which keeps its luff on the stay (the stays' feet are off the centreline), or the gaff's for the spanker. Clewed hangs from the yard hoisted; Furled lies on it lowered for a topsail, topgallant or royal (rig.json's hoist_m[0]: hoisted, its stay runs through the bunt) and where it is for a course. A square sail's clews belong at the yard below's sheaves (a course's at the ship's side): braced, the Set turned rigidly with its yard is only near (its clews part from the yard below by up to 28 in at 30 deg), so the game must draw the foot to the yard below. brace_deg: how far its yard braces with this sail set (rig.json's limit, or less where the set sail meets the rigging first, less 1 deg); ease_m [[deg, m]] (lower and topsail yards): how far forward its yard's truss or parrel lets it come as it braces with this sail set, used as rig.json's ease_m (the same or more: a sail's head, robands and earings stand a little off the yard). info: each sail's size and corners (metres, the ship's frame or, for *_local_m, the yard's; clew_cut_local_m is the clew as the sail is cut and the draught draws it)",
+ "sails": {
+  "fore_course": {
+   "objects": {
+    "Head": "Sail_ForeCourse_Head",
+    "Set": "Sail_ForeCourse_Set",
+    "Clewed": "Sail_ForeCourse_Clewed",
+    "Furled": "Sail_ForeCourse_Furled"
+   },
+   "parent": "Yard_Fore",
+   "brace_deg": [
+    -33.5,
+    33.5
+   ],
+   "ease_m": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0508
+    ],
+    [
+     2.0,
+     0.0762
+    ],
+    [
+     3.0,
+     0.1016
+    ],
+    [
+     4.0,
+     0.127
+    ],
+    [
+     5.0,
+     0.1524
+    ],
+    [
+     6.0,
+     0.1778
+    ],
+    [
+     7.0,
+     0.2032
+    ],
+    [
+     8.0,
+     0.2286
+    ],
+    [
+     9.0,
+     0.254
+    ],
+    [
+     10.0,
+     0.2794
+    ],
+    [
+     11.0,
+     0.3048
+    ],
+    [
+     12.0,
+     0.3302
+    ],
+    [
+     13.0,
+     0.3556
+    ],
+    [
+     14.0,
+     0.381
+    ],
+    [
+     15.0,
+     0.4064
+    ],
+    [
+     16.0,
+     0.4318
+    ],
+    [
+     17.0,
+     0.4699
+    ],
+    [
+     18.0,
+     0.4953
+    ],
+    [
+     19.0,
+     0.5207
+    ],
+    [
+     20.0,
+     0.5461
+    ],
+    [
+     21.0,
+     0.5715
+    ],
+    [
+     22.0,
+     0.5969
+    ],
+    [
+     23.0,
+     0.6223
+    ],
+    [
+     24.0,
+     0.6604
+    ],
+    [
+     25.0,
+     0.6858
+    ],
+    [
+     26.0,
+     0.7112
+    ],
+    [
+     27.0,
+     0.7366
+    ],
+    [
+     28.0,
+     0.7747
+    ],
+    [
+     29.0,
+     0.8001
+    ],
+    [
+     30.0,
+     0.8255
+    ],
+    [
+     31.0,
+     0.8636
+    ],
+    [
+     32.0,
+     0.889
+    ],
+    [
+     33.0,
+     0.9144
+    ],
+    [
+     60.0,
+     0.9144
+    ]
+   ],
+   "info": {
+    "kind": "course",
+    "yard": "Yard_Fore",
+    "sheets_to": null,
+    "area_ft2": 2925.0,
+    "head_ft": 78.92,
+    "foot_ft": 89.18,
+    "depth_ft": 35.45,
+    "belly_ft": 8.41,
+    "clews_set_apart_ft": 37.19,
+    "roach_ft": 0.89,
+    "roach_table_ft": 0.89,
+    "roach_clears": [],
+    "reefs": [
+     0.215,
+     0.41
+    ],
+    "clew_local_m": [
+     1.283,
+     5.668,
+     -8.814
+    ],
+    "clew_cut_local_m": [
+     0.673,
+     13.591,
+     -10.748
+    ],
+    "head_earing_local_m": [
+     0.951,
+     12.028,
+     0.049
+    ],
+    "clew_block_local_m": [
+     1.157,
+     6.615,
+     -0.433
+    ],
+    "grid": [
+     64,
+     16
+    ]
+   }
+  },
+  "fore_topsail": {
+   "objects": {
+    "Head": "Sail_ForeTopsail_Head",
+    "Set": "Sail_ForeTopsail_Set",
+    "Clewed": "Sail_ForeTopsail_Clewed",
+    "Furled": "Sail_ForeTopsail_Furled"
+   },
+   "parent": "Yard_ForeTopsail",
+   "brace_deg": [
+    -27.0,
+    28.75
+   ],
+   "ease_m": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0031
+    ],
+    [
+     2.0,
+     0.0046
+    ],
+    [
+     3.0,
+     0.0062
+    ],
+    [
+     4.0,
+     0.0077
+    ],
+    [
+     5.0,
+     0.0092
+    ],
+    [
+     6.0,
+     0.0108
+    ],
+    [
+     7.0,
+     0.0123
+    ],
+    [
+     8.0,
+     0.0139
+    ],
+    [
+     9.0,
+     0.0154
+    ],
+    [
+     10.0,
+     0.0169
+    ],
+    [
+     11.0,
+     0.0185
+    ],
+    [
+     12.0,
+     0.02
+    ],
+    [
+     13.0,
+     0.0216
+    ],
+    [
+     14.0,
+     0.0231
+    ],
+    [
+     15.0,
+     0.0246
+    ],
+    [
+     16.0,
+     0.0286
+    ],
+    [
+     17.0,
+     0.0349
+    ],
+    [
+     18.0,
+     0.0413
+    ],
+    [
+     19.0,
+     0.0476
+    ],
+    [
+     20.0,
+     0.0544
+    ],
+    [
+     21.0,
+     0.0617
+    ],
+    [
+     22.0,
+     0.0689
+    ],
+    [
+     23.0,
+     0.0762
+    ],
+    [
+     24.0,
+     0.0825
+    ],
+    [
+     25.0,
+     0.0889
+    ],
+    [
+     26.0,
+     0.0953
+    ],
+    [
+     27.0,
+     0.1016
+    ],
+    [
+     60.0,
+     0.1016
+    ]
+   ],
+   "info": {
+    "kind": "topsail",
+    "yard": "Yard_ForeTopsail",
+    "sheets_to": "Yard_Fore",
+    "area_ft2": 3182.0,
+    "head_ft": 47.7,
+    "foot_ft": 82.41,
+    "depth_ft": 52.54,
+    "belly_ft": 6.51,
+    "clews_set_apart_ft": 82.41,
+    "roach_ft": 4.28,
+    "roach_table_ft": 2.88,
+    "roach_clears": [
+     "fore stay"
+    ],
+    "reefs": [
+     0.1,
+     0.205,
+     0.326,
+     0.466
+    ],
+    "clew_local_m": [
+     -0.125,
+     12.56,
+     -15.954
+    ],
+    "clew_cut_local_m": [
+     -0.125,
+     12.56,
+     -15.954
+    ],
+    "head_earing_local_m": [
+     0.73,
+     7.269,
+     0.039
+    ],
+    "clew_block_local_m": [
+     0.928,
+     3.998,
+     -0.369
+    ],
+    "grid": [
+     64,
+     29
+    ]
+   }
+  },
+  "fore_topgallant": {
+   "objects": {
+    "Head": "Sail_ForeTopgallant_Head",
+    "Set": "Sail_ForeTopgallant_Set",
+    "Clewed": "Sail_ForeTopgallant_Clewed",
+    "Furled": "Sail_ForeTopgallant_Furled"
+   },
+   "parent": "Yard_ForeTopgallant",
+   "brace_deg": [
+    -28.25,
+    29.25
+   ],
+   "info": {
+    "kind": "topgallant",
+    "yard": "Yard_ForeTopgallant",
+    "sheets_to": "Yard_ForeTopsail",
+    "area_ft2": 1187.0,
+    "head_ft": 31.08,
+    "foot_ft": 58.48,
+    "depth_ft": 30.53,
+    "belly_ft": 4.48,
+    "clews_set_apart_ft": 58.48,
+    "roach_ft": 4.63,
+    "roach_table_ft": 1.75,
+    "roach_clears": [
+     "Top_Fore"
+    ],
+    "reefs": [
+     0.16
+    ],
+    "clew_local_m": [
+     0.04,
+     8.913,
+     -9.276
+    ],
+    "clew_cut_local_m": [
+     0.04,
+     8.913,
+     -9.276
+    ],
+    "head_earing_local_m": [
+     0.442,
+     4.737,
+     0.023
+    ],
+    "clew_block_local_m": [
+     0.664,
+     2.605,
+     -0.302
+    ],
+    "grid": [
+     50,
+     17
+    ]
+   }
+  },
+  "fore_royal": {
+   "objects": {
+    "Head": "Sail_ForeRoyal_Head",
+    "Set": "Sail_ForeRoyal_Set",
+    "Clewed": "Sail_ForeRoyal_Clewed",
+    "Furled": "Sail_ForeRoyal_Furled"
+   },
+   "parent": "Yard_ForeRoyal",
+   "brace_deg": [
+    -35.5,
+    36.25
+   ],
+   "info": {
+    "kind": "royal",
+    "yard": "Yard_ForeRoyal",
+    "sheets_to": "Yard_ForeTopgallant",
+    "area_ft2": 389.0,
+    "head_ft": 20.78,
+    "foot_ft": 33.69,
+    "depth_ft": 15.13,
+    "belly_ft": 2.72,
+    "clews_set_apart_ft": 33.69,
+    "roach_ft": 1.01,
+    "roach_table_ft": 1.01,
+    "roach_clears": [],
+    "reefs": [],
+    "clew_local_m": [
+     0.31,
+     5.134,
+     -4.596
+    ],
+    "clew_cut_local_m": [
+     0.31,
+     5.134,
+     -4.596
+    ],
+    "head_earing_local_m": [
+     0.327,
+     3.166,
+     0.016
+    ],
+    "clew_block_local_m": [
+     0.556,
+     1.741,
+     -0.269
+    ],
+    "grid": [
+     30,
+     10
+    ]
+   }
+  },
+  "main_course": {
+   "objects": {
+    "Head": "Sail_MainCourse_Head",
+    "Set": "Sail_MainCourse_Set",
+    "Clewed": "Sail_MainCourse_Clewed",
+    "Furled": "Sail_MainCourse_Furled"
+   },
+   "parent": "Yard_Main",
+   "brace_deg": [
+    -36.0,
+    36.0
+   ],
+   "ease_m": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0127
+    ],
+    [
+     2.0,
+     0.019
+    ],
+    [
+     3.0,
+     0.0508
+    ],
+    [
+     4.0,
+     0.0762
+    ],
+    [
+     5.0,
+     0.1016
+    ],
+    [
+     6.0,
+     0.127
+    ],
+    [
+     7.0,
+     0.1524
+    ],
+    [
+     8.0,
+     0.1778
+    ],
+    [
+     9.0,
+     0.2032
+    ],
+    [
+     10.0,
+     0.2286
+    ],
+    [
+     11.0,
+     0.254
+    ],
+    [
+     12.0,
+     0.2794
+    ],
+    [
+     13.0,
+     0.3048
+    ],
+    [
+     14.0,
+     0.3302
+    ],
+    [
+     15.0,
+     0.3556
+    ],
+    [
+     16.0,
+     0.381
+    ],
+    [
+     17.0,
+     0.4064
+    ],
+    [
+     18.0,
+     0.4318
+    ],
+    [
+     19.0,
+     0.4572
+    ],
+    [
+     20.0,
+     0.4826
+    ],
+    [
+     21.0,
+     0.508
+    ],
+    [
+     22.0,
+     0.5461
+    ],
+    [
+     23.0,
+     0.5715
+    ],
+    [
+     24.0,
+     0.5969
+    ],
+    [
+     25.0,
+     0.6223
+    ],
+    [
+     26.0,
+     0.635
+    ],
+    [
+     27.0,
+     0.6604
+    ],
+    [
+     28.0,
+     0.6858
+    ],
+    [
+     29.0,
+     0.7112
+    ],
+    [
+     30.0,
+     0.7493
+    ],
+    [
+     31.0,
+     0.7747
+    ],
+    [
+     32.0,
+     0.8128
+    ],
+    [
+     33.0,
+     0.8382
+    ],
+    [
+     34.0,
+     0.8763
+    ],
+    [
+     35.0,
+     0.9144
+    ],
+    [
+     60.0,
+     0.9144
+    ]
+   ],
+   "info": {
+    "kind": "course",
+    "yard": "Yard_Main",
+    "sheets_to": null,
+    "area_ft2": 4181.0,
+    "head_ft": 88.23,
+    "foot_ft": 99.7,
+    "depth_ft": 45.23,
+    "belly_ft": 9.4,
+    "clews_set_apart_ft": 40.47,
+    "roach_ft": 1.0,
+    "roach_table_ft": 1.0,
+    "roach_clears": [],
+    "reefs": [
+     0.215,
+     0.41
+    ],
+    "clew_local_m": [
+     1.353,
+     6.167,
+     -11.773
+    ],
+    "clew_cut_local_m": [
+     0.744,
+     15.194,
+     -13.722
+    ],
+    "head_earing_local_m": [
+     1.052,
+     13.446,
+     0.054
+    ],
+    "clew_block_local_m": [
+     1.254,
+     7.395,
+     -0.46
+    ],
+    "grid": [
+     64,
+     22
+    ]
+   }
+  },
+  "main_topsail": {
+   "objects": {
+    "Head": "Sail_MainTopsail_Head",
+    "Set": "Sail_MainTopsail_Set",
+    "Clewed": "Sail_MainTopsail_Clewed",
+    "Furled": "Sail_MainTopsail_Furled"
+   },
+   "parent": "Yard_MainTopsail",
+   "brace_deg": [
+    -35.0,
+    35.0
+   ],
+   "ease_m": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.0027
+    ],
+    [
+     2.0,
+     0.004
+    ],
+    [
+     3.0,
+     0.0053
+    ],
+    [
+     4.0,
+     0.0067
+    ],
+    [
+     5.0,
+     0.008
+    ],
+    [
+     6.0,
+     0.0094
+    ],
+    [
+     7.0,
+     0.0107
+    ],
+    [
+     8.0,
+     0.012
+    ],
+    [
+     9.0,
+     0.0134
+    ],
+    [
+     10.0,
+     0.0147
+    ],
+    [
+     11.0,
+     0.016
+    ],
+    [
+     12.0,
+     0.0174
+    ],
+    [
+     13.0,
+     0.0187
+    ],
+    [
+     14.0,
+     0.0201
+    ],
+    [
+     15.0,
+     0.0214
+    ],
+    [
+     16.0,
+     0.0227
+    ],
+    [
+     17.0,
+     0.0241
+    ],
+    [
+     18.0,
+     0.0254
+    ],
+    [
+     19.0,
+     0.0327
+    ],
+    [
+     20.0,
+     0.0399
+    ],
+    [
+     21.0,
+     0.0472
+    ],
+    [
+     22.0,
+     0.0544
+    ],
+    [
+     23.0,
+     0.0617
+    ],
+    [
+     24.0,
+     0.0689
+    ],
+    [
+     25.0,
+     0.0762
+    ],
+    [
+     26.0,
+     0.0847
+    ],
+    [
+     27.0,
+     0.0931
+    ],
+    [
+     28.0,
+     0.1016
+    ],
+    [
+     29.0,
+     0.1101
+    ],
+    [
+     30.0,
+     0.1185
+    ],
+    [
+     31.0,
+     0.127
+    ],
+    [
+     32.0,
+     0.1397
+    ],
+    [
+     33.0,
+     0.1524
+    ],
+    [
+     60.0,
+     0.1524
+    ]
+   ],
+   "info": {
+    "kind": "topsail",
+    "yard": "Yard_MainTopsail",
+    "sheets_to": "Yard_Main",
+    "area_ft2": 4014.0,
+    "head_ft": 54.51,
+    "foot_ft": 92.15,
+    "depth_ft": 58.22,
+    "belly_ft": 7.33,
+    "clews_set_apart_ft": 92.15,
+    "roach_ft": 4.13,
+    "roach_table_ft": 3.23,
+    "roach_clears": [
+     "main stay"
+    ],
+    "reefs": [
+     0.1,
+     0.205,
+     0.326,
+     0.466
+    ],
+    "clew_local_m": [
+     -0.12,
+     14.044,
+     -17.677
+    ],
+    "clew_cut_local_m": [
+     -0.12,
+     14.044,
+     -17.677
+    ],
+    "head_earing_local_m": [
+     0.814,
+     8.307,
+     0.044
+    ],
+    "clew_block_local_m": [
+     1.006,
+     4.569,
+     -0.393
+    ],
+    "grid": [
+     64,
+     32
+    ]
+   }
+  },
+  "main_topgallant": {
+   "objects": {
+    "Head": "Sail_MainTopgallant_Head",
+    "Set": "Sail_MainTopgallant_Set",
+    "Clewed": "Sail_MainTopgallant_Clewed",
+    "Furled": "Sail_MainTopgallant_Furled"
+   },
+   "parent": "Yard_MainTopgallant",
+   "brace_deg": [
+    -58.0,
+    58.0
+   ],
+   "info": {
+    "kind": "topgallant",
+    "yard": "Yard_MainTopgallant",
+    "sheets_to": "Yard_MainTopsail",
+    "area_ft2": 1448.0,
+    "head_ft": 34.93,
+    "foot_ft": 66.86,
+    "depth_ft": 32.83,
+    "belly_ft": 5.09,
+    "clews_set_apart_ft": 66.86,
+    "roach_ft": 5.0,
+    "roach_table_ft": 2.01,
+    "roach_clears": [
+     "Top_Main"
+    ],
+    "reefs": [
+     0.16
+    ],
+    "clew_local_m": [
+     0.066,
+     10.19,
+     -9.974
+    ],
+    "clew_cut_local_m": [
+     0.066,
+     10.19,
+     -9.974
+    ],
+    "head_earing_local_m": [
+     0.48,
+     5.324,
+     0.026
+    ],
+    "clew_block_local_m": [
+     0.699,
+     2.928,
+     -0.315
+    ],
+    "grid": [
+     56,
+     18
+    ]
+   }
+  },
+  "main_royal": {
+   "objects": {
+    "Head": "Sail_MainRoyal_Head",
+    "Set": "Sail_MainRoyal_Set",
+    "Clewed": "Sail_MainRoyal_Clewed",
+    "Furled": "Sail_MainRoyal_Furled"
+   },
+   "parent": "Yard_MainRoyal",
+   "brace_deg": [
+    -60.0,
+    60.0
+   ],
+   "info": {
+    "kind": "royal",
+    "yard": "Yard_MainRoyal",
+    "sheets_to": "Yard_MainTopgallant",
+    "area_ft2": 435.0,
+    "head_ft": 23.38,
+    "foot_ft": 37.89,
+    "depth_ft": 15.13,
+    "belly_ft": 3.06,
+    "clews_set_apart_ft": 37.89,
+    "roach_ft": 1.14,
+    "roach_table_ft": 1.14,
+    "roach_clears": [],
+    "reefs": [],
+    "clew_local_m": [
+     0.333,
+     5.774,
+     -4.593
+    ],
+    "clew_cut_local_m": [
+     0.333,
+     5.774,
+     -4.593
+    ],
+    "head_earing_local_m": [
+     0.352,
+     3.564,
+     0.018
+    ],
+    "clew_block_local_m": [
+     0.58,
+     1.96,
+     -0.278
+    ],
+    "grid": [
+     34,
+     10
+    ]
+   }
+  },
+  "mizzen_topsail": {
+   "objects": {
+    "Head": "Sail_MizzenTopsail_Head",
+    "Set": "Sail_MizzenTopsail_Set",
+    "Clewed": "Sail_MizzenTopsail_Clewed",
+    "Furled": "Sail_MizzenTopsail_Furled"
+   },
+   "parent": "Yard_MizzenTopsail",
+   "brace_deg": [
+    -22.5,
+    22.5
+   ],
+   "ease_m": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     1.0,
+     0.002
+    ],
+    [
+     2.0,
+     0.003
+    ],
+    [
+     3.0,
+     0.004
+    ],
+    [
+     4.0,
+     0.005
+    ],
+    [
+     5.0,
+     0.006
+    ],
+    [
+     6.0,
+     0.007
+    ],
+    [
+     7.0,
+     0.008
+    ],
+    [
+     8.0,
+     0.009
+    ],
+    [
+     9.0,
+     0.01
+    ],
+    [
+     10.0,
+     0.011
+    ],
+    [
+     11.0,
+     0.012
+    ],
+    [
+     12.0,
+     0.0129
+    ],
+    [
+     13.0,
+     0.0139
+    ],
+    [
+     14.0,
+     0.0149
+    ],
+    [
+     15.0,
+     0.0159
+    ],
+    [
+     16.0,
+     0.0169
+    ],
+    [
+     17.0,
+     0.0179
+    ],
+    [
+     18.0,
+     0.0443
+    ],
+    [
+     19.0,
+     0.0697
+    ],
+    [
+     20.0,
+     0.0951
+    ],
+    [
+     21.0,
+     0.1205
+    ],
+    [
+     22.0,
+     0.1459
+    ],
+    [
+     35.0,
+     0.1524
+    ],
+    [
+     60.0,
+     0.1524
+    ]
+   ],
+   "info": {
+    "kind": "topsail",
+    "yard": "Yard_MizzenTopsail",
+    "sheets_to": "Yard_Crossjack",
+    "area_ft2": 1787.0,
+    "head_ft": 36.44,
+    "foot_ft": 57.48,
+    "depth_ft": 45.75,
+    "belly_ft": 4.7,
+    "clews_set_apart_ft": 57.48,
+    "roach_ft": 9.41,
+    "roach_table_ft": 2.01,
+    "roach_clears": [
+     "Top_Mizzen"
+    ],
+    "reefs": [
+     0.1,
+     0.205,
+     0.326,
+     0.466
+    ],
+    "clew_local_m": [
+     -0.066,
+     8.759,
+     -13.9
+    ],
+    "clew_cut_local_m": [
+     -0.066,
+     8.759,
+     -13.9
+    ],
+    "head_earing_local_m": [
+     0.598,
+     5.553,
+     0.031
+    ],
+    "clew_block_local_m": [
+     0.805,
+     3.054,
+     -0.33
+    ],
+    "grid": [
+     52,
+     25
+    ]
+   }
+  },
+  "mizzen_topgallant": {
+   "objects": {
+    "Head": "Sail_MizzenTopgallant_Head",
+    "Set": "Sail_MizzenTopgallant_Set",
+    "Clewed": "Sail_MizzenTopgallant_Clewed",
+    "Furled": "Sail_MizzenTopgallant_Furled"
+   },
+   "parent": "Yard_MizzenTopgallant",
+   "brace_deg": [
+    -59.75,
+    59.75
+   ],
+   "info": {
+    "kind": "topgallant",
+    "yard": "Yard_MizzenTopgallant",
+    "sheets_to": "Yard_MizzenTopsail",
+    "area_ft2": 718.0,
+    "head_ft": 23.47,
+    "foot_ft": 44.63,
+    "depth_ft": 24.95,
+    "belly_ft": 3.4,
+    "clews_set_apart_ft": 44.63,
+    "roach_ft": 4.4,
+    "roach_table_ft": 1.34,
+    "roach_clears": [
+     "Top_Mizzen"
+    ],
+    "reefs": [
+     0.16
+    ],
+    "clew_local_m": [
+     0.067,
+     6.802,
+     -7.581
+    ],
+    "clew_cut_local_m": [
+     0.067,
+     6.802,
+     -7.581
+    ],
+    "head_earing_local_m": [
+     0.361,
+     3.576,
+     0.018
+    ],
+    "clew_block_local_m": [
+     0.588,
+     1.967,
+     -0.278
+    ],
+    "grid": [
+     38,
+     14
+    ]
+   }
+  },
+  "mizzen_royal": {
+   "objects": {
+    "Head": "Sail_MizzenRoyal_Head",
+    "Set": "Sail_MizzenRoyal_Set",
+    "Clewed": "Sail_MizzenRoyal_Clewed",
+    "Furled": "Sail_MizzenRoyal_Furled"
+   },
+   "parent": "Yard_MizzenRoyal",
+   "brace_deg": [
+    -60.0,
+    60.0
+   ],
+   "info": {
+    "kind": "royal",
+    "yard": "Yard_MizzenRoyal",
+    "sheets_to": "Yard_MizzenTopgallant",
+    "area_ft2": 201.0,
+    "head_ft": 15.73,
+    "foot_ft": 25.39,
+    "depth_ft": 11.14,
+    "belly_ft": 2.06,
+    "clews_set_apart_ft": 25.39,
+    "roach_ft": 1.66,
+    "roach_table_ft": 0.76,
+    "roach_clears": [
+     "mizzen topgallant stay"
+    ],
+    "reefs": [],
+    "clew_local_m": [
+     0.259,
+     3.87,
+     -3.382
+    ],
+    "clew_cut_local_m": [
+     0.259,
+     3.87,
+     -3.382
+    ],
+    "head_earing_local_m": [
+     0.272,
+     2.397,
+     0.012
+    ],
+    "clew_block_local_m": [
+     0.505,
+     1.318,
+     -0.253
+    ],
+    "grid": [
+     22,
+     10
+    ]
+   }
+  },
+  "fore_topmast_staysail": {
+   "objects": {
+    "Set": "Sail_ForeTopmastStaysail_Set",
+    "Clewed": "Sail_ForeTopmastStaysail_Clewed",
+    "Furled": "Sail_ForeTopmastStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "headsail",
+    "stay": "fore topmast stay",
+    "area_ft2": 687.0,
+    "luff_ft": 61.8,
+    "foot_ft": 25.45,
+    "leech_ft": 54.33,
+    "tack_m": [
+     39.775,
+     0.362,
+     12.832
+    ],
+    "head_m": [
+     28.287,
+     0.13,
+     27.758
+    ],
+    "clew_m": [
+     32.104,
+     1.246,
+     11.681
+    ],
+    "grid": [
+     13,
+     31
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      39.7755,
+      0.3617,
+      12.8325
+     ],
+     "normal": [
+      -0.02012,
+      0.999798,
+      0.0
+     ]
+    }
+   }
+  },
+  "jib": {
+   "objects": {
+    "Set": "Sail_Jib_Set",
+    "Clewed": "Sail_Jib_Clewed",
+    "Furled": "Sail_Jib_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "headsail",
+    "stay": "fore topgallant stay",
+    "area_ft2": 1240.0,
+    "luff_ft": 86.32,
+    "foot_ft": 34.23,
+    "leech_ft": 73.29,
+    "tack_m": [
+     48.73,
+     0.238,
+     16.93
+    ],
+    "head_m": [
+     30.701,
+     0.078,
+     36.09
+    ],
+    "clew_m": [
+     38.441,
+     1.663,
+     15.195
+    ],
+    "grid": [
+     17,
+     44
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      48.7302,
+      0.2378,
+      16.9296
+     ],
+     "normal": [
+      -0.008864,
+      0.999961,
+      0.0
+     ]
+    }
+   }
+  },
+  "flying_jib": {
+   "objects": {
+    "Set": "Sail_FlyingJib_Set",
+    "Clewed": "Sail_FlyingJib_Clewed",
+    "Furled": "Sail_FlyingJib_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "headsail",
+    "stay": "fore royal stay",
+    "area_ft2": 1396.0,
+    "luff_ft": 93.15,
+    "foot_ft": 35.41,
+    "leech_ft": 78.68,
+    "tack_m": [
+     54.597,
+     0.204,
+     19.07
+    ],
+    "head_m": [
+     33.948,
+     0.075,
+     38.558
+    ],
+    "clew_m": [
+     44.013,
+     2.766,
+     16.956
+    ],
+    "grid": [
+     18,
+     47
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      54.597,
+      0.2039,
+      19.0704
+     ],
+     "normal": [
+      -0.00623,
+      0.999981,
+      0.0
+     ]
+    }
+   }
+  },
+  "main_staysail": {
+   "objects": {
+    "Set": "Sail_MainStaysail_Set",
+    "Clewed": "Sail_MainStaysail_Clewed",
+    "Furled": "Sail_MainStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "staysail",
+    "stay": "main preventer stay",
+    "area_ft2": 767.0,
+    "luff_ft": 55.53,
+    "foot_ft": 48.1,
+    "leech_ft": 32.0,
+    "tack_m": [
+     17.588,
+     -0.41,
+     11.399
+    ],
+    "head_m": [
+     2.968,
+     -0.162,
+     19.924
+    ],
+    "clew_m": [
+     2.968,
+     1.759,
+     10.363
+    ],
+    "grid": [
+     25,
+     28
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      17.5875,
+      -0.4103,
+      11.399
+     ],
+     "normal": [
+      0.017005,
+      0.999855,
+      -0.0
+     ]
+    }
+   }
+  },
+  "main_topmast_staysail": {
+   "objects": {
+    "Set": "Sail_MainTopmastStaysail_Set",
+    "Clewed": "Sail_MainTopmastStaysail_Clewed",
+    "Furled": "Sail_MainTopmastStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "staysail",
+    "stay": "main topmast stay",
+    "area_ft2": 1059.0,
+    "luff_ft": 65.4,
+    "foot_ft": 52.01,
+    "leech_ft": 40.74,
+    "tack_m": [
+     18.39,
+     0.0,
+     24.263
+    ],
+    "head_m": [
+     2.538,
+     0.0,
+     36.351
+    ],
+    "clew_m": [
+     2.538,
+     1.902,
+     24.079
+    ],
+    "grid": [
+     27,
+     33
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      18.3897,
+      0.0,
+      24.2632
+     ],
+     "normal": [
+      0.0,
+      1.0,
+      -0.0
+     ]
+    }
+   }
+  },
+  "main_topgallant_staysail": {
+   "objects": {
+    "Set": "Sail_MainTopgallantStaysail_Set",
+    "Clewed": "Sail_MainTopgallantStaysail_Clewed",
+    "Furled": "Sail_MainTopgallantStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "staysail",
+    "stay": "main topgallant stay",
+    "area_ft2": 766.0,
+    "luff_ft": 56.33,
+    "foot_ft": 49.63,
+    "leech_ft": 30.95,
+    "tack_m": [
+     18.262,
+     0.0,
+     38.863
+    ],
+    "head_m": [
+     3.172,
+     0.0,
+     47.051
+    ],
+    "clew_m": [
+     3.172,
+     1.815,
+     37.795
+    ],
+    "grid": [
+     25,
+     29
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      18.2622,
+      0.0,
+      38.8632
+     ],
+     "normal": [
+      0.0,
+      1.0,
+      -0.0
+     ]
+    }
+   }
+  },
+  "mizzen_staysail": {
+   "objects": {
+    "Set": "Sail_MizzenStaysail_Set",
+    "Clewed": "Sail_MizzenStaysail_Clewed",
+    "Furled": "Sail_MizzenStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "staysail",
+    "stay": "mizzen stay",
+    "area_ft2": 309.0,
+    "luff_ft": 37.22,
+    "foot_ft": 28.81,
+    "leech_ft": 21.57,
+    "tack_m": [
+     -5.859,
+     0.005,
+     7.809
+    ],
+    "head_m": [
+     -14.611,
+     0.027,
+     15.029
+    ],
+    "clew_m": [
+     -14.611,
+     1.054,
+     8.534
+    ],
+    "grid": [
+     15,
+     19
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      -5.8585,
+      0.0051,
+      7.8086
+     ],
+     "normal": [
+      0.002521,
+      0.999997,
+      -0.0
+     ]
+    }
+   }
+  },
+  "mizzen_topmast_staysail": {
+   "objects": {
+    "Set": "Sail_MizzenTopmastStaysail_Set",
+    "Clewed": "Sail_MizzenTopmastStaysail_Clewed",
+    "Furled": "Sail_MizzenTopmastStaysail_Furled"
+   },
+   "parent": null,
+   "info": {
+    "kind": "staysail",
+    "stay": "mizzen topmast stay",
+    "area_ft2": 358.0,
+    "luff_ft": 31.8,
+    "foot_ft": 31.61,
+    "leech_ft": 24.56,
+    "tack_m": [
+     -6.348,
+     0.0,
+     26.483
+    ],
+    "head_m": [
+     -15.275,
+     0.0,
+     30.256
+    ],
+    "clew_m": [
+     -15.275,
+     1.156,
+     22.86
+    ],
+    "grid": [
+     16,
+     16
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      -6.3475,
+      0.0,
+      26.4831
+     ],
+     "normal": [
+      0.0,
+      1.0,
+      -0.0
+     ]
+    }
+   }
+  },
+  "spanker": {
+   "objects": {
+    "Head": "Sail_Spanker_Head",
+    "Set": "Sail_Spanker_Set",
+    "Clewed": "Sail_Spanker_Clewed",
+    "Furled": "Sail_Spanker_Furled"
+   },
+   "parent": "SpankerGaff",
+   "info": {
+    "kind": "spanker",
+    "area_ft2": 2433.0,
+    "luff_ft": 35.63,
+    "head_ft": 53.05,
+    "foot_ft": 61.18,
+    "leech_ft": 52.42,
+    "corners_gaff_frame_m": {
+     "throat": [
+      -0.285,
+      0.0,
+      -0.053
+     ],
+     "peak": [
+      -15.326,
+      0.0,
+      5.884
+     ],
+     "tack": [
+      -0.345,
+      0.0,
+      -10.913
+     ],
+     "clew": [
+      -18.953,
+      0.0,
+      -9.677
+     ]
+    },
+    "grid": [
+     31,
+     20
+    ],
+    "starboard_tack_mirror": {
+     "point_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "normal": [
+      0.0,
+      1.0,
+      0.0
+     ],
+     "frame": "SpankerGaff"
+    }
+   }
+  }
+ }
+}

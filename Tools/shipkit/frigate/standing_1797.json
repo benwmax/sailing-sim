@@ -106,7 +106,8 @@
   "futtock_stave_src": "by eye: a stout stave (served rope over iron) seized across the shrouds",
   "ratline_pitch_in": 15,
   "ratline_src": "rule: 13 to 16 in apart; every fifth one is carried to the aftermost shroud",
-  "catharpins": [3, 3, 2]
+  "catharpins": [3, 3, 0],
+  "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)"
  },
  "topmast": {
   "rim_from": 0.07,

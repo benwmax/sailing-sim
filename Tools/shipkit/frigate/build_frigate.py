@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-4).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-5).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -9,15 +9,20 @@ jibbooms. Each yard, the boom, the gaff and the spritsail yard is its own object
 about (local Z up that axis): <out>/rig.json lists how far each one braces and hoists. Slice 4 (rigging.py,
 standing_1797.json) sets up the standing rigging: shrouds, deadeyes, lanyards, chains, ratlines, futtock shrouds,
 backstays, stays and the bowsprit's shrouds, martingales and guys; then each moving spar is swung against it (and the
-masts and hull) to find how far it braces, hoisted, lowered and between (brace_limits).
+masts and hull) to find how far it braces, hoisted, lowered and between (brace_limits). Slice 5 (sails.py,
+sails_1797.json) bends on the sails, each set, clewed up (or hauled down) and furled, a collection per state, and
+checks them against the ship (sail_room): each state clear of the spars and rigging, the set sails clear of each
+other, and how far each yard braces before its sail meets the rigging.
 
     python build_frigate.py <out dir>        (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
-<out>/build.json (triangles per object, main dimensions, displacement, the rig's heights) and <out>/rig.json. Units are metres in Unreal's body frame
+<out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks),
+<out>/rig.json and <out>/sails.json (each sail's objects, parent and sizes). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
-specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, never the .blend.
+specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
+never the .blend.
 """
 import json
 import math
@@ -34,6 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import loft  # noqa: E402
 import rigging  # noqa: E402
+import sails  # noqa: E402
 import skin  # noqa: E402
 import spars  # noqa: E402
 
@@ -361,6 +367,279 @@ for name, b in BRACE.items():
     if any(t[-1][1] > 0.0 for _, t in b["ease_m_by_hoist"]):
         RIG.meta[name]["ease_m_by_hoist"] = b["ease_m_by_hoist"]
 
+# the sails (slice 5, sails.py and sails_1797.json), built after the brace limits and the rope's clearance: those
+# measure the ship without sails (a square sail goes where its yard goes). Each sail has an object for each state in
+# the collection of that name: Sails_Set is shown, Sails_Clewed and Sails_Furled are hidden from the viewport and
+# renders, and Sails_Head (a square sail's head rope, robands and earings, the spanker's lacing) shows in every state.
+# A square sail's objects are parented to its yard, the spanker's to the gaff, so they brace and hoist with it; the
+# headsails' and staysails' stay in the ship's frame. The cloth carries FSailCloth's three UV layers (UV0 to UV2)
+SV = sails.Sails(RIG, ST).build()
+CANVAS = (0.66, 0.60, 0.48)           # unbleached duck (Blender's look only: in the game the cloth is M_SailCloth's)
+
+
+def sail_material(name, uv):
+    """Canvas for the Blender renders: a darker seam where two cloths overlap, every cloth's width less the seam along
+    uv's x (UV0 on a square sail, whose cloths run up and down it; UV2 on a fore-and-aft sail, parallel to its leech),
+    and a quarter of the light through it, so a sail against the sun glows and its seams show dark"""
+    cv = SV.sp["canvas"]
+    pitch = (cv["cloth_in"] - cv["seam_in"]) * loft.FT / 12
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    N, Lk = m.node_tree.nodes, m.node_tree.links
+    bsdf = N["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.9
+    uvn = N.new("ShaderNodeUVMap")
+    uvn.uv_map = uv
+    sep = N.new("ShaderNodeSeparateXYZ")
+    Lk.new(uvn.outputs["UV"], sep.inputs[0])
+    div = N.new("ShaderNodeMath")
+    div.operation = "DIVIDE"
+    div.inputs[1].default_value = pitch
+    Lk.new(sep.outputs["X"], div.inputs[0])
+    fr = N.new("ShaderNodeMath")
+    fr.operation = "FRACT"
+    Lk.new(div.outputs[0], fr.inputs[0])
+    seam = N.new("ShaderNodeMath")
+    seam.operation = "LESS_THAN"
+    seam.inputs[1].default_value = cv["seam_in"] / (cv["cloth_in"] - cv["seam_in"])
+    Lk.new(fr.outputs[0], seam.inputs[0])
+    shade = N.new("ShaderNodeMath")
+    shade.operation = "MULTIPLY_ADD"                  # 1 - 0.18 on the seam
+    shade.inputs[1].default_value = -0.18
+    shade.inputs[2].default_value = 1.0
+    Lk.new(seam.outputs[0], shade.inputs[0])
+    col = N.new("ShaderNodeVectorMath")
+    col.operation = "SCALE"
+    col.inputs[0].default_value = CANVAS
+    Lk.new(shade.outputs[0], col.inputs["Scale"])
+    Lk.new(col.outputs["Vector"], bsdf.inputs["Base Color"])
+    tr = N.new("ShaderNodeBsdfTranslucent")
+    Lk.new(col.outputs["Vector"], tr.inputs["Color"])
+    mix = N.new("ShaderNodeMixShader")
+    mix.inputs[0].default_value = 0.25
+    Lk.new(bsdf.outputs[0], mix.inputs[1])
+    Lk.new(tr.outputs[0], mix.inputs[2])
+    Lk.new(mix.outputs[0], N["Material Output"].inputs["Surface"])
+    return m
+
+
+MATS[sails.CLOTH] = sail_material(sails.CLOTH, "UV0")
+MATS[sails.CLOTH_FA] = sail_material(sails.CLOTH_FA, "UV2")
+SAIL_COLS = {}
+for state in ("Head",) + sails.STATES:
+    SAIL_COLS[state] = bpy.data.collections.new("Sails_" + state)
+    SC.collection.children.link(SAIL_COLS[state])
+for name, (V, F, M, U, frame, parent, key, state) in SV.objects().items():
+    ob = make_painted(name, V, F, M)
+    SC.collection.objects.unlink(ob)
+    SAIL_COLS[state].objects.link(ob)
+    me = ob.data
+    vi = np.zeros(len(me.loops), dtype=np.int32)
+    me.loops.foreach_get("vertex_index", vi)
+    for k in range(3):
+        lay = me.uv_layers.new(name=f"UV{k}")
+        lay.data.foreach_set("uv", np.ascontiguousarray(U[vi][:, 2 * k:2 * k + 2], dtype=np.float32).ravel())
+    if frame is not None:
+        o, R = frame
+        ob.parent = SC.objects[parent]
+        ob.matrix_world = Matrix(((*R[0], o[0]), (*R[1], o[1]), (*R[2], o[2]), (0, 0, 0, 1)))
+    smooth(ob, 50)
+for state in ("Clewed", "Furled"):
+    SAIL_COLS[state].hide_render = True
+    bpy.context.view_layer.layer_collection.children[SAIL_COLS[state].name].hide_viewport = True
+
+
+def world_tris(ob, mats=None):
+    """an object's vertices in the ship's frame and its triangles (those on the named materials, if given)"""
+    me = ob.data
+    Mw = np.array(ob.matrix_world)
+    co = np.zeros(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", co)
+    V = co.reshape(-1, 3) @ Mw[:3, :3].T + Mw[:3, 3]
+    me.calc_loop_triangles()
+    T = np.zeros(len(me.loop_triangles) * 3, dtype=np.int64)
+    me.loop_triangles.foreach_get("vertices", T)
+    T = T.reshape(-1, 3)
+    if mats is not None:
+        mi = np.zeros(len(me.loop_triangles), dtype=np.int64)
+        me.loop_triangles.foreach_get("material_index", mi)
+        keep = [i for i, m in enumerate(me.materials) if m.name in mats]
+        T = T[np.isin(mi, keep)]
+    return V, T
+
+
+def sail_room(cfg):
+    """Every sail object, all of it (cloth, bolt ropes, cringles, robands, reef points, hanks, gaskets, lacing), in
+    each state, against the ship: the hull's fittings, masts, tops, yards (squared and hoisted), the standing rigging
+    and each stay as its own rope (the Stays object's triangles go to the stay whose straight run they lie on). Nothing
+    is excused: a sail must clear its own yard, stay, boom and gaff too (it lies on them, it doesn't pass through
+    them). A furled topsail, topgallant or royal is tried with every yard lowered on its cap instead (they are furled
+    with the yard down: hoisted, the stay leaving the masthead just above it runs through the bunt); a clewed-up sail
+    hangs from its hoisted yard. The headsails, staysails and spanker are tried set on the starboard tack too (their
+    Set mirrored about info's starboard_tack_mirror plane). Then the set sails against each other, on either tack, and
+    each square sail set on its braced yard: the last angle each way where the sail (with its head) clears the masts,
+    tops, hull and standing rigging, less cfg's margin (the other yards brace with it). As brace_limits does for the
+    bare yard, the yard is eased forward on its truss or parrel as it braces, from rig.json's ease_m an inch at a time
+    up to cfg's ease_max (by kind), at each of cfg's step_deg steps to top_deg; the ease the sail needs (a step early,
+    kept where it grows) is its ease_m, and the limit is cut back where that table fails at a quarter degree.
+    Returns {"through": {object: {what: triangles}}, "set_sails_meet": [[a, b, triangles]], "brace_contact": {sail:
+    {"deg": [lo, hi], "yard_limit_deg": [lo, hi], "meets": [lo's, hi's], "brace_deg": [lo, hi], "ease_m": [[deg,
+    m], ...]}}}."""
+    hoist = {n: np.array(m["axis"], float) * m["hoist_m"][0] for n, m in RIG.meta.items() if m["hoist_m"][0] != 0.0}
+    sail_names = set(SV.objs)
+    runs = [(nm, a, b, r) for nm, a, b, r in ST.spans if nm.endswith(" stay")]
+    statics = [o for o in SC.objects if o.type == "MESH" and o.name not in sail_names and o.name != "Hull"]
+
+    def owners(o, V, T):
+        if o.name != "Stays":
+            return [o.name] * len(T)
+        C = V[T].mean(1)
+        lab, best = np.array(["Stays"] * len(C), dtype=object), np.full(len(C), np.inf)
+        for nm, a, b, r in runs:
+            d = b - a
+            t = np.clip((C - a) @ d / (d @ d), 0.0, 1.0)
+            dist = np.linalg.norm(C - (a + t[:, None] * d), axis=1) - r
+            m = (dist < 2 * loft.FT / 12) & (dist < best)
+            best[m], lab[m] = dist[m], nm
+        return list(lab)
+
+    def tree(objs, lowered=False):
+        Vs, Ts, owner, n0 = [], [], [], 0
+        for o in objs:
+            V, T = world_tris(o)
+            if lowered and o.name in hoist:
+                V = V + hoist[o.name]
+            Vs.append(V)
+            Ts.append(T + n0)
+            owner += owners(o, V, T)
+            n0 += len(V)
+        return BVHTree.FromPolygons(np.concatenate(Vs).tolist(), np.concatenate(Ts).tolist(), all_triangles=True), owner
+
+    def mirror_of(key):
+        mi = SV.info[key].get("starboard_tack_mirror")
+        if mi is None:
+            return None
+        p, n = np.array(mi["point_m"], float), np.array(mi["normal"], float)
+        if "frame" in mi:
+            o_, R_ = RIG.parts_[mi["frame"]]["frame"]
+            p, n = o_ + R_ @ p, R_ @ n
+        return p, n / np.linalg.norm(n)
+
+    trees = {False: tree(statics), True: tree(statics, True)}
+    through, set_trees = {}, {False: {}, True: {}}            # set sails' BVHs by tack (True: starboard)
+    for name, d in SV.objs.items():
+        V, T = world_tris(SC.objects[name])
+        if not len(T):
+            continue
+        key, state = d["sail"], d["state"]
+        cases = [(name, V, False)]
+        if state == "Furled" and d["parent"] in hoist:
+            cases = [(name + " (yards lowered)", V + hoist[d["parent"]], True)]
+        if state == "Set" and mirror_of(key) is not None:
+            p, n = mirror_of(key)
+            cases.append((name + " (starboard tack)", V - 2 * ((V - p) @ n)[:, None] * n[None], False))
+        for label, Vq, lowered in cases:
+            t_s = BVHTree.FromPolygons(Vq.tolist(), T.tolist(), all_triangles=True)
+            tr, owner = trees[lowered]
+            hits = {}
+            for _, j in t_s.overlap(tr):
+                hits[owner[j]] = hits.get(owner[j], 0) + 1
+            if hits:
+                through[label] = hits
+            if state == "Set":
+                stbd = label.endswith("(starboard tack)")
+                set_trees[stbd][key] = t_s
+                if mirror_of(key) is None:
+                    set_trees[True][key] = t_s
+    meet = []
+    for stbd, ts in set_trees.items():
+        keys = list(ts)
+        for i, a in enumerate(keys):
+            for b in keys[i + 1:]:
+                n = len(ts[a].overlap(ts[b]))
+                if n:
+                    meet.append([a, b, n, "starboard tack" if stbd else "port tack"])
+    # braced: against the masts, tops, bowsprit, hull and standing rigging (the yards, boom and gaff brace too)
+    still = [o for o in statics if o.name not in RIG.meta]
+    tr_b, owner_b = tree(still)
+    step, top, margin, e_step = cfg["step_deg"], cfg["top_deg"], cfg["margin_deg"], cfg["ease_step_m"]
+    sq = SV.sp["square"]["sails"]
+    contact = {}
+    for key, spec in sq.items():
+        yn = spec["yard"]
+        m = RIG.meta[yn]
+        org, ax = np.array(m["origin_m"], float), np.array(m["axis"], float)
+        fwd = np.array(SC.objects[yn].matrix_world)[:3, 0]
+        fwd /= np.linalg.norm(fwd)
+        Vs, Ts, n0 = [], [], 0
+        for nm in ("Sail_" + sails.camel(key) + "_Set", "Sail_" + sails.camel(key) + "_Head"):
+            V, T = world_tris(SC.objects[nm])
+            Vs.append(V - org)
+            Ts.append(T + n0)
+            n0 += len(V)
+        Vl, Tl = np.concatenate(Vs), np.concatenate(Ts).tolist()
+        K = np.array([[0, -ax[2], ax[1]], [ax[2], 0, -ax[0]], [-ax[1], ax[0], 0]])
+        ease_y = np.array(m.get("ease_m", [[0.0, 0.0]]), float)
+        kind = next((k.lower() for k in ("Topsail", "Topgallant", "Royal") if k in yn), "lower")
+        e_max = max(cfg["ease_max_ft"][kind] * loft.FT, float(ease_y[:, 1].max()))
+
+        def hit_at(a, sgn, e):
+            th = math.radians(sgn * a)
+            Rm = np.eye(3) + math.sin(th) * K + (1 - math.cos(th)) * (K @ K)
+            ov = BVHTree.FromPolygons((Vl @ Rm.T + org + fwd * e).tolist(), Tl, all_triangles=True).overlap(tr_b)
+            return owner_b[ov[0][1]] if ov else None
+
+        def eased(a, sgn, e0):
+            """the least ease from e0 (at least the yard's own), an inch at a time, that clears at a: (ease, what it
+            still meets at the most ease)"""
+            e = max(e0, float(np.interp(a, ease_y[:, 0], ease_y[:, 1])))
+            hit = hit_at(a, sgn, e)
+            while hit and e + e_step <= e_max + 1e-9:
+                e += e_step
+                hit = hit_at(a, sgn, e)
+            return e, hit
+        need, coarse, what = [], {}, {}
+        for sgn in (-1, 1):
+            a, e, hit = 0.0, 0.0, None
+            while a <= top + margin + 1e-9:
+                e, hit = eased(a, sgn, e)
+                if hit:
+                    break
+                need.append((a, e))
+                a += step
+            coarse[sgn], what[sgn] = (a if hit else None), hit
+        # the ease table: each angle's need (the more either side needs) a step early, kept where it grows
+        grid = np.arange(0.0, top + step / 2, step)
+        e_of = np.maximum.accumulate(np.array([max([e for g2, e in need if abs(g2 - g - step) < 1e-6] +
+                                                   [float(np.interp(g, ease_y[:, 0], ease_y[:, 1]))]) for g in grid]))
+        tb = [[0.0, 0.0]] + [[float(g), round(float(e), 4)] for k, (g, e) in enumerate(zip(grid, e_of))
+                             if k > 0 and e > e_of[k - 1]]
+        if tb[-1][1] > 0.0:
+            tb.append([float(top), round(float(e_of[-1]), 4)])
+        tba = np.array(tb, float)
+        deg = []
+        for sgn in (-1, 1):
+            # every quarter degree with the table, to the last whole degree that cleared (or top): the limit is the
+            # last quarter that clears, less the margin
+            end = (coarse[sgn] - 0.25) if coarse[sgn] is not None else top + margin
+            last = 0.0
+            for q in np.arange(0.25, end + 1e-9, 0.25):
+                h = hit_at(q, sgn, float(np.interp(q, tba[:, 0], tba[:, 1])))
+                if h:
+                    what[sgn] = h + " (eased)" if what[sgn] is None or h != what[sgn] else h
+                    break
+                last = float(q)
+            lim = min(top, last - margin) if (coarse[sgn] is not None or last < end - 1e-9) else top
+            deg.append(sgn * round(max(0.0, lim), 2))
+        contact[key] = {"deg": deg, "yard_limit_deg": m["brace_deg"], "meets": [what[-1], what[1]],
+                        "brace_deg": [max(deg[0], m["brace_deg"][0]), min(deg[1], m["brace_deg"][1])],
+                        "ease_m": tb if tb[-1][1] > 0.0 else []}
+    return {"through": through, "set_sails_meet": meet, "brace_contact": contact}
+
+
+SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_deg", "margin_deg", "ease_max_ft")},
+                       "ease_step_m": ST.sp["brace"]["ease_step_in"] * loft.FT / 12})
+
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
@@ -402,8 +681,16 @@ def displacement(L):
 
 
 REFERENCE = {"Hull"}           # measured, never drawn
+SAIL_STATE = {n: d["state"] for n, d in SV.objs.items()}
 stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects if o.type == "MESH"}}
-stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items() if k not in REFERENCE)
+stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items()
+                               if k not in REFERENCE and SAIL_STATE.get(k) not in ("Clewed", "Furled"))
+stats["triangles_model_note"] = ("as drawn, with the sails set: the hidden Clewed and Furled sails are in "
+                                 "triangles_sails (one state of each sail shows at a time)")
+tri_state = {s: sum(stats["objects"][n]["triangles"] for n, st_ in SAIL_STATE.items() if st_ == s)
+             for s in ("Head",) + sails.STATES}
+stats["triangles_sails"] = {"set": tri_state["Set"] + tri_state["Head"], "clewed": tri_state["Clewed"] + tri_state["Head"],
+                            "furled": tri_state["Furled"] + tri_state["Head"], "all_states": sum(tri_state.values())}
 stats["triangles_reference"] = sum(v["triangles"] for k, v in stats["objects"].items() if k in REFERENCE)
 stats["dimensions"] = loft.summary(L, H)
 sk_ob = SC.objects["Skin"]
@@ -420,7 +707,31 @@ stats["standing"] = ST.summary()
 stats["triangles_rigging"] = sum(v["triangles"] for k, v in stats["objects"].items() if k in ST.meshes)
 stats["brace"] = BRACE
 stats["span_room"] = SPAN_ROOM
+area = {g: round(sum(SV.info[k]["area_ft2"] for k in SV.sp["sail_list"][g]), 0) for g in SV.sp["sail_list"] if g != "note"}
+stats["sails"] = {"area_ft2": dict(area, total=sum(area.values())), "room": SAIL_ROOM}
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1)
+SAILS_NOTE = (
+    "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
+    "a Head shown in every state (square sails and the spanker). parent: the spar the objects ride on (their origin and "
+    "axes are its own: they hoist with it), or null (in the ship's frame). Set is full of wind with the yards square "
+    "and the wind aft (square sails) and on the port tack (the others). The starboard tack is the Set mirrored about "
+    "info's starboard_tack_mirror plane (point_m, normal; in the ship's frame, or the named frame's): the vertical "
+    "plane through the sail's stay, which keeps its luff on the stay (the stays' feet are off the centreline), or the "
+    "gaff's for the spanker. Clewed hangs from the yard hoisted; Furled lies on it lowered for a topsail, topgallant or "
+    "royal (rig.json's hoist_m[0]: hoisted, its stay runs through the bunt) and where it is for a course. A square "
+    "sail's clews belong at the yard below's sheaves (a course's at the ship's side): braced, the Set turned rigidly "
+    "with its yard is only near (its clews part from the yard below by up to 28 in at 30 deg), so the game must draw "
+    "the foot to the yard below. brace_deg: how far its yard braces with this sail set (rig.json's limit, or less where "
+    "the set sail meets the rigging first, less 1 deg); ease_m [[deg, m]] (lower and topsail yards): how far forward its yard's truss or parrel lets it come as it braces with this sail set, used as rig.json's ease_m (the same or more: a sail's head, robands and earings stand a little off the yard). info: each sail's size and corners (metres, the ship's frame "
+    "or, for *_local_m, the yard's; clew_cut_local_m is the clew as the sail is cut and the draught draws it)")
+BC = SAIL_ROOM["brace_contact"]
+json.dump({"note": SAILS_NOTE,
+           "sails": {k: {"objects": {d["state"]: n for n, d in SV.objs.items() if d["sail"] == k},
+                         "parent": next((d["parent"] for d in SV.objs.values() if d["sail"] == k), None),
+                         **({"brace_deg": BC[k]["brace_deg"]} if k in BC else {}),
+                         **({"ease_m": BC[k]["ease_m"]} if BC.get(k, {}).get("ease_m") else {}),
+                         "info": SV.info[k]} for k in SV.info}},
+          open(os.path.join(OUT, "sails.json"), "w"), indent=1)
 json.dump({"note": "each moving spar (docs/shipkit-3): origin_m on the axis it turns about (metres, ship frame) and that "
                    "axis (the object's local +Z); parent, the object it rides on; hoist_m, its offset along the axis "
                    "[lowered, hoisted] (negative is down; the model hangs it hoisted); brace_deg, the limits of a turn "
@@ -435,3 +746,6 @@ json.dump({"note": "each moving spar (docs/shipkit-3): origin_m on the axis it t
                    "hoists, interpolate between their tables' values",
            "parts": RIG.meta}, open(os.path.join(OUT, "rig.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
+if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
+    raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
+                     json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))
