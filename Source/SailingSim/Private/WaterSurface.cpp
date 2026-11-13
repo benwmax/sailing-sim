@@ -1393,15 +1393,14 @@ void AWaterSurface::BuildShoreDepth(const FLakeData& Lake, const Sailing::FLakeT
 	for (const FMarinaRamp& Ramp : Ramps)
 	{
 		const FVector2D Head = 0.5 * (Ramp.In + Ramp.Out), Side(-Ramp.Dir.Y, Ramp.Dir.X);
-		const FVector2D Corners[] = { Ramp.In, Ramp.Out, Ramp.In + Ramp.Dir * FMarinaRamp::Length, Ramp.Out + Ramp.Dir * FMarinaRamp::Length };
+		const FVector2D Corners[] = { Ramp.In, Ramp.Out, Ramp.In + Ramp.Dir * Ramp.Length, Ramp.Out + Ramp.Dir * Ramp.Length };
 		FBox2D Box(ForceInit);
 		for (const FVector2D& K : Corners) Box += K;
 		Stamp(Box.Min, Box.Max, ShoreReachM, [&](const FVector2D& P)
 		{
 			const double T = FVector2D::DotProduct(P - Head, Ramp.Dir), Across = FMath::Abs(FVector2D::DotProduct(P - Head, Side));
-			const double Along = FMath::Clamp(T, 0.0, double(FMarinaRamp::Length));
-			const double Z = Ramp.Top + (FMarinaRamp::Foot - Ramp.Top) * Along / FMarinaRamp::Length;
-			const double Gap = FVector2D(FMath::Max(0.0, Across - 0.5 * FMarinaRamp::Width), FMath::Max(0.0, -T) + FMath::Max(0.0, T - FMarinaRamp::Length)).Size();
+			const double Z = Ramp.ZAt(T);
+			const double Gap = FVector2D(FMath::Max(0.0, Across - 0.5 * FMarinaRamp::Width), FMath::Max(0.0, -T) + FMath::Max(0.0, T - Ramp.Length)).Size();
 			return float(FMath::Max(0.05, -Z) + 0.6 * Gap);
 		});
 	}
