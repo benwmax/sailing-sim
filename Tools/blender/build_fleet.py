@@ -2002,11 +2002,15 @@ print(f"{TAG}: exported", ", ".join(o.name for o in (hull_obj, mast_obj, boom_ob
 
 
 def save_shape_blend():
-    """The shape loop's scene (FLEET_SHAPE_BLEND=1): the hull mesh split into one object per part, then saved."""
+    """The shape loop's scene (FLEET_SHAPE_BLEND=1): the hull mesh split into one object per part, then saved. Run it
+    from the command line only: it removes the hull object from the scene it saves."""
     me = hull_obj.data
     att = [d.value for d in me.attributes["shape_part"].data]
+    counts = {i: att.count(i) for i in range(len(SHAPE_PARTS))}
+    for o in [o for o in bpy.data.objects if o.name in ("Cube", "Camera", "Light")]:
+        bpy.data.objects.remove(o, do_unlink=True)    # the factory scene's own
     for pid, part in enumerate(SHAPE_PARTS):
-        if pid not in att:
+        if not counts[pid]:
             continue
         bm = bmesh.new()
         bm.from_mesh(me)
@@ -2020,13 +2024,22 @@ def save_shape_blend():
         ob = bpy.data.objects.new(f"{TAG}_{part}", m2)
         ob.matrix_world = hull_obj.matrix_world
         bpy.context.scene.collection.objects.link(ob)
+        # the hull's shading, as Mesh.finish gives it (the export applies it)
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.context.view_layer.objects.active = ob
+        ob.select_set(True)
+        try:
+            bpy.ops.object.shade_auto_smooth(angle=math.radians(35.0))
+        except Exception:
+            pass
+        ob.select_set(False)
     bpy.data.objects.remove(hull_obj, do_unlink=True)
-    json.dump({"canoe_volume_m3": round(vol, 4), "physics_volume_m3": round(CFG["design_volume"], 4),
-               "cb_x": round(cb.x, 3), "cb_z": round(cb.z, 3),
-               "physics_cb": [round(CFG["design_cb"][0], 3), round(CFG["design_cb"][2], 3)]},
-              open(os.path.join(OUT, f"{TAG}_shape_report.json"), "w"))
+    with open(os.path.join(OUT, f"{TAG}_shape_report.json"), "w") as fh:
+        json.dump({"canoe_volume_m3": round(vol, 4), "physics_volume_m3": round(CFG["design_volume"], 4),
+                   "cb_x": round(cb.x, 3), "cb_z": round(cb.z, 3),
+                   "physics_cb": [round(CFG["design_cb"][0], 3), round(CFG["design_cb"][2], 3)]}, fh)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, f"{TAG}_shape.blend"))
-    print(f"{TAG}: shape scene", ", ".join(f"{p} {att.count(i)}" for i, p in enumerate(SHAPE_PARTS)))
+    print(f"{TAG}: shape scene", ", ".join(f"{p} {counts[i]}" for i, p in enumerate(SHAPE_PARTS)))
 
 
 if SHAPE_BLEND:

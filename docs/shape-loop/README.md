@@ -133,7 +133,10 @@ is Fittings) and, after the export, the build saves `<out>/Sunfish_shape.blend` 
 `Sunfish_shape_report.json` (the canoe body's volume and centre of buoyancy with the physics'). The fbx files are the
 same either way (checked: same vertices, faces, slots and attributes). `sections_sunfish.json` maps the objects to the
 plan's sections (hull, deck, well, board and trunk, rudder, fittings) and names the hull object and report the tools
-read.
+read. Where the faces fall: the rubrail is built in `deck()` (Deck), the well's corner fillets at the deck in
+`cockpit()` (Well), the well's lip tube in `dinghy_detail` (Fittings), and the kit's parts default to Fittings. The
+split scene keeps the hull's 35 degree smooth-by-angle on every part, and the factory scene's cube, camera and light
+are removed. Only from the command line: the save removes the hull object from the scene it saves.
 
     Artifacts/boat-export sunfish $O/sunfish.json      # (scripts/make-boat-models.sh builds boat-export)
     FLEET_SHAPE_BLEND=1 blender -b --factory-startup -P Tools/blender/build_fleet.py -- $O/sunfish.json Sunfish $O
@@ -142,8 +145,8 @@ read.
     python Tools/shapeloop/seams.py $O/Sunfish_shape.blend Tools/shapeloop/sections_sunfish.json $O
     python Tools/shapeloop/render_set.py $O/Sunfish_shape.blend Tools/shapeloop/sections_sunfish.json $O
 
-Baseline (main ff21b4b6): 115,302 triangles (hull 15,672, deck 3,270, well 108, board 1,452, fittings 56,706,
-rudder 1,464, rig 36,630); fairness 0 inflections, 4 kinks; both seams (hull-deck, deck-well) closed, since the parts
+Baseline (main ff21b4b6): 115,290 triangles (hull 15,672, deck 3,270, well 108, board 1,452, fittings 56,706,
+rudder 1,464, rig 36,618); fairness 0 inflections, 4 kinks; both seams (hull-deck, deck-well) closed, since the parts
 share their edge vertices. The model's canoe body is 0.1431 m³ against the physics' 0.145 (-1.3%, CB within 0.1 cm):
 `SailingSim.Visual.FleetMesh`'s tolerance, an older gap, so Sunfish cards compare against the baseline
 (`"physics_reference": "baseline"`), not the physics.
