@@ -106,7 +106,7 @@ namespace
 	constexpr float kSkyCacheFarM = 40000.f;
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
-	// samples, read brighter than High's.
+	// samples, read brighter than High's. (Measured at view scale 2; feedback #22 raised it to 3: docs/cloud-shimmer.)
 	constexpr float kSkyCacheSunHigh = 1.45f, kSkyCacheSkyHigh = 2.1f;
 	constexpr float kSkyCacheSunUltra = 1.7f, kSkyCacheSkyUltra = 1.2f;
 	// pc/ultra-cloud-tops: Ultra's cloud noise footprint floor (m) and cumulus top ramp (the material's 110 and 4 elsewhere).
@@ -115,8 +115,6 @@ namespace
 	// docs/exposure-band: the share of the exposure band the histogram may use on the dark side of the incident meter.
 	constexpr float kExposureBandDark = 0.2f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
-	// pc/near-cloud-grain (docs/near-cloud-grain): the cumulus step cap taken as if each step were at least this long (m; 0, off, elsewhere).
-	constexpr float kUltraCloudCapStepM = 76.f;   // four of Ultra's 19 m near steps
 }
 ASailingEnvironment::ASailingEnvironment()
 {
@@ -365,7 +363,7 @@ void ASailingEnvironment::BeginPlay()
 			// Graphics G1: more samples on the shadow rays inside the cloud (their jitter was most of the speckle) and, on
 			// High and Ultra, along the view ray. -SailingCloudScale=<view>,<shadow> overrides, for measuring.
 			const ESailingQuality Q = USailingSettings::Get()->Quality;
-			CloudComp->SetViewSampleCountScale(Q == ESailingQuality::Ultra ? 2.f : 1.f);
+			CloudComp->SetViewSampleCountScale(CloudViewSampleScale(Q));   // Ultra 3 (feedback #22, docs/cloud-shimmer)
 			CloudComp->SetShadowViewSampleCountScale(Q == ESailingQuality::Ultra ? 4.f : 1.f);
 			// The shadow rays' samples over 4 km instead of the default 15: the same count, three times as dense where the
 			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost. On High, 3 km
@@ -429,7 +427,8 @@ void ASailingEnvironment::BeginPlay()
 			if (Foot > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudFootFloor"), Foot);
 			if (Edge > 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudEdgeTop"), Edge);
 			if (Billow2 >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudBillow2"), Billow2);
-			float CapStep = bUltraClouds ? kUltraCloudCapStepM : -1.f;   // measuring: -SailingCloudCapStep=<m>
+			// docs/near-cloud-grain, docs/cloud-shimmer: the cumulus step cap's minimum step (Ultra 150 m; unset elsewhere).
+			float CapStep = bUltraClouds ? CloudCapStepFloorM(ESailingQuality::Ultra) : -1.f;   // measuring: -SailingCloudCapStep=<m>
 			FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudCapStep="), CapStep);
 			if (CapStep >= 0.f) CloudMaterial->SetScalarParameterValue(TEXT("CloudCapStepFloor"), CapStep);
 		}
