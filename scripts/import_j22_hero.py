@@ -60,7 +60,11 @@ float zcm = LP.z;                             // the hull's and the rudder's piv
 // Zones: the hull group above the taped line (topsides) and below it (bottom), a boot stripe 7 to 9.5 cm over the
 // waterline (j22_materials.py's band), the deck moulding's smooth gelcoat, its non-skid, and the teak.
 float pLum = dot(c, float3(0.3, 0.59, 0.11));
-float pExt = step(0.5, Exterior), pHull = step(0.5, IsHull) * pExt;
+// A coloured mark in the bake (the registration sticker, #2F7D3A) keeps its own colour: the gelcoat and the grey
+// bottom are near neutral (under 0.08 between their channels), a decal is not (0.18), so the hull's paint skips it.
+// (The first stills had the green sticker repainted dark on every painted hull.)
+float pMark = smoothstep(0.10, 0.15, max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b)));
+float pExt = step(0.5, Exterior), pHull = step(0.5, IsHull) * pExt * (1.0 - pMark);
 float pBelow = 1.0 - smoothstep(-0.3, 0.0, zcm);
 c = lerp(c, PaintHull.rgb * min(pLum / 0.871, 1.2), PaintHull.a * pHull * (1.0 - pBelow));
 c = lerp(c, PaintBottom.rgb * min(pLum / 0.278, 1.3), PaintBottom.a * pHull * pBelow);
