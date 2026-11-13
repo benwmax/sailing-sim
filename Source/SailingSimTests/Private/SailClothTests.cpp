@@ -186,16 +186,39 @@ bool FVisualSailDentTest::RunTest(const FString& Parameters)
 /**
  * Feedback #20: the spinnaker's head on its halyard. The physics strips put a spinnaker's luff a metre or two ahead of the
  * mast (the J/22's head at x 2.6 m, her mast at 0.65), and the cloth drew the head there, floating short of the mast.
- * On every boat that carries one, set and flown both sides, drawn and simulated, the head corner must sit on the
- * halyard point, the head must come to a point there (the leech meets the luff), the tack must stay where the physics
- * puts it, and the halyard point must be at the mast: the J/22 hero's Hounds socket (J22H_sockets.json) a swivel's
- * length ahead, or the front of the config's mast at the sail's head height.
+ * On every boat that carries one: the head point is just ahead of the mast's front (the J/22 hero's Hounds socket,
+ * J22H_sockets.json, or the config's mast), at the sail's own head height or over the jib's head, under the masthead.
+ * Set and flown both sides, drawn and simulated, the head corner sits on it and comes to a point, the tack stays where the
+ * physics puts it, and the luff stays ahead of the jib's below the jib's head; drawn, no edge of the spinnaker's cloth
+ * passes through the jib's (the first try at this fix drew the J/22's luff aft through the jib's upper cloth).
  */
+namespace
+{
+	// Moller-Trumbore: does the segment P0-P1 cross the triangle (inside both)?
+	bool SegmentCrossesTriangle(const FVector& P0, const FVector& P1, const FVector& A, const FVector& B, const FVector& C)
+	{
+		const FVector E1 = B - A, E2 = C - A, D = P1 - P0;
+		const FVector H = FVector::CrossProduct(D, E2);
+		const double Det = FVector::DotProduct(E1, H);
+		if (FMath::Abs(Det) < 1e-9) return false;
+		const double F = 1.0 / Det;
+		const FVector Sv = P0 - A;
+		const double U = F * FVector::DotProduct(Sv, H);
+		if (U < 0.0 || U > 1.0) return false;
+		const FVector Q = FVector::CrossProduct(Sv, E1);
+		const double V = F * FVector::DotProduct(D, Q);
+		if (V < 0.0 || U + V > 1.0) return false;
+		const double W = F * FVector::DotProduct(E2, Q);
+		return W > 0.0 && W < 1.0;
+	}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSpinnakerHeadTest, "SailingSim.Visual.SpinnakerHead", SailClothFlags)
 bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 {
 	using namespace Sailing;
 	const FVector HeroHounds(68.06, 0.0, 783.09);   // Inputs/j22-hero/J22H_sockets.json, boat frame cm
+	constexpr int32 Rows = FSailCloth::Rows, Cols = FSailCloth::Cols;
 	int32 Boats = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
@@ -205,30 +228,41 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(C.Type));
 		const double MastFrontCm = (C.MastX + 0.5 * C.MastDiameter) * CmPerMeter;
 		const double SailHeadCm = C.Spinnaker.Strips[C.Spinnaker.NumStrips - 1].ZTop * CmPerMeter;
-		struct FCase { const TCHAR* What; FVector Head; };
+		const double JibHeadCm = C.HasJib() ? C.Jib.Strips[C.Jib.NumStrips - 1].ZTop * CmPerMeter : -1.0;
+		struct FCase { const TCHAR* What; FVector Head; bool bHero; };
 		TArray<FCase> Cases;
-		Cases.Add({ TEXT("no model"), SpinnakerHeadCm(C.Spinnaker, C.MastX, C.MastDiameter, nullptr) });
-		if (C.Type == EBoatType::J22) Cases.Add({ TEXT("hero Hounds"), SpinnakerHeadCm(C.Spinnaker, C.MastX, C.MastDiameter, &HeroHounds) });
+		Cases.Add({ TEXT("no model"), SpinnakerHeadCm(C, nullptr), false });
+		if (C.Type == EBoatType::J22) Cases.Add({ TEXT("hero Hounds"), SpinnakerHeadCm(C, &HeroHounds), true });
 
-		// The halyard point is at the mast, not where the physics put the head.
-		const FVector Fallback = Cases[0].Head;
-		TestTrue(FString::Printf(TEXT("%s: the head (no model) is just ahead of the mast's front, x %.0f cm (mast front %.0f)"), *BoatName, Fallback.X, MastFrontCm),
-			Fallback.X > MastFrontCm && Fallback.X < MastFrontCm + 15.0);
-		TestEqual(FString::Printf(TEXT("%s: the head (no model) at the sail's head height"), *BoatName), Fallback.Z, SailHeadCm, 0.5);
-		TestEqual(FString::Printf(TEXT("%s: the head (no model) on the centreline"), *BoatName), Fallback.Y, 0.0, 0.01);
-		if (C.Type == EBoatType::J22)
+		// The halyard point: at the mast, not where the physics put the head; high enough; under the masthead.
+		for (const FCase& K : Cases)
 		{
-			const FVector Hero = Cases[1].Head;
-			TestTrue(FString::Printf(TEXT("J/22 hero: the head within 10 cm of the Hounds socket (%.1f cm)"), FVector::Dist(Hero, HeroHounds)),
-				FVector::Dist(Hero, HeroHounds) <= 10.0);
-			TestTrue(TEXT("J/22 hero: the head ahead of the halyard's exit, not inside the mast"), Hero.X > HeroHounds.X);
+			const FString What = FString::Printf(TEXT("%s (%s)"), *BoatName, K.What);
+			const double Front = K.bHero ? HeroHounds.X : MastFrontCm;
+			TestTrue(FString::Printf(TEXT("%s: the head just ahead of the mast's front, x %.0f cm (front %.0f)"), *What, K.Head.X, Front),
+				K.Head.X > Front && K.Head.X <= Front + 10.0);
+			TestEqual(FString::Printf(TEXT("%s: the head on the centreline"), *What), K.Head.Y, 0.0, 0.01);
+			TestTrue(FString::Printf(TEXT("%s: the head at least at the sail's own head height (%.0f cm, sail %.0f)"), *What, K.Head.Z, SailHeadCm), K.Head.Z >= SailHeadCm - 0.5);
+			TestTrue(FString::Printf(TEXT("%s: the head under the masthead (%.0f cm)"), *What, K.Head.Z), K.Head.Z < C.MastheadZ * CmPerMeter);
+			if (C.HasJib() && K.Head.Z < C.MastheadZ * CmPerMeter - 10.5)
+			{
+				TestTrue(FString::Printf(TEXT("%s: the head over the jib's (%.0f cm, jib %.0f)"), *What, K.Head.Z, JibHeadCm), K.Head.Z >= JibHeadCm + 15.0);
+			}
 		}
 
-		// The cloth: unpinned for the tack's reference, then pinned.
+		// The jib's luff as its cloth draws it (FSailCloth::Init's luff line), cm.
+		auto JibLuffXCm = [&C](double ZCm)
+		{
+			const FSailGeometry& J = C.Jib;
+			const double Z0 = 0.5 * (J.Strips[0].ZBottom + J.Strips[0].ZTop);
+			const double Slope = J.NumStrips > 1 ? (J.Strips[J.NumStrips - 1].LuffX - J.Strips[0].LuffX) / (0.5 * (J.Strips[J.NumStrips - 1].ZBottom + J.Strips[J.NumStrips - 1].ZTop) - Z0) : 0.0;
+			return (J.Strips[0].LuffX + Slope * (ZCm / CmPerMeter - Z0)) * CmPerMeter;
+		};
+
 		FSailCloth Free;
 		Free.Init(C.Spinnaker, ESailKind::Spinnaker);
 		TestFalse(FString::Printf(TEXT("%s: Init leaves no head point"), *BoatName), Free.HasHeadPoint());
-		FSailStripState Strips[kMaxSailStrips];
+		FSailStripState Strips[kMaxSailStrips], JibStrips[kMaxSailStrips];
 		for (const FCase& K : Cases)
 		{
 			for (const int32 Side : { 1, -1 })
@@ -237,7 +271,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 				{
 					FSailCloth Cloth;
 					Cloth.Init(C.Spinnaker, ESailKind::Spinnaker);
-					Cloth.SetHeadPoint(K.Head);
+					Cloth.SetHeadPoint(K.Head, C.HasJib() ? &C.Jib : nullptr);
 					TestTrue(FString::Printf(TEXT("%s: the head point is taken"), *BoatName), Cloth.HasHeadPoint());
 					FSailClothDrive Drive;
 					Drive.ApparentWindKnots = 14.f;
@@ -248,7 +282,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 						for (int32 I = 0; I < C.Spinnaker.NumStrips; ++I)
 						{
 							Strips[I].Camber = 0.20;
-							Strips[I].AngleFromCenterline = (55.0 + 6.0 * I) * kDegToRad;
+							Strips[I].AngleFromCenterline = Side * (55.0 + 6.0 * I) * kDegToRad;   // signed: + = starboard (Sail.h)
 							// A blown spinnaker too: the top strips collapse half the time.
 							Strips[I].Flow = (N / 30) % 2 == 1 && I >= C.Spinnaker.NumStrips - 2 ? ESailFlow::Luffing : ESailFlow::Attached;
 						}
@@ -257,7 +291,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 						if (N == 0) Free.Step(Strips, Side, Drive);
 					}
 					const TArray<FVector>& P = Cloth.Positions();
-					const int32 HeadLuff = (FSailCloth::Rows - 1) * FSailCloth::Cols, HeadLeech = HeadLuff + FSailCloth::Cols - 1;
+					const int32 HeadLuff = (Rows - 1) * Cols, HeadLeech = HeadLuff + Cols - 1;
 					const FString Case = FString::Printf(TEXT("%s (%s, side %d, %s)"), *BoatName, K.What, Side, bSimulate ? TEXT("cloth") : TEXT("drawn"));
 					bool bFinite = true;
 					for (const FVector& V : P) bFinite &= !V.ContainsNaN();
@@ -268,10 +302,85 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 						FVector::Dist(P[HeadLeech], K.Head) < 10.0);
 					TestTrue(FString::Printf(TEXT("%s: the tack where the physics puts it (%.1f cm off)"), *Case, FVector::Dist(P[0], Free.Positions()[0])),
 						FVector::Dist(P[0], Free.Positions()[0]) < 1.0);
-					// Every row's luff between the tack and the head, none above the head.
 					double Highest = -1e9;
 					for (const FVector& V : P) Highest = FMath::Max(Highest, V.Z);
 					TestTrue(FString::Printf(TEXT("%s: nothing above the head (%.1f cm over)"), *Case, Highest - K.Head.Z), Highest <= K.Head.Z + 5.0);
+					// The luff (column 0, held to its target) ahead of the jib's below the jib's head.
+					if (C.HasJib())
+					{
+						double Worst = 1e9, WorstZ = 0.0;
+						for (int32 R = 0; R < Rows - 1; ++R)
+						{
+							const FVector& L = P[R * Cols];
+							if (L.Z > JibHeadCm || L.Z < C.Jib.Strips[0].ZBottom * CmPerMeter) continue;
+							const double Ahead = L.X - JibLuffXCm(L.Z);
+							if (Ahead < Worst) { Worst = Ahead; WorstZ = L.Z; }
+						}
+						TestTrue(FString::Printf(TEXT("%s: the luff ahead of the jib's (worst %.1f cm at %.0f cm up)"), *Case, Worst, WorstZ), Worst >= 10.0);
+					}
+				}
+			}
+		}
+
+		// Drawn beside the jib on a reach and a run: no edge of the spinnaker's cloth through the jib's.
+		if (C.HasJib())
+		{
+			struct FTrim { double Jib, Spin; };
+			for (const FTrim Trim : { FTrim{ 45.0, 70.0 }, FTrim{ 80.0, 60.0 }, FTrim{ 30.0, 20.0 } })
+			{
+				for (const int32 Side : { 1, -1 })
+				{
+					for (int32 I = 0; I < C.Jib.NumStrips; ++I)
+					{
+						JibStrips[I].Camber = 0.13;
+						JibStrips[I].AngleFromCenterline = Side * (Trim.Jib + 3.0 * I) * kDegToRad;
+						JibStrips[I].Flow = ESailFlow::Attached;
+					}
+					for (int32 I = 0; I < C.Spinnaker.NumStrips; ++I)
+					{
+						Strips[I].Camber = 0.20;
+						Strips[I].AngleFromCenterline = Side * (Trim.Spin + 6.0 * I) * kDegToRad;
+						Strips[I].Flow = ESailFlow::Attached;
+					}
+					FSailClothDrive Drawn;
+					Drawn.bSimulate = false;
+					FSailCloth Jib, Spin;
+					Jib.Init(C.Jib, ESailKind::Jib);
+					Jib.Step(JibStrips, Side, Drawn);
+					Spin.Init(C.Spinnaker, ESailKind::Spinnaker);
+					Spin.SetHeadPoint(Cases.Last().Head, &C.Jib);
+					Spin.Step(Strips, Side, Drawn);
+					const TArray<FVector>& J = Jib.Positions();
+					const TArray<FVector>& S = Spin.Positions();
+					int32 Crossings = 0;
+					FVector First = FVector::ZeroVector;
+					for (int32 R = 0; R < Rows; ++R)
+					{
+						for (int32 Col = 0; Col < Cols; ++Col)
+						{
+							for (const FIntPoint Dir : { FIntPoint(1, 0), FIntPoint(0, 1) })
+							{
+								if (R + Dir.X >= Rows || Col + Dir.Y >= Cols) continue;
+								const FVector& P0 = S[R * Cols + Col];
+								const FVector& P1 = S[(R + Dir.X) * Cols + Col + Dir.Y];
+								bool bHit = false;
+								for (int32 JR = 0; JR + 1 < Rows && !bHit; ++JR)
+								{
+									for (int32 JC = 0; JC + 1 < Cols && !bHit; ++JC)
+									{
+										const FVector& A = J[JR * Cols + JC];
+										const FVector& Up = J[(JR + 1) * Cols + JC];
+										const FVector& Aft = J[JR * Cols + JC + 1];
+										const FVector& Far = J[(JR + 1) * Cols + JC + 1];
+										bHit = SegmentCrossesTriangle(P0, P1, A, Up, Aft) || SegmentCrossesTriangle(P0, P1, Up, Far, Aft);
+									}
+								}
+								if (bHit && Crossings++ == 0) First = P0;
+							}
+						}
+					}
+					TestEqual(FString::Printf(TEXT("%s: jib %.0f, spinnaker %.0f deg, side %d: spinnaker edges through the jib (first at %s)"),
+						*BoatName, Trim.Jib, Trim.Spin, Side, *First.ToString()), Crossings, 0);
 				}
 			}
 		}

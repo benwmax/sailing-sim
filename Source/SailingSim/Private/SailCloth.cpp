@@ -1,6 +1,7 @@
 #include "SailCloth.h"
 #include "ProceduralMeshComponent.h"
 #include "SailingSim.h"
+#include "BoatModel.h"
 
 using namespace Sailing;
 
@@ -96,10 +97,8 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	Out.LuffX = Geo.Strips[0].LuffX + LuffSlope * (Out.Z - LuffZ0);
 	if (bHeadPoint)
 	{
-		// Feedback #20: the luff straight from the tack up to the head on its halyard.
-		const double V = double(R) / (Rows - 1);
-		Out.Z = ZFoot + (HeadZ - ZFoot) * V;
-		Out.LuffX = FootLuffX + (HeadX - FootLuffX) * V;
+		Out.Z = ZFoot + (HeadZ - ZFoot) * R / (Rows - 1);
+		Out.LuffX = LuffXAt(Out.Z, R);
 	}
 	Out.Chord = RowChord[R];
 	// Strip state at this height: between the two strips whose mid-heights bracket it.
@@ -135,7 +134,7 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	if (SA.Flow == ESailFlow::Backed && SB.Flow == ESailFlow::Backed) Out.Camber = -Out.Camber;
 }
 
-void FSailCloth::SetHeadPoint(const FVector& HeadCm)
+void FSailCloth::SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometry* KeepAheadOf)
 {
 	if (NumStrips <= 0 || HeadCm.ContainsNaN()) return;
 	const double X = HeadCm.X / Sailing::CmPerMeter, Z = HeadCm.Z / Sailing::CmPerMeter;
@@ -145,15 +144,40 @@ void FSailCloth::SetHeadPoint(const FVector& HeadCm)
 	HeadX = X;
 	HeadZ = Z;
 	FootLuffX = Geo.Strips[0].LuffX + LuffSlope * (ZFoot - LuffZ0);
+	// The jib's luff as its cloth draws it (Init's luff line).
+	bAheadOf = KeepAheadOf && KeepAheadOf->NumStrips > 0;
+	if (bAheadOf)
+	{
+		const Sailing::FSailGeometry& J = *KeepAheadOf;
+		const int32 N = J.NumStrips;
+		AheadZ0 = 0.5 * (J.Strips[0].ZBottom + J.Strips[0].ZTop);
+		AheadX0 = J.Strips[0].LuffX;
+		AheadSlope = N > 1 ? (J.Strips[N - 1].LuffX - J.Strips[0].LuffX) / (0.5 * (J.Strips[N - 1].ZBottom + J.Strips[N - 1].ZTop) - AheadZ0) : 0.0;
+		AheadZTop = J.Strips[N - 1].ZTop;
+	}
 }
 
-FVector SpinnakerHeadCm(const Sailing::FSailGeometry& Spinnaker, double MastX, double MastDiameter, const FVector* HalyardCm)
+double FSailCloth::LuffXAt(double Z, int32 Row) const
+{
+	if (!bHeadPoint) return Geo.Strips[0].LuffX + LuffSlope * (Z - LuffZ0);
+	// Feedback #20: straight from the tack up to the head on its halyard, held ahead of the jib's luff below the jib's head.
+	const double V = FMath::Clamp((Z - ZFoot) / FMath::Max(HeadZ - ZFoot, 1e-3), 0.0, 1.0);
+	double X = FootLuffX + (HeadX - FootLuffX) * V;
+	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
+	return X;
+}
+
+FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm)
 {
 	// The head's swivel and shackle hang about 8 cm ahead of the halyard's exit (the sail flies forward of the mast).
 	constexpr double SwivelCm = 8.0;
-	if (HalyardCm && !HalyardCm->ContainsNaN()) return *HalyardCm + FVector(SwivelCm, 0.0, 0.0);
-	const double ZHeadM = Spinnaker.NumStrips > 0 ? Spinnaker.Strips[Spinnaker.NumStrips - 1].ZTop : 0.0;
-	return FVector((MastX + 0.5 * MastDiameter) * Sailing::CmPerMeter + SwivelCm, 0.0, ZHeadM * Sailing::CmPerMeter);
+	const Sailing::FSailGeometry& S = C.Spinnaker;
+	double Z = S.NumStrips > 0 ? S.Strips[S.NumStrips - 1].ZTop : 0.0;
+	// Over the jib's head: its luff comes down ahead of the jib's (FSailCloth::SetHeadPoint), not through it.
+	if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
+	Z = FMath::Min(Z, C.MastheadZ - 0.1);
+	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? MastFrontCm->X : (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);
 }
 
 void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const
@@ -175,7 +199,7 @@ void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray
 				// A symmetric spinnaker is a dome, not a deep jib: fuller in section, and curved top to bottom as well
 				// (both edges curl in toward the head and the clews).
 				const double V = double(R) / (Rows - 1);
-				Depth = 1.5 * Depth + 0.09 * (ZHead - ZFoot) * FMath::Sin(PI * FMath::Min(V * 1.15, 1.0)) * FMath::Sqrt(FMath::Max(FMath::Sin(PI * U), 0.0));
+				Depth = 1.5 * Depth + 0.09 * Span() * FMath::Sin(PI * FMath::Min(V * 1.15, 1.0)) * FMath::Sqrt(FMath::Max(FMath::Sin(PI * U), 0.0));
 			}
 			const Vec3 P = Vec3(Row.LuffX, 0.0, Row.Z) + Chord * (U * Row.Chord) + Leeward * Depth;
 			Out[Index(R, C)] = FVector(P.X, P.Y, P.Z) * Sailing::CmPerMeter;

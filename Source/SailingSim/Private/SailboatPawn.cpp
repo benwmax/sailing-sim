@@ -3493,10 +3493,11 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
 	if (T.NumSpinStrips > 0)
 	{
-		// Feedback #20: the head on its halyard at the mast (the model mast's Hounds, mast bend included).
-		const bool bHalyard = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
-		const FVector Halyard = bHalyard ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
-		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg.Spinnaker, Cfg.MastX, Cfg.MastDiameter, bHalyard ? &Halyard : nullptr));
+		// Feedback #20: the head on its halyard at the mast (the model mast's front: its Hounds, mast bend included), the luff
+		// kept ahead of the jib's.
+		const bool bMastFront = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
+		const FVector MastFront = bMastFront ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
+		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bMastFront ? &MastFront : nullptr), Cfg.HasJib() ? &Cfg.Jib : nullptr);
 		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
 	}
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
