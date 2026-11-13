@@ -1,0 +1,35 @@
+{
+ "part": "rock",
+ "name": "Quarried limestone riprap: the club breakwater, the bridges' and the shores' riprap",
+ "slice": 1,
+ "meshes": "SM_Rock_0..11 (/Game/World/Props, Nanite): Tools/blender/build_props.py rock() over Tools/blender/rock_kit.py; scripts/import_world.py keeps the vertex colours",
+ "material": "MI_World_Rock (WORLD_LIBRARY: colour 0.52 0.49 0.43, roughness 0.9, pattern 4.25) on M_WorldSurface; scripts/make_materials.py WORLD_SURFACE_CODE, the 'Pattern > 4.15 && Pattern < 4.5' branch",
+ "placements": {
+  "breakwater": "AMarinaActor (RayHubbard.marina.json rcyc.breakwater: 6 m wide, 1.6 m crest, ISMs with E1 custom data: CD10 age, CD13 wet, CD15 shade)",
+  "riprap": "ABridgesActor shore and abutment riprap (HISMs, no custom data: the shader's world noise stands in for the per-stone shade)",
+  "piers": "coast piers' riprap (build_piers.py), same meshes"
+ },
+ "closest_camera_m": 1.0,
+ "real": {
+  "stone": "crushed and blasted limestone armour stone, 0.3 to 1.5 m, angular: flat fracture faces meeting at chipped edges, a few rounded weathered bed faces",
+  "colour": "pale cream-grey on fresh fractures, greyer and darker after decades in the sun; dark crustose lichen in spots a few cm across; black run-off streaks",
+  "lake": "under the pool an olive-brown algae and silt film; a damp darker band with tan clay stain up to the wave-wash line (about 0.6 m on Ray Hubbard's breakwater); a pale dried scum line at its top; a green film in the lowest hand's breadth",
+  "level": "Ray Hubbard swings about a metre below the 435.5 ft pool in a dry autumn (432.3 ft on Oct 11 2026): the ring and algae stand high and dry above the water"
+ },
+ "measures": {
+  "size": "each stone keeps the old kit's bounding box (rock_kit.OLD_SIZE): placements and packing unchanged",
+  "dry_albedo_mean": [0.30, 0.38],
+  "dry_albedo_p10_p90_spread": 0.12,
+  "ring_to_dry_ratio": [0.55, 0.75],
+  "triangles_per_stone_max": 60000,
+  "pattern_cells": "no repeating squares or lattice at any distance from 1 m"
+ },
+ "colour_check": "waits on Bean's grey-card club photos (breakwater at 1 m and 4 m, the waterline); until then the targets above are from the literature and the blind rounds judge",
+ "references_wanted": [
+  "breakwater lake face from a boat, 3-5 m off, midday, grey card on a stone",
+  "the same from 1 m, looking down at the waterline",
+  "a single stone's fracture face filling the frame (scale: a coin or the card)",
+  "the riprap at a bridge abutment"
+ ],
+ "stations": ["shore-rock-outer-4m", "shore-rock-outer-1m", "shore-rock-inner-4m", "shore-rock-gauge-4m"]
+}

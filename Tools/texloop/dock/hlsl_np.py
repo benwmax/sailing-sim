@@ -69,7 +69,28 @@ def _split_top(s, sep=","):
     return out
 
 
+def _ternary(e):
+    """`lhs = cond ? a : b` (one level, at the top of the expression) as np.where."""
+    depth, q, col = 0, -1, -1
+    for k, ch in enumerate(e):
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        elif depth == 0 and ch == "?" and q < 0:
+            q = k
+        elif depth == 0 and ch == ":" and q >= 0:
+            col = k
+            break
+    if q < 0 or col < 0:
+        return e
+    m = re.match(r"^(\s*[A-Za-z_]\w*\s*(?:[-+*/]?=)(?!=))(.*)$", e[:q], re.S)
+    lhs, cond = (m.group(1), m.group(2)) if m else ("", e[:q])
+    return f"{lhs} np.where({cond.strip()}, {e[q + 1:col].strip()}, {e[col + 1:].strip()})"
+
+
 def _expr(e):
+    e = _ternary(e)
     e = re.sub(r"\bfloat[234]\s*\(", "F(", e)
     e = re.sub(r"\b([A-Za-z_]\w*)\.(rgb|xy|x|y|z)\b", lambda m: m.group(1) + SWZ[m.group(2)], e)
     e = re.sub(r"(\d)\.(?=\D|$)", r"\1.0", e)
