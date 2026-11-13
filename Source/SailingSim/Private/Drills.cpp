@@ -1,4 +1,8 @@
 #include "Drills.h"
+#include "SailingSim.h"
+#include "FixedStepper.h"
+#include "Wind.h"
+#include <algorithm>
 
 using namespace Sailing;
 
@@ -288,10 +292,17 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 		const double T = Len2 > 1e-9 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.0, 1.0) : 0.0;
 		return FVector2D::Distance(P, A + AB * T) - S.Radius;
 	};
+	// The bow as close to the wind as the face allows.
+	auto HeadingFor = [](const FVector2D& Along, double FromRad)
+	{
+		const FVector2D Up(FMath::Cos(FromRad), FMath::Sin(FromRad));
+		const FVector2D Bow = FVector2D::DotProduct(Along, Up) >= 0.0 ? Along : -Along;
+		return FMath::Atan2(Bow.Y, Bow.X);
+	};
 	// Room for the whole boat with water under the keel (the J/22: 2.4 m beam, 6.9 m long, 1.2 m draft).
 	const double HalfBeam = 0.5 * Boat.Beam + 0.05, HalfLength = 0.5 * Boat.LengthOverall + 0.07, MinDepth = Boat.Draft + 1.14;
-	double Best = MaxRange;
-	bool bFound = false;
+	struct FCandidate { double D; FVector2D P, Along; };
+	std::vector<FCandidate> Candidates;
 	for (size_t I = 0; I < Obstacles.size(); ++I)
 	{
 		const FObstacleSegment& S = Obstacles[I];
@@ -307,7 +318,7 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 			{
 				const FVector2D P = A + Along * T + Normal * (Side * (S.Radius + HalfBeam + 0.15));
 				const double D = FVector2D::Distance(P, Near);
-				if (D >= Best) continue;
+				if (D >= MaxRange) continue;
 				bool bOk = true;
 				for (double U = -HalfLength; U <= HalfLength && bOk; U += HalfLength)
 				{
@@ -327,17 +338,66 @@ bool FindBerth(const FLakeTerrain& Terrain, const std::vector<FObstacleSegment>&
 					const FVector2D Q = P + Normal * (Side * Out);
 					if (Terrain.DepthAt(Q.X, Q.Y) < MinDepth) bOk = false;
 				}
-				if (!bOk) continue;
-				Best = D;
-				bFound = true;
-				OutPosition = P;
-				const FVector2D Up(FMath::Cos(WindFromRad), FMath::Sin(WindFromRad));
-				const FVector2D Bow = FVector2D::DotProduct(Along, Up) >= 0.0 ? Along : -Along;
-				OutHeading = FMath::Atan2(Bow.Y, Bow.X);
+				if (bOk) Candidates.push_back({ D, P, Along });
 			}
 		}
 	}
-	return bFound;
+	// Nearest first; ties (two sides of a face, mirrored docks) by north, then east, so the pick never depends on the sort.
+	std::sort(Candidates.begin(), Candidates.end(), [](const FCandidate& X, const FCandidate& Y)
+	{
+		if (X.D != Y.D) return X.D < Y.D;
+		if (X.P.X != Y.P.X) return X.P.X < Y.P.X;
+		return X.P.Y < Y.P.Y;
+	});
+	if (Candidates.empty()) return false;
+	auto Choose = [&](const FCandidate& C)
+	{
+		OutPosition = C.P;
+		OutHeading = HeadingFor(C.Along, WindFromRad);
+		return true;
+	};
+	// A dinghy lies against the dock on her slack lines by design (SailingSim.Drills.SunfishLessons), and with her sheets
+	// out in 12 kn sails into any face: no settle, the nearest berth.
+	if (Boat.Type == EBoatType::Sunfish || Boat.Type == EBoatType::ILCA7 || Boat.Type == EBoatType::Hobie16) return Choose(Candidates[0]);
+	// A keelboat's berth must lie quietly (club shore detail, SailingSim.Lake.ClubBerth's rule): her dock lines reach
+	// (two or more), and tied up with her sheets out, 20 s in 12 kn from each quarter of the compass, she stays afloat
+	// and never touches the dock above half a knot. With the 1 m shore at the club a face nearer the club gained water
+	// under the keel, and the J/22 ground along it. One model, its obstacle grid built once (about 5 ms), reset per run;
+	// nearest first; at most kMaxSteps physics steps in all (this runs on the game thread when a drill starts).
+	constexpr int32 kRunSteps = int32(20 * PhysicsHz);
+	constexpr int32 kMaxSteps = 16 * 4 * kRunSteps;   // sixteen candidates settled in full
+	FBoatModel M(Boat);
+	M.SetTerrain(&Terrain);
+	M.SetObstacles(&Obstacles);
+	FBoatControls Controls;
+	Controls.MainSheet = Controls.JibSheet = 1.0;
+	int32 Steps = 0;
+	for (const FCandidate& C : Candidates)
+	{
+		if (Steps >= kMaxSteps) break;
+		bool bQuiet = true;
+		for (const double FromDeg : { 0.0, 90.0, 180.0, 270.0 })
+		{
+			M.Reset(C.P.X, C.P.Y, HeadingFor(C.Along, FromDeg * kDegToRad), 0.0);
+			M.GetMooringLines() = FindDockLines(M, Obstacles);
+			if (M.GetMooringLines().size() < 2) { bQuiet = false; break; }
+			FWindParams WP;
+			WP.SpeedKnots = 12.0;
+			WP.FromDegrees = FromDeg;
+			const FWindField Wind(WP);
+			for (int32 K = 0; K < kRunSteps && bQuiet; ++K, ++Steps)
+			{
+				M.Step(PhysicsDt, Controls, Wind);
+				const FBoatTelemetry& Tm = M.GetTelemetry();
+				bQuiet = !Tm.bAground && !(Tm.BoatSpeed > 0.5 * kKnot && Tm.bCollision);
+			}
+			if (!bQuiet) break;
+		}
+		if (bQuiet) return Choose(C);
+	}
+	SAIL_LOG(Warning, TEXT("FindBerth: no berth within %.0f m of (%.0f, %.0f) lies quietly for the %s (%d steps); taking the nearest, (%.0f, %.0f)"),
+		MaxRange, Near.X, Near.Y, UTF8_TO_TCHAR(BoatTypeName(Boat.Type)), Steps, Candidates[0].P.X, Candidates[0].P.Y);
+	return Choose(Candidates[0]);
 }
 
 std::vector<FMooringLine> FindDockLines(const FBoatModel& Boat, const std::vector<FObstacleSegment>& Obstacles, double Reach)
