@@ -1288,21 +1288,31 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		{
 			const FLightningStrike& Near = Strikes[Si];
 			if (FMath::Abs(Near.Time - T) > 120.0) continue;
-			const float Closeness = FMath::Clamp(1.f - FVector2D::Distance(FVector2D(Near.X, Near.Y), Listener) / 20000.f, 0.f, 1.f);
+			const float Closeness = FMath::Clamp(1.f - float(FVector2D::Distance(FVector2D(Near.X, Near.Y), Listener)) / 20000.f, 0.f, 1.f);
 			if (Closeness > Nearness) { Nearness = Closeness; Cell = FVector2D(Near.X, Near.Y); }
 		}
-		if (Nearness <= 0.f || bNoLightning || T < NextRumble - 120.0) NextRumble = -1.0;   // no cell, or the clock went back
-		else if (NextRumble < 0.0) NextRumble = T + SailingSound::DistantRumbleGap(Nearness, FMath::FRand());
+		if (Nearness <= 0.f || bNoLightning || T < NextRumble - 120.0 || T < LastRumbleCaption)   // no cell, or the clock went back
+		{
+			NextRumble = -1.0;
+			LastRumbleCaption = FMath::Min(LastRumbleCaption, T - 25.0);
+		}
+		else if (NextRumble < 0.0) NextRumble = T + SailingSound::DistantRumbleGap(Nearness, RumbleRng.FRand());
 		else if (T >= NextRumble)
 		{
-			// 8 to 16 km off, within 40 deg of the cell's bearing: loudness by the strikes' own law (2500 / distance).
+			// At least 8 km off and never nearer than the cell itself (up to 6 km past it), within 40 deg of its bearing:
+			// loudness by the strikes' own law (2500 / distance), so never louder than the cell's own thunder.
 			const FVector2D ToCell = Cell - Listener;
-			const double Bearing = FMath::Atan2(ToCell.Y, ToCell.X) + FMath::DegreesToRadians(FMath::FRandRange(-40.0, 40.0));
-			const float RollM = FMath::FRandRange(8000.f, 16000.f);
+			const double Bearing = FMath::Atan2(ToCell.Y, ToCell.X) + FMath::DegreesToRadians(double(RumbleRng.FRandRange(-40.f, 40.f)));
+			const float RollM = FMath::Max(float(ToCell.Size()), 8000.f) + RumbleRng.FRandRange(0.f, 6000.f);
 			const FVector2D At = Listener + FVector2D(FMath::Cos(Bearing), FMath::Sin(Bearing)) * RollM;
-			Thunder.Add({ FMath::Clamp(2500.f / RollM, 0.1f, 1.f), 0.f, FMath::FRandRange(6.f, 10.f), float(At.X), float(At.Y), FMath::FRandRange(0.8f, 1.6f) });
-			if (USoundCaptions* Captions = USoundCaptions::Get(this)) Captions->AddFrom(TEXT("Thunder, distant"), At, FString(), 4.0);
-			NextRumble = T + SailingSound::DistantRumbleGap(Nearness, FMath::FRand());
+			Thunder.Add({ FMath::Clamp(2500.f / RollM, 0.1f, 1.f), 0.f, RumbleRng.FRandRange(6.f, 10.f), float(At.X), float(At.Y), RumbleRng.FRandRange(0.8f, 1.6f) });
+			// One caption at most every 25 s, so the captions don't scroll with rumbles.
+			if (T - LastRumbleCaption >= 25.0)
+			{
+				LastRumbleCaption = T;
+				if (USoundCaptions* Captions = USoundCaptions::Get(this)) Captions->AddFrom(TEXT("Thunder, distant"), At, FString(), 4.0);
+			}
+			NextRumble = T + SailingSound::DistantRumbleGap(Nearness, RumbleRng.FRand());
 		}
 	}
 

@@ -3109,20 +3109,25 @@ void ASailboatPawn::StartSampleLayer()
 	if (Mask) SAIL_LOG(Display, TEXT("Sound: %d recorded samples in place of synth voices"), FMath::CountBits(Mask));
 }
 
-bool ASailboatPawn::IsPlayerTrimming() const
+bool ASailboatPawn::IsPlayerTrimming()
 {
 	// Feedback #18: the player's own hand on a sheet (keys or stick held), not the trim assist or the crew.
-	if (bMenuOpen || bTrafficBoat || bGhost) return false;
-	if (Stations.IsActive())
-	{
-		// At a crew station the player's sheet, grinder or mainsheet keys work the winch.
-		for (const FName Action : { NAME_JibSheet, NAME_MainSheet, FName(TEXT("Grind")) })
-		{
-			if (const float* V = HeldAxes.Find(Action); V && *V != 0.f) return true;
-		}
-		return false;
-	}
-	return Boat.GetState().Time - LastManualTrimTime < 0.25;
+	static const FName NAME_Grind(TEXT("Grind"));
+	const double Now = Boat.GetState().Time;
+	// A tapped grind keeps grinding after the key is up (GrindTapSeconds): hear it while the sheet still comes in.
+	const double GrindM = Stations.IsActive() ? Stations.GetPlayerGrindM() : 0.0;
+	if (GrindM > LastGrindM + 1e-4) LastGrindTime = Now;
+	LastGrindM = GrindM;
+	auto Held = [this](FName Action) { const float* V = HeldAxes.Find(Action); return V ? *V : 0.f; };
+	SailingSound::FPlayerTrimInput In;
+	In.bBlocked = bMenuOpen || bTrafficBoat || bGhost;
+	In.Station = int32(Stations.GetStation());
+	In.SecondsSinceManualTrim = Now - LastManualTrimTime;
+	In.JibSheetHeld = Held(NAME_JibSheet);
+	In.GrindHeld = Held(NAME_Grind);
+	In.MainSheetHeld = Held(NAME_MainSheet);
+	In.SecondsSinceGrind = Now - LastGrindTime;
+	return SailingSound::IsPlayerTrimming(In);
 }
 
 void ASailboatPawn::UpdateSound(float DeltaSeconds)
@@ -3217,6 +3222,7 @@ void ASailboatPawn::UpdateSound(float DeltaSeconds)
 	P.Chop = SailingSound::ChopFor(float(T.TrueWindSpeed));
 	P.RainDeck = RainNow;
 	P.RainWater = RainNow;
+	P.SailRain = bSailsStowed ? 0.f : RainNow;
 	P.Squall = Squall;
 	// The sample layer follows the same levels as the voices it replaces.
 	if (SampleCues.Num() == int32(ESailingCue::Count))
@@ -3326,11 +3332,13 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 	Crossfade(Speed, WashC, 4, Wash);
 	Wash[3] = FMath::Max(Wash[3], FMath::Clamp((P.HullSpeedRatio.load() - 0.9f) * 5.f, 0.f, 1.f));
 	Crossfade(Trim, WinchC, 2, Winch);
-	// Feedback #18: under way in a chop the choppy lapping carries the wavelets at the hull, not only at rest.
-	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max3(Chop * Moored, Slam, Chop * (1.f - Moored)) };
+	// Feedback #18: under way in a chop (the wind's sea, P.Chop, as HullSlap's level) the choppy lapping carries the
+	// wavelets at the hull, not only at rest.
+	float Lap[3] = { (1.f - Chop) * (1.f - Tied), Tied * (1.f - 0.5f * Chop), FMath::Max3(Chop * Moored, Slam, P.Chop.load() * (1.f - Moored)) };
 	const float LapSum = FMath::Max(Lap[0] + Lap[1] + Lap[2], 1e-3f);
 	for (float& L : Lap) L /= LapSum;
 	const TConstArrayView<FPackLoop> Loops = PackLoops();
+	const bool bSendPitch = FMath::Abs(WindPitch - WindPitchSet) > 0.002f;
 	for (int32 I = 0; I < PackLoopComps.Num(); ++I)
 	{
 		const FPackLoop& L = Loops[PackLoopDefs[I]];
@@ -3346,9 +3354,11 @@ void ASailboatPawn::UpdatePackSound(const FSailingSoundParams& P, float Aws, con
 		default: break;
 		}
 		PackLoopComps[I]->SetVolumeMultiplier(CueLevels[int32(L.Cue)] * W * Master * GroupShare(CueGroup(L.Cue)));
-		// Feedback #19: the wind's loops rise in pitch with a surge and drop in a lull (UpdateSound's WindBuffet).
-		if (L.Cue == ESailingCue::Wind) PackLoopComps[I]->SetPitchMultiplier(WindPitch);
+		// Feedback #19: the wind's loops rise in pitch with a surge and drop in a lull (UpdateSound's WindBuffet); sent only
+		// when it has moved.
+		if (L.Cue == ESailingCue::Wind && bSendPitch) PackLoopComps[I]->SetPitchMultiplier(WindPitch);
 	}
+	if (bSendPitch) WindPitchSet = WindPitch;
 	if (PackShotSounds.Num() == 0) return;
 	const double Now = GetWorld()->GetTimeSeconds();
 	// Slice sound pass: where each one-shot happens on the boat (cm in BoatRoot's frame).

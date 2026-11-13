@@ -241,9 +241,10 @@ bool FSailingShoreLifeTest::RunTest(const FString& Parameters)
 }
 
 /**
- * Feedback #18: the winch clicks only when the player winches a sheet in. The crew's own trims (trim assist, Easy mode,
- * the trimmer's hands) on a winch boat are silent; easing still runs the sheet out; a dinghy's sheet still runs through
- * its blocks both ways. In the boat's voice: no trim, no click.
+ * Feedback #18: the winch clicks only when the player winches a sheet in. The crew's own trims and small eases (trim
+ * assist, Easy mode, the trimmer's hands) on a winch boat are silent; a sheet let run is heard; a dinghy's sheet still
+ * runs through its blocks both ways. Who counts as the player trimming, at the boat's own sheets and at each station.
+ * (The pawn's wiring, ASailboatPawn::IsPlayerTrimming, fills FPlayerTrimInput from its held keys and grind.)
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCrewTrimSilentTest, "SailingSim.Audio.CrewTrimSilent", AudioFlags)
 bool FSailingCrewTrimSilentTest::RunTest(const FString& Parameters)
@@ -251,11 +252,34 @@ bool FSailingCrewTrimSilentTest::RunTest(const FString& Parameters)
 	using namespace SailingSound;
 	TestEqual(TEXT("The crew trimming in on a J/22: no click"), AudibleTrimRate(0.15f, true, false), 0.f);
 	TestEqual(TEXT("The player winching in on a J/22: clicks"), AudibleTrimRate(0.15f, true, true), 0.15f);
-	TestEqual(TEXT("The crew easing on a J/22: the sheet runs out"), AudibleTrimRate(-0.4f, true, false), -0.4f);
+	TestEqual(TEXT("The crew letting a sheet run on a J/22: heard"), AudibleTrimRate(-0.4f, true, false), -0.4f);
+	TestEqual(TEXT("The crew's small ease on a J/22: silent"), AudibleTrimRate(-0.2f, true, false), 0.f);
+	TestEqual(TEXT("The player's small ease: heard"), AudibleTrimRate(-0.2f, true, true), -0.2f);
 	TestEqual(TEXT("The crew trimming a Sunfish: the sheet runs through its blocks"), AudibleTrimRate(0.4f, false, false), 0.4f);
 	TestEqual(TEXT("Nothing moving"), AudibleTrimRate(0.f, true, false), 0.f);
 
-	// The boat's voice with only the winch layer able to sound (no wind, no speed): silent at TrimRate 0, clicking at 0.2.
+	// Who is trimming: the boat's own sheets within 0.25 s of a key; at a station only that station's keys (taps grind on).
+	FPlayerTrimInput In;
+	In.SecondsSinceManualTrim = 0.1;
+	TestTrue(TEXT("A sheet key just moved a sheet"), IsPlayerTrimming(In));
+	In.SecondsSinceManualTrim = 2.0;
+	TestFalse(TEXT("The trim assist's turn"), IsPlayerTrimming(In));
+	In.SecondsSinceManualTrim = 0.1; In.bBlocked = true;
+	TestFalse(TEXT("A menu open"), IsPlayerTrimming(In));
+	In = FPlayerTrimInput(); In.Station = 2;
+	TestFalse(TEXT("Jib station, hands off"), IsPlayerTrimming(In));
+	In.GrindHeld = 1.f;
+	TestTrue(TEXT("Jib station, grinding"), IsPlayerTrimming(In));
+	In.GrindHeld = 0.f; In.SecondsSinceGrind = 0.1;
+	TestTrue(TEXT("Jib station, a tapped grind still bringing sheet in"), IsPlayerTrimming(In));
+	In.SecondsSinceGrind = 1e9; In.MainSheetHeld = 1.f;
+	TestFalse(TEXT("Jib station, the mainsheet key does nothing there"), IsPlayerTrimming(In));
+	In.Station = 3;
+	TestTrue(TEXT("Main station, the mainsheet"), IsPlayerTrimming(In));
+	In.Station = 1; In.JibSheetHeld = 1.f; In.GrindHeld = 1.f;
+	TestFalse(TEXT("The helm works the wheel"), IsPlayerTrimming(In));
+
+	// The boat's voice with only the winch layer able to sound (no wind, no speed): a crew trim is silent, the player's clicks.
 	auto Rms = [](USailingSynthWave* W, int32 N)
 	{
 		TArray<uint8> Buf;
@@ -288,7 +312,8 @@ bool FSailingStormVarietyTest::RunTest(const FString& Parameters)
 	using namespace SailingSound;
 	TestEqual(TEXT("A light breeze, no rain: not stormy"), Storminess(3.f, 0.f, 0.f), 0.f);
 	TestTrue(TEXT("Rain makes it stormy"), Storminess(4.f, 0.8f, 0.f) >= 0.8f);
-	TestTrue(TEXT("25 kn apparent is a blow"), Storminess(13.f, 0.f, 0.f) >= 0.99f);
+	TestEqual(TEXT("An ordinary afternoon's beat (16 kn apparent): unchanged"), Storminess(8.f, 0.f, 0.f), 0.f);
+	TestTrue(TEXT("29 kn apparent is a blow"), Storminess(15.f, 0.f, 0.f) >= 0.99f);
 	TestTrue(TEXT("A squall coming"), Storminess(4.f, 0.f, 0.6f) >= 0.6f);
 
 	for (double T = 0.0; T < 60.0; T += 0.37)
@@ -337,8 +362,8 @@ bool FSailingStormVarietyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("No chop in a calm"), ChopFor(2.f), 0.f);
 	TestEqual(TEXT("A full chop by 20 kn"), ChopFor(10.5f), 1.f);
 	TestTrue(TEXT("Rumbles come more often under the cell"), DistantRumbleGap(1.f, 0.5f) < DistantRumbleGap(0.2f, 0.5f));
-	TestTrue(TEXT("Under the cell: 2.5 to 7.5 s"), DistantRumbleGap(1.f, 0.f) >= 2.5f && DistantRumbleGap(1.f, 1.f) <= 7.5f);
-	TestTrue(TEXT("At the edge: 7 to 21 s"), DistantRumbleGap(0.f, 0.f) >= 7.f && DistantRumbleGap(0.f, 1.f) <= 21.f);
+	TestTrue(TEXT("Under the cell: 7 to 21 s"), DistantRumbleGap(1.f, 0.f) >= 7.f && DistantRumbleGap(1.f, 1.f) <= 21.f);
+	TestTrue(TEXT("At the edge: 14 to 42 s"), DistantRumbleGap(0.f, 0.f) >= 14.f && DistantRumbleGap(0.f, 1.f) <= 42.f);
 	return true;
 }
 
@@ -368,7 +393,7 @@ bool FSailingNaturalLayersTest::RunTest(const FString& Parameters)
 	{
 		USailingSynthWave* W = NewObject<USailingSynthWave>();
 		W->Params.SampledMask = Recorded;
-		W->Params.BoatSpeed = Speed; W->Params.Chop = Chop; W->Params.RainDeck = Rain; W->Params.RainWater = Rain;
+		W->Params.BoatSpeed = Speed; W->Params.Chop = Chop; W->Params.RainDeck = Rain; W->Params.RainWater = Rain; W->Params.SailRain = Rain;
 		return W;
 	};
 	// Eight seconds each (the slaps come at random, a few a second).
@@ -380,5 +405,8 @@ bool FSailingNaturalLayersTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("More in a chop (%.5f > %.5f)"), Choppy, Light), Choppy > 1.5 * Light);
 	const double Raining = Rms(Boat(0.f, 0.f, 1.f), 16);
 	TestTrue(FString::Printf(TEXT("Rain drums on the sails (%.5f)"), Raining), Raining > 2e-4);
+	USailingSynthWave* Stowed = Boat(0.f, 0.f, 1.f);
+	Stowed->Params.SailRain = 0.f;
+	TestTrue(TEXT("Sails stowed: no drumming on them"), Rms(Stowed, 8) < 1e-4);
 	return true;
 }

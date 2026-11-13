@@ -203,6 +203,8 @@ private:
 	struct FPendingThunder { float Delay; float Loudness; float X = 0.f; float Y = 0.f; float Distance = 0.f; };
 	TArray<FPendingThunder> PendingThunder;
 	double NextRumble = -1.0;   // feedback #19: weather time of the next distant, unseen rumble (-1: not scheduled)
+	double LastRumbleCaption = -1e9;   // weather time of the last "Thunder, distant" caption for a rumble
+	FRandomStream RumbleRng = FRandomStream(0x5EED7A);   // the rumbles' own draws (the global stream stays reproducible)
 	float SunIntensity = 10.f;
 	float SkyIntensity = 1.f;
 	float FogBaseDensity = 0.02f;
