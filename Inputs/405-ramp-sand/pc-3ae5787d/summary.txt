@@ -1,0 +1,7 @@
+PR #668 (mac/club-shore-rebake at 3ae5787d: marina, bridges and houses tiles rebaked on the 1 m club shore) on the PC:
+Development package Packaged\Windows-3ae5787d (incremental cook, 13 min), the two ramp views as ../ (Drone capture,
+absolute; ramp = -SailingCamWorld=37.2,170.4,3.4,107,-18, ramp-top = 30.0,166.0,22,107,-62), Ultra 1920x1080, 15:00.
+Against ../after-* (main 4eb20ef5): the launch ramp's concrete slab is back beside the pier's foot, and the club's
+concrete walk to the pier's landward end too. The slab's lake end lies flat over the water, as the Mac saw: in ramp-top it
+runs out past the shoreline as one level plate (its far edge stands proud of the water, no water over it), and in ramp it
+reads as a flat deck at the shore's height reaching over the lake rather than sloping down into it.

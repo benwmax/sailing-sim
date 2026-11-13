@@ -1,0 +1,8 @@
+4K Ultra fullscreen bench of PR #668 (3ae5787d, Development package Packaged\Windows-3ae5787d), marina and slip only,
+against main 4eb20ef5 (Inputs/bench/4k-4eb20ef5). Same run: bench-visual-win -Tiers Ultra -Only marina,slip, 12 s, demo
+autopilot, -fullscreen 3840x2160 (bench.json resolution 3840x2160, render_pct 100). Foreground 0 on both (as 4eb20ef5's).
+1% low = 1000 / p99_ms; gpu = gpu.total_ms.
+view     fps (4eb20ef5)   1%low (4eb20ef5)   gpu ms (4eb20ef5)   game ms (4eb20ef5)
+marina   45.6 (46.2)      31.7 (36.8)        17.13 (16.59)       15.39 (15.24)
+slip     44.1 (44.1)      35.1 (35.8)        17.72 (18.31)       15.73 (16.31)
+Within a run's noise on fps; marina's 1% low is lower (one run each: a single hitch moves p99).

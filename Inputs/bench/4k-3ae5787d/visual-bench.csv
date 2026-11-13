@@ -1,0 +1,3 @@
+view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms,cloth_cpu_ms,water_cpu_ms
+marina,Ultra,45.6,31.54,17.13,4.52,1.23,1.36,5.37,0.01,2.75,1.89,2.319,1.75
+slip,Ultra,44.1,28.46,17.72,6.18,2.2,1.1,4.27,0.01,2.78,1.19,1.411,1.947
