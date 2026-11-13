@@ -1285,6 +1285,27 @@ bool FVisualCrewClothLoosenessTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s: a few tenths of the polo is loose, not all of it"), *R), Loose > N / 20 && Loose < N / 2);
 		TestTrue(FString::Printf(TEXT("%s: the hem is loose"), *R), Hem > 0 && HemLoose > Hem / 2);
 		TestTrue(FString::Printf(TEXT("%s: the collar is not"), *R), CollarLoose == 0);
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualStormGradeTest, "SailingSim.Visual.StormGrade", VisualFlags)
+bool FVisualStormGradeTest::RunTest(const FString& Parameters)
+{
+	// Feedback #24: under the deck the grade is grey with a storm's contrast and a cold cast in the shadows, not dead grey.
+	TestEqual(TEXT("No gloom, no storm grade"), StormGradeAmount(0.2, 0.0), 0.f);
+	TestEqual(TEXT("Full gloom, full storm grade"), StormGradeAmount(0.9, 0.0), 1.f);
+	TestEqual(TEXT("Not at night (the towns' warm light under the deck)"), StormGradeAmount(0.9, 1.0), 0.f);
+	const FStormGrade Fair = StormGradeFor(0.f, false), Storm = StormGradeFor(1.f, false), Old = StormGradeFor(1.f, true);
+	TestTrue(TEXT("A fair day is untouched"), Fair.Saturation == 1.f && Fair.Contrast == 1.f && Fair.ShadowGain == FVector4(1.0, 1.0, 1.0, 1.0)
+		&& Fair.LutIntensity == 1.f && Fair.Vignette == 0.45f);
+	TestEqual(TEXT("Classic: the old saturation"), Old.Saturation, 0.3f, 1e-6f);
+	TestEqual(TEXT("Classic: the old LUT fade"), Old.LutIntensity, 0.4f, 1e-6f);
+	TestTrue(TEXT("Classic: nothing else"), Old.Contrast == 1.f && Old.ShadowGain == FVector4(1.0, 1.0, 1.0, 1.0) && Old.Vignette == 0.45f);
+	TestTrue(TEXT("Still grey (Phase 8: storm frames must not read as a clear dusk)"), Storm.Saturation <= 0.5f && Storm.Saturation > Old.Saturation);
+	TestTrue(TEXT("Steeper: deep shelf, bright sails and caps"), Storm.Contrast > 1.1f && Storm.Contrast < 1.3f);
+	TestTrue(TEXT("A cold cast in the shadows, blue over red, small"), Storm.ShadowGain.Z > 1.0 && Storm.ShadowGain.X < 1.0
+		&& Storm.ShadowGain.Z - Storm.ShadowGain.X < 0.2);
+	TestTrue(TEXT("Darker edges"), Storm.Vignette > Fair.Vignette);
+	return true;
+}
+
 #endif
 	}
 	return true;

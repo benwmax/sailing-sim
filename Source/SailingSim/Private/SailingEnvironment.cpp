@@ -677,14 +677,17 @@ void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double Cl
 	}
 	const float Dark = FMath::Clamp(float(CloudDarkness), 0.f, 1.f);
 	const bool bUltra = USailingSettings::Get()->Quality == ESailingQuality::Ultra;
-	// Under a storm deck the grade fades: gloom is grey, not teal and amber.
+	// Under a storm deck the grade fades part of the way: gloom is grey, not teal and amber (feedback #24: but not dead
+	// grey either; StormGradeFor, on the cloud darkness itself as before).
+	static SailingArgs::FCachedFlag ClassicStormGrade(TEXT("SailingClassicStormGrade"));
+	const FStormGrade Storm = StormGradeFor(Dark, ClassicStormGrade.Get());
 	PP.ColorGradingLUT = CinematicLUT;
 	PP.bOverride_ColorGradingLUT = CinematicLUT != nullptr;
-	PP.ColorGradingIntensity = FMath::Lerp(1.f, 0.4f, Dark);
+	PP.ColorGradingIntensity = Storm.LutIntensity;
 	PP.FilmSlope = 0.92f;      // engine 0.88
 	PP.FilmToe = 0.58f;        // engine 0.55: a little deeper shadows before the LUT lifts them
 	PP.FilmShoulder = 0.24f;   // engine 0.26
-	PP.VignetteIntensity = 0.45f;
+	PP.VignetteIntensity = Storm.Vignette;
 	PP.FilmGrainIntensity = 0.06f;
 	if (bUltra)
 	{
@@ -1036,9 +1039,15 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
 		// (Not at night, docs/night-clouds/: under the deck then the light is the towns', warm off its base, and the grey cut
 		// it to a colourless sheet.)
-		const float Grey = FMath::SmoothStep(0.3f, 0.8f, float(W.CloudDarkness)) * (1.f - NightAmount);
-		PostProcess->Settings.bOverride_ColorSaturation = true;
-		PostProcess->Settings.ColorSaturation = FVector4(1.f, 1.f, 1.f, 1.f - 0.7f * Grey);
+		// Feedback #24: grey, but with the storm's contrast and a cold cast in the shadows (StormGradeFor;
+		// -SailingClassicStormGrade is the old saturation-only grade).
+		static SailingArgs::FCachedFlag ClassicStormGrade(TEXT("SailingClassicStormGrade"));
+		const FStormGrade Grade = StormGradeFor(StormGradeAmount(W.CloudDarkness, NightAmount), ClassicStormGrade.Get());
+		FPostProcessSettings& PP = PostProcess->Settings;
+		PP.bOverride_ColorSaturation = PP.bOverride_ColorContrast = PP.bOverride_ColorGainShadows = true;
+		PP.ColorSaturation = FVector4(1.f, 1.f, 1.f, Grade.Saturation);
+		PP.ColorContrast = FVector4(1.f, 1.f, 1.f, Grade.Contrast);
+		PP.ColorGainShadows = Grade.ShadowGain;
 	}
 }
 
@@ -1243,6 +1252,15 @@ void ASailingEnvironment::UpdateRainWall(const FVector& CameraPos)
 	RainWall->MarkRenderStateDirty();
 }
 
+namespace
+{
+	bool ClassicStormGradeFlash()
+	{
+		static SailingArgs::FCachedFlag Classic(TEXT("SailingClassicStormGrade"));
+		return Classic.Get();
+	}
+}
+
 void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& CameraPos)
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1291,7 +1309,8 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 	if (Flash > 0.f)
 	{
 		const float Flicker = bFlashHold ? 1.f : 0.6f + 0.4f * FMath::Abs(FMath::Sin(GetWorld()->GetTimeSeconds() * 47.f));
-		FlashLight->SetIntensity(14.f * Flash * Flicker);
+		// Feedback #24: 22 (was 14): a near strike lights the water and the sails past the gloom's own light for a moment.
+		FlashLight->SetIntensity((ClassicStormGradeFlash() ? 14.f : 22.f) * Flash * Flicker);
 		Flash = FMath::Max(0.f, Flash - DeltaSeconds * 3.5f);
 	}
 	else

@@ -1015,10 +1015,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		WaveParams.FetchMeters = Lake.IsLoaded() ? FetchCacheMeters : WeatherState.FetchMeters;
 	}
 	UpdateShelter();
-	if (WeatherState.Front.bActive && WeatherState.Front.DistanceAhead(BoatPos.X, BoatPos.Y, Now) < 0.0 && Now < WeatherState.Front.DecayStartTime)
+	if (WeatherState.Front.bActive)
 	{
-		WaveParams.WindSpeedKnots = WeatherState.Front.OutflowKnots;
-		WaveParams.WindFromDegrees = WeatherState.Front.OutflowFromDegrees;
+		// Feedback #21: behind the front the sea grows under the storm's own wind at the boat (the outflow and the burst,
+		// easing out with the decay), not a switch to the bare outflow that dropped back the moment the decay began.
+		WeatherState.Front.SeaWindAt(BoatPos.X, BoatPos.Y, Now, WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees,
+			WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
 	if (Ocean)
 	{

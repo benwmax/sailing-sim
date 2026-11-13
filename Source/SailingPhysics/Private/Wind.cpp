@@ -194,6 +194,27 @@ namespace Sailing
 		return ColdPoolDeltaC * In * (1.0 - 0.6 * SmoothStep(DecayStartTime, DecayStartTime + 3600.0, T));
 	}
 
+	void FGustFront::SeaWindAt(double X, double Y, double T, double AmbientKnots, double AmbientFromDeg, double& OutKnots, double& OutFromDeg) const
+	{
+		OutKnots = AmbientKnots;
+		OutFromDeg = AmbientFromDeg;
+		const double W = Behind(X, Y, T);
+		if (W <= 0.0) return;
+		const double AmbFrom = AmbientFromDeg * kDegToRad, OutFrom = OutflowFromDegrees * kDegToRad;
+		// Velocities (toward where the air goes, m/s) at 10 m: the outflow's mean plus the burst there (its gusts average out).
+		const Vec3 B10 = BurstAt(X, Y, 10.0, T);
+		const double AX = -std::cos(AmbFrom) * AmbientKnots * kKnot, AY = -std::sin(AmbFrom) * AmbientKnots * kKnot;
+		const double FX = -std::cos(OutFrom) * OutflowKnots * kKnot + B10.X, FY = -std::sin(OutFrom) * OutflowKnots * kKnot + B10.Y;
+		const double VX = AX + (FX - AX) * W, VY = AY + (FY - AY) * W;
+		const double Speed = std::sqrt(VX * VX + VY * VY);
+		OutKnots = Speed / kKnot;
+		if (Speed > 1e-6)
+		{
+			const double From = std::atan2(-VY, -VX) * kRadToDeg;
+			OutFromDeg = From < 0.0 ? From + 360.0 : From;
+		}
+	}
+
 	Vec3 FGustFront::BurstAt(double X, double Y, double Z, double T) const
 	{
 		if (!bActive || Burst.PeakOutflowMs <= 0.0 || T < BurstStartTime) return Vec3();
