@@ -132,7 +132,7 @@ def main(scan, out):
     os.remove(os.path.join(out, "overlay_rig_full.jpg"))
 
     res = {"heights": rows, "bowsprit": bow, "summary": {k: v for k, v in summ.items() if k != "yards"},
-           "yards": {k: {kk: v[kk] for kk in ("length_ft", "diam_in", "z_ft", "hoist_m", "brace_deg")} for k, v in
+           "yards": {k: {kk: v[kk] for kk in ("length_ft", "diam_in", "z_ft", "hoist_m")} for k, v in
                      summ["yards"].items()}}
     json.dump(res, open(os.path.join(out, "rig.json"), "w"), indent=1)
     with open(os.path.join(out, "rig.md"), "w") as fh:
@@ -153,11 +153,12 @@ def main(scan, out):
             fh.write(f"| {n} | " + " | ".join(str(s[k]) for k in ("step", "spar_deck", "hounds", "top", "lower_cap",
                                                                   "topmast_crosstrees", "topmast_cap", "topgallant_stop",
                                                                   "truck")) + " |\n")
-        fh.write("\nYards (hoisted; hoist is how far each one lowers, m; brace limits in degrees):\n\n| part | length ft | "
-                 "diameter in | height ft | lowers m | braces |\n| --- | --- | --- | --- | --- | --- |\n")
+        fh.write("\nYards (hoisted; lowers is how far each one comes down, m, before the standing rigging: the royals "
+                 "rest on it, slice 4). How far each braces is measured against the standing rigging by build_frigate.py "
+                 "and written to its rig.json (brace_deg, brace_deg_by_hoist).\n\n| part | length ft | "
+                 "diameter in | height ft | lowers m |\n| --- | --- | --- | --- | --- |\n")
         for k, v in summ["yards"].items():
-            fh.write(f"| {k} | {v['length_ft']} | {v['diam_in']} | {v['z_ft']} | {abs(v['hoist_m'][0]):.2f} | "
-                     f"{v['brace_deg'][0]:+.0f} to {v['brace_deg'][1]:+.0f} |\n")
+            fh.write(f"| {k} | {v['length_ft']} | {v['diam_in']} | {v['z_ft']} | {abs(v['hoist_m'][0]):.2f} |\n")
     print(open(os.path.join(out, "rig.md")).read())
 
 

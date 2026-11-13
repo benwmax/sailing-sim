@@ -45,10 +45,12 @@
  "plankshear_moulding": {"radius_in": 2.5, "note": "a half-round along the plankshear's outer edge (sized by eye from the section)"},
  "grooves": {"depth_in": 0.35, "half_width_in": 0.4, "note": "a V at each plank seam (caulked and payed), so the strakes read up close"},
  "channels": {
-  "note": "how far each channel stands out from the side and its thickness. Not on the drawings: sized so the deadeyes (slice 4) stand clear of the rail cap and the tumblehome, and to be checked against the shrouds there",
+  "note": "how far each channel stands out from the side and its thickness. Not on the drawings: sized so the deadeyes and their lanyards stand clear of the rail cap and the tumblehome (slice 4 widened the fore's from 3.0 and the mizzen's from 2.25 ft, where its deadeyes and lanyards touched the rail cap)",
   "main_out_ft": 3.0,
-  "fore_out_ft": 3.0,
-  "mizzen_out_ft": 2.25,
+  "fore_out_ft": 3.25,
+  "mizzen_out_ft": 2.4,
+  "fore_end_ft": {"fore": 71.2, "main": -10.75, "mizzen": -59.81},
+  "fore_end_note": "slice 4: each channel runs forward to the 1817 draught's fore end (its x 2370, 1528 and 1022 px on the 3840 px copy, through spars_1795.json's registration; feet forward of midships), past the 1927 plan's, so its foremost deadeye stands abreast the mast as the draught's do. The fore channel's is 0.3 ft (3 px) past the draught's 70.88: the model's foremost spar deck port (the 1927 plan's, 4.5 ft wide, ending at 69.45 ft) leaves the foremost deadeye no room otherwise",
   "thick_in": 6
  },
  "port_lids": {"thick_in": 4, "hinges": 2, "note": "gun deck ports only, hinged along the head; black outside (the chequer of the period), red inside. The spar ports have none"},
