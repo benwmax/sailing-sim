@@ -1366,6 +1366,9 @@ bool FSailingGroundPatchTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The slab is fixed to the bank: it rises with the bank when the water falls"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY + 4.0), Slab(4.0) + 0.6, 1e-6));
 	TestTrue(TEXT("The untouched bank reads the level too"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY - 20.0), T.NaturalHeightAt(P.HeadX, P.HeadY - 20.0), 1e-9)
 		&& FMath::IsNearlyEqual(T.NaturalHeightAt(P.HeadX, P.HeadY - 20.0), 2.0 - 0.03 * P.HeadX - 0.15 * (P.HeadY - 20.0) + 0.6, 1e-6));
+	// A non-finite position keeps HeightAt's land stand-in (the patch's box test fails on NaN rather than passing it on).
+	TestEqual(TEXT("A NaN position still reads as land through the patches"), T.HeightAt(std::numeric_limits<double>::quiet_NaN(), P.HeadY), 50.0);
+	TestEqual(TEXT("An infinite position still reads as land through the patches"), T.HeightAt(P.HeadX, std::numeric_limits<double>::infinity()), 50.0);
 	// A copy made after the patches keeps them (workers take copies).
 	const FLakeTerrain W = T.WindowAround(P.HeadX, P.HeadY, 60.0);
 	TestTrue(TEXT("A window onto the terrain keeps its patches"), FMath::IsNearlyEqual(W.HeightAt(P.HeadX, P.HeadY + 4.0), Slab(4.0) + 0.6, 1e-6));

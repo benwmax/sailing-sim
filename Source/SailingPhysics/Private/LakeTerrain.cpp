@@ -281,7 +281,8 @@ namespace Sailing
 	{
 		// HeightAt runs this for every sample of the fetch and shelter marches: out of the patch's box in a few compares.
 		const double PX = X - HeadX, PY = Y - HeadY;
-		if (std::fabs(PX) + std::fabs(PY) > 1.5 * (Length + HalfWidth + 2.0 * Margin)) return Ground;   // |P|_1 <= sqrt 2 |P| (a loose box)
+		// (written so a NaN position fails the test and keeps Ground: HeightAt's non-finite stand-in, SailingSim.Lake.HeightAtNonFinite)
+		if (!(std::fabs(PX) + std::fabs(PY) <= 1.5 * (Length + HalfWidth + 2.0 * Margin))) return Ground;   // |P|_1 <= sqrt 2 |P| (a loose box)
 		const double Along = PX * DirX + PY * DirY;
 		if (Along <= -Margin || Along >= Length + Margin) return Ground;
 		const double Across = std::fabs(-PX * DirY + PY * DirX);
