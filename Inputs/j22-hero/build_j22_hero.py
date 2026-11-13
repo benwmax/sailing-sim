@@ -1328,6 +1328,96 @@ def build_registration():
     return out
 
 
+# ------------------------------------------------------------------ non-skid panels
+
+NS_MARGIN = 0.045            # smooth gelcoat between a non-skid panel and the edge, wall or rail beside it
+NS_CORNER_R = 0.05           # the panels' corners (Commons j22-above-deck-cockpit: moulded panels, rounded corners)
+NS_PX = 0.003                # the mask's pixel, metres
+
+
+def nonskid_panels(walls, mats):
+    """The moulded non-skid panels (shape wave 4b). The deck mould's non-skid ran onto every flat face up to its edge;
+    on the boat it is moulded in panels with a smooth band round them (Commons j22-above-deck-cockpit). This draws, in
+    plan, the distance from every wall, slope, rail and edge of the shape objects `walls` (faces not facing up or down),
+    keeps what is NS_MARGIN clear of them with NS_CORNER_R rounded corners (an opening: shrunk by the radius, grown back)
+    and gives it to the deck mould materials `mats` as a float image over object x, y: positive metres inside a panel,
+    multiplied into their NonSkidFlat (bake_j22_hero's detail mask follows the PanelMask node)."""
+    import numpy as np
+    x0, x1, y0, y1 = STERN - 0.15, BOW + 0.15, -1.35, 1.35
+    nx, ny = int((x1 - x0) / NS_PX), int((y1 - y0) / NS_PX)
+    x1, y1 = x0 + nx * NS_PX, y0 + ny * NS_PX         # the image's own extent, whole pixels
+    wall = np.zeros((ny, nx), bool)
+    dg = bpy.context.evaluated_depsgraph_get()
+    for ob in walls:
+        me = ob.evaluated_get(dg).to_mesh()
+        mw = ob.matrix_world
+        for poly in me.polygons:
+            nz = (mw.to_3x3() @ poly.normal).normalized().z
+            if nz >= 0.9 or nz <= -0.3:              # flats (the panels' own) and undersides
+                continue
+            vs = [(mw @ me.vertices[i].co).xy for i in poly.vertices]
+            for a, b in zip(vs, vs[1:] + vs[:1]):     # every edge, sampled at half a pixel
+                n = max(1, int((b - a).length / (NS_PX / 2)))
+                t = np.arange(n + 1) / n
+                i = ((a.x + (b.x - a.x) * t - x0) / NS_PX).astype(int)
+                j = ((a.y + (b.y - a.y) * t - y0) / NS_PX).astype(int)
+                ok = (i >= 0) & (i < nx) & (j >= 0) & (j < ny)
+                wall[j[ok], i[ok]] = True
+        ob.evaluated_get(dg).to_mesh_clear()
+    cap = int(math.ceil((NS_MARGIN + 2 * NS_CORNER_R) / NS_PX))
+
+    def dist_to(feat):
+        """Distance (m) from every pixel to the nearest True pixel of feat, exact up to cap pixels (two passes: down the
+        columns, then the nearest column within the cap)."""
+        g = np.full((ny, nx), cap, np.float32)
+        run = np.full(nx, cap, np.float32)
+        for j in range(ny):
+            run = np.where(feat[j], 0, np.minimum(run + 1, cap))
+            g[j] = run
+        run = np.full(nx, cap, np.float32)
+        for j in range(ny - 1, -1, -1):
+            run = np.where(feat[j], 0, np.minimum(run + 1, cap))
+            g[j] = np.minimum(g[j], run)
+        g2 = g * g
+        d2 = g2.copy()
+        for dx in range(1, cap + 1):
+            d2[:, dx:] = np.minimum(d2[:, dx:], g2[:, :-dx] + dx * dx)
+            d2[:, :-dx] = np.minimum(d2[:, :-dx], g2[:, dx:] + dx * dx)
+        return np.sqrt(np.minimum(d2, cap * cap)) * NS_PX
+    e = dist_to(wall)                                 # clear of every wall and edge
+    sgn = NS_CORNER_R - dist_to(e > NS_MARGIN + NS_CORNER_R)
+    img = bpy.data.images.new("J22H_PanelMask", nx, ny, alpha=False, float_buffer=True)
+    img.colorspace_settings.name = "Non-Color"
+    px = np.repeat(np.clip(sgn, -0.02, 0.02).reshape(-1, 1), 4, axis=1)
+    px[:, 3] = 1.0
+    img.pixels.foreach_set(px.ravel())
+    img.pack()
+    for m in mats:
+        nt = m.node_tree
+        flat = nt.nodes["NonSkidFlat"]
+        assert "PanelMask" not in nt.nodes, f"{m.name}: non-skid panels already applied"
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        mp = nt.nodes.new("ShaderNodeMapping")
+        mp.inputs["Location"].default_value = (-x0 / (x1 - x0), -y0 / (y1 - y0), 0.0)
+        mp.inputs["Scale"].default_value = (1 / (x1 - x0), 1 / (y1 - y0), 1.0)
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        tex.image, tex.interpolation, tex.extension = img, "Linear", "EXTEND"
+        edge = nt.nodes.new("ShaderNodeMapRange")
+        edge.name = "PanelMask"
+        edge.interpolation_type = "SMOOTHSTEP"
+        edge.inputs[1].default_value, edge.inputs[2].default_value = -0.0012, 0.0012
+        nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+        nt.links.new(mp.outputs["Vector"], tex.inputs["Vector"])
+        nt.links.new(tex.outputs["Color"], edge.inputs[0])
+        mul = nt.nodes.new("ShaderNodeMath")
+        mul.operation = "MULTIPLY"
+        for lk in list(flat.outputs[0].links):
+            nt.links.new(mul.outputs[0], lk.to_socket)
+        nt.links.new(flat.outputs[0], mul.inputs[0])
+        nt.links.new(edge.outputs[0], mul.inputs[1])
+    return img
+
+
 # ------------------------------------------------------------------ build
 
 hull = build_hull()
@@ -1368,6 +1458,10 @@ if STYLE.get("interior", {}).get("drop_board_stowed", True):
     bpy.data.objects.remove(db, do_unlink=True)
     interior.append(box("DropBoard", 0.12, 0.60, INTERIOR.BENCH_IN + 0.22, INTERIOR.BENCH_IN + 0.50, INTERIOR.BENCH_Z,
                         INTERIOR.BENCH_Z + 0.024, MAT["TeakWeathered"], bev=0.004))
+# wave 4b: the moulded non-skid panels keep clear of every wall, rail, hatch and edge of the deck mould
+nonskid_panels([deck, cockpit, cabin] + [o for o in rudder if o.name == "Rudder"]
+               + [o for o in hw if o.name.startswith(("ToeRail_", "CoamingCap_", "Handrail_", "FwdHatch", "SlideHatch"))],
+               [MAT["Gelcoat"], MAT["CabinGelcoat"]])
 rig, wires = build_rig()
 regs = build_registration()
 sails, sail_lines = build_sails() if SAILS else ([], [])

@@ -257,6 +257,7 @@ def deck_mould(st, name="Gelcoat", windows=False):
     x, y, z = _xyz(nt, vec)
     nx, ny, nz = _xyz(nt, tc.outputs["Normal"])
     flat = _n(nt, "ShaderNodeMapRange", interpolation_type="SMOOTHSTEP")
+    flat.name = "NonSkidFlat"        # build_j22_hero.nonskid_panels multiplies the moulded panels' mask in after it
     flat.inputs[1].default_value, flat.inputs[2].default_value = 0.84, 0.93
     _l(nt, nz, flat.inputs[0])
     w1v, _ = _coords(nt, rot=(0, 0, math.radians(45)))

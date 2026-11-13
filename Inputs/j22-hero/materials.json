@@ -91,15 +91,6 @@
    "roughness": 0.45,
    "metallic": 0.0
   },
-  "CabinGelcoat": {
-   "base_color_linear": [
-    0.6105,
-    0.5583,
-    0.4233
-   ],
-   "roughness": 0.5,
-   "metallic": 0.0
-  },
   "CamBase": {
    "base_color_linear": [
     0.0232,
@@ -180,15 +171,6 @@
    ],
    "roughness": 0.5,
    "metallic": 0.85
-  },
-  "Gelcoat": {
-   "base_color_linear": [
-    0.6105,
-    0.5583,
-    0.4233
-   ],
-   "roughness": 0.5,
-   "metallic": 0.0
   },
   "GelcoatHull": {
    "base_color_linear": [
@@ -488,5 +470,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 46103556
+ "glb_bytes": 46021324
 }
