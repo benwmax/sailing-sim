@@ -349,6 +349,31 @@ FString FSailSave::ToJson() const
 	}
 	Root->SetObjectField(TEXT("progress"), Prog);
 
+	// Boat skins: which skin each boat wears. A boat whose skin was taken off is written without one, and its entry is
+	// taken out of the file's own copy so KeepUnknown does not bring the old choice back.
+	{
+		TSharedRef<FJsonObject> Boats = Obj();
+		for (const TPair<FString, FString>& B : BoatSkins)
+		{
+			if (B.Key.IsEmpty() || B.Value.IsEmpty()) continue;
+			TSharedRef<FJsonObject> O = Obj();
+			O->SetStringField(TEXT("skin"), B.Value);
+			Boats->SetObjectField(B.Key, O);
+		}
+		if (Raw.IsValid())
+		{
+			if (const TSharedPtr<FJsonObject> Old = Child(*Raw, TEXT("boats")))
+			{
+				for (const auto& F : Old->Values)
+				{
+					const TSharedPtr<FJsonObject>* OldBoat = nullptr;
+					if (!BoatSkins.Contains(FString(F.Key)) && F.Value.IsValid() && F.Value->TryGetObject(OldBoat) && OldBoat) (*OldBoat)->RemoveField(TEXT("skin"));
+				}
+			}
+		}
+		if (Boats->Values.Num() > 0 || (Raw.IsValid() && Raw->HasField(TEXT("boats")))) Root->SetObjectField(TEXT("boats"), Boats);
+	}
+
 	if (Raw.IsValid()) KeepUnknown(*Root, *Raw);
 	// Career 1's Open everything is Free Sail now (docs/free-sail): freeSail carries it, so the old field goes.
 	Career->RemoveField(TEXT("openEverything"));
@@ -607,6 +632,18 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*First, TEXT("at"), Out.Progress.FirstLaunch.At);
 		}
 	}
+	if (const TSharedPtr<FJsonObject> Boats = Child(*Root, TEXT("boats")))
+	{
+		for (const auto& F : Boats->Values)
+		{
+			const TSharedPtr<FJsonObject>* Boat = nullptr;
+			FString Skin;
+			if (F.Value.IsValid() && F.Value->TryGetObject(Boat) && Boat && (*Boat)->TryGetStringField(TEXT("skin"), Skin) && !Skin.IsEmpty() && Skin.Len() <= 64)
+			{
+				Out.BoatSkins.Add(FString(F.Key), Skin);
+			}
+		}
+	}
 	Say(bMigrated ? FString::Printf(TEXT("migrated from version %d"), Version) : FString(TEXT("ok")));
 	return bMigrated ? EResult::Migrated : EResult::Ok;
 }
@@ -853,6 +890,19 @@ FString SailSaveStore::Path()
 
 FString SailSaveStore::Status() { return SailSaveLocal::Store().Status; }
 FSailSave::FProgress& SailSaveStore::Progress() { return SailSaveLocal::Store().Save.Progress; }
+
+FString SailSaveStore::BoatSkin(const FString& BoatId)
+{
+	const FString* Skin = SailSaveLocal::Store().Save.BoatSkins.Find(BoatId);
+	return Skin ? *Skin : FString();
+}
+
+void SailSaveStore::SetBoatSkin(const FString& BoatId, const FString& SkinId)
+{
+	if (BoatId.IsEmpty()) return;
+	if (SkinId.IsEmpty()) SailSaveLocal::Store().Save.BoatSkins.Remove(BoatId);
+	else SailSaveLocal::Store().Save.BoatSkins.Add(BoatId, SkinId);
+}
 
 void SailSaveStore::LoadOnce()
 {

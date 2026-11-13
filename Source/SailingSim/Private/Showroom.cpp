@@ -10,7 +10,7 @@ namespace SailShowroom
 	EShowroomStage StageFor(ESailScreen Screen, bool bInGame)
 	{
 		if (bInGame) return Screen == ESailScreen::ConditionsInGame ? EShowroomStage::Weather : EShowroomStage::None;
-		if (Screen == ESailScreen::Boat) return EShowroomStage::Boat;
+		if (Screen == ESailScreen::Boat || Screen == ESailScreen::Customize) return EShowroomStage::Boat;   // (Customize: boat skins, on the same stage)
 		if (Screen == ESailScreen::Conditions) return EShowroomStage::Weather;
 		return EShowroomStage::None;
 	}

@@ -180,6 +180,9 @@ struct SAILINGSIM_API FSailSave
 	bool bHasLast = false;
 	FSession Last;
 	FProgress Progress;
+	/** Boat skins (docs/skins): the skin each boat wears, boat id to skin id ("boats": { "J22": { "skin": "my-navy" } });
+	 *  a boat without one wears her class's own look. Added in version 1 without a version change. */
+	TMap<FString, FString> BoatSkins;
 	/** The file as it was read (after migration): fields this version doesn't know are written back from it. */
 	TSharedPtr<FJsonObject> Raw;
 
@@ -227,4 +230,7 @@ namespace SailSaveStore
 	SAILINGSIM_API FString Status();
 	/** The save's progress, which the career (Career.h) and the session totals edit in place; Commit writes it. */
 	SAILINGSIM_API FSailSave::FProgress& Progress();
+	/** Boat skins: the skin id a boat (by save id) wears, empty for none; SetBoatSkin("") takes it off. Commit writes it. */
+	SAILINGSIM_API FString BoatSkin(const FString& BoatId);
+	SAILINGSIM_API void SetBoatSkin(const FString& BoatId, const FString& SkinId);
 }

@@ -148,3 +148,27 @@ FBoatLivery SampleBoatLivery(int32 BoatType, uint32 Seed)
 	}
 	return L;
 }
+
+FBoatLivery LiveryForScheme(int32 BoatType, int32 Scheme)
+{
+	FBoatLivery L = SampleBoatLivery(BoatType, 0);
+	if (BoatType < 0 || BoatType >= int32(UE_ARRAY_COUNT(LiveryClasses))) return L;
+	const FLiveryClass& C = LiveryClasses[BoatType];
+	if (Scheme < 0 || Scheme >= C.NumSchemes) return L;
+	const FLiveryScheme& S = C.Schemes[Scheme];
+	L.Scheme = Scheme;
+	L.Hull = S.Hull; L.Deck = S.Deck; L.NonSkid = S.NonSkid; L.Bottom = S.Bottom;
+	L.bBoot = S.bBoot; L.Boot = S.bBoot ? S.Boot : S.Hull;
+	L.bCove = S.bCove; L.Cove = S.bCove ? S.Cove : S.Hull;
+	L.bTeak = S.bTeak; L.Teak = S.Teak;
+	return L;
+}
+
+void SetLiveryWear(FBoatLivery& L, int32 BoatType, float K)
+{
+	if (BoatType < 0 || BoatType >= int32(UE_ARRAY_COUNT(LiveryClasses))) return;
+	const FLiveryWear& W = *LiveryClasses[BoatType].Wear;
+	K = FMath::Clamp(K, 0.f, 1.f);
+	for (int32 I = 0; I < 4; ++I) L.Wear[I] = FMath::Clamp(W.ClubRange[I][1] * K, 0.f, 1.f);
+	L.SailFade = FMath::Clamp(W.FadeRange[0][1] * K, 0.f, 1.f);
+}
