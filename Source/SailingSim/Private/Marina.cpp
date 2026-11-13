@@ -138,7 +138,7 @@ void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
 	{
 		for (const FMarinaRamp& R : Ramps)
 		{
-			const FVector2D A = 0.5 * (R.In + R.Out), AB = R.Dir * FMarinaRamp::Length;
+			const FVector2D A = 0.5 * (R.In + R.Out), AB = R.Dir * R.Length;
 			const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / AB.SizeSquared(), 0.0, 1.0);
 			if (FVector2D::Distance(P, A + AB * T) < 0.5 * FMarinaRamp::Width + 0.5 * C30.Beam + 0.5) return true;
 		}
@@ -191,6 +191,20 @@ void FMarina::PlaceRamps(TFunctionRef<double(double, double)> HeightAt)
 		R.In = Head - Side * (0.5 * FMarinaRamp::Width);
 		R.Out = Head + Side * (0.5 * FMarinaRamp::Width);
 		R.Top = float(FMath::Max3(HeightAt(R.In.X, R.In.Y), HeightAt(R.Out.X, R.Out.Y), 0.3)) + 0.05f;
+		// The foot where the ground on the slab's centre line first reaches Foot: a straight slab from the head to there
+		// follows the bank down into the water, cut in level across it (the 1 m club shore drops 2 m in 7 m, where an 18 m
+		// slab stood up to 0.6 m out of the water for 5 m past the shore; it also falls about 0.8 m across the slab's 5 m,
+		// from the pier side, so the bank covers that edge a little and the far kerb stands out of it).
+		R.Length = FMarinaRamp::MaxLength;
+		for (double Along = FMarinaRamp::MinLength; Along <= FMarinaRamp::MaxLength; Along += 0.25)
+		{
+			const FVector2D Mid = 0.5 * (R.In + R.Out) + R.Dir * Along;
+			if (HeightAt(Mid.X, Mid.Y) <= FMarinaRamp::Foot)
+			{
+				R.Length = float(Along);
+				break;
+			}
+		}
 		Ramps.Add(R);
 	}
 }
