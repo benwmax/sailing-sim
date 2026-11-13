@@ -105,7 +105,8 @@ class Profile:
             self._r1[part] = np.polyfit(xs, p[:, 1], 2)
             setattr(self, "rail_resid_" + part[:2], p[:, 1] - np.polyval(self._r1[part], xs))
         # the channels as traced, less any part over the open waist (the 1927 plan runs the fore channel about 6 ft aft
-        # of the forecastle into what was then a solid waist; on the 1817 draught it starts at the forecastle's break)
+        # of the forecastle into what was then a solid waist; on the 1817 draught it starts at the forecastle's break),
+        # each run forward to the draught's fore end where specs give one (its deadeyes stand abreast the mast)
         self.channels = {}
         for name, v in sk["channels"].items():
             if name != "note":
@@ -116,6 +117,10 @@ class Profile:
                     xa, za = self.x_fc, lerp(self.x_fc)
                 if self.x_e0 < xf < self.x_fc:
                     xf, zf = self.x_e0, lerp(self.x_e0)
+                fe = specs["channels"].get("fore_end_ft", {}).get(name)
+                if fe is not None:                       # the 1817 draught's fore end (slice 4)
+                    x1 = L.mid_px + fe * L.ppf
+                    xf, zf = x1, lerp(x1)
                 self.channels[name] = (xa, xf, za, zf)
         ri = sk["rudder_irons"]
         self.rudder_straps = [(z, ship(xe, ze), ze) for z, xe, ze in ri["straps"]]

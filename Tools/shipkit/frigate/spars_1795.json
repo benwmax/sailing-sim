@@ -250,6 +250,7 @@
  },
  "fittings": {
   "note": "fractions of the lower mast's diameter D unless named; by eye from period drawings and the draught",
+  "head_gap_in": {"fore": 10.0, "main": 10.0, "mizzen": 5.75, "topmast": {"fore": 6.5, "main": 6.5, "mizzen": 4.25}, "note": "between a masthead's fore face and the next mast's heel, in inches: the stays come down the masthead's fore face from their eyes, in front of the shrouds' eyes, and turn forward under the heel (slice 4), so the gap is a shroud eye and a stay across, and an inch: lower masts 3.3 + 5.6 in (fore and main) and 1.9 + 2.7 in (mizzen), topmasts 2.2 + 3.2 in and 1.4 + 1.8 in (standing_1797.json's sizes). The caps' bridges between their two holes are as broad"},
   "head_square": 0.72,
   "trestletree": {
    "depth": 0.36,
@@ -260,6 +261,7 @@
    "breadth": 0.25
   },
   "top_plank_in": 2.5,
+  "lubber_hole_in": {"fore": 11.0, "main": 10.5, "mizzen": 6.0, "note": "the lubber's hole's sides stand this far off the trestletrees' outer faces: the lower shrouds' legs (slice 4) come down through the hole, and this leaves them about an inch clear of the hole's coaming (0.8 to 1.0 in). Slice 3 had 4.2 in, which put the legs through the coaming"},
   "top_rim_in": [4.5, 4.0],
   "top_rail_ft": 3.0,
   "cheek": {

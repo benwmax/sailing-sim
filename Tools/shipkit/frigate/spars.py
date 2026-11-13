@@ -320,7 +320,8 @@ class Rig:
         tt, ct = fit["trestletree"], fit["crosstree"]
         Lt, Bt = tp["fore_aft_ft"] * FT, tp["breadth_ft"] * FT
         D_tm = tm["diam_in"] * IN
-        gap = 1.0 * IN
+        hg = fit["head_gap_in"]
+        gap = hg[name] * IN                                        # room for the stays' eyes (slice 4)
         off_tm = hs + D_tm / 2 + gap                              # the topmast's axis before the masthead's
         fa, ff = -0.45 * Lt, 0.55 * Lt                             # the top's aft edge and fore point
         s_tt1 = s_h + tt["depth"] * D
@@ -332,17 +333,23 @@ class Rig:
             yc = sgn * (hs + tt["breadth"] * D / 2)
             c = O + (s_h + s_tt1) / 2 * u + 0.5 * (fa + 0.03 * Lt + ff - 0.12 * Lt) * f + yc * Y
             box(tops, c, f, Y, u, (ff - 0.12 * Lt - fa - 0.03 * Lt) / 2, tt["breadth"] * D / 2, (s_tt1 - s_h) / 2, B)
-        # bolsters on the trestletrees beside the masthead (the shrouds' eyes bed on them), and the topmast's iron fid
+        # bolsters on the trestletrees beside the masthead (the shrouds' eyes bed on them), and the topmast's iron fid.
+        # They run from just before the after crosstree to 0.8 of the gap before the masthead: the shrouds' legs lie side
+        # by side over them (slice 4)
         bo = fit["bolster"]
+        bolster_x = (-1.1 * hs, hs + 0.8 * gap)
         for sgn in (1, -1):
             c = O + (s_tt1 + bo * D / 2) * u + sgn * (hs + tt["breadth"] * D / 2) * Y
-            spar(tops, c - hs * 1.1 * f, f, u, [(0.0, bo * D / 2), (2.2 * hs, bo * D / 2)], B, 12)
+            spar(tops, c + bolster_x[0] * f, f, u, [(0.0, bo * D / 2), (bolster_x[1] - bolster_x[0], bo * D / 2)], B, 12)
         c = O + (s_tt1 + fit["fid"] * D_tm / 2) * u + off_tm * f
         box(tops, c, f, Y, u, fit["fid"] * D_tm / 2, hs + tt["breadth"] * D * 0.8, fit["fid"] * D_tm / 2, self.mat_iron)
         outline = self.top_outline(fa, ff, Bt)
-        hole = (-hs - 0.6 * FT, off_tm + D_tm / 2 + 0.6 * FT, hs + tt["breadth"] * D + 0.35 * FT)   # x0, x1, half width
-        for xc in (fa + 0.03 * Lt + ct["breadth"] * D / 2 + 0.01, -hs - ct["breadth"] * D / 2 - 0.05, off_tm + D_tm / 2 + ct["breadth"] * D / 2 + 0.05,
-                   ff - 0.2 * Lt):
+        # the lubber's hole: x0, x1, half width. Its sides stand off the trestletrees' outer faces by lubber_hole_in, so
+        # the lower shrouds' legs pass down through it clear of its coaming (slice 4)
+        hole = (-hs - 0.6 * FT, off_tm + D_tm / 2 + 0.6 * FT, hs + tt["breadth"] * D + fit["lubber_hole_in"][name] * IN)
+        ct_xs = (fa + 0.03 * Lt + ct["breadth"] * D / 2 + 0.01, -hs - ct["breadth"] * D / 2 - 0.05,
+                 off_tm + D_tm / 2 + ct["breadth"] * D / 2 + 0.05, ff - 0.2 * Lt)
+        for xc in ct_xs:
             hw = self.top_half_width(outline, xc) - 0.12 * FT
             c = O + (s_tt1 + s_ct1) / 2 * u + xc * f
             box(tops, c, f, Y, u, ct["breadth"] * D / 2, hw, (s_ct1 - s_tt1) / 2, B)
@@ -390,7 +397,7 @@ class Rig:
             loft_solid(M2, rings, B)
         # topmast trestletrees and crosstrees
         D_tg = tg["diam_in"] * IN
-        off_tg = hs_tm + D_tg / 2 + gap
+        off_tg = hs_tm + D_tg / 2 + hg["topmast"][name] * IN
         L2 = fit["topmast_trestletrees_of_top"] * Lt
         B2 = fit["topmast_crosstrees_of_top"] * Bt
         tt_d, tt_b = tt["depth"] * D_tm, tt["breadth"] * D_tm
@@ -402,7 +409,8 @@ class Rig:
             box(tops, c, f, Y, u, (f2 - a2) / 2, tt_b / 2, tt_d / 2, B)
         c = Otm + (s_b + fit["fid"] * D_tg / 2) * u + off_tg * f
         box(tops, c, f, Y, u, fit["fid"] * D_tg / 2, hs_tm + tt_b * 0.8, fit["fid"] * D_tg / 2, self.mat_iron)
-        for xc in (-hs_tm - ct_b / 2 - 0.02, off_tg + D_tg / 2 + ct_b / 2 + 0.03, f2 - ct_b / 2 - 0.05):
+        ct2_xs = (-hs_tm - ct_b / 2 - 0.02, off_tg + D_tg / 2 + ct_b / 2 + 0.03, f2 - ct_b / 2 - 0.05)
+        for xc in ct2_xs:
             c = Otm + (s_b + ct_d / 2) * u + xc * f
             box(tops, c, f, Y, u, ct_b / 2, B2 / 2, ct_d / 2, B)
         # the topmast cap
@@ -439,7 +447,13 @@ class Rig:
         self.masts[name] = dict(O=O, u=u, f=f, s_step=s_step, s_gun=s_gun, s_h=s_h, s_top=s_top, s_plat=s_plat,
                                 s_cap1=s_cap1, Otm=Otm, s_tm0=s0, s_tmh=s_tmh, s_tm_top=s_tm_top, s_tmcap1=s_tmcap1,
                                 Otg=Otg, s_tg0=t0, s_ly=s_ly, c_len2=c_len2, s_tmct1=s_tmct1, s_stop=s_stop, s_pole=s_pole, D=D, D_tm=D_tm, D_tg=D_tg,
-                                R_lower=R_lower, R_tm=R_tm, R_tg=R_tg, head=head, deck_ft=zd, Lt=Lt, Bt=Bt, fa=fa, ff=ff)
+                                R_lower=R_lower, R_tm=R_tm, R_tg=R_tg, head=head, deck_ft=zd, Lt=Lt, Bt=Bt, fa=fa, ff=ff,
+                                # for the standing rigging (slice 4): the heads, trestletrees, bolsters and crosstrees
+                                hs=hs, tt_b=tt["breadth"] * D, s_tt1=s_tt1, s_ct1=s_ct1, bolster_r=bo * D / 2, bolster_x=bolster_x,
+                                ct_b=ct["breadth"] * D, ct_xs=ct_xs, outline=outline, off_tm=off_tm, hs_tm=hs_tm,
+                                tt2_b=tt_b, s_tt2a=s_a, s_tt2b=s_b, ct2_d=ct_d, ct2_b=ct_b, ct2_xs=ct2_xs, B2=B2,
+                                off_tg=off_tg, s_tm_heel=s0, s_tg_heel=t0, fid_tm=fit["fid"] * D_tm, fid_tg=fit["fid"] * D_tg,
+                                hole=hole, plank=plank)
 
     # ---- the top's pieces ------------------------------------------------------------------------------------------
     @staticmethod
@@ -854,7 +868,11 @@ class Rig:
                                        "length_ft": sy["length_ft"], "diam_in": round(d / IN, 1),
                                        "z_ft": round(float((o - x_off * up)[2] / FT), 2)}
         self.bs = dict(H=H, ub=ub, up=up, Lb=Lb, D=D, R=R_bs, s_bed=s_bed, cap=H + Lb * ub, jib_end=p0 + Lj * uj,
-                       fjb_end=q0 + Lf * uf, heel_z_ft=zh / FT, x_stem=x_stem, z_stem=z_stem)
+                       fjb_end=q0 + Lf * uf, heel_z_ft=zh / FT, x_stem=x_stem, z_stem=z_stem,
+                       # for the standing rigging (slice 4)
+                       cap_t=cap_t, c_lo=c_lo, c_hi=c_hi, bee_s=Lb - 5.5 * FT, bee_y=Re * 0.75 + 0.15,
+                       jib=(p0, uj, upj, Lj, Rj), fjb=(q0, uf, upf, Lf, lambda s_: Df / 2 * float(ft_(min(1.0, s_ / Lf)))),
+                       ds_top=top, ds_dir=ud, ds_len=Ld, ds_d=Dd, sy_s=s_sy)
 
     # ---- all of it -----------------------------------------------------------------------------------------------------
     def build(self):

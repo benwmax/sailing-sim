@@ -1,0 +1,370 @@
+{
+ "deadeyes": [
+  {
+   "mast": "fore",
+   "deadeye": "topmast backstay 0",
+   "draught_ft": 38.57,
+   "model_ft": 39.57,
+   "moved_in": 12.0
+  },
+  {
+   "mast": "fore",
+   "deadeye": "topmast backstay 1",
+   "draught_ft": 41.8,
+   "model_ft": 44.19,
+   "moved_in": 28.7
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 0",
+   "draught_ft": 46.64,
+   "model_ft": 45.83,
+   "moved_in": -9.8
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 1",
+   "draught_ft": 48.1,
+   "model_ft": 48.29,
+   "moved_in": 2.3
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 2",
+   "draught_ft": 50.2,
+   "model_ft": 53.37,
+   "moved_in": 38.0
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 3",
+   "draught_ft": 52.63,
+   "model_ft": 55.73,
+   "moved_in": 37.2
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 4",
+   "draught_ft": 58.28,
+   "model_ft": 58.07,
+   "moved_in": -2.5
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 5",
+   "draught_ft": 60.05,
+   "model_ft": 62.41,
+   "moved_in": 28.2
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 6",
+   "draught_ft": 64.9,
+   "model_ft": 64.73,
+   "moved_in": -2.1
+  },
+  {
+   "mast": "fore",
+   "deadeye": "shroud 7",
+   "draught_ft": 69.91,
+   "model_ft": 70.37,
+   "moved_in": 5.4
+  },
+  {
+   "mast": "fore",
+   "deadeye": "topgallant backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": 38.71,
+   "moved_in": null
+  },
+  {
+   "mast": "fore",
+   "deadeye": "royal backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": 38.03,
+   "moved_in": null
+  },
+  {
+   "mast": "main",
+   "deadeye": "topmast backstay 0",
+   "draught_ft": -48.11,
+   "model_ft": -48.89,
+   "moved_in": -9.4
+  },
+  {
+   "mast": "main",
+   "deadeye": "topmast backstay 1",
+   "draught_ft": -45.85,
+   "model_ft": -43.35,
+   "moved_in": 30.0
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 0",
+   "draught_ft": -40.35,
+   "model_ft": -41.33,
+   "moved_in": -11.8
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 1",
+   "draught_ft": -38.74,
+   "model_ft": -38.89,
+   "moved_in": -1.8
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 2",
+   "draught_ft": -36.8,
+   "model_ft": -32.85,
+   "moved_in": 47.4
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 3",
+   "draught_ft": -29.05,
+   "model_ft": -30.13,
+   "moved_in": -13.0
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 4",
+   "draught_ft": -26.72,
+   "model_ft": -27.81,
+   "moved_in": -13.1
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 5",
+   "draught_ft": -22.84,
+   "model_ft": -22.49,
+   "moved_in": 4.2
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 6",
+   "draught_ft": -18.05,
+   "model_ft": -19.39,
+   "moved_in": -16.1
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 7",
+   "draught_ft": -16.38,
+   "model_ft": -17.11,
+   "moved_in": -8.8
+  },
+  {
+   "mast": "main",
+   "deadeye": "shroud 8",
+   "draught_ft": -11.65,
+   "model_ft": -11.65,
+   "moved_in": 0.0
+  },
+  {
+   "mast": "main",
+   "deadeye": "topgallant backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": -49.75,
+   "moved_in": null
+  },
+  {
+   "mast": "main",
+   "deadeye": "royal backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": -50.43,
+   "moved_in": null
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "topmast backstay 0",
+   "draught_ft": -83.11,
+   "model_ft": -83.11,
+   "moved_in": 0.0
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "topmast backstay 1",
+   "draught_ft": -80.85,
+   "model_ft": -81.19,
+   "moved_in": -4.0
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 0",
+   "draught_ft": -78.59,
+   "model_ft": -76.55,
+   "moved_in": 24.5
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 1",
+   "draught_ft": -73.09,
+   "model_ft": -73.19,
+   "moved_in": -1.1
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 2",
+   "draught_ft": -71.48,
+   "model_ft": -71.37,
+   "moved_in": 1.3
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 3",
+   "draught_ft": -67.28,
+   "model_ft": -66.21,
+   "moved_in": 12.9
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 4",
+   "draught_ft": -62.43,
+   "model_ft": -62.53,
+   "moved_in": -1.2
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "shroud 5",
+   "draught_ft": -60.81,
+   "model_ft": -60.71,
+   "moved_in": 1.2
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "topgallant backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": -84.07,
+   "moved_in": null
+  },
+  {
+   "mast": "mizzen",
+   "deadeye": "royal backstay (thimble)",
+   "draught_ft": null,
+   "model_ft": -84.71,
+   "moved_in": null
+  }
+ ],
+ "hearts": [
+  {
+   "stay": "fore",
+   "upper_model_ft": [
+    119.1,
+    43.9
+   ],
+   "lower_model_ft": [
+    123.0,
+    41.9
+   ],
+   "upper_draught_ft": [
+    121.0,
+    38.5
+   ],
+   "lower_draught_ft": [
+    124.5,
+    35.8
+   ]
+  },
+  {
+   "stay": "fore preventer",
+   "upper_model_ft": [
+    116.9,
+    42.3
+   ],
+   "lower_model_ft": [
+    120.4,
+    40.3
+   ],
+   "upper_draught_ft": [
+    118.6,
+    37.3
+   ],
+   "lower_draught_ft": [
+    121.8,
+    34.8
+   ]
+  },
+  {
+   "stay": "main",
+   "upper_model_ft": [
+    85.1,
+    26.7
+   ],
+   "lower_model_ft": [
+    87.7,
+    25.3
+   ],
+   "lower_draught_ft": [
+    87.4,
+    24.3
+   ]
+  },
+  {
+   "stay": "main preventer",
+   "upper_model_ft": [
+    80.6,
+    23.8
+   ],
+   "lower_model_ft": [
+    82.5,
+    22.7
+   ],
+   "lower_draught_ft": [
+    82.5,
+    23.1
+   ]
+  },
+  {
+   "stay": "mizzen",
+   "upper_model_ft": [
+    -16.2,
+    22.9
+   ],
+   "lower_model_ft": [
+    -14.9,
+    21.9
+   ]
+  }
+ ],
+ "notes": [
+  "fore channel: the topmast backstay 0's lanyard crosses a spar deck port's edge by 7.2 in",
+  "fore channel: the shroud 2's lanyard crosses a spar deck port's edge by 11.1 in",
+  "fore channel: the shroud 4's lanyard crosses a spar deck port's edge by 0.3 in",
+  "fore channel: the shroud 5's lanyard crosses a spar deck port's edge by 11.0 in",
+  "fore channel: the shroud 6's lanyard crosses a spar deck port's edge by 9.0 in",
+  "fore lower head: legs packed 0.86 of their width",
+  "fore lower head: the foremost leg leaves 10.0 in before the mast's axis, clearing the lower yard by 1.5 in",
+  "fore lower head: 7 legs held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "fore top: the topmast shrouds' deadeyes end 0.756 of the top's length from its after edge (the draught's 0.78) to clear the topsail yard lowered",
+  "fore topmast head: 2 legs held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "main lower head: 5 legs held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "main top: the topmast shrouds' deadeyes end 0.770 of the top's length from its after edge (the draught's 0.78) to clear the topsail yard lowered",
+  "main topmast head: 2 legs held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "mizzen lower head: the foremost leg leaves 3.1 in before the mast's axis, clearing the lower yard by 1.5 in",
+  "mizzen lower head: 2 legs held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "mizzen top: the topmast shrouds' deadeyes end 0.743 of the top's length from its after edge (the draught's 0.78) to clear the topsail yard lowered",
+  "mizzen topmast head: 1 leg held in the bundle down the head to under the crosstrees (the after crosstree or the leg abaft)",
+  "main stay: its collar goes round the bowsprit before the stem head (where the draught's heart puts it, it would pass through the stem), so its hearts move 0.7 ft forward and up onto the line to it"
+ ],
+ "objects": {
+  "Rigging_Fore": 43948,
+  "Deadeyes_Fore": 40200,
+  "Ratlines_Fore": 17520,
+  "Rigging_Main": 46124,
+  "Deadeyes_Main": 42912,
+  "Ratlines_Main": 18630,
+  "Rigging_Mizzen": 29328,
+  "Deadeyes_Mizzen": 31872,
+  "Ratlines_Mizzen": 7340,
+  "Stays": 23324,
+  "Rigging_Bowsprit": 10012
+ },
+ "triangles": 311210,
+ "deadeye_count": 180,
+ "heart_count": 10,
+ "main_stays_heart_y_ft": {
+  "main": 1.88,
+  "main_preventer": -1.77
+ }
+}
