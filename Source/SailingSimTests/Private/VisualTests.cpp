@@ -2,6 +2,7 @@
 #include "SailingAudio.h"
 #include "GpuSlices.h"
 #include "VisualPipeline.h"
+#include "Components/VolumetricCloudComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
 #include "Misc/Paths.h"
@@ -83,6 +84,8 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	// Every other tier keeps the engine's scale and the material's default (no floor).
 	TestEqual(TEXT("Ultra: 320 cloud samples"), CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 320.f);
 	TestEqual(TEXT("Ultra: cloud view sample scale 3"), CloudViewSampleScale(ESailingQuality::Ultra), 3.f);
+	TestTrue(TEXT("Ultra: the sample cap doesn't clip the view scale (base x scale <= cap)"),
+		UVolumetricCloudComponent::BaseViewRaySampleCount * CloudViewSampleScale(ESailingQuality::Ultra) <= CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")));
 	TestEqual(TEXT("Ultra: cumulus step cap floor 150 m"), CloudCapStepFloorM(ESailingQuality::Ultra), 150.f);
 	TestEqual(TEXT("High: 80 cloud samples (unchanged)"), CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 80.f);
 	TestEqual(TEXT("Medium: 72 cloud samples (unchanged)"), CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 72.f);
