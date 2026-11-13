@@ -183,4 +183,101 @@ bool FVisualSailDentTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * Feedback #20: the spinnaker's head on its halyard. The physics strips put a spinnaker's luff a metre or two ahead of the
+ * mast (the J/22's head at x 2.6 m, her mast at 0.65), and the cloth drew the head there, floating short of the mast.
+ * On every boat that carries one, set and flown both sides, drawn and simulated, the head corner must sit on the
+ * halyard point, the head must come to a point there (the leech meets the luff), the tack must stay where the physics
+ * puts it, and the halyard point must be at the mast: the J/22 hero's Hounds socket (J22H_sockets.json) a swivel's
+ * length ahead, or the front of the config's mast at the sail's head height.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSpinnakerHeadTest, "SailingSim.Visual.SpinnakerHead", SailClothFlags)
+bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FVector HeroHounds(68.06, 0.0, 783.09);   // Inputs/j22-hero/J22H_sockets.json, boat frame cm
+	int32 Boats = 0;
+	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
+	{
+		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
+		if (!C.HasSpinnaker()) continue;
+		++Boats;
+		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(C.Type));
+		const double MastFrontCm = (C.MastX + 0.5 * C.MastDiameter) * CmPerMeter;
+		const double SailHeadCm = C.Spinnaker.Strips[C.Spinnaker.NumStrips - 1].ZTop * CmPerMeter;
+		struct FCase { const TCHAR* What; FVector Head; };
+		TArray<FCase> Cases;
+		Cases.Add({ TEXT("no model"), SpinnakerHeadCm(C.Spinnaker, C.MastX, C.MastDiameter, nullptr) });
+		if (C.Type == EBoatType::J22) Cases.Add({ TEXT("hero Hounds"), SpinnakerHeadCm(C.Spinnaker, C.MastX, C.MastDiameter, &HeroHounds) });
+
+		// The halyard point is at the mast, not where the physics put the head.
+		const FVector Fallback = Cases[0].Head;
+		TestTrue(FString::Printf(TEXT("%s: the head (no model) is just ahead of the mast's front, x %.0f cm (mast front %.0f)"), *BoatName, Fallback.X, MastFrontCm),
+			Fallback.X > MastFrontCm && Fallback.X < MastFrontCm + 15.0);
+		TestEqual(FString::Printf(TEXT("%s: the head (no model) at the sail's head height"), *BoatName), Fallback.Z, SailHeadCm, 0.5);
+		TestEqual(FString::Printf(TEXT("%s: the head (no model) on the centreline"), *BoatName), Fallback.Y, 0.0, 0.01);
+		if (C.Type == EBoatType::J22)
+		{
+			const FVector Hero = Cases[1].Head;
+			TestTrue(FString::Printf(TEXT("J/22 hero: the head within 10 cm of the Hounds socket (%.1f cm)"), FVector::Dist(Hero, HeroHounds)),
+				FVector::Dist(Hero, HeroHounds) <= 10.0);
+			TestTrue(TEXT("J/22 hero: the head ahead of the halyard's exit, not inside the mast"), Hero.X > HeroHounds.X);
+		}
+
+		// The cloth: unpinned for the tack's reference, then pinned.
+		FSailCloth Free;
+		Free.Init(C.Spinnaker, ESailKind::Spinnaker);
+		TestFalse(FString::Printf(TEXT("%s: Init leaves no head point"), *BoatName), Free.HasHeadPoint());
+		FSailStripState Strips[kMaxSailStrips];
+		for (const FCase& K : Cases)
+		{
+			for (const int32 Side : { 1, -1 })
+			{
+				for (const bool bSimulate : { false, true })
+				{
+					FSailCloth Cloth;
+					Cloth.Init(C.Spinnaker, ESailKind::Spinnaker);
+					Cloth.SetHeadPoint(K.Head);
+					TestTrue(FString::Printf(TEXT("%s: the head point is taken"), *BoatName), Cloth.HasHeadPoint());
+					FSailClothDrive Drive;
+					Drive.ApparentWindKnots = 14.f;
+					Drive.bSimulate = bSimulate;
+					const int32 Steps = bSimulate ? 180 : 1;
+					for (int32 N = 0; N < Steps; ++N)
+					{
+						for (int32 I = 0; I < C.Spinnaker.NumStrips; ++I)
+						{
+							Strips[I].Camber = 0.20;
+							Strips[I].AngleFromCenterline = (55.0 + 6.0 * I) * kDegToRad;
+							// A blown spinnaker too: the top strips collapse half the time.
+							Strips[I].Flow = (N / 30) % 2 == 1 && I >= C.Spinnaker.NumStrips - 2 ? ESailFlow::Luffing : ESailFlow::Attached;
+						}
+						Drive.Time = N / 60.f;
+						Cloth.Step(Strips, Side, Drive);
+						if (N == 0) Free.Step(Strips, Side, Drive);
+					}
+					const TArray<FVector>& P = Cloth.Positions();
+					const int32 HeadLuff = (FSailCloth::Rows - 1) * FSailCloth::Cols, HeadLeech = HeadLuff + FSailCloth::Cols - 1;
+					const FString Case = FString::Printf(TEXT("%s (%s, side %d, %s)"), *BoatName, K.What, Side, bSimulate ? TEXT("cloth") : TEXT("drawn"));
+					bool bFinite = true;
+					for (const FVector& V : P) bFinite &= !V.ContainsNaN();
+					TestTrue(Case + TEXT(": the cloth is finite"), bFinite);
+					TestTrue(FString::Printf(TEXT("%s: the head on the halyard point (%.1f cm off)"), *Case, FVector::Dist(P[HeadLuff], K.Head)),
+						FVector::Dist(P[HeadLuff], K.Head) < 1.0);
+					TestTrue(FString::Printf(TEXT("%s: the head comes to a point (leech %.1f cm from it)"), *Case, FVector::Dist(P[HeadLeech], K.Head)),
+						FVector::Dist(P[HeadLeech], K.Head) < 10.0);
+					TestTrue(FString::Printf(TEXT("%s: the tack where the physics puts it (%.1f cm off)"), *Case, FVector::Dist(P[0], Free.Positions()[0])),
+						FVector::Dist(P[0], Free.Positions()[0]) < 1.0);
+					// Every row's luff between the tack and the head, none above the head.
+					double Highest = -1e9;
+					for (const FVector& V : P) Highest = FMath::Max(Highest, V.Z);
+					TestTrue(FString::Printf(TEXT("%s: nothing above the head (%.1f cm over)"), *Case, Highest - K.Head.Z), Highest <= K.Head.Z + 5.0);
+				}
+			}
+		}
+	}
+	TestTrue(TEXT("Some boats carry a spinnaker"), Boats >= 3);
+	return true;
+}
+
 #endif

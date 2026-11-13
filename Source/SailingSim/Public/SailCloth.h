@@ -87,6 +87,14 @@ SAILINGSIM_API float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm,
 SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& OutLambda, double& OutAmp);
 
 /**
+ * Feedback #20: where a boat's spinnaker (or gennaker) head is drawn (boat frame, cm): at the halyard's exit on the mast,
+ * HalyardCm (the model mast's Hounds socket: the forestay's top, where the J/22's spinnaker halyard leaves the mast, and
+ * a masthead rig's halyard too), a swivel's length ahead of it; without a model socket (nullptr), on the front of the
+ * config's mast at the sail's own head height.
+ */
+SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FSailGeometry& Spinnaker, double MastX, double MastDiameter, const FVector* HalyardCm);
+
+/**
  * docs/sail-wrinkles-cost/: SailWrinkleCm worked out for a whole render grid, frame after frame, at a fraction of its cost.
  * Everything in it but the loads is fixed once the sail is made (the corners' angles, each vertex's distance and angle from
  * them, the fades, the cell across each crest), so Build keeps that per vertex, only for the vertices a wrinkle can reach;
@@ -136,6 +144,15 @@ public:
 
 	/** Forgets the cloth's motion: the next Step starts again from the target shape (the boat was reset or moved). */
 	void Reset() { bStarted = false; Accumulator = 0.f; bClearCached = false; }
+
+	/**
+	 * Feedback #20: the spinnaker's head on its halyard (boat frame, cm). The physics strips put a spinnaker's luff out
+	 * ahead of the mast (its centre of effort), which drew the head floating in the air, a metre or two forward of the
+	 * mast and short of its halyard. Set, the luff runs straight from the tack up to this point and the head comes to a
+	 * point there (the head corner is pinned to it); the physics is unchanged. Init clears it.
+	 */
+	void SetHeadPoint(const FVector& HeadCm);
+	bool HasHeadPoint() const { return bHeadPoint; }
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
@@ -216,6 +233,9 @@ private:
 	ESailKind Kind = ESailKind::Main;
 	int32 NumStrips = 0;
 	double ZFoot = 0.0, ZHead = 1.0, LuffSlope = 0.0, LuffZ0 = 0.0;
+	/** SetHeadPoint's head (m, boat frame) and the luff at the foot it is drawn up from. */
+	bool bHeadPoint = false;
+	double HeadX = 0.0, HeadZ = 0.0, FootLuffX = 0.0;
 	TArray<double> RowChord;   // planform chord per row (m)
 	TArray<FVector> Pos, Prev, Target;
 	TArray<FVector2D> UVMeters, UVNormal, UVLeech;

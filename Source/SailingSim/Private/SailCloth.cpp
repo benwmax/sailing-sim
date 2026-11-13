@@ -28,6 +28,7 @@ ETelltaleState LeechTelltaleState(const FSailStripState& St)
 void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 {
 	bClearCached = false;
+	bHeadPoint = false;
 	Wrinkles.Reset();
 	Geo = InGeo;
 	Kind = InKind;
@@ -54,7 +55,8 @@ void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 		}
 		else if (Z >= ZCN)
 		{
-			const double Head = Kind == ESailKind::Main ? 0.14 : (Kind == ESailKind::Jib ? 0.04 : 0.35 * Geo.Strips[NumStrips - 1].Chord);
+			// Feedback #20: a spinnaker's head is a point on its swivel (its shoulders are the top strip), as a jib's.
+			const double Head = Kind == ESailKind::Main ? 0.14 : 0.04;
 			Chord = FMath::Lerp(Geo.Strips[NumStrips - 1].Chord, Head, (Z - ZCN) / FMath::Max(ZHead - ZCN, 1e-3));
 		}
 		else
@@ -92,6 +94,13 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 {
 	Out.Z = ZFoot + (ZHead - ZFoot) * R / (Rows - 1);
 	Out.LuffX = Geo.Strips[0].LuffX + LuffSlope * (Out.Z - LuffZ0);
+	if (bHeadPoint)
+	{
+		// Feedback #20: the luff straight from the tack up to the head on its halyard.
+		const double V = double(R) / (Rows - 1);
+		Out.Z = ZFoot + (HeadZ - ZFoot) * V;
+		Out.LuffX = FootLuffX + (HeadX - FootLuffX) * V;
+	}
 	Out.Chord = RowChord[R];
 	// Strip state at this height: between the two strips whose mid-heights bracket it.
 	int32 A = 0, B = 0;
@@ -124,6 +133,27 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	Out.Camber = FMath::Lerp(SA.Camber, SB.Camber, T);
 	// A backed sail bulges to windward.
 	if (SA.Flow == ESailFlow::Backed && SB.Flow == ESailFlow::Backed) Out.Camber = -Out.Camber;
+}
+
+void FSailCloth::SetHeadPoint(const FVector& HeadCm)
+{
+	if (NumStrips <= 0 || HeadCm.ContainsNaN()) return;
+	const double X = HeadCm.X / Sailing::CmPerMeter, Z = HeadCm.Z / Sailing::CmPerMeter;
+	// A head below the foot is no head (a bad socket): keep the planform's own.
+	if (Z <= ZFoot + 0.5) return;
+	bHeadPoint = true;
+	HeadX = X;
+	HeadZ = Z;
+	FootLuffX = Geo.Strips[0].LuffX + LuffSlope * (ZFoot - LuffZ0);
+}
+
+FVector SpinnakerHeadCm(const Sailing::FSailGeometry& Spinnaker, double MastX, double MastDiameter, const FVector* HalyardCm)
+{
+	// The head's swivel and shackle hang about 8 cm ahead of the halyard's exit (the sail flies forward of the mast).
+	constexpr double SwivelCm = 8.0;
+	if (HalyardCm && !HalyardCm->ContainsNaN()) return *HalyardCm + FVector(SwivelCm, 0.0, 0.0);
+	const double ZHeadM = Spinnaker.NumStrips > 0 ? Spinnaker.Strips[Spinnaker.NumStrips - 1].ZTop : 0.0;
+	return FVector((MastX + 0.5 * MastDiameter) * Sailing::CmPerMeter + SwivelCm, 0.0, ZHeadM * Sailing::CmPerMeter);
 }
 
 void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const
