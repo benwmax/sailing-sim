@@ -59,6 +59,25 @@ question the photos answer better than more guessing.
    has 7.7 times the triangles; Nanite draws by screen size, so the cost should be in Nanite's raster and the shadow
    pages near the shore, not in the instance count (Galveston's riprap has about 324k instances).
 
+## On the Mac (Nov 13)
+
+Assets rebuilt in 1b58d818. The world gate passed on main and the branch (343 of 343 tests), every view within about
+1.5 fps of main:
+
+| View | fps | View | fps |
+| --- | --- | --- | --- |
+| marina | 54.1 (main 55.5) | slip | 46.4 |
+| coast-day | 52.3 | coast-night | 57.8 |
+| helm-eye | 55.8 | bridge | 59.7 |
+| marina-night | 55.4 | far-coast | 61.3 |
+| far-coast-night | 78.6 | marseille-port | 51.5 |
+| stream-run | 50.6 | | |
+
+The first station captures (`captures/main`, `captures/branch`, 9d17510e) used `ShoreTele`, a 15 degree telephoto: each
+frame holds a stone or two from a few metres, which shows the surface but not the bank. They show the squares gone,
+the chipped edges and the worn pale crests; the faces read smoother and plainer than in the cloud renders. The stations
+now use the 80 degree `Drone` lens for the next captures.
+
 ## Waiting on
 
 Bean's grey-card photos of the breakwater (card `references_wanted`): until then the colour has no measured target

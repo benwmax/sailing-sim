@@ -26,10 +26,11 @@ It is the texture loop's (`docs/texture-loop/`) and the part detail loop's, on s
 ## Stations
 
 `Tools/shoreloop/stations.csv` is in `capture-scenes.sh`'s format (`SCENES=Tools/shoreloop/stations.csv
-OUT=docs/shore-loop/captures scripts/capture-scenes.sh 8`). Fixed cameras are `ShoreTele` with `-SailingCaptureAbsolute`;
-`-SailingCamWorld`'s north and east are relative to launch spot 0 (map 5.5, -37.5), its `up` is above the water. The
-rock stations are first-pass positions worked out from `RayHubbard.marina.json`: the Mac checks the first captures and
-moves a camera that misses. Each slice adds its own stations (waterline, grass bank, plant beds, tree line, debris).
+OUT=docs/shore-loop/captures scripts/capture-scenes.sh 8`). Fixed cameras use the `Drone` preset (an 80 degree lens, like a phone held wide) with
+`-SailingCamWorld`, never `ShoreTele`: that is a 15 degree telephoto, so a camera 4 m off fills its frame with one
+stone. `-SailingCamWorld`'s north and east are relative to launch spot 0 (map 5.5, -37.5), its `up` is above the
+water, and `camera.json`'s `camera_m` gives the map metres used. The breakwater's toe stones reach about 5.5 m off its
+centreline in `RayHubbard.marina.json`, so the rock stations stand 6.7 to 9.5 m off it (placed by the Mac, Nov 13). Each slice adds its own stations (waterline, grass bank, plant beds, tree line, debris).
 
 ## Slices so far
 
