@@ -785,6 +785,9 @@ private:
 	TArray<uint8> PackShotKinds;  // SailingSound::EPackShot per sound
 	double NextHalyardShot = 0.0, NextDockShot = 0.0, NextWinchClick = 0.0, LuffHighAt = -100.0;
 	float PrevTrimRate = 0.f;
+	float WindPitch = 1.f;   // feedback #19: the wind loops' pitch this frame (SailingSound::WindBuffet)
+	/** Feedback #18: whether the player's own hand is on a sheet this frame (the winch clicks only then). */
+	bool IsPlayerTrimming() const;
 	void UpdatePackSound(const struct FSailingSoundParams& P, float Aws, const float* CueLevels);
 	/** Plays one of the pack's one-shots at a place on the boat (cm in BoatRoot's frame): the halyard at the mast, the
 	 *  winch in the cockpit, the fender at her side. */

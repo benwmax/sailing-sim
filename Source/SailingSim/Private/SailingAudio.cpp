@@ -239,6 +239,60 @@ bool SailingSound::HasSheetWinches(Sailing::EBoatType Type)
 	return !(Type == EBoatType::Sunfish || Type == EBoatType::ILCA7 || Type == EBoatType::Hobie16);
 }
 
+float SailingSound::AudibleTrimRate(float TrimRate, bool bWinches, bool bPlayerTrimming)
+{
+	// Trimming in on a winch is the ratchet's click: only when the player is on the handle. The crew's trims stay silent.
+	if (TrimRate > 0.f && bWinches && !bPlayerTrimming) return 0.f;
+	return TrimRate;
+}
+
+float SailingSound::Storminess(float ApparentWindMs, float Rain, float Squall)
+{
+	// A fresh breeze starts to roar from about 10 kn apparent and is a blow by 25; rain or a squall coming is a storm whatever the wind.
+	const float Blow = FMath::Clamp((ApparentWindMs - 5.f) / 8.f, 0.f, 1.f);
+	return FMath::Clamp(FMath::Max3(Blow, FMath::Clamp(Rain, 0.f, 1.f), FMath::Clamp(Squall, 0.f, 1.f)), 0.f, 1.f);
+}
+
+SailingSound::FWindBuffet SailingSound::WindBuffet(double TimeSeconds, float Storm)
+{
+	FWindBuffet B;
+	const float S = FMath::Clamp(Storm, 0.f, 1.f);
+	if (S <= 0.f) return B;
+	// Four slow waves at incommensurate rates (periods about 9.1, 4.3, 2.4 and 1.5 s, no common period): their sum never repeats a pattern a
+	// listener can hear, rising to a surge and falling to a lull a few seconds apart.
+	const double T = TimeSeconds, Tau = 2.0 * UE_DOUBLE_PI;
+	const double A = FMath::Sin(Tau * 0.1093 * T) + 0.7 * FMath::Sin(Tau * 0.2317 * T + 1.3) + 0.5 * FMath::Sin(Tau * 0.4129 * T + 2.1)
+		+ 0.3 * FMath::Sin(Tau * 0.6701 * T + 0.4);
+	const float N = FMath::Clamp(float(A / 2.0), -1.f, 1.f);
+	// A surge is quick and loud, a lull long and soft: sharpen the tops, flatten the troughs.
+	const float Shaped = N >= 0.f ? FMath::Pow(N, 0.8f) : -FMath::Pow(-N, 1.3f);
+	B.Level = 1.f + S * 0.45f * Shaped;
+	B.Pitch = 1.f + S * (Shaped >= 0.f ? 0.08f : 0.06f) * Shaped;
+	return B;
+}
+
+float SailingSound::RainSwell(double TimeSeconds, float Rain)
+{
+	const float R = FMath::Clamp(Rain, 0.f, 1.f);
+	if (R <= 0.f) return 1.f;
+	// Sheets of rain blowing through: slow waves at about 0.05, 0.13 and 0.21 Hz, at rates with no common period.
+	const double T = TimeSeconds, Tau = 2.0 * UE_DOUBLE_PI;
+	const double A = FMath::Sin(Tau * 0.0513 * T + 0.7) + 0.6 * FMath::Sin(Tau * 0.1307 * T + 2.9) + 0.4 * FMath::Sin(Tau * 0.2129 * T + 5.1);
+	const float N = FMath::Clamp(float(A / 1.6), -1.f, 1.f);
+	return 1.f + (N >= 0.f ? 0.3f : 0.4f) * N;
+}
+
+float SailingSound::ChopFor(float TrueWindMs)
+{
+	return FMath::Clamp((TrueWindMs - 3.f) / 7.f, 0.f, 1.f);
+}
+
+float SailingSound::DistantRumbleGap(float Nearness, float U)
+{
+	const float Mean = FMath::Lerp(14.f, 5.f, FMath::Clamp(Nearness, 0.f, 1.f));
+	return Mean * (0.5f + FMath::Clamp(U, 0.f, 1.f));
+}
+
 const TCHAR* WorldSoundName(EWorldSound Kind)
 {
 	static const TCHAR* Names[] = { TEXT("MarinaHalyards"), TEXT("Gulls"), TEXT("Outboard"), TEXT("Diesel"), TEXT("Horn"), TEXT("Thunder"), TEXT("ShoreLife") };
@@ -278,6 +332,7 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 	const float TGust = Params.GustRatio.load(), TShadow = Params.WindShadow.load(), TMoored = Params.Moored.load();
 	const float TRainDeck = Params.RainDeck.load(), TRainWater = Params.RainWater.load(), TSquall = Params.Squall.load();
 	const float Winches = FMath::Clamp(Params.Winches.load(), 0.f, 1.f);
+	const float TChop = Params.Chop.load(), TBuffet = Params.Buffet.load();
 	const float TGainBoat = Params.GainBoat.load(), TGainWeather = Params.GainWeather.load(), TGainSignals = Params.GainSignals.load();
 	const float LimiterRelease = FMath::Exp(-1.f / (0.15f * Sr));
 	// A recorded sample plays instead of a muted voice (the pawn's sample layer).
@@ -314,11 +369,14 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		// Wind in the rigging: a breathy band that rises in pitch and level with apparent wind, slowly gusting.
 		GustPhase += 0.23f / Sr;
 		const float Gust = 0.75f + 0.25f * FMath::Sin(2.f * PI * GustPhase) * FMath::Sin(2.f * PI * GustPhase * 0.37f);
-		const float WindLevel = FMath::Clamp(W / 10.f, 0.f, 2.5f);
+		// Feedback #19: in a blow the wind roars and lulls (SailingSound::WindBuffet) instead of one steady hiss.
+		const float Bf = Smooth(SBuffet, TBuffet, Rate * 0.2f);
+		const float WindLevel = FMath::Clamp(W / 10.f, 0.f, 2.5f) * Bf;
 		Mix += WindBand.Process(PinkN, FMath::Min(0.9f, 2.f * PI * (220.f + 55.f * W) / Sr), 0.7f) * 0.35f * WindLevel * WindLevel * Gust * MWind;
 		Mix += Whistle.Process(WhiteN, FMath::Min(0.9f, 2.f * PI * (850.f + 70.f * W) / Sr), 0.06f) * 0.012f * FMath::Pow(WindLevel, 3.f) * Gust * MWind;
-		// A gust buffets the ears: a low, irregular rumble growing with how far the wind is over its mean.
-		Mix += GustLow.Low(BrownN, 2.f * PI * 45.f / Sr) * 0.05f * FMath::Clamp((Gr - 1.f) * 2.5f, 0.f, 1.f) * FMath::Clamp(W / 7.f, 0.f, 1.5f) * MGust;
+		// A gust buffets the ears: a low, irregular rumble growing with how far the wind is over its mean. Feedback #19: at
+		// half its old level, since a storm's steady low rumble read as wind blowing into a microphone.
+		Mix += GustLow.Low(BrownN, 2.f * PI * 45.f / Sr) * 0.025f * FMath::Clamp((Gr - 1.f) * 2.5f, 0.f, 1.f) * FMath::Clamp(W / 7.f, 0.f, 1.5f) * MGust;
 
 		// Luffing / flogging: slapping bursts at a rate that rises with the wind.
 		FlapPhase += (3.5f + 0.9f * W) / Sr;
@@ -353,6 +411,19 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		HalyardP1 -= FMath::FloorToFloat(HalyardP1); HalyardP2 -= FMath::FloorToFloat(HalyardP2);
 		Mix += (FMath::Sin(2.f * PI * HalyardP1) + 0.4f * FMath::Sin(2.f * PI * HalyardP2)) * 0.06f * HalyardEnv * HalyardEnv * MHalyard;
 
+		// Feedback #18/#19: under way the wind's wavelets slap and knock at the hull at random, a soft one now and then in a
+		// light breeze, often and harder in a chop; never a steady rhythm. Not a cue a recording replaces.
+		const float Ch = Smooth(SChop, TChop, Rate * 0.2f);
+		const float UnderWay = FMath::Clamp(Sp / 1.5f, 0.f, 1.f);
+		const float WaveRate = UnderWay * (0.4f + 0.8f * Ch) * (1.f + 0.5f * FMath::Clamp(Sp / 3.f, 0.f, 1.f));   // about 0.4 to 1.8 a second
+		if (Noise() > 1.f - 2.f * WaveRate / Sr)
+		{
+			WaveEnv = 0.35f + 0.65f * FMath::Abs(Noise());
+			WaveTone = 2.f * PI * (160.f + 220.f * FMath::Abs(Noise())) / Sr;
+		}
+		WaveEnv *= 0.9992f;
+		Mix += WaveBand.Process(WaveLow.Low(WhiteN, 0.15f) * WaveEnv, WaveTone > 0.f ? WaveTone : 0.03f, 0.45f) * 0.55f * (0.5f + 0.5f * Ch) * UnderWay;
+
 		// Bow wave slaps when the bow meets a wave.
 		if (Noise() > 1.f - 0.0004f * Sl) SlapEnv = 1.f;
 		SlapEnv *= 0.9993f;
@@ -380,6 +451,10 @@ int32 USailingSynthWave::OnGeneratePCMAudio(TArray<uint8>& OutAudio, int32 NumSa
 		if (Noise() > 1.f - 0.004f * Rd) DropEnv = 1.f;
 		DropEnv *= 0.99f;
 		MixWeather += DropBand.Process(WhiteN * DropEnv, 0.5f, 0.3f) * 0.2f * Rd * MDeck;
+		// Feedback #19: drops drumming on the taut sails, a duller patter than the deck's (not replaced by a recording).
+		if (Noise() > 1.f - 0.0025f * Rd) SailDropEnv = 0.5f + 0.5f * FMath::Abs(Noise());
+		SailDropEnv *= 0.994f;
+		MixWeather += SailDropBand.Process(WhiteN * SailDropEnv, 2.f * PI * 750.f / Sr, 0.5f) * 0.12f * Rd;
 		// A squall coming across the water: a broad hiss, the rain and the wind's roar, rising as it nears.
 		MixWeather += (SquallBand.Process(WhiteN, 2.f * PI * 3500.f / Sr, 0.9f) * 0.05f + SquallBand2.Process(PinkN, 2.f * PI * 600.f / Sr, 0.8f) * 0.08f) * Sq * Sq * MSquall;
 
