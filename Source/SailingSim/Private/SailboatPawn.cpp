@@ -421,6 +421,18 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Livery = SampleBoatLivery(int32(Boat.GetConfig().Type), Seed);
 		CrewSeed = Seed;
 	}
+	// Boat skins (docs/skins): the skin this boat wears, over her class's livery: the Customize screen's preview, else
+	// (her own boat, not traffic or the ghost) -SailingSkin or the save's choice. No skin: nothing changes.
+	{
+		const int32 SkinType = int32(Boat.GetConfig().Type);
+		if (bSkinPreview) { Skin = PreviewSkin; bHasSkin = true; }
+		else bHasSkin = !bTrafficBoat && !bGhost && BoatSkinStore::Active(SkinType, Skin);
+		if (bHasSkin)
+		{
+			Skin.ApplyTo(Livery, SkinType);
+			Skin.RopeColumns(SkinRopeColumns);
+		}
+	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	bModelTravelerBridge = Model.bTravelerBridge;
 	if (Model.Hull)
@@ -649,7 +661,9 @@ void ASailboatPawn::RebuildBoatVisuals()
 		// #405 gap 4: the Sunfish carries the emblem too (the class's sails put it in the upper sail, the number centred
 		// under it: Inputs/g3/boat-catalogue.json), the made-up one from make_sail_marks.py.
 		const bool bEmblem = C.Type == EBoatType::J22 || C.Type == EBoatType::Sunfish;
-		Mid->SetScalarParameterValue(TEXT("Marks"), bEmblem ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
+		// Boat skins: a skin can take the class mark off (the number stays).
+		const bool bMark = bEmblem && !(bHasSkin && Skin.Sails.bClassMark.IsSet() && !Skin.Sails.bClassMark.GetValue());
+		Mid->SetScalarParameterValue(TEXT("Marks"), bMark ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
 		Mid->SetScalarParameterValue(TEXT("SailDigits"), float(Digits.Len()));
 		Mid->SetScalarParameterValue(TEXT("SailNum"), Digits.IsEmpty() ? 0.f : float(FCString::Atoi(*Digits)));
 		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
@@ -678,6 +692,13 @@ void ASailboatPawn::RebuildBoatVisuals()
 			static const FLinearColor Laminates[] = { FLinearColor(0.30f, 0.30f, 0.31f), FLinearColor(0.42f, 0.42f, 0.41f), FLinearColor(0.40f, 0.29f, 0.13f) };
 			SailColor = Laminates[(H / 100u) % UE_ARRAY_COUNT(Laminates)];
 		}
+	}
+	// Boat skins: the skin's cloth colour. The class's white Dacron is drawn at 0.70 albedo, not the hex white's 0.9, so a
+	// skin's colour is scaled the same way (a skin's white is the cloth the boat already has).
+	if (bHasSkin && Skin.Sails.Cloth.IsSet())
+	{
+		const FLinearColor Cloth = Skin.Sails.Cloth.GetValue();
+		SailColor = FLinearColor(Cloth.R * 0.77f, Cloth.G * 0.77f, Cloth.B * 0.77f);
 	}
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0))) Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
@@ -737,6 +758,26 @@ void ASailboatPawn::RebuildBoatVisuals()
 		NavLights.Add(Light);
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
+}
+
+void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
+{
+	PreviewSkin = InSkin;
+	bSkinPreview = true;
+	RebuildBoatVisuals();
+}
+
+void ASailboatPawn::ClearSkinPreview()
+{
+	if (!bSkinPreview) return;
+	bSkinPreview = false;
+	RebuildBoatVisuals();
+}
+
+void ASailboatPawn::RefreshSkin()
+{
+	bSkinPreview = false;
+	RebuildBoatVisuals();
 }
 
 const FWindField& ASailboatPawn::GetWind() const

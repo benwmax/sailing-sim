@@ -152,6 +152,16 @@ void ASailingHUD::BeginPlay()
 			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : Screen == TEXT("Gallery") ? ESailScreen::Gallery : ESailScreen::Credits);
 			return;
 		}
+		if (Screen == TEXT("Customize"))
+		{
+			// Boat skins stills: the flow walked to the Boat screen, then Customize on the session's boat (-SailingCustomTab=<0..4>).
+			OpenFrontEnd(ESailScreen::Title);
+			for (int32 K = 1; K <= int32(ESailScreen::Boat); ++K) FrontEnd->Push(ESailScreen(K));
+			int32 BoatArg = 0;
+			if (const ASailboatPawn* Pawn = Cast<ASailboatPawn>(PlayerOwner->GetPawn())) BoatArg = Pawn->GetBoatTypeIndex();
+			FrontEnd->OpenCustomize(BoatArg);
+			return;
+		}
 		if (Screen == TEXT("Feedback"))
 		{
 			// Like Pause: 4 s in, so the view behind it is the sailing.

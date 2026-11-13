@@ -305,7 +305,7 @@ void SSailFrontEnd::Construct(const FArguments& A)
 			.Visibility_Lambda([this]() { return IsGallery() && bGalleryClean ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })
 			.Showroom_Lambda([this]() { return IsStageScreen() || IsGallery(); })
 			// (The Boat screen's left column ends at 460 px of 1440, Conditions' panel at 600, the gallery's list at 430.)
-			.FadeEnd_Lambda([this]() { return Current() == ESailScreen::Boat ? 460.f / 1440.f : IsGallery() ? (bGalleryFull ? 0.f : 430.f / 1440.f) : 600.f / 1440.f; })
+			.FadeEnd_Lambda([this]() { return Current() == ESailScreen::Boat ? 460.f / 1440.f : Current() == ESailScreen::Customize ? 500.f / 1440.f : IsGallery() ? (bGalleryFull ? 0.f : 430.f / 1440.f) : 600.f / 1440.f; })
 			// The swap's cover: the moment the new boat is built the screen is dark, and it clears over 150 ms.
 			.Dip_Lambda([this]()
 			{
@@ -323,6 +323,8 @@ void SSailFrontEnd::Construct(const FArguments& A)
 SSailFrontEnd::~SSailFrontEnd()
 {
 	if (GalleryStage.IsValid()) CloseGallery(true);
+	// Boat skins: a draft still on the boat comes off (not while the world is being torn down for a reload).
+	if (const ASailboatPawn* P = Current() == ESailScreen::Customize ? Pawn() : nullptr; P && IsValid(P) && P->GetWorld() && !P->GetWorld()->bIsTearingDown) EndCustomize();
 	Showroom.End(Pawn(), GameMode());
 	if (USailSessionSubsystem* Session = Player.IsValid() ? USailSessionSubsystem::Get(Player.Get()) : nullptr; Session && !bMenusInGame && !Session->bHasActive)
 	{
@@ -340,7 +342,8 @@ ASailingGameMode* SSailFrontEnd::GameMode() const
 EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 {
 	// The Boat screen shows the focused boat (focus is the selection there); every other screen the chosen one.
-	const int32 Shown = Current() == ESailScreen::Boat ? (ShowroomArg >= 0 ? ShowroomArg : FocusedBoat) : Pending.Boat;
+	const int32 Shown = Current() == ESailScreen::Boat ? (ShowroomArg >= 0 ? ShowroomArg : FocusedBoat)
+		: Current() == ESailScreen::Customize ? SkinEdit.GetBoatType() : Pending.Boat;   // (Customize: the boat being dressed)
 	// Inputs/ui-showroom/brief.md section 6: the Conditions screen's preview eases rather than pops. The wind and gusts
 	// close on the choice over about 2 s (the waves and the heel build with them) and the clock sweeps at up to 3 hours a
 	// second while the slider moves; while they move, the world is re-previewed five times a second. The direction, sky,
@@ -370,6 +373,7 @@ EActiveTimerReturnType SSailFrontEnd::TickShowroom(double Time, float)
 		}
 	}
 	Showroom.Update(Pawn(), GameMode(), Current(), bMenusInGame, Shown, bConditions ? Blend : Pending.Conditions, Time);
+	if (Current() == ESailScreen::Customize) TickCustomize(Time);
 	KeepFocusInMenus();
 	return EActiveTimerReturnType::Continue;
 }
@@ -460,6 +464,7 @@ void SSailFrontEnd::Pop()
 	}
 	if (Current() == ESailScreen::Quiz) { Quiz.Reset(); CheckrideTierId.Reset(); QuizRetakeLessonId.Reset(); }
 	if (IsGallery() && GalleryStage.IsValid()) { GalleryBack(); return; }
+	if (Current() == ESailScreen::Customize) EndCustomize();   // boat skins: an unsaved draft comes off the boat
 	Stack.Pop();
 	// Rebuild the uncovered screen: its summary rows may show choices made further on.
 	const ESailScreen S = Stack.Last().Screen;
@@ -573,6 +578,12 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		if (P && FocusedControlRow < P->GetKeyRows().Num()) ListenControls(FocusedControlRow, true);
 		return FReply::Handled();
 	}
+	// Boat skins: the Customize screen's keys (and a text box's typing) come before the stage's.
+	if (Current() == ESailScreen::Customize)
+	{
+		const FReply R = CustomizeKeyDown(E);
+		if (R.IsEventHandled()) return R;
+	}
 	if (IsStageScreen())
 	{
 		// Inputs/ui-showroom/brief.md sections 2 and 6: V or the controller's View button hides the panels; it, Esc or B
@@ -581,6 +592,12 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		if (K == EKeys::V || K == EKeys::Gamepad_Special_Left || (bViewMode && IsBackKey(K))) { bViewMode = !bViewMode; return FReply::Handled(); }
 		if (Current() == ESailScreen::Boat && (K == EKeys::Q || K == EKeys::Gamepad_LeftShoulder)) { StepBoat(-1); return FReply::Handled(); }
 		if (Current() == ESailScreen::Boat && (K == EKeys::E || K == EKeys::Gamepad_RightShoulder)) { StepBoat(1); return FReply::Handled(); }
+		// Boat skins: C or Y opens Customize on the boat shown (not a locked one).
+		if (Current() == ESailScreen::Boat && !bViewMode && CustomizeEnabled() && (K == EKeys::C || K == EKeys::Gamepad_FaceButton_Top))
+		{
+			if (SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty()) OpenCustomize(FocusedBoat);
+			return FReply::Handled();
+		}
 		if (K == EKeys::Home || K == EKeys::Gamepad_RightThumbstick) { if (ASailboatPawn* P = Pawn()) P->ShowroomResetView(); return FReply::Handled(); }
 	}
 	if (IsBackKey(K)) { Pop(); return FReply::Handled(); }
@@ -700,7 +717,7 @@ EActiveTimerReturnType SSailFrontEnd::TickOrbitStick(double, float Delta)
 bool SSailFrontEnd::IsStageScreen() const
 {
 	const ESailScreen S = Current();
-	return S == ESailScreen::Boat || S == ESailScreen::Conditions || S == ESailScreen::ConditionsInGame;
+	return S == ESailScreen::Boat || S == ESailScreen::Customize || S == ESailScreen::Conditions || S == ESailScreen::ConditionsInGame;
 }
 
 void SSailFrontEnd::StepBoat(int32 Dir)
@@ -843,6 +860,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Gallery: E = BuildGallery(); break;
 	case ESailScreen::FirstLaunch: E = BuildFirstLaunch(); break;
 	case ESailScreen::Feedback: E = BuildFeedback(); break;
+	case ESailScreen::Customize: E = BuildCustomize(); break;
 	}
 	E.Screen = S;
 	RefocusChoice = NAME_None;
@@ -1311,7 +1329,13 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Pips ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12 kn true wind."), EType::Small, Muted, true) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })[ Next ] ],
+			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })[ Next ] ]
+			// Boat skins (docs/skins): her paint, sails, lines and wear.
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+			[
+				SNew(SBox).Visibility(CustomizeEnabled() ? EVisibility::Visible : EVisibility::Collapsed).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })
+				[ ActionButton(TEXT("Customize"), FSimpleDelegate::CreateLambda([this, LockOf]() { if (LockOf(FocusedBoat).IsEmpty()) OpenCustomize(FocusedBoat); }), false) ]
+			],
 			FMargin(22.f))
 	];
 
@@ -1368,9 +1392,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Right ]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 92.f)[ SNew(SBox).Visibility_Lambda(Panels)[ Strip ] ];
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Boat")),
-		Prompt(TEXT("Drag"), TEXT("R"), TEXT("Turn")), Prompt(TEXT("Wheel"), TEXT("LT / RT"), TEXT("Zoom")), Prompt(TEXT("V"), TEXT("View"), TEXT("Hide panels")),
-		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
+	TArray<Prompt> BoatPrompts = { Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Boat")) };
+	if (CustomizeEnabled()) BoatPrompts.Add(Prompt(TEXT("C"), TEXT("Y"), TEXT("Customize")));
+	BoatPrompts.Append({ Prompt(TEXT("Drag"), TEXT("R"), TEXT("Turn")), Prompt(TEXT("Wheel"), TEXT("LT / RT"), TEXT("Zoom")), Prompt(TEXT("V"), TEXT("View"), TEXT("Hide panels")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) });
+	E.Footer = PromptBar(BoatPrompts, FString());
 	return E;
 }
 

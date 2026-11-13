@@ -22,6 +22,7 @@
 #include "CockpitEye.h"
 #include "CrewFalls.h"
 #include "BoatLivery.h"
+#include "BoatSkin.h"
 #include "BoatPhysicsTask.h"
 #include "Showroom.h"
 #include "PhotoSettings.h"
@@ -571,6 +572,13 @@ private:
 	TArray<FCrewRig> MetaCrewRigs;
 	FBoatLivery Livery; // Graphics G3: this boat's colours, wear and sail number
 	uint32 CrewSeed = 0; // pc/crew-colours: the livery's seed, for the crew's polos and life jackets (CrewOutfit.h)
+	// Boat skins (docs/skins): the skin she wears over the livery (RebuildBoatVisuals), its rope colours by look, and the
+	// Customize screen's preview, which beats the saved choice while it is set.
+	FBoatSkin Skin;
+	bool bHasSkin = false;
+	uint8 SkinRopeColumns[256] = {};
+	FBoatSkin PreviewSkin;
+	bool bSkinPreview = false;
 	bool LoadMetaCrew();
 	class USkeletalMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
 public:
@@ -578,6 +586,14 @@ public:
 	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
 	const TArray<TObjectPtr<class USkeletalMeshComponent>>& GetCrewMeshes() const { return Crew; }
 	const FBoatLivery& GetLivery() const { return Livery; }
+	/** Boat skins: shows a skin on this boat without saving it (the Customize screen), and rebuilds her look. */
+	void SetSkinPreview(const FBoatSkin& InSkin);
+	/** Ends the preview: she wears her saved skin (or none) again. */
+	void ClearSkinPreview();
+	/** Rebuilds her look from the saved choice (after the Customize screen saves or takes a skin off). */
+	void RefreshSkin();
+	bool HasSkin() const { return bHasSkin; }
+	const FBoatSkin& GetSkin() const { return Skin; }
 	/** Rig clearance (SailingSim.Visual.RigClearance): in a bare test world, a steady breeze and the autopilot holding a true
 	 *  wind angle (deg, + = wind from starboard), and the rig lines recorded as they are built (boat frame, cm): each drawn
 	 *  line, named, plus the spreaders (not drawn as lines: the mast model has them) for the sails to clear. */
