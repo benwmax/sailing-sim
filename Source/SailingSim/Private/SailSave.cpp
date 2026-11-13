@@ -367,7 +367,7 @@ FString FSailSave::ToJson() const
 				for (const auto& F : Old->Values)
 				{
 					const TSharedPtr<FJsonObject>* OldBoat = nullptr;
-					if (!BoatSkins.Contains(F.Key) && F.Value.IsValid() && F.Value->TryGetObject(OldBoat) && OldBoat) (*OldBoat)->RemoveField(TEXT("skin"));
+					if (!BoatSkins.Contains(FString(F.Key)) && F.Value.IsValid() && F.Value->TryGetObject(OldBoat) && OldBoat) (*OldBoat)->RemoveField(TEXT("skin"));
 				}
 			}
 		}
@@ -640,7 +640,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			FString Skin;
 			if (F.Value.IsValid() && F.Value->TryGetObject(Boat) && Boat && (*Boat)->TryGetStringField(TEXT("skin"), Skin) && !Skin.IsEmpty() && Skin.Len() <= 64)
 			{
-				Out.BoatSkins.Add(F.Key, Skin);
+				Out.BoatSkins.Add(FString(F.Key), Skin);
 			}
 		}
 	}
