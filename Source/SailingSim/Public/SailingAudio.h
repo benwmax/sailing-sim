@@ -37,6 +37,10 @@ struct FSailingSoundParams
 	std::atomic<float> GainBoat{ 1.f };      // everything on board
 	std::atomic<float> GainWeather{ 1.f };   // rain, squall, thunder
 	std::atomic<float> GainSignals{ 1.f };   // horns and whistles
+	// Feedback #18/#19 (natural sound): the water and the storm's moods.
+	std::atomic<float> Chop{ 0.f };          // 0..1 the wind's sea at the boat: wavelets slapping the hull under way
+	std::atomic<float> Buffet{ 1.f };        // the wind's roar and lull (SailingSound::WindBuffet), times the wind's level
+	std::atomic<float> SailRain{ 0.f };      // 0..1 drops drumming on the sails (0 with the sails stowed)
 };
 
 /** The synth's voices a recorded sample can replace (Content/Audio/Samples/<Name>.wav -> /Game/Audio/Samples/S_<Name>). */
@@ -96,6 +100,10 @@ private:
 	float SGust = 1.f, SShadow = 0.f, SMoored = 0.f, SRainDeck = 0.f, SRainWater = 0.f, SSquall = 0.f;
 	FOnePole GustLow, LapLow;
 	FBandPass LapBand, SquallBand, SquallBand2, SheetBand;
+	// Feedback #18/#19: wavelets slapping the hull under way, rain drumming on the sails.
+	float SChop = 0.f, SBuffet = 1.f, SSailRain = 0.f, WaveEnv = 0.f, WaveTone = 0.f, SailDropEnv = 0.f;
+	FBandPass WaveBand, SailDropBand;
+	FOnePole WaveLow;
 	float LapEnv = 0.f, HalyardEnv = 0.f, HalyardF1 = 0.f, HalyardF2 = 0.f, HalyardP1 = 0.f, HalyardP2 = 0.f, SheetPhase = 0.f;
 	// Slice sound pass: smoothed group gains and the output limiter's envelope (in place of the old tanh clip).
 	float SGainBoat = 1.f, SGainWeather = 1.f, SGainSignals = 1.f, LimiterEnv = 0.f;
@@ -228,6 +236,42 @@ namespace SailingSound
 	/** Whether the boat trims its sheets on winches (keelboats, the trimaran and the cat cruiser) or by hand through
 	 *  blocks (the Sunfish, the ILCA and the Hobie): a dinghy never clicks a winch, its sheet runs through blocks both ways. */
 	SAILINGSIM_API bool HasSheetWinches(Sailing::EBoatType Type);
+
+	/** Feedback #18: the trim the sound hears. A winch clicks only when the player winches a sheet in: the crew's own small
+	 *  trims and eases (trim assist, Easy mode, the trimmer's hands) are silent on a winch boat, where they used to click
+	 *  and whir constantly; only a big ease by the crew (a sheet let run, under -0.3) is heard. A dinghy's sheet runs
+	 *  through its blocks either way (no winch to click). */
+	SAILINGSIM_API float AudibleTrimRate(float TrimRate, bool bWinches, bool bPlayerTrimming);
+
+	/** Feedback #18: what says the player's own hand is on a sheet this frame (ASailboatPawn::IsPlayerTrimming fills it). */
+	struct FPlayerTrimInput
+	{
+		bool bBlocked = false;                 // a menu open, a traffic boat or the ghost
+		int32 Station = 0;                     // Sailing::ECrewStation: 0 none (the boat's own sheets), 1 helm, 2 jib trimmer, 3 main trimmer
+		double SecondsSinceManualTrim = 1e9;   // no station: since a sheet key last moved a sheet
+		float JibSheetHeld = 0.f, GrindHeld = 0.f, MainSheetHeld = 0.f;   // at a station: the keys held now
+		double SecondsSinceGrind = 1e9;        // at the jib: since the player's grinding last brought sheet in (taps grind on)
+	};
+	/** Whether the player is trimming: within 0.25 s of moving a sheet; at a station only the keys that work there (the
+	 *  jib trimmer's sheet and grinder, taps included; the main trimmer's mainsheet; nothing at the helm). */
+	SAILINGSIM_API bool IsPlayerTrimming(const FPlayerTrimInput& In);
+
+	/** Feedback #19: how stormy the wind sounds, 0..1, from the apparent wind (m/s), the rain and a squall's nearness
+	 *  (0..1 each). 0 in a breeze under about 17 kn apparent without rain or a squall. */
+	SAILINGSIM_API float Storminess(float ApparentWindMs, float Rain, float Squall);
+	/** Feedback #19: the wind's roar and lull in a blow: an irregular swell (four incommensurate slow waves, surges two to
+	 *  nine seconds apart, never a steady loop) times Storminess. Level multiplies the wind's loudness (0.55..1.45), Pitch
+	 *  its loops' pitch (0.94..1.08); both exactly 1 when Storminess is 0. */
+	struct FWindBuffet { float Level = 1.f, Pitch = 1.f; };
+	SAILINGSIM_API FWindBuffet WindBuffet(double TimeSeconds, float Storm);
+	/** Feedback #19: rain comes in waves. A multiplier (0.6..1.3, mean about 1) on the rain's level that drifts over 5 to
+	 *  20 s; 1 when Rain is 0. (The pawn caps the swollen rain at 1.2: a downpour's peaks run a fifth over the old level.) */
+	SAILINGSIM_API float RainSwell(double TimeSeconds, float Rain);
+	/** Feedback #18/#19: the wind's sea at the boat, 0..1, from the true wind (m/s): none under 3 m/s, full by 10. */
+	SAILINGSIM_API float ChopFor(float TrueWindMs);
+	/** Feedback #19: seconds to the next distant, unseen rumble while a storm cell is near (Nearness 0..1, U uniform
+	 *  0..1): 14 to 42 s at the edge of hearing, 7 to 21 s under the cell (they last 6 to 10 s: never a steady roll). */
+	SAILINGSIM_API float DistantRumbleGap(float Nearness, float U);
 
 	/** Slice sound pass: who is calling along a North Texas lake's shore, 0..1 each, from the sun's elevation (deg) and
 	 *  whether it is morning (the sun in the east), the day of the year, the rain (0..1) and the wind (m/s). Birds sing

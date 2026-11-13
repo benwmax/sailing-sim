@@ -1,5 +1,6 @@
 #include "SailingEnvironment.h"
 #include "SoundCaptions.h"
+#include "SailingAudio.h"
 #include "SailingFrame.h"
 #include "SailingProbeCopy.h"
 #include "BenchRunner.h"
@@ -1276,6 +1277,45 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 			float(S.X), float(S.Y), Distance });
 	}
 
+	// Feedback #19: a storm rumbles on between the strikes it shows: distant thunder from discharges hidden in the cloud
+	// and the rain, heard but not seen (no flash, no bolt), from the cell's side of the sky. Only while a cell is active
+	// within about 20 km (strikes within two minutes either side of now); more often the nearer it is.
+	{
+		float Nearness = 0.f;
+		FVector2D Cell(0.0, 0.0);
+		const int32 NumStrikes = int32(Strikes.size());
+		for (int32 Si = FMath::Max(0, NextStrike - 40); Si < FMath::Min(NumStrikes, NextStrike + 40); ++Si)
+		{
+			const FLightningStrike& Near = Strikes[Si];
+			if (FMath::Abs(Near.Time - T) > 120.0) continue;
+			const float Closeness = FMath::Clamp(1.f - float(FVector2D::Distance(FVector2D(Near.X, Near.Y), Listener)) / 20000.f, 0.f, 1.f);
+			if (Closeness > Nearness) { Nearness = Closeness; Cell = FVector2D(Near.X, Near.Y); }
+		}
+		if (Nearness <= 0.f || bNoLightning || T < NextRumble - 120.0 || T < LastRumbleCaption)   // no cell, or the clock went back
+		{
+			NextRumble = -1.0;
+			LastRumbleCaption = FMath::Min(LastRumbleCaption, T - 25.0);
+		}
+		else if (NextRumble < 0.0) NextRumble = T + SailingSound::DistantRumbleGap(Nearness, RumbleRng.FRand());
+		else if (T >= NextRumble)
+		{
+			// At least 8 km off and never nearer than the cell itself (up to 6 km past it), within 40 deg of its bearing:
+			// loudness by the strikes' own law (2500 / distance), so never louder than the cell's own thunder.
+			const FVector2D ToCell = Cell - Listener;
+			const double Bearing = FMath::Atan2(ToCell.Y, ToCell.X) + FMath::DegreesToRadians(double(RumbleRng.FRandRange(-40.f, 40.f)));
+			const float RollM = FMath::Max(float(ToCell.Size()), 8000.f) + RumbleRng.FRandRange(0.f, 6000.f);
+			const FVector2D At = Listener + FVector2D(FMath::Cos(Bearing), FMath::Sin(Bearing)) * RollM;
+			Thunder.Add({ FMath::Clamp(2500.f / RollM, 0.1f, 1.f), 0.f, RumbleRng.FRandRange(6.f, 10.f), float(At.X), float(At.Y), RumbleRng.FRandRange(0.8f, 1.6f) });
+			// One caption at most every 25 s, so the captions don't scroll with rumbles.
+			if (T - LastRumbleCaption >= 25.0)
+			{
+				LastRumbleCaption = T;
+				if (USoundCaptions* Captions = USoundCaptions::Get(this)) Captions->AddFrom(TEXT("Thunder, distant"), At, FString(), 4.0);
+			}
+			NextRumble = T + SailingSound::DistantRumbleGap(Nearness, RumbleRng.FRand());
+		}
+	}
+
 	// Stills (docs/storm-lumen/): -SailingFlashHold holds the storm's first strike at full flash, so a still shows the
 	// scene lit by lightning (a flash lasts about 0.3 s; a bench's screenshot never lands on one).
 	static SailingArgs::FCachedFlag FlashHoldArg(TEXT("SailingFlashHold"));
@@ -1320,7 +1360,7 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 		if (PendingThunder[I].Delay <= 0.f)
 		{
 			const FPendingThunder& Pt = PendingThunder[I];
-			Thunder.Add({ Pt.Loudness, 0.f, 3.f + 4.f * (1.f - Pt.Loudness), Pt.X, Pt.Y });
+			Thunder.Add({ Pt.Loudness, 0.f, 3.f + 4.f * (1.f - Pt.Loudness), Pt.X, Pt.Y, 0.15f });
 			// Sound captions: what was heard and where from (close under 2 km, distant past 8 km).
 			if (USoundCaptions* Captions = USoundCaptions::Get(this))
 			{
