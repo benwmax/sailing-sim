@@ -83,8 +83,6 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	// Every other tier keeps the engine's scale and the material's default (no floor).
 	TestEqual(TEXT("Ultra: 320 cloud samples"), CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 320.f);
 	TestEqual(TEXT("Ultra: cloud view sample scale 3"), CloudViewSampleScale(ESailingQuality::Ultra), 3.f);
-	TestTrue(TEXT("Ultra: the cap leaves room for the scale (>= 160 x scale / 1.5)"),
-		CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")) * 1.5f >= 160.f * CloudViewSampleScale(ESailingQuality::Ultra));
 	TestEqual(TEXT("Ultra: cumulus step cap floor 150 m"), CloudCapStepFloorM(ESailingQuality::Ultra), 150.f);
 	TestEqual(TEXT("High: 80 cloud samples (unchanged)"), CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 80.f);
 	TestEqual(TEXT("Medium: 72 cloud samples (unchanged)"), CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 72.f);
