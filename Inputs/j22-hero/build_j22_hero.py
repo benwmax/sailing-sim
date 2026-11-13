@@ -483,37 +483,6 @@ def build_cabin():
 
 # ------------------------------------------------------------------ appendages
 
-def naca(t, x):
-    return 5 * t * (0.2969 * math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4)
-
-
-def foil(name, root_le, root_te, tip_le, tip_te, z_root, z_tip, thick=0.12, n=36, m=24, mat=None, round_tip=True):
-    bm = bmesh.new()
-    rings = []
-    for i in range(m + 1):
-        s = i / m
-        le = root_le + (tip_le - root_le) * s
-        te = root_te + (tip_te - root_te) * s
-        z = z_root + (z_tip - z_root) * s
-        c = le - te
-        tt = thick * (1 - 0.35 * s ** 6) if round_tip else thick
-        ring = []
-        for k in range(n):
-            a = 2 * math.pi * k / n
-            xc = 0.5 * (1 + math.cos(a))
-            y = naca(tt, xc) * c * (1 if a < math.pi else -1)
-            ring.append(bm.verts.new((le - xc * c, y, z)))
-        rings.append(ring)
-    for a, b in zip(rings[:-1], rings[1:]):
-        for k in range(n):
-            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
-    bm.faces.new(rings[0][::-1])
-    bm.faces.new(rings[-1])
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    ob = mesh_obj(name, bm, mat)
-    return ob
-
-
 def keel_edges(z):
     """Keel leading and trailing edge x at height z: the class template (docs/boatkit-3) at MPA, 216 mm under the hull,
     and MPC, 483 mm lower: chords 0.965 and 0.603 m, trailing edge 2.90 m forward of the transom at MPA. The rule's
@@ -524,12 +493,101 @@ def keel_edges(z):
 
 KEEL_MPA_Z = keel_z(0.0) - 0.216
 
+# The keel's sections: the class's Plan C table of offsets (International J/22 Class Rules, section H; the 1993 yearbook
+# prints the same plan), half-widths in mm at these fractions of the chord from the leading edge, at sections 1 to 4
+# (216, 458, 700 and 942 mm under the hull; chords 975, 795, 615 and 435 mm). A 10% section at the root thickening to 14%
+# at the tip, fullest at 30-35% of the chord, with a 6 mm blunt trailing edge (shape wave 4: it was a NACA 0012 thinned
+# to 8% at the tip).
+KEEL_XC = (0.0, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0)
+KEEL_SECTIONS = (    # (depth under the hull in m, chord in m, half-widths in mm at KEEL_XC)
+    (0.216, 0.975, (0, 17.5, 24.5, 34, 40.5, 44.5, 47, 48, 49, 47, 43, 37, 30, 21.5, 12.5, 3)),
+    (0.458, 0.795, (0, 15.5, 22, 30, 35.5, 39.5, 41.5, 42, 42, 41.5, 38, 32.5, 26, 19, 11, 3)),
+    (0.700, 0.615, (0, 14, 19, 26.5, 31, 34, 36, 36.5, 36.5, 36, 33, 28, 22.5, 16, 10, 3)),
+    (0.942, 0.435, (0, 12, 16.5, 22.5, 26.5, 29, 30.5, 31, 31, 30.5, 27.5, 23.5, 18.5, 13.5, 8.5, 3)),
+)
+KEEL_TIP_R = 0.012           # the bottom closes round over this height
+
+
+def _pchip(xs, ys, x):
+    """Monotone cubic through (xs, ys) at x (Fritsch-Carlson slopes): no overshoot between the table's stations."""
+    n = len(xs)
+    i = max(0, min(n - 2, next((k for k in range(n - 1) if x <= xs[k + 1]), n - 2)))
+    h = [xs[k + 1] - xs[k] for k in range(n - 1)]
+    dl = [(ys[k + 1] - ys[k]) / h[k] for k in range(n - 1)]
+
+    def slope(k):
+        if k == 0:
+            return dl[0]
+        if k == n - 1:
+            return dl[-1]
+        if dl[k - 1] * dl[k] <= 0:
+            return 0.0
+        w1, w2 = 2 * h[k] + h[k - 1], h[k] + 2 * h[k - 1]
+        return (w1 + w2) / (w1 / dl[k - 1] + w2 / dl[k])
+    t = (x - xs[i]) / h[i]
+    h00, h10, h01, h11 = 2 * t ** 3 - 3 * t * t + 1, t ** 3 - 2 * t * t + t, -2 * t ** 3 + 3 * t * t, t ** 3 - t * t
+    return h00 * ys[i] + h10 * h[i] * slope(i) + h01 * ys[i + 1] + h11 * h[i] * slope(i + 1)
+
+
+def keel_half(z, xc):
+    """The keel's half-width over its chord at height z, xc of the chord from the leading edge (Plan C, interpolated
+    in depth between the sections and held past the first and last)."""
+    d = KEEL_MPA_Z + 0.216 - z                       # depth under the hull, as Plan C counts it
+    ds = [sct[0] for sct in KEEL_SECTIONS]
+    d = min(max(d, ds[0]), ds[-1])
+    k = max(0, min(len(ds) - 2, next((i for i in range(len(ds) - 1) if d <= ds[i + 1]), len(ds) - 2)))
+    w = (d - ds[k]) / (ds[k + 1] - ds[k])
+    xc = min(max(xc, 0.0), 1.0)
+    out = 0.0
+    for sct, f in ((KEEL_SECTIONS[k], 1 - w), (KEEL_SECTIONS[k + 1], w)):
+        ys = [v / 1000.0 / sct[1] for v in sct[2]]
+        if xc < KEEL_XC[1]:
+            # the nose: a*sqrt(xc) + b*xc, round at the edge and meeting the cubic's value and slope at 2.5% (a plain
+            # root left a slope break there that shaded as a line down the leading edge)
+            x1, y1, s1 = KEEL_XC[1], ys[1], (ys[2] - ys[1]) / (KEEL_XC[2] - KEEL_XC[1])
+            a = 2 * (y1 - s1 * x1) / math.sqrt(x1)
+            h = a * math.sqrt(xc) + (s1 - a / (2 * math.sqrt(x1))) * xc
+        else:
+            h = _pchip(KEEL_XC[1:], ys[1:], xc)
+        out += f * h
+    return out
+
 
 def build_keel():
+    """The fin: Plan C's sections on the class planform, its bottom closed round. It meets the hull on a crisp
+    joint, as the photos show: a 12-35 mm fillet read as a raised bead to three blind reviewers (shape wave 4). The
+    physics keel is a lift curve and an area (FBoatConfig), so none of this moves it."""
     z_root, z_tip = keel_z(0.0) + 0.05, -1.16
-    (rl, rt), (tl, tt) = keel_edges(z_root), keel_edges(z_tip)
-    k = foil("Keel", rl, rt, tl, tt, z_root, z_tip, thick=0.12, mat=MAT["KeelLead"])
-    return k
+    n, m = 64, 30
+    bm = bmesh.new()
+    rings = []
+    zs = [z_root + (z_tip + KEEL_TIP_R - z_root) * i / m for i in range(m)]
+    # the bottom closes round: the section thins on a quarter ellipse over the last KEEL_TIP_R (the bottom ring keeps
+    # 12%, a narrow flat), the planform carried straight down to the bottom
+    zs += [z_tip + KEEL_TIP_R * (1 - math.cos(math.radians(p))) for p in (90, 70, 55, 42, 30, 18, 0)]
+
+    def ring_at(z):
+        le, te = keel_edges(z)
+        c = le - te
+        u = (z_tip + KEEL_TIP_R - z) / KEEL_TIP_R
+        f = max(math.sqrt(max(1 - min(u, 1.0) ** 2, 0.0)), 0.12) if u > 0 else 1.0
+        ring = []
+        for k in range(n):
+            a = 2 * math.pi * k / n
+            xc = 0.5 * (1 - math.cos(a))                  # 0 at the leading edge (k = 0), 1 at the trailing edge
+            sgn = 0 if k == n // 2 else (1 if a < math.pi else -1)    # the trailing edge's middle: a square blunt end
+            y = keel_half(z, xc) * c * f * sgn
+            ring.append(bm.verts.new((le - xc * c, y, z)))
+        return ring
+    for z in zs:
+        rings.append(ring_at(z))
+    for a_, b_ in zip(rings[:-1], rings[1:]):
+        for k in range(n):
+            bm.faces.new((a_[k], a_[(k + 1) % n], b_[(k + 1) % n], b_[k]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return mesh_obj("Keel", bm, MAT["KeelLead"])
 
 
 # ------------------------------------------------------------------ deck hardware

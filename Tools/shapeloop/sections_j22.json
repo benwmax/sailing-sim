@@ -139,10 +139,12 @@
     "Pintle_"
    ],
    "owns": [
-    "naca",
-    "foil",
     "keel_edges",
     "build_keel",
+    "KEEL_XC",
+    "KEEL_SECTIONS",
+    "_pchip",
+    "keel_half",
     "Inputs/j22-hero/j22_steering.py"
    ],
    "borders": [
