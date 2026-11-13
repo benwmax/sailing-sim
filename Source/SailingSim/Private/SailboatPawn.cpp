@@ -4542,8 +4542,8 @@ void ASailboatPawn::UpdateCrewGroomLOD()
 		USkeletalMeshComponent* Part = P.Get();
 		if (!Part) continue;
 		const bool bFar = bHighOnly && FVector::Dist(Eye, Part->Bounds.Origin) > 150.0 && Part->GetNumLODs() > 1;
-		const int32 Want = bFar ? 2 : 0; // SetForcedLodModel counts from 1: 2 is LOD1, 0 lets it choose
-		if (Part->GetForcedLOD() != Want) Part->SetForcedLodModel(Want);
+		const int32 Want = bFar ? 2 : 0; // SetForcedLOD counts from 1: 2 is LOD1, 0 lets it choose
+		if (Part->GetForcedLOD() != Want) Part->SetForcedLOD(Want);
 	}
 	for (const TPair<TWeakObjectPtr<UGroomComponent>, int32>& G : CrewGrooms)
 	{
