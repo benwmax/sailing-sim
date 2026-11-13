@@ -1,0 +1,46 @@
+{
+ "id": "j22-keel",
+ "boat": "J22H",
+ "sections": [
+  "keel_rudder"
+ ],
+ "status": "wave 4, round 3: blind A/B 3 of 3 (round 1 0 of 3: the keel-hull fillet; round 2 1 of 3: a lip under the rudder, a line down the keel's nose)",
+ "feature": "Keel and rudder fairing above the physics: the fin's sections from the class's table of offsets, the bottoms closed round, the rudder's bottom corners on the class radius. Planforms and spans unchanged (the physics' foils).",
+ "targets": {
+  "Keel.width": {
+   "value": 0.117,
+   "tol_m": 0.004,
+   "tier": "A",
+   "source": "International J/22 Class Rules, section H, Plan C table of offsets: section 1 (216 mm under the hull) 975 mm chord, 49 mm half-width at 35% (5.0%); held to the hull, where the class planform's chord is 1.16 m. Measured as the Keel object's bounds across."
+  },
+  "Rudder.width": {
+   "value": 0.044,
+   "tol_m": 0.002,
+   "tier": "C",
+   "source": "unchanged: the head's 44 mm where the tiller straps and the kit's pintles hug it (j22_steering.blade_thick)"
+  }
+ },
+ "outline_views": [],
+ "features": [
+  "keel sections: Plan C half-widths at 15 stations, 10% at the root to 14% at the tip, 6 mm blunt trailing edge",
+  "keel bottom: closed round, the section thinning on a quarter ellipse over the last 12 mm",
+  "rudder bottom: 40 mm corners in profile (Plan D), closed round over the last 9 mm"
+ ],
+ "references": "International J/22 Class Rules 2025 section H Plans C and D (also the 1993 yearbook's printing, Plans A-B-C-D); Commons j22-broadside-crane-stern (CC BY-SA) for the fillet and the rudder's look. Links and numbers only.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code reads the keel's or rudder's mesh; the physics foils are FBoatConfig numbers. The Mac rebakes the Hull and Rudder groups.",
+ "photo_needed": "no",
+ "physics_reference": "physics",
+ "physics_table": "Tools/boats/j22/make_j22_hull.py",
+ "findings": [
+  "The rudder against Plan D: the class blade is 300 mm chord and reaches 860-890 mm under the hull's bottom at the transom, about z -0.65; the hero's (and the physics') is about 350 mm and reaches z -0.98. Plan D's section is 13% thick (19.7 mm half-width at 105 mm), the hero's 10%. A real change: it waits for a physics calibration pass (rudder Area 0.34 m^2, Chord 0.36), and the kit's pintles are sized to the 36 mm blade. The head above the water follows Bean's photos (pc/j22-detail) and is left as it is.",
+  "The keel's sections were a NACA 0012 thinned to 8% at the tip; Plan C's are 10% at the root and 14% at the tip, fullest at 30-35%. The planform (keel_edges, boatkit-3) is unchanged.",
+  "Round 1 swept a 35 mm concave fillet round the keel's root (ray-cast to the hull): blind A/B 0 of 3, all three read it as a raised bead or a bad fairing job; 12 mm read the same. The crane photo shows a crisp joint, so the fin meets the hull as before.",
+  "QA, round 1: the keel's sections are fractions of Plan C's chords put on keel_edges' (0.965/0.602 m against Plan C's 0.975/0.615), so the fin is 1-2% thinner than the table's millimetres; above section 1 the fraction is held, so at the hull (1.16 m chord) the half-width is 58 mm.",
+  "Round 3's three blind reviewers all preferred it (rounded rudder corners and keel bottom); all three noted the keel's trailing edge at the hull reads as a thick rounded strip. It is Plan C's 6 mm blunt edge (held as a fraction up to the hull, about 7 mm there) under smooth shading; a sharp-edged square end is a follow-up."
+ ]
+}

@@ -1,0 +1,335 @@
+{
+ "about": "Masts, tops, caps, yards, booms, bowsprit and jibbooms for the frigate Commonwealth (docs/shipkit-3), read by Tools/shipkit/frigate/spars.py. Lengths in feet, diameters in inches. Each number says where it comes from: 'list' is the War Office's statement of 31 March 1795 of masts and yards for the 44-gun frigates 'according to Mr. Steel's method'; '1801' the Navy's December 1801 orders for the 44s (fore 95 ft x 32 in, main 105 x 35, mizzen 92 x 24, bowsprit 64 x 34; quoted in T. Martin, 'Constitution Close Up', USS Constitution Museum), kept as the cross-check; '36s' scaled from the War Office's 1794 list for the 36-gun frigates (topmasts and topgallant masts there 'will answer for both'); 'rule' a proportion of the period (David Steel, 'Elements and Practice of Rigging and Seamanship', 1794, as modelling references quote it: not checked against the book here, whose transcriptions this session cannot reach); 'draught' read off the 1817 sail plan 'A Draft of the U.S. Frigate Constitution' (NARA 102278445, refs.json) at 10.31 px/ft both ways (its deadeyes are round), 'by eye' sized to look right where nothing says.",
+ "sources": {
+  "list": "https://wardepartmentpapers.org/document/78108/ (statement of lengths of masts and yards of 44-gun frigates; read through search transcriptions)",
+  "36s": "https://wardepartmentpapers.org/document/47336/ (dimensions of masts, yards and spars for 44 and 36 gun frigates, 1794)",
+  "1801": "https://ussconstitutionmuseum.org/wp-content/uploads/dlm_uploads/2020/01/closeup_martin.pdf",
+  "draught": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_U.S._Frigate_Constitution_-_NARA_-_102278445.jpg"
+ },
+ "registration": {
+  "note": "the 1817 draught against the model (docs/shipkit-3): draught x = 0.9292 ship x px + 337.1 (from its gun ports B..O against the model's 1..14, 10.31 px/ft), draught y = 2302.3 + 0.00924 draught x - 10.31 z ft (the load line at z = 0, a 0.53 deg tilt of the sheet). Its hull is drawn about 16% deeper than the 1927 lines (11.95 px/ft up the side), so heights near the hull are read against the hull and the rig's against the waterline",
+  "x_scale": 0.9292,
+  "x_offset": 337.1,
+  "y0": 2302.3,
+  "y_tilt": 0.00924,
+  "px_per_ft": 10.31
+ },
+ "step": {
+  "keelson_over_rabbet_ft": 3.0,
+  "note": "the lower masts step on the keelson: keel, floors and keelson about 3 ft over the rabbet (the hold slice builds them)"
+ },
+ "masts": {
+  "fore": {
+   "x_ft": 68.9,
+   "rake_deg": 0.5,
+   "x_note": "draught: the mast's centre just above the rail (draught x 2349.6); the rake by eye from the draught (it stands nearly upright)",
+   "lower": {
+    "length_ft": 97.0,
+    "diam_in": 32.3,
+    "head_ft": 13.5,
+    "src": "rule: 8/9 of the main mast (1801: 95 x 32); 1 in of diameter a yard of length; the head 5 in a yard"
+   },
+   "yard_below_top_ft": 9.7,
+   "yard_src": "draught: the fore yard 9.7 ft under the top",
+   "top": {
+    "fore_aft_ft": 11.8,
+    "breadth_ft": 15.7,
+    "src": "draught (fore and aft); breadth 4/3 of that (rule)"
+   },
+   "topmast": {
+    "length_ft": 58.8,
+    "diam_in": 19.6,
+    "head_ft": 8.2,
+    "src": "36s: 0.9 of the main topmast; 1 in a yard; head 5 in a yard"
+   },
+   "topgallant": {
+    "length_ft": 29.0,
+    "diam_in": 9.7,
+    "pole_ft": 16.1,
+    "src": "36s scaled (42 ft with the royal pole, 15 ft of it the pole, on a 36); 1 in a yard of the mast to its stop"
+   }
+  },
+  "main": {
+   "x_ft": -10.9,
+   "rake_deg": 1.5,
+   "x_note": "draught: 1527 above the rail, 1512 at the masthead (1.2-1.5 deg aft)",
+   "lower": {
+    "length_ft": 109.17,
+    "diam_in": 36.4,
+    "head_ft": 15.2,
+    "src": "list: 109 1/6 ft, half the gun deck plus the extreme breadth (1801: 105 x 35); 1 in a yard; head 5 in a yard"
+   },
+   "yard_below_top_ft": 10.4,
+   "yard_src": "draught: the main yard 10.4 ft under the top",
+   "top": {
+    "fore_aft_ft": 12.4,
+    "breadth_ft": 16.5,
+    "src": "draught (fore and aft); breadth 4/3 of that (rule). The rule's 1/3 of the topmast (21.8 ft) is wider than the draught's tops: theirs is used"
+   },
+   "topmast": {
+    "length_ft": 65.5,
+    "diam_in": 21.8,
+    "head_ft": 9.1,
+    "src": "list: 65 1/2 ft, 3/5 of the main mast; 1 in a yard; head 5 in a yard (draught 9.9 ft)"
+   },
+   "topgallant": {
+    "length_ft": 31.1,
+    "diam_in": 10.4,
+    "pole_ft": 16.1,
+    "src": "36s scaled (44 ft with the pole on a 36); 1 in a yard of the mast to its stop"
+   }
+  },
+  "mizzen": {
+   "x_ft": -64.4,
+   "rake_deg": 2.5,
+   "x_note": "draught: 974 above the rail; it rakes aft more than the main (by eye)",
+   "yard_below_top_ft": 9.1,
+   "yard_src": "the main's proportion of the head (the draught hangs the crossjack 5.8 ft under the top, where the gaff's jaws would meet it)",
+   "lower": {
+    "length_ft": 93.6,
+    "diam_in": 23.4,
+    "head_ft": 13.0,
+    "src": "rule: 6/7 of the main mast (1801: 92 x 24); 3/4 in a yard; head 5 in a yard"
+   },
+   "top": {
+    "fore_aft_ft": 9.5,
+    "breadth_ft": 12.7,
+    "src": "draught (fore and aft); breadth 4/3 of that (rule)"
+   },
+   "topmast": {
+    "length_ft": 49.1,
+    "diam_in": 16.4,
+    "head_ft": 6.8,
+    "src": "36s: 3/4 of the main topmast; 1 in a yard; head 5 in a yard"
+   },
+   "topgallant": {
+    "length_ft": 23.3,
+    "diam_in": 7.8,
+    "pole_ft": 12.1,
+    "src": "the main's proportions"
+   }
+  }
+ },
+ "yards": {
+  "note": "length overall, diameter at the slings, and each yardarm (outside the stop cleats). The yardarms by rule: 1/20 of the length for the lower yards, 1/9 for topsail yards (the reef earings), 1/12 above. Royals 2/3 of the topgallant yards (rule); the 1795 list stops at the topgallants",
+  "fore_yard": {
+   "mast": "fore",
+   "on": "lower",
+   "length_ft": 86.75,
+   "src": "list"
+  },
+  "fore_topsail_yard": {
+   "mast": "fore",
+   "on": "topmast",
+   "length_ft": 60.5,
+   "src": "list"
+  },
+  "fore_topgallant_yard": {
+   "mast": "fore",
+   "on": "topgallant",
+   "length_ft": 36.75,
+   "src": "list"
+  },
+  "fore_royal_yard": {
+   "mast": "fore",
+   "on": "pole",
+   "length_ft": 24.5,
+   "src": "rule"
+  },
+  "main_yard": {
+   "mast": "main",
+   "on": "lower",
+   "length_ft": 97.0,
+   "src": "list (Asa Curtis gives the United States 95 ft)"
+  },
+  "main_topsail_yard": {
+   "mast": "main",
+   "on": "topmast",
+   "length_ft": 69.17,
+   "src": "list"
+  },
+  "main_topgallant_yard": {
+   "mast": "main",
+   "on": "topgallant",
+   "length_ft": 41.33,
+   "src": "list"
+  },
+  "main_royal_yard": {
+   "mast": "main",
+   "on": "pole",
+   "length_ft": 27.6,
+   "src": "rule"
+  },
+  "crossjack_yard": {
+   "mast": "mizzen",
+   "on": "lower",
+   "length_ft": 60.5,
+   "src": "list"
+  },
+  "mizzen_topsail_yard": {
+   "mast": "mizzen",
+   "on": "topmast",
+   "length_ft": 46.17,
+   "src": "list"
+  },
+  "mizzen_topgallant_yard": {
+   "mast": "mizzen",
+   "on": "topgallant",
+   "length_ft": 27.7,
+   "src": "rule: 0.6 of the topsail yard, as the list's main and fore"
+  },
+  "mizzen_royal_yard": {
+   "mast": "mizzen",
+   "on": "pole",
+   "length_ft": 18.5,
+   "src": "rule"
+  },
+  "diam_in_per_yard": 0.714,
+  "diam_note": "5/7 in of diameter a yard of length (rule)",
+  "studding_sail_booms": {
+   "note": "on the fore and main lower and topsail yards, in boom irons, half the yard long, 1 in of diameter for each 5 ft (rule)",
+   "yards": ["fore_yard", "fore_topsail_yard", "main_yard", "main_topsail_yard"],
+   "length_of_yard": 0.5,
+   "diam_in_per_ft": 0.2
+  }
+ },
+ "bowsprit": {
+  "length_ft": 65.5,
+  "diam_in": 35.3,
+  "src": "list: 65 1/2 ft (1801: 64 x 34); its diameter the 1801 ratio to the main mast",
+  "line": "its heel stands on the forecastle deck, placed so the cap at its end lands on the 1817 draught's cap (3048, 1912): that puts the heel about 16 ft inside the stem (the Navy's 1849 spar deck plan, NARA 75841368, draws a later bowsprit's heel there, 10 ft inside the stem; the gun deck plan has none). The steeve is the draught's (its edges between draught x 2730 and 3000). It passes out over the stem head, which is cut down to bed it (spars.Rig.stem_bed, skin.Skin.backbone); the knightheads beside it and the opening in the bow's bulwark are slice 9's",
+  "steeve_deg": 22.2,
+  "cap_draught_px": [3048, 1912],
+  "jibboom": {
+   "length_ft": 46.8,
+   "diam_in": 15.6,
+   "out_ft": 29.0,
+   "src": "rule: 5/7 of the bowsprit, 1 in a yard; draught: its end 29 ft past the cap"
+  },
+  "flying_jibboom": {
+   "length_ft": 40.0,
+   "diam_in": 10.0,
+   "out_ft": 20.5,
+   "src": "draught: its end 20 ft past the jibboom's; new in the 1790s"
+  },
+  "dolphin_striker": {
+   "length_ft": 11.5,
+   "diam_in": 7.0,
+   "src": "rule: 1/4 of the jibboom"
+  },
+  "spritsail_yard": {
+   "length_ft": 60.5,
+   "at": 0.78,
+   "src": "rule: the fore topsail yard's length; slung under the bowsprit 0.78 of the way out"
+  }
+ },
+ "spanker": {
+  "boom": {
+   "length_ft": 65.4,
+   "diam_in": 15.0,
+   "jaws_over_rail_ft": 2.0,
+   "rise_deg": 3.0,
+   "src": "draught: from the mizzen to its end over the stern 65 ft, rising aft, its jaws about 2 ft over the quarterdeck rail (so it swings over the rail and the taffrail); its diameter by eye"
+  },
+  "gaff": {
+   "length_ft": 55.4,
+   "diam_in": 11.0,
+   "jaws_below_top_ft": 4.8,
+   "peak_deg": 19.3,
+   "src": "draught: its jaws 4.8 ft under the mizzen top, its peak 52.3 ft aft and 18.3 ft up"
+  },
+  "brace_note": "the boom and gaff swing 40 deg either way: about where the after mizzen shrouds (slice 4) stop them"
+ },
+ "taper": {
+  "note": "diameter along a spar as a fraction of its greatest (rule). Masts by quarters from the partners or cap up to the hounds; yards by quarters from the slings out to the yardarm's end",
+  "mast": [1.0, 0.984, 0.933, 0.857, 0.75],
+  "yard": [1.0, 0.969, 0.875, 0.7, 0.43],
+  "bowsprit": [1.0, 0.98, 0.92, 0.83, 0.6],
+  "boom": [0.85, 1.0, 0.95, 0.85, 0.7],
+  "pole": [0.7, 0.45]
+ },
+ "fittings": {
+  "note": "fractions of the lower mast's diameter D unless named; by eye from period drawings and the draught",
+  "head_gap_in": {"fore": 10.0, "main": 10.0, "mizzen": 5.75, "topmast": {"fore": 6.5, "main": 6.5, "mizzen": 4.25}, "note": "between a masthead's fore face and the next mast's heel, in inches: the stays come down the masthead's fore face from their eyes, in front of the shrouds' eyes, and turn forward under the heel (slice 4), so the gap is a shroud eye and a stay across, and an inch: lower masts 3.3 + 5.6 in (fore and main) and 1.9 + 2.7 in (mizzen), topmasts 2.2 + 3.2 in and 1.4 + 1.8 in (standing_1797.json's sizes). The caps' bridges between their two holes are as broad"},
+  "head_square": 0.72,
+  "trestletree": {
+   "depth": 0.36,
+   "breadth": 0.2
+  },
+  "crosstree": {
+   "depth": 0.22,
+   "breadth": 0.25
+  },
+  "top_plank_in": 2.5,
+  "lubber_hole_in": {"fore": 11.0, "main": 10.5, "mizzen": 6.0, "note": "the lubber's hole's sides stand this far off the trestletrees' outer faces: the lower shrouds' legs (slice 4) come down through the hole, and this leaves them about an inch clear of the hole's coaming (0.8 to 1.0 in). Slice 3 had 4.2 in, which put the legs through the coaming"},
+  "top_rim_in": [4.5, 4.0],
+  "top_rail_ft": 3.0,
+  "cheek": {
+   "length_of_head": 0.55,
+   "thick": 0.18,
+   "broad": 0.5,
+   "topmast_thick": 0.15,
+   "clear_of_yard_ft": 0.4,
+   "note": "the lower mast's cheeks stop 0.4 ft above the lower yard (never longer than 0.55 of the head), so a braced yard swings clear of them; the topmast's are 0.35 of its head and the topsail yard hoists to 0.4 ft under them",
+   "topmast_length_of_head": 0.35
+  },
+  "fid": 0.25,
+  "bolster": 0.16,
+  "cap": {
+   "margin_of_topmast": 0.35,
+   "depth_of_topmast": 0.8
+  },
+  "topmast_trestletrees_of_top": 0.65,
+  "topmast_crosstrees_of_top": 0.55,
+  "hoops": {
+   "pitch_ft": 4.0,
+   "broad_in": 4.0,
+   "thick_in": 0.6,
+   "note": "iron hoops on the made lower masts and the bowsprit"
+  },
+  "mast_coat": {
+   "height_in": 10,
+   "out_in": 6
+  }
+ },
+ "paint": {
+  "note": "1797: masts, topmasts, booms and bowsprit bright (oiled pine); mastheads, tops, caps, crosstrees and all yards black; iron black",
+  "wood": "Spar",
+  "black": "HullBlack",
+  "iron": "Iron"
+ },
+ "draught_heights": {
+  "note": "heights read off the draught (z ft over the load line at 10.31 px/ft) for rig_check.py: [draught x, draught y]. The 1817 rig carries a skysail yard above each royal (draught y 307 fore, 153 main, 487 mizzen) on a pole up to the truck, so its trucks stand a skysail pole higher than the model's royal poles",
+  "main": {
+   "top": [1500, 1505],
+   "lower_cap": [1528, 1318],
+   "topmast_crosstrees": [1527, 940],
+   "topmast_cap": [1527, 822],
+   "lower_yard": [1520, 1612],
+   "topsail_yard": [1525, 977],
+   "topgallant_yard": [1530, 595],
+   "royal_yard": [1530, 342],
+   "truck": [1532, 132]
+  },
+  "fore": {
+   "top": [2340, 1540],
+   "lower_cap": [2363, 1375],
+   "lower_yard": [2380, 1640],
+   "topmast_crosstrees": [2370, 1045],
+   "topmast_cap": [2372, 935],
+   "topgallant_yard": [2378, 700],
+   "royal_yard": [2380, 465],
+   "truck": [2382, 290]
+  },
+  "mizzen": {
+   "top": [966, 1600],
+   "lower_cap": [977, 1460],
+   "lower_yard": [985, 1660],
+   "topmast_crosstrees": [985, 1110],
+   "topmast_cap": [985, 1015],
+   "topgallant_yard": [985, 835],
+   "royal_yard": [990, 640],
+   "truck": [990, 465]
+  }
+ }
+}

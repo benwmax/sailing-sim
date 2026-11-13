@@ -1,0 +1,161 @@
+{
+ "about": "Standing rigging for the frigate Commonwealth (docs/shipkit-4), read by Tools/shipkit/frigate/rigging.py: shrouds, deadeyes, lanyards, chains, ratlines, futtock shrouds, backstays, stays and the bowsprit's shrouds, martingales and guys. Rope sizes are circumferences in inches, as rope was measured then (diameter = circumference / pi); lengths in feet. Each number says where it comes from: 'draught' read off the 1817 sail plan (NARA 102278445) through the registration in spars_1795.json (x px on the 3840 px copy); '1799' a December 1799 note that the 44s' main shrouds were 10 1/2 in (T. Martin, 'Constitution Close Up', USS Constitution Museum, as a search summary quotes it: this session could not open the paper); 'rule' a period proportion of the shroud or stay it goes with (as modelling references give them, not checked against Steel's tables); 'by eye' where nothing says. The 1797 'Dimensions of the Rigging for the Frigate Constitution' (War Department Papers 78269; the museum's catalogue 2506.1) has the real list, but neither site opens from here: allow wardepartmentpapers.org and ussconstitutionmuseum.org in the session's network settings to check these sizes against it.",
+ "sources": {
+  "draught": "https://commons.wikimedia.org/wiki/File:A_Draft_of_the_U.S._Frigate_Constitution_-_NARA_-_102278445.jpg",
+  "1799": "https://ussconstitutionmuseum.org/wp-content/uploads/dlm_uploads/2020/01/closeup_martin.pdf",
+  "1797_list": "https://wardepartmentpapers.org/document/78269/ (not opened)"
+ },
+ "paint": {
+  "note": "standing rigging tarred (near black brown); lanyards untarred hemp; deadeyes and hearts dark wood; chains, strops and plates black iron",
+  "rope": "Tarred",
+  "lanyard": "Hemp",
+  "wood": "Deadeye",
+  "iron": "Iron"
+ },
+ "masts": {
+  "note": "shrouds and topmast backstays a side are counted on the draught (its deadeyes on the channels and the tops); x_draught are the centres of its lower deadeyes on the channel, aft to fore within each list. rigging.py keeps the count and order and moves each deadeye the least it takes to stand clear of the spar deck ports (the model's ports are the 1927 plan's, which are not the 1817 draught's) with a deadeye's gap between them: rigging.md lists the moves",
+  "fore": {
+   "shrouds": 8,
+   "shroud_x_draught": [2120, 2135, 2156.7, 2181.7, 2240, 2258.3, 2308.3, 2360],
+   "topmast_backstays": 2,
+   "backstay_x_draught": [2036.7, 2070],
+   "topmast_shrouds": 5,
+   "topgallant_shrouds": 3,
+   "src": "draught: 8 shroud and 2 backstay deadeyes on the fore channel, 5 on each side of the fore top; topgallant shrouds by rule"
+  },
+  "main": {
+   "shrouds": 9,
+   "shroud_x_draught": [1222.7, 1239.3, 1259.3, 1339.3, 1363.3, 1403.3, 1452.7, 1470, 1518.7],
+   "topmast_backstays": 2,
+   "backstay_x_draught": [1142.7, 1166],
+   "topmast_shrouds": 5,
+   "topgallant_shrouds": 3,
+   "src": "draught: 9 shroud and 2 backstay deadeyes on the main channel, 5 a side on the main top"
+  },
+  "mizzen": {
+   "shrouds": 6,
+   "shroud_x_draught": [828.3, 885, 901.7, 945, 995, 1011.7],
+   "topmast_backstays": 2,
+   "backstay_x_draught": [781.7, 805],
+   "topmast_shrouds": 4,
+   "topgallant_shrouds": 2,
+   "src": "draught: 6 shroud and 2 backstay deadeyes on the mizzen channel, 4 a side on the mizzen top"
+  }
+ },
+ "rope_in": {
+  "note": "circumference in inches: [fore, main, mizzen]",
+  "shrouds": [10.5, 10.5, 6.0],
+  "shrouds_src": "1799 (main 10 1/2 in); rule: the fore as the main, the mizzen 4/7 of them",
+  "stay": [17.5, 17.5, 8.5],
+  "stay_src": "rule: the fore and main stays 5/3 of their shrouds, the mizzen stay half the main's",
+  "preventer_stay": [12.0, 12.0, 0],
+  "preventer_src": "rule: 0.7 of the stay; the mizzen has none",
+  "topmast_shrouds": [6.0, 6.0, 4.0],
+  "topmast_stay": [10.0, 10.0, 5.5],
+  "topmast_backstays": [7.0, 7.0, 4.5],
+  "futtock_shrouds": [6.5, 6.5, 4.5],
+  "catharpins": [4.0, 4.0, 3.0],
+  "topgallant_shrouds": [3.5, 3.5, 2.5],
+  "topgallant_stay": [4.5, 4.5, 3.0],
+  "topgallant_backstays": [4.5, 4.5, 3.0],
+  "royal_stay": [3.0, 3.0, 2.5],
+  "royal_backstays": [3.0, 3.0, 2.5],
+  "upper_src": "rule: topmast shrouds 4/7 of the lower, topmast stay about the lower shrouds, backstays a size over the topmast shrouds, futtock shrouds a little over the topmast shrouds, topgallant rigging about half the topmast's",
+  "ratlines": {"lower": 1.25, "topmast": 1.0, "topgallant": 0.75, "futtock": 1.0, "src": "rule"},
+  "lanyard_of_rope": 0.5,
+  "lanyard_src": "rule: half the rope it sets up",
+  "collar_of_stay": 0.85,
+  "bowsprit_shrouds": 7.5,
+  "martingale_stay": 5.0,
+  "flying_martingale_stay": 3.5,
+  "martingale_back_rope": 4.5,
+  "jibboom_guys": 5.0,
+  "flying_jibboom_guys": 4.0,
+  "bowsprit_src": "rule"
+ },
+ "deadeyes": {
+  "note": "diameters in inches; a deadeye's thickness is 0.55 of it, its three holes on a circle 0.48 of it across. The draught draws every deadeye about 17 in (round, 15 px across at 10.31 px/ft)",
+  "lower": [17, 17, 14],
+  "lower_src": "draught (fore and main); the mizzen by eye between the draught and the rule (1.6 times the shroud)",
+  "backstay": [12, 12, 10],
+  "topmast": [11, 11, 8],
+  "topmast_src": "rule: 1.6 times the topmast shroud, rounded up: the draught's tops are drawn with the lower deadeyes' size", "bowsprit": 12, "bowsprit_src": "rule: 1.6 times the bowsprit shroud"
+ },
+ "thimbles": {
+  "note": "the topgallant and royal backstays are set up with a thimble turned into their end and a lanyard of three turns to an eyebolt in the channel's top, abaft the topmast backstays: the draught has only the topmast backstays' deadeyes on the channels, and there is no room for more between the ports",
+  "diam_in": 3.5,
+  "lanyard_ft": 1.0,
+  "channel_room_in": 5.0,
+  "src": "by eye"
+ },
+ "hearts_in": {
+  "note": "a heart's length along its rope; breadth 0.85 and thickness 0.5 of that",
+  "stay": [20, 20, 12],
+  "preventer_stay": [16, 16, 0],
+  "src": "rule: about the stay's circumference"
+ },
+ "lower": {
+  "upper_deadeye": "rail",
+  "upper_deadeye_note": "draught: the upper deadeyes stand at the rail's top, their lanyards spanning the spar deck ports' height (about 5 ft): the 1817 channels are low, under the ports",
+  "chain_below_channel_ft": 5.0,
+  "chain_note": "draught: the chains reach about 5 ft below the channel's top; one that would land over a gun deck port stops above its head",
+  "eye_over_bolster": true,
+  "futtock_stave_below_top_ft": [7.0, 7.8, 6.0],
+  "futtock_src": "draught: the main futtock shrouds meet the shrouds about 7.8 ft under the top; the fore's and mizzen's by eye, in proportion",
+  "futtock_stave_diam_in": [2.0, 2.0, 1.5],
+  "futtock_stave_src": "by eye: a stout stave (served rope over iron) seized across the shrouds",
+  "ratline_pitch_in": 15,
+  "ratline_src": "rule: 13 to 16 in apart; every fifth one is carried to the aftermost shroud",
+  "catharpins": [3, 3, 2]
+ },
+ "topmast": {
+  "rim_from": 0.07,
+  "rim_to": 0.78,
+  "rim_note": "draught: the topmast shrouds' deadeyes on the top's rim from 0.07 to 0.78 of its length from the after edge",
+  "lanyard_ft": 4.0,
+  "lanyard_note": "draught: the upper deadeyes 4 ft over the rim's (centre to centre)",
+  "plate_below_top_ft": 1.6,
+  "ratline_pitch_in": 15
+ },
+ "topgallant": {
+  "note": "the topgallant shrouds pass over the topmast crosstrees' ends and down to the topmast shrouds as their futtock shrouds",
+  "futtock_ft": 6.0,
+  "ratline_pitch_in": 13,
+  "crosstrees_note": "the topgallant shrouds pass side by side through the after crosstree's ends: the model's other two crosstrees stand before the topgallant mast, where the topgallant yard hangs, and a shroud led from them down to the topmast shrouds would cross the topsail yard hoisted",
+  "royal_eyes_below_truck_in": 7,
+  "royal_note": "the royal backstays' and stay's eyes go over the pole 7 in under the truck, so the royal stay leads clear over the royal yard hoisted (1.3 ft under the truck, slice 3); a royal yard lowered now rests on the topgallant rigging's eyes, not the bare stop (rig.json)"
+ },
+ "stays": {
+  "note": "stays leave their masthead's eye down its fore face (between it and the next mast's heel, under which they turn forward at the mouse) and set up with hearts and a lanyard. Draught points are x, y px on the 3840 px copy",
+  "fore": {"to": "bowsprit", "heart_up_draught": [2887, 1932], "heart_low_draught": [2923, 1960], "collar_draught": [2958, 1988], "src": "draught"},
+  "fore_preventer": {"to": "bowsprit", "heart_up_draught": [2862, 1944], "heart_low_draught": [2895, 1970], "collar_draught": [2923, 1993], "src": "draught"},
+  "main": {"to": "bowsprit_inboard", "side": 1, "heart_draught": [2540, 2075], "heart_over_bowsprit_ft": 2.2, "src": "draught: set up on the forecastle about 18 ft before the foremast, passing it to starboard. The draught's heart is the lower (its collar goes round the bowsprit inboard of the stem head), the upper above it toward the masthead"},
+  "main_preventer": {"to": "bowsprit_inboard", "side": -1, "heart_draught": [2490, 2087], "heart_over_bowsprit_ft": 2.2, "src": "draught: as the stay, to port of the foremast"},
+  "mizzen": {"to": "main_mast", "src": "draught: to a collar round the main mast at the rail's height"},
+  "fore_topmast": {"to": "bees", "src": "rule: through the starboard bee at the bowsprit's end (its fall is slice 6's)"},
+  "main_topmast": {"to": "fore_masthead", "src": "rule: to a block on the fore masthead over the top (its fall to the deck is slice 6's)"},
+  "mizzen_topmast": {"to": "main_masthead", "src": "rule"},
+  "fore_topgallant": {"to": "jibboom_end", "src": "draught"},
+  "main_topgallant": {"to": "fore_topmast_head", "src": "draught"},
+  "mizzen_topgallant": {"to": "main_topmast_head", "src": "draught"},
+  "fore_royal": {"to": "flying_jibboom_end", "src": "draught"},
+  "main_royal": {"to": "fore_royal_head", "src": "draught"},
+  "mizzen_royal": {"to": "main_royal_head", "src": "draught"}
+ },
+ "brace": {
+  "note": "how far each moving spar braces (build_frigate.py brace_limits): turned in step_deg steps from square to top_deg each way, at each hoist (0 lowered, 1 hoisted), against the standing rigging, masts, tops and hull; the limit is the last clear angle less margin_deg. Braced sharp, a lower yard's truss is eased and a topsail yard's parrel gives, so the yard comes forward of the mast and clears the lee rigging: ease_max_ft is how far (by eye: a truss pendant's slack; a parrel's ribs and trucks), tried ease_step_in at a time",
+  "step_deg": 0.5,
+  "top_deg": 60.0,
+  "margin_deg": 1.0,
+  "hoists": [0.0, 0.25, 0.5, 0.75, 1.0],
+  "ease_step_in": 1.0,
+  "ease_max_ft": {"lower": 3.0, "topsail": 0.5, "topgallant": 0.0, "royal": 0.0, "spanker": 0.0, "spritsail": 0.0},
+  "src": "by eye"
+ },
+ "bowsprit": {
+  "shrouds": {"collars_x_ft": [110.0, 116.0], "bow_x_ft": [86.0, 82.0], "bow_z_ft": 17.0, "src": "by eye: two a side, from the bowsprit about a third out to eyebolts on the bow"},
+  "martingale_back_rope": {"bow_x_ft": 88.0, "bow_z_ft": 15.5, "src": "by eye: from the dolphin striker's end to the bow each side"},
+  "jibboom_guys": {"bow_x_ft": 84.0, "bow_z_ft": 20.5, "src": "by eye: from the jibboom's and flying jibboom's ends to the bow each side (the cathead's place, slice 10)"},
+  "later": "the gammoning and bobstays go through the knee of the head (slice 9) and come with it"
+ }
+}

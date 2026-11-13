@@ -33,6 +33,9 @@ TRANSOM_X = -3.41
 CAM = None   # build_j22_hero sets the kit's cam cleat (j22_kitfit.cam_cleat) unless --old-hardware; None draws D's
 PINTLE_Z = (0.47, 0.05)
 HEAD_TOP = 0.80
+BLADE_BOT = -0.98          # the blade's bottom (the physics rudder's span; Plan D's is shallower: docs/shape-loop wave 4)
+BOT_CORNER_R = 0.04        # the bottom's corners in profile, both on a 40 mm radius (class Plan D)
+BOT_EDGE_R = 0.009         # the bottom closes round over this height (shape wave 4: it was a flat cut face)
 LE_X = PIVOT_X - 0.016     # the blade's leading edge behind the pintle barrels
 
 
@@ -58,13 +61,22 @@ def blade_edges(z):
     R, zc = 0.24, 0.56
     if z > zc:
         te += R - math.sqrt(max(R * R - (z - zc) ** 2, 0.0))
+    zb = BLADE_BOT + BOT_CORNER_R                  # Plan D's 40 mm corners, down to the bottom
+    if z < zb:
+        cut = BOT_CORNER_R - math.sqrt(max(BOT_CORNER_R ** 2 - (zb - z) ** 2, 0.0))
+        le, te = le - cut, te + cut
     return le, te
 
 
 def blade_thick(z, chord):
-    """Thickness ratio: a 10% section in the water, the head 44 mm thick where the straps hug it."""
+    """Thickness ratio: a 10% section in the water, the head 44 mm thick where the straps hug it, and the section thinned
+    on a quarter ellipse over the last BOT_EDGE_R, so the bottom closes round (the bottom ring keeps 12%)."""
     head = min(0.044 / max(chord, 0.05), 0.30)
-    return 0.10 + (head - 0.10) * smooth((z - 0.42) / 0.14)
+    t = 0.10 + (head - 0.10) * smooth((z - 0.42) / 0.14)
+    u = (BLADE_BOT + BOT_EDGE_R - z) / BOT_EDGE_R
+    if u > 0:
+        t *= max(math.sqrt(max(1 - min(u, 1.0) ** 2, 0.0)), 0.12)
+    return t
 
 
 def blade_half(x, z):
@@ -75,11 +87,20 @@ def blade_half(x, z):
 
 
 def build_blade(mat):
-    zs = [-0.98 + (0.42 + 0.98) * i / 18 for i in range(19)] + [0.42 + (HEAD_TOP - 0.006 - 0.42) * i / 26 for i in range(1, 27)]
+    # the bottom: the edge's quarter round across the blade (blade_thick) and the corners' 40 mm rounds in profile
+    # (blade_edges) share these rings, so the bottom's outline runs straight into the corner arcs
+    bot = []
+    for z in sorted([BLADE_BOT + BOT_EDGE_R * (1 - math.cos(math.radians(p))) for p in (0, 30, 50, 65, 78, 90)]
+                    + [BLADE_BOT + BOT_CORNER_R * (1 - math.cos(math.radians(p))) for p in (12, 24, 36, 48, 60, 72, 84, 90)]):
+        if not bot or z - bot[-1] > 0.0015:          # no sliver faces where the two sets nearly meet
+            bot.append(z)
+    zs = bot + [z for z in (-0.98 + (0.42 + 0.98) * i / 18 for i in range(19)) if z > bot[-1] + 0.02]
+    zs += [0.42 + (HEAD_TOP - 0.006 - 0.42) * i / 26 for i in range(1, 27)]
     n = 44
     bm = bmesh.new()
     rings = []
-    for z in zs:
+
+    def ring_at(z):
         le, te = blade_edges(z)
         c = le - te
         t = blade_thick(z, c)
@@ -87,15 +108,18 @@ def build_blade(mat):
         for k in range(n):
             a = 2 * math.pi * k / n
             xc = 0.5 * (1 + math.cos(a))
-            y = naca(t, xc) * c * (1 if a < math.pi else -1)
+            sgn = 0 if k == 0 else (1 if a < math.pi else -1)     # the trailing edge's middle on the centreline
+            y = naca(t, xc) * c * sgn
             ring.append(bm.verts.new((le - xc * c, y, z)))
-        rings.append(ring)
+        return ring
+    for z in zs:
+        rings.append(ring_at(z))
     # a rounded top: the last rings drawn in toward the section's middle
     le, te = blade_edges(HEAD_TOP - 0.006)
     mid = 0.5 * (le + te)
     for f, dz in ((0.82, 0.003), (0.45, 0.0055), (0.12, 0.0065)):
         ring = []
-        for v in rings[len(zs) - 1]:
+        for v in rings[-1]:
             ring.append(bm.verts.new((mid + (v.co.x - mid) * (0.6 + 0.4 * f), v.co.y * f, HEAD_TOP - 0.006 + dz)))
         rings.append(ring)
     for a, b in zip(rings[:-1], rings[1:]):

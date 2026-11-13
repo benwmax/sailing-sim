@@ -3,74 +3,48 @@
 Vehicles for the bridge traffic: a sedan, a pickup and a semi with its trailer, as low-poly bodies with slots Paint (colour
 per instance), Glass, Tyre, HeadLight, TailLight and Trailer. X forward, origin on the road between the axles.
 
-Riprap rocks: three blocky limestone pieces (a subdivided cube pushed out by noise, with flattened bedding planes, the
-way quarried chalk breaks), about 1 m across so the marina's breakwater scales them per instance. Box-projected UVs in
-metres (the M_WorldSurface concrete pattern). Prints "Props: <name> <tris>".
+Riprap rocks: twelve quarried limestone stones from rock_kit.py (shore loop slice 1, docs/shore-loop/rocks.md), about
+1 m across so the marina's breakwater and the bridges' riprap scale them per instance. Box-projected UVs in metres and a
+vertex colour that M_WorldSurface's rock pattern reads. Prints "Props: <name> <tris>".
 Usage: blender -b --factory-startup -P build_props.py -- <out dir>
 """
 import math
 import os
-import random
 import sys
 
 import bmesh
 import bpy
-from mathutils import Vector, noise
+from mathutils import Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rock_kit  # noqa: E402
 
 OUT = sys.argv[sys.argv.index("--") + 1]
 
 
 def rock(index):
-    """Graphics G2: a quarried limestone block at real detail (about 7k triangles): a subdivided cube rounded part-way
-    toward a boulder, broken up by ridged multi-octave noise, with a few flat fracture faces cut across it and bedding
-    planes; shaded smooth inside 40-degree edges, so the facets read as chipped stone, not polygons."""
-    rng = random.Random(9001 + index * 7919)
+    """Shore loop slice 1 (docs/shore-loop/rocks.md): a quarried limestone riprap stone from rock_kit.build: a block of
+    tilted fracture planes and corner cuts, fresh faces undulating and rough, weathered rind faces lumpy and pitted, edges
+    rounded and chipped; about 49k triangles (Nanite). Vertex colour = rock_kit's open / weathered / edge (linear), which
+    M_WorldSurface's rock pattern reads. Box-projected UVs in metres, as before. Indices keep their kinds: 0-5 blocks,
+    6-11 slab, long, angular twice; sizes match the old kit's, so the placements keep their scale."""
+    verts, quads, col, kind = rock_kit.build(index)
     bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=22, use_grid_fill=True)
-    scale = Vector((rng.uniform(0.9, 1.3), rng.uniform(0.7, 1.0), rng.uniform(0.5, 0.8)))
-    seed = Vector((rng.uniform(0, 100), rng.uniform(0, 100), rng.uniform(0, 100)))
-    cuts = []
-    for _ in range(rng.randint(3, 5)):                            # fracture planes: a direction and how deep they cut
-        d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.6, 1.0))).normalized()
-        cuts.append((d, rng.uniform(0.36, 0.46)))
-    # Near-shore phase 3 (audit item 5: "one large rounded shape repeated in a line"): rocks 6 to 11 are other shapes a
-    # quarry's armour stone comes in, a flat slab, a long block and a sharp angular piece, each with more fracture faces
-    # and less rounding than the first six (which keep their shapes: the shore's riprap uses them).
-    rounding = 0.5
-    if index >= 6:
-        kind = (index - 6) % 3
-        scale = [Vector((rng.uniform(1.1, 1.4), rng.uniform(0.9, 1.2), rng.uniform(0.32, 0.45))),
-                 Vector((rng.uniform(1.7, 2.1), rng.uniform(0.6, 0.8), rng.uniform(0.55, 0.7))),
-                 Vector((rng.uniform(0.9, 1.1), rng.uniform(0.8, 1.0), rng.uniform(0.75, 0.95)))][kind]
-        rounding = (0.3, 0.35, 0.15)[kind]
-        for _ in range(rng.randint(2, 4)):
-            d = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.6, 1.0))).normalized()
-            cuts.append((d, rng.uniform(0.33, 0.42)))
-    for v in bm.verts:
-        d = v.co.normalized()
-        p = v.co.lerp(d * 0.62, rounding)
-        n = 0.0
-        amp, freq = 0.14, 2.0
-        for _ in range(5):                                        # ridged fBm: sharp crests, worn hollows
-            n += amp * (1.0 - 2.0 * abs(noise.noise(p * freq + seed)))
-            amp *= 0.5
-            freq *= 2.1
-        p = p + d * n * 0.6
-        for c, depth in cuts:                                     # flatten against each fracture plane
-            k = p.dot(c)
-            if k > depth:
-                p = p - c * (k - depth) * 0.92
-        p.z = p.z * 0.85 + round(p.z * 5.0) / 5.0 * 0.15            # faint bedding planes
-        v.co = Vector((p.x * scale.x, p.y * scale.y, p.z * scale.z))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bv = [bm.verts.new(Vector(v)) for v in verts.tolist()]
+    bm.verts.index_update()
+    for q in quads.tolist():
+        bm.faces.new([bv[k] for k in q])
+    bm.normal_update()
     uv = bm.loops.layers.uv.new("UVMap")
+    cl = bm.loops.layers.color.new("Col")
     for f in bm.faces:
         n = f.normal
         ax = max(range(3), key=lambda k: abs(n[k]))
         for loop in f.loops:
             c = loop.vert.co
             loop[uv].uv = (c.y, c.z) if ax == 0 else ((c.x, c.z) if ax == 1 else (c.x, c.y))
+            r, g, b = col[loop.vert.index]
+            loop[cl] = (float(r), float(g), float(b), 1.0)
     name = f"SM_Rock_{index}"
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
@@ -85,15 +59,11 @@ def rock(index):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
-    try:
-        bpy.ops.object.shade_auto_smooth(angle=math.radians(40))
-    except Exception:
-        pass
     bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, name + ".fbx"), use_selection=True, apply_unit_scale=True,
                              apply_scale_options="FBX_SCALE_UNITS", axis_forward="X", axis_up="Z", bake_space_transform=True,
-                             mesh_smooth_type="FACE")
+                             mesh_smooth_type="FACE", colors_type="LINEAR")
     bpy.data.objects.remove(obj)
-    print(f"Props: {name} {tris}")
+    print(f"Props: {name} {tris} ({kind})")
 
 
 class Body:

@@ -233,3 +233,29 @@ fittings). The Sunfish's underwater hull is the physics hull exactly, so its phy
   the aft deck in one piece (Commons j22-above-deck-cockpit). Blind A/B 3 of 3; their notes (thinner, wider, one piece
   to the aft deck) are in. The jib sheet's baked lead runs over the board's inner edge with no sag into it.
 - The footwell's fore step already reads as in the photos; left as is.
+
+## Wave 4, round 3 (Nov 12-13): keel and rudder fairing
+
+Above the physics only: the keel's planform (`keel_edges`, boatkit-3) and the rudder's span and chord are the physics
+foils' and stay as they were (card `cards/j22-keel.json`).
+
+- The keel's sections follow the class's Plan C table of offsets (International J/22 Class Rules, section H; the 1993
+  yearbook prints the same page): `KEEL_SECTIONS` holds the half-widths at the leading edge and 15 chord stations at the four sections 216,
+  458, 700 and 942 mm under the hull, `keel_half` interpolates them in depth (held past the first and last) and along
+  the chord (a monotone cubic, a square-root nose ahead of 2.5%). The fin is 10% thick at the root and 14% at the tip,
+  fullest at 30-35%, with a 6 mm blunt trailing edge; it was a NACA 0012 thinned to 8% at the tip.
+- The keel meets the hull on a crisp joint. A first round swept a 35 mm concave fillet round the fin (ray-cast to
+  the hull) and lost the blind A/B 0 of 3: at that size, and again at 12 mm, it read as a raised bead along the root,
+  where the crane photo (Commons j22-broadside-crane-stern) shows the fin going straight into the hull.
+- The keel's and the rudder's bottoms close round: the section thins on a quarter ellipse over the last 12 and 9 mm
+  (the bottom ring keeps 12% of it, a narrow flat), the planform carried straight down. The rudder's bottom corners are
+  on Plan D's 40 mm radius (`j22_steering.BOT_CORNER_R`), sharing the same rings so the outline runs straight into the
+  arcs (round 2 dropped the edge's rings below the arcs, and three reviewers saw a thin plate under the blade). The
+  keel's trailing edge ends square on Plan C's 6 mm (the ring's middle vertex on the centreline; it sat 3 mm to one
+  side), and its nose meets Plan C's cubic in value and slope at 2.5% (a plain square root left a line down the
+  leading edge).
+- Blind A/B: round 1 0 of 3 (the fillet), round 2 1 of 3, round 3 3 of 3. All three round 3 reviewers noted the keel's
+  6 mm trailing edge reads as a rounded strip at the hull (smooth shading over the blunt end): a follow-up.
+- Plan D also puts the rudder at 300 mm chord, 13% thick, reaching 860-890 mm under the hull's bottom at the transom
+  (about z -0.65; the hero's reaches -0.98 at about 350 mm). That is a real change to the steering and waits for a
+  physics calibration pass: see the card's findings.

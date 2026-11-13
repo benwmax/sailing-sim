@@ -1299,7 +1299,8 @@ void AMarinaActor::BuildGeometry(const FMarina& Marina, const FLakeTerrain* Terr
 	for (const FMarinaRamp& R : Marina.Ramps)
 	{
 		if (!Generated(R.PierId)) continue;
-		constexpr float W = FMarinaRamp::Width, Len = FMarinaRamp::Length, Foot = FMarinaRamp::Foot;
+		constexpr float W = FMarinaRamp::Width, Foot = FMarinaRamp::Foot;
+		const float Len = R.Length;
 		const FVector2D In = R.In, Out2 = R.Out, InFar = In + R.Dir * Len, OutFar = Out2 + R.Dir * Len;
 		// (the slab faces up: A->D along the ramp, A->B across it). Tagged for M_WorldSurface (UV1.y -1004: the ramp's
 		// grooves, tyre lanes, slime and silt; docs/texloop-dock); the kerbs stay plain concrete.

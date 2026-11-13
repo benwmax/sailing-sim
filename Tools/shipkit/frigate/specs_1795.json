@@ -1,0 +1,59 @@
+{
+ "about": "Planking, wales and bulwark sizes for the frigate Commonwealth's skin (docs/shipkit-2), read off the US Navy's midship section of USS Constitution (US National Archives 75841360, 'Midship Section Starboard Side Looking Forward', a restoration drawing of 1919-1940; public domain). The sheet gives its heights 'as per Mr. Joshua Humphreys' specifications for 44 gun frigates' (1795). Read by Tools/shipkit/frigate/skin.py. Inches unless named _px; heights in the drawing's own feet and inches.",
+ "source": {
+  "commons": "https://commons.wikimedia.org/wiki/File:USS_Constitution-_Midship_Section_Starboard_Side_Looking_Forward_-_NARA_-_75841360.jpg",
+  "nara_id": 75841360,
+  "licence": "Public domain (US Navy record)"
+ },
+ "heights": {
+  "note": "up the side at midships, from the section's dimension lines. The ports themselves come from the 1927 lines plan (offsets.json skin): its ports are 2 ft 7.7 in high (30.9 px) where this sheet says 2 ft 11 in, and the plankshear sits 2 ft 8.2 in over the head (31.4 px), as here",
+  "lower_sill_to_top_of_main_wale_in": 39.5,
+  "main_wale_depth_in": 60,
+  "port_lower_to_upper_sill_in": 35,
+  "upper_sill_to_top_of_plankshear_in": 31.5,
+  "tumblehome_in": 36,
+  "mean_lwl_above_bottom_of_main_wale_in": 16,
+  "lwl_note": "the sheet's mean load line (21 ft) is about 1 ft 4 in above the main wale's bottom; on the 1927 lines the wale's bottom falls on waterline A at midships, so their load lines differ by about that much. The copper runs up to the wale's bottom (it rises toward both ends with the sheer), the way she is painted today"
+ },
+ "strakes": {
+  "note": "outside planking from the bottom up, thickness standing out from the frames (the moulded surface). Strake widths are the band's height shared equally.",
+  "bottom_in": 4,
+  "thick_stuff_under_wales_in": [6, 5.5],
+  "thick_stuff_note": "under the copper the thickness eases from the bottom's 4 in to 6 in at the wale over the 4 strakes below it (about 3 ft 4 in), with no steps: copper hides the seams",
+  "main_wales": {"count": 6, "broad_in": 10, "thick_in": 7, "note": "'Main wales 10 x 7'. With them the extreme breadth is the moulded 43 ft 5 in plus 14 in (44 ft 7 in); the 45 ft 0 in sometimes given would need 9 in wales"},
+  "black_strakes_in": [5.5, 5, 4.5],
+  "black_strakes_note": "'mitered down' from the wale to the port sills, thickest at the bottom",
+  "port_band": {"count": 3, "thick_in": 4},
+  "string_plank": {"count": 2, "thick_in": 4},
+  "channel_wale": {"count": 2, "thick_in": 5, "note": "under the channels; up to the plankshear"},
+  "bulwark": {"thick_in": 4, "note": "above the plankshear: one strake to the spar port sills, four to their heads, two more to the rail on the quarterdeck and forecastle"}
+ },
+ "inside": {
+  "note": "inner faces measured in from the moulded surface (frames and ceiling). Placeholders for the decks slices (7, 12-14), which build the clamps, spirketting and waterways themselves",
+  "gun_deck_wall_in": 16,
+  "bulwark_inner_face_in": 8,
+  "gun_deck_below_port_sill_in": 24,
+  "spar_deck_below_plankshear_in": 4,
+  "deck_slab_in": 8
+ },
+ "rail": {
+  "note": "'Waist or main rail 14 x 4 1/2': the cap on the bulwark's top, waist, quarterdeck and forecastle alike",
+  "broad_in": 14,
+  "thick_in": 4.5
+ },
+ "waist_rail": {"stanchion_in": 4, "stanchion_spacing_ft": 6, "note": "1797: the waist is open above the gangways, its rail at the sheer's height on stanchions (the 1817 draught draws them; the 1927 lines draw the later solid bulwark there). The rail is the waist rail's 14 x 4 1/2 in; stanchion size and spacing by eye from the draught"},
+ "plankshear_moulding": {"radius_in": 2.5, "note": "a half-round along the plankshear's outer edge (sized by eye from the section)"},
+ "grooves": {"depth_in": 0.35, "half_width_in": 0.4, "note": "a V at each plank seam (caulked and payed), so the strakes read up close"},
+ "channels": {
+  "note": "how far each channel stands out from the side and its thickness. Not on the drawings: sized so the deadeyes and their lanyards stand clear of the rail cap and the tumblehome (slice 4 widened the fore's from 3.0 and the mizzen's from 2.25 ft, where its deadeyes and lanyards touched the rail cap)",
+  "main_out_ft": 3.0,
+  "fore_out_ft": 3.25,
+  "mizzen_out_ft": 2.4,
+  "fore_end_ft": {"fore": 71.2, "main": -10.75, "mizzen": -59.81},
+  "fore_end_note": "slice 4: each channel runs forward to the 1817 draught's fore end (its x 2370, 1528 and 1022 px on the 3840 px copy, through spars_1795.json's registration; feet forward of midships), past the 1927 plan's, so its foremost deadeye stands abreast the mast as the draught's do. The fore channel's is 0.3 ft (3 px) past the draught's 70.88: the model's foremost spar deck port (the 1927 plan's, 4.5 ft wide, ending at 69.45 ft) leaves the foremost deadeye no room otherwise",
+  "thick_in": 6
+ },
+ "port_lids": {"thick_in": 4, "hinges": 2, "note": "gun deck ports only, hinged along the head; black outside (the chequer of the period), red inside. The spar ports have none"},
+ "rudder": {"fore_edge_siding_in": 22, "aft_edge_siding_in": 13, "strap_broad_in": 4, "strap_thick_in": 1, "note": "the rudder is as thick as the sternpost at its fore edge, thinning aft; pintle and gudgeon straps of bronze (Revere's, 1797)"},
+ "entry_steps": {"broad_in": 4, "proud_in": 4}
+}

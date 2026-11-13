@@ -150,6 +150,31 @@ bool FSailingShoreDetailTest::RunTest(const FString& Parameters)
 	const FLakeTerrain& T = Lake.Terrain;
 	if (!TestTrue(TEXT("Shore detail loaded"), T.HasDetail())) return false;
 	TestTrue(TEXT("Detail covers the shore within 2 km of the club"), T.HasDetailIn(-2000.0, -2000.0, 2000.0, 2000.0));
+	// The band sits on the shore (#club-detail: build_shore_detail.py chose tiles in 60 m blocks for 64 m tiles, which slid
+	// the band 6% of the distance from the grid origin; the club's ramp had none). The ramp, and almost every point where
+	// the 5 m grid crosses the shoreline, has detail.
+	double RampH;
+	TestTrue(TEXT("The club's ramp (map 40, 138) has 1 m detail"), T.DetailHeightAt(40.0, 138.0, RampH));
+	{
+		FRandomStream ShoreRng(11);
+		int32 Shore = 0, Covered = 0;
+		for (int32 K = 0; K < 1000000 && Shore < 2000; ++K)
+		{
+			// Inside the 5 m grid (its last row and column hold the nodes R0 + 1, C0 + 1 read below).
+			const double X = ShoreRng.FRandRange(T.GetOriginX(), T.GetOriginX() + (T.GetRows() - 2) * T.GetCell());
+			const double Y = ShoreRng.FRandRange(T.GetOriginY(), T.GetOriginY() + (T.GetCols() - 2) * T.GetCell());
+			const int32 R0 = FMath::FloorToInt((X - T.GetOriginX()) / T.GetCell()), C0 = FMath::FloorToInt((Y - T.GetOriginY()) / T.GetCell());
+			const double H00 = T.NodeHeight(R0, C0), H01 = T.NodeHeight(R0, C0 + 1), H10 = T.NodeHeight(R0 + 1, C0), H11 = T.NodeHeight(R0 + 1, C0 + 1);
+			const bool bWet = FMath::Min(FMath::Min(H00, H01), FMath::Min(H10, H11)) < 0.0, bDry = FMath::Max(FMath::Max(H00, H01), FMath::Max(H10, H11)) > 0.0;
+			if (!bWet || !bDry) continue;   // not a shoreline cell of the 5 m grid
+			++Shore;
+			double Hd;
+			Covered += T.DetailHeightAt(X, Y, Hd);
+		}
+		const double Share = Shore ? double(Covered) / Shore : 0.0;
+		AddInfo(FString::Printf(TEXT("%d shoreline points of the 5 m grid, %.1f%% with 1 m detail"), Shore, Share * 100.0));
+		TestTrue(FString::Printf(TEXT("The band follows the shoreline (%.1f%% of %d shoreline points have detail)"), Share * 100.0, Shore), Shore > 500 && Share > 0.97);
+	}
 	TArray<double> LandDiff;
 	int32 Steps = 0, BigSteps = 0, Edges = 0;
 	double WorstSeam = 0.0;
@@ -904,7 +929,9 @@ bool FSailingSunfishLessonsTest::RunTest(const FString& Parameters)
 		{
 			FVector2D Berth;
 			double Heading = 0.0;
+			const double T0 = FPlatformTime::Seconds();
 			if (!TestTrue(TEXT("A Sunfish berth near the club"), FindBerth(Lake.Terrain, Lake.Obstacles, FVector2D::ZeroVector, 600.0, WindDeg * kDegToRad, Berth, Heading, Sunfish))) return false;
+			AddInfo(FString::Printf(TEXT("FindBerth (Sunfish, wind from %.0f): %.0f ms"), WindDeg, (FPlatformTime::Seconds() - T0) * 1000.0));
 			FBoatModel Boat(Sunfish);
 			Boat.SetTerrain(&Lake.Terrain);
 			Boat.SetObstacles(&Lake.Obstacles);
@@ -1153,7 +1180,12 @@ bool FSailingClubBerthTest::RunTest(const FString& Parameters)
 	{
 		FVector2D Berth;
 		double Heading = 0.0;
+		const double T0 = FPlatformTime::Seconds();
 		if (!TestTrue(TEXT("A berth near the club"), FindBerth(Lake.Terrain, Lake.Obstacles, FVector2D::ZeroVector, 600.0, WindDeg * kDegToRad, Berth, Heading))) return false;
+		AddInfo(FString::Printf(TEXT("FindBerth (J/22, wind from %.0f): %.0f ms"), WindDeg, (FPlatformTime::Seconds() - T0) * 1000.0));
+		// Independent of FindBerth's own settle: the club's J/22 berth is the one off the club's dock, (35, 165) m (club shore
+		// detail: with the 1 m shore a face 111 m out first won, and she ground along it).
+		TestTrue(FString::Printf(TEXT("The J/22's berth is the club's, near (35, 165) (got %.0f, %.0f)"), Berth.X, Berth.Y), FVector2D::Distance(Berth, FVector2D(35.0, 165.0)) < 10.0);
 		FBoatModel Boat;
 		Boat.SetTerrain(&Lake.Terrain);
 		Boat.SetObstacles(&Lake.Obstacles);
@@ -1214,11 +1246,25 @@ bool FSailingMarinaTest::RunTest(const FString& Parameters)
 	{
 		const FMarinaRamp& R = M.Ramps[0];
 		const FVector2D Head = 0.5 * (R.In + R.Out), Wet = Head + R.Dir * (R.DryLength() + 3.0);
-		AddInfo(FString::Printf(TEXT("Ramp head %.2f m up at (%.1f, %.1f), dry for %.1f of %.0f m"), R.Top, Head.X, Head.Y, R.DryLength(), FMarinaRamp::Length));
+		AddInfo(FString::Printf(TEXT("Ramp head %.2f m up at (%.1f, %.1f), dry for %.1f of %.0f m"), R.Top, Head.X, Head.Y, R.DryLength(), R.Length));
 		TestTrue(TEXT("The ramp's head is on dry ground"), Lake.Terrain.HeightAt(Head.X, Head.Y) > 0.3);
-		TestTrue(TEXT("The ramp runs down into the water"), R.DryLength() > 1.0 && R.DryLength() < FMarinaRamp::Length);
+		TestTrue(TEXT("The ramp runs down into the water"), R.DryLength() > 1.0 && R.DryLength() < R.Length);
 		TestTrue(TEXT("The ramp's dry part is an obstacle"), Covered(Head + R.Dir * (0.5 * R.DryLength()), 0.0));
 		TestFalse(TEXT("The submerged slab is not"), Covered(Wet, 0.0));
+		// #405 gap 2 (the 1 m club shore): the slab lies on the bank down into the water. Along its centre line it is never
+		// more than 0.5 m over the ground there (an 18 m slab on the steeper shore stood 1.6 m over the bed, a deck out over
+		// the water) and never under it (buried). (Across it the bank falls about 0.8 m from the pier side: cut in level.)
+		double Over = 0.0, Under = 0.0;
+		for (double D = 0.0; D <= R.Length; D += 0.5)
+		{
+			const FVector2D P = Head + R.Dir * D;
+			const double Mid = Lake.Terrain.HeightAt(P.X, P.Y), Z = R.ZAt(D);
+			Over = FMath::Max(Over, Z - Mid);
+			Under = FMath::Max(Under, Mid - Z);
+		}
+		AddInfo(FString::Printf(TEXT("Ramp slab %.1f m long: at most %.2f m over the ground on its centre line, %.2f m under it"), R.Length, Over, Under));
+		TestTrue(TEXT("The ramp slab lies on the bank (never 0.5 m over the ground)"), Over < 0.5);
+		TestTrue(TEXT("The ramp slab is not buried (the ground never 0.15 m over its centre line)"), Under < 0.15);
 	}
 	// Moored in the home slip, the boat lies between its fingers without touching them.
 	FBoatModel Boat;
@@ -1296,9 +1342,10 @@ bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 	// Just below the waterline on the slab's centre line: shallow enough to lap (M_WaterV4's swash, under 0.35 m).
 	const float Lap = At(Head + R.Dir * (R.DryLength() + 0.5));
 	TestTrue(FString::Printf(TEXT("The waves lap at the ramp's waterline (%.2f m)"), Lap), Lap >= 0.f && Lap < 0.35f);
-	// Ten metres down the slab: the water over it (or less, where the bed is higher), never the bed's depth beside it.
-	const double T = 10.0;
-	const double SlabZ = R.Top + (FMarinaRamp::Foot - R.Top) * T / FMarinaRamp::Length;
+	// Down the slab (past its waterline, short of its foot): the water over it (or less, where the bed is higher), never the
+	// bed's depth beside it.
+	const double T = FMath::Max(R.DryLength() + 1.5, 0.75 * R.Length);
+	const double SlabZ = R.ZAt(T);
 	const float OverSlab = At(Head + R.Dir * T);
 	TestTrue(FString::Printf(TEXT("Over the slab, the water over it (%.2f m, slab %.2f m down)"), OverSlab, -SlabZ),
 		OverSlab >= 0.f && OverSlab <= float(-SlabZ) + 0.15f);

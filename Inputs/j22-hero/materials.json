@@ -5,7 +5,7 @@
    "R": "T_J22H_Hull_R.png",
    "N": "T_J22H_Hull_N.png",
    "X": "T_J22H_Hull_X.png",
-   "uv_m": 6.6586
+   "uv_m": 7.0227
   },
   "DeckMould": {
    "D": "T_J22H_DeckMould_D.png",
@@ -19,7 +19,7 @@
    "R": "T_J22H_Rudder_R.png",
    "N": "T_J22H_Rudder_N.png",
    "X": "T_J22H_Rudder_X.png",
-   "uv_m": 1.7878
+   "uv_m": 1.7772
   },
   "Teak": {
    "D": "T_J22H_Teak_D.png",
@@ -488,5 +488,5 @@
    "metallic": 0.0
   }
  },
- "glb_bytes": 46007196
+ "glb_bytes": 46103556
 }
