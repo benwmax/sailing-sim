@@ -1,0 +1,149 @@
+{
+ "slice": 1,
+ "grid": [
+  420,
+  104
+ ],
+ "triangles": {
+  "Hull": 172422,
+  "Transom": 216,
+  "DeckPlaceholder": 10044
+ },
+ "triangles_total": 182682,
+ "budget_slice_1": 200000,
+ "shell": {
+  "open_edges": 0,
+  "nonmanifold_edges": 0,
+  "flipped_edges": 0,
+  "degenerate_faces": 0,
+  "enclosed_m3": 398.21,
+  "closed": true
+ },
+ "hydrostatics": {
+  "loa_m": 39.929,
+  "loa_ft": 131.0,
+  "lwl_m": 26.026,
+  "lwl_ft": 85.39,
+  "lwl_ends_m": [
+   -13.004,
+   13.023
+  ],
+  "beam_m": 6.556,
+  "beam_ft": 21.51,
+  "beam_wl_m": 6.09,
+  "beam_wl_ft": 19.98,
+  "draft_m": 4.521,
+  "draft_ft": 14.83,
+  "freeboard_min_m": 1.335,
+  "bow_overhang_ft": 18.77,
+  "stern_overhang_ft": 26.84,
+  "volume_m3": 152.92,
+  "volume_ft3": 5400.0,
+  "displacement_t": 156.7,
+  "displacement_long_tons": 154.3,
+  "lcb_m": -0.676,
+  "lcb_pct_lwl_from_bow": 52.6,
+  "vcb_m": -1.033,
+  "waterplane_m2": 117.92,
+  "lcf_m": -0.518,
+  "bm_t_m": 1.819,
+  "midship_area_m2": 11.949,
+  "midship_x_m": -1.37,
+  "cp": 0.492,
+  "cb": 0.213,
+  "cwp": 0.744,
+  "wetted_m2": 192.6,
+  "wetted_ft2": 2073.0,
+  "disp_length_ratio": 247.8
+ },
+ "rule": {
+  "rating_ft": 75.71,
+  "L_ft": 85.39,
+  "S_ft2": 7500.0,
+  "D_ft3": 5435.0,
+  "D_long_tons": 155.3,
+  "rows": [
+   {
+    "check": "rating",
+    "value": 75.71,
+    "target": null,
+    "limit": 76.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft limit",
+    "value": 14.83,
+    "target": null,
+    "limit": 15.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "length overall",
+    "value": 131.0,
+    "target": 131.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "load waterline",
+    "value": 85.39,
+    "target": 85.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "beam",
+    "value": 21.51,
+    "target": 21.5,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft",
+    "value": 14.83,
+    "target": 15.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "displacement",
+    "value": 155.29,
+    "target": 155.0,
+    "limit": null,
+    "unit": "long tons",
+    "ok": true
+   },
+   {
+    "check": "bow overhang",
+    "value": 18.77,
+    "target": 19.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "stern overhang",
+    "value": 26.84,
+    "target": 27.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "least freeboard",
+    "value": 4.38,
+    "target": 4.2,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   }
+  ],
+  "pass": true
+ }
+}

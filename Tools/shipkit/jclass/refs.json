@@ -1,0 +1,105 @@
+{
+ "about": "Reference pack for Bluebonnet (docs/jclass-1), an invented J-Class sloop of 1937. Period and modern photos of the real Js on Wikimedia Commons, public domain or plain CC BY only (no NC, ND or SA), for checking our own lines' proportions and look by eye: nothing is traced or measured off them into the model, and no real yacht's drawing is used. Files are not committed: python3 -I Tools/shipkit/fetch_refs.py Tools/shipkit/jclass/refs.json Data/Reference/raw/ships/Bluebonnet (git-ignored). Credit the CC BY photographers if a picture is ever shown in the docs.",
+ "drawings": [
+  {
+   "file": "Lancement du yacht \"Endeavour\" qui doit courir la coupe d'Am\u00e9rique (le 16 avril 1934, \u00e0 Gosport) - btv1b532994598.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Lancement_du_yacht_\"Endeavour\"_qui_doit_courir_la_coupe_d'Am\u00e9rique_(le_16_avril_1934,_\u00e0_Gosport)_-_btv1b532994598.jpg",
+   "kind": "period_photo_1934_launch",
+   "use": "slice 1: the underbody out of the water (keel profile, forefoot, counter) at her launch",
+   "size_px": [8478, 6400],
+   "licence": "Public domain (Agence Rol, 1934; Biblioth\u00e8que nationale de France)",
+   "credit": "Agence Rol / BnF Gallica",
+   "date": "1934-04-16",
+   "commercial": true
+  },
+  {
+   "file": "Angleterre - d\u00e9part pour les Etats Unis du yacht Endeavour qui doit disputer la coupe d'Am\u00e9rique - btv1b90276463.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Angleterre_-_d\u00e9part_pour_les_Etats_Unis_du_yacht_Endeavour_qui_doit_disputer_la_coupe_d'Am\u00e9rique_-_btv1b90276463.jpg",
+   "kind": "period_photo_1937",
+   "use": "slices 1, 3: Endeavour leaving for the 1937 Cup races in her delivery rig: sheer, freeboard and counter afloat",
+   "size_px": [5231, 7000],
+   "licence": "Public domain (Agence Meurisse, 1937; Biblioth\u00e8que nationale de France)",
+   "credit": "Agence Meurisse / BnF Gallica",
+   "date": "1937-05-02",
+   "commercial": true
+  },
+  {
+   "file": "Yankee 1935.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Yankee_1935.jpg",
+   "kind": "period_photo_1935",
+   "use": "slices 1, 6: an American J of the period under sail (sheer, overhangs, rig)",
+   "size_px": [1296, 1863],
+   "licence": "Public domain (Werft Reederei Hafen, 1935)",
+   "credit": "unknown photographer",
+   "date": "1935",
+   "commercial": true
+  },
+  {
+   "file": "Velsheda1996.JPG",
+   "commons": "https://commons.wikimedia.org/wiki/File:Velsheda1996.JPG",
+   "kind": "modern_photo_yard",
+   "use": "slice 1: a 1933 J in the yard (hull form, counter, overhangs)",
+   "size_px": [3188, 2125],
+   "licence": "CC BY 3.0",
+   "credit": "Phil Whiston",
+   "date": "1996-05-15",
+   "commercial": true
+  },
+  {
+   "file": "Velsheda - J Class Yacht - J-K7 (8104768603).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Velsheda_-_J_Class_Yacht_-_J-K7_(8104768603).jpg",
+   "kind": "modern_photo_broadside",
+   "use": "slices 1, 6: broadside under sail: sheer, freeboard and overhangs against the rig",
+   "size_px": [4886, 2932],
+   "licence": "CC BY 2.0",
+   "credit": "Chris Parfitt",
+   "date": "2012-10-20",
+   "commercial": true
+  },
+  {
+   "file": "Velsheda - J Class Yacht - J-K7 (8104856413).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Velsheda_-_J_Class_Yacht_-_J-K7_(8104856413).jpg",
+   "kind": "modern_photo_broadside",
+   "use": "slices 1, 6: broadside under sail",
+   "size_px": [4928, 3264],
+   "licence": "CC BY 2.0",
+   "credit": "Chris Parfitt",
+   "date": "2012-10-20",
+   "commercial": true
+  },
+  {
+   "file": "Camp Velsheda J class yacht Don Ramey Logan.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Camp_Velsheda_J_class_yacht_Don_Ramey_Logan.jpg",
+   "kind": "modern_photo",
+   "use": "slices 1, 3: the counter and topsides afloat",
+   "size_px": [6016, 4016],
+   "licence": "CC BY 4.0",
+   "credit": "Don Ramey Logan",
+   "date": "2017-08-26",
+   "commercial": true
+  },
+  {
+   "file": "J Class Yacht Racing 8 (7615881426).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:J_Class_Yacht_Racing_8_(7615881426).jpg",
+   "kind": "modern_photo_two_js",
+   "use": "slice 1: Ranger (the 2003 replica of the 1937 yacht) and Velsheda (1933) side by side",
+   "size_px": [1024, 685],
+   "licence": "CC BY 2.0",
+   "credit": "David Blaikie",
+   "date": "2012-07-19",
+   "commercial": true
+  }
+ ],
+ "elsewhere": [
+  {
+   "what": "1930s lines of the Js (Enterprise 1930 scan on archive.org; Burgess and Stephens drawings in books and museum archives)",
+   "licence": "varies; most are copyright or of unclear status",
+   "status": "not used: archive.org and the class and museum sites are blocked from the cloud, and Bluebonnet's lines are our own design to the rule"
+  },
+  {
+   "what": "Commons photos licensed CC BY-SA (most of Don Ramey Logan's Newport 2017 set)",
+   "licence": "CC BY-SA",
+   "status": "left out: the shipkit takes public domain, CC0 and CC BY only"
+  }
+ ]
+}

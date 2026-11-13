@@ -1,0 +1,21 @@
+{
+ "boat": "Bluebonnet",
+ "build": "Tools/shipkit/jclass/build_jclass.py",
+ "hull_object": "Hull",
+ "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1). Slice 1: the hull (canoe body and keel in one surface, lofted by loft.py), the transom, and a placeholder deck for slice 3.",
+ "sections": {
+  "hull_shell": {
+   "objects": ["Hull", "Transom"],
+   "owns": ["loft.py", "lines_bluebonnet.json"],
+   "shared": ["specs_bluebonnet.json"],
+   "borders": ["deck_placeholders"]
+  },
+  "deck_placeholders": {
+   "objects": ["DeckPlaceholder"],
+   "owns": ["build_jclass.deck_mesh"],
+   "shared": [],
+   "borders": ["hull_shell"]
+  }
+ },
+ "joins": []
+}
