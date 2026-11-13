@@ -569,6 +569,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	CrewFigures.Reset();
 	CrewConfig.Reset(); // a copy of this config for the crew's animation (NewCrewBody)
 	CrewGrooms.Reset();
+	CrewLodParts.Reset();
 	// Visual V7: MetaHumans on the player's boat on Medium and High when they are built (scripts/make-metahumans.sh);
 	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
 	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
@@ -4531,15 +4532,32 @@ void ASailboatPawn::WriteCaptureSettings() const
 void ASailboatPawn::UpdateCrewGroomLOD()
 {
 	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	if (CrewGrooms.IsEmpty() || !PC || !PC->PlayerCameraManager) return;
+	if ((CrewGrooms.IsEmpty() && CrewLodParts.IsEmpty()) || !PC || !PC->PlayerCameraManager) return;
 	const FVector Eye = PC->PlayerCameraManager->GetCameraLocation();
+	// Crew LOD (docs/crew-lod): on High the player's crew bodies, outfits, polos, vests and shoes are held at LOD1 past
+	// 1.5 m (0.8-1 ms of base pass and velocities in the crew view); Ultra and close-ups keep LOD0. The face syncs to its body (bSyncAttachParentLOD).
+	const bool bHighOnly = USailingSettings::Get()->Quality == ESailingQuality::High;
+	for (const TWeakObjectPtr<USkeletalMeshComponent>& P : CrewLodParts)
+	{
+		USkeletalMeshComponent* Part = P.Get();
+		if (!Part) continue;
+		const bool bFar = bHighOnly && FVector::Dist(Eye, Part->Bounds.Origin) > 150.0 && Part->GetNumLODs() > 1;
+		const int32 Want = bFar ? 2 : 0; // SetForcedLodModel counts from 1: 2 is LOD1, 0 lets it choose
+		if (Part->GetForcedLOD() != Want) Part->SetForcedLodModel(Want);
+	}
 	for (const TPair<TWeakObjectPtr<UGroomComponent>, int32>& G : CrewGrooms)
 	{
 		UGroomComponent* Hair = G.Key.Get();
 		if (!Hair) continue;
 		// Up close the groom picks its own LOD (strands or finer cards); from 6 m it stays on its last cards.
 		const double Dist = FVector::Dist(Eye, Hair->Bounds.Origin);
+#if PLATFORM_MAC
+		// Crew LOD: the Mac binds only cards (SM5, no strand geometry), so the grooms stay on their coarsest cards at any
+		// distance (the finer LODs ran the strands' visibility pass, 0.5 ms in the crew view). Windows keeps strands close.
+		const int32 Want = G.Value;
+#else
 		const int32 Want = Dist > 600.0 ? G.Value : -1;
+#endif
 		if (Hair->GetForcedLOD() != Want) Hair->SetForcedLOD(Want);
 		// Perf 1 fix 8: brows, beards and moustaches go past 8 m, the hair past 40 m (a few pixels; each groom drawn
 		// costs its card interpolation on the render thread every frame).
@@ -4832,6 +4850,15 @@ USkeletalMeshComponent* ASailboatPawn::AddMetaHumanFigure(int32 CrewRole, int32 
 		static const FLinearColor Caps[] = { FLinearColor(0.8f, 0.8f, 0.78f), FLinearColor(0.02f, 0.04f, 0.12f), FLinearColor(0.35f, 0.3f, 0.2f) };
 		if (UMaterialInstanceDynamic* Mid = Cap->CreateDynamicMaterialInstance(0)) { Mid->SetVectorParameterValue(TEXT("Color"), Caps[CrewRole % UE_ARRAY_COUNT(Caps)]); WearGear(Mid); }
 		BoatParts.Add(Cap);
+	}
+	if (!bTrafficBoat)
+	{
+		// Crew LOD: every skinned part but the face (UpdateCrewGroomLOD holds them at LOD1 on High from 1.5 m).
+		TArray<USceneComponent*> Kids;
+		Body->GetChildrenComponents(false, Kids);
+		CrewLodParts.Add(Body);
+		for (USceneComponent* K : Kids)
+			if (USkeletalMeshComponent* Sk = Cast<USkeletalMeshComponent>(K); Sk && Sk != FacePart) CrewLodParts.Add(Sk);
 	}
 	return Body;
 }
