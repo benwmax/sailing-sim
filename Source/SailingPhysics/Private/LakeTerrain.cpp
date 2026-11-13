@@ -277,14 +277,19 @@ namespace Sailing
 		return !(R < -1.0 || C < -1.0 || R > GridRows || C > GridCols);
 	}
 
-	double FGroundPatch::Apply(double X, double Y, double Ground) const
+	double FGroundPatch::Apply(double X, double Y, double Ground, double Level) const
 	{
+		// HeightAt runs this for every sample of the fetch and shelter marches: out of the patch's box in a few compares.
 		const double PX = X - HeadX, PY = Y - HeadY;
-		const double Along = PX * DirX + PY * DirY, Across = std::fabs(-PX * DirY + PY * DirX);
-		const double OutAlong = std::max(0.0, std::max(-Along, Along - Length)), OutAcross = std::max(0.0, Across - HalfWidth);
-		const double Gap = std::sqrt(OutAlong * OutAlong + OutAcross * OutAcross);
+		if (std::fabs(PX) + std::fabs(PY) > 1.5 * (Length + HalfWidth + 2.0 * Margin)) return Ground;   // |P|_1 <= sqrt 2 |P| (a loose box)
+		const double Along = PX * DirX + PY * DirY;
+		if (Along <= -Margin || Along >= Length + Margin) return Ground;
+		const double Across = std::fabs(-PX * DirY + PY * DirX);
+		if (Across >= HalfWidth + Margin) return Ground;
+		const double OutAlong = std::max(0.0, std::max(-Along, Along - Length)), OutAcross = Across - HalfWidth;
+		const double Gap = OutAcross <= 0.0 ? OutAlong : std::sqrt(OutAlong * OutAlong + OutAcross * OutAcross);
 		if (Gap >= Margin) return Ground;
-		const double Slab = Z0 + (Z1 - Z0) * Clamp(Along / Length, 0.0, 1.0);
+		const double Slab = Z0 + (Z1 - Z0) * Clamp(Along / Length, 0.0, 1.0) + Level;
 		// Inside the slab's plan its plane; across the margin a smooth return to the bank (a cut face or a fill slope).
 		const double T = Gap / Margin, W = 1.0 - T * T * (3.0 - 2.0 * T);
 		return Ground + (Slab - Ground) * W;
@@ -314,7 +319,7 @@ namespace Sailing
 		double H = NaturalHeightAt(X, Y);
 		if (Patches)
 		{
-			for (const FGroundPatch& P : *Patches) H = P.Apply(X, Y, H);
+			for (const FGroundPatch& P : *Patches) H = P.Apply(X, Y, H, LevelBelowPool);
 		}
 		return H;
 	}

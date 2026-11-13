@@ -187,6 +187,8 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		Marina.PlaceRamps([this](double X, double Y) { return Terrain.HeightAt(X, Y); });
 		// The ground under each slab is the slab (5 cm under it, so the terrain and the concrete don't fight), kerbs
 		// included, cut into the bank or built up to it, returning to the bank over 1.5 m past the kerbs (docs/ramp-cut).
+		// Kept in the pool frame: the slab is fixed to the bank, and the game mode moves the lake level after this load.
+		const double LoadLevel = Terrain.GetLevelBelowPool();
 		for (const FMarinaRamp& R : Marina.Ramps)
 		{
 			Sailing::FGroundPatch P;
@@ -195,7 +197,7 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 			P.DirX = R.Dir.X; P.DirY = R.Dir.Y;
 			P.Length = R.Length;
 			P.HalfWidth = 0.5 * FMarinaRamp::Width + FMarinaRamp::KerbWidth;
-			P.Z0 = R.Top - 0.05; P.Z1 = FMarinaRamp::Foot - 0.05;
+			P.Z0 = R.Top - 0.05 - LoadLevel; P.Z1 = FMarinaRamp::Foot - 0.05 - LoadLevel;
 			P.Margin = 1.5;
 			Terrain.AddGroundPatch(P);
 		}

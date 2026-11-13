@@ -1313,6 +1313,65 @@ bool FSailingMarinaTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * docs/ramp-cut: FGroundPatch alone, on a synthetic sloping bank. Inside the slab's plan the ground is the slab's plane
+ * (cut or fill), at its edge still the slab, across the margin a smooth return, past the margin the bank untouched; a
+ * second patch over the first wins where they overlap; and the slab is fixed to the bank, so with the lake level moved
+ * after the patch was laid the patched ground moves with the bank (the water's frame), not with the water.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingGroundPatchTest, "SailingSim.Physics.GroundPatch", Flags)
+bool FSailingGroundPatchTest::RunTest(const FString& Parameters)
+{
+	// A 200 x 200 m bank at 10 m cells falling 15 % east (+Y) and 3 % north: 2 m up at the origin.
+	constexpr int32 Rows = 21, Cols = 21;
+	std::vector<float> H;
+	for (int32 R = 0; R < Rows; ++R)
+		for (int32 C = 0; C < Cols; ++C) H.push_back(float(2.0 - 0.03 * (R * 10.0) - 0.15 * (C * 10.0)));
+	FLakeTerrain T;
+	T.InitSynthetic(Rows, Cols, 10.0, 0.0, 0.0, H);
+	FGroundPatch P;
+	P.HeadX = 100.0; P.HeadY = 50.0;       // the bank is 2 - 3 - 7.5 = -8.5 m here: the slab is laid well up on fill
+	P.DirX = 0.0; P.DirY = 1.0;            // down the ramp east, down the bank
+	P.Length = 15.0; P.HalfWidth = 2.7; P.Z0 = -8.0; P.Z1 = -10.1; P.Margin = 1.5;
+	T.AddGroundPatch(P);
+	auto Slab = [&](double Along) { return P.Z0 + (P.Z1 - P.Z0) * FMath::Clamp(Along / P.Length, 0.0, 1.0); };
+	// Inside and on the edges (both kerbs, the head, the foot): the slab's plane.
+	double Worst = 0.0;
+	for (const double Across : { -2.7, -1.0, 0.0, 1.0, 2.7 })
+		for (const double Along : { 0.0, 0.01, 4.0, 7.5, 14.99, 15.0 })
+			Worst = FMath::Max(Worst, FMath::Abs(T.HeightAt(P.HeadX + Across, P.HeadY + Along) - Slab(Along)));
+	TestTrue(FString::Printf(TEXT("Inside the slab and on its edges the ground is the slab (worst %.4f m)"), Worst), Worst < 1e-6);
+	// Across the margin: between the slab and the bank, monotonic, the bank itself at the margin and beyond.
+	const double Along = 7.5, Bank = T.NaturalHeightAt(P.HeadX + 2.7 + 0.75, P.HeadY + Along), Mid = T.HeightAt(P.HeadX + 2.7 + 0.75, P.HeadY + Along);
+	TestTrue(FString::Printf(TEXT("Half way across the margin the ground is between the slab (%.2f) and the bank (%.2f): %.2f"), Slab(Along), Bank, Mid),
+		(Mid - Slab(Along)) * (Bank - Mid) > 0.0 && FMath::Abs(Mid - 0.5 * (Slab(Along) + Bank)) < 1e-6);
+	double Leak = 0.0;
+	for (const double D : { 1.5, 1.6, 3.0, 20.0 })
+		for (const FVector2D& Q : { FVector2D(P.HeadX + 2.7 + D, P.HeadY + Along), FVector2D(P.HeadX - 2.7 - D, P.HeadY + Along), FVector2D(P.HeadX, P.HeadY - D), FVector2D(P.HeadX, P.HeadY + P.Length + D) })
+			Leak = FMath::Max(Leak, FMath::Abs(T.HeightAt(Q.X, Q.Y) - T.NaturalHeightAt(Q.X, Q.Y)));
+	TestTrue(FString::Printf(TEXT("At and past the margin the bank is its own (worst %.6f m)"), Leak), Leak < 1e-9);
+	// The margin's corner is round: diagonally off the foot's corner by the margin the bank is its own, and by half of it
+	// in each direction (0.71 of the margin) the ground is still blended.
+	const FVector2D Corner(P.HeadX + 2.7, P.HeadY + P.Length);
+	TestTrue(TEXT("Past the corner's round margin the bank is its own"), FMath::IsNearlyEqual(T.HeightAt(Corner.X + 1.1, Corner.Y + 1.1), T.NaturalHeightAt(Corner.X + 1.1, Corner.Y + 1.1), 1e-9));
+	TestFalse(TEXT("Inside the corner's round margin the ground is still blended"), FMath::IsNearlyEqual(T.HeightAt(Corner.X + 0.75, Corner.Y + 0.75), T.NaturalHeightAt(Corner.X + 0.75, Corner.Y + 0.75), 1e-6));
+	// A second patch laid over the first wins where they overlap and leaves the first elsewhere.
+	FGroundPatch Q = P;
+	Q.HeadY = P.HeadY + 10.0; Q.Z0 = -5.0; Q.Z1 = -5.0;
+	T.AddGroundPatch(Q);
+	TestTrue(TEXT("The later patch wins where the two overlap"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY + 12.0), -5.0, 1e-6));
+	TestTrue(TEXT("The first patch stays where the second doesn't reach"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY + 4.0), Slab(4.0), 1e-6));
+	// The lake 0.6 m down (the water's frame rises 0.6 m): the bank and the slab both read 0.6 m higher.
+	T.SetLevelBelowPool(0.6);
+	TestTrue(TEXT("The slab is fixed to the bank: it rises with the bank when the water falls"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY + 4.0), Slab(4.0) + 0.6, 1e-6));
+	TestTrue(TEXT("The untouched bank reads the level too"), FMath::IsNearlyEqual(T.HeightAt(P.HeadX, P.HeadY - 20.0), T.NaturalHeightAt(P.HeadX, P.HeadY - 20.0), 1e-9)
+		&& FMath::IsNearlyEqual(T.NaturalHeightAt(P.HeadX, P.HeadY - 20.0), 2.0 - 0.03 * P.HeadX - 0.15 * (P.HeadY - 20.0) + 0.6, 1e-6));
+	// A copy made after the patches keeps them (workers take copies).
+	const FLakeTerrain W = T.WindowAround(P.HeadX, P.HeadY, 60.0);
+	TestTrue(TEXT("A window onto the terrain keeps its patches"), FMath::IsNearlyEqual(W.HeightAt(P.HeadX, P.HeadY + 4.0), Slab(4.0) + 0.6, 1e-6));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShoreMapRampTest, "SailingSim.Lake.ShoreMapAtRamp", Flags)
 bool FSailingShoreMapRampTest::RunTest(const FString& Parameters)
 {

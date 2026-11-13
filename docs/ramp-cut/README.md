@@ -15,14 +15,20 @@ After:
 - `FLakeTerrain::AddGroundPatch` (`LakeTerrain.h`, SailingPhysics, plain data): `FLakeData::Load` lays one
   `FGroundPatch` per ramp after `PlaceRamps`. Inside the slab's plan plus the kerbs (half width 2.7 m) `HeightAt` returns
   the slab's plane 5 cm down (so the terrain mesh and the concrete don't fight); over the next 1.5 m the ground returns to
-  the bank's own height with a smoothstep. `NaturalHeightAt` is the bank as baked. The terrain actor meshes the shore at
+  the bank's own height with a smoothstep. `NaturalHeightAt` is the bank as baked. The patch is kept in the pool frame
+  (the game mode moves the lake level after the load): the slab is concrete fixed to the bank, so with the lake up or
+  down it rises and falls with the bank in the water's frame, and the live build draws it at `Top + level`. (The baked
+  marina tile is fixed, as the whole marina's is, a pre-existing simplification.) `Apply` leaves early on a box test:
+  a few compares per `HeightAt` call off the patch. The terrain actor meshes the shore at
   1 m from `HeightAt`, the physics ground on it, and the water's shore map reads the same bed, so the cut and the fill
   show, ground and lap in one place.
 - `AMarinaActor::BuildGeometry` (`MarinaActor.cpp`): kerbs 0.2 m wide and 0.15 m tall with an inner face, a top and an
-  outer face down to the patch's level; the pier-side kerb stands against the cut, the far one over the fill.
-- `FMarinaRamp::ZAt`, `DryLength`, the water's ramp stamp and the dry-part obstacle follow the new `Length`;
+  outer face down to the patch's level, closed at both ends; the pier-side kerb stands against the cut, the far one over the fill.
+- `FMarinaRamp::ZAt`, `DryLength`, the water's ramp stamp and the dry-part obstacle (half width `Width/2 + KerbWidth`) follow the new `Length`;
   `OverRamp` in `PlaceAlongside` keeps the fixed 18 m, so no Catalina lies beside the ramp's run into the water.
-- `SailingSim.Lake.Marina` samples the centre line and both edges: the bed is never over the slab, never 0.1 m under
+- `SailingSim.Physics.GroundPatch` holds the patch alone on a synthetic bank: the plane inside and on its edges, the
+  blend across the margin and nothing past it (round corners), a later patch winning an overlap, the level offset, a
+  window copy keeping the patches. `SailingSim.Lake.Marina` samples the centre line and both edges: the bed is never over the slab, never 0.1 m under
   it, the grade is 11.5 to 15.5 %, the slab is cut into the bank somewhere, cut and fill stay under 2 m, and 3 m past
   the kerbs the ground is the bank's.
 

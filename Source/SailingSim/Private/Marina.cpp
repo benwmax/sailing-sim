@@ -227,7 +227,7 @@ void FMarina::ForEachObstacleLine(TFunctionRef<void(const TArray<FVector2D>&, co
 	for (const FMarinaRamp& R : Ramps)
 	{
 		const FVector2D Head = 0.5 * (R.In + R.Out);
-		Visit({ Head, Head + R.Dir * R.DryLength() }, TEXT("ramp"), 0.5f * FMarinaRamp::Width + 0.15f);
+		Visit({ Head, Head + R.Dir * R.DryLength() }, TEXT("ramp"), 0.5f * FMarinaRamp::Width + FMarinaRamp::KerbWidth);
 	}
 }
 

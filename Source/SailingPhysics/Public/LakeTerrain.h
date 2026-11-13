@@ -68,10 +68,12 @@ namespace Sailing
 		double DirX = 1.0, DirY = 0.0;    // unit, down the slab
 		double Length = 10.0;             // m
 		double HalfWidth = 2.5;           // m, kerbs included
-		double Z0 = 0.0, Z1 = -1.0;       // the ground's height under the head and under the foot (m above the water)
+		double Z0 = 0.0, Z1 = -1.0;       // the ground's height under the head and under the foot (m above the POOL: the slab
+		                                  // is concrete, fixed to the bank; the water moves against it with the lake level)
 		double Margin = 1.5;              // m past the edges over which the ground returns to its own
-		/** The patched height at (X, Y) whose own ground is Ground. */
-		double Apply(double X, double Y, double Ground) const;
+		/** The patched height at (X, Y) whose own ground is Ground (water-relative, LevelBelowPool included), the water
+		 *  standing Level below the pool. Cheap off the patch: a box test before any square root. */
+		double Apply(double X, double Y, double Ground, double Level) const;
 	};
 
 	/**
