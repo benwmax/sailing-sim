@@ -674,6 +674,8 @@ private:
 	// this build doesn't have, so a sailor 10 m off went bald (game-05). Held on the cards beyond a few metres.
 	TArray<TPair<TWeakObjectPtr<class UGroomComponent>, int32>> CrewGrooms;
 	void UpdateCrewGroomLOD();
+	// Crew LOD (docs/crew-lod): the player's crew skinned parts (no faces), held at LOD1 on High past 1.5 m.
+	TArray<TWeakObjectPtr<USkeletalMeshComponent>> CrewLodParts;
 	FVector MainsheetCarCm = FVector::ZeroVector;
 	bool TillerEndCm(FVector& Out) const;
 	/** The tiller extension stowed, nobody holding it (Settings > Show crew off, the cockpit view, or no hand on it). A model
