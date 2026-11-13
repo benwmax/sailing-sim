@@ -5560,19 +5560,77 @@ else if (Pattern > 2.5 && Pattern < 3.5)
 }
 else if (Pattern > 4.15 && Pattern < 4.5)
 {
-    // Near-shore phase 3 (audit item 5): quarried limestone (MI_World_Rock, the riprap and breakwater rocks). Mottling and
-    // pits in world space (the rocks' box UVs are a metre at most), each rock its own shade where it carries custom data
-    // 15 (the marina's breakwater), pale weathered tops with lichen, and the water's ring dark and green below its wet line.
-    float3 q = WP * 0.01;
-    float m1 = 0.5 + 0.5 * sin(q.x * 2.3 + sin(q.y * 3.1 + q.z * 1.7)) * sin(q.y * 2.9 + sin(q.z * 2.2 + q.x * 1.3));
-    float m2 = 0.5 + 0.5 * sin(q.x * 9.1 + sin(q.y * 7.3)) * sin(q.y * 8.3 + q.z * 6.1);
-    float pit = step(0.82, frac(sin(dot(floor(q * 9.0), float3(12.99, 78.23, 37.71))) * 43758.5));
-    float shade = seeded ? 0.72 + 0.5 * frac(CD15 * 0.618 + 0.13) : 0.9 + 0.2 * wh2;
-    c *= shade * (0.82 + 0.3 * m1) * (0.92 + 0.12 * m2) * (1.0 - 0.3 * pit);
-    c = lerp(c, float3(0.48, 0.47, 0.38), 0.3 * saturate((m2 - 0.65) * 4.0) * saturate(zw - wetM));
-    float ringK = (1.0 - smoothstep(wetM - 0.1, wetM + 0.05, zw)) * (0.6 + 0.4 * m1);
-    c = lerp(c, c * float3(0.45, 0.5, 0.38), ringK);
-    r = lerp(r, 0.55, ringK * 0.6);
+    // Shore loop slice 1 (docs/shore-loop/rocks.md, Tools/shoreloop/cards/rock.json): quarried limestone riprap
+    // (MI_World_Rock: the breakwater, the bridges' and the shores' riprap). The rocks' vertex colour (rock_kit.py) says
+    // where each point is: VC.x open (1) or down in a hollow (0), VC.y the bed's weathered rind (1) or a fresh fracture
+    // face (0), VC.z 1 on a face and toward 0 on an edge's worn crest. A mesh without colours reads white (open,
+    // weathered, no edge). Detail is smooth value noise in the box UVs (metres) at 43, 11 and 3 cm with its slope as the
+    // bump; the old lattice of hashed 11 cm cells read as squares on every face up close.
+    float vOpen = VC.x, vRind = VC.y, vEdge = 1.0 - VC.z;
+    float2 ra = uv * 2.3, rb = uv * 9.0, rc = uv * 31.0;
+    float2 ia = floor(ra), ib = floor(rb), ic = floor(rc);
+    float2 fa = frac(ra), fb = frac(rb), fc = frac(rc);
+    float2 sa = fa * fa * (3.0 - 2.0 * fa), sb = fb * fb * (3.0 - 2.0 * fb), sc = fc * fc * (3.0 - 2.0 * fc);
+    float a00 = frac(sin(dot(ia, float2(12.99, 78.23))) * 43758.5), a10 = frac(sin(dot(ia + float2(1, 0), float2(12.99, 78.23))) * 43758.5);
+    float a01 = frac(sin(dot(ia + float2(0, 1), float2(12.99, 78.23))) * 43758.5), a11 = frac(sin(dot(ia + float2(1, 1), float2(12.99, 78.23))) * 43758.5);
+    float b00 = frac(sin(dot(ib, float2(39.35, 11.13))) * 43758.5), b10 = frac(sin(dot(ib + float2(1, 0), float2(39.35, 11.13))) * 43758.5);
+    float b01 = frac(sin(dot(ib + float2(0, 1), float2(39.35, 11.13))) * 43758.5), b11 = frac(sin(dot(ib + float2(1, 1), float2(39.35, 11.13))) * 43758.5);
+    float c00 = frac(sin(dot(ic, float2(73.16, 52.24))) * 43758.5), c10 = frac(sin(dot(ic + float2(1, 0), float2(73.16, 52.24))) * 43758.5);
+    float c01 = frac(sin(dot(ic + float2(0, 1), float2(73.16, 52.24))) * 43758.5), c11 = frac(sin(dot(ic + float2(1, 1), float2(73.16, 52.24))) * 43758.5);
+    float va = lerp(lerp(a00, a10, sa.x), lerp(a01, a11, sa.x), sa.y);
+    float vb = lerp(lerp(b00, b10, sb.x), lerp(b01, b11, sb.x), sb.y);
+    float vc = lerp(lerp(c00, c10, sc.x), lerp(c01, c11, sc.x), sc.y);
+    // Slopes of the 11 and 3 cm noise (d/du, d/dv), for the bump: the grain of a broken face, a millimetre or two deep.
+    float2 db = 6.0 * fb * (1.0 - fb) * 9.0, dc = 6.0 * fc * (1.0 - fc) * 31.0;
+    float gbx = lerp(b10 - b00, b11 - b01, sb.y) * db.x, gby = lerp(b01 - b00, b11 - b10, sb.x) * db.y;
+    float gcx = lerp(c10 - c00, c11 - c01, sc.y) * dc.x, gcy = lerp(c01 - c00, c11 - c10, sc.x) * dc.y;
+    // Each stone its own shade: the breakwater's carry it (custom data 15); elsewhere a 1.5 m world noise stands in.
+    float3 q = WP * 0.0067;
+    float wq = 0.5 + 0.5 * sin(q.x * 2.1 + sin(q.y * 2.7 + q.z * 1.9)) * sin(q.y * 1.7 + sin(q.z * 2.3 + q.x * 1.1));
+    float shade = lerp(0.88 + 0.22 * wq, 0.86 + 0.24 * frac(CD15 * 0.618 + 0.13), step(0.0, CD10));
+    // Fresh fracture faces: the stone's own pale cream-grey, finely mottled. The weathered rind: greyer and a little
+    // darker, blotched at the 43 cm scale, with dark crustose lichen (rosettes a few centimetres across, gathered where
+    // the slow noise is high) and a few pale ones.
+    // Riprap on a lake for decades: even the blast fractures have greyed (aged), blotchy at the 43 cm scale.
+    float3 fresh = Color.rgb * float3(1.07, 1.05, 1.0) * (0.92 + 0.12 * vb) * (0.95 + 0.08 * vc);
+    fresh = lerp(fresh, Color.rgb * float3(0.74, 0.74, 0.73) * (0.72 + 0.4 * va), saturate(0.3 + aged * 1.2) * 0.8);
+    float3 rind = Color.rgb * float3(0.68, 0.67, 0.64) * (0.7 + 0.45 * va) * (0.9 + 0.16 * vb);
+    float lich = smoothstep(0.62, 0.72, 0.55 * vb + 0.45 * vc) * smoothstep(0.45, 0.62, va);
+    c = lerp(fresh, rind, vRind);
+    // Buff iron staining in broad patches, and each stone a little warmer or greyer than its neighbours.
+    c *= lerp(float3(1.0, 1.0, 1.0), float3(1.04, 0.93, 0.78), smoothstep(0.55, 0.85, va) * 0.45);
+    float hueK = lerp(wq, frac(CD15 * 1.37 + 0.41), step(0.0, CD10));
+    c *= lerp(float3(0.95, 0.97, 1.0), float3(1.04, 1.0, 0.92), hueK);
+    c = lerp(c, float3(0.10, 0.10, 0.09), lich * (0.3 + 0.4 * vRind) * saturate(aged * 2.0));
+    c = lerp(c, float3(0.60, 0.60, 0.56), smoothstep(0.8, 0.86, vc * 0.6 + vb * 0.4) * smoothstep(0.5, 0.7, 1.0 - va) * 0.6 * vRind);
+    c *= shade;
+    r = lerp(Rough - 0.03, Rough + 0.03, vRind);
+    // Edges worn pale by knocks and the years; hollows dark with the lake's tan clay and grit washed into them.
+    c = lerp(c, Color.rgb * 1.12 * shade, vEdge * 0.45);
+    c = lerp(c, float3(0.24, 0.20, 0.14) * (0.8 + 0.4 * vb), (1.0 - vOpen) * 0.6);
+    c *= 0.75 + 0.25 * vOpen;
+    // Black run-off streaks on the rind (cyanobacteria): lanes a few centimetres wide, stretched downhill.
+    float2 sh = float2((WP.x + WP.y * 0.7) * 0.06, zw * 1.6);
+    float2 si = floor(sh), sf = frac(sh), ss = sf * sf * (3.0 - 2.0 * sf);
+    float s00 = frac(sin(dot(si, float2(27.6, 61.3))) * 43758.5), s10 = frac(sin(dot(si + float2(1, 0), float2(27.6, 61.3))) * 43758.5);
+    float s01 = frac(sin(dot(si + float2(0, 1), float2(27.6, 61.3))) * 43758.5), s11 = frac(sin(dot(si + float2(1, 1), float2(27.6, 61.3))) * 43758.5);
+    float streak = smoothstep(0.66, 0.86, lerp(lerp(s00, s10, ss.x), lerp(s01, s11, ss.x), ss.y)) * vRind * (0.6 + 0.4 * aged);
+    // The lake's bands, from the pool (zw 0) up: under the water an olive-brown film of algae and silt, slicker; the lap
+    // zone up to the stone's wet line (wetM, ragged) damp and darker with a tan clay stain, a green film in its lowest
+    // hand's breadth, a pale dried scum line at its top. Above it, dry stone.
+    float ringTop = wetM * (0.8 + 0.4 * va);
+    float under = 1.0 - smoothstep(-0.06, 0.04, zw);
+    float ringK = (1.0 - smoothstep(ringTop - 0.06, ringTop + 0.02, zw)) * (1.0 - under);
+    c = lerp(c, c * 0.45, streak * (1.0 - smoothstep(-0.05, 0.1, ringTop - zw)) * 0.8);
+    c = lerp(c, lerp(c * 0.5, float3(0.26, 0.21, 0.14), 0.5), ringK * (0.8 + 0.2 * vb));
+    c = lerp(c, float3(0.50, 0.46, 0.36), exp(-pow((zw - ringTop - 0.015) / 0.025, 2.0)) * 0.35 * (1.0 - under));
+    c = lerp(c, float3(0.13, 0.14, 0.08) * (0.8 + 0.4 * vb), (1.0 - smoothstep(0.02, 0.2, zw)) * (1.0 - under) * 0.65);
+    c = lerp(c, float3(0.12, 0.12, 0.065) * (0.8 + 0.4 * va), under * 0.85);
+    r = lerp(r, 0.62, ringK);
+    r = lerp(r, 0.45, under);
+    // Relief: the grain (3 cm) on fresh faces, softer and broader (11 cm) on the rind.
+    float amp = lerp(0.0016, 0.0011, vRind);
+    bump = float3((gcx * amp + gbx * 0.0022 * vRind) * 0.85, (gcy * amp + gby * 0.0022 * vRind) * 0.85, 0.0) * (1.0 - under * 0.6);
 }
 else if (Pattern > 3.5 && Pattern < 4.15)
 {
@@ -5783,7 +5841,7 @@ def build_world_surface():
     night.set_editor_property("collection", world_collection())
     night.set_editor_property("parameter_name", "Night")
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
-    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site", "UV1", "Metal"] + [f"CD{k}" for k in range(10, 16)],
+    c = custom(mat, WORLD_SURFACE_CODE, ["UV", "Color", "Rough", "Pattern", "Windows", "Glow", "Night", "WP", "Site", "UV1", "Metal", "VC"] + [f"CD{k}" for k in range(10, 16)],
                unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
                extra_outputs=[("Out", F1), ("Emit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Nrm", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("Met", F1)])
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -900, 800), "", c, "WP")
@@ -5797,6 +5855,7 @@ def build_world_surface():
         connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1100, 1000 + 60 * k, data_index=k, const_default_value=-1.0), "", c, f"CD{k}")
     connect(uv, "", c, "UV")
     connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -900, -100, coordinate_index=1), "", c, "UV1")   # bridge weathering
+    connect(node(mat, unreal.MaterialExpressionVertexColor, -900, -200), "", c, "VC")   # the rocks' open/rind/edge (rock_kit.py)
     connect(color, "RGBA", c, "Color")
     connect(rough, "", c, "Rough")
     connect(pattern, "", c, "Pattern")
