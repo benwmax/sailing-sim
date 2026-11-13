@@ -2,7 +2,7 @@
  "boat": "Frigate",
  "build": "Tools/shipkit/frigate/build_frigate.py",
  "hull_object": "Hull",
- "note": "The frigate's shape sections for the shape loop tools (docs/shipkit-1, docs/shipkit-2). \"Hull\" is the moulded hull (slice 1), kept as the measured reference: it is in no section, so render_set.py hides it, and the planked skin over it is what renders. The decks and bulkheads are placeholders for slices 7 and 9-14.",
+ "note": "The frigate's shape sections for the shape loop tools (docs/shipkit-1, docs/shipkit-2, docs/shipkit-3). \"Hull\" is the moulded hull (slice 1), kept as the measured reference: it is in no section, so render_set.py hides it, and the planked skin over it is what renders. The decks and bulkheads are placeholders for slices 7 and 9-14. The rig (slice 3) is spars and yards; each yard and the spanker boom and gaff is its own object, placed by a frame that turns about its mast (rig.json).",
  "sections": {
   "planking": {
    "objects": ["Skin", "GunWall", "BulwarkIn", "BulwarkTop", "PortLinings", "Lid_"],
@@ -19,8 +19,8 @@
   "backbone": {
    "objects": ["Backbone"],
    "owns": ["backbone_outline", "Skin.backbone"],
-   "shared": [],
-   "borders": ["planking", "rudder"]
+   "shared": ["Rig.stem_bed"],
+   "borders": ["planking", "rudder", "rig"]
   },
   "rudder": {
    "objects": ["Rudder", "RudderIrons"],
@@ -39,6 +39,12 @@
    "owns": ["Skin.decks", "Skin.bulkheads"],
    "shared": [],
    "borders": ["planking"]
+  },
+  "rig": {
+   "objects": ["Mast_", "Top_", "Topmast_", "Topgallant_", "Yard_", "Spanker*", "Bowsprit*", "Jibboom"],
+   "owns": ["spars.py", "spars_1795.json", "rig_check.py"],
+   "shared": ["specs_1795.json"],
+   "borders": ["planking", "rails", "deck_placeholders", "backbone"]
   }
  },
  "joins": []

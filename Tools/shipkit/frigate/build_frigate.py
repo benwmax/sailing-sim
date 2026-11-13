@@ -1,17 +1,20 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1, docs/shipkit-2).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1, docs/shipkit-2, docs/shipkit-3).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
 ports with their linings and lids, the rail cap, the plankshear moulding, the channels, the entry steps, the rudder
-and its irons, and placeholder decks and bulkheads for the later slices.
+and its irons, and placeholder decks and bulkheads for the later slices. Slice 3 (spars.py, spars_1795.json) masts
+her: lower masts, tops, caps, topmasts, topgallant masts, every yard, the spanker boom and gaff, the bowsprit and
+jibbooms. Each yard, the boom, the gaff and the spritsail yard is its own object with its origin on the axis it turns
+about (local Z up that axis): <out>/rig.json lists how far each one braces and hoists.
 
     python build_frigate.py <out dir>        (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
-Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py) and
-<out>/build.json (triangles per object, main dimensions, displacement). Units are metres in Unreal's body frame
+Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
+<out>/build.json (triangles per object, main dimensions, displacement, the rig's heights) and <out>/rig.json. Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
-specs_1795.json, never the .blend.
+specs_1795.json, spars.py and spars_1795.json, never the .blend.
 """
 import json
 import math
@@ -27,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import loft  # noqa: E402
 import skin  # noqa: E402
+import spars  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -87,6 +91,7 @@ PAINT = {
     "Deck": ((0.58, 0.52, 0.42), 0.75, 0.0),
     "Iron": ((0.05, 0.05, 0.05), 0.5, 0.6),
     "Bronze": ((0.55, 0.40, 0.22), 0.35, 1.0),
+    "Spar": ((0.50, 0.36, 0.20), 0.5, 0.0),
 }
 MATS = {}
 for name, (rgb, rough, metal) in PAINT.items():
@@ -140,7 +145,9 @@ weld(transom)
 smooth(transom)
 
 # the planked ship
-SK = skin.Skin(L).build()
+# the rig first: the stem head is cut down to the bowsprit's bed
+RIG = spars.Rig(L, json.load(open(os.path.join(HERE, "specs_1795.json")))).build()
+SK = skin.Skin(L, stem_bed=RIG.stem_bed).build()
 SKIN = SK.parts()
 LIDS = []
 for name, (V, F, M, side) in SKIN.items():
@@ -169,6 +176,15 @@ for name in LIDS:
         ob = make_painted(f"{name}_{suffix}", Vl, Fs, M)
         ob.matrix_world = Matrix(((*R[0], oo[0]), (*R[1], oo[1]), (*R[2], oo[2]), (0, 0, 0, 1)))
         smooth(ob, 30)
+
+# the masts and yards (slice 3): masts, tops and the bowsprit where they stand; each yard, the spanker boom and gaff on
+# its own frame, origin on the axis it turns about
+for name, (V, F, M, frame) in RIG.parts().items():
+    ob = make_painted(name, V, F, M)
+    if frame is not None:
+        o, R = frame
+        ob.matrix_world = Matrix(((*R[0], o[0]), (*R[1], o[1]), (*R[2], o[2]), (0, 0, 0, 1)))
+    smooth(ob, 35)
 
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
@@ -223,5 +239,14 @@ vol = displacement(L)
 stats["displacement"] = {"moulded_volume_m3": round(vol, 1), "seawater_tonnes": round(vol * 1.025, 0),
                          "long_tons": round(vol * 1.025 / 1.016, 0),
                          "note": "moulded (inside the planking); the planking and copper add about 3-4%. Constitution: about 2,200 long tons at 21 ft (designed)"}
+stats["rig"] = RIG.summary()
+stats["triangles_rig"] = sum(v["triangles"] for k, v in stats["objects"].items() if k in RIG.parts_)
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1)
+json.dump({"note": "each moving spar (docs/shipkit-3): origin_m on the axis it turns about (metres, ship frame) and that "
+                   "axis (the object's local +Z); parent, the object it rides on; hoist_m, its offset along the axis "
+                   "[lowered, hoisted] (negative is down; the model hangs it hoisted); brace_deg, the limits of a turn "
+                   "about local +Z (right-handed: positive swings a square yard's starboard arm aft and the spanker "
+                   "boom and gaff to port); port_tack_sign, the sign of the turn that trims it for the wind on the "
+                   "port side (each yard's lee arm aft, the boom and gaff to leeward)",
+           "parts": RIG.meta}, open(os.path.join(OUT, "rig.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
