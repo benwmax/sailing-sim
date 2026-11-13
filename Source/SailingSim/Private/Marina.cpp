@@ -138,7 +138,8 @@ void FMarina::PlaceAlongside(TFunctionRef<double(double, double)> DepthAt)
 	{
 		for (const FMarinaRamp& R : Ramps)
 		{
-			const FVector2D A = 0.5 * (R.In + R.Out), AB = R.Dir * R.Length;
+			// the old fixed 18 m (MaxLength), not the slab's own Length: no boat lies beside a launch ramp's run into the water
+			const FVector2D A = 0.5 * (R.In + R.Out), AB = R.Dir * FMarinaRamp::MaxLength;
 			const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / AB.SizeSquared(), 0.0, 1.0);
 			if (FVector2D::Distance(P, A + AB * T) < 0.5 * FMarinaRamp::Width + 0.5 * C30.Beam + 0.5) return true;
 		}
