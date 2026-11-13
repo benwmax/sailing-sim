@@ -1,0 +1,12 @@
+#405 gap 2: the ramp pier's shore end, before and after the club shore-detail rebake (#660).
+Camera: Drone capture, absolute; ramp = the #405 audit's dock-ramp view (-SailingCamWorld=37.2,170.4,3.4,107,-18), ramp-top
+= straight down over the pier's landward end (-SailingCamWorld=30.0,166.0,22,107,-62). Ultra, 1920x1080, 15:00.
+before: main 52f2a912 (Nov 12), uncooked editor build. RayHubbard.detail had no tile at the club (tile 75,177; nearest
+  640 m east), so the shore there was the 5 m grid: +0.45 m to -1.66 m within a cell or two, big stepped flat facets.
+after: main 4eb20ef5 (Nov 13), Development package (Packaged\Windows-4eb20ef5). The log: "1 m shore detail loaded (59.7 MB)";
+  the new RayHubbard.detail has tile (75,177) (heights -2.85..2.66 m). Across the ramp's foot (map N 40, E 120..160, every
+  4 m): 1.51 1.47 1.44 1.14 0.73 0.10 -0.54 -1.42 -2.02 -2.09 m: about 0.16 m per metre at the waterline.
+What changed: the stepped facets are gone; the bank is a smooth lidar slope, grass above about a metre, a sand band to the
+water, the shoreline a smooth curve. The wet band (M_Terrain, 0.05-0.6 m above the water) is a narrow darker strip at most.
+Look at: the launch ramp's concrete slab beside the pier's foot (FMarina::PlaceRamps; light slabs in before-ramp-top) is not
+visible in after-ramp-top: possibly placed by the old heights and now under the new bank, or not placed.
