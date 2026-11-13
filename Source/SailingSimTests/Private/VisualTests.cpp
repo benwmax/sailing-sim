@@ -1285,6 +1285,12 @@ bool FVisualCrewClothLoosenessTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s: a few tenths of the polo is loose, not all of it"), *R), Loose > N / 20 && Loose < N / 2);
 		TestTrue(FString::Printf(TEXT("%s: the hem is loose"), *R), Hem > 0 && HemLoose > Hem / 2);
 		TestTrue(FString::Printf(TEXT("%s: the collar is not"), *R), CollarLoose == 0);
+
+#endif
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualStormGradeTest, "SailingSim.Visual.StormGrade", VisualFlags)
 bool FVisualStormGradeTest::RunTest(const FString& Parameters)
 {
@@ -1303,10 +1309,5 @@ bool FVisualStormGradeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A cold cast in the shadows, blue over red, small"), Storm.ShadowGain.Z > 1.0 && Storm.ShadowGain.X < 1.0
 		&& Storm.ShadowGain.Z - Storm.ShadowGain.X < 0.2);
 	TestTrue(TEXT("Darker edges"), Storm.Vignette > Fair.Vignette);
-	return true;
-}
-
-#endif
-	}
 	return true;
 }

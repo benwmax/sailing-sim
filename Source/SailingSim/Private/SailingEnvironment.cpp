@@ -680,14 +680,16 @@ void ASailingEnvironment::ApplyCinematicLook(FPostProcessSettings& PP, double Cl
 	// Under a storm deck the grade fades part of the way: gloom is grey, not teal and amber (feedback #24: but not dead
 	// grey either; StormGradeFor, on the cloud darkness itself as before).
 	static SailingArgs::FCachedFlag ClassicStormGrade(TEXT("SailingClassicStormGrade"));
+	// The LUT fades on the cloud darkness itself, as before; the storm's darker edges only under a storm deck by day.
 	const FStormGrade Storm = StormGradeFor(Dark, ClassicStormGrade.Get());
+	const FStormGrade Deck = StormGradeFor(StormGradeAmount(CloudDarkness, NightAmount), ClassicStormGrade.Get());
 	PP.ColorGradingLUT = CinematicLUT;
 	PP.bOverride_ColorGradingLUT = CinematicLUT != nullptr;
 	PP.ColorGradingIntensity = Storm.LutIntensity;
 	PP.FilmSlope = 0.92f;      // engine 0.88
 	PP.FilmToe = 0.58f;        // engine 0.55: a little deeper shadows before the LUT lifts them
 	PP.FilmShoulder = 0.24f;   // engine 0.26
-	PP.VignetteIntensity = Storm.Vignette;
+	PP.VignetteIntensity = Deck.Vignette;
 	PP.FilmGrainIntensity = 0.06f;
 	if (bUltra)
 	{

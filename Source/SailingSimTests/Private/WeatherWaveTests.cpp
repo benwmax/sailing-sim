@@ -453,8 +453,15 @@ bool FSailingStormSeaWindTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("Sea wind: outflow %.1f kn from %.0f deg a minute behind the front, peak %.1f kn at %.0f s (the burst), largest 1 s step after the front %.2f kn"),
 		MidKnots, MidFrom, Peak, PeakT, MaxJump));
 	TestTrue(TEXT("Ahead of the front the sea follows the breeze"), AheadErr < 1e-6);
-	TestTrue(TEXT("Behind the front it follows the outflow"), FMath::Abs(MidKnots - Mid.Front.OutflowKnots) < 4.0
+	// (A minute behind the front the burst's ring is over her: the outflow's direction, at least its strength.)
+	TestTrue(TEXT("Behind the front it follows the outflow (and the burst)"), MidKnots > Mid.Front.OutflowKnots - 1.0
 		&& FMath::Abs(WrapAngle((MidFrom - Mid.Front.OutflowFromDegrees) * kDegToRad)) < 15.0 * kDegToRad);
+	// Without the burst the sea wind behind the front is the outflow itself.
+	FWeatherState NoBurst = Mid;
+	NoBurst.Front.Burst.PeakOutflowMs = 0.0;
+	double BareKnots = 0.0, BareFrom = 0.0;
+	NoBurst.Front.SeaWindAt(0.0, 0.0, FWeatherSystem::kFrontArrives + 60.0, Mid.Wind.SpeedKnots, Mid.Wind.FromDegrees, BareKnots, BareFrom);
+	TestTrue(TEXT("... the bare outflow without a burst"), FMath::Abs(BareKnots - Mid.Front.OutflowKnots) < 0.5);
 	TestTrue(TEXT("The microburst raises it past the bare outflow"), Peak > Mid.Front.OutflowKnots + 3.0);
 	TestTrue(TEXT("No step when the outflow decays (1 s steps under 1.5 kn)"), MaxJump < 1.5);
 	TestTrue(TEXT("Back to the breeze once the outflow has died"), AfterErr < 1e-6);
