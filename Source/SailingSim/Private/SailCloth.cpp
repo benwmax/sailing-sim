@@ -100,7 +100,7 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 		// Over a jib whose head is below this one, the rows under the head end at the jib's head height, so the last
 		// panel (to the head) is all above the jib: its luff never cuts back through the jib's top.
 		const bool bOverJib = bAheadOf && AheadZTop < HeadZ && AheadZTop > ZFoot + 0.5;
-		Out.Z = R == Rows - 1 ? HeadZ : (bOverJib ? ZFoot + (AheadZTop - ZFoot) * R / (Rows - 2) : ZFoot + (HeadZ - ZFoot) * R / (Rows - 1));
+		Out.Z = R == Rows - 1 ? HeadZ : (bOverJib ? (R == Rows - 2 ? AheadZTop : ZFoot + (AheadZTop - ZFoot) * R / (Rows - 2)) : ZFoot + (HeadZ - ZFoot) * R / (Rows - 1));
 		Out.LuffX = LuffXAt(Out.Z, R);
 	}
 	Out.Chord = RowChord[R];
@@ -166,7 +166,7 @@ double FSailCloth::LuffXAt(double Z, int32 Row) const
 	// Feedback #20: straight from the tack up to the head on its halyard, held ahead of the jib's luff below the jib's head.
 	const double V = FMath::Clamp((Z - ZFoot) / FMath::Max(HeadZ - ZFoot, 1e-3), 0.0, 1.0);
 	double X = FootLuffX + (HeadX - FootLuffX) * V;
-	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
+	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
 	return X;
 }
 
@@ -179,8 +179,8 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 	// Over the jib's head: its luff comes down ahead of the jib's (FSailCloth::SetHeadPoint), not through it.
 	if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
 	Z = FMath::Min(Z, C.MastheadZ - 0.1);
-	// The model's socket carries the mast's bend, but never inside the config's mast (the maxi's Hounds is near her mast's
-	// centre line).
+	// The model's socket, when it is forward of the config's mast front (a bent mast); never inside the mast (the maxi's
+	// Hounds is near her mast's centre line, the J/22 hero's 2 cm behind the config's front).
 	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
 	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? FMath::Max(MastFrontCm->X, ConfigFront) : ConfigFront;
 	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);

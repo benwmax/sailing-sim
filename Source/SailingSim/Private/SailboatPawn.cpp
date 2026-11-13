@@ -3493,7 +3493,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
 	if (T.NumSpinStrips > 0)
 	{
-		// Feedback #20: the head on its halyard at the mast (the model mast's front: its Hounds, mast bend included), the luff
+		// Feedback #20: the head on its halyard at the mast (the model mast's Hounds when it is forward of the config's front), the luff
 		// kept ahead of the jib's.
 		const bool bMastFront = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
 		const FVector MastFront = bMastFront ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
