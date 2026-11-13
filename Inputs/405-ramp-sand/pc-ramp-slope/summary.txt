@@ -1,0 +1,11 @@
+pc/ramp-slope f1788495 (from mac/club-shore-rebake 3ae5787d): the launch ramp's slab ends where the bank reaches its foot.
+Stills: uncooked editor build with -SailingProceduralWorld (the code's geometry, no rebake), same two views as ../ (Drone,
+absolute; ramp = 37.2,170.4,3.4,107,-18; ramp-top = 30.0,166.0,22,107,-62), Ultra 1920x1080, 15:00. No tile rebaked.
+Cause: on the 1 m club shore the bank falls 2 m in about 7 m (centre line, from the head: 0.67 0.48 0.20 -0.11 -0.41 -0.76
+-1.13 -1.43 m every metre); the slab was one plane from Top 0.97 m to Foot -1.4 m over a fixed 18 m, so it stayed out of the
+water to 7.4 m: a near-level plate 0.2-0.6 m over the water for 5 m past the shore (../pc-3ae5787d).
+Fix: FMarinaRamp::Length is where the centre line's ground first reaches Foot (4 to 18 m): 7 m here, dry for 2.9 m; the slab
+is never more than 0.30 m over the ground on its centre line. Drawing, the water's shore map and the obstacle use it.
+Look at: the bank also falls about 0.8 m across the slab's 5 m from the pier side, so the slab is cut in level and the bank
+covers its pier-side edge near the head (the missing corner in ramp-top). With the shorter slab, a Catalina 30 now lies
+alongside the ramp pier's far side where the old 18 m slab's clearance kept it out (FMarina OverRamp).
