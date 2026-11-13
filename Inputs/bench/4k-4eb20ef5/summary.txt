@@ -1,0 +1,28 @@
+4K Ultra fullscreen bench, main 4eb20ef5 (Nov 13), Development package Packaged\Windows-4eb20ef5, against the 5e8233ef
+baseline's B pass (Inputs/bench/4k-baseline-5e8233ef/fullscreen/B). Same run: bench-visual-win -Tiers Ultra, 16 views,
+12 s each, demo autopilot, -fullscreen at 3840x2160 (window mode 1); the game is DPI aware from Config now (#dpi-aware), so
+no ini seeding. bench.json resolution 3840x2160 on all 16, render_pct 100 (no upscaler).
+Foreground 0 on all 16 (the baseline had 1.0): the game window was not reported in front this time; read the numbers with
+that in mind (they are close to the baseline's all the same).
+1% low = 1000 / p99_ms; gpu = gpu.total_ms.
+
+view              fps  base  d_fps  1%low  base   gpu   base
+beam8            47.2  47.8   -0.6   36.5  38.5  16.13 15.97
+beat15           45.8  48.2   -2.4   35.7  38.7  16.57 15.64
+bridge           49.6  49.2   +0.4   35.4  37.2  14.99 15.06
+coast-day        44.1  44.8   -0.7   31.9  31.7  17.38 17.31
+coast-night      44.9  45.0   -0.1   32.9  31.3  18.33 17.72
+crew             40.2  40.6   -0.4   31.4  33.0  18.30 17.96
+far-coast-night  56.8  57.2   -0.4   35.0  38.4  12.60 12.46
+far-coast        48.4  47.9   +0.5   31.8  32.0  14.97 15.13
+gulf-sea         49.6  50.2   -0.6   36.5  37.5  14.80 15.03
+helm-eye         48.6  49.0   -0.4   34.7  32.8  15.70 15.08
+marina-night     47.0  45.7   +1.3   38.8  38.3  17.71 18.57
+marina           46.2  47.4   -1.2   36.8  35.9  16.59 15.70
+marseille-port   45.7  45.2   +0.5   28.9  27.9  16.89 17.23
+slip             44.1  44.8   -0.7   35.8  36.2  18.31 17.87
+storm            37.3  38.3   -1.0   28.3  23.0  19.84 18.76
+stream-run       38.7  38.0   +0.7   28.4  30.4  19.99 19.88
+Mean fps change -0.3 (all 16 within -2.4..+1.3). GPU +0.2 ms on average; marina +0.9 ms GPU (60% occupancy, #663), storm
++1.1 ms. Development's game thread is 15-18 ms on every view (as in the baseline), so the views are not GPU bound here.
+shots/: each view's 4K screenshot (JPEG 85).
