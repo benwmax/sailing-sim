@@ -53,6 +53,23 @@ nw *= dot(nw, V) < 0.0 ? -1.0 : 1.0;          // two-sided: the generated shells
 float up = saturate((nw.z - 0.4) * 2.5);
 float gcAll = X.b * (1.0 - X.r) * (1.0 - X.g);
 float zcm = LP.z;                             // the hull's and the rudder's pivots sit on the design waterline
+// Boat skins (docs/skins): a skin's paint over the bake. Each Paint* is a colour with alpha 1 where the skin names one
+// (0, the default: the bake as it is, so a boat without a skin is unchanged). The bake's own shading and marks stay:
+// the paint is scaled by the bake's brightness against that zone's clean colour (the style's gelcoat #F2F0EA, grey
+// bottom #8E918F, non-skid #CDC5AE, bare teak), and the wear below then weathers the paint as it weathers the gelcoat.
+// Zones: the hull group above the taped line (topsides) and below it (bottom), a boot stripe 7 to 9.5 cm over the
+// waterline (j22_materials.py's band), the deck moulding's smooth gelcoat, its non-skid, and the teak.
+float pLum = dot(c, float3(0.3, 0.59, 0.11));
+float pExt = step(0.5, Exterior), pHull = step(0.5, IsHull) * pExt;
+float pBelow = 1.0 - smoothstep(-0.3, 0.0, zcm);
+c = lerp(c, PaintHull.rgb * min(pLum / 0.871, 1.2), PaintHull.a * pHull * (1.0 - pBelow));
+c = lerp(c, PaintBottom.rgb * min(pLum / 0.278, 1.3), PaintBottom.a * pHull * pBelow);
+float pBoot = smoothstep(6.85, 7.0, zcm) * (1.0 - smoothstep(9.5, 9.65, zcm));
+c = lerp(c, PaintBoot.rgb * min(pLum / 0.871, 1.2), PaintBoot.a * pHull * pBoot);
+float pDeckGroup = (1.0 - step(0.5, IsHull)) * (1.0 - step(0.5, Waterline)) * pExt;
+c = lerp(c, PaintDeck.rgb * min(pLum / 0.871, 1.2), PaintDeck.a * pDeckGroup * gcAll);
+c = lerp(c, PaintNonSkid.rgb * min(pLum / 0.559, 1.3), PaintNonSkid.a * pDeckGroup * X.r);
+c = lerp(c, PaintTrim.rgb * min(pLum / 0.22, 1.5), PaintTrim.a * pDeckGroup * X.g);
 // Chalk, as M_BoatSurface: the tops first, in 40 cm blotches (wear.BLOT), pale gelcoat toward chalk.
 float ox = max(dirtK, 0.3 * timeK) * gcAll * (0.55 + 0.45 * up);
 float2 blq = LP.xz / 40.0 + LP.yy / 55.0, blqi = floor(blq), blqf = smoothstep(0.0, 1.0, frac(blq));
@@ -363,6 +380,12 @@ def hero_material(defaults):
     wear.set_editor_property("parameter_name", "Wear")
     wear.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
     extra["Wear"] = (wear, "RGBA")
+    # Boat skins (docs/skins): a skin's paint per zone (alpha 0: the bake as it is), set by the pawn on the player's boat.
+    for i, pname in enumerate(("PaintHull", "PaintBottom", "PaintBoot", "PaintDeck", "PaintNonSkid", "PaintTrim")):
+        pv = node(mat, unreal.MaterialExpressionVectorParameter, -1300, 1620 + i * 80)
+        pv.set_editor_property("parameter_name", pname)
+        pv.set_editor_property("default_value", unreal.LinearColor(1, 1, 1, 0))
+        extra[pname] = (pv, "RGBA")
     # Hero ageing (docs/hero-ageing): the waterline, blotches and grime are anchored to the part (cm; the hull's and the
     # rudder's pivots sit on the design waterline), as M_BoatSurface's LP.
     extra["LP"] = (node(mat, unreal.MaterialExpressionLocalPosition, -900, 2120), "")

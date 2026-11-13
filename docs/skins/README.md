@@ -68,6 +68,21 @@ red-stripe and blue-stripe schemes differ only in the sail's stripes, which a li
 Online-readiness: skins are cosmetic and never reach SailingPhysics (rule 1); any vessel can wear one, nothing asks for
 "the player" beyond choosing whose saved skin to read (rule 2); the file is versioned with string ids (rule 7).
 
+## Paint on the hero J/22
+
+The first Mac stills (Nov 13, `Inputs/skins-stills/` on the inputs branch) showed paint on the Sunfish and not on the
+hero J/22: her hull, deck and teak are baked textures (`M_J22HeroSurface`), so no slot takes a livery colour. The
+material now paints its zones from six vector parameters the pawn sets from the skin (`PaintHull`, `PaintBottom`,
+`PaintBoot`, `PaintDeck`, `PaintNonSkid`, `PaintTrim`; alpha 1 paints, the default 0 leaves the bake, so a boat without
+a skin is unchanged). The zones: the hull above and below the taped waterline, a boot stripe 7 to 9.5 cm over it, the
+deck moulding's smooth gelcoat, its non-skid (the detail mask's red), the teak (green). The paint is scaled by the
+bake's brightness, so her shading, registration numbers and marks stay, and the wear weathers the paint as it does the
+gelcoat. Only what the skin names is painted. She has no cove stripe to paint yet.
+
+This is a change to `scripts/import_j22_hero.py`: the Mac rebuilds the material (`HERO_MATERIALS_ONLY=1`) and commits
+it, and the pull request needs Bean's label. The three wear looks (Showroom new, Well loved, Barn find) carry no paint,
+so they leave her colours alone.
+
 ## The Customize screen
 
 Boat screen > Customize (C, or Y on the pad; not for a locked boat). `ESailScreen::Customize`, `UI/SailCustomize.cpp`;

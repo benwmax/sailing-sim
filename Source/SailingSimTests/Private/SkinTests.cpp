@@ -277,7 +277,8 @@ bool FSailingSkinBuiltInTest::RunTest(const FString&)
 			TestFalse(S.Id + TEXT(" name twice"), Names.Contains(S.Name));
 			Ids.Add(S.Id);
 			Names.Add(S.Name);
-			TestTrue(S.Id + TEXT(" has a hull colour"), S.Paint.Hull.IsSet());
+			// A look is paint (with or without wear), or wear alone: the wear looks leave her colours as they are.
+			TestTrue(S.Id + TEXT(" has a hull colour or is wear alone"), S.Paint.Hull.IsSet() || (S.Paint.IsEmpty() && S.Wear.Level >= 0));
 			// Found again by id, and never written or deleted as a file.
 			FBoatSkin Found;
 			TestTrue(S.Id + TEXT(" found"), BoatSkinStore::Find(T, S.Id, Found) && Found.Name == S.Name);
@@ -515,6 +516,7 @@ bool FSailingSkinEditorTest::RunTest(const FString&)
 		// Every built-in shows its own scheme's trim and stripes over the class's look.
 		for (const FBoatSkin& B : BoatSkinStore::BuiltIn(J22))
 		{
+			if (B.Paint.IsEmpty()) continue;   // (a wear look: her own trim and stripes)
 			FBoatLivery L = SampleBoatLivery(J22, 0);
 			B.ApplyTo(L, J22);
 			TestEqual(*FString::Printf(TEXT("%s: trim as its paint says"), *B.Id), L.bTeak, B.Paint.bTrim.Get(false));

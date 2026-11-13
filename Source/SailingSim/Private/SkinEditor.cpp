@@ -228,7 +228,8 @@ void FSkinEditor::SetName(const FString& Name)
 
 void FSkinEditor::Surprise(FRandomStream& Random)
 {
-	const TArray<FBoatSkin> BuiltIn = BoatSkinStore::BuiltIn(BoatType);
+	// (the built-ins that are paint; the wear looks carry none)
+	const TArray<FBoatSkin> BuiltIn = BoatSkinStore::BuiltIn(BoatType).FilterByPredicate([](const FBoatSkin& S) { return !S.Paint.IsEmpty(); });
 	if (BuiltIn.Num() > 0) Draft.Paint = BuiltIn[Random.RandRange(0, BuiltIn.Num() - 1)].Paint;
 	Draft.Wear = FBoatSkin::FWear();
 	Draft.Wear.Level = Random.RandRange(0, 3);

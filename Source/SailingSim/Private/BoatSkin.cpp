@@ -66,13 +66,16 @@ namespace BoatSkinLocal
 	FString FileOf(const FString& Id) { return BoatSkinStore::Dir() / (Id + FileSuffix); }
 
 	/** A built-in: a catalogue scheme's paint (and optionally a wear level) under a name. */
-	FBoatSkin MakeBuiltIn(int32 BoatType, const TCHAR* Slug, const TCHAR* Name, int32 Scheme, int32 WearLevel)
+	FBoatSkin MakeBuiltIn(int32 BoatType, const TCHAR* Slug, const TCHAR* Name, int32 Scheme, int32 WearLevel, bool bPaint = true)
 	{
 		FBoatSkin S;
 		S.bBuiltIn = true;
 		S.BoatId = FSailSave::BoatId(BoatType);
 		S.Id = FString::Printf(TEXT("%s%s-%s"), BuiltInPrefix, *S.BoatId.ToLower(), Slug);
 		S.Name = Name;
+		S.Wear.Level = WearLevel;
+		// (a wear look carries no paint: she keeps her own colours, which on the hero J/22 are her bake's)
+		if (!bPaint) return S;
 		const FBoatLivery L = LiveryForScheme(BoatType, Scheme);
 		S.Paint.Hull = L.Hull; S.Paint.Deck = L.Deck; S.Paint.NonSkid = L.NonSkid; S.Paint.Bottom = L.Bottom;
 		S.Paint.bBoot = L.bBoot;
@@ -82,7 +85,6 @@ namespace BoatSkinLocal
 		if (L.bCove) S.Paint.Cove = L.Cove;
 		S.Paint.bTrim = L.bTeak;
 		if (L.bTeak) S.Paint.Trim = L.Teak;
-		S.Wear.Level = WearLevel;
 		return S;
 	}
 }
@@ -437,9 +439,9 @@ TArray<FBoatSkin> BoatSkinStore::BuiltIn(int32 BoatType)
 	}
 	if (Schemes > 0)
 	{
-		Out.Add(MakeBuiltIn(BoatType, TEXT("showroom"), TEXT("Showroom new"), 0, 0));
-		Out.Add(MakeBuiltIn(BoatType, TEXT("well-loved"), TEXT("Well loved"), 0, 3));
-		Out.Add(MakeBuiltIn(BoatType, TEXT("barn-find"), TEXT("Barn find"), 0, 4));
+		Out.Add(MakeBuiltIn(BoatType, TEXT("showroom"), TEXT("Showroom new"), 0, 0, false));
+		Out.Add(MakeBuiltIn(BoatType, TEXT("well-loved"), TEXT("Well loved"), 0, 3, false));
+		Out.Add(MakeBuiltIn(BoatType, TEXT("barn-find"), TEXT("Barn find"), 0, 4, false));
 	}
 	return Out;
 }

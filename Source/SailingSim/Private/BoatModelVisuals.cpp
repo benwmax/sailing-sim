@@ -647,6 +647,27 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 				if (const FLinearColor* Col = LiveryFor(Packed[K])) Mid->SetVectorParameterValue(SailingBoatPacks::ColourParam(K), *Col);
 			}
 			if (const FLinearColor* Col = Packed.Num() ? nullptr : LiveryFor(Slots[I].ToString())) Mid->SetVectorParameterValue(TEXT("Color"), *Col);
+			// Boat skins (docs/skins): the hero J/22's hull, deck and teak are baked textures, so no slot takes a livery
+			// colour; M_J22HeroSurface paints its zones from these instead (alpha 1: paint it; unset, the bake as it is).
+			// Only what the skin itself names is painted, so a skin of wear or sails leaves the bake alone. Materials
+			// without the parameters ignore them.
+			if (bHasSkin)
+			{
+				const FBoatSkin::FPaint& Paint = Skin.Paint;
+				auto SetPaint = [Mid](const TCHAR* Param, const TOptional<FLinearColor>& Colour, bool bOn)
+				{
+					const FLinearColor C = Colour.Get(FLinearColor::White);
+					Mid->SetVectorParameterValue(Param, FLinearColor(C.R, C.G, C.B, bOn && Colour.IsSet() ? 1.f : 0.f));
+				};
+				SetPaint(TEXT("PaintHull"), Paint.Hull, true);
+				SetPaint(TEXT("PaintBottom"), Paint.Bottom, true);
+				SetPaint(TEXT("PaintBoot"), Paint.Boot, Paint.bBoot.Get(true));
+				SetPaint(TEXT("PaintDeck"), Paint.Deck, true);
+				SetPaint(TEXT("PaintNonSkid"), Paint.NonSkid, true);
+				// (no trim: the rails take the deck's colour, as the livery has it)
+				const bool bNoTrim = Paint.bTrim.IsSet() && !Paint.bTrim.GetValue();
+				SetPaint(TEXT("PaintTrim"), bNoTrim ? TOptional<FLinearColor>(L.Deck) : Paint.Trim, true);
+			}
 		}
 	}
 	// Boat detail pass: the cabin interior, same pivot as the hull; only on the player's boat (it shows through the
