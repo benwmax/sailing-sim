@@ -76,7 +76,20 @@ namespace Sailing
 		/** The crew's tack (Settings.bCrewTacks): true while they hold the main through a called tack (for the tests). */
 		bool IsHoldingForTack() const { return CrewTack == 2; }
 
-		void Reset() { CrewTack = 0; MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
+		/**
+		 * Feedback #23: the player eased the mainsheet by hand to Sheet. When the assist takes over again it keeps the main at
+		 * least that far out (it still eases further for heel or a wind that goes aft), so a sail eased on purpose is left to
+		 * luff instead of being hauled back in. The hold ends when the player trims the main by hand (PlayerTrimmedMain), the
+		 * main changes sides (a tack or a gybe), or the apparent wind comes forward EaseHoldReleaseDeg from where it was
+		 * (heading up toward a beat). A dinghy rolling to windward is still sheeted in.
+		 */
+		void PlayerEasedMain(const FBoatModel& Boat, double Sheet);
+		void PlayerTrimmedMain() { bEaseHeld = false; }
+		/** The sheet the player's ease holds the main at, or a negative number when none is held (for the HUD and tests). */
+		double GetHeldEase() const { return bEaseHeld ? HeldEase : -1.0; }
+		static constexpr double EaseHoldReleaseDeg = 15.0;
+
+		void Reset() { bEaseHeld = false; CrewTack = 0; MainEase = 0.0; SpinEase = 0.0; FeltWind = 0.0; SetUpWind = 0.0; bSensed = false; MainHand = TravelerHand = JibHand = FHand(); bMainSeen = bJibSeen = false; }
 
 	private:
 		double MainEase = 0.0; // rad, extra ease from heel feedback
@@ -99,6 +112,10 @@ namespace Sailing
 		bool bHandsNow = true;
 		mutable int Adjustments = 0;
 		bool bMainSeen = false, bJibSeen = false;
+		// Feedback #23: the player's own ease, kept (PlayerEasedMain).
+		bool bEaseHeld = false;
+		double HeldEase = 0.0, HeldEaseAwaDeg = 0.0;
+		int HeldEaseSide = 0;
 		/** One hand on a control: a move at the control's rate past the dead band, a creep below it. */
 		double Work(FHand& Hand, double Now, double Target, double DegPerUnit, double RateOut, double RateIn, double Dt) const;
 		double See(double& Seen, bool& bSeen, double Raw, double Dt) const;
