@@ -598,8 +598,9 @@ class Skin:
     """Builds the planking and everything on it. build() then parts() returns name -> (V (n, 3) metres, faces, face
     materials): starboard parts (mirrored for port by the caller) and centreline parts."""
 
-    def __init__(self, L, specs=None):
+    def __init__(self, L, specs=None, stem_bed=None):
         self.L = L
+        self.stem_bed = stem_bed            # the bowsprit's underside over the stem head (spars.Rig.stem_bed), or None
         self.sp = specs or json.load(open(os.path.join(HERE, "specs_1795.json")))
         self.pr = Profile(L, self.sp)
         self.m = Mould(L)
@@ -1299,12 +1300,17 @@ class Skin:
 
     def backbone(self, part):
         """Keel, deadwood, sternpost and stem as loft.py draws them, sided wider by the bottom planking's thickness each
-        side (the planking lands in their rabbets) and the stem carried up to the forecastle's rail; coppered up to the
-        main wale's bottom."""
+        side (the planking lands in their rabbets) and the stem carried up to the forecastle's rail (or cut down
+        to the bowsprit's bed, when there is one); coppered up to the main wale's bottom."""
         L, pr = self.L, self.pr
         hw = L.k + self.pl.t0 * pr.pxin
         top = float(pr.R1(np.array([L.x_fwd(250.0)]))[0]) + self.sp["rail"]["thick_in"] * pr.pxin
         ol = np.array(loft.backbone_outline(L, top=top))
+        if self.stem_bed is not None:
+            # the stem head is cut down to the bowsprit's bed (forward of midships only: the sternpost keeps its head)
+            b = self.stem_bed
+            bed = lambda p: (b["z_ft"] + b["slope"] * ((p[0] - L.mid_px) / L.ppf - b["x_ft"])) * L.ppf_y - p[1]
+            ol = np.array(clip_poly(ol, lambda p: max(bed(p), L.mid_px - p[0])))
         c = lambda p: float(pr.Wb(np.array([p[0]]))[0])
         pieces = [(clip_poly(ol, lambda p: c(p) - p[1]), "Copper"),
                   (clip_poly(ol, lambda p: min(p[1] - c(p), p[0] - 1500.0)), "HullBlack"),
