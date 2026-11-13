@@ -38,9 +38,14 @@ Test: `SailingSim.Weather.StormSeaFollowsTheStormWind` (the sea wind and the ses
 
 Under a storm deck the grade was saturation 0.3 and the cinematic LUT faded to 0.4, nothing else: grey and flat. The
 Phase 8 blind test's reason for the grey stands (the light under the deck is not blue), so the scene stays grey, but
-`StormGradeFor` (`VisualPipeline.h`) now keeps more of the colour (0.45), steepens the middle (contrast 1.18), puts a
-small slate cast in the shadows only (`ColorGainShadows` 0.93, 0.99, 1.06: whites stay white), keeps two thirds of the
-LUT and darkens the frame's edges (vignette 0.6). Lightning's flash light is 22 (was 14).
+`StormGradeFor` (`VisualPipeline.h`) now keeps more of the colour (0.4), steepens the middle (contrast 1.18), puts a
+slate cast in the shadows (`ColorGainShadows` 0.91, 1.0, 1.07) and, gentler, the middle (`ColorGainMidtones` 0.95, 0.99,
+1.04), so whites stay white, and darkens the frame's edges (vignette 0.6). Lightning's flash light is 22 (was 14).
+
+Round 2 (Bean, Nov 13 2026, on the first stills in `inputs:storm-grade-677/`: "too sepia"): the first grade kept the
+cinematic LUT at 0.65 under the deck, and its warm highlights turned the lake's brown water sepia. The LUT now fades to
+0.4 as before, the white balance is 450 K cooler under a day deck (`WhiteTempOffset`), and the slate cast reaches the
+midtones.
 
 `-SailingClassicStormGrade` gives the old grade and flash for compared stills. Test: `SailingSim.Visual.StormGrade`.
 

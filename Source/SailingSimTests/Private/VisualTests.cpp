@@ -1300,11 +1300,16 @@ bool FVisualStormGradeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Not at night (the towns' warm light under the deck)"), StormGradeAmount(0.9, 1.0), 0.f);
 	const FStormGrade Fair = StormGradeFor(0.f, false), Storm = StormGradeFor(1.f, false), Old = StormGradeFor(1.f, true);
 	TestTrue(TEXT("A fair day is untouched"), Fair.Saturation == 1.f && Fair.Contrast == 1.f && Fair.ShadowGain == FVector4(1.0, 1.0, 1.0, 1.0)
-		&& Fair.LutIntensity == 1.f && Fair.Vignette == 0.45f);
+		&& Fair.MidtoneGain == FVector4(1.0, 1.0, 1.0, 1.0) && Fair.LutIntensity == 1.f && Fair.Vignette == 0.45f && Fair.WhiteTempOffset == 0.f);
 	TestEqual(TEXT("Classic: the old saturation"), Old.Saturation, 0.3f, 1e-6f);
 	TestEqual(TEXT("Classic: the old LUT fade"), Old.LutIntensity, 0.4f, 1e-6f);
-	TestTrue(TEXT("Classic: nothing else"), Old.Contrast == 1.f && Old.ShadowGain == FVector4(1.0, 1.0, 1.0, 1.0) && Old.Vignette == 0.45f);
+	TestTrue(TEXT("Classic: nothing else"), Old.Contrast == 1.f && Old.ShadowGain == FVector4(1.0, 1.0, 1.0, 1.0)
+		&& Old.MidtoneGain == FVector4(1.0, 1.0, 1.0, 1.0) && Old.Vignette == 0.45f && Old.WhiteTempOffset == 0.f);
 	TestTrue(TEXT("Still grey (Phase 8: storm frames must not read as a clear dusk)"), Storm.Saturation <= 0.5f && Storm.Saturation > Old.Saturation);
+	// Bean's first stills: kept warm, the brown lake went sepia.
+	TestTrue(TEXT("Not warm: the LUT's warm highlights fade, the white balance cools"), Storm.LutIntensity <= Old.LutIntensity && Storm.WhiteTempOffset < -200.f);
+	TestTrue(TEXT("A gentler slate cast in the middle"), Storm.MidtoneGain.Z > 1.0 && Storm.MidtoneGain.X < 1.0
+		&& Storm.MidtoneGain.Z - Storm.MidtoneGain.X < Storm.ShadowGain.Z - Storm.ShadowGain.X);
 	TestTrue(TEXT("Steeper: deep shelf, bright sails and caps"), Storm.Contrast > 1.1f && Storm.Contrast < 1.3f);
 	TestTrue(TEXT("A cold cast in the shadows, blue over red, small"), Storm.ShadowGain.Z > 1.0 && Storm.ShadowGain.X < 1.0
 		&& Storm.ShadowGain.Z - Storm.ShadowGain.X < 0.2);

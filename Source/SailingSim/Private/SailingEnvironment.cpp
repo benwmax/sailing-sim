@@ -641,7 +641,12 @@ void ASailingEnvironment::ApplyCameraLook(bool bPhysicalCamera, double CloudDark
 		ApplyCinematicLook(PP, CloudDarkness); // bCinematic is false on Low: clears its overrides
 		return;
 	}
-	PP.WhiteTemp = FMath::Lerp(6900.f, 6500.f, FMath::Clamp(float(CloudDarkness) * 1.5f, 0.f, 1.f));
+	{
+		// Feedback #24: and cooler again under a storm deck by day (StormGradeFor's WhiteTempOffset).
+		static SailingArgs::FCachedFlag ClassicStormGrade(TEXT("SailingClassicStormGrade"));
+		const FStormGrade Deck = StormGradeFor(StormGradeAmount(CloudDarkness, NightAmount), ClassicStormGrade.Get());
+		PP.WhiteTemp = FMath::Lerp(6900.f, 6500.f, FMath::Clamp(float(CloudDarkness) * 1.5f, 0.f, 1.f)) + Deck.WhiteTempOffset;
+	}
 	PP.LocalExposureHighlightContrastScale = 0.7f;
 	PP.LocalExposureShadowContrastScale = 0.9f;
 	PP.BloomIntensity = 0.35f;
@@ -1047,10 +1052,11 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 		static SailingArgs::FCachedFlag ClassicStormGrade(TEXT("SailingClassicStormGrade"));
 		const FStormGrade Grade = StormGradeFor(StormGradeAmount(W.CloudDarkness, NightAmount), ClassicStormGrade.Get());
 		FPostProcessSettings& PP = PostProcess->Settings;
-		PP.bOverride_ColorSaturation = PP.bOverride_ColorContrast = PP.bOverride_ColorGainShadows = true;
+		PP.bOverride_ColorSaturation = PP.bOverride_ColorContrast = PP.bOverride_ColorGainShadows = PP.bOverride_ColorGainMidtones = true;
 		PP.ColorSaturation = FVector4(1.f, 1.f, 1.f, Grade.Saturation);
 		PP.ColorContrast = FVector4(1.f, 1.f, 1.f, Grade.Contrast);
 		PP.ColorGainShadows = Grade.ShadowGain;
+		PP.ColorGainMidtones = Grade.MidtoneGain;
 	}
 }
 

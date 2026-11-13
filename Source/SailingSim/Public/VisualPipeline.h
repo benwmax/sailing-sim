@@ -70,8 +70,10 @@ struct FStormGrade
 	float Saturation = 1.f;          // ColorSaturation's W
 	float Contrast = 1.f;            // ColorContrast's W
 	FVector4 ShadowGain = FVector4(1.0, 1.0, 1.0, 1.0); // ColorGainShadows: a cold slate cast, shadows only
+	FVector4 MidtoneGain = FVector4(1.0, 1.0, 1.0, 1.0); // ColorGainMidtones: the slate cast, gentler, in the middle
 	float LutIntensity = 1.f;        // the cinematic LUT's intensity (warm highlights, cool shadows)
 	float Vignette = 0.45f;          // the cinematic vignette
+	float WhiteTempOffset = 0.f;     // K added to the V1 look's white balance (lower is cooler)
 };
 SAILINGSIM_API float StormGradeAmount(double CloudDarkness, double Night);
 SAILINGSIM_API FStormGrade StormGradeFor(float Storm, bool bClassic);
