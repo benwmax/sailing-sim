@@ -170,6 +170,13 @@ namespace Sailing
 		static constexpr double kOutflowDecays = 420.0;
 		static constexpr double kClearingStarts = 450.0;
 		static constexpr double kClear = 560.0;
+		/** Feedback #21 (Bean Nov 13 2026: "real sea, storm arrives sooner"): a played storm day starts this long before the
+		 *  gust front reaches the boat, not the timeline's full build (kFrontArrives); the sea stays honest (a breeze sea
+		 *  until the front) and the storm comes to her within half a minute. */
+		static constexpr double kSessionStormLead = 30.0;
+		/** The weather time a played session of this preset starts at (0 but for the thunderstorm). The game uses it when
+		 *  no -SailingWeatherTime is given, on the preset's own storm (not a real day, a scene or -SailingStormDelay). */
+		static double SessionStartTime(EWeatherPreset Preset) { return Preset == EWeatherPreset::Thunderstorm ? kFrontArrives - kSessionStormLead : 0.0; }
 
 		// Mistral (prologue step 4), when no scene cues it: the squall's front reaches the start, then the break.
 		static constexpr double kSquallArrives = 240.0;

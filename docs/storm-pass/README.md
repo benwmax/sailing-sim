@@ -26,8 +26,13 @@ The peak of 35 kn just behind the front is the burst's ring passing; its far sid
 the sea wind dips a little before the decay. The sea grows to it over `FWaveField::GrowthSeconds` as before. The gale
 spray and spindrift (`AWaterSurface::GaleSprayFor`) read the same wind, so in the burst they now start.
 
-Test: `SailingSim.Weather.StormSeaFollowsTheStormWind`. When the front arrives in a session is Bean's choice (asked in
-the project thread); this pass does not move it.
+Bean's choice (Nov 13 2026, "real sea, storm arrives sooner"): a played storm day now starts 30 s before the front
+reaches the boat (`FWeatherSystem::kSessionStormLead`, `SessionStartTime`: weather time 120 instead of 0), with the shelf
+337 m off and the gloom already in. The game applies it when no `-SailingWeatherTime` is given, on the preset's own storm
+(not a real day, a scene, or `-SailingStormDelay`); every bench, capture and loudness view passes `-SailingWeatherTime`,
+so their timing is unchanged. Strikes before the start are skipped as before (`ASailingEnvironment::BeginPlay`).
+
+Test: `SailingSim.Weather.StormSeaFollowsTheStormWind` (the sea wind and the session start).
 
 ## The storm grade (#24)
 

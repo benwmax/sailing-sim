@@ -459,6 +459,15 @@ bool FSailingStormSeaWindTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("No step when the outflow decays (1 s steps under 1.5 kn)"), MaxJump < 1.5);
 	TestTrue(TEXT("Back to the breeze once the outflow has died"), AfterErr < 1e-6);
 
+	// Bean Nov 13 2026 ("real sea, storm arrives sooner"): a played storm day starts half a minute before the front reaches
+	// the boat; the other presets start at the beginning of their day.
+	const double Start = FWeatherSystem::SessionStartTime(EWeatherPreset::Thunderstorm);
+	const FWeatherState AtStart = Weather.Evaluate(Start);
+	TestTrue(TEXT("A storm session starts ahead of the front, its shelf close"), AtStart.Front.DistanceAhead(0.0, 0.0, Start) > 0.0
+		&& AtStart.Storm == EStormPhase::Building);
+	TestEqual(TEXT("... and the front reaches her 30 s in"), FWeatherSystem::kFrontArrives - Start, 30.0);
+	TestEqual(TEXT("Other presets start at their day's beginning"), FWeatherSystem::SessionStartTime(EWeatherPreset::AfternoonBreeze), 0.0);
+
 	// No front: the ambient wind, untouched.
 	FGustFront None;
 	double K = 0.0, F = 0.0;

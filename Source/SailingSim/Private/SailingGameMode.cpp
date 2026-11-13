@@ -668,7 +668,14 @@ void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTi
 {
 	const USailingSettings* Settings = USailingSettings::Get();
 	float WeatherOffset = 0.f;
-	FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
+	const bool bWeatherTimeArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
+	// Feedback #21 (Bean: "real sea, storm arrives sooner"): a played storm day starts half a minute before the gust front
+	// reaches the boat. Benches, captures and stills pass -SailingWeatherTime (or -SailingStormDelay) and keep their timing.
+	if (!bWeatherTimeArg && !KeepWeatherStartTime && RealDayDate.IsEmpty() && !bScene
+		&& FCString::Strifind(SailingArgs::Dev(), TEXT("SailingStormDelay=")) == nullptr)
+	{
+		WeatherOffset = float(FWeatherSystem::SessionStartTime(EWeatherPreset(Settings->WeatherPreset)));
+	}
 	WeatherStartTime = KeepWeatherStartTime ? *KeepWeatherStartTime : GetSimTime() - WeatherOffset;
 	// The storm's timeline is set for the boat's start (the gust front reaches it at kFrontArrives); before Visual V5 it
 	// was the map origin, so a start away from the club met the front a minute or more early.
