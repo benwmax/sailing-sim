@@ -1,0 +1,32 @@
+4K Ultra fullscreen bench, main d1364112 (#668 club shore + ramp, #664 rocks, #665 keel/rudder, #667 frigate rigging),
+Development package Packaged\Windows-d1364112, the 16 B views (bench-visual-win -Tiers Ultra, 12 s, demo autopilot,
+-fullscreen 3840x2160, render_pct 100; foreground 0 as on 4eb20ef5). coast-day is Galveston (riprap). Against 4eb20ef5
+(Inputs/bench/4k-4eb20ef5, this morning). FLAG = more than 2 fps or 1 ms GPU worse.
+view               fps   base  d_fps  gpu_ms   base  d_gpu  1%low  res
+beam8             44.9   47.2  -2.3   17.47  16.13   1.34   33.2  3840 FLAG
+beat15            43.7   45.8  -2.1   18.08  16.57   1.51     35  3840 FLAG
+bridge            47.9   49.6  -1.7   16.15  14.99   1.16   35.3  3840 FLAG
+coast-day           41   44.1  -3.1   18.71  17.38   1.33     29  3840 FLAG
+coast-night         42   44.9  -2.9   20.15  18.33   1.82     29  3840 FLAG
+crew              38.1   40.2  -2.1    19.3   18.3      1   30.6  3840 FLAG
+far-coast-night   53.7   56.8  -3.1   13.39   12.6   0.79   33.6  3840 FLAG
+far-coast         45.1   48.4  -3.3   16.05  14.97   1.08   30.8  3840 FLAG
+gulf-sea          47.5   49.6  -2.1   16.09   14.8   1.29     34  3840 FLAG
+helm-eye          46.9   48.6  -1.7   16.62   15.7   0.92   34.3  3840 
+marina-night      44.4     47  -2.6   18.65  17.71   0.94   36.5  3840 FLAG
+marina            45.7   46.2  -0.5   16.68  16.59   0.09   37.9  3840 
+marseille-port      43   45.7  -2.7   17.44  16.89   0.55   29.3  3840 FLAG
+slip              42.2   44.1  -1.9   18.86  18.31   0.55   34.7  3840 
+storm             34.9   37.3  -2.4   21.01  19.84   1.17   25.6  3840 FLAG
+stream-run        35.8   38.7  -2.9   20.87  19.99   0.88   25.4  3840 FLAG
+
+The drop is the PC, not the build: right after, the same four views back to back on both packages (ab/, fps / GPU ms):
+view       | a 4eb20ef5 fps/gpu | b d1364112 fps/gpu | c 4eb20ef5 fps/gpu
+coast-day  | 43.1/18.39         | 42.8/18.31         | 42/18.68
+gulf-sea   | 49.2/15.65         | 49.6/15.94         | 47.8/15.79
+helm-eye   | 47/16.34           | 46/16.86           | 48.5/16.45
+marina     | 46.5/15.99         | 46.3/16.28         | 45.2/17.43
+d1364112 sits inside 4eb20ef5's own two runs on every view (coast-day 42.8 against 42.0 and 43.1; the rocks cost nothing
+visible there). The whole-list drop against this morning (about -2.4 fps and +1.1 ms GPU on average, every slice a little)
+came with the PC, which was busier and warmer this afternoon; this morning's numbers are the better baseline for the PC at
+rest, and the A/B is the build comparison.

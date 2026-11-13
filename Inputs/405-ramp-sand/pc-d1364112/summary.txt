@@ -1,0 +1,9 @@
+Main d1364112 (#668 merged: the 7 m slab on the 1 m club shore, the marina tile rebaked on the Mac), Development package
+Packaged\Windows-d1364112, on the BAKED tile; same cameras as ../ (Drone absolute; ramp = 37.2,170.4,3.4,107,-18;
+ramp-top = 30.0,166.0,22,107,-62), Ultra 1920x1080, 15:00. rocks = the breakwater's middle leg from 9 m off on the marina
+side (-SailingCamWorld=-60.5,125.6,2.5,237,-14).
+The slab runs down the bank and under the water at the waterline, as in ../pc-ramp-slope (procedural); no boat lies beside
+the ramp on the pier's far side (the 18 m clearance). The pier-side corner near the head is under the bank (cut level).
+Lake.Marina on this head: "Ramp head 0.97 m up at (37.8, 133.5), dry for 2.9 of 7 m"; "Ramp slab 7.0 m long: at most 0.30 m
+over the ground on its centre line, 0.00 m under it". (The cut-into-bank ramp is #670, on main 8a28c999.)
+rocks: the #664 breakwater stones along the crest's lake edge, the crest itself the terrain's grass.
