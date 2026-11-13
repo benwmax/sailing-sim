@@ -126,10 +126,27 @@ The physics check reads the build's own report, so it only sees real builds.
 
 ## Sunfish
 
-The fleet build (`Tools/blender/build_fleet.py`) joins each boat into one hull mesh before exporting the fbx, so the
-section split by object name doesn't apply to it yet. Wave 5 adds an option to save the pre-join scene as a .blend
-(no change to the fbx), then a `sections_sunfish.json` (hull and deck, cockpit well, board and trunk, rudder, small
-fittings). The Sunfish's underwater hull is the physics hull exactly, so its physics check is exact.
+The fleet build (`Tools/blender/build_fleet.py`) builds each boat's hull, deck, well, board and deck gear into one
+mesh. With `FLEET_SHAPE_BLEND=1` every face remembers the part it was built in (`with shape_part("Deck"):`; the rest
+is Fittings) and, after the export, the build saves `<out>/Sunfish_shape.blend` with that mesh split into
+`Sunfish_Hull`, `_Deck`, `_Well`, `_Board` and `_Fittings` beside the rudder, mast and boom, and
+`Sunfish_shape_report.json` (the canoe body's volume and centre of buoyancy with the physics'). The fbx files are the
+same either way (checked: same vertices, faces, slots and attributes). `sections_sunfish.json` maps the objects to the
+plan's sections (hull, deck, well, board and trunk, rudder, fittings) and names the hull object and report the tools
+read.
+
+    Artifacts/boat-export sunfish $O/sunfish.json      # (scripts/make-boat-models.sh builds boat-export)
+    FLEET_SHAPE_BLEND=1 blender -b --factory-startup -P Tools/blender/build_fleet.py -- $O/sunfish.json Sunfish $O
+    python Tools/shapeloop/measure.py $O/Sunfish_shape.blend Tools/shapeloop/sections_sunfish.json $O
+    python Tools/shapeloop/fairness.py $O/Sunfish_shape.blend $O --object Sunfish_Hull
+    python Tools/shapeloop/seams.py $O/Sunfish_shape.blend Tools/shapeloop/sections_sunfish.json $O
+    python Tools/shapeloop/render_set.py $O/Sunfish_shape.blend Tools/shapeloop/sections_sunfish.json $O
+
+Baseline (main ff21b4b6): 115,302 triangles (hull 15,672, deck 3,270, well 108, board 1,452, fittings 56,706,
+rudder 1,464, rig 36,630); fairness 0 inflections, 4 kinks; both seams (hull-deck, deck-well) closed, since the parts
+share their edge vertices. The model's canoe body is 0.1431 m³ against the physics' 0.145 (-1.3%, CB within 0.1 cm):
+`SailingSim.Visual.FleetMesh`'s tolerance, an older gap, so Sunfish cards compare against the baseline
+(`"physics_reference": "baseline"`), not the physics.
 
 ## Wave 1 changes to the tools (Nov 10)
 

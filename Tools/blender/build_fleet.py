@@ -12,6 +12,10 @@ draft. Each class's rig is built from the same numbers (mast, spreaders, boom, t
 only for the fittings that class has (an unstayed ILCA has no shroud plates); the game draws its wires from them.
 
 Writes <out>/SM_<Tag>_Hull.fbx, _Mast, _Boom, _Rudder and <Tag>_sockets.json (Unreal frame, cm), like the J/22.
+With FLEET_SHAPE_BLEND=1 (the shape loop, docs/shape-loop) it also saves <out>/<Tag>_shape.blend after the export: the
+hull mesh split by the part each face was built in (SHAPE_PARTS) into <Tag>_<Part> objects, beside the rudder, mast and
+boom, and <Tag>_shape_report.json (the canoe body's volume and centre of buoyancy with the physics'). The fbx files
+are the same either way.
 Frames as in build_j22.py: Unreal's body frame (X forward, Y starboard, Z up, metres, origin on the design waterline
 amidships); points go into Blender as (x, -y, z).
 """
@@ -58,6 +62,24 @@ SPECS = {
     "Lagoon42": dict(paint=True, crown=0.04, rig="cruisingcat", bridgedeck=(-4.6, 4.3), spreader=1.6),
 }
 SPEC = SPECS[TAG]
+
+# The shape loop's sections (docs/shape-loop): every face of the hull mesh remembers the part it was built in, so the
+# saved .blend can be split into objects by moulding. Only with FLEET_SHAPE_BLEND=1; the fbx export never carries it.
+SHAPE_BLEND = os.environ.get("FLEET_SHAPE_BLEND") == "1"
+SHAPE_PARTS = ["Fittings", "Hull", "Deck", "Well", "Board"]
+_PART = ["Fittings"]
+
+
+class shape_part:
+    """`with shape_part("Deck"):` tags the faces built inside it (the default is Fittings)."""
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self):
+        _PART.append(self.name)
+
+    def __exit__(self, *exc):
+        _PART.pop()
 
 
 # ---------------------------------------------------------------- the physics hulls (FHullShape, BoatModel.cpp)
@@ -132,6 +154,7 @@ class Mesh:
         self.name = name
         self.bm = bmesh.new()
         self.verts = {}
+        self.part = self.bm.faces.layers.int.new("shape_part") if SHAPE_BLEND else None
 
     def v(self, p):
         x, y, z = p
@@ -158,6 +181,8 @@ class Mesh:
             return None
         f.material_index = SLOTS.index(slot)
         f.smooth = True
+        if self.part is not None:
+            f[self.part] = SHAPE_PARTS.index(_PART[-1])
         return f
 
     def grid(self, rows, slot, flip=False, slot_fn=None):
@@ -1019,7 +1044,8 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     # the daggerboard (Sunfish: varnished wood; ILCA: white plastic centreboard) a hand's width proud, with a grip
     xb = x0 + 0.18
     # (pc/ilca-fidelity: the ILCA's board and bailer as the Sunfish's, its board white plastic)
-    sunfish_board(H, f, mast_x, mast_step_z, plastic=TAG == "ILCA7")
+    with shape_part("Board"):
+        sunfish_board(H, f, mast_x, mast_step_z, plastic=TAG == "ILCA7")
     sunfish_bailer(xb, sole(xb))
     tube(hull, [(xb + 0.2, 0.12, sole(xb + 0.2)), (xb + 0.2, 0.12, sole(xb + 0.2) + 0.008)], 0.02, "BlackPlastic", 10)
     # mainsheet: blocks on the traveler bridle, a swivel ratchet block in the well (ILCA) or on the aft deck (Sunfish)
@@ -1283,12 +1309,14 @@ def lagoon_detail(b0, b1, dz, inner, s0, s1, sw, roof):
 
 # ---------------------------------------------------------------- the boat
 
-for Hh in HS:
-    shell(Hh)
+with shape_part("Hull"):
+    for Hh in HS:
+        shell(Hh)
 
 boards = [f for f in CFG["foils"] if f["role"] in ("keel", "board")]
-for f in boards:
-    board(HS[f["hull"]], f, -DRAFT)
+with shape_part("Board"):
+    for f in boards:
+        board(HS[f["hull"]], f, -DRAFT)
 
 mast_x = RIG["mast_x"]
 jib = CFG["jib"]
@@ -1302,8 +1330,10 @@ traveler = None
 
 if TAG in ("Sunfish", "ILCA7"):
     ck = SPEC["cockpit"]
-    deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])], smooth_margin=TAG in ("Sunfish", "ILCA7"))
-    cockpit(MAIN, ck)
+    with shape_part("Deck"):
+        deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])], smooth_margin=TAG in ("Sunfish", "ILCA7"))
+    with shape_part("Well"):
+        cockpit(MAIN, ck)
     # Daggerboard trunk cap and the mast thwart; hiking strap.
     f = boards[0]
     if TAG != "Sunfish":
@@ -1969,3 +1999,35 @@ for obj in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj e
                              mesh_smooth_type="FACE", use_mesh_modifiers=True, add_leaf_bones=False, bake_space_transform=True)
     obj.location = loc
 print(f"{TAG}: exported", ", ".join(o.name for o in (hull_obj, mast_obj, boom_obj, rudder_obj) + ((ext_obj,) if ext_obj else ())))
+
+
+def save_shape_blend():
+    """The shape loop's scene (FLEET_SHAPE_BLEND=1): the hull mesh split into one object per part, then saved."""
+    me = hull_obj.data
+    att = [d.value for d in me.attributes["shape_part"].data]
+    for pid, part in enumerate(SHAPE_PARTS):
+        if pid not in att:
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        lay = bm.faces.layers.int["shape_part"]
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f[lay] != pid], context="FACES")
+        m2 = bpy.data.meshes.new(f"{TAG}_{part}")
+        bm.to_mesh(m2)
+        bm.free()
+        for mat in me.materials:
+            m2.materials.append(mat)
+        ob = bpy.data.objects.new(f"{TAG}_{part}", m2)
+        ob.matrix_world = hull_obj.matrix_world
+        bpy.context.scene.collection.objects.link(ob)
+    bpy.data.objects.remove(hull_obj, do_unlink=True)
+    json.dump({"canoe_volume_m3": round(vol, 4), "physics_volume_m3": round(CFG["design_volume"], 4),
+               "cb_x": round(cb.x, 3), "cb_z": round(cb.z, 3),
+               "physics_cb": [round(CFG["design_cb"][0], 3), round(CFG["design_cb"][2], 3)]},
+              open(os.path.join(OUT, f"{TAG}_shape_report.json"), "w"))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, f"{TAG}_shape.blend"))
+    print(f"{TAG}: shape scene", ", ".join(f"{p} {att.count(i)}" for i, p in enumerate(SHAPE_PARTS)))
+
+
+if SHAPE_BLEND:
+    save_shape_blend()

@@ -1,0 +1,18 @@
+{
+ "boat": "Sunfish",
+ "build": "Tools/blender/build_fleet.py",
+ "build_args": "FLEET_SHAPE_BLEND=1, then <sunfish.json from Tools/BoatExport> Sunfish <out dir>: reads <out>/Sunfish_shape.blend",
+ "hull_object": "Sunfish_Hull",
+ "report": "Sunfish_shape_report.json",
+ "note": "build_fleet.py builds the Sunfish's hull, deck, well, board and deck gear into one mesh; with FLEET_SHAPE_BLEND=1 each face remembers the part it was built in (shape_part) and the saved .blend splits them into Sunfish_<Part> objects. The rudder, tiller extension, mast and boom are their own objects as in the game. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig). Below the water the hull is the physics hull exactly (FHullShape::BottomZ at the canoe depth): a hull change is a physics change.",
+ "sections": {
+  "hull": {"objects": ["Sunfish_Hull"], "owns": ["Hull", "shell"], "shared": ["Hull"], "borders": ["deck", "board_trunk"]},
+  "deck": {"objects": ["Sunfish_Deck"], "owns": ["deck"], "borders": ["hull", "well", "fittings"]},
+  "well": {"objects": ["Sunfish_Well"], "owns": ["cockpit", "WELL_CORNER"], "borders": ["deck", "fittings"]},
+  "board_trunk": {"objects": ["Sunfish_Board"], "owns": ["board", "sunfish_board"], "borders": ["hull", "deck"]},
+  "rudder": {"objects": ["SM_Sunfish_Rudder", "SM_Sunfish_TillerExt"], "owns": ["build_rudder"], "borders": []},
+  "fittings": {"objects": ["Sunfish_Fittings"], "owns": ["dinghy_detail", "sunfish_splash_guard", "sunfish_bailer", "sunfish_bridle", "dinghy_hiking_strap", "place_kit", "Tools/boatkit/layouts/sunfish.json"], "borders": ["deck", "well"]}
+ },
+ "joins": [["Sunfish_Hull", "Sunfish_Deck"], ["Sunfish_Deck", "Sunfish_Well"]],
+ "joins_note": "The hull and deck share their sheer vertices (one mesh, split by part), as do the deck and the well's rim, so these seams start closed; a round that opens them fails."
+}

@@ -5,7 +5,8 @@
 Writes <out>/stats.json: every object's section, triangles, bounds and centre (the object centres stand in for the
 sockets the bake derives from them: a centre that moves is a socket that may move); triangles per section; the hull's
 principal dimensions and its sheer, half-beam and keel line at 21 stations (cut through the hull mesh); and, when the
-build's j22_hero_report.json sits beside the .blend, the canoe body's volume and centre of buoyancy with the physics'.
+build's report (j22_hero_report.json, or the sections file's "report") sits beside the .blend, the canoe body's
+volume and centre of buoyancy with the physics'.
 Needs Blender's Python (pip bpy). Frame: Blender, X forward, Y to port, Z up, metres.
 """
 import json
@@ -172,7 +173,7 @@ if cb is not None and cb.name in objects:
             features[key] = r(w)
 
 physics = {}
-rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), "j22_hero_report.json")
+rep = os.path.join(os.path.dirname(os.path.abspath(SRC)), SEC.get("report", "j22_hero_report.json"))
 if os.path.exists(rep):
     physics = json.load(open(rep))
 
