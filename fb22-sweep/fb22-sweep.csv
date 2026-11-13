@@ -1,0 +1,8 @@
+variant,spatial_grain_std,temporal_shimmer_mad_mean5pairs,temporal_shimmer_pair21_22,water_mad_held_check,clouds_fog_ms
+0-main,1.598,0.878,0.772,0.682,157.24
+1-upsample4,1.620,0.918,1.057,0.737,153.77
+2-boxconstraint0,1.556,0.911,1.052,0.738,157.19
+3-samples320-scale34,1.644,0.652,0.557,0.589,230.48
+4-capstep150,1.481,0.836,0.620,0.512,191.56
+5-foot110,1.632,0.876,0.788,1.300,178.69
+6-shadow160,1.496,0.899,0.786,0.556,168.94
