@@ -259,3 +259,17 @@ foils' and stay as they were (card `cards/j22-keel.json`).
 - Plan D also puts the rudder at 300 mm chord, 13% thick, reaching 860-890 mm under the hull's bottom at the transom
   (about z -0.65; the hero's reaches -0.98 at about 350 mm). That is a real change to the steering and waits for a
   physics calibration pass: see the card's findings.
+
+## Wave 4b (Nov 13): non-skid panels
+
+Material only: no shape object moves (card `cards/j22-deck-panels.json`, score 0 moved).
+
+- The deck mould's non-skid ran onto every flat face up to its edge. On the boat it is moulded in panels with a smooth
+  gelcoat band round them (Commons j22-above-deck-cockpit). `nonskid_panels` in `build_j22_hero.py` draws, in plan, the
+  distance from every wall, slope, rail, hatch and edge of the deck, cockpit, cabin and rudder, keeps what is 45 mm
+  clear with 50 mm rounded corners, and multiplies that mask (a packed float image over object x, y) into the
+  `NonSkidFlat` node of the Gelcoat and CabinGelcoat materials. The bake's detail mask follows the same `PanelMask`
+  node, so the game's non-skid and the baked diffuse agree.
+- Blind A/B 3 of 3. Their notes for later: the band round the cabin top's rounded edge and the forward hatch reads up
+  to twice the real width, small fittings want small smooth pads, and the non-skid's colour is warmer than the photos'
+  light grey. The bow and the mast step were checked against the photos and left as they are.

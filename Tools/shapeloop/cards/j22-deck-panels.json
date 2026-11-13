@@ -1,0 +1,29 @@
+{
+ "id": "j22-deck-panels",
+ "boat": "J22H",
+ "sections": [],
+ "status": "wave 4b, round 1: blind A/B 3 of 3",
+ "feature": "The deck mould's non-skid in moulded panels: a smooth gelcoat band about 45 mm wide round every wall, rail, hatch and deck edge, the panel corners rounded at 50 mm. Material only: no shape object moves.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "non-skid panels clear of every wall, slope, rail, hatch and edge of the deck mould by 45 mm, corners on a 50 mm radius (build_j22_hero.nonskid_panels, a plan-view mask image)",
+  "the bake's detail mask follows the panels, so the game's non-skid and the baked diffuse agree"
+ ],
+ "references": "Commons j22-above-deck-cockpit (CC BY-SA): panels with smooth margins of about 4-5 cm and rounded corners on the side decks, foredeck, cabin top and cockpit seats. Links and numbers only.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes the DeckMould group (its non-skid detail mask and diffuse).",
+ "photo_needed": "no",
+ "physics_reference": "physics",
+ "findings": [
+  "Round 1's three blind reviewers (sailor, boatbuilder, 3D artist) all preferred the panels: smooth bands along the toe rails, coamings, cabin edges, seat fronts and round the hatches, as in the photos.",
+  "Their notes for later: the bands round the cabin top's edge and the forward hatch read up to twice the real width (the cabin's rounded edge is a slope, so the band starts where the roundover starts); the side-deck panel's inboard edge follows the coaming's plan and reads uneven in places; small fittings sit straight on the non-skid where a production deck has small smooth pads; the non-skid colour is warmer than the photos' light grey (the deck mould's colour, unchanged here).",
+  "QA: the opening drops any flat strip narrower than 2 x (45 + 50 mm) = 19 cm altogether, so narrow strips stay smooth gelcoat. The mask is a plan view over object x, y, so it only fits objects with identity transforms (Deck, Cockpit, Cabin, Rudder today); a future kit part on the Gelcoat material with its own transform would sample it in its own coordinates.",
+  "The mask is a packed float image; reloading the saved .blend keeps its negative values (checked: -0.02 to 0.02)."
+ ],
+ "physics_table": "Tools/boats/j22/make_j22_hull.py"
+}

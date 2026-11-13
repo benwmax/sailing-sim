@@ -344,11 +344,19 @@ def detail_emission(mat):
         mr.interpolation_type = "SMOOTHSTEP"
         mr.inputs[1].default_value, mr.inputs[2].default_value = 0.84, 0.93
         nt.links.new(sep.outputs["Z"], mr.inputs[0])
+        ns = mr.outputs[0]
+        panel = nt.nodes.get("PanelMask")             # build_j22_hero.nonskid_panels: the moulded panels' smooth margins
+        if panel is not None:
+            mul = nt.nodes.new("ShaderNodeMath")
+            mul.operation = "MULTIPLY"
+            nt.links.new(mr.outputs[0], mul.inputs[0])
+            nt.links.new(panel.outputs[0], mul.inputs[1])
+            ns = mul.outputs[0]
         inv = nt.nodes.new("ShaderNodeMath")
         inv.operation = "SUBTRACT"
         inv.inputs[0].default_value = 1.0
-        nt.links.new(mr.outputs[0], inv.inputs[1])
-        nt.links.new(mr.outputs[0], comb.inputs[0])
+        nt.links.new(ns, inv.inputs[1])
+        nt.links.new(ns, comb.inputs[0])
         nt.links.new(inv.outputs[0], comb.inputs[2])
     else:
         comb.inputs[1].default_value = 1.0 if kind == "teak" else 0.0
