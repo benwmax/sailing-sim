@@ -483,6 +483,9 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		P.Stance = ECrewStance::DinghyHike;
 		Out.Pelvis = FVector(X, Side * FMath::Clamp(Off + 0.06, Inner, Edge), Sheer + 0.06);
+		// Shape wave 5: the Sunfish's deck is crowned (63 mm over the sheer just forward of the well), so her sailor sits on
+		// the deck under them, not the sheer (SailingSim.Visual.CrewHullClearance: the flesh 6 cm down from the pelvis).
+		if (Cfg.Type == EBoatType::Sunfish) Out.Pelvis.Z = CrewSeatSurfaceZ(Cfg, X, Out.Pelvis.Y) + 0.06;
 	}
 	else if (Out.bHelm)
 	{
