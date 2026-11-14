@@ -9,24 +9,42 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeLock.h"
+#include "Misc/CoreDelegates.h"
+#include "HAL/Runnable.h"
+#include "HAL/RunnableThread.h"
+#include "HAL/Event.h"
+#include <atomic>
 
 namespace SailSessionLogLocal
 {
+	/**
+	 * Lines are buffered and written by one writer thread about once a second (Error lines and a report's read at once,
+	 * a Warning wakes the writer): a write plus flush to a busy disk took 16-103 ms on the game thread (storm hitches,
+	 * docs/session-log/). Two locks: Lock guards the buffer and the counters and is held only to copy bytes; FileLock
+	 * guards the file and is held through the disk write, so a slow disk never blocks a caller of Write. Order: FileLock,
+	 * then Lock.
+	 */
 	struct FLog
 	{
-		FCriticalSection Lock;
+		FCriticalSection Lock;       // Pending, Bytes, bCapped, bOpen, bWriter
+		FCriticalSection FileLock;   // File, Directory
 		FString Directory;
 		TUniquePtr<IFileHandle> File;
+		TArray<uint8> Pending;
 		int64 Bytes = 0;
 		bool bCapped = false;
-		bool bTried = false;
+		bool bOpen = false;
+		bool bWriter = false;        // the writer thread is running (else Write drains itself)
+		std::atomic<bool> bTried{ false };   // opened (or tried): Write's fast path
+		bool bOpening = false;               // FileLock: a log line written while opening doesn't open again
 		double Start = FPlatformTime::Seconds();
 	};
 
+	/** Never destroyed: the writer thread and the crash and exit hooks may outlive static destruction's order. */
 	FLog& Log()
 	{
-		static FLog L;
-		return L;
+		static FLog* L = new FLog;
+		return *L;
 	}
 
 	FString FileIn(const FString& Directory, int32 Index)
@@ -44,46 +62,176 @@ namespace SailSessionLogLocal
 		}
 	}
 
+	void AppendBytes(FLog& L, const FTCHARToUTF8& Utf8)
+	{
+		L.Pending.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
+	}
+
+	thread_local bool bInLog = false;   // this thread is changing the buffer (DrainForCrash leaves it alone)
+	struct FInLog { FInLog() { bInLog = true; } ~FInLog() { bInLog = false; } };
+
+	/** Buffers one line, counting it against the cap; the caller holds Lock. */
 	void Raw(FLog& L, const FString& Text)
 	{
-		if (!L.File || L.bCapped) return;
+		if (!L.bOpen || L.bCapped) return;
+		const FInLog InLog;
 		const FTCHARToUTF8 Utf8(*Text);
 		if (L.Bytes + Utf8.Length() > SailSessionLog::MaxBytes)
 		{
-			const FTCHARToUTF8 Note(TEXT("[log full: the rest of this launch is not written]\n"));
-			L.File->Write(reinterpret_cast<const uint8*>(Note.Get()), Note.Length());
-			L.File->Flush();
+			AppendBytes(L, FTCHARToUTF8(TEXT("[log full: the rest of this launch is not written]\n")));
 			L.bCapped = true;
 			return;
 		}
-		L.File->Write(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
-		L.File->Flush();
+		AppendBytes(L, Utf8);
 		L.Bytes += Utf8.Length();
 	}
 
-	/** Opens (or reopens) the log; the caller holds the lock. */
+	void WriteOut(FLog& L, const TArray<uint8>& Out)
+	{
+		if (!L.File || Out.Num() == 0) return;
+		L.File->Write(Out.GetData(), Out.Num());
+		L.File->Flush();
+	}
+
+	/** Writes what is buffered to the file and flushes it; the caller holds FileLock (not Lock). */
+	void DrainHeld(FLog& L)
+	{
+		TArray<uint8> Out;
+		{
+			FScopeLock Guard(&L.Lock);
+			Swap(Out, L.Pending);
+		}
+		WriteOut(L, Out);
+	}
+
+	void Drain(FLog& L)
+	{
+		FScopeLock File(&L.FileLock);
+		DrainHeld(L);
+	}
+
+	/** A crash: whatever is buffered goes out, unless another thread holds a lock (then nothing waits on it), or the crash
+	 *  is inside the log itself on this thread (bInLog: the buffer may be half updated). */
+	void DrainForCrash()
+	{
+		FLog& L = Log();
+		if (bInLog || !L.FileLock.TryLock()) return;
+		if (L.Lock.TryLock())
+		{
+			TArray<uint8> Out;
+			Swap(Out, L.Pending);
+			L.Lock.Unlock();
+			WriteOut(L, Out);
+		}
+		L.FileLock.Unlock();
+	}
+
+	class FWriter final : public FRunnable
+	{
+	public:
+		FEvent* Wake = FPlatformProcess::GetSynchEventFromPool(false);
+		std::atomic<bool> bStop{ false };
+
+		virtual uint32 Run() override
+		{
+			while (!bStop.load())
+			{
+				Wake->Wait(FTimespan::FromSeconds(SailSessionLog::FlushSeconds));
+				Drain(Log());
+			}
+			return 0;
+		}
+		virtual void Stop() override
+		{
+			bStop = true;
+			Wake->Trigger();
+		}
+	};
+
+	FWriter* GWriter = nullptr;
+	FRunnableThread* GWriterThread = nullptr;
+
+	/** At exit: the writer stops and the buffer is written by the caller (later lines are written as they come). */
+	void StopWriter()
+	{
+		FLog& L = Log();
+		{
+			FScopeLock Guard(&L.Lock);
+			if (!L.bWriter) return;
+			L.bWriter = false;
+		}
+		if (GWriterThread)
+		{
+			GWriterThread->Kill(true);
+			delete GWriterThread;
+			GWriterThread = nullptr;
+		}
+		Drain(L);
+	}
+
+	/** Once, on the first open: the writer thread and the hooks that write the buffer at exit and on a crash. */
+	void StartWriter(FLog& L)
+	{
+		FCoreDelegates::OnPreExit.AddStatic(&StopWriter);
+		FCoreDelegates::OnHandleSystemError.AddStatic(&DrainForCrash);
+		FCoreDelegates::OnShutdownAfterError.AddStatic(&DrainForCrash);
+		if (!FPlatformProcess::SupportsMultithreading()) return;
+		GWriter = new FWriter;   // never deleted: its event may still be waited on as the process ends
+		GWriterThread = FRunnableThread::Create(GWriter, TEXT("SailSessionLog"), 0, TPri_BelowNormal);
+		if (!GWriterThread) return;
+		FScopeLock Guard(&L.Lock);
+		L.bWriter = true;
+	}
+
+	/** Opens (or reopens) the log; the caller holds FileLock. What the old file had buffered is written to it first. */
 	void Open(FLog& L, const FString& Directory, bool bRotate)
 	{
+		{
+			// The old file's lines and the reset in one section: a line from another thread lands in the old file or the new.
+			FScopeLock Guard(&L.Lock);
+			TArray<uint8> Out;
+			Swap(Out, L.Pending);
+			WriteOut(L, Out);
+			L.bOpen = false;
+			L.bCapped = false;
+			L.Bytes = 0;
+		}
 		L.File.Reset();
 		L.Directory = Directory;
-		L.bCapped = false;
-		L.Bytes = 0;
 		IFileManager::Get().MakeDirectory(*Directory, true);
 		if (bRotate) Rotate(Directory);
 		L.File.Reset(FPlatformFileManager::Get().GetPlatformFile().OpenWrite(*FileIn(Directory, 0), !bRotate, true));
+		{
+			FScopeLock Guard(&L.Lock);
+			L.bOpen = L.File.IsValid();
+		}
 		if (!bRotate) return;
-		Raw(L, FString::Printf(TEXT("Ready About: Sailing session log, %s UTC\n"), *FDateTime::UtcNow().ToString(TEXT("%Y-%m-%d %H:%M:%S"))));
 		FString Stamp;
 		if (FFileHelper::LoadFileToString(Stamp, *(FPaths::ProjectContentDir() / TEXT("BuildStamp/version.txt")))) Stamp.TrimStartAndEndInline();
-		Raw(L, FString::Printf(TEXT("Build %s, %s, engine %s, %s %s\n"), Stamp.IsEmpty() ? TEXT("dev") : *Stamp, LexToString(FApp::GetBuildConfiguration()),
-			*FEngineVersion::Current().ToString(), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()), *FPlatformMisc::GetOSVersion()));
+		{
+			FScopeLock Guard(&L.Lock);
+			Raw(L, FString::Printf(TEXT("Ready About: Sailing session log, %s UTC\n"), *FDateTime::UtcNow().ToString(TEXT("%Y-%m-%d %H:%M:%S"))));
+			Raw(L, FString::Printf(TEXT("Build %s, %s, engine %s, %s %s\n"), Stamp.IsEmpty() ? TEXT("dev") : *Stamp, LexToString(FApp::GetBuildConfiguration()),
+				*FEngineVersion::Current().ToString(), ANSI_TO_TCHAR(FPlatformProperties::IniPlatformName()), *FPlatformMisc::GetOSVersion()));
+		}
+		DrainHeld(L);
+	}
+
+	/** The caller holds FileLock. */
+	void EnsureOpenHeld(FLog& L)
+	{
+		if (L.bTried.load() || L.bOpening) return;
+		L.bOpening = true;
+		Open(L, FPaths::ConvertRelativePathToFull(FPaths::ProjectLogDir()), true);
+		StartWriter(L);
+		L.bTried = true;
 	}
 
 	void EnsureOpen(FLog& L)
 	{
-		if (L.File || L.bTried) return;
-		L.bTried = true;
-		Open(L, FPaths::ConvertRelativePathToFull(FPaths::ProjectLogDir()), true);
+		if (L.bTried.load()) return;
+		FScopeLock File(&L.FileLock);
+		EnsureOpenHeld(L);
 	}
 }
 
@@ -110,26 +258,45 @@ void SailSessionLog::Write(const TCHAR* Level, const FString& Line)
 {
 	using namespace SailSessionLogLocal;
 	FLog& L = Log();
-	FScopeLock Guard(&L.Lock);
 	EnsureOpen(L);
 	FString Text = ScrubLine(SailCrashReports::ScrubPaths(Line));
 	Text.ReplaceInline(TEXT("\r"), TEXT(" "));
 	Text.ReplaceInline(TEXT("\n"), TEXT(" "));
 	const bool bPlain = FCString::Strcmp(Level, TEXT("Display")) == 0 || FCString::Strcmp(Level, TEXT("Log")) == 0;
-	Raw(L, FString::Printf(TEXT("[+%.3f] %s%s%s\n"), FPlatformTime::Seconds() - L.Start, bPlain ? TEXT("") : Level, bPlain ? TEXT("") : TEXT(": "), *Text));
+	const bool bAtOnce = FCString::Strcmp(Level, TEXT("Error")) == 0 || FCString::Strcmp(Level, TEXT("Fatal")) == 0;
+	const bool bSoon = FCString::Strcmp(Level, TEXT("Warning")) == 0;
+	bool bWriter = false;
+	{
+		FScopeLock Guard(&L.Lock);
+		Raw(L, FString::Printf(TEXT("[+%.3f] %s%s%s\n"), FPlatformTime::Seconds() - L.Start, bPlain ? TEXT("") : Level, bPlain ? TEXT("") : TEXT(": "), *Text));
+		bWriter = L.bWriter;
+	}
+	// An error may be the last thing before a crash: it is on disk before Write returns. Without the writer (no threads,
+	// or after exit began) every line is.
+	if (bAtOnce || !bWriter) Drain(L);
+	else if (bSoon && GWriter) GWriter->Wake->Trigger();
+}
+
+void SailSessionLog::Flush()
+{
+	using namespace SailSessionLogLocal;
+	FLog& L = Log();
+	EnsureOpen(L);
+	Drain(L);
 }
 
 FString SailSessionLog::Path()
 {
 	using namespace SailSessionLogLocal;
 	FLog& L = Log();
-	FScopeLock Guard(&L.Lock);
 	EnsureOpen(L);
+	FScopeLock File(&L.FileLock);
 	return FileIn(L.Directory, 0);
 }
 
 FString SailSessionLog::Tail(int32 MaxLines)
 {
+	Flush();
 	FString Text;
 	if (!FFileHelper::LoadFileToString(Text, *Path(), FFileHelper::EHashOptions::None, FILEREAD_AllowWrite)) return FString();
 	TArray<FString> Lines;
@@ -141,6 +308,7 @@ FString SailSessionLog::Tail(int32 MaxLines)
 
 FString SailSessionLog::ReportLogPath()
 {
+	Flush();   // a report reads the file next
 #if NO_LOGGING
 	return Path();
 #else
@@ -153,8 +321,8 @@ FString SailSessionLog::OpenIn(const FString& Directory, bool bRotate)
 {
 	using namespace SailSessionLogLocal;
 	FLog& L = Log();
-	FScopeLock Guard(&L.Lock);
-	EnsureOpen(L);
+	FScopeLock File(&L.FileLock);
+	EnsureOpenHeld(L);
 	const FString Was = L.Directory;
 	Open(L, Directory, bRotate);
 	return Was;

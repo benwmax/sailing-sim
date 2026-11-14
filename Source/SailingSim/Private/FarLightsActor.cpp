@@ -275,6 +275,6 @@ void AFarLightsActor::Tick(float DeltaSeconds)
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 5.0;
-		SAIL_LOG(Display, TEXT("Far lights: %d showing, %d looms (dark %d, visibility %.0f km)"), Shown, Looms, bDark, Visibility);
+		UE_LOG(LogSailing, Log, TEXT("Far lights: %d showing, %d looms (dark %d, visibility %.0f km)"), Shown, Looms, bDark, Visibility);
 	}
 }

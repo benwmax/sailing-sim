@@ -364,6 +364,6 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 5.0;
-		SAIL_LOG(Display, TEXT("Navaids: %d lights showing (dark %d)"), LitCount, bDark);
+		UE_LOG(LogSailing, Log, TEXT("Navaids: %d lights showing (dark %d)"), LitCount, bDark);
 	}
 }
