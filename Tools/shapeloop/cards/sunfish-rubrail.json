@@ -1,0 +1,30 @@
+{
+ "id": "sunfish-rubrail",
+ "boat": "Sunfish",
+ "sections": [
+  "deck"
+ ],
+ "status": "wave 5, round 4: blind A/B 3 of 3",
+ "feature": "The Sunfish's rubrail runs right round the hull-deck joint: across the transom (stopping either side of the rudder's fittings) and round the stem, where it had stopped short at both ends of each side with capped ends.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "one rubrail path (build_fleet.deck, Sunfish only): the sides 6 mm out from the deck's edge as before (stations clustered toward the bow), quarter ellipses round the transom's corners, across the transom 6 mm aft of it with a 90 mm gap at the rudder's head and gudgeon, a Hermite turn round the stem 6 mm past it that leaves the sides tangent"
+ ],
+ "references": "Round 2 and 3's blind reviewers (the rubrail ending in knobs at the transom corners and short of the stem); the Sunfish's vinyl rubrail runs round the whole deck joint.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Blind A/B on the closed loop: 3 of 3 reviewers (realism, boatbuilder, 3D artist) picked the full-length rail.",
+  "QA: the closed loop ran through the rudder head and gudgeon (72 and 12 face pairs). Fixed: the rail stops 45 mm either side of the centreline at the transom; 0 overlaps with SM_Sunfish_Rudder and Sunfish_Fittings after.",
+  "QA: a 25.7 deg knuckle where the sides met the bow's half ellipse, and a 2.3 mm stand-off at the shoulders. Fixed with a Hermite turn tangent to the sides and stations clustered toward the bow.",
+  "Volume, CB, fairness (0 of 4) and seams unchanged; nothing else moved; 116,964 to 118,940 triangles.",
+  "Open: the rail is thin (11 mm), it sinks about 11 mm into the transom's corners, and it reaches 17 mm past the hull's ends (FleetMesh checks the canoe body, so LOA and beam are unchanged)."
+ ]
+}

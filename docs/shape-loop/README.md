@@ -338,3 +338,14 @@ forward) and the forefoot's stations keep the last unclamped station's rows. The
 about 1,650 more triangles, mostly where the old zero-area faces had been welded away (thin slivers in the
 forefoot's bottom rows: a later tidy-up). Blind A/B 3 of 3. Open: the bow reads
 blunt (the physics hull's end), a knuckle at the forefoot, sharp stem corners, the rubrail short of the stem.
+
+## Wave 5, round 4 (Nov 14): the Sunfish's rubrail
+
+Card `cards/sunfish-rubrail.json`. The reviewers of rounds 2 and 3 saw the rubrail end in knobs at the transom's corners
+and short of the stem. For the Sunfish, `deck()` now lays one rail path: the sides 6 mm out from the deck's edge as before
+(stations clustered toward the bow), quarter ellipses round the transom's corners, across the transom 6 mm aft of it, and
+a Hermite turn round the stem 6 mm past it that leaves the sides tangent. A first closed loop won the blind A/B 3 of 3;
+QA found it ran through the rudder's head and gudgeon and kinked 26 deg where the sides met the bow, so the rail now
+stops 45 mm either side of the centreline at the transom (no overlap with the rudder or fittings) and the bow turn is
+the Hermite. Volume, CB, fairness and seams unchanged; about 2,000 more triangles. Open: the rail is thin, sinks about
+11 mm into the transom's corners and reaches 17 mm past the hull's ends.
