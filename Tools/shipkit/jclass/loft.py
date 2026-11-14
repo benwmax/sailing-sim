@@ -70,7 +70,8 @@ def _fair(pts, tol):
     def g(xq):
         return f(np.clip(np.asarray(xq, float), lo, hi))
     g.miss = float(np.max(np.abs(f(x) - y)))
-    assert g.miss <= tol * 1.001, f"design curve misses its key points by {g.miss:.4f} (tolerance {tol})"
+    if g.miss > tol * 1.001:
+        raise ValueError(f"design curve misses its key points by {g.miss:.4f} (tolerance {tol})")
     return g
 
 
@@ -102,14 +103,16 @@ def smax(a, b, k):
     return -smin(-a, -b, k)
 
 
-def _line(p, q):
+def _line(p, q, level_ok=False):
     (x0, z0), (x1, z1) = p, q
+    if abs(x1 - x0) < 1e-6 or (abs(z1 - z0) < 1e-6 and not level_ok):
+        raise ValueError(f"keel line {p} to {q}: the leading edge and post must slope (neither upright nor level)")
     s = (z1 - z0) / (x1 - x0)
     return lambda x: z0 + s * (np.asarray(x, float) - x0), s
 
 
 LE, LE_SLOPE = _line(*KEEL["leading_edge"])
-BOT, _ = _line(*KEEL["bottom"])
+BOT, _ = _line(*KEEL["bottom"], level_ok=True)
 POST, POST_SLOPE = _line(*KEEL["post"])
 
 
@@ -124,11 +127,33 @@ def keel_outline(x):
 
 def leading_edge_tangent(toe):
     """The leading edge's top: where the straight line up from the toe touches the forefoot from below, so the keel's
-    leading edge and the stem are one convex line with no knee between (lines_bluebonnet.json holds the result)."""
+    leading edge and the stem are one convex line with no knee between (lines_bluebonnet.json holds the result, and
+    the loft refuses a json whose leading edge no longer touches the canoe line: see _check_leading_edge)."""
+    from scipy.optimize import minimize_scalar
     xs = np.linspace(toe[0] + 4.0, END["stem_head"][0] - 0.5, 2000)
     s = (CANOE(xs) - toe[1]) / (xs - toe[0])
     i = int(np.argmin(s))
-    return [round(float(xs[i]), 3), round(float(CANOE(xs[i])), 3)]
+    if i in (0, len(xs) - 1):
+        raise ValueError("leading_edge_tangent: the line from the toe touches the canoe line at the end of its search "
+                         f"window (x {xs[i]:.2f}): the forefoot has no tangent point for this toe")
+    r = minimize_scalar(lambda xq: (float(CANOE(xq)) - toe[1]) / (xq - toe[0]), bounds=(xs[i - 1], xs[i + 1]),
+                        method="bounded", options={"xatol": 1e-7})
+    return [round(float(r.x), 3), round(float(CANOE(r.x)), 3)]
+
+
+def _check_leading_edge():
+    """The json's leading edge must still touch the canoe line from below at its top (within 2 mm), or editing the
+    canoe line has silently brought back a knee (profile() is a hard minimum there): rerun leading_edge_tangent."""
+    (xt, zt), toe = KEEL["leading_edge"]
+    xs = np.linspace(toe[0] + 4.0, END["stem_head"][0] - 0.5, 4000)
+    gap = CANOE(xs) - LE(xs)                         # the canoe line above the leading edge's line
+    if abs(float(CANOE(xt)) - zt) > 0.002 or float(gap.min()) < -0.002:
+        raise ValueError(f"the keel's leading edge {KEEL['leading_edge']} no longer touches the canoe line (top off it "
+                         f"by {float(CANOE(xt)) - zt:+.4f} m, cuts above it by {-float(gap.min()):.4f} m): set its top to "
+                         f"leading_edge_tangent({toe}) = {leading_edge_tangent(toe)}")
+
+
+_check_leading_edge()
 
 
 def fillet(x):
@@ -154,7 +179,7 @@ def keel_half_thickness(x, z, f):
     """Half-thickness of the keel at (x, z), f of the way up from its bottom to the canoe body there: a foil between
     the leading edge and the post at that height, thickest a third of the way back, tapering from the root's thickness
     down to the bottom's (the lead's), so the garboard's hollow runs on down the keel's sides."""
-    xle = KEEL["leading_edge"][0][0] + (z - KEEL["leading_edge"][0][1]) / LE_SLOPE
+    xle = KEEL["leading_edge"][0][0] + (z - KEEL["leading_edge"][0][1]) / LE_SLOPE     # _line: never level
     xte = KEEL["post"][0][0] + (z - KEEL["post"][0][1]) / POST_SLOPE
     c = max(xle - xte, 0.5)
     xi = (xle - x) / c
@@ -169,9 +194,10 @@ def keel_half_thickness(x, z, f):
     s = 1.0 - (1.0 - min(max(s, 0.0), 1.0)) * (1.0 - b)
     t = tp + (T - tp) * min(max(s, 0.0), 1.0)
     # forward of the keel and aft of the post the line runs on as the stem bar's width, toward the stem and transom
+    # (under the counter section_polygon spreads the bar's points across the floor)
     xf, xa = KEEL["leading_edge"][0][0], KEEL["post"][1][0]
-    f = max(_smoothstep((x - xf) / 3.0), _smoothstep((xa - x) / 3.0))
-    return t + (KEEL["half_thickness_stem"] - t) * f
+    w_end = max(_smoothstep((x - xf) / 3.0), _smoothstep((xa - x) / 3.0))
+    return t + (KEEL["half_thickness_stem"] - t) * w_end
 
 
 def _smoothstep(t):
@@ -208,14 +234,35 @@ def section_polygon(x, xs_sheer=None):
     # centreline, a keel bar's width out, so the section is the same family of curves everywhere along the hull.
     z2 = zb + 0.35 * hf
     z3 = zb + 0.62 * hf
-    def kt(z):        # the keel's half-thickness, or the stem bar's (narrowing into the stem head) where there is none;
-        if hf <= 0:   # where the keel is shallow (its leading edge's top, the post's) it eases to the bar's, so the
-            return y0  # bar runs on into the keel with no swelling
-        t = keel_half_thickness(x, z, (z - zb) / hf)
-        return y0 + (t - y0) * _smoothstep(hf / KEEL["full_thickness_depth"])
-    ys = np.maximum.accumulate([0.0, 0.85 * kt(zb), kt(z2), kt(z3)])     # never narrowing upward
-    lead = [(float(ys[0]), zb), (float(ys[1]), zb), (float(ys[2]), z2), (float(ys[3]), z3)]
-    return lead + [c1, c2, c3, c4, c5]
+    deep = _smoothstep(hf / KEEL["full_thickness_depth"])     # 0 where there is no keel, 1 where it is full depth
+    # Where the keel is shallow its thickness eases to what the section is without one. Toward the bow (the leading
+    # edge's top) that is the section's own V: the straight line from the stem bar at the keel's bottom out to the
+    # floor point, so the forefoot opens into the bow's V with no thin blade or waist under it. Toward the stern (the
+    # post's top) it is the bar's width, so the post stays thin up to the counter.
+    fwd = _smoothstep((x - KEEL["bottom"][1][0]) / (KEEL["bottom"][0][0] - KEEL["bottom"][1][0]))
+    def kt(z):
+        v = y0 + (c1[0] - y0) * min(max((z - zb) / max(c1[1] - zb, 1e-6), 0.0), 1.0)
+        bare = y0 + (v - y0) * fwd
+        if hf <= 0:   # no keel: the stem bar's width (narrowing into the stem head)
+            return bare
+        return bare + (keel_half_thickness(x, z, (z - zb) / hf) - bare) * deep
+    run = [(0.0, zb), (0.85 * kt(zb), zb), (kt(z2), z2), (kt(z3), z3)]
+    # Under the counter there is no keel, and the run's points would sit together a bar's width out: the section
+    # would turn through its deadrise there within millimetres, a crease along the counter's centreline. There the
+    # floor's points step out in four equal widths whose slopes grow evenly (0, t, 2t, 3t, then 4t on to the bilge
+    # point), the floor point sunk to meet them, so the counter's underside curves from flat at the centreline toward
+    # the bilge with no crease. Forward of the keel the points stay together: the stem bar.
+    aft = _smoothstep((KEEL["post"][1][0] - x) / 3.0) * (1.0 - deep)
+    if aft > 0:
+        a = 0.25 * (c1[0] - y0)                    # four equal steps across the floor, the first one flat
+        D, dzb, W = c1[1] - zb, c2[1] - c1[1], max(c2[0] - c1[0], 1e-6)
+        t = (dzb + D) / (4 * W + 6 * a)            # the steps' slopes t, 2t, 3t, then 4t on to the bilge point
+        sink = min(max(D - 6 * a * t, 0.0), D)
+        c1 = (c1[0], c1[1] - aft * sink)
+        spread = [(0.0, zb), (y0 + a, zb), (y0 + 2 * a, zb + a * t), (y0 + 3 * a, zb + 3 * a * t)]
+        run = [(r[0] + (q[0] - r[0]) * aft, r[1] + (q[1] - r[1]) * aft) for r, q in zip(run, spread)]
+    ys = np.maximum.accumulate([p[0] for p in run])                      # never narrowing upward
+    return [(float(y), float(p[1])) for y, p in zip(ys, run)] + [c1, c2, c3, c4, c5]
 
 
 def row_positions():
@@ -243,7 +290,8 @@ def control_net():
             poly = [(0.0, float(SHEER(x)))] * len(poly)
         else:                                        # a section runs out and up from the keel: no folds
             d = np.diff(np.array(poly), axis=0)
-            assert (d >= -1e-9).all(), f"section polygon at x {x:.3f} folds back: {poly}"
+            if not (d >= -1e-9).all():
+                raise ValueError(f"section polygon at x {x:.3f} folds back: {poly}")
         rows.append([(x + tau * (z - zb), y, z) for y, z in poly])
     return np.array(rows)
 
@@ -338,23 +386,24 @@ def hydrostatics(S=None, n=400):
     xs_cross = [cl[k, 0] + (0 - z[k]) / (z[k + 1] - z[k]) * (cl[k + 1, 0] - cl[k, 0]) for k in cross]
     wl_aft, wl_fwd = float(min(xs_cross)), float(max(xs_cross))
     xs = np.linspace(x_lo + 1e-3, x_hi - 1e-3, n)
-    A, Y, Zc, B = [], [], [], []
-    secs = {}
+    A, Ac, Zc, B = [], [], [], []
     for x in xs:
         sec = station_cut(S, x)
         if sec is None:
-            A.append(0.0); Y.append(0.0); Zc.append(0.0); B.append(0.0)
+            A.append(0.0); Ac.append(0.0); Zc.append(0.0); B.append(0.0)
             continue
         a, cy, cz = _clip_area_below(sec)
-        A.append(2 * a); Zc.append(cz); B.append(_half_breadth_at(sec, 0.0) if a > 0 else 0.0)
-        secs[float(x)] = sec
-    A, Zc, B = np.array(A), np.array(Zc), np.array(B)
+        keel = _clip_area_below(sec, min(float(CANOE(x)), 0.0))[0]       # the part below the canoe body's line
+        A.append(2 * a); Ac.append(2 * max(a - keel, 0.0)); Zc.append(cz)
+        B.append(_half_breadth_at(sec, 0.0) if a > 0 else 0.0)
+    A, Ac, Zc, B = np.array(A), np.array(Ac), np.array(Zc), np.array(B)
     V = float(np.trapezoid(A, xs))
     lcb = float(np.trapezoid(A * xs, xs) / V)
     vcb = float(np.trapezoid(A * Zc, xs) / V)
     Aw = float(np.trapezoid(2 * B, xs))
     lcf = float(np.trapezoid(2 * B * xs, xs) / Aw)
     i_t = float(np.trapezoid(2 * B ** 3 / 3, xs))              # transverse second moment of the waterplane
+    i_l = float(np.trapezoid(2 * B * (xs - lcf) ** 2, xs))      # and fore and aft, about its centre
     Am = float(A.max())
     x_am = float(xs[int(A.argmax())])
     lwl = wl_fwd - wl_aft
@@ -368,7 +417,9 @@ def hydrostatics(S=None, n=400):
     qa = 0.5 * np.linalg.norm(np.cross(d1, d2), axis=-1)
     qz = 0.25 * (q[1:, 1:, 2] + q[:-1, :-1, 2] + q[1:, :-1, 2] + q[:-1, 1:, 2])
     wetted = 2 * float(qa[qz < 0].sum())
-    # canoe body (above the keel's root) for the keel's volume
+    # the canoe body: the hull above its centreline line (the keel hangs below it), on its own depth
+    vc = float(np.trapezoid(Ac, xs))
+    tc = -float(CANOE(np.linspace(wl_aft, wl_fwd, 801)).min())
     return {
         "loa_m": round(x_hi - x_lo, 3), "loa_ft": round((x_hi - x_lo) / FT, 2),
         "lwl_m": round(lwl, 3), "lwl_ft": round(lwl / FT, 2), "lwl_ends_m": [round(wl_aft, 3), round(wl_fwd, 3)],
@@ -382,18 +433,21 @@ def hydrostatics(S=None, n=400):
         "lcb_m": round(lcb, 3), "lcb_pct_lwl_from_bow": round(100 * (wl_fwd - lcb) / lwl, 1),
         "vcb_m": round(vcb, 3),
         "waterplane_m2": round(Aw, 2), "lcf_m": round(lcf, 3),
-        "bm_t_m": round(i_t / V, 3),
+        "bm_t_m": round(i_t / V, 3), "bm_l_m": round(i_l / V, 2),
         "midship_area_m2": round(Am, 3), "midship_x_m": round(x_am, 2),
         "cp": round(V / (Am * lwl), 3), "cb": round(V / (lwl * bwl * draft), 3),
         "cwp": round(Aw / (lwl * bwl), 3),
+        "canoe_volume_m3": round(vc, 2), "keel_volume_m3": round(V - vc, 2), "canoe_depth_m": round(tc, 3),
+        "cb_canoe": round(vc / (lwl * bwl * tc), 3), "cp_canoe": round(vc / (float(Ac.max()) * lwl), 3),
         "wetted_m2": round(wetted, 1), "wetted_ft2": round(wetted / FT ** 2, 0),
         "disp_length_ratio": round((V / FT ** 3 / 35.0) / (0.01 * lwl / FT) ** 3, 1),
     }
 
 
 def rudder_stock_z(x):
-    """The rudder's stock line: parallel to the post, the rudder's chord forward of it. At station x the rudder is the
-    part of the keel below this height (aft of the stock); slice 2 hangs it there."""
+    """The rudder's stock line: parallel to the keel's aft edge (the 'post', which is the rudder's trailing edge), the
+    rudder's chord forward of it. The rudder is the keel's after part, inside the hull surface: at station x it is the
+    part of the keel below this height. Slice 2 cuts it out of the keel along this line."""
     (hx, hz), _ = KEEL["post"]
     return hz + POST_SLOPE * (np.asarray(x, float) - hx - KEEL["rudder_chord"])
 
@@ -434,8 +488,10 @@ def lead_keel(S, lead_t, rho_lead=11340.0):
             lo = mid
     top = 0.5 * (lo + hi)
     V, cx, cz = volume_below(S, top, zfloor=rudder_stock_z)
-    assert abs(V - need) < 0.01 * need, "the lead does not fit in the hull"
-    assert top < float(CANOE(np.linspace(-10, 10, 201)).min()), "the lead's top is above the canoe body: no keel to hold it"
+    if abs(V - need) >= 0.01 * need:
+        raise ValueError("the lead does not fit in the hull")
+    if top >= float(CANOE(np.linspace(-10, 10, 201)).min()):
+        raise ValueError("the lead's top is above the canoe body: no keel to hold it")
     return {"lead_t": round(lead_t, 1), "lead_m3": round(need, 2), "lead_m3_placed": round(V, 3), "top_z_m": round(top, 3),
             "centroid_x_m": round(cx, 3), "centroid_z_m": round(cz, 3)}
 
@@ -455,15 +511,19 @@ def weight_check(S, h):
     xg = sum(p[0] * p[1] for p in parts.values()) / W
     zg = sum(p[0] * p[2] for p in parts.values()) / W
     km = h["vcb_m"] + h["bm_t_m"]
+    gml = h["vcb_m"] + h["bm_l_m"] - zg
     return {"lead": lead, "total_long_tons": round(W, 1), "lcg_m": round(xg, 3), "lcb_m": h["lcb_m"],
             "lcg_minus_lcb_m": round(xg - h["lcb_m"], 3), "vcg_m": round(zg, 3), "km_m": round(km, 3),
-            "gm_m": round(km - zg, 3)}
+            "gm_m": round(km - zg, 3), "gm_l_m": round(gml, 2),
+            "trim_by_stern_m": round((h["lcb_m"] - xg) * h["lwl_m"] / gml, 3)}
 
 
 def export_sections(path, S=None, n=31):
-    """Half sections at n stations for the physics (slice 13), in the shape of Tools/boats/maxi/sections.json: each
-    from the centreline (keel or counter) out to the sheer, 24 points. Unlike the maxi's, the sections include the keel:
-    a J's keel is part of her hull surface, so there are no separate appendages to add (the rudder is slice 2)."""
+    """Half sections at n stations for the physics (slice 13). Each station's record has the keys of
+    Tools/boats/maxi/sections.json's (x, half_section from the centreline, keel or counter, out to the sheer in 24
+    points, sheer, half_wl), but the top level differs: the sections include the keel and rudder (a J's are part of
+    her hull surface, so there are no appendages to add), and volume_m3 is that whole hull's, where the maxi's
+    canoe_volume_m3 is her canoe body alone. Slice 13 adapts make_maxi_hull.py to it rather than running it as is."""
     S = surface() if S is None else S
     h = hydrostatics(S)
     x_lo, x_hi = END["transom_bottom"][0], float(S[..., 0].max())     # aft of the transom's foot the cut misses the keel
@@ -523,11 +583,19 @@ def draw_lines(S, path):
     axh.plot(S[:, -1, 0], S[:, -1, 1], "k", lw=1.2)
     for zl in (-1.2, -0.9, -0.6, -0.3, 0.0, 0.4, 0.8):
         xs, ys = [], []
-        for i in range(S.shape[0]):
-            sec = list(zip(S[i, :, 1], S[i, :, 2]))
-            b = _half_breadth_at(sec, zl)
-            if b > 0:
-                xs.append(S[i, 0, 0]); ys.append(b)
+        for i in range(S.shape[0]):          # each row's outermost crossing of z, at its own x (the aft rows lean)
+            row = S[i]
+            k = np.where((row[:-1, 2] - zl) * (row[1:, 2] - zl) <= 0)[0]
+            best = None
+            for kk in k:
+                if row[kk + 1, 2] != row[kk, 2]:
+                    p = row[kk] + (zl - row[kk, 2]) / (row[kk + 1, 2] - row[kk, 2]) * (row[kk + 1] - row[kk])
+                    if best is None or p[1] > best[1]:
+                        best = p
+            if best is not None and best[1] > 0:
+                xs.append(best[0]); ys.append(best[1])
+        o = np.argsort(xs)
+        xs, ys = list(np.array(xs)[o]), list(np.array(ys)[o])
         axh.plot(xs, ys, color="tab:blue" if zl == 0 else "tab:gray", lw=1.0 if zl == 0 else 0.6)
     # stations
     stations = np.linspace(-12.954, 12.954, 11)
@@ -568,6 +636,6 @@ if __name__ == "__main__":
     try:
         draw_lines(S, os.path.join(out, "lines.png"))
     except ImportError:
-        pass
+        print("lines.png not drawn: it needs matplotlib")
     for k, v in h.items():
         print(f"{k:24s} {v}")

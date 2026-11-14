@@ -11,8 +11,9 @@ measures its curvature (turning angle per metre). A fair line bends one way, smo
                tighter or gentler on purpose keeps one peak; 15 cm at each end of a line (stem, transom corner) is
                left out
 Both are measured on 2 cm resampled cuts, so a denser mesh of the same shape gives the same counts.
-per line, and writes <out>/fairness.json. The check compares against the baseline: a round must not add inflections
-or kinks to any line (a line the drawing bends both ways, such as a reverse sheer, keeps its own count).
+It writes the counts per line to <out>/fairness.json, with where each one is (inflections_at, kinks_at: the point in
+the cut's plane). The check compares against the baseline: a round must not add inflections or kinks to any line (a
+line the drawing bends both ways, such as a reverse sheer, keeps its own count).
 Needs Blender's Python (pip bpy), numpy and scipy.
 """
 import json
@@ -113,6 +114,7 @@ def fairness(p, axes):
     b = q[2 * w:] - q[w:-w]
     ang = np.arctan2(a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0], (a * b).sum(axis=1))
     k = ang / (w * s[-1] / (n - 1))                 # rad per metre
+    at = q[w:-w]                                    # where each k is, in the cut's plane
     # inflections: sign changes of the curvature smoothed over 30 cm, ignoring bends under 0.15 rad/m (a 6.7 m radius).
     # Both counts are measured on the surface, not the mesh: a denser mesh of the same shape gives the same counts
     # (docs/shape-loop, density test).
@@ -123,6 +125,7 @@ def fairness(p, axes):
     # the line's ends (the stem, the transom corner, the keel root) are corners by design: leave 15 cm off each end
     e = min(len(k) // 4, 7)
     k = k[e:len(k) - e] if e else k
+    at = at[e:len(at) - e] if e else at
     ks = smooth(k, 15)
     floor = 0.15
     sig = np.sign(np.where(np.abs(ks) > floor, ks, 0))
@@ -132,11 +135,19 @@ def fairness(p, axes):
     # (the bilge, the turn at the stem); a bump, a flat or a crease adds a peak and a dip next to it. Count the peaks
     # and dips of the 10 cm curvature that stand out by more than 0.5 rad/m (their prominence), so a bend made
     # tighter or gentler on purpose keeps its count and a ripple of a few millimetres over 20 cm does not.
-    kinks = len(find_peaks(k, prominence=0.5)[0]) + len(find_peaks(-k, prominence=0.5)[0])
-    firm = len(find_peaks(k, prominence=0.7)[0]) + len(find_peaks(-k, prominence=0.7)[0])   # score.py's hysteresis
+    peaks = sorted(set(find_peaks(k, prominence=0.5)[0]) | set(find_peaks(-k, prominence=0.5)[0]))
+    firm_at = set(find_peaks(k, prominence=0.7)[0]) | set(find_peaks(-k, prominence=0.7)[0])   # score.py's hysteresis
+    kinks, firm = len(peaks), len(firm_at)
     med = float(np.median(np.abs(np.diff(k)))) if len(k) > 1 else 0.0
+    # where they are, in the cut's plane (x, y for a waterline; y, z for a station), so a report can say which turn
+    # each one is: an inflection at the first point of the new sign, a kink with its curvature and firm or soft
+    idx = np.where(sig != 0)[0]
+    infl_at = [[round(float(c), 2) for c in at[idx[j + 1]]] for j in np.where(nz[1:] != nz[:-1])[0]]
+    kink_at = [[round(float(at[i][0]), 2), round(float(at[i][1]), 2), round(float(k[i]), 2),
+                "firm" if i in firm_at else "soft"] for i in peaks]
     return {"length_m": round(float(s[-1]), 3), "inflections": infl, "kinks": kinks, "kinks_firm": firm,
-            "k_max": round(float(np.max(np.abs(k))), 3), "k_step_median": round(med, 4)}
+            "k_max": round(float(np.max(np.abs(k))), 3), "k_step_median": round(med, 4),
+            "inflections_at": infl_at, "kinks_at": kink_at}
 
 
 lo = [min((OB.matrix_world @ v.co)[i] for v in OB.data.vertices) for i in range(3)]

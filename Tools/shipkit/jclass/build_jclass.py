@@ -187,6 +187,8 @@ def main():
     for ob in (hull, transom, deck):
         ob["slice"] = 1
     shell = shell_check((hull, transom, deck))
+    if not shell["closed"]:
+        raise SystemExit(f"the hull, transom and deck do not close into one shell: {shell}")
     h = loft.hydrostatics(S)
     r = rule_check.check(h)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
@@ -207,7 +209,6 @@ def main():
     with open(os.path.join(OUT, "build.json"), "w") as f:
         json.dump(build, f, indent=1)
     print(json.dumps({"triangles": tris, "shell": shell, "rule": r}, indent=1))
-    assert shell["closed"], "the hull, transom and deck do not close into one shell"
 
 
 main()

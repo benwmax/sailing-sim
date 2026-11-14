@@ -5,7 +5,9 @@
 Rating R = 0.18 L sqrt(S) / cbrt(D) (feet, square feet, cubic feet), which must be 76 ft or less, with:
   L  the load waterline length (specs_bluebonnet.json explains why that is close enough),
   S  the rated sail area: the size card's target until slice 6 measures the sails (build.json "sail_area_ft2"),
-  D  the displaced volume in cubic feet: the hull's, plus the rudder until slice 2 builds it (an allowance here).
+  D  the displaced volume in cubic feet: the hull's. The rudder is the keel's after part, inside the hull surface
+     (slice 2 cuts it out along its stock line), so it is already counted; build.json's "appendage_ft3" adds anything
+     hung outside the surface.
 The draft must be 15 ft or less, and each size within the card's tolerance (5%). Plain Python: no Blender needed.
 """
 import json
@@ -16,7 +18,6 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPECS = json.load(open(os.path.join(HERE, "specs_bluebonnet.json")))
 FT = 0.3048
-RUDDER_ALLOWANCE_FT3 = 35.0     # about 1 m^3: a J's rudder, until slice 2 builds and measures it
 
 
 def rating(lwl_ft, sail_ft2, disp_ft3):
@@ -28,7 +29,7 @@ def check(h, sail_ft2=None, appendage_ft3=None):
     t, rule = SPECS["targets"], SPECS["rule"]
     tol = t["tolerance"]
     S = sail_ft2 if sail_ft2 is not None else t["sail_area_ft2"]
-    app = RUDDER_ALLOWANCE_FT3 if appendage_ft3 is None else appendage_ft3
+    app = 0.0 if appendage_ft3 is None else appendage_ft3
     D = h["volume_ft3"] + app
     R = rating(h["lwl_ft"], S, D)
     rows = []
@@ -67,5 +68,9 @@ if __name__ == "__main__":
     b = json.load(open(sys.argv[1]))
     h = b.get("hydrostatics", b)
     r = check(h, b.get("sail_area_ft2"), b.get("appendage_ft3"))
+    shell = b.get("shell")
+    if shell is not None and not shell.get("closed"):
+        r["pass"] = False
+        print(f"FAIL: the build's shell does not close: {shell}")
     print(report(r))
     sys.exit(0 if r["pass"] else 1)
