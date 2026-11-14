@@ -872,28 +872,20 @@ void AWaterSurface::UpdateDetail()
 	const FWaveDetailParams& Q = DetailConfigured;
 	const bool bReconfigure = !Detail || Detail->Spec(0).N != DrawnChop().N || FMath::Abs(P.WindMs - Q.WindMs) > 0.25 || FMath::Abs(FMath::FindDeltaAngleRadians(P.TravelDirRad, Q.TravelDirRad)) > 0.05
 		|| FMath::Abs(P.FetchMeters / Q.FetchMeters - 1.0) > 0.1 || FMath::Abs(P.Development / Q.Development - 1.0) > 0.3;
-	if (bReconfigure)
+	static SailingArgs::FCachedFlag OneChopArg(TEXT("SailingOneChop"));
+	// The cascades this tier draws, and the long chop's index among them.
+	auto MakeSpecs = [this](int32& OutLongIndex)
 	{
-		if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
-		TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> New = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
-		static SailingArgs::FCachedFlag OneChopArg(TEXT("SailingOneChop"));
 		FWaveDetail::FCascadeSpec ChopSpec = DrawnChop();
 		if (OneChopArg.Get()) ChopSpec.MaxWavelength = 4.0;   // (the one tile, as before docs/chop-cascades/)
 		std::vector<FWaveDetail::FCascadeSpec> Specs = { ChopSpec };
 		if (Tier >= 2) { Specs.push_back(DrawnRipple()); Specs.push_back(DrawnCapillary()); }
-		LongChopCascade = OneChopArg.Get() ? -1 : int32(Specs.size());
-		if (LongChopCascade >= 0) Specs.push_back(DrawnLongChop());
-		New->Configure(P, Specs);
-		Detail = New;
-		DetailConfigured = P;
-		FramePrev.Reset();
-		FrameNext.Reset();
-	}
-	const double Scale = P.Development / DetailConfigured.Development;
-
-	TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> D = Detail;
-	const int32 LongIndex = LongChopCascade;
-	auto Evaluate = [D, Scale, LongIndex](double At) -> FDetailFramePtr
+		OutLongIndex = OneChopArg.Get() ? -1 : int32(Specs.size());
+		if (OutLongIndex >= 0) Specs.push_back(DrawnLongChop());
+		return Specs;
+	};
+	// One detail frame of D at time At (its amplitude scaled by Scale): on a worker, or here at a start.
+	auto EvaluateWith = [](const TSharedPtr<FWaveDetail, ESPMode::ThreadSafe>& D, double Scale, int32 LongIndex, double At) -> FDetailFramePtr
 	{
 		FDetailFramePtr F = MakeShared<FDetailFrame, ESPMode::ThreadSafe>();
 		F->Source = D.Get();
@@ -904,6 +896,76 @@ void AWaterSurface::UpdateDetail()
 		if (LongIndex > 0 && LongIndex < D->NumCascades()) D->Evaluate(LongIndex, At, F->LongChop, Scale);
 		return F;
 	};
+	const double TNow = GetSimTime();
+	// The first detail, or a new tier's grid size (the textures follow N): here, at once. A sea that moved: on a worker,
+	// the old detail drawn meanwhile (26-35 ms of game thread per reconfigure on the PC's 4K storm traces).
+	const bool bSyncConfigure = !Detail || Detail->Spec(0).N != DrawnChop().N;
+	if (bReconfigure && bSyncConfigure)
+	{
+		if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
+		if (bConfigPending) { PendingConfig.Wait(); bConfigPending = false; }
+		ReadyConfig.Reset();
+		TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> New = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
+		New->Configure(P, MakeSpecs(LongChopCascade));
+		Detail = New;
+		DetailConfigured = P;
+		FramePrev.Reset();
+		FrameNext.Reset();
+	}
+	else if (bReconfigure && !bConfigPending && !ReadyConfig)
+	{
+		// Its first frames on the next step boundaries past now (the worker takes a few frames); the swap waits for the
+		// clock to reach the first, so what is drawn never steps back in time.
+		int32 NewLongIndex = -1;
+		std::vector<FWaveDetail::FCascadeSpec> Specs = MakeSpecs(NewLongIndex);
+		// (DetailConfigLead steps ahead: one, more after a config arrived too late, a slow CPU or a busy pool.)
+		const double T0 = (FMath::FloorToDouble(TNow / kDetailStep) + double(DetailConfigLead)) * kDetailStep;
+		PendingConfig = Async(EAsyncExecution::ThreadPool, [P, Specs = MoveTemp(Specs), NewLongIndex, T0, EvaluateWith]() -> FDetailConfigPtr
+		{
+			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailConfigure);
+			FDetailConfigPtr Cfg = MakeShared<FDetailConfig, ESPMode::ThreadSafe>();
+			Cfg->Detail = MakeShared<FWaveDetail, ESPMode::ThreadSafe>();
+			Cfg->Detail->Configure(P, Specs);
+			Cfg->Params = P;
+			Cfg->LongIndex = NewLongIndex;
+			Cfg->Prev = EvaluateWith(Cfg->Detail, 1.0, NewLongIndex, T0);
+			Cfg->Next = EvaluateWith(Cfg->Detail, 1.0, NewLongIndex, T0 + kDetailStep);
+			return Cfg;
+		});
+		bConfigPending = true;
+	}
+	if (bConfigPending && PendingConfig.IsReady())
+	{
+		ReadyConfig = PendingConfig.Get();
+		bConfigPending = false;
+	}
+	if (ReadyConfig && TNow >= ReadyConfig->Prev->Time - 1e-6)
+	{
+		const FDetailConfigPtr Cfg = ReadyConfig;
+		ReadyConfig.Reset();
+		// (Past its second frame by more than a step, a long hitch or a jump in time: dropped; the next frame asks again.)
+		if (TNow <= Cfg->Next->Time + kDetailStep)
+		{
+			// The pending frame belongs to the old detail: dropped (its worker holds the old detail until it is done).
+			bFramePending = false;
+			PendingFrame = TFuture<FDetailFramePtr>();
+			Detail = Cfg->Detail;
+			DetailConfigured = Cfg->Params;
+			LongChopCascade = Cfg->LongIndex;
+			FramePrev = Cfg->Prev;
+			FrameNext = Cfg->Next;
+			DetailConfigLead = FMath::Max(DetailConfigLead - 1, 1);   // on time: ease the lead back
+		}
+		else
+		{
+			DetailConfigLead = FMath::Min(DetailConfigLead + 2, 9);
+		}
+	}
+	const double Scale = P.Development / DetailConfigured.Development;
+
+	TSharedPtr<FWaveDetail, ESPMode::ThreadSafe> D = Detail;
+	const int32 LongIndex = LongChopCascade;
+	auto Evaluate = [D, Scale, LongIndex, EvaluateWith](double At) -> FDetailFramePtr { return EvaluateWith(D, Scale, LongIndex, At); };
 	auto Launch = [&](double At)
 	{
 		PendingFrame = Async(EAsyncExecution::ThreadPool, [Evaluate, At]() { return Evaluate(At); });
@@ -920,6 +982,8 @@ void AWaterSurface::UpdateDetail()
 		FrameNext = Evaluate(T0 + kDetailStep);
 		Launch(T0 + 2.0 * kDetailStep);
 	}
+	// (After a swap no frame is in flight: the new detail's next one starts here.)
+	if (!bFramePending) Launch(FrameNext->Time + kDetailStep);
 	while (T >= FrameNext->Time && bFramePending && PendingFrame.IsReady())
 	{
 		FDetailFramePtr Ready = PendingFrame.Get();
@@ -2023,6 +2087,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bShorePending) { PendingShore.Wait(); bShorePending = false; }
 	if (bWakePending) { PendingWake.Wait(); bWakePending = false; }
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
+	if (bConfigPending) { PendingConfig.Wait(); bConfigPending = false; }
 	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
 	if (bFoamPending) { PendingFoam.Wait(); bFoamPending = false; }
 }
