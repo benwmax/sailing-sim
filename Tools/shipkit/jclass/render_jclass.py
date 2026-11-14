@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint and deck renders of Bluebonnet for the docs and the blind reviews (docs/jclass-1, jclass-2,
-jclass-3).
+"""Clay, zebra, afloat, paint, deck and rig renders of Bluebonnet for the docs and the blind reviews (docs/jclass-1 to
+jclass-4).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -18,6 +18,14 @@ boats), the same every round so before and after line up:
   deck_*                                     slice 3's deck: from aloft, a bow quarter from above, the bow's nibbed
                                              planking, the skylight and companionway, the doghouse, the helm (wheel,
                                              binnacle, cockpit), the stern's after margin, and the helmsman's eye
+  rig_*                                      slice 4's spars: profile and from ahead (orthographic), a quarter view
+                                             afloat, the masthead, the hounds and jumpers, the spreaders seen from the
+                                             deck, the gooseneck, the pole's car, and the boom and pole set for a run
+                                             (boom to starboard, pole to port) and a reach (boom to port, pole to
+                                             starboard)
+Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
+slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
+as the measured reference) stays hidden in every shot.
 The cameras look from Blender's -Y for the starboard side: build_jclass.py puts the hull's frame (starboard +y) into
 Blender's right-handed one as (x, -y, z), so the pictures are the boat as she is, not her mirror image.
 Cycles on the CPU (no GPU needed), with a material override for the clay and zebra views. Needs Blender's Python (pip bpy).
@@ -46,11 +54,19 @@ SC.view_settings.view_transform = "Standard"
 SC.view_settings.look = "None"
 
 meshes = [o for o in SC.objects if o.type == "MESH"]
-pts = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
-LO = Vector([min(p[i] for p in pts) for i in range(3)])
-HI = Vector([max(p[i] for p in pts) for i in range(3)])
-MID = (LO + HI) / 2
+HIDDEN = {o.name for o in meshes if o.hide_render}       # what the build hid (slice 1's moulded hull) stays hidden
+
+
+def bounds(obs):
+    pts = [o.matrix_world @ Vector(c) for o in obs for c in o.bound_box]
+    lo = Vector([min(p[i] for p in pts) for i in range(3)])
+    hi = Vector([max(p[i] for p in pts) for i in range(3)])
+    return lo, hi, (lo + hi) / 2
+
+
+LO, HI, MID = bounds([o for o in meshes if o.get("slice", 1) < 4])      # the hull and deck: the earlier slices' frame
 L = HI.x - LO.x
+LOA, HIA, MIDA = bounds(meshes)                                            # with the rig
 
 world = bpy.data.worlds.new("JWorld")
 SC.world = world
@@ -159,12 +175,42 @@ def turn_rudder(deg):
         ob.matrix_world = M @ Matrix.Rotation(math.radians(deg), 4, "Z")
 
 
-def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0):
+def turn_about_z(name, deg):
+    """Turn an object about its own Z from where the build put it (its "frame"), degrees, right-handed in Blender."""
+    ob = bpy.data.objects.get(name)
+    if ob is None:
+        return
+    if "frame" not in ob:
+        ob["frame"] = [c for row in ob.matrix_world for c in row]
+    M = Matrix([ob["frame"][k:k + 4] for k in range(0, 16, 4)])
+    ob.matrix_world = M @ Matrix.Rotation(math.radians(deg), 4, "Z")
+
+
+def swing_boom(deg):
+    """Swing the boom about its gooseneck pin: positive takes its end to starboard (build.json's rig frames: a positive
+    turn about the boom's own Z in Blender moves its end to starboard)."""
+    turn_about_z("Boom", deg)
+
+
+def set_pole(deg):
+    """Set the spinnaker pole deg from the bow, positive to starboard, negative to port. The build sets it 70 degrees
+    to starboard, and a positive turn about its own Z in Blender takes its end to port."""
+    turn_about_z("SpinnakerPole", 70.0 - deg)
+
+
+def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
+         upto=3, boom=0.0, pole=70.0):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
-    rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard)."""
+    rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
+    objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
+    to starboard)."""
     if ONLY and name not in ONLY:
         return
+    for o in meshes:
+        o.hide_render = o.name in HIDDEN or o.get("slice", 1) > upto
     turn_rudder(rudder)
+    swing_boom(boom)
+    set_pole(pole)
     world_kind("zebra" if kind == "zebra" else "shade")
     WN.nodes["Background"].inputs[1].default_value = 0.55 if kind == "paint" else 1.0
     set_sun(sun_dir or (0.3, 0.5, -0.8), sun if kind == "paint" else 0.0)
@@ -257,4 +303,29 @@ shot("deck_helm", "paint", (-14.0, -2.5, 3.3), (-9.5, 0.0, 1.7), lens=30, sun_di
 shot("deck_stern", "paint", (-17.3, -1.9, 3.4), (-20.6, 0.0, 1.55), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
 # the helmsman's eye: standing on the cockpit's sole abaft the wheel, 1.6 m up, looking forward along the deck
 shot("deck_eye", "paint", (-10.6, 0.25, 2.59), (2.0, 0.0, 1.9), lens=24, sun_dir=DSUN, sun=2.4, samples=48)
+# slice 4: the spars (Blender's -Y is starboard). The mast steps at x 3.0; the hounds are 36 m above the deck (z about
+# 37.6), the truck's top at z 47.8; the boom's top at the mast 2.45 m above the deck; the pole's heel 2.0 m up.
+RSUN = (-0.35, 0.5, -0.8)
+HA = HIA.z - LOA.z
+shot("rig_profile", "paint", (MIDA.x, -150, MIDA.z), MIDA, ortho=1.05 * max(HIA.x - LOA.x, HA * ASPECT), sun_dir=RSUN,
+     sun=3.0, upto=4)
+shot("rig_ahead", "paint", (150, 0, MIDA.z), (0, 0, MIDA.z), ortho=1.05 * HA * ASPECT, sun_dir=(-0.6, 0.3, -0.75),
+     sun=3.0, upto=4)
+shot("rig_afloat34", "paint", (46.0, -54.0, 5.0), (-1.0, 0.0, 22.0), lens=24, sea=True, sun_dir=RSUN, sun=3.0,
+     samples=48, upto=4)
+shot("rig_masthead", "paint", (6.0, -4.2, 49.4), (1.85, 0.0, 46.9), lens=50, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=4)
+shot("rig_hounds", "paint", (8.5, -6.0, 39.6), (3.2, 0.0, 37.4), lens=40, sun_dir=RSUN, sun=3.0, samples=64, upto=4)
+shot("rig_spreaders", "paint", (7.0, -3.6, 2.9), (2.4, 0.0, 30.0), lens=22, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=4, pole=10.0)
+shot("rig_gooseneck", "paint", (-0.6, -2.7, 4.7), (2.55, 0.0, 3.7), lens=35, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=4)
+shot("rig_polecar", "paint", (6.6, -2.6, 4.5), (3.2, 0.0, 3.4), lens=35, sun_dir=(-0.6, 0.35, -0.7), sun=3.0,
+     samples=64, upto=4)
+# from high astern: running (the boom squared off to starboard, the pole squared to port) and reaching on starboard
+# tack (the boom eased to port, the pole forward to starboard)
+shot("rig_run", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48, upto=4,
+     boom=80.0, pole=-85.0)
+shot("rig_reach", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48,
+     upto=4, boom=-30.0, pole=60.0)
 print("render_jclass: done")

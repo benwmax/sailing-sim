@@ -1,0 +1,143 @@
+{
+ "about": "Bluebonnet's spars (docs/jclass-4): the riveted duralumin mast with its three sets of spreaders, the jumper struts at the hounds and the mainsail's track, the long boom on its gooseneck, and the spinnaker pole on its car. Built by spars.py, in the hull's frame (X forward, Y starboard, Z up, metres; heights 'above deck' are from the deck at the mast's partners, measured upright). The mast steps where deck_bluebonnet.json's 'mast' puts it (x 3.0 at the partners). The sizes are ours, in the manner of the 1934-37 Js: the height is the size card's 152 ft (Ranger's was 153), the boom came out 65 ft overall (E, from the mast to its black band, is set by the rated sail area below), and the 1937 class rule's minimum weight for the mast (6,400 lb) is met. Slice 5 rigs her from the attachment points the build reports; slice 6 makes the sails.",
+ "material": {
+  "note": "Duralumin (2,800 kg/m^3) for the spars' skins and the spreaders and struts; cast bronze (8,800) for the fittings and the tracks. The spars are painted a pale buff, the period's mast colour, over flush rivets that show only faintly (as the hull's plating does); the black bands mark the sail's measured limits on the mast and the boom.",
+  "duralumin": 2800.0,
+  "bronze": 8800.0,
+  "colours": {
+   "Spar": [214, 200, 168],
+   "Black": [22, 22, 22]
+  }
+ },
+ "plates": {
+  "note": "The mast and the boom are rolled from duralumin plates riveted together: two halves, a forward (or upper) and an after (or lower) one, meeting in a lapped seam down each side, each half in plates 'plate_length' long with their butts staggered half a plate between the halves, a row of rivets each side of every seam and butt. Drawn by the spars' paint from their 'Spar' UV map (U metres along the spar, V the fraction of the way round from the forward face, or the top on the boom) and 'SparG' (the girth there, metres), like the hull's plating, so it costs no triangles. Sizes are our estimates; depths and fades as the hull's.",
+  "plate_length": 3.66,
+  "rivet_offset": 0.022,
+  "rivet_pitch": 0.05,
+  "seam_width": 0.004,
+  "seam_depth": 0.0006,
+  "rivet_radius": 0.0065,
+  "rivet_depth": 0.0004,
+  "fade_rivets": [5.0, 12.0],
+  "fade_seams": [14.0, 40.0]
+ },
+ "mast": {
+  "note": "A pear-shaped section, fuller forward, 'depth' fore and aft and 'width' across at the partners, the same from the heel to 'taper_from' of the height, then tapering to 'top_scale' of it at the truck. The heel steps on the keelson at 'step_z' (the canoe body's centreline is at -1.79 m here; the floors and keelson take up the rest). The mast rakes 'rake_deg' aft. The wall is thickest low down, where the bending is greatest, and thinner aloft ('wall': fraction of the height above deck, metres); 'frames_fraction' adds its internal ring frames, stringers, laps and rivets to the skin's weight. 'sides' points round each section, a section every 'ring_step' along it.",
+  "height_above_deck": 46.33,
+  "rake_deg": 1.5,
+  "step_z": -1.45,
+  "depth": 0.58,
+  "width": 0.42,
+  "fullness": 0.14,
+  "taper_from": 0.6,
+  "top_scale": 0.5,
+  "taper_power": 1.4,
+  "wall": [[0.0, 0.011], [0.55, 0.011], [0.8, 0.0075], [1.0, 0.005]],
+  "frames_fraction": 0.16,
+  "sides": 64,
+  "ring_step": 0.2,
+  "truck": {"radius_over": 0.025, "height": 0.16},
+  "masthead_band": {"below_top": 0.55, "height": 0.3, "thickness": 0.008},
+  "masthead_crane": {"below_top": 0.36, "reach": 0.32, "height": 0.16, "thickness": 0.05},
+  "black_band": {"below_top": 1.2, "height": 0.1},
+  "fixed_kg": {
+   "note": "Fittings with no geometry of their own (our estimates): the halyard sheaves and their pins inside the masthead and at the hounds, the tangs' internal plates and bolts.",
+   "Masthead sheaves (inside the mast)": [45.0, 0.98],
+   "Hounds sheaves and internal plates": [30.0, 0.78]
+  },
+  "minimum_1937_lb": 6400.0,
+  "minimum_note": "The J class rule was amended in 1937 to make rigs weigh at least 6,400 lb, so the masts would stop breaking (Wikipedia's J Class page, as a web search quotes it; its sources and the rule's text could not be read from the cloud). We read it as the mast with its fittings, spreaders and struts (not the mast coat, which is the deck's), the strict reading; Enterprise's 1930 duralumin mast had weighed about 4,000 lb."
+ },
+ "partners": {
+  "note": "The mast coat: a bronze collar round the mast where it passes through the deck, its flange let into the deck.",
+  "grow_bottom": 0.13,
+  "height": 0.24,
+  "let_in": 0.01
+ },
+ "hounds": {
+  "note": "Where the forestay, the cap shrouds and the jumper struts meet the mast: a bronze band with the forestay's tang forward and a shroud tang each side. The forestay goes to 'height_fraction' of the mast's height, the period's three-quarter-height jibstay raised a little (the upper mast is held by the jumpers and the topmast stay).",
+  "height_fraction": 0.78,
+  "band_height": 0.42,
+  "band_thickness": 0.01,
+  "tang": {"reach": 0.13, "height": 0.16, "thickness": 0.026}
+ },
+ "chainplates": {
+  "note": "Where slice 5's shrouds come down to the sheer, abreast the mast: here only to set the spreaders' angles.",
+  "x": 3.0,
+  "inboard_of_sheer": 0.06
+ },
+ "spreaders": {
+  "note": "Three sets square to the centreline (the period's in-line spreaders, with running backstays fore and aft). Each spreader's tip stands 'tip_y' out from the centreline at 'heights' above the deck, pushing the cap shroud out of its straight line from the chainplate to its tang's hole at the hounds; it is angled to bisect the shroud's bend at its tip, so it carries the push straight along itself. A streamlined section 'chord' fore and aft and 'thickness' (root, tip), its skin 'wall' thick, in bronze sockets on the mast (a bronze band round the mast through each pair's sockets) and bronze tip fittings.",
+  "heights": [10.5, 20.0, 28.5],
+  "tip_y": [2.93, 2.31, 1.38],
+  "chord": [0.23, 0.13],
+  "thickness": [0.075, 0.045],
+  "wall": 0.004,
+  "sides": 20,
+  "socket": {"length": 0.22, "grow": 0.025},
+  "tip_fitting": {"length": 0.13, "grow": 0.012}
+ },
+ "jumpers": {
+  "note": "A pair of struts at the hounds, coming off the mast 'splay_deg' round from its forward face each side, 'length' long, which hold the jumper stays (slice 5) off the upper mast between 'stay_top_below_top' the truck and 'stay_foot_below' the hounds. Each stay's ends are on the mast's surface the same way round as its strut, so the stay and the strut lie in one plane through the mast's axis, and the strut is angled to bisect the stay's bend at its tip. Round duralumin tubes, 'diameter' at the root and the tip.",
+  "above_hounds": 0.12,
+  "length": 2.6,
+  "splay_deg": 22.0,
+  "stay_top_below_top": 0.6,
+  "stay_foot_below": 8.0,
+  "diameter": [0.11, 0.07],
+  "wall": 0.004
+ },
+ "track": {
+  "note": "The mainsail's track up the mast's after face, from just above the boom to the black band, and the spinnaker pole car's track on its forward face: bronze T-section bars let into the mast (their weight from 'section_area').",
+  "width": 0.034,
+  "proud": 0.02,
+  "let_in": 0.004,
+  "section_area": 0.00025,
+  "pole_track": [0.9, 4.2]
+ },
+ "gooseneck": {
+  "note": "The boom hangs on a vertical pin 'pin_aft' abaft the mast's after face, on a lug from a bronze band round the mast; the boom's jaw takes the pin above and below the lug. 'boom_top_above_deck' is the boom's top at the mast, the foot of the mainsail's luff.",
+  "boom_top_above_deck": 2.45,
+  "pin_aft": 0.3,
+  "band_height": 0.3,
+  "band_thickness": 0.01,
+  "pin_radius": 0.03,
+  "eye_radius": 0.05,
+  "lug_height": 0.08
+ },
+ "boom": {
+  "note": "A deep oval section of riveted duralumin, deepest in its middle third where the mainsheet bends it, its top straight (the sail's foot runs along its track) and rising 'rise_deg' aft from level. It runs 'beyond_band' past the black band at E, which the build sets from the rated sail area (sail_area below). 'section_mid' and 'section_end' are its depth and width; bronze end fittings: the jaw forward, the outhaul's cap aft, and bands where the mainsheet's blocks hang (metres forward of the aft end).",
+  "rise_deg": 1.0,
+  "section_mid": [0.56, 0.42],
+  "section_end": [0.36, 0.28],
+  "mid_from": 0.3,
+  "mid_to": 0.65,
+  "beyond_band": 0.45,
+  "wall": 0.006,
+  "frames_fraction": 0.12,
+  "sides": 48,
+  "ring_step": 0.15,
+  "sheet_bands": [0.6, 3.2, 6.4],
+  "band_width": 0.12,
+  "band_thickness": 0.008,
+  "swing_deg": 85.0,
+  "swing_step": 5.0
+ },
+ "pole": {
+  "note": "The spinnaker pole: a drawn duralumin tube, fattest in its middle, no longer than the fore triangle's base J measured from the mast's face (the usual limit), with bronze end fittings. Its heel's jaw takes a vertical pin on a car on the mast's forward face, 'heel_above_deck' up, so it swings level from beside the forestay to square on either side; it is built set 'set_deg' from the bow to starboard.",
+  "length": 15.24,
+  "diameter_mid": 0.26,
+  "diameter_end": 0.16,
+  "wall": 0.004,
+  "sides": 32,
+  "heel_above_deck": 2.0,
+  "car": {"reach": 0.16, "height": 0.26, "width": 0.12},
+  "set_deg": 70.0,
+  "sweep_deg": [10.0, 90.0],
+  "sweep_step": 5.0
+ },
+ "sail_area": {
+  "note": "The rated sail area S the build gives the rule check: the main's triangle P x E / 2 plus the fore triangle I x J / 2, measured on the spars (I upright from the deck to the forestay on the mast's forward face, J level from that face at the deck to the forestay's tack at the stem head, P along the mast's after face from the boom's top to the black band, E along the boom from the mast's after face to its black band). That is the conventional measure; the Universal Rule's own sail measurement could not be read from the cloud, so slice 6 measures the real sails the same way. The boom's black band is placed to make S 'target_ft2', a little under the size card's 7,500 so the rating keeps its margin.",
+  "target_ft2": 7480.0
+ }
+}
