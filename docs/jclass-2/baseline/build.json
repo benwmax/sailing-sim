@@ -1,0 +1,517 @@
+{
+ "slice": 2,
+ "grid_slice_1": [
+  420,
+  104
+ ],
+ "triangles": {
+  "Shell": 240010,
+  "Transom": 252,
+  "DeckPlaceholder": 11004,
+  "Rudder": 7158,
+  "RudderStock": 92,
+  "Letters_name": 5792,
+  "Letters_port": 4688
+ },
+ "triangles_total": 268996,
+ "triangles_hidden_reference_hull": 172422,
+ "budget_slices_1_2": 550000,
+ "shell": {
+  "shell_transom_deck": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 399.707,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "rudder": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 1.033,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "stock": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.138,
+   "bad_edges_at": [],
+   "closed": true
+  }
+ },
+ "hydrostatics": {
+  "loa_m": 39.929,
+  "loa_ft": 131.0,
+  "lwl_m": 26.025,
+  "lwl_ft": 85.38,
+  "lwl_ends_m": [
+   -13.004,
+   13.021
+  ],
+  "beam_m": 6.556,
+  "beam_ft": 21.51,
+  "beam_wl_m": 6.09,
+  "beam_wl_ft": 19.98,
+  "draft_m": 4.521,
+  "draft_ft": 14.83,
+  "freeboard_min_m": 1.335,
+  "bow_overhang_ft": 18.78,
+  "stern_overhang_ft": 26.84,
+  "volume_m3": 153.5,
+  "volume_ft3": 5421.0,
+  "displacement_t": 157.3,
+  "displacement_long_tons": 154.9,
+  "lcb_m": -0.68,
+  "lcb_pct_lwl_from_bow": 52.6,
+  "vcb_m": -1.03,
+  "waterplane_m2": 119.37,
+  "lcf_m": -0.646,
+  "bm_t_m": 1.818,
+  "bm_l_m": 30.23,
+  "midship_area_m2": 11.957,
+  "midship_x_m": -1.37,
+  "cp": 0.493,
+  "cb": 0.214,
+  "cwp": 0.753,
+  "canoe_volume_m3": 128.03,
+  "keel_volume_m3": 25.47,
+  "canoe_depth_m": 2.279,
+  "cb_canoe": 0.354,
+  "cp_canoe": 0.484,
+  "wetted_m2": 193.8,
+  "wetted_ft2": 2086.0,
+  "disp_length_ratio": 248.8
+ },
+ "rule": {
+  "rating_ft": 75.76,
+  "L_ft": 85.38,
+  "S_ft2": 7500.0,
+  "D_ft3": 5421.0,
+  "D_long_tons": 154.9,
+  "rows": [
+   {
+    "check": "rating",
+    "value": 75.76,
+    "target": null,
+    "limit": 76.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft limit",
+    "value": 14.83,
+    "target": null,
+    "limit": 15.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "length overall",
+    "value": 131.0,
+    "target": 131.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "load waterline",
+    "value": 85.38,
+    "target": 85.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "beam",
+    "value": 21.51,
+    "target": 21.5,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft",
+    "value": 14.83,
+    "target": 15.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "displacement",
+    "value": 154.89,
+    "target": 155.0,
+    "limit": null,
+    "unit": "long tons",
+    "ok": true
+   },
+   {
+    "check": "bow overhang",
+    "value": 18.78,
+    "target": 19.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "stern overhang",
+    "value": 26.84,
+    "target": 27.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "least freeboard",
+    "value": 4.38,
+    "target": 4.2,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   }
+  ],
+  "pass": true
+ },
+ "weights": {
+  "lead": {
+   "long_tons": 93.2,
+   "top_z_m": -2.7013,
+   "lead_m3": 8.3505,
+   "lead_m3_placed": 8.3505,
+   "long_tons_placed": 93.199,
+   "centroid_x_m": -0.834,
+   "centroid_z_m": -3.299,
+   "measured_on": "the finished shell's mesh, below the casting's top",
+   "builds": [
+    {
+     "top_z_m": -2.70318,
+     "solved_top_z_m": -2.70127
+    },
+    {
+     "top_z_m": -2.70127,
+     "solved_top_z_m": -2.70127
+    }
+   ]
+  },
+  "total_long_tons": 156.2,
+  "lcg_m": -0.717,
+  "lcb_m": -0.68,
+  "lcg_minus_lcb_m": -0.037,
+  "vcg_m": -1.101,
+  "km_m": 0.788,
+  "gm_m": 1.889,
+  "gm_l_m": 30.3,
+  "trim_by_stern_m": 0.032,
+  "displacement_as_built_long_tons": 156.09
+ },
+ "finish": {
+  "grid": [
+   460,
+   120
+  ],
+  "cuts": {
+   "rudder": 182,
+   "keel_cut": 233,
+   "lead": 276,
+   "boot_bottom": 695,
+   "boot_top": 812,
+   "cove_low": 1137,
+   "cove_high": 1220,
+   "welded_slivers": 260
+  },
+  "rudder": {
+   "stock_line": {
+    "through": [
+     -4.3,
+     -4.572
+    ],
+    "dz_dx": -1.2206
+   },
+   "head_from": [
+    -5.793,
+    -2.75
+   ],
+   "head_to": [
+    -8.246,
+    -1.83
+   ],
+   "shoulder_radius_m": 0.4,
+   "cone_radius_per_m_up_the_stock": 0.4037,
+   "head_to_in_stock_frame": {
+    "aft_m": 1.315,
+    "up_m": 2.267
+   },
+   "area_m2": 3.274,
+   "area_ft2": 35.2,
+   "nose_radius_m": [
+    0.0,
+    0.196,
+    0.301
+   ],
+   "gaps_m": {
+    "groove": 0.015,
+    "head": 0.025,
+    "slot": 0.1
+   },
+   "helm_sweep": {
+    "turns_deg": [
+     -35.0,
+     35.0
+    ],
+    "step_deg": 2.5,
+    "touching": 0,
+    "least_clearance_mm": 11.7,
+    "least_clearance_at_deg": -35.0,
+    "turns": [
+     {
+      "deg": -35.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -32.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -30.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -27.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -25.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -22.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -20.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -17.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -15.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -12.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -10.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -7.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": -5.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -2.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 0.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 2.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 5.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": 7.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 12.0
+     },
+     {
+      "deg": 10.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": 12.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 15.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 17.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 20.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 22.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": 25.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 12.0
+     },
+     {
+      "deg": 27.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 12.0
+     },
+     {
+      "deg": 30.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.9
+     },
+     {
+      "deg": 32.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 35.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     }
+    ]
+   },
+   "frame": {
+    "origin": [
+     -5.7927,
+     0.0,
+     -2.75
+    ],
+    "X": [
+     -0.77354,
+     0.0,
+     -0.63375
+    ],
+    "Z": [
+     -0.63375,
+     0.0,
+     0.77354
+    ],
+    "positive_turn_about_Z_in_blender_moves_trailing_edge": "starboard (+y): the bow turns to starboard"
+   },
+   "stock_meets_deck": [
+    -9.272,
+    0.0,
+    1.496
+   ]
+  },
+  "displacement": {
+   "plating_thickness_m": 0.008,
+   "plated_wetted_m2": 154.95,
+   "plating_m3": 1.24,
+   "slot_and_groove_m3": 0.051,
+   "rudder_m3": 1.033,
+   "added_long_tons": 1.2,
+   "lead_long_tons": 93.2,
+   "moulded_long_tons": 154.89,
+   "as_built_long_tons": 156.09,
+   "rating_if_plating_counted_ft": 75.57
+  },
+  "chains": {
+   "rudder": 181,
+   "keel": 227,
+   "rudder_zones": {
+    "stock": 93,
+    "shoulder": 9,
+    "cone": 79
+   },
+   "keel_zones": {
+    "face": 108,
+    "shoulder": 16,
+    "cone": 103
+   }
+  },
+  "labels": {
+   "Antifouling": 29294,
+   "Bootstripe": 8040,
+   "CoveStripe": 3567,
+   "Keel": 5566,
+   "Rudder": 1789,
+   "Slot": 515,
+   "Topsides": 69038
+  },
+  "lead": {
+   "long_tons": 93.2,
+   "top_z_m": -2.7013,
+   "lead_m3": 8.3505,
+   "lead_m3_placed": 8.3505,
+   "long_tons_placed": 93.199,
+   "centroid_x_m": -0.834,
+   "centroid_z_m": -3.299,
+   "measured_on": "the finished shell's mesh, below the casting's top",
+   "builds": [
+    {
+     "top_z_m": -2.70318,
+     "solved_top_z_m": -2.70127
+    },
+    {
+     "top_z_m": -2.70127,
+     "solved_top_z_m": -2.70127
+    }
+   ]
+  },
+  "lettering": {
+   "name": {
+    "text": "BLUEBONNET",
+    "cap_height_m": 0.1197,
+    "width_m": 1.377,
+    "transom_width_m": 1.812,
+    "relief_m": 0.004,
+    "let_into_plate_m": 0.0005
+   },
+   "port": {
+    "text": "GALVESTON",
+    "cap_height_m": 0.075,
+    "width_m": 0.791,
+    "transom_width_m": 1.328,
+    "relief_m": 0.004,
+    "let_into_plate_m": 0.0005
+   }
+  }
+ }
+}
