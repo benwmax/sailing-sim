@@ -14,6 +14,12 @@ Slice 3's deck (docs/jclass-3):
                       deck.planking_terms from the deck mesh's own UV maps (the terms the teak's material runs)
   deck_profile.png    everything on deck from starboard, coloured by material, over the centreline section
 
+Slice 4's spars (docs/jclass-4):
+
+  sail_plan.png       the yacht from starboard and from ahead with the built spars, the fore and main triangles and
+                      their measures (I, J, P, E and the rated area), the cap shroud's line over the spreaders' tips,
+                      and the mast's sections
+
 build_jclass.py calls draw_all() after the build; it needs matplotlib (it says so and goes on without it).
 """
 import math
@@ -433,7 +439,180 @@ def draw_deck_profile(parts, deck_rep, sheer, path):
     plt.close(fig)
 
 
-def draw_all(pieces, fin, out, parts=None, deck_rep=None):
+SPAR_PALETTE = {"Spar": (0.84, 0.78, 0.66), "Bronze": (0.72, 0.55, 0.25), "Black": (0.09, 0.09, 0.09)}
+
+
+def _silhouette(ax, part, a, b, palette, order=("Spar", "Bronze", "Black"), alpha=1.0):
+    """A part's faces projected on two of its axes (a, b: 0 x, 1 y, 2 z), filled by slot, the later slots on top."""
+    from matplotlib.collections import PolyCollection
+    V = np.asarray(part.V)
+    for slot in order:
+        polys = [V[list(f)][:, [a, b]] for k, f in enumerate(part.F) if part.slot[k] == slot]
+        if polys:
+            c = palette.get(slot, (0.6, 0.6, 0.6))
+            ax.add_collection(PolyCollection(polys, facecolors=[c], edgecolors=[c], linewidths=0.15, alpha=alpha,
+                                             zorder=3 + order.index(slot)))
+
+
+def _hull_fill(ax, pieces, a, b, mirror=False, zorder=6):
+    """The hull (shell and rudder) filled as seen along the remaining axis: every triangle projected on axes a, b (and
+    on -a too with mirror, for a view from ahead), so the outline is exact wherever the mesh's vertices fall."""
+    from matplotlib.collections import PolyCollection
+    polys = []
+    for k in ("Shell", "Rudder"):
+        p = pieces[k]
+        V = np.asarray(p.V)
+        t, _ = _triangles(p, lambda i: True)
+        polys.append(V[t][:, :, [a, b]])
+        if mirror:
+            m = V[t][:, :, [a, b]].copy()
+            m[:, :, 0] *= -1.0
+            polys.append(m)
+    c = (0.79, 0.83, 0.9)
+    ax.add_collection(PolyCollection(np.concatenate(polys), facecolors=[c], edgecolors=[c], linewidths=0.3,
+                                     zorder=zorder))
+
+
+def draw_sail_plan(sp_parts, rig, pieces, deck_parts, path):
+    """The sail plan from the built spars: the yacht from starboard with the fore and main triangles and their measures
+    (I, J, P, E, the rated area S), from ahead with the spreaders and the cap shroud's line over their tips (slice 5
+    rigs it), and the mast's and boom's sections."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+
+    import spars
+    ms, at, mp = rig["measures"], rig["attachments"], rig["measure_points"]
+    FW_IN, FH_IN = 18.0, 12.6
+    fig = plt.figure(figsize=(FW_IN, FH_IN), dpi=120)
+    # both views at one scale: each box sized from its data's extent at SC inches a metre
+    SC, X0, Z0 = 0.19, 0.7, 0.9
+    PX, PZ, AY = (-23.0, 21.0), (-5.0, 50.0), (15.5, -6.0)
+    wp, hp, wa = SC * (PX[1] - PX[0]), SC * (PZ[1] - PZ[0]), SC * abs(AY[1] - AY[0])
+    # ---- profile from starboard
+    ax = fig.add_axes([X0 / FW_IN, Z0 / FH_IN, wp / FW_IN, hp / FH_IN])
+    from matplotlib.collections import LineCollection
+    _hull_fill(ax, pieces, 0, 2)                  # drawn over the spars: the mast's heel is inside her
+    for k in ("Shell", "Rudder"):
+        p = pieces[k]
+        V = np.asarray(p.V)
+        t, _ = _triangles(p, lambda i: True)
+        ax.add_collection(LineCollection(_section(V[:, [0, 2, 1]], t, 0.0), colors="#1f3f7f", linewidths=0.8,
+                                         zorder=7))
+    sh = np.asarray(pieces["Shell"].sheer)
+    ax.plot(sh[:, 0], sh[:, 2], color="#1f3f7f", lw=0.8, zorder=7)
+    ax.axhline(0.0, color="#3b7dbf", lw=0.8, zorder=7)
+    for k, p in deck_parts.items():
+        if k != "Deck":
+            _silhouette(ax, p, 0, 2, {s: (0.62, 0.5, 0.38) for s in set(p.slot)}, order=tuple(sorted(set(p.slot))))
+    for k in ("Mast", "Boom", "SpinnakerPole"):
+        _silhouette(ax, sp_parts[k], 0, 2, SPAR_PALETTE)
+    zp = spars.Z_P
+    xf = at["stem_head_forestay_tack"]
+    xfront = spars.at(0.0, spars.half_depth(0.0))
+    fh = at["forestay_hounds"]
+    ax.plot([xf[0], fh[0]], [xf[2], fh[2]], color="#555", lw=0.9, ls=":", zorder=6)
+    ax.text(0.5 * (xf[0] + fh[0]) + 0.4, 0.5 * (xf[2] + fh[2]), "forestay (slice 5)", fontsize=8.5, color="#555",
+            rotation=math.degrees(math.atan2(fh[2] - xf[2], fh[0] - xf[0])) - 180, ha="left", va="center")
+    # the fore triangle (the mast's face at the deck, the forestay's tack, where the forestay meets the face) and the
+    # main's (the boom's top at the mast's after face, the mast's black band, the boom's), between the measured points
+    fc = mp["forestay_on_mast_face"]
+    tri_f = np.array([[xfront[0], xfront[2]], [xf[0], xf[2]], [fc[0], fc[2]]])
+    ax.fill(tri_f[:, 0], tri_f[:, 1], color="#e9c46a", alpha=0.22, zorder=2)
+    pa, xtop, bb = (mp["boom_top_at_mast_after_face"], mp["black_band_on_mast_lower_edge"],
+                    mp["black_band_on_boom_forward_edge"])
+    tri_m = np.array([[pa[0], pa[2]], [xtop[0], xtop[2]], [bb[0], bb[2]]])
+    ax.fill(tri_m[:, 0], tri_m[:, 1], color="#2a9d8f", alpha=0.16, zorder=2)
+
+    def dim(p, q, label, off, rot=None):
+        p, q = np.asarray(p, float), np.asarray(q, float)
+        d = q - p
+        nrm = np.array([-d[1], d[0]]) / np.linalg.norm(d) * off
+        ax.annotate("", p + nrm, q + nrm, arrowprops=dict(arrowstyle="<->", lw=0.8, color="#222"), zorder=7)
+        m = 0.5 * (p + q) + nrm * 1.6
+        ax.text(m[0], m[1], label, fontsize=10, ha="center", va="center", zorder=7,
+                rotation=rot if rot is not None else 0,
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.85))
+    dim((xfront[0], zp), (xfront[0], zp + ms["I_m"]), "I %.1f ft\n(%.2f m)" % (ms["I_ft"], ms["I_m"]), -1.2)
+    zj = zp + 6.0                                 # J level, above the pole, from the mast's face to over the stem head
+    ax.plot([xf[0], xf[0]], [xf[2], zj + 0.4], color="#222", lw=0.6, zorder=7)
+    dim((xfront[0], zj), (xf[0], zj), "J %.1f ft (%.2f m)" % (ms["J_ft"], ms["J_m"]), 0.0)
+    dim((pa[0], pa[2]), (xtop[0], xtop[2]), "P %.1f ft\n(%.2f m)" % (ms["P_ft"], ms["P_m"]), 1.4)
+    dim((pa[0], pa[2]), (bb[0], bb[2]), "E %.1f ft (%.2f m)" % (ms["E_ft"], ms["E_m"]), -1.4)
+    for sp in rig["spreaders"]:
+        h = sp["height_above_deck_m"]
+        ax.text(spars.at(spars.s_at(h))[0] - 1.0, zp + h, "spreaders %.1f m" % h, fontsize=8, ha="right", va="center")
+    ax.text(fh[0] - 1.0, fh[2], "hounds %.1f m" % (fh[2] - zp), fontsize=8, ha="right", va="center")
+    ax.text(spars.at(spars.S_TOP)[0] - 1.0, spars.at(spars.S_TOP)[2], "truck %.1f ft above deck" %
+            rig["mast"]["height_above_deck_ft"], fontsize=8, ha="right", va="center")
+    ax.text(-22.0, 47.0, "rated sail area S = P E / 2 + I J / 2\n= %.0f + %.0f = %.0f sq ft"
+            % (ms["main_triangle_ft2"], ms["fore_triangle_ft2"], rig["sail_area_ft2"]), fontsize=11, va="top")
+    ax.text(-22.0, 42.5,
+            "mast %.1f ft above deck, %.1f ft overall, raked %.1f deg\n"
+            "mast with its fittings %.0f lb (the 1937 minimum %.0f)\n"
+            "boom %.1f ft, pole %.1f ft (J %.1f ft)\nspars %.2f long tons (the card's %.1f)"
+            % (rig["mast"]["height_above_deck_ft"], rig["mast"]["length_overall_ft"], rig["mast"]["rake_deg"],
+               rig["weights"]["mast_with_fittings_lb"], rig["weights"]["minimum_1937_lb"],
+               rig["boom"]["length_overall_ft"], rig["pole"]["length_ft"], ms["J_ft"],
+               rig["weights"]["total_long_tons"], rig["weights"]["card_long_tons"]), fontsize=9.5, va="top")
+    ax.set_xlim(*PX)
+    ax.set_ylim(*PZ)
+    ax.set_aspect("equal")
+    ax.grid(alpha=0.2)
+    ax.set_xlabel("x, m forward of mid-waterline")
+    ax.set_ylabel("z, m above the waterline")
+    ax.set_title("From starboard (the pole set %.0f deg from the bow to starboard)" % rig["pole"]["set_deg_from_bow"],
+                 fontsize=11)
+    ax.legend(handles=[Patch(color=SPAR_PALETTE["Spar"], label="spars (painted duralumin)"),
+                       Patch(color=SPAR_PALETTE["Bronze"], label="bronze fittings"),
+                       Patch(color=SPAR_PALETTE["Black"], label="black bands (P and E)"),
+                       Patch(color="#e9c46a", alpha=0.4, label="fore triangle"),
+                       Patch(color="#2a9d8f", alpha=0.35, label="main's triangle")], loc="upper right", fontsize=9)
+    # ---- from ahead
+    ax2 = fig.add_axes([(X0 + wp + 0.75) / FW_IN, Z0 / FH_IN, wa / FW_IN, hp / FH_IN])
+    _hull_fill(ax2, pieces, 1, 2, mirror=True)
+    ax2.axhline(0.0, color="#3b7dbf", lw=0.8, zorder=7)
+    for k in ("Mast", "Boom", "SpinnakerPole"):
+        _silhouette(ax2, sp_parts[k], 1, 2, SPAR_PALETTE)
+    for side in ("starboard", "port"):
+        path_pts = [at["chainplates"][side]] + list(at["spreader_tips"][side]) + [at["shroud_tangs"][side]]
+        P = np.array(path_pts)
+        ax2.plot(P[:, 1], P[:, 2], color="#555", lw=0.9, ls=":", zorder=6)
+    ax2.text(14.5, 16.0, "dotted: the cap shrouds'\nline over the spreaders'\ntips (slice 5)", fontsize=8.5,
+             color="#555")
+    ax2.set_xlim(*AY)                            # seen from ahead: starboard on the left
+    ax2.set_ylim(*PZ)
+    ax2.set_aspect("equal")
+    ax2.grid(alpha=0.2)
+    ax2.set_xlabel("y, m to starboard (seen from ahead)")
+    ax2.set_title("From ahead", fontsize=11)
+    # ---- sections
+    heights = [("at the partners", 0.0), ("%.0f%% up, where it starts to taper" % (100 * spars.M["taper_from"]),
+                                           spars.M["taper_from"] * spars.H),
+               ("at the hounds", spars.RG["hounds"]["height_fraction"] * spars.H), ("under the truck", spars.H - 0.3)]
+    for n, (title, h) in enumerate(heights):
+        a3 = fig.add_axes([15.3 / FW_IN, (Z0 + hp - 1.95 - n * 2.65) / FH_IN, 2.34 / FW_IN, 1.95 / FH_IN])
+        s = spars.s_at(h)
+        f, y = spars.egg(spars.scale(s), 128)
+        a3.fill(np.r_[y, y[0]], np.r_[f, f[0]], color=SPAR_PALETTE["Spar"], ec="#333", lw=0.8)
+        a3.set_xlim(-0.36, 0.36)
+        a3.set_ylim(-0.36, 0.36)
+        a3.set_aspect("equal")
+        a3.grid(alpha=0.25)
+        a3.set_title("mast %s\n%.0f x %.0f mm, wall %.1f mm" % (title, 1000 * (f.max() - f.min()),
+                                                            1000 * (y.max() - y.min()), 1000 * spars.wall(s)),
+                     fontsize=8.5)
+        a3.tick_params(labelsize=7)
+        if n == 3:
+            a3.set_xlabel("m across (forward is up)", fontsize=8)
+    fig.suptitle("Bluebonnet's sail plan, measured on the built spars (slice 4): the same scale in both views",
+                 fontsize=13)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -442,5 +621,7 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None):
         if parts is not None:
             draw_deck_plan(parts, deck_rep, os.path.join(out, "deck_plan.png"))
             draw_deck_profile(parts, deck_rep, pieces["Shell"].sheer, os.path.join(out, "deck_profile.png"))
+        if rig is not None:
+            draw_sail_plan(rig[0], rig[1], pieces, parts, os.path.join(out, "sail_plan.png"))
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

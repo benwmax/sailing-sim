@@ -716,10 +716,18 @@ def build(nu=NU, nv=NV, extra_lead_tons=0.0):
     it, and the top moved until the casting holds the size card's lead plus what the plating and the slot change in her
     displacement (measured on the same build), plus `extra_lead_tons`: what the later slices' parts weigh less than the
     size card's estimate for them (slice 3's deck), so she still floats on her lines. Two builds usually settle it to
-    a fraction of a millimetre."""
+    a fraction of a millimetre.
+
+    From slice 4 finish_bluebonnet.json fixes the casting's top (lead.casting_top_z, where slice 3's solve put it) and
+    _build_cast builds at it: the same weight goes on, the casting's share fixed and the rest as trimming ballast, so a
+    later slice's weights move the ballast in the bilge, not the casting's top line (moving it had brought the top to a
+    height where the keel's slot cut fails). The solve above still runs when casting_top_z is taken out."""
     surf = Surface()
-    S = loft.surface(420, 104)                                  # slice 1's grid
     lead_card = loft.SPECS["weights"]["lead_keel"]
+    cast = FIN["lead"].get("casting_top_z")
+    if cast is not None:
+        return _build_cast(surf, cast, nu, nv, lead_card, extra_lead_tons)
+    S = loft.surface(420, 104)                                  # slice 1's grid
     z = lead_top_guess(S, lead_card + 1.2 + extra_lead_tons)
     passes = []
     for _ in range(4):
@@ -743,6 +751,36 @@ def build(nu=NU, nv=NV, extra_lead_tons=0.0):
                       "card_long_tons": lead_card, "for_the_finish_long_tons": round(tons - lead_card - extra_lead_tons, 3),
                       "for_the_deck_long_tons": round(extra_lead_tons, 3)}
     report["displacement"]["lead_long_tons"] = round(tons, 2)
+    del report["displacement"]["_added_long_tons"]
+    return pieces, report
+
+
+def _build_cast(surf, z, nu, nv, lead_card, extra_lead_tons):
+    """The shell with the casting's top fixed at z (finish_bluebonnet.json's lead.casting_top_z): what the lead must
+    weigh to float her on her lines, less what the casting holds, goes into the bilge as trimming ballast (lead pigs
+    on the floors, lead.trim_ballast), so later slices change the trimming ballast, not the casting."""
+    pieces, report, T_shell = _build_at(surf, z, nu, nv)
+    tons = lead_card + report["displacement"]["_added_long_tons"] + extra_lead_tons
+    v, cx, cz = volume_below_mesh(T_shell, z)
+    placed = v * RHO_LEAD / 1000.0 / LT
+    trim = tons - placed
+    tb = FIN["lead"]["trim_ballast"]
+    if trim < -0.005:
+        raise ValueError(f"the casting holds {placed:.3f} long tons, {-trim:.3f} more than she needs to float on her "
+                         "lines: the parts built so far weigh more than the size card's estimate for them, so she "
+                         "would float deeper unless the casting is made smaller (lower lead.casting_top_z)")
+    W = placed + max(trim, 0.0)
+    report["lead"] = {"long_tons": round(W, 2), "top_z_m": round(z, 4), "casting_fixed": True,
+                      "casting_long_tons": round(placed, 3), "lead_m3_placed": round(v, 4),
+                      "casting_centroid_x_m": round(cx, 3), "casting_centroid_z_m": round(cz, 3),
+                      "trim_ballast_long_tons": round(max(trim, 0.0), 3), "trim_ballast_centre": tb["centre"],
+                      "centroid_x_m": round((placed * cx + max(trim, 0.0) * tb["centre"][0]) / W, 3),
+                      "centroid_z_m": round((placed * cz + max(trim, 0.0) * tb["centre"][1]) / W, 3),
+                      "measured_on": "the finished shell's mesh, below the casting's top",
+                      "builds": [{"top_z_m": round(z, 5), "fixed": True}], "card_long_tons": lead_card,
+                      "for_the_finish_long_tons": round(tons - lead_card - extra_lead_tons, 3),
+                      "for_the_later_slices_long_tons": round(extra_lead_tons, 3)}
+    report["displacement"]["lead_long_tons"] = round(W, 2)
     del report["displacement"]["_added_long_tons"]
     return pieces, report
 

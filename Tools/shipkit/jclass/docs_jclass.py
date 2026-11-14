@@ -1,13 +1,14 @@
-"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1, docs/jclass-2, docs/jclass-3).
+"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-4).
 
-    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3]
+    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4]
 
 <out dir> is where loft.py, build_jclass.py, fairness.py and render_jclass.py wrote (renders in <out>/renders). Slice 1
 (the default) copies build.json, hydrostatics.json, sections.json and fairness.json and writes the clay, zebra and
 afloat renders and the lines drawing. Slice 2 copies build.json, fairness.json (the moulded hull, as slice 1) and
 <out>/shell/fairness.json as fairness_shell.json (the finished shell), and writes the paint renders and the build's
 two drawings (plating.png, rudder_sections.png). Slice 3 copies the same three jsons and writes the deck renders,
-the afloat and profile views with the deck on, and the deck's two drawings (deck_plan.png, deck_profile.png). Each
+the afloat and profile views with the deck on, and the deck's two drawings (deck_plan.png, deck_profile.png). Slice 4
+copies the same three jsons and writes the rig renders and the sail plan (sail_plan.png). Each
 image is a JPEG under 300 KB (docs images are plain git, not LFS), with a contact sheet of the renders. Needs Pillow.
 """
 import os
@@ -27,8 +28,8 @@ for _a in _it:
         raise SystemExit(f"docs_jclass.py: unknown option {_a}")
     else:
         ARGS.append(_a)
-if len(ARGS) != 2 or SLICE not in (1, 2, 3):
-    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3]")
+if len(ARGS) != 2 or SLICE not in (1, 2, 3, 4):
+    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3|4]")
 OUT, DOCS = ARGS
 RENDERS = {
     1: ["clay_profile", "clay_plan", "clay_bow34", "clay_stern34", "clay_bow", "clay_stern", "clay_under",
@@ -37,6 +38,8 @@ RENDERS = {
         "paint_rudder", "paint_slot", "paint_transom", "paint_plating"],
     3: ["deck_aloft", "deck_34", "deck_eye", "deck_bow", "deck_skylight", "deck_doghouse", "deck_helm", "deck_stern",
         "paint_afloat34", "paint_profile"],
+    4: ["rig_profile", "rig_afloat34", "rig_ahead", "rig_run", "rig_reach", "rig_spreaders", "rig_masthead",
+        "rig_hounds", "rig_gooseneck", "rig_polecar"],
 }[SLICE]
 JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.json"),
              ("sections.json", "sections.json"), ("fairness.json", "fairness.json")],
@@ -45,7 +48,8 @@ JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.j
 JSONS = JSONS[min(SLICE, 2)]
 DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             2: [("plating.png", "plating.jpg", 1800), ("rudder_sections.png", "rudder_sections.jpg", 1600)],
-            3: [("deck_plan.png", "deck_plan.jpg", 2000), ("deck_profile.png", "deck_profile.jpg", 1800)]}[SLICE]
+            3: [("deck_plan.png", "deck_plan.jpg", 2000), ("deck_profile.png", "deck_profile.jpg", 1800)],
+            4: [("sail_plan.png", "sail_plan.jpg", 1800)]}[SLICE]
 LIMIT = 290_000
 
 
