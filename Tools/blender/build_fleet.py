@@ -290,6 +290,34 @@ def tube(m, path, radius, slot, sides=10, cap=True):
             m.face(list(reversed(r)) if rev else r, slot)
 
 
+def drail(m, path, height, back, face, slot, corner=0.004, bulge=0.001, flare=0.26, end=0.6, n=4):
+    """A vinyl rail's section swept along a path that runs anticlockwise seen from above (the hull on its right): a back
+    `back` m out from the path at its top, leaning in by `flare` per metre down to follow the topsides, a flat face out to
+    `face` m crowned by `bulge`, `height` m tall, its outer corners rounded to `corner` (n segments each). Both ends are
+    capped, their sections scaled by `end` about the back so the rail closes off instead of stopping square."""
+    h, rc = height / 2, corner
+    prof = [(back - flare * height, -h)]
+    prof += [(face - rc + rc * math.cos(a), -h + rc + rc * math.sin(a)) for a in (-math.pi / 2 + math.pi / 2 * k / n for k in range(n + 1))]
+    zs = [-h + rc + (2 * h - 2 * rc) * k / 4 for k in (1, 2, 3)]
+    prof += [(face + bulge * math.cos(math.pi / 2 * z / (h - rc)), z) for z in zs]
+    prof += [(face - rc + rc * math.cos(a), h - rc + rc * math.sin(a)) for a in (math.pi / 2 * k / n for k in range(n + 1))]
+    prof += [(back, h)]
+    pts = [Vector(p) for p in path]
+    rings = []
+    for i, p in enumerate(pts):
+        t = pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]
+        o = Vector((-t.y, t.x, 0.0)).normalized()  # outward: left of the direction of travel
+        k = end if i in (0, len(pts) - 1) else 1.0
+        ring = [p + o * (back + (u - back) * k) + Vector((0, 0, h - (h - z) * k)) for (u, z) in prof]
+        rings.append([tuple(q) for q in ring + [ring[0]]])
+    m.grid(rings, slot)
+    # (Mesh.v mirrors y, which turns every face over: the grid's quads come out facing outward, so the caps go the
+    # other way round from the rings' own order)
+    for ring, rev in ((rings[0], False), (rings[-1], True)):
+        r = ring[:-1]
+        m.face(list(reversed(r)) if rev else r, slot)
+
+
 def ttube(m, path, radii, slot, sides=12):
     """A tube whose radius changes along its path (radii per point), capped at both ends (pc/lagoon-fidelity)."""
     pts = [Vector(p) for p in path]
@@ -571,7 +599,7 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         # like knobs. One length now: along each side 6 mm out from the deck's edge, quarter ellipses at the transom's
         # corners, round the stem 6 mm past it, across the transom to either side of the rudder's fittings.
         st, bw, r = H.h["stern_x"], H.h["bow_x"], 0.011
-        zf = lambda x: H.sheer(x) - 0.008
+        zf = lambda x: H.sheer(x) - 0.012
         out = lambda x: H.sharp_half_beam(x) + 0.006
         xa, xb = st + 0.03, bw - 0.02
         # (the sides' stations close up toward the stem, where the deck's edge turns fastest)
@@ -592,11 +620,16 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         # (across the transom from the quarter to 45 mm off the centreline: the rail stops either side of the rudder's
         # gudgeon and head, which sit on the transom's top on the centreline)
         g = 0.045
-        across = [(st - 0.006, g + (ya - 0.03 - g) * k / 4) for k in range(4)]
+        across = [(st - 0.006, g)] + [(st - 0.006, g + 0.012 + (ya - 0.03 - g - 0.012) * k / 4) for k in range(4)]
         # from beside the rudder to starboard, up that side, round the stem, down the port side and back beside it
         path = across + corner[::-1] + side + bowarc + [(x, -y) for (x, y) in reversed(side)] \
             + [(x, -y) for (x, y) in corner] + [(x, -y) for (x, y) in reversed(across)]
-        tube(hull, [(x, H.cy + y, zf(min(max(x, st), bw))) for (x, y) in path], r, "Rubrail", 8)
+        # Shape wave 5, rail 2: a vinyl rail's section 22 mm tall (it was a 22 mm round tube standing about 18 mm proud, its
+        # centre 6 mm out): a flat, slightly crowned face about 15 mm proud on the sides (11-12 mm at the stem and across
+        # the transom) with 4 mm rounded corners, its back leaning in with the topsides' flare and 1-2 mm inside them, its
+        # top 1 mm under the deck's edge so the joint shows as a line; the ends beside the rudder's fittings close off over
+        # their last 12 mm.
+        drail(hull, [(x, H.cy + y, zf(min(max(x, st), bw))) for (x, y) in path], 0.022, -0.008, 0.0045, "Rubrail")
         return
     # Rubrail along the hull-deck joint.
     for side in (1, -1):

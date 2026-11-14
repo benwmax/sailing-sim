@@ -1,0 +1,32 @@
+{
+ "id": "sunfish-rail2",
+ "boat": "Sunfish",
+ "sections": [
+  "deck"
+ ],
+ "status": "wave 5, round 8: blind A/B 3 of 3",
+ "feature": "The Sunfish's rubrail is a vinyl rail's section (flat crowned face, rounded corners, 22 mm tall, about 15 mm proud) seated on the topsides, in place of a 22 mm round tube.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "drail() in build_fleet.py: a section swept along the round-4 rail path (unchanged): back leaning in with the topsides' flare (0.26 per metre) and 1-2 mm inside them, flat face crowned 1 mm, 4 mm corners, top 1 mm under the deck's edge so the joint shows as a line",
+  "the ends beside the rudder's fittings close off over their last 12 mm (end sections scaled 0.6 about the back); caps face outward (Mesh.v mirrors y, so they wind the other way from tube()'s)"
+ ],
+ "references": "Round 4's blind reviewers and QA (the rail thin); Bean's pick Nov 14 (\"Thicker rubrail\"). A 1-1/16 x 11/16 in flexible vinyl rail is the common profile for 10-16 ft boats (Taco Marine, RecPro catalogues).",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish (the Sunfish's meshes only, not the shared kit), then the boats gate.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Blind A/B round 1 (27 mm D-section, 22 mm proud): 2 of 3 picked it, all three said it was too big and bumper-like.",
+  "QA round 1: a 4.5 mm wedge gap between the rail's vertical back and the flared topsides, and both end caps facing inward (the old tube()'s caps do too). Fixed: the back leans with the flare (every back point 0.8-8 mm inside the hull), caps reversed (dot 0.90 outward).",
+  "Blind A/B round 2 on the slimmer rail (fresh reviewers): 3 of 3 (realism, boatbuilder, 3D artist) picked it.",
+  "QA round 2: 0 non-manifold edges, no folds at the corners or the closed ends, 23.6 mm clear of the rudder and 15.0 mm of the fittings; only the comment's numbers were off (fixed).",
+  "Volume, CB, LOA, beam, fairness (0 inflections) and seams unchanged; 121,626 to 124,558 triangles.",
+  "Open: the rail stops 45 mm either side of the centreline at the transom for the rudder's fittings (reviewers would like it to run behind the gudgeon's plate or end in a moulded cap); no shadow reveal under its lower edge; tube() still has inward caps on other boats."
+ ]
+}
