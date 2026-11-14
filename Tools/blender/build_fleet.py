@@ -439,6 +439,13 @@ def shell(H):
     for x in xs:
         s = H.sheer(x)
         d = H.keel_line_depth(x)
+        if TAG == "Sunfish" and rows and -d > af:
+            # Shape wave 5, bow: forward of where the forefoot rises past the bottom band's top (from x 1.995 on the Sunfish),
+            # the bands' rows clamped onto the keel one after another, each station's set different from the last, and
+            # the faces between them stepped like a saw under the stem. The rows keep the last unclamped station's
+            # places on the section (r), which run on smoothly to the stem.
+            rows.append(list(rows[-1]))
+            continue
         # A fixed number of rows per station (the grid needs it): uniform in r across the flat of the bottom, uniform
         # in z through the turn of the bilge, then the paint bands and the topsides.
         r_af = H.r_at_z(x, af)
@@ -476,6 +483,10 @@ def shell(H):
         # share the old outline: a later round, with their rebakes.)
         loop = tr + [(p[0], H.cy - (p[1] - H.cy), p[2]) for p in reversed(tr[1:])]
         fan(hull, loop, "Topsides", (-1, 0, 0))
+        # Shape wave 5, bow: the shell's last station (the physics hull's end, 34 mm wide and 18 cm deep, all above the
+        # water) was left open, a dark slot at the stem with the inside showing as steps under it. The stem's face.
+        st = pts[-1]
+        fan(hull, st + [(p[0], H.cy - (p[1] - H.cy), p[2]) for p in reversed(st[1:])], "Topsides", (1, 0, 0))
         return xs
     loop = tr + [(p[0], H.cy - (p[1] - H.cy), p[2]) for p in reversed(tr[:-1])]
     hull.face(list(reversed(loop)), "Topsides")
@@ -541,6 +552,12 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         cap = [p for k, p in enumerate(cap) if k == 0 or abs(p[1] - cap[k - 1][1]) > 1e-6]
         # (its ends are on the sheer, where the crown runs out: the arc and its chord along the transom's top)
         fan(hull, cap, "Deck", (-1, 0, 0))
+    if "crown_table" in SPEC:
+        # Shape wave 5, bow: the deck stops 3 mm short of the stem (bow_x - 0.003) and the shell's stem face reaches it;
+        # the deck's forward edge closes to the stem's top, where the crown has run out.
+        bx, top = H.h["bow_x"], H.section_point(H.h["bow_x"], 1.0)[0]
+        front = sorted({P(bow, y) for y in ys}, key=lambda p: p[1])
+        fan(hull, front + [(bx, top[1], top[2]), (bx, H.cy - (top[1] - H.cy), top[2])], "Deck", (0, 0, 1))
     # Rubrail along the hull-deck joint.
     for side in (1, -1):
         rail = [(x, H.cy + side * (H.sharp_half_beam(x) + 0.006), H.sheer(x) - 0.008) for x in stations(stern + 0.02, bow - 0.06, 40)]

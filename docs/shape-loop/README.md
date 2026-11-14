@@ -325,3 +325,16 @@ collinear point that ear-clipping turns into zero-area slivers, so the importer'
 The deck's closing face takes the non-skid border's vertices on the after edge too (QA: they had left two open
 slivers). Checks: fairness, seams, volume and CB unchanged; 26 more triangles; nothing moves; the joined hull fbx's
 open edges 786 to 762. Blind A/B 3 of 3.
+
+## Wave 5, round 3 (Nov 14): the Sunfish's stem and forefoot
+
+Card `cards/sunfish-bow.json`. Two faults under the reviewers' "slot at the stem" and "stair steps under the bow".
+`shell()` closed the transom but never the last station at the stem, which on the Sunfish is 34 mm wide and 18 cm deep
+(all above the water), so the inside showed. And forward of x 1.98, where the forefoot rises past the bottom band's top
+(`af`), the bands' rows clamped onto the keel one station after another; rows of different heights met across each
+station and the faces between them stepped like a saw. For the Sunfish the stem's face is closed (a `fan()` facing
+forward) and the forefoot's stations keep the last unclamped station's rows. The deck stops 3 mm short of the stem
+(`bow_x - 0.003`); QA found the slot that left over the stem face, and the deck's forward edge now closes to it. Volume, CB, fairness and seams unchanged;
+about 1,650 more triangles, mostly where the old zero-area faces had been welded away (thin slivers in the
+forefoot's bottom rows: a later tidy-up). Blind A/B 3 of 3. Open: the bow reads
+blunt (the physics hull's end), a knuckle at the forefoot, sharp stem corners, the rubrail short of the stem.
