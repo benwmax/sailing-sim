@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 #include "BoatModel.h"
 #include "SailCloth.h"
+#include "SailingSim.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
