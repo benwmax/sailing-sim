@@ -1,0 +1,28 @@
+{
+ "id": "sunfish-rudder",
+ "boat": "Sunfish",
+ "sections": [
+  "rudder"
+ ],
+ "status": "wave 5, round 6: blind A/B 3 of 3",
+ "feature": "The Sunfish's rudder blade has a rounded foot and its trailing edge rounds into the top aft of the head, where it had been cut square at both ends.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "build_rudder (Sunfish only): the blade's foot rounded, 60 mm at the leading edge and 20 mm at the trailing edge, the flat at the same depth; the top aft corner rounded 70 mm; thickness from the unrounded chord; faces wound outward"
+ ],
+ "references": "Round 2, 4 and 5's blind reviewers (the rudder a flat plate, square-cut); class photos of the Sunfish's kick-up blade.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Blind A/B: 3 of 3 reviewers (realism, boatbuilder, 3D artist) picked the rounded blade.",
+  "QA: planform unchanged between the rounded ends (leading edge at x -2.110 throughout, trailing edge within 0.3 mm), foot still at z -0.485, thickness within 0.02 mm of before, the head's cheeks unchanged, 0 non-manifold edges, all faces outward (308 of 322 had been inward); the ILCA, Catalina 22 and Corsair take the old path. Fixed after QA: the top corner's sections were bunched at the wrong end of its arc (now even round it).",
+  "Reviewers' notes for later: the leading edge plumb under the head (the real blade rakes aft; the physics' rudder is upright), the blade butted under the head's cheeks rather than housed between them on the pivot bolt, the blunt bow (the physics hull's end), the deep stern sections."
+ ]
+}

@@ -956,6 +956,8 @@ def winch(x, y, z, r=0.055, plain=False):
 
 # Shape wave 5, board: the Sunfish's daggerboard tip radii (leading, trailing edge), metres.
 SUNFISH_BOARD_TIP = (0.08, 0.025)
+# Shape wave 5, rudder: the Sunfish's rudder blade's foot radii (leading, trailing edge) and its top aft corner's, metres.
+SUNFISH_RUDDER_ROUND = (0.06, 0.02, 0.07)
 
 
 def board_mid_x(f):
@@ -2026,13 +2028,35 @@ def build_rudder():
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
     if TAG == "Hobie16":     # pc/hobie-fidelity: hers too (it stood a centimetre inside the transom)
         secs = [(z, stock_x - 0.014, c) for (z, le, c) in secs]
-    foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
+    if TAG == "Sunfish":
+        # Shape wave 5, rudder: the Sunfish's blade has a rounded foot (a big radius at the leading edge, a small one at
+        # the trailing edge) and its trailing edge rounds into the top aft of the head's cheeks (class photos); it had
+        # been cut square at both ends. Same planform between them, the foot's flat at the same depth; the thickness
+        # follows the blade's chord there, not the rounded-off one, and the faces are wound outward.
+        le = stock_x - 0.014
+        span = z_top - z_bot
+        cn = lambda z: chord * (1.2 - 0.45 * ((z_top - z) / span) ** 1.4)
+        rl, rt, ra = SUNFISH_RUDDER_ROUND
+        zs = [z_top - ra * (1.0 - math.cos(math.pi / 2 * k / 8)) for k in range(8)]  # the top's corner, even round its arc
+        zs += [z_top - ra - (span - ra - rl) * k / 8 for k in range(9)]
+        zs += [z_bot + rl * (1.0 - math.sin(math.pi / 2 * k / 12)) for k in range(1, 13)]   # the foot, clustered at the tip
+        secs = []
+        for z in zs:
+            hb, ht = z - z_bot, z_top - z
+            il = rl - math.sqrt(max(rl * rl - (rl - hb) ** 2, 0.0)) if hb < rl else 0.0
+            it = rt - math.sqrt(max(rt * rt - (rt - hb) ** 2, 0.0)) if hb < rt else 0.0
+            ia = ra - math.sqrt(max(ra * ra - (ra - ht) ** 2, 0.0)) if ht < ra else 0.0
+            c = cn(z)
+            secs.append((z, le - il, c - il - it - ia, 0.11 * c / (c - il - it - ia)))
+        foil(m, secs, "Topsides", 0.11, cy, outward=True)
+    else:
+        foil(m, [(z, le, c) for (z, le, c) in secs], "Antifouling" if SPEC["paint"] else "Topsides", 0.11, cy)
     if transom and tillered and TAG in ("Sunfish", "ILCA7", "Catalina22", "Corsair880"):
         tz = Hh.sheer(st) + 0.08
         tl = RIG["tiller_length"]
         big = TAG in ("Catalina22", "Corsair880")     # (pc/corsair-fidelity: the Corsair's kick-up head is the C22's size)
         z0 = tz - 0.45 if big else 0.10
-        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if big else 1.0)
+        sunfish_rudder_head(m, Hh, stock_x, cy, st, tz, tl, secs[0][2] * secs[0][3] / 0.11 if len(secs[0]) > 3 else secs[0][2], alu_tiller=TAG == "ILCA7", z0=z0, k=1.4 if big else 1.0)
         sunfish_gudgeon(Hh, stock_x, cy, st, z0)
         if TAG == "Sunfish":
             # pc/sunfish-hero: the tiller extension, as on the TurboSquid 1460907 reference: a black tube on a rubber
