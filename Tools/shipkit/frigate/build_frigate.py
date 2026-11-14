@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-5).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-6).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -12,17 +12,25 @@ backstays, stays and the bowsprit's shrouds, martingales and guys; then each mov
 masts and hull) to find how far it braces, hoisted, lowered and between (brace_limits). Slice 5 (sails.py,
 sails_1797.json) bends on the sails, each set, clewed up (or hauled down) and furled, a collection per state, and
 checks them against the ship (sail_room): each state clear of the spars and rigging, the set sails clear of each
-other, and how far each yard braces before its sail meets the rigging.
+other, and how far each yard braces before its sail meets the rigging. Slice 6 (running.py, running_1797.json) reeves
+the running rigging: every lift, halyard, tye, brace, sheet, tack, clew garnet, clewline and buntline of the square
+sails, the fore-and-aft sails' sheets, the spanker's and the spritsail yard's gear, the footropes and stirrups, with their
+blocks (each hung along the pull of its ropes), bull's eyes, thimbles and the sheaves in the side, belayed to pins in
+the pin and fife rails or to kevels; a collection per sail state like the sails, checked against the ship, the sails
+and each other (running_room). The bull's eyes' places and the pins given out are kept in running_places_1797.json so a
+build starts from them; --place-running places them all afresh (about half an hour) and rewrites that file.
 
-    python build_frigate.py <out dir>        (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
+    python build_frigate.py <out dir> [--place-running]
+                                             (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
 <out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks),
-<out>/rig.json and <out>/sails.json (each sail's objects, parent and sizes). Units are metres in Unreal's body frame
+<out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes) and <out>/running.json (each line's path
+and stations, each block's pose, in each state; the pins and kevels). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
-never the .blend.
+running.py and running_1797.json, never the .blend.
 """
 import json
 import math
@@ -39,6 +47,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import loft  # noqa: E402
 import rigging  # noqa: E402
+import running  # noqa: E402
 import sails  # noqa: E402
 import skin  # noqa: E402
 import spars  # noqa: E402
@@ -108,6 +117,11 @@ PAINT = {
     "Hemp": ((0.35, 0.28, 0.18), 0.85, 0.0),
     "Deadeye": ((0.16, 0.10, 0.055), 0.6, 0.0),
     "Shadow": ((0.008, 0.007, 0.006), 0.9, 0.0),
+    # the running rigging (slice 6): elm blocks, lignum vitae sheaves and belaying pins, oak rails and kevels
+    "Block": ((0.33, 0.22, 0.12), 0.7, 0.0),
+    "Sheave": ((0.13, 0.08, 0.045), 0.5, 0.0),
+    "Pin": ((0.17, 0.10, 0.055), 0.45, 0.0),
+    "Rail": ((0.40, 0.28, 0.16), 0.7, 0.0),
 }
 MATS = {}
 for name, (rgb, rough, metal) in PAINT.items():
@@ -640,6 +654,47 @@ def sail_room(cfg):
 SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_deg", "margin_deg", "ease_max_ft")},
                        "ease_step_m": ST.sp["brace"]["ease_step_in"] * loft.FT / 12})
 
+# the running rigging (slice 6, running.py and running_1797.json), solved in each sail state (the yards square, the
+# upper yards lowered when furled): each state's ropes and its blocks, bull's eyes, thimbles and side sheaves are
+# objects in the collection Running_<State> (Running_Set shown, the others hidden like the sails'); the pin rails,
+# pins, kevels, eyebolts and coils never move ("PinRails"). running_room: every rope and block, every bull's eye and
+# thimble and its strop, and every coil clear by the build gap of the ship, the sails and the other ropes, except where
+# it is made fast or led (the build fails otherwise)
+RN = running.Running(RIG, SK, ST, SV).gear()
+RW = running.World(RIG, SK, ST, SV)
+RCX = {S: running.Clearance(RW.soup(running.Pose(RIG, S), extra=RN.extras())) for S in running.STATES}
+RUN_MISSING = RN.settle(RCX, os.path.join(HERE, "running_places_1797.json"), replace="--place-running" in ARGS)
+RN.place_coils(RCX)                                         # each coil hung clear of the rail, the ropes and its neighbours
+RN.seat_fairleads(RCX)                                      # each bull's eye and thimble on a strop to what holds it
+RUN_GAP = RN.cfg["check"]["build_gap_in"] * loft.FT / 12
+RUN_NEAR = (RN.check(RCX, gap=0.012) + RN.check_blocks(RCX, gap=0.012) + RN.check_fittings(RCX, gap=0.012) +
+            [("All", w, "coil", d, p_) for w, d, p_ in RN.check_coils(RCX, gap=0.012)])   # within 12 mm, for the record
+RUN_AIM = RN.cfg["check"]["gap_in"] * loft.FT / 12
+RUN_ROOM = {"gap_in": RN.cfg["check"]["build_gap_in"],
+            "lines": [[s_, ln, what, round(float(d), 4)] for s_, ln, what, d, _ in RN.check(RCX, gap=RUN_GAP)],
+            "blocks": [[s_, b, what, round(float(d), 4)] for s_, b, what, d, _ in RN.check_blocks(RCX, gap=RUN_GAP)],
+            "fittings": [[s_, ln, what, round(float(d), 4)] for s_, ln, what, d, _ in RN.check_fittings(RCX, gap=RUN_GAP)],
+            "coils": [[w, round(float(d), 4)] for w, d, _ in RN.check_coils(RCX, gap=RUN_GAP)],
+            "aim_gap_in": RN.cfg["check"]["gap_in"],
+            "under_aim": [[s_, ln, what, round(float(d), 4)] for s_, ln, what, d, _ in RUN_NEAR if d < RUN_AIM],
+            "closest": [[s_, ln, what, round(float(d), 4)] for s_, ln, what, d, _ in sorted(RUN_NEAR, key=lambda b: b[3])[:10]],
+            "crossings": RN.crossings(),                    # falls crossing just above a side rail (a foul lead; listed)
+            "placement_missing": RUN_MISSING or "placed afresh"}
+RUN_COLS = {}
+for state in running.STATES:
+    RUN_COLS[state] = bpy.data.collections.new("Running_" + state)
+    SC.collection.children.link(RUN_COLS[state])
+RUN_OBJS = RN.objects()
+for name, (V, F, M, state) in RUN_OBJS.items():
+    ob = make_painted(name, V, F, M)
+    if state is not None:
+        SC.collection.objects.unlink(ob)
+        RUN_COLS[state].objects.link(ob)
+    smooth(ob, 50)
+for state in ("Clewed", "Furled"):
+    RUN_COLS[state].hide_render = True
+    bpy.context.view_layer.layer_collection.children[RUN_COLS[state].name].hide_viewport = True
+
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
@@ -682,11 +737,13 @@ def displacement(L):
 
 REFERENCE = {"Hull"}           # measured, never drawn
 SAIL_STATE = {n: d["state"] for n, d in SV.objs.items()}
+RUN_STATE = {n: d[3] for n, d in RUN_OBJS.items()}
 stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects if o.type == "MESH"}}
 stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items()
-                               if k not in REFERENCE and SAIL_STATE.get(k) not in ("Clewed", "Furled"))
-stats["triangles_model_note"] = ("as drawn, with the sails set: the hidden Clewed and Furled sails are in "
-                                 "triangles_sails (one state of each sail shows at a time)")
+                               if k not in REFERENCE and SAIL_STATE.get(k) not in ("Clewed", "Furled")
+                               and RUN_STATE.get(k) not in ("Clewed", "Furled"))
+stats["triangles_model_note"] = ("as drawn, with the sails set: the hidden Clewed and Furled sails and running rigging "
+                                 "are in triangles_sails and running.triangles (one state shows at a time)")
 tri_state = {s: sum(stats["objects"][n]["triangles"] for n, st_ in SAIL_STATE.items() if st_ == s)
              for s in ("Head",) + sails.STATES}
 stats["triangles_sails"] = {"set": tri_state["Set"] + tri_state["Head"], "clewed": tri_state["Clewed"] + tri_state["Head"],
@@ -709,6 +766,15 @@ stats["brace"] = BRACE
 stats["span_room"] = SPAN_ROOM
 area = {g: round(sum(SV.info[k]["area_ft2"] for k in SV.sp["sail_list"][g]), 0) for g in SV.sp["sail_list"] if g != "note"}
 stats["sails"] = {"area_ft2": dict(area, total=sum(area.values())), "room": SAIL_ROOM}
+run_tri = {s: sum(stats["objects"][n]["triangles"] for n, st_ in RUN_STATE.items() if st_ == s)
+           for s in (None,) + running.STATES}
+stats["running"] = dict(RN.summary(), room=RUN_ROOM,
+                        triangles={"set": run_tri["Set"] + run_tri[None], "clewed": run_tri["Clewed"] + run_tri[None],
+                                   "furled": run_tri["Furled"] + run_tri[None], "pin_rails": run_tri[None],
+                                   "all_states": sum(run_tri.values()),
+                                   "blocks_per_state": {s: sum(stats["objects"][n]["triangles"] for n, st_ in
+                                                               RUN_STATE.items() if st_ == s and n.startswith("Blocks_"))
+                                                        for s in running.STATES}})
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -745,7 +811,27 @@ json.dump({"note": "each moving spar (docs/shipkit-3): origin_m on the axis it t
                    "it. ease_m_by_hoist [[hoist, [[deg, m]]]] (topsail yards): the same table at each hoist; between two "
                    "hoists, interpolate between their tables' values",
            "parts": RIG.meta}, open(os.path.join(OUT, "rig.json"), "w"), indent=1)
+RUN_NOTE = (
+    "the running rigging (docs/shipkit-6), in the ship's frame (metres): lines, each with its group (a mast's square "
+    "gear, Headsails, Staysails, Spanker, Spritsail), size (circumference, in) and, for each state it is rove in (a "
+    "headsail's or staysail's sheet only when the sail is set), its centre line (points) and stations (end: made fast; "
+    "sheave: round a block's sheave; thru: through a bull's eye, thimble or a sheave in the side, a bull's eye's or "
+    "thimble's with its strop from its rim to the point it is seized to and what holds it; pin or kevel: belayed); "
+    "a station's p is in its frame (a spar's own, as rig.json's, or the ship's). blocks: each block's sheaves, length, "
+    "how it is held in each state (held: hangs_from a frame and point on pendant_m, or fixed to a frame) and its pose "
+    "in each state (centre, crown_to_tail, pin: the block's axes; drawn false: a sheave let into a spar). pins and "
+    "kevels: where each fall belays. coils: the coil on each pin or kevel, as fitted (shift_m along the rail, width "
+    "the share of its full width, off_rail_m further off the rail where it lies over its neighbour's). The "
+    "states are sails.json's: the yards square, the wind aft for the square sails and on the port tack for the others "
+    "(their sheets lead to starboard: on the starboard tack mirror a fore-and-aft sail's sheet with its sail, about "
+    "sails.json's starboard_tack_mirror plane, to the same pin rail on the other side). Braced, a yard's gear must be "
+    "laid again between its stations (the game's drawing code, a later pass): the blocks on a yard go with it, the "
+    "others hang along their ropes' pull")
+json.dump(dict({"note": RUN_NOTE}, **RN.game_data()), open(os.path.join(OUT, "running.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
+if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
+    raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
+                     json.dumps({k: RUN_ROOM[k][:20] for k in ("lines", "blocks", "fittings", "coils")}))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))

@@ -1,0 +1,1118 @@
+{
+ "note": "running.py's placement of the bull's eyes (ship, m) and the pins given out (by line name and station index), kept so a build starts from it: build_frigate.py <out> --place-running places everything afresh and rewrites this file",
+ "eyes": {
+  "main course lift starboard": {
+   "3": [
+    -3.2575,
+    0.614,
+    23.8105
+   ]
+  },
+  "main topsail lift starboard": {
+   "1": [
+    -3.9926,
+    0.3476,
+    43.0174
+   ],
+   "2": [
+    -3.2638,
+    0.7245,
+    24.05
+   ]
+  },
+  "main topgallant lift starboard": {
+   "2": [
+    -4.0459,
+    0.3726,
+    43.3791
+   ],
+   "3": [
+    -3.3806,
+    0.7245,
+    24.2068
+   ]
+  },
+  "main topgallant sheet starboard": {
+   "3": [
+    -2.9572,
+    0.6769,
+    28.5092
+   ],
+   "4": [
+    -3.1359,
+    0.6279,
+    23.9894
+   ]
+  },
+  "main royal sheet starboard": {
+   "3": [
+    -3.2635,
+    0.3952,
+    43.5811
+   ],
+   "4": [
+    -2.7569,
+    0.5478,
+    23.8256
+   ]
+  },
+  "main topsail clewline starboard": {
+   "3": [
+    -2.9372,
+    0.757,
+    28.4388
+   ],
+   "4": [
+    -3.1709,
+    0.7124,
+    24.0984
+   ]
+  },
+  "main topgallant clewline starboard": {
+   "3": [
+    -3.1735,
+    0.3952,
+    41.8161
+   ],
+   "4": [
+    -2.7262,
+    0.6179,
+    23.8823
+   ]
+  },
+  "main royal clewline starboard": {
+   "3": [
+    -3.8403,
+    0.3351,
+    41.3874
+   ],
+   "4": [
+    -3.3261,
+    0.6769,
+    23.9685
+   ]
+  },
+  "main course buntline 1 starboard": {
+   "2": [
+    -2.9417,
+    0.5698,
+    23.8906
+   ]
+  },
+  "main course buntline 2 starboard": {
+   "2": [
+    -2.9519,
+    0.6803,
+    23.7945
+   ]
+  },
+  "main topsail buntline 1 starboard": {
+   "2": [
+    -3.1242,
+    0.24,
+    40.6998
+   ],
+   "3": [
+    -2.9698,
+    0.6888,
+    23.9578
+   ]
+  },
+  "main topsail buntline 2 starboard": {
+   "2": [
+    -3.2073,
+    0.2725,
+    40.6392
+   ],
+   "3": [
+    -3.0948,
+    0.7185,
+    23.8107
+   ]
+  },
+  "main course lift port": {
+   "3": [
+    -3.2575,
+    -0.614,
+    23.8105
+   ]
+  },
+  "main topsail lift port": {
+   "1": [
+    -3.9926,
+    -0.3476,
+    43.0174
+   ],
+   "2": [
+    -3.2638,
+    -0.7245,
+    24.05
+   ]
+  },
+  "main topgallant lift port": {
+   "2": [
+    -4.0459,
+    -0.3726,
+    43.3791
+   ],
+   "3": [
+    -3.3806,
+    -0.7245,
+    24.2068
+   ]
+  },
+  "main topgallant sheet port": {
+   "3": [
+    -2.9572,
+    -0.6769,
+    28.5092
+   ],
+   "4": [
+    -3.1359,
+    -0.6279,
+    23.9894
+   ]
+  },
+  "main royal sheet port": {
+   "3": [
+    -3.2635,
+    -0.3952,
+    43.5811
+   ],
+   "4": [
+    -2.7569,
+    -0.5478,
+    23.8256
+   ]
+  },
+  "main topsail clewline port": {
+   "3": [
+    -2.9372,
+    -0.757,
+    28.4388
+   ],
+   "4": [
+    -3.1709,
+    -0.7124,
+    24.0984
+   ]
+  },
+  "main topgallant clewline port": {
+   "3": [
+    -3.1735,
+    -0.3952,
+    41.8161
+   ],
+   "4": [
+    -2.7262,
+    -0.6179,
+    23.8823
+   ]
+  },
+  "main royal clewline port": {
+   "3": [
+    -3.8403,
+    -0.3351,
+    41.3874
+   ],
+   "4": [
+    -3.3261,
+    -0.6769,
+    23.9685
+   ]
+  },
+  "main course buntline 1 port": {
+   "2": [
+    -2.9417,
+    -0.5698,
+    23.8906
+   ]
+  },
+  "main course buntline 2 port": {
+   "2": [
+    -2.9519,
+    -0.6803,
+    23.7945
+   ]
+  },
+  "main topsail buntline 1 port": {
+   "2": [
+    -3.1242,
+    -0.24,
+    40.6998
+   ],
+   "3": [
+    -2.9698,
+    -0.6888,
+    23.9578
+   ]
+  },
+  "main topsail buntline 2 port": {
+   "2": [
+    -3.2073,
+    -0.2725,
+    40.6392
+   ],
+   "3": [
+    -3.0948,
+    -0.7185,
+    23.8107
+   ]
+  },
+  "main topgallant halyard": {
+   "2": [
+    -5.8762,
+    0.25,
+    24.405
+   ]
+  },
+  "main royal halyard": {
+   "2": [
+    -5.8787,
+    -0.425,
+    24.4983
+   ]
+  },
+  "fore course lift starboard": {
+   "3": [
+    21.2563,
+    0.5605,
+    21.219
+   ]
+  },
+  "fore topsail lift starboard": {
+   "1": [
+    20.9956,
+    0.3488,
+    38.8122
+   ],
+   "2": [
+    21.2545,
+    0.6603,
+    21.4305
+   ]
+  },
+  "fore topgallant lift starboard": {
+   "2": [
+    21.0537,
+    0.3488,
+    38.8127
+   ],
+   "3": [
+    21.3179,
+    0.614,
+    21.0785
+   ]
+  },
+  "fore topgallant sheet starboard": {
+   "3": [
+    21.682,
+    0.6047,
+    25.093
+   ],
+   "4": [
+    21.3895,
+    0.6642,
+    21.2537
+   ]
+  },
+  "fore royal sheet starboard": {
+   "3": [
+    21.7183,
+    0.3578,
+    38.5295
+   ],
+   "4": [
+    21.8771,
+    0.5446,
+    21.1839
+   ]
+  },
+  "fore topsail clewline starboard": {
+   "3": [
+    21.8078,
+    0.6767,
+    25.1068
+   ],
+   "4": [
+    21.3888,
+    0.5615,
+    21.3312
+   ]
+  },
+  "fore topgallant clewline starboard": {
+   "3": [
+    21.7651,
+    0.3578,
+    37.8077
+   ],
+   "4": [
+    21.8481,
+    0.4894,
+    21.0479
+   ]
+  },
+  "fore royal clewline starboard": {
+   "3": [
+    21.1484,
+    0.3432,
+    36.8548
+   ],
+   "4": [
+    21.3305,
+    0.6788,
+    21.3607
+   ]
+  },
+  "fore course buntline 1 starboard": {
+   "2": [
+    21.7599,
+    0.6552,
+    21.0472
+   ]
+  },
+  "fore course buntline 2 starboard": {
+   "2": [
+    21.7472,
+    0.5131,
+    21.1317
+   ]
+  },
+  "fore topsail buntline 1 starboard": {
+   "2": [
+    21.7959,
+    0.2523,
+    36.0995
+   ],
+   "3": [
+    21.6519,
+    0.6047,
+    21.0462
+   ]
+  },
+  "fore topsail buntline 2 starboard": {
+   "2": [
+    21.7229,
+    0.2597,
+    36.2249
+   ],
+   "3": [
+    21.5751,
+    0.6047,
+    21.1883
+   ]
+  },
+  "fore course lift port": {
+   "3": [
+    21.2563,
+    -0.5605,
+    21.219
+   ]
+  },
+  "fore topsail lift port": {
+   "1": [
+    20.9956,
+    -0.3488,
+    38.8122
+   ],
+   "2": [
+    21.2545,
+    -0.6603,
+    21.4305
+   ]
+  },
+  "fore topgallant lift port": {
+   "2": [
+    21.0537,
+    -0.3488,
+    38.8127
+   ],
+   "3": [
+    21.3179,
+    -0.614,
+    21.0785
+   ]
+  },
+  "fore topgallant sheet port": {
+   "3": [
+    21.682,
+    -0.6047,
+    25.093
+   ],
+   "4": [
+    21.3895,
+    -0.6642,
+    21.2537
+   ]
+  },
+  "fore royal sheet port": {
+   "3": [
+    21.7183,
+    -0.3578,
+    38.5295
+   ],
+   "4": [
+    21.8771,
+    -0.5446,
+    21.1839
+   ]
+  },
+  "fore topsail clewline port": {
+   "3": [
+    21.8078,
+    -0.6767,
+    25.1068
+   ],
+   "4": [
+    21.3888,
+    -0.5615,
+    21.3312
+   ]
+  },
+  "fore topgallant clewline port": {
+   "3": [
+    21.7651,
+    -0.3578,
+    37.8077
+   ],
+   "4": [
+    21.8481,
+    -0.4894,
+    21.0479
+   ]
+  },
+  "fore royal clewline port": {
+   "3": [
+    21.1484,
+    -0.3432,
+    36.8548
+   ],
+   "4": [
+    21.3305,
+    -0.6788,
+    21.3607
+   ]
+  },
+  "fore course buntline 1 port": {
+   "2": [
+    21.7599,
+    -0.6552,
+    21.0472
+   ]
+  },
+  "fore course buntline 2 port": {
+   "2": [
+    21.7472,
+    -0.5131,
+    21.1317
+   ]
+  },
+  "fore topsail buntline 1 port": {
+   "2": [
+    21.7959,
+    -0.2523,
+    36.0995
+   ],
+   "3": [
+    21.6519,
+    -0.6047,
+    21.0462
+   ]
+  },
+  "fore topsail buntline 2 port": {
+   "2": [
+    21.7229,
+    -0.2597,
+    36.2249
+   ],
+   "3": [
+    21.5751,
+    -0.6047,
+    21.1883
+   ]
+  },
+  "fore topgallant halyard": {
+   "2": [
+    18.9294,
+    0.2379,
+    21.4716
+   ]
+  },
+  "fore royal halyard": {
+   "2": [
+    18.9286,
+    -0.2379,
+    21.5604
+   ]
+  },
+  "mizzen crossjack lift starboard": {
+   "3": [
+    -20.0185,
+    0.4018,
+    19.9023
+   ]
+  },
+  "mizzen topsail lift starboard": {
+   "1": [
+    -20.6786,
+    0.296,
+    33.0812
+   ]
+  },
+  "mizzen topgallant lift starboard": {
+   "2": [
+    -20.6685,
+    0.2724,
+    34.2918
+   ]
+  },
+  "mizzen topgallant sheet starboard": {
+   "3": [
+    -19.8126,
+    0.4728,
+    23.6129
+   ],
+   "4": [
+    -19.8295,
+    0.4231,
+    19.9356
+   ]
+  },
+  "mizzen royal sheet starboard": {
+   "3": [
+    -20.1958,
+    0.3035,
+    34.4469
+   ],
+   "4": [
+    -19.6239,
+    0.4024,
+    19.6961
+   ]
+  },
+  "mizzen topsail clewline starboard": {
+   "3": [
+    -19.7465,
+    0.5256,
+    23.6585
+   ],
+   "4": [
+    -19.9186,
+    0.4231,
+    19.9041
+   ]
+  },
+  "mizzen topgallant clewline starboard": {
+   "3": [
+    -20.1318,
+    0.3035,
+    33.7372
+   ],
+   "4": [
+    -19.5585,
+    0.4156,
+    19.7517
+   ]
+  },
+  "mizzen royal clewline starboard": {
+   "3": [
+    -20.7215,
+    0.296,
+    34.424
+   ]
+  },
+  "mizzen topsail buntline 1 starboard": {
+   "2": [
+    -20.0212,
+    0.1805,
+    32.2037
+   ]
+  },
+  "mizzen topsail buntline 2 starboard": {
+   "2": [
+    -20.1013,
+    0.2234,
+    32.2002
+   ]
+  },
+  "mizzen crossjack lift port": {
+   "3": [
+    -20.0185,
+    -0.4018,
+    19.9023
+   ]
+  },
+  "mizzen topsail lift port": {
+   "1": [
+    -20.6786,
+    -0.296,
+    33.0812
+   ]
+  },
+  "mizzen topgallant lift port": {
+   "2": [
+    -20.6685,
+    -0.2724,
+    34.2918
+   ]
+  },
+  "mizzen topgallant sheet port": {
+   "3": [
+    -19.8126,
+    -0.4728,
+    23.6129
+   ],
+   "4": [
+    -19.8295,
+    -0.4231,
+    19.9356
+   ]
+  },
+  "mizzen royal sheet port": {
+   "3": [
+    -20.1958,
+    -0.3035,
+    34.4469
+   ],
+   "4": [
+    -19.6239,
+    -0.4024,
+    19.6961
+   ]
+  },
+  "mizzen topsail clewline port": {
+   "3": [
+    -19.7465,
+    -0.5256,
+    23.6585
+   ],
+   "4": [
+    -19.9186,
+    -0.4231,
+    19.9041
+   ]
+  },
+  "mizzen topgallant clewline port": {
+   "3": [
+    -20.1318,
+    -0.3035,
+    33.7372
+   ],
+   "4": [
+    -19.5585,
+    -0.4156,
+    19.7517
+   ]
+  },
+  "mizzen royal clewline port": {
+   "3": [
+    -20.7215,
+    -0.296,
+    34.424
+   ]
+  },
+  "mizzen topsail buntline 1 port": {
+   "2": [
+    -20.0212,
+    -0.1805,
+    32.2037
+   ]
+  },
+  "mizzen topsail buntline 2 port": {
+   "2": [
+    -20.1013,
+    -0.2234,
+    32.2002
+   ]
+  },
+  "mizzen topgallant halyard": {
+   "2": [
+    -21.8622,
+    0.3271,
+    19.9407
+   ]
+  },
+  "mizzen royal halyard": {
+   "2": [
+    -21.783,
+    -0.3608,
+    19.8902
+   ]
+  },
+  "spanker peak halyard": {
+   "3": [
+    -21.7092,
+    -0.4282,
+    19.9653
+   ]
+  }
+ },
+ "pins": {
+  "main course lift starboard": {
+   "4": "fife_main:5"
+  },
+  "main topsail lift starboard": {
+   "3": "fife_main:3"
+  },
+  "main topgallant lift starboard": {
+   "4": "qd8s:0"
+  },
+  "main topsail sheet starboard": {
+   "3": "fife_main:0"
+  },
+  "main topgallant sheet starboard": {
+   "5": "qd7s:1"
+  },
+  "main royal sheet starboard": {
+   "5": "qd6s:5"
+  },
+  "main topsail clewline starboard": {
+   "5": "qd7s:5"
+  },
+  "main topgallant clewline starboard": {
+   "5": "qd6s:6"
+  },
+  "main royal clewline starboard": {
+   "5": "fife_main:2"
+  },
+  "main course clew garnet starboard": {
+   "3": "qd8s:2"
+  },
+  "main course buntline 1 starboard": {
+   "3": "qd7s:0"
+  },
+  "main course buntline 2 starboard": {
+   "3": "qd7s:2"
+  },
+  "main topsail buntline 1 starboard": {
+   "4": "qd6s:4"
+  },
+  "main topsail buntline 2 starboard": {
+   "4": "qd6s:2"
+  },
+  "main topsail brace starboard": {
+   "3": "qd3s:3"
+  },
+  "main topgallant brace starboard": {
+   "3": "qd3s:5"
+  },
+  "main royal brace starboard": {
+   "2": "fife_mizzen:4"
+  },
+  "main course lift port": {
+   "4": "fife_main:8"
+  },
+  "main topsail lift port": {
+   "3": "fife_main:10"
+  },
+  "main topgallant lift port": {
+   "4": "qd8p:0"
+  },
+  "main topsail sheet port": {
+   "3": "fife_main:13"
+  },
+  "main topgallant sheet port": {
+   "5": "qd7p:1"
+  },
+  "main royal sheet port": {
+   "5": "qd6p:5"
+  },
+  "main topsail clewline port": {
+   "5": "qd7p:5"
+  },
+  "main topgallant clewline port": {
+   "5": "qd6p:6"
+  },
+  "main royal clewline port": {
+   "5": "fife_main:11"
+  },
+  "main course clew garnet port": {
+   "3": "qd8p:2"
+  },
+  "main course buntline 1 port": {
+   "3": "qd7p:0"
+  },
+  "main course buntline 2 port": {
+   "3": "qd7p:2"
+  },
+  "main topsail buntline 1 port": {
+   "4": "qd6p:4"
+  },
+  "main topsail buntline 2 port": {
+   "4": "qd6p:2"
+  },
+  "main topsail brace port": {
+   "3": "qd3p:3"
+  },
+  "main topgallant brace port": {
+   "3": "qd3p:5"
+  },
+  "main royal brace port": {
+   "2": "fife_mizzen:7"
+  },
+  "main topgallant halyard": {
+   "3": "fife_main:4"
+  },
+  "main royal halyard": {
+   "3": "fife_main:9"
+  },
+  "main topsail halyard": {
+   "5": "qd4p:2"
+  },
+  "fore course lift starboard": {
+   "4": "fife_fore:7"
+  },
+  "fore topsail lift starboard": {
+   "3": "fife_fore:6"
+  },
+  "fore topgallant lift starboard": {
+   "4": "fife_fore:2"
+  },
+  "fore topsail sheet starboard": {
+   "3": "fife_fore:1"
+  },
+  "fore topgallant sheet starboard": {
+   "5": "fife_fore:4"
+  },
+  "fore royal sheet starboard": {
+   "5": "fc1s:5"
+  },
+  "fore topsail clewline starboard": {
+   "5": "fife_fore:3"
+  },
+  "fore topgallant clewline starboard": {
+   "5": "gws:49"
+  },
+  "fore royal clewline starboard": {
+   "5": "fife_fore:5"
+  },
+  "fore course clew garnet starboard": {
+   "3": "fife_fore:0"
+  },
+  "fore course buntline 1 starboard": {
+   "3": "fc1s:4"
+  },
+  "fore course buntline 2 starboard": {
+   "3": "fc1s:2"
+  },
+  "fore topsail buntline 1 starboard": {
+   "4": "fc1s:3"
+  },
+  "fore topsail buntline 2 starboard": {
+   "4": "fc1s:1"
+  },
+  "fore course brace starboard": {
+   "3": "gws:9"
+  },
+  "fore topsail brace starboard": {
+   "3": "gws:15"
+  },
+  "fore topgallant brace starboard": {
+   "3": "gws:7"
+  },
+  "fore royal brace starboard": {
+   "2": "gws:6"
+  },
+  "fore course lift port": {
+   "4": "fife_fore:10"
+  },
+  "fore topsail lift port": {
+   "3": "fife_fore:11"
+  },
+  "fore topgallant lift port": {
+   "4": "fife_fore:15"
+  },
+  "fore topsail sheet port": {
+   "3": "fife_fore:16"
+  },
+  "fore topgallant sheet port": {
+   "5": "fife_fore:13"
+  },
+  "fore royal sheet port": {
+   "5": "fc1p:5"
+  },
+  "fore topsail clewline port": {
+   "5": "fife_fore:14"
+  },
+  "fore topgallant clewline port": {
+   "5": "gwp:49"
+  },
+  "fore royal clewline port": {
+   "5": "fife_fore:12"
+  },
+  "fore course clew garnet port": {
+   "3": "fife_fore:17"
+  },
+  "fore course buntline 1 port": {
+   "3": "fc1p:4"
+  },
+  "fore course buntline 2 port": {
+   "3": "fc1p:2"
+  },
+  "fore topsail buntline 1 port": {
+   "4": "fc1p:3"
+  },
+  "fore topsail buntline 2 port": {
+   "4": "fc1p:1"
+  },
+  "fore course brace port": {
+   "3": "gwp:9"
+  },
+  "fore topsail brace port": {
+   "3": "gwp:15"
+  },
+  "fore topgallant brace port": {
+   "3": "gwp:7"
+  },
+  "fore royal brace port": {
+   "2": "gwp:6"
+  },
+  "fore topgallant halyard": {
+   "3": "fife_fore:8"
+  },
+  "fore royal halyard": {
+   "3": "fife_fore:9"
+  },
+  "fore topsail halyard": {
+   "5": "fc1s:0"
+  },
+  "mizzen crossjack lift starboard": {
+   "4": "fife_mizzen:1"
+  },
+  "mizzen topsail lift starboard": {
+   "2": "top_mizzens:6"
+  },
+  "mizzen topgallant lift starboard": {
+   "3": "top_mizzens:1"
+  },
+  "mizzen topsail sheet starboard": {
+   "3": "qd3s:2"
+  },
+  "mizzen topgallant sheet starboard": {
+   "5": "qd4s:0"
+  },
+  "mizzen royal sheet starboard": {
+   "5": "qd2s:4"
+  },
+  "mizzen topsail clewline starboard": {
+   "5": "qd3s:0"
+  },
+  "mizzen topgallant clewline starboard": {
+   "5": "qd2s:5"
+  },
+  "mizzen royal clewline starboard": {
+   "4": "top_mizzens:2"
+  },
+  "mizzen topsail buntline 1 starboard": {
+   "3": "top_mizzens:7"
+  },
+  "mizzen topsail buntline 2 starboard": {
+   "3": "top_mizzens:5"
+  },
+  "mizzen crossjack brace starboard": {
+   "3": "qd5s:6"
+  },
+  "mizzen topsail brace starboard": {
+   "3": "fife_main:6"
+  },
+  "mizzen topgallant brace starboard": {
+   "3": "fife_main:1"
+  },
+  "mizzen royal brace starboard": {
+   "2": "qd6s:1"
+  },
+  "mizzen crossjack lift port": {
+   "4": "fife_mizzen:10"
+  },
+  "mizzen topsail lift port": {
+   "2": "top_mizzenp:6"
+  },
+  "mizzen topgallant lift port": {
+   "3": "top_mizzenp:1"
+  },
+  "mizzen topsail sheet port": {
+   "3": "qd3p:2"
+  },
+  "mizzen topgallant sheet port": {
+   "5": "qd4p:0"
+  },
+  "mizzen royal sheet port": {
+   "5": "qd2p:4"
+  },
+  "mizzen topsail clewline port": {
+   "5": "qd3p:0"
+  },
+  "mizzen topgallant clewline port": {
+   "5": "qd2p:5"
+  },
+  "mizzen royal clewline port": {
+   "4": "top_mizzenp:2"
+  },
+  "mizzen topsail buntline 1 port": {
+   "3": "top_mizzenp:7"
+  },
+  "mizzen topsail buntline 2 port": {
+   "3": "top_mizzenp:5"
+  },
+  "mizzen crossjack brace port": {
+   "3": "qd5p:6"
+  },
+  "mizzen topsail brace port": {
+   "3": "fife_main:7"
+  },
+  "mizzen topgallant brace port": {
+   "3": "fife_main:12"
+  },
+  "mizzen royal brace port": {
+   "2": "qd6p:1"
+  },
+  "mizzen topgallant halyard": {
+   "3": "fife_mizzen:0"
+  },
+  "mizzen royal halyard": {
+   "3": "fife_mizzen:11"
+  },
+  "mizzen topsail halyard": {
+   "5": "qd1s:3"
+  },
+  "main staysail sheet": {
+   "1": "gws:16"
+  },
+  "main topmast staysail sheet": {
+   "1": "gws:14"
+  },
+  "main topgallant staysail sheet": {
+   "1": "gws:17"
+  },
+  "mizzen staysail sheet": {
+   "1": "qd4s:5"
+  },
+  "mizzen topmast staysail sheet": {
+   "1": "qd4s:1"
+  },
+  "mizzen staysail halyard": {
+   "2": "fife_mizzen:5"
+  },
+  "spanker throat halyard": {
+   "3": "fife_mizzen:2"
+  },
+  "spanker peak halyard": {
+   "4": "fife_mizzen:6"
+  },
+  "spanker vang starboard": {
+   "1": "qd0s:1"
+  },
+  "spanker vang port": {
+   "1": "qd0p:1"
+  },
+  "spanker topping lift starboard": {
+   "2": "fife_mizzen:3"
+  },
+  "spanker topping lift port": {
+   "2": "fife_mizzen:8"
+  },
+  "spanker boom sheet": {
+   "4": "qd0s:0"
+  }
+ }
+}
