@@ -668,7 +668,14 @@ void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTi
 {
 	const USailingSettings* Settings = USailingSettings::Get();
 	float WeatherOffset = 0.f;
-	FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
+	const bool bWeatherTimeArg = FParse::Value(SailingArgs::Dev(), TEXT("SailingWeatherTime="), WeatherOffset);
+	// Feedback #21 (Bean: "real sea, storm arrives sooner"): a played storm day starts half a minute before the gust front
+	// reaches the boat. Benches, captures and stills pass -SailingWeatherTime (or -SailingStormDelay) and keep their timing.
+	if (!bWeatherTimeArg && !KeepWeatherStartTime && RealDayDate.IsEmpty() && !bScene
+		&& FCString::Strifind(SailingArgs::Dev(), TEXT("SailingStormDelay=")) == nullptr)
+	{
+		WeatherOffset = float(FWeatherSystem::SessionStartTime(EWeatherPreset(Settings->WeatherPreset)));
+	}
 	WeatherStartTime = KeepWeatherStartTime ? *KeepWeatherStartTime : GetSimTime() - WeatherOffset;
 	// The storm's timeline is set for the boat's start (the gust front reaches it at kFrontArrives); before Visual V5 it
 	// was the map origin, so a start away from the club met the front a minute or more early.
@@ -1015,10 +1022,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		WaveParams.FetchMeters = Lake.IsLoaded() ? FetchCacheMeters : WeatherState.FetchMeters;
 	}
 	UpdateShelter();
-	if (WeatherState.Front.bActive && WeatherState.Front.DistanceAhead(BoatPos.X, BoatPos.Y, Now) < 0.0 && Now < WeatherState.Front.DecayStartTime)
+	if (WeatherState.Front.bActive)
 	{
-		WaveParams.WindSpeedKnots = WeatherState.Front.OutflowKnots;
-		WaveParams.WindFromDegrees = WeatherState.Front.OutflowFromDegrees;
+		// Feedback #21: behind the front the sea grows under the storm's own wind at the boat (the outflow and the burst,
+		// easing out with the decay), not a switch to the bare outflow that dropped back the moment the decay began.
+		WeatherState.Front.SeaWindAt(BoatPos.X, BoatPos.Y, Now, WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees,
+			WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
 	if (Ocean)
 	{

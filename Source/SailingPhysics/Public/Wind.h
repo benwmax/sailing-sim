@@ -85,6 +85,13 @@ namespace Sailing
 		double TemperatureDropAt(double X, double Y, double T) const;
 		/** The microburst's air velocity at a point (world, m/s; Z up), its strength through its life included. */
 		Vec3 BurstAt(double X, double Y, double Z, double T) const;
+		/**
+		 * Feedback #21: the mean 10 m wind the sea grows under at a point: the wind ahead (AmbientKnots from AmbientFromDeg)
+		 * blended into the outflow and the microburst as the front passes (Behind: across the leading edge, and back out as
+		 * the outflow decays), as vectors. The sea used to switch to the bare outflow behind the front and back the moment
+		 * the decay began, missing the burst. Without an active front it returns the ambient wind.
+		 */
+		void SeaWindAt(double X, double Y, double T, double AmbientKnots, double AmbientFromDeg, double& OutKnots, double& OutFromDeg) const;
 	};
 
 	/**

@@ -57,3 +57,23 @@ SAILINGSIM_API double CameraEV100(double SunElevationDeg, double CloudShade, dou
 
 /** The scene-units offset: real EV100 minus the EV100 the scene needs for the same picture (calibrated, see .cpp). */
 SAILINGSIM_API double SceneEVOffset();
+
+/**
+ * Feedback #24: the grade under a storm deck. The light under the deck is grey (the sky's blue never reaches the lake:
+ * Phase 8's blind test), but not colourless and flat: storm photographs keep a cold slate cast in the shadows, deep
+ * blacks under the shelf and whites (sails, foam, the hull) that stand out against them. Storm is how far into the gloom
+ * (SmoothStep 0.3..0.8 of the cloud darkness, nothing at night); bClassic (-SailingClassicStormGrade) gives the old grade
+ * (saturation 1 - 0.7 Storm, the cinematic LUT faded to 0.4, nothing else) for compared stills.
+ */
+struct FStormGrade
+{
+	float Saturation = 1.f;          // ColorSaturation's W
+	float Contrast = 1.f;            // ColorContrast's W
+	FVector4 ShadowGain = FVector4(1.0, 1.0, 1.0, 1.0); // ColorGainShadows: a cold slate cast, shadows only
+	FVector4 MidtoneGain = FVector4(1.0, 1.0, 1.0, 1.0); // ColorGainMidtones: the slate cast, gentler, in the middle
+	float LutIntensity = 1.f;        // the cinematic LUT's intensity (warm highlights, cool shadows)
+	float Vignette = 0.45f;          // the cinematic vignette
+	float WhiteTempOffset = 0.f;     // K added to the V1 look's white balance (lower is cooler)
+};
+SAILINGSIM_API float StormGradeAmount(double CloudDarkness, double Night);
+SAILINGSIM_API FStormGrade StormGradeFor(float Storm, bool bClassic);

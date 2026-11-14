@@ -426,4 +426,61 @@ bool FSailingWeatherPresetsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingStormSeaWindTest, "SailingSim.Weather.StormSeaFollowsTheStormWind", Flags)
+bool FSailingStormSeaWindTest::RunTest(const FString& Parameters)
+{
+	// Feedback #21: the sea at the boat grows under the storm's own wind: the breeze ahead of the front, the outflow and the
+	// microburst behind it, and easing back as the outflow decays (it used to drop back to the breeze in one step).
+	FWeatherSystem Weather;
+	Weather.Configure(EWeatherPreset::Thunderstorm, 11, 16.0);
+	double Prev = -1.0, MaxJump = 0.0, Peak = 0.0, PeakT = 0.0, AheadErr = 0.0, AfterErr = 0.0;
+	for (int32 I = 0; I <= 650; ++I)
+	{
+		const double T = I;
+		const FWeatherState S = Weather.Evaluate(T);
+		double Knots = 0.0, From = 0.0;
+		S.Front.SeaWindAt(0.0, 0.0, T, S.Wind.SpeedKnots, S.Wind.FromDegrees, Knots, From);
+		if (T < FWeatherSystem::kFrontArrives - 30.0) AheadErr = FMath::Max(AheadErr, FMath::Abs(Knots - S.Wind.SpeedKnots) + FMath::Abs(WrapAngle((From - S.Wind.FromDegrees) * kDegToRad)));
+		if (T > S.Front.DecayStartTime + S.Front.DecaySeconds) AfterErr = FMath::Max(AfterErr, FMath::Abs(Knots - S.Wind.SpeedKnots));
+		if (Knots > Peak) { Peak = Knots; PeakT = T; }
+		// (The front itself is a 22 s ramp to the outflow: count the steps after it, through the decay.)
+		if (Prev >= 0.0 && T > FWeatherSystem::kFrontArrives + 60.0) MaxJump = FMath::Max(MaxJump, FMath::Abs(Knots - Prev));
+		Prev = Knots;
+	}
+	const FWeatherState Mid = Weather.Evaluate(FWeatherSystem::kFrontArrives + 60.0);
+	double MidKnots = 0.0, MidFrom = 0.0;
+	Mid.Front.SeaWindAt(0.0, 0.0, FWeatherSystem::kFrontArrives + 60.0, Mid.Wind.SpeedKnots, Mid.Wind.FromDegrees, MidKnots, MidFrom);
+	AddInfo(FString::Printf(TEXT("Sea wind: outflow %.1f kn from %.0f deg a minute behind the front, peak %.1f kn at %.0f s (the burst), largest 1 s step after the front %.2f kn"),
+		MidKnots, MidFrom, Peak, PeakT, MaxJump));
+	TestTrue(TEXT("Ahead of the front the sea follows the breeze"), AheadErr < 1e-6);
+	// (A minute behind the front the burst's ring is over her: the outflow's direction, at least its strength.)
+	TestTrue(TEXT("Behind the front it follows the outflow (and the burst)"), MidKnots > Mid.Front.OutflowKnots - 1.0
+		&& FMath::Abs(WrapAngle((MidFrom - Mid.Front.OutflowFromDegrees) * kDegToRad)) < 15.0 * kDegToRad);
+	// Without the burst the sea wind behind the front is the outflow itself.
+	FWeatherState NoBurst = Mid;
+	NoBurst.Front.Burst.PeakOutflowMs = 0.0;
+	double BareKnots = 0.0, BareFrom = 0.0;
+	NoBurst.Front.SeaWindAt(0.0, 0.0, FWeatherSystem::kFrontArrives + 60.0, Mid.Wind.SpeedKnots, Mid.Wind.FromDegrees, BareKnots, BareFrom);
+	TestTrue(TEXT("... the bare outflow without a burst"), FMath::Abs(BareKnots - Mid.Front.OutflowKnots) < 0.5);
+	TestTrue(TEXT("The microburst raises it past the bare outflow"), Peak > Mid.Front.OutflowKnots + 3.0);
+	TestTrue(TEXT("No step when the outflow decays (1 s steps under 1.5 kn)"), MaxJump < 1.5);
+	TestTrue(TEXT("Back to the breeze once the outflow has died"), AfterErr < 1e-6);
+
+	// Bean Nov 13 2026 ("real sea, storm arrives sooner"): a played storm day starts half a minute before the front reaches
+	// the boat; the other presets start at the beginning of their day.
+	const double Start = FWeatherSystem::SessionStartTime(EWeatherPreset::Thunderstorm);
+	const FWeatherState AtStart = Weather.Evaluate(Start);
+	TestTrue(TEXT("A storm session starts ahead of the front, its shelf close"), AtStart.Front.DistanceAhead(0.0, 0.0, Start) > 0.0
+		&& AtStart.Storm == EStormPhase::Building);
+	TestEqual(TEXT("... and the front reaches her 30 s in"), FWeatherSystem::kFrontArrives - Start, 30.0);
+	TestEqual(TEXT("Other presets start at their day's beginning"), FWeatherSystem::SessionStartTime(EWeatherPreset::AfternoonBreeze), 0.0);
+
+	// No front: the ambient wind, untouched.
+	FGustFront None;
+	double K = 0.0, F = 0.0;
+	None.SeaWindAt(0.0, 0.0, 100.0, 12.0, 180.0, K, F);
+	TestTrue(TEXT("No front, no change"), K == 12.0 && F == 180.0);
+	return true;
+}
+
 #endif

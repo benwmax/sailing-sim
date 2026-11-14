@@ -224,7 +224,9 @@ bool FSailingConditionsKeepTimeTest::RunTest(const FString&)
 	const double Tw = GM->GetWeatherTime();
 	const double Km = GM->GetWeather().Evaluate(Tw).StormDistanceKm;
 	const double Hour = GM->GetLocalHour();
-	TestTrue(FString::Printf(TEXT("30 s of weather (%.2f s)"), Tw), FMath::Abs(Tw - 30.0) < 0.1);
+	// Feedback #21: a storm day starts half a minute before the gust front reaches the boat (SessionStartTime), then runs.
+	const double StormStart = Sailing::FWeatherSystem::SessionStartTime(Sailing::EWeatherPreset::Thunderstorm);
+	TestTrue(FString::Printf(TEXT("30 s of weather from the storm day's start (%.2f s)"), Tw), FMath::Abs(Tw - (StormStart + 30.0)) < 0.1);
 	FSailConditions Fair = Storm;
 	Fair.Sky = ESailSky::Fair;
 	Fair.WindKn = 8.f;

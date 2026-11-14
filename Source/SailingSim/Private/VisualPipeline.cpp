@@ -146,3 +146,33 @@ double CameraEV100(double SunElevationDeg, double CloudShade, double CloudDarkne
 	const double Real = Metered + (1.0 - Adaptation) * FMath::Max(Clear - Metered, 0.0);
 	return FMath::Max(Real - kSceneEVOffset, NightFloorEV);
 }
+
+float StormGradeAmount(double CloudDarkness, double Night)
+{
+	return FMath::SmoothStep(0.3f, 0.8f, float(CloudDarkness)) * (1.f - FMath::Clamp(float(Night), 0.f, 1.f));
+}
+
+FStormGrade StormGradeFor(float Storm, bool bClassic)
+{
+	const float S = FMath::Clamp(Storm, 0.f, 1.f);
+	FStormGrade G;
+	if (bClassic)
+	{
+		G.Saturation = 1.f - 0.7f * S;
+		G.LutIntensity = FMath::Lerp(1.f, 0.4f, S);
+		return G;
+	}
+	// Grey, but some colour stays (the boat's livery, the shore's greens read through the gloom); the middle steeper so the
+	// shelf's base goes deep and the sails and caps stand out; a slate cast (blue-green over red) in the shadows and,
+	// gentler, the middle, so whites stay white; the frame's edges darker. Bean's first stills (Nov 13 2026): kept warm,
+	// the lake's brown water went sepia, so the LUT's warm highlights fade as far as before (0.4) and the white balance
+	// is 450 K cooler under the deck.
+	G.Saturation = 1.f - 0.6f * S;
+	G.Contrast = 1.f + 0.18f * S;
+	G.ShadowGain = FVector4(1.0 - 0.09 * S, 1.0, 1.0 + 0.07 * S, 1.0);
+	G.MidtoneGain = FVector4(1.0 - 0.05 * S, 1.0 - 0.01 * S, 1.0 + 0.04 * S, 1.0);
+	G.LutIntensity = FMath::Lerp(1.f, 0.4f, S);
+	G.Vignette = FMath::Lerp(0.45f, 0.6f, S);
+	G.WhiteTempOffset = -450.f * S;
+	return G;
+}
