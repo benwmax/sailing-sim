@@ -98,8 +98,8 @@ SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVec
  * Feedback #20 follow-up: where the jib's head is drawn on a model with a forestay (boat frame, cm): at its top, the mast's
  * Hounds socket (the forestay's tang), a head shackle's length under it and on the mast's front. The physics jib's head
  * is set from the class numbers (the J/22's at 8.25 m) and the hero model's forestay ends at 7.83 m, so the drawn jib
- * reached 42 cm past the wire's top. False (keep the planform's head) when the jib's head is far from the tang: a reefed
- * headsail, a model whose socket isn't the forestay's top.
+ * reached 42 cm past the wire's top. Only lowers the head: false (keep the planform's) when the tang is at or over the
+ * jib's head (the fleet models, masthead rigs) or more than 0.6 m under it (a socket that isn't the forestay's top).
  */
 SAILINGSIM_API bool JibHeadCm(const Sailing::FBoatConfig& C, const FVector& HoundsCm, FVector& OutHeadCm);
 
@@ -171,6 +171,8 @@ public:
 	/** The luff's x (m, boat frame) the cloth draws at height Z (m): the planform's, or SetHeadPoint's below the head. */
 	double LuffXAt(double Z, int32 Row) const;
 	bool HasHeadPoint() const { return bHeadPoint; }
+	/** Back to the planform's head (and no jib to keep ahead of). */
+	void ClearHeadPoint() { bHeadPoint = false; bAheadOf = false; }
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;

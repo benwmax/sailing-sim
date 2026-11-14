@@ -3538,6 +3538,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	{
 		FVector JibHead;
 		if (bHounds && JibHeadCm(Cfg, Hounds, JibHead)) JibCloth.SetHeadPoint(JibHead);
+		else JibCloth.ClearHeadPoint();
 		SailUpdates.Add({ JibSail, &JibCloth, T.JibStrips, S.JibSide });
 	}
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);

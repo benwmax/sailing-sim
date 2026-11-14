@@ -416,14 +416,25 @@ bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 	FVector Head;
 	TestTrue(TEXT("J/22 hero: the jib's head goes to the forestay's top"), JibHeadCm(C, HeroHounds, Head));
 	TestTrue(FString::Printf(TEXT("J/22 hero: the head a shackle under the tang (%.1f cm)"), HeroHounds.Z - Head.Z), Head.Z < HeroHounds.Z && Head.Z >= HeroHounds.Z - 8.0);
-	TestTrue(FString::Printf(TEXT("J/22 hero: the head on the mast's front (x %.1f, front %.1f)"), Head.X, MastFrontCm), Head.X > MastFrontCm && Head.X <= MastFrontCm + 6.0);
+	TestTrue(FString::Printf(TEXT("J/22 hero: the head just ahead of the tang (x %.1f, tang %.1f)"), Head.X, HeroHounds.X), Head.X > HeroHounds.X + 2.0 && Head.X <= HeroHounds.X + 6.0);
+	TestTrue(FString::Printf(TEXT("J/22 hero: the head ahead of the mast's centre (x %.1f)"), Head.X), Head.X > C.MastX * CmPerMeter + 5.0);
 	TestEqual(TEXT("J/22 hero: the head on the centreline"), Head.Y, 0.0, 0.01);
 	TestTrue(FString::Printf(TEXT("J/22 hero: the head under the physics jib's (%.0f, physics %.0f)"), Head.Z, JibTopCm), Head.Z < JibTopCm - 30.0);
 
 	// A socket that isn't the forestay's top: the planform's head stays.
 	FVector Unused;
 	TestFalse(TEXT("A tang a metre under the jib's head is not its forestay"), JibHeadCm(C, HeroHounds - FVector(0, 0, 100.0), Unused));
-	TestFalse(TEXT("A masthead socket is not the jib's forestay"), JibHeadCm(C, FVector(HeroHounds.X, 0.0, C.MastheadZ * CmPerMeter), Unused));
+	TestFalse(TEXT("A masthead tang never raises the jib's head"), JibHeadCm(C, FVector(HeroHounds.X, 0.0, C.MastheadZ * CmPerMeter), Unused));
+	const FVector Inside(C.MastX * CmPerMeter - 2.0, 0.0, HeroHounds.Z);
+	FVector InsideHead;
+	TestTrue(TEXT("A tang inside the mast still sets the head"), JibHeadCm(C, Inside, InsideHead));
+	TestTrue(FString::Printf(TEXT("A tang inside the mast: the head ahead of the mast's front (x %.1f)"), InsideHead.X), InsideHead.X > MastFrontCm);
+	FSailCloth Cleared;
+	Cleared.Init(C.Jib, ESailKind::Jib);
+	Cleared.SetHeadPoint(Head);
+	Cleared.ClearHeadPoint();
+	TestFalse(TEXT("ClearHeadPoint goes back to the planform's head"), Cleared.HasHeadPoint());
+	TestEqual(TEXT("ClearHeadPoint: the planform's top"), Cleared.TopZ() * CmPerMeter, JibTopCm, 0.01);
 	TestFalse(TEXT("A bad socket"), JibHeadCm(C, FVector(std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0), Unused));
 
 	FSailCloth Plan;
@@ -475,8 +486,8 @@ bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	// The other boats' models put Hounds 5 cm over the physics jib's head on the mast's front (build_fleet.py): the head
-	// stays at its height.
+	// The other boats' models put Hounds 5 cm over the physics jib's head on fractional rigs and 5 cm under the masthead on
+	// masthead rigs (build_fleet.py): neither moves the jib's head (it is only ever lowered to a forestay under it).
 	int32 Jibs = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
@@ -484,16 +495,11 @@ bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 		if (!F.HasJib()) continue;
 		++Jibs;
 		const double TopCm = F.Jib.Strips[F.Jib.NumStrips - 1].ZTop * CmPerMeter;
-		const FVector Hounds((F.MastX + 0.5 * F.MastDiameter) * CmPerMeter, 0.0, TopCm + 5.0);
+		const double FrontCm = (F.MastX + 0.5 * F.MastDiameter) * CmPerMeter;
 		FVector FleetHead;
 		const FString Name = ANSI_TO_TCHAR(BoatTypeName(F.Type));
-		TestTrue(Name + TEXT(": the fleet model's Hounds is the jib's forestay top"), JibHeadCm(F, Hounds, FleetHead));
-		TestEqual(Name + TEXT(": the jib's head at its own height"), FleetHead.Z, TopCm, 0.5);
-		FSailCloth Cloth;
-		Cloth.Init(F.Jib, ESailKind::Jib);
-		Cloth.SetHeadPoint(FleetHead);
-		TestTrue(Name + TEXT(": the head point is taken"), Cloth.HasHeadPoint());
-		TestEqual(Name + TEXT(": the drawn jib's top"), Cloth.TopZ() * CmPerMeter, TopCm, 0.5);
+		TestFalse(Name + TEXT(": a fractional model's Hounds leaves the jib's head"), JibHeadCm(F, FVector(FrontCm, 0.0, TopCm + 5.0), FleetHead));
+		TestFalse(Name + TEXT(": a masthead model's Hounds leaves the jib's head"), JibHeadCm(F, FVector(FrontCm, 0.0, F.MastheadZ * CmPerMeter - 5.0), FleetHead));
 	}
 	TestTrue(TEXT("Some boats carry a jib"), Jibs >= 3);
 	return true;

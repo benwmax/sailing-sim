@@ -99,7 +99,7 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	{
 		// Over a jib whose head is below this one, the rows under the head end at the jib's head height, so the last
 		// panel (to the head) is all above the jib: its luff never cuts back through the jib's top.
-		const bool bOverJib = bAheadOf && AheadZTop < HeadZ && AheadZTop > ZFoot + 0.5;
+		const bool bOverJib = bAheadOf && AheadZTop < HeadZ - 0.1 && AheadZTop > ZFoot + 0.5;
 		Out.Z = R == Rows - 1 ? HeadZ : (bOverJib ? (R == Rows - 2 ? AheadZTop : ZFoot + (AheadZTop - ZFoot) * R / (Rows - 2)) : ZFoot + (HeadZ - ZFoot) * R / (Rows - 1));
 		Out.LuffX = LuffXAt(Out.Z, R);
 	}
@@ -189,14 +189,17 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 bool JibHeadCm(const Sailing::FBoatConfig& C, const FVector& HoundsCm, FVector& OutHeadCm)
 {
 	if (!C.HasJib() || HoundsCm.ContainsNaN()) return false;
-	// The head shackle between the sail's head and the wire's end; the head 4 cm ahead of the mast's front, so its 4 cm head
-	// (FSailCloth::Init's head chord) stays out of the mast.
-	constexpr double ShackleCm = 5.0, AheadCm = 4.0, NearM = 0.6;
+	// The head shackle between the sail's head and the wire's end; the head 4 cm ahead of the tang (the model mast's face),
+	// so its 4 cm head (FSailCloth::Init's head chord) stays out of the mast. Only ever lowers the head: a forestay at or
+	// over the jib's head (the fleet models' Hounds, 5 cm over it, or a masthead rig's) keeps the planform's, so the
+	// spinnaker's head above it (SpinnakerHeadCm) keeps its room under the masthead.
+	constexpr double ShackleCm = 5.0, AheadCm = 4.0, LowerM = 0.02, NearM = 0.6;
 	const double JibTopM = C.Jib.Strips[C.Jib.NumStrips - 1].ZTop;
 	const double HeadZM = (HoundsCm.Z - ShackleCm) / Sailing::CmPerMeter;
-	if (FMath::Abs(HeadZM - JibTopM) > NearM) return false;
-	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
-	OutHeadCm = FVector(FMath::Max(HoundsCm.X, ConfigFront) + AheadCm, 0.0, HoundsCm.Z - ShackleCm);
+	if (HeadZM > JibTopM - LowerM || HeadZM < JibTopM - NearM) return false;
+	// A socket inside the mast (behind its centre line) puts the head on the config's mast front instead.
+	const double X = HoundsCm.X >= C.MastX * Sailing::CmPerMeter ? HoundsCm.X : (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	OutHeadCm = FVector(X + AheadCm, 0.0, HoundsCm.Z - ShackleCm);
 	return true;
 }
 
