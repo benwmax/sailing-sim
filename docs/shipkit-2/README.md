@@ -83,7 +83,7 @@ and the shape tools measure it, because the drawing's lines are the frames' outs
   are the texture loop's. `baseline/compare_1817.jpg` sets the draught's side over the model's.
 * **The open waist.** The 1927 lines draw a solid bulwark along the waist: that is the ship as rebuilt later. The
   1817 draught shows the waist above the gangways open, a rail on stanchions (with the hammock netting along it), and
-  that is how this slice builds it. The netting itself is slice 8's.
+  that is how this slice builds it. The netting itself is slice 7's (`docs/shipkit-7`).
 * **No air ports.** The 1927 sheer plan draws a row of small round air ports along the berth deck. They were added
   long after 1797, so they are left out.
 * **Ports as drawn.** The ports' heights come from the 1927 plan (2 ft 7.7 in, where the specification says 2 ft

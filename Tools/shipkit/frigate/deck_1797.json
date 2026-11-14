@@ -1,0 +1,184 @@
+{
+ "about": "The spar deck of the frigate Commonwealth as built, 1797 (docs/shipkit-7): the planked quarterdeck, gangways and forecastle round the open waist, and what stands on them. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. deck.py reads this file.",
+ "sources": {
+  "plan_1849": "NARA 75841368, 'Spar Deck of the U.S. Frigate Constitution', Navy Yard Boston, May 1849, scale four feet to the inch (public domain; local copy in Data/Reference). The only deck plan of the spar deck: skylights, companionway, two hatchways, the main bitts, the long hatchway over the waist with its beams, the smoke (galley funnel), the scuttle and the bowsprit's partners, each with its inside size written on it",
+  "gun_deck_1849": "NARA 75841364, the gun deck in the same set: the pumps, capstans and galley are on that deck (slice 12), none on the spar deck",
+  "draught_1817": "NARA 102278445, 'A Draft of the U.S. Frigate Constitution' (1817): the open waist's rail on stanchions, the drifts at the breaks, the entry",
+  "period": "estimate: the period's practice for an American or British frigate of the 1790s where neither drawing shows a part (the wheel, binnacle, capstan head, belfry, breast rails, ladders, gratings, hammock nettings)"
+ },
+ "registration": {
+  "note": "the 1849 plan's full-resolution scan (3840 px wide), stern on the left: each item's centre is measured there and carried to the ship by the masts. Between two masts an item keeps its share of the way from one to the other (the 1849 masts stand 10% closer between the mizzen and the main than ours, which came from the 1817 draught in slice 3); aft of the mizzen and forward of the fore mast it keeps its distance from the mast at the plan's own scale. The scale is the written sizes' (40 ft 8 in for the long hatchway's 784 px, 3 ft 3 in for the round skylight's 63 px, and eight more: 19.2 px a foot, about 77 to the paper's inch)",
+  "px_per_ft": 19.2,
+  "centreline_px": 585,
+  "masts_px": {"mizzen": 779.3, "main": 1702.5, "fore": 3192.4}
+ },
+ "deck": {
+  "note": "the deck is flat across, as slices 2 to 6 laid it (its top at the bulwark's foot, skin.py's w_Pd row): a 44's beams rounded up about 6 in at the middle, left out because the fife rails, bitts and coils of slice 6 stand on the flat deck. Its underside stays skin.py's placeholder 8 in below (slice 12 frames the gun deck's ceiling). The openings are open: looking down a hatchway or the companion shows the gun deck's placeholder, which slice 12 builds out. The bowsprit's heel (slice 3, from the rig's deck line) stands a little into the deck's top where the bow flares: it is let into a recess (deck.pockets)",
+  "quarterdeck_break": "entry_fore",
+  "quarterdeck_break_note": "the quarterdeck's forward edge (its breast beam) at the entry's fore post, 1.5 m forward of the main mast. The bulwark's drift stays at the entry's after post (slice 2), 0.58 m forward of the mast's axis: a breast beam there would leave the mast's partners 4 in of deck forward of the mast. The 1849 deck (by then nearly flush) starts its long hatchway 8 ft forward of the main mast. Estimate",
+  "gangway_width_ft": 6.5,
+  "gangway_note": "each gangway at least 6 ft 6 in wide inside the side (estimate: the 1797 spar deck carries no guns in the waist; the 1849 plan's opening is 14 ft wide, the later near-flush deck): the waist's opening is square-sided, its edges straight fore and aft where the narrower end leaves 6 ft 6 in",
+  "mast_hole_gap_in": 0.5,
+  "planking": {
+   "width_in": 6.0,
+   "thick_in": 3.0,
+   "length_beams": 8,
+   "seam_in": 0.4,
+   "butt_stagger_beams": [0, 4, 2, 6],
+   "plug_in": 1.0,
+   "plug_off_butt_in": 2.0,
+   "nib_of_width": 0.4,
+   "note": "pine plank 3 in thick and 6 in wide, laid straight fore and aft with a plank on the middle line, each 8 beams long (21 ft 10 in: a butt must land on a beam), the butts shifted 4, 2 and 6 beams over four strakes, caulked with oakum and paid with pitch (the seams); two plugs over the spikes in each plank at every beam, a quarter of the plank's width in from each edge, and either side of a butt 2 in off it; where the deck narrows at the bow and stern each plank runs on until 0.4 of its width is left inside the waterway's edge and is nibbed into the waterway there, square across (estimate, period practice for an upper deck). The planks are drawn, not modelled: the deck's top carries a UV map 'Planking' (u, v = x, y in metres) from which the material draws them (build_frigate.py's DeckPlanks; deck.planking_terms)"
+  },
+  "beam_pitch_note": "the spar deck's beams every 32.7 in (the waist's length over 16, from its after end): the waist's beams are every other one (below), and the deck's plugs fall on all of them",
+  "mesh_step_m": 0.3,
+  "waterway": {
+   "profile_in": [[0.0, 4.0], [1.0, 3.5], [2.2, 2.7], [3.6, 1.9], [5.2, 1.2], [7.0, 0.7], [9.0, 0.3], [12.0, 0.0]],
+   "let_in_in": 0.5,
+   "note": "the waterway along the deck's edge: 12 in wide, 4 in up the bulwark's foot, its face hollowed so the water runs to the scuppers (estimate). In the waist it stops just under the plankshear's top (the bulwark there is the open rail on stanchions, slice 2). Oak, unpainted"
+  }
+ },
+ "waist": {
+  "note": "the open waist between the gangways: the spar deck's beams carried across it every other beam, at the planks' underside (the 'spar deck' is named for the spare spars stowed on them; the boats go on them in slice 11). The 1849 plan draws six across its long hatchway, 14 in sided, 5 1/2 ft apart; ours is 43 ft 8 in long, so seven. A coaming round the opening on the deck",
+  "beams": 7,
+  "beam_sided_in": 14.0,
+  "beam_moulded_in": 10.0,
+  "coaming_high_in": 6.0,
+  "coaming_thick_in": 5.0
+ },
+ "breast_rails": {
+  "note": "a rail on turned balusters across each break, along the opening's end, with a gap at each ladder (estimate, period practice)",
+  "height_in": 42.0,
+  "cap_in": [5.0, 3.0],
+  "foot_in": [5.0, 3.0],
+  "post_in": 6.0,
+  "baluster_max_in": 3.5,
+  "baluster_pitch_in": 7.0
+ },
+ "ladders": {
+  "note": "two ladders at each break down to the gun deck in the waist, either side of the middle line (estimate: where the 1849 gun deck's pumps and hatches leave room). Slice 12 keeps the gun deck clear where they land",
+  "y_ft": 5.0,
+  "width_in": 28.0,
+  "angle_deg": 60.0,
+  "stringer_in": [10.0, 2.5],
+  "tread_in": [8.0, 1.75],
+  "rise_in": 9.5,
+  "rail_high_in": 33.0
+ },
+ "hatchways": {
+  "note": "two hatchways on the quarterdeck between the main and the mizzen, 5 ft 0 in long by 5 ft 2 in wide inside (1849 plan, written on it), each with a coaming and a grating (fair weather). The coaming's height and the grating's bars: estimate",
+  "items": [
+   {"name": "AfterHatch", "plan_px": [1250.8, 585.0], "inside_ft": [5.0, 5.1667]},
+   {"name": "ForeHatch", "plan_px": [1464.5, 585.0], "inside_ft": [5.0, 5.1667]}
+  ],
+  "coaming_high_in": 9.0,
+  "coaming_thick_in": 5.0,
+  "grating": {"hole_in": 2.25, "bar_in": 1.5, "ledge_deep_in": 3.0, "batten_deep_in": 1.5, "camber_in": 2.0, "under_top_in": 0.5}
+ },
+ "companion": {
+  "note": "the companionway (4 ft 4 in square inside, 1849 plan) with its hood, the doors facing forward (estimate)",
+  "plan_px": [1038.8, 585.0],
+  "inside_ft": [4.3333, 4.3333],
+  "coaming_thick_in": 5.0,
+  "hood_high_in": [40.0, 34.0],
+  "door_in": [26.0, 30.0]
+ },
+ "skylights": {
+  "note": "a pitched glazed skylight, two lids with three panes each and bars over them: the 1849 plan's 2 ft 4 in by 3 ft 2 in one forward of the mizzen, and one over the after cabin. The plan's round skylight (3 ft 3 in, 13.8 ft abaft the mizzen) stands where the after wheel's helmsmen stand: ours is square and further aft (estimate, its size too)",
+  "items": [
+   {"name": "SkylightMizzen", "plan_px": [948.3, 585.0], "inside_ft": [2.3333, 3.1667]},
+   {"name": "SkylightCabin", "x_m": -24.95, "inside_ft": [3.5, 4.5]}
+  ],
+  "coaming_high_in": 10.0,
+  "coaming_thick_in": 4.0,
+  "ridge_in": 9.0,
+  "panes": 3,
+  "bars": 4
+ },
+ "capstan": {
+  "note": "the head of the main capstan, a double capstan whose barrel runs down to the gun deck (slice 12). Neither 1849 plan draws a capstan; between the quarterdeck's two hatchways (the same gap on the gun deck below) is the room the period's frigates gave it (estimate). Its own frame: origin on its axis at the deck, local Z up: a turn about Z heaves",
+  "between": ["AfterHatch", "ForeHatch"],
+  "drumhead_diam_in": 60.0,
+  "drumhead_thick_in": 15.0,
+  "top_high_in": 42.0,
+  "barrel_diam_in": [26.0, 21.0],
+  "whelps": 8,
+  "whelp_out_in": 2.5,
+  "bar_holes": 12,
+  "bar_hole_in": [4.5, 4.5, 14.0]
+ },
+ "wheel": {
+  "note": "a double wheel on a fore-and-aft axle abaft the mizzen, the tiller ropes wound on the barrel between the wheels and led down through the deck to the tiller below (estimate: the period's frigates; abaft the mizzen it stands over the tiller's end, about 25 ft forward of the rudder head). Its own frame: origin on the axle midway between the wheels, local X forward along the axle: a positive turn about X takes the top of the wheels to port (the ship's head to port)",
+  "x_m": -22.25,
+  "axle_high_in": 45.0,
+  "between_wheels_in": 44.0,
+  "rim_diam_in": 66.0,
+  "rim_in": [3.5, 2.5],
+  "spokes": 10,
+  "spoke_diam_in": 2.25,
+  "handle_out_in": 9.0,
+  "nave_in": [9.0, 7.0],
+  "barrel_diam_in": 12.0,
+  "standard_in": [4.0, 3.0],
+  "standard_spread_in": 30.0,
+  "rope_turns": 7,
+  "tiller_rope_in": 3.0
+ },
+ "binnacle": {
+  "note": "a wooden binnacle forward of the wheel: two compasses in the side compartments and a lamp between, glazed toward the wheel (estimate, period form)",
+  "gap_to_wheel_m": 0.55,
+  "size_in": [20.0, 38.0, 40.0],
+  "roof_in": 6.0,
+  "window_in": [11.0, 9.0]
+ },
+ "belfry": {
+  "note": "the ship's bell in a belfry at the forecastle's break, on the middle line, rung from the waist (estimate: the period's American frigates). The bell 17 in across the mouth",
+  "bell_mouth_in": 17.0,
+  "post_in": 6.0,
+  "posts_apart_in": 28.0,
+  "height_in": 80.0,
+  "headstock_in": 72.0
+ },
+ "chimney": {
+  "note": "the galley's funnel through the forecastle deck at the 1849 plan's 'Smoke' (3 ft 5 in by 4 ft 0 in inside, written on it): a coaming, an iron plate over it, and the funnel with its cowl turned aft (the funnel's size and height, estimate). The galley itself is on the gun deck (slice 12)",
+  "plan_px": [3011.0, 585.0],
+  "inside_ft": [3.4167, 4.0],
+  "coaming_high_in": 8.0,
+  "coaming_thick_in": 4.0,
+  "funnel_in": 16.0,
+  "funnel_high_in": 40.0,
+  "cowl_bend_in": 10.0
+ },
+ "bowsprit_step": {
+  "note": "the bowsprit's heel stands on the forecastle deck (slice 3): a step across the deck abaft it, its fore face square to the bowsprit, between two bitts (estimate). The 1849 plan's scuttle forward of the fore mast falls under our longer bowsprit's heel and is left out",
+  "bitt_in": 14.0,
+  "bitt_high_in": 40.0,
+  "step_in": [14.0, 14.0],
+  "gap_in": 4.0
+ },
+ "mast_coats": {
+  "note": "a tarred canvas coat round each mast at the deck over the partners' wedges (estimate)",
+  "high_in": 12.0,
+  "out_in": 6.0,
+  "lashing_in": 1.5
+ },
+ "nettings": {
+  "note": "hammock nettings on the quarterdeck's and forecastle's rail caps and the waist's rail (the 1817 draught draws the netting along the waist's rail; slice 2 left it for here): iron cranes every 4 ft holding a rail each side, rope netting between, the crew's hammocks rolled and stowed on end inside, a canvas hammock cloth over the top. They stop at the breaks and narrow, tapering, wherever a shroud, rope, block or fitting comes close over the rail (the build finds where: deck.nettings, from what slices 3 to 6 put there), and break where less than min_wide_in would be left. Sizes estimate",
+  "high_in": 22.0,
+  "wide_in": 12.0,
+  "crane_pitch_in": 48.0,
+  "crane_in": [1.0, 0.75],
+  "rail_diam_in": 1.0,
+  "roll_diam_in": 6.5,
+  "cloth_down_in": 4.0,
+  "cloth_crown_in": 1.5,
+  "mesh_in": 3.0,
+  "cord_in": 0.35,
+  "gap_pad_in": 6.0,
+  "min_wide_in": 8.0,
+  "taper": 0.3,
+  "min_run_m": 0.5,
+  "aft_end_m": -29.6,
+  "fore_end_m": 23.6
+ }
+}

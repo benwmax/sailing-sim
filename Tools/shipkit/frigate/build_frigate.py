@@ -1,9 +1,9 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-6).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-7).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
 ports with their linings and lids, the rail cap, the plankshear moulding, the channels, the entry steps, the rudder
-and its irons, and placeholder decks and bulkheads for the later slices. Slice 3 (spars.py, spars_1795.json) masts
+and its irons, and placeholders for the gun deck and the bulkheads for the later slices. Slice 3 (spars.py, spars_1795.json) masts
 her: lower masts, tops, caps, topmasts, topgallant masts, every yard, the spanker boom and gaff, the bowsprit and
 jibbooms. Each yard, the boom, the gaff and the spritsail yard is its own object with its origin on the axis it turns
 about (local Z up that axis): <out>/rig.json lists how far each one braces and hoists. Slice 4 (rigging.py,
@@ -18,19 +18,26 @@ sails, the fore-and-aft sails' sheets, the spanker's and the spritsail yard's ge
 blocks (each hung along the pull of its ropes), bull's eyes, thimbles and the sheaves in the side, belayed to pins in
 the pin and fife rails or to kevels; a collection per sail state like the sails, checked against the ship, the sails
 and each other (running_room). The bull's eyes' places and the pins given out are kept in running_places_1797.json so a
-build starts from them; --place-running places them all afresh (about half an hour) and rewrites that file.
+build starts from them; --place-running places them all afresh (about half an hour) and rewrites that file. Slice 7
+(deck.py, deck_1797.json) lays the spar deck before the brace limits, the sails and the ropes, which must clear it: the
+planked quarterdeck, gangways and forecastle round the open waist, the waterways, the waist's beams, the breast rails
+and ladders, the hatchways and gratings, the companion, the skylights, the capstan's head and the double wheel (each on
+its own frame), the binnacle, the belfry, the galley's chimney, the bowsprit's step and the mast coats; then, after the
+ropes, the hammock nettings on the rail caps, narrowing wherever something comes near them; deck_room checks every
+deck part against the rest of the ship.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
-<out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks),
-<out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes) and <out>/running.json (each line's path
-and stations, each block's pose, in each state; the pins and kevels). Units are metres in Unreal's body frame
+<out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks, the
+deck's layout and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
+(each line's path and stations, each block's pose, in each state; the pins and kevels) and <out>/deck.json (the deck's
+fittings, the capstan's and wheel's frames, the nettings, the planking pattern). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
-running.py and running_1797.json, never the .blend.
+running.py and running_1797.json, deck.py and deck_1797.json, never the .blend.
 """
 import json
 import math
@@ -45,6 +52,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import deck  # noqa: E402
 import loft  # noqa: E402
 import rigging  # noqa: E402
 import running  # noqa: E402
@@ -122,7 +130,18 @@ PAINT = {
     "Sheave": ((0.13, 0.08, 0.045), 0.5, 0.0),
     "Pin": ((0.17, 0.10, 0.055), 0.45, 0.0),
     "Rail": ((0.40, 0.28, 0.16), 0.7, 0.0),
+    # the spar deck (slice 7): unpainted oak (waterways, coamings, gratings, the capstan, the wheel), glass, the
+    # hammocks' canvas and their tarred cloth, the compass cards (the planks and the nettings' mesh: deck.py's
+    # materials, below)
+    "Oak": ((0.30, 0.20, 0.11), 0.7, 0.0),
+    "Glass": ((0.05, 0.07, 0.07), 0.05, 0.0),
+    "Canvas": ((0.55, 0.50, 0.40), 0.9, 0.0),
+    "Tarpaulin": ((0.06, 0.055, 0.05), 0.6, 0.0),
+    "CompassCard": ((0.75, 0.72, 0.62), 0.6, 0.0),
 }
+DECK_PLANK = (0.42, 0.36, 0.27)       # holystoned pine (Blender's look only: the game draws the deck from the same UVs)
+DECK_PITCH = (0.012, 0.010, 0.008)    # the seams
+NET_ROPE = (0.30, 0.24, 0.15)
 MATS = {}
 for name, (rgb, rough, metal) in PAINT.items():
     m = material(name, rgb, rough)
@@ -222,6 +241,42 @@ for name, (V, F, M, _) in ST.parts().items():
     smooth(make_painted(name, V, F, M), 40)
 for name, low in ST.yard_rests().items():          # a royal yard lowered rests on the topgallant rigging's eyes
     RIG.meta[name]["hoist_m"][0] = low
+
+# the spar deck (slice 7, deck.py and deck_1797.json): the planked quarterdeck, gangways and forecastle round the open
+# waist, and what stands on them, each where it stands; the capstan's head and the wheel on frames of their own (origin
+# on the axis each turns about: deck.json). Built before the brace limits, the sails and the ropes, which must clear it.
+# The deck's top carries two UV maps the planks are drawn from: 'Planking' (u, v = x, y in metres) and 'Margin' (the
+# waterway's inner edge's half-breadth less |y|, and its slope along x: the nibs); deck.planking_terms is the pattern.
+# The hammock nettings go on last, round the running rigging (below)
+DK = deck.Deck(SK, RIG).build()
+MATS["DeckPlanks"] = deck.planks_material(bpy, "DeckPlanks", DK.planking(), DECK_PLANK, DECK_PITCH, PAINT["Oak"][0])
+MATS["Netting"] = deck.netting_material(bpy, "Netting", NET_ROPE, DK.c["nettings"]["mesh_in"] * loft.FT / 12,
+                                        DK.c["nettings"]["cord_in"] * loft.FT / 12)
+DECK_UV = {"SparDeck": ("Planking", "Margin"), "Nettings": ("Netting",)}
+
+
+def make_deck_part(name, V, F, M, frame, uv):
+    """a deck part: in place, or on its own frame (the vertices are in it); its UV maps (DECK_UV) from uv's columns"""
+    ob = make_painted(name, V, F, M)
+    if uv is not None:
+        me = ob.data
+        vi = np.zeros(len(me.loops), dtype=np.int32)
+        me.loops.foreach_get("vertex_index", vi)
+        for k, nm in enumerate(DECK_UV[name]):
+            lay = me.uv_layers.new(name=nm)
+            lay.data.foreach_set("uv", np.ascontiguousarray(np.asarray(uv)[vi][:, 2 * k:2 * k + 2],
+                                                            dtype=np.float32).ravel())
+    if frame is not None:
+        o, R = frame
+        ob.matrix_world = Matrix(((*R[0], o[0]), (*R[1], o[1]), (*R[2], o[2]), (0, 0, 0, 1)))
+    smooth(ob, 35)
+    return ob
+
+
+for name, (V, F, M, frame, uv) in DK.parts().items():
+    make_deck_part(name, V, F, M, frame, uv)
+DECK_STATIC = [(name, *DK.world(name)) for name in DK.parts()]       # for the running rigging's clearances
+DECK_STATIC = [(name, V, running.tris_of(F)) for name, V, F in DECK_STATIC]
 
 
 def brace_limits(cfg):
@@ -661,7 +716,7 @@ SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_d
 # thimble and its strop, and every coil clear by the build gap of the ship, the sails and the other ropes, except where
 # it is made fast or led (the build fails otherwise)
 RN = running.Running(RIG, SK, ST, SV).gear()
-RW = running.World(RIG, SK, ST, SV)
+RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC)
 RCX = {S: running.Clearance(RW.soup(running.Pose(RIG, S), extra=RN.extras())) for S in running.STATES}
 RUN_MISSING = RN.settle(RCX, os.path.join(HERE, "running_places_1797.json"), replace="--place-running" in ARGS)
 RN.place_coils(RCX)                                         # each coil hung clear of the rail, the ropes and its neighbours
@@ -694,6 +749,70 @@ for name, (V, F, M, state) in RUN_OBJS.items():
 for state in ("Clewed", "Furled"):
     RUN_COLS[state].hide_render = True
     bpy.context.view_layer.layer_collection.children[RUN_COLS[state].name].hide_viewport = True
+
+
+# the hammock nettings (slice 7): on the rail caps, each run narrowing (or breaking) wherever something comes near it
+def netting_obstacles(step_deg=0.5):
+    """what the nettings must stand clear of: every running line's path in every state (every 3 cm, its radius), every
+    other object's vertices (the blocks, bull's eyes, pins and coils, the standing rigging, the sails in every state,
+    the spars), and a moving spar low enough to come near the rails swung between its brace limits. The hull's parts
+    (the rail caps they stand on) and the deck's own parts (inboard of the rails: deck_room checks them) are left out"""
+    obs = []
+    for ln in RN.lines:
+        for S, P in ln.path.items():
+            P = np.asarray(P, float)
+            seg = np.diff(P, axis=0)
+            n = np.maximum(1, np.ceil(np.linalg.norm(seg, axis=1) / 0.03).astype(int))
+            pts = [P[:1]] + [P[i] + seg[i] * (np.arange(1, n[i] + 1) / n[i])[:, None] for i in range(len(seg))]
+            obs.append((np.concatenate(pts), ln.r, ln.name))
+    skip = set(SKIN) | {"Hull", "Transom"} | set(DK.parts())
+    box = DK.netting_box()
+    for o in SC.objects:
+        if o.type != "MESH" or o.name in skip or o.name.startswith(("Lid_", "Running_")):
+            continue
+        V, T = world_tris(o)
+        if not len(T):
+            continue
+        if o.name in RIG.meta:
+            if V[:, 2].min() > 9.0:                                # a yard aloft never comes near the rails
+                continue
+            # its surface every 4 cm (each point's radius grown by the spacing's reach), swung through its brace limits
+            P = deck.surface_points(V, T, 0.04)
+            lo, hi = RIG.meta[o.name]["brace_deg"]
+            obs += [(Q, R + 0.6 * 0.04, lab) for Q, R, lab in
+                    deck.swept(P, np.array(o.matrix_world)[:3, 3], RIG.meta[o.name]["axis"], lo, hi, step_deg,
+                               o.name + " swung")]
+            continue
+        # its surface every 2 cm where it passes near the rails (a shroud or lanyard between its vertices too)
+        P = deck.surface_points(V, T, 0.02, *box)
+        if len(P):
+            obs.append((P, 0.6 * 0.02, o.name))
+    return obs
+
+
+DK.nettings(netting_obstacles())
+make_deck_part("Nettings", *DK.parts()["Nettings"])
+
+
+def deck_room():
+    """every deck part against everything else in the ship (the sails and running rigging in every state too) and
+    against the deck's other parts: the pairs whose surfaces meet, less those that meet by design (deck.MEETS: a
+    ladder's foot on the gun deck, a netting on its rail cap, a fitting let into the deck...) as deep as allowed; and
+    every fitting standing on the deck's top as it rises along the sheer (deck.room). Ropes, blocks and coils are also
+    held clear of the deck by running_room, the sails by sail_room, the standing rigging by span_room and the moving
+    spars by brace_limits, each with its own gap"""
+    objs = {}
+    for o in SC.objects:
+        if o.type != "MESH" or o.name in REFERENCE:
+            continue
+        V, T = world_tris(o)
+        if len(T):
+            objs[o.name] = (V, T)
+    return deck.room(objs, set(DK.parts()), DK.z)
+
+
+REFERENCE = {"Hull"}           # measured, never drawn
+DECK_ROOM = deck_room()
 
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
@@ -735,7 +854,6 @@ def displacement(L):
     return vol_px / (L.ppf * L.ppf_y ** 2) * loft.FT ** 3     # x across the sheet, half-breadths and heights down it
 
 
-REFERENCE = {"Hull"}           # measured, never drawn
 SAIL_STATE = {n: d["state"] for n, d in SV.objs.items()}
 RUN_STATE = {n: d[3] for n, d in RUN_OBJS.items()}
 stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects if o.type == "MESH"}}
@@ -775,6 +893,9 @@ stats["running"] = dict(RN.summary(), room=RUN_ROOM,
                                    "blocks_per_state": {s: sum(stats["objects"][n]["triangles"] for n, st_ in
                                                                RUN_STATE.items() if st_ == s and n.startswith("Blocks_"))
                                                         for s in running.STATES}})
+stats["deck"] = dict(DK.info, room=DECK_ROOM,
+                     triangles={n: stats["objects"][n]["triangles"] for n in DK.parts()},
+                     triangles_total=sum(stats["objects"][n]["triangles"] for n in DK.parts()))
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -828,10 +949,29 @@ RUN_NOTE = (
     "laid again between its stations (the game's drawing code, a later pass): the blocks on a yard go with it, the "
     "others hang along their ropes' pull")
 json.dump(dict({"note": RUN_NOTE}, **RN.game_data()), open(os.path.join(OUT, "running.json"), "w"), indent=1)
+DECK_NOTE = (
+    "the spar deck (docs/shipkit-7), in the ship's frame (metres): frames, the parts that turn (the capstan's head, the "
+    "double wheel) with their origin on the axis they turn about and their axes (the object's local axes in the ship; "
+    "the vertices are in that frame) and how they turn; layout, where each fitting stands (x of its centre, its inside "
+    "size); waist, the open waist's ends and half-width; ladders, each ladder's top and foot; beams_x_m, the waist's "
+    "beams; nettings, each rail's netting runs and where they narrow or break and for what; planking, the pattern's "
+    "sizes: the material draws the planks from the deck's two UV maps, 'Planking' (x, y) and 'Margin' (the waterway's "
+    "inner edge's half-breadth less |y|, and its slope along x), as deck.planking_terms does: planks w wide with one "
+    "on the middle line, seams 'seam' wide, butts every Lb beams from x0 (beam pitch bp) shifted by 'stagger' beams "
+    "over four strakes, plugs plug_r at every beam, nibbed into the waterway where nib of a plank's width is left. The "
+    "nettings' mesh is the 'Netting' UV (along, up; metres) cut in diamonds")
+json.dump(dict({"note": DECK_NOTE}, **DK.game_data()), open(os.path.join(OUT, "deck.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
                      json.dumps({k: RUN_ROOM[k][:20] for k in ("lines", "blocks", "fittings", "coils")}))
+if DECK_ROOM["meet"] or DECK_ROOM["floats"]:
+    raise SystemExit("the deck's parts meet the ship or each other, or stand off the deck (build.json deck.room): " +
+                     json.dumps({"meet": DECK_ROOM["meet"][:30], "floats": DECK_ROOM["floats"][:30]}))
+CLOSE = [[n["rail"], n["side"], n["least_clear_in"], n["closest"]] for n in DK.info["nettings"]
+         if n["least_clear_in"] is not None and n["least_clear_in"] < 0.98]
+if CLOSE:
+    raise SystemExit("something comes within 1 in of a netting as built (build.json deck.nettings): " + json.dumps(CLOSE))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))

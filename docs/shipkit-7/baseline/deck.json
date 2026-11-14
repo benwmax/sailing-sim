@@ -1,0 +1,408 @@
+{
+ "note": "the spar deck (docs/shipkit-7), in the ship's frame (metres): frames, the parts that turn (the capstan's head, the double wheel) with their origin on the axis they turn about and their axes (the object's local axes in the ship; the vertices are in that frame) and how they turn; layout, where each fitting stands (x of its centre, its inside size); waist, the open waist's ends and half-width; ladders, each ladder's top and foot; beams_x_m, the waist's beams; nettings, each rail's netting runs and where they narrow or break and for what; planking, the pattern's sizes: the material draws the planks from the deck's two UV maps, 'Planking' (x, y) and 'Margin' (the waterway's inner edge's half-breadth less |y|, and its slope along x), as deck.planking_terms does: planks w wide with one on the middle line, seams 'seam' wide, butts every Lb beams from x0 (beam pitch bp) shifted by 'stagger' beams over four strakes, plugs plug_r at every beam, nibbed into the waterway where nib of a plank's width is left. The nettings' mesh is the 'Netting' UV (along, up; metres) cut in diamonds",
+ "frames": {
+  "Capstan": {
+   "origin_m": [
+    -9.4135,
+    0.0,
+    4.1109
+   ],
+   "axes": [
+    [
+     1.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "turns": "about its own +Z (up): the drumhead heaves either way; the pawls (CapstanPawls) stay"
+  },
+  "Wheel": {
+   "origin_m": [
+    -22.25,
+    0.0,
+    5.4957
+   ],
+   "axes": [
+    [
+     1.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "turns": "about its own +X (forward along the axle): a positive turn takes the top of the wheels to port, and the ship's head to port (tiller ropes led as the period's ships led them); the standards (WheelStandards) and the tiller rope (TillerRope) stay: the barrel turns under the rope's turns, which look the same",
+   "spokes": 10
+  }
+ },
+ "layout": {
+  "AfterHatch": {
+   "x_m": -11.301,
+   "inside_m": [
+    1.524,
+    1.575
+   ]
+  },
+  "ForeHatch": {
+   "x_m": -7.526,
+   "inside_m": [
+    1.524,
+    1.575
+   ]
+  },
+  "Companion": {
+   "x_m": -15.045,
+   "inside_m": [
+    1.321,
+    1.321
+   ]
+  },
+  "SkylightMizzen": {
+   "x_m": -16.644,
+   "inside_m": [
+    0.711,
+    0.965
+   ]
+  },
+  "SkylightCabin": {
+   "x_m": -24.95,
+   "inside_m": [
+    1.067,
+    1.372
+   ]
+  },
+  "Chimney": {
+   "x_m": 18.039,
+   "inside_m": [
+    1.041,
+    1.219
+   ]
+  },
+  "Capstan": {
+   "x_m": -9.414
+  },
+  "Wheel": {
+   "x_m": -22.25
+  },
+  "Binnacle": {
+   "x_m": -20.798
+  }
+ },
+ "waist": {
+  "x_m": [
+   -1.777,
+   11.522
+  ],
+  "half_width_m": 3.562,
+  "beam_pitch_m": 0.8312
+ },
+ "ladders": [
+  {
+   "break": "quarterdeck",
+   "y_m": 1.524,
+   "top_x_m": -1.777,
+   "foot_x_m": -0.538,
+   "drop_m": 2.146,
+   "treads": 8
+  },
+  {
+   "break": "quarterdeck",
+   "y_m": -1.524,
+   "top_x_m": -1.777,
+   "foot_x_m": -0.538,
+   "drop_m": 2.146,
+   "treads": 8
+  },
+  {
+   "break": "forecastle",
+   "y_m": 1.524,
+   "top_x_m": 11.522,
+   "foot_x_m": 10.245,
+   "drop_m": 2.213,
+   "treads": 8
+  },
+  {
+   "break": "forecastle",
+   "y_m": -1.524,
+   "top_x_m": 11.522,
+   "foot_x_m": 10.245,
+   "drop_m": 2.213,
+   "treads": 8
+  }
+ ],
+ "beams_x_m": [
+  -0.1143,
+  1.5481,
+  3.2105,
+  4.8729,
+  6.5353,
+  8.1977,
+  9.8601
+ ],
+ "nettings": [
+  {
+   "rail": "quarterdeck",
+   "side": "starboard",
+   "runs_m": [
+    [
+     -29.6,
+     -22.3
+    ],
+    [
+     -21.25,
+     -20.6
+    ],
+    [
+     -18.4,
+     -2.8
+    ]
+   ],
+   "gaps": [
+    {
+     "x_m": [
+      -22.3,
+      -21.25
+     ],
+     "for": [
+      "Deadeyes_Mizzen",
+      "Rigging_Mizzen"
+     ]
+    },
+    {
+     "x_m": [
+      -20.6,
+      -18.4
+     ],
+     "for": [
+      "Deadeyes_Mizzen",
+      "Rigging_Mizzen"
+     ]
+    }
+   ],
+   "narrowed_m": [
+    [
+     -23.2,
+     -22.6
+    ],
+    [
+     -22.4,
+     -21.15
+    ],
+    [
+     -20.75,
+     -18.3
+    ]
+   ],
+   "least_wide_in": 8.4,
+   "least_clear_in": 1.63,
+   "closest": "SpankerBoom swung"
+  },
+  {
+   "rail": "quarterdeck",
+   "side": "port",
+   "runs_m": [
+    [
+     -29.6,
+     -22.3
+    ],
+    [
+     -21.25,
+     -20.6
+    ],
+    [
+     -18.4,
+     -2.8
+    ]
+   ],
+   "gaps": [
+    {
+     "x_m": [
+      -22.3,
+      -21.25
+     ],
+     "for": [
+      "Deadeyes_Mizzen",
+      "Rigging_Mizzen"
+     ]
+    },
+    {
+     "x_m": [
+      -20.6,
+      -18.4
+     ],
+     "for": [
+      "Deadeyes_Mizzen",
+      "Rigging_Mizzen"
+     ]
+    }
+   ],
+   "narrowed_m": [
+    [
+     -23.2,
+     -22.6
+    ],
+    [
+     -22.4,
+     -21.15
+    ],
+    [
+     -20.75,
+     -18.3
+    ]
+   ],
+   "least_wide_in": 8.4,
+   "least_clear_in": 1.63,
+   "closest": "SpankerBoom swung"
+  },
+  {
+   "rail": "forecastle",
+   "side": "starboard",
+   "runs_m": [
+    [
+     11.58,
+     21.42
+    ],
+    [
+     21.92,
+     23.57
+    ]
+   ],
+   "gaps": [
+    {
+     "x_m": [
+      21.42,
+      21.92
+     ],
+     "for": [
+      "Deadeyes_Fore",
+      "Rigging_Fore"
+     ]
+    }
+   ],
+   "narrowed_m": [
+    [
+     19.23,
+     19.58
+    ],
+    [
+     19.73,
+     20.33
+    ],
+    [
+     21.22,
+     22.02
+    ]
+   ],
+   "least_wide_in": 8.4,
+   "least_clear_in": null,
+   "closest": null
+  },
+  {
+   "rail": "forecastle",
+   "side": "port",
+   "runs_m": [
+    [
+     11.58,
+     21.42
+    ],
+    [
+     21.92,
+     23.57
+    ]
+   ],
+   "gaps": [
+    {
+     "x_m": [
+      21.42,
+      21.92
+     ],
+     "for": [
+      "Deadeyes_Fore",
+      "Rigging_Fore"
+     ]
+    }
+   ],
+   "narrowed_m": [
+    [
+     19.23,
+     19.58
+    ],
+    [
+     19.73,
+     20.33
+    ],
+    [
+     21.22,
+     22.02
+    ]
+   ],
+   "least_wide_in": 8.4,
+   "least_clear_in": null,
+   "closest": null
+  },
+  {
+   "rail": "waist",
+   "side": "starboard",
+   "runs_m": [
+    [
+     -1.71,
+     11.46
+    ]
+   ],
+   "gaps": [],
+   "narrowed_m": [],
+   "least_wide_in": 12.0,
+   "least_clear_in": null,
+   "closest": null
+  },
+  {
+   "rail": "waist",
+   "side": "port",
+   "runs_m": [
+    [
+     -1.71,
+     11.46
+    ]
+   ],
+   "gaps": [],
+   "narrowed_m": [],
+   "least_wide_in": 12.0,
+   "least_clear_in": null,
+   "closest": null
+  }
+ ],
+ "planking": {
+  "w": 0.1524,
+  "seam": 0.01016,
+  "x0": -1.77674,
+  "bp": 0.8312,
+  "Lb": 8,
+  "stagger": [
+   0,
+   4,
+   2,
+   6
+  ],
+  "plug_r": 0.0127,
+  "plug_off": 0.0508,
+  "nib": 0.4
+ }
+}

@@ -12,7 +12,7 @@ slice 6. It is still post-slice art: nothing here is imported into Unreal or wir
 
 * **Lower masts** stepped on the keelson (3 ft over the rabbet), round and tapering by the period's quarters from the
   spar deck to the hounds, with a square black head, the cheeks under the trestletrees, iron hoops every 4 ft (they are
-  "made" masts, built up from several trees) and a canvas mast coat at the deck.
+  "made" masts, built up from several trees) and a canvas mast coat at the deck (since slice 7 the deck's own: `docs/shipkit-7`).
 * **Tops:** trestletrees, four crosstrees, the bolsters, the topmast's iron fid, a planked platform with the lubber's
   hole round the masthead, a rim, and the rail with its stanchions across the top's aft edge. The **lower cap** on the
   masthead, with its iron band.
