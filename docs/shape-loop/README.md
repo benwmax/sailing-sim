@@ -369,3 +369,13 @@ edge into the top aft of the head's cheeks (70 mm), with the planform between un
 unrounded chord and the faces wound outward. Blind A/B 3 of 3; QA's fix (the top corner's sections spaced evenly round
 its arc) is in. Hull, deck and fittings unchanged; the rudder from 596 to 1,396 triangles. Open: the leading edge plumb
 under the head and the blade butted under the cheeks rather than housed between them.
+
+## Wave 5, round 7 (Nov 14): the Sunfish's cockpit well
+
+Card `cards/sunfish-well.json` (Bean's pick). The well sat at -1.18 to -0.52, aft of the reference's by most of its own
+length. It is now the TurboSquid 1460907 reference's opening (1.24-2.04 m from its transom, scaled to her length):
+-0.86 to -0.08, 12 cm longer, from just behind the trunk. The ratchet, its padeye and the halyard cleat move with it
+(`layouts/sunfish.json`), as does everything built from the well; `CrewPose.cpp`'s well and strap follow, and her sailor
+sits beside the well's after part (`CrewMotion.cpp`; the physics' crew x stays). Blind A/B 3 of 3; QA's two fixes in
+(the crossing crouched over the after deck, the ratchet out from under the boom's block). Open: the trunk is still about
+0.4 m forward of the well (the physics' board).

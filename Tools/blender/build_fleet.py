@@ -55,7 +55,11 @@ SPECS = {
     # 63-65 mm just forward of the well, nothing at the bow; it had been 35 mm everywhere ("crown", kept for the well's sole: sole_z))
     "Sunfish": dict(paint=False, crown=0.035, crown_table=((0.0, 0.012), (0.1, 0.028), (0.2, 0.041), (0.28, 0.0505), (0.5, 0.063),
                                                            (0.6, 0.065), (0.65, 0.065), (0.75, 0.048), (0.85, 0.030), (0.95, 0.013), (1.0, 0.0)),
-                    cockpit=(-1.18, -0.52, 0.29, 0.20), trunk=True, rig="lateen", tiller=True),
+                    # (shape wave 5, well: the well 0.32-0.44 m further forward, from just behind the trunk, and 12 cm
+                    # longer: the TurboSquid 1460907 reference's opening, 1.24-2.04 m from its transom, scaled to her
+                    # length; it had been -1.18 to -0.52, aft of the reference's by most of its own length. CrewPose.cpp's
+                    # well follows it.)
+                    cockpit=(-0.86, -0.08, 0.29, 0.20), trunk=True, rig="lateen", tiller=True),
     "ILCA7": dict(paint=False, crown=0.05, cockpit=(-1.62, -0.22, 0.31, 0.22), trunk=True, rig="una", tiller=True, vang=True),
     "Catalina22": dict(paint=True, crown=0.05, cockpit=(-3.05, -0.78, 0.63, 0.42), cabin=(-0.78, 1.70, 0.62, 0.42), rig="masthead",
                        tiller=True, lifelines=True, outboard=True, spreader=0.62, winch_x=-1.05),

@@ -313,6 +313,11 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	{
 		X = FMath::Clamp(FMath::Min(X, Hull.SternX + Cfg.TillerLength + 0.15), KeelWell.X0 + 0.35, KeelWell.X1 - 0.12);
 	}
+	// Shape wave 5, well: the Sunfish's well is the reference's now (-0.86 to -0.08, build_fleet.py), and her sailor sits on
+	// the side deck beside its after part with the feet in it, not at the crew model's x -0.9, 4 cm aft of its wall: crossing
+	// a tack there crouched over the after deck, 0.22 m higher than over the sole, the back in the boom. Only the figure
+	// moves: the physics' CrewCG stays.
+	if (Cfg.Type == EBoatType::Sunfish && CrewCockpitWell(Cfg, KeelWell)) X = FMath::Max(X, KeelWell.X0 + 0.2);
 	// Multihull crew: a trimaran's helm sits in the main hull's cockpit (the Corsair's tiller is on the centreline, the
 	// ama 2.8 m out of reach); her crew out past the main hull's deck sit on the windward net, forward of the after aka
 	// (at x -2.05 and -2.6 they sat over the water behind it) and of the cockpit, side by side.

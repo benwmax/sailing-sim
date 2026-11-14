@@ -1,0 +1,34 @@
+{
+ "id": "sunfish-well",
+ "boat": "Sunfish",
+ "sections": [
+  "well",
+  "deck"
+ ],
+ "status": "wave 5, round 7: blind A/B 3 of 3",
+ "feature": "The Sunfish's cockpit well sits where the reference's does, from just behind the daggerboard trunk: 0.32-0.44 m further forward than it was, and 12 cm longer.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "SPECS cockpit (-0.86, -0.08, 0.29, 0.20), from the TurboSquid 1460907 reference's opening 1.24-2.04 m from its transom scaled to her length; it had been -1.18 to -0.52",
+  "the mainsheet ratchet and its padeye (x 0.04, 12 cm forward of the well as before, under the boom's middle block) and the halyard's horn cleat (x 0.03, y -0.18) move forward with it (layouts/sunfish.json); everything built from the well (rim, strap, bailer, drain, halyard lead) follows it",
+  "CrewPose.cpp's Sunfish well and strap ends follow it (crew seating)",
+  "CrewMotion.cpp: the Sunfish's sailor sits beside the well's after part (x at least its aft wall + 0.2), the feet in it; the physics' CrewCG (x -0.9) is unchanged"
+ ],
+ "references": "TurboSquid 1460907 centreline profile (Inputs/shape-sunfish/turbosquid_1460907.json); the PC's Oct 30 measurement note (well, board and mast placement).",
+ "moves_ok": [],
+ "moves_ok_sections": [
+  "fittings"
+ ],
+ "moves_ok_note": "The fittings built from the well (rim, strap, bailer, drain) and the kit's ratchet, padeye and horn cleat move with it.",
+ "tris_max": null,
+ "mac_wiring": true,
+ "mac_note": "CrewPose.cpp's Sunfish well moves with the model: rebake and reimport the Sunfish, rebuild, run the crew and boats gates (SailingSim.Visual.CrewHullClearance).",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Blind A/B: 3 of 3 reviewers (realism, boatbuilder, 3D artist) picked the well forward: the well no longer pushed toward the stern, about 4 ft of after deck.",
+  "QA: everything built from the well follows it, the sole stays at z 0.047 inside the hull, deck cut and seams unchanged, clearances to the trunk, cleat and halyard fine, CrewPose.cpp's numbers consistent. Fixed after QA: the sailor at the crew model's x -0.9 now sat aft of the well, so crossing a tack crouched over the after deck into the boom (seated beside the well's after part now); the ratchet had moved 23 cm forward of the boom's middle block (back to 12 cm, as before).",
+  "Open: the daggerboard trunk is still about 0.4 m forward of the well (the physics' board, frozen; on the class boat it is a few inches); the well's corner radius isn't in the crew's well (CrewInsideBoat is a rectangle); the strap reads as a beam in clay renders."
+ ]
+}
