@@ -1012,6 +1012,23 @@ bool FWaterFarCapSpritesTest::RunTest(const FString&)
 		TestEqual(TEXT("... and not before the hold"), AWaterSurface::FarCapSizeStepNext(2.0, B, 1.0), 2.0);
 		TestEqual(TEXT("Calm again: back to 1"), AWaterSurface::FarCapSizeStepNext(1.5, B / 4, AWaterSurface::FarCapStepHoldS), 1.0);
 	}
+	// A tile is rebuilt for more slots only when its slots can't carry the cover all live: not just after a build, not at
+	// a 10% rise (a fresh plan's 30% headroom rebuilt a tile at every rise: builds on half the storm's frames), and never
+	// at the slot cap (it would rebuild itself every replan).
+	{
+		const double Cap = AWaterSurface::FarCapArea;   // (Area: the tile's, above)
+		const double Cover = AWaterSurface::FarCapCover(20.0 * Sailing::kKnot, 1.0, 1.0);
+		int32 Slots = 0;
+		float Prob = 0.f;
+		AWaterSurface::FarCapTilePlan(Cover, Area, Slots, Prob, Cap);
+		TestFalse(TEXT("Not outgrown just after its build"), AWaterSurface::FarCapTileOutgrown(Cover, Area, Cap, Slots));
+		TestFalse(TEXT("Not outgrown by a 10% rise"), AWaterSurface::FarCapTileOutgrown(Cover * 1.1, Area, Cap, Slots));
+		TestTrue(TEXT("Outgrown by a 50% rise"), AWaterSurface::FarCapTileOutgrown(Cover * 1.5, Area, Cap, Slots));
+		int32 Full = 0;
+		AWaterSurface::FarCapTilePlan(Cover * 1000.0, Area, Full, Prob, Cap);
+		TestEqual(TEXT("A storm's tile is at the slot cap"), Full, AWaterSurface::FarCapMaxSlots);
+		TestFalse(TEXT("... and never outgrown there"), AWaterSurface::FarCapTileOutgrown(Cover * 1000.0, Area, Cap, Full));
+	}
 	return true;
 }
 

@@ -83,6 +83,11 @@ public:
 	 *  slots at Cur pass the budget by 10% (at once past 50%) and falls only when the lower step fits 90% of it, and either
 	 *  waits FarCapStepHoldS after the last change (docs/far-cap-sprites/, the storm hitches). */
 	static double FarCapSizeStepNext(double Cur, int32 Total, double SinceChange);
+	/** A tile holding Slots caps of CapArea has outgrown them when they can't carry the cover even all live (and it isn't
+	 *  at the slot cap already). Not when a fresh plan, with its 30% headroom, would hold more: that rebuilt a tile at every
+	 *  rise of the cover. */
+	static bool FarCapTileOutgrown(double Cover, double TileArea, double CapArea, int32 Slots);
+	static constexpr int32 FarCapMaxSlots = 6000;   // per tile (FarCapTilePlan)
 	static constexpr double FarCapStepHoldS = 4.0;
 	/** Game-thread time a replan may spend building tiles (at least one is built); the rest wait for the next frames. */
 	static constexpr double FarCapBuildBudgetMs = 2.0;

@@ -517,8 +517,13 @@ void AWaterSurface::FarCapTilePlan(double Cover, double TileArea, int32& OutSlot
 {
 	// The caps live at once: the tile's foam over one cap's, over the mean of a life (M_FarCap: 1.6 sin, clamped at 1).
 	const double Live = Cover * TileArea / (CapArea * 0.7937);
-	OutSlots = Live < 0.05 ? 0 : FMath::Min(FMath::CeilToInt(Live * 1.3) + 1, 6000);
+	OutSlots = Live < 0.05 ? 0 : FMath::Min(FMath::CeilToInt(Live * 1.3) + 1, FarCapMaxSlots);
 	OutProb = OutSlots > 0 ? float(FMath::Min(Live / OutSlots, 1.0)) : 0.f;
+}
+
+bool AWaterSurface::FarCapTileOutgrown(double Cover, double TileArea, double CapArea, int32 Slots)
+{
+	return Slots < FarCapMaxSlots && Cover * TileArea / (CapArea * 0.7937) > double(Slots) + 0.5;
 }
 
 double AWaterSurface::FarCapSizeStepNext(double Cur, int32 Total, double SinceChange)
@@ -1554,13 +1559,14 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	{
 		FarCapTilePlan(P.Cover, Area, P.Slots, P.Prob, CapArea);
 		const FFarCapTile* Tile = FarCapTiles.Find(P.Key);
-		// (Outgrown is judged at the tile's own size: a tile waiting at an old step is short of slots only for its own caps.)
-		int32 OwnSlots = P.Slots;
-		float OwnProb = 0.f;
-		if (Tile && Tile->Size != SizeStep) FarCapTilePlan(P.Cover, Area, OwnSlots, OwnProb, FarCapArea * Tile->Size);
-		P.Need = !Tile ? 1 : OwnSlots > Tile->Slots ? 2 : Tile->Size != SizeStep ? 3 : 0;
+		// Outgrown only when its slots can no longer carry the cover even all live (probability past 1), at the tile's own
+		// size. (Comparing against a fresh plan, whose slots carry 30% headroom, rebuilt a tile at every rise of the cover:
+		// on the PC's storm traces a build nearly every replan on main, and every frame once replans ran back to back.)
+		const bool bOutgrown = Tile && FarCapTileOutgrown(P.Cover, Area, FarCapArea * Tile->Size, Tile->Slots);
+		P.Need = !Tile ? 1 : bOutgrown ? 2 : Tile->Size != SizeStep ? 3 : 0;
 		P.Dist = FMath::Square(P.CX - Cam.X) + FMath::Square(P.CY - Cam.Y);
 	}
+	TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_FarCapBuild);   // (to the end: the sort, builds, slot count and tile drops; before it, the plan)
 	Plans.Sort([](const FPlan& A, const FPlan& B) { return A.Need != B.Need ? (A.Need == 0 ? false : B.Need == 0 ? true : A.Need < B.Need) : A.Dist < B.Dist; });
 	const double BuildStart = FPlatformTime::Seconds();
 	int32 Built = 0;
