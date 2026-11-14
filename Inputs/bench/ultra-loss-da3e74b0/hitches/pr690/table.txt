@@ -1,0 +1,24 @@
+a-0d2c4802   fps  35.6 p99  35.7 max  54.3 gpu 28.04 game 17.98 | GT frames >40 ms 23, >60 11
+   Sailing_Water frames 1154, median 4.02, >15 ms 12, largest 84.8 ms at 11.04s: {'Sailing_WaterUploads': 35.3, 'ParallelFor': 31.0, 'UPrimitiveComponent::PrecachePSOs': 8.4, 'Sailing_FarCapBuild': 2.4}
+   top Sailing_Water: [(11.04, 84.8, 35.3), (11.33, 56.5, 39.0), (11.87, 43.9, 34.5), (11.64, 41.4, 35.3), (19.65, 40.9, 38.0)]
+   Sailing_WaterUploads: 1154, >20 ms 11 [39.0, 38.0, 35.3, 35.3, 34.5, 31.3, 30.5, 29.5, 28.4, 28.2, 27.9], max 39.0, median 0.65
+   DetailConfigure: 0 on threads Counter(); ms []; at []
+   DetailBlend after 8.7 s: 1154 events on 12 worker threads, mean gap 29.4 ms, max gap 980.2 ms; last at 45.05s
+b-ae9d8ade   fps  36.3 p99  32.6 max  46.1 gpu 27.46 game 17.40 | GT frames >40 ms 14, >60 8
+   Sailing_Water frames 1180, median 3.98, >15 ms 6, largest 73.6 ms at 10.97s: {'Sailing_WaterUploads': 31.1, 'ParallelFor': 28.7, 'UPrimitiveComponent::PrecachePSOs': 4.5, 'Sailing_FarCapBuild': 2.3}
+   top Sailing_Water: [(10.97, 73.6, 31.1), (11.26, 55.6, 41.0), (11.76, 42.8, 34.5), (11.11, 21.7, 0.8), (11.49, 16.1, 1.1)]
+   Sailing_WaterUploads: 1180, >20 ms 3 [41.0, 34.5, 31.1], max 41.0, median 0.65
+   DetailConfigure: 6 on threads Counter({'Background Worker #7': 2, 'Background Worker #8': 2, 'Background Worker #5': 1, 'Background Worker #9': 1}); ms [34.9, 33.4, 37.1, 42.0, 39.4, 32.8]; at [34.67, 29.79, 39.34, 19.61, 24.94, 44.66]
+   DetailBlend after 8.7 s: 1179 events on 13 worker threads, mean gap 28.9 ms, max gap 968.8 ms; last at 45.03s
+     configure 34.67-34.70s: blend before at [34.6437555], next blends [34.724, 34.752, 34.774], gap across 79.8 ms
+     configure 29.79-29.82s: blend before at [29.7595389], next blends [29.844, 29.867, 29.896], gap across 84.1 ms
+     configure 39.34-39.37s: blend before at [39.3082456], next blends [39.39, 39.418, 39.444], gap across 82.2 ms
+     configure 19.61-19.65s: blend before at [19.586563], next blends [19.663, 19.691, 19.714], gap across 76.9 ms
+     configure 24.94-24.98s: blend before at [24.9150543], next blends [24.998, 25.029, 25.054], gap across 83.0 ms
+     configure 44.66-44.69s: blend before at [44.6326032], next blends [44.72, 44.743, 44.772], gap across 87.7 ms
+c-0d2c4802   fps  35.0 p99  36.3 max  51.4 gpu 28.38 game 16.41 | GT frames >40 ms 17, >60 6
+   Sailing_Water frames 1138, median 3.79, >15 ms 11, largest 73.6 ms at 9.30s: {'ParallelFor': 30.5, 'Sailing_WaterUploads': 28.0, 'UPrimitiveComponent::PrecachePSOs': 6.3, 'Sailing_FarCapBuild': 2.3}
+   top Sailing_Water: [(9.3, 73.6, 28.0), (9.58, 56.9, 41.0), (11.14, 39.0, 31.2), (17.89, 37.9, 35.4), (23.23, 37.9, 31.7)]
+   Sailing_WaterUploads: 1138, >20 ms 10 [41.0, 35.4, 31.7, 31.2, 31.1, 30.1, 29.4, 28.7, 28.5, 28.0], max 41.0, median 0.59
+   DetailConfigure: 0 on threads Counter(); ms []; at []
+   DetailBlend after 8.7 s: 1137 events on 13 worker threads, mean gap 29.8 ms, max gap 979.0 ms; last at 43.23s
