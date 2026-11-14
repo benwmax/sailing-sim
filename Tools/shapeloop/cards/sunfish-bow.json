@@ -1,0 +1,30 @@
+{
+ "id": "sunfish-bow",
+ "boat": "Sunfish",
+ "sections": [
+  "hull"
+ ],
+ "status": "wave 5, round 3: blind A/B 3 of 3",
+ "feature": "The Sunfish's stem is closed and its forefoot runs smooth: the shell's last station gets its face, and forward of where the forefoot rises past the bottom band the rows keep their places on the section instead of clamping onto the keel one by one.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "the stem's face: the shell's last station (34 mm wide, 18 cm deep, above the water) closed with triangles facing forward (build_fleet.shell, Sunfish only)",
+  "the forefoot: forward of x 1.98 every station keeps the last unclamped station's rows (r on the section), so no faces step between stations",
+  "the deck's forward edge (3 mm short of the stem) closed to the stem's top, where the crown has run out (build_fleet.deck, crown_table boats)"
+ ],
+ "references": "The blind reviewers' notes on rounds 1 and 2 (a black slot at the stem, stair steps under it); the build's station rows printed from the shape blend.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Round 3's three blind reviewers (sailor, boatbuilder, 3D artist) all preferred the closed stem and smooth forefoot.",
+  "Their notes for later: the bow reads blunt (a flat, near-vertical stem face nearly as deep as the topsides, where a real Sunfish's stem rakes and rounds into a finer entry); a crisp knuckle where the forefoot meets the keel line; knife-sharp corners at the stem; the rubrail stopping short of the stem. The bow's plan and profile are the physics hull's (BoatExport), so a finer entry is a hull-lines change for a calibration pass, or an above-water stem shape over it.",
+  "The triangle count rises by about 1,650 (79 the stem's face, 5 the deck's front, the rest the forefoot's rows: before, the 17 stations forward of x 1.995 had collapsed to 10-13 points a side and their zero-area faces were welded away). QA: the reused rows are copied from x 1.978, where the bottom band had almost run out, so 27 of the 39 rows a side sit in the bottom 1.3 mm: fair, but thin slivers (326 quads with an edge under 0.5 mm, the stem face's smallest angle 0.08 deg). Reusing a station further aft or thinning the bottom rows would spend them better; a later tidy-up."
+ ]
+}
