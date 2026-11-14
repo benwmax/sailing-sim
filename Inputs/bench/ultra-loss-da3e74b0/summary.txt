@@ -50,3 +50,23 @@ b9910b7d (#682+#674) 38.3 42.3 18.99  7.90  4.70  1.59  2.53  17.70
 The two leads hold on one warm run each: #675 brings the cloud slice +1.1 ms, the game thread +3 ms and p99 +4.5 ms;
 #677 the base pass +0.5 ms, the game thread +2 ms more and p99 +5 ms; nothing after moves much. b9910b7d reads 0.9 ms
 lighter than 8d291ade (cloud 7.90 against 8.67): within one-run noise or not is what the three trace rounds (s4) decide.
+
+Step 2, settled (s4-*): storm, three warm rounds back to back, -SailingBenchTrace on each (frames.csv), means; the last
+column is frames over 40 ms in the measured 3-15 s per run, with the game-thread-bound ones in brackets:
+build              fps   p99   gpu    cloud  base  game  | trace GPU median | frames > 40 ms
+2f8e31f6           39.9  34.6  18.69  7.95  4.41  15.28 | 23.9 | 4(2), 3(2), 4(3)
+be5daf53 (#675)    39.4  34.6  18.48  7.79  4.30  16.01 | 24.4 | 3(2), 4(3), 3(2)
+a4724e25 (#677)    37.8  46.1  19.87  8.41  4.96  18.72 | 25.5 | 8(7), 9(8), 6(5)
+b9910b7d           38.9  42.9  18.95  7.88  4.84  17.14 | 24.5 | 8(7), 5(4), 5(4)
+#675 (storm audio) costs nothing measurable: its single-run gap in s2f was noise. #677 (storm look) is the step on both
+counts: +1.2 ms GPU (clouds +0.5, base +0.55), +2.7 ms on the game thread, p99 +11.5 ms, and twice the hitches. The later
+merges add nothing that three warm rounds resolve (b9910b7d sits between, within run-to-run spread).
+
+Hitches (insights-da3e74b0/): one Unreal Insights CPU trace of storm on da3e74b0 (-trace=cpu,frame,bookmark
+-statnamedevents; the 97 MB .utrace stays on the PC), GameThread timing events exported headless
+(TimingInsights.ExportTimingEvents). Of the 11 game-thread frames over 40 ms in the run, 7 spend 28-45 ms in AWaterSurface's
+tick, scope Sailing_Water (twice its child Sailing_WaterUploads, 30-35 ms, otherwise many ISM AddInstancesInternal under
+it); one 113 ms frame is FarLightsActor's tick (96 ms); two are the game thread waiting on the render thread
+(Sync_RenderingThread 47-86 ms). Over the run Sailing_Water's median is 4.1 ms and its slowest ten are 89, 45, 37, 33, 31,
+30, 28, 28, 23 and 21 ms: the storm sea's water work (#677 grows the storm sea under the outflow and burst) spikes on the
+game thread. long-frames-excerpt.csv lists every scope over 1 ms (to depth 14) inside each of those frames.
