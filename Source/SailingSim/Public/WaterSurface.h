@@ -281,6 +281,20 @@ private:
 	FDetailFramePtr FramePrev, FrameNext;
 	TFuture<FDetailFramePtr> PendingFrame;
 	bool bFramePending = false;
+	// The storm hitches (docs/storm-hitches/): a new sea's FWaveDetail is configured and its first two frames evaluated on a
+	// worker (26-35 ms on the game thread before); the old detail is drawn until the new one's first frame is due, then
+	// Detail, DetailConfigured, LongChopCascade and both frames swap in one frame.
+	struct FDetailConfig
+	{
+		TSharedPtr<Sailing::FWaveDetail, ESPMode::ThreadSafe> Detail;
+		Sailing::FWaveDetailParams Params;
+		int32 LongIndex = -1;
+		FDetailFramePtr Prev, Next;
+	};
+	using FDetailConfigPtr = TSharedPtr<FDetailConfig, ESPMode::ThreadSafe>;
+	TFuture<FDetailConfigPtr> PendingConfig;
+	bool bConfigPending = false;
+	FDetailConfigPtr ReadyConfig;   // made, waiting for the sim clock to reach its first frame
 	// Perf 1 fix 5: the detail maps' blend, mips and half-float packing run on a worker for the next frame's time; the
 	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
 	struct FDetailUpload
