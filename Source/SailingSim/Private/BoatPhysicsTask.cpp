@@ -55,6 +55,8 @@ void FBoatStepJob::Run() const
 		// The assist waiting after the player's sheet, or turned off: the crew's body still answers the boat (see
 		// LastManualHikeTime; Bean, Nov 11: the sailor moves in by reflex whatever the Trim assist setting).
 		const bool bReflex = !bAssist && Now - LastManualHikeTime > TrimIdleSeconds;
+		// Feedback #23: the player's held ease ends on a tack or a head-up even while the assist is waiting.
+		if (!bAssist && !bSimple && !bReflex) Trim->CheckHeldEase(*Boat);
 		if (bAssist || bSimple || bReflex)
 		{
 			const FBoatControls Assisted = Trim->Update(*Boat, *Controls, StepDt);

@@ -1551,6 +1551,7 @@ void ASailboatPawn::PoseForDisplay(double X, double Y, double Z, double HeadingR
 {
 	const double Time = Boat.GetState().Time;
 	Boat.Reset(X, Y, HeadingRad, 0.0);
+	TrimAssist.PlayerTrimmedMain(); // re-placed: the player's held ease goes (feedback #23)
 	Boat.GetMutableState().Time = Time;
 	Boat.GetMutableState().Velocity = Vec3();
 	Boat.GetMutableState().Position.Z += Z - Boat.OriginPosition().Z;
@@ -2859,6 +2860,7 @@ void ASailboatPawn::StartDrill(ESailingDrill Drill)
 		}
 		Controls = FBoatControls();
 		Controls.MainSheet = Controls.JibSheet = 0.6;
+		TrimAssist.Reset(); // a new start: no held ease or tack call carried over (feedback #23)
 		if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingSpinnaker"))) Controls.bSpinnaker = Boat.GetConfig().HasSpinnaker();
 		ApplyStateToTransform();
 	}
@@ -3760,6 +3762,10 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 	// Prologue step 2: at a crew station the hands go to the station merge (UpdateStations), not straight to the controls.
 	if (Stations.IsActive()) return;
 	Adjust(Controls.MainSheet, NAME_MainSheet, 0.35, 0.0, 1.0);
+	// Feedback #23: an ease by hand is kept when the trim assist takes over again; a trim by hand hands the main back to it.
+	// (Before, the assist hauled the eased main back to its own trim 4 s after the key was let go.)
+	if (const float MainHeld = Held(NAME_MainSheet); MainHeld > 0.f) TrimAssist.PlayerEasedMain(Boat, Controls.MainSheet);
+	else if (MainHeld < 0.f) TrimAssist.PlayerTrimmedMain();
 	// With the spinnaker up the jib-sheet keys trim the spinnaker sheet (the jib is in its shadow anyway).
 	Adjust(Controls.bSpinnaker ? Controls.SpinSheet : Controls.JibSheet, NAME_JibSheet, 0.35, 0.0, 1.0);
 	// Engine: throttle and (twin engines) the split, held to change; 0 is neutral.
