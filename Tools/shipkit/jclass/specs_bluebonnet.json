@@ -1,0 +1,79 @@
+{
+ "about": "Bluebonnet's size card (docs/jclass-1): an invented J-Class sloop of 1937 for the Bolivar Roads Yacht Club, Galveston (both names invented, Bean Nov 13 2026). Her sizes sit between Endeavour (1934) and Ranger (1937) as published, and her rated sail area a little under both; every later slice is checked against them (within 5%) and against the rule (rule_check.py). Feet are the period's units; metres follow.",
+ "yacht": {
+  "name": "Bluebonnet",
+  "club": "Bolivar Roads Yacht Club",
+  "home_port": "Galveston",
+  "year": 1937,
+  "look": "1934-37 rule: steel hull, laid teak deck, winches on deck, full crew and owner's accommodation, quadrilateral jib, parachute spinnaker",
+  "sail_mark": "the club's star, no sail number"
+ },
+ "targets": {
+  "loa_ft": 131.0,
+  "lwl_ft": 85.0,
+  "beam_ft": 21.5,
+  "draft_ft": 15.0,
+  "displacement_long_tons": 155.0,
+  "sail_area_ft2": 7500.0,
+  "mast_above_deck_ft": 152.0,
+  "bow_overhang_ft": 19.0,
+  "stern_overhang_ft": 27.0,
+  "freeboard_min_ft": 4.2,
+  "tolerance": 0.05
+ },
+ "rule": {
+  "formula": "R = 0.18 L sqrt(S) / cbrt(D), L and R in feet, S in square feet, D in cubic feet of displaced sea water (35 cubic feet to the long ton)",
+  "rating_max_ft": 76.0,
+  "draft_max_ft": 15.0,
+  "notes": [
+   "L is taken as the load waterline length. The rule's own length measurement varied over the years and added length for the overhangs; with L as the waterline, Ranger's published figures (87 ft, 7,546 sq ft, 166 tons) rate 75.7 ft against her official 76, so the simplification is close.",
+   "The 15 ft draft is what the 1934-37 Js drew (Ranger's and Endeavour's published draft); a rule text with the class's draft limit could not be read from the cloud (Wikipedia and the archive sites are blocked), so slice 0 holds the yacht to it as a design limit.",
+   "From 1934 the class rules put the winches on deck and required full accommodation below: slices 3, 7, 9 and 10 build to that."
+  ]
+ },
+ "published": {
+  "note": "Published figures for real Js, as found in museum and class pages in Nov 2026. Sources differ; these are for checking our sizes, nothing is copied from their drawings.",
+  "Enterprise_1930": {
+   "loa_ft": 120.75,
+   "lwl_ft": 80.0,
+   "sail_area_ft2": 7583
+  },
+  "Endeavour_1934": {
+   "loa_ft": 129.5,
+   "beam_ft": 22.0,
+   "draft_ft": 15.0,
+   "displacement_long_tons": 143,
+   "sail_area_ft2": 7651
+  },
+  "Ranger_1937": {
+   "loa_ft": 135.17,
+   "lwl_ft": 87.0,
+   "beam_ft": 21.0,
+   "draft_ft": 15.0,
+   "displacement_long_tons": 166,
+   "sail_area_ft2": 7546,
+   "mast_above_deck_ft": 153
+  }
+ },
+ "weights": {
+  "note": "Slice 1's weight estimate (long tons): our own split for a riveted steel J, checked so the lead fits in the keel and the centre of gravity can sit over the centre of buoyancy. Refined as later slices add their parts.",
+  "lead_keel": 92.0,
+  "hull_steel_and_frames": 30.0,
+  "deck_and_deckhouses": 7.0,
+  "mast_boom_and_rigging": 8.5,
+  "sails_aboard": 3.0,
+  "winches_and_hardware": 3.5,
+  "accommodation": 6.0,
+  "crew_and_stores": 5.0
+ },
+ "weight_positions": {
+  "note": "Estimated centres (x forward of mid-waterline, z above the waterline, metres) of the parts other than the lead, whose centre comes from the hull. Mast and rigging at about a third of the mast's height; the sails are stowed below when not set.",
+  "hull_steel_and_frames": [-0.8, -0.55],
+  "deck_and_deckhouses": [-1.5, 1.45],
+  "mast_boom_and_rigging": [1.5, 16.0],
+  "sails_aboard": [3.0, -0.6],
+  "winches_and_hardware": [-3.0, 1.6],
+  "accommodation": [-1.0, -0.5],
+  "crew_and_stores": [-1.0, 1.0]
+ }
+}

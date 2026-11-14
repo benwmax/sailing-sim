@@ -1,0 +1,208 @@
+{
+ "about": "Bluebonnet's hull lines: our own design to the 1930s Universal Rule (docs/jclass-1). Nothing here is read from a real yacht's drawing: the curves are drawn to the size card (specs_bluebonnet.json) and the look of the 1934-37 Js in period photos. loft.py turns them into a B-spline surface. Units: metres. Frame: X forward, Y starboard, Z up, origin on the centreline at the middle of the load waterline, Z 0 on the load waterline.",
+ "ends": {
+  "stem_head": [18.745, 2.4],
+  "transom_top": [-21.184, 2.0],
+  "transom_bottom": [-20.573, 1.35],
+  "lwl_ends": [-12.954, 12.954]
+ },
+ "canoe_bottom": {
+  "note": "The canoe body's centreline, without the keel: the counter's underside aft, the run, the forefoot and the spoon bow's stem forward. Over the keel it is where the canoe's deadrise would meet the centreline; the keel hangs below it.",
+  "points": [
+   [-20.573, 1.35],
+   [-19.0, 1.04],
+   [-17.0, 0.67],
+   [-15.0, 0.32],
+   [-13.0, 0.0],
+   [-11.0, -0.4],
+   [-9.0, -0.95],
+   [-7.0, -1.48],
+   [-5.0, -1.93],
+   [-3.0, -2.22],
+   [-1.0, -2.27],
+   [1.0, -2.11],
+   [3.0, -1.8],
+   [5.0, -1.36],
+   [7.0, -0.98],
+   [9.0, -0.7],
+   [11.0, -0.46],
+   [12.954, 0.0],
+   [14.5, 0.57],
+   [16.0, 1.17],
+   [17.5, 1.8],
+   [18.745, 2.4]
+  ]
+ },
+ "keel": {
+  "note": "The keel's outline below the canoe body: a straight raked leading edge from the toe, drawn tangent to the forefoot so keel and stem are one convex line (loft.leading_edge_tangent gives its top, and the loft refuses a top that no longer touches the canoe line), a straight bottom with a little drag, and the raked aft edge ('post'), which is the rudder's trailing edge: the rudder is the keel's after part, 'rudder_chord' (m, fore and aft) wide, aft of its stock line, and slice 2 cuts it out of the keel there (the lead stops at the stock line). Corners are rounded by 'round' (m). Where it meets the canoe body the hollow is 'fillet' (m) under the counter, fading to 'fillet_fwd' at the forefoot along the bottom. Half-thicknesses (the control polygon's, which the surface rounds off: see docs/jclass-1 for the thickness as built): the lead at the bottom, the root, the post, and the stem bar forward of the keel. 'bottom_blunt' keeps the lead's bottom 0.6 m blunt out to the toe and heel. Where the keel is shallower than 'full_thickness_depth' (m) its thickness eases to the section without a keel: the bow's V at the leading edge's top, the bar's width at the post's top.",
+  "leading_edge": [
+   [14.186, 0.44],
+   [1.9, -4.2]
+  ],
+  "bottom": [
+   [1.9, -4.2],
+   [-6.0, -4.572]
+  ],
+  "post": [
+   [-6.0, -4.572],
+   [-9.5, -0.3]
+  ],
+  "round_bottom_fwd": 1.2,
+  "round_heel": 0.45,
+  "fillet": 1.0,
+  "fillet_fwd": 0.0,
+  "half_thickness_bottom": 0.27,
+  "half_thickness_root": 0.48,
+  "half_thickness_post": 0.07,
+  "half_thickness_stem": 0.035,
+  "bottom_blunt": 0.7,
+  "full_thickness_depth": 1.0,
+  "rudder_chord": 1.7
+ },
+ "sheer": {
+  "note": "Height of the deck edge above the load waterline.",
+  "points": [
+   [-21.184, 2.0],
+   [-18.0, 1.74],
+   [-15.0, 1.57],
+   [-12.0, 1.46],
+   [-9.0, 1.39],
+   [-6.0, 1.35],
+   [-3.0, 1.335],
+   [0.0, 1.34],
+   [3.0, 1.37],
+   [6.0, 1.43],
+   [9.0, 1.53],
+   [12.0, 1.7],
+   [14.5, 1.9],
+   [16.5, 2.1],
+   [18.745, 2.4]
+  ]
+ },
+ "deck_half_breadth": {
+  "points": [
+   [-21.184, 0.92],
+   [-19.0, 1.52],
+   [-16.0, 2.22],
+   [-12.0, 2.82],
+   [-8.0, 3.15],
+   [-4.0, 3.272],
+   [-1.5, 3.2766],
+   [2.0, 3.25],
+   [6.0, 3.07],
+   [10.0, 2.66],
+   [13.0, 2.12],
+   [15.5, 1.48],
+   [17.3, 0.82],
+   [18.745, 0.0]
+  ]
+ },
+ "knuckle": {
+  "note": "Each section's shoulder, a smooth line along the hull at a fraction of the section's height (canoe centreline to sheer): near the load waterline amidships, lower down the section in the overhangs. The load waterline's real half-breadths come out of the surface.",
+  "height_fraction": [
+   [-21.184, 0.55],
+   [-17.0, 0.55],
+   [-14.0, 0.55],
+   [-11.0, 0.57],
+   [-8.0, 0.6],
+   [-4.0, 0.63],
+   [0.0, 0.64],
+   [4.0, 0.63],
+   [7.0, 0.59],
+   [10.0, 0.5],
+   [13.0, 0.42],
+   [16.0, 0.37],
+   [18.745, 0.36]
+  ],
+  "half_breadth": [
+   [-21.184, 0.85],
+   [-19.0, 1.4],
+   [-17.0, 1.86],
+   [-15.0, 2.2],
+   [-13.0, 2.46],
+   [-10.0, 2.72],
+   [-7.0, 2.9],
+   [-4.0, 3.02],
+   [-1.0, 3.07],
+   [2.0, 3.03],
+   [4.0, 2.9],
+   [6.0, 2.7],
+   [8.0, 2.38],
+   [10.0, 1.92],
+   [12.0, 1.38],
+   [14.0, 0.9],
+   [16.0, 0.5],
+   [17.5, 0.25],
+   [18.745, 0.0]
+  ]
+ },
+ "section_shape": {
+  "note": "Per-station shape factors: floor = where the floor's control point sits (fraction of the knuckle breadth); deadrise = the bottom's rise at the centreline in degrees (never steeper than the straight line to the bilge point, so the section stays convex); bilge = the turn's control point (fraction of the knuckle breadth, fraction of the height from the canoe's centreline to the knuckle); flare = how far the topside's control point reaches toward the deck edge.",
+  "floor": [
+   [-21.184, 0.45],
+   [-15.0, 0.42],
+   [-8.0, 0.4],
+   [0.0, 0.4],
+   [8.0, 0.38],
+   [13.0, 0.34],
+   [18.745, 0.3]
+  ],
+  "deadrise_deg": [
+   [-21.184, 16],
+   [-15.0, 16],
+   [-11.0, 19],
+   [-6.0, 23],
+   [0.0, 28],
+   [6.0, 32],
+   [10.0, 37],
+   [14.0, 46],
+   [18.745, 58]
+  ],
+  "bilge_breadth": [
+   [-21.184, 0.72],
+   [-17.0, 0.74],
+   [-13.0, 0.81],
+   [-8.0, 0.88],
+   [-3.0, 0.9],
+   [0.0, 0.9],
+   [4.0, 0.89],
+   [8.0, 0.86],
+   [12.0, 0.81],
+   [15.0, 0.78],
+   [18.745, 0.77]
+  ],
+  "bilge_height": [
+   [-21.184, 0.5],
+   [-13.0, 0.68],
+   [-6.0, 0.53],
+   [0.0, 0.5],
+   [6.0, 0.52],
+   [12.0, 0.59],
+   [18.745, 0.66]
+  ],
+  "flare": [
+   [-21.184, 0.62],
+   [-8.0, 0.62],
+   [0.0, 0.62],
+   [8.0, 0.6],
+   [14.0, 0.58],
+   [18.745, 0.58]
+  ]
+ },
+ "fairing": {
+  "note": "Each curve along the length is faired like a batten (loft._fair): it may miss its key points by up to the tolerance here (metres, or the curve's own unit), its ends held, with the least change of curvature that allows.",
+  "knot_spacing_m": 1.5,
+  "tolerance": {
+   "canoe_bottom": 0.01,
+   "sheer": 0.01,
+   "deck_half_breadth": 0.015,
+   "knuckle_half_breadth": 0.02,
+   "knuckle_height_fraction": 0.01,
+   "floor": 0.005,
+   "deadrise_deg": 0.5,
+   "bilge_breadth": 0.005,
+   "bilge_height": 0.005,
+   "flare": 0.01
+  }
+ }
+}

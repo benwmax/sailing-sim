@@ -60,7 +60,7 @@ def main(refs, out, full=False):
         if not licence_ok(d.get("licence")):
             print("skip (licence in refs.json):", d["file"])
             continue
-        name = d["file"].replace(" ", "_")
+        name = re.sub(r'[<>:"|?*]', "_", d["file"].replace(" ", "_"))   # a name Windows can save too
         if not name or name != os.path.basename(name) or name.startswith(".") or "\\" in name:
             print("skip (not a plain file name):", d["file"])
             continue
