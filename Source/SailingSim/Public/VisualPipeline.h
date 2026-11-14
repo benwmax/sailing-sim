@@ -35,6 +35,16 @@ SAILINGSIM_API int32 QualityGIScalabilityLevel(ESailingQuality Quality);
 /** Every console variable a tier sets (ApplyQualitySettings applies them after the scalability level). */
 SAILINGSIM_API TArray<FQualityCVar> QualityCVars(ESailingQuality Quality);
 
+/** The volumetric clouds' view-ray sample scale per tier (UVolumetricCloudComponent::ViewSampleCountScale): Ultra 3,
+ *  every other tier 1. It only takes effect up to r.VolumetricCloud.ViewRaySampleMaxCount (QualityCVars), so the two
+ *  rise together (docs/cloud-shimmer). */
+SAILINGSIM_API float CloudViewSampleScale(ESailingQuality Quality);
+
+/** The cumulus step-depth cap's minimum step (m, M_CloudLayers' CloudCapStepFloor; docs/near-cloud-grain): each near
+ *  step's opacity is capped as if the step were at least this long, so a cloud base closes over several steps and its
+ *  grain averages out. Ultra 150 m (docs/cloud-shimmer); 0 (the material's default, off) elsewhere. */
+SAILINGSIM_API float CloudCapStepFloorM(ESailingQuality Quality);
+
 /** Medium and High use the physical camera and the V1 look; Low keeps the Phase 8 exposure and post. */
 SAILINGSIM_API bool UsesPhysicalCamera(ESailingQuality Quality);
 

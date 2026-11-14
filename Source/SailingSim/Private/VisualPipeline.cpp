@@ -27,13 +27,26 @@ int32 QualityGIScalabilityLevel(ESailingQuality Quality)
 	return Quality == ESailingQuality::Low ? 1 : (Quality == ESailingQuality::Ultra ? 3 : 2);
 }
 
+float CloudViewSampleScale(ESailingQuality Quality)
+{
+	return Quality == ESailingQuality::Ultra ? 3.f : 1.f;
+}
+
+float CloudCapStepFloorM(ESailingQuality Quality)
+{
+	return Quality == ESailingQuality::Ultra ? 150.f : 0.f;
+}
+
 TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 {
 	TArray<FQualityCVar> V;
 	const bool bLow = Quality == ESailingQuality::Low, bUltra = Quality == ESailingQuality::Ultra;
 	const bool bHigh = Quality == ESailingQuality::High || bUltra;   // Ultra has everything High has, and more
 	// Volumetric clouds are the most expensive part of the sky: cap their ray-march samples per tier.
-	V.Add({ TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), bLow ? 48.f : (bUltra ? 160.f : (bHigh ? 80.f : 72.f)) });
+	// Feedback #22 (docs/cloud-shimmer): Ultra's cap is 320 with a view scale of 3 (CloudViewSampleScale: 96 x 3 = 288
+	// asked). At 160 the cap clipped the old scale of 2 (192 asked). On the Mac sweep this alone cut the cumulus's
+	// frame-to-frame shimmer by about a quarter.
+	V.Add({ TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), bLow ? 48.f : (bUltra ? 320.f : (bHigh ? 80.f : 72.f)) });
 	V.Add({ TEXT("r.VolumetricCloud.ReflectionRaySampleMaxCount"), bUltra ? 48.f : (bHigh ? 24.f : 16.f) });
 	// W5a: the march fitted to the cloud. Rays shorter than this (km) get proportionally fewer samples, so with the engine's
 	// 15 km every near ray stepped about 94 m whatever the slab, and the material had to cap each step's opacity (cotton

@@ -2,6 +2,7 @@
 #include "SailingAudio.h"
 #include "GpuSlices.h"
 #include "VisualPipeline.h"
+#include "Components/VolumetricCloudComponent.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
 #include "Misc/Paths.h"
@@ -78,6 +79,21 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Ultra: clouds traced at half resolution"), CVarOf(Ultra, TEXT("r.VolumetricRenderTarget.Mode")), 1.f);
 	TestEqual(TEXT("High: clouds at quarter resolution"), CVarOf(High, TEXT("r.VolumetricRenderTarget.Mode")), 0.f);
 	TestTrue(TEXT("Ultra has the most cloud samples"), CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")) > CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")));
+	// Feedback #22 (docs/cloud-shimmer): Ultra's view-ray scale must not be clipped by the cap. 160 samples at a scale of 2
+	// already met the cap, so the scale and the cap rise together (320 at 3); the near step cap's floor goes to 150 m.
+	// Every other tier keeps the engine's scale and the material's default (no floor).
+	TestEqual(TEXT("Ultra: 320 cloud samples"), CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 320.f);
+	TestEqual(TEXT("Ultra: cloud view sample scale 3"), CloudViewSampleScale(ESailingQuality::Ultra), 3.f);
+	TestTrue(TEXT("Ultra: the sample cap doesn't clip the view scale (base x scale <= cap)"),
+		UVolumetricCloudComponent::BaseViewRaySampleCount * CloudViewSampleScale(ESailingQuality::Ultra) <= CVarOf(Ultra, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")));
+	TestEqual(TEXT("Ultra: cumulus step cap floor 150 m"), CloudCapStepFloorM(ESailingQuality::Ultra), 150.f);
+	TestEqual(TEXT("High: 80 cloud samples (unchanged)"), CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 80.f);
+	TestEqual(TEXT("Medium: 72 cloud samples (unchanged)"), CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 72.f);
+	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium, ESailingQuality::High })
+	{
+		TestEqual(TEXT("Below Ultra: cloud view sample scale 1"), CloudViewSampleScale(Q), 1.f);
+		TestEqual(TEXT("Below Ultra: no cumulus step cap floor"), CloudCapStepFloorM(Q), 0.f);
+	}
 	for (const TArray<FQualityCVar>* Tier : { &High, &Ultra })
 	{
 		for (const FQualityCVar& C : *Tier)
