@@ -954,6 +954,7 @@ void AWaterSurface::UpdateDetail()
 			LongChopCascade = Cfg->LongIndex;
 			FramePrev = Cfg->Prev;
 			FrameNext = Cfg->Next;
+			DetailConfigLead = FMath::Max(DetailConfigLead - 1, 1);   // on time: ease the lead back
 		}
 		else
 		{
