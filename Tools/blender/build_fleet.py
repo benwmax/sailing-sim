@@ -558,6 +558,39 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
         bx, top = H.h["bow_x"], H.section_point(H.h["bow_x"], 1.0)[0]
         front = sorted({P(bow, y) for y in ys}, key=lambda p: p[1])
         fan(hull, front + [(bx, top[1], top[2]), (bx, H.cy - (top[1] - H.cy), top[2])], "Deck", (0, 0, 1))
+    if TAG == "Sunfish":
+        # Shape wave 5, rubrail: the Sunfish's vinyl rubrail runs right round the hull-deck joint, across the transom and
+        # round the stem; it had stopped 2 cm short of the transom and 6 cm short of the stem on each side, its ends capped
+        # like knobs. One length now: along each side 6 mm out from the deck's edge, quarter ellipses at the transom's
+        # corners, round the stem 6 mm past it, across the transom to either side of the rudder's fittings.
+        st, bw, r = H.h["stern_x"], H.h["bow_x"], 0.011
+        zf = lambda x: H.sheer(x) - 0.008
+        out = lambda x: H.sharp_half_beam(x) + 0.006
+        xa, xb = st + 0.03, bw - 0.02
+        # (the sides' stations close up toward the stem, where the deck's edge turns fastest)
+        side = [(x, out(x)) for x in (xa + (xb - xa) * math.sin(math.pi / 2 * k / 80) for k in range(81))]
+        ya, yb = side[0][1], side[-1][1]
+        # (round the stem: a Hermite curve from the side's end, along its own direction, to a point 6 mm past the stem
+        # heading straight across, so the rail turns without a knuckle)
+        (x1, y1), (x0, y0) = side[-1], side[-2]
+        n = math.hypot(x1 - x0, y1 - y0)
+        L = math.hypot(bw + 0.006 - x1, y1)
+        d0, d1 = ((x1 - x0) / n * L, (y1 - y0) / n * L), (0.0, -L)
+        herm = lambda t: tuple((2 * t ** 3 - 3 * t ** 2 + 1) * p0 + (t ** 3 - 2 * t ** 2 + t) * m0 + (-2 * t ** 3 + 3 * t ** 2) * p1
+                               + (t ** 3 - t ** 2) * m1 for p0, m0, p1, m1 in zip((x1, y1), d0, (bw + 0.006, 0.0), d1))
+        tip = [herm(k / 10) for k in range(1, 11)]
+        bowarc = tip + [(x, -y) for (x, y) in reversed(tip[:-1])]
+        # (the starboard quarter: from the side's end, 3 cm in from the transom, round to the transom's face)
+        corner = [(xa - 0.036 * math.sin(math.pi / 2 * k / 8), (ya - 0.03) + 0.03 * math.cos(math.pi / 2 * k / 8)) for k in range(1, 9)]
+        # (across the transom from the quarter to 45 mm off the centreline: the rail stops either side of the rudder's
+        # gudgeon and head, which sit on the transom's top on the centreline)
+        g = 0.045
+        across = [(st - 0.006, g + (ya - 0.03 - g) * k / 4) for k in range(4)]
+        # from beside the rudder to starboard, up that side, round the stem, down the port side and back beside it
+        path = across + corner[::-1] + side + bowarc + [(x, -y) for (x, y) in reversed(side)] \
+            + [(x, -y) for (x, y) in corner] + [(x, -y) for (x, y) in reversed(across)]
+        tube(hull, [(x, H.cy + y, zf(min(max(x, st), bw))) for (x, y) in path], r, "Rubrail", 8)
+        return
     # Rubrail along the hull-deck joint.
     for side in (1, -1):
         rail = [(x, H.cy + side * (H.sharp_half_beam(x) + 0.006), H.sheer(x) - 0.008) for x in stations(stern + 0.02, bow - 0.06, 40)]
