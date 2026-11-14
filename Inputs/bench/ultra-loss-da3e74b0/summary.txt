@@ -32,3 +32,21 @@ GPU. Its p99 comes from a handful of game-thread spikes (5-7 frames of 40-93 ms 
 GPU 25-31 ms on those frames) against 1-3 on d1364112: the tail is hitches on the game thread, not GPU time. Their times
 (about 3.1, 9.3, 10.5, 14.7 s, and one render-thread spike near 11.0 s on both builds) match no logged event (no lightning
 or thunder lines in the logs). (Frames past 15 s are the bench's end: GPU profiling and the screenshot.)
+
+Step 2, fine (s2f-*): storm at 4K Ultra fullscreen on 2f8e31f6, each mainline merge #675..#681 packaged with ONLY the
+#682 cast applied locally (Packaged\Windows-<sha>-msvcfix; never committed), and b9910b7d; the eight in a row, twice.
+Pass 1 is not usable for the six new packages: a package's first launch compiles its shaders on the game thread (16-18
+fps, game 24-29 ms, p99 68-107 ms on every fresh package, 38-40 fps on the two already run). (The same explains
+b9910b7d's 16.6 fps first run in s2-.) Pass 2 (all warm), one run each:
+build               fps   p99   gpu   cloud  base  water  post  game
+2f8e31f6           40.8  34.3  18.00  7.50  4.36  1.53  2.43  14.65
+be5daf53 (#675)    38.6  38.8  19.56  8.59  4.46  1.62  2.66  17.71
+a4724e25 (#677)    37.3  44.1  19.82  8.58  4.96  1.59  2.46  19.88
+8cb9da51 (#679)    36.9  48.0  20.19  8.76  5.01  1.64  2.52  20.34
+a7d43878 (#676)    36.9  50.4  19.81  8.54  4.93  1.60  2.47  20.08
+5b9616c8 (#680)    37.3  49.6  19.88  8.46  5.02  1.45  2.51  20.20
+8d291ade (#681)    36.9  48.8  19.88  8.67  4.85  1.59  2.44  20.52
+b9910b7d (#682+#674) 38.3 42.3 18.99  7.90  4.70  1.59  2.53  17.70
+The two leads hold on one warm run each: #675 brings the cloud slice +1.1 ms, the game thread +3 ms and p99 +4.5 ms;
+#677 the base pass +0.5 ms, the game thread +2 ms more and p99 +5 ms; nothing after moves much. b9910b7d reads 0.9 ms
+lighter than 8d291ade (cloud 7.90 against 8.67): within one-run noise or not is what the three trace rounds (s4) decide.
