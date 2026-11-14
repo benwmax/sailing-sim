@@ -2,19 +2,71 @@
  "boat": "Bluebonnet",
  "build": "Tools/shipkit/jclass/build_jclass.py",
  "hull_object": "Hull",
- "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1). Slice 1: the hull (canoe body and keel in one surface, lofted by loft.py), the transom, and a placeholder deck for slice 3.",
+ "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1, docs/jclass-2). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame). The deck is a placeholder for slice 3.",
  "sections": {
   "hull_shell": {
-   "objects": ["Hull", "Transom"],
-   "owns": ["loft.py", "lines_bluebonnet.json"],
-   "shared": ["specs_bluebonnet.json"],
-   "borders": ["deck_placeholders"]
+   "objects": [
+    "Shell",
+    "Transom"
+   ],
+   "owns": [
+    "loft.py",
+    "lines_bluebonnet.json",
+    "shell.py",
+    "finish_bluebonnet.json paint, plating, lead"
+   ],
+   "shared": [
+    "specs_bluebonnet.json"
+   ],
+   "borders": [
+    "rudder",
+    "lettering",
+    "deck_placeholders"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "Rudder",
+    "RudderStock"
+   ],
+   "owns": [
+    "shell.py rudder",
+    "finish_bluebonnet.json rudder"
+   ],
+   "shared": [
+    "loft.py rudder_stock_z"
+   ],
+   "borders": [
+    "hull_shell",
+    "deck_placeholders"
+   ]
+  },
+  "lettering": {
+   "objects": [
+    "Letters_"
+   ],
+   "owns": [
+    "build_jclass.lettering",
+    "finish_bluebonnet.json lettering",
+    "fonts/"
+   ],
+   "shared": [],
+   "borders": [
+    "hull_shell"
+   ]
   },
   "deck_placeholders": {
-   "objects": ["DeckPlaceholder"],
-   "owns": ["build_jclass.deck_mesh"],
+   "objects": [
+    "DeckPlaceholder"
+   ],
+   "owns": [
+    "build_jclass.deck_mesh"
+   ],
    "shared": [],
-   "borders": ["hull_shell"]
+   "borders": [
+    "hull_shell",
+    "rudder"
+   ]
   }
  },
  "joins": []

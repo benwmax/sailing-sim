@@ -1,0 +1,111 @@
+{
+ "about": "Bluebonnet's finish (docs/jclass-2): the paint lines, the riveted plating under the paint, the lead casting, the rudder and its stock, and the name on the transom. Our own choices for an invented 1937 J; sizes in metres in the hull's frame (X forward of mid-waterline, Z up from the load waterline) unless a key says otherwise.",
+ "paint": {
+  "note": "Deep blue topsides (the bluebonnet's own colour, the flower she is named for), a gold cove line just under the sheer, a white boot top along the waterline and a dark red bottom: the usual dress of a 1930s steel yacht. The boot top's lines are heights above the load waterline that rise toward the ends ('sheered'), so the stripe still shows at the bow and under the counter, where the hull leaves the water at a shallow angle. The cove line is measured down from the sheer. Colours are sRGB 0-255 for the renders; the game's skins set their own.",
+  "boot_top_bottom": {
+   "mid": 0.1,
+   "rise_at_lwl_ends": 0.1
+  },
+  "boot_top_top": {
+   "mid": 0.26,
+   "rise_at_lwl_ends": 0.16
+  },
+  "cove_below_sheer": [
+   0.08,
+   0.105
+  ],
+  "colours": {
+   "Topsides": [
+    30,
+    48,
+    118
+   ],
+   "Bootstripe": [
+    236,
+    233,
+    222
+   ],
+   "Antifouling": [
+    112,
+    34,
+    28
+   ],
+   "Keel": [
+    112,
+    34,
+    28
+   ],
+   "CoveStripe": [
+    212,
+    166,
+    64
+   ],
+   "Gilt": [
+    212,
+    166,
+    64
+   ],
+   "Bronze": [
+    150,
+    104,
+    60
+   ]
+  }
+ },
+ "plating": {
+  "note": "Flush-riveted steel plating, faired and painted, so the plate edges and rivet heads show only faintly in a raking light. Strakes run fore and aft at a constant girth below the sheer (the sheer strake and each one under it 'width' wide), and run out where they meet the stem, the keel's edge, the counter's centreline or the lead casting, so each strake ends at its own place. Plates are 'plate_length' long, their butts staggered by a third of a plate from one strake to the next. Frames every 'frame_spacing' along the hull carry a single row of rivets; seams and butts a row each side. Drawn by the paint's material from the hull's 'Plating' UV map (U = x, V = girth below the sheer, metres; -1 where there is no plating), not modelled, so it costs no triangles and fades out with distance. Sizes are our estimates for a riveted steel yacht of the period; the depths are what the paint lets show (a seam's soft groove 'seam_depth' deep, 'seam_width' wide; a rivet's dimple 'rivet_depth'), set by eye in a raking light. 'thickness' is the plate's (our estimate, 5/16 in): it stands outside the moulded surface, so below the waterline it adds buoyancy (see lead). 'fade_rivets' and 'fade_seams' are the camera distances (m) over which each fades out, so the far hull does not sparkle where a rivet is smaller than a pixel; the game's material will do the same by its own distances.",
+  "width": 1.05,
+  "plate_length": 6.1,
+  "frame_spacing": 0.53,
+  "rivet_offset": 0.035,
+  "rivet_pitch": 0.075,
+  "frame_rivet_pitch": 0.11,
+  "seam_width": 0.006,
+  "seam_depth": 0.001,
+  "rivet_radius": 0.009,
+  "rivet_depth": 0.0005,
+  "thickness": 0.008,
+  "fade_rivets": [
+   6.0,
+   14.0
+  ],
+  "fade_seams": [
+   18.0,
+   45.0
+  ]
+ },
+ "lead": {
+  "note": "The lead ballast casting is the keel below its top, forward of the keel's after face at the rudder's slot. Its weight is the size card's 92 long tons plus what the finish changes in her displacement: the plating (plating.thickness outside the moulded surface below the waterline, except on the lead, which is cast to the moulded line) adds buoyancy, and the slot and the groove round the rudder's nose take a little away. The build measures both on the finished shell, then finds the top whose casting, measured on the same mesh (groove and all), holds that weight, so she floats on her lines. Its top is a fair horizontal line on the keel: the joint between casting and plating, faint under the paint like a seam. Painted with the bottom, in its own material slot ('Keel') so a skin can pick it out."
+ },
+ "rudder": {
+  "note": "The rudder is the keel's after part, cut out along its stock line (loft.rudder_stock_z, 1.7 m forward of the trailing edge, parallel to it) and turned about it. Everything about the cut is shaped round the stock's axis, so the rudder can turn without touching the keel: its leading edge is a round nose about the axis as wide as the rudder there, turning in a groove in the keel's after edge 'gap' wider all round; its head starts as a flat shoulder square to the stock at 'top_edge.stock_z' on the stock line, out to 'shoulder_radius' from the axis (past the nose), then rises as a cone about the axis to the trailing edge at 'top_edge.post_z'. The deadwood's underside over the head follows the same shoulder and cone 'head_gap' clear, so a point on the head turns along it and never into the deadwood. The keel's side ends 'slot' forward of the axis, far enough that the groove stays inside the keel's thickness, and that is the line seen from outside. 'lateral_limit' (m off the centreline) keeps the cone from cutting into the hull's wider sections above the rudder. The stock is a bronze shaft 'stock_radius' in radius from 'stock_from_bottom' above the stock line's foot up through the counter to just under the deck, where slice 3's steering gear takes it.",
+  "top_edge": {
+   "stock_z": -2.75,
+   "post_z": -1.83
+  },
+  "shoulder_radius": 0.4,
+  "gap": 0.015,
+  "head_gap": 0.025,
+  "slot": 0.1,
+  "lateral_limit": 0.5,
+  "stock_radius": 0.08,
+  "stock_from_bottom": 0.6
+ },
+ "lettering": {
+  "note": "Name and home port in gilt Roman capitals on the transom, the name over the port, as a yacht of the period carried them. The letters are mesh, raised 'relief' off the plate, set from Libre Baskerville (SIL Open Font License 1.1, fonts/OFL-LibreBaskerville.txt): the glyphs become part of the model; the font itself is not shipped. Heights are cap heights; 'z' is the height of each line's baseline on the transom's centreline.",
+  "font": "fonts/LibreBaskerville-Regular.ttf",
+  "name": {
+   "text": "BLUEBONNET",
+   "cap_height": 0.13,
+   "z": 1.74,
+   "tracking": 0.12
+  },
+  "port": {
+   "text": "GALVESTON",
+   "cap_height": 0.075,
+   "z": 1.52,
+   "tracking": 0.18
+  },
+  "relief": 0.004
+ }
+}

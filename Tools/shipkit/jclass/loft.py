@@ -496,14 +496,15 @@ def lead_keel(S, lead_t, rho_lead=11340.0):
             "centroid_x_m": round(cx, 3), "centroid_z_m": round(cz, 3)}
 
 
-def weight_check(S, h):
+def weight_check(S, h, lead=None):
     """The size card's weight split against the hull: does the lead fit in the keel, and where are G and B?
-    Heights of the parts other than the lead are our estimates for a 1930s steel J (see specs_bluebonnet.json)."""
+    Heights of the parts other than the lead are our estimates for a 1930s steel J (see specs_bluebonnet.json).
+    `lead` (centroid_x_m, centroid_z_m) replaces lead_keel's: slice 2 passes the casting with the rudder's slot cut away."""
     w = SPECS["weights"]
     lt = 1.016047
-    lead = lead_keel(S, w["lead_keel"] * lt)
+    lead = lead or lead_keel(S, w["lead_keel"] * lt)
     # (long tons, x m, z m) of each part; the lead's from the hull, the rest estimated
-    parts = {"lead_keel": (w["lead_keel"], lead["centroid_x_m"], lead["centroid_z_m"])}
+    parts = {"lead_keel": (lead.get("long_tons", w["lead_keel"]), lead["centroid_x_m"], lead["centroid_z_m"])}
     for k, xz in SPECS["weight_positions"].items():
         if k != "note":
             parts[k] = (w[k], xz[0], xz[1])

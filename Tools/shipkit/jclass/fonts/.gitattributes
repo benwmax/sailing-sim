@@ -1,0 +1,3 @@
+# Bluebonnet's lettering font is plain git, not LFS (like docs/.gitattributes): one 147 KB OFL font that the
+# cloud build lane reads, and that lane cannot upload LFS objects.
+*.ttf -filter -diff -merge binary

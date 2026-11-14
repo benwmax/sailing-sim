@@ -68,9 +68,19 @@ if __name__ == "__main__":
     b = json.load(open(sys.argv[1]))
     h = b.get("hydrostatics", b)
     r = check(h, b.get("sail_area_ft2"), b.get("appendage_ft3"))
-    shell = b.get("shell")
-    if shell is not None and not shell.get("closed"):
-        r["pass"] = False
-        print(f"FAIL: the build's shell does not close: {shell}")
+    if "hydrostatics" in b:
+        # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
+        # shell with its transom and deck, the rudder, the stock)
+        shell = b.get("shell") or {}
+        pieces = {"shell": shell} if "closed" in shell else shell
+        need = ("shell_transom_deck", "rudder", "stock") if b.get("slice", 1) >= 2 else ("shell",)
+        for name in need:
+            if name not in pieces:
+                r["pass"] = False
+                print(f"FAIL: the build has no closure check for its {name}")
+        for name, c in pieces.items():
+            if not c.get("closed"):
+                r["pass"] = False
+                print(f"FAIL: the build's {name} does not close: {c}")
     print(report(r))
     sys.exit(0 if r["pass"] else 1)
