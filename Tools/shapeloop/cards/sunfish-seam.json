@@ -1,0 +1,27 @@
+{
+ "id": "sunfish-seam",
+ "boat": "Sunfish",
+ "sections": ["hull", "deck"],
+ "status": "wave 5, round 2: blind A/B 3 of 3",
+ "feature": "The Sunfish's hull-deck seam at the transom closes: the transom's outline runs sheer to sheer and faces aft, and the deck moulding's flange fills the crown over the transom's top.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "transom outline: the mirror leaves out the keel point (tr[1:]), not the sheer point; its top edge was from one sheer corner to 25 mm under the other, it faced forward and left holes into the hull (build_fleet.shell, Sunfish only)",
+  "the deck's after edge closed down to the transom's top under the crown (12 mm at the centreline), facing aft (build_fleet.deck, crown_table boats: the Sunfish)"
+ ],
+ "references": "The blind reviewers' notes on round 1 (a dark line along the transom's top); a ray cast from astern found the holes and the slot.",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Round 2's three blind reviewers (sailor, boatbuilder, 3D artist) all preferred the closed seam; the old one read as a deck floating over a hollow hull.",
+  "Their notes for later: the faceted forefoot (stair steps under the bow); a dark sliver at the stem; the rubrail ending in knobs at the transom corners instead of carrying across; a sharp deck-to-transom corner with no flange lip or radius; the daggerboard and rudder as plain slabs; the rudder blade long against the real one.",
+  "The other fleet boats share the old transom outline (one sheer corner skipped, facing forward): a later round with their rebakes; the loop's scope is the J/22 hero and the Sunfish."
+ ]
+}

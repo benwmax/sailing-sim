@@ -330,6 +330,14 @@ def oface(m, pts, slot, out):
     return m.face(list(reversed(pts)) if n.dot(Vector(out)) > 0 else list(pts), slot)
 
 
+def fan(m, loop, slot, out):
+    """A convex planar outline as triangles from its centroid, each wound to look along `out`: an n-gon with collinear
+    points (the transom's) can triangulate into zero-area slivers in the importer."""
+    c = tuple(sum(p[k] for p in loop) / len(loop) for k in range(3))
+    for a, b in zip(loop, loop[1:] + loop[:1]):
+        oface(m, [c, a, b], slot, out)
+
+
 def slab(m, outline, y0, thick, slot):
     """A flat part: a convex outline in the x-z plane [(x, z)], `thick` across y, centred on y0."""
     a = [(x, y0 - thick / 2, z) for (x, z) in outline]
@@ -461,6 +469,14 @@ def shell(H):
                     qq.reverse()
                 hull.face(qq, slot)
     tr = pts[0]
+    if TAG == "Sunfish":
+        # Shape wave 5, seam: the transom's outline skipped the port sheer point and doubled the keel's (tr runs keel to
+        # sheer; the mirror must leave out tr[0], not tr[-1]), so its top edge ran from one sheer corner to 25 mm under
+        # the other, and it faced forward: from astern a dark wedge under the deck's after edge. (The other fleet boats
+        # share the old outline: a later round, with their rebakes.)
+        loop = tr + [(p[0], H.cy - (p[1] - H.cy), p[2]) for p in reversed(tr[1:])]
+        fan(hull, loop, "Topsides", (-1, 0, 0))
+        return xs
     loop = tr + [(p[0], H.cy - (p[1] - H.cy), p[2]) for p in reversed(tr[:-1])]
     hull.face(list(reversed(loop)), "Topsides")
     return xs
@@ -514,6 +530,17 @@ def deck(H, cuts=(), slot="NonSkid", smooth_margin=False):
             for part, s in ((clip(clip(flat, up), lo), slot), (clip(flat, lambda p: -up(p)), "Deck"), (clip(flat, lambda p: -lo(p)), "Deck")):
                 if len(part) >= 3:
                     hull.face([(x, y, H.deck_z(x, y)) for (x, y) in part], s)
+    if "crown_table" in SPEC:
+        # Shape wave 5, seam: the deck's crown stands over the transom's top (12 mm at the centreline on the Sunfish), and
+        # the transom ended at the sheer, leaving a slot open under the deck's after edge. The deck moulding's flange
+        # closes it, flush with the transom.
+        b = H.sharp_half_beam(stern)
+        cut = set(ys) | ({H.cy - (b - 0.08), H.cy + (b - 0.08)} if smooth_margin else set())  # (the deck's edge vertices)
+        cap = [P(stern, y) for y in sorted(y for y in cut if abs(y - H.cy) < b)]
+        cap = [P(stern, H.cy - b)] + cap + [P(stern, H.cy + b)]
+        cap = [p for k, p in enumerate(cap) if k == 0 or abs(p[1] - cap[k - 1][1]) > 1e-6]
+        # (its ends are on the sheer, where the crown runs out: the arc and its chord along the transom's top)
+        fan(hull, cap, "Deck", (-1, 0, 0))
     # Rubrail along the hull-deck joint.
     for side in (1, -1):
         rail = [(x, H.cy + side * (H.sharp_half_beam(x) + 0.006), H.sheer(x) - 0.008) for x in stations(stern + 0.02, bow - 0.06, 40)]
