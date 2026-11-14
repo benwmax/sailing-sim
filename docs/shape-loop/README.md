@@ -311,3 +311,17 @@ traveller -11.5 mm, mainsheet ratchet +22.5 mm). Blind A/B 3 of 3. Open for late
 (underwater, waits for a physics pass), its well about 0.4 m further forward (needs the Mac's crew work), the faceted
 forefoot, a thin dark line at the transom's top, a slot at the stem, and a flatter, more ridged section than the
 parabola.
+
+## Wave 5, round 2 (Nov 14): the Sunfish's transom seam
+
+Card `cards/sunfish-seam.json`. Round 1's reviewers saw a thin dark line along the transom's top. A ray cast from
+astern found two faults. The transom's outline in `shell()` mirrored `tr[:-1]` where it meant `tr[1:]`, so it skipped
+the port sheer point and doubled the keel's: its top ran from one sheer corner to 25 mm under the other, it faced
+forward, and its triangulation left holes into the hull. And the deck's crown (12 mm at the transom) stood over the
+transom's top, which ends at the sheer. For the Sunfish the transom now runs sheer to sheer facing aft, and `deck()`
+closes the crown's arc down to the transom (`crown_table` boats). The other fleet boats keep the old outline until a
+round with their rebakes. Both faces are triangle fans from their centroids (`fan()`): the transom's outline has a
+collinear point that ear-clipping turns into zero-area slivers, so the importer's triangulation is not left to chance.
+The deck's closing face takes the non-skid border's vertices on the after edge too (QA: they had left two open
+slivers). Checks: fairness, seams, volume and CB unchanged; 26 more triangles; nothing moves; the joined hull fbx's
+open edges 786 to 762. Blind A/B 3 of 3.
