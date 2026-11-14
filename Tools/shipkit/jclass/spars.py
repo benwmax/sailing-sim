@@ -90,10 +90,11 @@ def scale(s):
     return 1.0 - (1.0 - M["top_scale"]) * t ** M["taper_power"]
 
 
-def egg(k, n, grow=0.0):
+def egg(k, n, grow=0.0, th=None):
     """The mast's section at scale k as n points (f forward, y starboard) round from the forward face toward
-    starboard: a pear, fuller forward, 'depth' by 'width' at k = 1; grow pushes it out (a band over the mast)."""
-    th = 2 * math.pi * np.arange(n) / n
+    starboard: a pear, fuller forward, 'depth' by 'width' at k = 1; grow pushes it out (a band over the mast). th: the
+    points' angles instead (0 the forward face, pi the after face)."""
+    th = 2 * math.pi * np.arange(n) / n if th is None else np.asarray(th, float)
     a = 0.5 * M["depth"] * k + grow
     b = 0.5 * M["width"] * k
     f = a * np.cos(th)
@@ -230,16 +231,72 @@ def plate(part, origin, U, Vd, N, u0, u1, h, t, slot, label, round_end=True, mas
     part.add(V, F, slot, mass, label)
 
 
-def band(part, s, height, t, slot, label, rho=BRZ, n=64):
+def _gap_angle(s, grow, half):
+    """How far round from the after face (radians) the mast's section at s, grown by `grow`, is `half` off its centre
+    plane."""
+    k = scale(s)
+    lo, hi = 0.0, math.pi / 2
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if egg(k, 1, grow, th=[math.pi - mid])[1][0] < half:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def band(part, s, height, t, slot, label, rho=BRZ, n=64, gap=0.0):
     """A band round the mast at s, 'height' tall and t proud of it (rho 0: paint, no weight). Its inner face is inside
-    the mast, so it sits on it with no gap."""
+    the mast, so it sits on it with no gap. gap > 0 leaves the after face open `gap` either side of the centre plane,
+    where the mainsail's track runs (a C round the mast, its ends square, so the sail's slides pass between them)."""
     s0, s1 = s - height / 2, s + height / 2
-    rings = [ring_at(s0, n, -0.012), ring_at(s0, n, t), ring_at(s1, n, t), ring_at(s1, n, -0.012)]
-    V, F = deck.loft_rings(rings, closed=True)
+    if gap <= 0:
+        rings = [ring_at(s0, n, -0.012), ring_at(s0, n, t), ring_at(s1, n, t), ring_at(s1, n, -0.012)]
+        V, F = deck.loft_rings(rings, closed=True)
+        arc = ring_at(s, n)
+        arc = np.vstack([arc, arc[:1]])
+    else:
+        def arc_at(sr, grow):
+            d = _gap_angle(sr, grow, gap)
+            f, y = egg(scale(sr), n, grow, th=np.linspace(math.pi + d, 3 * math.pi - d, n))
+            return at(sr) + f[:, None] * FW + y[:, None] * Y
+        a = [arc_at(s0, -0.012), arc_at(s0, t), arc_at(s1, t), arc_at(s1, -0.012)]
+        V, F = deck.loft_rings([np.array([q[i] for q in a]) for i in range(n)])
+        arc = arc_at(s, 0.0)
     part.add(V, F, slot, None, label)
     if rho:
-        part.masses.append({"part": label, "kg": round(girth(ring_at(s, n)) * height * t * rho, 1),
-                            "centre": [round(float(v), 3) for v in at(s)], "how": "band"})
+        seg = np.linalg.norm(np.diff(arc, axis=0), axis=1)
+        mid = 0.5 * (arc[1:] + arc[:-1])
+        cen = (mid * seg[:, None]).sum(0) / seg.sum() if gap > 0 else at(s)
+        part.masses.append({"part": label, "kg": round(float(seg.sum()) * height * t * rho, 1),
+                            "centre": [round(float(v), 3) for v in cen], "how": "band"})
+
+
+def track_run():
+    """The mainsail track's ends along the mast: from just above the boom to just under the black band."""
+    return s_at(RG["gooseneck"]["boom_top_above_deck"] + 0.06), S_TOP - M["black_band"]["below_top"] - 0.02
+
+
+def band_gap():
+    """How far either side of the centre plane a band crossing the track's run stops: clear of the slides' lane."""
+    return RG["track"]["slide_lane"]["half_width"] + 0.003
+
+
+def slide_lane(s0=None, s1=None):
+    """The room the mainsail's slides need up the track: a box along the mast's after face from just off its skin to
+    'out' past it, 'half_width' either side of the centre plane, from s0 to s1 (the track's run by default). Nothing
+    but the track may be in it. Returns the solid's vertices and faces."""
+    tk = RG["track"]
+    ln = tk["slide_lane"]
+    run = track_run()
+    s0 = run[0] if s0 is None else s0
+    s1 = run[1] if s1 is None else s1
+    rings = []
+    for s in np.linspace(s0, s1, max(int((s1 - s0) / 0.25), 2) + 1):
+        a = half_depth(s)
+        f_in, f_out, w = -(a + 0.003), -(a + ln["out"]), ln["half_width"]
+        rings.append(np.array([at(s, f_in, -w), at(s, f_out, -w), at(s, f_out, w), at(s, f_in, w)]))
+    return deck.loft_rings(rings)
 
 
 def _bisector(T, prev, nxt):
@@ -274,7 +331,7 @@ def mast(part, rep):
     V, F = deck.revolve([(rt, 0.0), (rt, 0.55 * th), (0.82 * rt, 0.88 * th), (0.45 * rt, th), (0.0, th)],
                         at(S_TOP - th), A, FW, 40)
     part.add(V, F, "Bronze", ("cast", BRZ, 0.006), "Truck")
-    # the masthead band, the crane forward (the topmast stay's tang and the spinnaker halyard's block), the black band
+    # the masthead band, the crane forward (the spinnaker halyard's block, clear of the mast), the black band
     mb = M["masthead_band"]
     band(part, S_TOP - mb["below_top"], mb["height"], mb["thickness"], "Bronze", "Masthead band")
     cr = M["masthead_crane"]
@@ -315,7 +372,7 @@ def partners(part):
 def hounds(part, rep):
     hd = RG["hounds"]
     s_h = s_at(hd["height_fraction"] * H)
-    band(part, s_h + 0.05, hd["band_height"], hd["band_thickness"], "Bronze", "Hounds band")
+    band(part, s_h + 0.05, hd["band_height"], hd["band_thickness"], "Bronze", "Hounds band", gap=band_gap())
     tg = hd["tang"]
     a = half_depth(s_h)
     plate(part, at(s_h), FW, A, Y, a - 0.03, a + hd["band_thickness"] + tg["reach"], tg["height"], tg["thickness"],
@@ -339,6 +396,7 @@ def spreaders(part, rep, sheer, s_h):
     hb = float(np.interp(cp["x"], sheer[o, 0], np.abs(sheer[o, 1]))) - cp["inboard_of_sheer"]
     nsd = sp["sides"]
     rep["chainplates"], rep["spreader_tips"], rep["spreaders"] = {}, {}, []
+    rep["spreader_chords"] = {}                                   # fore and aft along each tip's section
     sockets = [[] for _ in sp["heights"]]                        # where each socket sits on the mast (s), both sides
     for sd, side in ((1, "starboard"), (-1, "port")):
         chain = np.array([cp["x"], sd * hb, float(shell.deck_z(np.array([cp["x"]]), np.array([sd * hb]))[0])])
@@ -346,6 +404,7 @@ def spreaders(part, rep, sheer, s_h):
         path = [chain] + tips + [np.asarray(rep["shroud_tangs"][side], float)]
         rep["chainplates"][side] = chain
         rep["spreader_tips"][side] = tips
+        rep["spreader_chords"][side] = []
         for i, T in enumerate(tips):
             s = s_at(sp["heights"][i])
             ax = _bisector(T, path[i], path[i + 2])
@@ -355,6 +414,7 @@ def spreaders(part, rep, sheer, s_h):
             root = T - L * ax
             ch = unit(FW - (FW @ ax) * ax)
             tk = np.cross(ax, ch)
+            rep["spreader_chords"][side].append(ch)
 
             def sec(l, grow=0.0, shrink=1.0):
                 tau = min(max((l - (L - L_out)) / L_out, 0.0), 1.0)
@@ -389,8 +449,9 @@ def spreaders(part, rep, sheer, s_h):
                                          "length_from_mast_m": round(float(L_out), 3),
                                          "tilt_up_deg": round(math.degrees(math.asin(float(ax @ UP))), 2),
                                          "shroud_bend_at_tip_deg": round(180.0 - bend, 2)})
+    rep["spreader_band_s"] = [float(np.mean(ss)) for ss in sockets]
     for ss in sockets:                                            # a band round the mast through each pair's sockets
-        band(part, float(np.mean(ss)), sp["socket"]["length"] * 0.8, 0.006, "Bronze", "Spreader bands")
+        band(part, float(np.mean(ss)), sp["socket"]["length"] * 0.8, 0.006, "Bronze", "Spreader bands", gap=band_gap())
 
 
 def jumpers(part, rep, s_h):
@@ -408,15 +469,18 @@ def jumpers(part, rep, s_h):
         hdir = unit(math.cos(ps) * FW + sd * math.sin(ps) * Y)
         Rs = surface_toward(s_j, hdir)
         st, sf = surface_toward(s_top, hdir), surface_toward(s_foot, hdir)
+        # the stay's pins, on small tangs 'stay_pins_out' off those points (slice 5): the strut bisects the bend
+        # of the stay between them
+        pt, pf = st + jp["stay_pins_out"] * unit(st - at(s_top)), sf + jp["stay_pins_out"] * unit(sf - at(s_foot))
         d = hdir
         for _ in range(100):
-            d_new = _bisector(Rs + jp["length"] * d, st, sf)
+            d_new = _bisector(Rs + jp["length"] * d, pt, pf)
             done = float(np.linalg.norm(d_new - d)) < 1e-12
             d = d_new
             if done:
                 break
         T = Rs + jp["length"] * d
-        off = math.degrees(math.acos(min(1.0, float(d @ _bisector(T, st, sf)))))
+        off = math.degrees(math.acos(min(1.0, float(d @ _bisector(T, pt, pf)))))
         if off > 0.01:
             raise ValueError(f"the {side} jumper strut is {off:.3f} degrees off its stay's bisector")
         rep["jumper_stays"][side] = {"top": st, "foot": sf}
@@ -432,6 +496,7 @@ def jumpers(part, rep, s_h):
         V, F = deck.revolve([(r0 + 0.02, 0.0), (r0 + 0.02, 0.3), (r0 + 0.004, 0.34), (r0 - 0.002, 0.35)], o, d, UP, 24)
         part.add(V, F, "Bronze", ("cast", BRZ, 0.006, disc(r0 + 0.02, 24) + disc(r0 - 0.002, 24)), "Jumper strut sockets")
         rep["jumper_tips"][side] = T
+        rep.setdefault("jumper_strut_dirs", {})[side] = d
     hz = d - (d @ UP) * UP                                        # the last (port) strut's heading, level
     rep["jumper_struts"] = {"length_m": jp["length"],
                             "splay_deg": round(math.degrees(math.atan2(abs(float(hz @ Y)), float(hz @ FW))), 2),
@@ -706,7 +771,7 @@ def build(sheer=None):
     spreaders(mp, pts, sheer, s_h)
     jumpers(mp, pts, s_h)
     g = RG["gooseneck"]
-    track(mp, s_at(g["boom_top_above_deck"] + 0.06), pts["black_band_s"] - 0.02)
+    track(mp, *track_run())
     pt = RG["track"]["pole_track"]
     track(mp, s_at(pt[0]), s_at(pt[1]), after=False, label="Pole track")
     G, s_pin = gooseneck(mp, pts)
@@ -737,6 +802,7 @@ def build(sheer=None):
     rep["checks"] = {"pole_no_longer_than_J": pl_ok(meas), "pole_from_mast_face_m": round(pole_from_face(), 3),
                      "boom_end_forward_of_transom_m": round(float(pts["boom"]["end"][0] - loft.END["transom_top"][0]), 3)}
     rep["weights"] = spar_weights(parts)
+    rep["_pts"] = dict(pts, s_pin=s_pin)                          # unrounded, for rigging.py (not written out)
     return parts, rep
 
 

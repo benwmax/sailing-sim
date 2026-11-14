@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint, deck and rig renders of Bluebonnet for the docs and the blind reviews (docs/jclass-1 to
-jclass-4).
+"""Clay, zebra, afloat, paint, deck, rig and rigging renders of Bluebonnet for the docs and the blind reviews
+(docs/jclass-1 to jclass-5).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -23,6 +23,13 @@ boats), the same every round so before and after line up:
                                              deck, the gooseneck, the pole's car, and the boom and pole set for a run
                                              (boom to starboard, pole to port) and a reach (boom to port, pole to
                                              starboard)
+  rigging_*                                  slice 5's standing rigging and runners, sailed on starboard tack (the
+                                             starboard runner and checkstay set, the port pair let off): profile and
+                                             from ahead, a quarter view afloat, the hounds, a lower spreader's tip, the
+                                             chainplates, the let-off pair lashed to the shroud, a set runner's tackle,
+                                             the masthead's backstay crane, the jumpers, the backstay at the counter,
+                                             the forestay at the stem head, the boom squared off past the let-off pair,
+                                             and running on each tack
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -198,16 +205,26 @@ def set_pole(deg):
     turn_about_z("SpinnakerPole", 70.0 - deg)
 
 
+def shown(o, upto, tack):
+    """Whether an object shows in a shot: its slice is no later than `upto`, the build did not hide it, and a runner's
+    or a checkstay's state shows set on the tack's side (windward) and let off on the other."""
+    if o.get("slice", 1) > upto:
+        return False
+    if o.get("state") is not None:
+        return (o["state"] == "Set") == (o["side"] == tack)
+    return o.name not in HIDDEN
+
+
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
-         upto=3, boom=0.0, pole=70.0):
+         upto=3, boom=0.0, pole=70.0, tack="starboard"):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
-    to starboard)."""
+    to starboard). tack: which side the runners are set on (slice 5)."""
     if ONLY and name not in ONLY:
         return
     for o in meshes:
-        o.hide_render = o.name in HIDDEN or o.get("slice", 1) > upto
+        o.hide_render = not shown(o, upto, tack)
     turn_rudder(rudder)
     swing_boom(boom)
     set_pole(pole)
@@ -328,4 +345,40 @@ shot("rig_run", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir
      boom=80.0, pole=-85.0)
 shot("rig_reach", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48,
      upto=4, boom=-30.0, pole=60.0)
+# slice 5: the standing rigging and the runners, sailed on starboard tack (the wind from starboard: the starboard runner
+# and checkstay set, the port pair let off and lashed to the aftermost shroud, the boom to port) unless a shot says
+# otherwise. Blender's +Y is port. The chainplates are abreast the mast at x 2.9 to 3.3, y 3.15 out; the lower
+# spreaders' tips at z 12.0; the hounds at z 37.6; the backstay's crane at z 47.4; its chainplate at x -20.8.
+shot("rigging_profile", "paint", (MIDA.x, -150, MIDA.z), MIDA, ortho=1.05 * max(HIA.x - LOA.x, HA * ASPECT),
+     sun_dir=RSUN, sun=3.0, upto=5, boom=-15.0)
+shot("rigging_ahead", "paint", (150, 0, MIDA.z), (0, 0, MIDA.z), ortho=1.05 * HA * ASPECT, sun_dir=(-0.6, 0.3, -0.75),
+     sun=3.0, upto=5, boom=-15.0)
+shot("rigging_afloat34", "paint", (46.0, -54.0, 5.0), (-1.0, 0.0, 22.0), lens=24, sea=True, sun_dir=RSUN, sun=3.0,
+     samples=48, upto=5, boom=-25.0)
+shot("rigging_hounds", "paint", (-3.6, -6.6, 39.9), (2.0, 0.0, 37.6), lens=85, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+shot("rigging_tip", "paint", (5.4, -5.6, 13.1), (2.73, -2.93, 11.95), lens=110, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+shot("rigging_chainplates", "paint", (6.6, -5.8, 3.2), (3.05, -3.1, 1.8), lens=35, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+shot("rigging_lashing", "paint", (5.0, 5.0, 3.4), (2.8, 3.1, 2.5), lens=35, sun_dir=(-0.35, -0.5, -0.8), sun=3.0,
+     samples=64, upto=5, boom=-25.0)
+shot("rigging_tackle", "paint", (-9.4, -5.3, 3.7), (-12.3, -2.43, 2.0), lens=35, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5, boom=-25.0)
+shot("rigging_masthead", "paint", (-4.2, -4.8, 49.8), (1.6, 0.0, 47.2), lens=70, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+shot("rigging_jumpers", "paint", (10.5, -7.5, 40.5), (3.0, -0.2, 38.8), lens=30, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+shot("rigging_counter", "paint", (-17.3, -2.9, 3.6), (-20.6, 0.0, 2.3), lens=35, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5, boom=-25.0)
+shot("rigging_stemhead", "paint", (15.5, -2.9, 3.7), (18.6, 0.0, 2.7), lens=35, sun_dir=RSUN, sun=3.0, samples=64,
+     upto=5)
+# the boom squared off to port (85 degrees) past the let-off runner and checkstay, seen from aft on the port side
+shot("rigging_boom_lee", "paint", (-4.6, 7.6, 4.3), (2.6, 3.2, 2.6), lens=30, sun_dir=(-0.35, -0.5, -0.8), sun=3.0,
+     samples=64, upto=5, boom=-85.0)
+# running on starboard tack (the boom squared off to port, the pole to starboard) and on port tack (the other way)
+shot("rigging_run", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48, upto=5,
+     boom=-80.0, pole=85.0)
+shot("rigging_run_port", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48,
+     upto=5, boom=80.0, pole=-85.0, tack="port")
 print("render_jclass: done")
