@@ -31,3 +31,30 @@ child; a one-off in this run.
 
 `Sailing_Water`'s median rises from 4.0 to 5.3 ms, the build work now spread over frames. p99 is 3-5 ms lower; fps and
 GPU are unchanged.
+
+## Plan frames: why the median rose (follow-up, same traces)
+
+UpdateFarCaps has no scope of its own and `FarCapTilePlan` none either. A plan that builds nothing leaves no mark in the
+trace, so a frame counts as a plan frame here only when it builds a tile: a `RegisterComponent` and an
+`AddInstancesInternal` directly under `Sailing_Water`. The two always come together.
+
+These counts cover every `Sailing_Water` event in the trace, about 1,090 per run. That is wider than the 494 build
+frames in the histogram above, so #688 shows 516 here. "Rest" is `Sailing_Water` minus `Sailing_WaterUploads` minus the
+named build calls.
+
+| run | frames | with builds | without | median with | median without | rest with | rest without | longest streak of build frames |
+|---|---|---|---|---|---|---|---|---|
+| a 62a84cc7 | 1086 | 69 | 1017 | 8.86 ms | 3.93 ms | 7.16 ms | 3.17 ms | 1 frame (69 single frames) |
+| b #688 | 1089 | 516 | 573 | 6.47 ms | 4.06 ms | 4.94 ms | 3.27 ms | 224 frames (38 streaks) |
+| c 62a84cc7 | 1099 | 69 | 1030 | 8.33 ms | 3.91 ms | 6.44 ms | 3.21 ms | 1 frame (69 single frames) |
+
+On frames without a build, #688's `Sailing_Water` is within 0.15 ms of main's (median 4.06 against 3.91-3.93 ms;
+rest 3.27 against 3.17-3.21 ms). Holding more slots costs next to nothing on the game thread.
+
+The rise from 4.0 to 5.3 ms comes from the build frames themselves: 47% of #688's frames build, against 6% on main.
+#688 replans every frame while tiles wait, and one streak ran 224 frames in a row (about 7 s). Each of those frames
+costs about 1.7 ms more rest than a frame without a build (4.94 against 3.27 ms). On top of that come 0.69 ms of named
+build calls at the median.
+
+That extra rest is the plan loop plus unnamed build work: slot placement with `HeightAt` and `SetCustomDataValue`. The
+trace can't split the two.
