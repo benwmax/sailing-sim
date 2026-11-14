@@ -50,7 +50,12 @@ CANOE = ("Topsides", "Bootstripe", "CoveStripe", "Antifouling", "PackCanoe")   #
 
 # Per class: the deck and fittings the physics doesn't describe (metres, body frame), from the class drawings.
 SPECS = {
-    "Sunfish": dict(paint=False, crown=0.035, cockpit=(-1.18, -0.52, 0.29, 0.20), trunk=True, rig="lateen", tiller=True),
+    # (shape wave 5, crown_table: the deck's crown over the sheer along the boat, as fractions of the length from the
+    # transom, measured on the TurboSquid 1460907 (Inputs/shape-sunfish on the inputs branch): 12 mm at the transom,
+    # 63-65 mm just forward of the well, nothing at the bow; it had been 35 mm everywhere ("crown", kept for the well's sole: sole_z))
+    "Sunfish": dict(paint=False, crown=0.035, crown_table=((0.0, 0.012), (0.1, 0.028), (0.2, 0.041), (0.28, 0.0505), (0.5, 0.063),
+                                                           (0.6, 0.065), (0.65, 0.065), (0.75, 0.048), (0.85, 0.030), (0.95, 0.013), (1.0, 0.0)),
+                    cockpit=(-1.18, -0.52, 0.29, 0.20), trunk=True, rig="lateen", tiller=True),
     "ILCA7": dict(paint=False, crown=0.05, cockpit=(-1.62, -0.22, 0.31, 0.22), trunk=True, rig="una", tiller=True, vang=True),
     "Catalina22": dict(paint=True, crown=0.05, cockpit=(-3.05, -0.78, 0.63, 0.42), cabin=(-0.78, 1.70, 0.62, 0.42), rig="masthead",
                        tiller=True, lifelines=True, outboard=True, spreader=0.62, winch_x=-1.05),
@@ -140,7 +145,29 @@ class Hull:
 
     def deck_z(self, x, y):
         b = max(self.sharp_half_beam(x), 1e-3)
+        if "crown_table" in SPEC:
+            return self.sheer(x) + self.crown_at(x) * max(0.0, 1.0 - ((y - self.cy) / b) ** 2)
         return self.sheer(x) + SPEC["crown"] * max(0.0, 1.0 - ((y - self.cy) / b) ** 2)
+
+    def crown_at(self, x):
+        """shape wave 5: the deck's crown over the sheer along the boat, SPEC "crown_table" (fraction of the length
+        from the transom, metres), interpolated."""
+        tab = SPEC["crown_table"]
+        f = (x - self.h["stern_x"]) / (self.h["bow_x"] - self.h["stern_x"])
+        f = min(max(f, tab[0][0]), tab[-1][0])
+        for (fa, ca), (fb, cb) in zip(tab, tab[1:]):
+            if f <= fb:
+                return ca + (cb - ca) * (f - fa) / max(fb - fa, 1e-9)
+        return tab[-1][1]
+
+    def sole_z(self, x, w, depth):
+        """A dinghy well's sole, `depth` under the deck at its side walls (w off the centreline). With crown_table the sole
+        stays where the old 35 mm crown put it (0.047 m up: CrewPose.cpp's well SoleZ and the hiking strap), the walls
+        growing by the deeper crown."""
+        if "crown_table" in SPEC:
+            b = max(self.sharp_half_beam(x), 1e-3)
+            return self.sheer(x) + SPEC["crown"] * max(0.0, 1.0 - (w / b) ** 2) - depth
+        return self.deck_z(x, self.cy + w) - depth
 
 
 HS = [Hull(h) for h in HULLS]
@@ -504,7 +531,7 @@ def cockpit(H, spec):
         # pc/sunfish-hero-2: the moulded well's corners are rounded, 10 cm, as on the boat and the TurboSquid 1460907
         # reference (they had been square). The deck's cut stays the rectangle; deck-level fillets close its corners.
         R = WELL_CORNER
-        sole = lambda x: H.deck_z(x, H.cy + w) - depth
+        sole = lambda x: H.sole_z(x, w, depth)
         path = []
         for (cx, cy, a0) in ((x1 - R, w - R, 0.0), (x0 + R, w - R, 90.0), (x0 + R, -w + R, 180.0), (x1 - R, -w + R, 270.0)):
             for k in range(7):
@@ -690,7 +717,12 @@ def place_kit(m):
         for s in ((1, -1) if e.get("mirror") else (1,)):
             x, y = e["x"], e["y"] * s
             Hh = min(HS, key=lambda h: abs(h.cy - y))
-            z = e["z"] if e.get("on") == "z" else Hh.deck_z(x, y) - (SPEC["cockpit"][3] if e.get("on") == "sole" else 0.0)
+            if e.get("on") == "z":
+                z = e["z"]
+            elif e.get("on") == "sole":      # (the well's sole: the old 35 mm crown under a crown_table, Hull.sole_z)
+                z = Hh.sole_z(x, y - Hh.cy, SPEC["cockpit"][3])
+            else:
+                z = Hh.deck_z(x, y)
             yaw = math.radians(e.get("yaw", 0.0)) * (s if e.get("mirror") else 1)
             socks = kit_part(e["part"], x, y, z + e.get("dz", 0.0), yaw, e.get("flip", False), e.get("size"), m, **e.get("kw", {}))
             if "socket" in e:      # ["<the model's socket>", "<the part's socket it sits at>"]
@@ -917,7 +949,7 @@ def dinghy_hiking_strap(H, ck):
     its end walls 12 cm over the sole with 2 cm of sag, so the sailor's feet tuck under it; each end under a screwed
     stainless retainer plate on the wall. (It had been a red tube 36 mm round, 6 cm off the sole, and two red pads.)"""
     x0, x1, w, depth = ck
-    sole = lambda x: H.deck_z(x, H.cy + w) - depth
+    sole = lambda x: H.sole_z(x, w, depth)
     end_h, mid_h = STRAP_TOP_ABOVE_SOLE
     xa, xb = x0 + 0.004, x1 - 0.004
     path, secs = [], []
@@ -1038,7 +1070,9 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     blocks on the traveler, deck control lines to cam cleats, a bow handle and the transom drain plug; the Sunfish's
     V splash guard and halyard cleat, the ILCA's control lines and the shock cord on its hiking strap."""
     x0, x1, w, depth = ck
-    sole = lambda x: H.deck_z(x, 0) - depth
+    # (shape wave 5: with crown_table the bailer and drain sit on the sole itself; they had been taken from the deck's
+    # centreline, 8 mm over the sole, which the ILCA keeps)
+    sole = (lambda x: H.sole_z(x, w, depth)) if "crown_table" in SPEC else (lambda x: H.deck_z(x, 0) - depth)
     bx, chord = f["center"][0], f["chord"]
     dz = H.deck_z(bx, 0)
     # the daggerboard (Sunfish: varnished wood; ILCA: white plastic centreboard) a hand's width proud, with a grip

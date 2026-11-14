@@ -293,3 +293,21 @@ Material only: no shape object moves (card `cards/j22-deck-panels.json`, score 0
 - Blind A/B 3 of 3. Their notes for later: the band round the cabin top's rounded edge and the forward hatch reads up
   to twice the real width, small fittings want small smooth pads, and the non-skid's colour is warmer than the photos'
   light grey. The bow and the mast step were checked against the photos and left as they are.
+
+## Wave 5 (Nov 14): the Sunfish deck's crown
+
+Card `cards/sunfish-deck.json`. The Sunfish deck had a 35 mm crown over the sheer from bow to transom. The reference
+model (TurboSquid 1460907, Bean's purchase, measured on BEN-PC by `Inputs/shape-sunfish/measure_reference.py` on the
+inputs branch, numbers only) has about 12 mm at the transom, 63-65 mm just forward of the well and nothing at the bow,
+where the deck meets the rubrail. `build_fleet.py`'s Sunfish spec now carries `crown_table` (fraction from the
+transom, crown in m) and `deck_z` reads it; across the boat the crown is the same parabola on the half-beam. The
+well's sole, hiking strap and bailer hang from the old 35 mm crown (`Hull.sole_z`) so their heights, and CrewPose's
+`SoleZ` 0.047, hold. `CrewPose.cpp`'s Sunfish deck crown follows the same table (`DeckCrownAbove`), so keep the two
+tables the same.
+
+Round 1: crown within 1-2 mm of the reference at every station; fairness 0 inflections, 4 kinks (as before); both
+seams closed; volume and CB unchanged; triangles unchanged. Three sockets move with the deck (mast step +4.5 mm,
+traveller -11.5 mm, mainsheet ratchet +22.5 mm). Blind A/B 3 of 3. Open for later: the reference's narrower stern
+(underwater, waits for a physics pass), its well about 0.4 m further forward (needs the Mac's crew work), the faceted
+forefoot, a thin dark line at the transom's top, a slot at the stem, and a flatter, more ridged section than the
+parabola.

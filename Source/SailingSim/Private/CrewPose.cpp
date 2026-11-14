@@ -1014,6 +1014,26 @@ namespace CrewPoseDetail
 		default: return 0.0;
 		}
 	}
+
+	// The deck's height over the sheer at (X, Yh off a hull's centreline), where its deck is Half wide. The Sunfish's crown
+	// changes along the boat (build_fleet.py SPECS "crown_table", shape wave 5: the measured Sunfish's, 12 mm at the
+	// transom, 63-65 mm just forward of the well, nothing at the bow); the others' is the same at every station.
+	double DeckCrownAbove(Sailing::EBoatType Type, const Sailing::FHullShape& H, double X, double Half, double Yh)
+	{
+		const double Across = FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(Half, 1e-3)));
+		if (Type == Sailing::EBoatType::Sunfish)
+		{
+			static constexpr double TabF[] = { 0.0, 0.1, 0.2, 0.28, 0.5, 0.6, 0.65, 0.75, 0.85, 0.95, 1.0 };
+			static constexpr double TabC[] = { 0.012, 0.028, 0.041, 0.0505, 0.063, 0.065, 0.065, 0.048, 0.030, 0.013, 0.0 };
+			const double F = FMath::Clamp((X - H.SternX) / FMath::Max(H.BowX - H.SternX, 1e-3), 0.0, 1.0);
+			static_assert(UE_ARRAY_COUNT(TabF) == UE_ARRAY_COUNT(TabC), "the crown table's stations and heights");
+			int32 K = 1;
+			while (K < int32(UE_ARRAY_COUNT(TabF)) - 1 && F > TabF[K]) ++K;
+			const double T = (F - TabF[K - 1]) / (TabF[K] - TabF[K - 1]);
+			return (TabC[K - 1] + (TabC[K] - TabC[K - 1]) * T) * Across;
+		}
+		return DeckCrown(Type) * Across;
+	}
 }
 
 namespace
@@ -1062,7 +1082,7 @@ double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTrave
 			return H.SheerHeight(X) + Trunk.HeightAt(X);
 		}
 		// (The deck's crown too: the Hobie's and the maxi's feet were planted on the sheer, inside it.)
-		return H.SheerHeight(X) + CrewPoseDetail::DeckCrown(C.Type) * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(H.DeckHalfBeam(X), 1e-3)));
+		return H.SheerHeight(X) + CrewPoseDetail::DeckCrownAbove(C.Type, H, X, H.DeckHalfBeam(X), Yh);
 	}
 	return CrewBetweenHullsZ(C, X, Y);
 }
@@ -1118,7 +1138,7 @@ double CrewSeatSurfaceZ(const Sailing::FBoatConfig& C, double X, double Y)
 		if (X < H.SternX || X > H.BowX || Yh >= Half) continue;
 		double Floor = 0.0;
 		if (K == 0 && bWell && InWell(C, W, X, Yh, Floor)) return H.SheerHeight(X);
-		return H.SheerHeight(X) + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Yh / FMath::Max(Half, 1e-3)));
+		return H.SheerHeight(X) + CrewPoseDetail::DeckCrownAbove(C.Type, H, X, Half, Yh);
 	}
 	const double Between = CrewBetweenHullsZ(C, X, Y);
 	if (Between > -1e8) return Between;
@@ -1178,7 +1198,6 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 	const bool bWell = CrewCockpitWell(C, W, bTravelerBridge);
 	FCrewCabinTrunk Trunk;
 	const bool bTrunk = CrewCabinTrunk(C, Trunk, bTravelerBridge);
-	const double Crown = CrewPoseDetail::DeckCrown(C.Type);
 	for (int32 K = 0; K < int32(C.Hulls.size()); ++K)
 	{
 		const Sailing::FHullShape& H = C.Hulls[K];
@@ -1192,7 +1211,7 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 		{
 			return true;
 		}
-		if (P.Z >= Sheer + Crown * FMath::Max(0.0, 1.0 - FMath::Square(Y / FMath::Max(Half, 1e-3)))) continue;
+		if (P.Z >= Sheer + CrewPoseDetail::DeckCrownAbove(C.Type, H, P.X, Half, Y)) continue;
 		if (P.Z <= H.BottomZ(P.X, Y, HullDepth)) continue;
 		double Floor = 0.0;
 		if (K == 0 && bWell && InWell(C, W, P.X, Y, Floor) && P.Z >= Floor)

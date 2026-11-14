@@ -1,0 +1,31 @@
+{
+ "id": "sunfish-deck",
+ "boat": "Sunfish",
+ "sections": ["deck"],
+ "status": "wave 5, round 1: blind A/B 3 of 3",
+ "feature": "The Sunfish deck's crown follows the measured boat along its length: about 12 mm over the sheer at the transom, 63-65 mm just forward of the well, running out to nothing at the bow, where it had been 35 mm everywhere. The well's sole, the hiking strap and the bailer keep their heights.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "deck crown along the boat from a table (build_fleet SPEC crown_table, 11 stations), measured on the reference model; across the boat the same parabola on the deck's half-beam",
+  "the well's sole, strap and bailer hang from the old 35 mm crown (Hull.sole_z), so CrewPose's SoleZ 0.047 and the strap heights hold",
+  "CrewPose's deck crown for the Sunfish follows the same table (CrewPoseDetail::DeckCrownAbove), so the crew sit on the new deck"
+ ],
+ "references": "TurboSquid 1460907 (Bean's purchase, on BEN-PC only): measured by Inputs/shape-sunfish/measure_reference.py on the inputs branch, numbers only (Inputs/shape-sunfish/turbosquid_1460907.json). No geometry or images in the repo.",
+ "moves_ok": [],
+ "moves_ok_sections": ["well", "board_trunk", "fittings"],
+ "moves_ok_note": "The well, trunk and deck fittings ride on the deck: the mast step and base rise 4.5 mm, the traveller 11.5 mm lower aft, the mainsheet ratchet 22.5 mm higher amidships.",
+ "tris_max": null,
+ "mac_wiring": true,
+ "mac_note": "CrewPose.cpp changes (the Sunfish deck crown), so the crew gates matter (SailingSim.Visual crew tests). The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Round 1's three blind reviewers (sailor, boatbuilder, 3D artist) all preferred the measured crown: it peaks just forward of the well, closes flush at the bow, and stays low at the transom. The old constant crown stood up as a ridge at the bow.",
+  "Their notes for later: a thin dark line where the deck meets the top of the transom (in both builds, thicker on the old one); a black slot at the stem; the reference's section reads closer to flat panels rising to a slight ridge than a round arch (43% out, 48% of the crown risen against the parabola's 67%: one reviewer's estimate); the even shading makes the crown hard to see in 3/4 views.",
+  "The reference's stern is much narrower at the waterline (half-breadth about 0.31 m against ours 0.54): an underwater change, so it waits for a physics calibration pass.",
+  "The reference's well sits about 0.4 m further forward (body x about -0.85 to -0.09 against ours -1.18 to -0.52): a later round with the Mac (CrewPose's Sunfish well and strap are hard-coded).",
+  "The forefoot under the bow shows stair-stepped facets from the 35 degree smooth-by-angle (also in the game fbx): a later round.",
+  "The build's deck uses sharp_half_beam for the crown's width and CrewPose uses DeckHalfBeam; forward of the widest point they differ by up to about 1 cm, so the crew's deck height can be off by a millimetre or two there."
+ ]
+}
