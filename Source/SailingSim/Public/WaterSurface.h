@@ -295,6 +295,7 @@ private:
 	TFuture<FDetailConfigPtr> PendingConfig;
 	bool bConfigPending = false;
 	FDetailConfigPtr ReadyConfig;   // made, waiting for the sim clock to reach its first frame
+	int32 DetailConfigLead = 1;      // steps ahead of now a new config's first frame is put (grows after one came too late)
 	// Perf 1 fix 5: the detail maps' blend, mips and half-float packing run on a worker for the next frame's time; the
 	// game thread hands the finished mips to the render thread (UpdateTextureRegions frees them).
 	struct FDetailUpload

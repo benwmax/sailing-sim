@@ -918,7 +918,8 @@ void AWaterSurface::UpdateDetail()
 		// clock to reach the first, so what is drawn never steps back in time.
 		int32 NewLongIndex = -1;
 		std::vector<FWaveDetail::FCascadeSpec> Specs = MakeSpecs(NewLongIndex);
-		const double T0 = (FMath::FloorToDouble(TNow / kDetailStep) + 1.0) * kDetailStep;
+		// (DetailConfigLead steps ahead: one, more after a config arrived too late, a slow CPU or a busy pool.)
+		const double T0 = (FMath::FloorToDouble(TNow / kDetailStep) + double(DetailConfigLead)) * kDetailStep;
 		PendingConfig = Async(EAsyncExecution::ThreadPool, [P, Specs = MoveTemp(Specs), NewLongIndex, T0, EvaluateWith]() -> FDetailConfigPtr
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WaterDetailConfigure);
@@ -954,6 +955,10 @@ void AWaterSurface::UpdateDetail()
 			FramePrev = Cfg->Prev;
 			FrameNext = Cfg->Next;
 		}
+		else
+		{
+			DetailConfigLead = FMath::Min(DetailConfigLead + 2, 9);
+		}
 	}
 	const double Scale = P.Development / DetailConfigured.Development;
 
@@ -976,6 +981,8 @@ void AWaterSurface::UpdateDetail()
 		FrameNext = Evaluate(T0 + kDetailStep);
 		Launch(T0 + 2.0 * kDetailStep);
 	}
+	// (After a swap no frame is in flight: the new detail's next one starts here.)
+	if (!bFramePending) Launch(FrameNext->Time + kDetailStep);
 	while (T >= FrameNext->Time && bFramePending && PendingFrame.IsReady())
 	{
 		FDetailFramePtr Ready = PendingFrame.Get();
@@ -2079,6 +2086,7 @@ void AWaterSurface::WaitForWorkers()
 	if (bShorePending) { PendingShore.Wait(); bShorePending = false; }
 	if (bWakePending) { PendingWake.Wait(); bWakePending = false; }
 	if (bFramePending) { PendingFrame.Wait(); bFramePending = false; }
+	if (bConfigPending) { PendingConfig.Wait(); bConfigPending = false; }
 	if (bUploadPending) { PendingUpload.Wait(); bUploadPending = false; }
 	if (bFoamPending) { PendingFoam.Wait(); bFoamPending = false; }
 }
