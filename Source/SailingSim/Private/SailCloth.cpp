@@ -137,7 +137,7 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	if (SA.Flow == ESailFlow::Backed && SB.Flow == ESailFlow::Backed) Out.Camber = -Out.Camber;
 }
 
-void FSailCloth::SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometry* KeepAheadOf)
+void FSailCloth::SetHeadPoint(const FVector& HeadCm, const FSailCloth* KeepAheadOf)
 {
 	if (NumStrips <= 0 || HeadCm.ContainsNaN()) return;
 	const double X = HeadCm.X / Sailing::CmPerMeter, Z = HeadCm.Z / Sailing::CmPerMeter;
@@ -147,16 +147,14 @@ void FSailCloth::SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometr
 	HeadX = X;
 	HeadZ = Z;
 	FootLuffX = Geo.Strips[0].LuffX + LuffSlope * (ZFoot - LuffZ0);
-	// The jib's luff as its cloth draws it (Init's luff line).
-	bAheadOf = KeepAheadOf && KeepAheadOf->NumStrips > 0;
+	// The jib's luff as its cloth draws it (its planform's luff line, or its own head point's): a straight line.
+	bAheadOf = KeepAheadOf && KeepAheadOf != this && KeepAheadOf->IsValid() && !KeepAheadOf->bAheadOf;
 	if (bAheadOf)
 	{
-		const Sailing::FSailGeometry& J = *KeepAheadOf;
-		const int32 N = J.NumStrips;
-		AheadZ0 = 0.5 * (J.Strips[0].ZBottom + J.Strips[0].ZTop);
-		AheadX0 = J.Strips[0].LuffX;
-		AheadSlope = N > 1 ? (J.Strips[N - 1].LuffX - J.Strips[0].LuffX) / (0.5 * (J.Strips[N - 1].ZBottom + J.Strips[N - 1].ZTop) - AheadZ0) : 0.0;
-		AheadZTop = J.Strips[N - 1].ZTop;
+		AheadZ0 = KeepAheadOf->FootZ();
+		AheadZTop = KeepAheadOf->TopZ();
+		AheadX0 = KeepAheadOf->LuffXAt(AheadZ0, 0);
+		AheadSlope = (KeepAheadOf->LuffXAt(AheadZTop, Rows - 1) - AheadX0) / FMath::Max(AheadZTop - AheadZ0, 1e-3);
 	}
 }
 
@@ -170,20 +168,36 @@ double FSailCloth::LuffXAt(double Z, int32 Row) const
 	return X;
 }
 
-FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm)
+FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm, const FSailCloth* Jib)
 {
 	// The head's swivel and shackle hang about 8 cm ahead of the halyard's exit (the sail flies forward of the mast).
 	constexpr double SwivelCm = 8.0;
 	const Sailing::FSailGeometry& S = C.Spinnaker;
 	double Z = S.NumStrips > 0 ? S.Strips[S.NumStrips - 1].ZTop : 0.0;
-	// Over the jib's head: its luff comes down ahead of the jib's (FSailCloth::SetHeadPoint), not through it.
-	if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
+	// Over the jib's head (as its cloth draws it, else the planform's): its luff comes down ahead of the jib's
+	// (FSailCloth::SetHeadPoint), not through it.
+	if (Jib && Jib->IsValid()) Z = FMath::Max(Z, Jib->TopZ() + 0.2);
+	else if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
 	Z = FMath::Min(Z, C.MastheadZ - 0.1);
 	// The model's socket, when it is forward of the config's mast front (a bent mast); never inside the mast (the maxi's
 	// Hounds is near her mast's centre line, the J/22 hero's 2 cm behind the config's front).
 	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
 	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? FMath::Max(MastFrontCm->X, ConfigFront) : ConfigFront;
 	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);
+}
+
+bool JibHeadCm(const Sailing::FBoatConfig& C, const FVector& HoundsCm, FVector& OutHeadCm)
+{
+	if (!C.HasJib() || HoundsCm.ContainsNaN()) return false;
+	// The head shackle between the sail's head and the wire's end; the head 4 cm ahead of the mast's front, so its 4 cm head
+	// (FSailCloth::Init's head chord) stays out of the mast.
+	constexpr double ShackleCm = 5.0, AheadCm = 4.0, NearM = 0.6;
+	const double JibTopM = C.Jib.Strips[C.Jib.NumStrips - 1].ZTop;
+	const double HeadZM = (HoundsCm.Z - ShackleCm) / Sailing::CmPerMeter;
+	if (FMath::Abs(HeadZM - JibTopM) > NearM) return false;
+	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	OutHeadCm = FVector(FMath::Max(HoundsCm.X, ConfigFront) + AheadCm, 0.0, HoundsCm.Z - ShackleCm);
+	return true;
 }
 
 void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const
@@ -474,7 +488,7 @@ void FSailCloth::KeepClear(TArray<FVector>& P, bool bTarget)
 	// stopped at the shroud), and a jib that reaches past them (an overlapping genoa) goes outside. Angles are from aft:
 	// both sails run aft from their luffs. A spreader is level: the rows within a panel of it keep clear of it, so no
 	// panel spans it.
-	const float RowPitch = float(FMath::Max(ZHead - ZFoot, 0.01) / (Rows - 1)) * Sailing::CmPerMeter;
+	const float RowPitch = float(FMath::Max(Span(), 0.01) / (Rows - 1)) * Sailing::CmPerMeter;
 	const bool bMain = Kind == ESailKind::Main;
 	if (!bDentOnly)
 	{
