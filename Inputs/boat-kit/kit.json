@@ -59,7 +59,7 @@
  "Padeye": {
   "category": "fastener",
   "note": "Round stainless pad eye, 40 mm base, four countersunk screw holes, round-bar loop (6 mm size)",
-  "tris": 16444,
+  "tris": 16604,
   "size_m": [
    0.04,
    0.04,
@@ -106,7 +106,7 @@
    ]
   },
   "light": {
-   "tris": 4111,
+   "tris": 4151,
    "slots": [
     "Stainless"
    ],
@@ -132,7 +132,7 @@
  "HornCleat": {
   "category": "cleat",
   "note": "Cast aluminium open-base horn cleat, 150 mm (6 in), line hole, two through-bolts",
-  "tris": 17018,
+  "tris": 17148,
   "size_m": [
    0.1499,
    0.0289,
@@ -170,7 +170,7 @@
    ]
   },
   "light": {
-   "tris": 4254,
+   "tris": 4286,
    "slots": [
     "Aluminium",
     "Stainless"
@@ -206,12 +206,12 @@
   "note": "Composite cam cleat, 38 mm axle centres: two toothed teardrop cams on a moulded base",
   "tris": 8864,
   "size_m": [
-   0.0361,
+   0.0363,
    0.0626,
    0.0192
   ],
   "min_m": [
-   -0.0226,
+   -0.0227,
    -0.0313,
    0.0
   ],
@@ -243,7 +243,7 @@
    ]
   },
   "light": {
-   "tris": 2216,
+   "tris": 6306,
    "slots": [
     "BlackPlastic",
     "Graphics",
@@ -411,7 +411,7 @@
  "Block40": {
   "category": "block",
   "note": "40 mm single block with swivel and becket",
-  "tris": 15022,
+  "tris": 15014,
   "size_m": [
    0.0472,
    0.0201,
@@ -454,7 +454,7 @@
    ]
   },
   "light": {
-   "tris": 3754,
+   "tris": 3752,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -479,7 +479,7 @@
  "Ratchet57": {
   "category": "block",
   "note": "57 mm swivel ratchet block, on/off switch, 10 mm line: the Sunfish's and ILCA's mainsheet block",
-  "tris": 15196,
+  "tris": 15216,
   "size_m": [
    0.0673,
    0.0349,
@@ -518,7 +518,7 @@
    ]
   },
   "light": {
-   "tris": 3798,
+   "tris": 3804,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -543,7 +543,7 @@
  "Fiddle40": {
   "category": "block",
   "note": "40 mm fiddle block with swivel: a big and a small sheave in line (the vang's and mainsheet's upper block)",
-  "tris": 19966,
+  "tris": 19974,
   "size_m": [
    0.0472,
    0.0201,
@@ -596,7 +596,7 @@
    ]
   },
   "light": {
-   "tris": 4990,
+   "tris": 4992,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -623,7 +623,7 @@
  "FiddleCam": {
   "category": "block",
   "note": "40 mm fiddle block with becket and cam cleat: the vang's and mainsheet's lower block",
-  "tris": 28736,
+  "tris": 28762,
   "size_m": [
    0.0724,
    0.03,
@@ -693,7 +693,7 @@
    ]
   },
   "light": {
-   "tris": 7184,
+   "tris": 7190,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -1862,7 +1862,7 @@
    ]
   },
   "light": {
-   "tris": 822,
+   "tris": 821,
    "slots": [
     "Stainless",
     "BlackPlastic"
@@ -2319,7 +2319,7 @@
  "BowHandle": {
   "category": "hull",
   "note": "Sunfish bow handle: cast aluminium grip arched over two oval feet, one oval-head screw each, 150 mm",
-  "tris": 11246,
+  "tris": 11244,
   "size_m": [
    0.1516,
    0.0257,
@@ -2854,7 +2854,7 @@
    ]
   },
   "light": {
-   "tris": 1576,
+   "tris": 1577,
    "slots": [
     "MOBVinyl",
     "CrewReflective",
@@ -2921,7 +2921,7 @@
    ]
   },
   "light": {
-   "tris": 2296,
+   "tris": 2297,
    "slots": [
     "MOBVinyl",
     "CrewReflective",
@@ -3816,7 +3816,7 @@
    ]
   },
   "light": {
-   "tris": 4467,
+   "tris": 4468,
    "slots": [
     "BlackPlastic",
     "Stainless"
