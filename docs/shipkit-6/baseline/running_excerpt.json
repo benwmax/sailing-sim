@@ -1,0 +1,466 @@
+{
+ "note": "an excerpt of running.json (built by build_frigate.py): two lines (their centre lines cut short), three blocks (one hanging, one fixed, one sheave let into a spar), two pins, a kevel and three coils; the whole file has 204 lines, 170 blocks, 304 pins, 13 kevels, 137 coils",
+ "lines": [
+  {
+   "name": "main topsail lift starboard",
+   "group": "Main",
+   "circ_in": 3.0,
+   "radius_m": 0.012,
+   "states": {
+    "Set": {
+     "points": [
+      [-2.91, 10.406, 39.605],
+      [-3.99, 0.38, 43.022],
+      [-3.991, 0.363, 43.024],
+      [-3.993, 0.348, 43.017],
+      [-3.993, 0.334, 42.997],
+      [-3.264, 0.725, 24.05],
+      [-4.317, 1.042, 4.893]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "Yard_MainTopsail",
+       "p": [0.478, 10.406, 0.042]
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.993, 0.348, 43.017],
+       "fit": "thimble",
+       "strop": {
+        "from": [-3.967, 0.342, 43.023],
+        "to": [-3.671, 0.193, 43.025],
+        "holds": "Topmast_Main"
+       }
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.264, 0.725, 24.05],
+       "fit": "bullseye",
+       "strop": {
+        "from": [-3.307, 0.709, 24.05],
+        "to": [-3.429, 0.664, 24.039],
+        "holds": "Rigging_Main"
+       }
+      },
+      {
+       "kind": "pin",
+       "pin": "fife_main:3"
+      }
+     ]
+    },
+    "Clewed": {
+     "points": [
+      [-2.91, 10.406, 39.605],
+      [-3.99, 0.38, 43.022],
+      [-3.991, 0.363, 43.024],
+      [-3.993, 0.348, 43.017],
+      [-3.993, 0.334, 42.997],
+      [-3.264, 0.725, 24.05],
+      [-4.317, 1.042, 4.893]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "Yard_MainTopsail",
+       "p": [0.478, 10.406, 0.042]
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.993, 0.348, 43.017],
+       "fit": "thimble",
+       "strop": {
+        "from": [-3.967, 0.342, 43.023],
+        "to": [-3.671, 0.193, 43.025],
+        "holds": "Topmast_Main"
+       }
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.264, 0.725, 24.05],
+       "fit": "bullseye",
+       "strop": {
+        "from": [-3.307, 0.709, 24.05],
+        "to": [-3.429, 0.664, 24.039],
+        "holds": "Rigging_Main"
+       }
+      },
+      {
+       "kind": "pin",
+       "pin": "fife_main:3"
+      }
+     ]
+    },
+    "Furled": {
+     "points": [
+      [-2.643, 10.406, 29.404],
+      [-3.989, 0.387, 43.005],
+      [-3.991, 0.365, 43.019],
+      [-3.993, 0.34, 43.014],
+      [-3.994, 0.328, 43.001],
+      [-3.993, 0.324, 42.983],
+      [-3.264, 0.725, 24.05],
+      [-4.317, 1.042, 4.893]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "Yard_MainTopsail",
+       "p": [0.478, 10.406, 0.042]
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.993, 0.348, 43.017],
+       "fit": "thimble",
+       "strop": {
+        "from": [-3.966, 0.344, 43.021],
+        "to": [-3.671, 0.193, 43.025],
+        "holds": "Topmast_Main"
+       }
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-3.264, 0.725, 24.05],
+       "fit": "bullseye",
+       "strop": {
+        "from": [-3.307, 0.709, 24.05],
+        "to": [-3.429, 0.664, 24.039],
+        "holds": "Rigging_Main"
+       }
+      },
+      {
+       "kind": "pin",
+       "pin": "fife_main:3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "main course sheet starboard",
+   "group": "Main",
+   "circ_in": 5.0,
+   "radius_m": 0.02,
+   "states": {
+    "Set": {
+     "points": [
+      [-3.162, 5.734, 4.394],
+      [-2.332, 6.131, 9.284],
+      [-2.322, 6.134, 9.315],
+      "(and 7 points more)",
+      [-2.862, 5.763, 4.334],
+      [-2.862, 5.394, 4.334],
+      [-3.232, 5.302, 4.334]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "ship",
+       "p": [-3.162, 5.734, 4.394]
+      },
+      {
+       "kind": "sheave",
+       "block": "MainCourseSheetS",
+       "sheave": 0
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.763, 4.334],
+       "fit": "side_sheave"
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.394, 4.334]
+      },
+      {
+       "kind": "kevel",
+       "frame": "ship",
+       "p": [-3.232, 5.302, 4.334]
+      }
+     ]
+    },
+    "Clewed": {
+     "points": [
+      [-3.162, 5.734, 4.394],
+      [-3.139, 5.813, 4.452],
+      [-3.118, 5.883, 4.521],
+      "(and 64 points more)",
+      [-2.862, 5.763, 4.334],
+      [-2.862, 5.394, 4.334],
+      [-3.232, 5.302, 4.334]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "ship",
+       "p": [-3.162, 5.734, 4.394]
+      },
+      {
+       "kind": "sheave",
+       "block": "MainCourseSheetS",
+       "sheave": 0
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.763, 4.334],
+       "fit": "side_sheave"
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.394, 4.334]
+      },
+      {
+       "kind": "kevel",
+       "frame": "ship",
+       "p": [-3.232, 5.302, 4.334]
+      }
+     ]
+    },
+    "Furled": {
+     "points": [
+      [-3.162, 5.734, 4.394],
+      [-3.117, 6.148, 4.92],
+      [-3.093, 6.369, 5.564],
+      "(and 27 points more)",
+      [-2.862, 5.763, 4.334],
+      [-2.862, 5.394, 4.334],
+      [-3.232, 5.302, 4.334]
+     ],
+     "stations": [
+      {
+       "kind": "end",
+       "frame": "ship",
+       "p": [-3.162, 5.734, 4.394]
+      },
+      {
+       "kind": "sheave",
+       "block": "MainCourseSheetS",
+       "sheave": 0
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.763, 4.334],
+       "fit": "side_sheave"
+      },
+      {
+       "kind": "thru",
+       "frame": "ship",
+       "p": [-2.862, 5.394, 4.334]
+      },
+      {
+       "kind": "kevel",
+       "frame": "ship",
+       "p": [-3.232, 5.302, 4.334]
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "blocks": [
+  {
+   "id": "MaincourseLiftArmS",
+   "group": "Main",
+   "sheaves": 1,
+   "length_m": 0.356,
+   "drawn": true,
+   "held": {
+    "Set": {
+     "hangs_from": {
+      "frame": "Yard_Main",
+      "p": [0.514, 14.623, 0.033]
+     },
+     "pendant_m": 0.0
+    },
+    "Clewed": {
+     "hangs_from": {
+      "frame": "Yard_Main",
+      "p": [0.514, 14.623, 0.033]
+     },
+     "pendant_m": 0.0
+    },
+    "Furled": {
+     "hangs_from": {
+      "frame": "Yard_Main",
+      "p": [0.514, 14.623, 0.033]
+     },
+     "pendant_m": 0.0
+    }
+   },
+   "pose": {
+    "Set": {
+     "centre": [-3.25, 14.351, 21.514],
+     "crown_to_tail": [0.042, -0.917, 0.396],
+     "pin": [0.989, 0.095, 0.117]
+    },
+    "Clewed": {
+     "centre": [-3.25, 14.351, 21.514],
+     "crown_to_tail": [0.042, -0.917, 0.396],
+     "pin": [0.989, 0.095, 0.117]
+    },
+    "Furled": {
+     "centre": [-3.25, 14.351, 21.514],
+     "crown_to_tail": [0.042, -0.917, 0.396],
+     "pin": [0.989, 0.095, 0.117]
+    }
+   }
+  },
+  {
+   "id": "MaincourseQuarterS",
+   "group": "Main",
+   "sheaves": 2,
+   "length_m": 0.457,
+   "drawn": true,
+   "held": {
+    "Set": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 1.459, -0.564],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    },
+    "Clewed": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 1.459, -0.564],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    },
+    "Furled": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 1.459, -0.564],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    }
+   },
+   "pose": {
+    "Set": {
+     "centre": [-3.017, 1.459, 20.807],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    },
+    "Clewed": {
+     "centre": [-3.017, 1.459, 20.807],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    },
+    "Furled": {
+     "centre": [-3.017, 1.459, 20.807],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    }
+   }
+  },
+  {
+   "id": "MaintopsailSheetArmS",
+   "group": null,
+   "sheaves": 1,
+   "length_m": 0.457,
+   "drawn": false,
+   "held": {
+    "Set": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 14.044, 0.0],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    },
+    "Clewed": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 14.044, 0.0],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    },
+    "Furled": {
+     "fixed": {
+      "frame": "Yard_Main",
+      "centre": [0.744, 14.044, 0.0],
+      "crown_to_tail": [0.0, 0.0, -1.0],
+      "pin": [1.0, 0.0, 0.0]
+     }
+    }
+   },
+   "pose": {
+    "Set": {
+     "centre": [-3.031, 14.044, 21.371],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    },
+    "Clewed": {
+     "centre": [-3.031, 14.044, 21.371],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    },
+    "Furled": {
+     "centre": [-3.031, 14.044, 21.371],
+     "crown_to_tail": [0.026, 0.0, -1.0],
+     "pin": [1.0, 0.0, 0.026]
+    }
+   }
+  }
+ ],
+ "pins": [
+  {
+   "id": "qd0s:0",
+   "zone": "qd0s",
+   "p": [-28.687, 4.126, 5.467],
+   "axis": [0.0, 0.0, 1.0],
+   "line": "spanker boom sheet"
+  },
+  {
+   "id": "qd0s:1",
+   "zone": "qd0s",
+   "p": [-28.434, 4.145, 5.459],
+   "axis": [0.0, 0.0, 1.0],
+   "line": "spanker vang starboard"
+  }
+ ],
+ "kevels": [
+  {
+   "name": "MainCourseSheetS",
+   "p": [-3.235, 5.412, 4.334],
+   "normal": [0.032, -1.0, -0.0]
+  }
+ ],
+ "coils": [
+  {
+   "on": "FlyingJibSheet",
+   "line": "flying jib sheet",
+   "shift_m": -0.04,
+   "width": 1.0,
+   "off_rail_m": 0.0
+  },
+  {
+   "on": "ForeCourseSheetP",
+   "line": "fore course sheet port",
+   "shift_m": 0.0,
+   "width": 1.0,
+   "off_rail_m": 0.0
+  },
+  {
+   "on": "ForeCourseSheetS",
+   "line": "fore course sheet starboard",
+   "shift_m": 0.0,
+   "width": 1.0,
+   "off_rail_m": 0.0
+  }
+ ]
+}
