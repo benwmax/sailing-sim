@@ -1,4 +1,5 @@
-"""Clay, zebra, afloat and paint renders of Bluebonnet for the docs and the blind reviews (docs/jclass-1, jclass-2).
+"""Clay, zebra, afloat, paint and deck renders of Bluebonnet for the docs and the blind reviews (docs/jclass-1, jclass-2,
+jclass-3).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -14,6 +15,9 @@ boats), the same every round so before and after line up:
                                              stern quarters, underside, afloat, the rudder (and turned 15 degrees in
                                              its slot, seen from port), the transom's lettering, the
                                              plating close to in a raking light, the boot top at the bow
+  deck_*                                     slice 3's deck: from aloft, a bow quarter from above, the bow's nibbed
+                                             planking, the skylight and companionway, the doghouse, the helm (wheel,
+                                             binnacle, cockpit), the stern's after margin, and the helmsman's eye
 The cameras look from Blender's -Y for the starboard side: build_jclass.py puts the hull's frame (starboard +y) into
 Blender's right-handed one as (x, -y, z), so the pictures are the boat as she is, not her mirror image.
 Cycles on the CPU (no GPU needed), with a material override for the clay and zebra views. Needs Blender's Python (pip bpy).
@@ -239,4 +243,18 @@ shot("paint_plating", "paint", (4.5, -4.75, 0.95), (6.25, -2.7, 0.5), lens=35, s
 # the boot top rising toward the bow, where the hull leaves the water at a shallow angle; low, from abeam
 shot("paint_bowline", "paint", (HI.x - 5.0, -14.5, 0.5), (HI.x - 7.5, 0, 0.2), lens=35, sun_dir=SUN, sun=3.5,
      samples=48)
+# slice 3: the deck in its own materials under a sun at about 45 degrees from forward of the starboard beam; the seams
+# fade to the deck's average tone past 14 m (gone by 48 m), so the far views show the planks' tints, the near ones
+# their seams, nibs and butts
+DSUN = (0.35, 0.55, -0.75)
+shot("deck_aloft", "paint", (9.0, 0.6, 21.0), (-7.0, 0.0, 1.5), lens=28, sun_dir=DSUN, sun=2.4, samples=48)
+shot("deck_34", "paint", (HI.x + 0.22 * L, -0.42 * L, 0.33 * L), (MID.x + 0.08 * L, 0, 1.0), lens=36, sun_dir=DSUN,
+     sun=2.4, samples=48)
+shot("deck_bow", "paint", (15.0, 0.9, 3.5), (17.6, -0.55, 1.75), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
+shot("deck_skylight", "paint", (2.3, -2.5, 3.1), (-1.3, 0.0, 1.75), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
+shot("deck_doghouse", "paint", (-1.2, -3.1, 3.0), (-6.0, 0.0, 1.85), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
+shot("deck_helm", "paint", (-14.0, -2.5, 3.3), (-9.5, 0.0, 1.7), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
+shot("deck_stern", "paint", (-17.3, -1.9, 3.4), (-20.6, 0.0, 1.55), lens=30, sun_dir=DSUN, sun=2.4, samples=64)
+# the helmsman's eye: standing on the cockpit's sole abaft the wheel, 1.6 m up, looking forward along the deck
+shot("deck_eye", "paint", (-10.6, 0.25, 2.59), (2.0, 0.0, 1.9), lens=24, sun_dir=DSUN, sun=2.4, samples=48)
 print("render_jclass: done")

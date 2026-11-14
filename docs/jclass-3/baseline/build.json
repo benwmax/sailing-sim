@@ -1,0 +1,2545 @@
+{
+ "slice": 3,
+ "grid_slice_1": [
+  420,
+  104
+ ],
+ "triangles": {
+  "Shell": 240014,
+  "Transom": 264,
+  "Deck": 18314,
+  "Rudder": 7154,
+  "RudderStock": 92,
+  "Letters_name": 5792,
+  "Letters_port": 4688,
+  "ToeRail": 14992,
+  "Hatches": 2408,
+  "Skylights": 3296,
+  "Companionway": 744,
+  "Doghouse": 3216,
+  "Cockpit": 816,
+  "Steering": 2392,
+  "Wheel": 3520
+ },
+ "triangles_total": 307702,
+ "triangles_slice_3": 49698,
+ "budget_slice_3": 500000,
+ "triangles_hidden_reference_hull": 172422,
+ "budget_slices_1_3": 1050000,
+ "shell": {
+  "shell_transom_deck": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 396.48,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "rudder": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 1.033,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "stock": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.138,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "ToeRail": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.276,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Hatches": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.455,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Skylights": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 1.182,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Companionway": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.241,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Doghouse": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 4.053,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Cockpit": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.046,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Steering": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.296,
+   "bad_edges_at": [],
+   "closed": true
+  },
+  "Wheel": {
+   "open_edges": 0,
+   "nonmanifold_edges": 0,
+   "flipped_edges": 0,
+   "degenerate_faces": 0,
+   "enclosed_m3": 0.013,
+   "bad_edges_at": [],
+   "closed": true
+  }
+ },
+ "hydrostatics": {
+  "loa_m": 39.929,
+  "loa_ft": 131.0,
+  "lwl_m": 26.025,
+  "lwl_ft": 85.38,
+  "lwl_ends_m": [
+   -13.004,
+   13.021
+  ],
+  "beam_m": 6.556,
+  "beam_ft": 21.51,
+  "beam_wl_m": 6.09,
+  "beam_wl_ft": 19.98,
+  "draft_m": 4.521,
+  "draft_ft": 14.83,
+  "freeboard_min_m": 1.335,
+  "bow_overhang_ft": 18.78,
+  "stern_overhang_ft": 26.84,
+  "volume_m3": 153.5,
+  "volume_ft3": 5421.0,
+  "displacement_t": 157.3,
+  "displacement_long_tons": 154.9,
+  "lcb_m": -0.68,
+  "lcb_pct_lwl_from_bow": 52.6,
+  "vcb_m": -1.03,
+  "waterplane_m2": 119.37,
+  "lcf_m": -0.646,
+  "bm_t_m": 1.818,
+  "bm_l_m": 30.23,
+  "midship_area_m2": 11.957,
+  "midship_x_m": -1.37,
+  "cp": 0.493,
+  "cb": 0.214,
+  "cwp": 0.753,
+  "canoe_volume_m3": 128.03,
+  "keel_volume_m3": 25.47,
+  "canoe_depth_m": 2.279,
+  "cb_canoe": 0.354,
+  "cp_canoe": 0.484,
+  "wetted_m2": 193.8,
+  "wetted_ft2": 2086.0,
+  "disp_length_ratio": 248.8
+ },
+ "rule": {
+  "rating_ft": 75.76,
+  "L_ft": 85.38,
+  "S_ft2": 7500.0,
+  "D_ft3": 5421.0,
+  "D_long_tons": 154.9,
+  "rows": [
+   {
+    "check": "rating",
+    "value": 75.76,
+    "target": null,
+    "limit": 76.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft limit",
+    "value": 14.83,
+    "target": null,
+    "limit": 15.0,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "length overall",
+    "value": 131.0,
+    "target": 131.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "load waterline",
+    "value": 85.38,
+    "target": 85.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "beam",
+    "value": 21.51,
+    "target": 21.5,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "draft",
+    "value": 14.83,
+    "target": 15.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "displacement",
+    "value": 154.89,
+    "target": 155.0,
+    "limit": null,
+    "unit": "long tons",
+    "ok": true
+   },
+   {
+    "check": "bow overhang",
+    "value": 18.78,
+    "target": 19.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "stern overhang",
+    "value": 26.84,
+    "target": 27.0,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   },
+   {
+    "check": "least freeboard",
+    "value": 4.38,
+    "target": 4.2,
+    "limit": null,
+    "unit": "ft",
+    "ok": true
+   }
+  ],
+  "pass": true
+ },
+ "weights": {
+  "lead": {
+   "long_tons": 93.43,
+   "top_z_m": -2.6994,
+   "lead_m3": 8.3711,
+   "lead_m3_placed": 8.3711,
+   "long_tons_placed": 93.429,
+   "centroid_x_m": -0.834,
+   "centroid_z_m": -3.297,
+   "measured_on": "the finished shell's mesh, below the casting's top",
+   "builds": [
+    {
+     "top_z_m": -2.70125,
+     "solved_top_z_m": -2.6994
+    },
+    {
+     "top_z_m": -2.6994,
+     "solved_top_z_m": -2.69941
+    }
+   ],
+   "card_long_tons": 92.0,
+   "for_the_finish_long_tons": 1.199,
+   "for_the_deck_long_tons": 0.23
+  },
+  "measured": [
+   "deck_and_deckhouses"
+  ],
+  "total_long_tons": 156.2,
+  "lcg_m": -0.748,
+  "lcb_m": -0.68,
+  "lcg_minus_lcb_m": -0.068,
+  "vcg_m": -1.102,
+  "km_m": 0.788,
+  "gm_m": 1.89,
+  "gm_l_m": 30.3,
+  "trim_by_stern_m": 0.058,
+  "displacement_as_built_long_tons": 156.09
+ },
+ "finish": {
+  "grid": [
+   460,
+   120
+  ],
+  "cuts": {
+   "rudder": 182,
+   "keel_cut": 233,
+   "lead": 277,
+   "boot_bottom": 695,
+   "boot_top": 812,
+   "cove_low": 1137,
+   "cove_high": 1220,
+   "welded_slivers": 261
+  },
+  "rudder": {
+   "stock_line": {
+    "through": [
+     -4.3,
+     -4.572
+    ],
+    "dz_dx": -1.2206
+   },
+   "head_from": [
+    -5.793,
+    -2.75
+   ],
+   "head_to": [
+    -8.246,
+    -1.83
+   ],
+   "shoulder_radius_m": 0.4,
+   "cone_radius_per_m_up_the_stock": 0.4037,
+   "head_to_in_stock_frame": {
+    "aft_m": 1.315,
+    "up_m": 2.267
+   },
+   "area_m2": 3.274,
+   "area_ft2": 35.2,
+   "nose_radius_m": [
+    0.0,
+    0.196,
+    0.301
+   ],
+   "gaps_m": {
+    "groove": 0.015,
+    "head": 0.025,
+    "slot": 0.1
+   },
+   "helm_sweep": {
+    "turns_deg": [
+     -35.0,
+     35.0
+    ],
+    "step_deg": 2.5,
+    "touching": 0,
+    "least_clearance_mm": 11.7,
+    "least_clearance_at_deg": -35.0,
+    "turns": [
+     {
+      "deg": -35.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -32.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -30.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -27.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -25.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -22.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -20.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -17.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -15.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -12.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -10.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": -7.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -5.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": -2.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 0.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 2.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 5.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 7.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 10.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 12.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 15.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 17.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 20.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 22.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 25.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 27.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 30.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     },
+     {
+      "deg": 32.5,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.8
+     },
+     {
+      "deg": 35.0,
+      "touching_triangles": 0,
+      "least_clearance_mm": 11.7
+     }
+    ]
+   },
+   "frame": {
+    "origin": [
+     -5.7927,
+     0.0,
+     -2.75
+    ],
+    "X": [
+     -0.77354,
+     0.0,
+     -0.63375
+    ],
+    "Z": [
+     -0.63375,
+     0.0,
+     0.77354
+    ],
+    "positive_turn_about_Z_in_blender_moves_trailing_edge": "starboard (+y): the bow turns to starboard"
+   },
+   "stock_meets_deck": [
+    -9.266,
+    0.0,
+    1.49
+   ]
+  },
+  "displacement": {
+   "plating_thickness_m": 0.008,
+   "plated_wetted_m2": 154.9,
+   "plating_m3": 1.239,
+   "slot_and_groove_m3": 0.051,
+   "rudder_m3": 1.033,
+   "added_long_tons": 1.2,
+   "lead_long_tons": 93.43,
+   "moulded_long_tons": 154.89,
+   "as_built_long_tons": 156.09,
+   "rating_if_plating_counted_ft": 75.57
+  },
+  "chains": {
+   "rudder": 181,
+   "keel": 227,
+   "rudder_zones": {
+    "stock": 93,
+    "shoulder": 9,
+    "cone": 79
+   },
+   "keel_zones": {
+    "face": 109,
+    "shoulder": 15,
+    "cone": 103
+   }
+  },
+  "labels": {
+   "Antifouling": 29288,
+   "Bootstripe": 8040,
+   "CoveStripe": 3567,
+   "Keel": 5574,
+   "Rudder": 1787,
+   "Slot": 515,
+   "Topsides": 69038
+  },
+  "lead": {
+   "long_tons": 93.43,
+   "top_z_m": -2.6994,
+   "lead_m3": 8.3711,
+   "lead_m3_placed": 8.3711,
+   "long_tons_placed": 93.429,
+   "centroid_x_m": -0.834,
+   "centroid_z_m": -3.297,
+   "measured_on": "the finished shell's mesh, below the casting's top",
+   "builds": [
+    {
+     "top_z_m": -2.70125,
+     "solved_top_z_m": -2.6994
+    },
+    {
+     "top_z_m": -2.6994,
+     "solved_top_z_m": -2.69941
+    }
+   ],
+   "card_long_tons": 92.0,
+   "for_the_finish_long_tons": 1.199,
+   "for_the_deck_long_tons": 0.23
+  },
+  "lettering": {
+   "name": {
+    "text": "BLUEBONNET",
+    "cap_height_m": 0.1197,
+    "width_m": 1.377,
+    "transom_width_m": 1.812,
+    "relief_m": 0.004,
+    "let_into_plate_m": 0.0005
+   },
+   "port": {
+    "text": "GALVESTON",
+    "cap_height_m": 0.075,
+    "width_m": 0.791,
+    "transom_width_m": 1.328,
+    "relief_m": 0.004,
+    "let_into_plate_m": 0.0005
+   }
+  }
+ },
+ "deck": {
+  "deck_area_m2": 200.3,
+  "deck_triangles": 18110,
+  "cockpit_sole_z_m": 0.993,
+  "edge_points": 942,
+  "inside_points": 8550,
+  "planking_mitre": [
+   0.796334,
+   0.877556
+  ],
+  "toe_rail_length_m": 82.7,
+  "weights": {
+   "rows": [
+    {
+     "part": "Deck planking (before what stands on it)",
+     "kg": 5728.6,
+     "centre": [
+      -1.558,
+      0.0,
+      1.53
+     ],
+     "how": "top",
+     "pieces": 1
+    },
+    {
+     "part": "Cockpit sides and sole",
+     "kg": 153.8,
+     "centre": [
+      -10.962,
+      0.0,
+      1.127
+     ],
+     "how": "skin",
+     "pieces": 1
+    },
+    {
+     "part": "Toe rail",
+     "kg": 179.1,
+     "centre": [
+      -1.637,
+      0.0,
+      1.618
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "ForecastleHatch coaming",
+     "kg": 14.9,
+     "centre": [
+      12.55,
+      0.0,
+      1.894
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "ForecastleHatch lid",
+     "kg": 19.8,
+     "centre": [
+      12.55,
+      0.0,
+      2.033
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "SailHatch coaming",
+     "kg": 15.7,
+     "centre": [
+      10.0,
+      0.0,
+      1.718
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "SailHatch lid",
+     "kg": 54.7,
+     "centre": [
+      9.999,
+      0.0,
+      1.82
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "LazaretteHatch coaming",
+     "kg": 4.2,
+     "centre": [
+      -13.3,
+      0.0,
+      1.605
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "LazaretteHatch lid",
+     "kg": 12.4,
+     "centre": [
+      -13.3,
+      0.0,
+      1.665
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "ForecastleSkylight coaming",
+     "kg": 23.9,
+     "centre": [
+      7.283,
+      0.0,
+      1.682
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "ForecastleSkylight ridge",
+     "kg": 8.6,
+     "centre": [
+      7.3,
+      0.0,
+      1.917
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "ForecastleSkylight gable ends",
+     "kg": 3.6,
+     "centre": [
+      7.3,
+      0.0,
+      1.869
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "ForecastleSkylight lid",
+     "kg": 11.2,
+     "centre": [
+      7.3,
+      0.0,
+      1.908
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "ForecastleSkylight glass",
+     "kg": 9.2,
+     "centre": [
+      7.3,
+      -0.0,
+      1.928
+     ],
+     "how": "solid",
+     "pieces": 4
+    },
+    {
+     "part": "ForecastleSkylight bars",
+     "kg": 8.4,
+     "centre": [
+      7.3,
+      0.0,
+      1.941
+     ],
+     "how": "solid",
+     "pieces": 12
+    },
+    {
+     "part": "SaloonSkylight coaming",
+     "kg": 47.9,
+     "centre": [
+      -1.703,
+      0.0,
+      1.591
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "SaloonSkylight ridge",
+     "kg": 21.1,
+     "centre": [
+      -1.7,
+      0.0,
+      1.874
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "SaloonSkylight gable ends",
+     "kg": 6.4,
+     "centre": [
+      -1.7,
+      0.0,
+      1.814
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "SaloonSkylight lid",
+     "kg": 35.2,
+     "centre": [
+      -1.7,
+      0.0,
+      1.864
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "SaloonSkylight glass",
+     "kg": 29.4,
+     "centre": [
+      -1.7,
+      0.0,
+      1.887
+     ],
+     "how": "solid",
+     "pieces": 6
+    },
+    {
+     "part": "SaloonSkylight bars",
+     "kg": 26.4,
+     "centre": [
+      -1.7,
+      0.0,
+      1.901
+     ],
+     "how": "solid",
+     "pieces": 22
+    },
+    {
+     "part": "Companionway",
+     "kg": 24.3,
+     "centre": [
+      0.847,
+      0.0,
+      1.601
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "Companionway top (forward of the slide)",
+     "kg": 6.5,
+     "centre": [
+      1.11,
+      0.0,
+      1.736
+     ],
+     "how": "fixed",
+     "pieces": 1
+    },
+    {
+     "part": "Companionway runners",
+     "kg": 5.6,
+     "centre": [
+      0.705,
+      0.0,
+      1.763
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Companionway slide",
+     "kg": 9.8,
+     "centre": [
+      0.675,
+      0.0,
+      1.827
+     ],
+     "how": "skin",
+     "pieces": 1
+    },
+    {
+     "part": "Companionway doors",
+     "kg": 1.4,
+     "centre": [
+      0.421,
+      0.001,
+      1.588
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Doghouse sides",
+     "kg": 146.7,
+     "centre": [
+      -5.887,
+      0.0,
+      1.758
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "Doghouse roof",
+     "kg": 115.2,
+     "centre": [
+      -5.9,
+      0.0,
+      2.157
+     ],
+     "how": "top",
+     "pieces": 1
+    },
+    {
+     "part": "Doghouse portlight glass",
+     "kg": 4.8,
+     "centre": [
+      -5.9,
+      0.0,
+      1.806
+     ],
+     "how": "solid",
+     "pieces": 6
+    },
+    {
+     "part": "Doghouse portlight rims",
+     "kg": 9.6,
+     "centre": [
+      -5.9,
+      0.0,
+      1.807
+     ],
+     "how": "solid",
+     "pieces": 6
+    },
+    {
+     "part": "Doghouse window glass",
+     "kg": 2.6,
+     "centre": [
+      -4.447,
+      0.0,
+      1.827
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Doghouse window rims",
+     "kg": 4.2,
+     "centre": [
+      -4.444,
+      0.0,
+      1.828
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Doghouse doors",
+     "kg": 3.0,
+     "centre": [
+      -7.366,
+      0.0,
+      1.768
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Doghouse slide",
+     "kg": 11.7,
+     "centre": [
+      -6.904,
+      0.0,
+      2.236
+     ],
+     "how": "skin",
+     "pieces": 1
+    },
+    {
+     "part": "Doghouse handrails",
+     "kg": 2.8,
+     "centre": [
+      -5.575,
+      -0.0,
+      2.223
+     ],
+     "how": "solid",
+     "pieces": 10
+    },
+    {
+     "part": "Cockpit coaming",
+     "kg": 30.1,
+     "centre": [
+      -10.948,
+      0.0,
+      1.569
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Wheel box",
+     "kg": 30.5,
+     "centre": [
+      -9.382,
+      0.0,
+      1.748
+     ],
+     "how": "sides",
+     "pieces": 1
+    },
+    {
+     "part": "Wheel box lid",
+     "kg": 11.3,
+     "centre": [
+      -9.385,
+      0.0,
+      2.025
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Steering gear (inside the box)",
+     "kg": 300.0,
+     "centre": [
+      -9.385,
+      0.0,
+      1.641
+     ],
+     "how": "fixed",
+     "pieces": 1
+    },
+    {
+     "part": "Binnacle",
+     "kg": 25.6,
+     "centre": [
+      -9.57,
+      0.0,
+      2.228
+     ],
+     "how": "skin",
+     "pieces": 1
+    },
+    {
+     "part": "Binnacle glass",
+     "kg": 2.7,
+     "centre": [
+      -9.57,
+      0.0,
+      2.385
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Binnacle bezel",
+     "kg": 8.9,
+     "centre": [
+      -9.57,
+      0.0,
+      2.387
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Compass (inside the bowl)",
+     "kg": 20.0,
+     "centre": [
+      -9.57,
+      0.0,
+      2.313
+     ],
+     "how": "fixed",
+     "pieces": 1
+    },
+    {
+     "part": "Binnacle corrector spheres (soft iron)",
+     "kg": 12.4,
+     "centre": [
+      -9.57,
+      0.0,
+      2.323
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Binnacle brackets",
+     "kg": 0.4,
+     "centre": [
+      -9.57,
+      0.0,
+      2.303
+     ],
+     "how": "solid",
+     "pieces": 2
+    },
+    {
+     "part": "Wheel hub",
+     "kg": 24.1,
+     "centre": [
+      -10.151,
+      0.0,
+      1.833
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Wheel rim",
+     "kg": 3.9,
+     "centre": [
+      -10.15,
+      0.0,
+      1.833
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Wheel spokes",
+     "kg": 2.4,
+     "centre": [
+      -10.15,
+      0.0,
+      1.833
+     ],
+     "how": "solid",
+     "pieces": 8
+    },
+    {
+     "part": "Wheel shaft",
+     "kg": 8.7,
+     "centre": [
+      -9.97,
+      0.0,
+      1.833
+     ],
+     "how": "solid",
+     "pieces": 1
+    },
+    {
+     "part": "Less the planking under coamings and houses",
+     "kg": -366.5,
+     "centre": [
+      -2.105,
+      -0.0,
+      1.499
+     ],
+     "how": "top",
+     "pieces": 1
+    }
+   ],
+   "total_kg": 6877.2,
+   "total_long_tons": 6.769,
+   "centre": [
+    -2.234,
+    0.0,
+    1.575
+   ],
+   "card_long_tons": 7.0,
+   "card_centre_xz": [
+    -1.5,
+    1.45
+   ]
+  },
+  "layout": {
+   "inboard_m": {
+    "ForecastleHatch": 1.501,
+    "SailHatch": 1.753,
+    "LazaretteHatch": 2.028,
+    "ForecastleSkylight": 2.199,
+    "SaloonSkylight": 2.376,
+    "Companionway": 2.561,
+    "Doghouse": 1.891,
+    "Cockpit": 1.593,
+    "WheelBox": 2.449
+   },
+   "mast_clear_m": {
+    "ForecastleHatch": 9.2,
+    "SailHatch": 6.4,
+    "LazaretteHatch": 16.0,
+    "ForecastleSkylight": 3.8,
+    "SaloonSkylight": 3.7,
+    "Companionway": 1.725,
+    "Doghouse": 7.4,
+    "Cockpit": 12.902,
+    "WheelBox": 11.95
+   },
+   "pairs_closer_than_0_05_m": [],
+   "ok": true,
+   "stock_meets_deck": [
+    -9.266,
+    0.0,
+    1.49
+   ],
+   "stock_under_wheel_box": true
+  },
+  "footprints": {
+   "ForecastleHatch": [
+    [
+     12.9,
+     0.29
+    ],
+    [
+     12.898,
+     0.306
+    ],
+    [
+     12.892,
+     0.32
+    ],
+    [
+     12.882,
+     0.332
+    ],
+    [
+     12.87,
+     0.342
+    ],
+    [
+     12.856,
+     0.348
+    ],
+    [
+     12.84,
+     0.35
+    ],
+    [
+     12.26,
+     0.35
+    ],
+    [
+     12.244,
+     0.348
+    ],
+    [
+     12.23,
+     0.342
+    ],
+    [
+     12.218,
+     0.332
+    ],
+    [
+     12.208,
+     0.32
+    ],
+    [
+     12.202,
+     0.306
+    ],
+    [
+     12.2,
+     0.29
+    ],
+    [
+     12.2,
+     -0.29
+    ],
+    [
+     12.202,
+     -0.306
+    ],
+    [
+     12.208,
+     -0.32
+    ],
+    [
+     12.218,
+     -0.332
+    ],
+    [
+     12.23,
+     -0.342
+    ],
+    [
+     12.244,
+     -0.348
+    ],
+    [
+     12.26,
+     -0.35
+    ],
+    [
+     12.84,
+     -0.35
+    ],
+    [
+     12.856,
+     -0.348
+    ],
+    [
+     12.87,
+     -0.342
+    ],
+    [
+     12.882,
+     -0.332
+    ],
+    [
+     12.892,
+     -0.32
+    ],
+    [
+     12.898,
+     -0.306
+    ],
+    [
+     12.9,
+     -0.29
+    ]
+   ],
+   "SailHatch": [
+    [
+     10.6,
+     0.445
+    ],
+    [
+     10.597,
+     0.466
+    ],
+    [
+     10.589,
+     0.485
+    ],
+    [
+     10.577,
+     0.502
+    ],
+    [
+     10.56,
+     0.514
+    ],
+    [
+     10.541,
+     0.522
+    ],
+    [
+     10.52,
+     0.525
+    ],
+    [
+     9.48,
+     0.525
+    ],
+    [
+     9.459,
+     0.522
+    ],
+    [
+     9.44,
+     0.514
+    ],
+    [
+     9.423,
+     0.502
+    ],
+    [
+     9.411,
+     0.485
+    ],
+    [
+     9.403,
+     0.466
+    ],
+    [
+     9.4,
+     0.445
+    ],
+    [
+     9.4,
+     -0.445
+    ],
+    [
+     9.403,
+     -0.466
+    ],
+    [
+     9.411,
+     -0.485
+    ],
+    [
+     9.423,
+     -0.502
+    ],
+    [
+     9.44,
+     -0.514
+    ],
+    [
+     9.459,
+     -0.522
+    ],
+    [
+     9.48,
+     -0.525
+    ],
+    [
+     10.52,
+     -0.525
+    ],
+    [
+     10.541,
+     -0.522
+    ],
+    [
+     10.56,
+     -0.514
+    ],
+    [
+     10.577,
+     -0.502
+    ],
+    [
+     10.589,
+     -0.485
+    ],
+    [
+     10.597,
+     -0.466
+    ],
+    [
+     10.6,
+     -0.445
+    ]
+   ],
+   "LazaretteHatch": [
+    [
+     -13.0,
+     0.25
+    ],
+    [
+     -13.002,
+     0.263
+    ],
+    [
+     -13.007,
+     0.275
+    ],
+    [
+     -13.015,
+     0.285
+    ],
+    [
+     -13.025,
+     0.293
+    ],
+    [
+     -13.037,
+     0.298
+    ],
+    [
+     -13.05,
+     0.3
+    ],
+    [
+     -13.55,
+     0.3
+    ],
+    [
+     -13.563,
+     0.298
+    ],
+    [
+     -13.575,
+     0.293
+    ],
+    [
+     -13.585,
+     0.285
+    ],
+    [
+     -13.593,
+     0.275
+    ],
+    [
+     -13.598,
+     0.263
+    ],
+    [
+     -13.6,
+     0.25
+    ],
+    [
+     -13.6,
+     -0.25
+    ],
+    [
+     -13.598,
+     -0.263
+    ],
+    [
+     -13.593,
+     -0.275
+    ],
+    [
+     -13.585,
+     -0.285
+    ],
+    [
+     -13.575,
+     -0.293
+    ],
+    [
+     -13.563,
+     -0.298
+    ],
+    [
+     -13.55,
+     -0.3
+    ],
+    [
+     -13.05,
+     -0.3
+    ],
+    [
+     -13.037,
+     -0.298
+    ],
+    [
+     -13.025,
+     -0.293
+    ],
+    [
+     -13.015,
+     -0.285
+    ],
+    [
+     -13.007,
+     -0.275
+    ],
+    [
+     -13.002,
+     -0.263
+    ],
+    [
+     -13.0,
+     -0.25
+    ]
+   ],
+   "ForecastleSkylight": [
+    [
+     7.8,
+     0.395
+    ],
+    [
+     7.799,
+     0.403
+    ],
+    [
+     7.796,
+     0.41
+    ],
+    [
+     7.791,
+     0.416
+    ],
+    [
+     7.785,
+     0.421
+    ],
+    [
+     7.778,
+     0.424
+    ],
+    [
+     7.77,
+     0.425
+    ],
+    [
+     6.83,
+     0.425
+    ],
+    [
+     6.822,
+     0.424
+    ],
+    [
+     6.815,
+     0.421
+    ],
+    [
+     6.809,
+     0.416
+    ],
+    [
+     6.804,
+     0.41
+    ],
+    [
+     6.801,
+     0.403
+    ],
+    [
+     6.8,
+     0.395
+    ],
+    [
+     6.8,
+     -0.395
+    ],
+    [
+     6.801,
+     -0.403
+    ],
+    [
+     6.804,
+     -0.41
+    ],
+    [
+     6.809,
+     -0.416
+    ],
+    [
+     6.815,
+     -0.421
+    ],
+    [
+     6.822,
+     -0.424
+    ],
+    [
+     6.83,
+     -0.425
+    ],
+    [
+     7.77,
+     -0.425
+    ],
+    [
+     7.778,
+     -0.424
+    ],
+    [
+     7.785,
+     -0.421
+    ],
+    [
+     7.791,
+     -0.416
+    ],
+    [
+     7.796,
+     -0.41
+    ],
+    [
+     7.799,
+     -0.403
+    ],
+    [
+     7.8,
+     -0.395
+    ]
+   ],
+   "SaloonSkylight": [
+    [
+     -0.7,
+     0.565
+    ],
+    [
+     -0.701,
+     0.574
+    ],
+    [
+     -0.705,
+     0.582
+    ],
+    [
+     -0.71,
+     0.59
+    ],
+    [
+     -0.718,
+     0.595
+    ],
+    [
+     -0.726,
+     0.599
+    ],
+    [
+     -0.735,
+     0.6
+    ],
+    [
+     -2.665,
+     0.6
+    ],
+    [
+     -2.674,
+     0.599
+    ],
+    [
+     -2.683,
+     0.595
+    ],
+    [
+     -2.69,
+     0.59
+    ],
+    [
+     -2.695,
+     0.582
+    ],
+    [
+     -2.699,
+     0.574
+    ],
+    [
+     -2.7,
+     0.565
+    ],
+    [
+     -2.7,
+     -0.565
+    ],
+    [
+     -2.699,
+     -0.574
+    ],
+    [
+     -2.695,
+     -0.582
+    ],
+    [
+     -2.69,
+     -0.59
+    ],
+    [
+     -2.683,
+     -0.595
+    ],
+    [
+     -2.674,
+     -0.599
+    ],
+    [
+     -2.665,
+     -0.6
+    ],
+    [
+     -0.735,
+     -0.6
+    ],
+    [
+     -0.726,
+     -0.599
+    ],
+    [
+     -0.718,
+     -0.595
+    ],
+    [
+     -0.71,
+     -0.59
+    ],
+    [
+     -0.705,
+     -0.583
+    ],
+    [
+     -0.701,
+     -0.574
+    ],
+    [
+     -0.7,
+     -0.565
+    ]
+   ],
+   "Companionway": [
+    [
+     1.275,
+     0.36
+    ],
+    [
+     1.274,
+     0.37
+    ],
+    [
+     1.27,
+     0.38
+    ],
+    [
+     1.263,
+     0.388
+    ],
+    [
+     1.255,
+     0.395
+    ],
+    [
+     1.245,
+     0.399
+    ],
+    [
+     1.235,
+     0.4
+    ],
+    [
+     0.465,
+     0.4
+    ],
+    [
+     0.455,
+     0.399
+    ],
+    [
+     0.445,
+     0.395
+    ],
+    [
+     0.437,
+     0.388
+    ],
+    [
+     0.43,
+     0.38
+    ],
+    [
+     0.426,
+     0.37
+    ],
+    [
+     0.425,
+     0.36
+    ],
+    [
+     0.425,
+     -0.36
+    ],
+    [
+     0.426,
+     -0.37
+    ],
+    [
+     0.43,
+     -0.38
+    ],
+    [
+     0.437,
+     -0.388
+    ],
+    [
+     0.445,
+     -0.395
+    ],
+    [
+     0.455,
+     -0.399
+    ],
+    [
+     0.465,
+     -0.4
+    ],
+    [
+     1.235,
+     -0.4
+    ],
+    [
+     1.245,
+     -0.399
+    ],
+    [
+     1.255,
+     -0.395
+    ],
+    [
+     1.263,
+     -0.388
+    ],
+    [
+     1.27,
+     -0.38
+    ],
+    [
+     1.274,
+     -0.37
+    ],
+    [
+     1.275,
+     -0.36
+    ]
+   ],
+   "Doghouse": [
+    [
+     -4.4,
+     0.75
+    ],
+    [
+     -4.405,
+     0.799
+    ],
+    [
+     -4.419,
+     0.846
+    ],
+    [
+     -4.442,
+     0.889
+    ],
+    [
+     -4.473,
+     0.927
+    ],
+    [
+     -4.511,
+     0.958
+    ],
+    [
+     -4.554,
+     0.981
+    ],
+    [
+     -4.601,
+     0.995
+    ],
+    [
+     -4.65,
+     1.0
+    ],
+    [
+     -7.15,
+     1.0
+    ],
+    [
+     -7.199,
+     0.995
+    ],
+    [
+     -7.246,
+     0.981
+    ],
+    [
+     -7.289,
+     0.958
+    ],
+    [
+     -7.327,
+     0.927
+    ],
+    [
+     -7.358,
+     0.889
+    ],
+    [
+     -7.381,
+     0.846
+    ],
+    [
+     -7.395,
+     0.799
+    ],
+    [
+     -7.4,
+     0.75
+    ],
+    [
+     -7.4,
+     -0.75
+    ],
+    [
+     -7.395,
+     -0.799
+    ],
+    [
+     -7.381,
+     -0.846
+    ],
+    [
+     -7.358,
+     -0.889
+    ],
+    [
+     -7.327,
+     -0.927
+    ],
+    [
+     -7.289,
+     -0.958
+    ],
+    [
+     -7.246,
+     -0.981
+    ],
+    [
+     -7.199,
+     -0.995
+    ],
+    [
+     -7.15,
+     -1.0
+    ],
+    [
+     -4.65,
+     -1.0
+    ],
+    [
+     -4.601,
+     -0.995
+    ],
+    [
+     -4.554,
+     -0.981
+    ],
+    [
+     -4.511,
+     -0.958
+    ],
+    [
+     -4.473,
+     -0.927
+    ],
+    [
+     -4.442,
+     -0.889
+    ],
+    [
+     -4.419,
+     -0.846
+    ],
+    [
+     -4.405,
+     -0.799
+    ],
+    [
+     -4.4,
+     -0.75
+    ]
+   ],
+   "Cockpit": [
+    [
+     -9.902,
+     0.753
+    ],
+    [
+     -9.908,
+     0.801
+    ],
+    [
+     -9.928,
+     0.849
+    ],
+    [
+     -9.96,
+     0.89
+    ],
+    [
+     -10.001,
+     0.922
+    ],
+    [
+     -10.049,
+     0.942
+    ],
+    [
+     -10.097,
+     0.948
+    ],
+    [
+     -10.242,
+     0.948
+    ],
+    [
+     -10.383,
+     0.948
+    ],
+    [
+     -10.525,
+     0.948
+    ],
+    [
+     -10.667,
+     0.948
+    ],
+    [
+     -10.808,
+     0.948
+    ],
+    [
+     -10.95,
+     0.948
+    ],
+    [
+     -11.092,
+     0.948
+    ],
+    [
+     -11.233,
+     0.948
+    ],
+    [
+     -11.375,
+     0.948
+    ],
+    [
+     -11.517,
+     0.948
+    ],
+    [
+     -11.658,
+     0.948
+    ],
+    [
+     -11.803,
+     0.948
+    ],
+    [
+     -11.851,
+     0.942
+    ],
+    [
+     -11.899,
+     0.922
+    ],
+    [
+     -11.94,
+     0.89
+    ],
+    [
+     -11.972,
+     0.849
+    ],
+    [
+     -11.992,
+     0.801
+    ],
+    [
+     -11.998,
+     0.753
+    ],
+    [
+     -11.998,
+     0.6
+    ],
+    [
+     -11.998,
+     0.45
+    ],
+    [
+     -11.998,
+     0.3
+    ],
+    [
+     -11.998,
+     0.15
+    ],
+    [
+     -11.998,
+     0.0
+    ],
+    [
+     -11.998,
+     -0.15
+    ],
+    [
+     -11.998,
+     -0.3
+    ],
+    [
+     -11.998,
+     -0.45
+    ],
+    [
+     -11.998,
+     -0.6
+    ],
+    [
+     -11.998,
+     -0.753
+    ],
+    [
+     -11.992,
+     -0.801
+    ],
+    [
+     -11.972,
+     -0.849
+    ],
+    [
+     -11.94,
+     -0.89
+    ],
+    [
+     -11.899,
+     -0.922
+    ],
+    [
+     -11.851,
+     -0.942
+    ],
+    [
+     -11.803,
+     -0.948
+    ],
+    [
+     -11.658,
+     -0.948
+    ],
+    [
+     -11.517,
+     -0.948
+    ],
+    [
+     -11.375,
+     -0.948
+    ],
+    [
+     -11.233,
+     -0.948
+    ],
+    [
+     -11.092,
+     -0.948
+    ],
+    [
+     -10.95,
+     -0.948
+    ],
+    [
+     -10.808,
+     -0.948
+    ],
+    [
+     -10.667,
+     -0.948
+    ],
+    [
+     -10.525,
+     -0.948
+    ],
+    [
+     -10.383,
+     -0.948
+    ],
+    [
+     -10.242,
+     -0.948
+    ],
+    [
+     -10.097,
+     -0.948
+    ],
+    [
+     -10.049,
+     -0.942
+    ],
+    [
+     -10.001,
+     -0.922
+    ],
+    [
+     -9.96,
+     -0.89
+    ],
+    [
+     -9.928,
+     -0.849
+    ],
+    [
+     -9.908,
+     -0.801
+    ],
+    [
+     -9.902,
+     -0.753
+    ],
+    [
+     -9.902,
+     -0.6
+    ],
+    [
+     -9.902,
+     -0.45
+    ],
+    [
+     -9.902,
+     -0.3
+    ],
+    [
+     -9.902,
+     -0.15
+    ],
+    [
+     -9.902,
+     0.0
+    ],
+    [
+     -9.902,
+     0.15
+    ],
+    [
+     -9.902,
+     0.3
+    ],
+    [
+     -9.902,
+     0.45
+    ],
+    [
+     -9.902,
+     0.6
+    ]
+   ],
+   "WheelBox": [
+    [
+     -8.95,
+     0.24
+    ],
+    [
+     -8.951,
+     0.25
+    ],
+    [
+     -8.955,
+     0.26
+    ],
+    [
+     -8.962,
+     0.268
+    ],
+    [
+     -8.97,
+     0.275
+    ],
+    [
+     -8.98,
+     0.279
+    ],
+    [
+     -8.99,
+     0.28
+    ],
+    [
+     -9.78,
+     0.28
+    ],
+    [
+     -9.79,
+     0.279
+    ],
+    [
+     -9.8,
+     0.275
+    ],
+    [
+     -9.808,
+     0.268
+    ],
+    [
+     -9.815,
+     0.26
+    ],
+    [
+     -9.819,
+     0.25
+    ],
+    [
+     -9.82,
+     0.24
+    ],
+    [
+     -9.82,
+     -0.24
+    ],
+    [
+     -9.819,
+     -0.25
+    ],
+    [
+     -9.815,
+     -0.26
+    ],
+    [
+     -9.808,
+     -0.268
+    ],
+    [
+     -9.8,
+     -0.275
+    ],
+    [
+     -9.79,
+     -0.279
+    ],
+    [
+     -9.78,
+     -0.28
+    ],
+    [
+     -8.99,
+     -0.28
+    ],
+    [
+     -8.98,
+     -0.279
+    ],
+    [
+     -8.97,
+     -0.275
+    ],
+    [
+     -8.962,
+     -0.268
+    ],
+    [
+     -8.955,
+     -0.26
+    ],
+    [
+     -8.951,
+     -0.25
+    ],
+    [
+     -8.95,
+     -0.24
+    ]
+   ]
+  },
+  "wheel_sweep": {
+   "turns_deg": [
+    0.0,
+    45.0
+   ],
+   "step_deg": 5.0,
+   "touching": 0,
+   "least_clearance_mm": 177.0,
+   "turns": [
+    {
+     "deg": 0.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 5.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 10.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 15.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 20.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 25.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 30.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 35.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 40.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    },
+    {
+     "deg": 45.0,
+     "touching_triangles": 0,
+     "least_clearance_mm": 177.0
+    }
+   ]
+  },
+  "cockpit_room": {
+   "points": 763,
+   "least_m": 1.002,
+   "nearest_point": [
+    -11.875,
+    0.88,
+    0.993
+   ],
+   "from_sole_corners": {
+    "x -9.95 y -0.90": {
+     "down_m": 1.402,
+     "out_m": 1.988
+    },
+    "x -9.95 y +0.90": {
+     "down_m": 1.402,
+     "out_m": 1.988
+    },
+    "x -11.95 y -0.90": {
+     "down_m": 1.064,
+     "out_m": 1.756
+    },
+    "x -11.95 y +0.90": {
+     "down_m": 1.064,
+     "out_m": 1.756
+    }
+   },
+   "ok": true
+  },
+  "wheel_frame": {
+   "origin": [
+    -10.15,
+    0.0,
+    1.8329
+   ],
+   "X": [
+    1.0,
+    -0.0,
+    -0.0
+   ],
+   "Z": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "positive_turn_about_X_in_blender_moves_its_top": "to starboard (+y): clockwise as the helmsman sees it, the bow to starboard"
+  }
+ }
+}

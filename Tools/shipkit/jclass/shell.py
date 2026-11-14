@@ -53,6 +53,18 @@ ARC_NU, ARC_NV = 500, 700      # the girth table for the plating UV
 NOSE_J = 10                    # segments across the rudder's nose and the keel's groove (port to starboard)
 NO_PLATING = -1.0              # the plating UV's V where there is no plating (lead, rudder, closings, transom)
 DECK_CAMBER = 0.11             # m of crown at the widest beam (about 4 in, the period's figure for a deck this wide)
+DECK_X = (loft.END["transom_top"][0], loft.END["stem_head"][0])
+HDM = float(loft.DECK_HB(np.linspace(*DECK_X, 4000)).max())     # the deck's widest half-breadth
+
+
+def deck_z(x, y):
+    """The deck's height at (x, y): the sheer plus the beam camber. Every deck beam is cut from one mould (a parabola
+    DECK_CAMBER high over the widest beam), so the deck rises less where it is narrower: z = sheer + K (hd^2 - y^2),
+    K = DECK_CAMBER / HDM^2, with hd the deck's half-breadth at x (slice 3; slice 2's placeholder rose in proportion to
+    hd instead)."""
+    xc = np.clip(x, *DECK_X)
+    hd = loft.DECK_HB(xc)
+    return loft.SHEER(xc) + DECK_CAMBER * (hd * hd - np.asarray(y, float) ** 2) / (HDM * HDM)
 
 
 # ------------------------------------------------------------------------------------------------- the surface
@@ -696,21 +708,23 @@ def _strip_kind(z0, z1):
     return "strip:" + (z0 if z0 == z1 else "shoulder")
 
 
-def build(nu=NU, nv=NV):
+def build(nu=NU, nv=NV, extra_lead_tons=0.0):
     """The finished shell's pieces and a report: {'Shell', 'Rudder', 'Stock'} pieces and the checks.
 
     The lead casting's top is solved on the finished shell itself: a first guess from slice 1's sections, then the
     shell is built, the casting (everything below its top: the keel forward of the slot, less the groove) measured on
     it, and the top moved until the casting holds the size card's lead plus what the plating and the slot change in her
-    displacement (measured on the same build). Two builds usually settle it to a fraction of a millimetre."""
+    displacement (measured on the same build), plus `extra_lead_tons`: what the later slices' parts weigh less than the
+    size card's estimate for them (slice 3's deck), so she still floats on her lines. Two builds usually settle it to
+    a fraction of a millimetre."""
     surf = Surface()
     S = loft.surface(420, 104)                                  # slice 1's grid
     lead_card = loft.SPECS["weights"]["lead_keel"]
-    z = lead_top_guess(S, lead_card + 1.2)
+    z = lead_top_guess(S, lead_card + 1.2 + extra_lead_tons)
     passes = []
     for _ in range(4):
         pieces, report, T_shell = _build_at(surf, z, nu, nv)
-        tons = lead_card + report["displacement"]["_added_long_tons"]
+        tons = lead_card + report["displacement"]["_added_long_tons"] + extra_lead_tons
         z_new, need = lead_on_mesh(T_shell, tons)
         passes.append({"top_z_m": round(z, 5), "solved_top_z_m": round(z_new, 5)})
         if abs(z_new - z) < 3e-4:
@@ -725,7 +739,9 @@ def build(nu=NU, nv=NV):
     report["lead"] = {"long_tons": round(tons, 2), "top_z_m": round(z, 4), "lead_m3": round(need, 4),
                       "lead_m3_placed": round(v, 4), "long_tons_placed": round(placed, 3),
                       "centroid_x_m": round(cx, 3), "centroid_z_m": round(cz, 3),
-                      "measured_on": "the finished shell's mesh, below the casting's top", "builds": passes}
+                      "measured_on": "the finished shell's mesh, below the casting's top", "builds": passes,
+                      "card_long_tons": lead_card, "for_the_finish_long_tons": round(tons - lead_card - extra_lead_tons, 3),
+                      "for_the_deck_long_tons": round(extra_lead_tons, 3)}
     report["displacement"]["lead_long_tons"] = round(tons, 2)
     del report["displacement"]["_added_long_tons"]
     return pieces, report
@@ -940,17 +956,16 @@ def rudder_frame():
     return o, np.array([-N_STOCK[0], 0.0, -N_STOCK[1]]), np.array([UP_STOCK[0], 0.0, UP_STOCK[1]])
 
 
-def stock_axis(camber):
+def stock_axis():
     """The stock's axis: a point on it (the rudder's head on the stock line), its unit direction (up), and where it
-    meets the placeholder deck's centreline (the sheer plus `camber` at the widest deck, less where it is narrower)."""
+    meets the deck's centreline (deck_z)."""
     p0 = np.array([A[0], 0.0, A[1]])
     up = np.array([UP_STOCK[0], 0.0, UP_STOCK[1]])
-    hdm = float(loft.DECK_HB(np.linspace(loft.END["transom_top"][0], loft.END["stem_head"][0], 800)).max())
     lo, hi = 0.0, 20.0
     for _ in range(60):
         m = 0.5 * (lo + hi)
         p = p0 + m * up
-        zd = float(loft.SHEER(p[0])) + camber * float(loft.DECK_HB(p[0])) / hdm
+        zd = float(deck_z(p[0], 0.0))
         if p[2] < zd:
             lo = m
         else:
@@ -959,7 +974,7 @@ def stock_axis(camber):
 
 
 def _stock_piece(sides=24):
-    p0, up, deck = stock_axis(DECK_CAMBER)
+    p0, up, deck = stock_axis()
     r = RUD["stock_radius"]
     bottom = np.array([SX, 0.0, HZ]) + up * (RUD["stock_from_bottom"] / up[2])
     top = deck - up * (0.03 + r * math.tan(math.acos(up[2])) + 0.02)   # the tilted top disc stays under the deck

@@ -496,24 +496,30 @@ def lead_keel(S, lead_t, rho_lead=11340.0):
             "centroid_x_m": round(cx, 3), "centroid_z_m": round(cz, 3)}
 
 
-def weight_check(S, h, lead=None):
+def weight_check(S, h, lead=None, measured=None):
     """The size card's weight split against the hull: does the lead fit in the keel, and where are G and B?
     Heights of the parts other than the lead are our estimates for a 1930s steel J (see specs_bluebonnet.json).
-    `lead` (centroid_x_m, centroid_z_m) replaces lead_keel's: slice 2 passes the casting with the rudder's slot cut away."""
+    `lead` (centroid_x_m, centroid_z_m) replaces lead_keel's: slice 2 passes the casting with the rudder's slot cut away.
+    `measured` {part: (long tons, x, z)} replaces the card's estimate for the parts a slice has built (slice 3: the deck
+    and deckhouses)."""
     w = SPECS["weights"]
     lt = 1.016047
     lead = lead or lead_keel(S, w["lead_keel"] * lt)
-    # (long tons, x m, z m) of each part; the lead's from the hull, the rest estimated
+    # (long tons, x m, z m) of each part; the lead's from the hull, the rest estimated unless measured
     parts = {"lead_keel": (lead.get("long_tons", w["lead_keel"]), lead["centroid_x_m"], lead["centroid_z_m"])}
     for k, xz in SPECS["weight_positions"].items():
         if k != "note":
             parts[k] = (w[k], xz[0], xz[1])
+    for k, v in (measured or {}).items():
+        if k not in parts:
+            raise KeyError(f"no part {k} in the size card's weights")
+        parts[k] = tuple(float(a) for a in v)
     W = sum(p[0] for p in parts.values())
     xg = sum(p[0] * p[1] for p in parts.values()) / W
     zg = sum(p[0] * p[2] for p in parts.values()) / W
     km = h["vcb_m"] + h["bm_t_m"]
     gml = h["vcb_m"] + h["bm_l_m"] - zg
-    return {"lead": lead, "total_long_tons": round(W, 1), "lcg_m": round(xg, 3), "lcb_m": h["lcb_m"],
+    return {"lead": lead, "measured": sorted(measured or {}), "total_long_tons": round(W, 1), "lcg_m": round(xg, 3), "lcb_m": h["lcb_m"],
             "lcg_minus_lcb_m": round(xg - h["lcb_m"], 3), "vcg_m": round(zg, 3), "km_m": round(km, 3),
             "gm_m": round(km - zg, 3), "gm_l_m": round(gml, 2),
             "trim_by_stern_m": round((h["lcb_m"] - xg) * h["lwl_m"] / gml, 3)}
