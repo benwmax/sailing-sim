@@ -119,6 +119,7 @@ Each mirrors a Mac script and writes the same logs to `Artifacts\`. Run from the
 | `scripts\windows\make-crew-clothes.ps1 [-SkipExport] [-ExportOnly]` (`$env:PIECES=Vest`) | `scripts/make-crew-clothes.sh` | Exports the MetaHuman bodies (full editor, `QUIT_EDITOR` after the script), tailors polo, shoes and vest in Blender, imports them (`PIECES` filters the import) and tunes the skin. Needs the MetaHumans and Blender; logs `Artifacts\crew-*.log` |
 | `scripts\windows\bench-win.ps1 [-Seconds 20] [-Quality Ultra] [-Demo] [-GameArgs "..."]` | `scripts/bench-mac.sh` | Runs the packaged game, prints fps and GPU slices, copies `bench.json` and the screenshot to `Artifacts\` |
 | `scripts\windows\bench-visual-win.ps1 [-Tiers High,Ultra]` | `scripts/bench-visual.sh` | The twelve visual views per tier, CSV in `Artifacts\` |
+| `scripts\windows\capture-reel.ps1 -Shot wireframe\|fleet\|physics\|storm\|night\|all [-Quality draft]` | `scripts/capture-reel.sh` | The sim reel's showcase loops through Movie Render Queue: 4K masters and the portfolio's web clips in `Artifacts\reel\` (steps: `docs/sim-reel/PC-RUNBOOK.md`) |
 
 The game arguments in `CLAUDE.md` (`-SailingWeather=Thunderstorm`, `-SailingWorld=1`, `-SailingCapture=HelmEye`, ...)
 work the same way through `-GameArgs`. To play, run `Packaged\Windows\SailingSim.exe`.

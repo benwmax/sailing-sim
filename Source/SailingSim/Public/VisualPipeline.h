@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "SailingSettings.h"
 
+struct FPostProcessSettings;
+
 /**
  * Visual V1: the rendering pipeline per quality tier and the physical camera (see docs/visual-1/README.md).
  *
@@ -42,6 +44,14 @@ SAILINGSIM_API bool UsesPhysicalCamera(ESailingQuality Quality);
  *  otherwise the Settings toggle or photo mode. Capture mode stays neutral unless asked: its stills are compared with
  *  real photographs. */
 SAILINGSIM_API bool UsesCinematicLook(ESailingQuality Quality, bool bSettingOn, bool bPhotoMode, bool bCaptureMode);
+
+/** Sim reel (docs/sim-reel/): -SailingReel, a showcase render through Movie Render Queue (Tools/reel). Its lens keeps
+ *  motion blur and depth of field on, capture mode included (whose reference stills keep neither without it). */
+SAILINGSIM_API bool IsReelRun();
+
+/** The reel's lens on a camera: focus at FocusCm, -SailingReelFstop=<f> (4 by default) on a full-frame sensor, motion
+ *  blur at a 180 degree shutter. */
+SAILINGSIM_API void ApplyReelLens(FPostProcessSettings& PP, float FocusCm);
 
 /** Horizontal illuminance at the water (real lux) from the sun (elevation deg, cloud shade of its direct light 0..1,
  *  cloud darkness 0..1) and the moon (elevation deg, lit fraction 0..1). Twilight follows the civil and nautical
