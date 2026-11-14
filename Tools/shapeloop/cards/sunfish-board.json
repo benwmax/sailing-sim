@@ -1,0 +1,30 @@
+{
+ "id": "sunfish-board",
+ "boat": "Sunfish",
+ "sections": [
+  "board_trunk"
+ ],
+ "status": "wave 5, round 5: blind A/B 3 of 3",
+ "feature": "The Sunfish's daggerboard is one board through the deck: the part above the deck, its gasket and the splash guard line up with the board below (they had been 6 cm forward of it), and the tip is rounded instead of cut square.",
+ "targets": {},
+ "outline_views": [],
+ "features": [
+  "board_mid_x (build_fleet, Sunfish only): the above-deck board, the slot's gasket and the splash guard centred on the underwater board's chord, the above-deck part its full chord",
+  "board() (Sunfish only): the tip rounded, 80 mm at the leading edge and 25 mm at the trailing edge, the flat between them at the physics' draft",
+  "the tip keeps the board's full 19 mm (each tip section's thickness ratio from the full chord), its faces wound outward, and the above-deck board's eased top edge inset so it is the board's own edge, its ends capped inside the wood"
+ ],
+ "references": "Round 2's blind reviewers (the daggerboard and rudder as plain slabs); class photos of the Sunfish's wooden board (one flat board, rounded tip).",
+ "moves_ok": [],
+ "moves_ok_sections": [],
+ "moves_ok_note": "The board's parts above the deck move 6 cm aft to sit on the board below; the splash guard (fittings) moves with the trunk.",
+ "tris_max": null,
+ "mac_wiring": false,
+ "mac_note": "No game code changes. The Mac rebakes and reimports the Sunfish.",
+ "photo_needed": "no",
+ "physics_reference": "baseline",
+ "findings": [
+  "Blind A/B: 3 of 3 reviewers (realism, boatbuilder, 3D artist) picked the rounded, aligned board, each by a small margin.",
+  "QA: the alignment, draft (-0.890 m), thickness (slab 19.0 mm, foil 19.2 mm) and clearances hold; nothing else moved (the fittings' 14 vertices at the ratchet are the weld picking other survivors, under 0.01 mm). Fixed after QA: the tip had thinned to 10.8 mm (now 19.1 mm to the bottom), the rounding was sampled away from the tip (now clustered toward it, 6 points on the trailing radius), the foil's faces were wound inward (now outward), the eased top edge stood 10 mm proud of the board's edges with open ends.",
+  "Reviewers' notes for later: no slot or fairing where the board leaves the hull bottom; the blunt bow and forefoot step (the physics hull's end); the rudder a flat plate on a boxy head; the board's handle cap reads tall. The ILCA's board is 6 cm out of line the same way (not in this slice)."
+ ]
+}

@@ -349,3 +349,14 @@ QA found it ran through the rudder's head and gudgeon and kinked 26 deg where th
 stops 45 mm either side of the centreline at the transom (no overlap with the rudder or fittings) and the bow turn is
 the Hermite. Volume, CB, fairness and seams unchanged; about 2,000 more triangles. Open: the rail is thin, sinks about
 11 mm into the transom's corners and reaches 17 mm past the hull's ends.
+
+## Wave 5, round 5 (Nov 14): the Sunfish's daggerboard
+
+Card `cards/sunfish-board.json`. `board()` puts a board's leading edge a quarter chord ahead of the physics' centre,
+but the Sunfish's board above the deck, the slot's gasket and the splash guard were centred on the centre itself, so
+the board above the deck sat 6 cm forward of the board below. They now follow the board's chord (`board_mid_x`, Sunfish
+only), the part above the deck its full chord, so it reads as one board through the deck. The tip, cut square, is
+rounded (80 mm at the leading edge, 25 mm at the trailing edge) with its flat still at the physics' draft, the full
+19 mm thick to the bottom and its faces wound outward. Blind A/B 3 of 3; QA's fixes (tip thickness, sampling, winding,
+the eased edge standing proud) are in. Volume, CB, fairness and seams unchanged; about 1,100 more triangles. Open: no slot
+or fairing where the board leaves the hull; the ILCA's board is out of line the same way.
