@@ -3530,15 +3530,24 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	// docs/sail-parallel/: the sails step side by side (UpdateSailCloths).
 	TArray<FSailUpdate, TInlineAllocator<3>> SailUpdates;
 	SailUpdates.Add({ MainSail, &MainCloth, T.MainStrips, S.MainSide });
-	if (Cfg.HasJib()) SailUpdates.Add({ JibSail, &JibCloth, T.JibStrips, S.JibSide });
+	// Feedback #20 follow-up: the jib's head at the forestay's top on a model that has one (the hero J/22's is 42 cm under
+	// the physics jib's head). Its Hounds is also the spinnaker's mast front below.
+	const bool bHounds = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
+	const FVector Hounds = bHounds ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
+	if (Cfg.HasJib())
+	{
+		FVector JibHead;
+		if (bHounds && JibHeadCm(Cfg, Hounds, JibHead)) JibCloth.SetHeadPoint(JibHead);
+		else JibCloth.ClearHeadPoint();
+		SailUpdates.Add({ JibSail, &JibCloth, T.JibStrips, S.JibSide });
+	}
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
 	if (T.NumSpinStrips > 0)
 	{
-		// Feedback #20: the head on its halyard at the mast (the model mast's Hounds when it is forward of the config's front), the luff
-		// kept ahead of the jib's.
-		const bool bMastFront = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
-		const FVector MastFront = bMastFront ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
-		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bMastFront ? &MastFront : nullptr), Cfg.HasJib() ? &Cfg.Jib : nullptr);
+		// Feedback #20: the head on its halyard at the mast (the model mast's Hounds when it is forward of the config's front), over
+		// the jib's head as its cloth draws it, the luff kept ahead of the jib's.
+		const FSailCloth* Jib = Cfg.HasJib() ? &JibCloth : nullptr;
+		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bHounds ? &Hounds : nullptr, Jib), Jib);
 		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
 	}
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
