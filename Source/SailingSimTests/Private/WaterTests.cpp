@@ -1002,7 +1002,8 @@ bool FWaterFarCapSpritesTest::RunTest(const FString&)
 			if (double(Total) / Step > 1.5 * B) AddError(FString::Printf(TEXT("Replan %d: %.0f slots held, over 1.5x the budget"), I, double(Total) / Step));
 		}
 		AddInfo(FString::Printf(TEXT("Wandering storm: step %.2f after %d changes"), Step, Changes));
-		TestTrue(TEXT("A wandering storm total changes the step at most once"), Changes <= 1);
+		TestTrue(TEXT("A wandering storm total changes the step once"), Changes == 1);
+		TestEqual(TEXT("... to 1.5"), Step, 1.5);
 		TestEqual(TEXT("Under the budget the step is 1"), AWaterSurface::FarCapSizeStepNext(1.0, B / 2, 0.0), 1.0);
 		TestEqual(TEXT("Far over the budget it rises at once"), AWaterSurface::FarCapSizeStepNext(1.0, 2 * B, 0.0), 2.0);
 		TestEqual(TEXT("A little over, it waits for the hold"), AWaterSurface::FarCapSizeStepNext(1.0, int32(1.2 * B), 1.0), 1.0);

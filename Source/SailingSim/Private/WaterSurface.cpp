@@ -1554,7 +1554,11 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	{
 		FarCapTilePlan(P.Cover, Area, P.Slots, P.Prob, CapArea);
 		const FFarCapTile* Tile = FarCapTiles.Find(P.Key);
-		P.Need = !Tile ? 1 : P.Slots > Tile->Slots ? 2 : Tile->Size != SizeStep ? 3 : 0;
+		// (Outgrown is judged at the tile's own size: a tile waiting at an old step is short of slots only for its own caps.)
+		int32 OwnSlots = P.Slots;
+		float OwnProb = 0.f;
+		if (Tile && Tile->Size != SizeStep) FarCapTilePlan(P.Cover, Area, OwnSlots, OwnProb, FarCapArea * Tile->Size);
+		P.Need = !Tile ? 1 : OwnSlots > Tile->Slots ? 2 : Tile->Size != SizeStep ? 3 : 0;
 		P.Dist = FMath::Square(P.CX - Cam.X) + FMath::Square(P.CY - Cam.Y);
 	}
 	Plans.Sort([](const FPlan& A, const FPlan& B) { return A.Need != B.Need ? (A.Need == 0 ? false : B.Need == 0 ? true : A.Need < B.Need) : A.Dist < B.Dist; });
