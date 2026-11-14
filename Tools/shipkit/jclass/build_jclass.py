@@ -6,16 +6,20 @@ a UV map, the rudder cut out of the keel with its round nose and bronze stock, a
 the transom. Slice 3 builds the deck and what stands on it (deck.py, deck_bluebonnet.json): the laid teak deck with the
 cockpit let into it, its planking drawn by its material from three UV maps, the toe rail, hatches, skylights,
 companionway, doghouse, the wheel box, wheel and binnacle; their weight replaces the size card's estimate, and the
-lead takes up the difference so she still floats on her lines.
+lead takes up the difference so she still floats on her lines. Slice 4 builds the spars (spars.py, rig_bluebonnet.json):
+the riveted duralumin mast with its spreaders, jumper struts, track and fittings, the boom on its gooseneck and the
+spinnaker pole on its car, the boom and the pole each in its own frame so they swing; their weight replaces the size
+card's estimate for the spars as the deck's does, and the rated sail area comes from the spars' measures.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
 
 Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom and deck; the rudder, stock and each of the
 deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics, the
-rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's and the wheel's
-frames), plus the drawings from drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png,
-deck_profile.png; they need matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
-of the load waterline. Edit loft.py, shell.py, deck.py and the json files, never the .blend. The moulded hull of slice 1
+rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
+the boom's and the pole's frames, the rig's measures, sweeps and attachment points), plus the drawings from
+drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png, deck_profile.png, sail_plan.png; they need
+matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
+of the load waterline. Edit loft.py, shell.py, deck.py, spars.py and the json files, never the .blend. The moulded hull of slice 1
 stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
 """
 import json
@@ -34,6 +38,7 @@ import loft  # noqa: E402
 import rule_check  # noqa: E402
 import shell  # noqa: E402
 import deck  # noqa: E402
+import spars  # noqa: E402
 import drawings_jclass  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -44,8 +49,9 @@ NU, NV = 420, 104          # slice 1's hull grid (the hidden reference the fairn
 FIN = shell.FIN
 DK = deck.DK
 SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Bronze", "Gilt", "Teak", "Wood", "CabinWindow",
-         "Iron"]
+         "Iron", "Spar", "Black"]
 DECK_PARTS = ["ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit", "Steering", "Wheel"]
+SPARS = ["Mast", "Boom", "SpinnakerPole"]
 
 
 def clear():
@@ -136,6 +142,68 @@ def plating_group(lead_top):
                 fade(pl["fade_rivets"]))
     h = m("MULTIPLY", m("MULTIPLY", m("ADD", grooves, dimples), -1.0), plated)
     Lk.new(h, out.inputs[0])
+    return g
+
+
+def spar_plating_group():
+    """The spars' plating in their paint, as the hull's: a height (m, negative into the plate) from the 'Spar' UV map
+    (u metres along the spar, v the fraction of the way round from its forward face, or the boom's top) and 'SparG'
+    (the girth there, and whether it is plated): a lapped seam down each side (v = 1/4 and 3/4), butts every
+    'plate_length' along each half, staggered half a plate between the halves, and a row of rivets each side of every
+    seam and butt. Each fades out with the camera's distance."""
+    pl = spars.RG["plates"]
+    g = bpy.data.node_groups.new("SparPlating", "ShaderNodeTree")
+    g.interface.new_socket("Height", in_out="OUTPUT", socket_type="NodeSocketFloat")
+    N, Lk = g.nodes, g.links
+    out = N.new("NodeGroupOutput")
+
+    def uvmap(name):
+        u = N.new("ShaderNodeUVMap")
+        u.uv_map = name
+        sp = N.new("ShaderNodeSeparateXYZ")
+        Lk.new(u.outputs[0], sp.inputs[0])
+        return sp.outputs[0], sp.outputs[1]
+
+    def m(op, a, b=None, c=None, clamp=False):
+        n = N.new("ShaderNodeMath")
+        n.operation = op
+        n.use_clamp = clamp
+        for k, v in enumerate((a, b, c)):
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                n.inputs[k].default_value = float(v)
+            else:
+                Lk.new(v, n.inputs[k])
+        return n.outputs[0]
+
+    def near(v, step):
+        return m("ABSOLUTE", m("SUBTRACT", v, m("MULTIPLY", m("ROUND", m("DIVIDE", v, step)), step)))
+
+    def bell(d, width):
+        q = m("DIVIDE", d, width)
+        return m("EXPONENT", m("MULTIPLY", m("MULTIPLY", q, q), -1.0))
+
+    U, Vf = uvmap("Spar")
+    Gm, on = uvmap("SparG")
+    lp, ro, rp = pl["plate_length"], pl["rivet_offset"], pl["rivet_pitch"]
+    sw, rr = pl["seam_width"], pl["rivet_radius"]
+    plated = m("GREATER_THAN", on, 0.0)
+    ds = m("MULTIPLY", near(m("SUBTRACT", Vf, 0.25), 0.5), Gm)            # metres round to the nearer side seam
+    half = m("FLOORED_MODULO", m("FLOOR", m("DIVIDE", m("SUBTRACT", Vf, 0.25), 0.5)), 2.0)   # 0 after, 1 forward
+    db = near(m("SUBTRACT", U, m("MULTIPLY", half, lp / 2)), lp)
+    seam, butt = bell(ds, sw), bell(db, sw)
+    riv_seam = m("MULTIPLY", bell(m("ABSOLUTE", m("SUBTRACT", ds, ro)), rr), bell(near(U, rp), rr))
+    riv_butt = m("MULTIPLY", bell(m("ABSOLUTE", m("SUBTRACT", db, ro)), rr), bell(near(m("MULTIPLY", Vf, Gm), rp), rr))
+    dist = N.new("ShaderNodeCameraData").outputs["View Distance"]
+
+    def fade(rng):
+        a, b = rng
+        return m("DIVIDE", m("SUBTRACT", b, dist), b - a, clamp=True)
+
+    grooves = m("MULTIPLY", m("MULTIPLY", m("ADD", seam, butt), pl["seam_depth"]), fade(pl["fade_seams"]))
+    dimples = m("MULTIPLY", m("MULTIPLY", m("ADD", riv_seam, riv_butt), pl["rivet_depth"]), fade(pl["fade_rivets"]))
+    Lk.new(m("MULTIPLY", m("MULTIPLY", m("ADD", grooves, dimples), -1.0), plated), out.inputs[0])
     return g
 
 
@@ -268,7 +336,7 @@ def make_material(name, rgb, rough, metal=0.0, plating=False, coat=0.0):
         b.inputs["Coat Roughness"].default_value = 0.08
     if plating:
         grp = nt.nodes.new("ShaderNodeGroup")
-        grp.node_tree = bpy.data.node_groups["Plating"]
+        grp.node_tree = bpy.data.node_groups["Plating" if plating is True else plating]
         bump = nt.nodes.new("ShaderNodeBump")
         bump.inputs["Distance"].default_value = 1.0
         bump.inputs["Strength"].default_value = 1.0
@@ -281,7 +349,9 @@ def make_material(name, rgb, rough, metal=0.0, plating=False, coat=0.0):
 
 def materials(lead_top, mitre):
     plating_group(lead_top)
+    spar_plating_group()
     c = FIN["paint"]["colours"]
+    sc = spars.MAT["colours"]
     return {
         "Topsides": make_material("Topsides", c["Topsides"], 0.32, plating=True, coat=0.6),
         "Bootstripe": make_material("Bootstripe", c["Bootstripe"], 0.35, plating=True, coat=0.4),
@@ -294,6 +364,8 @@ def materials(lead_top, mitre):
         "Wood": make_material("Wood", DK["colours"]["Wood"], 0.3, coat=1.0),
         "CabinWindow": make_material("CabinWindow", DK["colours"]["CabinWindow"], 0.04, coat=1.0),
         "Iron": make_material("Iron", DK["colours"]["Iron"], 0.45),
+        "Spar": make_material("Spar", sc["Spar"], 0.35, plating="SparPlating", coat=0.5),
+        "Black": make_material("Black", sc["Black"], 0.45),
     }
 
 
@@ -404,8 +476,8 @@ def transom_mesh(edge):
 
 
 def part_object(p, mats):
-    """One of deck.py's parts as an object: its slots, its three UV maps on every face corner, smooth by angle."""
-    uvs = {k: [[v[i] for i in f] for f in p.F] for k, v in p.uv.items()}
+    """One of deck.py's parts (or spars.py's) as an object: its slots, its UV maps on every face corner, smooth by angle."""
+    uvs = p.corner_uv() if hasattr(p, "corner_uv") else {k: [[v[i] for i in f] for f in p.F] for k, v in p.uv.items()}
     return mesh_object(p.name, p.V, p.F, mats, p.slot, uvs, smooth="angle", weld=0, frame=p.frame)
 
 
@@ -622,6 +694,83 @@ def cockpit_room(obs, sole_z):
             "from_sole_corners": rays, "ok": least > 0.2}
 
 
+def _tree(groups):
+    """{name: (object, faces to leave out or None)} to {name: BVH tree of the object's other faces}."""
+    from mathutils.bvhtree import BVHTree
+    out = {}
+    for name, items in groups.items():
+        V, F = [], []
+        for ob, skip in items:
+            M = ob.matrix_world
+            off = len(V)
+            V.extend(M @ v.co for v in ob.data.vertices)
+            F.extend(tuple(off + i for i in p.vertices) for k, p in enumerate(ob.data.polygons)
+                     if skip is None or k not in skip)
+        out[name] = BVHTree.FromPolygons(V, F, epsilon=0.0)
+    return out
+
+
+def swing_sweep(ob, part, groups, angles, leave_out, end_local):
+    """Turn a moving spar about its own Z through `angles` (degrees, Blender's sense) and look, at each, for any
+    triangle of it crossing one of each group's (BVH overlap), and the least clearance from its vertices to each group.
+    `leave_out` names the spar's pieces that meet a fixed piece by design (a jaw round its pin), left out of the test;
+    `end_local` is a point on the spar (its own frame) whose side, starboard or port, labels each turn."""
+    from mathutils.bvhtree import BVHTree
+    trees = _tree(groups)
+    keep = [k for k, lab in enumerate(part.labels) if lab not in leave_out]
+    polys = [tuple(ob.data.polygons[k].vertices) for k in keep]
+    used = sorted({i for p in polys for i in p})
+    M0 = ob.matrix_world.copy()
+    loc = [v.co.copy() for v in ob.data.vertices]
+    turns = []
+    for deg in angles:
+        M = M0 @ Matrix.Rotation(math.radians(deg), 4, "Z")
+        Vr = [M @ c for c in loc]
+        bvh = BVHTree.FromPolygons(Vr, polys, epsilon=0.0)
+        end = to_blender(np.array(M @ Vector(end_local)))
+        row = {"turn_deg": round(float(deg), 1), "end": [round(float(a), 2) for a in end],
+               "side": "starboard" if end[1] > 1e-6 else ("port" if end[1] < -1e-6 else "centreline")}
+        for name, tree in trees.items():
+            row[f"touching_{name}"] = len(bvh.overlap(tree))
+            row[f"clearance_{name}_mm"] = round(min(tree.find_nearest(Vr[i])[3] for i in used) * 1000, 1)
+        turns.append(row)
+    out = {"turns": turns, "left_out": sorted(leave_out),
+           "touching": sum(r[f"touching_{n}"] for r in turns for n in trees)}
+    for name in trees:
+        r = min(turns, key=lambda t: t[f"clearance_{name}_mm"])
+        out[f"least_clearance_{name}_mm"] = r[f"clearance_{name}_mm"]
+        out[f"least_clearance_{name}_at_deg"] = r["turn_deg"]
+    return out
+
+
+def mast_heel_room(mast_ob, mast_part, hull_obs):
+    """The mast below the deck must stand inside the hull clear of the plating: the least distance from its tube's
+    vertices below the deck to the shell and transom, and a ray straight down from its heel must meet the hull."""
+    trees = _tree({"hull": [(ob, None) for ob in hull_obs]})
+    tree = trees["hull"]
+    Vh = np.asarray(mast_part.V)
+    below = [i for i, lab in enumerate(mast_part.labels) if lab == "Mast"]
+    idx = sorted({v for k in below for v in mast_part.F[k] if Vh[v, 2] < spars.Z_P - 0.1})
+    M = mast_ob.matrix_world
+    least = min(tree.find_nearest(M @ mast_ob.data.vertices[i].co)[3] for i in idx)
+    heel = Vector(tuple(to_blender(spars.at(spars.S_HEEL))))
+    down = tree.ray_cast(heel, Vector((0, 0, -1)))[3]
+    return {"points": len(idx), "least_m": round(float(least), 3), "heel_down_to_hull_m": round(down, 3) if down else None,
+            "ok": least > 0.1 and down is not None}
+
+
+def frame_report(frame, ob, local, rot_axis, what):
+    """The frame of a moving piece and which way a point on it (its own frame) goes for a small positive turn."""
+    o, X, Z = frame
+    M = ob.matrix_world
+    p0 = to_blender(np.array(M @ Vector(local)))
+    p1 = to_blender(np.array(M @ Matrix.Rotation(0.1, 4, rot_axis) @ Vector(local)))
+    return {"origin": [round(float(a), 4) for a in o], "X": [round(float(a), 5) for a in X],
+            "Z": [round(float(a), 5) for a in Z],
+            f"positive_turn_about_{rot_axis}_in_blender_moves_{what}":
+                "to starboard (+y)" if p1[1] > p0[1] else "to port (-y)"}
+
+
 def main():
     clear()
     sc = bpy.context.scene
@@ -632,7 +781,9 @@ def main():
     # the deck's weight first (on the loft's sheer), so the lead can take up the difference from the size card's
     _, deck0 = deck.build()
     w0 = deck0["weights"]
-    extra = w0["card_long_tons"] - w0["total_long_tons"]
+    _, rig0 = spars.build()
+    s0 = rig0["weights"]
+    extra = (w0["card_long_tons"] - w0["total_long_tons"]) + (s0["card_long_tons"] - s0["total_long_tons"])
     pieces, finish = shell.build(extra_lead_tons=extra)
     sh = pieces["Shell"]
     parts, deck_rep = deck.build(sh.sheer)
@@ -642,6 +793,17 @@ def main():
                          f"{w0['total_long_tons']} on the loft's: the lead was set for the wrong weight")
     if not deck_rep["layout"]["ok"]:
         raise SystemExit(f"the deck's layout fails its checks: {deck_rep['layout']}")
+    sp_parts, rig = spars.build(sh.sheer)
+    sw = rig["weights"]
+    if abs(sw["total_long_tons"] - s0["total_long_tons"]) > 0.01:
+        raise SystemExit(f"the spars weigh {sw['total_long_tons']} long tons on the shell's sheer, "
+                         f"{s0['total_long_tons']} on the loft's: the lead was set for the wrong weight")
+    if not sw["meets_1937_minimum"]:
+        raise SystemExit(f"the mast with its fittings weighs {sw['mast_with_fittings_lb']} lb, under the 1937 rule's "
+                         f"{sw['minimum_1937_lb']}")
+    if not all(v for k, v in rig["checks"].items() if isinstance(v, bool)):
+        raise SystemExit(f"the rig fails a check: {rig['checks']}")
+    r = rule_check.check(h, rig["sail_area_ft2"])
     mats = materials(finish["lead"]["top_z_m"], deck_rep["planking_mitre"])
     # slice 1's moulded hull: the fairness check's reference, hidden from renders
     hull = mesh_object("Hull", *hull_mesh(S), {"Topsides": mats["Topsides"]})
@@ -668,9 +830,12 @@ def main():
         ob["slice"] = 2
     for ob in [deck_ob] + list(deck_obs.values()):
         ob["slice"] = 3
+    spar_obs = {k: part_object(sp_parts[k], mats) for k in SPARS}
+    for ob in spar_obs.values():
+        ob["slice"] = 4
     checks = {"shell_transom_deck": shell_check((shell_ob, transom, deck_ob)), "rudder": shell_check((rudder,)),
               "stock": shell_check((stock,))}
-    for k, ob in deck_obs.items():
+    for k, ob in list(deck_obs.items()) + list(spar_obs.items()):
         checks[k] = shell_check((ob,))
     if not all(c["closed"] for c in checks.values()):
         raise SystemExit(f"a piece does not close into a shell: {[k for k, c in checks.items() if not c['closed']]}"
@@ -686,11 +851,52 @@ def main():
     deck_rep["cockpit_room"] = cockpit_room((shell_ob, transom), deck_rep["cockpit_sole_z_m"])
     if not deck_rep["cockpit_room"]["ok"]:
         raise SystemExit(f"the cockpit comes too near the hull: {deck_rep['cockpit_room']}")
+    # the spars: the boom swings each way about its pin, the pole sets on either side, clear of the mast (but the pin
+    # its jaw takes), the deck and everything on it; the mast's heel stands inside the hull
+    mast_parts = sp_parts["Mast"]
+
+    def pins(label):
+        return {k for k, lab in enumerate(mast_parts.labels) if lab == label}
+    groups = {"deck": [(deck_ob, None), (deck_obs["ToeRail"], None)],
+              "on_deck": [(deck_obs[k], None) for k in DECK_PARTS if k != "ToeRail"]}
+    bm = spars.RG["boom"]
+    b_end = (rig["boom"]["from_mast_after_face_m"] - spars.RG["gooseneck"]["pin_aft"], 0.0, 0.0)
+    rig["boom_sweep"] = swing_sweep(spar_obs["Boom"], sp_parts["Boom"],
+                                    dict(groups, mast=[(spar_obs["Mast"], pins("Gooseneck pin"))]),
+                                    np.arange(-bm["swing_deg"], bm["swing_deg"] + 1e-9, bm["swing_step"]),
+                                    {"Boom jaw"}, b_end)
+    pl = spars.RG["pole"]
+    po, pX, _ = sp_parts["SpinnakerPole"].frame
+    xb = to_blender(pX)
+    angles, from_bow = [], []
+    for side in (1, -1):
+        for phi in np.arange(pl["sweep_deg"][0], pl["sweep_deg"][1] + 1e-9, pl["sweep_step"]):
+            tb = to_blender(np.array([math.cos(math.radians(phi)), side * math.sin(math.radians(phi)), 0.0]))
+            angles.append(math.degrees(math.atan2(tb[1], tb[0]) - math.atan2(xb[1], xb[0])))
+            from_bow.append(round(float(phi), 1))
+    rig["pole_sweep"] = swing_sweep(spar_obs["SpinnakerPole"], sp_parts["SpinnakerPole"],
+                                    dict(groups, mast=[(spar_obs["Mast"], pins("Pole car pin"))]), angles,
+                                    {"Pole jaw"}, (pl["length"], 0.0, 0.0))
+    for t, phi in zip(rig["pole_sweep"]["turns"], from_bow):
+        t["from_bow_deg"] = phi
+    for k in ("boom_sweep", "pole_sweep"):
+        if rig[k]["touching"]:
+            raise SystemExit(f"the {k[:-6]} touches something when swung: "
+                             f"{[t for t in rig[k]['turns'] if any(v for a, v in t.items() if a.startswith('touching'))]}")
+    rig["mast_heel_room"] = mast_heel_room(spar_obs["Mast"], mast_parts, (shell_ob, transom))
+    if not rig["mast_heel_room"]["ok"]:
+        raise SystemExit(f"the mast's heel comes too near the hull: {rig['mast_heel_room']}")
+    rig["boom_frame"] = frame_report(sp_parts["Boom"].frame, spar_obs["Boom"], (5.0, 0.0, 0.0), "Z", "its_end")
+    rig["pole_frame"] = frame_report(sp_parts["SpinnakerPole"].frame, spar_obs["SpinnakerPole"], (5.0, 0.0, 0.0), "Z",
+                                     "its_end")
     lt = dw["total_long_tons"]
-    w = loft.weight_check(S, h, finish["lead"], measured={"deck_and_deckhouses": (lt, dw["centre"][0], dw["centre"][2])})
+    w = loft.weight_check(S, h, finish["lead"], measured={"deck_and_deckhouses": (lt, dw["centre"][0], dw["centre"][2]),
+                                                          "spars": (sw["total_long_tons"], sw["centre"][0],
+                                                                    sw["centre"][2])})
     # as built she displaces the moulded hull plus the plating, less the slot; the lead carries that and what the deck
-    # weighs less than the card's estimate (shell.py measures both and sets the casting's top), so she still floats on
-    # her lines (weight = displacement). The rule check keeps the moulded hull's D (the higher rating).
+    # and the spars weigh less than the card's estimate (shell.py measures both: the casting's top is fixed at slice 3's,
+    # and trimming ballast in the bilge takes the rest), so she still floats on her lines (weight = displacement). The
+    # rule check keeps the moulded hull's D (the higher rating).
     dsp = finish["displacement"]
     d_mould = h["volume_ft3"] / 35.0
     dsp["moulded_long_tons"] = round(d_mould, 2)
@@ -724,21 +930,30 @@ def main():
                                    if t1[1] > t0[1] else "to port (-y): anticlockwise as the helmsman sees it"}
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
     write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
-    visible = [shell_ob, transom, deck_ob, rudder, stock] + letters + list(deck_obs.values())
+    visible = [shell_ob, transom, deck_ob, rudder, stock] + letters + list(deck_obs.values()) + list(spar_obs.values())
     tris = {ob.name: tri_count(ob) for ob in visible}
     slice3 = sum(tris[ob.name] for ob in [deck_ob] + list(deck_obs.values()))
-    build = {"slice": 3, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
-             "triangles_slice_3": slice3, "budget_slice_3": 500000,
-             "triangles_hidden_reference_hull": tri_count(hull), "budget_slices_1_3": 200000 + 350000 + 500000,
-             "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep}
-    if slice3 > build["budget_slice_3"]:
-        raise SystemExit(f"slice 3 has {slice3} triangles, over its budget")
+    slice4 = sum(tris[ob.name] for ob in spar_obs.values())
+    build = {"slice": 4, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+             "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
+             "budget_slice_4": 250000, "triangles_hidden_reference_hull": tri_count(hull),
+             "budget_slices_1_4": 200000 + 350000 + 500000 + 250000, "sail_area_ft2": rig["sail_area_ft2"],
+             "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep,
+             "rig": rig}
+    if slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]:
+        raise SystemExit(f"slices 3 and 4 have {slice3} and {slice4} triangles, over a budget")
     with open(os.path.join(OUT, "build.json"), "w") as f:
         json.dump(build, f, indent=1)
-    drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep)
+    drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep, rig=(sp_parts, rig))
     short = {k: v for k, v in finish["rudder"].items() if k != "helm_sweep"}
     short["helm_sweep"] = {k: v for k, v in sweep.items() if k != "turns"}
-    print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3,
+    print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3, "slice_4": slice4,
+                      "sail_area_ft2": rig["sail_area_ft2"], "measures": rig["measures"],
+                      "spars_weight": {k: sw[k] for k in ("spars", "mast_with_fittings_lb", "total_long_tons", "centre")},
+                      "boom_sweep": {k: v for k, v in rig["boom_sweep"].items() if k != "turns"},
+                      "pole_sweep": {k: v for k, v in rig["pole_sweep"].items() if k != "turns"},
+                      "mast_heel_room": rig["mast_heel_room"], "boom_frame": rig["boom_frame"],
+                      "pole_frame": rig["pole_frame"],
                       "shell": {k: c["closed"] for k, c in checks.items()}, "rule": r["rating_ft"],
                       "weights": w, "lead": finish["lead"], "deck_weight": {k: dw[k] for k in ("total_kg", "total_long_tons",
                                                                                             "centre")},

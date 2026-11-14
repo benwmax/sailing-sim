@@ -2,7 +2,7 @@
  "boat": "Bluebonnet",
  "build": "Tools/shipkit/jclass/build_jclass.py",
  "hull_object": "Hull",
- "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1, docs/jclass-2, docs/jclass-3). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame); so is the wheel, in a frame whose X runs forward along its shaft (build.json deck.wheel_frame). Slice 3's deck closes the shell at the sheer and the transom's top.",
+ "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1 to docs/jclass-4). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame); so is the wheel, in a frame whose X runs forward along its shaft (build.json deck.wheel_frame). Slice 3's deck closes the shell at the sheer and the transom's top. Slice 4's spars are three objects: the mast with everything fixed to it (spreaders, jumper struts, tracks, bands, the gooseneck's lug and pin, the pole's car), and the boom and the spinnaker pole, each in a frame that turns about its pin (build.json rig.boom_frame and rig.pole_frame).",
  "sections": {
   "hull_shell": {
    "objects": [
@@ -21,7 +21,8 @@
    "borders": [
     "rudder",
     "lettering",
-    "deck"
+    "deck",
+    "spars"
    ]
   },
   "rudder": {
@@ -73,7 +74,8 @@
    "borders": [
     "hull_shell",
     "deck_structures",
-    "steering"
+    "steering",
+    "spars"
    ]
   },
   "deck_structures": {
@@ -94,7 +96,8 @@
    ],
    "borders": [
     "deck",
-    "steering"
+    "steering",
+    "spars"
    ]
   },
   "steering": {
@@ -114,6 +117,28 @@
     "deck",
     "deck_structures",
     "rudder"
+   ]
+  },
+  "spars": {
+   "objects": [
+    "Mast",
+    "Boom",
+    "SpinnakerPole"
+   ],
+   "owns": [
+    "spars.py",
+    "rig_bluebonnet.json",
+    "build_jclass.spar_plating_group"
+   ],
+   "shared": [
+    "deck_bluebonnet.json mast",
+    "shell.py deck_z, sheer",
+    "specs_bluebonnet.json weights spars"
+   ],
+   "borders": [
+    "deck",
+    "deck_structures",
+    "hull_shell"
    ]
   }
  },

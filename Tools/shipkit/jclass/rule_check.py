@@ -4,7 +4,8 @@
 
 Rating R = 0.18 L sqrt(S) / cbrt(D) (feet, square feet, cubic feet), which must be 76 ft or less, with:
   L  the load waterline length (specs_bluebonnet.json explains why that is close enough),
-  S  the rated sail area: the size card's target until slice 6 measures the sails (build.json "sail_area_ft2"),
+  S  the rated sail area (build.json "sail_area_ft2"): the size card's target before slice 4, then the spars' measured
+     triangles (slice 4: the fore triangle I x J / 2 plus the main's P x E / 2), then slice 6's sails,
   D  the displaced volume in cubic feet: the hull's. The rudder is the keel's after part, inside the hull surface
      (slice 2 cuts it out along its stock line), so it is already counted; build.json's "appendage_ft3" adds anything
      hung outside the surface.
@@ -70,13 +71,16 @@ if __name__ == "__main__":
     r = check(h, b.get("sail_area_ft2"), b.get("appendage_ft3"))
     if "hydrostatics" in b:
         # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
-        # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too
+        # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too, and
+        # slice 4 one for each spar
         shell = b.get("shell") or {}
         pieces = {"shell": shell} if "closed" in shell else shell
         sl = b.get("slice", 1)
         need = ("shell",) if sl < 2 else ("shell_transom_deck", "rudder", "stock")
         if sl >= 3:
             need += ("ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit", "Steering", "Wheel")
+        if sl >= 4:
+            need += ("Mast", "Boom", "SpinnakerPole")
         for name in need:
             if name not in pieces:
                 r["pass"] = False
