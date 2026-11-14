@@ -360,3 +360,12 @@ rounded (80 mm at the leading edge, 25 mm at the trailing edge) with its flat st
 19 mm thick to the bottom and its faces wound outward. Blind A/B 3 of 3; QA's fixes (tip thickness, sampling, winding,
 the eased edge standing proud) are in. Volume, CB, fairness and seams unchanged; about 1,100 more triangles. Open: no slot
 or fairing where the board leaves the hull; the ILCA's board is out of line the same way.
+
+## Wave 5, round 6 (Nov 14): the Sunfish's rudder blade
+
+Card `cards/sunfish-rudder.json`. The blade was cut square at both ends. For the Sunfish, `build_rudder()` now rounds
+its foot (60 mm at the leading edge, 20 mm at the trailing edge, the flat at the same depth) and rounds the trailing
+edge into the top aft of the head's cheeks (70 mm), with the planform between unchanged, the thickness from the
+unrounded chord and the faces wound outward. Blind A/B 3 of 3; QA's fix (the top corner's sections spaced evenly round
+its arc) is in. Hull, deck and fittings unchanged; the rudder from 596 to 1,396 triangles. Open: the leading edge plumb
+under the head and the blade butted under the cheeks rather than housed between them.
