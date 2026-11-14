@@ -1,6 +1,7 @@
 #include "SailCloth.h"
 #include "ProceduralMeshComponent.h"
 #include "SailingSim.h"
+#include "BoatModel.h"
 
 using namespace Sailing;
 
@@ -28,6 +29,7 @@ ETelltaleState LeechTelltaleState(const FSailStripState& St)
 void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 {
 	bClearCached = false;
+	bHeadPoint = false;
 	Wrinkles.Reset();
 	Geo = InGeo;
 	Kind = InKind;
@@ -54,7 +56,8 @@ void FSailCloth::Init(const FSailGeometry& InGeo, ESailKind InKind)
 		}
 		else if (Z >= ZCN)
 		{
-			const double Head = Kind == ESailKind::Main ? 0.14 : (Kind == ESailKind::Jib ? 0.04 : 0.35 * Geo.Strips[NumStrips - 1].Chord);
+			// Feedback #20: a spinnaker's head is a point on its swivel (its shoulders are the top strip), as a jib's.
+			const double Head = Kind == ESailKind::Main ? 0.14 : 0.04;
 			Chord = FMath::Lerp(Geo.Strips[NumStrips - 1].Chord, Head, (Z - ZCN) / FMath::Max(ZHead - ZCN, 1e-3));
 		}
 		else
@@ -92,6 +95,14 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 {
 	Out.Z = ZFoot + (ZHead - ZFoot) * R / (Rows - 1);
 	Out.LuffX = Geo.Strips[0].LuffX + LuffSlope * (Out.Z - LuffZ0);
+	if (bHeadPoint)
+	{
+		// Over a jib whose head is below this one, the rows under the head end at the jib's head height, so the last
+		// panel (to the head) is all above the jib: its luff never cuts back through the jib's top.
+		const bool bOverJib = bAheadOf && AheadZTop < HeadZ && AheadZTop > ZFoot + 0.5;
+		Out.Z = R == Rows - 1 ? HeadZ : (bOverJib ? (R == Rows - 2 ? AheadZTop : ZFoot + (AheadZTop - ZFoot) * R / (Rows - 2)) : ZFoot + (HeadZ - ZFoot) * R / (Rows - 1));
+		Out.LuffX = LuffXAt(Out.Z, R);
+	}
 	Out.Chord = RowChord[R];
 	// Strip state at this height: between the two strips whose mid-heights bracket it.
 	int32 A = 0, B = 0;
@@ -126,6 +137,55 @@ void FSailCloth::RowAt(const FSailStripState* Strips, int32 Side, int32 R, FRowS
 	if (SA.Flow == ESailFlow::Backed && SB.Flow == ESailFlow::Backed) Out.Camber = -Out.Camber;
 }
 
+void FSailCloth::SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometry* KeepAheadOf)
+{
+	if (NumStrips <= 0 || HeadCm.ContainsNaN()) return;
+	const double X = HeadCm.X / Sailing::CmPerMeter, Z = HeadCm.Z / Sailing::CmPerMeter;
+	// A head below the foot is no head (a bad socket): keep the planform's own.
+	if (Z <= ZFoot + 0.5) return;
+	bHeadPoint = true;
+	HeadX = X;
+	HeadZ = Z;
+	FootLuffX = Geo.Strips[0].LuffX + LuffSlope * (ZFoot - LuffZ0);
+	// The jib's luff as its cloth draws it (Init's luff line).
+	bAheadOf = KeepAheadOf && KeepAheadOf->NumStrips > 0;
+	if (bAheadOf)
+	{
+		const Sailing::FSailGeometry& J = *KeepAheadOf;
+		const int32 N = J.NumStrips;
+		AheadZ0 = 0.5 * (J.Strips[0].ZBottom + J.Strips[0].ZTop);
+		AheadX0 = J.Strips[0].LuffX;
+		AheadSlope = N > 1 ? (J.Strips[N - 1].LuffX - J.Strips[0].LuffX) / (0.5 * (J.Strips[N - 1].ZBottom + J.Strips[N - 1].ZTop) - AheadZ0) : 0.0;
+		AheadZTop = J.Strips[N - 1].ZTop;
+	}
+}
+
+double FSailCloth::LuffXAt(double Z, int32 Row) const
+{
+	if (!bHeadPoint) return Geo.Strips[0].LuffX + LuffSlope * (Z - LuffZ0);
+	// Feedback #20: straight from the tack up to the head on its halyard, held ahead of the jib's luff below the jib's head.
+	const double V = FMath::Clamp((Z - ZFoot) / FMath::Max(HeadZ - ZFoot, 1e-3), 0.0, 1.0);
+	double X = FootLuffX + (HeadX - FootLuffX) * V;
+	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
+	return X;
+}
+
+FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm)
+{
+	// The head's swivel and shackle hang about 8 cm ahead of the halyard's exit (the sail flies forward of the mast).
+	constexpr double SwivelCm = 8.0;
+	const Sailing::FSailGeometry& S = C.Spinnaker;
+	double Z = S.NumStrips > 0 ? S.Strips[S.NumStrips - 1].ZTop : 0.0;
+	// Over the jib's head: its luff comes down ahead of the jib's (FSailCloth::SetHeadPoint), not through it.
+	if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
+	Z = FMath::Min(Z, C.MastheadZ - 0.1);
+	// The model's socket, when it is forward of the config's mast front (a bent mast); never inside the mast (the maxi's
+	// Hounds is near her mast's centre line, the J/22 hero's 2 cm behind the config's front).
+	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
+	const double X = MastFrontCm && !MastFrontCm->ContainsNaN() ? FMath::Max(MastFrontCm->X, ConfigFront) : ConfigFront;
+	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);
+}
+
 void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const
 {
 	Out.SetNum(Rows * Cols);
@@ -145,7 +205,7 @@ void FSailCloth::ComputeTarget(const FSailStripState* Strips, int32 Side, TArray
 				// A symmetric spinnaker is a dome, not a deep jib: fuller in section, and curved top to bottom as well
 				// (both edges curl in toward the head and the clews).
 				const double V = double(R) / (Rows - 1);
-				Depth = 1.5 * Depth + 0.09 * (ZHead - ZFoot) * FMath::Sin(PI * FMath::Min(V * 1.15, 1.0)) * FMath::Sqrt(FMath::Max(FMath::Sin(PI * U), 0.0));
+				Depth = 1.5 * Depth + 0.09 * Span() * FMath::Sin(PI * FMath::Min(V * 1.15, 1.0)) * FMath::Sqrt(FMath::Max(FMath::Sin(PI * U), 0.0));
 			}
 			const Vec3 P = Vec3(Row.LuffX, 0.0, Row.Z) + Chord * (U * Row.Chord) + Leeward * Depth;
 			Out[Index(R, C)] = FVector(P.X, P.Y, P.Z) * Sailing::CmPerMeter;

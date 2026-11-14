@@ -86,6 +86,15 @@ SAILINGSIM_API float SailWrinkleCm(const FSailWrinkles& W, const FVector2D& UVm,
 /** The fan's wavelength (m) and amplitude (m) at r metres from a corner carrying F newtons over an angle Beta (radians). */
 SAILINGSIM_API void SailCornerWrinkle(double F, double Beta, double R, double& OutLambda, double& OutAmp);
 
+namespace Sailing { struct FBoatConfig; }
+/**
+ * Feedback #20: where a boat's spinnaker (or gennaker) head is drawn (boat frame, cm): on the front of the mast, a swivel's
+ * length ahead of it (MastFrontCm: the model mast's Hounds socket, the forestay's tang on its front face, never aft of the
+ * config's mast front; nullptr: the config's mast), at the sail's own head height, or over the jib's head when the jib's is higher (so the spinnaker's luff
+ * comes over it), and under the masthead.
+ */
+SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm);
+
 /**
  * docs/sail-wrinkles-cost/: SailWrinkleCm worked out for a whole render grid, frame after frame, at a fraction of its cost.
  * Everything in it but the loads is fixed once the sail is made (the corners' angles, each vertex's distance and angle from
@@ -136,6 +145,21 @@ public:
 
 	/** Forgets the cloth's motion: the next Step starts again from the target shape (the boat was reset or moved). */
 	void Reset() { bStarted = false; Accumulator = 0.f; bClearCached = false; }
+
+	/**
+	 * Feedback #20: the spinnaker's head on its halyard (boat frame, cm; SpinnakerHeadCm). The physics strips put a
+	 * spinnaker's luff out ahead of the mast (its centre of effort), which drew the head floating in the air, a metre or two
+	 * forward of the mast and short of its halyard. Set, the luff runs from the tack up to this point and the head comes to
+	 * a point there (the head corner is pinned to it); the physics is unchanged. KeepAheadOf (the jib, both on the
+	 * centreline) holds every row's luff below the jib's head at least kAheadOfJibM ahead of the jib's luff, and ends the
+	 * rows under the head at the jib's head height, so the luff comes over the jib's head to the mast instead of through its
+	 * cloth. Init clears it.
+	 */
+	void SetHeadPoint(const FVector& HeadCm, const Sailing::FSailGeometry* KeepAheadOf = nullptr);
+	static constexpr double kAheadOfJibM = 0.15;
+	/** The luff's x (m, boat frame) the cloth draws at height Z (m): the planform's, or SetHeadPoint's below the head. */
+	double LuffXAt(double Z, int32 Row) const;
+	bool HasHeadPoint() const { return bHeadPoint; }
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
@@ -216,6 +240,13 @@ private:
 	ESailKind Kind = ESailKind::Main;
 	int32 NumStrips = 0;
 	double ZFoot = 0.0, ZHead = 1.0, LuffSlope = 0.0, LuffZ0 = 0.0;
+	/** SetHeadPoint's head (m, boat frame) and the luff at the foot it is drawn up from; the jib's luff line it keeps ahead of. */
+	bool bHeadPoint = false;
+	double HeadX = 0.0, HeadZ = 0.0, FootLuffX = 0.0;
+	bool bAheadOf = false;
+	double AheadX0 = 0.0, AheadZ0 = 0.0, AheadSlope = 0.0, AheadZTop = 0.0;
+	/** The cloth's height, foot to head (m). */
+	double Span() const { return (bHeadPoint ? HeadZ : ZHead) - ZFoot; }
 	TArray<double> RowChord;   // planform chord per row (m)
 	TArray<FVector> Pos, Prev, Target;
 	TArray<FVector2D> UVMeters, UVNormal, UVLeech;

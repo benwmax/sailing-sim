@@ -3532,7 +3532,15 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	SailUpdates.Add({ MainSail, &MainCloth, T.MainStrips, S.MainSide });
 	if (Cfg.HasJib()) SailUpdates.Add({ JibSail, &JibCloth, T.JibStrips, S.JibSide });
 	SpinSail->SetVisibility(T.NumSpinStrips > 0);
-	if (T.NumSpinStrips > 0) SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
+	if (T.NumSpinStrips > 0)
+	{
+		// Feedback #20: the head on its halyard at the mast (the model mast's Hounds when it is forward of the config's front), the luff
+		// kept ahead of the jib's.
+		const bool bMastFront = ModelMast && ModelMast->DoesSocketExist(TEXT("Hounds"));
+		const FVector MastFront = bMastFront ? RigPoint(ModelMast, TEXT("Hounds")) : FVector::ZeroVector;
+		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bMastFront ? &MastFront : nullptr), Cfg.HasJib() ? &Cfg.Jib : nullptr);
+		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
+	}
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
 	if (Cfg.HasJib()) JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
 	UpdateKitFittings();
