@@ -267,6 +267,35 @@ bool FSailSessionLogTest::RunTest(const FString&)
 	TestTrue(TEXT("One line per event"), Tail.Contains(TEXT("started with a second line")));
 	TestTrue(TEXT("Times since launch"), Tail.Contains(TEXT("[+")));
 	TestTrue(TEXT("The tail is a tail"), SailSessionLog::Tail(2).Contains(TEXT("Drill: Leave the dock")) && !SailSessionLog::Tail(2).Contains(TEXT("Session:")));
+	// When lines reach the disk: an Error at once (it may be the last line before a crash), the rest by Flush or the
+	// writer thread, never on the caller's thread per line (a flush took up to 100 ms of the game thread).
+	{
+		auto OnDisk = [](const TCHAR* What)
+		{
+			FString File;
+			FFileHelper::LoadFileToString(File, *SailSessionLog::Path(), FFileHelper::EHashOptions::None, FILEREAD_AllowWrite);
+			return File.Contains(What);
+		};
+		SailSessionLog::Write(TEXT("Error"), TEXT("flush check: an error"));
+		TestTrue(TEXT("An error is on disk when Write returns"), OnDisk(TEXT("Error: flush check: an error")));
+		SailSessionLog::Write(TEXT("Display"), TEXT("flush check: a display line"));
+		SailSessionLog::Flush();
+		TestTrue(TEXT("Flush writes what is buffered"), OnDisk(TEXT("] flush check: a display line")));
+		SailSessionLog::Write(TEXT("Display"), TEXT("flush check: written by the writer"));
+		bool bWritten = false;
+		for (double End = FPlatformTime::Seconds() + SailSessionLog::FlushSeconds * 4.0 + 1.0; !bWritten && FPlatformTime::Seconds() < End; FPlatformProcess::Sleep(0.05f))
+		{
+			bWritten = OnDisk(TEXT("] flush check: written by the writer"));
+		}
+		TestTrue(TEXT("The writer thread writes a buffered line within a few FlushSeconds"), bWritten);
+		// A Write never waits on the disk: a thousand lines in well under the time one flush to a busy disk took.
+		const double T0 = FPlatformTime::Seconds();
+		for (int32 I = 0; I < 1000; ++I) SailSessionLog::Write(TEXT("Display"), TEXT("flush check: burst"));
+		const double BurstMs = (FPlatformTime::Seconds() - T0) * 1000.0;
+		AddInfo(FString::Printf(TEXT("1000 Display lines took %.2f ms"), BurstMs));
+		TestTrue(TEXT("1000 lines are buffered in under 50 ms"), BurstMs < 50.0);
+		SailSessionLog::Flush();
+	}
 	// Each launch rotates: the last KeepLaunches kept.
 	for (int32 I = 0; I < SailSessionLog::KeepLaunches + 1; ++I)
 	{

@@ -22,7 +22,25 @@ log attachment) would carry nothing.
   - `Save:` loads, migrations and refusals;
   - the world's loads (lake, marina, trees, streaming).
 
-One line per event, `[+seconds since launch] Level: text` (no level shown for Display), flushed as it's written.
+One line per event, `[+seconds since launch] Level: text` (no level shown for Display).
+
+## When it reaches the disk
+
+Lines are buffered in memory and written by the log's own thread (`SailSessionLog`, below normal priority) every
+`FlushSeconds` (1 s). Until Nov 2026 every line was written and flushed on the caller's thread under the log's lock: on
+the PC's storm bench a flush to a busy disk took 16-103 ms of the game thread, every 5 s from the far lights' status line
+alone (`Inputs/bench/ultra-loss-da3e74b0/hitches/summary.md` on the inputs branch).
+
+- An `Error` (or `Fatal`) line is written and flushed before `Write` returns: it may be the last line before a crash.
+- A `Warning` wakes the writer at once (written within milliseconds, the caller doesn't wait).
+- `SailSessionLog::Flush()` writes the buffer now; `Tail` and `ReportLogPath` call it, so a report reads every line.
+- At exit (`FCoreDelegates::OnPreExit`) the writer stops and the buffer is written; later lines are written as they come.
+- On a crash (`OnHandleSystemError`, `OnShutdownAfterError`) the buffer is written unless the log's locks are taken.
+- Two locks: one guards the buffer (held only to copy bytes), one the file (held through the disk write), so a slow disk
+  never blocks a `SAIL_LOG` caller.
+
+Status lines that repeat (the far lights' every 5 s) are `UE_LOG` at Log level, not `SAIL_LOG`: they stay out of the
+session log.
 
 ## Rules
 
