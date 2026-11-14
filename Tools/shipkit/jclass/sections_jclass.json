@@ -2,7 +2,7 @@
  "boat": "Bluebonnet",
  "build": "Tools/shipkit/jclass/build_jclass.py",
  "hull_object": "Hull",
- "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1, docs/jclass-2). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame). The deck is a placeholder for slice 3.",
+ "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1, docs/jclass-2, docs/jclass-3). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame); so is the wheel, in a frame whose X runs forward along its shaft (build.json deck.wheel_frame). Slice 3's deck closes the shell at the sheer and the transom's top.",
  "sections": {
   "hull_shell": {
    "objects": [
@@ -21,7 +21,7 @@
    "borders": [
     "rudder",
     "lettering",
-    "deck_placeholders"
+    "deck"
    ]
   },
   "rudder": {
@@ -38,7 +38,8 @@
    ],
    "borders": [
     "hull_shell",
-    "deck_placeholders"
+    "deck",
+    "steering"
    ]
   },
   "lettering": {
@@ -55,16 +56,63 @@
     "hull_shell"
    ]
   },
-  "deck_placeholders": {
+  "deck": {
    "objects": [
-    "DeckPlaceholder"
+    "Deck",
+    "ToeRail"
    ],
    "owns": [
-    "build_jclass.deck_mesh"
+    "deck.py deck_surface, toe_rail",
+    "deck_bluebonnet.json deck, toe_rail, colours",
+    "build_jclass.planking_group"
    ],
-   "shared": [],
+   "shared": [
+    "shell.py deck_z, sheer",
+    "deck_bluebonnet.json timber, mast"
+   ],
    "borders": [
     "hull_shell",
+    "deck_structures",
+    "steering"
+   ]
+  },
+  "deck_structures": {
+   "objects": [
+    "Hatches",
+    "Skylights",
+    "Companionway",
+    "Doghouse",
+    "Cockpit"
+   ],
+   "owns": [
+    "deck.py hatch, skylight, companionway, doghouse, cockpit_coaming",
+    "deck_bluebonnet.json hatches, skylights, companionway, doghouse, cockpit"
+   ],
+   "shared": [
+    "deck_bluebonnet.json timber, mast",
+    "shell.py deck_z"
+   ],
+   "borders": [
+    "deck",
+    "steering"
+   ]
+  },
+  "steering": {
+   "objects": [
+    "Steering",
+    "Wheel"
+   ],
+   "owns": [
+    "deck.py steering",
+    "deck_bluebonnet.json steering"
+   ],
+   "shared": [
+    "shell.py stock_axis",
+    "deck_bluebonnet.json timber"
+   ],
+   "borders": [
+    "deck",
+    "deck_structures",
     "rudder"
    ]
   }

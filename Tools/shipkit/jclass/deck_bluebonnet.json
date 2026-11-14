@@ -1,0 +1,114 @@
+{
+ "about": "Bluebonnet's deck and what stands on it (docs/jclass-3): the laid teak deck, the toe rail, the hatches, skylights, companionway and doghouse, the cockpit, the steering gear's box, the wheel and the binnacle. Our own layout for an invented 1937 J, in the manner of the 1934-37 Js: a clean flush deck, low skylights and hatches on the centreline, a small doghouse aft of the saloon skylight, the wheel and binnacle over the rudder's stock with a small cockpit behind them for the helmsman, and no lifelines (period photos show none). Sizes in metres in the hull's frame (X forward of mid-waterline, Y to starboard, Z up from the load waterline); every part sits on the centreline and is placed by its centre 'x' and its outside length (fore and aft) and width; heights are above the deck at the part's centre unless a key says otherwise.",
+ "deck": {
+  "note": "Laid teak, 1 3/4 in thick, on steel beams (the beams, stringer and tie plates are the hull's steel, counted in its 30 tons). The planks are laid straight, parallel to the centreline, either side of a wide king plank, and nibbed into the covering boards (the margin planks along the sheer): where the covering board's inner edge cuts a plank at a shallow angle, the plank is not run out to a feather edge but cut square across once it is 'nib' of its width wide, and the covering board is notched to take it. Across the transom the planks end square against an after margin plank. Butts are staggered so that no two neighbours butt within a quarter of a plank's length, the same place repeating every fourth plank ('butt_stagger', in plank lengths, plank by plank out from the king plank), and the starboard side's butts sit 'starboard_shift' of a length along from the port side's, so the two sides are not mirror images; the covering boards and the king plank are scarfed, each scarf 'scarf_run' long. The seams are caulked and payed with black marine glue. 'pitch' is a plank's width with its seam; 'seam' the black line's width. None of it is modelled: the deck's material draws it from the deck's UV maps (deck.py), so it costs no triangles and the game's material can do the same (with full-precision UVs and V turned back: docs/jclass-3). 'fade_seams' are the camera distances (m) over which the seams fade to the deck's average tone, so a far deck does not shimmer where a seam is thinner than a pixel. 'grid' is the spacing of the deck mesh's points inside its edge.",
+  "planking": {
+   "thickness": 0.044,
+   "pitch": 0.057,
+   "seam": 0.006,
+   "plank_length": 7.3,
+   "butt_stagger": [0.0, 0.5, 0.25, 0.75],
+   "starboard_shift": 0.125,
+   "king_plank": 0.33,
+   "king_scarf": 9.1,
+   "covering_board": 0.3,
+   "covering_scarf": 6.1,
+   "scarf_run": 0.45,
+   "nib": 0.5,
+   "after_margin": 0.28,
+   "fade_seams": [14.0, 48.0]
+  },
+  "grid": 0.15,
+  "let_in": 0.005
+ },
+ "colours": {
+  "note": "sRGB, for the renders (the game's skins set their own; its material library names the slots the same way): bare teak scrubbed pale (the deck, hatch lids, the cockpit's sole), varnished teak (a deep amber: coamings, houses, the toe rail, the wheel), the seams' black marine glue, the skylights' and ports' glass seen against a dark cabin, and the binnacle's corrector spheres in dark grey paint.",
+  "Teak": [176, 140, 102],
+  "Wood": [124, 70, 32],
+  "Caulking": [20, 18, 16],
+  "CabinWindow": [14, 16, 18],
+  "Iron": [36, 38, 40]
+ },
+ "timber": {
+  "note": "For the weights. Teak, air dried (about 650 kg/m^3; Tectona grandis is 630 to 720); bronze 8,800; plate glass 2,500. Coamings and the doghouse's sides are 1 1/2 in teak, the doghouse roof and the cockpit's sides and sole 1 1/4 in; hatch lids, the toe rail, the wheel and the skylights' frames are solid. The binnacle is cast bronze about 8 mm thick; its corrector spheres are soft iron (7,200 kg/m^3), painted. The steering gear (a bronze worm and its wheel on the rudder's head, in the wheel box) and the compass are fixed weights, our estimates.",
+  "teak": 650.0,
+  "bronze": 8800.0,
+  "glass": 2500.0,
+  "coaming": 0.038,
+  "house_side": 0.038,
+  "house_roof": 0.032,
+  "cockpit": 0.032,
+  "binnacle_wall": 0.008,
+  "steering_gear_kg": 300.0,
+  "compass_kg": 20.0
+ },
+ "mast": {
+  "note": "The mast steps at x = 3.0, its partners on the deck's centreline. Slice 4 builds it; this slice keeps the deck clear within 'clear_radius' of it. Placed from her sail plan's proportions: a fore triangle base (J) about 50 ft to the stem head and a main boom about 60 ft, the usual split of a 1930s J's 7,500 sq ft, put the mast 15.7 m abaft the stem head, about 3 m forward of mid-waterline.",
+  "x": 3.0,
+  "clear_radius": 0.7
+ },
+ "toe_rail": {
+  "note": "A low varnished teak toe rail along the covering board's outer edge, round the transom's top and forward to just short of the stem head, where slice 8's stem fitting takes both ends. Its outer face stands 'inset' inboard of the sheer, its foot is let into the deck, its top is rounded.",
+  "height": 0.065,
+  "base_width": 0.055,
+  "top_width": 0.045,
+  "inset": 0.006,
+  "ends_at_half_breadth": 0.14
+ },
+ "hatches": {
+  "note": "Teak-topped hatches with varnished coamings (sides): 'coaming' is the coaming's height above the deck at the centreline (its top and the lid follow the deck's sheer fore and aft, so it stands the same height at either end), 'lid' the lid's thickness, 'overhang' how far the lid stands out over the coaming, 'crown' the lid's rise at its middle. The sail hatch, for handing headsails and the spinnaker up from below, has a lid in two halves.",
+  "ForecastleHatch": {"x": 12.55, "length": 0.7, "width": 0.7, "coaming": 0.22, "lid": 0.045, "overhang": 0.03, "crown": 0.015, "corner": 0.06},
+  "SailHatch": {"x": 10.0, "length": 1.2, "width": 1.05, "coaming": 0.14, "lid": 0.05, "overhang": 0.035, "crown": 0.02, "corner": 0.08, "split": true},
+  "LazaretteHatch": {"x": -13.3, "length": 0.6, "width": 0.6, "coaming": 0.07, "lid": 0.04, "overhang": 0.025, "crown": 0.01, "corner": 0.05}
+ },
+ "skylights": {
+  "note": "Varnished teak skylights: a coaming box with two glazed lids hinged along a ridge on the centreline, each lid of 'panes' panes, and bronze guard bars ('bars' to a lid, 'bar_radius') running down the lids over the glass. 'coaming' is the box's height above the deck, 'rise' the ridge's height above the box (each lid's underside rests on the box's side and rises to the ridge). Each lid is weighed as solid teak at half its density (a frame round the panes; the glass is weighed on its own).",
+  "ForecastleSkylight": {"x": 7.3, "length": 1.0, "width": 0.85, "coaming": 0.26, "rise": 0.15, "lid": 0.04, "panes": 2, "bars": 6, "bar_radius": 0.008, "corner": 0.03},
+  "SaloonSkylight": {"x": -1.7, "length": 2.0, "width": 1.2, "coaming": 0.3, "rise": 0.2, "lid": 0.045, "panes": 3, "bars": 11, "bar_radius": 0.009, "corner": 0.035}
+ },
+ "companionway": {
+  "note": "The crew's companionway abaft the mast: a varnished box with its top's after part a sliding hatch on runners and a pair of doors in its after face.",
+  "x": 0.85,
+  "length": 0.85,
+  "width": 0.8,
+  "height": 0.3,
+  "slide_length": 0.52,
+  "slide_height": 0.06,
+  "corner": 0.04
+ },
+ "doghouse": {
+  "note": "A low varnished doghouse over the companion to the owner's quarters and the chart table: sides leaning in by 'tumblehome' degrees, a cambered roof with eaves, three portlights a side and two windows forward (glass in bronze rims), a pair of doors and a sliding hatch at its after end, and a teak handrail along each side of the roof. 'side_height' is the sides' height above the deck at its centreline.",
+  "x": -5.9,
+  "length": 3.0,
+  "width": 2.0,
+  "side_height": 0.62,
+  "tumblehome_deg": 7.0,
+  "corner": 0.25,
+  "roof_crown": 0.06,
+  "roof_thickness": 0.05,
+  "eave": 0.035,
+  "ports_a_side": 3,
+  "port": [0.32, 0.17, 0.05],
+  "windows_forward": 2,
+  "window": [0.42, 0.2, 0.05],
+  "doors": [0.3, 0.48],
+  "slide": [0.8, 0.66, 0.07],
+  "handrail": {"inboard_of_edge": 0.2, "height": 0.075, "section": [0.032, 0.03], "feet": 4}
+ },
+ "cockpit": {
+  "note": "The helmsman's small cockpit abaft the wheel: a well let into the deck 'depth' below its lowest edge, with varnished sides, a slatted teak sole and a low coaming round it.",
+  "x_forward": -9.95,
+  "x_aft": -11.95,
+  "width": 1.8,
+  "depth": 0.5,
+  "corner": 0.15,
+  "coaming": 0.12,
+  "coaming_width": 0.05
+ },
+ "steering": {
+  "note": "The wheel box houses the steering gear (a bronze worm and its wheel) over the rudder's stock, which comes up to just under the deck there; the wheel's shaft runs aft out of it to a varnished wheel standing in the cockpit's forward end. The binnacle stands on the box's lid at its after end, a metre from the helmsman's eye, so he reads the compass over the wheel's rim. The wheel is its own object, in a frame whose X runs forward along the shaft, so the game can turn it: a positive turn about that X is clockwise as the helmsman sees it (the top to starboard), which steers her bow to starboard, the game's positive helm. 'hub_height' is above the deck at the wheel (the cockpit's sole is 0.5 m lower); one spoke stands upright when the helm is amidships (the king spoke). The binnacle's 'height' is its bowl's top above the box's lid.",
+  "box": {"x_forward": -8.95, "x_aft": -9.82, "width": 0.56, "height": 0.55, "corner": 0.04, "lid_overhang": 0.02, "lid": 0.03},
+  "wheel": {"x": -10.15, "hub_height": 0.33, "radius": 0.6, "rim": [0.05, 0.042], "spokes": 8, "spoke_radius": [0.018, 0.013], "hub": [0.085, 0.13], "shaft_radius": 0.03},
+  "binnacle": {"x": -9.57, "height": 0.32, "bowl_radius": 0.19, "base_radius": 0.16, "corrector_spheres": [0.06, 0.27]}
+ }
+}

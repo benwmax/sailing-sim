@@ -70,10 +70,13 @@ if __name__ == "__main__":
     r = check(h, b.get("sail_area_ft2"), b.get("appendage_ft3"))
     if "hydrostatics" in b:
         # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
-        # shell with its transom and deck, the rudder, the stock)
+        # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too
         shell = b.get("shell") or {}
         pieces = {"shell": shell} if "closed" in shell else shell
-        need = ("shell_transom_deck", "rudder", "stock") if b.get("slice", 1) >= 2 else ("shell",)
+        sl = b.get("slice", 1)
+        need = ("shell",) if sl < 2 else ("shell_transom_deck", "rudder", "stock")
+        if sl >= 3:
+            need += ("ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit", "Steering", "Wheel")
         for name in need:
             if name not in pieces:
                 r["pass"] = False

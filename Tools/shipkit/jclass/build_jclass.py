@@ -1,18 +1,22 @@
-"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1, docs/jclass-2).
+"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1, docs/jclass-2, docs/jclass-3).
 
-Slice 1 lofted the hull's lines (loft.py); slice 2 finishes it (shell.py, finish_bluebonnet.json): the shell split at
+Slice 1 lofted the hull's lines (loft.py); slice 2 finished it (shell.py, finish_bluebonnet.json): the shell split at
 its paint lines (bottom, boot top, topsides, gold cove) and the lead casting's top, the plating drawn in the paint from
 a UV map, the rudder cut out of the keel with its round nose and bronze stock, and the name and home port in gilt on
-the transom. The deck is still slice 1's flat cambered placeholder (the real one is slice 3).
+the transom. Slice 3 builds the deck and what stands on it (deck.py, deck_bluebonnet.json): the laid teak deck with the
+cockpit let into it, its planking drawn by its material from three UV maps, the toe rail, hatches, skylights,
+companionway, doghouse, the wheel box, wheel and binnacle; their weight replaces the size card's estimate, and the
+lead takes up the difference so she still floats on her lines.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
 
-Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom and deck; the rudder and stock are their
-own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics, the rule check, the weights,
-the finish's checks, the displacement as built and the rudder's pivot), plus two drawings from drawings_jclass.py
-(plating.png, rudder_sections.png; they need matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up),
-origin on the centreline at the middle of the load waterline. Edit loft.py, shell.py and the json files, never the
-.blend. The moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
+Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom and deck; the rudder, stock and each of the
+deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics, the
+rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's and the wheel's
+frames), plus the drawings from drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png,
+deck_profile.png; they need matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
+of the load waterline. Edit loft.py, shell.py, deck.py and the json files, never the .blend. The moulded hull of slice 1
+stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
 """
 import json
 import math
@@ -29,6 +33,7 @@ sys.path.insert(0, HERE)
 import loft  # noqa: E402
 import rule_check  # noqa: E402
 import shell  # noqa: E402
+import deck  # noqa: E402
 import drawings_jclass  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -36,10 +41,11 @@ OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
 os.makedirs(OUT, exist_ok=True)
 
 NU, NV = 420, 104          # slice 1's hull grid (the hidden reference the fairness check measures)
-DECK_NY = 6                # deck rows across each half
-DECK_CAMBER = shell.DECK_CAMBER   # the placeholder deck's crown at the widest beam (the stock's top stops under it)
 FIN = shell.FIN
-SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Bronze", "Gilt", "Deck"]
+DK = deck.DK
+SLOTS = ["Topsides", "Bootstripe", "CoveStripe", "Antifouling", "Keel", "Bronze", "Gilt", "Teak", "Wood", "CabinWindow",
+         "Iron"]
+DECK_PARTS = ["ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit", "Steering", "Wheel"]
 
 
 def clear():
@@ -133,6 +139,122 @@ def plating_group(lead_top):
     return g
 
 
+def planking_group(mitre):
+    """The laid deck in the teak's material, from the deck's three UV maps (deck.py): Planking (x, y), Margin (d, y_m),
+    Aft (d_aft, s). Outputs the colour, the roughness and a height (m, negative into the seams) for a bump. The
+    pattern itself (which piece a point is on, how near a seam) is deck.planking_terms, which the deck drawing runs too.
+
+    Regions: the covering board where |y| is past its nibbed inner edge E (each plank cut along the board's edge y_m
+    until it is 'nib' of its width wide, then square across, the board notched to take it), or within 'after_margin'
+    of the after edge; the king plank within half its width of the centreline; planks between. Seams: along the
+    planks every 'pitch' of |y| from the king plank's edge, the butts (staggered over four planks), the covering board's
+    inner edge and the nibs' square ends, the after margin's edge and its mitre with the covering board, the scarfs in
+    the king plank and covering boards. Each plank, king plank length and covering board length gets its own slight
+    tint, and a fine grain along its length. The seams fade to the deck's average tone with the camera's distance."""
+    g = bpy.data.node_groups.new("Planking", "ShaderNodeTree")
+    for nm, kind in (("Color", "NodeSocketColor"), ("Roughness", "NodeSocketFloat"), ("Height", "NodeSocketFloat")):
+        g.interface.new_socket(nm, in_out="OUTPUT", socket_type=kind)
+    N, Lk = g.nodes, g.links
+    out = N.new("NodeGroupOutput")
+
+    def uvmap(name):
+        u = N.new("ShaderNodeUVMap")
+        u.uv_map = name
+        sp = N.new("ShaderNodeSeparateXYZ")
+        Lk.new(u.outputs[0], sp.inputs[0])
+        return sp.outputs[0], sp.outputs[1]
+
+    def m(op, a, b=None, c=None, clamp=False):
+        n = N.new("ShaderNodeMath")
+        n.operation = op
+        n.use_clamp = clamp
+        for k, v in enumerate((a, b, c)):
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                n.inputs[k].default_value = float(v)
+            else:
+                Lk.new(v, n.inputs[k])
+        return n.outputs[0]
+
+    U, Ys = uvmap("Planking")
+    D, YM = uvmap("Margin")
+    DA, SL = uvmap("Aft")
+    pl = deck.PL
+    T = deck.planking_terms(m, U, Ys, D, YM, DA, SL, mitre)
+    seam, Y, idx, idy = T["seam"], T["Y"], T["idx"], T["idy"]
+    sw, w = pl["seam"], pl["pitch"]
+    # each piece's own tint, from its id
+    cv = N.new("ShaderNodeCombineXYZ")
+    Lk.new(idx, cv.inputs[0])
+    Lk.new(idy, cv.inputs[1])
+    wn = N.new("ShaderNodeTexWhiteNoise")
+    wn.noise_dimensions = "3D"
+    Lk.new(cv.outputs[0], wn.inputs["Vector"])
+    tint = m("ADD", 0.9, m("MULTIPLY", wn.outputs["Value"], 0.2))
+    # grain: streaks along each plank
+    gv = N.new("ShaderNodeCombineXYZ")
+    Lk.new(m("MULTIPLY", U, 1.5), gv.inputs[0])
+    Lk.new(m("ADD", m("MULTIPLY", Y, 90.0), m("MULTIPLY", wn.outputs["Value"], 37.0)), gv.inputs[1])
+    nz = N.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 1.0
+    nz.inputs["Detail"].default_value = 6.0
+    nz.inputs["Roughness"].default_value = 0.6
+    Lk.new(gv.outputs[0], nz.inputs["Vector"])
+    grain = m("ADD", 0.93, m("MULTIPLY", nz.outputs["Fac"], 0.14))
+    # fade the seams with distance into the deck's average tone (seams cover seam / pitch of it)
+    dist = N.new("ShaderNodeCameraData").outputs["View Distance"]
+    n0, n1 = pl["fade_seams"]
+    fade = m("DIVIDE", m("SUBTRACT", n1, dist), n1 - n0, clamp=True)
+    c = DK["colours"]
+    teak = N.new("ShaderNodeRGB")
+    teak.outputs[0].default_value = (*srgb(c["Teak"]), 1)
+    caulk = N.new("ShaderNodeRGB")
+    caulk.outputs[0].default_value = (*srgb(c["Caulking"]), 1)
+    tinted = N.new("ShaderNodeMix")
+    tinted.data_type = "RGBA"
+    tinted.blend_type = "MULTIPLY"
+    tinted.inputs["Factor"].default_value = 1.0
+    Lk.new(teak.outputs[0], tinted.inputs[6])
+    tv = N.new("ShaderNodeCombineColor")
+    tg = m("MULTIPLY", tint, grain)
+    for i in range(3):
+        Lk.new(tg, tv.inputs[i])
+    Lk.new(tv.outputs[0], tinted.inputs[7])
+    far = N.new("ShaderNodeMix")
+    far.data_type = "RGBA"
+    Lk.new(m("MULTIPLY", m("SUBTRACT", 1.0, fade), sw / w), far.inputs["Factor"])
+    Lk.new(tinted.outputs[2], far.inputs[6])
+    Lk.new(caulk.outputs[0], far.inputs[7])
+    col = N.new("ShaderNodeMix")
+    col.data_type = "RGBA"
+    seen = m("MULTIPLY", seam, fade)
+    Lk.new(seen, col.inputs["Factor"])
+    Lk.new(far.outputs[2], col.inputs[6])
+    Lk.new(caulk.outputs[0], col.inputs[7])
+    Lk.new(col.outputs[2], out.inputs["Color"])
+    Lk.new(m("ADD", 0.6, m("MULTIPLY", seen, 0.3)), out.inputs["Roughness"])
+    Lk.new(m("MULTIPLY", seen, -0.0008), out.inputs["Height"])
+    return g
+
+
+def teak_material(mitre):
+    planking_group(mitre)
+    mt = bpy.data.materials.new("Teak")
+    mt.use_nodes = True
+    nt = mt.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    grp = nt.nodes.new("ShaderNodeGroup")
+    grp.node_tree = bpy.data.node_groups["Planking"]
+    nt.links.new(grp.outputs["Color"], b.inputs["Base Color"])
+    nt.links.new(grp.outputs["Roughness"], b.inputs["Roughness"])
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Distance"].default_value = 1.0
+    nt.links.new(grp.outputs["Height"], bump.inputs["Height"])
+    nt.links.new(bump.outputs[0], b.inputs["Normal"])
+    return mt
+
+
 def make_material(name, rgb, rough, metal=0.0, plating=False, coat=0.0):
     mt = bpy.data.materials.new(name)
     mt.use_nodes = True
@@ -157,7 +279,7 @@ def make_material(name, rgb, rough, metal=0.0, plating=False, coat=0.0):
     return mt
 
 
-def materials(lead_top):
+def materials(lead_top, mitre):
     plating_group(lead_top)
     c = FIN["paint"]["colours"]
     return {
@@ -168,7 +290,10 @@ def materials(lead_top):
         "Keel": make_material("Keel", c["Keel"], 0.75, plating=True),
         "Bronze": make_material("Bronze", c["Bronze"], 0.38, metal=1.0),
         "Gilt": make_material("Gilt", c["Gilt"], 0.28, metal=1.0),
-        "Deck": make_material("Deck", (180, 150, 112), 0.7),
+        "Teak": teak_material(mitre),
+        "Wood": make_material("Wood", DK["colours"]["Wood"], 0.3, coat=1.0),
+        "CabinWindow": make_material("CabinWindow", DK["colours"]["CabinWindow"], 0.04, coat=1.0),
+        "Iron": make_material("Iron", DK["colours"]["Iron"], 0.45),
     }
 
 
@@ -190,8 +315,10 @@ def mesh_object(name, verts, faces, mats=None, slots=None, uvs=None, smooth=True
     so each face's corners (and their UVs and normals) are taken in the reverse order to keep it facing outward."""
     verts = to_blender(verts)
     faces = [tuple(f)[::-1] for f in faces]
+    if uvs is not None and not isinstance(uvs, dict):
+        uvs = {"Plating": uvs}
     if uvs is not None:
-        uvs = [list(u)[::-1] for u in uvs]
+        uvs = {k: [list(u)[::-1] for u in v] for k, v in uvs.items()}
     R = None
     if frame is not None:
         o, X, Z = (to_blender(a) for a in frame)
@@ -199,9 +326,9 @@ def mesh_object(name, verts, faces, mats=None, slots=None, uvs=None, smooth=True
         verts = (verts - o) @ R
     me = bpy.data.meshes.new(name)
     me.from_pydata([tuple(map(float, v)) for v in verts], [], faces)
-    if uvs is not None:
-        lay = me.uv_layers.new(name="Plating")
-        flat = [c for f in uvs for c in f]
+    for name_uv, per_face in (uvs or {}).items():
+        lay = me.uv_layers.new(name=name_uv)
+        flat = [c for f in per_face for c in f]
         lay.data.foreach_set("uv", [float(a) for c in flat for a in c])
     if weld:
         bm = bmesh.new()
@@ -210,7 +337,10 @@ def mesh_object(name, verts, faces, mats=None, slots=None, uvs=None, smooth=True
         bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=weld)
         bm.to_mesh(me)
         bm.free()
-    if smooth:
+    if smooth == "angle":
+        me.shade_smooth()
+        me.set_sharp_from_angle(angle=math.radians(35.0))
+    elif smooth:
         for p in me.polygons:
             p.use_smooth = True
     if normals is not None:
@@ -259,18 +389,12 @@ def hull_mesh(S):
     return verts, faces
 
 
-def transom_tilt():
-    """dx/dz of the transom's plane (its top leans aft)."""
-    (xtb, ztb), (xtt, ztt) = loft.END["transom_bottom"], loft.END["transom_top"]
-    return (xtt - xtb) / (ztt - ztb)
-
-
-def transom_mesh(edge, hdm):
+def transom_mesh(edge):
     """The transom: the shell's aft edge (it lies in the transom's plane; `edge` keel to sheer, starboard), port and
-    starboard, closed at the top by the deck's cambered aft edge, so shell, transom and deck meet edge to edge."""
+    starboard, closed at the top by the deck's after edge (deck.aft_row), so shell, transom and deck meet edge to edge."""
     stb = [tuple(p) for p in edge]
     port = [(p[0], -p[1], p[2]) for p in edge[1:]]
-    top = deck_row(edge[-1], hdm, transom_tilt())[1:-1]   # port to starboard, without the sheer corners
+    top = [tuple(p) for p in deck.aft_row(edge[-1])[1:-1]]   # port to starboard, without the sheer corners
     ring = list(reversed(stb)) + port + top      # sheer stb -> centreline -> sheer port -> deck edge -> stb
     face = tuple(range(len(ring)))
     a, b, c = (np.array(ring[k]) for k in (0, len(stb) - 1, len(stb) + len(port) - 1))
@@ -279,31 +403,10 @@ def transom_mesh(edge, hdm):
     return ring, [face]
 
 
-def deck_row(p, hdm, tilt=0.0):
-    """One row of the placeholder deck across the sheer point p (starboard), port to starboard. The aft row leans with
-    the transom (tilt dx/dz) so it stays in the transom's plane."""
-    x, hd, zs = p
-    crown = DECK_CAMBER * hd / hdm
-    n = 2 * DECK_NY + 1
-    row = []
-    for k in range(n):
-        s = -1 + 2 * k / (n - 1)
-        z = zs + crown * (1 - s * s)
-        row.append((x + tilt * (z - zs), s * hd, z))
-    return row
-
-
-def deck_mesh(sheer, hdm):
-    """A flat placeholder deck with camber, from sheer to sheer (slice 3 builds the real one)."""
-    verts, faces = [], []
-    n = 2 * DECK_NY + 1
-    for i, p in enumerate(sheer):
-        verts += deck_row(p, hdm, transom_tilt() if i == 0 else 0.0)
-    for i in range(len(sheer) - 1):
-        for k in range(n - 1):
-            a, b = i * n + k, (i + 1) * n + k
-            faces.append((a, b, b + 1, a + 1))
-    return verts, faces
+def part_object(p, mats):
+    """One of deck.py's parts as an object: its slots, its three UV maps on every face corner, smooth by angle."""
+    uvs = {k: [[v[i] for i in f] for f in p.F] for k, v in p.uv.items()}
+    return mesh_object(p.name, p.V, p.F, mats, p.slot, uvs, smooth="angle", weld=0, frame=p.frame)
 
 
 def lettering(mats, edge):
@@ -450,6 +553,75 @@ def helm_sweep(rudder, solids, max_deg=35.0, step=2.5):
             "turns": turns}
 
 
+def wheel_sweep(wheel, solids, step=5.0):
+    """Turn the wheel about its shaft through one spoke's spacing and look for any touch of its rim or spokes (the
+    wood; its bronze hub and shaft run into the box by design) with the deck, the cockpit's coaming or the box, and the
+    least clearance from them."""
+    from mathutils.bvhtree import BVHTree
+    V, P = [], []
+    for ob in solids:
+        M = ob.matrix_world
+        off = len(V)
+        V += [M @ v.co for v in ob.data.vertices]
+        P += [tuple(i + off for i in p.vertices) for p in ob.data.polygons]
+    tree = BVHTree.FromPolygons(V, P, epsilon=0.0)
+    wood = wheel.data.materials.find("Wood")
+    polys = [tuple(p.vertices) for p in wheel.data.polygons if p.material_index == wood]
+    used = sorted({i for p in polys for i in p})
+    M0 = wheel.matrix_world.copy()
+    loc = [v.co.copy() for v in wheel.data.vertices]
+    span = 360.0 / DK["steering"]["wheel"]["spokes"]
+    turns = []
+    for k in range(int(round(span / step)) + 1):
+        deg = k * step
+        M = M0 @ Matrix.Rotation(math.radians(deg), 4, "X")
+        Vr = [M @ c for c in loc]
+        touch = len(BVHTree.FromPolygons(Vr, polys, epsilon=0.0).overlap(tree))
+        clear = min(tree.find_nearest(Vr[i])[3] for i in used)
+        turns.append({"deg": deg, "touching_triangles": touch, "least_clearance_mm": round(clear * 1000, 1)})
+    return {"turns_deg": [0.0, span], "step_deg": step, "touching": sum(t["touching_triangles"] for t in turns),
+            "least_clearance_mm": min(t["least_clearance_mm"] for t in turns), "turns": turns}
+
+
+def cockpit_room(obs, sole_z):
+    """How far the cockpit's well stands inside the hull: the least distance from its walls and sole (points every
+    0.15 m or less over them) to the shell and transom, and, for the record, from the sole's corners straight down and
+    out to each side. The well must not come near the plating."""
+    from mathutils.bvhtree import BVHTree
+    V, F = [], []
+    for ob in obs:
+        M = ob.matrix_world
+        off = len(V)
+        V.extend(M @ v.co for v in ob.data.vertices)
+        F.extend(tuple(off + i for i in p.vertices) for p in ob.data.polygons)
+    tree = BVHTree.FromPolygons(V, F, epsilon=0.0)
+    c = DK["cockpit"]
+    H = deck.cockpit_outline(c)
+    rim = shell.deck_z(H[:, 0], H[:, 1])
+    pts = [np.column_stack([H, rim - (rim - sole_z) * f]) for f in np.linspace(0.0, 1.0, 6)]
+    g = 0.1
+    gx, gy = np.meshgrid(np.arange(H[:, 0].min(), H[:, 0].max(), g), np.arange(H[:, 1].min(), H[:, 1].max(), g))
+    inside = np.column_stack([gx.ravel(), gy.ravel()])
+    inside = inside[deck.in_poly(inside, H)]
+    pts.append(np.column_stack([inside, np.full(len(inside), sole_z)]))
+    pts = np.concatenate(pts)
+    least, where = 1e9, None
+    for q in pts:
+        hit = tree.find_nearest(Vector(tuple(to_blender(q))))
+        if hit[3] is not None and hit[3] < least:
+            least, where = hit[3], q
+    rays = {}
+    for x in (c["x_forward"], c["x_aft"]):
+        for y in (-c["width"] / 2, c["width"] / 2):
+            p = Vector(tuple(to_blender((x, y, sole_z))))
+            down = tree.ray_cast(p, Vector((0, 0, -1)))[3]
+            side = tree.ray_cast(p, Vector((0, -1 if y > 0 else 1, 0)))[3]  # Blender's -y is starboard
+            rays[f"x {x:+.2f} y {y:+.2f}"] = {"down_m": round(down, 3) if down else None,
+                                               "out_m": round(side, 3) if side else None}
+    return {"points": len(pts), "least_m": round(float(least), 3), "nearest_point": [round(float(a), 3) for a in where],
+            "from_sole_corners": rays, "ok": least > 0.2}
+
+
 def main():
     clear()
     sc = bpy.context.scene
@@ -457,20 +629,29 @@ def main():
     S = loft.surface(NU, NV)
     h = loft.hydrostatics(S)
     r = rule_check.check(h)
-    pieces, finish = shell.build()
-    mats = materials(finish["lead"]["top_z_m"])
+    # the deck's weight first (on the loft's sheer), so the lead can take up the difference from the size card's
+    _, deck0 = deck.build()
+    w0 = deck0["weights"]
+    extra = w0["card_long_tons"] - w0["total_long_tons"]
+    pieces, finish = shell.build(extra_lead_tons=extra)
+    sh = pieces["Shell"]
+    parts, deck_rep = deck.build(sh.sheer)
+    dw = deck_rep["weights"]
+    if abs(dw["total_long_tons"] - w0["total_long_tons"]) > 0.01:
+        raise SystemExit(f"the deck weighs {dw['total_long_tons']} long tons on the shell's sheer, "
+                         f"{w0['total_long_tons']} on the loft's: the lead was set for the wrong weight")
+    if not deck_rep["layout"]["ok"]:
+        raise SystemExit(f"the deck's layout fails its checks: {deck_rep['layout']}")
+    mats = materials(finish["lead"]["top_z_m"], deck_rep["planking_mitre"])
     # slice 1's moulded hull: the fairness check's reference, hidden from renders
     hull = mesh_object("Hull", *hull_mesh(S), {"Topsides": mats["Topsides"]})
     hull.hide_render = True
     hull.hide_set(True)
-    sh = pieces["Shell"]
     shell_ob = mesh_object("Shell", sh.V, sh.F, mats, sh.slot, sh.uv, weld=0, normals=sh.corner_normals())
-    hdm = float(sh.sheer[:, 1].max())
-    tv, tf = transom_mesh(sh.transom_edge, hdm)
+    tv, tf = transom_mesh(sh.transom_edge)
     transom = mesh_object("Transom", tv, tf, mats, ["Topsides"], [[(p[0], shell.NO_PLATING) for p in tv]],
                           smooth=False, weld=0)
-    dv, df = deck_mesh(sh.sheer, hdm)
-    deck = mesh_object("DeckPlaceholder", dv, df, mats, ["Deck"] * len(df))
+    deck_ob = part_object(parts["Deck"], mats)
     frame = shell.rudder_frame()
     rd = pieces["Rudder"]
     rudder = mesh_object("Rudder", rd.V, rd.F, mats, rd.slot, rd.uv, weld=0, frame=frame,
@@ -480,22 +661,36 @@ def main():
     for p in stock.data.polygons[:-2]:
         p.use_smooth = True
     letters, letter_report = lettering(mats, sh.transom_edge)
-    for ob in (hull, transom, deck):
+    deck_obs = {k: part_object(parts[k], mats) for k in DECK_PARTS}
+    for ob in (hull,):
         ob["slice"] = 1
-    for ob in [shell_ob, rudder, stock] + letters:
+    for ob in [shell_ob, transom, rudder, stock] + letters:
         ob["slice"] = 2
-    checks = {"shell_transom_deck": shell_check((shell_ob, transom, deck)), "rudder": shell_check((rudder,)),
+    for ob in [deck_ob] + list(deck_obs.values()):
+        ob["slice"] = 3
+    checks = {"shell_transom_deck": shell_check((shell_ob, transom, deck_ob)), "rudder": shell_check((rudder,)),
               "stock": shell_check((stock,))}
+    for k, ob in deck_obs.items():
+        checks[k] = shell_check((ob,))
     if not all(c["closed"] for c in checks.values()):
-        raise SystemExit(f"a piece does not close into a shell: {checks}")
-    sweep = helm_sweep(rudder, (shell_ob, transom, deck))
+        raise SystemExit(f"a piece does not close into a shell: {[k for k, c in checks.items() if not c['closed']]}"
+                         f" {checks}")
+    sweep = helm_sweep(rudder, (shell_ob, transom, deck_ob))
     if sweep["touching"]:
         raise SystemExit(f"the rudder touches the hull when turned: {[t for t in sweep['turns'] if t['touching_triangles']]}")
     finish["rudder"]["helm_sweep"] = sweep
-    w = loft.weight_check(S, h, finish["lead"])
-    # as built she displaces the moulded hull plus the plating, less the slot: the lead carries the difference (shell.py
-    # measures both and sets the casting's top), so she still floats on her lines (weight = displacement). The rule
-    # check keeps the moulded hull's D (the higher rating).
+    wsweep = wheel_sweep(deck_obs["Wheel"], (deck_ob, deck_obs["Cockpit"], deck_obs["Steering"]))
+    if wsweep["touching"]:
+        raise SystemExit(f"the wheel touches the deck or the box: {wsweep}")
+    deck_rep["wheel_sweep"] = wsweep
+    deck_rep["cockpit_room"] = cockpit_room((shell_ob, transom), deck_rep["cockpit_sole_z_m"])
+    if not deck_rep["cockpit_room"]["ok"]:
+        raise SystemExit(f"the cockpit comes too near the hull: {deck_rep['cockpit_room']}")
+    lt = dw["total_long_tons"]
+    w = loft.weight_check(S, h, finish["lead"], measured={"deck_and_deckhouses": (lt, dw["centre"][0], dw["centre"][2])})
+    # as built she displaces the moulded hull plus the plating, less the slot; the lead carries that and what the deck
+    # weighs less than the card's estimate (shell.py measures both and sets the casting's top), so she still floats on
+    # her lines (weight = displacement). The rule check keeps the moulded hull's D (the higher rating).
     dsp = finish["displacement"]
     d_mould = h["volume_ft3"] / 35.0
     dsp["moulded_long_tons"] = round(d_mould, 2)
@@ -513,24 +708,43 @@ def main():
                                  "positive_turn_about_Z_in_blender_moves_trailing_edge":
                                      "starboard (+y): the bow turns to starboard" if te1[1] > te0[1]
                                      else "port (-y): the bow turns to port"}
-    p0, up, deck_pt = shell.stock_axis(DECK_CAMBER)
+    p0, up, deck_pt = shell.stock_axis()
     finish["rudder"]["stock_meets_deck"] = [round(float(a), 3) for a in deck_pt]
     finish["lettering"] = letter_report
+    # the wheel's frame: which way its top goes for a positive turn about its X (forward along the shaft) in Blender;
+    # the top to starboard is clockwise as the helmsman sees it, the bow to starboard
+    wo, wX, wZ = parts["Wheel"].frame
+    Mw = deck_obs["Wheel"].matrix_world
+    t0 = to_blender(np.array(Mw @ Vector((0.0, 0.0, 0.7))))
+    t1 = to_blender(np.array(Mw @ Matrix.Rotation(0.1, 4, "X") @ Vector((0.0, 0.0, 0.7))))
+    deck_rep["wheel_frame"] = {"origin": [round(float(a), 4) for a in wo], "X": [round(float(a), 5) for a in wX],
+                               "Z": [round(float(a), 5) for a in wZ],
+                               "positive_turn_about_X_in_blender_moves_its_top":
+                                   "to starboard (+y): clockwise as the helmsman sees it, the bow to starboard"
+                                   if t1[1] > t0[1] else "to port (-y): anticlockwise as the helmsman sees it"}
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
-    write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck))
-    visible = [shell_ob, transom, deck, rudder, stock] + letters
+    write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
+    visible = [shell_ob, transom, deck_ob, rudder, stock] + letters + list(deck_obs.values())
     tris = {ob.name: tri_count(ob) for ob in visible}
-    build = {"slice": 2, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
-             "triangles_hidden_reference_hull": tri_count(hull), "budget_slices_1_2": 200000 + 350000,
-             "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish}
+    slice3 = sum(tris[ob.name] for ob in [deck_ob] + list(deck_obs.values()))
+    build = {"slice": 3, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+             "triangles_slice_3": slice3, "budget_slice_3": 500000,
+             "triangles_hidden_reference_hull": tri_count(hull), "budget_slices_1_3": 200000 + 350000 + 500000,
+             "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep}
+    if slice3 > build["budget_slice_3"]:
+        raise SystemExit(f"slice 3 has {slice3} triangles, over its budget")
     with open(os.path.join(OUT, "build.json"), "w") as f:
         json.dump(build, f, indent=1)
-    drawings_jclass.draw_all(pieces, FIN, OUT)
+    drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep)
     short = {k: v for k, v in finish["rudder"].items() if k != "helm_sweep"}
     short["helm_sweep"] = {k: v for k, v in sweep.items() if k != "turns"}
-    print(json.dumps({"triangles": tris, "total": build["triangles_total"], "shell": checks, "rule": r,
-                      "weights": w, "lead": finish["lead"], "displacement": dsp, "rudder": short,
-                      "lettering": letter_report}, indent=1))
+    print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3,
+                      "shell": {k: c["closed"] for k, c in checks.items()}, "rule": r["rating_ft"],
+                      "weights": w, "lead": finish["lead"], "deck_weight": {k: dw[k] for k in ("total_kg", "total_long_tons",
+                                                                                            "centre")},
+                      "layout_ok": deck_rep["layout"]["ok"],
+                      "wheel": {k: v for k, v in wsweep.items() if k != "turns"}, "cockpit": deck_rep["cockpit_room"],
+                      "rudder": short["helm_sweep"]}, indent=1))
 
 
 main()
