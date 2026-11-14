@@ -1,0 +1,34 @@
+Ultra loss on main da3e74b0 (storm and marina at 4K Ultra fullscreen, Development packages, back to back on the PC).
+Step 1 (s1-*): Packaged\Windows-da3e74b0 plain, with #678's pre-change Ultra values (-SailingCloudScale=2,4
+-SailingCloudCapStep=76, -SailingExecAt=0:r.VolumetricCloud.ViewRaySampleMaxCount+160, confirmed in the log), plain.
+view     run             fps  p99ms   gpums   cloud   base  lumen   post
+storm    a-plain          37  49.83      20    8.67      5   1.01   2.38
+storm    b-old678       37.7  44.85    19.8    8.58   4.78   1.04   2.53
+storm    c-plain        36.5  49.29   20.53    9.48   4.79   1.02   2.38
+marina   a-plain        44.7  26.55   16.99    6.15   4.41   1.16   2.79
+marina   b-old678       47.6  26.62   16.26    5.05   4.45   1.28   2.75
+marina   c-plain        45.3  29.52   16.75    5.65   4.58   1.16    2.6
+#678's share: marina about +0.6 ms GPU (clouds +0.85) and 2.4 fps; storm about +0.5 ms GPU (clouds +0.5); storm's p99 (49 ms)
+is the same with or without it.
+
+Step 2, coarse (s2-*): storm and marina on d1364112, 2f8e31f6 (#662-#673), b9910b7d (#675-#682 and #674), da3e74b0 (#678),
+the four in a row, twice. Means per build:
+marina, 2f8e31f6             fps  48.0 p99  26.0 gpu  15.84 cloud  4.84 base  4.72 lumen  1.19 water  1.27 post  2.52 other  1.28
+marina, b9910b7d             fps  47.9 p99  25.7 gpu  15.80 cloud  4.90 base  4.62 lumen  1.22 water  1.24 post  2.52 other  1.29
+marina, d1364112             fps  47.5 p99  26.7 gpu  15.97 cloud  4.88 base  4.67 lumen  1.25 water  1.25 post  2.55 other  1.35
+marina, da3e74b0             fps  46.5 p99  26.5 gpu  16.36 cloud  5.54 base  4.50 lumen  1.15 water  1.17 post  2.62 other  1.35
+storm, 2f8e31f6              fps  39.4 p99  33.8 gpu  18.84 cloud  8.07 base  4.45 lumen  1.04 water  1.52 post  2.50 other  1.25
+storm, b9910b7d              fps  26.9 p99  77.9 gpu  20.91 cloud  9.36 base  5.22 lumen  1.03 water  1.52 post  2.58 other  1.20
+storm, d1364112              fps  39.8 p99  35.1 gpu  18.48 cloud  7.88 base  4.35 lumen  1.02 water  1.58 post  2.46 other  1.19
+storm, da3e74b0              fps  37.0 p99  45.6 gpu  20.21 cloud  9.27 base  4.71 lumen  1.03 water  1.57 post  2.47 other  1.16
+Marina: flat from d1364112 to b9910b7d; da3e74b0 (#678) +0.5 ms GPU, all of it clouds (+0.65): marina is #678.
+Storm: flat from d1364112 to 2f8e31f6; the loss arrives between 2f8e31f6 and b9910b7d (#675, #677, #679, #676, #680, #681,
+#682, #674): clouds +1.3 ms, base +0.8 ms (b9910b7d's first storm run was a hitchy 16.6 fps, p99 103 ms; its second 37.2
+fps, 20.0 ms GPU). #678 adds little on storm on top of that. The finer split (one -msvcfix package per merge) is next.
+
+Step 3 (s3-*): storm with -SailingBenchTrace, da3e74b0 and d1364112 alternating, frames.csv each. In the measured window
+(3-15 s): da3e74b0 frame median 26.4 ms (GPU median 25.7) against 24.1-24.4 (GPU 23.6-23.7) on d1364112: a steady +2 ms of
+GPU. Its p99 comes from a handful of game-thread spikes (5-7 frames of 40-93 ms per run, game_ms about equal to the frame,
+GPU 25-31 ms on those frames) against 1-3 on d1364112: the tail is hitches on the game thread, not GPU time. Their times
+(about 3.1, 9.3, 10.5, 14.7 s, and one render-thread spike near 11.0 s on both builds) match no logged event (no lightning
+or thunder lines in the logs). (Frames past 15 s are the bench's end: GPU profiling and the screenshot.)
