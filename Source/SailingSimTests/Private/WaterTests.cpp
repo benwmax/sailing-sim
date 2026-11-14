@@ -986,6 +986,49 @@ bool FWaterFarCapSpritesTest::RunTest(const FString&)
 		const float W = AWaterSurface::FarCapSpriteWeight(D, 20.0);
 		if (W < 0.f || W > 1.f) { AddError(FString::Printf(TEXT("Weight %.2f at %.0f m"), W, D)); break; }
 	}
+	// The size step's hysteresis (the storm hitches: each step rebuilt every tile in view in one frame). A storm's planned
+	// total wandering +-6% across the 1.5-quarter boundary at every half-second replan for two minutes changes the step at
+	// most once; under the budget it stays at 1; far over it rises at once; it falls once the hold is over.
+	{
+		const int32 B = AWaterSurface::FarCapBudget;
+		double Step = 1.0, Since = 1.0e9;
+		int32 Changes = 0;
+		for (int32 I = 0; I < 240; ++I)
+		{
+			const int32 Total = int32(1.5 * B * (1.0 + 0.06 * FMath::Sin(I * 0.9)));
+			const double Next = AWaterSurface::FarCapSizeStepNext(Step, Total, Since);
+			if (Next != Step) { ++Changes; Step = Next; Since = 0.0; }
+			Since += 0.5;
+			if (double(Total) / Step > 1.5 * B) AddError(FString::Printf(TEXT("Replan %d: %.0f slots held, over 1.5x the budget"), I, double(Total) / Step));
+		}
+		AddInfo(FString::Printf(TEXT("Wandering storm: step %.2f after %d changes"), Step, Changes));
+		TestTrue(TEXT("A wandering storm total changes the step once"), Changes == 1);
+		TestEqual(TEXT("... to 1.5"), Step, 1.5);
+		TestEqual(TEXT("Under the budget the step is 1"), AWaterSurface::FarCapSizeStepNext(1.0, B / 2, 0.0), 1.0);
+		TestEqual(TEXT("Far over the budget it rises at once"), AWaterSurface::FarCapSizeStepNext(1.0, 2 * B, 0.0), 2.0);
+		TestEqual(TEXT("A little over, it waits for the hold"), AWaterSurface::FarCapSizeStepNext(1.0, int32(1.2 * B), 1.0), 1.0);
+		TestEqual(TEXT("... then rises"), AWaterSurface::FarCapSizeStepNext(1.0, int32(1.2 * B), AWaterSurface::FarCapStepHoldS), 1.25);
+		TestEqual(TEXT("It falls once the lower step fits 90% of the budget"), AWaterSurface::FarCapSizeStepNext(2.0, B, AWaterSurface::FarCapStepHoldS), 1.25);
+		TestEqual(TEXT("... and not before the hold"), AWaterSurface::FarCapSizeStepNext(2.0, B, 1.0), 2.0);
+		TestEqual(TEXT("Calm again: back to 1"), AWaterSurface::FarCapSizeStepNext(1.5, B / 4, AWaterSurface::FarCapStepHoldS), 1.0);
+	}
+	// A tile is rebuilt for more slots only when its slots can't carry the cover all live: not just after a build, not at
+	// a 10% rise (a fresh plan's 30% headroom rebuilt a tile at every rise: builds on half the storm's frames), and never
+	// at the slot cap (it would rebuild itself every replan).
+	{
+		const double Cap = AWaterSurface::FarCapArea;   // (Area: the tile's, above)
+		const double Cover = AWaterSurface::FarCapCover(20.0 * Sailing::kKnot, 1.0, 1.0);
+		int32 Slots = 0;
+		float Prob = 0.f;
+		AWaterSurface::FarCapTilePlan(Cover, Area, Slots, Prob, Cap);
+		TestFalse(TEXT("Not outgrown just after its build"), AWaterSurface::FarCapTileOutgrown(Cover, Area, Cap, Slots));
+		TestFalse(TEXT("Not outgrown by a 10% rise"), AWaterSurface::FarCapTileOutgrown(Cover * 1.1, Area, Cap, Slots));
+		TestTrue(TEXT("Outgrown by a 50% rise"), AWaterSurface::FarCapTileOutgrown(Cover * 1.5, Area, Cap, Slots));
+		int32 Full = 0;
+		AWaterSurface::FarCapTilePlan(Cover * 1000.0, Area, Full, Prob, Cap);
+		TestEqual(TEXT("A storm's tile is at the slot cap"), Full, AWaterSurface::FarCapMaxSlots);
+		TestFalse(TEXT("... and never outgrown there"), AWaterSurface::FarCapTileOutgrown(Cover * 1000.0, Area, Cap, Full));
+	}
 	return true;
 }
 

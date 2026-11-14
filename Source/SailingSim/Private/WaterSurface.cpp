@@ -517,8 +517,24 @@ void AWaterSurface::FarCapTilePlan(double Cover, double TileArea, int32& OutSlot
 {
 	// The caps live at once: the tile's foam over one cap's, over the mean of a life (M_FarCap: 1.6 sin, clamped at 1).
 	const double Live = Cover * TileArea / (CapArea * 0.7937);
-	OutSlots = Live < 0.05 ? 0 : FMath::Min(FMath::CeilToInt(Live * 1.3) + 1, 6000);
+	OutSlots = Live < 0.05 ? 0 : FMath::Min(FMath::CeilToInt(Live * 1.3) + 1, FarCapMaxSlots);
 	OutProb = OutSlots > 0 ? float(FMath::Min(Live / OutSlots, 1.0)) : 0.f;
+}
+
+bool AWaterSurface::FarCapTileOutgrown(double Cover, double TileArea, double CapArea, int32 Slots)
+{
+	return Slots < FarCapMaxSlots && Cover * TileArea / (CapArea * 0.7937) > double(Slots) + 0.5;
+}
+
+double AWaterSurface::FarCapSizeStepNext(double Cur, int32 Total, double SinceChange)
+{
+	auto StepFor = [](double Slots, double Budget) { return Slots > Budget ? FMath::CeilToDouble(4.0 * Slots / Budget) / 4.0 : 1.0; };
+	const double Budget = double(FarCapBudget), AtCur = double(Total) / FMath::Max(Cur, 1.0);
+	if (AtCur > 1.5 * Budget) return StepFor(double(Total), Budget);   // far over: don't wait (the slots are real cost)
+	if (SinceChange < FarCapStepHoldS) return Cur;
+	if (AtCur > 1.1 * Budget) return StepFor(double(Total), Budget);
+	const double Lower = FMath::Max(StepFor(double(Total), 0.9 * Budget), 1.0);
+	return Lower < Cur ? Lower : Cur;
 }
 
 float AWaterSurface::FarCapSpriteWeight(double DistM, double HeightM)
@@ -1492,7 +1508,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	const double HalfFov = 0.5 * (CamMgr ? CamMgr->GetFOVAngle() : 90.0);
 	const FVector2D Fwd = SailingFrame::ToMap(GetWorld(), CamW + FRotator(0.0, Yaw, 0.0).Vector() * 100.0) - Cam;
 	const double Bearing = FMath::RadiansToDegrees(FMath::Atan2(Fwd.Y, Fwd.X));
-	struct FPlan { FIntPoint Key; double Cover, CX, CY; int32 Slots; };
+	struct FPlan { FIntPoint Key; double Cover, CX, CY; int32 Slots; float Prob = 0.f; int32 Need = 0; double Dist = 0.0; };
 	TArray<FPlan> Plans;
 	TSet<FIntPoint> Want;
 	int32 Total = 0;
@@ -1526,21 +1542,52 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 			Want.Add(Key);
 		}
 	}
-	// Over the budget (a storm), fewer and bigger caps: the same foam. Stepped by quarters so the tiles aren't rebuilt as it wanders.
-	const double SizeStep = Total > FarCapBudget ? FMath::CeilToDouble(4.0 * double(Total) / FarCapBudget) / 4.0 : 1.0;
+	// Over the budget (a storm), fewer and bigger caps: the same foam. Stepped by quarters, with hysteresis and a hold
+	// (FarCapSizeStepNext): a step sends every tile in view to a rebuild, and a storm's cover wandering across a quarter
+	// rebuilt about 30 tiles in one frame (28-37 ms of game thread on the PC's 4K storm traces).
+	const double Now = GetWorld()->GetTimeSeconds();
+	{
+		const double Next = FarCapSizeStepNext(FarCapSizeStep, Total, Now - FarCapStepChanged);
+		if (Next != FarCapSizeStep) { FarCapSizeStep = Next; FarCapStepChanged = Now; }
+	}
+	const double SizeStep = FarCapSizeStep;
 	const double CapArea = FarCapArea * SizeStep;
+	// Builds are spread over frames: missing tiles first (nearest first), then tiles whose cover outgrew their slots, then
+	// tiles still at an old size step (they keep drawing their own size, with the same cover, until their turn). A replan
+	// builds until FarCapBuildBudgetMs is spent (at least one tile) and plans again next frame while any wait.
+	for (FPlan& P : Plans)
+	{
+		FarCapTilePlan(P.Cover, Area, P.Slots, P.Prob, CapArea);
+		const FFarCapTile* Tile = FarCapTiles.Find(P.Key);
+		// Outgrown only when its slots can no longer carry the cover even all live (probability past 1), at the tile's own
+		// size. (Comparing against a fresh plan, whose slots carry 30% headroom, rebuilt a tile at every rise of the cover:
+		// on the PC's storm traces a build nearly every replan on main, and every frame once replans ran back to back.)
+		const bool bOutgrown = Tile && FarCapTileOutgrown(P.Cover, Area, FarCapArea * Tile->Size, Tile->Slots);
+		P.Need = !Tile ? 1 : bOutgrown ? 2 : Tile->Size != SizeStep ? 3 : 0;
+		P.Dist = FMath::Square(P.CX - Cam.X) + FMath::Square(P.CY - Cam.Y);
+	}
+	TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_FarCapBuild);   // (to the end: the sort, builds, slot count and tile drops; before it, the plan)
+	Plans.Sort([](const FPlan& A, const FPlan& B) { return A.Need != B.Need ? (A.Need == 0 ? false : B.Need == 0 ? true : A.Need < B.Need) : A.Dist < B.Dist; });
+	const double BuildStart = FPlatformTime::Seconds();
+	int32 Built = 0;
+	bool bWaiting = false;
 	for (FPlan& P : Plans)
 	{
 		{
 			const FIntPoint Key = P.Key;
 			const double X0 = Key.X * TileM, Y0 = Key.Y * TileM, CX = P.CX, CY = P.CY, Cover = P.Cover;
-			int32 Slots = 0;
-			float Prob = 0.f;
-			FarCapTilePlan(Cover, Area, Slots, Prob, CapArea);
+			const int32 Slots = P.Slots;
 			FFarCapTile* Tile = FarCapTiles.Find(Key);
 			// Rebuilt only when the cover needs more slots than it holds (or the caps' size steps). Not shrunk in place: the
 			// slots past the new count would vanish mid-life; a tile is dropped when it leaves the view or the ring instead.
-			const bool bRebuild = !Tile || Slots > Tile->Slots || Tile->Size != SizeStep;
+			bool bRebuild = P.Need != 0;
+			if (bRebuild && Built > 0 && (FPlatformTime::Seconds() - BuildStart) * 1000.0 > FarCapBuildBudgetMs)
+			{
+				bRebuild = false;
+				bWaiting = true;
+				if (!Tile) continue;   // not built yet: next frame
+			}
+			if (bRebuild) ++Built;
 			// The probability in effect before (a cap's life is decided at its start, M_FarCap's ProbA and ProbB), and the
 			// slots that already stood (the rest stay dark until their next life).
 			const float ProbBefore = Tile ? Tile->Prob : -1.f;
@@ -1624,7 +1671,8 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 				Tile->Mid->SetScalarParameterValue(TEXT("DebugAll"), bDebug ? 1.f : 0.f);
 				// A cap's life is decided as it starts: lives begun before SwitchT keep ProbA (the slots a rebuild added none),
 				// later ones take ProbB. Changing the probability under a living cap made it blink out (or in) mid-life.
-				const float NewProb = bDebug ? 1.f : Tile->Slots > 0 ? float(FMath::Min(Cover * Area / (CapArea * 0.7937) / Tile->Slots, 1.0)) : 0.f;
+				// (The tile's own size step: a tile waiting for its rebuild after a step keeps its caps' area, and the cover.)
+				const float NewProb = bDebug ? 1.f : Tile->Slots > 0 ? float(FMath::Min(Cover * Area / (FarCapArea * Tile->Size * 0.7937) / Tile->Slots, 1.0)) : 0.f;
 				if (bRebuild || FMath::Abs(NewProb - Tile->Prob) > 0.01f)
 				{
 					Tile->Mid->SetScalarParameterValue(TEXT("ProbA"), Tile->Prob < 0.f ? NewProb : Tile->Prob);
@@ -1632,13 +1680,14 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 					Tile->Mid->SetScalarParameterValue(TEXT("SwitchT"), GetWorld()->GetTimeSeconds());
 					Tile->Prob = NewProb;
 				}
-				Tile->Mid->SetScalarParameterValue(TEXT("Size"), float(FMath::Sqrt(SizeStep)));
+				Tile->Mid->SetScalarParameterValue(TEXT("Size"), float(FMath::Sqrt(Tile->Size)));
 				Tile->Mid->SetScalarParameterValue(TEXT("CapH"), float(FMath::Lerp(0.2, 0.45, FMath::Clamp((Waves->GetParams().WindSpeedKnots - 12.0) / 10.0, 0.0, 1.0))) * (bDebug ? 10.f : 1.f));
 				// A cap rides a crest: stood at the mean level, the crests between it and a low eye hid it.
 				Tile->Mid->SetScalarParameterValue(TEXT("Lift"), float(0.6 * Waves->SignificantHeightAt(CX, CY) * CmPerMeter));
 			}
 		}
 	}
+	if (bWaiting) FarCapTimer = 0.f;   // tiles still to build: plan again next frame
 	FarCapSlotsHeld = 0;
 	for (const FPlan& P : Plans) if (const FFarCapTile* Tl = FarCapTiles.Find(P.Key)) FarCapSlotsHeld += Tl->Slots;
 	static SailingArgs::FCachedFlag DebugFarCapsLog(TEXT("SailingDebugFarCaps"));
