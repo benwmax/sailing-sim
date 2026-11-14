@@ -5,14 +5,20 @@
 Rating R = 0.18 L sqrt(S) / cbrt(D) (feet, square feet, cubic feet), which must be 76 ft or less, with:
   L  the load waterline length (specs_bluebonnet.json explains why that is close enough),
   S  the rated sail area (build.json "sail_area_ft2"): the size card's target before slice 4, then the spars' measured
-     triangles (slice 4: the fore triangle I x J / 2 plus the main's P x E / 2), then slice 6's sails,
+     triangles (slice 4: the fore triangle I x J / 2 plus the main's P x E / 2), which the rule measured rather than
+     the cloth: slice 6's sails must lie within them (the mainsail's head under the mast's black band and its clew
+     inside the boom's, the jibs' heads under the forestay's hounds, the spinnaker's pole no longer than J),
   D  the displaced volume in cubic feet: the hull's. The rudder is the keel's after part, inside the hull surface
      (slice 2 cuts it out along its stock line), so it is already counted; build.json's "appendage_ft3" adds anything
      hung outside the surface.
 The draft must be 15 ft or less, and each size within the card's tolerance (5%). From slice 5 a build must also show
 the boom swinging out past the let-off runner and checkstay with room to spare (LEE_RUNNER_MM at its least, nothing
 touching on either tack), every wire and rope clear along its length, no fitting crossing anything but by design,
-and nothing in the lane the mainsail's slides need up its track.
+and nothing in the lane the mainsail's slides need up its track. From slice 6 every suit of sails (set, lowered,
+doused, moored) must pass the build's check: no face of a sail crossing anything but by design, every free face of
+a set sail's cloth clear of everything else, the spinnaker pole, where a suit has it lashed down on deck,
+crossing nothing, and no set sail creased where it is pressed off what it lies on (PRESS_TURN_ADDED_DEG at most added
+to its greatest turn between neighbouring cells).
 Plain Python: no Blender needed.
 """
 import json
@@ -24,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SPECS = json.load(open(os.path.join(HERE, "specs_bluebonnet.json")))
 FT = 0.3048
 LEE_RUNNER_MM = 100.0       # the boom's least room to the let-off runner and checkstay at full swing (slice 5)
+PRESS_TURN_ADDED_DEG = 10.0  # the most the press may sharpen a set sail's greatest turn between cells (slice 6)
 RIGGING = ("Shrouds", "Stays", "RunnerFittings") + tuple(f"{k}.{s}.{t}" for k in ("Runner", "Checkstay")
                                                          for s in ("Starboard", "Port") for t in ("Set", "LetOff"))
 
@@ -78,8 +85,8 @@ if __name__ == "__main__":
     r = check(h, b.get("sail_area_ft2"), b.get("appendage_ft3"))
     if "hydrostatics" in b:
         # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
-        # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too, and
-        # slice 4 one for each spar
+        # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too, slice 4
+        # one for each spar, slice 5 for each rigging object and slice 6 for each sail's state
         shell = b.get("shell") or {}
         pieces = {"shell": shell} if "closed" in shell else shell
         sl = b.get("slice", 1)
@@ -90,6 +97,10 @@ if __name__ == "__main__":
             need += ("Mast", "Boom", "SpinnakerPole")
         if sl >= 5:
             need += RIGGING
+        if sl >= 6:
+            # each sail's state is its own object (Mainsail.Set, Genoa.Bagged, ...): every one in a suit
+            need += tuple(sorted({n for k, v in ((b.get("sails") or {}).get("suits") or {}).items() if k != "note"
+                                  for n in v["sails"]}))
         for name in need:
             if name not in pieces:
                 r["pass"] = False
@@ -117,6 +128,47 @@ if __name__ == "__main__":
                       f"{least.get('gap_mm')} mm ({least.get('wire')} to {least.get('against')}), none under "
                       f"{room.get('fail_under_mm')} mm; crossings {cont.get('crossing')}; in the mainsail's slides' "
                       f"lane {lane.get('crossing')}")
+                ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 6:
+            # slice 6: the sails inside the measured triangles, and every suit clear
+            sv = b.get("sails") or {}
+            sr = sv.get("sails") or {}
+            flags = {"Mainsail": ("within_P", "within_E"), "Genoa": ("head_below_forestay_hounds",),
+                     "Quadrilateral": ("head_below_forestay_hounds",), "Staysail": ("head_below_forestay_hounds",),
+                     "Spinnaker": ("pole_within_J",)}
+            bad = [f"{k} {f}" for k, fs in flags.items() for f in fs if not (sr.get(k) or {}).get(f)]
+            ok = not bad
+            print(f"{'ok  ' if ok else 'FAIL'} the sails within the measured triangles (P, E, the forestay's hounds, "
+                  f"J){': ' + ', '.join(bad) if bad else ''}")
+            sc = sv.get("suit_checks") or {}
+            suits = [k for k in (sv.get("suits") or {}) if k != "note"]
+            for name in suits or ["(none)"]:
+                c = sc.get(name) or {}
+                least = min((g["gap_mm"] for row in (c.get("room") or {}).values() for g in row["least"].values()),
+                            default=None)
+                good = bool(c.get("ok"))
+                room = (f"the cloth's least room {least} mm (limit {c.get('room_fail_under_mm')})" if least is not None
+                        else "no sail set")
+                print(f"{'ok  ' if good else 'FAIL'} the {name} suit: crossings {c.get('crossing')}, {room}")
+                ok = ok and good
+            # the pole lashed down on deck in each suit that stows it
+            pc = sv.get("pole_stowed_checks") or {}
+            for name in [k for k in suits if (sv["suits"][k] or {}).get("pole") == "stowed"]:
+                c = pc.get(name) or {}
+                good = bool(c.get("ok"))
+                room = ", ".join(f"{k} {v['gap_mm']} mm" for k, v in (c.get("least") or {}).items())
+                print(f"{'ok  ' if good else 'FAIL'} the pole stowed on deck in the {name} suit: crossings "
+                      f"{c.get('crossing')}, least room {room or 'not measured'}")
+                ok = ok and good
+            # the press bends the cloth round what it lies on; it may not crease it
+            for name, p in (sv.get("press") or {}).items():
+                added = p.get("turn_deg_pressed", 99.0) - p.get("turn_deg_shaped", 0.0)
+                good = added <= PRESS_TURN_ADDED_DEG
+                print(f"{'ok  ' if good else 'FAIL'} {name} pressed: moved {p.get('most_moved_m')} m at most, its "
+                      f"greatest turn between cells {p.get('turn_deg_shaped')} deg as shaped, "
+                      f"{p.get('turn_deg_pressed')} pressed (limit {PRESS_TURN_ADDED_DEG:.0f} more)")
                 ok = ok and good
             if not ok:
                 r["pass"] = False

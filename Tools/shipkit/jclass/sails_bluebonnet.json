@@ -1,0 +1,256 @@
+{
+ "about": "Bluebonnet's sails (docs/jclass-6): the mainsail, the overlapping genoa, the quadrilateral jib and the staysail, and the parachute spinnaker, in cream Egyptian cotton cut the period's way, each in its states. Built by sails.py on slice 4's spars and slice 5's stays, in the hull's frame (X forward, Y starboard, Z up, metres). Sizes are ours, in the manner of the 1934-37 Js; the sources below say what is published and what is our estimate.",
+ "sources": {
+  "quadrilateral": "The quadrilateral jib: a double-clewed headsail, a big jib with its clew cut off so it has four sides and two sheets, introduced on Endeavour in 1934 (Camper & Nicholson for T. O. M. Sopwith) and used that year by Rainbow and Yankee too; still carried by the Js racing today (Endeavour's history pages, americascup.com's 1934 page and the J Class Association's history, as a web search quotes them in Nov 2026). Before it, jibs were triangles.",
+  "cut": "Cotton sails were cut with the cloths parallel to the leech (the 'vertical' cut, older than the cross cut and still used on classic yachts), so the leech's strain runs along the threads and the cloth does not hollow there as it stretches (Yachting, 1922; T. W. Ratsey's 1894 patent lays the weft parallel to the leech and the foot). Headsails of the period were mitre cut: cloths parallel to the leech above a seam bisecting the clew's angle, parallel to the foot below it.",
+  "spinnaker": "Parachute spinnakers came to the Js in 1934 and grew fast: one list credits Endeavour II (1936) with an 18,000 sq ft spinnaker, and a museum record calls Ranger's the largest sail ever made (sources disagree, as the search found them). Ours is sized from the pole: its foot twice the pole's length and its widest girth 2.1 times, hoisted from the masthead.",
+  "cloth": "Egyptian cotton in 18 in cloths for the working sails (weights in ounces to the sailmaker's yard, 28 1/2 x 36 in, our estimate for a J), a light cotton for the spinnaker. The weights, ropes, slides and hanks are our estimates."
+ },
+ "cloth": {
+  "note": "Per sail kind: the cloth's width and the seams' overlap (cloth_in, seam_in: the seams run every cloth_in - seam_in), its weight (oz to the sailmaker's yard of 28 1/2 x 36 in) and thickness, and 'finish' the share added for tablings, linings, corner patches and reef bands. 'colour' is the Blender render's cream (sRGB): in the game M_SailCloth draws the cloth from the same UVs.",
+  "main": {
+   "cloth_in": 18.0,
+   "seam_in": 1.25,
+   "oz": 15.0,
+   "thick_mm": 0.75,
+   "finish": 0.15
+  },
+  "headsail": {
+   "cloth_in": 18.0,
+   "seam_in": 1.25,
+   "oz": 11.0,
+   "thick_mm": 0.6,
+   "finish": 0.12
+  },
+  "spinnaker": {
+   "cloth_in": 36.0,
+   "seam_in": 1.0,
+   "oz": 2.75,
+   "thick_mm": 0.16,
+   "finish": 0.08
+  },
+  "colour": [232, 222, 196],
+  "spinnaker_colour": [238, 232, 214],
+  "bag_colour": [168, 150, 112],
+  "sailmakers_yard_m2": 0.66194
+ },
+ "grid": {
+  "note": "The cloth's grid: cells about 'cell' metres (finer near the head, where the rows are short), 'head_cell' on the spinnaker. Every reef band and the quadrilateral jib's upper clew fall on a row.",
+  "cell": 0.3,
+  "spinnaker_cell": 0.34
+ },
+ "press": {
+  "note": "A set sail that comes near a spar, a wire, another sail or the deck is pressed off it, the way a genoa lies against the spreader tips or a squared mainsail on the lee shrouds: each obstacle is on one side of the cloth (the mast, the windward rigging and the mainsail behind a jib; the lee shrouds in front of the staysail; the lee shrouds behind a running mainsail, which they hold back), and each grid point within a cell of an obstacle's surface (in the cloth's plane) that is on the wrong side, or nearer than 'clear' (m, by what it is pressed against), is moved along the cloth's normal until it clears, the move spread smoothly over at least 'spread' metres (wider for a bigger move, so the cloth bends rather than creases). The held edges never move (the luff and the corners, and the mainsail's foot on its slides); the cloth hinges smoothly away from them. The jibs are trimmed row by row before the press (headsails' note). The build then checks every suit: no face of a sail crosses anything (but the slides in their tracks, the hanks on their stays and the heaps and bags on the deck), and every free face of each set sail's cloth is 10 mm or more from everything else (and everything else 10 mm or more from it).",
+  "clear": {
+   "rig": 0.045,
+   "sail": 0.12,
+   "hull": 0.06
+  },
+  "spread": 0.8,
+  "rounds": 6
+ },
+ "ropes": {
+  "note": "Radii (m): the mainsail's bolt rope on the luff and foot (manila, sewn on the port side), the headsails' luff ropes over a wire, the spinnaker's tapes, reef points and sail ties (cotton line); kg per metre for the weights.",
+  "main_bolt": 0.008,
+  "headsail_luff": 0.008,
+  "spinnaker_tape": 0.004,
+  "reef_point": 0.005,
+  "sail_tie": 0.007,
+  "bolt_kg_per_m": 0.12,
+  "tape_kg_per_m": 0.03
+ },
+ "mainsail": {
+  "note": "Bent to the mast's track by its luff and to the boom's by its foot, between the black bands (P and E are the most it may measure): its head 'head_below_band' under the mast's band, its clew 'clew_inside_band' forward of the boom's. The luff rope's centre lies 'luff_off' abaft the mast's after face (beyond the slides' lane, slice 4), the foot's 'foot_off' above the boom's top. The headboard is 'headboard' wide (it clears the backstay, which slice 5's crane holds 'clear of the mainsail's headboard') and 'headboard_depth' deep. The leech carries a roach 'roach' at most (its share 'roach_at' up from the clew), held by 'battens' short battens in pockets on the port side, at shares of the leech from the clew, each its length in from the leech; the roach must clear the backstay by 'backstay_clear' when the boom is amidships. Two reef bands 'reefs' metres up the luff, parallel to the foot, with a point every 'point_every' (each 'point_hang' long on either face) and a cringle at each end. Slides on the luff and the foot every 'slide_every'.",
+  "head_below_band": 0.05,
+  "clew_inside_band": 0.06,
+  "luff_off": 0.068,
+  "foot_off": 0.068,
+  "headboard": 0.3,
+  "headboard_depth": 0.5,
+  "headboard_t": 0.006,
+  "roach": 1.0,
+  "roach_at": 0.38,
+  "backstay_clear": 0.28,
+  "battens": {
+   "at": [0.2, 0.4, 0.6, 0.8],
+   "length": [1.5, 2.1, 2.1, 1.5],
+   "pocket_w": 0.07,
+   "proud": 0.012
+  },
+  "reefs": [3.6, 7.2],
+  "point_every": 0.9,
+  "point_hang": 0.32,
+  "slide_every": 0.9,
+  "slide": {
+   "height": 0.08,
+   "width": 0.042,
+   "depth": 0.026,
+   "kg": 0.22
+  },
+  "emblem": {
+   "note": "The Bolivar Roads Yacht Club's five-pointed star in place of a sail number, in the hull's blue on both faces: its centre at 'at' (share of its row from the luff, share of the luff's height), 'radius' to its points.",
+   "at": [0.5, 0.74],
+   "radius": 1.25
+  },
+  "trims": {
+   "note": "How each set state is trimmed, sailed on starboard tack (the boom to port; the port tack is the mirror about the centreline): 'boom_deg' the boom's angle off the centreline, 'twist_deg' how much more the head stands off than the foot, 'depth' the camber's depth as a share of the chord up the sail (share of the luff's height, depth) and 'draft' where along the chord it is deepest.",
+   "Set": {
+    "boom_deg": 4.0,
+    "twist_deg": 9.0,
+    "depth": [[0.0, 0.0], [0.07, 0.08], [0.35, 0.1], [0.75, 0.095], [1.0, 0.065]],
+    "draft": [[0.0, 0.5], [1.0, 0.47]]
+   },
+   "Run": {
+    "boom_deg": 75.0,
+    "twist_deg": 14.0,
+    "depth": [[0.0, 0.0], [0.07, 0.11], [0.35, 0.14], [0.75, 0.13], [1.0, 0.09]],
+    "draft": [[0.0, 0.48], [1.0, 0.45]]
+   }
+  },
+  "stow": {
+   "note": "Lowered: dropped onto the boom in loose folds, the slides stacked on the tracks (luff slides 'stack_pitch' apart up the mast's track from the boom, each touching the next, the headboard on top). Flaked: flaked down on the boom and tied with sail ties every 'tie_every'. The heap's bulk is the cloth's area x its thickness x 'packing' (air between the folds), its width 'width' (at the mast, at the end) and its height following; beyond the boom's sides the folds hang 'droop' lower.",
+   "stack_pitch": 0.082,
+   "Lowered": {
+    "packing": 9.0,
+    "width": [1.0, 0.55],
+    "from": 0.25,
+    "to": 0.8,
+    "lumpy": 2.2,
+    "droop": 0.22
+   },
+   "Flaked": {
+    "packing": 5.0,
+    "width": [0.62, 0.36],
+    "from": 0.25,
+    "to": 0.9,
+    "lumpy": 0.8,
+    "droop": 0.05,
+    "tie_every": 1.6
+   }
+  }
+ },
+ "headsails": {
+  "note": "Hanked to their stays (slice 5) by bronze piston hanks every 'hank_every', the luff rope's centre 'luff_off' abaft the stay's centre. The tack is 'tack_up' up the stay's line from its wire's lower end (the tack pendant to the stem plate or deck plate is slice 7's), the head 'head_below' under its upper end (the halyard is slice 7's). The clew (the virtual clew of the quadrilateral jib) is at x, 'clew' [x, height above the deck at the centreline] in the centreline plane before it is sheeted; the quadrilateral jib's clew is cut off by a line from 'upper_clew' (its share up the leech from the virtual clew) to 'lower_clew' (its share forward along the foot). Each is trimmed as the main: 'psi_deg' the foot's angle off the centreline, the rows' turning 'twist_deg' more by the head, 'depth' and 'draft' as the main's. Lowered: hauled down on deck still hanked on, the heap along 'heap' (plan points, x, y); bagged: in its bag on deck along 'bag' (plan points) with 'packing' air in it. The genoa and the quadrilateral jib, whose leeches reach well abaft the mast, are sheeted outside the rigging to the rail (the chainplates are on the rail, so an overlapping jib cannot pass inside the shrouds); the staysail sets inside them. Before the press each row of a jib is turned (eased or sheeted in, within 12 degrees of its trim) so it passes between what must stay inside it and what must stay outside it, and made flatter where it cannot; a row with no room fails the build. The jibs' heads stop 'head_below' (4.5 m) under the forestay's top: the jumper stays' lower legs cross the forestay's line about 3 m under the hounds, and a head above that could not clear them.",
+  "hank_every": 0.9,
+  "hank": {
+   "clear": 0.012,
+   "r": 0.0045,
+   "kg": 0.16
+  },
+  "luff_off": 0.045,
+  "genoa": {
+   "stay": "forestay",
+   "tack_up": 0.55,
+   "head_below": 4.5,
+   "clew": [-4.4, 1.25],
+   "trim": {
+    "psi_deg": 7.8,
+    "twist_deg": 6.0,
+    "depth": [[0.0, 0.07], [0.3, 0.12], [0.7, 0.13], [1.0, 0.1]],
+    "draft": [[0.0, 0.42], [1.0, 0.4]]
+   },
+   "heap": [[18.15, 0.0], [13.2, 0.0]],
+   "heap_packing": 7.0,
+   "heap_width": 1.0,
+   "bag": [[13.6, -1.15], [10.2, -1.2]],
+   "bag_packing": 2.6
+  },
+  "quadrilateral": {
+   "stay": "forestay",
+   "tack_up": 0.55,
+   "head_below": 4.5,
+   "clew": [-1.4, 1.2],
+   "upper_clew": 0.17,
+   "lower_clew": 0.14,
+   "trim": {
+    "psi_deg": 8.6,
+    "twist_deg": 6.5,
+    "depth": [[0.0, 0.07], [0.3, 0.12], [0.7, 0.13], [1.0, 0.1]],
+    "draft": [[0.0, 0.42], [1.0, 0.4]]
+   },
+   "heap": [[18.15, 0.0], [13.2, 0.0]],
+   "heap_packing": 7.0,
+   "heap_width": 1.0,
+   "bag": [[9.0, -1.35], [5.9, -1.5]],
+   "bag_packing": 2.6
+  },
+  "staysail": {
+   "stay": "staysail",
+   "tack_up": 0.5,
+   "head_below": 0.8,
+   "clew": [3.75, 1.85],
+   "trim": {
+    "psi_deg": 13.0,
+    "twist_deg": 8.0,
+    "depth": [[0.0, 0.08], [0.3, 0.12], [0.7, 0.12], [1.0, 0.09]],
+    "draft": [[0.0, 0.42], [1.0, 0.4]]
+   },
+   "heap": [[11.1, 0.0], [11.0, -0.9], [10.7, -1.1], [8.3, -1.2]],
+   "heap_packing": 7.0,
+   "heap_width": 0.7,
+   "bag": [[8.9, 1.35], [7.3, 1.45]],
+   "bag_packing": 2.6
+  }
+ },
+ "spinnaker": {
+  "note": "A parachute spinnaker, symmetric: its two luffs 'luff_over_chord' times the longer of head to tack and head to clew as set, its foot 'foot_of_pole' and its widest girth 'girth_of_pole' times the pole's length, the girth up the sail from 'girth' (share of the flat pattern's height, share of the widest), the pattern's height solved so its luffs are that long. Hoisted from a block 'head_below_crane' under the masthead crane's tip and 'head_fwd' forward of it; its tack at the pole's end (the pole set 'pole_deg' from the bow to windward, its car at 'pole_heel_above_deck', where the build puts it), its clew at 'clew' (hull frame), placed so both luffs as set are within 1% of their cut length (the build fails otherwise) and the foot, by its own shape, passes well ahead of the forestay: on a run with the pole squared aft the clew rides forward, under the main's boom end and out to leeward. As set on starboard tack (the boom 'boom_deg' to port), the luffs run from the tack and the clew to the head, spread apart at the shoulders so each girth spans its chord in an arc of 'arc_ratio' (girth over chord; near the head no more than 'head_spread' times the distance down from it), the spread leaning 'shoulder_fwd' forward; each girth is a circular arc no deeper than 'max_arc_ratio', bulging downwind and 'lift' upward toward the foot (the foot rises in the middle). Cut in two halves joined down a centre seam, the cloths running square to it. Bagged on deck along 'bag' (plan points) with 'bag_packing' air in it.",
+  "head_below_crane": 0.9,
+  "head_fwd": 0.25,
+  "pole_deg": 70.0,
+  "pole_heel_above_deck": 2.0,
+  "boom_deg": 75.0,
+  "clew": [15.0, -11.5, 4.0],
+  "luff_over_chord": 1.03,
+  "foot_of_pole": 2.0,
+  "girth_of_pole": 2.1,
+  "girth": [[0.0, 0.952], [0.2, 0.985], [0.45, 1.0], [0.65, 0.93], [0.8, 0.76], [0.9, 0.52], [0.96, 0.27], [1.0, 0.0]],
+  "lift": 0.3,
+  "arc_ratio": 1.4,
+  "head_spread": 1.5,
+  "shoulder_fwd": 0.25,
+  "max_arc_ratio": 2.2,
+  "bag": [[13.4, 1.15], [10.6, 1.3]],
+  "bag_packing": 3.0
+ },
+ "pole_stowed": {
+  "note": "Under the working sails and in harbour the spinnaker pole is unshipped from its car and lashed down on the starboard side deck, inboard of the chainplates and outboard of the sail bags and the deckhouses: its heel pin's plan point at 'heel', the pole lying toward 'toward' (plan points, hull frame), pitched to the deck's chord under it and let down until its lowest point is 'gap' above the deck (it rests on its end fittings; the chocks and lashings are not modelled). The build checks it clear of everything else in every suit that stows it.",
+  "heel": [-4.5, 2.05],
+  "toward": [10.7, 2.05],
+  "gap": 0.005
+ },
+ "suits": {
+  "note": "The sails set together, each with its spars' pose (boom and pole, degrees; the pole's car height) and the runners of starboard tack, and the stowed states as they lie together: the build checks each suit's sails against each other and everything else, and the renders show them. Each suit names its pole: set ('pole_deg' from the bow to starboard, its car 'pole_heel_above_deck' up) or 'stowed' on deck ('pole_stowed'). Moored: the mainsail flaked on the boom under its ties (its slides stacked at the foot of the track) and the headsails and the spinnaker in their bags on deck. Lowered and Doused: the mainsail dropped on the boom and the quadrilateral jib and the staysail, or the genoa, hauled down on deck still hanked on.",
+  "Genoa": {
+   "sails": ["Mainsail.Set", "Genoa.Set"],
+   "boom_deg": 4.0,
+   "pole": "stowed"
+  },
+  "Quadrilateral": {
+   "sails": ["Mainsail.Set", "Quadrilateral.Set", "Staysail.Set"],
+   "boom_deg": 4.0,
+   "pole": "stowed"
+  },
+  "Spinnaker": {
+   "sails": ["Mainsail.Run", "Spinnaker.Set"],
+   "boom_deg": 75.0,
+   "pole": "set",
+   "pole_deg": 70.0,
+   "pole_heel_above_deck": 2.0
+  },
+  "Moored": {
+   "sails": ["Mainsail.Flaked", "Mainsail.Stack", "Genoa.Bagged", "Quadrilateral.Bagged", "Staysail.Bagged", "Spinnaker.Bagged"],
+   "boom_deg": 0.0,
+   "pole": "stowed"
+  },
+  "Lowered": {
+   "sails": ["Mainsail.Lowered", "Mainsail.Stack", "Quadrilateral.Lowered", "Staysail.Lowered"],
+   "boom_deg": 0.0,
+   "pole": "stowed"
+  },
+  "Doused": {
+   "sails": ["Mainsail.Lowered", "Mainsail.Stack", "Genoa.Lowered"],
+   "boom_deg": 0.0,
+   "pole": "stowed"
+  }
+ }
+}

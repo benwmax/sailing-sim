@@ -2,7 +2,7 @@
  "boat": "Bluebonnet",
  "build": "Tools/shipkit/jclass/build_jclass.py",
  "hull_object": "Hull",
- "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1 to docs/jclass-5). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame); so is the wheel, in a frame whose X runs forward along its shaft (build.json deck.wheel_frame). Slice 3's deck closes the shell at the sheer and the transom's top. Slice 4's spars are three objects: the mast with everything fixed to it (spreaders, jumper struts, tracks, bands, the gooseneck's lug and pin, the pole's car), and the boom and the spinnaker pole, each in a frame that turns about its pin (build.json rig.boom_frame and rig.pole_frame). Slice 5's rigging is the shrouds and the stays (two objects, with their tangs, sockets, rigging screws and chainplates), the runners' and checkstays' tangs and padeyes, and each runner and checkstay in two states, Set and LetOff (Runner.<Side>.<State>, Checkstay.<Side>.<State>): the build shows the starboard-tack pair (starboard set, port let off) and hides the others.",
+ "note": "Bluebonnet's shape sections for the shape loop tools (docs/jclass-1 to docs/jclass-6). \"Hull\" is slice 1's moulded hull, kept as the measured reference: it is in no section, so render_set.py hides it, and slice 2's painted shell (the same surface, cut at its paint lines, the lead's top and the rudder) is what renders. The rudder and its stock are their own objects, placed by a frame that turns about the stock line (build.json finish.rudder.frame); so is the wheel, in a frame whose X runs forward along its shaft (build.json deck.wheel_frame). Slice 3's deck closes the shell at the sheer and the transom's top. Slice 4's spars are three objects: the mast with everything fixed to it (spreaders, jumper struts, tracks, bands, the gooseneck's lug and pin, the pole's car), and the boom and the spinnaker pole, each in a frame that turns about its pin (build.json rig.boom_frame and rig.pole_frame). Slice 5's rigging is the shrouds and the stays (two objects, with their tangs, sockets, rigging screws and chainplates), the runners' and checkstays' tangs and padeyes, and each runner and checkstay in two states, Set and LetOff (Runner.<Side>.<State>, Checkstay.<Side>.<State>): the build shows the starboard-tack pair (starboard set, port let off) and hides the others. Slice 6's sails are one object per sail and state (Mainsail.Set, Mainsail.Run, Mainsail.Lowered, Mainsail.Flaked, Mainsail.Stack; Genoa, Quadrilateral and Staysail .Set, .Lowered, .Bagged; Spinnaker.Set, Spinnaker.Bagged): the mainsail's Lowered and Flaked lie in the boom's frame (each carries it as its 'frame'), the rest in the hull's. The build shows the genoa's suit (Mainsail.Set and Genoa.Set) and hides the others; build.json sails.suits lists which states are set together.",
  "sections": {
   "hull_shell": {
    "objects": [
@@ -139,7 +139,8 @@
     "deck",
     "deck_structures",
     "hull_shell",
-    "rigging"
+    "rigging",
+    "sails"
    ]
   },
   "rigging": {
@@ -165,7 +166,34 @@
     "spars",
     "deck",
     "deck_structures",
-    "hull_shell"
+    "hull_shell",
+    "sails"
+   ]
+  },
+  "sails": {
+   "objects": [
+    "Mainsail.*",
+    "Genoa.*",
+    "Quadrilateral.*",
+    "Staysail.*",
+    "Spinnaker.*"
+   ],
+   "owns": [
+    "sails.py",
+    "sail_materials.py",
+    "sails_bluebonnet.json"
+   ],
+   "shared": [
+    "spars.py attachment points, slide_lane",
+    "rig_bluebonnet.json track, bands",
+    "rigging.py wire paths",
+    "shell.py deck_z, sheer"
+   ],
+   "borders": [
+    "spars",
+    "rigging",
+    "deck",
+    "deck_structures"
    ]
   }
  },

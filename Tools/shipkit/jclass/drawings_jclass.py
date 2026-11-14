@@ -20,6 +20,15 @@ Slice 4's spars (docs/jclass-4):
                       their measures (I, J, P, E and the rated area), the cap shroud's line over the spreaders' tips,
                       and the mast's sections
 
+Slice 6's sails (docs/jclass-6):
+
+  sail_cut.png        each sail's flat pattern (its cloth's UV0, metres) with its cut drawn by the rules its material
+                      runs: the seams (parallel to the leech on the mainsail, mitre cut on the jibs, square to the
+                      centre seam on the spinnaker), the corner patches, the mainsail's reef bands and the club's star,
+                      with each sail's measures and weight
+  sail_suits.png      the three sailing suits from starboard, the cloth as built (pressed and trimmed) with the boom and
+                      the pole posed as each suit has them, over the rated fore and main triangles
+
 build_jclass.py calls draw_all() after the build; it needs matplotlib (it says so and goes on without it).
 """
 import math
@@ -769,7 +778,217 @@ def draw_rigging_plan(rg_parts, rr, sp_parts, rig, pieces, deck_parts, path, sho
     plt.close(fig)
 
 
-def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None):
+SAIL_FILL = (0.93, 0.9, 0.82)
+SAIL_EDGE = "#6b5d3f"
+SEAM = "#9c8a62"
+
+
+def _cloth(part):
+    """A set sail's cloth: its triangles (n, 3) over the part's vertices, and the vertices' three UV maps."""
+    t, _ = _triangles(part, lambda k: part.labels[k].endswith(" cloth"))
+    used = np.unique(t)
+    remap = -np.ones(len(part.V), int)
+    remap[used] = np.arange(len(used))
+    uv = {k: np.asarray(v, float)[used] for k, v in part.uv.items()}
+    return remap[t], np.asarray(part.V, float)[used], uv
+
+
+def _boundary(tris):
+    """The edges used by one triangle only (the cloth's outline), as index pairs."""
+    from collections import Counter
+    e = Counter()
+    for a, b, c in tris:
+        for u, v in ((a, b), (b, c), (c, a)):
+            e[(min(u, v), max(u, v))] += 1
+    return [k for k, n in e.items() if n == 1]
+
+
+def draw_sail_cut(sl_parts, srep, cloth, path):
+    """Each sail's flat pattern with its cut, at one scale."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.tri as mtri
+    from matplotlib.collections import LineCollection
+    IN = 0.0254
+    order = ["Mainsail", "Genoa", "Quadrilateral", "Staysail", "Spinnaker"]
+    info = srep["sails"]
+    pats = {}
+    for name in order:
+        tris, V, uv = _cloth(sl_parts[f"{name}.Set"])
+        x0, y0 = uv["UV0"][:, 0], uv["UV0"][:, 1]
+        if name == "Spinnaker":                     # centred on its centre seam
+            x0 = x0 - 0.5 * np.interp(y0, *_row_width(x0, y0))
+        pats[name] = (tris, x0, y0, uv)
+    widths = [float(p[1].max() - p[1].min()) for p in pats.values()]
+    H = max(float(p[2].max()) for p in pats.values())
+    SC, GAP, X0, Z0 = 0.165, 1.5, 0.5, 2.0
+    FW = X0 * 2 + SC * sum(widths) + GAP * (len(order) - 1)
+    FH = Z0 + SC * H + 1.4
+    fig = plt.figure(figsize=(FW, FH), dpi=130)
+    xl = X0
+    for name, w in zip(order, widths):
+        tris, x0, y0, uv = pats[name]
+        it = info[name]
+        ax = fig.add_axes([xl / FW, Z0 / FH, SC * w / FW, SC * H / FH])
+        xl += SC * w + GAP
+        T = mtri.Triangulation(x0, y0, tris)
+        ax.tripcolor(T, np.zeros(len(x0)), cmap=matplotlib.colors.ListedColormap([SAIL_FILL]), shading="flat",
+                     edgecolors="none")
+        c = cloth[it["cloth"]]
+        pitch = (c["cloth_in"] - c["seam_in"]) * IN
+        a, b = uv["UV2"][:, 0], uv["UV2"][:, 1]
+        f = uv["UV1"][:, 0]
+        if it["kind"] == "main":
+            # in the roach the cloths run on past the leech's straight line (b at and under 0)
+            q, how = b, "cloths parallel to the leech"
+            lv = np.arange(math.ceil(float(q.min()) / pitch) * pitch, float(q.max()), pitch)
+        elif it["kind"] == "mitre":
+            q, how = np.minimum(b, y0), "mitre cut: cloths parallel\nto the leech and to the foot"
+            lv = np.arange(pitch, float(q.max()), pitch)
+        else:
+            q, how = y0, "two halves, cloths square\nto the centre seam"
+            lv = np.arange(pitch, float(q.max()), pitch)
+        ax.tricontour(T, q, levels=lv, colors=SEAM, linewidths=0.35)
+        if it["kind"] == "mitre":
+            ax.tricontour(T, b - y0, levels=[0.0], colors=SEAM, linewidths=0.9)
+        if it["kind"] == "spin":
+            ax.tricontour(T, f - 0.5, levels=[0.0], colors=SEAM, linewidths=0.9)
+        # corner patches (the material's: straight across the corner) and the mainsail's reef bands
+        after = a
+        hy = it["head_y_m"]
+        corners = [x0 + y0, after + y0, x0 + (hy - y0)] if it["kind"] != "spin" else \
+            [uv["UV0"][:, 0] + y0, a + y0, hy - y0]
+        if "upper_clew_y_m" in it:
+            corners.append(after + np.abs(y0 - it["upper_clew_y_m"]))
+        r1, r2 = (1.6, 0.95) if it["kind"] != "spin" else (1.2, 0.6)
+        for cv in corners:
+            ax.tricontour(T, cv, levels=[r2, r1], colors="#7a6a48", linewidths=0.7)
+        for h in it.get("reefs_m", []):
+            ax.plot([float(x0.min()), float(np.interp(h, *_row_width(x0, y0)))], [h, h], color="#7a6a48", lw=0.8,
+                    ls="--")
+        if it.get("emblem"):
+            e = it["emblem"]
+            ang = np.radians(90 + np.arange(11) * 36.0)
+            rr = np.where(np.arange(11) % 2 == 0, e["radius_m"], e["radius_m"] * math.sin(math.radians(18)) /
+                          math.sin(math.radians(126)))
+            ax.fill(e["at"][0] + rr * np.cos(ang), e["at"][1] + rr * np.sin(ang), color="#1e3076", zorder=5)
+        P = np.stack([x0, y0], 1)
+        ax.add_collection(LineCollection([P[list(e)] for e in _boundary(tris)], colors=SAIL_EDGE, linewidths=1.0))
+        ax.set_xlim(float(x0.min()) - 0.3, float(x0.min()) + w + 0.3)
+        ax.set_ylim(-0.5, H + 0.3)
+        ax.set_aspect("equal")
+        ax.axis("off")
+        meas = [f"{it['area_m2']:.0f} m\u00b2 ({it['area_ft2']:.0f} sq ft)", f"luff {it['luff_m']:.1f} m, "
+                f"foot {it['foot_m']:.1f} m"]
+        if it["kind"] == "main":
+            meas += [f"roach {it['roach_m2']:.0f} m\u00b2", f"reefs at {', '.join(str(h) for h in it['reefs_m'])} m"]
+        elif it["kind"] == "mitre":
+            meas += [f"leech {it['leech_m']:.1f} m, LP {it['lp_m']:.1f} m", f"{it['hanks']} hanks"]
+        else:
+            meas += [f"widest girth {it['widest_girth_m']:.1f} m", f"pole {it['pole_m']:.2f} m"]
+        meas += [f"{c['oz']:g} oz cotton", f"{it['total_kg']:.0f} kg made up"]
+        ax.text(0.0, -0.06, f"{name}\n" + "\n".join(meas) + f"\n{how}", transform=ax.transAxes, fontsize=8.5,
+                va="top", ha="left")
+    wd = srep["wardrobe"]
+    fig.suptitle("Bluebonnet's sails cut flat (slice 6): seams every %.1f in (the %g in cloths less their overlap), "
+                 "corner patches in two layers, the mainsail's reef bands dashed. The five weigh %.0f kg (%.2f long "
+                 "tons); the size card allows %.1f for her whole wardrobe"
+                 % (cloth["main"]["cloth_in"] - cloth["main"]["seam_in"], cloth["main"]["cloth_in"], wd["total_kg"],
+                    wd["total_long_tons"], wd["card_long_tons"]), fontsize=11)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def _row_width(x0, y0):
+    """Each height's row width in a flat pattern (for centring the spinnaker on its seam)."""
+    ys = np.unique(np.round(y0, 6))
+    w = np.array([x0[np.abs(y0 - y) < 1e-6].max() for y in ys])
+    return ys, w
+
+
+def _posed(part, deg, about):
+    """A spar's vertices turned deg about its own frame's Z through its origin (sails.rot's sense: positive takes +X
+    to +Y; the boom's X runs aft, so positive swings its end to port, and the pole's runs forward, so positive swings
+    its end to starboard)."""
+    import sails
+    o, X, Z = (np.asarray(a, float) for a in part.frame)
+    R = sails.rot(Z, math.radians(deg))
+    return o[None] + (np.asarray(part.V, float) - o[None]) @ R.T
+
+
+def draw_sail_suits(sl_parts, srep, sp_parts, rig, pieces, deck_parts, path):
+    """The three sailing suits from starboard over the rated triangles."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PolyCollection
+    import spars
+    suits = [(n, srep["suits"][n]) for n in ("Genoa", "Quadrilateral", "Spinnaker")]
+    mp = rig["measure_points"]
+    PX, PZ = (-23.0, 21.0), (-5.0, 50.0)
+    SC = 0.115
+    FW = 0.6 + 3 * SC * (PX[1] - PX[0]) + 2 * 0.4 + 0.3
+    FH = 1.3 + SC * (PZ[1] - PZ[0]) + 0.9
+    fig = plt.figure(figsize=(FW, FH), dpi=130)
+    pl = spars.RG["pole"]
+    for n, (name, suit) in enumerate(suits):
+        ax = fig.add_axes([(0.6 + n * (SC * (PX[1] - PX[0]) + 0.4)) / FW, 1.3 / FH, SC * (PX[1] - PX[0]) / FW,
+                           SC * (PZ[1] - PZ[0]) / FH])
+        _hull_fill(ax, pieces, 0, 2)
+        ax.axhline(0.0, color="#3b7dbf", lw=0.8, zorder=7)
+        sh = np.asarray(pieces["Shell"].sheer)
+        ax.plot(sh[:, 0], sh[:, 2], color="#1f3f7f", lw=0.8, zorder=7)
+        # the rated triangles
+        xf = rig["attachments"]["stem_head_forestay_tack"]
+        xfront = spars.at(0.0, spars.half_depth(0.0))
+        fc = mp["forestay_on_mast_face"]
+        ax.fill([xfront[0], xf[0], fc[0]], [xfront[2], xf[2], fc[2]], color="#e9c46a", alpha=0.25, zorder=1)
+        pa, xtop, bb = (mp["boom_top_at_mast_after_face"], mp["black_band_on_mast_lower_edge"],
+                        mp["black_band_on_boom_forward_edge"])
+        ax.fill([pa[0], xtop[0], bb[0]], [pa[2], xtop[2], bb[2]], color="#2a9d8f", alpha=0.2, zorder=1)
+        # the sails, the farthest from the viewer (to port) first
+        order = sorted(suit["sails"], key=lambda k: float(np.mean(np.asarray(sl_parts[k].V, float)[:, 1])))
+        for k in order:
+            p = sl_parts[k]
+            tris, V, _ = _cloth(p)
+            ax.add_collection(PolyCollection(V[tris][:, :, [0, 2]], facecolors=[SAIL_FILL], edgecolors=[SAIL_FILL],
+                                             linewidths=0.2, alpha=0.93, zorder=4))
+            P = V[:, [0, 2]]
+            from matplotlib.collections import LineCollection
+            ax.add_collection(LineCollection([P[list(e)] for e in _boundary(tris)], colors=SAIL_EDGE, linewidths=0.8,
+                                             zorder=5))
+        for k in ("Mast", "Boom", "SpinnakerPole"):
+            part = sp_parts[k]
+            if k == "Boom":
+                Vp = _posed(part, suit["boom_deg"], None)
+            elif k == "SpinnakerPole" and suit.get("pole") == "stowed":
+                ps = srep["pole_stowed"]
+                Vp = np.asarray(part.V, float) @ np.asarray(ps["R"]).T + np.asarray(ps["t"])[None]
+            elif k == "SpinnakerPole":
+                Vp = _posed(part, suit["pole_deg"] - pl["set_deg"], None)
+            else:
+                Vp = np.asarray(part.V, float)
+            polys = [Vp[list(f)][:, [0, 2]] for f in part.F]
+            ax.add_collection(PolyCollection(polys, facecolors=[SPAR_PALETTE["Spar"]], edgecolors=[SPAR_PALETTE["Spar"]],
+                                             linewidths=0.15, zorder=6))
+        area = sum(srep["sails"][k.split(".")[0]]["area_ft2"] for k in suit["sails"])
+        ax.set_title("%s suit: %s\n%.0f sq ft of sail set (rated S %.0f)" % (
+            name, " + ".join(k.split(".")[0].lower() for k in suit["sails"]), area, rig["sail_area_ft2"]), fontsize=10)
+        ax.set_xlim(*PX)
+        ax.set_ylim(*PZ)
+        ax.set_aspect("equal")
+        ax.grid(alpha=0.2)
+        ax.set_xlabel("x, m forward of mid-waterline")
+        if n == 0:
+            ax.set_ylabel("z, m above the waterline")
+    fig.suptitle("Bluebonnet's suits from starboard (slice 6), sailed on starboard tack: the cloth as built, over the "
+                 "rated fore triangle (yellow) and main triangle (green)", fontsize=11.5)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -783,5 +1002,8 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None
         if rigging is not None:
             draw_rigging_plan(rigging[0], rigging[1], rig[0], rig[1], pieces, parts,
                               os.path.join(out, "rigging_plan.png"), rigging[2])
+        if sails is not None:
+            draw_sail_cut(sails[0], sails[1], sails[2], os.path.join(out, "sail_cut.png"))
+            draw_sail_suits(sails[0], sails[1], rig[0], rig[1], pieces, parts, os.path.join(out, "sail_suits.png"))
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

@@ -667,6 +667,7 @@ def boom(part, rep, G, s_pin, E):
                    "length_overall_ft": round(float(over) / FT, 1),
                    "from_mast_after_face_m": round(float(t1 + 0.145 - t_a), 3),
                    "end": G + (t1 + 0.145) * D, "black_band": G + t_band * D + 0.5 * d_end * N,
+                   "track_from_pin_m": round(float(t0 + 0.13), 4), "track_to_pin_m": round(float(t_band), 4),
                    "rise_deg": bm["rise_deg"], "section_mid": bm["section_mid"], "section_end": bm["section_end"],
                    "sheet_bands_from_aft_m": bm["sheet_bands"]}
     return t_a
