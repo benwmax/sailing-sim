@@ -986,6 +986,31 @@ bool FWaterFarCapSpritesTest::RunTest(const FString&)
 		const float W = AWaterSurface::FarCapSpriteWeight(D, 20.0);
 		if (W < 0.f || W > 1.f) { AddError(FString::Printf(TEXT("Weight %.2f at %.0f m"), W, D)); break; }
 	}
+	// The size step's hysteresis (the storm hitches: each step rebuilt every tile in view in one frame). A storm's planned
+	// total wandering +-6% across the 1.5-quarter boundary at every half-second replan for two minutes changes the step at
+	// most once; under the budget it stays at 1; far over it rises at once; it falls once the hold is over.
+	{
+		const int32 B = AWaterSurface::FarCapBudget;
+		double Step = 1.0, Since = 1.0e9;
+		int32 Changes = 0;
+		for (int32 I = 0; I < 240; ++I)
+		{
+			const int32 Total = int32(1.5 * B * (1.0 + 0.06 * FMath::Sin(I * 0.9)));
+			const double Next = AWaterSurface::FarCapSizeStepNext(Step, Total, Since);
+			if (Next != Step) { ++Changes; Step = Next; Since = 0.0; }
+			Since += 0.5;
+			if (double(Total) / Step > 1.5 * B) AddError(FString::Printf(TEXT("Replan %d: %.0f slots held, over 1.5x the budget"), I, double(Total) / Step));
+		}
+		AddInfo(FString::Printf(TEXT("Wandering storm: step %.2f after %d changes"), Step, Changes));
+		TestTrue(TEXT("A wandering storm total changes the step at most once"), Changes <= 1);
+		TestEqual(TEXT("Under the budget the step is 1"), AWaterSurface::FarCapSizeStepNext(1.0, B / 2, 0.0), 1.0);
+		TestEqual(TEXT("Far over the budget it rises at once"), AWaterSurface::FarCapSizeStepNext(1.0, 2 * B, 0.0), 2.0);
+		TestEqual(TEXT("A little over, it waits for the hold"), AWaterSurface::FarCapSizeStepNext(1.0, int32(1.2 * B), 1.0), 1.0);
+		TestEqual(TEXT("... then rises"), AWaterSurface::FarCapSizeStepNext(1.0, int32(1.2 * B), AWaterSurface::FarCapStepHoldS), 1.25);
+		TestEqual(TEXT("It falls once the lower step fits 90% of the budget"), AWaterSurface::FarCapSizeStepNext(2.0, B, AWaterSurface::FarCapStepHoldS), 1.25);
+		TestEqual(TEXT("... and not before the hold"), AWaterSurface::FarCapSizeStepNext(2.0, B, 1.0), 2.0);
+		TestEqual(TEXT("Calm again: back to 1"), AWaterSurface::FarCapSizeStepNext(1.5, B / 4, AWaterSurface::FarCapStepHoldS), 1.0);
+	}
 	return true;
 }
 

@@ -78,6 +78,14 @@ public:
 	 *  takes, each live with what probability per 4 s life (mean life 0.7937 of it), so the caps' area is the cover. */
 	static double FarCapCover(double WindMs, double Scale, double Onset);
 	static void FarCapTilePlan(double Cover, double TileArea, int32& OutSlots, float& OutProb, double CapArea = FarCapArea);
+	/** The caps' size step (area over FarCapArea, in quarters) after a replan that planned Total slots at size 1, from Cur
+	 *  set SinceChange seconds ago. With hysteresis: a step moves every tile in view to a rebuild, so it rises only when the
+	 *  slots at Cur pass the budget by 10% (at once past 50%) and falls only when the lower step fits 90% of it, and either
+	 *  waits FarCapStepHoldS after the last change (docs/far-cap-sprites/, the storm hitches). */
+	static double FarCapSizeStepNext(double Cur, int32 Total, double SinceChange);
+	static constexpr double FarCapStepHoldS = 4.0;
+	/** Game-thread time a replan may spend building tiles (at least one is built); the rest wait for the next frames. */
+	static constexpr double FarCapBuildBudgetMs = 2.0;
 	/** The sprites' share of the far caps at a point (mirrored by M_WaterV4's flecks, which take the rest, and M_FarCap):
 	 *  from 300 to 400 m out, faded again from 1100 to 1250 m (under a third of a pixel), and only seen low (from above the
 	 *  flat flecks are right, an upright sprite edge-on): gone as the view's rise passes 0.05 to 0.14 of the distance. */
@@ -339,6 +347,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UObject>> FarCapKeep; // the tiles' meshes and instances, held for the GC
 	float FarCapTimer = 0.f;
 	float FarCapYaw = 0.f; // the view's yaw at the last plan (a turn of more than 8 deg plans again at once)
+	double FarCapSizeStep = 1.0;        // FarCapSizeStepNext's state: the step new and rebuilt tiles take
+	double FarCapStepChanged = -1.0e9;  // world seconds at its last change
 	bool bFarCaps = false;
 	// Spray (docs/spray/): a clump of droplets, a sheet torn off the bow wave, or the mist they leave (ESprayKind).
 	struct FDroplet
