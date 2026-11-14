@@ -1331,7 +1331,7 @@ void ASailingEnvironment::UpdateLightning(float DeltaSeconds, const FVector& Cam
 			const double Bearing = FMath::Atan2(ToCell.Y, ToCell.X) + FMath::DegreesToRadians(double(RumbleRng.FRandRange(-40.f, 40.f)));
 			const float RollM = FMath::Max(float(ToCell.Size()), 8000.f) + RumbleRng.FRandRange(0.f, 6000.f);
 			const FVector2D At = Listener + FVector2D(FMath::Cos(Bearing), FMath::Sin(Bearing)) * RollM;
-			Thunder.Add({ FMath::Clamp(2500.f / RollM, 0.1f, 1.f), 0.f, RumbleRng.FRandRange(6.f, 10.f), float(At.X), float(At.Y), RumbleRng.FRandRange(0.8f, 1.6f) });
+			Thunder.Add({ FMath::Clamp(2500.f / RollM, 0.1f, 1.f), 0.f, float(RumbleRng.FRandRange(6.f, 10.f)), float(At.X), float(At.Y), float(RumbleRng.FRandRange(0.8f, 1.6f)) });
 			// One caption at most every 25 s, so the captions don't scroll with rumbles.
 			if (T - LastRumbleCaption >= 25.0)
 			{
