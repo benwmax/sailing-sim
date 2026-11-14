@@ -1225,56 +1225,11 @@ class Skin:
                 V, F = self.grid_faces(G)
                 part.add(V, self.facing(V, F, np.array([want, 0, 0])), mat)
 
-    def decks(self, gun_part, spar_part):
-        """Placeholder decks (slice 7 builds the real ones): the gun deck, and the spar deck (planking's top and the
-        beams' underside) with the waist open between gangways along each side."""
-        pr = self.pr
-        wg = 6.5 * FT                                      # gangway width
+    def decks(self, gun_part):
+        """The gun deck, a placeholder (slice 12 builds it). The spar deck is slice 7's (deck.py)."""
         P, _, X = self.row_points("g_G")
         V, F = self.grid_faces(self.across(P))
         gun_part.add(V, self.facing(V, F, np.array([0, 0, 1.0])), "Deck")
-        e0, fc = pr.x_e0, pr.x_fc
-        Pt, _, Xt = self.row_points("w_Pd")
-        Pb, _, Xb = self.row_points("g_Pu")
-        edge = dict(zip(np.round(Xt, 9), Pt[:, 1] - wg))
-        for P, X, mat, want in ((Pt, Xt, "Deck", 1.0), (Pb, Xb, "Interior", -1.0)):
-            ys = P[:, 1]
-            for sel in (X <= e0 + 1e-9, X >= fc - 1e-9):
-                Q = P[sel]
-                if len(Q) < 2:
-                    continue
-                G = []
-                for p, y in zip(Q, ys[sel]):
-                    w = min(wg, 0.4 * y)
-                    yy = np.concatenate([[y, y - w / 2], np.linspace(y - w, -(y - w), 9), [-(y - w / 2), -y]])
-                    G.append([[p[0], v, p[2]] for v in yy])
-                V, F = self.grid_faces(np.array(G))
-                spar_part.add(V, self.facing(V, F, np.array([0, 0, want])), mat)
-            sel = (X >= e0 - 1e-9) & (X <= fc + 1e-9)
-            Q = P[sel]
-            for sgn in (1.0, -1.0):
-                G = []
-                for p, x in zip(Q, X[sel]):
-                    yi = edge.get(round(float(x), 9), p[1] - wg)
-                    G.append([[p[0], sgn * v, p[2]] for v in np.linspace(p[1], yi, 4)])
-                V, F = self.grid_faces(np.array(G))
-                spar_part.add(V, self.facing(V, F, np.array([0, 0, want])), mat)
-        # the opening's edges: the gangways' inner sides and the breast beams at each end
-        ztop = dict(zip(np.round(Xt, 9), Pt[:, 2]))
-        zbot = dict(zip(np.round(Xb, 9), Pb[:, 2]))
-        xs = [x for x in Xt if e0 - 1e-9 <= x <= fc + 1e-9 and round(float(x), 9) in zbot]
-        for sgn in (1.0, -1.0):
-            G = [[[ (x - self.L.mid_px) * self.m.sx, sgn * edge[round(float(x), 9)], ztop[round(float(x), 9)]],
-                  [(x - self.L.mid_px) * self.m.sx, sgn * edge[round(float(x), 9)], zbot[round(float(x), 9)]]] for x in xs]
-            V, F = self.grid_faces(np.array(G))
-            spar_part.add(V, self.facing(V, F, np.array([0, -sgn, 0])), "Deck")
-        for x, want in ((xs[0], 1.0), (xs[-1], -1.0)):
-            k = round(float(x), 9)
-            y = edge[k]
-            xm = (x - self.L.mid_px) * self.m.sx
-            G = np.array([[[xm, v, ztop[k]], [xm, v, zbot[k]]] for v in np.linspace(y, -y, 9)])
-            V, F = self.grid_faces(G)
-            spar_part.add(V, self.facing(V, F, np.array([want, 0, 0])), "Deck")
 
     def stern_top(self, part):
         """The transom carried up from the sheer to the rail (the taffrail's face; slice 9 makes the stern), and its top
@@ -1443,10 +1398,9 @@ class Skin:
         self.moulding(out["Moulding"])
         self.channels(out["Channels"])
         self.entry_steps(out["EntrySteps"])
-        centre = {n: Part() for n in ("Bulkheads", "GunDeck", "SparDeck", "TransomTop", "Backbone", "Rudder",
-                                      "RudderIrons")}
+        centre = {n: Part() for n in ("Bulkheads", "GunDeck", "TransomTop", "Backbone", "Rudder", "RudderIrons")}
         self.bulkheads(centre["Bulkheads"])
-        self.decks(centre["GunDeck"], centre["SparDeck"])
+        self.decks(centre["GunDeck"])
         self.stern_top(centre["TransomTop"])
         self.backbone(centre["Backbone"])
         self.rudder(centre["Rudder"], centre["RudderIrons"])

@@ -311,17 +311,14 @@ class Rig:
                     P2 = P2[::-1]
                 rings.append(frame_ring(O + s * u, f, Y, P2))
             loft_solid(M, rings, B)
-        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft
+        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft, none at the spar deck's partners
+        # (the deck and its mast coat, slice 7's deck.py, stand there)
         hp = fit["hoops"]
+        p0, p1 = (v * IN for v in hp["clear_of_partners_in"])
         for s in np.arange(s_step + 2 * FT, s_h - c_len - 0.5 * FT, hp["pitch_ft"] * FT):
+            if s + hp["broad_in"] / 2 * IN > p0 and s - hp["broad_in"] / 2 * IN < p1:
+                continue
             ring_band(M, O, u, f, s, R_lower(s), hp["broad_in"] * IN, hp["thick_in"] * IN, I, n)
-        # the mast coat at the spar deck (canvas over the wedges)
-        mc = fit["mast_coat"]
-        R0 = R_lower(0.0)
-        rings = [frame_ring(O + z * u, f, Y, circle(rr, n)) for rr, z in
-                 ((R0 - 0.002, -0.01), (R0 + mc["out_in"] * IN, 0.0), (R0 + 0.3 * IN, mc["height_in"] * IN),
-                  (R0 - 0.002, mc["height_in"] * IN))]
-        loft_solid(M, rings, B)
 
         # trestletrees, crosstrees and the top
         tt, ct = fit["trestletree"], fit["crosstree"]

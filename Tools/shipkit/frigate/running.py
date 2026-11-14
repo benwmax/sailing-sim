@@ -106,9 +106,10 @@ class World:
     """The ship's meshes as triangles in the ship's frame for a pose and a sails' state, labelled by part, and a BVH of
     them for clearance queries (everything the running rigging must stand clear of)."""
 
-    def __init__(self, rig, sk, st, sv):
+    def __init__(self, rig, sk, st, sv, extra_static=()):
         self.rig, self.sk, self.st, self.sv = rig, sk, st, sv
-        self.static = []                                       # (label, V, T) that never move
+        self.static = [(label, np.asarray(V, float), np.asarray(T)) for label, V, T in extra_static]
+        # (label, V, T) that never move: extra_static's (the spar deck and its fittings, slice 7) and the hull's
         for name, (V, F, M, side) in sk.parts().items():
             if name.startswith("Lid_"):
                 continue
