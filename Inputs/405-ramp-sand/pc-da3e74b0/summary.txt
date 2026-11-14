@@ -1,0 +1,8 @@
+Main da3e74b0 (#670 ramp cut into the bank, #662 boat skins, and the rest merged on Nov 13-14), Development package
+Packaged\Windows-da3e74b0, on the BAKED tile, same cameras as ../ (Drone absolute; ramp = 37.2,170.4,3.4,107,-18;
+ramp-top = 30.0,166.0,22,107,-62), Ultra 1920x1080, 15:00; customize = -SailingFrontEnd=Customize -SailingFreeSail=1.
+The cut ramp shows in the cooked game as in ../pc-ramp-cut (procedural): a full rectangular slab between two kerbs running
+down into the water, the pier-side kerb against the cut face, the fill side sloping to the bed. Lake.Marina on this head:
+"Ramp slab 13.9 m at 14.0 %: bed at most 0.00 m over it, 0.05 m under it; cut 0.39 m into the bank, fill 1.13 m".
+customize: the Customize screen opens (Skins / Paint / Sails / Lines / Wear tabs, the built-in skins listed, the boat turning
+behind the panel).

@@ -1,0 +1,24 @@
+4K Ultra fullscreen bench, main da3e74b0 against d1364112, back to back A/B/A on the PC (Development packages
+Packaged\Windows-da3e74b0 and Windows-d1364112, bench-visual-win -Tiers Ultra, 12 s, demo autopilot, -fullscreen 3840x2160,
+render_pct 100). gpu = gpu.total_ms, cloud = gpu.clouds_fog_ms. FLAG = more than 2 fps or 1 ms GPU worse than d1364112.
+view       run             fps  p99ms   gpums cloudms
+helm-eye   a-da3e74b0     47.5  29.95   15.29     3.5
+helm-eye   b-d1364112     51.3  26.27   14.82     3.3
+helm-eye   c-da3e74b0     49.6   31.1   15.12    3.53
+coast-day  a-da3e74b0     44.2  33.01   17.94    5.18
+coast-day  b-d1364112     45.7  28.45   17.37    4.53
+coast-day  c-da3e74b0     43.7  30.65   17.98    5.26
+marina     a-da3e74b0     45.7  28.82   16.39    5.18
+marina     b-d1364112     48.8  26.25   15.36    4.39
+marina     c-da3e74b0     44.6  28.37   16.69    5.77
+storm      a-da3e74b0     35.1  47.09   21.07     9.7
+storm      b-d1364112     39.5  33.91   18.32    7.77
+storm      c-da3e74b0       36  46.96   20.66    9.31
+
+da3e74b0 (mean of a and c) against d1364112 (b):
+helm-eye   -2.7 fps, +0.4 ms GPU (cloud +0.2)   FLAG (fps)
+coast-day  -1.8 fps, +0.6 ms GPU (cloud +0.7)
+marina     -3.6 fps, +1.2 ms GPU (cloud +1.0)   FLAG
+storm      -4.0 fps, +2.5 ms GPU (cloud +1.7)   FLAG
+About half to two thirds of the GPU change is the clouds pass (#678's Ultra sample cap and step, merged in da3e74b0); the
+rest is spread (base pass +0.2-0.5 ms). p99 is worse on storm (47 ms against 34 on d1364112).
