@@ -612,7 +612,164 @@ def draw_sail_plan(sp_parts, rig, pieces, deck_parts, path):
     plt.close(fig)
 
 
-def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None):
+RIG_COLOURS = {"cap": "#1d3557", "d3": "#457b9d", "d2": "#2a9d8f", "d1": "#6a994e", "forestay": "#9d0208",
+               "staysail": "#dc2f02", "backstay": "#7b2cbf", "jumper": "#c77dff", "runner": "#e85d04",
+               "checkstay": "#f48c06", "fall": "#b08968"}
+RIG_PALETTE = {"Wire": (0.45, 0.46, 0.47), "WireRope": (0.38, 0.38, 0.38), "Rope": (0.69, 0.54, 0.34),
+               "Bronze": (0.72, 0.55, 0.25), "Galvanised": (0.55, 0.56, 0.57)}
+
+
+def draw_rigging_plan(rg_parts, rr, sp_parts, rig, pieces, deck_parts, path, shown):
+    """The standing rigging and the runners as built (slice 5), at the sail plan's scale: from starboard with each
+    wire's line (the starboard runner and checkstay set, the port pair let off and lashed to the aftermost shroud,
+    dashed), from ahead with the shrouds over the spreaders' tips and the jumper stays, and a table of the wires'
+    sizes, lengths and strength, the weights and the checks."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    FW_IN, FH_IN = 18.0, 12.6
+    fig = plt.figure(figsize=(FW_IN, FH_IN), dpi=120)
+    SC, X0, Z0 = 0.19, 0.7, 0.9
+    PX, PZ, AY = (-23.0, 21.0), (-5.0, 50.0), (6.0, -6.0)
+    wp, hp, wa = SC * (PX[1] - PX[0]), SC * (PZ[1] - PZ[0]), SC * abs(AY[1] - AY[0])
+    sizes = rr["sizes"]
+    wires = [w for w in rr["wires"] if w["object"] in shown]
+
+    def lw(w):
+        return max(0.5, 1000 * 2 * w["r"] / 11.0)
+
+    def draw(ax, a, b, side=None):
+        _hull_fill(ax, pieces, a, b, mirror=(a == 1))
+        ax.axhline(0.0, color="#3b7dbf", lw=0.8, zorder=7)
+        for k in ("Mast", "Boom", "SpinnakerPole"):
+            _silhouette(ax, sp_parts[k], a, b, SPAR_PALETTE, alpha=0.75)
+        for name in shown:
+            _silhouette(ax, rg_parts[name], a, b, RIG_PALETTE, order=("Wire", "WireRope", "Rope", "Galvanised",
+                                                                         "Bronze"))
+        for w in wires:
+            if side is not None and ", port" in w["name"]:          # from starboard: the port side's lie behind
+                continue
+            P = np.array(w["path"], float)
+            let_off = w["state"] is not None and w["state"][1] == "LetOff"
+            ax.plot(P[:, a], P[:, b], color=RIG_COLOURS[w["key"]], lw=lw(w), ls="--" if let_off else "-", zorder=8,
+                    alpha=0.9)
+    # ---- profile from starboard: the starboard side's wires (the port shrouds lie behind them)
+    ax = fig.add_axes([X0 / FW_IN, Z0 / FH_IN, wp / FW_IN, hp / FH_IN])
+    for k, p in deck_parts.items():
+        if k != "Deck":
+            _silhouette(ax, p, 0, 2, {s: (0.62, 0.5, 0.38) for s in set(p.slot)}, order=tuple(sorted(set(p.slot))))
+    draw(ax, 0, 2, side="starboard")
+    for w in [w for w in rr["wires"] if w["object"] in shown and w["state"] is not None and w["state"][0] == "port"
+              and w["key"] != "fall"]:
+        P = np.array(w["path"], float)
+        ax.plot(P[:, 0], P[:, 2], color=RIG_COLOURS[w["key"]], lw=lw(w), ls="--", zorder=8, alpha=0.6)
+
+    def tag(P, Q, text, f=0.5, dx=0.4, **kw):
+        m = np.asarray(P, float) + f * (np.asarray(Q, float) - np.asarray(P, float))
+        ax.text(m[0] + dx, m[2], text, fontsize=8.5, va="center", zorder=9,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8), **kw)
+    tag(rr["forestay"]["stem_pin"], rr["forestay"]["tang_pin"], "forestay %.0f mm" % sizes["forestay"]["d_mm"], 0.45)
+    tag(rr["staysail_stay"]["deck_pin"], rr["staysail_stay"]["tang_pin"],
+        "staysail stay %.0f mm" % sizes["staysail"]["d_mm"], 0.35)
+    tag(rr["backstay"]["deck_pin"], rr["backstay"]["crane_pin"], "backstay %.0f mm" % sizes["backstay"]["d_mm"], 0.5)
+    ru, ck = rr["runners"]["runner"]["starboard"], rr["runners"]["checkstay"]["starboard"]
+    tag(ru["padeye_hole"], ru["tang_pin"], "runner (set) %.0f mm" % sizes["runner"]["d_mm"], 0.3)
+    tag(ck["padeye_hole"], ck["tang_pin"], "checkstay (set) %.0f mm" % sizes["checkstay"]["d_mm"], 0.42)
+    lp = rr["runners"]["runner"]["port"]["lashed_to_d3_at"]
+    ax.text(lp[0] + 1.0, lp[2] + 3.0, "dashed: the port (lee) runner and\ncheckstay let off, lashed to D3",
+            fontsize=8.5, zorder=9, bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8))
+    ax.set_xlim(*PX)
+    ax.set_ylim(*PZ)
+    ax.set_aspect("equal")
+    ax.grid(alpha=0.2)
+    ax.set_xlabel("x, m forward of mid-waterline")
+    ax.set_ylabel("z, m above the waterline")
+    ax.set_title("From starboard, sailing on starboard tack", fontsize=11)
+    keys = ["cap", "d3", "d2", "d1", "forestay", "staysail", "backstay", "jumper", "runner", "checkstay"]
+    ax.legend(handles=[Line2D([], [], color=RIG_COLOURS[k], lw=2, label=sizes[k]["label"]) for k in keys]
+              + [Line2D([], [], color=RIG_COLOURS["fall"], lw=2, label="tackle falls (manila)")],
+              loc="upper right", fontsize=8.5)
+    # ---- from ahead: both sides' shrouds over the spreaders, the jumper stays
+    ax2 = fig.add_axes([(X0 + wp + 0.6) / FW_IN, Z0 / FH_IN, wa / FW_IN, hp / FH_IN])
+    draw(ax2, 1, 2)
+    sh = rr["shrouds"]["starboard"]
+    for k, row in sh.items():                     # each label on the wire's top run, where the four part company
+        top = np.asarray(row["top_pin"], float)
+        q = np.asarray(row["passes"][0] if row["passes"] else row["chainplate_pin"], float)
+        m = top + 0.5 * (q - top)
+        ax2.text(m[1] + 0.3, m[2], {"cap": "V1", "d3": "D3", "d2": "D2", "d1": "D1"}[k], fontsize=9,
+                 color=RIG_COLOURS[k], ha="right", va="center", zorder=9,
+                 bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
+    ax2.set_xlim(*AY)
+    ax2.set_ylim(*PZ)
+    ax2.set_aspect("equal")
+    ax2.grid(alpha=0.2)
+    ax2.set_xlabel("y, m to starboard (seen from ahead)")
+    ax2.set_title("From ahead", fontsize=11)
+    # ---- the table
+    a3 = fig.add_axes([(X0 + wp + wa + 1.0) / FW_IN, Z0 / FH_IN, (FW_IN - X0 - wp - wa - 1.2) / FW_IN, hp / FH_IN])
+    a3.axis("off")
+    length = {}
+    for w in rr["wires"]:
+        if w["key"] == "fall" or (w["state"] is not None and w["state"] != ("starboard", "Set")):
+            continue
+        if w["state"] is None and ", port" in w["name"]:
+            continue
+        P = np.array(w["path"], float)
+        length[w["key"]] = length.get(w["key"], 0.0) + float(np.linalg.norm(np.diff(P, axis=0), axis=1).sum())
+    lines = ["%-20s %5s %5s %5s %6s %6s" % ("wire (one side)", "d mm", "", "kg/m", "break", "length"),
+             "%-20s %5s %5s %5s %6s %6s" % ("", "", "", "", "kN", "m")]
+    for k in keys:
+        z = sizes[k]
+        lines.append("%-20s %5.0f %5s %5.2f %6.0f %6.1f" % (z["label"].split(" (")[0][:20], z["d_mm"],
+                                                           z["construction"], z["kg_per_m"], z["breaking_kn"],
+                                                           length.get(k, 0.0)))
+    wt = rr["weights"]
+    lines += ["", "weights as sailed (kg)"]
+    for row in sorted(wt["rows"], key=lambda r: -r["kg"]):
+        lines.append("  %-34s %7.1f" % (row["part"][:34], row["kg"]))
+    lines.append("  %-34s %7.1f" % ("total: %.2f long tons (card %.1f)" % (wt["total_long_tons"], wt["card_long_tons"]),
+                                    wt["total_kg"]))
+    st = rr["strength"]
+    fl, bl = st["fittings"]["least"], st["balance"]
+    lines += ["", "strength",
+              "  weakest fitting: %.3f x its wire" % fl["over_wire"],
+              "    (%s, %s)" % (fl["fitting"], fl["how"]),
+              "  runner / forestay fore and aft: %.2f" % bl["runner"]["ratio"],
+              "  checkstay / staysail stay: %.2f" % bl["checkstay"]["ratio"],
+              "  windward shrouds' breaking moment",
+              "  %.0f kNm = %.1f x her righting moment" % (st["breaking_moment_knm"], st["breaking_over_righting"]),
+              "  heeled 30 deg (%.0f kNm, GM sin 30)" % st["righting_moment_30_deg_knm"]]
+    bs = rig["boom_sweep"]
+    ps = rig["pole_sweep"]
+    room = rr["room"]["starboard"]
+    rd = room["least_to_hull_deck"]
+    # the least room between two wires (a wire's own tube, not a fitting or a block)
+    rw = min((dict(r["rigging"], wire=r["wire"]) for r in room["rows"]
+              if "rigging" in r and " | " not in r["rigging"]["piece"]), key=lambda q: q["gap_mm"])
+    lines += ["", "checks",
+              "  boom swung to %.0f deg: %.0f mm at least" % (abs(bs["least_clearance_lee_runners_at_deg"]),
+                                                            bs["least_clearance_lee_runners_mm"]),
+              "    from the let-off runner and checkstay",
+              "  pole 10-90 deg each side: %.0f mm at least" % ps["least_clearance_rigging_mm"],
+              "    from the rigging",
+              "  least room between two wires: %.1f mm" % rw["gap_mm"],
+              "    (%s by %s)" % (rw["wire"].split(",")[0], rw["against"].split(",")[0]),
+              "  least room anywhere: %.1f mm" % room["least"]["least_gap_mm"],
+              "    (%s)" % room["least"]["wire"],
+              "  the let-off tackles' ropes lie %.0f mm" % rd["gap_mm"],
+              "    off the deck",
+              "  the mainsail's slides' lane up the track:",
+              "    %s" % ("clear" if all(v["ok"] for v in rr["slide_lane"].values()) else "NOT clear")]
+    a3.text(0.0, 1.0, "\n".join(lines), family="monospace", fontsize=8.6, va="top", transform=a3.transAxes)
+    fig.suptitle("Bluebonnet's standing rigging and runners as built (slice 5): the sail plan's scale in both views",
+                 fontsize=13)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -623,5 +780,8 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None):
             draw_deck_profile(parts, deck_rep, pieces["Shell"].sheer, os.path.join(out, "deck_profile.png"))
         if rig is not None:
             draw_sail_plan(rig[0], rig[1], pieces, parts, os.path.join(out, "sail_plan.png"))
+        if rigging is not None:
+            draw_rigging_plan(rigging[0], rigging[1], rig[0], rig[1], pieces, parts,
+                              os.path.join(out, "rigging_plan.png"), rigging[2])
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

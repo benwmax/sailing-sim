@@ -1,0 +1,254 @@
+{
+ "about": "Bluebonnet's standing rigging and her runners (docs/jclass-5), built by rigging.py from the attachment points spars.py reports: the cap shrouds over the three spreaders and the diagonals in line with them, the forestay to the stem head, the staysail stay, the jumper stays over the jumper struts, a permanent backstay on a crane aft at the masthead to the counter, and the running backstays (at the hounds) and checkstays (at the top spreaders), each on a tackle to a padeye on deck. Our own sizes and layout, in the manner of the 1934-37 Js: galvanised steel wire, poured bronze sockets, bronze rigging screws and toggles, steel chainplates through the deck. The rigging is a continuous one: each diagonal runs from its tang under a spreader over the tips of the spreaders below it and on to the deck beside the cap shroud, in its own groove in each tip fitting.",
+ "material": {
+  "note": "Steel for the wire and the chainplates (7,850 kg/m^3), the wire's breaking stress for the strength check (galvanised improved plough steel, 1,570 MPa); the fittings' for the check that each is stronger than its wire (high-tensile manganese bronze, 550 MPa; the chainplates' mild steel, 430); manila for the tackles' falls, as kg per cubic metre of the rope's circle (fibre about 1,380 kg/m^3 at about 62% fill). Bronze is rig_bluebonnet.json's.",
+  "steel": 7850.0,
+  "steel_breaking_mpa": 1570.0,
+  "bronze_breaking_mpa": 550.0,
+  "chainplate_steel_breaking_mpa": 430.0,
+  "manila": 860.0
+ },
+ "constructions": {
+  "note": "Each wire's construction: its metal's share of the circle round it ('fill': 19 wires of one size in a 1x19 strand fill 19/25 of it; 7 strands of 19 fill 133/225), the share of the wires' strength the rope keeps ('efficiency'), and for the drawn lay the outer strands and how far along (in diameters) they take to go once round.",
+  "1x19": {
+   "fill": 0.76,
+   "efficiency": 0.9,
+   "strands": 12,
+   "lay_diameters": 13.0
+  },
+  "7x19": {
+   "fill": 0.59,
+   "efficiency": 0.85,
+   "strands": 6,
+   "lay_diameters": 7.5
+  },
+  "manila": {
+   "strands": 3,
+   "lay_diameters": 3.4
+  }
+ },
+ "paint": {
+  "note": "Each wire's and rope's paint, sRGB 0-255, its roughness and metalness, and its lay drawn from the 'Spar' UV map (u metres along it, v the fraction round) and 'SparG' (its girth): 'strands' outer strands each going once round in 'lay_diameters' diameters (the constructions'), each strand a round ridge 'depth' x the radius proud of the grooves between, fading out between 'fade' metres from the camera. Galvanised for the chainplates and the padeyes' links.",
+  "Wire": {
+   "rgb": [150, 152, 150],
+   "rough": 0.38,
+   "metal": 1.0,
+   "construction": "1x19",
+   "depth": 0.12
+  },
+  "WireRope": {
+   "rgb": [118, 119, 116],
+   "rough": 0.45,
+   "metal": 1.0,
+   "construction": "7x19",
+   "depth": 0.22
+  },
+  "Rope": {
+   "rgb": [196, 168, 118],
+   "rough": 0.85,
+   "metal": 0.0,
+   "construction": "manila",
+   "depth": 0.3
+  },
+  "Galvanised": {
+   "rgb": [160, 162, 160],
+   "rough": 0.55,
+   "metal": 1.0
+  },
+  "fade": [2.0, 25.0]
+ },
+ "wires": {
+  "note": "Diameter (m) and construction of each wire. The standing wires are 1x19 strand, the runners' and checkstays' pendants the more flexible 7x19 wire rope, as they are let off and taken forward each tack; each pendant is sized so it breaks no sooner than the stay it balances (the runner the forestay, the checkstay the staysail stay), its fore-and-aft pull being the smaller share of its tension (the build checks it). 'label' names them in the weights and the drawing.",
+  "cap": {
+   "d": 0.026,
+   "construction": "1x19",
+   "label": "Cap shrouds (V1)"
+  },
+  "d3": {
+   "d": 0.02,
+   "construction": "1x19",
+   "label": "Upper diagonals (D3)"
+  },
+  "d2": {
+   "d": 0.022,
+   "construction": "1x19",
+   "label": "Diagonals (D2)"
+  },
+  "d1": {
+   "d": 0.024,
+   "construction": "1x19",
+   "label": "Lower shrouds (D1)"
+  },
+  "forestay": {
+   "d": 0.026,
+   "construction": "1x19",
+   "label": "Forestay"
+  },
+  "staysail": {
+   "d": 0.019,
+   "construction": "1x19",
+   "label": "Staysail stay"
+  },
+  "backstay": {
+   "d": 0.019,
+   "construction": "1x19",
+   "label": "Backstay"
+  },
+  "jumper": {
+   "d": 0.014,
+   "construction": "1x19",
+   "label": "Jumper stays"
+  },
+  "runner": {
+   "d": 0.033,
+   "construction": "7x19",
+   "label": "Runner pendants"
+  },
+  "checkstay": {
+   "d": 0.024,
+   "construction": "7x19",
+   "label": "Checkstay pendants"
+  }
+ },
+ "fittings": {
+  "note": "The fittings' sizes, in the wire's radius r unless marked m, chosen so each is stronger than its wire (the build checks the pins in double shear, the jaws' cheeks, the tangs and the chainplates across their pin holes, and the screws' studs at the thread's root and their body's bars, and stops if one is weaker). A jaw is lengthened where the plate it straddles reaches further past its pin than the fitting behind the jaw starts (slice 4's tangs at the hounds are bigger than ours), so the socket or the toggle clears the plate's end by 0.4 r. 'tang': a bronze plate off the mast (or its tang band) 'reach' out past the mast's surface (its pin half its height in from the end), 'root_in' m into the mast. 'terminal': a poured socket on the wire's end with a jaw whose cheeks straddle a tang (or a block's lug), and its clevis pin: the cheeks reach 'jaw_back' behind the pin and 'jaw' ahead of it, the socket's body runs 'body' along the wire from the pin and narrows to 'neck_r' at 'cone_end', where the wire leaves it. 'screw': a bronze rigging screw from a chainplate's pin up the wire's line: a toggle's jaw on the pin and its body, the lower stud, the open body (two bosses joined by two bars), the upper stud and the wire's socket. 'chainplate': a galvanised steel strap through the deck to a frame below (its pin 'pin_above_deck' m up the wire's line from the deck; 'below_deck' m of it hidden, weighed), under a bronze deck plate. 'stem_flange': the forestay's plate on the stem head ('thickness' x the chainplates', bronze), let into the stem, with a flange bedded on the deck aft of it 'length' m long and at most 'width' m wide, following the deck and narrowing with it 'margin' m inside its edge, stopping where it would leave less than 'beside_plate' m beside the plate; 'let_in' m into the deck and 'proud' m above it. 'wire_bend': the radius the wire is bent to at a spreader's or strut's tip.",
+  "terminal": {
+   "jaw_back": 2.6,
+   "jaw": 4.6,
+   "cheek_t": 1.2,
+   "cheek_half": 2.6,
+   "body": [4.2, 10.5],
+   "body_r": 2.4,
+   "cone_end": 14.0,
+   "neck_r": 1.1,
+   "pin_r": 1.3,
+   "head_r": 1.9
+  },
+  "screw": {
+   "jaw": 4.4,
+   "toggle": [3.8, 8.4],
+   "toggle_r": 2.4,
+   "stud_r": 1.8,
+   "lower_stud": [8.0, 13.8],
+   "bosses": [[13.5, 16.5], [28.5, 31.5]],
+   "boss_r": 3.1,
+   "bar_off": 2.6,
+   "bar_t": 1.2,
+   "bar_w": 2.6,
+   "upper_stud": [31.2, 36.3],
+   "socket": [36.0, 44.0],
+   "cone_end": 48.5
+  },
+  "chainplate": {
+   "width": 7.0,
+   "thickness": 2.0,
+   "above_pin": 3.5,
+   "pin_above_deck": 0.1,
+   "below_deck": 0.6,
+   "deck_plate": [0.03, 0.016, 0.012]
+  },
+  "stem_flange": {
+   "thickness": 1.3,
+   "width": 0.1,
+   "length": 0.5,
+   "margin": 0.012,
+   "beside_plate": 0.009,
+   "let_in": 0.006,
+   "proud": 0.012
+  },
+  "tang": {
+   "reach": 7.0,
+   "height": 6.0,
+   "thickness": 2.4,
+   "root_in": 0.03
+  },
+  "wire_bend": 8.0
+ },
+ "shrouds": {
+  "note": "Each side: the cap shroud (V1) from its tang at the hounds over all three spreaders' tips; the upper diagonal (D3) from a tang under the top spreaders over the middle and lower tips; the diagonal (D2) from under the middle spreaders over the lower tips; the lower shroud (D1) from under the lower spreaders straight to the deck. Below the lower spreaders the four run down side by side to their chainplates in a row along the sheer, 'x_offset' forward of the cap shroud's (which slice 4 set at x 3.0, the spreaders' angles solved for it). In each tip fitting a diagonal runs in its own groove 'groove' forward of the cap shroud. The tangs are on a bronze band 'tang_below' under each pair of spreaders.",
+  "x_offset": {
+   "d1": 0.32,
+   "d2": 0.16,
+   "cap": 0.0,
+   "d3": -0.16
+  },
+  "groove": {
+   "d2": 0.03,
+   "d3": -0.03
+  },
+  "tang_below": 0.2,
+  "tang_band": {
+   "height": 0.16,
+   "thickness": 0.008
+  }
+ },
+ "stays": {
+  "note": "The forestay runs from slice 4's tang at the hounds to a bronze plate on the stem head, its pin 'pin_up_the_line' m up the line from the forestay's tack there, so its line, and the measured I and J, are slice 4's. The staysail stay runs from a tang on the forward face of the top spreaders' tang band to a deck plate on the centreline at 'deck_x', between the sail hatch and the fo'c'sle hatch. The backstay runs from a bronze crane aft at the masthead, 'below_top' under the truck, out 'reach' past the mast's after face (it carries the backstay clear of the mainsail's headboard), to a chainplate on the centreline 'deck_from_transom_top' m forward of the transom's top. The jumper stays' pins stand out from slice 4's points on the mast on small tangs, by rig_bluebonnet.json's jumpers 'stay_pins_out' (slice 4 solves the struts for the pins).",
+  "pin_up_the_line": 0.12,
+  "staysail": {
+   "deck_x": 11.4
+  },
+  "backstay": {
+   "crane": {
+    "below_top": 0.36,
+    "reach": 0.3,
+    "height": 0.14,
+    "thickness": 0.045
+   },
+   "deck_from_transom_top": 0.32
+  }
+ },
+ "runners": {
+  "note": "The running backstays from tangs aft on the hounds band (at 'tang_above_hounds' above the hounds), and the checkstays from tangs aft on the top spreaders' tang band, each a 7x19 pendant to a tackle (two double blocks, the standing part on the lower block's becket: four parts, a 4:1 purchase; the fall's tail leads to its winch in slice 7) on a padeye on deck, 'deck_x' and 'inboard' of the sheer (or at 'deck_y'). The pendant is one wire, the same length in both states: let off, it reaches from its tang to the upper block lashed on the shroud (below), so set (the windward pair), running straight from its tang toward its padeye, its tackle takes up the rest (the blocks at least 'min_set_gap' apart, or the build stops). Let off (the leeward pair), the pendant is taken forward and lashed to the aftermost shroud (D3) 'lashed_above_deck' up, its tackle overhauled along the deck to the padeye, so the boom can swing out past it: the lashing holds the runner's pendant 'lash_aft' aft of the shroud and the checkstay's, lower down, 'lash_inboard' inboard of it, so the checkstay's pendant comes down past the runner's block on the shroud's inboard side and neither crosses the other. The upper block hangs head up on the pendant's end, 'block_hang' below the lashing, its sheaves in the plane of the pendant and the lead aft to the padeye; the lower block lies on its side at the padeye with its sheaves level (the two blocks' sheaves at right angles, so the parts lead fair). The overhauled tackle is slack: each part leaves the upper block straight down, hangs to the deck over 'slack_drop' x the block's height above it, lies on the deck ('lie_above_deck' m clear of the planking, the deck's own surface) in a lane of its own ('lane_gap' m between the ropes, the lanes counted inboard from the lead, clear of the shroud, the same on either side), and rises to the lower block at the padeye, entering it along the block. The blocks ('block'): bronze cheeks 'cheek_over' past the sheaves, each sheave's groove 'sheave_side' clear of the cheeks either side of the rope, the head's lug a bronze plate on the lower block and, on the upper block, where the pendant's jaw takes it, a tang's size for the pendant's wire (the build checks it with the other fittings). The tackles are otherwise drawn to the look of the period's, not sized for the pendant's breaking load (slice 7, with the winches, sizes the purchase). The fall's tail to the winch ('tail_allowance_m') is weighed but not drawn. Each tang lies in the plane that best takes both pulls; the checkstay's reaches 'tang_reach' x its wire's radius past the mast (the fittings' tang 'reach' otherwise), so its pendant's jaw clears the tang band below it.",
+  "runner": {
+   "tang_above_hounds": 0.1,
+   "deck_x": -12.5,
+   "inboard": 0.3,
+   "min_set_gap": 0.3,
+   "lashed_above_deck": 1.5,
+   "lash": "aft",
+   "tackle": {
+    "rope_d": 0.022,
+    "sheave_d": 0.15
+   }
+  },
+  "checkstay": {
+   "tang": "top spreaders' tang band",
+   "tang_reach": 8.0,
+   "deck_x": -6.0,
+   "deck_y": 2.1,
+   "min_set_gap": 0.3,
+   "lashed_above_deck": 0.9,
+   "lash": "inboard",
+   "tackle": {
+    "rope_d": 0.018,
+    "sheave_d": 0.12
+   }
+  },
+  "lash_aft": 0.15,
+  "lash_inboard": 0.15,
+  "block_hang": 0.32,
+  "slack_drop": 1.3,
+  "lie_above_deck": 0.006,
+  "lane_gap": 0.012,
+  "block": {
+   "cheek_t": 0.007,
+   "cheek_over": 0.018,
+   "sheave_side": 0.004,
+   "lug": 0.075,
+   "lug_height": 0.05,
+   "lug_thickness": 0.02,
+   "axle_r": 0.012,
+   "becket": [0.035, 0.016]
+  },
+  "padeye": {
+   "base": [0.17, 0.09, 0.012],
+   "height": 0.075,
+   "thickness": 0.018,
+   "hole_above_deck": 0.052,
+   "link": 0.08,
+   "link_r": 0.008
+  },
+  "tail_allowance_m": 6.0
+ }
+}

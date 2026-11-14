@@ -55,16 +55,16 @@
   "let_in": 0.01
  },
  "hounds": {
-  "note": "Where the forestay, the cap shrouds and the jumper struts meet the mast: a bronze band with the forestay's tang forward and a shroud tang each side. The forestay goes to 'height_fraction' of the mast's height, the period's three-quarter-height jibstay raised a little (the upper mast is held by the jumpers and the topmast stay).",
+  "note": "Where the forestay, the cap shrouds and the jumper struts meet the mast: a bronze band with the forestay's tang forward and a shroud tang each side. The forestay goes to 'height_fraction' of the mast's height, the period's three-quarter-height jibstay raised a little (the upper mast is held by the jumpers and the backstay).",
   "height_fraction": 0.78,
   "band_height": 0.42,
   "band_thickness": 0.01,
   "tang": {"reach": 0.13, "height": 0.16, "thickness": 0.026}
  },
  "chainplates": {
-  "note": "Where slice 5's shrouds come down to the sheer, abreast the mast: here only to set the spreaders' angles.",
+  "note": "Where slice 5's shrouds come down to the deck, abreast the mast and 'inboard_of_sheer' in from the sheer, clear of the toe rail: here only to set the spreaders' angles.",
   "x": 3.0,
-  "inboard_of_sheer": 0.06
+  "inboard_of_sheer": 0.14
  },
  "spreaders": {
   "note": "Three sets square to the centreline (the period's in-line spreaders, with running backstays fore and aft). Each spreader's tip stands 'tip_y' out from the centreline at 'heights' above the deck, pushing the cap shroud out of its straight line from the chainplate to its tang's hole at the hounds; it is angled to bisect the shroud's bend at its tip, so it carries the push straight along itself. A streamlined section 'chord' fore and aft and 'thickness' (root, tip), its skin 'wall' thick, in bronze sockets on the mast (a bronze band round the mast through each pair's sockets) and bronze tip fittings.",
@@ -78,12 +78,13 @@
   "tip_fitting": {"length": 0.13, "grow": 0.012}
  },
  "jumpers": {
-  "note": "A pair of struts at the hounds, coming off the mast 'splay_deg' round from its forward face each side, 'length' long, which hold the jumper stays (slice 5) off the upper mast between 'stay_top_below_top' the truck and 'stay_foot_below' the hounds. Each stay's ends are on the mast's surface the same way round as its strut, so the stay and the strut lie in one plane through the mast's axis, and the strut is angled to bisect the stay's bend at its tip. Round duralumin tubes, 'diameter' at the root and the tip.",
+  "note": "A pair of struts at the hounds, coming off the mast 'splay_deg' round from its forward face each side, 'length' long, which hold the jumper stays (slice 5) off the upper mast between 'stay_top_below_top' the truck and 'stay_foot_below' the hounds. Each stay's ends are on the mast's surface the same way round as its strut, so the stay and the strut lie in one plane through the mast's axis, and the strut is angled to bisect the stay's bend at its tip. The stay's pins stand 'stay_pins_out' off those points on small tangs (slice 5), and the bend bisected is the stay's between its pins. Round duralumin tubes, 'diameter' at the root and the tip.",
   "above_hounds": 0.12,
   "length": 2.6,
   "splay_deg": 22.0,
   "stay_top_below_top": 0.6,
   "stay_foot_below": 8.0,
+  "stay_pins_out": 0.035,
   "diameter": [0.11, 0.07],
   "wall": 0.004
  },
@@ -93,6 +94,7 @@
   "proud": 0.02,
   "let_in": 0.004,
   "section_area": 0.00025,
+  "slide_lane": {"half_width": 0.03, "out": 0.05, "note": "The room the mainsail's slides need up the track (slice 6 draws them): 'half_width' either side of the mast's centre plane, from its after face to 'out' past it. The bands the track crosses stop short of it either side (a C round the mast), and nothing else may be in it."},
   "pole_track": [0.9, 4.2]
  },
  "gooseneck": {

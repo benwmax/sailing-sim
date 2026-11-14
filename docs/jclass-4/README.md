@@ -32,7 +32,8 @@ gooseneck; the pole's car. Each is in `baseline/` at 1200 pixels wide.
   sockets on the mast and bronze tip fittings.
 * **The hounds,** 78% of the way up: a bronze band with the forestay's tang forward and a cap shroud's tang each side,
   and **a pair of jumper struts** pointing forward and out from it.
-* **The masthead:** the truck (a bronze cap), a bronze band with a crane aft for the main halyard's block, and the black
+* **The masthead:** the truck (a bronze cap), a bronze band with a crane forward for the spinnaker halyard's block (an
+  earlier version of this page said aft, for the main halyard: it is forward), and the black
   band that marks the top of the mainsail's luff.
 * **Two tracks** let into the mast: the mainsail's up its after face from just above the boom to the black band, and the
   pole car's on its forward face.

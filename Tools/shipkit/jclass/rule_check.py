@@ -9,7 +9,11 @@ Rating R = 0.18 L sqrt(S) / cbrt(D) (feet, square feet, cubic feet), which must 
   D  the displaced volume in cubic feet: the hull's. The rudder is the keel's after part, inside the hull surface
      (slice 2 cuts it out along its stock line), so it is already counted; build.json's "appendage_ft3" adds anything
      hung outside the surface.
-The draft must be 15 ft or less, and each size within the card's tolerance (5%). Plain Python: no Blender needed.
+The draft must be 15 ft or less, and each size within the card's tolerance (5%). From slice 5 a build must also show
+the boom swinging out past the let-off runner and checkstay with room to spare (LEE_RUNNER_MM at its least, nothing
+touching on either tack), every wire and rope clear along its length, no fitting crossing anything but by design,
+and nothing in the lane the mainsail's slides need up its track.
+Plain Python: no Blender needed.
 """
 import json
 import math
@@ -19,6 +23,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPECS = json.load(open(os.path.join(HERE, "specs_bluebonnet.json")))
 FT = 0.3048
+LEE_RUNNER_MM = 100.0       # the boom's least room to the let-off runner and checkstay at full swing (slice 5)
+RIGGING = ("Shrouds", "Stays", "RunnerFittings") + tuple(f"{k}.{s}.{t}" for k in ("Runner", "Checkstay")
+                                                         for s in ("Starboard", "Port") for t in ("Set", "LetOff"))
 
 
 def rating(lwl_ft, sail_ft2, disp_ft3):
@@ -81,6 +88,8 @@ if __name__ == "__main__":
             need += ("ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit", "Steering", "Wheel")
         if sl >= 4:
             need += ("Mast", "Boom", "SpinnakerPole")
+        if sl >= 5:
+            need += RIGGING
         for name in need:
             if name not in pieces:
                 r["pass"] = False
@@ -89,5 +98,27 @@ if __name__ == "__main__":
             if not c.get("closed"):
                 r["pass"] = False
                 print(f"FAIL: the build's {name} does not close: {c}")
+        if sl >= 5:
+            # the rule check of slice 5: the boom clears the lee runner and checkstay when they are let off
+            bs = b["rig"]["boom_sweep"]
+            lee = bs.get("least_clearance_lee_runners_mm")
+            ok = bs.get("touching") == 0 and lee is not None and lee >= LEE_RUNNER_MM
+            print(f"{'ok  ' if ok else 'FAIL'} the boom past the let-off runner and checkstay: {lee} mm at its least, "
+                  f"at {bs.get('least_clearance_lee_runners_at_deg')} deg (limit {LEE_RUNNER_MM:.0f}); "
+                  f"{bs.get('touching')} triangles touching")
+            g = b.get("rigging") or {}
+            for tack in ("starboard", "port"):
+                room = (g.get("room") or {}).get(tack) or {}
+                cont = (g.get("contacts") or {}).get(tack) or {}
+                lane = (g.get("slide_lane") or {}).get(tack) or {}
+                good = bool(room.get("ok")) and bool(cont.get("ok")) and bool(lane.get("ok"))
+                least = room.get("least_to_rigging") or {}
+                print(f"{'ok  ' if good else 'FAIL'} the rigging on {tack} tack: least room for a wire or rope "
+                      f"{least.get('gap_mm')} mm ({least.get('wire')} to {least.get('against')}), none under "
+                      f"{room.get('fail_under_mm')} mm; crossings {cont.get('crossing')}; in the mainsail's slides' "
+                      f"lane {lane.get('crossing')}")
+                ok = ok and good
+            if not ok:
+                r["pass"] = False
     print(report(r))
     sys.exit(0 if r["pass"] else 1)
