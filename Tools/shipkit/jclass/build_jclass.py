@@ -1,4 +1,4 @@
-"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1, docs/jclass-2, docs/jclass-3).
+"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-6).
 
 Slice 1 lofted the hull's lines (loft.py); slice 2 finished it (shell.py, finish_bluebonnet.json): the shell split at
 its paint lines (bottom, boot top, topsides, gold cove) and the lead casting's top, the plating drawn in the paint from
@@ -14,18 +14,24 @@ the standing rigging and the runners (rigging.py, standing_bluebonnet.json): the
 tangs, sockets, rigging screws and chainplates, the forestay, staysail stay, jumper stays and backstay, and each runner
 and checkstay in two states (set, or let off with its pendant lashed to the shroud), the wires' lay drawn by their paint;
 the boom and the pole are swung against them, every wire's free length is measured for room, and their weight replaces
-the size card's estimate for the standing rigging.
+the size card's estimate for the standing rigging. Slice 6 builds the sails (sails.py, sail_materials.py,
+sails_bluebonnet.json): the mainsail, the overlapping genoa, the quadrilateral jib and its staysail and the parachute
+spinnaker in cream cotton, cut in their period panels with seams, tablings, corner patches and reef points drawn by
+their materials, each in its states (set, lowered, flaked on the boom or bagged); every suit of sails (the genoa's, the
+quadrilateral's, the spinnaker's, moored, lowered, doused) is posed with its boom and pole and checked clear, and the
+.blend is saved under main and genoa with the other states hidden.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
 
-Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom and deck; the rudder, stock and each of the
-deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics, the
-rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
-the boom's and the pole's frames, the rig's measures, sweeps and attachment points), plus the drawings from
-drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png, deck_profile.png, sail_plan.png; they need
-matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
-of the load waterline. Edit loft.py, shell.py, deck.py, spars.py and the json files, never the .blend. The moulded hull of slice 1
-stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
+Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom and deck; the rudder, stock and each of
+the deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics,
+the rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
+the boom's and the pole's frames, the rig's measures, sweeps and attachment points, the sails' measures, weights and
+suit checks), plus the drawings from drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png,
+deck_profile.png, sail_plan.png, rigging_plan.png, sail_cut.png, sail_suits.png; they need matplotlib). Units are metres
+in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle of the load waterline. Edit
+loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py and the json files, never the .blend. The
+moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
 """
 import json
 import math
@@ -45,6 +51,8 @@ import shell  # noqa: E402
 import deck  # noqa: E402
 import spars  # noqa: E402
 import rigging  # noqa: E402
+import sails  # noqa: E402
+import sail_materials  # noqa: E402
 import drawings_jclass  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -632,6 +640,70 @@ def shell_check(obs):
             "closed": open_edges == 0 and nonmanifold == 0 and flipped == 0 and small == 0 and vol > 0}
 
 
+def sail_closure(ob, labels):
+    """A sail's object: its cloth (faces labelled '... cloth') one sheet, open only round its rim (every edge inside it
+    shared by two faces wound the same way, its edge one closed loop), and everything else on it (ropes, slides,
+    hanks, battens, the headboard, heaps, bags, ties) closed solids, as shell_check."""
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    if len(bm.faces) != len(labels):
+        raise SystemExit(f"{ob.name} has {len(bm.faces)} faces for {len(labels)} labels")
+    lay = bm.faces.layers.int.new("cloth")
+    for f in bm.faces:
+        f[lay] = int(labels[f.index].endswith(" cloth"))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
+    cloth = [f for f in bm.faces if f[lay]]
+    rest = [f for f in bm.faces if not f[lay]]
+    out = {}
+    if cloth:
+        cs = set(cloth)
+        edges = {e for f in cloth for e in f.edges}
+        rim = [e for e in edges if sum(1 for g in e.link_faces if g in cs) == 1]
+        inner = [e for e in edges if sum(1 for g in e.link_faces if g in cs) == 2]
+        over = sum(1 for e in edges if sum(1 for g in e.link_faces if g in cs) > 2)
+        flipped = sum(1 for e in inner if not e.is_contiguous)
+        deg = {}
+        for e in rim:
+            for v in e.verts:
+                deg[v] = deg.get(v, 0) + 1
+        loops, seen = 0, set()
+        adj = {}
+        for e in rim:
+            a_, b_ = e.verts
+            adj.setdefault(a_, []).append(b_)
+            adj.setdefault(b_, []).append(a_)
+        for v in adj:
+            if v in seen:
+                continue
+            loops += 1
+            stack = [v]
+            while stack:
+                w = stack.pop()
+                if w in seen:
+                    continue
+                seen.add(w)
+                stack.extend(adj[w])
+        out["cloth"] = {"faces": len(cloth), "rim_edges": len(rim), "rim_loops": loops,
+                        "rim_vertices_not_on_two_rim_edges": sum(1 for n in deg.values() if n != 2),
+                        "nonmanifold_edges": over, "flipped_edges": flipped,
+                        "sheet": over == 0 and flipped == 0 and loops == 1 and all(n == 2 for n in deg.values())}
+    if rest:
+        bmesh.ops.delete(bm, geom=cloth, context="FACES_ONLY")
+        loose = [v for v in bm.verts if not v.link_faces]
+        bmesh.ops.delete(bm, geom=loose, context="VERTS")
+        open_edges = sum(1 for e in bm.edges if len(e.link_faces) == 1)
+        nonmanifold = sum(1 for e in bm.edges if len(e.link_faces) > 2)
+        flipped = sum(1 for e in bm.edges if len(e.link_faces) == 2 and not e.is_contiguous)
+        small = sum(1 for f in bm.faces if f.calc_area() < 1e-10)
+        vol = bm.calc_volume(signed=True)
+        out["solids"] = {"open_edges": open_edges, "nonmanifold_edges": nonmanifold, "flipped_edges": flipped,
+                         "degenerate_faces": small, "enclosed_m3": round(vol, 4),
+                         "closed": open_edges == 0 and nonmanifold == 0 and flipped == 0 and small == 0 and vol > 0}
+    bm.free()
+    out["closed"] = out.get("cloth", {}).get("sheet", True) and out.get("solids", {}).get("closed", True)
+    return out
+
+
 def tri_count(ob):
     ob.data.calc_loop_triangles()
     return len(ob.data.loop_triangles)
@@ -1045,6 +1117,168 @@ def slide_lane_check(items):
             "crossing": bad, "ok": not bad}
 
 
+
+# ------------------------------------------------------------------------------------------------ slice 6's checks
+# the headsails' heaps and bunched luffs and the bags, bedded on the deck (let 3 mm into it)
+SAIL_ON_DECK = tuple(f"{n} {w}" for n in ("Genoa", "Quadrilateral", "Staysail")
+                     for w in ("lowered", "luff bunched", "bag")) + ("Spinnaker bag",)
+SAIL_ROOM_MM = 10.0                                          # a free point of the cloth nearer anything than this fails
+
+
+def pose_spars(obs, boom_to_port, pole_from_bow, pole_built):
+    """Swing the boom (and the sails riding on it) boom_to_port degrees to port and set the pole pole_from_bow degrees
+    from the bow to starboard, from their rest "frame": a positive turn about the boom's own Z in Blender takes its end
+    to starboard, one about the pole's to port (build.json's rig frames). pole_from_bow "stowed" lays the pole down on
+    the deck (its "stowed" matrix, sails.pole_stowed's)."""
+    for ob in obs:
+        M = Matrix([ob["frame"][k:k + 4] for k in range(0, 16, 4)])
+        if ob.name == "SpinnakerPole" and pole_from_bow == "stowed":
+            ob.matrix_world = Matrix([ob["stowed"][k:k + 4] for k in range(0, 16, 4)])
+            continue
+        deg = pole_built - pole_from_bow if ob.name == "SpinnakerPole" else -boom_to_port
+        ob.matrix_world = M @ Matrix.Rotation(math.radians(deg), 4, "Z")
+    bpy.context.view_layer.update()
+
+
+def stowed_matrix(R, t, frame):
+    """The pole's matrix_world stowed: sails.pole_stowed's (R, t) (p -> R p + t in the hull's frame) carried into
+    Blender's (y turned over) and applied after its rest matrix (frame, flat)."""
+    Mi = np.diag([1.0, -1.0, 1.0])
+    T = np.eye(4)
+    T[:3, :3] = Mi @ np.asarray(R, float) @ Mi
+    T[:3, 3] = Mi @ np.asarray(t, float)
+    return Matrix(T.tolist()) @ Matrix([frame[k:k + 4] for k in range(0, 16, 4)])
+
+
+def pole_stowed_check(pole_item, hull_items, spar_items, rig_items, sail_items, reach=0.5):
+    """The pole lashed down on the deck: none of its faces crossing anything (the deck, the deckhouses, the mast and the
+    boom, the rigging as sailed on starboard tack, the suit's sails), and its least room to each within `reach`
+    (measured from its vertices to their faces: its lowest points rest just above the deck)."""
+    pole, labels = pole_item
+    tp, wp = _labelled([pole_item])
+    bad = {}
+    cats = {"hull_deck": hull_items, "spars": [it for it in spar_items if it[0] is not pole], "rigging": rig_items,
+            "sails": sail_items}
+    least = {}
+    P = [pole.matrix_world @ v.co for v in pole.data.vertices]
+    for c, items in cats.items():
+        if not items:
+            continue
+        t, who = _labelled(items)
+        for i, j in tp.overlap(t):
+            k = f"{wp[i][1]} x {who[j][0]}: {who[j][1]}"
+            bad[k] = bad.get(k, 0) + 1
+        best = None
+        for q in P:
+            hit = t.find_nearest(q, reach)
+            if hit[0] is not None and (best is None or hit[3] < best[0]):
+                best = (hit[3], who[hit[2]], q)
+        if best:
+            least[c] = {"gap_mm": round(best[0] * 1000, 1), "against": f"{best[1][0]}: {best[1][1]}",
+                        "at": [round(float(v), 3) for v in to_blender(np.array(best[2]))]}
+    ok = not bad and all(v["gap_mm"] >= (3.0 if c == "hull_deck" else SAIL_ROOM_MM) for c, v in least.items())
+    return {"crossing": bad, "least": least, "ok": ok}
+
+
+def sail_contact_allowed(a, b):
+    """Whether a sail's face (object, label) may meet another piece's by design: the mainsail's slides in their tracks,
+    a hank round its stay's wire, a heap or a bag bedded on the deck."""
+    la, (ob, lb) = a[1], b
+    if la == "Mainsail luff slide":
+        return ob == "Mast" and lb == "Mainsail track"
+    if la == "Mainsail foot slide":
+        return ob == "Boom" and lb == "Boom track"
+    if la == "Hank":
+        return rigging.group_of(lb) in ("Forestay", "Staysail stay") and rigging.kind_of(lb) == "wire"
+    if la in SAIL_ON_DECK:
+        return ob == "Deck"
+    return False
+
+
+def _free_faces(ob, free):
+    """The faces of a sail's object whose corners are all free cloth points (in the hull's frame, each a triangle), and
+    sample points over them: their corners, the thirds of their edges and their centres (about 0.1 m apart on a
+    0.37 m grid)."""
+    M = ob.matrix_world
+    fr = set(free)
+    ob.data.calc_loop_triangles()
+    W = [M @ v.co for v in ob.data.vertices]
+    tris = [tuple(t.vertices) for t in ob.data.loop_triangles if all(i in fr for i in t.vertices)]
+    Wa = np.array([tuple(v) for v in W])
+    T = np.array(tris, int).reshape(-1, 3)
+    E = np.unique(np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), axis=1), axis=0)
+    P = np.concatenate([Wa[np.unique(T)], (2 * Wa[E[:, 0]] + Wa[E[:, 1]]) / 3, (Wa[E[:, 0]] + 2 * Wa[E[:, 1]]) / 3,
+                        Wa[T].mean(1)])
+    return W, tris, P
+
+
+def sail_suit_check(shown, hull_items, spar_items, rig_items, reach=1.0):
+    """One suit's sails (each (object, labels, free cloth vertices)) against the hull and the deck, the spars as posed,
+    the rigging as sailed on starboard tack, and each other: faces crossing (less the contacts by design, and pieces
+    of the same sail, as the mainsail's heap and its luff's stack) counted by pair, and each set sail's free cloth
+    (the faces between its points the press may move: not the luff, not a corner) measured to each of them within
+    `reach`, both ways: points over the free faces (_free_faces) to their faces, and their vertices to the free faces.
+    A gap under SAIL_ROOM_MM fails."""
+    from mathutils.bvhtree import BVHTree
+    sail_items = [(ob, labels) for ob, labels, _ in shown]
+    ts, ws = _labelled(sail_items)
+    sail_of = {ob.name: ob["sail"] for ob, _ in sail_items}
+    bad = {}
+    for cat_items in (hull_items, spar_items, rig_items):
+        to, wo = _labelled(cat_items)
+        for i, j in ts.overlap(to):
+            if not sail_contact_allowed(ws[i], wo[j]):
+                k = f"{ws[i][1]} x {wo[j][0]}: {wo[j][1]}"
+                bad[k] = bad.get(k, 0) + 1
+    for i, j in ts.overlap(ts):
+        a, b = ws[i], ws[j]
+        if i >= j or a[0] == b[0] or sail_of[a[0]] == sail_of[b[0]]:
+            continue
+        k = " x ".join(sorted((f"{a[0]}: {a[1]}", f"{b[0]}: {b[1]}")))
+        bad[k] = bad.get(k, 0) + 1
+    cats = {"hull_deck": hull_items, "mast": [it for it in spar_items if it[0].name == "Mast"],
+            "boom": [it for it in spar_items if it[0].name == "Boom"],
+            "pole": [it for it in spar_items if it[0].name == "SpinnakerPole"], "rigging": rig_items}
+    trees = {c: _labelled(v, raw=True) for c, v in cats.items() if v}
+    rows, tight = {}, []
+    for ob, labels, free in shown:
+        if not free:
+            continue
+        W, tris, Pa = _free_faces(ob, free)
+        mine = BVHTree.FromPolygons(W, tris, epsilon=0.0)
+        lo, hi = Pa.min(0) - reach, Pa.max(0) + reach
+        own = {}
+        others = [(o, lb) for o, lb, _ in shown if o is not ob and sail_of[o.name] != ob["sail"]]
+        tr = dict(trees)
+        if others:
+            tr["other_sails"] = _labelled(others, raw=True)
+        for c, (t, who, Vo, Fo) in tr.items():
+            best = None
+            Va = np.array([tuple(v) for v in Vo])
+            olo, ohi = Va.min(0) - reach, Va.max(0) + reach
+            for q in Pa[np.all((Pa > olo) & (Pa < ohi), axis=1)]:
+                hit = t.find_nearest(Vector(q), reach)
+                if hit[0] is not None and (best is None or hit[3] < best[0]):
+                    best = (hit[3], who[hit[2]], q)
+            # and the other way: each of their vertices near the sail to its free faces
+            near = np.nonzero(np.all((Va > lo) & (Va < hi), axis=1))[0]
+            if len(near):
+                owner = np.empty(len(Vo), int)
+                for fi, f in enumerate(Fo):
+                    owner[list(f)] = fi
+                for vi in near:
+                    hit = mine.find_nearest(Vo[vi], reach)
+                    if hit[0] is not None and (best is None or hit[3] < best[0]):
+                        best = (hit[3], who[owner[vi]], hit[0])
+            if best:
+                own[c] = {"gap_mm": round(best[0] * 1000, 1), "against": f"{best[1][0]}: {best[1][1]}",
+                          "at": [round(float(v), 3) for v in to_blender(np.array(best[2]))]}
+                if best[0] * 1000 < SAIL_ROOM_MM:
+                    tight.append({"sail": ob.name, "category": c, **own[c]})
+        rows[ob.name] = {"free_points": len(free), "free_faces": len(tris), "samples": len(Pa), "least": own}
+    return {"crossing": bad, "room": rows, "tight": tight, "room_fail_under_mm": SAIL_ROOM_MM, "reach_m": reach,
+            "measured": "over the free faces, both ways", "ok": not bad and not tight}
+
 def merge_sweeps(outs):
     """The boom's (or the pole's) sweeps on each tack, each against that tack's rigging, as one."""
     turns = sorted((t for o in outs for t in o["turns"]), key=lambda t: t["turn_deg"])
@@ -1092,7 +1326,7 @@ def main():
     if not all(v for k, v in rig["checks"].items() if isinstance(v, bool)):
         raise SystemExit(f"the rig fails a check: {rig['checks']}")
     rg_parts, rr = rigging.build(rig, sh.sheer)
-    rig.pop("_pts")
+    pts = rig.pop("_pts")
     gw = rr["weights"]
     if abs(gw["total_long_tons"] - g0["total_long_tons"]) > 0.01:
         raise SystemExit(f"the rigging weighs {gw['total_long_tons']} long tons on the shell's sheer, "
@@ -1254,6 +1488,66 @@ def main():
             raise SystemExit(f"a wire or rope comes too near something on {tack} tack: {rr['room'][tack]['tight']}")
         if not rr["contacts"][tack]["ok"]:
             raise SystemExit(f"the rigging crosses something on {tack} tack: {rr['contacts'][tack]['crossing']}")
+    # the sails (slice 6): each sail in its states, pressed off the spars, the wires and the hull. Each suit (the sails
+    # set together) is checked with its spars posed against everything else and each other; the Genoa suit is shown
+    # (the boom 4 degrees to port, the pole carried forward), the other states hidden. The boom, the pole and the
+    # sails that ride on the boom keep the build's rest pose as their "frame" (render_jclass.py turns them from it).
+    hull_parts = [sh, parts["Deck"]] + [parts[k] for k in DECK_PARTS]
+    sl_parts, srep = sails.build(rig, pts, rr, sails.obstacles_from(hull_parts, sp_parts, rg_parts))
+    mats.update(sail_materials.make(srep["sails"], sails.SL["cloth"], FIN["paint"]["colours"]["Topsides"]))
+    suits = {k: v for k, v in sails.SL["suits"].items() if k != "note"}
+    sail_obs = {}
+    for k, p in sl_parts.items():
+        ob = part_object(p, mats)
+        ob["slice"], ob["sail"], ob["sail_state"] = 6, p.sail, p.state
+        ob["suits"] = ",".join(n for n, v in suits.items() if k in v["sails"])
+        ob["on_boom"] = p.frame is not None
+        for a, v in p.pose.items():
+            ob[f"pose_{a}"] = v
+        sail_obs[k] = ob
+    lost = [k for k, ob in sail_obs.items() if not ob["suits"]]
+    if lost:
+        raise SystemExit(f"sails in no suit (the build checks each suit): {lost}")
+    for k, ob in sail_obs.items():
+        checks[k] = sail_closure(ob, sl_parts[k].labels)
+    if not all(checks[k]["closed"] for k in sail_obs):
+        raise SystemExit(f"a sail's cloth is not one sheet or its fittings do not close: "
+                         f"{ {k: checks[k] for k in sail_obs if not checks[k]['closed']} }")
+    posable = [spar_obs["Boom"], spar_obs["SpinnakerPole"]] + [ob for ob in sail_obs.values() if ob["on_boom"]]
+    for ob in posable:
+        ob["frame"] = [c for row in ob.matrix_world for c in row]
+    ps = srep["pole_stowed"]
+    spar_obs["SpinnakerPole"]["stowed"] = [c for row in stowed_matrix(ps["R"], ps["t"],
+                                                                      spar_obs["SpinnakerPole"]["frame"]) for c in row]
+
+    def suit_pole(suit):
+        return "stowed" if suit.get("pole") == "stowed" else suit["pole_deg"]
+    srep["suit_checks"], srep["pole_stowed_checks"] = {}, {}
+    for name, suit in suits.items():
+        if suit.get("pole") != "stowed" and abs(suit["pole_heel_above_deck"] - pl["heel_above_deck"]) > 1e-6:
+            raise SystemExit(f"the {name} suit raises the pole's car: the car is part of the mast's mesh, so the build "
+                             f"cannot pose it")
+        pose_spars(posable, suit.get("boom_deg", 0.0), suit_pole(suit), pl["set_deg"])
+        shown_sails = [(sail_obs[k], sl_parts[k].labels, sl_parts[k].free) for k in suit["sails"]]
+        rig_items = [(rig_obs[k], rg_parts[k].labels) for k in rigging.OBJECTS + TACKS["starboard"]]
+        srep["suit_checks"][name] = sail_suit_check(shown_sails, hull_items, spar_items, rig_items)
+        if suit.get("pole") == "stowed":
+            srep["pole_stowed_checks"][name] = pole_stowed_check(
+                (spar_obs["SpinnakerPole"], sp_parts["SpinnakerPole"].labels), hull_items, spar_items, rig_items,
+                [(ob, lb) for ob, lb, _ in shown_sails])
+    bad = {n: c for n, c in srep["suit_checks"].items() if not c["ok"]}
+    if bad:
+        raise SystemExit(f"a suit's sails cross or come too near something: "
+                         f"{ {n: (c['crossing'], c['tight']) for n, c in bad.items()} }")
+    bad = {n: c for n, c in srep["pole_stowed_checks"].items() if not c["ok"]}
+    if bad:
+        raise SystemExit(f"the pole stowed on deck crosses or comes too near something: {bad}")
+    g = suits["Genoa"]
+    pose_spars(posable, g["boom_deg"], suit_pole(g), pl["set_deg"])
+    for k, ob in sail_obs.items():
+        if k not in g["sails"]:
+            ob.hide_render = True
+            ob.hide_set(True)
     lt = dw["total_long_tons"]
     w = loft.weight_check(S, h, finish["lead"], measured={"deck_and_deckhouses": (lt, dw["centre"][0], dw["centre"][2]),
                                                           "spars": (sw["total_long_tons"], sw["centre"][0],
@@ -1302,31 +1596,46 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
     write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
     rig_shown = [rig_obs[k] for k in rigging.OBJECTS + rigging.SAILING]
+    sail_shown = [sail_obs[k] for k in suits["Genoa"]["sails"]]
     visible = ([shell_ob, transom, deck_ob, rudder, stock] + letters + list(deck_obs.values()) + list(spar_obs.values())
-               + rig_shown)
+               + rig_shown + sail_shown)
     tris = {ob.name: tri_count(ob) for ob in visible}
     slice3 = sum(tris[ob.name] for ob in [deck_ob] + list(deck_obs.values()))
     slice4 = sum(tris[ob.name] for ob in spar_obs.values())
     slice5 = sum(tris[ob.name] for ob in rig_shown)
-    build = {"slice": 5, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+    sail_tris = {k: tri_count(ob) for k, ob in sail_obs.items()}
+    slice6 = {n: sum(sail_tris[k] for k in v["sails"]) for n, v in suits.items()}
+    build = {"slice": 6, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
              "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
              "budget_slice_4": 250000, "triangles_slice_5": slice5, "budget_slice_5": 250000,
+             "triangles_slice_6_by_suit": slice6, "triangles_slice_6_states": sail_tris,
+             "triangles_slice_6_all_states": sum(sail_tris.values()), "budget_slice_6": 300000,
              "triangles_hidden_states": {k: tri_count(rig_obs[k]) for k in rigging.STATES if k not in rigging.SAILING},
              "triangles_hidden_reference_hull": tri_count(hull),
-             "budget_slices_1_5": 200000 + 350000 + 500000 + 250000 + 250000, "sail_area_ft2": rig["sail_area_ft2"],
+             "budget_slices_1_6": 200000 + 350000 + 500000 + 250000 + 250000 + 300000,
+             "sail_area_ft2": rig["sail_area_ft2"],
              "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep,
-             "rig": rig, "rigging": spars.rnd(rr)}
+             "rig": rig, "rigging": spars.rnd(rr), "sails": spars.rnd({k: v for k, v in srep.items()
+                                                                       if not k.startswith("_")})}
     if (slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]
-            or slice5 > build["budget_slice_5"]):
-        raise SystemExit(f"slices 3, 4 and 5 have {slice3}, {slice4} and {slice5} triangles, over a budget")
+            or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]):
+        raise SystemExit(f"slices 3, 4, 5 and 6 have {slice3}, {slice4}, {slice5} and {slice6} triangles, over a budget")
     with open(os.path.join(OUT, "build.json"), "w") as f:
-        json.dump(build, f, indent=1)
+        json.dump(build, f, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
     drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep, rig=(sp_parts, rig),
-                             rigging=(rg_parts, rr, rigging.OBJECTS + rigging.SAILING))
+                             rigging=(rg_parts, rr, rigging.OBJECTS + rigging.SAILING),
+                             sails=(sl_parts, srep, sails.SL["cloth"]))
     short = {k: v for k, v in finish["rudder"].items() if k != "helm_sweep"}
     short["helm_sweep"] = {k: v for k, v in sweep.items() if k != "turns"}
     print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3, "slice_4": slice4,
-                      "slice_5": slice5,
+                      "slice_5": slice5, "slice_6": slice6,
+                      "sails": {k: {a: v[a] for a in ("area_m2", "area_ft2", "total_kg")} for k, v in srep["sails"].items()},
+                      "wardrobe": {k: srep["wardrobe"][k] for k in ("total_kg", "total_long_tons")},
+                      "press": {k: {a: v[a] for a in ("most_moved_m", "held_points_asked_m", "points_pushed_both_ways")}
+                                for k, v in srep["press"].items()},
+                      "suit_checks": {n: {"ok": c["ok"], "least": {k: {a: b["gap_mm"] for a, b in v["least"].items()}
+                                                                    for k, v in c["room"].items()}}
+                                      for n, c in srep["suit_checks"].items()},
                       "rigging_weight": {k: gw[k] for k in ("total_kg", "total_long_tons", "centre", "card_long_tons")},
                       "room": {t: {"least": v["least"], "ok": v["ok"]} for t, v in rr["room"].items()},
                       "contacts": {t: v["ok"] for t, v in rr["contacts"].items()}, "strength": rr["strength"],

@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint, deck, rig and rigging renders of Bluebonnet for the docs and the blind reviews
-(docs/jclass-1 to jclass-5).
+"""Clay, zebra, afloat, paint, deck, rig, rigging and sails renders of Bluebonnet for the docs and the blind reviews
+(docs/jclass-1 to jclass-6).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -30,6 +30,13 @@ boats), the same every round so before and after line up:
                                              the masthead's backstay crane, the jumpers, the backstay at the counter,
                                              the forestay at the stem head, the boom squared off past the let-off pair,
                                              and running on each tack
+  sails_*                                    slice 6's sails: Milestone A's silhouettes at 200 m (main and genoa from
+                                             the lee bow, abeam to leeward and to windward; the quadrilateral and
+                                             staysail; the spinnaker from the bow and abeam), the profile, quarter
+                                             views of each suit, the main backlit, the headboard, the clew and reef
+                                             points, the luff slides on the track, the hanks, the genoa's clew, the
+                                             spinnaker's head, and the sails stowed: moored (flaked and bagged),
+                                             lowered on deck, and the main's slides stacked at the foot of the track
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -37,6 +44,7 @@ The cameras look from Blender's -Y for the starboard side: build_jclass.py puts 
 Blender's right-handed one as (x, -y, z), so the pictures are the boat as she is, not her mirror image.
 Cycles on the CPU (no GPU needed), with a material override for the clay and zebra views. Needs Blender's Python (pip bpy).
 """
+import json
 import math
 import os
 import sys
@@ -73,7 +81,9 @@ def bounds(obs):
 
 LO, HI, MID = bounds([o for o in meshes if o.get("slice", 1) < 4])      # the hull and deck: the earlier slices' frame
 L = HI.x - LO.x
-LOA, HIA, MIDA = bounds(meshes)                                            # with the rig
+LOA, HIA, MIDA = bounds([o for o in meshes if o.get("slice", 1) < 6])       # with the rig (not the sails)
+SUITS = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                      "sails_bluebonnet.json")))["suits"].items() if k != "note"}
 
 world = bpy.data.worlds.new("JWorld")
 SC.world = world
@@ -146,7 +156,9 @@ SC.camera = cam
 water = None
 
 
-def set_water(on):
+def set_water(on, size=1.0):
+    """on: a flat sea at the load waterline, `size` times the usual 12 boat lengths across (the far views want
+    its edge past the horizon)."""
     global water
     if on and water is None:
         bpy.ops.mesh.primitive_plane_add(size=L * 12, location=(MID.x, 0, 0))
@@ -155,6 +167,7 @@ def set_water(on):
         water.data.materials.append(material("water"))
     if water is not None:
         water.hide_render = not on
+        water.scale = (size, size, 1.0)
 
 
 sun = bpy.data.objects.new("JSun", bpy.data.lights.new("JSun", "SUN"))
@@ -195,43 +208,59 @@ def turn_about_z(name, deg):
 
 def swing_boom(deg):
     """Swing the boom about its gooseneck pin: positive takes its end to starboard (build.json's rig frames: a positive
-    turn about the boom's own Z in Blender moves its end to starboard)."""
+    turn about the boom's own Z in Blender moves its end to starboard). The mainsail lowered or flaked on it goes with
+    it (built in the boom's frame)."""
     turn_about_z("Boom", deg)
+    for o in meshes:
+        if o.get("on_boom"):
+            turn_about_z(o.name, deg)
 
 
 def set_pole(deg):
     """Set the spinnaker pole deg from the bow, positive to starboard, negative to port. The build sets it 70 degrees
-    to starboard, and a positive turn about its own Z in Blender takes its end to port."""
+    to starboard, and a positive turn about its own Z in Blender takes its end to port. "stowed": lashed down on the
+    starboard side deck (the build's "stowed" matrix)."""
+    ob = bpy.data.objects.get("SpinnakerPole")
+    if deg == "stowed":
+        ob.matrix_world = Matrix([ob["stowed"][k:k + 4] for k in range(0, 16, 4)])
+        return
     turn_about_z("SpinnakerPole", 70.0 - deg)
 
 
-def shown(o, upto, tack):
-    """Whether an object shows in a shot: its slice is no later than `upto`, the build did not hide it, and a runner's
-    or a checkstay's state shows set on the tack's side (windward) and let off on the other."""
+def shown(o, upto, tack, suit=None):
+    """Whether an object shows in a shot: its slice is no later than `upto`, the build did not hide it, a runner's or
+    a checkstay's state shows set on the tack's side (windward) and let off on the other, and a sail's state shows
+    when it is in the shot's suit (sails_bluebonnet.json's suits)."""
     if o.get("slice", 1) > upto:
         return False
+    if o.get("sail") is not None:
+        return suit is not None and suit in o["suits"].split(",")
     if o.get("state") is not None:
         return (o["state"] == "Set") == (o["side"] == tack)
     return o.name not in HIDDEN
 
 
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
-         upto=3, boom=0.0, pole=70.0, tack="starboard"):
+         upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
-    to starboard). tack: which side the runners are set on (slice 5)."""
+    to starboard; "stowed" on deck). tack: which side the runners are set on (slice 5). suit: the sails set (slice 6),
+    with the boom and the pole posed as the suit has them."""
     if ONLY and name not in ONLY:
         return
+    if suit is not None:
+        boom = -SUITS[suit]["boom_deg"]
+        pole = "stowed" if SUITS[suit].get("pole") == "stowed" else SUITS[suit]["pole_deg"]
     for o in meshes:
-        o.hide_render = not shown(o, upto, tack)
+        o.hide_render = not shown(o, upto, tack, suit)
     turn_rudder(rudder)
     swing_boom(boom)
     set_pole(pole)
     world_kind("zebra" if kind == "zebra" else "shade")
     WN.nodes["Background"].inputs[1].default_value = 0.55 if kind == "paint" else 1.0
     set_sun(sun_dir or (0.3, 0.5, -0.8), sun if kind == "paint" else 0.0)
-    set_water(sea)
+    set_water(sea, sea_size)
     saved = {}
     bpy.context.view_layer.material_override = None
     if sea and kind == "clay":
@@ -247,7 +276,7 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     cam.location = loc
     cam.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
     cd = cam.data
-    cd.clip_start, cd.clip_end = 0.05, 2000
+    cd.clip_start, cd.clip_end = 0.05, 6000
     if ortho:
         cd.type, cd.ortho_scale = "ORTHO", ortho
     else:
@@ -381,4 +410,54 @@ shot("rigging_run", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun
      boom=-80.0, pole=85.0)
 shot("rigging_run_port", "paint", (-62.0, -9.0, 46.0), (-5.0, 0.0, 2.0), lens=38, sun_dir=RSUN, sun=3.0, samples=48,
      upto=5, boom=80.0, pole=-85.0, tack="port")
+# slice 6: the sails, sailed on starboard tack (the wind from starboard: the sails to port, Blender's +Y) under each
+# suit, and stowed. Milestone A's silhouettes are from 200 m on a sea that reaches past the horizon, a 50 mm lens at
+# 3 m above the water: under main and genoa from the lee bow, abeam to leeward and to windward; under main and
+# quadrilateral jib with the staysail; under the spinnaker from the bow and abeam.
+LEE_SUN = (-0.35, -0.5, -0.8)            # from the port bow: lights the sails' lee (convex) faces seen from port
+WW_SUN = (-0.35, 0.5, -0.8)              # from the starboard bow: their windward faces, and backlights the lee side
+far = dict(lens=50, sea=True, sea_size=30.0, samples=48, upto=6)
+shot("sails_200m_genoa", "paint", (110.0, 167.0, 3.0), (0.0, 0.0, 19.0), suit="Genoa", sun_dir=LEE_SUN, sun=3.0, **far)
+shot("sails_200m_genoa_abeam", "paint", (-1.0, 200.0, 3.0), (-1.0, 0.0, 21.0), suit="Genoa", sun_dir=LEE_SUN, sun=3.0,
+     **far)
+shot("sails_200m_genoa_windward", "paint", (-1.0, -200.0, 3.0), (-1.0, 0.0, 21.0), suit="Genoa", sun_dir=WW_SUN,
+     sun=3.0, **far)
+shot("sails_200m_quad", "paint", (110.0, 167.0, 3.0), (0.0, 0.0, 19.0), suit="Quadrilateral", sun_dir=LEE_SUN, sun=3.0,
+     **far)
+shot("sails_200m_spin", "paint", (185.0, 76.0, 3.0), (6.0, 0.0, 21.0), suit="Spinnaker", sun_dir=(-0.6, -0.3, -0.75),
+     sun=3.0, **far)
+shot("sails_200m_spin_abeam", "paint", (2.0, 200.0, 3.0), (2.0, 0.0, 21.0), suit="Spinnaker", sun_dir=LEE_SUN, sun=3.0,
+     **far)
+# nearer: the profile (orthographic, from starboard), the lee quarter, against the light, each suit three-quarters
+shot("sails_profile", "paint", (MIDA.x, -150, MIDA.z), MIDA, ortho=1.05 * max(HIA.x - LOA.x, HA * ASPECT), sun_dir=WW_SUN,
+     sun=3.0, upto=6, suit="Genoa")
+shot("sails_lee34", "paint", (-42.0, 58.0, 12.0), (1.0, 0.0, 19.0), lens=30, sea=True, sun_dir=LEE_SUN, sun=3.0,
+     samples=48, upto=6, suit="Genoa")
+shot("sails_backlit", "paint", (-26.0, 44.0, 3.0), (-2.0, 0.0, 19.0), lens=24, sea=True, sun_dir=(0.15, 0.5, -0.7),
+     sun=4.0, samples=64, upto=6, suit="Genoa")
+shot("sails_quad34", "paint", (60.0, 70.0, 10.0), (2.0, 0.0, 17.0), lens=30, sea=True, sun_dir=LEE_SUN, sun=3.0,
+     samples=48, upto=6, suit="Quadrilateral")
+shot("sails_spin34", "paint", (80.0, 48.0, 8.0), (4.0, 0.0, 21.0), lens=30, sea=True, sun_dir=(-0.6, -0.3, -0.75),
+     sun=3.0, samples=48, upto=6, suit="Spinnaker")
+# close to: the mainsail's head and headboard, its clew at the boom's end, its luff's slides and reef bands, the
+# genoa's hanks at the tack, the spinnaker's head; then stowed: moored (the main flaked under its ties, the bags on
+# deck), lowered (the main on the boom with its slides stacked, the jibs hauled down still hanked on)
+shot("sails_head", "paint", (-1.0, 10.0, 46.0), (1.5, 0.2, 45.4), lens=50, sun_dir=LEE_SUN, sun=3.0, samples=64,
+     upto=6, suit="Genoa")
+shot("sails_clew", "paint", (-9.5, 8.5, 8.5), (-16.0, 1.3, 6.3), lens=30, sun_dir=LEE_SUN, sun=3.0, samples=64,
+     upto=6, suit="Genoa")
+shot("sails_luff", "paint", (-5.0, -7.0, 7.0), (1.5, 0.3, 8.5), lens=30, sun_dir=WW_SUN, sun=3.0, samples=64, upto=6,
+     suit="Genoa")
+shot("sails_hanks", "paint", (16.0, -2.2, 5.5), (17.6, 0.0, 5.0), lens=35, sun_dir=WW_SUN, sun=3.0, samples=64, upto=6,
+     suit="Genoa")
+shot("sails_genoa_clew", "paint", (-0.5, 7.5, 4.5), (-3.5, 3.0, 3.0), lens=35, sun_dir=LEE_SUN, sun=3.0, samples=64,
+     upto=6, suit="Genoa")
+shot("sails_spin_head", "paint", (9.0, 7.0, 46.0), (2.7, 0.0, 45.6), lens=50, sun_dir=(-0.6, -0.3, -0.75), sun=3.0,
+     samples=64, upto=6, suit="Spinnaker")
+shot("sails_moored", "paint", (-7.0, -15.0, 13.0), (1.0, 0.0, 3.0), lens=28, sun_dir=WW_SUN, sun=3.0, samples=48,
+     upto=6, suit="Moored")
+shot("sails_lowered", "paint", (21.0, 12.0, 10.0), (5.0, 0.0, 2.6), lens=28, sun_dir=LEE_SUN, sun=3.0, samples=48,
+     upto=6, suit="Lowered")
+shot("sails_stack", "paint", (-1.0, 5.5, 6.5), (2.4, 0.0, 6.2), lens=24, sun_dir=LEE_SUN, sun=3.0, samples=64, upto=6,
+     suit="Lowered")
 print("render_jclass: done")
