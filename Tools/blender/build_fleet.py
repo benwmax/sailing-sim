@@ -311,12 +311,15 @@ def naca_loop(chord, thickness, n=20):
     return pts + [(x, -y) for (x, y) in reversed(pts[1:-1])]
 
 
-def foil(m, sections, slot, thickness=0.12, y0=0.0):
-    """A vertical foil through (z, leading edge x, chord) sections."""
+def foil(m, sections, slot, thickness=0.12, y0=0.0, outward=False):
+    """A vertical foil through (z, leading edge x, chord[, thickness ratio]) sections. `outward` winds its faces to look
+    out (shape wave 5: the Sunfish's board; the others have always been wound inward, drawn two-sided)."""
     rings = []
-    for z, le_x, chord in sections:
-        loop = naca_loop(chord, thickness)
-        rings.append([(le_x - x, y0 + y, z) for (x, y) in loop] + [(le_x - loop[0][0], y0 + loop[0][1], z)])
+    for sec in sections:
+        z, le_x, chord = sec[:3]
+        loop = naca_loop(chord, sec[3] if len(sec) > 3 else thickness)
+        ring_pts = [(le_x - x, y0 + y, z) for (x, y) in loop] + [(le_x - loop[0][0], y0 + loop[0][1], z)]
+        rings.append(list(reversed(ring_pts)) if outward else ring_pts)
     m.grid(rings, slot)
     m.face(rings[0][:-1], slot)
     m.face(list(reversed(rings[-1][:-1])), slot)
@@ -951,6 +954,17 @@ def winch(x, y, z, r=0.055, plain=False):
     kit_part("Winch16", x, y, z, size=min(bases, key=lambda s: abs(bases[s] - 2 * r)))
 
 
+# Shape wave 5, board: the Sunfish's daggerboard tip radii (leading, trailing edge), metres.
+SUNFISH_BOARD_TIP = (0.08, 0.025)
+
+
+def board_mid_x(f):
+    """Where the board's chord is centred along the boat. board() puts the leading edge a quarter chord ahead of the
+    physics' centre; the Sunfish's parts above the deck (board, gasket, splash guard) follow it, so the board is one
+    piece through the deck (they had been centred on the physics' centre, 6 cm forward of the board below)."""
+    return f["center"][0] - (0.25 * f["chord"] if TAG == "Sunfish" else 0.0)
+
+
 def board(Hh, f, deepest):
     """A keel or daggerboard: NACA section from inside the hull down to the deepest point."""
     cx, cy, cz = f["center"]
@@ -958,11 +972,27 @@ def board(Hh, f, deepest):
     le = cx + 0.25 * chord
     z_top = Hh.bottom_z(cx, cy) + 0.05
     secs = []
-    for k in range(9):
-        t = k / 8
-        z = z_top + (deepest - z_top) * t
-        c = chord * (1.0 - 0.25 * t if f["role"] == "keel" else 1.0)
-        secs.append((z, le - 0.1 * t * chord if f["role"] == "keel" else le, c))
+    if TAG == "Sunfish" and f["role"] == "board":
+        # Shape wave 5, board: the Sunfish's daggerboard tip is rounded, a big radius at the leading edge and a small one
+        # at the trailing edge (class photos); it had been cut square. The flat between them stays at the physics' draft.
+        rl, rt = SUNFISH_BOARD_TIP
+        zc = deepest + rl
+        for k in range(7):
+            secs.append((z_top + (zc - z_top) * k / 6, le, chord))
+        for k in range(1, 17):
+            h = rl * (1.0 - math.sin(math.pi / 2 * k / 16))            # height above the tip, clustered toward it
+            il = rl - math.sqrt(max(rl * rl - (rl - h) ** 2, 0.0))
+            it = rt - math.sqrt(max(rt * rt - (rt - h) ** 2, 0.0)) if h < rt else 0.0
+            c = chord - il - it
+            secs.append((deepest + h, le - il, c, 0.08 * chord / c))  # (the full 19 mm right to the tip)
+        foil(hull, secs, "Keel", 0.08, cy, outward=True)
+        return
+    else:
+        for k in range(9):
+            t = k / 8
+            z = z_top + (deepest - z_top) * t
+            c = chord * (1.0 - 0.25 * t if f["role"] == "keel" else 1.0)
+            secs.append((z, le - 0.1 * t * chord if f["role"] == "keel" else le, c))
     foil(hull, secs, "Keel", 0.12 if f["role"] == "keel" else 0.08, cy)
     if f["role"] == "keel" and SPEC["paint"] and deepest < -1.2:
         # A bulb on the deeper fins (the Catalina 30's lead), faired into the tip.
@@ -1048,14 +1078,22 @@ def sunfish_board(H, f, mast_x, mast_step_z, plastic=False):
     its top corners rounded and its edges eased; the black rubber gasket round the trunk's slot; the shock cord from an eye
     at the board's forward top corner to the mast, which keeps it aboard in a capsize (class photos). pc/ilca-fidelity:
     plastic, the ILCA's: white moulded, 22 mm, a black handle moulding along its top edge."""
-    bx, chord = f["center"][0], f["chord"]
+    bx, chord = board_mid_x(f), f["chord"]
     dz = H.deck_z(bx, 0)
-    x0, x1 = bx - 0.46 * chord, bx + 0.46 * chord
+    hc = 0.5 if TAG == "Sunfish" else 0.46                             # (shape wave 5: the Sunfish's above-deck part is the board's full chord)
+    x0, x1 = bx - hc * chord, bx + hc * chord
     th = 0.022 if plastic else 0.019
     slab(hull, rounded(x0, dz - 0.02, x1, dz + 0.12, 0.05, 6, corners=(0, 0, 1, 1)), 0.0, th, "Deck" if plastic else "Wood")
     # (the eased edge: a half-round along the top, a shade wider than the board; the ILCA's black handle moulding)
-    top = [(x, 0.0, z) for (x, z) in rounded(x0, dz - 0.02, x1, dz + 0.12, 0.05, 6, corners=(0, 0, 1, 1))[2:]]
-    tube(hull, top, 0.5 * th + 0.004 if plastic else 0.0098, "BlackPlastic" if plastic else "Wood", 8, cap=False)
+    if TAG == "Sunfish":
+        # (shape wave 5: the eased edge's centreline inset by its radius, so it is the board's own edge and ends inside
+        # the wood; it had stood 10 mm proud of both edges with open ends)
+        t = 0.0098
+        top = [(x, 0.0, z) for (x, z) in rounded(x0 + t, dz - 0.02, x1 - t, dz + 0.12 - t, 0.05 - t, 6, corners=(0, 0, 1, 1))[2:]]
+        tube(hull, top, t, "Wood", 8, cap=True)
+    else:
+        top = [(x, 0.0, z) for (x, z) in rounded(x0, dz - 0.02, x1, dz + 0.12, 0.05, 6, corners=(0, 0, 1, 1))[2:]]
+        tube(hull, top, 0.5 * th + 0.004 if plastic else 0.0098, "BlackPlastic" if plastic else "Wood", 8, cap=False)
     # the slot's gasket
     gl, gw = chord + 0.02, 0.022
     loop = []
@@ -1150,7 +1188,7 @@ def dinghy_detail(H, ck, f, mast_x, mast_step_z, traveler):
     # (shape wave 5: with crown_table the bailer and drain sit on the sole itself; they had been taken from the deck's
     # centreline, 8 mm over the sole, which the ILCA keeps)
     sole = (lambda x: H.sole_z(x, w, depth)) if "crown_table" in SPEC else (lambda x: H.deck_z(x, 0) - depth)
-    bx, chord = f["center"][0], f["chord"]
+    bx, chord = board_mid_x(f), f["chord"]
     dz = H.deck_z(bx, 0)
     # the daggerboard (Sunfish: varnished wood; ILCA: white plastic centreboard) a hand's width proud, with a grip
     xb = x0 + 0.18
