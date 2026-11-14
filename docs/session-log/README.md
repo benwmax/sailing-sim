@@ -39,7 +39,7 @@ alone (`Inputs/bench/ultra-loss-da3e74b0/hitches/summary.md` on the inputs branc
 - Two locks: one guards the buffer (held only to copy bytes), one the file (held through the disk write), so a slow disk
   never blocks a `SAIL_LOG` caller.
 
-Status lines that repeat (the far lights' every 5 s) are `UE_LOG` at Log level, not `SAIL_LOG`: they stay out of the
+Status lines that repeat (the far lights' and the navaids' every 5 s) are `UE_LOG` at Log level, not `SAIL_LOG`: they stay out of the
 session log.
 
 ## Rules

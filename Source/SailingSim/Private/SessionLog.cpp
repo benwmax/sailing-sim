@@ -67,10 +67,14 @@ namespace SailSessionLogLocal
 		L.Pending.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
 	}
 
+	thread_local bool bInLog = false;   // this thread is changing the buffer (DrainForCrash leaves it alone)
+	struct FInLog { FInLog() { bInLog = true; } ~FInLog() { bInLog = false; } };
+
 	/** Buffers one line, counting it against the cap; the caller holds Lock. */
 	void Raw(FLog& L, const FString& Text)
 	{
 		if (!L.bOpen || L.bCapped) return;
+		const FInLog InLog;
 		const FTCHARToUTF8 Utf8(*Text);
 		if (L.Bytes + Utf8.Length() > SailSessionLog::MaxBytes)
 		{
@@ -106,11 +110,12 @@ namespace SailSessionLogLocal
 		DrainHeld(L);
 	}
 
-	/** A crash: whatever is buffered goes out, unless the crashing thread holds a lock (then nothing waits on it). */
+	/** A crash: whatever is buffered goes out, unless another thread holds a lock (then nothing waits on it), or the crash
+	 *  is inside the log itself on this thread (bInLog: the buffer may be half updated). */
 	void DrainForCrash()
 	{
 		FLog& L = Log();
-		if (!L.FileLock.TryLock()) return;
+		if (bInLog || !L.FileLock.TryLock()) return;
 		if (L.Lock.TryLock())
 		{
 			TArray<uint8> Out;
@@ -181,15 +186,18 @@ namespace SailSessionLogLocal
 	/** Opens (or reopens) the log; the caller holds FileLock. What the old file had buffered is written to it first. */
 	void Open(FLog& L, const FString& Directory, bool bRotate)
 	{
-		DrainHeld(L);
-		L.File.Reset();
-		L.Directory = Directory;
 		{
+			// The old file's lines and the reset in one section: a line from another thread lands in the old file or the new.
 			FScopeLock Guard(&L.Lock);
+			TArray<uint8> Out;
+			Swap(Out, L.Pending);
+			WriteOut(L, Out);
 			L.bOpen = false;
 			L.bCapped = false;
 			L.Bytes = 0;
 		}
+		L.File.Reset();
+		L.Directory = Directory;
 		IFileManager::Get().MakeDirectory(*Directory, true);
 		if (bRotate) Rotate(Directory);
 		L.File.Reset(FPlatformFileManager::Get().GetPlatformFile().OpenWrite(*FileIn(Directory, 0), !bRotate, true));

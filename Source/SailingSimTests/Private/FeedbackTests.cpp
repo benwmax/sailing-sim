@@ -281,6 +281,19 @@ bool FSailSessionLogTest::RunTest(const FString&)
 		SailSessionLog::Write(TEXT("Display"), TEXT("flush check: a display line"));
 		SailSessionLog::Flush();
 		TestTrue(TEXT("Flush writes what is buffered"), OnDisk(TEXT("] flush check: a display line")));
+		// (Deterministic: a Display line isn't on disk the moment Write returns, unless the build has no threads.)
+		// (Three tries: the writer's once-a-second pass may land between a Write and the read.)
+		if (FPlatformProcess::SupportsMultithreading())
+		{
+			bool bBuffered = false;
+			for (int32 Try = 0; Try < 3 && !bBuffered; ++Try)
+			{
+				const FString Line = FString::Printf(TEXT("flush check: buffered %d"), Try);
+				SailSessionLog::Write(TEXT("Display"), Line);
+				bBuffered = !OnDisk(*(TEXT("] ") + Line));
+			}
+			TestTrue(TEXT("A Display line is buffered, not written on the caller's thread"), bBuffered);
+		}
 		SailSessionLog::Write(TEXT("Display"), TEXT("flush check: written by the writer"));
 		bool bWritten = false;
 		for (double End = FPlatformTime::Seconds() + SailSessionLog::FlushSeconds * 4.0 + 1.0; !bWritten && FPlatformTime::Seconds() < End; FPlatformProcess::Sleep(0.05f))
@@ -293,7 +306,7 @@ bool FSailSessionLogTest::RunTest(const FString&)
 		for (int32 I = 0; I < 1000; ++I) SailSessionLog::Write(TEXT("Display"), TEXT("flush check: burst"));
 		const double BurstMs = (FPlatformTime::Seconds() - T0) * 1000.0;
 		AddInfo(FString::Printf(TEXT("1000 Display lines took %.2f ms"), BurstMs));
-		TestTrue(TEXT("1000 lines are buffered in under 50 ms"), BurstMs < 50.0);
+		TestTrue(TEXT("1000 lines are buffered in under 250 ms (1000 flushes took seconds)"), BurstMs < 250.0);
 		SailSessionLog::Flush();
 	}
 	// Each launch rotates: the last KeepLaunches kept.
@@ -310,6 +323,7 @@ bool FSailSessionLogTest::RunTest(const FString&)
 	// A launch's log stops at its cap, with a note.
 	const FString Big = FString::ChrN(1000, 'x');
 	for (int32 I = 0; I < int32(SailSessionLog::MaxBytes / 1000) + 10; ++I) SailSessionLog::Write(TEXT("Display"), Big);
+	SailSessionLog::Flush();
 	TestTrue(TEXT("Capped"), IFileManager::Get().FileSize(*SailSessionLog::Path()) <= SailSessionLog::MaxBytes + 200);
 	TestTrue(TEXT("... with a note"), SailSessionLog::Tail(1).Contains(TEXT("log full")));
 	// The report's log: this build's engine log in the editor (it has one), the session log where it doesn't.

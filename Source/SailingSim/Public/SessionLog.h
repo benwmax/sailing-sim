@@ -10,8 +10,9 @@
  * quality, resolution, RHI, GPU). Rotated per launch (session-1.txt ... the last KeepLaunches), capped at MaxBytes per
  * launch. Lines are buffered and written by the log's own thread every FlushSeconds, never on the caller's (a flush to a
  * busy disk took up to 100 ms of the game thread); an Error line is on disk before Write returns, a Warning wakes the
- * writer, and the buffer is written at exit, on a crash and before anything reads the file (Tail, ReportLogPath). Every line goes through SailCrashReports::ScrubPaths and loses e-mail addresses:
- * no user names, paths with them, tokens or DSNs.
+ * writer, and the buffer is written at exit, on a crash and before anything reads the file (Tail, ReportLogPath).
+ * Every line goes through SailCrashReports::ScrubPaths and loses e-mail addresses: no user names, paths with them, tokens
+ * or DSNs.
  */
 namespace SailSessionLog
 {

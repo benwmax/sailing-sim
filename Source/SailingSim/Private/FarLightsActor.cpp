@@ -130,7 +130,7 @@ void AFarLightsActor::BeginPlay()
 			}
 		}
 	}
-	UE_LOG(LogSailing, Log, TEXT("Far lights: %d lights (%d colours), %d shore sprites, %d horizon ships on %d lanes, %d city domes"),
+	SAIL_LOG(Display, TEXT("Far lights: %d lights (%d colours), %d shore sprites, %d horizon ships on %d lanes, %d city domes"),
 		Data.Lights.Num(), LightIsms.Num(), Data.Shore.Num(), Ships.Num(), Data.Lanes.Num(), Data.Cities.Num());
 }
 
