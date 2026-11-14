@@ -1,0 +1,425 @@
+{
+  "note": "The running rigging (slice 6, running.py): rope sizes (circumference, in) for the main mast's gear, the fore's and mizzen's by mast_scale, blocks by the rope they take, pins and rails. Every value is an estimate (rule of thumb) unless its src says otherwise: the period rigging tables (Steel 1794, Lees) could not be fetched here (their hosts are blocked from this machine), so the sizes follow the proportions the standing rigging's tables give (slice 4) and are marked as estimates. rope_in also sizes gear not rove yet (leechlines, bowlines, reef tackles, the topgallants' buntlines, trusses, parrels, downhauls, brails, the outhaul, tacks and the headsails' halyards), for the pass that adds it",
+  "mast_scale": {
+    "fore": 0.92,
+    "main": 1.0,
+    "mizzen": 0.75,
+    "note": "the fore's running gear a little lighter than the main's, the mizzen's three quarters (estimate); each size rounded to half an inch"
+  },
+  "rope_in": {
+    "course": {
+      "lift": 4.5,
+      "brace": 4.5,
+      "tack": 6.5,
+      "sheet": 5.0,
+      "clew_garnet": 3.5,
+      "buntline": 3.0,
+      "leechline": 2.5,
+      "bowline": 3.5,
+      "reef_tackle": 2.5,
+      "footrope": 4.0,
+      "stirrup": 3.0,
+      "truss": 5.0
+    },
+    "crossjack": {
+      "lift": 3.5,
+      "brace": 3.0,
+      "footrope": 3.5,
+      "stirrup": 2.5,
+      "truss": 4.0
+    },
+    "topsail": {
+      "tye": 7.0,
+      "halyard": 3.5,
+      "lift": 3.0,
+      "brace": 3.5,
+      "sheet": 6.0,
+      "clewline": 3.0,
+      "buntline": 2.5,
+      "bowline": 3.0,
+      "reef_tackle": 2.5,
+      "footrope": 3.5,
+      "stirrup": 2.5,
+      "parrel": 3.5
+    },
+    "topgallant": {
+      "halyard": 3.0,
+      "lift": 2.0,
+      "brace": 2.0,
+      "sheet": 3.5,
+      "clewline": 2.0,
+      "buntline": 2.0,
+      "bowline": 2.0,
+      "footrope": 2.5,
+      "stirrup": 2.0,
+      "parrel": 2.5
+    },
+    "royal": {
+      "halyard": 2.0,
+      "lift": 1.5,
+      "brace": 1.5,
+      "sheet": 2.0,
+      "clewline": 1.5,
+      "footrope": 2.0,
+      "parrel": 2.0
+    },
+    "headsail": {
+      "halyard": 3.0,
+      "downhaul": 2.0,
+      "sheet": 3.0
+    },
+    "staysail": {
+      "halyard": 2.5,
+      "downhaul": 2.0,
+      "sheet": 2.5,
+      "tack": 2.5
+    },
+    "spanker": {
+      "throat_halyard": 3.5,
+      "peak_halyard": 3.5,
+      "vang": 3.0,
+      "brail": 2.0,
+      "outhaul": 3.5,
+      "topping_lift": 3.5,
+      "boom_sheet": 3.5,
+      "tack": 2.5
+    },
+    "spritsail": {
+      "lift": 3.0,
+      "brace": 3.0,
+      "sling": 4.5
+    },
+    "src": "estimate: the main course's tack (6.5 in), sheet (5 in) and braces (4.5 in) a third to a quarter of its stay's 17.5 in (slice 4's 1797 table, from Constitution's rigging list); the rest scaled to them by rule of thumb"
+  },
+  "block": {
+    "length_of_circ": 3.0,
+    "min_in": 5.0,
+    "strop_of_rope": 0.9,
+    "lead_min_in": 5.0,
+    "note": "a block's shell is about three times its rope's circumference long (a whole number of inches, 5 in at least); its strop a little under the rope's size. Shell 0.78 of its length wide, a single 0.42 thick (0.30 more for each sheave after the first), the sheave 0.54 across (estimate, by eye from period block drawings)",
+    "gravity": 0.12
+  },
+  "pins": {
+    "spacing_in": 10.0,
+    "fife_spacing_in": 9.0,
+    "handle_in": 7.0,
+    "shank_in": 9.0,
+    "diam_in": 1.6,
+    "rail_over_deck_ft": 3.0,
+    "fife_over_deck_ft": 2.6,
+    "rail_in": [
+      5.0,
+      4.0
+    ],
+    "note": "belaying pins of lignum vitae: a 7 in handle over the rail and the shank through it, every 10 in along the bulwark's pin rails and 9 in on the fife rails (estimate). The gangways' rails stand gangway_inset_in inboard of the waist's rail cap on knees (so a fall from aloft clears the cap's overhang); top: masts whose top's after rail takes pins for the falls from above it (the mizzen's lane under its top is too narrow for all its falls)",
+    "top": [
+      "mizzen"
+    ],
+    "gangway_inset_in": 6.5
+  },
+  "footrope": {
+    "drop_ft": {
+      "lower": 3.0,
+      "topmast": 2.6,
+      "topgallant": 2.0,
+      "pole": 1.6
+    },
+    "aft_in": 10.0,
+    "stirrups": {
+      "lower": 3,
+      "topmast": 2,
+      "topgallant": 1,
+      "pole": 0
+    },
+    "note": "footropes (horses) hang this far under the yard and abaft it, on stirrups evenly spaced along them; each runs from its yardarm in to the yard just outside its quarter block (the royal's, outside its clewline block; a topsail yard's, shroud_clear_m outside the foremost topmast shroud where the yard lowered onto the cap meets it). In the period a lower yard's two crossed at the slings and were made fast on the far side: here they stop short, clear of the quarter blocks, the slings and the jeers (estimate)",
+    "shroud_clear_m": 0.15
+  },
+  "slack": {
+    "clewed_sheet": 0.01,
+    "note": "how much longer than the straight span a slack rope is (its sag): a course's sheet and tack when it is clewed up or furled, and a topsail's, topgallant's or royal's sheet when its sail is clewed up (estimate)"
+  },
+  "brace": {
+    "course": {
+      "pendant_ft": 6.5,
+      "pin_x": -28.18,
+      "hole_aft": 0.08,
+      "hole_over_deck": 1.25,
+      "eyebolt_fwd": 0.5
+    },
+    "note": "the braces (estimate, after Steel 1794 and Lees): a pendant of pendant_ft from each yardarm with a single block (none on the royals: a single brace from the yardarm), the standing part standing_m from the lead block on the yard's side of it. The main course's: standing part at an eyebolt in the quarter, back in through a sheave in the side 0.08 m abaft its pin (pin_x: the pin's ship x). Leads (kind, where, height or ship x): the main's upper braces aft to the mizzen's foremost lower shroud under the crossjack (z, m), so they pass under the mizzen topsail; the crossjack's forward to the main's aftmost lower shroud, its fall abaft that shroud to the quarterdeck rail abaft the main channel (a trailing dict: rails, where it belays; between false, its fall does not come in between two shrouds; toward and off_m, the strop's side and offset); the mizzen's upper braces forward to the main top's after rail (y, m); the fore and fore topsail braces aft to the main stay (port: the preventer stay) under the main topmast staysail's foot, the fore topgallant and royal braces to the main topgallant stay abaft the staysails' heads (ship x, m). rails: where each mast's braces belay. A lead block on a shroud hangs on a strop lead_off_m off it, and its fall comes in between two shrouds to the rail (through the ladder, clear of the ratlines)",
+    "pendant_ft": {
+      "course": 6.5,
+      "crossjack": 2.0,
+      "topsail": 3.0,
+      "topgallant": 1.5,
+      "royal": 0.0
+    },
+    "standing_m": 0.35,
+    "leads": {
+      "main": {
+        "1": [
+          "shroud",
+          "mizzen",
+          0,
+          13.5
+        ],
+        "2": [
+          "shroud",
+          "mizzen",
+          0,
+          14.5
+        ],
+        "3": [
+          "shroud",
+          "mizzen",
+          0,
+          15.5
+        ],
+        "rails": [
+          "fife_mizzen",
+          "qd3",
+          "qd2"
+        ]
+      },
+      "mizzen": {
+        "0": [
+          "shroud",
+          "main",
+          -1,
+          16.0,
+          {
+            "rails": [
+              "qd5",
+              "qd4"
+            ],
+            "between": false
+          }
+        ],
+        "1": [
+          "top",
+          "main",
+          1.61
+        ],
+        "2": [
+          "top",
+          "main",
+          1.18
+        ],
+        "3": [
+          "top",
+          "main",
+          0.7
+        ],
+        "rails": [
+          "fife_main",
+          "qd7",
+          "qd6"
+        ]
+      },
+      "fore": {
+        "0": [
+          "stay",
+          1.0
+        ],
+        "1": [
+          "stay",
+          2.5
+        ],
+        "2": [
+          "tg_stay",
+          0.7
+        ],
+        "3": [
+          "tg_stay",
+          0.2
+        ],
+        "rails": [
+          "gw"
+        ]
+      }
+    },
+    "lead_pendant_m": 0.08,
+    "lead_off_m": 0.1
+  },
+  "course": {
+    "main": {
+      "sheet_kevel_dx": -0.38,
+      "tack_dx": 4.2,
+      "tack_over_deck": 0.45,
+      "chesstree_proud": 0.025,
+      "tack_kevel_dx": 0.38,
+      "tack_clew_dx": 0.05
+    },
+    "fore": {
+      "sheet_eyebolt_dx": -0.25,
+      "sheet_hole_dx": 0.05,
+      "sheet_kevel_dx": -0.38,
+      "tack_dx": 0.9,
+      "tack_over_deck": 1.1,
+      "chesstree_proud": 0.1,
+      "tack_kevel_dx": 0.38,
+      "tack_clew_dx": 0.15
+    },
+    "note": "the courses' sheets and tacks (m, ship x along the side; estimate). The main's sheet: standing part at an eyebolt 0.42 m abaft the quarterdeck's break, in through a sheave 0.12 m abaft it, belayed to a kevel sheet_kevel_dx from the sheave; its tack forward tack_dx to the chesstree tack_over_deck above the deck. The fore's sheet comes down under its clew forward of the fore channel (eyebolt and sheave sheet_eyebolt_dx and sheet_hole_dx from the clew braced square), its tack tack_dx forward of that through a chesstree standing chesstree_proud off the bow's flare, so neither rope lies on the channel or the shrouds. tack_clew_dx: how far forward of the clew the tack is bent, set (the fore's clear of the sheet block hanging under the clew)"
+  },
+  "fore_and_aft": {
+    "sheets": {
+      "fore_topmast_staysail": {
+        "x": 24.0,
+        "over_deck": 1.35,
+        "kevel_dx": 0.25,
+        "proud": 0.06
+      },
+      "jib": {
+        "x": 24.6,
+        "over_deck": 1.35,
+        "kevel_dx": 0.25,
+        "proud": 0.06
+      },
+      "flying_jib": {
+        "x": 25.2,
+        "over_deck": 1.35,
+        "kevel_dx": 0.25,
+        "proud": 0.06
+      },
+      "main_staysail": {
+        "rails": [
+          "gw"
+        ]
+      },
+      "main_topmast_staysail": {
+        "rails": [
+          "gw"
+        ]
+      },
+      "main_topgallant_staysail": {
+        "rails": [
+          "gw"
+        ]
+      },
+      "mizzen_staysail": {
+        "rails": [
+          "qd5",
+          "qd4"
+        ],
+        "mast": "mizzen"
+      },
+      "mizzen_topmast_staysail": {
+        "rails": [
+          "qd5",
+          "qd4"
+        ],
+        "mast": "mizzen"
+      },
+      "note": "each headsail's and staysail's lee sheet, set only (the sails are drawn on the port tack, the lee to starboard; hauled down or stowed, a sheet is stopped in on the heap, so it is not drawn): the headsails' in through a sheave in the starboard bow x (m, ship) over_deck above the deck (its rope's bed proud of the bow's flare), belayed to a kevel kevel_dx from it; the staysails' to the pin rails named (mast: the size scaled as that mast's gear; estimate)"
+    },
+    "halyards": {
+      "mizzen_staysail": {
+        "block_down_m": 0.8,
+        "pendant_m": 0.1,
+        "rails": [
+          "fife_mizzen"
+        ],
+        "side": 1,
+        "mast": "mizzen"
+      },
+      "note": "a staysail's halyard: bent to the head (hauled down, the head on top of the heap), up through a single block on a pendant from the stay block_down_m below its eye, the fall straight down to the rails named on side side. Only the mizzen staysail's: the main staysails' falls would come down through the main course and topsail when they are set, and the headsails' halyards lead to the fore top's crowded throat, so they are left for a later pass (estimate)"
+    },
+    "spanker": {
+      "throat_side": 1,
+      "throat_block": [
+        -0.5,
+        0.25,
+        0.0
+      ],
+      "throat_gaff_x": -0.55,
+      "throat_rails": [
+        "fife_mizzen"
+      ],
+      "peak_side": -1,
+      "peak_block_below_cap": 0.4,
+      "peak_at": 0.6,
+      "peak_pendant_m": 0.2,
+      "peak_rails": [
+        "fife_mizzen",
+        "qd3"
+      ],
+      "vang_in_m": 0.25,
+      "vang_rails": [
+        "qd0"
+      ],
+      "lift_in_m": 0.3,
+      "lift_block": [
+        0.25,
+        0.75,
+        0.05
+      ],
+      "lift_rails": [
+        "fife_mizzen",
+        "qd3"
+      ],
+      "sheet_x": -30.66,
+      "sheet_rails": [
+        "qd0"
+      ],
+      "note": "the spanker's gear (estimate, after Lees): the throat halyard a tackle from a block under the starboard trestletree (throat_block: x from the mast's axis, y, s above the hounds, m) to one on the gaff's heel throat_gaff_x along it; the peak halyard from a strop round the masthead's after side through a block on the gaff peak_at of its length out, a block peak_block_below_cap under the cap, down abaft the top's rim (port); a vang each side from vang_in_m inside the gaff's end to the quarter's rail; a topping lift each side from lift_in_m inside the boom's end up to a block under the top's after rim (lift_block: x inside the rim, y, s above the hounds) and down, laid over the cloth where it lies against it; the boom sheet a double block under the boom over the taffrail (sheet_x, ship) and a single on it. No brails, outhaul or tack lashing yet"
+    },
+    "spritsail": {
+      "lift_in_m": 0.5,
+      "lift_cap": [
+        0.06,
+        0.25,
+        -0.45
+      ],
+      "brace_in_m": 0.35,
+      "brace_x": 24.3,
+      "brace_over_deck": 0.45,
+      "brace_kevel_dx": -0.3,
+      "note": "the spritsail yard's gear (the yard carries no sail here): slings round the bowsprit; a lift from lift_in_m inside each yardarm to an eyebolt under the bowsprit cap's side (lift_cap: from the cap's centre, m); a brace from brace_in_m inside each yardarm aft, in through a sheave in the bow at brace_x (ship) brace_over_deck above the deck to a kevel brace_kevel_dx from it (estimate: single ropes, no pendant blocks)"
+    },
+    "note": "the fore-and-aft sails' gear and the spritsail yard's (running.py fa_gear)"
+  },
+  "check": {
+    "gap_in": 0.25,
+    "skip_end_in": 6.0,
+    "note": "the clearance check: every line's surface at least gap_in clear of everything it doesn't belay to or run through (within skip_end_in of a station it may touch what holds it; within in_cloth_m of a clewline's or clew garnet's block or a buntline's end clewed up, the cloth gathered round it; clewed up, a clewline or clew garnet lying along its yard may press cloth_give_m into the cloth gathered under the yard); the build fails below build_gap_in (running_room). A fall leads fair: no two falls to one side's rails cross, seen from inboard, within cross_above_m above the higher of their pins (the placement trades pins where they would; the build lists any left, running_room.crossings). Estimate, the review's measure (crossings below 8 m, about 3 m over the rails): the height the hands haul in, where a fall hauled on would chafe the one it crosses",
+    "build_gap_in": 0.1,
+    "in_cloth_m": 0.3,
+    "cloth_give_m": 0.01,
+    "cross_above_m": 3.0
+  },
+  "fife": {
+    "fore": [
+      0.45,
+      -1.3,
+      1.0,
+      "fwd"
+    ],
+    "main": [
+      0.4,
+      -1.3,
+      1.05,
+      "fwd"
+    ],
+    "mizzen": [
+      1.2,
+      -0.4,
+      0.85,
+      "aft"
+    ],
+    "note": "each mast's fife rail (m from the mast's axis at the deck): forward and after ends of its arms, the arms' half spacing, its open end. The main's opens forward at the quarterdeck's break, the fore's toward the bowsprit's heel, the mizzen's aft toward the spanker's boom (estimate)"
+  },
+  "mesh": {
+    "simplify_of_r": 0.3,
+    "kevel_m": [
+      0.5,
+      0.14
+    ],
+    "coil": {
+      "drop_max_m": 0.55,
+      "drop_of_circ": 0.06,
+      "points": 10
+    },
+    "note": "a rope's path is thinned to the points that keep it within simplify_of_r of its radius; a kevel is kevel_m long and high; a fall's coil hangs on its pin in two loops drop_of_circ m per inch of the rope's circumference (and 0.15 m) deep, drop_max_m at most, points round each loop (estimate)"
+  }
+}
