@@ -298,6 +298,22 @@ namespace SailHudImpl
 	TAttribute<FText> Attr(const FText& Ref) { return TAttribute<FText>::CreateLambda([&Ref]() { return Ref; }); }
 	TAttribute<FSlateColor> ColorAttr(const FLinearColor& Ref) { return TAttribute<FSlateColor>::CreateLambda([&Ref]() { return FSlateColor(Ref); }); }
 
+	/** Settings > Display > HUD size as a scale (0.85 to 1.3); -SailingHudScale=<percent> overrides it for layout stills
+	 *  (docs/hud-layout/). The argument is read once per command line (it is swapped by bench lists). */
+	float HudScaleNow()
+	{
+		static uint32 Gen = MAX_uint32;
+		static int32 ArgPercent = 0;
+		if (Gen != SailingArgs::Generation())
+		{
+			Gen = SailingArgs::Generation();
+			FString V;
+			ArgPercent = SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingHudScale="), V) ? FCString::Atoi(*V) : 0;
+		}
+		const int32 Percent = ArgPercent > 0 ? ArgPercent : USailingSettings::Get()->HudScale;
+		return FMath::Clamp(Percent, 85, 130) / 100.f;
+	}
+
 	/** Message text over the scene: the HUD's text with a dark drop shadow, so a letter still reads where the card's edge
 	 *  meets bright water or sky. */
 	TSharedRef<SWidget> ShadowText(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap)
@@ -360,7 +376,7 @@ void SSailHud::Construct(const FArguments& A)
 		SNew(SInvalidationPanel)
 		[
 		// Settings > Display > HUD size scales every panel around its anchor.
-		SNew(SDPIScaler).DPIScale_Lambda([]() { return FMath::Clamp(USailingSettings::Get()->HudScale, 85, 130) / 100.f; })
+		SNew(SDPIScaler).DPIScale_Lambda([]() { return HudScaleNow(); })
 		[
 		SNew(SOverlay).Visibility_Lambda([this]()
 		{
@@ -625,7 +641,7 @@ void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 {
 	SCompoundWidget::Tick(G, Now, Dt);
 	SAILING_PERF_SCOPE(Hud);
-	LayoutWidth = float(G.GetLocalSize().X) / (FMath::Clamp(USailingSettings::Get()->HudScale, 85, 130) / 100.f);
+	LayoutWidth = float(G.GetLocalSize().X) / SailHudImpl::HudScaleNow();
 	if (Now >= NextRefresh)
 	{
 		NextRefresh = Now + (SailUI::IsLow() ? 0.2 : 0.1);

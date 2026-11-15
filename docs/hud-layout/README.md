@@ -49,7 +49,8 @@ Worst-case stacks (captain's call, toast, points and signals at once, about 330 
 130%. The top right has no pause button to clash with: pause is a key (Esc or the pad's Menu), shown in the bottom-right
 hints. There is no touch layout yet; the pad uses the same HUD.
 
-`-SailingHudSample` holds up a toast, a points card and a signal so the layout can be photographed at any size, e.g.
+`-SailingHudSample` holds up a toast, a points card and a signal so the layout can be photographed at any size
+(`-SailingHudScale=<percent>`, 85 to 130, stands in for Settings > HUD size), e.g.
 `RESX=2560 RESY=1080 scripts/run-game.sh 8 -ForceRes -SailingHudSample -SailingDrill=LeavetheDock`.
 
 ## Screenshots
