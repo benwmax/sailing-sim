@@ -5,6 +5,8 @@ half-round mouldings and low leaves on a surface; used on the head's trailboards
     relief(mesh, design, band.to_xz, place, mat)     place(XZ (n, 2)) -> (points (n, 3), outward normals (n, 3))
 A design is {"strokes": [(points (n, 2) in (s, w) metres along and across the band, radius (n,))], "leaves": [(base
 (2,), direction (2,), length, width, height)], "berries": [(centre (2,), radius)]}.
+    relief(..., seat=Seat(V, F))                    leaves (draped) and berries set down on a curved surface's faces
+    seated(parts, carriers)                         the build's check that every piece is on what it is carved on
 """
 import math
 
@@ -198,10 +200,10 @@ def leaf_mesh(base, d, nrm, length, width, height, mat, nu=7, nv=5):
     return V, F, [mat] * len(F)
 
 
-def leaf_draped(base, d, length, width, height, mat, to_xz, place, nu=7, nv=5):
+def leaf_draped(base, d, length, width, height, mat, to_xz, place, nu=7, nv=5, seat=None):
     """leaf_mesh laid over a curved surface: its outline drawn in the design's plane (base, d: 2D) and each of its
     points set on the surface there (to_xz, then place) and raised along the surface's normal, so a long leaf follows
-    a surface that curves away under it."""
+    a surface that curves away under it; on a seat, each point set on the faces themselves, so its rim stays sunk."""
     base = np.asarray(base, float)
     d = np.asarray(d, float) / np.linalg.norm(d)
     w_ax = np.array([-d[1], d[0]])
@@ -215,6 +217,8 @@ def leaf_draped(base, d, length, width, height, mat, to_xz, place, nu=7, nv=5):
             H.append(height * (1.0 - v * v) ** 0.6 * math.sin(math.pi * t) ** 0.5 + 0.004 - 0.006)
     P3, N3 = place(to_xz(np.array(P2)))
     N3 = unit(N3)
+    if seat is not None:
+        H = np.array(H) + seat.along(P3, N3)
     V = P3 + N3 * np.array(H)[:, None]
     F = []
     for i in range(nu):
@@ -228,11 +232,48 @@ def leaf_draped(base, d, length, width, height, mat, to_xz, place, nu=7, nv=5):
     return V, F, [mat] * len(F)
 
 
-def berry_mesh(c, nrm, r, mat, n=8):
-    """A small half-round boss (the spiral's eye)."""
+class Seat:
+    """The surface the work is laid on as it is meshed: its flat faces lie inside a curved surface by their chords'
+    sag, so a leaf or a berry set on the curve itself can stand off them, its open underside showing. along() says how
+    far the faces lie under the curve, and the work is set down onto them (leaf_draped, berry_mesh)."""
+
+    def __init__(self, V, F, reach=0.05):
+        from mathutils.bvhtree import BVHTree
+        self.tree = BVHTree.FromPolygons(np.asarray(V, float).tolist(), [tuple(int(i) for i in f) for f in F])
+        self.reach = reach
+
+    def along(self, P3, N3):
+        """for each point P3 with its outward normal N3: how far under it the faces lie along N3 (negative): of the
+        faces a line along the normal crosses within reach either way, the one nearest the point; 0 where that one lies
+        over it (the work is only sunk deeper there) or none is found"""
+        out = np.zeros(len(P3))
+        for i, (p, n) in enumerate(zip(np.asarray(P3, float), unit(N3))):
+            start, gone, best = p + self.reach * n, 0.0, None
+            while gone < 2.0 * self.reach:
+                hit = self.tree.ray_cast(start.tolist(), (-n).tolist(), 2.0 * self.reach - gone)
+                if hit[0] is None:
+                    break
+                gone += hit[3]
+                h = self.reach - gone                       # the face's height over the point along the normal
+                if best is None or abs(h) < abs(best):
+                    best = h
+                gone += 1e-5
+                start = p + (self.reach - gone) * n
+            if best is not None:
+                out[i] = min(best, 0.0)
+        return out
+
+
+def berry_mesh(c, nrm, r, mat, n=8, seat=None):
+    """A small half-round boss (the spiral's eye), its rim sunk a fifth of its radius; on a seat, set down so the rim is
+    sunk so far under the faces wherever they lie lowest beneath it."""
     nrm = unit(nrm)
     a = unit(np.cross(nrm, [0.0, 0.0, 1.0] if abs(nrm[2]) < 0.9 else [1.0, 0.0, 0.0]))
     b = np.cross(nrm, a)
+    if seat is not None:
+        th = np.arange(n) * 2 * math.pi / n
+        under = np.concatenate([[c], c + r * (np.cos(th)[:, None] * a + np.sin(th)[:, None] * b)])
+        c = c + nrm * float(seat.along(under, np.tile(nrm, (len(under), 1))).min())
     rings = []
     for k in range(4):
         el = math.pi / 2 * k / 4
@@ -262,10 +303,11 @@ def tri_count(F):
     return sum(len(f) - 2 for f in F)
 
 
-def relief(mesh, design, to_xz, place, mat, drape=False):
+def relief(mesh, design, to_xz, place, mat, drape=False, seat=None):
     """Lay a design on a surface: strokes as half-round mouldings, leaves and berries. to_xz maps the design's (s, w)
     to elevation (x, z); place(XZ) gives the surface's points and outward normals there. drape: each leaf follows
-    the surface under it (leaf_draped) rather than lying flat on its tangent plane at its base"""
+    the surface under it (leaf_draped) rather than lying flat on its tangent plane at its base. seat: the surface as
+    meshed (Seat), on whose faces the draped leaves and the berries are set down"""
     n_tri = 0
     for P2, rad in design["strokes"]:
         XZ = to_xz(P2)
@@ -275,7 +317,7 @@ def relief(mesh, design, to_xz, place, mat, drape=False):
         n_tri += tri_count(F)
     for base, d, L, W, H in design["leaves"]:
         if drape:
-            V, F, M = leaf_draped(base, d, L, W, H, mat, to_xz, place)
+            V, F, M = leaf_draped(base, d, L, W, H, mat, to_xz, place, seat=seat)
             mesh.add(V, F, M)
             n_tri += tri_count(F)
             continue
@@ -288,7 +330,98 @@ def relief(mesh, design, to_xz, place, mat, drape=False):
         n_tri += tri_count(F)
     for c, r in design["berries"]:
         P3, N3 = place(to_xz(np.array([c])))
-        V, F, M = berry_mesh(P3[0], N3[0], r, mat)
+        V, F, M = berry_mesh(P3[0], N3[0], r, mat, seat=seat)
         mesh.add(V, F, M)
         n_tri += tri_count(F)
     return n_tri
+
+
+def seated(parts, carriers, min_m=0.0005, rim_m=0.0001):
+    """Is the carving on what it is carved on? parts: {name: (V (n, 3), triangles (m, 3))} of the carving; carriers:
+    {name: [(V, triangles), ...]} what each may lie on. Every piece of it (a stroke, a leaf, a berry: its connected
+    pieces) must reach into a carrier, and every vertex of an open rim (a leaf or a berry is open underneath) lie in a
+    carrier, or within rim_m of its faces, or in another piece of the same carving that reaches in (a berry in a
+    scroll's eye). In a carrier: min_m behind its nearest face (by that face's normal), or, where carriers' closed
+    blocks overlap (a roof slab let into a cornice), inside one of them by the faces a ray crosses on its way out
+    (entries less exits, the middle of three rays). Returns {name: report}; a report's loose pieces and standing rims
+    are what fails."""
+    from mathutils.bvhtree import BVHTree
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    def tree(V, T):
+        return BVHTree.FromPolygons(np.asarray(V, float).tolist(), np.asarray(T, np.int64).tolist(), all_triangles=True)
+
+    def joined(items):
+        Vs, Ts, base = [], [], 0
+        for Vc, Tc in items:
+            Vs.append(np.asarray(Vc, float))
+            Ts.append(np.asarray(Tc, np.int64) + base)
+            base += len(Vc)
+        return np.concatenate(Vs), np.concatenate(Ts)
+
+    def closed(T):
+        e = np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), 1)
+        return not (np.unique(e, axis=0, return_counts=True)[1] == 1).any()
+
+    def signed(t, P):
+        out = np.empty(len(P))
+        for i, p in enumerate(P):
+            q, n, _, _ = t.find_nearest(p.tolist())
+            out[i] = np.dot(p - np.asarray(q), np.asarray(n)) if q is not None else np.inf
+        return out
+    RAYS = unit(np.array([[0.267, 0.534, 0.802], [-0.6, 0.31, -0.737], [0.11, -0.913, 0.393]]))
+
+    def within(t, p):
+        """inside a closed block: of three rays out from p, the middle count of exits less entries is positive"""
+        if t is None:
+            return False
+        counts = []
+        for d in RAYS:
+            o, w = np.asarray(p, float), 0
+            for _ in range(200):
+                loc, n, _, _ = t.ray_cast(o.tolist(), d.tolist(), 100.0)
+                if loc is None:
+                    break
+                w += 1 if np.dot(d, n) > 0 else -1
+                o = np.asarray(loc) + d * 1e-6
+            counts.append(w)
+        return sorted(counts)[1] > 0
+    report = {}
+    for name, (V, T) in parts.items():
+        V, T = np.asarray(V, float), np.asarray(T, np.int64)
+        tc = tree(*joined(carriers[name]))
+        shut = [(Vc, Tc) for Vc, Tc in carriers[name] if closed(np.asarray(Tc, np.int64))]
+        tw = tree(*joined(shut)) if shut else None
+        n = len(V)
+        E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+        k, lab = connected_components(coo_matrix((np.ones(len(E)), (E[:, 0], E[:, 1])), shape=(n, n)), directed=False)
+        sd = signed(tc, V)
+        deep = np.full(k, np.inf)
+        np.minimum.at(deep, lab, sd)
+        seat = deep <= -min_m
+        for j in np.where(~seat)[0]:
+            seat[j] = any(within(tw, p) for p in V[lab == j][::4])
+        loose = [{"at_m": np.round(V[lab == j].mean(0), 3).tolist(), "nearest_mm": round(float(deep[j]) * 1000, 1)}
+                 for j in np.where(~seat)[0]]
+        u, cnt = np.unique(np.sort(E, 1), axis=0, return_counts=True)
+        rim = np.unique(u[cnt == 1])
+        tp = tree(V, T)
+        tlab = lab[T[:, 0]]
+        off = []
+        for vi in rim[sd[rim] > rim_m]:
+            p = V[vi]
+            if within(tw, p):
+                continue
+            others = [h for h in tp.find_nearest_range(p.tolist(), 0.04)
+                      if tlab[h[2]] != lab[vi] and seat[tlab[h[2]]]]
+            if others:
+                q, nn, _, _ = min(others, key=lambda h: h[3])
+                if np.dot(p - np.asarray(q), np.asarray(nn)) <= rim_m:
+                    continue
+            off.append((float(sd[vi]), np.round(p, 3).tolist()))
+        off.sort(reverse=True)
+        report[name] = {"pieces": int(k), "loose": loose, "rim_vertices": int(len(rim)), "rims_standing": len(off),
+                        "rim_most_off_mm": round(off[0][0] * 1000, 2) if off else None,
+                        "rims_at_m": [p for _, p in off[:6]]}
+    return report

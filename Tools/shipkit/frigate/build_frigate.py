@@ -38,7 +38,8 @@ the knee), and the stern: the taffrail, the carved frieze, the spar deck's stern
 with their sashes and glass, the name, the quarter pieces, the quarter galleries with their lights, roofs and drops,
 the cabin light in each side and the quarter lanterns (held clear of the spanker boom swung to its brace limits);
 decor_room checks every new part against the rest of the ship and the others, the meetings that are by design listed,
-with how deep, in decor_1797.json's meets.
+with how deep, in decor_1797.json's meets, and decor_seated that every piece of the carving reaches into what it is
+carved on, the open rims of its leaves and berries sunk.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
@@ -68,6 +69,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import carve  # noqa: E402
 import deck  # noqa: E402
 import guns  # noqa: E402
 import head  # noqa: E402
@@ -944,6 +946,21 @@ def decor_room():
 
 DECOR_ROOM = decor_room()
 
+
+def decor_seated():
+    """the carving (decor_1797.json's meets' seated) on what it meets by design: every piece of it reaching in, every
+    open rim of a leaf or a berry in it (carve.seated)"""
+    seat = HD.cfg["meets"]["seated"]
+    on = {name: set() for name in seat}
+    for A, B, _, _ in HD.cfg["meets"]["pairs"]:
+        for name in seat:
+            on[name] |= (set(B) if name in A else set()) | (set(A) if name in B else set())
+    tris_of = {n: world_tris(SC.objects[n]) for n in set(seat) | set().union(*on.values())}
+    return carve.seated({n: tris_of[n] for n in seat}, {n: [tris_of[c] for c in sorted(on[n] - set(seat))] for n in seat})
+
+
+DECOR_SEATED = decor_seated()
+
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
@@ -1031,7 +1048,7 @@ stats["deck"] = dict(DK.info, room=DECK_ROOM,
                      triangles={n: stats["objects"][n]["triangles"] for n in DK.parts()},
                      triangles_total=sum(stats["objects"][n]["triangles"] for n in DK.parts()))
 stats["guns"] = dict(GN.info, room=GUN_ROOM, triangles=GUN_TRIS, **GN.rig_stats())
-stats["decor"] = {"head": HD.info, "stern": SN.info, "room": DECOR_ROOM,
+stats["decor"] = {"head": HD.info, "stern": SN.info, "room": DECOR_ROOM, "seated": DECOR_SEATED,
                   "triangles": {n: stats["objects"][n]["triangles"] for n in DECOR},
                   "triangles_total": sum(stats["objects"][n]["triangles"] for n in DECOR)}
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
@@ -1142,6 +1159,9 @@ if STRETCHED:
 if DECOR_ROOM["meet"]:
     raise SystemExit("the head's or the stern's parts meet the ship or each other (build.json decor.room): " +
                      json.dumps(DECOR_ROOM["meet"][:30]))
+UNSEATED = {n: r for n, r in DECOR_SEATED.items() if r["loose"] or r["rims_standing"]}
+if UNSEATED:
+    raise SystemExit("carving stands off what it is carved on (build.json decor.seated): " + json.dumps(UNSEATED))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))

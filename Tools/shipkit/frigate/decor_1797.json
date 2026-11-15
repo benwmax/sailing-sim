@@ -307,7 +307,13 @@
   }
  },
  "meets": {
-  "note": "the head's and stern's parts that meet another part of the ship (or each other) by design, each pair with why and how far (in) either may go into the other; every other meeting fails the build (build_frigate's decor_room, deck.room). Each entry: the parts on one side, the parts on the other, why, the depth allowed: the deepest the build measures over the entry's pairs (deck.room's measure, how far a vertex lies behind the other's nearest face, found within 0.3 m, so never more than 11.8 in) with a quarter inch over, a guard against a part moving deeper",
+  "note": "the head's and stern's parts that meet another part of the ship (or each other) by design, each pair with why and how far (in) either may go into the other; every other meeting fails the build (build_frigate's decor_room, deck.room). Each entry: the parts on one side, the parts on the other, why, the depth allowed: the deepest the build measures over the entry's pairs (deck.room's measure, how far a vertex lies behind the other's nearest face, found within 0.3 m, so never more than 11.8 in) with a quarter inch over, a guard against a part moving deeper. seated: the carving, laid on what it meets by design here; every piece of it must reach into that, and every open rim of a leaf or a berry lie in it (build_frigate's decor_seated, carve.seated)",
+  "seated": [
+   "TrailCarving",
+   "SternCarving",
+   "GalleryCarving",
+   "FigureBaseGilt"
+  ],
   "pairs": [
    [["HeadKnee", "HeadCheeks"], ["Backbone"], "the knee is fayed and bolted to the stem's fore face, the cheeks' after ends to its sides", 3.23],
    [["HeadGratings"], ["Backbone"], "the gratings' inner ends lie on the stem", 0.64],

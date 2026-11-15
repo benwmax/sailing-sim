@@ -534,16 +534,36 @@ class Stern:
         zs = np.linspace(za, zb, 40)
         a, h, wr, o, rc = q["on_face_m"], q["proud_m"], q["wrap_m"], q["out_m"], q["round_m"]
         beads = {1.0: []}
+
+        def frame(z, sgn):
+            """at height z: the face's half breadth, its edge, the level normal there and the way outboard along it"""
+            W = float(self.face.half(z))
+            C = self.face.xyz(sgn * W, z)
+            nf = self.face.normal(sgn * W, z)
+            nf = unit(nf - nf[2] * EZ)                                      # level: the piece is a vertical sweep
+            es = unit(np.cross(EZ, nf) * sgn * np.sign(np.cross(EZ, nf)[1] + 1e-12))  # outboard along the face
+            if es[1] * sgn < 0:
+                es = -es
+            return W, C, nf, es
+
+        def front(UV, sgn):
+            """the piece's face part, h proud of the stern's face (u across as the face's, v up): its points and
+            normals, as the sweep lays it"""
+            def at(u, v):
+                W, C, nf, es = frame(v, sgn)
+                return C + (sgn * u - W) * es + h * nf
+            P, N = [], []
+            for u, v in np.atleast_2d(np.asarray(UV, float)):
+                e = 0.002
+                du, dv = at(u + e, v) - at(u - e, v), at(u, v + e) - at(u, v - e)
+                n_ = unit(np.cross(du, dv))
+                P.append(at(u, v))
+                N.append(n_ if n_ @ frame(v, sgn)[2] > 0 else -n_)
+            return np.array(P), np.array(N)
         for sgn in (1.0,):
             secs = []
             for z in zs:
-                W = float(self.face.half(z))
-                C = self.face.xyz(sgn * W, z)
-                nf = self.face.normal(sgn * W, z)
-                nf = unit(nf - nf[2] * EZ)                                  # level: the piece is a vertical sweep
-                es = unit(np.cross(EZ, nf) * sgn * np.sign(np.cross(EZ, nf)[1] + 1e-12))  # outboard along the face
-                if es[1] * sgn < 0:
-                    es = -es
+                W, C, nf, es = frame(z, sgn)
                 tp = float(self.y_out(z)) - W                               # the planking's thickness at the edge
                 corner = C + (tp + o) * es + h * nf
                 pts = [C - a * es - 0.01 * nf, C - a * es + h * nf]
@@ -561,7 +581,7 @@ class Stern:
                       sgn * EY)
             V, F, M = carve.stroke_mesh(B, nb, np.full(len(B), q["bead_r_m"]), self.paint["carving"])
             g.add(V, F, M)
-            # the volute at its head: on the face part, under the taffrail
+            # the volute at its head: on the face part (as swept, not the stern's face h out), under the taffrail
             vo = q["volute"]
             zc = zb - vo["below_m"]
             W = float(self.face.half(zc))
@@ -571,8 +591,9 @@ class Stern:
             sp = cen + sp * [0.55 * a / vo["r_m"], 1.0]
             r0, r1 = vo["rope_m"]
             design = {"strokes": [(sp, np.linspace(r0, r1, len(sp)))], "leaves": [], "berries": [(sp[-1], 1.4 * r1)]}
-            carve.relief(g, design, lambda P: np.asarray(P, float),
-                         lambda UV: (self.face.at(UV, h), self.face.n_at(UV)), self.paint["carving"])
+            Vm, Fm, _ = m.arrays()
+            carve.relief(g, design, lambda P: np.asarray(P, float), lambda UV, s_=sgn: front(UV, s_),
+                         self.paint["carving"], seat=carve.Seat(Vm, Fm))
         for part, name in ((m, "QuarterPieces"), (g, "SternCarving")):
             V, F, M = part.arrays()
             V = np.asarray(V, float)
@@ -714,6 +735,7 @@ class Stern:
         outline = outline[np.concatenate([[True], np.linalg.norm(np.diff(outline, axis=0), axis=1) > 0.005])]
         to3d = lambda P2, d: self.gmap(P2, 0.5 * depth(P2) + np.asarray(d, float) * np.ones(len(P2)))  # noqa: E731
         slab(body, outline, [], 0.05, to3d, lambda P2: 0.5 * depth(P2), self.paint["ground"])
+        seat = carve.Seat(*body.arrays()[:2])                  # the berries and the garland set down on its faces
         # the scales: rows of scallops, each a half ring hanging from its row with a berry in it, staggered
         sc = gc["scales"]
         R = sc["r_m"]
@@ -729,7 +751,7 @@ class Stern:
                 design["strokes"].append((arc, np.full(len(arc), sc["rope_m"])))
                 design["berries"].append((np.array([s, zr - 0.45 * R]), sc["berry_r_m"]))
         n = carve.relief(g, design, lambda P: np.asarray(P, float),
-                         lambda P2: (self.gmap(P2, depth(P2)), self.g_n(P2, depth)), self.paint["carving"])
+                         lambda P2: (self.gmap(P2, depth(P2)), self.g_n(P2, depth)), self.paint["carving"], seat=seat)
         # the garland down the roof's fore edge: leaves following its curve
         ga = gc["garland"]
         Lf, Wf, Hf = ga["leaf_m"]
@@ -743,7 +765,7 @@ class Stern:
             leaves.append((p, unit(dirn + np.array([0.0, -0.5])), Lf, Wf, Hf))
         n += carve.relief(g, {"strokes": [], "leaves": leaves, "berries": []}, lambda P: np.asarray(P, float),
                           lambda P2: (self.gmap(P2, depth(P2)), self.g_n(P2, depth)), self.paint["carving"],
-                          drape=True)
+                          drape=True, seat=seat)
         self.info["roof"] = {"scales_triangles_a_side": n}
 
     def drop(self, gc, body, g):
@@ -782,7 +804,8 @@ class Stern:
         design = {"strokes": [(Pb, np.full(len(Pb), dr["bead_r_m"]))], "leaves": leaves,
                   "berries": [(pt + [0.0, -0.02], 0.035)]}
         carve.relief(g, design, lambda P: np.asarray(P, float),
-                     lambda P2: (self.gmap(P2, depth(P2)), self.g_n(P2, depth)), self.paint["carving"], drape=True)
+                     lambda P2: (self.gmap(P2, depth(P2)), self.g_n(P2, depth)), self.paint["carving"], drape=True,
+                     seat=carve.Seat(*body.arrays()[:2]))
 
     def aft_light(self, gc, frame, sash, glass):
         """a light in the gallery's after face: a sash of one pane by three, in a casing, between the planking and the
