@@ -95,10 +95,14 @@ namespace SailCatalog
 				// #490: what each still shows (Tools/ui/make_ui_art.py): a Catalina 30, the J/22, the storm (the J/22 small under the shelf
 				// cloud: storm-lake.camera.json is a Chase shot of her), the Sunfish, the Catalina 22. The lake has no boat-free still,
 				// so its other boats load on the plain screen.
-				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
+				// 5..11: the slice boats in the other looks (docs/loading-stills, scenes.csv order).
+				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Catalina22),
+					int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Sunfish), int32(EBoatType::J22), int32(EBoatType::Sunfish) };
 				// Their light (each capture's camera.json): rh-c30-evening 19:36 in June, sun 10.8 deg; j22-moderate-chase noon;
-				// storm-lake the shelf cloud; the Sunfish and Catalina 22 chase stills a fair afternoon (docs/ui-490).
-				W.LoadingLooks = { ELoadingLook::LowSun, ELoadingLook::Day, ELoadingLook::Storm, ELoadingLook::Day, ELoadingLook::Day };
+				// storm-lake the shelf cloud; the Sunfish and Catalina 22 chase stills a fair afternoon (docs/ui-490); then
+				// j22/sunfish-lowsun (19:36 in June), j22/sunfish-grey (overcast), sunfish-storm, j22/sunfish-night (21:30, moon).
+				W.LoadingLooks = { ELoadingLook::LowSun, ELoadingLook::Day, ELoadingLook::Storm, ELoadingLook::Day, ELoadingLook::Day,
+					ELoadingLook::LowSun, ELoadingLook::LowSun, ELoadingLook::Grey, ELoadingLook::Grey, ELoadingLook::Storm, ELoadingLook::Night, ELoadingLook::Night };
 				for (int32 I = 0; I < W.LoadingBoats.Num(); ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });

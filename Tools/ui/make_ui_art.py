@@ -137,6 +137,12 @@ for i, src in enumerate((CAP + "rh-c30-evening.png", CAP + "j22-moderate-chase.p
 CAP490 = "docs/ui-490/captures/"
 for i, src in ((3, CAP490 + "sunfish-chase.jpg"), (4, CAP490 + "catalina22-chase.jpg")):
     crop(src, f"T_Load_RayHubbard_{i}.jpg")
+# Loading stills that match the weather (docs/loading-stills): the slice boats in the other looks, 5..11 in scenes.csv
+# order (captured at 1920x1080, already 1600x900); SailCatalog tags each with its boat and look.
+CAPLS = "docs/loading-stills/captures/"
+LOOKS = ("j22-lowsun", "sunfish-lowsun", "j22-grey", "sunfish-grey", "sunfish-storm", "j22-night", "sunfish-night")
+for i, n in enumerate(LOOKS, start=5):
+    crop(CAPLS + n + ".jpg", f"T_Load_RayHubbard_{i}.jpg")
 for i, src in enumerate((CAP4 + "bay-j22-chase.png", CAP4 + "bay-hobie-chase.png", CAP + "sunfish-reach.png")):
     crop(src, f"T_Load_GalvestonBay_{i}.jpg")
 crop(CAP + "j22-heavy-chase.png", "T_Title_RayHubbard.jpg")
