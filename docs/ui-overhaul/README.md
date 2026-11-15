@@ -135,6 +135,17 @@ The stills of phase 1 and 2 (this folder) showed text that could not be read, an
 - The step bar lies on its own strip of glass, with thicker bars and readable upcoming steps.
 - "Choose a boat" and "Set the conditions" are sentence case, and the boat's name is as written.
 
+## Phase 2c: pause, briefing and quiz on paper
+
+- Pause: the session so far (distance, top speed, the coach's note) is one slip of chart paper; the menu stays on the
+  scene with its heading in chart paper.
+- Briefing: two sheets, the lesson and its steps ("What good looks like" and "Common mistakes" in the paper's starboard
+  green and warning).
+- Quiz: one sheet; a right or wrong answer is edged in the paper's starboard or port.
+
+Stills: `pause`, `briefing` (`-SailingDrill=LeavetheDock -SailingFrontEnd=Briefing`), `quiz`
+(`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be
