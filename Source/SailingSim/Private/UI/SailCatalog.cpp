@@ -96,7 +96,9 @@ namespace SailCatalog
 				// cloud: storm-lake.camera.json is a Chase shot of her), the Sunfish, the Catalina 22. The lake has no boat-free still,
 				// so its other boats load on the plain screen.
 				W.LoadingBoats = { int32(EBoatType::Catalina30), int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::Sunfish), int32(EBoatType::Catalina22) };
-				W.LoadingStormy = { 2 };   // #595: storm-lake (the shelf cloud) only when the session has storms
+				// Their light (each capture's camera.json): rh-c30-evening 19:36 in June, sun 10.8 deg; j22-moderate-chase noon;
+				// storm-lake the shelf cloud; the Sunfish and Catalina 22 chase stills a fair afternoon (docs/ui-490).
+				W.LoadingLooks = { ELoadingLook::LowSun, ELoadingLook::Day, ELoadingLook::Storm, ELoadingLook::Day, ELoadingLook::Day };
 				for (int32 I = 0; I < W.LoadingBoats.Num(); ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ TEXT("22,745"), TEXT("Acres") });
@@ -116,6 +118,7 @@ namespace SailCatalog
 				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
 				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16), int32(EBoatType::Sunfish) };   // #490
+				W.LoadingLooks = { ELoadingLook::Day, ELoadingLook::Day, ELoadingLook::Day };   // bay chase stills and sunfish-reach: 13:00, fair
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -134,6 +137,7 @@ namespace SailCatalog
 				W.CardTexture = TEXT("/Game/UI/T_Card_Marseille.T_Card_Marseille");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_Marseille.T_Title_Marseille");
 				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::J22), int32(EBoatType::J22) };   // #490: the J/22 in all three
+				W.LoadingLooks = { ELoadingLook::Day, ELoadingLook::Day, ELoadingLook::Day };   // clear Mediterranean days
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_Marseille_%d.T_Load_Marseille_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -154,6 +158,7 @@ namespace SailCatalog
 				W.CardTexture = TEXT("/Game/UI/T_Card_GalvestonBay.T_Card_GalvestonBay");
 				W.TitleTexture = TEXT("/Game/UI/T_Title_GalvestonBay.T_Title_GalvestonBay");
 				W.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16), int32(EBoatType::Sunfish) };   // #490
+				W.LoadingLooks = { ELoadingLook::Day, ELoadingLook::Day, ELoadingLook::Day };   // bay chase stills and sunfish-reach: 13:00, fair
 				for (int32 I = 0; I < 3; ++I) W.LoadingTextures.Add(FString::Printf(TEXT("/Game/UI/T_Load_GalvestonBay_%d.T_Load_GalvestonBay_%d"), I, I));
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
@@ -237,22 +242,37 @@ namespace SailCatalog
 		for (const FWorld& W : Worlds()) if (W.Index == Want) return W;
 		return Worlds()[0];
 	}
-	TArray<FString> LoadingStills(const FWorld& W, int32 BoatType, bool bStormy)
+	TArray<FString> LoadingStills(const FWorld& W, int32 BoatType, ELoadingLook Look)
 	{
-		TArray<FString> Own, Neutral, Storm;
+		TArray<FString> Own, Neutral;
 		for (int32 I = 0; I < W.LoadingTextures.Num(); ++I)
 		{
 			if (!W.LoadingBoats.IsValidIndex(I)) continue;   // untagged: could show any boat, so never shown
+			if (!W.LoadingLooks.IsValidIndex(I) || W.LoadingLooks[I] != Look) continue;   // another weather's (or any): never
 			const int32 Shows = W.LoadingBoats[I];
-			if (W.LoadingStormy.Contains(I))
-			{
-				if (bStormy && (Shows == BoatType || Shows == FWorld::NoBoat)) Storm.Add(W.LoadingTextures[I]);
-				continue;   // a storm still on a fair day: never
-			}
 			if (Shows == BoatType) Own.Add(W.LoadingTextures[I]);
 			else if (Shows == FWorld::NoBoat) Neutral.Add(W.LoadingTextures[I]);
 		}
-		return Storm.Num() ? Storm : (Own.Num() ? Own : Neutral);
+		return Own.Num() ? Own : Neutral;
+	}
+	ELoadingLook LoadingLook(const FSailConditions& K, int32 WorldIndex)
+	{
+		// The sky decides once the sun is up; after sunset every sky is a night still (a night storm is not the noon shelf).
+		if (SunElevationDeg(K.LocalHour, K.Month, K.Day, WorldIndex) < -0.833) return ELoadingLook::Night;
+		switch (K.Sky)
+		{
+		case ESailSky::Storms: return ELoadingLook::Storm;
+		case ESailSky::Fog: return ELoadingLook::Fog;
+		case ESailSky::Overcast:
+		case ESailSky::Rain: return ELoadingLook::Grey;
+		default: break;
+		}
+		return SunElevationDeg(K.LocalHour, K.Month, K.Day, WorldIndex) < 12.0 ? ELoadingLook::LowSun : ELoadingLook::Day;
+	}
+	const TCHAR* LoadingLookName(ELoadingLook Look)
+	{
+		static const TCHAR* Names[] = { TEXT("Day"), TEXT("LowSun"), TEXT("Grey"), TEXT("Fog"), TEXT("Storm"), TEXT("Night") };
+		return Names[FMath::Clamp(int32(Look), 0, int32(UE_ARRAY_COUNT(Names)) - 1)];
 	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
 	{
@@ -335,16 +355,23 @@ namespace SailCatalog
 		return Boats()[0]; // a boat the Boat screen does not list (the maxi) reads as the J/22's card
 	}
 
+	double SunElevationDeg(float Hour, int32 Month, int32 Day, int32 WorldIndex)
+	{
+		const bool bMarseille = WorldIndex == 3;
+		const double Lat = WorldIndex == 0 ? 32.82 : (bMarseille ? 43.29 : 29.5), Lon = WorldIndex == 0 ? -96.5 : (bMarseille ? 5.37 : -94.9);
+		const int32 Doy = FDateTime(2026, FMath::Clamp(Month, 1, 12), FMath::Clamp(Day, 1, 28)).GetDayOfYear();
+		const bool bSummer = Month >= 3 && Month <= 10;
+		const double Utc = bMarseille ? (bSummer ? 2.0 : 1.0) : (bSummer ? -5.0 : -6.0);   // CEST / CET, CDT / CST
+		double El = 0.0, Az = 0.0;
+		ASailingEnvironment::SunPosition(Hour, Doy, Lat, Lon, Utc, El, Az);
+		return El;
+	}
+
 	float SunsetHour(int32 Month, int32 Day, int32 WorldIndex)
 	{
-		const double Lat = WorldIndex == 0 ? 32.82 : 29.5, Lon = WorldIndex == 0 ? -96.5 : -94.9;
-		const int32 Doy = FDateTime(2026, FMath::Clamp(Month, 1, 12), FMath::Clamp(Day, 1, 28)).GetDayOfYear();
-		const double Utc = (Month >= 3 && Month <= 10) ? -5.0 : -6.0;   // CDT / CST
 		for (double H = 15.0; H < 22.0; H += 1.0 / 60.0)
 		{
-			double El, Az;
-			ASailingEnvironment::SunPosition(H, Doy, Lat, Lon, Utc, El, Az);
-			if (El < -0.833) return float(H);
+			if (SunElevationDeg(float(H), Month, Day, WorldIndex) < -0.833) return float(H);
 		}
 		return 20.f;
 	}

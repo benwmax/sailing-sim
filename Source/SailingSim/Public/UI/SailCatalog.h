@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GeoAnchor.h"
 
+struct FSailConditions;
+
 /**
  * Graphics G4: what the front end offers (ui-spec.md 2.5), read from the game's own data rather than typed: launch spots
  * from each world's bake (Content/TerrainData/<World>.json), boat figures from the physics configs and reference polars.
@@ -10,6 +12,18 @@
  */
 namespace SailCatalog
 {
+	/** A loading still's light and sky, and a session's (LoadingLook): a still shows only for a session of its own look, so
+	 *  a fair day never loads under a storm, a grey day or a night session under a sunny noon (Nov 10 audit, findings 1-2). */
+	enum class ELoadingLook : uint8
+	{
+		Day,       // sun 12 deg or more, clear or fair
+		LowSun,    // sun under 12 deg (golden hour, the haze warming: docs/graphics-5), clear or fair
+		Grey,      // overcast or rain
+		Fog,
+		Storm,     // the shelf cloud: the session's sky is Storms
+		Night,     // the sun is down (its upper limb under the horizon)
+	};
+
 	struct FSpot
 	{
 		FString Id;                // stable: the bake's "id", or the name made lower-case with dashes (SpotId)
@@ -34,8 +48,9 @@ namespace SailCatalog
 		TArray<FString> LoadingTextures;
 		/** #490: the boat each loading still shows (EBoatType), NoBoat for a sky or water still; parallel to LoadingTextures. */
 		TArray<int32> LoadingBoats;
-		/** #595: the stills that show a storm (the shelf cloud): only for a stormy session, never on a fair day. */
-		TArray<int32> LoadingStormy;
+		/** The light and sky each loading still shows (ELoadingLook); parallel to LoadingTextures. A still without one is never
+		 *  shown (it could be any weather). */
+		TArray<ELoadingLook> LoadingLooks;
 		static constexpr int32 NoBoat = -1;
 	};
 
@@ -54,9 +69,12 @@ namespace SailCatalog
 	SAILINGSIM_API const TArray<FWorld>& Worlds();
 	SAILINGSIM_API const FWorld& World(int32 Index);
 	/** #490: the world's loading stills that suit a session's boat: those showing that boat, else those showing none; empty
-	 *  when there is neither (the loading screen goes plain rather than show another boat). #595: a storm still only when the
-	 *  session is stormy (bStormy), and then it is the one shown if it has the boat. */
-	SAILINGSIM_API TArray<FString> LoadingStills(const FWorld& World, int32 BoatType, bool bStormy = false);
+	 *  when there is neither (the loading screen goes plain rather than show another boat). Only stills of the session's
+	 *  look: the plain screen rather than another weather's still. */
+	SAILINGSIM_API TArray<FString> LoadingStills(const FWorld& World, int32 BoatType, ELoadingLook Look = ELoadingLook::Day);
+	/** A session's look from its sky and the sun at its start (the date and hour, at the world's latitude). */
+	SAILINGSIM_API ELoadingLook LoadingLook(const FSailConditions& Conditions, int32 World);
+	SAILINGSIM_API const TCHAR* LoadingLookName(ELoadingLook Look);
 	/** The slice build's menus (USailingSettings::SliceOnly): true for what they show; always true outside a slice build. */
 	SAILINGSIM_API bool InSliceWorld(int32 Index);
 	SAILINGSIM_API bool InSliceBoat(int32 Type);
@@ -82,6 +100,8 @@ namespace SailCatalog
 	SAILINGSIM_API FString Expect(float WindKn, float GustKn, int32 Sky, float Hour, int32 Month, int32 Day, int32 BoatType, int32 World, bool bRealDay = false);
 	/** Sunset (local clock hour) for a date at a world's latitude. */
 	SAILINGSIM_API float SunsetHour(int32 Month, int32 Day, int32 World);
+	/** The sun's elevation (degrees) at a local clock hour on a date in a world (the place and clock SunsetHour uses). */
+	SAILINGSIM_API double SunElevationDeg(float Hour, int32 Month, int32 Day, int32 World);
 	SAILINGSIM_API FString ClockText(float Hour);
 	SAILINGSIM_API FString MonthName(int32 Month);
 

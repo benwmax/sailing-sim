@@ -39,7 +39,7 @@ public:
 	 *  Points of sail for the triangle, Heaving to, Crew overboard), Points of sail for the first job, Thunderstorms when the
 	 *  session has storms; otherwise INDEX_NONE: a random tip that isn't the thunderstorm one. */
 	static int32 FirstTip(const struct FSailSessionConfig& Config);
-	/** #595: the session has storms (its sky is Storms): only then the storm still and tip. */
+	/** #595: the session has storms (its sky is Storms): only then the thunderstorm tip (the still: SailCatalog::LoadingLook). */
 	static bool IsStormy(const struct FSailSessionConfig& Config);
 
 private:
