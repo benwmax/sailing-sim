@@ -118,7 +118,8 @@ is at the plankshear.
   gilt bead along each edge. The band stands 0.15 m higher than the 1927 plan's, to clear the rudder head where it
   comes up through the counter, its top 1 cm under the windows' sill.
 * **The quarter pieces** (`QuarterPieces`): a moulded piece down each corner of the stern from the taffrail's end,
-  over the side planking's ends, with a gilt bead on its outer corner and a gilt volute under the taffrail.
+  over the side planking's ends, with a gilt bead on its outer corner and a gilt volute on its face under the
+  taffrail.
 * **The quarter galleries** (`Gallery`, `GalleryFrame`, `GallerySash`, `GalleryGlass`, `GalleryCarving`): an enclosed
   gallery on each quarter, 3.1 m long, raked with the stern. Over a base and a band of six raised panels, the lights
   band has three windows of two panes by three between pilasters, then a cornice with a gilt bead under it, and a roof
@@ -192,6 +193,10 @@ moving deeper.
 | The glass sits in the sash's rebates | `CabinWindowSash` with `CabinWindowGlass` | 0.58 | 0.33 |
 | The lantern's bracket is let into the quarter piece | `Lanterns` with `QuarterPieces` | 1.05 | 0.80 |
 | The glass panes sit in the lantern's frame | `LanternGlass` with `Lanterns` | 0.25 | 0.00 |
+
+The carving (`meets.seated`) is checked the other way too (`decor_seated`, `build.json` `decor.seated`): every piece of
+it, each stroke, leaf and berry, must reach into what it is carved on, and the open rim under every leaf and berry
+must lie inside it.
 
 The running rigging's own checks (slice 6) see the opened bow and the new parts: every rope clears them, and the
 spanker boom's sheet block now hangs from an eyebolt half sunk in the taffrail's top, its strop through the eye.
@@ -281,7 +286,8 @@ planking, so the rigging, sails, deck and guns that follow must clear them with 
 head or stern part meets anything it doesn't by design or goes deeper than its contact allows (`decor_room`), if a
 pair of parts is named twice in the meets, if the bow's opening leaves an edge uncovered, if the bowsprit's bed comes
 out empty, if the name's band reaches the windows' sill or its letters its beads, if the figure's console doesn't
-cover her footprint, or if the spanker boom at its brace limits comes within 0.3 m of a lantern. `make_figure.py`
+cover her footprint, if a piece of the carving stands off what it is carved on or the open rim of a leaf or a berry
+does (`decor_seated`), or if the spanker boom at its brace limits comes within 0.3 m of a lantern. `make_figure.py`
 fails if the figure is left open anywhere, a fill crosses her, or her faces look inward. Everything else in the ship
 is as slice 8 left it.
 
@@ -298,7 +304,7 @@ the rebuilt parts, were run again on the parts as the final code builds them:
 | 3. The port quarter piece's end caps faced in | the starboard piece is built and mirrored, its faces reversed | every cap faces out |
 | 4. The name's band ran 6.5 cm up into the windows' sill | the band under the sill, 2.58 to 2.845 m (the rudder head comes out of the counter at 2.54); the build fails if it reaches the sill or the letters reach its beads | the band's top 1 cm under the sill, the letters' tops 1.5 cm under the upper bead |
 | 5. The bobstays' runs from their holes to the knee's fore edge passed up to 4.3 cm into the knee | each run follows the knee's side, 2 mm off it | no rope more than 1.8 mm into the knee outside its holes |
-| 6. The cheeks' smoothing lifted their backs up to 5.4 cm off the bow and dug their after ends 7.6 cm in; the lower cheek's fore end stood 5.9 cm out past the cutwater | the back takes whichever is further in of the smoothed and the true side, let in an inch; each section is trimmed against the cutwater at its own height, stopping 5 cm short | every vertex of the cheeks' backs lies in the bow, the stem or the knee; of 44,492 points sampled over the starboard backs, 11 stand off, by up to 9 mm, where the upper cheek passes the stem's fore face (Known gaps); the fore ends 5 cm short of the cutwater |
+| 6. The cheeks' smoothing lifted their backs up to 5.4 cm off the bow and dug their after ends 7.6 cm in; the lower cheek's fore end stood 5.9 cm out past the cutwater | the back takes whichever is further in of the smoothed and the true side, let in an inch; each section is trimmed against the cutwater at its own height, stopping 5 cm short | every vertex of the cheeks' backs lies in the bow, the stem or the knee; of 44,492 points sampled over the starboard backs, 11 stand off, by up to 9 mm, where the upper cheek passes the stem's fore face (Known gaps); the nearest vertex to the cutwater 7.5 cm behind it |
 | 7. The head gratings floated, their top 4.5 cm under the rail and 5 mm off the knee, and their battens were laid across a unit span then stretched (1.8 to 8 cm wide) | seated in the knee's side and the lower rail, their top 1.2 in under the rail's; the bars and openings laid in inches | 1.14 to 1.18 in under the rail's top; let into the knee 0.39 in, the rail 0.79 in, the timbers 1.44 in; bars 2.5 in, openings 3 in |
 | 8. The bow's opening left slits beside and under the bowsprit, where the planking, bulwark, rail cap and bulkhead were cut and nothing covered the cut | the cut is exact, along the knightheads' inner faces and a bed timber hollowed to the spar; the build fails if a cut edge lies outside a knighthead or the bed | every cut edge covered; the bed 3 mm off the spar |
 | 9. Carved strokes that curl back had their end caps facing in: the caps were turned by the stroke's first-to-last chord | each cap turned by its own end | no cap faces in (the trailboards, the stern, the console, the galleries) |
@@ -322,6 +328,15 @@ console, her base let 1 cm into its top. Looking at each contact before setting 
 main rails' fore ends ran 3.1 in through the gilt volutes on the console's sides. The volutes now stand forward of
 where the rails land.
 
+Running the review's scripts once more on the final code, with a new check of every carved piece against what it is
+carved on, found one more. The gilt volute at the head of each quarter piece was laid on the stern's face, the piece's
+thickness out along the face's raked normal, not on the piece's own front, which is a level sweep: it stood 6.3 mm off
+the piece, the boss in its eye 15.3 mm. It now lies on the piece's front, sunk as the other strokes are. And on the
+gallery's curved roof and drop the leaves and berries were set on the curve itself, whose flat faces lie inside it by
+their chords' sag: the edges of a few garland leaves just over the cornice stood up to 2.3 mm off the roof. Each is now
+set down on the faces themselves (`carve.Seat`). The build now fails on either (`decor_seated`); run on the build
+before these fixes, the check finds both.
+
 ## Known gaps
 
 * **The figure is the scan as it stands.** No sculptor has worked on her: she is Thorvaldsen's Hope, not a figure
@@ -344,8 +359,8 @@ where the rails land.
   roof as blocks standing on one another; where two meet along the back (on the planking) their edges are shared by
   four faces (156 edges a side). They draw and shade as they should; a tool that wants one closed solid per object
   would have to join them.
-* **Carved leaves and berries are open underneath,** sunk 2 mm and a fifth of their radius into what they are carved
-  on, as slice 8's eyebolts are.
+* **Carved leaves and berries are open underneath,** their rims sunk 2 mm and a fifth of their radius into what they
+  are carved on (the build checks every rim), as slice 8's eyebolts are.
 * **The spanker sheet's blocks hang close.** The boom passes low over the taffrail where its sheet comes down, so with
   the lower block lifted onto its eyebolt the two blocks' shells are 6 cm apart (slice 8 left 21 cm, its lower block
   where the taffrail now stands): the sheet is all but hauled block to block. The boom stands where the spars put it;
@@ -358,13 +373,13 @@ where the rails land.
 | --- | --- |
 | `Tools/shipkit/frigate/head.py` | the head (`Head`): the knee, cheeks, trailboards and their carving, rails, timbers, gratings, knightheads, the bow's opening and the bowsprit's bed (`open_bow`, `cut_away`), the figure and her console |
 | `Tools/shipkit/frigate/stern.py` | the stern (`Stern`): the taffrail and its carved board, ports, arch, stars, windows, pilasters, the name, the quarter pieces, the galleries, the cabin's side lights, the lanterns and the boom's check over them |
-| `Tools/shipkit/frigate/carve.py` | carved relief: running scrolls, spirals, half-round strokes with their end caps turned by their own ends (`tube`), leaves and bosses laid on a surface |
-| `Tools/shipkit/frigate/decor_1797.json` | every size and place, each with its source or marked an estimate, and the meets by design |
+| `Tools/shipkit/frigate/carve.py` | carved relief: running scrolls, spirals, half-round strokes with their end caps turned by their own ends (`tube`), leaves and bosses laid on a surface and set down on its faces (`Seat`); the check that every piece is on what it is carved on (`seated`) |
+| `Tools/shipkit/frigate/decor_1797.json` | every size and place, each with its source or marked an estimate, the meets by design and the carving that must be seated |
 | `Tools/shipkit/frigate/make_figure.py`, `figure_hope.npz` | the figure from the scan, and her mesh |
 | `Tools/shipkit/frigate/rigging.py`, `standing_1797.json` | the gammoning and bobstays through the knee (`Standing.head_rigging`); the bowsprit's shrouds and martingale back ropes lead to the bow over the head's main rail |
 | `Tools/shipkit/frigate/running.py` | the spanker sheet's block on its eyebolt in the taffrail; the running rigging's world is the opened bow and the head and stern |
 | `Tools/shipkit/frigate/deck.py` | `room` takes another meets list (the decoration's) and can leave out its standing check; the triangulator walks in from its hull (Review) |
-| `Tools/shipkit/frigate/build_frigate.py` | builds the head and stern after the planking, opens the bow, checks their room (`decor_room`), the lanterns under the boom, and writes their counts and places in `build.json` |
+| `Tools/shipkit/frigate/build_frigate.py` | builds the head and stern after the planking, opens the bow, checks their room (`decor_room`), the carving's seating (`decor_seated`), the lanterns under the boom, and writes their counts and places in `build.json` |
 | `Tools/shipkit/frigate/sections_frigate.json` | the shape loop's sections: `head` and `stern_decor` |
 | `CREDITS.md` | the figure's scan and the name's font |
 | `docs/shipkit-9/baseline/` | `build.json` and renders |

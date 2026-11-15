@@ -22937,7 +22937,7 @@
     [
      "Gallery",
      "GalleryCarving",
-     15123,
+     15233,
      "the gallery's frames, sashes, glass and carving in and on its body, the drop's foot in its carved leaves",
      "deepest 3.94 in"
     ],
@@ -23203,9 +23203,9 @@
     [
      "QuarterPieces",
      "SternCarving",
-     724,
+     1196,
      "the quarter pieces cover the planking's ends at the stern's corners and the stern's bands' ends",
-     "deepest 0.42 in"
+     "deepest 0.5 in"
     ],
     [
      "QuarterPieces",
@@ -23363,6 +23363,40 @@
     ]
    ],
    "floats": []
+  },
+  "seated": {
+   "TrailCarving": {
+    "pieces": 40,
+    "loose": [],
+    "rim_vertices": 400,
+    "rims_standing": 0,
+    "rim_most_off_mm": null,
+    "rims_at_m": []
+   },
+   "SternCarving": {
+    "pieces": 199,
+    "loose": [],
+    "rim_vertices": 1768,
+    "rims_standing": 0,
+    "rim_most_off_mm": null,
+    "rims_at_m": []
+   },
+   "GalleryCarving": {
+    "pieces": 208,
+    "loose": [],
+    "rim_vertices": 1172,
+    "rims_standing": 0,
+    "rim_most_off_mm": null,
+    "rims_at_m": []
+   },
+   "FigureBaseGilt": {
+    "pieces": 9,
+    "loose": [],
+    "rim_vertices": 32,
+    "rims_standing": 0,
+    "rim_most_off_mm": null,
+    "rims_at_m": []
+   }
   },
   "triangles": {
    "HeadKnee": 10052,
