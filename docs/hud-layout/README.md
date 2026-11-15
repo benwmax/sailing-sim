@@ -45,8 +45,9 @@ logical width (aspect ratio) and Settings > Display > HUD size (85% to 130%, whi
 | 5120x1440 (32:9) | 3640 x 1080 | 2800 x 831 | messages stay at the right, as asked |
 | 1440x1080 (4:3) | 1440 x 1080 | 1108 x 831 | with a drill panel the stack narrows to 300 and reaches the centre |
 
-Worst-case stacks (captain's call, toast, points and signals at once, about 330 px) still end above the sail trim panel at
-130%. The top right has no pause button to clash with: pause is a key (Esc or the pad's Menu), shown in the bottom-right
+Worst-case stacks (captain's call, toast, points and signals at once, about 330 px) end above the sail trim panel at 100%
+(the trim redesign's 300 x 196 box plus hints reaches up to y 824); at 130% the stack's bottom and the redesigned panel's top
+meet within a few pixels only when all four messages show at once. The top right has no pause button to clash with: pause is a key (Esc or the pad's Menu), shown in the bottom-right
 hints. There is no touch layout yet; the pad uses the same HUD.
 
 `-SailingHudSample` holds up a toast, a points card and a signal so the layout can be photographed at any size
