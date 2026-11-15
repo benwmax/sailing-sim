@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint, deck, rig, rigging, sails, running rigging and deck hardware renders of Bluebonnet for
-the docs and the blind reviews (docs/jclass-1 to jclass-8).
+"""Clay, zebra, afloat, paint, deck, rig, rigging, sails, running rigging, deck hardware and below-decks renders of
+Bluebonnet for the docs and the blind reviews (docs/jclass-1 to jclass-9).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -51,6 +51,13 @@ boats), the same every round so before and after line up:
                                              (under main and genoa), the genoa's sheet track and car, the counter with
                                              the stern light and the ensign's socket, the ensign, and the burgee at the
                                              masthead
+  below_*                                    slice 9's cabins forward, lit by work lights under the deck (the render's,
+                                             not the model's: lighting below is slice 10's): a plan cut at 1.25 m and
+                                             the two halves cut at the centreline (the camera's clipping does the
+                                             cutting), the forepeak cut in the gypsy's plane, views in the fo'c'sle,
+                                             the galley, the bins round the mast, the sail locker, the washroom and the
+                                             forepeak, close views of a cot, the range and the windlass, and on deck the
+                                             bow chock and the cable's lead to the chain pipe
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -257,13 +264,31 @@ def shown(o, upto, tack, suit=None):
     return o.name not in HIDDEN
 
 
+WORK = []          # slice 9's work lights below: lamps under the deckhead, shining down, at (x, z) on the centreline
+# (z 3 cm under each room's lowest beam), watts; the camera does not see them, nor do glossy rays (no hot spots on the
+# varnish), and the below shots use AgX, whose highlights roll off instead of clipping white
+for x_, z_, w_ in ((2.3, 1.29, 22), (3.9, 1.29, 22), (5.6, 1.33, 22), (7.4, 1.33, 22), (9.3, 1.42, 20),
+                   (10.6, 1.42, 20), (11.9, 1.54, 14), (12.9, 1.54, 12), (13.9, 1.67, 8), (15.0, 1.67, 8)):
+    lt = bpy.data.lights.new(f"JWork{x_}", "AREA")
+    lt.shape, lt.size, lt.energy = "DISK", 0.35, w_
+    lt.color = (1.0, 0.93, 0.82)
+    lo = bpy.data.objects.new(f"JWork{x_}", lt)
+    lo.location = (x_, 0.0, z_)                    # an area light shines down its -Z: no turn needed
+    lo.visible_camera, lo.visible_glossy = False, False
+    SC.collection.objects.link(lo)
+    WORK.append(lo)
+
+
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
-         upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0):
+         upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0, clip=None, work=False,
+         view="Standard", exposure=0.0):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
     to starboard; "stowed" on deck). tack: which side the runners are set on (slice 5). suit: the sails set (slice 6),
-    with the boom and the pole posed as the suit has them."""
+    with the boom and the pole posed as the suit has them. clip: the camera's near clip (a cut through the model, for
+    the sections below); work: slice 9's work lights on below. view, exposure: the colour management's view transform
+    and exposure (stops); the earlier slices' shots keep Standard at 0."""
     if ONLY and name not in ONLY:
         return
     if suit is not None:
@@ -293,13 +318,16 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     cam.location = loc
     cam.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
     cd = cam.data
-    cd.clip_start, cd.clip_end = 0.05, 6000
+    cd.clip_start, cd.clip_end = clip or 0.05, 6000
+    for lo in WORK:
+        lo.hide_render = not work
     if ortho:
         cd.type, cd.ortho_scale = "ORTHO", ortho
     else:
         cd.type, cd.lens = "PERSP", lens
     SC.cycles.samples = samples
     SC.cycles.max_bounces = 2 if kind == "zebra" else 3
+    SC.view_settings.view_transform, SC.view_settings.look, SC.view_settings.exposure = view, "None", exposure
     SC.render.filepath = os.path.join(OUT, name + ".png")
     bpy.ops.render.render(write_still=True)
     for o in meshes:                      # put the model's own materials back (clearing them resets the faces' slots)
@@ -532,4 +560,25 @@ shot("hardware_stern", "paint", (-25.0, -4.0, 3.6), (-21.0, 0.0, 2.4), lens=40, 
 shot("hardware_ensign", "paint", (-30.0, -12.0, 5.5), (-22.6, 0.0, 3.7), lens=35, suit="Moored",
      **dict(hw, sun_dir=AFT_SUN))
 shot("hardware_burgee", "paint", (-3.5, -9.0, 49.3), (1.5, 0.3, 48.6), lens=70, suit="Genoa", **hw)
+# slice 9: below decks forward, moored (the sails bagged), by the work lights; Blender's y is the hull's turned over,
+# so the port side is +y here
+bl = dict(sun_dir=WW_SUN, sun=1.5, samples=96, upto=9, suit="Moored", work=True, view="AgX")
+CUT = 1.25                                     # the plan's cut, under every beam (the galley's lowest is at 1.32)
+shot("below_plan", "paint", (9.1, 0.0, CUT + 40.0), (9.1, 0.0, 0.0), ortho=16.4, clip=40.0, **bl)
+shot("below_half_port", "paint", (9.1, -40.0, 0.6), (9.1, 0.0, 0.6), ortho=16.4, clip=40.0, **bl)
+shot("below_half_starboard", "paint", (9.1, 40.0, 0.6), (9.1, 0.0, 0.6), ortho=16.4, clip=40.0, **bl)
+shot("below_forepeak_section", "paint", (15.0, -40.0, 1.45), (15.0, 0.0, 1.45), ortho=3.9, clip=40.21, **bl)
+shot("below_fcsl_forward", "paint", (5.15, 0.0, 1.15), (8.6, 0.0, 0.35), lens=16, **bl)
+shot("below_fcsl_aft", "paint", (8.35, -0.25, 1.15), (5.0, 0.35, 0.3), lens=16, **bl)
+shot("below_galley", "paint", (4.55, -0.35, 1.0), (2.7, 2.0, 0.3), lens=18, **bl)
+shot("below_galley_bins", "paint", (4.55, 0.3, 1.0), (2.8, -1.9, -0.1), lens=18, **bl)
+shot("below_sail_locker", "paint", (8.8, 0.0, 1.25), (11.2, 0.0, 0.35), lens=16, **bl)
+shot("below_washroom", "paint", (11.45, 0.1, 1.6), (13.35, -0.15, 0.75), lens=16, **bl)
+shot("below_forepeak", "paint", (13.55, -0.35, 1.6), (15.2, 0.25, 1.15), lens=18, **bl)
+shot("below_cot", "paint", (6.0, -0.9, 0.85), (5.45, -1.9, 0.35), lens=24, **bl)
+shot("below_range", "paint", (3.75, 1.15, 0.95), (3.1, 2.25, 0.3), lens=24, **bl)
+shot("below_windlass", "paint", (14.3, -0.55, 1.62), (14.95, 0.2, 1.3), lens=24, **bl)
+deckv = dict(sun_dir=WW_SUN, sun=3.0, samples=64, upto=9, suit="Moored")
+shot("below_bow_chock", "paint", (17.25, 1.2, 2.78), (17.69, 0.58, 2.37), lens=45, **deckv)
+shot("below_cable_lead", "paint", (14.6, 0.15, 3.0), (16.6, 0.66, 2.15), lens=28, **deckv)
 print("render_jclass: done")

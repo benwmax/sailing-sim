@@ -27,7 +27,14 @@ coming within 3 mm of it, each mooring line's lead from its fairlead to its clea
 running light's lens over the 1910 rules' arc (RULE_ARCS, fixed here) and showing over all of it, each side light's
 screen reaching three feet forward of its lens and stopping its light across the bow, the fixed pieces bedded on the
 deck (none floating, none sunk), the anchor clear of the deck, and all the deck hardware (the winches, cleats, sheet
-tracks, slice 8's pieces and the ground tackle's estimate) no heavier than the size card's estimate.
+tracks, slice 8's pieces and the ground tackle's estimate) no heavier than the size card's estimate. From slice 9 the
+interior forward must close (each of its five objects), no piece of it may cross the structure, the ceiling, the
+bulkheads and soles, the shell, the deck or another piece but by design (the build names the kinds allowed), the
+fixed pieces (structure, ceiling, bulkheads, soles) may not cross each other, every piece must rest on something that
+reaches the hull (none loose, no set of pieces floating), each room forward must have its headroom between the beams
+over a 0.6 m walkway (HEADROOM_M), the ground tackle drawn below replaces slice 8's estimate in the deck hardware's
+weight, and the accommodation forward must leave room in the card's accommodation for slice 10's cabins aft (whose
+weight and centre are printed: what slice 10 must weigh, and where, to keep the card's centre).
 Plain Python: no Blender needed.
 """
 import json
@@ -42,6 +49,11 @@ LEE_RUNNER_MM = 100.0       # the boom's least room to the let-off runner and ch
 PRESS_TURN_ADDED_DEG = 10.0  # the most the press may sharpen a set sail's greatest turn between cells (slice 6)
 RULE_ARCS = {"starboard": (0.0, 112.5), "port": (-112.5, 0.0), "stern": (112.5, 247.5)}  # the 1910 rules (slice 8)
 RULE_SCREEN_M = 0.9144      # the side lights' screens: three feet forward of the light (slice 8)
+INTERIOR = ("Below.Structure", "Below.Ceiling", "Below.Joinery", "Below.Fittings", "Below.Canvas")  # slice 9
+# the least headroom between the beams on the centreline in each room forward (slice 9): standing room (6 ft) where the
+# crew live and work, stooping room in the sail locker, sitting room in the washroom, and none asked of the forepeak,
+# whose platform is the chain locker's top
+HEADROOM_M = {"Galley": 1.83, "Fo'c'sle": 1.83, "SailLocker": 1.6, "Washroom": 1.25}
 RIGGING = ("Shrouds", "Stays", "RunnerFittings") + tuple(f"{k}.{s}.{t}" for k in ("Runner", "Checkstay")
                                                          for s in ("Starboard", "Port") for t in ("Set", "LetOff"))
 
@@ -117,6 +129,8 @@ if __name__ == "__main__":
         if sl >= 7:
             need += ("Winches", "RunningFittings") + tuple(f"Running.{k}" for k in
                                                            ((b.get("sails") or {}).get("suits") or {}) if k != "note")
+        if sl >= 9:
+            need += INTERIOR
         if sl >= 8:
             suits8 = [k for k in ((b.get("sails") or {}).get("suits") or {}) if k != "note"]
             need += ("DeckHardware", "Ensign.Moored", "Cowls.Moored") + tuple(f"Burgee.{k}" for k in suits8) + tuple(
@@ -256,7 +270,8 @@ if __name__ == "__main__":
                 c = {k: (hw.get(k) or {}).get(name) or {} for k in ("contacts", "room", "lead_room", "wire_room")}
                 rm = c["room"].get("within_reach") or {}
                 near = min(rm.items(), key=lambda kv: kv[1]["gap_mm"], default=None)
-                lr = c["lead_room"].get("least") or {}
+                lr = min((r for r in c["lead_room"].get("rows") or [] if r.get("least_gap_mm") is not None
+                          and not r.get("report_only")), key=lambda r: r["least_gap_mm"], default={})
                 good = all(bool(v.get("ok")) for v in c.values())
                 nearest = f"{near[0]} {near[1]['gap_mm']} mm to {near[1]['against']}" if near else "nothing"
                 print(f"{'ok  ' if good else 'FAIL'} the deck hardware in the {name} suit: crossings "
@@ -296,6 +311,61 @@ if __name__ == "__main__":
             card = SPECS["weights"]["winches_and_hardware"]
             good = hwt is not None and hwt <= card
             print(f"{'ok  ' if good else 'FAIL'} all the deck hardware weighs {hwt} long tons (the card's {card})")
+            ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 9:
+            # slice 9: the interior forward clear of itself and the hull, its headroom, the ground tackle's weight drawn
+            # and the accommodation forward within the card's accommodation
+            inr = b.get("interior") or {}
+            hw_all = b.get("hardware") or {}
+            ok = True
+            ov = inr.get("overlaps") or {}
+            good = (bool(ov.get("ok")) and not ov.get("crossing_faces") and not ov.get("fixed_crossing_faces")
+                    and bool(ov.get("furniture_groups")))
+            print(f"{'ok  ' if good else 'FAIL'} below decks forward nothing crosses anything but by design "
+                  f"({ov.get('furniture_groups')} groups of furniture in {ov.get('furniture_trees')} meshes, checked "
+                  f"against each other, the hull and the deck; the {ov.get('fixed_groups')} fixed groups (structure, "
+                  f"ceiling, bulkheads, soles, deck) against each other; {len(ov.get('allowed_by_design') or {})} "
+                  f"pairs touching by design): crossings {ov.get('crossing_faces')}, fixed crossings "
+                  f"{ov.get('fixed_crossing_faces')}")
+            ok = ok and good
+            su = inr.get("support") or {}
+            good = bool(su.get("ok")) and bool(su.get("pieces")) and not su.get("loose") and not su.get("floating")
+            print(f"{'ok  ' if good else 'FAIL'} every piece below rests on something that reaches the hull "
+                  f"({su.get('pieces')} pieces, each joined to the hull through the pieces it touches"
+                  f"{', within ' + str(su['gap_mm']) + ' mm' if su.get('gap_mm') else ''}): loose "
+                  f"{su.get('loose')}, floating {su.get('floating')}")
+            ok = ok and good
+            hr = inr.get("headroom") or {}
+            for room, need_m in HEADROOM_M.items():
+                v = hr.get(room) or {}
+                walk = v.get("walkway_0.6_m") or {}
+                got = min((x for x in (v.get("between_beams_m"), walk.get("between_beams_m")) if x is not None),
+                          default=None)
+                good = got is not None and got >= need_m
+                print(f"{'ok  ' if good else 'FAIL'} the {room}'s headroom between the beams over a 0.6 m walkway: "
+                      f"{got} m (at least {need_m}); under the beams {walk.get('under_beams_m', v.get('headroom_m'))} "
+                      f"m")
+                ok = ok and good
+            bc = hw_all.get("bow_chock") or {}
+            print(f"     the bow chock: the cable turns {bc.get('turn_at_inboard_mouth_deg')} deg at its inboard mouth "
+                  f"and {bc.get('turn_at_outboard_mouth_deg')} at its outboard one; leads checked clear at "
+                  f"{bc.get('dips_tested_deg')} deg down, reported only at {bc.get('steep_dips_reported_deg')}")
+            gt = (inr.get("weights") or {}).get("ground_tackle") or {}
+            rows = (((b.get("hardware") or {}).get("all_deck_hardware_weight") or {}).get("rows") or {})
+            drawn = rows.get("ground_tackle_below") or {}
+            good = bool(gt.get("total_kg")) and drawn.get("kg") == gt.get("total_kg")
+            print(f"{'ok  ' if good else 'FAIL'} the ground tackle below is drawn and weighed with the deck hardware: "
+                  f"{gt.get('total_kg')} kg (in the deck hardware's weight: {drawn.get('kg')} kg)")
+            ok = ok and good
+            ac = inr.get("accommodation") or {}
+            fwd, card = ac.get("forward_measured_long_tons"), SPECS["weights"]["accommodation"]
+            good = fwd is not None and fwd < card and (ac.get("left_for_slice_10_long_tons") or 0.0) > 0.0
+            tg = ac.get("slice_10_target") or {}
+            print(f"{'ok  ' if good else 'FAIL'} the accommodation forward weighs {fwd} long tons of the card's {card} "
+                  f"(left for the cabins aft: {ac.get('left_for_slice_10_long_tons')}, which slice 10 must centre at "
+                  f"x {tg.get('centre_x')}, z {tg.get('centre_z')} m to keep the card's centre)")
             ok = ok and good
             if not ok:
                 r["pass"] = False

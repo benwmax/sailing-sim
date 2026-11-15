@@ -8,6 +8,7 @@ winches and the leads (slice 7's), and her flags.
                  flanges in harbour, struck below at sea and the flanges capped
   deck prisms    glass prisms let into the planking over the cabins, flush on deck, their pendants below
   anchor         a fisherman's anchor stowed flat on the port foredeck on teak chocks, lashed; the chain pipe's cap
+  bow chock      the anchor cable's open chock on the port bow's toe rail (slice 9, with the cable below)
   lights         the side lights on their light boards by the shrouds and the stern light on the counter: bronze
                  lanterns with coloured lenses over their arcs
   ensign         the staff's socket on the counter; in harbour (the Moored suit) the staff and a 48-star ensign
@@ -19,8 +20,9 @@ Objects: "DeckHardware" (everything fixed, the cowls' flanges among it), "Ensign
 harbour only), "Cowls.Moored" (the cowls standing, in harbour), one "CowlCaps.<suit>" for each other suit (the flanges'
 caps) and one "Burgee.<suit>" per suit (the stick and the burgee as it flies in that suit). Each is a set of closed
 solids labelled "<group> | <kind>" (kinds: stem head, cleat, fairlead, cowl, cowl cap, deck prism, anchor, chock,
-lashing, chain pipe, lantern, lens, light board, bracket, standard, socket, staff, ensign, stick, spindle, burgee),
-weighed from its geometry and the json's densities; the ground tackle below is the json's estimate. The flags' faces
+lashing, chain pipe, bow chock, lantern, lens, light board, bracket, standard, socket, staff, ensign, stick, spindle,
+burgee), weighed from its geometry and the json's densities; the ground tackle below (the bower, her cable and the
+windlass) is the interior's (interior.py, slice 9). The flags' faces
 carry their pattern's coordinates in metres in the "Spar" UV map (x along the fly from the hoist, y down the hoist:
 from its top on the ensign, from its middle on the burgee); hardware_materials.py draws them. Units are metres in the
 hull's frame (X forward, Y starboard, Z up). Plain Python: no Blender needed.
@@ -56,6 +58,7 @@ CAT_COWL = "Cowl vents (bronze)"
 CAT_PRISM = "Deck prisms (glass)"
 CAT_ANCHOR = "Anchor (iron), chocks and lashings"
 CAT_PIPE = "Chain pipe (bronze)"
+CAT_CHOCK = "Bow chock (bronze)"
 CAT_NAV = "Side and stern lights, light boards"
 CAT_ENSIGN = "Ensign staff, socket and ensign"
 CAT_BURGEE = "Burgee and its stick"
@@ -271,10 +274,142 @@ def mooring(part, sh):
     return rep, leads
 
 
+def bow_chock(part, sh):
+    """The anchor cable's chock on the bow (slice 9): an open bronze chock let into the toe rail's top, laid along it
+    as a fairlead is, its throat a U across the rail as wide as a link stands (rounded at its floor and lips), the
+    cable dropped in from above. Moored, the cable leads 'cable_out_deg' outboard of ahead to the anchor and aft from
+    the chock to the chain pipe, both nearly fore and aft while the rail here runs aft and out at about 27 degrees: so
+    the throat is bored along the anchor's lead, across the rail at a slant, the U kept a link wide square to that
+    axis and the body long enough to carry it, its floor falling away at both mouths. Returns the report and the
+    cable's leads for the room checks: through the throat to the chain pipe's mouth (bearing on the inboard mouth),
+    lifted clear of the throat, and over the outboard mouth at each dip tested."""
+    bc = HW["bow_chock"]
+    sd = -1.0 if bc["side"] == "port" else 1.0
+    x = bc["x"]
+    p, t, up, out = sh.rail(x, sd)
+    L, W, H = bc["length"], bc["width"], bc["height"]
+    g, hb, let, rl, rc = bc["throat"], bc["floor"], bc["let_in"], bc["lip_r"], bc["corner_r"]
+    cp = HW["chain_pipe"]
+    c = np.asarray(cp["at"], float)
+    mouth = np.array([c[0], c[1], deck_z(c[0], c[1]) + cp["height"]])
+    r = bc["cable_r"]
+    th = math.radians(bc["cable_out_deg"])
+    to_anchor = np.array([math.cos(th), sd * math.sin(th), 0.0])
+    # the throat is bored along the anchor's lead, so the cable riding to her runs fair through it; it turns aft to
+    # the chain pipe at the inboard mouth, where it is slack (or under the windlass's pull)
+    ax_h = to_anchor
+    k = float(ax_h @ t) / float(ax_h @ out)                 # its run along the rail for each metre across it
+    sc = math.hypot(1.0, k)                                 # a width square to the axis, measured along the rail
+    if L < sc * (g + 2 * rl) + 2 * (rc + 0.01):
+        raise ValueError(f"the bow chock is too short for its throat slanted {math.degrees(math.atan(k)):.0f} deg: "
+                         f"it needs {sc * (g + 2 * rl) + 2 * (rc + 0.01):.3f} m along the rail")
+
+    def arc(cu, cw, rad, a0, a1, n=6, s_u=1.0, mark=False):
+        return [(cu + s_u * rad * math.cos(a), cw + rad * math.sin(a), mark)
+                for a in np.radians(np.linspace(a0, a1, n))]
+
+    # the section along the rail (u along it, w up from its top), counter-clockwise from the foot's after end; the
+    # throat's U and lips stretched along u by sc, so square to the slanted axis they are round and a link wide (the
+    # U's points marked: its floor falls away at the mouths)
+    base = np.array([(-L / 2, -let, False), (L / 2, -let, False)] + arc(L / 2 - rc, H - rc, rc, 0, 90)
+                    + arc(sc * (g / 2 + rl), H - rl, rl, 90, 180, s_u=sc)
+                    + arc(0.0, hb + g / 2, g / 2, 0, -180, 13, s_u=sc, mark=True)
+                    + arc(-sc * (g / 2 + rl), H - rl, rl, 0, 90, s_u=sc) + arc(-L / 2 + rc, H - rc, rc, 90, 180),
+                    dtype=float)
+    is_u = base[:, 2] > 0.5
+    # the mouths: along the axis the U's floor rounds down on 'mouth_r' from level to the steepest dip tested (to the
+    # chain pipe's lead inboard, 'mouth_in_deg'), then falls at that slope, square to the axis (so the cable bending
+    # over it meets it the same right across), to 2 mm above the rail's top; the middle line's bend meets the face
+    rm = bc["mouth_r"]
+    A_face = sc * W / 2                                     # where the throat's middle line meets each face
+
+    def fall(A, dmax):                                      # the floor's drop A along the axis past the bend's start
+        if A <= 0.0:
+            return 0.0
+        a_arc = rm * math.sin(dmax)
+        if A <= a_arc:
+            return rm - math.sqrt(rm * rm - A * A)
+        return rm * (1.0 - math.cos(dmax)) + (A - a_arc) * math.tan(dmax)
+    d_out, d_in = math.radians(max(bc["dips_deg"] + bc["steep_dips_deg"])), math.radians(bc["mouth_in_deg"])
+    A0_out, A0_in = A_face - rm * math.sin(d_out), A_face - rm * math.sin(d_in)
+
+    flare = bc["mouth_flare"]
+
+    def section(s_):
+        Q = base[:, :2].copy()
+        for i in np.where(is_u)[0]:
+            A = s_ * sc + k * Q[i, 0] / sc                  # its distance along the axis from the middle
+            dr = min(fall(A - A0_out, d_out) if A > 0 else fall(-A - A0_in, d_in), hb - 0.002)
+            Q[i] = (Q[i, 0] * (1.0 + flare * dr / (g / 2)), Q[i, 1] - dr)   # widening as it falls ('mouth_flare')
+        return Q
+    to3 = lambda Q, s: p + Q[:, :1] * t + Q[:, 1:2] * up + s * (out + k * t)  # noqa: E731
+
+    def bend(V):
+        d = np.asarray(V, float) - p
+        res = []
+        for (u, v, w) in zip(d @ t, d @ out, d @ up):
+            pu, _, upu, outu = sh.rail(x + u * t[0], sd)
+            res.append(pu + v * outu + w * upu)
+        return np.array(res)
+    ss = np.linspace(-W / 2, W / 2, 23)
+    V, F = deck.loft_section([to3(section(sv), sv) for sv in ss], section(ss[0]), section(ss[-1]))
+    g_ = f"Bow chock, {bc['side']}"
+    solid(part, bend(V), F, "Bronze", lab(g_, "bow chock"), CAT_CHOCK, BRZ)
+    on = lambda A_, w_: bend([p + w_ * up + (A_ / sc) * (out + k * t)])[0]  # noqa: E731
+    Cb = on(0.0, hb + r)
+    inner = on(-A_face, hb + r)
+    # past the inboard face the cable turns down and aft, bearing on the throat's inboard mouth: its first 'bears_m'
+    # may touch the chock, the rest only the chain pipe
+    bears = inner + bc["bears_m"] * unit(mouth - inner)
+    leads = [{"name": "Anchor cable on deck", "group": "Anchor cable on deck", "object": "", "r": r, "rope": False,
+              "step_m": 0.004,
+              "pieces": [{"name": "through the chock", "path": [list(on(A_face, hb + r)), list(Cb), list(inner),
+                                                                list(bears)],
+                          "allow": [("DeckHardware", g_)]},
+                         {"name": "to the chain pipe", "path": [list(bears), list(mouth)],
+                          "allow": [("DeckHardware", "Chain pipe")]}]}]
+    # the throat's room: the cable lifted 'lift' off the floor it lies on must clear everything (the U, its lips, the
+    # rail) by the room check's margin; then the cable bending over the outboard mouth (lifted the same) and running
+    # out 'out_m' toward the anchor at each of 'dips_deg' below the level
+    lift = bc["lift"]
+    lw = hb + r + lift
+    throat = [list(on(-A_face, lw)), list(Cb + lift * up), list(on(A_face, lw))]
+    leads.append({"name": "Anchor cable in the throat", "group": "Anchor cable in the throat", "object": "", "r": r,
+                  "rope": False, "step_m": 0.004, "pieces": [{"name": "the throat", "allow": [], "path": throat}]})
+    cen = on(A0_out, hb - rm)
+    up_m = unit(on(A0_out, 1.0) - on(A0_out, 0.0))
+    ax_m = unit(on(A_face, hb) - on(-A_face, hb))
+    Rb = rm + r + lift
+    for dip in bc["dips_deg"] + bc["steep_dips_deg"]:
+        dq = math.radians(dip)
+        D = unit(math.cos(dq) * to_anchor - math.sin(dq) * np.array([0.0, 0.0, 1.0]))
+        th_end = dq + math.asin(max(-1.0, min(1.0, float(ax_m[2]))))     # the axis rises a little with the sheer
+        bendp = [cen + Rb * (math.sin(a) * ax_m + math.cos(a) * up_m) for a in np.linspace(0.0, th_end, 9)]
+        path = [Cb + lift * up] + bendp + [bendp[-1] + bc["out_m"] * D]
+        leads.append({"name": f"Anchor cable, {dip:g} deg down", "group": f"Anchor cable, {dip:g} deg down",
+                      "object": "", "r": r, "rope": False, "step_m": 0.004,
+                      "report_only": dip in bc["steep_dips_deg"],
+                      "pieces": [{"name": "over the mouth", "allow": [], "path": [list(q) for q in path]}]})
+    lin = unit(mouth - Cb)
+    off_in = math.degrees(math.acos(min(1.0, abs(float(unit(lin * np.array([1.0, 1.0, 0.0])) @ ax_h)))))
+    off_in3 = math.degrees(math.acos(min(1.0, abs(float(lin @ ax_m)))))
+    off_out = math.degrees(math.acos(min(1.0, float(to_anchor @ ax_h))))
+    return ({"x": x, "side": bc["side"], "throat": [round(float(v), 3) for v in Cb],
+             "throat_skew_deg": round(abs(math.degrees(math.atan(k))), 1), "length_m": L,
+             "throat_along_rail_m": round(sc * g, 3), "cable_out_deg": bc["cable_out_deg"],
+             "turn_at_inboard_mouth_deg": {"in_plan": round(off_in, 1), "in_all": round(off_in3, 1),
+                                           "down": round(math.degrees(math.asin(-float(lin[2]))), 1)},
+             "turn_at_outboard_mouth_deg": {"in_plan": round(off_out, 1)}, "mouth_r_m": rm,
+             "dips_tested_deg": bc["dips_deg"], "steep_dips_reported_deg": bc["steep_dips_deg"],
+             "lift_in_tests_m": lift,
+             "lead_to_chain_pipe_m": round(float(np.linalg.norm(mouth - Cb)), 2)}, leads)
+
+
 # ------------------------------------------------------------------------------------------------ cowls, deck prisms
-def cowl_flange(part, at, group):
+def cowl_flange(part, at, group, bored=False):
     """A cowl's bronze deck flange (always on deck): a ring let into the deck round the pipe's hole. Weighed as the
-    ring (less its bore)."""
+    ring (less its bore). `bored` (slice 9, where the deck is opened under it): drawn with its bore open, carried down
+    through the deck as a collar and finished under the deckhead by a backing ring; weighed the same."""
     cw = HW["cowls"]
     c = np.asarray(at, float)
     z0 = deck_z(c[0], c[1])
@@ -288,7 +423,20 @@ def cowl_flange(part, at, group):
              np.column_stack([ring(fr - 0.01), np.full(n, z0 + 0.013)]),
              np.column_stack([ring(pr + 0.012), np.full(n, z0 + 0.02)])]
     V, F = deck.loft_rings(rings)
-    solid(part, V, F, "Bronze", lab(group, "cowl"), CAT_COWL, BRZ)
+    if bored:
+        rb = pr - 0.004
+        under = deck.PL["thickness"]
+        dz = lambda r, h: np.column_stack([ring(r), shell.deck_z(*ring(r).T) + h])  # noqa: E731
+        # the collar fills the deck's hole (its radius pr + 6 mm) and the flange keeps its flat foot outside it
+        rc = pr + 0.007
+        Vb, Fb = deck.loft_rings(rings + [np.column_stack([ring(rb), np.full(n, z0 + 0.02)]),
+                                          dz(rb, -under - 0.06), dz(rc, -under - 0.06),
+                                          dz(rc, -under - 0.004), dz(fr - 0.01, -under - 0.004),
+                                          dz(fr - 0.01, -under), dz(rc, -under), dz(rc, -deck.LET)], closed=True)
+        part.add(Vb, Fb, "Bronze", None, lab(group, "cowl"))
+        part.weigh(V, F, ("solid", BRZ), CAT_COWL)
+    else:
+        solid(part, V, F, "Bronze", lab(group, "cowl"), CAT_COWL, BRZ)
     bore = math.pi * (pr - 0.004) ** 2 * (0.02 + deck.LET)
     part.masses[-1]["kg"] = round(part.masses[-1]["kg"] - BRZ * bore, 1)
     part.masses[-1]["how"] = "solid less its bore"
@@ -505,7 +653,9 @@ def anchor(part):
             "lashings_at_s_m": lash, "bills": [[round(float(v), 3) for v in b] for b in bills]}
 
 
-def chain_pipe(part):
+def chain_pipe(part, bored=False):
+    """The chain pipe's casting and its cap. `bored` (slice 9, where the deck is opened under it): the neck drawn
+    hollow down through the deck (the forepeak's spurling pipe carries on from its foot), weighed the same."""
     cp = HW["chain_pipe"]
     c = np.asarray(cp["at"], float)
     z0 = deck_z(c[0], c[1])
@@ -516,7 +666,27 @@ def chain_pipe(part):
         prof.append((nr * math.cos(q) + 0.004, h - 0.022 + 0.022 * math.sin(q)))
     prof.append((0.0, h))
     V, F = deck.revolve(prof, np.array([c[0], c[1], z0]), UP, X, 40)
-    solid(part, V, F, "Bronze", lab("Chain pipe", "chain pipe"), CAT_PIPE, BRZ)
+    if bored:
+        # the neck's collar fills the deck's hole (its radius neck_r + 2 mm) down to a backing flange under the
+        # deckhead, which follows the deck's sheer and camber; the casting's let-in foot stays as it was
+        rb, under, n = nr - 0.008, deck.PL["thickness"], 40
+        ang = 2 * math.pi * np.arange(n) / n
+        ring = lambda r: np.column_stack([c[0] + r * np.cos(ang), c[1] + r * np.sin(ang)])  # noqa: E731
+        flat = lambda r, dh: np.column_stack([ring(r), np.full(n, z0 + dh)])  # noqa: E731
+        dz = lambda r, dh: np.column_stack([ring(r), shell.deck_z(*ring(r).T) + dh])  # noqa: E731
+        rc = nr + 0.003
+        Vb, Fb = deck.loft_rings([flat(rb, h - 0.024), dz(rb, -under - 0.012), dz(fr, -under - 0.012), dz(fr, -under),
+                                  dz(rc, -under), flat(rc, -0.012), flat(fr, -0.012), flat(fr, 0.005),
+                                  flat(fr - 0.01, 0.011), flat(nr, 0.016), flat(nr, h - 0.024)], closed=True)
+        part.add(Vb, Fb, "Bronze", None, lab("Chain pipe", "chain pipe"))
+        cap = [(0.0, h - 0.026), (nr + 0.004, h - 0.026), (nr + 0.004, h - 0.022)]
+        cap += [(nr * math.cos(math.pi / 2 * k / 6) + 0.004, h - 0.022 + 0.022 * math.sin(math.pi / 2 * k / 6))
+                for k in range(1, 7)] + [(0.0, h)]
+        Vc, Fc = deck.revolve(cap, np.array([c[0], c[1], z0]), UP, X, 40)
+        part.add(Vc, Fc, "Bronze", None, lab("Chain pipe", "chain pipe"))
+        part.weigh(V, F, ("solid", BRZ), CAT_PIPE)
+    else:
+        solid(part, V, F, "Bronze", lab("Chain pipe", "chain pipe"), CAT_PIPE, BRZ)
     # weighed as the casting it is: the neck's bore (the chain's way below, 8 mm in from its outside) is empty
     bore = math.pi * (nr - 0.008) ** 2 * (h - 0.022 + 0.012)
     part.masses[-1]["kg"] = round(part.masses[-1]["kg"] - BRZ * bore, 1)
@@ -727,23 +897,51 @@ def burgee(part, pts, deg):
 
 
 # ------------------------------------------------------------------------------------------------ the whole
-def build(sheer, pts):
-    """{object name: SparPart} and the report."""
+def deck_holes(opened):
+    """The deck's holes under the fittings that pass through it (slice 9): {name: plan outline}. `opened` is the
+    interior's openings: the deck prisms by their index, the cowls by their place, and the chain pipe. Each hole lies
+    inside its fitting's solid (a prism's top less 2 mm, a bore plus 10 mm), so its edge never shows."""
+    out = {}
+    dp = HW["deck_prisms"]
+    for k in opened.get("prisms", []):
+        at = dp["at"][k]
+        for sd, side in SIDES:
+            P = rounded_rect(dp["top"][0] / 2 - 0.002, dp["top"][1] / 2 - 0.002, 0.004, 2)
+            out[f"Deck prism {k + 1}, {side}"] = P + np.array([at[0], sd * at[1]])
+    ang = 2 * math.pi * np.arange(24) / 24
+    circle = np.column_stack([np.cos(ang), np.sin(ang)])
+    for name in opened.get("cowls", []):
+        at = HW["cowls"]["places"][name]["at"]
+        for sd, side in SIDES:
+            out[f"{name} cowl, {side}"] = np.array([at[0], sd * at[1]]) + (HW["cowls"]["pipe_r"] + 0.006) * circle
+    if opened.get("chain_pipe"):
+        out["Chain pipe"] = np.asarray(HW["chain_pipe"]["at"], float) + (HW["chain_pipe"]["neck_r"] + 0.002) * circle
+    return out
+
+
+def build(sheer, pts, opened=None):
+    """{object name: SparPart} and the report. `opened`: the interior's openings (deck_holes), whose fittings are
+    drawn bored through the deck."""
+    opened = opened or {}
     sh = Sheer(sheer)
     hw = SparPart("DeckHardware")
     rep = {"stem_head": stem_head(hw, sh)}
     rep["mooring"], rep["mooring_leads"] = mooring(hw, sh)
-    cowls = [(f"{name} cowl, {side}", (pl["at"][0], sd * pl["at"][1]), pl["deg"])
+    cowls = [(f"{name} cowl, {side}", (pl["at"][0], sd * pl["at"][1]), pl["deg"], name in opened.get("cowls", []))
              for name, pl in HW["cowls"]["places"].items() for sd, side in SIDES]
-    for g, at, deg in cowls:
-        cowl_flange(hw, at, g)
+    for g, at, deg, bored in cowls:
+        cowl_flange(hw, at, g, bored)
     rep["deck_prisms"] = []
     for k, at in enumerate(HW["deck_prisms"]["at"]):
         for sd, side in SIDES:
             deck_prism(hw, (at[0], sd * at[1]), f"Deck prism {k + 1}, {side}")
             rep["deck_prisms"].append([at[0], sd * at[1]])
     rep["anchor"] = anchor(hw)
-    rep["chain_pipe"] = chain_pipe(hw)
+    rep["chain_pipe"] = chain_pipe(hw, bool(opened.get("chain_pipe")))
+    if opened.get("chain_pipe"):
+        rep["bow_chock"], rep["cable_leads"] = bow_chock(hw, sh)
+    rep["through_deck"] = sorted([g for g, _, _, bored in cowls if bored] +
+                                 (["Chain pipe"] if opened.get("chain_pipe") else []))
     rep["lights"] = sidelights(hw, sh)
     rep["lights"]["stern"] = stern_light(hw)
     foot, ax = ensign_socket(hw)
@@ -752,7 +950,7 @@ def build(sheer, pts):
     rep["cowls"] = {}
     for s in SUITS:
         cp = SparPart(f"Cowls.{s}" if s in HW["cowls"]["standing_in"] else f"CowlCaps.{s}")
-        for g, at, deg in cowls:
+        for g, at, deg, _ in cowls:
             if s in HW["cowls"]["standing_in"]:
                 rep["cowls"][g] = cowl(cp, at, deg, g)
             else:
@@ -767,14 +965,12 @@ def build(sheer, pts):
         rep["burgee"][s] = burgee(bp, pts, HW["burgee"]["flies_deg"][s])
         parts[bp.name] = bp
     rep["weights"] = weights(parts)
-    rep["ground_tackle"] = ground_tackle()
     return parts, rep
 
 
 def weights(parts):
     """The hardware's weight by row: the fixed hardware, the ensign and its staff (aboard: stowed below at sea), the
-    cowls and their caps (one set stowed below while the other is up: weighed where they stand), one burgee, and the
-    ground tackle below (ground_tackle: weighed apart)."""
+    cowls and their caps (one set stowed below while the other is up: weighed where they stand) and one burgee."""
     up = HW["cowls"]["standing_in"][0]
     capped = next(s for s in SUITS if s not in HW["cowls"]["standing_in"])
     rows = (list(parts["DeckHardware"].masses) + list(parts["Ensign.Moored"].masses)
@@ -793,17 +989,6 @@ def weights(parts):
             "centre": [round(float(a), 3) for a in mom / max(kg, 1e-9)]}
 
 
-def ground_tackle():
-    """The ground tackle below: the json's estimate (not drawn until the interior), weighed with the deck hardware
-    against the size card."""
-    gt = HW["ground_tackle"]
-    kg = sum(r["kg"] for r in gt["items"])
-    cen = sum(r["kg"] * np.asarray(r["centre"], float) for r in gt["items"]) / kg
-    return {"items": {r["name"]: {"kg": r["kg"], "centre": r["centre"]} for r in gt["items"]},
-            "total_kg": round(kg, 1), "total_long_tons": round(kg / deck.LT_KG, 3),
-            "centre": [round(float(a), 3) for a in cen], "how": "estimate"}
-
-
 def summary(rep):
     """The report for build.json: without its working keys (those starting with '_', at any depth) and the mooring
     lines' leads (their room is reported)."""
@@ -813,4 +998,4 @@ def summary(rep):
         if isinstance(v, (list, tuple)):
             return [strip(a) for a in v]
         return v
-    return strip({k: v for k, v in rep.items() if k != "mooring_leads"})
+    return strip({k: v for k, v in rep.items() if k not in ("mooring_leads", "cable_leads")})

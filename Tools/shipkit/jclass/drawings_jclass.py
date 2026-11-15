@@ -29,6 +29,12 @@ Slice 6's sails (docs/jclass-6):
   sail_suits.png      the three sailing suits from starboard, the cloth as built (pressed and trimmed) with the boom and
                       the pole posed as each suit has them, over the rated fore and main triangles
 
+Slice 9's accommodation forward (docs/jclass-9):
+
+  interior_plan.png   the rooms forward in plan, cut 1.0 m above each sole (under the beams in the forepeak), and
+                      in section on the centreline looking to port, coloured by material, with each room's headroom;
+                      close-ups of the forepeak's windlass, spurling pipe and chain locker in plan and section
+
 build_jclass.py calls draw_all() after the build; it needs matplotlib (it says so and goes on without it).
 """
 import math
@@ -1152,8 +1158,146 @@ def draw_hardware_plan(hw_parts, hwrep, pieces, deck_rep, path, fittings=None):
     plt.close(fig)
 
 
+IN_COLOURS = {"Varnish": "#9c6433", "Pine": "#d9b77a", "WhitePaint": "#ecebe4", "Deckhead": "#ecebe4",
+              "Bronze": "#b08a3e", "Iron": "#4c4f52", "Galvanised": "#8d9297", "Porcelain": "#f7f7f4",
+              "Canvas": "#d9cfb2", "Zinc": "#a8b0b4", "Black": "#222222", "Rope": "#c2a878"}
+
+
+def _in_faces(ax, parts, keep, a, b, depth, zorder=3, alpha=1.0, groups=None):
+    """The interior's faces kept by keep(face vertices), projected on axes a, b, the deepest (by depth) drawn first;
+    with `groups`, only the faces whose label's group (before " | ") is one of them."""
+    from matplotlib.collections import PolyCollection
+    polys, cols, keys = [], [], []
+    for part in parts:
+        V = np.asarray(part.V, float)
+        labs = part.labels if groups is not None else [None] * len(part.F)
+        for f, sl, lb in zip(part.F, part.slot, labs):
+            if groups is not None and (lb or "").split(" | ")[0] not in groups:
+                continue
+            P = V[list(f)]
+            if keep(P):
+                polys.append(P[:, [a, b]])
+                cols.append(IN_COLOURS.get(sl, "#888888"))
+                keys.append(depth(P))
+    order = np.argsort(keys)
+    polys = [polys[i] for i in order]
+    cols = [cols[i] for i in order]
+    ax.add_collection(PolyCollection(polys, facecolors=cols, edgecolors=cols, linewidths=0.05, alpha=alpha,
+                                     zorder=zorder))
+
+
+def draw_interior_plan(in_parts, inrep, pieces, path, deck_z):
+    """Slice 9's accommodation forward: the plan cut 1.0 m above each room's sole or just under the beams if lower,
+    and in the washroom (its cots hang higher than 1.0 m) just under the beams (the fo'c'sle's upper cots, the deck and
+    its beams lifted off), and the section on the centreline looking to port, with the rooms named and their headroom
+    (between the beams and under them, the least over a 0.6 m walkway); and close-ups of the forepeak (the windlass,
+    the cable's lead from the chain pipe, the chain locker) in plan and section, the plan with the chain pipe, the
+    spurling pipe and the cable's upper leg, above its cut, drawn faint over it. Coloured by material: varnished teak
+    and mahogany, white paint, pine, bronze, iron, canvas."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import interior as IR
+
+    sh = np.asarray(pieces["Shell"].sheer)
+    o = np.argsort(sh[:, 0])
+    rooms = [(n, r) for n, r in IR.ROOMS]
+    xg = np.linspace(rooms[0][1]["x"][0] - 0.5, 19.0, 800)
+    under = IR.deckhead_z(xg, 0.0 * xg) - IR.BM_D - 0.05                     # just under the beams
+    cut = np.array([u if IR.room_at(x)[0] == "Washroom" else min(IR.sole_at(IR.room_at(x)[0], x) + 1.0, u)
+                    for x, u in zip(xg, under)])                              # under the beams in the forepeak
+    parts = [in_parts[k] for k in IR.OBJECTS if in_parts[k].F]
+    x0, x1 = rooms[0][1]["x"][0] - 0.3, 18.9
+
+    def plan_keep(P):
+        return P[:, 2].max() < np.interp(P[:, 0].mean(), xg, cut) and P[:, 0].min() > x0
+
+    def section_keep(P):
+        return P[:, 1].max() < 0.005 and P[:, 0].min() > x0
+
+    def plan(ax):
+        ax.plot(sh[o, 0], sh[o, 1], color="#1f3f7f", lw=1.0, zorder=6)
+        ax.plot(sh[o, 0], -sh[o, 1], color="#1f3f7f", lw=1.0, zorder=6)
+        _in_faces(ax, parts, plan_keep, 0, 1, lambda P: P[:, 2].mean())
+
+    def section(ax):
+        xs = np.linspace(x0, 18.7, 300)
+        ax.plot(sh[o, 0], sh[o, 2], color="#1f3f7f", lw=1.0, zorder=6)
+        ax.plot(xs, deck_z(xs, 0.0 * xs), color="#1f3f7f", lw=0.6, ls=":", zorder=6)
+        ax.axhline(0.0, color="#2b6cb0", lw=0.6, ls="--", zorder=1)
+        _in_faces(ax, parts, section_keep, 0, 2, lambda P: P[:, 1].mean())
+
+    fig = plt.figure(figsize=(20, 15), dpi=130)
+    ax = fig.add_axes([0.04, 0.66, 0.93, 0.29])
+    plan(ax)
+    for n, r in rooms:
+        xm = 0.5 * (r["x"][0] + r["x"][1])
+        ax.text(xm, -2.9, n.replace("SailLocker", "sail locker").lower(), ha="center", fontsize=9, zorder=8)
+        ax.axvline(r["x"][0], color="#999999", lw=0.4, ls=":", zorder=0)
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(3.3, -3.3)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    ax.set_ylabel("y, m to starboard", fontsize=8)
+    ax.set_title("Bluebonnet below decks forward, in plan cut 1.0 m above each sole (in the washroom and the forepeak "
+                 "just under the beams; the fo'c'sle's upper cots, the deck and its beams lifted off), bow to the "
+                 "right, starboard below", fontsize=10)
+    ax = fig.add_axes([0.04, 0.33, 0.93, 0.3])
+    section(ax)
+    for n, r in rooms:
+        xm = 0.5 * (r["x"][0] + r["x"][1])
+        hr = (inrep.get("headroom") or {}).get(n) or {}
+        wk = hr.get("walkway_0.6_m") or hr
+        ax.text(xm, 3.05, n.replace("SailLocker", "sail locker").lower()
+                + (f"\nheadroom {wk['between_beams_m']:.2f} m, {wk.get('under_beams_m', hr.get('headroom_m')):.2f} "
+                   "under the beams" if hr else ""),
+                ha="center", fontsize=8.5, zorder=8)
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(-1.2, 3.5)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    ax.set_xlabel("x, m forward of mid-waterline", fontsize=8)
+    ax.set_ylabel("z, m above the waterline", fontsize=8)
+    ax.set_title("the section on the centreline, looking to port: the port cots, galley, bins and lockers, the "
+                 "ladders, the deck's beams and knees, the waterline dashed; headroom the least over a 0.6 m walkway",
+                 fontsize=9.5)
+    fp = (inrep.get("forepeak") or {})
+    ax = fig.add_axes([0.04, 0.04, 0.45, 0.25])
+    plan(ax)
+
+    def above_keep(P):                                   # what the cut lifted off over the forepeak
+        return P[:, 2].max() >= np.interp(P[:, 0].mean(), xg, cut) and P[:, 0].min() > 13.0
+    _in_faces(ax, parts, above_keep, 0, 1, lambda P: P[:, 2].mean(), zorder=7, alpha=0.4,
+              groups=("Spurling pipe", "Cable"))
+    import hardware
+    cp = hardware.HW["chain_pipe"]
+    for r_, ls_ in ((cp["neck_r"], "-"), (cp["flange_r"], "--")):
+        a_ = np.linspace(0.0, 2.0 * np.pi, 73)
+        ax.plot(cp["at"][0] + r_ * np.cos(a_), cp["at"][1] + r_ * np.sin(a_), color="#8a5a1f", lw=0.9, ls=ls_,
+                zorder=8)
+    ax.text(cp["at"][0], cp["at"][1] - cp["flange_r"] - 0.05, "chain pipe (on deck)", ha="center", fontsize=7,
+            zorder=8)
+    ax.set_xlim(13.0, 16.9)
+    ax.set_ylim(1.6, -1.6)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    ax.set_title("the forepeak in plan: the windlass on its platform, the spurling pipe from the chain pipe and the "
+                 "cable's upper leg (above the cut, faint), the navel pipe down to the chain locker", fontsize=8.5)
+    ax = fig.add_axes([0.53, 0.04, 0.45, 0.25])
+    section(ax)
+    sp = fp.get("spurling_pipe") or {}
+    ax.set_xlim(13.0, 16.9)
+    ax.set_ylim(-0.3, 2.4)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    lead = f" ({sp.get('lead_dip_deg')} deg down onto the gypsy, {sp.get('wrap_deg')} deg round it)" if sp else ""
+    ax.set_title("the forepeak in section: the cable's lead" + lead, fontsize=8.5)
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None, running=None,
-             hardware=None):
+             hardware=None, interior=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -1175,5 +1319,7 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None
         if hardware is not None:
             draw_hardware_plan(hardware[0], hardware[1], pieces, deck_rep, os.path.join(out, "hardware_plan.png"),
                                fittings=running[0]["RunningFittings"] if running is not None else None)
+        if interior is not None:
+            draw_interior_plan(interior[0], interior[1], pieces, os.path.join(out, "interior_plan.png"), interior[2])
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")
