@@ -265,9 +265,9 @@
   "fore_and_aft": {
     "sheets": {
       "fore_topmast_staysail": {
-        "x": 24.0,
+        "x": 24.35,
         "over_deck": 1.35,
-        "kevel_dx": 0.25,
+        "kevel_dx": -0.25,
         "proud": 0.06
       },
       "jib": {
@@ -311,7 +311,7 @@
         ],
         "mast": "mizzen"
       },
-      "note": "each headsail's and staysail's lee sheet, set only (the sails are drawn on the port tack, the lee to starboard; hauled down or stowed, a sheet is stopped in on the heap, so it is not drawn): the headsails' in through a sheave in the starboard bow x (m, ship) over_deck above the deck (its rope's bed proud of the bow's flare), belayed to a kevel kevel_dx from it; the staysails' to the pin rails named (mast: the size scaled as that mast's gear; estimate)"
+      "note": "each headsail's and staysail's lee sheet, set only (the sails are drawn on the port tack, the lee to starboard; hauled down or stowed, a sheet is stopped in on the heap, so it is not drawn): the headsails' in through a sheave in the starboard bow x (m, ship) over_deck above the deck (its rope's bed proud of the bow's flare), belayed to a kevel kevel_dx from it; the staysails' to the pin rails named (mast: the size scaled as that mast's gear; estimate). The fore topmast staysail's hole is 24.35, not 24.0, so its sheet passes forward of the cathead (slice 10) about 0.1 m clear rather than through its fore edge, its kevel abaft the hole, clear of the jib's"
     },
     "halyards": {
       "mizzen_staysail": {

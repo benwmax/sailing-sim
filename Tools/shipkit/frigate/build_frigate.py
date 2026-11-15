@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-9).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-10).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -39,22 +39,31 @@ with their sashes and glass, the name, the quarter pieces, the quarter galleries
 the cabin light in each side and the quarter lanterns (held clear of the spanker boom swung to its brace limits);
 decor_room checks every new part against the rest of the ship and the others, the meetings that are by design listed,
 with how deep, in decor_1797.json's meets, and decor_seated that every piece of the carving reaches into what it is
-carved on, the open rims of its leaves and berries sunk.
+carved on, the open rims of its leaves and berries sunk. Slice 10 (anchors.py, anchors_1797.json) fits her anchors and
+cables, also right after the planking: a cathead each side over the rail at the head rail's after end, the bowers (5,300
+lb each, built to their weight) catted and fished, the bill of each inner fluke on its billboard, the hawse holes (two a
+side through the bow, lined with lead, in an oak bolster; cut through the planking) and the 22 in hemp cables bent to
+the bowers' rings and led in through them, with the cat stoppers and the shank painters; the sheet, stream and kedge
+anchors are sized here and stowed by the slices that build where they go (the boats, the gun deck). anchors_room checks
+every part against the rest of the ship and the others, the meetings by design in anchors_1797.json's meets.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
 <out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks, the
-deck's layout and checks, the guns' placing and checks, the head's and stern's layout and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
+deck's layout and checks, the guns' placing and checks, the head's and stern's layout and checks, the anchors' sizes,
+places and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
 (each line's path and stations, each block's pose, in each state; the pins and kevels), <out>/deck.json (the deck's
-fittings, the capstan's and wheel's frames, the nettings, the planking pattern) and <out>/guns.json (each gun's frame and
-pose, its lid, the unique meshes and what moves on each). Units are metres in Unreal's body frame
+fittings, the capstan's and wheel's frames, the nettings, the planking pattern), <out>/guns.json (each gun's frame and
+pose, its lid, the unique meshes and what moves on each) and <out>/anchors.json (each anchor's size, the bowers' hang,
+the catheads, the hawse holes, the cables, the stoppers' holes and the painters' eyes). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
 running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, head.py, stern.py, carve.py
-and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), never the .blend.
+and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), anchors.py and anchors_1797.json, never the
+.blend.
 """
 import json
 import math
@@ -69,6 +78,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import anchors  # noqa: E402
 import carve  # noqa: E402
 import deck  # noqa: E402
 import guns  # noqa: E402
@@ -167,6 +177,11 @@ PAINT = {
     # a stone white (FigurePaint); the windows' and the lanterns' panes are the spar deck's Glass
     "Gilt": ((0.80, 0.58, 0.24), 0.32, 1.0),
     "FigurePaint": ((0.80, 0.78, 0.72), 0.55, 0.0),
+    # the anchors (slice 10): the hawse holes' lead linings, the cables' weathered tarred hemp (lighter than the
+    # standing rigging's fresh tar); the anchors' iron is the guns' Blacking, the catheads and bolsters HullBlack (painted
+    # with the side), the billboards' and stock's oak Oak
+    "Lead": ((0.36, 0.36, 0.37), 0.65, 0.3),
+    "Cable": ((0.15, 0.105, 0.065), 0.8, 0.0),
 }
 DECK_PLANK = (0.42, 0.36, 0.27)       # holystoned pine (Blender's look only: the game draws the deck from the same UVs)
 DECK_PITCH = (0.012, 0.010, 0.008)    # the seams
@@ -236,6 +251,11 @@ SKIN = SK.parts()
 HD = head.Head(L, RIG, SK).build()
 HD.open_bow(SKIN)
 SN = stern.Stern(L, RIG, SK).build()
+# the anchors (slice 10, anchors.py and anchors_1797.json), on the opened bow: the catheads let into the rail cap, the
+# bowers catted and fished on their billboards, the hawse holes in their bolsters (cut through the planking here, before
+# the skin's objects are made), the cables, the cat stoppers and the shank painters
+AN = anchors.Anchors(L, RIG, SK, HD, SKIN).build()
+AN.cut_hawse(SKIN)
 LIDS = []
 for name, (V, F, M, side) in SKIN.items():
     if name.startswith("Lid_"):
@@ -272,6 +292,17 @@ for name, (V, F, M, side) in list(HD.parts().items()) + list(SN.parts().items())
         V, F, M = mirrored(V, F, M)
     smooth(make_painted(name, V, F, M), 35)
     DECOR[name] = (np.asarray(V, float), F)
+
+# the anchors and their gear (slice 10): each part one object, both sides in it. Smoothed at 35 deg, so the shank's
+# chamfers stay crisp (45 deg) and the 12-sided ring rounds; the ropes and eyebolts (8-sided, as the running rigging's
+# ropes) at 50 deg
+ANCHOR = {}
+for name, (V, F, M, side) in AN.parts().items():
+    assert name not in ANCHOR and name not in SKIN and name not in DECOR, name
+    if side == "stbd":
+        V, F, M = mirrored(V, F, M)
+    smooth(make_painted(name, V, F, M), 50 if name in ("Cable", "CatStopper", "ShankPainter", "AnchorEyebolts") else 35)
+    ANCHOR[name] = (np.asarray(V, float), F)
 
 # the masts and yards (slice 3): masts, tops and the bowsprit where they stand; each yard, the spanker boom and gaff on
 # its own frame, origin on the axis it turns about
@@ -765,7 +796,7 @@ SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_d
 # thimble and its strop, and every coil clear by the build gap of the ship, the sails and the other ropes, except where
 # it is made fast or led (the build fails otherwise)
 RN = running.Running(RIG, SK, ST, SV, taffrail_z=SN.taffrail_top).gear()
-DECOR_STATIC = [(name, V, running.tris_of(F)) for name, (V, F) in DECOR.items()]
+DECOR_STATIC = [(name, V, running.tris_of(F)) for name, (V, F) in list(DECOR.items()) + list(ANCHOR.items())]
 RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC + DECOR_STATIC, skin_parts=SKIN)
 RCX = {S: running.Clearance(RW.soup(running.Pose(RIG, S), extra=RN.extras())) for S in running.STATES}
 RUN_MISSING = RN.settle(RCX, os.path.join(HERE, "running_places_1797.json"), replace="--place-running" in ARGS)
@@ -922,18 +953,22 @@ def gun_room():
 GUN_ROOM = gun_room()
 
 
-def decor_room():
-    """every part of the head and the stern (slice 9) against everything else in the ship (the sails, running rigging
-    and guns in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet by design
-    (decor_1797.json's meets: a gallery's back let into the planking, a sash in its casing...) as deep as allowed
-    (deck.room, without the deck's standing check)"""
+def meets_of(card, path):
+    """{(a, b): (why, depth_in)} from a card's meets' pairs (the parts on one side, those on the other, why, the depth
+    allowed); a pair named twice fails the build"""
     meets = {}
-    for A, B, why, depth_in in HD.cfg["meets"]["pairs"]:
+    for A, B, why, depth_in in card["meets"]["pairs"]:
         for a in A:
             for b in B:
                 if (a, b) in meets or (b, a) in meets:
-                    raise SystemExit(f"decor_1797.json's meets name {a} with {b} twice")
+                    raise SystemExit(f"{path}'s meets name {a} with {b} twice")
                 meets[(a, b)] = (why, depth_in)
+    return meets
+
+
+def ship_tris():
+    """every mesh of the ship as built (the sails, running rigging and guns in every state and pose too) but the
+    measured reference: {name: (V, T)} in the ship's frame"""
     objs = {}
     for o in SC.objects:
         if o.type != "MESH" or o.name in REFERENCE:
@@ -941,10 +976,50 @@ def decor_room():
         V, T = world_tris(o)
         if len(T):
             objs[o.name] = (V, T)
-    return deck.room(objs, set(DECOR), None, meets=meets)
+    return objs
+
+
+def decor_room():
+    """every part of the head and the stern (slice 9) against everything else in the ship (the sails, running rigging,
+    guns and anchors in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet by
+    design (decor_1797.json's meets: a gallery's back let into the planking, a sash in its casing...) as deep as allowed
+    (deck.room, without the deck's standing check)"""
+    return deck.room(ship_tris(), set(DECOR), None, meets=meets_of(HD.cfg, "decor_1797.json"))
 
 
 DECOR_ROOM = decor_room()
+
+
+def anchors_room():
+    """every part of the anchors and their gear (slice 10) against everything else in the ship (the sails, running
+    rigging and guns in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet
+    by design (anchors_1797.json's meets: the cathead let into the rail cap, a bill on its billboard, the cable bent to
+    the ring...) as deep as allowed (deck.room, without the deck's standing check)"""
+    return deck.room(ship_tris(), set(ANCHOR), None, meets=meets_of(AN.card, "anchors_1797.json"))
+
+
+ANCHOR_ROOM = anchors_room()
+
+
+def anchors_folds():
+    """each connected piece of each anchors part against itself: {name: [pairs of its faces that cross, sharing no
+    corner, a point on the first]} (a rope bent tighter than its radius, or anything folded back through itself; the
+    room check sees only parts against other parts)"""
+    out = {}
+    for name, (V, F) in ANCHOR.items():
+        T = np.asarray(running.tris_of(F), np.int64)
+        lab = deck.islands(T, len(V))[T[:, 0]]
+        bad = []
+        for k in np.unique(lab):
+            Tk = T[lab == k]
+            tree = BVHTree.FromPolygons(V.tolist(), Tk.tolist(), all_triangles=True)
+            bad += [np.round(V[Tk[i]].mean(0), 3).tolist() for i, j in tree.overlap(tree)
+                    if i < j and not set(Tk[i].tolist()) & set(Tk[j].tolist())]
+        out[name] = {"pairs": len(bad), "at": bad[:5]}
+    return out
+
+
+ANCHOR_FOLDS = anchors_folds()
 
 
 def decor_seated():
@@ -1051,6 +1126,9 @@ stats["guns"] = dict(GN.info, room=GUN_ROOM, triangles=GUN_TRIS, **GN.rig_stats(
 stats["decor"] = {"head": HD.info, "stern": SN.info, "room": DECOR_ROOM, "seated": DECOR_SEATED,
                   "triangles": {n: stats["objects"][n]["triangles"] for n in DECOR},
                   "triangles_total": sum(stats["objects"][n]["triangles"] for n in DECOR)}
+stats["anchors"] = dict(AN.info, room=ANCHOR_ROOM, folds={n: v["pairs"] for n, v in ANCHOR_FOLDS.items()},
+                        triangles={n: stats["objects"][n]["triangles"] for n in ANCHOR},
+                        triangles_total=sum(stats["objects"][n]["triangles"] for n in ANCHOR))
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -1126,6 +1204,18 @@ GUNS_NOTE = (
     "loop's bolt). The gear is drawn at rest in each pose (the game moves between them; slice 17 fires the guns, "
     "the flash at pan_in_barrel_m and the muzzle)")
 json.dump(dict({"note": GUNS_NOTE}, **GN.game_data()), open(os.path.join(OUT, "guns.json"), "w"), indent=1)
+ANCHORS_NOTE = (
+    "the anchors and their gear (docs/shipkit-10), in the ship's frame (metres), starboard (port: negate the y of every "
+    "point and direction, and then the bower frame's y axis as well, so the port frame stays right-handed): anchors, "
+    "each anchor's weight, where it is stowed (cathead: the bowers, drawn here; boats and gun_deck: built by slices 11 "
+    "and 12) and its sizes as built to that weight; bower, the best bower catted and fished (the small bower is its "
+    "mirror): frame is the anchor's own (origin at the crown, z up the shank, x toward the inner arm, whose bill rests "
+    "on the billboard, y along the stock) for moving it, with its ring's top under the cathead and its bill; cathead, "
+    "its end and heel; hawse, the holes' mouths on the planking, the bolster's face and the bores' inboard axis; "
+    "billboard, cable (the hawse hole it leads through, its length and where it is clinched), stopper (its holes in the "
+    "cathead, knotted on top) and painter (its eyebolts), where each lies. The parts are the objects Cathead, Bower, Billboard, HawseBolster, HawseLining, Cable, "
+    "CatStopper, ShankPainter and AnchorEyebolts (the painters' eyebolts), both sides in each")
+json.dump(dict({"note": ANCHORS_NOTE}, **AN.info), open(os.path.join(OUT, "anchors.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
@@ -1138,7 +1228,8 @@ CLOSE = [[n["rail"], n["side"], n["least_clear_in"], n["closest"]] for n in DK.i
 if CLOSE:
     raise SystemExit("something comes within 1 in of a netting as built (build.json deck.nettings): " + json.dumps(CLOSE))
 BAD_LIDS = {k: v for k, v in GUN_ROOM["lids"].items() if v.get("lid_max_deg") is None or v.get("lid_open_deg") is None
-            or not v.get("run_out_elevation_deg")}
+            or not v.get("run_out_elevation_deg")
+            or (v.get("meets_past_it") and v["meets_past_it"][1] in ANCHOR)}      # no lid's swing stopped by an anchor
 if GUN_ROOM["local"]["meet"] or GUN_ROOM["ship"] or GUN_ROOM["elevated"] or GUN_ROOM["guns"] or GUN_ROOM["train"] or \
         BAD_LIDS:
     raise SystemExit("the guns meet the ship, each other or themselves (build.json guns.room): " +
@@ -1159,6 +1250,15 @@ if STRETCHED:
 if DECOR_ROOM["meet"]:
     raise SystemExit("the head's or the stern's parts meet the ship or each other (build.json decor.room): " +
                      json.dumps(DECOR_ROOM["meet"][:30]))
+if ANCHOR_ROOM["meet"]:
+    raise SystemExit("the anchors' parts meet the ship or each other (build.json anchors.room): " +
+                     json.dumps(ANCHOR_ROOM["meet"][:30]))
+FOLDED = {n: v for n, v in ANCHOR_FOLDS.items() if v["pairs"]}
+if FOLDED:
+    raise SystemExit("an anchors part crosses itself (build.json anchors.folds): " + json.dumps(FOLDED))
+if AN.info["cable"]["least_bend_of_diameter"] < AN.card["cable"]["bend_min_of_diameter"] - 0.005:
+    raise SystemExit("the cable bends tighter than anchors_1797.json's bend_min_of_diameter outside the clinch "
+                     "(build.json anchors.cable.least_bend_of_diameter)")
 UNSEATED = {n: r for n, r in DECOR_SEATED.items() if r["loose"] or r["rims_standing"]}
 if UNSEATED:
     raise SystemExit("carving stands off what it is carved on (build.json decor.seated): " + json.dumps(UNSEATED))
