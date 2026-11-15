@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-7).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-8).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -24,20 +24,26 @@ planked quarterdeck, gangways and forecastle round the open waist, the waterways
 and ladders, the hatchways and gratings, the companion, the skylights, the capstan's head and the double wheel (each on
 its own frame), the binnacle, the belfry, the galley's chimney, the bowsprit's step and the mast coats; then, after the
 ropes, the hammock nettings on the rail caps, narrowing wherever something comes near them; deck_room checks every
-deck part against the rest of the ship.
+deck part against the rest of the ship. Slice 8 (guns.py, guns_1797.json) arms her: a long 24-pounder on its truck
+carriage at each of the gun deck's 28 ports and a 32-pounder carronade on its slide at each of the spar deck's 22, two
+models placed as copies (linked meshes), each gun turned to its port, its gear rigged and its ringbolts fitted to the
+side and deck there, the long guns housed for sea, run in and run out and the carronades run out and recoiled, a
+collection per pose; gun_room checks every gun against the ship, the others and its own port's lid (how far each lid
+swings, how far it must open for its gun to run out and elevate), and each carronade trained across its port.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
 <out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks, the
-deck's layout and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
-(each line's path and stations, each block's pose, in each state; the pins and kevels) and <out>/deck.json (the deck's
-fittings, the capstan's and wheel's frames, the nettings, the planking pattern). Units are metres in Unreal's body frame
+deck's layout and checks, the guns' placing and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
+(each line's path and stations, each block's pose, in each state; the pins and kevels), <out>/deck.json (the deck's
+fittings, the capstan's and wheel's frames, the nettings, the planking pattern) and <out>/guns.json (each gun's frame and
+pose, its lid, the unique meshes and what moves on each). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
-running.py and running_1797.json, deck.py and deck_1797.json, never the .blend.
+running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, never the .blend.
 """
 import json
 import math
@@ -53,6 +59,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import deck  # noqa: E402
+import guns  # noqa: E402
 import loft  # noqa: E402
 import rigging  # noqa: E402
 import running  # noqa: E402
@@ -138,6 +145,10 @@ PAINT = {
     "Canvas": ((0.55, 0.50, 0.40), 0.9, 0.0),
     "Tarpaulin": ((0.06, 0.055, 0.05), 0.6, 0.0),
     "CompassCard": ((0.75, 0.72, 0.62), 0.6, 0.0),
+    # the guns (slice 8): the carriages, beds and slides red ochre, a shade darker than the bulwarks' red; the barrels
+    # blacked (lamp black in oil over the cast iron: a dull black, not bare metal)
+    "Carriage": ((0.33, 0.11, 0.055), 0.65, 0.0),
+    "Blacking": ((0.035, 0.035, 0.037), 0.55, 0.0),
 }
 DECK_PLANK = (0.42, 0.36, 0.27)       # holystoned pine (Blender's look only: the game draws the deck from the same UVs)
 DECK_PITCH = (0.012, 0.010, 0.008)    # the seams
@@ -814,6 +825,62 @@ def deck_room():
 REFERENCE = {"Hull"}           # measured, never drawn
 DECK_ROOM = deck_room()
 
+# the guns (slice 8, guns.py and guns_1797.json), after everything they must clear: a long 24-pounder on its truck
+# carriage in each gun deck port but the bridle port and a 32-pounder carronade on its slide in each quarterdeck and
+# forecastle port but the foremost, with their breechings, tackles, ringbolts and coiled falls. Each kind is one set of
+# meshes copied to every port as linked duplicates (the game instances them; guns.json gives each port's frame and how
+# the parts stand in each pose), each gun's gear and irons its own: the housed long guns and the run-out carronades are
+# shown (collections Guns_Housed and Carronades_RunOut, with Guns: the irons, the slides and the chocks fitted to each
+# port's waterway), the other poses hidden (Guns_RunIn, Guns_RunOut, Carronades_Recoil). gun_room checks them against
+# the ship and each other
+GN = guns.Guns(SK, DK, SKIN).build()
+GUN_COLS = {}
+for cn in ("Guns", "Guns_Housed", "Guns_RunIn", "Guns_RunOut", "Carronades_RunOut", "Carronades_Recoil"):
+    GUN_COLS[cn] = bpy.data.collections.new(cn)
+    SC.collection.children.link(GUN_COLS[cn])
+GUN_MESHES = {}
+for name, part in GN.meshes.items():
+    V, F, M, _ = part.arrays()
+    used = sorted(set(M))
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(map(float, v)) for v in V], [], [list(map(int, f)) for f in F])
+    for n in used:
+        me.materials.append(MATS[n])
+    me.polygons.foreach_set("material_index", [used.index(m) for m in M])
+    me.validate()
+    me.shade_smooth()
+    if hasattr(me, "set_sharp_from_angle"):
+        me.set_sharp_from_angle(angle=math.radians(40))
+    GUN_MESHES[name] = me
+for name, mesh, Mx, cn in GN.instances():
+    ob = bpy.data.objects.new(name, GUN_MESHES[mesh])
+    ob.matrix_world = Matrix([list(map(float, r)) for r in Mx])
+    GUN_COLS[cn].objects.link(ob)
+for cn in ("Guns_RunIn", "Guns_RunOut", "Carronades_Recoil"):
+    GUN_COLS[cn].hide_render = True
+    bpy.context.view_layer.layer_collection.children[cn].hide_viewport = True
+
+
+def gun_room():
+    """the guns against everything else in the ship (the sails and running rigging in every state too) and each
+    other, the carronades trained, and how far each lid must open for its gun to run out (guns.Guns.room)"""
+    objs, lids = {}, {}
+    for o in SC.objects:
+        if o.type != "MESH" or o.name in REFERENCE or o.name.startswith(("Gun24_", "Carr32_")):
+            continue
+        V, T = world_tris(o)
+        if len(T):
+            objs[o.name] = (V, T)
+        if o.name.startswith("Lid_"):
+            me = o.data
+            co = np.zeros(len(me.vertices) * 3)
+            me.vertices.foreach_get("co", co)
+            lids[o.name] = (co.reshape(-1, 3), T, np.array(o.matrix_world))
+    return GN.room(objs, lids)
+
+
+GUN_ROOM = gun_room()
+
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
@@ -856,12 +923,16 @@ def displacement(L):
 
 SAIL_STATE = {n: d["state"] for n, d in SV.objs.items()}
 RUN_STATE = {n: d[3] for n, d in RUN_OBJS.items()}
-stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects if o.type == "MESH"}}
+stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects
+                     if o.type == "MESH" and not o.name.startswith(("Gun24_", "Carr32_"))}}
+GUN_TRIS = GN.triangles()
 stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items()
                                if k not in REFERENCE and SAIL_STATE.get(k) not in ("Clewed", "Furled")
-                               and RUN_STATE.get(k) not in ("Clewed", "Furled"))
+                               and RUN_STATE.get(k) not in ("Clewed", "Furled")) + GUN_TRIS["as_drawn"]["total"]
 stats["triangles_model_note"] = ("as drawn, with the sails set: the hidden Clewed and Furled sails and running rigging "
-                                 "are in triangles_sails and running.triangles (one state shows at a time)")
+                                 "are in triangles_sails and running.triangles (one state shows at a time); the guns "
+                                 "as drawn (housed long guns, run-out carronades: guns.triangles) are counted in, their "
+                                 "copies left out of objects")
 tri_state = {s: sum(stats["objects"][n]["triangles"] for n, st_ in SAIL_STATE.items() if st_ == s)
              for s in ("Head",) + sails.STATES}
 stats["triangles_sails"] = {"set": tri_state["Set"] + tri_state["Head"], "clewed": tri_state["Clewed"] + tri_state["Head"],
@@ -896,7 +967,8 @@ stats["running"] = dict(RN.summary(), room=RUN_ROOM,
 stats["deck"] = dict(DK.info, room=DECK_ROOM,
                      triangles={n: stats["objects"][n]["triangles"] for n in DK.parts()},
                      triangles_total=sum(stats["objects"][n]["triangles"] for n in DK.parts()))
-json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1)
+stats["guns"] = dict(GN.info, room=GUN_ROOM, triangles=GUN_TRIS, **GN.rig_stats())
+json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
     "a Head shown in every state (square sails and the spanker). parent: the spar the objects ride on (their origin and "
@@ -961,6 +1033,16 @@ DECK_NOTE = (
     "over four strakes, plugs plug_r at every beam, nibbed into the waterway where nib of a plank's width is left. The "
     "nettings' mesh is the 'Netting' UV (along, up; metres) cut in diamonds")
 json.dump(dict({"note": DECK_NOTE}, **DK.game_data()), open(os.path.join(OUT, "deck.json"), "w"), indent=1)
+GUNS_NOTE = (
+    "the guns (docs/shipkit-8), in the ship's frame (metres): meshes, each in its own frame (the barrels, carriages, "
+    "quoin, trucks, beds and slides shared: copy them to every gun; each gun's gear and irons its own); for each gun "
+    "its port's frame and how its parts stand in each pose: the long 24-pounders housed for sea, run in and run out "
+    "(carriage_x_m along the port's X, the barrel on its trunnions at the pose's elevation, the quoin, the trucks, the "
+    "gun's gear mesh for the pose; run out, the lid's opening and the elevations it allows), the carronades on their "
+    "slides (the fighting bolt's place, train_deg, the bed run out or recoiled along the slide, the barrel on its "
+    "loop's bolt). The gear is drawn at rest in each pose (the game moves between them; slice 17 fires the guns, "
+    "the flash at pan_in_barrel_m and the muzzle)")
+json.dump(dict({"note": GUNS_NOTE}, **GN.game_data()), open(os.path.join(OUT, "guns.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
@@ -972,6 +1054,18 @@ CLOSE = [[n["rail"], n["side"], n["least_clear_in"], n["closest"]] for n in DK.i
          if n["least_clear_in"] is not None and n["least_clear_in"] < 0.98]
 if CLOSE:
     raise SystemExit("something comes within 1 in of a netting as built (build.json deck.nettings): " + json.dumps(CLOSE))
+BAD_LIDS = {k: v for k, v in GUN_ROOM["lids"].items() if v.get("lid_max_deg") is None or v.get("lid_open_deg") is None
+            or not v.get("run_out_elevation_deg")}
+if GUN_ROOM["local"]["meet"] or GUN_ROOM["ship"] or GUN_ROOM["elevated"] or GUN_ROOM["guns"] or GUN_ROOM["train"] or \
+        BAD_LIDS:
+    raise SystemExit("the guns meet the ship, each other or themselves (build.json guns.room): " +
+                     json.dumps({k: GUN_ROOM[k][:30] for k in ("ship", "elevated", "guns", "train")} |
+                                {"local": GUN_ROOM["local"]["meet"][:30], "lids": BAD_LIDS}, default=str))
+OFF_DECK = {k: {kk: vv for kk, vv in v.items() if kk != "by_gun"} for k, v in GN.info["coils_on_deck"].items()
+            if v["least_in"] < -0.08 or v["most_in"] > 0.08}
+if OFF_DECK:
+    raise SystemExit("a coil lies more than 0.08 in off its gun's deck (build.json guns.coils_on_deck): " +
+                     json.dumps(OFF_DECK))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))

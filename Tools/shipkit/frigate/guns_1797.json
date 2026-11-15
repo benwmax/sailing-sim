@@ -1,0 +1,247 @@
+{
+ "about": "The guns of the frigate Commonwealth (slice 8, guns.py, docs/shipkit-8): the long 24-pounder on its truck carriage for the gun deck, the 32-pounder carronade on its slide for the quarterdeck and forecastle, their breechings and tackles, the ringbolts they are made fast to, and where each stands. Inches unless named; a gun's own frames are X toward the muzzle, Z up off the deck, Y = Z x X (the gun's right as the game shows it: the ship's frame is Unreal's, Y to starboard). Every size is an estimate after the period's rules of proportion (Muller's Treatise of Artillery, 1757/1780; Adye, The Bombardier and Pocket Gunner, 1801; Simmons, The Sea-Gunner's Vade-Mecum, 1812), as remembered: their scans, Commons' photographs of Constitution's guns and the Navy's drawings could not be fetched from this machine (Commons answered 429, too many requests, on 14 Nov 2026; the Navy's and museums' hosts are blocked), except where a source says otherwise.",
+ "sources": {
+  "weight": "US Navy photo caption 050825-N-9076B-006 (Commons, public domain): Constitution's gun deck guns are 5,600 lb 24-pounders, which is a 9 ft 6 in long gun of about 50 cwt",
+  "commons_429": "commons.wikimedia.org and upload.wikimedia.org refused this machine's requests (HTTP 429) on 14 Nov 2026; the Category:Cannons_of_the_USS_Constitution photographs (US Navy, public domain) are the first thing to measure against when they can be fetched"
+ },
+ "long24": {
+  "bore_in": 5.823,
+  "length_in": 114.0,
+  "length_note": "9 ft 6 in from the muzzle's face to the base ring's back (the cascabel behind it): the Blomefield-pattern 24-pounder of the 1790s, about 50 cwt. Commonwealth's guns are cast to that pattern (estimate: the American foundries of 1794-97 copied British guns)",
+  "profile": [[-9.6, 0.0], [-9.45, 1.4], [-9.0, 2.3], [-8.3, 3.0], [-7.4, 3.45], [-6.5, 3.55], [-5.7, 3.35], [-5.2, 2.95], [-4.9, 2.8], [-4.3, 2.8], [-4.0, 3.3], [-3.6, 4.6], [-3.0, 5.8], [-2.2, 7.0], [-1.2, 8.1], [-0.4, 8.9], [0.0, 9.25], [0.0, 9.6], [0.45, 9.6], [0.6, 9.55], [0.9, 9.42], [1.2, 9.3], [1.5, 9.25], [1.7, 9.27], [1.75, 9.4], [2.15, 9.4], [2.2, 9.15], [17.0, 9.0], [32.4, 8.85], [32.45, 9.05], [33.25, 9.05], [33.3, 8.6], [43.0, 8.5], [52.0, 8.4], [52.05, 8.6], [52.6, 8.6], [52.9, 8.45], [53.3, 8.15], [53.7, 7.92], [54.0, 7.85], [54.05, 7.7], [70.0, 7.18], [86.0, 6.66], [103.4, 6.1], [103.45, 6.35], [103.85, 6.35], [103.9, 6.4], [104.15, 6.65], [104.45, 6.78], [104.75, 6.65], [105.0, 6.4], [105.05, 6.35], [105.45, 6.35], [105.5, 6.05], [106.4, 6.05], [106.9, 6.15], [107.8, 6.4], [108.8, 6.65], [109.8, 6.85], [110.8, 6.98], [111.8, 7.05], [112.2, 7.05], [112.25, 7.2], [112.85, 7.2], [112.9, 7.05], [113.4, 6.98], [113.8, 6.9], [114.0, 6.8]],
+  "profile_note": "outside radius (in) at x (in) from the base ring's back face toward the muzzle: the button and neck of the cascabel and the breech behind it (x < 0), the base ring and its ogee, the first reinforce to 2/7 of the length and its ring, the second reinforce (the trunnions in it) and its ring, the chase, the muzzle astragal and fillets, the swell of the muzzle and the lip. Metal at the breech about one calibre, at the muzzle's neck about half (estimate after Muller's proportions for iron guns, Blomefield's simpler mouldings: no chase girdle)",
+  "mouth_in": 3.15,
+  "bore_shown_in": 14.0,
+  "sides": 48,
+  "trunnion": {
+   "x_in": 48.86,
+   "below_axis_in": 0.6,
+   "radius_in": 2.91,
+   "length_in": 5.82,
+   "rimbase_radius_in": 4.3,
+   "rimbase_face_in": 10.1,
+   "note": "the trunnions' axis 3/7 of the length from the base ring (the breech's preponderance), a tenth of a calibre below the bore's axis; a calibre across and a calibre long, on rimbases standing 1.6 in off the reinforce (estimate)"
+  },
+  "loop": {
+   "x_in": -5.4,
+   "z_in": 5.6,
+   "ring_in": 2.4,
+   "bar_in": 0.9,
+   "note": "Blomefield's breeching loop: a ring cast on top of the cascabel, across the gun, the breeching rove through it (on guns from 1787); its hole 3 in across for the 7 in breeching"
+  },
+  "vent": {
+   "x_in": 3.6,
+   "radius_in": 0.2,
+   "patch_in": [2.6, 3.0, 0.12],
+   "note": "the vent at the bore's end, in a raised patch"
+  },
+  "lock": {
+   "x_in": 5.8,
+   "around_deg": 16.0,
+   "plate_in": [6.0, 1.5, 0.3],
+   "pan_gap_in": 0.2,
+   "note": "a flintlock (gunlock) on the gun's right of the vent (its plate's middle at x_in, around_deg from the top toward +Y), its pan at the vent's mouth, pan_gap_in from the vent's edge with a priming channel between, the steel standing over the pan, the cock behind it fired by a lanyard (the US Navy fitted locks from 1797; slice 17's flash starts at the pan: guns.json pan_in_barrel_m)"
+  }
+ },
+ "carriage24": {
+  "trunnion_over_deck_in": 37.5,
+  "trunnion_note": "the trunnions' axis 3 ft 1.5 in over the deck, so the bore's axis (38.1 in) lies near the middle of the port as the period built its carriages to their ports. Slice 2's port sills rise outboard with the side's lean (up to 5.4 in amidships: they follow the side's normal, not the level); at this height the chase clears every port's sill and linings when run out (build.json guns.room.ship: nothing of a run-out gun meets the ports). A 32-pounder's carriage of the period is quoted at 2 ft 9 in to the trunnion bed for lower deck ports 2 ft over the deck (estimate)",
+  "bracket_thick_in": 5.5,
+  "bracket_inner_y_in": {"at_trunnion": 10.2, "rear": 12.0},
+  "bracket_inner_note": "the brackets' inner faces a tenth of an inch off the rimbases at the trunnions, splaying aft to 12 in at the back to leave room round the breech",
+  "bracket_x_in": [-49.5, 11.0],
+  "steps": [[-7.0, 4.0], [-20.0, 8.0], [-33.0, 12.0]],
+  "steps_note": "the bracket's top: level from its front at the trunnions' height, then three steps down at these x by these drops (the handspikes' purchase), the tail rounded down to its back (estimate: the period's 24-pounder carriage has its steps and its arched underside)",
+  "tail_radius_in": 5.0,
+  "arch": {"x_in": [-34.0, -5.0], "rise_in": 2.5},
+  "fore_axle": {"x_in": 4.0, "body_in": [9.0, 7.5], "below_arm_in": 2.5, "arm_radius_in": 2.25, "truck_radius_in": 9.5},
+  "hind_axle": {"x_in": -40.0, "body_in": [8.5, 7.0], "below_arm_in": 2.5, "arm_radius_in": 2.25, "truck_radius_in": 8.5},
+  "axle_note": "the fore trucks 19 in across and the hind 17 in (the period's practice); each axletree's arms stand at their own trucks' radius over the deck, so the brackets and the bed stand level on a level deck (the deck's camber and sheer under each gun are taken up by its port's frame: Guns.seat); each axletree's body 2.5 in under its arms' axis, let 2.5 in into the brackets' undersides",
+  "axle_let_in": 2.5,
+  "truck": {"thick_in": 5.0, "gap_in": 0.4, "chamfer_in": 0.45, "hole_clear_in": 0.06, "sides": 40},
+  "washer_in": [1.1, 0.35],
+  "linch_pin_in": {"radius": 0.32, "out": 0.55, "head": 0.6},
+  "transom": {"x_in": [-0.5, 8.5], "under_barrel_in": 3.5},
+  "bed": {
+   "x_in": [-49.0, -13.0],
+   "thick_in": 4.0,
+   "stool_half_y_in": 6.0,
+   "bolt_x_in": -16.0,
+   "bolt_radius_in": 0.6,
+   "note": "the bed: a plank between the brackets on a stool on the hind axletree and the bed bolt across under its fore end, its top where the breech comes down on it at breech_on_bed_deg"
+  },
+  "quoin": {
+   "length_in": 22.0,
+   "width_in": 11.0,
+   "high_in": [2.0, 10.0],
+   "handle_in": [3.0, 0.6],
+   "note": "the quoin: a wedge on the bed, its thick end aft with a handle sticking out behind the breech; the base ring's lower edge bears on its face, so drawn out it lets the breech down (the muzzle rises) and pushed home it lifts it. Its place for the level gun and how far it travels for each degree are derived (guns.json long24.quoin); out (housed) the breech lies on the bed"
+  },
+  "cap_square": {"broad_in": 3.0, "thick_in": 0.55, "reach_in": 6.5},
+  "bolt_head_in": [0.9, 0.4],
+  "bolts_note": "square bolt heads on the brackets' outsides where the transverse bolts pass: the transom's, the bed's, the axletrees' and two through the steps",
+  "eyebolt_side": {
+   "x_in": -6.0,
+   "z_in": 31.0,
+   "note": "each side tackle's eyebolt on its bracket's outside, its eye lying flat: high enough and far enough aft that the tackle's block clears the fore truck when the gun is run in, and far enough from the side's ringbolt that the two blocks fit between them when it is run out"
+  },
+  "breeching_hole": {
+   "x_in": -28.0,
+   "z_below_trunnion_in": 13.5,
+   "radius_in": 1.75,
+   "note": "the breeching rove through a hole in each bracket under the second step, 3.5 in across for the 7 in breeching: high enough that the breeching clears the bed and the fore truck, below the side tackle's block when the gun is housed"
+  },
+  "train_eyebolt": {
+   "z_in": 9.0,
+   "note": "the train tackle's eyebolt in the hind axletree's back"
+  },
+  "eyebolt_in": {"eye": 1.15, "bar": 0.42, "shank": 0.45, "into": 3.5},
+  "breech_on_bed_deg": 10.5,
+  "breech_on_bed_note": "the elevation at which the breech comes down on the bed with the quoin out: the period built the carriage to its port so that a housed gun, hauled out with the quoin out, came up against the port's upper sill with its breech on the bed (too low and the muzzle misses the sill and its lashing's bolts, too high and the breech hangs off the bed). The ports' upper sills stand 53.6 to 55.6 in over the deck: the highest needs 10.0 deg for the muzzle to come 0.5 in over it (build.json guns.long24.ports: head_in, housed_muzzle_top_in); 10.5 deg is also the most a gun elevates (estimate)"
+ },
+ "carronade32": {
+  "bore_in": 6.25,
+  "length_in": 42.0,
+  "length_note": "3 ft 6 in from the base ring's back to the muzzle (4 ft over the cascabel), about 17 cwt: the Carron Company's 32-pounder of the 1790s (estimate). A carronade on the quarterdeck and forecastle is the plan's choice for an invented 44; the American 44s carried long 12-pounders there in 1797-98 and carronades soon after",
+  "profile": [[-6.5, 0.0], [-6.35, 1.3], [-5.9, 2.15], [-5.2, 2.75], [-4.4, 3.0], [-3.7, 2.9], [-3.3, 2.5], [-3.0, 2.4], [-2.7, 2.6], [-2.3, 4.0], [-1.8, 5.3], [-1.1, 6.5], [-0.4, 7.4], [0.0, 7.75], [0.0, 8.15], [0.9, 8.15], [1.1, 8.05], [1.4, 7.9], [1.7, 7.85], [1.75, 7.75], [14.0, 7.55], [25.0, 7.35], [25.05, 7.55], [25.75, 7.55], [25.8, 7.2], [33.0, 6.6], [37.5, 6.15], [38.0, 6.1], [38.05, 6.3], [38.45, 6.3], [38.5, 6.05], [39.2, 6.05], [39.8, 6.2], [40.4, 6.5], [40.9, 6.85], [41.3, 7.15], [41.6, 7.3], [41.65, 7.45], [41.95, 7.45], [42.0, 7.3]],
+  "profile_note": "the cascabel's knob and the breech, a base ring, the body to a reinforce ring, the chase, a fillet at the neck and the muzzle flaring into its cup (estimate after the Carron pattern)",
+  "mouth_in": 3.6,
+  "cup_rim_in": 6.3,
+  "cup_in": 2.2,
+  "bore_shown_in": 9.0,
+  "sides": 48,
+  "lug": {
+   "x_in": 17.0,
+   "length_in": 6.5,
+   "thick_in": 3.6,
+   "drop_in": 9.6,
+   "round_in": 2.1,
+   "note": "the loop under the barrel at its balance, its bolt 2 in under the barrel, bolted between the bed's cheeks: a carronade has no trunnions"
+  },
+  "loop": {
+   "x_in": -3.7,
+   "z_in": 5.0,
+   "ring_in": 2.1,
+   "bar_in": 0.8,
+   "note": "the breeching loop on the cascabel, its hole 2.6 in across for the 6 in breeching"
+  },
+  "screw_boss": {
+   "x_in": -1.6,
+   "radius_in": 1.3,
+   "drop_in": 1.4,
+   "note": "a boss under the breech the elevating screw bears on"
+  },
+  "vent": {"x_in": 2.6, "radius_in": 0.2, "patch_in": [2.4, 2.8, 0.12]},
+  "lock": {"x_in": 4.6, "around_deg": 18.0, "plate_in": [5.5, 1.4, 0.3], "pan_gap_in": 0.2},
+  "cup_note": "the muzzle's cup: a cone from cup_rim_in at the muzzle's face down to the bore (mouth_in, then a small bevel) cup_in deep, so the blast clears the side (the carronade's own mark)"
+ },
+ "slide": {
+  "length_in": 84.0,
+  "rail_in": [6.0, 6.0],
+  "slot_in": 4.0,
+  "under_rails_in": 11.2,
+  "front_in": 3.0,
+  "transoms": {"front": [0.5, 6.0], "middle": [38.0, 44.0], "rear": [76.0, 83.0]},
+  "transom_drop_in": 3.6,
+  "bolt_radius_in": 0.9,
+  "truck_in": {"radius": 3.6, "thick": 3.0, "y": 5.0, "gap": 0.25},
+  "train_deg": 18.0,
+  "chock": {
+   "behind_bolt_in": 5.6,
+   "half_y_in": 8.8,
+   "off_face_in": 0.5,
+   "over_waterway_in": 0.25,
+   "let_in": 0.15,
+   "note": "the chock under the slide's fore end (estimate, period practice: the fighting bolt through the slide's front transom, a chock and the waterway into the deck): an oak block on the waterway (where the waterway's hollow face runs out, on the deck), its top level over_waterway_in above the waterway's highest point under any port's chock, its outboard end off_face_in off the bulwark, wide and long enough for the front transom to turn on it through train_deg each way; the slide's front transom stands on its top. Each port's chock fits its own waterway, so the chocks are drawn in place, not as copies"
+  },
+  "note": "the slide (estimate): two rails 6 in square with a 4 in slot between them for the bed's keel, joined by three transoms; the front transom stands on the deck inside the bulwark under the port with the fighting bolt through it into the deck (the slide trains about it), the back on two trucks set across under the rear transom (they roll as it trains). The slide's front is front_in ahead of the bolt"
+ },
+ "bed": {
+  "length_in": 36.0,
+  "width_in": 16.0,
+  "high_in": 7.0,
+  "head_in": [9.0, 4.5],
+  "bolt_below_head_in": 2.2,
+  "bolt_from_front_in": 4.5,
+  "bolt_radius_in": 0.85,
+  "keel_in": [3.5, 3.0],
+  "eyebolt": {"from_front_in": 9.0, "z_in": 3.5, "eye": 1.0, "bar": 0.38, "shank": 0.42, "into": 3.0},
+  "screw_radius_in": 0.7,
+  "screw_handle_in": [6.0, 0.35],
+  "note": "the carronade's carriage (its bed): a block 3 ft long sliding on the slide, a keel under it in the slide's slot, the barrel's loop bolted between the two cheeks of its raised head, the elevating screw under the cascabel's boss (estimate)"
+ },
+ "irons": {
+  "ringbolt24": {"eye": 1.55, "bar": 0.55, "shank": 0.6, "ring": 2.8, "ring_bar": 0.55},
+  "ringbolt32c": {"eye": 1.35, "bar": 0.48, "shank": 0.52, "ring": 2.5, "ring_bar": 0.48},
+  "tackle_ring24": {"eye": 1.3, "bar": 0.45, "shank": 0.5, "ring": 1.9, "ring_bar": 0.42},
+  "tackle_ring32c": {"eye": 1.15, "bar": 0.4, "shank": 0.45, "ring": 1.7, "ring_bar": 0.38},
+  "into_side_in": 2.5,
+  "standoff_in": 0.15,
+  "hook_bar_in": {"long24": 0.48, "carronade32": 0.42},
+  "note": "ringbolts: an eyebolt driven through the side (or the deck) with an iron ring in its eye; the breeching's end is clinched to a ring and the tackles' hooks go into theirs (eye and ring: centre-line radius and bar radius, estimate); a ring hangs toward its pull, bearing on the eye's bar; a breeching's ring is wide enough for the rope's clinch round it to clear the eye it hangs in; the housing bolts: two eyebolts in the side over each gun deck port, their eyes lying flat, the housed gun's muzzle lashing rove down through them",
+  "housing24": {"eye": 1.3, "bar": 0.45, "shank": 0.5}
+ },
+ "ropes": {
+  "breeching24_circ_in": 7.0,
+  "tackle24_circ_in": 3.0,
+  "breeching32c_circ_in": 6.0,
+  "tackle32c_circ_in": 2.5,
+  "block_of_circ": 3.0,
+  "coil_inner_in": 2.0,
+  "note": "the breeching about the calibre's size in circumference, the tackles' falls 3 in for the 24-pounders, gun tackle purchases (two single blocks, iron-bound, hooked), blocks three times their rope's circumference long (estimate); the muzzle lashing: turns round the housed gun's chase behind its muzzle swell and through the two housing bolts over the port (estimate)",
+  "muzzle_lashing24_circ_in": 2.5,
+  "muzzle_lashing_turns": 2
+ },
+ "placement": {
+  "gun_deck": {
+   "ports": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+   "ring_height_in": 21.0,
+   "breeching_bolt_y_in": 27.0,
+   "breeching_bolt_z_in": 21.0,
+   "tackle_bolt_y_in": 48.0,
+   "tackle_bolt_z_in": 18.0,
+   "run_out_gap_in": 1.0,
+   "muzzle_inboard_in": 12.0,
+   "train_span_in": 36.0,
+   "coil_in": [-24.0, 40.0],
+   "train_coil_in": [10.0, -18.0],
+   "note": "a long 24-pounder in each gun deck port but the bridle port at the bow (15: a chase port the foremost guns were shifted into, too far forward to house a gun in), 14 a side. Three poses. Housed for sea (shown): the lids shut, each gun hauled out with the quoin out until its muzzle comes up against the port's upper sill from inside (housed_gap_in off the side above the sill), the breech down on the bed (carriage24.breech_on_bed_deg), the muzzle lashed to the two housing bolts over the port (housing_bolt_y_in either side of the port's middle at housing_bolt_z_in), the side tackles and train tackle hooked and hauled; the breeching's slack hangs, its length set by the recoil. Run in: where the gun recoils to and is loaded, the breeching taut, the barrel level on its quoin and its muzzle muzzle_inboard_in inside the port's inner face. Run out: the carriage's front run_out_gap_in off the side (the lid open: guns.json lid_open_deg). Each port's frame: X out of the side square to its inner face at ring_height over the deck, Z square to the deck under the gun's trucks (a plane fitted to it in every pose); a ringbolt each side of the port for the breeching (breeching_bolt_y out from the port's middle) and one further out for the side tackle, the train tackle's ringbolt in the deck train_span inboard of the carriage's back when run in; each gun's ringbolts are fitted to its own side and deck (their eyes irons.standoff_in off it where they come nearest). Each side tackle's fall is coiled down on the deck at coil_in (x along the port's X from the side's inner face, y out from the port's middle), clear of the waterway slice 12 will lay along the side, the train tackle's at train_coil_in from its ringbolt; every gun's gear is laid on its own deck (its falls, coils and the breeching's bights: guns.coils_on_deck). port_overrides: ports whose gear lies differently (with what differs there)",
+   "housing_bolt_y_in": 9.0,
+   "housing_bolt_z_in": 58.5,
+   "housed_gap_in": 0.5,
+   "poses": [
+    "housed",
+    "run_in",
+    "run_out"
+   ],
+   "port_overrides": [
+    {
+     "ports": [7],
+     "train_coil_in": [-14.0, 0.0],
+     "why": "the quarterdeck's ladders come down to the gun deck beside gun 7: its train tackle's fall is coiled straight inboard of its ringbolt, under the ladder and clear of its foot (on the gun's left, the common place, the starboard gun's coil lies under the starboard ladder's foot; on its right the port gun's would)"
+    },
+    {
+     "ports": [14],
+     "train_coil_in": [-14.0, 0.0],
+     "why": "the foremost port: its train tackle's fall is coiled straight inboard of its ringbolt, clear of the foremast"
+    }
+   ]
+  },
+  "spar_deck": {
+   "ports": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+   "ring_height_in": 22.0,
+   "breeching_bolt_y_in": 24.0,
+   "breeching_bolt_z_in": 26.0,
+   "tackle_bolt_y_in": 40.0,
+   "tackle_bolt_z_in": 18.0,
+   "run_out_gap_in": 1.0,
+   "recoil_in": 30.0,
+   "coil_in": [-20.0, 36.0],
+   "note": "a carronade in each quarterdeck and forecastle port but the foremost (4 ft 6 in wide, a chase port for a long gun shifted forward), 11 a side, run out; the breeching's ringbolt beside each port and the side tackle's further out and lower, far enough from the bed's eyebolt that the tackle's two blocks fit between them when it is run out. recoil: how far the bed runs in along the slide before the breeching brings it up. The slides are trained with handspikes under their trucks (no training tackles drawn); each side tackle's fall coiled down at coil_in, inboard of the waterway, on its own gun's deck; ring_height between the two ringbolts' heights, which lie close together so the bulwark's lean, which differs from port to port, moves them little (the eyes stand within about an inch of the side at every port)",
+   "poses": [
+    "run_out",
+    "recoil"
+   ]
+  }
+ }
+}
