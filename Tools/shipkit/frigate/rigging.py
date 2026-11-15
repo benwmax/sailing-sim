@@ -279,6 +279,18 @@ def outside_path(cs, Ts, rs, r_x):
     return [to3(q) for q in path], [to3(q) for q in touch]
 
 
+def rounded_rect_xy(x0, x1, y0, y1, rad, n=5):
+    """A rectangle's outline in plan (x0..x1, y0..y1), its corners rounded rad: points (k, 2), anticlockwise."""
+    rad = min(rad, 0.45 * (x1 - x0), 0.45 * (y1 - y0))
+    pts = []
+    for cx, cy, a0 in ((x1 - rad, y1 - rad, 0.0), (x0 + rad, y1 - rad, 90.0), (x0 + rad, y0 + rad, 180.0),
+                       (x1 - rad, y0 + rad, 270.0)):
+        for k in range(n):
+            a = math.radians(a0 + 90.0 * k / (n - 1))
+            pts.append((cx + rad * math.cos(a), cy + rad * math.sin(a)))
+    return np.array(pts)
+
+
 def point_at_z(Pa, Pb, z):
     """The point on the line through Pa and Pb at height z."""
     t = (z - Pa[2]) / (Pb[2] - Pa[2])
@@ -1683,6 +1695,168 @@ class Standing:
             self.collar_spar(centre, p0 + sj * uj, uj, Rj(sj), rm, ex)
             tube(centre, [col, a], rm, self.ROPE)
             self.span(key.replace("_", " "), col, a, rm)
+
+    # ---- the head's rigging: the gammoning and the bobstays (slice 9) ---------------------------------------------------
+    def gammoning(self, hd):
+        """The gammoning (docs/shipkit-9): turns of rope through the slot in the knee of the head and over the bowsprit,
+        side by side in the slot and on the spar, each turn's legs up the knee's sides and leading forward to the
+        bowsprit; frapped in the middle (turns round both sides' legs, drawing them in). hd: the built head.Head."""
+        g = hd.c["gammoning"]
+        b = self.rig.bs
+        H, ub = b["H"], b["ub"]
+        r = rope_r(g["rope_in"])
+        M = self.mesh("Rigging_Bowsprit")
+        centre = Side(M, 1)
+        (x0, x1), (z0, z1) = g["slot_m"]["x"], g["slot_m"]["z"]
+        rad, zc = 0.5 * (z1 - z0), 0.5 * (z0 + z1)
+
+        def z_in_slot(x):
+            """the rope's middle against the slot's top (the turns bear up toward the bowsprit), its round ends too"""
+            if x < x0 + rad:
+                d = x0 + rad - x
+            elif x > x1 - rad:
+                d = x - (x1 - rad)
+            else:
+                return z1 - r
+            return zc + math.sqrt(max((rad - r) ** 2 - d * d, 0.0))
+        zk = lambda x: float(np.interp(x, hd.knee_top[:, 0], hd.knee_top[:, 1]))     # noqa: E731
+        half = lambda x, z: float(hd.knee_half(np.array([[x, z]]))[0])             # noqa: E731
+        n = g["turns"]
+        xs = np.linspace(x0 + 0.04, x1 - 0.04, n)
+        legs, frap_pts, lean = [], [], []
+        for i, xsl in enumerate(xs):
+            xb = xsl + g["lead_fwd_m"]
+            sb = (xb - H[0]) / ub[0]
+            A = H + sb * ub
+            a_e = float(b["R"](sb)) + r                                 # the turn's middle round the spar: an ellipse
+            b_e = a_e / ub[0]                                           # in the upright section at xb
+            zm = z_in_slot(xsl)
+            hm = half(xsl, zm)
+            zt = zk(xsl + 0.03)
+            xt = xsl + g["lead_fwd_m"] * (zt - zm) / max(A[2] - zm, 0.1)
+            ht = half(xt, zt - 0.02)
+            # the frapping's height: halfway from the knee's top to the spar's underside
+            zf = 0.5 * (zt + A[2] - b_e)
+            xf = xsl + g["lead_fwd_m"] * (zf - zm) / max(A[2] - zm, 0.1)
+            # the tangent from the frapped leg to the spar's section, on the outside
+            ph = np.linspace(-math.pi / 2 + 1e-3, math.pi / 2, 4000)
+            Ey, Ez = a_e * np.cos(ph), A[2] + b_e * np.sin(ph)
+            # where the leg would be unfrapped (straight from the knee's top to the spar's side), then drawn in
+            y_nat = ht + r + (a_e - ht - r) * (zf - zt) / max(A[2] - zt, 0.1)
+            yf = ht + r + g["frap_draw"] * (y_nat - ht - r)
+            dEy, dEz = -a_e * np.sin(ph), b_e * np.cos(ph)
+            cr = (Ey - yf) * dEz - (Ez - zf) * dEy
+            k = int(np.argmin(np.abs(cr)))
+            ph_t = float(ph[k])
+            arc = [np.array([xb, a_e * math.cos(q), A[2] + b_e * math.sin(q)])
+                   for q in np.linspace(ph_t, math.pi - ph_t, 25)]
+            stb = [np.array([xsl, hm + r, zm]), np.array([xt, ht + r, zt + r]), np.array([xf, yf, zf])]
+            port = [p * np.array([1.0, -1.0, 1.0]) for p in stb[::-1]]
+            # through the slot from port to starboard, then the starboard leg, over the spar, the port leg
+            loop = [np.array([xsl, -hm, zm]), np.array([xsl, hm, zm])] + stb + arc + port
+            tube(centre, fillet(loop, 2 * r), r, self.ROPE, n=6, closed=True)
+            legs.append((stb, arc))
+            frap_pts.append((xf, yf, zf))
+            lean.append(g["lead_fwd_m"] / max(A[2] - zm, 0.1))
+            self.span("gammoning leg stbd", stb[-1], arc[0], r)
+            self.span("gammoning leg port", port[0], arc[-1], r)
+        # the frapping: turns round both sides' legs at their middle, a rope's breadth apart up the legs
+        xf = np.array([p[0] for p in frap_pts])
+        yf = max(p[1] for p in frap_pts)
+        zf = float(np.mean([p[2] for p in frap_pts]))
+        nf = g["frapping_turns"]
+        rf = r
+        for j in range(nf):
+            dz = (j - 0.5 * (nf - 1)) * 2.05 * rf
+            sl = float(np.mean(lean)) * dz                               # the legs lean forward: follow them
+            xa, xf_ = xf.min() - r - rf + sl, xf.max() + r + rf + sl
+            ring = rounded_rect_xy(xa, xf_, -(yf + r + rf), yf + r + rf, 2.2 * rf)
+            tube(centre, [np.array([p[0], p[1], zf + dz]) for p in ring], rf, self.ROPE, n=6, closed=True)
+        self.report["gammoning"] = {"turns": n, "frapping_turns": nf, "slot_x_m": [x0, x1],
+                                    "on_bowsprit_x_m": [round(float(xs[0] + g["lead_fwd_m"]), 3),
+                                                        round(float(xs[-1] + g["lead_fwd_m"]), 3)],
+                                    "frapped_at_z_m": round(zf, 3)}
+
+    def bobstays(self, hd):
+        """The bobstays (docs/shipkit-9): each doubled through its hole in the cutwater, the two parts up either side
+        of the cutwater's fore edge to where they come together, the stay on up to a deadeye, a lanyard to the deadeye
+        turned into a collar round the bowsprit. The lower hole's stay goes to the outer collar, so they never cross."""
+        bo = hd.c["bobstays"]
+        b = self.rig.bs
+        H, ub = b["H"], b["ub"]
+        ri = self.sp["rope_in"]
+        rb = rope_r(bo["rope_in"])
+        D = bo["deadeye_in"] * IN
+        r_lan = rope_r(ri["lanyard_of_rope"] * bo["rope_in"])
+        M = self.mesh("Rigging_Bowsprit")
+        centre = Side(M, 1)
+        r_hole = 0.5 * bo["hole_d_in"] * IN
+        holes = sorted(hd.bobstay_holes, key=lambda h: h[1])           # low to high
+        collars = sorted(bo["collars_x_m"], reverse=True)              # out to in
+        out = []
+        for (xh, zh), xc in zip(holes, collars):
+            s = (xc - H[0]) / ub[0]
+            o = H + s * ub
+            R = float(b["R"](s))
+            Hc = np.array([xh, 0.0, zh])
+            extra = self.beside(o, R, [b["jib"]])
+            loop, _, _ = self.collar_spar(centre, o, ub, R, rb, extra)
+            col = max(loop, key=lambda p: p @ unit(Hc - o))
+            t = unit(col - Hc)                                         # up the stay
+            CU = col - t * bo["collar_leg_d"] * D
+            CL = CU - t * 1.9 * D
+            Xl, Yl, Zl = self.deadeye_pair(centre, CL, CU, EY, D, D, r_lan)
+            end_u, tp_u = self.turnin(centre, CU, Xl, Yl, Zl, D, rb)
+            tube(centre, fillet([col] + tp_u, 2 * rb), rb, self.ROPE)
+            Xd = -Xl
+            Yd = np.cross(Zl, Xd)
+            end_l, tp_l = self.turnin(centre, CL, Xd, Yd, Zl, D, rb)
+            # where the stay's line (elevation) leaves the cutwater's fore edge, and where its parts come together
+            u2 = np.array([t[0], t[2]])
+            sline = np.linspace(0.0, 3.0, 601)
+            P2 = np.array([xh, zh]) + sline[:, None] * u2[None, :]
+            import deck                                                  # (deck imports this module)
+            inside = deck.in_poly(P2, hd.knee_outline)
+            k_out = int(np.argmax(~inside[1:])) + 1 if (~inside[1:]).any() else 1
+            s_out = float(sline[k_out])
+            Ex = P2[k_out]
+            s_j = s_out + bo["join_beyond_m"]
+            J = Hc + t * s_j
+            hE = float(hd.knee_half(Ex[None])[0])
+            hH = float(hd.knee_half(np.array([[xh, zh]]))[0])
+            # the bight: bearing on the hole's side toward the stay, across the knee; from the hole to the fore edge it
+            # lies along each side of the knee, standing off it as the side is there (full siding, then the edge's bevel)
+            Pb = Hc + t * (r_hole - rb)
+            ks = np.linspace(0.0, 1.0, 16)[1:-1]
+            A2 = np.array([Pb[0], Pb[2]])[None, :] + ks[:, None] * (Ex - np.array([Pb[0], Pb[2]]))[None, :]
+            e = 0.005
+            hk = lambda A: np.asarray(hd.knee_half(A), float)                    # noqa: E731
+            gx = (hk(A2 + [e, 0.0]) - hk(A2 - [e, 0.0])) / (2 * e)
+            gz = (hk(A2 + [0.0, e]) - hk(A2 - [0.0, e])) / (2 * e)
+            Ns = np.stack([-gx, np.ones(len(A2)), -gz], -1)
+            Ns /= np.linalg.norm(Ns, axis=1, keepdims=True)                     # the side's normal (starboard)
+            S3 = np.stack([A2[:, 0], hk(A2), A2[:, 1]], -1) + (rb + 0.002) * Ns
+            along = list(S3)                                                    # starboard, hole to edge
+            bight = [J + np.array([0.0, -rb, 0.0]), np.array([Ex[0], -(hE + rb), Ex[1]])] + \
+                [p * np.array([1.0, -1.0, 1.0]) for p in along[::-1]] + \
+                [Pb + np.array([0.0, -(hH + 0.3 * rb), 0.0]), Pb + np.array([0.0, hH + 0.3 * rb, 0.0])] + along + \
+                [np.array([Ex[0], hE + rb, Ex[1]]), J + np.array([0.0, rb, 0.0])]
+            tube(centre, fillet(bight, 2.5 * rb), rb, self.ROPE)
+            # the doubled stay from where the parts meet up to the lower deadeye, turned in round it
+            tube(centre, fillet([J] + tp_l, 2 * rb), rb, self.ROPE)
+            hoop(centre, J + t * 0.1, t, EY, stadium(rb, rb + 0.05 * IN, 4), 2.2 * rb, 0.25 * rb + 0.1 * IN, self.ROPE)
+            self.span(f"bobstay {xc}", J, end_l, rb)
+            self.span(f"bobstay {xc} parts", np.array([Ex[0], 0.0, Ex[1]]), J, rb)
+            self.span(f"bobstay {xc} collar", end_u, col, rb)
+            out.append({"hole_m": [round(float(xh), 3), round(float(zh), 3)], "collar_x_m": xc,
+                        "leaves_edge_m": [round(float(Ex[0]), 3), round(float(Ex[1]), 3)],
+                        "lower_deadeye_m": np.round(CL, 3).tolist()})
+        self.report["bobstays"] = out
+
+    def head_rigging(self, hd):
+        self.gammoning(hd)
+        self.bobstays(hd)
+        return self
 
     # ---- all of it ---------------------------------------------------------------------------------------------------
     def build(self):

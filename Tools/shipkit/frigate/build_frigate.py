@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-8).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-9).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -29,21 +29,31 @@ carriage at each of the gun deck's 28 ports and a 32-pounder carronade on its sl
 models placed as copies (linked meshes), each gun turned to its port, its gear rigged and its ringbolts fitted to the
 side and deck there, the long guns housed for sea, run in and run out and the carronades run out and recoiled, a
 collection per pose; gun_room checks every gun against the ship, the others and its own port's lid (how far each lid
-swings, how far it must open for its gun to run out and elevate), and each carronade trained across its port.
+swings, how far it must open for its gun to run out and elevate), and each carronade trained across its port. Slice 9
+(head.py, stern.py, carve.py, decor_1797.json) decorates her ends, right after the planking so that the ropes and the
+deck's checks see them: the head (the knee, the cheeks, the trailboards and their carving, the head rails and timbers,
+the gratings and the knightheads, with the bow opened between the knightheads and the bowsprit bedded there), the
+figurehead on its console (from make_figure.py's figure_hope.npz), the gammoning and the bobstays (rigging.py, through
+the knee), and the stern: the taffrail, the carved frieze, the spar deck's stern ports, the arch, the stern windows
+with their sashes and glass, the name, the quarter pieces, the quarter galleries with their lights, roofs and drops,
+the cabin light in each side and the quarter lanterns (held clear of the spanker boom swung to its brace limits);
+decor_room checks every new part against the rest of the ship and the others, the meetings that are by design listed,
+with how deep, in decor_1797.json's meets.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
 
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
 <out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks, the
-deck's layout and checks, the guns' placing and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
+deck's layout and checks, the guns' placing and checks, the head's and stern's layout and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
 (each line's path and stations, each block's pose, in each state; the pins and kevels), <out>/deck.json (the deck's
 fittings, the capstan's and wheel's frames, the nettings, the planking pattern) and <out>/guns.json (each gun's frame and
 pose, its lid, the unique meshes and what moves on each). Units are metres in Unreal's body frame
 (X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
-running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, never the .blend.
+running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, head.py, stern.py, carve.py
+and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), never the .blend.
 """
 import json
 import math
@@ -60,12 +70,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import deck  # noqa: E402
 import guns  # noqa: E402
+import head  # noqa: E402
 import loft  # noqa: E402
 import rigging  # noqa: E402
 import running  # noqa: E402
 import sails  # noqa: E402
 import skin  # noqa: E402
 import spars  # noqa: E402
+import stern  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -149,6 +161,10 @@ PAINT = {
     # blacked (lamp black in oil over the cast iron: a dull black, not bare metal)
     "Carriage": ((0.33, 0.11, 0.055), 0.65, 0.0),
     "Blacking": ((0.035, 0.035, 0.037), 0.55, 0.0),
+    # the head and stern (slice 9): the carved work gilt (gold leaf, a warm metal); the figure and the window sashes in
+    # a stone white (FigurePaint); the windows' and the lanterns' panes are the spar deck's Glass
+    "Gilt": ((0.80, 0.58, 0.24), 0.32, 1.0),
+    "FigurePaint": ((0.80, 0.78, 0.72), 0.55, 0.0),
 }
 DECK_PLANK = (0.42, 0.36, 0.27)       # holystoned pine (Blender's look only: the game draws the deck from the same UVs)
 DECK_PITCH = (0.012, 0.010, 0.008)    # the seams
@@ -209,6 +225,15 @@ smooth(transom)
 RIG = spars.Rig(L, json.load(open(os.path.join(HERE, "specs_1795.json")))).build()
 SK = skin.Skin(L, stem_bed=RIG.stem_bed).build()
 SKIN = SK.parts()
+# the head and the stern (slice 9, head.py, stern.py and decor_1797.json), built on the skin: the head's knee, cheeks,
+# trailboards and their carving, rails, timbers, gratings, the knightheads and the figure; the bow's bulwark cut open
+# between the knightheads down to the bowsprit's bed, and the bed made to take the cut (open_bow), before the skin's
+# objects are made (and the running rigging's world is this opened skin). The stern's taffrail and
+# its carved board, ports, arch, stars, windows, pilasters and the name, the quarter pieces, a quarter gallery and a cabin
+# light each side and the quarter lanterns
+HD = head.Head(L, RIG, SK).build()
+HD.open_bow(SKIN)
+SN = stern.Stern(L, RIG, SK).build()
 LIDS = []
 for name, (V, F, M, side) in SKIN.items():
     if name.startswith("Lid_"):
@@ -237,6 +262,15 @@ for name in LIDS:
         ob.matrix_world = Matrix(((*R[0], oo[0]), (*R[1], oo[1]), (*R[2], oo[2]), (0, 0, 0, 1)))
         smooth(ob, 30)
 
+# the head and the stern (slice 9): each part one object, both sides in it
+DECOR = {}
+for name, (V, F, M, side) in list(HD.parts().items()) + list(SN.parts().items()):
+    assert name not in DECOR and name not in SKIN, name
+    if side == "stbd":
+        V, F, M = mirrored(V, F, M)
+    smooth(make_painted(name, V, F, M), 35)
+    DECOR[name] = (np.asarray(V, float), F)
+
 # the masts and yards (slice 3): masts, tops and the bowsprit where they stand; each yard, the spanker boom and gaff on
 # its own frame, origin on the axis it turns about
 for name, (V, F, M, frame) in RIG.parts().items():
@@ -246,8 +280,9 @@ for name, (V, F, M, frame) in RIG.parts().items():
         ob.matrix_world = Matrix(((*R[0], o[0]), (*R[1], o[1]), (*R[2], o[2]), (0, 0, 0, 1)))
     smooth(ob, 35)
 
-# the standing rigging (slice 4): built in place, both sides in each object
-ST = rigging.Standing(RIG, SK).build()
+# the standing rigging (slice 4): built in place, both sides in each object; the bowsprit's gammoning and bobstays
+# through the head's knee (slice 9)
+ST = rigging.Standing(RIG, SK).build().head_rigging(HD)
 for name, (V, F, M, _) in ST.parts().items():
     smooth(make_painted(name, V, F, M), 40)
 for name, low in ST.yard_rests().items():          # a royal yard lowered rests on the topgallant rigging's eyes
@@ -446,6 +481,7 @@ for name, b in BRACE.items():
         RIG.meta[name]["ease_m"] = b["ease_m"]
     if any(t[-1][1] > 0.0 for _, t in b["ease_m_by_hoist"]):
         RIG.meta[name]["ease_m_by_hoist"] = b["ease_m_by_hoist"]
+SN.boom_check()                                     # the quarter lanterns under the spanker boom at its final limits
 
 # the sails (slice 5, sails.py and sails_1797.json), built after the brace limits and the rope's clearance: those
 # measure the ship without sails (a square sail goes where its yard goes). Each sail has an object for each state in
@@ -726,8 +762,9 @@ SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_d
 # pins, kevels, eyebolts and coils never move ("PinRails"). running_room: every rope and block, every bull's eye and
 # thimble and its strop, and every coil clear by the build gap of the ship, the sails and the other ropes, except where
 # it is made fast or led (the build fails otherwise)
-RN = running.Running(RIG, SK, ST, SV).gear()
-RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC)
+RN = running.Running(RIG, SK, ST, SV, taffrail_z=SN.taffrail_top).gear()
+DECOR_STATIC = [(name, V, running.tris_of(F)) for name, (V, F) in DECOR.items()]
+RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC + DECOR_STATIC, skin_parts=SKIN)
 RCX = {S: running.Clearance(RW.soup(running.Pose(RIG, S), extra=RN.extras())) for S in running.STATES}
 RUN_MISSING = RN.settle(RCX, os.path.join(HERE, "running_places_1797.json"), replace="--place-running" in ARGS)
 RN.place_coils(RCX)                                         # each coil hung clear of the rail, the ropes and its neighbours
@@ -811,10 +848,11 @@ def deck_room():
     ladder's foot on the gun deck, a netting on its rail cap, a fitting let into the deck...) as deep as allowed; and
     every fitting standing on the deck's top as it rises along the sheer (deck.room). Ropes, blocks and coils are also
     held clear of the deck by running_room, the sails by sail_room, the standing rigging by span_room and the moving
-    spars by brace_limits, each with its own gap"""
+    spars by brace_limits, each with its own gap; the head's and the stern's parts by decor_room (against the deck's
+    parts too, with their own meets)"""
     objs = {}
     for o in SC.objects:
-        if o.type != "MESH" or o.name in REFERENCE:
+        if o.type != "MESH" or o.name in REFERENCE or o.name in DECOR:
             continue
         V, T = world_tris(o)
         if len(T):
@@ -880,6 +918,31 @@ def gun_room():
 
 
 GUN_ROOM = gun_room()
+
+
+def decor_room():
+    """every part of the head and the stern (slice 9) against everything else in the ship (the sails, running rigging
+    and guns in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet by design
+    (decor_1797.json's meets: a gallery's back let into the planking, a sash in its casing...) as deep as allowed
+    (deck.room, without the deck's standing check)"""
+    meets = {}
+    for A, B, why, depth_in in HD.cfg["meets"]["pairs"]:
+        for a in A:
+            for b in B:
+                if (a, b) in meets or (b, a) in meets:
+                    raise SystemExit(f"decor_1797.json's meets name {a} with {b} twice")
+                meets[(a, b)] = (why, depth_in)
+    objs = {}
+    for o in SC.objects:
+        if o.type != "MESH" or o.name in REFERENCE:
+            continue
+        V, T = world_tris(o)
+        if len(T):
+            objs[o.name] = (V, T)
+    return deck.room(objs, set(DECOR), None, meets=meets)
+
+
+DECOR_ROOM = decor_room()
 
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
@@ -968,6 +1031,9 @@ stats["deck"] = dict(DK.info, room=DECK_ROOM,
                      triangles={n: stats["objects"][n]["triangles"] for n in DK.parts()},
                      triangles_total=sum(stats["objects"][n]["triangles"] for n in DK.parts()))
 stats["guns"] = dict(GN.info, room=GUN_ROOM, triangles=GUN_TRIS, **GN.rig_stats())
+stats["decor"] = {"head": HD.info, "stern": SN.info, "room": DECOR_ROOM,
+                  "triangles": {n: stats["objects"][n]["triangles"] for n in DECOR},
+                  "triangles_total": sum(stats["objects"][n]["triangles"] for n in DECOR)}
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -1073,6 +1139,9 @@ STRETCHED = {f"{kind} {gid}": {p: v["length_in"] for p, v in by_pose.items()}
 if STRETCHED:
     raise SystemExit("a breeching is drawn more than 0.3 in longer in one pose than another (build.json "
                      "guns.breeching_in): " + json.dumps(STRETCHED))
+if DECOR_ROOM["meet"]:
+    raise SystemExit("the head's or the stern's parts meet the ship or each other (build.json decor.room): " +
+                     json.dumps(DECOR_ROOM["meet"][:30]))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))

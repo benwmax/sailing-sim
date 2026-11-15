@@ -20,6 +20,7 @@ The capstan and the wheel each have a frame of their own (origin on the axis the
 else is built in place. The hammock nettings come last (nettings()), after the running rigging is rove: each runs along
 its rail cap and narrows, or breaks, wherever a rope, block or fitting comes over the rail (the obstacles it is given).
 """
+import collections
 import json
 import math
 import os
@@ -377,10 +378,39 @@ def cdt(outline, holes, step):
         raise ValueError(f"the deck's triangulation added or merged points ({len(ov)} for {len(P2)})")
     to_in = [ids[0] for ids in orig_v]
     T = np.array([[to_in[i] for i in f] for f in of])
+    # which triangles are the solid's: walked over from the triangulation's hull (outside), turning inside out across
+    # every edge of the outline and the holes. Where three of the outline's points lie in a line (a straight side cut
+    # into steps) the hull can run across them, leaving a triangle of no area along the boundary whose centre a test
+    # can't place; the walk does. The centre test checks it everywhere else.
+    cons = set(frozenset(e) for e in E)
+    adj = {}
+    for i, t in enumerate(T):
+        for k in range(3):
+            adj.setdefault(frozenset((int(t[k]), int(t[(k + 1) % 3]))), []).append(i)
+    par = np.full(len(T), -1)
+    todo = collections.deque()
+    for e, ts in adj.items():
+        if len(ts) == 1 and par[ts[0]] < 0:                 # on the hull: inside where the edge is the outline's
+            par[ts[0]] = 1 if e in cons else 0
+            todo.append(ts[0])
+    while todo:
+        i = todo.popleft()
+        for k in range(3):
+            e = frozenset((int(T[i, k]), int(T[i, (k + 1) % 3])))
+            for j in adj[e]:
+                if par[j] < 0:
+                    par[j] = par[i] ^ (1 if e in cons else 0)
+                    todo.append(j)
+    sel = par == 1
     cen = P2[T].mean(1)
-    sel = in_poly(cen, outline)
+    sel_c = in_poly(cen, outline)
     for h in holes:
-        sel &= ~in_poly(cen, h)
+        sel_c &= ~in_poly(cen, h)
+    a2 = (P2[T[:, 1], 0] - P2[T[:, 0], 0]) * (P2[T[:, 2], 1] - P2[T[:, 0], 1]) - \
+         (P2[T[:, 1], 1] - P2[T[:, 0], 1]) * (P2[T[:, 2], 0] - P2[T[:, 0], 0])
+    long2 = np.max(np.sum((P2[T[:, [1, 2, 0]]] - P2[T]) ** 2, axis=2), axis=1)
+    if np.any((sel != sel_c) & (np.abs(a2) >= 1e-9 * long2)) or np.any(par < 0):
+        raise ValueError("the deck's triangulation: the walk from its hull and the centre test disagree")
     T = T[sel]
     have = set()
     for t in T:
@@ -621,15 +651,17 @@ MEETS = {
 }
 
 
-def meets_by_design(a, b):
-    """why deck part a meets object b (or another deck part) by design (MEETS, either way round), or None"""
-    m = MEETS.get((a, b)) or MEETS.get((b, a))
+def meets_by_design(a, b, meets=None):
+    """why deck part a meets object b (or another deck part) by design (MEETS or meets, either way round), or None"""
+    meets = MEETS if meets is None else meets
+    m = meets.get((a, b)) or meets.get((b, a))
     return m[0] if m else None
 
 
-def meets_depth_in(a, b):
+def meets_depth_in(a, b, meets=None):
     """how far (inches) a and b may go into each other where they meet by design"""
-    return (MEETS.get((a, b)) or MEETS[(b, a)])[1]
+    meets = MEETS if meets is None else meets
+    return (meets.get((a, b)) or meets[(b, a)])[1]
 
 
 def islands(T, n):
@@ -642,10 +674,11 @@ def islands(T, n):
     return connected_components(coo_matrix((np.ones(len(a)), (a, b)), shape=(n, n)), directed=False)[1]
 
 
-def room(objs, mine, z_deck, near=0.3):
+def room(objs, mine, z_deck, near=0.3, meets=None):
     """The deck's clearance check (build.json deck.room). objs: {name: (V (n, 3) in the ship's frame, T (m, 3))} for
     every mesh of the ship (the sails and ropes in every state too) but the measured reference; mine: the deck's parts;
-    z_deck(x): the deck's top (flat across). Returns:
+    z_deck(x): the deck's top (flat across), or None to leave out the standing check (the head's and stern's parts,
+    slice 9, which check their own meets, not MEETS). Returns:
 
     * meet: the pairs, a deck part and another object or another deck part, whose surfaces cross and don't meet by
       design (MEETS, either way round), and those that do but go deeper than MEETS allows;
@@ -719,15 +752,16 @@ def room(objs, mine, z_deck, near=0.3):
         return d
     ok = {}
     for k in pairs:
-        if meets_by_design(*k):
+        if meets_by_design(*k, meets):
             ok[k] = (len(pairs[k][0]), round(depth(*k) / IN, 2))
     meet = [[a, b, len(pairs[(a, b)][0])] for a, b in sorted(pairs) if (a, b) not in ok]
-    meet += [[a, b, n, "deeper than " + str(meets_depth_in(a, b)) + " in: " + str(dp) + " in"]
-             for (a, b), (n, dp) in sorted(ok.items()) if dp > meets_depth_in(a, b)]
-    by_design = [[a, b, n, meets_by_design(a, b), "deepest " + str(dp) + " in"] for (a, b), (n, dp) in sorted(ok.items())]
+    meet += [[a, b, n, "deeper than " + str(meets_depth_in(a, b, meets)) + " in: " + str(dp) + " in"]
+             for (a, b), (n, dp) in sorted(ok.items()) if dp > meets_depth_in(a, b, meets)]
+    by_design = [[a, b, n, meets_by_design(a, b, meets), "deepest " + str(dp) + " in"]
+                 for (a, b), (n, dp) in sorted(ok.items())]
     # standing on the deck
     floats, tol, band = [], 0.1 * IN, 2.5 * IN
-    for a in mine:
+    for a in (mine if z_deck is not None else []):
         if a == "SparDeck":
             continue
         V, T = objs[a]
