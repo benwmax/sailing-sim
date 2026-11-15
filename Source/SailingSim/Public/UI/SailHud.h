@@ -80,6 +80,11 @@ private:
 	TSharedPtr<class SBox> RightPanels, RightPanelsRoom;
 	bool bCompactDrill = false;
 	float FullPanelsHeight = 0.f;
+	// The left-hand column's cards (strip, tip, rules callout) and their room above the instruments: bCompactLeft drops the
+	// explainer lines (the callout's reason, the tip card's footer) until the room holds FullLeftHeight again.
+	TSharedPtr<class SBox> LeftPanels, LeftPanelsRoom;
+	bool bCompactLeft = false;
+	float FullLeftHeight = 0.f;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
 	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;

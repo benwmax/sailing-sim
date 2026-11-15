@@ -27,6 +27,12 @@ condenses to its current step and "Step k of n" (`bCompactDrill`). It goes back 
 Anything still too tall is clipped at the trim panel's top edge. The first stills (82fa86c) showed both overlaps that
 led to this: the race card's last line under the trim panel, and the 130% drill card's last steps under it.
 
+The left side works the same way: the time/wind/sky strip, the learning tip and the rules callout sit in the room above
+the instruments. When they need more (the rules callout at HUD size 130%, found in the retake's after-130-race still),
+the callout's reason line and the tip card's "Hide tips" footer drop out (`bCompactLeft`); anything still taller is
+clipped above the instruments. The condensed drill's footer is just "Step k of n" and the drill's status, so it no longer
+wraps a lone word.
+
 ## The messages
 
 - Each message is a card of ink at 92% (the panels' 80% let bright sky and whitecaps show through the letters), a 1 px
