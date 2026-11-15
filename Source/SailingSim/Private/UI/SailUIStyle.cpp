@@ -121,8 +121,10 @@ namespace SailUI
 		case EType::Button: return Make(SairaSemi(), TEXT("SemiBold"), 21 * K, 10);
 		case EType::Value: return Make(SairaSemi(), TEXT("SemiBold"), 21 * K, 0);
 		case EType::InstrumentBig: return Make(SairaSemi(), TEXT("SemiBold"), 52, 0);
-		case EType::Body: return Make(Sans(), TEXT("Regular"), 20 * K, 0);
-		case EType::Small: return Make(Sans(), TEXT("Regular"), 17 * K, 0);
+		// (Source Sans 3 is a variable font and Slate draws its lightest instance: hairlines at this size. Until the overhaul's
+		// text face is in, body and notes are Saira Semi Condensed Regular.)
+		case EType::Body: return Make(SairaSemi(), TEXT("Regular"), 20 * K, 0);
+		case EType::Small: return Make(SairaSemi(), TEXT("Regular"), 17 * K, 0);
 		}
 		return Make(Sans(), TEXT("Regular"), 20, 0);
 	}

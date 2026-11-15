@@ -123,6 +123,18 @@ logbook and the set-up steps.
 Test: `SailingSim.UI.Overhaul.Paper` (the scope, nesting, every twin, opacity kept, 4.5:1 on paper). Extra still:
 `credits` (`-SailingFrontEnd=Credits`); `settings`, `first-launch` and `components` now show paper.
 
+## Phase 2b: what the first stills showed
+
+The stills of phase 1 and 2 (this folder) showed text that could not be read, and this pass fixes it:
+
+- Body and note text were hairlines: Source Sans 3 is a variable font and Slate draws its lightest instance. Until the
+  overhaul's text face is in, `Body` and `Small` are Saira Semi Condensed Regular.
+- Text straight on the scene (no panel) gets an ink shadow: `SailUI::TextOverScene`, the screen headers, the menu rows
+  off their paper label (their notes are also chart-paper at 85%, not grey).
+- The Boat screen's type line, pill, description and flags are a slip of chart paper under her name.
+- The step bar lies on its own strip of glass, with thicker bars and readable upcoming steps.
+- "Choose a boat" and "Set the conditions" are sentence case, and the boat's name is as written.
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

@@ -1245,35 +1245,45 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(8.f, 0.f, 0.f, 0.f)
 	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(1); })[ KeyCap(TEXT("E"), TEXT("RB")) ] ];
 
-	// Left column: type line, her name big, the pill, the description, the flags.
+	// Left column: her name big over the scene, then her card: a slip of chart paper with the type line, the pill, the
+	// description and the flags (UI overhaul: pink and grey type straight on a bright sky could not be read).
 	FSlateFontInfo NameFont = Font(EType::Logo);
 	NameFont.Size = 80;
-	TSharedRef<SWidget> Left = SNew(SBox).WidthOverride(380.f)
-	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Accent)) ] ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 8.f)
-		[
-			SNew(STextBlock).Font(NameFont).ColorAndOpacity(Fg).AutoWrapText(true).LineHeightPercentage(0.85f)
-				.Text_Lambda([Cur]() { return FText::FromString(Cur().Name.ToUpper()); })
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
-		[
-			SNew(SBox).Visibility_Lambda([this, Panels]() { return Panels() == EVisibility::Visible && (FocusedBoat == 0 || !SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty()) ? EVisibility::Visible : EVisibility::Collapsed; })
+	TSharedPtr<SWidget> BoatSlip;
+	{
+		const FScopedPaper PaperScope;
+		BoatSlip = PanelBox(
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Accent)) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 10.f)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
-				+ SHorizontalBox::Slot().FillWidth(1.f)
+				SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 || !SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty() ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
-					TextAttr(TAttribute<FText>::CreateLambda([this, LockOf]() { return FText::FromString(LockOf(FocusedBoat)); }), EType::Small, FSlateColor(Fg), true)
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						TextAttr(TAttribute<FText>::CreateLambda([this, LockOf]() { return FText::FromString(LockOf(FocusedBoat)); }), EType::Small, FSlateColor(Fg), true)
+					]
 				]
 			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Muted), true) ] ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight()[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Fg), true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+			[
+				TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT("   ·   ")).ToUpper(); }), EType::Label, FSlateColor(Muted), true)
+			],
+			FMargin(18.f, 16.f));
+	}
+	TSharedRef<SWidget> Left = SNew(SBox).WidthOverride(400.f)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 12.f)
 		[
-			SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT("   ·   ")).ToUpper(); }), EType::Label, FSlateColor(Fg), true) ]
+			SNew(STextBlock).Font(NameFont).ColorAndOpacity(Fg).AutoWrapText(true).LineHeightPercentage(0.85f)
+				.ShadowOffset(FVector2D(1.f, 2.f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
+				.Text_Lambda([Cur]() { return FText::FromString(Cur().Name); })
 		]
+		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ BoatSlip.ToSharedRef() ] ]
 	];
 
 	// Right column: the numbers as bars against the fleet's biggest, the handling, the note, Next.
@@ -1377,8 +1387,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Fleet of eight"), EType::Eyebrow, Accent) ]
-				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(TEXT("CHOOSE A BOAT"))) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(TEXT("Fleet of eight"), EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f)).Text(FText::FromString(TEXT("Choose a boat"))) ]
 			]
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 22.f, 0.f, 0.f)
@@ -1517,7 +1527,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 		PanelBox(SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(bInGame ? TEXT("Paused") : TEXT("Weather and time"), EType::Eyebrow, Accent) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(bInGame ? TEXT("CHANGE CONDITIONS") : TEXT("SET THE CONDITIONS"))) ]
+			[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(bInGame ? TEXT("Change conditions") : TEXT("Set the conditions"))) ]
 			+ SVerticalBox::Slot().FillHeight(1.f)
 			[
 				Scroll

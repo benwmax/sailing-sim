@@ -121,6 +121,8 @@ private:
 namespace SailUI
 {
 	TSharedRef<SWidget> Text(const FString& S, EType Type, const FLinearColor& Color = Fg, bool bWrap = false);
+	/** Text that lies straight on the scene (no panel): the same, with an ink shadow. */
+	TSharedRef<SWidget> TextOverScene(const FString& S, EType Type, const FLinearColor& Color = Fg, bool bWrap = false);
 	TSharedRef<SWidget> TextAttr(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap = false);
 	/** Eyebrow, title, and the step bar (step 1..5, 0 = none). */
 	TSharedRef<SWidget> Header(const FString& Eyebrow, const FString& Title, int32 Step);

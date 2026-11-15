@@ -65,6 +65,15 @@ namespace SailUI
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
+	TSharedRef<SWidget> TextOverScene(const FString& S, EType Type, const FLinearColor& Color, bool bWrap)
+	{
+		// Text with no panel under it lies on whatever the world shows (a bright sky as often as dark water): an ink shadow
+		// keeps its edge.
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+			.ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
+			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
+	}
+
 	TSharedRef<SWidget> TextAttr(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap)
 	{
 		if (OnPaper())
@@ -129,10 +138,10 @@ namespace SailUI
 				Steps->AddSlot().AutoWidth().Padding(4.f, 0.f)
 				[
 					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(110.f).HeightOverride(3.f)
-						[ SNew(SBorder).BorderImage(Rounded(bCur ? Accent : (bDone ? Fg : Line), 1.f)) ] ]
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(110.f).HeightOverride(5.f)
+						[ SNew(SBorder).BorderImage(Rounded(bCur ? Accent : (bDone ? Fg : Muted.CopyWithNewOpacity(0.5f)), 2.f)) ] ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
-						[ Text(FString::Printf(TEXT("%d %s"), I + 1, Names[I]), EType::Label, bCur ? Accent : (bDone ? Fg : Dim)) ]
+						[ Text(FString::Printf(TEXT("%d %s"), I + 1, Names[I]), EType::Label, bCur ? Accent : (bDone ? Fg : Muted)) ]
 				];
 			}
 		}
@@ -140,10 +149,12 @@ namespace SailUI
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Bottom)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ Text(Eyebrow, EType::Eyebrow, Accent) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(Title, EType::ScreenTitle, Fg) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(Eyebrow, EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextOverScene(Title, EType::ScreenTitle, Fg) ]
 			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 14.f)[ Steps ];
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 14.f)
+			// (The steps lie on their own strip of glass: over a bright sky the thin bars were lost.)
+			[ Step > 0 ? PanelBox(Steps, FMargin(10.f, 10.f, 10.f, 8.f), RadiusButton) : TSharedRef<SWidget>(Steps) ];
 	}
 
 	TSharedRef<SSailButton> ActionButton(const FString& Label, FSimpleDelegate OnClicked, bool bPrimary)
@@ -164,11 +175,17 @@ namespace SailUI
 				return FSlateColor(Row.IsValid() && Row->IsFocusedNow() ? On : Off);
 			});
 		};
+		// Off the paper label the text lies on the scene: an ink shadow keeps its edge (none on the label itself).
+		const TAttribute<FLinearColor> Shadow = TAttribute<FLinearColor>::CreateLambda([Self]()
+		{
+			const TSharedPtr<SSailButton> Held = Self->Pin();
+			return Held.IsValid() && Held->IsFocusedNow() ? FLinearColor::Transparent : Ink.CopyWithNewOpacity(0.7f);
+		});
 		const TSharedRef<SSailButton> Row = SNew(SSailButton).Look(EButtonLook::MenuRow).OnClicked(OnClicked).IsEnabled(bEnabled).Padding(FMargin(32.f, PadY, 18.f, PadY))
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Label, EType::MenuItem)).Font(Font(EType::MenuItem)).ColorAndOpacity(Colour(bEnabled ? Fg : Muted, PaperInk)) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Sub, EType::Small)).Font(Font(EType::Small)).ColorAndOpacity(Colour(Muted, PaperMuted)) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Label, EType::MenuItem)).Font(Font(EType::MenuItem)).ColorAndOpacity(Colour(bEnabled ? Fg : Muted, PaperInk)).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Shadow) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Sub, EType::Small)).Font(Font(EType::Small)).ColorAndOpacity(Colour(bEnabled ? Fg.CopyWithNewOpacity(0.85f) : Muted, PaperMuted)).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Shadow) ]
 		];
 		*Self = Row;
 		return Row;
