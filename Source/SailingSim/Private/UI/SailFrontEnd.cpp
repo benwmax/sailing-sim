@@ -896,7 +896,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines (tighter still
 		// with the developers' tenth, Gallery).
 		const bool bTen = USailingSettings::DeveloperTools();
-		// UI overhaul: the focused row lies on a paper label with the chart's magenta diamond (SailUI::MenuRow).
+		// UI overhaul: the focused row lies on a paper label with the accent diamond (SailUI::MenuRow).
 		TSharedRef<SSailButton> B = MenuRow(Label, Sub, Do, bEnabled, bTen ? 1.f : 3.f);
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(600.f)[ B ] ];
 		if (!First.IsValid() && bEnabled) First = B;
@@ -1387,7 +1387,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(TEXT("Fleet of eight"), EType::Eyebrow, Accent) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(TEXT("Fleet of eight"), EType::Eyebrow, Fg) ]
 				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f)).Text(FText::FromString(TEXT("Choose a boat"))) ]
 			]
 		]

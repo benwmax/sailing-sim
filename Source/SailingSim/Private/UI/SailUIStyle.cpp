@@ -19,15 +19,15 @@ namespace SailUI
 		return FLinearColor(FColor((RGB >> 16) & 255, (RGB >> 8) & 255, RGB & 255)).CopyWithNewOpacity(Alpha);
 	}
 
-	// Glass: ink-blue panels over the water, chart-paper text, chart magenta for focus and the main action. (The yellow of
+	// Glass: ink-blue panels over the water, chart-paper text, sea aqua for focus and the main action (Bean, Nov 15 2026: not the chart magenta of the first pass). (The yellow of
 	// the first UI is Caution now, and nothing else.) Contrast on Panel: Fg 13:1, Muted 7.7:1, Dim 5.2:1, Accent 4.7:1.
 	const FLinearColor Ink = Hex(0x15222C), Panel = Hex(0x15222C, 0.82f), PanelSolid = Hex(0x1B2B36), Raise = Hex(0x26394A),
-		Line = Hex(0x3B5161), Fg = Hex(0xF0E8D2), Muted = Hex(0xAEB6B0), Dim = Hex(0x8C968F), Accent = Hex(0xDB5FA3),
+		Line = Hex(0x3B5161), Fg = Hex(0xF0E8D2), Muted = Hex(0xAEB6B0), Dim = Hex(0x8C968F), Accent = Hex(0x4FD1C9),
 		AccentInk = Hex(0x15222C), Selected = Hex(0xF0E8D2, 0.75f), Chart = Hex(0xD14F9B), Water = Hex(0x2F6F97),
 		Land = Hex(0xCDBF98), Port = Hex(0xE2483D), Starboard = Hex(0x2DB36A), Warn = Hex(0xFF9A2E), WindTrue = Hex(0x9FD3FF);
-	// Paper: chart paper, ink, the chart's own magenta (deeper, for paper), brass for medals.
+	// Paper: chart paper, ink, the accent deep enough for paper, brass for medals.
 	const FLinearColor Paper = Hex(0xF0E8D2), PaperInk = Hex(0x15222C), PaperMuted = Hex(0x4A5A64), PaperLine = Hex(0xCFC4A6),
-		AccentDeep = Hex(0xA62B6E), Brass = Hex(0xA98A44), Caution = Hex(0xF4C430);
+		AccentDeep = Hex(0x086068), Brass = Hex(0xA98A44), Caution = Hex(0xF4C430);
 	// Paper's raised fill (a chip, a secondary button), and port, starboard and warning deep enough to read on paper.
 	const FLinearColor PaperRaise = Hex(0xE4DABD), PaperPort = Hex(0xB3261F), PaperStarboard = Hex(0x17703F), PaperWarn = Hex(0x8A5200);
 

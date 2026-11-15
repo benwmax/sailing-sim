@@ -10,7 +10,7 @@ class SBorder;
 /**
  * Graphics G4: the front end's shared widgets (ui-spec.md 3.4), in Slate. Every focusable is keyboard, gamepad and mouse
  * driven: hovering moves focus (one highlight at a time), Enter / A / click activates, Left and Right adjust a value
- * widget. Focus is the chart-magenta ring; on a menu row (MenuRow) it is a paper label with the magenta diamond, the
+ * widget. Focus is the accent ring; on a menu row (MenuRow) it is a paper label with the accent diamond, the
  * row's text turning to ink on it (UI overhaul, docs/ui-overhaul/). Selection is the paper edge and a tick.
  */
 namespace SailUI
@@ -133,10 +133,10 @@ namespace SailUI
 	/** The footer: actions the screen handles, plus a hint on the right. */
 	TSharedRef<SWidget> PromptBar(TArray<TTuple<FString, FString, FString>> Prompts, const FString& Hint);
 	TSharedRef<SWidget> Pill(const FString& S, bool bAccent = false);
-	/** The primary (chart magenta) or secondary call to action. */
+	/** The primary (accent) or secondary call to action. */
 	TSharedRef<SSailButton> ActionButton(const FString& Label, FSimpleDelegate OnClicked, bool bPrimary = true);
 	/** A menu row (the title's and the pause menu's): the name, a quieter note on the right. Focused, it lies on a paper
-	 *  label with the magenta diamond and its text is ink. PadY is the row's padding above and below. */
+	 *  label with the accent diamond and its text is ink. PadY is the row's padding above and below. */
 	TSharedRef<SSailButton> MenuRow(const FString& Label, const FString& Sub, FSimpleDelegate OnClicked, bool bEnabled = true, float PadY = 3.f);
 	bool IsConfirmKey(const FKey& Key);
 	bool IsBackKey(const FKey& Key);
