@@ -1,0 +1,2981 @@
+{
+ "note": "the guns (docs/shipkit-8), in the ship's frame (metres): meshes, each in its own frame (the barrels, carriages, quoin, trucks, beds and slides shared: copy them to every gun; each gun's gear and irons its own); for each gun its port's frame and how its parts stand in each pose: the long 24-pounders housed for sea, run in and run out (carriage_x_m along the port's X, the barrel on its trunnions at the pose's elevation, the quoin, the trucks, the gun's gear mesh for the pose; run out, the lid's opening and the elevations it allows), the carronades on their slides (the fighting bolt's place, train_deg, the bed run out or recoiled along the slide, the barrel on its loop's bolt). The gear is drawn at rest in each pose (the game moves between them; slice 17 fires the guns, the flash at pan_in_barrel_m and the muzzle)",
+ "frames_note": "a gun's port frame: origin on the deck under the point where the port's middle line meets the side's inner face at the ringbolts' height, X out through the port, Z the deck's normal, Y = Z x X (the gun's right). A port side gun is its starboard twin turned (not mirrored). yaw_deg: how far X was turned from the side's normal to fit the ringbolts",
+ "meshes": {
+  "Carr32_Barrel": {
+   "frame": "the 32-pounder carronade's barrel: origin on the loop's bolt, X along the bore (elevates about Y)",
+   "triangles": 5016
+  },
+  "Carr32_Bed": {
+   "frame": "its bed: origin on the slide's top under the loop's bolt, X along the slide",
+   "triangles": 676
+  },
+  "Carr32_Chocks": {
+   "frame": "the chocks under the slides' fore ends, every port and both sides, in the ship's frame (each fitted to its own waterway: not a copy)",
+   "triangles": 5456
+  },
+  "Carr32_P01_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P01_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P01_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P02_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P02_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P02_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P03_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P03_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P03_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P04_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P04_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P04_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P05_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P05_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P05_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P06_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18500
+  },
+  "Carr32_P06_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P06_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P07_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18460
+  },
+  "Carr32_P07_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18236
+  },
+  "Carr32_P07_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P08_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18460
+  },
+  "Carr32_P08_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18252
+  },
+  "Carr32_P08_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P09_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18500
+  },
+  "Carr32_P09_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P09_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P10_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_P10_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_P10_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_P11_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18600
+  },
+  "Carr32_P11_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18300
+  },
+  "Carr32_P11_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S01_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S01_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S01_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S02_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S02_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S02_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S03_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S03_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S03_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S04_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S04_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S04_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S05_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S05_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S05_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S06_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18500
+  },
+  "Carr32_S06_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S06_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S07_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18460
+  },
+  "Carr32_S07_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18236
+  },
+  "Carr32_S07_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S08_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18460
+  },
+  "Carr32_S08_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18252
+  },
+  "Carr32_S08_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S09_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18500
+  },
+  "Carr32_S09_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S09_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S10_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18540
+  },
+  "Carr32_S10_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18268
+  },
+  "Carr32_S10_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_S11_GearRecoil": {
+   "frame": "the same recoiled (the breeching taut)",
+   "triangles": 18600
+  },
+  "Carr32_S11_GearRunOut": {
+   "frame": "this carronade's breeching and side tackles run out (the slide square to the side), in its port's frame",
+   "triangles": 18300
+  },
+  "Carr32_S11_Irons": {
+   "frame": "its ringbolts, fitted to its own bulwark; in its port's frame",
+   "triangles": 784
+  },
+  "Carr32_Slide": {
+   "frame": "its slide: origin on the deck on the fighting bolt's axis, X toward the port; trains about its Z",
+   "triangles": 1036
+  },
+  "Gun24_Barrel": {
+   "frame": "the long 24-pounder's barrel: origin on the trunnions' axis, X along the bore (the bore's axis bore_over_trunnions_m above the origin), Y along the trunnions (it elevates about Y)",
+   "triangles": 7808
+  },
+  "Gun24_Carriage": {
+   "frame": "its truck carriage: origin on the deck under the trunnions' middle, X toward the muzzle",
+   "triangles": 2992
+  },
+  "Gun24_P01_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_P01_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27964
+  },
+  "Gun24_P01_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29892
+  },
+  "Gun24_P01_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P02_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_P02_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27996
+  },
+  "Gun24_P02_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29956
+  },
+  "Gun24_P02_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P03_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_P03_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28068
+  },
+  "Gun24_P03_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29988
+  },
+  "Gun24_P03_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P04_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_P04_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28084
+  },
+  "Gun24_P04_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30020
+  },
+  "Gun24_P04_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P05_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_P05_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_P05_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_P05_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P06_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34340
+  },
+  "Gun24_P06_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_P06_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_P06_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P07_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_P07_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_P07_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_P07_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P08_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_P08_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_P08_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_P08_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P09_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_P09_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_P09_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_P09_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P10_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_P10_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_P10_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_P10_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P11_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34340
+  },
+  "Gun24_P11_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_P11_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_P11_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P12_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_P12_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28012
+  },
+  "Gun24_P12_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29956
+  },
+  "Gun24_P12_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P13_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34372
+  },
+  "Gun24_P13_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27996
+  },
+  "Gun24_P13_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29924
+  },
+  "Gun24_P13_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_P14_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34372
+  },
+  "Gun24_P14_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27876
+  },
+  "Gun24_P14_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29764
+  },
+  "Gun24_P14_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_Quoin": {
+   "frame": "its quoin, the wedge under the breech that sets the elevation: origin on the bed's top under its thick end's back, X toward the muzzle",
+   "triangles": 48
+  },
+  "Gun24_S01_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_S01_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27964
+  },
+  "Gun24_S01_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29892
+  },
+  "Gun24_S01_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S02_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_S02_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27996
+  },
+  "Gun24_S02_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29956
+  },
+  "Gun24_S02_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S03_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_S03_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28068
+  },
+  "Gun24_S03_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29988
+  },
+  "Gun24_S03_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S04_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_S04_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28084
+  },
+  "Gun24_S04_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30020
+  },
+  "Gun24_S04_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S05_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_S05_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_S05_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_S05_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S06_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34340
+  },
+  "Gun24_S06_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_S06_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_S06_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S07_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_S07_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_S07_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_S07_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S08_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_S08_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_S08_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_S08_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S09_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_S09_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_S09_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_S09_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S10_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34324
+  },
+  "Gun24_S10_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28116
+  },
+  "Gun24_S10_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30084
+  },
+  "Gun24_S10_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S11_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34340
+  },
+  "Gun24_S11_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28100
+  },
+  "Gun24_S11_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 30052
+  },
+  "Gun24_S11_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S12_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34356
+  },
+  "Gun24_S12_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 28012
+  },
+  "Gun24_S12_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29956
+  },
+  "Gun24_S12_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S13_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34372
+  },
+  "Gun24_S13_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27996
+  },
+  "Gun24_S13_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29924
+  },
+  "Gun24_S13_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_S14_GearHoused": {
+   "frame": "this gun's breeching (its slack hanging), side tackles and train tackle hooked, its muzzle lashed to the housing bolts, the rings and the coiled falls, housed for sea; in its port's frame",
+   "triangles": 34372
+  },
+  "Gun24_S14_GearRunIn": {
+   "frame": "the same run in for loading (the breeching taut, where the recoil brings the gun up; no lashing)",
+   "triangles": 27876
+  },
+  "Gun24_S14_GearRunOut": {
+   "frame": "the same run out (the breeching's slack in bights on the deck, the coils holding what the tackles let go)",
+   "triangles": 29764
+  },
+  "Gun24_S14_Irons": {
+   "frame": "this gun's ringbolts (four in the side, one in the deck) and its two housing bolts over the port, fitted to its own side and deck; in its port's frame",
+   "triangles": 1372
+  },
+  "Gun24_TruckFore": {
+   "frame": "a fore truck (the same either side): origin at its centre, Y along its axle",
+   "triangles": 480
+  },
+  "Gun24_TruckHind": {
+   "frame": "a hind truck",
+   "triangles": 480
+  }
+ },
+ "long24": {
+  "note": "the gun deck's long 24-pounders. Each gun: its carriage's origin at carriage_x_m[pose] along its port's X (the carriage's axes the port's); the barrel at barrel_in_carriage_m in the carriage's frame, turned about its own Y (the trunnions) to the pose's elevation (positive raises the muzzle: a turn of -elevation about +Y); the quoin under the breech where quoin.x_m_by_deg puts it for that elevation (along the carriage's X, at quoin.z_m), but housed (out: the breech on the bed); the trucks at their origin_m (turn each about its Y as the carriage moves: radius truck_radius_m); the gun's own gear mesh for the pose and its irons, in its port's frame. Housed (the pose for sea, shown): the lid shut, the barrel at breech_on_bed_deg, its muzzle against the side over the port's head and lashed there. Run in: the lid shut or open, the barrel level; where the recoil brings it and it is loaded (slice 17 fires it from run out to here). Run out: open the lid to lid_open_deg (a turn about the lid's own +X); the gun elevates within run_out_elevation_deg (as far as the lid lets it where lid_open_deg is the lid's own limit, lid_max_deg)",
+  "barrel_in_carriage_m": [
+   0.0,
+   0.0,
+   0.9525
+  ],
+  "bore_over_trunnions_m": 0.01524,
+  "elevation": {
+   "quoin_home_deg": -1.44,
+   "quoin_thin_deg": 8.07,
+   "breech_on_bed_deg": 10.5,
+   "poses_deg": {
+    "housed": 10.5,
+    "run_in": 0.0,
+    "run_out": 0.0
+   },
+   "note": "with the quoin under the breech the barrel elevates from quoin_home_deg (its thick end under the base ring) to quoin_thin_deg (its thin end); drawn right out, the breech comes down on the bed at breech_on_bed_deg, the most it elevates (housed it lies so)"
+  },
+  "quoin": {
+   "mesh": "Gun24_Quoin",
+   "z_m": 0.50106,
+   "x_m_by_deg": [
+    [
+     -1.44,
+     -1.24638
+    ],
+    [
+     -1.0,
+     -1.27087
+    ],
+    [
+     -0.5,
+     -1.29887
+    ],
+    [
+     0.0,
+     -1.32673
+    ],
+    [
+     0.5,
+     -1.35444
+    ],
+    [
+     1.0,
+     -1.38202
+    ],
+    [
+     1.5,
+     -1.40944
+    ],
+    [
+     2.0,
+     -1.43672
+    ],
+    [
+     2.5,
+     -1.46384
+    ],
+    [
+     3.0,
+     -1.49082
+    ],
+    [
+     3.5,
+     -1.51764
+    ],
+    [
+     4.0,
+     -1.5443
+    ],
+    [
+     4.5,
+     -1.5708
+    ],
+    [
+     5.0,
+     -1.59714
+    ],
+    [
+     5.5,
+     -1.62332
+    ],
+    [
+     6.0,
+     -1.64933
+    ],
+    [
+     6.5,
+     -1.67518
+    ],
+    [
+     7.0,
+     -1.70086
+    ],
+    [
+     7.5,
+     -1.72636
+    ],
+    [
+     8.0,
+     -1.7517
+    ],
+    [
+     8.07,
+     -1.75543
+    ]
+   ]
+  },
+  "pan_in_barrel_m": [
+   -1.1496,
+   0.02032,
+   0.25796
+  ],
+  "vent_in_barrel_m": [
+   -1.1496,
+   0.0,
+   0.25034
+  ],
+  "truck_radius_m": {
+   "fore": 0.2413,
+   "hind": 0.2159
+  },
+  "trucks": {
+   "fore_R": {
+    "mesh": "Gun24_TruckFore",
+    "origin_m": [
+     0.1016,
+     0.47904,
+     0.2413
+    ]
+   },
+   "fore_L": {
+    "mesh": "Gun24_TruckFore",
+    "origin_m": [
+     0.1016,
+     -0.47904,
+     0.2413
+    ]
+   },
+   "hind_R": {
+    "mesh": "Gun24_TruckHind",
+    "origin_m": [
+     -1.016,
+     0.51644,
+     0.2159
+    ]
+   },
+   "hind_L": {
+    "mesh": "Gun24_TruckHind",
+    "origin_m": [
+     -1.016,
+     -0.51644,
+     0.2159
+    ]
+   }
+  },
+  "guns": [
+   {
+    "id": "P01",
+    "port": 1,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -21.05399,
+      -4.54433,
+      2.22345
+     ],
+     "x": [
+      -0.068392,
+      -0.997656,
+      0.002271
+     ],
+     "y": [
+      0.997242,
+      -0.068429,
+      -0.028727
+     ],
+     "z": [
+      0.028815,
+      0.0003,
+      0.999585
+     ]
+    },
+    "yaw_deg": -0.046,
+    "irons": "Gun24_P01_Irons",
+    "carriage_x_m": {
+     "housed": -1.68224,
+     "run_in": -1.99593,
+     "run_out": -0.36246
+    },
+    "gear": {
+     "housed": "Gun24_P01_GearHoused",
+     "run_in": "Gun24_P01_GearRunIn",
+     "run_out": "Gun24_P01_GearRunOut"
+    },
+    "lid": "Lid_01_P",
+    "lid_open_deg": 130,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P02",
+    "port": 2,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -17.93649,
+      -4.76432,
+      2.12898
+     ],
+     "x": [
+      -0.073482,
+      -0.997295,
+      0.001911
+     ],
+     "y": [
+      0.996956,
+      -0.073507,
+      -0.025997
+     ],
+     "z": [
+      0.026067,
+      -5e-06,
+      0.99966
+     ]
+    },
+    "yaw_deg": -0.217,
+    "irons": "Gun24_P02_Irons",
+    "carriage_x_m": {
+     "housed": -1.72339,
+     "run_in": -2.01701,
+     "run_out": -0.34239
+    },
+    "gear": {
+     "housed": "Gun24_P02_GearHoused",
+     "run_in": "Gun24_P02_GearRunIn",
+     "run_out": "Gun24_P02_GearRunOut"
+    },
+    "lid": "Lid_02_P",
+    "lid_open_deg": 95,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P03",
+    "port": 3,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -14.44011,
+      -5.0155,
+      2.04637
+     ],
+     "x": [
+      -0.071346,
+      -0.997451,
+      0.001495
+     ],
+     "y": [
+      0.997229,
+      -0.071361,
+      -0.02103
+     ],
+     "z": [
+      0.021083,
+      -9e-06,
+      0.999778
+     ]
+    },
+    "yaw_deg": -0.251,
+    "irons": "Gun24_P03_Irons",
+    "carriage_x_m": {
+     "housed": -1.75362,
+     "run_in": -2.03251,
+     "run_out": -0.32715
+    },
+    "gear": {
+     "housed": "Gun24_P03_GearHoused",
+     "run_in": "Gun24_P03_GearRunIn",
+     "run_out": "Gun24_P03_GearRunOut"
+    },
+    "lid": "Lid_03_P",
+    "lid_open_deg": 90,
+    "lid_max_deg": 160,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P04",
+    "port": 4,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -11.19404,
+      -5.24424,
+      1.9841
+     ],
+     "x": [
+      -0.070575,
+      -0.997506,
+      0.001198
+     ],
+     "y": [
+      0.99736,
+      -0.070586,
+      -0.017055
+     ],
+     "z": [
+      0.017097,
+      -8e-06,
+      0.999854
+     ]
+    },
+    "yaw_deg": -0.207,
+    "irons": "Gun24_P04_Irons",
+    "carriage_x_m": {
+     "housed": -1.77952,
+     "run_in": -2.04521,
+     "run_out": -0.3175
+    },
+    "gear": {
+     "housed": "Gun24_P04_GearHoused",
+     "run_in": "Gun24_P04_GearRunIn",
+     "run_out": "Gun24_P04_GearRunOut"
+    },
+    "lid": "Lid_04_P",
+    "lid_open_deg": 85,
+    "lid_max_deg": 170,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P05",
+    "port": 5,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -7.7951,
+      -5.47779,
+      1.93329
+     ],
+     "x": [
+      -0.064557,
+      -0.997914,
+      0.00081
+     ],
+     "y": [
+      0.997834,
+      -0.064562,
+      -0.012596
+     ],
+     "z": [
+      0.012622,
+      -5e-06,
+      0.99992
+     ]
+    },
+    "yaw_deg": -0.137,
+    "irons": "Gun24_P05_Irons",
+    "carriage_x_m": {
+     "housed": -1.81432,
+     "run_in": -2.06172,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_P05_GearHoused",
+     "run_in": "Gun24_P05_GearRunIn",
+     "run_out": "Gun24_P05_GearRunOut"
+    },
+    "lid": "Lid_05_P",
+    "lid_open_deg": 85,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P06",
+    "port": 6,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -4.34481,
+      -5.67397,
+      1.89544
+     ],
+     "x": [
+      -0.047436,
+      -0.998874,
+      0.000433
+     ],
+     "y": [
+      0.998832,
+      -0.047438,
+      -0.009164
+     ],
+     "z": [
+      0.009174,
+      -2e-06,
+      0.999958
+     ]
+    },
+    "yaw_deg": -0.126,
+    "irons": "Gun24_P06_Irons",
+    "carriage_x_m": {
+     "housed": -1.84252,
+     "run_in": -2.07366,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_P06_GearHoused",
+     "run_in": "Gun24_P06_GearRunIn",
+     "run_out": "Gun24_P06_GearRunOut"
+    },
+    "lid": "Lid_06_P",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P07",
+    "port": 7,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -1.00672,
+      -5.80854,
+      1.86358
+     ],
+     "x": [
+      -0.035385,
+      -0.999374,
+      0.000343
+     ],
+     "y": [
+      0.999326,
+      -0.035386,
+      -0.009799
+     ],
+     "z": [
+      0.009805,
+      -4e-06,
+      0.999952
+     ]
+    },
+    "yaw_deg": -0.147,
+    "irons": "Gun24_P07_Irons",
+    "carriage_x_m": {
+     "housed": -1.85293,
+     "run_in": -2.07696,
+     "run_out": -0.31318
+    },
+    "gear": {
+     "housed": "Gun24_P07_GearHoused",
+     "run_in": "Gun24_P07_GearRunIn",
+     "run_out": "Gun24_P07_GearRunOut"
+    },
+    "lid": "Lid_07_P",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P08",
+    "port": 8,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      2.18327,
+      -5.90931,
+      1.83681
+     ],
+     "x": [
+      -0.026658,
+      -0.999645,
+      0.000162
+     ],
+     "y": [
+      0.999624,
+      -0.026658,
+      -0.006347
+     ],
+     "z": [
+      0.006349,
+      -7e-06,
+      0.99998
+     ]
+    },
+    "yaw_deg": -0.085,
+    "irons": "Gun24_P08_Irons",
+    "carriage_x_m": {
+     "housed": -1.85649,
+     "run_in": -2.07924,
+     "run_out": -0.31115
+    },
+    "gear": {
+     "housed": "Gun24_P08_GearHoused",
+     "run_in": "Gun24_P08_GearRunIn",
+     "run_out": "Gun24_P08_GearRunOut"
+    },
+    "lid": "Lid_08_P",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P09",
+    "port": 9,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      5.49521,
+      -5.96524,
+      1.82229
+     ],
+     "x": [
+      -0.004553,
+      -0.99999,
+      2e-06
+     ],
+     "y": [
+      0.999987,
+      -0.004553,
+      -0.002196
+     ],
+     "z": [
+      0.002196,
+      -8e-06,
+      0.999998
+     ]
+    },
+    "yaw_deg": -0.028,
+    "irons": "Gun24_P09_Irons",
+    "carriage_x_m": {
+     "housed": -1.86004,
+     "run_in": -2.08229,
+     "run_out": -0.30836
+    },
+    "gear": {
+     "housed": "Gun24_P09_GearHoused",
+     "run_in": "Gun24_P09_GearRunIn",
+     "run_out": "Gun24_P09_GearRunOut"
+    },
+    "lid": "Lid_09_P",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P10",
+    "port": 10,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      8.86362,
+      -5.91759,
+      1.84639
+     ],
+     "x": [
+      0.037933,
+      -0.99928,
+      0.000885
+     ],
+     "y": [
+      0.998956,
+      0.037943,
+      0.025449
+     ],
+     "z": [
+      -0.025464,
+      -8.2e-05,
+      0.999676
+     ]
+    },
+    "yaw_deg": 0.39,
+    "irons": "Gun24_P10_Irons",
+    "carriage_x_m": {
+     "housed": -1.8575,
+     "run_in": -2.08305,
+     "run_out": -0.30785
+    },
+    "gear": {
+     "housed": "Gun24_P10_GearHoused",
+     "run_in": "Gun24_P10_GearRunIn",
+     "run_out": "Gun24_P10_GearRunOut"
+    },
+    "lid": "Lid_10_P",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P11",
+    "port": 11,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      12.09428,
+      -5.72182,
+      1.96071
+     ],
+     "x": [
+      0.080031,
+      -0.996788,
+      0.002921
+     ],
+     "y": [
+      0.996119,
+      0.080084,
+      0.036529
+     ],
+     "z": [
+      -0.036646,
+      -1.4e-05,
+      0.999328
+     ]
+    },
+    "yaw_deg": 0.457,
+    "irons": "Gun24_P11_Irons",
+    "carriage_x_m": {
+     "housed": -1.80924,
+     "run_in": -2.06375,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_P11_GearHoused",
+     "run_in": "Gun24_P11_GearRunIn",
+     "run_out": "Gun24_P11_GearRunOut"
+    },
+    "lid": "Lid_11_P",
+    "lid_open_deg": 85,
+    "lid_max_deg": 140,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P12",
+    "port": 12,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      15.48337,
+      -5.41356,
+      2.06612
+     ],
+     "x": [
+      0.098037,
+      -0.995178,
+      0.003078
+     ],
+     "y": [
+      0.994688,
+      0.098085,
+      0.031211
+     ],
+     "z": [
+      -0.031362,
+      1e-06,
+      0.999508
+     ]
+    },
+    "yaw_deg": 0.286,
+    "irons": "Gun24_P12_Irons",
+    "carriage_x_m": {
+     "housed": -1.72644,
+     "run_in": -2.02184,
+     "run_out": -0.32969
+    },
+    "gear": {
+     "housed": "Gun24_P12_GearHoused",
+     "run_in": "Gun24_P12_GearRunIn",
+     "run_out": "Gun24_P12_GearRunOut"
+    },
+    "lid": "Lid_12_P",
+    "lid_open_deg": 90,
+    "lid_max_deg": 180,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P13",
+    "port": 13,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      18.73842,
+      -5.074,
+      2.19893
+     ],
+     "x": [
+      0.126629,
+      -0.991929,
+      0.006534
+     ],
+     "y": [
+      0.9906,
+      0.126798,
+      0.051313
+     ],
+     "z": [
+      -0.051727,
+      -2.5e-05,
+      0.998661
+     ]
+    },
+    "yaw_deg": 0.58,
+    "irons": "Gun24_P13_Irons",
+    "carriage_x_m": {
+     "housed": -1.70256,
+     "run_in": -2.01066,
+     "run_out": -0.34188
+    },
+    "gear": {
+     "housed": "Gun24_P13_GearHoused",
+     "run_in": "Gun24_P13_GearRunIn",
+     "run_out": "Gun24_P13_GearRunOut"
+    },
+    "lid": "Lid_13_P",
+    "lid_open_deg": 95,
+    "lid_max_deg": 160,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "P14",
+    "port": 14,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      22.07935,
+      -4.2938,
+      2.43578
+     ],
+     "x": [
+      0.406591,
+      -0.913032,
+      0.032514
+     ],
+     "y": [
+      0.910136,
+      0.407889,
+      0.072654
+     ],
+     "z": [
+      -0.079598,
+      5.1e-05,
+      0.996827
+     ]
+    },
+    "yaw_deg": 0.176,
+    "irons": "Gun24_P14_Irons",
+    "carriage_x_m": {
+     "housed": -1.5908,
+     "run_in": -1.9779,
+     "run_out": -0.40437
+    },
+    "gear": {
+     "housed": "Gun24_P14_GearHoused",
+     "run_in": "Gun24_P14_GearRunIn",
+     "run_out": "Gun24_P14_GearRunOut"
+    },
+    "lid": "Lid_14_P",
+    "lid_open_deg": 175,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.12
+    ]
+   },
+   {
+    "id": "S01",
+    "port": 1,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -21.05399,
+      4.54433,
+      2.22345
+     ],
+     "x": [
+      -0.068392,
+      0.997656,
+      0.002271
+     ],
+     "y": [
+      -0.997242,
+      -0.068429,
+      0.028727
+     ],
+     "z": [
+      0.028815,
+      -0.0003,
+      0.999585
+     ]
+    },
+    "yaw_deg": 0.046,
+    "irons": "Gun24_S01_Irons",
+    "carriage_x_m": {
+     "housed": -1.68224,
+     "run_in": -1.99593,
+     "run_out": -0.36246
+    },
+    "gear": {
+     "housed": "Gun24_S01_GearHoused",
+     "run_in": "Gun24_S01_GearRunIn",
+     "run_out": "Gun24_S01_GearRunOut"
+    },
+    "lid": "Lid_01_S",
+    "lid_open_deg": 130,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S02",
+    "port": 2,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -17.93649,
+      4.76432,
+      2.12898
+     ],
+     "x": [
+      -0.073482,
+      0.997295,
+      0.001911
+     ],
+     "y": [
+      -0.996956,
+      -0.073507,
+      0.025997
+     ],
+     "z": [
+      0.026067,
+      5e-06,
+      0.99966
+     ]
+    },
+    "yaw_deg": 0.217,
+    "irons": "Gun24_S02_Irons",
+    "carriage_x_m": {
+     "housed": -1.72339,
+     "run_in": -2.01701,
+     "run_out": -0.34239
+    },
+    "gear": {
+     "housed": "Gun24_S02_GearHoused",
+     "run_in": "Gun24_S02_GearRunIn",
+     "run_out": "Gun24_S02_GearRunOut"
+    },
+    "lid": "Lid_02_S",
+    "lid_open_deg": 95,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S03",
+    "port": 3,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -14.44011,
+      5.0155,
+      2.04637
+     ],
+     "x": [
+      -0.071346,
+      0.997451,
+      0.001495
+     ],
+     "y": [
+      -0.997229,
+      -0.071361,
+      0.02103
+     ],
+     "z": [
+      0.021083,
+      9e-06,
+      0.999778
+     ]
+    },
+    "yaw_deg": 0.251,
+    "irons": "Gun24_S03_Irons",
+    "carriage_x_m": {
+     "housed": -1.75362,
+     "run_in": -2.03251,
+     "run_out": -0.32715
+    },
+    "gear": {
+     "housed": "Gun24_S03_GearHoused",
+     "run_in": "Gun24_S03_GearRunIn",
+     "run_out": "Gun24_S03_GearRunOut"
+    },
+    "lid": "Lid_03_S",
+    "lid_open_deg": 90,
+    "lid_max_deg": 160,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S04",
+    "port": 4,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -11.19404,
+      5.24424,
+      1.9841
+     ],
+     "x": [
+      -0.070575,
+      0.997506,
+      0.001198
+     ],
+     "y": [
+      -0.99736,
+      -0.070586,
+      0.017055
+     ],
+     "z": [
+      0.017097,
+      8e-06,
+      0.999854
+     ]
+    },
+    "yaw_deg": 0.207,
+    "irons": "Gun24_S04_Irons",
+    "carriage_x_m": {
+     "housed": -1.77952,
+     "run_in": -2.04521,
+     "run_out": -0.3175
+    },
+    "gear": {
+     "housed": "Gun24_S04_GearHoused",
+     "run_in": "Gun24_S04_GearRunIn",
+     "run_out": "Gun24_S04_GearRunOut"
+    },
+    "lid": "Lid_04_S",
+    "lid_open_deg": 85,
+    "lid_max_deg": 170,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S05",
+    "port": 5,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -7.7951,
+      5.47779,
+      1.93329
+     ],
+     "x": [
+      -0.064557,
+      0.997914,
+      0.00081
+     ],
+     "y": [
+      -0.997834,
+      -0.064562,
+      0.012596
+     ],
+     "z": [
+      0.012622,
+      5e-06,
+      0.99992
+     ]
+    },
+    "yaw_deg": 0.137,
+    "irons": "Gun24_S05_Irons",
+    "carriage_x_m": {
+     "housed": -1.81432,
+     "run_in": -2.06172,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_S05_GearHoused",
+     "run_in": "Gun24_S05_GearRunIn",
+     "run_out": "Gun24_S05_GearRunOut"
+    },
+    "lid": "Lid_05_S",
+    "lid_open_deg": 85,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S06",
+    "port": 6,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -4.34481,
+      5.67397,
+      1.89544
+     ],
+     "x": [
+      -0.047436,
+      0.998874,
+      0.000433
+     ],
+     "y": [
+      -0.998832,
+      -0.047438,
+      0.009164
+     ],
+     "z": [
+      0.009174,
+      2e-06,
+      0.999958
+     ]
+    },
+    "yaw_deg": 0.126,
+    "irons": "Gun24_S06_Irons",
+    "carriage_x_m": {
+     "housed": -1.84252,
+     "run_in": -2.07366,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_S06_GearHoused",
+     "run_in": "Gun24_S06_GearRunIn",
+     "run_out": "Gun24_S06_GearRunOut"
+    },
+    "lid": "Lid_06_S",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S07",
+    "port": 7,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -1.00672,
+      5.80854,
+      1.86358
+     ],
+     "x": [
+      -0.035385,
+      0.999374,
+      0.000343
+     ],
+     "y": [
+      -0.999326,
+      -0.035386,
+      0.009799
+     ],
+     "z": [
+      0.009805,
+      4e-06,
+      0.999952
+     ]
+    },
+    "yaw_deg": 0.147,
+    "irons": "Gun24_S07_Irons",
+    "carriage_x_m": {
+     "housed": -1.85293,
+     "run_in": -2.07696,
+     "run_out": -0.31318
+    },
+    "gear": {
+     "housed": "Gun24_S07_GearHoused",
+     "run_in": "Gun24_S07_GearRunIn",
+     "run_out": "Gun24_S07_GearRunOut"
+    },
+    "lid": "Lid_07_S",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S08",
+    "port": 8,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      2.18327,
+      5.90931,
+      1.83681
+     ],
+     "x": [
+      -0.026658,
+      0.999645,
+      0.000162
+     ],
+     "y": [
+      -0.999624,
+      -0.026658,
+      0.006347
+     ],
+     "z": [
+      0.006349,
+      7e-06,
+      0.99998
+     ]
+    },
+    "yaw_deg": 0.085,
+    "irons": "Gun24_S08_Irons",
+    "carriage_x_m": {
+     "housed": -1.85649,
+     "run_in": -2.07924,
+     "run_out": -0.31115
+    },
+    "gear": {
+     "housed": "Gun24_S08_GearHoused",
+     "run_in": "Gun24_S08_GearRunIn",
+     "run_out": "Gun24_S08_GearRunOut"
+    },
+    "lid": "Lid_08_S",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S09",
+    "port": 9,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      5.49521,
+      5.96524,
+      1.82229
+     ],
+     "x": [
+      -0.004553,
+      0.99999,
+      2e-06
+     ],
+     "y": [
+      -0.999987,
+      -0.004553,
+      0.002196
+     ],
+     "z": [
+      0.002196,
+      8e-06,
+      0.999998
+     ]
+    },
+    "yaw_deg": 0.028,
+    "irons": "Gun24_S09_Irons",
+    "carriage_x_m": {
+     "housed": -1.86004,
+     "run_in": -2.08229,
+     "run_out": -0.30836
+    },
+    "gear": {
+     "housed": "Gun24_S09_GearHoused",
+     "run_in": "Gun24_S09_GearRunIn",
+     "run_out": "Gun24_S09_GearRunOut"
+    },
+    "lid": "Lid_09_S",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S10",
+    "port": 10,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      8.86362,
+      5.91759,
+      1.84639
+     ],
+     "x": [
+      0.037933,
+      0.99928,
+      0.000885
+     ],
+     "y": [
+      -0.998956,
+      0.037943,
+      -0.025449
+     ],
+     "z": [
+      -0.025464,
+      8.2e-05,
+      0.999676
+     ]
+    },
+    "yaw_deg": -0.39,
+    "irons": "Gun24_S10_Irons",
+    "carriage_x_m": {
+     "housed": -1.8575,
+     "run_in": -2.08305,
+     "run_out": -0.30785
+    },
+    "gear": {
+     "housed": "Gun24_S10_GearHoused",
+     "run_in": "Gun24_S10_GearRunIn",
+     "run_out": "Gun24_S10_GearRunOut"
+    },
+    "lid": "Lid_10_S",
+    "lid_open_deg": 80,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S11",
+    "port": 11,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      12.09428,
+      5.72182,
+      1.96071
+     ],
+     "x": [
+      0.080031,
+      0.996788,
+      0.002921
+     ],
+     "y": [
+      -0.996119,
+      0.080084,
+      -0.036529
+     ],
+     "z": [
+      -0.036646,
+      1.4e-05,
+      0.999328
+     ]
+    },
+    "yaw_deg": -0.457,
+    "irons": "Gun24_S11_Irons",
+    "carriage_x_m": {
+     "housed": -1.80924,
+     "run_in": -2.06375,
+     "run_out": -0.31496
+    },
+    "gear": {
+     "housed": "Gun24_S11_GearHoused",
+     "run_in": "Gun24_S11_GearRunIn",
+     "run_out": "Gun24_S11_GearRunOut"
+    },
+    "lid": "Lid_11_S",
+    "lid_open_deg": 85,
+    "lid_max_deg": 140,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S12",
+    "port": 12,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      15.48337,
+      5.41356,
+      2.06612
+     ],
+     "x": [
+      0.098037,
+      0.995178,
+      0.003078
+     ],
+     "y": [
+      -0.994688,
+      0.098085,
+      -0.031211
+     ],
+     "z": [
+      -0.031362,
+      -1e-06,
+      0.999508
+     ]
+    },
+    "yaw_deg": -0.286,
+    "irons": "Gun24_S12_Irons",
+    "carriage_x_m": {
+     "housed": -1.72644,
+     "run_in": -2.02184,
+     "run_out": -0.32969
+    },
+    "gear": {
+     "housed": "Gun24_S12_GearHoused",
+     "run_in": "Gun24_S12_GearRunIn",
+     "run_out": "Gun24_S12_GearRunOut"
+    },
+    "lid": "Lid_12_S",
+    "lid_open_deg": 90,
+    "lid_max_deg": 180,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S13",
+    "port": 13,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      18.73842,
+      5.074,
+      2.19893
+     ],
+     "x": [
+      0.126629,
+      0.991929,
+      0.006534
+     ],
+     "y": [
+      -0.9906,
+      0.126798,
+      -0.051313
+     ],
+     "z": [
+      -0.051727,
+      2.5e-05,
+      0.998661
+     ]
+    },
+    "yaw_deg": -0.58,
+    "irons": "Gun24_S13_Irons",
+    "carriage_x_m": {
+     "housed": -1.70256,
+     "run_in": -2.01066,
+     "run_out": -0.34188
+    },
+    "gear": {
+     "housed": "Gun24_S13_GearHoused",
+     "run_in": "Gun24_S13_GearRunIn",
+     "run_out": "Gun24_S13_GearRunOut"
+    },
+    "lid": "Lid_13_S",
+    "lid_open_deg": 95,
+    "lid_max_deg": 160,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.5
+    ]
+   },
+   {
+    "id": "S14",
+    "port": 14,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      22.07935,
+      4.2938,
+      2.43578
+     ],
+     "x": [
+      0.406591,
+      0.913032,
+      0.032514
+     ],
+     "y": [
+      -0.910136,
+      0.407889,
+      -0.072654
+     ],
+     "z": [
+      -0.079598,
+      -5.1e-05,
+      0.996827
+     ]
+    },
+    "yaw_deg": -0.176,
+    "irons": "Gun24_S14_Irons",
+    "carriage_x_m": {
+     "housed": -1.5908,
+     "run_in": -1.9779,
+     "run_out": -0.40437
+    },
+    "gear": {
+     "housed": "Gun24_S14_GearHoused",
+     "run_in": "Gun24_S14_GearRunIn",
+     "run_out": "Gun24_S14_GearRunOut"
+    },
+    "lid": "Lid_14_S",
+    "lid_open_deg": 175,
+    "lid_max_deg": 175,
+    "run_out_elevation_deg": [
+     -1.44,
+     10.12
+    ]
+   }
+  ]
+ },
+ "carronade32": {
+  "note": "the quarterdeck's and forecastle's 32-pounder carronades: each gun's slide with its origin at fighting_bolt_x_m along its port's X, turned about its Z within train_deg; the bed's origin at bed_x_m along the slide and bed_z_m over the deck (the slide's top), the barrel at barrel_in_bed_m; the gun's own gear mesh for the pose and its irons in its port's frame (drawn with the slide square to the side)",
+  "train_deg": [
+   -18.0,
+   18.0
+  ],
+  "bed_x_m": {
+   "run_out": -0.0381,
+   "recoil": -0.8001
+  },
+  "bed_z_m": 0.43688,
+  "barrel_in_bed_m": [
+   0.0,
+   0.0,
+   0.23622
+  ],
+  "bore_over_bolt_m": 0.24384,
+  "pan_in_barrel_m": [
+   -0.36576,
+   0.02032,
+   0.45101
+  ],
+  "vent_in_barrel_m": [
+   -0.36576,
+   0.0,
+   0.44339
+  ],
+  "chocks": "Carr32_Chocks",
+  "guns": [
+   {
+    "id": "P01",
+    "port": 1,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -26.84669,
+      -4.34759,
+      4.49116
+     ],
+     "x": [
+      -0.054213,
+      -0.998528,
+      0.001778
+     ],
+     "y": [
+      0.997991,
+      -0.054243,
+      -0.032733
+     ],
+     "z": [
+      0.032782,
+      -0.0,
+      0.999463
+     ]
+    },
+    "yaw_deg": -0.201,
+    "irons": "Carr32_P01_Irons",
+    "fighting_bolt_x_m": -0.13564,
+    "gear": {
+     "run_out": "Carr32_P01_GearRunOut",
+     "recoil": "Carr32_P01_GearRecoil"
+    }
+   },
+   {
+    "id": "P02",
+    "port": 2,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -23.9945,
+      -4.46816,
+      4.4012
+     ],
+     "x": [
+      -0.034424,
+      -0.999407,
+      0.001019
+     ],
+     "y": [
+      0.998969,
+      -0.034439,
+      -0.029569
+     ],
+     "z": [
+      0.029587,
+      -0.0,
+      0.999562
+     ]
+    },
+    "yaw_deg": -0.189,
+    "irons": "Carr32_P02_Irons",
+    "fighting_bolt_x_m": -0.13945,
+    "gear": {
+     "run_out": "Carr32_P02_GearRunOut",
+     "recoil": "Carr32_P02_GearRecoil"
+    }
+   },
+   {
+    "id": "P03",
+    "port": 3,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -20.88835,
+      -4.56566,
+      4.31804
+     ],
+     "x": [
+      -0.034303,
+      -0.999411,
+      0.000788
+     ],
+     "y": [
+      0.999147,
+      -0.034312,
+      -0.022965
+     ],
+     "z": [
+      0.022978,
+      -0.0,
+      0.999736
+     ]
+    },
+    "yaw_deg": -0.162,
+    "irons": "Carr32_P03_Irons",
+    "fighting_bolt_x_m": -0.13792,
+    "gear": {
+     "run_out": "Carr32_P03_GearRunOut",
+     "recoil": "Carr32_P03_GearRecoil"
+    }
+   },
+   {
+    "id": "P04",
+    "port": 4,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -16.9937,
+      -4.73723,
+      4.23834
+     ],
+     "x": [
+      -0.05411,
+      -0.998534,
+      0.000958
+     ],
+     "y": [
+      0.998378,
+      -0.054119,
+      -0.017669
+     ],
+     "z": [
+      0.017695,
+      -0.0,
+      0.999843
+     ]
+    },
+    "yaw_deg": -0.09,
+    "irons": "Carr32_P04_Irons",
+    "fighting_bolt_x_m": -0.13183,
+    "gear": {
+     "run_out": "Carr32_P04_GearRunOut",
+     "recoil": "Carr32_P04_GearRecoil"
+    }
+   },
+   {
+    "id": "P05",
+    "port": 5,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -13.88367,
+      -4.91136,
+      4.18692
+     ],
+     "x": [
+      -0.056152,
+      -0.998422,
+      0.000888
+     ],
+     "y": [
+      0.998297,
+      -0.056159,
+      -0.015781
+     ],
+     "z": [
+      0.015806,
+      -0.0,
+      0.999875
+     ]
+    },
+    "yaw_deg": -0.101,
+    "irons": "Carr32_P05_Irons",
+    "fighting_bolt_x_m": -0.12675,
+    "gear": {
+     "run_out": "Carr32_P05_GearRunOut",
+     "recoil": "Carr32_P05_GearRecoil"
+    }
+   },
+   {
+    "id": "P06",
+    "port": 6,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -10.73673,
+      -5.07897,
+      4.13465
+     ],
+     "x": [
+      -0.04811,
+      -0.998842,
+      0.00085
+     ],
+     "y": [
+      0.998686,
+      -0.048117,
+      -0.01764
+     ],
+     "z": [
+      0.017661,
+      -0.0,
+      0.999844
+     ]
+    },
+    "yaw_deg": -0.164,
+    "irons": "Carr32_P06_Irons",
+    "fighting_bolt_x_m": -0.12014,
+    "gear": {
+     "run_out": "Carr32_P06_GearRunOut",
+     "recoil": "Carr32_P06_GearRecoil"
+    }
+   },
+   {
+    "id": "P07",
+    "port": 7,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -7.58271,
+      -5.20937,
+      4.07844
+     ],
+     "x": [
+      -0.037527,
+      -0.999295,
+      0.000642
+     ],
+     "y": [
+      0.999149,
+      -0.037533,
+      -0.017092
+     ],
+     "z": [
+      0.017104,
+      -0.0,
+      0.999854
+     ]
+    },
+    "yaw_deg": -0.224,
+    "irons": "Carr32_P07_Irons",
+    "fighting_bolt_x_m": -0.10998,
+    "gear": {
+     "run_out": "Carr32_P07_GearRunOut",
+     "recoil": "Carr32_P07_GearRecoil"
+    }
+   },
+   {
+    "id": "P08",
+    "port": 8,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      -4.45083,
+      -5.31811,
+      4.03225
+     ],
+     "x": [
+      -0.034471,
+      -0.999406,
+      0.000399
+     ],
+     "y": [
+      0.999339,
+      -0.034473,
+      -0.011573
+     ],
+     "z": [
+      0.01158,
+      -0.0,
+      0.999933
+     ]
+    },
+    "yaw_deg": -0.157,
+    "irons": "Carr32_P08_Irons",
+    "fighting_bolt_x_m": -0.1016,
+    "gear": {
+     "run_out": "Carr32_P08_GearRunOut",
+     "recoil": "Carr32_P08_GearRecoil"
+    }
+   },
+   {
+    "id": "P09",
+    "port": 9,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      12.79896,
+      -5.44563,
+      4.1492
+     ],
+     "x": [
+      0.041848,
+      -0.999123,
+      0.001287
+     ],
+     "y": [
+      0.998651,
+      0.041868,
+      0.030721
+     ],
+     "z": [
+      -0.030747,
+      -0.0,
+      0.999527
+     ]
+    },
+    "yaw_deg": 0.265,
+    "irons": "Carr32_P09_Irons",
+    "fighting_bolt_x_m": -0.12268,
+    "gear": {
+     "run_out": "Carr32_P09_GearRunOut",
+     "recoil": "Carr32_P09_GearRecoil"
+    }
+   },
+   {
+    "id": "P10",
+    "port": 10,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      15.82233,
+      -5.29418,
+      4.23585
+     ],
+     "x": [
+      0.061641,
+      -0.998097,
+      0.001884
+     ],
+     "y": [
+      0.997631,
+      0.06167,
+      0.030484
+     ],
+     "z": [
+      -0.030542,
+      -0.0,
+      0.999533
+     ]
+    },
+    "yaw_deg": 0.192,
+    "irons": "Carr32_P10_Irons",
+    "fighting_bolt_x_m": -0.13437,
+    "gear": {
+     "run_out": "Carr32_P10_GearRunOut",
+     "recoil": "Carr32_P10_GearRecoil"
+    }
+   },
+   {
+    "id": "P11",
+    "port": 11,
+    "side": "port",
+    "frame": {
+     "origin_m": [
+      18.58825,
+      -5.09396,
+      4.34174
+     ],
+     "x": [
+      0.083684,
+      -0.996484,
+      0.003984
+     ],
+     "y": [
+      0.995357,
+      0.083779,
+      0.047391
+     ],
+     "z": [
+      -0.047558,
+      -0.0,
+      0.998868
+     ]
+    },
+    "yaw_deg": 0.143,
+    "irons": "Carr32_P11_Irons",
+    "fighting_bolt_x_m": -0.15011,
+    "gear": {
+     "run_out": "Carr32_P11_GearRunOut",
+     "recoil": "Carr32_P11_GearRecoil"
+    }
+   },
+   {
+    "id": "S01",
+    "port": 1,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -26.84669,
+      4.34759,
+      4.49116
+     ],
+     "x": [
+      -0.054213,
+      0.998528,
+      0.001778
+     ],
+     "y": [
+      -0.997991,
+      -0.054243,
+      0.032733
+     ],
+     "z": [
+      0.032782,
+      0.0,
+      0.999463
+     ]
+    },
+    "yaw_deg": 0.201,
+    "irons": "Carr32_S01_Irons",
+    "fighting_bolt_x_m": -0.13564,
+    "gear": {
+     "run_out": "Carr32_S01_GearRunOut",
+     "recoil": "Carr32_S01_GearRecoil"
+    }
+   },
+   {
+    "id": "S02",
+    "port": 2,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -23.9945,
+      4.46816,
+      4.4012
+     ],
+     "x": [
+      -0.034424,
+      0.999407,
+      0.001019
+     ],
+     "y": [
+      -0.998969,
+      -0.034439,
+      0.029569
+     ],
+     "z": [
+      0.029587,
+      0.0,
+      0.999562
+     ]
+    },
+    "yaw_deg": 0.189,
+    "irons": "Carr32_S02_Irons",
+    "fighting_bolt_x_m": -0.13945,
+    "gear": {
+     "run_out": "Carr32_S02_GearRunOut",
+     "recoil": "Carr32_S02_GearRecoil"
+    }
+   },
+   {
+    "id": "S03",
+    "port": 3,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -20.88835,
+      4.56566,
+      4.31804
+     ],
+     "x": [
+      -0.034303,
+      0.999411,
+      0.000788
+     ],
+     "y": [
+      -0.999147,
+      -0.034312,
+      0.022965
+     ],
+     "z": [
+      0.022978,
+      0.0,
+      0.999736
+     ]
+    },
+    "yaw_deg": 0.162,
+    "irons": "Carr32_S03_Irons",
+    "fighting_bolt_x_m": -0.13792,
+    "gear": {
+     "run_out": "Carr32_S03_GearRunOut",
+     "recoil": "Carr32_S03_GearRecoil"
+    }
+   },
+   {
+    "id": "S04",
+    "port": 4,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -16.9937,
+      4.73723,
+      4.23834
+     ],
+     "x": [
+      -0.05411,
+      0.998534,
+      0.000958
+     ],
+     "y": [
+      -0.998378,
+      -0.054119,
+      0.017669
+     ],
+     "z": [
+      0.017695,
+      0.0,
+      0.999843
+     ]
+    },
+    "yaw_deg": 0.09,
+    "irons": "Carr32_S04_Irons",
+    "fighting_bolt_x_m": -0.13183,
+    "gear": {
+     "run_out": "Carr32_S04_GearRunOut",
+     "recoil": "Carr32_S04_GearRecoil"
+    }
+   },
+   {
+    "id": "S05",
+    "port": 5,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -13.88367,
+      4.91136,
+      4.18692
+     ],
+     "x": [
+      -0.056152,
+      0.998422,
+      0.000888
+     ],
+     "y": [
+      -0.998297,
+      -0.056159,
+      0.015781
+     ],
+     "z": [
+      0.015806,
+      0.0,
+      0.999875
+     ]
+    },
+    "yaw_deg": 0.101,
+    "irons": "Carr32_S05_Irons",
+    "fighting_bolt_x_m": -0.12675,
+    "gear": {
+     "run_out": "Carr32_S05_GearRunOut",
+     "recoil": "Carr32_S05_GearRecoil"
+    }
+   },
+   {
+    "id": "S06",
+    "port": 6,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -10.73673,
+      5.07897,
+      4.13465
+     ],
+     "x": [
+      -0.04811,
+      0.998842,
+      0.00085
+     ],
+     "y": [
+      -0.998686,
+      -0.048117,
+      0.01764
+     ],
+     "z": [
+      0.017661,
+      0.0,
+      0.999844
+     ]
+    },
+    "yaw_deg": 0.164,
+    "irons": "Carr32_S06_Irons",
+    "fighting_bolt_x_m": -0.12014,
+    "gear": {
+     "run_out": "Carr32_S06_GearRunOut",
+     "recoil": "Carr32_S06_GearRecoil"
+    }
+   },
+   {
+    "id": "S07",
+    "port": 7,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -7.58271,
+      5.20937,
+      4.07844
+     ],
+     "x": [
+      -0.037527,
+      0.999295,
+      0.000642
+     ],
+     "y": [
+      -0.999149,
+      -0.037533,
+      0.017092
+     ],
+     "z": [
+      0.017104,
+      0.0,
+      0.999854
+     ]
+    },
+    "yaw_deg": 0.224,
+    "irons": "Carr32_S07_Irons",
+    "fighting_bolt_x_m": -0.10998,
+    "gear": {
+     "run_out": "Carr32_S07_GearRunOut",
+     "recoil": "Carr32_S07_GearRecoil"
+    }
+   },
+   {
+    "id": "S08",
+    "port": 8,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      -4.45083,
+      5.31811,
+      4.03225
+     ],
+     "x": [
+      -0.034471,
+      0.999406,
+      0.000399
+     ],
+     "y": [
+      -0.999339,
+      -0.034473,
+      0.011573
+     ],
+     "z": [
+      0.01158,
+      0.0,
+      0.999933
+     ]
+    },
+    "yaw_deg": 0.157,
+    "irons": "Carr32_S08_Irons",
+    "fighting_bolt_x_m": -0.1016,
+    "gear": {
+     "run_out": "Carr32_S08_GearRunOut",
+     "recoil": "Carr32_S08_GearRecoil"
+    }
+   },
+   {
+    "id": "S09",
+    "port": 9,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      12.79896,
+      5.44563,
+      4.1492
+     ],
+     "x": [
+      0.041848,
+      0.999123,
+      0.001287
+     ],
+     "y": [
+      -0.998651,
+      0.041868,
+      -0.030721
+     ],
+     "z": [
+      -0.030747,
+      0.0,
+      0.999527
+     ]
+    },
+    "yaw_deg": -0.265,
+    "irons": "Carr32_S09_Irons",
+    "fighting_bolt_x_m": -0.12268,
+    "gear": {
+     "run_out": "Carr32_S09_GearRunOut",
+     "recoil": "Carr32_S09_GearRecoil"
+    }
+   },
+   {
+    "id": "S10",
+    "port": 10,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      15.82233,
+      5.29418,
+      4.23585
+     ],
+     "x": [
+      0.061641,
+      0.998097,
+      0.001884
+     ],
+     "y": [
+      -0.997631,
+      0.06167,
+      -0.030484
+     ],
+     "z": [
+      -0.030542,
+      0.0,
+      0.999533
+     ]
+    },
+    "yaw_deg": -0.192,
+    "irons": "Carr32_S10_Irons",
+    "fighting_bolt_x_m": -0.13437,
+    "gear": {
+     "run_out": "Carr32_S10_GearRunOut",
+     "recoil": "Carr32_S10_GearRecoil"
+    }
+   },
+   {
+    "id": "S11",
+    "port": 11,
+    "side": "starboard",
+    "frame": {
+     "origin_m": [
+      18.58825,
+      5.09396,
+      4.34174
+     ],
+     "x": [
+      0.083684,
+      0.996484,
+      0.003984
+     ],
+     "y": [
+      -0.995357,
+      0.083779,
+      -0.047391
+     ],
+     "z": [
+      -0.047558,
+      0.0,
+      0.998868
+     ]
+    },
+    "yaw_deg": -0.143,
+    "irons": "Carr32_S11_Irons",
+    "fighting_bolt_x_m": -0.15011,
+    "gear": {
+     "run_out": "Carr32_S11_GearRunOut",
+     "recoil": "Carr32_S11_GearRecoil"
+    }
+   }
+  ]
+ }
+}
