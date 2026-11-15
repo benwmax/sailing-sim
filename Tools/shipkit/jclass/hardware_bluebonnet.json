@@ -95,7 +95,7 @@
   ]
  },
  "deck_prisms": {
-  "note": "Deck prisms over the cabins, the Victorian kind still let into yachts' decks in the 1930s: a glass prism set in the planking, its flat top 'top' (length along the planks, width) m flush with the deck ('proud' m above it at every point, following the deck's camber and sheer), its pendant a ridge 'pendant' m below the deck's top (under the 44 mm planking) that spreads the daylight below. Starboard plan points, mirrored to port.",
+  "note": "Deck prisms over the cabins, the Victorian kind still let into yachts' decks in the 1930s: a glass prism set in the planking, its flat top 'top' (length along the planks, width) m flush with the deck ('proud' m above it at every point, following the deck's camber and sheer), its pendant a ridge 'pendant' m below the deck's top (under the 44 mm planking) that spreads the daylight below. Starboard plan points, mirrored to port. The third pair (over the saloon) stands at x -1.87, clear of the beam at -1.57 (slice 10 bores it through the deck).",
   "top": [
    0.15,
    0.1
@@ -112,7 +112,7 @@
     0.75
    ],
    [
-    -1.7,
+    -1.87,
     1.5
    ],
    [

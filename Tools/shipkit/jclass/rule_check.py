@@ -34,7 +34,13 @@ fixed pieces (structure, ceiling, bulkheads, soles) may not cross each other, ev
 reaches the hull (none loose, no set of pieces floating), each room forward must have its headroom between the beams
 over a 0.6 m walkway (HEADROOM_M), the ground tackle drawn below replaces slice 8's estimate in the deck hardware's
 weight, and the accommodation forward must leave room in the card's accommodation for slice 10's cabins aft (whose
-weight and centre are printed: what slice 10 must weigh, and where, to keep the card's centre).
+weight and centre are printed: what slice 10 must weigh, and where, to keep the card's centre). From slice 10 the
+interior aft must close too (its five objects), the same crossing and support checks cover it, the saloon and the
+owner's end must have standing headroom, the companion stairs' rise may not pass interior_bluebonnet.json's
+'rise_max' (nor 0.27 m), every door aft must open at least 1.6 m high, the triangles below aft stay within slice 10's
+900,000,
+and the accommodation forward and aft together, measured, must weigh no more than the card's and replace its estimate
+in the weight check, the trimming ballast taking what it leaves.
 Plain Python: no Blender needed.
 """
 import json
@@ -50,10 +56,16 @@ PRESS_TURN_ADDED_DEG = 10.0  # the most the press may sharpen a set sail's great
 RULE_ARCS = {"starboard": (0.0, 112.5), "port": (-112.5, 0.0), "stern": (112.5, 247.5)}  # the 1910 rules (slice 8)
 RULE_SCREEN_M = 0.9144      # the side lights' screens: three feet forward of the light (slice 8)
 INTERIOR = ("Below.Structure", "Below.Ceiling", "Below.Joinery", "Below.Fittings", "Below.Canvas")  # slice 9
+INTERIOR_AFT = ("Aft.Structure", "Aft.Panelling", "Aft.Joinery", "Aft.Fittings", "Aft.Upholstery")  # slice 10
+DOOR_MIN_M = 1.6            # the least height of a door's opening below (slice 10)
+STAIR_RISE_MAX_M = 0.27     # the companion stairs' steepest rise (slice 10): the json's 'rise_max' may only be less
+SLICE_10_TRIANGLES = 900000  # below decks aft's budget (the plan's), whatever the build says
+AFT_ROOMS = ("Pantry", "Saloon", "Aft cabins")
 # the least headroom between the beams on the centreline in each room forward (slice 9): standing room (6 ft) where the
 # crew live and work, stooping room in the sail locker, sitting room in the washroom, and none asked of the forepeak,
 # whose platform is the chain locker's top
-HEADROOM_M = {"Galley": 1.83, "Fo'c'sle": 1.83, "SailLocker": 1.6, "Washroom": 1.25}
+HEADROOM_M = {"Galley": 1.83, "Fo'c'sle": 1.83, "SailLocker": 1.6, "Washroom": 1.25,
+              "Pantry": 1.83, "Saloon": 1.83, "Aft cabins": 1.83}         # (slice 10's: standing room aft too)
 RIGGING = ("Shrouds", "Stays", "RunnerFittings") + tuple(f"{k}.{s}.{t}" for k in ("Runner", "Checkstay")
                                                          for s in ("Starboard", "Port") for t in ("Set", "LetOff"))
 
@@ -131,6 +143,8 @@ if __name__ == "__main__":
                                                            ((b.get("sails") or {}).get("suits") or {}) if k != "note")
         if sl >= 9:
             need += INTERIOR
+        if sl >= 10:
+            need += INTERIOR_AFT
         if sl >= 8:
             suits8 = [k for k in ((b.get("sails") or {}).get("suits") or {}) if k != "note"]
             need += ("DeckHardware", "Ensign.Moored", "Cowls.Moored") + tuple(f"Burgee.{k}" for k in suits8) + tuple(
@@ -323,7 +337,8 @@ if __name__ == "__main__":
             ov = inr.get("overlaps") or {}
             good = (bool(ov.get("ok")) and not ov.get("crossing_faces") and not ov.get("fixed_crossing_faces")
                     and bool(ov.get("furniture_groups")))
-            print(f"{'ok  ' if good else 'FAIL'} below decks forward nothing crosses anything but by design "
+            where = "below decks" if sl >= 10 else "below decks forward"
+            print(f"{'ok  ' if good else 'FAIL'} {where} nothing crosses anything but by design "
                   f"({ov.get('furniture_groups')} groups of furniture in {ov.get('furniture_trees')} meshes, checked "
                   f"against each other, the hull and the deck; the {ov.get('fixed_groups')} fixed groups (structure, "
                   f"ceiling, bulkheads, soles, deck) against each other; {len(ov.get('allowed_by_design') or {})} "
@@ -339,6 +354,8 @@ if __name__ == "__main__":
             ok = ok and good
             hr = inr.get("headroom") or {}
             for room, need_m in HEADROOM_M.items():
+                if room not in hr and sl < 10:
+                    continue
                 v = hr.get(room) or {}
                 walk = v.get("walkway_0.6_m") or {}
                 got = min((x for x in (v.get("between_beams_m"), walk.get("between_beams_m")) if x is not None),
@@ -360,13 +377,60 @@ if __name__ == "__main__":
                   f"{gt.get('total_kg')} kg (in the deck hardware's weight: {drawn.get('kg')} kg)")
             ok = ok and good
             ac = inr.get("accommodation") or {}
-            fwd, card = ac.get("forward_measured_long_tons"), SPECS["weights"]["accommodation"]
-            good = fwd is not None and fwd < card and (ac.get("left_for_slice_10_long_tons") or 0.0) > 0.0
-            tg = ac.get("slice_10_target") or {}
-            print(f"{'ok  ' if good else 'FAIL'} the accommodation forward weighs {fwd} long tons of the card's {card} "
-                  f"(left for the cabins aft: {ac.get('left_for_slice_10_long_tons')}, which slice 10 must centre at "
-                  f"x {tg.get('centre_x')}, z {tg.get('centre_z')} m to keep the card's centre)")
-            ok = ok and good
+            card = SPECS["weights"]["accommodation"]
+            if sl < 10:
+                fwd = ac.get("forward_measured_long_tons")
+                good = fwd is not None and fwd < card and (ac.get("left_for_slice_10_long_tons") or 0.0) > 0.0
+                tg = ac.get("slice_10_target") or {}
+                print(f"{'ok  ' if good else 'FAIL'} the accommodation forward weighs {fwd} long tons of the card's "
+                      f"{card} (left for the cabins aft: {ac.get('left_for_slice_10_long_tons')}, which slice 10 must "
+                      f"centre at x {tg.get('centre_x')}, z {tg.get('centre_z')} m to keep the card's centre)")
+                ok = ok and good
+            else:
+                # slice 10: the accommodation measured, forward and aft, in place of the card's estimate
+                tot = ac.get("total_long_tons")
+                measured = (b.get("weights") or {}).get("measured") or []
+                # and the trimming ballast takes what it leaves of the card's (shell.retrim)
+                left = ((b.get("finish") or {}).get("lead") or {}).get("for_the_accommodation_long_tons")
+                good = (tot is not None and tot <= card and bool(ac.get("aft_long_tons"))
+                        and "accommodation" in measured and left is not None and abs(left - (card - tot)) <= 0.011
+                        and len(ac.get("centre") or []) == 3)
+                print(f"{'ok  ' if good else 'FAIL'} the accommodation weighs {tot} long tons (forward "
+                      f"{ac.get('forward_long_tons')}, aft {ac.get('aft_long_tons')}) of the card's {card}, centred at "
+                      f"{ac.get('centre')} (the card's x, z {ac.get('card_centre_xz')}); measured in the weight check: "
+                      f"{'accommodation' in measured}; the trimming ballast takes the {left} long tons left")
+                ok = ok and good
+                aft = inr.get("aft") or {}
+                st = (aft.get("lobby") or {}).get("stairs") or {}
+                rise_max = json.load(open(os.path.join(HERE, "interior_bluebonnet.json")))["aft"]["lobby"]["stairs"][
+                    "rise_max"]
+                rise_max = min(rise_max, STAIR_RISE_MAX_M)
+                good = bool(st.get("rises")) and st.get("rise_m", 9.0) <= rise_max
+                print(f"{'ok  ' if good else 'FAIL'} the companion stairs: {st.get('rises')} rises of "
+                      f"{st.get('rise_m')} m (at most {rise_max}) at {st.get('lean_deg')} deg, {st.get('width_m')} m "
+                      f"wide")
+                ok = ok and good
+                # the doors aft: the four in the partitions and those in the bulkheads between the rooms aft and to
+                # the galley
+                doors, nb = {}, 0
+                for k, v in (aft.get("partitions") or {}).items():
+                    for n, d in (v.get("doors") or {}).items():
+                        doors[n] = d.get("opening_m")
+                for k, v in (inr.get("bulkheads") or {}).items():
+                    if v.get("kind") == "door" and set(v.get("between") or []) & set(AFT_ROOMS):
+                        doors[" / ".join(v["between"])] = v.get("opening_m")
+                        nb += 1
+                high = all(o and o[1] >= DOOR_MIN_M for o in doors.values())
+                good = len(doors) == 4 + nb and nb == len(AFT_ROOMS) and high
+                print(f"{'ok  ' if good else 'FAIL'} the doors aft open at least {DOOR_MIN_M} m high (width, "
+                      f"height): {doors}")
+                ok = ok and good
+                tri, bud = b.get("triangles_slice_10_below"), b.get("budget_slice_10")
+                good = tri is not None and tri <= SLICE_10_TRIANGLES and bud == SLICE_10_TRIANGLES
+                print(f"{'ok  ' if good else 'FAIL'} below decks aft has {tri} triangles (slice 10's "
+                      f"{SLICE_10_TRIANGLES}; the build's budget {bud}), streamed in with slice 9's "
+                      f"{b.get('triangles_slice_9_below')}")
+                ok = ok and good
             if not ok:
                 r["pass"] = False
     print(report(r))
