@@ -99,11 +99,22 @@ private:
 	TArray<TTuple<FString, int32, FString>> DrillSteps;   // text, 0 upcoming 1 current 2 done, coach line
 	TSharedPtr<class SVerticalBox> DrillList;
 	// The right-hand column's panels (drill, race, navigation) and the room they have between the minimap and the sail trim
-	// panel. When they need more than that room the drill panel condenses to its current step (bCompactDrill), and goes
-	// back once the room holds the full panels' height (FullPanelsHeight); anything still too tall is clipped.
+	// panel. When they need more than that room they shed whole lines, one fit level at a time (RightFit, 0 = everything):
+	// 1 the drill footer's mode, 2 the coach's lines, 3 every step but the current one, 4 the race's detail lines and the
+	// navigation text, 5 the navigation panel, 6 the drill's step and the race score, 7 the race's task (its headline
+	// stays). A level is undone once the room holds the height measured before it (RightFitHeights). Never a cut line.
 	TSharedPtr<class SBox> RightPanels, RightPanelsRoom;
-	bool bCompactDrill = false;
-	float FullPanelsHeight = 0.f;
+	static constexpr int32 RightFitMax = 7;
+	int32 RightFit = 0;
+	float RightFitHeights[RightFitMax] = {};
+	uint32 RightFitKey = 0;
+	double RightFitHold = 0.0;
+	bool Fit(int32 Level) const { return RightFit >= Level; }
+	// The left-hand column's cards (strip, tip, rules callout) and their room above the instruments: bCompactLeft drops the
+	// explainer lines (the callout's reason, the tip card's footer) until the room holds FullLeftHeight again.
+	TSharedPtr<class SBox> LeftPanels, LeftPanelsRoom;
+	bool bCompactLeft = false;
+	float FullLeftHeight = 0.f;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
 	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;

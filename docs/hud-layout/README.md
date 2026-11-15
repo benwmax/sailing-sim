@@ -15,17 +15,26 @@ centre right. Code: `Source/SailingSim/Private/UI/SailHud.cpp` (`SSailHud::Const
 | Bottom left | Minimap | **Apparent wind dial, then speed over depth** (one compact 410 x 254 block) |
 | Bottom centre | Captain's call, captions, signals, speed, wind dial, depth | **Clear** (the boat) |
 
-HUD modes are unchanged: Full shows everything; Minimal hides the minimap, tip and trim but keeps the cluster, compass,
-drill panel and messages; Off keeps toasts, the captain's call and sound captions.
+HUD modes are unchanged: Full shows everything; Minimal hides the minimap, tip and key hints but keeps the cluster,
+compass, drill panel and messages, and shows the sail trim panel's two telltale windows without words (UI Natural,
+docs/trim-panel/); Off keeps toasts, the captain's call and sound captions.
 
 ## The right column
 
 The minimap, the drill/race/navigation panels and the sail trim panel are one column from the top-right corner to the
 bottom-right corner, so the panels can never run under the trim panel. The panels get the room between the minimap and
-the trim panel. When they need more (a long drill at HUD size 130%, or a drill and a race at once), the drill panel
-condenses to its current step and "Step k of n" (`bCompactDrill`). It goes back to the full list once the room holds it.
-Anything still too tall is clipped at the trim panel's top edge. The first stills (82fa86c) showed both overlaps that
-led to this: the race card's last line under the trim panel, and the 130% drill card's last steps under it.
+the trim panel. When they need more (a long drill at HUD size 130%, or a drill and a race at once), they shed whole
+lines, one fit level at a time (`RightFit`): the drill footer's mode, the coach's line, the steps other than the current
+one ("Step k of n"), the race's detail lines and the navigation text, the navigation panel, the drill's step and the race
+score, and last the race's task, leaving its headline. Each level comes back once the room holds the height measured
+before it. A line is never cut through: the 1d45f3a/106cf9c5 stills showed the race headline sliced by the column's edge
+at 130%, and #714's bigger type had put the 1080p drill on its current step only, where it now keeps all four steps.
+
+The left side works the same way: the time/wind/sky strip, the learning tip and the rules callout sit in the room above
+the instruments. When they need more (the rules callout at HUD size 130%, found in the retake's after-130-race still),
+the callout's reason line and the tip card's "Hide tips" footer drop out (`bCompactLeft`); anything still taller is
+clipped above the instruments. The condensed drill's footer is just "Step k of n" and the drill's status, so it no longer
+wraps a lone word.
 
 ## The messages
 

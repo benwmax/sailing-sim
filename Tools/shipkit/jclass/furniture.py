@@ -405,15 +405,15 @@ def range_on_gimbals(parts, side, rx, f, zt, segs, sd, zs):
             "clear_of_lining_m": round(clear, 3), "pins_z": round(zp, 3)}
 
 
-def dresser(parts, side, g, zt, sd):
-    """The dresser over the ice chest: two end boards, shelves at even heights out from the lining with a fiddle along
-    each, the lowest a plate rack with the plates standing in it, mugs on the next."""
+def dresser(parts, side, g, zt, sd, gr="Galley dresser"):
+    """The dresser over the ice chest (and slice 10's in the pantry, `gr` its group): two end boards, shelves at even
+    heights out from the lining with a fiddle along each, the lowest a plate rack with the plates standing in it, mugs
+    on the next."""
     jo, fi = parts[J], parts[F]
     dx0, dx1 = g["dresser"]["x"]
     heights = g["dresser"]["shelves"]
     deep = 0.27
     z_top = zt + heights[-1] + 0.02
-    gr = "Galley dresser"
     fdr = side.y(dx0, zt) - deep - 0.01
     for x in (dx0, dx1 - BOARD):
         board_x(jo, end_board(side, x + BOARD / 2, fdr, zt, z_top), x, BOARD, sd, "Varnish", WT["teak"],
@@ -583,11 +583,11 @@ def bins(parts, side):
 
 # ------------------------------------------------------------------------------------------------ ladders
 def ladders(parts, holes):
-    """A teak ladder under each hatch: its strings' after edges leaning `lean_deg` from upright with their tops
-    against the hatch's after lining at the coaming's top, treads at an even rise from the sole, let into the
-    strings."""
+    """A teak ladder under each hatch (and the companionway, slice 10): its strings' after edges leaning `lean_deg`
+    from upright with their tops against the opening's after lining at the coaming's top (the sill's), treads at an
+    even rise from the sole, let into the strings."""
     ld = IN["ladders"]
-    jo = parts[J]
+    jo = IR.Router(parts[J], parts["Aft.Joinery"]) if "Aft.Joinery" in parts else parts[J]
     s_t, s_d = ld["string"]
     t_d, t_t = ld["tread"]
     w = ld["width"]
@@ -596,8 +596,8 @@ def ladders(parts, holes):
     for name in ld["under"]:
         h = holes[name]
         xa = float(h[:, 0].min()) + IN["openings"]["inset"]     # the after lining's inside face
-        hs = deck.DK["hatches"][name]
-        z_top = float(shell.deck_z(xa, 0.0)) + hs["coaming"]
+        hs = IR.opening_spec(name)
+        z_top = float(shell.deck_z(xa, 0.0)) + hs.get("coaming", hs.get("sill"))   # a house's sill (slice 10)
         # the foot: on whichever sole it lands on
         for _ in range(3):
             room, _r = IR.room_at(xa + 0.3)

@@ -68,6 +68,11 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	bool bShowHud = true;
 
+	/** The interface mode (UI overhaul, docs/ui-overhaul/): 0 Helpful (full text and explainers), 1 Natural (a glimpse of
+	 *  what is hard to see, few words), 2 Off. SailUI::UiMode() reads it; the HUD's SSailHud::Mode follows it. */
+	UPROPERTY(config, EditAnywhere, Category = "Sailing")
+	int32 UiMode = 0;
+
 	/** Simple is the default; on Easy the layout is always Simple. */
 	UPROPERTY(config, EditAnywhere, Category = "Sailing")
 	ESailingControlLayout ControlLayout = ESailingControlLayout::Simple;

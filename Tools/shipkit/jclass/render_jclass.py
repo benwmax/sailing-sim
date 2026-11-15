@@ -1,5 +1,5 @@
 """Clay, zebra, afloat, paint, deck, rig, rigging, sails, running rigging, deck hardware and below-decks renders of
-Bluebonnet for the docs and the blind reviews (docs/jclass-1 to jclass-9).
+Bluebonnet for the docs and the blind reviews (docs/jclass-1 to jclass-10).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -58,6 +58,14 @@ boats), the same every round so before and after line up:
                                              the galley, the bins round the mast, the sail locker, the washroom and the
                                              forepeak, close views of a cot, the range and the windlass, and on deck the
                                              bow chock and the cable's lead to the chain pipe
+  below_aft_*                                slice 10's cabins aft, lit by their own lamps (build.json's interior
+                                             report: a point light in each lamp's shade, its bulb glowing), work
+                                             lights under the deck like slice 9's (the pantry has no lamp) and the
+                                             daylight through the skylights and the doghouse: a plan cut at 1.1 m over
+                                             the sole and the two halves cut at the centreline, the saloon looking
+                                             forward and aft, the pantry, the lobby from the stairs, the stairs up to
+                                             the doghouse, the navigator's desk, the owner's stateroom and bathroom,
+                                             the guest cabin and heads, and the bookcase
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -279,16 +287,59 @@ for x_, z_, w_ in ((2.3, 1.29, 22), (3.9, 1.29, 22), (5.6, 1.33, 22), (7.4, 1.33
     WORK.append(lo)
 
 
+# slice 10's work lights aft: the same discs, between the beams in each room aft (x, y, z: y to starboard, the hull's;
+# z 3 cm under the lowest beam there), watts: the pantry has no lamp of its own, and mahogany panelling by its lamps
+# alone is too dark to read in a render
+WORK_AFT = []
+for x_, y_, z_, w_ in ((0.84, 0.0, 1.27, 22), (-0.77, 0.0, 1.27, 26), (-1.84, 0.0, 1.27, 26), (-2.91, 0.0, 1.27, 26),
+                       (-4.51, 0.0, 1.27, 18), (-6.12, 0.0, 1.27, 18), (-5.05, 1.9, 1.2, 18), (-5.05, -1.9, 1.2, 18),
+                       (-7.2, 1.6, 1.22, 12), (-7.2, -1.6, 1.22, 12)):
+    lt = bpy.data.lights.new(f"JWorkAft{x_}{y_:+}", "AREA")
+    lt.shape, lt.size, lt.energy = "DISK", 0.35, w_
+    lt.color = (1.0, 0.93, 0.82)
+    lo = bpy.data.objects.new(f"JWorkAft{x_}{y_:+}", lt)
+    lo.location = (x_, -y_, z_)
+    lo.visible_camera, lo.visible_glossy = False, False
+    SC.collection.objects.link(lo)
+    WORK_AFT.append(lo)
+
+
+# slice 10's lamps below aft, lit: a point light in each lamp's shade over its bulb (the build's report gives the
+# bulbs' centres), the bulbs glowing
+LAMPS = []
+_bj = os.path.join(os.path.dirname(os.path.abspath(SRC)), "build.json")
+for i_, p_ in enumerate((json.load(open(_bj)).get("interior", {}).get("aft", {}).get("lamps", [])
+                         if os.path.exists(_bj) else [])):
+    lt = bpy.data.lights.new(f"JLamp{i_}", "POINT")
+    lt.energy, lt.shadow_soft_size, lt.color = 18.0, 0.015, (1.0, 0.84, 0.62)
+    lo = bpy.data.objects.new(f"JLamp{i_}", lt)
+    lo.location = (p_[0], -p_[1], p_[2] + 0.03)            # over the bulb, in the shade's open top
+    lo.visible_glossy = False
+    SC.collection.objects.link(lo)
+    LAMPS.append(lo)
+
+
+def bulbs_lit(on):
+    m = bpy.data.materials.get("Bulb")
+    if m is None or not m.use_nodes:
+        return
+    p = next((n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    if p is not None:
+        p.inputs["Emission Color"].default_value = (1.0, 0.86, 0.66, 1.0)
+        p.inputs["Emission Strength"].default_value = 12.0 if on else 0.0
+
+
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
          upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0, clip=None, work=False,
-         view="Standard", exposure=0.0):
+         view="Standard", exposure=0.0, lamps=False, work_aft=False):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
     to starboard; "stowed" on deck). tack: which side the runners are set on (slice 5). suit: the sails set (slice 6),
     with the boom and the pole posed as the suit has them. clip: the camera's near clip (a cut through the model, for
-    the sections below); work: slice 9's work lights on below. view, exposure: the colour management's view transform
-    and exposure (stops); the earlier slices' shots keep Standard at 0."""
+    the sections below); work: slice 9's work lights on below; lamps: slice 10's lamps lit; work_aft: slice 10's
+    work lights on. view, exposure: the colour
+    management's view transform and exposure (stops); the earlier slices' shots keep Standard at 0."""
     if ONLY and name not in ONLY:
         return
     if suit is not None:
@@ -321,6 +372,11 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     cd.clip_start, cd.clip_end = clip or 0.05, 6000
     for lo in WORK:
         lo.hide_render = not work
+    for lo in WORK_AFT:
+        lo.hide_render = not work_aft
+    for lo in LAMPS:
+        lo.hide_render = not lamps
+    bulbs_lit(lamps)
     if ortho:
         cd.type, cd.ortho_scale = "ORTHO", ortho
     else:
@@ -581,4 +637,23 @@ shot("below_windlass", "paint", (14.3, -0.55, 1.62), (14.95, 0.2, 1.3), lens=24,
 deckv = dict(sun_dir=WW_SUN, sun=3.0, samples=64, upto=9, suit="Moored")
 shot("below_bow_chock", "paint", (17.25, 1.2, 2.78), (17.69, 0.58, 2.37), lens=45, **deckv)
 shot("below_cable_lead", "paint", (14.6, 0.15, 3.0), (16.6, 0.66, 2.15), lens=28, **deckv)
+# slice 10: below decks aft, moored, by its own lamps, the work lights aft and the daylight through the skylights and
+# the doghouse; Blender's y is the hull's turned over, so the port side is +y here
+ba = dict(sun_dir=WW_SUN, sun=1.5, samples=96, upto=10, suit="Moored", lamps=True, work_aft=True, view="AgX")
+CUT_AFT = 0.5                                  # 1.1 m over the sole: through the partitions, under the shelves
+shot("below_aft_plan", "paint", (-3.2, 0.0, CUT_AFT + 40.0), (-3.2, 0.0, 0.0), ortho=10.8, clip=40.0, **ba)
+shot("below_aft_half_port", "paint", (-3.2, -40.0, 0.4), (-3.2, 0.0, 0.4), ortho=10.8, clip=40.0, **ba)
+shot("below_aft_half_starboard", "paint", (-3.2, 40.0, 0.4), (-3.2, 0.0, 0.4), ortho=10.8, clip=40.0, **ba)
+shot("below_aft_saloon_forward", "paint", (-3.3, 0.0, 0.8), (0.0, 0.0, 0.2), lens=16, **ba)
+shot("below_aft_saloon_aft", "paint", (-0.3, -0.4, 0.9), (-3.7, 0.0, 0.2), lens=16, **ba)
+shot("below_aft_pantry", "paint", (0.2, 0.4, 0.9), (1.6, -1.0, 0.4), lens=16, **ba)
+shot("below_aft_lobby", "paint", (-6.9, 0.0, 1.2), (-4.3, 0.5, 0.3), lens=15, **ba)
+shot("below_aft_stairs", "paint", (-4.6, -0.2, 1.0), (-7.4, 0.0, 0.6), lens=15, **ba)
+shot("below_aft_doghouse_up", "paint", (-4.9, 0.0, 0.2), (-7.0, 0.0, 1.9), lens=16, **ba)
+shot("below_aft_desk", "paint", (-4.3, -0.2, 0.9), (-5.0, 0.8, 0.4), lens=24, **ba)
+shot("below_aft_stateroom", "paint", (-4.6, -1.4, 1.2), (-6.3, -2.4, 0.0), lens=15, **ba)
+shot("below_aft_bathroom", "paint", (-6.45, -2.05, 1.25), (-7.45, -1.25, 0.1), lens=14, **ba)
+shot("below_aft_guest", "paint", (-4.6, 1.4, 1.2), (-6.3, 2.4, 0.0), lens=15, **ba)
+shot("below_aft_heads", "paint", (-6.45, 1.15, 1.3), (-7.3, 1.6, -0.4), lens=12, **ba)
+shot("below_aft_bookcase", "paint", (-2.6, 1.0, 0.5), (-3.6, 2.2, 0.1), lens=24, **ba)
 print("render_jclass: done")

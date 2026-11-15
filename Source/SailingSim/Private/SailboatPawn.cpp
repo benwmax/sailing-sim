@@ -8,6 +8,7 @@
 #include "PerfScopes.h"
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
+#include "UI/SailUIStyle.h"
 #include "SailSession.h"
 #include "SailSave.h"
 #include "GroomComponent.h"
@@ -1000,6 +1001,7 @@ void ASailboatPawn::BeginPlay()
 			CameraBoom->SetRelativeLocation(FVector(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2])) * CmPerMeter);
 			CameraBoom->SocketOffset = FVector::ZeroVector;
 			CameraBoom->bEnableCameraLag = false;
+			bChaseCameraLag = false;
 		}
 	}
 	// (the chase camera's pitch from the arguments under the arm's limit too, feedback #5)
@@ -1057,6 +1059,7 @@ void ASailboatPawn::ApplyDifficulty()
 void ASailboatPawn::ResetBoat()
 {
 	CameraShoreLiftCm = 0.f;   // #498: the view starts again from where the boat starts
+	SnapChaseCamera();         // ... and is there at once, not flown there over the lake
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
 		FLaunchSpot Spot;
@@ -1141,6 +1144,12 @@ void ASailboatPawn::ResetBoat()
 void ASailboatPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	// The chase camera's lag comes back once the arm has updated at the boat's new place (it ticks after the pawn).
+	if (bChaseSnapPending && GFrameCounter > ChaseSnapFrame + 1)
+	{
+		bChaseSnapPending = false;
+		if (CameraBoom) CameraBoom->bEnableCameraLag = bChaseCameraLag;
+	}
 	if (bKeysOpen) PollKeyCapture();
 	if (!bTrafficBoat && !bGhost)
 	{
@@ -3118,7 +3127,7 @@ void ASailboatPawn::StartSampleLayer()
 		const TConstArrayView<SailingSound::FPackLoop> Loops = SailingSound::PackLoops();
 		for (int32 I = 0; I < Loops.Num(); ++I)
 		{
-			if (SampleCues[int32(Loops[I].Cue)]) continue;
+			if (Loops[I].bRetired || SampleCues[int32(Loops[I].Cue)]) continue;
 			USoundBase* Wave = SailingSound::LoadPack(Loops[I].Asset);
 			if (!Wave) continue;
 			UAudioComponent* A = NewObject<UAudioComponent>(this);
@@ -3490,7 +3499,18 @@ void ASailboatPawn::ApplyStateToTransform()
 	const Vec3 Origin = Boat.OriginPosition();
 	const Quat& Q = Boat.GetState().Orientation;
 	// World streaming: the physics is in the map frame (doubles), the actor in the render frame (SailingFrame.h).
-	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), Origin.X, Origin.Y, Origin.Z) + FVector(0.0, 0.0, WaterSurfaceZ), FQuat(Q.X, Q.Y, Q.Z, Q.W));
+	const FVector To = SailingFrame::ToWorld(GetWorld(), Origin.X, Origin.Y, Origin.Z) + FVector(0.0, 0.0, WaterSurfaceZ);
+	// Put somewhere new (not sailed there): the chase camera starts at her rather than flying over (SnapChaseCamera).
+	if (FVector::DistSquared(To, GetActorLocation()) > FMath::Square(ChaseSnapJumpCm)) SnapChaseCamera();
+	SetActorLocationAndRotation(To, FQuat(Q.X, Q.Y, Q.Z, Q.W));
+}
+
+void ASailboatPawn::SnapChaseCamera()
+{
+	if (!CameraBoom) return;
+	CameraBoom->bEnableCameraLag = false;
+	bChaseSnapPending = true;
+	ChaseSnapFrame = GFrameCounter;
 }
 
 void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
@@ -4041,9 +4061,8 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	else if (Action == TEXT("ToggleHud"))
 	{
 		// Graphics G4: H cycles the HUD: full, minimal (cluster, compass, drill, toasts), off (toasts only).
-		Settings->bShowHud = true;
-		SSailHud::Mode = (SSailHud::Mode + 1) % 3;
-		Settings->Save();
+		// UI overhaul: the three modes are Helpful, Natural and Off, and the choice is saved (SailUI::SetUiMode).
+		SailUI::SetUiMode(SailUI::EUiMode((SSailHud::Mode + 1) % 3));
 	}
 	else if (Action == TEXT("ResetBoat"))
 	{

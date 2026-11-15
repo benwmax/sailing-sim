@@ -32,67 +32,76 @@ namespace SailUI
 			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Size), FSlateLayoutTransform(FVector2f(Inset))), Brush, ESlateDrawEffect::None, Tint * Brush->TintColor.GetSpecifiedColor());
 		}
 
-		/** The draggable track with its yellow fill and knob. */
+		/** The draggable track with its magenta fill and knob. */
 		class SSailTrack : public SLeafWidget
 		{
 		public:
 			SLATE_BEGIN_ARGS(SSailTrack) {}
 				SLATE_ATTRIBUTE(float, Fraction)
 			SLATE_END_ARGS()
-			void Construct(const FArguments& A) { Fraction = A._Fraction; }
+			void Construct(const FArguments& A) { Fraction = A._Fraction; bPaper = OnPaper(); }
 			virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(200.f, 22.f); }
 			virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle& Style, bool) const override
 			{
 				const FVector2D S = G.GetLocalSize();
 				const float F = FMath::Clamp(Fraction.Get(0.f), 0.f, 1.f);
 				const float Y = S.Y * 0.5f - 2.f;
-				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(S.X, 4.f), FSlateLayoutTransform(FVector2f(0.f, Y))), Rounded(Line, 2.f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Line);
-				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(FMath::Max(S.X * F, 2.f), 4.f), FSlateLayoutTransform(FVector2f(0.f, Y))), Rounded(Accent, 2.f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Accent);
+				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(S.X, 4.f), FSlateLayoutTransform(FVector2f(0.f, Y))), Rounded(Surface(bPaper, Line), 2.f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Surface(bPaper, Line));
+				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(FMath::Max(S.X * F, 2.f), 4.f), FSlateLayoutTransform(FVector2f(0.f, Y))), Rounded(Surface(bPaper, Accent), 2.f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Surface(bPaper, Accent));
 				const float K = 14.f;
-				FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(K, K), FSlateLayoutTransform(FVector2f(S.X * F - K * 0.5f, S.Y * 0.5f - K * 0.5f))), Rounded(Fg, K * 0.5f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Fg);
+				FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(K, K), FSlateLayoutTransform(FVector2f(S.X * F - K * 0.5f, S.Y * 0.5f - K * 0.5f))), Rounded(Surface(bPaper, Fg), K * 0.5f), ESlateDrawEffect::None, Style.GetColorAndOpacityTint() * Surface(bPaper, Fg));
 				return Layer + 2;
 			}
 		private:
 			TAttribute<float> Fraction;
+			bool bPaper = false;
 		};
 	}
 
 	TSharedRef<SWidget> Text(const FString& S, EType Type, const FLinearColor& Color, bool bWrap)
 	{
-		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		// (On a paper sheet the glass token becomes its paper twin: SailUI::Surface.)
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap)
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
 	TSharedRef<SWidget> TextAttr(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap)
 	{
+		if (OnPaper())
+		{
+			const TAttribute<FSlateColor> Glass = Color;
+			Color = TAttribute<FSlateColor>::CreateLambda([Glass]() { return FSlateColor(Surface(true, Glass.Get(FSlateColor(Fg)).GetSpecifiedColor())); });
+		}
 		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
 	TSharedRef<SWidget> Pill(const FString& S, bool bAccent)
 	{
-		return SNew(SBorder).BorderImage(Rounded(bAccent ? Accent : Raise, 11.f, bAccent ? Accent : Line, 1.f)).Padding(FMargin(10.f, 3.f))
+		return SNew(SBorder).BorderImage(Rounded(OnSurface(bAccent ? Accent : Raise), 11.f, OnSurface(bAccent ? Accent : Line), 1.f)).Padding(FMargin(10.f, 3.f))
 			[ Text(S, EType::Label, bAccent ? AccentInk : Fg) ];
 	}
 
 	TSharedRef<SWidget> PanelBox(TSharedRef<SWidget> Content, FMargin Padding, float Radius)
 	{
-		return SNew(SBorder).BorderImage(Rounded(IsLow() ? PanelSolid : Panel, Radius, Line, 1.f)).Padding(Padding)[ Content ];
+		// Built inside an FScopedPaper it is a sheet of chart paper.
+		return SNew(SBorder).BorderImage(Rounded(OnPaper() ? Paper : (IsLow() ? PanelSolid : Panel), Radius, OnSurface(Line), 1.f)).Padding(Padding)[ Content ];
 	}
 
 	TSharedRef<SWidget> KeyCap(const FString& Keyboard, const FString& Pad)
 	{
+		const bool bPaper = OnPaper();
 		auto Label = [Keyboard, Pad]() { return FText::FromString(UsingGamepad() ? Pad : Keyboard); };
-		auto Fill = [Pad]() -> const FSlateBrush*
+		auto Fill = [Pad, bPaper]() -> const FSlateBrush*
 		{
-			if (!UsingGamepad()) return Rounded(Raise, 5.f, Line, 1.f);
+			if (!UsingGamepad()) return Rounded(Surface(bPaper, Raise), 5.f, Surface(bPaper, Line), 1.f);
 			// Xbox face buttons in their colours (the mockup's glyphs).
 			const FLinearColor C = Pad == TEXT("A") ? Hex(0x3BA55C) : Pad == TEXT("B") ? Hex(0xD9453C) : Pad == TEXT("X") ? Hex(0x2F7DD3)
 				: Pad == TEXT("Y") ? Hex(0xE3B321) : Raise;
 			return Rounded(C, 11.f, Line, 1.f);
 		};
 		return SNew(SBorder).BorderImage_Lambda(Fill).Padding(FMargin(8.f, 2.f)).VAlign(VAlign_Center)
-			[ SNew(STextBlock).Text_Lambda(Label).Font(Font(EType::Label)).ColorAndOpacity(Fg) ];
+			[ SNew(STextBlock).Text_Lambda(Label).Font(Font(EType::Label)).ColorAndOpacity_Lambda([bPaper]() { return FSlateColor(UsingGamepad() ? Fg : Surface(bPaper, Fg)); }) ];
 	}
 
 	TSharedRef<SWidget> PromptBar(TArray<TTuple<FString, FString, FString>> Prompts, const FString& Hint)
@@ -142,6 +151,28 @@ namespace SailUI
 		return SNew(SSailButton).Look(bPrimary ? EButtonLook::Primary : EButtonLook::Secondary).OnClicked(OnClicked).Padding(FMargin(28.f, 14.f))
 			[ SNew(SBox).HAlign(HAlign_Center)[ Text(Label, EType::Button, bPrimary ? AccentInk : Fg) ] ];
 	}
+
+	TSharedRef<SSailButton> MenuRow(const FString& Label, const FString& Sub, FSimpleDelegate OnClicked, bool bEnabled, float PadY)
+	{
+		// The text asks its own row whether it has the focus (the row is made after its text, so through a holder).
+		const TSharedRef<TWeakPtr<SSailButton>> Self = MakeShared<TWeakPtr<SSailButton>>();
+		auto Colour = [Self](const FLinearColor& Off, const FLinearColor& On)
+		{
+			return TAttribute<FSlateColor>::CreateLambda([Self, Off, On]()
+			{
+				const TSharedPtr<SSailButton> Row = Self->Pin();
+				return FSlateColor(Row.IsValid() && Row->IsFocusedNow() ? On : Off);
+			});
+		};
+		const TSharedRef<SSailButton> Row = SNew(SSailButton).Look(EButtonLook::MenuRow).OnClicked(OnClicked).IsEnabled(bEnabled).Padding(FMargin(32.f, PadY, 18.f, PadY))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Label, EType::MenuItem)).Font(Font(EType::MenuItem)).ColorAndOpacity(Colour(bEnabled ? Fg : Muted, PaperInk)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Sub, EType::Small)).Font(Font(EType::Small)).ColorAndOpacity(Colour(Muted, PaperMuted)) ]
+		];
+		*Self = Row;
+		return Row;
+	}
 }
 
 // ---------------------------------------------------------------- SSailButton
@@ -149,6 +180,7 @@ namespace SailUI
 void SSailButton::Construct(const FArguments& A)
 {
 	Look = A._Look;
+	bPaper = SailUI::OnPaper();
 	SelectedAttr = A._IsSelected;
 	Enabled = A._IsEnabled;
 	OnClicked = A._OnClicked;
@@ -212,29 +244,42 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 	FWidgetStyle S = Style;
 	if (!bOn) S.BlendColorAndOpacityTint(FLinearColor(1, 1, 1, 0.45f));
 	const FLinearColor T = S.GetColorAndOpacityTint();
+	// On a paper sheet each glass token is drawn as its paper twin.
+	auto C = [this](const FLinearColor& Glass) { return SailUI::Surface(bPaper, Glass); };
 	switch (Look)
 	{
 	case SailUI::EButtonLook::Card:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel, SailUI::RadiusCard, bSel ? SailUI::Selected : SailUI::Line, bSel ? 1.5f : 1.f), T);
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? SailUI::Paper : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusCard, C(bSel ? SailUI::Selected : SailUI::Line), bSel ? 1.5f : 1.f), T);
 		break;
 	case SailUI::EButtonLook::Pin:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Accent : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), SailUI::Fg, 2.f), T);
+		// A chosen pin is paper with a magenta edge (it was yellow; magenta on magenta would not show).
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Paper : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), bSel ? SailUI::AccentDeep : SailUI::Fg, 2.f), T);
+		break;
+	case SailUI::EButtonLook::MenuRow:
+		if (bFocus)
+		{
+			// The paper label under the focused row, and the chart's magenta diamond at its head.
+			SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Paper, 2.f), T);
+			const float Cy = float(G.GetLocalSize().Y) * 0.5f;
+			FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(10.f, Cy), FVector2f(16.f, Cy - 6.f), FVector2f(22.f, Cy), FVector2f(16.f, Cy + 6.f), FVector2f(10.f, Cy) },
+				ESlateDrawEffect::None, SailUI::AccentDeep * T, true, 3.f);
+		}
 		break;
 	case SailUI::EButtonLook::MenuItem:
 		if (bFocus)
 		{
-			SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Accent.CopyWithNewOpacity(0.16f), 3.f), T);
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(4.f, G.GetLocalSize().Y), FSlateLayoutTransform()), SailUI::Rounded(SailUI::Accent, 1.f), ESlateDrawEffect::None, T * SailUI::Accent);
+			SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(C(SailUI::Accent).CopyWithNewOpacity(0.16f), 3.f), T);
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(4.f, G.GetLocalSize().Y), FSlateLayoutTransform()), SailUI::Rounded(C(SailUI::Accent), 1.f), ESlateDrawEffect::None, T * C(SailUI::Accent));
 		}
 		break;
 	case SailUI::EButtonLook::Primary:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Accent, SailUI::RadiusButton), T);
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(C(SailUI::Accent), SailUI::RadiusButton), T);
 		break;
 	case SailUI::EButtonLook::Secondary:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Raise, SailUI::RadiusButton, SailUI::Line, 1.f), T);
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(C(SailUI::Raise), SailUI::RadiusButton, C(SailUI::Line), 1.f), T);
 		break;
 	case SailUI::EButtonLook::Chip:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Fg : SailUI::Raise, SailUI::RadiusButton, SailUI::Line, 1.f), T);
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(C(bSel ? SailUI::Fg : SailUI::Raise), SailUI::RadiusButton, C(SailUI::Line), 1.f), T);
 		break;
 	}
 	int32 Max = SCompoundWidget::OnPaint(Args, G, Culling, Out, Layer + 2, S, bParentEnabled);
@@ -244,13 +289,13 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 		const FVector2D Sz = G.GetLocalSize();
 		const FVector2f O(Sz.X - 30.f, 14.f);
 		FSlateDrawElement::MakeLines(Out, Max + 1, G.ToPaintGeometry(), { O + FVector2f(0.f, 7.f), O + FVector2f(5.f, 12.f), O + FVector2f(15.f, 0.f) },
-			ESlateDrawEffect::None, SailUI::Accent * T, true, 3.f);
+			ESlateDrawEffect::None, C(SailUI::Accent) * T, true, 3.f);
 	}
-	if (bFocus && Look != SailUI::EButtonLook::MenuItem)
+	if (bFocus && Look != SailUI::EButtonLook::MenuItem && Look != SailUI::EButtonLook::MenuRow)
 	{
-		// Focus: a 3 px yellow ring and a soft glow (white on the yellow button).
+		// Focus: a 3 px magenta ring and a soft glow (paper on the magenta button).
 		const float R = Look == SailUI::EButtonLook::Pin ? FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f) : (Look == SailUI::EButtonLook::Card ? SailUI::RadiusCard : SailUI::RadiusButton);
-		const FLinearColor Ring = Look == SailUI::EButtonLook::Primary ? SailUI::Fg : SailUI::Accent;
+		const FLinearColor Ring = C(Look == SailUI::EButtonLook::Primary ? SailUI::Fg : SailUI::Accent);
 		SailUI::Box(Out, Max + 2, G, FVector2D(-7.f), SailUI::Rounded(FLinearColor::Transparent, R + 7.f, Ring.CopyWithNewOpacity(0.22f), 6.f), T);
 		SailUI::Box(Out, Max + 3, G, FVector2D(-2.f), SailUI::Rounded(FLinearColor::Transparent, R + 2.f, Ring, 3.f), T);
 		Max += 3;
@@ -263,6 +308,7 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 void SSailSlider::Construct(const FArguments& A)
 {
 	Min = A._Min; Max = A._Max; Step = A._Step; Value = A._Value; Enabled = A._IsEnabled; OnChanged = A._OnChanged;
+	bPaper = SailUI::OnPaper();
 	TAttribute<FString> ValueText = A._ValueText;
 	const TAttribute<float> V = Value;
 	const float Lo = Min, Hi = Max;
@@ -275,7 +321,7 @@ void SSailSlider::Construct(const FArguments& A)
 			SAssignNew(Track, SailUI::SSailTrack).Fraction_Lambda([V, Lo, Hi]() { return (V.Get(Lo) - Lo) / FMath::Max(Hi - Lo, 1e-3f); })
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.2f).HAlign(HAlign_Right).VAlign(VAlign_Center)
-			[ SNew(STextBlock).Text_Lambda([ValueText]() { return FText::FromString(ValueText.Get(FString())); }).Font(SailUI::Font(SailUI::EType::Value)).ColorAndOpacity(SailUI::Fg) ]
+			[ SNew(STextBlock).Text_Lambda([ValueText]() { return FText::FromString(ValueText.Get(FString())); }).Font(SailUI::Font(SailUI::EType::Value)).ColorAndOpacity(SailUI::OnSurface(SailUI::Fg)) ]
 	];
 }
 
@@ -333,11 +379,12 @@ int32 SSailSlider::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 {
 	FWidgetStyle S = Style;
 	if (!Enabled.Get(true)) S.BlendColorAndOpacityTint(FLinearColor(1, 1, 1, 0.4f));
-	SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel, SailUI::RadiusButton, SailUI::Line, 1.f), S.GetColorAndOpacityTint());
+	// (On a paper sheet the row is a ruled cell of the sheet, not a panel of its own.)
+	SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? FLinearColor::Transparent : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusButton, SailUI::Surface(bPaper, SailUI::Line), 1.f), S.GetColorAndOpacityTint());
 	int32 Top = SCompoundWidget::OnPaint(Args, G, Culling, Out, Layer + 1, S, bParentEnabled);
 	if (HasKeyboardFocus())
 	{
-		SailUI::Box(Out, Top + 1, G, FVector2D(-2.f), SailUI::Rounded(FLinearColor::Transparent, SailUI::RadiusButton + 2.f, SailUI::Accent, 3.f));
+		SailUI::Box(Out, Top + 1, G, FVector2D(-2.f), SailUI::Rounded(FLinearColor::Transparent, SailUI::RadiusButton + 2.f, SailUI::Surface(bPaper, SailUI::Accent), 3.f));
 		++Top;
 	}
 	return Top + 1;
@@ -348,6 +395,8 @@ int32 SSailSlider::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 void SSailChoice::Construct(const FArguments& A)
 {
 	Options = A._Options; Index = A._Index; Enabled = A._IsEnabled; OnChanged = A._OnChanged;
+	bPaper = SailUI::OnPaper();
+	const bool bP = bPaper;
 	SetTag(FName(*A._Label));   // names the choice in the UI script's log (every Seg choice has the same source line)
 	// The chips take the width the row gives them and wrap (right-aligned) when it's too narrow; six or more sit a little
 	// tighter. (The Sky row's six ran past its panel over the next column at 1440x1080.)
@@ -359,11 +408,11 @@ void SSailChoice::Construct(const FArguments& A)
 		Chips->AddSlot().Padding(bMany ? 3.f : 4.f, 0.f)
 		[
 			SNew(SBorder).Padding(FMargin(bMany ? 8.f : 10.f, 4.f))
-			.BorderImage_Lambda([Idx, I]() { return SailUI::Rounded(Idx.Get(0) == I ? SailUI::Fg : SailUI::Raise, SailUI::RadiusButton, SailUI::Line, 1.f); })
+			.BorderImage_Lambda([Idx, I, bP]() { return SailUI::Rounded(SailUI::Surface(bP, Idx.Get(0) == I ? SailUI::Fg : SailUI::Raise), SailUI::RadiusButton, SailUI::Surface(bP, SailUI::Line), 1.f); })
 			.OnMouseButtonDown_Lambda([this, I](const FGeometry&, const FPointerEvent&) { if (Enabled.Get(true)) OnChanged.ExecuteIfBound(I); return FReply::Handled(); })
 			[
 				SNew(STextBlock).Text(FText::FromString(Options[I])).Font(SailUI::Font(SailUI::EType::Ui))
-				.ColorAndOpacity_Lambda([Idx, I]() { return FSlateColor(Idx.Get(0) == I ? SailUI::Ink : SailUI::Fg); })
+				.ColorAndOpacity_Lambda([Idx, I, bP]() { return FSlateColor(SailUI::Surface(bP, Idx.Get(0) == I ? SailUI::Ink : SailUI::Fg)); })
 			]
 		];
 	}
@@ -399,11 +448,12 @@ int32 SSailChoice::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 {
 	FWidgetStyle S = Style;
 	if (!Enabled.Get(true)) S.BlendColorAndOpacityTint(FLinearColor(1, 1, 1, 0.4f));
-	SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel, SailUI::RadiusButton, SailUI::Line, 1.f), S.GetColorAndOpacityTint());
+	// (On a paper sheet the row is a ruled cell of the sheet, not a panel of its own.)
+	SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? FLinearColor::Transparent : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusButton, SailUI::Surface(bPaper, SailUI::Line), 1.f), S.GetColorAndOpacityTint());
 	int32 Top = SCompoundWidget::OnPaint(Args, G, Culling, Out, Layer + 1, S, bParentEnabled);
 	if (HasKeyboardFocus())
 	{
-		SailUI::Box(Out, Top + 1, G, FVector2D(-2.f), SailUI::Rounded(FLinearColor::Transparent, SailUI::RadiusButton + 2.f, SailUI::Accent, 3.f));
+		SailUI::Box(Out, Top + 1, G, FVector2D(-2.f), SailUI::Rounded(FLinearColor::Transparent, SailUI::RadiusButton + 2.f, SailUI::Surface(bPaper, SailUI::Accent), 3.f));
 		++Top;
 	}
 	return Top + 1;

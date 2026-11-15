@@ -1,7 +1,7 @@
 {
- "about": "Bluebonnet below decks, forward (docs/jclass-9): the crew's end of the yacht from the forepeak to the bulkhead forward of the saloon, built by interior.py in the hull's frame (X forward, Y starboard, Z up, metres; z above the load waterline). Our own layout in the manner of the 1934-37 Js, fitted to slice 3's deck openings: the crew's washroom and the ladder under the forecastle hatch, the sail locker under the sail hatch, the fo'c'sle (the crew's quarters and mess) under the forecastle skylight, and the galley and the sail bins round the mast. Slice 10 builds the owner's end aft of 'aft_bulkhead'. Everything here is streamed in only when you go below (the game, slice 14).",
+ "about": "Bluebonnet below decks (docs/jclass-9 forward, docs/jclass-10 aft): from the forepeak to the after bulkhead forward of the lazarette, built by interior.py in the hull's frame (X forward, Y starboard, Z up, metres; z above the load waterline). Our own layout in the manner of the 1934-37 Js, fitted to slice 3's deck openings. Forward of 'aft_bulkhead' (slice 9, the 'Below.' objects): the crew's washroom and the ladder under the forecastle hatch, the sail locker under the sail hatch, the fo'c'sle under the forecastle skylight, and the galley and the sail bins round the mast. Aft of it (slice 10, the 'Aft.' objects): the pantry and the crew's ladder under the companionway, the saloon under the saloon skylight, and the owner's end under the doghouse: the lobby with the navigator's desk and the companion stairs, the owner's stateroom and bathroom to starboard, the guest cabin and heads to port. Everything is streamed in only when you go below (the game, slice 14).",
  "structure": {
-  "note": "The steel the cabins are built inside, all counted in the hull's 30 tons (specs_bluebonnet.json): the plating's inside face 'plating' inboard of the moulded surface (slice 1's surface is the plating's outside), angle-bar frames every 'frame_spacing' from 'frames_from' to 'frames_to', each a 'frame' (depth inboard, flange fore and aft, thickness) angle riveted to the plating with its flange toward amidships (an open bevel), and a deck beam on each frame ('beam': depth below the planking, flange, thickness) under the 1 3/4 in teak, joined to its frame by a bracket knee 'knee' m on each leg. The spacing is set so that no beam passes under the chain pipe, the forward cowl's flange or a deck prism; the mast (x 3.0, 0.58 m fore and aft) stands between two frames, the beams there cut and landed on carlins either side of it (the partners, 'partners': carlins' half spacing, wedges' depth and thickness). Beams that would cross a hatch or skylight are cut at its coaming's lining and landed on carlins under the coaming's sides. The planking's underside is the deckhead. The plating and frames are drawn down to 'below_sole' under each room's sole. Painted white throughout, as a working yacht's crew spaces were.",
+  "note": "The steel the cabins are built inside, all counted in the hull's 30 tons (specs_bluebonnet.json): the plating's inside face 'plating' inboard of the moulded surface (slice 1's surface is the plating's outside), angle-bar frames every 'frame_spacing' from 'frames_from' to 'frames_to', each a 'frame' (depth inboard, flange fore and aft, thickness) angle riveted to the plating with its flange toward amidships (an open bevel), and a deck beam on each frame ('beam': depth below the planking, flange, thickness) under the 1 3/4 in teak, joined to its frame by a bracket knee 'knee' m on each leg. The spacing is set so that no beam passes under the chain pipe, a cowl's flange or a deck prism (slice 10 moved the third prism, beside the saloon skylight, from x -1.7 to -1.87 between two beams); the mast (x 3.0, 0.58 m fore and aft) stands between two frames, the beams there cut and landed on carlins either side of it (the partners, 'partners': carlins' half spacing, wedges' depth and thickness). Beams that would cross a hatch or skylight are cut at its coaming's lining and landed on carlins under the coaming's sides. The planking's underside is the deckhead. The plating and frames are drawn down to 'below_sole' under each room's sole. Painted white throughout, as a working yacht's crew spaces were. Slice 10 carries the frames aft to x -7.99, the after bulkhead forward of the lazarette and the steering gear; every flange points aft, as forward (the bulkheads stand on the frames' forward faces).",
   "frame_spacing": 0.535,
   "plating": 0.008,
   "frame": [
@@ -15,7 +15,7 @@
    0.009
   ],
   "knee": 0.22,
-  "frames_from": 1.64,
+  "frames_from": -7.99,
   "frames_to": 16.62,
   "below_sole": 0.25,
   "partners": [
@@ -25,7 +25,7 @@
   ]
  },
  "ceiling": {
-  "note": "The ceiling: horizontal pine battens 'batten' (width, thickness) at 'pitch' on the frames' inner edges, from 'from_sole' above each room's sole up to 'to_deckhead' below the deckhead, where the crew's gear and the sails rub; the galley is lined with tongue-and-groove instead ('lined'), painted, its boards 'board' wide. The rooms in 'bare' are not ceiled: the forepeak's frames show, and its bosun's shelves stand on them (the chain locker under its platform is the cable's).",
+  "note": "The ceiling: horizontal pine battens 'batten' (width, thickness) at 'pitch' on the frames' inner edges, from 'from_sole' above each room's sole up to 'to_deckhead' below the deckhead, where the crew's gear and the sails rub; the galley is lined with tongue-and-groove instead ('lined'), painted, its boards 'board' wide. The rooms in 'bare' are not ceiled: the forepeak's frames show, and its bosun's shelves stand on them (the chain locker under its platform is the cable's). Aft (slice 10) the pantry is lined like the galley, and the saloon and the owner's end are 'panelled': varnished mahogany boards 'panel' 'board' wide over the frames, from 'from_sole' over the sole, with rails ('rail': height, proud) along them at 'rails_z' over the sole (their feet), a stile ('stile') over each frame and a cornice ('cornice') along their top, 'to_deckhead' under the deckhead at the side, where the beams' knees begin. A room's ceiling runs from bulkhead to bulkhead, broken at a transverse partition on a frame ('breaks': the owner's end's on frame -6.385, between the cabins and the bathrooms).",
   "batten": [
    0.07,
    0.019
@@ -34,16 +34,48 @@
   "from_sole": 0.05,
   "to_deckhead": 0.32,
   "lined": [
-   "Galley"
+   "Galley",
+   "Pantry"
   ],
   "bare": [
    "Forepeak"
   ],
-  "board": 0.09
+  "board": 0.09,
+  "panelled": [
+   "Saloon",
+   "Aft cabins"
+  ],
+  "panel": {
+   "from_sole": 0.002,
+   "rails_z": [
+    0.002,
+    0.42,
+    0.95
+   ],
+   "rail": [
+    0.06,
+    0.012
+   ],
+   "stile": [
+    0.06,
+    0.012
+   ],
+   "cornice": [
+    0.05,
+    0.03
+   ],
+   "board": 0.11,
+   "to_deckhead": 0.32
+  },
+  "breaks": {
+   "Aft cabins": [
+    -6.385
+   ]
+  }
  },
  "aft_bulkhead": 1.64,
  "rooms": {
-  "note": "Bow to stern: each room between two bulkheads (x, on frames), its sole's top 'sole' (a flat sole, or two where 'sole_forward' [x, z] raises its forward part, of planks 'sole_plank' wide on the floors, 'sole_thickness' thick, out to 'sole_clear' from the frames; a step where two soles differ by more than 'step_max'). Headroom is from the sole to the underside of the deck beams (under them) and to the deckhead (between them). The forepeak's 'sole' is its platform's top.",
+  "note": "Bow to stern: each room between two bulkheads (x, on frames), its sole's top 'sole' (a flat sole, or two where 'sole_forward' [x, z] raises its forward part, of planks 'sole_plank' wide on the floors, 'sole_thickness' thick, out to 'sole_clear' from the frames; a step where two soles differ by more than 'step_max'). Headroom is from the sole to the underside of the deck beams (under them) and to the deckhead (between them). The forepeak's 'sole' is its platform's top. Aft of the galley (slice 10) the soles are 0.1 m lower, -0.6, for six feet under the beams in the owner's end; the step down at the galley's door is under 'step_max', so it is the sill's.",
   "sole_plank": 0.11,
   "sole_thickness": 0.028,
   "step_max": 0.2,
@@ -91,10 +123,34 @@
    "sole": -0.5,
    "what": "the galley to port, the sail bins round the mast to starboard"
   },
-  "sole_clear": 0.01
+  "sole_clear": 0.01,
+  "Pantry": {
+   "x": [
+    0.035,
+    1.64
+   ],
+   "sole": -0.6,
+   "what": "the pantry and the crew's lobby: the ladder down from the companionway, the pantry's counter and plate racks to port, the steward's lockers to starboard"
+  },
+  "Saloon": {
+   "x": [
+    -3.71,
+    0.035
+   ],
+   "sole": -0.6,
+   "what": "the panelled saloon under the saloon skylight: settees each side with a table before each, chairs, sideboards forward, bookcases aft, books over the settees"
+  },
+  "Aft cabins": {
+   "x": [
+    -7.99,
+    -3.71
+   ],
+   "sole": -0.6,
+   "what": "the owner's end under the doghouse: a lobby on the centreline with the navigator's desk and the companion stairs, the owner's stateroom and bathroom to starboard, the guest cabin and heads to port"
+  }
  },
  "bulkheads": {
-  "note": "Joiner's bulkheads of tongue-and-groove pine 'thickness', painted, each on a frame and up to the deck beam over it, with a door 'door' (width, height above the higher sole; less where the headroom is less, its head 'head_clear' under the beam) on the centreline, its leaf hooked back flat against the forward face (to port). The forepeak's is a small door 'scuttle' (width, height, sill above the washroom's sole: its top 2 cm over the forepeak's platform), with steps up to it no more than 'scuttle_step' each.",
+  "note": "Joiner's bulkheads of tongue-and-groove pine 'thickness', painted, each on a frame and up to the deck beam over it, with a door 'door' (width, height above the higher sole; less where the headroom is less, its head 'head_clear' under the beam) on the centreline, its leaf hooked back flat against the forward face (to port). The forepeak's is a small door 'scuttle' (width, height, sill above the washroom's sole: its top 2 cm over the forepeak's platform), with steps up to it no more than 'scuttle_step' each. Aft (slice 10) each bulkhead's face toward a panelled room (the saloon, the owner's end) is varnished mahogany, the pantry's and the galley's faces white; the after bulkhead at the frames' after end, forward of the lazarette, is blank (the lazarette is reached from its deck hatch).",
   "thickness": 0.022,
   "door": [
    0.56,
@@ -107,7 +163,8 @@
    0.68
   ],
   "scuttle_step": 0.35,
-  "leaf": 0.024
+  "leaf": 0.024,
+  "aft_end": "blank"
  },
  "cots": {
   "note": "Pipe cots: a frame of galvanised pipe 'pipe' radius, the row's x range by 'width' (the pipes' centres), canvas laced inside it, the outboard pipe resting in hooks on the ceiling 'off_ceiling' clear of it at the cot's ends and the inboard one hung from the deck beams by a chain at each end, drawn lowered (they fold up against the ceiling by day). Each row is a cot each side: the room, the x range, and the canvas's height above the room's (after) sole.",
@@ -258,7 +315,7 @@
   ]
  },
  "ladders": {
-  "note": "Teak ladders under the forecastle hatch and the sail hatch: two strings 'string' and treads 'tread' (depth, thickness) at an even rise no more than 'rise_max', from the sole to the coaming's top, leaning 'lean_deg' from upright, against the opening's after edge.",
+  "note": "Teak ladders under the forecastle hatch and the sail hatch: two strings 'string' and treads 'tread' (depth, thickness) at an even rise no more than 'rise_max', from the sole to the coaming's top, leaning 'lean_deg' from upright, against the opening's after edge. Slice 10 adds the crew's ladder under the companionway into the pantry.",
   "string": [
    0.05,
    0.11
@@ -272,7 +329,8 @@
   "lean_deg": 15.0,
   "under": [
    "ForecastleHatch",
-   "SailHatch"
+   "SailHatch",
+   "Companionway"
   ]
  },
  "washroom": {
@@ -411,26 +469,33 @@
   }
  },
  "openings": {
-  "note": "The deck is cut under these (slice 3's deck had no openings below the cockpit's), each hole 'inset' m inside the coaming's (or fitting's) inside, and the coaming carried down through the deck to the deckhead as a lining. Slice 10 opens the aft ones.",
+  "note": "The deck is cut under these (slice 3's deck had no openings below the cockpit's), each hole 'inset' m inside the coaming's (or fitting's) inside, and the coaming carried down through the deck to the deckhead as a lining. Slice 9 opened the forward ones; slice 10 opens the saloon skylight, the third prism, the after cowls, and the 'houses': the crew's companionway and the doghouse, whose walls are carried down the same way, with their doors' openings cut through to the top and their tops open under the slides.",
   "inset": 0.01,
   "hatches": [
    "ForecastleHatch",
    "SailHatch"
   ],
   "skylights": [
-   "ForecastleSkylight"
+   "ForecastleSkylight",
+   "SaloonSkylight"
   ],
   "prisms": [
    0,
-   1
+   1,
+   2
   ],
   "cowls": [
-   "Forward"
+   "Forward",
+   "Aft"
   ],
-  "chain_pipe": true
+  "chain_pipe": true,
+  "houses": [
+   "Companionway",
+   "Doghouse"
+  ]
  },
  "materials": {
-  "note": "sRGB for the renders (the game's skins set their own): white paint below decks, the soles' scrubbed pine, varnished pine battens and teak trim, cot canvas and the sail bags' canvas, the galley's zinc, the WC's porcelain. The galvanised pipe and chain, the range's black iron and the bronze are the rig's and the deck's materials.",
+  "note": "sRGB for the renders (the game's skins set their own): white paint below decks, the soles' scrubbed pine, varnished pine battens and teak trim, cot canvas and the sail bags' canvas, the galley's zinc, the WC's porcelain. The galvanised pipe and chain, the range's black iron and the bronze are the rig's and the deck's materials. Aft (slice 10): varnished mahogany panelling and joinery, the settees' and chairs' blue velvet, the saloon's and the stateroom's red carpets, white linen on the berths, brass lamps and fittings (each lamp's bulb frosted white, lit in the renders), mirrors, the books' leather.",
   "WhitePaint": [
    228,
    226,
@@ -460,14 +525,350 @@
    238,
    236,
    230
+  ],
+  "Mahogany": [
+   104,
+   46,
+   30
+  ],
+  "Upholstery": [
+   38,
+   58,
+   104
+  ],
+  "Carpet": [
+   112,
+   34,
+   36
+  ],
+  "Linen": [
+   232,
+   228,
+   214
+  ],
+  "Brass": [
+   196,
+   158,
+   76
+  ],
+  "Mirror": [
+   200,
+   204,
+   208
+  ],
+  "Leather": [
+   92,
+   40,
+   30
+  ],
+  "Bulb": [
+   255,
+   238,
+   205
   ]
  },
  "weights": {
-  "note": "Densities and thicknesses for weighing (kg/m^3, m); the steel is the hull's. Accommodation forward is weighed against the size card's 6.0 tons for all of it (slices 9 and 10). The sail bags in the bins are her spare and light-weather sails, in the size card's 'sails_aboard' (her whole wardrobe, which stays the weight check's estimate: slice 6), so they are not weighed here.",
+  "note": "Densities and thicknesses for weighing (kg/m^3, m); the steel is the hull's. Accommodation forward is weighed against the size card's 6.0 tons for all of it (slices 9 and 10). The sail bags in the bins are her spare and light-weather sails, in the size card's 'sails_aboard' (her whole wardrobe, which stays the weight check's estimate: slice 6), so they are not weighed here. Aft (slice 10): Honduras mahogany at 590; the cushions and mattresses (horsehair and kapok in their covers) at 120 and 90; a pile carpet 2.8 kg/m^2; brass 8,500; mirror glass 2,500; the books at 650. The WCs with their pumps and the basins' works are estimated ('aft' 'wc' 'kg'). The aft accommodation and the forward together replace the size card's 6.0-ton estimate in her weight.",
   "pine": 530.0,
   "teak": 650.0,
   "iron": 7200.0,
   "galvanised_pipe_kg_m": 1.3,
-  "canvas_kg_m2": 0.6
+  "canvas_kg_m2": 0.6,
+  "mahogany": 590.0,
+  "upholstery": 120.0,
+  "mattress": 90.0,
+  "carpet_kg_m2": 2.8,
+  "brass": 8500.0,
+  "glass": 2500.0,
+  "books": 650.0
+ },
+ "aft": {
+  "note": "Slice 10's rooms aft of the galley (saloon.py), our own layout in the manner of the surviving Js' owner's ends. The owner's end under the doghouse is split by mahogany partitions: two fore and aft, their lobby faces 'lobby_half_width' out from the centreline (under the doghouse sill's inside face), from the after bulkhead to the saloon's, and one across on frame 'cross_frame' each side from them out to the hull. Each partition is tongue-and-groove mahogany 'partition' 'thickness' thick in boards 'board' wide, standing on the sole and scribed up under whatever is over it: the deckhead, the uncut beams, the doghouse's forward header, its sill's lining. 'doors': each door's opening ('width', its height 'height' over the sole, less where a beam is lower, and its sill 'sill' over the sole), its leaf hooked open flat against the saloon's bulkhead (the cabins) or shut (the heads and the bathroom). The rooms' pieces stand on the sole, against the panelling's rails and stiles or the partitions; positions are the hull's (x forward, y starboard, z up, metres) and each piece's 'side' is +1 starboard, -1 port.",
+  "lobby_half_width": 0.9546,
+  "cross_frame": -6.385,
+  "partition": {
+   "thickness": 0.022,
+   "board": 0.11
+  },
+  "door": {
+   "width": 0.53,
+   "height": 1.72,
+   "sill": 0.025,
+   "head_clear": 0.06
+  },
+  "doors": {
+   "Owner's stateroom": {
+    "side": 1,
+    "x": [
+     -4.2865,
+     -3.7565
+    ],
+    "open": true
+   },
+   "Guest cabin": {
+    "side": -1,
+    "x": [
+     -4.2865,
+     -3.7565
+    ],
+    "open": true
+   },
+   "Guest heads": {
+    "side": -1,
+    "x": [
+     -7.22,
+     -6.69
+    ],
+    "open": false
+   },
+   "Owner's bathroom": {
+    "side": 1,
+    "y": [
+     1.12,
+     1.65
+    ],
+    "open": false
+   }
+  },
+  "pantry": {
+   "note": "The steward's pantry, lined white like the galley: a counter to port with lockers under it and a dresser with a plate rack over it, the steward's lockers and a second dresser to starboard.",
+   "counter": {
+    "x": [
+     0.12,
+     1.6
+    ],
+    "depth": 0.55,
+    "height": 0.9
+   },
+   "dresser": {
+    "x": [
+     0.2,
+     1.1
+    ],
+    "shelves": [
+     0.26,
+     0.48,
+     0.64
+    ]
+   }
+  },
+  "saloon": {
+   "note": "Settees each side ('settee': x range, the seat's height over the sole with its cushion, depth, the cushion's thickness, the back cushion's thickness and height), a table before each ('tables': side, centre x, length, width; its top 'table_height' over the sole and 'over_seat' out over the settee's front), chairs on the inboard side of each table, sideboards against the forward bulkhead ('sideboard': x range, inboard end, height), bookcases against the after bulkhead ('bookcase': x range, inboard end, height, shelves' heights over the sole), a book shelf over each settee ('shelf': x range, height over the sole, clear of a sitter's head, depth), lamps on the stiles over the settees ('lamps': frames, height over the sole), the carpet ('carpet': x range, half width).",
+   "settee": {
+    "x": [
+     -3.05,
+     -0.55
+    ],
+    "seat": 0.42,
+    "depth": 0.62,
+    "cushion": 0.12,
+    "back": [
+     0.1,
+     0.4
+    ]
+   },
+   "tables": [
+    {
+     "side": -1,
+     "x": -1.8,
+     "size": [
+      1.8,
+      0.75
+     ]
+    },
+    {
+     "side": 1,
+     "x": -1.8,
+     "size": [
+      1.2,
+      0.6
+     ]
+    }
+   ],
+   "table_height": 0.74,
+   "over_seat": 0.1,
+   "sideboard": {
+    "x": [
+     -0.41,
+     0.0385
+    ],
+    "inboard": 0.45,
+    "height": 0.85
+   },
+   "bookcase": {
+    "x": [
+     -3.684,
+     -3.35
+    ],
+    "inboard": 1.0,
+    "height": 1.2,
+    "shelves": [
+     0.1,
+     0.43,
+     0.76
+    ]
+   },
+   "shelf": {
+    "x": [
+     -2.2,
+     -1.4
+    ],
+    "height": 1.38,
+    "depth": 0.2
+   },
+   "lamps": {
+    "frames": [
+     -2.64,
+     -1.035
+    ],
+    "height": 1.42
+   },
+   "carpet": {
+    "x": [
+     -3.3,
+     -0.45
+    ],
+    "half_width": 2.1
+   }
+  },
+  "lobby": {
+   "note": "Under the doghouse: the companion stairs from its doors' sill down to the sole ('stairs': lean from upright, width between the strings, strings (thickness, depth), treads (depth, thickness), handrails (radius, off the strings)), the navigator's desk against the port partition ('desk': x range, depth, top over the sole, its pedestals' length, its lamp over the top), the stool ('stool': where, its seat's height over the sole, the weight of its hollow brass pedestal, estimated), a runner on the sole, the lobby's lamp on the starboard partition ('lamp': x, height over the sole).",
+   "stairs": {
+    "lean_deg": 35.0,
+    "width": 0.6,
+    "string": [
+     0.035,
+     0.25
+    ],
+    "tread": [
+     0.22,
+     0.03
+    ],
+    "rise_max": 0.27,
+    "rail": [
+     0.014,
+     0.07
+    ]
+   },
+   "desk": {
+    "x": [
+     -5.5,
+     -4.4
+    ],
+    "depth": 0.6,
+    "height": 0.78,
+    "pedestal": 0.42,
+    "lamp_over_top": 0.44
+   },
+   "stool": {
+    "at": [
+     -5.15,
+     -0.15
+    ],
+    "seat": 0.45,
+    "kg": 7.0
+   },
+   "lamp": {
+    "x": -5.0,
+    "height": 1.65
+   },
+   "runner": {
+    "x": [
+     -5.5,
+     -3.76
+    ],
+    "half_width": 0.3
+   }
+  },
+  "stateroom": {
+   "note": "The owner's stateroom to starboard: the berth against the hull ('berth': x range, mattress top over the sole, width), a chest of drawers against the partition with a mirror over it ('chest': x range, depth, height), the wardrobe in the forward outboard corner ('wardrobe': x range, inboard face, height), a carpet, the reading lamp on the side's stile over the berth ('lamp': its frame, height over the sole).",
+   "berth": {
+    "x": [
+     -6.3585,
+     -4.357
+    ],
+    "top": 0.55,
+    "width": 0.85
+   },
+   "chest": {
+    "x": [
+     -5.5,
+     -4.6
+    ],
+    "depth": 0.42,
+    "height": 0.8
+   },
+   "wardrobe": {
+    "x": [
+     -4.34,
+     -3.7067
+    ],
+    "inboard": 1.75,
+    "height": 1.75
+   },
+   "lamp": {
+    "frame": -5.85,
+    "height": 1.4
+   }
+  },
+  "guest": {
+   "note": "The guest cabin to port: two berths one over the other against the hull ('berths': x range, the mattresses' tops over the sole, width of the lower), a hanging locker like the owner's wardrobe, a carpet, the lamp on the partition ('lamp': x, height over the sole).",
+   "berths": {
+    "x": [
+     -6.3,
+     -4.4
+    ],
+    "tops": [
+     0.5,
+     1.25
+    ],
+    "width": 0.75
+   },
+   "locker": {
+    "x": [
+     -4.34,
+     -3.7067
+    ],
+    "inboard": 1.75,
+    "height": 1.75
+   },
+   "lamp": {
+    "x": -5.0,
+    "height": 1.4
+   }
+  },
+  "bathroom": {
+   "note": "The owner's bathroom aft of the stateroom: a pump WC ('wc': its pan's centre, its pump outboard of it, clear of the vanity's door), the basin's vanity against the partition with a mirror over it ('vanity': x range, depth, height), a towel rail on the partition forward.",
+   "wc": {
+    "x": -6.8,
+    "y": 1.72
+   },
+   "vanity": {
+    "x": [
+     -7.7,
+     -7.05
+    ],
+    "depth": 0.44,
+    "height": 0.8
+   }
+  },
+  "heads": {
+   "note": "The guest heads aft of the guest cabin: a pump WC, a basin cabinet against the after bulkhead with a mirror over it ('basin': y range, depth, height), a towel rail.",
+   "wc": {
+    "x": -6.7,
+    "y": -1.8
+   },
+   "basin": {
+    "y": [
+     -1.5,
+     -0.977
+    ],
+    "depth": 0.42,
+    "height": 0.8
+   }
+  },
+  "wc": {
+   "kg": 40.0
+  }
  }
 }
