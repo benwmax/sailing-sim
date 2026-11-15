@@ -6,13 +6,14 @@
 
 class APlayerController;
 class ASailboatPawn;
-namespace Sailing { class FScriptedScene; }
+namespace Sailing { class FScriptedScene; struct FBoatTelemetry; struct FBoatConfig; }
 
 /**
  * Graphics G4: the in-game HUD (ui-spec.md 5.8) in Slate, replacing the canvas instruments: the environment strip,
  * compass tape and heading, learning tip card, drill panel, toast line, sail trim panel, instrument cluster (speed,
  * apparent wind dial, depth), minimap and key hints. Dials, tape and map are painted every frame; text refreshes at
- * 10 Hz (a real instrument's damping, and no text rebuilt each frame). H cycles Full, Minimal and Off.
+ * 10 Hz (a real instrument's damping, and no text rebuilt each frame). H cycles Full, Minimal and Off (Bean's UI Helpful,
+ * UI Natural and UI Off: the trim panel follows them, docs/trim-panel/).
  */
 class SAILINGSIM_API SSailHud : public SCompoundWidget
 {
@@ -35,6 +36,19 @@ public:
 	static FVector2f MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped);
 	/** #602 polish: an edge-clamped dot moved along its edge out of the Keep boxes (the N label, the wind arrow), Radius clear. */
 	static FVector2f MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size);
+
+	/** The sail trim panel's plain line in UI Helpful (Bean, Nov 15 2026, docs/trim-panel/): the most urgent thing its telltales
+	 *  and the heel say, as a headline and a short what-to-do. bGood when all is well; bNeutral at the dock. */
+	struct FTrimVerdict
+	{
+		const TCHAR* Head = TEXT("");
+		const TCHAR* Say = TEXT("");
+		bool bGood = false;
+		bool bNeutral = false;
+	};
+	static FTrimVerdict TrimVerdict(const Sailing::FBoatTelemetry& T, const Sailing::FBoatConfig& Cfg, bool bTiedUp);
+	/** Which of a sail's NumStrips strips a telltale HeightFraction up it reads (the 3D ribbons' mapping). */
+	static int32 TrimStripAt(float HeightFraction, int32 NumStrips);
 
 	ASailboatPawn* Pawn() const;
 

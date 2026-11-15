@@ -849,3 +849,73 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
 	return true;
 }
+
+// The sail trim panel's plain line (Bean, Nov 15 2026, docs/trim-panel/): it says what the telltales show, by the 3D
+// ribbons' rules, the most urgent first (the dock, irons, heel past the boat's limit, then the yarns), and a boat with no
+// jib is read from the luff of her main.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUITrimVerdictTest, "SailingSim.UI.TrimVerdict", UIFlags)
+bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig J22;
+	// A boat sailing well close-hauled on starboard: every strip drawing, well above its luff angle and under its stall.
+	auto Trimmed = [](int32 NumJib)
+	{
+		FBoatTelemetry T;
+		T.TrueWindAngle = FMath::DegreesToRadians(42.0);
+		T.ApparentWindAngle = FMath::DegreesToRadians(28.0);
+		T.Heel = FMath::DegreesToRadians(8.0);
+		T.NumJibStrips = NumJib;
+		T.NumMainStrips = 4;
+		for (int32 I = 0; I < kMaxSailStrips; ++I)
+		{
+			for (FSailStripState* St : { &T.JibStrips[I], &T.MainStrips[I] })
+			{
+				St->Flow = ESailFlow::Attached;
+				St->AlphaN = FMath::DegreesToRadians(12.0);
+				St->LuffAlpha = FMath::DegreesToRadians(3.0);
+				St->StallAlpha = FMath::DegreesToRadians(20.0);
+			}
+		}
+		return T;
+	};
+	auto Head = [&](const FBoatTelemetry& T, bool bTied = false) { return FString(SSailHud::TrimVerdict(T, J22, bTied).Head); };
+
+	FBoatTelemetry T = Trimmed(4);
+	TestEqual(TEXT("Everything streaming: sailing well"), Head(T), FString(TEXT("Sailing well")));
+	TestTrue(TEXT("... in the good colour"), SSailHud::TrimVerdict(T, J22, false).bGood);
+	TestEqual(TEXT("At the dock: tied up"), Head(T, true), FString(TEXT("Tied up")));
+	TestTrue(TEXT("... in neither colour"), SSailHud::TrimVerdict(T, J22, true).bNeutral);
+
+	for (int32 I = 0; I < 4; ++I) T.JibStrips[I].Flow = ESailFlow::Luffing;
+	T.TrueWindAngle = FMath::DegreesToRadians(36.0);
+	TestEqual(TEXT("Jib luffing close-hauled: pinching"), Head(T), FString(TEXT("Pinching")));
+	TestTrue(TEXT("... with a what-to-do line"), FString(SSailHud::TrimVerdict(T, J22, false).Say).Contains(TEXT("Bear away")));
+	T.TrueWindAngle = FMath::DegreesToRadians(95.0);
+	TestEqual(TEXT("Jib luffing on a reach: sheet in"), Head(T), FString(TEXT("Sails luffing")));
+	T.Heel = FMath::DegreesToRadians(J22.TrimHeelLimitDeg + 4.0);
+	TestEqual(TEXT("Heel past the limit wins over the yarns"), Head(T), FString(TEXT("Heeling too much")));
+	T.bInIrons = true;
+	TestEqual(TEXT("In irons wins over the heel"), Head(T), FString(TEXT("In irons")));
+
+	T = Trimmed(4);
+	for (int32 I = 0; I < 4; ++I) T.JibStrips[I].Flow = ESailFlow::Stalled;
+	TestEqual(TEXT("Leeward yarns stalled: too tight"), Head(T), FString(TEXT("Sails too tight")));
+	T = Trimmed(4);
+	for (int32 I = 0; I < 4; ++I) T.MainStrips[I].Flow = ESailFlow::Stalled;
+	TestEqual(TEXT("Leech ribbons curling: main too tight"), Head(T), FString(TEXT("Main too tight")));
+	T = Trimmed(4);
+	T.JibStrips[3].Flow = ESailFlow::Luffing;
+	TestEqual(TEXT("One lifting yarn of three is not a call"), Head(T), FString(TEXT("Sailing well")));
+
+	// No jib (the Sunfish): the panel's yarns are on the main's luff.
+	T = Trimmed(0);
+	for (int32 I = 0; I < 4; ++I) T.MainStrips[I].Flow = ESailFlow::Luffing;
+	TestEqual(TEXT("No jib: the main's luff yarns lift when pinching"), Head(T), FString(TEXT("Pinching")));
+
+	// The strips each yarn reads, as the 3D ribbons do: a quarter, half and three-quarters up a four-strip jib.
+	TestEqual(TEXT("Top yarn on a four-strip sail"), SSailHud::TrimStripAt(0.75f, 4), 3);
+	TestEqual(TEXT("Bottom yarn"), SSailHud::TrimStripAt(0.25f, 4), 1);
+	TestEqual(TEXT("A sail with no strips reads none past 0"), SSailHud::TrimStripAt(0.75f, 0), 0);
+	return true;
+}

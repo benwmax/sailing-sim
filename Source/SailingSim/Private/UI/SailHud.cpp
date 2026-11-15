@@ -19,6 +19,10 @@
 #include "Tides.h"
 #include "TrafficManager.h"
 #include "SoundCaptions.h"
+#include "SailCloth.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
 #include "Rendering/DrawElements.h"
@@ -229,62 +233,217 @@ namespace SailHudImpl
 		TSharedPtr<FSlateBrush> Map;
 	};
 
-	/** Telltales: a streamer per state (flowing straight, lifting with a curl, or drooping) and the heel bar. */
+	/**
+	 * The sail trim panel (Bean, Nov 15 2026: the "Telltale window", docs/trim-panel/): a window onto the jib's luff with
+	 * three yarn pairs a hand's width aft of it (the near, windward yarn solid; the far one faint through the cloth; green
+	 * to starboard, red to port) and one onto the main's leech with its three ribbons. The yarns read the 3D ribbons' own
+	 * rules (JibTelltaleState, LeechTelltaleState) on the same strips (TrimStripAt), so the panel and the sail agree. A boat
+	 * with no jib shows the luff of her main. UI Natural (Mode 1) draws only the two windows, a glimpse with no words; UI
+	 * Helpful (Mode 0) sets them on a panel with a header and one plain line (SSailHud::TrimVerdict).
+	 */
 	class STrimView : public SLeafWidget
 	{
 	public:
-		SLATE_BEGIN_ARGS(STrimView) {}
+		SLATE_BEGIN_ARGS(STrimView) : _bHelpful(true) {}
 			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
+			SLATE_ARGUMENT(bool, bHelpful)
+			SLATE_ATTRIBUTE(FText, Point)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Player = A._Player; ForceVolatile(true); }
-		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(258, 96); }
+		void Construct(const FArguments& A) { Player = A._Player; bHelpful = A._bHelpful; Point = A._Point; ForceVolatile(true); }
+		virtual FVector2D ComputeDesiredSize(float) const override
+		{
+			return bHelpful ? FVector2D(Pad * 2.f + JibW + Gap + MainW, 184.f) : FVector2D(JibW + Gap + MainW + 2.f, WinH + 3.f);
+		}
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
 			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 			if (!Boat) return Layer;
 			const FBoatTelemetry& T = Boat->GetBoatModel().GetTelemetry();
-			const FVector2D S = G.GetLocalSize();
-			auto Count = [](const FSailStripState* St, int32 N, ESailFlow F) { int32 K = 0; for (int32 I = 0; I < N; ++I) K += St[I].Flow == F; return K; };
-			const int32 JibLuff = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Luffing) + Count(T.JibStrips, T.NumJibStrips, ESailFlow::Backed);
-			const int32 JibStall = Count(T.JibStrips, T.NumJibStrips, ESailFlow::Stalled);
-			const int32 MainStall = Count(T.MainStrips, T.NumMainStrips, ESailFlow::Stalled);
-			const float Time = float(FPlatformTime::Seconds());
-			// A streamer: straight when flowing, a curl when lifting (windward) or stalled, colour by side.
-			auto Streamer = [&](float Y, const FLinearColor& Col, bool bFlow, float Phase)
-			{
-				TArray<FVector2f> P;
-				for (int32 I = 0; I <= 24; ++I)
-				{
-					const float X = 120.f + I * 5.f;
-					const float Wob = bFlow ? FMath::Sin(Time * 9.f + I * 0.6f + Phase) * 1.2f : FMath::Sin(Time * 4.f + I * 0.45f + Phase) * (2.f + I * 0.5f);
-					P.Add(FVector2f(X, Y + Wob + (bFlow ? 0.f : I * 0.6f)));
-				}
-				FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, Col, true, 2.5f);
-			};
-			auto Label = [&](float Y, const FString& L) { FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(110.f, 18.f), FSlateLayoutTransform(FVector2f(0.f, Y - 9.f))), L, Font(EType::Small), ESlateDrawEffect::None, Muted); };
-			const bool bStbd = T.TrueWindAngle > 0.0;
-			if (T.NumJibStrips > 0)
-			{
-				Label(12.f, TEXT("Jib"));
-				Streamer(6.f, bStbd ? Starboard : Port, JibLuff < 2, 0.f);       // windward
-				Streamer(18.f, bStbd ? Port : Starboard, JibStall < 2, 1.3f);    // leeward
-			}
-			Label(42.f, TEXT("Main leech"));
-			Streamer(42.f, Fg, MainStall < 2, 2.1f);
-			// Heel: the boat's comfortable band in green, the boat's heel marker.
-			const double Heel = FMath::Abs(FMath::RadiansToDegrees(T.Heel));
 			const FBoatConfig& Cfg = Boat->GetBoatModel().GetConfig();
-			const float Lo = Cfg.bMultihull ? 0.f : float(Cfg.TrimHeelLimitDeg) * 0.55f, Hi = Cfg.bMultihull ? 5.f : float(Cfg.TrimHeelLimitDeg) * 0.85f;
-			Label(76.f, FString::Printf(TEXT("Heel %.0f°"), Heel));
-			const float X0 = 120.f, Wd = S.X - 124.f, Y = 72.f, Max = 35.f;
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Wd, 6.f), FSlateLayoutTransform(FVector2f(X0, Y))), Rounded(Line, 3.f), ESlateDrawEffect::None, Line);
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(Wd * (Hi - Lo) / Max, 6.f), FSlateLayoutTransform(FVector2f(X0 + Wd * Lo / Max, Y))), Rounded(Starboard, 3.f), ESlateDrawEffect::None, Starboard.CopyWithNewOpacity(0.8f));
-			const float M = X0 + Wd * FMath::Clamp(float(Heel) / Max, 0.f, 1.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { FVector2f(M, Y - 6.f), FVector2f(M, Y + 12.f) }, ESlateDrawEffect::None, Heel > Cfg.TrimHeelLimitDeg ? Warn : Fg, true, 3.f);
-			return Layer + 2;
+			const bool bTied = Boat->IsTiedUp();
+			const float Time = float(FPlatformTime::Seconds());
+			const FVector2f S(G.GetLocalSize());
+			const FVector2f O = bHelpful ? FVector2f(Pad, 34.f) : FVector2f(0.f, 0.f);
+			if (bHelpful)
+			{
+				const FLinearColor Bg = IsLow() ? PanelSolid : Panel;
+				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Bg, RadiusCard, Line, 1.f), ESlateDrawEffect::None, Bg);
+				const FSlateFontInfo LabelFont = Font(EType::Label);
+				const float LabelW = PaintText(Out, Layer + 1, G, TEXT("TELLTALES"), LabelFont, Muted, FVector2f(Pad, 10.f), 0.f);
+				PaintText(Out, Layer + 1, G, Point.Get().ToString(), Font(EType::Small), Muted, FVector2f(S.X - Pad, 10.f), S.X - Pad * 2.f - LabelW - 12.f, true);
+			}
+			DrawJibWindow(Out, Layer + 1, G, O, T, bTied, Time);
+			DrawMainWindow(Out, Layer + 1, G, O + FVector2f(JibW + Gap, 0.f), T, bTied, Time);
+			if (bHelpful)
+			{
+				const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(T, Cfg, bTied);
+				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
+				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, 140.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
+				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, 132.f), S.X - Pad * 2.f - 16.f);
+				if (*V.Say) PaintText(Out, Layer + 5, G, V.Say, Font(EType::Small), Hex(0xC3D0D7), FVector2f(Pad, 157.f), S.X - Pad * 2.f);
+			}
+			return Layer + 6;
 		}
+
 	private:
+		static constexpr float Pad = 16.f;
+		static constexpr float JibW = 190.f;
+		static constexpr float MainW = 70.f;
+		static constexpr float Gap = 8.f;
+		static constexpr float WinH = 90.f;
+
+		/** How a yarn hangs: its first heading (radians, 0 = streaming aft, positive = down), the flutter toward the tail, the curl. */
+		enum class EYarn : uint8 { Stream, Lift, Stall, Flutter, LeechCurl, Hang };
+		static EYarn LuffYarn(ETelltaleState St)
+		{
+			return St == ETelltaleState::Lifting ? EYarn::Lift : St == ETelltaleState::Stalled ? EYarn::Stall : St == ETelltaleState::Fluttering ? EYarn::Flutter : EYarn::Stream;
+		}
+		static EYarn LeechYarn(ETelltaleState St)
+		{
+			return St == ETelltaleState::Stalled ? EYarn::LeechCurl : St == ETelltaleState::Fluttering ? EYarn::Flutter : EYarn::Stream;
+		}
+
+		/** One wool yarn from its patch: a chain of short segments whose heading flutters more toward the tail. */
+		static void DrawYarn(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f Root, float Len, EYarn Kind, float Sev, float Time, float Phase, const FLinearColor& Col, float Width)
+		{
+			float Base = 0.06f, Wob = 0.22f, Curl = 0.f, Speed = 13.f;
+			switch (Kind)
+			{
+			case EYarn::Lift: Base = -1.25f * Sev; Wob = 0.85f; Curl = 2.f * Sev; Speed = 7.f; break;
+			case EYarn::Stall: Base = 1.35f; Wob = 0.35f; Curl = 0.9f; Speed = 2.6f; break;
+			case EYarn::Flutter: Base = 0.1f; Wob = 0.75f; Speed = 21.f; break;
+			case EYarn::LeechCurl: Base = 0.35f; Wob = 0.25f; Curl = 2.6f; Speed = 2.4f; break;
+			case EYarn::Hang: Base = 1.45f; Wob = 0.05f; Speed = 1.2f; break;
+			default: break;
+			}
+			constexpr int32 N = 14;
+			TArray<FVector2f> P;
+			P.Reserve(N + 1);
+			P.Add(Root);
+			FVector2f At = Root;
+			for (int32 K = 1; K <= N; ++K)
+			{
+				const float F = float(K) / N;
+				const float H = Base + Wob * F * FMath::Sin(Time * Speed - K * 0.6f + Phase) + Curl * F * F * (0.7f + 0.5f * FMath::Sin(Time * Speed * 0.45f + Phase * 1.7f));
+				At += FVector2f(FMath::Cos(H), FMath::Sin(H)) * (Len / N);
+				P.Add(At);
+			}
+			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, Col, true, Width);
+		}
+
+		/** Text at At (its top left, or its top right when bRight), shrunk to fit MaxW when MaxW > 0. Returns its width. */
+		static float PaintText(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, const FString& Str, FSlateFontInfo F, const FLinearColor& Col, FVector2f At, float MaxW, bool bRight = false)
+		{
+			float W = 0.f;
+			if (FSlateApplication::IsInitialized())
+			{
+				const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+				W = float(Measure->Measure(Str, F).X);
+				if (MaxW > 0.f && W > MaxW)
+				{
+					F.Size = static_cast<decltype(F.Size)>(FMath::Max(9.f, float(F.Size) * MaxW / W));
+					W = float(Measure->Measure(Str, F).X);
+				}
+			}
+			const FVector2f Pos = bRight ? FVector2f(At.X - W, At.Y) : At;
+			FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(FMath::Max(W, 1.f) + 4.f, 30.f), FSlateLayoutTransform(Pos)), Str, F, ESlateDrawEffect::None, Col);
+			return W;
+		}
+
+		void Frame(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, float W) const
+		{
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(W, WinH), FSlateLayoutTransform(At)), Rounded(FLinearColor::Transparent, 4.f, Hex(0x000000, 0.35f), 1.f), ESlateDrawEffect::None, FLinearColor::White);
+		}
+		void Shadow(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, float W) const
+		{
+			// UI Natural has no panel: a soft drop shadow keeps the windows off a bright sky.
+			if (!bHelpful) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(W, WinH), FSlateLayoutTransform(At + FVector2f(2.f, 3.f))), Rounded(Hex(0x000000, 0.35f), 4.f), ESlateDrawEffect::None, Hex(0x000000, 0.35f));
+		}
+
+		/** Sailcloth, lit from the cockpit: a shade at the luff tape, a little darker toward the far edge. */
+		static void Cloth(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, FVector2f Size)
+		{
+			TArray<FSlateGradientStop> Stops;
+			Stops.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Hex(0xCFD6D5)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.08f, 0.f), Hex(0xEEF0EC)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.7f, 0.f), Hex(0xE6E9E5)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X, 0.f), Hex(0xD6DCDA)));
+			FSlateDrawElement::MakeGradient(Out, Layer, G.ToPaintGeometry(Size, FSlateLayoutTransform(At)), Stops, Orient_Vertical);
+		}
+
+		void DrawJibWindow(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, const FBoatTelemetry& T, bool bTied, float Time) const
+		{
+			Shadow(Out, Layer, G, At, JibW);
+			Out.PushClip(FSlateClippingZone(G.ToPaintGeometry(FVector2f(JibW, WinH), FSlateLayoutTransform(At))));
+			Cloth(Out, Layer + 1, G, At, FVector2f(JibW, WinH));
+			for (int32 I = 0; I < 3; ++I)   // panel seams
+			{
+				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { At + FVector2f(40.f + I * 70.f, 0.f), At + FVector2f(20.f + I * 70.f, WinH) }, ESlateDrawEffect::None, Hex(0x3C464B, 0.1f), true, 1.f);
+			}
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, Hex(0xBCC4C5));   // luff tape
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { At + FVector2f(4.f, 0.f), At + FVector2f(4.f, WinH) }, ESlateDrawEffect::None, Hex(0x56636A), true, 2.f);   // forestay
+			if (bHelpful) PaintText(Out, Layer + 2, G, T.NumJibStrips > 0 ? TEXT("JIB") : TEXT("SAIL"), Font(EType::Label), Hex(0x7F8B90), At + FVector2f(JibW - 8.f, 4.f), 0.f, true);
+			// The windward face is the side the wind comes from: green to starboard, red to port, as on a real boat.
+			const bool bStbdWindward = T.ApparentWindAngle >= 0.0;
+			const FLinearColor Near = bStbdWindward ? Starboard : Port, Far = bStbdWindward ? Port : Starboard;
+			const bool bJib = T.NumJibStrips > 0;
+			const FSailStripState* Strips = bJib ? T.JibStrips : T.MainStrips;
+			const int32 N = bJib ? T.NumJibStrips : T.NumMainStrips;
+			for (int32 K = 0; K < 3 && N > 0; ++K)
+			{
+				const FSailStripState& St = Strips[SSailHud::TrimStripAt(0.75f - 0.25f * K, N)];   // top first, as you look up the luff
+				const EYarn Win = bTied ? EYarn::Hang : LuffYarn(JibTelltaleState(St, true));
+				const EYarn Lee = bTied ? EYarn::Hang : LuffYarn(JibTelltaleState(St, false));
+				const FVector2f Root = At + FVector2f(44.f, 15.f + 30.f * K);
+				const float Ph = K * 1.3f;
+				// The far yarn, seen through the cloth: a soft wide shadow and a faint line.
+				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), 62.f, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.14f), 6.f);
+				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), 62.f, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.4f), 2.6f);
+				// The near yarn: solid wool with a little shadow on the cloth.
+				const float Sev = 1.f - 0.08f * K;
+				DrawYarn(Out, Layer + 3, G, Root, 62.f, Win, Sev, Time, Ph, Hex(0x000000, 0.18f), 4.6f);
+				DrawYarn(Out, Layer + 3, G, Root, 62.f, Win, Sev, Time, Ph, Near, 3.2f);
+				FSlateDrawElement::MakeBox(Out, Layer + 4, G.ToPaintGeometry(FVector2f(7.f, 7.f), FSlateLayoutTransform(Root - FVector2f(3.5f, 3.5f))), Rounded(Hex(0xF7F8F5), 3.5f, Hex(0x000000, 0.22f), 1.f), ESlateDrawEffect::None, Hex(0xF7F8F5));
+			}
+			Out.PopClip();
+			Frame(Out, Layer + 4, G, At, JibW);
+		}
+
+		void DrawMainWindow(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, const FBoatTelemetry& T, bool bTied, float Time) const
+		{
+			Shadow(Out, Layer, G, At, MainW);
+			Out.PushClip(FSlateClippingZone(G.ToPaintGeometry(FVector2f(MainW, WinH), FSlateLayoutTransform(At))));
+			TArray<FSlateGradientStop> Sky;   // looking aft past the leech
+			Sky.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Hex(0xA8C3D6)));
+			Sky.Add(FSlateGradientStop(FVector2f(0.f, WinH), Hex(0xC9D8E2)));
+			FSlateDrawElement::MakeGradient(Out, Layer + 1, G.ToPaintGeometry(FVector2f(MainW, WinH), FSlateLayoutTransform(At)), Sky, Orient_Horizontal);
+			// The main, out to its leech: a gentle curve (the roach), drawn in thin bands.
+			auto LeechX = [](float F) { return MainW * 0.42f + FMath::Sin(F * UE_PI) * 8.f; };
+			constexpr int32 Bands = 30;
+			for (int32 B = 0; B < Bands; ++B)
+			{
+				const float F = (B + 0.5f) / Bands, H = WinH / Bands;
+				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(LeechX(F), H + 0.5f), FSlateLayoutTransform(At + FVector2f(0.f, B * H))), White(), ESlateDrawEffect::None, Hex(0xE4E7E3));
+			}
+			TArray<FVector2f> Leech;
+			for (int32 I = 0; I <= 10; ++I) Leech.Add(At + FVector2f(LeechX(I / 10.f) - 1.f, WinH * I / 10.f));
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, Hex(0xAAB3B5), true, 2.f);
+			// Three ribbons at the battens, as on the 3D sail (0.4, 0.6, 0.8 up the leech), top first.
+			for (int32 K = 0; K < 3 && T.NumMainStrips > 0; ++K)
+			{
+				const float F = 0.2f + 0.3f * K;
+				const FSailStripState& St = T.MainStrips[SSailHud::TrimStripAt(0.8f - 0.2f * K, T.NumMainStrips)];
+				const EYarn Kind = bTied ? EYarn::Hang : LeechYarn(LeechTelltaleState(St));
+				DrawYarn(Out, Layer + 3, G, At + FVector2f(LeechX(F), WinH * F), 28.f, Kind, 1.f, Time, 2.2f * K + 0.7f, Hex(0xC8281E), 2.6f);
+			}
+			Out.PopClip();
+			if (bHelpful) PaintText(Out, Layer + 4, G, TEXT("MAIN"), Font(EType::Label), Hex(0x4B5D68), At + FVector2f(MainW - 6.f, 4.f), 0.f, true);
+			Frame(Out, Layer + 4, G, At, MainW);
+		}
+
 		TWeakObjectPtr<APlayerController> Player;
+		bool bHelpful = true;
+		TAttribute<FText> Point;
 	};
 
 	TSharedRef<SWidget> Field(const FString& Label, TAttribute<FText> Value)
@@ -317,11 +476,14 @@ void SSailHud::Construct(const FArguments& A)
 	using namespace SailHudImpl;
 	Player = A._Player;
 	RegisterInputTracker();
+	// Stills of each HUD mode (docs/trim-panel/): -SailingHudMode=0 Full (UI Helpful), 1 Minimal (UI Natural), 2 Off.
+	if (int32 Forced = 0; FParse::Value(FCommandLine::Get(), TEXT("-SailingHudMode="), Forced)) Mode = FMath::Clamp(Forced, 0, 2);
 	UTexture2D* Tex = SailUI::KeptTexture(SailCatalog::MiniMap(USailingSettings::Get()->World).Texture);
 	MapBrush = MakeShared<FSlateBrush>();
 	if (Tex) { MapBrush->SetResourceObject(Tex); MapBrush->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	auto Full = [](){ return Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };
 	auto NotOff = [](){ return Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };
+	auto Natural = [](){ return Mode == 1 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };
 	auto Heading = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(P->GetHeadingTrueDeg()) : 0.f; };
 	auto WindFrom = [this]() { const ASailboatPawn* P = Pawn(); const ASailingGameMode* GM = P ? P->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr; return GM ? float(GM->GetWeatherState().Wind.FromDegrees) : 0.f; };
 	auto Awa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().ApparentWindAngle)) : 0.f; };
@@ -541,22 +703,17 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			]
 		]
-		// Bottom-right: sail trim and key hints.
+		// Bottom-right: the sail trim panel (UI Helpful: the telltale windows with a header and one plain line; UI Natural:
+		// the windows alone, docs/trim-panel/) and the key hints.
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(M)
 		[
-			SNew(SVerticalBox).Visibility_Lambda(Full)
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).WidthOverride(290.f)
-				[
-					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Sail trim"), EType::Label, Muted) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 10.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return PointText; }), EType::Ui, FSlateColor(Fg)) ]
-						+ SVerticalBox::Slot().AutoHeight()[ SNew(STrimView).Player(Player) ], FMargin(16.f, 12.f))
-				]
-			]
+			SNew(SVerticalBox).Visibility_Lambda(NotOff)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+			[ SNew(STrimView).Player(Player).bHelpful(true).Point(TAttribute<FText>::CreateLambda([this]() { return PointText; })).Visibility_Lambda(Full) ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+			[ SNew(STrimView).Player(Player).bHelpful(false).Visibility_Lambda(Natural) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
-			[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HintsText; }), EType::Small, FSlateColor(Muted)) ]
+			[ SNew(SBox).Visibility_Lambda(Full)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HintsText; }), EType::Small, FSlateColor(Muted)) ] ]
 		]
 		]
 		]
@@ -741,6 +898,48 @@ void SSailHud::Refresh()
 	Hints.Add((SailUI::UsingGamepad() ? KeyName(TEXT("Menu"), false) : FString(TEXT("Esc"))) + TEXT("  Pause"));
 	while (Hints.Num() > 3) Hints.RemoveAt(1);
 	HintsText = FText::FromString(FString::Join(Hints, TEXT("     ")));
+}
+
+int32 SSailHud::TrimStripAt(float HeightFraction, int32 NumStrips)
+{
+	// The 3D ribbons' mapping (SailVisuals.cpp): the strip whose band holds that height.
+	return FMath::Clamp(int32(HeightFraction * NumStrips), 0, FMath::Max(NumStrips - 1, 0));
+}
+
+SSailHud::FTrimVerdict SSailHud::TrimVerdict(const FBoatTelemetry& T, const FBoatConfig& Cfg, bool bTiedUp)
+{
+	// The most urgent thing first. Telltale counts use the panel's own yarns (three up the luff, three on the leech) and
+	// the 3D ribbons' rules; two of three make a call, as the old streamers needed two strips.
+	auto Make = [](const TCHAR* Head, const TCHAR* Say, bool bGood = false) { FTrimVerdict V; V.Head = Head; V.Say = Say; V.bGood = bGood; return V; };
+	if (bTiedUp)
+	{
+		FTrimVerdict V = Make(TEXT("Tied up"), TEXT(""));
+		V.bNeutral = true;
+		return V;
+	}
+	if (T.bInIrons) return Make(TEXT("In irons"), TEXT("Bear away until the sails fill."));
+	if (!Cfg.bMultihull && FMath::Abs(FMath::RadiansToDegrees(T.Heel)) > Cfg.TrimHeelLimitDeg) return Make(TEXT("Heeling too much"), TEXT("Ease the main or hike out."));
+	const bool bJib = T.NumJibStrips > 0;
+	const FSailStripState* Luff = bJib ? T.JibStrips : T.MainStrips;
+	const int32 NumLuff = bJib ? T.NumJibStrips : T.NumMainStrips;
+	int32 Lifting = 0, Drooping = 0, Curling = 0;
+	for (int32 K = 0; K < 3; ++K)
+	{
+		if (NumLuff > 0)
+		{
+			const FSailStripState& St = Luff[TrimStripAt(0.75f - 0.25f * K, NumLuff)];
+			Lifting += JibTelltaleState(St, true) == ETelltaleState::Lifting;
+			Drooping += JibTelltaleState(St, false) == ETelltaleState::Stalled;
+		}
+		if (T.NumMainStrips > 0) Curling += LeechTelltaleState(T.MainStrips[TrimStripAt(0.8f - 0.2f * K, T.NumMainStrips)]) == ETelltaleState::Stalled;
+	}
+	// Lifting inside yarns: close-hauled you are steering too high; off the wind the sheet is too far out.
+	if (Lifting >= 2) return FMath::Abs(FMath::RadiansToDegrees(T.TrueWindAngle)) < 50.0
+		? Make(TEXT("Pinching"), TEXT("Inside yarns lifting. Bear away."))
+		: Make(TEXT("Sails luffing"), TEXT("Inside yarns lifting. Sheet in."));
+	if (Drooping >= 2) return Make(TEXT("Sails too tight"), TEXT("Outside yarns drooping. Ease out."));
+	if (Curling >= 2) return Make(TEXT("Main too tight"), TEXT("Leech ribbons curling. Ease the main."));
+	return Make(TEXT("Sailing well"), TEXT("All yarns streaming. Hold course."), true);
 }
 
 bool SSailHud::TipsMutedByScene(const Sailing::FScriptedScene* Scene, bool bHandoverPending)
