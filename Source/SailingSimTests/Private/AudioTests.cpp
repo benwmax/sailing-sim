@@ -394,7 +394,8 @@ bool FSailingNaturalLayersTest::RunTest(const FString& Parameters)
 		}
 		return FMath::Sqrt(Sum / (double(Blocks) * 12000.0)) / 32768.0;
 	};
-	// Every other voice that moving water would sound through is a recording here (the sample pack plays it).
+	// The voices that moving water would sound through, masked as if a recording played each (the sample pack plays most;
+	// HullSlap's lapping loops are retired, but this test is about the synth's own under-way wavelets).
 	const uint32 Recorded = (1u << uint32(ESailingCue::BowWave)) | (1u << uint32(ESailingCue::HullSlap)) | (1u << uint32(ESailingCue::RainDeck))
 		| (1u << uint32(ESailingCue::RainWater)) | (1u << uint32(ESailingCue::Wind)) | (1u << uint32(ESailingCue::GustRumble));
 	auto Boat = [Recorded](float Speed, float Chop, float Rain)
