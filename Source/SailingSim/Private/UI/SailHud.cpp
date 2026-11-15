@@ -1,6 +1,7 @@
 #include "UI/SailHud.h"
 #include "Widgets/SInvalidationPanel.h"
 #include "PerfScopes.h"
+#include "BenchRunner.h"
 #include "Learning.h"
 #include "UI/SailWidgets.h"
 #include "UI/SailCatalog.h"
@@ -297,6 +298,27 @@ namespace SailHudImpl
 	TAttribute<FText> Attr(const FText& Ref) { return TAttribute<FText>::CreateLambda([&Ref]() { return Ref; }); }
 	TAttribute<FSlateColor> ColorAttr(const FLinearColor& Ref) { return TAttribute<FSlateColor>::CreateLambda([&Ref]() { return FSlateColor(Ref); }); }
 
+	/** Message text over the scene: the HUD's text with a dark drop shadow, so a letter still reads where the card's edge
+	 *  meets bright water or sky. */
+	TSharedRef<SWidget> ShadowText(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap)
+	{
+		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+			.ShadowOffset(FVector2D(1.5, 1.5)).ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.85f))
+			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
+	}
+
+	/** A message card (docs/hud-layout/): near-opaque ink (the panels' 0.8 let a bright sky or whitecaps through the
+	 *  letters), a light rim and a 6 px edge in the message's colour. */
+	TSharedRef<SWidget> MessageCard(TFunction<FLinearColor()> EdgeColor, TSharedRef<SWidget> Content)
+	{
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(6.f)[ SNew(SBorder).BorderImage_Lambda([EdgeColor]() { return Rounded(EdgeColor(), 2.f); }) ] ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)
+			[
+				SNew(SBorder).BorderImage(Rounded(Ink.CopyWithNewOpacity(0.92f), 4.f, Line, 1.f)).Padding(FMargin(16.f, 10.f))[ Content ]
+			];
+	}
+
 	/** The tip card's title for a learning tip's ASA topic. */
 	FString LearningTopicName(const FString& Topic)
 	{
@@ -399,7 +421,7 @@ void SSailHud::Construct(const FArguments& A)
 				]
 			]
 		]
-		// Top-centre: the compass tape, heading and toasts.
+		// Top-centre: the compass tape and heading (the toasts moved to the message stack, centre right).
 		// (Centred on the screen and padded clear of the strip and the right-hand panels: it narrows on a 4:3 screen rather than
 		// overlapping them.)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(FMargin(M + 530.f, M, M + 530.f, M))
@@ -407,20 +429,17 @@ void SSailHud::Construct(const FArguments& A)
 			SNew(SVerticalBox).Visibility_Lambda(NotOff)
 			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(650.f).MinDesiredWidth(260.f).HeightOverride(50.f)[ SNew(SCompassTape).Heading_Lambda(Heading).WindFrom_Lambda(WindFrom) ] ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HeadingText; }), EType::Value, FSlateColor(Fg)) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)
-			[
-				SNew(SHorizontalBox).Visibility_Lambda([this]() { return bToast ? EVisibility::Visible : EVisibility::Collapsed; })
-				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(4.f)[ SNew(SBorder).BorderImage_Lambda([this]() { return Rounded(ToastColor, 2.f); }) ] ]
-				+ SHorizontalBox::Slot().AutoWidth()[ PanelBox(TextAttr(TAttribute<FText>::CreateLambda([this]() { return ToastText; }), EType::Ui, FSlateColor(Fg)), FMargin(14.f, 8.f), 4.f) ]
-			]
 		]
-		// Top-right: the drill or race panel, and the navigation panel on the coast.
+		// Top-right: the minimap in the corner (Bean Nov 15: it was bottom left), then the drill or race panel and the
+		// navigation panel on the coast under it.
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(M)
 		[
 			SNew(SVerticalBox).Visibility_Lambda(NotOff)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 12.f)
+			[ SNew(SBox).WidthOverride(210.f).HeightOverride(210.f).Visibility_Lambda(Full)[ SNew(SMiniMap).Player(Player).Map(MapBrush) ] ]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SBox).WidthOverride(365.f).Visibility_Lambda([this]() { return bDrill ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bDrill ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Drill"), EType::Eyebrow, Accent) ]
@@ -432,7 +451,7 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SBox).WidthOverride(365.f).Visibility_Lambda([this]() { return bRace ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bRace ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Race"), EType::Eyebrow, Accent) ]
@@ -446,7 +465,7 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 			[
-				SNew(SBox).WidthOverride(365.f).Visibility_Lambda([this]() { return bNav && Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bNav && Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Navigation"), EType::Eyebrow, Accent) ]
@@ -456,64 +475,11 @@ void SSailHud::Construct(const FArguments& A)
 				]
 			]
 		]
-		// Bottom-left: the minimap.
+		// Bottom-left (Bean Nov 15: where the minimap was): the apparent wind dial, then speed over depth. A compact block,
+		// so the bottom centre stays clear for the boat.
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(M)
-		[ SNew(SBox).WidthOverride(210.f).HeightOverride(210.f).Visibility_Lambda(Full)[ SNew(SMiniMap).Player(Player).Map(MapBrush) ] ]
-		// Bottom-centre: the rules callout and signals heard, then speed, apparent wind, depth.
-		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(M)
 		[
-			SNew(SVerticalBox)
-			// Prologue step 1: the captain's call, in the rules callout's panel; shown in every HUD mode (it is the scene).
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 10.f)
-			[
-				SNew(SBox).WidthOverride(560.f).Visibility_Lambda([this]() { return bCaptain ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(4.f)[ SNew(SBorder).BorderImage(Rounded(Warn, 2.f)) ] ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)
-					[
-						PanelBox(SNew(SVerticalBox)
-							+ SVerticalBox::Slot().AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().FillWidth(1.f)[ TextAttr(Attr(CaptainWho), EType::Eyebrow, FSlateColor(Warn), false) ]
-								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(CaptainStation), EType::Eyebrow, FSlateColor(Accent), false) ]
-							]
-							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ TextAttr(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
-							+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda([this]() { return CaptainHint.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(CaptainHint), EType::Small, FSlateColor(Muted), true) ] ],
-							FMargin(16.f, 10.f), 4.f)
-					]
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
-			[
-				// Sound captions show even with the HUD off (Mode 2): they stand in for what a player can't hear.
-				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bCaptions ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
-				[ PanelBox(TextAttr(Attr(CaptionsText), EType::Small, FSlateColor(Fg), true), FMargin(14.f, 8.f), 4.f) ]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 0.f, 0.f, 8.f)
-			[
-				SNew(SBox).MaxDesiredWidth(640.f).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
-				[ PanelBox(TextAttr(Attr(SignalsText), EType::Small, FSlateColor(WindTrue), true), FMargin(14.f, 8.f), 4.f) ]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
-			[
 			SNew(SHorizontalBox).Visibility_Lambda(NotOff)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
-			[
-				SNew(SBox).WidthOverride(200.f)
-				[
-					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Speed"), EType::Label, Muted) ]
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedText; }), EType::InstrumentBig, FSlateColor(Fg)) ]
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(SpeedUnitText), EType::Small, FSlateColor(Muted)) ]
-						]
-						+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedSub; }), EType::Small, FSlateColor(Muted)) ], FMargin(16.f, 12.f))
-				]
-			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
 			[
 				PanelBox(SNew(SVerticalBox)
@@ -523,22 +489,95 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 			[
-				SNew(SBox).WidthOverride(200.f)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 				[
-					SNew(SBorder).BorderImage_Lambda([this]() { return Rounded(IsLow() ? PanelSolid : Panel, RadiusCard, bShallow ? Warn : Line, bShallow ? 2.f : 1.f); }).Padding(FMargin(16.f, 12.f))
+					SNew(SBox).WidthOverride(200.f)
 					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Depth"), EType::Label, Muted) ]
-						+ SVerticalBox::Slot().AutoHeight()
+						PanelBox(SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Speed"), EType::Label, Muted) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedText; }), EType::InstrumentBig, FSlateColor(Fg)) ]
+								+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(SpeedUnitText), EType::Small, FSlateColor(Muted)) ]
+							]
+							+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedSub; }), EType::Small, FSlateColor(Muted)) ], FMargin(16.f, 12.f))
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SBox).WidthOverride(200.f)
+					[
+						SNew(SBorder).BorderImage_Lambda([this]() { return Rounded(IsLow() ? PanelSolid : Panel, RadiusCard, bShallow ? Warn : Line, bShallow ? 2.f : 1.f); }).Padding(FMargin(16.f, 12.f))
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthText; }), EType::InstrumentBig, TAttribute<FSlateColor>::CreateLambda([this]() { return FSlateColor(bShallow ? Warn : Fg); })) ]
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(DepthUnitText), EType::Small, FSlateColor(Muted)) ]
+							SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Depth"), EType::Label, Muted) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthText; }), EType::InstrumentBig, TAttribute<FSlateColor>::CreateLambda([this]() { return FSlateColor(bShallow ? Warn : Fg); })) ]
+								+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(DepthUnitText), EType::Small, FSlateColor(Muted)) ]
+							]
+							+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthSub; }), EType::Small, FSlateColor(Muted)) ]
 						]
-						+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthSub; }), EType::Small, FSlateColor(Muted)) ]
 					]
 				]
 			]
+		]
+		// Centre-right: the messages (Bean Nov 15: easier to read over the scene, centre right). The captain's call, toasts,
+		// rules points, signals heard and sound captions, each on a solid card, stacked from the screen's middle; left of the
+		// right-hand panels when they show, and kept right of the boat where the screen is wide enough.
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Center)
+			.Padding(TAttribute<FMargin>::CreateLambda([this, M]() { return FMargin(M, M, M + (RightPanelsShown() ? RightColumnWidth + MessageGap : 0.f), M); }))
+		[
+			SNew(SBox).WidthOverride_Lambda([this]() { return FOptionalSize(MessageWidthFor(LayoutWidth, RightPanelsShown())); })
+			[
+				SNew(SVerticalBox)
+				// Prologue step 1: the captain's call; shown in every HUD mode (it is the scene).
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { return bCaptain ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[
+						MessageCard([]() { return Warn; }, SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()
+							[
+								SNew(SHorizontalBox)
+								+ SHorizontalBox::Slot().FillWidth(1.f)[ ShadowText(Attr(CaptainWho), EType::Eyebrow, FSlateColor(Warn), false) ]
+								+ SHorizontalBox::Slot().AutoWidth()[ ShadowText(Attr(CaptainStation), EType::Eyebrow, FSlateColor(Accent), false) ]
+							]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 2.f)[ ShadowText(Attr(CaptainText), EType::Ui, FSlateColor(Fg), true) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda([this]() { return CaptainHint.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ ShadowText(Attr(CaptainHint), EType::Small, FSlateColor(Muted), true) ] ])
+					]
+				]
+				// Toasts: the boat's status line (shown in every mode: Off keeps toasts).
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { return bToast ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[ MessageCard([this]() { return ToastColor; }, ShadowText(Attr(ToastText), EType::Ui, FSlateColor(Fg), true)) ]
+				]
+				// Rules points: the number large in its colour, then what it was for.
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { return bPoints && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[
+						MessageCard([this]() { return PointsColor; }, SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 14.f, 0.f)[ ShadowText(Attr(PointsValue), EType::CardTitleM, ColorAttr(PointsColor), false) ]
+							+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ ShadowText(Attr(PointsText), EType::Ui, FSlateColor(Fg), true) ])
+					]
+				]
+				// Signals heard and vessels keeping clear: the last 8 seconds.
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { return bSignals && Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[ MessageCard([]() { return WindTrue; }, ShadowText(Attr(SignalsText), EType::Ui, FSlateColor(Fg), true)) ]
+				]
+				// Sound captions show even with the HUD off (Mode 2): they stand in for what a player can't hear.
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { return bCaptions ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[ MessageCard([]() { return Muted; }, ShadowText(Attr(CaptionsText), EType::Ui, FSlateColor(Fg), true)) ]
+				]
 			]
 		]
 		// Bottom-right: sail trim and key hints.
@@ -564,6 +603,19 @@ void SSailHud::Construct(const FArguments& A)
 	Refresh();
 }
 
+bool SSailHud::RightPanelsShown() const
+{
+	return ((bDrill || bRace) && Mode < 2) || (bNav && Mode == 0);
+}
+
+float SSailHud::MessageWidthFor(float Width, bool bRightPanels)
+{
+	// The stack's right edge, and room from there back to just right of the screen's centre (where the boat sits).
+	const float Right = Width - SailUI::HudMargin - (bRightPanels ? RightColumnWidth + MessageGap : 0.f);
+	const float Room = Right - (Width * 0.5f + 40.f);
+	return FMath::Clamp(Room, MessageMinWidth, MessageMaxWidth);
+}
+
 ASailboatPawn* SSailHud::Pawn() const
 {
 	return Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
@@ -573,6 +625,7 @@ void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 {
 	SCompoundWidget::Tick(G, Now, Dt);
 	SAILING_PERF_SCOPE(Hud);
+	LayoutWidth = float(G.GetLocalSize().X) / (FMath::Clamp(USailingSettings::Get()->HudScale, 85, 130) / 100.f);
 	if (Now >= NextRefresh)
 	{
 		NextRefresh = Now + (SailUI::IsLow() ? 0.2 : 0.1);
@@ -728,6 +781,20 @@ void SSailHud::Refresh()
 	}
 	RefreshScene(*P, *GM);
 	RefreshTraffic(*P, *GM);
+	// -SailingHudSample (docs/hud-layout/): a toast, a points card and a signal held up for layout stills at any size.
+	static SailingArgs::FCachedFlag HudSampleArg(TEXT("SailingHudSample"));
+	if (HudSampleArg.Get())
+	{
+		bToast = true;
+		ToastText = FText::FromString(TEXT("Good tack: lost 0.9 kn, back up to speed in 6 s"));
+		ToastColor = Starboard;
+		bPoints = true;
+		PointsValue = FText::FromString(TEXT("+20"));
+		PointsText = FText::FromString(TEXT("Kept clear of the starboard tacker"));
+		PointsColor = Starboard;
+		bSignals = true;
+		SignalsText = FText::FromString(TEXT("Five short blasts from the power boat ahead\nJ/22 Bluebird keeping clear astern"));
+	}
 	// Key hints: up to three, from the situation.
 	TArray<FString> Hints;
 	if (T.bCapsized && Cfg.RightingLever > 0.0) Hints.Add(KeyName(TEXT("Righting"), false) + TEXT("  Right the boat"));
@@ -898,7 +965,7 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 	}
 
 	const ATrafficManager* TM = ATrafficManager::Find(P.GetWorld());
-	bCoach = bSignals = bRace = false;
+	bCoach = bSignals = bRace = bPoints = false;
 	if (!TM) return;
 	const double Now = TM->GetSim().GetTime();
 	const FRulesCoach& Coach = TM->GetCoach();
@@ -919,9 +986,12 @@ void SSailHud::RefreshTraffic(const ASailboatPawn& P, const ASailingGameMode& GM
 	// Signals heard, vessels keeping clear and the latest rules judgment: the last 8 seconds.
 	TArray<FString> Heard;
 	const std::vector<FRulesCoach::FScore>& Scores = Coach.GetScores();
-	if (!Scores.empty() && Now - Scores.back().Time < 8.0)
+	bPoints = !Scores.empty() && Now - Scores.back().Time < 8.0;
+	if (bPoints)
 	{
-		Heard.Add(FString::Printf(TEXT("%+d  %s"), Scores.back().Points, UTF8_TO_TCHAR(Scores.back().Text.c_str())));
+		PointsValue = FText::FromString(FString::Printf(TEXT("%+d"), Scores.back().Points));
+		PointsText = FText::FromString(UTF8_TO_TCHAR(Scores.back().Text.c_str()));
+		PointsColor = Scores.back().Points < 0 ? Port : Starboard;
 	}
 	const TArray<TPair<double, FString>>& Messages = TM->GetMessages();
 	for (int32 I = Messages.Num() - 1; I >= 0 && Heard.Num() < 3; --I)
