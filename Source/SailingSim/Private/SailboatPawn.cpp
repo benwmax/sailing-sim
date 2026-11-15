@@ -3118,7 +3118,7 @@ void ASailboatPawn::StartSampleLayer()
 		const TConstArrayView<SailingSound::FPackLoop> Loops = SailingSound::PackLoops();
 		for (int32 I = 0; I < Loops.Num(); ++I)
 		{
-			if (SampleCues[int32(Loops[I].Cue)]) continue;
+			if (Loops[I].bRetired || SampleCues[int32(Loops[I].Cue)]) continue;
 			USoundBase* Wave = SailingSound::LoadPack(Loops[I].Asset);
 			if (!Wave) continue;
 			UAudioComponent* A = NewObject<UAudioComponent>(this);

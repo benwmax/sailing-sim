@@ -49,6 +49,14 @@ bool FSailingSamplePackTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("Every mapped file is in the manifest"), Mapped.Num(), Entries.Num());
+	// Bean, Nov 15 2026: the script-built lapping loops warbled like an arcade game (their bubbles chirp up an octave). They
+	// stay retired, so the hull's lapping is the synth's soft knocks, until a real recording replaces them.
+	for (const FPackLoop& L : PackLoops())
+	{
+		const bool bLapping = FString(L.Asset).StartsWith(TEXT("Water/water_lapping"));
+		TestEqual(FString::Printf(TEXT("%s retired exactly when it is a script-built lapping loop"), L.Asset), L.bRetired, bLapping);
+		if (!L.bRetired) TestTrue(FString::Printf(TEXT("%s: no loop plays the hull's lapping"), L.Asset), L.Cue != ESailingCue::HullSlap);
+	}
 
 	const float C[] = { 3.f, 7.f, 11.f };
 	for (float X = 0.f; X <= 14.f; X += 0.5f)

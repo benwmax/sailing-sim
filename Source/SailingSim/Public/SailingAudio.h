@@ -190,7 +190,12 @@ namespace SailingSound
 	/** A pack recording, /Game/Audio/Pack/<Folder>/<name> (null when not imported). */
 	SAILINGSIM_API USoundBase* LoadPack(const FString& Asset);
 	/** The pack's loops for the boat's voices: each plays one band of a cue's crossfade. */
-	struct FPackLoop { const TCHAR* Asset; ESailingCue Cue; int32 Band; };
+	/**
+	 * bRetired: imported and listed (the manifest maps every file) but never played; its cue stays the synth voice. The
+	 * script-built lapping loops are retired: their bubbles rise an octave as they ring, a warbling video-game "bloop" that
+	 * read as anything but water (Bean, Nov 15 2026). A real recording takes the slot back.
+	 */
+	struct FPackLoop { const TCHAR* Asset; ESailingCue Cue; int32 Band; bool bRetired = false; };
 	SAILINGSIM_API TConstArrayView<FPackLoop> PackLoops();
 	/** The pack's one-shots, chosen at random with a +-5% pitch spread. */
 	enum class EPackShot : uint8 { HalyardSlap, SailFill, WinchClick, SheetEaseFast, SheetEaseSlow, DockCreak, FenderSqueak, Count };
