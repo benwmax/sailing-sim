@@ -572,6 +572,21 @@ def boom_line(G, s_pin):
     return D, N, top0, t_a
 
 
+def eye_lug(part, base, out, along, height, length, t, label):
+    """A bronze eye standing `height` out of a spar along `out` from the point `base` on its surface (sunk 1 cm into
+    it), `length` along `along` at its root, its top rounded, `t` thick: a link or a shackle passes through its hole,
+    which is drawn closed (as the padeyes'). Returns the hole's centre and axis."""
+    out, along = unit(out), unit(along)
+    ax = np.cross(out, along)
+    hole = height - 0.6 * (length / 2)
+    rr = height - hole
+    q = np.linspace(0.0, math.pi, 11)
+    poly = [(length / 2, -0.01)] + [(rr * math.cos(a), hole + rr * math.sin(a)) for a in q] + [(-length / 2, -0.01)]
+    V, F = deck.slab(np.array(poly), base, along, out, ax, -t / 2, t / 2)
+    part.add(V, F, "Bronze", ("solid", BRZ), label)
+    return {"hole": base + hole * out, "axis": ax, "out": out}
+
+
 def boom(part, rep, G, s_pin, E):
     """The boom from its jaw on the pin to its outhaul cap, the black band E along it from the mast's after face."""
     bm, g = RG["boom"], RG["gooseneck"]
@@ -648,6 +663,18 @@ def boom(part, rep, G, s_pin, E):
     boom_band(t_band + bb / 2, bb, 0.0015, "Black", "Boom black band", 0)
     for x in bm["sheet_bands"]:
         boom_band(t1 - x, bm["band_width"], bm["band_thickness"], "Bronze", "Mainsheet bands", BRZ)
+    # slice 7's eyes: one under each of the after two bands, where the mainsheet's boom blocks hang, and one on top of
+    # the end cap for the topping lift (each a bronze lug in the boom's middle plane, its hole athwartships)
+    ey = bm["eyes"]
+    eyes = {}
+    for k, x in enumerate(bm["sheet_bands"][:2]):
+        tc = t1 - x
+        d, _ = size(tc)
+        base = G + tc * D + 0.5 * (d_end - d) * N - (0.5 * d + bm["band_thickness"]) * N
+        eyes[f"mainsheet_{k}"] = eye_lug(part, base, -N, D, ey["height"], ey["length"], ey["thickness"],
+                                         "Mainsheet eyes")
+    base = G + (t1 + 0.0) * D + rc * N
+    eyes["topping_lift"] = eye_lug(part, base, N, D, ey["height"], ey["length"], ey["thickness"], "Topping lift eye")
     # the foot's track along the top, from the jaw's socket to the black band
     tk = RG["track"]
     rr = []
@@ -669,7 +696,7 @@ def boom(part, rep, G, s_pin, E):
                    "end": G + (t1 + 0.145) * D, "black_band": G + t_band * D + 0.5 * d_end * N,
                    "track_from_pin_m": round(float(t0 + 0.13), 4), "track_to_pin_m": round(float(t_band), 4),
                    "rise_deg": bm["rise_deg"], "section_mid": bm["section_mid"], "section_end": bm["section_end"],
-                   "sheet_bands_from_aft_m": bm["sheet_bands"]}
+                   "sheet_bands_from_aft_m": bm["sheet_bands"], "eyes": eyes}
     return t_a
 
 
@@ -706,9 +733,21 @@ def pole(part, rep, Ph):
     V, F = deck.revolve([(re - 0.002, L - 0.395), (rc, L - 0.38), (rc, L - 0.16), (0.07, L - 0.06), (0.05, L - 0.01),
                          (0.0, L)], Ph, X, UP, 32)
     part.add(V, F, "Bronze", ("cast", BRZ, 0.008, disc(re - 0.002)), "Pole end fitting")
+    # slice 7's eyes on the end fitting: on its sleeve the lift's on top, the foreguy's under it and the guy's on the
+    # after side, and at its tip, on the forward side (toward the sail's tack), the eye the tack is lashed to
+    ey = pl["eyes"]
+    side = np.cross(UP, X)                                     # aft, as the pole is set
+    eyes = {}
+    for key, out in (("lift", UP), ("foreguy", -UP), ("guy", side)):
+        eyes[key] = eye_lug(part, Ph + (L - ey["sleeve_from_end"]) * X + rc * out, out, X,
+                            ey["height"], ey["length"], ey["thickness"], "Pole end eyes")
+    tip = Ph + (L - ey["tip_back"]) * X
+    r_tip = float(np.interp(L - ey["tip_back"], [L - 0.16, L - 0.06, L - 0.01, L], [rc, 0.07, 0.05, 0.0]))
+    eyes["end"] = eye_lug(part, tip - (r_tip - 0.004) * side, -side, X, ey["tip_height"], ey["length"],
+                          ey["thickness"], "Pole end eyes")
     part.frame = (Ph, X, UP)
     rep["pole"] = {"length_m": L, "length_ft": round(L / FT, 1), "set_deg_from_bow": pl["set_deg"],
-                   "heel_above_deck_m": pl["heel_above_deck"], "end": Ph + L * X}
+                   "heel_above_deck_m": pl["heel_above_deck"], "end": Ph + L * X, "eyes": eyes}
 
 
 # ------------------------------------------------------------------------------------------------ the whole rig

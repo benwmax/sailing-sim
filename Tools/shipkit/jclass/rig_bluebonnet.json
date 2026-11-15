@@ -123,7 +123,8 @@
   "band_width": 0.12,
   "band_thickness": 0.008,
   "swing_deg": 85.0,
-  "swing_step": 5.0
+  "swing_step": 5.0,
+  "eyes": {"note": "Slice 7's eyes: under the after two mainsheet bands (the boom blocks hang there) and on top of the end cap (the topping lift's): 'height' out of the band, 'length' along the boom at the root, 'thickness'.", "height": 0.07, "length": 0.09, "thickness": 0.018}
  },
  "pole": {
   "note": "The spinnaker pole: a drawn duralumin tube, fattest in its middle, no longer than the fore triangle's base J measured from the mast's face (the usual limit), with bronze end fittings. Its heel's jaw takes a vertical pin on a car on the mast's forward face, 'heel_above_deck' up, so it swings level from beside the forestay to square on either side; it is built set 'set_deg' from the bow to starboard.",
@@ -136,7 +137,8 @@
   "car": {"reach": 0.16, "height": 0.26, "width": 0.12},
   "set_deg": 70.0,
   "sweep_deg": [10.0, 90.0],
-  "sweep_step": 5.0
+  "sweep_step": 5.0,
+  "eyes": {"note": "Slice 7's eyes on the end fitting: the lift's on top, the foreguy's under it and the guy's on its after side, 'sleeve_from_end' back from the end on its sleeve; at its tip, 'tip_back' from the end on the forward side (toward the sail), the eye the spinnaker's tack is lashed to, 'tip_height' out of the dome. Sizes as the boom's.", "sleeve_from_end": 0.27, "tip_back": 0.07, "height": 0.06, "tip_height": 0.075, "length": 0.08, "thickness": 0.016}
  },
  "sail_area": {
   "note": "The rated sail area S the build gives the rule check: the main's triangle P x E / 2 plus the fore triangle I x J / 2, measured on the spars (I upright from the deck to the forestay on the mast's forward face, J level from that face at the deck to the forestay's tack at the stem head, P along the mast's after face from the boom's top to the black band, E along the boom from the mast's after face to its black band). That is the conventional measure; the Universal Rule's own sail measurement could not be read from the cloud, so slice 6 measures the real sails the same way. The boom's black band is placed to make S 'target_ft2', a little under the size card's 7,500 so the rating keeps its margin.",

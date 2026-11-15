@@ -785,6 +785,26 @@ def _build_cast(surf, z, nu, nv, lead_card, extra_lead_tons):
     return pieces, report
 
 
+def retrim(finish, tons):
+    """Add `tons` (long tons; less than nothing takes it off) to the trimming ballast of a shell built at a fixed
+    casting (_build_cast's report in `finish`): what a later slice's parts weigh less than the size card's estimate
+    for them, measured after the shell is built (slice 7's running rigging, which needs the sails). Returns tons."""
+    ld = finish["lead"]
+    trim = ld["trim_ballast_long_tons"] + tons
+    if trim < -0.005:
+        raise ValueError(f"the trimming ballast would be {trim:.3f} long tons: the parts weigh more than the size "
+                         "card's estimate for them")
+    trim = max(trim, 0.0)
+    placed, tb = ld["casting_long_tons"], ld["trim_ballast_centre"]
+    W = placed + trim
+    ld.update(long_tons=round(W, 2), trim_ballast_long_tons=round(trim, 3),
+              centroid_x_m=round((placed * ld["casting_centroid_x_m"] + trim * tb[0]) / W, 3),
+              centroid_z_m=round((placed * ld["casting_centroid_z_m"] + trim * tb[1]) / W, 3),
+              for_the_later_slices_long_tons=round(ld["for_the_later_slices_long_tons"] + tons, 3))
+    finish["displacement"]["lead_long_tons"] = round(W, 2)
+    return round(tons, 3)
+
+
 def _build_at(surf, z_lead, nu, nv):
     """The shell with the lead's top at z_lead: pieces, report, and the shell's triangles (for the lead)."""
     fields = make_fields(z_lead)

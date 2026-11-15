@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint, deck, rig, rigging and sails renders of Bluebonnet for the docs and the blind reviews
-(docs/jclass-1 to jclass-6).
+"""Clay, zebra, afloat, paint, deck, rig, rigging, sails and running rigging renders of Bluebonnet for the docs and the
+blind reviews (docs/jclass-1 to jclass-7).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -37,6 +37,13 @@ boats), the same every round so before and after line up:
                                              points, the luff slides on the track, the hanks, the genoa's clew, the
                                              spinnaker's head, and the sails stowed: moored (flaked and bagged),
                                              lowered on deck, and the main's slides stacked at the foot of the track
+  running_*                                  slice 7's winches and running rigging, on starboard tack: the after deck
+                                             from the lee quarter, a primary winch's turns, cleat and coil, the
+                                             mainsheet's tackle, a runner's tail onto its winch, the reels round the
+                                             mast's foot, the halyards' boxes aloft, the genoa's lead, the
+                                             quadrilateral's and the spinnaker's suits, the pole's end, moored with the
+                                             topping lift on, and an idle capstan and reel close to (the part loop's
+                                             views)
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -235,6 +242,8 @@ def shown(o, upto, tack, suit=None):
         return False
     if o.get("sail") is not None:
         return suit is not None and suit in o["suits"].split(",")
+    if o.get("suit") is not None:                          # slice 7's running rigging, one object per suit
+        return o["suit"] == suit
     if o.get("state") is not None:
         return (o["state"] == "Set") == (o["side"] == tack)
     return o.name not in HIDDEN
@@ -460,4 +469,32 @@ shot("sails_lowered", "paint", (21.0, 12.0, 10.0), (5.0, 0.0, 2.6), lens=28, sun
      upto=6, suit="Lowered")
 shot("sails_stack", "paint", (-1.0, 5.5, 6.5), (2.4, 0.0, 6.2), lens=24, sun_dir=LEE_SUN, sun=3.0, samples=64, upto=6,
      suit="Lowered")
+# slice 7: the winches and running rigging under each suit on starboard tack (the sheets to port, Blender's +Y); the
+# coils lie where the build found room for them
+run = dict(sun_dir=LEE_SUN, sun=3.0, samples=64, upto=7)
+shot("running_afterdeck", "paint", (-25.0, 9.0, 8.0), (-10.0, 0.5, 1.6), lens=28, suit="Genoa", **run)
+shot("running_primary", "paint", (-6.6, 3.3, 2.6), (-8.1, 2.1, 1.75), lens=35, suit="Genoa", **run)
+shot("running_mainsheet", "paint", (-20.5, 3.5, 4.0), (-15.5, 0.2, 2.6), lens=28, suit="Genoa", **run)
+shot("running_runner", "paint", (-10.5, -5.0, 3.2), (-12.6, -1.8, 1.8), lens=30, suit="Genoa",
+     **dict(run, sun_dir=WW_SUN))
+shot("running_mast_foot", "paint", (6.5, 2.8, 3.2), (2.9, 0.0, 1.8), lens=28, suit="Genoa", **run)
+shot("running_reel", "paint", (0.6, 2.1, 2.5), (2.2, 0.55, 1.85), lens=40, suit="Genoa", **run)
+shot("running_masthead", "paint", (-1.0, 8.0, 47.2), (1.65, 0.0, 46.85), lens=70, suit="Genoa", **run)
+shot("running_genoa_lead", "paint", (-3.0, 6.0, 4.0), (-6.5, 2.9, 1.9), lens=30, suit="Genoa", **run)
+shot("running_quad", "paint", (-14.0, 8.0, 9.0), (-3.0, 1.8, 2.0), lens=28, suit="Quadrilateral", **run)
+shot("running_spin34", "paint", (-14.0, -14.0, 14.0), (3.0, -6.0, 2.5), lens=28, suit="Spinnaker",
+     **dict(run, sun_dir=WW_SUN))
+shot("running_pole_end", "paint", (5.0, -16.5, 4.6), (8.5, -14.1, 3.7), lens=50, suit="Spinnaker",
+     **dict(run, sun_dir=WW_SUN))
+shot("running_spin_quarter", "paint", (-24.0, 10.0, 7.0), (-13.0, 2.0, 2.0), lens=28, suit="Spinnaker", **run)
+shot("running_moored", "paint", (-26.0, -9.0, 10.0), (-8.0, 0.0, 4.0), lens=28, suit="Moored",
+     **dict(run, sun_dir=WW_SUN))
+shot("running_profile", "paint", (MIDA.x, -150, MIDA.z), MIDA, ortho=1.05 * max(HIA.x - LOA.x, HA * ASPECT),
+     sun_dir=WW_SUN, sun=3.0, upto=7, suit="Genoa")
+# the part loop's views: an idle capstan (the starboard mainsheet winch, free on starboard tack) and an idle reel (the
+# topping lift's, its wire wound on)
+shot("running_capstan", "paint", (-14.2, -2.15, 2.7), (-15.6, -0.85, 1.98), lens=50, suit="Genoa",
+     **dict(run, sun_dir=WW_SUN))
+shot("running_reel_close", "paint", (1.05, -1.5, 2.3), (2.0, -0.66, 1.72), lens=60, suit="Genoa",
+     **dict(run, sun_dir=WW_SUN))
 print("render_jclass: done")

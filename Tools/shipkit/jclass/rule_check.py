@@ -18,7 +18,10 @@ and nothing in the lane the mainsail's slides need up its track. From slice 6 ev
 doused, moored) must pass the build's check: no face of a sail crossing anything but by design, every free face of
 a set sail's cloth clear of everything else, the spinnaker pole, where a suit has it lashed down on deck,
 crossing nothing, and no set sail creased where it is pressed off what it lies on (PRESS_TURN_ADDED_DEG at most added
-to its greatest turn between neighbouring cells).
+to its greatest turn between neighbouring cells). From slice 7 the running rigging in every suit must pass the build's
+checks: each rope clear along its length but where it runs over its own gear, no fitting crossing anything but by
+design, nothing in the slides' lane, each loaded lead rising onto its drum and meeting its sheaves within the json's
+limits, and the winches and cleats no heavier than the size card's estimate for all the deck hardware.
 Plain Python: no Blender needed.
 """
 import json
@@ -86,7 +89,8 @@ if __name__ == "__main__":
     if "hydrostatics" in b:
         # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
         # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too, slice 4
-        # one for each spar, slice 5 for each rigging object and slice 6 for each sail's state
+        # one for each spar, slice 5 for each rigging object, slice 6 for each sail's state and slice 7 for the winches,
+        # the running fittings and each suit's running rigging
         shell = b.get("shell") or {}
         pieces = {"shell": shell} if "closed" in shell else shell
         sl = b.get("slice", 1)
@@ -101,6 +105,9 @@ if __name__ == "__main__":
             # each sail's state is its own object (Mainsail.Set, Genoa.Bagged, ...): every one in a suit
             need += tuple(sorted({n for k, v in ((b.get("sails") or {}).get("suits") or {}).items() if k != "note"
                                   for n in v["sails"]}))
+        if sl >= 7:
+            need += ("Winches", "RunningFittings") + tuple(f"Running.{k}" for k in
+                                                           ((b.get("sails") or {}).get("suits") or {}) if k != "note")
         for name in need:
             if name not in pieces:
                 r["pass"] = False
@@ -170,6 +177,62 @@ if __name__ == "__main__":
                       f"greatest turn between cells {p.get('turn_deg_shaped')} deg as shaped, "
                       f"{p.get('turn_deg_pressed')} pressed (limit {PRESS_TURN_ADDED_DEG:.0f} more)")
                 ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 7:
+            # slice 7: the running rigging in every suit
+            rn = b.get("running") or {}
+            ok = True
+            for name in [k for k in ((b.get("sails") or {}).get("suits") or {}) if k != "note"]:
+                room = (rn.get("room") or {}).get(name) or {}
+                cont = (rn.get("contacts") or {}).get(name) or {}
+                least = room.get("least") or {}
+                good = bool(room.get("ok")) and bool(cont.get("ok"))
+                print(f"{'ok  ' if good else 'FAIL'} the running rigging in the {name} suit: least room "
+                      f"{least.get('least_gap_mm')} mm ({least.get('rope')} to {least.get('against')}), none under "
+                      f"{room.get('fail_under_mm')} mm; crossings {cont.get('crossing')}")
+                ok = ok and good
+            lanes = rn.get("slide_lane") or {}
+            good = bool(lanes) and all(v.get("ok") for v in lanes.values())
+            print(f"{'ok  ' if good else 'FAIL'} the running rigging out of the mainsail's slides' lane in every "
+                  f"suit: { {k: v.get('crossing') for k, v in lanes.items() if not v.get('ok')} or 'nothing in it'}")
+            ok = ok and good
+            hr = rn.get("hitch_room") or {}
+            least = min(((v.get("least") or {}) for v in hr.values()), key=lambda r: r.get("least_gap_mm", 1e9),
+                        default={})
+            good = bool(hr) and all(v.get("ok") for v in hr.values())
+            print(f"{'ok  ' if good else 'FAIL'} every hitch clear of its cleat: least {least.get('least_gap_mm')} mm "
+                  f"({least.get('rope')}, to {least.get('against')})")
+            ok = ok and good
+            sh = rn.get("shape") or {}
+            sc = sh.get("self_clearance") or {}
+            kk = sh.get("kinks") or {}
+            worst_sc = min((r for v in sc.values() for r in v.get("rows", [])), key=lambda r: r["least_gap_mm"],
+                           default={})
+            worst_k = max((r for v in kk.values() for r in v.get("rows", [])), key=lambda r: r["worst_deg"],
+                          default={})
+            good = bool(sh.get("ok"))
+            print(f"{'ok  ' if good else 'FAIL'} each rope clear of itself (least {worst_sc.get('least_gap_mm')} mm, "
+                  f"{worst_sc.get('rope')}, {worst_sc.get('pieces')}) and without kinks (worst bend "
+                  f"{worst_k.get('worst_deg')} deg over three diameters, {worst_k.get('rope')}, {worst_k.get('piece')})")
+            ok = ok and good
+            st = rn.get("settled") or {}
+            good = st.get("worst_last_pass_mm") is not None and st["worst_last_pass_mm"] <= st.get("tolerance_mm", 0)
+            print(f"{'ok  ' if good else 'FAIL'} every lead settled: the worst last pass moved "
+                  f"{st.get('worst_last_pass_mm')} mm (under {st.get('tolerance_mm')})")
+            ok = ok and good
+            ld = rn.get("leads") or {}
+            good = bool(ld.get("ok"))
+            fails = "" if good else f"; failing {ld.get('failing')}"
+            print(f"{'ok  ' if good else 'FAIL'} the leads: rise onto the drums {ld.get('rise_deg_range')} deg, the "
+                  f"sheaves' fleet {ld.get('fleet_deg_max')} deg at most{fails}")
+            ok = ok and good
+            wc = ((rn.get("weights") or {}).get("winches_and_cleats") or {}).get("total_long_tons")
+            card = SPECS["weights"]["winches_and_hardware"]
+            good = wc is not None and wc <= card
+            print(f"{'ok  ' if good else 'FAIL'} the winches and cleats weigh {wc} long tons (the card's "
+                  f"{card} for all the deck hardware)")
+            ok = ok and good
             if not ok:
                 r["pass"] = False
     print(report(r))

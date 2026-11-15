@@ -1,0 +1,113 @@
+{
+ "about": "Bluebonnet's winches and running rigging (docs/jclass-7): our own layout for an invented 1937 J, in the manner of the 1934-37 Js, which carried two dozen or more bronze deck winches. Sizes in metres in the hull's frame (X forward of mid-waterline, Y to starboard, Z up); plan points are (x, y) and a 'both_sides' entry stands for a mirrored pair. Everything here is drawn for starboard tack (the lee, the side the sheets lead to, is port), as slices 5 and 6 are.",
+ "material": {
+  "note": "Cast bronze (rig_bluebonnet.json's, 8,800 kg/m^3) for the winches, cleats, blocks and fittings; a winch's body is hollow round its gears and pawls, so it weighs 'winch_fill' of its solid bronze. The pads are varnished teak (700). Rope is manila (standing_bluebonnet.json's 860 kg per cubic metre of the rope's circle), wire the 7x19 of the runners' pendants.",
+  "winch_fill": 0.42,
+  "teak": 700.0
+ },
+ "winch": {
+  "note": "Period bronze winches: capstans for rope (a ribbed drum on a skirted base flange bolted down through a teak pad, a band where the pawls are housed, and a domed cap with a square socket for the handle; the rope takes three turns and its tail goes to a horn cleat) in three sizes, and reel winches for the wire halyards (the wire stored on a flanged reel, a brake drum under it, the same base and cap). Turned clockwise seen from above. 'drum_r' the drum's radius at the ribs' tops, 'drum_h' its height, 'base_r' the flange's, 'skirt_h' the base's height to the drum, 'cap_h' the cap's, 'ribs' how many ribs round the drum, each 'rib' proud; 'lip' how far the drum's foot flares out. A reel's 'flange_r'; the wire stored on it (the halyard's hoist, from a metre above the deck to its sheave aloft) is wound to the radius its length needs, at 'packing' of the space it fills. 'turns' on a capstan's drum.",
+  "sizes": {
+   "large": {"drum_r": 0.11, "drum_h": 0.25, "base_r": 0.2, "skirt_h": 0.075, "cap_h": 0.055, "ribs": 14, "rib": 0.004, "lip": 0.018, "bolts": 8, "turns": 3},
+   "medium": {"drum_r": 0.082, "drum_h": 0.19, "base_r": 0.15, "skirt_h": 0.06, "cap_h": 0.045, "ribs": 12, "rib": 0.0035, "lip": 0.015, "bolts": 6, "turns": 3},
+   "small": {"drum_r": 0.06, "drum_h": 0.14, "base_r": 0.115, "skirt_h": 0.05, "cap_h": 0.035, "ribs": 10, "rib": 0.003, "lip": 0.012, "bolts": 6, "turns": 3},
+   "reel": {"drum_r": 0.07, "drum_h": 0.22, "flange_r": 0.18, "base_r": 0.2, "skirt_h": 0.07, "cap_h": 0.04, "brake_h": 0.035, "bolts": 8, "packing": 0.85}
+  },
+  "pad": {"note": "Each winch stands on a round teak pad 'over' wider than its flange, 'let_in' into the deck; its height is the winch's own ('pad' below), set so each loaded lead rises onto the drum. The runners' and checkstays' winches stand on teak pads about 0.15 m high, each where its fall leaves the lower block's sheave square to its axle (slice 5's lower blocks sit about 0.28 m up) and rises 4 degrees onto the drum.", "over": 0.03, "let_in": 0.004},
+  "socket": [0.034, 0.022, 0.012]
+ },
+ "cleat": {
+  "note": "Bronze horn cleats, one by each capstan, 'at' its centre (dx, dy from the winch) and 'deg' its horns' heading from forward (to starboard positive). Sizes as the kit's HornCleat (Tools/boatkit), scaled: 'L' horn to horn, 'h_under' free height under the horns, 'h_top' the horns' top, 'half_w' their half width, 'foot_x' the feet's outer edge.",
+  "sizes": {
+   "large": {"L": 0.36, "h_under": 0.055, "h_top": 0.085, "half_w": 0.017, "foot_x": 0.075},
+   "medium": {"L": 0.3, "h_under": 0.046, "h_top": 0.072, "half_w": 0.014, "foot_x": 0.062},
+   "small": {"L": 0.24, "h_under": 0.038, "h_top": 0.06, "half_w": 0.012, "foot_x": 0.05}
+  }
+ },
+ "winches": {
+  "note": "Each winch: its size, plan point, pad height, what it works, and its cleat (dx, dy, deg; capstans only). Each tail's coil lies where the rope ends after its hitch, just beyond it and to the side its spiral comes round from, so the rope runs on into the coil's outer turn (or the nearest free spot on deck within a metre). Mirrored pairs are given for starboard; the port one has y and the headings negated.",
+  "Primary": {"size": "large", "at": [-8.0, 2.15], "pad": 0.09, "both_sides": true, "works": "genoa sheet, quadrilateral's lower sheet, spinnaker guy", "cleat": [-0.45, -0.18, 15]},
+  "Secondary": {"size": "medium", "at": [-9.35, 1.75], "pad": 0.05, "both_sides": true, "works": "quadrilateral's upper sheet", "cleat": [-0.38, -0.14, 15]},
+  "StaysailSheet": {"size": "medium", "at": [0.25, 1.6], "pad": 0.15, "both_sides": true, "works": "staysail sheet", "cleat": [-0.38, -0.12, 0]},
+  "Checkstay": {"size": "medium", "at": [-6.042, 1.338], "pad": 0.147, "both_sides": true, "works": "checkstay fall", "cleat": [-0.38, 0.05, 0]},
+  "Runner": {"size": "medium", "at": [-12.497, 1.448], "pad": 0.146, "both_sides": true, "works": "runner fall", "cleat": [-0.4, 0.05, 0]},
+  "Mainsheet": {"size": "large", "at": [-15.6, 0.75], "pad": 0.12, "both_sides": true, "works": "mainsheet", "cleat": [-0.1, -0.45, 60], "note": "its cleat inboard of it: on the run the parts from the after deck block to the boom squared off sweep low over its outboard side"},
+  "Quarter": {"size": "large", "at": [-14.7, 1.62], "pad": 0.06, "both_sides": true, "works": "spinnaker sheet", "cleat": [0.45, -0.12, 0]},
+  "Foreguy": {"size": "small", "at": [9.0, 1.7], "pad": 0.08, "both_sides": true, "works": "spinnaker pole's foreguy", "cleat": [-0.32, -0.06, 0]},
+  "SpinnakerHalyard": {"size": "reel", "at": [3.05, -0.98], "pad": 0.04, "works": "spinnaker halyard", "halyard": "spinnaker"},
+  "MainHalyard": {"size": "reel", "at": [2.0, -0.66], "pad": 0.04, "works": "main halyard", "halyard": "main"},
+  "ToppingLift": {"size": "reel", "at": [2.0, 0.66], "pad": 0.04, "works": "boom's topping lift", "halyard": "topping_lift"},
+  "JibHalyard": {"size": "reel", "at": [3.98, -0.64], "pad": 0.04, "works": "headsail halyard (genoa or quadrilateral)", "halyard": "jib"},
+  "StaysailHalyard": {"size": "reel", "at": [3.98, 0.64], "pad": 0.04, "works": "staysail halyard", "halyard": "staysail"},
+  "PoleLift": {"size": "reel", "at": [3.05, 0.98], "pad": 0.04, "works": "spinnaker pole's lift", "halyard": "pole_lift"}
+ },
+ "ropes": {
+  "note": "Diameters (m). Manila for the sheets, guys and tails; flexible 7x19 wire for the halyards and the lifts.",
+  "genoa_sheet": {"d": 0.028, "kind": "manila"},
+  "quad_sheet": {"d": 0.024, "kind": "manila"},
+  "staysail_sheet": {"d": 0.02, "kind": "manila"},
+  "spinnaker_sheet": {"d": 0.024, "kind": "manila"},
+  "guy": {"d": 0.026, "kind": "manila"},
+  "foreguy": {"d": 0.018, "kind": "manila"},
+  "mainsheet": {"d": 0.026, "kind": "manila"},
+  "spinnaker_halyard": {"d": 0.012, "kind": "7x19"},
+  "main_halyard": {"d": 0.016, "kind": "7x19"},
+  "jib_halyard": {"d": 0.014, "kind": "7x19"},
+  "staysail_halyard": {"d": 0.011, "kind": "7x19"},
+  "pole_lift": {"d": 0.011, "kind": "7x19"},
+  "topping_lift": {"d": 0.012, "kind": "7x19"}
+ },
+ "blocks": {
+  "note": "Bronze swivel blocks on padeyes on deck (the padeyes fixed, each block hanging on its link toward the pull of its rope, so it lies as each suit's lead puts it), and the mainsheet's blocks on the boom's bands. 'label' what a rope's block is called after the rope's name, 'name' the block's own (its padeye is named after it), 'sheave_d' the sheave's diameter; 'padeye' its plan point.",
+  "GenoaLead": {"label": "lead block", "name": "Genoa lead block", "padeye": [-6.8, 3.03], "sheave_d": 0.16, "both_sides": true},
+  "RailLead": {"label": "rail block", "name": "Rail block", "padeye": [-1.0, 3.1], "sheave_d": 0.15, "both_sides": true, "note": "the quadrilateral's lower sheet to leeward, the spinnaker's guy to windward"},
+  "QuarterRail": {"label": "quarter block", "name": "Quadrilateral's quarter block", "padeye": [-10.6, 2.8], "sheave_d": 0.13, "both_sides": true, "note": "the quadrilateral's upper sheet"},
+  "StaysailLead": {"label": "lead block", "name": "Staysail lead block", "padeye": [2.25, 1.78], "sheave_d": 0.12, "both_sides": true},
+  "SpinnakerSheetLead": {"label": "quarter block", "name": "Spinnaker sheet's quarter block", "padeye": [-16.6, 1.93], "sheave_d": 0.15, "both_sides": true},
+  "ForeguyLead": {"label": "lead block", "name": "Foreguy lead block", "padeye": [11.0, 2.22], "sheave_d": 0.11, "both_sides": true},
+  "MainsheetAft": {"label": "after deck block", "name": "Mainsheet's after deck block", "padeye": [-16.72, 0.0], "sheave_d": 0.16, "becket": true},
+  "MainsheetFwd": {"label": "forward deck block", "name": "Mainsheet's forward deck block", "padeye": [-14.12, 0.0], "sheave_d": 0.16},
+  "boom": {"sheave_d": 0.16, "bands_from_aft": [0.6, 3.2], "eye": [0.07, 0.05, 0.02]}
+ },
+ "halyards": {
+  "note": "The halyards are internal: wire from the sail's head over a sheave in the mast (aloft, at the height 'aloft_z' on the mast's face 'face_deg' round from forward, to starboard positive), down inside it and out over a sheave in a bronze box low on the mast ('foot_h' above the deck, clear of the mast coat, toward its winch) to its reel winch; the spinnaker halyard is the same wire, from the head's block at the crane into the mast just below it and down to its own reel. Each reel stores the wire the hoist does not use (from a metre above the deck to its sheave aloft), the same in every suit. Out of use a halyard's shackle is hauled up to its box aloft, clear of the sails.",
+  "main": {"label": "Main halyard", "rope": "main_halyard", "winch": "MainHalyard", "aloft_z": 46.85, "face_deg": 180, "foot_h": 0.38, "suits": {"Genoa": "Mainsail.Set", "Quadrilateral": "Mainsail.Set", "Spinnaker": "Mainsail.Run"}},
+  "jib": {"label": "Headsail halyard", "rope": "jib_halyard", "winch": "JibHalyard", "aloft_z": 37.15, "face_deg": 0, "foot_h": 0.38, "suits": {"Genoa": "Genoa.Set", "Quadrilateral": "Quadrilateral.Set"}},
+  "staysail": {"label": "Staysail halyard", "rope": "staysail_halyard", "winch": "StaysailHalyard", "aloft_z": 28.95, "face_deg": 0, "foot_h": 0.38, "suits": {"Quadrilateral": "Staysail.Set"}},
+  "pole_lift": {"label": "Pole lift", "rope": "pole_lift", "winch": "PoleLift", "aloft_z": 22.4, "face_deg": 0, "foot_h": 0.38, "suits": {"Spinnaker": "pole"}},
+  "topping_lift": {"label": "Topping lift", "rope": "topping_lift", "winch": "ToppingLift", "aloft_z": 47.12, "face_deg": 180, "foot_h": 0.38, "suits": {"Moored": "boom", "Lowered": "boom", "Doused": "boom"}},
+  "spinnaker": {"label": "Spinnaker halyard", "rope": "spinnaker_halyard", "winch": "SpinnakerHalyard", "aloft_z": 46.95, "face_deg": 0, "foot_h": 0.38, "suits": {"Spinnaker": "Spinnaker.Set"}}
+ },
+ "mast_boxes": {"note": "The halyards' sheave boxes on the mast: 'height' along it, 'width' round it, 'proud' of its skin and 'sunk' into it; the sheave's centre 'sheave_out' off the skin, its radius 'sheave_r' (to the rope's centre).", "height": 0.22, "width": 0.075, "proud": 0.06, "sunk": 0.015, "sheave_out": 0.02, "sheave_r": 0.04},
+ "sheets": {
+  "note": "Each rope from its sail's corner (or the pole's end) through its blocks to its winch, on the lee side unless 'side' says otherwise, in the suits named. 'cut_m' its length; what is not in the lead is in the coil.",
+  "genoa": {"label": "Genoa sheet", "rope": "genoa_sheet", "from": ["Genoa.Set", "clew"], "via": ["GenoaLead"], "winch": "Primary", "suits": ["Genoa"], "cut_m": 24.0},
+  "quad_lower": {"label": "Quadrilateral's lower sheet", "rope": "quad_sheet", "from": ["Quadrilateral.Set", "clew"], "via": ["RailLead"], "winch": "Primary", "suits": ["Quadrilateral"], "cut_m": 24.0},
+  "quad_upper": {"label": "Quadrilateral's upper sheet", "rope": "quad_sheet", "from": ["Quadrilateral.Set", "upper_clew"], "via": ["QuarterRail"], "winch": "Secondary", "suits": ["Quadrilateral"], "cut_m": 24.0},
+  "staysail": {"label": "Staysail sheet", "rope": "staysail_sheet", "from": ["Staysail.Set", "clew"], "via": ["StaysailLead"], "winch": "StaysailSheet", "suits": ["Quadrilateral"], "cut_m": 12.0},
+  "spinnaker": {"label": "Spinnaker sheet", "rope": "spinnaker_sheet", "from": ["Spinnaker.Set", "clew"], "via": ["SpinnakerSheetLead"], "winch": "Quarter", "suits": ["Spinnaker"], "cut_m": 48.0},
+  "guy": {"label": "Spinnaker guy", "rope": "guy", "from": ["pole", "guy"], "via": ["RailLead"], "winch": "Primary", "side": "windward", "suits": ["Spinnaker"], "cut_m": 30.0},
+  "foreguy": {"label": "Pole foreguy", "rope": "foreguy", "from": ["pole", "foreguy"], "via": ["ForeguyLead"], "winch": "Foreguy", "side": "windward", "suits": ["Spinnaker"], "cut_m": 26.0}
+ },
+ "mainsheet": {
+  "note": "Four parts between the boom's two after bands and two blocks on the counter: the standing part on the after deck block's becket, up to the after boom block, down round the after deck block, up to the forward boom block, down round the forward deck block, and the fall aft to the lee mainsheet winch.",
+  "rope": "mainsheet", "winch": "Mainsheet", "cut_m": 112.0
+ },
+ "tails": {
+  "note": "The runners' and checkstays' tackles' falls (slice 5's tackles; called 'Runner tackle's fall' and 'Checkstay tackle's fall') leave the lower block's second sheave inboard, in the sheave's plane, to their winch, which stands in that plane on its plinth; a let-off fall is cast off its winch and lies on deck to its coil. The rope's length is slice 5's (the let-off parts and their tail allowance).",
+  "runner": {"winch": "Runner"},
+  "checkstay": {"winch": "Checkstay"}
+ },
+ "coil": {
+  "note": "A tail beyond its cleat is flemished down on the deck: a flat spiral from 'r_in' out to at most 'r_out', then another layer on top coming back in, and so on, each layer one diameter higher.",
+  "r_in": 0.05, "r_out": 0.45, "gap": 0.001
+ },
+ "checks": {
+  "note": "Every loaded rope's lead rises onto its capstan's drum by 'rise_deg' (the turns climb the drum rather than ride over each other), meets each sheave square to its axle within 'fleet_deg' (the blocks, the tails' lower blocks and the halyard boxes at the mast's foot) or 'fleet_aloft_deg' (the halyard boxes aloft, whose sheaves are fixed in the mast while the lead swings with the sail), and every rope keeps 'room_mm' clear of everything but its own gear along its length. The build also holds each rope clear of itself (two parts of it more than four diameters apart along it at least a diameter apart, less 1 mm) and without kinks (no turn over 60 degrees across three diameters outside its sheaves, turns, hitch and coil), and every lead's fixed-point loop settled to 0.5 mm.",
+  "rise_deg": [0.0, 12.0],
+  "fleet_deg": 4.0,
+  "fleet_aloft_deg": 8.0,
+  "fleet_exempt": {"note": "Leads the fleet check leaves out, each with why.", "Pole lift box aloft": "The lift leads off its box on the mast's forward face to whichever side the pole is set (about 36 degrees off the sheave's plane with the pole squared to starboard), over the box's flared lip, as period masts had it; a swivel block on an eye there would lead it fair (a known gap)."},
+  "room_mm": 3.0
+ }
+}

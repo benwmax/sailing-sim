@@ -1,4 +1,4 @@
-"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-6).
+"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-7).
 
 Slice 1 lofted the hull's lines (loft.py); slice 2 finished it (shell.py, finish_bluebonnet.json): the shell split at
 its paint lines (bottom, boot top, topsides, gold cove) and the lead casting's top, the plating drawn in the paint from
@@ -18,8 +18,14 @@ the size card's estimate for the standing rigging. Slice 6 builds the sails (sai
 sails_bluebonnet.json): the mainsail, the overlapping genoa, the quadrilateral jib and its staysail and the parachute
 spinnaker in cream cotton, cut in their period panels with seams, tablings, corner patches and reef points drawn by
 their materials, each in its states (set, lowered, flaked on the boom or bagged); every suit of sails (the genoa's, the
-quadrilateral's, the spinnaker's, moored, lowered, doused) is posed with its boom and pole and checked clear, and the
-.blend is saved under main and genoa with the other states hidden.
+quadrilateral's, the spinnaker's, moored, lowered, doused) is posed with its boom and pole and checked clear. Slice 7
+builds the winches and running rigging (winches.py, running.py, running_bluebonnet.json): bronze capstans and reel
+winches on teak pads with their horn cleats, the lead blocks hanging on their padeyes, the halyards' sheave boxes on
+the mast, and for each suit the sheets, guys, foreguy, mainsheet, halyards and the runners' tails led through their
+blocks to their winches, turned on the drums, hitched and flemished down; each rope is checked for room along its
+length, each fitting for contact, each lead's rise onto its drum and angle to its sheaves, and their weight replaces
+the size card's estimate, the trimming ballast taking up the difference. The .blend is saved under main and genoa with
+the other states hidden.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
 
@@ -27,11 +33,12 @@ Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom an
 the deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics,
 the rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
 the boom's and the pole's frames, the rig's measures, sweeps and attachment points, the sails' measures, weights and
-suit checks), plus the drawings from drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png,
-deck_profile.png, sail_plan.png, rigging_plan.png, sail_cut.png, sail_suits.png; they need matplotlib). Units are metres
-in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle of the load waterline. Edit
-loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py and the json files, never the .blend. The
-moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
+suit checks, the running rigging's leads, room and weights), plus the drawings from drawings_jclass.py (plating.png,
+rudder_sections.png, deck_plan.png, deck_profile.png, sail_plan.png, rigging_plan.png, sail_cut.png, sail_suits.png,
+running_plan.png; they need matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on
+the centreline at the middle of the load waterline. Edit loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py,
+sail_materials.py, winches.py, running.py and the json files, never the .blend. The moulded hull of slice 1 stays in the
+.blend as `Hull`, hidden from renders: the fairness check measures it.
 """
 import json
 import math
@@ -53,6 +60,7 @@ import spars  # noqa: E402
 import rigging  # noqa: E402
 import sails  # noqa: E402
 import sail_materials  # noqa: E402
+import running  # noqa: E402
 import drawings_jclass  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -1078,16 +1086,19 @@ def rigging_overlaps(rig_items, other_items, wires):
     return {"crossing": bad, "ok": not bad}
 
 
-def slide_lane_check(items):
+def slide_lane_check(items, riders=()):
     """The lane the mainsail's slides need up its track (spars.slide_lane) against everything shown: nothing but the
-    track may cross it or lie inside it (faces crossing its sides, and vertices inside it)."""
+    track may cross it or lie inside it (faces crossing its sides, and vertices inside it). `riders`: the groups that
+    ride up the lane above the headboard, ahead of the slides (the main halyard and its shackle), left out."""
     from mathutils.bvhtree import BVHTree
     V, F = spars.slide_lane()
     lane = BVHTree.FromPolygons([Vector(tuple(v)) for v in to_blender(np.asarray(V))], F, epsilon=0.0)
     tree, who = _labelled(items)
     bad = {}
+    def rides(lb):
+        return any(lb == g or lb.startswith(g + " | ") for g in riders)
     for _, j in lane.overlap(tree):
-        if who[j][1] != "Mainsail track":
+        if who[j][1] != "Mainsail track" and not rides(who[j][1]):
             k = f"{who[j][0]}: {who[j][1]}"
             bad[k] = bad.get(k, 0) + 1
     ln = spars.RG["track"]["slide_lane"]
@@ -1110,11 +1121,11 @@ def slide_lane_check(items):
                     vlab.setdefault(i, labels[k])
         for i in np.nonzero(inside)[0]:
             lb = vlab.get(int(i), ob.name)
-            if lb != "Mainsail track":
+            if lb != "Mainsail track" and not rides(lb):
                 k = f"{ob.name}: {lb}"
                 bad[k] = bad.get(k, 0) + 1
     return {"from_s_m": round(s0, 3), "to_s_m": round(s1, 3), "half_width_m": ln["half_width"], "out_m": ln["out"],
-            "crossing": bad, "ok": not bad}
+            "riders_left_out": list(riders), "crossing": bad, "ok": not bad}
 
 
 
@@ -1278,6 +1289,152 @@ def sail_suit_check(shown, hull_items, spar_items, rig_items, reach=1.0):
         rows[ob.name] = {"free_points": len(free), "free_faces": len(tris), "samples": len(Pa), "least": own}
     return {"crossing": bad, "room": rows, "tight": tight, "room_fail_under_mm": SAIL_ROOM_MM, "reach_m": reach,
             "measured": "over the free faces, both ways", "ok": not bad and not tight}
+
+# ------------------------------------------------------------------------------------------------ slice 7's checks
+SPAR_EYES = {"Mainsheet eyes", "Topping lift eye", "Pole end eyes"}
+RUN_DECK_KINDS = {"pad", "padeye", "cleat"}                  # let into the deck or bolted down on it
+RUN_PAIRS = ({"link", "padeye"}, {"shackle", "becket"})       # a block's link through its padeye, a shackle in a becket
+
+
+def _piece_inside(V, F, by_piece, sub):
+    """inside(q, piece): a point inside a labelled piece's solid (a ray from it crosses its faces an odd number of
+    times)."""
+    from mathutils.bvhtree import BVHTree
+
+    def inside(q, piece):
+        if piece not in sub:
+            idx = by_piece[piece]
+            used = sorted({i for k in idx for i in F[k]})
+            remap = {i: j for j, i in enumerate(used)}
+            sub[piece] = BVHTree.FromPolygons([V[i] for i in used], [tuple(remap[i] for i in F[k]) for k in idx],
+                                              epsilon=0.0)
+        t, d, p, hits = sub[piece], Vector((0.5773, 0.5779, 0.5767)).normalized(), Vector(tuple(q)), 0
+        while hits < 400:
+            loc = t.ray_cast(p, d)[0]
+            if loc is None:
+                break
+            hits += 1
+            p = loc + d * 1e-6
+        return hits % 2 == 1
+    return inside
+
+
+def rope_room(ropes, items, step=0.05, reach=0.12, fail_mm=3.0):
+    """Each running rope's room along its centreline (running.py's records, in pieces): sampled every `step`, or
+    closer for a thin rope (1.8 times its radius plus `fail_mm`, so an edge between two samples cannot reach past the
+    rope's skin by more than the margin unseen), and at every vertex, the faces of everything shown within `reach`, leaving out the rope's own tube and fittings (its
+    object's faces labelled with its group) and what each piece may touch by design (its 'allow': (object, label
+    prefix): the sheave and cheeks of a block it runs through, its drum, its cleat, the deck under its coil, the mast
+    it runs into). The gap is the distance less the rope's radius, less than nothing inside a solid; under `fail_mm`
+    fails."""
+    tree, who, V, F = _labelled(items, raw=True)
+    by_piece = {}
+    for k, wk in enumerate(who):
+        by_piece.setdefault(wk, []).append(k)
+    inside = _piece_inside(V, F, by_piece, {})
+    rows = []
+    for rp in ropes:
+        grp, own, r = rp["group"], rp["object"], rp["r"]
+        st = min(step, 1.8 * (r + fail_mm / 1000.0))
+        best, n = None, 0
+        for pc in rp["pieces"]:
+            allow = [tuple(a) for a in pc["allow"]]
+            P = to_blender(np.asarray(pc["path"], float))
+            for a, b in zip(P[:-1], P[1:]):
+                L = float(np.linalg.norm(b - a))
+                for t in list(np.arange(0.0, L, st)) + [L]:
+                    q = a + (b - a) * (t / max(L, 1e-9))
+                    n += 1
+                    nearest = None
+                    for loc, nrm, idx, d in tree.find_nearest_range(Vector(tuple(q)), r + reach):
+                        obn, label = who[idx]
+                        if obn == own and (label == grp or label.startswith(grp + " | ")):
+                            continue
+                        if any(obn == o and label.startswith(pre) for o, pre in allow):
+                            continue
+                        gap = d - r
+                        if best is None or gap < best[0]:
+                            best = (gap, obn, label, pc["name"], q)
+                        dot = (Vector(tuple(q)) - loc).dot(nrm)
+                        if nearest is None or d < nearest[0] - 1e-7 or (d < nearest[0] + 1e-7 and dot > nearest[1]):
+                            nearest = (d, dot, idx)
+                    if nearest and nearest[1] < -1e-7 and inside(q, who[nearest[2]]):
+                        d, _, idx = nearest
+                        gap = -d - r
+                        if gap < best[0]:
+                            best = (gap, who[idx][0], who[idx][1], pc["name"], q)
+        row = {"rope": rp["name"], "object": own, "samples": n}
+        if best:
+            row.update(least_gap_mm=round(best[0] * 1000, 1), against=f"{best[1]}: {best[2]}", piece=best[3],
+                       at=[round(float(v), 3) for v in best[4]])
+        rows.append(row)
+    tight = [r for r in rows if r.get("least_gap_mm") is not None and r["least_gap_mm"] < fail_mm]
+    have = [r for r in rows if r.get("least_gap_mm") is not None]
+    return {"rows": rows, "step_m": f"{step} or 1.8 x (radius + margin)", "reach_m": reach, "fail_under_mm": fail_mm,
+            "tight": tight, "ok": not tight,
+            "least": min(have, key=lambda r: r["least_gap_mm"]) if have else None}
+
+
+def running_overlaps(run_items, other_items, corners, pairs, zone=0.025, headboard=0.1):
+    """Faces of the running rigging's fittings (its winches, pads, cleats, padeyes, boxes, blocks, links, shackles,
+    eyes and lashing; the ropes' own tubes are the room check's) crossing anything else or each other (pieces of
+    different groups), less the contacts by design: a pad, a padeye or a cleat on the deck, a halyard box in the
+    mast's skin, a link or a shackle through a spar's eye, a shackle, its rope's eye or the lashing through a sail's
+    corner (its cringle or headboard, and the cloth, tapes and ropes there: the cloth is drawn whole inside the ring and
+    under the board), a link through its own padeye, a shackle in its own block's becket (`pairs`: the groups that
+    meet so, as running.py records them). `corners` maps each sail shown to its
+    cringles' (centre in the hull's frame, the ring's outer radius, 0 for a headboard); a fitting's face meets a sail at
+    its corner when all its corners lie within `zone` past the ring's outside (within `headboard` of a headboard's
+    shackle point). Also returns, for each sail, how far past its ring the farthest of those faces reaches."""
+    tr, wr, Vr, Fr = _labelled(run_items, raw=True)
+    to, wo, Vo, Fo = _labelled(other_items, raw=True)
+    far = {}
+    own_pairs = [set(p) for p in pairs]
+
+    def fitting(lb):
+        return " | " in lb
+
+    def at_corner(b, i):
+        q = to_blender(np.array([tuple(Vr[k]) for k in Fr[i]]))
+        for o, R in corners[b[0]]:
+            reach = float(np.linalg.norm(q - np.asarray(o, float), axis=1).max())
+            if reach <= (R + zone if R > 0 else headboard):
+                past = round(reach - R, 4) if R > 0 else None
+                if past is not None:
+                    far[b[0]] = max(far.get(b[0], -1.0), past)
+                return True
+        return False
+
+    def allowed(a, b, i):
+        ka = rigging.kind_of(a[1])
+        if b[0] in HULL_DECK:
+            return b[0] == "Deck" and ka in RUN_DECK_KINDS
+        if b[0] == "Mast":
+            return ka == "halyard box" and b[1] in MAST_SKIN
+        if b[0] in SPARS:
+            return ka in ("link", "shackle", "lashing") and b[1] in SPAR_EYES
+        if b[0] in corners:
+            if ka not in ("shackle", "eye", "lashing"):
+                return False
+            return b[1].endswith("cringle") or b[1] == "Headboard" or at_corner(b, i)
+        return False
+    bad = {}
+    for i, j in tr.overlap(to):
+        if fitting(wr[i][1]) and not allowed(wr[i], wo[j], i):
+            k = f"{wr[i][0]}: {wr[i][1]} x {wo[j][0]}: {wo[j][1]}"
+            bad[k] = bad.get(k, 0) + 1
+    for i, j in tr.overlap(tr):
+        a, b = wr[i], wr[j]
+        if i >= j or not (fitting(a[1]) and fitting(b[1])):
+            continue                                      # a rope's tube: the room check's
+        if rigging.group_of(a[1]) == rigging.group_of(b[1]):
+            continue
+        mine = {rigging.group_of(a[1]), rigging.group_of(b[1])} in own_pairs
+        if not (mine and {rigging.kind_of(a[1]), rigging.kind_of(b[1])} in RUN_PAIRS):
+            k = " x ".join(sorted((f"{a[0]}: {a[1]}", f"{b[0]}: {b[1]}")))
+            bad[k] = bad.get(k, 0) + 1
+    return {"crossing": bad, "ok": not bad, "corner_zone_m": zone, "farthest_corner_contact_past_ring_m": far}
+
 
 def merge_sweeps(outs):
     """The boom's (or the pole's) sweeps on each tack, each against that tack's rigging, as one."""
@@ -1542,10 +1699,103 @@ def main():
     bad = {n: c for n, c in srep["pole_stowed_checks"].items() if not c["ok"]}
     if bad:
         raise SystemExit(f"the pole stowed on deck crosses or comes too near something: {bad}")
+    # the running rigging (slice 7): the winches, the lead blocks' padeyes and the halyards' boxes fixed, and each suit's
+    # ropes (running.py, running_bluebonnet.json) led on starboard tack with the suit's boom, pole and sails; the
+    # winches' leads, their room, their fittings' contacts and the slides' lane are checked in each suit, and their
+    # weight replaces the size card's estimate for the running rigging, the trimming ballast taking up the difference
+    G = np.asarray(pts["gooseneck_pin"], float)
+    stow_R, stow_t = np.asarray(ps["R"], float), np.asarray(ps["t"], float)
+
+    def suit_obstacles(name):
+        """Everything on deck in a suit but the running rigging, in the hull's frame, for where the coils may lie."""
+        suit = suits[name]
+        R = sails.rot(spars.A, math.radians(suit.get("boom_deg", 0.0)))
+        out = [(np.asarray(p.V, float), p.F) for p in [parts["Deck"]] + [parts[k] for k in DECK_PARTS]]
+        out.append((np.asarray(sp_parts["Mast"].V, float), sp_parts["Mast"].F))
+        out.append((G + (np.asarray(sp_parts["Boom"].V, float) - G) @ R.T, sp_parts["Boom"].F))
+        V = np.asarray(sp_parts["SpinnakerPole"].V, float)
+        out.append((V @ stow_R.T + stow_t if suit.get("pole") == "stowed" else V, sp_parts["SpinnakerPole"].F))
+        out += [(np.asarray(rg_parts[k].V, float), rg_parts[k].F) for k in rigging.OBJECTS + TACKS["starboard"]]
+        for k in suit["sails"]:
+            V = np.asarray(sl_parts[k].V, float)
+            out.append((G + (V - G) @ R.T if sl_parts[k].frame is not None else V, sl_parts[k].F))
+        return out
+
+    def sail_corners(suit):
+        """Each of a suit's sails' cringles: (centre in the hull's frame, with the suit's boom; the ring's outer radius,
+        0 for a headboard)."""
+        R = sails.rot(spars.A, math.radians(suit.get("boom_deg", 0.0)))
+        out = {}
+        for k in suit["sails"]:
+            p = sl_parts[k]
+            out[k] = []
+            for c in (p.cringles or {}).values():
+                if "R" not in c:
+                    continue                              # the spinnaker's halyard block, not a corner
+                o = np.asarray(c["c"], float)
+                out[k].append((G + (o - G) @ R.T if p.frame is not None else o, float(c["R"]) + float(c["r"])))
+        return out
+    rn_parts, rnrep = running.build(pts, rr, sl_parts, deck_rep["footprints"], sh.sheer, suit_obstacles)
+    run_obs = {k: part_object(p, mats) for k, p in rn_parts.items()}
+    for k, ob in run_obs.items():
+        ob["slice"] = 7
+        if k.startswith("Running."):
+            ob["suit"] = k.split(".", 1)[1]
+        checks[k] = shell_check((ob,))
+    if not all(checks[k]["closed"] for k in run_obs):
+        raise SystemExit(f"a piece of the running rigging does not close: "
+                         f"{ {k: checks[k] for k in run_obs if not checks[k]['closed']} }")
+    fixed_run = [(run_obs[k], rn_parts[k].labels) for k in ("Winches", "RunningFittings")]
+    rig_items = [(rig_obs[k], rg_parts[k].labels) for k in rigging.OBJECTS + TACKS["starboard"]]
+    rnrep["room"], rnrep["contacts"], rnrep["slide_lane"], rnrep["hitch_room"] = {}, {}, {}, {}
+    for name, suit in suits.items():
+        pose_spars(posable, suit.get("boom_deg", 0.0), suit_pole(suit), pl["set_deg"])
+        sail_items = [(sail_obs[k], sl_parts[k].labels) for k in suit["sails"]]
+        run_items = fixed_run + [(run_obs[f"Running.{name}"], rn_parts[f"Running.{name}"].labels)]
+        rnrep["room"][name] = rope_room(rnrep["ropes"][name], hull_items + spar_items + rig_items + sail_items + run_items)
+        rnrep["contacts"][name] = running_overlaps(run_items, hull_items + spar_items + rig_items + sail_items,
+                                                   sail_corners(suit), rnrep["suits"][name]["pairs"])
+        rnrep["slide_lane"][name] = slide_lane_check(spar_items + run_items, riders=(running.MAIN_HALYARD,))
+        # each hitch against its cleat (and the rest of the winches): the room check lets a hitch touch its own cleat,
+        # so here it may not come into it at all
+        hitches = [dict(rp, pieces=[dict(pc, allow=[a for a in pc["allow"] if not str(a[1]).endswith(" | cleat")])
+                                    for pc in rp["pieces"] if pc["name"] == "hitch"])
+                   for rp in rnrep["ropes"][name] if any(pc["name"] == "hitch" for pc in rp["pieces"])]
+        rnrep["hitch_room"][name] = rope_room(hitches, fixed_run[:1], fail_mm=0.0)
+    rnrep["leads"] = running.lead_checks(rnrep)
+    rnrep["shape"] = running.shape_checks(rnrep)
+    bad = {n: (c["tight"], rnrep["contacts"][n]["crossing"]) for n, c in rnrep["room"].items()
+           if not (c["ok"] and rnrep["contacts"][n]["ok"])}
+    if bad:
+        raise SystemExit(f"the running rigging comes too near or crosses something: {bad}")
+    bad = {n: c["crossing"] for n, c in rnrep["slide_lane"].items() if not c["ok"]}
+    if bad:
+        raise SystemExit(f"the running rigging is in the mainsail's slides' lane: {bad}")
+    bad = {n: c["tight"] for n, c in rnrep["hitch_room"].items() if not c["ok"]}
+    if bad:
+        raise SystemExit(f"a hitch comes into its cleat: {bad}")
+    if not rnrep["shape"]["ok"]:
+        sc, kk = rnrep["shape"]["self_clearance"], rnrep["shape"]["kinks"]
+        raise SystemExit(f"a rope runs into itself or kinks: { {n: c['tight'] for n, c in sc.items() if c['tight']} } "
+                         f"{ {n: c['kinked'] for n, c in kk.items() if c['kinked']} }")
+    if not rnrep["leads"]["ok"]:
+        raise SystemExit(f"a rope leads badly onto its drum or a sheave: {rnrep['leads']['failing']}")
+    rw = rnrep["weights"]
+    wc = rw["winches_and_cleats"]
+    if wc["total_long_tons"] > loft.SPECS["weights"]["winches_and_hardware"]:
+        raise SystemExit(f"the winches and cleats weigh {wc['total_long_tons']} long tons, more than the size card's "
+                         f"{loft.SPECS['weights']['winches_and_hardware']} for all the deck hardware")
+    run_w = rw["running_rigging"]
+    finish["lead"]["for_the_running_rigging_long_tons"] = shell.retrim(
+        finish, loft.SPECS["weights"]["running_rigging"] - run_w["total_long_tons"])
     g = suits["Genoa"]
     pose_spars(posable, g["boom_deg"], suit_pole(g), pl["set_deg"])
     for k, ob in sail_obs.items():
         if k not in g["sails"]:
+            ob.hide_render = True
+            ob.hide_set(True)
+    for k, ob in run_obs.items():
+        if ob.get("suit") not in (None, "Genoa"):
             ob.hide_render = True
             ob.hide_set(True)
     lt = dw["total_long_tons"]
@@ -1553,7 +1803,9 @@ def main():
                                                           "spars": (sw["total_long_tons"], sw["centre"][0],
                                                                     sw["centre"][2]),
                                                           "standing_rigging": (gw["total_long_tons"], gw["centre"][0],
-                                                                               gw["centre"][2])})
+                                                                               gw["centre"][2]),
+                                                          "running_rigging": (run_w["total_long_tons"],
+                                                                              run_w["centre"][0], run_w["centre"][2])})
     # the windward shrouds' breaking moment against her righting moment heeled 30 degrees
     rm30 = w["total_long_tons"] * deck.LT_KG * 9.81 * w["gm_m"] * 0.5 / 1000.0
     rr["strength"]["righting_moment_30_deg_knm"] = round(rm30, 0)
@@ -1597,38 +1849,48 @@ def main():
     write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
     rig_shown = [rig_obs[k] for k in rigging.OBJECTS + rigging.SAILING]
     sail_shown = [sail_obs[k] for k in suits["Genoa"]["sails"]]
+    run_shown = [run_obs[k] for k in ("Winches", "RunningFittings", "Running.Genoa")]
     visible = ([shell_ob, transom, deck_ob, rudder, stock] + letters + list(deck_obs.values()) + list(spar_obs.values())
-               + rig_shown + sail_shown)
+               + rig_shown + sail_shown + run_shown)
     tris = {ob.name: tri_count(ob) for ob in visible}
     slice3 = sum(tris[ob.name] for ob in [deck_ob] + list(deck_obs.values()))
     slice4 = sum(tris[ob.name] for ob in spar_obs.values())
     slice5 = sum(tris[ob.name] for ob in rig_shown)
     sail_tris = {k: tri_count(ob) for k, ob in sail_obs.items()}
     slice6 = {n: sum(sail_tris[k] for k in v["sails"]) for n, v in suits.items()}
-    build = {"slice": 6, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+    run_tris = {k: tri_count(ob) for k, ob in run_obs.items()}
+    slice7 = {n: run_tris["Winches"] + run_tris["RunningFittings"] + run_tris[f"Running.{n}"] for n in suits}
+    build = {"slice": 7, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
              "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
              "budget_slice_4": 250000, "triangles_slice_5": slice5, "budget_slice_5": 250000,
              "triangles_slice_6_by_suit": slice6, "triangles_slice_6_states": sail_tris,
              "triangles_slice_6_all_states": sum(sail_tris.values()), "budget_slice_6": 300000,
+             "triangles_slice_7_by_suit": slice7, "triangles_slice_7_objects": run_tris, "budget_slice_7": 400000,
              "triangles_hidden_states": {k: tri_count(rig_obs[k]) for k in rigging.STATES if k not in rigging.SAILING},
              "triangles_hidden_reference_hull": tri_count(hull),
-             "budget_slices_1_6": 200000 + 350000 + 500000 + 250000 + 250000 + 300000,
+             "budget_slices_1_7": 200000 + 350000 + 500000 + 250000 + 250000 + 300000 + 400000,
              "sail_area_ft2": rig["sail_area_ft2"],
              "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep,
              "rig": rig, "rigging": spars.rnd(rr), "sails": spars.rnd({k: v for k, v in srep.items()
-                                                                       if not k.startswith("_")})}
+                                                                       if not k.startswith("_")}),
+             "running": spars.rnd(running.summary(rnrep))}
     if (slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]
-            or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]):
-        raise SystemExit(f"slices 3, 4, 5 and 6 have {slice3}, {slice4}, {slice5} and {slice6} triangles, over a budget")
+            or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]
+            or max(slice7.values()) > build["budget_slice_7"]):
+        raise SystemExit(f"slices 3, 4, 5, 6 and 7 have {slice3}, {slice4}, {slice5}, {slice6} and {slice7} triangles, "
+                         f"over a budget")
     with open(os.path.join(OUT, "build.json"), "w") as f:
         json.dump(build, f, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
     drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep, rig=(sp_parts, rig),
                              rigging=(rg_parts, rr, rigging.OBJECTS + rigging.SAILING),
-                             sails=(sl_parts, srep, sails.SL["cloth"]))
+                             sails=(sl_parts, srep, sails.SL["cloth"]), running=(rn_parts, rnrep))
     short = {k: v for k, v in finish["rudder"].items() if k != "helm_sweep"}
     short["helm_sweep"] = {k: v for k, v in sweep.items() if k != "turns"}
     print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3, "slice_4": slice4,
-                      "slice_5": slice5, "slice_6": slice6,
+                      "slice_5": slice5, "slice_6": slice6, "slice_7": slice7,
+                      "running": {k: v for k, v in running.summary(rnrep).items() if k in ("leads", "weights")},
+                      "running_room": {n: {"ok": c["ok"], "least": c["least"]} for n, c in rnrep["room"].items()},
+                      "running_contacts": {n: c["ok"] for n, c in rnrep["contacts"].items()},
                       "sails": {k: {a: v[a] for a in ("area_m2", "area_ft2", "total_kg")} for k, v in srep["sails"].items()},
                       "wardrobe": {k: srep["wardrobe"][k] for k in ("total_kg", "total_long_tons")},
                       "press": {k: {a: v[a] for a in ("most_moved_m", "held_points_asked_m", "points_pushed_both_ways")}

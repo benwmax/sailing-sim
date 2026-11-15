@@ -1,6 +1,6 @@
-"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-6).
+"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-7).
 
-    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6]
+    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7]
 
 <out dir> is where loft.py, build_jclass.py, fairness.py and render_jclass.py wrote (renders in <out>/renders). Slice 1
 (the default) copies build.json, hydrostatics.json, sections.json and fairness.json and writes the clay, zebra and
@@ -11,6 +11,7 @@ and profile views with the deck on, and the deck's two drawings (deck_plan.png, 
 same three jsons and writes the rig renders and the sail plan (sail_plan.png). Slice 5 copies the same three jsons and
 writes the rigging renders and the rigging plan (rigging_plan.png). Slice 6 copies the same three jsons and writes the
 sails' renders (the 200 m silhouettes first, Milestone A's) and the sails' two drawings (sail_cut.png, sail_suits.png).
+Slice 7 copies the same three jsons and writes the running rigging's renders and its plan (running_plan.png).
 Each image is a JPEG under 300 KB (docs images are plain git, not LFS), with a contact sheet of the renders. Needs
 Pillow.
 """
@@ -31,8 +32,8 @@ for _a in _it:
         raise SystemExit(f"docs_jclass.py: unknown option {_a}")
     else:
         ARGS.append(_a)
-if len(ARGS) != 2 or SLICE not in (1, 2, 3, 4, 5, 6):
-    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3|4|5|6]")
+if len(ARGS) != 2 or SLICE not in (1, 2, 3, 4, 5, 6, 7):
+    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3|4|5|6|7]")
 OUT, DOCS = ARGS
 RENDERS = {
     1: ["clay_profile", "clay_plan", "clay_bow34", "clay_stern34", "clay_bow", "clay_stern", "clay_under",
@@ -50,6 +51,9 @@ RENDERS = {
         "sails_200m_spin_abeam", "sails_200m_quad", "sails_profile", "sails_lee34", "sails_backlit", "sails_quad34",
         "sails_spin34", "sails_head", "sails_clew", "sails_luff", "sails_hanks", "sails_genoa_clew", "sails_spin_head",
         "sails_moored", "sails_lowered", "sails_stack"],
+    7: ["running_afterdeck", "running_primary", "running_mainsheet", "running_runner", "running_mast_foot",
+        "running_reel", "running_masthead", "running_genoa_lead", "running_quad", "running_spin34", "running_pole_end",
+        "running_spin_quarter", "running_moored", "running_profile", "running_capstan", "running_reel_close"],
 }[SLICE]
 JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.json"),
              ("sections.json", "sections.json"), ("fairness.json", "fairness.json")],
@@ -61,7 +65,8 @@ DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             3: [("deck_plan.png", "deck_plan.jpg", 2000), ("deck_profile.png", "deck_profile.jpg", 1800)],
             4: [("sail_plan.png", "sail_plan.jpg", 1800)],
             5: [("rigging_plan.png", "rigging_plan.jpg", 2000)],
-            6: [("sail_cut.png", "sail_cut.jpg", 2000), ("sail_suits.png", "sail_suits.jpg", 1800)]}[SLICE]
+            6: [("sail_cut.png", "sail_cut.jpg", 2000), ("sail_suits.png", "sail_suits.jpg", 1800)],
+            7: [("running_plan.png", "running_plan.jpg", 2000)]}[SLICE]
 LIMIT = 290_000
 
 
