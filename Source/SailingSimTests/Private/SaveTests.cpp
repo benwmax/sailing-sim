@@ -55,6 +55,8 @@ namespace SailSaveTestsLocal
 		T.ResolutionScale = 75;
 		T.FrameCap = 60;
 		T.bCinematicLook = true;
+		T.bLensWater = false;     // (both default on)
+		T.bCameraShake = false;
 		T.HudScale = 115;
 		T.TextScale = 130;
 		T.SpeedUnits = TEXT("kmh");
@@ -171,6 +173,8 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("resolution"), Y.ResolutionScale, X.ResolutionScale);
 	TestEqual(TEXT("frame cap"), Y.FrameCap, X.FrameCap);
 	TestEqual(TEXT("cinematic"), Y.bCinematicLook, X.bCinematicLook);
+	TestEqual(TEXT("lens water"), Y.bLensWater, X.bLensWater);
+	TestEqual(TEXT("camera shake"), Y.bCameraShake, X.bCameraShake);
 	TestEqual(TEXT("hud scale"), Y.HudScale, X.HudScale);
 	TestEqual(TEXT("text scale"), Y.TextScale, X.TextScale);
 	TestEqual(TEXT("speed units"), Y.SpeedUnits, X.SpeedUnits);

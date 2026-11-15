@@ -151,6 +151,14 @@ public:
 	 *  the metered neutral look. Photo mode always uses it; -SailingCinematic=0|1 overrides. Medium and above. */
 	UPROPERTY(config, EditAnywhere, Category = "Graphics")
 	bool bCinematicLook = false;
+	/** Storm look (docs/storm-look/): rain and spray drops on the camera's glass (M_LensWater; High and Ultra, not in the
+	 *  capture mode). On by default (Bean, Nov 15 2026). */
+	UPROPERTY(config, EditAnywhere, Category = "Graphics")
+	bool bLensWater = true;
+	/** Storm look: the camera shakes with the boat's slams, a sea coming aboard and the gusts (the chase and cockpit
+	 *  views; never in photo mode, the capture mode or a measured run). On by default; off for anyone motion bothers. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	bool bCameraShake = true;
 
 	// Bean's playtest (Oct 20): the Display and Graphics page. Each row is -1 (Auto: the Quality tier's own, so the tiers are
 	// presets that fill them in) or an override; benches and captures ignore them all (IsMeasuring).

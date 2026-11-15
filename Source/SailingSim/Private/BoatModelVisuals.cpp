@@ -9,6 +9,7 @@
 #include "SailboatPawn.h"
 #include "Misc/PackageName.h"
 #include "CourseMarks.h"
+#include "GreenWater.h"
 #include "SailingFrame.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "BenchRunner.h"
@@ -1861,12 +1862,32 @@ void ASailboatPawn::UpdateBoatWetness(float DeltaSeconds)
 			GM->GetWaves().Sample(B.X, B.Y, S.Time, H, Vz, Sx, Sy);
 			const double Closing = Vz - BowV.Z, Speed = FVector2D(BowV.X, BowV.Y).Size();
 			if (Speed > 2.0) Throw += 0.04f * float(Speed - 2.0) * DeltaSeconds;
+			BuffetSlamClosing = BowNow.Z <= H + 0.15 && Speed > 1.5 ? Closing : 0.0;   // the camera's buffet (UpdateCameraBuffet)
 			if (BowNow.Z <= H + 0.15 && Closing > 0.45 && Speed > 1.5)
 				Throw += 0.8f * float(FMath::Min(Closing, 2.5) - 0.45) * FMath::Min(float(Speed) / 3.f, 1.5f) * DeltaSeconds;
 		}
 		LastBowM = BowNow;
 		bHasLastBow = true;
 		SprayWetness = FMath::Clamp(SprayWetness + Throw - DeltaSeconds / 40.f, 0.f, 1.f);
+	}
+	// Storm look 2 (docs/storm-look/green-water/): solid water over her sheer (the bow buried, the lee rail under) comes
+	// aboard as a sheet streaming over the deck (M_BoatSurface's and the hero's Wash), soaks the deck and tops up its low
+	// spots; it runs off over the side and out of the cockpit in a couple of seconds. AWaterSurface throws the sheets.
+	{
+		const FGreenWater Green = T.bCapsized ? FGreenWater() : GreenWaterOn(Boat, &GM->GetWaves(), S.Time);
+		BuffetGreenM = Green.DepthM;
+		if (Green.DepthM > 0.02)
+		{
+			const float In = FMath::Clamp(float(Green.DepthM) / 0.12f, 0.f, 1.f);
+			WashSide = In > WashLevel ? float(Green.Side) : WashSide;
+			WashLevel = FMath::Max(WashLevel, In);
+			DeckWetness = 1.f;
+			SprayWetness = FMath::Max(SprayWetness, In);
+			PuddleLevel = FMath::Min(1.f, PuddleLevel + DeltaSeconds * 0.4f * In);
+		}
+		WashLevel = FMath::Max(0.f, WashLevel - DeltaSeconds / 1.8f);
+		UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("Wash"), WashLevel);
+		UKismetMaterialLibrary::SetScalarParameterValue(this, BoatParameters, TEXT("WashSide"), WashSide);
 	}
 	// Splash band: the bow wave and the chop climb the topsides with speed and sea, and spray after them.
 	const float Band = 4.f + float(Hs) * 45.f + FMath::Clamp(Knots - 3.f, 0.f, 6.f) * 2.5f + 25.f * SprayWetness;

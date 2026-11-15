@@ -1,4 +1,5 @@
 #include "WaterSurface.h"
+#include "GreenWater.h"
 #include "SailingFrame.h"
 #include "SeaState.h"
 #include "BenchRunner.h"
@@ -1775,6 +1776,7 @@ AWaterSurface::FGaleSpray AWaterSurface::GaleSprayFor(double MeanKnots)
 	FGaleSpray G;
 	G.Gale = FMath::SmoothStep(24.f, 32.f, float(MeanKnots));
 	G.Spindrift = FMath::SmoothStep(33.f, 41.f, float(MeanKnots));
+	G.Torn = FMath::SmoothStep(22.f, 30.f, float(MeanKnots));
 	G.Samples = 24 + FMath::RoundToInt32(72.f * G.Gale);
 	return G;
 }
@@ -1839,6 +1841,35 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		const Vec3 B = M.BodyToWorld(Vec3(0.85 * Hull.BowX, 0.0, 0.0));
 		const FVector Bow(B.X, B.Y, B.Z);
 		if (FVector2D::Distance(FVector2D(Bow.X, Bow.Y), CamM) > 120.0) { LastBow.Remove(*It); continue; }
+		// Storm look 2 (docs/storm-look/green-water/): a sea over her sheer comes aboard: sheets of water and torn drops
+		// thrown up off the rail where it is deepest, left behind by the boat (so they sweep aft across her deck) and
+		// pushed inboard, off the rail they came over. The pawn's deck film (MPC_Boat Wash) carries what runs over the deck.
+		{
+			const FGreenWater Green = M.GetTelemetry().bCapsized ? FGreenWater() : GreenWaterOn(M, Waves, T);
+			if (Green.DepthM > 0.02)
+			{
+				const float Dense = float(MaxDroplets()) / float(kMaxDroplets);
+				const int32 Count = FMath::Min(FMath::RoundToInt(Dense * Dt * 500.f * FMath::Min(float(Green.DepthM), 0.3f) + SprayRng.FRand()), FMath::RoundToInt(10.f * Dense));
+				const Vec3 BoatV = M.GetState().Velocity;
+				const Vec3 Inboard = M.GetState().Orientation.Rotate(Vec3(0.0, Green.Side < 0.0 ? 1.0 : -1.0, 0.0));
+				for (int32 I = 0; I < Count; ++I)
+				{
+					// (Each seeded draw its own const: the order of draws inside one expression differs between compilers.)
+					const float Along = SprayRng.FRandRange(-0.6f, 0.6f);
+					const float Push = SprayRng.FRandRange(0.6f, 1.8f) * float(FMath::Abs(Green.Side));
+					const float Up = SprayRng.FRandRange(0.4f, 1.4f) * FMath::Sqrt(FMath::Min(float(Green.DepthM) / 0.1f, 2.f));
+					const float Size = SprayRng.FRandRange(0.3f, 0.6f);
+					const float Life = SprayRng.FRandRange(0.3f, 0.55f);
+					const Vec3 A = M.BodyToWorld(Vec3(Green.X + Along, 0.0, 0.0)) - M.BodyToWorld(Vec3(Green.X, 0.0, 0.0));
+					const FVector P(Green.At.X + A.X, Green.At.Y + A.Y, Green.At.Z + 0.05);
+					const FVector V = FVector(BoatV.X, BoatV.Y, 0.0) * 0.15f + FVector(Inboard.X, Inboard.Y, 0.0) * Push + FVector(0, 0, Up);
+					Emit(P, V, Size, ESprayKind::Sheet, Life);
+					const float DropSize = SprayRng.FRandRange(0.08f, 0.2f);
+					const float DropLife = SprayRng.FRandRange(0.5f, 1.1f);
+					Emit(P + FVector(0, 0, 0.1f), V * 1.2f + FVector(0, 0, 0.6f), DropSize, ESprayKind::Drops, DropLife);
+				}
+			}
+		}
 		FVector* Last = LastBow.Find(*It);
 		const FVector BowV = Last && Dt > 0.f ? (Bow - *Last) / Dt : FVector::ZeroVector;
 		LastBow.Add(*It, Bow);
@@ -1959,6 +1990,33 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 				const FVector V = WindAt2m * SprayRng.FRandRange(0.3f, 0.7f) + FVector(0, 0, SprayRng.FRandRange(0.5f, 1.6f));
 				Emit(P, V, SprayRng.FRandRange(0.08f, 0.2f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
 				if (I == 0) Emit(P, V * 0.5f, SprayRng.FRandRange(0.6f, 1.2f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.5f));
+			}
+			// Storm look item 4: from about 25 kn the wind tears the lip off a share of the breaking crests: a short sheet off
+			// the top, a wisp of spume streaming downwind at half the wind's speed and a few fine drops carried with it.
+			if (Gale.Torn > 0.f && SprayRng.FRand() < Gale.Torn)
+			{
+				const FVector Lip(X, Y, H + 0.15);
+				const float SheetCarry = SprayRng.FRandRange(0.6f, 0.8f);
+				const float SheetLift = SprayRng.FRandRange(0.4f, 1.f);
+				const float SheetSize = SprayRng.FRandRange(0.3f, 0.6f);
+				const float SheetLife = SprayRng.FRandRange(0.25f, 0.5f);
+				Emit(Lip, WindAt2m * SheetCarry + FVector(0, 0, SheetLift), SheetSize, ESprayKind::Sheet, SheetLife);
+				const float WispCarry = SprayRng.FRandRange(0.5f, 0.75f);
+				const float WispLift = SprayRng.FRandRange(0.3f, 0.9f);
+				const float WispSize = SprayRng.FRandRange(0.5f, 1.f);
+				const float WispLife = SprayRng.FRandRange(0.8f, 1.6f);
+				Emit(Lip, WindAt2m * WispCarry + FVector(0, 0, WispLift), WispSize, ESprayKind::Mist, WispLife);
+				const int32 Fine = 2 + FMath::Min(2, int32(SprayRng.FRand() * 3.f));
+				for (int32 F = 0; F < Fine; ++F)
+				{
+					const float DropX = SprayRng.FRandRange(-0.3f, 0.3f);
+					const float DropY = SprayRng.FRandRange(-0.3f, 0.3f);
+					const float DropCarry = SprayRng.FRandRange(0.55f, 0.85f);
+					const float DropLift = SprayRng.FRandRange(0.6f, 1.4f);
+					const float DropSize = SprayRng.FRandRange(0.04f, 0.1f);
+					const float DropLife = SprayRng.FRandRange(0.4f, 0.9f);
+					Emit(Lip + FVector(DropX, DropY, 0.0), WindAt2m * DropCarry + FVector(0, 0, DropLift), DropSize, ESprayKind::Drops, DropLife);
+				}
 			}
 			// Spindrift: a sheet of mist torn off the crest, carried at most of the wind's speed, low over the water.
 			if (Gale.Spindrift > 0.f && SprayRng.FRand() < Gale.Spindrift)
@@ -2263,6 +2321,9 @@ void AWaterSurface::UpdateMaterial()
 	{
 		if (Tree.Value) Tree.Value->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
 	}
+	// Storm look 1 (docs/storm-look/whitecaps/): -SailingClassicFoam draws the caps as before (M_WaterV4's FoamLife 0).
+	static SailingArgs::FCachedFlag ClassicFoamArg(TEXT("SailingClassicFoam"));
+	WaterMaterial->SetScalarParameterValue(TEXT("FoamLife"), ClassicFoamArg.Get() ? 0.f : 1.f);
 	static SailingArgs::FCachedFlag PolarizedArg(TEXT("SailingPolarized"));
 	const bool bPolarizedArg = PolarizedArg.Get();
 	WaterMaterial->SetScalarParameterValue(TEXT("Polarized"), (GPolarized != 0 || bPolarizedArg) ? 1.f : 0.f);

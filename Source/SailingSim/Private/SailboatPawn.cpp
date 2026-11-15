@@ -1380,6 +1380,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
 	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
 	// Drills: follow the boat and the crew's actions.
@@ -2291,6 +2292,40 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
 	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard
+}
+
+void ASailboatPawn::UpdateCameraBuffet(float DeltaSeconds)
+{
+	// Storm look (docs/storm-look/camera-buffet/): the slams and seas UpdateBoatWetness saw this frame, and the wind on the
+	// camera, shake the view a little (FCameraBuffet). Settings > Camera shake turns it off; it never runs in photo mode,
+	// the capture mode or a measured run (benches and stills stay steady). The chase camera sits at its arm's end with
+	// nothing else in its relative transform; the cockpit view is placed each frame, so the shake is added after it.
+	static SailingArgs::FCachedFlag NoShakeArg(TEXT("SailingNoCameraShake"));
+	const bool bOn = USailingSettings::Get()->bCameraShake && !USailingSettings::IsMeasuring() && !IsCaptureMode() && !bPhoto && !bWatching
+		&& !NoShakeArg.Get() && Camera;
+	if (!bOn)
+	{
+		if (bBuffetApplied && Camera && !bCockpit) Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+		bBuffetApplied = false;
+		CameraBuffet.Reset();
+		return;
+	}
+	FCameraBuffetInput In;
+	In.Dt = DeltaSeconds;
+	In.Time = Boat.GetState().Time;
+	In.SlamClosingMs = BuffetSlamClosing;
+	In.GreenWaterM = BuffetGreenM;
+	In.ApparentWindMs = Boat.GetTelemetry().ApparentWindSpeed;
+	CameraBuffet.Step(In);
+	const FVector Offset = FVector(CameraBuffet.OffsetX, CameraBuffet.OffsetY, CameraBuffet.OffsetZ) * CmPerMeter;
+	const FRotator Turn(float(CameraBuffet.PitchDeg), float(CameraBuffet.YawDeg), float(CameraBuffet.RollDeg));
+	if (bCockpit)
+	{
+		Camera->AddLocalOffset(Offset);
+		Camera->AddLocalRotation(Turn);
+	}
+	else Camera->SetRelativeLocationAndRotation(Offset, Turn);
+	bBuffetApplied = true;
 }
 
 void ASailboatPawn::UpdatePhotoLens()

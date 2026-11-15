@@ -1195,6 +1195,20 @@ bool FWaterGaleSprayTest::RunTest(const FString&)
 		Last = G.Gale + G.Spindrift;
 	}
 	TestTrue(TEXT("It only grows with the wind"), bMonotone);
+	// Storm look item 4: torn crests from Beaufort 6, all of them by 30 kn.
+	TestEqual(TEXT("20 kn: no crest is torn"), AWaterSurface::GaleSprayFor(20.0).Torn, 0.f);
+	const float Torn26 = AWaterSurface::GaleSprayFor(26.0).Torn;
+	TestTrue(FString::Printf(TEXT("26 kn: some crests torn (%.2f)"), Torn26), Torn26 > 0.2f && Torn26 < 0.8f);
+	TestEqual(TEXT("32 kn: every breaking crest torn"), AWaterSurface::GaleSprayFor(32.0).Torn, 1.f);
+	float LastTorn = -1.f;
+	bool bTornMonotone = true;
+	for (double Kn = 18.0; Kn <= 36.0; Kn += 0.5)
+	{
+		const float Torn = AWaterSurface::GaleSprayFor(Kn).Torn;
+		bTornMonotone &= Torn >= LastTorn;
+		LastTorn = Torn;
+	}
+	TestTrue(TEXT("Torn crests only grow with the wind"), bTornMonotone);
 	return true;
 }
 

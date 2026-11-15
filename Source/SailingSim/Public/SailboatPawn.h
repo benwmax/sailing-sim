@@ -20,6 +20,7 @@
 #include "CrewPose.h"
 #include "CrewMotion.h"
 #include "CockpitEye.h"
+#include "CameraBuffet.h"
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatSkin.h"
@@ -469,6 +470,12 @@ private:
 	float CockpitLastYaw = 0.f;
 	double CockpitLookedAt = -1e9;           // when the player last turned the view
 	void UpdateCockpitCamera(float DeltaSeconds);
+	/** Storm look (docs/storm-look/camera-buffet/): Settings > Camera shake: slams, seas coming aboard and strong wind
+	 *  buffet the chase and cockpit views (FCameraBuffet), fed by UpdateBoatWetness's bow and rail tests. */
+	void UpdateCameraBuffet(float DeltaSeconds);
+	Sailing::FCameraBuffet CameraBuffet;
+	double BuffetSlamClosing = 0.0, BuffetGreenM = 0.0;
+	bool bBuffetApplied = false;
 	void UpdatePhotoLens();
 	/** The boat's context, and photo mode's above it while photo mode is open. */
 	void ApplyMappingContexts();
@@ -701,6 +708,10 @@ private:
 	TArray<FDrip> DripList;
 	float DripClock = 0.f;
 	float SprayWetness = 0.f;   // spray hull: 0..1, the topsides wetted by the bow wave and slams, drying in about 40 s
+	/** Storm look 2 (docs/storm-look/green-water/): the sheet of water streaming over the deck after a sea comes aboard
+	 *  (0..1, draining in a couple of seconds; MPC_Boat Wash) and which rail it came over (-1 port, +1 starboard, 0 the bow). */
+	float WashLevel = 0.f;
+	float WashSide = 0.f;
 	FVector LastBowM = FVector::ZeroVector;
 	bool bHasLastBow = false;
 	bool bRigLinesBuilt = false;

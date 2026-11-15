@@ -99,7 +99,10 @@ public:
 	 *  0..1 fades in from 24 to 32 kn (Beaufort 7; M_WaterV4's streaks fade in alike), Spindrift 0..1 from 33 to 41 kn
 	 *  (Beaufort 8: the crests' edges blow off), Samples the crest points UpdateSpray tries a frame (24, four times that in a
 	 *  full gale). */
-	struct FGaleSpray { int32 Samples = 24; float Gale = 0.f; float Spindrift = 0.f; };
+	/** Storm look item 4: Torn is the share of breaking crests whose lip the wind tears off (a sheet, a wisp of spume and a
+	 *  few drops streaming downwind), from Beaufort 6 ("probably some spray") to full by 30 kn, before the gale's extra
+	 *  crests (Gale, 24-32 kn) and its spindrift (Beaufort 8, 33-41 kn). */
+	struct FGaleSpray { int32 Samples = 24; float Gale = 0.f; float Spindrift = 0.f; float Torn = 0.f; };
 	static FGaleSpray GaleSprayFor(double MeanKnots);
 	static constexpr double FarCapArea = 1.5;      // m^2: one cap's foam on a lake (a metre or two along the wind)
 	static constexpr double FarCapTileM = 400.0;   // m
