@@ -143,8 +143,11 @@ The stills of phase 1 and 2 (this folder) showed text that could not be read, an
   green and warning).
 - Quiz: one sheet; a right or wrong answer is edged in the paper's starboard or port.
 
+- Career: the tier's lessons and checkride are a page of chart paper (medals in inks that read on it); the tier cards
+  stay on glass beside it. The logbook's own redesign comes next.
+
 Stills: `pause`, `briefing` (`-SailingDrill=LeavetheDock -SailingFrontEnd=Briefing`), `quiz`
-(`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`).
+(`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`), `career`.
 
 ## What comes next
 

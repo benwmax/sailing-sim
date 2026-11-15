@@ -2311,7 +2311,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 	}
 	E.Content = SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 24.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 14.f, 0.f)[ Left ], FMargin(28.f, 24.f, 14.f, 24.f)) ]
-		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Right ], FMargin(26.f, 22.f)) ];
+		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 0.f, 12.f)[ Right ], FMargin(26.f, 22.f)) ];
 	PaperScope.Reset();
 	E.Focus = Go;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Start the drill")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip")) }, TEXT("The game is paused while you read"));
@@ -2640,6 +2640,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	const FSailSave::FProgress& Prog = Career.Get();
 	auto MedalColour = [](ECareerMedal M)
 	{
+		// (On the paper page the metals are inks dark enough to read: 4.5:1 or better on chart paper.)
+		if (OnPaper()) return M == ECareerMedal::Gold ? Hex(0x7A5E14) : (M == ECareerMedal::Silver ? Hex(0x55616B) : (M == ECareerMedal::Bronze ? Hex(0x8A4B1E) : Dim));
 		return M == ECareerMedal::Gold ? Hex(0xE2B84E) : (M == ECareerMedal::Silver ? Hex(0xC4CDD3) : (M == ECareerMedal::Bronze ? Hex(0xC08552) : Dim));
 	};
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Career); Show(Stack.Last(), true); };
@@ -2715,7 +2717,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::Printf(TEXT("%d/%d"), Prog.RacesWon, Prog.RacesSailed), TEXT("Races won")) ], FMargin(16.f, 12.f))
 	];
 
-	// Right: the tier's lessons and checkride.
+	// Right: the tier's lessons and checkride, a page of chart paper (UI overhaul; the tiers stay on glass beside it).
+	TOptional<FScopedPaper> PaperScope;
+	PaperScope.Emplace();
 	TSharedRef<SVerticalBox> Detail = SNew(SVerticalBox);
 	if (Shown)
 	{
@@ -2823,13 +2827,16 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		];
 	}
 
+	const TSharedRef<SWidget> DetailPage = PanelBox(Detail, FMargin(24.f));
+	PaperScope.Reset();
+
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(Content.School.IsEmpty() ? FString(TEXT("Career")) : Content.School, TEXT("Learn to sail"), 0) ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Tiers ] ]
-			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ DetailPage ] ]
 		];
 	if (StartFocus == ECareerFocus::FirstJob && FirstJobFocus.IsValid()) E.Focus = FirstJobFocus;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Tiers, lessons")),
