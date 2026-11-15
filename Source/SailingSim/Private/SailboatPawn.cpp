@@ -8,6 +8,7 @@
 #include "PerfScopes.h"
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
+#include "UI/SailUIStyle.h"
 #include "SailSession.h"
 #include "SailSave.h"
 #include "GroomComponent.h"
@@ -4041,9 +4042,8 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	else if (Action == TEXT("ToggleHud"))
 	{
 		// Graphics G4: H cycles the HUD: full, minimal (cluster, compass, drill, toasts), off (toasts only).
-		Settings->bShowHud = true;
-		SSailHud::Mode = (SSailHud::Mode + 1) % 3;
-		Settings->Save();
+		// UI overhaul: the three modes are Helpful, Natural and Off, and the choice is saved (SailUI::SetUiMode).
+		SailUI::SetUiMode(SailUI::EUiMode((SSailHud::Mode + 1) % 3));
 	}
 	else if (Action == TEXT("ResetBoat"))
 	{

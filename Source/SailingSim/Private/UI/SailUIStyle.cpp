@@ -1,6 +1,7 @@
 #include "UI/SailUIStyle.h"
 #include "SailingSim.h"
 #include "SailingSettings.h"
+#include "UI/SailHud.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Fonts/CompositeFont.h"
@@ -18,10 +19,15 @@ namespace SailUI
 		return FLinearColor(FColor((RGB >> 16) & 255, (RGB >> 8) & 255, RGB & 255)).CopyWithNewOpacity(Alpha);
 	}
 
-	const FLinearColor Ink = Hex(0x0A141C), Panel = Hex(0x0D1D28, 0.8f), PanelSolid = Hex(0x102130), Raise = Hex(0x17303F),
-		Line = Hex(0x2B4554), Fg = Hex(0xEAF0F2), Muted = Hex(0x93A8B4), Dim = Hex(0x71889A), Accent = Hex(0xF4C430),
-		AccentInk = Hex(0x1D1600), Selected = Hex(0xEAF0F2, 0.75f), Chart = Hex(0xD14F9B), Water = Hex(0x2F6F97),
+	// Glass: ink-blue panels over the water, chart-paper text, chart magenta for focus and the main action. (The yellow of
+	// the first UI is Caution now, and nothing else.) Contrast on Panel: Fg 13:1, Muted 7.7:1, Dim 5.2:1, Accent 4.7:1.
+	const FLinearColor Ink = Hex(0x15222C), Panel = Hex(0x15222C, 0.82f), PanelSolid = Hex(0x1B2B36), Raise = Hex(0x26394A),
+		Line = Hex(0x3B5161), Fg = Hex(0xF0E8D2), Muted = Hex(0xAEB6B0), Dim = Hex(0x8C968F), Accent = Hex(0xDB5FA3),
+		AccentInk = Hex(0x15222C), Selected = Hex(0xF0E8D2, 0.75f), Chart = Hex(0xD14F9B), Water = Hex(0x2F6F97),
 		Land = Hex(0xCDBF98), Port = Hex(0xE2483D), Starboard = Hex(0x2DB36A), Warn = Hex(0xFF9A2E), WindTrue = Hex(0x9FD3FF);
+	// Paper: chart paper, ink, the chart's own magenta (deeper, for paper), brass for medals.
+	const FLinearColor Paper = Hex(0xF0E8D2), PaperInk = Hex(0x15222C), PaperMuted = Hex(0x4A5A64), PaperLine = Hex(0xCFC4A6),
+		AccentDeep = Hex(0xA62B6E), Brass = Hex(0xA98A44), Caution = Hex(0xF4C430);
 
 	namespace
 	{
@@ -69,30 +75,32 @@ namespace SailUI
 
 	FSlateFontInfo Font(EType T)
 	{
+		// UI overhaul: nothing under 15 px at 1080p (labels were 12, notes 14, body 17), sentence case without the wide
+		// tracking, and the player's text size on every style under 30 px.
+		const float K = TextScale();
 		switch (T)
 		{
 		case EType::Logo: return Make(Saira(), TEXT("Bold"), 120, 0);
-		case EType::ScreenTitle: return Make(Saira(), TEXT("SemiBold"), 60, 20);
+		case EType::ScreenTitle: return Make(Saira(), TEXT("SemiBold"), 56, 0);
 		case EType::CardTitle: return Make(Saira(), TEXT("SemiBold"), 38, 0);
 		case EType::CardTitleM: return Make(Saira(), TEXT("SemiBold"), 30, 0);
-		case EType::CardTitleS: return Make(Saira(), TEXT("SemiBold"), 22, 0);
-		case EType::MenuItem: return Make(Saira(), TEXT("SemiBold"), 30, 40);
-		case EType::Eyebrow: return Make(SairaSemi(), TEXT("SemiBold"), 14, 180);
-		case EType::Label: return Make(SairaSemi(), TEXT("SemiBold"), 12, 140);
-		case EType::Ui: return Make(SairaSemi(), TEXT("Medium"), 17 * TextScale(), 0);
-		case EType::Button: return Make(SairaSemi(), TEXT("SemiBold"), 19, 60);
-		case EType::Value: return Make(SairaSemi(), TEXT("SemiBold"), 19, 0);
-		case EType::InstrumentBig: return Make(SairaSemi(), TEXT("SemiBold"), 48, 0);
-		case EType::Body: return Make(Sans(), TEXT("Regular"), 17 * TextScale(), 0);
-		case EType::Small: return Make(Sans(), TEXT("Regular"), 14 * TextScale(), 0);
+		case EType::CardTitleS: return Make(Saira(), TEXT("SemiBold"), 24 * K, 0);
+		case EType::MenuItem: return Make(Saira(), TEXT("SemiBold"), 30, 10);
+		case EType::Eyebrow: return Make(SairaSemi(), TEXT("SemiBold"), 16 * K, 120);
+		case EType::Label: return Make(SairaSemi(), TEXT("SemiBold"), 15 * K, 80);
+		case EType::Ui: return Make(SairaSemi(), TEXT("Medium"), 20 * K, 0);
+		case EType::Button: return Make(SairaSemi(), TEXT("SemiBold"), 21 * K, 10);
+		case EType::Value: return Make(SairaSemi(), TEXT("SemiBold"), 21 * K, 0);
+		case EType::InstrumentBig: return Make(SairaSemi(), TEXT("SemiBold"), 52, 0);
+		case EType::Body: return Make(Sans(), TEXT("Regular"), 20 * K, 0);
+		case EType::Small: return Make(Sans(), TEXT("Regular"), 17 * K, 0);
 		}
-		return Make(Sans(), TEXT("Regular"), 17, 0);
+		return Make(Sans(), TEXT("Regular"), 20, 0);
 	}
 
 	bool IsUpper(EType T)
 	{
-		return T == EType::Logo || T == EType::ScreenTitle || T == EType::CardTitle || T == EType::CardTitleM || T == EType::CardTitleS
-			|| T == EType::MenuItem || T == EType::Eyebrow || T == EType::Label || T == EType::Button;
+		return T == EType::Eyebrow || T == EType::Label;
 	}
 
 	FText Txt(const FString& S, EType T)
@@ -135,6 +143,25 @@ namespace SailUI
 		UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
 		if (Tex) Kept.Textures.Add(Path, Tex);
 		return Tex;
+	}
+
+	EUiMode UiMode()
+	{
+		return EUiMode(FMath::Clamp(USailingSettings::Get()->UiMode, 0, 2));
+	}
+
+	void SetUiMode(EUiMode Mode)
+	{
+		USailingSettings* S = USailingSettings::Get();
+		S->UiMode = int32(Mode);
+		S->bShowHud = true;
+		SSailHud::Mode = int32(Mode);
+		S->Save();
+	}
+
+	const TCHAR* UiModeName(EUiMode Mode)
+	{
+		return Mode == EUiMode::Helpful ? TEXT("Helpful") : Mode == EUiMode::Natural ? TEXT("Natural") : TEXT("Off");
 	}
 
 	bool IsLow()

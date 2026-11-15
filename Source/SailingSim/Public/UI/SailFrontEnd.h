@@ -20,7 +20,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch, Customize };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch, Customize, Components };
 
 struct FCareerLesson;
 
@@ -118,7 +118,10 @@ private:
 	FEntry BuildCredits();
 	/** The developer-only asset gallery (docs/gallery/pc/, Inputs/gallery/brief.md G2; UI/SailGallery.cpp). */
 	FEntry BuildGallery();
-	/** #402 (docs/first-launch/): a new save's two questions, then the first job (or the title). */
+	/** UI overhaul (docs/ui-overhaul/; UI/SailComponents.cpp): the developer-only component page, every token, type style
+	 *  and shared widget on one screen. */
+	FEntry BuildComponents();
+	/** #402 (docs/first-launch/): a new save's questions, then the first job (or the title). */
 	FEntry BuildFirstLaunch();
 	/** #402: a lesson's quiz taken from its Career row or retaken from the finish panel (no drill sailed this time). */
 	FString QuizRetakeLessonId;

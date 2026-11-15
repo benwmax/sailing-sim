@@ -32,7 +32,7 @@ namespace SailUI
 			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Size), FSlateLayoutTransform(FVector2f(Inset))), Brush, ESlateDrawEffect::None, Tint * Brush->TintColor.GetSpecifiedColor());
 		}
 
-		/** The draggable track with its yellow fill and knob. */
+		/** The draggable track with its magenta fill and knob. */
 		class SSailTrack : public SLeafWidget
 		{
 		public:
@@ -142,6 +142,28 @@ namespace SailUI
 		return SNew(SSailButton).Look(bPrimary ? EButtonLook::Primary : EButtonLook::Secondary).OnClicked(OnClicked).Padding(FMargin(28.f, 14.f))
 			[ SNew(SBox).HAlign(HAlign_Center)[ Text(Label, EType::Button, bPrimary ? AccentInk : Fg) ] ];
 	}
+
+	TSharedRef<SSailButton> MenuRow(const FString& Label, const FString& Sub, FSimpleDelegate OnClicked, bool bEnabled, float PadY)
+	{
+		// The text asks its own row whether it has the focus (the row is made after its text, so through a holder).
+		const TSharedRef<TWeakPtr<SSailButton>> Self = MakeShared<TWeakPtr<SSailButton>>();
+		auto Colour = [Self](const FLinearColor& Off, const FLinearColor& On)
+		{
+			return TAttribute<FSlateColor>::CreateLambda([Self, Off, On]()
+			{
+				const TSharedPtr<SSailButton> Row = Self->Pin();
+				return FSlateColor(Row.IsValid() && Row->IsFocusedNow() ? On : Off);
+			});
+		};
+		const TSharedRef<SSailButton> Row = SNew(SSailButton).Look(EButtonLook::MenuRow).OnClicked(OnClicked).IsEnabled(bEnabled).Padding(FMargin(32.f, PadY, 18.f, PadY))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextAttr(Txt(Label, EType::MenuItem), EType::MenuItem, Colour(bEnabled ? Fg : Muted, PaperInk)) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ TextAttr(Txt(Sub, EType::Small), EType::Small, Colour(Muted, PaperMuted)) ]
+		];
+		*Self = Row;
+		return Row;
+	}
 }
 
 // ---------------------------------------------------------------- SSailButton
@@ -218,7 +240,18 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel, SailUI::RadiusCard, bSel ? SailUI::Selected : SailUI::Line, bSel ? 1.5f : 1.f), T);
 		break;
 	case SailUI::EButtonLook::Pin:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Accent : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), SailUI::Fg, 2.f), T);
+		// A chosen pin is paper with a magenta edge (it was yellow; magenta on magenta would not show).
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Paper : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), bSel ? SailUI::AccentDeep : SailUI::Fg, 2.f), T);
+		break;
+	case SailUI::EButtonLook::MenuRow:
+		if (bFocus)
+		{
+			// The paper label under the focused row, and the chart's magenta diamond at its head.
+			SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Paper, 2.f), T);
+			const float Cy = float(G.GetLocalSize().Y) * 0.5f;
+			FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(10.f, Cy), FVector2f(16.f, Cy - 6.f), FVector2f(22.f, Cy), FVector2f(16.f, Cy + 6.f), FVector2f(10.f, Cy) },
+				ESlateDrawEffect::None, SailUI::AccentDeep * T, true, 3.f);
+		}
 		break;
 	case SailUI::EButtonLook::MenuItem:
 		if (bFocus)
@@ -246,9 +279,9 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 		FSlateDrawElement::MakeLines(Out, Max + 1, G.ToPaintGeometry(), { O + FVector2f(0.f, 7.f), O + FVector2f(5.f, 12.f), O + FVector2f(15.f, 0.f) },
 			ESlateDrawEffect::None, SailUI::Accent * T, true, 3.f);
 	}
-	if (bFocus && Look != SailUI::EButtonLook::MenuItem)
+	if (bFocus && Look != SailUI::EButtonLook::MenuItem && Look != SailUI::EButtonLook::MenuRow)
 	{
-		// Focus: a 3 px yellow ring and a soft glow (white on the yellow button).
+		// Focus: a 3 px magenta ring and a soft glow (paper on the magenta button).
 		const float R = Look == SailUI::EButtonLook::Pin ? FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f) : (Look == SailUI::EButtonLook::Card ? SailUI::RadiusCard : SailUI::RadiusButton);
 		const FLinearColor Ring = Look == SailUI::EButtonLook::Primary ? SailUI::Fg : SailUI::Accent;
 		SailUI::Box(Out, Max + 2, G, FVector2D(-7.f), SailUI::Rounded(FLinearColor::Transparent, R + 7.f, Ring.CopyWithNewOpacity(0.22f), 6.f), T);
