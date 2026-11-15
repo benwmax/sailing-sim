@@ -174,7 +174,12 @@ try {
 		}
 		$B = $Benches[1]
 	} finally {
-		Get-Process SailingSim-Win64-Shipping -ErrorAction SilentlyContinue | Stop-Process -Force
+		# Only the smokes' own game: a Stop-Process by name would also close a tester zip Bean is playing on this PC
+		# (Nov 15 2026 dry run). The Shipping bootstrap and the game both run from this build's folder.
+		$Mine = (Resolve-Path $Folder).Path.TrimEnd('\') + '\'
+		Get-Process SailingSim*, SailingSim-Win64-Shipping -ErrorAction SilentlyContinue |
+			Where-Object { $_.Path -and $_.Path.StartsWith($Mine, [System.StringComparison]::OrdinalIgnoreCase) } |
+			Stop-Process -Force -ErrorAction SilentlyContinue
 		if ($Holding) {
 			Start-Sleep -Seconds 2
 			Rename-Item $Saved "Saved.friday-$Sha"   # the smokes' own logs and crashes, kept beside it
