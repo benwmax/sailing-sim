@@ -1067,6 +1067,14 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), CameraPos);
 	const double RainHere = GM->GetRainAt(CamMap.X, CamMap.Y);
 	const bool bRaining = RainHere > 0.01;
+	if (LensMaterial && PostProcess)
+	{
+		// Settings > Graphics > Water on the lens (storm look): the blendable stays, its weight follows the setting
+		// (a blendable at weight 0 is not drawn).
+		const float LensWeight = USailingSettings::Get()->bLensWater ? 1.f : 0.f;
+		for (FWeightedBlendable& Blend : PostProcess->Settings.WeightedBlendables.Array)
+			if (Blend.Object == LensMaterial) Blend.Weight = LensWeight;
+	}
 	if (LensMaterial)
 	{
 		// The air over the glass: the wind less the camera's own motion, in screen axes (+y down), with gravity.
@@ -1950,7 +1958,8 @@ void ASailingEnvironment::UpdateHaze()
 	if (!Fog || !GM) return;
 	const FWeatherState& W = GM->GetWeatherState();
 	const int32 World = USailingSettings::Get()->World;
-	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day and 1.5 km a downpour.
+	// Koschmieder: visibility ~ 3.9 / extinction. Tuned so 25 km is a clear lake day; a downpour is 0.8 km
+	// (FStormRain::VisibilityKm, storm look: METAR +TSRA is 1/4 to 1 statute mile).
 	// Wide World Rendering PR 4: the clamp reaches 80 km now (a mistral day), FHaze (Haze.h).
 	const float Density = float(Sailing::FHaze::FogDensity(W.VisibilityKm));
 	UExponentialHeightFogComponent* F = Fog->GetComponent();

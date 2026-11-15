@@ -4,6 +4,8 @@
 #include "Algo/Reverse.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "CameraBuffet.h"
+#include "GreenWater.h"
 #include "Ocean.h"
 #include "ScriptedScene.h"
 #include "SailingGameMode.h"
@@ -159,6 +161,123 @@ bool FRainFootTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Heavy rain under the core"), Mid.Rain > 0.7);
 	TestTrue(TEXT("Dry a few kilometres ahead of the storm at the same moment"), Mid.RainAt(Mid.Front.StartX + std::cos(Mid.Front.MoveDegrees * kDegToRad) * 1e5,
 		Mid.Front.StartY + std::sin(Mid.Front.MoveDegrees * kDegToRad) * 1e5, FWeatherSystem::kRainStarts + 60.0) == 0.0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDownpourVisibilityTest, "SailingSim.Weather.DownpourVisibility", StormTestFlags)
+bool FDownpourVisibilityTest::RunTest(const FString& Parameters)
+{
+	// Storm look 3 (docs/storm-look/): rain eats the horizon. A downpour is half a statute mile (airport reports in heavy
+	// thunderstorm rain), moderate rain already halves a clear 10 km, and rain never clears the air.
+	TestEqual(TEXT("Dry air keeps its visibility"), FStormRain::VisibilityKm(10.0, 0.0), 10.0, 1e-9);
+	TestEqual(TEXT("A downpour: 0.8 km"), FStormRain::VisibilityKm(10.0, 1.0), FStormRain::DownpourVisibilityKm, 1e-9);
+	TestEqual(TEXT("... from any clear air"), FStormRain::VisibilityKm(25.0, 1.0), FStormRain::DownpourVisibilityKm, 1e-9);
+	const double Moderate = FStormRain::VisibilityKm(10.0, FStormRain::Amount(7.6));   // moderate's upper bound
+	const double Heavy = FStormRain::VisibilityKm(10.0, FStormRain::Amount(25.0));
+	AddInfo(FString::Printf(TEXT("From 10 km: %.1f km in moderate rain (7.6 mm/h), %.1f km in heavy (25 mm/h), %.1f km in a downpour"),
+		Moderate, Heavy, FStormRain::VisibilityKm(10.0, 1.0)));
+	TestTrue(TEXT("Moderate rain: 3-6 km (2-4 statute miles)"), Moderate >= 3.0 && Moderate <= 6.0);
+	TestTrue(TEXT("Heavy rain: 1-2 km"), Heavy >= 1.0 && Heavy <= 2.0);
+	double Last = 1e9;
+	bool bFalls = true;
+	for (double R = 0.0; R <= 1.0; R += 0.05)
+	{
+		const double V = FStormRain::VisibilityKm(10.0, R);
+		bFalls = bFalls && V <= Last + 1e-12;
+		Last = V;
+	}
+	TestTrue(TEXT("More rain, less visibility"), bFalls);
+	TestEqual(TEXT("Air already thicker than a downpour stays as it is"), FStormRain::VisibilityKm(0.5, 1.0), 0.5, 1e-9);
+	// The thunderstorm's core, as a boat in it sees it: the heaviest rain along the storm's track.
+	FWeatherSystem Weather;
+	Weather.Configure(EWeatherPreset::Thunderstorm, 3, 16.0);
+	const double T = FWeatherSystem::kRainStarts + 60.0;
+	FWeatherState Mid = Weather.Evaluate(T);
+	const double CA = std::cos(Mid.Front.MoveDegrees * kDegToRad), SA = std::sin(Mid.Front.MoveDegrees * kDegToRad);
+	double X = Mid.Front.StartX, Y = Mid.Front.StartY, Most = -1.0;
+	for (double Along = -30000.0; Along <= 60000.0; Along += 100.0)
+	{
+		const double PX = Mid.Front.StartX + CA * Along, PY = Mid.Front.StartY + SA * Along;
+		const double R = Mid.RainAt(PX, PY, T);
+		if (R > Most) { Most = R; X = PX; Y = PY; }
+	}
+	Mid.Rain = Most;
+	Mid.LocalizeStorm(X, Y, T);
+	AddInfo(FString::Printf(TEXT("In the core: rain %.2f, visibility %.2f km"), Mid.Rain, Mid.VisibilityKm));
+	TestTrue(TEXT("The core is a downpour"), Mid.Rain > 0.9);
+	TestTrue(TEXT("... and the far shore is gone in it: under 1.2 km"), Mid.VisibilityKm < 1.2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGreenWaterTest, "SailingSim.Physics.GreenWater", StormTestFlags)
+bool FGreenWaterTest::RunTest(const FString& Parameters)
+{
+	// Storm look 2 (docs/storm-look/green-water/): solid water comes aboard where the sea stands over her sheer. A J/22
+	// floats with her deck dry, keeps it dry heeled to 20 degrees, puts her lee rail under past about 28 (her 0.62 m of
+	// freeboard over a 1.18 m half beam), and buries her bow pitched 15 degrees down.
+	FBoatModel Boat;
+	Boat.Reset(0.0, 0.0, 0.0, 0.0);
+	const Quat Level = Boat.GetState().Orientation;
+	TestEqual(TEXT("Afloat on flat water: dry"), GreenWaterOn(Boat, nullptr, 0.0).Points, 0);
+	auto Heeled = [&](double Deg, int SideDown)   // SideDown +1: the starboard rail toward the water
+	{
+		Boat.GetMutableState().Orientation = Level * Quat::FromAxisAngle({ 1, 0, 0 }, -SideDown * Deg * kDegToRad);
+		return GreenWaterOn(Boat, nullptr, 0.0);
+	};
+	TestEqual(TEXT("Heeled 20 degrees: dry"), Heeled(20.0, 1).Points, 0);
+	const FGreenWater Stbd = Heeled(40.0, 1), Port = Heeled(40.0, -1);
+	AddInfo(FString::Printf(TEXT("Heeled 40 degrees: %.2f m over the lee rail at %.2f m (side %.2f), %d points"), Stbd.DepthM, Stbd.X, Stbd.Side, Stbd.Points));
+	TestTrue(TEXT("Heeled 40 degrees: the lee rail is under"), Stbd.DepthM > 0.1 && Stbd.Points >= 3);
+	TestEqual(TEXT("... on the starboard side"), Stbd.Side, 1.0, 1e-9);
+	TestEqual(TEXT("... or the port side, heeled the other way"), Port.Side, -1.0, 1e-9);
+	TestTrue(TEXT("... as deep either way (she is symmetric)"), FMath::Abs(Port.DepthM - Stbd.DepthM) < 0.02);
+	TestTrue(TEXT("Deeper the further she goes over"), Heeled(55.0, 1).DepthM > Stbd.DepthM);
+	Boat.GetMutableState().Orientation = Level * Quat::FromAxisAngle({ 0, 1, 0 }, 15.0 * kDegToRad);
+	const FGreenWater Bow = GreenWaterOn(Boat, nullptr, 0.0);
+	AddInfo(FString::Printf(TEXT("Bow down 15 degrees: %.2f m over the deck at %.2f m, side %.2f"), Bow.DepthM, Bow.X, Bow.Side));
+	TestTrue(TEXT("Bow down 15 degrees: a sea over the bow"), Bow.DepthM > 0.05 && Bow.X > 2.0);
+	TestTrue(TEXT("... across both rails"), FMath::Abs(Bow.Side) < 0.1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCameraBuffetTest, "SailingSim.Visual.CameraBuffet", StormTestFlags)
+bool FCameraBuffetTest::RunTest(const FString& Parameters)
+{
+	// Storm look (docs/storm-look/camera-buffet/): a calm sail holds the camera still; a hard slam kicks it once (a held bow
+	// does not keep kicking) by a few centimetres and a degree or two, and it settles within a second; a gale's apparent
+	// wind makes it tremble, a little.
+	auto Run = [](FCameraBuffet& B, double Seconds, double Slam, double Green, double Wind, double& PeakPitch, double& PeakZ, double T0 = 0.0)
+	{
+		PeakPitch = 0.0; PeakZ = 0.0;
+		for (double T = 0.0; T < Seconds; T += 1.0 / 60.0)
+		{
+			FCameraBuffetInput In;
+			In.Dt = 1.0 / 60.0; In.Time = T0 + T; In.SlamClosingMs = Slam; In.GreenWaterM = Green; In.ApparentWindMs = Wind;
+			B.Step(In);
+			PeakPitch = FMath::Max(PeakPitch, FMath::Abs(B.PitchDeg));
+			PeakZ = FMath::Max(PeakZ, FMath::Abs(B.OffsetZ));
+		}
+	};
+	FCameraBuffet B;
+	double Pitch = 0.0, Z = 0.0;
+	Run(B, 5.0, 0.6, 0.0, 6.0, Pitch, Z);
+	TestEqual(TEXT("A breeze and a gentle bow: still"), Pitch + Z, 0.0, 1e-12);
+	Run(B, 0.5, 2.5, 0.0, 6.0, Pitch, Z);
+	AddInfo(FString::Printf(TEXT("A 2.5 m/s slam: %.2f deg of pitch and %.1f cm at the most"), Pitch, Z * 100.0));
+	TestTrue(TEXT("A hard slam kicks it"), Pitch > 0.5 && Z > 0.01);
+	TestTrue(TEXT("... by no more than 2 degrees and 5 cm"), Pitch <= 2.0 && Z <= 0.05);
+	const double Left = B.Energy();
+	Run(B, 1.0, 2.5, 0.0, 6.0, Pitch, Z, 0.5);
+	TestTrue(TEXT("A bow held in the wave kicks once: it settles all the same"), B.Energy() < 0.2 * Left);
+	Run(B, 1.0, 0.0, 0.0, 6.0, Pitch, Z, 1.5);
+	TestTrue(TEXT("Settled a second later"), Pitch < 0.15);
+	FCameraBuffet G;
+	Run(G, 0.5, 0.0, 0.12, 6.0, Pitch, Z);
+	TestTrue(TEXT("A sea coming aboard kicks it too"), Pitch > 0.3);
+	FCameraBuffet W;
+	Run(W, 4.0, 0.0, 0.0, 20.0, Pitch, Z);
+	AddInfo(FString::Printf(TEXT("39 kn of apparent wind: a tremble of %.2f deg"), Pitch));
+	TestTrue(TEXT("A gale's wind trembles it, a little"), Pitch > 0.02 && Pitch < 0.3);
 	return true;
 }
 

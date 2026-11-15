@@ -1885,6 +1885,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Index_Lambda([S]() { return S->bCinematicLook ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bCinematicLook = I == 1; S->Save(); })
 			.Note(TEXT("Cinematic: a photographic grade (warm highlights, cool shadows), wider bloom and sun glitter. Photo mode always uses it.")));
+		Add(SNew(SSailChoice).Label(TEXT("Water on the lens")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bLensWater ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bLensWater = I == 1; S->Save(); })
+			.Note(TEXT("Rain and spray drops on the camera, High and up: the drops show the world upside down, and a slam throws a splash.")));
 		Help = TEXT("Quality is a preset: choosing a tier sets every row on Auto to that tier's own. Change a row to override it.\n\n"
 			"On a MacBook Pro with an M5 Pro, Medium keeps above 60 frames a second and High about 45 in the busiest views. "
 			"Ultra is for a desktop graphics card: fully ray-traced light, strand hair and full-resolution clouds.\n\nRender scale draws the "
@@ -1937,6 +1941,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Value_Lambda([S]() { return S->FieldOfView > 0 ? float(S->FieldOfView) : 90.f; })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d°"), S->FieldOfView > 0 ? S->FieldOfView : 90); })
 			.OnChanged_Lambda([S](float V) { S->FieldOfView = FMath::RoundToInt32(V) == 90 ? 0 : FMath::RoundToInt32(V); S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Camera shake")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bCameraShake ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bCameraShake = I == 1; S->Save(); })
+			.Note(TEXT("The camera jolts when the bow slams a wave or green water comes aboard, and trembles in a gale. Turn it off if motion bothers you.")));
 		Add(SNew(SSailSlider).Label(TEXT("Brightness")).Min(50.f).Max(150.f).Step(5.f)
 			.Value_Lambda([S]() { return float(S->Brightness); })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), S->Brightness); })

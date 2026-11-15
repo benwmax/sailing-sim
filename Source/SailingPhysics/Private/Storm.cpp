@@ -76,6 +76,13 @@ namespace Sailing
 		return MmPerHour <= 0.0 ? 0.0 : std::sqrt(std::min(MmPerHour / 50.0, 1.0));
 	}
 
+	double FStormRain::VisibilityKm(double ClearKm, double RainAmount)
+	{
+		const double R = std::clamp(RainAmount, 0.0, 1.0);
+		if (ClearKm <= DownpourVisibilityKm) return ClearKm;
+		return ClearKm * std::pow(DownpourVisibilityKm / ClearKm, R);
+	}
+
 	// ---------------------------------------------------------------- squall line (prologue step 4)
 
 	double FSquallLine::Inside(double DistanceAheadM) const

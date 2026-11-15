@@ -2034,6 +2034,21 @@ float rring = 0.0f, rbead = 0.0f;
 }
 col *= (1.0 - 0.3 * pudK) * (1.0 + 0.4 * rring);
 wetAll = saturate(max(wetAll, max(pudK, rbead)));
+// Storm look 2 (docs/storm-look/green-water/): a sea come aboard (MPC_Boat Wash, 0..1, draining in a couple of seconds;
+// WashSide -1 the port rail, +1 starboard, 0 over the bow, from FGreenWater): a sheet of water running aft over the deck
+// at about a metre a second and off to leeward, dark and glossy, its surface in ripples that run with it (the sole too: it
+// drains through the cockpit). The ripples fade out from 3 to 6 m; nothing is computed without a sea aboard.
+float washK = saturate(Wash) * up * (1.0 - Metal);
+[branch] if (washK > 0.001)
+{
+    float ws = WashSide;
+    washK *= lerp(1.0, smoothstep(-20.0, 30.0, LP.y * sign(ws)), abs(ws));   // that rail's half of the deck
+    float wph = LP.x / 2.5 + Time * 40.0 + 1.3 * sin(LP.y / 9.0 + Time * 3.0);
+    float wrip = sin(wph) * (0.6 + 0.4 * sin(LP.y / 4.0 - Time * 7.0 + LP.x / 11.0));
+    grad += (LX * wrip * 0.35 - LY * ws * 0.1) * washK * (1.0 - saturate((Depth - 300.0) / 300.0));
+    col *= 1.0 - 0.25 * washK;
+    wetAll = saturate(max(wetAll, washK));
+}
 // Spray hull (docs/spray-hull): below the wet line the topsides carry a water film, a fifth darker even on gelcoat that
 // takes up no water (the film's own absorption and the shore it reflects); beads stand in the band's top 8 cm, drips run
 // down from the line, and after spray and slams (MPC_Boat SprayWet) beads spatter up the side above it.
@@ -2120,7 +2135,8 @@ return normalize(n - grad);
 
 MPC_BOAT_PARAMS = (("WaterZ", 0.0), ("WetBand", 6.0), ("DeckWet", 0.0), ("SprayWet", 0.0),   # spray hull: 0..1 after spray and slams
                    ("Rain", 0.0), ("Puddle", 0.0),   # rain deck
-                   ("Detail", 0.0))   # boat fidelity 1: 1 = the close-up detail maps (High and Ultra; the pawn sets it)
+                   ("Detail", 0.0),   # boat fidelity 1: 1 = the close-up detail maps (High and Ultra; the pawn sets it)
+                   ("Wash", 0.0), ("WashSide", 0.0))   # storm look 2: green water over the deck (FGreenWater)
 
 
 def collection():
@@ -2192,7 +2208,7 @@ def build_boat_surface(name, bend, packed=False):
         connect(c, "", t, "")
         axes.append(t)
     params = {}
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail", "SprayWet", "Rain", "Puddle")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "Detail", "SprayWet", "Rain", "Puddle", "Wash", "WashSide")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -1400, 1100 + i * 100)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
@@ -2230,14 +2246,15 @@ def build_boat_surface(name, bend, packed=False):
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
     # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
     connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
     for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
-                     (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time")):
+                     (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time"),
+                     (params["Wash"], "Wash"), (params["WashSide"], "WashSide")):
         connect(src, "", c, pin)
     for pin, t in detail_tex.items():
         connect(t, "", c, pin)
@@ -3309,6 +3326,12 @@ float om = 0.0;
     sx += (oa.g + ob.g) * of; sy += (oa.b + ob.b) * of;
 }
 // Rain: rings spreading from drops, a fresh set every few tenths of a second in each 40 cm cell, by the rain rate.
+// Storm look 3 (docs/storm-look/): and the splash each drop throws up as it lands (its crown and the jet after it, a
+// centimetre or two across, gone in a tenth of a second) before its ring spreads: a white speck at the ring's centre for
+// the first 8% of its life, plus a finer, denser set of splashes alone (15 cm cells, three a second) within 30 m. In a
+// downpour the near water fizzes white (V4 drew rings only: the sea in a 50 mm/h core read as wet glass). Drawn as foam
+// (rainSplash, faded by the pixel's footprint below).
+float rainSplash = 0.0;
 [branch] if (Rain > 0.01 && dist < 80.0)
 {
     for (int layer = 0; layer < 2; layer++)
@@ -3320,9 +3343,20 @@ float om = 0.0;
         float life = frac(T * 1.6 + rnd);
         float2 off = q - centre;
         float r = length(off);
-        float ring = sin((r - life * 0.55) * 50.0) * saturate(1.0 - abs(r - life * 0.55) * 8.0) * (1.0 - life) * step(rnd, Rain * 1.2);
+        float hit = step(rnd, Rain * 1.2);
+        float ring = sin((r - life * 0.55) * 50.0) * saturate(1.0 - abs(r - life * 0.55) * 8.0) * (1.0 - life) * hit;
         float2 g = off / max(r, 1e-3) * ring * 0.35;
         sx += g.x; sy += g.y;
+        rainSplash = max(rainSplash, (1.0 - smoothstep(0.02, 0.05, r)) * saturate(1.0 - life / 0.08) * hit);
+    }
+    [branch] if (dist < 30.0)
+    {
+        float2 qs = p.xy / 0.15 + 5.3;
+        float2 sId = floor(qs);
+        float sr = frac(sin(dot(sId, float2(39.3468, 11.1351))) * 24634.6345);
+        float2 sc = sId + 0.5 + 0.4 * float2(frac(sr * 17.3) - 0.5, frac(sr * 5.9) - 0.5);
+        float sl = frac(T * 3.0 + sr * 7.1);
+        rainSplash = max(rainSplash, (1.0 - smoothstep(0.05, 0.12, length(qs - sc))) * saturate(1.0 - sl / 0.12) * step(sr, Rain * Rain));
     }
 }
 // Whitecaps: where the crests fold (the Jacobian of the choppy waves drops under 0.6), as many as the Monahan
@@ -3478,22 +3512,64 @@ float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + l
 //   is solid white; its edge thins out instead of stopping.
 float fresh = saturate(crest / max(caps, 1e-3));
 float cellsE = lerp(cells, 0.25, patFade);
-FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
-FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
 // A cap's interior isn't solid either: bubble cells and the gaps between them (opacity 0.4-1 by cell), and its edge feathers
 // over a wider fold ramp (0.15 of J against the mask's 0.05) so the outline thins out instead of stopping.
 float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+// Storm look 1 (docs/storm-look/whitecaps/; sailing-feedback #24: the caps read as crackled white plates, all one size,
+// with no streaks). A whitecap has a life (Monahan and Lu 1990's stage A and B; Callaghan, de Leeuw, Cohen and O'Dowd 2008
+// from video): the active crest is a dense, bright heap of bubbles; the patch it leaves opens into lace, holes growing as
+// it thins; the last of it is drawn out by the wind into strings and dissolves. And breakers come in a wave group's
+// highest waves (Banner, Babanin and Young 2000), so they gather: bigger and longer-lived at a group's peak, smaller
+// between. Only how the foam is drawn changes: crest, residue and caps, the mask the cover tests and -SailingDebugFoam
+// measure, are untouched. FoamLife 0 is the look before (-SailingClassicFoam compares).
+// - capVar: a group's breakers against their neighbours' (0..1): value noise on two scales, the group's (90 m along the
+//   wind by 50 m, moving downwind at the group's speed, half the chop's phase speed of about 0.4 U) and the cap's own (12 m);
+//   it moves the drawn edge by STORM_CAP_VARY of the cover's e-fold either way (drawn cover e^+-0.8), never the mask;
+// - capAge: only the deepest part of a fold is the active crest. The age is 0 two e-folds of cover inside the threshold
+//   (capDepth 1), climbs to STORM_CAP_RIM at the drawn edge and is 1 in the residue. Holes open in the lace as it ages (the
+//   lace channel's low values first: a growing network of films): STORM_FOAM_HOLES (0.3 opens about half) times 0.6-1.4,
+//   more on a small cap, and never less than STORM_CAP_CORE of that even in the core, so no cap is a solid plate;
+// - the drawn edge is ragged: the lace moves it by STORM_CAP_RAG of J (mean 0, so the drawn cover stays);
+// - the core's opacity follows the marbling gently (0.7-1), not the old 0.4-1 by cell, whose dark veins drew the crackle.
+// (The first cut aged a cap only at its feathered rim: BEN-PC's 4K stills showed smooth, solid white plates, the
+// offline preview in docs/storm-look/whitecaps/ the same; this is the revision it chose.)
+float capVar = saturate(0.6 * WB_NOISE(float2((dot(p.xy, wd) - 0.2 * WindP.z * T) / 90.0, dot(p.xy, wn) / 50.0) + 41.0)
+    + 0.4 * WB_NOISE(float2(dot(p.xy, wd) - 0.4 * WindP.z * T, dot(p.xy, wn)) / 12.0 + 17.0));
+float capVarS = FoamLife * (2.0 * capVar - 1.0) * STORM_CAP_VARY * capSlope;
+float capRag = FoamLife * STORM_CAP_RAG * (lace - 0.25) * (1.0 - patFade);
+float laceF = saturate(0.8 + 1.3 * laceE);
+float crestV = crest + (1.0 - useTable) * (saturate((capThr + capVarS + capRag - Jt) / 0.05 + 0.5) - saturate((capThr - Jt) / 0.05 + 0.5)) * laceF;
+float softV = saturate((capThr + capVarS + capRag - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+float capDepth = saturate((capThr + capVarS - Jt) / (2.0 * max(capSlope, 0.01)));
+float capAge = saturate(1.0 - fresh + STORM_CAP_RIM * (1.0 - capDepth) * (1.0 - capDepth) * (1.0 - useTable));
+float holeT = STORM_FOAM_HOLES * lerp(STORM_CAP_CORE, 1.0, capAge) * lerp(1.4, 0.6, capVar);
+float capLace = smoothstep(holeT - 0.05, holeT + 0.05, lace + 0.02);
+float capOpenNew = lerp(lerp(0.7, 1.0, smoothstep(0.03, 0.4, cellsE)) * capLace, lerp(0.9, 0.55, capAge), patFade);
+float capOpenOld = lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
+FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
+FoamTone = lerp(FoamTone, lerp(0.5, 1.0, fresh) * lerp(lerp(0.85, 1.0, saturate(cellsE * 2.0)), lerp(0.7, 1.0, saturate(cellsE * 2.0)), capAge), FoamLife);
+FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
 // W4 step 2: the foam a cap leaves behind (AWaterSurface's foam grid, FoamGridRect: x0, y0, size m, on). It decays on
 // Monahan's residual-whitecap timescale and drifts downwind on the worker, so a cap that has stopped breaking leaves a
 // thinning, streaked patch instead of vanishing. Drawn thin and lacy along the wind, at the residue's tone.
 float trail = saturate(persist - max(caps, wakeBreak));   // what outlives the cap or the boat's wash
-float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(foamStreak, 0.5, patFade)));
+// Storm look 1: stage B. The grid fades the foam as exp(-t / 4 s), so the trail's value is its age: just off the crest
+// (near 1) it is lace with small holes, the holes grow as it fades, and from about half its life it is strings along the
+// wind (the streak channel, thinning as it goes) that dissolve. A group's bigger breakers leave foam that lasts longer.
+float trailAge = saturate((1.0 - trail) * lerp(1.3, 0.8, capVar));
+float trString = smoothstep(0.25, 0.85, trailAge);
+float trHole = STORM_FOAM_HOLES * lerp(0.5, 1.6, trailAge);
+float trStrT = lerp(0.03, 0.3, trailAge);
+float trPat = lerp(smoothstep(trHole - 0.06, trHole + 0.06, lace) * lerp(0.75, 1.0, smoothstep(0.03, 0.4, cells)),
+    smoothstep(trStrT, trStrT + 0.12, foamStreak), trString);
+float trailOld = lerp(0.45, 1.0, smoothstep(0.3, 0.85, lerp(foamStreak, 0.5, patFade)));
+float trailDrawn = pow(trail, 1.2) * 0.85 * lerp(trailOld, lerp(trPat, lerp(0.6, 0.25, trString), patFade), FoamLife);
 // Far (the fold table's cover): a pixel's cover there is the share of the sea under foam, not how much of one cap it holds,
 // so it is drawn as it is, not to the power 1.5 (a cap's thinning edge): at the lake's 0.2-0.4% that power drew a twentieth
-// of it and the caps vanished past about 200 m (docs/far-caps/). The bubble cells' factor fades to its mean (0.6), not to
-// the factor of the cells' mean (0.44).
-float capsDrawn = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), lerp(1.5, 1.0, useTable))
-    * lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
+// of it and the caps vanished past about 200 m (docs/far-caps/). The opacity factor fades to its mean, not to the factor
+// of the patterns' means (Storm look 1: 0.9 on a crest to 0.55 in its residue; before it, the old cells' 0.6).
+float capsDrawnOld = pow(saturate(max(soft * crest > 0.0 ? lerp(crest, soft, 0.5) : 0.0, residue)), lerp(1.5, 1.0, useTable)) * capOpenOld;
+float capsDrawn = lerp(capsDrawnOld, pow(saturate(max(softV * crestV > 0.0 ? lerp(crestV, softV, 0.5) : 0.0, residue)), lerp(1.5, 1.0, useTable)) * capOpenNew, FoamLife);
 // docs/far-flecks/ (option A of docs/far-caps/): far out the table's cover is the sea's share under foam, a fraction of a
 // percent spread evenly over each pixel, which no one can see. Real distant caps are bright flecks on dark water. So the
 // cover is redistributed into flecks, never added to: cells five footprints across (the footprint's geometric mean; a
@@ -3542,7 +3618,7 @@ float fleck = 0.0;
     fleck *= 1.0 - FarCapSprites * FCS_W;
 }
 capsDrawn = lerp(capsDrawn, max(fleck, residue), useTable);
-FoamTone = lerp(FoamTone, 0.5, saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
+FoamTone = lerp(FoamTone, lerp(0.5, lerp(0.75, 0.5, trailAge), FoamLife), saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
 // docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
 // clip): foam clinging along her waterline where the water meets the skin (the bottom just above the drawn surface,
@@ -3584,7 +3660,11 @@ float hfReach = length(HullClipRect.zw) + 3.0 + 1.5 * HullClipV.z;   // the chur
     hullNear = exp(-outM / HULL_NEAR_M) * step(0.0, -hout.x) * step(hbx, HullClipRect.x + HullClipRect.z) * step(0.0, hc.a - hout.x + 0.05);
 }
 FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps * 4.0)));
-Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain);
+// Storm look 3: the rain's splashes (above), while a pixel still resolves them (a speck is about 2 cm: gone into the
+// rain's general greying, 0.10 Rain, by a 5 cm footprint).
+float splashSeen = 0.8 * rainSplash * (1.0 - smoothstep(0.02, 0.05, footMip));
+FoamTone = lerp(FoamTone, 1.0, saturate(splashSeen * 2.0) * (1.0 - saturate(caps * 4.0)));
+Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain + splashSeen);
 Dark = saturate((gustRatio - 0.95) * 2.5);
 Dark = max(Dark, HULL_NEAR_DARK * hullNear);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
@@ -3657,6 +3737,19 @@ float galeFx = fwidth(across);
     float galeDrawn = 0.7 * galeS;
     FoamTone = lerp(FoamTone, 0.6, saturate((galeDrawn - Foam) / max(galeDrawn, 1e-3)));
     Foam = max(Foam, galeDrawn);
+}
+// Storm look 1: fresh foam stands a centimetre or two proud of the water, a heap of bubbles (aged lace lies flat in its
+// films), so the light catches it: a height from the drawn foam, its freshness (FoamTone) and its marbling, its slope
+// from the screen derivatives solved for the surface through the pixel's footprint (fdx, fdy: the 2x2 inverse), faded
+// with the pattern and capped at a slope of 0.4. The foam and the water share one normal (single layer water). Taken here,
+// outside every branch, so the derivatives are defined; STORM_FOAM_BUMP 0 turns it off.
+{
+    float fH = FoamLife * STORM_FOAM_BUMP * 0.02 * Foam * saturate(2.0 * FoamTone - 0.8) * lerp(0.5, 1.0, cellsE) * (1.0 - patFade);
+    float2 hd = float2(ddx(fH), ddy(fH));
+    float det = fdx.x * fdy.y - fdx.y * fdy.x;
+    float2 fGrad = abs(det) > 1e-12 ? float2(fdy.y * hd.x - fdx.y * hd.y, fdx.x * hd.y - fdy.x * hd.x) / det : float2(0.0, 0.0);
+    fGrad *= min(1.0, 0.4 / max(length(fGrad), 1e-5));
+    sx += fGrad.x; sy += fGrad.y;
 }
 // Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
 float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, smoothing);
@@ -3805,8 +3898,11 @@ def build_water_v4():
     rain = scalar(mat, "Rain", 0.0, -1800, 1000)
     F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT1
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ", "DetailE"]
-    shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex"],
+    shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2"))
+                   .replace("STORM_FOAM_HOLES", os.environ.get("STORM_FOAM_HOLES", "0.3")).replace("STORM_FOAM_BUMP", os.environ.get("STORM_FOAM_BUMP", "1.0"))
+                   .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")).replace("STORM_CAP_RAG", os.environ.get("STORM_CAP_RAG", "0.06"))
+                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -3820,6 +3916,7 @@ def build_water_v4():
     connect(polarized, "", shade, "Polarized")
     connect(scalar(mat, "Glitter", 0.0, -2000, 1050), "", shade, "Glitter")
     connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")
+    connect(scalar(mat, "FoamLife", 1.0, -2000, 1200), "", shade, "FoamLife")   # docs/storm-look/: 0 = -SailingClassicFoam
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
     for c in (wpo,):
         connect(chop, "", c, "Chop")
@@ -4941,23 +5038,29 @@ def build_sky_dome():
 
 LENS_CODE = """
 // Visual V5 (High): water on the lens. Raindrops land and run across the glass with the apparent wind (WindScreen: the
-// screen direction the air pushes them, gravity included); spray after a wave leaves a burst of larger spots. Each drop
-// refracts the scene behind it (a small lens: the image inside is shifted and slightly dimmed). Returns the UV shift
-// (xy) and the drop mask (z).
+// screen direction the air pushes them, gravity included); spray after a wave leaves a burst of larger spots.
+// Storm look 5 (docs/storm-look/lens-water/; feedback #24: the drops read as grey discs): each drop is a lens, a cap of
+// water on the glass with a short focal length, so it shows the scene behind it upside down and wide (the sample point
+// mirrored through the drop's centre and spread over LENS_FIELD times its own size: the inverted horizon in every wet
+// action-camera frame), its rim dark where the light inside is turned away (total internal reflection at the steep
+// edge), with one sharp glint high on it toward the sky, and the edge of a drop on glass is sharp. A slam's spray
+// (Spray, from AWaterSurface::LensSpray) throws big splashes and leaves the whole glass filmed and wobbling a moment.
+// Returns the UV shift (xy), the water's mask (z) and the gain on the refracted light (w: the rim's shade and the glint).
 float2 uv = GetViewportUV(Parameters);
 float aspect = View.ViewSizeAndInvSize.x * View.ViewSizeAndInvSize.w;
 float2 wdir = normalize(Wind.xy + float2(0.0, 1e-3));
 float2 offset = float2(0.0, 0.0);
-float mask = 0.0;
-for (int layer = 0; layer < 3; layer++)
+float mask = 0.0, gain = 1.0;
+for (int layer = 0; layer < 4; layer++)
 {
-    float scale = 9.0 + 9.0 * layer;
-    float speed = Wind.z * (0.08 + 0.05 * layer);
+    // Three sizes of rain drop, and a fourth of the big splashes a slam throws.
+    float scale = layer < 3 ? 9.0 + 9.0 * layer : 4.5;
+    float speed = Wind.z * (layer < 3 ? 0.08 + 0.05 * layer : 0.05);
     float2 p = uv * float2(aspect, 1.0) * scale - wdir * T * speed * scale;
     float2 cell = floor(p);
     float2 f = frac(p);
     float h = frac(sin(dot(cell + layer * 17.0, float2(127.1, 311.7))) * 43758.5453);
-    float chance = Rain * (0.18 + 0.06 * layer) + Spray * (layer == 0 ? 0.5 : 0.15);
+    float chance = layer < 3 ? Rain * (0.18 + 0.06 * layer) + Spray * (layer == 0 ? 0.5 : 0.15) : 0.35 * Spray * Spray;
     if (h < chance)
     {
         float2 c = float2(frac(h * 13.1), frac(h * 7.3)) * 0.6 + 0.2;
@@ -4965,15 +5068,30 @@ for (int layer = 0; layer < 3; layer++)
         // Streaked along the way it runs (longer the harder the air pushes).
         float along = dot(d, wdir), across = dot(d, float2(-wdir.y, wdir.x));
         float stretch = 1.0 + 2.0 * saturate(Wind.z * 0.15) * saturate(along * 4.0 + 0.5);
-        float r = length(float2(along / stretch, across)) / (0.1 + 0.12 * frac(h * 3.3));
-        float drop = smoothstep(1.0, 0.6, r) * (1.0 - 0.6 * frac(T * 0.2 + h));
-        // A drop is a little lens: it shows the scene flipped and shrunk (a large shift), its rim catches the light.
-        offset += d * drop * 1.6 / (scale * float2(aspect, 1.0));
-        mask = max(mask, drop);
+        float rad = layer < 3 ? 0.1 + 0.12 * frac(h * 3.3) : 0.18 + 0.12 * frac(h * 3.3);
+        float2 q = float2(along / stretch, across) / rad;   // the drop's own frame, its rim at 1
+        float r = length(q);
+        float life = layer < 3 ? 1.0 - 0.6 * frac(T * 0.2 + h) : Spray;
+        float drop = smoothstep(1.0, 0.9, r) * life;
+        if (drop > 0.0)
+        {
+            // The lens: the view through it mirrored through its centre and spread (the shift from this pixel to there).
+            float2 dUv = d / (scale * float2(aspect, 1.0));
+            offset += dUv * (1.0 + LENS_FIELD) * drop;
+            // The rim's dark ring and the glint (high on the drop, toward the sky: screen up is -v).
+            float g = saturate(1.0 - length(q - float2(-0.25, -0.45)) / 0.2);
+            float dropGain = (1.0 - 0.6 * smoothstep(0.55, 0.95, r)) + 1.2 * g * g;
+            gain = drop >= mask ? dropGain : gain;
+            mask = max(mask, drop);
+        }
     }
 }
-return float3(offset, mask);
-"""
+// The film a slam leaves: the glass all wet for a moment, the view through it wobbling.
+float film = Spray * Spray;
+offset += film * 0.006 * float2(sin(uv.y * 41.0 + T * 3.1) + 0.5 * sin(uv.x * 23.0 - T * 1.7), sin(uv.x * 37.0 - T * 2.6) + 0.5 * sin(uv.y * 19.0 + T * 2.2));
+mask = max(mask, 0.55 * film);
+return float4(offset, mask, gain);
+""".replace("LENS_FIELD", os.environ.get("LENS_FIELD", "4.0"))
 
 
 def build_lens_water():
@@ -4985,7 +5103,7 @@ def build_lens_water():
     spray = scalar(mat, "Spray", 0.0, -1000, 100)
     wind = vector(mat, "WindScreen", (0, 1, 0, 0), -1000, 200)
     t = node(mat, unreal.MaterialExpressionTime, -1000, 300)
-    c = custom(mat, LENS_CODE, ["Rain", "Spray", "Wind", "T"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100)
+    c = custom(mat, LENS_CODE, ["Rain", "Spray", "Wind", "T"], unreal.CustomMaterialOutputType.CMOT_FLOAT4, -700, 100)
     connect(rain, "", c, "Rain")
     connect(spray, "", c, "Spray")
     connect(wind, "RGBA", c, "Wind")
@@ -5005,8 +5123,10 @@ def build_lens_water():
     scene.set_editor_property("scene_texture_id", unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
     m = node(mat, unreal.MaterialExpressionComponentMask, -450, 300, r=False, g=False, b=True, a=False)
     connect(c, "", m, "")
+    # Storm look 5: the drop's gain on the light through it (the rim's shade, the glint; was a constant 1.06).
     dim = node(mat, unreal.MaterialExpressionMultiply, 0, 250)
-    k = node(mat, unreal.MaterialExpressionConstant, -150, 350, r=1.06)
+    k = node(mat, unreal.MaterialExpressionComponentMask, -450, 400, r=False, g=False, b=False, a=True)
+    connect(c, "", k, "")
     connect(refr, "Color", dim, "A")
     connect(k, "", dim, "B")
     mix = node(mat, unreal.MaterialExpressionLinearInterpolate, 150, 100)

@@ -985,7 +985,7 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		WeatherState.Rain = WeatherState.RainAt(BoatPos.X, BoatPos.Y, Now);
 		// W8: and the storm's gloom is the boat's too (sunshine ahead of the front until the shelf is close).
 		if (WeatherState.Front.bActive || WeatherState.bSquall) WeatherState.LocalizeStorm(BoatPos.X, BoatPos.Y, Now);
-		else WeatherState.VisibilityKm = FMath::Lerp(FMath::Max(WeatherState.VisibilityKm, 10.0), 1.5, WeatherState.Rain);
+		else WeatherState.VisibilityKm = Sailing::FStormRain::VisibilityKm(FMath::Max(WeatherState.VisibilityKm, 10.0), WeatherState.Rain);
 	}
 
 	// The sea follows the mean wind at the boat (including a gust front's outflow once it has passed).

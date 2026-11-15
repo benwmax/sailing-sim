@@ -423,7 +423,7 @@ namespace Sailing
 			W.bStormRain = true;
 			if (W.StormRainScale <= 0.0) W.StormRainScale = 1.0;
 			W.Rain = W.RainAt(OriginX, OriginY, T);
-			W.VisibilityKm = std::min(W.VisibilityKm, Lerp(25.0, 1.5, W.Rain));
+			W.VisibilityKm = std::min(W.VisibilityKm, FStormRain::VisibilityKm(25.0, W.Rain));
 			W.CloudDarkness = std::max(W.CloudDarkness, 0.85 * W.Rain);
 		}
 		return W;
@@ -761,7 +761,8 @@ namespace Sailing
 		CloudDarkness = std::max(BaseCloudDarkness, Lerp(Lerp(0.1, 0.85, Over), 0.15, StormClearing));
 		// The air thickens as the front's dust and spray arrive (about 30 s before it to 20 s after, at its speed).
 		const double FrontHere = 1.0 - SmoothStep(-20.0 * Front.SpeedMs, 30.0 * Front.SpeedMs, D);
-		const double Visibility = Lerp(Lerp(Lerp(25.0, 10.0, FrontHere), 1.5, Rain), 20.0, StormClearing);
+		// Storm look 3 (docs/storm-look/): through the core's rain to half a mile (FStormRain::VisibilityKm).
+		const double Visibility = Lerp(FStormRain::VisibilityKm(Lerp(25.0, 10.0, FrontHere), Rain), 20.0, StormClearing);
 		VisibilityKm = std::min(BaseVisibilityKm, Visibility);
 		// Under the rain (the core, or a real day's radar) it is dark whatever the shelf is doing.
 		CloudDarkness = std::max(CloudDarkness, 0.85 * Rain);

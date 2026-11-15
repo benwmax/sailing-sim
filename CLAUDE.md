@@ -481,6 +481,14 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   at 12, 16 and 20 kn in `docs/water-8/capshape-mac/`), to Monahan x `WhitecapScaleFor`; `FoamThresholdAt`/`CapSlopeAt`
   are the fallback and what `SailingSim.Visual.Whitecaps` holds. Far pixels read the fold table `DetailC` (mips average
   cover). `-SailingDebugFoam[=2|3]` draws the caps alone for counting; `-SailingDebugCaps` logs the solved thresholds.
+- Storm look (`docs/storm-look/`, Bean Nov 15: +3 ms at native 4K Ultra for all of it): M_WaterV4's caps age into lace
+  then wind strings and gather by wave group (`FoamLife`, `-SailingClassicFoam`; only the drawn foam, never the cap mask),
+  rain splashes on the sea, a downpour is 0.8 km (`FStormRain::VisibilityKm`), green water over the rail (`GreenWaterOn`
+  -> `UpdateSpray` sheets, `MPC_Boat` `Wash`/`WashSide`), torn crests from 22-30 kn (`FGaleSpray::Torn`), refractive lens
+  drops (`LENS_CODE` float4, `LENS_FIELD`) and camera shake (`FCameraBuffet`, `-SailingNoCameraShake`); Settings > Water on
+  the lens and Camera shake (save `display.lensWater`, `display.cameraShake`). Knobs `STORM_FOAM_HOLES`, `STORM_CAP_VARY`,
+  `STORM_CAP_CORE`, `STORM_CAP_RIM`, `STORM_CAP_RAG`, `STORM_FOAM_BUMP` (make_materials.py env); `Tools/water/foam_preview.py`
+  previews the near caps offline.
 - W3 prep (`docs/w3-prep/`): the growth laws take the adjusted wind U_A = 0.71 U^1.23 (`FWaveField::AdjustedWindSpeed`),
   steepened by (U / 18 kn)^0.43 above 18 kn to follow the SWAN bake (`GrowthStressWind`, `docs/physics-gaps/`);
   the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
