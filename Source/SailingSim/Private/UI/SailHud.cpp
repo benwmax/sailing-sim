@@ -446,13 +446,22 @@ void SSailHud::Construct(const FArguments& A)
 			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(650.f).MinDesiredWidth(260.f).HeightOverride(50.f)[ SNew(SCompassTape).Heading_Lambda(Heading).WindFrom_Lambda(WindFrom) ] ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HeadingText; }), EType::Value, FSlateColor(Fg)) ]
 		]
-		// Top-right: the minimap in the corner (Bean Nov 15: it was bottom left), then the drill or race panel and the
-		// navigation panel on the coast under it.
-		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(M)
+		// The right-hand column, top to bottom (Bean Nov 15: the minimap moved here from the bottom left): the minimap in the
+		// corner; the drill or race panel and the coast's navigation panel in the room left between it and the sail trim panel
+		// (they condense, then clip, rather than run under it: RightPanelsRoom, bCompactDrill); sail trim and key hints at
+		// the bottom.
+		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Fill).Padding(M)
 		[
-			SNew(SVerticalBox).Visibility_Lambda(NotOff)
+			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 12.f)
 			[ SNew(SBox).WidthOverride(210.f).HeightOverride(210.f).Visibility_Lambda(Full)[ SNew(SMiniMap).Player(Player).Map(MapBrush) ] ]
+			+ SVerticalBox::Slot().FillHeight(1.f).HAlign(HAlign_Right)
+			[
+			SAssignNew(RightPanelsRoom, SBox).VAlign(VAlign_Top)
+			[
+			SAssignNew(RightPanels, SBox).Clipping(EWidgetClipping::ClipToBounds)
+			[
+			SNew(SVerticalBox).Visibility_Lambda(NotOff)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bDrill ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
@@ -489,6 +498,26 @@ void SSailHud::Construct(const FArguments& A)
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return NextText.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(NextText), EType::Ui, FSlateColor(Accent), true) ] ],
 						FMargin(18.f, 14.f))
 				]
+			]
+			]
+			]
+			]
+			// Bottom of the column: sail trim and key hints.
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 12.f, 0.f, 0.f)
+			[
+				SNew(SVerticalBox).Visibility_Lambda(Full)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					SNew(SBox).WidthOverride(290.f)
+					[
+						PanelBox(SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Sail trim"), EType::Label, Muted) ]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 10.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return PointText; }), EType::Ui, FSlateColor(Fg)) ]
+							+ SVerticalBox::Slot().AutoHeight()[ SNew(STrimView).Player(Player) ], FMargin(16.f, 12.f))
+					]
+				]
+				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
+				[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HintsText; }), EType::Small, FSlateColor(Muted)) ]
 			]
 		]
 		// Bottom-left (Bean Nov 15: where the minimap was): the apparent wind dial, then speed over depth. A compact block,
@@ -596,23 +625,6 @@ void SSailHud::Construct(const FArguments& A)
 				]
 			]
 		]
-		// Bottom-right: sail trim and key hints.
-		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(M)
-		[
-			SNew(SVerticalBox).Visibility_Lambda(Full)
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SBox).WidthOverride(290.f)
-				[
-					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Sail trim"), EType::Label, Muted) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 10.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return PointText; }), EType::Ui, FSlateColor(Fg)) ]
-						+ SVerticalBox::Slot().AutoHeight()[ SNew(STrimView).Player(Player) ], FMargin(16.f, 12.f))
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
-			[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HintsText; }), EType::Small, FSlateColor(Muted)) ]
-		]
 		]
 		]
 	];
@@ -642,6 +654,23 @@ void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 	SCompoundWidget::Tick(G, Now, Dt);
 	SAILING_PERF_SCOPE(Hud);
 	LayoutWidth = float(G.GetLocalSize().X) / SailHudImpl::HudScaleNow();
+	// The right-hand column: condense the drill panel when the panels outgrow the room above the sail trim panel.
+	if (RightPanels.IsValid() && RightPanelsRoom.IsValid())
+	{
+		const float Room = float(RightPanelsRoom->GetTickSpaceGeometry().GetLocalSize().Y);
+		const float Wanted = float(RightPanels->GetDesiredSize().Y);
+		if (!bCompactDrill && bDrill && Room > 0.f && Wanted > Room + 1.f)
+		{
+			bCompactDrill = true;
+			FullPanelsHeight = Wanted;
+			DrillSteps.Reset();   // rebuild the list condensed
+		}
+		else if (bCompactDrill && (!bDrill || Room >= FullPanelsHeight + 8.f))
+		{
+			bCompactDrill = false;
+			DrillSteps.Reset();
+		}
+	}
 	if (Now >= NextRefresh)
 	{
 		NextRefresh = Now + (SailUI::IsLow() ? 0.2 : 0.1);
@@ -764,6 +793,15 @@ void SSailHud::Refresh()
 		{
 			const int32 State = D.IsComplete() || I < D.GetStep() ? 2 : (I == D.GetStep() ? 1 : 0);
 			Steps.Add({ bBrief ? Brief->StepText(I) : D.GetSteps()[I], State, bBrief && State == 1 && S->bLearningMode ? Brief->Steps[I].Coach : FString() });
+		}
+		// Condensed (no room above the sail trim panel): the current step alone, without the coach's line, and the count.
+		if (bCompactDrill && Steps.Num() > 0)
+		{
+			const int32 Current = FMath::Clamp(D.IsComplete() ? Steps.Num() - 1 : D.GetStep(), 0, Steps.Num() - 1);
+			TTuple<FString, int32, FString> Only = Steps[Current];
+			Only.Get<2>().Reset();
+			Steps = { Only };
+			DrillFooter = FText::FromString(FString::Printf(TEXT("Step %d of %d · %s"), Current + 1, D.GetSteps().Num(), *DrillFooter.ToString()));
 		}
 		if (Steps != DrillSteps)
 		{

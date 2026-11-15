@@ -74,6 +74,12 @@ private:
 	double TipShownAt = 0.0;
 	TArray<TTuple<FString, int32, FString>> DrillSteps;   // text, 0 upcoming 1 current 2 done, coach line
 	TSharedPtr<class SVerticalBox> DrillList;
+	// The right-hand column's panels (drill, race, navigation) and the room they have between the minimap and the sail trim
+	// panel. When they need more than that room the drill panel condenses to its current step (bCompactDrill), and goes
+	// back once the room holds the full panels' height (FullPanelsHeight); anything still too tall is clipped.
+	TSharedPtr<class SBox> RightPanels, RightPanelsRoom;
+	bool bCompactDrill = false;
+	float FullPanelsHeight = 0.f;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
 	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;

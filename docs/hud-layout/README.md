@@ -10,14 +10,22 @@ centre right. Code: `Source/SailingSim/Private/UI/SailHud.cpp` (`SSailHud::Const
 |---|---|---|
 | Top left | Time, wind, sky, tide strip; learning tip; rules callout | unchanged |
 | Top centre | Compass tape, heading, toasts | Compass tape and heading only |
-| Top right | Drill or race panel, navigation panel | **Minimap** in the corner, then the drill or race panel and the navigation panel under it |
+| Right column | Drill or race panel, navigation panel (top); sail trim, key hints (bottom) | **Minimap** in the corner; the drill or race panel and the navigation panel in the room between it and the sail trim panel; sail trim and key hints at the bottom |
 | Centre right | (nothing) | **Message stack**: captain's call, toasts, rules points, signals heard, sound captions |
 | Bottom left | Minimap | **Apparent wind dial, then speed over depth** (one compact 410 x 254 block) |
 | Bottom centre | Captain's call, captions, signals, speed, wind dial, depth | **Clear** (the boat) |
-| Bottom right | Sail trim, key hints (Esc Pause) | unchanged |
 
 HUD modes are unchanged: Full shows everything; Minimal hides the minimap, tip and trim but keeps the cluster, compass,
 drill panel and messages; Off keeps toasts, the captain's call and sound captions.
+
+## The right column
+
+The minimap, the drill/race/navigation panels and the sail trim panel are one column from the top-right corner to the
+bottom-right corner, so the panels can never run under the trim panel. The panels get the room between the minimap and
+the trim panel. When they need more (a long drill at HUD size 130%, or a drill and a race at once), the drill panel
+condenses to its current step and "Step k of n" (`bCompactDrill`). It goes back to the full list once the room holds it.
+Anything still too tall is clipped at the trim panel's top edge. The first stills (82fa86c) showed both overlaps that
+led to this: the race card's last line under the trim panel, and the 130% drill card's last steps under it.
 
 ## The messages
 
