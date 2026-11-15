@@ -58,6 +58,10 @@ The crest search's sample count, the gale's extra crests (24 to 32 kn) and the s
 `SailingSim.Visual.GaleSpray` checks Torn: nothing at 20 kn, some at 26, every crest by 32, and only growing with the
 wind.
 
+The puffs that were left over the crests in the round 2 stills were on main too: the crest spray the game already had.
+The follow-up in [crest-spray/](crest-spray/) draws far drops with the ink they had near, and turns each crest's mist
+puff (and the spindrift) into spume, a low streak along the wind.
+
 ## Settings
 
 Both default to on and are saved in `profile.json` (`display.lensWater`, `display.cameraShake`; see

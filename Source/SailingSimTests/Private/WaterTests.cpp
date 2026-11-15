@@ -1212,6 +1212,42 @@ bool FWaterGaleSprayTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * docs/storm-look/crest-spray/: the spray off breaking crests read as white puffs, like steam, in BEN-PC's 4K storm stills
+ * (on main as much as with the storm look). Past 25 m each clump of drops was drawn twelve times as inky as near, and each
+ * crest's mist was a round puff. Far drops now keep their ink, and the crest's spray is spume: a low streak along the wind.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterSprayQuadTest, "SailingSim.Visual.SprayQuad", WaterFlags)
+bool FWaterSprayQuadTest::RunTest(const FString&)
+{
+	using EKind = AWaterSurface::ESprayKind;
+	auto Ink = [](const AWaterSurface::FSprayQuad& Q) { return AWaterSurface::SprayInkPerAlpha(Q.Grain) * Q.Alpha * Q.Length * Q.Width; };
+	// Near drops are drawn as they were: a clump of its own size, full grain.
+	const AWaterSurface::FSprayQuad Near = AWaterSurface::SprayQuadFor(EKind::Drops, 0.14f, 0.3f, 10.f, 0.f, 0.5f);
+	TestTrue(TEXT("Near drops: their own size, full grain"), FMath::IsNearlyEqual(Near.Width, 0.14f, 1e-4f) && Near.Grain == 1.f);
+	TestTrue(TEXT("Near drops: as opaque as before"), FMath::IsNearlyEqual(Near.Alpha, 0.85f * (1.f - 0.09f), 1e-4f));
+	for (const float Dist : { 30.f, 40.f, 50.f, 80.f })
+	{
+		const AWaterSurface::FSprayQuad Far = AWaterSurface::SprayQuadFor(EKind::Drops, 0.14f, 0.3f, Dist, 0.f, 0.5f);
+		const float Ratio = Ink(Far) / Ink(Near);
+		TestTrue(FString::Printf(TEXT("Drops at %.0f m keep their ink (%.2f of near)"), Dist, Ratio), Ratio > 0.95f && Ratio < 1.05f);
+		TestTrue(FString::Printf(TEXT("Drops at %.0f m are drawn wider and smoother"), Dist), Far.Width > Near.Width && Far.Grain < 1.f);
+	}
+	// Spume: across the view in a 30 kn wind (about 13 m/s at 2 m) a streak several times as long as it is wide; seen along
+	// the wind, short and fainter than the mist puff it replaces.
+	for (const float Life : { 0.2f, 0.4f, 0.7f })
+	{
+		const AWaterSurface::FSprayQuad Across = AWaterSurface::SprayQuadFor(EKind::Spume, 0.9f, Life, 30.f, 13.f, 0.f);
+		const AWaterSurface::FSprayQuad Along = AWaterSurface::SprayQuadFor(EKind::Spume, 0.9f, Life, 30.f, 0.f, 0.f);
+		const AWaterSurface::FSprayQuad Mist = AWaterSurface::SprayQuadFor(EKind::Mist, 0.9f, Life, 30.f, 0.f, 0.f);
+		TestTrue(FString::Printf(TEXT("Spume at %.0f%% of its life: a streak along the wind (%.1f x %.1f m)"), Life * 100.f, Across.Length, Across.Width),
+			Across.Length > 3.f * Across.Width && Across.Grain == 0.f);
+		TestTrue(FString::Printf(TEXT("Spume at %.0f%% of its life: seen along the wind, no puff (ink %.3f against the mist's %.3f)"), Life * 100.f, Ink(Along), Ink(Mist)),
+			Ink(Along) < 0.3f * Ink(Mist) && Along.Alpha <= Mist.Alpha);
+	}
+	return true;
+}
+
 // Feedback #6: white lines between the water's tiles as the camera turned. Each ring's hole is filled by the next finer ring;
 // both snap to the camera on their own grids, so for some camera positions their centres sit a coarse cell apart. The finer
 // ring must still overlap the hole by a coarse cell on both sides, or the edges meet in T-junctions the waves pull open.
