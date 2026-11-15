@@ -227,6 +227,21 @@ c *= (1.0 - 0.3 * pudK) * (1.0 + 0.6 * rring);
 Rough = lerp(Rough, 0.015, saturate(pudK + rbead));
 Rough = lerp(Rough, 0.12, rring);
 Rough = lerp(Rough, 0.02, bead);                                  // a bead is a lens: a sharp glint
+// Storm look 2 (docs/storm-look/green-water/), as M_BoatSurface: a sea come aboard (Wash, WashSide) runs aft over the deck
+// and the sole in a dark, glossy sheet rippling as it goes, off to leeward when it came over a rail.
+float washK = saturate(Wash) * up;
+[branch] if (washK > 0.001)
+{
+    float ws = WashSide;
+    washK *= lerp(1.0, smoothstep(-20.0, 30.0, LP.y * sign(ws)), abs(ws));
+    float wph = LP.x / 2.5 + Time * 40.0 + 1.3 * sin(LP.y / 9.0 + Time * 3.0);
+    float wrip = sin(wph) * (0.6 + 0.4 * sin(LP.y / 4.0 - Time * 7.0 + LP.x / 11.0));
+    float wnear = 1.0 - saturate((Depth - 300.0) / 300.0);
+    NormalOut = normalize(lerp(NormalOut, float3(0.0, 0.0, 1.0), 0.7 * washK) + float3(wrip * 0.3, -ws * 0.08, 0.0) * washK * wnear);
+    c *= 1.0 - 0.25 * washK;
+    Rough = lerp(Rough, 0.03, washK);
+    wetAll = saturate(max(wetAll, washK));
+}
 // docs/lee-topside-patch/: Lumen's screen traces run before the sea (Single Layer Water) is drawn, so a mirror reflection
 // pointing down into it found the hull and keel under the water: a dark dome on the lee topsides of a heeled boat. Where
 // the reflection points below the horizon the gelcoat is rough enough (0.45) that Lumen takes its radiance cache, the
@@ -394,7 +409,7 @@ def hero_material(defaults):
     # rudder's pivots sit on the design waterline), as M_BoatSurface's LP.
     extra["LP"] = (node(mat, unreal.MaterialExpressionLocalPosition, -900, 2120), "")
     mpc = unreal.load_asset("/Game/Boats/MPC_Boat")
-    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet", "Rain", "Puddle")):
+    for i, pname in enumerate(("WaterZ", "WetBand", "DeckWet", "SprayWet", "Rain", "Puddle", "Wash", "WashSide")):
         cp = node(mat, unreal.MaterialExpressionCollectionParameter, -900, 2160 + i * 80)
         cp.set_editor_property("collection", mpc)
         cp.set_editor_property("parameter_name", pname)
