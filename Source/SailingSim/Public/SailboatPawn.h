@@ -761,6 +761,17 @@ private:
 	float CameraDistance = 1600.f;
 	/** #498: the chase view's lift over the shore and docks (cm), eased toward ShoreFloorM so it doesn't pop. */
 	float CameraShoreLiftCm = 0.f;
+	/**
+	 * The chase camera follows with lag, so a boat put somewhere new (a reset, the launch spot found after the first frame)
+	 * would fly the camera across the lake to her (Bean, Nov 15 2026: the title's fly to the anchored boat). SnapChaseCamera
+	 * turns the lag off until the arm has updated at her new place (two frames), then back to bChaseCameraLag.
+	 */
+	void SnapChaseCamera();
+	/** Beyond this jump (cm) in one ApplyStateToTransform the boat was put there, not sailed there: the camera snaps. */
+	static constexpr double ChaseSnapJumpCm = 5000.0;
+	bool bChaseCameraLag = true;   // off for -SailingCamTarget stills
+	bool bChaseSnapPending = false;
+	uint64 ChaseSnapFrame = 0;
 	float VisualTime = 0.f;
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
