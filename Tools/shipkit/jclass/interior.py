@@ -32,7 +32,7 @@ import deck  # noqa: E402
 import loft  # noqa: E402
 import shell  # noqa: E402
 import spars  # noqa: E402
-from deck import box, ear_clip, loft_rings, loft_section, region_slab  # noqa: E402,F401
+from deck import box, clip_halfplane, ear_clip, loft_rings, loft_section, region_slab  # noqa: E402,F401
 
 IN = json.load(open(os.path.join(HERE, "interior_bluebonnet.json")))
 ST, CE, RM, BH = IN["structure"], IN["ceiling"], IN["rooms"], IN["bulkheads"]
@@ -42,20 +42,58 @@ ROOMS = sorted(((k, v) for k, v in RM.items() if isinstance(v, dict)), key=lambd
 FRAMES = ST["frames_from"] + ST["frame_spacing"] * np.arange(
     int(round((ST["frames_to"] - ST["frames_from"]) / ST["frame_spacing"])) + 1)
 OBJECTS = ("Below.Structure", "Below.Ceiling", "Below.Joinery", "Below.Fittings", "Below.Canvas")
+AFT_OBJECTS = ("Aft.Structure", "Aft.Panelling", "Aft.Joinery", "Aft.Fittings", "Aft.Upholstery")   # slice 10
 X0, X1 = float(FRAMES[0]), float(FRAMES[-1])      # the after and forward bulkheads
+SPLIT_X = float(IN["aft_bulkhead"])               # slice 9's after bulkhead: its rooms forward, slice 10's aft
+AFT_ROOMS = tuple(k for k, v in ROOMS if v["x"][1] <= SPLIT_X + 1e-6)   # the pantry, the saloon, the owner's end
 SIDES = ((1, "starboard"), (-1, "port"))
+
+
+class Router:
+    """One of the interior's kinds of piece, forward and aft (slice 10): each piece goes to the forward object (slice
+    9's "Below.<kind>") or the after one ("Aft.<kind>") by where it lies, its points' mean x against SPLIT_X (less
+    0.1 m: slice 9's after bulkhead and its frame stay forward), and each fixed weight by its centre the same way; a
+    piece labelled with a room aft's name goes aft wherever it lies (the pantry sole's cleat on that bulkhead)."""
+
+    def __init__(self, fwd, aft):
+        self.fwd, self.aft = fwd, aft
+
+    def pick(self, x, label=None):
+        if label and label.startswith(AFT_ROOMS):      # a room aft's own piece, even at its forward bulkhead
+            return self.aft
+        return self.fwd if x >= SPLIT_X - 0.1 else self.aft
+
+    def add(self, V, F, slot, mass=None, label=None, orient=True, uv=None):
+        self.pick(float(np.asarray(V, float)[:, 0].mean()), label).add(V, F, slot, mass, label, orient, uv)
+
+    def weight(self, label, kg, centre):
+        self.pick(float(centre[0]), label).weight(label, kg, centre)
 
 
 def lab(group, kind):
     return f"{group} | {kind}"
 
 
+def opening_spec(name):
+    """An opened hatch's, skylight's or house's (slice 10: the companionway, the doghouse) plan box: its "x",
+    "length" and "width", the coaming's or the sill's outside."""
+    if name in ("Companionway", "Doghouse"):
+        return deck.DK[name.lower()]
+    return deck.DK["hatches"].get(name) or deck.DK["skylights"][name]
+
+
+def opened_names():
+    """The openings whose coamings (or sills) line them below and whose beams are cut: hatches, skylights, houses."""
+    o = IN["openings"]
+    return list(o["hatches"]) + list(o["skylights"]) + list(o.get("houses", []))
+
+
 def openings():
-    """The deck's openings over these cabins, for deck.build (hatches and skylights by name) and hardware.build and
-    hardware.deck_holes (the prisms by index, the cowls by place, the chain pipe)."""
+    """The deck's openings over these cabins, for deck.build (hatches, skylights and houses by name) and hardware.build
+    and hardware.deck_holes (the prisms by index, the cowls by place, the chain pipe)."""
     o = IN["openings"]
     return {"hatches": list(o["hatches"]), "skylights": list(o["skylights"]), "prisms": list(o["prisms"]),
-            "cowls": list(o["cowls"]), "chain_pipe": bool(o["chain_pipe"])}
+            "cowls": list(o["cowls"]), "chain_pipe": bool(o["chain_pipe"]), "houses": list(o.get("houses", []))}
 
 
 def deckhead_z(x, y):
@@ -222,21 +260,6 @@ def fan_slab(P2, origin, U, Vd, N, t0, t1):
     return deck.slab(np.asarray(P2, float), origin, U, Vd, N, t0, t1)
 
 
-def clip_halfplane(P, a, b, c):
-    """The convex polygon P (n, 2) clipped to a*x + b*y <= c (Sutherland-Hodgman)."""
-    out = []
-    n = len(P)
-    for i in range(n):
-        p, q = P[i], P[(i + 1) % n]
-        fp, fq = a * p[0] + b * p[1] - c, a * q[0] + b * q[1] - c
-        if fp <= 0:
-            out.append(p)
-        if fp * fq < 0:
-            t = fp / (fp - fq)
-            out.append(p + t * (q - p))
-    return np.array(out)
-
-
 def clean_poly(P, tol=1e-6):
     P = np.asarray(P, float)
     keep = [0]
@@ -318,7 +341,7 @@ def beam_cuts(xk, holes, cut_names):
     a0, a1 = xk + BEAM_L[:, 0].min(), xk + BEAM_L[:, 0].max()
     out = []
     for name in cut_names:
-        spec = deck.DK["hatches"].get(name) or deck.DK["skylights"][name]
+        spec = opening_spec(name)
         x0, x1 = spec["x"] - spec["length"] / 2, spec["x"] + spec["length"] / 2
         if a1 > x0 and a0 < x1:
             out.append((spec["width"] / 2 + 2 * WEB, name))
@@ -488,7 +511,7 @@ def structure(part, hull, holes, cut_names):
         if what == "mast":
             yw = ST["partners"][0]
         else:
-            spec = deck.DK["hatches"].get(what) or deck.DK["skylights"][what]
+            spec = opening_spec(what)
             yw = spec["width"] / 2 + WEB
         # from the web of the beam aft of it to the web of the beam forward of it; that beam's flange reaches aft over
         # the carlin's end, so the carlin's flange stops at its edge and only its web runs on under it
@@ -506,13 +529,20 @@ def structure(part, hull, holes, cut_names):
         if what == "mast":
             continue
         # the headers: an angle across each end of the opening, between the carlins' webs, its web against the
-        # coaming's lining and its flange away from the opening, so the planking's ends there are carried
+        # coaming's lining and its flange away from the opening, so the planking's ends there are carried; where an
+        # uncut beam already lies across the end, wholly outside the opening and within 0.1 m of it (the doghouse's
+        # after end, slice 10), that beam is the header
         xe0, xe1 = spec["x"] - spec["length"] / 2, spec["x"] + spec["length"] / 2
         hx = []
         for xe, toward in ((xe0 - WEB, -1.0), (xe1 + WEB, 1.0)):
             a, b = -BEAM_L[:, 0] * toward, BEAM_L[:, 1]
             near = [xk for xk in FRAMES if f"{xk:.3f}" not in rep["beams_cut"] and abs(xk - xe) < BM_F + 0.02]
             if near:
+                fa, fb = near[0] + BEAM_L[:, 0].min(), near[0] + BEAM_L[:, 0].max()
+                gap = xe0 - fb if toward < 0 else fa - xe1
+                if 0.0 <= gap <= 0.1:
+                    hx.append(f"beam {near[0]:.3f}")
+                    continue
                 raise ValueError(f"the header at x {xe:.3f} ({what}) comes on the beam at {near[0]:.3f}: move the "
                                  "opening or re-space the frames")
             for name, H in holes.items():
@@ -548,27 +578,33 @@ def structure(part, hull, holes, cut_names):
     # with the deck's holes through it
     # (out to 0.5 mm inside the plating at its underside and at its top, whichever is less), its top 'DH_TOP' under
     # the deck's, clear of the fittings let 10 mm into the planking (the mast coat's flange)
-    xs = np.linspace(X0 + 0.015, X1 + 0.015, int(round((X1 - X0) / 0.1)) + 1)
-    ys = []
-    for x in xs:
-        z, y = hull.side_top(x, pl + 0.0005)
-        ys.append(min(y, hull.y_at(x, pl + 0.0005, z + PLANK - DH_TOP) or y))
-    ys = np.array(ys)
-    # its ends straight across, with points every 0.1 m so the slab follows the camber there too
-    fwd = [(xs[-1], y) for y in np.linspace(ys[-1], -ys[-1], int(math.ceil(2 * ys[-1] / 0.1)) + 1)[1:-1]]
-    aft = [(xs[0], y) for y in np.linspace(-ys[0], ys[0], int(math.ceil(2 * ys[0] / 0.1)) + 1)[1:-1]]
-    outline = np.concatenate([np.column_stack([xs, ys]), np.array(fwd).reshape(-1, 2),
-                              np.column_stack([xs[::-1], -ys[::-1]]), np.array(aft).reshape(-1, 2)])
-    inside = {k: np.asarray(v, float) for k, v in holes.items() if X0 < np.asarray(v)[:, 0].mean() < X1}
-    # and the mast's: round its wedges at the slab's mid-depth, 1 mm clear (the mast's rake moves them under 1 mm)
+    # (in two slabs, slice 10: forward and aft of slice 9's after bulkhead, each with the holes over it)
     z_mid = float(shell.deck_z(spars.X_P, 0.0)) - 0.5 * (PLANK + DH_TOP)
-    inside["mast"] = spars.ring_at((z_mid - spars.Z_P) / math.cos(spars.RAKE), 48, ST["partners"][2] + 0.001)[:, :2]
-    to3 = lambda A, t: np.column_stack([A, shell.deck_z(A[:, 0], A[:, 1]) - t])  # noqa: E731
-    # the holes' straight sides cut every 5 cm, so the slab follows the camber along them too (a 1 m side drawn as
-    # one chord sagged a millimetre under the headers there)
-    V, F = region_slab(outline, [densify(h, 0.05) for h in inside.values()], to3, PLANK, DH_TOP, grid=0.12)
-    part.add(V, F, "WhitePaint", None, lab("Deckhead", "deckhead"))
-    rep["deckhead_holes"] = sorted(inside)
+    rep["deckhead_holes"] = []
+    for xa, xb in ((SPLIT_X, X1), (X0, SPLIT_X)):
+        xs = np.linspace(xa + 0.015, xb + 0.015, int(round((xb - xa) / 0.1)) + 1)
+        ys = []
+        for x in xs:
+            z, y = hull.side_top(x, pl + 0.0005)
+            ys.append(min(y, hull.y_at(x, pl + 0.0005, z + PLANK - DH_TOP) or y))
+        ys = np.array(ys)
+        # its ends straight across, with points every 0.1 m so the slab follows the camber there too
+        fwd = [(xs[-1], y) for y in np.linspace(ys[-1], -ys[-1], int(math.ceil(2 * ys[-1] / 0.1)) + 1)[1:-1]]
+        aft = [(xs[0], y) for y in np.linspace(-ys[0], ys[0], int(math.ceil(2 * ys[0] / 0.1)) + 1)[1:-1]]
+        outline = np.concatenate([np.column_stack([xs, ys]), np.array(fwd).reshape(-1, 2),
+                                  np.column_stack([xs[::-1], -ys[::-1]]), np.array(aft).reshape(-1, 2)])
+        inside = {k: np.asarray(v, float) for k, v in holes.items()
+                  if xa + 0.015 < np.asarray(v)[:, 0].mean() < xb + 0.015}
+        # and the mast's: round its wedges at the slab's mid-depth, 1 mm clear (the mast's rake moves them under 1 mm)
+        if xa + 0.015 < spars.X_P < xb + 0.015:
+            inside["mast"] = spars.ring_at((z_mid - spars.Z_P) / math.cos(spars.RAKE), 48,
+                                           ST["partners"][2] + 0.001)[:, :2]
+        to3 = lambda A, t: np.column_stack([A, shell.deck_z(A[:, 0], A[:, 1]) - t])  # noqa: E731
+        # the holes' straight sides cut every 5 cm, so the slab follows the camber along them too (a 1 m side drawn
+        # as one chord sagged a millimetre under the headers there)
+        V, F = region_slab(outline, [densify(h, 0.05) for h in inside.values()], to3, PLANK, DH_TOP, grid=0.12)
+        part.add(V, F, "WhitePaint", None, lab("Deckhead", "deckhead"))
+        rep["deckhead_holes"] += sorted(inside)
     return rep
 
 
@@ -632,6 +668,27 @@ def board_on(pts, nn, z, w):
     a, b = pts[k], pts[k + 1]
     t = 0.0 if b[1] == a[1] else (z - a[1]) / (b[1] - a[1])
     sc = s[k] + t * (s[k + 1] - s[k])
+    return board_at(pts, nn, s, sc, w, k)
+
+
+def arc_at(pts, z):
+    """The length along a section's polyline (from its first point) where it first reaches height z, and the
+    polyline's cumulative lengths; None where it does not."""
+    k = np.where((pts[:-1, 1] - z) * (pts[1:, 1] - z) <= 0)[0]
+    s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))])
+    if len(k) == 0:
+        return None, s
+    k = int(k[0])
+    a, b = pts[k], pts[k + 1]
+    t = 0.0 if b[1] == a[1] else (z - a[1]) / (b[1] - a[1])
+    return s[k] + t * (s[k + 1] - s[k]), s
+
+
+def board_at(pts, nn, s, sc, w, k=None):
+    """board_on's board centred at length sc along the polyline (s its cumulative lengths; k the segment, if
+    known)."""
+    if k is None:
+        k = int(min(max(np.searchsorted(s, sc) - 1, 0), len(s) - 2))
     if sc - w / 2 < 0.0 or sc + w / 2 > s[-1]:
         return None
     at = lambda q: np.array([np.interp(q, s, pts[:, 0]), np.interp(q, s, pts[:, 1])])  # noqa: E731
@@ -646,39 +703,80 @@ def board_on(pts, nn, z, w):
 
 
 _ROWS = {}
+PN = CE.get("panel", {})
 
 
-def ceiling_rows(hull, name):
-    """A room's ceiling as ceiling() draws it: its stations (the room's ends and the frames in it) and its rows, each
-    (z, [(lo, hi, nn) at each station]: board_on's outer face and inboard normal); cached by hull and room."""
-    key = (id(hull), name)
+def room_runs(name):
+    """A room's runs of ceiling along each side: its clear length, cut where a transverse partition stands on one of
+    its frames (slice 10: 'breaks', the owner's end's partition on frame -6.385, each run ending at its faces)."""
+    x0, x1 = room_span(name)
+    runs, a = [], x0
+    for xb in sorted(CE.get("breaks", {}).get(name, [])):
+        runs.append((a, xb + 0.5 * FR_T))
+        a = xb + 0.5 * FR_T + IN["aft"]["partition"]["thickness"]
+    return runs + [(a, x1)]
+
+
+def ceiling_rows(hull, name, run=0):
+    """A room's ceiling as ceiling() draws it, on one of its runs (room_runs): its stations (the run's ends and the
+    frames in it) and its rows, each (z, [(lo, hi, nn) at each station]: board_on's outer face and inboard normal);
+    cached by hull, room and run. A panelled room's (slice 10) boards are its panelling's."""
+    key = (id(hull), name, run)
     if key not in _ROWS:
         r = RM[name]
         bw, bt = CE["batten"]
-        x0, x1 = room_span(name)
+        x0, x1 = room_runs(name)[run]
         st = [x0] + [x for x in FRAMES if x0 < x < x1 - 1e-6] + [x1]
         edges = {x: frame_edge(hull, x, r["sole"], 3.0, step=0.02) for x in st}
         lined = name in CE["lined"]
-        w, pitch = (CE["board"] - 0.002, CE["board"]) if lined else (bw, CE["pitch"])
-        z0 = r["sole"] + CE["from_sole"]
-        z1 = min(hull.side_top(x, ST["plating"] + FR_D)[0] for x in st) - CE["to_deckhead"]
+        panel = name in CE.get("panelled", [])
+        if panel:
+            w, pitch = PN["board"] - 0.002, PN["board"]
+        else:
+            w, pitch = (CE["board"] - 0.002, CE["board"]) if lined else (bw, CE["pitch"])
+        z0 = r["sole"] + (PN["from_sole"] if panel else CE["from_sole"])
+        below = PN["to_deckhead"] if panel else CE["to_deckhead"]
+        z1 = min(hull.side_top(x, ST["plating"] + FR_D)[0] for x in st) - below
         rows = []
-        for k in range(int((z1 - z0 - w) / pitch) + 1):
+        if panel:
+            # panelling: its boards laid by length along each station's curve from z0 up to z1, as many at every
+            # station (each tapering a little along the run), so they close up where the side turns into the bilge
+            # instead of opening into gaps as boards spaced by height do
+            arcs = {x: (arc_at(edges[x][0], z0), arc_at(edges[x][0], z1)) for x in st}
+            if any(a[0] is None or b[0] is None for a, b in arcs.values()):
+                raise ValueError(f"the {name}'s panelling: a station's side does not reach {z0:.3f} to {z1:.3f}")
+            n = int(min((b[0] - a[0]) / pitch for a, b in arcs.values()))
+            for k in range(n):
+                got = []
+                for x in st:
+                    (sa, sl), (sb, _) = arcs[x]
+                    p = (sb - sa) / n
+                    got.append(board_at(*edges[x], sl, sa + (k + 0.5) * p, p - 0.002))
+                if any(g is None for g in got) or min(min(g[0][0], g[1][0]) for g in got) < 0.02:
+                    continue
+                rows.append((float(np.mean([0.5 * (g[0][1] + g[1][1]) for g in got])), got))
+        for k in range(0 if panel else int((z1 - z0 - w) / pitch) + 1):
             z = z0 + 0.5 * w + k * pitch
             got = [board_on(*edges[x], z, w) for x in st]
             if any(g is None for g in got) or min(min(g[0][0], g[1][0]) for g in got) < 0.02:
                 continue
             rows.append((z, got))
-        _ROWS[key] = {"st": st, "rows": rows, "thickness": bt, "lined": lined, "z": (z0, z1)}
+        _ROWS[key] = {"st": st, "rows": rows, "thickness": bt, "lined": lined, "panel": panel, "z": (z0, z1)}
     return _ROWS[key]
 
 
+def run_at(name, x):
+    """The run of a room's ceiling (room_runs) that x is in, or the nearest."""
+    runs = room_runs(name)
+    return min(range(len(runs)), key=lambda i: max(runs[i][0] - x, x - runs[i][1], 0.0))
+
+
 def ceiling_face(hull, x, z, row=None):
-    """The ceiling's inner face (the battens' or the lining's) at (x, z): its half-breadth there on the row covering z
-    (or on `row`, an index into ceiling_rows' rows; or, between rows, the nearest), carried past the row's edges, with
-    the row's index and its band (z from, to) at x."""
+    """The ceiling's inner face (the battens', the lining's or the panelling's) at (x, z): its half-breadth there on
+    the row covering z (or on `row`, an index into ceiling_rows' rows; or, between rows, the nearest), carried past
+    the row's edges, with the row's index and its band (z from, to) at x."""
     name, _ = room_at(x)
-    c = ceiling_rows(hull, name)
+    c = ceiling_rows(hull, name, run_at(name, x))
     st, bt = c["st"], c["thickness"]
     k = min(max(int(np.searchsorted(st, x)) - 1, 0), len(st) - 2)
     u = (x - st[k]) / (st[k + 1] - st[k])
@@ -700,33 +798,110 @@ def ceiling_face(hull, x, z, row=None):
 
 
 def ceiling(part, hull):
-    """Battens on the frames' inner edges in every room but the bare ones (the forepeak), or the galley's
-    tongue-and-groove lining: horizontal, from 'from_sole' over the room's (lower) sole to 'to_deckhead' under the
-    deckhead at the side, each flat across the frames' curve (board_on), a row left out where it would come within
-    2 cm of the centreline (the bow's narrow bottom). A ceiled room with no row is an error."""
+    """Battens on the frames' inner edges in every room but the bare ones (the forepeak), or the galley's (and the
+    pantry's) tongue-and-groove lining, or (slice 10) the saloon's and the owner's end's mahogany panelling with its
+    rails, stiles and cornice (panel_trim): horizontal, from 'from_sole' over the room's (lower) sole to
+    'to_deckhead' under the deckhead at the side, each flat across the frames' curve (board_on), a row left out where
+    it would come within 2 cm of the centreline (the bow's narrow bottom). A ceiled room with no row is an error."""
     rep = {}
     for name, r in ROOMS:
         if name in CE["bare"]:
             rep[name] = {"rows_each_side": 0, "kind": "bare (the frames show)"}
             continue
+        for run in range(len(room_runs(name))):
+            c = ceiling_rows(hull, name, run)
+            if not c["rows"]:
+                raise ValueError(f"the {name}'s ceiling has no row between {c['z'][0]:.3f} and {c['z'][1]:.3f}")
+            bt, lined, panel = c["thickness"], c["lined"], c["panel"]
+            R = c["rows"]
+            for i, (z, got) in enumerate(R):
+                for sd, side in SIDES:
+                    rings = []
+                    for j, (x, (lo, hi, nn)) in enumerate(zip(c["st"], got)):
+                        d_lo = d_hi = 0.0
+                        if panel:
+                            # the panel boards' edges bevelled back toward the room by as much as each meets its
+                            # neighbour at an angle (bt tan(half the angle), and 0.3 mm): flat boards round the bilge's
+                            # turn would otherwise cross each other's inner edges; it shows as a V-groove
+                            cb = (hi - lo) / np.linalg.norm(hi - lo)
+                            for k2, sgn in ((i - 1, -1), (i + 1, 1)):
+                                if 0 <= k2 < len(R):
+                                    a = math.acos(min(1.0, float(np.dot(nn, R[k2][1][j][2]))))
+                                    d = min(bt * math.tan(0.5 * a) + 0.0003, 0.3 * np.linalg.norm(hi - lo))
+                                    if sgn < 0:
+                                        d_lo = d
+                                    else:
+                                        d_hi = d
+                            q = np.array([lo, hi, hi + bt * nn - d_hi * cb, lo + bt * nn + d_lo * cb])
+                        else:
+                            q = np.array([lo, hi, hi + bt * nn, lo + bt * nn])
+                        rings.append(np.column_stack([np.full(4, x), sd * q[:, 0], q[:, 1]]))
+                    V, F = loft_rings(rings)
+                    if panel:
+                        part.add(V, F, "Mahogany", ("solid", WT["mahogany"]), lab(f"{name} panelling, {side}",
+                                                                                  "panel"))
+                    elif lined:
+                        part.add(V, F, "WhitePaint", ("solid", WT["pine"]), lab(f"{name} lining, {side}", "lining"))
+                    else:
+                        part.add(V, F, "Varnish", ("solid", WT["pine"]), lab(f"{name} ceiling, {side}", "batten"))
+            if panel:
+                panel_trim(part, hull, name, run)
+        rows = sum(len(ceiling_rows(hull, name, k)["rows"]) for k in range(len(room_runs(name))))
         c = ceiling_rows(hull, name)
-        if not c["rows"]:
-            raise ValueError(f"the {name}'s ceiling has no row between {c['z'][0]:.3f} and {c['z'][1]:.3f}")
-        bt, lined = c["thickness"], c["lined"]
-        for z, got in c["rows"]:
-            for sd, side in SIDES:
-                rings = []
-                for x, (lo, hi, nn) in zip(c["st"], got):
-                    q = np.array([lo, hi, hi + bt * nn, lo + bt * nn])
-                    rings.append(np.column_stack([np.full(4, x), sd * q[:, 0], q[:, 1]]))
-                V, F = loft_rings(rings)
-                if lined:
-                    part.add(V, F, "WhitePaint", ("solid", WT["pine"]), lab(f"{name} lining, {side}", "lining"))
-                else:
-                    part.add(V, F, "Varnish", ("solid", WT["pine"]), lab(f"{name} ceiling, {side}", "batten"))
-        rep[name] = {"rows_each_side": len(c["rows"]), "from_z": round(c["z"][0], 3), "to_z": round(c["z"][1], 3),
-                     "kind": "lining" if lined else "battens"}
+        rep[name] = {"rows_each_side": rows, "from_z": round(c["z"][0], 3), "to_z": round(c["z"][1], 3),
+                     "kind": "panelling" if c["panel"] else "lining" if c["lined"] else "battens"}
+        if len(room_runs(name)) > 1:
+            rep[name]["runs_x"] = [[round(a, 3), round(b, 3)] for a, b in room_runs(name)]
     return rep
+
+
+def trim_face(hull, name, run, x, z0, z1, proud, nz=2):
+    """A trim strip's section at station x: from z0 to z1 on the panelling's face (its back, 0.3 mm proud of the
+    boards: they are flat across, so a strip's back laid on their face at its two edges stands off them between) and
+    `proud` in from it, horizontally. (y, z) corners, back up then front down."""
+    zz = np.linspace(z0, z1, nz)
+    back = [(ceiling_face(hull, x, z)[0] - 0.0003, z) for z in zz]
+    return np.array(back + [(y - proud, z) for y, z in back[::-1]])
+
+
+def panel_trim(part, hull, name, run):
+    """A panelled room's trim on its boards, along one run each side (slice 10): a rail along each of 'rails_z' (its
+    foot over the sole: the skirting, the seat rail, the dado rail), a stile up each frame between the rails and up to
+    the cornice, and the cornice along the boards' top edge, all varnished mahogany 'proud' of the boards."""
+    c = ceiling_rows(hull, name, run)
+    zs = RM[name]["sole"]
+    rh, rp = PN["rail"]
+    sw, sp = PN["stile"]
+    ch, cp = PN["cornice"]
+    st = c["st"]
+    top_row = c["rows"][-1][1]
+    z_top = min(max(lo[1], hi[1]) for lo, hi, _ in top_row)      # the boards' top edge, its lowest station
+    bands = [(zs + z, zs + z + rh) for z in PN["rails_z"]] + [(z_top - ch, z_top)]
+    for sd, side in SIDES:
+        g = f"{name} panelling, {side}"
+        for k, (z0, z1) in enumerate(bands):
+            last = k == len(bands) - 1
+            rings = []
+            for x in st:
+                P = trim_face(hull, name, run, x, z0, z1, cp if last else rp)
+                rings.append(np.column_stack([np.full(len(P), x), sd * P[:, 0], P[:, 1]]))
+            V, F = loft_rings(rings)
+            part.add(V, F, "Mahogany", ("solid", WT["mahogany"]), lab(g, "cornice" if last else "rail"))
+        for xf in [x for x in st[1:-1] if st[0] < x - sw / 2 and x + sw / 2 < st[-1]]:   # (not into a bulkhead)
+            for (_, za), (zb, _) in zip(bands[:-1], bands[1:]):
+                za, zb = za - 0.0005, zb + 0.0005                  # into the rails each end: no shared face
+                nz = max(int(math.ceil((zb - za) / 0.08)), 1) + 1
+                sheets = []
+                for t in (0.0, 1.0):
+                    rows = []
+                    for x in (xf - sw / 2, xf + sw / 2):
+                        P = trim_face(hull, name, run, x, za, zb, sp, nz)
+                        back, front = P[:nz], P[nz:][::-1]
+                        Q = back if t == 0.0 else front
+                        rows.append(np.column_stack([np.full(nz, x), sd * Q[:, 0], Q[:, 1]]))
+                    sheets.append(np.array(rows))
+                V, F = strip_solid(sheets[1], sheets[0])
+                part.add(V, F, "Mahogany", ("solid", WT["mahogany"]), lab(g, "stile"))
 
 
 # ------------------------------------------------------------------------------------------------ bulkheads
@@ -777,19 +952,56 @@ def sill_face(xb):
 
 def bulkhead_list():
     """Each bulkhead: (x of its frame, the room aft, the room forward, kind)."""
-    out = [(ROOMS[0][1]["x"][0], None, ROOMS[0][0], "door_closed")]
+    out = [(ROOMS[0][1]["x"][0], None, ROOMS[0][0], BH.get("aft_end", "door_closed"))]
     for (na, ra), (nb, rb) in zip(ROOMS[:-1], ROOMS[1:]):
         out.append((ra["x"][1], na, nb, "scuttle" if nb == "Forepeak" else "door"))
     out.append((ROOMS[-1][1]["x"][1], ROOMS[-1][0], None, "plate"))
     return out
 
 
-def bulkheads(part, hull, steel):
+def bulkheads(part, hull, steel, carlins=None):
     """The joiner's bulkheads (in `part`), each on the forward face of its frame: tongue-and-groove pine boards up to
     the deckhead beside the beam, round a door on the centreline (or the forepeak's scuttle) with its frame and sill
-    and its leaf hooked back to port on the forward face (the after bulkhead's door shut); the forward bulkhead at the
-    forward end a plain steel plate, with the structure (in `steel`)."""
+    and its leaf hooked back to port on the forward face (slice 9's after bulkhead's door shut; slice 10's after
+    bulkhead blank, its boards right across); the forward bulkhead at the forward end a plain steel plate, with the
+    structure (in `steel`). A bulkhead's face toward a panelled room (slice 10) is varnished mahogany (each board one
+    solid, its faces carrying the two slots). A board under a carlin (`carlins`, the structure's: slice 10's
+    companionway's start over the bulkhead between the saloon and the pantry) is cut in pieces where the carlin's web
+    and its flange begin and end, each 0.5 mm under what is over it."""
     t, bwid = BH["thickness"], CE["board"]
+
+    def under_carlins(Q, y0, y1, xa_):
+        """The board Q (y0..y1) as the pieces it is cut into under any carlin over it: split (0.3 mm apart) where
+        the carlin's web and its flange begin and end, each piece 0.5 mm under what is over it there."""
+        bands = []                                      # (y from, y to, depth under the deckhead)
+        for c in (carlins or {}).values():
+            if not (c["x"][0] - 0.0005 <= xa_ + t and xa_ <= c["x"][1] + 0.0005):
+                continue
+            yw = c["half_y"]
+            for sd in (1.0, -1.0):
+                for a, b, d in ((yw - WEB - 0.0005, yw + WEB + 0.0005, BM_D),
+                                (yw + WEB + 0.0005, yw - WEB + BM_F + 0.0005, BM_T)):
+                    lo, hi = sorted((sd * a, sd * b))
+                    if y1 > lo and y0 < hi:
+                        bands.append((lo, hi, d))
+        if not bands:
+            return [Q]
+        cuts = sorted({e for lo, hi, _ in bands for e in (lo, hi) if y0 + 0.002 < e < y1 - 0.002})
+        out = []
+        for a, b in zip([y0] + cuts, cuts + [y1]):
+            P = Q
+            if a > y0:
+                P = clip_halfplane(P, -1.0, 0.0, -(a + 0.00015))
+            if b < y1 and len(P) >= 3:
+                P = clip_halfplane(P, 1.0, 0.0, b - 0.00015)
+            d = max([dd for lo, hi, dd in bands if lo < b - 0.0005 and hi > a + 0.0005], default=0.0)
+            if d and len(P) >= 3:
+                ys = np.linspace(max(a, y0 + 0.001), min(b, y1 - 0.001), 4)
+                zc = min(float(deckhead_z(x, y)) for x in (xa_, xa_ + t) for y in ys)
+                P = clip_halfplane(P, 0.0, 1.0, zc - d - 0.0005)
+            if len(P) >= 3 and abs(deck.poly_area(P)) > 1e-7:
+                out.append(P)
+        return out
     rep = {}
     for xb, aft, fwd, kind in bulkhead_list():
         xa_ = xb + 0.5 * FR_T                         # its after face
@@ -807,6 +1019,21 @@ def bulkheads(part, hull, steel):
         outline = section_outline(hull, xa_ + t, z_bot, ST["plating"] + 0.0015, x2=xa_, clear=0.0005)
         hi = max(soles)
         fw, pr = DOOR_FW, DOOR_PR
+        aft_face = "Mahogany" if aft in CE.get("panelled", []) else "WhitePaint"
+        fwd_face = "Mahogany" if fwd in CE.get("panelled", []) else "WhitePaint"
+        if kind == "blank":
+            ymax = float(np.abs(outline[:, 0]).max())
+            nb, y = 0, -ymax - 0.01
+            while y < ymax + 0.01:
+                for Q in board_polys(outline, y + 0.001, y + bwid - 0.001):
+                    V, F = deck.slab(Q, (xa_, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0), 0.0, t)
+                    n = len(Q)
+                    part.add(V, F, ["WhitePaint"] * n + [aft_face] * n + [fwd_face] * n, ("solid", WT["pine"]),
+                             lab(f"Bulkhead {xb:.2f}", "bulkhead"))
+                    nb += 1
+                y += bwid
+            rep[f"{xb:.3f}"] = {"kind": "blank", "between": [aft, fwd], "boards": nb}
+            continue
         w = (BH["scuttle"] if kind == "scuttle" else BH["door"])[0]
         # the beam over it, lowest across the frame's head (the deck's camber drops it toward the sides)
         beam_under = min(float(deckhead_z(xb, y)) for y in np.linspace(0.0, w / 2 + fw, 5)) - BM_D
@@ -831,10 +1058,13 @@ def bulkheads(part, hull, steel):
             y += bwid
         nb = 0
         for y0, y1, door in strips:
-            for Q in board_polys(outline, y0 + 0.001, y1 - 0.001, [(z0, z1)] if door else []):
-                V, F = deck.slab(Q, (xa_, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0), 0.0, t)
-                part.add(V, F, "WhitePaint", ("solid", WT["pine"]), lab(f"Bulkhead {xb:.2f}", "bulkhead"))
-                nb += 1
+            for Q0 in board_polys(outline, y0 + 0.001, y1 - 0.001, [(z0, z1)] if door else []):
+                for Q in under_carlins(Q0, y0, y1, xa_):
+                    V, F = deck.slab(Q, (xa_, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0), 0.0, t)
+                    n = len(Q)
+                    part.add(V, F, ["WhitePaint"] * n + [aft_face] * n + [fwd_face] * n, ("solid", WT["pine"]),
+                             lab(f"Bulkhead {xb:.2f}", "bulkhead"))
+                    nb += 1
         # the frame round the opening: jambs, head and sill, 6 mm proud of each face
         xc = xa_ + 0.5 * t
         for sd in (1.0, -1.0):
@@ -1070,18 +1300,23 @@ def soles(part, hull):
 # ------------------------------------------------------------------------------------------------ the whole
 LINING = PLANK + BM_D + 0.002                    # the coamings' linings reach the beams' underside (deck.build)
 MATERIALS = {"WhitePaint": (0.42, 0.0, 0.0), "Pine": (0.82, 0.0, 0.0), "Varnish": (0.3, 0.0, 1.0),
-             "Canvas": (0.9, 0.0, 0.0), "Zinc": (0.45, 0.8, 0.0), "Porcelain": (0.12, 0.0, 0.6)}  # rough, metal, coat
+             "Canvas": (0.9, 0.0, 0.0), "Zinc": (0.45, 0.8, 0.0), "Porcelain": (0.12, 0.0, 0.6),  # rough, metal, coat
+             "Mahogany": (0.28, 0.0, 1.0), "Upholstery": (0.85, 0.0, 0.0), "Carpet": (0.95, 0.0, 0.0),
+             "Linen": (0.8, 0.0, 0.0), "Brass": (0.3, 1.0, 0.0), "Mirror": (0.03, 1.0, 0.0),
+             "Leather": (0.55, 0.0, 0.3), "Bulb": (0.3, 0.0, 0.0)}
 
 
 def build(S, holes):
     """{object name: SparPart} and the report."""
     hull = Hull(S)
-    parts = {k: spars.SparPart(k) for k in OBJECTS}
-    cut = list(IN["openings"]["hatches"]) + list(IN["openings"]["skylights"])
-    rep = {"structure": structure(parts["Below.Structure"], hull, holes, cut)}
-    rep["ceiling"] = ceiling(parts["Below.Ceiling"], hull)
-    rep["bulkheads"] = bulkheads(parts["Below.Joinery"], hull, parts["Below.Structure"])
-    rep["soles"] = soles(parts["Below.Joinery"], hull)
+    parts = {k: spars.SparPart(k) for k in OBJECTS + AFT_OBJECTS}
+    steel = Router(parts["Below.Structure"], parts["Aft.Structure"])
+    join = Router(parts["Below.Joinery"], parts["Aft.Joinery"])
+    cut = opened_names()
+    rep = {"structure": structure(steel, hull, holes, cut)}
+    rep["ceiling"] = ceiling(Router(parts["Below.Ceiling"], parts["Aft.Panelling"]), hull)
+    rep["bulkheads"] = bulkheads(join, hull, steel, rep["structure"]["carlins"])
+    rep["soles"] = soles(join, hull)
     import furniture
     side = furniture.Side(hull)
     rep["mess"] = furniture.mess(parts, side)
@@ -1091,7 +1326,9 @@ def build(S, holes):
     rep["cots"] = furniture.cots(parts, side, list(FRAMES))
     rep["washroom"] = furniture.washroom(parts, side)
     rep["forepeak"] = furniture.forepeak(parts, side, hull, list(FRAMES))
-    rep["coaming_linings"] = coaming_linings(parts["Below.Joinery"], cut)
+    import saloon
+    rep["aft"] = saloon.build(parts, hull, holes, rep["structure"])
+    rep["coaming_linings"] = coaming_linings(join, cut)
     cr = rep["forepeak"]["windlass"]["crank"]
     cr["clearance"] = furniture.crank_clearance(parts, cr.pop("sweep"), RM["Forepeak"]["sole"])
     if min(cr["clearance"]["fist_m"], cr["clearance"]["arm_m"], cr["clearance"]["platform_under_fist_m"]) < 0.02:
@@ -1102,14 +1339,20 @@ def build(S, holes):
 
 
 def coaming_linings(part, names):
-    """The coamings' linings below the deck: deck.coaming_ring draws each opened hatch's and skylight's coaming on down
-    through the planking to LINING under the deck's top, and weighs only what stands above it; the rest, its walls
-    round the opening (teak, the coaming's thickness), is weighed here with the accommodation."""
+    """The coamings' linings below the deck: deck.coaming_ring draws each opened hatch's and skylight's coaming (and
+    each house's sill, slice 10) on down through the planking to LINING under the deck's top, and weighs only what
+    stands above it; the rest, its walls round the opening (teak, the coaming's or the sill's thickness), is weighed
+    here with the accommodation."""
     tb = deck.TB
     out = {}
     for name in names:
-        spec = deck.DK["hatches"].get(name) or deck.DK["skylights"][name]
-        t = tb["coaming"]
+        spec = opening_spec(name)
+        if name == "Companionway":
+            t = tb["coaming"] + spec["wall_inset"]
+        elif name == "Doghouse":
+            t = tb["house_side"] + math.tan(math.radians(spec["tumblehome_deg"])) * spec["sill"]
+        else:
+            t = tb["coaming"]
         area = 2 * (spec["length"] + spec["width"] - 2 * t) * LINING
         kg = tb["teak"] * t * area
         c = [spec["x"], spec.get("y", 0.0), float(shell.deck_z(spec["x"], 0.0)) - 0.5 * LINING]
@@ -1147,12 +1390,14 @@ def weights(parts):
     """What the interior weighs, in two rows: the ground tackle (the windlass, the cable, the bower on its chocks and
     the spurling and navel pipes: weighed with the deck hardware against the size card's winches and hardware, in place
     of slice 8's estimate) and the rest, the accommodation forward (part of the card's accommodation, which slice 10's
-    aft cabins share). Each row by kind of piece, with its total and centre."""
-    rows = {"ground_tackle": {}, "accommodation_forward": {}}
+    aft cabins share), and slice 10's accommodation aft (the "Aft." objects). Each row by kind of piece, with its total
+    and centre."""
+    rows = {"ground_tackle": {}, "accommodation_forward": {}, "accommodation_aft": {}}
     for p in parts.values():
         for m in p.masses:
             g = m["part"].split(" | ")[0].split(",")[0].split(":")[0].split(" (")[0].strip()
-            key = "ground_tackle" if g in GROUND_TACKLE else "accommodation_forward"
+            key = "ground_tackle" if g in GROUND_TACKLE else \
+                "accommodation_aft" if p.name.startswith("Aft.") else "accommodation_forward"
             t = rows[key].setdefault(g, {"kg": 0.0, "mom": np.zeros(3)})
             t["kg"] += m["kg"]
             t["mom"] += m["kg"] * np.asarray(m["centre"], float)

@@ -1,0 +1,418 @@
+{
+ "object": "Shell",
+ "lines": {
+  "wl_0": {
+   "z": -3.938,
+   "length_m": 6.857,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.765,
+   "k_step_median": 0.0042,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_1": {
+   "z": -3.295,
+   "length_m": 9.503,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.364,
+   "k_step_median": 0.0042,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_2": {
+   "z": -2.652,
+   "length_m": 12.84,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.398,
+   "k_step_median": 0.0062,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_3": {
+   "z": -2.009,
+   "length_m": 15.813,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.942,
+   "k_step_median": 0.0113,
+   "inflections_at": [
+    [
+     -6.62,
+     0.51
+    ]
+   ],
+   "kinks_at": []
+  },
+  "wl_4": {
+   "z": -1.366,
+   "length_m": 18.792,
+   "inflections": 1,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 2.849,
+   "k_step_median": 0.0171,
+   "inflections_at": [
+    [
+     -8.04,
+     0.38
+    ]
+   ],
+   "kinks_at": []
+  },
+  "wl_5": {
+   "z": -0.723,
+   "length_m": 22.081,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 0.424,
+   "k_step_median": 0.0126,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_6": {
+   "z": -0.08,
+   "length_m": 26.649,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 1.645,
+   "k_step_median": 0.0065,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_7": {
+   "z": 0.563,
+   "length_m": 32.169,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 1.995,
+   "k_step_median": 0.003,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_8": {
+   "z": 1.206,
+   "length_m": 37.156,
+   "inflections": 0,
+   "kinks": 0,
+   "kinks_firm": 0,
+   "k_max": 1.657,
+   "k_step_median": 0.0024,
+   "inflections_at": [],
+   "kinks_at": []
+  },
+  "wl_9": {
+   "z": 1.849,
+   "length_m": 4.102,
+   "inflections": 1,
+   "kinks": 1,
+   "kinks_firm": 0,
+   "k_max": 0.397,
+   "k_step_median": 0.003,
+   "inflections_at": [
+    [
+     17.38,
+     0.17
+    ]
+   ],
+   "kinks_at": [
+    [
+     17.24,
+     0.25,
+     0.39,
+     "soft"
+    ]
+   ]
+  },
+  "st_0": {
+   "x": -18.788,
+   "length_m": 1.891,
+   "inflections": 0,
+   "kinks": 2,
+   "kinks_firm": 0,
+   "k_max": 2.459,
+   "k_step_median": 0.0322,
+   "inflections_at": [],
+   "kinks_at": [
+    [
+     1.0,
+     1.24,
+     0.02,
+     "soft"
+    ],
+    [
+     1.44,
+     1.49,
+     2.46,
+     "soft"
+    ]
+   ]
+  },
+  "st_1": {
+   "x": -14.884,
+   "length_m": 2.914,
+   "inflections": 0,
+   "kinks": 2,
+   "kinks_firm": 1,
+   "k_max": 1.616,
+   "k_step_median": 0.0192,
+   "inflections_at": [],
+   "kinks_at": [
+    [
+     2.18,
+     1.06,
+     -1.62,
+     "firm"
+    ],
+    [
+     1.61,
+     0.73,
+     -0.01,
+     "soft"
+    ]
+   ]
+  },
+  "st_2": {
+   "x": -10.98,
+   "length_m": 3.71,
+   "inflections": 0,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 0.968,
+   "k_step_median": 0.0122,
+   "inflections_at": [],
+   "kinks_at": [
+    [
+     2.51,
+     0.54,
+     -0.97,
+     "firm"
+    ],
+    [
+     1.15,
+     -0.13,
+     -0.05,
+     "firm"
+    ]
+   ]
+  },
+  "st_3": {
+   "x": -7.076,
+   "length_m": 5.243,
+   "inflections": 1,
+   "kinks": 1,
+   "kinks_firm": 1,
+   "k_max": 1.146,
+   "k_step_median": 0.0118,
+   "inflections_at": [
+    [
+     1.56,
+     -0.94
+    ]
+   ],
+   "kinks_at": [
+    [
+     2.55,
+     -0.33,
+     -0.87,
+     "firm"
+    ]
+   ]
+  },
+  "st_4": {
+   "x": -3.172,
+   "length_m": 7.022,
+   "inflections": 2,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 2.213,
+   "k_step_median": 0.0105,
+   "inflections_at": [
+    [
+     1.68,
+     -1.57
+    ],
+    [
+     0.25,
+     -3.86
+    ]
+   ],
+   "kinks_at": [
+    [
+     2.63,
+     -0.89,
+     -0.83,
+     "firm"
+    ],
+    [
+     0.3,
+     -3.3,
+     0.71,
+     "firm"
+    ]
+   ]
+  },
+  "st_5": {
+   "x": 0.733,
+   "length_m": 6.778,
+   "inflections": 2,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 2.31,
+   "k_step_median": 0.0173,
+   "inflections_at": [
+    [
+     1.7,
+     -1.51
+    ],
+    [
+     0.32,
+     -3.59
+    ]
+   ],
+   "kinks_at": [
+    [
+     2.63,
+     -0.85,
+     -0.83,
+     "firm"
+    ],
+    [
+     0.41,
+     -3.1,
+     0.62,
+     "firm"
+    ]
+   ]
+  },
+  "st_6": {
+   "x": 4.637,
+   "length_m": 5.793,
+   "inflections": 2,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 0.892,
+   "k_step_median": 0.0161,
+   "inflections_at": [
+    [
+     0.31,
+     -2.43
+    ],
+    [
+     1.99,
+     -0.7
+    ]
+   ],
+   "kinks_at": [
+    [
+     0.4,
+     -2.19,
+     -0.55,
+     "firm"
+    ],
+    [
+     2.43,
+     -0.41,
+     0.89,
+     "firm"
+    ]
+   ]
+  },
+  "st_7": {
+   "x": 8.541,
+   "length_m": 4.411,
+   "inflections": 2,
+   "kinks": 2,
+   "kinks_firm": 2,
+   "k_max": 0.898,
+   "k_step_median": 0.02,
+   "inflections_at": [
+    [
+     0.24,
+     -1.31
+    ],
+    [
+     1.51,
+     -0.22
+    ]
+   ],
+   "kinks_at": [
+    [
+     0.3,
+     -1.18,
+     -0.79,
+     "firm"
+    ],
+    [
+     1.93,
+     0.05,
+     0.9,
+     "firm"
+    ]
+   ]
+  },
+  "st_8": {
+   "x": 12.445,
+   "length_m": 2.999,
+   "inflections": 1,
+   "kinks": 1,
+   "kinks_firm": 1,
+   "k_max": 0.886,
+   "k_step_median": 0.0083,
+   "inflections_at": [
+    [
+     0.52,
+     0.09
+    ]
+   ],
+   "kinks_at": [
+    [
+     1.02,
+     0.4,
+     -0.89,
+     "firm"
+    ]
+   ]
+  },
+  "st_9": {
+   "x": 16.349,
+   "length_m": 1.44,
+   "inflections": 1,
+   "kinks": 2,
+   "kinks_firm": 0,
+   "k_max": 0.874,
+   "k_step_median": 0.0288,
+   "inflections_at": [
+    [
+     0.45,
+     1.59
+    ]
+   ],
+   "kinks_at": [
+    [
+     0.3,
+     1.48,
+     0.87,
+     "soft"
+    ],
+    [
+     0.43,
+     1.58,
+     -0.55,
+     "soft"
+    ]
+   ]
+  }
+ },
+ "total_inflections": 14,
+ "total_kinks": 19
+}

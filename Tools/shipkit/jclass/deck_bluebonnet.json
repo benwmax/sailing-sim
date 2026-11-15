@@ -67,23 +67,27 @@
   "SaloonSkylight": {"x": -1.7, "length": 2.0, "width": 1.2, "coaming": 0.3, "rise": 0.2, "lid": 0.045, "panes": 3, "bars": 11, "bar_radius": 0.009, "corner": 0.035}
  },
  "companionway": {
-  "note": "The crew's companionway abaft the mast: a varnished box with its top's after part a sliding hatch on runners and a pair of doors in its after face.",
+  "note": "The crew's companionway abaft the mast: a varnished box with its top's after part a sliding hatch on runners and a pair of doors in its after face. Slice 10 opens the deck under it: a sill 'sill' m over the deck at the centreline (the doors' threshold) lines the opening below, the walls stand 'wall_inset' m in from the sill's outside, the top forward of the slide is a board between them, and the doors ('door_width' each) close the opening up to the slide.",
   "x": 0.85,
   "length": 0.85,
   "width": 0.8,
   "height": 0.3,
   "slide_length": 0.52,
   "slide_height": 0.06,
-  "corner": 0.04
+  "corner": 0.04,
+  "sill": 0.04,
+  "wall_inset": 0.006,
+  "door_width": 0.33
  },
  "doghouse": {
-  "note": "A low varnished doghouse over the companion to the owner's quarters and the chart table: sides leaning in by 'tumblehome' degrees, a cambered roof with eaves, three portlights a side and two windows forward (glass in bronze rims), a pair of doors and a sliding hatch at its after end, and a teak handrail along each side of the roof. 'side_height' is the sides' height above the deck at its centreline.",
+  "note": "A low varnished doghouse over the companion to the owner's quarters and the chart table: sides leaning in by 'tumblehome' degrees, a cambered roof with eaves, three portlights a side and two windows forward (glass in bronze rims), a pair of doors ('door_width' each) and a sliding hatch at its after end, and a teak handrail along each side of the roof. 'side_height' is the sides' height above the deck at its centreline. Slice 10 opens it over the companion down to the owner's end: the walls stand on a sill 'sill' m over the deck at the centreline (the doors' threshold) that lines the opening below, the ports and windows are cut through them, the doors fill the opening from the sill up to the slide, and the slide runs over a notch in the roof.",
   "x": -5.9,
   "length": 3.0,
   "width": 2.0,
   "side_height": 0.62,
   "tumblehome_deg": 7.0,
   "corner": 0.25,
+  "sill": 0.06,
   "roof_crown": 0.06,
   "roof_thickness": 0.05,
   "eave": 0.035,
@@ -91,7 +95,7 @@
   "port": [0.32, 0.17, 0.05],
   "windows_forward": 2,
   "window": [0.42, 0.2, 0.05],
-  "doors": [0.3, 0.48],
+  "door_width": 0.3,
   "slide": [0.8, 0.66, 0.07],
   "handrail": {"inboard_of_edge": 0.2, "height": 0.075, "section": [0.032, 0.03], "feet": 4}
  },
