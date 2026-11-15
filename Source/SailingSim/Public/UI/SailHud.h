@@ -6,7 +6,8 @@
 
 class APlayerController;
 class ASailboatPawn;
-namespace Sailing { class FScriptedScene; struct FBoatTelemetry; struct FBoatConfig; }
+namespace Sailing { class FScriptedScene; struct FBoatTelemetry; struct FBoatConfig; struct FSailStripState; struct FEasyAssists; }
+enum class ETelltaleState : uint8;
 
 /**
  * Graphics G4: the in-game HUD (ui-spec.md 5.8) in Slate, replacing the canvas instruments: the environment strip,
@@ -37,8 +38,10 @@ public:
 	/** #602 polish: an edge-clamped dot moved along its edge out of the Keep boxes (the N label, the wind arrow), Radius clear. */
 	static FVector2f MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size);
 
-	/** The sail trim panel's plain line in UI Helpful (Bean, Nov 15 2026, docs/trim-panel/): the most urgent thing its telltales
-	 *  and the heel say, as a headline and a short what-to-do. bGood when all is well; bNeutral at the dock. */
+	/** The sail trim panel's plain line in UI Helpful (Bean, Nov 15 2026, docs/trim-panel/): the coach's tips
+	 *  (SailingCollectBoatTips) in one headline and a short what-to-do, the most urgent first, so the panel never says all
+	 *  is well beside a tip that says otherwise. bGood when all is well; bNeutral at the dock. bHoldNoGo: the tips'
+	 *  start hold on the no-go cue (SailingNoGoTipHoldSeconds). */
 	struct FTrimVerdict
 	{
 		const TCHAR* Head = TEXT("");
@@ -46,9 +49,16 @@ public:
 		bool bGood = false;
 		bool bNeutral = false;
 	};
-	static FTrimVerdict TrimVerdict(const Sailing::FBoatTelemetry& T, const Sailing::FBoatConfig& Cfg, bool bTiedUp);
+	static FTrimVerdict TrimVerdict(const Sailing::FBoatTelemetry& T, const Sailing::FBoatConfig& Cfg, const Sailing::FEasyAssists& Easy,
+		bool bTiedUp, bool bHoldNoGo = false);
 	/** Which of a sail's NumStrips strips a telltale HeightFraction up it reads (the 3D ribbons' mapping). */
 	static int32 TrimStripAt(float HeightFraction, int32 NumStrips);
+	/** The panel's yarns: the luff's near (windward) and far (leeward) yarns and the leech ribbons. */
+	enum class ETrimYarn : uint8 { LuffWindward, LuffLeeward, Leech };
+	/** What the panel's yarn on one third of a sail shows (Band 0 the bottom third, 2 the top): the 3D ribbons' rules
+	 *  (JibTelltaleState, LeechTelltaleState) on every strip in that third, the worst of them, so any call the verdict
+	 *  makes from two strips shows on at least one yarn. A third with no strip of its own reads the strip at its middle. */
+	static ETelltaleState TrimYarnState(const Sailing::FSailStripState* Strips, int32 NumStrips, int32 Band, ETrimYarn Yarn);
 
 	ASailboatPawn* Pawn() const;
 

@@ -8,15 +8,17 @@ Mockups (live, every state): https://claude.ai/artifact/5WzmjY6kEr6xtv7oBnvo32
 ## What it shows
 
 - **Jib window.** The jib's luff seen from the cockpit: luff tape and forestay on the left, three yarn pairs a hand's width
-  aft (a quarter, half and three-quarters up, the same strips as the 3D ribbons). The near, windward yarn is solid; the far
-  one shows faintly through the cloth. Green to starboard, red to port, as on a real boat.
-- **Main window.** The main's leech against the sky with three red ribbons at the battens (0.4, 0.6, 0.8 up), streaming aft
-  or curling behind the leech when the main stalls.
+  aft, one for each third of the sail. The near, windward yarn is solid; the far one shows faintly through the cloth.
+  Green to starboard, red to port, as on a real boat.
+- **Main window.** The main's leech against the sky with three red ribbons at the battens, one for each third of the
+  leech, streaming aft, curling behind the leech when the main stalls, flapping when it luffs.
 - A boat with no jib (Sunfish, ILCA) shows the luff of her main in the left window, labelled SAIL.
 - At the dock every yarn hangs still.
 
-The yarns use the 3D ribbons' own rules (`JibTelltaleState`, `LeechTelltaleState` in `SailCloth.h`) and strip mapping
-(`SSailHud::TrimStripAt`), so the panel and the sail always agree.
+Each yarn uses the 3D ribbons' own rules (`JibTelltaleState`, `LeechTelltaleState` in `SailCloth.h`) on every physics
+strip in its third of the sail and shows the worst of them (`SSailHud::TrimYarnState`; a third with no strip of its own,
+on a sail with fewer than three, reads the strip at its middle). So whenever the headline calls a sail, at least one yarn
+shows it.
 
 ## UI modes
 
@@ -34,18 +36,26 @@ UI Helpful is 300 px wide at 100% HUD and about 184-200 px tall: its rows follow
 
 ## The Helpful line
 
-`SSailHud::TrimVerdict` picks the most urgent; two of the three yarns make a call (`SailingSim.UI.TrimVerdict`).
+`SSailHud::TrimVerdict` says what the coach's tips say (`SailingCollectBoatTips` in `SailingHUD.cpp`), in one headline and
+one short line, the most urgent first. It uses the tips' own no-go cue (`NoGoCueFor`: Easy mode's wider zone and its
+warning band, held for the tips' first 10 s after a start), their counts over every strip, two strips to make a call, and
+their gate (no sail calls under 35 deg off the wind). `SailingSim.UI.TrimVerdict` sweeps every pair of strips on both
+sails, a sloop and a dinghy, nine wind angles, Realistic and Easy, and fails if the headline says all is well while a tip
+warns (or the other way round), or if a call doesn't show on a yarn.
 
 | When | Headline | Line |
 | --- | --- | --- |
 | Tied up | Tied up | |
 | In irons | In irons | Bear away until the sails fill. |
 | Heel past `TrimHeelLimitDeg` (monohulls) | Heeling too much | Ease the main or hike out. |
-| Inside yarns lifting, TWA under 50 deg | Pinching | Inside yarns lifting. Bear away. |
-| Inside yarns lifting, further off the wind | Sails luffing | Inside yarns lifting. Sheet in. |
-| Outside yarns stalled | Sails too tight | Outside yarns drooping. Ease out. |
-| Leech ribbons curling | Main too tight | Leech ribbons curling. Ease the main. |
-| Otherwise | Sailing well | All yarns streaming. Hold course. |
+| Inside the no-go zone | Too close to the wind | Bear away to about 45 degrees. |
+| In Easy mode's warning band | Near the no-go zone | Bear away a little before she slows. |
+| Two jib strips luffing or backed | Jib luffing | Inside yarns lifting. Sheet in or bear away. (Sheet the jib in, past 60 deg) |
+| Two jib strips stalled | Jib too tight | Outside yarns drooping. Ease the jib. |
+| Two main strips luffing | Main luffing | Leech ribbons flapping. Sheet the main in. |
+| Two main strips stalled | Main too tight | Leech ribbons curling. Ease the main. |
+| No jib: two strips luffing / stalled | Sail luffing / Sail too tight | Inside yarns lifting. Sheet in. / Yarns drooping and curling. Ease the sheet. |
+| Otherwise | Sailing well | Yarns streaming. Hold course. (Inside yarns just lifting. Right on the edge, when two inside yarns lift short of a luff) |
 
 "Good" is light blue (`WindTrue`), never green: red and green only mean port and starboard. A line wider than the panel
 is drawn smaller to fit (Settings > Accessibility > Text size).

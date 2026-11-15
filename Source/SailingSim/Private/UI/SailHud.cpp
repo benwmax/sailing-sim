@@ -236,10 +236,11 @@ namespace SailHudImpl
 	/**
 	 * The sail trim panel (Bean, Nov 15 2026: the "Telltale window", docs/trim-panel/): a window onto the jib's luff with
 	 * three yarn pairs a hand's width aft of it (the near, windward yarn solid; the far one faint through the cloth; green
-	 * to starboard, red to port) and one onto the main's leech with its three ribbons. The yarns read the 3D ribbons' own
-	 * rules (JibTelltaleState, LeechTelltaleState) on the same strips (TrimStripAt), so the panel and the sail agree. A boat
-	 * with no jib shows the luff of her main. UI Natural (Mode 1) draws only the two windows, a glimpse with no words; UI
-	 * Helpful (Mode 0) sets them on a panel with a header and one plain line (SSailHud::TrimVerdict).
+	 * to starboard, red to port) and one onto the main's leech with its three ribbons. Each yarn reads the 3D ribbons' own
+	 * rules (JibTelltaleState, LeechTelltaleState) over a third of the sail (SSailHud::TrimYarnState), so the panel, the
+	 * sail and the verdict agree. A boat with no jib shows the luff of her main. UI Natural (Mode 1) draws only the two
+	 * windows, a glimpse with no words; UI Helpful (Mode 0) sets them on a panel with a header and one plain line
+	 * (SSailHud::TrimVerdict).
 	 */
 	class STrimView : public SLeafWidget
 	{
@@ -277,7 +278,7 @@ namespace SailHudImpl
 			DrawMainWindow(Out, Layer + 1, G, O + FVector2f(JibW + Gap, 0.f), T, bTied, Time);
 			if (bHelpful)
 			{
-				const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(T, Cfg, bTied);
+				const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(T, Cfg, Boat->GetEasyAssists(), bTied, Boat->GetSecondsSinceStart() < SailingNoGoTipHoldSeconds);
 				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
 				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
 				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, Lay.HeadTop), S.X - Pad * 2.f - 16.f);
@@ -372,7 +373,10 @@ namespace SailHudImpl
 
 		void Frame(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, float W) const
 		{
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(W, WinH), FSlateLayoutTransform(At)), Rounded(FLinearColor::Transparent, 4.f, Hex(0x000000, 0.35f), 1.f), ESlateDrawEffect::None, FLinearColor::White);
+			// A hairline round the window. Lines, not a box: MakeBox paints its tint as the fill (CLAUDE.md), and a rounded
+			// outline brush tinted white covered the whole window (#712's first Mac stills).
+			const FVector2f A = At + FVector2f(0.5f, 0.5f), B = At + FVector2f(W - 0.5f, WinH - 0.5f);
+			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { A, FVector2f(B.X, A.Y), B, FVector2f(A.X, B.Y), A }, ESlateDrawEffect::None, Hex(0x000000, 0.35f), true, 1.f);
 		}
 		void Shadow(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, float W) const
 		{
@@ -411,9 +415,9 @@ namespace SailHudImpl
 			const int32 N = bJib ? T.NumJibStrips : T.NumMainStrips;
 			for (int32 K = 0; K < 3 && N > 0; ++K)
 			{
-				const FSailStripState& St = Strips[SSailHud::TrimStripAt(0.75f - 0.25f * K, N)];   // top first, as you look up the luff
-				const EYarn Win = bTied ? EYarn::Hang : LuffYarn(JibTelltaleState(St, true));
-				const EYarn Lee = bTied ? EYarn::Hang : LuffYarn(JibTelltaleState(St, false));
+				const int32 Band = 2 - K;   // top first, as you look up the luff
+				const EYarn Win = bTied ? EYarn::Hang : LuffYarn(SSailHud::TrimYarnState(Strips, N, Band, SSailHud::ETrimYarn::LuffWindward));
+				const EYarn Lee = bTied ? EYarn::Hang : LuffYarn(SSailHud::TrimYarnState(Strips, N, Band, SSailHud::ETrimYarn::LuffLeeward));
 				const FVector2f Root = At + FVector2f(44.f, 15.f + 30.f * K);
 				const float Ph = K * 1.3f;
 				// The far yarn, seen through the cloth: a soft wide shadow and a faint line.
@@ -448,12 +452,11 @@ namespace SailHudImpl
 			TArray<FVector2f> Leech;
 			for (int32 I = 0; I <= 10; ++I) Leech.Add(At + FVector2f(LeechX(I / 10.f) - 1.f, WinH * I / 10.f));
 			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, Hex(0xAAB3B5), true, 2.f);
-			// Three ribbons at the battens, as on the 3D sail (0.4, 0.6, 0.8 up the leech), top first.
+			// Three ribbons at the battens, one for each third of the leech, top first.
 			for (int32 K = 0; K < 3 && T.NumMainStrips > 0; ++K)
 			{
 				const float F = 0.2f + 0.3f * K;
-				const FSailStripState& St = T.MainStrips[SSailHud::TrimStripAt(0.8f - 0.2f * K, T.NumMainStrips)];
-				const EYarn Kind = bTied ? EYarn::Hang : LeechYarn(LeechTelltaleState(St));
+				const EYarn Kind = bTied ? EYarn::Hang : LeechYarn(SSailHud::TrimYarnState(T.MainStrips, T.NumMainStrips, 2 - K, SSailHud::ETrimYarn::Leech));
 				DrawYarn(Out, Layer + 3, G, At + FVector2f(LeechX(F), WinH * F), 28.f, Kind, 1.f, Time, 2.2f * K + 0.7f, Hex(0xC8281E), 2.6f);
 			}
 			Out.PopClip();
@@ -926,10 +929,34 @@ int32 SSailHud::TrimStripAt(float HeightFraction, int32 NumStrips)
 	return FMath::Clamp(int32(HeightFraction * NumStrips), 0, FMath::Max(NumStrips - 1, 0));
 }
 
-SSailHud::FTrimVerdict SSailHud::TrimVerdict(const FBoatTelemetry& T, const FBoatConfig& Cfg, bool bTiedUp)
+ETelltaleState SSailHud::TrimYarnState(const FSailStripState* Strips, int32 NumStrips, int32 Band, ETrimYarn Yarn)
 {
-	// The most urgent thing first. Telltale counts use the panel's own yarns (three up the luff, three on the leech) and
-	// the 3D ribbons' rules; two of three make a call, as the old streamers needed two strips.
+	auto Rule = [Yarn](const FSailStripState& St)
+	{
+		return Yarn == ETrimYarn::Leech ? LeechTelltaleState(St) : JibTelltaleState(St, Yarn == ETrimYarn::LuffWindward);
+	};
+	// Worse is further from streaming: a lift or a flutter, then a stall.
+	auto Rank = [](ETelltaleState St) { return St == ETelltaleState::Stalled ? 2 : St == ETelltaleState::Streaming ? 0 : 1; };
+	if (!Strips || NumStrips <= 0) return ETelltaleState::Streaming;
+	ETelltaleState Worst = ETelltaleState::Streaming;
+	bool bAny = false;
+	for (int32 I = 0; I < NumStrips; ++I)
+	{
+		// A strip belongs to the third that holds its middle.
+		if (FMath::Clamp(int32((I + 0.5f) * 3.f / NumStrips), 0, 2) != Band) continue;
+		const ETelltaleState St = Rule(Strips[I]);
+		if (!bAny || Rank(St) > Rank(Worst)) Worst = St;
+		bAny = true;
+	}
+	return bAny ? Worst : Rule(Strips[TrimStripAt((Band + 0.5f) / 3.f, NumStrips)]);
+}
+
+SSailHud::FTrimVerdict SSailHud::TrimVerdict(const FBoatTelemetry& T, const FBoatConfig& Cfg, const FEasyAssists& Easy, bool bTiedUp, bool bHoldNoGo)
+{
+	// The coach's tips in one line (SailingCollectBoatTips, SailingHUD.cpp): the same no-go cue, the same counts over every
+	// strip, the same thresholds and gate, so the panel's headline and the tip card agree (#712's first Mac stills said
+	// "Sailing well" beside "Too close to the wind" and "Jib is stalled"). SailingSim.UI.TrimVerdict holds them together.
+	// The most urgent first: the dock, irons, heel past the boat's limit, the no-go zone, then the sails.
 	auto Make = [](const TCHAR* Head, const TCHAR* Say, bool bGood = false) { FTrimVerdict V; V.Head = Head; V.Say = Say; V.bGood = bGood; return V; };
 	if (bTiedUp)
 	{
@@ -939,27 +966,45 @@ SSailHud::FTrimVerdict SSailHud::TrimVerdict(const FBoatTelemetry& T, const FBoa
 	}
 	if (T.bInIrons) return Make(TEXT("In irons"), TEXT("Bear away until the sails fill."));
 	if (!Cfg.bMultihull && FMath::Abs(FMath::RadiansToDegrees(T.Heel)) > Cfg.TrimHeelLimitDeg) return Make(TEXT("Heeling too much"), TEXT("Ease the main or hike out."));
-	const bool bJib = T.NumJibStrips > 0;
-	const FSailStripState* Luff = bJib ? T.JibStrips : T.MainStrips;
-	const int32 NumLuff = bJib ? T.NumJibStrips : T.NumMainStrips;
-	int32 Lifting = 0, Drooping = 0, Curling = 0;
-	for (int32 K = 0; K < 3; ++K)
+	const ENoGoCue Cue = NoGoCueFor(T, Easy);
+	if (!bHoldNoGo && Cue == ENoGoCue::Inside) return Make(TEXT("Too close to the wind"), TEXT("Bear away to about 45 degrees."));
+	if (!bHoldNoGo && Cue == ENoGoCue::Near) return Make(TEXT("Near the no-go zone"), TEXT("Bear away a little before she slows."));
+
+	const double Twa = FMath::Abs(FMath::RadiansToDegrees(T.TrueWindAngle));
+	if (Twa >= 35.0)
 	{
-		if (NumLuff > 0)
+		auto Count = [](const FSailStripState* Strips, int32 N, bool bLuff)
 		{
-			const FSailStripState& St = Luff[TrimStripAt(0.75f - 0.25f * K, NumLuff)];
-			Lifting += JibTelltaleState(St, true) == ETelltaleState::Lifting;
-			Drooping += JibTelltaleState(St, false) == ETelltaleState::Stalled;
-		}
-		if (T.NumMainStrips > 0) Curling += LeechTelltaleState(T.MainStrips[TrimStripAt(0.8f - 0.2f * K, T.NumMainStrips)]) == ETelltaleState::Stalled;
+			int32 K = 0;
+			for (int32 I = 0; I < N; ++I)
+			{
+				const ESailFlow F = Strips[I].Flow;
+				if (bLuff ? (F == ESailFlow::Luffing || F == ESailFlow::Backed) : F == ESailFlow::Stalled) ++K;
+			}
+			return K;
+		};
+		const bool bJib = T.NumJibStrips > 0;
+		if (bJib && Count(T.JibStrips, T.NumJibStrips, true) >= 2)
+			return Make(TEXT("Jib luffing"), Twa < 60.0 ? TEXT("Inside yarns lifting. Sheet in or bear away.") : TEXT("Inside yarns lifting. Sheet the jib in."));
+		if (bJib && Count(T.JibStrips, T.NumJibStrips, false) >= 2) return Make(TEXT("Jib too tight"), TEXT("Outside yarns drooping. Ease the jib."));
+		// With no jib (the Sunfish) the panel's luff window is the main's own luff.
+		if (Count(T.MainStrips, T.NumMainStrips, true) >= 2)
+			return bJib ? Make(TEXT("Main luffing"), TEXT("Leech ribbons flapping. Sheet the main in."))
+				: Make(TEXT("Sail luffing"), TEXT("Inside yarns lifting. Sheet in."));
+		if (Count(T.MainStrips, T.NumMainStrips, false) >= 2)
+			return bJib ? Make(TEXT("Main too tight"), TEXT("Leech ribbons curling. Ease the main."))
+				: Make(TEXT("Sail too tight"), TEXT("Yarns drooping and curling. Ease the sheet."));
 	}
-	// Lifting inside yarns: close-hauled you are steering too high; off the wind the sheet is too far out.
-	if (Lifting >= 2) return FMath::Abs(FMath::RadiansToDegrees(T.TrueWindAngle)) < 50.0
-		? Make(TEXT("Pinching"), TEXT("Inside yarns lifting. Bear away."))
-		: Make(TEXT("Sails luffing"), TEXT("Inside yarns lifting. Sheet in."));
-	if (Drooping >= 2) return Make(TEXT("Sails too tight"), TEXT("Outside yarns drooping. Ease out."));
-	if (Curling >= 2) return Make(TEXT("Main too tight"), TEXT("Leech ribbons curling. Ease the main."));
-	return Make(TEXT("Sailing well"), TEXT("All yarns streaming. Hold course."), true);
+	// Well trimmed for the tips, but the panel's inside yarns lift within a few degrees of luffing (JibTelltaleState): say
+	// so, rather than "streaming" beside yarns that visibly lift.
+	const FSailStripState* Luff = T.NumJibStrips > 0 ? T.JibStrips : T.MainStrips;
+	const int32 NumLuff = T.NumJibStrips > 0 ? T.NumJibStrips : T.NumMainStrips;
+	int32 Lifting = 0;
+	for (int32 Band = 0; Band < 3; ++Band)
+	{
+		if (TrimYarnState(Luff, NumLuff, Band, ETrimYarn::LuffWindward) == ETelltaleState::Lifting) ++Lifting;
+	}
+	return Make(TEXT("Sailing well"), Lifting >= 2 ? TEXT("Inside yarns just lifting. Right on the edge.") : TEXT("Yarns streaming. Hold course."), true);
 }
 
 bool SSailHud::TipsMutedByScene(const Sailing::FScriptedScene* Scene, bool bHandoverPending)
