@@ -19,7 +19,9 @@ Seven new stills. The Catalina 22 (stretch boat) has only a Day still; the Catal
 
 ## Capture (Mac, packaged build, High)
 
-    SCENES=docs/loading-stills/scenes.csv OUT=docs/loading-stills/captures scripts/capture-scenes.sh
+    RESX=1920 RESY=1080 SCENES=docs/loading-stills/scenes.csv OUT=docs/loading-stills/captures scripts/capture-scenes.sh
+
+Shoot at 16:9: at run-game's default 1440x1080 the 16:9 crop cuts the J/22's hull off (first run, Nov 15).
 
 Then check each still at 1:1 by eye: the boat clear in frame, the sky reading as its look (night: the moon and shore
 lights visible, not a black frame). Shrink each to a JPEG of 1600x900 under 300 KB (docs JPEGs are plain git), keep the
