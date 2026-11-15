@@ -5057,32 +5057,41 @@ for (int layer = 0; layer < 4; layer++)
     float scale = layer < 3 ? 9.0 + 9.0 * layer : 4.5;
     float speed = Wind.z * (layer < 3 ? 0.08 + 0.05 * layer : 0.05);
     float2 p = uv * float2(aspect, 1.0) * scale - wdir * T * speed * scale;
-    float2 cell = floor(p);
-    float2 f = frac(p);
-    float h = frac(sin(dot(cell + layer * 17.0, float2(127.1, 311.7))) * 43758.5453);
     float chance = layer < 3 ? Rain * (0.18 + 0.06 * layer) + Spray * (layer == 0 ? 0.5 : 0.15) : 0.35 * Spray * Spray;
-    if (h < chance)
+    // A drop's tail runs past its own cell, so look in the four cells nearest this pixel. Every drop is kept within 0.66
+    // of a cell of its centre (centres sit 0.2 to 0.8 into their cell), so those four always hold it. Looked for in its own
+    // cell alone, a big drop was cut off square at the cell's edges (the Mac's slam stills, Nov 15).
+    float2 base = floor(p - 0.5);
+    for (int iy = 0; iy < 2; iy++)
     {
-        float2 c = float2(frac(h * 13.1), frac(h * 7.3)) * 0.6 + 0.2;
-        float2 d = f - c;
-        // Streaked along the way it runs (longer the harder the air pushes).
-        float along = dot(d, wdir), across = dot(d, float2(-wdir.y, wdir.x));
-        float stretch = 1.0 + 2.0 * saturate(Wind.z * 0.15) * saturate(along * 4.0 + 0.5);
-        float rad = layer < 3 ? 0.1 + 0.12 * frac(h * 3.3) : 0.18 + 0.12 * frac(h * 3.3);
-        float2 q = float2(along / stretch, across) / rad;   // the drop's own frame, its rim at 1
-        float r = length(q);
-        float life = layer < 3 ? 1.0 - 0.6 * frac(T * 0.2 + h) : Spray;
-        float drop = smoothstep(1.0, 0.9, r) * life;
-        if (drop > 0.0)
+        for (int ix = 0; ix < 2; ix++)
         {
-            // The lens: the view through it mirrored through its centre and spread (the shift from this pixel to there).
-            float2 dUv = d / (scale * float2(aspect, 1.0));
-            offset += dUv * (1.0 + LENS_FIELD) * drop;
-            // The rim's dark ring and the glint (high on the drop, toward the sky: screen up is -v).
-            float g = saturate(1.0 - length(q - float2(-0.25, -0.45)) / 0.2);
-            float dropGain = (1.0 - 0.6 * smoothstep(0.55, 0.95, r)) + 1.2 * g * g;
-            gain = drop >= mask ? dropGain : gain;
-            mask = max(mask, drop);
+            float2 cell = base + float2(ix, iy);
+            float h = frac(sin(dot(cell + layer * 17.0, float2(127.1, 311.7))) * 43758.5453);
+            if (h < chance)
+            {
+                float2 c = float2(frac(h * 13.1), frac(h * 7.3)) * 0.6 + 0.2;
+                float2 d = p - cell - c;
+                // Streaked along the way it runs (longer the harder the air pushes), never past 0.66 of a cell.
+                float along = dot(d, wdir), across = dot(d, float2(-wdir.y, wdir.x));
+                float rad = layer < 3 ? 0.1 + 0.12 * frac(h * 3.3) : 0.18 + 0.12 * frac(h * 3.3);
+                float stretch = min(1.0 + 2.0 * saturate(Wind.z * 0.15) * saturate(along * 4.0 + 0.5), 0.66 / rad);
+                float2 q = float2(along / stretch, across) / rad;   // the drop's own frame, its rim at 1
+                float r = length(q);
+                float life = layer < 3 ? 1.0 - 0.6 * frac(T * 0.2 + h) : Spray;
+                float drop = smoothstep(1.0, 0.9, r) * life;
+                // A pixel looks through one drop, the strongest over it (the shifts of overlapping drops used to add up).
+                if (drop > mask)
+                {
+                    // The lens: the view through it mirrored through its centre and spread (the shift from this pixel to there).
+                    float2 dUv = d / (scale * float2(aspect, 1.0));
+                    offset = dUv * (1.0 + LENS_FIELD) * drop;
+                    // The rim's dark ring and the glint (high on the drop, toward the sky: screen up is -v).
+                    float g = saturate(1.0 - length(q - float2(-0.25, -0.45)) / 0.2);
+                    gain = (1.0 - 0.6 * smoothstep(0.55, 0.95, r)) + 1.2 * g * g;
+                    mask = drop;
+                }
+            }
         }
     }
 }
@@ -5090,6 +5099,11 @@ for (int layer = 0; layer < 4; layer++)
 float film = Spray * Spray;
 offset += film * 0.006 * float2(sin(uv.y * 41.0 + T * 3.1) + 0.5 * sin(uv.x * 23.0 - T * 1.7), sin(uv.x * 37.0 - T * 2.6) + 0.5 * sin(uv.y * 19.0 + T * 2.2));
 mask = max(mask, 0.55 * film);
+// A drop near the frame's edge looks past it: mirror the view back into the frame. Clamped, the edge's last pixels were
+// smeared across the drop in streaks.
+float2 src = uv - offset;
+src = 1.0 - abs(1.0 - abs(src));
+offset = uv - src;
 return float4(offset, mask, gain);
 """.replace("LENS_FIELD", os.environ.get("LENS_FIELD", "4.0"))
 

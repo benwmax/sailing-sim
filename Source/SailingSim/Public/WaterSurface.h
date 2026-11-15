@@ -99,11 +99,25 @@ public:
 	 *  0..1 fades in from 24 to 32 kn (Beaufort 7; M_WaterV4's streaks fade in alike), Spindrift 0..1 from 33 to 41 kn
 	 *  (Beaufort 8: the crests' edges blow off), Samples the crest points UpdateSpray tries a frame (24, four times that in a
 	 *  full gale). */
-	/** Storm look item 4: Torn is the share of breaking crests whose lip the wind tears off (a sheet, a wisp of spume and a
-	 *  few drops streaming downwind), from Beaufort 6 ("probably some spray") to full by 30 kn, before the gale's extra
-	 *  crests (Gale, 24-32 kn) and its spindrift (Beaufort 8, 33-41 kn). */
+	/** Storm look item 4: Torn is the share of breaking crests whose lip the wind tears off (a short sheet and a few drops
+	 *  streaming downwind, within 25 m of the camera), from Beaufort 6 ("probably some spray") to full by 30 kn, before the
+	 *  gale's extra crests (Gale, 24-32 kn) and its spindrift (Beaufort 8, 33-41 kn). */
 	struct FGaleSpray { int32 Samples = 24; float Gale = 0.f; float Spindrift = 0.f; float Torn = 0.f; };
 	static FGaleSpray GaleSprayFor(double MeanKnots);
+	/** docs/spray/: what one spray instance is (FDroplet::Kind). Spume (docs/storm-look/crest-spray/) is the spray the wind
+	 *  tears off a breaking crest and the gale's spindrift: it hangs like mist but is drawn as a low streak along the wind. */
+	enum class ESprayKind : uint8 { Drops, Sheet, Mist, Spume };
+	/** One spray instance as UpdateSpray draws it: a camera-facing quad Length along its motion across the view and Width
+	 *  across it (m), with M_Spray's per-instance opacity and grain (1 a clump of drops, 0.6 a sheet, 0 mist). */
+	struct FSprayQuad { float Length = 0.f; float Width = 0.f; float Alpha = 0.f; float Grain = 1.f; };
+	/** Kind, size (m), age over life (0..1), distance from the camera (m), speed across the view (m/s; for spume, of its
+	 *  level motion) and vertical speed (m/s, negative falling). Past 25 m drops lose their grain and grow, and keep the ink
+	 *  they had near (SprayInkPerAlpha): they used to gain twelvefold, and the spray off breaking crests read as puffs. */
+	static FSprayQuad SprayQuadFor(ESprayKind Kind, float Size, float LifeFrac, float DistM, float AcrossMs, float RiseMs);
+	/** M_Spray's mean cover of its quad per unit opacity at a grain (from SPRAY_CODE over 24 seeds: 0.131 mist, 0.057 a
+	 *  sheet, 0.026 a clump of drops; Ultra's Fine noise is within a fifth of it). */
+	static float SprayInkPerAlpha(float Grain);
+	static constexpr float SpumeStreakSeconds = 0.3f;   // a spume streak is as long as this much of its level motion
 	static constexpr double FarCapArea = 1.5;      // m^2: one cap's foam on a lake (a metre or two along the wind)
 	static constexpr double FarCapTileM = 400.0;   // m
 	static constexpr int32 FarCapBudget = 30000;   // slots held at once; past it the caps get fewer and bigger (same cover)

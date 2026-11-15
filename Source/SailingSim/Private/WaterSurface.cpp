@@ -63,8 +63,6 @@ namespace
 	// the same ISM, so High's look and cost don't move).
 	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 3000 : kMaxDroplets; }
 	constexpr float kTornReachM = 25.f;   // storm look item 4: torn crests near the camera only (drops past it draw as mist)
-	// docs/spray/: what one spray instance is (FDroplet::Kind).
-	enum class ESprayKind : uint8 { Drops, Sheet, Mist };
 	constexpr int32 kShoreRes = 512;            // shore map: 512 m around the boat at 1 m
 	constexpr float kShoreCellM = 1.f;
 
@@ -1782,6 +1780,64 @@ AWaterSurface::FGaleSpray AWaterSurface::GaleSprayFor(double MeanKnots)
 	return G;
 }
 
+float AWaterSurface::SprayInkPerAlpha(float Grain)
+{
+	// Measured from SPRAY_CODE (the quad's whole square, 24 seeds): near enough linear between mist, sheet and drops.
+	const float G = FMath::Clamp(Grain, 0.f, 1.f);
+	return G < 0.6f ? FMath::Lerp(0.131f, 0.057f, G / 0.6f) : FMath::Lerp(0.057f, 0.026f, (G - 0.6f) / 0.4f);
+}
+
+AWaterSurface::FSprayQuad AWaterSurface::SprayQuadFor(ESprayKind Kind, float Size, float LifeFrac, float DistM, float AcrossMs, float RiseMs)
+{
+	FSprayQuad Quad;
+	const float Life = FMath::Clamp(LifeFrac, 0.f, 1.f);
+	// Mist and spume: in quickly, then thinning as they spread.
+	const float Puff = FMath::Sin(UE_PI * FMath::Min(Life * 1.4f, 1.f)) * (1.f - Life);
+	float Drawn = Size;
+	switch (Kind)
+	{
+	case ESprayKind::Mist:
+		Drawn *= 1.f + 1.5f * Life;                                   // spreading as it drifts
+		Quad.Alpha = 0.22f * Puff;
+		Quad.Grain = 0.f;
+		break;
+	case ESprayKind::Spume:
+	{
+		// docs/storm-look/crest-spray/: spray torn off a crest streams downwind in a low streak a few metres long (Beaufort 7
+		// and 8: foam and spray blown in streaks along the wind). Half as wide as mist of its size and as long as
+		// SpumeStreakSeconds of its level motion across the view, so seen along the wind it is short and faint, never a
+		// round puff: the mist puffs it replaces read as steam over the crests in BEN-PC's 4K stills.
+		const float Spread = Size * (1.f + 1.5f * Life);
+		Quad.Width = 0.5f * Spread;
+		Quad.Length = Quad.Width + SpumeStreakSeconds * FMath::Max(AcrossMs, 0.f);
+		Quad.Alpha = 0.18f * Puff;
+		Quad.Grain = 0.f;
+		return Quad;
+	}
+	case ESprayKind::Sheet:
+		Drawn *= 1.f + 0.8f * Life;
+		Quad.Alpha = 0.45f * (1.f - Life);
+		Quad.Grain = 0.6f;
+		break;
+	default:
+	{
+		Quad.Alpha = 0.85f * (1.f - Life * Life) * (RiseMs < 0.f ? FMath::Clamp(1.f + RiseMs * 0.12f, 0.5f, 1.f) : 1.f);
+		// Past 25 m a clump's millimetre drops are under a pixel: it is drawn as a smooth disc, wider so it doesn't alias, and
+		// as much fainter as keeps its ink (cover times area). It was 0.4 as opaque at 2.5 times the size with five times the
+		// cover per unit opacity, twelve times the ink, so the spray off every breaking crest out there was a white puff.
+		const float Far = FMath::Clamp((DistM - 25.f) / 25.f, 0.f, 1.f);
+		const float Grow = 1.f + 1.5f * Far;
+		Drawn *= Grow;
+		Quad.Grain = 1.f - Far;
+		Quad.Alpha *= SprayInkPerAlpha(1.f) / (SprayInkPerAlpha(Quad.Grain) * Grow * Grow);
+		break;
+	}
+	}
+	Quad.Width = Drawn;
+	Quad.Length = Drawn + FMath::Max(AcrossMs, 0.f) / 60.f;   // the blur of a 1/60 s exposure
+	return Quad;
+}
+
 void AWaterSurface::UpdateSpray(float DeltaSeconds)
 {
 	const FWaveField* Waves = GetWaves();
@@ -1990,7 +2046,15 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 				const FVector P(X + SprayRng.FRandRange(-0.4f, 0.4f), Y + SprayRng.FRandRange(-0.4f, 0.4f), H);
 				const FVector V = WindAt2m * SprayRng.FRandRange(0.3f, 0.7f) + FVector(0, 0, SprayRng.FRandRange(0.5f, 1.6f));
 				Emit(P, V, SprayRng.FRandRange(0.08f, 0.2f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
-				if (I == 0) Emit(P, V * 0.5f, SprayRng.FRandRange(0.6f, 1.2f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.5f));
+				if (I == 0)
+				{
+					// The spray the wind takes off the crest: a low streak carried along the wind (docs/storm-look/crest-spray/;
+					// it was a mist puff rising off the crest). Each seeded draw its own const (compilers order them differently).
+					const float SpumeSize = SprayRng.FRandRange(0.6f, 1.2f);
+					const float SpumeLife = SprayRng.FRandRange(1.5f, 2.5f);
+					const float SpumeCarry = SprayRng.FRandRange(0.4f, 0.7f);
+					Emit(P, WindAt2m * SpumeCarry + FVector(0, 0, 0.2f), SpumeSize, ESprayKind::Spume, SpumeLife);
+				}
 			}
 			// Storm look item 4: from about 25 kn the wind tears the lip off a share of the breaking crests: a short torn sheet
 			// off the top and a few fine drops streaking downwind with it. Only within kTornReachM of the camera, where drops are
@@ -2026,7 +2090,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 				const FVector V = WindAt2m * Carry + FVector(0, 0, Lift);
 				const float MistSize = SprayRng.FRandRange(1.2f, 2.4f);
 				const float MistLife = SprayRng.FRandRange(1.5f, 3.f);
-				Emit(P, V, MistSize, ESprayKind::Mist, MistLife);
+				Emit(P, V, MistSize, ESprayKind::Spume, MistLife);
 				const float SheetSize = SprayRng.FRandRange(0.4f, 0.8f);
 				const float SheetLife = SprayRng.FRandRange(0.3f, 0.6f);
 				Emit(P, V * 0.9f, SheetSize, ESprayKind::Sheet, SheetLife);
@@ -2073,14 +2137,15 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	for (int32 I = Droplets.Num() - 1; I >= 0; --I)
 	{
 		FDroplet& D = Droplets[I];
-		const bool bMist = D.Kind == uint8(ESprayKind::Mist);
+		const bool bMist = D.Kind == uint8(ESprayKind::Mist) || D.Kind == uint8(ESprayKind::Spume);
 		D.V += ((bMist ? G * 0.05f : G) + (WindAt2m - D.V) * (bMist ? 2.5f : 1.2f)) * Dt;
 		D.P += D.V * Dt;
 		D.Age += Dt;
 		if (D.Age > D.Life || (!bMist && D.P.Z < Waves->Height(D.P.X, D.P.Y, T) - 0.05) || (D.Age > 0.15f && InsideABoat(D.P))) Droplets.RemoveAtSwap(I);
 	}
 	// Draw: each a quad facing the camera, stretched along its motion across the view (the blur of a 1/60 s exposure),
-	// fading with age and as it falls back. Past 25 m the droplets read as mist (no grain, wider, fainter).
+	// fading with age and as it falls back (SprayQuadFor). Past 25 m the droplets read as mist (no grain, wider, and fainter
+	// by as much, so their ink stays); spume lies along the water, a streak along its level motion.
 	TArray<FTransform> Xf;
 	const int32 Pool = Spray->GetInstanceCount();
 	Xf.SetNumUninitialized(Pool);
@@ -2095,38 +2160,18 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			const FVector ToCam = Cam - W;
 			const float Dist = float(ToCam.Size()) / CmPerMeter;
 			const FVector N = ToCam.GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
-			FVector Across = D.V - FVector::DotProduct(D.V, N) * N; // its motion across the view (m/s)
+			// Its motion across the view (m/s); spume's level motion only, so its streak lies along the water.
+			const FVector Vel = D.Kind == uint8(ESprayKind::Spume) ? FVector(D.V.X, D.V.Y, 0.0) : D.V;
+			FVector Across = Vel - FVector::DotProduct(Vel, N) * N;
 			const float Smear = float(Across.Size());
 			if (Smear < 1e-3f) Across = FVector::CrossProduct(N, FVector::UpVector);
 			const FVector X = Across.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
 			const FVector Y = FVector::CrossProduct(N, X);
 			const FQuat Q = FMatrix(X, Y, N, FVector::ZeroVector).ToQuat();
-			const float Life = D.Age / D.Life;
-			const float Far = FMath::Clamp((Dist - 25.f) / 25.f, 0.f, 1.f);
-			float Size = D.Size, Alpha = 0.f, Grain = 1.f;
-			switch (ESprayKind(D.Kind))
-			{
-			case ESprayKind::Mist:
-				Size *= 1.f + 1.5f * Life;                                   // spreading as it drifts
-				Alpha = 0.22f * FMath::Sin(UE_PI * FMath::Min(Life * 1.4f, 1.f)) * (1.f - Life);
-				Grain = 0.f;
-				break;
-			case ESprayKind::Sheet:
-				Size *= 1.f + 0.8f * Life;
-				Alpha = 0.45f * (1.f - Life);
-				Grain = 0.6f;
-				break;
-			default:
-				Alpha = 0.85f * (1.f - Life * Life) * (D.V.Z < 0.f ? FMath::Clamp(1.f + float(D.V.Z) * 0.12f, 0.5f, 1.f) : 1.f);
-				Size *= 1.f + 1.5f * Far;
-				Alpha *= 1.f - 0.6f * Far;
-				Grain = 1.f - Far;
-				break;
-			}
-			const float Length = Size + Smear / 60.f;
-			Xf[I] = FTransform(Q, W, FVector(Length, Size, 1.f));
-			Data[0] = Alpha;
-			Data[1] = Grain;
+			const FSprayQuad Quad = SprayQuadFor(ESprayKind(D.Kind), D.Size, D.Age / D.Life, Dist, Smear, float(D.V.Z));
+			Xf[I] = FTransform(Q, W, FVector(Quad.Length, Quad.Width, 1.f));
+			Data[0] = Quad.Alpha;
+			Data[1] = Quad.Grain;
 			Data[2] = D.Seed;
 			Spray->SetCustomData(I, MakeArrayView(Data, 3), false);
 		}
