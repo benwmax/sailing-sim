@@ -252,7 +252,7 @@ namespace SailHudImpl
 		void Construct(const FArguments& A) { Player = A._Player; bHelpful = A._bHelpful; Point = A._Point; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override
 		{
-			return bHelpful ? FVector2D(Pad * 2.f + JibW + Gap + MainW, 184.f) : FVector2D(JibW + Gap + MainW + 2.f, WinH + 3.f);
+			return bHelpful ? FVector2D(Pad * 2.f + JibW + Gap + MainW, HelpfulLayout().Height) : FVector2D(JibW + Gap + MainW + 2.f, WinH + 3.f);
 		}
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -263,7 +263,8 @@ namespace SailHudImpl
 			const bool bTied = Boat->IsTiedUp();
 			const float Time = float(FPlatformTime::Seconds());
 			const FVector2f S(G.GetLocalSize());
-			const FVector2f O = bHelpful ? FVector2f(Pad, 34.f) : FVector2f(0.f, 0.f);
+			const FHelpfulLayout Lay = HelpfulLayout();
+			const FVector2f O = bHelpful ? FVector2f(Pad, Lay.WindowsTop) : FVector2f(0.f, 0.f);
 			if (bHelpful)
 			{
 				const FLinearColor Bg = IsLow() ? PanelSolid : Panel;
@@ -278,9 +279,9 @@ namespace SailHudImpl
 			{
 				const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(T, Cfg, bTied);
 				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
-				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, 140.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
-				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, 132.f), S.X - Pad * 2.f - 16.f);
-				if (*V.Say) PaintText(Out, Layer + 5, G, V.Say, Font(EType::Small), Hex(0xC3D0D7), FVector2f(Pad, 157.f), S.X - Pad * 2.f);
+				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
+				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, Lay.HeadTop), S.X - Pad * 2.f - 16.f);
+				if (*V.Say) PaintText(Out, Layer + 5, G, V.Say, Font(EType::Small), Hex(0xC3D0D7), FVector2f(Pad, Lay.SayTop), S.X - Pad * 2.f);
 			}
 			return Layer + 6;
 		}
@@ -291,6 +292,25 @@ namespace SailHudImpl
 		static constexpr float MainW = 70.f;
 		static constexpr float Gap = 8.f;
 		static constexpr float WinH = 90.f;
+
+		/** UI Helpful's rows from the fonts' own line heights, so a bigger type scale or Settings > Text size moves them
+		 *  down instead of overlapping: header, the windows, the headline, the line, and the panel's height. */
+		struct FHelpfulLayout { float WindowsTop = 34.f, HeadTop = 132.f, HeadH = 24.f, SayTop = 158.f, Height = 196.f; };
+		static float LineHeight(const FSlateFontInfo& F)
+		{
+			if (FSlateApplication::IsInitialized()) return float(FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->GetMaxCharacterHeight(F));
+			return float(F.Size) * 1.4f;
+		}
+		static FHelpfulLayout HelpfulLayout()
+		{
+			FHelpfulLayout L;
+			L.WindowsTop = 10.f + LineHeight(Font(EType::Label)) + 6.f;
+			L.HeadTop = L.WindowsTop + WinH + 8.f;
+			L.HeadH = LineHeight(Font(EType::Ui));
+			L.SayTop = L.HeadTop + L.HeadH + 1.f;
+			L.Height = L.SayTop + LineHeight(Font(EType::Small)) + 10.f;
+			return L;
+		}
 
 		/** How a yarn hangs: its first heading (radians, 0 = streaming aft, positive = down), the flutter toward the tail, the curl. */
 		enum class EYarn : uint8 { Stream, Lift, Stall, Flutter, LeechCurl, Hang };
