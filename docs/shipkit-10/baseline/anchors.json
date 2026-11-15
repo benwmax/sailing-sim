@@ -1,0 +1,128 @@
+{
+ "note": "the anchors and their gear (docs/shipkit-10), in the ship's frame (metres), starboard (port: negate the y of every point and direction, and then the bower frame's y axis as well, so the port frame stays right-handed): anchors, each anchor's weight, where it is stowed (cathead: the bowers, drawn here; boats and gun_deck: built by slices 11 and 12) and its sizes as built to that weight; bower, the best bower catted and fished (the small bower is its mirror): frame is the anchor's own (origin at the crown, z up the shank, x toward the inner arm, whose bill rests on the billboard, y along the stock) for moving it, with its ring's top under the cathead and its bill; cathead, its end and heel; hawse, the holes' mouths on the planking, the bolster's face and the bores' inboard axis; billboard, cable (the hawse hole it leads through, its length and where it is clinched), stopper (its holes in the cathead, knotted on top) and painter (its eyebolts), where each lies. The parts are the objects Cathead, Bower, Billboard, HawseBolster, HawseLining, Cable, CatStopper, ShankPainter and AnchorEyebolts (the painters' eyebolts), both sides in each",
+ "cathead": {
+  "end_m": [26.019, 5.217, 7.903],
+  "heel_inboard_of_rail_m": [0.559, 0.299, 0.537, 0.277],
+  "heel_z_m": [6.504, 6.971],
+  "length_m": 2.709
+ },
+ "hawse": {
+  "mouths_m": [[26.07, 1.522, 2.816], [26.401, 1.055, 2.822]],
+  "bolster_face_m": [26.316, 1.346, 2.803],
+  "axis": [-0.961, -0.135, 0.242],
+  "bore_off_face_deg": 27.4,
+  "cut_faces": {"Skin": 33}
+ },
+ "bower": {
+  "lb": 5300,
+  "iron_kg": 2404.9,
+  "shank_m": 4.961,
+  "bill_x": 24.0,
+  "bill_m": [24.136, 3.73, 3.007],
+  "ring_top_m": [25.911, 5.063, 7.433],
+  "crown_m": [25.194, 4.525, 1.921],
+  "shank_slope_deg": 79.3,
+  "stock_off_level_deg": 0.0,
+  "roll_natural_deg": 139.44,
+  "cog_below_eye_bill_m": 0.546,
+  "frame": {
+   "origin_m": [25.19443, 4.52466, 1.92059],
+   "x": [-0.785715, -0.589909, 0.186169],
+   "y": [0.600405, -0.799696, -0.0],
+   "z": [0.148878, 0.111777, 0.982518]
+  }
+ },
+ "billboard": {
+  "centre_m": [24.071, 3.648, 3.017],
+  "board_in": 3.08,
+  "card_board_in": 3.0,
+  "plate_face_off_planking_m": 0.0908
+ },
+ "cable": {
+  "circ_in": 22,
+  "diameter_m": 0.1779,
+  "length_m": 7.59,
+  "hole": 0,
+  "clinch_m": [26.115, 4.791, 6.846],
+  "least_bend_of_diameter": 1.5
+ },
+ "stopper": {
+  "circ_in": 4.5,
+  "holes_m": [[25.934, 5.096, 8.028], [25.698, 4.759, 7.822]],
+  "wrap_deg": 116.6,
+  "least_bend_of_diameter": 1.374
+ },
+ "painter": {
+  "circ_in": 4.5,
+  "on_shank_m": [25.639, 4.858, 4.853],
+  "eyes_m": [[25.821, 2.681, 5.734], [25.721, 2.806, 5.734]]
+ },
+ "anchors": {
+  "best_bower": {
+   "lb": 5300,
+   "stow": "cathead",
+   "side": "starboard",
+   "iron_kg": 2404.9,
+   "shank_ft": 16.28,
+   "stock_ft": 17.74,
+   "pea_to_pea_ft": 9.86,
+   "throat_in": 9.21,
+   "ring_ft": 2.93
+  },
+  "small_bower": {
+   "lb": 5300,
+   "stow": "cathead",
+   "side": "port",
+   "iron_kg": 2404.9,
+   "shank_ft": 16.28,
+   "stock_ft": 17.74,
+   "pea_to_pea_ft": 9.86,
+   "throat_in": 9.21,
+   "ring_ft": 2.93
+  },
+  "sheet": {
+   "lb": 5400,
+   "stow": "gun_deck",
+   "side": "starboard",
+   "iron_kg": 2450.3,
+   "shank_ft": 16.38,
+   "stock_ft": 17.85,
+   "pea_to_pea_ft": 9.92,
+   "throat_in": 9.27,
+   "ring_ft": 2.95
+  },
+  "stream": {
+   "lb": 1100,
+   "stow": "boats",
+   "side": "port",
+   "iron_kg": 499.2,
+   "shank_ft": 9.64,
+   "stock_ft": 10.5,
+   "pea_to_pea_ft": 5.84,
+   "throat_in": 5.46,
+   "ring_ft": 1.73
+  },
+  "kedge_large": {
+   "lb": 700,
+   "stow": "boats",
+   "side": "starboard",
+   "iron_kg": 317.9,
+   "shank_ft": 8.29,
+   "stock_ft": 9.04,
+   "pea_to_pea_ft": 5.02,
+   "throat_in": 4.7,
+   "ring_ft": 1.49
+  },
+  "kedge_small": {
+   "lb": 400,
+   "stow": "boats",
+   "side": "port",
+   "iron_kg": 181.5,
+   "shank_ft": 6.88,
+   "stock_ft": 7.5,
+   "pea_to_pea_ft": 4.17,
+   "throat_in": 3.9,
+   "ring_ft": 1.24
+  }
+ }
+}
