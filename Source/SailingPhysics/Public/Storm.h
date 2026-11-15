@@ -70,6 +70,14 @@ namespace Sailing
 		static double LateralMask(double AlongFrontM);
 		/** The game's rain amount, 0..1 (1 = a downpour, 50 mm/h and over). */
 		static double Amount(double MmPerHour);
+		/** Storm look 3 (docs/storm-look/): the visibility in a downpour (Amount 1): half a statute mile, what airport
+		 *  reports give in heavy thunderstorm rain (+TSRA at 1/4 to 1 SM). Was 1.5 km, which left the far shore and a
+		 *  crisp horizon showing through the storm's core. */
+		static constexpr double DownpourVisibilityKm = 0.8;
+		/** The visibility through rain of an amount (0..1) where the air without it shows ClearKm: geometric between the
+		 *  two (extinction adds, so the log of visibility, not visibility, goes with the rain), so moderate rain (amount
+		 *  0.3-0.4) already halves a clear 10 km and heavy rain (0.7) is under 2 km. Never above ClearKm. */
+		static double VisibilityKm(double ClearKm, double RainAmount);
 	};
 
 	/**
