@@ -19,22 +19,22 @@ class SWidget;
 namespace SailUI
 {
 	// Colour (3.1).
-	extern const FLinearColor Ink, Panel, PanelSolid, Raise, Line, Fg, Muted, Dim, Accent, AccentInk, Selected, Chart, Water,
+	extern SAILINGSIM_API const FLinearColor Ink, Panel, PanelSolid, Raise, Line, Fg, Muted, Dim, Accent, AccentInk, Selected, Chart, Water,
 		Land, Port, Starboard, Warn, WindTrue;
 	// Paper surfaces (the focus label, and the menus' sheets as they are converted), brass for medals, yellow for caution.
-	extern const FLinearColor Paper, PaperInk, PaperMuted, PaperLine, AccentDeep, Brass, Caution;
+	extern SAILINGSIM_API const FLinearColor Paper, PaperInk, PaperMuted, PaperLine, AccentDeep, Brass, Caution;
 	FLinearColor Hex(uint32 RGB, float Alpha = 1.f);
 
 	// Type (3.2).
 	enum class EType : uint8 { Logo, ScreenTitle, CardTitle, CardTitleM, CardTitleS, MenuItem, Eyebrow, Label, Ui, Button, Value, InstrumentBig, Body, Small };
 	/** Settings > Accessibility > Text size: every style under 30 px (body, notes, labels, buttons, values). Titles and
 	 *  the big instrument numerals are large already and keep their size, so the fixed title layouts hold. */
-	float TextScale();
-	FSlateFontInfo Font(EType Type);
+	SAILINGSIM_API float TextScale();
+	SAILINGSIM_API FSlateFontInfo Font(EType Type);
 	/** Upper-case styles are drawn upper case: the text helpers apply it. Only the short tracked labels (Eyebrow, Label)
 	 *  since the UI overhaul: sentence case reads faster from a couch. */
-	bool IsUpper(EType Type);
-	FText Txt(const FString& S, EType Type);
+	SAILINGSIM_API bool IsUpper(EType Type);
+	SAILINGSIM_API FText Txt(const FString& S, EType Type);
 
 	// Brushes: rounded panels, borders, focus rings.
 	const FSlateBrush* Rounded(const FLinearColor& Fill, float Radius, const FLinearColor& Outline = FLinearColor::Transparent, float OutlineWidth = 0.f);
@@ -56,10 +56,10 @@ namespace SailUI
 	 *  of what is hard to see with few words, Off nothing but warnings. Saved as USailingSettings::UiMode; SSailHud::Mode
 	 *  is the same number while sailing (0, 1, 2) and the H key cycles it. */
 	enum class EUiMode : uint8 { Helpful, Natural, Off };
-	EUiMode UiMode();
+	SAILINGSIM_API EUiMode UiMode();
 	/** Sets it, keeps the HUD in step and saves the settings. */
-	void SetUiMode(EUiMode Mode);
-	const TCHAR* UiModeName(EUiMode Mode);
+	SAILINGSIM_API void SetUiMode(EUiMode Mode);
+	SAILINGSIM_API const TCHAR* UiModeName(EUiMode Mode);
 
 	/** Low quality: solid panels, no blur, no slides (8.2). */
 	bool IsLow();
