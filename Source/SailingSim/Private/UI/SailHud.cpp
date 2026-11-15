@@ -360,6 +360,8 @@ void SSailHud::Construct(const FArguments& A)
 	if (Tex) { MapBrush->SetResourceObject(Tex); MapBrush->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }
 	auto Full = [](){ return Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };
 	auto NotOff = [](){ return Mode < 2 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; };
+	// Shown while the right-hand column's fit level is at most Level (RightFit: lines dropped whole when room runs out).
+	auto UpTo = [this](int32 Level) { return [this, Level]() { return RightFit <= Level ? EVisibility::HitTestInvisible : EVisibility::Collapsed; }; };
 	auto Heading = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(P->GetHeadingTrueDeg()) : 0.f; };
 	auto WindFrom = [this]() { const ASailboatPawn* P = Pawn(); const ASailingGameMode* GM = P ? P->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr; return GM ? float(GM->GetWeatherState().Wind.FromDegrees) : 0.f; };
 	auto Awa = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(FMath::RadiansToDegrees(P->GetBoatModel().GetTelemetry().ApparentWindAngle)) : 0.f; };
@@ -509,12 +511,12 @@ void SSailHud::Construct(const FArguments& A)
 		]
 		// The right-hand column, top to bottom (Bean Nov 15: the minimap moved here from the bottom left): the minimap in the
 		// corner; the drill or race panel and the coast's navigation panel in the room left between it and the sail trim panel
-		// (they condense, then clip, rather than run under it: RightPanelsRoom, bCompactDrill); sail trim and key hints at
+		// (they shed whole lines, then whole panels, rather than run under it: RightPanelsRoom, RightFit); sail trim and key hints at
 		// the bottom.
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Fill).Padding(M)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 12.f)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 0.f, 0.f, 10.f)
 			[ SNew(SBox).WidthOverride(210.f).HeightOverride(210.f).Visibility_Lambda(Full)[ SNew(SMiniMap).Player(Player).Map(MapBrush) ] ]
 			+ SVerticalBox::Slot().FillHeight(1.f).HAlign(HAlign_Right)
 			[
@@ -529,9 +531,9 @@ void SSailHud::Construct(const FArguments& A)
 				[
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Drill"), EType::Eyebrow, Accent) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 10.f)[ TextAttr(Attr(DrillTitle), EType::CardTitleS, FSlateColor(Fg)) ]
-						+ SVerticalBox::Slot().AutoHeight()[ SAssignNew(DrillList, SVerticalBox) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextAttr(Attr(DrillFooter), EType::Small, FSlateColor(Muted), true) ],
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 8.f)[ TextAttr(Attr(DrillTitle), EType::CardTitleS, FSlateColor(Fg)) ]
+						+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(UpTo(5))[ SAssignNew(DrillList, SVerticalBox) ] ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return DrillFooter.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(DrillFooter), EType::Small, FSlateColor(Muted), true) ] ],
 						FMargin(18.f, 14.f))
 				]
 			]
@@ -542,20 +544,20 @@ void SSailHud::Construct(const FArguments& A)
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Race"), EType::Eyebrow, Accent) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 8.f)[ TextAttr(Attr(RaceHead), EType::CardTitleS, ColorAttr(RaceHeadColor)) ]
-						+ SVerticalBox::Slot().AutoHeight()[ TextAttr(Attr(RaceTask), EType::Ui, ColorAttr(RaceTaskColor), true) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextAttr(Attr(RaceLine), EType::Small, ColorAttr(RaceLineColor), true) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return RaceResults.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(RaceResults), EType::Small, FSlateColor(Fg), true) ] ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return ScoreText.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(ScoreText), EType::Small, ColorAttr(ScoreColor), true) ] ],
+						+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(UpTo(6))[ TextAttr(Attr(RaceTask), EType::Ui, ColorAttr(RaceTaskColor), true) ] ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda(UpTo(3))[ TextAttr(Attr(RaceLine), EType::Small, ColorAttr(RaceLineColor), true) ] ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return RaceResults.IsEmpty() || Fit(4) ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(RaceResults), EType::Small, FSlateColor(Fg), true) ] ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return ScoreText.IsEmpty() || Fit(6) ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(ScoreText), EType::Small, ColorAttr(ScoreColor), true) ] ],
 						FMargin(18.f, 14.f))
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 			[
-				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bNav && Mode == 0 ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+				SNew(SBox).WidthOverride(RightColumnWidth).Visibility_Lambda([this]() { return bNav && Mode == 0 && !Fit(5) ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
 				[
 					PanelBox(SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Navigation"), EType::Eyebrow, Accent) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextAttr(Attr(NavText), EType::Small, FSlateColor(Fg), true) ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda(UpTo(3))[ TextAttr(Attr(NavText), EType::Small, FSlateColor(Fg), true) ] ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SNew(SBox).Visibility_Lambda([this]() { return NextText.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible; })[ TextAttr(Attr(NextText), EType::Ui, FSlateColor(Accent), true) ] ],
 						FMargin(18.f, 14.f))
 				]
@@ -564,7 +566,7 @@ void SSailHud::Construct(const FArguments& A)
 			]
 			]
 			// Bottom of the column: sail trim and key hints.
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 12.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
 			[
 				SNew(SVerticalBox).Visibility_Lambda(Full)
 				+ SVerticalBox::Slot().AutoHeight()
@@ -665,21 +667,32 @@ void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 	SCompoundWidget::Tick(G, Now, Dt);
 	SAILING_PERF_SCOPE(Hud);
 	LayoutWidth = float(G.GetLocalSize().X) / SailHudImpl::HudScaleNow();
-	// The right-hand column: condense the drill panel when the panels outgrow the room above the sail trim panel.
+	// The right-hand column: shed whole lines, one fit level at a time, while the panels outgrow the room between the
+	// minimap and the sail trim panel; take them back once the room holds the height measured before each level. A level
+	// waits for the layout to show the last one (RightFitHold) and starts again from 0 when the panels shown change.
 	if (RightPanels.IsValid() && RightPanelsRoom.IsValid())
 	{
+		const uint32 Key = (bDrill ? 1u : 0u) | (bRace ? 2u : 0u) | (bNav ? 4u : 0u) | (uint32(Mode) << 3);
+		if (Key != RightFitKey)
+		{
+			RightFitKey = Key;
+			if (RightFit != 0) { RightFit = 0; DrillSteps.Reset(); NextRefresh = 0.0; }
+			RightFitHold = Now + 0.05;
+		}
 		const float Room = float(RightPanelsRoom->GetTickSpaceGeometry().GetLocalSize().Y);
 		const float Wanted = float(RightPanels->GetDesiredSize().Y);
-		if (!bCompactDrill && bDrill && Room > 0.f && Wanted > Room + 1.f)
+		if (Now >= RightFitHold && Room > 0.f)
 		{
-			bCompactDrill = true;
-			FullPanelsHeight = Wanted;
-			DrillSteps.Reset();   // rebuild the list condensed
-		}
-		else if (bCompactDrill && (!bDrill || Room >= FullPanelsHeight + 8.f))
-		{
-			bCompactDrill = false;
-			DrillSteps.Reset();
+			int32 NewFit = RightFit;
+			if (Wanted > Room + 1.f && RightFit < RightFitMax) { RightFitHeights[RightFit] = Wanted; NewFit = RightFit + 1; }
+			else if (RightFit > 0 && Room >= RightFitHeights[RightFit - 1] + 8.f) NewFit = RightFit - 1;
+			if (NewFit != RightFit)
+			{
+				RightFit = NewFit;
+				DrillSteps.Reset();     // rebuild the drill list at the new level
+				NextRefresh = 0.0;      // this tick, so the next layout already shows it
+				RightFitHold = Now + 0.05;
+			}
 		}
 	}
 	// The left-hand column: drop the tip card's and the rules callout's explainers when they outgrow the room above the
@@ -814,13 +827,14 @@ void SSailHud::Refresh()
 			const int32 State = D.IsComplete() || I < D.GetStep() ? 2 : (I == D.GetStep() ? 1 : 0);
 			Steps.Add({ bBrief ? Brief->StepText(I) : D.GetSteps()[I], State, bBrief && State == 1 && S->bLearningMode ? Brief->Steps[I].Coach : FString() });
 		}
-		// Condensed (no room above the sail trim panel): the current step alone, without the coach's line, and the count.
-		if (bCompactDrill && Steps.Num() > 0)
+		// Short of room above the sail trim panel (RightFit): the footer keeps only the drill's status, then the coach's line
+		// goes, then every step but the current one (with "Step k of n").
+		if (Fit(1)) DrillFooter = FText::FromString(D.GetStatus());
+		if (Fit(2)) for (TTuple<FString, int32, FString>& Row : Steps) Row.Get<2>().Reset();
+		if (Fit(3) && Steps.Num() > 0)
 		{
 			const int32 Current = FMath::Clamp(D.IsComplete() ? Steps.Num() - 1 : D.GetStep(), 0, Steps.Num() - 1);
-			TTuple<FString, int32, FString> Only = Steps[Current];
-			Only.Get<2>().Reset();
-			Steps = { Only };
+			Steps = { Steps[Current] };
 			DrillFooter = FText::FromString(D.GetStatus().IsEmpty() ? FString::Printf(TEXT("Step %d of %d"), Current + 1, D.GetSteps().Num())
 				: FString::Printf(TEXT("Step %d of %d · %s"), Current + 1, D.GetSteps().Num(), *D.GetStatus()));
 		}
