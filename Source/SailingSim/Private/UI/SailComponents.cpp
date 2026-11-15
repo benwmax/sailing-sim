@@ -161,7 +161,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildComponents()
 	AddThree(Section(TEXT("Widgets on paper")));
 	{
 		// Built inside an FScopedPaper, the same widgets and glass tokens are drawn for paper (SailUI::Surface).
-		const FScopedPaper Sheet;
+		const FScopedPaper PaperScope;
 		const TSharedRef<float> PaperSlider = MakeShared<float>(40.f);
 		const TSharedRef<int32> PaperChoice = MakeShared<int32>(1);
 		AddThree(SNew(SBorder).BorderImage(Rounded(Paper, RadiusCard, PaperLine, 1.f)).Padding(FMargin(16.f))
