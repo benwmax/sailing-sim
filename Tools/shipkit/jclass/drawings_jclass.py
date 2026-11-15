@@ -988,7 +988,59 @@ def draw_sail_suits(sl_parts, srep, sp_parts, rig, pieces, deck_parts, path):
     plt.close(fig)
 
 
-def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None):
+def draw_running_plan(rn_parts, rnrep, pieces, deck_rep, path):
+    """Slice 7's running rigging in plan, one panel for each sailing suit (starboard tack, the sheets to port): the
+    deck's edge and furniture, the winches and cleats, the padeyes, the blocks and fittings, and every rope's
+    centreline (the coils as laid), each loaded rope's rise onto its drum by its winch."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PolyCollection
+
+    sh = np.asarray(pieces["Shell"].sheer)
+    o = np.argsort(sh[:, 0])
+    fp = {k: np.asarray(v) for k, v in deck_rep["footprints"].items()}
+    names = ("Genoa", "Quadrilateral", "Spinnaker")
+    fig = plt.figure(figsize=(20, 16), dpi=130)
+    colours = plt.get_cmap("tab20")
+    for n, name in enumerate(names):
+        ax = fig.add_axes([0.03, 0.04 + (2 - n) * 0.32, 0.95, 0.27])
+        ax.plot(sh[o, 0], sh[o, 1], color="#1f3f7f", lw=1.0)
+        ax.plot(sh[o, 0], -sh[o, 1], color="#1f3f7f", lw=1.0)
+        for k, P in fp.items():
+            ax.fill(P[:, 0], P[:, 1], color="#d8d4cc", lw=0.6, ec="#555555")
+        for k, col in (("Winches", "#b08a3e"), ("RunningFittings", "#8a6a2e"), (f"Running.{name}", "#6b4f1d")):
+            p = rn_parts[k]
+            V = np.asarray(p.V, float)
+            keep = [i for i, lb in enumerate(p.labels) if " | " in lb]
+            polys = [V[list(p.F[i])][:, :2] for i in keep if V[list(p.F[i]), 2].min() < 6.0]
+            ax.add_collection(PolyCollection(polys, facecolors=[col], edgecolors=[col], linewidths=0.1, zorder=3))
+        for i, rp in enumerate(rnrep["ropes"][name]):
+            for pc in rp["pieces"]:
+                P = np.asarray(pc["path"], float)
+                low = P[:, 2] < 6.0
+                if low.any():
+                    ax.plot(P[low, 0], P[low, 1], color=colours(i % 20), lw=max(0.6, rp["r"] * 60), zorder=4,
+                            solid_capstyle="round")
+        rep = rnrep["suits"][name]
+        for g, w in rnrep["winches"].items():
+            ax.annotate(g.replace(" winch", ""), w["at"], fontsize=6, ha="center", va="bottom", color="#222222",
+                        xytext=(0, 7), textcoords="offset points", zorder=6)
+        for g, (deg, L) in rep["rise_deg"].items():
+            w = rnrep["winches"][rep["ropes"][g]["winch"]]
+            ax.annotate(f"{deg:+.1f}\u00b0", w["at"], fontsize=6, ha="center", va="top", color="#7f1f1f",
+                        xytext=(0, -7), textcoords="offset points", zorder=6)
+        ax.set_xlim(-19.5, 19.0)
+        ax.set_ylim(-3.6, 3.6)
+        ax.set_aspect("equal")
+        ax.tick_params(labelsize=7)
+        ax.set_title(f"{name} suit, starboard tack: the running rigging on deck (winches labelled, each loaded rope's "
+                     f"rise onto its drum in red; ropes above 6 m not drawn)", fontsize=10)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None, running=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -1005,5 +1057,7 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None
         if sails is not None:
             draw_sail_cut(sails[0], sails[1], sails[2], os.path.join(out, "sail_cut.png"))
             draw_sail_suits(sails[0], sails[1], rig[0], rig[1], pieces, parts, os.path.join(out, "sail_suits.png"))
+        if running is not None:
+            draw_running_plan(running[0], running[1], pieces, deck_rep, os.path.join(out, "running_plan.png"))
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

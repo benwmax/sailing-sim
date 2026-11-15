@@ -182,6 +182,7 @@ class SailPart(deck.Part):
         self.sail, self.state = sail, state
         self.pose = {}
         self.free = []          # the cloth's vertices the press may move (not its luff and corners): the build's room check
+        self.cringles = {}      # corner: the ring's centre, axis, radii (slice 7 shackles its sheets and halyards there)
 
     def add(self, V, F, slot, label, uv=None, orient=True, mass=None):
         V = np.asarray(V, float)
@@ -215,7 +216,9 @@ def tube(part, P, r, slot, label, n=8, closed=False, mass=None):
     return float(u[-1])
 
 
-def torus(part, c, nrm, R, r, slot, label, n=12, m=6, kg=None):
+def torus(part, c, nrm, R, r, slot, label, n=12, m=6, kg=None, corner=None):
+    if corner is not None and hasattr(part, "cringles"):
+        part.cringles[corner] = {"c": np.asarray(c, float), "n": unit(np.asarray(nrm, float)), "R": R, "r": r}
     a = spars.unit(np.cross(nrm, EZ if abs(unit(nrm) @ EZ) < 0.9 else EX))
     b = np.cross(unit(nrm), a)
     th = 2 * math.pi * np.arange(n) / n
@@ -647,11 +650,14 @@ class Mainsail:
         self.headboard(part, sh)
         self.battens(part, sh)
         self.reef_gear(part, sh)
-        for f_, y_ in ((0.0, 0.0), (1.0, 0.0)):
+        for f_, y_, cn in ((0.0, 0.0, "tack"), (1.0, 0.0, "clew")):
             P = sh.at([f_], [y_])[0]
             inward = sh.at([0.5], [min(y_ + 1.0, self.yH)])[0] - P
             torus(part, P + unit(inward) * 0.05, sh.normal([f_], [y_])[0], 0.035, 0.009, "Bronze", "Mainsail cringle",
-                  kg=0.3)
+                  kg=0.3, corner=cn)
+        # the halyard's shackle goes through the headboard's top, a hand forward of its after corner
+        Ph = sh.at([0.003], [self.yH])[0]
+        part.cringles["head"] = {"c": Ph, "n": sh.normal([0.003], [self.yH])[0], "R": 0.0, "r": 0.0}
         return nluff, nfoot
 
     def slide_at(self, part, c, along, aft, out_len, label):
@@ -1004,14 +1010,14 @@ class Headsail:
         ro = SL["ropes"]
         tube(part, sh.G[0], ro["headsail_luff"], "Rope", f"{self.key.capitalize()} luff rope")
         n = self.hanks(part, np.arange(0.35, float(np.linalg.norm(self.H - self.T)) - 0.1, hs["hank_every"]))
-        corners = [(0.0, 0.0), (1.0, 0.0), (0.0, self.yH)]
+        corners = [(0.0, 0.0, "tack"), (1.0, 0.0, "clew"), (0.0, self.yH, "head")]
         if self.quad:
-            corners.append((1.0, float(self.UCf[1])))
-        for f_, y_ in corners:
+            corners.append((1.0, float(self.UCf[1]), "upper_clew"))
+        for f_, y_, cn in corners:
             P = sh.at([f_], [y_])[0]
             inward = sh.at([0.35], [min(max(y_, 0.6), self.yH - 0.6)])[0] - P
             torus(part, P + unit(inward) * 0.05, sh.normal([f_], [min(y_, self.yH - 0.05)])[0], 0.035, 0.009, "Bronze",
-                  f"{self.key.capitalize()} cringle", kg=0.3)
+                  f"{self.key.capitalize()} cringle", kg=0.3, corner=cn)
         return n
 
     def hanks(self, part, ds):
@@ -1149,11 +1155,11 @@ class Spinnaker:
         tube(part, sh.G[0], r, "SailLine", "Spinnaker tape", n=6)
         tube(part, sh.G[-1], r, "SailLine", "Spinnaker tape", n=6)
         tube(part, sh.G[:, 0], r, "SailLine", "Spinnaker tape", n=6)
-        for i, j in ((0, 0), (sh.nu, 0)):
+        for i, j, cn in ((0, 0, "tack"), (sh.nu, 0, "clew")):
             P = sh.G[i, j]
             inward = sh.G[sh.nu // 2, 3] - P
             n_ = sh.normal([i / sh.nu], [0.0])[0]
-            torus(part, P + unit(inward) * 0.05, n_, 0.04, 0.01, "Bronze", "Spinnaker cringle", kg=0.4)
+            torus(part, P + unit(inward) * 0.05, n_, 0.04, 0.01, "Bronze", "Spinnaker cringle", kg=0.4, corner=cn)
         # the head's swivel: a bronze ring and its eye
         P = sh.G[0, -1]
         torus(part, P + EZ * 0.06, EX, 0.035, 0.01, "Bronze", "Spinnaker head swivel")
@@ -1167,7 +1173,9 @@ class Spinnaker:
         side = unit(np.cross(d, EX))
         box(part, cb, d, side, np.cross(d, side), (0.08, 0.026, 0.06), "Bronze", "Spinnaker halyard block",
             mass=("solid", BRZ * 0.35))
-        tube(part, np.array([P + EZ * 0.15, cb - 0.07 * d]), 0.009, "SailLine", "Spinnaker halyard")
+        # slice 7 leads the halyard's hauling part from this block down to the mast's exit box
+        part.cringles["halyard_block"] = {"c": cb, "d": d, "side": side, "half": (0.08, 0.026, 0.06), "top": top}
+        tube(part, np.array([P + EZ * 0.15, cb - 0.07 * d]), 0.006, "WireRope", "Spinnaker halyard")
         tube(part, np.array([cb + 0.07 * d, top - 0.02 * d]), 0.008, "Rope", "Spinnaker halyard pendant")
         torus(part, top - 0.035 * d, side, 0.022, 0.006, "Bronze", "Spinnaker halyard pendant eye")
 

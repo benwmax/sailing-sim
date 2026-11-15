@@ -540,7 +540,8 @@ class Block:
     """A bronze block: the head's pin H, ax from the head toward the sheaves, e in the sheaves' plane, nsh sheaves on
     one axle along n = ax x e. Builds its cheeks, sheaves, axle, head bridge and lug (and a becket at its tail)."""
 
-    def __init__(self, part, H, ax, e, nsh, rope_d, sheave_d, group, becket=False, lug_size=None):
+    def __init__(self, part, H, ax, e, nsh, rope_d, sheave_d, group, becket=False, lug_size=None, lug_axis=None,
+                 cat="Runner and checkstay blocks"):
         b = SR["runners"]["block"]
         self.ax = unit(ax)
         self.e = unit(e - (e @ self.ax) * self.ax)
@@ -560,7 +561,6 @@ class Block:
         self.H = H
         self.lug_t = lt
         self.offsets = [(j - (nsh - 1) / 2) * self.g for j in range(nsh)]
-        cat = "Runner and checkstay blocks"
         gs = lab(group, "sheave")
         gk = lab(group, "becket")
         group = lab(group, "block")
@@ -578,12 +578,18 @@ class Block:
             self.C, self.n, self.ax, "Bronze", group, cat, 12)
         self.Rc = Rc
         self.half = half + ct / 2                                 # the outer cheeks' faces along n
-        # the head: a bridge across the cheeks, and a lug forward to the head's pin
-        bridge = [(-(Rc + 0.035), -0.5 * Rc), (-(Rc - 0.01), -0.5 * Rc), (-(Rc - 0.01), 0.5 * Rc),
-                  (-(Rc + 0.035), 0.5 * Rc)]
+        # the head: a bridge across the cheeks, clear of the rope where it wraps round the sheaves' head side (slice 7
+        # draws the falls round them), and a lug forward to the head's pin, its hole along e or, on a swivel (a collar
+        # between the bridge and the lug), along `lug_axis`
+        top = max(Rc - 0.01, self.Rs + rope_d / 2 + 0.006)
+        bridge = [(-(Rc + 0.035), -0.5 * Rc), (-top, -0.5 * Rc), (-top, 0.5 * Rc), (-(Rc + 0.035), 0.5 * Rc)]
         bh = max(half + ct / 2, lh / 2)                           # across the cheeks, and the lug's height
         flat(part, bridge, self.C, self.ax, self.e, self.n, -bh, bh, "Bronze", group, cat)
-        plate2(part, self.C, -self.ax, self.n, self.e, Rc + 0.02, Rc + 0.03 + lug, lh, lt, group, cat)
+        la = self.e if lug_axis is None else unit(lug_axis - (lug_axis @ self.ax) * self.ax)
+        plate2(part, self.C, -self.ax, np.cross(la, self.ax), la, Rc + 0.02, Rc + 0.03 + lug, lh, lt, group, cat)
+        if lug_axis is not None:
+            rev(part, [(0.55 * lh, Rc + 0.03), (0.55 * lh, Rc + 0.05)], self.C, -self.ax, la, "Bronze", group, cat, 16)
+        self.lug_axis = la
         self.becket = None
         if becket:
             bl, bt = b["becket"]
@@ -705,6 +711,7 @@ def tackle(part, H_u, H_l, e, spec, group, ax_u=None, slack=False, lug_u=None):
         l_a, l_b = at_n(Lb, a), at_n(Lb, b)
         parts = [[Lb.becket, U.side(0, 1)], [U.side(0, -1), Lb.side(l_a, -1)], [Lb.side(l_a, 1), U.side(1, 1)],
                  [U.side(1, -1), Lb.side(l_b, -1)]]
+        fall_k, fall_w = l_b, -1
     else:
         U = Block(part, H_u, ax_u, H_l - H_u, 2, spec["rope_d"], spec["sheave_d"], group, lug_size=lug_u)
         ax_l = unit(H_u - H_l)
@@ -721,6 +728,7 @@ def tackle(part, H_u, H_l, e, spec, group, ax_u=None, slack=False, lug_u=None):
         l1, l2 = (0, 1) if Lb.offsets[0] > Lb.offsets[1] else (1, 0)    # the upper and the lower sheave
         ends = [(Lb.becket, U.side(a, 1)), (U.side(a, -1), Lb.side(l1, v)), (Lb.side(l1, -v), U.side(b, 1)),
                 (U.side(b, -1), Lb.side(l2, -v))]
+        fall_k, fall_w = l2, -v
         lanes = [2.0, 3.0, 1.0, 0.0]                                 # counted inboard from the lead, clear of the shroud
         pitch = spec["rope_d"] + SR["runners"]["lane_gap"]
         drop = SR["runners"]["slack_drop"] * float(U.C[2] - deck_z(U.C[0], U.C[1]))
@@ -737,6 +745,10 @@ def tackle(part, H_u, H_l, e, spec, group, ax_u=None, slack=False, lug_u=None):
     L = 0.0
     for p in parts:
         L += wire(part, p, rr, lab(group, "fall"), "Tackle falls (manila)", kgm, slot="Rope", n=10, bend=0.0)
+    # where the last part enters the lower block: slice 7 takes the fall on round that sheave's head side to its winch
+    Lb.fall = {"centre": Lb.C + Lb.offsets[fall_k] * Lb.n, "ax": Lb.ax, "e": Lb.e, "n": Lb.n, "R": Lb.Rs,
+               "enters": Lb.side(fall_k, fall_w), "side": fall_w, "arrives": unit(parts[3][-1] - parts[3][-2]),
+               "rope_d": spec["rope_d"], "half_gap": Lb.g / 2}
     return U, Lb, L, parts
 
 
@@ -863,6 +875,7 @@ def runner_rig(parts, rep, pts, sheer):
                                          "r": spec["tackle"]["rope_d"] / 2, "path": pp, "passes": [],
                                          "state": (side, state), "rope": True})
                 rec[state] = {"pendant_m": Lw, "falls_m": Lp, "upper_block_pin": H_u, "lower_block_pin": H_l,
+                              "fall_sheave": Lb.fall,
                               "tackle_axis": unit(H_u - H_l), "parts_least_room_mm": round(1000 * parts_room(
                                   prt, spec["tackle"]["rope_d"] / 2), 1)}
                 if state == "Set":
