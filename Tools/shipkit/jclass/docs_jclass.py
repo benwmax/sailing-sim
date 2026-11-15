@@ -1,6 +1,6 @@
-"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-8).
+"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-9).
 
-    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8]
+    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8|9]
 
 <out dir> is where loft.py, build_jclass.py, fairness.py and render_jclass.py wrote (renders in <out>/renders). Slice 1
 (the default) copies build.json, hydrostatics.json, sections.json and fairness.json and writes the clay, zebra and
@@ -12,7 +12,8 @@ same three jsons and writes the rig renders and the sail plan (sail_plan.png). S
 writes the rigging renders and the rigging plan (rigging_plan.png). Slice 6 copies the same three jsons and writes the
 sails' renders (the 200 m silhouettes first, Milestone A's) and the sails' two drawings (sail_cut.png, sail_suits.png).
 Slice 7 copies the same three jsons and writes the running rigging's renders and its plan (running_plan.png). Slice 8
-copies the same three jsons and writes the deck hardware's renders and its plan (hardware_plan.png).
+copies the same three jsons and writes the deck hardware's renders and its plan (hardware_plan.png). Slice 9 copies
+the same three jsons and writes the renders below decks forward and the arrangement drawing (interior_plan.png).
 Each image is a JPEG under 300 KB (docs images are plain git, not LFS), with a contact sheet of the renders. Needs
 Pillow.
 """
@@ -33,8 +34,8 @@ for _a in _it:
         raise SystemExit(f"docs_jclass.py: unknown option {_a}")
     else:
         ARGS.append(_a)
-if len(ARGS) != 2 or SLICE not in (1, 2, 3, 4, 5, 6, 7, 8):
-    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3|4|5|6|7|8]")
+if len(ARGS) != 2 or SLICE not in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|3|4|5|6|7|8|9]")
 OUT, DOCS = ARGS
 RENDERS = {
     1: ["clay_profile", "clay_plan", "clay_bow34", "clay_stern34", "clay_bow", "clay_stern", "clay_under",
@@ -58,6 +59,9 @@ RENDERS = {
     8: ["hardware_foredeck", "hardware_profile", "hardware_stem_head", "hardware_bow_cleat", "hardware_anchor",
         "hardware_cowl", "hardware_cowl_capped", "hardware_deck_prism", "hardware_sidelight", "hardware_sidelight_port",
         "hardware_track", "hardware_stern", "hardware_ensign", "hardware_burgee"],
+    9: ["below_plan", "below_half_port", "below_half_starboard", "below_fcsl_forward", "below_fcsl_aft", "below_cot",
+        "below_galley", "below_range", "below_galley_bins", "below_sail_locker", "below_washroom", "below_forepeak",
+        "below_forepeak_section", "below_windlass", "below_cable_lead", "below_bow_chock"],
 }[SLICE]
 JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.json"),
              ("sections.json", "sections.json"), ("fairness.json", "fairness.json")],
@@ -71,7 +75,8 @@ DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             5: [("rigging_plan.png", "rigging_plan.jpg", 2000)],
             6: [("sail_cut.png", "sail_cut.jpg", 2000), ("sail_suits.png", "sail_suits.jpg", 1800)],
             7: [("running_plan.png", "running_plan.jpg", 2000)],
-            8: [("hardware_plan.png", "hardware_plan.jpg", 2000)]}[SLICE]
+            8: [("hardware_plan.png", "hardware_plan.jpg", 2000)],
+            9: [("interior_plan.png", "interior_plan.jpg", 2000)]}[SLICE]
 LIMIT = 290_000
 
 

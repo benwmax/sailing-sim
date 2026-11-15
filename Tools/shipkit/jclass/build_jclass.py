@@ -1,4 +1,4 @@
-"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-8).
+"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-9).
 
 Slice 1 lofted the hull's lines (loft.py); slice 2 finished it (shell.py, finish_bluebonnet.json): the shell split at
 its paint lines (bottom, boot top, topsides, gold cove) and the lead casting's top, the plating drawn in the paint from
@@ -30,6 +30,12 @@ fitting, mooring cleats and fairleads, cowl vents, deck prisms, the anchor stowe
 their boards and standard, the ensign's socket (and in harbour its staff and ensign) and the club burgee flying at the
 masthead in each suit; every piece is checked clear of what lies on deck in every suit (the ropes are led and coiled
 round it), the lights' arcs are cast, and the hardware's weight with the winches' replaces the size card's estimate.
+Slice 9 builds below decks forward (interior.py, furniture.py, interior_bluebonnet.json), streamed in only when below:
+the frames, beams and deckhead under the deck opened at its hatches, skylight, prisms, cowls and chain pipe; the
+ceiling; the bulkheads, soles and steps; the fo'c'sle's pipe cots and mess, the galley, the sail bins round the mast,
+the ladders, the washroom, and the forepeak's windlass, chain locker, cable and bower anchor, with the bow chock on
+deck; every piece closes and is checked clear of the rest, the ground tackle's weight replaces slice 8's estimate and
+the accommodation forward is weighed against the card's.
 The .blend is saved under main and genoa with the other states hidden.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
@@ -38,13 +44,14 @@ Writes <out>/jclass.blend, <out>/jclass.obj (the closed shell: shell, transom an
 the deck's parts are their own closed pieces) and <out>/build.json (triangles, the hull's dimensions and hydrostatics,
 the rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
 the boom's and the pole's frames, the rig's measures, sweeps and attachment points, the sails' measures, weights and
-suit checks, the running rigging's leads, room and weights, the hardware's checks and weights), plus the drawings from
+suit checks, the running rigging's leads, room and weights, the hardware's checks and weights, the interior's report,
+overlaps, headroom and weights), plus the drawings from
 drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png, deck_profile.png, sail_plan.png, rigging_plan.png,
-sail_cut.png, sail_suits.png, running_plan.png, hardware_plan.png; they need matplotlib). Units are metres in the
-hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle of the load waterline. Edit loft.py,
-shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py, winches.py, running.py, hardware.py,
-hardware_materials.py and the json files, never the .blend. The moulded hull of slice 1 stays in the .blend as `Hull`,
-hidden from renders: the fairness check measures it.
+sail_cut.png, sail_suits.png, running_plan.png, hardware_plan.png, interior_plan.png; they need matplotlib). Units are
+metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle of the load waterline.
+Edit loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py, winches.py, running.py, hardware.py,
+hardware_materials.py, interior.py, furniture.py and the json files, never the .blend. The moulded hull of slice 1
+stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
 """
 import json
 import math
@@ -69,6 +76,7 @@ import sail_materials  # noqa: E402
 import running  # noqa: E402
 import hardware  # noqa: E402
 import hardware_materials  # noqa: E402
+import interior  # noqa: E402
 import drawings_jclass  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -654,6 +662,21 @@ def shell_check(obs):
     return {"open_edges": open_edges, "nonmanifold_edges": nonmanifold, "flipped_edges": flipped,
             "degenerate_faces": small, "enclosed_m3": round(vol, 3), "bad_edges_at": where,
             "closed": open_edges == 0 and nonmanifold == 0 and flipped == 0 and small == 0 and vol > 0}
+
+
+def hole_caps(holes, mats):
+    """The deck's holes capped (for shell_check only: the shell, transom and deck close with them): each a fan over its
+    outline at the deck's height, facing up as the deck does."""
+    p = spars.SparPart("_HoleCaps")
+    for name, H in holes.items():
+        H = np.asarray(H, float)
+        if deck.poly_area(H) < 0:
+            H = H[::-1]
+        n = len(H)
+        c = H.mean(0)
+        V = np.vstack([np.column_stack([H, shell.deck_z(H[:, 0], H[:, 1])]), [[c[0], c[1], float(shell.deck_z(*c))]]])
+        p.add(V, [(k, (k + 1) % n, n) for k in range(n)], "Teak", None, name, orient=False)
+    return part_object(p, mats)
 
 
 def sail_closure(ob, labels):
@@ -1330,12 +1353,15 @@ def _piece_inside(V, F, by_piece, sub):
 
 def rope_room(ropes, items, step=0.05, reach=0.12, fail_mm=3.0):
     """Each running rope's room along its centreline (running.py's records, in pieces): sampled every `step`, or
-    closer for a thin rope (1.8 times its radius plus `fail_mm`, so an edge between two samples cannot reach past the
-    rope's skin by more than the margin unseen), and at every vertex, the faces of everything shown within `reach`, leaving out the rope's own tube and fittings (its
+    closer for a thin rope (1.8 times its radius plus `fail_mm`), or a rope's own 'step_m', and at every vertex. A
+    corner standing between two samples s apart can come up to about s^2 / (8 r) nearer the rope than measured (some
+    5 mm for a 12 mm rope at its 16 mm: slice 9's anchor cable, a 56 mm link, is sampled every 4 mm, 0.07 mm); at
+    every sample the faces of everything shown within `reach`, leaving out the rope's own tube and fittings (its
     object's faces labelled with its group) and what each piece may touch by design (its 'allow': (object, label
     prefix): the sheave and cheeks of a block it runs through, its drum, its cleat, the deck under its coil, the mast
     it runs into). The gap is the distance less the rope's radius, less than nothing inside a solid; under `fail_mm`
-    fails."""
+    fails, except a rope marked 'report_only' (the anchor cable's steepest dips over the bow chock), whose room is
+    only reported."""
     tree, who, V, F = _labelled(items, raw=True)
     by_piece = {}
     for k, wk in enumerate(who):
@@ -1344,7 +1370,7 @@ def rope_room(ropes, items, step=0.05, reach=0.12, fail_mm=3.0):
     rows = []
     for rp in ropes:
         grp, own, r = rp["group"], rp["object"], rp["r"]
-        st = min(step, 1.8 * (r + fail_mm / 1000.0))
+        st = min(step, 1.8 * (r + fail_mm / 1000.0), rp.get("step_m", step))
         best, n = None, 0
         for pc in rp["pieces"]:
             allow = [tuple(a) for a in pc["allow"]]
@@ -1373,15 +1399,20 @@ def rope_room(ropes, items, step=0.05, reach=0.12, fail_mm=3.0):
                         if gap < best[0]:
                             best = (gap, who[idx][0], who[idx][1], pc["name"], q)
         row = {"rope": rp["name"], "object": own, "samples": n}
+        if rp.get("report_only"):
+            row["report_only"] = True
         if best:
             row.update(least_gap_mm=round(best[0] * 1000, 1), against=f"{best[1]}: {best[2]}", piece=best[3],
                        at=[round(float(v), 3) for v in best[4]])
         rows.append(row)
-    tight = [r for r in rows if r.get("least_gap_mm") is not None and r["least_gap_mm"] < fail_mm]
-    have = [r for r in rows if r.get("least_gap_mm") is not None]
+    tight = [r for r in rows if r.get("least_gap_mm") is not None and r["least_gap_mm"] < fail_mm
+             and not r.get("report_only")]
+    have = [r for r in rows if r.get("least_gap_mm") is not None and not r.get("report_only")]
+    shown = [r for r in rows if r.get("least_gap_mm") is not None and r.get("report_only")]
     return {"rows": rows, "step_m": f"{step} or 1.8 x (radius + margin)", "reach_m": reach, "fail_under_mm": fail_mm,
             "tight": tight, "ok": not tight,
-            "least": min(have, key=lambda r: r["least_gap_mm"]) if have else None}
+            "least": min(have, key=lambda r: r["least_gap_mm"]) if have else None,
+            "least_reported_only": min(shown, key=lambda r: r["least_gap_mm"]) if shown else None}
 
 
 def running_overlaps(run_items, other_items, corners, pairs, zone=0.025, headboard=0.1):
@@ -1447,8 +1478,9 @@ def running_overlaps(run_items, other_items, corners, pairs, zone=0.025, headboa
 
 # ------------------------------------------------------------------------------------------------ slice 8's checks
 HW_DECK_KINDS = {"stem head", "cleat", "fairlead", "cowl", "deck prism", "chain pipe", "chock", "bracket", "standard",
-                 "socket"}                                    # let into the deck or bedded on it
-HW_RAIL_KINDS = {"fairlead", "stem head"}                     # let into the toe rail's top, or taking its ends
+                 "socket", "bow chock"}                       # let into the deck or bedded on it
+HW_RAIL_KINDS = {"fairlead", "stem head", "bow chock"}        # let into the toe rail's top, or taking its ends
+HW_ON_RAIL = {"fairlead", "bow chock"}                        # standing on the toe rail (the rest on the deck)
 HW_UNDER = {"Deck", "ToeRail", "Shell", "Transom"}            # what the hardware stands on: left out of its room
 FORESTAY_PLATES = ("Forestay | stem plate", "Forestay | deck plate")
 HW_ANCHOR_CLEAR = 0.01                                        # the anchor's palms and bills off the deck, at least
@@ -1537,14 +1569,16 @@ def hardware_room(hw_items, other_items, reach=0.05, fail_mm=3.0):
     return {"within_reach": rows, "reach_m": reach, "fail_under_mm": fail_mm, "tight": tight, "ok": not tight}
 
 
-def hardware_seating(hw_items, under, band=0.03, float_mm=0.5, sunk_mm=30.0, prism=(-0.5, 2.5)):
+def hardware_seating(hw_items, under, through=(), band=0.03, float_mm=0.5, sunk_mm=30.0, prism=(-0.5, 2.5)):
     """Each deck hardware group bedded on what it stands on (`under`: {"deck": object, "rail": object}; a fairlead
-    stands on the toe rail, the rest on the deck), by rays down onto it from above each of its vertices: every vertex
-    of its feet (its downward faces within `band` of the surface with nothing of its own under them: not a cleat's
-    horns, a cowl's bell, a cap's lip over its flange, or a ring over its base) must be at most `float_mm` above the
-    surface, and its lowest at most `sunk_mm` below it (let in, not sunk); "under them" reaches down to that depth
-    below the surface, so a ring over its let-in base is not a foot. A deck prism's top must lie `prism` (mm)
-    about the deck all round (flush); its pendant goes on down below the planking."""
+    and the bow chock stand on the toe rail, the rest on the deck), by rays down onto it from above each of its
+    vertices: every vertex of its feet (its downward faces within `band` of the surface with nothing of its own under
+    them: not a cleat's horns, a cowl's bell, a cap's lip over its flange, or a ring over its base) must be at most
+    `float_mm` above the surface, and its lowest at most `sunk_mm` below it (let in, not sunk); "under them" reaches
+    down to that depth below the surface, so a ring over its let-in base is not a foot. A deck prism's top must lie
+    `prism` (mm) about the deck all round (flush); its pendant goes on down below the planking. A group in `through`
+    (carried down through the deck where slice 9 opens it: the forward cowls' flanges, the chain pipe) is measured
+    above the planking's underside: its collar and backing ring below it are in the cabin."""
     from mathutils.bvhtree import BVHTree
 
     def tree(faces):
@@ -1572,7 +1606,7 @@ def hardware_seating(hw_items, under, band=0.03, float_mm=0.5, sunk_mm=30.0, pri
     out, bad = {}, {}
     for g, faces in sorted(groups.items()):
         kind = faces[0][0]
-        surf = T["rail"] if kind == "fairlead" else T["deck"]
+        surf = T["rail"] if kind in HW_ON_RAIL else T["deck"]
         own = tree([(W, None) for _, W, _ in faces])
         hs, top, foot, worst = [], [], [], None
         for kd, W, nz in faces:
@@ -1581,6 +1615,8 @@ def hardware_seating(hw_items, under, band=0.03, float_mm=0.5, sunk_mm=30.0, pri
                 if hit[0] is None:
                     continue
                 h = q.z - hit[0].z
+                if g in through and h < 0.003 - deck.PL["thickness"]:
+                    continue
                 hs.append(h)
                 if kd == "deck prism":
                     if h > -0.02:
@@ -1603,6 +1639,258 @@ def hardware_seating(hw_items, under, band=0.03, float_mm=0.5, sunk_mm=30.0, pri
             bad[g] = rec
     return {"groups": out, "band_m": band, "float_over_mm": float_mm, "sunk_under_mm": sunk_mm,
             "prism_top_mm": list(prism), "bad": bad, "ok": not bad}
+
+
+IN_FIXED = ("Below.Structure", "Below.Ceiling")              # below decks: what the furniture stands in
+IN_FIXED_KINDS = {"bulkhead", "door", "door frame", "hinge", "door stop", "sill", "sole", "slat", "riser", "step",
+                  "collar", "bearer", "floor"}
+# contacts below decks allowed by design: pairs of (group's beginning, kind), either way round ("*" any kind)
+IN_ALLOWED = (
+    (("Galley range", "gimbal pin"), ("Galley counter", "locker")),   # the range's pins through the counter's ends
+    (("Sail bins", "sail bag"), ("Sail bins", "sail bag")),           # the bags pressed together in a bin
+    (("Cot", "hook"), ("", "batten")),                                # each cot's hooks screwed into a batten
+    (("Deckhead", "deckhead"), ("Hatches", "*")),                     # the deckhead's holes, like the deck's, end
+    (("Deckhead", "deckhead"), ("Skylights", "*")),                   # inside the coamings' walls carried below
+    (("Deckhead", "deckhead"), ("Deck prism", "*")),                  # and inside the fittings through the deck
+    (("Deckhead", "deckhead"), ("Forward cowl", "*")),                # (hardware.deck_holes), so no hole's edge
+    (("Deckhead", "deckhead"), ("Chain pipe", "*")),                  # shows round them
+    (("Plating", "plating"), ("Plating", "plating")),                 # the two sides' skins lap 4 mm at the stem bar
+    (("Cot", "lacing"), ("Cot", "cot frame")),                        # each cot's lacing passes round its frame
+)
+IN_SUPPORT_M = 0.0005                                        # every piece below rests on something: within 0.5 mm
+
+
+def _allowed(a, b, allow):
+    for ra, rb in allow:
+        for (p, q), (r, s) in (((ra, rb), (a, b)), ((rb, ra), (a, b))):
+            if r[0].startswith(p[0]) and p[1] in ("*", r[1]) and s[0].startswith(q[0]) and q[1] in ("*", s[1]):
+                return True
+    return False
+
+
+def _faces_of(ob, labels):
+    """An object's faces in world space: [(corner points, (group, kind))]; labels None names them by the object."""
+    M = ob.matrix_world
+    W = [tuple(M @ v.co) for v in ob.data.vertices]
+    out = []
+    for k, p in enumerate(ob.data.polygons):
+        gk = (rigging.group_of(labels[k]), rigging.kind_of(labels[k])) if labels else (ob.name, ob.name)
+        out.append(([W[i] for i in p.vertices], gk))
+    return out
+
+
+def _offset(V, F, s):
+    """Vertices V (of faces F, wound outward) moved so that every face's plane moves s in (s < 0: out): each
+    vertex (welded with any at the same point) by the least-squares d with d . n = s for each distinct normal n of
+    the faces round it (a box's corner moves s along each of its three faces' normals, not s along their mean), at
+    most 3|s|."""
+    V = np.asarray(V, float)
+    key = [tuple(k) for k in np.round(V, 6)]
+    ns = {}
+    for f in F:
+        n = np.cross(V[f[1]] - V[f[0]], V[f[2]] - V[f[0]])
+        if len(f) == 4:
+            n = n + np.cross(V[f[2]] - V[f[0]], V[f[3]] - V[f[0]])
+        ln = np.linalg.norm(n)
+        if ln < 1e-15:
+            continue
+        n = tuple(np.round(n / ln, 4))
+        for i in f:
+            ns.setdefault(key[i], set()).add(n)
+    move = {}
+    for k, nset in ns.items():
+        N = np.array(sorted(nset))
+        d = np.linalg.lstsq(N, np.full(len(N), s), rcond=None)[0]
+        ld = np.linalg.norm(d)
+        move[k] = d if ld <= 3 * abs(s) else d * (3 * abs(s) / ld)
+    zero = np.zeros(3)
+    return V - np.array([move.get(k, zero) for k in key])
+
+
+def _face_tree(faces, s=0.0):
+    """A BVH of faces (each its own corners), each face's plane moved s in (_offset); with the faces' names."""
+    from mathutils.bvhtree import BVHTree
+    V = np.array([q for W, _ in faces for q in W], float)
+    F, o = [], 0
+    for W, _ in faces:
+        F.append(tuple(range(o, o + len(W))))
+        o += len(W)
+    if s:
+        V = _offset(V, F, s)
+    cen = np.array([np.mean([V[i] for i in f], axis=0) for f in F])
+    return (BVHTree.FromPolygons([tuple(v) for v in V], F, epsilon=0.0), [gk for _, gk in faces], (V.min(0), V.max(0)),
+            cen)
+
+
+def _near(bb_a, bb_b, m):
+    return bool(np.all(bb_a[0] <= bb_b[1] + m) and np.all(bb_b[0] <= bb_a[1] + m))
+
+
+def interior_overlaps(in_items, fixed_items, shrink=0.001, allow=IN_ALLOWED):
+    """Below decks (slice 9), three tests:
+
+      furniture   each piece of furniture (the interior's faces other than the structure, the ceiling and the joiner's
+                  structure: the bulkheads with their doors, the soles, slats, bearers, risers and steps), one tree for
+                  each group in each object, shrunk `shrink` in along its faces' normals so pieces resting on each
+                  other or on the sole do not count, against the structure's, the ceiling's and the joiner's groups,
+                  `fixed_items` (the shell, the deck, the hatches' and skylights' linings, the deck hardware carried
+                  down through the deck, the mast and the toe rail), and every other furniture tree (a group's own
+                  pieces in another object included)
+      fixed       the structure's, the ceiling's and the joiner's groups against each other and `fixed_items`: a pair
+                  crosses only where each, shrunk, still meets the other unshrunk (the deck and the shell, open
+                  surfaces, are never shrunk)
+      allowed     faces whose (group, kind) pair is in `allow` may cross by design and are counted apart
+
+    Returns the crossing faces counted by pair."""
+    furn, fixed = {}, {}
+    for ob, labels in in_items:
+        for face in _faces_of(ob, labels):
+            g, kd = face[1]
+            if ob.name in IN_FIXED or kd in IN_FIXED_KINDS:
+                fixed.setdefault(g, []).append(face)
+            else:
+                furn.setdefault(f"{g} [{ob.name}]", []).append(face)
+    ext = set()
+    for ob, labels in fixed_items:
+        for face in _faces_of(ob, labels):
+            key = face[1][0] if labels else ob.name
+            fixed.setdefault(key, []).append(face)
+            ext.add(key)
+    surfaces = {"Deck", "Shell"}
+    T_fur = {g: _face_tree(f, shrink) for g, f in furn.items()}
+    T_fix = {g: _face_tree(f) for g, f in fixed.items()}
+    T_fix_s = {g: (_face_tree(f, shrink) if g not in surfaces else T_fix[g]) for g, f in fixed.items()}
+    crossing, allowed, fixed_crossing, where = {}, {}, {}, {}
+
+    def count(a, ta, b, tb, store_cross):
+        hits = ta[0].overlap(tb[0])
+        for i, j in hits:
+            ok = _allowed(ta[1][i], tb[1][j], allow)
+            store = allowed if ok else store_cross
+            key = f"{a} / {b}"
+            store[key] = store.get(key, 0) + 1
+            if not ok and key not in where:     # the first crossing of each pair: its kinds and where (Blender's frame)
+                where[key] = [ta[1][i][1], tb[1][j][1], [round(float(c), 3) for c in ta[3][i]]]
+        return hits
+
+    names = sorted(T_fur)
+    for i, a in enumerate(names):
+        for b in sorted(T_fix):
+            if _near(T_fur[a][2], T_fix[b][2], 0.002):
+                count(a, T_fur[a], b, T_fix[b], crossing)
+        for b in names[i + 1:]:
+            if _near(T_fur[a][2], T_fur[b][2], 0.002):
+                count(a, T_fur[a], b, T_fur[b], crossing)
+    fx = sorted(T_fix)
+    for i, a in enumerate(fx):
+        for b in fx[i + 1:]:
+            if (a in ext and b in ext) or not _near(T_fix[a][2], T_fix[b][2], 0.002):
+                continue
+            if T_fix_s[a][0].overlap(T_fix[b][0]) and T_fix[a][0].overlap(T_fix_s[b][0]):
+                count(a, T_fix_s[a], b, T_fix[b], fixed_crossing)
+    return {"shrink_m": shrink, "furniture_groups": len({n.rsplit(" [", 1)[0] for n in names}),
+            "furniture_trees": len(names), "fixed_groups": len([g for g in fx if g not in ext]),
+            "crossing_faces": crossing, "fixed_crossing_faces": fixed_crossing, "allowed_by_design": allowed,
+            "first_crossing": where, "ok": not crossing and not fixed_crossing}
+
+
+def interior_support(in_items, other_items, gap=IN_SUPPORT_M):
+    """Below decks (slice 9): every piece (each closed solid of the interior's objects) must be held up: touching
+    another piece that is, or the ship itself (`other_items`: the shell, the deck, the hatches' and skylights' linings,
+    the deck hardware, the mast, the toe rail). Two pieces touch where one crosses the other (as a tread let into its
+    string does) or, grown `gap` out along its faces (_offset), meets it. Returns the pieces that touch nothing (with
+    their least distance, corner to face, up to 30 mm, and what is nearest) and the sets of pieces that touch only each
+    other (a shelf and its fiddle in the air), by group."""
+    from mathutils.bvhtree import BVHTree
+    pieces = []
+    for ob, labels in in_items:
+        M = ob.matrix_world
+        W = np.array([tuple(M @ v.co) for v in ob.data.vertices], float)
+        polys = [tuple(p.vertices) for p in ob.data.polygons]
+        parent = list(range(len(W)))
+
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+        for f in polys:
+            r0 = find(f[0])
+            for v in f[1:]:
+                r = find(v)
+                if r != r0:
+                    parent[r] = r0
+        comp = {}
+        for k, f in enumerate(polys):
+            comp.setdefault(find(f[0]), []).append(k)
+        for ks in comp.values():
+            ids = sorted({v for k in ks for v in polys[k]})
+            m = {v: j for j, v in enumerate(ids)}
+            pieces.append((ob.name, labels[ks[0]] if labels else ob.name, W[ids],
+                           [tuple(m[v] for v in polys[k]) for k in ks]))
+    others = []
+    for ob, labels in other_items:
+        M = ob.matrix_world
+        W = np.array([tuple(M @ v.co) for v in ob.data.vertices], float)
+        others.append((ob.name, ob.name, W, [tuple(p.vertices) for p in ob.data.polygons]))
+    items = pieces + others
+    trees = [BVHTree.FromPolygons([tuple(v) for v in V], F, epsilon=0.0) for _, _, V, F in items]
+    grown = [BVHTree.FromPolygons([tuple(v) for v in _offset(V, F, -gap)], F, epsilon=0.0) for _, _, V, F in pieces]
+    bb = np.array([np.concatenate([V.min(0), V.max(0)]) for _, _, V, _ in items])
+    n = len(pieces)
+    root = list(range(len(items)))
+
+    def find(a):
+        while root[a] != a:
+            root[a] = root[root[a]]
+            a = root[a]
+        return a
+    for j in range(n + 1, len(items)):                 # the ship is one
+        root[find(j)] = find(n)
+    touched = [False] * n
+    for i in range(n):
+        lo, hi = bb[i, :3] - gap, bb[i, 3:] + gap
+        cand = [j for j in np.nonzero(np.all(bb[:, :3] <= hi, axis=1) & np.all(bb[:, 3:] >= lo, axis=1))[0] if j != i]
+        for j in sorted(cand, key=lambda j: float(np.linalg.norm(bb[j, :3] + bb[j, 3:] - bb[i, :3] - bb[i, 3:]))):
+            if touched[i] and find(i) == find(j):
+                continue
+            if trees[i].overlap(trees[j]) or grown[i].overlap(trees[j]):
+                touched[i] = True
+                if j < n:
+                    touched[j] = True
+                root[find(i)] = find(j)
+    ground = find(n) if others else None
+    lim = 0.03
+    loose, floating = [], {}
+    for i, (obn, lb, V, F) in enumerate(pieces):
+        if touched[i]:
+            if find(i) != ground:
+                floating.setdefault(find(i), []).append(i)
+            continue
+        lo, hi = bb[i, :3] - lim, bb[i, 3:] + lim
+        cand = [j for j in np.nonzero(np.all(bb[:, :3] <= hi, axis=1) & np.all(bb[:, 3:] >= lo, axis=1))[0] if j != i]
+        best, who = lim, None
+        for j in cand:
+            for v in V:
+                r = trees[j].find_nearest(tuple(v), best)
+                if r[0] is not None and r[3] < best:
+                    best, who = r[3], items[j][1]
+            Vj = items[j][2]
+            sel = np.all((Vj >= bb[i, :3] - best) & (Vj <= bb[i, 3:] + best), axis=1)
+            for v in Vj[sel]:
+                r = trees[i].find_nearest(tuple(v), best)
+                if r[0] is not None and r[3] < best:
+                    best, who = r[3], items[j][1]
+        loose.append({"piece": lb, "object": obn, "gap_mm": round(best * 1000, 1), "nearest": who,
+                      "at": [round(float(c), 3) for c in V.mean(0)]})
+    sets = []
+    for ids in floating.values():
+        P = np.concatenate([pieces[i][2] for i in ids])
+        groups = sorted({rigging.group_of(pieces[i][1]) for i in ids})
+        sets.append({"groups": groups, "pieces": len(ids), "from": [round(float(c), 3) for c in P.min(0)],
+                     "to": [round(float(c), 3) for c in P.max(0)]})
+    return {"gap_m": gap, "gap_mm": gap * 1000, "pieces": n, "loose": sorted(loose, key=lambda d: -d["gap_mm"]),
+            "floating": sorted(sets, key=lambda d: d["from"]), "ok": not loose and not sets}
 
 
 RULE_ARCS = {"starboard": (0.0, 112.5), "port": (-112.5, 0.0), "stern": (112.5, 247.5)}
@@ -1750,8 +2038,12 @@ def main():
     S = loft.surface(NU, NV)
     h = loft.hydrostatics(S)
     r = rule_check.check(h)
-    # the deck's weight first (on the loft's sheer), so the lead can take up the difference from the size card's
-    _, deck0 = deck.build()
+    # the deck's weight first (on the loft's sheer), so the lead can take up the difference from the size card's; the
+    # deck is opened under the forward hatches, skylight, prisms, cowls and chain pipe, which go below (slice 9)
+    op = interior.openings()
+    deck_open = {"opened": op["hatches"] + op["skylights"], "fitting_holes": hardware.deck_holes(op),
+                 "lining": interior.LINING}
+    _, deck0 = deck.build(**deck_open)
     w0 = deck0["weights"]
     _, rig0 = spars.build()
     s0 = rig0["weights"]
@@ -1760,7 +2052,8 @@ def main():
     extra = sum(x["card_long_tons"] - x["total_long_tons"] for x in (w0, s0, g0))
     pieces, finish = shell.build(extra_lead_tons=extra)
     sh = pieces["Shell"]
-    parts, deck_rep = deck.build(sh.sheer)
+    parts, deck_rep = deck.build(sh.sheer, **deck_open)
+    holes = deck_rep.pop("_holes")
     dw = deck_rep["weights"]
     if abs(dw["total_long_tons"] - w0["total_long_tons"]) > 0.01:
         raise SystemExit(f"the deck weighs {dw['total_long_tons']} long tons on the shell's sheer, "
@@ -1779,7 +2072,7 @@ def main():
         raise SystemExit(f"the rig fails a check: {rig['checks']}")
     rg_parts, rr = rigging.build(rig, sh.sheer)
     pts = rig.pop("_pts")
-    hw_parts, hwrep = hardware.build(sh.sheer, pts)
+    hw_parts, hwrep = hardware.build(sh.sheer, pts, op)
     gw = rr["weights"]
     if abs(gw["total_long_tons"] - g0["total_long_tons"]) > 0.01:
         raise SystemExit(f"the rigging weighs {gw['total_long_tons']} long tons on the shell's sheer, "
@@ -1787,6 +2080,8 @@ def main():
     r = rule_check.check(h, rig["sail_area_ft2"])
     mats = materials(finish["lead"]["top_z_m"], deck_rep["planking_mitre"])
     mats.update(hardware_materials.make())
+    for k, (rough, metal, coat) in interior.MATERIALS.items():
+        mats[k] = make_material(k, interior.IN["materials"][k], rough, metal=metal, coat=coat)
     # slice 1's moulded hull: the fairness check's reference, hidden from renders
     hull = mesh_object("Hull", *hull_mesh(S), {"Topsides": mats["Topsides"]})
     hull.hide_render = True
@@ -1840,13 +2135,37 @@ def main():
         opt = (f"Ensign.{name}", f"Cowls.{name}", f"CowlCaps.{name}")
         ks = ["DeckHardware", f"Burgee.{name}"] + [k for k in opt if k in hw_obs]
         return [(hw_obs[k], hw_parts[k].labels) for k in ks]
-    checks = {"shell_transom_deck": shell_check((shell_ob, transom, deck_ob)), "rudder": shell_check((rudder,)),
+    # below decks forward (slice 9), streamed in only when below
+    in_parts, inrep = interior.build(S, holes)
+    in_obs = {k: part_object(p, mats) for k, p in in_parts.items() if p.F}
+    for ob in in_obs.values():
+        ob["slice"] = 9
+    # the shell, transom and deck close with the deck's openings capped (the caps only for the check)
+    caps = hole_caps(holes, mats)
+    checks = {"shell_transom_deck": shell_check((shell_ob, transom, deck_ob, caps)), "rudder": shell_check((rudder,)),
               "stock": shell_check((stock,))}
-    for k, ob in list(deck_obs.items()) + list(spar_obs.items()) + list(rig_obs.items()) + list(hw_obs.items()):
+    bpy.data.objects.remove(caps)
+    for k, ob in (list(deck_obs.items()) + list(spar_obs.items()) + list(rig_obs.items()) + list(hw_obs.items())
+                  + list(in_obs.items())):
         checks[k] = shell_check((ob,))
     if not all(c["closed"] for c in checks.values()):
         raise SystemExit(f"a piece does not close into a shell: {[k for k, c in checks.items() if not c['closed']]}"
                          f" {checks}")
+    # below decks: no piece of furniture crosses the structure, the ceiling, the bulkheads and soles, the shell, the
+    # deck, the hatches' and skylights' linings, the fittings carried down through the deck, or another piece
+    in_items = [(ob, in_parts[k].labels) for k, ob in in_obs.items()]
+    around = [(shell_ob, None), (deck_ob, None), (deck_obs["Hatches"], None), (deck_obs["Skylights"], None),
+              (hw_obs["DeckHardware"], hw_parts["DeckHardware"].labels), (spar_obs["Mast"], None),
+              (deck_obs["ToeRail"], None)]
+    inrep["overlaps"] = interior_overlaps(in_items, around)
+    if not inrep["overlaps"]["ok"]:
+        raise SystemExit(f"below decks, a piece crosses another: {inrep['overlaps']['crossing_faces']} "
+                         f"{inrep['overlaps']['fixed_crossing_faces']}")
+    # and every piece below rests on something
+    inrep["support"] = interior_support(in_items, around)
+    if not inrep["support"]["ok"]:
+        raise SystemExit(f"below decks, a piece is not held up: {inrep['support']['loose']} "
+                         f"{inrep['support']['floating']}")
     sweep = helm_sweep(rudder, (shell_ob, transom, deck_ob))
     if sweep["touching"]:
         raise SystemExit(f"the rudder touches the hull when turned: {[t for t in sweep['turns'] if t['touching_triangles']]}")
@@ -2111,18 +2430,19 @@ def main():
         others = hull_items + spar_items + rig_items + sail_items + run_items
         hwrep["contacts"][name] = hardware_overlaps(hw, others)
         hwrep["room"][name] = hardware_room(hw, others)
-        hwrep["lead_room"][name] = rope_room(hwrep["mooring_leads"], others + hw)
+        hwrep["lead_room"][name] = rope_room(hwrep["mooring_leads"] + (hwrep.get("cable_leads", []) if name == "Moored"
+                                                                       else []), others + hw)
         wr = wire_room(wires_set, hw)
         hwrep["wire_room"][name] = {k: wr[k] for k in ("least", "tight", "ok", "reach_m", "fail_under_mm")}
         hwrep["lights_check"][name] = lights_check(hwrep["lights"], hw, others, hardware.HW["sidelights"]["flame_d"],
                                                    hardware.HW["sidelights"]["cutoff_deg"])
     # the fixed pieces bedded on the deck and the rail (the same in every suit), and the anchor clear of the deck
     hwrep["seating"] = hardware_seating([(hw_obs["DeckHardware"], hw_parts["DeckHardware"].labels)],
-                                        {"deck": deck_ob, "rail": deck_obs["ToeRail"]})
+                                        {"deck": deck_ob, "rail": deck_obs["ToeRail"]}, hwrep["through_deck"])
     hwrep["anchor"]["clears_deck_by_at_least_m"] = HW_ANCHOR_CLEAR
     fails = []
     for k, what in (("contacts", "crosses something"), ("room", "comes too near something"),
-                    ("lead_room", "has a mooring line's lead come too near something"),
+                    ("lead_room", "has a mooring line's (or moored, the anchor cable's) lead come too near something"),
                     ("wire_room", "comes too near a wire"), ("lights_check", "screens a light's arc wrongly")):
         bad = {n: c for n, c in hwrep[k].items() if not c["ok"]}
         if bad:
@@ -2139,10 +2459,10 @@ def main():
     finish["lead"]["for_the_running_rigging_long_tons"] = shell.retrim(
         finish, loft.SPECS["weights"]["running_rigging"] - run_w["total_long_tons"])
     # all the deck hardware, measured: slice 7's winches and cleats, the sheet tracks and slice 8's pieces, with the
-    # ground tackle below (estimated until the interior draws it); the trimming ballast takes up what they weigh less
-    # than the size card's estimate
+    # ground tackle below (slice 9 draws it: the windlass, the cable, the bower, the spurling and navel pipes); the
+    # trimming ballast takes up what they weigh less than the size card's estimate
     rows = {"winches_and_cleats": rw["winches_and_cleats"], "sheet_tracks": rw["sheet_tracks"],
-            "deck_hardware": hwrep["weights"], "ground_tackle_below_estimated": hwrep["ground_tackle"]}
+            "deck_hardware": hwrep["weights"], "ground_tackle_below": inrep["weights"]["ground_tackle"]}
     kg = sum(v["total_kg"] for v in rows.values())
     cen = sum(v["total_kg"] * np.asarray(v["centre"], float) for v in rows.values()) / kg
     card_hw = loft.SPECS["weights"]["winches_and_hardware"]
@@ -2153,6 +2473,24 @@ def main():
         raise SystemExit(f"the deck hardware weighs {hw_w['total_long_tons']} long tons, more than the size card's "
                          f"{card_hw}")
     hwrep["all_deck_hardware_weight"] = hw_w
+    # the accommodation forward against the size card's accommodation, which it shares with slice 10's aft cabins: the
+    # card's estimate (its weight and centre) stands in the weight check until slice 10 has built the rest
+    fwd = inrep["weights"]["accommodation_forward"]
+    card_acc = loft.SPECS["weights"]["accommodation"]
+    cx_, cz_ = loft.SPECS["weight_positions"]["accommodation"]
+    left = card_acc - fwd["total_long_tons"]
+    inrep["accommodation"] = {"forward_measured_long_tons": fwd["total_long_tons"], "forward_centre": fwd["centre"],
+                              "card_long_tons": card_acc, "card_centre_xz": [cx_, cz_],
+                              "left_for_slice_10_long_tons": round(left, 3),
+                              # what the aft cabins must weigh, and where, for the whole to sit on the card's centre
+                              "slice_10_target": {"long_tons": round(left, 3),
+                                                  "centre_x": round((card_acc * cx_ - fwd["total_long_tons"]
+                                                                     * fwd["centre"][0]) / max(left, 1e-9), 2),
+                                                  "centre_z": round((card_acc * cz_ - fwd["total_long_tons"]
+                                                                     * fwd["centre"][2]) / max(left, 1e-9), 2)}}
+    if fwd["total_long_tons"] > card_acc:
+        raise SystemExit(f"the accommodation forward weighs {fwd['total_long_tons']} long tons, more than the size "
+                         f"card's {card_acc} for all of it")
     finish["lead"]["for_the_deck_hardware_long_tons"] = shell.retrim(finish, card_hw - hw_w["total_long_tons"])
     g = suits["Genoa"]
     pose_spars(posable, g["boom_deg"], suit_pole(g), pl["set_deg"])
@@ -2232,39 +2570,55 @@ def main():
     slice7 = {n: run_tris["Winches"] + run_tris["RunningFittings"] + run_tris[f"Running.{n}"] for n in suits}
     hw_tris = {k: tri_count(ob) for k, ob in hw_obs.items()}
     slice8 = {n: sum(tri_count(ob) for ob, _ in hw_shown(n)) for n in suits}
-    build = {"slice": 8, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+    in_tris = {k: tri_count(ob) for k, ob in in_obs.items()}
+    slice9 = sum(in_tris.values())
+    build = {"slice": 9, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
              "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
              "budget_slice_4": 250000, "triangles_slice_5": slice5, "budget_slice_5": 250000,
              "triangles_slice_6_by_suit": slice6, "triangles_slice_6_states": sail_tris,
              "triangles_slice_6_all_states": sum(sail_tris.values()), "budget_slice_6": 300000,
              "triangles_slice_7_by_suit": slice7, "triangles_slice_7_objects": run_tris, "budget_slice_7": 400000,
              "triangles_slice_8_by_suit": slice8, "triangles_slice_8_objects": hw_tris, "budget_slice_8": 300000,
+             "triangles_slice_9_below": slice9, "triangles_slice_9_objects": in_tris, "budget_slice_9": 600000,
+             "streamed_below": {"objects": sorted(in_obs), "when": "the camera is below decks",
+                                "note": "the game loads these together and only below (each carries 'slice' 9); "
+                                        "their triangles are budgeted on their own, outside 'triangles'"},
              "triangles_hidden_states": {k: tri_count(rig_obs[k]) for k in rigging.STATES if k not in rigging.SAILING},
              "triangles_hidden_reference_hull": tri_count(hull),
              "budget_slices_1_8": 200000 + 350000 + 500000 + 250000 + 250000 + 300000 + 400000 + 300000,
+             "triangles_below_note": "slice 9's objects are below decks, streamed in only when below: not in "
+                                     "'triangles' (what shows from outside) and budgeted on their own",
              "sail_area_ft2": rig["sail_area_ft2"],
              "shell": checks, "hydrostatics": h, "rule": r, "weights": w, "finish": finish, "deck": deck_rep,
              "rig": rig, "rigging": spars.rnd(rr), "sails": spars.rnd({k: v for k, v in srep.items()
                                                                        if not k.startswith("_")}),
-             "running": spars.rnd(running.summary(rnrep)), "hardware": spars.rnd(hardware.summary(hwrep))}
+             "running": spars.rnd(running.summary(rnrep)), "hardware": spars.rnd(hardware.summary(hwrep)),
+             "interior": spars.rnd(inrep)}
     if (slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]
             or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]
-            or max(slice7.values()) > build["budget_slice_7"] or max(slice8.values()) > build["budget_slice_8"]):
-        raise SystemExit(f"slices 3, 4, 5, 6, 7 and 8 have {slice3}, {slice4}, {slice5}, {slice6}, {slice7} and "
-                         f"{slice8} triangles, over a budget")
+            or max(slice7.values()) > build["budget_slice_7"] or max(slice8.values()) > build["budget_slice_8"]
+            or slice9 > build["budget_slice_9"]):
+        raise SystemExit(f"slices 3, 4, 5, 6, 7, 8 and 9 have {slice3}, {slice4}, {slice5}, {slice6}, {slice7}, "
+                         f"{slice8} and {slice9} triangles, over a budget")
     with open(os.path.join(OUT, "build.json"), "w") as f:
         json.dump(build, f, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o))
     drawings_jclass.draw_all(pieces, FIN, OUT, parts=parts, deck_rep=deck_rep, rig=(sp_parts, rig),
                              rigging=(rg_parts, rr, rigging.OBJECTS + rigging.SAILING),
                              sails=(sl_parts, srep, sails.SL["cloth"]), running=(rn_parts, rnrep),
-                             hardware=(hw_parts, hwrep))
+                             hardware=(hw_parts, hwrep), interior=(in_parts, inrep, shell.deck_z))
     short = {k: v for k, v in finish["rudder"].items() if k != "helm_sweep"}
     short["helm_sweep"] = {k: v for k, v in sweep.items() if k != "turns"}
     print(json.dumps({"triangles": tris, "total": build["triangles_total"], "slice_3": slice3, "slice_4": slice4,
-                      "slice_5": slice5, "slice_6": slice6, "slice_7": slice7, "slice_8": slice8,
+                      "slice_5": slice5, "slice_6": slice6, "slice_7": slice7, "slice_8": slice8, "slice_9": slice9,
+                      "interior": {"weights": {k: {a: v[a] for a in ("total_kg", "total_long_tons", "centre")}
+                                               for k, v in inrep["weights"].items()},
+                                   "accommodation": inrep["accommodation"], "overlaps": inrep["overlaps"],
+                                   "headroom": inrep["headroom"], "ladders": inrep["ladders"],
+                                   "forepeak": inrep["forepeak"]},
                       "hardware": {"weights": hwrep["all_deck_hardware_weight"],
                                    "checks": {k: {n: c["ok"] for n, c in hwrep[k].items()}
                                               for k in ("contacts", "room", "lead_room", "wire_room", "lights_check")},
+                                   "bow_chock": hwrep.get("bow_chock"),
                                    "seating": hwrep["seating"]["ok"],
                                    "lights": {k: {a: v.get(a) for a in ("lens_arc_deg", "rays_in_arc", "rays_showing",
                                                                         "blocked_by", "seen_across_bow_deg",

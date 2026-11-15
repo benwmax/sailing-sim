@@ -1,0 +1,473 @@
+{
+ "about": "Bluebonnet below decks, forward (docs/jclass-9): the crew's end of the yacht from the forepeak to the bulkhead forward of the saloon, built by interior.py in the hull's frame (X forward, Y starboard, Z up, metres; z above the load waterline). Our own layout in the manner of the 1934-37 Js, fitted to slice 3's deck openings: the crew's washroom and the ladder under the forecastle hatch, the sail locker under the sail hatch, the fo'c'sle (the crew's quarters and mess) under the forecastle skylight, and the galley and the sail bins round the mast. Slice 10 builds the owner's end aft of 'aft_bulkhead'. Everything here is streamed in only when you go below (the game, slice 14).",
+ "structure": {
+  "note": "The steel the cabins are built inside, all counted in the hull's 30 tons (specs_bluebonnet.json): the plating's inside face 'plating' inboard of the moulded surface (slice 1's surface is the plating's outside), angle-bar frames every 'frame_spacing' from 'frames_from' to 'frames_to', each a 'frame' (depth inboard, flange fore and aft, thickness) angle riveted to the plating with its flange toward amidships (an open bevel), and a deck beam on each frame ('beam': depth below the planking, flange, thickness) under the 1 3/4 in teak, joined to its frame by a bracket knee 'knee' m on each leg. The spacing is set so that no beam passes under the chain pipe, the forward cowl's flange or a deck prism; the mast (x 3.0, 0.58 m fore and aft) stands between two frames, the beams there cut and landed on carlins either side of it (the partners, 'partners': carlins' half spacing, wedges' depth and thickness). Beams that would cross a hatch or skylight are cut at its coaming's lining and landed on carlins under the coaming's sides. The planking's underside is the deckhead. The plating and frames are drawn down to 'below_sole' under each room's sole. Painted white throughout, as a working yacht's crew spaces were.",
+  "frame_spacing": 0.535,
+  "plating": 0.008,
+  "frame": [
+   0.076,
+   0.064,
+   0.008
+  ],
+  "beam": [
+   0.1,
+   0.064,
+   0.009
+  ],
+  "knee": 0.22,
+  "frames_from": 1.64,
+  "frames_to": 16.62,
+  "below_sole": 0.25,
+  "partners": [
+   0.3,
+   0.1,
+   0.04
+  ]
+ },
+ "ceiling": {
+  "note": "The ceiling: horizontal pine battens 'batten' (width, thickness) at 'pitch' on the frames' inner edges, from 'from_sole' above each room's sole up to 'to_deckhead' below the deckhead, where the crew's gear and the sails rub; the galley is lined with tongue-and-groove instead ('lined'), painted, its boards 'board' wide. The rooms in 'bare' are not ceiled: the forepeak's frames show, and its bosun's shelves stand on them (the chain locker under its platform is the cable's).",
+  "batten": [
+   0.07,
+   0.019
+  ],
+  "pitch": 0.17,
+  "from_sole": 0.05,
+  "to_deckhead": 0.32,
+  "lined": [
+   "Galley"
+  ],
+  "bare": [
+   "Forepeak"
+  ],
+  "board": 0.09
+ },
+ "aft_bulkhead": 1.64,
+ "rooms": {
+  "note": "Bow to stern: each room between two bulkheads (x, on frames), its sole's top 'sole' (a flat sole, or two where 'sole_forward' [x, z] raises its forward part, of planks 'sole_plank' wide on the floors, 'sole_thickness' thick, out to 'sole_clear' from the frames; a step where two soles differ by more than 'step_max'). Headroom is from the sole to the underside of the deck beams (under them) and to the deckhead (between them). The forepeak's 'sole' is its platform's top.",
+  "sole_plank": 0.11,
+  "sole_thickness": 0.028,
+  "step_max": 0.2,
+  "Forepeak": {
+   "x": [
+    13.41,
+    16.62
+   ],
+   "sole": 1.02,
+   "what": "the chain locker and the hand windlass, bosun's shelves"
+  },
+  "Washroom": {
+   "x": [
+    11.27,
+    13.41
+   ],
+   "sole": 0.15,
+   "what": "the crew's washroom, oilskin lockers and the ladder up the forecastle hatch; two pipe cots over them",
+   "sole_forward": [
+    12.62,
+    0.36
+   ]
+  },
+  "SailLocker": {
+   "x": [
+    8.595,
+    11.27
+   ],
+   "sole": -0.2,
+   "what": "slatted sail bins each side and the ladder up the sail hatch"
+  },
+  "Fo'c'sle": {
+   "x": [
+    4.85,
+    8.595
+   ],
+   "sole": -0.4,
+   "what": "the crew's quarters and mess: pipe cots in two tiers each side and the mess table under the skylight"
+  },
+  "Galley": {
+   "x": [
+    1.64,
+    4.85
+   ],
+   "sole": -0.5,
+   "what": "the galley to port, the sail bins round the mast to starboard"
+  },
+  "sole_clear": 0.01
+ },
+ "bulkheads": {
+  "note": "Joiner's bulkheads of tongue-and-groove pine 'thickness', painted, each on a frame and up to the deck beam over it, with a door 'door' (width, height above the higher sole; less where the headroom is less, its head 'head_clear' under the beam) on the centreline, its leaf hooked back flat against the forward face (to port). The forepeak's is a small door 'scuttle' (width, height, sill above the washroom's sole: its top 2 cm over the forepeak's platform), with steps up to it no more than 'scuttle_step' each.",
+  "thickness": 0.022,
+  "door": [
+   0.56,
+   1.72
+  ],
+  "head_clear": 0.06,
+  "scuttle": [
+   0.5,
+   0.62,
+   0.68
+  ],
+  "scuttle_step": 0.35,
+  "leaf": 0.024
+ },
+ "cots": {
+  "note": "Pipe cots: a frame of galvanised pipe 'pipe' radius, the row's x range by 'width' (the pipes' centres), canvas laced inside it, the outboard pipe resting in hooks on the ceiling 'off_ceiling' clear of it at the cot's ends and the inboard one hung from the deck beams by a chain at each end, drawn lowered (they fold up against the ceiling by day). Each row is a cot each side: the room, the x range, and the canvas's height above the room's (after) sole.",
+  "pipe": 0.017,
+  "width": 0.62,
+  "off_ceiling": 0.03,
+  "rows": [
+   {
+    "room": "Fo'c'sle",
+    "x": [
+     4.94,
+     6.7
+    ],
+    "above_sole": 0.48
+   },
+   {
+    "room": "Fo'c'sle",
+    "x": [
+     4.94,
+     6.7
+    ],
+    "above_sole": 1.12
+   },
+   {
+    "room": "Fo'c'sle",
+    "x": [
+     6.8,
+     8.5
+    ],
+    "above_sole": 0.48
+   },
+   {
+    "room": "Fo'c'sle",
+    "x": [
+     6.8,
+     8.5
+    ],
+    "above_sole": 1.12
+   },
+   {
+    "room": "Washroom",
+    "x": [
+     11.33,
+     13.1
+    ],
+    "above_sole": 1.05
+   }
+  ]
+ },
+ "mess": {
+  "note": "The crew's mess table on the centreline under the forecastle skylight: a teak top 'top' (length, width, thickness) 'height' above the sole on a centre post with fiddles round it, and a fixed bench each side.",
+  "x": 7.3,
+  "top": [
+   1.6,
+   0.66,
+   0.035
+  ],
+  "height": 0.74,
+  "fiddle": 0.025,
+  "bench": [
+   1.5,
+   0.32,
+   0.44
+  ]
+ },
+ "galley": {
+  "note": "To port, from aft: the zinc-lined ice chest inside the counter under the dresser (its lid let into the top, 'ice_chest' size the chest's), the paraffin range on gimbals in a recess with zinc on the lining behind it (a pressure range: no flue), the sink with its bronze pump. A counter 'counter' high, 'depth' deep at its ends, runs along under them with lockers under it; the dresser's shelves ('shelves': their heights over the top, the lowest a plate rack; the highest under the knees) stand on the counter against the lining. 'kg' the range's and the chest's weights (estimated: their works and linings are not drawn).",
+  "x": [
+   1.8,
+   4.75
+  ],
+  "counter": 0.9,
+  "depth": 0.62,
+  "range": {
+   "x": 3.1,
+   "size": [
+    0.62,
+    0.44,
+    0.44
+   ],
+   "kg": 85.0
+  },
+  "sink": {
+   "x": 4.25,
+   "size": [
+    0.42,
+    0.34,
+    0.18
+   ]
+  },
+  "ice_chest": {
+   "x": 2.15,
+   "size": [
+    0.75,
+    0.55,
+    0.85
+   ],
+   "kg": 45.0
+  },
+  "dresser": {
+   "x": [
+    1.82,
+    2.6
+   ],
+   "shelves": [
+    0.26,
+    0.5,
+    0.68
+   ]
+  }
+ },
+ "bins": {
+  "note": "Slatted sail bins: open-fronted pens of 'slat' battens at 'gap', 'height' high from the sole, against the ceiling. Round the mast (Galley, starboard) and both sides of the sail locker. Sail bags lie in them.",
+  "slat": [
+   0.06,
+   0.02
+  ],
+  "gap": 0.04,
+  "height": 1.0,
+  "places": [
+   {
+    "room": "Galley",
+    "x": [
+     1.8,
+     4.75
+    ],
+    "side": 1,
+    "depth": 0.9
+   },
+   {
+    "room": "SailLocker",
+    "x": [
+     8.68,
+     11.1
+    ],
+    "side": 1,
+    "depth": 0.85
+   },
+   {
+    "room": "SailLocker",
+    "x": [
+     8.68,
+     11.1
+    ],
+    "side": -1,
+    "depth": 0.85
+   }
+  ]
+ },
+ "ladders": {
+  "note": "Teak ladders under the forecastle hatch and the sail hatch: two strings 'string' and treads 'tread' (depth, thickness) at an even rise no more than 'rise_max', from the sole to the coaming's top, leaning 'lean_deg' from upright, against the opening's after edge.",
+  "string": [
+   0.05,
+   0.11
+  ],
+  "tread": [
+   0.11,
+   0.028
+  ],
+  "width": 0.46,
+  "rise_max": 0.28,
+  "lean_deg": 15.0,
+  "under": [
+   "ForecastleHatch",
+   "SailHatch"
+  ]
+ },
+ "washroom": {
+  "note": "The crew's washroom forward: a pump WC to starboard ('wc' its pan's centre, 'kg' with its pump, estimated), the folding wash basin's cabinet forward of it ('basin': x range, depth at its ends, height), and the oilskin lockers to port ('lockers'), low enough for the cots over them.",
+  "wc": {
+   "x": 11.62,
+   "y": 0.5,
+   "kg": 35.0
+  },
+  "basin": {
+   "x": [
+    11.9,
+    12.32
+   ],
+   "depth": 0.42,
+   "height": 0.78
+  },
+  "lockers": {
+   "x": [
+    11.4,
+    12.2
+   ],
+   "depth": 0.45,
+   "height": 0.8
+  }
+ },
+ "forepeak": {
+  "note": "The chain locker in the forepeak's bottom under the slatted 'platform' (x range; its top is the room's sole), its after bulkhead at 'locker' [0], the hull closing it forward. The hand windlass on the platform, aft where the bow is wide enough for it ('windlass': its barrel's middle 'at' between its cheeks; its bed (length, width, thickness), its middle 'bed_aft' aft of the barrel under both shafts, from just outside the port cheek to starboard; the barrel 'shaft_h' over the bed, the cheeks 'cheek_gap' apart and 'cheek' thick; the gypsy (the cable's pitch radius, width) 'gypsy_off' outboard of the port cheek, with 'whelps' pockets each holding a flat link and an upright one, so its pitch circle is that many pairs of links round; the warping drum (radius, width) to starboard; the crankshaft aft of the barrel, its pinion driving the barrel's spur wheel ('gear': teeth on each, the wheel's pitch radius, their width); a crank (its radius, the grip's length, its angle from forward as drawn) on the crankshaft's starboard end). The spurling pipe ('r' outside, 'wall') turns from the chain pipe's foot in one bend of 'bend_r' onto a straight lead tangent onto the gypsy's top, ending 'short' of the touch; the navel pipe (its bore 'r' outside, 'flange', 'length' below the platform), under the gypsy's axis ('aft' of it), takes the cable down off the gypsy's after side into the locker, where it lies in a heap over the frames ('heap': its x range and its packing, the share of the heap's volume that is steel). The cable: 'm' metres of 'cable_d' chain at 'kg_m'. The bower: a stockless anchor of our sizes ('shank_length', 'shank_section' (width, depth) at the crown and the head, the crown's casting (length, width, depth) and each fluke (length, width, thickness)), stowed flat on teak chocks 'chocks_h' high under its crown (the one under its shank as high as the shank's underside), its crown at 'crown_at' with the shank heading 'heading_deg' from forward. Bosun's shelves each side over the platform's after end, under the knees, from the bulkhead forward, on the frames' inner edges (there is no ceiling here).",
+  "platform": [
+   13.45,
+   15.4
+  ],
+  "locker": [
+   14.0,
+   15.4
+  ],
+  "windlass": {
+   "at": [
+    14.35,
+    -0.34
+   ],
+   "bed": [
+    0.56,
+    0.38,
+    0.03
+   ],
+   "bed_aft": 0.07,
+   "shaft_h": 0.3,
+   "cheek_gap": 0.24,
+   "cheek": 0.025,
+   "gypsy": [
+    0.1222,
+    0.1
+   ],
+   "gypsy_off": 0.03,
+   "whelps": 8,
+   "drum": [
+    0.085,
+    0.12
+   ],
+   "gear": {
+    "wheel_teeth": 42,
+    "pinion_teeth": 15,
+    "wheel_r": 0.14,
+    "width": 0.035
+   },
+   "crank": [
+    0.25,
+    0.14,
+    120.0
+   ]
+  },
+  "spurling": {
+   "r": 0.05,
+   "wall": 0.006,
+   "bend_r": 0.42,
+   "short": 0.2
+  },
+  "cable_d": 0.016,
+  "cable": {
+   "m": 75.0,
+   "kg_m": 5.6
+  },
+  "heap": {
+   "x": [
+    14.0,
+    15.015
+   ],
+   "packing": 0.45
+  },
+  "bower": {
+   "shank_length": 1.05,
+   "shank_section": [
+    [
+     0.1,
+     0.075
+    ],
+    [
+     0.075,
+     0.06
+    ]
+   ],
+   "crown": [
+    0.3,
+    0.42,
+    0.15
+   ],
+   "fluke": [
+    0.5,
+    0.17,
+    0.06
+   ],
+   "chocks_h": 0.04,
+   "crown_at": [
+    13.72,
+    0.5
+   ],
+   "heading_deg": -10.0
+  },
+  "shelves": {
+   "x": [
+    13.436,
+    14.3
+   ],
+   "z": [
+    1.22,
+    1.45
+   ],
+   "depth": 0.24
+  },
+  "navel": {
+   "aft": 0.0,
+   "r": 0.052,
+   "flange": 0.068,
+   "length": 0.06
+  }
+ },
+ "openings": {
+  "note": "The deck is cut under these (slice 3's deck had no openings below the cockpit's), each hole 'inset' m inside the coaming's (or fitting's) inside, and the coaming carried down through the deck to the deckhead as a lining. Slice 10 opens the aft ones.",
+  "inset": 0.01,
+  "hatches": [
+   "ForecastleHatch",
+   "SailHatch"
+  ],
+  "skylights": [
+   "ForecastleSkylight"
+  ],
+  "prisms": [
+   0,
+   1
+  ],
+  "cowls": [
+   "Forward"
+  ],
+  "chain_pipe": true
+ },
+ "materials": {
+  "note": "sRGB for the renders (the game's skins set their own): white paint below decks, the soles' scrubbed pine, varnished pine battens and teak trim, cot canvas and the sail bags' canvas, the galley's zinc, the WC's porcelain. The galvanised pipe and chain, the range's black iron and the bronze are the rig's and the deck's materials.",
+  "WhitePaint": [
+   228,
+   226,
+   216
+  ],
+  "Pine": [
+   196,
+   160,
+   112
+  ],
+  "Varnish": [
+   150,
+   92,
+   44
+  ],
+  "Canvas": [
+   212,
+   200,
+   170
+  ],
+  "Zinc": [
+   170,
+   172,
+   168
+  ],
+  "Porcelain": [
+   238,
+   236,
+   230
+  ]
+ },
+ "weights": {
+  "note": "Densities and thicknesses for weighing (kg/m^3, m); the steel is the hull's. Accommodation forward is weighed against the size card's 6.0 tons for all of it (slices 9 and 10). The sail bags in the bins are her spare and light-weather sails, in the size card's 'sails_aboard' (her whole wardrobe, which stays the weight check's estimate: slice 6), so they are not weighed here.",
+  "pine": 530.0,
+  "teak": 650.0,
+  "iron": 7200.0,
+  "galvanised_pipe_kg_m": 1.3,
+  "canvas_kg_m2": 0.6
+ }
+}

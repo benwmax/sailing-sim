@@ -307,12 +307,117 @@ def slab(poly_uv, origin, U, Vd, N, t0, t1):
     return loft_rings([P + t0 * np.asarray(N), P + t1 * np.asarray(N)])
 
 
+def ear_clip(P):
+    """A simple polygon's triangles (index triples, in its own winding) by ear clipping."""
+    P = np.asarray(P, float)
+    area = 0.5 * float(np.sum(P[:, 0] * np.roll(P[:, 1], -1) - np.roll(P[:, 0], -1) * P[:, 1]))
+    sg = 1.0 if area > 0 else -1.0
+    idx = list(range(len(P)))
+    tris = []
+    cross = lambda a, b, c: (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])  # noqa: E731
+    while len(idx) > 3:
+        for k in range(len(idx)):
+            i0, i1, i2 = idx[k - 1], idx[k], idx[(k + 1) % len(idx)]
+            a, b, c = P[i0], P[i1], P[i2]
+            if sg * cross(a, b, c) <= 1e-15:
+                continue
+            if any(sg * cross(a, b, P[j]) >= 0 and sg * cross(b, c, P[j]) >= 0 and sg * cross(c, a, P[j]) >= 0
+                   for j in idx if j not in (i0, i1, i2)):
+                continue
+            tris.append((i0, i1, i2))
+            idx.pop(k)
+            break
+        else:
+            raise ValueError("ear_clip: no ear (the polygon is not simple)")
+    tris.append(tuple(idx))
+    return tris
+
+
+def loft_section(rings, prof, prof_last=None):
+    """A closed solid through rings that are each the same profile `prof` (n, 2) placed in space (a frame's or a
+    beam's angle bar): quads between consecutive rings and each end capped by the profile's own triangulation, so an
+    L's cap stays inside the L (deck.loft_rings' fan to the centre would sweep across its open corner). `prof_last`:
+    the last ring's own profile, where the rings change shape along the way (same points, moved)."""
+    rings = [np.asarray(r, float) for r in rings]
+    n = len(rings[0])
+    V = np.concatenate(rings)
+    F = []
+    for i in range(len(rings) - 1):
+        for k in range(n):
+            k1 = (k + 1) % n
+            F.append((i * n + k, i * n + k1, (i + 1) * n + k1, (i + 1) * n + k))
+    last = (len(rings) - 1) * n
+    for a, b, c in ear_clip(prof):
+        F.append((c, b, a))
+        if prof_last is None:
+            F.append((last + a, last + b, last + c))
+    if prof_last is not None:                               # the last ring is a different shape: its own cap
+        F += [(last + a, last + b, last + c) for a, b, c in ear_clip(prof_last)]
+    return V, F
+
+
 def ring_slab(outer_uv, inner_uv, origin, U, Vd, N, t0, t1):
     """A flat ring (a window's rim): between two polygons with the same number of points, from t0 to t1 along N."""
     o = np.asarray(origin, float)
     lift = lambda P2, t: o + P2[:, :1] * np.asarray(U) + P2[:, 1:2] * np.asarray(Vd) + t * np.asarray(N)  # noqa
     rings = [lift(outer_uv, t0), lift(outer_uv, t1), lift(inner_uv, t1), lift(inner_uv, t0)]
     return loft_rings(rings, closed=True)
+
+
+def region_slab(P2, holes, to3, t0, t1, grid=None):
+    """A slab over a plan region: the polygon P2 (n, 2) less `holes` (polygons inside it), triangulated (Blender's
+    constrained Delaunay) with a lattice of points `grid` apart inside, lifted by to3(points (m, 2), t) -> (m, 3) to
+    its two faces at t0 and t1, and walled round every edge. Returns V, F."""
+    from mathutils import Vector, geometry
+    loops = [np.asarray(P2, float)] + [np.asarray(h, float) for h in holes]
+    pts = []
+    if grid:
+        lo, hi = loops[0].min(0), loops[0].max(0)
+        for j, yy in enumerate(np.arange(lo[1] + grid / 2, hi[1], grid * 0.866)):
+            xx = np.arange(lo[0] + (grid / 2 if j % 2 else 0.0), hi[0], grid)
+            pts.append(np.column_stack([xx, np.full(len(xx), yy)]))
+        pts = np.concatenate(pts)
+        keep = in_poly(pts, loops[0])
+        for h in loops[1:]:
+            keep &= ~in_poly(pts, h)
+        pts = pts[keep]
+        clear = np.min([seg_dist(pts, L) for L in loops], axis=0)
+        pts = pts[clear > 0.5 * grid]
+    else:
+        pts = np.zeros((0, 2))
+    A = np.concatenate(loops + [pts])
+    E, o = [], 0
+    for L in loops:
+        E += [(o + k, o + (k + 1) % len(L)) for k in range(len(L))]
+        o += len(L)
+    out = geometry.delaunay_2d_cdt([Vector((float(a), float(b))) for a, b in A], E, [], 0, 1e-9, True)
+    if len(out[0]) != len(A):
+        raise ValueError(f"a slab's triangulation added or merged points ({len(out[0])} for {len(A)})")
+    to_in = [ids[0] for ids in out[3]]
+    T = np.array([[to_in[i] for i in f] for f in out[2]])
+    cen = A[T].mean(1)
+    inside = in_poly(cen, loops[0])
+    for h in loops[1:]:
+        inside &= ~in_poly(cen, h)
+    T = T[inside]
+    a2 = (A[T[:, 1], 0] - A[T[:, 0], 0]) * (A[T[:, 2], 1] - A[T[:, 0], 1]) - \
+         (A[T[:, 1], 1] - A[T[:, 0], 1]) * (A[T[:, 2], 0] - A[T[:, 0], 0])
+    T, a2 = T[np.abs(a2) > 1e-12], a2[np.abs(a2) > 1e-12]        # none flat along a straight run of the outline
+    T[a2 < 0] = T[a2 < 0][:, ::-1]
+    n = len(A)
+    V = np.concatenate([to3(A, t1), to3(A, t0)])
+    F = [tuple(t) for t in T] + [(c + n, b + n, a + n) for a, b, c in T]
+    count = {}
+    for t in T:
+        for k in range(3):
+            e = (t[k], t[(k + 1) % 3])
+            count[frozenset(e)] = count.get(frozenset(e), 0) + 1
+    for t in T:
+        for k in range(3):
+            a, b = t[k], t[(k + 1) % 3]
+            if count[frozenset((a, b))] == 1:
+                F.append((a, a + n, b + n, b))
+    return V, F
 
 
 def box(c, half):
@@ -417,6 +522,32 @@ def on_deck_prism(shape, z_top, slot, mass, label, part, bevel=0.0, cap=None, in
     return V
 
 
+def coaming_ring(shape, z_top, t, slot, mass, label, part, bevel=0.0, hole_inset=0.01, under=None):
+    """A coaming round an opening in the deck (slice 9): outside as on_deck_prism's (its foot let into the deck, its
+    top at z_top with the top edge rounded off by `bevel`), its inside `t` in from that and carried down through the
+    deck to `under` below the deck (by default 2 mm under the deckhead, the planking's underside), its foot flat
+    there, so it lines the opening below. Weighed as on_deck_prism weighs a coaming, by its outside's sides (the lining
+    below is the interior's). Returns the deck's hole for it: `hole_inset` outside the lining, so the hole's edge lies
+    inside the coaming's wall and nothing shows between them."""
+    zt = z_top if callable(z_top) else (lambda xx: np.full(len(xx), float(z_top)))
+    ring = lambda o, dz: (lambda P: np.column_stack([P, zt(P[:, 0]) + dz]))(shape(o))  # noqa: E731
+    outer = [deck_height_ring(shape(0.0), -LET)]
+    if bevel > 0:
+        outer += [ring(0.0, -bevel), ring(-bevel * (1 - math.sqrt(0.5)), -bevel * (1 - math.sqrt(0.5))),
+                  ring(-bevel, 0.0)]
+    else:
+        outer.append(ring(0.0, 0.0))
+    under = PL["thickness"] + 0.002 if under is None else under
+    inner = [ring(-t, 0.0), deck_height_ring(shape(-t), -under), deck_height_ring(shape(0.0), -under)]
+    V, F = loft_rings(outer + inner, closed=True)
+    part.add(V, F, slot, None, label)
+    Vm, Fm = loft_rings([deck_height_ring(shape(0.0), -LET), ring(0.0, 0.0)])
+    kg, cen, _ = mass_of(Vm, Fm, mass[0], mass[1], mass[2] if len(mass) > 2 else None)
+    part.masses.append({"part": label, "kg": round(float(kg), 1), "centre": [round(float(c), 3) for c in cen],
+                        "how": mass[0]})
+    return shape(-t + hole_inset)
+
+
 def lid(shape, z_bot, thick, crown, slot, mass, label, part, bevel=0.01):
     """A lid or roof slab: underneath at z_bot (a number, or a function of x for a lid that follows the deck's sheer),
     its top `thick` above with a rounded edge, crowned `crown` at its middle (athwartships). A teak lid is planked on
@@ -448,11 +579,17 @@ def centre_z(x):
     return float(shell.deck_z(x, 0.0))
 
 
-def hatch(name, h, part, footprints):
+def hatch(name, h, part, footprints, holes=None, lining=None):
+    """A hatch: its coaming and lid (or a lid in two halves). With `holes` (a dict) the deck is opened under it: the
+    coaming lines the opening down to `lining` below the deck and its hole is put in `holes` (slice 9)."""
     x, L, W = h["x"], h["length"], h["width"]
     zc = lambda xx: shell.deck_z(np.asarray(xx, float), 0.0) + h["coaming"]  # noqa: E731  (follows the sheer)
     shape = rshape(x, 0.0, L, W, h["corner"])
-    on_deck_prism(shape, zc, "Wood", ("sides", TB["teak"], TB["coaming"]), f"{name} coaming", part, bevel=0.008)
+    if holes is None:
+        on_deck_prism(shape, zc, "Wood", ("sides", TB["teak"], TB["coaming"]), f"{name} coaming", part, bevel=0.008)
+    else:
+        holes[name] = coaming_ring(shape, zc, TB["coaming"], "Wood", ("sides", TB["teak"], TB["coaming"]),
+                                   f"{name} coaming", part, bevel=0.008, under=lining)
     ov = h["overhang"]
     if h.get("split"):
         gap = 0.003
@@ -465,12 +602,18 @@ def hatch(name, h, part, footprints):
     footprints[name] = shape(0.0)
 
 
-def skylight(name, s, part, footprints):
-    """Coaming box, ridge bar, two glazed lids sloping off the ridge, panes and guard bars."""
+def skylight(name, s, part, footprints, holes=None, lining=None):
+    """Coaming box, ridge bar, two glazed lids sloping off the ridge, panes and guard bars. Each lid is a frame round
+    its panes (rails, stiles and mullions), the panes set in its rebates, so light comes through where the deck is
+    opened under it (`holes`, as for hatch)."""
     x, L, W = s["x"], s["length"], s["width"]
     zc = centre_z(x) + s["coaming"]
     shape = rshape(x, 0.0, L, W, s["corner"])
-    on_deck_prism(shape, zc, "Wood", ("sides", TB["teak"], TB["coaming"]), f"{name} coaming", part, bevel=0.006)
+    if holes is None:
+        on_deck_prism(shape, zc, "Wood", ("sides", TB["teak"], TB["coaming"]), f"{name} coaming", part, bevel=0.006)
+    else:
+        holes[name] = coaming_ring(shape, zc, TB["coaming"], "Wood", ("sides", TB["teak"], TB["coaming"]),
+                                   f"{name} coaming", part, bevel=0.006, under=lining)
     footprints[name] = shape(0.0)
     ov, t, rise = 0.02, s["lid"], s["rise"]
     ridge_hw = 0.03
@@ -496,11 +639,6 @@ def skylight(name, s, part, footprints):
         part.add(V, F, "Wood", ("solid", TB["teak"]), f"{name} gable ends")
     for side in (1.0, -1.0):
         ys = np.array([ridge_hw, y_out]) * side
-        quad = np.array([[x0, ys[0]], [x1, ys[0]], [x1, ys[1]], [x0, ys[1]]])
-        top = np.column_stack([quad, ztop(quad[:, 1])])
-        bot = top - np.array([0.0, 0.0, t])
-        V, F = loft_rings([bot, top])
-        part.add(V, F, "Wood", ("solid", 0.5 * TB["teak"]), f"{name} lid")
         # the lid's own frame on its top: U fore and aft, Vd down the slope, N out of the lid
         o = np.array([x0, ys[0], ztop(ys[0])])
         U = np.array([1.0, 0.0, 0.0])
@@ -511,13 +649,23 @@ def skylight(name, s, part, footprints):
         if N[2] < 0:
             N = -N
         npn = s["panes"]
-        m, mul = 0.05, 0.035
-        pw = (x1 - x0 - 2 * m - (npn - 1) * mul) / npn
+        m, mul, reb = 0.05, 0.035, 0.006
+        Lu = x1 - x0
+        pw = (Lu - 2 * m - (npn - 1) * mul) / npn
+        # the frame: a rail along the ridge and one along the eave, a stile at each end and a mullion between panes
+        # (one solid round the panes' openings), `t` deep under the lid's top plane as the solid lid was
+        outline = np.array([[0.0, 0.0], [Lu, 0.0], [Lu, lv], [0.0, lv]])
+        lights = [np.array([[u0, m], [u0, lv - m], [u0 + pw, lv - m], [u0 + pw, m]])
+                  for u0 in (m + k * (pw + mul) for k in range(npn))]
+        to3 = lambda A, dz: o + A[:, :1] * U + A[:, 1:2] * Vd - np.array([0.0, 0.0, dz])  # noqa: E731
+        V, F = region_slab(outline, lights, to3, t, 0.0)
+        part.add(V, F, "Wood", ("solid", TB["teak"]), f"{name} lid")
+        # the panes, each `reb` into the frame's rebates all round, from 8 mm under the top to 2 mm proud of it
         for k in range(npn):
             u0 = m + k * (pw + mul)
-            pane = rrect(u0 + pw / 2, lv / 2, pw, lv - 2 * m, 0.008, 2)
-            V, F = slab(pane, o, U, Vd, N, -0.002, 0.002)
-            part.add(V, F, "CabinWindow", ("solid", TB["glass"] * 0.006 / 0.004), f"{name} glass")
+            pane = rrect(u0 + pw / 2, lv / 2, pw + 2 * reb, lv - 2 * m + 2 * reb, 0.008, 2)
+            V, F = slab(pane, o, U, Vd, N, -0.008, 0.002)
+            part.add(V, F, "CabinWindow", ("solid", TB["glass"] * 0.006 / 0.010), f"{name} glass")
         nb, r = s["bars"], s["bar_radius"]
         for k in range(nb):
             u = m + (x1 - x0 - 2 * m) * (k + 0.5) / nb
@@ -908,9 +1056,10 @@ def after_mitre(sheer, ra, xf, ym):
 
 
 # ------------------------------------------------------------------------------------------------ the deck surface
-def deck_surface(sheer, part):
+def deck_surface(sheer, part, holes=None):
     """The deck from the shell's sheer (starboard, from the transom's corner to the stem head), with the cockpit let
-    in. Returns the deck's edge loop, the corner indices and a report."""
+    in and the deck opened under `holes` ({name: plan outline}, slice 9: the openings below, each lined by what stands
+    round it). Returns the deck's edge loop, the corner indices and a report."""
     from mathutils import Vector, geometry          # Blender's constrained Delaunay triangulation
     sheer = np.asarray(sheer, float)
     if abs(sheer[-1, 1]) > 1e-9:
@@ -922,6 +1071,7 @@ def deck_surface(sheer, part):
     i_corner_p = len(sheer) + len(port) - 1
     c = DK["cockpit"]
     hole = cockpit_outline(c)
+    others = [np.asarray(P, float) for P in (holes or {}).values()]
     g = DK["deck"]["grid"]
     # points inside: a triangular lattice, clear of the edges
     xs = np.arange(loop[:, 0].min() + g / 2, loop[:, 0].max(), g)
@@ -932,12 +1082,21 @@ def deck_surface(sheer, part):
         pts.append(np.column_stack([np.full(len(ys), xx), ys]))
     pts = np.concatenate(pts)
     keep = in_poly(pts, loop[:, :2]) & ~in_poly(pts, hole)
+    for P in others:
+        keep &= ~in_poly(pts, P)
     pts = pts[keep]
     clear = np.minimum(seg_dist(pts, loop[:, :2]), seg_dist(pts, hole))
+    for P in others:
+        clear = np.minimum(clear, seg_dist(pts, P))
     pts = pts[clear > 0.55 * g]
-    P2 = np.concatenate([loop[:, :2], hole, pts])
+    P2 = np.concatenate([loop[:, :2], hole] + others + [pts])
     nl, nh = len(loop), len(hole)
     E = [(k, (k + 1) % nl) for k in range(nl)] + [(nl + k, nl + (k + 1) % nh) for k in range(nh)]
+    o0 = nl + nh
+    for P in others:
+        E += [(o0 + k, o0 + (k + 1) % len(P)) for k in range(len(P))]
+        o0 += len(P)
+    nho = o0 - nl - nh
     out = geometry.delaunay_2d_cdt([Vector((float(a), float(b))) for a, b in P2], E, [], 0, 1e-9, True)
     ov, oe, of, orig_v = out[0], out[1], out[2], out[3]
     if len(ov) != len(P2):
@@ -945,7 +1104,10 @@ def deck_surface(sheer, part):
     to_in = [ids[0] for ids in orig_v]
     T = np.array([[to_in[i] for i in f] for f in of])
     cen = P2[T].mean(1)
-    T = T[in_poly(cen, loop[:, :2]) & ~in_poly(cen, hole)]
+    inside = in_poly(cen, loop[:, :2]) & ~in_poly(cen, hole)
+    for P in others:
+        inside &= ~in_poly(cen, P)
+    T = T[inside]
     # every edge of the deck's outline and of the cockpit must be in the triangulation, or the shell will not close
     have = set()
     for t in T:
@@ -981,7 +1143,7 @@ def deck_surface(sheer, part):
     ra = row[NY_AFT:]                                     # the after row from the centreline out to starboard
     x_aft = np.interp(np.abs(V[:, 1]), np.abs(ra[:, 1]), ra[:, 0])
     on_deck = np.zeros(len(V), bool)
-    on_deck[:nl + nh + len(pts)] = True
+    on_deck[:nl + nh + nho + len(pts)] = True
     plk = np.array(V[:, :2])
     plk[sole0:] = np.column_stack([np.full(len(V) - sole0, PLAIN_U), PLAIN_Y + V[sole0:, 1]])  # the sole: its own planks
     uv = {"Planking": plk,
@@ -1013,34 +1175,42 @@ def deck_surface(sheer, part):
 
 
 # ------------------------------------------------------------------------------------------------ the whole deck
-def build(sheer=None):
+def build(sheer=None, opened=(), fitting_holes=None, lining=None):
     """Every part of the deck: {name: Part}, the footprints (plan outlines of what stands on the deck), and a report
-    (the deck's weights and the layout's checks)."""
+    (the deck's weights and the layout's checks). `opened`: the hatches and skylights the deck is opened under (slice
+    9: their coamings line the openings down to `lining` below the deck); `fitting_holes`: {name: plan outline} for
+    the fittings that pass through the deck (deck prisms, cowls' flanges, the chain pipe: hardware.deck_holes). The
+    holes are in rep['openings'] (and as outlines in rep['_holes'], for the build's checks and the deckhead)."""
     sheer = loft_sheer() if sheer is None else np.asarray(sheer, float)
     parts = {k: Part(k) for k in ("Deck", "ToeRail", "Hatches", "Skylights", "Companionway", "Doghouse", "Cockpit",
                                   "Steering", "Wheel")}
     fp = {}
-    loop, ns, ic_p, rep = deck_surface(sheer, parts["Deck"])
-    rep["toe_rail_length_m"] = round(toe_rail(loop, ns, ic_p, parts["ToeRail"]), 2)
+    holes = {}
     for name, h in DK["hatches"].items():
         if name != "note":
-            hatch(name, h, parts["Hatches"], fp)
+            hatch(name, h, parts["Hatches"], fp, holes if name in opened else None, lining)
     for name, s in DK["skylights"].items():
         if name != "note":
-            skylight(name, s, parts["Skylights"], fp)
+            skylight(name, s, parts["Skylights"], fp, holes if name in opened else None, lining)
+    holes.update(fitting_holes or {})
+    loop, ns, ic_p, rep = deck_surface(sheer, parts["Deck"], holes)
+    rep["toe_rail_length_m"] = round(toe_rail(loop, ns, ic_p, parts["ToeRail"]), 2)
     companionway(DK["companionway"], parts["Companionway"], fp)
     doghouse(DK["doghouse"], parts["Doghouse"], fp)
     cockpit_coaming(DK["cockpit"], parts["Cockpit"], fp)
     steering(DK["steering"], parts["Steering"], parts["Wheel"], fp)
-    rep["weights"] = deck_weights(parts, fp)
+    rep["weights"] = deck_weights(parts, fp, holes)
     rep["layout"] = layout_checks(fp, sheer)
+    rep["openings"] = {k: {"points": len(v), "area_m2": round(abs(poly_area(v)), 4),
+                           "centre": [round(float(a), 3) for a in np.asarray(v).mean(0)]} for k, v in holes.items()}
+    rep["_holes"] = {k: np.asarray(v, float) for k, v in holes.items()}     # for the build's closed-shell check
     rep["footprints"] = {k: [[round(float(a), 3) for a in p] for p in v] for k, v in fp.items()}
     return parts, rep
 
 
-def deck_weights(parts, fp):
+def deck_weights(parts, fp, holes=None):
     """Every part's weight and the deck's together, less the planking under what stands on it (a coaming stands on the
-    beams, not on planking)."""
+    beams, not on planking). Where the deck is opened under a coaming (`holes`), the opening has no planking already."""
     rows = [m for p in parts.values() for m in p.masses]
     under = 0.0
     cu = np.zeros(3)
@@ -1048,6 +1218,8 @@ def deck_weights(parts, fp):
         a = abs(poly_area(P))
         if k == "Cockpit":                                 # the well is a hole: only the coaming's ring has planking
             a -= abs(poly_area(cockpit_outline(DK["cockpit"])))
+        if holes and k in holes:                           # an opening: likewise
+            a -= abs(poly_area(holes[k]))
         under += a
         cu += a * np.array([*P.mean(0), float(shell.deck_z(*P.mean(0)))])
     kg_under = TB["teak"] * PL["thickness"] * under
