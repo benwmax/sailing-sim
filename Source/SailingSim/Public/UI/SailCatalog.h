@@ -18,8 +18,7 @@ namespace SailCatalog
 	{
 		Day,       // sun 12 deg or more, clear or fair
 		LowSun,    // sun under 12 deg (golden hour, the haze warming: docs/graphics-5), clear or fair
-		Grey,      // overcast or rain
-		Fog,
+		Grey,      // overcast, rain or fog (fog runs as overcast: USailSessionSubsystem::WeatherPresetFor)
 		Storm,     // the shelf cloud: the session's sky is Storms
 		Night,     // the sun is down (its upper limb under the horizon)
 	};

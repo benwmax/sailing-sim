@@ -830,7 +830,7 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 		TestEqual(TEXT("Lesson day at 19:15: LowSun"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("LowSun")));
 		K.Sky = ESailSky::Fog;
 		K.LocalHour = 10.f;
-		TestEqual(TEXT("Fog: Fog"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Fog")));
+		TestEqual(TEXT("Fog (it runs as overcast): Grey"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Grey")));
 		K.Sky = ESailSky::Rain;
 		TestEqual(TEXT("Rain: Grey"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Grey")));
 	}

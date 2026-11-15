@@ -262,7 +262,7 @@ namespace SailCatalog
 		switch (K.Sky)
 		{
 		case ESailSky::Storms: return ELoadingLook::Storm;
-		case ESailSky::Fog: return ELoadingLook::Fog;
+		case ESailSky::Fog:        // runs as overcast (WeatherPresetFor): a grey still until fog has a look of its own
 		case ESailSky::Overcast:
 		case ESailSky::Rain: return ELoadingLook::Grey;
 		default: break;
@@ -271,7 +271,7 @@ namespace SailCatalog
 	}
 	const TCHAR* LoadingLookName(ELoadingLook Look)
 	{
-		static const TCHAR* Names[] = { TEXT("Day"), TEXT("LowSun"), TEXT("Grey"), TEXT("Fog"), TEXT("Storm"), TEXT("Night") };
+		static const TCHAR* Names[] = { TEXT("Day"), TEXT("LowSun"), TEXT("Grey"), TEXT("Storm"), TEXT("Night") };
 		return Names[FMath::Clamp(int32(Look), 0, int32(UE_ARRAY_COUNT(Names)) - 1)];
 	}
 	const FMiniMap& MiniMap(int32 SettingsWorld)
