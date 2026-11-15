@@ -695,9 +695,10 @@ TConstArrayView<SailingSound::FPackLoop> SailingSound::PackLoops()
 		{ TEXT("Water/hull_wash_3kn_loop"), ESailingCue::BowWave, 1 },             // 1.5
 		{ TEXT("Water/hull_wash_5kn_loop"), ESailingCue::BowWave, 2 },             // 2.6
 		{ TEXT("Water/hull_wash_7kn_loop"), ESailingCue::BowWave, 3 },             // 3.6, raised near hull speed
-		{ TEXT("Water/water_lapping_hull_calm_loop"), ESailingCue::HullSlap, 0 },  // at rest
-		{ TEXT("Water/water_lapping_dock_loop"), ESailingCue::HullSlap, 1 },       // at rest in the slip
-		{ TEXT("Water/water_lapping_hull_choppy_loop"), ESailingCue::HullSlap, 2 },// bow slam, or drifting in a chop
+		// Retired (the synth's soft knocks play instead): script-built, their chirping bubbles warbled like an arcade game.
+		{ TEXT("Water/water_lapping_hull_calm_loop"), ESailingCue::HullSlap, 0, true },  // at rest
+		{ TEXT("Water/water_lapping_dock_loop"), ESailingCue::HullSlap, 1, true },       // at rest in the slip
+		{ TEXT("Water/water_lapping_hull_choppy_loop"), ESailingCue::HullSlap, 2, true },// bow slam, or drifting in a chop
 		{ TEXT("Winch/winch_ratchet_slow_loop"), ESailingCue::Winch, 0 },          // trimming slowly
 		{ TEXT("Winch/winch_ratchet_tailing_loop"), ESailingCue::Winch, 1 },       // trimming fast
 		{ TEXT("Rigging/sheet_running_block_loop"), ESailingCue::SheetBlock, 0 },  // easing

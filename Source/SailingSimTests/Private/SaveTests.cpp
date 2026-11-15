@@ -44,6 +44,7 @@ namespace SailSaveTestsLocal
 		T.bLearningMode = false;
 		T.bTrimAssist = false;
 		T.bShowHud = false;
+		T.UiMode = TEXT("natural");
 		T.bShowCrew = true;   // (the default is off)
 		T.Volume = 0.35f;
 		T.VolumeBoat = 0.6f;
@@ -162,6 +163,7 @@ bool FSailingSaveRoundTripTest::RunTest(const FString&)
 	TestEqual(TEXT("learning mode"), Y.bLearningMode, X.bLearningMode);
 	TestEqual(TEXT("trim assist"), Y.bTrimAssist, X.bTrimAssist);
 	TestEqual(TEXT("show hud"), Y.bShowHud, X.bShowHud);
+	TestEqual(TEXT("ui mode"), Y.UiMode, X.UiMode);
 	TestEqual(TEXT("show crew"), Y.bShowCrew, X.bShowCrew);
 	TestEqual(TEXT("volume"), Y.Volume, X.Volume);
 	TestEqual(TEXT("volume boat"), Y.VolumeBoat, X.VolumeBoat);

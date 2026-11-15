@@ -107,6 +107,9 @@ void ASailingHUD::BeginPlay()
 	}
 	if (PlayerOwner && GEngine && GEngine->GameViewport && !IsRunningCommandlet())
 	{
+		// UI overhaul: the HUD starts in the player's saved interface mode (Helpful, Natural, Off); a measuring run keeps
+		// the full HUD, as it ignores the player's other display choices.
+		SSailHud::Mode = USailingSettings::IsMeasuring() ? 0 : int32(SailUI::UiMode());
 		SlateHud = SNew(SSailHud).Player(PlayerOwner);
 		GEngine->GameViewport->AddViewportWidgetContent(SlateHud.ToSharedRef(), 5);
 		PhotoPanel = SNew(SSailPhotoPanel).Player(PlayerOwner);
@@ -146,10 +149,11 @@ void ASailingHUD::BeginPlay()
 			OpenFrontEnd(ESailScreen::FirstLaunch);
 			return;
 		}
-		if (Screen == TEXT("Credits") || Screen == TEXT("Career") || Screen == TEXT("Gallery"))
+		if (Screen == TEXT("Credits") || Screen == TEXT("Career") || Screen == TEXT("Gallery") || Screen == TEXT("Components"))
 		{
 			OpenFrontEnd(ESailScreen::Title);
-			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : Screen == TEXT("Gallery") ? ESailScreen::Gallery : ESailScreen::Credits);
+			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : Screen == TEXT("Gallery") ? ESailScreen::Gallery
+				: Screen == TEXT("Components") ? ESailScreen::Components : ESailScreen::Credits);
 			return;
 		}
 		if (Screen == TEXT("Customize"))
@@ -269,7 +273,7 @@ void ASailingHUD::Tick(float DeltaSeconds)
 	{
 		static const TCHAR* const Names[] = { TEXT("Title"), TEXT("World"), TEXT("Launch"), TEXT("Boat"), TEXT("Conditions"), TEXT("Mode"),
 			TEXT("Pause"), TEXT("ConditionsInGame"), TEXT("Settings"), TEXT("Controls"), TEXT("Confirm"), TEXT("Briefing"), TEXT("Quiz"),
-			TEXT("Credits"), TEXT("Career"), TEXT("Gallery"), TEXT("Feedback"), TEXT("FirstLaunch") };
+			TEXT("Credits"), TEXT("Career"), TEXT("Gallery"), TEXT("Feedback"), TEXT("FirstLaunch"), TEXT("Customize"), TEXT("Components") };
 		if (FrontEnd.IsValid()) { const int32 I = int32(FrontEnd->Current()); return I < UE_ARRAY_COUNT(Names) ? Names[I] : TEXT("?"); }
 		return Loading.IsValid() ? TEXT("Loading") : TEXT("Hud");
 	};

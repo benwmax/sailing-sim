@@ -35,6 +35,12 @@ Slice 9's accommodation forward (docs/jclass-9):
                       in section on the centreline looking to port, coloured by material, with each room's headroom;
                       close-ups of the forepeak's windlass, spurling pipe and chain locker in plan and section
 
+Slice 10's accommodation aft (docs/jclass-10):
+
+  interior_aft_plan.png  the pantry, saloon and owner's end in plan, cut 1.0 m above the sole with the walls cut there
+                      drawn black, in section on the centreline looking to port, and across the saloon looking forward
+                      and across the cabins looking aft, coloured by material, with each room's headroom
+
 build_jclass.py calls draw_all() after the build; it needs matplotlib (it says so and goes on without it).
 """
 import math
@@ -1160,12 +1166,29 @@ def draw_hardware_plan(hw_parts, hwrep, pieces, deck_rep, path, fittings=None):
 
 IN_COLOURS = {"Varnish": "#9c6433", "Pine": "#d9b77a", "WhitePaint": "#ecebe4", "Deckhead": "#ecebe4",
               "Bronze": "#b08a3e", "Iron": "#4c4f52", "Galvanised": "#8d9297", "Porcelain": "#f7f7f4",
-              "Canvas": "#d9cfb2", "Zinc": "#a8b0b4", "Black": "#222222", "Rope": "#c2a878"}
+              "Canvas": "#d9cfb2", "Zinc": "#a8b0b4", "Black": "#222222", "Rope": "#c2a878",
+              "Mahogany": "#7a3b1d", "Upholstery": "#2f4a8a", "Carpet": "#8f2a2a", "Linen": "#f2f0e8",
+              "Brass": "#c9a240", "Mirror": "#b9c7d1", "Leather": "#5a2c1a", "Teak": "#9c6433"}
 
 
-def _in_faces(ax, parts, keep, a, b, depth, zorder=3, alpha=1.0, groups=None):
+def _clip_face(P, axis, value, sign):
+    """A face's polygon (n, 3) clipped to sign * (p[axis] - value) >= 0 (Sutherland-Hodgman)."""
+    out = []
+    d = sign * (P[:, axis] - value)
+    for i in range(len(P)):
+        j = (i + 1) % len(P)
+        if d[i] >= 0.0:
+            out.append(P[i])
+        if (d[i] >= 0.0) != (d[j] >= 0.0):
+            out.append(P[i] + d[i] / (d[i] - d[j]) * (P[j] - P[i]))
+    return np.array(out)
+
+
+def _in_faces(ax, parts, keep, a, b, depth, zorder=3, alpha=1.0, groups=None, clip=None, lw=0.05):
     """The interior's faces kept by keep(face vertices), projected on axes a, b, the deepest (by depth) drawn first;
-    with `groups`, only the faces whose label's group (before " | ") is one of them."""
+    with `groups`, only the faces whose label's group (before " | ") is one of them; with `clip` (axis, value,
+    sign), each face cut to the side of that plane it shows on (a section's), its depth taken on what is left. Each
+    face's edge is drawn `lw` wide in its own colour (wider hides the seams between a curved face's triangles)."""
     from matplotlib.collections import PolyCollection
     polys, cols, keys = [], [], []
     for part in parts:
@@ -1175,6 +1198,12 @@ def _in_faces(ax, parts, keep, a, b, depth, zorder=3, alpha=1.0, groups=None):
             if groups is not None and (lb or "").split(" | ")[0] not in groups:
                 continue
             P = V[list(f)]
+            if clip is not None:
+                if (clip[2] * (P[:, clip[0]] - clip[1])).max() <= 0.0:
+                    continue
+                P = _clip_face(P, *clip)
+                if len(P) < 3:
+                    continue
             if keep(P):
                 polys.append(P[:, [a, b]])
                 cols.append(IN_COLOURS.get(sl, "#888888"))
@@ -1182,7 +1211,7 @@ def _in_faces(ax, parts, keep, a, b, depth, zorder=3, alpha=1.0, groups=None):
     order = np.argsort(keys)
     polys = [polys[i] for i in order]
     cols = [cols[i] for i in order]
-    ax.add_collection(PolyCollection(polys, facecolors=cols, edgecolors=cols, linewidths=0.05, alpha=alpha,
+    ax.add_collection(PolyCollection(polys, facecolors=cols, edgecolors=cols, linewidths=lw, alpha=alpha,
                                      zorder=zorder))
 
 
@@ -1296,6 +1325,119 @@ def draw_interior_plan(in_parts, inrep, pieces, path, deck_z):
     plt.close(fig)
 
 
+def _in_cut(ax, parts, axis, value, a, b, keep, zorder=5):
+    """Where the interior's faces kept by keep(face vertices) cross the plane `axis` = value: the cut's lines,
+    projected on axes a, b, drawn black (a wall cut by a plan)."""
+    from matplotlib.collections import LineCollection
+    segs = []
+    for part in parts:
+        V = np.asarray(part.V, float)
+        for f in part.F:
+            P = V[list(f)]
+            d = P[:, axis] - value
+            if d.min() >= 0.0 or d.max() <= 0.0 or not keep(P):
+                continue
+            pts = []
+            for i in range(len(P)):
+                j = (i + 1) % len(P)
+                if (d[i] < 0.0) != (d[j] < 0.0):
+                    t = d[i] / (d[i] - d[j])
+                    q = P[i] + t * (P[j] - P[i])
+                    pts.append((q[a], q[b]))
+            if len(pts) == 2:
+                segs.append(pts)
+    ax.add_collection(LineCollection(segs, colors="#111111", linewidths=0.7, zorder=zorder))
+
+
+def draw_interior_aft_plan(in_parts, inrep, pieces, path, deck_z):
+    """Slice 10's accommodation aft: the plan cut 1.0 m above the sole (the walls, partitions, tall lockers and the
+    stairs cut there drawn black), the section on the centreline looking to port, and sections across the saloon
+    (at x -2.0, looking forward) and across the cabins (at x -5.0, looking aft), with the rooms named and their
+    headroom. Coloured by material: varnished mahogany and teak, the velvet, carpets, linen, brass, white paint,
+    pine."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import interior as IR
+
+    sh = np.asarray(pieces["Shell"].sheer)
+    o = np.argsort(sh[:, 0])
+    parts = [in_parts[k] for k in IR.AFT_OBJECTS if in_parts[k].F]
+    x0, x1 = IR.RM["Aft cabins"]["x"][0] - 0.3, IR.RM["Pantry"]["x"][1] + 0.25
+    zs = IR.RM["Saloon"]["sole"]
+    cut = zs + 1.0
+    aft = inrep.get("aft") or {}
+
+    def plan_keep(P):
+        return P[:, 2].max() < cut and x0 < P[:, 0].min() and P[:, 0].max() < x1
+
+    def wall_keep(P):
+        return x0 < P[:, 0].min() and P[:, 0].max() < x1
+
+    fig = plt.figure(figsize=(20, 24), dpi=110)
+    ax = fig.add_axes([0.04, 0.6, 0.92, 0.36])
+    ax.plot(sh[o, 0], sh[o, 1], color="#1f3f7f", lw=1.0, zorder=6)
+    ax.plot(sh[o, 0], -sh[o, 1], color="#1f3f7f", lw=1.0, zorder=6)
+    _in_faces(ax, parts, plan_keep, 0, 1, lambda P: P[:, 2].mean(), lw=0.4)
+    _in_cut(ax, parts, 2, cut, 0, 1, wall_keep)
+    names = [("pantry", 0.85, 0.0), ("saloon", -1.8, 0.0), ("lobby", -5.6, 0.0), ("owner's stateroom", -5.2, 1.75),
+             ("owner's\nbathroom", -7.4, 1.6), ("guest cabin", -5.2, -1.75), ("guest heads", -7.25, -1.55)]
+    for n, xm, ym in names:
+        ax.text(xm, ym, n, ha="center", va="center", fontsize=9, zorder=8,
+                bbox={"facecolor": "white", "alpha": 0.7, "lw": 0, "pad": 1.5})
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(3.3, -3.3)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    ax.set_ylabel("y, m to starboard", fontsize=8)
+    ax.set_title("Bluebonnet below decks aft, in plan cut 1.0 m above the sole (the walls cut there drawn black), bow "
+                 "to the right, starboard below", fontsize=10)
+
+    def section(ax, keep, a, depth, xlim, title, invert=False, clip=None):
+        _in_faces(ax, parts, keep, a, 2, depth, clip=clip)
+        if clip is not None:
+            _in_cut(ax, parts, clip[0], clip[1], a, 2, keep)
+        ax.axhline(0.0, color="#2b6cb0", lw=0.6, ls="--", zorder=1)
+        ax.set_xlim(*(xlim[::-1] if invert else xlim))
+        ax.set_ylim(-1.0, 1.9)
+        ax.set_aspect("equal")
+        ax.tick_params(labelsize=7)
+        ax.set_ylabel("z, m above the waterline", fontsize=8)
+        ax.set_title(title, fontsize=9.5)
+
+    ax = fig.add_axes([0.04, 0.33, 0.92, 0.22])
+    xs = np.linspace(x0, x1, 200)
+    ax.plot(sh[o, 0], sh[o, 2], color="#1f3f7f", lw=1.0, zorder=6)
+    ax.plot(xs, deck_z(xs, 0.0 * xs), color="#1f3f7f", lw=0.6, ls=":", zorder=6)
+    section(ax, lambda P: P[:, 1].max() < 0.005 and wall_keep(P), 0, lambda P: P[:, 1].mean(), (x0, x1),
+            "the section on the centreline, looking to port: the companion stairs from the doghouse, the navigator's "
+            "desk, the port partition and the guest cabin's door, the saloon's port settee, the waterline dashed")
+    for n in ("Pantry", "Saloon", "Aft cabins"):
+        r = IR.RM[n]
+        hr = (inrep.get("headroom") or {}).get(n) or {}
+        wk = hr.get("walkway_0.6_m") or hr
+        if hr:
+            ax.text(0.5 * (r["x"][0] + r["x"][1]), 1.62, f"{n.lower()}\nheadroom {wk['between_beams_m']:.2f} m, "
+                    f"{wk['under_beams_m']:.2f} under the beams", ha="center", fontsize=8.5, zorder=8)
+    ax.set_xlabel("x, m forward of mid-waterline", fontsize=8)
+    ax = fig.add_axes([0.04, 0.04, 0.44, 0.25])
+    section(ax, lambda P: P[:, 0].max() < 0.07, 1, lambda P: -P[:, 0].mean(), (-3.3, 3.3),
+            "across the saloon at x -2.0, looking forward (starboard to the right): the settees, tables and chairs, "
+            "the sideboards against the bulkhead", clip=(0, -2.0, 1.0))
+    ax.set_xlabel("y, m to starboard", fontsize=8)
+    ax = fig.add_axes([0.53, 0.04, 0.44, 0.25])
+    section(ax, lambda P: P[:, 0].min() > x0, 1, lambda P: P[:, 0].mean(), (-3.3, 3.3),
+            "across the cabins at x -5.0, looking aft (starboard to the left): the berths, the partitions, the "
+            "companion stairs", invert=True, clip=(0, -5.0, -1.0))
+    ax.set_xlabel("y, m to starboard", fontsize=8)
+    if aft.get("lobby", {}).get("stairs"):
+        st = aft["lobby"]["stairs"]
+        fig.text(0.5, 0.005, f"companion stairs: {st['rises']} rises of {st['rise_m']} m at {st['lean_deg']} deg, "
+                 f"{st['width_m']} m wide", ha="center", fontsize=9)
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None, running=None,
              hardware=None, interior=None):
     import os
@@ -1321,5 +1463,7 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None
                                fittings=running[0]["RunningFittings"] if running is not None else None)
         if interior is not None:
             draw_interior_plan(interior[0], interior[1], pieces, os.path.join(out, "interior_plan.png"), interior[2])
+            draw_interior_aft_plan(interior[0], interior[1], pieces, os.path.join(out, "interior_aft_plan.png"),
+                                   interior[2])
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

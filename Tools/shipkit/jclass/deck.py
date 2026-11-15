@@ -364,12 +364,13 @@ def ring_slab(outer_uv, inner_uv, origin, U, Vd, N, t0, t1):
     return loft_rings(rings, closed=True)
 
 
-def region_slab(P2, holes, to3, t0, t1, grid=None):
-    """A slab over a plan region: the polygon P2 (n, 2) less `holes` (polygons inside it), triangulated (Blender's
-    constrained Delaunay) with a lattice of points `grid` apart inside, lifted by to3(points (m, 2), t) -> (m, 3) to
-    its two faces at t0 and t1, and walled round every edge. Returns V, F."""
+def cdt(loops, grid=None, seams=()):
+    """A plan region's triangles: the polygon loops[0] less the holes loops[1:], triangulated (Blender's constrained
+    Delaunay) with a lattice of points `grid` apart inside it, and with `seams` (pairs of the outline's point indices)
+    kept as edges, so no triangle spans one. Returns the points A (the loops' in order, then the lattice's) and the
+    triangles T (index triples, counter-clockwise)."""
     from mathutils import Vector, geometry
-    loops = [np.asarray(P2, float)] + [np.asarray(h, float) for h in holes]
+    loops = [np.asarray(L, float) for L in loops]
     pts = []
     if grid:
         lo, hi = loops[0].min(0), loops[0].max(0)
@@ -390,6 +391,7 @@ def region_slab(P2, holes, to3, t0, t1, grid=None):
     for L in loops:
         E += [(o + k, o + (k + 1) % len(L)) for k in range(len(L))]
         o += len(L)
+    E += [tuple(int(i) for i in e) for e in seams]
     out = geometry.delaunay_2d_cdt([Vector((float(a), float(b))) for a, b in A], E, [], 0, 1e-9, True)
     if len(out[0]) != len(A):
         raise ValueError(f"a slab's triangulation added or merged points ({len(out[0])} for {len(A)})")
@@ -404,6 +406,14 @@ def region_slab(P2, holes, to3, t0, t1, grid=None):
          (A[T[:, 1], 1] - A[T[:, 0], 1]) * (A[T[:, 2], 0] - A[T[:, 0], 0])
     T, a2 = T[np.abs(a2) > 1e-12], a2[np.abs(a2) > 1e-12]        # none flat along a straight run of the outline
     T[a2 < 0] = T[a2 < 0][:, ::-1]
+    return A, T
+
+
+def region_slab(P2, holes, to3, t0, t1, grid=None, seams=()):
+    """A slab over a plan region: the polygon P2 (n, 2) less `holes` (polygons inside it), triangulated by cdt (a
+    lattice `grid` apart inside, `seams` kept as edges), lifted by to3(points (m, 2), t) -> (m, 3) to its two faces
+    at t0 and t1, and walled round every edge. Returns V, F."""
+    A, T = cdt([P2] + list(holes), grid, seams)
     n = len(A)
     V = np.concatenate([to3(A, t1), to3(A, t0)])
     F = [tuple(t) for t in T] + [(c + n, b + n, a + n) for a, b, c in T]
@@ -418,6 +428,52 @@ def region_slab(P2, holes, to3, t0, t1, grid=None):
             if count[frozenset((a, b))] == 1:
                 F.append((a, a + n, b + n, b))
     return V, F
+
+
+def crowned_slab(P, z_bot, z_top, bevel, grid=0.15):
+    """A roof or a top board over any plan outline P (counter-clockwise; a notch and all): flat or shaped underneath
+    at z_bot(x, y), its top at z_top(x, y), the top edge rounded off by `bevel` (a quarter round in three steps, the
+    outline mitred in), the top triangulated with a lattice `grid` apart so it follows a crown. Returns V, F."""
+    P = np.asarray(P, float)
+    n = len(P)
+    m = miter(P, True)
+    Pm, Pin = P + bevel * (1 - math.sqrt(0.5)) * m, P + bevel * m
+    lift = lambda Q, dz: np.column_stack([Q, z_top(Q[:, 0], Q[:, 1]) + dz])  # noqa: E731
+    _, Tb = cdt([P])
+    At, Tt = cdt([Pin], grid)
+    V = np.concatenate([np.column_stack([P, z_bot(P[:, 0], P[:, 1])]), lift(P, -bevel),
+                        lift(Pm, -bevel * (1 - math.sqrt(0.5))), lift(At, 0.0)])
+    F = [(c, b, a) for a, b, c in Tb]
+    for i in range(3):
+        for k in range(n):
+            k1 = (k + 1) % n
+            F.append((i * n + k, i * n + k1, (i + 1) * n + k1, (i + 1) * n + k))
+    F += [(a + 3 * n, b + 3 * n, c + 3 * n) for a, b, c in Tt]
+    return V, F
+
+
+def clip_halfplane(P, a, b, c):
+    """The convex polygon P (n, 2) clipped to a*x + b*y <= c (Sutherland-Hodgman)."""
+    out = []
+    n = len(P)
+    for i in range(n):
+        p, q = P[i], P[(i + 1) % n]
+        fp, fq = a * p[0] + b * p[1] - c, a * q[0] + b * q[1] - c
+        if fp <= 0:
+            out.append(p)
+        if fp * fq < 0:
+            t = fp / (fp - fq)
+            out.append(p + t * (q - p))
+    return np.array(out)
+
+
+def rr_normals(P, cx, cy, L, W, r):
+    """Each point's outward normal on the rounded rectangle rrect(cx, cy, L, W, r): its straight side's, or the
+    radius on a corner, so P + o * normal is rrect(cx, cy, L + 2 o, W + 2 o, r + o) exactly."""
+    d = np.asarray(P, float) - np.array([cx, cy])
+    ax, ay = L / 2 - r, W / 2 - r
+    nr = d - np.column_stack([np.clip(d[:, 0], -ax, ax), np.clip(d[:, 1], -ay, ay)])
+    return nr / np.linalg.norm(nr, axis=1)[:, None]
 
 
 def box(c, half):
@@ -675,118 +731,236 @@ def skylight(name, s, part, footprints, holes=None, lining=None):
             part.add(V, F, "Bronze", ("solid", TB["bronze"]), f"{name} bars")
 
 
-def companionway(c, part, footprints):
+def rshape_dense(cx, cy, L, W, r, n, step=0.1):
+    """rshape with points added along its straight sides at most `step` apart (the same number at any offset), so a
+    ring standing on the deck follows its camber and sheer along them."""
+    base = rrect(cx, cy, L, W, r, n)
+    counts = [max(int(math.ceil(np.linalg.norm(q - p) / step - 1e-6)), 1) for p, q in zip(base, np.roll(base, -1, 0))]
+
+    def shape(o=0.0):
+        P = rrect(cx, cy, L + 2 * o, W + 2 * o, r + o, n)
+        return np.array([p + (q - p) * (k / c) for p, q, c in zip(P, np.roll(P, -1, 0), counts) for k in range(c)])
+    return shape
+
+
+class HouseWalls:
+    """A deckhouse's walls (slice 10) as one strip of timber run round its plan from one side of the door opening in
+    its after face round to the other: the plan outline `shape(0)` (a rshape_dense round cx), the opening |y| < notch,
+    the outside face off(z) out from the outline at height z (a tumblehome leans it in as it rises: off falls), the
+    inside face `t` in from that, both horizontal. The strip is unrolled into (s, z), s the distance along the
+    outline from the opening's port side, so ports and windows are holes cut in a flat region; to3 lays it back on
+    the house. Every straight side stays a plane (its window glass and rims and the doors are laid in that plane);
+    an edge is kept up from each of the corners' points, so the corners' facets stay flat too."""
+
+    def __init__(self, shape, cx, L, W, r, notch, off):
+        Q = shape(0.0)
+        xa = cx - L / 2
+        aft = np.abs(Q[:, 0] - xa) < 1e-9
+        Q = Q[~(aft & (np.abs(Q[:, 1]) <= notch + 1e-6))]
+        aft = np.abs(Q[:, 0] - xa) < 1e-9
+        i0 = int(np.nonzero(aft & (Q[:, 1] < 0))[0][0])          # the first point to port of the opening
+        self.Q = np.concatenate([[[xa, -notch]], np.roll(Q, -i0, axis=0), [[xa, notch]]])
+        self.n = rr_normals(self.Q, cx, 0.0, L, W, r)
+        self.corner = (np.abs(self.Q[:, 0] - cx) >= L / 2 - r - 1e-9) & (np.abs(self.Q[:, 1]) >= W / 2 - r - 1e-9)
+        self.s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(self.Q, axis=0), axis=1))])
+        self.off = off
+
+    def to3(self, A, t):
+        """(s, z) points on the strip to 3-D: on the outside face (t = 0) or `t` in from it."""
+        A = np.asarray(A, float)
+        p = [np.interp(A[:, 0], self.s, self.Q[:, k]) for k in (0, 1)]
+        nn = [np.interp(A[:, 0], self.s, self.n[:, k]) for k in (0, 1)]
+        o = self.off(A[:, 1]) - t
+        return np.column_stack([p[0] + o * nn[0], p[1] + o * nn[1], A[:, 1]])
+
+    def s_at(self, q):
+        """The distance along the outline at its point nearest the plan point q."""
+        d = np.diff(self.Q, axis=0)
+        L2 = (d * d).sum(1)
+        u = np.clip(((np.asarray(q, float) - self.Q[:-1]) * d).sum(1) / L2, 0.0, 1.0)
+        i = int(np.argmin(((self.Q[:-1] + u[:, None] * d - q) ** 2).sum(1)))
+        return float(self.s[i] + u[i] * math.sqrt(L2[i]))
+
+    def frame(self, s, z):
+        """The outside face's point at (s, z) and its axes there: U along the strip, Vd up the face, N out."""
+        o = self.to3([[s, z]], 0.0)[0]
+        U = self.to3([[s + 1e-3, z]], 0.0)[0] - self.to3([[s - 1e-3, z]], 0.0)[0]
+        Vd = self.to3([[s, z + 1e-3]], 0.0)[0] - self.to3([[s, z - 1e-3]], 0.0)[0]
+        U, Vd = U / np.linalg.norm(U), Vd / np.linalg.norm(Vd)
+        N = np.cross(U, Vd)
+        nh = np.array([np.interp(s, self.s, self.n[:, 0]), np.interp(s, self.s, self.n[:, 1]), 0.0])
+        return o, U, Vd, (N if N @ nh > 0 else -N)
+
+    def solid(self, z_foot, z_top, t, holes=()):
+        """The strip from z_foot(x, y) at its foot (on the sill) up to z_top, `t` thick, with `holes` ((s, z)
+        polygons) through it. Returns V, F."""
+        m = len(self.Q)
+        bottom = np.column_stack([self.s, z_foot(self.Q[:, 0], self.Q[:, 1])])
+        up = [i for i in range(m) if self.corner[i] or i in (0, m - 1)]
+        top = np.column_stack([self.s[up], np.full(len(up), float(z_top))])[::-1]
+        seams = [(i, m + len(up) - 1 - j) for j, i in enumerate(up) if self.corner[i] and 0 < i < m - 1]
+        return region_slab(np.concatenate([bottom, top]), holes, self.to3, 0.0, t, seams=seams)
+
+
+def glazing(walls, s, z, size, label, t, part):
+    """A port or window in a house's wall: its glass set in a bronze rim on the outside face (the glass 4 mm into
+    the rim all round), a bronze ring round the opening on the inside face, and the hole through the wall between
+    them ((s, z) polygon for HouseWalls.solid). Weighed solid."""
+    w, h, r = size
+    o, U, Vd, N = walls.frame(s, z)
+    V, F = slab(rrect(0.0, 0.0, w + 0.008, h + 0.008, r + 0.004, 4), o, U, Vd, N, -0.004, 0.002)
+    part.add(V, F, "CabinWindow", ("solid", TB["glass"]), f"{label} glass")
+    V, F = ring_slab(rrect(0.0, 0.0, w + 0.036, h + 0.036, r + 0.018, 4), rrect(0.0, 0.0, w, h, r, 4), o, U, Vd, N,
+                     -0.004, 0.007)
+    part.add(V, F, "Bronze", ("solid", TB["bronze"]), f"{label} rims")
+    nh = N - (N @ np.array([0.0, 0.0, 1.0])) * np.array([0.0, 0.0, 1.0])
+    o_in = o - t * nh / np.linalg.norm(nh)                     # the inside face (t in, horizontally)
+    V, F = ring_slab(rrect(0.0, 0.0, w + 0.036, h + 0.036, r + 0.018, 4), rrect(0.0, 0.0, w + 0.004, h + 0.004,
+                     r + 0.002, 4), o_in, U, Vd, N, -0.007, 0.004)
+    part.add(V, F, "Bronze", ("solid", TB["bronze"]), f"{label} rims")
+    hole = rrect(0.0, 0.0, w + 0.02, h + 0.02, r + 0.01, 4)
+    return np.column_stack([s + hole[:, 0], z + hole[:, 1] * Vd[2]])
+
+
+def house_doors(walls, xa, notch, dw, z_sill, z_head, t, label, part):
+    """A pair of doors closing the opening in a house's after face, in the face's own plane: from 3 mm over the sill
+    to `z_head` (the slide's underside, less 3 mm), meeting with 4 mm between them, 3 mm inside the opening's sides,
+    from 6 mm inside the wall's inside face to 8 mm proud of its outside."""
+    o = np.array([xa - walls.off(np.array([z_sill]))[0], 0.0, z_sill])
+    k = float(walls.off(np.array([z_sill]))[0] - walls.off(np.array([z_sill + 1.0]))[0])    # lean per metre up
+    Vd = np.array([k, 0.0, 1.0]) / math.hypot(k, 1.0)
+    U = np.array([0.0, 1.0, 0.0])
+    N = np.cross(U, Vd)
+    N = N if N[0] < 0 else -N
+    v0, v1 = 0.003 / Vd[2], (z_head - z_sill) / Vd[2]
+    for side in (-1.0, 1.0):
+        u0, u1 = side * 0.002, side * (notch - 0.003)
+        V, F = slab(rrect(0.5 * (u0 + u1), 0.5 * (v0 + v1), abs(u1 - u0), v1 - v0, 0.008, 2), o, U, Vd, N,
+                    -t * Vd[2] + 0.006, 0.008)
+        part.add(V, F, "Wood", ("solid", TB["teak"]), f"{label} doors")
+
+
+def notched(P, x_aft, half, x_fwd):
+    """A plan outline (counter-clockwise, its after edge straight across at x_aft) with a notch cut in from its
+    after edge: |y| < half, forward to x_fwd (a slide's opening in a roof)."""
+    aft = np.abs(P[:, 0] - x_aft) < 1e-9
+    keep = ~(aft & (np.abs(P[:, 1]) <= half + 1e-6))
+    out = []
+    for i in range(len(P)):
+        if keep[i]:
+            out.append(P[i])
+        if aft[i] and keep[i] and P[i, 1] > half and (aft[(i + 1) % len(P)] and not keep[(i + 1) % len(P)]):
+            out += [[x_aft, half], [x_fwd, half], [x_fwd, -half], [x_aft, -half]]
+    return np.array(out, float)
+
+
+def companionway(c, part, footprints, holes=None, lining=None):
+    """The crew's companionway: a teak box on the deck, its sill lining the opening below (slice 10), its walls one
+    strip round it (HouseWalls) open in the after face for the doors, the top boarded forward of the slide and the
+    slide over the after part on two runners."""
     x, L, W, H = c["x"], c["length"], c["width"], c["height"]
     zc = centre_z(x) + H
-    shape = rshape(x, 0.0, L, W, c["corner"])
-    on_deck_prism(shape, zc, "Wood", ("sides", TB["teak"], TB["coaming"]), "Companionway", part, bevel=0.008)
+    t, inset, sill = TB["coaming"], c["wall_inset"], c["sill"]
+    shape = rshape_dense(x, 0.0, L, W, c["corner"], 6)
     footprints["Companionway"] = shape(0.0)
-    # the slide over the after part of the top, on two runners; the top forward of it is boarded, the rest open
+    zs = lambda xx: shell.deck_z(np.asarray(xx, float), 0.0) + sill  # noqa: E731  (the sill's top follows the sheer)
+    h = coaming_ring(shape, zs, t + inset, "Wood", ("sides", TB["teak"], t + inset), "Companionway sill", part,
+                     bevel=0.004, under=lining)
+    if holes is not None:
+        holes["Companionway"] = h
+    dw = c["door_width"]
+    notch = dw + 0.005
+    walls = HouseWalls(shape, x, L, W, c["corner"], notch, lambda zz: np.full(np.shape(zz), -inset))
+    V, F = walls.solid(lambda xx, yy: zs(xx) - 0.0005, zc, t)
+    part.add(V, F, "Wood", ("solid", TB["teak"]), "Companionway")
+    # the slide over the after part of the top, from over the doors forward, on two runners on the walls' tops
     ls, hs = c["slide_length"], c["slide_height"]
     xa = x - L / 2
-    part.weight("Companionway top (forward of the slide)", TB["teak"] * TB["coaming"] * (L - ls) * W,
-                (x + ls / 2, 0.0, zc - TB["coaming"] / 2))
-    for y in (-W / 2 + 0.05, W / 2 - 0.05):
-        V, F = box((xa + ls / 2 + 0.02, y, zc + 0.008), (ls / 2 + 0.02, 0.012, 0.012))
+    x0s, x1s = xa - 0.012, xa - 0.012 + ls + 0.02
+    x_cut = x1s - 0.04
+    # the top forward of it: a board inside the walls (half a millimetre into them), its top flush with theirs
+    P = clip_halfplane(rrect(x, 0.0, L - 2 * (inset + t) + 0.001, W - 2 * (inset + t) + 0.001,
+                             c["corner"] - inset - t + 0.0005, 6), -1.0, 0.0, -x_cut)
+    V, F = region_slab(P, [], lambda A, tt: np.column_stack([A, np.full(len(A), zc - tt)]), 0.0003, TB["coaming"])
+    part.add(V, F, "Wood", ("solid", TB["teak"]), "Companionway top")
+    yr = W / 2 - inset - t / 2
+    for y in (-yr, yr):
+        V, F = box((0.5 * (x0s + 0.01 + x_cut + 0.02), y, zc + 0.008), (0.5 * (x_cut + 0.01 - x0s), 0.012, 0.012))
         part.add(V, F, "Bronze", ("solid", TB["bronze"]), "Companionway runners")
-    sh = rshape(xa + ls / 2 - 0.01, 0.0, ls + 0.02, W + 0.03, 0.02)
+    sh = rshape(0.5 * (x0s + x1s), 0.0, x1s - x0s, W + 0.03, 0.02)
     lid(sh, zc + 0.014, hs, 0.015, "Teak", ("skin", TB["teak"], 0.025), "Companionway slide", part)
-    # the doors in the after face, a pair meeting with 4 mm between them, inside the face's flat
-    dw = (W - 2 * c["corner"] - 0.01) / 2
-    for side in (-1, 1):
-        panel = rrect(side * (dw / 2 + 0.002), H * 0.45, dw, H * 0.62, 0.01, 2)
-        V, F = slab(panel, (xa, 0.0, centre_z(xa)), np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, 1.0]),
-                    np.array([-1.0, 0.0, 0.0]), -0.004, 0.012)
-        part.add(V, F, "Wood", ("solid", TB["teak"]), "Companionway doors")
+    house_doors(walls, xa, notch, dw, float(zs(xa)), zc + 0.011, t, "Companionway", part)
 
 
-def doghouse(d, part, footprints):
+def doghouse(d, part, footprints, holes=None, lining=None):
+    """The doghouse (slice 10: opened over the companion down to the owner's end): its sill on the deck lining the
+    opening below, its walls one strip (HouseWalls) leaning in by the tumblehome, with real ports and windows cut
+    through them in bronze rims and the door opening in the after face; the roof cambered with its eaves out past
+    the walls and notched over the doors under the sliding hatch; the doors filling the opening from the sill to the
+    slide; the handrails along the roof."""
     x, L, W, H = d["x"], d["length"], d["width"], d["side_height"]
-    tan_t = math.tan(math.radians(d["tumblehome_deg"]))
-    lean = H * tan_t
+    k = math.tan(math.radians(d["tumblehome_deg"]))
+    lean = H * k
     zb = centre_z(x)
     zt = zb + H
-    shape = rshape(x, 0.0, L, W, d["corner"], 8)
+    t, sill, r = TB["house_side"], d["sill"], d["corner"]
+    off = lambda zz: -k * (np.asarray(zz, float) - zb)  # noqa: E731  (a plane on each side, through the old base)
+    shape = rshape_dense(x, 0.0, L, W, r, 8)
     footprints["Doghouse"] = shape(0.0)
-    rings = [deck_height_ring(shape(0.0), -LET), np.column_stack([shape(-lean), np.full(len(shape(0.0)), zt)])]
-    V, F = loft_rings(rings)
-    part.add(V, F, "Wood", ("sides", TB["teak"], TB["house_side"]), "Doghouse sides")
-    # the roof: flat underneath, cambered athwartships, its eaves standing out past the sides' top
-    roof_shape = rshape(x, 0.0, L - 2 * lean, W - 2 * lean, d["corner"] - lean, 8)
-    eave = d["eave"]
-    top = lid(lambda o: roof_shape(o + eave), zt - 0.004, d["roof_thickness"], d["roof_crown"], "Wood",
-              ("top", TB["teak"], TB["house_roof"]), "Doghouse roof", part, bevel=0.015)
-
-    def side_frame(face, at):
-        """A point on the face (its base at `at` along it) and the face's axes: U along, Vd up it, N out."""
-        if face in ("port", "starboard"):
-            s = 1.0 if face == "starboard" else -1.0
-            xb = at
-            base = np.array([xb, s * W / 2, float(shell.deck_z(xb, s * W / 2))])
-            Vd = np.array([0.0, -s * lean, zt - base[2]])
-            U = np.array([1.0, 0.0, 0.0])
-        else:
-            s = 1.0 if face == "forward" else -1.0
-            xf = x + s * L / 2
-            base = np.array([xf, at, float(shell.deck_z(xf, at))])
-            Vd = np.array([-s * lean, 0.0, zt - base[2]])
-            U = np.array([0.0, 1.0, 0.0])
-        Vd /= np.linalg.norm(Vd)
-        N = np.cross(U, Vd)
-        if face == "forward" and N[0] < 0 or face == "aft" and N[0] > 0 or \
-                face == "starboard" and N[1] < 0 or face == "port" and N[1] > 0:
-            N = -N
-        return base, U, Vd, N
-
-    def window(face, at, height, size, label):
-        w, h, r = size
-        base, U, Vd, N = side_frame(face, at)
-        cos_l = float(Vd[2])
-        o = base + (height / cos_l) * Vd
-        # the glass runs 4 mm into the rim all round, so no edge of the two solids meets (they would not close)
-        V, F = slab(rrect(0.0, 0.0, w + 0.008, h + 0.008, r + 0.004, 4), o, U, Vd, N, -0.004, 0.002)
-        part.add(V, F, "CabinWindow", ("solid", TB["glass"]), f"Doghouse {label} glass")
-        V, F = ring_slab(rrect(0.0, 0.0, w + 0.036, h + 0.036, r + 0.018, 4), rrect(0.0, 0.0, w, h, r, 4), o, U, Vd,
-                         N, -0.004, 0.007)
-        part.add(V, F, "Bronze", ("solid", TB["bronze"]), f"Doghouse {label} rims")
-
-    straight = L - 2 * d["corner"]
-    npt = d["ports_a_side"]
-    for face in ("starboard", "port"):
-        for k in range(npt):
-            xp = x - straight / 2 + straight * (k + 0.5) / npt
-            window(face, xp, 0.36, d["port"], "portlight")
-    sw = W - 2 * d["corner"]
-    for k in range(d["windows_forward"]):
-        yp = -sw / 2 + sw * (k + 0.5) / d["windows_forward"]
-        window("forward", yp, 0.38, d["window"], "window")
-    # the doors in the after face
-    dw, dh = d["doors"]
-    for s in (-1, 1):
-        base, U, Vd, N = side_frame("aft", s * (dw / 2 + 0.006))
-        o = base + (0.06 + dh / 2) / float(Vd[2]) * Vd
-        V, F = slab(rrect(0.0, 0.0, dw, dh, 0.012, 2), o, U, Vd, N, -0.004, 0.012)
-        part.add(V, F, "Wood", ("solid", TB["teak"]), "Doghouse doors")
-    # the sliding hatch on the roof's after end
+    zs = lambda xx: shell.deck_z(np.asarray(xx, float), 0.0) + sill  # noqa: E731
+    t_sill = t - float(off(np.array([zb + sill]))[0])         # its inside face under the walls' inside face
+    h = coaming_ring(shape, zs, t_sill, "Wood", ("sides", TB["teak"], t_sill), "Doghouse sill", part, bevel=0.004,
+                     under=lining)
+    if holes is not None:
+        holes["Doghouse"] = h
+    dw = d["door_width"]
+    notch = dw + 0.005
+    walls = HouseWalls(shape, x, L, W, r, notch, off)
+    cut = []
+    straight = L - 2 * r
+    for side in (1.0, -1.0):
+        for j in range(d["ports_a_side"]):
+            xp = x - straight / 2 + straight * (j + 0.5) / d["ports_a_side"]
+            cut.append(glazing(walls, walls.s_at((xp, side * W / 2)), float(shell.deck_z(xp, side * W / 2)) + 0.36,
+                               d["port"], "Doghouse portlight", t, part))
+    sw = W - 2 * r
+    for j in range(d["windows_forward"]):
+        yp = -sw / 2 + sw * (j + 0.5) / d["windows_forward"]
+        cut.append(glazing(walls, walls.s_at((x + L / 2, yp)), float(shell.deck_z(x + L / 2, yp)) + 0.38,
+                           d["window"], "Doghouse window", t, part))
+    V, F = walls.solid(lambda xx, yy: zs(xx) - 0.0005, zt, t, cut)
+    part.add(V, F, "Wood", ("solid", TB["teak"]), "Doghouse sides")
+    # the roof: flat underneath, cambered athwartships, its eaves standing out past the walls' top, notched over
+    # the doors from its after edge to under the sliding hatch's forward end
     sl, sw_, sh = d["slide"]
-    xa = x - L / 2 + lean + 0.02
-    z_edge = float(top(np.array([xa]), np.array([sw_ / 2]))[0])
-    lid(rshape(xa + sl / 2, 0.0, sl, sw_, 0.02), z_edge - 0.004, sh, 0.012, "Wood",
+    eave = d["eave"]
+    Lr, Wr = L - 2 * lean + 2 * eave, W - 2 * lean + 2 * eave
+    xs0 = x - L / 2 + lean - 0.012                           # the slide's after edge: over the doors' tops
+    half_w = Wr / 2
+    zr = zt - 0.004
+    top = lambda xx, yy: zr + d["roof_thickness"] + d["roof_crown"] * (1 - (np.asarray(yy) / half_w) ** 2)  # noqa
+    P = notched(rshape_dense(x, 0.0, Lr, Wr, r - lean + eave, 8)(0.0), x - Lr / 2, notch - 0.002, xs0 + sl - 0.08)
+    V, F = crowned_slab(P, lambda xx, yy: np.full(len(xx), zr), top, 0.015)
+    part.add(V, F, "Wood", ("top", TB["teak"], TB["house_roof"]), "Doghouse roof")
+    # the sliding hatch on the roof's after end, and the doors under it
+    z_edge = float(top(np.array([xs0]), np.array([sw_ / 2]))[0])
+    lid(rshape(xs0 + sl / 2, 0.0, sl, sw_, 0.02), z_edge - 0.004, sh, 0.012, "Wood",
         ("skin", TB["teak"], 0.025), "Doghouse slide", part, bevel=0.008)
+    house_doors(walls, x - L / 2, notch, dw, float(zs(x - L / 2)), z_edge - 0.007, t, "Doghouse", part)
     # the handrails along the roof
     hr = d["handrail"]
     bw, bh = hr["section"]
     xr0, xr1 = x - L / 2 + lean + sl + 0.15, x + L / 2 - lean - 0.3
     for s in (-1, 1):
         y = s * (W / 2 - lean - hr["inboard_of_edge"])
-        zr = float(top(np.array([x]), np.array([y]))[0])
-        V, F = box(((xr0 + xr1) / 2, y, zr + hr["height"] + bh / 2), ((xr1 - xr0) / 2, bw / 2, bh / 2))
+        zr_ = float(top(np.array([x]), np.array([y]))[0])
+        V, F = box(((xr0 + xr1) / 2, y, zr_ + hr["height"] + bh / 2), ((xr1 - xr0) / 2, bw / 2, bh / 2))
         part.add(V, F, "Wood", ("solid", TB["teak"]), "Doghouse handrails")
-        for k in range(hr["feet"]):
-            xf = xr0 + 0.05 + (xr1 - xr0 - 0.1) * k / (hr["feet"] - 1)
+        for j in range(hr["feet"]):
+            xf = xr0 + 0.05 + (xr1 - xr0 - 0.1) * j / (hr["feet"] - 1)
             zf = float(top(np.array([xf]), np.array([y]))[0])
-            V, F = box((xf, y, (zf - 0.004 + zr + hr["height"] + 0.004) / 2),
-                       (0.03, bw / 2 - 0.002, (zr + hr["height"] + 0.008 - zf) / 2))
+            V, F = box((xf, y, (zf - 0.004 + zr_ + hr["height"] + 0.004) / 2),
+                       (0.03, bw / 2 - 0.002, (zr_ + hr["height"] + 0.008 - zf) / 2))
             part.add(V, F, "Wood", ("solid", TB["teak"]), "Doghouse handrails")
 
 
@@ -1178,7 +1352,8 @@ def deck_surface(sheer, part, holes=None):
 def build(sheer=None, opened=(), fitting_holes=None, lining=None):
     """Every part of the deck: {name: Part}, the footprints (plan outlines of what stands on the deck), and a report
     (the deck's weights and the layout's checks). `opened`: the hatches and skylights the deck is opened under (slice
-    9: their coamings line the openings down to `lining` below the deck); `fitting_holes`: {name: plan outline} for
+    9: their coamings line the openings down to `lining` below the deck; slice 10 adds the companionway and the
+    doghouse, whose sills do the same); `fitting_holes`: {name: plan outline} for
     the fittings that pass through the deck (deck prisms, cowls' flanges, the chain pipe: hardware.deck_holes). The
     holes are in rep['openings'] (and as outlines in rep['_holes'], for the build's checks and the deckhead)."""
     sheer = loft_sheer() if sheer is None else np.asarray(sheer, float)
@@ -1192,11 +1367,11 @@ def build(sheer=None, opened=(), fitting_holes=None, lining=None):
     for name, s in DK["skylights"].items():
         if name != "note":
             skylight(name, s, parts["Skylights"], fp, holes if name in opened else None, lining)
+    companionway(DK["companionway"], parts["Companionway"], fp, holes if "Companionway" in opened else None, lining)
+    doghouse(DK["doghouse"], parts["Doghouse"], fp, holes if "Doghouse" in opened else None, lining)
     holes.update(fitting_holes or {})
     loop, ns, ic_p, rep = deck_surface(sheer, parts["Deck"], holes)
     rep["toe_rail_length_m"] = round(toe_rail(loop, ns, ic_p, parts["ToeRail"]), 2)
-    companionway(DK["companionway"], parts["Companionway"], fp)
-    doghouse(DK["doghouse"], parts["Doghouse"], fp)
     cockpit_coaming(DK["cockpit"], parts["Cockpit"], fp)
     steering(DK["steering"], parts["Steering"], parts["Wheel"], fp)
     rep["weights"] = deck_weights(parts, fp, holes)
