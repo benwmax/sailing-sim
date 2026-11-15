@@ -22,6 +22,7 @@ namespace SailSaveLocal
 	static_assert(UE_ARRAY_COUNT(BoatIds) == int32(Sailing::EBoatType::Count), "every boat needs a save id");
 	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf"), TEXT("marseille"), TEXT("texas-coast") };
 	const TCHAR* const SpeedIds[] = { TEXT("kn"), TEXT("mph"), TEXT("kmh") };
+	const TCHAR* const UiModeIds[] = { TEXT("helpful"), TEXT("natural"), TEXT("off") };
 	const TCHAR* const DepthIds[] = { TEXT("ft"), TEXT("m"), TEXT("fathoms") };
 
 	template <typename TEnum>
@@ -185,6 +186,7 @@ FString FSailSave::ToJson() const
 	Set->SetBoolField(TEXT("learningMode"), S.bLearningMode);
 	Set->SetBoolField(TEXT("trimAssist"), S.bTrimAssist);
 	Set->SetBoolField(TEXT("showHud"), S.bShowHud);
+	Set->SetStringField(TEXT("uiMode"), S.UiMode);
 	Set->SetBoolField(TEXT("showCrew"), S.bShowCrew);
 	TSharedRef<FJsonObject> Audio = Obj();
 	Audio->SetNumberField(TEXT("volume"), S.Volume);
@@ -452,6 +454,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 		Read(*Set, TEXT("learningMode"), S.bLearningMode);
 		Read(*Set, TEXT("trimAssist"), S.bTrimAssist);
 		Read(*Set, TEXT("showHud"), S.bShowHud);
+		Read(*Set, TEXT("uiMode"), S.UiMode);
 		Read(*Set, TEXT("showCrew"), S.bShowCrew);
 		if (const TSharedPtr<FJsonObject> A = Child(*Set, TEXT("audio")))
 		{
@@ -683,6 +686,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bLearningMode = In.bLearningMode;
 	S.bTrimAssist = In.bTrimAssist;
 	S.bShowHud = In.bShowHud;
+	S.UiMode = UiModeIds[FMath::Clamp(In.UiMode, 0, 2)];
 	S.bShowCrew = In.bShowCrew;
 	S.Volume = In.Volume;
 	S.VolumeBoat = In.VolumeBoat;
@@ -772,6 +776,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bLearningMode = S.bLearningMode;
 	Out.bTrimAssist = S.bTrimAssist;
 	Out.bShowHud = S.bShowHud;
+	Out.UiMode = FMath::Max(IndexOf(UiModeIds, 3, S.UiMode), 0);
 	Out.bShowCrew = S.bShowCrew;
 	Out.Volume = FMath::Clamp(S.Volume, 0.f, 1.f);
 	Out.VolumeBoat = FMath::Clamp(S.VolumeBoat, 0.f, 1.f);

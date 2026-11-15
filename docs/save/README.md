@@ -30,7 +30,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
   "writtenAt": "2026-10-18T17:05:12.000Z",
   "settings": {
     "quality": "Medium", "difficulty": "Easy", "controlLayout": "Simple",
-    "learningMode": true, "trimAssist": true, "showHud": true, "showCrew": false,
+    "learningMode": true, "trimAssist": true, "showHud": true, "uiMode": "helpful", "showCrew": false,
     "audio": { "volume": 0.8, "boat": 1, "world": 1, "weather": 1, "signals": 1, "mono": false, "captions": true },
     "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "lensWater": true, "cameraShake": true,
                  "hudScale": 100, "textScale": 100,
@@ -83,6 +83,10 @@ mode reads it through `USailingSettings`); `lastSession` is what Continue sails.
 `launchSpotAt` (optional, added in version 1 without a version change: `docs/geo-anchor/README.md`) is the spot on the
 earth. When `launchSpot` names a spot the game no longer has (renamed or removed in a rebake), the spot nearest that
 lat/lon within 500 m is used (`FSailSave::SpotIndex`); beyond that, the world's first spot.
+
+`settings.uiMode` is the interface mode (`docs/ui-overhaul/README.md`): `helpful` (full text and explainers), `natural`
+(a glimpse of what is hard to see, few words) or `off`, added in version 1 without a version change: an older file has
+none and reads `helpful`. The H key and Settings > Display > Interface write it (`SailUI::SetUiMode`).
 
 `settings.showCrew` is Settings > Show crew (your boat's crew figures drawn), added in version 1 without a version change:
 an older file has none and reads off, the default (`-SailingShowCrew=0|1` beats it).
