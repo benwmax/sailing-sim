@@ -32,7 +32,7 @@ and **UI Helpful** (full text and explainers). Until the saved setting exists th
 | Minimal (1) | UI Natural | The two windows only, no panel, no words (268 x 93 px) |
 | Off (2) | UI Off | Hidden |
 
-UI Helpful is 300 px wide at 100% HUD and about 184-200 px tall: its rows follow the fonts' own line heights (`STrimView::HelpfulLayout`), so a bigger type scale or Settings > Text size pushes them down instead of overlapping. It is anchored bottom right with the key hints under it.
+UI Helpful is 300 px wide at 100% HUD and about 184-200 px tall: its rows follow the fonts' own line heights (`STrimView::HelpfulLayout`), so a bigger type scale or Settings > Text size pushes them down instead of overlapping. It sits at the bottom of the HUD's right-hand column (docs/hud-layout/), with the key hints under it in UI Helpful.
 
 ## The Helpful line
 
