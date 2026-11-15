@@ -1841,6 +1841,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 	[
 		SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { SetSettingsTab(SettingsTab + 1); })[ KeyCap(TEXT("E"), TEXT("RB")) ]
 	];
+	// UI overhaul phase 2: the rows and the help are sheets of chart paper (everything built while PaperScope is alive is
+	// drawn for paper); the header, the tabs and the prompt bar stay on the glass over the water.
+	TOptional<FScopedPaper> PaperScope;
+	PaperScope.Emplace();
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	FString Help;
 	auto Add = [&](TSharedRef<SWidget> W) { Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)[ W ]; if (!E.Focus.IsValid()) E.Focus = W; };
@@ -2047,6 +2051,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			[ SailUI::Text(TEXT("Component page (developer)"), EType::Ui, Fg) ]
 		];
 	}
+	const TSharedRef<SWidget> HelpSheet = PanelBox(SailUI::Text(Help, EType::Body, Muted, true));
+	const TSharedRef<SWidget> RowsSheet = SNew(SBorder).BorderImage(Rounded(Paper, RadiusCard, PaperLine, 1.f)).Padding(FMargin(18.f, 16.f, 8.f, 16.f))
+	[
+		SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Rows ]
+	];
+	PaperScope.Reset();
 	// The PC's menu sweep (Nov 4): every list follows the keyboard's focus (Graphics and Gameplay run past 1080 lines, and
 	// the focus used to go on below the screen, unseen).
 	E.Content = SNew(SVerticalBox)
@@ -2055,8 +2065,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Rows ] ]
-			+ SHorizontalBox::Slot().FillWidth(0.38f).VAlign(VAlign_Top)[ PanelBox(SailUI::Text(Help, EType::Body, Muted, true)) ]
+			+ SHorizontalBox::Slot().FillWidth(0.62f).Padding(0.f, 0.f, 20.f, 0.f)[ RowsSheet ]
+			+ SHorizontalBox::Slot().FillWidth(0.38f).VAlign(VAlign_Top)[ HelpSheet ]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")), Prompt(TEXT("Q / E"), TEXT("LB / RB"), TEXT("Tab")),
 		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Changes apply at once and are saved"));
@@ -2150,6 +2160,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCredits()
 	FEntry E;
 	const TArray<SailCatalog::FCreditLine> Lines = SailCatalog::Credits();
 	FString Title = TEXT("Credits and licences");
+	TOptional<FScopedPaper> PaperScope;   // the credits are a sheet of chart paper (UI overhaul phase 2)
+	PaperScope.Emplace();
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	for (const SailCatalog::FCreditLine& L : Lines)
 	{
@@ -2182,12 +2194,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCredits()
 	}
 	Rows->AddSlot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)[ SailUI::Text(TEXT("The sources and licences of the game's data, art and sound."), EType::Small, Dim, true) ];
 	CreditsScroll = SNew(SScrollBox).ScrollBarAlwaysVisible(true) + SScrollBox::Slot().Padding(0.f, 0.f, 18.f, 0.f)[ Rows ];
+	const TSharedRef<SWidget> CreditsSheet = PanelBox(CreditsScroll.ToSharedRef(), FMargin(26.f, 22.f));
+	PaperScope.Reset();
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Credits"), Title, 0) ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			// A reading measure, not the full width of a wide screen.
-			SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.f).MaxWidth(1180.f)[ PanelBox(CreditsScroll.ToSharedRef(), FMargin(26.f, 22.f)) ]
+			SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.f).MaxWidth(1180.f)[ CreditsSheet ]
 		];
 	// No focus target: the front end itself takes the keys and scrolls.
 	E.Footer = PromptBar({ Prompt(TEXT("\u2191 \u2193"), TEXT("\u2191 \u2193"), TEXT("Scroll")), Prompt(TEXT("PgUp / PgDn"), TEXT("LB / RB"), TEXT("Page")),
@@ -2810,6 +2824,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	TOptional<FScopedPaper> PaperScope;   // the card is a sheet of chart paper (UI overhaul phase 2)
+	PaperScope.Emplace();
 	USailingSettings* S = USailingSettings::Get();
 	if (FirstQuality < 0) FirstQuality = int32(S->Quality);   // pre-picked from the GPU, as the settings already are
 #if PLATFORM_WINDOWS
@@ -2860,7 +2876,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Blue Heron Sailing School"), EType::Eyebrow, Accent) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 18.f)[ SailUI::Text(TEXT("Three things before your first job"), EType::CardTitleM, Fg, true) ]
 				+ SVerticalBox::Slot().AutoHeight()[ Quality ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 2.f, 16.f, 14.f)[ SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(TierLines[FMath::Clamp(FirstQuality, 0, 3)]); }).Font(Font(EType::Small)).ColorAndOpacity(Muted).AutoWrapText(true) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 2.f, 16.f, 14.f)[ SNew(STextBlock).Text_Lambda([this]() { return FText::FromString(TierLines[FMath::Clamp(FirstQuality, 0, 3)]); }).Font(Font(EType::Small)).ColorAndOpacity(OnSurface(Muted)).AutoWrapText(true) ]
 				+ SVerticalBox::Slot().AutoHeight()[ Sails ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 2.f, 16.f, 14.f)[ SailUI::Text(TEXT("Easy: the helm and trim help you, and she won't round up or lay over. You can switch any time in Settings. Gold medals need Realistic."), EType::Small, Muted, true) ]
 				+ SVerticalBox::Slot().AutoHeight()[ HelpChoice ]
@@ -2870,6 +2886,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildFirstLaunch()
 				FMargin(28.f))
 		]
 	];
+	PaperScope.Reset();
 	E.Focus = Start;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Change")) }, TEXT("All three can be changed later in Settings"));
 	return E;
@@ -2917,6 +2934,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConfirm()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	TOptional<FScopedPaper> PaperScope;   // the question is a slip of chart paper (UI overhaul phase 2)
+	PaperScope.Emplace();
 	TSharedRef<SSailButton> Yes = ActionButton(ConfirmYes, FSimpleDelegate::CreateLambda([this]() { TFunction<void()> Do = ConfirmAction; Pop(); if (Do) Do(); }));
 	TSharedRef<SSailButton> No = ActionButton(ConfirmNo.IsEmpty() ? FString(TEXT("Cancel")) : ConfirmNo,
 		FSimpleDelegate::CreateLambda([this]() { TFunction<void()> Do = ConfirmNoAction; Pop(); if (Do) Do(); }), false);
@@ -2934,6 +2953,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConfirm()
 				], FMargin(28.f))
 		]
 	];
+	PaperScope.Reset();
 	E.Focus = No;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Cancel")) }, FString());
 	return E;

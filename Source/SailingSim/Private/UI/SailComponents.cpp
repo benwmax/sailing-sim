@@ -158,6 +158,47 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildComponents()
 		+ SVerticalBox::Slot().AutoHeight()[ Text(TEXT("Ink on chart paper: 4.2 nautical miles, 10 knots from the south gusting 13, two tacks short of perfect."), EType::Body, PaperInk, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(TEXT("The quieter line on paper (PaperMuted)."), EType::Small, PaperMuted, true) ]
 	]);
+	AddThree(Section(TEXT("Widgets on paper")));
+	{
+		// Built inside an FScopedPaper, the same widgets and glass tokens are drawn for paper (SailUI::Surface).
+		const FScopedPaper Sheet;
+		const TSharedRef<float> PaperSlider = MakeShared<float>(40.f);
+		const TSharedRef<int32> PaperChoice = MakeShared<int32>(1);
+		AddThree(SNew(SBorder).BorderImage(Rounded(Paper, RadiusCard, PaperLine, 1.f)).Padding(FMargin(16.f))
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ Text(TEXT("Display"), EType::Eyebrow, Accent) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f)
+			[
+				SNew(SSailChoice).Label(TEXT("Interface")).Options({ TEXT("Helpful"), TEXT("Natural"), TEXT("Off") })
+				.Index_Lambda([PaperChoice]() { return *PaperChoice; })
+				.OnChanged_Lambda([PaperChoice](int32 I) { *PaperChoice = I; })
+				.Note(TEXT("A note in the quieter ink."))
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)
+			[
+				SNew(SSailSlider).Label(TEXT("Brightness")).Min(0.f).Max(100.f).Step(5.f)
+				.Value_Lambda([PaperSlider]() { return *PaperSlider; })
+				.ValueText_Lambda([PaperSlider]() { return FString::Printf(TEXT("%.0f%%"), *PaperSlider); })
+				.OnChanged_Lambda([PaperSlider](float V) { *PaperSlider = V; })
+			]
+			+ SVerticalBox::Slot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 8.f, 0.f)[ ActionButton(TEXT("Cast off"), FSimpleDelegate(), true) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ ActionButton(TEXT("Cancel"), FSimpleDelegate(), false) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 8.f, 0.f)[ Pill(TEXT("Lake"), false) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 8.f, 0.f)[ Pill(TEXT("New"), true) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 8.f, 0.f)[ KeyCap(TEXT("Enter"), TEXT("A")) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 12.f, 0.f)[ Text(TEXT("P  Port"), EType::Value, Port) ]
+				+ SHorizontalBox::Slot().AutoWidth()[ Text(TEXT("S  Starboard"), EType::Value, Starboard) ]
+			]
+		]);
+	}
 	AddThree(Section(TEXT("Interface mode")));
 	{
 		const EUiMode Now = UiMode();

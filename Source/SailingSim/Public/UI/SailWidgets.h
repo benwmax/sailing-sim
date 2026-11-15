@@ -52,6 +52,7 @@ private:
 	FSimpleDelegate OnClicked, OnFocused;
 	TDelegate<void(int32)> OnAdjust;
 	bool bPressed = false;
+	bool bPaper = false;   // built inside an FScopedPaper: drawn for a paper sheet
 };
 
 /** A labelled slider row: name, track, value; Left/Right step (key repeat holds), the mouse drags the track. */
@@ -88,6 +89,7 @@ private:
 	TDelegate<void(float)> OnChanged;
 	TSharedPtr<SWidget> Track;
 	bool bDragging = false;
+	bool bPaper = false;
 };
 
 /** A row of chips (one chosen): Left/Right cycles, click picks. */
@@ -113,6 +115,7 @@ private:
 	TAttribute<int32> Index;
 	TAttribute<bool> Enabled;
 	TDelegate<void(int32)> OnChanged;
+	bool bPaper = false;
 };
 
 namespace SailUI

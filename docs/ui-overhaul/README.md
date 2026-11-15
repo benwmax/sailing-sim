@@ -97,6 +97,32 @@ At 1920x1080 (`RESX=1920 RESY=1080 scripts/run-game.sh 6 -ForceRes -SailingNoGpu
 What to look for: text that no longer fits its box (the bigger type), the title's ten rows clear of the prompt bar, the
 paper label under the focused row with ink text, and nothing yellow except a caution.
 
+## Phase 2: menus on paper (first sheets)
+
+The mechanism (`SailUIStyle.h`): while a `SailUI::FScopedPaper` is alive, the shared widgets and text helpers built
+inside it are drawn for paper. Screens keep passing the glass tokens; `SailUI::Surface` turns each into its paper twin:
+
+| Glass | On paper |
+|---|---|
+| `Fg` | `PaperInk` |
+| `Muted`, `Dim` | `PaperMuted` |
+| `Accent` | `AccentDeep` |
+| `Ink`, `PanelSolid` (and `AccentInk`, the same ink) | `Paper` |
+| `Raise`, `Line` | `PaperRaise` `#E4DABD`, `PaperLine` |
+| `Port`, `Starboard`, `Warn` | `PaperPort` `#B3261F`, `PaperStarboard` `#17703F`, `PaperWarn` `#8A5200` (5.0:1 or better on paper) |
+
+A widget asks `OnPaper()` once, when it is constructed. Map a colour once only: ink and paper are each other's twins, so
+inside a scope never pass a paper token (`PaperInk`) to `SailUI::Text`, and give a hand-built `STextBlock`
+`OnSurface(<token>)`. A screen wraps only its sheet in the scope (a `TOptional<FScopedPaper>`, reset before the header,
+tabs and prompt bar are built): those stay on the glass over the water.
+
+On paper so far: Settings (the rows are one sheet with ruled rows, the help is a second sheet), the first-launch card,
+the confirm slip and the credits. The component page has a "Widgets on paper" section. Next: pause, briefing, quiz, the
+logbook and the set-up steps.
+
+Test: `SailingSim.UI.Overhaul.Paper` (the scope, nesting, every twin, opacity kept, 4.5:1 on paper). Extra still:
+`credits` (`-SailingFrontEnd=Credits`); `settings`, `first-launch` and `components` now show paper.
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

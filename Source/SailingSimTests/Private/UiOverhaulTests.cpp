@@ -106,3 +106,35 @@ bool FSailingUiOverhaulModeTest::RunTest(const FString&)
 	TestTrue(TEXT("The names"), FString(SailUI::UiModeName(SailUI::EUiMode::Natural)) == TEXT("Natural"));
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUiOverhaulPaperTest, "SailingSim.UI.Overhaul.Paper", SailUiOverhaulTestsLocal::OverhaulFlags)
+bool FSailingUiOverhaulPaperTest::RunTest(const FString&)
+{
+	using namespace SailUiOverhaulTestsLocal;
+	// Phase 2: inside an FScopedPaper the glass tokens are drawn as their paper twins, and only there.
+	TestFalse(TEXT("Not on paper by default"), SailUI::OnPaper());
+	TestTrue(TEXT("Off paper a token is itself"), SailUI::OnSurface(SailUI::Fg) == SailUI::Fg);
+	{
+		const SailUI::FScopedPaper Sheet;
+		TestTrue(TEXT("On paper inside the scope"), SailUI::OnPaper());
+		TestTrue(TEXT("Text is ink"), SailUI::OnSurface(SailUI::Fg) == SailUI::PaperInk);
+		TestTrue(TEXT("Quiet text is the quieter ink"), SailUI::OnSurface(SailUI::Muted) == SailUI::PaperMuted && SailUI::OnSurface(SailUI::Dim) == SailUI::PaperMuted);
+		TestTrue(TEXT("The accent is the deeper magenta"), SailUI::OnSurface(SailUI::Accent) == SailUI::AccentDeep);
+		TestTrue(TEXT("Ink (text on a chosen chip) is paper"), SailUI::OnSurface(SailUI::Ink) == SailUI::Paper);
+		TestTrue(TEXT("A token keeps its own opacity"), FMath::IsNearlyEqual(SailUI::OnSurface(SailUI::Accent.CopyWithNewOpacity(0.16f)).A, 0.16f));
+		{
+			const SailUI::FScopedPaper Glass(false);
+			TestFalse(TEXT("A nested glass scope"), SailUI::OnPaper());
+		}
+		TestTrue(TEXT("Back on paper after it"), SailUI::OnPaper());
+		// Every mapped colour reads on paper: text 4.5:1, the side colours and the warning too.
+		const FLinearColor* const Texts[] = { &SailUI::Fg, &SailUI::Muted, &SailUI::Dim, &SailUI::Accent, &SailUI::Port, &SailUI::Starboard, &SailUI::Warn };
+		for (const FLinearColor* T : Texts)
+		{
+			TestTrue(FString::Printf(TEXT("%s reads on paper"), *T->ToString()), Contrast(SailUI::OnSurface(*T), SailUI::Paper) >= 4.5);
+		}
+		TestTrue(TEXT("The main button's text on its fill"), Contrast(SailUI::OnSurface(SailUI::AccentInk), SailUI::OnSurface(SailUI::Accent)) >= 4.5);
+	}
+	TestFalse(TEXT("Off paper after the scope"), SailUI::OnPaper());
+	return true;
+}

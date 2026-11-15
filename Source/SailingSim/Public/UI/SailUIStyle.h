@@ -23,6 +23,25 @@ namespace SailUI
 		Land, Port, Starboard, Warn, WindTrue;
 	// Paper surfaces (the focus label, and the menus' sheets as they are converted), brass for medals, yellow for caution.
 	extern SAILINGSIM_API const FLinearColor Paper, PaperInk, PaperMuted, PaperLine, AccentDeep, Brass, Caution;
+	extern SAILINGSIM_API const FLinearColor PaperRaise, PaperPort, PaperStarboard, PaperWarn;
+
+	/**
+	 * Paper sheets (UI overhaul phase 2). While an FScopedPaper is alive, the shared widgets and text helpers built
+	 * inside it are drawn for paper: they are given the glass tokens as before and Surface() turns each into its paper
+	 * twin (Fg to ink, Muted to the quieter ink, Accent to the deeper magenta, Ink to paper, lines and raised fills to
+	 * their paper tints). A widget asks OnPaper() once, when it is constructed, and keeps the answer. Map a colour once
+	 * only: ink and paper are each other's twins, so a second pass would turn it back.
+	 */
+	SAILINGSIM_API bool OnPaper();
+	struct SAILINGSIM_API FScopedPaper
+	{
+		explicit FScopedPaper(bool bOn = true);
+		~FScopedPaper();
+	private:
+		bool bWas = false;
+	};
+	SAILINGSIM_API FLinearColor Surface(bool bPaper, const FLinearColor& Glass);
+	inline FLinearColor OnSurface(const FLinearColor& Glass) { return Surface(OnPaper(), Glass); }
 	FLinearColor Hex(uint32 RGB, float Alpha = 1.f);
 
 	// Type (3.2).

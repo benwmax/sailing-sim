@@ -28,6 +28,35 @@ namespace SailUI
 	// Paper: chart paper, ink, the chart's own magenta (deeper, for paper), brass for medals.
 	const FLinearColor Paper = Hex(0xF0E8D2), PaperInk = Hex(0x15222C), PaperMuted = Hex(0x4A5A64), PaperLine = Hex(0xCFC4A6),
 		AccentDeep = Hex(0xA62B6E), Brass = Hex(0xA98A44), Caution = Hex(0xF4C430);
+	// Paper's raised fill (a chip, a secondary button), and port, starboard and warning deep enough to read on paper.
+	const FLinearColor PaperRaise = Hex(0xE4DABD), PaperPort = Hex(0xB3261F), PaperStarboard = Hex(0x17703F), PaperWarn = Hex(0x8A5200);
+
+	namespace
+	{
+		bool GOnPaper = false;   // the game thread builds widgets; nothing else reads it
+		bool Same(const FLinearColor& A, const FLinearColor& B) { return A.R == B.R && A.G == B.G && A.B == B.B; }
+	}
+
+	bool OnPaper() { return GOnPaper; }
+	FScopedPaper::FScopedPaper(bool bOn) : bWas(GOnPaper) { GOnPaper = bOn; }
+	FScopedPaper::~FScopedPaper() { GOnPaper = bWas; }
+
+	FLinearColor Surface(bool bPaper, const FLinearColor& Glass)
+	{
+		if (!bPaper) return Glass;
+		// (Compared without alpha, so a token with its opacity changed still finds its twin and keeps that opacity.)
+		const float A = Glass.A;
+		if (Same(Glass, Fg)) return PaperInk.CopyWithNewOpacity(A);
+		if (Same(Glass, Muted) || Same(Glass, Dim)) return PaperMuted.CopyWithNewOpacity(A);
+		if (Same(Glass, Accent)) return AccentDeep.CopyWithNewOpacity(A);
+		if (Same(Glass, Ink) || Same(Glass, PanelSolid)) return Paper;   // (Panel is Ink with an opacity: a sheet is opaque)
+		if (Same(Glass, Raise)) return PaperRaise.CopyWithNewOpacity(A);
+		if (Same(Glass, Line)) return PaperLine.CopyWithNewOpacity(A);
+		if (Same(Glass, Port)) return PaperPort.CopyWithNewOpacity(A);
+		if (Same(Glass, Starboard)) return PaperStarboard.CopyWithNewOpacity(A);
+		if (Same(Glass, Warn)) return PaperWarn.CopyWithNewOpacity(A);
+		return Glass;
+	}
 
 	namespace
 	{
