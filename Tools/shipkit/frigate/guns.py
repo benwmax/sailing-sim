@@ -1548,12 +1548,9 @@ class Long24:
         nf = -EX                                                    # the side's inner face looks inboard
         eyes = {}
         for sd, sg in (("L", -1.0), ("R", 1.0)):
-            eyes["breeching_" + sd] = (np.array([-(so + sp_b["bar"] + sp_b["eye"]), sg * pl["breeching_bolt_y_in"],
-                                                 pl["breeching_bolt_z_in"]]), nf, EZ, sp_b)
-            eyes["tackle_" + sd] = (np.array([-(so + sp_t["bar"] + sp_t["eye"]), sg * pl["tackle_bolt_y_in"],
-                                              pl["tackle_bolt_z_in"]]), nf, EZ, sp_t)
-            eyes["housing_" + sd] = (np.array([-(so + sp_h["bar"] + sp_h["eye"]), sg * pl["housing_bolt_y_in"],
-                                               pl["housing_bolt_z_in"]]), nf, EY, sp_h)
+            for kind, sp, up in (("breeching", sp_b, EZ), ("tackle", sp_t, EZ), ("housing", sp_h, EY)):
+                y, z = bolt_at(pl, kind, sd)
+                eyes[kind + "_" + sd] = (np.array([-(so + sp["bar"] + sp["eye"]), sg * y, z]), nf, up, sp)
         x_tr = self.train_x(x_c["run_in"], pl)
         eyes["train"] = (np.array([x_tr, 0.0, so + sp_t["bar"] + sp_t["eye"]]), EZ, EX, sp_t)
         for nm, c_ in eye_at.items():
@@ -1586,7 +1583,10 @@ class Long24:
             c_, n_, up, sp = eyes["train"]
             M.cur = "ring"
             ring = ring_in(GPart() if dry else M, c_, holes["train"], n_, et - c_, sp)
-            out["train"] = tackle(M, ring, (et, A0["train_eye_n"], A0["eye_R"], A0["eye_bar"]), Lb, tk_r, r_h, EY,
+            # the train tackle's blocks lie flat, so its fall leaves the deck's block on one side (-y): rove the other
+            # way round where its coil lies on the other side (+y)
+            xt = EY if ty <= 0.0 else -EY
+            out["train"] = tackle(M, ring, (et, A0["train_eye_n"], A0["eye_R"], A0["eye_bar"]), Lb, tk_r, r_h, xt,
                                   coil_at["train"], coil_len["train"], r0, bodies=bodies, dry=dry, floor=floor,
                                   coils=coils)
             return out
@@ -1862,10 +1862,9 @@ class Carr32:
         nf = -EX
         eyes = {}
         for sd, sg in (("L", -1.0), ("R", 1.0)):
-            eyes["breeching_" + sd] = (np.array([-(so + sp_b["bar"] + sp_b["eye"]), sg * pl["breeching_bolt_y_in"],
-                                                 pl["breeching_bolt_z_in"]]), nf, EZ, sp_b)
-            eyes["tackle_" + sd] = (np.array([-(so + sp_t["bar"] + sp_t["eye"]), sg * pl["tackle_bolt_y_in"],
-                                              pl["tackle_bolt_z_in"]]), nf, EZ, sp_t)
+            for kind, sp in (("breeching", sp_b), ("tackle", sp_t)):
+                y, z = bolt_at(pl, kind, sd)
+                eyes[kind + "_" + sd] = (np.array([-(so + sp["bar"] + sp["eye"]), sg * y, z]), nf, EZ, sp)
         for nm, c_ in (eye_at or {}).items():
             eyes[nm] = (np.asarray(c_, float),) + eyes[nm][1:]
         irons = GPart()
@@ -2083,7 +2082,9 @@ SHIP_MEETS = {
     ("ringbolt", "BulwarkIn"): ("the carronades' ringbolts driven into the bulwark", 4.0),
     ("ringbolt", "GunDeck"): ("the train tackles' ringbolts driven into the gun deck", 3.0),
     ("fighting_bolt", "SparDeck"): ("the fighting bolt driven down through the chock into the deck", 4.5),
-    ("fighting_bolt", "Waterways"): ("the fighting bolt through the waterway's inner edge", 0.5),
+    ("fighting_bolt", "Waterways"): ("the fighting bolt driven down through the chock and the waterway's inner edge "
+                                     "into the deck (the period's way: guns_1797.json slide.chock), as deep in as its "
+                                     "own thickness where the waterway is wide", 1.8),
     ("fighting_bolt", "Carr32_Chocks"): ("the fighting bolt through its chock (the depth counts the chock's points "
                                          "inside the bolt)", 1.0),
     ("transom", "Carr32_Chocks"): ("the slide's front transom on its chock (the depth counts the chock's points inside "
@@ -2098,6 +2099,12 @@ SHIP_MEETS = {
     ("breeching", "GunDeck"): ("the housed and run-out long guns' breechings, slack in bights on the deck", 0.3),
     ("breeching", "SparDeck"): ("the run-out carronades' breechings, slack on the deck", 0.3),
 }
+
+
+def bolt_at(pl, kind, s2):
+    """a ringbolt's (y, z) in its gun's port frame (inches) from a placement: kind_bolt_y_in and kind_bolt_z_in, or the
+    one bolt's own (kind_L_y_in, kind_R_z_in and so on: a port override for the bolt on one side of the port)"""
+    return (pl.get(f"{kind}_{s2}_y_in", pl[f"{kind}_bolt_y_in"]), pl.get(f"{kind}_{s2}_z_in", pl[f"{kind}_bolt_z_in"]))
 
 
 def allowed(table, a, b):
@@ -2209,21 +2216,23 @@ class Guns:
                 out[k] = z0 - hit[3] / IN
         return out
 
-    def reach(self, deck, P, x0, ports=None):
+    def reach(self, deck, P, x0, ports=None, back=100.0):
         """how far points P (inches, a port's frame, placed x0 further in along X) may go out along X before one meets
-        the side, the least over the ports (every one if None) and both sides (y mirrored), and where (the port and
-        the point, in the starboard port's frame)"""
+        the side (less than nothing if one already stands past the side's face), the least over the ports (every one
+        if None) and both sides (y mirrored), and where (the port and the point, in the starboard port's frame). Each
+        ray starts back inches further in, so a point placed past the face (a housed muzzle under a port's head where
+        the side leans in) still finds it"""
         best, at = np.inf, None
         Q = np.concatenate([P, P * np.array([1.0, -1.0, 1.0])]) + np.array([x0, 0.0, 0.0])
         for i, (T, _) in self.frames[deck].items():
             if ports is not None and i not in ports:
                 continue
-            O = pts(T, I(Q))
+            O = pts(T, I(Q - np.array([back, 0.0, 0.0])))
             X = T[:3, 0].tolist()
             for k, o in enumerate(O):
-                hit = self.side[deck].ray_cast(o.tolist(), X, 3.0)
-                if hit[0] is not None and hit[3] / IN < best:
-                    best, at = hit[3] / IN, (i, np.round(Q[k] - [x0, 0, 0], 2).tolist())
+                hit = self.side[deck].ray_cast(o.tolist(), X, 3.0 + back * IN)
+                if hit[0] is not None and hit[3] / IN - back < best:
+                    best, at = hit[3] / IN - back, (i, np.round(Q[k] - [x0, 0, 0], 2).tolist())
         return best, at
 
     def head(self, i):
@@ -2245,14 +2254,19 @@ class Guns:
                 hi = m
         return hi
 
-    def pl24(self, i):
-        """the gun deck's placement at port i: the common values and the port's own (port_overrides)"""
-        pl = self.c["placement"]["gun_deck"]
+    def placement(self, deck, i, sd=None):
+        """a deck's placement at port i: the common values and the port's own (port_overrides). An override that names
+        its sides ("S", "P") is for those guns' gear only (sd: the gun's side; without one, the values both guns of
+        the port share)"""
+        pl = self.c["placement"][deck]
         out = {k: v for k, v in pl.items() if k != "port_overrides"}
         for o in pl.get("port_overrides", []):
-            if i in o["ports"]:
-                out.update({k: v for k, v in o.items() if k not in ("ports", "why")})
+            if i in o["ports"] and ("sides" not in o or sd in o["sides"]):
+                out.update({k: v for k, v in o.items() if k not in ("ports", "sides", "why")})
         return out
+
+    def pl24(self, i, sd=None):
+        return self.placement("gun_deck", i, sd)
 
     # --- placing them -------------------------------------------------------------------------------------------
     def fit_irons(self, deck, i, sd, bolts, train=None):
@@ -2339,12 +2353,13 @@ class Guns:
                         "head_in": round(head, 2), "housed_muzzle_top_in": round(top, 2),
                         "muzzle_ref_in": round(min(ref), 2), "trucks_deck_off_in": [round(min(dev), 3), round(max(dev), 3)]}
             for sd in ("S", "P"):
+                pls = self.pl24(i, sd)
                 bolts = {}
                 for s2 in ("L", "R"):
-                    bolts["breeching_" + s2] = (pl["breeching_bolt_y_in"], pl["breeching_bolt_z_in"], ir["ringbolt24"], EZ)
-                    bolts["tackle_" + s2] = (pl["tackle_bolt_y_in"], pl["tackle_bolt_z_in"], ir["tackle_ring24"], EZ)
-                    bolts["housing_" + s2] = (pl["housing_bolt_y_in"], pl["housing_bolt_z_in"], ir["housing24"], EY)
-                eyes, depth, fit = self.fit_irons("gun_deck", i, sd, bolts, (g.train_x(x_in, pl), ir["tackle_ring24"]))
+                    bolts["breeching_" + s2] = bolt_at(pls, "breeching", s2) + (ir["ringbolt24"], EZ)
+                    bolts["tackle_" + s2] = bolt_at(pls, "tackle", s2) + (ir["tackle_ring24"], EZ)
+                    bolts["housing_" + s2] = bolt_at(pls, "housing", s2) + (ir["housing24"], EY)
+                eyes, depth, fit = self.fit_irons("gun_deck", i, sd, bolts, (g.train_x(x_in, pls), ir["tackle_ring24"]))
                 self.g24[(i, sd)] = {"eyes": eyes, "depth": depth, "fit": fit}
         self.info["long24"] = {"ports": ports, "irons_off_face_in": {f"{sd}{i:02d}": G["fit"]
                                                                      for (i, sd), G in sorted(self.g24.items())}}
@@ -2499,10 +2514,11 @@ class Guns:
         self.c32 = {}
         for i in ports:
             for sd in ("S", "P"):
+                pls = self.placement("spar_deck", i, sd)
                 bolts = {}
                 for s2 in ("L", "R"):
-                    bolts["breeching_" + s2] = (pl["breeching_bolt_y_in"], pl["breeching_bolt_z_in"], sp_b, EZ)
-                    bolts["tackle_" + s2] = (pl["tackle_bolt_y_in"], pl["tackle_bolt_z_in"], sp_t, EZ)
+                    bolts["breeching_" + s2] = bolt_at(pls, "breeching", s2) + (sp_b, EZ)
+                    bolts["tackle_" + s2] = bolt_at(pls, "tackle", s2) + (sp_t, EZ)
                 eyes, depth, fit = self.fit_irons("spar_deck", i, sd, bolts)
                 self.c32[(i, sd)] = {"eyes": eyes, "depth": depth, "fit": fit}
         lo = min(G[:, :, 2].min() for G in self.chock_plans.values())
@@ -2577,7 +2593,7 @@ class Guns:
         self.gear, self.rig24, self.rig32 = {}, {}, {}
         for (i, sd), G in sorted(self.g24.items()):
             gid = f"Gun24_{sd}{i:02d}"
-            gear, irons, info = g.rig(self.x24[i], self.pl24(i), ir, G["depth"], G["eyes"],
+            gear, irons, info = g.rig(self.x24[i], self.pl24(i, sd), ir, G["depth"], G["eyes"],
                                       self.deck_field("gun_deck", i, sd), self.elev24)
             self.rig24[(i, sd)] = info
             for pose in POSES24:
@@ -2585,10 +2601,9 @@ class Guns:
                 M[gid + "_Gear" + TAG[pose]] = scaled(gear[pose], IN)
             self.gear[(gid, "irons")] = irons
             M[gid + "_Irons"] = scaled(irons, IN)
-        pl = self.c["placement"]["spar_deck"]
         for (i, sd), G in sorted(self.c32.items()):
             gid = f"Carr32_{sd}{i:02d}"
-            gear, irons, info = k.rig(self.x_f[i], self.x_bed, pl, ir, G["depth"], G["eyes"],
+            gear, irons, info = k.rig(self.x_f[i], self.x_bed, self.placement("spar_deck", i, sd), ir, G["depth"], G["eyes"],
                                       floor=self.deck_field("spar_deck", i, sd))
             self.rig32[(i, sd)] = info
             for pose in POSES32:

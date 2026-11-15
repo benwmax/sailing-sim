@@ -205,7 +205,7 @@
    "train_span_in": 36.0,
    "coil_in": [-24.0, 40.0],
    "train_coil_in": [10.0, -18.0],
-   "note": "a long 24-pounder in each gun deck port but the bridle port at the bow (15: a chase port the foremost guns were shifted into, too far forward to house a gun in), 14 a side. Three poses. Housed for sea (shown): the lids shut, each gun hauled out with the quoin out until its muzzle comes up against the port's upper sill from inside (housed_gap_in off the side above the sill), the breech down on the bed (carriage24.breech_on_bed_deg), the muzzle lashed to the two housing bolts over the port (housing_bolt_y_in either side of the port's middle at housing_bolt_z_in), the side tackles and train tackle hooked and hauled; the breeching's slack hangs, its length set by the recoil. Run in: where the gun recoils to and is loaded, the breeching taut, the barrel level on its quoin and its muzzle muzzle_inboard_in inside the port's inner face. Run out: the carriage's front run_out_gap_in off the side (the lid open: guns.json lid_open_deg). Each port's frame: X out of the side square to its inner face at ring_height over the deck, Z square to the deck under the gun's trucks (a plane fitted to it in every pose); a ringbolt each side of the port for the breeching (breeching_bolt_y out from the port's middle) and one further out for the side tackle, the train tackle's ringbolt in the deck train_span inboard of the carriage's back when run in; each gun's ringbolts are fitted to its own side and deck (their eyes irons.standoff_in off it where they come nearest). Each side tackle's fall is coiled down on the deck at coil_in (x along the port's X from the side's inner face, y out from the port's middle), clear of the waterway slice 12 will lay along the side, the train tackle's at train_coil_in from its ringbolt; every gun's gear is laid on its own deck (its falls, coils and the breeching's bights: guns.coils_on_deck). port_overrides: ports whose gear lies differently (with what differs there)",
+   "note": "a long 24-pounder in each gun deck port but the bridle port at the bow (15: a chase port the foremost guns were shifted into, too far forward to house a gun in), 14 a side. Three poses. Housed for sea (shown): the lids shut, each gun hauled out with the quoin out until its muzzle comes up against the port's upper sill from inside (housed_gap_in off the side above the sill), the breech down on the bed (carriage24.breech_on_bed_deg), the muzzle lashed to the two housing bolts over the port (housing_bolt_y_in either side of the port's middle at housing_bolt_z_in), the side tackles and train tackle hooked and hauled; the breeching's slack hangs, its length set by the recoil. Run in: where the gun recoils to and is loaded, the breeching taut, the barrel level on its quoin and its muzzle muzzle_inboard_in inside the port's inner face. Run out: the carriage's front run_out_gap_in off the side (the lid open: guns.json lid_open_deg). Each port's frame: X out of the side square to its inner face at ring_height over the deck, Z square to the deck under the gun's trucks (a plane fitted to it in every pose); a ringbolt each side of the port for the breeching (breeching_bolt_y out from the port's middle) and one further out for the side tackle, the train tackle's ringbolt in the deck train_span inboard of the carriage's back when run in; each gun's ringbolts are fitted to its own side and deck (their eyes irons.standoff_in off it where they come nearest). Each side tackle's fall is coiled down on the deck at coil_in (x along the port's X from the side's inner face, y out from the port's middle), clear of the waterway slice 12 will lay along the side, the train tackle's at train_coil_in from its ringbolt; every gun's gear is laid on its own deck (its falls, coils and the breeching's bights: guns.coils_on_deck). port_overrides: ports whose gear lies differently (with what differs there; one that names its sides is for those guns only, a starboard gun's aft being its +y and a port gun's its -y)",
    "housing_bolt_y_in": 9.0,
    "housing_bolt_z_in": 58.5,
    "housed_gap_in": 0.5,
@@ -217,13 +217,21 @@
    "port_overrides": [
     {
      "ports": [7],
-     "train_coil_in": [-14.0, 0.0],
-     "why": "the quarterdeck's ladders come down to the gun deck beside gun 7: its train tackle's fall is coiled straight inboard of its ringbolt, under the ladder and clear of its foot (on the gun's left, the common place, the starboard gun's coil lies under the starboard ladder's foot; on its right the port gun's would)"
+     "sides": ["S"],
+     "train_coil_in": [-14.0, 8.0],
+     "why": "the quarterdeck's ladders come down to the gun deck beside gun 7, their feet just forward of its train tackle's ringbolt (on the gun's left, the common place, the starboard gun's coil would lie on the starboard ladder's foot; on its right the port gun's would): its fall is coiled inboard of its ringbolt and a little aft, under the ladder where it stands clear over the coil. The starboard gun's aft is its +y"
+    },
+    {
+     "ports": [7],
+     "sides": ["P"],
+     "train_coil_in": [-14.0, -8.0],
+     "why": "as the starboard gun 7's: the port gun's aft is its -y"
     },
     {
      "ports": [14],
-     "train_coil_in": [-14.0, 0.0],
-     "why": "the foremost port: its train tackle's fall is coiled straight inboard of its ringbolt, clear of the foremast"
+     "sides": ["S"],
+     "train_coil_in": [10.0, 18.0],
+     "why": "the foremost port, the foremast just forward of its guns and the ship so narrow there that the two guns' train coils, laid straight inboard, would meet on the centreline: each gun's coil lies aft of its train tackle, the common place for the port gun (its -y is aft) and this, its mirror, for the starboard gun"
     }
    ]
   },
@@ -237,10 +245,24 @@
    "run_out_gap_in": 1.0,
    "recoil_in": 30.0,
    "coil_in": [-20.0, 36.0],
-   "note": "a carronade in each quarterdeck and forecastle port but the foremost (4 ft 6 in wide, a chase port for a long gun shifted forward), 11 a side, run out; the breeching's ringbolt beside each port and the side tackle's further out and lower, far enough from the bed's eyebolt that the tackle's two blocks fit between them when it is run out. recoil: how far the bed runs in along the slide before the breeching brings it up. The slides are trained with handspikes under their trucks (no training tackles drawn); each side tackle's fall coiled down at coil_in, inboard of the waterway, on its own gun's deck; ring_height between the two ringbolts' heights, which lie close together so the bulwark's lean, which differs from port to port, moves them little (the eyes stand within about an inch of the side at every port)",
+   "note": "a carronade in each quarterdeck and forecastle port but the foremost (4 ft 6 in wide, a chase port for a long gun shifted forward), 11 a side, run out; the breeching's ringbolt beside each port and the side tackle's further out and lower, far enough from the bed's eyebolt that the tackle's two blocks fit between them when it is run out. recoil: how far the bed runs in along the slide before the breeching brings it up. The slides are trained with handspikes under their trucks (no training tackles drawn); each side tackle's fall coiled down at coil_in, inboard of the waterway, on its own gun's deck; ring_height between the two ringbolts' heights, which lie close together so the bulwark's lean, which differs from port to port, moves them little (the eyes stand within about an inch of the side at every port). port_overrides: ports whose gear lies differently (a key such as tackle_L_z_in sets one ringbolt's height: L the bolt at -y)",
    "poses": [
     "run_out",
     "recoil"
+   ],
+   "port_overrides": [
+    {
+     "ports": [8],
+     "sides": ["S"],
+     "tackle_L_z_in": 21.0,
+     "why": "the main course's sheet and tack belay to kevels on the bulwark just forward of port 8 (slice 6), where the forward side tackle's ringbolt goes: it stands higher there, clear over the kevel (the starboard gun's forward bolt is its L, at -y)"
+    },
+    {
+     "ports": [8],
+     "sides": ["P"],
+     "tackle_R_z_in": 21.0,
+     "why": "as the starboard gun 8's: the port gun's forward bolt is its R, at +y"
+    }
    ]
   }
  }
