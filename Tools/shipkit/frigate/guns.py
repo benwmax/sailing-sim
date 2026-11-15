@@ -557,11 +557,33 @@ def _keep_lengths(P, seg):
         P[i + 1] -= wb[:, None] * c
 
 
-def hang(A, B, L, r, bodies, n=56, iters=900, bias=None, g=None, start=None):
+def hang(A, B, L, r, bodies, n=56, iters=900, bias=None, g=None, start=None, exact=None):
     """a slack rope of length L from A to B under gravity (g: the down direction, a step per iteration), resting on what
     it meets (bodies: the deck among them) and pushed by bias (a small sideways step, so a bight lies to one side):
     position-based dynamics, the segments kept their length (a last settling without gravity or bias puts it back
-    to its length where pushing stretched it). start: the first guess (n points)"""
+    to its length where pushing stretched it). start: the first guess (n points). A rope hung nearly taut still
+    comes out stretched (2 in on a 98-in breeching's leg): exact (in), if given, is how near L its drawn length must
+    come, the rope hung again from where it lies, asked shorter by what it came out too long (a secant step after the
+    first), up to four times, the nearest kept"""
+    P = _hang(A, B, L, r, bodies, n, iters, bias, g, start)
+    if exact is None:
+        return P
+    asks, got, best = [L], [length(P)], P
+    for _ in range(4):
+        if abs(got[-1] - L) <= exact:
+            break
+        s = 1.0
+        if len(asks) > 1 and abs(asks[-1] - asks[-2]) > 1e-6:
+            s = min(max((got[-1] - got[-2]) / (asks[-1] - asks[-2]), 0.2), 1.5)
+        asks.append(asks[-1] - (got[-1] - L) / s)
+        Q = _hang(A, B, asks[-1], r, bodies, n, max(iters // 3, 200), bias, g, best)
+        got.append(length(Q))
+        if abs(got[-1] - L) < abs(length(best) - L):
+            best = Q
+    return best
+
+
+def _hang(A, B, L, r, bodies, n, iters, bias, g, start):
     A, B = np.asarray(A, float), np.asarray(B, float)
     g = -EZ * 0.004 if g is None else g
     seg = L / (n - 1)
@@ -1637,7 +1659,7 @@ class Long24:
                         raise SystemExit(f"guns: the long gun's breeching is too short for it to stand {pose}")
                     bodies = self.bodies(x_c[pose], elev[pose]) + [Plane([0, 0, 0], -EX)]
                     leg = hang(s0, ho, Lleg, rb_r, [deck] + bodies, n=72, iters=1200,
-                               bias=sg * EY * 0.004 - EX * 0.012, g=-EZ * 0.12)
+                               bias=sg * EY * 0.004 - EX * 0.012, g=-EZ * 0.12, exact=0.1)
                 parts.append((cl, leg, ho))
             (clL, legL, hoL), (clR, legR, hoR) = parts
             thru = {sd: np.concatenate([rims[sd]["out"][::-1], rims[sd]["in"]]) for sd in ("L", "R")}
@@ -1954,9 +1976,9 @@ class Carr32:
                 cl = ends(M, pose, 0.2)
                 spare = total - length(cl["L"]) - length(cl["R"]) - legs_len["L"] - legs_len["R"]
                 legL = hang(cl["L"][-1], L_, legs_len["L"] + spare / 2, rb_r, [deck] + bodies, n=56,
-                            iters=1000, bias=-EY * 0.002 - EX * 0.05, g=-EZ * 0.1)
+                            iters=1000, bias=-EY * 0.002 - EX * 0.05, g=-EZ * 0.1, exact=0.1)
                 legR = hang(cl["R"][-1], L_, legs_len["R"] + spare / 2, rb_r, [deck] + bodies, n=56,
-                            iters=1000, bias=EY * 0.002 - EX * 0.05, g=-EZ * 0.1)
+                            iters=1000, bias=EY * 0.002 - EX * 0.05, g=-EZ * 0.1, exact=0.1)
             rope = np.concatenate([cl["L"], legL[1:], legR[::-1][1:-1], cl["R"][::-1]])
             M.cur = "breeching"
             tube(M, rope, rb_r, ROPE, n=10)

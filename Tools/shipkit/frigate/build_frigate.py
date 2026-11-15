@@ -1066,6 +1066,13 @@ OFF_DECK = {k: {kk: vv for kk, vv in v.items() if kk != "by_gun"} for k, v in GN
 if OFF_DECK:
     raise SystemExit("a coil lies more than 0.08 in off its gun's deck (build.json guns.coils_on_deck): " +
                      json.dumps(OFF_DECK))
+# a breeching is one rope: as drawn, as long in every pose (its hanging legs take up what its middle gives)
+STRETCHED = {f"{kind} {gid}": {p: v["length_in"] for p, v in by_pose.items()}
+             for kind, by_gun in stats["guns"]["breeching_in"].items() for gid, by_pose in by_gun.items()
+             if max(v["length_in"] for v in by_pose.values()) - min(v["length_in"] for v in by_pose.values()) > 0.3}
+if STRETCHED:
+    raise SystemExit("a breeching is drawn more than 0.3 in longer in one pose than another (build.json "
+                     "guns.breeching_in): " + json.dumps(STRETCHED))
 if SAIL_ROOM["through"] or SAIL_ROOM["set_sails_meet"]:
     raise SystemExit("sails meet the ship or each other (build.json sails.room): " +
                      json.dumps({"through": SAIL_ROOM["through"], "set_sails_meet": SAIL_ROOM["set_sails_meet"]}))
