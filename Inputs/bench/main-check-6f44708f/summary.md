@@ -24,3 +24,14 @@ The log has:
 - the two ensures every launch has (PSO precache, DoubleFloat origin on the first frame);
 - the older cook gap, unchanged: `M_BowWave`, 45 `/Game/Audio/Pack` sounds and the Catalina tiller extensions are not
   in the package (see main-check-7cfcaae2).
+
+## Full suite (job 4, after #703; Nov 15)
+
+Before the suite I rebuilt on clean 6f44708f: Succeeded, 0 errors, 0 warnings in our Source.
+
+`test.ps1`, default filter SailingSim: **344 passed, 0 failed, 30 with warnings, 0 not run, 149 min.**
+
+These are the same tests with warnings as on 7cfcaae2's suite (main-check-7cfcaae2, all reasons there), with one
+difference. The engine's blocked HTTP probe (`generate_204`) landed on Fleet.Polar.J22 this time, instead of
+Fleet.Polar.ILCA7 and Physics.LeewayAndWeatherHelm, so there are 30 warned tests rather than 31. There are no new
+failures and no new kinds of warning.
