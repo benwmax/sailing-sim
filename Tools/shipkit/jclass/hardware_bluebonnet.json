@@ -1,0 +1,320 @@
+{
+ "about": "Bluebonnet's deck hardware (docs/jclass-8), built by hardware.py: the stem head fitting, the mooring cleats and their fairleads, the cowl vents (standing in harbour, struck and capped at sea), the deck prisms, the anchor stowed on deck with its chain pipe, the side and stern lights, the ensign staff and ensign, and the club burgee at the masthead. The genoa's and staysail's sheet tracks are running_bluebonnet.json's (their cars carry slice 7's lead blocks). Our own sizes and layout, in the manner of the 1934-37 Js: cast bronze fittings, teak chocks and light boards, an iron anchor. Each piece's place was chosen clear of what lies on deck in every suit (the sail bags, the lowered headsails' heaps, the stowed pole, the coils and the let-off runners): the build checks it. Plan points are (x forward, y to starboard) in metres in the hull's frame; a pair given for starboard is mirrored to port.",
+ "material": {
+  "note": "kg per cubic metre. Bronze is rig_bluebonnet.json's (8,800), teak deck_bluebonnet.json's (650 to 700: we take 700 for the chocks and boards, as the winch pads), iron cast and galvanised 7,850, glass 2,500, spruce for the burgee stick 450. Thin castings (the cowls, the lanterns) are weighed as their skin times a wall 'wall' m thick. Bunting is 0.2 kg per square metre of flag, our estimate for wool bunting.",
+  "teak": 700.0,
+  "iron": 7850.0,
+  "glass": 2500.0,
+  "spruce": 450.0,
+  "wall": 0.004,
+  "bunting_kg_m2": 0.2
+ },
+ "stem_head": {
+  "note": "A bronze casting over the deck's tip, forward of 'from_x', taking both ends of the toe rail (which stop at x 18.51) and cast round the forestay's plate and the forward end of its flange: its plan is the deck's edge 'inset' m inboard, its top 'height' m above the deck's centreline with its edges rounded off by 'bevel', and its tip rounded where the deck is 'tip_half_width' m wide. Over the rail's ends its after part rises so its top, less the rounding, stands 'over_rail' m above the rail's top, easing down to 'height' over 'rise_length' m forward of them. Its top stays under the forestay's toggle (the build checks the room). Weighed as a casting with walls 'wall' m thick.",
+  "from_x": 18.45,
+  "height": 0.068,
+  "inset": 0.004,
+  "bevel": 0.014,
+  "tip_half_width": 0.012,
+  "over_rail": 0.004,
+  "rise_length": 0.06,
+  "wall": 0.012
+ },
+ "cleats": {
+  "note": "Bronze mooring cleats (winches.py's horn cleat at a mooring size): 'at' the starboard one's plan point, 'deg' its horns' heading from forward (to starboard positive, mirrored to port), each paired with the fairlead 'fairlead' (x on the toe rail) its line leads through. Sizes as running_bluebonnet.json's cleats.",
+  "size": {
+   "L": 0.45,
+   "h_under": 0.068,
+   "h_top": 0.102,
+   "half_w": 0.021,
+   "foot_x": 0.092
+  },
+  "places": {
+   "Bow": {
+    "at": [
+     16.3,
+     0.85
+    ],
+    "deg": 10.0,
+    "fairlead": 16.8
+   },
+   "Spring": {
+    "at": [
+     8.0,
+     2.5
+    ],
+    "deg": 4.0,
+    "fairlead": 8.6
+   },
+   "Quarter": {
+    "at": [
+     -19.95,
+     0.62
+    ],
+    "deg": -20.0,
+    "fairlead": -20.55
+   }
+  }
+ },
+ "fairlead": {
+  "note": "A closed bronze fairlead on the toe rail's top (a fixed chock), cast along the rail as it curves and rises: a base 'length' m along the rail and 'width' m across it (inside the rail's 45 mm top, so it beds on it), let 'let_in' m into the rail, and over it a ring round the line's hole, 'height' m above the rail's top and a millimetre inside the base's sides; the hole ('hole_length' by 'hole_height', its centre 'hole_up' above the rail's top) bored through the ring athwartships, skewed toward the line's cleat.",
+  "length": 0.24,
+  "height": 0.085,
+  "width": 0.04,
+  "hole_length": 0.13,
+  "hole_height": 0.042,
+  "hole_up": 0.04,
+  "let_in": 0.01
+ },
+ "cowls": {
+  "note": "Bronze cowl vents over the fo'c'sle and the after accommodation, painted red inside. In harbour (the suits in 'standing_in') each stands in its flange with its mouth turned aft: a flange on the deck 'flange_r' m round, a pipe 'pipe_r' m (outer) 'rise' m up, a bend of 'bend_r' m (its centreline) to level, and the bell 'bell_length' m long flaring to 'mouth_r'. Racing, the cowls were struck below so the sheets and the headsails' feet could not foul them, and each flange closed with a screw cap: in the other suits only the flanges and caps show. Weighed as their skin times the wall (the flange as the ring less its bore). 'at' the starboard one's plan point, 'deg' the mouth's heading from forward.",
+  "flange_r": 0.1,
+  "pipe_r": 0.062,
+  "rise": 0.26,
+  "bend_r": 0.11,
+  "bell_length": 0.13,
+  "mouth_r": 0.12,
+  "places": {
+   "Forward": {
+    "at": [
+     12.55,
+     0.62
+    ],
+    "deg": 180.0
+   },
+   "Aft": {
+    "at": [
+     -3.55,
+     0.85
+    ],
+    "deg": 180.0
+   }
+  },
+  "standing_in": [
+   "Moored"
+  ]
+ },
+ "deck_prisms": {
+  "note": "Deck prisms over the cabins, the Victorian kind still let into yachts' decks in the 1930s: a glass prism set in the planking, its flat top 'top' (length along the planks, width) m flush with the deck ('proud' m above it at every point, following the deck's camber and sheer), its pendant a ridge 'pendant' m below the deck's top (under the 44 mm planking) that spreads the daylight below. Starboard plan points, mirrored to port.",
+  "top": [
+   0.15,
+   0.1
+  ],
+  "proud": 0.001,
+  "pendant": 0.085,
+  "at": [
+   [
+    11.9,
+    0.62
+   ],
+   [
+    8.3,
+    0.75
+   ],
+   [
+    -1.7,
+    1.5
+   ],
+   [
+    -18.2,
+    0.9
+   ]
+  ]
+ },
+ "anchor": {
+  "note": "A fisherman's (yachtsman's) anchor stowed flat on the port foredeck, its stock folded down beside the shank from the bolt it pivots on at the shank's head, on two teak chocks and lashed to them: our sizes for a kedge of about 70 kg (the build weighs it from its geometry; the bower and her chain went below, in 'ground_tackle'). 'crown' the crown's plan point, the shank 'shank_length' m forward of it (to its eye) at heading 'deg' from forward, its section 'shank_section' (width, depth) at the crown and at the eye; the arms a circle 'arm_radius' m round from the crown to 'arm_deg' each side, their section 'arm_section'; the palms 'palm' (length along the arm, width, thickness); the stock 'stock' (length, radius, ball radius) beside the shank 'stock_off' m to port, resting on the forward chock; the ring 'ring' (radius, bar radius). The arms lie level, the shank's line 'lie_height' m above the deck (the palms stand across the arms and must clear it: the build measures the lowest iron). Chocks 'chocks' (s along the shank, length, width, set over toward the stock by 'offset', and the s of the lashing over the shank and stock, rove through a hole in the chock): their tops are saddled 2 mm to the shank.",
+  "crown": [
+   14.0,
+   -1.22
+  ],
+  "deg": 0.0,
+  "shank_length": 1.5,
+  "shank_section": [
+   [
+    0.064,
+    0.054
+   ],
+   [
+    0.044,
+    0.04
+   ]
+  ],
+  "arm_radius": 0.5,
+  "arm_deg": 68.0,
+  "arm_section": [
+   [
+    0.052,
+    0.046
+   ],
+   [
+    0.034,
+    0.03
+   ]
+  ],
+  "palm": [
+   0.21,
+   0.15,
+   0.016
+  ],
+  "stock": [
+   1.28,
+   0.021,
+   0.032
+  ],
+  "stock_off": 0.085,
+  "ring": [
+   0.1,
+   0.016
+  ],
+  "lie_height": 0.13,
+  "chocks": [
+   [
+    0.17,
+    0.2,
+    0.26,
+    -0.04,
+    0.22
+   ],
+   [
+    1.12,
+    0.14,
+    0.26,
+    -0.04,
+    1.12
+   ]
+  ],
+  "lashing_d": 0.012
+ },
+ "chain_pipe": {
+  "note": "The chain pipe the cable goes below by, capped with the anchor stowed: a bronze flange 'flange_r' round with a neck 'neck_r' and a domed cap, 'height' m above the deck.",
+  "at": [
+   15.92,
+   -0.82
+  ],
+  "flange_r": 0.095,
+  "neck_r": 0.062,
+  "height": 0.055
+ },
+ "sidelights": {
+  "note": "The side lights (green to starboard, red to port), each a bronze lantern with a coloured lens from right ahead to 'arc_deg' outboard (22.5 degrees abaft the beam), on a teak light board standing on two bronze brackets by the rail just forward of the shrouds. The board runs forward 'board' (length, height, thickness) from just abaft the lantern, reaching more than three feet forward of the lens (the International Regulations of 1910, in force in 1937: inboard screens 'projecting at least three feet forward from the light, so as to prevent these lights from being seen across the bow'), its outboard face 'board_in' m inboard of the lamp, the lantern's back against it on a bronze plate. The build casts rays from each lamp to measure what it shows. 'at' the starboard lamp's x and its distance 'from_sheer' inboard of the sheer, 'lamp_up' its height above the deck; the lantern 'lantern' (radius, height), the lens 'lens_h' high. The build checks the screen: from a flame 'flame_d' m across (a one-inch wick) no light may show more than 'cutoff_deg' across the bow past the board, and the lights' arcs are the 1910 rules' (fixed in the check, not read from here).",
+  "at_x": 4.4,
+  "from_sheer": 0.13,
+  "lamp_up": 0.22,
+  "arc_deg": 112.5,
+  "board": [
+   1.1,
+   0.3,
+   0.022
+  ],
+  "board_in": 0.074,
+  "board_bottom": 0.07,
+  "lantern": [
+   0.068,
+   0.15
+  ],
+  "lens_h": 0.09,
+  "flame_d": 0.025,
+  "cutoff_deg": 6.0
+ },
+ "stern_light": {
+  "note": "The white stern light, showing 'arc_deg' (twelve points) about right astern, the arc the side lights leave dark (the 1910 rules' Article 10 let a vessel carry it in place of showing a light to one overtaking her), a lantern like the side lights' on a short bronze standard 'post' (radius, flange radius) on the counter, its lamp 'lamp_up' above the deck: as low as clears the toe rail, to keep it near the side lights' height (the sheer's rise still puts it higher); 'at' its plan point.",
+  "at": [
+   -20.92,
+   -0.36
+  ],
+  "lamp_up": 0.16,
+  "arc_deg": 135.0,
+  "post": [
+   0.018,
+   0.05
+  ]
+ },
+ "ensign": {
+  "note": "The ensign staff's bronze socket on the counter (always), and in harbour (the Moored suit) the staff in it, raked 'rake_deg' aft, 'staff' (length, radius at the foot, at the head) with a gilt ball 'truck_r', flying a 48-star United States ensign 'fly' by 'hoist' m (the flag's proportions, 1.9 to 1; the fly the usual inch per foot of her length, 131 inches) streaming aft, its hoist from 'below_truck' m under the ball, 2 mm off the staff. The socket 'socket' (radius, flange radius, height).",
+  "at": [
+   -20.92,
+   0.36
+  ],
+  "rake_deg": 10.0,
+  "socket": [
+   0.038,
+   0.065,
+   0.12
+  ],
+  "staff": [
+   3.2,
+   0.03,
+   0.018
+  ],
+  "truck_r": 0.03,
+  "fly": 3.33,
+  "hoist": 1.75,
+  "below_truck": 0.05,
+  "wave": [
+   0.08,
+   1.3
+  ],
+  "droop": 0.2
+ },
+ "burgee": {
+  "note": "The club burgee on a spruce stick on the mast's truck: the stick 'stick' (length, radius at the foot, at the head) up the mast's line, a bronze spindle 'spindle' (length, radius) turning in its head with the burgee's hoist laced along it (so the burgee swings clear above the stick), the burgee a triangle 'fly' long with a 'hoist' m hoist (navy, a white star: our invented club's), streaming down the apparent wind in each suit: 'flies_deg' its heading from forward (to starboard positive), close-hauled on starboard tack aft and to port, under the spinnaker forward and to port, head to wind aft.",
+  "stick": [
+   1.2,
+   0.016,
+   0.01
+  ],
+  "spindle": [
+   0.6,
+   0.005
+  ],
+  "fly": 0.95,
+  "hoist": 0.55,
+  "wave": [
+   0.04,
+   0.6
+  ],
+  "droop": 0.06,
+  "flies_deg": {
+   "Genoa": -155.0,
+   "Quadrilateral": -152.0,
+   "Spinnaker": -62.0,
+   "Moored": 180.0,
+   "Lowered": 180.0,
+   "Doused": 180.0
+  }
+ },
+ "flag_thickness": 0.002,
+ "ground_tackle": {
+  "note": "Her ground tackle below, not drawn until the interior (slices 9-10): the bower anchor, its chain in the locker under the chain pipe and the windlass under the foredeck. Our estimates (kg, centre x, y, z in the hull's frame), weighed with the deck hardware against the size card's winches and hardware so the trimming ballast does not take their weight.",
+  "row": "Ground tackle below (estimated, not drawn)",
+  "items": [
+   {
+    "name": "bower anchor (fisherman's, about 2.5 times the kedge)",
+    "kg": 180.0,
+    "centre": [
+     15.2,
+     0.0,
+     1.45
+    ]
+   },
+   {
+    "name": "75 m of 16 mm galvanised chain, 5.6 kg a metre",
+    "kg": 420.0,
+    "centre": [
+     15.6,
+     0.0,
+     1.3
+    ]
+   },
+   {
+    "name": "hand windlass",
+    "kg": 150.0,
+    "centre": [
+     14.8,
+     0.0,
+     1.75
+    ]
+   }
+  ]
+ }
+}

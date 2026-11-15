@@ -32,6 +32,7 @@ Slice 6's sails (docs/jclass-6):
 build_jclass.py calls draw_all() after the build; it needs matplotlib (it says so and goes on without it).
 """
 import math
+import types
 
 import numpy as np
 
@@ -1040,7 +1041,119 @@ def draw_running_plan(rn_parts, rnrep, pieces, deck_rep, path):
     plt.close(fig)
 
 
-def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None, running=None):
+HW_COLOURS = {"Bronze": "#b08a3e", "Wood": "#9c6433", "Galvanised": "#8d9297", "Gilt": "#d4af37", "Black": "#222222",
+              "CowlRed": "#aa201c", "LensGreen": "#28aa5a", "LensRed": "#c81e1e", "LensClear": "#dfe8ec",
+              "DeckGlass": "#bfe0d4", "Ensign": "#b22234", "Burgee": "#1c2852", "Rope": "#c2a878"}
+
+
+def _hw_faces(ax, part, alpha=1.0, zorder=4):
+    """A hardware part's faces from above, the higher drawn over the lower, coloured by slot."""
+    from matplotlib.collections import PolyCollection
+    V = np.asarray(part.V, float)
+    order = sorted(range(len(part.F)), key=lambda i: V[list(part.F[i]), 2].mean())
+    polys = [V[list(part.F[i])][:, :2] for i in order]
+    cols = [HW_COLOURS.get(part.slot[i], "#777777") for i in order]
+    ax.add_collection(PolyCollection(polys, facecolors=cols, edgecolors=cols, linewidths=0.05, alpha=alpha,
+                                     zorder=zorder))
+
+
+def draw_hardware_plan(hw_parts, hwrep, pieces, deck_rep, path, fittings=None):
+    """Slice 8's deck hardware in plan, from above, bow to the right (starboard below): the deck's edge and furniture,
+    every piece (the cowls standing and the ensign flown, as in harbour), the sheet tracks and their cars (from
+    `fittings`, slice 7's RunningFittings), the running lights' arcs and the mooring lines' leads; close-ups of the
+    bow, a side light and the counter; and the burgee's heading in each suit."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Wedge
+
+    sh = np.asarray(pieces["Shell"].sheer)
+    o = np.argsort(sh[:, 0])
+    fp = {k: np.asarray(v) for k, v in deck_rep["footprints"].items()}
+    lights = hwrep["lights"]
+    arc_col = {"starboard": "#28aa5a", "port": "#c81e1e", "stern": "#9aa4a8"}
+    tracks = None
+    if fittings is not None:
+        # the sheet tracks and their cars, with the eyes on them (their faces' groups name the car)
+        tracks = types.SimpleNamespace(V=fittings.V, F=[], slot=[])
+        for f, sl, lb in zip(fittings.F, fittings.slot, fittings.labels):
+            if " car" in lb.split(" | ")[0]:
+                tracks.F.append(f)
+                tracks.slot.append(sl)
+
+    def base(ax, r_arc):
+        ax.plot(sh[o, 0], sh[o, 1], color="#1f3f7f", lw=1.0)
+        ax.plot(sh[o, 0], -sh[o, 1], color="#1f3f7f", lw=1.0)
+        for k, P in fp.items():
+            ax.fill(P[:, 0], P[:, 1], color="#d8d4cc", lw=0.6, ec="#555555", zorder=1)
+        for k, L in lights.items():
+            a0, a1 = sorted(L["arc_deg"])
+            ax.add_patch(Wedge(tuple(L["lamp"][:2]), r_arc, a0, a1, color=arc_col[k], alpha=0.22, lw=0, zorder=2))
+        for ld in hwrep["mooring_leads"]:
+            for pc in ld["pieces"]:
+                P = np.asarray(pc["path"], float)
+                ax.plot(P[:, 0], P[:, 1], color="#6b4f1d", lw=0.8, ls="--", zorder=5)
+        _hw_faces(ax, hw_parts["DeckHardware"])
+        _hw_faces(ax, hw_parts["Cowls.Moored"], zorder=4.5)
+        if tracks is not None:
+            _hw_faces(ax, tracks)
+        _hw_faces(ax, hw_parts["Ensign.Moored"], alpha=0.85, zorder=5)
+
+    fig = plt.figure(figsize=(20, 14), dpi=130)
+    ax = fig.add_axes([0.03, 0.56, 0.95, 0.38])
+    base(ax, 1.6)
+    tags = {"Stem head": hwrep["stem_head"]["tip_x"] - 0.3, "Anchor": hwrep["anchor"]["crown"][0] + 0.7}
+    for k, L in lights.items():
+        ax.annotate(f"{k} light", L["lamp"][:2], (L["lamp"][0] + 0.8, L["lamp"][1] * 0.45 if k != "stern" else -2.2),
+                    fontsize=8, ha="center", arrowprops=dict(arrowstyle="-", lw=0.5, color="#555"), zorder=7)
+    for name, x in tags.items():
+        ax.annotate(name.lower(), (x, -1.0 if name == "Anchor" else 0.0), (x, -2.6), fontsize=8, ha="center",
+                    arrowprops=dict(arrowstyle="-", lw=0.5, color="#555"), zorder=7)
+    ax.set_xlim(-24.0, 19.5)
+    ax.set_ylim(3.6, -3.6)
+    ax.set_aspect("equal")
+    ax.tick_params(labelsize=7)
+    ax.set_xlabel("x, m forward of mid-waterline", fontsize=8)
+    ax.set_ylabel("y, m to starboard", fontsize=8)
+    ax.set_title("Bluebonnet's deck hardware in plan, from above, bow to the right (starboard below): bronze, teak, "
+                 "galvanised iron, the lenses and deck glass in their colours; the running lights' arcs shaded, the "
+                 "mooring lines' leads dashed, the cowls and the ensign as in harbour, the sheet tracks", fontsize=10)
+    views = [("the bow: stem head, bow cleats and fairleads, chain pipe, the anchor on its chocks", 13.2, 19.0,
+              -1.9, 1.3),
+             ("the starboard side light on its board, and the spring cleat", 3.6, 9.0, 1.6, 3.4),
+             ("the counter: stern light, ensign socket and staff, quarter cleats and fairleads", -23.6, -18.6, -1.4,
+              1.4)]
+    for n, (title, x0, x1, y0, y1) in enumerate(views):
+        ax = fig.add_axes([0.03 + n * 0.245, 0.06, 0.225, 0.42])
+        base(ax, 0.9)
+        ax.set_xlim(x0, x1)
+        ax.set_ylim(y1, y0)
+        ax.set_aspect("equal")
+        ax.tick_params(labelsize=7)
+        ax.set_title(title, fontsize=8.5)
+    # the burgee's heading in each suit, seen from above at the masthead
+    ax = fig.add_axes([0.78, 0.08, 0.2, 0.38])
+    for k, (s, b) in enumerate(hwrep["burgee"].items()):
+        q = np.radians(b["flies_deg"]) if "flies_deg" in b else None
+        if q is None:
+            continue
+        c = np.array([0.0, k * 1.2])
+        ax.annotate("", c + 0.9 * np.array([np.cos(q), np.sin(q)]), c, arrowprops=dict(arrowstyle="-|>", lw=1.2,
+                                                                                       color="#1c2852"))
+        ax.plot([c[0]], [c[1]], "o", ms=4, color="#b08a3e")
+        ax.text(c[0] + 1.1, c[1], f"{s}: {b['flies_deg']:+.0f}\u00b0", fontsize=8, va="center")
+    ax.set_xlim(-1.2, 3.2)
+    ax.set_ylim(len(hwrep["burgee"]) * 1.2 - 0.4, -0.8)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_title("the burgee's heading from forward in each suit\n(from above, bow to the right: streaming down the "
+                 "apparent wind)", fontsize=8.5)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None, sails=None, running=None,
+             hardware=None):
     import os
     try:
         draw_plating(pieces["Shell"], pieces["Rudder"], fin, os.path.join(out, "plating.png"))
@@ -1059,5 +1172,8 @@ def draw_all(pieces, fin, out, parts=None, deck_rep=None, rig=None, rigging=None
             draw_sail_suits(sails[0], sails[1], rig[0], rig[1], pieces, parts, os.path.join(out, "sail_suits.png"))
         if running is not None:
             draw_running_plan(running[0], running[1], pieces, deck_rep, os.path.join(out, "running_plan.png"))
+        if hardware is not None:
+            draw_hardware_plan(hardware[0], hardware[1], pieces, deck_rep, os.path.join(out, "hardware_plan.png"),
+                               fittings=running[0]["RunningFittings"] if running is not None else None)
     except ImportError:
         print("the drawings were not drawn: they need matplotlib")

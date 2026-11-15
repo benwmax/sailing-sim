@@ -21,7 +21,13 @@ crossing nothing, and no set sail creased where it is pressed off what it lies o
 to its greatest turn between neighbouring cells). From slice 7 the running rigging in every suit must pass the build's
 checks: each rope clear along its length but where it runs over its own gear, no fitting crossing anything but by
 design, nothing in the slides' lane, each loaded lead rising onto its drum and meeting its sheaves within the json's
-limits, and the winches and cleats no heavier than the size card's estimate for all the deck hardware.
+limits, and the winches and cleats no heavier than the size card's estimate for all the deck hardware. From slice 8
+the rest of the deck hardware in every suit must pass the build's checks: no piece crossing anything but by design or
+coming within 3 mm of it, each mooring line's lead from its fairlead to its cleat clear, the wires clear of it, each
+running light's lens over the 1910 rules' arc (RULE_ARCS, fixed here) and showing over all of it, each side light's
+screen reaching three feet forward of its lens and stopping its light across the bow, the fixed pieces bedded on the
+deck (none floating, none sunk), the anchor clear of the deck, and all the deck hardware (the winches, cleats, sheet
+tracks, slice 8's pieces and the ground tackle's estimate) no heavier than the size card's estimate.
 Plain Python: no Blender needed.
 """
 import json
@@ -34,6 +40,8 @@ SPECS = json.load(open(os.path.join(HERE, "specs_bluebonnet.json")))
 FT = 0.3048
 LEE_RUNNER_MM = 100.0       # the boom's least room to the let-off runner and checkstay at full swing (slice 5)
 PRESS_TURN_ADDED_DEG = 10.0  # the most the press may sharpen a set sail's greatest turn between cells (slice 6)
+RULE_ARCS = {"starboard": (0.0, 112.5), "port": (-112.5, 0.0), "stern": (112.5, 247.5)}  # the 1910 rules (slice 8)
+RULE_SCREEN_M = 0.9144      # the side lights' screens: three feet forward of the light (slice 8)
 RIGGING = ("Shrouds", "Stays", "RunnerFittings") + tuple(f"{k}.{s}.{t}" for k in ("Runner", "Checkstay")
                                                          for s in ("Starboard", "Port") for t in ("Set", "LetOff"))
 
@@ -89,8 +97,9 @@ if __name__ == "__main__":
     if "hydrostatics" in b:
         # a build's json must carry its closure checks: slice 1 wrote one shell's, slice 2 one per closed piece (the
         # shell with its transom and deck, the rudder, the stock), slice 3 one for each of the deck's parts too, slice 4
-        # one for each spar, slice 5 for each rigging object, slice 6 for each sail's state and slice 7 for the winches,
-        # the running fittings and each suit's running rigging
+        # one for each spar, slice 5 for each rigging object, slice 6 for each sail's state, slice 7 for the winches,
+        # the running fittings and each suit's running rigging, and slice 8 for the deck hardware, the ensign and each
+        # suit's burgee
         shell = b.get("shell") or {}
         pieces = {"shell": shell} if "closed" in shell else shell
         sl = b.get("slice", 1)
@@ -108,6 +117,10 @@ if __name__ == "__main__":
         if sl >= 7:
             need += ("Winches", "RunningFittings") + tuple(f"Running.{k}" for k in
                                                            ((b.get("sails") or {}).get("suits") or {}) if k != "note")
+        if sl >= 8:
+            suits8 = [k for k in ((b.get("sails") or {}).get("suits") or {}) if k != "note"]
+            need += ("DeckHardware", "Ensign.Moored", "Cowls.Moored") + tuple(f"Burgee.{k}" for k in suits8) + tuple(
+                f"CowlCaps.{k}" for k in suits8 if k != "Moored")
         for name in need:
             if name not in pieces:
                 r["pass"] = False
@@ -232,6 +245,57 @@ if __name__ == "__main__":
             good = wc is not None and wc <= card
             print(f"{'ok  ' if good else 'FAIL'} the winches and cleats weigh {wc} long tons (the card's "
                   f"{card} for all the deck hardware)")
+            ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 8:
+            # slice 8: the rest of the deck hardware in every suit, the lights' arcs, and all the deck hardware's weight
+            hw = b.get("hardware") or {}
+            ok = True
+            for name in [k for k in ((b.get("sails") or {}).get("suits") or {}) if k != "note"]:
+                c = {k: (hw.get(k) or {}).get(name) or {} for k in ("contacts", "room", "lead_room", "wire_room")}
+                rm = c["room"].get("within_reach") or {}
+                near = min(rm.items(), key=lambda kv: kv[1]["gap_mm"], default=None)
+                lr = c["lead_room"].get("least") or {}
+                good = all(bool(v.get("ok")) for v in c.values())
+                nearest = f"{near[0]} {near[1]['gap_mm']} mm to {near[1]['against']}" if near else "nothing"
+                print(f"{'ok  ' if good else 'FAIL'} the deck hardware in the {name} suit: crossings "
+                      f"{c['contacts'].get('crossing')}, nearest {nearest}"
+                      f" (within {c['room'].get('reach_m')} m, none under {c['room'].get('fail_under_mm')} mm); the "
+                      f"mooring lines' least room {lr.get('least_gap_mm')} mm ({lr.get('rope')}); the wires' "
+                      f"{'clear' if c['wire_room'].get('ok') else c['wire_room'].get('tight')}")
+                ok = ok and good
+                lc = ((hw.get("lights_check") or {}).get(name) or {})
+                lts = lc.get("lights") or {}
+                good = bool(lc.get("ok")) and set(lts) == set(RULE_ARCS)
+                for k, arc in RULE_ARCS.items():
+                    v = lts.get(k) or {}
+                    la = v.get("lens_arc_deg") or [None, None]
+                    good = good and None not in la and all(abs(a - e) < 0.05 for a, e in zip(la, arc))
+                    good = good and v.get("rays_showing") == v.get("rays_in_arc") and not v.get("blocked_by")
+                    if k != "stern":
+                        good = good and (v.get("board_forward_of_lens_m") or 0.0) >= RULE_SCREEN_M
+                        seen = v.get("seen_across_bow_deg")
+                        good = good and seen is not None and seen <= (lc.get("cutoff_across_bow_deg") or 0.0)
+                shows = ", ".join(f"{k} {v.get('lens_arc_deg')} deg, {v.get('rays_showing')}/{v.get('rays_in_arc')}"
+                                  " rays" + (f", board {v.get('board_forward_of_lens_m')} m forward of the lens, seen "
+                                             f"{v.get('seen_across_bow_deg')} deg across the bow"
+                                             if k != "stern" else "") for k, v in lts.items())
+                print(f"{'ok  ' if good else 'FAIL'} the running lights in the {name} suit (the 1910 rules: side "
+                      f"lights right ahead to two points abaft the beam behind three-foot screens, the stern light "
+                      f"over twelve points): {shows}{'' if good else ' ' + str(lts)}")
+                ok = ok and good
+            seat = hw.get("seating") or {}
+            low = (hw.get("anchor") or {}).get("lowest_iron_above_deck_m")
+            good = bool(seat.get("ok")) and bool(seat.get("groups")) and low is not None and low >= 0.01
+            print(f"{'ok  ' if good else 'FAIL'} the deck hardware is bedded on the deck and the rail "
+                  f"({len(seat.get('groups') or {})} pieces, none floating or sunk"
+                  f"{'' if seat.get('ok') else ': ' + str(seat.get('bad'))}); the anchor's iron {low} m off the deck")
+            ok = ok and good
+            hwt = (hw.get("all_deck_hardware_weight") or {}).get("total_long_tons")
+            card = SPECS["weights"]["winches_and_hardware"]
+            good = hwt is not None and hwt <= card
+            print(f"{'ok  ' if good else 'FAIL'} all the deck hardware weighs {hwt} long tons (the card's {card})")
             ok = ok and good
             if not ok:
                 r["pass"] = False
