@@ -154,9 +154,9 @@
   "src": "by eye"
  },
  "bowsprit": {
-  "shrouds": {"collars_x_ft": [110.0, 116.0], "bow_x_ft": [86.0, 82.0], "bow_z_ft": 17.0, "src": "by eye: two a side, from the bowsprit about a third out to eyebolts on the bow"},
-  "martingale_back_rope": {"bow_x_ft": 88.0, "bow_z_ft": 15.5, "src": "by eye: from the dolphin striker's end to the bow each side"},
+  "shrouds": {"collars_x_ft": [110.0, 116.0], "bow_x_ft": [86.0, 82.0], "bow_z_ft": 19.5, "src": "by eye: two a side, from the bowsprit about a third out to eyebolts on the bow, over the head's main rail (slice 9)"},
+  "martingale_back_rope": {"bow_x_ft": 85.0, "bow_z_ft": 19.0, "src": "by eye: from the dolphin striker's end to the bow each side, over the head's main rail and well outboard of the figure (slice 9)"},
   "jibboom_guys": {"bow_x_ft": 84.0, "bow_z_ft": 20.5, "src": "by eye: from the jibboom's and flying jibboom's ends to the bow each side (the cathead's place, slice 10)"},
-  "later": "the gammoning and bobstays go through the knee of the head (slice 9) and come with it"
+  "head": "the gammoning and bobstays go through the knee of the head: decor_1797.json's head (Standing.head_rigging)"
  }
 }

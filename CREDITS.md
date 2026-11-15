@@ -159,4 +159,15 @@ The BY-SA photos stay under their BY-SA licence. In brackets: the `docs/` folder
 - [Sunset lake tawakoni duck cove 2014-07-30](https://commons.wikimedia.org/wiki/File%3ASunset_lake_tawakoni_duck_cove_2014-07-30.jpeg) by Eastcheap, CC BY-SA 4.0 (graphics-5)
 - [Tug and barges on Intracoastal Canal, Bolivar Peninsula, Texas 1219091527](https://commons.wikimedia.org/wiki/File:Tug_and_barges_on_Intracoastal_Canal,_Bolivar_Peninsula,_Texas_1219091527.jpg) by Patrick Feller, CC BY 2.0 (visual-6)
 
+### Models in the repo, not yet in the game
+
+- The frigate *Commonwealth*'s figurehead (`Tools/shipkit/frigate/figure_hope.npz`, docs/shipkit-9) is made from
+  [a 3D scan of Bertel Thorvaldsen's Goddess of Hope](https://zenodo.org/records/10242636) by Geoffrey Marchal, CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/): its pieces joined, stood level, cut off its plinth, closed (the top
+  of her head, which the scan lacks, filled in), decimated, scaled and leaned forward to stand on the ship's head
+  ("changes were made"). The statue (1817) is in the public domain; the scan is
+  Marchal's. When the frigate goes into the game, this credit moves above `game:skip`.
+- The frigate's name on her stern is set in Libre Baskerville (Copyright 2012 The Libre Baskerville Project Authors),
+  SIL Open Font License 1.1, as the J-Class yacht's is (`Tools/shipkit/jclass/fonts/`, with the licence's text).
+
 <!-- game:end -->

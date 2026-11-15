@@ -106,11 +106,12 @@ class World:
     """The ship's meshes as triangles in the ship's frame for a pose and a sails' state, labelled by part, and a BVH of
     them for clearance queries (everything the running rigging must stand clear of)."""
 
-    def __init__(self, rig, sk, st, sv, extra_static=()):
+    def __init__(self, rig, sk, st, sv, extra_static=(), skin_parts=None):
         self.rig, self.sk, self.st, self.sv = rig, sk, st, sv
         self.static = [(label, np.asarray(V, float), np.asarray(T)) for label, V, T in extra_static]
-        # (label, V, T) that never move: extra_static's (the spar deck and its fittings, slice 7) and the hull's
-        for name, (V, F, M, side) in sk.parts().items():
+        # (label, V, T) that never move: extra_static's (the spar deck and its fittings, slice 7) and the hull's (as the
+        # build has them: skin_parts, the bow opened for the bowsprit by slice 9's head, or the skin's own)
+        for name, (V, F, M, side) in (sk.parts() if skin_parts is None else skin_parts).items():
             if name.startswith("Lid_"):
                 continue
             if side == "stbd":
@@ -1022,15 +1023,29 @@ def bullseye_mesh(r_rope):
     return M, ro
 
 
-def eyebolt_mesh(r_eye, r_bar):
-    """an eyebolt's eye standing out of a surface: a ring in the local XZ plane, its foot at the origin, standing up Z"""
+def eyebolt_mesh(r_eye, r_bar, centre=None):
+    """an eyebolt's eye standing out of a surface: a ring in the local XZ plane, its foot at the origin, standing up Z.
+    centre: its eye's middle over the surface, if not r_eye + r_bar (then its lower part is sunk in the surface, a
+    staple's shape, and it has no washer)"""
     M = Mesh()
     th = np.linspace(0, 2 * math.pi, 12, endpoint=False)
-    c = np.array([0.0, 0.0, r_eye + r_bar])
+    c = np.array([0.0, 0.0, r_eye + r_bar if centre is None else centre])
     P = c[None] + r_eye * np.stack([np.cos(th), np.zeros(12), np.sin(th)], 1)
     tube(M, P, r_bar, IRON, n=6, closed=True)
-    tube(M, np.array([[0.0, 0.0, -0.01], [0.0, 0.0, r_bar * 0.5]]), r_bar * 1.6, IRON, n=6)
+    if centre is None:
+        tube(M, np.array([[0.0, 0.0, -0.01], [0.0, 0.0, r_bar * 0.5]]), r_bar * 1.6, IRON, n=6)
     return M
+
+
+def eyebolt_seat(L, r_strop):
+    """A block standing crown down on an eyebolt, the eyebolt's eye through its strop's eye and square to it: the
+    height of the block's centre over the surface, the eyebolt eye's middle's, its radius and its bar's. The strop's
+    eye (block_mesh's: radius max(1.6 r_strop, 0.12 L), its rope 0.85 r_strop) stands 3 mm clear of the surface; the
+    eyebolt's eye has its top bar through the strop eye's middle, its lower half sunk in the surface (a staple)."""
+    r_eye = max(1.6 * r_strop, 0.12 * L)
+    c_strop = 0.003 + 0.85 * r_strop + r_eye
+    r_a, r_bar = max(1.6 * r_strop, 0.03), max(0.6 * r_strop, 0.012)
+    return c_strop + L / 2 + 2 * r_strop + r_eye, c_strop - r_a, r_a, r_bar
 
 
 def ring_mesh(ri, ro, h, mat, n=14):
@@ -1181,10 +1196,13 @@ MIRROR = np.array([1.0, -1.0, 1.0])                            # ship port <-> s
 
 
 class Running:
-    """Every working line, its blocks and fairleads, the rails and pins they belay to; solved for each sail state"""
+    """Every working line, its blocks and fairleads, the rails and pins they belay to; solved for each sail state.
+    taffrail_z: the top of the stern's taffrail (slice 9's stern.py) where the spanker boom sheet's lower block stands;
+    without it, the top of the skin's transom cap"""
 
-    def __init__(self, rig, sk, st, sv, cfg=None):
+    def __init__(self, rig, sk, st, sv, cfg=None, taffrail_z=None):
         self.rig, self.sk, self.st, self.sv = rig, sk, st, sv
+        self.taffrail_z = taffrail_z
         self.cfg = cfg or json.load(open(os.path.join(HERE, "running_1797.json")))
         self.deck = Deck(sk)
         self.rails = Rails(self.deck, rig, self.cfg).build()
@@ -2692,13 +2710,17 @@ class Running:
         xl = float((xs - o_b[0]) / Rb_[0, 0])
         P_s, R_s = self.spar_at(B, xl)
         L = self.block_L(c)
-        TV = np.asarray(self.sk.parts()["TransomTop"][0], float)
-        z_t = float(TV[np.abs(TV[:, 1]) < 0.4][:, 2].max())
+        if self.taffrail_z is not None:
+            z_t = float(self.taffrail_z)
+        else:
+            TV = np.asarray(self.sk.parts()["TransomTop"][0], float)
+            z_t = float(TV[np.abs(TV[:, 1]) < 0.4][:, 2].max())
         ubk = self.add_block("SpankerSheetBoom", 2, c, fixed=(B, P_s - np.array([0.0, 0.0, R_s + 0.5 * L + 0.05]),
                                                               np.array([0.0, 0.0, -1.0]), EX), group=grp)
         ubk.ring = (B, P_s, EX, R_s + 0.004 + ubk.r_strop)      # its strop round the boom
-        lbk = self.add_block("SpankerSheetTaffrail", 1, c, fixed=("ship", np.array([xs, 0.0, z_t + 0.07 + 0.5 * L]),
-                                                                  np.array([0.0, 0.0, 1.0]), EX), group=grp)
+        lbk = self.add_block("SpankerSheetTaffrail", 1, c, group=grp)
+        lbk.fixed = ("ship", np.array([xs, 0.0, z_t + eyebolt_seat(lbk.L, lbk.r_strop)[0]]), np.array([0.0, 0.0, 1.0]),
+                     EX)
         lbk.eyebolt = True
         ln = self.new_line("spanker boom sheet", grp, c)
         pin = self.pin_station("mizzen", 1.0, q["sheet_rails"])
@@ -4081,15 +4103,22 @@ class Running:
             for mat in sorted(set(km)):
                 idx = [i for i, m_ in enumerate(km) if m_ == mat]
                 M.add(p + kv @ Rm.T, [kf[i] for i in idx], mat)
-        for P, n, r in self.eyebolts():
-            ev, ef, _ = eyebolt_mesh(max(1.6 * r, 0.03), max(0.6 * r, 0.012)).arrays()
-            Rm = to_frame(n, EX if abs(n[0]) < 0.9 else EZ)
+        for P, n, r, seat in self.eyebolts():
+            if seat is None:
+                ev, ef, _ = eyebolt_mesh(max(1.6 * r, 0.03), max(0.6 * r, 0.012)).arrays()
+                Rm = to_frame(n, EX if abs(n[0]) < 0.9 else EZ)
+            else:                                               # through a block's strop eye, square to it
+                x_in, c_a, r_a, r_bar = seat
+                ev, ef, _ = eyebolt_mesh(r_a, r_bar, centre=c_a).arrays()
+                Rm = to_frame(n, x_in)
             M.add(P + ev @ Rm.T, ef, IRON)
         self.mesh_coils(M)
         return M
 
     def eyebolts(self):
-        """(point, normal out of the surface, rope radius) of each eyebolt a rope's standing part is made fast to"""
+        """(point, normal out of the surface, rope radius, seat) of each eyebolt a rope's standing part is made fast to
+        or a block stands on; seat None, or for a block (the direction its eye lies along, square to the block's strop
+        eye; its eye's middle's height, radius and bar's radius: eyebolt_seat)"""
         out = []
         S = "Set"
         sv = self.solvers[S]
@@ -4099,13 +4128,14 @@ class Running:
             st = ln.st[S][0]
             if st.get("eyebolt") is not None:
                 P, n = st["eyebolt"]
-                out.append((np.asarray(P, float), unit(np.asarray(n, float)), ln.r))
+                out.append((np.asarray(P, float), unit(np.asarray(n, float)), ln.r, None))
         for b in self.blocks.values():
             if getattr(b, "eyebolt", False):                    # a block standing on an eyebolt (crown down)
                 C, a, n = b.pose[S]
-                out.append((C - a * (b.L / 2 + 0.07), a, b.r_strop))
+                lift, c_a, r_a, r_bar = eyebolt_seat(b.L, b.r_strop)
+                out.append((C - a * lift, a, b.r_strop, (np.cross(n, -a), c_a, r_a, r_bar)))
             elif getattr(b, "hook", False):                     # a block hooked to an eyebolt in the deck
-                out.append((sv.at(b.attach) - EZ * 0.05, EZ, b.r_strop))
+                out.append((sv.at(b.attach) - EZ * 0.05, EZ, b.r_strop, None))
         return out
 
     def coil_falls(self):
