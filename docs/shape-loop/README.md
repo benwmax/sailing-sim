@@ -379,3 +379,12 @@ length. It is now the TurboSquid 1460907 reference's opening (1.24-2.04 m from i
 sits beside the well's after part (`CrewMotion.cpp`; the physics' crew x stays). Blind A/B 3 of 3; QA's two fixes in
 (the crossing crouched over the after deck, the ratchet out from under the boom's block). Open: the trunk is still about
 0.4 m forward of the well (the physics' board).
+
+## Wave 5, round 8 (Nov 14): the Sunfish's rubrail section
+
+Card `cards/sunfish-rail2.json` (Bean's pick). The rail was a 22 mm round tube; it is now a vinyl rail's section
+(`drail()` in `build_fleet.py`) swept along round 4's path: 22 mm tall, a flat, slightly crowned face about 15 mm proud
+with 4 mm corners, its back following the topsides' flare, its top 1 mm under the deck's edge, its ends beside the rudder's
+fittings closed off. A first, bigger D-section (27 mm, 22 mm proud) won 2 of 3 but all three called it too big, and QA
+found a gap under its back and inward end caps; the slimmer rail won 3 of 3 with fresh reviewers and passed QA. Open: the
+rail still stops either side of the rudder's fittings; `tube()`'s caps face inward on the other boats.
