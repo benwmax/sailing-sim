@@ -58,17 +58,18 @@
   "topping_lift": {"d": 0.012, "kind": "7x19"}
  },
  "blocks": {
-  "note": "Bronze swivel blocks on padeyes on deck (the padeyes fixed, each block hanging on its link toward the pull of its rope, so it lies as each suit's lead puts it), and the mainsheet's blocks on the boom's bands. 'label' what a rope's block is called after the rope's name, 'name' the block's own (its padeye is named after it), 'sheave_d' the sheave's diameter; 'padeye' its plan point.",
-  "GenoaLead": {"label": "lead block", "name": "Genoa lead block", "padeye": [-6.8, 3.03], "sheave_d": 0.16, "both_sides": true},
+  "note": "Bronze swivel blocks on padeyes on deck (the padeyes fixed, each block hanging on its link toward the pull of its rope, so it lies as each suit's lead puts it), and the mainsheet's blocks on the boom's bands. 'label' what a rope's block is called after the rope's name, 'name' the block's own (its padeye is named after it), 'sheave_d' the sheave's diameter; 'padeye' its plan point. A block with a 'track' hangs from a car on a bronze sheet track instead (slice 8): the track runs along the deck parallel to its edge from track[0] m abaft the plan point to track[1] m forward of it, the car at the plan point with its eye's hole where the padeye's would be, so the lead is the same.",
+  "GenoaLead": {"label": "lead block", "name": "Genoa lead block", "padeye": [-6.8, 3.03], "sheave_d": 0.16, "both_sides": true, "track": [0.9, 0.6]},
   "RailLead": {"label": "rail block", "name": "Rail block", "padeye": [-1.0, 3.1], "sheave_d": 0.15, "both_sides": true, "note": "the quadrilateral's lower sheet to leeward, the spinnaker's guy to windward"},
   "QuarterRail": {"label": "quarter block", "name": "Quadrilateral's quarter block", "padeye": [-10.6, 2.8], "sheave_d": 0.13, "both_sides": true, "note": "the quadrilateral's upper sheet"},
-  "StaysailLead": {"label": "lead block", "name": "Staysail lead block", "padeye": [2.25, 1.78], "sheave_d": 0.12, "both_sides": true},
+  "StaysailLead": {"label": "lead block", "name": "Staysail lead block", "padeye": [2.25, 1.78], "sheave_d": 0.12, "both_sides": true, "track": [0.45, 0.45]},
   "SpinnakerSheetLead": {"label": "quarter block", "name": "Spinnaker sheet's quarter block", "padeye": [-16.6, 1.93], "sheave_d": 0.15, "both_sides": true},
   "ForeguyLead": {"label": "lead block", "name": "Foreguy lead block", "padeye": [11.0, 2.22], "sheave_d": 0.11, "both_sides": true},
   "MainsheetAft": {"label": "after deck block", "name": "Mainsheet's after deck block", "padeye": [-16.72, 0.0], "sheave_d": 0.16, "becket": true},
   "MainsheetFwd": {"label": "forward deck block", "name": "Mainsheet's forward deck block", "padeye": [-14.12, 0.0], "sheave_d": 0.16},
   "boom": {"sheave_d": 0.16, "bands_from_aft": [0.6, 3.2], "eye": [0.07, 0.05, 0.02]}
  },
+ "track": {"note": "The sheet tracks (slice 8's deck hardware, weighed with it): a bronze bar 'width' wide and 'height' high on the deck, let 'let_in' into it, rounded on top, its ends sloped down; the car 'car' (length, width, height) on it, and on the car an eye in the padeye's plane with its hole at the padeye's height (standing_bluebonnet.json's runners' padeye).", "width": 0.032, "height": 0.012, "let_in": 0.004, "car": [0.15, 0.052, 0.022]},
  "halyards": {
   "note": "The halyards are internal: wire from the sail's head over a sheave in the mast (aloft, at the height 'aloft_z' on the mast's face 'face_deg' round from forward, to starboard positive), down inside it and out over a sheave in a bronze box low on the mast ('foot_h' above the deck, clear of the mast coat, toward its winch) to its reel winch; the spinnaker halyard is the same wire, from the head's block at the crane into the mast just below it and down to its own reel. Each reel stores the wire the hoist does not use (from a metre above the deck to its sheave aloft), the same in every suit. Out of use a halyard's shackle is hauled up to its box aloft, clear of the sails.",
   "main": {"label": "Main halyard", "rope": "main_halyard", "winch": "MainHalyard", "aloft_z": 46.85, "face_deg": 180, "foot_h": 0.38, "suits": {"Genoa": "Mainsail.Set", "Quadrilateral": "Mainsail.Set", "Spinnaker": "Mainsail.Run"}},

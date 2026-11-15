@@ -49,6 +49,7 @@ CAT_ROPE = "Running rigging: rope"
 CAT_WIRE = "Running rigging: wire halyards"
 CAT_FIT = "Running rigging: shackles"
 CAT_BLOCK = "Running rigging: blocks, padeyes and boxes"
+CAT_TRACK = "Sheet tracks and cars (bronze)"           # slice 8's deck hardware: weighed apart from the rigging
 
 
 def lab(group, kind):
@@ -534,9 +535,10 @@ class Deckwork:
                     cl["group"] = f"{group} cleat"
                     self.cleats[(name, sd)] = cl
 
-    def padeyes(self, pulls):
-        """Each lead block's padeye (both sides where asked), its eye's plane along the mean plan pull on it over the
-        suits and both tacks (`pulls`: {(name, sd): [plan directions]}; the other side's come mirrored)."""
+    def padeyes(self, pulls, sheer):
+        """Each lead block's padeye (both sides where asked), or its car on a sheet track (track_car), its eye's plane
+        along the mean plan pull on it over the suits and both tacks (`pulls`: {(name, sd): [plan directions]}; the
+        other side's come mirrored)."""
         fp = self.parts["RunningFittings"]
         out = {}
         for name, bl in RN["blocks"].items():
@@ -550,13 +552,82 @@ class Deckwork:
                 else:                                     # a centreline block works both tacks
                     ds += [np.array([v[0], -v[1]]) for v in ds]
                 toward = unit(np.r_[np.mean(ds, axis=0), 0.0]) if ds else X
-                group = f"{bl['name']} padeye" + (f", {side_name(sd)}" if sd else "")
+                group = f"{bl['name']} {'car' if 'track' in bl else 'padeye'}" + (f", {side_name(sd)}" if sd else "")
                 n0 = len(fp.masses)
-                hole, pnrm = rigging.padeye(fp, P, toward, group)
+                if "track" in bl:
+                    hole, pnrm = track_car(fp, P, toward, group, bl["track"], sheer)
+                    cat = CAT_TRACK
+                else:
+                    hole, pnrm = rigging.padeye(fp, P, toward, group)
+                    cat = CAT_BLOCK
                 for m in fp.masses[n0:]:
-                    m["part"] = CAT_BLOCK
+                    m["part"] = cat
                 out[(name, sd)] = {"hole": hole, "axis": pnrm, "group": group, "toward": toward[:2]}
         return out
+
+
+def track_car(part, P, toward, group, span, sheer):
+    """A bronze sheet track on the deck parallel to its edge (as far in from the sheer as the plan point P), from
+    span[0] m abaft P to span[1] m forward of it, with a car at P carrying an eye in the plane of `toward`: the eye's
+    hole is where rigging.padeye's would be (its height above the deck at P, its axis square to `toward`), so a lead
+    from it is the same as from a padeye. The track is labelled 'track' (it lies on the deck), the car and its eye
+    'padeye' (the block's link goes through the eye). Returns the hole and its axis."""
+    tk = RN["track"]
+    pe = SR["runners"]["padeye"]
+    s = np.asarray(sheer, float)
+    o = np.argsort(s[:, 0])
+
+    def half(x):
+        return np.interp(x, s[o, 0], np.abs(s[o, 1]))
+    sd = 1.0 if P[1] > 0 else -1.0
+    inb = float(half(P[0])) - abs(float(P[1]))
+    W, h, let = tk["width"], tk["height"], tk["let_in"]
+    xs = np.linspace(P[0] - span[0], P[0] + span[1], 31)
+    path = np.column_stack([xs, sd * (half(xs) - inb)])
+    t2 = np.gradient(path, axis=0)
+    t2 /= np.linalg.norm(t2, axis=1)[:, None]
+    n2 = np.column_stack([-t2[:, 1], t2[:, 0]])
+    # the bar's section, its ends sloped down to the deck over 'end' m
+    r = 0.004
+    c45 = r * (1 - math.sqrt(0.5))
+    sec = [(-W / 2, -let - 0.003), (W / 2, -let - 0.003), (W / 2, h - r), (W / 2 - c45, h - c45), (W / 2 - r, h),
+           (-W / 2 + r, h), (-W / 2 + c45, h - c45), (-W / 2, h - r)]
+    rings = []
+    for k, (q, nn) in enumerate(zip(path, n2)):
+        e = min(abs(xs[k] - xs[0]), abs(xs[-1] - xs[k]))
+        f = min(1.0, 0.35 + 0.65 * e / 0.03)
+        pts = np.array([[q[0] + w * nn[0], q[1] + w * nn[1]] for w, _ in sec])
+        zd = shell.deck_z(pts[:, 0], pts[:, 1])
+        z = [zd[j] + (hh if hh < 0 else hh * f) for j, (_, hh) in enumerate(sec)]
+        rings.append(np.column_stack([pts, z]))
+    V, F = deck.loft_rings(rings)
+    rigging.solid(part, V, F, "Bronze", lab(group, "track"), CAT_TRACK)
+    # the car on the track at P, square to the track there
+    tp = np.array([0.02, sd * float(half(P[0] + 0.01) - half(P[0] - 0.01))])
+    tp /= np.linalg.norm(tp)
+    t = np.r_[tp, 0.0]
+    nn = np.r_[-tp[1], tp[0], 0.0]
+    zd = deck_z(P[0], P[1])
+    cl, cwid, ch = tk["car"]
+    base = deck.rrect(0.0, 0.0, cl, cwid, 0.012)
+    Oc = np.array([P[0], P[1], zd])
+    lo = Oc + (h - 0.003) * UP + base[:, :1] * t + base[:, 1:2] * nn
+    hi = Oc + (h + ch) * UP + 0.94 * (base[:, :1] * t + base[:, 1:2] * nn)
+    V, F = deck.loft_rings([lo, Oc + (h + ch - 0.006) * UP + base[:, :1] * t + base[:, 1:2] * nn, hi])
+    rigging.solid(part, V, F, "Bronze", lab(group, "padeye"), CAT_TRACK)
+    # the eye on the car, in the padeye's plane: its foot no wider than the car's top along `toward`
+    d = unit(np.array([toward[0], toward[1], 0.0]))
+    nrm = np.cross(UP, d)
+    hole = pe["hole_above_deck"]
+    rr = pe["height"] - hole
+    reach = min(abs(0.47 * cl / max(abs(float(d @ t)), 1e-6)), abs(0.47 * cwid / max(abs(float(d @ nn)), 1e-6)))
+    wb = min(reach, rr + 0.004)
+    q = np.linspace(0.0, math.pi, 11)
+    zf = h + ch - 0.004
+    poly = [(wb, zf)] + [(rr * math.cos(a), hole + rr * math.sin(a)) for a in q] + [(-wb, zf)]
+    et = pe["thickness"]
+    rigging.flat(part, poly, Oc, d, UP, nrm, -et / 2, et / 2, "Bronze", lab(group, "padeye"), CAT_TRACK)
+    return np.array([P[0], P[1], zd + hole]), nrm
 
 
 # ------------------------------------------------------------------------------------------------ the mast's boxes
@@ -771,9 +842,10 @@ def build(pts, rr, sl_parts, footprints, sheer, obstacles):
     out = {}
     for pass_ in (0, 1):
         if pass_:
-            pad = dw.padeyes(pulls)
-            # the halyards' and padeyes' fixed parts weigh once
-            weighed.by_key[("fixed", "boxes and padeyes")] = list(fit.masses)
+            pad = dw.padeyes(pulls, sheer)
+            # the halyards' and padeyes' fixed parts weigh once; the sheet tracks and their cars are deck hardware
+            tracks = [m for m in fit.masses if m["part"] == CAT_TRACK]
+            weighed.by_key[("fixed", "boxes and padeyes")] = [m for m in fit.masses if m["part"] != CAT_TRACK]
             fit.masses = []
         for sname in SUITS:
             sp = SparPart(f"Running.{sname}")
@@ -797,7 +869,7 @@ def build(pts, rr, sl_parts, footprints, sheer, obstacles):
            "halyards": {k: {"stored_on_reel_m": stored[k],
                             "inside_mast_m": round(h["inside_m"], 2), "foot_box_fleet_deg": h.get("foot_fleet_deg")}
                         for k, h in hal.items()}}
-    rep["weights"] = weights(parts, weighed, out, hal, stored)
+    rep["weights"] = weights(parts, weighed, out, hal, stored, tracks)
     rep["settled"] = {"tolerance_mm": SETTLE_TOL * 1000,
                       "worst_last_pass_mm": round(max(SETTLED.values()) * 1000, 4),
                       "loops": {k: round(v * 1000, 4) for k, v in sorted(SETTLED.items())}}
@@ -1132,10 +1204,11 @@ def tack_lashing(part, cr, eye):
                      MANILA * math.pi * r * r)
 
 
-def weights(parts, weighed, out, hal, stored):
+def weights(parts, weighed, out, hal, stored, tracks=()):
     """The running rigging's weight: the ropes aboard from their cut lengths (both sides' sheets, centred where they are
     led), the wire halyards from their full length (on the reel, at the foot, inside the mast, aloft), and each block,
-    shackle, padeye and box once. The winches and cleats are reported apart (slice 8's hardware)."""
+    shackle, padeye and box once. The winches and cleats, and the sheet tracks with their cars (`tracks`: their
+    masses), are reported apart: they are deck hardware (slice 8's)."""
     rows = list(weighed.rows) + weighed.mirrored()
     seen = {}
     for sname, o in out.items():
@@ -1179,6 +1252,8 @@ def weights(parts, weighed, out, hal, stored):
         t["mom"] += m["kg"] * np.asarray(m["centre"], float)
     wkg = sum(v["kg"] for v in wrow.values())
     wmom = sum((v["mom"] for v in wrow.values()), np.zeros(3))
+    tkg = sum(m["kg"] for m in tracks)
+    tmom = sum((m["kg"] * np.asarray(m["centre"], float) for m in tracks), np.zeros(3))
     return {"running_rigging": {"rows": cats, "total_kg": round(kg, 1), "total_long_tons": round(kg / deck.LT_KG, 3),
                                 "centre": [round(float(a), 3) for a in mom / max(kg, 1e-9)],
                                 "ropes": [m for m in rows if "rope" in m]},
@@ -1186,7 +1261,9 @@ def weights(parts, weighed, out, hal, stored):
                                                 "centre": [round(float(a), 3) for a in v["mom"] / max(v["kg"], 1e-9)]}
                                             for k, v in wrow.items()},
                                    "total_kg": round(wkg, 1), "total_long_tons": round(wkg / deck.LT_KG, 3),
-                                   "centre": [round(float(a), 3) for a in wmom / max(wkg, 1e-9)]}}
+                                   "centre": [round(float(a), 3) for a in wmom / max(wkg, 1e-9)]},
+            "sheet_tracks": {"total_kg": round(tkg, 1), "total_long_tons": round(tkg / deck.LT_KG, 3),
+                             "centre": [round(float(a), 3) for a in tmom / max(tkg, 1e-9)]}}
 
 def lead_checks(rep):
     """Every loaded rope's rise onto its capstan's drum within the json's 'rise_deg', and every part's angle to the

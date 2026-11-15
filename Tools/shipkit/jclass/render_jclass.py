@@ -1,5 +1,5 @@
-"""Clay, zebra, afloat, paint, deck, rig, rigging, sails and running rigging renders of Bluebonnet for the docs and the
-blind reviews (docs/jclass-1 to jclass-7).
+"""Clay, zebra, afloat, paint, deck, rig, rigging, sails, running rigging and deck hardware renders of Bluebonnet for
+the docs and the blind reviews (docs/jclass-1 to jclass-8).
 
     python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
 
@@ -44,6 +44,13 @@ boats), the same every round so before and after line up:
                                              quadrilateral's and the spinnaker's suits, the pole's end, moored with the
                                              topping lift on, and an idle capstan and reel close to (the part loop's
                                              views)
+  hardware_*                                 slice 8's deck hardware: the foredeck moored from aloft, the profile with
+                                             the ensign flying (framed to the burgee), the stem head, a bow cleat and
+                                             its fairlead, the anchor on its chocks, a cowl's red mouth in harbour and
+                                             its flange capped at sea, a deck prism, both side lights on their boards
+                                             (under main and genoa), the genoa's sheet track and car, the counter with
+                                             the stern light and the ensign's socket, the ensign, and the burgee at the
+                                             masthead
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -89,6 +96,7 @@ def bounds(obs):
 LO, HI, MID = bounds([o for o in meshes if o.get("slice", 1) < 4])      # the hull and deck: the earlier slices' frame
 L = HI.x - LO.x
 LOA, HIA, MIDA = bounds([o for o in meshes if o.get("slice", 1) < 6])       # with the rig (not the sails)
+LOH, HIH, MIDH = bounds([o for o in meshes if o.get("slice", 1) < 6 or o.name in ("Burgee.Moored", "Ensign.Moored")])
 SUITS = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                       "sails_bluebonnet.json")))["suits"].items() if k != "note"}
 
@@ -242,7 +250,7 @@ def shown(o, upto, tack, suit=None):
         return False
     if o.get("sail") is not None:
         return suit is not None and suit in o["suits"].split(",")
-    if o.get("suit") is not None:                          # slice 7's running rigging, one object per suit
+    if o.get("suit") is not None:                          # slice 7's running rigging and slice 8's flags, by suit
         return o["suit"] == suit
     if o.get("state") is not None:
         return (o["state"] == "Set") == (o["side"] == tack)
@@ -497,4 +505,31 @@ shot("running_capstan", "paint", (-14.2, -2.15, 2.7), (-15.6, -0.85, 1.98), lens
      **dict(run, sun_dir=WW_SUN))
 shot("running_reel_close", "paint", (1.05, -1.5, 2.3), (2.0, -0.66, 1.72), lens=60, suit="Genoa",
      **dict(run, sun_dir=WW_SUN))
+# slice 8: the deck hardware; moored (the sails bagged, the cowls up, the ensign flying) for the foredeck, the bow and a
+# cowl, sailing in the genoa's suit for a capped cowl flange, the deck prisms, the side lights, the sheet track and the
+# burgee, and lowered (the ensign's staff unshipped) for the counter
+hw = dict(sun_dir=WW_SUN, sun=3.0, samples=64, upto=8)
+AFT_SUN = (0.55, 0.4, -0.75)              # from the starboard quarter, for the views from aft
+AFT_SUN_PORT = (0.55, -0.4, -0.75)        # from the port quarter
+shot("hardware_foredeck", "paint", (24.0, -7.0, 9.0), (12.0, 0.0, 2.0), lens=30, suit="Moored", **hw)
+shot("hardware_profile", "paint", (MIDH.x, -150, MIDH.z), MIDH,
+     ortho=1.05 * max(HIH.x - LOH.x, (HIH.z - LOH.z) * ASPECT), sun_dir=WW_SUN, sun=3.0, upto=8, suit="Moored")
+shot("hardware_stem_head", "paint", (19.9, -1.1, 3.0), (18.55, 0.0, 2.42), lens=50, suit="Moored", **hw)
+shot("hardware_bow_cleat", "paint", (15.2, -2.9, 3.2), (16.75, -1.4, 2.15), lens=40, suit="Moored", **hw)
+shot("hardware_anchor", "paint", (12.6, 3.4, 3.4), (14.75, 1.22, 1.97), lens=35, suit="Moored",
+     **dict(hw, sun_dir=AFT_SUN_PORT))
+shot("hardware_cowl", "paint", (-6.0, -2.6, 2.5), (-3.55, -0.85, 1.65), lens=45, suit="Moored",
+     **dict(hw, sun_dir=AFT_SUN))
+shot("hardware_cowl_capped", "paint", (-5.0, -2.0, 2.2), (-3.55, -0.85, 1.6), lens=55, suit="Genoa",
+     **dict(hw, sun_dir=AFT_SUN))
+shot("hardware_deck_prism", "paint", (7.4, -1.5, 2.4), (8.3, -0.75, 1.59), lens=60, suit="Genoa", **hw)
+shot("hardware_sidelight", "paint", (6.5, -5.4, 2.4), (4.6, -2.95, 1.6), lens=45, suit="Genoa", **hw)
+shot("hardware_sidelight_port", "paint", (6.5, 5.4, 2.4), (4.6, 2.95, 1.6), lens=45, suit="Genoa",
+     **dict(hw, sun_dir=LEE_SUN))
+shot("hardware_track", "paint", (-9.0, 1.2, 2.9), (-6.9, 2.95, 1.38), lens=45, suit="Genoa", **hw)
+shot("hardware_stern", "paint", (-25.0, -4.0, 3.6), (-21.0, 0.0, 2.4), lens=40, suit="Lowered",
+     **dict(hw, sun_dir=AFT_SUN))
+shot("hardware_ensign", "paint", (-30.0, -12.0, 5.5), (-22.6, 0.0, 3.7), lens=35, suit="Moored",
+     **dict(hw, sun_dir=AFT_SUN))
+shot("hardware_burgee", "paint", (-3.5, -9.0, 49.3), (1.5, 0.3, 48.6), lens=70, suit="Genoa", **hw)
 print("render_jclass: done")

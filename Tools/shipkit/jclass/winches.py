@@ -202,10 +202,11 @@ def wound_radius(stored_m, d):
 
 
 # ------------------------------------------------------------------------------------------------ cleats
-def cleat(part, at, heading_deg, size, group):
+def cleat(part, at, heading_deg, size, group, cat="Cleats (bronze)"):
     """A bronze horn cleat at plan point `at`, its horns along `heading_deg` from forward (to starboard positive): the
-    bar with its horns, slimmer and turned up a little at the tips, on two feet let into the deck. Returns its frame."""
-    cs = RN["cleat"]["sizes"][size]
+    bar with its horns, slimmer and turned up a little at the tips, on two feet let into the deck. `size` names one of
+    the json's sizes or is a size itself (slice 8's mooring cleats); `cat` its weights' row. Returns its frame."""
+    cs = size if isinstance(size, dict) else RN["cleat"]["sizes"][size]
     L, hu, ht, hw, fx = cs["L"], cs["h_under"], cs["h_top"], cs["half_w"], cs["foot_x"]
     h = math.radians(heading_deg)
     Xc = np.array([math.cos(h), math.sin(h), 0.0])
@@ -230,7 +231,7 @@ def cleat(part, at, heading_deg, size, group):
         z = zc + hz * np.sign(cq) * np.abs(cq) ** (2 / p)
         rings.append(O + x * Xc + y[:, None] * Yc + z[:, None] * UP)
     V, F = deck.loft_rings(rings)
-    _solid(part, V, F, "Bronze", lab(group, "cleat"), ("solid", BRZ, "Cleats (bronze)"))
+    _solid(part, V, F, "Bronze", lab(group, "cleat"), ("solid", BRZ, cat))
     for sg in (1, -1):
         xc = sg * 0.68 * fx
         rr = []
@@ -243,7 +244,7 @@ def cleat(part, at, heading_deg, size, group):
                 pts[:, 2] = z0 + zz
             rr.append(pts)
         V, F = deck.loft_rings(rr)
-        _solid(part, V, F, "Bronze", lab(group, "cleat"), ("solid", BRZ, "Cleats (bronze)"))
+        _solid(part, V, F, "Bronze", lab(group, "cleat"), ("solid", BRZ, cat))
     return {"O": O, "X": Xc, "Y": Yc, "size": size, **cs}
 
 
