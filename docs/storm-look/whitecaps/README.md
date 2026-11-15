@@ -27,10 +27,14 @@ measure, are untouched. `FoamLife` (a material scalar, 1 by default) blends the 
   - the cap's own: 12 m.
   It moves the drawn edge (not the mask) by `STORM_CAP_VARY` (0.8) of the cover's e-fold either way. Drawn cover is
   scaled by e^+-0.8 from group to group, and the mean is about the same.
-- **Age (`capAge`).** It is 0 in a crest's core, about a quarter at its feathered rim and 1 in its residue. Holes open in
-  the lace channel as it ages: the low values open first, so they grow as a network of films. The hole threshold is
-  `STORM_FOAM_HOLES` (0.3) x age, times 0.6 to 1.4 by group (a small cap opens sooner).
-- **Opacity.** The core follows the marbling gently (0.8 to 1), not by 0.4 to 1. Far out, where the patterns fade, it
+- **Age (`capAge`).** Only the deepest part of a fold is the active crest. The age is 0 two e-folds of cover inside the
+  threshold, climbs to `STORM_CAP_RIM` (1.2, so fully aged) at the drawn edge, and is 1 in the residue. Holes open in the
+  lace channel as it ages: the low values open first, so they grow as a network of films. The hole threshold is
+  `STORM_FOAM_HOLES` (0.3) x age, times 0.6 to 1.4 by group (a small cap opens sooner). It never falls below
+  `STORM_CAP_CORE` (0.3) of that, even in the core, so no cap is a solid plate.
+- **A ragged edge.** The lace moves the drawn edge by `STORM_CAP_RAG` (0.06) of J. The mean is 0, so the drawn cover
+  stays the same.
+- **Opacity.** The core follows the marbling gently (0.7 to 1), not by 0.4 to 1. Far out, where the patterns fade, it
   goes to 0.9 on a crest and 0.55 in residue.
 - **The trail (stage B).** AWaterSurface's foam grid fades the foam as exp(-t / 4 s), so the trail's value is its age:
   - just off the crest it is lace with small holes;
@@ -43,6 +47,25 @@ measure, are untouched. `FoamLife` (a material scalar, 1 by default) blends the 
   footprint (the 2x2 inverse of `fdx`, `fdy`), faded out with the patterns and capped at 0.4. The foam and the water
   share one normal (Single Layer Water). The derivatives are taken outside every branch. `STORM_FOAM_BUMP` 0 turns it
   off.
+
+## The first cut, and the revision
+
+BEN-PC's 4K Ultra stills of the first cut (`Inputs/storm-look-703/pc/stills/` on the inputs branch) showed smooth,
+solid white plates with crisp outlines. Its caps aged only at their feathered rim, so the whole folded area was drawn as
+an active crest at 0.8 to 1 opacity. That is just as wrong as the crackle it replaced, the other way.
+
+`Tools/water/foam_preview.py` draws the shader's near foam over a synthetic choppy sea, seen from a camera 4 m up, with
+no editor needed. The rows are classic, the first cut and now:
+
+![classic, first cut, now](preview.jpg)
+
+- **Classic** is crackled caps under a broad grey haze of trail.
+- **The first cut** draws the plates the PC showed. 1.2% of the pixels are over half opaque, against classic's 0.17%.
+- **Now** has a bright leading edge on each cap, opening into lace behind it, with a ragged rim (1.0%). The trail is
+  lace and then strings along the wind.
+
+To try other values, pass them on the command line: `python -I Tools/water/foam_preview.py <dir> CORE=0.2,RAG=0.1`.
+Bake `T_FoamLace.png` into `<dir>` first with `make_foam_texture.py`.
 
 ## Cost
 

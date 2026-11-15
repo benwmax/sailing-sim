@@ -3525,23 +3525,29 @@ float soft = saturate((capThr - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * 
 // - capVar: a group's breakers against their neighbours' (0..1): value noise on two scales, the group's (90 m along the
 //   wind by 50 m, moving downwind at the group's speed, half the chop's phase speed of about 0.4 U) and the cap's own (12 m);
 //   it moves the drawn edge by STORM_CAP_VARY of the cover's e-fold either way (drawn cover e^+-0.8), never the mask;
-// - capAge: 0 in a crest's core, a quarter at its feathered rim (the wide ramp, softV, at its threshold), 1 in its residue:
-//   holes open in the lace there (the lace channel's low values first: a growing network of films), at most
-//   STORM_FOAM_HOLES (0.3 opens about half) times 0.6-1.4, more on a small cap;
-// - the core's opacity follows the marbling gently (0.8-1), not the old 0.4-1 by cell, whose dark veins drew the crackle.
+// - capAge: only the deepest part of a fold is the active crest. The age is 0 two e-folds of cover inside the threshold
+//   (capDepth 1), climbs to STORM_CAP_RIM at the drawn edge and is 1 in the residue. Holes open in the lace as it ages (the
+//   lace channel's low values first: a growing network of films): STORM_FOAM_HOLES (0.3 opens about half) times 0.6-1.4,
+//   more on a small cap, and never less than STORM_CAP_CORE of that even in the core, so no cap is a solid plate;
+// - the drawn edge is ragged: the lace moves it by STORM_CAP_RAG of J (mean 0, so the drawn cover stays);
+// - the core's opacity follows the marbling gently (0.7-1), not the old 0.4-1 by cell, whose dark veins drew the crackle.
+// (The first cut aged a cap only at its feathered rim: BEN-PC's 4K stills showed smooth, solid white plates, the
+// offline preview in docs/storm-look/whitecaps/ the same; this is the revision it chose.)
 float capVar = saturate(0.6 * WB_NOISE(float2((dot(p.xy, wd) - 0.2 * WindP.z * T) / 90.0, dot(p.xy, wn) / 50.0) + 41.0)
     + 0.4 * WB_NOISE(float2(dot(p.xy, wd) - 0.4 * WindP.z * T, dot(p.xy, wn)) / 12.0 + 17.0));
 float capVarS = FoamLife * (2.0 * capVar - 1.0) * STORM_CAP_VARY * capSlope;
+float capRag = FoamLife * STORM_CAP_RAG * (lace - 0.25) * (1.0 - patFade);
 float laceF = saturate(0.8 + 1.3 * laceE);
-float crestV = crest + (1.0 - useTable) * (saturate((capThr + capVarS - Jt) / 0.05 + 0.5) - saturate((capThr - Jt) / 0.05 + 0.5)) * laceF;
-float softV = saturate((capThr + capVarS - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
-float capAge = saturate(1.0 - fresh + 0.6 * (1.0 - softV) * (1.0 - softV) * (1.0 - useTable));
-float holeT = STORM_FOAM_HOLES * capAge * lerp(1.4, 0.6, capVar);
+float crestV = crest + (1.0 - useTable) * (saturate((capThr + capVarS + capRag - Jt) / 0.05 + 0.5) - saturate((capThr - Jt) / 0.05 + 0.5)) * laceF;
+float softV = saturate((capThr + capVarS + capRag - Jt) / 0.15 + 0.35) * (1.0 - useTable) + crest * useTable;
+float capDepth = saturate((capThr + capVarS - Jt) / (2.0 * max(capSlope, 0.01)));
+float capAge = saturate(1.0 - fresh + STORM_CAP_RIM * (1.0 - capDepth) * (1.0 - capDepth) * (1.0 - useTable));
+float holeT = STORM_FOAM_HOLES * lerp(STORM_CAP_CORE, 1.0, capAge) * lerp(1.4, 0.6, capVar);
 float capLace = smoothstep(holeT - 0.05, holeT + 0.05, lace + 0.02);
-float capOpenNew = lerp(lerp(0.8, 1.0, smoothstep(0.03, 0.4, cellsE)) * capLace, lerp(0.9, 0.55, capAge), patFade);
+float capOpenNew = lerp(lerp(0.7, 1.0, smoothstep(0.03, 0.4, cellsE)) * capLace, lerp(0.9, 0.55, capAge), patFade);
 float capOpenOld = lerp(lerp(0.4, 1.0, smoothstep(0.15, 0.75, cells)), 0.6, patFade);
 FoamTone = lerp(0.5, 1.0, fresh) * lerp(0.7, 1.0, saturate(cellsE * 2.0));
-FoamTone = lerp(FoamTone, lerp(0.5, 1.0, fresh) * lerp(lerp(0.88, 1.0, saturate(cellsE * 2.0)), lerp(0.7, 1.0, saturate(cellsE * 2.0)), capAge), FoamLife);
+FoamTone = lerp(FoamTone, lerp(0.5, 1.0, fresh) * lerp(lerp(0.85, 1.0, saturate(cellsE * 2.0)), lerp(0.7, 1.0, saturate(cellsE * 2.0)), capAge), FoamLife);
 FoamTone = lerp(FoamTone, 1.0, saturate(wakeBreak * 2.0) * (1.0 - saturate(caps * 4.0)));   // boats' wash: fresh foam
 // W4 step 2: the foam a cap leaves behind (AWaterSurface's foam grid, FoamGridRect: x0, y0, size m, on). It decays on
 // Monahan's residual-whitecap timescale and drifts downwind on the worker, so a cap that has stopped breaking leaves a
@@ -3894,7 +3900,8 @@ def build_water_v4():
     shade_common = ["P", "Cam", "T", "Fade", "OceanA", "OceanB", "OceanMask", "OceanP", "OceanMaskRect", "DetailA", "DetailP", "WakeGrid", "WakeGridRect", "ShoreMap", "ShoreRect", "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ", "DetailE"]
     shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2"))
                    .replace("STORM_FOAM_HOLES", os.environ.get("STORM_FOAM_HOLES", "0.3")).replace("STORM_FOAM_BUMP", os.environ.get("STORM_FOAM_BUMP", "1.0"))
-                   .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                   .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")).replace("STORM_CAP_RAG", os.environ.get("STORM_CAP_RAG", "0.06"))
+                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])

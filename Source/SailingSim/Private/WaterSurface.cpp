@@ -62,6 +62,7 @@ namespace
 	// Graphics G8 Ultra showcase: two and a half times the bow spray on Ultra (the 4090 has the room; still CPU droplets in
 	// the same ISM, so High's look and cost don't move).
 	int32 MaxDroplets() { return USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 3000 : kMaxDroplets; }
+	constexpr float kTornReachM = 25.f;   // storm look item 4: torn crests near the camera only (drops past it draw as mist)
 	// docs/spray/: what one spray instance is (FDroplet::Kind).
 	enum class ESprayKind : uint8 { Drops, Sheet, Mist };
 	constexpr int32 kShoreRes = 512;            // shore map: 512 m around the boat at 1 m
@@ -1991,21 +1992,18 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 				Emit(P, V, SprayRng.FRandRange(0.08f, 0.2f), ESprayKind::Drops, SprayRng.FRandRange(0.6f, 1.4f));
 				if (I == 0) Emit(P, V * 0.5f, SprayRng.FRandRange(0.6f, 1.2f), ESprayKind::Mist, SprayRng.FRandRange(1.5f, 2.5f));
 			}
-			// Storm look item 4: from about 25 kn the wind tears the lip off a share of the breaking crests: a short sheet off
-			// the top, a wisp of spume streaming downwind at half the wind's speed and a few fine drops carried with it.
-			if (Gale.Torn > 0.f && SprayRng.FRand() < Gale.Torn)
+			// Storm look item 4: from about 25 kn the wind tears the lip off a share of the breaking crests: a short torn sheet
+			// off the top and a few fine drops streaking downwind with it. Only within kTornReachM of the camera, where drops are
+			// drawn as drops (past 25 m the spray draws them as mist), and no mist of its own: BEN-PC's 4K stills showed the first
+			// cut's spume wisps, and its far drops, as white puffs like steam all over the sea.
+			if (Gale.Torn > 0.f && R < kTornReachM && SprayRng.FRand() < Gale.Torn)
 			{
 				const FVector Lip(X, Y, H + 0.15);
 				const float SheetCarry = SprayRng.FRandRange(0.6f, 0.8f);
 				const float SheetLift = SprayRng.FRandRange(0.4f, 1.f);
-				const float SheetSize = SprayRng.FRandRange(0.3f, 0.6f);
-				const float SheetLife = SprayRng.FRandRange(0.25f, 0.5f);
+				const float SheetSize = SprayRng.FRandRange(0.2f, 0.4f);
+				const float SheetLife = SprayRng.FRandRange(0.2f, 0.4f);
 				Emit(Lip, WindAt2m * SheetCarry + FVector(0, 0, SheetLift), SheetSize, ESprayKind::Sheet, SheetLife);
-				const float WispCarry = SprayRng.FRandRange(0.5f, 0.75f);
-				const float WispLift = SprayRng.FRandRange(0.3f, 0.9f);
-				const float WispSize = SprayRng.FRandRange(0.5f, 1.f);
-				const float WispLife = SprayRng.FRandRange(0.8f, 1.6f);
-				Emit(Lip, WindAt2m * WispCarry + FVector(0, 0, WispLift), WispSize, ESprayKind::Mist, WispLife);
 				const int32 Fine = 2 + FMath::Min(2, int32(SprayRng.FRand() * 3.f));
 				for (int32 F = 0; F < Fine; ++F)
 				{

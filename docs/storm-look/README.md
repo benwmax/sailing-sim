@@ -45,11 +45,14 @@ read as wet glass.
 
 The Beaufort scale's force 6 (22 to 27 kn) says "probably some spray", and force 7 says foam is blown in streaks.
 `GaleSprayFor(kn).Torn` is a smoothstep from 22 to 30 kn. That share of the breaking crests found by the crest-spray
-search (the same search, the same fold test) also have their lip torn off:
+search (the same search, the same fold test), within 25 m of the camera, also have their lip torn off:
 
-- a short sheet off the top, 0.3 to 0.6 m, lasting a quarter to half a second, carried at 60 to 80% of the wind;
-- a wisp of spume, mist 0.5 to 1 m across, lasting 0.8 to 1.6 s, carried at half to three quarters of the wind;
-- two to four fine drops (4 to 10 cm quads) carried with them.
+- a short torn sheet off the top, 0.2 to 0.4 m, lasting 0.2 to 0.4 s, carried at 60 to 80% of the wind;
+- two to four fine drops (4 to 10 cm quads) streaking downwind with it.
+
+The first cut also threw a mist wisp off every torn crest out to 60 m. Past 25 m the spray draws its drops as mist
+too, so BEN-PC's 4K stills showed white puffs like steam all over the sea. Now the torn crests stay near the camera,
+where drops are drawn as drops, and add no mist of their own.
 
 The crest search's sample count, the gale's extra crests (24 to 32 kn) and the spindrift (33 to 41 kn) are unchanged.
 `SailingSim.Visual.GaleSpray` checks Torn: nothing at 20 kn, some at 26, every crest by 32, and only growing with the
@@ -70,6 +73,9 @@ Both default to on and are saved in `profile.json` (`display.lensWater`, `displa
 - `STORM_FOAM_HOLES` (0.3): how far holes open in ageing foam. 0.3 opens about half of an old patch.
 - `STORM_CAP_VARY` (0.8): how much a wave group moves the drawn caps' edge, in e-folds of cover.
 - `STORM_FOAM_BUMP` (1.0): the fresh foam's relief. 0 turns it off.
+- `STORM_CAP_CORE` (0.3): the share of the hole threshold that opens even in a cap's core.
+- `STORM_CAP_RIM` (1.2): how aged a cap's drawn edge is.
+- `STORM_CAP_RAG` (0.06): how far the lace moves a cap's drawn edge, in J.
 - `LENS_FIELD` (4.0): how wide a view each lens drop shows, in drop sizes.
 
 ## What the Mac and the PC still have to do

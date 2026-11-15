@@ -487,7 +487,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   -> `UpdateSpray` sheets, `MPC_Boat` `Wash`/`WashSide`), torn crests from 22-30 kn (`FGaleSpray::Torn`), refractive lens
   drops (`LENS_CODE` float4, `LENS_FIELD`) and camera shake (`FCameraBuffet`, `-SailingNoCameraShake`); Settings > Water on
   the lens and Camera shake (save `display.lensWater`, `display.cameraShake`). Knobs `STORM_FOAM_HOLES`, `STORM_CAP_VARY`,
-  `STORM_FOAM_BUMP` (make_materials.py env).
+  `STORM_CAP_CORE`, `STORM_CAP_RIM`, `STORM_CAP_RAG`, `STORM_FOAM_BUMP` (make_materials.py env); `Tools/water/foam_preview.py`
+  previews the near caps offline.
 - W3 prep (`docs/w3-prep/`): the growth laws take the adjusted wind U_A = 0.71 U^1.23 (`FWaveField::AdjustedWindSpeed`),
   steepened by (U / 18 kn)^0.43 above 18 kn to follow the SWAN bake (`GrowthStressWind`, `docs/physics-gaps/`);
   the lake's sea grows on `FLakeTerrain::EffectiveFetch` (Saville, nine rays over +/-45 deg; cached in the game mode).
