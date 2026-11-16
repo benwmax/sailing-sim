@@ -1,0 +1,744 @@
+{
+ "note": "the boats and their stowage (docs/shipkit-11), in the ship's frame (metres): boats, each boat's kind, her origin (her own frame's: x forward from her transom's top aft edge, y to her starboard, z up from her base, the rabbet line amidships; axes the ship's), her keel's bottom, her cradles and gripes; gig, where she lies in the starboard cutter; spars, each spare spar's boat, kind, size, axis height and its saddles' thickness; anchors, where each anchor's stock lies across its boat's gunwales and how far it is turned down; gaps, the cutters' places; checks, the gangways' and ladders' room and each boat's own clash check. The objects: Launch, Cutter_S, Cutter_P, Gig (each on her own frame), SpareSpars, SparSaddles, BoatCradles, GigChocks, StreamAnchor, KedgeLarge, KedgeSmall, BoatGripes and GripeEyebolts (in place)",
+ "boats": {
+  "Launch": {
+   "boat": "launch",
+   "keel_bottom_z_m": 4.2958,
+   "cradles_x_m": [
+    3.829,
+    7.783
+   ],
+   "under_keel_in": [
+    4.0,
+    4.51
+   ],
+   "y_m": 0.0,
+   "origin_m": [
+    -0.333,
+    0.0,
+    4.4937
+   ],
+   "gripes": [
+    {
+     "x_m": 3.829,
+     "length_m": 7.21
+    },
+    {
+     "x_m": 7.783,
+     "length_m": 6.74
+    }
+   ],
+   "built": {
+    "length_ft": 34.07,
+    "breadth_ft": 10.83,
+    "breadth_moulded_ft": 10.42,
+    "depth_ft": 4.57,
+    "keel_bottom_z_m": -0.1979,
+    "thwarts_x_m": [
+     2.892,
+     3.661,
+     4.496,
+     5.332,
+     6.87,
+     8.006,
+     8.792
+    ],
+    "masts_at": {
+     "after": 0,
+     "main": 4,
+     "fore": 6
+    },
+    "frames": 31,
+    "room_in": 12.0,
+    "tris": 55028,
+    "parts": [
+     "bottom_boards",
+     "breasthook",
+     "cappings",
+     "frames",
+     "gudgeons",
+     "hog",
+     "inner_post",
+     "inwales",
+     "keel_stem",
+     "keelson",
+     "knees",
+     "lashings",
+     "mast_clamps",
+     "mast_steps",
+     "masts",
+     "oars",
+     "painter",
+     "planking",
+     "quarter_knees",
+     "ring_bolt",
+     "risings",
+     "roller",
+     "rubbing",
+     "rudder",
+     "sails",
+     "sling_plates",
+     "stern_benches",
+     "stern_risings",
+     "thole_pins",
+     "thwarts",
+     "tiller",
+     "transom",
+     "transom_bench",
+     "windlass"
+    ],
+    "gudgeons": [
+     {
+      "which": "upper",
+      "eye_z_m": [
+       1.7717,
+       1.7344
+      ],
+      "eye_aft_in": 1.0
+     },
+     {
+      "which": "lower",
+      "eye_z_m": [
+       -0.0747,
+       -0.112
+      ],
+      "eye_aft_in": 1.0
+     }
+    ]
+   }
+  },
+  "Cutter_S": {
+   "boat": "cutter",
+   "keel_bottom_z_m": 4.2261,
+   "cradles_x_m": [
+    3.942,
+    6.918
+   ],
+   "under_keel_in": [
+    4.0,
+    4.76
+   ],
+   "y_m": 2.7871,
+   "origin_m": [
+    0.8914,
+    2.7871,
+    4.3397
+   ],
+   "gripes": [
+    {
+     "x_m": 3.942,
+     "length_m": 5.29
+    },
+    {
+     "x_m": 6.918,
+     "length_m": 5.14
+    }
+   ],
+   "built": {
+    "length_ft": 26.19,
+    "breadth_ft": 7.55,
+    "breadth_moulded_ft": 7.18,
+    "depth_ft": 2.63,
+    "keel_bottom_z_m": -0.1136,
+    "thwarts_x_m": [
+     2.515,
+     3.429,
+     4.343,
+     5.258,
+     6.172
+    ],
+    "masts_at": {
+     "main": 1,
+     "fore": 4
+    },
+    "frames": 36,
+    "room_in": 8.0,
+    "tris": 53032,
+    "parts": [
+     "bottom_boards",
+     "breasthook",
+     "cappings",
+     "frames",
+     "gudgeons",
+     "hog",
+     "inner_post",
+     "inwales",
+     "keel_stem",
+     "keelson",
+     "knees",
+     "lashings",
+     "mast_clamps",
+     "mast_steps",
+     "masts",
+     "oars",
+     "painter",
+     "planking",
+     "quarter_knees",
+     "ring_bolt",
+     "risings",
+     "rubbing",
+     "rudder",
+     "sails",
+     "stern_benches",
+     "stern_risings",
+     "thwarts",
+     "tiller",
+     "transom",
+     "transom_bench",
+     "washstrake"
+    ],
+    "gudgeons": [
+     {
+      "which": "upper",
+      "eye_z_m": [
+       0.9349,
+       0.8975
+      ],
+      "eye_aft_in": 1.0
+     },
+     {
+      "which": "lower",
+      "eye_z_m": [
+       -0.0118,
+       -0.0492
+      ],
+      "eye_aft_in": 1.0
+     }
+    ]
+   }
+  },
+  "Cutter_P": {
+   "boat": "cutter",
+   "keel_bottom_z_m": 4.2378,
+   "cradles_x_m": [
+    3.942,
+    6.918
+   ],
+   "under_keel_in": [
+    4.0,
+    4.12
+   ],
+   "y_m": -2.7903,
+   "origin_m": [
+    0.8914,
+    -2.7903,
+    4.3514
+   ],
+   "gripes": [
+    {
+     "x_m": 3.942,
+     "length_m": 4.75
+    },
+    {
+     "x_m": 6.918,
+     "length_m": 4.68
+    }
+   ],
+   "built": {
+    "length_ft": 26.19,
+    "breadth_ft": 7.55,
+    "breadth_moulded_ft": 7.18,
+    "depth_ft": 2.63,
+    "keel_bottom_z_m": -0.1136,
+    "thwarts_x_m": [
+     2.515,
+     3.429,
+     4.343,
+     5.258,
+     6.172
+    ],
+    "masts_at": {
+     "main": 1,
+     "fore": 4
+    },
+    "frames": 36,
+    "room_in": 8.0,
+    "tris": 53032,
+    "parts": [
+     "bottom_boards",
+     "breasthook",
+     "cappings",
+     "frames",
+     "gudgeons",
+     "hog",
+     "inner_post",
+     "inwales",
+     "keel_stem",
+     "keelson",
+     "knees",
+     "lashings",
+     "mast_clamps",
+     "mast_steps",
+     "masts",
+     "oars",
+     "painter",
+     "planking",
+     "quarter_knees",
+     "ring_bolt",
+     "risings",
+     "rubbing",
+     "rudder",
+     "sails",
+     "stern_benches",
+     "stern_risings",
+     "thwarts",
+     "tiller",
+     "transom",
+     "transom_bench",
+     "washstrake"
+    ],
+    "gudgeons": [
+     {
+      "which": "upper",
+      "eye_z_m": [
+       0.9349,
+       0.8975
+      ],
+      "eye_aft_in": 1.0
+     },
+     {
+      "which": "lower",
+      "eye_z_m": [
+       -0.0118,
+       -0.0492
+      ],
+      "eye_aft_in": 1.0
+     }
+    ]
+   }
+  },
+  "Gig": {
+   "boat": "gig",
+   "origin_m": [
+    1.1114,
+    2.7871,
+    5.1478
+   ],
+   "in": "Cutter_S",
+   "on_thwarts": [
+    0,
+    3
+   ],
+   "x_off_m": 0.22,
+   "keel_over_thwart_in": 2.0,
+   "lifted_in": 0.0,
+   "clear_in": 1.638,
+   "built": {
+    "length_ft": 22.16,
+    "breadth_ft": 5.1,
+    "breadth_moulded_ft": 4.79,
+    "depth_ft": 1.88,
+    "keel_bottom_z_m": -0.0813,
+    "thwarts_x_m": [
+     2.362,
+     3.277,
+     4.191,
+     5.105
+    ],
+    "masts_at": {
+     "main": 2
+    },
+    "frames": 35,
+    "room_in": 7.0,
+    "tris": 42196,
+    "parts": [
+     "bottom_boards",
+     "breasthook",
+     "cappings",
+     "frames",
+     "gudgeons",
+     "hog",
+     "inner_post",
+     "inwales",
+     "keel_stem",
+     "keelson",
+     "knees",
+     "lashings",
+     "mast_clamps",
+     "mast_steps",
+     "masts",
+     "oars",
+     "painter",
+     "planking",
+     "quarter_knees",
+     "ring_bolt",
+     "risings",
+     "rubbing",
+     "rudder",
+     "sails",
+     "stern_benches",
+     "stern_risings",
+     "thole_pins",
+     "thwarts",
+     "tiller",
+     "transom",
+     "transom_bench"
+    ],
+    "gudgeons": [
+     {
+      "which": "upper",
+      "eye_z_m": [
+       0.6474,
+       0.6102
+      ],
+      "eye_aft_in": 1.0
+     },
+     {
+      "which": "lower",
+      "eye_z_m": [
+       0.0199,
+       -0.0173
+      ],
+      "eye_aft_in": 1.0
+     }
+    ]
+   }
+  }
+ },
+ "gig": {
+  "in": "Cutter_S",
+  "on_thwarts": [
+   0,
+   3
+  ],
+  "x_off_m": 0.22,
+  "keel_over_thwart_in": 2.0,
+  "lifted_in": 0.0,
+  "clear_in": 1.638
+ },
+ "anchors": {
+  "stream": {
+   "stock_x_m": 1.569,
+   "stock_off_m": 0.0,
+   "shank_down_deg": 8.03,
+   "rests_on": [
+    "masts"
+   ],
+   "ring_swing_deg": 0.0,
+   "stock_len_ft": 10.5,
+   "breadth_over_cappings_ft": 9.17,
+   "overhang_in": 8.0,
+   "stock_on": "cappings",
+   "boat": "Launch"
+  },
+  "kedge_large": {
+   "stock_x_m": 9.241,
+   "stock_off_m": 0.0,
+   "shank_down_deg": 16.29,
+   "rests_on": [
+    "thwarts"
+   ],
+   "ring_swing_deg": 0.0,
+   "stock_len_ft": 9.04,
+   "breadth_over_cappings_ft": 7.71,
+   "overhang_in": 7.9,
+   "stock_on": "cappings",
+   "boat": "Launch"
+  },
+  "kedge_small": {
+   "stock_x_m": 6.512,
+   "stock_off_m": 0.0,
+   "shank_down_deg": 7.83,
+   "rests_on": [
+    "keelson"
+   ],
+   "ring_swing_deg": 0.0,
+   "stock_len_ft": 7.5,
+   "breadth_over_cappings_ft": 6.17,
+   "overhang_in": 8.0,
+   "stock_on": "cappings+washstrake",
+   "boat": "Cutter_P"
+  }
+ },
+ "gaps": {
+  "Cutter_S": 2.7871,
+  "Cutter_P": -2.7903
+ },
+ "spars": {
+  "SpareMainTopgallantYard": {
+   "boat": "Launch",
+   "kind": "yard",
+   "length_ft": 41.33,
+   "diam_in": 9.84,
+   "y_off_boat_m": 0.85,
+   "axis_z_m": 4.0968,
+   "beams": 7,
+   "saddles_in": [
+    2.0,
+    3.83
+   ]
+  },
+  "SpareForeTopgallantYard": {
+   "boat": "Launch",
+   "kind": "yard",
+   "length_ft": 36.75,
+   "diam_in": 8.75,
+   "y_off_boat_m": -0.85,
+   "axis_z_m": 4.1106,
+   "beams": 7,
+   "saddles_in": [
+    3.33,
+    5.16
+   ]
+  },
+  "SpareMizzenTopgallantMast": {
+   "boat": "Cutter_S",
+   "kind": "mast",
+   "length_ft": 35.4,
+   "diam_in": 7.8,
+   "y_off_boat_m": -0.54,
+   "axis_z_m": 4.0636,
+   "beams": 7,
+   "saddles_in": [
+    2.0,
+    3.74
+   ]
+  },
+  "SpareMizzenTopgallantYard": {
+   "boat": "Cutter_S",
+   "kind": "yard",
+   "length_ft": 27.7,
+   "diam_in": 6.59,
+   "y_off_boat_m": 0.54,
+   "axis_z_m": 4.0683,
+   "beams": 5,
+   "saddles_in": [
+    3.58,
+    4.21
+   ]
+  },
+  "SpareMainTopmastStuddingsailBoom": {
+   "boat": "Cutter_P",
+   "kind": "boom",
+   "length_ft": 34.58,
+   "diam_in": 6.92,
+   "y_off_boat_m": 0.54,
+   "axis_z_m": 4.0776,
+   "beams": 7,
+   "saddles_in": [
+    2.0,
+    3.99
+   ]
+  },
+  "SpareForeTopmastStuddingsailBoom": {
+   "boat": "Cutter_P",
+   "kind": "boom",
+   "length_ft": 30.25,
+   "diam_in": 6.05,
+   "y_off_boat_m": -0.54,
+   "axis_z_m": 4.0881,
+   "beams": 5,
+   "saddles_in": [
+    4.3,
+    4.81
+   ]
+  }
+ },
+ "checks": {
+  "inside": {
+   "cutter": [],
+   "gig": [],
+   "launch": []
+  },
+  "inside_within": {
+   "cutter": [],
+   "gig": [],
+   "launch": []
+  },
+  "inside_open": {
+   "cutter": [],
+   "gig": [],
+   "launch": []
+  },
+  "inside_by_design": {
+   "cutter": 49,
+   "gig": 50,
+   "launch": 58
+  },
+  "seams_open_mm": {
+   "cutter": 0.0,
+   "gig": 0.2,
+   "launch": 0.0
+  },
+  "lines_worst_in": {
+   "cutter": 1.08,
+   "gig": 0.72,
+   "launch": 1.0
+  },
+  "floating": {
+   "cutter": [],
+   "gig": [],
+   "launch": []
+  },
+  "sizes": {
+   "cutter": {
+    "length_ft": [
+     26.19,
+     26.0,
+     0.7
+    ],
+    "breadth_moulded_ft": [
+     7.18,
+     7.25,
+     1.0
+    ],
+    "depth_ft": [
+     2.63,
+     2.6667,
+     1.4
+    ]
+   },
+   "gig": {
+    "length_ft": [
+     22.16,
+     22.0,
+     0.7
+    ],
+    "breadth_moulded_ft": [
+     4.79,
+     4.8333,
+     0.9
+    ],
+    "depth_ft": [
+     1.88,
+     1.9167,
+     1.9
+    ]
+   },
+   "launch": {
+    "length_ft": [
+     34.07,
+     34.0,
+     0.2
+    ],
+    "breadth_moulded_ft": [
+     10.42,
+     10.4167,
+     0.0
+    ],
+    "depth_ft": [
+     4.57,
+     4.5,
+     1.6
+    ]
+   }
+  },
+  "sizes_off": [],
+  "lines_written": {
+   "cutter": {
+    "length_ft": [
+     26.16,
+     26.0,
+     0.6
+    ],
+    "breadth_ft": [
+     7.18,
+     7.26,
+     1.2
+    ],
+    "depth_ft": [
+     2.63,
+     2.67,
+     1.8
+    ]
+   },
+   "gig": {
+    "length_ft": [
+     22.13,
+     22.0,
+     0.6
+    ],
+    "breadth_ft": [
+     4.79,
+     4.84,
+     1.2
+    ],
+    "depth_ft": [
+     1.88,
+     1.91,
+     1.8
+    ]
+   },
+   "launch": {
+    "length_ft": [
+     34.05,
+     34.0,
+     0.1
+    ],
+    "breadth_moulded_ft": [
+     10.42,
+     10.42,
+     0.0
+    ],
+    "depth_midships_ft": [
+     4.56,
+     4.48,
+     1.9
+    ]
+   }
+  },
+  "lines_written_off": [],
+  "gangways": {
+   "starboard": {
+    "clear_ft": 5.82,
+    "at_x_m": 3.92
+   },
+   "port": {
+    "clear_ft": 5.81,
+    "at_x_m": 3.92
+   }
+  },
+  "gangways_narrow": [],
+  "ladders": [
+   {
+    "break": "quarterdeck",
+    "y_m": 1.524,
+    "headroom_ft": null,
+    "clear_ft": 0.81,
+    "nearest": "SpareSpars"
+   },
+   {
+    "break": "quarterdeck",
+    "y_m": -1.524,
+    "headroom_ft": null,
+    "clear_ft": 0.89,
+    "nearest": "SpareSpars"
+   },
+   {
+    "break": "forecastle",
+    "y_m": 1.524,
+    "headroom_ft": null,
+    "clear_ft": 0.73,
+    "nearest": "SpareSpars"
+   },
+   {
+    "break": "forecastle",
+    "y_m": -1.524,
+    "headroom_ft": null,
+    "clear_ft": 0.88,
+    "nearest": "SpareSpars"
+   }
+  ],
+  "ladders_low": [],
+  "coaming_clear_in": 5.45,
+  "within": {},
+  "gig_clear_in": 1.638,
+  "triangles": {
+   "Launch": 55028,
+   "Cutter_S": 53032,
+   "Gig": 42196,
+   "Cutter_P": 53032,
+   "SpareSpars": 4336,
+   "SparSaddles": 1804,
+   "BoatCradles": 2532,
+   "StreamAnchor": 3516,
+   "KedgeLarge": 3504,
+   "BoatGripes": 24520,
+   "GripeEyebolts": 3408,
+   "GigChocks": 388,
+   "KedgeSmall": 3492
+  },
+  "triangles_total": 250788,
+  "share_of_budget": 0.784
+ }
+}
