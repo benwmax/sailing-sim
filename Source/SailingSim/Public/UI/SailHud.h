@@ -110,6 +110,9 @@ private:
 	double ToastSince = 0.0;
 	FString LastToast, LastTip;
 	double TipShownAt = 0.0;
+	/** The sail trim panel's headline, judged in Refresh beside the tip card (HoldTrimVerdict). */
+	FTrimVerdictHold TrimHold;
+	FTrimVerdict TrimShown;
 	TArray<TTuple<FString, int32, FString>> DrillSteps;   // text, 0 upcoming 1 current 2 done, coach line
 	TSharedPtr<class SVerticalBox> DrillList;
 	// The right-hand column's panels (drill, race, navigation) and the room they have between the minimap and the sail trim

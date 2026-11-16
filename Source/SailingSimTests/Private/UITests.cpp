@@ -937,6 +937,13 @@ bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
 		TArray<TPair<FString, int32>> Tips;
 		SailingCollectBoatTips(Trimmed(0, 45.0), 1.0, FBoatControls(), Realistic, false, false, Tips);
 		TestFalse(TEXT("No jib: no jib tip"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.Contains(TEXT("Jib")); }));
+		FBoatTelemetry Cat = Trimmed(0, 45.0);
+		Cat.MainStrips[0].Flow = Cat.MainStrips[1].Flow = ESailFlow::Stalled;
+		Tips.Reset();
+		SailingCollectBoatTips(Cat, 1.0, FBoatControls(), Realistic, false, false, Tips);
+		TestTrue(TEXT("No jib: her one sail is 'the sail', as on the panel"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.StartsWith(TEXT("Sail is stalled")); }));
+		TestFalse(TEXT("... never 'Main'"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.Contains(TEXT("Main")); }));
+		TestEqual(TEXT("... and the panel says the same"), FString(Verdict(Cat).Head), FString(TEXT("Sail too tight")));
 	}
 
 	// The headline's hold, the tip card's rule: a warning shows at once and stays TipHoldSeconds; all-clear waits for it.

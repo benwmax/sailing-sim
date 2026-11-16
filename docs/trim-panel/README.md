@@ -62,9 +62,11 @@ warns (or the other way round), or if a call doesn't show on a yarn.
 ribbon is curling. Ease the main a touch." (or the sheet, on a cat rig), then "An outside yarn is drooping. Ease the jib a
 touch.", then "Inside yarns just lifting. Right on the edge." when two inside yarns lift short of a luff.
 
-The headline holds like the learning tip card beside it (`SSailHud::HoldTrimVerdict`, `TipHoldSeconds`): a warning shows
-at once and stays at least 6 s, so a stall flickering between one strip and two doesn't blink it, and the card and the
-headline change together. The dock shows at once; the same headline's line changes at most every 1.5 s.
+The headline is judged beside the learning tip card, in `SSailHud::Refresh` at the HUD's 10 Hz text rate, from the same
+telemetry, and holds by the card's rule (`SSailHud::HoldTrimVerdict`, `TipHoldSeconds`): a warning shows at once and stays
+at least 6 s, so a stall flickering between one strip and two doesn't blink it, and the card and the headline change
+together. The dock shows at once; the same headline's line changes at most every 1.5 s. On a cat rig the tips say "Sail",
+not "Main" or "Jib", as the panel does.
 
 "Good" is light blue (`WindTrue`), never green: red and green only mean port and starboard. A line wider than the panel
 is drawn smaller to fit (Settings > Accessibility > Text size).

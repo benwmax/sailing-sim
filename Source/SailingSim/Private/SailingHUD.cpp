@@ -1539,12 +1539,15 @@ void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const 
 		else
 			Tips.Add({ TEXT("Jib telltales streaming: well trimmed."), 1 });
 
+		// A cat rig's one sail is "the sail" (the trim panel says the same), not the main.
+		const bool bCatRig = T.NumJibStrips <= 0;
 		if (MainLuff >= 2)
-			Tips.Add({ TEXT("Main is luffing: trim the mainsheet in (W)."), 2 });
+			Tips.Add({ bCatRig ? TEXT("Sail is luffing: trim the sheet in (W).") : TEXT("Main is luffing: trim the mainsheet in (W)."), 2 });
 		else if (MainStall >= 2)
-			Tips.Add({ TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), 2 });
+			Tips.Add({ bCatRig ? TEXT("Sail is stalled (leech telltales curling behind the sail): ease the sheet (S).")
+				: TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), 2 });
 		else
-			Tips.Add({ TEXT("Main leech telltales streaming: well trimmed."), 1 });
+			Tips.Add({ bCatRig ? TEXT("Leech telltales streaming: well trimmed.") : TEXT("Main leech telltales streaming: well trimmed."), 1 });
 	}
 
 	if (HeelLeeward > 22.0)

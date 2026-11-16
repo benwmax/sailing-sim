@@ -250,8 +250,9 @@ namespace SailHudImpl
 			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
 			SLATE_ARGUMENT(bool, bHelpful)
 			SLATE_ATTRIBUTE(FText, Point)
+			SLATE_ATTRIBUTE(SSailHud::FTrimVerdict, Verdict)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Player = A._Player; bHelpful = A._bHelpful; Point = A._Point; ForceVolatile(true); }
+		void Construct(const FArguments& A) { Player = A._Player; bHelpful = A._bHelpful; Point = A._Point; Verdict = A._Verdict; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override
 		{
 			return bHelpful ? FVector2D(Pad * 2.f + JibW + Gap + MainW, HelpfulLayout().Height) : FVector2D(JibW + Gap + MainW + 2.f, WinH + 3.f);
@@ -261,7 +262,6 @@ namespace SailHudImpl
 			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 			if (!Boat) return Layer;
 			const FBoatTelemetry& T = Boat->GetBoatModel().GetTelemetry();
-			const FBoatConfig& Cfg = Boat->GetBoatModel().GetConfig();
 			const bool bTied = Boat->IsTiedUp();
 			const float Time = float(FPlatformTime::Seconds());
 			const FVector2f S(G.GetLocalSize());
@@ -279,8 +279,8 @@ namespace SailHudImpl
 			DrawMainWindow(Out, Layer + 1, G, O + FVector2f(JibW + Gap, 0.f), T, bTied, Time);
 			if (bHelpful)
 			{
-				const SSailHud::FTrimVerdict V = SSailHud::HoldTrimVerdict(Hold,
-					SSailHud::TrimVerdict(T, Cfg, Boat->GetEasyAssists(), bTied, Boat->GetSecondsSinceStart() < SailingNoGoTipHoldSeconds), FPlatformTime::Seconds());
+				// Judged with the tip card, at the HUD's 10 Hz text rate (SSailHud::Refresh), so the two read the same moment.
+				const SSailHud::FTrimVerdict V = Verdict.Get();
 				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
 				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
 				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, Lay.HeadTop), S.X - Pad * 2.f - 16.f);
@@ -470,7 +470,7 @@ namespace SailHudImpl
 		TWeakObjectPtr<APlayerController> Player;
 		bool bHelpful = true;
 		TAttribute<FText> Point;
-		mutable SSailHud::FTrimVerdictHold Hold;
+		TAttribute<SSailHud::FTrimVerdict> Verdict;
 	};
 
 	TSharedRef<SWidget> Field(const FString& Label, TAttribute<FText> Value)
@@ -759,7 +759,7 @@ void SSailHud::Construct(const FArguments& A)
 			[
 				SNew(SVerticalBox).Visibility_Lambda(NotOff)
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
-				[ SNew(STrimView).Player(Player).bHelpful(true).Point(TAttribute<FText>::CreateLambda([this]() { return PointText; })).Visibility_Lambda(Full) ]
+				[ SNew(STrimView).Player(Player).bHelpful(true).Point(TAttribute<FText>::CreateLambda([this]() { return PointText; })).Verdict_Lambda([this]() { return TrimShown; }).Visibility_Lambda(Full) ]
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
 				[ SNew(STrimView).Player(Player).bHelpful(false).Visibility_Lambda(Natural) ]
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
@@ -977,6 +977,9 @@ void SSailHud::Refresh()
 		TipBody = FText::FromString(Dot > 0 ? Best->Key.Mid(Dot + 1).TrimStart() : Best->Key);
 	}
 	if (P->IsTiedUp() && !Learned) LastTip.Reset();   // feedback #488: no sailing tip left on the card at the dock
+	// The trim panel's headline: the same telemetry, moment and hold as the card (#712's third Mac stills: judged every
+	// frame, it caught a two-strip stall between the card's 10 Hz looks and held it, beside a card saying all was well).
+	TrimShown = HoldTrimVerdict(TrimHold, TrimVerdict(T, Cfg, P->GetEasyAssists(), P->IsTiedUp(), P->GetSecondsSinceStart() < SailingNoGoTipHoldSeconds), Now);
 	// (While muted the coach's tips are consumed unseen: the card's last tip is cleared, so none from the scene's time shows
 	// once it lifts.)
 	const bool bMuted = TipsMutedByScene(GM->GetScene(), GM->IsSceneHandoverPending());
