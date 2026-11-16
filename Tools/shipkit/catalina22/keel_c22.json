@@ -1,0 +1,104 @@
+{
+ "about": "The Catalina 22's swing keel, its stub and trunk, the kick-up rudder with its tiller, and the outboard on its bracket, for her rebuild's slice 3 (docs/c22-4). keel_c22.py turns these into outlines and sections; build_keel_c22.py meshes them. Frame: the game's body frame (X forward, Y starboard, Z up), metres, origin amidships on the design waterline. The model floats with the game's 227 kg crew aboard, about 3 cm deeper than the empty boat the published drafts are for (the card's game.crew_sink_m). Nothing here is traced from a drawing: the sizes come from the size card, the game's physics (Fleet.cpp, Catalina22()), Practical Sailor and owners' reports, and photos decide the rest (refs.json).",
+ "stub": {
+  "x": [
+   -0.85,
+   1.14
+  ],
+  "full_x": [
+   -0.5,
+   0.92
+  ],
+  "bottom_z": -0.415,
+  "half_width_top": 0.07,
+  "half_width_bottom": 0.055,
+  "corner_radius": 0.015,
+  "note": "The keel stub: a shallow fibreglass fin moulded into the hull along her centreline, the trunk the keel swings up into, with the slot along its bottom. Its bottom is 0.18 m (7 in) under the canoe body, and the keel's pin is in its forward end; the physics' keel spans 0.98 m from z -0.46, near this stub's bottom. Its length is what the raised keel needs; its front rakes up into the hull at about 40 degrees and its after end tapers into the hull's bottom (round 1's reviewers asked for a shallow faired stub, not a box). The stub's depth, width and ends wait on a photo of her bottom on a trailer (refs.json)."
+ },
+ "slot": {
+  "half_width": 0.0375,
+  "x": [
+   -0.54,
+   0.9
+  ],
+  "wall": 0.012,
+  "note": "The slot is 7.5 cm wide, the keel's thickness and about 3 cm, open from the raised keel's tip to ahead of the pin. Inside the hull the trunk rises as high as the keel's top swings at each point (keel_c22.trunk_knots, 3 cm clear): about 0.2 m over the hull's bottom aft, rising to 0.43 m by the pin, a long box down the middle of the cabin's floor under the dinette table (slice 7). How tall the real trunk stands in the cabin waits on a photo of her cabin."
+ },
+ "keel": {
+  "pivot": [
+   0.8,
+   -0.37
+  ],
+  "boss_radius": 0.06,
+  "rake_deg": 20,
+  "chord_root": 0.62,
+  "chord_tip": 0.54,
+  "corner_radius": [
+   0.08,
+   0.26
+  ],
+  "top_arc_end_deg": 150,
+  "draft_up": 0.61,
+  "mass_kg": 249,
+  "iron_kg_m3": 7200,
+  "note": "The swing keel: a flat cast-iron plate of even thickness with rounded edges (the physics calls it a plate with blunt edges, Hoerner's Cd0 0.03), on a 1 in pin through two bronze castings in the stub's forward end (Practical Sailor's keel overhaul). Down, the whole plate is raked aft rake_deg from its pin, its chord nearly even (chord_root to chord_tip, square to the leading edge), its lower forward corner rounded small and its lower aft corner on a big radius, the arc it swings through; its leading edge's length is solved so its lowest point is the card's 5 ft 0 in draft (1.524 m) plus the crew's sink. Above the pin's level its trailing edge turns forward round the pin, so the plate's top stays low as it swings up; the cable that raises it is fixed near there (slice 6). Its thickness is solved so that its volume is mass_kg of cast iron (keel_c22.thickness): about 4.6 cm. Raised, it turns aft about the pin until its lowest point is the card's 2 ft 0 in (draft_up) plus the crew's sink. Sources give 450 to 550 lb and 1 ft 8 in or 2 ft 0 in up; the card's 550 lb and 2 ft 0 in are kept. Round 1's reviewers asked for the raked, even-chord plate and no swelling at the tip. The outline and the thickness wait on a photo of the keel down on a trailer."
+ },
+ "rudder": {
+  "pivot_x": -3.2738,
+  "head": {
+   "z": [
+    0.02,
+    0.905
+   ],
+   "chord_bottom": 0.4,
+   "chord_top": 0.27,
+   "plate": 0.008,
+   "blade_slot": 0.038,
+   "bolt": [
+    -0.1,
+    0.09
+   ]
+  },
+  "blade": {
+   "top_radius": 0.035,
+   "rake_deg": 3,
+   "tip_z": -0.942,
+   "shoulder_z": 0.05,
+   "chord_top": 0.33,
+   "chord_tip": 0.3,
+   "corner_radius": [
+    0.03,
+    0.11
+   ],
+   "thickness": 0.1,
+   "kick_up_deg": 86
+  },
+  "gudgeons_z": [
+   0.2,
+   0.62
+  ],
+  "tiller": {
+   "end": [
+    -2.2738,
+    0.88
+   ],
+   "root_z": 0.87,
+   "root_dx": -0.22,
+   "bolt_dx": -0.17,
+   "depth": [
+    0.05,
+    0.03
+   ],
+   "width": [
+    0.034,
+    0.028
+   ]
+  },
+  "note": "The kick-up rudder: a fibreglass blade pivoting on a bolt near the foot of its head, a cassette of two aluminium cheeks reaching down to the waterline, which hangs on two pintles in strap gudgeons on the transom (the kit's, Tools/boatkit/bk_part_rudder.py). The pin's axis is today's RudderPivot socket (2.4 cm aft of the transom), so the game turns it as before. The blade's top is round about the bolt between the cheeks, so it turns clear of the head's front as it kicks up; its top corner is inside the cheeks, which are as wide as the blade at their foot, so it comes out of the head's foot whole, with about 13 in of chord, its leading edge nearly upright (rake_deg), its foot flat with the lower aft corner rounded. Catalina Direct says the original rudder's leading edge is 'angled aft'; round 1's three reviewers all read a raked blade as half kicked up and asked for it nearly upright, so it rakes 3 degrees until a photo decides. An owner gives 36 in of draft with it down, so its foot is 36 in plus the crew's sink under the waterline. About 0.29 m^2 is under the water (the physics' 0.25, to be taken from the model in slice 10). The head is nearly parallel-sided, its top square and just over the tiller, which runs back between the cheeks on a through-bolt (the final blind round asked for it: the narrow, pointed head read as standing loose of the tiller). The tiller runs from inside the head's top to today's TillerEnd socket, over the deck at the transom (0.815 at the centreline). Kicked up (--keel-up), the blade turns kick_up_deg aft about its bolt, which brings its lowest point out of the water (the bolt is low, so it has to turn nearly level). The head's and blade's outline wait on a photo of her transom."
+ },
+ "outboard": {
+  "y": 0.4,
+  "bracket_z": 0.21,
+  "note": "The kit's two-position bracket (OutboardBracket) on the transom's starboard quarter and its brand-free 3.5 hp four-stroke (Outboard35) clamped to it, as today's model has them: the physics' engine is at y 0.40. The motor is shown down; slice 6 adds its tilted-up pose if the game needs it."
+ }
+}

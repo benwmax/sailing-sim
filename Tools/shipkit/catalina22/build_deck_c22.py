@@ -126,7 +126,8 @@ class Mesh:
                     self.face([self.v(tuple(q)) for q in t], slot, out, flat=True)
 
     def finish(self, materials, weld=1e-6):
-        bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=weld)
+        if weld:                                   # (0: keep every vertex, as build_keel_c22's sealed meshes ask)
+            bmesh.ops.remove_doubles(self.bm, verts=self.bm.verts, dist=weld)
         bmesh.ops.delete(self.bm, geom=[v for v in self.bm.verts if not v.link_faces], context="VERTS")
         self.bm.normal_update()
         uv = self.bm.loops.layers.uv.new("UVMap")
