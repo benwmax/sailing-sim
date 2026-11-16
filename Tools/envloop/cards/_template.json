@@ -15,6 +15,7 @@
   {"id": "own-house-01", "what": "a lakefront house's windows from the water, grey card on the sill", "licence": "Own photo", "use": "ship", "file": null}
  ],
  "stations": ["residential-a", "residential-b"],
+ "packs": ["north-texas-lake"],
  "licence": {"source": "made here (script)", "commercial": true},
  "build": "Tools/blender/<track script>.py --part window-single-hung-a",
  "status": "card"

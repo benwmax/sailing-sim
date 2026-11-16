@@ -1,0 +1,33 @@
+{
+ "id": "north-texas-lake",
+ "name": "North Texas lake (Lake Ray Hubbard)",
+ "extends": null,
+ "note": "Everything about the region that isn't code: where it applies, its climate and seasons, which map data its placement rules read, its sizes, its shared material slots and colours. Each track's file beside this one (ground.json, grass.json, ...) lists that track's assets for the region and where each goes. Layout: docs/env-loop/packs.md.",
+ "applies_to": {"worlds": ["RayHubbard"], "box_deg": {"lat": [32.5, 33.3], "lon": [-97.2, -96.2]}},
+ "place": {
+  "lat": 32.82, "lon": -96.50, "utc_offset_h": -6, "elevation_m": 133,
+  "climate": "Koppen Cfa: hot humid summers, mild winters, 990 mm of rain a year, warm-season grasses go dormant (tan) from late November to early April",
+  "reference_day": {"date": "2026-06-15", "hour": 15}
+ },
+ "seasons": {
+  "summer":  {"months": [6, 7, 8, 9], "note": "lawns green while watered, rough grass straw by August, every deciduous tree in full leaf"},
+  "dormant": {"months": [12, 1, 2], "note": "bermuda and St. Augustine tan, cedar elm and pecan bare, live oak and eastern red cedar green"},
+  "spring":  {"months": [3, 4, 5], "note": "green-up from late March, bluebonnets and wildflowers on verges in April"},
+  "fall":    {"months": [10, 11], "note": "late, short colour: cedar elm yellow, Shumard oak red, mid November"}
+ },
+ "required_seasons": ["summer", "dormant"],
+ "map_data": {
+  "heights": "Content/TerrainData/RayHubbard.height (5 m) + RayHubbard.detail (1 m lidar shore band)",
+  "trees": "RayHubbard.height's tree density + RayHubbard.crowns (lidar crowns)",
+  "houses": "RayHubbard.houses (footprints as wings, storeys, roof shape and colour, commercial flag)",
+  "lots": "HouseKit.cpp's lot dressing (lake.py lot()): bank type, boathouse, street side",
+  "osm": "OSM piers, landuse and roads already in the bakes",
+  "marina": "RayHubbard.marina.json (the home club)"
+ },
+ "sizes": {"base": "../../size_card.json", "overrides": {}},
+ "hand_placed": {"allowed": ["marina"], "note": "only the home club (the marina json) is placed by hand; everything else by the rules in the track files"},
+ "material_slots": {
+  "MetalRoof": {"tints": {"galvalume": [0.55, 0.56, 0.57], "barn_red": [0.25, 0.04, 0.03], "forest_green": [0.05, 0.12, 0.06], "charcoal": [0.05, 0.05, 0.05], "tan": [0.40, 0.33, 0.24]}},
+  "Galv": {}, "Canvas": {}, "Plastic": {}, "Vinyl": {}, "Carpet": {}, "Paint": {}
+ }
+}

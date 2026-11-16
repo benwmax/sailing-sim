@@ -1,0 +1,17 @@
+{
+ "pack": "north-texas-lake", "track": "D",
+ "note": "Tree and shrub species by share, picked per lidar crown (RayHubbard.crowns) by its height and setting. Assets are Track D's species ids. Shares are a first guess from Dallas County urban forest counts (to confirm in Track D).",
+ "entries": [
+  {"id": "cedar-elm", "asset": null, "latin": "Ulmus crassifolia", "group": "tree", "weight": 20, "seasons": ["summer", "dormant"], "where": {"crown_height_m": [6, 18]}},
+  {"id": "post-oak", "asset": null, "latin": "Quercus stellata", "group": "tree", "weight": 10, "seasons": ["summer", "dormant"], "where": {"crown_height_m": [8, 18], "landuse": ["wood", "field"]}},
+  {"id": "live-oak", "asset": null, "latin": "Quercus virginiana", "group": "tree", "weight": 12, "seasons": ["summer", "dormant"], "where": {"landuse": ["yard", "park", "lawn"]}},
+  {"id": "pecan", "asset": null, "latin": "Carya illinoinensis", "group": "tree", "weight": 8, "seasons": ["summer", "dormant"], "where": {"crown_height_m": [12, 30]}},
+  {"id": "eastern-red-cedar", "asset": null, "latin": "Juniperus virginiana", "group": "tree", "weight": 10, "seasons": ["summer", "dormant"], "where": {"crown_height_m": [3, 12], "landuse": ["field", "wood", "shore"]}},
+  {"id": "eastern-cottonwood", "asset": null, "latin": "Populus deltoides", "group": "tree", "weight": 6, "seasons": ["summer", "dormant"], "where": {"water_m": [0, 60], "crown_height_m": [12, 30]}},
+  {"id": "black-willow", "asset": null, "latin": "Salix nigra", "group": "tree", "weight": 6, "seasons": ["summer", "dormant"], "where": {"water_m": [0, 25]}},
+  {"id": "sugarberry", "asset": null, "latin": "Celtis laevigata", "group": "tree", "weight": 12, "seasons": ["summer", "dormant"], "where": {"crown_height_m": [6, 20]}},
+  {"id": "shumard-oak", "asset": null, "latin": "Quercus shumardii", "group": "tree", "weight": 6, "seasons": ["summer", "dormant"], "where": {"landuse": ["yard", "park", "lawn"]}},
+  {"id": "crape-myrtle", "asset": null, "latin": "Lagerstroemia indica", "group": "shrub", "weight": 3, "where": {"lot": ["house", "club"], "house_m": [0, 15]}},
+  {"id": "yaupon-holly", "asset": null, "latin": "Ilex vomitoria", "group": "shrub", "weight": 2, "where": {"lot": ["house"], "house_m": [0, 6]}}
+ ]
+}

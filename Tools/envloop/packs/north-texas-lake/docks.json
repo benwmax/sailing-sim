@@ -1,0 +1,252 @@
+{
+ "pack": "north-texas-lake",
+ "track": "F",
+ "note": "Docks, boathouses, marina sheds and the boats that fill their sockets. Assets are Track F's meshes (Tools/envloop/docks/cards.json). A dock or boathouse is picked per banked house lot by the rules (HouseKit's boathouse rule decides 'boathouse'); boats and fittings fill sockets by name (boat_N, pwc_port_N, pwc_N, kayak_N, umbrella_0, chairs_0), N counting from 0. Regulations behind the rules: the cards' _rules (Rockwall Takeline, Heath).",
+ "entries": [
+  {
+   "id": "shore-dock-a",
+   "asset": "SM_ShoreDock_A",
+   "group": "dock",
+   "where": {
+    "lot_edge": [
+     "bulkhead"
+    ],
+    "depth_m": [
+     1.0,
+     99
+    ],
+    "boathouse": false
+   },
+   "weight": 3,
+   "sockets": [
+    "boat_0"
+   ],
+   "where_text": "seawalled lots with water 1 m deep within 15 m, no boathouse"
+  },
+  {
+   "id": "shore-dock-b",
+   "asset": "SM_ShoreDock_B",
+   "group": "dock",
+   "where": {
+    "lot_edge": [
+     "bulkhead"
+    ],
+    "depth_m": [
+     0.8,
+     99
+    ],
+    "boathouse": false
+   },
+   "weight": 2,
+   "sockets": [
+    "pwc_port_0",
+    "pwc_0",
+    "chairs_0"
+   ],
+   "where_text": "seawalled lots, water 0.8 m deep within 12 m"
+  },
+  {
+   "id": "shore-dock-c",
+   "asset": "SM_ShoreDock_C",
+   "group": "dock",
+   "where": {
+    "depth_m": [
+     1.2,
+     99
+    ],
+    "boathouse": false
+   },
+   "weight": 2,
+   "sockets": [
+    "boat_0"
+   ],
+   "where_text": "lots with 1.2 m of water within 14 m"
+  },
+  {
+   "id": "shore-dock-d",
+   "asset": "SM_ShoreDock_D",
+   "group": "dock",
+   "where": {
+    "lot_edge": [
+     "riprap",
+     "natural"
+    ],
+    "boathouse": false
+   },
+   "weight": 2,
+   "sockets": [
+    "kayak_0",
+    "kayak_1",
+    "boat_0"
+   ],
+   "where_text": "riprap or natural banks and coves where the water swings (no seawall needed)"
+  },
+  {
+   "id": "shore-dock-e",
+   "asset": "SM_ShoreDock_E",
+   "group": "dock",
+   "where": {
+    "footprint_m2": [
+     250,
+     2000
+    ],
+    "boathouse": false
+   },
+   "weight": 1,
+   "sockets": [
+    "umbrella_0",
+    "chairs_0",
+    "boat_0"
+   ],
+   "where_text": "bigger lots, open water views"
+  },
+  {
+   "id": "shore-dock-f",
+   "asset": "SM_ShoreDock_F",
+   "group": "dock",
+   "where": {
+    "footprint_m2": [
+     0,
+     200
+    ],
+    "depth_m": [
+     0.5,
+     1.2
+    ],
+    "boathouse": false
+   },
+   "weight": 1,
+   "sockets": [
+    "pwc_port_0",
+    "pwc_0",
+    "pwc_port_1",
+    "pwc_1"
+   ],
+   "where_text": "small lots, shallow water"
+  },
+  {
+   "id": "boathouse-a",
+   "asset": "SM_Boathouse_A",
+   "group": "boathouse",
+   "where": {
+    "boathouse": true
+   },
+   "weight": 2,
+   "sockets": [
+    "boat_0"
+   ],
+   "where_text": "replaces HouseKit.cpp's boathouse (a third of banked lots, deep water, no charted dock near)"
+  },
+  {
+   "id": "boathouse-b",
+   "asset": "SM_Boathouse_B",
+   "group": "boathouse",
+   "where": {
+    "boathouse": true
+   },
+   "weight": 1,
+   "sockets": [
+    "boat_0",
+    "boat_1",
+    "pwc_port_0",
+    "pwc_0"
+   ],
+   "where_text": "wider lots, one in four boathouses"
+  },
+  {
+   "id": "boathouse-c",
+   "asset": "SM_Boathouse_C",
+   "group": "boathouse",
+   "where": {
+    "boathouse": true
+   },
+   "weight": 1,
+   "sockets": [
+    "boat_0",
+    "umbrella_0",
+    "chairs_0"
+   ],
+   "where_text": "one in four boathouses"
+  },
+  {
+   "id": "marina-shed-bay",
+   "asset": "SM_MarinaShed_Bay",
+   "group": "marina_shed",
+   "where": {
+    "landuse": [
+     "marina"
+    ]
+   },
+   "weight": 1,
+   "sockets": [
+    "boat_0"
+   ],
+   "where_text": "the lake's commercial marinas (not the club, which is open slips)"
+  },
+  {
+   "id": "marina-shed-end",
+   "asset": "SM_MarinaShed_End",
+   "group": "marina_shed",
+   "where": {
+    "landuse": [
+     "marina"
+    ]
+   },
+   "weight": 1,
+   "sockets": [
+    "boat_0"
+   ],
+   "where_text": "each end of a shed row"
+  },
+  {
+   "id": "shore-pwc-port",
+   "asset": "SM_ShorePWCPort",
+   "group": "fitting",
+   "weight": 1,
+   "fills": [
+    "pwc_port_N"
+   ],
+   "where_text": "docks' pwc_port sockets"
+  },
+  {
+   "id": "shore-boat-runabout-covered",
+   "asset": "SM_ShoreBoat_RunaboutCovered",
+   "group": "boat",
+   "weight": 2,
+   "fills": [
+    "boat_N"
+   ],
+   "where_text": "boat sockets on lifts and alongside"
+  },
+  {
+   "id": "shore-boat-runabout-open",
+   "asset": "SM_ShoreBoat_RunaboutOpen",
+   "group": "boat",
+   "weight": 2,
+   "fills": [
+    "boat_N"
+   ],
+   "where_text": "boat sockets"
+  },
+  {
+   "id": "shore-boat-pontoon",
+   "asset": "SM_ShoreBoat_Pontoon",
+   "group": "boat",
+   "weight": 2,
+   "fills": [
+    "boat_N"
+   ],
+   "where_text": "boat sockets, marina sheds"
+  },
+  {
+   "id": "shore-boat-pwc",
+   "asset": "SM_ShoreBoat_PWC",
+   "group": "boat",
+   "weight": 3,
+   "fills": [
+    "pwc_N"
+   ],
+   "where_text": "pwc sockets on ports"
+  }
+ ]
+}
