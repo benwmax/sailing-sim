@@ -49,6 +49,9 @@ public:
 	static FVector2f MiniMapPoint(const FVector2D& BoatMap, const FVector2D& TargetMap, double SpanM, const FVector2f& Origin, const FVector2f& Size, bool& bClamped);
 	/** #602 polish: an edge-clamped dot moved along its edge out of the Keep boxes (the N label, the wind arrow), Radius clear. */
 	static FVector2f MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size);
+	/** The chart minimap's scale bar: the longest round length in nautical miles that fits in 40% of the map's width
+	 *  (WidthPx across SpanM); its label, and its length in px. */
+	static FString MiniMapScaleBar(double SpanM, float WidthPx, float& OutBarPx);
 
 	/** The sail trim panel's plain line in UI Helpful (Bean, Nov 15 2026, docs/trim-panel/): the coach's tips
 	 *  (SailingCollectBoatTips) in one headline and a short what-to-do, the most urgent first, so the panel never says all

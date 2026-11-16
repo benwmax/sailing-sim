@@ -224,6 +224,22 @@ A boat's instruments turn red after dark so the eye keeps its night sight; the H
 - Stills: `hud-night.jpg` and `hud-natural-night.jpg` (22:00, the real night); `-SailingNightHud=<0..1>` forces it
   (`hud-half.jpg` is 0.5 by day, to show the blend).
 
+## Phase 7: the chart minimap
+
+The minimap was a bright blue screen in a rounded glass frame with an aqua arrow that was hard to find on it. It is now
+a small sheet of chart paper (Helpful only, as before).
+
+- **Sheet.** Paper with a 6 px margin and an ink neatline round the chart, square-cornered like a chart panel.
+- **Print.** The same map crop, under a wash of the paper so its saturated blue and tan settle toward a chart's tints.
+  (The map texture itself is `Content`; a redrawn chart-style texture is a later Content job.)
+- **The boat.** Ink over a paper halo, with a fine heading line ahead of her, so she reads on water and on land.
+- **Aids to navigation.** Buoys, beacons and lights inside the crop as dots in their chart colours.
+- **Furniture.** North as a letter under an arrowhead, the true wind as an arrow flying downwind, and a scale bar in
+  round nautical miles (`SSailHud::MiniMapScaleBar`: 0.5 nm on the lake's 3 km map, 1 nm on the 8 km offshore map).
+- **Night.** The sheet dims and reddens; the marks swap to the text's red over ink halos.
+- Stills: `minimap.jpg` (a 1:1 crop on the lake), `minimap-bay.jpg` and `minimap-bay-open.jpg` (Galveston Bay, with
+  channel buoys), `hud.jpg`, `hud-night.jpg`.
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

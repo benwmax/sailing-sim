@@ -12,6 +12,8 @@
 #include "SailingEnvironment.h"
 #include "EngineUtils.h"
 #include "Styling/StyleDefaults.h"
+#include "Chart.h"
+#include "LakeData.h"
 #include "SailingBindings.h"
 #include "SailSession.h"
 #include "Drills.h"
@@ -225,11 +227,23 @@ namespace SailHudImpl
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(210, 210); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
+			// The chart minimap (docs/ui-overhaul/, Phase 7): a small sheet of chart paper with an ink neatline, the chart crop
+			// washed toward the paper, the boat in ink with her heading line, a scale bar, north and the true wind. By night
+			// the sheet dims and reddens with the rest of the HUD.
 			const FVector2D S = G.GetLocalSize();
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Water, 14.f, Line, 2.f), ESlateDrawEffect::None, NightCol(Water));
+			const FLinearColor Sheet = NightDim(Paper, 0.3f);
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Sheet, 6.f), ESlateDrawEffect::None, Sheet);
+			const FVector2f MapOrigin(6.f, 6.f), MapSize(float(S.X) - 12.f, float(S.Y) - 12.f);
+			const FLinearColor InkCol = NightCol(FMath::Lerp(PaperInk, Fg, NightHud));                      // marks: ink by day, the text's red by night
+			const FLinearColor HaloCol = FMath::Lerp(Paper, Ink, NightHud).CopyWithNewOpacity(0.85f);     // under them: paper by day, ink by night
+			auto Neatline = [&]()
+			{
+				const FVector2f A = MapOrigin, B = MapOrigin + MapSize;
+				FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { A, FVector2f(B.X, A.Y), B, FVector2f(A.X, B.Y), A }, ESlateDrawEffect::None, InkCol.CopyWithNewOpacity(0.7f), true, 1.f);
+			};
 			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 			const ASailingGameMode* GM = Player.IsValid() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
-			if (!Boat || !GM || !Map.IsValid() || Map->ImageSize.X <= 0) return Layer;
+			if (!Boat || !GM || !Map.IsValid() || Map->ImageSize.X <= 0) { Neatline(); return Layer + 2; }
 			const SailCatalog::FMiniMap& W = SailCatalog::MiniMap(USailingSettings::Get()->World);
 			const FVector2D P = Boat->GetMapPosition();
 			const float U = float((P.Y - W.GridEast) / W.GridWidthM), V = float(1.0 - (P.X - W.GridNorth) / W.GridHeightM);
@@ -237,20 +251,62 @@ namespace SailHudImpl
 			const float SpanU = float(W.SpanM / W.GridWidthM), SpanV = float(W.SpanM / W.GridHeightM);
 			FSlateBrush Crop = *Map;
 			Crop.SetUVRegion(FBox2f(FVector2f(U - SpanU * 0.5f, V - SpanV * 0.5f), FVector2f(U + SpanU * 0.5f, V + SpanV * 0.5f)));
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(S.X - 8.f, S.Y - 8.f), FSlateLayoutTransform(FVector2f(4.f, 4.f))), &Crop, ESlateDrawEffect::None, NightDim(FLinearColor::White, 0.45f));
-			const FVector2f C(S.X * 0.5f, S.Y * 0.5f);
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), &Crop, ESlateDrawEffect::None, NightDim(FLinearColor::White, 0.45f));
+			// A wash of the paper over the print: the map's saturated blue and tan settle toward a chart's pale tints.
+			const FLinearColor Wash = NightDim(Paper, 0.3f).CopyWithNewOpacity(0.24f);
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), White(), ESlateDrawEffect::None, Wash);
+			Neatline();
+			// Aids to navigation inside the crop, in their chart colours (a dot each: the chart page has the symbols).
+			{
+				int32 Drawn = 0;
+				const double Half = W.SpanM * 0.5;
+				for (const FNavaid& Aid : GM->GetLake().Navaids)
+				{
+					if (FMath::Abs(Aid.X - P.X) > Half || FMath::Abs(Aid.Y - P.Y) > Half) continue;
+					bool bOff = false;
+					const FVector2f Q = SSailHud::MiniMapPoint(P, FVector2D(Aid.X, Aid.Y), W.SpanM, MapOrigin, MapSize, bOff);
+					if (bOff) continue;
+					const FLinearColor AidCol = NightCol(SailingChart::AidColour(Aid));
+					FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(7.f, 7.f), FSlateLayoutTransform(Q - FVector2f(3.5f, 3.5f))), Rounded(HaloCol, 3.5f), ESlateDrawEffect::None, HaloCol);
+					FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(5.f, 5.f), FSlateLayoutTransform(Q - FVector2f(2.5f, 2.5f))), Rounded(AidCol, 2.5f), ESlateDrawEffect::None, AidCol);
+					if (++Drawn >= 48) break;
+				}
+			}
+			const FVector2f C = MapOrigin + MapSize * 0.5f;
 			const float H = FMath::DegreesToRadians(float(Boat->GetHeadingTrueDeg()));
 			const FVector2f F(FMath::Sin(H), -FMath::Cos(H)), Sd(-F.Y, F.X);
-			// At night the chart is dim red and so is the accent: the boat goes to the text's brightness over an ink halo.
-			if (NightHud > 0.f) FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
-				ESlateDrawEffect::None, Ink.CopyWithNewOpacity(0.9f * NightHud), true, 7.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
-				ESlateDrawEffect::None, NightCol(FMath::Lerp(Accent, Fg, NightHud)), true, 3.f);
+			// The boat: her heading line ahead, then her outline in ink over a halo, so she reads on water and on land.
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 14.f, C + F * 38.f }, ESlateDrawEffect::None, InkCol.CopyWithNewOpacity(0.85f), true, 1.5f);
+			const TArray<FVector2f> Hull = { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f };
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, HaloCol, true, 7.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, InkCol, true, 2.5f);
+			// The true wind, top right: an arrow flying downwind, in the wind's colour over a halo.
 			const float Wd = FMath::DegreesToRadians(float(GM->GetWeatherState().Wind.FromDegrees));
-			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd));
-			const FVector2f Tip = FVector2f(S.X - 28.f, 28.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, NightCol(WindTrue), true, 3.f);
-			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, NightCol(Ink));
+			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd)), WS(-WF.Y, WF.X);
+			const FVector2f Tip = FVector2f(float(S.X) - 30.f, 30.f);
+			const FVector2f WHead = Tip - WF * 14.f, WTail = Tip + WF * 14.f;
+			const TArray<FVector2f> Shaft = { WTail, WHead };
+			const TArray<FVector2f> Barb = { WHead + WF * 8.f + WS * 5.f, WHead, WHead + WF * 8.f - WS * 5.f };
+			const FLinearColor WindCol = NightCol(FMath::Lerp(AccentDeep, WindTrue, NightHud));
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Shaft, ESlateDrawEffect::None, HaloCol, true, 6.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Barb, ESlateDrawEffect::None, HaloCol, true, 6.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Shaft, ESlateDrawEffect::None, WindCol, true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Barb, ESlateDrawEffect::None, WindCol, true, 2.5f);
+			// North, top left: the letter under a small arrowhead.
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { FVector2f(12.f, 16.f), FVector2f(17.f, 9.f), FVector2f(22.f, 16.f) }, ESlateDrawEffect::None, InkCol, true, 1.5f);
+			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(12.f, 16.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, InkCol);
+			// The scale bar, bottom left: a round length in nautical miles, ticked at its ends.
+			{
+				float BarPx = 0.f;
+				const FString BarText = SSailHud::MiniMapScaleBar(W.SpanM, MapSize.X, BarPx);
+				const FVector2f B0 = MapOrigin + FVector2f(8.f, MapSize.Y - 12.f), B1 = B0 + FVector2f(BarPx, 0.f);
+				const TArray<FVector2f> Bar = { B0 - FVector2f(0.f, 4.f), B0, B1, B1 - FVector2f(0.f, 4.f) };
+				FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Bar, ESlateDrawEffect::None, HaloCol, true, 5.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Bar, ESlateDrawEffect::None, InkCol, true, 2.f);
+				FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(80.f, 20.f), FSlateLayoutTransform(B0 + FVector2f(1.f, -22.f) + FVector2f(1.f, 1.f))), BarText, Font(EType::Label), ESlateDrawEffect::None, HaloCol);
+				FSlateDrawElement::MakeText(Out, Layer + 4, G.ToPaintGeometry(FVector2f(80.f, 20.f), FSlateLayoutTransform(B0 + FVector2f(1.f, -22.f))), BarText, Font(EType::Label), ESlateDrawEffect::None, InkCol);
+				// (the ink strokes sit a layer above their halos: within one layer Slate does not keep the order of batches)
+			}
 			// #602 (the #400 audit): a drill's marks still to round and the person in the water, on the map: a triangle's marks
 			// could only be found by the panel's distance, and an overboard drill is about keeping them in sight. The next
 			// mark larger; one off the map sits on its edge, so its direction shows. Filled dots under the boat (her arrow
@@ -259,8 +315,9 @@ namespace SailHudImpl
 			const FDrillRunner& D = Boat->GetDrill();
 			if (D.IsActive())
 			{
-				const FVector2f MapOrigin(4.f, 4.f), MapSize(S.X - 8.f, S.Y - 8.f);
-				const FBox2f Keep[2] = { FBox2f(FVector2f(0.f, 0.f), FVector2f(34.f, 34.f)), FBox2f(FVector2f(float(S.X) - 50.f, 0.f), FVector2f(float(S.X), 50.f)) };
+				// Edge dots keep clear of north (top left), the wind arrow (top right) and the scale bar (bottom left).
+				const FBox2f Keep[3] = { FBox2f(FVector2f(0.f, 0.f), FVector2f(34.f, 38.f)), FBox2f(FVector2f(float(S.X) - 52.f, 0.f), FVector2f(float(S.X), 52.f)),
+					FBox2f(FVector2f(0.f, float(S.Y) - 40.f), FVector2f(96.f, float(S.Y))) };
 				auto Dot = [&](const FVector2D& At, float R, const FLinearColor& Col)
 				{
 					bool bClamped = false;
@@ -274,7 +331,7 @@ namespace SailHudImpl
 				for (int32 K = D.GetNextMark(); K < Marks.Num(); ++K) Dot(Marks[K], K == D.GetNextMark() ? 4.5f : 3.f, Warn);
 				if (D.HasDummy()) Dot(D.GetDummy(), 4.5f, Port);
 			}
-			return Layer + 3;
+			return Layer + 4;
 		}
 	private:
 		TWeakObjectPtr<APlayerController> Player;
@@ -926,6 +983,21 @@ float SSailHud::NightHudAmount(float NightAmount, bool bEnabled)
 	// every frame of the dusk.
 	if (!bEnabled) return 0.f;
 	return FMath::RoundToFloat(FMath::SmoothStep(0.3f, 0.75f, NightAmount) * 16.f) / 16.f;
+}
+
+FString SSailHud::MiniMapScaleBar(double SpanM, float WidthPx, float& OutBarPx)
+{
+	// The longest of these that fits in 40% of the map's width; under the shortest, the shortest.
+	static const double Lengths[] = { 5.0, 2.0, 1.0, 0.5, 0.25, 0.1 };
+	static const TCHAR* Names[] = { TEXT("5 nm"), TEXT("2 nm"), TEXT("1 nm"), TEXT("0.5 nm"), TEXT("0.25 nm"), TEXT("0.1 nm") };
+	const double PxPerM = SpanM > 0.0 ? double(WidthPx) / SpanM : 0.0;
+	int32 Pick = int32(UE_ARRAY_COUNT(Lengths)) - 1;
+	if (PxPerM > 0.0) for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Lengths)); ++I)
+	{
+		if (Lengths[I] * 1852.0 * PxPerM <= double(WidthPx) * 0.4) { Pick = I; break; }
+	}
+	OutBarPx = float(Lengths[Pick] * 1852.0 * PxPerM);
+	return Names[Pick];
 }
 
 void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
