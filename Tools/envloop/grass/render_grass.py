@@ -416,7 +416,8 @@ def populate(kit, cy, tier, rng):
         return d < lim * 0.8 or rng.random() < max(0.0, (lim - d) / (lim * 0.2))
 
     def pick(base, d):
-        return base if d < 30.0 else base + "_Light"
+        """Hero mesh to 30 m, then the plant's one Light copy (SM_Grass_Sedge_2 -> SM_Grass_Sedge_Light)."""
+        return base if d < 30.0 else base.rsplit("_", 1)[0] + "_Light"
 
     # sedge at the water's edge
     y = -0.1
