@@ -1,0 +1,74 @@
+{
+ "about": "The Catalina 22's sails, for her rebuild's slice 5 (docs/c22-6). sails_c22.py turns these into cloth grids and checks them; build_sails_c22.py meshes them. Frame: the game's body frame (X forward, Y starboard, Z up), metres. The sails are cut to slice 4's rig (rig_c22): the mainsail between the mast's black bands (P) and to the boom's (E), the headsails on the forestay. Areas are held to the physics' (Fleet.cpp Catalina22(): SetMain, SetSail) within 5%. Every set sail is drawn on starboard tack (the wind from starboard, the boom and sails to port); port tack is the mirror. Sizes not in the card are guesses at a 1970s production suit for a 22 ft trailer-sailer: photos decide.",
+ "cloth": {
+  "dacron_mm": 0.3,
+  "nylon_mm": 0.06,
+  "bulk": 6.0,
+  "note": "The working sails are 4 oz Dacron (about 0.3 mm), the spinnaker 0.75 oz nylon. 'bulk' is how much a folded or bagged sail's volume exceeds its cloth's: it sizes the flaked mainsail, the heaps and the bags."
+ },
+ "mainsail": {
+  "head_board": 0.11,
+  "roach": 0.12,
+  "battens": [
+   [0.27, 0.42],
+   [0.52, 0.55],
+   [0.77, 0.42]
+  ],
+  "batten_pocket_w": 0.045,
+  "reef": 0.2,
+  "reef_points": 5,
+  "area": 9.42,
+  "luff_in_groove": 0.004,
+  "luff_bend": 0.15,
+  "states": {
+   "Set": {"boom_deg": 4.0, "twist_deg": 9.0, "depth": [[0.0, 0.0], [0.1, 0.075], [0.3, 0.11], [0.65, 0.105], [0.9, 0.08], [1.0, 0.05]], "draft_at": [[0.0, 0.48], [1.0, 0.45]]},
+   "Run": {"boom_deg": 70.0, "twist_deg": 16.0, "depth": [[0.0, 0.0], [0.1, 0.09], [0.3, 0.14], [0.65, 0.135], [0.9, 0.1], [1.0, 0.06]], "draft_at": [[0.0, 0.5], [1.0, 0.48]]},
+   "Reefed": {"boom_deg": 6.0, "twist_deg": 10.0, "depth": [[0.0, 0.0], [0.12, 0.07], [0.35, 0.1], [0.7, 0.095], [1.0, 0.05]], "draft_at": [[0.0, 0.47], [1.0, 0.45]]}
+  },
+  "note": "'area' is the physics' MainArea, P E / 2: the drawn sail is a little more, its headboard and roach. Bent to the mast by a bolt rope in its groove and to the boom by its foot's bolt rope (the original C22 main has no slides), between the bands: luff P, foot E, its triangle P E / 2 the physics' 9.42 m^2, with the headboard and a small roach ('roach', 12 cm, held by three short battens [height share, length]) on top. An aluminium headboard. One reef (the physics' ReefLuffFraction 0.80: 'reef' of the luff), its points across the sail parallel to the foot with cringles at the luff and leech. Set: close-hauled, the boom 4 deg to port, the leech twisted 9 deg off at the head; Run: squared off to 70 deg, as the physics eases it (the boom stops on the aft lower at 74.5), more twist and depth; Reefed: hoisted 20% lower, the reef tied in. Each row leaves the groove straight aft and turns to its angle over 'luff_bend' (0.15 m: round the mast's after side when squared off); the tack stays at the luff when the boom swings. 'depth' is the camber's depth as a share of the chord up the sail (0 at the boom, where the bolt rope holds the foot), deepest at 'draft_at' of the chord."
+ },
+ "headsails": {
+  "luff_aft_of_stay": 0.016,
+  "tack_over_deck": 0.09,
+  "head_below_hounds": 0.25,
+  "hank_spacing": 0.6,
+  "Jib": {
+   "lp": 0.9,
+   "clew_z": 1.35,
+   "sheet_deg": 8.0,
+   "foot_round": 0.02,
+   "leech_hollow": 0.01,
+   "twist_deg": 9.0,
+   "depth": [[0.0, 0.08], [0.25, 0.115], [0.6, 0.12], [0.9, 0.09], [1.0, 0.05]],
+   "draft_at": [[0.0, 0.42], [1.0, 0.38]],
+   "note": "The working jib, hanked on and sheeted inside the shrouds ('sheet_deg' off the centreline from the tack): its clew is only about 0.33 m off the centreline, over the cabin top, so its lead is a short track or a block on the cabin top beside the mast, not the side deck (slice 6 places it). The plan had a 110% jib, but with her forward and aft lowers a jib whose leech reaches aft of the mast can't set: the forward lower runs from the mast's side, under the spreaders, out to the side deck ahead of the mast, through where that leech would be (sails_c22.py finds every jib over about 92% crossing it). So the working jib is a 90% (LP 0.9 J), its clew just forward of the mast, as the fractional working jibs of boats with lowers forward of the mast are cut. A photo of her jib set decides."
+  },
+  "Genoa": {
+   "lp": 1.35,
+   "clew_z": 1.35,
+   "sheet_deg": 19.5,
+   "foot_round": 0.03,
+   "leech_hollow": 0.01,
+   "twist_deg": 20.0,
+   "twist_power": 0.9,
+   "area": 12.9,
+   "depth": [[0.0, 0.09], [0.25, 0.12], [0.6, 0.125], [0.9, 0.09], [1.0, 0.05]],
+   "draft_at": [[0.0, 0.42], [1.0, 0.38]],
+   "note": "The 135% genoa the physics sails with (Fleet.cpp: 12.9 m^2), hanked on, sheeted outside the shrouds to a track on the toe rail ('sheet_deg' 19.5 puts the clew over the rail, 0.6 m above the deck, where its foot comes off the shrouds without a kink; 15.5 left the clew inboard of the chainplates and the foot bent hard round them). It overlaps the mast and lies on the lee shrouds and spreader tip, as a genoa does: sails_c22.press pushes it clear of them."
+  },
+  "note": "Both hank to the forestay ('hank_spacing' apart) with their luff 'luff_aft_of_stay' behind it; the tack shackled to the stemhead fitting behind the forestay's turnbuckle, 'tack_over_deck' above the deck (the luff's line carried down the stay), the head 'head_below_hounds' down the stay (the halyard's block and shackle). A headsail's clew is solved from its LP (the perpendicular from the clew to the luff, as a share of J), its height and its sheeting angle. Rows run parallel to the foot."
+ },
+ "spinnaker": {
+  "shoulder": [0.0, 1.3],
+  "fly_fwd": 1.2,
+  "head_drop": 0.25,
+  "head_out": 0.25,
+  "area": 26.0,
+  "pole_ring_over_step": 1.05,
+  "pole_deg": 84.0,
+  "pole_d": 0.045,
+  "clew": [1.9, -2.25, 2.3],
+  "depth": [[0.0, 0.3], [0.35, 0.34], [0.7, 0.34], [0.95, 0.18], [1.0, 0.0]],
+  "note": "A symmetric masthead spinnaker (the physics' 26 m^2) on a run: its head hung under a halyard block on the masthead's forward face ('head_drop' below it, swung 'head_out' forward), its tack at the end of a pole J long (the card's 8 ft) squared 'pole_deg' off the centreline to starboard from a ring on the mast's front 'pole_ring_over_step' over the step, level with its clew to port, which flies a little forward of the tack (the sheet's lead is aft, but the foot must bow forward round the forestay: square to the wind, the clew would lie aft of the shrouds and the foot across the stay). Its luff and leech are cubic curves: straight up from the corners ('shoulder' [0]: how far out the lower control point stands) and out to broad shoulders under the head ('shoulder' [1]), the whole sail flying 'fly_fwd' forward of its corners at the shoulders; so its girth is about 5.7 m at the foot, 4.8 m halfway up and 3.3 m three quarters up (cloth girths: the straight foot is 4.7 m; the foot's 'depth' of 0.3 carries it 15 cm clear forward of the forestay, as a run's foot bows round it), and 'depth' is the forward bulge of each row as a share of its width. Its area is the cloth's (a spinnaker is measured round its curves). Its colours are made up (Ready About's own)."
+ }
+}
