@@ -5,7 +5,7 @@
                                    compass rose. The map covers the world's whole height grid, north up, so the game
                                    places pins by the grid's extent (Content/TerrainData/<World>.json "grid").
   Artifacts/ui/T_MiniMap_<World>.png  the HUD's minimap, 4096 px, drawn as a paper chart (docs/ui-overhaul, Phase 12): deep
-                                   water left as paper, water under 5 m and under 2 m tinted blue, fine depth lines at 2,
+                                   water a blue-white, water under 5 m and under 2 m tinted blue, fine depth lines at 2,
                                    5 and 10 m, an ink shoreline, no names (and the Gulf passage's).
   Artifacts/ui/T_Card_<World>.jpg  world card art and T_Load_<World>_<n>.jpg loading images, cropped from the bench
                                    screenshots in docs/ (the game itself, never photos).
@@ -58,12 +58,12 @@ def load(world):
 
 
 # The minimap's paper chart (the UI overhaul's "chart table": paper ashore, the HUD's map a sheet of chart paper).
-CHART_LAND = (0xD9, 0xC8, 0x9A)
-CHART_PAPER = (0xF1, 0xEA, 0xD6)
-CHART_SHOAL = (0xA9, 0xD0, 0xE0)    # under 2 m
-CHART_MID = (0xD3, 0xE5, 0xE6)      # 2 to 5 m
+CHART_LAND = (0xD3, 0xC0, 0x8E)
+CHART_DEEP = (0xE3, 0xEE, 0xEE)     # past 5 m: a blue-white, so open water never reads as the HUD's cream paper
+CHART_SHOAL = (0x93, 0xC4, 0xDA)    # under 2 m
+CHART_MID = (0xBF, 0xDC, 0xE6)      # 2 to 5 m
 CHART_INK = (0x3A, 0x34, 0x28)
-CHART_LINE = (0x5E, 0x93, 0xAE)
+CHART_LINE = (0x4F, 0x86, 0xA4)
 CHART_BRIDGE = (0x6B, 0x55, 0x3A)
 
 
@@ -72,7 +72,9 @@ def chart_sheet(small):
     (distance to a level = |h - level| / |grad h|), so they are anti-aliased and an even width at any grid size."""
     k = np.exp(-0.5 * (np.arange(-4, 5) / 1.2) ** 2)
     k /= k.sum()
-    sm = small.astype(np.float64)
+    # Flats lying exactly on a level (a basin at 0, a channel dredged to 5 m) have no gradient, so a line there would
+    # fill them; the levels sit 3 cm deeper than the round numbers and a flat at 0 stays land, as in the launch maps.
+    sm = small.astype(np.float64) + 0.03
     for axis in (1, 0):
         sm = np.apply_along_axis(lambda r: np.convolve(np.pad(r, 4, mode="edge"), k, "valid"), axis, sm)
     gy, gx = np.gradient(sm)
@@ -86,17 +88,17 @@ def chart_sheet(small):
 
     rgb = np.empty(sm.shape + (3,), float)
     rgb[:] = CHART_SHOAL
-    for level, col in ((-2.0, CHART_MID), (-5.0, CHART_PAPER)):
+    for level, col in ((-2.0, CHART_MID), (-5.0, CHART_DEEP)):
         a = below(level)[..., None]
         rgb = rgb * (1 - a) + np.array(col, float) * a
     ly, lx = np.gradient(np.where(sm < 0, 0, sm))
     shade = np.clip(1.0 + 0.04 * (lx - ly), 0.92, 1.06)[..., None]
     a = (1 - below(0.0))[..., None]
     rgb = rgb * (1 - a) + np.array(CHART_LAND, float) * shade * a
-    for level, strength in ((-2.0, 0.75), (-5.0, 0.75), (-10.0, 0.6)):
-        a = (band(level, 0.3) * strength * (sm < -0.5))[..., None]
+    for level, strength in ((-2.0, 0.9), (-5.0, 0.9), (-10.0, 0.8)):
+        a = (band(level, 0.5) * strength * (sm < -0.5))[..., None]
         rgb = rgb * (1 - a) + np.array(CHART_LINE, float) * a
-    a = band(0.0, 0.75)[..., None]
+    a = band(0.0, 0.9)[..., None]
     rgb = rgb * (1 - a) + np.array(CHART_INK, float) * a
     return Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB")
 

@@ -252,8 +252,8 @@ namespace SailHudImpl
 			FSlateBrush Crop = *Map;
 			Crop.SetUVRegion(FBox2f(FVector2f(U - SpanU * 0.5f, V - SpanV * 0.5f), FVector2f(U + SpanU * 0.5f, V + SpanV * 0.5f)));
 			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), &Crop, ESlateDrawEffect::None, NightDim(FLinearColor::White, 0.45f));
-			// A wash of the paper over the print: the map's saturated blue and tan settle toward a chart's pale tints.
-			const FLinearColor Wash = NightDim(Paper, 0.3f).CopyWithNewOpacity(0.24f);
+			// A light wash of the paper over the print ties it to the sheet (the texture is a pale chart already: Phase 12).
+			const FLinearColor Wash = NightDim(Paper, 0.3f).CopyWithNewOpacity(0.08f);
 			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), White(), ESlateDrawEffect::None, Wash);
 			Neatline();
 			// Aids to navigation inside the crop, in their chart colours (a dot each: the chart page has the symbols).
