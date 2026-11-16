@@ -1,6 +1,6 @@
-"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-11).
+"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-12).
 
-    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8|9|10|11]
+    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8|9|10|11|12]
 
 <out dir> is where loft.py, build_jclass.py, fairness.py and render_jclass.py wrote (renders in <out>/renders). Slice 1
 (the default) copies build.json, hydrostatics.json, sections.json and fairness.json and writes the clay, zebra and
@@ -17,8 +17,11 @@ the same three jsons and writes the renders below decks forward and the arrangem
 Slice 10 copies the same three jsons and writes the renders below decks aft, lit by the cabins' lamps, and the
 arrangement drawing aft (interior_aft_plan.png). Slice 11 copies build.json and wear_check.json (from the renders) and
 writes only a contact sheet of the wear views, each at L0, L2 and L4 (new, six years half kept, twenty neglected) in
-a row; its ladders are wear_check.py's sheets. Each image is a JPEG under 300 KB (docs images are plain git, not
-LFS), with a contact sheet of the renders. Needs Pillow.
+a row; its ladders are wear_check.py's sheets. Slice 12 copies build.json, light.json (the light copy's report),
+gate_views.json (gate_views.py's six frame-rate views) and the light renders' compare.json, and writes a contact sheet
+of the light shots, the detailed boat beside her light copy in each row; the pairs over their difference and the crops
+at the screen's own pixels are light_compare.py's (run it with this docs folder). Each image is a JPEG under 300 KB
+(docs images are plain git, not LFS), with a contact sheet of the renders. Needs Pillow.
 """
 import os
 import shutil
@@ -37,8 +40,8 @@ for _a in _it:
         raise SystemExit(f"docs_jclass.py: unknown option {_a}")
     else:
         ARGS.append(_a)
-if len(ARGS) != 2 or SLICE not in range(1, 12):
-    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|...|11]")
+if len(ARGS) != 2 or SLICE not in range(1, 13):
+    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|...|12]")
 OUT, DOCS = ARGS
 RENDERS = {
     1: ["clay_profile", "clay_plan", "clay_bow34", "clay_stern34", "clay_bow", "clay_stern", "clay_under",
@@ -71,6 +74,8 @@ RENDERS = {
          "below_aft_heads"],
     11: [f"wear_{v}_{lv}" for v in ("hull", "deck", "winch", "chainplates", "doghouse", "gooseneck", "sail", "cot",
                                     "saloon") for lv in ("L0", "L2", "L4")],
+    12: [f"light_{d}_{b}_{w}" for d in (50, 100, 300) for b in ("abeam", "bow") for w in ("hero", "light")]
+    + [f"light_wire_{v}_{w}" for v in ("bow", "mast_foot", "counter") for w in ("hero", "light")],
 }[SLICE]
 JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.json"),
              ("sections.json", "sections.json"), ("fairness.json", "fairness.json")],
@@ -78,8 +83,11 @@ JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.j
              (os.path.join("shell", "fairness.json"), "fairness_shell.json")]}
 if SLICE < 11:
     JSONS = JSONS[min(SLICE, 2)]
-else:
+elif SLICE == 11:
     JSONS = [("build.json", "build.json"), (os.path.join("renders", "wear_check.json"), "wear_check.json")]
+else:
+    JSONS = [("build.json", "build.json"), ("light.json", "light.json"), ("gate_views.json", "gate_views.json"),
+             (os.path.join("renders", "compare.json"), "compare.json")]
 DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             2: [("plating.png", "plating.jpg", 1800), ("rudder_sections.png", "rudder_sections.jpg", 1600)],
             3: [("deck_plan.png", "deck_plan.jpg", 2000), ("deck_profile.png", "deck_profile.jpg", 1800)],
@@ -89,7 +97,8 @@ DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             7: [("running_plan.png", "running_plan.jpg", 2000)],
             8: [("hardware_plan.png", "hardware_plan.jpg", 2000)],
             9: [("interior_plan.png", "interior_plan.jpg", 2000)],
-            10: [("interior_aft_plan.png", "interior_aft_plan.jpg", 2000)], 11: []}[SLICE]
+            10: [("interior_aft_plan.png", "interior_aft_plan.jpg", 2000)], 11: [], 12: []}[SLICE]
+COLS, CELL = (2, (900, 506)) if SLICE == 12 else (3, (600, 337))    # slice 12: each row a pair
 LIMIT = 290_000
 
 
@@ -103,19 +112,30 @@ def save(im, path, width):
     raise SystemExit(f"{path} is still over {LIMIT} bytes")
 
 
+def fit(im, cell):
+    """im scaled to fit the cell, centred on white (slice 12's shots are cropped to the boat, each its own shape)."""
+    im = im.convert("RGB")
+    k = min(cell[0] / im.size[0], cell[1] / im.size[1])
+    im = im.resize((max(1, round(im.size[0] * k)), max(1, round(im.size[1] * k))), Image.LANCZOS)
+    out = Image.new("RGB", cell, "white")
+    out.paste(im, ((cell[0] - im.size[0]) // 2, (cell[1] - im.size[1]) // 2))
+    return out
+
+
 def main():
     os.makedirs(DOCS, exist_ok=True)
     for src, dst in JSONS:
         shutil.copy(os.path.join(OUT, src), os.path.join(DOCS, dst))
-    for n in RENDERS if SLICE < 11 else []:
+    for n in RENDERS if SLICE < 11 else []:     # slice 11's are wear_check.py's, slice 12's light_compare.py's
         save(Image.open(os.path.join(OUT, "renders", n + ".png")), os.path.join(DOCS, n + ".jpg"), 1200)
     for src, dst, width in DRAWINGS:
         save(Image.open(os.path.join(OUT, src)), os.path.join(DOCS, dst), width)
-    rows = (len(RENDERS) + 2) // 3
-    sheet = Image.new("RGB", (1800, 337 * rows), "white")
+    rows = (len(RENDERS) + COLS - 1) // COLS
+    sheet = Image.new("RGB", (COLS * CELL[0], CELL[1] * rows), "white")
     for k, n in enumerate(RENDERS):
-        im = Image.open(os.path.join(OUT, "renders", n + ".png")).convert("RGB").resize((600, 337), Image.LANCZOS)
-        sheet.paste(im, ((k % 3) * 600, (k // 3) * 337))
+        im = Image.open(os.path.join(OUT, "renders", n + ".png"))
+        im = fit(im, CELL) if SLICE == 12 else im.convert("RGB").resize(CELL, Image.LANCZOS)
+        sheet.paste(im, ((k % COLS) * CELL[0], (k // COLS) * CELL[1]))
     save(sheet, os.path.join(DOCS, "sheet.jpg"), 1800 if rows <= 6 else 1350)    # slice 11's 9 rows: smaller
     print("docs_jclass: wrote", DOCS)
 

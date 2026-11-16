@@ -1,0 +1,74 @@
+{
+ "note": "Bluebonnet's light copy (slice 12, light.py, docs/jclass-12): a lighter twin of every part seen from outside, for distant and AI boats. Each twin is held to one pixel of the screen below from 'from_m' out: its surface within that of the detailed part's, its paint lines where the detailed part has them, and nothing smaller than that left out.",
+ "screen": {
+  "width_px": 3840,
+  "aspect": 1.7778,
+  "fov_deg": 60.0,
+  "note": "a 4K screen at the game's narrowest Field of view setting (Settings > Field of view runs 60 to 120 deg, SailingSettings.h): the view in which a centimetre covers the most pixels, outside photo mode's zoom",
+  "fov_max_deg": 120.0,
+  "note_fov_max": "the widest Field of view setting. Unreal switches a part by its whole bounding sphere's screen size, measured from the sphere's centre, which shrinks as the field of view widens: so each part's switch (light.json's ue_screen_size) is set where its twin's error is within a pixel at the sphere's nearest point (a radius nearer than its centre) in the widest view, and so in every view"
+ },
+ "from_m": 50.0,
+ "pixels": 1.0,
+ "note_from": "1 pixel at 50 m on that screen is 1.5 cm: the twin may be shown for any boat 50 m off or further (AI boats in a race, distant boats); the game sets each part's switch by its own screen size (light.json's ue_screen_size)",
+ "budget_share": 0.25,
+ "note_budget": "the plan's ceiling: about a quarter of the detailed boat's triangles in every suit",
+ "speck_share": 1.0,
+ "note_speck": "a separate piece (a pin, a split ring, a rivet head) whose bounding box's diagonal is under this many tolerances is left out: under a pixel from 'from_m'",
+ "seam_join_share": 2.0,
+ "note_seam": "paint lines: the faces either side of a line between two materials, or of a seam in a UV map (where the drawn paint jumps: the plating's, a sail's cloths), are simplified apart, so the line keeps its place exactly, and then sewn together again: each vertex on one side is put into the other side's edge if it lies within this many tolerances of it (each side may stray a tolerance), the nearest edge winning. A UV jump of a whole turn (a spar's wrap round seam) is no seam: it is left whole",
+ "tube": {
+  "min_sides": 4,
+  "radius_share": 0.3,
+  "flat_share": 0.5,
+  "hero_sides_from": 6,
+  "roundness": 1.5,
+  "round_median": 1.03,
+  "line_share": 0.5,
+  "note": "a rope, a wire or a round rod (the detailed part's tube: rings of the same count capped by a fan to each end's centre, most of them round to round_median, none further from round than 'roundness', largest over least distance from the centre: a mitred bend's ring is an ellipse) is built again round its own centreline with the fewest sides (at least min_sides) whose corners, standing at the mean radius r 2 / (1 + cos(pi / sides)), and flats lie within flat_share of the tolerance and within radius_share of its radius of the round tube (as far outside it as inside: for four sides 17% of the radius), so its width from every side is within that of the round tube's; its paint is carried from the detailed tube's as a solid's is; its rings are thinned to those the centreline and radius need to stay within line_share of the tolerance. A tube built again that strays further than the tolerance from the detailed one, or whose paint slides further (the 99th percentile by area: a winch drum's, round which the paint jumps back within one face), or one of fewer than hero_sides_from sides, is simplified with the solids."
+ },
+ "ratios": [
+  0.004,
+  0.006,
+  0.008,
+  0.01,
+  0.0125,
+  0.015,
+  0.02,
+  0.025,
+  0.03,
+  0.04,
+  0.05,
+  0.065,
+  0.08,
+  0.1,
+  0.125,
+  0.15,
+  0.2,
+  0.25,
+  0.3,
+  0.4,
+  0.5,
+  0.65,
+  0.8,
+  1.0
+ ],
+ "note_ratios": "each part's solids are collapsed to the smallest of these shares of their triangles that keeps the part within the tolerance (Blender's quadric collapse, the paint lines held as above), every seam sewn, its drawn paint within the tolerance too (the 99th percentile of how far a UV number's lines slide) and no face turned over wider than the tolerance",
+ "uv_read_in_game": ["UV1"],
+ "note_uv_read_in_game": "maps a part's paint is held to though its Blender material does not read them, because the game's does: UV1, the sails' planform (the share along the row and up the sail), from which the game's M_SailCloth draws a tri-radial's seams, the insignia and the number",
+ "uv_numbers": {
+  "Margin.v": "metres",
+  "SparG.u": "metres",
+  "Aft.v": "setting",
+  "SparG.v": "setting"
+ },
+ "note_uv_numbers": "the UV numbers that draw no lines of their own (every other number's lines are where it takes a value, and the paint's slide is how far those lines move: its error over its rate). 'metres': a length the material reads (the deck's Margin v, the margin plank's inner edge's distance out at that point: where the planks' nibs end; SparG u, the spar's girth there: the share round times it places the plating's lines), so its error is itself how far a line moves. 'setting': a number that sets something else (the deck's Aft v, the margin's slope: the nibs' angle; SparG v, 1 where a spar is plated and -1 on its fittings), whose largest error is reported, not held",
+ "skip": [
+  "Hull"
+ ],
+ "note_skip": "slice 1's moulded hull is the fairness check's reference, never shown; below decks (slices 9 and 10) is only drawn from inside, close to",
+ "below_slices": [
+  9,
+  10
+ ]
+}
