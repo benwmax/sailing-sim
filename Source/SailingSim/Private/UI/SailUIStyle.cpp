@@ -171,8 +171,8 @@ namespace SailUI
 			case EType::CardTitleM: return Make(Besley(), TEXT("SemiBold"), 25, 0);
 			case EType::CardTitleS: return Make(Besley(), TEXT("SemiBold"), 20 * S, 0);
 			case EType::MenuItem: return Make(Besley(), TEXT("SemiBold"), 25, 0);
-			case EType::Eyebrow: return Make(Atkinson(), TEXT("SemiBold"), 15 * S, 80);
-			case EType::Label: return Make(Atkinson(), TEXT("SemiBold"), 15 * S, 30);
+			case EType::Eyebrow: return Make(Atkinson(), TEXT("SemiBold"), 14 * S, 60);
+			case EType::Label: return Make(Atkinson(), TEXT("SemiBold"), 14 * S, 30);
 			case EType::Ui: return Make(Atkinson(), TEXT("Medium"), 18 * S, 0);
 			case EType::Button: return Make(Atkinson(), TEXT("SemiBold"), 18 * S, 0);
 			case EType::Value: return Make(B612(), TEXT("Bold"), 18 * S, 0);

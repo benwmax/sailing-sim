@@ -296,3 +296,5 @@ After the first stills with the faces on (`faces/`): Atkinson has no arrows, so 
 smaller one with Besley ("Set the conditions" ran past its panel); the flow steps are 122 px wide and labels are tracked
 30 ("4 CONDITIONS" touched "5 MODE"); the briefing's goal and calls are text, not instrument figures; the trim window's
 point-of-sail note may shrink to 8 pt beside the wider label.
+B612 sits about 3 px higher than Atkinson at the same size, so only figures keep it (the HUD's readouts, the boat's
+numbers): the Controls columns, quiz letters and step numbers are text. Labels and eyebrows are 14 px.
