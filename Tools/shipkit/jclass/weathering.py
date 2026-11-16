@@ -32,6 +32,7 @@ import wear as loop  # noqa: E402
 
 CARDS = json.load(open(os.path.join(HERE, "textures_bluebonnet.json")))
 SHARED_META = json.load(open(os.path.join(REPO, "Inputs", "boat-detail", "detail_textures.json")))
+PLANKS = json.load(open(os.path.join(HERE, "deck_bluebonnet.json")))["deck"]["planking"]     # her laid deck
 LEVELS = {lv["id"]: lv for lv in loop.levels()}
 SALT = 1.0                       # Galveston: the salt-water rate (the lake's is about a third: docs/texture-loop metal)
 
@@ -117,9 +118,11 @@ def amounts(surface, kind, age, care):
             a["rust"] = 0.0
         return a
     if surface == "manila":
-        own = min(age, 0.5 * (3.0 + 12.0 * (1.0 - care)))       # rope is renewed: on average half its life old
+        # rope is renewed as it wears: on a kept yacht every three seasons or so (on average half that old), on a
+        # neglected one hardly ever (twenty years laid up: 15 years old)
+        own = min(age, 1.5 / max(care, 0.05))
         rt, rd = loop.time_k(own, care), loop.dirt_k(own, care)
-        return {"grey": sat(0.6 * math.sqrt(rd) + 0.3 * rt), "fuzz": sat(0.8 * math.sqrt(rd) + 0.3 * rt),
+        return {"grey": sat(0.6 * math.sqrt(rd) + 0.45 * rt), "fuzz": sat(0.8 * math.sqrt(rd) + 0.3 * rt),
                 "dark": rd, "mildew": ramp(rd, 0.5, 0.9)}
     if surface == "wire":
         dull = sat(3.0 * t)
@@ -183,7 +186,7 @@ SILVER = (156, 152, 146)
 BLOND = (200, 184, 156)
 MILDEW = (36, 38, 32)
 GREY_WOOD = (132, 126, 118)
-OLD_VARNISH = (92, 52, 26)
+OLD_VARNISH = (80, 50, 30)
 STAIN = (40, 34, 28)
 BLOOM = (210, 206, 196)
 PATINA = (96, 66, 40)
@@ -644,7 +647,11 @@ def paint(w, sh, kind):
         cr = w.crevice(0.12)
         grime = w.mul(w.term("grime"), w.add(w.mul(cr, 0.8), w.mul(w.blot(pos, 0.3, 1.0), 0.6)))
         sh.col = w.mix(sh.col, w.scale(sh.col, (0.55, 0.5, 0.42)), w.sat(grime))
-        rust = w.mul(w.patches(pos, 0.04, w.mul(w.term("rust"), 0.6), seed=7.0, detail=4.0), w.sat(w.mul(cr, 2.0)))
+        # rust comes through at the fastenings and the joints, and weeps down from them as a brown stain
+        spot = w.mul(w.patches(pos, 0.015, w.mul(w.term("rust"), 0.3), seed=7.0, detail=3.0), w.sat(w.mul(cr, 2.0)))
+        weep = w.mul(w.term("rust"), w.sat(w.mul(cr, 1.5)),
+                     w.smooth(w.noise(pos, 0.02, 8.0, stretch=(1.0, 1.0, 8.0)), 0.55, 0.68))
+        rust = w.sat(w.add(spot, w.mul(weep, 0.5)))
         sh.col = w.mix(sh.col, RUST, rust)
         sh.rough = w.lerp(sh.rough, 0.9, rust)
         sh.finish()
@@ -652,8 +659,12 @@ def paint(w, sh, kind):
     # the shine goes: rougher, the clear coat (the enamel's gloss) thinner
     sh.rough = w.lerp(sh.rough, 0.62, w.term("gloss"))
     sh.coat = w.lerp(sh.coat, 0.05, w.term("gloss"))
-    # chalk, in big soft blotches, most on what faces the sky: the colour greyed and lifted, a white staying white
-    ch = w.mul(w.term("chalk"), w.add(0.35, w.mul(w.blot(pos, 0.45, 2.0), 0.8)), w.add(0.7, w.mul(w.sat(w.up()), 0.3)))
+    # chalk, nearly even, most high up and on what faces the sky, and washed down the topsides by the rain in
+    # long soft streaks: the colour greyed and lifted, a white staying white
+    washed = w.blot(pos, 0.25, 2.0, detail=1.0, stretch=(1.0, 1.0, 6.0))
+    high = w.smooth(w.wz(), 0.0, 2.0)
+    ch = w.mul(w.term("chalk"), w.add(0.5, w.mul(washed, 0.35), w.mul(high, 0.2)),
+               w.add(0.75, w.mul(w.sat(w.up()), 0.25)))
     sh.col = w.mix(sh.col, chalky(w, sh.col, CHALK), w.sat(ch))
     sh.rough = w.lerp(sh.rough, 0.8, w.mul(w.sat(ch), 0.4))
     z = w.wz()
@@ -673,13 +684,13 @@ def paint(w, sh, kind):
         # a few of the frames' rivet rows weep from a rivet somewhere in the strake (and run on into the next: the
         # strake above's are drawn too); the seams' rivets (7.5 cm apart, on the frames' lines) weep from the seam;
         # the scuppers and fittings at the sheer make the long wide runs
-        frame = dict(pitch=0.53, share=w.mul(0.2, more), width=0.02, length=(0.2, 0.9), seed=11.0, start=0.9,
+        frame = dict(pitch=0.53, share=w.mul(0.2, more), width=0.03, length=(0.35, 1.4), seed=11.0, start=0.9,
                      on_lines=True, along=v)
         from_frame = w.m("MAXIMUM", runs(w, u, below_seam, row, **frame),
                          runs(w, u, w.add(below_seam, 1.05), w.m("SUBTRACT", row, 1.0), **frame))
-        from_seam = runs(w, u, below_seam, row, 0.075, w.mul(0.05, more), 0.012, (0.06, 0.4), 13.0, on_lines=True,
+        from_seam = runs(w, u, below_seam, row, 0.075, w.mul(0.04, more), 0.015, (0.12, 0.6), 13.0, on_lines=True,
                          along=v)
-        from_sheer = runs(w, u, v, 0.0, 0.45, w.mul(0.25, more), 0.035, (0.3, 1.4), 17.0, jitter=0.6)
+        from_sheer = runs(w, u, v, 0.0, 0.45, w.mul(0.25, more), 0.05, (0.5, 2.0), 17.0, jitter=0.6)
         weeps = w.mul(on, dry, w.m("MAXIMUM", w.m("MAXIMUM", from_seam, from_frame), from_sheer))
         rust = w.add(w.mul(w.term("rust"), w.sat(w.mul(weeps, 1.5))), w.mul(off, loose_rust))
         # chips along the sheer, where fenders, warps and the dinghy knock her
@@ -734,10 +745,23 @@ def teak(w, sh, kind):
     tone = w.add(1.0, w.mul(grain, 0.6))
     sh.col = w.mix(sh.col, w.scale(w.rgb(_lin(SILVER)), tone), w.mul(w.term("silver"), 0.85, wood))
     sh.col = w.mix(sh.col, w.scale(w.rgb(_lin(BLOND)), tone), w.mul(w.term("pale"), 0.75, wood))
-    # dark with grime, algae and mildew, most in the soft early wood
+    # dark with grime, algae and mildew: plank by plank (each soaks and weathers its own way), in streaks along
+    # the grain, most in the soft early wood, and greenest where water lies (the waterways, round the fittings).
+    # The planks run fore and aft, 'pitch' apart out from the king plank (the Planking UV: x along, y across)
+    pu, pv, _ = w.sep(w.uv("Planking"))
+    has = w.m("GREATER_THAN", w.add(w.m("ABSOLUTE", pu), w.m("ABSOLUTE", pv)), 0.0)
+    px, py, _ = w.sep(pos)
+    pu, pv = w.lerp(px, pu, has), w.lerp(py, pv, has)
+    row = w.m("FLOOR", w.m("DIVIDE", w.m("SUBTRACT", w.m("ABSOLUTE", pv), PLANKS["king_plank"] / 2), PLANKS["pitch"]))
+    piece = w.m("FLOOR", w.add(w.m("DIVIDE", pu, PLANKS["plank_length"]), w.mul(row, 0.37)))
+    tone, _ = w.hash(w.comb(row, piece, 0.0), 3.0)
+    along = w.blot(w.comb(pu, pv, 0.0), 0.05, 4.0, detail=2.0, stretch=(14.0, 1.0, 1.0))
     soft = w.m("SUBTRACT", 1.0, w.smooth(r, 0.45, 0.75))
-    dark = w.mul(w.term("dark"), w.add(0.35, w.mul(soft, 0.5), w.mul(w.blot(pos, 0.25, 3.0), 0.4)), wood)
-    sh.col = w.mix(sh.col, w.mix(MILDEW, (46, 54, 32), w.mul(w.blot(pos, 0.5, 8.0), 0.6)), w.sat(dark))
+    wet = w.crevice(0.25, 0.4, 0.95)
+    dark = w.mul(w.term("dark"), w.sat(w.add(0.3, w.mul(soft, 0.35), w.mul(tone, 0.3), w.mul(along, 0.3),
+                                             w.mul(wet, 0.3))), wood)
+    green = w.sat(w.add(w.mul(wet, 0.8), w.mul(w.blot(pos, 0.6, 8.0, stretch=(4.0, 1.0, 1.0)), 0.3)))
+    sh.col = w.mix(sh.col, w.mix(MILDEW, (46, 54, 32), w.mul(green, 0.8)), w.sat(dark))
     sh.rough = w.lerp(sh.rough, 0.85, w.mul(w.term("silver"), 0.6))
     # checks open with the years (the map's checks repeat with its tile: patches pick which open)
     some = w.patches(pos, 0.3, 0.35, seed=29.0, detail=2.0, soft=0.12)
@@ -769,11 +793,15 @@ def varnish(w, sh, kind):
     if kind == "exterior":
         # the old film the sun has cooked: dark and brown, no longer the mahogany's red
         sh.col = w.mix(sh.col, w.scale(w.rgb(_lin(OLD_VARNISH)), w.add(1.0, w.mul(figure, 0.6))),
-                       w.mul(w.term("fail"), 0.6))
-        # the film goes first on the tops and edges; left long enough it goes everywhere
-        # (a few patches at first, most of it gone when long neglected)
-        fail = w.patches(pos, 0.06, w.mul(w.term("fail"), w.term("fail"), w.add(0.6, w.mul(top, 0.35))), seed=41.0,
-                         detail=3.0, soft=0.04)
+                       w.mul(w.term("fail"), 0.8))
+        # the film goes first on the tops and edges; left long enough it goes everywhere (a few flakes at first,
+        # most of it gone when long neglected). It lifts in flakes drawn out along the grain (which runs level on
+        # her deckhouses), ragged at their ends, and the film round a flake's edge has lifted and gone milky
+        share = w.mul(w.term("fail"), w.term("fail"), w.add(0.55, w.mul(top, 0.4)))
+        flake = dict(seed=41.0, detail=4.0, soft=0.03, stretch=(3.0, 3.0, 1.0))
+        fail = w.patches(pos, 0.05, share, **flake)
+        rim = w.mul(w.patches(pos, 0.05, w.mul(share, 1.25), **flake), w.m("SUBTRACT", 1.0, fail))
+        sh.col = w.mix(sh.col, w.mix(sh.col, (204, 184, 146), 0.6), w.mul(rim, w.term("fail"), 0.7))
         # where it has gone the wood is grey, its grain standing out dark
         bare = w.scale(w.mix(GREY_WOOD, STAIN, w.mul(w.term("stain"), 0.5)), w.add(1.0, w.mul(figure, 1.2)))
         sh.col = w.mix(sh.col, bare, fail)
@@ -785,8 +813,13 @@ def varnish(w, sh, kind):
     else:
         hands = w.mul(w.term("grime"), w.add(w.mul(w.edge(0.008), 0.7), w.mul(w.blot(pos, 0.3, 45.0), 0.45)))
         sh.col = w.mix(sh.col, w.scale(sh.col, (0.66, 0.62, 0.56)), w.sat(hands))
-        bloom = w.mul(w.term("bloom"), w.patches(pos, 0.12, 0.35, seed=47.0, detail=2.0, soft=0.12))
-        sh.col = w.mix(sh.col, BLOOM, w.mul(bloom, 0.5))
+        # the blush is a milky haze the wood still shows through, never a paint: thickest low down, where the
+        # damp stood over the sole, and in soft streaks where condensation ran down from the deckhead and the ports
+        low = w.m("SUBTRACT", 1.0, w.smooth(w.wz(), -0.6, 0.7))
+        ran = w.mul(w.blot(pos, 0.2, 47.0, detail=1.0, stretch=(1.0, 1.0, 6.0)), w.blot(pos, 0.9, 48.0, detail=1.0))
+        bloom = w.sat(w.mul(w.term("bloom"), w.add(w.mul(low, 0.7), w.mul(ran, 0.8))))
+        sh.col = w.mix(sh.col, BLOOM, w.mul(bloom, 0.22))
+        sh.rough = w.lerp(sh.rough, 0.6, bloom)
         sh.coat = w.lerp(sh.coat, 0.2, bloom)
         # water rings: the contour of a smooth noise is a closed ring about each blot
         n = w.noise(pos, 0.02, 49.0, detail=0.0)
@@ -812,8 +845,12 @@ def bronze(w, sh, kind):
     patina = w.sat(w.m("MAXIMUM", open_p, in_rec))
     sh.rough = w.lerp(w.add(sh.rough, w.mul(w.m("SUBTRACT", rough_v, 0.5), 0.1)), 0.62, w.mul(patina, 0.8))
     sh.metal = w.lerp(sh.metal, 0.7, patina)
-    crust = w.patches(pos, 0.015, w.mul(0.12, w.add(0.3, w.mul(w.sat(w.up()), 0.7))), seed=67.0, detail=2.0)
-    vg = w.sat(w.mul(w.term("verdigris"), w.add(w.mul(rec, 0.6), w.mul(crust, 0.5))))
+    # verdigris gathers where water stands and dries: in the recesses and the casting's pits, in short streaks
+    # down from them, and at the foot of a fitting; the open faces take only a thin, soft bloom of it
+    near = w.crevice(0.06, 0.45, 0.95)
+    drip = w.mul(near, w.smooth(w.noise(pos, 0.008, 67.0, detail=2.0, stretch=(1.0, 1.0, 5.0)), 0.5, 0.62))
+    film = w.mul(w.blot(pos, 0.04, 68.0, detail=1.0), 0.12)
+    vg = w.sat(w.mul(w.term("verdigris"), w.add(w.mul(rec, 0.75), w.mul(drip, 0.6), film)))
     sh.col = w.mix(sh.col, VERDIGRIS, vg)
     sh.rough = w.lerp(sh.rough, 0.9, vg)
     sh.metal = w.lerp(sh.metal, 0.0, vg)
@@ -853,11 +890,14 @@ def duralumin(w, sh, kind):
     streak = w.patches(pos, 0.03, 0.3, seed=77.0, detail=2.0, stretch=(1.0, 1.0, 12.0))
     gr = w.sat(w.mul(w.term("grime"), streak, w.add(0.4, w.mul(w.crevice(0.08), 1.2))))
     sh.col = w.mix(sh.col, w.mix(w.scale(sh.col, 0.6), GRIME, 0.3), w.mul(gr, 0.6))
-    # the paint lets go: grey metal with white oxide powder round each flake
-    # (most where water lies: at the fittings and on the upper side)
-    where = w.add(0.6, w.mul(w.sat(w.up()), 0.5), w.mul(w.crevice(0.05), 0.8))
-    flake = w.patches(pos, 0.05, w.mul(w.term("flake"), 0.12, where), seed=79.0, detail=4.0, soft=0.03)
-    halo = w.mul(w.patches(pos, 0.05, w.mul(w.term("flake"), 0.22, where), seed=79.0, detail=4.0, soft=0.14),
+    # the paint lets go where the alloy corrodes under it: round the fittings and their fastenings (the bronze
+    # and the steel against the alloy), where water lies, and in a few clusters elsewhere; grey metal with white
+    # oxide powder blistering the paint round each flake
+    near = w.crevice(0.15, 0.5, 0.97)
+    cluster = w.smooth(w.blot(pos, 0.35, 78.0, detail=1.0), 0.55, 0.9)
+    where = w.add(0.05, w.mul(near, 1.6), w.mul(cluster, 0.5), w.mul(w.sat(w.up()), 0.2))
+    flake = w.patches(pos, 0.025, w.mul(w.term("flake"), 0.3, where), seed=79.0, detail=4.0, soft=0.03)
+    halo = w.mul(w.patches(pos, 0.025, w.mul(w.term("flake"), 0.6, where), seed=79.0, detail=4.0, soft=0.14),
                  w.m("SUBTRACT", 1.0, flake))
     mr, mg, _ = w.image("Metal", pos, tile_of("Metal"))
     bare = w.mix(DURAL, OXIDE, w.smooth(mr, 0.3, 0.9))
@@ -884,14 +924,25 @@ def cotton(w, sh, kind):
         height = w.wz()
     sh.col = w.scale(sh.col, w.add(0.97, w.mul(g, 0.06)))
     sh.col = w.mix(sh.col, w.scale(sh.col, (1.0, 0.95, 0.8)), w.term("yellow"))
-    dinge = w.mul(w.term("dinge"), w.add(0.4, w.mul(w.blot(pos, 0.8, 83.0), 0.9)))
+    # dinge: the cloth greys nearly evenly; grime gathers along the foot (the deck, the hands, the bag) and in
+    # streaks the rain and spray have run down the cloth
+    dinge = w.mul(w.term("dinge"), w.add(0.7, w.mul(w.blot(pos, 0.8, 83.0, detail=1.0), 0.3)))
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.72, 0.71, 0.68)), w.sat(dinge))
     foot = w.m("SUBTRACT", 1.0, w.smooth(height, 0.1, 2.0)) if kind == "sail" else w.val(0.6)
-    grime = w.mul(w.term("grime"), foot, w.add(0.3, w.mul(w.blot(pos, 0.3, 89.0), 1.0)))
+    ran = w.blot(pos, 0.2, 89.0, detail=1.0, stretch=(1.0, 1.0, 5.0))
+    grime = w.mul(w.term("grime"), w.add(w.mul(foot, w.add(0.65, w.mul(ran, 0.35))), w.mul(ran, 0.12)))
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.6, 0.52, 0.42)), w.sat(grime))
-    # mildew: black specks, in drifts where the damp lay (more of them toward the foot)
+    # mildew: black specks, in drifts where the damp lay (more of them toward the foot). A sail was flaked down
+    # in folds parallel to its foot (about 0.8 m apart) and stowed damp: the specks gather along the folds
     drift = w.patches(pos, 0.5, w.mul(w.term("mildew"), w.add(0.4, w.mul(foot, 0.4))), seed=101.0, detail=2.0,
                       soft=0.25)
+    if kind == "sail":
+        fy = w.add(y, w.mul(w.m("SUBTRACT", w.noise(vec, 0.6, 102.0, detail=1.0), 0.5), 0.3))   # folds not ruled
+        to_fold = w.m("ABSOLUTE", w.m("SUBTRACT", w.m("FRACT", w.m("DIVIDE", fy, 0.8)), 0.5))
+        fold = w.m("SUBTRACT", 1.0, w.smooth(to_fold, 0.02, 0.14))
+        along_fold = w.blot(vec, 0.3, 104.0, detail=1.0, stretch=(3.0, 1.0, 1.0))
+        drift = w.sat(w.mul(w.term("mildew"), w.add(w.mul(fold, w.add(0.5, w.mul(along_fold, 0.7))),
+                                                    w.mul(drift, 0.3))))
     # (specks a few millimetres across: past a few metres they would only alias, so they fade into their own mean,
     # a grey mottle, as the game's fine detail fades)
     share = w.mul(w.term("mildew"), 0.2)
@@ -899,10 +950,9 @@ def cotton(w, sh, kind):
     mil = w.mul(w.lerp(w.mul(share, 0.8), specks, w.fade(1.0, 4.0)), drift)
     sh.col = w.mix(sh.col, MILDEW, w.sat(mil))
     if kind == "sail":
-        # rust streaks run aft from the hanks and slides along the luff
-        streak = w.smooth(w.noise(vec, 0.03, 103.0, stretch=(8.0, 1.0, 1.0)), 0.6, 0.7)
-        luff = w.m("SUBTRACT", 1.0, w.smooth(x, 0.05, 0.7))
-        sh.col = w.mix(sh.col, RUST, w.mul(w.term("rust"), streak, luff, 0.7))
+        # rust runs aft from the hanks and slides along the luff (about 0.75 m apart), spreading and fading
+        hank = runs(w, y, x, 0.0, 0.75, 0.7, 0.04, (0.15, 0.6), 103.0, jitter=0.2)
+        sh.col = w.mix(sh.col, w.mix(RUST, (150, 104, 70), 0.4), w.mul(w.term("rust"), hank, 0.8))
     elif kind == "stowed":
         rust = w.mul(w.term("rust"), w.smooth(w.noise(pos, 0.03, 103.0, stretch=(1.0, 1.0, 8.0)), 0.66, 0.74))
         sh.col = w.mix(sh.col, RUST, w.mul(rust, 0.6))
@@ -923,13 +973,18 @@ def manila(w, sh, kind):
     r, g, b = (w.lerp(bx, ly, has) for bx, ly in zip(by_box, by_lay))
     sh.bump(w.mul(w.m("SUBTRACT", b, 0.5), 0.00025, w.fade(*fade_of("Manila"))))
     sh.col = w.scale(sh.col, (0.94, 1.0, 1.3))                        # new manila's colour, held to the scan (Rope001)
-    sh.col = w.scale(sh.col, w.add(0.85, w.mul(r, 0.3)))
-    hair = w.mul(g, w.add(0.3, w.mul(w.term("fuzz"), 0.9)), w.fade(0.4, 2.0))
+    # broken fibres stand out of an old rope: close to, single hairs catching the light; further off they fill
+    # the strands' grooves, so the lay goes soft and the rope reads paler and duller
+    fuzz = w.term("fuzz")
+    lay = w.lerp(0.3, 0.1, fuzz)
+    sh.col = w.scale(sh.col, w.add(w.m("SUBTRACT", 1.0, w.mul(lay, 0.5)), w.mul(r, lay)))
+    hair = w.mul(g, w.add(0.3, w.mul(fuzz, 0.9)), w.fade(0.4, 2.0))
     sh.col = w.mix(sh.col, w.scale(sh.col, 1.25), w.sat(hair))
     sh.col = w.mix(sh.col, (112, 104, 92), w.mul(w.term("grey"), 0.85))
+    sh.col = w.mix(sh.col, w.mix(sh.col, (176, 170, 156), 0.5), w.mul(fuzz, 0.35))   # the hairs' pale halo
     dark = w.mul(w.term("dark"), w.add(0.2, w.mul(w.blot(pos, 0.2, 107.0), 0.9)))
     sh.col = w.mix(sh.col, w.scale(sh.col, 0.6), w.sat(dark))
-    mil = w.mul(w.term("mildew"), w.smooth(w.noise(pos, 0.01, 109.0, detail=3.0), 0.5, 0.62))
+    mil = w.mul(w.term("mildew"), w.smooth(w.noise(pos, 0.03, 109.0, detail=3.0), 0.5, 0.6))
     sh.col = w.mix(sh.col, w.mix(MILDEW, (40, 54, 32), w.blot(pos, 0.1, 113.0)), w.mul(mil, 0.8))
     sh.rough = w.lerp(sh.rough, 0.95, w.term("fuzz"))
     sh.finish()
@@ -947,9 +1002,11 @@ def wire(w, sh, kind):
     sh.col = w.scale(sh.col, w.add(0.92, w.mul(spangle, w.lerp(0.16, 0.04, w.term("dull")))))
     sh.rough = w.lerp(w.add(sh.rough, w.mul(w.m("SUBTRACT", mg, 0.5), 0.1)), 0.7, w.term("dull"))
     sh.col = w.mix(sh.col, w.scale(sh.col, 0.82 if kind == "wire" else 0.9), w.term("dull"))
-    bloom = w.mul(w.blot(pos, 0.05, 131.0), 0.5 if kind == "wire" else 1.2)
-    ox = w.mul(w.term("oxide"), w.add(w.mul(groove, 0.9), bloom))
-    sh.col = w.mix(sh.col, ZINC_WHITE, w.sat(ox))
+    # white rust: a powder in the grooves and the crevices, and a thin, uneven film over the rest (never in
+    # sharp blotches: it is a bloom on the zinc, the dull metal showing through)
+    film = w.mul(w.add(0.45, w.mul(w.blot(pos, 0.12, 131.0, detail=1.0), 0.55)), 0.4 if kind == "wire" else 0.75)
+    ox = w.mul(w.term("oxide"), w.add(w.mul(w.m("MAXIMUM", groove, w.crevice(0.02)), 0.9), film))
+    sh.col = w.mix(sh.col, ZINC_WHITE, w.mul(w.sat(ox), 0.85))
     sh.metal = w.lerp(sh.metal, 0.0, w.sat(ox))
     sh.rough = w.lerp(sh.rough, 0.95, w.sat(ox))
     if kind == "zinc":

@@ -330,18 +330,19 @@ SHEETS = {"paint": ("hull", ("Topsides", "Bootstripe", "Antifouling", "CoveStrip
           "duralumin": ("gooseneck", ("Spar",)),
           "cotton": ("sail", ("ClothGenoa", "ClothMainsail")),
           "manila": ("winch", ("Rope",)),
-          "wire": ("chainplates", ("Wire", "WireRope", "Galvanised")),
+          "wire": ("chainplates", ("Wire", "WireRope", "Galvanised"), 0.5),      # the shrouds' feet: wire is thin
           "furnishings": ("saloon", ("Upholstery", "Carpet", "Leather"))}
 SHEET_PX = 360                      # each level's crop is scaled to this height
 
 
-def crop_box(rdir, view, names):
-    """The bounding box (left, top, right, bottom) of the materials' pixels in the view, padded and at least a
-    third of the frame each way."""
+def crop_box(rdir, view, names, below=0.0):
+    """The bounding box (left, top, right, bottom) of the materials' pixels in the view (those in the frame's lower
+    1 - below of its height only, when below is given), padded and at least a third of the frame each way."""
     ids = {v: int(k) for k, v in json.load(open(os.path.join(rdir, "wear_ids.json"))).items()}
     code, sure = decode(os.path.join(rdir, f"wear_{view}_id.png"))
     mask = np.isin(code, [ids[n] for n in names if n in ids]) & sure
     h, w = mask.shape
+    mask[:int(below * h)] = False
     if mask.sum() < 200:
         return 0, 0, w, h
     ys, xs = np.nonzero(mask)
@@ -364,8 +365,8 @@ def make_sheets(rdir, out):
     os.makedirs(os.path.join(out, "blind"), exist_ok=True)
     rng = np.random.default_rng(11)
     key = {}
-    for surface, (view, names) in SHEETS.items():
-        box = crop_box(rdir, view, names)
+    for surface, (view, names, *below) in SHEETS.items():
+        box = crop_box(rdir, view, names, *below)
         crops = {}
         for lv in LEVELS:
             im = Image.open(os.path.join(rdir, f"wear_{view}_{lv}.png")).convert("RGB").crop(box)

@@ -116,7 +116,7 @@ def main():
     for k, n in enumerate(RENDERS):
         im = Image.open(os.path.join(OUT, "renders", n + ".png")).convert("RGB").resize((600, 337), Image.LANCZOS)
         sheet.paste(im, ((k % 3) * 600, (k // 3) * 337))
-    save(sheet, os.path.join(DOCS, "sheet.jpg"), 1800)
+    save(sheet, os.path.join(DOCS, "sheet.jpg"), 1800 if rows <= 6 else 1350)    # slice 11's 9 rows: smaller
     print("docs_jclass: wrote", DOCS)
 
 
