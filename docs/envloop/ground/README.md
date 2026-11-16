@@ -97,7 +97,7 @@ What the reviewers still saw at 15 and 60 m, for round 2: band edges along the s
 limestone shingle patches reading as flat grey decals with clean outlines; a cut bank that is one even texture with no
 strata, slumps or roots (shape is Track C's, the strata can be a clay-face layer here); the cracked-mud and gravel tiles
 repeating at 3 m; the wood's floor on the 60 m hill showing as a dark patch with hard edges (partly the test scene's
-square wood). Sheets: `Artifacts/envloop/ground/r1/sheet_*.jpg` (rebuilt by the commands below).
+square wood). Before and after page: https://claude.ai/artifact/T9SCPjdAAP92REkYXzzRRz (renders are not in git: images go through LFS, which cloud sessions cannot push; the commands below rebuild them).
 
 ## What integration needs (after Nov 21, through the sim thread)
 

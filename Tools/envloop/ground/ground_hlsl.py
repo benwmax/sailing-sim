@@ -14,7 +14,6 @@ terrain mesh carries no tangents); AO.
 Sampling: Texture2DArraySampleGrad with gradients taken before the far branch (no gradient in flow control), and only
 the two strongest surfaces are sampled: 2 surfaces x 2 scales x 3 maps = 12 fetches inside 150 m, none past it.
 """
-import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))

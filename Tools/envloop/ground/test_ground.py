@@ -5,7 +5,6 @@
   decode    the vertex-colour decode reads BuildChunk's own tones: open grass, woods, low flats, clay and sand banks
   hlsl      the HLSL is fully generated (no {PLACEHOLDER} left, braces balance) and its constants are the card's
 """
-import json
 import os
 import re
 import sys
