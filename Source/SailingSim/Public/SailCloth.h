@@ -94,6 +94,43 @@ namespace Sailing { struct FBoatConfig; }
  * comes over it), and under the masthead.
  */
 SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm, const class FSailCloth* Jib = nullptr);
+
+/**
+ * Feedback #25: a symmetric spinnaker's corners and its gear as the crew sets them (boat frame, cm). The physics flies the
+ * sail from a luff on the centreline ahead of the mast, turned out by its chord angle; drawn that way its 6.9 m foot (the
+ * J/22's planform) swung its clew 5 m and more out over the water, abeam or ahead of the bow, held by nothing. Here:
+ *   - the pole from a ring on the mast's front, as long as the J (the forestay's tack to the mast's front, class rules),
+ *     level at a pole's height over the deck, squared to the apparent wind (90 deg off it) between on the forestay
+ *     (PoleMinDeg) and squared back on a run (PoleMaxDeg), always to windward; the tack at its end (the guy's);
+ *   - the clew on the leeward side, the foot (at most FootPerJ x J, the class limit) laid from the tack across the bow on a
+ *     run and back toward the leeward shrouds on a reach, a little forward when the sheet is eased, then held by the sheet:
+ *     never further than ClewOutboardM outside the rail, ahead of the mainsail (ClewAheadOfMastM forward of the mast) and
+ *     not past the bow (the cloth bellies out between corners closer than its foot);
+ *   - the guy from the tack down to the twing block on the windward side deck by the shrouds and aft to its cleat beside
+ *     the cockpit, the sheet from the clew to the leeward quarter block and forward to its cleat (the hero J/22's spinnaker
+ *     gear in build_j22_hero.py, placed by the hull's shape for any boat).
+ * The physics is unchanged. Gennakers (bAsymmetricSpinnaker: tacked to the bow or a sprit, no pole) get no rig (bValid false).
+ */
+namespace SpinnakerRigLimits
+{
+	constexpr double PoleMinDeg = 5.0, PoleMaxDeg = 80.0;
+	constexpr double FootPerJ = 1.8;
+	constexpr double ClewOutboardM = 1.0;
+	constexpr double ClewAheadOfMastM = 0.5;
+	constexpr double PoleOverSheerM = 0.9;     // the pole's height over the sheer at the mast
+	constexpr double ClewUnderTackM = 0.25;    // the clew flies a little under the tack
+	constexpr double FootRunDeg = 92.0, FootReachDeg = 125.0, FootEaseDeg = 10.0;
+}
+struct FSpinnakerRig
+{
+	bool bValid = false;
+	double PoleDeg = 0.0;   // the pole's angle from the bow toward windward
+	FVector PoleHeel = FVector::ZeroVector, Tack = FVector::ZeroVector, Clew = FVector::ZeroVector;
+	FVector GuyBlock = FVector::ZeroVector, GuyCleat = FVector::ZeroVector, SheetBlock = FVector::ZeroVector, SheetCleat = FVector::ZeroVector;
+};
+/** Side: the side the sail flies on (+1 starboard, the physics' SpinSide); ApparentWindAngle in radians (either sign);
+ *  SheetEase 0 (trimmed) to 1 (eased); FootChordM the drawn planform's foot (FSailCloth::FootChord, 0: FootPerJ x J). */
+SAILINGSIM_API FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double ApparentWindAngle, double SheetEase, double FootChordM);
 /**
  * Feedback #20 follow-up: where the jib's head is drawn on a model with a forestay (boat frame, cm): at its top, the mast's
  * Hounds socket (the forestay's tang), a head shackle's length under it and on the mast's front. The physics jib's head
@@ -173,6 +210,19 @@ public:
 	bool HasHeadPoint() const { return bHeadPoint; }
 	/** Back to the planform's head (and no jib to keep ahead of). */
 	void ClearHeadPoint() { bHeadPoint = false; bAheadOf = false; }
+	/**
+	 * Feedback #25: a spinnaker drawn between its corners (boat frame, cm; SpinnakerRigCm): the luff from the tack (the
+	 * pole's end) up to the head, the leech from the clew up to it, each row's cloth (the planform's girth at its height)
+	 * bellying downwind between them. The flow, camber and collapse still come from the strips. The tack and clew are
+	 * pinned. Init clears it; only a spinnaker takes it.
+	 */
+	void SetCorners(const FVector& TackCm, const FVector& ClewCm);
+	void ClearCorners() { bCorners = false; }
+	bool HasCorners() const { return bCorners; }
+	/** The planform's foot (m): the drawn sail's width at its foot. */
+	double FootChord() const { return RowChord.Num() > 0 ? RowChord[0] : 0.0; }
+	/** Within this sideways distance of the centreline (m) a cornered luff is held ahead of the jib's (SetHeadPoint). */
+	static constexpr double kJibNearM = 0.5;
 
 	/** The target shape (boat frame, cm) for the strips' current state; Side = +1 sail to starboard, -1 to port. */
 	void ComputeTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
@@ -258,6 +308,10 @@ private:
 	double HeadX = 0.0, HeadZ = 0.0, FootLuffX = 0.0;
 	bool bAheadOf = false;
 	double AheadX0 = 0.0, AheadZ0 = 0.0, AheadSlope = 0.0, AheadZTop = 0.0;
+	/** SetCorners' tack and clew (m, boat frame). */
+	bool bCorners = false;
+	FVector CornerTack = FVector::ZeroVector, CornerClew = FVector::ZeroVector;
+	void ComputeCorneredTarget(const Sailing::FSailStripState* Strips, int32 Side, TArray<FVector>& Out) const;
 	/** The cloth's height, foot to head (m). */
 	double Span() const { return (bHeadPoint ? HeadZ : ZHead) - ZFoot; }
 	TArray<double> RowChord;   // planform chord per row (m)

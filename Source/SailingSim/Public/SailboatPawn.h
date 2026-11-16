@@ -677,6 +677,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Drips;   // rain deck: falling drips (M_Spray quads)
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> BowWave;   // spray hull: the bow wave's curl (world space)
 	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
+	/** Feedback #25: the spinnaker's pole, corners and gear as last drawn (SpinnakerRigCm; bValid only while a poled spinnaker is up). */
+	FSpinnakerRig SpinRig;
 	// Graphics G8: where the crew's hands hold the tiller extension, the mainsheet and the jib sheet (boat frame, cm), set
 	// by UpdateCrewFigures for the rig lines; the mainsheet's block on the car from the last UpdateModelRig.
 	TOptional<FVector> HelmGripCm, MainGripCm, JibGripCm;

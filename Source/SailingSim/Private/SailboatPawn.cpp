@@ -3586,6 +3586,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
+		SpinRig = FSpinnakerRig();
 		UpdateKitFittings(); // the hanks and the head shackle go with the jib
 		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
 		return;
@@ -3620,8 +3621,15 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		// the jib's head as its cloth draws it, the luff kept ahead of the jib's.
 		const FSailCloth* Jib = Cfg.HasJib() ? &JibCloth : nullptr;
 		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bHounds ? &Hounds : nullptr, Jib), Jib);
+		// Feedback #25: a poled spinnaker between its tack on the pole's end and its clew on the sheet (the physics' foot swung
+		// the clew metres out over the water); its pole, guy and sheet are drawn from SpinRig (UpdateModelRig).
+		SpinRig = SpinnakerRigCm(Cfg, S.SpinSide, T.ApparentWindAngle, Controls.SpinSheet, SpinCloth.FootChord());
+		if (SpinRig.bValid) SpinCloth.SetCorners(SpinRig.Tack, SpinRig.Clew);
+		else SpinCloth.ClearCorners();
+		if (!SpinCloth.HasCorners()) SpinRig = FSpinnakerRig();
 		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
 	}
+	else SpinRig = FSpinnakerRig();
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
 	if (Cfg.HasJib()) JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
 	UpdateKitFittings();
