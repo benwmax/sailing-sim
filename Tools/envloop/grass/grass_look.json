@@ -1,0 +1,436 @@
+{
+ "_about": "Track B blade colours, linear albedo (0..1, the value Unreal's BaseColor takes, not sRGB). root = where the blade leaves the ground, tip = the outer third; parts not listed use the leaf. lawn_bermuda and lawn_rough leaf colours are solved (check_grass.py --solve) so their blades seen from above average to Track A's ground means (_track_a, from Tools/envloop/ground/surfaces.json, Nov 16 provisional, no grey card yet): tips brighter and roots darker than the ground, the same mean, so the fade from blades to texture can't be seen: the tip colours of lawn_bermuda and lawn_rough must equal Track A's lawn and dry-grass albedo within 10 percent so the fade from blades to texture can't be seen. translucency = share of light passing through a leaf (backlit glow), roughness for the specular sheen of a waxy blade. Sources: leaf albedo of turf grasses 0.05 to 0.15 in the visible (USDA/ASD field spectra, green peak 0.12 to 0.18), dormant warm-season turf 0.25 to 0.35; checked against the reference photos by eye until grey-card photos exist. Bunch grasses' summer tips raised Nov 16 to the middle of that green peak (the first renders read too dark against the ground at noon).",
+ "lawn_bermuda": {
+  "summer": {
+   "root": [
+    0.0488,
+    0.0796,
+    0.0244
+   ],
+   "tip": [
+    0.1465,
+    0.217,
+    0.065
+   ],
+   "cut_tip": [
+    0.2232,
+    0.246,
+    0.1081
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.1829,
+    0.1528,
+    0.0884
+   ],
+   "tip": [
+    0.4081,
+    0.3264,
+    0.1836
+   ],
+   "cut_tip": [
+    0.4643,
+    0.3889,
+    0.2448
+   ]
+  },
+  "translucency": 0.35,
+  "roughness": 0.55
+ },
+ "lawn_rough": {
+  "summer": {
+   "root": [
+    0.0692,
+    0.1004,
+    0.0346
+   ],
+   "tip": [
+    0.2595,
+    0.2594,
+    0.1298
+   ],
+   "seed": [
+    0.2,
+    0.14,
+    0.1
+   ],
+   "stalk": [
+    0.12,
+    0.13,
+    0.06
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.2195,
+    0.1912,
+    0.1117
+   ],
+   "tip": [
+    0.4156,
+    0.3744,
+    0.2233
+   ],
+   "seed": [
+    0.22,
+    0.17,
+    0.11
+   ],
+   "stalk": [
+    0.26,
+    0.22,
+    0.13
+   ]
+  },
+  "translucency": 0.35,
+  "roughness": 0.6
+ },
+ "bluestem": {
+  "summer": {
+   "root": [
+    0.07,
+    0.1,
+    0.055
+   ],
+   "tip": [
+    0.13,
+    0.17,
+    0.1
+   ],
+   "stalk": [
+    0.14,
+    0.12,
+    0.08
+   ],
+   "seed": [
+    0.52,
+    0.5,
+    0.45
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.16,
+    0.08,
+    0.04
+   ],
+   "tip": [
+    0.34,
+    0.15,
+    0.06
+   ],
+   "stalk": [
+    0.3,
+    0.13,
+    0.06
+   ],
+   "seed": [
+    0.6,
+    0.57,
+    0.52
+   ]
+  },
+  "translucency": 0.4,
+  "roughness": 0.6
+ },
+ "switchgrass": {
+  "summer": {
+   "root": [
+    0.06,
+    0.09,
+    0.04
+   ],
+   "tip": [
+    0.13,
+    0.18,
+    0.08
+   ],
+   "stalk": [
+    0.11,
+    0.13,
+    0.06
+   ],
+   "seed": [
+    0.2,
+    0.14,
+    0.1
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.18,
+    0.15,
+    0.08
+   ],
+   "tip": [
+    0.38,
+    0.31,
+    0.17
+   ],
+   "stalk": [
+    0.34,
+    0.28,
+    0.15
+   ],
+   "seed": [
+    0.3,
+    0.24,
+    0.14
+   ]
+  },
+  "translucency": 0.4,
+  "roughness": 0.5
+ },
+ "johnsongrass": {
+  "summer": {
+   "root": [
+    0.05,
+    0.09,
+    0.03
+   ],
+   "tip": [
+    0.11,
+    0.18,
+    0.06
+   ],
+   "midrib": [
+    0.36,
+    0.38,
+    0.3
+   ],
+   "stalk": [
+    0.1,
+    0.12,
+    0.05
+   ],
+   "seed": [
+    0.18,
+    0.08,
+    0.09
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.13,
+    0.1,
+    0.06
+   ],
+   "tip": [
+    0.25,
+    0.19,
+    0.11
+   ],
+   "midrib": [
+    0.35,
+    0.3,
+    0.21
+   ],
+   "stalk": [
+    0.24,
+    0.18,
+    0.1
+   ],
+   "seed": [
+    0.15,
+    0.09,
+    0.07
+   ]
+  },
+  "translucency": 0.35,
+  "roughness": 0.45
+ },
+ "sedge": {
+  "summer": {
+   "root": [
+    0.045,
+    0.075,
+    0.03
+   ],
+   "tip": [
+    0.1,
+    0.16,
+    0.06
+   ],
+   "stalk": [
+    0.08,
+    0.1,
+    0.04
+   ],
+   "seed": [
+    0.15,
+    0.11,
+    0.06
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.05,
+    0.07,
+    0.03
+   ],
+   "tip": [
+    0.22,
+    0.19,
+    0.1
+   ],
+   "stalk": [
+    0.18,
+    0.15,
+    0.08
+   ],
+   "seed": [
+    0.14,
+    0.1,
+    0.06
+   ]
+  },
+  "translucency": 0.3,
+  "roughness": 0.4
+ },
+ "horseweed": {
+  "summer": {
+   "root": [
+    0.07,
+    0.1,
+    0.04
+   ],
+   "tip": [
+    0.12,
+    0.17,
+    0.07
+   ],
+   "stalk": [
+    0.1,
+    0.12,
+    0.05
+   ],
+   "seed": [
+    0.45,
+    0.43,
+    0.33
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.14,
+    0.1,
+    0.06
+   ],
+   "tip": [
+    0.2,
+    0.15,
+    0.09
+   ],
+   "stalk": [
+    0.2,
+    0.15,
+    0.09
+   ],
+   "seed": [
+    0.3,
+    0.26,
+    0.18
+   ]
+  },
+  "translucency": 0.3,
+  "roughness": 0.6
+ },
+ "lawn_weeds": {
+  "summer": {
+   "root": [
+    0.04,
+    0.07,
+    0.025
+   ],
+   "tip": [
+    0.07,
+    0.13,
+    0.04
+   ],
+   "stalk": [
+    0.09,
+    0.12,
+    0.05
+   ],
+   "seed": [
+    0.7,
+    0.5,
+    0.02
+   ],
+   "flower_white": [
+    0.7,
+    0.7,
+    0.65
+   ]
+  },
+  "dormant": {
+   "root": [
+    0.05,
+    0.08,
+    0.03
+   ],
+   "tip": [
+    0.08,
+    0.12,
+    0.05
+   ],
+   "stalk": [
+    0.1,
+    0.11,
+    0.05
+   ],
+   "seed": [
+    0.55,
+    0.53,
+    0.48
+   ],
+   "flower_white": [
+    0.55,
+    0.53,
+    0.45
+   ]
+  },
+  "translucency": 0.3,
+  "roughness": 0.5
+ },
+ "_track_a": {
+  "lawn": {
+   "summer": [
+    0.105,
+    0.15,
+    0.048
+   ],
+   "dormant": [
+    0.29,
+    0.235,
+    0.135
+   ]
+  },
+  "rough": {
+   "summer": [
+    0.15,
+    0.155,
+    0.075
+   ],
+   "dormant": [
+    0.265,
+    0.235,
+    0.14
+   ]
+  },
+  "litter": {
+   "summer": [
+    0.11,
+    0.095,
+    0.055
+   ],
+   "dormant": [
+    0.14,
+    0.105,
+    0.065
+   ]
+  },
+  "season_param": "one Season scalar, 0 summer to 1 dormant (same name in the grass material)"
+ }
+}

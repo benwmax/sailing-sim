@@ -1,0 +1,62 @@
+{
+ "plant": "lawn_weeds",
+ "name": "Lawn weeds",
+ "latin": "Taraxacum officinale, Trifolium repens, Plantago major",
+ "where": "Scattered through lawns, more in older and less cared-for yards: dandelion and plantain rosettes, clover patches",
+ "bands": {
+  "hero": "0 to 15 m (lie flat: past that they are Track A's texture)"
+ },
+ "real": {
+  "dandelion_leaf_length_m": [
+   0.1,
+   0.25
+  ],
+  "dandelion_flower_mm": [
+   25,
+   40
+  ],
+  "dandelion_stalk_m": [
+   0.08,
+   0.2
+  ],
+  "clover_leaflet_mm": [
+   10,
+   20
+  ],
+  "clover_patch_m": [
+   0.3,
+   0.6
+  ],
+  "clover_flower_mm": [
+   15,
+   25
+  ],
+  "plantain_leaf_length_m": [
+   0.08,
+   0.15
+  ],
+  "plantain_leaf_width_m": [
+   0.04,
+   0.08
+  ]
+ },
+ "mesh": {
+  "names": "SM_Weed_Dandelion, SM_Weed_Clover, SM_Weed_Plantain"
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 3,
+ "budget": {
+  "tris_lod0_max": 1200,
+  "tris_light_max": 400
+ },
+ "references": [
+  "dandelion",
+  "clover",
+  "plantain"
+ ],
+ "colour": "grass_look.json[lawn_weeds]",
+ "card_version": 1
+}

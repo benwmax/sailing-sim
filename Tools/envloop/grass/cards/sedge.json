@@ -1,0 +1,50 @@
+{
+ "plant": "sedge",
+ "name": "Sedge tussock",
+ "latin": "Carex spp.",
+ "where": "The water's edge and wet bank toe, coves, under the bank grass: the last plant before the water",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra"
+ },
+ "real": {
+  "height_m": [
+   0.3,
+   0.7
+  ],
+  "clump_diameter_m": [
+   0.2,
+   0.4
+  ],
+  "blade_width_mm": [
+   3.0,
+   8.0
+  ],
+  "blade_length_m": [
+   0.3,
+   0.8
+  ],
+  "habit": "dense tussock of arching, keeled leaves falling outward like a fountain; three-sided stems with small brown spikes; stays half green in winter"
+ },
+ "mesh": {
+  "names": "SM_Grass_Sedge_0..2, _Light",
+  "blades": [
+   90,
+   140
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 3,
+ "budget": {
+  "tris_lod0_max": 2500,
+  "tris_light_max": 700
+ },
+ "references": [
+  "sedge"
+ ],
+ "colour": "grass_look.json[sedge]",
+ "card_version": 1
+}
