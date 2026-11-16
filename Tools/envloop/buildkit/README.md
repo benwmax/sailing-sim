@@ -68,4 +68,4 @@ budgets: `build_kit.py`; colour against a grey card: waits for photos; no repeat
 counts: 8 windows, 5 doors, 5 garage doors, 6 styles; blind review; budget per house), in-game still at Track 0's
 stations (after Nov 21), Bean's look at the styles.
 
-Results and review sheets: `docs/envloop/buildkit/README.md`.
+Results and review sheets: `docs/envloop/buildkit/README.md` (review page https://claude.ai/artifact/EuV8wLy5cTwEkoimabCtRM).
