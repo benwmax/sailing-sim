@@ -2483,6 +2483,8 @@ void SSailFrontEnd::StartQuiz()
 	using namespace SailFrontEndImpl;
 	QuizLessonId.Reset();
 	QuizCareerLine.Reset();
+	QuizMedal = 0;
+	bQuizCertificate = false;
 	FRandomStream Rng{ int32(FPlatformTime::Cycles()) };
 	if (!CheckrideTierId.IsEmpty())
 	{
@@ -2553,11 +2555,19 @@ void SSailFrontEnd::StartQuiz()
 		{
 			QuizLessonId = L->Id;
 			const int32 Sec = FMath::RoundToInt32(A.Seconds);
-			QuizDebrief += FString::Printf(TEXT("%sLesson: %s · %s medal in %d:%02d%s."), QuizDebrief.IsEmpty() ? TEXT("") : TEXT("\n\n"), *L->Title,
-				*FCareerContent::MedalName(A.Medal), Sec / 60, Sec % 60, A.bNewBest && A.Medal != ECareerMedal::None ? TEXT(", a new best") : TEXT(""));
+			QuizMedal = int32(A.Medal);
+			QuizMedalSeconds = Sec;
+			bQuizMedalNewBest = A.bNewBest;
+			bQuizMedalEasy = A.bEasyCapped;
+			QuizMedalLesson = L->Title;
+			// The medal card says the lesson, the medal and the time; the debrief keeps only what the card doesn't (a run
+			// with no medal has no card, so it keeps its line).
+			FString LessonLine;
+			if (A.Medal == ECareerMedal::None) LessonLine = FString::Printf(TEXT("Lesson: %s · no medal in %d:%02d."), *L->Title, Sec / 60, Sec % 60);
 			// Easy mode: honest grading (career.json's easy_max_medal).
-			if (A.bEasyCapped) QuizDebrief += FString::Printf(TEXT(" Sailed on Easy, which earns at most %s: sail it on Realistic for more."),
+			if (A.bEasyCapped) LessonLine += FString::Printf(TEXT("%sSailed on Easy, which earns at most %s: sail it on Realistic for more."), LessonLine.IsEmpty() ? TEXT("") : TEXT(" "),
 				*FCareerContent::MedalName(FCareerContent::Get().EasyMaxMedal).ToLower());
+			if (!LessonLine.IsEmpty()) QuizDebrief += (QuizDebrief.IsEmpty() ? TEXT("") : TEXT("\n\n")) + LessonLine;
 			// #403: what went well, and what to work on for the next medal.
 			if (!A.Lines.DidWell.IsEmpty()) QuizDebrief += TEXT("\nWhat went well: ") + A.Lines.DidWell;
 			if (!A.Lines.Improve.IsEmpty()) QuizDebrief += TEXT("\nTo improve: ") + A.Lines.Improve;
@@ -2610,6 +2620,39 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		: FString::Printf(TEXT("Quiz · %s · question %d of %d"), *QuizDrillName, QuizIndex + 1, Quiz.Num()), EType::Eyebrow, Accent) ];
 	if (!QuizDebrief.IsEmpty() && (QuizIndex == 0 || bDone))
 		Box->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 4.f)[ SailUI::Text(QuizDebrief, EType::Body, Muted, true) ];
+	// The medal moment (UI overhaul phase 5): the medal as a struck disc in its metal, its name large, the lesson and
+	// the time under it. On the quiz's first page (the run just ended) and again with the score.
+	if (QuizMedal > 0 && (QuizIndex == 0 || bDone))
+	{
+		const ECareerMedal Won = ECareerMedal(FMath::Clamp(QuizMedal, 1, 3));
+		const FLinearColor Metal = Won == ECareerMedal::Gold ? Hex(0xE2B84E) : (Won == ECareerMedal::Silver ? Hex(0xC4CDD3) : Hex(0xC08552));
+		const FLinearColor MetalInk = Won == ECareerMedal::Gold ? Hex(0x7A5E14) : (Won == ECareerMedal::Silver ? Hex(0x55616B) : Hex(0x8A4B1E));
+		FString MedalNote = FString::Printf(TEXT("%s · %d:%02d"), *QuizMedalLesson, QuizMedalSeconds / 60, QuizMedalSeconds % 60);
+		if (bQuizMedalNewBest) MedalNote += TEXT(" · a new best");
+		if (bQuizMedalEasy) MedalNote += TEXT(" · sailed on Easy");
+		Box->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 8.f)
+		[
+			SNew(SBorder).BorderImage(Rounded(PaperRaise, RadiusCard, PaperLine, 1.f)).Padding(FMargin(20.f, 16.f))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 20.f, 0.f)
+				[
+					SNew(SBox).WidthOverride(76.f).HeightOverride(76.f)
+					[
+						SNew(SBorder).BorderImage(Rounded(Metal, 38.f, MetalInk, 3.f)).Padding(FMargin(9.f))
+						[ SNew(SBorder).BorderImage(Rounded(FLinearColor::Transparent, 29.f, MetalInk.CopyWithNewOpacity(0.55f), 1.5f)) ]
+					]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Medal"), EType::Eyebrow, Accent) ]
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Text(FText::FromString(FCareerContent::MedalName(Won) + TEXT(" medal"))).Font(Font(EType::CardTitle)).ColorAndOpacity(MetalInk) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(MedalNote, EType::Small, Muted, true) ]
+				]
+			]
+		];
+	}
 	if (bDone)
 	{
 		const bool bCheckride = !CheckrideTierId.IsEmpty();
@@ -2622,7 +2665,29 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 			else { Quiz.Reset(); CheckrideTierId.Reset(); QuizRetakeLessonId.Reset(); Close(); }
 		}), !bFromCareer && QuizLessonId.IsEmpty());
 		Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 6.f)[ SailUI::Text(FString::Printf(TEXT("%d of %d right"), QuizRight, Quiz.Num()), EType::ScreenTitle, QuizRight == Quiz.Num() ? Starboard : Fg) ];
-		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? TEXT("All correct. On to the next drill.") : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
+		Box->AddSlot().AutoHeight()[ SailUI::Text(QuizRight == Quiz.Num() ? (bCheckride ? TEXT("All correct. The checkride is passed.") : TEXT("All correct. On to the next drill.")) : TEXT("The drill panel's coach notes and the briefing cover the ones you missed."), EType::Body, Muted, true) ];
+		// The certificate moment (UI overhaul phase 5): a passed checkride's certificate, set as a document with a brass
+		// double rule, above the line that says what it opens.
+		if (bQuizCertificate)
+		{
+			static const TCHAR* Months[] = { TEXT("January"), TEXT("February"), TEXT("March"), TEXT("April"), TEXT("May"), TEXT("June"), TEXT("July"), TEXT("August"),
+				TEXT("September"), TEXT("October"), TEXT("November"), TEXT("December") };
+			const FDateTime Today = FDateTime::Now();
+			const FString Dated = FString::Printf(TEXT("Awarded %d %s %d"), Today.GetDay(), Months[FMath::Clamp(Today.GetMonth() - 1, 0, 11)], Today.GetYear());
+			Box->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 4.f)
+			[
+				SNew(SBorder).BorderImage(Rounded(PaperRaise, 2.f, Brass, 2.f)).Padding(FMargin(5.f))
+				[
+					SNew(SBorder).BorderImage(Rounded(FLinearColor::Transparent, 0.f, Brass, 1.f)).Padding(FMargin(24.f, 20.f))
+					[
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SailUI::Text(TEXT("Certificate"), EType::Eyebrow, Accent) ]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f, 0.f, 6.f)[ SailUI::Text(QuizCertificateName, EType::ScreenTitle, Fg) ]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SailUI::Text(Dated, EType::Small, Muted) ]
+					]
+				]
+			];
+		}
 		if (!QuizCareerLine.IsEmpty()) Box->AddSlot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ SailUI::Text(QuizCareerLine, EType::Body, Accent, true) ];
 		// #402: the finish panel's way on after a lesson: the next lesson, the same again, or the quiz again (not passed).
 		TSharedRef<SVerticalBox> Ways = SNew(SVerticalBox);
@@ -2750,6 +2815,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 						const bool bAwarded = SailCareer::RecordCheckrideQuiz(T->Id, QuizRight, Quiz.Num());
 						if (bAwarded)
 						{
+							bQuizCertificate = true;
+							QuizCertificateName = T->CertificateName;
 							const TArray<FString> Opens = TiersOpenedBy(*T);
 							QuizCareerLine = T->CertificateName + TEXT(" earned.") + (Opens.Num() ? FString::Printf(TEXT(" Open now: %s."), *FString::Join(Opens, TEXT(", "))) : FString());
 						}
@@ -2783,7 +2850,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		SNew(SBox).WidthOverride(940.f)[ PanelBox(Box, FMargin(34.f, 28.f)) ]
 	];
 	PaperScope.Reset();
-	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions on what you just sailed"));
+	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), bDone ? TEXT("Back") : TEXT("Skip the quiz")) }, TEXT("Questions on what you just sailed"));
 	return E;
 }
 

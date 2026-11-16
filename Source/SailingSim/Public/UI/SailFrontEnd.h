@@ -191,6 +191,11 @@ private:
 	// Career 1: the tier shown on the Career screen; the checkride whose quiz is running (empty: a drill's quiz); the
 	// lesson a drill's quiz closes; the career's line on the quiz's last page.
 	FString CareerTierId, CheckrideTierId, QuizLessonId, QuizCareerLine;
+	// UI overhaul phase 5, the moments: the medal the run earned (ECareerMedal as a number; 0 none), its time and lesson,
+	// shown as a medal card on the quiz's first and last pages; the certificate a passed checkride just awarded.
+	int32 QuizMedal = 0, QuizMedalSeconds = 0;
+	bool bQuizMedalNewBest = false, bQuizMedalEasy = false, bQuizCertificate = false;
+	FString QuizMedalLesson, QuizCertificateName;
 	// Free Sail: the title was rebuilt by its Mode switch, so the switch keeps the focus.
 	bool bTitleFocusMode = false;
 	TFunction<void()> ConfirmAction, ConfirmNoAction;
