@@ -437,7 +437,7 @@ def garage_carriage9(name="GarageCarriage9"):
     return K.part(name, garage(name, s["w"], s["h"], True, 0.61), {"LightL": (-s["w"] / 2 - 0.35, 0, 2.3), "LightR": (s["w"] / 2 + 0.35, 0, 2.3)})
 
 
-@register("GarageFlush16", 1200)
+@register("GarageFlush16", 1200, row="GarageRaised16")
 def garage_flush16(name="GarageFlush16"):
     s = K.SIZES["GarageRaised16"]
     return K.part(name, garage(name, s["w"], s["h"], False, 0.44, flush=True), {"LightL": (-s["w"] / 2 - 0.35, 0, 2.3), "LightR": (s["w"] / 2 + 0.35, 0, 2.3)})

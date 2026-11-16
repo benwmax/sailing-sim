@@ -66,6 +66,7 @@ class House:
         elif self.roof_fin == "membrane_flat":
             self.roof_fin = "metal_seam"
         self.palette = dict(r.choice(st["palettes"]))
+        self.galvalume = r.random() < st["roof"].get("galvalume_chance", 0.0)
         if st["windows"].get("sash_override"):
             self.palette["sash"] = st["windows"]["sash_override"]
         w = st["wall"]
@@ -232,6 +233,8 @@ class House:
             for side in ("front", "back"):
                 for op in list(ops[side]):
                     if op.get("storey", 0) or op["kind"] == "garage" and side == "back":
+                        continue
+                    if op["kind"] == "door" and side == "front" and feat == "WinArchTop3060":
                         continue
                     part = main
                     pw, ph = size(part)
@@ -655,7 +658,7 @@ class House:
         self.body = body
         tri = K.tris(body) + sum(K.tris(o) for o in self.placed)
         return dict(style=self.s["id"], seed=self.seed, length=round(self.L, 2), depth=round(self.D, 2), roof=self.roof_type,
-                    roof_finish=self.roof_fin, wall_front=self.fin_front, wall_sides=self.fin_sides, palette=self.palette,
+                    roof_finish=self.roof_fin, galvalume=self.galvalume, wall_front=self.fin_front, wall_sides=self.fin_sides, palette=self.palette,
                     tris=tri, parts=self.used, openings=self.openings)
 
 
@@ -719,6 +722,10 @@ def main():
         r, g, b, _ = PV._hex(h0.palette["body"])
         for fid in (4, 5, 6):
             PV.WALL_PREVIEW[fid] = ((r, g, b), (0, 0, 0), PV.WALL_PREVIEW[fid][2])
+    if h0.galvalume:
+        PV.ROOF_PREVIEW[3] = (0.50, 0.52, 0.53)
+    elif "roof" in h0.palette:
+        PV.ROOF_PREVIEW[3] = PV._hex(h0.palette["roof"])[:3]
     PV.setup_materials(h0.palette, trim_dir)
     ground()
     tag = f"{sid}_{seed}" + ("_row" if "--row" in flags else "")
@@ -740,7 +747,8 @@ def main():
                   ("15m_low", (L * 0.35, -D / 2 - 15.0, 1.6), (0.0, 0.0, 2.6), 35.0, "low"),
                   ("15m_overcast", (L * 0.35, -D / 2 - 15.0, 1.6), (0.0, 0.0, 2.6), 35.0, "overcast"),
                   ("15m_back", (-L * 0.30, D / 2 + 15.0, 1.6), (0.0, 0.0, 2.6), 35.0, "midday"),
-                  ("60m", (L * 0.6, -D / 2 - 60.0, 1.6), (0.0, 0.0, 3.0), 50.0, "midday")]
+                  ("60m", (L * 0.6, -D / 2 - 60.0, 1.6), (0.0, 0.0, 3.0), 50.0, "midday"),
+                  ("40m_back", (-L * 0.5, D / 2 + 40.0, 2.0), (0.0, 0.0, 3.0), 35.0, "midday")]
     only = [v for v in os.environ.get("HK_ONLY", "").split(",") if v]
     for name, loc, tgt, lens, lt in views:
         if only and name not in only:

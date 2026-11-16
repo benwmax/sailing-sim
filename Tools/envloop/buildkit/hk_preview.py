@@ -24,7 +24,7 @@ WALL_PREVIEW = {   # finish id: (base colour, joint colour, pattern)
     5: ((0.80, 0.80, 0.78), (0.0, 0.0, 0.0), "batten"),
     6: ((0.80, 0.76, 0.68), (0.0, 0.0, 0.0), "stucco"),
 }
-ROOF_PREVIEW = {0: (0.24, 0.21, 0.18), 1: (0.11, 0.11, 0.115), 2: (0.20, 0.15, 0.11), 3: (0.30, 0.31, 0.32)}
+ROOF_PREVIEW = {0: (0.24, 0.21, 0.18), 1: (0.11, 0.11, 0.115), 2: (0.20, 0.15, 0.11), 3: (0.30, 0.31, 0.32), 4: (0.55, 0.55, 0.53)}
 
 
 def _hex(c):
@@ -211,11 +211,13 @@ def _pattern_wall(nt, uvv, fid, bsdf):
     tone = nt.nodes.new("ShaderNodeMix")
     tone.data_type = "RGBA"
     tone.blend_type = "MULTIPLY"
-    tone.inputs["Factor"].default_value = 1.0
+    nt.links.new(_math(nt, "ADD", isbrick, isstone), tone.inputs["Factor"])
     brick.inputs["Color1"].default_value = (1.0, 1.0, 1.0, 1)
     brick.inputs["Color2"].default_value = (0.78, 0.74, 0.72, 1)
     stone.inputs["Color1"].default_value = (1.0, 1.0, 1.0, 1)
     stone.inputs["Color2"].default_value = (0.86, 0.84, 0.80, 1)
+    brick.inputs["Mortar"].default_value = (1.0, 1.0, 1.0, 1)
+    stone.inputs["Mortar"].default_value = (1.0, 1.0, 1.0, 1)
     bc = nt.nodes.new("ShaderNodeMix")
     bc.data_type = "RGBA"
     nt.links.new(isbrick, bc.inputs["Factor"])
@@ -275,8 +277,8 @@ def roof_material():
     nt.links.new(uv.outputs["UV"], sep.inputs["Vector"])
     rib = _math(nt, "LESS_THAN", _math(nt, "FRACT", _math(nt, "DIVIDE", sep.outputs["X"], 0.406)), 0.06)
     row = _math(nt, "FRACT", _math(nt, "DIVIDE", sep.outputs["Y"], 0.143))
-    ismetal = _math(nt, "GREATER_THAN", fid, 2.5 / 255.0)
-    base = _ramp(nt, fid, [(0.0, ROOF_PREVIEW[0] + (1,))] + [((i - 0.5) / 255.0, ROOF_PREVIEW[i] + (1,)) for i in (1, 2, 3)])
+    ismetal = _math(nt, "MULTIPLY", _math(nt, "GREATER_THAN", fid, 2.5 / 255.0), _math(nt, "LESS_THAN", fid, 3.5 / 255.0))
+    base = _ramp(nt, fid, [(0.0, ROOF_PREVIEW[0] + (1,))] + [((i - 0.5) / 255.0, ROOF_PREVIEW[i] + (1,)) for i in (1, 2, 3, 4)])
     grit = nt.nodes.new("ShaderNodeTexNoise")
     grit.inputs["Scale"].default_value = 300.0
     nt.links.new(uv.outputs["UV"], grit.inputs["Vector"])
@@ -287,8 +289,8 @@ def roof_material():
     nt.links.new(base.outputs["Color"], tone.inputs[6])
     nt.links.new(sh.outputs["Color"], tone.inputs[7])
     nt.links.new(tone.outputs[2], bsdf.inputs["Base Color"])
-    nt.links.new(_math(nt, "ADD", _math(nt, "MULTIPLY", ismetal, -0.5), 0.9), bsdf.inputs["Roughness"])
-    nt.links.new(ismetal, bsdf.inputs["Metallic"])
+    nt.links.new(_math(nt, "ADD", _math(nt, "MULTIPLY", ismetal, -0.45), 0.9), bsdf.inputs["Roughness"])
+    nt.links.new(_math(nt, "MULTIPLY", ismetal, 0.6), bsdf.inputs["Metallic"])
     h = _math(nt, "ADD", _math(nt, "MULTIPLY", _math(nt, "SUBTRACT", 1.0, ismetal),
                                 _math(nt, "ADD", _math(nt, "MULTIPLY", row, 0.006), _math(nt, "MULTIPLY", sh.outputs["Fac"], -0.004))),
               _math(nt, "ADD", _math(nt, "MULTIPLY", ismetal, _math(nt, "MULTIPLY", rib, 0.02)), _math(nt, "MULTIPLY", grit.outputs["Fac"], 0.001)))
