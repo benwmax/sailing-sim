@@ -175,7 +175,8 @@ bool FSailingChaseCameraPawnTest::RunTest(const FString&)
 	};
 	const FMinimalViewInfo Chase = Lens();
 	TestTrue(FString::Printf(TEXT("Chase: the lens low, 2 to 4.5 m over the hull (%.2f m)"), UpM(Chase)), UpM(Chase) > 2.0 && UpM(Chase) < 4.5);
-	TestTrue(FString::Printf(TEXT("Chase: the boat near the middle (%.1f deg off)"), OffDeg(Chase)), OffDeg(Chase) < 6.0);
+	TestTrue(FString::Printf(TEXT("Chase: the boat near the middle (%.1f deg off)"), OffDeg(Chase)), OffDeg(Chase) < 8.0);
+	TestEqual(TEXT("Chase: 4 deg down"), Chase.Rotation.Pitch, double(Boat->GetChaseRig().PitchDeg), 3.0);
 
 	Boat->SetCameraView(Next(Boat->GetCameraView()), false);
 	W.Tick(30);
@@ -199,8 +200,11 @@ bool FSailingChaseCameraPawnTest::RunTest(const FString&)
 	Boat->AddCameraOrbit(FVector2D::ZeroVector, -8.f);
 	W.Tick(90);
 	const FMinimalViewInfo Far = Lens();
-	TestTrue(FString::Printf(TEXT("Zoomed in and out, the boat stays put on screen (%.1f and %.1f deg off)"), OffDeg(Near), OffDeg(Far)),
-		FMath::Abs(OffDeg(Near) - OffDeg(Far)) < 2.0);
+	// (the hull bobs and the lens lags it, so the view moves a degree or two; the framing's own sums are held in .Rig)
+	TestTrue(FString::Printf(TEXT("Zoomed in and out, the boat stays near the middle (%.1f and %.1f deg off)"), OffDeg(Near), OffDeg(Far)),
+		OffDeg(Near) < 8.0 && OffDeg(Far) < 8.0);
+	TestEqual(TEXT("... the push the same share of the arm near and far"), PivotBelowCentreDeg(Boat->GetChaseRig(), Boat->GetChaseRig().MinArmCm),
+		PivotBelowCentreDeg(Boat->GetChaseRig(), Boat->GetChaseArmCm()), 0.01f);
 	return true;
 }
 

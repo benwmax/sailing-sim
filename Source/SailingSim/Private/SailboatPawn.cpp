@@ -947,6 +947,9 @@ void ASailboatPawn::BeginPlay()
 		bStartInHelm = View == ChaseCamera::EView::Helm;
 	}
 	SetBoat(USailingSettings::Get()->BoatType);
+	// The rig's own pitch to start (Chase looks 4 deg down; Classic keeps the old 14); -SailingCamPitch below beats it.
+	CameraPitch = ChaseRig.PitchDeg;
+	if (!bCockpit) ApplyChaseRig(false, false);
 	// -SailingHideBoat (stills): the player's boat and crew hidden, so the water's hull clip shows (docs/boat-water-clip/).
 	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
 	if (HideBoatArg.Get()) SetActorHiddenInGame(true);
