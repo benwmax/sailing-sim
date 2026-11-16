@@ -59,7 +59,7 @@
  "Padeye": {
   "category": "fastener",
   "note": "Round stainless pad eye, 40 mm base, four countersunk screw holes, round-bar loop (6 mm size)",
-  "tris": 16604,
+  "tris": 16444,
   "size_m": [
    0.04,
    0.04,
@@ -106,7 +106,7 @@
    ]
   },
   "light": {
-   "tris": 4151,
+   "tris": 4111,
    "slots": [
     "Stainless"
    ],
@@ -132,7 +132,7 @@
  "HornCleat": {
   "category": "cleat",
   "note": "Cast aluminium open-base horn cleat, 150 mm (6 in), line hole, two through-bolts",
-  "tris": 17148,
+  "tris": 17018,
   "size_m": [
    0.1499,
    0.0289,
@@ -170,7 +170,7 @@
    ]
   },
   "light": {
-   "tris": 4286,
+   "tris": 4254,
    "slots": [
     "Aluminium",
     "Stainless"
@@ -206,12 +206,12 @@
   "note": "Composite cam cleat, 38 mm axle centres: two toothed teardrop cams on a moulded base",
   "tris": 8864,
   "size_m": [
-   0.0363,
+   0.0361,
    0.0626,
    0.0192
   ],
   "min_m": [
-   -0.0227,
+   -0.0226,
    -0.0313,
    0.0
   ],
@@ -243,7 +243,7 @@
    ]
   },
   "light": {
-   "tris": 6306,
+   "tris": 2216,
    "slots": [
     "BlackPlastic",
     "Graphics",
@@ -411,7 +411,7 @@
  "Block40": {
   "category": "block",
   "note": "40 mm single block with swivel and becket",
-  "tris": 15014,
+  "tris": 15022,
   "size_m": [
    0.0472,
    0.0201,
@@ -454,7 +454,7 @@
    ]
   },
   "light": {
-   "tris": 3752,
+   "tris": 3754,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -479,7 +479,7 @@
  "Ratchet57": {
   "category": "block",
   "note": "57 mm swivel ratchet block, on/off switch, 10 mm line: the Sunfish's and ILCA's mainsheet block",
-  "tris": 15216,
+  "tris": 15196,
   "size_m": [
    0.0673,
    0.0349,
@@ -518,7 +518,7 @@
    ]
   },
   "light": {
-   "tris": 3804,
+   "tris": 3798,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -543,7 +543,7 @@
  "Fiddle40": {
   "category": "block",
   "note": "40 mm fiddle block with swivel: a big and a small sheave in line (the vang's and mainsheet's upper block)",
-  "tris": 19974,
+  "tris": 19966,
   "size_m": [
    0.0472,
    0.0201,
@@ -596,7 +596,7 @@
    ]
   },
   "light": {
-   "tris": 4992,
+   "tris": 4990,
    "slots": [
     "BlackPlastic",
     "Stainless"
@@ -623,7 +623,7 @@
  "FiddleCam": {
   "category": "block",
   "note": "40 mm fiddle block with becket and cam cleat: the vang's and mainsheet's lower block",
-  "tris": 28762,
+  "tris": 28736,
   "size_m": [
    0.0724,
    0.03,
@@ -693,7 +693,7 @@
    ]
   },
   "light": {
-   "tris": 7190,
+   "tris": 7184,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -1862,7 +1862,7 @@
    ]
   },
   "light": {
-   "tris": 821,
+   "tris": 822,
    "slots": [
     "Stainless",
     "BlackPlastic"
@@ -2319,7 +2319,7 @@
  "BowHandle": {
   "category": "hull",
   "note": "Sunfish bow handle: cast aluminium grip arched over two oval feet, one oval-head screw each, 150 mm",
-  "tris": 11244,
+  "tris": 11246,
   "size_m": [
    0.1516,
    0.0257,
@@ -2421,6 +2421,180 @@
     "50": 1.25
    }
   }
+ },
+ "BulkheadCompass": {
+  "category": "instrument",
+  "note": "Bulkhead steering compass, 100 mm class: flanged bezel, spherical bowl, conical card read at its aft edge, three lubber lines (shown without its dome)",
+  "tris": 7920,
+  "size_m": [
+   0.124,
+   0.124,
+   0.0934
+  ],
+  "min_m": [
+   -0.062,
+   -0.062,
+   -0.04
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "WhitePlastic",
+   "RedPlastic",
+   "Brass"
+  ],
+  "sockets": {
+   "Lubber": [
+    0.0045,
+    0.0,
+    0.0526
+   ],
+   "Mount": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Pivot": [
+    0.0,
+    0.0,
+    0.012
+   ]
+  },
+  "light": {
+   "tris": 1980,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "WhitePlastic",
+    "RedPlastic",
+    "Brass"
+   ],
+   "sockets": [
+    "Lubber",
+    "Mount",
+    "Pivot"
+   ]
+  },
+  "sizes": null
+ },
+ "BulkheadCompassCard": {
+  "category": "instrument",
+  "note": "The bulkhead compass's card alone, origin at the pivot, +X to its north (the game holds it level and north)",
+  "tris": 2708,
+  "size_m": [
+   0.076,
+   0.076,
+   0.0145
+  ],
+  "min_m": [
+   -0.038,
+   -0.038,
+   -0.0022
+  ],
+  "slots": [
+   "BlackPlastic",
+   "WhitePlastic",
+   "RedPlastic",
+   "Brass"
+  ],
+  "sockets": {
+   "Pivot": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "light": {
+   "tris": 676,
+   "slots": [
+    "BlackPlastic",
+    "WhitePlastic",
+    "RedPlastic",
+    "Brass"
+   ],
+   "sockets": [
+    "Pivot"
+   ]
+  },
+  "sizes": null
+ },
+ "BulkheadCompassMount": {
+  "category": "instrument",
+  "note": "The bulkhead compass's fixed part: bezel, bowl, pivot post and lubber lines (the card goes on its Pivot socket)",
+  "tris": 5212,
+  "size_m": [
+   0.124,
+   0.124,
+   0.0934
+  ],
+  "min_m": [
+   -0.062,
+   -0.062,
+   -0.04
+  ],
+  "slots": [
+   "BlackPlastic",
+   "Stainless",
+   "WhitePlastic"
+  ],
+  "sockets": {
+   "Lubber": [
+    0.0045,
+    0.0,
+    0.0526
+   ],
+   "Mount": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "Pivot": [
+    0.0,
+    0.0,
+    0.012
+   ]
+  },
+  "light": {
+   "tris": 1302,
+   "slots": [
+    "BlackPlastic",
+    "Stainless",
+    "WhitePlastic"
+   ],
+   "sockets": [
+    "Lubber",
+    "Mount",
+    "Pivot"
+   ]
+  },
+  "sizes": null
+ },
+ "BulkheadCompassDome": {
+  "category": "instrument",
+  "note": "The bulkhead compass's dome alone, in the mount's frame (the game draws it clear)",
+  "tris": 2046,
+  "size_m": [
+   0.0935,
+   0.0935,
+   0.0536
+  ],
+  "min_m": [
+   -0.0468,
+   -0.0468,
+   0.0052
+  ],
+  "slots": [
+   "CabinWindow"
+  ],
+  "sockets": {},
+  "light": {
+   "tris": 510,
+   "slots": [
+    "CabinWindow"
+   ],
+   "sockets": []
+  },
+  "sizes": null
  },
  "Fender": {
   "category": "loose",
@@ -2854,7 +3028,7 @@
    ]
   },
   "light": {
-   "tris": 1577,
+   "tris": 1576,
    "slots": [
     "MOBVinyl",
     "CrewReflective",
@@ -2921,7 +3095,7 @@
    ]
   },
   "light": {
-   "tris": 2297,
+   "tris": 2296,
    "slots": [
     "MOBVinyl",
     "CrewReflective",
@@ -3816,7 +3990,7 @@
    ]
   },
   "light": {
-   "tris": 4468,
+   "tris": 4467,
    "slots": [
     "BlackPlastic",
     "Stainless"
