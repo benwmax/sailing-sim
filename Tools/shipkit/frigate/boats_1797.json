@@ -252,14 +252,22 @@
    "keelson_in": [5.0, 4.0],
    "rising_in": [4.0, 1.5],
    "inwale_in": [3.0, 2.5],
-   "capping_in": [4.5, 1.25],
+   "capping_in": [5.75, 1.25],
    "rubbing_in": [2.5, 1.5],
    "thwart_in": [9.0, 1.75],
    "knee_in": [2.0, 9.0],
+   "quarter_knee_in": [12.0, 3.0],
+   "breasthook_in": [15.0, 4.0],
+   "hog_in": 3.5,
+   "transom_crown_in": 2.0,
    "stern_sheets_in": 1.25,
+   "stern_bench_in": 11.0,
    "bottom_boards_in": [8.0, 1.0],
    "rowlocks": "thole_pins",
    "thole_in": [1.25, 6.0],
+   "thole_gap_in": 4.0,
+   "rowlock_aft_in": 11.0,
+   "rowlock_sides": "both",
    "oars": {
     "count": 14,
     "length_ft": 17.0,
@@ -269,13 +277,21 @@
    "masts": [
     {
      "name": "main",
-     "length_ft": 26.0
+     "length_ft": 26.0,
+     "diam_in": 8.2
     },
     {
      "name": "fore",
-     "length_ft": 23.0
+     "length_ft": 23.0,
+     "diam_in": 6.6
     }
    ],
+   "sail_roll_in": 11.0,
+   "tiller_ft": 4.5,
+   "painter": {
+    "circ_in": 3.0,
+    "turns": 5
+   },
    "windlass": true,
    "roller": true,
    "sling_plates": true,
@@ -283,7 +299,8 @@
     "stowed": "inside",
     "chord_ft": 1.6
    },
-   "src": "lines: the longboat's draught; build, frames and fittings practice for a launch of the period"
+   "src": "lines: the longboat's draught; build, frames and fittings practice for a launch of the period",
+   "fit_src": "practice: the capping as wide as the sheer strake, the timbers' heads and the inwale with a lip outside; hog_in the hog's moulding inside the rabbet; quarter knees and breasthook (arm or length, depth) under the cappings; the stern bench (stern_bench_in wide) round the stern sheets; thole pins in pairs (thole_gap_in apart) on the capping, rowlock_aft_in aft of each thwart's after edge; the masts' diameters the draught's partners; sails furled on their yards to a roll sail_roll_in thick; the painter coiled turns deep"
   },
   "cutter": {
    "lines": "pinnace_1840",
@@ -309,18 +326,34 @@
    "keelson_in": [3.0, 2.5],
    "rising_in": [3.0, 1.0],
    "inwale_in": [2.0, 1.75],
-   "capping_in": [3.0, 1.0],
+   "capping_in": [3.5, 1.0],
    "rubbing_in": [1.75, 1.0],
    "thwart_in": [8.0, 1.25],
    "knee_in": [1.5, 7.0],
+   "quarter_knee_in": [9.0, 2.0],
+   "breasthook_in": [11.0, 2.75],
+   "hog_in": 2.0,
+   "gerald_ft": 2.0,
+   "transom_crown_in": 1.5,
    "stern_sheets_in": 1.0,
+   "stern_bench_in": 9.0,
    "bottom_boards_in": [6.0, 0.75],
    "washstrake_ft": 0.45,
+   "washstrake_thick_in": 0.75,
    "rowlocks": "notches",
    "notch_in": [3.75, 2.0],
+   "rowlock_aft_in": 11.0,
+   "rowlock_sides": "both",
    "thwart_room_ft": 3.0,
    "rowing_thwarts": 5,
    "stern_sheets_ft": 6.0,
+   "first_thwart_room": 0.75,
+   "mast_thwarts": {
+    "main": 1,
+    "fore": 4
+   },
+   "bottom_boards_z_ft": 0.5,
+   "stern_sheets_below_sheer_ft": 0.4,
    "oars": {
     "count": 10,
     "length_ft": 13.0,
@@ -330,18 +363,27 @@
    "masts": [
     {
      "name": "main",
-     "length_ft": 19.0
+     "length_ft": 19.0,
+     "diam_in": 4.5
     },
     {
      "name": "fore",
-     "length_ft": 17.0
+     "length_ft": 17.0,
+     "diam_in": 4.0
     }
    ],
+   "sail_roll_in": 8.0,
+   "tiller_ft": 3.5,
+   "painter": {
+    "circ_in": 2.5,
+    "turns": 4
+   },
    "rudder": {
     "stowed": "inside",
     "chord_ft": 1.25
    },
-   "src": "lines: the pinnace's draught (its washstrake and notches); build practice"
+   "src": "lines: the pinnace's draught (its washstrake and notches); build practice",
+   "fit_src": "practice, as the launch's; thwart i (from 0 aft) at stern_sheets_ft + (i + first_thwart_room) thwart_room_ft, the masts stepped through mast_thwarts (indices), the bottom boards' top bottom_boards_z_ft above the base and the stern sheets' stern_sheets_below_sheer_ft under the sheer; the washstrake (washstrake_thick_in) on the capping, its notches over each rowlock"
   },
   "gig": {
    "lines": "pinnace_1840",
@@ -367,17 +409,32 @@
    "keelson_in": [2.5, 2.0],
    "rising_in": [2.5, 0.875],
    "inwale_in": [1.5, 1.5],
-   "capping_in": [2.5, 0.875],
+   "capping_in": [3.0, 0.875],
    "rubbing_in": [1.5, 0.875],
    "thwart_in": [7.0, 1.0],
    "knee_in": [1.25, 6.0],
+   "quarter_knee_in": [8.0, 1.5],
+   "breasthook_in": [9.0, 2.25],
+   "hog_in": 1.5,
+   "gerald_ft": 1.75,
+   "transom_crown_in": 1.25,
    "stern_sheets_in": 0.875,
+   "stern_bench_in": 8.0,
    "bottom_boards_in": [5.0, 0.625],
    "rowlocks": "thole_pins",
    "thole_in": [0.875, 5.0],
+   "thole_gap_in": 3.25,
+   "rowlock_aft_in": 10.0,
+   "rowlock_sides": "alternate",
    "thwart_room_ft": 3.0,
    "rowing_thwarts": 4,
    "stern_sheets_ft": 5.5,
+   "first_thwart_room": 0.75,
+   "mast_thwarts": {
+    "main": 2
+   },
+   "bottom_boards_z_ft": 0.35,
+   "stern_sheets_below_sheer_ft": 0.3,
    "oars": {
     "count": 4,
     "length_ft": 13.0,
@@ -387,15 +444,136 @@
    "masts": [
     {
      "name": "main",
-     "length_ft": 15.0
+     "length_ft": 15.0,
+     "diam_in": 3.5
     }
    ],
+   "sail_roll_in": 6.5,
+   "tiller_ft": 3.0,
+   "painter": {
+    "circ_in": 2.0,
+    "turns": 4
+   },
    "rudder": {
     "stowed": "inside",
     "chord_ft": 1.0
    },
-   "src": "lines: the pinnace's draught, narrowed; build practice for a gig"
+   "src": "lines: the pinnace's draught, narrowed; build practice for a gig",
+   "fit_src": "practice, as the cutter's; single banked, her rowlocks alternating side to side (the stroke oar to port)"
   }
+ },
+ "stowage": {
+  "note": "how the boats ride on the booms over the open waist (practice: the period stowed its boats on the spare spars laid fore and aft across the waist's beams, the launch in the middle and the other boats beside her or in her; deck_1797.json's waist note: the spar deck is named for them). Each spare spar rests on a saddle on every beam it crosses (the beams follow the deck's sheer, the spar is straight: each saddle at least saddle_min_in thick, its top hollowed to the spar); each boat sits level on two cradles laid across her spars under her straight keel, their tops cut to her outside (her keel in a slot, the lands of a clinker boat notched), and is griped down to the cradles' ends by two gripes over her gunwales. The ladders at each break keep their headroom and the gangways their clear width (checked: boats_room). Metres in the ship's frame",
+  "spars": [
+   {
+    "name": "SpareMainTopgallantYard",
+    "spar": "yards.main_topgallant_yard",
+    "length_ft": 41.33,
+    "diam_in": 9.84,
+    "kind": "yard"
+   },
+   {
+    "name": "SpareForeTopgallantYard",
+    "spar": "yards.fore_topgallant_yard",
+    "length_ft": 36.75,
+    "diam_in": 8.75,
+    "kind": "yard"
+   },
+   {
+    "name": "SpareMainTopgallantMast",
+    "spar": "masts.main.topgallant",
+    "length_ft": 31.1,
+    "diam_in": 10.4,
+    "kind": "mast"
+   },
+   {
+    "name": "SpareForeTopgallantMast",
+    "spar": "masts.fore.topgallant",
+    "length_ft": 29.0,
+    "diam_in": 9.7,
+    "kind": "mast"
+   },
+   {
+    "name": "SpareMizzenTopgallantYard",
+    "spar": "yards.mizzen_topgallant_yard",
+    "length_ft": 27.7,
+    "diam_in": 6.59,
+    "kind": "yard"
+   },
+   {
+    "name": "SpareMizzenTopgallantMast",
+    "spar": "masts.mizzen.topgallant",
+    "length_ft": 23.3,
+    "diam_in": 7.8,
+    "kind": "mast"
+   }
+  ],
+  "spars_src": "a spare of each topgallant mast and yard (spars_1795.json's sizes; a yard's diameter diam_in_per_yard of its length in yards), the spares the period carried that fit the waist between its ladders (the topmasts and topsail yards are longer than it)",
+  "saddle_min_in": 2.0,
+  "saddle_in": [14.0, 1.0],
+  "saddle_note": "a saddle as long as the beam is sided, a spar's diameter wide and an inch more, its top hollowed to the spar",
+  "boats": {
+   "Launch": {
+    "boat": "launch",
+    "y_m": 0.0,
+    "spars": [["SpareMainTopgallantYard", 0.85], ["SpareForeTopgallantYard", -0.85]]
+   },
+   "Cutter_S": {
+    "boat": "cutter",
+    "side": 1,
+    "spars": [["SpareMainTopgallantMast", -0.54], ["SpareMizzenTopgallantYard", 0.54]]
+   },
+   "Cutter_P": {
+    "boat": "cutter",
+    "side": -1,
+    "spars": [["SpareForeTopgallantMast", 0.54], ["SpareMizzenTopgallantMast", -0.54]]
+   },
+   "Gig": {
+    "boat": "gig",
+    "in": "Cutter_S",
+    "on_thwarts": [1, 3]
+   }
+  },
+  "boats_note": "each boat's spars as (name, y off her middle line, m); the cutters as close to the launch as gap_between_boats_in allows at every height (side: starboard 1, port -1)",
+  "x_mid": "the waist's middle: every boat centred on it fore and aft",
+  "gap_between_boats_in": 4.0,
+  "cradle": {
+   "thick_in": 6.0,
+   "under_keel_in": 4.0,
+   "beyond_spar_in": 4.0,
+   "at": [0.22, 0.78],
+   "note": "two cradles a boat, at these fractions of her straight keel (between the deadwood's foot and the forefoot), each across her two spars, its ends beyond them"
+  },
+  "nest_chock_in": [5.0, 2.0],
+  "nest_note": "the gig on two chocks across the starboard cutter's thwarts (on_thwarts: their indices from aft), her keel in their slots, both boats griped together",
+  "gripes": {
+   "circ_in": 3.5,
+   "per_boat": 2,
+   "eyebolt_in": 0.875,
+   "note": "a gripe from an eyebolt in each cradle's end, up her side and over her gunwales (and whatever rides in her) to the other end, set up taut: each lies on the outline of what it passes over"
+  },
+  "anchors": {
+   "stream": {
+    "boat": "Launch",
+    "stock": "aft",
+    "src": "anchors_1797.json: the stream anchor"
+   },
+   "kedge_large": {
+    "boat": "Launch",
+    "stock": "fore",
+    "src": "anchors_1797.json: the large kedge"
+   },
+   "kedge_small": {
+    "boat": "Cutter_P",
+    "stock": "fore",
+    "src": "anchors_1797.json: the small kedge"
+   },
+   "stock_overhang_in": 8.0,
+   "note": "each anchor's stock lies across her gunwales near one end (where her breadth over the cappings is the stock's length less stock_overhang_in each side), its shank along her middle line toward her middle, the arms upright under it: turned down about the stock until the crown, an arm or the shank first rests on something in her (a thwart, the bottom boards)"
+  },
+  "gangway_clear_min_ft": 5.0,
+  "ladder_headroom_ft": 6.25,
+  "checks_note": "boats_room: the boats, spars, saddles, cradles and gripes against the whole ship (and each other, the meetings by design in meets); the gangways' clear width under the boats (to headroom height above the gangway's deck); the ladders' headroom over every tread; the gig clear of the cutter she nests in"
  },
  "paint": {
   "outside": "HullBlack",
