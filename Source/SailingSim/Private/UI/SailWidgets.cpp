@@ -3,6 +3,7 @@
 #include "Rendering/DrawElements.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -94,7 +95,20 @@ namespace SailUI
 	TSharedRef<SWidget> PanelBox(TSharedRef<SWidget> Content, FMargin Padding, float Radius)
 	{
 		// Built inside an FScopedPaper it is a sheet of chart paper.
-		return SNew(SBorder).BorderImage(Rounded(OnPaper() ? Paper : (IsLow() ? PanelSolid : Panel), Radius, OnSurface(Line), 1.f)).Padding(Padding)[ Content ];
+		if (OnPaper()) return PaperSheet(Content, Padding, Radius, Paper, PaperLine);
+		return SNew(SBorder).BorderImage(Rounded(IsLow() ? PanelSolid : Panel, Radius, OnSurface(Line), 1.f)).Padding(Padding)[ Content ];
+	}
+
+	TSharedRef<SWidget> PaperSheet(TSharedRef<SWidget> Content, FMargin Padding, float Radius, const FLinearColor& Fill, const FLinearColor& Outline)
+	{
+		const FSlateBrush* Grain = PaperGrain();
+		if (!Grain) return SNew(SBorder).BorderImage(Rounded(Fill, Radius, Outline, 1.f)).Padding(Padding)[ Content ];
+		// The grain is a square image: held inside the sheet's rounded corners by a third of the radius (at its few
+		// percent the missing corner slivers do not show).
+		return SNew(SOverlay)
+			+ SOverlay::Slot()[ SNew(SBorder).BorderImage(Rounded(Fill, Radius, Outline, 1.f)) ]
+			+ SOverlay::Slot().Padding(FMath::Max(1.f, Radius * 0.3f))[ SNew(SImage).Image(Grain).Visibility(EVisibility::HitTestInvisible) ]
+			+ SOverlay::Slot().Padding(Padding)[ Content ];
 	}
 
 	TSharedRef<SWidget> KeyCap(const FString& Keyboard, const FString& Pad)

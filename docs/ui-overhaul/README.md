@@ -298,3 +298,11 @@ smaller one with Besley ("Set the conditions" ran past its panel); the flow step
 point-of-sail note may shrink to 8 pt beside the wider label.
 B612 sits about 3 px higher than Atkinson at the same size, so only figures keep it (the HUD's readouts, the boat's
 numbers): the Controls columns, quiz letters and step numbers are text. Labels and eyebrows are 14 px.
+
+## Phase 10: the paper's grain
+
+The paper sheets (settings, briefing, quiz, logbook, the focus cards) were a flat cream. `SailUI::PaperGrain()` is a
+tiling 256 px brush made at runtime (`PaperGrainValue`: a slow mottle, a finer tooth and fibre specks; white where
+lighter, ink where darker, at most about 7% of the sheet), so there is no asset and no licence row. `PanelBox` on paper
+and `PaperSheet` lay it over the sheet's fill and under its content. `-SailingNoPaperGrain` compares.
+`SailingSim.UI.PaperGrain` holds the tile seamless and balanced.

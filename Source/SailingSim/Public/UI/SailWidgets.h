@@ -128,6 +128,8 @@ namespace SailUI
 	TSharedRef<SWidget> Header(const FString& Eyebrow, const FString& Title, int32 Step);
 	/** A glass panel (a solid one on Low). */
 	TSharedRef<SWidget> PanelBox(TSharedRef<SWidget> Content, FMargin Padding = FMargin(20.f), float Radius = RadiusCard);
+	/** A paper sheet with the paper's grain laid over its fill and under its content (PaperGrain; plain without it). */
+	TSharedRef<SWidget> PaperSheet(TSharedRef<SWidget> Content, FMargin Padding, float Radius, const FLinearColor& Fill, const FLinearColor& Outline);
 	/** A keycap glyph for an action: "Enter" / "A", "Esc" / "B" and so on, following the last device. */
 	TSharedRef<SWidget> KeyCap(const FString& Keyboard, const FString& Pad);
 	/** The footer: actions the screen handles, plus a hint on the right. */

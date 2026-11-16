@@ -2086,10 +2086,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		];
 	}
 	const TSharedRef<SWidget> HelpSheet = PanelBox(SailUI::Text(Help, EType::Body, Muted, true));
-	const TSharedRef<SWidget> RowsSheet = SNew(SBorder).BorderImage(Rounded(Paper, RadiusCard, PaperLine, 1.f)).Padding(FMargin(18.f, 16.f, 8.f, 16.f))
-	[
-		SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Rows ]
-	];
+	const TSharedRef<SWidget> RowsSheet = PaperSheet(
+		SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Rows ],
+		FMargin(18.f, 16.f, 8.f, 16.f), RadiusCard, Paper, PaperLine);
 	PaperScope.Reset();
 	// The PC's menu sweep (Nov 4): every list follows the keyboard's focus (Graphics and Gameplay run past 1080 lines, and
 	// the focus used to go on below the screen, unseen).

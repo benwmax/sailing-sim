@@ -1117,3 +1117,34 @@ bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Headline and tips disagree in no case"), Failures, 0);
 	return true;
 }
+
+// The paper's grain (UI overhaul phase 10): it tiles without a seam, stays in range, and is balanced (it must not tint
+// the sheet lighter or darker on average).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPaperGrainTest, "SailingSim.UI.PaperGrain", UIFlags)
+bool FSailingUIPaperGrainTest::RunTest(const FString&)
+{
+	const int32 N = 256;
+	double Sum = 0.0;
+	float Lo = 1.f, Hi = -1.f, WorstSeam = 0.f, WorstStep = 0.f;
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const float G = SailUI::PaperGrainValue(X, Y, N);
+			Sum += G;
+			Lo = FMath::Min(Lo, G);
+			Hi = FMath::Max(Hi, G);
+		}
+		// Wrapping: texel N is texel 0.
+		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(N, Y, N) - SailUI::PaperGrainValue(0, Y, N)));
+		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(Y, N, N) - SailUI::PaperGrainValue(Y, 0, N)));
+		// The step across the tile's edge is no bigger than the grain's own texel-to-texel steps can be (specks: 0.5).
+		WorstStep = FMath::Max(WorstStep, FMath::Abs(SailUI::PaperGrainValue(N - 1, Y, N) - SailUI::PaperGrainValue(N, Y, N)));
+	}
+	TestTrue(TEXT("The grain stays within -1..1"), Lo >= -1.f && Hi <= 1.f);
+	TestTrue(TEXT("It has both light fibres and dark specks"), Lo < -0.3f && Hi > 0.3f);
+	TestTrue(TEXT("It is balanced: the sheet keeps its tone"), FMath::Abs(Sum / double(N * N)) < 0.08);
+	TestTrue(TEXT("It wraps exactly"), WorstSeam < 1e-6f);
+	TestTrue(TEXT("No hard seam at the tile's edge"), WorstStep < 0.75f);
+	return true;
+}
