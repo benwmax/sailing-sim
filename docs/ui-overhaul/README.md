@@ -335,7 +335,8 @@ With the interface off a dinghy sailor has the wrist compass; a keelboat now car
 steering compass (`Tools/boatkit/bk_part_compass.py`): a black flanged pod standing on the bulkhead with a spherical bowl in it, a conical card on a
 pivot and three lubber lines on a wire hoop (aft, and 45 degrees either side for sitting out to windward). It is a
 generic shape with no maker's name, and it needs no texture: the card's ticks and figures are geometry in the kit's
-white plastic, so it uses the materials the kit already has.
+white plastic (the figures are B612 Bold, the HUD's instrument face, wrapped onto the card's cone), so it uses the
+materials the kit already has.
 
 - **Read from aft.** The helm sits behind the compass and reads the card's near edge, so the card is printed half a
   turn round, as real ones are: the figure at the aft lubber line is the heading, and higher headings lie to the left.
