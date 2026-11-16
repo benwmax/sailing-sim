@@ -237,7 +237,8 @@ a small sheet of chart paper (Helpful only, as before).
 - **Furniture.** North as a letter under an arrowhead, the true wind as an arrow flying downwind, and a scale bar in
   round nautical miles (`SSailHud::MiniMapScaleBar`: 0.5 nm on the lake's 3 km map, 1 nm on the 8 km offshore map).
 - **Night.** The sheet dims and reddens; the marks swap to the text's red over ink halos.
-- Stills: `minimap.jpg` (a crop of the HUD by day), `hud.jpg`, `hud-night.jpg`.
+- Stills: `minimap.jpg` (a 1:1 crop on the lake), `minimap-bay.jpg` and `minimap-bay-open.jpg` (Galveston Bay, with
+  channel buoys), `hud.jpg`, `hud-night.jpg`.
 
 ## What comes next
 
