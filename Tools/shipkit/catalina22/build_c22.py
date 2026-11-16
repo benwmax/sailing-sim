@@ -1,5 +1,5 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging.
 
     blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
 
@@ -7,12 +7,14 @@ Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved f
 rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from deck_c22.py (build_deck_c22.py meshes
 them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
 its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
-rudder kicked up, under the down ones' names). With --fleet <dir> (a build_fleet.py FLEET_SHAPE_BLEND=1 output:
-Catalina22_shape.blend) it also links today's mast and boom as they are, until slice 4 replaces them.
+rudder kicked up, under the down ones' names), and the mast, boom, wires and their kit fittings from rig_c22.py
+(build_rig_c22.py). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
+linked (the mast and boom).
 
-Writes <out>/c22.blend (objects C22_Hull, the deck's and the keel's (build_deck_c22.py and build_keel_c22.py list
-them), and with --fleet today's SM_Catalina22_Mast and SM_Catalina22_Boom), <out>/c22_report.json (the canoe body's
-volume and centre of buoyancy beside the game's: the shape loop's report format) and <out>/hydrostatics.json.
+Writes <out>/c22.blend (objects C22_Hull and the deck's, the keel's and the rig's: build_deck_c22.py,
+build_keel_c22.py and build_rig_c22.py list them), <out>/c22_report.json (the canoe body's volume and centre of
+buoyancy beside the game's: the shape loop's report format), <out>/hydrostatics.json and <out>/c22_sockets.json (the
+rig's sockets, for c22_check.py's I, J, P and E).
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
 the shape loop's tools read it like the fleet's .blend.
 """
@@ -29,6 +31,7 @@ sys.path.insert(0, HERE)
 import hull_c22 as H  # noqa: E402
 import build_deck_c22 as BD  # noqa: E402
 import build_keel_c22 as BK  # noqa: E402
+import build_rig_c22 as BR  # noqa: E402
 import keel_c22 as KC  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -111,22 +114,11 @@ SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail":
             "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
             "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82), "Keel": (0.24, 0.23, 0.22),
             "Antifouling": (0.16, 0.2, 0.3), "Topsides": (0.92, 0.92, 0.9), "Wood": (0.55, 0.36, 0.2),
-            "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9)}
+            "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9), "Wire": (0.7, 0.71, 0.73)}
 
 
 def deck_materials():
     return {k: material(k, v) for k, v in SLOT_RGB.items()}
-
-
-def link_fleet(path):
-    """Today's mast and boom from the fleet's shape .blend, as they are (slice 3 replaced its keel and rudder)."""
-    blend = os.path.join(path, "Catalina22_shape.blend")
-    want = ["SM_Catalina22_Mast", "SM_Catalina22_Boom"]
-    with bpy.data.libraries.load(blend, link=False) as (src, dst):
-        dst.objects = [n for n in src.objects if n in want]
-    for o in dst.objects:
-        if o is not None:
-            bpy.context.scene.collection.objects.link(o)
 
 
 def mesh_volume_below(ob, z=0.0):
@@ -157,8 +149,8 @@ def main():
     BD.build_all(deck_materials(), raised=RAISED)
     keel_obs = BK.build_all(deck_materials(), keel_up=KEEL_UP)
     keel = next(o for o in keel_obs if o.name == ("C22_KeelDown" if KEEL_UP else "C22_Keel"))
-    if FLEET:
-        link_fleet(FLEET)
+    _, socks = BR.build_all(deck_materials())
+    json.dump(socks, open(os.path.join(OUT, "c22_sockets.json"), "w"), indent=1)
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)
