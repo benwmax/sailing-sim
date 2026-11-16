@@ -1080,7 +1080,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(16.f)[ Pill(Locked.IsEmpty() ? W.Tagline : FString(TEXT("Locked")), W.Index == 0) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 20.f, 24.f, 6.f)[ SailUI::Text(W.Name, EType::CardTitle, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 0.f)[ SNew(SBox).HeightOverride(80.f)[ Scroll ] ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 0.f)[ SNew(SBox).HeightOverride(SailUI::HasOverhaulFonts() ? 99.f : 80.f)[ Scroll ] ]	// three whole lines of either face
 			// "Read more" while the text runs on below the box.
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 2.f, 24.f, 12.f)
 			[
@@ -1310,7 +1310,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Label, EType::Ui, Muted) ]
-				+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(Value), EType::Value, FSlateColor(Fg)) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, SailUI::HasOverhaulFonts() ? 3.f : 0.f, 0.f, 0.f)[ TextAttr(Attr(Value), EType::Value, FSlateColor(Fg)) ]	// B612 sits 3 px higher than Atkinson
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 5.f, 0.f, 12.f)
 			[
@@ -1351,7 +1351,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Handling"), EType::Ui, Muted) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Pips ]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12 kn true wind."), EType::Small, Muted, true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12\u00A0kn true wind."), EType::Small, Muted, true) ]
 			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })[ Next ] ]
 			// Boat skins (docs/skins): her paint, sails, lines and wear.
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
