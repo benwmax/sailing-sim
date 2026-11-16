@@ -339,6 +339,77 @@ namespace SailHudImpl
 	};
 
 	/**
+	 * The wrist compass (docs/ui-overhaul/, Phase 8; Bean: "a watch with a compass for a sunfish"): with the interface
+	 * off, a glance at the wrist. A brass-cased watch on its strap: the compass card turns under a fixed lubber mark at
+	 * twelve, north in red, the heading in figures at the centre and the time under it. It fades up and down with
+	 * ASailboatPawn::WristAlpha and reddens with the night palette.
+	 */
+	class SWristCompass : public SLeafWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SWristCompass) {}
+			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
+		SLATE_END_ARGS()
+		void Construct(const FArguments& A) { Player = A._Player; ForceVolatile(true); }
+		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(164, 204); }
+		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
+		{
+			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
+			const ASailingGameMode* GM = Player.IsValid() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+			const float Alpha = Boat ? Boat->WristAlpha() : 0.f;
+			if (!Boat || !GM || Alpha <= 0.f) return Layer;
+			auto Col = [Alpha](const FLinearColor& In) { const FLinearColor N = NightCol(In); return N.CopyWithNewOpacity(N.A * Alpha); };
+			auto Disc = [&](const FVector2f& At, float R, const FLinearColor& In, int32 L)
+			{
+				const FLinearColor Tone = Col(In);
+				FSlateDrawElement::MakeBox(Out, L, G.ToPaintGeometry(FVector2f(2.f * R, 2.f * R), FSlateLayoutTransform(At - FVector2f(R, R))), Rounded(Tone, R), ESlateDrawEffect::None, Tone);
+			};
+			const FVector2D S = G.GetLocalSize();
+			const FVector2f C(float(S.X) * 0.5f, float(S.Y) * 0.5f);
+			// The strap, above and below the case.
+			const FLinearColor Strap = Col(Hex(0x0E171E, 0.92f));
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(84.f, float(S.Y)), FSlateLayoutTransform(FVector2f(C.X - 42.f, 0.f))), Rounded(Strap, 10.f), ESlateDrawEffect::None, Strap);
+			// The case: brass, an ink bezel, the dark face.
+			Disc(C, 76.f, Brass, Layer + 1);
+			Disc(C, 70.f, Ink, Layer + 2);
+			Disc(C, 64.f, Hex(0x0B1319), Layer + 3);
+			// The card turns under the lubber mark: a tick each 30 degrees, longer at the cardinals, their letters inside.
+			const FLakeData& Lake = GM->GetLake();
+			const USailingSettings* U = USailingSettings::Get();
+			const bool bMagnetic = !U->bHeadingsTrue && Lake.VariationDeg != 0.0;
+			const double Hdg = FMath::Fmod(Boat->GetHeadingTrueDeg() - (bMagnetic ? Lake.VariationDeg : 0.0) + 720.0, 360.0);
+			auto On = [&](float Deg, float R) { const float A = FMath::DegreesToRadians(Deg - float(Hdg)); return C + FVector2f(FMath::Sin(A), -FMath::Cos(A)) * R; };
+			const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+			const FSlateFontInfo Small = Font(EType::Label);
+			for (int32 D = 0; D < 360; D += 30)
+			{
+				const bool bCard = D % 90 == 0;
+				FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), { On(float(D), 62.f), On(float(D), 58.f) }, ESlateDrawEffect::None, Col(D == 0 ? Port : (bCard ? Fg : Muted)), true, bCard ? 2.f : 1.f);
+				if (!bCard) continue;
+				const FString Letter = D == 0 ? TEXT("N") : D == 90 ? TEXT("E") : D == 180 ? TEXT("S") : TEXT("W");
+				const FVector2D Sz = Measure->Measure(Letter, Small);
+				// The letters ride a ring well outside the figures at the centre (they collided with the time at 37 px).
+				const FVector2f At = On(float(D), 46.f) - FVector2f(float(Sz.X), float(Sz.Y)) * 0.5f;
+				FSlateDrawElement::MakeText(Out, Layer + 4, G.ToPaintGeometry(FVector2f(float(Sz.X) + 2.f, float(Sz.Y)), FSlateLayoutTransform(At)), Letter, Small, ESlateDrawEffect::None, Col(D == 0 ? Port : Fg));
+			}
+			// The lubber mark at twelve, on the bezel: the way the bow points.
+			FSlateDrawElement::MakeLines(Out, Layer + 5, G.ToPaintGeometry(), { C + FVector2f(-6.f, -74.f), C + FVector2f(0.f, -64.f), C + FVector2f(6.f, -74.f) }, ESlateDrawEffect::None, Col(FMath::Lerp(Accent, Fg, NightHud)), true, 2.5f);
+			// The heading in figures and the time, at the centre.
+			const FSlateFontInfo Big = Font(EType::Value);
+			const FString HdgText = FString::Printf(TEXT("%03.0f°"), Hdg >= 359.5 ? 0.0 : Hdg);
+			const FVector2D HdgSize = Measure->Measure(HdgText, Big);
+			FSlateDrawElement::MakeText(Out, Layer + 5, G.ToPaintGeometry(FVector2f(float(HdgSize.X) + 2.f, float(HdgSize.Y)), FSlateLayoutTransform(C - FVector2f(float(HdgSize.X) * 0.5f, float(HdgSize.Y) * 0.5f + 5.f))), HdgText, Big, ESlateDrawEffect::None, Col(Fg));
+			const double Hour = GM->GetLocalHour();
+			const FString TimeText = FString::Printf(TEXT("%02d:%02d"), int32(Hour) % 24, int32(FMath::Fmod(Hour, 1.0) * 60.0));
+			const FVector2D TimeSize = Measure->Measure(TimeText, Small);
+			FSlateDrawElement::MakeText(Out, Layer + 5, G.ToPaintGeometry(FVector2f(float(TimeSize.X) + 2.f, float(TimeSize.Y)), FSlateLayoutTransform(C + FVector2f(-float(TimeSize.X) * 0.5f, float(HdgSize.Y) * 0.5f - 9.f))), TimeText, Small, ESlateDrawEffect::None, Col(Muted));
+			return Layer + 5;
+		}
+	private:
+		TWeakObjectPtr<APlayerController> Player;
+	};
+
+	/**
 	 * The sail trim panel (Bean, Nov 15 2026: the "Telltale window", docs/trim-panel/): a window onto the jib's luff with
 	 * three yarn pairs a hand's width aft of it (the near, windward yarn solid; the far one faint through the cloth; green
 	 * to starboard, red to port) and one onto the main's leech with its three ribbons. Each yarn reads the 3D ribbons' own
@@ -815,6 +886,12 @@ void SSailHud::Construct(const FArguments& A)
 			SNew(SVerticalBox).Visibility_Lambda(NotOff)
 			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(650.f).MinDesiredWidth(260.f).HeightOverride(50.f)[ SNew(SCompassTape).Heading_Lambda(Heading).WindFrom_Lambda(WindFrom).Bare_Lambda(Bare) ] ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return HeadingText; }), EType::Value, FSlateColor(Fg), false) ]
+		]
+		// The wrist compass (Phase 8): with the interface off, a glance at the wrist, bottom left where the instruments were.
+		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(M)
+		[
+			SNew(SBox).Visibility_Lambda([this]() { const ASailboatPawn* P = Pawn(); return Mode == 2 && P && P->IsWristUp() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+			[ SNew(SWristCompass).Player(Player) ]
 		]
 		// The right-hand column, top to bottom (Bean Nov 15: the minimap moved here from the bottom left): the minimap in the
 		// corner; the drill or race panel and the coast's navigation panel in the room left between it and the sail trim panel

@@ -313,6 +313,7 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("ToggleLearning"), EKeys::Gamepad_FaceButton_Top);
 	Add(TEXT("ToggleDifficulty"), EKeys::K);
 	Add(TEXT("ToggleHud"), EKeys::H);
+	Add(TEXT("Wrist"), EKeys::Period);          // UI overhaul: the wrist compass, for sailing with the interface off (keyboard only)
 	Add(TEXT("ResetBoat"), EKeys::R);
 	Add(TEXT("DockLines"), EKeys::T);
 	Add(TEXT("BackJib"), EKeys::B);

@@ -99,7 +99,7 @@ namespace
 			|| Action == TEXT("ToggleHud") || Action == TEXT("ResetBoat") || Action == TEXT("Menu") || Action == TEXT("ControlsCard") || Action == TEXT("DockLines") || Action == TEXT("BackJib")
 			|| Action == TEXT("MenuUp") || Action == TEXT("MenuDown") || Action == TEXT("MenuLeft") || Action == TEXT("MenuRight")
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
-			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot")
+			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot") || Action == TEXT("Wrist")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
 			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
@@ -1598,6 +1598,23 @@ double ASailboatPawn::GetHeadingTrueDeg() const
 	return SailingNav::NormalizeDeg(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading));
 }
 
+void ASailboatPawn::GlanceAtWrist()
+{
+	const double Now = FPlatformTime::Seconds();
+	if (WristUpAt >= 0.0 && Now < WristDownAt - 0.3) { WristDownAt = Now + 0.3; return; }   // up: put it down
+	WristUpAt = Now;
+	WristDownAt = Now + WristHoldSeconds;
+}
+
+float ASailboatPawn::WristAlpha() const
+{
+	static SailingArgs::FCachedFlag WristArg(TEXT("SailingWrist"));
+	if (WristArg.Get()) return 1.f;
+	if (WristUpAt < 0.0) return 0.f;
+	const double Now = FPlatformTime::Seconds();
+	return float(FMath::Clamp(FMath::Min((Now - WristUpAt) / 0.2, (WristDownAt - Now) / 0.3), 0.0, 1.0));
+}
+
 bool ASailboatPawn::TakeBearing()
 {
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1722,7 +1739,7 @@ namespace
 			{ TEXT("Reef"), { TEXT("Reef"), TEXT("") } }, { TEXT("Board"), { TEXT("Board up / down"), TEXT("") } },
 			{ TEXT("Righting"), { TEXT("Right a capsized boat"), TEXT("") } }, { TEXT("EngineNeutral"), { TEXT("Engine to neutral"), TEXT("") } },
 			{ TEXT("ToggleLearning"), { TEXT("Learning mode"), TEXT("") } }, { TEXT("ToggleDifficulty"), { TEXT("Difficulty"), TEXT("") } },
-			{ TEXT("ToggleHud"), { TEXT("Instruments"), TEXT("") } }, { TEXT("ResetBoat"), { TEXT("Reset the boat"), TEXT("") } },
+			{ TEXT("ToggleHud"), { TEXT("Instruments"), TEXT("") } }, { TEXT("Wrist"), { TEXT("Glance at your wrist compass"), TEXT("") } }, { TEXT("ResetBoat"), { TEXT("Reset the boat"), TEXT("") } },
 			{ TEXT("Chart"), { TEXT("Chart"), TEXT("") } }, { TEXT("Bearing"), { TEXT("Take a bearing"), TEXT("") } },
 			{ TEXT("Gps"), { TEXT("GPS on the chart"), TEXT("") } }, { TEXT("ClearPlot"), { TEXT("Clear the plot"), TEXT("") } },
 			{ TEXT("Logbook"), { TEXT("Ship's log"), TEXT("") } }, { TEXT("Replay"), { TEXT("Watch your last run"), TEXT("") } },
@@ -4063,6 +4080,16 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		// Graphics G4: H cycles the HUD: full, minimal (cluster, compass, drill, toasts), off (toasts only).
 		// UI overhaul: the three modes are Helpful, Natural and Off, and the choice is saved (SailUI::SetUiMode).
 		SailUI::SetUiMode(SailUI::EUiMode((SSailHud::Mode + 1) % 3));
+	}
+	else if (Action == TEXT("Wrist"))
+	{
+		// With the interface off the heading is on your wrist; in the other modes it is already on the screen.
+		if (SSailHud::Mode == 2) GlanceAtWrist();
+		else
+		{
+			StatusMessage = TEXT("The wrist compass is for sailing with the interface off. Your heading is at the top of the screen.");
+			StatusUntil = Boat.GetState().Time + 3.0;
+		}
 	}
 	else if (Action == TEXT("ResetBoat"))
 	{
