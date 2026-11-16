@@ -1,6 +1,6 @@
 {
  "_about": "Track E (building parts kit) hand-off between the parts thread and the materials thread (shore plan, Nov 16 2026). The parts kit (Tools/envloop/buildkit) writes meshes with these slots, UV rules and paint roles; the materials thread fills the Wall, Roof and Glass looks and the wear. Changing a name here changes both halves: say so in both threads.",
- "version": 2,
+ "version": 4,
  "units": "metres; Z up; a part's origin on the wall plane it mounts to, +Y out of the wall (toward the street or yard), +X along the wall to the right when facing the house",
  "slots": {
   "Trim": {
@@ -70,77 +70,59 @@
    "id": 6,
    "name": "fixed",
    "what": "own colour from the trim sheet's colour map: concrete, iron, brass, galvanised, rubber, cedar"
+  },
+  {
+   "id": 7,
+   "name": "body",
+   "what": "per house only (no vertex role): wall paint for lap siding, board and batten and stucco; brick and stone ignore it"
+  },
+  {
+   "id": 8,
+   "name": "roof",
+   "what": "per house only (no vertex role): painted standing-seam colour"
   }
  ],
- "per_house_paint": "the game passes one colour per paint role 0..5 per house (instance custom data, 6 x RGB); the style recipes in styles/*.json give the palettes",
+ "per_house_paint": "per house: 8 colours (paint roles 0..5 for trim parts, 7 body, 8 roof) as instance custom data 8 x RGB, plus one flag galvalume (1 = bare Galvalume metal roof, ignores the roof colour). Style palettes in styles/*.json give them as sRGB hex; galvalume is a per-style chance.",
  "wall_finishes": [
   {
    "id": 0,
    "name": "brick_red",
-   "tile_m": [
-    1.626,
-    0.813
-   ],
    "course_mm": 76,
    "module": "king size 244 x 70 mm faces, 10 mm joints, 76 mm course (materials thread)"
   },
   {
    "id": 1,
    "name": "brick_brown",
-   "tile_m": [
-    1.626,
-    0.813
-   ],
    "course_mm": 76,
    "module": "1990s brown flashed blend, same module"
   },
   {
    "id": 2,
    "name": "brick_buff",
-   "tile_m": [
-    1.626,
-    0.813
-   ],
    "course_mm": 76,
    "module": "Texas buff / tan blend, same module"
   },
   {
    "id": 3,
    "name": "limestone",
-   "tile_m": [
-    2.0,
-    1.0
-   ],
    "course_mm": 100,
    "module": "chopped limestone veneer, random ashlar"
   },
   {
    "id": 4,
    "name": "lap_siding",
-   "tile_m": [
-    3.66,
-    1.2
-   ],
    "course_mm": 150,
    "module": "fibre-cement lap, 150 mm exposure"
   },
   {
    "id": 5,
    "name": "board_batten",
-   "tile_m": [
-    2.44,
-    2.44
-   ],
    "course_mm": 305,
    "module": "vertical boards, 64 mm battens at 305 mm centres"
   },
   {
    "id": 6,
    "name": "stucco",
-   "tile_m": [
-    3.0,
-    3.0
-   ],
    "course_mm": 0,
    "module": "sand finish"
   }
@@ -169,8 +151,14 @@
    "name": "metal_seam",
    "rib_mm": 406,
    "rib_h_mm": 38
+  },
+  {
+   "id": 4,
+   "name": "membrane_flat",
+   "note": "commercial and modern flat roofs: light grey TPO or gravel ballast; today's Membrane code"
   }
  ],
  "trim_sheet": "trim.json (written by make_trim_sheet.py): bands and cells with their pixel and UV rectangles",
- "painted_trim_colours": "styles/*.json palettes: role colours as sRGB hex; the materials thread may reuse them for painted siding"
+ "painted_trim_colours": "styles/*.json palettes: role colours as sRGB hex; the materials thread may reuse them for painted siding",
+ "tile_sizes": "the materials thread's Tools/envloop/buildmat/cards.json owns texture tile sizes; UV0 is world metres, so parts never need them"
 }
