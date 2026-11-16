@@ -1,0 +1,58 @@
+{
+ "boat": "Catalina22",
+ "build": "Tools/shipkit/catalina22/build_c22.py",
+ "build_args": "blender -b --factory-startup -P build_c22.py -- <out dir> --fleet <dir with build_fleet.py's Catalina22_shape.blend>: reads <out>/c22.blend",
+ "hull_object": "C22_Hull",
+ "report": "c22_report.json",
+ "note": "The Catalina 22's rebuild (docs/c22-2 on). Slice 1 builds the hull shell (C22_Hull) and a placeholder deck (C22_DeckPlaceholder, replaced in slice 2); the keel and rudder are today's (Catalina22_Board, SM_Catalina22_Rudder from the fleet's shape .blend) until slice 3. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig). The keel and rudder sections are filled only when build_c22.py runs with --fleet; without it the size check reports the draft as not measured.",
+ "sections": {
+  "hull": {
+   "objects": [
+    "C22_Hull"
+   ],
+   "owns": [
+    "build_hull"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": [
+    "deck",
+    "keel"
+   ]
+  },
+  "deck": {
+   "objects": [
+    "C22_DeckPlaceholder"
+   ],
+   "owns": [
+    "build_deck_placeholder"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "keel": {
+   "objects": [
+    "Catalina22_Board"
+   ],
+   "owns": [
+    "link_fleet"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "SM_Catalina22_Rudder"
+   ],
+   "owns": [
+    "link_fleet"
+   ],
+   "borders": []
+  }
+ },
+ "joins": [],
+ "joins_note": "Slice 2 adds the hull-to-deck join at the sheer, slice 3 the keel trunk."
+}
