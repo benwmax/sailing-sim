@@ -1396,6 +1396,7 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		One(TEXT("Difficulty"), TEXT("ToggleDifficulty")),
 		One(TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Menu")),
 		One(TEXT("Instruments"), TEXT("ToggleHud")),
+		One(TEXT("Wrist compass (interface off)"), TEXT("Wrist")),
 		One(TEXT("Reset boat"), TEXT("ResetBoat")),
 		FLine{ TEXT("Camera"), TEXT("Mouse, wheel"), Pad(TEXT("Look"), false) },
 		One(TEXT("Close this card"), TEXT("ControlsCard")) });

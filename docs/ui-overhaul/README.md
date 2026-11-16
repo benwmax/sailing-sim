@@ -240,6 +240,23 @@ a small sheet of chart paper (Helpful only, as before).
 - Stills: `minimap.jpg` (a 1:1 crop on the lake), `minimap-bay.jpg` and `minimap-bay-open.jpg` (Galveston Bay, with
   channel buoys), `hud.jpg`, `hud-night.jpg`.
 
+## Phase 8: the wrist compass
+
+With the interface off there was no heading at all. Bean's note on the proposal: "give them a way to view a compass
+(like a watch with a compass for a sunfish boat)".
+
+- **A glance at the wrist.** The Wrist command (the period key by default; keyboard only, every pad button on the
+  boat's layer is taken; rebindable on the Controls screen) brings a watch up at the bottom left for 8 seconds; the
+  command again puts it down. It works only with the interface off: in Helpful and Natural the heading is already at
+  the top of the screen, and the key says so.
+- **The watch.** A brass case on a dark strap, an ink bezel and a dark face. The compass card turns under a fixed
+  aqua lubber mark at twelve, north in red, a tick each 30 degrees; the heading in figures at the centre (magnetic
+  where the chart has variation, as the HUD's) and the time under it.
+- **Night.** It reddens with the rest of the HUD.
+- The masthead fly on the keelboats already shows the apparent wind; a bulkhead compass on the boat itself is a
+  `Content` job (a card texture and a housing mesh) for later.
+- Stills: `-SailingHudMode=2 -SailingWrist` holds it up (`wrist.jpg`, `wrist-night.jpg`).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

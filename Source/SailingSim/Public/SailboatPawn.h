@@ -201,6 +201,13 @@ public:
 	/** Photo mode's shots this session, newest last (paths): a bug report may take the latest two. */
 	const TArray<FString>& GetSessionPhotos() const { return SessionPhotos; }
 	bool IsLogOpen() const { return bLogOpen; }
+	/** UI overhaul (docs/ui-overhaul/, Phase 8): with the interface off, a glance at the wrist: a watch with a compass
+	 *  comes up for 8 s (the Wrist command again puts it down). WristAlpha is its fade, 0 down .. 1 up; -SailingWrist
+	 *  holds it up for stills. */
+	void GlanceAtWrist();
+	bool IsWristUp() const { return WristAlpha() > 0.f; }
+	float WristAlpha() const;
+	static constexpr double WristHoldSeconds = 8.0;
 	/** Graphics G4: menus and the loading screen hold the boat still; the logbook opens from the title and pause menus. */
 	void SetHeldByUI(bool bHeld) { bHeldByUI = bHeld; StartClock.Hold(bHeld, Boat.GetState().Time); }
 	/**
@@ -530,6 +537,8 @@ private:
 	FLogEntry MakeLogEntry(const TCHAR* Kind, const FString& Remarks) const;
 	FLogbook Logbook;
 	bool bLogOpen = false;
+	double WristUpAt = -1.0;
+	double WristDownAt = -1.0;
 	bool bHeldByUI = false;
 	bool bLogStarted = false;
 	double LogNm = 0.0;

@@ -377,6 +377,7 @@ bool FSailingUIGamepadBindingsTest::RunTest(const FString&)
 	TestEqual(TEXT("And without either, its key"), Label(TEXT("Chart"), false, true), FString(TEXT("P")));
 	Settings->Bindings = Settings->GetDefaults();
 	TestEqual(TEXT("Defaults: board has no button"), Find(Settings->GetBindings(), TEXT("Board"), false, EColumn::Gamepad), FKey());
+	TestEqual(TEXT("Defaults: the wrist compass is on the period key"), Find(Settings->GetBindings(), TEXT("Wrist"), false, EColumn::Keyboard), EKeys::Period);
 	TestEqual(TEXT("Defaults: learning mode on Y"), Find(Settings->GetBindings(), TEXT("ToggleLearning"), false, EColumn::Gamepad), EKeys::Gamepad_FaceButton_Top);
 	// Leave the player's bindings as they were.
 	Settings->Bindings = Saved;
