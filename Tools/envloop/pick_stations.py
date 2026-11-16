@@ -42,7 +42,7 @@ SEEDS = [
      "The breakwater's lake face (the rock kit, merged 13 Nov)"),
     ("residential-a", "Residential street A (Rowlett)", "03-residential", (8752 - 40, 2115), 180,
      "A row of lakefront lots: houses, lawns, fences, bulkheads, the October audit's spot"),
-    ("bulkhead", "Bulkhead lot", "04-house-bulkhead", (8705 - 34, 2065), 180,
+    ("bulkhead", "Bulkhead lot", "04-house-bulkhead", (8705 - 34, 2065 + 8), 180,
      "One lot's concrete bulkhead with its boathouse and lift"),
     ("private-dock", "Private dock", "05-dock", (8175 + 5, 1625 + 35), 145,
      "A mapped private pier (OSM) off the Rowlett shore, seen from its side, 25 degrees off square, with the bank and houses behind"),
@@ -119,6 +119,13 @@ class Picker:
             acr = abs(-rel[0] * w[1] + rel[1] * w[0])
             if -1.0 < along < 17.0 and acr < 5.5:
                 problems.append("inside a generated boathouse (slip %.0f, %.0f)" % sp)
+                continue
+            # nor may its posts stand in the view: the sight line to the bank (all but its last 3 m) stays clear
+            for t in np.arange(0.5, max(dist - 3.0, 0.5), 0.5):
+                q = (cam[0] - n[0] * t - sp[0], cam[1] - n[1] * t - sp[1])
+                if 0.0 < q[0] * w[0] + q[1] * w[1] < 16.0 and abs(-q[0] * w[1] + q[1] * w[0]) < 4.5:
+                    problems.append("a generated boathouse in front of the view (slip %.0f, %.0f)" % sp)
+                    break
         for row in lk.marina.get("rows", []) + lk.marina.get("piers", []):
             for a, b in zip(row["points"], row["points"][1:]):
                 if _seg_dist(cam, a, b) < 0.5 * row.get("width", 2.0) + row.get("finger_length", 0.0) + 2.0:
