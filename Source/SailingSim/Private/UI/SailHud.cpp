@@ -389,11 +389,11 @@ namespace SailHudImpl
 				const FString Letter = D == 0 ? TEXT("N") : D == 90 ? TEXT("E") : D == 180 ? TEXT("S") : TEXT("W");
 				const FVector2D Sz = Measure->Measure(Letter, Small);
 				// The letters ride a ring well outside the figures at the centre (they collided with the time at 37 px).
-				const FVector2f At = On(float(D), 50.f) - FVector2f(float(Sz.X), float(Sz.Y)) * 0.5f;
+				const FVector2f At = On(float(D), 46.f) - FVector2f(float(Sz.X), float(Sz.Y)) * 0.5f;
 				FSlateDrawElement::MakeText(Out, Layer + 4, G.ToPaintGeometry(FVector2f(float(Sz.X) + 2.f, float(Sz.Y)), FSlateLayoutTransform(At)), Letter, Small, ESlateDrawEffect::None, Col(D == 0 ? Port : Fg));
 			}
 			// The lubber mark at twelve, on the bezel: the way the bow points.
-			FSlateDrawElement::MakeLines(Out, Layer + 5, G.ToPaintGeometry(), { C + FVector2f(-6.f, -74.f), C + FVector2f(0.f, -64.f), C + FVector2f(6.f, -74.f) }, ESlateDrawEffect::None, Col(Accent), true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 5, G.ToPaintGeometry(), { C + FVector2f(-6.f, -74.f), C + FVector2f(0.f, -64.f), C + FVector2f(6.f, -74.f) }, ESlateDrawEffect::None, Col(FMath::Lerp(Accent, Fg, NightHud)), true, 2.5f);
 			// The heading in figures and the time, at the centre.
 			const FSlateFontInfo Big = Font(EType::Value);
 			const FString HdgText = FString::Printf(TEXT("%03.0f°"), Hdg >= 359.5 ? 0.0 : Hdg);
