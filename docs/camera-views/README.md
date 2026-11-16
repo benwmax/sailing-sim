@@ -66,3 +66,34 @@ They are saved under `display` as `cameraView` (`"chase"`, `"overview"` or `"hel
 - `SailingSim.Visual.ChaseCamera.Pawn`: a sail starts in Chase at boom height. The cycle runs Chase, Overview, Helm and
   back. The lens is low with the boat near the middle, Overview is higher, and zoom keeps the boat in place.
 - `SailingSim.UI.PadNoCollisions` allows the dock lines' hold and the view's tap on the right stick.
+
+## Slice 2: photo mode's movement and buttons
+
+Photo mode's camera (`AFreeCamera`) moved like a drone only. Its orbit took no movement, the wheel set a speed rather
+than zooming, and on the pad the bumpers tilted the horizon while B hid the panel. Bean's picks:
+
+- **Opening view.** Photo mode opens orbiting the boat, from where the view was (the pivot is the chase camera's, at boom
+  height). Y (Tab) lets the camera fly free, and pressing it again goes back to orbiting.
+- **Orbit movement.** The left stick (WASD) moves the camera round the boat and in and out, and the triggers (Q, E) move
+  it over and under (`FreeCameraMath::OrbitTurnDegPerSec`, `OrbitTiltDegPerSec`, `OrbitDollyPerSec`; Shift is faster,
+  Ctrl slower). The right stick and mouse turn the view as before.
+- **Lens zoom.** The wheel and the bumpers zoom the lens from one focal mark to the next (14 to 200 mm, the panel's Lens
+  row). Held bumpers repeat. The tilt is now on Z and C, with the panel's Tilt row; X levels the camera.
+- **Speed.** Flying speed has eight steps from 0.5 to 120 m/s, each about twice the last, set with the D-pad's up and
+  down or with = and -. The last step chosen is kept in the save (`display.photoSpeed`). In orbit, these keys move the
+  camera in and out.
+- **Back and hide.** B (Backspace) closes the panel and hints first, and leaves photo mode when they are already closed.
+  A tap of View (H) hides them or shows them again. Holding View still leaves photo mode.
+- **Back to the boat.** The right stick's click (F) brings the camera back to the boat's view.
+
+Saved key lists get the new commands (`USailingInputSettings::AddMissingActions`), but not on a button another command
+in the same layer already holds there. A hold and a tap may share a button.
+
+Stills placed with `-SailingPhotoCam` fly, as before. The panel sliding aside when it covers the boat comes with the
+menu redesign (slice 3).
+
+Tests:
+
+- `SailingSim.UI.PhotoFreeFly.Limits`: the eight speeds.
+- `SailingSim.UI.PhotoFreeFly.Camera`: the orbit's moves (dolly, round, over) and that it keeps facing the boat.
+- `SailingSim.UI.PhotoFreeFly.Input`: the new buttons.

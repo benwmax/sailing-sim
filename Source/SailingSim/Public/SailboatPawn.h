@@ -528,7 +528,7 @@ private:
 	 *  the free camera off the boat through its limits (yaw from her heading; without it the camera faces her). */
 	double PhotoAt = -1.0;
 	FString PhotoCamArg;
-	double NextPhotoSpeedStep = 0.0, PhotoReadoutUntil = 0.0;
+	double NextPhotoSpeedStep = 0.0, NextPhotoZoomStep = 0.0, PhotoReadoutUntil = 0.0;
 public:
 	bool IsCockpitView() const { return bCockpit; }
 	/** The helm's eyes on or off (bAnnounce: the status line says so). */

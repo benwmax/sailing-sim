@@ -104,7 +104,7 @@ namespace
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
 			|| Action == TEXT("CockpitView") || Action == TEXT("ChangeView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| SailingBindings::IsPhotoPanelAction(Action);
+			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -1201,6 +1201,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		PhotoCamArg.ParseIntoArray(V, TEXT(","));
 		if (FreeCam && V.Num() >= 3)
 		{
+			FreeCam->SetMode(EFreeCameraMode::Fly);   // (a still's place and look are its own: photo mode opens in orbit)
 			const FRotator Heading(0.f, GetActorRotation().Yaw, 0.f);
 			const FVector At = GetActorLocation() + Heading.RotateVector(FVector(FCString::Atod(*V[0]), FCString::Atod(*V[1]), FCString::Atod(*V[2])) * 100.0);
 			const FRotator Look = V.Num() >= 5 ? FRotator(FCString::Atof(*V[4]), Heading.Yaw + FCString::Atof(*V[3]), 0.f) : (CameraBoom->GetComponentLocation() - At).Rotation();
@@ -1769,6 +1770,7 @@ namespace
 			{ TEXT("PhotoBoost"), { TEXT("Photo: fast (hold)"), TEXT("") } }, { TEXT("PhotoSlow"), { TEXT("Photo: slow (hold)"), TEXT("") } },
 			{ TEXT("PhotoSpeed"), { TEXT("Photo: faster"), TEXT("Photo: slower") } }, { TEXT("PhotoToBoat"), { TEXT("Photo: back to the boat"), TEXT("") } },
 			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the panel and hints"), TEXT("") } },
+			{ TEXT("PhotoZoom"), { TEXT("Photo: zoom the lens in"), TEXT("Photo: zoom the lens out") } }, { TEXT("PhotoBack"), { TEXT("Photo: back (the panel, then out)"), TEXT("") } },
 			{ TEXT("PhotoRowDown"), { TEXT("Photo panel: next row"), TEXT("") } }, { TEXT("PhotoRowUp"), { TEXT("Photo panel: previous row"), TEXT("") } },
 			{ TEXT("PhotoValueUp"), { TEXT("Photo panel: more"), TEXT("") } }, { TEXT("PhotoValueDown"), { TEXT("Photo panel: less"), TEXT("") } },
 			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next page"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous page"), TEXT("") } },
@@ -2687,8 +2689,11 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		{
 			FreeCam->Limits = FFreeCameraLimits();
 			FreeCam->SetAnchor(this, CameraBoom->GetComponentLocation() - GetActorLocation());
-			FreeCam->SetMode(EFreeCameraMode::Fly);
+			// Camera views slice 2 (Bean's pick): it opens orbiting the boat from where the view was, at the speed step
+			// last chosen; Y (or Tab) lets it fly free.
+			FreeCam->SetMode(EFreeCameraMode::Orbit);
 			FreeCam->SnapTo(ViewLocation(), Camera->GetComponentRotation());
+			FreeCam->SetSpeedIndex(USailingSettings::Get()->PhotoSpeed);
 			UCameraComponent* Lens = FreeCam->GetCamera();
 			Lens->PostProcessSettings = Camera->PostProcessSettings;
 			Lens->PostProcessBlendWeight = Camera->PostProcessBlendWeight;
@@ -2699,6 +2704,7 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		}
 		PhotoHintUntil = FPlatformTime::Seconds() + 5.0;
 		PhotoReadoutUntil = PhotoHintUntil;
+		bPhotoHideHints = false;   // (B hides the panel, then leaves: each visit starts with it shown)
 	}
 	else if (PC)
 	{
@@ -4039,6 +4045,20 @@ void ASailboatPawn::OnAxis(const FInputActionValue& Value, FName Action)
 		FreeCam->StepSpeed(V > 0.f ? 1 : -1);
 		NextPhotoSpeedStep = FPlatformTime::Seconds() + 0.15;
 		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+		if (FreeCam->GetMode() == EFreeCameraMode::Fly && USailingSettings::Get()->PhotoSpeed != FreeCam->GetSpeedIndex())
+		{
+			USailingSettings::Get()->PhotoSpeed = FreeCam->GetSpeedIndex();   // kept for the next photo session
+			USailingSettings::Get()->Save();
+		}
+	}
+	if (Action == TEXT("PhotoZoom") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoZoomStep)
+	{
+		// Camera views slice 2: the wheel or the bumpers (held, they repeat) zoom the lens from one focal mark to the next
+		// (the panel's Lens row: 14 to 200 mm on full frame).
+		UCameraComponent* Lens = FreeCam->GetCamera();
+		Lens->SetFieldOfView(FMath::Clamp(PhotoMath::FovForFocal(PhotoMath::StepFocal(PhotoMath::FocalForFov(Lens->FieldOfView), V > 0.f ? 1 : -1)), 10.f, 110.f));
+		NextPhotoZoomStep = FPlatformTime::Seconds() + 0.12;
+		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
 	}
 }
 
@@ -4166,6 +4186,12 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		}
 		else if (Action == TEXT("PhotoRollReset") && FreeCam) FreeCam->ResetRoll();
 		else if (Action == TEXT("PhotoHideUI")) bPhotoHideHints = !bPhotoHideHints;
+		else if (Action == TEXT("PhotoBack"))
+		{
+			// Bean's pick: B closes the panel first, then leaves.
+			if (!bPhotoHideHints) bPhotoHideHints = true;
+			else SetPhoto(false);
+		}
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}

@@ -15,6 +15,7 @@
 #include "SailingSettings.h"
 #include "PhotoSettings.h"
 #include "SailingFrame.h"
+#include "SailingAngles.h"
 #include "Camera/CameraTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -82,12 +83,17 @@ bool FSailingPhotoLimitsTest::RunTest(const FString&)
 	TestEqual(TEXT("A summit above the ceiling: over the summit"), ClampHeightM(1600.0, 0.0, 1700.0, L), 1700.5, 1e-9);
 	TestEqual(TEXT("In between: free"), ClampHeightM(42.0, 0.2, -3.0, L), 42.0);
 
-	TestEqual(TEXT("Five speeds"), NumSpeeds, 5);
+	// Camera views slice 2: eight steps, each about twice the last, starting on 2 m/s.
+	TestEqual(TEXT("Eight speeds"), NumSpeeds, 8);
 	TestEqual(TEXT("Slowest: walking"), SpeedStep(0), 0.5);
 	TestEqual(TEXT("Fastest: 120 m/s"), SpeedStep(NumSpeeds - 1), 120.0);
-	TestEqual(TEXT("Steps past the ends hold"), SpeedStep(9), 120.0);
-	TestEqual(TEXT("Boost is five times"), Speed(2, true, false), 40.0, 1e-9);
-	TestEqual(TEXT("Precision a fifth"), Speed(2, false, true), 1.6, 1e-9);
+	TestEqual(TEXT("Steps past the ends hold"), SpeedStep(12), 120.0);
+	TestEqual(TEXT("A new camera starts on 2 m/s"), SpeedStep(DefaultSpeedIndex), 2.0);
+	bool bRising = true;
+	for (int32 I = 1; I < NumSpeeds; ++I) bRising &= SpeedStep(I) / SpeedStep(I - 1) >= 1.9 && SpeedStep(I) / SpeedStep(I - 1) <= 3.1;
+	TestTrue(TEXT("Each step about twice the last"), bRising);
+	TestEqual(TEXT("Boost is five times"), Speed(4, true, false), 40.0, 1e-9);
+	TestEqual(TEXT("Precision a fifth"), Speed(4, false, true), 1.6, 1e-9);
 	double V = 0.0;
 	for (int32 I = 0; I < 15; ++I) V += (1.0 - V) * EaseAlpha(1.0 / 60.0);
 	TestTrue(TEXT("Eased: 95% of the speed after a quarter second"), FMath::Abs(V - 0.95) < 0.01);
@@ -108,7 +114,7 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 	if (!TestNotNull(TEXT("The camera spawns"), Cam) || !TestNotNull(TEXT("The anchor spawns"), Boat)) return false;
 	Cam->SetAnchor(Boat);
 	Cam->SnapTo(FVector(0.0, 0.0, 1000.0), FRotator::ZeroRotator);
-	for (int32 I = 0; I < 4; ++I) Cam->StepSpeed(1);
+	for (int32 I = 0; I < FreeCameraMath::NumSpeeds; ++I) Cam->StepSpeed(1);
 	TestEqual(TEXT("Top speed"), Cam->GetBaseSpeed(), 120.0);
 
 	FFreeCameraInput Fly;
@@ -150,7 +156,7 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 		Cam->SnapTo(FVector(0.0, 0.0, 500.0), FRotator::ZeroRotator);
 		FFreeCameraInput Ahead;
 		Ahead.Move = FVector2D(0.0, 1.0);
-		while (Cam->GetSpeedIndex() > 2) Cam->StepSpeed(-1); // 8 m/s
+		while (Cam->GetSpeedIndex() > 4) Cam->StepSpeed(-1); // 8 m/s
 		for (int32 I = 0; I < 60 * 6; ++I) Cam->Update(1.f / 60.f, Ahead);
 		const double X = Cam->GetActorLocation().X;
 		TestTrue(FString::Printf(TEXT("Stopped at the wall's face (1950 cm) less its sphere: %.1f cm"), X), X < 1950.0 - 19.0 && X > 1900.0);
@@ -166,8 +172,30 @@ bool FSailingPhotoCameraTest::RunTest(const FString&)
 	const double Before = FVector::Dist(Cam->GetActorLocation(), FVector(0.0, 0.0, 300.0));
 	Cam->StepSpeed(2);
 	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, FFreeCameraInput());
-	TestTrue(TEXT("The wheel moves the orbit in"), FVector::Dist(Cam->GetActorLocation(), FVector(0.0, 0.0, 300.0)) < Before * 0.8);
-	TestEqual(TEXT("And leaves the fly speed alone"), Cam->GetSpeedIndex(), 2);
+	TestTrue(TEXT("The speed keys move the orbit in"), FVector::Dist(Cam->GetActorLocation(), FVector(0.0, 0.0, 300.0)) < Before * 0.8);
+	TestEqual(TEXT("And leave the fly speed alone"), Cam->GetSpeedIndex(), 4);
+	// Camera views slice 2: in orbit the stick moves too: forward dollies in, a side goes round, up rises over the boat.
+	auto Dist = [Cam]() { return FVector::Dist(Cam->GetActorLocation(), FVector(0.0, 0.0, 300.0)); };
+	auto Bearing = [Cam]() { const FVector Off = Cam->GetActorLocation() - FVector(0.0, 0.0, 300.0); return FMath::RadiansToDegrees(FMath::Atan2(Off.Y, Off.X)); };
+	auto Height = [Cam]() { return Cam->GetActorLocation().Z; };
+	const double D0 = Dist(), B0 = Bearing(), H0 = Height();
+	FFreeCameraInput In;
+	In.Move = FVector2D(0.0, 1.0);
+	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, In);
+	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, FFreeCameraInput());
+	TestTrue(FString::Printf(TEXT("Orbit: a second forward dollies in by about exp(-1.2) (%.2f of the way)"), Dist() / D0), FMath::Abs(Dist() / D0 - FMath::Exp(-1.2)) < 0.05);
+	In.Move = FVector2D(1.0, 0.0);
+	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, In);
+	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, FFreeCameraInput());
+	const double Turned = SailingAngles::WrapDegrees(float(Bearing() - B0));
+	TestTrue(FString::Printf(TEXT("Orbit: a second to the right goes round about 60 deg (%.1f)"), Turned), FMath::Abs(FMath::Abs(Turned) - 60.0) < 5.0);
+	TestTrue(TEXT("... to the camera's own right (its bearing from the boat turns anticlockwise seen from above)"), Turned < 0.0);
+	In.Move = FVector2D::ZeroVector;
+	In.Vertical = 1.f;
+	for (int32 I = 0; I < 30; ++I) Cam->Update(1.f / 60.f, In);
+	for (int32 I = 0; I < 60; ++I) Cam->Update(1.f / 60.f, FFreeCameraInput());
+	TestTrue(FString::Printf(TEXT("Orbit: up rises over the boat (%.0f to %.0f cm)"), H0, Height()), Height() > H0 + 50.0);
+	TestTrue(TEXT("... still facing it"), FVector::DotProduct((FVector(0.0, 0.0, 300.0) - Cam->GetActorLocation()).GetSafeNormal(), Cam->GetActorForwardVector()) > 0.999);
 
 	// Back to the boat: put where asked, still.
 	Cam->SetMode(EFreeCameraMode::Fly);
@@ -227,7 +255,15 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	TestTrue(TEXT("Sailing: hold View for photo mode"), HasTrigger<UInputTriggerHold>(Boat, EKeys::Gamepad_Special_Left, TEXT("Photo")));
 	TestTrue(TEXT("Sailing: tap View for the controls card"), HasTrigger<UInputTriggerTap>(Boat, EKeys::Gamepad_Special_Left, TEXT("ControlsCard")));
 	TestTrue(TEXT("Photo mode: hold View leaves"), HasTrigger<UInputTriggerHold>(Photo, EKeys::Gamepad_Special_Left, TEXT("Photo")));
-	TestTrue(TEXT("Photo mode: tap View orbits"), HasTrigger<UInputTriggerTap>(Photo, EKeys::Gamepad_Special_Left, TEXT("PhotoOrbit")));
+	// Camera views slice 2 (Bean's picks): a tap of View hides the panel and hints, Y orbits, B is back (the panel, then
+	// out), the bumpers and the wheel zoom the lens, the right stick's click is back to the boat's view.
+	TestTrue(TEXT("Photo mode: tap View hides the panel"), HasTrigger<UInputTriggerTap>(Photo, EKeys::Gamepad_Special_Left, TEXT("PhotoHideUI")));
+	TestTrue(TEXT("Photo mode: Y orbits"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Top), TEXT("PhotoOrbit")));
+	TestTrue(TEXT("Photo mode: B is back"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Right), TEXT("PhotoBack")));
+	TestTrue(TEXT("Photo mode: RB zooms in"), Only(ActionsOn(Photo, EKeys::Gamepad_RightShoulder), TEXT("PhotoZoom")));
+	TestTrue(TEXT("Photo mode: LB zooms out"), Only(ActionsOn(Photo, EKeys::Gamepad_LeftShoulder), TEXT("PhotoZoom")));
+	TestTrue(TEXT("Photo mode: the wheel zooms"), Only(ActionsOn(Photo, EKeys::MouseWheelAxis), TEXT("PhotoZoom")));
+	TestTrue(TEXT("Photo mode: the right stick's click is back to the boat"), Only(ActionsOn(Photo, EKeys::Gamepad_RightThumbstick), TEXT("PhotoToBoat")));
 	TestTrue(TEXT("9 toggles on the press"), HasTrigger<UInputTriggerPressed>(Boat, EKeys::Nine, TEXT("Photo")));
 	TestTrue(TEXT("Esc opens the menu on the press"), HasTrigger<UInputTriggerPressed>(Boat, EKeys::Escape, TEXT("Menu")));
 	TestFalse(TEXT("Sailing, A is not the shutter"), ActionsOn(Boat, EKeys::Gamepad_FaceButton_Bottom).Contains(TEXT("PhotoShot")));

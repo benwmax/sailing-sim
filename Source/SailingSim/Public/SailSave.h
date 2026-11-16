@@ -55,6 +55,7 @@ struct SAILINGSIM_API FSailSave
 		float LookSpeed = 1.f;
 		bool bInvertLook = false;
 		bool bCameraRecentre = true;
+		int32 PhotoSpeed = 2;     // "photoSpeed": photo mode's speed step (camera views slice 2)
 		// UI overhaul: "nightHud" under "display" (an older file has none and reads it on, its default).
 		bool bNightHud = true;
 		// Bean's playtest: the Graphics page's rows (-1 Auto) and the Display rows (USailingSettings); "graphics" in the file.

@@ -144,7 +144,7 @@ void SSailPhotoPanel::Construct(const FArguments& InArgs)
 		const bool bPad = UsingGamepad();
 		auto L = [bPad](const TCHAR* A) { return SailingBindings::Label(A, false, bPad); };
 		return FText::FromString(bPad
-			? FString::Printf(TEXT("%s next row  ·  %s / %s change  ·  %s hide"), *L(TEXT("PhotoRowDown")), *L(TEXT("PhotoValueDown")), *L(TEXT("PhotoValueUp")), *L(TEXT("PhotoHideUI")))
+			? FString::Printf(TEXT("%s next row  ·  %s / %s change  ·  %s hide"), *L(TEXT("PhotoRowDown")), *L(TEXT("PhotoValueDown")), *L(TEXT("PhotoValueUp")), *L(TEXT("PhotoBack")))
 			: FString::Printf(TEXT("%s / %s row  ·  %s / %s change  ·  %s / %s page  ·  %s hide"), *L(TEXT("PhotoRowUp")), *L(TEXT("PhotoRowDown")), *L(TEXT("PhotoValueDown")),
 				*L(TEXT("PhotoValueUp")), *L(TEXT("PhotoPagePrev")), *L(TEXT("PhotoPageNext")), *L(TEXT("PhotoHideUI"))));
 	};

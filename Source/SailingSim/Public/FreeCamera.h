@@ -11,7 +11,7 @@ UENUM()
 enum class EFreeCameraMode : uint8
 {
 	Fly,     // a drone: moves on its level heading, looks anywhere
-	Orbit,   // turns about the anchor, the wheel in and out
+	Orbit,   // turns about the anchor: the look or the stick round it, the stick in and out
 };
 
 /**
@@ -83,6 +83,7 @@ public:
 	void Update(float DeltaSeconds, const FFreeCameraInput& Input);
 
 	int32 GetSpeedIndex() const { return SpeedIndex; }
+	void SetSpeedIndex(int32 Index) { SpeedIndex = FMath::Clamp(Index, 0, FreeCameraMath::NumSpeeds - 1); }
 	double GetBaseSpeed() const { return FreeCameraMath::SpeedStep(SpeedIndex); }
 	/** Horizontal distance from the anchor (m), and whether the leash is slowing the camera. */
 	double GetLeashDistanceM() const;
@@ -101,7 +102,7 @@ private:
 	float Yaw = 0.f, Pitch = 0.f, Roll = 0.f;
 	FFreeCameraOrbit Orbit;
 	double SinceLookSeconds = 1e9;
-	int32 SpeedIndex = 1;
+	int32 SpeedIndex = FreeCameraMath::DefaultSpeedIndex;
 	FVector VelocityMps = FVector::ZeroVector;
 
 	FVector Pivot() const;

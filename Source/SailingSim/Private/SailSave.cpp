@@ -208,6 +208,7 @@ FString FSailSave::ToJson() const
 	Display->SetNumberField(TEXT("lookSpeed"), S.LookSpeed);
 	Display->SetBoolField(TEXT("invertLook"), S.bInvertLook);
 	Display->SetBoolField(TEXT("cameraRecentre"), S.bCameraRecentre);
+	Display->SetNumberField(TEXT("photoSpeed"), S.PhotoSpeed);
 	Display->SetBoolField(TEXT("nightHud"), S.bNightHud);
 	TSharedRef<FJsonObject> Graphics = Obj();
 	Graphics->SetNumberField(TEXT("antiAliasing"), S.AntiAliasing);
@@ -498,6 +499,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*D, TEXT("lookSpeed"), S.LookSpeed);
 			Read(*D, TEXT("invertLook"), S.bInvertLook);
 			Read(*D, TEXT("cameraRecentre"), S.bCameraRecentre);
+			Read(*D, TEXT("photoSpeed"), S.PhotoSpeed);
 			Read(*D, TEXT("nightHud"), S.bNightHud);
 			Read(*D, TEXT("hudScale"), S.HudScale);
 			Read(*D, TEXT("textScale"), S.TextScale);
@@ -715,6 +717,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.LookSpeed = In.LookSpeed;
 	S.bInvertLook = In.bInvertLook;
 	S.bCameraRecentre = In.bCameraRecentre;
+	S.PhotoSpeed = In.PhotoSpeed;
 	S.bNightHud = In.bNightHud;
 	S.AntiAliasing = In.AntiAliasing;
  	S.ShadowQuality = In.ShadowQuality;
@@ -810,6 +813,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.LookSpeed = FMath::Clamp(S.LookSpeed, 0.25f, 3.f);
 	Out.bInvertLook = S.bInvertLook;
 	Out.bCameraRecentre = S.bCameraRecentre;
+	Out.PhotoSpeed = FMath::Clamp(S.PhotoSpeed, 0, 7);
 	Out.bNightHud = S.bNightHud;
 	Out.AntiAliasing = S.AntiAliasing;
  	Out.ShadowQuality = S.ShadowQuality;

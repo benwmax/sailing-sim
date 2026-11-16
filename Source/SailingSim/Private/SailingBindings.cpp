@@ -87,6 +87,7 @@ namespace SailingBindings
 		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
 			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
 			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
+			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack")
 			|| IsPhotoPanelAction(Action);
 	}
 

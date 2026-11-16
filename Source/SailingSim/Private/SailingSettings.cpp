@@ -234,7 +234,21 @@ void USailingInputSettings::AddMissingActions()
 	if (Bindings.Num() == 0) return; // the defaults are in effect
 	TSet<FName> Known;
 	for (const FSailingKeyBinding& B : Bindings) Known.Add(B.Action);
-	for (const FSailingKeyBinding& B : Defaults) if (!Known.Contains(B.Action)) Bindings.Add(B);
+	// A new command gets its default keys, except one another command in its layer already holds in the saved list (the
+	// player's, or an older default: photo mode's tilt kept the bumpers when the lens zoom came, docs/camera-views/); a
+	// hold beside a tap may share a button (the dock lines and the view on the right stick's click).
+	TArray<FSailingKeyBinding> Added;
+	for (const FSailingKeyBinding& B : Defaults)
+	{
+		if (Known.Contains(B.Action)) continue;
+		const bool bTaken = Bindings.ContainsByPredicate([&B](const FSailingKeyBinding& Have)
+		{
+			return Have.Key == B.Key && Have.Action != B.Action && SailingBindings::SameLayer(Have.Action, B.Action)
+				&& !SailingBindings::IsHoldAction(Have.Action) && !SailingBindings::IsHoldAction(B.Action);
+		});
+		if (!bTaken) Added.Add(B);
+	}
+	Bindings.Append(Added);
 	// A pad stick or trigger can't be rebound from the Controls screen, so a saved list gets a known command's new
 	// default axis (the throttle's left stick) unless the command has one or another command in its layer holds it.
 	for (const FSailingKeyBinding& D : Defaults)
@@ -374,24 +388,30 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoUpDown"), EKeys::Q, -1.f);
 	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_RightTriggerAxis);
 	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_LeftTriggerAxis, -1.f);
+	// Camera views slice 2 (docs/camera-views/): the bumpers and the wheel zoom the lens (the tilt is Z and C, and the
+	// panel's Tilt row); the speed is the D-pad's up and down, or = and -; Y orbits, B is back (the panel, then out),
+	// a tap of View hides the panel and hints, the right stick's click goes back to the boat's view.
 	Add(TEXT("PhotoRoll"), EKeys::C);
 	Add(TEXT("PhotoRoll"), EKeys::Z, -1.f);
-	Add(TEXT("PhotoRoll"), EKeys::Gamepad_RightShoulder);
-	Add(TEXT("PhotoRoll"), EKeys::Gamepad_LeftShoulder, -1.f);
 	Add(TEXT("PhotoRollReset"), EKeys::X);
-	Add(TEXT("PhotoRollReset"), EKeys::Gamepad_RightThumbstick);
+	Add(TEXT("PhotoZoom"), EKeys::MouseWheelAxis);
+	Add(TEXT("PhotoZoom"), EKeys::Gamepad_RightShoulder);
+	Add(TEXT("PhotoZoom"), EKeys::Gamepad_LeftShoulder, -1.f);
 	Add(TEXT("PhotoBoost"), EKeys::LeftShift);
 	Add(TEXT("PhotoBoost"), EKeys::Gamepad_LeftThumbstick);
 	Add(TEXT("PhotoSlow"), EKeys::LeftControl);
-	Add(TEXT("PhotoSpeed"), EKeys::MouseWheelAxis);
+	Add(TEXT("PhotoSpeed"), EKeys::Equals);
+	Add(TEXT("PhotoSpeed"), EKeys::Hyphen, -1.f);
 	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up);
 	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Down, -1.f);
 	Add(TEXT("PhotoToBoat"), EKeys::F);
-	Add(TEXT("PhotoToBoat"), EKeys::Gamepad_FaceButton_Top);
+	Add(TEXT("PhotoToBoat"), EKeys::Gamepad_RightThumbstick);
 	Add(TEXT("PhotoOrbit"), EKeys::Tab);
-	Add(TEXT("PhotoOrbit"), EKeys::Gamepad_Special_Left);
+	Add(TEXT("PhotoOrbit"), EKeys::Gamepad_FaceButton_Top);
 	Add(TEXT("PhotoHideUI"), EKeys::H);
-	Add(TEXT("PhotoHideUI"), EKeys::Gamepad_FaceButton_Right);
+	Add(TEXT("PhotoHideUI"), EKeys::Gamepad_Special_Left);
+	Add(TEXT("PhotoBack"), EKeys::BackSpace);
+	Add(TEXT("PhotoBack"), EKeys::Gamepad_FaceButton_Right);
 	// Its panel (docs/photo-mode/pc/): arrows for the row and its value, Page Up/Down for the page; X steps the rows
 	// on a pad and the D-pad's sides change the value (its up and down are the speed).
 	Add(TEXT("PhotoRowDown"), EKeys::Down);
