@@ -1,0 +1,68 @@
+{
+  "about": "Slice 13's starting points for Bluebonnet in the game's physics (physics.py; docs/jclass-13). Everything the model measures (hull sections, appendage, mass and its spread, foils' plan forms, rig and sails, windage) physics.py takes from the build; this file holds only what sailing her has to settle: the crew, the sails' aerodynamic knobs, the foils' effective aspect ratios and balance, the trimmer, resistance knobs and the helm. Each is a starting point for the Mac's tuning (slice 13's Mac half, after Nov 21), with its reason.",
+  "crew": {
+    "count": 30,
+    "kg_each": 80,
+    "sit_out_m": 2.0,
+    "hike_out_m": 0.3,
+    "move_speed": 1.0,
+    "note": "A 1930s J raced with 25 to 31 aboard (afterguard, two watches of hands on the runners, sheets and coffee grinders). The card's 5 long tons of crew and stores is about 30 at 80 kg plus stores. Most of them sit or lie on the weather deck in a breeze, about 2 m out on average on her 6.5 m deck; 'hiking' is legs over the rail for a few (0.3 m more)."
+  },
+  "sails": {
+    "main": [3.7, 6.0, 0.13],
+    "jib": [4.1, 4.5, 0.13],
+    "spinnaker": [2.6, 2.2, 0.2],
+    "jib_head_chord": 0.15,
+    "spinnaker_head_chord_of_foot": 0.2,
+    "reef_jib_fraction": [0.85, 0.85],
+    "note": "[lift slope per radian, induced aspect ratio, base camber] as SetMain/SetSail take them. Cotton and early synthetics on a tall, narrow Bermudan main (P^2/A 4.1): the maxi's 3.8 / 6.5 / 0.11 with a fuller cloth (camber 0.13) and a little less slope and aspect for the boom's long foot. The genoa is the physics' jib (luff 32.8 m, LP 22.6: an overlapping masthead-high sail), the J/22's 4.1 slope and an aspect from its luff. The parachute spinnaker is a symmetric spinnaker set from the pole (the maxi's A2 numbers rounder). Reefing the main (the reefs on the sails sheet, 3.6 and 7.2 m) brings the quadrilateral jib up in place of the genoa: 290.4 / 341.8 = 0.85; the staysail sets inside either and is left out of the physics' single jib (a note for the Mac's half)."
+  },
+  "foils": {
+    "keel_area_factor": 1.0,
+    "keel_centre_shift_x": 0.0,
+    "keel_effective_aspect_ratio": 0.9,
+    "keel_stall_deg": 22.0,
+    "keel_profile_drag": 0.001,
+    "keel_vent_start_deg": 60.0,
+    "keel_vent_end_deg": 85.0,
+    "keel_downwash": 1.0,
+    "heel_yaw_coef": 0.02,
+    "rudder_blade_aspect_ratio": 1.0,
+    "rudder_effective_aspect_ratio": 2.0,
+    "rudder_stall_deg": 25.0,
+    "rudder_profile_drag": 0.001,
+    "rudder_vent_depth": 0.9,
+    "rudder_vent_start_deg": 60.0,
+    "rudder_vent_end_deg": 85.0,
+    "note": "The keel foil is her whole lateral plane below the water (physics.py: canoe body and keel, less the rudder): geometric aspect draft^2 / area 0.32, doubled by the water's surface over it (0.64), a little more for the hull's flare: 0.9 to start; the Mac tunes it on her leeway. Low-aspect foils stall late (22 deg against a fin's 15). Its friction is in the hull's wetted area (the whole hull's, keel and all), so its profile drag is only the blunt bottom's form drag (0.001). The rudder hangs on the keel's after edge: it is the keel's trailing-edge flap (physics.py's rudder_as_flap, thin-aerofoil theory over the band of the lateral plane it spans, below its head), its own blade aspect 1.0 and as a flap end-plated by the keel ahead and the hull above 2.0. Its friction is in the hull's wetted area too (the lines run the keel's surface through it), so its profile drag is the keel's form drag (0.001). Sailed as a lone 3.3 m^2 blade she could not hold a course (the trial: rounded up through the wind on a reach in 10 kn with the wheel hard over); as the flap she holds every point, with 13 to 15 deg of weather helm in 16 kn: a heavy helm, as the Js had. A low aspect ratio raises a flap's effect above thin-aerofoil theory's (USAF DATCOM), which would lighten it: the Mac's knob for her feel (TRIAL_SET rudder_area). It never ventilates (its head is under the counter), so its vent angles and depth are FFoilDef's defaults (the fleet's Foil() gives rudders a dinghy's). Balance: the keel's centre is the lateral plane's centroid (no shift); HeelYawCoef 0.02, under the J/22's 0.06 and the maxi's 0.04: her waterlines are narrow and fine at both ends (LWL / beam 4.3 against the J/22's 2.9), much less lopsided heeled than a beamy modern hull's; in an earlier trial (the flap then reckoned over her whole lateral plane, twice today's) 0.05 gave her 9 to 13 deg of weather helm close-hauled in 10 kn against 3 to 4 at 0.02; with today's flap 0.02 gives 5 to 7. KeelDownwashFactor 1.0: the flap sits in the keel's own wake."
+  },
+  "trim": {
+    "heel_limit_deg": 22.0,
+    "max_ease_deg": 25.0,
+    "main_max_ease_deg": 75.0,
+    "traveler_range_deg": 4.0,
+    "jib_min_deg": 9.0,
+    "jib_max_deg": 70.0,
+    "note": "A J went best at 20 to 25 deg of heel, her rail near the water. The boom's sweep (slice 4's check) stops at the runners and shrouds; the main is never eased past 75 deg. The main sheet's horse across the counter gives only a few degrees either side; the genoa's sheets lead outside the rigging to the rail (9 deg the closest it sheets)."
+  },
+  "resistance": {
+    "form_factor": 1.06,
+    "added_resistance_coef": 0.6,
+    "heave_damping": 1200.0,
+    "residuary_factor": 1.0,
+    "j22_slenderness": 5.69,
+    "j22_residuary": [[0.0, 0.0], [0.1, 0.0002], [0.15, 0.0005], [0.2, 0.0012], [0.25, 0.0025], [0.3, 0.005], [0.35, 0.01],
+                      [0.4, 0.022], [0.45, 0.048], [0.5, 0.08], [0.55, 0.1], [0.6, 0.11], [0.7, 0.14], [0.8, 0.17], [0.9, 0.2],
+                      [1.0, 0.23]],
+    "maxi": {"munk": 9000.0, "volume": 40.165, "lwl": 29.6, "yaw_damping": 90000.0},
+    "note": "Friction: ITTC-57 with a form factor of 1.06 for a slender, deep canoe body with a long keel (the J/22's 1.10 is a short, beamy hull). Residuary: the J/22's table (FBoatConfig's default, j22_residuary) scaled to her slenderness (physics.py's resistance()), 'residuary_factor' the Mac's knob: 1.0 leaves her about 11% under Ranger's 1937 beat, and her overhangs' longer waterline under way points to about 0.6 (docs/jclass-13). Added resistance in waves: ORC's length scaling between the maxi's 0.47 (97 ft) and the J/22's 2.6; at her 85 ft waterline about 0.6. Heave damping as the maxi's. The maxi's Munk added mass and yaw damping are scaled to her volume and length."
+  },
+  "helm": {
+    "max_rudder_deg": 35.0,
+    "tiller_length": 0.5,
+    "stiffness": 1000000.0,
+    "response_s": 0.5,
+    "wheel_hard_over_s": 5.0,
+    "note": "Slice 3's wheel turns the rudder through worm gear: 35 deg each way (slice 2's helm sweep checks +-35), slow (about five seconds hard over to hard over is a start) and stiff (the worm holds the blade: a hinge moment of 15 kN m at 10 kn moves it under a degree). The rudder hangs on its stock at its leading edge, so its centre of pressure is far behind the stock (measured, physics.py). 'tiller_length' is the wheel's radius for the helm force the HUD shows."
+  }
+}

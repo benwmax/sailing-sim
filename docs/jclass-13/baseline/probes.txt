@@ -1,0 +1,7 @@
+# TRIAL_SET probes: one --point run each (the trimmer's default settings), the last 5 s sample
+# knobs | 12 kn beat: best VMG over TWA 32-40 (speed at the TWA sailed, helm) | 10 kn 52 | 16 kn 90 (helm) | 6 kn 90
+as the sheet has them | 6.48 (7.86 kn at 34.5, helm 7.2) | 8.52 | 10.95 (helm 13.4) | 6.96
+residuary=0.8 | 6.70 (7.82 kn at 31.1, helm 6.5) | 8.92 | 11.27 (helm 13.6) | 7.26
+residuary=0.6 | 7.02 (8.74 kn at 36.6, helm 7.4) | 9.40 | 11.76 (helm 12.2) | 7.61
+residuary=0.6,keel_ar=1.3 | 7.09 (8.77 kn at 36.1, helm 8.1) | 9.45 | 11.68 (helm 13.1) | 7.64
+rudder_area=10 | 6.51 (7.84 kn at 33.8, helm 5.3) | 8.62 | 11.15 (helm 9.2) | 6.96
