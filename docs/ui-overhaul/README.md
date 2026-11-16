@@ -149,6 +149,37 @@ The stills of phase 1 and 2 (this folder) showed text that could not be read, an
 Stills: `pause`, `briefing` (`-SailingDrill=LeavetheDock -SailingFrontEnd=Briefing`), `quiz`
 (`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`), `career`.
 
+## Phase 3: the set-up steps
+
+From the stills of main at b2f515a6 (`world.jpg`, `launch.jpg`, `mode.jpg`, `controls.jpg`, `customize.jpg`):
+
+- **Where do you start?** The map pins and the list's numbered circles were the chart's magenta, the last of it in the
+  menus, and the chosen pin (paper with a deep-aqua edge) was lost on the paper-coloured land. Pins are now ink with a
+  paper ring, and the chosen one is the aqua accent with an ink ring; the list's circles match. Chart magenta stays on
+  the chart itself.
+- **Choose a world.** A locked card was dimmed to 45% and its reason could not be read. Disabled buttons are now 62%,
+  and a locked card keeps its whole glass panel (only its contents dim), so the scene no longer shows through its text.
+- **Customize.** The boat's name over the scene has the ink shadow (`TextOverScene`) and the title is sentence case
+  ("Customize"), like the other screens.
+- **Controls.** The key list and its notes are two paper sheets, like Settings; the header and prompt bar stay on glass.
+- **Mode** needed nothing.
+
+### The logbook
+
+The logbook is the heart of the career (Bean, Nov 15). Until now it was one canvas page in the engine's font, reached by
+closing the menus. It is now a screen (`ESailScreen::Logbook`, `BuildLogbook`), opened from the title and the pause menu:
+
+- **Left sheet, "In all":** miles and hours in the big numerals, then sails, medals and certificates, and the sails
+  already in the book (the session files in `Saved/Logbook`, newest first, in a list that scrolls inside the sheet;
+  the file name's water is shown as words). The sails count is the save's or the files', whichever is more.
+- **Right sheet, "Ship's log":** this sail's page as a ruled table (time, position, course, knots, log, wind, sea,
+  remarks). Watch entries are in ink and events in red, the way a paper log is kept. It scrolls like Credits
+  (`IsReadingScreen`).
+- The quick look on Y while sailing is still the canvas page, now in the same paper and inks.
+
+Stills to retake: `world` (a locked card in view), `launch`, `controls`, `customize`; new: `logbook`
+(`-SailingFrontEnd=Logbook`, best after a few minutes of sailing so the page has entries).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

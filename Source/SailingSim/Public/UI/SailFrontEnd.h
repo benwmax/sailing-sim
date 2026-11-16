@@ -20,7 +20,7 @@ class APlayerController;
  * choices kept), and in game Pause, Change conditions, Settings and Controls. Cast off hands the session to
  * USailSessionSubsystem, which reloads the map with it. Credits (from the Title and Settings) reads CREDITS.md.
  */
-enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch, Customize, Components };
+enum class ESailScreen : uint8 { Title, World, Launch, Boat, Conditions, Mode, Pause, ConditionsInGame, Settings, Controls, Confirm, Briefing, Quiz, Credits, Career, Gallery, Feedback, FirstLaunch, Customize, Components, Logbook };
 
 struct FCareerLesson;
 
@@ -116,6 +116,7 @@ private:
 	FEntry BuildCareer();
 	/** Release readiness: every credit in CREDITS.md, after the Unreal Engine notice, as scrolling text. */
 	FEntry BuildCredits();
+	FEntry BuildLogbook();
 	/** The developer-only asset gallery (docs/gallery/pc/, Inputs/gallery/brief.md G2; UI/SailGallery.cpp). */
 	FEntry BuildGallery();
 	/** UI overhaul (docs/ui-overhaul/; UI/SailComponents.cpp): the developer-only component page, every token, type style
@@ -207,6 +208,9 @@ private:
 	// Credits: its scroll box. World: each card's description (the focused card's scrolls). The stick's scroll speed
 	// (-1..1, held while the stick is) is applied to the active one by an active timer.
 	TSharedPtr<class SScrollBox> CreditsScroll;
+	TSharedPtr<class SScrollBox> LogScroll;
+	/** Screens that are a page to read: the front end takes the keys and scrolls the page (no focus target). */
+	bool IsReadingScreen() const { return Current() == ESailScreen::Credits || Current() == ESailScreen::Logbook; }
 	TArray<TSharedPtr<class SScrollBox>> WorldScrolls;
 	TArray<TSharedPtr<class SSailButton>> WorldCards;
 	/** The scroll box the arrows, pages and sticks move on this screen: Credits' text, or the focused world card's. */
