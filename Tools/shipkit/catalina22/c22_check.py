@@ -31,7 +31,10 @@ How each is measured:
   J                       the forestay's tack (ForestayTack) to the front of the mast (MastStep plus half the mast's
                           diameter, the card's game.mast_diameter_m)
   E                       the front of the boom's clew fitting (Boom_Clew) to the mast's aft face (MastStep less half its
-                          diameter)
+                          diameter); in the rebuild's sockets (slice 4 on), Boom_Clew is the forward edge of the boom's
+                          black band
+  P                       the mast's black bands' inner edges, BandBoom (the boom's top) to BandTop: in the rebuild's
+                          sockets file only (build_c22.py writes <out>/c22_sockets.json from slice 4)
 Plain Python: no Blender needed.
 """
 import json
@@ -91,6 +94,8 @@ def measure(stats, sockets, card):
                 m["J_m"] = s["ForestayTack"][0] / 100.0 - (mast_x + r)
             if "Boom_Clew" in s:
                 m["E_m"] = (mast_x - r) - s["Boom_Clew"][0] / 100.0
+        if "BandTop" in s and "BandBoom" in s:
+            m["P_m"] = (s["BandTop"][2] - s["BandBoom"][2]) / 100.0
     return m
 
 

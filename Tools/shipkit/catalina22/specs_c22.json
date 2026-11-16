@@ -132,7 +132,7 @@
   "keel_kg": "build: the keel plate's mesh volume x cast iron (c22_report.json keel_kg, slice 3)",
   "I_m": "sockets",
   "J_m": "sockets",
-  "P_m": "later: slice 4 (the mast's black bands)",
+  "P_m": "sockets: the mast's black bands' inner edges (BandTop less BandBoom, slice 4)",
   "E_m": "sockets",
   "headroom_popup_closed_m": "build: slice 7 (cabin)",
   "headroom_popup_raised_m": "build: slice 7 (cabin)"
