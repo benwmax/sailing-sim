@@ -1,0 +1,21 @@
+{
+ "id": "window-single-hung-a",
+ "track": "E",
+ "name": "Single-hung window, white vinyl, 3 x 5 ft",
+ "what": "One window of the building parts kit: frame, sash, meeting rail, glass, sill; brick-mould casing as a separate part",
+ "where": "every house in the near band (HouseKit.cpp swaps its flat window rectangles for kit parts); club outbuildings",
+ "bands": ["hero", "near"],
+ "closest_camera_m": 5,
+ "size_card": ["window.single_hung", "window.sill_height", "window.casing_width", "window.reveal_depth_brick"],
+ "measured": {"window.single_hung": [0.91, 1.52], "window.casing_width": 0.089},
+ "textures": [{"name": "trim sheet (shared)", "px": 4096, "tile_m": 4.0, "band": "near", "note": "trim sheets are judged at the near band's 50 px/m"}],
+ "triangles": {"hero": 1200, "light": 150},
+ "variety": {"windows": 1},
+ "references": [
+  {"id": "own-house-01", "what": "a lakefront house's windows from the water, grey card on the sill", "licence": "Own photo", "use": "ship", "file": null}
+ ],
+ "stations": ["residential-a", "residential-b"],
+ "licence": {"source": "made here (script)", "commercial": true},
+ "build": "Tools/blender/<track script>.py --part window-single-hung-a",
+ "status": "card"
+}
