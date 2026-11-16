@@ -802,6 +802,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FlyBoxes;     // the stand-in fly (hidden under the kit's)
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> FlyKitMount;         // the kit fly's socket and stalk, when the mast lacks one
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> FlyKitVane;          // the kit fly's vane, turned with MastheadFly
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> CompassMount;        // the kit's bulkhead compass (your hero J/22)
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> CompassCard;         // its card, held level and north
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> JibHanks;    // piston hanks up the jib's luff
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> JibHeadShackle;      // the jib halyard's snap shackle
 	UPROPERTY(Transient) TArray<TObjectPtr<class USkeletalMeshComponent>> Crew;
