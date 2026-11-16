@@ -279,7 +279,8 @@ namespace SailHudImpl
 			DrawMainWindow(Out, Layer + 1, G, O + FVector2f(JibW + Gap, 0.f), T, bTied, Time);
 			if (bHelpful)
 			{
-				const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(T, Cfg, Boat->GetEasyAssists(), bTied, Boat->GetSecondsSinceStart() < SailingNoGoTipHoldSeconds);
+				const SSailHud::FTrimVerdict V = SSailHud::HoldTrimVerdict(Hold,
+					SSailHud::TrimVerdict(T, Cfg, Boat->GetEasyAssists(), bTied, Boat->GetSecondsSinceStart() < SailingNoGoTipHoldSeconds), FPlatformTime::Seconds());
 				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
 				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
 				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, Lay.HeadTop), S.X - Pad * 2.f - 16.f);
@@ -407,7 +408,8 @@ namespace SailHudImpl
 			}
 			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, Hex(0xBCC4C5));   // luff tape
 			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { At + FVector2f(4.f, 0.f), At + FVector2f(4.f, WinH) }, ESlateDrawEffect::None, Hex(0x56636A), true, 2.f);   // forestay
-			if (bHelpful) PaintText(Out, Layer + 2, G, T.NumJibStrips > 0 ? TEXT("JIB") : TEXT("SAIL"), Font(EType::Label), Hex(0x7F8B90), At + FVector2f(JibW - 8.f, 4.f), 0.f, true);
+			// A cat rig (Sunfish, ILCA) shows her one sail's luff here and its leech in the other window.
+			if (bHelpful) PaintText(Out, Layer + 2, G, T.NumJibStrips > 0 ? TEXT("JIB") : TEXT("LUFF"), Font(EType::Label), Hex(0x7F8B90), At + FVector2f(JibW - 8.f, 4.f), 0.f, true);
 			// The windward face is the side the wind comes from: green to starboard, red to port, as on a real boat.
 			const bool bStbdWindward = T.ApparentWindAngle >= 0.0;
 			const FLinearColor Near = bStbdWindward ? Starboard : Port, Far = bStbdWindward ? Port : Starboard;
@@ -453,21 +455,22 @@ namespace SailHudImpl
 			TArray<FVector2f> Leech;
 			for (int32 I = 0; I <= 10; ++I) Leech.Add(At + FVector2f(LeechX(I / 10.f) - 1.f, WinH * I / 10.f));
 			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, Hex(0xAAB3B5), true, 2.f);
-			// Three ribbons at the battens, one for each third of the leech, top first.
+			// Three ribbons at the battens, one for each third of the leech, top first; the top one clear of the label.
 			for (int32 K = 0; K < 3 && T.NumMainStrips > 0; ++K)
 			{
-				const float F = 0.2f + 0.3f * K;
+				const float F = 0.34f + 0.23f * K;
 				const EYarn Kind = bTied ? EYarn::Hang : LeechYarn(SSailHud::TrimYarnState(T.MainStrips, T.NumMainStrips, 2 - K, SSailHud::ETrimYarn::Leech));
 				DrawYarn(Out, Layer + 3, G, At + FVector2f(LeechX(F), WinH * F), 28.f, Kind, 1.f, Time, 2.2f * K + 0.7f, Hex(0xC8281E), 2.6f);
 			}
 			Out.PopClip();
-			if (bHelpful) PaintText(Out, Layer + 4, G, TEXT("MAIN"), Font(EType::Label), Hex(0x4B5D68), At + FVector2f(MainW - 6.f, 4.f), 0.f, true);
+			if (bHelpful) PaintText(Out, Layer + 4, G, T.NumJibStrips > 0 ? TEXT("MAIN") : TEXT("LEECH"), Font(EType::Label), Hex(0x4B5D68), At + FVector2f(MainW - 6.f, 4.f), 0.f, true);
 			Frame(Out, Layer + 4, G, At, MainW);
 		}
 
 		TWeakObjectPtr<APlayerController> Player;
 		bool bHelpful = true;
 		TAttribute<FText> Point;
+		mutable SSailHud::FTrimVerdictHold Hold;
 	};
 
 	TSharedRef<SWidget> Field(const FString& Label, TAttribute<FText> Value)
@@ -965,7 +968,7 @@ void SSailHud::Refresh()
 			TipBody = FText::FromString(Body);
 		}
 	}
-	else if (Best && (Best->Key != LastTip) && (Now - TipShownAt > 6.0 || Best->Value >= 2))
+	else if (Best && (Best->Key != LastTip) && (Now - TipShownAt > TipHoldSeconds || Best->Value >= 2))
 	{
 		LastTip = Best->Key;
 		TipShownAt = Now;
@@ -1151,16 +1154,45 @@ SSailHud::FTrimVerdict SSailHud::TrimVerdict(const FBoatTelemetry& T, const FBoa
 			return bJib ? Make(TEXT("Main too tight"), TEXT("Leech ribbons curling. Ease the main."))
 				: Make(TEXT("Sail too tight"), TEXT("Yarns drooping and curling. Ease the sheet."));
 	}
-	// Well trimmed for the tips, but the panel's inside yarns lift within a few degrees of luffing (JibTelltaleState): say
-	// so, rather than "streaming" beside yarns that visibly lift.
-	const FSailStripState* Luff = T.NumJibStrips > 0 ? T.JibStrips : T.MainStrips;
-	const int32 NumLuff = T.NumJibStrips > 0 ? T.NumJibStrips : T.NumMainStrips;
+	// Well trimmed for the tips (one strip is not a call), but the line says what the panel's yarns show rather than
+	// "streaming" beside one that curls (#712's second Mac stills: the bottom leech ribbon curled under "Yarns streaming").
+	const bool bJib = T.NumJibStrips > 0;
+	const FSailStripState* Luff = bJib ? T.JibStrips : T.MainStrips;
+	const int32 NumLuff = bJib ? T.NumJibStrips : T.NumMainStrips;
 	int32 Lifting = 0;
+	bool bDroop = false, bCurl = false;
 	for (int32 Band = 0; Band < 3; ++Band)
 	{
 		if (TrimYarnState(Luff, NumLuff, Band, ETrimYarn::LuffWindward) == ETelltaleState::Lifting) ++Lifting;
+		if (TrimYarnState(Luff, NumLuff, Band, ETrimYarn::LuffLeeward) == ETelltaleState::Stalled) bDroop = true;
+		if (T.NumMainStrips > 0 && TrimYarnState(T.MainStrips, T.NumMainStrips, Band, ETrimYarn::Leech) == ETelltaleState::Stalled) bCurl = true;
 	}
-	return Make(TEXT("Sailing well"), Lifting >= 2 ? TEXT("Inside yarns just lifting. Right on the edge.") : TEXT("Yarns streaming. Hold course."), true);
+	const TCHAR* Say = bCurl ? (bJib ? TEXT("A leech ribbon is curling. Ease the main a touch.") : TEXT("A leech ribbon is curling. Ease the sheet a touch."))
+		: bDroop ? TEXT("An outside yarn is drooping. Ease the jib a touch.")
+		: Lifting >= 2 ? TEXT("Inside yarns just lifting. Right on the edge.")
+		: TEXT("Yarns streaming. Hold course.");
+	return Make(TEXT("Sailing well"), Say, true);
+}
+
+SSailHud::FTrimVerdict SSailHud::HoldTrimVerdict(FTrimVerdictHold& Hold, const FTrimVerdict& Fresh, double Now)
+{
+	auto Warns = [](const FTrimVerdict& V) { return !V.bGood && !V.bNeutral; };
+	FTrimVerdict& Shown = Hold.Shown;
+	if (FCString::Strcmp(Fresh.Head, Shown.Head) == 0)
+	{
+		// The same call: its line follows after a short hold, so a yarn on the edge doesn't blink it.
+		if (FCString::Strcmp(Fresh.Say, Shown.Say) != 0 && Now - Hold.SayAt >= TrimSayHoldSeconds)
+		{
+			Shown.Say = Fresh.Say;
+			Hold.SayAt = Now;
+		}
+	}
+	else if (Fresh.bNeutral || Shown.bNeutral || Warns(Fresh) || Now - Hold.ShownAt >= (Warns(Shown) ? TipHoldSeconds : 0.0))
+	{
+		Shown = Fresh;
+		Hold.ShownAt = Hold.SayAt = Now;
+	}
+	return Shown;
 }
 
 bool SSailHud::TipsMutedByScene(const Sailing::FScriptedScene* Scene, bool bHandoverPending)

@@ -1528,7 +1528,11 @@ void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const 
 
 	if (!T.bInIrons && FMath::Abs(TwaDeg) >= 35.0)
 	{
-		if (JibLuff >= 2)
+		if (T.NumJibStrips <= 0)
+		{
+			// A cat rig (Sunfish, ILCA): no jib to talk about (#712's Mac stills had "Jib telltales streaming" on a Sunfish).
+		}
+		else if (JibLuff >= 2)
 			Tips.Add({ bUpwind ? TEXT("Jib is luffing (windward telltales lifting): trim the jib in (E), or bear away a little.") : TEXT("Jib is luffing: trim the jib in (E) until the luff stops bubbling."), 2 });
 		else if (JibStall >= 2)
 			Tips.Add({ TEXT("Jib is stalled (leeward telltales drooping): ease the jib (Q), or head up a little."), 2 });

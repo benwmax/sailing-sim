@@ -62,6 +62,20 @@ public:
 	 *  (JibTelltaleState, LeechTelltaleState) on every strip in that third, the worst of them, so any call the verdict
 	 *  makes from two strips shows on at least one yarn. A third with no strip of its own reads the strip at its middle. */
 	static ETelltaleState TrimYarnState(const Sailing::FSailStripState* Strips, int32 NumStrips, int32 Band, ETrimYarn Yarn);
+	/** The learning tip card keeps a tip at least this long unless a warning replaces it; the trim panel's headline holds a
+	 *  warning as long, so the two change together and a strip flickering on the edge doesn't blink either. */
+	static constexpr double TipHoldSeconds = 6.0;
+	/** The same headline's line changes no faster than this. */
+	static constexpr double TrimSayHoldSeconds = 1.5;
+	/** What the trim panel shows now (TrimVerdict held): a warning or a change at the dock shows at once; a warning stays
+	 *  until it has been up TipHoldSeconds (the tip card's rule). */
+	struct FTrimVerdictHold
+	{
+		FTrimVerdict Shown;
+		double ShownAt = -1.0e9;
+		double SayAt = -1.0e9;
+	};
+	static FTrimVerdict HoldTrimVerdict(FTrimVerdictHold& Hold, const FTrimVerdict& Fresh, double Now);
 
 	ASailboatPawn* Pawn() const;
 	/** The right-hand column's width (minimap, drill, race and navigation panels) and the gap the messages keep from it. */

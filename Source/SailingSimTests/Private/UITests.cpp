@@ -923,6 +923,41 @@ bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
 	for (int32 I = 0; I < 5; ++I) T.JibStrips[I].AlphaN = T.JibStrips[I].LuffAlpha + FMath::DegreesToRadians(1.0);
 	TestTrue(TEXT("Inside yarns lifting short of a luff: still well"), Verdict(T).bGood);
 	TestTrue(TEXT("... on the edge, not 'streaming'"), FString(Verdict(T).Say).Contains(TEXT("edge")));
+	// #712's second Mac stills: the bottom leech ribbon curled under "Yarns streaming".
+	T = Trimmed(5);
+	T.MainStrips[0].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("One main strip stalled: still well (the tips need two)"), Verdict(T).bGood);
+	TestTrue(TEXT("... but the line names the curling ribbon"), FString(Verdict(T).Say).Contains(TEXT("leech ribbon is curling")));
+	T = Trimmed(5);
+	T.JibStrips[0].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("One jib strip stalled: the line names the drooping yarn"), FString(Verdict(T).Say).Contains(TEXT("outside yarn is drooping")));
+
+	// A cat rig's tips say nothing about a jib.
+	{
+		TArray<TPair<FString, int32>> Tips;
+		SailingCollectBoatTips(Trimmed(0, 45.0), 1.0, FBoatControls(), Realistic, false, false, Tips);
+		TestFalse(TEXT("No jib: no jib tip"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.Contains(TEXT("Jib")); }));
+	}
+
+	// The headline's hold, the tip card's rule: a warning shows at once and stays TipHoldSeconds; all-clear waits for it.
+	{
+		SSailHud::FTrimVerdictHold Hold;
+		FBoatTelemetry Well = Trimmed(5), Tight = Trimmed(5), Curl = Trimmed(5);
+		Tight.MainStrips[0].Flow = Tight.MainStrips[1].Flow = ESailFlow::Stalled;
+		Curl.MainStrips[0].Flow = ESailFlow::Stalled;
+		auto Shown = [&](const FBoatTelemetry& S, double Now) { return FString(SSailHud::HoldTrimVerdict(Hold, Verdict(S), Now).Head); };
+		TestEqual(TEXT("Hold: first call shows"), Shown(Well, 0.0), FString(TEXT("Sailing well")));
+		TestEqual(TEXT("Hold: a warning shows at once"), Shown(Tight, 0.1), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: the warning stays while one strip flickers"), Shown(Curl, 3.0), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: ... and when it comes back"), Shown(Tight, 4.0), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: all clear after the tip card's hold"), Shown(Well, 0.1 + SSailHud::TipHoldSeconds + 0.01), FString(TEXT("Sailing well")));
+		TestEqual(TEXT("Hold: the dock shows at once"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Well, true), 6.2).Head), FString(TEXT("Tied up")));
+		const double T0 = 20.0;
+		Shown(Well, T0);
+		const FString Before = SSailHud::HoldTrimVerdict(Hold, Verdict(Well), T0).Say;
+		TestEqual(TEXT("Hold: the line waits a moment"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Curl), T0 + 0.5).Say), Before);
+		TestTrue(TEXT("Hold: ... then follows"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Curl), T0 + SSailHud::TrimSayHoldSeconds + 0.01).Say).Contains(TEXT("curling")));
+	}
 
 	// The yarns: each third of the sail shows its worst strip, so a call from any two strips is on a yarn.
 	using EYarnFace = SSailHud::ETrimYarn;
@@ -975,6 +1010,8 @@ bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
 		else if (H == TEXT("Jib too tight") || H == TEXT("Sail too tight")) bShown = AnyBand(Luff, NumLuff, EYarnFace::LuffLeeward, ETelltaleState::Stalled);
 		else if (H == TEXT("Main luffing")) bShown = AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Fluttering);
 		else if (H == TEXT("Main too tight")) bShown = AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Stalled);
+		// And the all-clear never says "streaming" beside a curled ribbon.
+		else if (V.bGood && AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Stalled)) bShown = FString(V.Say).Contains(TEXT("curling"));
 		++Cases;
 		if (V.bGood == bTipWarns || !bShown)
 		{

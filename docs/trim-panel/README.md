@@ -12,7 +12,8 @@ Mockups (live, every state): https://claude.ai/artifact/5WzmjY6kEr6xtv7oBnvo32
   Green to starboard, red to port, as on a real boat.
 - **Main window.** The main's leech against the sky with three red ribbons at the battens, one for each third of the
   leech, streaming aft, curling behind the leech when the main stalls, flapping when it luffs.
-- A boat with no jib (Sunfish, ILCA) shows the luff of her main in the left window, labelled SAIL.
+- A cat rig (Sunfish, ILCA) shows her one sail's luff in the left window and its leech in the right, labelled LUFF and
+  LEECH.
 - At the dock every yarn hangs still.
 
 Each yarn uses the 3D ribbons' own rules (`JibTelltaleState`, `LeechTelltaleState` in `SailCloth.h`) on every physics
@@ -55,7 +56,15 @@ warns (or the other way round), or if a call doesn't show on a yarn.
 | Two main strips luffing | Main luffing | Leech ribbons flapping. Sheet the main in. |
 | Two main strips stalled | Main too tight | Leech ribbons curling. Ease the main. |
 | No jib: two strips luffing / stalled | Sail luffing / Sail too tight | Inside yarns lifting. Sheet in. / Yarns drooping and curling. Ease the sheet. |
-| Otherwise | Sailing well | Yarns streaming. Hold course. (Inside yarns just lifting. Right on the edge, when two inside yarns lift short of a luff) |
+| Otherwise | Sailing well | Yarns streaming. Hold course. |
+
+"Sailing well" names a single yarn that is off, since one strip is not a call for the tips but the yarn shows it: "A leech
+ribbon is curling. Ease the main a touch." (or the sheet, on a cat rig), then "An outside yarn is drooping. Ease the jib a
+touch.", then "Inside yarns just lifting. Right on the edge." when two inside yarns lift short of a luff.
+
+The headline holds like the learning tip card beside it (`SSailHud::HoldTrimVerdict`, `TipHoldSeconds`): a warning shows
+at once and stays at least 6 s, so a stall flickering between one strip and two doesn't blink it, and the card and the
+headline change together. The dock shows at once; the same headline's line changes at most every 1.5 s.
 
 "Good" is light blue (`WindTrue`), never green: red and green only mean port and starboard. A line wider than the panel
 is drawn smaller to fit (Settings > Accessibility > Text size).
