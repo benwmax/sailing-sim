@@ -46,3 +46,5 @@ docs/gelcoat/compare/
 
 # The Sentry plugin's native cache (#417), made in each worktree at editor start.
 .sentry-native/
+# Shore Track A: prepared ground maps (Tools/envloop/ground/prep_ground.py), rebuilt from Data/Ground/raw
+Data/Ground/prep/

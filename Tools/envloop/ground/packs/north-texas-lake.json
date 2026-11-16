@@ -1,0 +1,347 @@
+{
+  "pack": "north-texas-lake",
+  "region": "North Texas reservoir shore (Lake Ray Hubbard): blackland prairie clays, bermuda lawns, post oak and cedar elm woods, limestone shingle, drought-exposed bed",
+  "_about": "Track A ground card (shore plan, Nov 16 2026): the eight ground surfaces of Lake Ray Hubbard's shore, their CC0 sources, real sizes and target colours. One region pack (Tools/envloop/ground/pack.py) is the source of truth for the ground material (ground_material.py, ground_hlsl.py), the prep script and Track B's blade tips (albedo_linear is linear RGB, the mean the material draws, before wetness). Sizes are the source scan's real width; px_per_m is what each tier keeps (hero band rule: 1 cm per pixel or finer).",
+  "tiers": {
+    "Ultra": {
+      "res": 2048
+    },
+    "High": {
+      "res": 1024
+    },
+    "Medium": {
+      "res": 512
+    },
+    "Low": {
+      "res": 0,
+      "note": "Low keeps today's painted colour"
+    }
+  },
+  "surfaces": [
+    {
+      "id": "lawn",
+      "name": "Mown bermuda lawn",
+      "where": "Mown yards and the club lawn (the Mown mask from the house and club footprints), on gentle slopes above 0.8 m over the pool",
+      "source": {
+        "site": "ambientCG",
+        "asset": "Grass004",
+        "licence": "CC0",
+        "url": "https://ambientcg.com/view?id=Grass004"
+      },
+      "alternates": [
+        "ambientCG Grass005",
+        "ambientCG Grass008"
+      ],
+      "tile_m": 1.4,
+      "tile_m_known": true,
+      "feature_mm": [
+        3,
+        6
+      ],
+      "feature_note": "bermuda blade width 1.5-3 mm, mown height 40-60 mm (plan size table); the scan shows blade clusters 3-6 mm wide",
+      "albedo_linear": {
+        "summer": [
+          0.11,
+          0.14,
+          0.058
+        ],
+        "dormant": [
+          0.29,
+          0.235,
+          0.135
+        ]
+      },
+      "albedo_note": "Summer: irrigated bermuda, sRGB about (94, 106, 68) (round 1's (92, 109, 61) read too saturated after the tone curve). Dormant (Dec-Mar in north Texas): straw tan, sRGB about (148, 133, 102). Provisional until Bean's grey-card ground photos.",
+      "roughness": 0.88,
+      "height_m": 0.03,
+      "wet": {
+        "darken": 0.25,
+        "rough_wet": 0.55
+      }
+    },
+    {
+      "id": "rough",
+      "name": "Rough dry grass",
+      "where": "Unmown fields, low flats back from the water, road verges and steep grassy banks: anywhere grass that is not in the Mown mask",
+      "source": {
+        "site": "ambientCG",
+        "asset": "Ground013",
+        "licence": "CC0",
+        "url": "https://ambientcg.com/view?id=Ground013"
+      },
+      "alternates": [
+        "Poly Haven grass_ground"
+      ],
+      "tile_m": 2.0,
+      "tile_m_known": false,
+      "feature_mm": [
+        4,
+        30
+      ],
+      "feature_note": "size not published; set from its grass tufts (2-3 cm across) and dead stems",
+      "albedo_linear": {
+        "summer": [
+          0.15,
+          0.155,
+          0.075
+        ],
+        "dormant": [
+          0.265,
+          0.235,
+          0.14
+        ]
+      },
+      "albedo_note": "Summer: little bluestem and johnsongrass with brown thatch, sRGB about (108, 110, 77). Dormant: straw, sRGB about (141, 133, 104).",
+      "roughness": 0.92,
+      "height_m": 0.05,
+      "wet": {
+        "darken": 0.25,
+        "rough_wet": 0.6
+      }
+    },
+    {
+      "id": "clay",
+      "name": "Blackland clay",
+      "where": "Steep and eroded faces, bare banks above the swash, cut banks: the slope term",
+      "source": {
+        "site": "Poly Haven",
+        "asset": "brown_mud_dry",
+        "licence": "CC0",
+        "url": "https://polyhaven.com/a/brown_mud_dry"
+      },
+      "alternates": [
+        "ambientCG Ground109"
+      ],
+      "tile_m": 1.3,
+      "tile_m_known": true,
+      "feature_mm": [
+        5,
+        40
+      ],
+      "feature_note": "crumbly clods 1-4 cm, the dry crumb of a Houston Black / Austin series vertisol",
+      "albedo_linear": {
+        "summer": [
+          0.15,
+          0.125,
+          0.095
+        ],
+        "dormant": [
+          0.15,
+          0.125,
+          0.095
+        ]
+      },
+      "albedo_note": "Dry blackland clay is a dark grey brown, sRGB about (108, 99, 87); the tan wave-cut faces of the lake's banks are a little lighter (the vertex colour's bank tone carries that).",
+      "roughness": 0.93,
+      "height_m": 0.04,
+      "wet": {
+        "darken": 0.45,
+        "rough_wet": 0.35
+      }
+    },
+    {
+      "id": "gravel",
+      "name": "Limestone gravel",
+      "where": "Wave-washed shingle on exposed points (0.1 to 0.7 m over the water, on the shore cells), the club's paths and lots (Track H later)",
+      "source": {
+        "site": "ambientCG",
+        "asset": "Gravel023",
+        "licence": "CC0",
+        "url": "https://ambientcg.com/view?id=Gravel023"
+      },
+      "alternates": [
+        "ambientCG Gravel037",
+        "ambientCG Ground062S"
+      ],
+      "tile_m": 1.5,
+      "tile_m_known": true,
+      "feature_mm": [
+        8,
+        25
+      ],
+      "feature_note": "crushed limestone 3/4 inch and under (8-25 mm stones)",
+      "albedo_linear": {
+        "summer": [
+          0.265,
+          0.25,
+          0.215
+        ],
+        "dormant": [
+          0.265,
+          0.25,
+          0.215
+        ]
+      },
+      "albedo_note": "Weathered, dirty crushed limestone at the waterline (silt film, algae stain), sRGB about (141, 137, 128); clean white crushed stone (0.33+) read as a painted patch in round 1.",
+      "roughness": 0.85,
+      "height_m": 0.02,
+      "wet": {
+        "darken": 0.35,
+        "rough_wet": 0.4
+      }
+    },
+    {
+      "id": "sand",
+      "name": "Sand",
+      "where": "The club beach and the lighter bank cells (the vertex colour's sandy bank tone), swash zone 0 to 0.5 m",
+      "source": {
+        "site": "Poly Haven",
+        "asset": "sand_01",
+        "licence": "CC0",
+        "url": "https://polyhaven.com/a/sand_01"
+      },
+      "alternates": [
+        "ambientCG Ground054",
+        "Poly Haven damp_sand"
+      ],
+      "tile_m": 1.5,
+      "tile_m_known": true,
+      "feature_mm": [
+        10,
+        40
+      ],
+      "feature_note": "trampled sand-clay: crust, ripples and footprints 1-4 cm; single grains (0.1-2 mm) are below a pixel at every tier, as they are to the eye at 3 m",
+      "albedo_linear": {
+        "summer": [
+          0.3,
+          0.25,
+          0.175
+        ],
+        "dormant": [
+          0.3,
+          0.25,
+          0.175
+        ]
+      },
+      "albedo_note": "Tan reservoir beach sand (brought-in concrete sand over clay), sRGB about (149, 137, 117).",
+      "roughness": 0.9,
+      "height_m": 0.02,
+      "wet": {
+        "darken": 0.4,
+        "rough_wet": 0.35
+      }
+    },
+    {
+      "id": "mud",
+      "name": "Wet mud",
+      "where": "The swash band (the water's edge to about 0.3 m over it) and the bed just under the surface",
+      "source": {
+        "site": "Poly Haven",
+        "asset": "brown_mud_02",
+        "licence": "CC0",
+        "url": "https://polyhaven.com/a/brown_mud_02"
+      },
+      "alternates": [
+        "Poly Haven brown_mud_03"
+      ],
+      "tile_m": 1.3,
+      "tile_m_known": true,
+      "feature_mm": [
+        10,
+        150
+      ],
+      "feature_note": "footprints, ruts and slumps 1-15 cm",
+      "albedo_linear": {
+        "summer": [
+          0.085,
+          0.072,
+          0.052
+        ],
+        "dormant": [
+          0.085,
+          0.072,
+          0.052
+        ]
+      },
+      "albedo_note": "Saturated clay mud, already wet: dark olive brown, sRGB about (82, 76, 64). Its wetness is in the albedo, so the wet term only lowers its roughness.",
+      "roughness": 0.45,
+      "height_m": 0.04,
+      "wet": {
+        "darken": 0.0,
+        "rough_wet": 0.25
+      }
+    },
+    {
+      "id": "cracked",
+      "name": "Cracked dry mud",
+      "where": "Lake bed left dry when the lake is under its pool (the gauge level): below 0 m pool height, above the water by 0.15 m or more, gentle slopes",
+      "source": {
+        "site": "Poly Haven",
+        "asset": "mud_cracked_dry_03",
+        "licence": "CC0",
+        "url": "https://polyhaven.com/a/mud_cracked_dry_03"
+      },
+      "alternates": [
+        "Poly Haven mud_cracked_dry_riverbed_002",
+        "ambientCG Ground031"
+      ],
+      "tile_m": 1.5,
+      "tile_m_known": true,
+      "feature_mm": [
+        80,
+        250
+      ],
+      "feature_note": "desiccation polygons 8-25 cm, cracks 5-15 mm",
+      "albedo_linear": {
+        "summer": [
+          0.175,
+          0.155,
+          0.12
+        ],
+        "dormant": [
+          0.175,
+          0.155,
+          0.12
+        ]
+      },
+      "albedo_note": "Dried lake silt crust, grey tan, sRGB about (117, 110, 97); 0.205 read as concrete at 15 m in round 1.",
+      "roughness": 0.9,
+      "height_m": 0.015,
+      "wet": {
+        "darken": 0.4,
+        "rough_wet": 0.4
+      }
+    },
+    {
+      "id": "litter",
+      "name": "Leaf litter",
+      "where": "Under trees (the vertex colour's canopy tone) and in the wooded banks",
+      "source": {
+        "site": "Poly Haven",
+        "asset": "forest_leaves_02",
+        "licence": "CC0",
+        "url": "https://polyhaven.com/a/forest_leaves_02"
+      },
+      "alternates": [
+        "Poly Haven dry_decay_leaves",
+        "Poly Haven brown_mud_leaves_01"
+      ],
+      "tile_m": 3.0,
+      "tile_m_known": true,
+      "feature_mm": [
+        20,
+        120
+      ],
+      "feature_note": "post oak and cedar elm leaves 3-12 cm, twigs, patches of moss",
+      "albedo_linear": {
+        "summer": [
+          0.11,
+          0.095,
+          0.055
+        ],
+        "dormant": [
+          0.14,
+          0.105,
+          0.065
+        ]
+      },
+      "albedo_note": "Oak litter under shade, brown with green moss, sRGB about (93, 87, 66); winter adds fresh fallen leaves, warmer.",
+      "roughness": 0.9,
+      "height_m": 0.03,
+      "wet": {
+        "darken": 0.3,
+        "rough_wet": 0.5
+      }
+    }
+  ]
+}
