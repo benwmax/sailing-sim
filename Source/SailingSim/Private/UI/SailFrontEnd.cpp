@@ -1152,7 +1152,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(S.Name, EType::Ui, Fg) ]
-					+ SHorizontalBox::Slot().AutoWidth()[ Pill(S.Tag, S.Tag == TEXT("Home")) ]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 26.f, 0.f)[ Pill(S.Tag, S.Tag == TEXT("Home")) ]	// clear of the chosen row's tick
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(S.Detail, EType::Small, Muted) ]
 			]
@@ -1468,6 +1468,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	for (const SailCatalog::FRealDay& D : SailCatalog::RealDays())
 	{
 		const bool bOk = Pending.World == 0;
+		// The card's second line carries the date: the title drops its "(11 June 2023)", which wrapped it to three lines.
+		FString DayTitle = D.Title;
+		int32 Paren = INDEX_NONE;
+		if (DayTitle.FindChar(TCHAR('('), Paren) && Paren > 0) DayTitle = DayTitle.Left(Paren).TrimEnd();
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(12.f, 8.f)).IsEnabled(bOk)
 			.IsSelected_Lambda([this, Date = D.Date]() { return Pending.Conditions.RealDay == Date; })
 			.OnClicked_Lambda([this, D, bInGame]()
@@ -1483,7 +1487,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			})
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(D.Title, EType::Ui, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(DayTitle, EType::Ui, Fg, true) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? D.Summary : FString(TEXT("Lake Ray Hubbard only")), EType::Small, Muted, true) ]
 		];
 		Days->AddSlot(Slot % 2, Slot / 2)[ B ];
