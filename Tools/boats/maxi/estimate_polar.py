@@ -9,9 +9,11 @@ Method, per reference boat and point:
   3. Reynolds: Froude scaling keeps the friction coefficient fixed, but ITTC-57's Cf at the maxi's Reynolds number (1e8)
      is about 0.6 of a small boat's; the speed rises by (Cf_ref / Cf_maxi)^(share / 2), share being the friction's part
      of the drag at that Froude number (0.85 below Fn 0.25 down to 0.3 past 0.5).
-The two scaled polars are averaged. Checked the same way from the Catalina 30 to the J/22: the scaled speeds match the
-J/22's ORC polar to 4% on average (each point within 10 to 17%), so the method is good to about 15% between keelboats;
-the maxi sits far outside the fleet (displacement-length 43 against 151 and 317), so the test allows 30%.
+The two scaled polars are averaged. Checked the same way from the Catalina 30 to the J/22: the J/22's ORC polar sails
+10% faster than the scaled speeds on average (4 to 20% at each point), so the method is good to about 20% between
+keelboats; the maxi sits far outside the fleet (displacement-length 43 against 151 and 317), so the test allows 30%.
+(Until Nov 16 2026 the J/22's sail area here was 20.7 + 9.2, her jib counted twice: 20.7 m^2 is main and jib together.
+That made the check look closer, 4%, and her estimate 2 to 9% slower; docs/jclass-13.)
 
 Run: python3 Tools/boats/maxi/estimate_polar.py
 """
@@ -21,8 +23,9 @@ ANGLES = [52, 60, 90, 120, 150]  # 120 and 150 with the spinnaker (the reference
 # Catalina 30 ORC certificate US 3522 (Fleet.cpp) and the J/22's ORC polar (PolarReference.cpp; spinnaker downwind).
 C30 = {6: [4.51, 4.76, 4.83, 4.57, 3.61], 10: [5.8, 5.99, 6.18, 6.17, 5.38], 16: [6.33, 6.51, 6.82, 7.11, 6.7]}
 J22 = {6: [4.3, 4.6, 4.9, 4.6, 3.6], 10: [5.6, 5.8, 6.1, 6.1, 5.4], 15: [6.03, 6.23, 6.75, 7.4, 6.68]}
-# LWL m, sail area (main + jib) m^2, sailing displacement volume m^3 (fresh water, crew aboard).
-BOATS = {"j22": (5.79, 20.7 + 9.2, 1.052), "c30": (7.62, 22.57 + 32.85, 5.027), "maxi": (29.6, 335.0 + 245.0, 40.165)}
+# LWL m, sail area (main + jib) m^2, sailing displacement volume m^3 (fresh water, crew aboard). The J/22's are
+# FBoatConfig's main 11.5 and jib 9.2: 223 sq ft, her published upwind area.
+BOATS = {"j22": (5.79, 11.5 + 9.2, 1.052), "c30": (7.62, 22.57 + 32.85, 5.027), "maxi": (29.6, 335.0 + 245.0, 40.165)}
 NU = 1.14e-6  # m^2/s, kinematic viscosity of fresh water at 15 C
 KNOT = 0.514444
 

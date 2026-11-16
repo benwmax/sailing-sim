@@ -669,11 +669,12 @@ namespace Sailing
 			break;
 		case EBoatType::Maxi:
 			// No published polar (a made-up boat): the Catalina 30's ORC certificate and the J/22's ORC polar scaled to her by
-			// Froude number (speeds and wind by sqrt(LWL ratio)), sail area / displacement^(2/3) (49.5 against 18.9 and 28.9)
+			// Froude number (speeds and wind by sqrt(LWL ratio)), sail area / displacement^(2/3) (49.5 against 18.9 and 20.0)
 			// and ITTC-57 friction at her Reynolds number, then averaged (Tools/boats/maxi/estimate_polar.py). Scaled the same
-			// way from the Catalina 30, the J/22's own polar comes out within 4% on average and 17% at worst; the maxi's
-			// displacement-length ratio (43) is far outside both (151, 317), hence 30%. A2 from 120.
-			AddTable(P, Tws16, 3, { 52, 60, 90, 120, 150 }, { { 7.5, 8.0, 8.3, 7.8, 6.2 }, { 11.2, 11.8, 12.2, 11.8, 9.8 }, { 13.4, 13.7, 14.3, 14.3, 13.1 } },
+			// way from the Catalina 30, the J/22's own polar is 10% faster on average and 20% at worst; the maxi's
+			// displacement-length ratio (43) is far outside both (151, 317), hence 30%. A2 from 120. (Nov 16 2026: the J/22's
+			// sail area counted once, 20.7 m^2; with her jib counted twice the table was 2 to 9% slower.)
+			AddTable(P, Tws16, 3, { 52, 60, 90, 120, 150 }, { { 8.2, 8.7, 9.0, 8.5, 6.7 }, { 11.7, 12.3, 12.7, 12.4, 10.4 }, { 13.7, 14.1, 14.6, 14.9, 13.7 } },
 				"estimate: Catalina 30 and J/22 ORC scaled by Froude, SA/D and Reynolds (estimate_polar.py)", 120.0, 0.30);
 			break;
 		default:
