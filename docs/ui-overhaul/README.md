@@ -306,3 +306,13 @@ tiling 256 px brush made at runtime (`PaperGrainValue`: a slow mottle, a finer t
 lighter, ink where darker, at most about 7% of the sheet), so there is no asset and no licence row. `PanelBox` on paper
 and `PaperSheet` lay it over the sheet's fill and under its content. `-SailingNoPaperGrain` compares.
 `SailingSim.UI.PaperGrain` holds the tile seamless and balanced.
+
+## Phase 11: controller glyphs
+
+The prompts' controller side was coloured text pills. `SPadGlyphs` (`SailWidgets.cpp`) draws them in code, so there is
+no platform artwork to license: `ParsePadGlyphs` turns a prompt's pad text ("A", "LB / RB", "← →", "R stick", "R ↕",
+"View") into glyphs. Face buttons are ink discs ringed in the pad's colour (softened), bumpers and triggers have their
+shapes, the D-pad is a cross with the arms that matter lit, a stick is a ring and cap (filled for a click, chevrons for a
+direction), View and Menu carry their marks; anything else stays a text pill. `KeyCap` shows the keyboard's cap or the
+glyphs by the last device used. `-SailingPad` shows the controller's prompts without one plugged in (stills).
+`SailingSim.UI.PadGlyphs` holds every label the prompts use to a drawn glyph.

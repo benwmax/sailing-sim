@@ -405,7 +405,12 @@ namespace SailUI
 		};
 	}
 
-	bool UsingGamepad() { return GGamepad; }
+	bool UsingGamepad()
+	{
+		// -SailingPad shows the controller's prompts without one plugged in (stills).
+		static const bool bForce = FParse::Param(FCommandLine::Get(), TEXT("SailingPad"));
+		return bForce || GGamepad;
+	}
 	bool MouseIsActive() { return GMouseActive && FPlatformTime::Seconds() - GMouseMovedAt < MouseHoverWindowSeconds; }
 
 	void FocusByHover(const TSharedRef<SWidget>& Widget)
