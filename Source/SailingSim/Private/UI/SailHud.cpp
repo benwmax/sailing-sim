@@ -351,7 +351,7 @@ namespace SailHudImpl
 			SLATE_ARGUMENT(TWeakObjectPtr<APlayerController>, Player)
 		SLATE_END_ARGS()
 		void Construct(const FArguments& A) { Player = A._Player; ForceVolatile(true); }
-		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(150, 190); }
+		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(164, 204); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
 			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
@@ -368,11 +368,11 @@ namespace SailHudImpl
 			const FVector2f C(float(S.X) * 0.5f, float(S.Y) * 0.5f);
 			// The strap, above and below the case.
 			const FLinearColor Strap = Col(Hex(0x0E171E, 0.92f));
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(78.f, float(S.Y)), FSlateLayoutTransform(FVector2f(C.X - 39.f, 0.f))), Rounded(Strap, 10.f), ESlateDrawEffect::None, Strap);
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(84.f, float(S.Y)), FSlateLayoutTransform(FVector2f(C.X - 42.f, 0.f))), Rounded(Strap, 10.f), ESlateDrawEffect::None, Strap);
 			// The case: brass, an ink bezel, the dark face.
-			Disc(C, 70.f, Brass, Layer + 1);
-			Disc(C, 64.f, Ink, Layer + 2);
-			Disc(C, 58.f, Hex(0x0B1319), Layer + 3);
+			Disc(C, 76.f, Brass, Layer + 1);
+			Disc(C, 70.f, Ink, Layer + 2);
+			Disc(C, 64.f, Hex(0x0B1319), Layer + 3);
 			// The card turns under the lubber mark: a tick each 30 degrees, longer at the cardinals, their letters inside.
 			const FLakeData& Lake = GM->GetLake();
 			const USailingSettings* U = USailingSettings::Get();
@@ -384,15 +384,16 @@ namespace SailHudImpl
 			for (int32 D = 0; D < 360; D += 30)
 			{
 				const bool bCard = D % 90 == 0;
-				FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), { On(float(D), 56.f), On(float(D), bCard ? 47.f : 51.f) }, ESlateDrawEffect::None, Col(D == 0 ? Port : (bCard ? Fg : Muted)), true, bCard ? 2.f : 1.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), { On(float(D), 62.f), On(float(D), 58.f) }, ESlateDrawEffect::None, Col(D == 0 ? Port : (bCard ? Fg : Muted)), true, bCard ? 2.f : 1.f);
 				if (!bCard) continue;
 				const FString Letter = D == 0 ? TEXT("N") : D == 90 ? TEXT("E") : D == 180 ? TEXT("S") : TEXT("W");
 				const FVector2D Sz = Measure->Measure(Letter, Small);
-				const FVector2f At = On(float(D), 37.f) - FVector2f(float(Sz.X), float(Sz.Y)) * 0.5f;
+				// The letters ride a ring well outside the figures at the centre (they collided with the time at 37 px).
+				const FVector2f At = On(float(D), 50.f) - FVector2f(float(Sz.X), float(Sz.Y)) * 0.5f;
 				FSlateDrawElement::MakeText(Out, Layer + 4, G.ToPaintGeometry(FVector2f(float(Sz.X) + 2.f, float(Sz.Y)), FSlateLayoutTransform(At)), Letter, Small, ESlateDrawEffect::None, Col(D == 0 ? Port : Fg));
 			}
 			// The lubber mark at twelve, on the bezel: the way the bow points.
-			FSlateDrawElement::MakeLines(Out, Layer + 5, G.ToPaintGeometry(), { C + FVector2f(-6.f, -68.f), C + FVector2f(0.f, -58.f), C + FVector2f(6.f, -68.f) }, ESlateDrawEffect::None, Col(Accent), true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 5, G.ToPaintGeometry(), { C + FVector2f(-6.f, -74.f), C + FVector2f(0.f, -64.f), C + FVector2f(6.f, -74.f) }, ESlateDrawEffect::None, Col(Accent), true, 2.5f);
 			// The heading in figures and the time, at the centre.
 			const FSlateFontInfo Big = Font(EType::Value);
 			const FString HdgText = FString::Printf(TEXT("%03.0f°"), Hdg >= 359.5 ? 0.0 : Hdg);
@@ -401,7 +402,7 @@ namespace SailHudImpl
 			const double Hour = GM->GetLocalHour();
 			const FString TimeText = FString::Printf(TEXT("%02d:%02d"), int32(Hour) % 24, int32(FMath::Fmod(Hour, 1.0) * 60.0));
 			const FVector2D TimeSize = Measure->Measure(TimeText, Small);
-			FSlateDrawElement::MakeText(Out, Layer + 5, G.ToPaintGeometry(FVector2f(float(TimeSize.X) + 2.f, float(TimeSize.Y)), FSlateLayoutTransform(C + FVector2f(-float(TimeSize.X) * 0.5f, float(HdgSize.Y) * 0.5f - 6.f))), TimeText, Small, ESlateDrawEffect::None, Col(Muted));
+			FSlateDrawElement::MakeText(Out, Layer + 5, G.ToPaintGeometry(FVector2f(float(TimeSize.X) + 2.f, float(TimeSize.Y)), FSlateLayoutTransform(C + FVector2f(-float(TimeSize.X) * 0.5f, float(HdgSize.Y) * 0.5f - 9.f))), TimeText, Small, ESlateDrawEffect::None, Col(Muted));
 			return Layer + 5;
 		}
 	private:
