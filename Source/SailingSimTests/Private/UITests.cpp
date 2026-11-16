@@ -144,6 +144,13 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 		TestEqual(TEXT("No red in early twilight"), SSailHud::NightHudAmount(0.25f, true), 0.f);
 		TestEqual(TEXT("All red in the dark"), SSailHud::NightHudAmount(1.f, true), 1.f);
 		TestEqual(TEXT("Turned off, never red"), SSailHud::NightHudAmount(1.f, false), 0.f);
+		// The chart minimap's scale bar (Phase 7): a round length that fits in 40% of the width.
+		float BarPx = 0.f;
+		TestEqual(TEXT("The lake's 3 km map: half a mile"), SSailHud::MiniMapScaleBar(3000.0, 198.f, BarPx), FString(TEXT("0.5 nm")));
+		TestTrue(FString::Printf(TEXT("... 926 m of it (%.1f px)"), BarPx), FMath::IsNearlyEqual(BarPx, 926.f * 198.f / 3000.f, 0.01f));
+		TestEqual(TEXT("Offshore's 8 km map: a mile"), SSailHud::MiniMapScaleBar(8000.0, 198.f, BarPx), FString(TEXT("1 nm")));
+		TestTrue(TEXT("... inside 40% of the width"), BarPx <= 198.f * 0.4f);
+		TestEqual(TEXT("No span: the shortest, no length"), SSailHud::MiniMapScaleBar(0.0, 198.f, BarPx), FString(TEXT("0.1 nm")));
 	}
 	S->World = W0; S->LaunchSpot = L0; S->BoatType = B0; S->TrafficLevel = T0; S->WeatherPreset = P0; S->StartHour = H0; S->Difficulty = D0; S->bLearningMode = bLearn0;
 	S->Save();
