@@ -582,7 +582,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		];
 
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 44;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 36 : 44;
 	TSharedRef<SWidget> Side = SNew(SBox).WidthOverride(430.f).Visibility_Lambda(Panels)
 	[
 		PanelBox(SNew(SVerticalBox)

@@ -49,6 +49,9 @@ namespace SailUI
 	/** Settings > Accessibility > Text size: every style under 30 px (body, notes, labels, buttons, values). Titles and
 	 *  the big instrument numerals are large already and keep their size, so the fixed title layouts hold. */
 	SAILINGSIM_API float TextScale();
+	/** True when the overhaul's faces (Besley, Atkinson Hyperlegible Next, B612) are all in Content/UI/Fonts and
+	 *  -SailingClassicFonts is not given; otherwise the styles stay on Saira. */
+	SAILINGSIM_API bool HasOverhaulFonts();
 	SAILINGSIM_API FSlateFontInfo Font(EType Type);
 	/** Upper-case styles are drawn upper case: the text helpers apply it. Only the short tracked labels (Eyebrow, Label)
 	 *  since the UI overhaul: sentence case reads faster from a couch. */

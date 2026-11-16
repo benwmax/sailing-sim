@@ -88,6 +88,40 @@ namespace SailUI
 			return F;
 		}
 
+		// The overhaul's faces (docs/ui-overhaul/, Phase 9): Besley for titles (a slab serif, the chart table's lettering),
+		// Atkinson Hyperlegible Next for text and labels, B612 (drawn for aircraft displays) for instrument figures. All
+		// static instances: Slate draws a variable font's lightest one.
+		const TSharedPtr<const FCompositeFont>& Besley()
+		{
+			static TSharedPtr<const FCompositeFont> F = Family(TEXT("Besley"), { { TEXT("SemiBold"), TEXT("Besley-SemiBold.ttf") }, { TEXT("Bold"), TEXT("Besley-Bold.ttf") } });
+			return F;
+		}
+		const TSharedPtr<const FCompositeFont>& Atkinson()
+		{
+			// Atkinson has no arrows (the prompts' "← →", the showroom's turn buttons, the wind's arrow drew as boxes on
+			// the first stills): those come from B612, which has them.
+			static TSharedPtr<const FCompositeFont> F = []()
+			{
+				TSharedRef<FStandaloneCompositeFont> Comp = MakeShared<FStandaloneCompositeFont>();
+				const FString Dir = FPaths::ProjectContentDir() / TEXT("UI/Fonts");
+				Comp->DefaultTypeface.AppendFont(TEXT("Regular"), Dir / TEXT("AtkinsonHyperlegibleNext-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Comp->DefaultTypeface.AppendFont(TEXT("Medium"), Dir / TEXT("AtkinsonHyperlegibleNext-Medium.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Comp->DefaultTypeface.AppendFont(TEXT("SemiBold"), Dir / TEXT("AtkinsonHyperlegibleNext-SemiBold.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				FCompositeSubFont& Arrows = Comp->SubTypefaces.AddDefaulted_GetRef();
+				Arrows.CharacterRanges.Add(FInt32Range(FInt32Range::BoundsType::Inclusive(0x2190), FInt32Range::BoundsType::Inclusive(0x21FF)));
+				Arrows.Typeface.AppendFont(TEXT("Regular"), Dir / TEXT("B612-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Arrows.Typeface.AppendFont(TEXT("Medium"), Dir / TEXT("B612-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Arrows.Typeface.AppendFont(TEXT("SemiBold"), Dir / TEXT("B612-Bold.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				return TSharedPtr<const FCompositeFont>(Comp);
+			}();
+			return F;
+		}
+		const TSharedPtr<const FCompositeFont>& B612()
+		{
+			static TSharedPtr<const FCompositeFont> F = Family(TEXT("B612"), { { TEXT("Regular"), TEXT("B612-Regular.ttf") }, { TEXT("Bold"), TEXT("B612-Bold.ttf") } });
+			return F;
+		}
+
 		// Slate sizes are in points at 96 dpi: the spec's sizes are pixels at 1080p, so 0.75 of them.
 		FSlateFontInfo Make(const TSharedPtr<const FCompositeFont>& F, const TCHAR* Face, float Px, int32 Tracking)
 		{
@@ -102,8 +136,51 @@ namespace SailUI
 		return FMath::Clamp(USailingSettings::Get()->TextScale, 100, 150) / 100.f;
 	}
 
+	bool HasOverhaulFonts()
+	{
+		// The new faces are used only when every file is there (a checkout or package without them keeps Saira), and
+		// -SailingClassicFonts keeps Saira for compared stills.
+		static int32 State = -1;
+		if (State < 0)
+		{
+			const FString Dir = FPaths::ProjectContentDir() / TEXT("UI/Fonts");
+			bool bAll = !FParse::Param(FCommandLine::Get(), TEXT("SailingClassicFonts"));
+			for (const TCHAR* File : { TEXT("Besley-SemiBold.ttf"), TEXT("Besley-Bold.ttf"), TEXT("AtkinsonHyperlegibleNext-Regular.ttf"),
+				TEXT("AtkinsonHyperlegibleNext-Medium.ttf"), TEXT("AtkinsonHyperlegibleNext-SemiBold.ttf"), TEXT("B612-Regular.ttf"), TEXT("B612-Bold.ttf") })
+			{
+				bAll = bAll && FPaths::FileExists(Dir / File);
+			}
+			State = bAll ? 1 : 0;
+		}
+		return State == 1;
+	}
+
 	FSlateFontInfo Font(EType T)
 	{
+		if (HasOverhaulFonts())
+		{
+			// The same pixel sizes as Saira's would overflow every layout: Saira is condensed, these are not. Titles are set
+			// at 0.8 of Saira's size, text at 0.88, figures at 0.84, which keeps line lengths close to what the layouts
+			// were drawn for; nothing goes under 15 px at 1080p. Capitals labels keep a little tracking.
+			const float S = TextScale();
+			switch (T)
+			{
+			case EType::Logo: return Make(Besley(), TEXT("Bold"), 96, 0);
+			case EType::ScreenTitle: return Make(Besley(), TEXT("SemiBold"), 44, 0);
+			case EType::CardTitle: return Make(Besley(), TEXT("SemiBold"), 31, 0);
+			case EType::CardTitleM: return Make(Besley(), TEXT("SemiBold"), 25, 0);
+			case EType::CardTitleS: return Make(Besley(), TEXT("SemiBold"), 20 * S, 0);
+			case EType::MenuItem: return Make(Besley(), TEXT("SemiBold"), 25, 0);
+			case EType::Eyebrow: return Make(Atkinson(), TEXT("SemiBold"), 14 * S, 60);
+			case EType::Label: return Make(Atkinson(), TEXT("SemiBold"), 14 * S, 30);
+			case EType::Ui: return Make(Atkinson(), TEXT("Medium"), 18 * S, 0);
+			case EType::Button: return Make(Atkinson(), TEXT("SemiBold"), 18 * S, 0);
+			case EType::Value: return Make(B612(), TEXT("Bold"), 18 * S, 0);
+			case EType::InstrumentBig: return Make(B612(), TEXT("Bold"), 44, 0);
+			case EType::Body: return Make(Atkinson(), TEXT("Regular"), 18 * S, 0);
+			case EType::Small: return Make(Atkinson(), TEXT("Regular"), 15 * S, 0);
+			}
+		}
 		// UI overhaul: nothing under 15 px at 1080p (labels were 12, notes 14, body 17), sentence case without the wide
 		// tracking, and the player's text size on every style under 30 px.
 		const float K = TextScale();

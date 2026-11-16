@@ -138,7 +138,7 @@ namespace SailUI
 				Steps->AddSlot().AutoWidth().Padding(4.f, 0.f)
 				[
 					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(110.f).HeightOverride(5.f)
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(122.f).HeightOverride(5.f)
 						[ SNew(SBorder).BorderImage(Rounded(bCur ? Accent : (bDone ? Fg : Muted.CopyWithNewOpacity(0.5f)), 2.f)) ] ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
 						[ Text(FString::Printf(TEXT("%d %s"), I + 1, Names[I]), EType::Label, bCur ? Accent : (bDone ? Fg : Muted)) ]

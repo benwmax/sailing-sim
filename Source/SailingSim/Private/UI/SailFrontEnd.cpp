@@ -1080,7 +1080,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildWorld()
 				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(16.f)[ Pill(Locked.IsEmpty() ? W.Tagline : FString(TEXT("Locked")), W.Index == 0) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 20.f, 24.f, 6.f)[ SailUI::Text(W.Name, EType::CardTitle, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 0.f)[ SNew(SBox).HeightOverride(80.f)[ Scroll ] ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 0.f, 24.f, 0.f)[ SNew(SBox).HeightOverride(SailUI::HasOverhaulFonts() ? 99.f : 80.f)[ Scroll ] ]	// three whole lines of either face
 			// "Read more" while the text runs on below the box.
 			+ SVerticalBox::Slot().AutoHeight().Padding(24.f, 2.f, 24.f, 12.f)
 			[
@@ -1310,7 +1310,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Label, EType::Ui, Muted) ]
-				+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(Attr(Value), EType::Value, FSlateColor(Fg)) ]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, SailUI::HasOverhaulFonts() ? 3.f : 0.f, 0.f, 0.f)[ TextAttr(Attr(Value), EType::Value, FSlateColor(Fg)) ]	// B612 sits 3 px higher than Atkinson
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 5.f, 0.f, 12.f)
 			[
@@ -1351,7 +1351,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(TEXT("Handling"), EType::Ui, Muted) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Pips ]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12 kn true wind."), EType::Small, Muted, true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ SailUI::Text(TEXT("Speeds are the boat's reference polar at 12\u00A0kn true wind."), EType::Small, Muted, true) ]
 			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).IsEnabled_Lambda([this, LockOf]() { return LockOf(FocusedBoat).IsEmpty(); })[ Next ] ]
 			// Boat skins (docs/skins): her paint, sails, lines and wear.
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
@@ -1394,7 +1394,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	];
 
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 44;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 36 : 44;
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()
 		[
@@ -1529,7 +1529,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			}))
 		: ActionButton(TEXT("Next: mode"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Mode); }));
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 40;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 31 : 40;	// Besley is wider than Saira: 40 ran past the panel
 	// Keys and the pad move focus down the column: it scrolls to keep the focused row in view (rows under the fold are out
 	// of the hit-test grid that navigation searches: Down used to stop at the sky).
 	TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(4.f, 4.f))
@@ -2159,8 +2159,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Row.Label, EType::Ui, Fg) ]
-				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(150.f)[ SailUI::Text(bListenKey ? FString(TEXT("Press a key…")) : Row.Key.GetDisplayName().ToString(), EType::Value, bListenKey ? Accent : (bPadFirst ? Muted : Fg)) ] ]
-				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(170.f)[ SailUI::Text(Pad, EType::Value, bListenPad ? Accent : bAxis || !Row.PadKey.IsValid() ? Dim : (bPadFirst ? Fg : Muted)) ] ]
+				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(150.f)[ SailUI::Text(bListenKey ? FString(TEXT("Press a key…")) : Row.Key.GetDisplayName().ToString(), EType::Button, bListenKey ? Accent : (bPadFirst ? Muted : Fg)) ] ]
+				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).WidthOverride(170.f)[ SailUI::Text(Pad, EType::Button, bListenPad ? Accent : bAxis || !Row.PadKey.IsValid() ? Dim : (bPadFirst ? Fg : Muted)) ] ]
 			];
 			Rows->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)[ B ];
 			if (!E.Focus.IsValid() || I == ListeningRow || (ListeningRow < 0 && I == FocusedControlRow)) E.Focus = B;
@@ -2418,14 +2418,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		Calls->AddSlot().AutoHeight().Padding(0.f, 4.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Reply.IsEmpty() ? FString::Printf(TEXT("“%s”"), *C.Call) : FString::Printf(TEXT("“%s”  →  “%s”"), *C.Call, *C.Reply), EType::Value, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Reply.IsEmpty() ? FString::Printf(TEXT("“%s”"), *C.Call) : FString::Printf(TEXT("“%s”  →  “%s”"), *C.Call, *C.Reply), EType::Button, Fg, true) ]
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Meaning, EType::Small, Muted, true) ]
 		];
 	}
 	TSharedRef<SVerticalBox> Left = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Drill briefing · %s"), *B->AsaSkill), EType::Eyebrow, Accent) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 14.f)[ SailUI::Text(B->Name, B->Name.Len() > 18 ? EType::CardTitle : EType::ScreenTitle, Fg, true) ]
-		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Value, Fg, true) ]
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Button, Fg, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SailUI::Text(B->Why, EType::Body, Muted, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Para(TEXT("Setup"), B->Setup, Fg) ];
 	if (B->Commands.Num()) Left->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
@@ -2445,7 +2445,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		Right->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Value, Accent) ] ]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Button, Accent) ] ]
 			+ SHorizontalBox::Slot().FillWidth(1.f)
 			[
 				SNew(SVerticalBox)
@@ -2773,7 +2773,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	{
 		const FQuizQuestion& Q = Quiz[QuizIndex];
 		const bool bAnswered = QuizChosen >= 0;
-		Box->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 16.f)[ SailUI::Text(Q.Question, EType::Value, Fg, true) ];
+		Box->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 16.f)[ SailUI::Text(Q.Question, EType::Button, Fg, true) ];
 		TSharedPtr<SWidget> First;
 		for (int32 I = 0; I < Q.Options.Num(); ++I)
 		{
@@ -2793,7 +2793,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 				SNew(SBorder).BorderImage(Rounded(FLinearColor::Transparent, RadiusButton, Edge, 2.f)).Padding(FMargin(8.f, 4.f))
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(FString::Chr(TCHAR('A' + I)), EType::Value, bAnswered && bRight ? Starboard : Accent) ]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(FString::Chr(TCHAR('A' + I)), EType::Button, bAnswered && bRight ? Starboard : Accent) ]
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Q.Options[I], EType::Body, bAnswered && !bRight && !bChosen ? Muted : Fg, true) ]
 				]
 			];
@@ -2985,7 +2985,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 				})
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Value, Muted) ] ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ SNew(SBox).WidthOverride(22.f)[ SailUI::Text(FString::FromInt(I + 1), EType::Button, Muted) ] ]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SailUI::Text(L.Title, EType::Ui, Fg) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(110.f)[ SailUI::Text(QuizText, EType::Small, R && R->bQuizPassed ? Starboard : Muted) ] ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f)[ SNew(SBox).WidthOverride(56.f)[ SailUI::Text(M == ECareerMedal::None ? FString(TEXT("–")) : FString::Printf(TEXT("%d:%02d"), Sec / 60, Sec % 60), EType::Value, Fg) ] ]

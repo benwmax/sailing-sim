@@ -539,7 +539,7 @@ namespace SailHudImpl
 				W = float(Measure->Measure(Str, F).X);
 				if (MaxW > 0.f && W > MaxW)
 				{
-					F.Size = static_cast<decltype(F.Size)>(FMath::Max(9.f, float(F.Size) * MaxW / W));
+					F.Size = static_cast<decltype(F.Size)>(FMath::Max(8.f, float(F.Size) * MaxW / W));
 					W = float(Measure->Measure(Str, F).X);
 				}
 			}

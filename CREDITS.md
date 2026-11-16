@@ -97,8 +97,9 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Crew clothing textures: ambientCG (Fabric036, Fabric048, Fabric070, Leather038), CC0.
 - Tree leaves and bark: ambientCG (LeafSet016, LeafSet019, LeafSet022, LeafSet024, Bark001), CC0.
 - Club shore: Poly Haven (polyhaven.com) models, CC0: Coast Rocks 05, Rock Moss Set 01, Boulder 01, Dead Tree Trunk and Dead Tree Trunk 02, Tree Stump 01, Grass Medium 01, Fern 02, Lifebuoy, Wooden Picnic Table, Painted Wooden Bench; by Rob Tuytel, Rico Cilliers, Jenelle van Heerden, Kirill Sannikov, Kless Gyzen, Hank Kaamura and Ulan Cabanilla.
-- Fonts: Saira (The Saira Project Authors) and Source Sans 3 (Adobe), SIL Open Font License 1.1; the licence texts
-  ship with them.
+- Fonts: Saira (The Saira Project Authors), Source Sans 3 (Adobe), Besley (The Besley Project Authors), Atkinson
+  Hyperlegible Next (The Atkinson Hyperlegible Next Project Authors) and B612 (The B612 Project Authors), SIL Open
+  Font License 1.1; the licence texts ship with them.
 - Crew: MetaHumans by Epic Games, used under the MetaHuman licence (Unreal Engine products only; not redistributed).
 - Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.
 - Boat class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) and ASA 101 are

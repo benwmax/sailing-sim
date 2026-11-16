@@ -78,7 +78,7 @@ namespace SailCatalog
 				}
 			}
 			const TArray<TSharedPtr<FJsonValue>>* Navaids = nullptr;
-			if (Root->TryGetArrayField(TEXT("navaids"), Navaids)) W.Facts.Insert({ FString::FromInt(Navaids->Num()), TEXT("Aids to navigation") }, 0);
+			if (Root->TryGetArrayField(TEXT("navaids"), Navaids)) W.Facts.Insert({ FString::FromInt(Navaids->Num()), TEXT("Buoys and lights") }, 0);
 		}
 
 		TArray<FWorld> MakeWorlds()
@@ -167,7 +167,7 @@ namespace SailCatalog
 				ReadWorld(W);
 				W.Facts.Add({ FString::FromInt(W.Spots.Num()), TEXT("Launch spots") });
 				W.Facts.Add({ TEXT("105 km"), TEXT("Clear Lake to Freeport") });
-				W.Facts.Add({ TEXT("Streamed"), TEXT("No loading on the way") });
+				W.Facts.Add({ TEXT("Open"), TEXT("No loading screens") });
 				Out.Add(W);
 			}
 			for (FWorld& W : Out)
