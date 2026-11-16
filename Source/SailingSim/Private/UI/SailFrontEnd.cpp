@@ -1125,7 +1125,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 			[
 				SNew(SBox).WidthOverride(36.f).HeightOverride(36.f)
 				[
-					SNew(SBorder).BorderImage_Lambda([this, I]() { return Rounded(Pending.LaunchSpot == I ? Accent : Chart, 18.f); }).HAlign(HAlign_Center).VAlign(VAlign_Center)
+					SNew(SBorder).BorderImage_Lambda([this, I]() { return Rounded(Pending.LaunchSpot == I ? Accent : Ink, 18.f, Pending.LaunchSpot == I ? Ink : Line, 1.5f); }).HAlign(HAlign_Center).VAlign(VAlign_Center)
 					[ SNew(STextBlock).Text(FText::AsNumber(I + 1)).Font(Font(EType::Value)).ColorAndOpacity_Lambda([this, I]() { return FSlateColor(Pending.LaunchSpot == I ? AccentInk : Fg); }) ]
 				]
 			]
@@ -2095,6 +2095,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 	using namespace SailFrontEndImpl;
 	FEntry E;
 	ASailboatPawn* P = Pawn();
+	TOptional<FScopedPaper> PaperScope;   // the key list and its notes are sheets of chart paper (UI overhaul phase 3)
+	PaperScope.Emplace();
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	if (P)
 	{
@@ -2145,20 +2147,23 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildControls()
 		}
 		if (ListeningRow < 0 && FocusedControlRow == Keys.Num() && Restore.IsValid()) E.Focus = Restore;   // after a restore, stay on it
 	}
+	const TSharedRef<SWidget> KeySheet = PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Rows ], FMargin(18.f));
+	const TSharedRef<SWidget> HelpSheet = PanelBox(SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Select a command, then press the new key (Enter or A) or controller button (Tab or Y). A key or button that another command used swaps over, so nothing is left without one."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Sticks and triggers stay on their axes (steering, the mainsheet, the camera) and can't be rebound. B cancels a listen, so B itself is reached by a swap or the defaults."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Keyboard only: no controller button by default yet. You can give one a button here (Tab or Y)."), EType::Body, Muted, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(ControlsMessage, EType::Body, Accent, true) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Bindings are saved in Input.ini, so the Mac and the PC can differ."), EType::Small, Dim, true) ]);
+	PaperScope.Reset();
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Controls"), TEXT("Keys and buttons"), 0) ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(0.66f).Padding(0.f, 0.f, 20.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Rows ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.66f).Padding(0.f, 0.f, 20.f, 0.f)[ KeySheet ]
 			+ SHorizontalBox::Slot().FillWidth(0.34f)
 			[
-				PanelBox(SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Select a command, then press the new key (Enter or A) or controller button (Tab or Y). A key or button that another command used swaps over, so nothing is left without one."), EType::Body, Muted, true) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Sticks and triggers stay on their axes (steering, the mainsheet, the camera) and can't be rebound. B cancels a listen, so B itself is reached by a swap or the defaults."), EType::Body, Muted, true) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Keyboard only: no controller button by default yet. You can give one a button here (Tab or Y)."), EType::Body, Muted, true) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(ControlsMessage, EType::Body, Accent, true) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ SailUI::Text(TEXT("Bindings are saved in Input.ini, so the Mac and the PC can differ."), EType::Small, Dim, true) ])
+				HelpSheet
 			]
 		];
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Rebind key")), Prompt(TEXT("Tab"), TEXT("Y"), TEXT("Rebind button")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());

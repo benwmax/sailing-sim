@@ -149,6 +149,22 @@ The stills of phase 1 and 2 (this folder) showed text that could not be read, an
 Stills: `pause`, `briefing` (`-SailingDrill=LeavetheDock -SailingFrontEnd=Briefing`), `quiz`
 (`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`), `career`.
 
+## Phase 3: the set-up steps
+
+From the stills of main at b2f515a6 (`world.jpg`, `launch.jpg`, `mode.jpg`, `controls.jpg`, `customize.jpg`):
+
+- **Where do you start?** The map pins and the list's numbered circles were the chart's magenta, the last of it in the
+  menus, and the chosen pin (paper with a deep-aqua edge) was lost on the paper-coloured land. Pins are now ink with a
+  paper ring, and the chosen one is the aqua accent with an ink ring; the list's circles match. Chart magenta stays on
+  the chart itself.
+- **Choose a world.** A locked card was dimmed to 45% and its reason could not be read. Disabled buttons are now 62%.
+- **Customize.** The boat's name over the scene has the ink shadow (`TextOverScene`) and the title is sentence case
+  ("Customize"), like the other screens.
+- **Controls.** The key list and its notes are two paper sheets, like Settings; the header and prompt bar stay on glass.
+- **Mode** needed nothing.
+
+Stills to retake: `world` (a locked card in view), `launch`, `controls`, `customize`.
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

@@ -259,7 +259,7 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 {
 	const bool bFocus = HasKeyboardFocus(), bSel = SelectedAttr.Get(false), bOn = IsEnabledNow();
 	FWidgetStyle S = Style;
-	if (!bOn) S.BlendColorAndOpacityTint(FLinearColor(1, 1, 1, 0.45f));
+	if (!bOn) S.BlendColorAndOpacityTint(FLinearColor(1, 1, 1, 0.62f));   // was 0.45: a locked card's reason has to read
 	const FLinearColor T = S.GetColorAndOpacityTint();
 	// On a paper sheet each glass token is drawn as its paper twin.
 	auto C = [this](const FLinearColor& Glass) { return SailUI::Surface(bPaper, Glass); };
@@ -269,8 +269,9 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? SailUI::Paper : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusCard, C(bSel ? SailUI::Selected : SailUI::Line), bSel ? 1.5f : 1.f), T);
 		break;
 	case SailUI::EButtonLook::Pin:
-		// A chosen pin is paper with an accent edge (accent on accent would not show).
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Paper : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), bSel ? SailUI::AccentDeep : SailUI::Fg, 2.f), T);
+		// Ink on the paper map with a paper ring; the chosen pin is the accent with an ink ring (UI overhaul phase 3:
+		// the chart's magenta stays on the chart, and a paper pin was lost on the paper-coloured land).
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Accent : SailUI::Ink, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), bSel ? SailUI::Ink : SailUI::Fg, 2.f), T);
 		break;
 	case SailUI::EButtonLook::MenuRow:
 		if (bFocus)

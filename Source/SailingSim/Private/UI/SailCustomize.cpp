@@ -599,8 +599,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		+ SVerticalBox::Slot().AutoHeight()
 		[
 			SNew(SVerticalBox).Visibility_Lambda(Panels)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Boat.Name, EType::Eyebrow, Accent) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(TEXT("CUSTOMIZE"))) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::TextOverScene(Boat.Name, EType::Eyebrow, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f)).Text(FText::FromString(TEXT("Customize"))) ]
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 14.f, 0.f, 92.f)
 		[
