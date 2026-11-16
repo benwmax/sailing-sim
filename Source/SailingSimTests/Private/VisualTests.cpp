@@ -89,9 +89,18 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Ultra: cumulus step cap floor 150 m"), CloudCapStepFloorM(ESailingQuality::Ultra), 150.f);
 	TestEqual(TEXT("High: 80 cloud samples (unchanged)"), CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 80.f);
 	TestEqual(TEXT("Medium: 72 cloud samples (unchanged)"), CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 72.f);
+	// docs/slip-clouds/: High's fair-weather clouds march at view 0.65 and shadow 0.5 (the slip view's 45 fps floor); Ultra
+	// keeps 3 and 4, Medium and Low 1 and 1.
+	TestEqual(TEXT("High: cloud view sample scale 0.65"), CloudViewSampleScale(ESailingQuality::High), 0.65f);
+	TestEqual(TEXT("High: cloud shadow sample scale 0.5"), CloudShadowSampleScale(ESailingQuality::High), 0.5f);
+	TestEqual(TEXT("Ultra: cloud shadow sample scale 4"), CloudShadowSampleScale(ESailingQuality::Ultra), 4.f);
+	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium })
+	{
+		TestEqual(TEXT("Medium and Low: cloud shadow sample scale 1"), CloudShadowSampleScale(Q), 1.f);
+	}
 	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium, ESailingQuality::High })
 	{
-		TestEqual(TEXT("Below Ultra: cloud view sample scale 1"), CloudViewSampleScale(Q), 1.f);
+		if (Q != ESailingQuality::High) TestEqual(TEXT("Medium and Low: cloud view sample scale 1"), CloudViewSampleScale(Q), 1.f);
 		TestEqual(TEXT("Below Ultra: no cumulus step cap floor"), CloudCapStepFloorM(Q), 0.f);
 	}
 	for (const TArray<FQualityCVar>* Tier : { &High, &Ultra })

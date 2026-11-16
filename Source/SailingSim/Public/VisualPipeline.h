@@ -36,9 +36,13 @@ SAILINGSIM_API int32 QualityGIScalabilityLevel(ESailingQuality Quality);
 SAILINGSIM_API TArray<FQualityCVar> QualityCVars(ESailingQuality Quality);
 
 /** The volumetric clouds' view-ray sample scale per tier (UVolumetricCloudComponent::ViewSampleCountScale): Ultra 3,
- *  every other tier 1. It only takes effect up to r.VolumetricCloud.ViewRaySampleMaxCount (QualityCVars), so the two
- *  rise together (docs/cloud-shimmer). */
+ *  High 0.65 in fair weather (docs/slip-clouds/; 1 under a storm deck), Medium and Low 1. It only takes effect up to
+ *  r.VolumetricCloud.ViewRaySampleMaxCount (QualityCVars), so on Ultra the two rise together (docs/cloud-shimmer). */
 SAILINGSIM_API float CloudViewSampleScale(ESailingQuality Quality);
+
+/** The volumetric clouds' shadow-ray sample scale per tier (ShadowViewSampleCountScale): Ultra 4, High 0.5
+ *  (docs/slip-clouds/), Medium and Low 1. */
+SAILINGSIM_API float CloudShadowSampleScale(ESailingQuality Quality);
 
 /** The cumulus step-depth cap's minimum step (m, M_CloudLayers' CloudCapStepFloor; docs/near-cloud-grain): each near
  *  step's opacity is capped as if the step were at least this long, so a cloud base closes over several steps and its
