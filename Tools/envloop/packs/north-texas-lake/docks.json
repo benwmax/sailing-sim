@@ -1,7 +1,7 @@
 {
  "pack": "north-texas-lake",
  "track": "F",
- "note": "Docks, boathouses, marina sheds and the boats that fill their sockets. Assets are Track F's meshes (Tools/envloop/docks/cards.json). A dock or boathouse is picked per banked house lot by the rules (HouseKit's boathouse rule decides 'boathouse'); boats and fittings fill sockets by name (boat_N, pwc_port_N, pwc_N, kayak_N, umbrella_0, chairs_0), N counting from 0. Regulations behind the rules: the cards' _rules (Rockwall Takeline, Heath).",
+ "note": "Docks, boathouses, marina sheds and the boats that fill their sockets. Assets are Track F's meshes (Tools/envloop/docks/cards.json). A dock or boathouse is picked per banked house lot by the rules (HouseKit's boathouse rule decides 'boathouse'); boats and fittings fill sockets by name (boat_N, pwc_port_N, pwc_N, kayak_N, umbrella_0, chairs_0), N counting from 0. Regulations behind the rules: the cards' _rules (Rockwall Takeline, Heath). dock_share: the share of banked lots without a boathouse that get a dock (first guess, Bean's photo trip settles it). socket_fill: the chance each socket is filled (\"a moored boat on some\"). Boats on lifts sit at Z 0.62, alongside at -0.3 (the sockets carry it).",
  "entries": [
   {
    "id": "shore-dock-a",
@@ -54,13 +54,16 @@
      1.2,
      99
     ],
-    "boathouse": false
+    "boathouse": false,
+    "lot_edge": [
+     "bulkhead"
+    ]
    },
    "weight": 2,
    "sockets": [
     "boat_0"
    ],
-   "where_text": "lots with 1.2 m of water within 14 m"
+   "where_text": "seawalled lots with 1.2 m of water within 14 m (a lift wants a seawall and fixed pier)"
   },
   {
    "id": "shore-dock-d",
@@ -98,7 +101,7 @@
     "chairs_0",
     "boat_0"
    ],
-   "where_text": "bigger lots, open water views"
+   "where_text": "bigger houses (footprint as the lot-size proxy), open water"
   },
   {
    "id": "shore-dock-f",
@@ -181,12 +184,13 @@
    "sockets": [
     "boat_0"
    ],
-   "where_text": "the lake's commercial marinas (not the club, which is open slips)"
+   "where_text": "along the commercial marinas' OSM piers, one bay every 4.58 m (tile_m); not the home club",
+   "tile_m": 4.58
   },
   {
    "id": "marina-shed-end",
    "asset": "SM_MarinaShed_End",
-   "group": "marina_shed",
+   "group": "marina_shed_end",
    "where": {
     "landuse": [
      "marina"
@@ -196,7 +200,8 @@
    "sockets": [
     "boat_0"
    ],
-   "where_text": "each end of a shed row"
+   "where_text": "one at each end of a shed row",
+   "row_end": true
   },
   {
    "id": "shore-pwc-port",
@@ -212,7 +217,7 @@
    "id": "shore-boat-runabout-covered",
    "asset": "SM_ShoreBoat_RunaboutCovered",
    "group": "boat",
-   "weight": 2,
+   "weight": 3,
    "fills": [
     "boat_N"
    ],
@@ -222,7 +227,7 @@
    "id": "shore-boat-runabout-open",
    "asset": "SM_ShoreBoat_RunaboutOpen",
    "group": "boat",
-   "weight": 2,
+   "weight": 1,
    "fills": [
     "boat_N"
    ],
@@ -248,5 +253,14 @@
    ],
    "where_text": "pwc sockets on ports"
   }
- ]
+ ],
+ "dock_share": 0.8,
+ "socket_fill": {
+  "boat_N": 0.6,
+  "pwc_port_N": 1.0,
+  "pwc_N": 0.5,
+  "kayak_N": 0.5,
+  "umbrella_0": 0.4,
+  "chairs_0": 0.5
+ }
 }

@@ -37,6 +37,7 @@ RULES = {
     "lot":            ("set", ["none", "house", "club"], "inside a house lot or the home club (houses, marina)"),
     "lot_edge":       ("set", ["none", "bulkhead", "riprap", "natural"], "the lot's bank type (lots)"),
     "boathouse":      ("bool", "the lot gets HouseKit's boathouse (lots)"),
+    "street_side":    ("bool", "on the street side of the house, the side HouseKit's lot dressing finds the street (lots)"),
     "house_m":        ("range", "distance to the nearest house wall (houses)"),
     "footprint_m2":   ("range", "the house's footprint area (houses)"),
     "storeys":        ("range", "the house's storeys (houses)"),

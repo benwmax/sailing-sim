@@ -10,8 +10,8 @@ Three rules every track keeps (the shore plan, "Built to work for other location
 1. **Region content is in the pack.** A track's builders make assets; the pack says which of them a region uses and
    where. Nothing North Texas–specific goes in a script.
 2. **Placement is by rule from map data.** A pack entry's `where` may only use the inputs in `pack.py RULES` (distance and
-   height to the water, depth, slope, tree cover, crown height, land use, house lot, bank type, boathouse, distance to a
-   house, footprint, storeys, roof shape, commercial). The only hand placement is the home club (`hand_placed`).
+   height to the water, depth, slope, tree cover, crown height, land use, house lot, bank type, boathouse, street side,
+   distance to a house, footprint, storeys, roof shape, commercial). The only hand placement is the home club (`hand_placed`).
 3. **Buildings are parts plus recipes.** A house style picks one part per slot (wall, roof finish, window, door, garage
    door, chimney, porch, trim) by weight. The roof shape is not picked: it comes from the house's lidar fit.
 
