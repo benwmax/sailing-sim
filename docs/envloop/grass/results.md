@@ -1,3 +1,32 @@
+# Track B round 2 results (16 Nov 2026)
+
+`python3 Tools/envloop/grass/check_grass.py --renders Artifacts/grass/set2` (pack `north-texas-lake`):
+
+| Check | Result |
+| --- | --- |
+| 1 Size | PASS: all 33 plant meshes inside their cards (the 6 far cards are 4-triangle outlines, not checked for size) |
+| 2 Colour | PASS: lawn and rough blades still match Track A's ground means, both seasons |
+| 3 Repeat | PASS: 0.023 to 0.039 along the bank at 15 m (limit 0.35) |
+| 4 Variety | PASS: unchanged |
+| 5 Blind | Round 2 beats round 1, 2 to 1: a clear win at 60 m on High (far cards), close to a draw at 15 m; see [blind.md](blind.md) |
+| 6 Budget | PASS: 39 meshes (33 plus 6 far cards at 4 triangles) under their cards |
+
+What changed: the stand rules (in `pack.json`: a vigour field sets height and density by patch, a few small gaps, plants
+a little shorter toward the bank top, no grid in the spacing), a fuller bluestem Light copy (288 triangles), a duller
+dormant bluestem, far crossed cards for the bunch grasses, sedge, rough and horseweed (`SM_Grass_*_Far`, 4 triangles,
+atlas `T_GrassFar_<season>` baked by `render_grass.py --bake-far`) from 60 to 150 m on High and 100 to 200 m on Ultra,
+and everything specific to North Texas moved into the region pack `packs/north-texas-lake/`.
+
+| View | Plants placed | Of them far cards | Triangles placed (million) |
+| --- | --- | --- | --- |
+| `shore_15m_noon_summer` | 1190 | 0 | 1.92 |
+| `shore_3m_noon_summer` | 1019 | 0 | 0.99 |
+| `shore_60m_noon_summer` | 2088 | 2081 | 0.01 |
+| `shore_60m_noon_summer_Ultra` | 3536 | 0 | 0.80 |
+
+At 60 m on High the bank now has grass: about 2,100 far cards for under 0.01 M triangles (round 1: nothing). The far
+cards still read as an even fence of upright spikes; next round softens their outlines.
+
 # Track B round 1 results (16 Nov 2026)
 
 `python3 Tools/envloop/grass/check_grass.py --renders Artifacts/grass/set` on branch claude/project-thread-q0885m:

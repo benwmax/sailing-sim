@@ -8,7 +8,7 @@ Needs Blender's Python (`bpy` 5.x), numpy and Pillow. A shot is <view>_<dist>m_<
          then mown lawn with weeds), the shore plan's target view
   dist   3, 15 or 60 m from the waterline, eye 1.5 m above the water (the plan's standard renders)
   light  noon (sun 68 deg), low (sun 12 deg, from the side and a little behind the camera: evening light on the bank), overcast (no sun, a grey sky)
-  season summer or dormant (grass_look.json)
+  season summer or dormant (the pack's look.json)
   tier   High (lawn blades to 20 m, bank plants to 60 m) or Ultra (bank plants to 100 m); past them the ground is a
          flat stand-in for Track A's texture at its mean colour
 Placement follows the plan's bands: hero meshes to 30 m (lawn hero to 8 m, its Light copy to 20 m), Light copies past
@@ -36,7 +36,7 @@ import grass_geo as G  # noqa: E402
 import bpy  # noqa: E402
 from build_grass import to_object  # noqa: E402
 
-LOOK = json.load(open(os.path.join(HERE, "grass_look.json")))
+LOOK = G.pack()["look"]                # the region pack (--pack, default north-texas-lake)
 WATER = (0.045, 0.055, 0.04)         # Ray Hubbard's turbid olive, as the shore loop's renderers use
 CLAY = (0.20, 0.13, 0.08)            # blackland clay at the wet toe (Track A will own this)
 HFOV = math.radians(55.0)            # a 35 mm-ish lens, about the game's helm view
@@ -81,7 +81,7 @@ def species_colours(card, season):
     return c, look["translucency"], look["roughness"]
 
 
-def grass_material(name, card, season, seed_slot):
+def grass_material(name, card, season, seed_slot, emit=False):
     """The grass material as the game will build it (its own script after the slice): root-to-tip blend along UV V,
     the root darkened toward the ground by the height fraction, a per-blade value and hue nudge from the colour's G,
     stalks and seed heads by B, mown tips by A, a pale midrib on johnsongrass; diffuse plus a translucent share for the
@@ -150,6 +150,11 @@ def grass_material(name, card, season, seed_slot):
     L.new(hsv.outputs[0], mul.inputs[6])
     L.new(shade, mul.inputs[7])
     col = mul.outputs[2]
+    if emit:                                            # the far-card baker reads the base colour only
+        em = N.new("ShaderNodeEmission")
+        L.new(col, em.inputs["Color"])
+        L.new(em.outputs[0], out.inputs["Surface"])
+        return m
     pb = N.new("ShaderNodeBsdfPrincipled")
     L.new(col, pb.inputs["Base Color"])
     pb.inputs["Roughness"].default_value = rough
@@ -162,6 +167,94 @@ def grass_material(name, card, season, seed_slot):
     L.new(tr.outputs[0], ms.inputs[2])
     L.new(ms.outputs[0], out.inputs["Surface"])
     return m
+
+
+FAR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "Artifacts", "grass", "far")
+
+
+def card_material(season):
+    """The far cards' material: the baked atlas's colour and its alpha as a cutout, lit like the blades."""
+    m = bpy.data.materials.new(f"GrassFar_{season}")
+    m.use_nodes = True
+    nt = m.node_tree
+    img = bpy.data.images.load(os.path.join(FAR_DIR, f"T_GrassFar_{season}.png"))
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = img
+    tex.interpolation = "Linear"
+    uv = nt.nodes.new("ShaderNodeUVMap")
+    nt.links.new(uv.outputs["UV"], tex.inputs["Vector"])
+    pb = nt.nodes["Principled BSDF"]
+    nt.links.new(tex.outputs["Color"], pb.inputs["Base Color"])
+    clip = nt.nodes.new("ShaderNodeMath")
+    clip.operation = "GREATER_THAN"
+    clip.inputs[1].default_value = 0.4
+    nt.links.new(tex.outputs["Alpha"], clip.inputs[0])
+    nt.links.new(clip.outputs[0], pb.inputs["Alpha"])
+    pb.inputs["Roughness"].default_value = 0.6
+    pb.inputs["Specular IOR Level"].default_value = 0.3
+    return m
+
+
+def bake_far(out, slot=256):
+    """Bake the far cards' atlas, one per season: each FAR_ATLAS plant's hero mesh seen side-on in an orthographic
+    square (the card's own frame, grass_geo.far_frame), its material's base colour (an emission copy, no light) and
+    coverage as alpha. Transparent texels take the mean colour so mips and filtering don't darken the edges. Writes
+    T_GrassFar_<season>.png (sRGB, straight alpha), 3 x 2 slots in FAR_ATLAS order."""
+    os.makedirs(out, exist_ok=True)
+    for season in ("summer", "dormant"):
+        atlas = np.zeros((2 * slot, 3 * slot, 4), dtype=np.float32)
+        for i, cid in enumerate(G.pack()["far"]["atlas"]):
+            sc = reset()
+            sc.render.film_transparent = True
+            sc.world = bpy.data.worlds.new("Black")
+            sc.world.use_nodes = True
+            sc.world.node_tree.nodes["Background"].inputs[1].default_value = 0.0
+            pl = G.catalogue(False)[G.pack()["far"]["source"][cid]][1]()
+            o = to_object(pl, "src")
+            o.data.materials.clear()
+            o.data.materials.append(grass_material("leaf", cid, season, False, emit=True))
+            o.data.materials.append(grass_material("seed", cid, season, True, emit=True))
+            side = G.far_frame(cid)
+            cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam"))
+            cam.data.type = "ORTHO"
+            cam.data.ortho_scale = side
+            cam.location = (0.0, -10.0, side / 2)
+            cam.rotation_euler = (math.pi / 2, 0.0, 0.0)
+            sc.collection.objects.link(cam)
+            sc.camera = cam
+            sc.render.resolution_x = sc.render.resolution_y = slot
+            sc.cycles.samples = 16
+            sc.cycles.use_denoising = False
+            path = os.path.join(out, f"slot_{i}.exr")
+            sc.render.filepath = path
+            bpy.ops.render.render(write_still=True)
+            px = read_exr(path)
+            os.remove(path)
+            a = px[..., 3:4]
+            rgb = np.where(a > 1e-4, px[..., :3] / np.maximum(a, 1e-4), 0.0)
+            # Seen from 60 m a 5 mm blade is a twentieth of a pixel, but a stand of them reads as solid: thicken the
+            # coverage by two texels (max filter) so the card keeps its mass through the mips, colour pushed out too.
+            for _ in range(2):
+                pad = np.pad(a[..., 0], 1, mode="edge")
+                grown = np.max([pad[1 + dy:1 + dy + slot, 1 + dx:1 + dx + slot] for dy in (-1, 0, 1) for dx in (-1, 0, 1)], axis=0)
+                padc = np.pad(rgb, ((1, 1), (1, 1), (0, 0)), mode="edge")
+                padw = np.pad(a[..., 0], 1)
+                acc = sum(padc[1 + dy:1 + dy + slot, 1 + dx:1 + dx + slot] * padw[1 + dy:1 + dy + slot, 1 + dx:1 + dx + slot, None]
+                          for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+                wsum = sum(padw[1 + dy:1 + dy + slot, 1 + dx:1 + dx + slot] for dy in (-1, 0, 1) for dx in (-1, 0, 1))[..., None]
+                rgb = np.where(a > 0.5, rgb, acc / np.maximum(wsum, 1e-6))
+                a = grown[..., None]
+            r, c = i // 3, i % 3
+            atlas[r * slot:(r + 1) * slot, c * slot:(c + 1) * slot, :3] = rgb
+            atlas[r * slot:(r + 1) * slot, c * slot:(c + 1) * slot, 3:] = a
+            print(f"Far card {cid} {season}: side {side:.2f} m, cover {float((a > 0.4).mean()):.2f}")
+        cov = atlas[..., 3] > 0.4
+        mean = atlas[..., :3][cov].mean(axis=0) if cov.any() else np.zeros(3)
+        atlas[..., :3] = np.where(atlas[..., 3:] > 0.05, atlas[..., :3], mean)
+        lin = np.clip(atlas[..., :3], 0, 1)
+        srgb = np.where(lin <= 0.0031308, 12.92 * lin, 1.055 * np.power(lin, 1 / 2.4) - 0.055)
+        rgba = np.concatenate([srgb, np.clip(atlas[..., 3:], 0, 1)], axis=2)
+        Image.fromarray((rgba * 255 + 0.5).astype(np.uint8), "RGBA").save(os.path.join(out, f"T_GrassFar_{season}.png"))
 
 
 def flat_material(name, colour, rough=0.9, noise=0.0):
@@ -201,6 +294,7 @@ def reset():
     sc.cycles.diffuse_bounces = 2
     sc.cycles.transmission_bounces = 2
     sc.cycles.use_adaptive_sampling = True
+    sc.cycles.transparent_max_bounces = 64   # far cards stack many deep along a grazing view
     sc.view_settings.view_transform = "Standard" if "Standard" in [e.identifier for e in sc.view_settings.bl_rna.properties["view_transform"].enum_items] else sc.view_settings.view_transform
     sc.render.image_settings.file_format = "OPEN_EXR"
     sc.render.image_settings.color_depth = "32"
@@ -379,6 +473,12 @@ class Kit:
             bpy.context.scene.collection.objects.unlink(o)
             me = o.data
             me.materials.clear()
+            if kind == "far":
+                if "far" not in self.mats:
+                    self.mats["far"] = card_material(self.season)
+                me.materials.append(self.mats["far"])
+                self.proto[name] = (me, pl.tri_count)
+                return self.proto[name]
             if card not in self.mats:
                 self.mats[card] = (grass_material(f"{card}_leaf", card, self.season, False),
                                    grass_material(f"{card}_seed", card, self.season, True))
@@ -404,24 +504,57 @@ def in_view(x, y, cy, margin=2.0):
     return d > 0.3 and abs(x) < d * math.tan(HFOV / 2) + margin
 
 
+# The stand rules the game's placement code will follow (round 2, from blind round 1's notes: "evenly spaced, the same
+# height, a hard top line"): a smooth vigour field sets each patch's height and density, the stand thins and shortens
+# toward the dry bank top, and bare gaps open where vigour is lowest.
+STAND = G.pack()["stand"]
+BANDS = G.pack()["bands"]
+
+
+def vigour(x, y):
+    return min(1.0, max(0.0, (field(x, y, STAND["vigour_seed"]) - 0.25) / 0.5))
+
+
+def stand(x, y, rng):
+    """(placed?, scale) for a bunch at (x, y) on the bank, by the stand rules."""
+    v = vigour(x, y)
+    top = min(1.0, max(0.0, (y - 0.8) / (EDGE_Y - 1.2)))
+    if v < STAND["gap_below"] and rng.random() < 0.7:
+        return False, 1.0
+    dens = STAND["density_low"] + (STAND["density_high"] - STAND["density_low"]) * v
+    scale = (STAND["scale_low"] + (STAND["scale_high"] - STAND["scale_low"]) * v) * (1.0 - STAND["top_shrink"] * top)
+    return rng.random() < dens, scale * rng.uniform(0.8, 1.2)
+
+
 def populate(kit, cy, tier, rng):
     """The shore bands by distance from the camera: hero to 30 m (lawn hero to 8 m, lawn Light to 20 m), Light copies
-    to the tier's limit (High 60, Ultra 100), the last fifth of each thinning out."""
-    far_lim = 100.0 if tier == "Ultra" else 60.0
+    to the tier's limit (High 60, Ultra 100), then far cards (High to 150, Ultra to 200), each band's last fifth
+    thinning out."""
+    light_lim, far_lim = BANDS[tier]["light"], BANDS[tier]["far"]
 
     def dist(x, y):
-        return math.hypot(x, y - cy) if True else 0.0
+        return math.hypot(x, y - cy)
 
     def keep(d, lim):
         return d < lim * 0.8 or rng.random() < max(0.0, (lim - d) / (lim * 0.2))
 
     def pick(base, d):
-        """Hero mesh to 30 m, then the plant's one Light copy (SM_Grass_Sedge_2 -> SM_Grass_Sedge_Light)."""
-        return base if d < 30.0 else base.rsplit("_", 1)[0] + "_Light"
+        """Hero mesh to 30 m, the plant's Light copy to the tier's limit, then its far card (None if it has none)."""
+        stem = base.rsplit("_", 1)[0]
+        if d < BANDS["hero_m"]:
+            return base
+        if d < light_lim:
+            return stem + "_Light"
+        return stem + "_Far" if stem + "_Far" in kit.cat else None
+
+    def put(base, d, x, y, scale):
+        name = pick(base, d)
+        if name:
+            kit.put(name, x, y, rng.uniform(0, 6.28), scale)
 
     # sedge at the water's edge
     y = -0.1
-    xs = np.arange(-120, 120, 0.45)
+    xs = np.arange(-160, 160, 0.45)
     for x in xs:
         for row in range(3):
             yy = y + row * 0.45 + rng.uniform(-0.15, 0.15)
@@ -431,29 +564,36 @@ def populate(kit, cy, tier, rng):
                 continue
             if field(xx, yy, 5) < 0.35 + 0.15 * row:      # gaps of bare clay
                 continue
-            kit.put(pick(f"SM_Grass_Sedge_{rng.randrange(3)}", d), xx, yy, rng.uniform(0, 6.28), rng.uniform(0.85, 1.15))
+            if d > light_lim and rng.random() < 0.5:      # far cards: half as many, each a whole tussock's outline
+                continue
+            put(f"SM_Grass_Sedge_{rng.randrange(3)}", d, xx, yy, rng.uniform(0.85, 1.15) * (0.7 + 0.5 * vigour(xx, yy)))
     # the bank: rough tiles everywhere as the base, bunch grasses and weeds in patches over them
     for yy in np.arange(1.2, EDGE_Y + 0.6, 0.5):
-        for xx in np.arange(-120, 120, 0.5):
-            x, y = xx + rng.uniform(-0.15, 0.15), yy + rng.uniform(-0.15, 0.15)
+        for xx in np.arange(-160, 160, 0.5):
+            x, y = xx + rng.uniform(-0.25, 0.25), yy + rng.uniform(-0.25, 0.25)   # a whole cell: no grid
             d = dist(x, y)
             if not in_view(x, y, cy) or not keep(d, far_lim):
                 continue
-            kit.put(pick(f"SM_Grass_Rough_{rng.randrange(3)}", d), x, y, rng.uniform(0, 6.28), rng.uniform(0.85, 1.15))
+            if d < light_lim or rng.random() < 0.25:      # past the Light band, one rough card per square metre
+                put(f"SM_Grass_Rough_{rng.randrange(3)}", d, x, y, rng.uniform(0.7, 1.3))
             f, g = field(x, y, 11), field(x, y, 29)
+            if not (0.8 < y < EDGE_Y - 0.4):
+                continue
+            placed, scale = stand(x, y, rng)
+            if not placed:
+                continue
             r = rng.random()
-            if 0.8 < y < EDGE_Y - 0.4 and r < 0.75:       # the unmown bank is a dense stand, species in patches
-                if g > 0.66:
-                    kind = f"SM_Grass_Switch_{rng.randrange(3)}"
-                elif f < 0.32 and g < 0.5:
-                    kind = f"SM_Grass_Johnson_{rng.randrange(2)}"
-                elif r < 0.03:
-                    kind = f"SM_Weed_Horseweed_{rng.randrange(2)}"
-                elif y < 2.0 and f < 0.5:
-                    kind = f"SM_Grass_Sedge_{rng.randrange(3)}"
-                else:
-                    kind = f"SM_Grass_Bluestem_{rng.randrange(3)}"
-                kit.put(pick(kind, d), x + rng.uniform(-0.2, 0.2), y, rng.uniform(0, 6.28), rng.uniform(0.85, 1.15))
+            if g > 0.66:
+                kind = f"SM_Grass_Switch_{rng.randrange(3)}"
+            elif f < 0.32 and g < 0.5:
+                kind = f"SM_Grass_Johnson_{rng.randrange(2)}"
+            elif r < 0.03:
+                kind = f"SM_Weed_Horseweed_{rng.randrange(2)}"
+            elif y < 2.0 and f < 0.5:
+                kind = f"SM_Grass_Sedge_{rng.randrange(3)}"
+            else:
+                kind = f"SM_Grass_Bluestem_{rng.randrange(3)}"
+            put(kind, d, x + rng.uniform(-0.2, 0.2), y + rng.uniform(-0.2, 0.2), scale)
     # the mown lawn: hero tiles to 8 m, the Light tile to 20 m, weeds in it
     lawn_lim = 20.0
     for yy in np.arange(EDGE_Y + 0.25, cy + lawn_lim + 1, 0.5):
@@ -488,7 +628,7 @@ def shot(out, view, dist, light, season, tier, res, samples):
     sc = reset()
     balance(sc, *lights(sc, light))
     white = meter(sc)
-    terrain(sc, -160, 160, 400, season)
+    terrain(sc, -200, 200, 400, season)
     kit = Kit(sc, season)
     populate(kit, -dist, tier, random.Random(1000 + dist))
     camera(sc, dist, res)
@@ -545,13 +685,17 @@ def studio(out, res, samples):
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument("--pack", help="region pack under Tools/envloop/grass/packs (default north-texas-lake)")
     ap.add_argument("--shots", default="standard")
     ap.add_argument("--res", default="1280x720")
     ap.add_argument("--samples", type=int, default=48)
     ap.add_argument("--studio", action="store_true")
+    ap.add_argument("--bake-far", action="store_true", help="bake the far cards' atlas to Artifacts/grass/far first")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     res = tuple(int(v) for v in a.res.split("x"))
+    if a.bake_far or not os.path.exists(os.path.join(FAR_DIR, "T_GrassFar_summer.png")):
+        bake_far(FAR_DIR)
     if a.studio:
         studio(a.out, res, a.samples)
         return

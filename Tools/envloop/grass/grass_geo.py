@@ -182,7 +182,7 @@ def rough_tile(seed, blades, stalks, size=0.5, light=False):
     pl = Plant("rough")
     for _ in range(blades):
         base = (rng.uniform(-size / 2, size / 2), rng.uniform(-size / 2, size / 2), -0.004)
-        blade(pl, base, rng.uniform(0, 2 * math.pi), rng.uniform(0.06, 0.26), rng.uniform(0.002, 0.005) * (1.8 if light else 1.0),
+        blade(pl, base, rng.uniform(0, 2 * math.pi), rng.uniform(0.06, 0.26), rng.uniform(0.002, 0.005) * (2.6 if light else 1.0),
               rng.uniform(0.15, 1.0), rng.uniform(0.2, 1.2), rng.random(), segs=2 if light else 3)
     for k in range(stalks):
         base = (rng.uniform(-size / 2, size / 2), rng.uniform(-size / 2, size / 2), -0.004)
@@ -210,7 +210,7 @@ def bluestem(seed, blades, stems, light=False):
     r0 = rng.uniform(0.07, 0.13)
     for _ in range(blades):
         base, a = _disc_point(rng, r0)
-        blade(pl, base, a + rng.uniform(-0.5, 0.5), rng.uniform(0.25, 0.6), rng.uniform(0.003, 0.006) * (1.6 if light else 1.0),
+        blade(pl, base, a + rng.uniform(-0.5, 0.5), rng.uniform(0.25, 0.6), rng.uniform(0.003, 0.006) * (2.6 if light else 1.0),
               rng.uniform(0.12, 0.7), rng.uniform(0.2, 1.1), rng.random(), segs=2 if light else 4,
               fold=0.0 if light else 0.35)
     for _ in range(stems):
@@ -243,7 +243,7 @@ def switchgrass(seed, stems, panicles, light=False):
         for k in range(2 if light else 6):             # leaves leave the stem up its lower three quarters and arch out
             t = rng.uniform(0.05, 0.75)
             p = _add(_mul(base, 1.0 - t), _mul(tip, t))
-            blade(pl, p, a + rng.uniform(-1.2, 1.2), rng.uniform(0.3, 0.55), rng.uniform(0.006, 0.012) * (1.3 if light else 1.0),
+            blade(pl, p, a + rng.uniform(-1.2, 1.2), rng.uniform(0.3, 0.55), rng.uniform(0.006, 0.012) * (2.2 if light else 1.0),
                   rng.uniform(0.3, 0.6), rng.uniform(0.5, 1.4), rnd, segs=2 if light else 4, fold=0.0 if light else 0.3)
         if i < panicles and not light:
             for k in range(rng.randint(7, 11)):        # the panicle: fine branches with tiny seeds at their ends
@@ -295,7 +295,7 @@ def sedge(seed, blades, light=False):
     r0 = rng.uniform(0.06, 0.12)
     for _ in range(blades):
         base, a = _disc_point(rng, r0)
-        blade(pl, base, a + rng.uniform(-0.4, 0.4), rng.uniform(0.3, 0.75), rng.uniform(0.003, 0.008) * (1.5 if light else 1.0),
+        blade(pl, base, a + rng.uniform(-0.4, 0.4), rng.uniform(0.3, 0.75), rng.uniform(0.003, 0.008) * (2.4 if light else 1.0),
               rng.uniform(0.15, 0.6), rng.uniform(0.8, 2.0), rng.random(), segs=3 if light else 5,
               fold=0.0 if light else 0.4)
     if not light:
@@ -400,37 +400,83 @@ def plantain(seed, light=False):
     return pl.finish()
 
 
+# ------------------------------------------------------------------------------------------------------ region packs
+
+import json  # noqa: E402
+import os  # noqa: E402
+
+PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "packs")
+# The shapes above are archetypes; a region pack (packs/<name>/pack.json) picks which, with which numbers.
+ARCHETYPES = {"mown_tile": lawn_tile, "rough_tile": rough_tile, "fine_bunch": bluestem, "panicle_clump": switchgrass,
+              "broadleaf_cane": johnsongrass, "tussock": sedge, "stalk_weed": horseweed, "lobed_rosette": dandelion,
+              "trefoil_patch": clover, "broad_rosette": plantain}
+PACK = {}
+
+
+def use_pack(name=None):
+    """Load a region pack (default: $GRASS_PACK or north-texas-lake): pack.json, look.json and cards/*.json."""
+    name = name or os.environ.get("GRASS_PACK", "north-texas-lake")
+    root = os.path.join(PACKS, name)
+    PACK.clear()
+    PACK.update(json.load(open(os.path.join(root, "pack.json"))))
+    PACK["look"] = json.load(open(os.path.join(root, "look.json")))
+    PACK["cards"] = {f[:-5]: json.load(open(os.path.join(root, "cards", f)))
+                     for f in sorted(os.listdir(os.path.join(root, "cards"))) if f.endswith(".json")}
+    PACK["root"] = root
+    return PACK
+
+
+def pack():
+    return PACK if PACK else use_pack(pack_from_argv())
+
+
+def pack_from_argv():
+    """Every tool here takes --pack <name> (read before argparse, so module-level tables see the right pack)."""
+    import sys
+    return sys.argv[sys.argv.index("--pack") + 1] if "--pack" in sys.argv else None
+
+
+# ------------------------------------------------------------------------------------------------------- far cards
+
+def far_frame(card_id):
+    """The square frame (side in metres) the baker renders the source plant into: the card is that square."""
+    lo, hi = catalogue(False)[pack()["far"]["source"][card_id]][1]().bounds()
+    return max(hi[2], hi[0] - lo[0], hi[1] - lo[1]) * 1.02
+
+
+def far_card(card_id, side):
+    """Two upright quads crossed at 90 deg (4 triangles), each showing the plant's baked side view from its atlas slot
+    (T_GrassFar_<season>: 3 x 2 slots in the pack's far.atlas order). For 60 to 150 m on High, 100 to 200 m on Ultra,
+    where a bunch is 2 to 10 pixels tall and only its outline and colour count."""
+    i = pack()["far"]["atlas"].index(card_id)
+    u0, v0 = (i % 3) / 3.0, 1.0 - (i // 3 + 1) / 2.0
+    pl = Plant("far")
+    for yaw in (0.0, math.pi / 2):
+        d = (math.cos(yaw), math.sin(yaw), 0.0)
+        ids = []
+        for cx, cz in ((-0.5, 0.0), (0.5, 0.0), (0.5, 1.0), (-0.5, 1.0)):
+            idx = pl.vert((d[0] * cx * side, d[1] * cx * side, cz * side), (0.0, 0.0, 1.0), 0.5, 0.0,
+                          u0 + (cx + 0.5) / 3.0, v0 + cz / 2.0)
+            pl.c[idx][0] = cz
+            ids.append(idx)
+        pl.tri(ids[0], ids[1], ids[2])
+        pl.tri(ids[0], ids[2], ids[3])
+    pl.blades.append((0.0, side, side))
+    return pl
+
+
 # ---------------------------------------------------------------------------------------------------------- the set
 
-def catalogue():
-    """mesh name -> (card id, builder, kind) for every mesh the track ships. kind: hero (LOD0), light, far (built by the
-    card baker, not here)."""
+def catalogue(with_far=True):
+    """mesh name -> (card id, builder, kind) for every mesh the pack ships. kind: hero (LOD0), light, far (a crossed
+    card whose texture the renderer bakes from the hero)."""
     out = {}
-    for i in range(4):
-        out[f"SM_Grass_Lawn_{i}"] = ("lawn_bermuda", lambda i=i: lawn_tile(100 + i, 230), "hero")
-    out["SM_Grass_Lawn_Light"] = ("lawn_bermuda", lambda: lawn_tile(150, 80, light=True), "light")
-    for i in range(3):
-        out[f"SM_Grass_Rough_{i}"] = ("lawn_rough", lambda i=i: rough_tile(200 + i, 220, 14), "hero")
-    out["SM_Grass_Rough_Light"] = ("lawn_rough", lambda: rough_tile(250, 70, 8, light=True), "light")
-    for i in range(3):
-        out[f"SM_Grass_Bluestem_{i}"] = ("bluestem", lambda i=i: bluestem(300 + i, 150, 8), "hero")
-    out["SM_Grass_Bluestem_Light"] = ("bluestem", lambda: bluestem(350, 70, 6, light=True), "light")
-    for i in range(3):
-        out[f"SM_Grass_Switch_{i}"] = ("switchgrass", lambda i=i: switchgrass(400 + i, 22, 10), "hero")
-    out["SM_Grass_Switch_Light"] = ("switchgrass", lambda: switchgrass(450, 16, 0, light=True), "light")
-    for i in range(2):
-        out[f"SM_Grass_Johnson_{i}"] = ("johnsongrass", lambda i=i: johnsongrass(500 + i, 8), "hero")
-    out["SM_Grass_Johnson_Light"] = ("johnsongrass", lambda: johnsongrass(550, 7, light=True), "light")
-    for i in range(3):
-        out[f"SM_Grass_Sedge_{i}"] = ("sedge", lambda i=i: sedge(600 + i, 110), "hero")
-    out["SM_Grass_Sedge_Light"] = ("sedge", lambda: sedge(650, 60, light=True), "light")
-    for i in range(2):
-        out[f"SM_Weed_Horseweed_{i}"] = ("horseweed", lambda i=i: horseweed(700 + i, 110), "hero")
-    out["SM_Weed_Horseweed_Light"] = ("horseweed", lambda: horseweed(750, 110, light=True), "light")
-    out["SM_Weed_Dandelion"] = ("lawn_weeds", lambda: dandelion(800), "hero")
-    out["SM_Weed_Clover"] = ("lawn_weeds", lambda: clover(810), "hero")
-    out["SM_Weed_Plantain"] = ("lawn_weeds", lambda: plantain(820), "hero")
-    out["SM_Weed_Dandelion_Light"] = ("lawn_weeds", lambda: dandelion(800, light=True), "light")
-    out["SM_Weed_Clover_Light"] = ("lawn_weeds", lambda: clover(810, light=True), "light")
-    out["SM_Weed_Plantain_Light"] = ("lawn_weeds", lambda: plantain(820, light=True), "light")
+    for m in pack()["meshes"]:
+        fn, args = ARCHETYPES[m["archetype"]], m.get("args", {})
+        for i in range(m.get("variants", 1)):
+            name = m["name"].replace("{i}", str(i))
+            out[name] = (m["card"], lambda fn=fn, seed=m["seed"] + i, args=args: fn(seed, **args), m["kind"])
+    if with_far:
+        for cid, src in pack()["far"]["source"].items():
+            out[src.rsplit("_", 1)[0] + "_Far"] = (cid, lambda cid=cid: far_card(cid, far_frame(cid)), "far")
     return out

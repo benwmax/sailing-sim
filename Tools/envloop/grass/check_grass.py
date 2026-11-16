@@ -27,8 +27,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import grass_geo as G  # noqa: E402
 
-LOOK = json.load(open(os.path.join(HERE, "grass_look.json")))
-CARDS = {os.path.basename(p)[:-5]: json.load(open(p)) for p in glob.glob(os.path.join(HERE, "cards", "*.json"))}
+LOOK = G.pack()["look"]                 # the region pack (--pack, default north-texas-lake)
+CARDS = G.pack()["cards"]
 HEIGHT_KEY = {"lawn_bermuda": "mown_height_m", "lawn_rough": "height_m", "bluestem": "flower_stem_height_m"}
 
 
@@ -45,6 +45,8 @@ def card_height(card):
 def check_size(built):
     fails, rows = [], []
     for name, (card_id, pl, kind) in built.items():
+        if kind == "far":                       # a card is the hero's frame: its size follows the hero
+            continue
         card = CARDS[card_id]
         lo, hi = card_height(card)
         h = pl.bounds()[1][2]
@@ -137,7 +139,7 @@ def check_repeat(render_dir):
 def solve(built):
     """Scale each lawn and rough season's leaf colours (root, tip, cut tip) by one factor per channel so the blades seen
     from above average to Track A's ground mean: the tint and the root-to-tip contrast are kept."""
-    path = os.path.join(HERE, "grass_look.json")
+    path = os.path.join(G.pack()["root"], "look.json")
     look = json.load(open(path))
     for card_id, ground in (("lawn_bermuda", "lawn"), ("lawn_rough", "rough")):
         names = [n for n, (c, _p, k) in built.items() if c == card_id and k == "hero"]
@@ -169,7 +171,7 @@ def check_budget(built, render_dir):
     fails, rows = [], []
     for name, (cid, pl, kind) in built.items():
         b = CARDS[cid]["budget"]
-        cap = b["tris_lod0_max"] if kind == "hero" else b["tris_light_max"]
+        cap = b["tris_lod0_max"] if kind == "hero" else b.get("tris_far_max", 4) if kind == "far" else b["tris_light_max"]
         ok = pl.tri_count <= cap
         rows.append((name, pl.tri_count, cap, ok))
         if not ok:
@@ -185,7 +187,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--renders")
     ap.add_argument("--json")
-    ap.add_argument("--solve", action="store_true", help="rescale the lawn and rough colours in grass_look.json so check 2 holds")
+    ap.add_argument("--pack", help="region pack (default north-texas-lake)")
+    ap.add_argument("--solve", action="store_true", help="rescale the lawn and rough colours in the pack's look.json so check 2 holds")
     a = ap.parse_args()
     built = {n: (c, fn(), k) for n, (c, fn, k) in G.catalogue().items()}
     if a.solve:
