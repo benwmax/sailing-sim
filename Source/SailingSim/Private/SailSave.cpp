@@ -203,6 +203,7 @@ FString FSailSave::ToJson() const
 	Display->SetBoolField(TEXT("cinematicLook"), S.bCinematicLook);
 	Display->SetBoolField(TEXT("lensWater"), S.bLensWater);
 	Display->SetBoolField(TEXT("cameraShake"), S.bCameraShake);
+	Display->SetBoolField(TEXT("nightHud"), S.bNightHud);
 	TSharedRef<FJsonObject> Graphics = Obj();
 	Graphics->SetNumberField(TEXT("antiAliasing"), S.AntiAliasing);
 	Graphics->SetNumberField(TEXT("shadowQuality"), S.ShadowQuality);
@@ -488,6 +489,7 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*D, TEXT("cinematicLook"), S.bCinematicLook);
 			Read(*D, TEXT("lensWater"), S.bLensWater);
 			Read(*D, TEXT("cameraShake"), S.bCameraShake);
+			Read(*D, TEXT("nightHud"), S.bNightHud);
 			Read(*D, TEXT("hudScale"), S.HudScale);
 			Read(*D, TEXT("textScale"), S.TextScale);
 			Read(*D, TEXT("speedUnits"), S.SpeedUnits);
@@ -700,6 +702,7 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bCinematicLook = In.bCinematicLook;
 	S.bLensWater = In.bLensWater;
 	S.bCameraShake = In.bCameraShake;
+	S.bNightHud = In.bNightHud;
 	S.AntiAliasing = In.AntiAliasing;
  	S.ShadowQuality = In.ShadowQuality;
  	S.LightingQuality = In.LightingQuality;
@@ -790,6 +793,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bCinematicLook = S.bCinematicLook;
 	Out.bLensWater = S.bLensWater;
 	Out.bCameraShake = S.bCameraShake;
+	Out.bNightHud = S.bNightHud;
 	Out.AntiAliasing = S.AntiAliasing;
  	Out.ShadowQuality = S.ShadowQuality;
  	Out.LightingQuality = S.LightingQuality;

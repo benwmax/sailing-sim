@@ -49,6 +49,8 @@ struct SAILINGSIM_API FSailSave
 		// change: an older file has neither and reads them on, their default).
 		bool bLensWater = true;
 		bool bCameraShake = true;
+		// UI overhaul: "nightHud" under "display" (an older file has none and reads it on, its default).
+		bool bNightHud = true;
 		// Bean's playtest: the Graphics page's rows (-1 Auto) and the Display rows (USailingSettings); "graphics" in the file.
 		int32 AntiAliasing = -1, ShadowQuality = -1, LightingQuality = -1, ReflectionQuality = -1, CloudQuality = -1, WaterQuality = -1;
 		int32 FoliageQuality = -1, ViewDistanceQuality = -1, MotionBlur = -1, FieldOfView = 0, Brightness = 100;

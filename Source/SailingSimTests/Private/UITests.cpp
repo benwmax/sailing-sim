@@ -10,6 +10,7 @@
 #include "Misc/ScopeExit.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
+#include "UI/SailUIStyle.h"
 #include "SailingHUD.h"
 #include "SailCloth.h"
 #include "EasyAssists.h"
@@ -128,6 +129,21 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 		TestTrue(TEXT("Logbook builds"), LogScreen->Current() == ESailScreen::Logbook);
 		TSharedRef<SSailHud> Hud = SNew(SSailHud);
 		TestTrue(TEXT("HUD builds"), Hud->Pawn() == nullptr);
+	}
+	{
+		// The night palette (docs/ui-overhaul/, Phase 6): day colours untouched, the dark all red, the accent still bright.
+		const FLinearColor Day = SSailHud::NightColor(SailUI::Accent, 0.f);
+		TestTrue(TEXT("By day a colour is itself"), Day.Equals(SailUI::Accent));
+		const FLinearColor Aqua = SSailHud::NightColor(SailUI::Accent, 1.f);
+		const FLinearColor Cream = SSailHud::NightColor(SailUI::Fg, 1.f);
+		TestTrue(TEXT("At night the accent is red"), Aqua.R > 3.f * Aqua.G && Aqua.R > 3.f * Aqua.B);
+		TestTrue(TEXT("... and keeps its brightness in the red"), Aqua.R > 0.3f);
+		TestTrue(TEXT("At night the text is red"), Cream.R > 3.f * Cream.G && Cream.R > 3.f * Cream.B);
+		TestTrue(TEXT("Opacity is kept"), FMath::IsNearlyEqual(SSailHud::NightColor(SailUI::Panel, 1.f).A, SailUI::Panel.A));
+		TestEqual(TEXT("No red at sunset"), SSailHud::NightHudAmount(0.f, true), 0.f);
+		TestEqual(TEXT("No red in early twilight"), SSailHud::NightHudAmount(0.25f, true), 0.f);
+		TestEqual(TEXT("All red in the dark"), SSailHud::NightHudAmount(1.f, true), 1.f);
+		TestEqual(TEXT("Turned off, never red"), SSailHud::NightHudAmount(1.f, false), 0.f);
 	}
 	S->World = W0; S->LaunchSpot = L0; S->BoatType = B0; S->TrafficLevel = T0; S->WeatherPreset = P0; S->StartHour = H0; S->Difficulty = D0; S->bLearningMode = bLearn0;
 	S->Save();

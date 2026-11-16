@@ -30,6 +30,15 @@ public:
 	virtual void Tick(const FGeometry& Geometry, const double CurrentTime, const float DeltaTime) override;
 	/** 0 full, 1 minimal (cluster, compass, drill panel, toasts), 2 off (toasts only). */
 	static int32 Mode;
+	/** The night palette (docs/ui-overhaul/, Phase 6): a HUD colour as it is drawn after dark. Red takes the colour's
+	 *  brightness, then (bTint) green and blue are cut; Amount 0 is the day colour. Text inside the HUD's tinted panel
+	 *  passes bTint false (the panel's tint does the cut). */
+	static FLinearColor NightColor(const FLinearColor& C, float Amount, bool bTint = true);
+	/** How far the palette is in for the environment's night amount (0 day .. 1 dark), in 1/16 steps; 0 when the player
+	 *  turned it off (Settings > Display > Night colours). */
+	static float NightHudAmount(float NightAmount, bool bEnabled);
+	static constexpr float NightTintGreen = 0.2f;
+	static constexpr float NightTintBlue = 0.14f;
 	/** #596: the learning tip card stays down while a scripted scene runs (the first job's instructor is the coach there;
 	 *  the two had talked at once with different instructions), and through a finished scene's handover to its lesson
 	 *  (bHandoverPending: the instructor's last line is still up). */
@@ -93,6 +102,7 @@ private:
 	void RefreshTraffic(const ASailboatPawn& P, const class ASailingGameMode& GM);
 	void RefreshScene(const ASailboatPawn& P, const class ASailingGameMode& GM);
 	TWeakObjectPtr<APlayerController> Player;
+	TWeakObjectPtr<class ASailingEnvironment> Environment;
 	double NextRefresh = 0.0;
 	/** Whether the right-hand column shows a panel under the minimap (the messages then sit left of it). */
 	bool RightPanelsShown() const;

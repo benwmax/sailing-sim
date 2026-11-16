@@ -164,6 +164,10 @@ public:
 	 *  views; never in photo mode, the capture mode or a measured run). On by default; off for anyone motion bothers. */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	bool bCameraShake = true;
+	/** UI overhaul (Bean, Nov 15 2026: "do it"): after dark the HUD turns red, as a boat's instruments do, so the eye
+	 *  keeps its night sight. On by default; off keeps the day colours all night. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	bool bNightHud = true;
 
 	// Bean's playtest (Oct 20): the Display and Graphics page. Each row is -1 (Auto: the Quality tier's own, so the tiers are
 	// presets that fill them in) or an override; benches and captures ignore them all (IsMeasuring).

@@ -32,7 +32,7 @@ starts and ends, when a drill is passed (with its lesson's medal), after each qu
     "quality": "Medium", "difficulty": "Easy", "controlLayout": "Simple",
     "learningMode": true, "trimAssist": true, "showHud": true, "uiMode": "helpful", "showCrew": false,
     "audio": { "volume": 0.8, "boat": 1, "world": 1, "weather": 1, "signals": 1, "mono": false, "captions": true },
-    "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "lensWater": true, "cameraShake": true,
+    "display": { "resolutionScale": 0, "frameCap": 0, "cinematicLook": false, "lensWater": true, "cameraShake": true, "nightHud": true,
                  "hudScale": 100, "textScale": 100,
                  "speedUnits": "kn", "depthUnits": "ft", "headingsTrue": false, "autoStart": false, "pauseOnFocusLoss": false },
     "graphics": { "antiAliasing": -1, "shadowQuality": -1, "lightingQuality": -1, "reflectionQuality": -1, "cloudQuality": -1,
