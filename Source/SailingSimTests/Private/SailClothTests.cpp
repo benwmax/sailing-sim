@@ -402,6 +402,177 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * Feedback #25: a J/22 tester on a light-air run (4 kn, TWA -162) saw the spinnaker hang far out ahead off the starboard
+ * side, connected to nothing: drawn from the physics' luff on the centreline and turned out by its chord angle, its 6.9 m
+ * foot put the clew 5 m and more out over the water. A poled spinnaker is drawn between its corners now (SpinnakerRigCm,
+ * FSailCloth::SetCorners): the tack on the pole's end, a J from the mast, to windward; the clew to leeward within reach of
+ * its sheet; the whole sail near the boat. Every boat with a symmetric spinnaker, both sides, from a reach to dead downwind,
+ * trimmed and eased, drawn (Low) and as cloth with its top collapsing; gennakers get no pole.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSpinnakerClewTest, "SailingSim.Visual.SpinnakerClew", SailClothFlags)
+bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	using namespace SpinnakerRigLimits;
+	constexpr int32 Rows = FSailCloth::Rows, Cols = FSailCloth::Cols;
+	int32 Poled = 0, Gennakers = 0;
+	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
+	{
+		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
+		if (!C.HasSpinnaker()) continue;
+		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(C.Type));
+		if (C.bAsymmetricSpinnaker)
+		{
+			++Gennakers;
+			TestFalse(FString::Printf(TEXT("%s: a gennaker has no pole"), *BoatName), SpinnakerRigCm(C, 1, PI, 0.5, 0.0).bValid);
+			continue;
+		}
+		++Poled;
+		const FHullShape& H = C.Hulls[0];
+		const double MastFront = C.MastX + 0.5 * C.MastDiameter;
+		const double JibTack = C.HasJib() ? (C.Jib.NumStrips > 1 ? C.Jib.Strips[0].LuffX - 0.5 * (C.Jib.Strips[1].LuffX - C.Jib.Strips[0].LuffX) : C.Jib.Strips[0].LuffX) : MastFront + 1.0;
+		const double JCm = (JibTack - MastFront) * CmPerMeter;
+		const double RailOutCm = (H.MaxHalfBeam + ClewOutboardM) * CmPerMeter;
+		FSailCloth PlanJib;
+		if (C.HasJib()) PlanJib.Init(C.Jib, ESailKind::Jib);
+		const FSailCloth* Jib = C.HasJib() ? &PlanJib : nullptr;
+		const FVector Head = SpinnakerHeadCm(C, nullptr, Jib);
+		FSailCloth Probe;
+		Probe.Init(C.Spinnaker, ESailKind::Spinnaker);
+		TestFalse(FString::Printf(TEXT("%s: Init leaves no corners"), *BoatName), Probe.HasCorners());
+		FSailStripState Strips[kMaxSailStrips];
+		// The apparent wind from a beam reach to dead downwind (the repro's run: about 160 deg at the masthead).
+		for (const double AwaDeg : { 90.0, 110.0, 135.0, 150.0, 162.0, 175.0, 180.0 })
+		{
+			for (const int32 Side : { 1, -1 })
+			{
+				for (const double Ease : { 0.0, 0.5, 1.0 })
+				{
+					// The wind from the side away from the sail (Sail.h: AWA + = from starboard; the sail lies to leeward).
+					const double Awa = -Side * AwaDeg * kDegToRad;
+					const FSpinnakerRig Rig = SpinnakerRigCm(C, Side, Awa, Ease, Probe.FootChord());
+					const FString Case = FString::Printf(TEXT("%s (AWA %.0f, side %d, sheet %.1f)"), *BoatName, AwaDeg, Side, Ease);
+					if (!TestTrue(Case + TEXT(": a poled spinnaker has a rig"), Rig.bValid)) continue;
+					// The pole: from the mast's front, a J long, level, to windward, between the forestay and squared back.
+					const double PoleLen = FVector::Dist(Rig.PoleHeel, Rig.Tack);
+					TestTrue(FString::Printf(TEXT("%s: the pole a J long (%.1f cm, J %.1f)"), *Case, PoleLen, JCm), FMath::Abs(PoleLen - JCm) < 1.0);
+					TestTrue(FString::Printf(TEXT("%s: the pole's heel on the mast's front (x %.1f)"), *Case, Rig.PoleHeel.X), FMath::Abs(Rig.PoleHeel.X - MastFront * CmPerMeter) < 6.0 && FMath::Abs(Rig.PoleHeel.Y) < 0.5);
+					TestTrue(FString::Printf(TEXT("%s: the pole to windward (tack y %.0f)"), *Case, Rig.Tack.Y), Rig.Tack.Y * Side < 0.0);
+					TestTrue(FString::Printf(TEXT("%s: the pole's angle %.0f deg"), *Case, Rig.PoleDeg), Rig.PoleDeg >= PoleMinDeg - 1e-6 && Rig.PoleDeg <= PoleMaxDeg + 1e-6);
+					TestTrue(FString::Printf(TEXT("%s: the pole over the deck (%.0f cm up, sheer %.0f)"), *Case, Rig.Tack.Z, H.SheerHeight(C.MastX) * CmPerMeter), Rig.Tack.Z > H.SheerHeight(C.MastX) * CmPerMeter + 50.0);
+					// The clew: to leeward, within reach of its sheet, ahead of the main, not ahead of the bow, the foot no longer
+					// than the class allows.
+					const double ClewOut = Side * (Rig.Clew.Y - H.CenterY * CmPerMeter);
+					TestTrue(FString::Printf(TEXT("%s: the clew to leeward (%.0f cm)"), *Case, ClewOut), ClewOut > H.MaxHalfBeam * CmPerMeter * 0.5);
+					TestTrue(FString::Printf(TEXT("%s: the clew at most %.1f m outside the rail (%.0f cm from the centreline)"), *Case, ClewOutboardM, ClewOut), ClewOut <= RailOutCm + 0.5);
+					TestTrue(FString::Printf(TEXT("%s: the clew ahead of the main and not past the bow (x %.0f)"), *Case, Rig.Clew.X),
+						Rig.Clew.X >= (C.MastX + ClewAheadOfMastM) * CmPerMeter - 0.5 && Rig.Clew.X <= H.BowX * CmPerMeter + 0.5);
+					TestTrue(FString::Printf(TEXT("%s: the foot within the class's (%.0f cm, J %.0f)"), *Case, FVector::Dist(Rig.Tack, Rig.Clew), JCm),
+						FVector::Dist(Rig.Tack, Rig.Clew) <= FootPerJ * JCm + 1.0);
+					// The gear: the guy's twing to windward, the sheet's quarter block to leeward and aft, on the deck.
+					TestTrue(Case + TEXT(": the twing block to windward"), Rig.GuyBlock.Y * Side < 0.0 && Rig.GuyCleat.Y * Side < 0.0);
+					TestTrue(Case + TEXT(": the quarter block to leeward, aft"), Rig.SheetBlock.Y * Side > 0.0 && Rig.SheetCleat.Y * Side > 0.0 && Rig.SheetBlock.X < Rig.SheetCleat.X);
+					TestTrue(Case + TEXT(": the gear inside the deck's edge"), FMath::Abs(Rig.GuyBlock.Y) < H.DeckHalfBeam(Rig.GuyBlock.X / CmPerMeter) * CmPerMeter
+						&& FMath::Abs(Rig.SheetBlock.Y) < H.DeckHalfBeam(Rig.SheetBlock.X / CmPerMeter) * CmPerMeter);
+
+					// The sail between its corners, drawn and as cloth: the tack and clew pinned there, the head on its halyard,
+					// nothing far out over the water or out ahead.
+					for (const bool bSimulate : { false, true })
+					{
+						FSailCloth Cloth;
+						Cloth.Init(C.Spinnaker, ESailKind::Spinnaker);
+						Cloth.SetHeadPoint(Head, Jib);
+						Cloth.SetCorners(Rig.Tack, Rig.Clew);
+						if (!TestTrue(Case + TEXT(": the corners are taken"), Cloth.HasCorners())) continue;
+						FSailClothDrive Drive;
+						Drive.ApparentWindKnots = 4.f;   // the repro's light air
+						Drive.bSimulate = bSimulate;
+						const int32 Steps = bSimulate ? 180 : 1;
+						for (int32 N = 0; N < Steps; ++N)
+						{
+							for (int32 I = 0; I < C.Spinnaker.NumStrips; ++I)
+							{
+								Strips[I].Camber = 0.20;
+								// The physics' chord angle on a run (SpinTarget, capped at 97 deg): what had swung the clew out.
+								Strips[I].AngleFromCenterline = Side * FMath::Min(AwaDeg - 10.0 + 6.0 * I, 97.0) * kDegToRad;
+								Strips[I].Flow = bSimulate && (N / 30) % 2 == 1 && I >= C.Spinnaker.NumStrips - 2 ? ESailFlow::Luffing : ESailFlow::Attached;
+							}
+							Drive.Time = N / 60.f;
+							Cloth.Step(Strips, Side, Drive);
+						}
+						const TArray<FVector>& P = Cloth.Positions();
+						const FString Shown = Case + (bSimulate ? TEXT(" cloth") : TEXT(" drawn"));
+						bool bFinite = true;
+						for (const FVector& V : P) bFinite &= !V.ContainsNaN();
+						if (!TestTrue(Shown + TEXT(": the cloth is finite"), bFinite)) continue;
+						TestTrue(FString::Printf(TEXT("%s: the tack on the pole's end (%.1f cm off)"), *Shown, FVector::Dist(P[0], Rig.Tack)), FVector::Dist(P[0], Rig.Tack) < 1.0);
+						TestTrue(FString::Printf(TEXT("%s: the clew on its sheet (%.1f cm off)"), *Shown, FVector::Dist(P[Cols - 1], Rig.Clew)), FVector::Dist(P[Cols - 1], Rig.Clew) < 1.0);
+						TestTrue(FString::Printf(TEXT("%s: the head on its halyard (%.1f cm off)"), *Shown, FVector::Dist(P[(Rows - 1) * Cols], Head)), FVector::Dist(P[(Rows - 1) * Cols], Head) < 1.0);
+						// Out to leeward no further than the clew's limit and the belly (0.15 of the luff's height); ahead no
+						// further than a metre and a half past the bow.
+						const double Belly = 0.15 * (Head.Z - Rig.Tack.Z);
+						double Out = -1e9, Ahead = -1e9, Low = 1e9;
+						for (const FVector& V : P)
+						{
+							Out = FMath::Max(Out, FMath::Abs(V.Y - H.CenterY * CmPerMeter));
+							Ahead = FMath::Max(Ahead, V.X);
+							Low = FMath::Min(Low, V.Z);
+						}
+						TestTrue(FString::Printf(TEXT("%s: the sail near the boat (%.0f cm from the centreline, limit %.0f)"), *Shown, Out, RailOutCm + Belly),
+							Out <= RailOutCm + Belly);
+						TestTrue(FString::Printf(TEXT("%s: the sail not far ahead (x %.0f, bow %.0f)"), *Shown, Ahead, H.BowX * CmPerMeter), Ahead <= (H.BowX + 1.5) * CmPerMeter);
+						TestTrue(FString::Printf(TEXT("%s: the foot clear of the deck (%.0f cm up, sheer %.0f)"), *Shown, Low, H.SheerHeight(C.MastX) * CmPerMeter),
+							Low > H.SheerHeight(C.MastX) * CmPerMeter + 30.0);
+						// QA on #728: where the sail's lower body crosses the centreline (the lower four fifths of the jib's luff; above,
+						// the leech closes on the head at the mast, behind the forestay by design) it passes ahead of the forestay (the
+						// jib's luff), not through it and the jib's tack (squared back on a dead run both corners are aft of it).
+						if (Jib && !bSimulate)
+						{
+							double Worst = 1e9, WorstZ = 0.0;
+							const double CheckTopCm = (Jib->FootZ() + 0.8 * (Jib->TopZ() - Jib->FootZ())) * CmPerMeter;
+							for (int32 R = 0; R < Rows - 1; ++R)
+							{
+								for (int32 Col = 1; Col < Cols; ++Col)
+								{
+									const FVector& V = P[R * Cols + Col];
+									if (FMath::Abs(V.Y - H.CenterY * CmPerMeter) > 30.0 || V.Z > CheckTopCm || V.Z < Jib->FootZ() * CmPerMeter) continue;
+									const double Fore = V.X - Jib->LuffXAt(V.Z / CmPerMeter, 0) * CmPerMeter;
+									if (Fore < Worst) { Worst = Fore; WorstZ = V.Z; }
+								}
+							}
+							TestTrue(FString::Printf(TEXT("%s: the cloth ahead of the forestay at the centreline (worst %.1f cm at %.0f cm up)"), *Shown, Worst, WorstZ), Worst >= 5.0);
+						}
+					}
+				}
+			}
+		}
+		// The drawn sail without its corners (the physics' foot, as in build 40226d1c) on the repro's run.
+		{
+			FSailCloth Old;
+			Old.Init(C.Spinnaker, ESailKind::Spinnaker);
+			Old.SetHeadPoint(Head, Jib);
+			for (int32 I = 0; I < C.Spinnaker.NumStrips; ++I) { Strips[I].Camber = 0.20; Strips[I].AngleFromCenterline = 97.0 * kDegToRad; Strips[I].Flow = ESailFlow::Attached; }
+			FSailClothDrive Drawn;
+			Drawn.bSimulate = false;
+			Old.Step(Strips, 1, Drawn);
+			const FSpinnakerRig Rig = SpinnakerRigCm(C, 1, -162.0 * kDegToRad, 0.5, Old.FootChord());
+			// The bug: from the physics' foot the clew was drawn past the sheet's reach; between its corners it is within it.
+			TestTrue(FString::Printf(TEXT("%s on a run: the physics' foot drew the clew %.0f cm out to starboard, past the sheet's reach (%.0f)"), *BoatName,
+				Old.Positions()[Cols - 1].Y, RailOutCm), Old.Positions()[Cols - 1].Y > RailOutCm + 50.0);
+			TestTrue(FString::Printf(TEXT("%s on a run: the clew now %.0f cm out (reach %.0f)"), *BoatName, Rig.Clew.Y, RailOutCm), Rig.Clew.Y <= RailOutCm + 0.5);
+			// A model's mast front (the hero J/22's Hounds, 2 cm behind the config's): the pole's heel on it.
+			const FVector ModelFront(MastFront * CmPerMeter - 2.0, 0.0, 783.0);
+			const FSpinnakerRig OnModel = SpinnakerRigCm(C, 1, -162.0 * kDegToRad, 0.5, Old.FootChord(), &ModelFront);
+			TestTrue(FString::Printf(TEXT("%s: the pole's heel on the model mast's front (x %.1f, front %.1f)"), *BoatName, OnModel.PoleHeel.X, ModelFront.X),
+				OnModel.bValid && FMath::Abs(OnModel.PoleHeel.X - (ModelFront.X + 3.0)) < 0.5);
+		}
+	}
+	TestTrue(TEXT("Some boats fly a poled spinnaker"), Poled >= 2);
+	TestTrue(TEXT("Some boats fly a gennaker"), Gennakers >= 1);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJibHeadTest, "SailingSim.Visual.JibHead", SailClothFlags)
 bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 {

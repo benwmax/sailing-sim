@@ -611,6 +611,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	MainCloth.Init(C.Main, ESailKind::Main);
 	JibCloth.Init(C.Jib, ESailKind::Jib);
 	SpinCloth.Init(C.Spinnaker, ESailKind::Spinnaker);
+	SpinRig = FSpinnakerRig();   // feedback #25: a new boat's rig starts from her own side and wind
 	ClothMainHeadZ = C.Main.NumStrips > 0 ? C.Main.Strips[C.Main.NumStrips - 1].ZTop : -1.0;
 	TelltaleRibbons->ClearAllMeshSections();
 	bTelltalesBuilt = false;
@@ -1136,6 +1137,7 @@ void ASailboatPawn::ResetBoat()
 	MainCloth.Reset();
 	JibCloth.Reset();
 	SpinCloth.Reset();
+	SpinRig = FSpinnakerRig();   // (and the drawn spinnaker's side and wind: feedback #25)
 	ApplyStateToTransform();
 	Plot.Start(GetMapPosition(), Time); // the departure is a known position
 	if (!bTrafficBoat) BeginRun(TEXT("Sail"));
@@ -3586,6 +3588,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
+		SpinRig = FSpinnakerRig();
 		UpdateKitFittings(); // the hanks and the head shackle go with the jib
 		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
 		return;
@@ -3620,8 +3623,28 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		// the jib's head as its cloth draws it, the luff kept ahead of the jib's.
 		const FSailCloth* Jib = Cfg.HasJib() ? &JibCloth : nullptr;
 		SpinCloth.SetHeadPoint(SpinnakerHeadCm(Cfg, bHounds ? &Hounds : nullptr, Jib), Jib);
-		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, S.SpinSide });
+		// Feedback #25: a poled spinnaker between its tack on the pole's end and its clew on the sheet (the physics' foot swung
+		// the clew metres out over the water); its pole, guy and sheet are drawn from SpinRig (UpdateModelRig).
+		// QA on #728: the crew don't gybe the pole on every roll. The physics flips the sail's side within 2 deg of dead
+		// downwind; the drawn rig follows once the new side has held for SpinGybeSeconds (or at once when it wasn't drawn),
+		// and snaps across (a gybe) instead of smearing through the mast. The pole follows the apparent wind over a second.
+		constexpr float SpinGybeSeconds = 1.f;
+		const double Awa = FMath::Abs(T.ApparentWindAngle);
+		if (!SpinRig.bValid) { SpinDrawSide = S.SpinSide >= 0 ? 1 : -1; SpinSideHeldFor = 0.f; SpinAwaDrawn = Awa; }
+		else if ((S.SpinSide >= 0 ? 1 : -1) != SpinDrawSide)
+		{
+			SpinSideHeldFor += DeltaSeconds;
+			if (SpinSideHeldFor >= SpinGybeSeconds) { SpinDrawSide = -SpinDrawSide; SpinSideHeldFor = 0.f; SpinCloth.Reset(); }
+		}
+		else SpinSideHeldFor = 0.f;
+		SpinAwaDrawn = FMath::FInterpTo(SpinAwaDrawn, Awa, double(DeltaSeconds), 1.0);
+		SpinRig = SpinnakerRigCm(Cfg, SpinDrawSide, SpinAwaDrawn, Controls.SpinSheet, SpinCloth.FootChord(), bHounds ? &Hounds : nullptr);
+		if (SpinRig.bValid) SpinCloth.SetCorners(SpinRig.Tack, SpinRig.Clew);
+		else SpinCloth.ClearCorners();
+		if (!SpinCloth.HasCorners()) SpinRig = FSpinnakerRig();
+		SailUpdates.Add({ SpinSail, &SpinCloth, T.SpinStrips, SpinRig.bValid ? SpinDrawSide : S.SpinSide });
 	}
+	else SpinRig = FSpinnakerRig();
 	UpdateSailCloths(SailUpdates, DeltaSeconds);
 	if (Cfg.HasJib()) JibClewCm = JibCloth.PointAt(1.f, 0.f); // where the jib sheets lead from
 	UpdateKitFittings();
