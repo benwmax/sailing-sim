@@ -10,6 +10,9 @@
 #include "Misc/ScopeExit.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
+#include "SailingHUD.h"
+#include "SailCloth.h"
+#include "EasyAssists.h"
 #include "UI/SailLoading.h"
 #include "LakeData.h"
 #include "SailboatPawn.h"
@@ -904,5 +907,187 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 		TestEqual(TEXT("... and the thunderstorm tip"), FString(SSailLoading::TipHeading(Stormy->ShownTip())), FString(TEXT("Thunderstorms on Texas lakes")));
 	}
 	else AddWarning(TEXT("No Slate application: the loading screen itself is not built"));
+	return true;
+}
+
+// The sail trim panel's plain line (Bean, Nov 15 2026, docs/trim-panel/) says what the coach's tips say, the most urgent
+// first (the dock, irons, heel past the boat's limit, the no-go zone, then the sails), and whatever it calls shows on at
+// least one of the panel's yarns. #712's first Mac stills said "Sailing well" beside "Too close to the wind" and "Jib is
+// stalled": the sweep below holds the headline to SailingCollectBoatTips on every pattern of two strips.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUITrimVerdictTest, "SailingSim.UI.TrimVerdict", UIFlags)
+bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	const FBoatConfig J22;
+	const FEasyAssists Realistic;
+	const FEasyAssists Easy = []() { FEasyAssists E; E.bEnabled = true; return E; }();
+	// A boat sailing well close-hauled on starboard: every strip drawing, well above its luff angle and under its stall.
+	auto Trimmed = [](int32 NumJib, double TwaDeg = 42.0)
+	{
+		FBoatTelemetry T;
+		T.TrueWindAngle = FMath::DegreesToRadians(TwaDeg);
+		T.ApparentWindAngle = FMath::DegreesToRadians(TwaDeg * 0.66);
+		T.Heel = FMath::DegreesToRadians(8.0);
+		T.NumJibStrips = NumJib;
+		T.NumMainStrips = 4;
+		for (int32 I = 0; I < kMaxSailStrips; ++I)
+		{
+			for (FSailStripState* St : { &T.JibStrips[I], &T.MainStrips[I] })
+			{
+				St->Flow = ESailFlow::Attached;
+				St->AlphaN = FMath::DegreesToRadians(12.0);
+				St->LuffAlpha = FMath::DegreesToRadians(3.0);
+				St->StallAlpha = FMath::DegreesToRadians(20.0);
+			}
+		}
+		return T;
+	};
+	auto Verdict = [&](const FBoatTelemetry& T, bool bTied = false, const FEasyAssists* A = nullptr) { return SSailHud::TrimVerdict(T, J22, A ? *A : Realistic, bTied); };
+	auto Head = [&](const FBoatTelemetry& T, bool bTied = false) { return FString(Verdict(T, bTied).Head); };
+
+	FBoatTelemetry T = Trimmed(5);
+	TestEqual(TEXT("Everything streaming: sailing well"), Head(T), FString(TEXT("Sailing well")));
+	TestTrue(TEXT("... in the good colour"), Verdict(T).bGood);
+	TestEqual(TEXT("At the dock: tied up"), Head(T, true), FString(TEXT("Tied up")));
+	TestTrue(TEXT("... in neither colour"), Verdict(T, true).bNeutral);
+
+	// The Mac's three stills.
+	T = Trimmed(5, 28.0);
+	TestEqual(TEXT("Pinching at 28 deg: too close to the wind"), Head(T), FString(TEXT("Too close to the wind")));
+	TestTrue(TEXT("... with a what-to-do line"), FString(Verdict(T).Say).Contains(TEXT("Bear away")));
+	TestTrue(TEXT("... but not in the tips' start hold"), SSailHud::TrimVerdict(T, J22, Realistic, false, true).bGood);
+	T = Trimmed(5);
+	T.JibStrips[0].Flow = T.JibStrips[1].Flow = ESailFlow::Stalled;
+	TestEqual(TEXT("Two low jib strips stalled: jib too tight"), Head(T), FString(TEXT("Jib too tight")));
+	T = Trimmed(0);
+	T.MainStrips[0].Flow = T.MainStrips[1].Flow = ESailFlow::Stalled;
+	TestEqual(TEXT("Sunfish with her main stalled: sail too tight"), Head(T), FString(TEXT("Sail too tight")));
+
+	T = Trimmed(5, 50.0);
+	TestEqual(TEXT("Easy mode warns before the no-go zone"), FString(Verdict(T, false, &Easy).Head), FString(TEXT("Near the no-go zone")));
+	T = Trimmed(5, 95.0);
+	for (int32 I = 0; I < 5; ++I) T.JibStrips[I].Flow = ESailFlow::Luffing;
+	TestEqual(TEXT("Jib luffing on a reach"), Head(T), FString(TEXT("Jib luffing")));
+	TestTrue(TEXT("... sheet the jib in"), FString(Verdict(T).Say).Contains(TEXT("Sheet the jib in")));
+	T.Heel = FMath::DegreesToRadians(J22.TrimHeelLimitDeg + 4.0);
+	TestEqual(TEXT("Heel past the limit wins over the sails"), Head(T), FString(TEXT("Heeling too much")));
+	T.bInIrons = true;
+	TestEqual(TEXT("In irons wins over the heel"), Head(T), FString(TEXT("In irons")));
+	T = Trimmed(5);
+	T.JibStrips[4].Flow = ESailFlow::Luffing;
+	TestEqual(TEXT("One luffing strip is not a call (the tips need two)"), Head(T), FString(TEXT("Sailing well")));
+	T = Trimmed(5);
+	for (int32 I = 0; I < 5; ++I) T.JibStrips[I].AlphaN = T.JibStrips[I].LuffAlpha + FMath::DegreesToRadians(1.0);
+	TestTrue(TEXT("Inside yarns lifting short of a luff: still well"), Verdict(T).bGood);
+	TestTrue(TEXT("... on the edge, not 'streaming'"), FString(Verdict(T).Say).Contains(TEXT("edge")));
+	// #712's second Mac stills: the bottom leech ribbon curled under "Yarns streaming".
+	T = Trimmed(5);
+	T.MainStrips[0].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("One main strip stalled: still well (the tips need two)"), Verdict(T).bGood);
+	TestTrue(TEXT("... but the line names the curling ribbon"), FString(Verdict(T).Say).Contains(TEXT("leech ribbon is curling")));
+	T = Trimmed(5);
+	T.JibStrips[0].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("One jib strip stalled: the line names the drooping yarn"), FString(Verdict(T).Say).Contains(TEXT("outside yarn is drooping")));
+
+	// A cat rig's tips say nothing about a jib.
+	{
+		TArray<TPair<FString, int32>> Tips;
+		SailingCollectBoatTips(Trimmed(0, 45.0), 1.0, FBoatControls(), Realistic, false, false, Tips);
+		TestFalse(TEXT("No jib: no jib tip"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.Contains(TEXT("Jib")); }));
+		FBoatTelemetry Cat = Trimmed(0, 45.0);
+		Cat.MainStrips[0].Flow = Cat.MainStrips[1].Flow = ESailFlow::Stalled;
+		Tips.Reset();
+		SailingCollectBoatTips(Cat, 1.0, FBoatControls(), Realistic, false, false, Tips);
+		TestTrue(TEXT("No jib: her one sail is 'the sail', as on the panel"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.StartsWith(TEXT("Sail is stalled")); }));
+		TestFalse(TEXT("... never 'Main'"), Tips.ContainsByPredicate([](const TPair<FString, int32>& P) { return P.Key.Contains(TEXT("Main")); }));
+		TestEqual(TEXT("... and the panel says the same"), FString(Verdict(Cat).Head), FString(TEXT("Sail too tight")));
+	}
+
+	// The headline's hold, the tip card's rule: a warning shows at once and stays TipHoldSeconds; all-clear waits for it.
+	{
+		SSailHud::FTrimVerdictHold Hold;
+		FBoatTelemetry Well = Trimmed(5), Tight = Trimmed(5), Curl = Trimmed(5);
+		Tight.MainStrips[0].Flow = Tight.MainStrips[1].Flow = ESailFlow::Stalled;
+		Curl.MainStrips[0].Flow = ESailFlow::Stalled;
+		auto Shown = [&](const FBoatTelemetry& S, double Now) { return FString(SSailHud::HoldTrimVerdict(Hold, Verdict(S), Now).Head); };
+		TestEqual(TEXT("Hold: first call shows"), Shown(Well, 0.0), FString(TEXT("Sailing well")));
+		TestEqual(TEXT("Hold: a warning shows at once"), Shown(Tight, 0.1), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: the warning stays while one strip flickers"), Shown(Curl, 3.0), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: ... and when it comes back"), Shown(Tight, 4.0), FString(TEXT("Main too tight")));
+		TestEqual(TEXT("Hold: all clear after the tip card's hold"), Shown(Well, 0.1 + SSailHud::TipHoldSeconds + 0.01), FString(TEXT("Sailing well")));
+		TestEqual(TEXT("Hold: the dock shows at once"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Well, true), 6.2).Head), FString(TEXT("Tied up")));
+		const double T0 = 20.0;
+		Shown(Well, T0);
+		const FString Before = SSailHud::HoldTrimVerdict(Hold, Verdict(Well), T0).Say;
+		TestEqual(TEXT("Hold: the line waits a moment"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Curl), T0 + 0.5).Say), Before);
+		TestTrue(TEXT("Hold: ... then follows"), FString(SSailHud::HoldTrimVerdict(Hold, Verdict(Curl), T0 + SSailHud::TrimSayHoldSeconds + 0.01).Say).Contains(TEXT("curling")));
+	}
+
+	// The yarns: each third of the sail shows its worst strip, so a call from any two strips is on a yarn.
+	using EYarnFace = SSailHud::ETrimYarn;
+	T = Trimmed(5);
+	T.JibStrips[0].Flow = T.JibStrips[1].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("Five strips: the bottom third holds strips 0 and 1"), SSailHud::TrimYarnState(T.JibStrips, 5, 0, EYarnFace::LuffLeeward) == ETelltaleState::Stalled);
+	TestTrue(TEXT("... the middle yarn streams"), SSailHud::TrimYarnState(T.JibStrips, 5, 1, EYarnFace::LuffLeeward) == ETelltaleState::Streaming);
+	TestTrue(TEXT("... the windward face streams"), SSailHud::TrimYarnState(T.JibStrips, 5, 0, EYarnFace::LuffWindward) == ETelltaleState::Streaming);
+	T.MainStrips[3].Flow = ESailFlow::Luffing;
+	TestTrue(TEXT("Four strips: the top third is strip 3"), SSailHud::TrimYarnState(T.MainStrips, 4, 2, EYarnFace::Leech) == ETelltaleState::Fluttering);
+	T.MainStrips[1].Flow = ESailFlow::Stalled;
+	TestTrue(TEXT("Two strips: the middle third reads the top strip"), SSailHud::TrimYarnState(T.MainStrips, 2, 1, EYarnFace::Leech) == ETelltaleState::Stalled);
+	TestTrue(TEXT("No strips: streaming"), SSailHud::TrimYarnState(T.MainStrips, 0, 1, EYarnFace::Leech) == ETelltaleState::Streaming);
+	TestEqual(TEXT("TrimStripAt: three-quarters up four strips"), SSailHud::TrimStripAt(0.75f, 4), 3);
+	TestEqual(TEXT("TrimStripAt: no strips reads none past 0"), SSailHud::TrimStripAt(0.75f, 0), 0);
+
+	// The sweep: every pair (and single) of strips luffing, backed or stalled on either sail, on a sloop and a cat-rigged
+	// dinghy, across the points of sail, Realistic and Easy. The headline warns exactly when the tips do, and its call shows.
+	int32 Cases = 0, Failures = 0;
+	auto AnyBand = [](const FSailStripState* Strips, int32 N, EYarnFace Face, ETelltaleState Want)
+	{
+		for (int32 B = 0; B < 3; ++B) if (SSailHud::TrimYarnState(Strips, N, B, Face) == Want) return true;
+		return false;
+	};
+	const ESailFlow Flows[] = { ESailFlow::Luffing, ESailFlow::Backed, ESailFlow::Stalled };
+	for (const int32 NumJib : { 5, 0 })
+	for (const double Twa : { 28.0, 33.0, 38.0, 45.0, 50.0, 58.0, 75.0, 100.0, 140.0 })
+	for (const FEasyAssists* A : { &Realistic, &Easy })
+	for (const bool bMain : { false, true })
+	for (const ESailFlow Flow : Flows)
+	for (int32 I = 0; I < 5; ++I)
+	for (int32 J = I; J < 5; ++J)
+	{
+		FBoatTelemetry S = Trimmed(NumJib, Twa);
+		FSailStripState* Strips = bMain ? S.MainStrips : S.JibStrips;
+		const int32 N = bMain ? S.NumMainStrips : S.NumJibStrips;
+		if (J >= N) continue;
+		Strips[I].Flow = Strips[J].Flow = Flow;
+		TArray<TPair<FString, int32>> Tips;
+		SailingCollectBoatTips(S, 1.0, FBoatControls(), *A, false, false, Tips);
+		bool bTipWarns = false;
+		for (const TPair<FString, int32>& Tip : Tips) if (Tip.Value >= 2) bTipWarns = true;
+		const SSailHud::FTrimVerdict V = SSailHud::TrimVerdict(S, J22, *A, false);
+		const FString H = V.Head;
+		// Whatever the headline calls on the sails is on a yarn the panel draws.
+		const FSailStripState* Luff = NumJib > 0 ? S.JibStrips : S.MainStrips;
+		const int32 NumLuff = NumJib > 0 ? S.NumJibStrips : S.NumMainStrips;
+		bool bShown = true;
+		if (H == TEXT("Jib luffing") || H == TEXT("Sail luffing")) bShown = AnyBand(Luff, NumLuff, EYarnFace::LuffWindward, ETelltaleState::Lifting);
+		else if (H == TEXT("Jib too tight") || H == TEXT("Sail too tight")) bShown = AnyBand(Luff, NumLuff, EYarnFace::LuffLeeward, ETelltaleState::Stalled);
+		else if (H == TEXT("Main luffing")) bShown = AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Fluttering);
+		else if (H == TEXT("Main too tight")) bShown = AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Stalled);
+		// And the all-clear never says "streaming" beside a curled ribbon.
+		else if (V.bGood && AnyBand(S.MainStrips, S.NumMainStrips, EYarnFace::Leech, ETelltaleState::Stalled)) bShown = FString(V.Say).Contains(TEXT("curling"));
+		++Cases;
+		if (V.bGood == bTipWarns || !bShown)
+		{
+			if (++Failures <= 8)
+			{
+				AddError(FString::Printf(TEXT("%s, TWA %.0f, %s, %s strips %d and %d %s: headline \"%s\" (good %d), tips warn %d, call shown %d"),
+					NumJib > 0 ? TEXT("sloop") : TEXT("dinghy"), Twa, A->bEnabled ? TEXT("Easy") : TEXT("Realistic"), bMain ? TEXT("main") : TEXT("jib"), I, J,
+					Flow == ESailFlow::Stalled ? TEXT("stalled") : Flow == ESailFlow::Backed ? TEXT("backed") : TEXT("luffing"), *H, V.bGood ? 1 : 0, bTipWarns ? 1 : 0, bShown ? 1 : 0));
+			}
+		}
+	}
+	TestTrue(TEXT("The sweep ran"), Cases > 500);
+	TestEqual(TEXT("Headline and tips disagree in no case"), Failures, 0);
 	return true;
 }
