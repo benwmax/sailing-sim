@@ -193,6 +193,18 @@ Stills to retake: `world` (a locked card in view), `launch`, `controls`, `custom
 
 Stills: `title`, `hud-natural` (`-SailingHudMode=1`), `hud` (Helpful, to check nothing moved).
 
+## Phase 5: the moments
+
+Until now a medal was a sentence in the quiz's debrief and a certificate a line of accent text.
+
+- **Medal card.** On the quiz's first page (the run has just ended) and again with the score: the medal as a struck
+  disc in its metal with an ink rim and an inner ring, "Gold medal" large in the medal's ink, and under it the lesson,
+  the time, "a new best" and "sailed on Easy" where they apply. Still: `-SailingDrill=<id> -SailingFrontEnd=Quiz
+  -SailingStillRun=<outcome>,<seconds>` in Career mode (`medal.jpg`).
+- **Certificate.** When a checkride's written part awards the certificate, the score page sets it as a document: a
+  brass double rule, "Certificate", the certificate's name in the title face and the date awarded, above the line that
+  says what it opens (`certificate.jpg`).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be
