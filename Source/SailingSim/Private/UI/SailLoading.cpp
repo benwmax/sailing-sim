@@ -102,8 +102,9 @@ void SSailLoading::Construct(const FArguments& A)
 		const int32 Storm = TipIndex(TEXT("Thunderstorms on Texas lakes"));
 		do { Tip = int32(FMath::Rand() % NumTips()); } while (Tip == Storm && NumTips() > 1);
 	}
-	// #490: a still of the session's own boat (or none at all), never another boat's; #595: the storm still only in storms.
-	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat, IsStormy(C));
+	// #490: a still of the session's own boat (or none at all), never another boat's; and of the session's own light and sky
+	// (Nov 10 audit 1-2): the storm still only in storms, no sunny noon at night, under rain or at dawn. None: the plain screen.
+	const TArray<FString> Stills = SailCatalog::LoadingStills(W, C.Boat, SailCatalog::LoadingLook(C.Conditions, W.Index));
 	UTexture2D* Tex = Stills.Num() ? SailUI::KeptTexture(Stills[FMath::Rand() % Stills.Num()]) : nullptr;
 	Image = MakeShared<FSlateBrush>();
 	if (Tex) { Image->SetResourceObject(Tex); Image->ImageSize = FVector2D(Tex->GetSizeX(), Tex->GetSizeY()); }

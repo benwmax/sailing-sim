@@ -746,6 +746,7 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 	for (const SailCatalog::FWorld& W : SailCatalog::Worlds())
 	{
 		TestEqual(FString::Printf(TEXT("%s: a boat for every loading still"), *W.File), W.LoadingBoats.Num(), W.LoadingTextures.Num());
+		TestEqual(FString::Printf(TEXT("%s: a look for every loading still"), *W.File), W.LoadingLooks.Num(), W.LoadingTextures.Num());
 	}
 	for (const int32 Index : { 0, 1 })
 	{
@@ -769,22 +770,78 @@ bool FSailingUILoadingStillTest::RunTest(const FString&)
 	}
 	// A boat with no still and no neutral still in the world: nothing (a plain screen), not another boat.
 	SailCatalog::FWorld Bare;
+	using SailCatalog::ELoadingLook;
 	Bare.LoadingTextures = { TEXT("/Game/UI/A"), TEXT("/Game/UI/B") };
 	Bare.LoadingBoats = { int32(EBoatType::J22), int32(EBoatType::Hobie16) };
+	Bare.LoadingLooks = { ELoadingLook::Day, ELoadingLook::Day };
 	TestEqual(TEXT("no own or neutral still: none"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Num(), 0);
 	Bare.LoadingTextures.Add(TEXT("/Game/UI/C"));
 	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
+	Bare.LoadingLooks.Add(ELoadingLook::Day);
 	TestTrue(TEXT("a neutral still when there is no own one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)) == TArray<FString>({ TEXT("/Game/UI/C") }));
 	TestTrue(TEXT("the own still before the neutral one"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22)) == TArray<FString>({ TEXT("/Game/UI/A") }));
 	// An untagged still (past LoadingBoats) could show any boat: never shown, not even as a neutral one.
 	Bare.LoadingTextures.Add(TEXT("/Game/UI/D"));
 	TestFalse(TEXT("an untagged still is left out"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Contains(TEXT("/Game/UI/D")));
+	// A still of another weather is never shown, not even as a neutral one; a still with a boat but no look neither.
+	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
+	Bare.LoadingLooks.Add(ELoadingLook::Night);
+	TestTrue(TEXT("a night session: the night still"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22), ELoadingLook::Night) == TArray<FString>({ TEXT("/Game/UI/D") }));
+	TestFalse(TEXT("a day session: never the night still"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Contains(TEXT("/Game/UI/D")));
+	TestEqual(TEXT("a grey session with no grey still: none"), SailCatalog::LoadingStills(Bare, int32(EBoatType::J22), ELoadingLook::Grey).Num(), 0);
+	Bare.LoadingTextures.Add(TEXT("/Game/UI/E"));
+	Bare.LoadingBoats.Add(SailCatalog::FWorld::NoBoat);
+	TestFalse(TEXT("a still with no look is left out"), SailCatalog::LoadingStills(Bare, int32(EBoatType::Sunfish)).Contains(TEXT("/Game/UI/E")));
 	// Decided, not an accident: the Catalina 22 on Galveston Bay (no still of her there, none without a boat) loads on the
 	// plain screen.
 	TestEqual(TEXT("Galveston, Catalina 22: the plain screen"), SailCatalog::LoadingStills(SailCatalog::World(1), int32(EBoatType::Catalina22)).Num(), 0);
 	// #595: the lake's storm still (2, the J/22 under the shelf cloud) only in a stormy session.
 	TestFalse(TEXT("Lake, J/22, fair: no storm still"), SailCatalog::LoadingStills(SailCatalog::World(0), int32(EBoatType::J22)).Contains(TEXT("/Game/UI/T_Load_RayHubbard_2.T_Load_RayHubbard_2")));
-	TestTrue(TEXT("Lake, J/22, stormy: the storm still"), SailCatalog::LoadingStills(SailCatalog::World(0), int32(EBoatType::J22), true) == TArray<FString>({ TEXT("/Game/UI/T_Load_RayHubbard_2.T_Load_RayHubbard_2") }));
+	TestTrue(TEXT("Lake, J/22, stormy: the storm still"), SailCatalog::LoadingStills(SailCatalog::World(0), int32(EBoatType::J22), ELoadingLook::Storm) == TArray<FString>({ TEXT("/Game/UI/T_Load_RayHubbard_2.T_Load_RayHubbard_2") }));
+	// Nov 10 audit 1-2: no still of another weather. Each slice boat on the lake has a still of her own in every look
+	// (docs/loading-stills); the Catalina 30's still is an evening one, so at noon she loads plain.
+	auto Lake = [](EBoatType Type, ELoadingLook Look) { return SailCatalog::LoadingStills(SailCatalog::World(0), int32(Type), Look); };
+	auto Load = [](int32 N) { return FString::Printf(TEXT("/Game/UI/T_Load_RayHubbard_%d.T_Load_RayHubbard_%d"), N, N); };
+	TestTrue(TEXT("Lake, J/22, low sun"), Lake(EBoatType::J22, ELoadingLook::LowSun) == TArray<FString>({ Load(5) }));
+	TestTrue(TEXT("Lake, Sunfish, low sun"), Lake(EBoatType::Sunfish, ELoadingLook::LowSun) == TArray<FString>({ Load(6) }));
+	TestTrue(TEXT("Lake, J/22, grey"), Lake(EBoatType::J22, ELoadingLook::Grey) == TArray<FString>({ Load(7) }));
+	TestTrue(TEXT("Lake, Sunfish, grey"), Lake(EBoatType::Sunfish, ELoadingLook::Grey) == TArray<FString>({ Load(8) }));
+	TestTrue(TEXT("Lake, Sunfish, stormy: her storm still, not the J/22's"), Lake(EBoatType::Sunfish, ELoadingLook::Storm) == TArray<FString>({ Load(9) }));
+	TestTrue(TEXT("Lake, J/22, night"), Lake(EBoatType::J22, ELoadingLook::Night) == TArray<FString>({ Load(10) }));
+	TestTrue(TEXT("Lake, Sunfish, night"), Lake(EBoatType::Sunfish, ELoadingLook::Night) == TArray<FString>({ Load(11) }));
+	TestTrue(TEXT("Lake, Sunfish, day: still only her day still"), Lake(EBoatType::Sunfish, ELoadingLook::Day) == TArray<FString>({ Load(3) }));
+	TestTrue(TEXT("Lake, Catalina 30, low sun: her evening still"), Lake(EBoatType::Catalina30, ELoadingLook::LowSun) == TArray<FString>({ Load(0) }));
+	TestEqual(TEXT("Lake, Catalina 30, noon: not the evening still"), Lake(EBoatType::Catalina30, ELoadingLook::Day).Num(), 0);
+	TestEqual(TEXT("Lake, Catalina 22, night: the plain screen"), Lake(EBoatType::Catalina22, ELoadingLook::Night).Num(), 0);
+	// A session's look from the presets: the lesson day (the whole first hour) is a day still, the July storm a storm, the
+	// norther grey, the glassy morning (07:30 in August) a low sun; the lesson day at 21:00 is night, at 19:15 in April (sun about 8 deg) low sun.
+	auto LookOf = [](const TCHAR* PresetId, int32 World)
+	{
+		FSailConditions K;
+		for (const FSailPreset& P : USailSessionSubsystem::Presets()) if (P.Id == FName(PresetId)) K = P.Values;
+		return SailCatalog::LoadingLook(K, World);
+	};
+	TestEqual(TEXT("Lesson day: Day"), FString(SailCatalog::LoadingLookName(LookOf(TEXT("Lesson"), 0))), FString(TEXT("Day")));
+	TestEqual(TEXT("July storm: Storm"), FString(SailCatalog::LoadingLookName(LookOf(TEXT("July"), 0))), FString(TEXT("Storm")));
+	TestEqual(TEXT("Blue norther: Grey"), FString(SailCatalog::LoadingLookName(LookOf(TEXT("Norther"), 0))), FString(TEXT("Grey")));
+	TestEqual(TEXT("Glassy morning: LowSun"), FString(SailCatalog::LoadingLookName(LookOf(TEXT("Glassy"), 0))), FString(TEXT("LowSun")));
+	TestEqual(TEXT("Bay sea breeze: Day"), FString(SailCatalog::LoadingLookName(LookOf(TEXT("SeaBreeze"), 1))), FString(TEXT("Day")));
+	{
+		FSailConditions K;
+		for (const FSailPreset& P : USailSessionSubsystem::Presets()) if (P.Id == FName(TEXT("Lesson"))) K = P.Values;
+		K.LocalHour = 21.f;
+		TestEqual(TEXT("Lesson day at 21:00: Night"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Night")));
+		K.Sky = ESailSky::Storms;
+		TestEqual(TEXT("... a storm at 21:00 too (not the noon shelf)"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Night")));
+		K.Sky = ESailSky::Fair;
+		K.LocalHour = 19.25f;
+		TestEqual(TEXT("Lesson day at 19:15: LowSun"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("LowSun")));
+		K.Sky = ESailSky::Fog;
+		K.LocalHour = 10.f;
+		TestEqual(TEXT("Fog (it runs as overcast): Grey"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Grey")));
+		K.Sky = ESailSky::Rain;
+		TestEqual(TEXT("Rain: Grey"), FString(SailCatalog::LoadingLookName(SailCatalog::LoadingLook(K, 0))), FString(TEXT("Grey")));
+	}
 	// The loading screen itself, for a Sunfish session on the lake: the Sunfish still (no world needed: the session is given).
 	if (FSlateApplication::IsInitialized())
 	{
