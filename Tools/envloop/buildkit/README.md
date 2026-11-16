@@ -21,7 +21,7 @@ Nothing here is loaded by the game yet. Everything runs in Blender's Python (the
 | `hk_core.py` | Face marks (`trim`, `cell`, `wall`, `roof`, `pane`) and the finish pass that writes UV0, UV1 and the colour attribute to the contract |
 | `hk_parts.py` | The kit: 53 parts (8 windows, 5 doors, 5 garage doors, 3 shutters, gutters and downspouts, 4 roof vents, ridge cap, 3 chimneys, 2 dormers, 4 columns and posts, rails, steps, 2 foundations, 3 lights, 2 AC units, 2 meters, casings, sills, corner boards, fascia) |
 | `build_kit.py` | Builds every part, checks it against its size-card row and triangle budget, exports `SM_HouseKit_<Part>.fbx` with sockets and `kit.json`; `--render` makes the catalogue sheet |
-| `styles/*.json` | Six house styles: 1970s brick ranch, 1990s two-storey brick, stone and metal-roof farmhouse, lake cottage, modern, plain commercial. Each picks parts, finishes, roof, porch, palettes by a seed |
+| `packs/<region>/` | Region packs: data, not code. `north-texas-lake` holds `pack.json` and `styles/*.json`, six house styles: 1970s brick ranch, 1990s two-storey brick, stone and metal-roof farmhouse, lake cottage, modern, plain commercial. Each picks parts, finishes, roof, porch, palettes by a seed. The tools take `--pack <region>` (default `north-texas-lake`); another region copies the folder and adds parts only where its houses need a shape the kit lacks |
 | `test_house.py` | Builds a whole house from a style and a seed and renders the loop's standard views; `--row` renders three seeds side by side (the no-repeat check) |
 | `hk_preview.py` | Preview materials and the three lights for the review renders. Wall and roof previews are stand-in patterns at the true course sizes; the real ones are the materials thread's |
 
@@ -31,9 +31,18 @@ Nothing here is loaded by the game yet. Everything runs in Blender's Python (the
     python3 Tools/envloop/buildkit/build_kit.py Artifacts/buildkit/kit --render
     python3 Tools/envloop/buildkit/test_house.py ranch1970 1 Artifacts/buildkit/houses --render
     python3 Tools/envloop/buildkit/test_house.py ranch1970 1 Artifacts/buildkit/houses --render --row
+    python3 Tools/envloop/buildkit/test_house.py ranch1970 1 Artifacts/buildkit/houses --pack north-texas-lake
 
 `HK_SAMPLES=<n>` sets the Cycles samples (default 48); `HK_ONLY=15m_midday,03m` renders some views only. A house takes
 about 3 to 5 minutes for all seven views on four CPU cores.
+
+## Other regions
+
+The kit is parts plus recipes. The parts, the trim sheet and the builder are shared; everything specific to North Texas
+(house styles, roof shapes and pitches, wall and roof finishes, palettes) is in `packs/north-texas-lake/`. Wall and roof
+finish names are the materials thread's pack list (`Tools/envloop/buildmat/packs/north-texas-lake.json`) on the ids in
+`slots.json`; a region's pack puts its own finishes on the same ids. Seeds are stable (crc32 of style and seed), so a
+house is the same on every run. The layout moves to Track 0's shared pack format when it lands.
 
 ## Rules for parts
 

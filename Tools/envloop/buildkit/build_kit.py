@@ -173,7 +173,8 @@ def main():
     json.dump(manifest, open(os.path.join(out, "kit.json"), "w"), indent=1)
     print(f"Kit: {len(built)} parts, {sum(m['tris'] for m in manifest.values())} tris, {len(failed)} failed -> {out}")
     if "--render" in flags:
-        pal = json.load(open(os.path.join(HERE, "styles", "ranch1970.json")))["palettes"][0]
+        import test_house as T
+        pal = T.load_style("ranch1970", T.DEFAULT_PACK)["palettes"][0]
         tiles = render_tiles(built, out, pal)
         contact_sheet(tiles, manifest, os.path.join(out, "catalogue.jpg"))
         print(f"Kit: catalogue -> {os.path.join(out, 'catalogue.jpg')}")

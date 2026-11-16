@@ -1,9 +1,10 @@
-"""Test house builder (Track E): assembles a whole house from a style recipe (styles/<id>.json) and the parts kit, to
+"""Test house builder (Track E): assembles a whole house from a style recipe in a region pack
+(packs/<pack>/styles/<id>.json) and the parts kit, to
 judge the kit outside the game. It is the reference for the integration step after Nov 21, when HouseKit.cpp swaps its
 flat window and door rectangles for kit parts on the same openings: the rules here (where openings go, reveals,
 casings, sills, shutters, gutters, porches) are the ones the game will follow.
 
-    python3 Tools/envloop/buildkit/test_house.py <style> <seed> <out dir> [--render] [--row] [--blend]
+    python3 Tools/envloop/buildkit/test_house.py <style> <seed> <out dir> [--pack north-texas-lake] [--render] [--row] [--blend]
         (bpy module; or blender -b --factory-startup -P test_house.py -- <style> <seed> <out> ...)
 
 The house is one rectangle (length along X, the front facing -Y), one or two storeys, with a gable, hip, shed or flat
@@ -15,6 +16,7 @@ import json
 import math
 import os
 import random
+import zlib
 import sys
 
 import bpy
@@ -40,7 +42,7 @@ class House:
     def __init__(self, style, seed, origin=(0.0, 0.0)):
         self.s = style
         self.seed = seed
-        self.rng = random.Random(hash((style["id"], seed)) & 0xFFFFFFFF)
+        self.rng = random.Random(zlib.crc32(f"{style['id']}:{seed}".encode()))  # stable across runs (hash() is salted)
         self.o = Vector((origin[0], origin[1], 0.0))
         self.pieces = []          # loose marked pieces (walls, roof, trim runs), joined at the end
         self.placed = []          # placed part objects
@@ -698,14 +700,27 @@ def camera(loc, target, lens=35.0):
     return c
 
 
+DEFAULT_PACK = "north-texas-lake"
+
+
+def load_style(sid, pack=DEFAULT_PACK):
+    """A style recipe from a region pack (packs/<pack>/styles/<id>.json): region data, never code."""
+    return json.load(open(os.path.join(HERE, "packs", pack, "styles", f"{sid}.json")))
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
+    pack = DEFAULT_PACK
+    if "--pack" in argv:
+        i = argv.index("--pack")
+        pack = argv[i + 1]
+        del argv[i:i + 2]
     sid, seed, out = argv[0], int(argv[1]), argv[2]
     flags = set(argv[3:])
     os.makedirs(out, exist_ok=True)
     import hk_preview as PV
     G.clear_scene()
-    style = json.load(open(os.path.join(HERE, "styles", f"{sid}.json")))
+    style = load_style(sid, pack)
     trim_dir = os.path.join(K.REPO, "Artifacts", "buildkit", "trim")
     if not os.path.exists(os.path.join(trim_dir, "T_HouseTrim_C.png")):
         import subprocess

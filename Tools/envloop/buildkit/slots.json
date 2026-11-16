@@ -1,6 +1,6 @@
 {
  "_about": "Track E (building parts kit) hand-off between the parts thread and the materials thread (shore plan, Nov 16 2026). The parts kit (Tools/envloop/buildkit) writes meshes with these slots, UV rules and paint roles; the materials thread fills the Wall, Roof and Glass looks and the wear. Changing a name here changes both halves: say so in both threads.",
- "version": 4,
+ "version": 5,
  "units": "metres; Z up; a part's origin on the wall plane it mounts to, +Y out of the wall (toward the street or yard), +X along the wall to the right when facing the house",
  "slots": {
   "Trim": {
@@ -83,6 +83,10 @@
   }
  ],
  "per_house_paint": "per house: 8 colours (paint roles 0..5 for trim parts, 7 body, 8 roof) as instance custom data 8 x RGB, plus one flag galvalume (1 = bare Galvalume metal roof, ignores the roof colour). Style palettes in styles/*.json give them as sRGB hex; galvalume is a per-style chance.",
+ "finish_pack": {
+  "pack": "north-texas-lake",
+  "notes": "wall_finishes and roof_finishes below are the north-texas-lake region pack's lists (the materials thread's Tools/envloop/buildmat/packs/north-texas-lake.json is the source), not the kit's own. The kit only carries the id in vertex colour G; another region's pack puts its own finishes on the same ids, and the shader branches on each finish's class (brick, stone, lap, batten, render, shingle, standing_seam, membrane), never on a name."
+ },
  "wall_finishes": [
   {
    "id": 0,
