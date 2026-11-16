@@ -15,8 +15,9 @@ centre right. Code: `Source/SailingSim/Private/UI/SailHud.cpp` (`SSailHud::Const
 | Bottom left | Minimap | **Apparent wind dial, then speed over depth** (one compact 410 x 254 block) |
 | Bottom centre | Captain's call, captions, signals, speed, wind dial, depth | **Clear** (the boat) |
 
-HUD modes are unchanged: Full shows everything; Minimal hides the minimap, tip and trim but keeps the cluster, compass,
-drill panel and messages; Off keeps toasts, the captain's call and sound captions.
+HUD modes are unchanged: Full shows everything; Minimal hides the minimap, tip and key hints but keeps the cluster,
+compass, drill panel and messages, and shows the sail trim panel's two telltale windows without words (UI Natural,
+docs/trim-panel/); Off keeps toasts, the captain's call and sound captions.
 
 ## The right column
 

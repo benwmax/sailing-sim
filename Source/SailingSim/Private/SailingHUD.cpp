@@ -1528,19 +1528,26 @@ void SailingCollectBoatTips(const FBoatTelemetry& T, double WindwardSide, const 
 
 	if (!T.bInIrons && FMath::Abs(TwaDeg) >= 35.0)
 	{
-		if (JibLuff >= 2)
+		if (T.NumJibStrips <= 0)
+		{
+			// A cat rig (Sunfish, ILCA): no jib to talk about (#712's Mac stills had "Jib telltales streaming" on a Sunfish).
+		}
+		else if (JibLuff >= 2)
 			Tips.Add({ bUpwind ? TEXT("Jib is luffing (windward telltales lifting): trim the jib in (E), or bear away a little.") : TEXT("Jib is luffing: trim the jib in (E) until the luff stops bubbling."), 2 });
 		else if (JibStall >= 2)
 			Tips.Add({ TEXT("Jib is stalled (leeward telltales drooping): ease the jib (Q), or head up a little."), 2 });
 		else
 			Tips.Add({ TEXT("Jib telltales streaming: well trimmed."), 1 });
 
+		// A cat rig's one sail is "the sail" (the trim panel says the same), not the main.
+		const bool bCatRig = T.NumJibStrips <= 0;
 		if (MainLuff >= 2)
-			Tips.Add({ TEXT("Main is luffing: trim the mainsheet in (W)."), 2 });
+			Tips.Add({ bCatRig ? TEXT("Sail is luffing: trim the sheet in (W).") : TEXT("Main is luffing: trim the mainsheet in (W)."), 2 });
 		else if (MainStall >= 2)
-			Tips.Add({ TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), 2 });
+			Tips.Add({ bCatRig ? TEXT("Sail is stalled (leech telltales curling behind the sail): ease the sheet (S).")
+				: TEXT("Main is stalled (leech telltales curling behind the sail): ease the mainsheet (S)."), 2 });
 		else
-			Tips.Add({ TEXT("Main leech telltales streaming: well trimmed."), 1 });
+			Tips.Add({ bCatRig ? TEXT("Leech telltales streaming: well trimmed.") : TEXT("Main leech telltales streaming: well trimmed."), 1 });
 	}
 
 	if (HeelLeeward > 22.0)
