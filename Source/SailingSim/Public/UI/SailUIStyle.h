@@ -66,6 +66,12 @@ namespace SailUI
 	 *  level reload collected the minimap's map under the HUD). Null if missing. */
 	class UTexture2D* KeptTexture(const FString& Path);
 
+	/** The paper's grain (UI overhaul phase 10): a tiling 256 px brush of soft mottle and fibre specks, lighter and
+	 *  darker than the sheet by a few percent, made at runtime (no asset). Null with -SailingNoPaperGrain. */
+	SAILINGSIM_API const FSlateBrush* PaperGrain();
+	/** The grain's value at a texel, -1 (dark speck) to 1 (light fibre): tiles every `Size` texels. For the test. */
+	SAILINGSIM_API float PaperGrainValue(int32 X, int32 Y, int32 Size);
+
 	// Measures (3.3). The margins keep text off a television's edges (the title-safe area is the inner 90%: 96 x 54 px
 	// at 1080p; these are most of the way there until the margin slider lands with the display rows).
 	constexpr float SafeX = 80.f;
