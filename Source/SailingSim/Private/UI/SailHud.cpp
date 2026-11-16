@@ -50,6 +50,14 @@ namespace SailHudImpl
 	 *  as they draw. */
 	float NightHud = 0.f;
 	FLinearColor NightCol(const FLinearColor& C) { return SSailHud::NightColor(C, NightHud); }
+	/** A bright surface at night (the trim windows' cloth and sky, the minimap's chart): red, and dimmed to Share of its
+	 *  brightness, so it is not the lamp on the screen and the marks drawn on it stand out. */
+	FLinearColor NightDim(const FLinearColor& C, float Share)
+	{
+		const FLinearColor N = NightCol(C);
+		const float K = FMath::Lerp(1.f, Share, NightHud);
+		return FLinearColor(N.R * K, N.G * K, N.B * K, N.A);
+	}
 	/** A text colour's attribute with red lifted to its brightness, so aqua and green words survive the panel's red tint. */
 	TAttribute<FSlateColor> NightLift(TAttribute<FSlateColor> Color)
 	{
@@ -229,12 +237,15 @@ namespace SailHudImpl
 			const float SpanU = float(W.SpanM / W.GridWidthM), SpanV = float(W.SpanM / W.GridHeightM);
 			FSlateBrush Crop = *Map;
 			Crop.SetUVRegion(FBox2f(FVector2f(U - SpanU * 0.5f, V - SpanV * 0.5f), FVector2f(U + SpanU * 0.5f, V + SpanV * 0.5f)));
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(S.X - 8.f, S.Y - 8.f), FSlateLayoutTransform(FVector2f(4.f, 4.f))), &Crop, ESlateDrawEffect::None, NightCol(FLinearColor::White));
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(S.X - 8.f, S.Y - 8.f), FSlateLayoutTransform(FVector2f(4.f, 4.f))), &Crop, ESlateDrawEffect::None, NightDim(FLinearColor::White, 0.45f));
 			const FVector2f C(S.X * 0.5f, S.Y * 0.5f);
 			const float H = FMath::DegreesToRadians(float(Boat->GetHeadingTrueDeg()));
 			const FVector2f F(FMath::Sin(H), -FMath::Cos(H)), Sd(-F.Y, F.X);
+			// At night the chart is dim red and so is the accent: the boat goes to the text's brightness over an ink halo.
+			if (NightHud > 0.f) FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
+				ESlateDrawEffect::None, Ink.CopyWithNewOpacity(0.9f * NightHud), true, 7.f);
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
-				ESlateDrawEffect::None, NightCol(Accent), true, 3.f);
+				ESlateDrawEffect::None, NightCol(FMath::Lerp(Accent, Fg, NightHud)), true, 3.f);
 			const float Wd = FMath::DegreesToRadians(float(GM->GetWeatherState().Wind.FromDegrees));
 			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd));
 			const FVector2f Tip = FVector2f(S.X - 28.f, 28.f);
@@ -426,10 +437,10 @@ namespace SailHudImpl
 		static void Cloth(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, FVector2f Size)
 		{
 			TArray<FSlateGradientStop> Stops;
-			Stops.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Hex(0xCFD6D5)));
-			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.08f, 0.f), Hex(0xEEF0EC)));
-			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.7f, 0.f), Hex(0xE6E9E5)));
-			Stops.Add(FSlateGradientStop(FVector2f(Size.X, 0.f), Hex(0xD6DCDA)));
+			Stops.Add(FSlateGradientStop(FVector2f(0.f, 0.f), NightDim(Hex(0xCFD6D5), 0.3f)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.08f, 0.f), NightDim(Hex(0xEEF0EC), 0.3f)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X * 0.7f, 0.f), NightDim(Hex(0xE6E9E5), 0.3f)));
+			Stops.Add(FSlateGradientStop(FVector2f(Size.X, 0.f), NightDim(Hex(0xD6DCDA), 0.3f)));
 			FSlateDrawElement::MakeGradient(Out, Layer, G.ToPaintGeometry(Size, FSlateLayoutTransform(At)), Stops, Orient_Vertical);
 		}
 
@@ -442,7 +453,7 @@ namespace SailHudImpl
 			{
 				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { At + FVector2f(40.f + I * 70.f, 0.f), At + FVector2f(20.f + I * 70.f, WinH) }, ESlateDrawEffect::None, NightCol(Hex(0x3C464B, 0.1f)), true, 1.f);
 			}
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, NightCol(Hex(0xBCC4C5)));   // luff tape
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, NightDim(Hex(0xBCC4C5), 0.3f));   // luff tape
 			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { At + FVector2f(4.f, 0.f), At + FVector2f(4.f, WinH) }, ESlateDrawEffect::None, NightCol(Hex(0x56636A)), true, 2.f);   // forestay
 			// A cat rig (Sunfish, ILCA) shows her one sail's luff here and its leech in the other window.
 			if (bHelpful) PaintText(Out, Layer + 2, G, T.NumJibStrips > 0 ? TEXT("JIB") : TEXT("LUFF"), Font(EType::Label), Hex(0x7F8B90), At + FVector2f(JibW - 8.f, 4.f), 0.f, true);
@@ -479,8 +490,8 @@ namespace SailHudImpl
 			Shadow(Out, Layer, G, At, MainW);
 			Out.PushClip(FSlateClippingZone(G.ToPaintGeometry(FVector2f(MainW, WinH), FSlateLayoutTransform(At))));
 			TArray<FSlateGradientStop> Sky;   // looking aft past the leech
-			Sky.Add(FSlateGradientStop(FVector2f(0.f, 0.f), Hex(0xA8C3D6)));
-			Sky.Add(FSlateGradientStop(FVector2f(0.f, WinH), Hex(0xC9D8E2)));
+			Sky.Add(FSlateGradientStop(FVector2f(0.f, 0.f), NightDim(Hex(0xA8C3D6), 0.3f)));
+			Sky.Add(FSlateGradientStop(FVector2f(0.f, WinH), NightDim(Hex(0xC9D8E2), 0.3f)));
 			FSlateDrawElement::MakeGradient(Out, Layer + 1, G.ToPaintGeometry(FVector2f(MainW, WinH), FSlateLayoutTransform(At)), Sky, Orient_Horizontal);
 			// The main, out to its leech: a gentle curve (the roach), drawn in thin bands.
 			auto LeechX = [](float F) { return MainW * 0.42f + FMath::Sin(F * UE_PI) * 8.f; };
@@ -488,11 +499,11 @@ namespace SailHudImpl
 			for (int32 B = 0; B < Bands; ++B)
 			{
 				const float F = (B + 0.5f) / Bands, H = WinH / Bands;
-				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(LeechX(F), H + 0.5f), FSlateLayoutTransform(At + FVector2f(0.f, B * H))), White(), ESlateDrawEffect::None, NightCol(Hex(0xE4E7E3)));
+				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(LeechX(F), H + 0.5f), FSlateLayoutTransform(At + FVector2f(0.f, B * H))), White(), ESlateDrawEffect::None, NightDim(Hex(0xE4E7E3), 0.3f));
 			}
 			TArray<FVector2f> Leech;
 			for (int32 I = 0; I <= 10; ++I) Leech.Add(At + FVector2f(LeechX(I / 10.f) - 1.f, WinH * I / 10.f));
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, NightCol(Hex(0xAAB3B5)), true, 2.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, NightDim(Hex(0xAAB3B5), 0.3f), true, 2.f);
 			// Three ribbons at the battens, one for each third of the leech, top first; the top one clear of the label.
 			for (int32 K = 0; K < 3 && T.NumMainStrips > 0; ++K)
 			{

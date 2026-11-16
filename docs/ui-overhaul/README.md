@@ -216,6 +216,9 @@ A boat's instruments turn red after dark so the eye keeps its night sight; the H
   reds of their own brightness; port's red and the shallow-water warning stay the brightest things on the HUD. The
   panels and their text are tinted once, inside the cached HUD; the instruments drawn live (compass tape, wind dial,
   minimap, sail trim) tint each colour as they draw.
+- **Bright surfaces.** The trim windows' cloth and sky and the minimap's chart are dimmed as well as reddened (to
+  about a third and a half), so they are not lamps on a dark screen; the minimap's boat takes the text's brightness
+  over an ink halo so it reads on the land.
 - **All three modes.** Helpful and Natural turn red alike; Off shows only its warnings, red too.
 - **Off switch.** Settings > Display > Night colours (save `display.nightHud`, on by default).
 - Stills: `-SailingNightHud=<0..1>` forces it (`hud-night.jpg`, `hud-natural-night.jpg`).
