@@ -1,5 +1,5 @@
 {
- "about": "The frigate's boats (docs/shipkit-11): a launch, two cutters and a gig on spare spars over the open waist, the stream anchor and the two kedges in the launch. Each hull is lofted from a period draught's traced lines (lines, feet in the draught's frame) scaled to the boat (boats), planked (carvel or clinker), framed and fitted out; stowage places them on chocks on the spars, which lie on the waist's beams, the gig nested in the starboard cutter, each griped down. Metres in the ship's frame (X forward, Y starboard, Z up, origin on the centreline at midships on waterline A) unless a key says ft or in. Every size is the period's practice for a 44's boats (an estimate) unless its src gives a source.",
+ "about": "The frigate's boats (docs/shipkit-11): a launch, two cutters and a gig on spare spars over the open waist, the stream anchor and the large kedge across the launch, the small kedge across the port cutter. Each hull is lofted from a period draught's traced lines (lines, feet in the draught's frame) scaled to the boat (boats), planked (carvel or clinker), framed and fitted out; stowage places them on cradles across their spars, which lie on saddles on the waist's beams, the gig nested in the starboard cutter, each griped down. Metres in the ship's frame (X forward, Y starboard, Z up, origin on the centreline at midships on waterline A) unless a key says ft or in. Every size is the period's practice for a 44's boats (an estimate) unless its src gives a source.",
  "sources": {
   "longboat_1801": "Royal Museums Greenwich J0267, '31ft Longboat (circa 1801)', a public domain scan on Wikimedia Commons: profile, half-breadth plan and body plan, 'A Longboat. Dimensions: Length 31 ft 0 in, Breadth Moulded 9 ft 6 in, Depth Midship 4 ft 1 in' written on it, with her thwarts, windlass, mast steps, stern sheets, sling plates and the roller in her stem head. Measured only (lines.longboat_1801): the scan is not in the repository",
   "pinnace_1840": "Royal Museums Greenwich J0667, 'Draught of a Pinnace' (signed J. W., 6 February 1840; traced 1951), a public domain scan on Wikimedia Commons: 'Length 30 ft 0 in, Breadth 8 ft 7 in, Depth 3 ft 1 in', profile with the washstrake and six rowlock notches a side, half-breadth plan, body plan. Measured only (lines.pinnace_1840)",
@@ -40,7 +40,6 @@
     "stern_sheets_to_x": 7.6,
     "stern_sheets_below_sheer": 0.42,
     "sling_plates_x": [5.95, 27.35],
-    "roller_at_stem_head": true,
     "bottom_boards_z": 0.9,
     "src": "the thwarts' ends, the mast steps and partners, the windlass's bitts and barrel, the stern sheets' rail, the sling plates on her side and the roller in her stem head as drawn; the bottom boards' top from the red line in her profile amidships"
    },
@@ -178,9 +177,7 @@
    "fittings": {
     "note": "read off the draught's profile (feet, its frame)",
     "thwart_below_sheer": 0.67,
-    "washstrake_ft": 0.5,
-    "notch_ft": [0.33, 0.18],
-    "src": "the thwarts (red) about 8 in under the sheer; the washstrake about 6 in deep, its rowlock notches 4 in wide and 2 in deep"
+    "src": "the thwarts (red) about 8 in under the sheer; the washstrake (traced as washstrake_top) about 6 in deep, its rowlock notches about 4 in wide and 2 in deep"
    },
    "stations": [
     {
@@ -234,6 +231,8 @@
    "lines": "longboat_1801",
    "count": 1,
    "length_ft": 34.0,
+   "breadth_moulded_ft": 10.4167,
+   "depth_ft": 4.5,
    "scale": [1.096774193548387, 1.096774193548387, 1.096774193548387],
    "scale_src": "practice: a 34 ft launch, the longboat's lines scaled alike every way (breadth moulded 10 ft 5 in, depth 4 ft 6 in); the inventory's 36 ft longboat is her later outfit's, and a 34 ft launch leaves the cutters room either side of her over the waist",
    "build": "carvel",
@@ -296,7 +295,6 @@
    "roller": true,
    "sling_plates": true,
    "rudder": {
-    "stowed": "inside",
     "chord_ft": 1.6
    },
    "src": "lines: the longboat's draught; build, frames and fittings practice for a launch of the period",
@@ -307,8 +305,9 @@
    "count": 2,
    "length_ft": 26.0,
    "breadth_moulded_ft": 7.25,
-   "scale": [0.8666666666666667, 0.8446634744212599, 0.8666666666666667],
-   "scale_src": "practice: 26 ft by 7 ft 3 in moulded, depth 2 ft 8 in, the pinnace's lines scaled; a cutter of the period was clinker built, a little finer than a pinnace",
+   "depth_ft": 2.6667,
+   "scale": [0.8666666666666667, 0.846369367265935, 0.8666666666666667],
+   "scale_src": "practice: 26 ft by 7 ft 3 in moulded, depth 2 ft 8 in, the pinnace's lines scaled (her breadth over the draught's greatest as traced, 8.57 ft); a cutter of the period was clinker built, a little finer than a pinnace",
    "build": "clinker",
    "plank_in": 0.625,
    "strakes": 10,
@@ -338,7 +337,7 @@
    "stern_sheets_in": 1.0,
    "stern_bench_in": 9.0,
    "bottom_boards_in": [6.0, 0.75],
-   "washstrake_ft": 0.45,
+   "washstrake": true,
    "washstrake_thick_in": 0.75,
    "rowlocks": "notches",
    "notch_in": [3.75, 2.0],
@@ -379,7 +378,6 @@
     "turns": 4
    },
    "rudder": {
-    "stowed": "inside",
     "chord_ft": 1.25
    },
    "src": "lines: the pinnace's draught (its washstrake and notches); build practice",
@@ -390,8 +388,9 @@
    "count": 1,
    "length_ft": 22.0,
    "breadth_moulded_ft": 4.8333,
-   "scale": [0.7333333333333333, 0.5631050994372795, 0.62],
-   "scale_src": "practice: a small gig 22 ft by 4 ft 10 in moulded, depth 1 ft 11 in (long and narrow, pulling four oars single banked), the pinnace's lines scaled",
+   "depth_ft": 1.9167,
+   "scale": [0.7333333333333333, 0.564242353490544, 0.62],
+   "scale_src": "practice: a small gig 22 ft by 4 ft 10 in moulded, depth 1 ft 11 in (long and narrow, pulling four oars single banked), the pinnace's lines scaled (her breadth over the draught's greatest as traced, 8.57 ft)",
    "build": "clinker",
    "plank_in": 0.5,
    "strakes": 8,
@@ -455,7 +454,6 @@
     "turns": 4
    },
    "rudder": {
-    "stowed": "inside",
     "chord_ft": 1.0
    },
    "src": "lines: the pinnace's draught, narrowed; build practice for a gig",
@@ -510,8 +508,8 @@
   ],
   "spars_src": "spares the period carried on the booms (spars_1795.json's sizes, each built as the rig builds it: a yard's diameter diam_in_per_yard of its length in yards, its cleats; the mizzen topgallant mast with its royal pole, 23.3 + 12.1 ft; a topmast studding sail boom half its topsail yard, 1 in of diameter for each 5 ft), those that fit the waist's 43 ft 8 in opening between its breast beams: the topmasts, topsail yards, the jib boom and the main and fore topgallant masts with their poles (47 and 45 ft) are longer than it",
   "saddle_min_in": 2.0,
-  "saddle_in": [14.0, 1.0],
-  "saddle_note": "a saddle as long as the beam is sided, a spar's diameter wide and an inch more, its top hollowed to the spar: one shape its whole length, the lowest of the spar's undersides over it (a spare mast's square heel seated in a square channel), over 50 deg either side of its bottom",
+  "saddle_wider_in": 1.0,
+  "saddle_note": "a saddle as long as the beam is sided, a spar's diameter wide and saddle_wider_in more, its top hollowed to the spar: one shape its whole length, the lowest of the spar's undersides over it (a spare mast's square heel seated in a square channel), over 50 deg either side of its bottom",
   "boats": {
    "Launch": {
     "boat": "launch",
@@ -545,7 +543,9 @@
    "note": "two cradles a boat, at these fractions of her straight keel (between the deadwood's foot and the forefoot), each across her two spars, its ends beyond them"
   },
   "nest_chock_in": [5.0, 2.0],
-  "nest_note": "the gig on two chocks across the starboard cutter's thwarts (on_thwarts: their indices from aft), her keel in their slots, both boats griped together",
+  "chock_rise_in": 6.0,
+  "nest_clear_in": 1.0,
+  "nest_note": "the gig on two chocks across the starboard cutter's thwarts (on_thwarts: their indices from aft), her keel in their slots, both boats griped together: each chock nest_chock_in fore and aft and under her keel, its ends where her bottom has risen chock_rise_in over her keel; the gig clear of everything in the cutter by nest_clear_in",
   "gripes": {
    "circ_in": 3.5,
    "per_boat": 2,
@@ -577,20 +577,19 @@
    "note": "each anchor's stock lies across her gunwales near one end, on their tops (the cappings, or a cutter's washstrakes), where her breadth over the cappings is the stock's length less stock_overhang_in each side, or as near there as lets it lie clear of her thole pins and what lies in her; its shank along her middle line toward her middle, the arms upright under it: turned down about the stock until the crown, an arm or the shank (never the stock) first rests on something in her (a thwart, the bottom boards, the anchor stowed before it)"
   },
   "budget_tris": 320000,
-  "budget_note": "the plan's floor for slice 11: the boats, their gear, the spares, saddles, cradles, chocks, gripes and the three anchors",
+  "budget_note": "the plan's figure for slice 11 (the boats, their gear, the spares, saddles, cradles, chocks, gripes and the three anchors): a starting point, not a ceiling (Bean, Nov 12), so the build reports the count against it and never fails on it",
   "meets": {
    "note": "the stowage's objects against the ship and each other (boats_room, deck.room): the pairs whose surfaces meet by design and how deep (in) they may go into each other there; any other pair must stay clear (the gig of the cutter she nests in too)",
    "pairs": [
      [["SparSaddles"], ["WaistFrame"], "each saddle on its beam's top", 0.25],
      [["SparSaddles"], ["SpareSpars"], "each saddle's top hollowed to its spar", 0.25],
-     [["BoatCradles"], ["SpareSpars"], "each cradle notched over its boat's two spars", 0.25],
+     [["BoatCradles"], ["SpareSpars"], "each cradle notched over its boat's two spars", 0.3],
      [["BoatCradles"], ["Launch", "Cutter_S", "Cutter_P"], "each cradle's top cut to her outside (straight between its faces, so a clinker land crossing it goes in a little)", 0.5],
-     [["GigChocks"], ["Cutter_S", "Gig"], "the gig's chocks on the cutter's thwarts, cut to the gig's outside", 0.25],
-     [["BoatGripes"], ["BoatCradles"], "each gripe's eyebolts driven into its cradle's ends", 4.25],
-     [["BoatGripes"], ["Launch", "Cutter_S", "Cutter_P", "Gig", "StreamAnchor", "KedgeLarge", "KedgeSmall"], "each gripe lying on what it passes over", 0.25],
+     [["GigChocks"], ["Cutter_S", "Gig"], "the gig's chocks on the cutter's thwarts, cut to the gig's outside", 0.35],
+     [["GripeEyebolts"], ["BoatCradles"], "each gripe's eyebolts driven into its cradle's ends", 3.25],
+     [["BoatGripes"], ["Launch", "Cutter_S", "Cutter_P", "Gig", "StreamAnchor", "KedgeLarge", "KedgeSmall"], "each gripe lying on what it passes over (its centre line its radius and 0.05 in off their outline: touching, never into them)", 0.0],
      [["StreamAnchor", "KedgeLarge"], ["Launch"], "the stock on her cappings, the anchor resting in her", 0.25],
-     [["KedgeSmall"], ["Cutter_P"], "the stock on her cappings, the anchor resting in her", 0.25],
-     [["StreamAnchor"], ["KedgeLarge"], "the kedge resting on the stream anchor in the launch", 0.25]
+     [["KedgeSmall"], ["Cutter_P"], "the stock on her cappings, the anchor resting in her", 0.25]
    ]
   },
   "gangway_clear_min_ft": 5.0,
@@ -598,29 +597,42 @@
   "checks_note": "boats_room: the boats, spars, saddles, cradles and gripes against the whole ship (and each other, the meetings by design in meets); the gangways' clear width under the boats (to headroom height above the gangway's deck); the ladders' headroom over every tread; the gig clear of the cutter she nests in"
  },
  "meets": {
-  "note": "inside each boat: the parts whose surfaces meet by design, and how deep (in) the two may go into each other there (Boat.room_check, deck.room over her parts; the allowance a quarter inch over the deepest measured in any of the three boats). Any other two parts must stay clear",
+  "note": "inside each boat: the parts whose surfaces meet by design, and how deep (in) the two may go into each other there (Boat.room_check: every closed piece of one part tested inside the other's, at its corners and over its faces where the two cross, however deep; the allowance a quarter inch over the deepest measured in any of the three boats). Any other two parts must stay clear, and so must two pieces of one part (two frames, two oars) unless 'within' names that part",
   "pairs": [
-    [["plank_ends"], ["planking_out", "planking_in"], "a plank's ends close its outside and inside faces: one solid, its outside a plank's thickness behind its inside (1 in in the launch)", 1.25],
-    [["planking_out", "planking_in", "plank_ends"], ["keel_stem", "hog", "transom_out", "transom_in", "transom_top"], "the planks' hood ends in the rabbet of the keel, stem and post, their after ends on the transom", 1.5],
-    [["frames"], ["planking_in", "hog", "keelson", "risings", "stern_risings", "inwales", "knees", "thwarts", "stern_benches", "cappings", "bottom_boards"], "the frames on the planking's inside (bridged over a clinker boat's lands) and notched over the hog; the keelson, risings, inwales and bottom boards on them, the knees, thwarts and stern benches against them", 1.5],
-    [["cappings"], ["planking_in", "planking_out", "plank_ends", "inwales", "quarter_knees", "rubbing", "transom_in", "transom_out", "transom_top", "washstrake", "breasthook", "thole_pins"], "the cappings on the top strake, the frames' heads and the inwales (over a launch's rubbing strake), the quarter knees and the breasthook under them, their ends on the transom; the washstrake on them and the thole pins through them", 1.5],
-    [["breasthook"], ["hog", "inwales", "planking_in"], "the breasthook between the inwales, against the apron and the planking at the stem", 1.25],
-    [["hog"], ["keel_stem", "keelson", "inner_post", "transom_in", "transom_out"], "the hog on the keel and up the stem as the apron, the keelson on it, the inner post and the transom on it aft", 1.5],
-    [["inner_post"], ["transom_in", "transom_bench"], "the inner post on the transom's inside, the transom bench notched round it", 0.25],
-    [["inwales"], ["knees", "quarter_knees", "transom_in"], "the inwales over the knees' heads, their after ends on the quarter knees and the transom", 0.5],
+    [["planking"], ["keel_stem"], "the planks' hood ends let into the rabbet of the keel, stem and post", 1.15],
+    [["planking"], ["hog", "transom"], "the garboards' edges on the hog in the rabbet, the planks' after ends round the transom", 0.4],
+    [["frames"], ["planking"], "the frames on the planking's inside (bridged over a clinker boat's lands, which they take a little of where her garboards are hollow)", 0.75],
+    [["frames"], ["hog", "keelson", "risings", "stern_risings", "inwales", "knees", "thwarts", "stern_benches", "cappings", "bottom_boards"], "the frames notched over the hog; the keelson, risings, inwales and bottom boards on them, the knees, thwarts and stern benches against them", 0.45],
+    [["cappings"], ["thole_pins"], "the thole pins driven through the cappings", 0.85],
+    [["cappings"], ["planking"], "the cappings on the top strake (a clinker boat's land under them)", 0.6],
+    [["cappings"], ["inwales", "quarter_knees", "rubbing", "transom", "washstrake", "breasthook"], "the cappings on the frames' heads and the inwales (over a launch's rubbing strake), the quarter knees and the breasthook under them, their ends on the transom; the washstrake on them", 0.3],
+    [["breasthook"], ["hog", "inwales"], "the breasthook between the inwales, notched round the apron", 0.35],
+    [["hog"], ["keel_stem", "inner_post", "transom"], "the hog on the keel and up the stem as the apron, the inner post and the transom on it aft", 0.25],
+    [["inner_post"], ["transom", "transom_bench"], "the inner post on the transom's inside, the transom bench notched round it", 0.35],
+    [["inwales"], ["knees", "quarter_knees", "transom"], "the inwales over the knees' heads, their after ends on the quarter knees and the transom", 0.45],
     [["keelson"], ["mast_steps", "windlass"], "the mast steps and a launch's pawl post on the keelson", 0.25],
-    [["thwarts"], ["knees", "risings", "mast_clamps"], "the thwarts on the risings, the knees on them, the mast clamps let into them", 1.5],
-    [["stern_benches"], ["stern_risings", "transom_bench", "transom_in"], "the stern benches on the stern risings, meeting the transom bench and the transom", 0.25],
+    [["thwarts"], ["knees", "risings", "mast_clamps"], "the thwarts on the risings, the knees on them, the mast clamps let into them", 0.3],
+    [["stern_benches"], ["stern_risings", "transom_bench", "transom"], "the stern benches on the stern risings, meeting the transom bench and the transom", 0.3],
     [["risings"], ["stern_risings"], "the stern risings' fore ends against the risings", 0.25],
-    [["planking_out"], ["rubbing", "sling_plates"], "the rubbing strake and a launch's sling plates on the planking's outside", 1.5],
-    [["rubbing"], ["sling_plates"], "a sling plate's strap up to the rubbing strake", 0.5],
-    [["transom_in"], ["quarter_knees", "stern_risings", "transom_bench"], "the quarter knees, the stern risings and the transom bench against the transom", 0.5],
+    [["planking"], ["rubbing", "sling_plates"], "the rubbing strake and a launch's sling plates on the planking's outside", 0.35],
+    [["rubbing"], ["sling_plates"], "a sling plate's strap up to the rubbing strake", 0.4],
+    [["transom"], ["quarter_knees", "stern_risings", "transom_bench"], "the quarter knees, the stern risings and the transom bench against the transom", 0.35],
     [["bottom_boards"], ["windlass"], "a launch's windlass bitts standing on the bottom boards", 0.25],
-    [["keel_stem"], ["ring_bolt", "roller"], "the painter's ring bolt driven into the stem, a launch's roller in its slot in the stem head", 1.5],
-    [["painter"], ["ring_bolt"], "the painter spliced round its ring", 0.75],
-    [["masts"], ["sails"], "each yard inside its furled sail", 1.25],
-    [["lashings"], ["masts", "sails"], "the lashings bitten into the furled sails and round the masts", 1.0]
-  ]
+    [["keel_stem"], ["ring_bolt"], "the painter's ring bolt driven into the stem", 1.1],
+    [["keel_stem"], ["roller"], "a launch's roller and its pin in their slot in the stem head", 1.7],
+    [["painter"], ["ring_bolt"], "the painter spliced round its ring", 0.55],
+    [["masts"], ["sails"], "each yard inside its furled sail", 4.1],
+    [["lashings"], ["masts", "sails"], "the lashings bitten into the furled sails and round the masts", 0.95],
+    [["stern_benches"], ["rudder", "tiller"], "the rudder (on its pintles' straps) and the tiller lying on the stern benches", 0.3],
+    [["windlass"], ["frames", "risings"], "a launch's windlass bitts fayed to the frames' inside and bolted through them, the risings over their heads", 0.35],
+    [["cappings"], ["sling_plates"], "the slings' eyebolts driven through the cappings over a launch's sling plates", 0.25],
+    [["thwarts"], ["oars"], "the oars lying on the thwarts", 0.25],
+    [["bottom_boards"], ["lashings"], "the lashings passed under the masts and furled sails on the bottom boards", 0.25],
+    [["breasthook"], ["painter"], "the painter's lead lying over the breasthook to the stem's ring", 0.3]
+  ],
+  "within": {
+
+  }
  },
  "paint": {
   "outside": "HullBlack",

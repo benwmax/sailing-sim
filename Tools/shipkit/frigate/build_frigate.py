@@ -1311,8 +1311,8 @@ BOATS_NOTE = (
     "cutter; spars, each spare spar's boat, kind, size, axis height and its saddles' thickness; anchors, where each "
     "anchor's stock lies across its boat's gunwales and how far it is turned down; gaps, the cutters' places; checks, "
     "the gangways' and ladders' room and each boat's own clash check. The objects: Launch, Cutter_S, Cutter_P, Gig (each "
-    "on her own frame), SpareSpars, SparSaddles, BoatCradles, GigChocks, StreamAnchor, KedgeLarge, KedgeSmall and "
-    "BoatGripes (in place)")
+    "on her own frame), SpareSpars, SparSaddles, BoatCradles, GigChocks, StreamAnchor, KedgeLarge, KedgeSmall, "
+    "BoatGripes and GripeEyebolts (in place)")
 json.dump(dict({"note": BOATS_NOTE}, **BT.info), open(os.path.join(OUT, "boats.json"), "w"), indent=1, default=str)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
