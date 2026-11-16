@@ -4,8 +4,8 @@ Bean, Nov 15 2026: the yellow UI was the stand-in that got the game on its feet.
 and real ("not kitschy, but real"), the menus stay over real engine content, and the overhaul lands in the slice.
 
 The direction is **paper for planning, glass for sailing** ("Chart table"): ashore, the menus are ink on chart paper;
-afloat, the HUD is ink-blue glass with chart-paper text. Chart magenta, the colour a chart uses for the course and for
-anything you should look at, is the focus and the main action. Yellow means caution and nothing else.
+afloat, the HUD is ink-blue glass with chart-paper text. Sea aqua is the focus and the main action (Bean, Nov 15 2026: the first pass's chart magenta read as purple on the
+menu; magenta stays where a chart uses it, on the chart itself). Yellow means caution and nothing else.
 
 - Findings (15, ranked, with sources): https://claude.ai/artifact/H9AP6SSkH3NvfujdPUsQYS
 - Proposal with mockups, the phases and the questions: https://claude.ai/artifact/Tu4gEHprSbyBKygQ7MJCkB
@@ -39,11 +39,11 @@ Game code only (`Source/`), no assets.
 | `Raise`, `Line` | `#17303F`, `#2B4554` | `#26394A`, `#3B5161` | Raised buttons, hairlines |
 | `Fg` | `#EAF0F2` | `#F0E8D2` (chart paper) | Main text on glass |
 | `Muted`, `Dim` | `#93A8B4`, `#71889A` | `#AEB6B0`, `#8C968F` | Quieter text (7.7:1 and 5.2:1 on the panel; `Dim` was 4.3:1) |
-| `Accent` | `#F4C430` (yellow) | `#DB5FA3` (chart magenta) | Focus ring, main action, section labels |
+| `Accent` | `#F4C430` (yellow) | `#4FD1C9` (sea aqua; first pass `#DB5FA3`) | Focus ring, main action, section labels |
 | `AccentInk` | `#1D1600` | `#15222C` | Text on the main button |
 
 New tokens: `Paper` `#F0E8D2`, `PaperInk` `#15222C`, `PaperMuted` `#4A5A64`, `PaperLine` `#CFC4A6`, `AccentDeep`
-`#A62B6E` (magenta on paper), `Brass` `#A98A44` (medals), `Caution` `#F4C430` (the old yellow, for caution only). Port red
+`#086068` (the accent on paper; first pass `#A62B6E`), `Brass` `#A98A44` (medals), `Caution` `#F4C430` (the old yellow, for caution only). Port red
 and starboard green are unchanged and are still always paired with P and S or a word.
 
 **Type.** Sizes are pixels at 1080p. Nothing is under 15 px now; the player's text size (100 to 150%) reaches every style
@@ -65,8 +65,8 @@ The proposal's targets for the couch are body 24 and labels 20. This step goes m
 the rest comes with each screen's own pass, where its boxes are redrawn for the bigger text.
 
 **Focus.** A focused menu row (the title's and the pause menu's, `SailUI::MenuRow`) lies on a paper label with the
-chart's magenta diamond at its head, and its text turns to ink. Everything else focusable gets the magenta ring. A chosen
-launch pin is paper with a magenta edge.
+accent diamond at its head, and its text turns to ink. Everything else focusable gets the accent ring. A chosen
+launch pin is paper with an accent edge.
 
 **Margins.** `SafeX` 64 to 80, `SafeTop` 50 to 54, `HudMargin` 30 to 40 (the title-safe area of a television is the
 inner 90%: 96 by 54 px at 1080p). A margin slider comes with the display rows.
@@ -122,6 +122,32 @@ logbook and the set-up steps.
 
 Test: `SailingSim.UI.Overhaul.Paper` (the scope, nesting, every twin, opacity kept, 4.5:1 on paper). Extra still:
 `credits` (`-SailingFrontEnd=Credits`); `settings`, `first-launch` and `components` now show paper.
+
+## Phase 2b: what the first stills showed
+
+The stills of phase 1 and 2 (this folder) showed text that could not be read, and this pass fixes it:
+
+- Body and note text were hairlines: Source Sans 3 is a variable font and Slate draws its lightest instance. Until the
+  overhaul's text face is in, `Body` and `Small` are Saira Semi Condensed Regular.
+- Text straight on the scene (no panel) gets an ink shadow: `SailUI::TextOverScene`, the screen headers, the menu rows
+  off their paper label (their notes are also chart-paper at 85%, not grey).
+- The Boat screen's type line, pill, description and flags are a slip of chart paper under her name.
+- The step bar lies on its own strip of glass, with thicker bars and readable upcoming steps.
+- "Choose a boat" and "Set the conditions" are sentence case, and the boat's name is as written.
+
+## Phase 2c: pause, briefing and quiz on paper
+
+- Pause: the session so far (distance, top speed, the coach's note) is one slip of chart paper; the menu stays on the
+  scene with its heading in chart paper.
+- Briefing: two sheets, the lesson and its steps ("What good looks like" and "Common mistakes" in the paper's starboard
+  green and warning).
+- Quiz: one sheet; a right or wrong answer is edged in the paper's starboard or port.
+
+- Career: the tier's lessons and checkride are a page of chart paper (medals in inks that read on it); the tier cards
+  stay on glass beside it. The logbook's own redesign comes next.
+
+Stills: `pause`, `briefing` (`-SailingDrill=LeavetheDock -SailingFrontEnd=Briefing`), `quiz`
+(`-SailingDrill=LeavetheDock -SailingFrontEnd=Quiz`), `career`.
 
 ## What comes next
 

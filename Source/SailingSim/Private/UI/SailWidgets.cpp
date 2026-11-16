@@ -32,7 +32,7 @@ namespace SailUI
 			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Size), FSlateLayoutTransform(FVector2f(Inset))), Brush, ESlateDrawEffect::None, Tint * Brush->TintColor.GetSpecifiedColor());
 		}
 
-		/** The draggable track with its magenta fill and knob. */
+		/** The draggable track with its accent fill and knob. */
 		class SSailTrack : public SLeafWidget
 		{
 		public:
@@ -62,6 +62,15 @@ namespace SailUI
 	{
 		// (On a paper sheet the glass token becomes its paper twin: SailUI::Surface.)
 		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap)
+			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
+	}
+
+	TSharedRef<SWidget> TextOverScene(const FString& S, EType Type, const FLinearColor& Color, bool bWrap)
+	{
+		// Text with no panel under it lies on whatever the world shows (a bright sky as often as dark water): an ink shadow
+		// keeps its edge.
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+			.ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
@@ -129,10 +138,10 @@ namespace SailUI
 				Steps->AddSlot().AutoWidth().Padding(4.f, 0.f)
 				[
 					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(110.f).HeightOverride(3.f)
-						[ SNew(SBorder).BorderImage(Rounded(bCur ? Accent : (bDone ? Fg : Line), 1.f)) ] ]
+					+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(110.f).HeightOverride(5.f)
+						[ SNew(SBorder).BorderImage(Rounded(bCur ? Accent : (bDone ? Fg : Muted.CopyWithNewOpacity(0.5f)), 2.f)) ] ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
-						[ Text(FString::Printf(TEXT("%d %s"), I + 1, Names[I]), EType::Label, bCur ? Accent : (bDone ? Fg : Dim)) ]
+						[ Text(FString::Printf(TEXT("%d %s"), I + 1, Names[I]), EType::Label, bCur ? Accent : (bDone ? Fg : Muted)) ]
 				];
 			}
 		}
@@ -140,10 +149,12 @@ namespace SailUI
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Bottom)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ Text(Eyebrow, EType::Eyebrow, Accent) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(Title, EType::ScreenTitle, Fg) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(Eyebrow, EType::Eyebrow, Fg) ]   // (the accent is lost on a bright cloud: chart paper with its shadow reads on anything)
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextOverScene(Title, EType::ScreenTitle, Fg) ]
 			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 14.f)[ Steps ];
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 14.f)
+			// (The steps lie on their own strip of glass: over a bright sky the thin bars were lost.)
+			[ Step > 0 ? PanelBox(Steps, FMargin(10.f, 10.f, 10.f, 8.f), RadiusButton) : TSharedRef<SWidget>(Steps) ];
 	}
 
 	TSharedRef<SSailButton> ActionButton(const FString& Label, FSimpleDelegate OnClicked, bool bPrimary)
@@ -164,11 +175,17 @@ namespace SailUI
 				return FSlateColor(Row.IsValid() && Row->IsFocusedNow() ? On : Off);
 			});
 		};
+		// Off the paper label the text lies on the scene: an ink shadow keeps its edge (none on the label itself).
+		const TAttribute<FLinearColor> Shadow = TAttribute<FLinearColor>::CreateLambda([Self]()
+		{
+			const TSharedPtr<SSailButton> Held = Self->Pin();
+			return Held.IsValid() && Held->IsFocusedNow() ? FLinearColor::Transparent : Ink.CopyWithNewOpacity(0.7f);
+		});
 		const TSharedRef<SSailButton> Row = SNew(SSailButton).Look(EButtonLook::MenuRow).OnClicked(OnClicked).IsEnabled(bEnabled).Padding(FMargin(32.f, PadY, 18.f, PadY))
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Label, EType::MenuItem)).Font(Font(EType::MenuItem)).ColorAndOpacity(Colour(bEnabled ? Fg : Muted, PaperInk)) ]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Sub, EType::Small)).Font(Font(EType::Small)).ColorAndOpacity(Colour(Muted, PaperMuted)) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Label, EType::MenuItem)).Font(Font(EType::MenuItem)).ColorAndOpacity(Colour(bEnabled ? Fg : Muted, PaperInk)).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Shadow) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(STextBlock).Text(Txt(Sub, EType::Small)).Font(Font(EType::Small)).ColorAndOpacity(Colour(bEnabled ? Fg.CopyWithNewOpacity(0.85f) : Muted, PaperMuted)).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Shadow) ]
 		];
 		*Self = Row;
 		return Row;
@@ -252,13 +269,13 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? SailUI::Paper : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusCard, C(bSel ? SailUI::Selected : SailUI::Line), bSel ? 1.5f : 1.f), T);
 		break;
 	case SailUI::EButtonLook::Pin:
-		// A chosen pin is paper with a magenta edge (it was yellow; magenta on magenta would not show).
+		// A chosen pin is paper with an accent edge (accent on accent would not show).
 		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bSel ? SailUI::Paper : SailUI::Chart, FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f), bSel ? SailUI::AccentDeep : SailUI::Fg, 2.f), T);
 		break;
 	case SailUI::EButtonLook::MenuRow:
 		if (bFocus)
 		{
-			// The paper label under the focused row, and the chart's magenta diamond at its head.
+			// The paper label under the focused row, and the accent diamond at its head.
 			SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(SailUI::Paper, 2.f), T);
 			const float Cy = float(G.GetLocalSize().Y) * 0.5f;
 			FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(10.f, Cy), FVector2f(16.f, Cy - 6.f), FVector2f(22.f, Cy), FVector2f(16.f, Cy + 6.f), FVector2f(10.f, Cy) },
@@ -293,7 +310,7 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 	}
 	if (bFocus && Look != SailUI::EButtonLook::MenuItem && Look != SailUI::EButtonLook::MenuRow)
 	{
-		// Focus: a 3 px magenta ring and a soft glow (paper on the magenta button).
+		// Focus: a 3 px accent ring and a soft glow (paper on the accent button).
 		const float R = Look == SailUI::EButtonLook::Pin ? FMath::RoundToFloat(G.GetLocalSize().Y * 0.5f) : (Look == SailUI::EButtonLook::Card ? SailUI::RadiusCard : SailUI::RadiusButton);
 		const FLinearColor Ring = C(Look == SailUI::EButtonLook::Primary ? SailUI::Fg : SailUI::Accent);
 		SailUI::Box(Out, Max + 2, G, FVector2D(-7.f), SailUI::Rounded(FLinearColor::Transparent, R + 7.f, Ring.CopyWithNewOpacity(0.22f), 6.f), T);

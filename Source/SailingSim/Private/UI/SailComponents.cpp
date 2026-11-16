@@ -70,7 +70,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildComponents()
 	for (const FStyle& S : Styles)
 	{
 		const int32 Px = FMath::RoundToInt32(Font(S.Type).Size / 0.75f);
-		AddOne(Text(FString::Printf(TEXT("%s %d: Ready about, 6.4 kn"), S.Name, Px), S.Type, Fg));
+		AddOne(Text(FString::Printf(TEXT("%s %d: 6.4 kn"), S.Name, Px), S.Type, Fg));
 	}
 	AddOne(Text(TEXT("12.4"), EType::InstrumentBig, Fg));
 

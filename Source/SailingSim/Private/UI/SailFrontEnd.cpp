@@ -896,7 +896,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		// Career 1 made it nine items: a little tighter, so Quit stays clear of the prompt bar at 1080 lines (tighter still
 		// with the developers' tenth, Gallery).
 		const bool bTen = USailingSettings::DeveloperTools();
-		// UI overhaul: the focused row lies on a paper label with the chart's magenta diamond (SailUI::MenuRow).
+		// UI overhaul: the focused row lies on a paper label with the accent diamond (SailUI::MenuRow).
 		TSharedRef<SSailButton> B = MenuRow(Label, Sub, Do, bEnabled, bTen ? 1.f : 3.f);
 		Menu->AddSlot().AutoHeight().Padding(0.f, bTen ? 0.f : 1.f)[ SNew(SBox).WidthOverride(600.f)[ B ] ];
 		if (!First.IsValid() && bEnabled) First = B;
@@ -1245,35 +1245,45 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(8.f, 0.f, 0.f, 0.f)
 	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(1); })[ KeyCap(TEXT("E"), TEXT("RB")) ] ];
 
-	// Left column: type line, her name big, the pill, the description, the flags.
+	// Left column: her name big over the scene, then her card: a slip of chart paper with the type line, the pill, the
+	// description and the flags (UI overhaul: pink and grey type straight on a bright sky could not be read).
 	FSlateFontInfo NameFont = Font(EType::Logo);
 	NameFont.Size = 80;
-	TSharedRef<SWidget> Left = SNew(SBox).WidthOverride(380.f)
-	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Accent)) ] ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 8.f)
-		[
-			SNew(STextBlock).Font(NameFont).ColorAndOpacity(Fg).AutoWrapText(true).LineHeightPercentage(0.85f)
-				.Text_Lambda([Cur]() { return FText::FromString(Cur().Name.ToUpper()); })
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
-		[
-			SNew(SBox).Visibility_Lambda([this, Panels]() { return Panels() == EVisibility::Visible && (FocusedBoat == 0 || !SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty()) ? EVisibility::Visible : EVisibility::Collapsed; })
+	TSharedPtr<SWidget> BoatSlip;
+	{
+		const FScopedPaper PaperScope;
+		BoatSlip = PanelBox(
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.TypeLine.ToUpper(); }), EType::Eyebrow, FSlateColor(Accent)) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 10.f)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
-				+ SHorizontalBox::Slot().FillWidth(1.f)
+				SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 || !SailCareer::Progress().BoatLockReason(FSailSave::BoatId(FocusedBoat)).IsEmpty() ? EVisibility::Visible : EVisibility::Collapsed; })
 				[
-					TextAttr(TAttribute<FText>::CreateLambda([this, LockOf]() { return FText::FromString(LockOf(FocusedBoat)); }), EType::Small, FSlateColor(Fg), true)
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth()[ SNew(SBox).Visibility_Lambda([this]() { return FocusedBoat == 0 ? EVisibility::Visible : EVisibility::Collapsed; })[ Pill(TEXT("Your lesson boat"), true) ] ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)
+					[
+						TextAttr(TAttribute<FText>::CreateLambda([this, LockOf]() { return FText::FromString(LockOf(FocusedBoat)); }), EType::Small, FSlateColor(Fg), true)
+					]
 				]
 			]
-		]
-		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Muted), true) ] ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight()[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return B.Description; }), EType::Body, FSlateColor(Fg), true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+			[
+				TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT("   ·   ")).ToUpper(); }), EType::Label, FSlateColor(Muted), true)
+			],
+			FMargin(18.f, 16.f));
+	}
+	TSharedRef<SWidget> Left = SNew(SBox).WidthOverride(400.f)
+	[
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 12.f)
 		[
-			SNew(SBox).Visibility_Lambda(Panels)[ TextAttr(Attr([](const SailCatalog::FBoat& B) { return FString::Join(B.Flags, TEXT("   ·   ")).ToUpper(); }), EType::Label, FSlateColor(Fg), true) ]
+			SNew(STextBlock).Font(NameFont).ColorAndOpacity(Fg).AutoWrapText(true).LineHeightPercentage(0.85f)
+				.ShadowOffset(FVector2D(1.f, 2.f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
+				.Text_Lambda([Cur]() { return FText::FromString(Cur().Name); })
 		]
+		+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).Visibility_Lambda(Panels)[ BoatSlip.ToSharedRef() ] ]
 	];
 
 	// Right column: the numbers as bars against the fleet's biggest, the handling, the note, Next.
@@ -1377,8 +1387,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Fleet of eight"), EType::Eyebrow, Accent) ]
-				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(TEXT("CHOOSE A BOAT"))) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(TEXT("Fleet of eight"), EType::Eyebrow, Fg) ]
+				+ SVerticalBox::Slot().AutoHeight()[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f)).Text(FText::FromString(TEXT("Choose a boat"))) ]
 			]
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 22.f, 0.f, 0.f)
@@ -1517,7 +1527,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 		PanelBox(SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(bInGame ? TEXT("Paused") : TEXT("Weather and time"), EType::Eyebrow, Accent) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-			[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(bInGame ? TEXT("CHANGE CONDITIONS") : TEXT("SET THE CONDITIONS"))) ]
+			[ SNew(STextBlock).Font(TitleFont).ColorAndOpacity(Fg).Text(FText::FromString(bInGame ? TEXT("Change conditions") : TEXT("Set the conditions"))) ]
 			+ SVerticalBox::Slot().FillHeight(1.f)
 			[
 				Scroll
@@ -1770,45 +1780,49 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 		Top = L.MaxSpeedKnots;
 		Minutes = P->GetBoatModel().GetState().Time / 60.0;
 	}
-	auto Tile = [](const FString& Value, const FString& Label)
-	{
-		return PanelBox(SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Value, EType::InstrumentBig, Fg) ]
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Label, Muted) ], FMargin(18.f, 12.f));
-	};
 	FString Coach = TEXT("Free sailing: practise your points of sail and tacks.");
 	if (bScene) Coach = TEXT("Follow the instructor's calls. Restart takes you back to the last checkpoint.");
 	else if (P && P->GetDrill().IsActive()) Coach = FString::Printf(TEXT("%s: %s"), DrillName(P->GetDrill().GetDrill()), P->GetDrill().GetSteps().IsValidIndex(P->GetDrill().GetStep()) ? *P->GetDrill().GetSteps()[P->GetDrill().GetStep()] : *P->GetDrill().GetStatus());
+	// UI overhaul: the session so far is a slip of chart paper (the log's numbers and the coach's note); the menu stays
+	// on the scene, its heading in chart paper with a shadow.
+	TSharedPtr<SWidget> LogSlip;
+	{
+		const FScopedPaper PaperScope;
+		LogSlip = PanelBox(SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("This sail"), EType::Eyebrow, Accent) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("%.1f"), LogNm), EType::InstrumentBig, Fg) ]
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Distance nm"), EType::Label, Muted) ]
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("%.1f"), Top), EType::InstrumentBig, Fg) ]
+					+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Top speed kn"), EType::Label, Muted) ]
+				]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 12.f)[ SNew(SBox).HeightOverride(1.f)[ SNew(SBorder).BorderImage(Rounded(PaperLine, 0.f)) ] ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Coach"), EType::Eyebrow, Accent) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(Coach, EType::Body, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+			[ SailUI::Text(TEXT("Rule of the road: starboard tack has right of way over port; the windward boat keeps clear."), EType::Small, Muted, true) ],
+			FMargin(24.f, 20.f));
+	}
 	E.Content = SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Paused · %.0f min on the water"), Minutes), EType::Eyebrow, Accent) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 24.f)[ SailUI::Text(Title, EType::ScreenTitle, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight()[ TextOverScene(FString::Printf(TEXT("Paused · %.0f min on the water"), Minutes), EType::Eyebrow, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 24.f)[ TextOverScene(Title, EType::ScreenTitle, Fg) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-		[
-			SNew(SBox).WidthOverride(520.f)
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)[ Tile(FString::Printf(TEXT("%.1f"), LogNm), TEXT("Distance nm")) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)[ Tile(FString::Printf(TEXT("%.1f"), Top), TEXT("Top speed kn")) ]
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
-				[
-					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Coach"), EType::Eyebrow, Accent) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(Coach, EType::Body, Fg, true) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
-						[ SailUI::Text(TEXT("Rule of the road: starboard tack has right of way over port; the windward boat keeps clear."), EType::Small, Muted, true) ])
-				]
-			]
-		];
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(520.f)[ LogSlip.ToSharedRef() ] ];
 	E.Focus = First;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Select")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Resume")) }, FString());
 	return E;
@@ -2218,6 +2232,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 	FEntry E;
 	const ASailboatPawn* P = Pawn();
 	const FDrillBriefing* B = P ? FLearningContent::Get().Briefing(P->GetDrill().GetDrill(), P->GetDrill().IsDinghyRun()) : nullptr;
+	// UI overhaul: the briefing is two sheets of chart paper (the lesson, and its steps); the prompt bar stays on glass.
+	TOptional<FScopedPaper> PaperScope;
+	if (B) PaperScope.Emplace();
 	TSharedRef<SSailButton> Go = ActionButton(TEXT("Start the drill"), FSimpleDelegate::CreateLambda([this]() { Close(); }));
 	if (!B)
 	{
@@ -2293,8 +2310,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		}
 	}
 	E.Content = SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 40.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Left ] ]
-		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Right ], FMargin(26.f, 22.f)) ];
+		+ SHorizontalBox::Slot().FillWidth(0.46f).Padding(0.f, 0.f, 24.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 14.f, 0.f)[ Left ], FMargin(28.f, 24.f, 14.f, 24.f)) ]
+		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 0.f, 90.f)[ PanelBox(SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 0.f, 12.f)[ Right ], FMargin(26.f, 22.f)) ];
+	PaperScope.Reset();
 	E.Focus = Go;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Start the drill")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip")) }, TEXT("The game is paused while you read"));
 	return E;
@@ -2421,6 +2439,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	using namespace SailUI;
 	using namespace SailFrontEndImpl;
 	FEntry E;
+	TOptional<FScopedPaper> PaperScope;   // the quiz is a sheet of chart paper (UI overhaul); the prompt bar stays on glass
+	PaperScope.Emplace();
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Quiz); Show(Stack.Last(), true); };
 	TSharedRef<SVerticalBox> Box = SNew(SVerticalBox);
 	QuizOptions.Reset();
@@ -2530,7 +2550,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 		for (int32 I = 0; I < Q.Options.Num(); ++I)
 		{
 			const bool bRight = I == Q.Answer, bChosen = I == QuizChosen;
-			const FLinearColor Edge = !bAnswered ? FLinearColor::Transparent : (bRight ? Starboard : (bChosen ? Port : FLinearColor::Transparent));
+			const FLinearColor Edge = !bAnswered ? FLinearColor::Transparent : OnSurface(bRight ? Starboard : (bChosen ? Port : FLinearColor::Transparent));
 			const FSimpleDelegate Choose = FSimpleDelegate::CreateLambda([this, I, Rebuild]()
 			{
 				if (QuizChosen >= 0 || !Quiz.IsValidIndex(QuizIndex)) return;
@@ -2603,6 +2623,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildQuiz()
 	[
 		SNew(SBox).WidthOverride(940.f)[ PanelBox(Box, FMargin(34.f, 28.f)) ]
 	];
+	PaperScope.Reset();
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("Esc"), TEXT("B"), TEXT("Skip the quiz")) }, TEXT("Questions on what you just sailed"));
 	return E;
 }
@@ -2619,6 +2640,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 	const FSailSave::FProgress& Prog = Career.Get();
 	auto MedalColour = [](ECareerMedal M)
 	{
+		// (On the paper page the metals are inks dark enough to read: 4.5:1 or better on chart paper.)
+		if (OnPaper()) return M == ECareerMedal::Gold ? Hex(0x7A5E14) : (M == ECareerMedal::Silver ? Hex(0x55616B) : (M == ECareerMedal::Bronze ? Hex(0x8A4B1E) : Dim));
 		return M == ECareerMedal::Gold ? Hex(0xE2B84E) : (M == ECareerMedal::Silver ? Hex(0xC4CDD3) : (M == ECareerMedal::Bronze ? Hex(0xC08552) : Dim));
 	};
 	auto Rebuild = [this]() { Stack.Last() = Build(ESailScreen::Career); Show(Stack.Last(), true); };
@@ -2694,7 +2717,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::Printf(TEXT("%d/%d"), Prog.RacesWon, Prog.RacesSailed), TEXT("Races won")) ], FMargin(16.f, 12.f))
 	];
 
-	// Right: the tier's lessons and checkride.
+	// Right: the tier's lessons and checkride, a page of chart paper (UI overhaul; the tiers stay on glass beside it).
+	TOptional<FScopedPaper> PaperScope;
+	PaperScope.Emplace();
 	TSharedRef<SVerticalBox> Detail = SNew(SVerticalBox);
 	if (Shown)
 	{
@@ -2802,13 +2827,16 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCareer()
 		];
 	}
 
+	const TSharedRef<SWidget> DetailPage = PanelBox(Detail, FMargin(24.f));
+	PaperScope.Reset();
+
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Header(Content.School.IsEmpty() ? FString(TEXT("Career")) : Content.School, TEXT("Learn to sail"), 0) ]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(0.36f).Padding(0.f, 0.f, 24.f, 0.f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ Tiers ] ]
-			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ PanelBox(Detail, FMargin(24.f)) ] ]
+			+ SHorizontalBox::Slot().FillWidth(0.64f)[ SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot()[ DetailPage ] ]
 		];
 	if (StartFocus == ECareerFocus::FirstJob && FirstJobFocus.IsValid()) E.Focus = FirstJobFocus;
 	E.Footer = PromptBar({ Prompt(TEXT("Enter"), TEXT("A"), TEXT("Choose")), Prompt(TEXT("← →"), TEXT("← →"), TEXT("Tiers, lessons")),

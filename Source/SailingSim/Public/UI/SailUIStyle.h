@@ -13,8 +13,8 @@ class SWidget;
  * brushes and the measures. Sizes are Slate units at the 1920x1080 reference; the viewport's DPI curve scales them.
  *
  * UI overhaul (docs/ui-overhaul/): "paper for planning, glass for sailing". The glass tokens (Ink .. WindTrue) are ink-blue
- * glass with chart-paper text and chart magenta for focus and the main action; yellow is only Caution now. The paper
- * tokens (Paper .. AccentDeep) are for surfaces drawn as chart paper: ink text on Paper, AccentDeep for magenta on it.
+ * glass with chart-paper text and sea aqua for focus and the main action; yellow is only Caution now. The paper
+ * tokens (Paper .. AccentDeep) are for surfaces drawn as chart paper: ink text on Paper, AccentDeep for the accent on it.
  */
 namespace SailUI
 {
@@ -28,7 +28,7 @@ namespace SailUI
 	/**
 	 * Paper sheets (UI overhaul phase 2). While an FScopedPaper is alive, the shared widgets and text helpers built
 	 * inside it are drawn for paper: they are given the glass tokens as before and Surface() turns each into its paper
-	 * twin (Fg to ink, Muted to the quieter ink, Accent to the deeper magenta, Ink to paper, lines and raised fills to
+	 * twin (Fg to ink, Muted to the quieter ink, Accent to the deeper aqua, Ink to paper, lines and raised fills to
 	 * their paper tints). A widget asks OnPaper() once, when it is constructed, and keeps the answer. Map a colour once
 	 * only: ink and paper are each other's twins, so a second pass would turn it back.
 	 */

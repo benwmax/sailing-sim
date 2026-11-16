@@ -37,8 +37,9 @@ bool FSailingUiOverhaulTokensTest::RunTest(const FString&)
 	TestTrue(TEXT("AccentDeep on Paper is at least 4.5:1"), Contrast(SailUI::AccentDeep, SailUI::Paper) >= 4.5);
 	// The focus ring is seen against a raised button too (3:1 for a graphic).
 	TestTrue(TEXT("Accent on Raise is at least 3:1"), Contrast(SailUI::Accent, SailUI::Raise) >= 3.0);
-	// Yellow is caution only: the accent is not yellow any more (more blue than green in it).
-	TestTrue(TEXT("The accent is magenta"), SailUI::Accent.B > SailUI::Accent.G && SailUI::Accent.R > SailUI::Accent.G);
+	// Yellow is caution only: the accent is not yellow any more (aqua: far more blue than red, and not the starboard green).
+	TestTrue(TEXT("The accent is aqua"), SailUI::Accent.B > SailUI::Accent.R * 2.f && SailUI::Accent.G > SailUI::Accent.R * 2.f);
+	TestTrue(TEXT("The accent is not starboard's green"), SailUI::Accent.B > SailUI::Starboard.B * 2.f);
 	return true;
 }
 
@@ -119,7 +120,7 @@ bool FSailingUiOverhaulPaperTest::RunTest(const FString&)
 		TestTrue(TEXT("On paper inside the scope"), SailUI::OnPaper());
 		TestTrue(TEXT("Text is ink"), SailUI::OnSurface(SailUI::Fg) == SailUI::PaperInk);
 		TestTrue(TEXT("Quiet text is the quieter ink"), SailUI::OnSurface(SailUI::Muted) == SailUI::PaperMuted && SailUI::OnSurface(SailUI::Dim) == SailUI::PaperMuted);
-		TestTrue(TEXT("The accent is the deeper magenta"), SailUI::OnSurface(SailUI::Accent) == SailUI::AccentDeep);
+		TestTrue(TEXT("The accent is the deeper aqua"), SailUI::OnSurface(SailUI::Accent) == SailUI::AccentDeep);
 		TestTrue(TEXT("Ink (text on a chosen chip) is paper"), SailUI::OnSurface(SailUI::Ink) == SailUI::Paper);
 		TestTrue(TEXT("A token keeps its own opacity"), FMath::IsNearlyEqual(SailUI::OnSurface(SailUI::Accent.CopyWithNewOpacity(0.16f)).A, 0.16f));
 		{
