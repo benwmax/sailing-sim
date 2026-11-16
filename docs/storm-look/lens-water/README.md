@@ -9,9 +9,9 @@ small lens of its own:
   `LENS_FIELD` (4) times the drop's own size.
 - **A dark rim.** Its steep edge turns the light inside away (total internal reflection). The light through it is
   multiplied by 1 at the centre, falling to 0.4 at the rim.
-- **A glint.** One sharp highlight sits high on the drop, toward the sky (up to x2.2).
+- **A glint.** One sharp highlight sits high on the drop, toward the sky (up to x2.2; since #28, x1.8 to x2.6, moved a little on each drop).
 - **A sharp edge.** The drop's edge on the glass is sharp: a 10% feather, where V5 used 40%.
-- **Slams.** A slam's spray (`Spray`, from `AWaterSurface::LensSpray`) throws big splashes (a fourth layer, scale 4.5,
+- **Slams.** A slam's spray (`Spray`, from `AWaterSurface::LensSpray`) throws big splashes (a fourth layer, scale 4.5 (5 since #28),
   as many as 0.35 x Spray squared). For a moment it also films the whole glass: up to 55% mask, the view through it
   wobbling.
 
@@ -38,7 +38,7 @@ and without `-SailingClassicFoam`.
 - **One drop per pixel.** Where drops overlap, the pixel looks through the strongest one. The shifts used to add up.
 
 Each layer now hashes four cells instead of one, 16 per pixel. That is a few hundred ALU operations, about
-0.1 ms at 4K on the 4090 by estimate.
+0.1 ms at 4K on the 4090 by estimate. (Superseded by the #28 rework below: measure it again.)
 
 ![An offline run of LENS_CODE on a test pattern: before and after](drops-whole.jpg)
 
@@ -57,7 +57,7 @@ look like a repeating pattern". Three causes, all in `LENS_CODE`:
 Now (`SailingLens::DropAt` in `LensDrops.h` is the CPU twin of the placement; `SailingSim.Visual.LensDrops` holds it and
 checks `LENS_CODE` still carries the same constants):
 
-- **Each cell keeps its own clock.** Its time runs in epochs of 2.7 to 8.1 s (rain; 3.6 to 8.4 s for a slam's splashes)
+- **Each cell keeps its own clock.** Its time runs in epochs of 2.7 to 6.3 s (rain; 3.6 to 8.4 s for a slam's splashes)
   in its own phase, from an integer hash of the cell (lowbias32). Each epoch draws anew: a drop or none, where it sits, its
   size, its shape, its glint, whether it runs. A drop lands at once, sits, and dries: it shrinks by a third and fades over
   the last part of its stay. No two cells keep step, and a drop never comes back to the same place. Ten seconds on, almost none
@@ -67,12 +67,24 @@ checks `LENS_CODE` still carries the same constants):
 - **Every drop is its own.** Twelve independent draws per drop: many small ones and a few big ones (radius 0.07 to 0.3 of a
   cell, by the square of a draw), a slightly oval outline with a wobble of up to 10% (no drop on glass is a circle), and
   the glint moved and brightened a little on each.
-- **Fewer.** About 190 drops at full rain (a third of before); the rain rate sets how many (about 55 at 0.3).
-- **The air over the glass.** `WindScreen.z` is the wind less the camera's own motion (gravity included), so it is camera
-  speed too. From 3 m/s up to 15 m/s a drop's stay falls from 0.9 to 0.4 of its epoch (about 3 s to 1.4 s on average) and up
+- **Fewer.** About 185 drops at full rain (a third of before); the rain rate sets how many (about 50 at 0.3). A drop's
+  presence eases in over 0.05 of the chance, so a change in the rain or a slam's spray dying away fades drops rather than
+  popping them. Screen cover (mask over 0.5) falls from about 7% to under 2%.
+- **The air over the glass.** `WindScreen.z` is now the whole speed of the air over the glass: the wind less the camera's
+  own motion, head-on air included (so camera speed counts even straight ahead), with gravity's 3 m/s. `xy` is still its
+  push in the screen. Both are low-passed over 2 s on the CPU (`SailingLens::FLensAir`): drops last a few seconds, and
+  read live, a camera turn from head-on air to crosswind rewrote every drop's life in one frame (half of them faded or came
+  back together; the boat's pitch and the buffet made them breathe). A camera move faster than 60 m/s in a frame (a cut, a
+  teleport, an origin rebase, the first frame) brings no air. From 3 m/s up to 15 m/s a drop's stay falls from 0.9 to 0.4 of its epoch (about 3 s to 1.4 s on average) and up
   to 70% of them run downwind, dragging a tail, as far as their cell allows. In still air none run. The lattices no longer
   scroll.
-- **Dry glass costs nothing.** With no rain and no spray a layer is skipped.
+- **Dry glass is cheaper.** A layer whose chance is under 0.002 is skipped (the pass, the film and the scene samples still
+  run); a drop's outline wobble (`atan2`, two `sin`) is worked out only within 1.15 of its rim.
+- **Splashes.** A slam's layer is now 5 cells a screen height (was 4.5), radius 0.18 to 0.32 (was 0.30), and the spray's
+  share of the rain layers 0.35, 0.12, 0.06 (was 0.5, 0.15, 0.15).
+- **Cost.** In rain each searched cell now hashes three times (period, phase, presence) and a cell holding a drop nine more:
+  roughly three times the old arithmetic, an estimated 0.2-0.3 ms at 4K on the 4090. To be measured with `-SailingProfileGPU`
+  in a thunderstorm on the Mac (High) and the PC (Ultra) against the storm look's 3 ms.
 
 A drop still stays within 0.66 of a cell of its centre and its centre 0.2 to 0.8 into its cell (a running one too: it runs
 only as far as that box allows), so the four nearest cells still hold every drop over a pixel.

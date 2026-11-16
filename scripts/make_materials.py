@@ -5038,8 +5038,8 @@ def build_sky_dome():
 
 LENS_CODE = """
 // Visual V5 (High): water on the lens. Raindrops land on the glass, sit, and dry or run off with the apparent wind
-// (WindScreen: the screen direction the air pushes them, gravity included; z its speed, m/s); spray after a wave leaves
-// a burst of larger spots.
+// (WindScreen: xy the screen direction the air pushes them, gravity included; z the air's whole speed over the glass,
+// head-on too, m/s; low-passed over 2 s on the CPU, SailingLens::FLensAir); spray after a wave leaves a burst of larger spots.
 // Storm look 5 (docs/storm-look/lens-water/; feedback #24: the drops read as grey discs): each drop is a lens, a cap of
 // water on the glass with a short focal length, so it shows the scene behind it upside down and wide (the sample point
 // mirrored through the drop's centre and spread over LENS_FIELD times its own size: the inverted horizon in every wet
@@ -5066,8 +5066,8 @@ for (int layer = 0; layer < 4; layer++)
     float scale = layer == 0 ? 11.0f : (layer == 1 ? 17.0f : (layer == 2 ? 26.0f : 5.0f));
     float chance = splash ? 0.35 * Spray * Spray
         : (layer == 0 ? 0.16 * rain + 0.35 * Spray : (layer == 1 ? 0.13 * rain + 0.12 * Spray : 0.10 * rain + 0.06 * Spray));
-    if (chance <= 0.0)
-        continue;   // dry glass: no work
+    if (chance < 0.002)
+        continue;   // (nearly) dry glass: no drop layers
     float visible = splash ? 0.9f : lerp(0.9, 0.4, windShare);
     // The layer's lattice, turned and shifted so no two layers' grids line up.
     float ca = cos(0.7 * layer), sa = sin(0.7 * layer);
@@ -5098,7 +5098,7 @@ for (int layer = 0; layer < 4; layer++)
             float tt = T / period + r[1];
             float epoch = floor(tt);
             float age = tt - epoch;
-            h = seed ^ (uint(epoch) * 0x9e3779b9u);
+            h = seed ^ (uint(epoch + 1.0) * 0x9e3779b9u);
             h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
             r[2] = float(h >> 8) * (1.0 / 16777216.0);
             if (r[2] < chance)
@@ -5109,7 +5109,7 @@ for (int layer = 0; layer < 4; layer++)
                     r[k2] = float(h >> 8) * (1.0 / 16777216.0);
                 }
             }
-            float present = saturate((chance - r[2]) / 0.02);
+            float present = saturate((chance - r[2]) / 0.05);
             if (present > 0.0)
             {
                 float life = saturate(age / 0.03) * (1.0 - smoothstep(0.6 * visible, visible, age)) * (splash ? Spray : 1.0f);
@@ -5131,9 +5131,14 @@ for (int layer = 0; layer < 4; layer++)
                 float tail = runs ? 2.0f : 0.6 * windShare;
                 float stretch = min(1.0 + tail * saturate(along * 4.0 + 0.5), 0.66 / (rad * 1.1));
                 float2 q = float2(along / stretch, across / aspectD) / rad;   // the drop's own frame, its rim near 1
-                // No drop on glass is a perfect circle: a wobble of up to 10% on its outline.
-                float th = atan2(q.y, q.x + 1e-5);
-                float rr = length(q) / (1.0 + 0.06 * sin(3.0 * th + 6.2832 * r[7]) + 0.04 * sin(5.0 * th + 6.2832 * r[9]));
+                // No drop on glass is a perfect circle: a wobble of up to 10% on its outline (worked out only near it: past
+                // 1.15 the drop is nothing whatever the wobble).
+                float rr = length(q);
+                if (rr < 1.15)
+                {
+                    float th = atan2(q.y, q.x + 1e-5);
+                    rr /= 1.0 + 0.06 * sin(3.0 * th + 6.2832 * r[7]) + 0.04 * sin(5.0 * th + 6.2832 * r[9]);
+                }
                 float drop = smoothstep(1.0, 0.9, rr) * life * present;
                 // A pixel looks through one drop, the strongest over it (the shifts of overlapping drops used to add up).
                 if (drop > mask)

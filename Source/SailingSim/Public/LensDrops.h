@@ -9,11 +9,12 @@
  * still carries the hash's constants.
  *
  * Each layer is a lattice of cells, turned and shifted per layer so the layers' grids never line up. A cell holds at most
- * one drop at a time. Its time runs in epochs of its own length (2.7 to 8.1 s for rain, from the cell's hash) and phase;
+ * one drop at a time. Its time runs in epochs of its own length (2.7 to 6.3 s for rain, from the cell's hash) and phase;
  * each epoch draws a new drop or none: where it sits in the cell, its size, its shape, whether it runs. So no two cells
  * keep step and no drop comes back to the same place. A drop lands at once, sits, and dries or is blown off: the harder
- * the air over the glass (the wind less the camera's own motion, so camera speed too), the shorter its life and the more
- * of them run downwind. The rain rate sets how many there are.
+ * the air over the glass (the wind less the camera's own motion, head-on too, so camera speed too), the shorter its life
+ * and the more of them run downwind. The rain rate sets how many there are. The air is low-passed over two seconds
+ * (FLensAir) so a turn of the camera, the boat's pitch or the buffet don't make the drops fade and come back together.
  */
 namespace SailingLens
 {
@@ -29,10 +30,43 @@ namespace SailingLens
 	/** The share of a layer's cells holding a drop in an epoch, for the rain at the camera (0..1) and a slam's spray (0..1). */
 	inline float LayerChance(int32 Layer, float Rain, float Spray)
 	{
-		if (Layer == SplashLayer) return 0.35f * Spray * Spray;
 		const float R = FMath::Clamp(Rain, 0.f, 1.f);
-		return Layer == 0 ? 0.16f * R + 0.35f * Spray : Layer == 1 ? 0.13f * R + 0.12f * Spray : 0.10f * R + 0.06f * Spray;
+		const float C = Layer == SplashLayer ? 0.35f * Spray * Spray
+			: Layer == 0 ? 0.16f * R + 0.35f * Spray : Layer == 1 ? 0.13f * R + 0.12f * Spray : 0.10f * R + 0.06f * Spray;
+		return C < 0.002f ? 0.f : C;   // the shader skips a (nearly) dry layer
 	}
+
+	/** A drop's presence eases in over this much of the chance, so a change in the rain or spray fades drops, not pops them. */
+	inline constexpr float PresenceEase = 0.05f;
+
+	/** WindScreen's low-pass (seconds): about a drop's stay, so its life isn't rewritten frame to frame. */
+	inline constexpr float AirSmoothSeconds = 2.f;
+
+	/** A camera faster than this (m/s) has cut or been moved (teleport, origin rebase, the first frame): no air from it. */
+	inline constexpr float CameraCutMs = 60.f;
+
+	/** The camera's velocity for the lens from its move this frame (metres), zero across a cut. */
+	inline FVector LensCameraVelocity(const FVector& MoveM, float Dt)
+	{
+		const FVector V = MoveM / FMath::Max(Dt, 1e-3f);
+		return V.Size() > CameraCutMs ? FVector::ZeroVector : V;
+	}
+
+	/** WindScreen, low-passed: xy the screen push (gravity's 3 m/s down included), z the air's whole speed with gravity. */
+	struct FLensAir
+	{
+		FVector2f Screen = FVector2f(0.f, 3.f);
+		float Speed = 3.f;
+		bool bPrimed = false;
+
+		void Update(const FVector2f& TargetScreen, float TargetSpeed, float Dt)
+		{
+			if (!bPrimed) { Screen = TargetScreen; Speed = TargetSpeed; bPrimed = true; return; }
+			const float A = 1.f - FMath::Exp(-FMath::Max(Dt, 0.f) / AirSmoothSeconds);
+			Screen += (TargetScreen - Screen) * A;
+			Speed += (TargetSpeed - Speed) * A;
+		}
+	};
 
 	/** How hard the air pushes on the glass, 0 (still, under 3 m/s) to 1 (15 m/s and up). */
 	inline float WindShare(float AirMs)
@@ -86,6 +120,8 @@ namespace SailingLens
 		float Radius = 0.f;         // cells, after drying
 		float Aspect = 1.f;         // across the way it runs, over along
 		float StretchMax = 1.f;     // its tail never takes it past 0.66 of a cell from its centre
+		float Tail = 0.f;           // the shader's stretch is min(1 + Tail * (0..1), StretchMax)
+		float Reach = 0.f;          // the farthest its outline gets from its centre (wobble included), cells
 		bool bRuns = false;
 		float Rand[12] = {};        // the draws, in the shader's order (rim wobble and glint use 7..11)
 	};
@@ -103,9 +139,9 @@ namespace SailingLens
 		const float Epoch = FMath::FloorToFloat(Tt);
 		D.Epoch = int32(Epoch);
 		D.Age = Tt - Epoch;
-		H = Seed ^ (uint32(D.Epoch) * 0x9e3779b9u);
+		H = Seed ^ (uint32(D.Epoch + 1) * 0x9e3779b9u);
 		H = Hash(H); D.Rand[2] = Unit(H);
-		D.Present = FMath::Clamp((LayerChance(Layer, Rain, Spray) - D.Rand[2]) / 0.02f, 0.f, 1.f);
+		D.Present = FMath::Clamp((LayerChance(Layer, Rain, Spray) - D.Rand[2]) / PresenceEase, 0.f, 1.f);
 		if (D.Present <= 0.f) return D;
 		for (int32 K = 3; K < 12; ++K) { H = Hash(H); D.Rand[K] = Unit(H); }
 		const float L = VisibleShare(Layer, AirMs);
@@ -127,6 +163,8 @@ namespace SailingLens
 			Run = FMath::Min(Rx, Ry) * (0.5f + 0.5f * D.Rand[7]) * FMath::SmoothStep(0.15f, L, D.Age);
 		}
 		D.Centre = C0 + WindLayer * Run;
+		D.Tail = D.bRuns ? 2.f : 0.6f * WindShare(AirMs);
+		D.Reach = D.Radius * 1.1f * FMath::Max(FMath::Min(1.f + D.Tail, D.StretchMax), D.Aspect);
 		return D;
 	}
 }

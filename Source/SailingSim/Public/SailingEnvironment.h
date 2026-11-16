@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Async/Future.h"
 #include "CloudSky.h"
+#include "LensDrops.h"
 #include "SailingEnvironment.generated.h"
 
 class ADirectionalLight;
@@ -153,6 +154,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class UMaterialParameterCollection> WorldCollection; // MPC_World (Visual V6: the wind)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LensMaterial;
 	FVector LastCameraPos = FVector::ZeroVector;
+	/** Feedback #28: the air over the lens, low-passed (a drop's life is not rewritten frame to frame). */
+	SailingLens::FLensAir LensAir;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WeatherMapTexture;
 	/** Realism audit 1: each texel's cumulus cell size (FWeatherMap::CumulusTop), R16F like the map. */
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> CumulusTopTexture;

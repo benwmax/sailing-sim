@@ -108,7 +108,7 @@ def lens_now(T, rain, wind):
     for layer in range(3):
         scale = (11.0, 17.0, 26.0)[layer]
         chance = (0.16, 0.13, 0.10)[layer] * min(max(rain, 0.0), 1.0)
-        if chance <= 0:
+        if chance < 0.002:
             continue
         visible = 0.9 + (0.4 - 0.9) * share
         ca, sa = np.cos(0.7 * layer), np.sin(0.7 * layer)
@@ -128,11 +128,11 @@ def lens_now(T, rain, wind):
                 period = 4.5 * (0.6 + 0.8 * r0)
                 tt = T / period + r1
                 epoch = np.floor(tt); age = tt - epoch
-                h = hash32(seed ^ (epoch.astype(np.int64).astype(np.uint32) * np.uint32(0x9E3779B9)).astype(np.uint32))
+                h = hash32(seed ^ ((epoch + 1).astype(np.int64).astype(np.uint32) * np.uint32(0x9E3779B9)).astype(np.uint32))
                 r = [r0, r1, unit(h)]
                 for _ in range(3, 12):
                     h = hash32(h); r.append(unit(h))
-                present = np.clip((chance - r[2]) / 0.02, 0, 1)
+                present = np.clip((chance - r[2]) / 0.05, 0, 1)
                 life = np.clip(age / 0.03, 0, 1) * (1.0 - smoothstep(0.6 * visible, visible, age))
                 rad = (0.07 + 0.23 * r[3] ** 2) * (1.0 - 0.35 * smoothstep(0.5 * visible, visible, age))
                 aspd = 0.8 + 0.25 * r[8]

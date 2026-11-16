@@ -93,8 +93,8 @@ namespace
  * Feedback #28: the storm's lens drops read as a repeating pattern, too steady and constant. Each drop lived for ever on a
  * lattice that scrolled with the wind, and its place and size came from one hash drawn under the rain's chance, so they
  * were alike. SailingLens::DropAt (the CPU twin of LENS_CODE's placement) must give drops that are independent, varied,
- * short-lived and fewer, that dry faster and run more in a harder air over the glass, and that are always inside the four
- * cells the shader looks in.
+ * short-lived and fewer, that dry faster and run more in a harder air over the glass (low-passed, so a camera turn doesn't
+ * fade them together), and that are always inside the four cells the shader looks in.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualLensDropsTest, "SailingSim.Visual.LensDrops", LensFlags)
 bool FVisualLensDropsTest::RunTest(const FString&)
@@ -165,37 +165,83 @@ bool FVisualLensDropsTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("A gale over the glass (or a fast camera): drops stay %.1f s, under 0.6 of still air's %.1f s"), Mean(Windy), Mean(Calm)),
 		Windy.Num() > 100 && Mean(Windy) < 0.6f * Mean(Calm));
 
-	// Running: none in still air; in a gale some do, and every drop, running or not, stays where the shader looks for it.
-	int32 RunCalm = 0, RunGale = 0, Drops = 0, Outside = 0;
-	for (int32 Layer = 0; Layer < SailingLens::NumLayers; ++Layer)
+	// Running: none in still air; in a gale some do.
+	int32 RunCalm = 0, RunGale = 0;
+	for (int32 Cell = 0; Cell < 2000; ++Cell)
 	{
-		for (const FVector2f Wind : { FVector2f(0.f, 1.f), FVector2f(1.f, 0.2f), FVector2f(-0.7f, 0.7f), FVector2f(0.3f, -1.f) })
+		for (const float Air : { StillAir, Gale })
 		{
-			const FVector2f WL = SailingLens::TurnToLayer(Layer, Wind.GetSafeNormal());
-			for (int32 Cell = 0; Cell < 300; ++Cell)
-			{
-				for (const float T : { 10.f, 13.3f, 17.9f, 25.2f })
-				{
-					for (const float Air : { StillAir, Gale })
-					{
-						const SailingLens::FLensDrop D = SailingLens::DropAt(Cell % 17 - 8, Cell / 17 - 9, Layer, T, 1.f, 1.f, Air, WL);
-						if (D.Present <= 0.f) continue;
-						++Drops;
-						(Air == Gale ? RunGale : RunCalm) += D.bRuns ? 1 : 0;
-						// Centre 0.2..0.8 into the cell, outline (a 10% wobble) within 0.66 of the centre any way.
-						const float Reach = D.Radius * 1.1f * FMath::Max(D.StretchMax, D.Aspect);
-						const bool bIn = D.Centre.X >= 0.2f - 1e-4f && D.Centre.X <= 0.8f + 1e-4f && D.Centre.Y >= 0.2f - 1e-4f && D.Centre.Y <= 0.8f + 1e-4f
-							&& D.Radius * 1.1f * D.StretchMax <= 0.66f + 1e-4f && D.Radius * 1.1f * D.Aspect <= 0.66f;
-						if (!bIn && ++Outside <= 5)
-							AddError(FString::Printf(TEXT("Layer %d: a drop at (%.3f, %.3f), reach %.3f, outside the four cells the shader searches"), Layer, D.Centre.X, D.Centre.Y, Reach));
-					}
-				}
-			}
+			const SailingLens::FLensDrop D = SailingLens::DropAt(Cell % 40, Cell / 40, 1, 33.f, 1.f, 0.f, Air, FVector2f(0.6f, 0.8f));
+			if (D.Present > 0.f) (Air == Gale ? RunGale : RunCalm) += D.bRuns ? 1 : 0;
 		}
 	}
 	TestEqual(TEXT("Drops in still air that run"), RunCalm, 0);
 	TestTrue(FString::Printf(TEXT("Drops in a gale that run: %d"), RunGale), RunGale > 0);
-	TestEqual(FString::Printf(TEXT("Drops outside the shader's four cells (of %d)"), Drops), Outside, 0);
+
+	// The shader looks for a pixel's drop only in the four cells nearest it (floor(p - 0.5) and the next). Every drop that
+	// can reach a point (its outline at its farthest, wobble and tail included) must sit in one of those four cells: walk
+	// points over the lattice and check all nine cells around each.
+	int32 Covering = 0, Missed = 0;
+	FRandomStream Rng(28);
+	for (int32 I = 0; I < 20000; ++I)
+	{
+		const int32 Layer = I % SailingLens::NumLayers;
+		const FVector2f P(Rng.FRandRange(-40.f, 40.f), Rng.FRandRange(-40.f, 40.f));
+		const FVector2f Wind = FVector2f(Rng.FRandRange(-1.f, 1.f), Rng.FRandRange(-1.f, 1.f)).GetSafeNormal();
+		const float T = Rng.FRandRange(0.f, 5000.f), Air = Rng.FRandRange(0.f, 30.f);
+		const FVector2f WL = SailingLens::TurnToLayer(Layer, Wind);
+		const int32 BaseX = FMath::FloorToInt(P.X - 0.5f), BaseY = FMath::FloorToInt(P.Y - 0.5f);
+		for (int32 Dy = -1; Dy <= 1; ++Dy)
+		{
+			for (int32 Dx = -1; Dx <= 1; ++Dx)
+			{
+				const int32 CX = FMath::FloorToInt(P.X) + Dx, CY = FMath::FloorToInt(P.Y) + Dy;
+				const SailingLens::FLensDrop D = SailingLens::DropAt(CX, CY, Layer, T, 1.f, 1.f, Air, WL);
+				if (D.Present <= 0.f) continue;
+				const FVector2f Off = P - FVector2f(float(CX), float(CY)) - D.Centre;
+				if (Off.Size() > D.Reach) continue;
+				++Covering;
+				const bool bSearched = (CX == BaseX || CX == BaseX + 1) && (CY == BaseY || CY == BaseY + 1);
+				if (!bSearched && ++Missed <= 5)
+					AddError(FString::Printf(TEXT("Layer %d: the drop of cell (%d, %d) at (%.3f, %.3f), reach %.3f, covers (%.3f, %.3f) outside the four cells searched"),
+						Layer, CX, CY, D.Centre.X, D.Centre.Y, D.Reach, P.X, P.Y));
+			}
+		}
+	}
+	TestTrue(FString::Printf(TEXT("Points under a drop: %d"), Covering), Covering > 1000);
+	TestEqual(TEXT("Drops reaching a point from outside its four searched cells"), Missed, 0);
+
+	// The air over the glass is low-passed, so a camera's turn (head-on air to crosswind) or the boat's pitch doesn't rewrite
+	// every drop's life in one frame; a cut, teleport or origin rebase brings no air at all.
+	{
+		SailingLens::FLensAir A;
+		A.Update(FVector2f(0.f, 3.f), 3.f, 1.f / 60.f);
+		TestTrue(TEXT("Lens air: the first frame takes the air as it is"), A.bPrimed && FMath::IsNearlyEqual(A.Speed, 3.f));
+		A.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("Lens air: one frame after a jump from 3 to 15 m/s, %.2f m/s"), A.Speed), A.Speed < 3.2f);
+		for (int32 F = 0; F < 600; ++F) A.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("Lens air: ten seconds on, %.2f m/s"), A.Speed), FMath::IsNearlyEqual(A.Speed, 15.f, 0.1f));
+		// Drops whose life changes much in the frame after the jump, with the filter.
+		int32 Changed = 0, Seen = 0;
+		SailingLens::FLensAir B;
+		B.Update(FVector2f(0.f, 3.f), 3.f, 1.f / 60.f);
+		const float Before = B.Speed;
+		B.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
+		for (int32 Cell = 0; Cell < 2000; ++Cell)
+		{
+			const SailingLens::FLensDrop D0 = SailingLens::DropAt(Cell % 40, Cell / 40, 0, 77.f, 1.f, 0.f, Before, FVector2f(0.f, 1.f));
+			const SailingLens::FLensDrop D1 = SailingLens::DropAt(Cell % 40, Cell / 40, 0, 77.f + 1.f / 60.f, 1.f, 0.f, B.Speed, FVector2f(0.f, 1.f));
+			if (D0.Present * D0.Life < 0.05f && D1.Present * D1.Life < 0.05f) continue;
+			++Seen;
+			Changed += FMath::Abs(D1.Present * D1.Life - D0.Present * D0.Life) > 0.1f ? 1 : 0;
+		}
+		TestTrue(FString::Printf(TEXT("A camera turn from head-on to crosswind air: %d of %d drops change by over 0.1 in a frame"), Changed, Seen),
+			Seen > 50 && Changed * 50 < Seen);
+		TestTrue(TEXT("A camera cut (a 19.2 km origin rebase in a frame) brings no air"),
+			SailingLens::LensCameraVelocity(FVector(19200.0, 0.0, 0.0), 1.f / 60.f).IsNearlyZero());
+		TestTrue(TEXT("A fast boat's camera (15 m/s) keeps its air"),
+			FMath::IsNearlyEqual(SailingLens::LensCameraVelocity(FVector(0.25, 0.0, 0.0), 1.f / 60.f).X, 15.0, 1e-3));
+	}
 
 	// LENS_CODE carries the same hash and draws as LensDrops.h.
 	FString Script;
@@ -207,9 +253,16 @@ bool FVisualLensDropsTest::RunTest(const FString&)
 			const int32 End = Script.Find(TEXT("\"\"\""), ESearchCase::CaseSensitive, ESearchDir::FromStart, Start + 16);
 			const FString Code = Script.Mid(Start, End - Start);
 			for (const TCHAR* Must : { TEXT("0x8da6b343u"), TEXT("0xd8163841u"), TEXT("0xcb1ab31fu"), TEXT("0x9e3779b9u"), TEXT("0x7feb352du"),
-					 TEXT("0x846ca68bu"), TEXT("11.0f"), TEXT("17.0f"), TEXT("26.0f"), TEXT("0.16 * rain"), TEXT("0.13 * rain"), TEXT("0.10 * rain"),
-					 TEXT("lerp(0.9, 0.4, windShare)"), TEXT("(splash ? 6.0f : 4.5f) * (0.6 + 0.8 * r[0])"), TEXT("0.07 + 0.23 * r[3] * r[3]"),
-					 TEXT("r[6] < 0.7 * windShare"), TEXT("0.66 / (rad * 1.1)"), TEXT("float2(0.37, 0.61) * layer"), TEXT("cos(0.7 * layer)") })
+					 TEXT("0x846ca68bu"), TEXT("uint(epoch + 1.0)"), TEXT("11.0f"), TEXT("17.0f"), TEXT("26.0f"), TEXT("5.0f"),
+					 TEXT("splash ? 0.35 * Spray * Spray"), TEXT("0.16 * rain + 0.35 * Spray"), TEXT("0.13 * rain + 0.12 * Spray"),
+					 TEXT("0.10 * rain + 0.06 * Spray"), TEXT("chance < 0.002"), TEXT("(chance - r[2]) / 0.05"),
+					 TEXT("saturate((Wind.z - 3.0) / 12.0)"), TEXT("splash ? 0.9f : lerp(0.9, 0.4, windShare)"),
+					 TEXT("(splash ? 6.0f : 4.5f) * (0.6 + 0.8 * r[0])"), TEXT("float tt = T / period + r[1]"),
+					 TEXT("saturate(age / 0.03) * (1.0 - smoothstep(0.6 * visible, visible, age)) * (splash ? Spray : 1.0f)"),
+					 TEXT("(splash ? 0.18 + 0.14 * r[3] : 0.07 + 0.23 * r[3] * r[3]) * (1.0 - 0.35 * smoothstep(0.5 * visible, visible, age))"),
+					 TEXT("0.8 + 0.25 * r[8]"), TEXT("float2(r[4], r[5]) * 0.6 + 0.2"), TEXT("!splash && r[6] < 0.7 * windShare"),
+					 TEXT("(0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age)"), TEXT("runs ? 2.0f : 0.6 * windShare"),
+					 TEXT("0.66 / (rad * 1.1)"), TEXT("float2(0.37, 0.61) * layer"), TEXT("cos(0.7 * layer)"), TEXT("floor(p - 0.5)") })
 				TestTrue(FString::Printf(TEXT("LENS_CODE has %s (LensDrops.h's twin)"), Must), Code.Contains(Must, ESearchCase::CaseSensitive));
 		}
 	}
