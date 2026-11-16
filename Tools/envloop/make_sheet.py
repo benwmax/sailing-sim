@@ -3,7 +3,7 @@ the three distances, so a track's change is seen from the same cameras every tim
 
     python3 Tools/envloop/make_sheet.py --before DIR --after DIR --out sheet.jpg [--stations a,b] [--distances 5,15,60]
 
-DIR holds capture-scenes.sh output (env-<station>-<dd>m.png). A missing picture leaves its cell grey and labelled.
+DIR holds capture-scenes.sh output (env-<station>-<dd>m.png, or .jpg). A missing picture leaves its cell grey and labelled.
 """
 import argparse
 import json
@@ -46,8 +46,9 @@ def main():
         x = 180
         for j, dist in enumerate(dists):
             for label, folder in cols:
-                p = os.path.join(folder, "env-%s-%02dm.png" % (s["id"], dist))
-                if os.path.exists(p):
+                p = next((q for q in (os.path.join(folder, "env-%s-%02dm.%s" % (s["id"], dist, e)) for e in ("png", "jpg"))
+                          if os.path.exists(q)), None)
+                if p:
                     sheet.paste(Image.open(p).convert("RGB").resize((T, th), Image.LANCZOS), (x, y))
                 else:
                     d.rectangle((x, y, x + T, y + th), fill=(200, 200, 200))
