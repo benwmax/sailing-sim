@@ -1,0 +1,82 @@
+{
+ "about": "The Catalina 22's deck, cockpit and cabin trunk with its pop-top, for her rebuild (docs/c22-3): drawn to the size card (specs_c22.json), today's model's sizes where nothing better is known (Tools/blender/build_fleet.py SPECS Catalina22: cockpit -3.05 to -0.78, 0.63 m a side; cabin -0.78 to 1.70), and today's sockets (the mast steps on the trunk top at x 0.86, z 1.188). Nothing is traced. deck_c22.py turns these into surfaces; build_c22.py meshes them. Units: metres, the game's body frame (X forward, Y starboard, Z up), origin amidships on the design waterline.",
+ "deck": {
+  "crown": 0.05,
+  "note": "The deck's camber: its height over the sheer at the centreline, a parabola across the beam (the sheer at the deck's edge). Today's model has 0.05. Forward, where her half-beam falls under 0.6 m, the crown shrinks with it, so the deck closes onto the stem head without a bump."
+ },
+ "rubrail": {
+  "height": 0.045,
+  "proud": 0.014,
+  "note": "The vinyl rubrail over the hull-to-deck joint: a rounded strip along the sheer and across the transom, its top 'cap' over the deck's edge (it caps the joint, so the hull-to-deck corner is inside it all the way round, the transom's corners too), standing proud of the topsides by 'proud'. It turns the transom's corners on corner_radius (in plan) and tapers away over the last stem_taper metres to the stem, where the stem fitting takes over. The blind reviewers of round 1 found 18 mm proud too fat.",
+  "corner_radius": 0.04,
+  "stem_taper": 0.3,
+  "cap": 0.006
+ },
+ "cockpit": {
+  "x": [
+   -3.05,
+   -0.78
+  ],
+  "half_width": 0.63,
+  "seat_drop": 0.27,
+  "footwell_half_width": 0.3,
+  "sole_z": 0.1,
+  "note": "The cockpit: an opening in the deck between x and half_width, with a bench seat each side 'seat_drop' under the deck's edge there, and the footwell between them down to the sole, 0.10 m over the waterline (so a seat is about 0.4 m above the sole). The aft end is a narrow deck across the transom, where the outboard bracket goes (slice 3)."
+ },
+ "cabin": {
+  "x": [
+   -0.78,
+   1.7
+  ],
+  "side_deck_min": 0.3,
+  "half_width_max": 0.63,
+  "height_at_mast": 0.39,
+  "aft_height": 0.42,
+  "top_crown": 0.04,
+  "side_lean": 0.06,
+  "front_rake": 0.32,
+  "front_round": 0.1,
+  "note": "The cabin trunk: from the companionway bulkhead (x[0], over the cockpit's forward end) to the foot of its front (x[1]). Its sides stand on the deck at half_width_max, or side_deck_min in from the deck's edge where she narrows, leaning in by side_lean over their height. The top is height_at_mast over the deck's centreline at the mast (so the mast steps where today's socket has it), rising to aft_height at the companionway, crowned by top_crown. The front rakes aft by front_rake from deck to top and is rounded in plan by front_round (its middle that much forward of its corners). Its top, front and side corners are rounded by corner_radius (moulded, not sharp); the pop-top's flange ends 1.5 cm inside the top's edge, over the start of the rounding.",
+  "corner_radius": 0.025
+ },
+ "windows": {
+  "ports": [
+   [
+    0.08,
+    0.86
+   ]
+  ],
+  "height": 0.14,
+  "z_share": 0.55,
+  "frame": 0.012,
+  "note": "One long window a side: from 'ports' (as shares of the trunk side's length at the window's height, from the companionway), its forward end raked parallel to the cabin front, its corners rounded, height (m), centred at z_share of the side's height, in an aluminium frame (Practical Sailor: the originals' windows were aluminium-trimmed; the MkII changed to smoked plexiglass). Round 1 drew two rounded ports a side, as today's model has; two of three blind reviewers said the original has one long, dark window a side. Bean's photos decide.",
+  "corner_radius": 0.035
+ },
+ "pop_top": {
+  "x": [
+   -0.78,
+   0.62
+  ],
+  "inset": 0.05,
+  "flange": 0.035,
+  "lift": 0.38,
+  "legs": 4,
+  "note": "The pop-top: most of the trunk's top, from the companionway bulkhead (its sliding hatch rides on it) to aft of the mast step, inset from the top's edges. Its lid stands lid_rise proud of the top, a flange turned down round it. Raised, it stands on four stainless legs with a canvas skirt all round (the aft panel over the companionway). lift is the card's headroom difference (4 ft 4 in closed, 5 ft 7 in raised: 0.38 m); Practical Sailor says the top lifts about 10 in (0.25 m). Bean's photos decide (refs.json). Raised, the lid is above the boom (either lift), so it goes up only in harbour with the boom topped up or off: the game must lift the boom with it (slice 9's sockets).",
+  "lid_rise": 0.025
+ },
+ "companionway": {
+  "boards": 3,
+  "hatch_length": 0.62,
+  "note": "The companionway in the trunk's aft face: an opening narrower at the sill (half_width_bottom a side) than at the top (half_width_top), from the bridge (the cockpit seats' height) up through the top, closed by teak drop boards (boards of them) in channels behind its jambs, and a sliding hatch hatch_length long on the aft end of the pop-top. Round 1 drew it straight-sided; two blind reviewers said it tapers.",
+  "half_width_bottom": 0.22,
+  "half_width_top": 0.27
+ },
+ "fore_hatch": {
+  "x": 2.05,
+  "size": [
+   0.48,
+   0.48
+  ],
+  "note": "The foredeck hatch over the V-berth: a low square hatch (the kit's HatchFwd in slice 6 dresses it)."
+ }
+}
