@@ -1,0 +1,478 @@
+{
+ "pack": "north-texas-lake",
+ "region": "Lake Ray Hubbard and North Texas lake shores: 1970s brick ranches to 2020s modern farmhouses",
+ "_about": "Building materials region pack (Track E2). Everything specific to a place lives here: which finishes it has, their real unit sizes, palettes, mortar and paint colours, and the test houses. The code is the same for every region: each finish names a class (buildmat_hlsl.CLASSES: how it is drawn and how it wears), and the finish ids are what the parts kit writes in vertex colour G (Tools/envloop/buildkit/slots.json: wall ids 0.., roof ids 0..). Another region adds a pack with its own finishes on the same material slots. Sizes are the interim size card until Track 0's lands; colours are sRGB hex as seen on a dry wall in shade, before wear. tile_m is the real size one texture covers: whole bricks, boards or shingle rows, so the courses run on across tiles. Texture sharpness: px per tile on Ultra (1024: about 4 mm a pixel), half on High, a quarter on Medium.",
+ "px": 1024,
+ "walls": [
+  {
+   "id": 0,
+   "name": "brick_red",
+   "class": "brick",
+   "what": "Texas red face brick, king size, running bond, grey mortar, concave tooled joints",
+   "unit_mm": {
+    "brick": [
+     244,
+     67
+    ],
+    "joint": 9.5,
+    "course": 76.2
+   },
+   "tile_m": [
+    4.056,
+    4.0386
+   ],
+   "bricks_across": 16,
+   "courses": 53,
+   "palette": [
+    "#8E3B2A",
+    "#9C4431",
+    "#7E3326",
+    "#A5503A",
+    "#6B2C22",
+    "#94402E"
+   ],
+   "mortar": "#A7A399",
+   "grain": [
+    "brickface",
+    "mortar"
+   ],
+   "roughness": [
+    0.82,
+    0.9
+   ],
+   "where": "1970s brick ranch, 1990s two-storey brick, commercial",
+   "colour_ref": {
+    "source": "brickface",
+    "label": "Poly Haven red_brick (interim, until grey-card photos)"
+   }
+  },
+  {
+   "id": 1,
+   "name": "brick_brown",
+   "class": "brick",
+   "what": "brown blend face brick with iron spots and darker flashed ends, king size, running bond",
+   "unit_mm": {
+    "brick": [
+     244,
+     67
+    ],
+    "joint": 9.5,
+    "course": 76.2
+   },
+   "tile_m": [
+    4.056,
+    4.0386
+   ],
+   "bricks_across": 16,
+   "courses": 53,
+   "palette": [
+    "#6E4A38",
+    "#7F5843",
+    "#5C3D30",
+    "#8C6A52",
+    "#4E3328",
+    "#76503D"
+   ],
+   "mortar": "#A39C8E",
+   "ironspot": true,
+   "grain": [
+    "brickface",
+    "mortar"
+   ],
+   "roughness": [
+    0.84,
+    0.9
+   ],
+   "where": "1990s two-storey brick, 2000s builder houses"
+  },
+  {
+   "id": 2,
+   "name": "brick_buff",
+   "class": "brick",
+   "what": "buff and cream blend face brick, king size, running bond, buff mortar",
+   "unit_mm": {
+    "brick": [
+     244,
+     67
+    ],
+    "joint": 9.5,
+    "course": 76.2
+   },
+   "tile_m": [
+    4.056,
+    4.0386
+   ],
+   "bricks_across": 16,
+   "courses": 53,
+   "palette": [
+    "#C9AE86",
+    "#BFA27A",
+    "#D4BC96",
+    "#B39371",
+    "#CDB48E",
+    "#C2A57E"
+   ],
+   "mortar": "#C4B9A4",
+   "grain": [
+    "brickface",
+    "mortar"
+   ],
+   "roughness": [
+    0.84,
+    0.9
+   ],
+   "where": "1970s ranch, lake cottages"
+  },
+  {
+   "id": 3,
+   "name": "limestone",
+   "class": "stone",
+   "what": "Austin chopped limestone veneer (cream), random ashlar in courses of 3 heights, raked joints",
+   "unit_mm": {
+    "course_heights": [
+     102,
+     152,
+     203
+    ],
+    "length": [
+     200,
+     600
+    ],
+    "joint": 12
+   },
+   "tile_m": [
+    4.0,
+    4.0
+   ],
+   "palette": [
+    "#D9CEB4",
+    "#CFC2A4",
+    "#E0D7C0",
+    "#C8B793",
+    "#D5C6A2",
+    "#BDB29A"
+   ],
+   "mortar": "#C9C0AC",
+   "grain": [
+    "stone",
+    "mortar"
+   ],
+   "roughness": [
+    0.88,
+    0.92
+   ],
+   "where": "stone and metal-roof farmhouse, modern accents, clubhouse piers",
+   "colour_ref": {
+    "source": "stone",
+    "label": "Poly Haven castle_brick_02_white (interim, until grey-card photos)"
+   }
+  },
+  {
+   "id": 4,
+   "name": "lap_siding",
+   "class": "lap",
+   "what": "fibre-cement lap siding, cedar-grain emboss, 150 mm exposed, butt joints staggered, painted",
+   "unit_mm": {
+    "exposure": 150,
+    "butt": 8,
+    "board_length": 3660
+   },
+   "tile_m": [
+    3.66,
+    4.05
+   ],
+   "courses": 27,
+   "palette": [
+    "#EDEAE0"
+   ],
+   "paint_examples": [
+    "#D1CBC1",
+    "#8E9A84",
+    "#7D8A93",
+    "#EDEAE0",
+    "#C9B79C"
+   ],
+   "grain": [
+    "wood"
+   ],
+   "roughness": [
+    0.7,
+    0.7
+   ],
+   "where": "lake cottage, 1990s two-storey upper floors, farmhouse"
+  },
+  {
+   "id": 5,
+   "name": "board_batten",
+   "class": "batten",
+   "what": "vertical board and batten, 305 mm centres, 64 mm battens 19 mm proud, painted",
+   "unit_mm": {
+    "centres": 305,
+    "batten": 64,
+    "batten_proud": 19
+   },
+   "tile_m": [
+    3.6576,
+    3.05
+   ],
+   "boards": 12,
+   "palette": [
+    "#EDEAE0"
+   ],
+   "paint_examples": [
+    "#F0EEE7",
+    "#2F2F30",
+    "#9AA39A",
+    "#E2D6BC"
+   ],
+   "grain": [
+    "wood"
+   ],
+   "roughness": [
+    0.68,
+    0.68
+   ],
+   "where": "modern farmhouse, modern, boathouses"
+  },
+  {
+   "id": 6,
+   "name": "stucco",
+   "class": "render",
+   "what": "sand-finish stucco with a light trowel texture, integral colour or painted",
+   "unit_mm": {
+    "sand": 1.5,
+    "trowel_sweep": 400
+   },
+   "tile_m": [
+    4.0,
+    4.0
+   ],
+   "palette": [
+    "#EDEAE0"
+   ],
+   "paint_examples": [
+    "#CDB898",
+    "#E2D6BC",
+    "#D8D2C4",
+    "#BFAE90"
+   ],
+   "grain": [
+    "stucco"
+   ],
+   "roughness": [
+    0.92,
+    0.92
+   ],
+   "where": "modern, commercial, some 1990s houses"
+  }
+ ],
+ "roofs": [
+  {
+   "id": 0,
+   "name": "shingle_weathered_wood",
+   "class": "shingle",
+   "what": "architectural (laminated) asphalt shingles, weathered-wood granule blend",
+   "unit_mm": {
+    "exposure": 143,
+    "strip": 1000,
+    "tab": [
+     100,
+     230
+    ]
+   },
+   "tile_m": [
+    4.0,
+    4.004
+   ],
+   "courses": 28,
+   "palette": [
+    "#6E6A63",
+    "#8A8174",
+    "#5A544D",
+    "#4A4744",
+    "#9A8F7E",
+    "#625C54"
+   ],
+   "roughness": [
+    0.9,
+    0.9
+   ],
+   "where": "most houses"
+  },
+  {
+   "id": 1,
+   "name": "shingle_charcoal",
+   "class": "shingle",
+   "what": "architectural asphalt shingles, charcoal granule blend",
+   "unit_mm": {
+    "exposure": 143,
+    "strip": 1000,
+    "tab": [
+     100,
+     230
+    ]
+   },
+   "tile_m": [
+    4.0,
+    4.004
+   ],
+   "courses": 28,
+   "palette": [
+    "#3A3A3B",
+    "#2C2C2E",
+    "#4A4A4A",
+    "#222224",
+    "#555352",
+    "#333334"
+   ],
+   "roughness": [
+    0.88,
+    0.88
+   ],
+   "where": "1990s and newer houses"
+  },
+  {
+   "id": 2,
+   "name": "shingle_barkwood",
+   "class": "shingle",
+   "what": "architectural asphalt shingles, brown barkwood granule blend",
+   "unit_mm": {
+    "exposure": 143,
+    "strip": 1000,
+    "tab": [
+     100,
+     230
+    ]
+   },
+   "tile_m": [
+    4.0,
+    4.004
+   ],
+   "courses": 28,
+   "palette": [
+    "#5A4334",
+    "#6E5340",
+    "#4A372B",
+    "#7C6450",
+    "#3E3029",
+    "#64493A"
+   ],
+   "roughness": [
+    0.9,
+    0.9
+   ],
+   "where": "1970s and 1990s houses"
+  },
+  {
+   "id": 3,
+   "name": "metal_seam",
+   "class": "standing_seam",
+   "what": "standing-seam steel roof, 406 mm panels, 25 mm seams, two pencil ribs; Galvalume or painted",
+   "unit_mm": {
+    "panel": 406,
+    "seam_height": 25,
+    "seam_width": 12
+   },
+   "tile_m": [
+    4.06,
+    4.0
+   ],
+   "panels": 10,
+   "palette": [
+    "#A9ADAF"
+   ],
+   "paint_examples": [
+    "#A9ADAF",
+    "#3C3F42",
+    "#4E4741",
+    "#E8E8E2",
+    "#5B6B5A"
+   ],
+   "metallic_bare": 1.0,
+   "grain": [
+    "metal"
+   ],
+   "roughness": [
+    0.38,
+    0.5
+   ],
+   "where": "farmhouse, boathouses, porches, commercial sheds"
+  },
+  {
+   "id": 4,
+   "name": "membrane_flat",
+   "class": "membrane",
+   "what": "single-ply membrane on a flat roof (white or grey TPO, or black modified bitumen), 3.05 m rolls with welded laps",
+   "unit_mm": {
+    "roll": 3050,
+    "lap": 40
+   },
+   "tile_m": [
+    3.05,
+    3.05
+   ],
+   "rolls": 1,
+   "palette": [
+    "#EDEAE0"
+   ],
+   "paint_examples": [
+    "#E6E6E0",
+    "#9C9C98",
+    "#2E2E2E"
+   ],
+   "grain": [
+    "stucco"
+   ],
+   "roughness": [
+    0.8,
+    0.8
+   ],
+   "where": "commercial blocks, modern flat roofs, porches"
+  }
+ ],
+ "test_houses": {
+  "ranch_red": {
+   "wall": "brick_red",
+   "roof": "shingle_weathered_wood"
+  },
+  "ranch_brown": {
+   "wall": "brick_brown",
+   "roof": "shingle_barkwood"
+  },
+  "ranch_buff": {
+   "wall": "brick_buff",
+   "roof": "shingle_charcoal"
+  },
+  "farm_stone": {
+   "wall": "limestone",
+   "roof": "metal_seam",
+   "bare": 1.0
+  },
+  "cottage_lap": {
+   "wall": "lap_siding",
+   "roof": "shingle_weathered_wood",
+   "paint": "#8E9A84"
+  },
+  "modern_bb": {
+   "wall": "board_batten",
+   "roof": "metal_seam",
+   "paint": "#F0EEE7",
+   "roof_paint": "#3C3F42"
+  },
+  "stucco": {
+   "wall": "stucco",
+   "roof": "shingle_charcoal",
+   "paint": "#CDB898"
+  }
+ },
+ "variety": {
+  "brick": 3,
+  "stone": 1,
+  "lap": 1,
+  "batten": 1,
+  "render": 1,
+  "shingle": 3,
+  "standing_seam": 1,
+  "membrane": 1
+ }
+}
