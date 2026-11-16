@@ -1,0 +1,547 @@
+{
+ "method": "Three fresh reviewers each, given only the nine blind sheets (docs/jclass-11/blind/<surface>.jpg) and the cards' level descriptions, put each sheet's letters A to E in level order (each level once) and named the least convincing thing on each sheet. Rule (wear_check.py): a reviewer passes a surface with all five right or one swap of neighbouring levels; a surface passes when at least three reviewers do.",
+ "round": 5,
+ "reviewers": {
+  "r1": {
+   "ladder": {
+    "paint": {
+     "A": "L1",
+     "B": "L4",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L1",
+     "D": "L0",
+     "E": "L3"
+    },
+    "varnish": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L1",
+     "D": "L3",
+     "E": "L4"
+    },
+    "bronze": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L0",
+     "D": "L1",
+     "E": "L4"
+    },
+    "duralumin": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L2",
+     "D": "L0",
+     "E": "L4"
+    },
+    "cotton": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L0",
+     "D": "L1",
+     "E": "L3"
+    },
+    "manila": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L2",
+     "E": "L1"
+    },
+    "wire": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L0",
+     "D": "L3",
+     "E": "L2"
+    },
+    "furnishings": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L4",
+     "D": "L2",
+     "E": "L0"
+    }
+   },
+   "confidence": {
+    "paint": "medium",
+    "teak": "high",
+    "varnish": "high",
+    "bronze": "high",
+    "duralumin": "high",
+    "cotton": "high",
+    "manila": "high",
+    "wire": "medium",
+    "furnishings": "medium"
+   },
+   "least_real": {
+    "paint": "L4 barnacle crust is an even grey speckle over the whole bottom, and the rust runs are evenly spaced vertical stripes",
+    "teak": "L3 is beige, not almost white-blond, and hard to tell from L1",
+    "varnish": "L4 cabin peeling is a regular brick-like patchwork of orange flakes on grey",
+    "bronze": "the L3 bronze shows no black patina in the recesses and looks almost the same as L1",
+    "duralumin": "L4 flaking is an even dark speckle over the whole mast, not clusters round the fittings, and there is no white corrosion powder",
+    "cotton": "L4 grime is soft vertical brown banding; the mildew doesn't follow the folds and no rust streaks from the hanks show",
+    "manila": "L0 to L3 rope barely changes (no visible hairiness); the levels read mostly from the deck",
+    "wire": "the wire itself is too small to read; the levels come from the deck and hull, not the wire",
+    "furnishings": "the L4 deckhead is a rough noisy texture, and the L1 to L3 velvet and carpet differences are very faint"
+   }
+  },
+  "r2": {
+   "ladder": {
+    "paint": {
+     "A": "L1",
+     "B": "L4",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L1",
+     "D": "L0",
+     "E": "L3"
+    },
+    "varnish": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L1",
+     "D": "L3",
+     "E": "L4"
+    },
+    "bronze": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L0",
+     "D": "L1",
+     "E": "L4"
+    },
+    "duralumin": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L2",
+     "D": "L0",
+     "E": "L4"
+    },
+    "cotton": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L0",
+     "D": "L1",
+     "E": "L3"
+    },
+    "manila": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L2",
+     "E": "L1"
+    },
+    "wire": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L0",
+     "D": "L3",
+     "E": "L2"
+    },
+    "furnishings": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L4",
+     "D": "L2",
+     "E": "L0"
+    }
+   },
+   "confidence": {
+    "paint": "medium",
+    "teak": "high",
+    "varnish": "high",
+    "bronze": "high",
+    "duralumin": "high",
+    "cotton": "high",
+    "manila": "high",
+    "wire": "high",
+    "furnishings": "low"
+   },
+   "least_real": {
+    "paint": "L4 rust runs are evenly spaced vertical stripes like a barcode, and the barnacled bottom reads as flat grey noise. The kept L3 hull has faded, streaky antifouling much like L2's",
+    "teak": "the levels differ mostly by an overall colour shift. L4's green algae, black mildew and proud failed seams hardly show",
+    "varnish": "the peeled deckhouse varnish at L4 is a blocky, brick-like patchwork of orange tiles on grey, not flakes along the grain",
+    "bronze": "the L4 winch base flakes to bright silver-white, as if paint were coming off metal, and the verdigris lies as an even all-over coat",
+    "duralumin": "the L4 corrosion is evenly scattered dark specks over the whole mast, not flaking clustered round the fittings with white powder",
+    "cotton": "the L4 mildew is a uniform grey wash with speckle, not spotting along the folds. No rust streaks from the hanks are visible",
+    "manila": "the rope itself barely changes from L0 to L3, so the deck and bronze carry the ladder. The L4 fraying and fuzz don't read",
+    "wire": "the wire is hardly visible in the crop: the levels read from the deck, the hull and the green, verdigris-looking turnbuckles rather than from rusting galvanised wire",
+    "furnishings": "L0 to L3 are nearly identical (only the saturation shifts slightly). At L4 the blue velvet turns uniformly grey and the ceiling turns into coarse mottled noise"
+   }
+  },
+  "r3": {
+   "ladder": {
+    "paint": {
+     "A": "L1",
+     "B": "L4",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L1",
+     "D": "L0",
+     "E": "L3"
+    },
+    "varnish": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L1",
+     "D": "L3",
+     "E": "L4"
+    },
+    "bronze": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L0",
+     "D": "L1",
+     "E": "L4"
+    },
+    "duralumin": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L2",
+     "D": "L0",
+     "E": "L4"
+    },
+    "cotton": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L0",
+     "D": "L1",
+     "E": "L3"
+    },
+    "manila": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L2",
+     "E": "L1"
+    },
+    "wire": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L0",
+     "D": "L3",
+     "E": "L2"
+    },
+    "furnishings": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L4",
+     "D": "L2",
+     "E": "L0"
+    }
+   },
+   "confidence": {
+    "paint": "medium",
+    "teak": "high",
+    "varnish": "high",
+    "bronze": "high",
+    "duralumin": "high",
+    "cotton": "high",
+    "manila": "high",
+    "wire": "high",
+    "furnishings": "medium"
+   },
+   "least_real": {
+    "paint": "L4 barnacle crust is flat grey speckle noise; rust runs evenly spaced like a stretched texture; L1 and L3 barely differ from new",
+    "teak": "new and first-season decks are flat uniform colour with no grain or plank-to-plank variation",
+    "varnish": "L4 peel on the cabin trunk reads as blotchy brick-like patches, not flakes along the grain",
+    "bronze": "L4 winch is an even green-brown camouflage mottle; L2/L3 hand-polish vs dark recesses hardly shows",
+    "duralumin": "mast wear is evenly scattered dark speckle over the whole spar, not flake clusters round the fittings",
+    "cotton": "mildew is uniform speckle across the furled sail rather than along the folds; hank rust streaks hard to read",
+    "manila": "the rope itself barely changes; no hairiness or fraying visible even at L4, the deck carries the ladder",
+    "wire": "the wire is hardly visible; L4 hull rust at the chainplates is blocky orange patches",
+    "furnishings": "L4 stains are big uniform smudges over walls, ceiling and carpet, like a dirt overlay; L0-L3 nearly identical"
+   }
+  }
+ },
+ "earlier_rounds": {
+  "4": {
+   "note": "the same sheets' layout before round 5's fixes; all three put every surface in the right order, and their least-real notes drove round 5",
+   "reviewers": {
+    "r1": {
+     "ladder": {
+      "paint": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "teak": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "varnish": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "bronze": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      },
+      "duralumin": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "cotton": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "manila": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "wire": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "furnishings": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L4",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "confidence": {
+      "paint": "medium",
+      "teak": "high",
+      "varnish": "high",
+      "bronze": "high",
+      "duralumin": "high",
+      "cotton": "high",
+      "manila": "high",
+      "wire": "medium",
+      "furnishings": "low"
+     },
+     "least_real": {
+      "paint": "chalking as soft cloud-noise blotches, the same pattern at L2 and L3",
+      "teak": "L4 grime in big soft blotches that ignore the planks and grain",
+      "varnish": "L4 peel as camouflage patches over the coachroof sides",
+      "bronze": "verdigris sprinkled as even specks all over, not gathered in the recesses",
+      "duralumin": "L4 flaking as evenly scattered polka-dot spots on the mast",
+      "cotton": "mildew as soft cloud drifts; no rust streaks from the hanks",
+      "manila": "the rope barely changes: no hairs or fraying, L4 still tan",
+      "wire": "the wire is too thin to show its own wear; the level only reads from the deck",
+      "furnishings": "L4 stains as huge cream camouflage blotches over walls and ceiling; L0 to L3 nearly identical"
+     }
+    },
+    "r2": {
+     "ladder": {
+      "paint": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "teak": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "varnish": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "bronze": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      },
+      "duralumin": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "cotton": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "manila": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "wire": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "furnishings": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L4",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "confidence": {
+      "paint": "medium",
+      "teak": "high",
+      "varnish": "high",
+      "bronze": "high",
+      "duralumin": "medium",
+      "cotton": "high",
+      "manila": "high",
+      "wire": "medium",
+      "furnishings": "low"
+     },
+     "least_real": {
+      "paint": "chalking is soft cloud-noise blotches; L2's rust weeps barely show, so L2 and L3 look almost the same",
+      "teak": "L4 deck is uniform dark mottled noise, no open checks or proud failed seams visible",
+      "varnish": "L4 peeling is big orange-and-grey camouflage blotches on the cabin sides, not flakes",
+      "bronze": "L4 verdigris is green confetti scattered evenly over the whole winch, not gathered in the recesses",
+      "duralumin": "L4 flaking is evenly spaced grey polka dots on the mast, no white powder at rivets or fittings",
+      "cotton": "mildew and grime are large soft cloud blotches over the whole sail, not specks or drifts; no rust streaks from hanks",
+      "manila": "the rope changes only in colour; no hairiness or fraying visible even at L4",
+      "wire": "the wire hardly changes between levels at this scale; L4 rust in the lay is invisible next to the spar's polka-dot flaking",
+      "furnishings": "L4 is cow-print brown and white blotches over every wood surface, ceiling and bookcase; L0 to L3 are nearly identical"
+     }
+    },
+    "r3": {
+     "ladder": {
+      "paint": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "teak": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "varnish": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "bronze": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      },
+      "duralumin": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "cotton": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "manila": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "wire": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "furnishings": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L4",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "confidence": {
+      "paint": "medium",
+      "teak": "high",
+      "varnish": "high",
+      "bronze": "medium",
+      "duralumin": "medium",
+      "cotton": "high",
+      "manila": "high",
+      "wire": "medium",
+      "furnishings": "medium"
+     },
+     "least_real": {
+      "paint": "chalking is soft cloud-noise blotches that ignore the plating; the L4 rust is scattered specks, not runs from seams and rivet rows",
+      "teak": "L4 deck is an even dark camouflage mottle; no visible open checks or proud failed seams",
+      "varnish": "L4 peel is big round orange blobs over grey, like camouflage, not flaking at edges and tops",
+      "bronze": "L4 verdigris is confetti specks over the domes instead of sitting in the recesses",
+      "duralumin": "L4 flaking is an even dalmatian spotting up the whole mast, not gathered at rivets and fittings",
+      "cotton": "mildew drifts are large soft cloud blotches; no rust streaks from the hanks to be seen",
+      "manila": "L4 rope keeps a crisp lay, just darker; no fuzz or fraying",
+      "wire": "the wire is too thin to read at this scale; L0 to L3 tell apart only by the deck and fittings",
+      "furnishings": "L4 is a white-and-brown camouflage pattern over every wall and the ceiling; it looks like a texture error, not mildew"
+     }
+    }
+   }
+  }
+ }
+}

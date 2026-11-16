@@ -1,0 +1,68 @@
+{
+ "key": {
+  "paint": [
+   "L1",
+   "L4",
+   "L2",
+   "L3",
+   "L0"
+  ],
+  "teak": [
+   "L4",
+   "L2",
+   "L1",
+   "L0",
+   "L3"
+  ],
+  "varnish": [
+   "L0",
+   "L2",
+   "L1",
+   "L3",
+   "L4"
+  ],
+  "bronze": [
+   "L2",
+   "L3",
+   "L0",
+   "L1",
+   "L4"
+  ],
+  "duralumin": [
+   "L3",
+   "L1",
+   "L2",
+   "L0",
+   "L4"
+  ],
+  "cotton": [
+   "L4",
+   "L2",
+   "L0",
+   "L1",
+   "L3"
+  ],
+  "manila": [
+   "L0",
+   "L4",
+   "L3",
+   "L2",
+   "L1"
+  ],
+  "wire": [
+   "L4",
+   "L1",
+   "L0",
+   "L3",
+   "L2"
+  ],
+  "furnishings": [
+   "L3",
+   "L1",
+   "L4",
+   "L2",
+   "L0"
+  ]
+ },
+ "about": "the level shown under each letter A to E of blind/<surface>.jpg"
+}
