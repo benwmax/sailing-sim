@@ -180,6 +180,19 @@ closing the menus. It is now a screen (`ESailScreen::Logbook`, `BuildLogbook`), 
 Stills to retake: `world` (a locked card in view), `launch`, `controls`, `customize`; new: `logbook`
 (`-SailingFrontEnd=Logbook`, best after a few minutes of sailing so the page has entries).
 
+## Phase 4: the title's slips and a box-free UI Natural
+
+- **Title.** The mode switch (Career or Free Sail) and the last-session card are slips of chart paper, like the pause
+  menu's "This sail". The wordmark and "SAILING" carry the ink shadow, and "SAILING" is paper-coloured instead of muted
+  grey. The layout is unchanged until the fonts arrive.
+- **UI Natural on the water** (`-SailingHudMode=1`) is box-free. The wind dial sits on its own round ink face with only
+  the apparent wind angle under it; speed and depth are the big numeral and its unit with a drop shadow (no label, no
+  second line, no panel; the depth keeps its amber box when shallow); the compass tape has no panel and its ticks and
+  numbers carry a shadow. UI Helpful keeps its panels and all its text. The drill and race panels and the message cards
+  are unchanged in both.
+
+Stills: `title`, `hud-natural` (`-SailingHudMode=1`), `hud` (Helpful, to check nothing moved).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be
