@@ -1,26 +1,160 @@
 {
- "note": "The plan's tracks and what each is checked against (docs/env-loop/README.md). A track keeps its cards in Tools/envloop/cards/<track>/, its build scripts where the game's builders live (Tools/blender/, a new scripts/make_env_materials.py for materials: never scripts/make_materials.py, the merge hotspot), its renders in Artifacts/envloop/<track>/ (git-ignored) and its notes in docs/env-loop/<track>.md. Variety targets are the minimum the 'variety' check counts.",
+ "note": "The plan's tracks and what each is checked against (docs/env-loop/README.md). A track keeps its cards in Tools/envloop/cards/<track>/, its build scripts where the game's builders live (Tools/blender/, a new scripts/make_env_materials.py for materials: never scripts/make_materials.py, the merge hotspot), its renders in Artifacts/envloop/<track>/ (git-ignored) and its notes in docs/env-loop/<track>.md. Variety targets are the minimum the 'variety' check counts. Region content (which surfaces, species, edge types, house styles and props, and where each goes) is not here: it is in the region pack, packs/<pack>/<pack_file> (docs/env-loop/packs.md). pack.py check holds every pack to its track's assets ('assets': where the track keeps its asset ids).",
  "tracks": {
-  "A": {"name": "Ground textures", "cards": "cards/ground", "stations": ["club-lawn", "club-beach", "clay-bank", "residential-a", "wooded"],
-        "variety": {"surfaces": 8, "seasons": 2},
-        "surfaces": ["mown bermuda lawn", "rough dry grass", "blackland clay", "limestone gravel", "sand", "wet mud", "cracked dry mud", "leaf litter"],
-        "budget": {"Ultra_mb": 120, "High_mb": 40, "Medium_mb": 12}},
-  "B": {"name": "3D grass and ground plants", "cards": "cards/grass", "stations": ["club-lawn", "club-beach", "clay-bank", "wooded"],
-        "variety": {"species": 6, "seasons": 2}, "draw_m": {"Ultra": 100, "High": 60, "Medium": 0},
-        "budget": {"Ultra_ms": 1.5, "High_ms": 1.0, "Medium_ms": 0.0}},
-  "C": {"name": "Shoreline types", "cards": "cards/shoreline", "stations": ["breakwater", "bulkhead", "residential-a", "residential-b", "clay-bank", "club-beach", "bridge"],
-        "variety": {"edge_types": 10}},
-  "D": {"name": "Trees and shrubs up close", "cards": "cards/trees", "stations": ["wooded", "club-lawn", "residential-b", "bridge"],
-        "variety": {"species": 9, "models_per_species": 3}},
-  "E": {"name": "Building parts kit", "cards": "cards/buildings", "stations": ["residential-a", "residential-b", "bulkhead", "club-lawn"],
-        "variety": {"windows": 8, "doors": 5, "garage_doors": 2, "chimneys": 3, "wall_finishes": 7, "roof_finishes": 4, "house_styles": 6},
-        "budget": {"trim_sheet_px": 4096}},
-  "F": {"name": "Docks, boathouses and waterfront structures", "cards": "cards/docks", "stations": ["private-dock", "bulkhead", "residential-a"],
-        "variety": {"dock_layouts": 6, "boathouses": 3}},
-  "G": {"name": "Clubhouse and landmarks", "cards": "cards/clubhouse", "stations": ["club-lawn", "club-beach"], "needs": "Bean's clubhouse photo set"},
-  "H": {"name": "Yard and shore clutter", "cards": "cards/clutter", "stations": ["residential-a", "residential-b", "private-dock"],
-        "variety": {"props": 30}},
-  "I": {"name": "Rollout, tiers and gates", "stations": "all"}
+  "A": {
+   "name": "Ground textures",
+   "cards": "cards/ground",
+   "stations": [
+    "club-lawn",
+    "club-beach",
+    "clay-bank",
+    "residential-a",
+    "wooded"
+   ],
+   "variety": {
+    "surfaces": 8,
+    "seasons": 2
+   },
+   "budget": {
+    "Ultra_mb": 120,
+    "High_mb": 40,
+    "Medium_mb": 12
+   },
+   "pack_file": "ground.json",
+   "assets": "ground/cards/*.json"
+  },
+  "B": {
+   "name": "3D grass and ground plants",
+   "cards": "cards/grass",
+   "stations": [
+    "club-lawn",
+    "club-beach",
+    "clay-bank",
+    "wooded"
+   ],
+   "variety": {
+    "species": 6,
+    "seasons": 2
+   },
+   "draw_m": {
+    "Ultra": 100,
+    "High": 60,
+    "Medium": 0
+   },
+   "budget": {
+    "Ultra_ms": 1.5,
+    "High_ms": 1.0,
+    "Medium_ms": 0.0
+   },
+   "pack_file": "grass.json",
+   "assets": "grass/cards/*.json"
+  },
+  "C": {
+   "name": "Shoreline types",
+   "cards": "cards/shoreline",
+   "stations": [
+    "breakwater",
+    "bulkhead",
+    "residential-a",
+    "residential-b",
+    "clay-bank",
+    "club-beach",
+    "bridge"
+   ],
+   "variety": {
+    "edge_types": 10
+   },
+   "pack_file": "shoreline.json",
+   "assets": "cards/shoreline/*.json"
+  },
+  "D": {
+   "name": "Trees and shrubs up close",
+   "cards": "cards/trees",
+   "stations": [
+    "wooded",
+    "club-lawn",
+    "residential-b",
+    "bridge"
+   ],
+   "variety": {
+    "species": 9,
+    "models_per_species": 3
+   },
+   "pack_file": "trees.json",
+   "assets": "cards/trees/*.json"
+  },
+  "E": {
+   "name": "Building parts kit",
+   "cards": "cards/buildings",
+   "stations": [
+    "residential-a",
+    "residential-b",
+    "bulkhead",
+    "club-lawn"
+   ],
+   "variety": {
+    "windows": 8,
+    "doors": 5,
+    "garage_doors": 2,
+    "chimneys": 3,
+    "wall_finishes": 7,
+    "roof_finishes": 4,
+    "house_styles": 6
+   },
+   "budget": {
+    "trim_sheet_px": 4096
+   },
+   "pack_file": "buildings.json",
+   "assets": "cards/buildings/*.json"
+  },
+  "F": {
+   "name": "Docks, boathouses and waterfront structures",
+   "cards": "cards/docks",
+   "stations": [
+    "private-dock",
+    "bulkhead",
+    "residential-a"
+   ],
+   "variety": {
+    "dock_layouts": 6,
+    "boathouses": 3
+   },
+   "pack_file": "docks.json",
+   "assets": "docks/cards.json#keys"
+  },
+  "G": {
+   "name": "Clubhouse and landmarks",
+   "cards": "cards/clubhouse",
+   "stations": [
+    "club-lawn",
+    "club-beach"
+   ],
+   "needs": "Bean's clubhouse photo set"
+  },
+  "H": {
+   "name": "Yard and shore clutter",
+   "cards": "cards/clutter",
+   "stations": [
+    "residential-a",
+    "residential-b",
+    "private-dock"
+   ],
+   "variety": {
+    "props": 30
+   },
+   "pack_file": "yard.json",
+   "assets": "yard/cards.json#keys"
+  },
+  "I": {
+   "name": "Rollout, tiers and gates",
+   "stations": "all"
+  }
  },
- "frame_share_ms": {"Ultra": 4.5, "High": 3.0, "Medium": 1.5, "note": "the plan's proposal; frame_cost.py measures today's at each station first"}
+ "frame_share_ms": {
+  "Ultra": 4.5,
+  "High": 3.0,
+  "Medium": 1.5,
+  "note": "the plan's proposal; frame_cost.py measures today's at each station first"
+ },
+ "default_pack": "north-texas-lake"
 }

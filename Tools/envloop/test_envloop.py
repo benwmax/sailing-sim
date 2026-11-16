@@ -53,6 +53,15 @@ def main():
     ok(repeat_check.repeat_peak(rng.random((400, 400))) < 0.1, "repeat: noise does not")
     r = subprocess.run([sys.executable, os.path.join(HERE, "check_card.py"), os.path.join(HERE, "cards", "_template.json")], capture_output=True, text=True)
     ok(r.returncode == 0, "check_card: the template card passes")
+    import pack
+    for pid in pack.ids():
+        probs = pack.check(pid)
+        ok(not probs, "pack %s passes pack.py check%s" % (pid, "" if not probs else ": " + "; ".join(probs[:3])))
+    bad = pack.check_rule({"slope_deg": [0, 10], "landuse": ["lawn"], "hand_x_m": [1, 2], "cover": ["jungle"]}, "t")
+    ok(len(bad) == 2, "pack: rules take map-data inputs only")
+    nt = pack.load("north-texas-lake")
+    ok(all(len(set(pack.track_file(nt, t)["entries"][0]) & {"id", "group"}) == 2 for t in "ABCDEFH"), "pack: every track has a file")
+    ok(abs(pack.noon_sun_deg(nt) - 80.5) < 0.3, "pack: noon sun on Jun 15 at 32.8 N is 80.5 deg")
     sc = json.load(open(os.path.join(HERE, "size_card.json")))
     ok(all("source" in v and "value" in v for v in sc["sizes"].values()), "size card: every row has a value and a source")
     st = json.load(open(os.path.join(HERE, "stations.json")))

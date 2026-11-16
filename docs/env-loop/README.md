@@ -125,11 +125,16 @@ reads the copied `bench.json` files and writes `frame_cost.csv` with the GPU tim
 share, and the base slice's, where geometry and shadows land). The plan's proposed shares (Ultra 4.5 ms, High 3.0, Medium
 1.5) are checked against this at the worst station. Uncooked runs are not representative of frame rate.
 
+## Region packs
+
+What each track makes for this lake, and where it goes, is listed in the region pack `Tools/envloop/packs/north-texas-lake/`
+(one file per track, placement by rule from map data, buildings as parts plus recipes): [packs.md](packs.md).
+
 ## Where each track starts
 
 | Track | Starts from | Its stations | Folder |
 | --- | --- | --- | --- |
-| A Ground textures | size card rows `grass.*`, the texture rule (a 2 m ground tile is 256 px on Ultra), `repeat_check.py` (stochastic or layered tiling needed), 8 surfaces x 2 seasons in `tracks.json` | club-lawn, club-beach, clay-bank, residential-a, wooded | `cards/ground` |
+| A Ground textures | size card rows `grass.*`, the texture rule (a 2 m ground tile is 256 px on Ultra), `repeat_check.py` (stochastic or layered tiling needed), 8 surfaces x 2 seasons (`packs/north-texas-lake/ground.json`) | club-lawn, club-beach, clay-bank, residential-a, wooded | `cards/ground` |
 | B 3D grass | `grass.*` and `plant.*` rows, draw distances (Ultra 100 m, High 60, Medium none), 6 species | club-lawn, club-beach, clay-bank, wooded | `cards/grass` |
 | C Shoreline types | `bulkhead.*`, `sheet_pile.*`, `limestone_block.*`, `timber_wall.*`, `riprap.*`, `launch_ramp.*`; `lake.py lot()` says which lots get which bank | breakwater, bulkhead, residential-a/b, clay-bank, club-beach, bridge | `cards/shoreline` |
 | D Trees up close | `tree.*` rows for nine species, 3 models each | wooded, club-lawn, residential-b, bridge | `cards/trees` |
@@ -147,7 +152,8 @@ share, and the base slice's, where geometry and shadows land). The plan's propos
 | `Tools/envloop/pick_stations.py` | fixed the ten stations (`stations.json`, `stations.csv`) |
 | `Tools/envloop/station_maps.py` | the stations from above |
 | `Tools/envloop/size_card.json` | shared real sizes, bands, texture rule |
-| `Tools/envloop/tracks.json` | per track: card folder, stations, variety targets, budgets |
+| `Tools/envloop/tracks.json` | per track: card folder, stations, variety targets, budgets, pack file |
+| `Tools/envloop/pack.py`, `packs/` | region packs and their checks ([packs.md](packs.md)) |
 | `Tools/envloop/cards/_template.json` | the card every asset starts from |
 | `Tools/envloop/check_card.py` | card checks |
 | `Tools/envloop/texel.py` | texture sharpness and memory |

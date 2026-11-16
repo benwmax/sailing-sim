@@ -155,11 +155,18 @@ def main():
     ap.add_argument("--eye", type=float, default=1.6)
     ap.add_argument("--yaw", type=float, default=0.0)
     ap.add_argument("--distances", default="3,15,60")
+    ap.add_argument("--pack", help="region pack (packs/<id>): the midday light is its sun at solar noon on its reference day")
     a = ap.parse_args(argv)
     name = a.name or os.path.splitext(os.path.basename(a.asset or a.builder))[0]
     dists = [float(v) for v in a.distances.split(",")]
     W, H = (int(v) for v in a.res.split("x"))
     os.makedirs(a.out, exist_ok=True)
+    if a.pack:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import pack as packs  # noqa: E402
+        el = packs.noon_sun_deg(packs.load(a.pack))
+        LIGHTS["midday"] = (el,) + LIGHTS["midday"][1:]
+        print("pack %s: midday sun %.1f deg" % (a.pack, el))
     reset()
     if a.builder:
         os.environ["ENV_RENDER_ARGS"] = json.dumps(vars(a))

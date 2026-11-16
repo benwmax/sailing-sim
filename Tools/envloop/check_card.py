@@ -1,6 +1,6 @@
 """Check an environment asset card (docs/env-loop/README.md): the card's fields, its sizes against the shared size card
 (within size_card.json tolerance_pct, or inside the row's range), its textures against the sharpness rule, its stations
-against stations.json, its references' licences, and its variety against its track's target.
+against stations.json, its region packs (packs/<id>), its references' licences, and its variety against its track's target.
 
     python3 Tools/envloop/check_card.py Tools/envloop/cards/<track>/<asset>.json [...]
     python3 Tools/envloop/check_card.py --all        # every card under Tools/envloop/cards (not _template.json)
@@ -59,6 +59,9 @@ def check(path, card_sizes, tol, stations, tracks):
         r = texel.check(t["px"], t["tile_m"], t.get("band", "hero"))
         if not r["ok"]:
             out.append("texture %s: %.0f px/m, the %s band wants %d" % (t["name"], r["px_per_m"], r["band"], r["want_px_per_m"]))
+    for pk in c.get("packs", []):
+        if not os.path.exists(os.path.join(HERE, "packs", pk, "pack.json")):
+            out.append("unknown region pack %r (packs/<id>/pack.json)" % pk)
     for s in c.get("stations", []):
         if s not in stations:
             out.append("unknown station %r" % s)

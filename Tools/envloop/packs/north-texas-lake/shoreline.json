@@ -1,0 +1,17 @@
+{
+ "pack": "north-texas-lake", "track": "C",
+ "note": "Shore edge types. A house lot's edge is picked by share; the shares here are what HouseKit.cpp's Hash01(K, 51) thresholds do today (0.55 bulkhead, 0.30 riprap, 0.15 natural), so the game can read them from the pack when Track I wires it. Assets are Track C's card ids.",
+ "lot_edge_shares": {"bulkhead": 0.55, "riprap": 0.30, "natural": 0.15},
+ "entries": [
+  {"id": "concrete-bulkhead", "asset": null, "group": "bulkhead", "weight": 3, "where": {"lot_edge": ["bulkhead"]}},
+  {"id": "vinyl-sheet-pile", "asset": null, "group": "bulkhead", "weight": 1, "where": {"lot_edge": ["bulkhead"]}},
+  {"id": "limestone-block-wall", "asset": null, "group": "bulkhead", "weight": 2, "where": {"lot_edge": ["bulkhead"]}},
+  {"id": "timber-wall", "asset": null, "group": "bulkhead", "weight": 1, "where": {"lot_edge": ["bulkhead"]}},
+  {"id": "limestone-riprap", "asset": null, "group": "riprap", "weight": 3, "where": {"lot_edge": ["riprap", "none"], "landuse": ["road_verge", "shore"]}},
+  {"id": "broken-concrete-riprap", "asset": null, "group": "riprap", "weight": 1, "where": {"lot_edge": ["riprap"]}},
+  {"id": "clay-cut-bank", "asset": null, "group": "natural", "weight": 2, "where": {"lot_edge": ["natural", "none"], "slope_deg": [25, 90]}},
+  {"id": "grass-to-water", "asset": null, "group": "natural", "weight": 2, "where": {"lot_edge": ["natural", "none"], "slope_deg": [0, 12]}},
+  {"id": "sand-beach", "asset": null, "group": "natural", "weight": 1, "where": {"landuse": ["park", "marina"], "slope_deg": [0, 8]}},
+  {"id": "concrete-launch-ramp", "asset": null, "group": "ramp", "weight": 1, "where": {"landuse": ["park", "marina"]}, "note": "from OSM slipways only"}
+ ]
+}
