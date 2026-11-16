@@ -2424,17 +2424,17 @@
  },
  "BulkheadCompass": {
   "category": "instrument",
-  "note": "Bulkhead steering compass, 100 mm class: flanged bezel, spherical bowl, conical card read at its aft edge, three lubber lines (shown without its dome)",
-  "tris": 7920,
+  "note": "Bulkhead steering compass, 100 mm class: flanged pod, spherical bowl, conical card read at its aft edge, three lubber lines (shown without its dome)",
+  "tris": 26443,
   "size_m": [
    0.124,
    0.124,
-   0.0934
+   0.0855
   ],
   "min_m": [
    -0.062,
    -0.062,
-   -0.04
+   0.0
   ],
   "slots": [
    "BlackPlastic",
@@ -2447,7 +2447,7 @@
    "Lubber": [
     0.0045,
     0.0,
-    0.0526
+    0.0846
    ],
    "Mount": [
     0.0,
@@ -2457,11 +2457,11 @@
    "Pivot": [
     0.0,
     0.0,
-    0.012
+    0.044
    ]
   },
   "light": {
-   "tris": 1980,
+   "tris": 6609,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -2480,11 +2480,11 @@
  "BulkheadCompassCard": {
   "category": "instrument",
   "note": "The bulkhead compass's card alone, origin at the pivot, +X to its north (the game holds it level and north)",
-  "tris": 2708,
+  "tris": 15663,
   "size_m": [
    0.076,
    0.076,
-   0.0145
+   0.0147
   ],
   "min_m": [
    -0.038,
@@ -2505,7 +2505,7 @@
    ]
   },
   "light": {
-   "tris": 676,
+   "tris": 3915,
    "slots": [
     "BlackPlastic",
     "WhitePlastic",
@@ -2520,17 +2520,17 @@
  },
  "BulkheadCompassMount": {
   "category": "instrument",
-  "note": "The bulkhead compass's fixed part: bezel, bowl, pivot post and lubber lines (the card goes on its Pivot socket)",
-  "tris": 5212,
+  "note": "The bulkhead compass's fixed part: pod, bowl, pivot post and lubber lines (the card goes on its Pivot socket)",
+  "tris": 10780,
   "size_m": [
    0.124,
    0.124,
-   0.0934
+   0.0855
   ],
   "min_m": [
    -0.062,
    -0.062,
-   -0.04
+   0.0
   ],
   "slots": [
    "BlackPlastic",
@@ -2541,7 +2541,7 @@
    "Lubber": [
     0.0045,
     0.0,
-    0.0526
+    0.0846
    ],
    "Mount": [
     0.0,
@@ -2551,11 +2551,11 @@
    "Pivot": [
     0.0,
     0.0,
-    0.012
+    0.044
    ]
   },
   "light": {
-   "tris": 1302,
+   "tris": 2694,
    "slots": [
     "BlackPlastic",
     "Stainless",
@@ -2581,7 +2581,7 @@
   "min_m": [
    -0.0468,
    -0.0468,
-   0.0052
+   0.0372
   ],
   "slots": [
    "CabinWindow"
