@@ -10,7 +10,7 @@ Preview looks are flat stand-ins for the MI_World_* looks (the game's materials 
 Writes <out>/<mesh>/<light>_<dist>m.png, a clay still, and stats.json (triangles, size, slots, sockets).
 
 Usage (Python with the bpy module):
-  python3 Tools/envloop/render_envloop.py <fbx dir> <out dir> [--dress <dir>,<dir>] [--only SM_A,SM_B]
+  python3 Tools/envloop/docks/render_envloop.py <fbx dir> <out dir> [--dress <dir>,<dir>] [--only SM_A,SM_B]
       [--dists 3,15,60] [--lights midday,low,overcast] [--samples 16] [--size 640x400] [--setting water|lawn]
       [--bearing <deg>] [--boat SM_ShoreBoat_RunaboutCovered] [--no-dress] [--no-clay]
 """

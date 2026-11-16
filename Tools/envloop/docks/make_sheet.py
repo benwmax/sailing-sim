@@ -1,7 +1,7 @@
 """Environment loop: a labelled contact sheet from render_envloop.py's output (for the docs, the blind rounds and
 Bean's one-page look).
 
-Usage: python3 Tools/envloop/make_sheet.py <render dir> <out.jpg> [--shots midday_15m,low_15m] [--only SM_A,SM_B]
+Usage: python3 Tools/envloop/docks/make_sheet.py <render dir> <out.jpg> [--shots midday_15m,low_15m] [--only SM_A,SM_B]
        [--cols 4] [--width 1600] [--title "..."]
 Each tile is one mesh x one shot, labelled with the mesh name (less SM_) and the shot.
 """

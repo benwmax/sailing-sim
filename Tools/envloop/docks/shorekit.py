@@ -20,7 +20,7 @@ import bpy  # noqa: F401  (first: brings bmesh and mathutils)
 import bmesh
 from mathutils import Matrix, Vector
 
-REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 _spec = importlib.util.spec_from_file_location("build_docks", os.path.join(REPO, "Tools", "blender", "build_docks.py"))
 club = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(club)

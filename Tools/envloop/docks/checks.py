@@ -9,7 +9,7 @@ its card. Until Track 0's shared checks land.
   6 cards    every mesh has a card and every card a mesh
 Colour against grey-card photos, repeat in a 40 m frame and the blind review are judged on renders (README).
 
-Usage: python3 Tools/envloop/checks.py <manifest.json> <cards.json> [<manifest> <cards> ...]   (exit 1 on a failure)
+Usage: python3 Tools/envloop/docks/checks.py <manifest.json> <cards.json> [<manifest> <cards> ...]   (exit 1 on a failure)
 """
 import json
 import os

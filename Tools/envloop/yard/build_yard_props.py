@@ -3,7 +3,7 @@ club's boat yard are dressed with, sparse and placed by seed (Bean's choice on O
 does not load them until Track I's integration places them (docs/envloop/yard/README.md).
 
 Every mesh: origin on the ground at its footprint's centre, +X its front, Z up, metres. Real sizes from catalogues and
-common practice are in cards.json (checked by Tools/envloop/checks.py). Colours that vary per yard are per-instance
+common practice are in cards.json (checked by Tools/envloop/docks/checks.py). Colours that vary per yard are per-instance
 (slots Plastic, Canvas, Paint); generic only: no logos, badges, plates or brand shapes.
 
 Usage: python3 Tools/envloop/yard/build_yard_props.py <out dir> [--only Kayak,GasGrill]
@@ -13,7 +13,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "docks"))
 import shorekit  # noqa: E402
 from shorekit import Part  # noqa: E402
 

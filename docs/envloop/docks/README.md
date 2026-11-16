@@ -57,10 +57,10 @@ rafters, 4x4 rails with pickets, the club kit's cleats, ladder, hoops and dock b
 ```
 python3 Tools/envloop/docks/build_shore_docks.py <out>/docks       # FBX + docks_manifest.json (bpy module or Blender)
 python3 Tools/envloop/yard/build_yard_props.py <out>/yard          # the dressing (Track H)
-python3 Tools/envloop/checks.py <out>/docks/docks_manifest.json Tools/envloop/docks/cards.json \
+python3 Tools/envloop/docks/checks.py <out>/docks/docks_manifest.json Tools/envloop/docks/cards.json \
         <out>/yard/yard_manifest.json Tools/envloop/yard/cards.json
-python3 Tools/envloop/render_envloop.py <out>/docks <out>/renders --dress <out>/yard   # 3/15/60 m x midday/low/overcast
-python3 Tools/envloop/make_sheet.py <out>/renders <out>/sheet.jpg --shots midday_15m
+python3 Tools/envloop/docks/render_envloop.py <out>/docks <out>/renders --dress <out>/yard   # 3/15/60 m x midday/low/overcast
+python3 Tools/envloop/docks/make_sheet.py <out>/renders <out>/sheet.jpg --shots midday_15m
 python3 Tools/envloop/docks/build_before.py <out>/before          # today's pier and boathouse, for blind rounds
 ```
 
