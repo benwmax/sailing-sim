@@ -29,7 +29,22 @@ int32 QualityGIScalabilityLevel(ESailingQuality Quality)
 
 float CloudViewSampleScale(ESailingQuality Quality)
 {
-	return Quality == ESailingQuality::Ultra ? 3.f : 1.f;
+	// High 0.65 (docs/slip-clouds/): the fair-weather march's view samples, which put the marina slip view back over its 45
+	// fps floor with the shadow cut below; the storm-adaptive code eases it back to 1 under a storm deck.
+	return Quality == ESailingQuality::Ultra ? 3.f : (Quality == ESailingQuality::High ? 0.65f : 1.f);
+}
+
+float CloudShadowSampleScale(ESailingQuality Quality)
+{
+	// High 0.5 (docs/slip-clouds/), the storm's own cut (docs/storm-high/) now in fair weather too; Ultra 4.
+	return Quality == ESailingQuality::Ultra ? 4.f : (Quality == ESailingQuality::High ? 0.5f : 1.f);
+}
+
+void CloudTierSampleScales(ESailingQuality Quality, bool bFullStormSamples, float& OutView, float& OutShadow)
+{
+	const bool bFull = bFullStormSamples && Quality == ESailingQuality::High;
+	OutView = bFull ? 1.f : CloudViewSampleScale(Quality);
+	OutShadow = bFull ? 1.f : CloudShadowSampleScale(Quality);
 }
 
 float CloudCapStepFloorM(ESailingQuality Quality)

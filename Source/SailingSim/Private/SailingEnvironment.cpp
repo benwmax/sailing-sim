@@ -344,8 +344,28 @@ void ASailingEnvironment::FindSceneActors()
 		{
 			CloudMaterial = UMaterialInstanceDynamic::Create(CloudComp->GetMaterial(), this);
 			CloudComp->SetMaterial(CloudMaterial);
+			// Ultra 3 and 4 (feedback #22, docs/cloud-shimmer), High 0.65 and 0.5 (docs/slip-clouds/); -SailingCloudScale overrides.
+			ApplyTierCloudScales();
 		}
 	}
+}
+
+void ASailingEnvironment::ApplyTierCloudScales()
+{
+	if (!bLayeredClouds || !Clouds) return;
+	UVolumetricCloudComponent* CloudComp = Clouds->FindComponentByClass<UVolumetricCloudComponent>();
+	if (!CloudComp) return;
+	static SailingArgs::FCachedFlag FullStormArg(TEXT("SailingFullStormSamples"));
+	float View = 1.f, Shadow = 1.f;
+	CloudTierSampleScales(USailingSettings::Get()->Quality, FullStormArg.Get(), View, Shadow);
+	FString Scales, A, B;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudScale="), Scales, false) && Scales.Split(TEXT(","), &A, &B))
+	{
+		View = FCString::Atof(*A);
+		Shadow = FCString::Atof(*B);
+	}
+	if (!FMath::IsNearlyEqual(CloudComp->ViewSampleCountScale, View)) CloudComp->SetViewSampleCountScale(View);
+	if (!FMath::IsNearlyEqual(CloudComp->ShadowViewSampleCountScale, Shadow)) CloudComp->SetShadowViewSampleCountScale(Shadow);
 }
 
 void ASailingEnvironment::BeginPlay()
@@ -364,8 +384,6 @@ void ASailingEnvironment::BeginPlay()
 			// Graphics G1: more samples on the shadow rays inside the cloud (their jitter was most of the speckle) and, on
 			// High and Ultra, along the view ray. -SailingCloudScale=<view>,<shadow> overrides, for measuring.
 			const ESailingQuality Q = USailingSettings::Get()->Quality;
-			CloudComp->SetViewSampleCountScale(CloudViewSampleScale(Q));   // Ultra 3 (feedback #22, docs/cloud-shimmer)
-			CloudComp->SetShadowViewSampleCountScale(Q == ESailingQuality::Ultra ? 4.f : 1.f);
 			// The shadow rays' samples over 4 km instead of the default 15: the same count, three times as dense where the
 			// light is actually lost (a cloud's own few kilometres), so far less jitter (the grain) at no cost. On High, 3 km
 			// (docs/storm-headroom/): 1.1 ms off the storm view, the clouds' slice 9.5 -> 7.9 ms, and the lake's cumulus, the
@@ -373,16 +391,6 @@ void ASailingEnvironment::BeginPlay()
 			CloudComp->SetShadowTracingDistance(Q == ESailingQuality::High ? 3.f : 4.f);
 			float ShadowKm = 0.f;
 			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudShadowKm="), ShadowKm)) CloudComp->SetShadowTracingDistance(ShadowKm);
-			FString Scales;
-			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudScale="), Scales, false))
-			{
-				FString A, B;
-				if (Scales.Split(TEXT(","), &A, &B))
-				{
-					CloudComp->SetViewSampleCountScale(FCString::Atof(*A));
-					CloudComp->SetShadowViewSampleCountScale(FCString::Atof(*B));
-				}
-			}
 		}
 		WeatherMapTexture = UTexture2D::CreateTransient(FWeatherMap::N, FWeatherMap::N, PF_FloatRGBA); // half floats (1024^2)
 		WeatherMapTexture->SRGB = false;
@@ -979,16 +987,25 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 				// (the shelf's face is lit by emission, not scattering), so its shadow rays decide little, and a dense grey
 				// mass seen through rain shows no grain at 56 (2.5 ms of the storm view's 23.4 at full resolution; its stills
 				// the same to within the rain's variance). The approach, with the lit shelf in a clear sky, keeps them all.
-				// -SailingFullStormSamples compares; -SailingCloudScale / -SailingCloudSamples (measuring) leave it alone.
+				// Since docs/slip-clouds/ fair weather on High starts lighter (view 0.65, shadow 0.5) and this block eases the
+				// view scale back to 1 under the deck, so the storm samples as before (view 1 up to 56, shadow 0.5).
+				// -SailingFullStormSamples compares (ApplyTierCloudScales gives it 1 and 1 with the tier's 80 cap);
+				// -SailingCloudScale / -SailingCloudSamples (measuring) leave it alone.
 				static SailingArgs::FCachedFlag FullStormArg(TEXT("SailingFullStormSamples"));
 				const bool bMeasuringClouds = FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudScale=")) != nullptr
 					|| FCString::Strifind(SailingArgs::Dev(), TEXT("SailingCloudSamples=")) != nullptr;
 				if (USailingSettings::Get()->Quality == ESailingQuality::High && !bMeasuringClouds && !FullStormArg.Get())
 				{
 					const float Storm = FMath::SmoothStep(0.4f, 0.75f, float(W.CloudDarkness));
-					const float ShadowScale = FMath::RoundToFloat(FMath::Lerp(1.f, 0.5f, Storm) * 10.f) / 10.f;   // 0.1 steps: a set rebuilds the proxy
+					// docs/slip-clouds/: fair weather now starts from High's lighter scales (view 0.65, shadow 0.5); under the
+					// deck the view scale eases back to 1 so the storm keeps exactly its old samples (scale 1, up to 56), and the
+					// shadow rays stay at the storm's 0.5.
+					const float FairShadow = CloudShadowSampleScale(ESailingQuality::High), FairView = CloudViewSampleScale(ESailingQuality::High);
+					const float ShadowScale = FMath::RoundToFloat(FMath::Lerp(FairShadow, FMath::Min(FairShadow, 0.5f), Storm) * 10.f) / 10.f;   // 0.1 steps: a set rebuilds the proxy
+					const float ViewScale = FMath::RoundToFloat(FMath::Lerp(FairView, 1.f, Storm) * 20.f) / 20.f;   // 0.05 steps
 					// (Against the live values, not a cache: the tier's settings may be applied again under it.)
 					if (!FMath::IsNearlyEqual(C->ShadowViewSampleCountScale, ShadowScale)) C->SetShadowViewSampleCountScale(ShadowScale);
+					if (!FMath::IsNearlyEqual(C->ViewSampleCountScale, ViewScale)) C->SetViewSampleCountScale(ViewScale);
 					const int32 ViewMax = FMath::RoundToInt(FMath::Lerp(80.f, 56.f, Storm));
 					static IConsoleVariable* ViewMaxVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"));
 					if (ViewMaxVar && ViewMaxVar->GetInt() != ViewMax)

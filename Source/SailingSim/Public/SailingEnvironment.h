@@ -42,6 +42,10 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	/** The cloud component's view and shadow sample scales for the current quality tier (CloudTierSampleScales;
+	 *  -SailingCloudScale overrides): at BeginPlay and on every quality change, so a tier switch leaves no other tier's
+	 *  scales behind (docs/slip-clouds/). */
+	void ApplyTierCloudScales();
 
 	/** Sun elevation and azimuth (degrees, azimuth clockwise from +X / north) for a local solar hour. */
 	/**

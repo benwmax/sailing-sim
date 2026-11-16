@@ -781,6 +781,8 @@ void ASailingGameMode::ApplyWeatherSettings(TOptional<double> KeepWeatherStartTi
 void ASailingGameMode::ApplyQualitySettings()
 {
 	const ESailingQuality Quality = USailingSettings::Get()->Quality;
+	// docs/slip-clouds/: the clouds' sample scales follow the tier too (a switch from High kept its 0.65 and 0.5).
+	for (TActorIterator<ASailingEnvironment> It(GetWorld()); It; ++It) It->ApplyTierCloudScales();
 	// The project's own anti-aliasing (DefaultEngine.ini), read before any tier or row has set one.
 	static const int32 ProjectAA = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))->GetInt();
 	// Engine scalability: Low = engine Medium (no Lumen), Medium = High, High = Epic. Then the tier's own console

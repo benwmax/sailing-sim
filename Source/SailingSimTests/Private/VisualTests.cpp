@@ -89,9 +89,32 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Ultra: cumulus step cap floor 150 m"), CloudCapStepFloorM(ESailingQuality::Ultra), 150.f);
 	TestEqual(TEXT("High: 80 cloud samples (unchanged)"), CVarOf(High, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 80.f);
 	TestEqual(TEXT("Medium: 72 cloud samples (unchanged)"), CVarOf(Med, TEXT("r.VolumetricCloud.ViewRaySampleMaxCount")), 72.f);
+	// docs/slip-clouds/: High's fair-weather clouds march at view 0.65 and shadow 0.5 (the slip view's 45 fps floor); Ultra
+	// keeps 3 and 4, Medium and Low 1 and 1.
+	TestEqual(TEXT("High: cloud view sample scale 0.65"), CloudViewSampleScale(ESailingQuality::High), 0.65f);
+	TestEqual(TEXT("High: cloud shadow sample scale 0.5"), CloudShadowSampleScale(ESailingQuality::High), 0.5f);
+	TestEqual(TEXT("Ultra: cloud shadow sample scale 4"), CloudShadowSampleScale(ESailingQuality::Ultra), 4.f);
+	// A tier switch applies the new tier's pair (ApplyTierCloudScales on every quality change): High -> Medium -> Ultra.
+	{
+		float V = 0.f, Sh = 0.f;
+		CloudTierSampleScales(ESailingQuality::High, false, V, Sh);
+		TestTrue(TEXT("Switch: High 0.65 / 0.5"), FMath::IsNearlyEqual(V, 0.65f) && FMath::IsNearlyEqual(Sh, 0.5f));
+		CloudTierSampleScales(ESailingQuality::Medium, false, V, Sh);
+		TestTrue(TEXT("Switch: then Medium 1 / 1"), FMath::IsNearlyEqual(V, 1.f) && FMath::IsNearlyEqual(Sh, 1.f));
+		CloudTierSampleScales(ESailingQuality::Ultra, false, V, Sh);
+		TestTrue(TEXT("Switch: then Ultra 3 / 4"), FMath::IsNearlyEqual(V, 3.f) && FMath::IsNearlyEqual(Sh, 4.f));
+		CloudTierSampleScales(ESailingQuality::High, true, V, Sh);
+		TestTrue(TEXT("-SailingFullStormSamples on High: 1 / 1"), FMath::IsNearlyEqual(V, 1.f) && FMath::IsNearlyEqual(Sh, 1.f));
+		CloudTierSampleScales(ESailingQuality::Ultra, true, V, Sh);
+		TestTrue(TEXT("-SailingFullStormSamples leaves Ultra 3 / 4"), FMath::IsNearlyEqual(V, 3.f) && FMath::IsNearlyEqual(Sh, 4.f));
+	}
+	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium })
+	{
+		TestEqual(TEXT("Medium and Low: cloud shadow sample scale 1"), CloudShadowSampleScale(Q), 1.f);
+	}
 	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium, ESailingQuality::High })
 	{
-		TestEqual(TEXT("Below Ultra: cloud view sample scale 1"), CloudViewSampleScale(Q), 1.f);
+		if (Q != ESailingQuality::High) TestEqual(TEXT("Medium and Low: cloud view sample scale 1"), CloudViewSampleScale(Q), 1.f);
 		TestEqual(TEXT("Below Ultra: no cumulus step cap floor"), CloudCapStepFloorM(Q), 0.f);
 	}
 	for (const TArray<FQualityCVar>* Tier : { &High, &Ultra })
