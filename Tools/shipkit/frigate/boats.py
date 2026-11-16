@@ -31,6 +31,7 @@ import os
 
 import numpy as np
 from scipy.interpolate import CubicSpline, PchipInterpolator, UnivariateSpline
+from scipy.spatial import ConvexHull
 
 import loft
 from anchors import Mesh
@@ -627,6 +628,39 @@ def strip_solid(A, B, wa, wb, mat_side, mat_b=None, mat_a=None, cap0=True, cap1=
     return V, F, M
 
 
+def profile_solid(O, R, wo, wr, mat):
+    """the keel, deadwood, post and stem outside the rabbet: the region in the middle plane between the outer edge O
+    and the rabbet R (both (n, 2) of (x, z), from the heel (O[0] = R[0]) to the stem head's top), half-widths wo and
+    wr (scalars or per point): its two sides (the region triangulated), its outer edge's faces and the head's top;
+    open along the rabbet (the hog and the planking close it). Faces turned out"""
+    O, R = np.asarray(O, float), np.asarray(R, float)
+    wo = np.broadcast_to(np.asarray(wo, float), (len(O),))
+    wr = np.broadcast_to(np.asarray(wr, float), (len(R),))
+    start = 1 if np.linalg.norm(O[0] - R[0]) < 1e-6 else 0
+    P = np.concatenate([O, R[::-1][:len(R) - start]])
+    W = np.concatenate([wo, wr[::-1][:len(R) - start]])
+    n, no = len(P), len(O)
+    sgn_area = area2d(P)
+    tris = loft.ear_clip(P if sgn_area > 0 else P[::-1])
+    if sgn_area <= 0:
+        tris = [tuple(n - 1 - i for i in t) for t in tris]
+    V = np.concatenate([np.stack([P[:, 0], W, P[:, 1]], -1), np.stack([P[:, 0], -W, P[:, 1]], -1)])
+    F = [tuple(t) for t in tris] + [tuple(n + i for i in t[::-1]) for t in tris]
+    M = [mat] * len(F)
+    for i in range(no):                    # the outer edge, then the head's top (O's last to R's last)
+        j = i + 1
+        if j >= n:
+            break
+        F.append((i, j, n + j, n + i))
+        M.append(mat)
+    # turn them out: a +y side face's normal along +y
+    f = F[0]
+    nrm = np.cross(V[f[1]] - V[f[0]], V[f[2]] - V[f[0]])
+    if nrm[1] < 0:
+        F = [ff[::-1] for ff in F]
+    return V, F, M
+
+
 def bar(P, Nn, Bn, n0, n1, b0, b1, mat, caps=True):
     """a bar along the polyline P (k, 3) with the cross-section's axes Nn and Bn at each point (k, 3): its corners at
     P + n Nn + b Bn for n in (n0, n1) and b in (b0, b1) (each scalar or (k,)); faces turned out"""
@@ -947,7 +981,12 @@ class Boat:
         i_af = len(ln.deadwood) - 1
         H = R[0]
         fe = ln.stem_fore[::-1].copy()                            # the stem's fore edge, from its foot up
-        fe[0, 1] = kb
+        # the trace's foot runs along the keel's bottom (its points there out of order): the edge from where it leaves
+        # the bottom, its first rise carried down to it
+        k = int(np.nonzero(fe[:, 1] > kb + 0.25 * IN)[0][0])
+        fe = fe[max(k, 1) - 1:]
+        d = fe[1] - fe[0]
+        fe[0] = [fe[1, 0] - d[0] * (fe[1, 1] - kb) / d[1] if d[1] > 1e-9 else fe[0, 0], kb]
         z_top = float(fe[-1, 1])
         # the rabbet carried on up from the head as the stem's after face to the stem head's top
         d = unit(R[-1] - R[-4])
@@ -959,9 +998,9 @@ class Boat:
         Ra = resample(R[:i_af + 1], n_a)
         Oa = resample(np.array([H, foot, [R[i_af][0], kb]]), n_a)
         Rb = resample(R[i_af:i_af + 2], n_b)
-        Ob = resample(np.array([[R[i_af][0], kb], [R[i_af + 1][0], kb]]), n_b)
+        Ob = resample(np.array([[R[i_af][0], kb], [fe[0, 0], kb]]), n_b)
         Rc = resample(R[i_af + 1:], n_c)
-        Oc = resample(np.concatenate([[[R[i_af + 1][0], kb]], fe]), n_c)
+        Oc = resample(fe, n_c)
         Rp = np.concatenate([Ra, Rb[1:], Rc[1:]])
         Op = np.concatenate([Oa, Ob[1:], Oc[1:]])
         w_r = self.ln.hs + self.t
@@ -996,9 +1035,7 @@ class Boat:
         ln = self.ln
         paint = self.card["paint"]
         Rp, Op, w_r, w_o, z_top = self.prof
-        V, F, M = strip_solid(Rp, Op, w_r, w_o, paint["outside"], mat_b=paint["outside"], cap0=False,
-                              mat_caps=paint["outside"])
-        self.put("keel_stem", V, F, M)
+        self.put("keel_stem", *profile_solid(Op, Rp, w_o, w_r, paint["outside"]))
         V, F, M = strip_solid(Rp, self.hog_line, ln.hs, ln.hs, paint["inside"], mat_b=paint["inside"],
                               mat_caps=paint["inside"])
         self.put("hog", V, F, M)
@@ -1806,7 +1843,7 @@ class Boat:
         Rp, Op, w_r, w_o, z_top = self.prof
         xf, xa = float(Op[-1, 0]), float(Rp[-1, 0])
         rr = 1.75 * IN
-        xr = xf - rr - 0.75 * IN
+        xr = xf - rr + 0.25 * IN                  # its fore side a little proud of the stem's face, so a rope clears it
         wo = float(np.atleast_1d(w_o)[-1])
         hw = float(np.interp(xr, [xa, xf], [w_r, wo] if xa < xf else [wo, w_r]))
         zr = z_top + 0.25 * IN
@@ -1859,41 +1896,94 @@ class Boat:
             secs.append(np.array([c - u * hw - v * th, c + u * hw - v * th, c + u * hw + v * th, c - u * hw + v * th]))
         self.put("oars", *sweep(secs, paint["oars"], closed=True, caps=True))
 
+    def oar_shape(self, L):
+        """an oar's half-width in plan and half-depth (its blade flat) at fractions f along it from its handle's end,
+        as oar() makes it"""
+        o = self.b["oars"]
+        r = 0.5 * o["loom_in"] * IN
+        bl, bw = o["blade_ft"][0] * FT, o["blade_ft"][1] * FT
+        f0 = 1.0 - bl / L
+        th = max(0.5 * IN, 0.28 * r)
+        lf, lk = zip(*[(0.0, 0.5), (0.11, 0.5), (0.13, 0.85), (0.33, 1.0), (f0, 0.72)])
+        bf, bk = zip(*[(f0 - 0.02, 0.6 * r), (f0 + 0.33 * bl / L, 0.5 * bw), (0.97, 0.5 * bw), (1.0, 0.4 * bw)])
+
+        def shape(f):
+            f = np.asarray(f, float)
+            loom = np.where(f <= f0, r * np.interp(f, lf, lk), 0.0)
+            blade = f >= f0 - 0.02
+            return (np.maximum(loom, np.where(blade, np.interp(f, bf, bk), 0.0)),
+                    np.maximum(loom, np.where(blade, th, 0.0)))
+        return shape
+
     def stow_oars(self):
-        """the oars on the thwarts along her sides (half each side), inboard of the knees, handles and blades
-        alternating, each resting on the highest thwarts under it"""
+        """the oars on the thwarts along her sides (half each side), handles and blades alternating, inboard of the
+        knees: each loom rests on the thwarts under it and each blade (wider than the looms' pitch) on its neighbours'
+        handles, the oar lying as low as it can about its balance (0.45 of it from the handle)"""
         b = self.b
         o = b["oars"]
         L = o["length_ft"] * FT
         r = 0.5 * o["loom_in"] * IN
         bw = o["blade_ft"][1] * FT
         arm = b["knee_in"][1] * IN
+        kt = b["knee_in"][0] * IN
+        shape = self.oar_shape(L)
         x_c = 0.5 * (self.thwarts[0]["x"] + self.thwarts[-1]["x"])
         x0, x1 = x_c - 0.5 * L, x_c + 0.5 * L
-        # the thwarts' tops under the oars and how far out an oar may lie at each
-        tops = [(th["x"] + d, self.thwart_z(th)[1]) for th in self.thwarts for d in (-0.5 * self.tw, 0.5 * self.tw)
-                if x0 < th["x"] < x1]
-        y_lim = []
-        for x in np.linspace(x0, x1, 25):
-            zt = float(np.interp(x, [p[0] for p in tops], [p[1] for p in tops]))
-            yy = self.inside_y(x, zt + 2 * r)
-            y_lim.append((yy if yy is not None else 0.0) - 1.0 * IN)
-        y_out = min(min(y_lim), min(self.inside_y(th["x"], self.thwart_z(th)[1]) - arm - 0.75 * IN
-                                    for th in self.thwarts))
-        n_side = o["count"] // 2
-        pitch = 2 * r + 0.5 * IN
+        xs = np.linspace(x0, x1, 161)
+        pitch = max(2.0 * r + 0.5 * IN, 0.5 * bw + 0.3 * IN)
+        top = np.full(len(xs), -np.inf)
+        for th in self.thwarts:
+            top[np.abs(xs - th["x"]) <= 0.5 * self.tw] = self.thwart_z(th)[1]
+        # d: the oar's blade forward (its handle at x0); its neighbours lie the other way
+        hw, hz = {}, {}
+        for d in (True, False):
+            hw[d], hz[d] = shape((xs - x0) / L if d else (x1 - xs) / L)
+        z = {True: None, False: None}
+
+        def solve(d):
+            req = top + hz[d]
+            if z[not d] is not None:
+                on = (hw[d] + hw[not d] > pitch - 0.1 * IN) & (hw[d] > hw[not d])
+                req = np.where(on, np.maximum(req, z[not d] + hz[not d] + hz[d] + 0.1 * IN), req)
+            ok = np.isfinite(req)
+            a, c = self.rest_line(xs[ok], req[ok], x0 + 0.45 * L if d else x1 - 0.45 * L)
+            return a * xs + c
+        for _ in range(4):
+            z[True] = solve(True)
+            z[False] = solve(False)
+        # the outermost oar each side: clear of her side and of the knees' arms on the thwarts
+        self.oars = {"xs": xs, "z": z, "hw": hw, "hz": hz, "y": {}}
         for sg in (1.0, -1.0):
-            for j in range(n_side):
-                y = sg * (y_out - r - j * pitch)
-                xs = np.array([p[0] for p in tops])
-                a, c = self.rest_line(xs, np.array([p[1] for p in tops]) + r)
-                fore = (j % 2 == 0) == (sg > 0)
-                P0 = np.array([x0, y, a * x0 + c])
-                P1 = np.array([x1, y, a * x1 + c])
-                # the blade lies flat: a little higher (it rides over the next oar's loom)
-                self.oar(P0, P1, o) if fore else self.oar(P1, P0, o)
-        self.oars_y = (y_out - (n_side - 1) * pitch - 2 * r, y_out)
-        _ = bw
+            d = sg > 0
+            lim = []
+            for i, x in enumerate(xs):
+                ys = [self.inside_y(x, zz) for zz in (z[d][i] - hz[d][i], z[d][i] + hz[d][i])]
+                lim.append(min(yy if yy is not None else 0.0 for yy in ys) - 1.0 * IN - hw[d][i])
+            for th in self.thwarts:
+                ys = self.inside_y(th["x"], self.thwart_z(th)[1])
+                near = np.abs(xs - th["x"]) <= 0.5 * kt + 0.5 * IN
+                if ys is not None and near.any():
+                    lim.append(ys - min(arm, 0.45 * ys) - 0.5 * IN - float(hw[d][near].max()))
+            y_out = min(lim)
+            self.oars["y"][sg] = []
+            for j in range(o["count"] // 2):
+                y = sg * (y_out - j * pitch)
+                d = (j % 2 == 0) == (sg > 0)
+                P0 = np.array([x0, y, z[d][0]]) if d else np.array([x1, y, z[d][-1]])
+                P1 = np.array([x1, y, z[d][-1]]) if d else np.array([x0, y, z[d][0]])
+                self.oar(P0, P1, o)
+                self.oars["y"][sg].append((y, d))
+
+    def oars_inner(self, x, sg):
+        """the inner edge (half-breadth) of the oars on side sg at x, and their top there (None where they don't
+        reach)"""
+        A = self.oars
+        xs = A["xs"]
+        if not xs[0] <= x <= xs[-1]:
+            return None
+        y, d = A["y"][sg][-1]
+        top = max(float(np.interp(x, xs, A["z"][dd] + A["hz"][dd])) for dd in (True, False))
+        return abs(y) - float(np.interp(x, xs, A["hw"][d])), top
 
     def stow_masts(self):
         """each mast on the bottom boards beside the keelson (the first to starboard, the next to port), its sail
@@ -1956,39 +2046,35 @@ class Boat:
                 ring[:, 2] -= rs * (1.0 - taper) * 0.9          # the roll's ends sag onto the yard
                 secs.append(ring)
             self.put("sails", *sweep(secs, paint["canvas"], closed=True, caps=True))
-            # lashings round mast and roll
+            # lashings round mast and roll: the rope round the pair's hull, under them on the bed
             rope_r = 0.35 * IN
             for f in (0.2, 0.5, 0.8):
                 xl = x_c + (f - 0.5) * Ly
                 zc = a * xl + c
-                cy = 0.5 * (y_m + y_s) * sg
-                cz = zc + 0.5 * (rm + rs) + 0.0
-                aa = 0.5 * (y_s - y_m) + max(rm, rs) * 0.95 + rope_r
-                bb = max(rm, rs) + rope_r
-                pts = []
-                for t in np.linspace(0.0, 2.0 * math.pi, 16, endpoint=False):
-                    pts.append([xl, cy + aa * math.cos(t), cz + bb * math.sin(t)])
-                pts = np.array(pts)
-                pts[:, 2] = np.maximum(pts[:, 2], zc + rope_r)
-                n6 = np.linspace(0.0, 2.0 * math.pi, 6, endpoint=False)
-                secs = []
-                for i in range(16):
-                    tng = unit(pts[(i + 1) % 16] - pts[i - 1])
-                    e1 = unit(np.cross(tng, EX)) if abs(tng @ EX) < 0.9 else EY
-                    e2 = np.cross(tng, e1)
-                    secs.append(pts[i] + rope_r * (np.cos(n6)[:, None] * e1 + np.sin(n6)[:, None] * e2))
-                V = np.concatenate(secs)
-                F = []
-                for i in range(16):
-                    for q in range(6):
-                        a0, b0 = i * 6 + q, i * 6 + (q + 1) % 6
-                        a1, b1 = ((i + 1) % 16) * 6 + q, ((i + 1) % 16) * 6 + (q + 1) % 6
-                        F.append((a0, a1, b1, b0))
-                f0 = F[0]
-                nrm = np.cross(V[f0[1]] - V[f0[0]], V[f0[3]] - V[f0[0]])
-                if np.dot(nrm, V[list(f0)].mean(0) - pts[0]) < 0:
-                    F = [ff[::-1] for ff in F]
-                self.put("lashings", V, F, [paint["rope"]] * len(F))
+                tm = (xl - x0) / L
+                rmx = rm * (1.0 - 0.25 * tm)
+                fr = (xl - ya[0]) / Ly
+                taper = 0.55 + 0.45 * math.sin(math.pi * (fr - 0.06) / 0.88)
+                bump = 1.0 + 0.06 * math.sin(7.3 * fr + 1.1 * j) + 0.04 * math.cos(13.1 * fr)
+                rad = rs * taper * bump
+                cz_s = zc + rs - rs * (1.0 - taper) * 0.9
+                t36 = np.linspace(0.0, 2.0 * math.pi, 36, endpoint=False)
+                pts = np.concatenate([np.stack([sg * y_m + rmx * np.cos(t36), zc + rmx + rmx * np.sin(t36)], -1),
+                                      np.stack([sg * y_s + rad * np.cos(t36), cz_s + 0.9 * rad * np.sin(t36)], -1)])
+                H = pts[ConvexHull(pts).vertices]
+                H = np.concatenate([H, H[:1]])
+                d = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(H, axis=0), axis=1))]
+                tt = np.linspace(0.0, d[-1], 24, endpoint=False)
+                Q = np.stack([np.interp(tt, d, H[:, 0]), np.interp(tt, d, H[:, 1])], -1)
+                ctr = Q.mean(0)
+                nq = len(Q)
+                N2 = np.array([unit2(np.array([Q[(i + 1) % nq][1] - Q[i - 1][1], Q[i - 1][0] - Q[(i + 1) % nq][0]]))
+                               for i in range(nq)])
+                N2 = np.where(((Q - ctr) * N2).sum(1)[:, None] < 0, -N2, N2)
+                Q = Q + rope_r * N2
+                Q[:, 1] = np.maximum(Q[:, 1], zc + rope_r)
+                loop = np.stack([np.full(nq, xl), Q[:, 0], Q[:, 1]], -1)
+                self.put("lashings", *ring_tube(loop, rope_r, paint["rope"]))
             self.mast_bundles.append((x0, x1, sg))
 
     def stow_rudder(self):
@@ -1999,15 +2085,26 @@ class Boat:
         c = b["rudder"]["chord_ft"] * FT
         th = max(1.0 * IN, 0.075 * c)
         z_heel = float(self.prof[1][:, 1].min())
-        Lr = min(self.transom_top_mid()[2] - z_heel + 0.8 * FT, self.x_ss - self.x_bench0 - 0.1)
-        xa = self.x_bench0 + 0.05
+        # aft of the stern sheets' fore edge, and forward of the quarter knee where it would not clear the knee
+        qk_len, qk_dep = (v * IN for v in b["quarter_knee_in"])
+        x_qk = self.x_on_plane(self.sheer(0.0) - qk_dep, self.tr_t) + qk_len
+
+        def start(height):
+            """the after end of something height thick lying on the bench: at the bench's after end if it clears the
+            quarter knee there (it lies at the bench's highest point under it), else forward of the knee"""
+            x0 = self.x_bench0 + 0.05
+            top = max(self.sheer(x) - self.ss_below for x in np.linspace(x0, x_qk, 9)) + height + 0.5 * IN
+            clear = all(top < self.sheer(x) - qk_dep for x in np.linspace(x0, x_qk, 9))
+            return x0 if clear else x_qk + 0.5 * IN
+        xa = start(th + 0.25 * IN)
+        Lr = min(self.transom_top_mid()[2] - z_heel + 0.8 * FT, self.x_ss - xa - 0.05)
         xb = xa + Lr
         # its outline in plan: the head (aft, narrow, the tiller's mortise in it) to the heel (forward, the full chord)
         yo = min(self.bench_y(x)[0] for x in np.linspace(xa, xb, 8)) - 0.5 * IN
         prof = [(0.0, 0.45), (0.22, 0.5), (0.34, 1.0), (0.97, 1.0), (1.0, 0.92)]
         P = [(xa + f * Lr, yo) for f, _ in prof] + [(xa + f * Lr, yo - w * c) for f, w in prof[::-1]]
         zt = [self.sheer(p[0]) - self.ss_below for p in P]
-        z_rest = max(zt)
+        z_rest = max(zt) + 0.25 * IN                      # on its pintles' straps
         self.put("rudder", *plan_prism(np.array(P), z_rest + th, z_rest, paint["outside"]))
         # the pintles: iron straps round its fore edge, their pins pointing aft
         for f in (0.45, 0.8):
@@ -2017,52 +2114,110 @@ class Boat:
             self.put("rudder", *cylinder((x, yo + 0.25 * IN, z_rest + 0.5 * th), (x, yo + 0.25 * IN, z_rest +
                                                                                     0.5 * th + 0.01), 0.4 * IN,
                                          paint["iron"], n=8))
-        # the tiller, along the port bench
-        Lt = min(b["tiller_ft"] * FT, self.x_ss - self.x_bench0 - 0.1)
-        yo_p = min(self.bench_y(x)[0] for x in np.linspace(xa, xa + Lt, 6)) - 0.5 * self.ss_w
-        zt = max(self.sheer(x) - self.ss_below for x in (xa, xa + Lt))
+        # the tiller, along the port bench (forward of the quarter knee where it would not clear it)
+        xt = start(2.2 * IN * (b["tiller_ft"] / 4.5) ** 0.5)
+        Lt = min(b["tiller_ft"] * FT, self.x_ss - xt - 0.05)
         r0, r1 = 1.1 * IN * (Lt / (4.5 * FT)) ** 0.5, 0.7 * IN * (Lt / (4.5 * FT)) ** 0.5
-        self.put("tiller", *cylinder((xa, -yo_p, zt + r0), (xa + Lt, -yo_p, zt + r1), r0, paint["bright"], n=8,
+        yo_p = min(self.bench_y(x)[0] for x in np.linspace(xt, xt + Lt, 6)) - 0.5 * self.ss_w
+        zt = max(self.sheer(x) - self.ss_below for x in np.linspace(xt, xt + Lt, 9)) + 0.05 * IN
+        self.put("tiller", *cylinder((xt, -yo_p, zt + r0), (xt + Lt, -yo_p, zt + r1), r0, paint["bright"], n=8,
                                      r1=r1))
         self.rudder_box = (xa, xb)
 
     def painter(self):
-        """the painter: from a ring bolt in the stem's fore face under the head, over the capping beside the stem head
-        and coiled down flat on the foremost thwart"""
+        """the painter: from a ring bolt in the stem's fore face under the head, up over the head (over the roller in
+        a launch), down onto the breasthook, slack from its after edge to the foremost thwart and coiled down there
+        (a stack of turns, laid with the sun) clear of the oars and the mast clamp"""
         paint = self.card["paint"]
         p = self.b["painter"]
         rr = p["circ_in"] * IN / (2.0 * math.pi)
         Rp, Op, w_r, w_o, z_top = self.prof
         z_s = self.sheer(float(Op[-1, 0]) - 0.3)
-        # the ring bolt: its eye on the stem's fore edge a little under the sheer
+        # the ring bolt: its eye on the stem's fore edge a little under the sheer, the ring hanging from it
         zr = z_s - 4.0 * IN
         fe = Op[np.argsort(Op[:, 1])]
-        xf = float(np.interp(zr, fe[:, 1], fe[:, 0]))
+
+        def x_fore(zz):
+            return float(np.interp(zz, fe[:, 1], fe[:, 0]))
+        xf = x_fore(zr)
         Rg = 1.6 * rr + 0.6 * IN
         eye = np.array([xf + 0.6 * IN, 0.0, zr])
-        self.put("painter", *cylinder(eye - [0.9 * IN, 0, 0], eye + [0.3 * IN, 0, 0], 0.35 * IN, paint["iron"], n=8))
+        self.put("ring_bolt", *cylinder(eye - [0.9 * IN, 0, 0], eye + [0.3 * IN, 0, 0], 0.35 * IN, paint["iron"],
+                                        n=8))
         ring_c = eye + [0.25 * IN, 0.0, -Rg]
-        self.put("painter", *torus(ring_c, EY, Rg, 0.3 * IN, paint["iron"], n=12, m=6, e1=EX))
-        # the coil on the foremost thwart, to port of the mast notch
+        self.put("ring_bolt", *torus(ring_c, EY, Rg, 0.3 * IN, paint["iron"], n=12, m=6, e1=EX))
+        # the coil on the foremost thwart: between the mast clamp (or her middle) and the oars, to port
         th = self.thwarts[-1]
-        zb, ztw = self.thwart_z(th)
+        ztw = self.thwart_z(th)[1]
+        y_in = (0.5 * th["mast_d"] + 0.25 * IN + 0.375 * IN + 0.75 * IN) if th["mast"] else 0.0
+        y_lim = []
+        for x in np.linspace(th["x"] - 0.15, th["x"] + 0.15, 7):
+            oi = self.oars_inner(x, -1.0)
+            y_lim.append(oi[0] - 0.5 * IN if oi is not None else
+                         self.inside_y(x, ztw) - self.b["knee_in"][1] * IN - 0.75 * IN)
+        y_out = min(y_lim)
+        Rc = min(5.0 * IN, 0.5 * (y_out - y_in))
+        cy = -0.5 * (y_in + y_out) if th["mast"] else -max(0.0, min(0.5 * (y_in + y_out), y_out - Rc))
+        cx = th["x"]
+        Rm = Rc - rr
+        # the head: over its top (over the roller in a launch) to the after corner
+        xa_h, xf_h = min(float(Rp[-1, 0]), float(self.hog_line[-1, 0])), float(Op[-1, 0])
+        head = []
+        if self.b.get("roller"):
+            rrol = 1.75 * IN
+            xr = xf_h - rrol + 0.25 * IN
+            zrl = z_top + 0.25 * IN
+            for ang in np.linspace(0.0, math.radians(160), 11):
+                head.append([xr + 1.03 * (rrol + rr) * math.cos(ang), 0.0, zrl + 1.03 * (rrol + rr) * math.sin(ang)])
+        else:
+            head = [[xf_h + 1.1 * rr * math.cos(ang), 0.0, z_top + 1.1 * rr * math.sin(ang)]
+                    for ang in np.linspace(0.0, 0.5 * math.pi, 4)]
+        head += [[xa_h + 1.1 * rr * math.cos(ang), 0.0, z_top + 1.1 * rr * math.sin(ang)]
+                 for ang in np.linspace(0.5 * math.pi, math.pi, 4)]
+        # down the fore face from the head to the ring, clear of the eye
+        down = []
+        for zz in np.linspace(z_top - 0.5 * IN, zr + 1.0 * IN, 5):
+            down.append([x_fore(zz) + rr + (1.6 * IN if zz < zr + 2.5 * IN else 0.15 * IN), 0.0, zz])
+        fore = [list(ring_c + [0.0, 0.0, -Rg + 0.5 * rr])] + [list(ring_c + [0.6 * IN, 0.0, 0.3 * Rg])] + down[::-1]
+        # over the breasthook to its after edge's middle
+        x_bh, x_bf = self.bh
+        L_bh = self.b["breasthook_in"][0] * IN
+        xe = x_bh + 0.35 * L_bh
+        E = np.array([xe - 0.25 * IN, 0.0, self.sheer(xe) + rr])
+        # slack from there to the coil's first turn (on the thwart, the rope leaving it toward the stem)
         turns = p.get("turns", 4)
-        c0 = np.array([th["x"], -0.5 * self.inside_y(th["x"], ztw), ztw])
-        r_in = 3.0 * IN
-        pitch = 2.0 * rr + 0.1 * IN
-        n = 24 * turns
-        t = np.linspace(0.0, 2.0 * math.pi * turns, n)
-        rad = r_in + pitch * t / (2.0 * math.pi)
-        coil = np.stack([c0[0] + rad * np.cos(t), c0[1] + rad * np.sin(t), np.full(n, c0[2] + rr)], -1)
-        # the lead: from the coil's outer end up over the capping beside the stem head, down to the ring
-        yi, yo, zc = self.cap_at(float(Op[-1, 0]) - 0.35)
-        lead = np.array([coil[-1] + [0.1, 0.02, 0.02],
-                         [float(Op[-1, 0]) - 0.45, 0.5 * (yi + yo) * 0.6, zc - 0.05],
-                         [float(Op[-1, 0]) - 0.35, 0.5 * (yi + yo), zc + rr + 0.2 * IN],
-                         [float(Op[-1, 0]) - 0.15, 0.5 * (yi + yo) + 0.04, zc - 0.02],
-                         ring_c + [0.0, 0.0, -Rg + 0.0]])
-        path = np.concatenate([coil, catmull(np.concatenate([[coil[-1]], lead]), 8)[1:]])
+        n = 20 * turns
+        tt = np.linspace(0.0, 2.0 * math.pi * turns, n)
+        jit = 1.0 + 0.05 * np.sin(1.7 * tt + 0.4)
+
+        def coil_at(a0):
+            return np.stack([cx + Rm * jit * np.cos(a0 - tt) + 0.15 * IN * np.sin(tt / turns),
+                             cy + Rm * jit * np.sin(a0 - tt), ztw + rr + 1.75 * rr * tt / (2.0 * math.pi)], -1)
+        dir2 = unit((np.array([cx, cy]) - E[:2]))
+        for _ in range(4):
+            ang0 = math.atan2(dir2[0], -dir2[1])
+            coil = coil_at(ang0)
+            S = coil[0]
+            dir2 = unit(S[:2] - E[:2])
+        D = float(np.linalg.norm(E[:2] - S[:2]))
+        Hh = float(E[2] - S[2])
+        lo, hi = 1e-3, 1e3
+        for _ in range(100):
+            am = math.sqrt(lo * hi)
+            if am * (math.cosh(min(D / am, 50.0)) - 1.0) > Hh:
+                lo = am
+            else:
+                hi = am
+        cat = []
+        for dd in np.linspace(D, 0.0, 16)[1:-1]:
+            q = S[:2] - dir2 * dd
+            cat.append([q[0], q[1], S[2] + am * (math.cosh(dd / am) - 1.0)])
+        # the coil (above): from its bottom turn (S) up, clockwise seen from above
+        lead = np.array(fore + head + [list(E)] + cat)
+        lead = chaikin(lead, 2)
+        path = np.concatenate([lead, coil[1:]])
         self.put("painter", *tube(path, rr, paint["rope"], n=6))
+        self.coil = (cx, cy, Rc, ztw)
 
     # --- the whole boat -----------------------------------------------------------------------------------------------
     def build(self):
@@ -2101,6 +2256,39 @@ class Boat:
             "parts": sorted(set(self.mesh.lab)),
         }
         return self.info
+
+    def label_tris(self):
+        """{label: (V, T)}: her parts by label, each in triangles over its own vertices"""
+        V, F, _ = self.mesh.arrays()
+        by = {}
+        for f, lab in zip(F, self.mesh.lab):
+            by.setdefault(lab, []).append(f)
+        out = {}
+        for lab, fs in by.items():
+            T = np.array([(f[0], f[k], f[k + 1]) for f in fs for k in range(1, len(f) - 1)], np.int64)
+            idx, inv = np.unique(T, return_inverse=True)
+            out[lab] = (V[idx], inv.reshape(T.shape))
+        return out
+
+    def room_check(self, near=0.03):
+        """her parts clear of each other but where they meet by design (the card's meets: the parts on one side, those
+        on the other, why, and how deep in inches the two may go into each other there), by deck.room over her labels:
+        {"meet": the pairs that cross and shouldn't, or go deeper than allowed, "by_design": every designed pair met,
+        with its deepest}"""
+        import deck
+        objs = self.label_tris()
+        mine = set(objs)
+        # deck.room weighs its parts against the rest of the ship as well: here there is none, so a speck far off
+        objs[" far"] = (np.array([[1e3, 1e3, 1e3], [1e3 + 1, 1e3, 1e3], [1e3, 1e3 + 1, 1e3]]), np.array([[0, 1, 2]]))
+        meets = {}
+        for A, B, why, depth_in in self.card["meets"]["pairs"]:
+            for a in A:
+                for b in B:
+                    if (a, b) in meets or (b, a) in meets:
+                        raise ValueError(f"the boats' meets name {a} with {b} twice")
+                    meets[(a, b)] = (why, depth_in)
+        r = deck.room(objs, mine, None, near=near, meets=meets)
+        return {"meet": r["meet"], "by_design": r["by_design"]}
 
     def _labels_per_piece(self):
         """each vertex block's label (the label of its first face)"""
@@ -2143,3 +2331,45 @@ def tube(P, r, mat, n=6):
         e2 = np.cross(T[i], e1)
         secs.append(P[i] + r * (np.cos(t)[:, None] * e1 + np.sin(t)[:, None] * e2))
     return sweep(secs, mat, closed=True, caps=True)
+
+
+def unit2(v):
+    n = float(np.hypot(v[0], v[1]))
+    return v / n if n > 1e-12 else v
+
+
+def ring_tube(P, r, mat, n=6):
+    """a closed loop of rope through the points P (a ring, no caps)"""
+    P = np.asarray(P, float)
+    m = len(P)
+    t = np.linspace(0.0, 2.0 * math.pi, n, endpoint=False)
+    secs = []
+    for i in range(m):
+        tng = unit(P[(i + 1) % m] - P[i - 1])
+        e1 = unit(np.cross(tng, EX)) if abs(tng @ EX) < 0.9 else unit(np.cross(tng, EY))
+        e2 = np.cross(tng, e1)
+        secs.append(P[i] + r * (np.cos(t)[:, None] * e1 + np.sin(t)[:, None] * e2))
+    V = np.concatenate(secs)
+    F = []
+    for i in range(m):
+        for q in range(n):
+            a0, b0 = i * n + q, i * n + (q + 1) % n
+            a1, b1 = ((i + 1) % m) * n + q, ((i + 1) % m) * n + (q + 1) % n
+            F.append((a0, a1, b1, b0))
+    f0 = F[0]
+    nrm = np.cross(V[f0[1]] - V[f0[0]], V[f0[3]] - V[f0[0]])
+    if np.dot(nrm, V[list(f0)].mean(0) - P[0]) < 0:
+        F = [f[::-1] for f in F]
+    return V, F, [mat] * len(F)
+
+
+def chaikin(P, k=2):
+    """corner cutting (its ends kept), k passes"""
+    P = np.asarray(P, float)
+    for _ in range(k):
+        Q = [P[0]]
+        for a, b in zip(P[:-1], P[1:]):
+            Q += [0.75 * a + 0.25 * b, 0.25 * a + 0.75 * b]
+        Q.append(P[-1])
+        P = np.array(Q)
+    return P

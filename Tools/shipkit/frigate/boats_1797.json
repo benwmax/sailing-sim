@@ -531,7 +531,7 @@
    "Gig": {
     "boat": "gig",
     "in": "Cutter_S",
-    "on_thwarts": [1, 3]
+    "on_thwarts": [0, 3]
    }
   },
   "boats_note": "each boat's spars as (name, y off her middle line, m); the cutters as close to the launch as gap_between_boats_in allows at every height (side: starboard 1, port -1)",
@@ -574,6 +574,31 @@
   "gangway_clear_min_ft": 5.0,
   "ladder_headroom_ft": 6.25,
   "checks_note": "boats_room: the boats, spars, saddles, cradles and gripes against the whole ship (and each other, the meetings by design in meets); the gangways' clear width under the boats (to headroom height above the gangway's deck); the ladders' headroom over every tread; the gig clear of the cutter she nests in"
+ },
+ "meets": {
+  "note": "inside each boat: the parts whose surfaces meet by design, and how deep (in) the two may go into each other there (Boat.room_check, deck.room over her parts; the allowance a quarter inch over the deepest measured in any of the three boats). Any other two parts must stay clear",
+  "pairs": [
+    [["plank_ends"], ["planking_out", "planking_in"], "a plank's ends close its outside and inside faces: one solid", 0.25],
+    [["planking_out", "planking_in", "plank_ends"], ["keel_stem", "hog", "transom_out", "transom_in", "transom_top"], "the planks' hood ends in the rabbet of the keel, stem and post, their after ends on the transom", 1.5],
+    [["frames"], ["planking_in", "hog", "keelson", "risings", "stern_risings", "inwales", "knees", "thwarts", "stern_benches", "cappings", "bottom_boards"], "the frames on the planking's inside (bridged over a clinker boat's lands) and notched over the hog; the keelson, risings, inwales and bottom boards on them, the knees, thwarts and stern benches against them", 1.5],
+    [["cappings"], ["planking_in", "planking_out", "plank_ends", "inwales", "quarter_knees", "rubbing", "transom_in", "transom_out", "transom_top", "washstrake", "breasthook", "thole_pins"], "the cappings on the top strake, the frames' heads and the inwales (over a launch's rubbing strake), the quarter knees and the breasthook under them, their ends on the transom; the washstrake on them and the thole pins through them", 1.5],
+    [["breasthook"], ["hog", "inwales", "planking_in"], "the breasthook between the inwales, against the apron and the planking at the stem", 1.25],
+    [["hog"], ["keel_stem", "keelson", "inner_post", "transom_in", "transom_out"], "the hog on the keel and up the stem as the apron, the keelson on it, the inner post and the transom on it aft", 1.5],
+    [["inner_post"], ["transom_in", "transom_bench"], "the inner post on the transom's inside, the transom bench notched round it", 0.25],
+    [["inwales"], ["knees", "quarter_knees", "transom_in"], "the inwales over the knees' heads, their after ends on the quarter knees and the transom", 0.5],
+    [["keelson"], ["mast_steps", "windlass"], "the mast steps and a launch's pawl post on the keelson", 0.25],
+    [["thwarts"], ["knees", "risings", "mast_clamps"], "the thwarts on the risings, the knees on them, the mast clamps let into them", 1.5],
+    [["stern_benches"], ["stern_risings", "transom_bench", "transom_in"], "the stern benches on the stern risings, meeting the transom bench and the transom", 0.25],
+    [["risings"], ["stern_risings"], "the stern risings' fore ends against the risings", 0.25],
+    [["planking_out"], ["rubbing", "sling_plates"], "the rubbing strake and a launch's sling plates on the planking's outside", 1.5],
+    [["rubbing"], ["sling_plates"], "a sling plate's strap up to the rubbing strake", 0.5],
+    [["transom_in"], ["quarter_knees", "stern_risings", "transom_bench"], "the quarter knees, the stern risings and the transom bench against the transom", 0.5],
+    [["bottom_boards"], ["windlass"], "a launch's windlass bitts standing on the bottom boards", 0.25],
+    [["keel_stem"], ["ring_bolt", "roller"], "the painter's ring bolt driven into the stem, a launch's roller in its slot in the stem head", 1.5],
+    [["painter"], ["ring_bolt"], "the painter spliced round its ring", 0.75],
+    [["masts"], ["sails"], "each yard inside its furled sail", 1.25],
+    [["lashings"], ["masts", "sails"], "the lashings bitten into the furled sails and round the masts", 1.0]
+  ]
  },
  "paint": {
   "outside": "HullBlack",
