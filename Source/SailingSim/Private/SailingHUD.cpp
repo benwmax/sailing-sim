@@ -1361,7 +1361,7 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		TwoUp(TEXT("Crew hike out / in"), TEXT("Hike")),
 		One(TEXT("Wing-on-wing"), TEXT("WingOnWing")),
 		One(TEXT("Back the jib (heave to, irons)"), TEXT("BackJib")),
-		One(TEXT("Dock lines on / off"), TEXT("DockLines")),
+		One(TEXT("Dock lines on / off (hold on the pad)"), TEXT("DockLines")),
 		One(TEXT("Crew action (answer the captain)"), TEXT("CrewAction")),
 		One(TEXT("Crew station: grind the jib winch (tap or hold)"), TEXT("Grind")),
 		One(TEXT("Crew station: dump the traveller"), TEXT("TravellerDump")),
@@ -1399,6 +1399,7 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		One(TEXT("Wrist compass (interface off)"), TEXT("Wrist")),
 		One(TEXT("Reset boat"), TEXT("ResetBoat")),
 		FLine{ TEXT("Camera"), TEXT("Mouse, wheel"), Pad(TEXT("Look"), false) },
+		One(TEXT("Change view (chase, overview, helm)"), TEXT("ChangeView")),
 		One(TEXT("Close this card"), TEXT("ControlsCard")) });
 	const float W = 780.f, H = 70.f + Lines.Num() * 28.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = Canvas->ClipY / UIScale * 0.5f - H * 0.5f;

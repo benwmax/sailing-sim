@@ -49,6 +49,9 @@ namespace SailingBindings
 	/** The photo panel's rows, values and pages (docs/photo-mode/pc/), part of that layer. */
 	SAILINGSIM_API bool IsPhotoPanelAction(FName Action);
 	SAILINGSIM_API bool SameLayer(FName A, FName B);
+	/** A pad button this command shares as a half-second hold (photo mode's toggle on View, the dock lines on the right
+	 *  stick's click): the other commands on that button in its context take the tap (ASailboatPawn::BuildContext). */
+	SAILINGSIM_API bool IsHoldAction(FName Action);
 	/** Photo mode's input context (IMC_Photo, above the boat's): every photo command, and the toggle's pad button (the
 	 *  context takes that button for the orbit toggle, so it carries the hold that leaves too). */
 	SAILINGSIM_API bool InPhotoContext(const FSailingKeyBinding& Binding);

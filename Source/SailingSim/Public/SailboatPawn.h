@@ -21,6 +21,7 @@
 #include "CrewMotion.h"
 #include "CockpitEye.h"
 #include "CameraBuffet.h"
+#include "ChaseCamera.h"
 #include "CrewFalls.h"
 #include "BoatLivery.h"
 #include "BoatSkin.h"
@@ -299,6 +300,8 @@ public:
 	static constexpr int32 PhotoContextPriority = 1;
 	/** The pad throttle's dead zone on the left stick's Y axis (the tiller is its X). */
 	static constexpr float ThrottleStickDeadZone = 0.5f;
+	/** The pad look's response curve (stick deflection to the power of this: fine aim near the centre). */
+	static constexpr float PadLookCurve = 1.7f;
 	ECapturePreset GetCapturePreset() const { return CapturePreset; }
 	UCameraComponent* GetCaptureCamera() const { return CaptureCamera; }
 	void AddCameraOrbit(const FVector2D& Delta, float ZoomDelta);
@@ -528,7 +531,13 @@ private:
 	double NextPhotoSpeedStep = 0.0, PhotoReadoutUntil = 0.0;
 public:
 	bool IsCockpitView() const { return bCockpit; }
-	void SetCockpitView(bool bOn);
+	/** The helm's eyes on or off (bAnnounce: the status line says so). */
+	void SetCockpitView(bool bOn, bool bAnnounce = true);
+	/** Camera views (docs/camera-views/): Chase, Overview or Helm; bRemember saves it (Settings > Camera) and says so. */
+	ChaseCamera::EView GetCameraView() const;
+	void SetCameraView(ChaseCamera::EView View, bool bRemember);
+	const ChaseCamera::FRig& GetChaseRig() const { return ChaseRig; }
+	float GetChaseArmCm() const { return CameraDistance; }
 private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
@@ -774,6 +783,19 @@ private:
 	float CameraYaw = 0.f;
 	float CameraPitch = -14.f;
 	float CameraDistance = 1600.f;
+	/** Camera views (docs/camera-views/): which chase rig the arm has, its numbers for this boat, and when the player last
+	 *  turned it (platform seconds: the yaw's lag waits for the look, and the view eases back behind her after it). */
+	ChaseCamera::ERig ChaseRigKind = ChaseCamera::ERig::Chase;
+	ChaseCamera::FRig ChaseRig;
+	double LastLookSeconds = -1e9;
+	bool bStartInHelm = false;
+	/** The rig for this boat on the arm: pivot height, socket, distance (bResetDistance) and pitch (bResetPitch). */
+	void ApplyChaseRig(bool bResetDistance, bool bResetPitch);
+	void ApplyChaseRotation();
+	/** The socket's push for the arm's length now (the rig keeps the boat's place on screen through zoom). */
+	void UpdateChaseSocket();
+	/** Each frame: the yaw's lag while nobody looks, and the ease back behind her (Settings > Camera returns behind). */
+	void UpdateChaseFollow(float DeltaSeconds);
 	/** #498: the chase view's lift over the shore and docks (cm), eased toward ShoreFloorM so it doesn't pop. */
 	float CameraShoreLiftCm = 0.f;
 	/**

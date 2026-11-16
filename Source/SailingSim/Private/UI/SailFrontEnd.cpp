@@ -1975,6 +1975,32 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Index_Lambda([S]() { return S->bCameraShake ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bCameraShake = I == 1; S->Save(); })
 			.Note(TEXT("The camera jolts when the bow slams a wave or green water comes aboard, and trembles in a gale. Turn it off if motion bothers you.")));
+		// Camera views (docs/camera-views/): the view you start in (and the one F5 or the right stick's click last chose),
+		// the look's speed and direction, and whether the camera eases back behind the boat.
+		Add(SNew(SSailChoice).Label(TEXT("Camera")).Options({ TEXT("Chase"), TEXT("Overview"), TEXT("Helm") })
+			.Index_Lambda([S]() { return FMath::Clamp(S->CameraView, 0, 2); })
+			.OnChanged_Lambda([this, S](int32 I)
+			{
+				S->CameraView = FMath::Clamp(I, 0, 2);
+				S->Save();
+				// In game (the pause menu), the boat's camera changes now; elsewhere the next sail starts in it.
+				ASailboatPawn* P = bMenusInGame ? Pawn() : nullptr;
+				if (P && IsValid(P) && P->GetShowroomStage() == EShowroomStage::None) P->SetCameraView(ChaseCamera::EView(S->CameraView), false);
+			})
+			.Note(TEXT("Chase sits low behind the boat, about where you'd stand in the cockpit. Overview is the high view, for your angle "
+				"to the wind and the marks. Helm is the helmsman's eyes. F5, the middle mouse button or a tap of the right stick changes it while you sail.")));
+		Add(SNew(SSailSlider).Label(TEXT("Look speed")).Min(25.f).Max(300.f).Step(25.f)
+			.Value_Lambda([S]() { return FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), FMath::RoundToInt32(FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f)); })
+			.OnChanged_Lambda([S](float V) { S->LookSpeed = FMath::Clamp(V / 100.f, 0.25f, 3.f); S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Invert up and down")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bInvertLook ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bInvertLook = I == 1; S->Save(); })
+			.Note(TEXT("On: pushing up looks down, as in a flight game.")));
+		Add(SNew(SSailChoice).Label(TEXT("Camera returns behind")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bCameraRecentre ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bCameraRecentre = I == 1; S->Save(); })
+			.Note(TEXT("On: a few seconds after you stop looking around, the camera swings back behind the boat.")));
 		Add(SNew(SSailSlider).Label(TEXT("Brightness")).Min(50.f).Max(150.f).Step(5.f)
 			.Value_Lambda([S]() { return float(S->Brightness); })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), S->Brightness); })

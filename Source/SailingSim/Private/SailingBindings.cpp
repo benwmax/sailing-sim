@@ -104,6 +104,11 @@ namespace SailingBindings
 		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
 	}
 
+	bool IsHoldAction(FName Action)
+	{
+		return Action == TEXT("Photo") || Action == TEXT("DockLines");
+	}
+
 	bool InPhotoContext(const FSailingKeyBinding& Binding)
 	{
 		return IsPhotoAction(Binding.Action) || (Binding.Action == TEXT("Photo") && Binding.Key.IsGamepadKey());
