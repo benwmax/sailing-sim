@@ -968,6 +968,8 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 		FString Detail = FString::Printf(TEXT("%s · %.0f kn %s gusting %.0f · %s · %s mode, %s."), *Spot, C.WindKn, *USailSessionSubsystem::CompassPoint(C.WindFromDeg),
 			C.GustKn, *USailSessionSubsystem::SkyName(C.Sky), L.bLearningMode ? TEXT("Learning") : TEXT("Game"), L.bEasy ? TEXT("easy") : TEXT("realistic"));
 		if (L.Mode == ESailMode::Drill) Detail += FString::Printf(TEXT(" Drill %d, %s, was in progress."), L.DrillIndex + 1, DrillName(ESailingDrill(L.DrillIndex + 1)));
+		// UI overhaul phase 4: the last session is a slip of chart paper, like the pause menu's "This sail".
+		const FScopedPaper PaperScope;
 		Card = SNew(SBox).WidthOverride(460.f)
 		[
 			PanelBox(SNew(SVerticalBox)
@@ -979,6 +981,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	}
 	// Free Sail: the play mode (docs/free-sail). Career opens places and boats with certificates and grades the lessons;
 	// Free Sail opens everything and earns no medals. The menus below follow it; Continue keeps its own session's mode.
+	// UI overhaul phase 4: the mode switch and its line are a paper slip too (built in a paper scope; the logo and the
+	// menu stay on the scene).
+	TOptional<FScopedPaper> ModePaper;
+	ModePaper.Emplace();
 	TSharedRef<SSailChoice> ModeChoice = SNew(SSailChoice).Label(TEXT("Mode")).Options({ TEXT("Career"), TEXT("Free Sail") })
 		.Index_Lambda([]() { return SailCareer::IsFreeSail() ? 1 : 0; })
 		.OnChanged_Lambda([this](int32 I)
@@ -994,6 +1000,12 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	const FString ModeLine = SailCareer::IsFreeSail()
 		? TEXT("Every world, boat, condition and mode open. No medals; the logbook still counts.")
 		: TEXT("Earn certificates to open places and boats. Lessons are graded.");
+	const TSharedRef<SWidget> ModeSlip = PanelBox(SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ ModeChoice ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 0.f, 16.f, 10.f)[ SailUI::Text(ModeLine, EType::Small, Muted, true) ],
+		FMargin(0.f));
+	ModePaper.Reset();
+	const FLinearColor LogoShadow = Ink.CopyWithNewOpacity(0.7f);
 	E.Content = SNew(SOverlay)
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center)
 		[
@@ -1005,21 +1017,20 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 				SNew(SBox).WidthOverride(780.f)
 				[
 					SNew(SOverlay)
-					+ SOverlay::Slot()[ SNew(STextBlock).Text(FText::FromString(TEXT("READY\nABOUT"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f) ]
+					+ SOverlay::Slot()[ SNew(STextBlock).Text(FText::FromString(TEXT("READY\nABOUT"))).Font(Font(EType::Logo)).ColorAndOpacity(Fg).LineHeightPercentage(0.78f)
+						.ShadowOffset(FVector2D(2.f, 3.f)).ShadowColorAndOpacity(LogoShadow) ]
 					+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 6.f)
 					[
 						SNew(SBox).WidthOverride(330.f)
 						[
-							PanelBox(SNew(SVerticalBox)
-								+ SVerticalBox::Slot().AutoHeight()[ ModeChoice ]
-								+ SVerticalBox::Slot().AutoHeight().Padding(16.f, 0.f, 16.f, 10.f)[ SailUI::Text(ModeLine, EType::Small, Muted, true) ],
-								FMargin(0.f))
+							ModeSlip
 						]
 					]
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 6.f, 0.f, 36.f)[ SNew(STextBlock).Text(FText::FromString(TEXT("SAILING")))
-				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Muted) ]
+				.Font([] { FSlateFontInfo F = Font(EType::Eyebrow); F.LetterSpacing = 320; return F; }()).ColorAndOpacity(Fg)
+				.ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(LogoShadow) ]
 			+ SVerticalBox::Slot().AutoHeight()[ Menu ]
 		]
 		+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, 90.f)[ Card ];

@@ -67,25 +67,33 @@ namespace SailHudImpl
 		SLATE_BEGIN_ARGS(SCompassTape) {}
 			SLATE_ATTRIBUTE(float, Heading)
 			SLATE_ATTRIBUTE(float, WindFrom)
+			/** UI Natural: no panel behind the tape; its ticks and numbers carry a drop shadow instead. */
+			SLATE_ATTRIBUTE(bool, Bare)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Heading = A._Heading; WindFrom = A._WindFrom; ForceVolatile(true); }
+		void Construct(const FArguments& A) { Heading = A._Heading; WindFrom = A._WindFrom; Bare = A._Bare; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(650, 50); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
 			const FVector2D S = G.GetLocalSize();
 			const float H = Heading.Get(0.f), PxPerDeg = S.X / 120.f, Cx = S.X * 0.5f;
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(IsLow() ? PanelSolid : Panel, RadiusButton), ESlateDrawEffect::None, IsLow() ? PanelSolid : Panel);
+			const bool bBare = Bare.Get(false);
+			const FVector2f Drop(1.f, 1.5f);
+			const FLinearColor DropColor(0.f, 0.f, 0.f, 0.7f);
+			if (!bBare) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(IsLow() ? PanelSolid : Panel, RadiusButton), ESlateDrawEffect::None, IsLow() ? PanelSolid : Panel);
 			for (int32 D = FMath::FloorToInt((H - 62.f) / 5.f) * 5; D <= H + 62.f; D += 5)
 			{
 				const float X = Cx + (D - H) * PxPerDeg;
 				const float Fade = FMath::Clamp(1.f - FMath::Abs(X - Cx) / (S.X * 0.5f), 0.f, 1.f);
 				const int32 N = ((D % 360) + 360) % 360;
 				const bool bBig = N % 30 == 0;
-				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, Muted.CopyWithNewOpacity(Fade), true, 1.f);
+				if (bBare) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f) + Drop, FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) + Drop }, ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.7f * Fade), true, 2.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, (bBare ? Fg : Muted).CopyWithNewOpacity(Fade), true, bBare ? 1.5f : 1.f);
 				if (bBig)
 				{
 					const TCHAR* Card = N == 0 ? TEXT("N") : N == 90 ? TEXT("E") : N == 180 ? TEXT("S") : N == 270 ? TEXT("W") : nullptr;
 					const FString L = Card ? FString(Card) : FString::FromInt(N);
+					if (bBare) FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(40.f, 20.f), FSlateLayoutTransform(FVector2f(X - L.Len() * 4.f, 6.f) + Drop)), L, Font(EType::Label),
+						ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.7f * Fade));
 					FSlateDrawElement::MakeText(Out, Layer + 1, G.ToPaintGeometry(FVector2f(40.f, 20.f), FSlateLayoutTransform(FVector2f(X - L.Len() * 4.f, 6.f))), L, Font(EType::Label),
 						ESlateDrawEffect::None, (Card ? Accent : Fg).CopyWithNewOpacity(Fade));
 				}
@@ -102,6 +110,7 @@ namespace SailHudImpl
 		}
 	private:
 		TAttribute<float> Heading, WindFrom;
+		TAttribute<bool> Bare;
 	};
 
 	/** The apparent wind dial: boat outline, port (red) and starboard (green) close-hauled sectors, the no-go zone,
@@ -117,8 +126,10 @@ namespace SailHudImpl
 			SLATE_ATTRIBUTE(float, NoGo)
 			SLATE_ATTRIBUTE(int32, Cue)
 			SLATE_ATTRIBUTE(bool, Wide)
+			/** UI Natural: no panel around the dial, so it carries its own round ink face. */
+			SLATE_ATTRIBUTE(bool, Bare)
 		SLATE_END_ARGS()
-		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; NoGo = A._NoGo; Cue = A._Cue; Wide = A._Wide; ForceVolatile(true); }
+		void Construct(const FArguments& A) { Awa = A._Awa; Twa = A._Twa; NoGo = A._NoGo; Cue = A._Cue; Wide = A._Wide; Bare = A._Bare; ForceVolatile(true); }
 		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(200, 200); }
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
@@ -132,6 +143,12 @@ namespace SailHudImpl
 				for (float A = A0; A <= A1 + 0.01f; A += 2.f) P.Add(Pt(A, Rad));
 				FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, Col, true, W);
 			};
+			if (Bare.Get(false))
+			{
+				const float Face = R + 6.f;
+				const FLinearColor FaceColor = Ink.CopyWithNewOpacity(0.5f);
+				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Face * 2.f, Face * 2.f), FSlateLayoutTransform(C - FVector2f(Face, Face))), Rounded(FaceColor, Face), ESlateDrawEffect::None, FaceColor);
+			}
 			Arc(0.f, 360.f, R, Line, 2.f);
 			Arc(-20.f, 20.f, R - 5.f, Muted.CopyWithNewOpacity(0.6f), 7.f);
 			Arc(20.f, 60.f, R - 5.f, Starboard, 7.f);
@@ -166,7 +183,7 @@ namespace SailHudImpl
 	private:
 		TAttribute<float> Awa, Twa, NoGo;
 		TAttribute<int32> Cue;
-		TAttribute<bool> Wide;
+		TAttribute<bool> Wide, Bare;
 	};
 
 	/** North-up chart crop around the boat (T_MiniMap_<World>), the boat, the true wind. */
@@ -560,6 +577,14 @@ void SSailHud::Construct(const FArguments& A)
 	auto NoGo = [this]() { const ASailboatPawn* P = Pawn(); return P ? float(P->GetEasyAssists().NoGoDeg()) : float(Sailing::FEasyAssists::kRealisticNoGoDeg); };
 	auto Cue = [this]() { const ASailboatPawn* P = Pawn(); return P ? int32(Sailing::NoGoCueFor(P->GetBoatModel().GetTelemetry(), P->GetEasyAssists())) : 0; };
 	auto Wide = [this]() { const ASailboatPawn* P = Pawn(); return P && P->GetEasyAssists().bEnabled; };
+	// UI overhaul phase 4: UI Natural is box-free. The instruments lose their panels, labels and second lines; what is
+	// left (the dial on its own round face, the speed, the depth, the compass tape) reads by a drop shadow.
+	auto Bare = []() { return Mode == 1; };
+	auto HudPanel = [](TSharedRef<SWidget> Content, const FMargin& Pad) -> TSharedRef<SWidget>
+	{
+		return SNew(SBorder).BorderImage_Lambda([]() { return Mode == 1 ? Rounded(FLinearColor::Transparent, 0.f) : Rounded(IsLow() ? PanelSolid : Panel, RadiusCard, Line, 1.f); }).Padding(Pad)[ Content ];
+	};
+	auto FullOnly = [Full](TSharedRef<SWidget> W) -> TSharedRef<SWidget> { return SNew(SBox).Visibility_Lambda(Full)[ W ]; };
 	const float M = HudMargin;
 	ChildSlot
 	[
@@ -646,10 +671,10 @@ void SSailHud::Construct(const FArguments& A)
 				SNew(SHorizontalBox).Visibility_Lambda(NotOff)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
 				[
-					PanelBox(SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa).NoGo_Lambda(NoGo).Cue_Lambda(Cue).Wide_Lambda(Wide) ] ]
-						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwaText; }), EType::Value, FSlateColor(Fg)) ]
-						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted)) ], FMargin(10.f, 8.f))
+					HudPanel(SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa).NoGo_Lambda(NoGo).Cue_Lambda(Cue).Wide_Lambda(Wide).Bare_Lambda(Bare) ] ]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return AwaText; }), EType::Value, FSlateColor(Fg), false) ]
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ FullOnly(TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted))) ], FMargin(10.f, 8.f))
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 				[
@@ -658,32 +683,32 @@ void SSailHud::Construct(const FArguments& A)
 					[
 						SNew(SBox).WidthOverride(200.f)
 						[
-							PanelBox(SNew(SVerticalBox)
-								+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Speed"), EType::Label, Muted) ]
+							HudPanel(SNew(SVerticalBox)
+								+ SVerticalBox::Slot().AutoHeight()[ FullOnly(SailUI::Text(TEXT("Speed"), EType::Label, Muted)) ]
 								+ SVerticalBox::Slot().AutoHeight()
 								[
 									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedText; }), EType::InstrumentBig, FSlateColor(Fg)) ]
-									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(SpeedUnitText), EType::Small, FSlateColor(Muted)) ]
+									+ SHorizontalBox::Slot().AutoWidth()[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return SpeedText; }), EType::InstrumentBig, FSlateColor(Fg), false) ]
+									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ ShadowText(Attr(SpeedUnitText), EType::Small, TAttribute<FSlateColor>::CreateLambda([]() { return FSlateColor(Mode == 1 ? Fg : Muted); }), false) ]
 								]
-								+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedSub; }), EType::Small, FSlateColor(Muted)) ], FMargin(16.f, 12.f))
+								+ SVerticalBox::Slot().AutoHeight()[ FullOnly(TextAttr(TAttribute<FText>::CreateLambda([this]() { return SpeedSub; }), EType::Small, FSlateColor(Muted))) ], FMargin(16.f, 12.f))
 						]
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						SNew(SBox).WidthOverride(200.f)
 						[
-							SNew(SBorder).BorderImage_Lambda([this]() { return Rounded(IsLow() ? PanelSolid : Panel, RadiusCard, bShallow ? Warn : Line, bShallow ? 2.f : 1.f); }).Padding(FMargin(16.f, 12.f))
+							SNew(SBorder).BorderImage_Lambda([this]() { return Mode == 1 && !bShallow ? Rounded(FLinearColor::Transparent, 0.f) : Rounded(IsLow() ? PanelSolid : Panel, RadiusCard, bShallow ? Warn : Line, bShallow ? 2.f : 1.f); }).Padding(FMargin(16.f, 12.f))
 							[
 								SNew(SVerticalBox)
-								+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Depth"), EType::Label, Muted) ]
+								+ SVerticalBox::Slot().AutoHeight()[ FullOnly(SailUI::Text(TEXT("Depth"), EType::Label, Muted)) ]
 								+ SVerticalBox::Slot().AutoHeight()
 								[
 									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot().AutoWidth()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthText; }), EType::InstrumentBig, TAttribute<FSlateColor>::CreateLambda([this]() { return FSlateColor(bShallow ? Warn : Fg); })) ]
-									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ TextAttr(Attr(DepthUnitText), EType::Small, FSlateColor(Muted)) ]
+									+ SHorizontalBox::Slot().AutoWidth()[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return DepthText; }), EType::InstrumentBig, TAttribute<FSlateColor>::CreateLambda([this]() { return FSlateColor(bShallow ? Warn : Fg); }), false) ]
+									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(6.f, 0.f, 0.f, 10.f)[ ShadowText(Attr(DepthUnitText), EType::Small, TAttribute<FSlateColor>::CreateLambda([]() { return FSlateColor(Mode == 1 ? Fg : Muted); }), false) ]
 								]
-								+ SVerticalBox::Slot().AutoHeight()[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthSub; }), EType::Small, FSlateColor(Muted)) ]
+								+ SVerticalBox::Slot().AutoHeight()[ FullOnly(TextAttr(TAttribute<FText>::CreateLambda([this]() { return DepthSub; }), EType::Small, FSlateColor(Muted))) ]
 							]
 						]
 					]
@@ -696,8 +721,8 @@ void SSailHud::Construct(const FArguments& A)
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Top).Padding(FMargin(M + 530.f, M, M + 530.f, M))
 		[
 			SNew(SVerticalBox).Visibility_Lambda(NotOff)
-			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(650.f).MinDesiredWidth(260.f).HeightOverride(50.f)[ SNew(SCompassTape).Heading_Lambda(Heading).WindFrom_Lambda(WindFrom) ] ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)[ TextAttr(TAttribute<FText>::CreateLambda([this]() { return HeadingText; }), EType::Value, FSlateColor(Fg)) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(650.f).MinDesiredWidth(260.f).HeightOverride(50.f)[ SNew(SCompassTape).Heading_Lambda(Heading).WindFrom_Lambda(WindFrom).Bare_Lambda(Bare) ] ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 6.f)[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return HeadingText; }), EType::Value, FSlateColor(Fg), false) ]
 		]
 		// The right-hand column, top to bottom (Bean Nov 15: the minimap moved here from the bottom left): the minimap in the
 		// corner; the drill or race panel and the coast's navigation panel in the room left between it and the sail trim panel
