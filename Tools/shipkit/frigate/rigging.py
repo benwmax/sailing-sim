@@ -366,9 +366,12 @@ def solve_back(clear, x0, step=1.0 * IN, tries=6):
 
 # ---- the standing rigging ------------------------------------------------------------------------------------------
 class Standing:
-    def __init__(self, rig, SK, path=os.path.join(HERE, "standing_1797.json")):
+    def __init__(self, rig, SK, path=os.path.join(HERE, "standing_1797.json"), holes=()):
+        """holes: the gun port lids' lanyard holes on the starboard side's outside, [(x, z, the lead bush's rim radius)]
+        in metres (slice 12, gungear.py; mirrored to port): a chain's plate stops above any its line passes over"""
         self.rig, self.SK, self.L, self.pr = rig, SK, rig.L, SK.pr
         self.sp = json.load(open(path))
+        self.holes = [(x / FT, z / FT, r / FT) for x, z, r in holes]
         p = self.sp["paint"]
         self.ROPE, self.LAN, self.WOOD, self.IRON = p["rope"], p["lanyard"], p["wood"], p["iron"]
         self.meshes = {}
@@ -376,7 +379,7 @@ class Standing:
         self.stack = {}                  # head -> [(height, radius)] of the eyes laid over it
         self.spans = []                  # the free straight runs: (name, a, b, radius), for the checks
         self.paths = []                  # a leg's points from its eye to its upper deadeye: (set, mast, points, r)
-        self.report = {"channels": {}, "skipped": [], "deadeyes": 0, "hearts": 0}
+        self.report = {"channels": {}, "skipped": [], "deadeyes": 0, "hearts": 0, "chains_over_lanyard_holes": []}
         self.shroud_lines = {}           # (mast, set, side) -> [(top, bottom, r)] fore to aft
         self.stave = {}                  # (mast, side) -> [point on each lower shroud's outside at the stave]
         self.tm_lines = {}
@@ -910,8 +913,9 @@ class Standing:
     # ---- chains ---------------------------------------------------------------------------------------------------
     def chain(self, fit, mast, C_L, Xl, Zl, D, x_ft, slope, bar_in):
         """The lower deadeye's strop and chain: an iron strop in its groove, two long links down toward the side and a
-        preventer plate bolted to the planking 5 ft under the channel (or over a gun deck port's head), in line with
-        the shroud seen from the side."""
+        preventer plate bolted to the planking 5 ft under the channel (or over a gun deck port's head, and an inch clear
+        above the lead bush of the port lid's lanyard hole where the plate's line passes over one), in line with the
+        shroud seen from the side."""
         I = self.IRON
         lw = self.sp["lower"]
         rb = bar_in * IN / 2
@@ -924,6 +928,15 @@ class Standing:
         if head is not None and z_B < head + 0.3:
             z_B = head + 0.3
             x_B = x_ft - slope * (C_L[2] / FT - z_B)
+        clear = 1.0 * IN / FT
+        for xh, zh, rh in self.holes:
+            x_line = x_ft - slope * (C_L[2] / FT - zh)          # where the plate's line passes the hole's height
+            if abs(x_line - xh) < rh + 1.5 * IN / FT + clear and z_B < zh + rh + clear:
+                self.report["chains_over_lanyard_holes"].append(
+                    {"mast": mast, "side": "starboard" if C_L[1] > 0 else "port", "x_m": round(float(x_B * FT), 3),
+                     "raised_in": round(float((zh + rh + clear - z_B) * 12.0), 2)})
+                z_B = zh + rh + clear
+                x_B = x_ft - slope * (C_L[2] / FT - z_B)
         lp = min(1.3, 0.35 * (z_ch - z_B))
         B, nB = self.hull_at(x_B, z_B)
         P2, n2 = self.hull_at(x_B + slope * lp, z_B + lp)
@@ -1892,7 +1905,8 @@ class Standing:
 
     def summary(self):
         res = {"objects": {n: m.tris() for n, m in self.meshes.items()}, "deadeyes": self.report["deadeyes"],
-               "hearts": self.report["hearts"], "channels": self.report["channels"], "notes": self.report["skipped"]}
+               "hearts": self.report["hearts"], "channels": self.report["channels"], "notes": self.report["skipped"],
+               "chains_over_lanyard_holes": self.report["chains_over_lanyard_holes"]}
         if "main_stays_y_ft" in self.report:
             res["main_stays_heart_y_ft"] = self.report["main_stays_y_ft"]
         return res

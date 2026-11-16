@@ -9,8 +9,8 @@ Sizes and places are deck_1797.json's, each with its source: the 1849 spar deck 
 draught, or the period's practice. Units: metres in the ship frame (X forward, Y starboard, Z up, origin on the
 centreline at midships on waterline A).
 
-The deck is flat across, its top at the bulwark's foot (skin.py's w_Pd row) and its underside the placeholder's 8 in
-below (g_Pu), as slices 2 to 6 laid it. Its top is one surface cut round the open waist, the masts, the hatchways,
+The deck is flat across, its top at the bulwark's foot (skin.py's w_Pd row) and its underside its planks' 3 in below
+(g_Pu; slice 12's gundeck.py frames the beams under them), as slices 2 to 6 laid it. Its top is one surface cut round the open waist, the masts, the hatchways,
 companion, skylights, chimney and the capstan's barrel (Blender's constrained Delaunay triangulation, so this module
 runs in Blender's Python), with a UV map 'Planking' (u, v = x, y in metres) from which the material draws the planks,
 their seams, butts and plugs (planking_terms; build_frigate.py's DeckPlanks). Where a hole's coaming stands, the hole is
@@ -28,7 +28,7 @@ import os
 import numpy as np
 
 import loft
-from rigging import tube, rope_r
+from rigging import fillet, tube, rope_r
 from spars import box, circle, loft_solid, spar, ring_band, clip_convex, unit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,24 +94,48 @@ def convex(P):
 
 def solid(mesh, rings, mat, cap0=True, cap1=True):
     """spars.loft_solid through rings (the same count each), each ring's points turned counter-clockwise about the
-    direction from the first ring to the last, so every face points out. Where the end rings are convex each end is
-    one face, not a fan round a point in its middle: an end that stands flush in an opening (a coaming's end in the
-    deck's) has no vertex inside what it stands in, for the room check to read as buried"""
+    direction from the first ring to the last, so every face points out. Each end is one face where its ring is convex,
+    not a fan round a point in its middle: an end that stands flush in an opening (a coaming's end in the deck's) has no
+    vertex inside what it stands in, for the room check to read as buried. A ring that is not convex (a waterway's
+    cove) is filled with triangles inside its outline (end_fill); a fan from its middle would cross its own sides"""
     rings = [np.asarray(r, float) for r in rings]
     d = rings[-1].mean(0) - rings[0].mean(0)
     if newell(rings[0]) @ d < 0:
         rings = [r[::-1] for r in rings]
-    if not (convex(rings[0]) and convex(rings[-1])):
-        loft_solid(mesh, rings, mat, cap0, cap1)
-        return
     n = len(rings[0])
+    caps = {}
+    for k, ring, want in ((0, rings[0], -1.0), (len(rings) - 1, rings[-1], 1.0)):
+        if (k == 0 and not cap0) or (k > 0 and not cap1):
+            continue
+        if convex(ring):
+            caps[k] = [tuple(range(n)) if want > 0 else tuple(range(n - 1, -1, -1))]
+        else:
+            caps[k] = end_fill(ring, want * newell(ring))
+            if caps[k] is None:                        # (a ring the fill cannot take: the fan round its middle)
+                loft_solid(mesh, rings, mat, cap0, cap1)
+                return
     F = [(j * n + i, j * n + (i + 1) % n, (j + 1) * n + (i + 1) % n, (j + 1) * n + i)
          for j in range(len(rings) - 1) for i in range(n)]
-    if cap0:
-        F.append(tuple(range(n - 1, -1, -1)))
-    if cap1:
-        F.append(tuple((len(rings) - 1) * n + i for i in range(n)))
+    for k, faces in caps.items():
+        F += [tuple(k * n + i for i in f) for f in faces]
     mesh.add(np.concatenate(rings), F, mat)
+
+
+def end_fill(ring, want):
+    """triangles (indices into ring) filling a flat ring that need not be convex, each facing want; None if the fill
+    does not cover the ring's area (a ring that crosses itself or repeats a point)"""
+    from mathutils import Vector
+    from mathutils.geometry import tessellate_polygon
+    tris = tessellate_polygon([[Vector(tuple(map(float, p))) for p in ring]])
+    out, area = [], 0.0
+    for a, b, c in tris:
+        nrm = np.cross(ring[b] - ring[a], ring[c] - ring[a])
+        area += 0.5 * float(np.linalg.norm(nrm))
+        out.append((a, b, c) if nrm @ want >= 0 else (a, c, b))
+    whole = 0.5 * float(np.linalg.norm(newell(ring)))
+    if len(out) != len(ring) - 2 or abs(area - whole) > 1e-2 * whole + 1e-9:
+        return None
+    return out
 
 
 def chevron(mesh, ring0, ring1, mat):
@@ -206,10 +230,13 @@ def revolve(mesh, o, axis, ref, profile, mat, n=16, want_out=True):
 def cell_solid(mesh, us, vs, depth, P, N, mat):
     """A solid over a grid of cells (a grating, a sash): us, vs the cells' edges; depth[i][j] how deep cell (i, j)'s
     column runs below the top (0: an opening); P(u, v) the top's point, N(u, v) its outward normal. Faces: each column's
-    top and bottom, and a side wherever two neighbouring columns (or a column and the outside) differ in depth."""
+    top and bottom, and a side wherever two neighbouring columns (or a column and the outside) differ in depth, cut at
+    every depth any column has: where a shallow side meets a deep one at a corner, the deep one has a vertex at the
+    shallow one's foot (no T-junction: they share it, and nothing cracks or reads as a fold)"""
     us, vs = np.asarray(us, float), np.asarray(vs, float)
     D = np.asarray(depth, float)
     nu, nv = D.shape
+    levels = np.unique(np.round(np.concatenate([[0.0], D[D > 0]]), 7))
     V, idx = [], {}
 
     def vert(i, j, d):
@@ -237,27 +264,33 @@ def cell_solid(mesh, us, vs, depth, P, N, mat):
             nn = N(uc, vc)
             face((vert(i, j, 0), vert(i + 1, j, 0), vert(i + 1, j + 1, 0), vert(i, j + 1, 0)), nn)
             face((vert(i, j, d), vert(i + 1, j, d), vert(i + 1, j + 1, d), vert(i, j + 1, d)), -nn)
+    def steps(lo, hi):
+        """the depths a side from lo to hi is cut at"""
+        cut = levels[(levels > lo + 1e-9) & (levels < hi - 1e-9)]
+        return np.concatenate([[lo], cut, [hi]])
     # sides on the u lines (between columns i-1 and i) and the v lines
     for i in range(nu + 1):
         for j in range(nv):
             a, b = dep(i - 1, j), dep(i, j)
             if abs(a - b) < 1e-9:
                 continue
-            lo, hi = min(a, b), max(a, b)
             vc = 0.5 * (vs[j] + vs[j + 1])
             du = P(us[i] + 1e-4, vc) - P(us[i] - 1e-4, vc)
             want = unit(du) * (1.0 if a > b else -1.0)          # toward the shallower column
-            face((vert(i, j, lo), vert(i, j + 1, lo), vert(i, j + 1, hi), vert(i, j, hi)), want)
+            st = steps(min(a, b), max(a, b))
+            for lo, hi in zip(st[:-1], st[1:]):
+                face((vert(i, j, lo), vert(i, j + 1, lo), vert(i, j + 1, hi), vert(i, j, hi)), want)
     for j in range(nv + 1):
         for i in range(nu):
             a, b = dep(i, j - 1), dep(i, j)
             if abs(a - b) < 1e-9:
                 continue
-            lo, hi = min(a, b), max(a, b)
             uc = 0.5 * (us[i] + us[i + 1])
             dv = P(uc, vs[j] + 1e-4) - P(uc, vs[j] - 1e-4)
             want = unit(dv) * (1.0 if a > b else -1.0)
-            face((vert(i, j, lo), vert(i + 1, j, lo), vert(i + 1, j, hi), vert(i, j, hi)), want)
+            st = steps(min(a, b), max(a, b))
+            for lo, hi in zip(st[:-1], st[1:]):
+                face((vert(i, j, lo), vert(i + 1, j, lo), vert(i + 1, j, hi), vert(i, j, hi)), want)
     mesh.add(np.array(V), F, mat)
 
 
@@ -617,10 +650,10 @@ def netting_material(bpy, name, rope, mesh_m, cord_m):
 
 # ---- what meets by design ----------------------------------------------------------------------------------------------
 MEETS = {
-    # (deck part, object or another deck part): (why they meet, how far either may go into the other, inches)
+    # (deck part, object or another deck part): (why they meet, how far either may go into the other, inches). The gun
+    # deck's parts (slice 12: the ladders' feet on it, the capstan's barrel through the beams) are gundeck_1797.json's
     ("Waterways", "BulwarkIn"): ("the waterway is let into the bulwark's face", 0.5),
     ("Nettings", "RailCap"): ("the nettings' cranes and cloth stand on the rail cap", 0.5),
-    ("Ladders", "GunDeck"): ("the ladders' feet stand on the gun deck", 0.5),
     ("SparDeck", "PinRails"): ("the fife rails' posts and the eyebolts stand in the deck", 8.0),
     ("SparDeck", "BulwarkIn"): ("the deck's top meets the bulwark's foot along its edge (under the waterway)", 0.1),
     ("SparDeck", "GunWall"): ("the deck's underside meets the gun deck's side along its edge", 0.1),
@@ -628,7 +661,7 @@ MEETS = {
     # the deck's own parts
     ("Waterways", "SparDeck"): ("the waterway is let into the deck", 0.55),
     ("WaistFrame", "SparDeck"): ("the gangways' coamings stand in the deck's edge, and the waist's beams run on under "
-                                 "the gangways' planks inside the deck's placeholder thickness", 3.5),
+                                 "the gangways' planks, their tops at the planks' underside", 3.5),
     ("Hatches", "SparDeck"): ("the hatchways' coamings stand in the deck's openings, their outsides its sides", 0.1),
     ("Companion", "SparDeck"): ("the companion's coaming stands in the deck's opening, its outside the opening's sides", 0.1),
     ("Skylights", "SparDeck"): ("the skylights' coamings stand in the deck's openings, their outsides its sides", 0.1),
@@ -640,8 +673,8 @@ MEETS = {
     ("Binnacle", "SparDeck"): ("the binnacle is let into the deck", 0.15),
     ("BowspritStep", "SparDeck"): ("the bowsprit's step and bitts are let into the deck", 0.25),
     ("WheelStandards", "SparDeck"): ("the wheel's standards and the tiller rope's plates are let into the deck", 0.25),
-    ("TillerRope", "SparDeck"): ("the tiller rope's legs go down into the deck (the gun deck's sheaves are slice 12's)",
-                                 2.5),
+    ("TillerRope", "SparDeck"): ("the tiller rope's legs go down through the deck to the gun deck (slice 12: through "
+                                 "it in lead bushes to the tiller below)", 2.5),
     ("TillerRope", "WheelStandards"): ("the tiller rope's legs go down through the plates' holes (each drawn as a dark "
                                        "box the rope passes through)", 0.5),
     ("Wheel", "WheelStandards"): ("the wheel's axle turns in the standards' bearings", 1.3),
@@ -674,11 +707,12 @@ def islands(T, n):
     return connected_components(coo_matrix((np.ones(len(a)), (a, b)), shape=(n, n)), directed=False)[1]
 
 
-def room(objs, mine, z_deck, near=0.3, meets=None):
+def room(objs, mine, z_deck, near=0.3, meets=None, flat=("SparDeck",)):
     """The deck's clearance check (build.json deck.room). objs: {name: (V (n, 3) in the ship's frame, T (m, 3))} for
     every mesh of the ship (the sails and ropes in every state too) but the measured reference; mine: the deck's parts;
     z_deck(x): the deck's top (flat across), or None to leave out the standing check (the head's and stern's parts,
-    slice 9, which check their own meets, not MEETS). Returns:
+    slice 9, which check their own meets, not MEETS); flat: the deck itself, left out of the standing check (the gun
+    deck's room, slice 12, passes its own). Returns:
 
     * meet: the pairs, a deck part and another object or another deck part, whose surfaces cross and don't meet by
       design (MEETS, either way round), and those that do but go deeper than MEETS allows;
@@ -687,8 +721,10 @@ def room(objs, mine, z_deck, near=0.3, meets=None):
       nearest face where that face lies square to it (within 'near'), so a part buried whole (an eyebolt's shank in
       the deck) counts as well as one crossing the other's surface;
     * floats: a piece of a deck part that reaches the deck's top must stand on it: none of its faces looking down (a
-      foot) may hang between 0.1 in and 2.5 in over the deck (a flat foot left level on the sheer); and a piece that
-      comes within 2.5 in of the deck without reaching it must touch something (a pawl on its ring)."""
+      foot) may hang between 0.1 in and 2.5 in over the deck (a flat foot left level on the sheer) unless it bears on
+      something else, another object's surface within 0.3 in of it along the face's normal (a partition scribed into
+      the waterway, an edge let into a raked wall, a chair's foot on the floor cloth); and a piece that comes within
+      2.5 in of the deck without reaching it must touch something (a pawl on its ring)."""
     try:
         from mathutils.bvhtree import BVHTree
     except ImportError:                             # the bpy module registers mathutils when it is imported
@@ -760,9 +796,20 @@ def room(objs, mine, z_deck, near=0.3, meets=None):
     by_design = [[a, b, n, meets_by_design(a, b, meets), "deepest " + str(dp) + " in"]
                  for (a, b), (n, dp) in sorted(ok.items())]
     # standing on the deck
-    floats, tol, band = [], 0.1 * IN, 2.5 * IN
+    floats, tol, band, reach = [], 0.1 * IN, 2.5 * IN, 0.3 * IN
+
+    def bears(a, V, T, faces, nrm, v):
+        """the foot vertex v of part a (on the downward faces 'faces', their normals nrm) bears on something else:
+        another object's surface within reach of it along those faces' mean normal, before or behind it (a partition
+        scribed into the waterway, an edge let into a raked wall, a chair's foot on the floor cloth)"""
+        at = (T[faces] == v).any(1)
+        n = nrm[faces[at]].sum(0)
+        n = n / max(float(np.linalg.norm(n)), 1e-12)
+        o, d = (V[v] - reach * n).tolist(), n.tolist()
+        return rest.ray_cast(o, d, 2.0 * reach)[0] is not None or \
+            any(tree(b).ray_cast(o, d, 2.0 * reach)[0] is not None for b in mine if b != a)
     for a in (mine if z_deck is not None else []):
-        if a == "SparDeck":
+        if a in flat:
             continue
         V, T = objs[a]
         L = lab(a)
@@ -773,10 +820,11 @@ def room(objs, mine, z_deck, near=0.3, meets=None):
         hmin = np.full(L.max() + 1, np.inf)
         np.minimum.at(hmin, L, h)
         for p in np.nonzero(hmin <= tol)[0]:                  # it reaches the deck: no foot hangs over it
-            vv = np.unique(T[down & (lt == p)].ravel())
-            bad = vv[(h[vv] > tol) & (h[vv] < band)]
+            faces = np.nonzero(down & (lt == p))[0]
+            vv = np.unique(T[faces].ravel())
+            bad = [v for v in vv[(h[vv] > tol) & (h[vv] < band)] if not bears(a, V, T, faces, nrm, v)]
             if len(bad):
-                v = bad[np.argmax(h[bad])]
+                v = bad[int(np.argmax(h[bad]))]
                 floats.append([a, "a foot over the deck", round(float(h[v]) / IN, 2), np.round(V[v], 3).tolist()])
         for p in np.nonzero((hmin > tol) & (hmin < band))[0]:  # near the deck without reaching it: on something
             tp = np.nonzero(lt == p)[0]
@@ -1488,13 +1536,15 @@ class Deck:
                     F = [(0, 1, 2, 3)]
                     if np.cross(Q[1] - Q[0], Q[3] - Q[0]) @ nrm < 0:
                         F = [(3, 2, 1, 0)]
-                    part.add(Q, F, "Glass")
+                    part.add(Q, F, "ClearGlass")
                 # guard bars down the slope over the panes
                 nb = sl["bars"]
                 for y in np.linspace(-Wo / 2 + fw + 0.6 * pane / 2, Wo / 2 - fw - 0.6 * pane / 2, nb):
                     a = eave + (fw * 0.5) * dirn + nrm * (ft + 0.5 * IN) + y * EY
                     b = eave + (S - fw * 0.75) * dirn + nrm * (ft + 0.5 * IN) + y * EY
-                    tube(part, np.array([a - nrm * 0.5 * IN, a, b, b - nrm * 0.5 * IN]), 0.25 * IN, "Iron", 6)
+                    # (each leg into the frame long enough to bend round on more than the bar's own radius)
+                    tube(part, fillet(np.array([a - nrm * 1.0 * IN, a, b, b - nrm * 1.0 * IN]), 0.4 * IN), 0.25 * IN,
+                         "Iron", 6)
             # the gable ends and the ridge board
             for sy in (-1.0, 1.0):
                 y = sy * (Wo / 2 - 0.3 * IN)
@@ -1561,7 +1611,8 @@ class Deck:
         rt = cs["barrel_diam_in"][0] / 2 * IN
         z_dh = Ht - Td                                         # the drumhead's underside (local)
         z_low = float(self.zu(x0)) - z0 - 0.15                 # the barrel runs on below the deck (slice 12's)
-        lathe(part, [0.0, 0.0, z_low], EZ, EX, [(0.0, rb), (-z_low + 2 * IN, rb), (z_dh, rt)], "Oak", 32)
+        # (its stations from z_low: the top one at the drumhead's underside)
+        lathe(part, [0.0, 0.0, z_low], EZ, EX, [(0.0, rb), (-z_low + 2 * IN, rb), (z_dh - z_low, rt)], "Oak", 32)
         # the whelps: ribs standing out of the barrel, an hourglass along their outer edge
         wo = cs["whelp_out_in"] * IN
         nw = cs["whelps"]
@@ -1668,11 +1719,14 @@ class Deck:
         helix = np.stack([xx, R0 * np.cos(th), R0 * np.sin(th)], 1)
         tube(rope, helix + o, rr, "Hemp", 8)
         self.frames["Wheel"] = (o, np.eye(3))
-        # the legs, from the barrel's sides down through iron plates in the deck
+        # the legs, from the barrel's sides down through iron plates in the deck and on down through the gun deck's
+        # lead bushes (slice 12) to the tiller below (the berth deck's, slice 13), 2 in into the gun deck
+        self.tiller_legs = []
         for x_, y_ in ((xa_, R0), (xf_, -R0)):
             p = o + np.array([x_, y_, 0.0])
             zl = float(self.z(p[0]))
-            tube(rope, np.array([p + EZ * 0.002, [p[0], p[1], zl - 0.06]]), rr, "Hemp", 8)
+            tube(rope, np.array([p + EZ * 0.002, [p[0], p[1], float(self.zg(p[0])) - 2.0 * IN]]), rr, "Hemp", 8)
+            self.tiller_legs.append((float(p[0]), float(p[1]), rr))
             k0 = len(still.V)
             for dx, dy, hx, hy in ((0.0, 2.2 * IN, 3.0 * IN, 1.0 * IN), (0.0, -2.2 * IN, 3.0 * IN, 1.0 * IN),
                                    (2.2 * IN, 0.0, 1.0 * IN, 1.2 * IN), (-2.2 * IN, 0.0, 1.0 * IN, 1.2 * IN)):

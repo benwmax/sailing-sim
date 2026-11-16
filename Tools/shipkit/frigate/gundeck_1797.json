@@ -1,0 +1,697 @@
+{
+ "about": "The gun deck of the frigate Commonwealth as built, 1797 (docs/shipkit-12): the planked deck under the guns, the spar deck's beams over it, its hatchways, wells and ladders, the gun deck's capstan, the pumps, the riding bitts, the galley, the bow's manger and cable scuttles, the captain's great cabin aft, the lanterns, and the guns' own gear. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. gundeck.py reads this file",
+ "sources": {
+  "gun_deck_1849": "NARA 75841364, the gun deck plan in the Navy Yard Boston set of 1849 (with the spar deck plan, NARA 75841368, deck_1797.json), scale four feet to the inch (public domain; local copy in Data/Reference, measured only): the hatchways with their inside sizes written on them, the pumps either side of the main mast, the room between the after hatchways where the capstan stands, the riding bitts and the galley between the fore hatchway and the fore mast, the scuttle forward of it, the manger, the bulkhead and cabins aft",
+  "spar_deck_1849": "NARA 75841368 (deck_1797.json): the capstan's head, the companion, the skylights and the chimney over this deck; the gun deck's capstan, ladders, cabin and galley stand under them",
+  "lines_1927": "the 1927 lines (slices 1-2): the gun deck's sheer, the ports and the stern's windows",
+  "period": "estimate: the period's practice for an American or British frigate of the 1790s where neither drawing shows a part (the framing's sizes, the pumps, the stove, the cabin's joinery and furniture, the lanterns, the guns' implements and the lids' lanyards)"
+ },
+ "registration": {
+  "note": "the 1849 gun deck plan's full-resolution scan (3840 px wide), stern on the left, carried to the ship by the masts as the spar deck's plan is (deck_1797.json): between two masts an item keeps its share of the way from one to the other, aft of the mizzen and forward of the fore mast its distance from the mast at the plan's scale. The masts are where each one's axis passes the gun deck (spars.Rig's s_gun); the scale is the written sizes' (19.44 px a foot)",
+  "px_per_ft": 19.44,
+  "centreline_px": 514,
+  "masts_px": {
+   "mizzen": 777.0,
+   "main": 1709.5,
+   "fore": 3221.0
+  }
+ },
+ "deck": {
+  "note": "the deck flat across (no round up, as the spar deck), its top on the skin's g_G row: the line under the port sills less 24 in (specs_1795.json inside.gun_deck_below_port_sill_in), faired between gun_deck_fair_m (specs_1795.json) where the traced sills left a kink (slice 8's known gap: the deck climbed 4 in in 5 m by port 10). Its underside 4 in below (the plank: the beams under it are the berth deck's, slice 13). The openings are open down to the wells (below); the masts, the capstan's barrel and the cable scuttles pass through holes. The pumps, bitts and stove stand on the deck, let into it",
+  "thick_in": 4.0,
+  "mast_hole_gap_in": 0.5,
+  "mesh_step_m": 0.3,
+  "planking": {
+   "width_in": 7.0,
+   "thick_in": 4.0,
+   "length_beams": 8,
+   "seam_in": 0.4,
+   "butt_stagger_beams": [
+    0,
+    4,
+    2,
+    6
+   ],
+   "plug_in": 1.0,
+   "plug_off_butt_in": 2.0,
+   "nib_of_width": 0.4,
+   "note": "pine plank 4 in thick and 7 in wide, laid as the spar deck's (deck_1797.json), the butts and plugs on its beams, which stand under the spar deck's (the same 32.7 in pitch from the waist's after end: estimate). Drawn by the material from the 'Planking' and 'Margin' UVs (build_frigate.py's GunDeckPlanks)"
+  },
+  "waterway": {
+   "profile_in": [
+    [
+     0.0,
+     2.0
+    ],
+    [
+     0.4,
+     1.4
+    ],
+    [
+     1.0,
+     0.75
+    ],
+    [
+     1.7,
+     0.3
+    ],
+    [
+     2.5,
+     0.06
+    ],
+    [
+     3.0,
+     0.0
+    ]
+   ],
+   "flush_in": 12.0,
+   "flush_note": "the waterway timber's top lies flush with the planks for 12 in in from the side (the deck's 'Margin' UV: the material draws it as one oak timber, the planks nibbed into it where the deck narrows); only the cove above stands proud (estimate)",
+   "note": "a small hollow (cove) along the deck's edge, 3 in out from the side and 2 in up it: the guns' carriages run out to within inches of the side, their trucks and the breeching bolts' rings over this corner, so the gun deck's waterway, a timber under the side's ceiling, shows only this much above the plank (estimate)"
+  }
+ },
+ "overhead": {
+  "note": "the spar deck's framing seen from the gun deck: its planks are 3 in thick (specs_1795.json inside.deck_slab_in: the placeholder's 8 in slab became the planks) on beams 14 in sided and 10 in moulded every other beam station (the waist's beams, deck_1797.json, carried on fore and aft), with a ledge between each two (6 by 5 in). Where a beam or ledge would cross an opening (a hatchway's coaming, the companion, a skylight, the chimney, a mast's partners, the capstan) it is cut: half beams from the side to a carling either side of the opening (8 by 8 in, fore and aft from the next whole beam to the next), and head ledges across between the carlings at the opening's ends. Under the gangways in the waist the stations between the waist's beams carry half beams to a carling under the opening's coaming. A breast beam under each break, its face flush with the deck's edge. The beams' ends rest on a clamp along the side (10 in deep, 5 in thick; over each gun port its lower edge stands at least clamp_over_port_in over the port's head, clear of the housing bolts over the port (guns_1797.json: 58.5 in over the deck, the heads 53.6 to 55.6 in) and the housed gun's muzzle lashing through them), held by a hanging knee under each beam that comes between two ports (7 in sided, arms 30 in, its foot clear of the ports' linings; one that would come within an inch of a lid lanyard's cleat slides along under its beam to the beam's face); a stanchion (6 in, turned) under every second beam on the middle line where the room allows (all estimate, period practice for a frigate's upper deck)",
+  "beam_in": [
+   14.0,
+   10.0
+  ],
+  "ledge_in": [
+   6.0,
+   5.0
+  ],
+  "carling_in": [
+   8.0,
+   8.0
+  ],
+  "opening_margin_in": 2.0,
+  "clamp_in": [
+   10.0,
+   5.0
+  ],
+  "clamp_over_port_in": 7.5,
+  "knee": {
+   "sided_in": 7.0,
+   "arm_in": 30.0,
+   "throat_in": 9.0,
+   "port_clear_in": 4.0
+  },
+  "stanchion_in": 6.0,
+  "stanchion_clear_m": 0.2
+ },
+ "hatchways": {
+  "note": "the gun deck's openings (1849 gun deck plan, their inside sizes written on it; x from the plan through the masts, or under the spar deck's own where the two decks' hatches stand one over the other): each with a coaming, a grating over it (fair weather) or open as a ladderway. The wardroom's skylight (a grating over the light well to the wardroom below) is the plan's 4 ft 10 in long by 3 ft 1 in, narrowed to 2 ft 4 in so its coaming clears the second guns' train tackle bolts. The coaming 10 in high and 5 in thick (4 in round the skylight), the gratings as the spar deck's (estimate)",
+  "items": [
+   {
+    "name": "SpiritHatch",
+    "under": "AfterHatch",
+    "inside_ft": [
+     5.0,
+     5.0
+    ],
+    "kind": "grating"
+   },
+   {
+    "name": "AfterHatch",
+    "under": "ForeHatch",
+    "inside_ft": [
+     5.0,
+     5.0
+    ],
+    "kind": "ladder"
+   },
+   {
+    "name": "MainHatch",
+    "plan_px": 2041.0,
+    "inside_ft": [
+     8.0833,
+     6.3333
+    ],
+    "kind": "grating"
+   },
+   {
+    "name": "ForeHatch",
+    "plan_px": 2622.0,
+    "inside_ft": [
+     4.5,
+     5.0833
+    ],
+    "kind": "ladder"
+   },
+   {
+    "name": "ForeHatchFore",
+    "plan_px": 2736.5,
+    "inside_ft": [
+     4.75,
+     5.0833
+    ],
+    "kind": "grating"
+   },
+   {
+    "name": "Scuttle",
+    "plan_px": 3327.0,
+    "inside_ft": [
+     3.0,
+     2.75
+    ],
+    "kind": "grating"
+   },
+   {
+    "name": "WardroomSkylight",
+    "plan_px": 921.25,
+    "inside_ft": [
+     4.8333,
+     2.3333
+    ],
+    "kind": "grating",
+    "coaming_thick_in": 4.0
+   }
+  ],
+  "coaming_high_in": 10.0,
+  "coaming_thick_in": 5.0
+ },
+ "wells": {
+  "note": "under each opening a well down to the berth deck (slice 13 builds it): lined dark, its floor 6 ft 10 in below the gun deck's top (the berth deck's height: estimate). The ladders land on that floor",
+  "depth_ft": 6.8333
+ },
+ "ladders": {
+  "note": "a ladder down each ladderway to the berth deck, from the hatch's after coaming forward (estimate), as the spar deck's (deck_1797.json); the companion's ladder from the quarterdeck's companion down to this deck, landing aft (estimate). The spar deck's four ladders at the breaks land on this deck in the waist: nothing stands within clear_m of their feet",
+  "width_in": 24.0,
+  "angle_deg": 62.0,
+  "stringer_in": [
+   9.0,
+   2.25
+  ],
+  "tread_in": [
+   7.0,
+   1.5
+  ],
+  "rise_in": 9.5,
+  "companion": {
+   "width_in": 24.0,
+   "angle_deg": 62.0
+  },
+  "clear_m": 0.3
+ },
+ "capstan": {
+  "note": "the double capstan's lower head, on the gun deck under the spar deck's (deck_1797.json capstan, the same axis): its barrel (the spindle, 17 in) runs up through the gap between the decks to the spar capstan's barrel, and both heads turn together; worked by bars from both decks to heave the cables. Its own frame: origin on its axis at the gun deck's top, local Z up. Its pawls on the deck (period practice; sizes estimate)",
+  "drumhead_diam_in": 56.0,
+  "drumhead_thick_in": 13.0,
+  "top_high_in": 36.0,
+  "barrel_diam_in": [
+   24.0,
+   20.0
+  ],
+  "spindle_in": 17.0,
+  "whelps": 8,
+  "whelp_out_in": 2.5,
+  "bar_holes": 12,
+  "bar_hole_in": [
+   4.5,
+   4.5,
+   13.0
+  ]
+ },
+ "pumps": {
+  "note": "the 1849 plan's pumps either side of the main mast: aft of it the chain pumps (two chains in one case over the well, worked by a crank across the ship with a winch handle at each end; estimate: the period's chain pump), forward of it a pair of common (brake) pumps, their brakes pointing forward (estimate). Sizes estimate",
+  "chain": {
+   "plan_px": [
+    1536.0,
+    1645.0
+   ],
+   "case_in": [
+    57.0,
+    66.0,
+    30.0
+   ],
+   "axle_high_in": 40.0,
+   "crank_throw_in": 12.0,
+   "handle_y_in": 49.0,
+   "standard_in": [
+    6.0,
+    4.0
+   ],
+   "axle_in": 3.0,
+   "handle_in": 2.0
+  },
+  "brake": {
+   "plan_px": [
+    1768.0,
+    1828.0
+   ],
+   "y_in": 12.0,
+   "tube_in": 9.0,
+   "barrel_in": [
+    13.0,
+    36.0
+   ],
+   "spout_in": [
+    4.0,
+    8.0
+   ],
+   "standard_in": [
+    7.0,
+    5.0
+   ],
+   "standard_high_in": 48.0,
+   "brake_ft": 7.0,
+   "brake_in": [
+    3.0,
+    2.5
+   ]
+  }
+ },
+ "bitts": {
+  "note": "the riding bitts abaft the fore mast (the 1849 plan's forward pair; its after pair stands where our galley's stove is): two posts through the deck with a cross piece on their fore faces and a standard (knee) behind each; bare at sea, the bowers' cables led below (estimate, sizes period practice)",
+  "x_m": 19.2,
+  "y_in": 23.6,
+  "post_in": 18.0,
+  "head_in": 42.0,
+  "cross_in": [
+   14.0,
+   12.0
+  ],
+  "cross_out_in": 20.0,
+  "cross_below_head_in": 10.0,
+  "standard_in": [
+   10.0,
+   12.0
+  ]
+ },
+ "galley": {
+  "note": "the galley under the forecastle, just abaft the riding bitts (where the 1849 plan has its after pair of bitts: bitts): an iron stove of the period's patent kind (Brodie's) on a brick hearth, its boilers' lids on top, the oven and fire doors on its fore face, a rail round it, its flue rising into the forecastle's chimney (deck_1797.json chimney) and meeting the chimney's plate. Sizes estimate",
+  "x_m": [
+   16.55,
+   18.23
+  ],
+  "width_in": 42.0,
+  "high_in": 39.0,
+  "hearth_in": [
+   4.0,
+   4.0
+  ],
+  "flue_in": 15.0,
+  "lids": 2,
+  "lid_in": 20.0,
+  "rail_in": [
+   2.0,
+   1.25
+  ],
+  "rail_high_in": 30.0,
+  "rail_out_in": 8.0
+ },
+ "bow": {
+  "note": "the bowers' cables come in through the hawse holes (anchors_1797.json, the bores now open to the gun deck), over the manger (a low board across the bow aft of the holes that stops the water coming in with the cables running aft) and down the cable scuttles to the tiers below (slice 14), lead collars round the scuttles. Sizes estimate",
+  "manger_x_m": 24.95,
+  "manger_in": [
+   10.0,
+   3.0
+  ],
+  "manger_scupper_in": [
+   6.0,
+   3.0
+  ],
+  "scuttle_at_m": [
+   23.85,
+   1.25
+  ],
+  "scuttle_in": 20.0,
+  "scuttle_note": "round, 20 in across for the 22 in (7 in thick) cable: room for it to turn down through the deck on its least bend (one and a half times its thickness) clear of the collar and the lining (estimate)",
+  "collar_in": [
+   2.5,
+   0.5
+  ],
+  "well_ft": 3.0
+ },
+ "cabin": {
+  "note": "the captain's great cabin under the quarterdeck (1849 plan: the bulkhead and the state rooms; the 1797 cabin was the captain's on this deck, estimate): a panelled bulkhead across abaft the first guns with a door either side of the tiller rope's legs; inside, the dining cabin with the side lights, and aft the stern cabin under the windows with a state room in each quarter, a seat and lockers under the windows over the rudder's head. The deck covered with a painted floor cloth in black and white squares; a table and chairs, a sideboard and a lantern. All sizes estimate (period practice)",
+  "bulkhead_x_m": -22.75,
+  "bulkhead_in": 2.5,
+  "panel": {
+   "stile_in": 4.0,
+   "proud_in": 0.5,
+   "rows": [
+    0.3,
+    0.7
+   ]
+  },
+  "doors": [
+   {
+    "y_m": [
+     0.3,
+     0.95
+    ],
+    "high_in": 66.0
+   }
+  ],
+  "door_in": 1.75,
+  "state_rooms": {
+   "y_m": 2.6,
+   "fore_x_m": -25.7,
+   "wall_in": 1.5,
+   "door_aft_of_fore_m": [
+    0.2,
+    0.75
+   ],
+   "door_high_in": 64.0,
+   "note": "a state room in each quarter abaft fore_x_m and outboard of y_m: its inboard wall fore and aft, its door in it near the fore end (door_aft_of_fore_m), opening into the stern cabin (estimate)"
+  },
+  "seat": {
+   "high_in": 17.0,
+   "deep_in": 20.0,
+   "rudder_box_in": 2.0
+  },
+  "floor_cloth": {
+   "thick_in": 0.12,
+   "square_in": 12.0,
+   "margin_in": 1.0
+  },
+  "table": {
+   "x_m": -24.3,
+   "size_in": [
+    72.0,
+    40.0
+   ],
+   "high_in": 29.0,
+   "top_in": 1.5
+  },
+  "chairs": [
+   [
+    -23.12,
+    0.0,
+    180.0
+   ],
+   [
+    -25.48,
+    0.0,
+    0.0
+   ],
+   [
+    -24.0,
+    0.85,
+    -90.0
+   ],
+   [
+    -24.6,
+    0.85,
+    -90.0
+   ],
+   [
+    -24.0,
+    -0.85,
+    90.0
+   ],
+   [
+    -24.6,
+    -0.85,
+    90.0
+   ]
+  ],
+  "chairs_note": "each chair [x m, y m, the way its sitter faces (deg, 0 forward, 90 to starboard)]: one at each end of the table (72 in long fore and aft, 40 in across) and two a side",
+  "chair_in": {
+   "seat": [
+    17.0,
+    16.0,
+    17.5
+   ],
+   "back_high_in": 36.0,
+   "leg_in": 1.5
+  },
+  "sideboard": {
+   "y_m": 2.05,
+   "size_in": [
+    20.0,
+    54.0,
+    36.0
+   ],
+   "note": "against the bulkhead's after face on the starboard side, 20 in deep, 54 in long, 36 in high"
+  },
+  "after_wall": {
+   "reveal_in": 1.0,
+   "lining_in": 0.75,
+   "note": "the after wall (the stern's inside, raked as the gun rows end) with the three stern windows opened through it and the transom: each window's inside opening reveal_in larger all round than the glass, the reveal lined between them with lining_in board (an inch board planed, mitred at the corners), its face lining_in inside the glass's edge where it butts on the glass, behind the sash's frame"
+  },
+  "lights_m": [
+   [
+    -24.8,
+    -23.78
+   ]
+  ],
+  "lights_note": "the cabin's side light each side (slice 9's sash and glass, decor_1797.json cabin_window) is a port in the port band with no lid, cut through the side as the gun ports are (specs_1795.json cabin_lights_m): daylight comes in through it"
+ },
+ "lanterns": {
+  "note": "horn lanterns hung under the spar deck between each second pair of guns a side, and one over the cabin's table; each a light in the game data (gundeck.json lights): warm candle light, cast without shadows, so the gun deck's light costs what slice 12's light budget allows (the PC lighting lane tunes it). Sizes estimate",
+  "between_guns": [
+   [
+    1,
+    2
+   ],
+   [
+    3,
+    4
+   ],
+   [
+    5,
+    6
+   ],
+   [
+    7,
+    8
+   ],
+   [
+    9,
+    10
+   ],
+   [
+    11,
+    12
+   ],
+   [
+    13,
+    14
+   ]
+  ],
+  "y_m": 1.05,
+  "body_in": [
+   9.0,
+   14.0
+  ],
+  "roof_in": 5.0,
+  "ring_in": 2.0,
+  "hook_in": 4.0,
+  "light": {
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false,
+   "blender_watts": 25.0
+  },
+  "light_budget": {
+   "max_lights": 16,
+   "note": "fourteen lanterns and the cabin's, all unshadowed point lights; the ports and hatches give daylight: no light probes or shadowing lights below in this slice (the PC lane's to add if the frame allows)"
+  }
+ },
+ "gun_gear": {
+  "note": "each long gun's gear (slice 8 left it for here). Housed for sea, a wooden tompion in the muzzle and a lead apron over the vent and the lock (taken out and off when the guns are cast loose, so only in Guns_Housed). Over each gun, athwartships in the bay between the spar deck's beams over its port, its two staffs (the sponge and rammer on one, the ladle and worm on the other, as sea service carried them) and its two handspikes, each on two iron hangers with a hook, hung below the beams so they pass under the carlings; its shot in a garland on the deck against the waterway in the space forward of its port; each lid's two lanyards (the hinges' straps end in a ringbolt on the lid's outside) up the side to lead-lined holes over the port, in through them and down to a cleat beside it (outside, lying down the shut lid with the guns housed, taut to the open lid with them run in or out). Sizes estimate (period practice)",
+  "tompion": {
+   "plug_in": 5.0,
+   "head_in": [
+    6.4,
+    1.2
+   ],
+   "boss_in": [
+    2.0,
+    1.0
+   ]
+  },
+  "apron": {
+   "size_in": [
+    12.0,
+    11.0
+   ],
+   "thick_in": 0.25,
+   "lift_in": 0.1,
+   "drape_in": 1.25
+  },
+  "implements": {
+   "staff_ft": 10.0,
+   "staff_in": 2.0,
+   "staffs": [
+    [
+     "sponge",
+     "rammer"
+    ],
+    [
+     "worm",
+     "ladle"
+    ]
+   ],
+   "sponge_in": [
+    5.9,
+    12.0
+   ],
+   "rammer_in": [
+    5.6,
+    7.0
+   ],
+   "ladle_in": [
+    5.4,
+    22.0
+   ],
+   "worm_in": [
+    5.0,
+    6.0
+   ],
+   "ferrule_in": [
+    2.6,
+    1.5
+   ],
+   "worm_bar_in": 0.35,
+   "worm_turns": 1.25,
+   "handspike_ft": 6.0,
+   "handspike_in": [
+    3.0,
+    2.5
+   ],
+   "handspike_toe_in": [
+    2.5,
+    1.0
+   ],
+   "hanger_in": [
+    0.5,
+    3.0
+   ],
+   "in_from_side_in": 14.0,
+   "below_beam_in": 2.5,
+   "gap_in": 0.5,
+   "note": "each staff ash, 2 in, 10 ft between its heads: the sponge (a fleece-covered head a hair over the bore, 5.9 in, 12 in long) and the rammer (5.6 in, 7 in) on one, the worm (two iron prongs in a 5 in double spiral, 6 in) and the ladle (a copper scoop 5.4 in across, 22 in long, holding the 8 lb charge, open a third of its round) on the other, each head on an iron ferrule; the handspikes ash, 6 ft, 3 by 2.5 in at the butt, its toe bevelled over handspike_toe_in[0] to handspike_toe_in[1] thick, tapering to a round grip. They lie side by side across the bay (the heads' widths and gap_in apart), the outboard ends in_from_side_in off the side, their tops below_beam_in under the beams' underside; each on two hangers (0.5 in iron rods from screw eyes in the deck's underside) ending in a 3 in hook, either side of its middle (in the waist: waist)",
+   "waist": {
+    "edge_in": 4.0,
+    "hangers_at": [
+     0.25,
+     0.75
+    ],
+    "note": "In the waist only the gangways are over the guns, so a staff laid athwartships over the gun would reach out under open sky with nothing to hang its inboard end from. There each gun's set hangs fore and aft under its gangway instead, its middle over the port's, the innermost item edge_in outboard of the gangway's inner edge, each item on two hangers at hangers_at of its length."
+   }
+  },
+  "garland": {
+   "shot_in": 5.55,
+   "shot_count": 8,
+   "rail_in": [
+    5.0,
+    3.5
+   ],
+   "pitch_in": 6.5,
+   "cup_in": 1.5,
+   "off_cove_in": 0.25,
+   "port_clear_in": 6.0,
+   "note": "a rail of oak 5 in wide and 3.5 in high lying on the deck along the waterway's cove, its length cupped for eight 24 lb shot (5.55 in) pitch_in apart, cup_in deep; one for each gun in the space forward of its port (the foremost in the space before the bridle port), clear of the ports by port_clear_in at least"
+  },
+  "lanyard": {
+   "circ_in": 1.5,
+   "holes_in": 2.25,
+   "bush_in": [
+    3.5,
+    0.25
+   ],
+   "hole_above_head_in": 5.0,
+   "hole_over_clamp_edge_in": 2.5,
+   "ring_from_hinge_of_lid": 0.75,
+   "ring_in": [
+    2.6,
+    0.45
+   ],
+   "eye_in": [
+    1.3,
+    0.35
+   ],
+   "cleat_in": [
+    8.0,
+    1.5,
+    2.0
+   ],
+   "cleat_out_of_jamb_in": 3.5,
+   "cleat_over_deck_in": 40.0,
+   "tail_in": 6.0,
+   "note": "two to a lid, over its hinges' straps: an eyebolt through the lid at the strap's end (ring_from_hinge_of_lid of the lid's height down from the hinge) with a ring in it; the lanyard (1.5 in rope) spliced to the ring, up to a hole 2.25 in across bored through the side and the clamp over the port (hole_over_clamp_edge_in over the clamp's lower edge there, which stands clear of the housing bolts; past the clamp's ends hole_above_head_in over the port's head, inside or out, whichever is the higher) and lined with lead (a bush each face, bush_in across and proud; a chain plate over the port stops an inch above the outer bush: standing_1797.json chain_note), in through it and down the inside to a cleat beside the port (cleat_out_of_jamb_in from the jamb, cleat_over_deck_in up), belayed there with its tail hanging. Outside it lies down the shut lid over the hinge, and runs taut to the open lid's ring"
+  }
+ },
+ "budget_tris": 1200000,
+ "budget_note": "the plan's figure for slice 12 (the gun deck, loaded only when below: build.json gundeck.triangles_below): a starting point, not a ceiling (Bean, Nov 12: frame rate is the only hard limit), so the build reports the count against it and never fails on it",
+ "meets": {
+  "note": "the gun deck's parts that meet another part of the ship (or each other) by design, each pair with why and how far (in) either may go into the other; every other meeting fails the build (build_frigate's gundeck_room, deck.room). Each entry: the parts on one side, the parts on the other, why, the depth allowed (measured, plus a quarter inch, rounded up to a twentieth). A designed contact the build no longer finds fails it too: a part meant to stand on, be let into or rest against another that no longer reaches it hangs clear of what holds it",
+  "pairs": [
+   [["AfterWall"], ["GunWall"], "the after wall's edges against the side's inner face", 0.25],
+   [["AfterWall"], ["SparDeck"], "the after wall's top under the spar deck's planks", 0.25],
+   [["AfterWall"], ["StateRooms"], "the state rooms' inboard walls run aft to the after wall, their ends let into its rake", 1.05],
+   [["AfterWall"], ["WindowReveals"], "each window's lining fills the after wall's opening for it", 0.45],
+   [["AfterWall"], ["WindowSeat"], "the window seat's top is let into the after wall", 0.45],
+   [["CabinBulkhead"], ["Clamps"], "the cabin's bulkhead is scribed round the clamp at the side", 0.3],
+   [["CabinBulkhead"], ["GunDeck"], "the cabin's bulkhead stands on the deck, its foot let in where the sheer rises under it", 0.55],
+   [["CabinBulkhead"], ["GunWall"], "the cabin's bulkhead's ends are scribed to the side's inner face", 0.75],
+   [["CabinBulkhead"], ["GunWaterways"], "the cabin's bulkhead's ends are scribed down over the waterways", 0.55],
+   [["CabinBulkhead"], ["SparDeck"], "the cabin's bulkhead's head under the spar deck's planks", 0.25],
+   [["CabinFurniture"], ["FloorCloth"], "the cabin's table, chairs and lockers stand on the floor cloth", 0.25],
+   [["Clamps"], ["DeckBeams"], "the spar deck's beams' ends rest on the clamp, let down into it", 0.5],
+   [["Clamps"], ["GunWall"], "the clamp is bolted to the side's inner face, which curves under its back", 0.6],
+   [["Clamps"], ["HangingKnees"], "each hanging knee's arm is fayed over the clamp", 0.75],
+   [["Clamps"], ["LidLanyards"], "the lid lanyards' holes are bored through the clamp over each port, lined with their lead bushes", 1.55],
+   [["Clamps"], ["StateRooms"], "the state rooms' fore walls are scribed round the clamp at the side", 0.3],
+   [["DeckBeams"], ["GunImplements"], "the rammers, sponges, worms and ladles hang on hooks driven into the beams", 0.65],
+   [["DeckBeams"], ["HangingKnees"], "each hanging knee's upper arm is fayed to its beam's side", 0.6],
+   [["DeckBeams"], ["SparDeck"], "the spar deck's planks are laid on its beams", 0.45],
+   [["DeckBeams"], ["Stanchions"], "each stanchion's head is under its beam", 0.4],
+   [["DeckBeams"], ["StateRooms"], "the state rooms' walls are stepped round the beams over them", 0.25],
+   [["DeckBeams"], ["TillerRope"], "the tiller rope's legs come down the fore face of the beam under their holes in the spar deck", 0.25],
+   [["DeckBeams"], ["WaistFrame"], "the carlings and ledges under the gangways are framed into the waist's beams (deck.py's)", 0.3],
+   [["FloorCloth"], ["GunDeck"], "the floor cloth is laid on the deck", 0.3],
+   [["Galley"], ["Chimney"], "the galley's flue goes up into the forecastle's chimney, meeting its plate", 0.45],
+   [["Galley"], ["GunDeck"], "the galley's brick hearth is bedded on the deck, let in where the sheer rises under it", 0.75],
+   [["GunCapstan"], ["Capstan"], "the gun deck capstan's spindle goes up into the spar deck capstan's barrel", 1.25],
+   [["GunCapstanPawls"], ["GunDeck"], "the capstan's pawl ring is let into the deck", 0.45],
+   [["GunDeck"], ["Bulkheads"], "the deck's fore end against the bow's inside (skin.py's flat placeholder there)", 0.25],
+   [["GunDeck"], ["GunWall"], "the deck's edge runs on under the waterways into the side", 0.75],
+   [["GunDeck"], ["GunWaterways"], "the waterways lie on the deck's edges", 0.55],
+   [["GunDeck"], ["HatchLadders"], "the ladder down the after hatchway hangs from its coaming, its head against the deck's opening", 0.4],
+   [["GunDeck"], ["Hatchways"], "the coamings stand in the deck's openings", 0.25],
+   [["GunDeck"], ["Ladders"], "the ladders up to the spar deck stand on this deck, their feet let in", 0.6],
+   [["GunDeck"], ["LeadBushes"], "the tiller rope's lead bushes line its holes through the deck, their flanges on it", 0.35],
+   [["GunDeck"], ["Manger"], "the manger stands on the deck, its foot let in, and the cable scuttles' lead collars are let into the deck", 0.75],
+   [["GunDeck"], ["MastWedges"], "the wedges are driven into the gap between each mast and its partners in the deck", 1.0],
+   [["GunDeck"], ["Pumps"], "the pumps' chambers go down through the deck", 0.85],
+   [["GunDeck"], ["RidingBitts"], "the riding bitts go down through the deck", 0.5],
+   [["GunDeck"], ["ShotGarlands"], "the shot garlands are bolted down on the deck", 0.55],
+   [["GunDeck"], ["Stanchions"], "each stanchion's foot stands on the deck", 0.25],
+   [["GunDeck"], ["StateRooms"], "the state rooms' walls stand on the deck, their feet let in where the sheer rises under them", 0.55],
+   [["GunDeck"], ["WindowSeat"], "the window seat's front board stands on the deck", 0.55],
+   [["GunImplements"], ["SparDeck"], "the implements' hooks are driven into the spar deck's underside between its beams", 0.45],
+   [["GunImplements"], ["WaistFrame"], "the implements' hooks are driven into the waist's beams", 0.4],
+   [["GunWaterways"], ["GunWall"], "each waterway's back lies against the side's inner face", 0.55],
+   [["GunWaterways"], ["Manger"], "the manger's ends are scribed down over the waterways", 1.4],
+   [["GunWaterways"], ["StateRooms"], "the state rooms' fore walls are scribed down over the waterway", 0.55],
+   [["HangingKnees"], ["GunWall"], "each hanging knee's lower arm is fayed to the side's inner face", 0.6],
+   [["HatchLadders"], ["Wells"], "the ladders down stand in their hatchways' wells", 0.25],
+   [["Hatchways"], ["Wells"], "each coaming stands on its well", 0.25],
+   [["LidLanyards"], ["GunWall"], "the lanyards' cleats are let into the side's inner face, and their lead bushes go out through it", 1.85],
+   [["LidLanyards"], ["LidLanyards_Shut"], "each lanyard runs on out of its lead bush to its shut lid", 0.5],
+   [["LidLanyards"], ["Lid_15_P", "Lid_15_S"], "the bridle ports have no gun and their lids stay shut: their lanyards are spliced to their rings", 0.45],
+   [["LidLanyards"], ["Skin"], "the lanyards' lead bushes go out through the planking", 1.3],
+   [["LidLanyards_Open"], ["Skin"], "each open lid's lanyard comes out of its bush in the planking", 1.1],
+   [["LidLanyards_Shut"], ["Skin"], "each shut lid's lanyard comes out of its bush in the planking", 1.1],
+   [["LidLanyards_Shut"], ["Lid_0[1-9]_[PS]", "Lid_1[0-4]_[PS]"], "each shut lid's lanyards are spliced to its rings", 0.5],
+   [["Manger"], ["GunWall"], "the manger's ends are let into the side's inner face", 0.45],
+   [["Manger"], ["Wells"], "the cable scuttles' collars and linings sit in their wells", 0.55],
+   [["MastWedges"], ["Mast_Fore", "Mast_Main", "Mast_Mizzen"], "the wedges are driven in round each mast where it passes the deck and bear on it (the mast carries no hoop there: spars_1795.json hoops)", 0.45],
+   [["StateRooms"], ["GunWall"], "the state rooms' fore walls are scribed to the side's inner face", 0.7],
+   [["StateRooms"], ["SparDeck"], "the state rooms' walls' heads under the spar deck's planks", 0.3],
+   [["StateRooms"], ["WindowSeat"], "the window seat's ends against the state rooms' walls", 0.25],
+   [["WindowReveals"], ["SternFrame"], "each window's lining ends in its casing's opening", 0.25],
+   [["WindowReveals"], ["SternGlass"], "each window's lining butts on the glass's back", 0.3],
+   [["WindowReveals"], ["SternSash"], "each window's lining butts on the sash's back", 0.3]
+  ]
+ }
+}

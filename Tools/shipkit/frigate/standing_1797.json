@@ -98,7 +98,7 @@
   "upper_deadeye": "rail",
   "upper_deadeye_note": "draught: the upper deadeyes stand at the rail's top, their lanyards spanning the spar deck ports' height (about 5 ft): the 1817 channels are low, under the ports",
   "chain_below_channel_ft": 5.0,
-  "chain_note": "draught: the chains reach about 5 ft below the channel's top; one that would land over a gun deck port stops above its head",
+  "chain_note": "draught: the chains reach about 5 ft below the channel's top; one that would land over a gun deck port stops above its head (0.3 ft over it), and an inch clear above the lead bush of that port lid's lanyard hole where its line passes over one (slice 12: gungear.py bores the holes over the ports; build.json standing.chains_over_lanyard_holes lists those raised)",
   "eye_over_bolster": true,
   "futtock_stave_below_top_ft": [7.0, 7.8, 6.0],
   "futtock_src": "draught: the main futtock shrouds meet the shrouds about 7.8 ft under the top; the fore's and mizzen's by eye, in proportion",
