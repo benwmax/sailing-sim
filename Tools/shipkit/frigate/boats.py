@@ -918,6 +918,24 @@ def torus(c, ax, R, r, mat, n=12, m=6, e1=None):
     return V, F, [mat] * len(F)
 
 
+def barrel(P0, P1, r_in, r_out, mat, n=12):
+    """a round eye from P0 to P1 (a short pipe): its bore r_in, its outside r_out, its two ends flat rings"""
+    P0, P1 = np.asarray(P0, float), np.asarray(P1, float)
+    ax = unit(P1 - P0)
+    u = unit(np.cross(ax, EZ if abs(ax[2]) < 0.9 else EX))
+    v = np.cross(ax, u)
+    t = np.linspace(0.0, 2.0 * math.pi, n, endpoint=False)
+    ring = np.cos(t)[:, None] * u + np.sin(t)[:, None] * v
+    V = np.concatenate([P0 + r_out * ring, P1 + r_out * ring, P1 + r_in * ring, P0 + r_in * ring])
+    # the outside, the far end, the bore, the near end: each a band between two of the four rings
+    F = [(k * n + j, k * n + (j + 1) % n, (k + 1) % 4 * n + (j + 1) % n, (k + 1) % 4 * n + j)
+         for k in range(4) for j in range(n)]
+    vol = sum(float(np.dot(V[f[0]], np.cross(V[f[q]], V[f[q + 1]]))) for f in F for q in (1, 2))
+    if vol < 0:
+        F = [f[::-1] for f in F]
+    return V, F, [mat] * len(F)
+
+
 def box(c, half, mat, R=None):
     """a box centred at c with half-sizes half (3,), turned by the rotation R (3x3, its columns the box's axes)"""
     c, h = np.asarray(c, float), np.asarray(half, float)
@@ -950,8 +968,8 @@ class Boat:
     (carvel or clinker), the keel, stem, deadwood and post, the transom, the frames, keelson, risings, inwales,
     cappings and rubbing strakes (and a cutter's washstrake with its rowlock notches), the thwarts and their knees,
     the stern sheets, bottom boards, breasthook and quarter knees, the rowlocks, a launch's windlass, roller and sling
-    plates, and her gear stowed in her (masts and furled sails, oars, rudder and tiller). mesh: every piece, labelled;
-    info: her sizes as built."""
+    plates, the rudder's gudgeons, and her gear stowed in her (masts and furled sails, oars, rudder and tiller).
+    mesh: every piece, labelled; info: her sizes as built."""
 
     def __init__(self, card, key, name=None):
         self.card, self.key = card, key
@@ -1085,6 +1103,25 @@ class Boat:
                 rows_i.append((np.full(nu, 1.0), np.zeros(nu), k))
             else:
                 rows_i += [(np.full(nu, b_), np.zeros(nu), k), (b_ + lam, np.zeros(nu), k)]
+
+        def through_heel(rows):
+            """a row more where the transom's heel falls between two (at her after end; the same share of the way
+            between them all along her): the after ends' edge then passes through the heel, where the deadwood's
+            rabbet turns up the transom's edge. Without it the edge runs straight from a strake's row on the
+            deadwood to its next on the transom, cutting the heel's corner off and leaving an opening between the
+            post's head, the transom's foot and the planks"""
+            sh = self.s_heel
+            for r in range(len(rows) - 1):
+                s0, s1 = float(rows[r][0][0]), float(rows[r + 1][0][0])
+                if min(abs(s0 - sh), abs(s1 - sh)) < 1e-9:
+                    return rows
+                if s0 < sh < s1:
+                    f = (sh - s0) / (s1 - s0)
+                    row = (rows[r][0] + f * (rows[r + 1][0] - rows[r][0]),
+                           rows[r][1] + f * (rows[r + 1][1] - rows[r][1]), rows[r + 1][2])
+                    return rows[:r + 1] + [row] + rows[r + 1:]
+            return rows
+        rows_o, rows_i = through_heel(rows_o), through_heel(rows_i)
         grids = []
         for rows, side in ((rows_o, 1), (rows_i, -1)):
             S = np.stack([r[0] for r in rows])
@@ -2500,6 +2537,69 @@ class Boat:
             return _bvh(V, T)
         return _bvh(V, T), [lab for f, lab in keep for _ in range(len(f) - 2)]
 
+    def gudgeons(self):
+        """the rudder's two gudgeons (iron; whole), where her pintles drop into them when she is shipped (hung on the
+        post's line, her head 0.8 ft over the transom's top: stow_rudder's pintles 3 in under the transom's top and
+        4 in over the heel): the upper a strap across the transom's outer face, the lower a strap round the post's
+        aft face with its arms along the post's sides (each on the surface there, found by casting across to it);
+        each eye on the hinge line (the post's aft edge's line, carried aft clear of the strap) from the pintle's
+        knuckle down as long as its pin has under it less half an inch, round the 0.75 in pin"""
+        b, paint, ln = self.b, self.card["paint"], self.ln
+        st = 0.2 * IN                                                     # the iron, as the pintles' straps
+        r_in, r_out, le = 0.42 * IN, 0.68 * IN, 1.5 * IN
+        e = st + r_out + 0.12 * IN                                        # the hinge line aft of the post's aft edge
+        a = unit(np.array([ln.post_dir[0], 0.0, ln.post_dir[1]]))         # down the post
+        n = self.tr_n                                                     # aft (and a little up), square to it
+        top = self.transom_top_mid()
+        z_heel = float(self.prof[1][:, 1].min())
+        kbs = b["keel_bottom_sided_in"] / 2 * IN
+        R = np.stack([a, EY, n], -1)                                      # a box's axes: down the post, across, aft
+        V_k, T_k = self.label_tris()["keel_stem"]
+        post = _bvh(V_k, T_k)
+        L_arm = 4.0 * IN
+        self.gudgeons_ = []
+        # each one's knuckle: the pintle's strap's lower end, along the post's line from the transom's top
+        for which, d0 in (("upper", 3.75 * IN), ("lower", float(top[2]) - z_heel - 3.25 * IN)):
+            c = top + a * (d0 + 0.5 * le)                                 # on the post's aft edge, the eye's middle
+            hw = 3.0 * IN if which == "upper" else kbs + st
+            with self.fitting():
+                # the strap on the transom's face (round the post's aft face, a little into its corners, for the lower)
+                f0 = 0.0 if which == "upper" else 0.06 * IN
+                self.put("gudgeons", *box(c + n * 0.5 * (st - f0), (0.5 * le, hw, 0.5 * (st + f0)), paint["iron"], R))
+                # the web out to the eye, into its wall
+                w1 = e - r_out + 0.1 * IN
+                self.put("gudgeons", *box(c + n * 0.5 * (st + w1), (0.5 * le, 0.25 * IN, 0.5 * (w1 - st)),
+                                          paint["iron"], R))
+                self.put("gudgeons", *barrel(c + n * e - a * 0.5 * le, c + n * e + a * 0.5 * le, r_in, r_out,
+                                             paint["iron"]))
+                if which == "lower":
+                    secs = []
+                    for u in np.linspace(0.03 * IN, L_arm, 9):
+                        sec = []
+                        for da in (-0.5 * le, 0.5 * le):
+                            o = c + a * da - n * u
+                            hit = post.ray_cast(tuple(o + EY * 0.5), (0.0, -1.0, 0.0), 0.6)
+                            if hit[0] is None:
+                                break
+                            h, m = np.array(hit[0]), np.array(hit[1])
+                            m = m if m[1] > 0 else -m
+                            sec.append((h, m))
+                        if len(sec) == 2:
+                            (h1, m1), (h2, m2) = sec
+                            secs.append(np.array([h1, h2, h2 + m2 * st, h1 + m1 * st]))
+                    if len(secs) < 2:
+                        raise SystemExit(f"{self.key}: no post under her lower gudgeon's arms")
+                    V, F, M = sweep_ends(secs, paint["iron"])
+                    vol = sum(float(np.dot(V[f[0]], np.cross(V[f[q]], V[f[q + 1]]))) for f in F
+                              for q in range(1, len(f) - 1))
+                    if vol < 0:
+                        F = [f[::-1] for f in F]
+                    self.put("gudgeons", V, F, M)
+                    self.put("gudgeons", np.asarray(V, float) * [1.0, -1.0, 1.0], [f[::-1] for f in F], M)
+            self.gudgeons_.append({"which": which, "eye_z_m": [round(float((c + a * s * 0.5 * le)[2]), 4)
+                                                                for s in (-1, 1)],
+                                   "eye_aft_in": round(e / IN, 2)})
+
     def stow_rudder(self):
         """the rudder unshipped and laid flat along the starboard stern bench (its fore edge, with the pintles, to her
         side), its full length (the transom's height over the heel and 0.8 ft for the tiller's head): its head at the
@@ -2793,9 +2893,9 @@ class Boat:
                      self.sling_plates):
             step()
         self.mirror()
-        for step in (self.backbone, self.frames, self.keelson, self.thwart_parts, self.breasthook, self.transom_bench,
-                     self.thole_pins, self.windlass, self.roller, self.stow_oars, self.stow_masts, self.stow_rudder,
-                     self.painter):
+        for step in (self.backbone, self.gudgeons, self.frames, self.keelson, self.thwart_parts, self.breasthook,
+                     self.transom_bench, self.thole_pins, self.windlass, self.roller, self.stow_oars, self.stow_masts,
+                     self.stow_rudder, self.painter):
             step()
         self.measure()
         return self
@@ -2818,6 +2918,7 @@ class Boat:
             "frames": len(self.frame_x), "room_in": self.b["frames"]["room_in"],
             "tris": self.mesh.tris(),
             "parts": sorted(set(self.mesh.lab)),
+            "gudgeons": getattr(self, "gudgeons_", []),
         }
         return self.info
 
@@ -2857,6 +2958,76 @@ class Boat:
         return room_depths(objs, meets, self.card["meets"].get("within", {}), step,
                            fittings={n: v[2] for n, v in lt.items()})
 
+
+    def seams_check(self):
+        """her hull seen from outside where its parts meet: points along the keel, deadwood, post and stem (their
+        rabbet and outer edges, both sides) and the transom's edge, each looked at by rays in a cone about her
+        outward normal there (to 70 deg off it, none from more than 20 deg above), each from a point with nothing of
+        her under it (not over her, nor in her: an open boat rightly shows her inside paint over her side). A ray that
+        meets inside paint first has come in through an opening, and the opening's width there is how far the ray can
+        be moved square to itself (each way, the narrower of two ways) and still come in. {"rays", "in": how many came
+        in, "widest_mm", "at": where the widest came in}: where two parts meet the seam is a millimetre or less; the
+        corner the planks' after ends once cut off the transom's heel let rays in through 12 mm (the launch) and
+        42 mm (a cutter)"""
+        V, F, M = self.mesh.arrays()
+        T = fan_tris(F)
+        per = [len(f) - 2 for f in F]
+        mt = np.repeat(np.array(M), per)
+        lab = np.repeat(np.array(self.mesh.lab), per)
+        tree = _bvh(V, T)
+        inside = self.card["paint"]["inside"]
+        outer = _bvh(V, T[np.isin(lab, ["planking", "keel_stem", "transom"]) & (mt != inside)])
+        Rp, Op, w_r, w_o, _ = self.prof
+        targets = []
+        for L, w in ((Rp, w_r), (Op, w_o)):
+            Q = resample(L, 400)
+            ww = np.interp(np.linspace(0.0, 1.0, 400), np.linspace(0.0, 1.0, np.size(w)), np.ravel(w)) \
+                if np.size(w) > 1 else np.full(400, float(np.ravel(w)[0]))
+            targets += [np.array([q[0], sd * wi, q[1]]) for q, wi in zip(Q, ww) for sd in (1.0, -1.0)]
+        E = resample(np.asarray(self.ln.transom_edge, float), 200)
+        targets += [np.array([q[0], sd * q[1], q[2]]) for q in E for sd in (1.0, -1.0)]
+        targets = [q for q in targets if q[2] < self.sheer(q[0]) - 0.1]
+
+        def comes_in(o, d):
+            i = tree.ray_cast(o.tolist(), d.tolist(), 3.0)[2]
+            return i is not None and mt[i] == inside
+        n_rays, n_in, widest, at = 0, 0, 0.0, None
+        for q in targets:
+            c, nrm = outer.find_nearest(q.tolist())[:2]
+            if c is None:
+                continue
+            nrm = np.array(nrm)
+            if nrm @ (q - np.array([q[0], 0.0, 0.5 * self.sheer(q[0])])) < 0:
+                nrm = -nrm
+            a = unit(np.cross(nrm, EZ if abs(nrm[2]) < 0.9 else EX))
+            b = np.cross(nrm, a)
+            dirs = [nrm] + [math.cos(th) * nrm + math.sin(th) * (math.cos(ph) * a + math.sin(ph) * b)
+                            for th in np.radians([25.0, 50.0, 70.0]) for ph in np.radians(np.arange(7.0, 360.0, 45.0))]
+            for d in dirs:
+                if d[2] > 0.35:
+                    continue
+                for off in np.linspace(-0.01, 0.01, 5):
+                    o = q + a * off + d * 0.6
+                    if tree.ray_cast(o.tolist(), (0.0, 0.0, -1.0), 10.0)[2] is not None:
+                        continue
+                    n_rays += 1
+                    if not comes_in(o, -d):
+                        continue
+                    n_in += 1
+                    e1 = unit(np.cross(d, EZ))
+                    e2 = np.cross(d, e1)
+                    w = []
+                    for e in (e1, -e1, e2, -e2):
+                        s_ = 0.0
+                        for step in (1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 4e-2):
+                            if not comes_in(o + e * step, -d):
+                                break
+                            s_ = step
+                        w.append(s_)
+                    wd = min(w[0] + w[1], w[2] + w[3])
+                    if wd > widest:
+                        widest, at = wd, [round(float(v), 3) for v in q]
+        return {"rays": n_rays, "in": n_in, "widest_mm": round(widest * 1000.0, 2), "at": at}
 
     def bears_check(self, drop=1e-3):
         """each stowed thing (gear_item) resting on something but itself and the lashings round it: let down drop more,
@@ -3415,6 +3586,7 @@ class Boats:
             bt.room_ = bt.room_check()
             bt.bears_ = bt.bears_check()
             bt.lines_ = bt.ln.check()
+            bt.seams_ = bt.seams_check()
             V, F, _ = bt.mesh.arrays()
             bt.T_ = fan_tris(F)
             bt.V_ = V
@@ -4056,9 +4228,10 @@ class Boats:
     # --- the checks ----------------------------------------------------------------------------------------------------
     def checks(self):
         """each boat's own clash check (two parts, two pieces of one part, every piece closed: Boat.room_check), her
-        stowed gear each bearing on something (bears_check) and the drawing's written sizes (within 5%); her length,
-        greatest moulded breadth and depth as built against the card's (within 5%); the gangways' clear width under
-        the boats up to headroom over their deck (at least gangway_clear_min_ft); the ladders' headroom over every tread
+        stowed gear each bearing on something (bears_check), nothing open where her hull's parts meet (seams_check:
+        2 mm at most) and the drawing's written sizes (within 5%); her length, greatest moulded breadth and depth as
+        built against the card's (within 5%); the gangways' clear width under the boats up to headroom over their
+        deck (at least gangway_clear_min_ft); the ladders' headroom over every tread
         and their head (at least ladder_headroom_ft; null when nothing of the stowage is over a ladder at all) and how
         far the nearest of the stowage is from the space a man climbing each takes (its treads' depth and its width, up
         to that headroom over them: clear_ft); every spar and saddle an inch inside the waist's coamings; each stowage
@@ -4071,6 +4244,7 @@ class Boats:
                "inside_within": {k: bt.room_["within"] for k, bt in self.built.items()},
                "inside_open": {k: bt.room_["open"] for k, bt in self.built.items()},
                "inside_by_design": {k: len(bt.room_["by_design"]) for k, bt in self.built.items()},
+               "seams_open_mm": {k: bt.seams_["widest_mm"] for k, bt in self.built.items()},
                "lines_worst_in": {k: bt.lines_["worst_in"] for k, bt in self.built.items()},
                "floating": {k: bt.bears_["floating"] for k, bt in self.built.items()}}
         sizes = {}
@@ -4197,4 +4371,6 @@ class Boats:
             bad["coaming_clear_in"] = c["coaming_clear_in"]
         if c["gig_clear_in"] is not None and c["gig_clear_in"] < self.st["nest_clear_in"] - 1e-3:
             bad["gig_clear_in"] = c["gig_clear_in"]
+        if any(v > 2.0 for v in c["seams_open_mm"].values()):             # a seam, not an opening
+            bad["seams_open_mm"] = c["seams_open_mm"]
         return bad
