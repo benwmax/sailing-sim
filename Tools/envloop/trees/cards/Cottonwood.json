@@ -1,0 +1,72 @@
+{
+ "id": "Cottonwood",
+ "name": "eastern cottonwood",
+ "latin": "Populus deltoides",
+ "usda": "https://plants.usda.gov/plant-profile/PODE3",
+ "tile": 7,
+ "where": "Low ground by the water and creek bottoms; the tallest tree on the lake.",
+ "height_m": [
+  20,
+  30
+ ],
+ "crown_w_over_h": 0.75,
+ "clear_trunk_m": [
+  5.0,
+  8.0
+ ],
+ "trunk_dbh_m": [
+  0.6,
+  1.4
+ ],
+ "form": "One massive trunk, a tall open crown; leaves on flat stems flutter in any breeze.",
+ "leaf": {
+  "set": "ambientcg/LeafSet004",
+  "length_cm": [
+   8,
+   13
+  ],
+  "look": "Triangular (deltoid), coarse round teeth, glossy bright green.",
+  "card_m": 1.0,
+  "per_twig": 6,
+  "twigs": 8,
+  "colour": [
+   0.92,
+   1.0,
+   0.85
+  ]
+ },
+ "winter": {
+  "set": null,
+  "look": "Bare; bright yellow in autumn."
+ },
+ "bark": {
+  "set": "ambientcg/Bark002",
+  "tile_m": [
+   0.9,
+   0.9
+  ],
+  "tile_estimated": true,
+  "tint": [
+   0.78,
+   0.76,
+   0.72
+  ],
+  "look": "Ash grey, very thick, deep furrows between flat ridges on old trunks."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/Cottonwood/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}

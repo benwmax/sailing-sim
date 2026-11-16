@@ -1,0 +1,72 @@
+{
+ "id": "LiveOak",
+ "name": "live oak",
+ "latin": "Quercus virginiana (Texas live oak, Q. fusiformis, inland)",
+ "usda": "https://plants.usda.gov/plant-profile/QUVI",
+ "tile": 1,
+ "where": "Planted in yards and at the club; a few wild on limestone banks. Evergreen.",
+ "height_m": [
+  6,
+  12
+ ],
+ "crown_w_over_h": 1.7,
+ "clear_trunk_m": [
+  1.5,
+  2.5
+ ],
+ "trunk_dbh_m": [
+  0.4,
+  0.9
+ ],
+ "form": "Short thick trunk splitting low into a few massive limbs that spread wide and droop; crown much wider than tall.",
+ "leaf": {
+  "set": "ambientcg/LeafSet022",
+  "length_cm": [
+   4,
+   8
+  ],
+  "look": "Small, oval, entire edge, glossy dark green, pale beneath.",
+  "card_m": 0.8,
+  "per_twig": 9,
+  "twigs": 10,
+  "colour": [
+   0.62,
+   0.75,
+   0.58
+  ]
+ },
+ "winter": {
+  "set": null,
+  "look": "Evergreen: summer leaves all year."
+ },
+ "bark": {
+  "set": "polyhaven/jolcham_oak_bark_01",
+  "tile_m": [
+   1.0,
+   2.0
+  ],
+  "tile_estimated": false,
+  "tint": [
+   0.55,
+   0.53,
+   0.5
+  ],
+  "look": "Dark grey-black, deeply furrowed into small blocks; lichen."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/LiveOak/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}

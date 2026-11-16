@@ -1,0 +1,72 @@
+{
+ "id": "CedarElm",
+ "name": "cedar elm",
+ "latin": "Ulmus crassifolia",
+ "usda": "https://plants.usda.gov/plant-profile/ULCR",
+ "tile": 2,
+ "where": "Everywhere on the lake's clay; banks, yards, creek mouths.",
+ "height_m": [
+  10,
+  16
+ ],
+ "crown_w_over_h": 0.65,
+ "clear_trunk_m": [
+  3.0,
+  4.5
+ ],
+ "trunk_dbh_m": [
+  0.3,
+  0.6
+ ],
+ "form": "An upright vase of fine, slightly drooping branches; corky wings on young twigs.",
+ "leaf": {
+  "set": "ambientcg/LeafSet001",
+  "length_cm": [
+   2.5,
+   5
+  ],
+  "look": "Small, rough (sandpapery), doubly toothed, dark green.",
+  "card_m": 0.7,
+  "per_twig": 12,
+  "twigs": 10,
+  "colour": [
+   0.8,
+   0.9,
+   0.75
+  ]
+ },
+ "winter": {
+  "set": null,
+  "look": "Bare (the game's winter fade); yellow in late autumn (LeafSet007 for the autumn slice later)."
+ },
+ "bark": {
+  "set": "ambientcg/Bark004",
+  "tile_m": [
+   0.6,
+   0.6
+  ],
+  "tile_estimated": true,
+  "tint": [
+   0.7,
+   0.66,
+   0.64
+  ],
+  "look": "Light grey-brown, flaky interlacing ridges."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/CedarElm/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}

@@ -1,0 +1,82 @@
+{
+ "id": "Mesquite",
+ "name": "honey mesquite",
+ "latin": "Prosopis glandulosa",
+ "usda": "https://plants.usda.gov/plant-profile/PRGL2",
+ "tile": 4,
+ "new_species": true,
+ "where": "Dry pasture edges and unmown banks away from the houses; small, crooked, open.",
+ "height_m": [
+  4,
+  8
+ ],
+ "crown_w_over_h": 1.5,
+ "clear_trunk_m": [
+  0.6,
+  1.5
+ ],
+ "trunk_dbh_m": [
+  0.15,
+  0.4
+ ],
+ "form": "One to three crooked, leaning trunks from near the ground; a wide, flat-topped, very airy crown of drooping fronds.",
+ "leaf": {
+  "set": "ambientcg/LeafSet013",
+  "length_cm": [
+   8,
+   15
+  ],
+  "leaflet_cm": [
+   1.2,
+   2.5
+  ],
+  "leaflets": [
+   20,
+   34
+  ],
+  "look": "Bipinnate: two feathery pinnae of tiny narrow leaflets; light, yellow-green.",
+  "card_m": 0.9,
+  "per_twig": 5,
+  "twigs": 7,
+  "colour": [
+   0.86,
+   0.95,
+   0.68
+  ],
+  "compound": "bipinnate"
+ },
+ "winter": {
+  "set": null,
+  "look": "Bare (leafs out last, drops early)."
+ },
+ "bark": {
+  "set": "ambientcg/Bark014",
+  "tile_m": [
+   1.2,
+   1.2
+  ],
+  "tile_estimated": false,
+  "tint": [
+   0.6,
+   0.52,
+   0.48
+  ],
+  "look": "Dark reddish-brown, shaggy, in long loose strips."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/Mesquite/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}
