@@ -85,7 +85,7 @@ boat at 5 m (hold), 15 m (design) and 60 m (near band) along that line, 2 m abov
 | Club breakwater | `breakwater` | -24, 61 | 80 | 02-riprap |
 | Residential street A (Rowlett) | `residential-a` | 8680, 2115 | 154 | 03-residential |
 | Residential street B | `residential-b` | 6554, 1344 | 109 | none yet |
-| Bulkhead lot (bulkhead, boathouse and lift) | `bulkhead` | 8650, 2065 | 175 | 04-house-bulkhead |
+| Bulkhead lot (bulkhead, boathouse and lift) | `bulkhead` | 8658, 2073 | 147 | 04-house-bulkhead (seed 8 m east, so the lift posts sit at the side of the view) |
 | Private dock (a mapped pier) | `private-dock` | 8160, 1698 | 17 | 05-dock |
 | Wooded bank | `wooded` | 2488, -3717 | 291 | 06-wooded |
 | Natural clay cut bank | `clay-bank` | 4890, -1614 | 356 | none yet |
