@@ -1,0 +1,279 @@
+{
+ "method_check": {
+  "what": "the J/22's ORC polar over the Catalina 30's scaled to her, at 6, 10 and 15 kn",
+  "mean": 1.105,
+  "min": 1.041,
+  "max": 1.198
+ },
+ "boat": {
+  "lwl_m": 26.024,
+  "sail_area_m2": 786.7,
+  "volume_m3": 153.513,
+  "sa_d": 27.44,
+  "disp_length": 243.0
+ },
+ "references": {
+  "j22": {
+   "speed_scale": 2.1201,
+   "wind_read_factor": 0.5523,
+   "wind_read_kn": {
+    "6": 3.31,
+    "10": 5.52,
+    "12": 6.63,
+    "16": 8.84
+   }
+  },
+  "c30": {
+   "speed_scale": 1.848,
+   "wind_read_factor": 0.6523,
+   "wind_read_kn": {
+    "6": 3.91,
+    "10": 6.52,
+    "12": 7.83,
+    "16": 10.44
+   }
+  }
+ },
+ "method": "Tools/boats/maxi/estimate_polar.py's: the Catalina 30's ORC certificate and the J/22's ORC polar scaled to her (Froude, SA/D, ITTC-57 friction) and averaged; the J/22's beat and run VMGs scaled the same way",
+ "points": [
+  {
+   "tws": 6,
+   "twa": 52,
+   "speed": 6.05,
+   "c30": 6.18,
+   "j22": 5.92,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 6,
+   "twa": 60,
+   "speed": 6.42,
+   "c30": 6.52,
+   "j22": 6.32,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 6,
+   "twa": 90,
+   "speed": 6.67,
+   "c30": 6.61,
+   "j22": 6.72,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 6,
+   "twa": 120,
+   "speed": 6.29,
+   "c30": 6.26,
+   "j22": 6.32,
+   "spinnaker": true,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 6,
+   "twa": 150,
+   "speed": 4.97,
+   "c30": 4.96,
+   "j22": 4.97,
+   "spinnaker": true,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 10,
+   "twa": 52,
+   "speed": 9.69,
+   "c30": 9.68,
+   "j22": 9.7,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 10,
+   "twa": 60,
+   "speed": 10.22,
+   "c30": 10.14,
+   "j22": 10.29,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 10,
+   "twa": 90,
+   "speed": 10.59,
+   "c30": 10.3,
+   "j22": 10.89,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 10,
+   "twa": 120,
+   "speed": 10.08,
+   "c30": 9.87,
+   "j22": 10.29,
+   "spinnaker": true,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 10,
+   "twa": 150,
+   "speed": 8.12,
+   "c30": 8.04,
+   "j22": 8.2,
+   "spinnaker": true,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 16,
+   "twa": 52,
+   "speed": 12.09,
+   "c30": 11.83,
+   "j22": 12.36,
+   "spinnaker": false,
+   "tolerance": 0.25,
+   "why": "close-hauled in 16 kn she is pressed to her heel limit, where the references (read at 8.8 and 10.4 kn) sail far more upright: the scaling carries their power but not their stiffness (compare.json's stiffness)"
+  },
+  {
+   "tws": 16,
+   "twa": 60,
+   "speed": 12.47,
+   "c30": 12.16,
+   "j22": 12.79,
+   "spinnaker": false,
+   "tolerance": 0.25,
+   "why": "close-hauled in 16 kn she is pressed to her heel limit, where the references (read at 8.8 and 10.4 kn) sail far more upright: the scaling carries their power but not their stiffness (compare.json's stiffness)"
+  },
+  {
+   "tws": 16,
+   "twa": 90,
+   "speed": 12.92,
+   "c30": 12.49,
+   "j22": 13.35,
+   "spinnaker": false,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 16,
+   "twa": 120,
+   "speed": 12.85,
+   "c30": 12.51,
+   "j22": 13.19,
+   "spinnaker": true,
+   "tolerance": 0.2
+  },
+  {
+   "tws": 16,
+   "twa": 150,
+   "speed": 11.41,
+   "c30": 11.17,
+   "j22": 11.66,
+   "spinnaker": true,
+   "tolerance": 0.2
+  }
+ ],
+ "vmg": [
+  {
+   "tws": 6,
+   "beat_vmg": 3.95,
+   "beat_twa": 43.5,
+   "run_vmg": 4.25,
+   "j22_wind_read_kn": 3.31
+  },
+  {
+   "tws": 10,
+   "beat_vmg": 6.52,
+   "beat_twa": 43.5,
+   "run_vmg": 7.02,
+   "j22_wind_read_kn": 5.52
+  },
+  {
+   "tws": 12,
+   "beat_vmg": 7.46,
+   "beat_twa": 43.1,
+   "run_vmg": 8.21,
+   "j22_wind_read_kn": 6.63
+  },
+  {
+   "tws": 16,
+   "beat_vmg": 8.83,
+   "beat_twa": 41.7,
+   "run_vmg": 10.21,
+   "j22_wind_read_kn": 8.84
+  }
+ ],
+ "period": [
+  {
+   "what": "Ranger's beat, 1937 America's Cup, third race (4 Aug 1937, off Brenton Reef): 15 nm dead to windward",
+   "leg_nm": 15.0,
+   "time": "2:03:55",
+   "wind_kn": 12.0,
+   "kind": "beat",
+   "source": "Grey River Argus, 6 Aug 1937 (Papers Past, paperspast.natlib.govt.nz/newspapers/GRA19370806.2.99): 'on the windward leg her time was 2h 3m 55s, thus breaking the Rainbow's record by 30s'; the wind about 12 kn at the start (the caption of A. D. Blake's painting of the third race's start, J. Russell Jinishian Gallery), reported rising to 14 kn at the mark in the second race",
+   "trust": "the time is good (several papers, 2:03:40 unofficial); the wind is one caption's",
+   "vmg_kn": 7.26
+  },
+  {
+   "what": "Ranger's run, the same race: 15 nm dead to leeward, the rest of her time for the course",
+   "leg_nm": 15.0,
+   "time": "1:50:35",
+   "time_range": [
+    "1:47:35",
+    "1:50:35"
+   ],
+   "wind_kn": 12.0,
+   "kind": "run",
+   "source": "the same reports: corrected time for the course 3:54:30 (another 'correct elapsed time' 3:51:30), less the beat's 2:03:55",
+   "trust": "the course time differs by three minutes between reports; the run's VMG is 8.1 to 8.4 kn",
+   "vmg_kn": 8.14,
+   "vmg_range_kn": [
+    8.14,
+    8.37
+   ]
+  },
+  {
+   "what": "Endeavour, 1934 America's Cup, first race (17 Sep 1934): 15 nm to windward and back",
+   "leg_nm": 30.0,
+   "time": "3:38:44",
+   "wind_kn": 15.0,
+   "kind": "course",
+   "source": "the 1934 America's Cup's Wikipedia table (Endeavour 3:38:44, Rainbow 3:40:53), the wind 'a fresh south westerly of 15 knots, gusting more than 20' (an account of race 1 on historic-brand.com)",
+   "trust": "low: the table's columns are jumbled in the search's copy; kept only as a course average",
+   "vmg_kn": 8.23
+  },
+  {
+   "what": "Endeavour today (restored, modern rig and sails): a sea trial in a breeze rising to about 17 kn",
+   "speed_kn": [
+    9.5,
+    10.5
+   ],
+   "reach_kn": 12.0,
+   "wind_kn": 17.0,
+   "kind": "modern",
+   "source": "Yachting World, 'At the helm of J Class yacht Endeavour' (yachtingworld.com/j-class/...-105489): 'upwind speeds of 9.5 to 10.5 knots and up to 12 knots reaching', typical for a J",
+   "trust": "good for a modern J; an upper bound for 1937 cotton and steel"
+  }
+ ],
+ "period_check": [
+  {
+   "what": "Ranger's beat, 1937 America's Cup, third race (4 Aug 1937, off Brenton Reef): 15 nm dead to windward",
+   "race": "beat VMG 7.26 kn in 12 kn",
+   "estimate": "estimate 7.46",
+   "ratio": 1.028
+  },
+  {
+   "what": "Ranger's run, the same race: 15 nm dead to leeward, the rest of her time for the course",
+   "race": "run VMG 8.14-8.37 kn",
+   "estimate": "estimate 8.21",
+   "ratio": 1.009
+  },
+  {
+   "what": "Endeavour, 1934 America's Cup, first race (17 Sep 1934): 15 nm to windward and back",
+   "race": "course VMG 8.23 kn in 15 kn",
+   "estimate": "estimate 9.06",
+   "ratio": 1.101
+  }
+ ]
+}
