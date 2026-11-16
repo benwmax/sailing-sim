@@ -1,0 +1,54 @@
+{
+ "plant": "lawn_rough",
+ "name": "Unmown edge grass gone to seed",
+ "latin": "Cynodon dactylon and Paspalum notatum (bahia)",
+ "where": "The strip the mower misses: along fences, the bank top, lot edges, under trees; the transition from lawn to bank",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra (Light copy)"
+ },
+ "real": {
+  "height_m": [
+   0.15,
+   0.5
+  ],
+  "blade_length_m": [
+   0.05,
+   0.18
+  ],
+  "blade_width_mm": [
+   2.0,
+   5.0
+  ],
+  "seedhead": "bermuda: 3 to 6 fingers 3 to 6 cm on a 15 to 30 cm stalk; bahia: two racemes in a V, 4 to 8 cm, on a 25 to 50 cm stalk",
+  "habit": "loose, leaning, half the stalks bent over",
+  "height_note": "leaves 0.15 to 0.3 m; bahia seed stalks to 0.5 m"
+ },
+ "mesh": {
+  "names": "SM_Grass_Rough_0..2 (0.5 m tiles), SM_Grass_Rough_Light",
+  "tile_m": 0.5,
+  "blades": [
+   150,
+   190
+  ],
+  "stalks": [
+   10,
+   18
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 3,
+ "budget": {
+  "tris_lod0_max": 1400,
+  "tris_light_max": 450
+ },
+ "references": [
+  "rough",
+  "bahia"
+ ],
+ "colour": "grass_look.json[lawn_rough]",
+ "card_version": 1
+}
