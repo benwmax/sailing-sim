@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-10).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-11).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -45,7 +45,17 @@ lb each, built to their weight) catted and fished, the bill of each inner fluke 
 side through the bow, lined with lead, in an oak bolster; cut through the planking) and the 22 in hemp cables bent to
 the bowers' rings and led in through them, with the cat stoppers and the shank painters; the sheet, stream and kedge
 anchors are sized here and stowed by the slices that build where they go (the boats, the gun deck). anchors_room checks
-every part against the rest of the ship and the others, the meetings by design in anchors_1797.json's meets.
+every part against the rest of the ship and the others, the meetings by design in anchors_1797.json's meets. Slice 11
+(boats.py, boats_1797.json) builds the ship's boats, each a small hull lofted from her own lines and fitted out (keel,
+stem and sternpost, frames, planking, risings, gunwales, thwarts and knees, breasthook, stern benches, bottom boards,
+rowlocks, oars, masts and sails, rudder and tiller, painter): a 34 ft launch (carvel), two 26 ft cutters and a 22 ft gig
+(clinker). They are stowed after the deck, over the open waist on its beams, before the ropes, which must clear them:
+the launch amidships and a cutter either side, each on two cradles across her own two spare spars (on saddles on the
+beams), the gig nested in the starboard cutter, the stream anchor and the large kedge across the launch's gunwales and
+the small kedge across the port cutter's, and a gripe over each boat at each cradle, spliced to eyebolts in its ends.
+boats_room checks them against the rest of the ship (the sails, running rigging and guns in every state and pose) and
+each other, the meetings by design in boats_1797.json's meets; each boat checks her own parts against each other as she
+is built, and every piece of them is checked for faces crossing themselves (a rope bent tighter than its radius).
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
@@ -53,17 +63,19 @@ every part against the rest of the ship and the others, the meetings by design i
 Writes <out>/frigate.blend, <out>/frigate.obj (the moulded hull, transom and backbone, for lines_check.py),
 <out>/build.json (triangles per object, main dimensions, displacement, the rig's heights, the sails' checks, the
 deck's layout and checks, the guns' placing and checks, the head's and stern's layout and checks, the anchors' sizes,
-places and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and sizes), <out>/running.json
-(each line's path and stations, each block's pose, in each state; the pins and kevels), <out>/deck.json (the deck's
-fittings, the capstan's and wheel's frames, the nettings, the planking pattern), <out>/guns.json (each gun's frame and
-pose, its lid, the unique meshes and what moves on each) and <out>/anchors.json (each anchor's size, the bowers' hang,
-the catheads, the hawse holes, the cables, the stoppers' holes and the painters' eyes). Units are metres in Unreal's body frame
-(X forward, Y starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in
+places and checks, the boats' stowage and checks), <out>/rig.json, <out>/sails.json (each sail's objects, parent and
+sizes), <out>/running.json (each line's path and stations, each block's pose, in each state; the pins and kevels),
+<out>/deck.json (the deck's fittings, the capstan's and wheel's frames, the nettings, the planking pattern),
+<out>/guns.json (each gun's frame and pose, its lid, the unique meshes and what moves on each), <out>/anchors.json (each
+anchor's size, the bowers' hang, the catheads, the hawse holes, the cables, the stoppers' holes and the painters' eyes)
+and <out>/boats.json (each boat's frame, cradles and gripes, the gig's nest, the spare spars, the anchors' places, the
+gangways' room). Units are metres in Unreal's body frame (X forward, Y starboard, Z up), origin on the centreline at
+midships on the load waterline. The moulded hull stays in
 the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
 running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, head.py, stern.py, carve.py
-and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), anchors.py and anchors_1797.json, never the
-.blend.
+and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), anchors.py and anchors_1797.json, boats.py
+and boats_1797.json, never the .blend.
 """
 import json
 import math
@@ -79,6 +91,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import anchors  # noqa: E402
+import boats  # noqa: E402
 import carve  # noqa: E402
 import deck  # noqa: E402
 import guns  # noqa: E402
@@ -356,6 +369,45 @@ for name, (V, F, M, frame, uv) in DK.parts().items():
     make_deck_part(name, V, F, M, frame, uv)
 DECK_STATIC = [(name, *DK.world(name)) for name in DK.parts()]       # for the running rigging's clearances
 DECK_STATIC = [(name, V, running.tris_of(F)) for name, V, F in DECK_STATIC]
+
+
+def smooth_soft(ob, angle, soft):
+    """smooth(ob, angle), then each edge between two faces of one of soft's paints sharp only past that paint's angle:
+    a rope's or an oar's facets rounded where a boat's planks, frames and fittings keep their edges"""
+    smooth(ob, angle)
+    me = ob.data
+    names = [m.name for m in me.materials]
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    for e in bm.edges:
+        if len(e.link_faces) != 2:
+            continue
+        f1, f2 = e.link_faces
+        p = names[f1.material_index]
+        if p == names[f2.material_index] and p in soft:
+            e.smooth = e.calc_face_angle(0.0) < math.radians(soft[p])
+    bm.to_mesh(me)
+    bm.free()
+
+
+# the boats (slice 11, boats.py and boats_1797.json), stowed over the open waist: the spare spars on saddles on the
+# waist's beams, the launch amidships and a cutter either side, each on two cradles across her own two spars, the gig
+# nested in the starboard cutter on chocks across its thwarts, the stream anchor and the large kedge in the launch and
+# the small kedge in the port cutter (their stocks across the gunwales), a gripe over each boat at each cradle. Each
+# boat is an object on her own frame (origin at her transom's top aft edge on her middle line, at her base: boats.json);
+# the rest are objects in place. Built after the deck (they lie on its beams) and before the brace limits, the sails and
+# the ropes, which must clear them
+BT = boats.Boats(SK, RIG, DK).build()
+BOAT = {}
+for name, (V, F, M, frame) in BT.parts().items():
+    assert name not in SKIN and name not in DECOR and name not in ANCHOR and name not in DK.parts(), name
+    ob = make_painted(name, V, F, M)
+    if frame is not None:
+        o, R = frame
+        ob.matrix_world = Matrix(((*R[0], o[0]), (*R[1], o[1]), (*R[2], o[2]), (0, 0, 0, 1)))
+    smooth_soft(ob, 35, {"Hemp": 60, "Spar": 50})
+    BOAT[name] = ob
+BOAT_STATIC = [(name, V, T) for name, (V, T) in BT.world().items()]
 
 
 def brace_limits(cfg):
@@ -797,7 +849,7 @@ SAIL_ROOM = sail_room({"step_deg": 1.0, **{k: ST.sp["brace"][k] for k in ("top_d
 # it is made fast or led (the build fails otherwise)
 RN = running.Running(RIG, SK, ST, SV, taffrail_z=SN.taffrail_top).gear()
 DECOR_STATIC = [(name, V, running.tris_of(F)) for name, (V, F) in list(DECOR.items()) + list(ANCHOR.items())]
-RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC + DECOR_STATIC, skin_parts=SKIN)
+RW = running.World(RIG, SK, ST, SV, extra_static=DECK_STATIC + DECOR_STATIC + BOAT_STATIC, skin_parts=SKIN)
 RCX = {S: running.Clearance(RW.soup(running.Pose(RIG, S), extra=RN.extras())) for S in running.STATES}
 RUN_MISSING = RN.settle(RCX, os.path.join(HERE, "running_places_1797.json"), replace="--place-running" in ARGS)
 RN.place_coils(RCX)                                         # each coil hung clear of the rail, the ropes and its neighbours
@@ -881,11 +933,11 @@ def deck_room():
     ladder's foot on the gun deck, a netting on its rail cap, a fitting let into the deck...) as deep as allowed; and
     every fitting standing on the deck's top as it rises along the sheer (deck.room). Ropes, blocks and coils are also
     held clear of the deck by running_room, the sails by sail_room, the standing rigging by span_room and the moving
-    spars by brace_limits, each with its own gap; the head's and the stern's parts by decor_room (against the deck's
-    parts too, with their own meets)"""
+    spars by brace_limits, each with its own gap; the head's and the stern's parts by decor_room and the boats and their
+    stowage by boats_room (against the deck's parts too, with their own meets)"""
     objs = {}
     for o in SC.objects:
-        if o.type != "MESH" or o.name in REFERENCE or o.name in DECOR:
+        if o.type != "MESH" or o.name in REFERENCE or o.name in DECOR or o.name in BOAT:
             continue
         V, T = world_tris(o)
         if len(T):
@@ -1022,6 +1074,39 @@ def anchors_folds():
 ANCHOR_FOLDS = anchors_folds()
 
 
+def boats_room():
+    """the boats and their stowage (slice 11) against everything else in the ship (the sails, running rigging and guns
+    in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet by design
+    (boats_1797.json's stowage meets: a saddle on its beam, a boat on her cradles, a gripe over her...) as deep as
+    allowed (deck.room, without the deck's standing check). Each boat's own parts are checked against each other by
+    boats.py (build.json boats.checks.inside)"""
+    return deck.room(ship_tris(), set(BOAT), None, meets=meets_of(BT.st, "boats_1797.json"))
+
+
+BOAT_ROOM = boats_room()
+
+
+def folds(objs):
+    """each connected piece of each object against itself: {name: [pairs of its faces that cross, sharing no corner,
+    a point on the first]} (a rope bent tighter than its radius, or anything folded back through itself; the room
+    checks see only parts against other parts)"""
+    out = {}
+    for name, (V, T) in objs.items():
+        T = np.asarray(T, np.int64)
+        lab = deck.islands(T, len(V))[T[:, 0]]
+        bad = []
+        for k in np.unique(lab):
+            Tk = T[lab == k]
+            tree = BVHTree.FromPolygons(V.tolist(), Tk.tolist(), all_triangles=True)
+            bad += [np.round(V[Tk[i]].mean(0), 3).tolist() for i, j in tree.overlap(tree)
+                    if i < j and not set(Tk[i].tolist()) & set(Tk[j].tolist())]
+        out[name] = {"pairs": len(bad), "at": bad[:5]}
+    return out
+
+
+BOAT_FOLDS = folds(BT.world())
+
+
 def decor_seated():
     """the carving (decor_1797.json's meets' seated) on what it meets by design: every piece of it reaching in, every
     open rim of a leaf or a berry in it (carve.seated)"""
@@ -1129,6 +1214,9 @@ stats["decor"] = {"head": HD.info, "stern": SN.info, "room": DECOR_ROOM, "seated
 stats["anchors"] = dict(AN.info, room=ANCHOR_ROOM, folds={n: v["pairs"] for n, v in ANCHOR_FOLDS.items()},
                         triangles={n: stats["objects"][n]["triangles"] for n in ANCHOR},
                         triangles_total=sum(stats["objects"][n]["triangles"] for n in ANCHOR))
+stats["boats"] = dict(BT.info, room=BOAT_ROOM, folds={n: v["pairs"] for n, v in BOAT_FOLDS.items()},
+                      triangles={n: stats["objects"][n]["triangles"] for n in BOAT},
+                      triangles_total=sum(stats["objects"][n]["triangles"] for n in BOAT))
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -1216,6 +1304,16 @@ ANCHORS_NOTE = (
     "cathead, knotted on top) and painter (its eyebolts), where each lies. The parts are the objects Cathead, Bower, Billboard, HawseBolster, HawseLining, Cable, "
     "CatStopper, ShankPainter and AnchorEyebolts (the painters' eyebolts), both sides in each")
 json.dump(dict({"note": ANCHORS_NOTE}, **AN.info), open(os.path.join(OUT, "anchors.json"), "w"), indent=1)
+BOATS_NOTE = (
+    "the boats and their stowage (docs/shipkit-11), in the ship's frame (metres): boats, each boat's kind, her origin "
+    "(her own frame's: x forward from her transom's top aft edge, y to her starboard, z up from her base, the rabbet "
+    "line amidships; axes the ship's), her keel's bottom, her cradles and gripes; gig, where she lies in the starboard "
+    "cutter; spars, each spare spar's boat, kind, size, axis height and its saddles' thickness; anchors, where each "
+    "anchor's stock lies across its boat's gunwales and how far it is turned down; gaps, the cutters' places; checks, "
+    "the gangways' and ladders' room and each boat's own clash check. The objects: Launch, Cutter_S, Cutter_P, Gig (each "
+    "on her own frame), SpareSpars, SparSaddles, BoatCradles, GigChocks, StreamAnchor, KedgeLarge, KedgeSmall and "
+    "BoatGripes (in place)")
+json.dump(dict({"note": BOATS_NOTE}, **BT.info), open(os.path.join(OUT, "boats.json"), "w"), indent=1, default=str)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
@@ -1256,6 +1354,16 @@ if ANCHOR_ROOM["meet"]:
 FOLDED = {n: v for n, v in ANCHOR_FOLDS.items() if v["pairs"]}
 if FOLDED:
     raise SystemExit("an anchors part crosses itself (build.json anchors.folds): " + json.dumps(FOLDED))
+if BOAT_ROOM["meet"]:
+    raise SystemExit("the boats or their stowage meet the ship or each other (build.json boats.room): " +
+                     json.dumps(BOAT_ROOM["meet"][:30]))
+BOAT_FOLDED = {n: v for n, v in BOAT_FOLDS.items() if v["pairs"]}
+if BOAT_FOLDED:
+    raise SystemExit("a boat or a part of their stowage crosses itself (build.json boats.folds): " +
+                     json.dumps(BOAT_FOLDED))
+if BT.failures():
+    raise SystemExit("the boats fail their own checks (build.json boats.checks): " +
+                     json.dumps(BT.failures(), default=str))
 if AN.info["cable"]["least_bend_of_diameter"] < AN.card["cable"]["bend_min_of_diameter"] - 0.005:
     raise SystemExit("the cable bends tighter than anchors_1797.json's bend_min_of_diameter outside the clinch "
                      "(build.json anchors.cable.least_bend_of_diameter)")

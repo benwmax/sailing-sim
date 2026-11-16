@@ -652,11 +652,12 @@ def _course(P, rad, step):
     return _even(out[keep], step), least
 
 
-def _bar_turn(rho, r, p1, tail, a0, k=10):
+def _bar_turn(rho, r, p1, tail, a0, k=10, gap=0.0):
     """A rope of radius r round a bar and back alongside itself, in the bar's section: p along the rope's way
     through (the bar's centre at the origin), q across. The standing part comes up at (-p1, -r), opens round the bar
-    on radius rho (leaving the arc a0 short of the way back on either side), closes again to (-p1, r) and its end lies
-    along the standing part to (-p1 - tail, r): the clinch of a cable on its ring, or a splice round an eyebolt's eye.
+    on radius rho (leaving the arc a0 short of the way back on either side), closes again to (-p1, r + gap) and its
+    end lies along the standing part to (-p1 - tail, r + gap): the clinch of a cable on its ring, or a splice round an
+    eyebolt's eye (gap: between the end and the standing part, so a rope drawn as one tube does not touch itself).
     Returns the (p, q) points in that order"""
     q0 = np.array([-rho * math.cos(a0), -rho * math.sin(a0)])
     m0 = np.array([math.sin(a0), -math.cos(a0)])
@@ -666,8 +667,8 @@ def _bar_turn(rho, r, p1, tail, a0, k=10):
         _hermite(np.array([-p1, -r]), np.array([1.0, 0.0]) * chord, q0, m0 * chord, k)[:-1],
         np.stack([rho * np.cos(arc), rho * np.sin(arc)], -1)[:-1],
         _hermite(q0 * np.array([1.0, -1.0]), np.array([-m0[0], m0[1]]) * chord,      # leaving the arc as it runs
-                 np.array([-p1, r]), np.array([-1.0, 0.0]) * chord, k),
-        np.stack([np.linspace(-p1, -p1 - tail, 12)[1:], np.full(11, r)], -1)])
+                 np.array([-p1, r + gap]), np.array([-1.0, 0.0]) * chord, k),
+        np.stack([np.linspace(-p1, -p1 - tail, 12)[1:], np.full(11, r + gap)], -1)])
 
 
 def _hermite(p0, m0, p1, m1, k):
@@ -1363,7 +1364,7 @@ class Anchors:
         r_o = unit(r_o) if np.linalg.norm(r_o) > 0.2 else unit(np.cross(along, n_a))
         rho = r_b + r + sp["splice_gap_in"] * IN
         p1, tail = sp["throat_m"], sp["splice_m"]
-        pq = _bar_turn(rho, r, p1, tail, math.radians(60.0))[::-1]
+        pq = _bar_turn(rho, r, p1, tail, math.radians(60.0), gap=sp.get("tail_gap_in", 0.0) * IN)[::-1]
 
         def X(q):
             return Pbar + q[:, :1] * n_a + q[:, 1:2] * r_o

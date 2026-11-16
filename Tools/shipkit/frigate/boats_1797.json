@@ -480,17 +480,10 @@
     "kind": "yard"
    },
    {
-    "name": "SpareMainTopgallantMast",
-    "spar": "masts.main.topgallant",
-    "length_ft": 31.1,
-    "diam_in": 10.4,
-    "kind": "mast"
-   },
-   {
-    "name": "SpareForeTopgallantMast",
-    "spar": "masts.fore.topgallant",
-    "length_ft": 29.0,
-    "diam_in": 9.7,
+    "name": "SpareMizzenTopgallantMast",
+    "spar": "masts.mizzen.topgallant",
+    "length_ft": 35.4,
+    "diam_in": 7.8,
     "kind": "mast"
    },
    {
@@ -501,17 +494,24 @@
     "kind": "yard"
    },
    {
-    "name": "SpareMizzenTopgallantMast",
-    "spar": "masts.mizzen.topgallant",
-    "length_ft": 23.3,
-    "diam_in": 7.8,
-    "kind": "mast"
+    "name": "SpareMainTopmastStuddingsailBoom",
+    "spar": "studding_sail_booms.main_topsail_yard",
+    "length_ft": 34.58,
+    "diam_in": 6.92,
+    "kind": "boom"
+   },
+   {
+    "name": "SpareForeTopmastStuddingsailBoom",
+    "spar": "studding_sail_booms.fore_topsail_yard",
+    "length_ft": 30.25,
+    "diam_in": 6.05,
+    "kind": "boom"
    }
   ],
-  "spars_src": "a spare of each topgallant mast and yard (spars_1795.json's sizes; a yard's diameter diam_in_per_yard of its length in yards), the spares the period carried that fit the waist between its ladders (the topmasts and topsail yards are longer than it)",
+  "spars_src": "spares the period carried on the booms (spars_1795.json's sizes, each built as the rig builds it: a yard's diameter diam_in_per_yard of its length in yards, its cleats; the mizzen topgallant mast with its royal pole, 23.3 + 12.1 ft; a topmast studding sail boom half its topsail yard, 1 in of diameter for each 5 ft), those that fit the waist's 43 ft 8 in opening between its breast beams: the topmasts, topsail yards, the jib boom and the main and fore topgallant masts with their poles (47 and 45 ft) are longer than it",
   "saddle_min_in": 2.0,
   "saddle_in": [14.0, 1.0],
-  "saddle_note": "a saddle as long as the beam is sided, a spar's diameter wide and an inch more, its top hollowed to the spar",
+  "saddle_note": "a saddle as long as the beam is sided, a spar's diameter wide and an inch more, its top hollowed to the spar: one shape its whole length, the lowest of the spar's undersides over it (a spare mast's square heel seated in a square channel), over 50 deg either side of its bottom",
   "boats": {
    "Launch": {
     "boat": "launch",
@@ -521,12 +521,12 @@
    "Cutter_S": {
     "boat": "cutter",
     "side": 1,
-    "spars": [["SpareMainTopgallantMast", -0.54], ["SpareMizzenTopgallantYard", 0.54]]
+    "spars": [["SpareMizzenTopgallantMast", -0.54], ["SpareMizzenTopgallantYard", 0.54]]
    },
    "Cutter_P": {
     "boat": "cutter",
     "side": -1,
-    "spars": [["SpareForeTopgallantMast", 0.54], ["SpareMizzenTopgallantMast", -0.54]]
+    "spars": [["SpareMainTopmastStuddingsailBoom", 0.54], ["SpareForeTopmastStuddingsailBoom", -0.54]]
    },
    "Gig": {
     "boat": "gig",
@@ -549,8 +549,13 @@
   "gripes": {
    "circ_in": 3.5,
    "per_boat": 2,
-   "eyebolt_in": 0.875,
-   "note": "a gripe from an eyebolt in each cradle's end, up her side and over her gunwales (and whatever rides in her) to the other end, set up taut: each lies on the outline of what it passes over"
+   "eye_in": [3.5, 0.875, 0.875],
+   "into_in": 4.0,
+   "throat_m": 0.05,
+   "splice_m": 0.09,
+   "splice_gap_in": 0.25,
+   "tail_gap_in": 0.05,
+   "note": "a gripe at each cradle, from an eyebolt in one end up her side and over her gunwales (and whatever rides in her) to an eyebolt in the other, set up taut: it lies on the outline of what it passes over (their section's convex hull at the cradle), each end spliced round its eyebolt's eye (eye_in: the eye's centre-line diameter, its bar, the shank; into_in driven into the cradle's end), as anchors.py splices the shank painter, its end laid tail_gap_in clear of the standing part (one rope, so it must not touch itself); turned round each corner of the outline on its own radius and a hair (a rope bent round an edge)"
   },
   "anchors": {
    "stream": {
@@ -569,7 +574,24 @@
     "src": "anchors_1797.json: the small kedge"
    },
    "stock_overhang_in": 8.0,
-   "note": "each anchor's stock lies across her gunwales near one end (where her breadth over the cappings is the stock's length less stock_overhang_in each side), its shank along her middle line toward her middle, the arms upright under it: turned down about the stock until the crown, an arm or the shank first rests on something in her (a thwart, the bottom boards)"
+   "note": "each anchor's stock lies across her gunwales near one end, on their tops (the cappings, or a cutter's washstrakes), where her breadth over the cappings is the stock's length less stock_overhang_in each side, or as near there as lets it lie clear of her thole pins and what lies in her; its shank along her middle line toward her middle, the arms upright under it: turned down about the stock until the crown, an arm or the shank (never the stock) first rests on something in her (a thwart, the bottom boards, the anchor stowed before it)"
+  },
+  "budget_tris": 320000,
+  "budget_note": "the plan's floor for slice 11: the boats, their gear, the spares, saddles, cradles, chocks, gripes and the three anchors",
+  "meets": {
+   "note": "the stowage's objects against the ship and each other (boats_room, deck.room): the pairs whose surfaces meet by design and how deep (in) they may go into each other there; any other pair must stay clear (the gig of the cutter she nests in too)",
+   "pairs": [
+     [["SparSaddles"], ["WaistFrame"], "each saddle on its beam's top", 0.25],
+     [["SparSaddles"], ["SpareSpars"], "each saddle's top hollowed to its spar", 0.25],
+     [["BoatCradles"], ["SpareSpars"], "each cradle notched over its boat's two spars", 0.25],
+     [["BoatCradles"], ["Launch", "Cutter_S", "Cutter_P"], "each cradle's top cut to her outside (straight between its faces, so a clinker land crossing it goes in a little)", 0.5],
+     [["GigChocks"], ["Cutter_S", "Gig"], "the gig's chocks on the cutter's thwarts, cut to the gig's outside", 0.25],
+     [["BoatGripes"], ["BoatCradles"], "each gripe's eyebolts driven into its cradle's ends", 4.25],
+     [["BoatGripes"], ["Launch", "Cutter_S", "Cutter_P", "Gig", "StreamAnchor", "KedgeLarge", "KedgeSmall"], "each gripe lying on what it passes over", 0.25],
+     [["StreamAnchor", "KedgeLarge"], ["Launch"], "the stock on her cappings, the anchor resting in her", 0.25],
+     [["KedgeSmall"], ["Cutter_P"], "the stock on her cappings, the anchor resting in her", 0.25],
+     [["StreamAnchor"], ["KedgeLarge"], "the kedge resting on the stream anchor in the launch", 0.25]
+   ]
   },
   "gangway_clear_min_ft": 5.0,
   "ladder_headroom_ft": 6.25,
@@ -578,7 +600,7 @@
  "meets": {
   "note": "inside each boat: the parts whose surfaces meet by design, and how deep (in) the two may go into each other there (Boat.room_check, deck.room over her parts; the allowance a quarter inch over the deepest measured in any of the three boats). Any other two parts must stay clear",
   "pairs": [
-    [["plank_ends"], ["planking_out", "planking_in"], "a plank's ends close its outside and inside faces: one solid", 0.25],
+    [["plank_ends"], ["planking_out", "planking_in"], "a plank's ends close its outside and inside faces: one solid, its outside a plank's thickness behind its inside (1 in in the launch)", 1.25],
     [["planking_out", "planking_in", "plank_ends"], ["keel_stem", "hog", "transom_out", "transom_in", "transom_top"], "the planks' hood ends in the rabbet of the keel, stem and post, their after ends on the transom", 1.5],
     [["frames"], ["planking_in", "hog", "keelson", "risings", "stern_risings", "inwales", "knees", "thwarts", "stern_benches", "cappings", "bottom_boards"], "the frames on the planking's inside (bridged over a clinker boat's lands) and notched over the hog; the keelson, risings, inwales and bottom boards on them, the knees, thwarts and stern benches against them", 1.5],
     [["cappings"], ["planking_in", "planking_out", "plank_ends", "inwales", "quarter_knees", "rubbing", "transom_in", "transom_out", "transom_top", "washstrake", "breasthook", "thole_pins"], "the cappings on the top strake, the frames' heads and the inwales (over a launch's rubbing strake), the quarter knees and the breasthook under them, their ends on the transom; the washstrake on them and the thole pins through them", 1.5],

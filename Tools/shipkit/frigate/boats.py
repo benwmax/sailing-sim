@@ -524,6 +524,11 @@ class Surface:
         N = np.cross(np.gradient(G, self.u, axis=1), np.gradient(G, s, axis=0))
         self.sign = 1.0 if N[ns // 2, self.nc // 2, 1] > 0 else -1.0
         self.N = unit(N * self.sign)
+        # the end columns are the boundaries themselves (the rabbet, the transom's edge), not the rows' cubics: there
+        # the low rows meet the rabbet at a shallow angle and the grid's derivatives give no normal (they turned it
+        # into the boat), so the three end columns take the normal of the next column in (3 cm along a row)
+        self.N[:, :3] = self.N[:, 3:4]
+        self.N[:, -3:] = self.N[:, -4:-3]
         d = np.linalg.norm(np.diff(G, axis=0), axis=2)
         self.girth_cols = d.sum(0)                                    # each column's girth (m)
         self.len_rows = G[:, -1, 0] - G[:, 0, 0]                      # each row's length (m)
@@ -651,7 +656,8 @@ def profile_solid(O, R, wo, wr, mat):
         j = i + 1
         if j >= n:
             break
-        F.append((i, j, n + j, n + i))
+        q = (i, j, n + j, n + i)            # out of the region where P runs counter-clockwise: in, like the sides
+        F.append(q[::-1] if sgn_area > 0 else q)
         M.append(mat)
     # turn them out: a +y side face's normal along +y
     f = F[0]
@@ -668,7 +674,7 @@ def bar(P, Nn, Bn, n0, n1, b0, b1, mat, caps=True):
     k = len(P)
     n0, n1, b0, b1 = (np.broadcast_to(np.asarray(v, float), (k,))[:, None] for v in (n0, n1, b0, b1))
     C = np.stack([P + n0 * Nn + b0 * Bn, P + n1 * Nn + b0 * Bn, P + n1 * Nn + b1 * Bn, P + n0 * Nn + b1 * Bn], 1)
-    return sweep(list(C), mat, closed=True, caps=caps)
+    return sweep_ends(list(C), mat) if caps else sweep(list(C), mat, closed=True, caps=False)
 
 
 def poly_slab(outline, z0, z1, mat, mat_edge=None):
@@ -815,6 +821,21 @@ def box(c, half, mat, R=None):
     return V, F, [mat] * 6
 
 
+def sweep_ends(secs, mat):
+    """skin.sweep with its end caps turned out along the tube's own ends (sweep turns them along its chord, which lies
+    square to them on a half round)"""
+    V, F, M = sweep(secs, mat, closed=True, caps=False)
+    S = np.asarray(secs, float)
+    m = S.shape[1]
+    for end, t in ((0, S[0].mean(0) - S[1].mean(0)), (len(S) - 1, S[-1].mean(0) - S[-2].mean(0))):
+        cap = list(range(end * m, end * m + m))
+        P = V[cap]
+        nrm = sum(np.cross(P[k] - P[0], P[k + 1] - P[0]) for k in range(1, m - 1))
+        F.append(tuple(cap) if nrm @ t > 0 else tuple(cap[::-1]))
+        M.append(mat)
+    return V, F, M
+
+
 class Boat:
     """One boat as card['boats'][key] gives her, built in her own frame (the module's docstring): the planking
     (carvel or clinker), the keel, stem, deadwood and post, the transom, the frames, keelson, risings, inwales,
@@ -925,7 +946,7 @@ class Boat:
             O = np.stack([r[1] for r in rows])
             P = self.offset_pts(S, np.broadcast_to(U, S.shape), O)
             V = P.reshape(-1, 3)
-            F = grid_quads(len(rows), nu, flip=(side < 0))
+            F = grid_quads(len(rows), nu, flip=(side > 0))         # the outside facing out, the inside in
             M = []
             for r in range(len(rows) - 1):
                 k = rows[r + 1][2]
@@ -1003,6 +1024,7 @@ class Boat:
         Oc = resample(fe, n_c)
         Rp = np.concatenate([Ra, Rb[1:], Rc[1:]])
         Op = np.concatenate([Oa, Ob[1:], Oc[1:]])
+        self.keel_run = (float(R[i_af][0]), float(fe[0, 0]), float(kb))   # the straight keel: the deadwood's foot to the forefoot
         w_r = self.ln.hs + self.t
         kbs = b["keel_bottom_sided_in"] / 2 * IN
         sf = b["stem_face_in"] / 2 * IN
@@ -1339,7 +1361,7 @@ class Boat:
             A, B = self.frame_lines(x - h), self.frame_lines(x + h)
             oa, ia, ob, ib = full(A[0]), full(A[1]), full(B[0]), full(B[1])
             secs = [np.array([[x - h, *oa[j]], [x + h, *ob[j]], [x + h, *ib[j]], [x - h, *ia[j]]]) for j in range(len(oa))]
-            self.put("frames", *sweep(secs, paint["inside"], closed=True, caps=True))
+            self.put("frames", *sweep_ends(secs, paint["inside"]))
 
     def floor_top(self, x):
         """the floors' (frames') top on the middle line at x, or None"""
@@ -1360,7 +1382,7 @@ class Boat:
         zb = np.interp(xs, self.frame_x, zf)
         secs = [np.array([[x, -ks / 2, z], [x, ks / 2, z], [x, ks / 2, z + kd], [x, -ks / 2, z + kd]])
                 for x, z in zip(xs, zb)]
-        self.put("keelson", *sweep(secs, paint["inside"], closed=True, caps=True))
+        self.put("keelson", *sweep_ends(secs, paint["inside"]))
         self.keelson_top = (xs, zb + kd)
         self.ks = ks
         # the mast steps: a block on the keelson under each mast thwart's notch, a mortise in its top
@@ -1371,10 +1393,11 @@ class Boat:
             x = th["x"] - 0.5 * self.tw
             z0 = float(np.interp(x, xs, zb + kd))
             L, hgt, m = 1.6 * d, 0.45 * d, 0.32 * d
+            mw = min(m, ks / 2 - 0.75 * IN)                       # the mortise's half width: a cheek either side
             for c, half in (((x - 0.5 * (L / 2 + m), 0.0, z0 + hgt / 2), (0.5 * (L / 2 - m), ks / 2, hgt / 2)),
                             ((x + 0.5 * (L / 2 + m), 0.0, z0 + hgt / 2), (0.5 * (L / 2 - m), ks / 2, hgt / 2)),
-                            ((x, 0.5 * (ks / 2 + m), z0 + hgt / 2), (m, 0.5 * (ks / 2 - m), hgt / 2)),
-                            ((x, -0.5 * (ks / 2 + m), z0 + hgt / 2), (m, 0.5 * (ks / 2 - m), hgt / 2))):
+                            ((x, 0.5 * (ks / 2 + mw), z0 + hgt / 2), (m, 0.5 * (ks / 2 - mw), hgt / 2)),
+                            ((x, -0.5 * (ks / 2 + mw), z0 + hgt / 2), (m, 0.5 * (ks / 2 - mw), hgt / 2))):
                 self.put("mast_steps", *box(c, half, paint["inside"]))
 
     # --- the stringers: risings, inwales ------------------------------------------------------------------------------
@@ -1391,14 +1414,14 @@ class Boat:
         x1 = self.thwarts[-1]["x"] + 0.5 * self.tw + 0.3
         xs = np.linspace(self.x_ss, x1, max(8, int((x1 - self.x_ss) / 0.12)))
         secs = self.stringer(xs, lambda x: self.sheer(x) - self.tbs - self.tt, self.ri_d, self.ri_t)
-        self.put("risings", *sweep(secs, paint["inside"], closed=True, caps=True))
+        self.put("risings", *sweep_ends(secs, paint["inside"]))
         # the stern sheets' rising, its after end on the transom's inside
         z_of = lambda x: self.sheer(x) - self.ss_below - self.ss_t          # noqa: E731
         x0 = self.x_on_plane(z_of(0.0) - self.ri_d, self.tr_t) + 0.002
         xs = np.linspace(x0, self.x_ss, max(6, int((self.x_ss - x0) / 0.12)))
         secs = self.stringer(xs, z_of, self.ri_d, self.ri_t)
         secs[0] = self.onto_plane(secs[0], self.tr_t)
-        self.put("stern_risings", *sweep(secs, paint["inside"], closed=True, caps=True))
+        self.put("stern_risings", *sweep_ends(secs, paint["inside"]))
 
     def inwales(self):
         """the inwales along the frames' heads under the cappings, from the transom's inside forward until they come
@@ -1416,7 +1439,7 @@ class Boat:
         secs = keep
         secs[0] = self.onto_plane(secs[0], self.tr_t)
         self.iw_secs = secs
-        self.put("inwales", *sweep(secs, paint["inside"], closed=True, caps=True))
+        self.put("inwales", *sweep_ends(secs, paint["inside"]))
 
     def iw_inner(self, x):
         """the inwale's inner face's top edge's half-breadth at x"""
@@ -1458,7 +1481,7 @@ class Boat:
             secs.append(np.array([[x, yi, z], [x, yo, z], [x, yo, z + self.cap_t], [x, yi, z + self.cap_t]]))
         secs[0] = self.onto_plane(secs[0], 0.0)
         self.cap_secs = secs
-        self.put("cappings", *sweep(secs, paint["bright"], closed=True, caps=True))
+        self.put("cappings", *sweep_ends(secs, paint["bright"]))
 
     def rubbing(self):
         """the rubbing strakes: proud of the planking just under the capping (a launch) or on the draught's line (a
@@ -1493,7 +1516,7 @@ class Boat:
             yo = max(yt, yb) + th
             secs.append(np.array([[x, yb, zb], [x, yt, zt], [x, yo, zt], [x, yo, zb]]))
         secs[0] = self.onto_plane(secs[0], 0.0)
-        self.put("rubbing", *sweep(secs, paint["outside"], closed=True, caps=True))
+        self.put("rubbing", *sweep_ends(secs, paint["outside"]))
 
     # --- thwarts and knees --------------------------------------------------------------------------------------------
     def thwart_outline(self, th):
@@ -1530,7 +1553,7 @@ class Boat:
                 c = np.array([xa, 0.0, 0.0])
                 secs.append(np.array([c + r * d + [0, 0, z0], c + (r + it) * d + [0, 0, z0],
                                       c + (r + it) * d + [0, 0, z1], c + r * d + [0, 0, z1]]))
-            self.put("mast_clamps", *sweep(secs, paint["iron"], closed=True, caps=True))
+            self.put("mast_clamps", *sweep_ends(secs, paint["iron"]))
             for sgn in (1.0, -1.0):
                 c = (xa + 1.5 * IN, sgn * (r + 0.5 * it), zt + 0.1875 * IN)
                 self.put("mast_clamps", *box(c, (1.5 * IN, 0.75 * IN, 0.1875 * IN), paint["iron"]))
@@ -1637,7 +1660,7 @@ class Boat:
             zt = z_of(x)
             secs.append(np.array([[x, yi, zt - self.ss_t], [x, yo, zt - self.ss_t], [x, yo, zt], [x, yi, zt]]))
         secs[0] = self.onto_plane(secs[0], self.tr_t)
-        self.put("stern_benches", *sweep(secs, paint["bright"], closed=True, caps=True))
+        self.put("stern_benches", *sweep_ends(secs, paint["bright"]))
         self.x_bench0 = x0
 
     def transom_bench(self):
@@ -1691,7 +1714,7 @@ class Boat:
                 a, b_ = good[0], good[-1]
                 secs = [np.array([[X[j], y0, zf], [X[j], yc[j], zf], [X[j], yc[j], zt], [X[j], y0, zt]])
                         for j in range(a, b_ + 1)]
-                self.put("bottom_boards", *sweep(secs, paint["inside"], closed=True, caps=True))
+                self.put("bottom_boards", *sweep_ends(secs, paint["inside"]))
             i += 1
         self.bb_x = (x0, x1)
 
@@ -1788,7 +1811,7 @@ class Boat:
             secs = []
             for y, z in zip(ys, zs):
                 secs.append(np.array([[x - sw, y, z], [x + sw, y, z], [x + sw, y + st, z], [x - sw, y + st, z]]))
-            self.put("sling_plates", *sweep(secs, paint["iron"], closed=True, caps=True))
+            self.put("sling_plates", *sweep_ends(secs, paint["iron"]))
             yi, yo, zc = self.cap_at(x)
             Rr, rr = 1.25 * IN, 0.3 * IN
             self.put("sling_plates", *torus((x, 0.5 * (yi + yo), zc + Rr + rr), EY, Rr, rr, paint["iron"], n=12, m=6,
@@ -1817,7 +1840,7 @@ class Boat:
         ring = np.stack([np.cos(t), np.zeros(8), np.sin(t)], -1)
         secs = [np.array([x, yy, z]) + ring * (rb * (0.9 + 0.1 * math.cos(math.pi * yy / (y_in - head))))
                 for yy in np.linspace(-(y_in - head), y_in - head, 5)]
-        self.put("windlass", *sweep(secs, paint["bright"], closed=True, caps=True))
+        self.put("windlass", *sweep_ends(secs, paint["bright"]))
         for sg in (1.0, -1.0):
             self.put("windlass", *box((x, sg * (y_in - 0.5 * head), z), (0.95 * rb, 0.5 * head, 0.95 * rb),
                                       paint["bright"]))
@@ -1885,7 +1908,7 @@ class Boat:
         # handle, its shoulder, the loom (thickest at the rowlock, a third along) and the neck into the blade
         prof = [(0.0, 0.5), (0.11, 0.5), (0.13, 0.85), (0.33, 1.0), (1.0 - bl / L, 0.72)]
         secs = [P0 + a * f * L + ring * (r * k) for f, k in prof]
-        self.put("oars", *sweep(secs, paint["oars"], closed=True, caps=True))
+        self.put("oars", *sweep_ends(secs, paint["oars"]))
         # the blade: flat, widening from the neck over its first third, its tip squared off with the corners eased
         th = max(0.5 * IN, 0.28 * r)
         f0 = 1.0 - bl / L
@@ -1894,7 +1917,7 @@ class Boat:
             c = P0 + a * f * L
             hw = 0.5 * bw * min(1.0, wf)
             secs.append(np.array([c - u * hw - v * th, c + u * hw - v * th, c + u * hw + v * th, c - u * hw + v * th]))
-        self.put("oars", *sweep(secs, paint["oars"], closed=True, caps=True))
+        self.put("oars", *sweep_ends(secs, paint["oars"]))
 
     def oar_shape(self, L):
         """an oar's half-width in plan and half-depth (its blade flat) at fractions f along it from its handle's end,
@@ -2045,7 +2068,7 @@ class Boat:
                 ring = c0 + rad * (np.cos(t12)[:, None] * u + np.sin(t12)[:, None] * v * 0.9)
                 ring[:, 2] -= rs * (1.0 - taper) * 0.9          # the roll's ends sag onto the yard
                 secs.append(ring)
-            self.put("sails", *sweep(secs, paint["canvas"], closed=True, caps=True))
+            self.put("sails", *sweep_ends(secs, paint["canvas"]))
             # lashings round mast and roll: the rope round the pair's hull, under them on the bed
             rope_r = 0.35 * IN
             for f in (0.2, 0.5, 0.8):
@@ -2103,25 +2126,30 @@ class Boat:
         yo = min(self.bench_y(x)[0] for x in np.linspace(xa, xb, 8)) - 0.5 * IN
         prof = [(0.0, 0.45), (0.22, 0.5), (0.34, 1.0), (0.97, 1.0), (1.0, 0.92)]
         P = [(xa + f * Lr, yo) for f, _ in prof] + [(xa + f * Lr, yo - w * c) for f, w in prof[::-1]]
-        zt = [self.sheer(p[0]) - self.ss_below for p in P]
-        z_rest = max(zt) + 0.25 * IN                      # on its pintles' straps
+        # lying along the bench (which rises aft with the sheer) on its pintles' straps: the lowest straight line over
+        # the bench's top under it
+        xs_r = np.linspace(xa, xb, 25)
+        a_r, c_r = self.rest_line(xs_r, [self.sheer(x) - self.ss_below + 0.25 * IN for x in xs_r])
+        z_rest = np.array([a_r * p[0] + c_r for p in P])
         self.put("rudder", *plan_prism(np.array(P), z_rest + th, z_rest, paint["outside"]))
         # the pintles: iron straps round its fore edge, their pins pointing aft
         for f in (0.45, 0.8):
             x = xa + f * Lr
-            self.put("rudder", *box((x, yo - 1.5 * IN, z_rest + 0.5 * th), (0.75 * IN, 1.75 * IN, 0.5 * th + 0.2 * IN),
+            zr = a_r * x + c_r
+            self.put("rudder", *box((x, yo - 1.5 * IN, zr + 0.5 * th), (0.75 * IN, 1.75 * IN, 0.5 * th + 0.2 * IN),
                                     paint["iron"]))
-            self.put("rudder", *cylinder((x, yo + 0.25 * IN, z_rest + 0.5 * th), (x, yo + 0.25 * IN, z_rest +
-                                                                                    0.5 * th + 0.01), 0.4 * IN,
-                                         paint["iron"], n=8))
+            self.put("rudder", *cylinder((x, yo + 0.25 * IN, zr + 0.5 * th), (x, yo + 0.25 * IN, zr + 0.5 * th + 0.01),
+                                         0.4 * IN, paint["iron"], n=8))
         # the tiller, along the port bench (forward of the quarter knee where it would not clear it)
         xt = start(2.2 * IN * (b["tiller_ft"] / 4.5) ** 0.5)
         Lt = min(b["tiller_ft"] * FT, self.x_ss - xt - 0.05)
         r0, r1 = 1.1 * IN * (Lt / (4.5 * FT)) ** 0.5, 0.7 * IN * (Lt / (4.5 * FT)) ** 0.5
         yo_p = min(self.bench_y(x)[0] for x in np.linspace(xt, xt + Lt, 6)) - 0.5 * self.ss_w
-        zt = max(self.sheer(x) - self.ss_below for x in np.linspace(xt, xt + Lt, 9)) + 0.05 * IN
-        self.put("tiller", *cylinder((xt, -yo_p, zt + r0), (xt + Lt, -yo_p, zt + r1), r0, paint["bright"], n=8,
-                                     r1=r1))
+        xs_t = np.linspace(xt, xt + Lt, 25)
+        a_t, c_t = self.rest_line(xs_t, [self.sheer(x) - self.ss_below + 0.05 * IN + r0 + (r1 - r0) * (x - xt) / Lt
+                                         for x in xs_t])
+        self.put("tiller", *cylinder((xt, -yo_p, a_t * xt + c_t), (xt + Lt, -yo_p, a_t * (xt + Lt) + c_t), r0,
+                                     paint["bright"], n=8, r1=r1))
         self.rudder_box = (xa, xb)
 
     def painter(self):
@@ -2160,30 +2188,43 @@ class Boat:
         cy = -0.5 * (y_in + y_out) if th["mast"] else -max(0.0, min(0.5 * (y_in + y_out), y_out - Rc))
         cx = th["x"]
         Rm = Rc - rr
-        # the head: over its top (over the roller in a launch) to the after corner
-        xa_h, xf_h = min(float(Rp[-1, 0]), float(self.hog_line[-1, 0])), float(Op[-1, 0])
-        head = []
-        if self.b.get("roller"):
-            rrol = 1.75 * IN
-            xr = xf_h - rrol + 0.25 * IN
-            zrl = z_top + 0.25 * IN
-            for ang in np.linspace(0.0, math.radians(160), 11):
-                head.append([xr + 1.03 * (rrol + rr) * math.cos(ang), 0.0, zrl + 1.03 * (rrol + rr) * math.sin(ang)])
-        else:
-            head = [[xf_h + 1.1 * rr * math.cos(ang), 0.0, z_top + 1.1 * rr * math.sin(ang)]
-                    for ang in np.linspace(0.0, 0.5 * math.pi, 4)]
-        head += [[xa_h + 1.1 * rr * math.cos(ang), 0.0, z_top + 1.1 * rr * math.sin(ang)]
-                 for ang in np.linspace(0.5 * math.pi, math.pi, 4)]
-        # down the fore face from the head to the ring, clear of the eye
-        down = []
-        for zz in np.linspace(z_top - 0.5 * IN, zr + 1.0 * IN, 5):
-            down.append([x_fore(zz) + rr + (1.6 * IN if zz < zr + 2.5 * IN else 0.15 * IN), 0.0, zz])
-        fore = [list(ring_c + [0.0, 0.0, -Rg + 0.5 * rr])] + [list(ring_c + [0.6 * IN, 0.0, 0.3 * Rg])] + down[::-1]
-        # over the breasthook to its after edge's middle
+        # down onto the breasthook, to its after edge's middle
         x_bh, x_bf = self.bh
         L_bh = self.b["breasthook_in"][0] * IN
         xe = x_bh + 0.35 * L_bh
         E = np.array([xe - 0.25 * IN, 0.0, self.sheer(xe) + rr])
+        # the head: over its top (over the roller in a launch) to the after corner
+        xa_h, xf_h = min(float(Rp[-1, 0]), float(self.hog_line[-1, 0])), float(Op[-1, 0])
+        # round the head's square corners a quarter of the rope's radius clear (a tighter turn folds the rope's skin),
+        # its arcs at 3 deg a step (coarser, the smoothing below leaves a kink where an arc meets a long straight)
+        Rb = 1.25 * rr
+        rake = math.atan2(x_fore(z_top) - x_fore(z_top - 2.0 * IN), 2.0 * IN)      # the fore face leaning forward
+        head = []
+        th = 0.5 * math.pi
+        if self.b.get("roller"):
+            rrol = 1.75 * IN
+            xr = xf_h - rrol + 0.25 * IN
+            zrl = z_top + 0.25 * IN
+            Ra = 1.03 * (rrol + rr)
+            # off the roller along the line touching it and the turn over the head's after corner
+            dx, dz = xa_h - xr, z_top - zrl
+            th = (math.atan2(dz, dx) - math.acos((Ra - Rb) / math.hypot(dx, dz))) % (2.0 * math.pi)
+            for ang in np.linspace(0.0, th, max(4, int(math.degrees(th) / 3.0) + 1)):
+                head.append([xr + Ra * math.cos(ang), 0.0, zrl + Ra * math.sin(ang)])
+        else:
+            head = [[xf_h + Rb * math.cos(ang), 0.0, z_top + Rb * math.sin(ang)]
+                    for ang in np.linspace(-rake, 0.5 * math.pi, int(math.degrees(0.5 * math.pi + rake) / 3.0) + 2)]
+        # off the after corner along the line touching it and running down to the breasthook's after edge
+        dx, dz = E[0] - xa_h, E[2] - z_top
+        th_e = (math.atan2(dz, dx) - math.acos(min(1.0, Rb / math.hypot(dx, dz)))) % (2.0 * math.pi)
+        th_e = min(max(th_e, th + 1e-3), math.pi)
+        head += [[xa_h + Rb * math.cos(ang), 0.0, z_top + Rb * math.sin(ang)]
+                 for ang in np.linspace(th, th_e, max(3, int(math.degrees(th_e - th) / 3.0) + 1))]
+        # down the fore face from the head to the ring, clear of the eye
+        down = []
+        for zz in np.linspace(z_top - 0.5 * IN, zr + 1.0 * IN, 5):
+            down.append([x_fore(zz) + Rb / math.cos(rake) + (1.6 * IN if zz < zr + 2.5 * IN else 0.0), 0.0, zz])
+        fore = [list(ring_c + [0.0, 0.0, -Rg + 0.5 * rr])] + [list(ring_c + [0.6 * IN, 0.0, 0.3 * Rg])] + down[::-1]
         # slack from there to the coil's first turn (on the thwart, the rope leaving it toward the stem)
         turns = p.get("turns", 4)
         n = 20 * turns
@@ -2192,7 +2233,7 @@ class Boat:
 
         def coil_at(a0):
             return np.stack([cx + Rm * jit * np.cos(a0 - tt) + 0.15 * IN * np.sin(tt / turns),
-                             cy + Rm * jit * np.sin(a0 - tt), ztw + rr + 1.75 * rr * tt / (2.0 * math.pi)], -1)
+                             cy + Rm * jit * np.sin(a0 - tt), ztw + rr + 2.1 * rr * tt / (2.0 * math.pi)], -1)
         dir2 = unit((np.array([cx, cy]) - E[:2]))
         for _ in range(4):
             ang0 = math.atan2(dir2[0], -dir2[1])
@@ -2215,6 +2256,9 @@ class Boat:
         # the coil (above): from its bottom turn (S) up, clockwise seen from above
         lead = np.array(fore + head + [list(E)] + cat)
         lead = chaikin(lead, 2)
+        # at an even step: where an arc's close points meet a long straight the rope's sections would otherwise
+        # turn the arc's last step over a hair's length and fold
+        lead = resample(lead, max(2, int(math.ceil(float(arclen(lead)[-1]) / (0.5 * rr))) + 1))
         path = np.concatenate([lead, coil[1:]])
         self.put("painter", *tube(path, rr, paint["rope"], n=6))
         self.coil = (cx, cy, Rc, ztw)
@@ -2330,7 +2374,7 @@ def tube(P, r, mat, n=6):
             e1 = unit(e1 - T[i] * (e1 @ T[i]))
         e2 = np.cross(T[i], e1)
         secs.append(P[i] + r * (np.cos(t)[:, None] * e1 + np.sin(t)[:, None] * e2))
-    return sweep(secs, mat, closed=True, caps=True)
+    return sweep_ends(secs, mat)
 
 
 def unit2(v):
@@ -2373,3 +2417,907 @@ def chaikin(P, k=2):
         Q.append(P[-1])
         P = np.array(Q)
     return P
+
+
+# --- the boats stowed over the waist ----------------------------------------------------------------------------------
+def _bvh(V, T):
+    """a BVH tree over the triangles T (m, 3) of V (n, 3)"""
+    try:
+        from mathutils.bvhtree import BVHTree
+    except ImportError:                             # the bpy module registers mathutils when it is imported
+        import bpy  # noqa: F401
+        from mathutils.bvhtree import BVHTree
+    return BVHTree.FromPolygons(np.asarray(V, float).tolist(), np.asarray(T, np.int64).reshape(-1, 3).tolist(),
+                                all_triangles=True)
+
+
+def fan_tris(F):
+    """the faces F (each a fan from its first corner) as triangles (m, 3)"""
+    return np.array([(f[0], f[k], f[k + 1]) for f in F for k in range(1, len(f) - 1)], np.int64).reshape(-1, 3)
+
+
+def plane_cut(V, T, x0):
+    """where the triangles T of V cross the plane x = x0: segments (n, 2, 2) of (y, z)"""
+    P = np.asarray(V, float)[np.asarray(T, np.int64)]
+    s = P[:, :, 0] - x0
+    s = np.where(np.abs(s) < 1e-9, 1e-9, s)
+    hit, pts = [], []
+    for a, b in ((0, 1), (1, 2), (2, 0)):
+        sa, sb = s[:, a], s[:, b]
+        t = (sa / np.where(sa != sb, sa - sb, 1.0))[:, None]
+        hit.append(sa * sb < 0)
+        pts.append((P[:, a] + t * (P[:, b] - P[:, a]))[:, 1:])
+    hit, pts = np.stack(hit, 1), np.stack(pts, 1)
+    two = hit.sum(1) == 2
+    return pts[two][hit[two]].reshape(-1, 2, 2)
+
+
+def lower_envelope(seg, ys):
+    """the lowest z of the segments seg (n, 2, 2 of y, z) at each y of ys (nan where none spans it)"""
+    ys = np.asarray(ys, float)
+    y1, z1 = seg[:, 0, 0], seg[:, 0, 1]
+    dy, dz = seg[:, 1, 0] - y1, seg[:, 1, 1] - z1
+    ok = np.abs(dy) > 1e-12
+    y1, z1, dy, dz = y1[ok], z1[ok], dy[ok], dz[ok]
+    lo, hi = np.minimum(y1, y1 + dy), np.maximum(y1, y1 + dy)
+    out = np.full(len(ys), np.nan)
+    for i0 in range(0, len(ys), 256):
+        Y = ys[i0:i0 + 256, None]
+        Z = np.where((Y >= lo) & (Y <= hi), z1 + (Y - y1) / dy * dz, np.inf)
+        z = Z.min(1)
+        out[i0:i0 + 256] = np.where(np.isfinite(z), z, np.nan)
+    return out
+
+
+def rdp_keep(ys, Z, tol):
+    """which of the samples ys to keep (Ramer-Douglas-Peucker on each row of Z, by its height off the chord)"""
+    keep = np.zeros(len(ys), bool)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(ys) - 1)]
+    while stack:
+        i, j = stack.pop()
+        if j <= i + 1:
+            continue
+        t = (ys[i + 1:j] - ys[i]) / max(float(ys[j] - ys[i]), 1e-12)
+        dev = np.abs(Z[:, i + 1:j] - (Z[:, i:i + 1] + t * (Z[:, j:j + 1] - Z[:, i:i + 1]))).max(0)
+        k = int(np.argmax(dev))
+        if dev[k] > tol:
+            keep[i + 1 + k] = True
+            stack += [(i, i + 1 + k), (i + 1 + k, j)]
+    return keep
+
+
+def envelope_samples(segs, y_a, y_b, tol=0.0003, eps=1e-6):
+    """the lower envelopes of the sections segs (each (n, 2, 2)) over y_a..y_b at shared samples: every segment's end
+    (either side of it, so a step stays a step), thinned where every envelope runs straight (within tol). Returns
+    the ys and each envelope's z there (nan where a section doesn't reach)"""
+    br = [y_a, y_b]
+    for seg in segs:
+        e = seg[:, :, 0].ravel()
+        br += list(e[(e > y_a + 2 * eps) & (e < y_b - 2 * eps)])
+    br = np.unique(np.round(br, 7))
+    ys = np.unique(np.concatenate([[y_a, y_b], np.clip(br - eps, y_a, y_b), np.clip(br + eps, y_a, y_b)]))
+    Z = np.stack([lower_envelope(seg, ys) for seg in segs])
+    if np.isnan(Z).any():
+        return ys, Z
+    keep = rdp_keep(ys, Z, tol)
+    return ys[keep], Z[:, keep]
+
+
+def turned_course(P, rad, max_step=0.1):
+    """a rope's centre line through the corners of the polyline P, each inner corner turned on a circular arc of radius
+    rad or as near it as the segments allow (anchors._course's turn), its arcs kept at 3 deg a step and its straight
+    runs divided no longer than max_step (not laid at an even step, which would cut a tight turn's arc into chords)"""
+    P = np.asarray(P, float)
+    P = P[np.concatenate([[True], np.linalg.norm(np.diff(P, axis=0), axis=1) > 1e-9])]
+    n = len(P)
+    seg = np.linalg.norm(np.diff(P, axis=0), axis=1)
+    U = unit(np.diff(P, axis=0))
+    th = np.zeros(n)
+    for i in range(1, n - 1):
+        th[i] = math.acos(float(np.clip(U[i - 1] @ U[i], -1.0, 1.0)))
+    want = rad * np.tan(0.5 * np.minimum(th, math.radians(170.0)))
+    f = np.ones(n - 1)
+    for j in range(n - 1):
+        need = want[j] + want[j + 1]
+        if need > seg[j]:
+            f[j] = 0.999 * seg[j] / need
+    pts = [P[0]]
+    for i in range(1, n - 1):
+        if th[i] < 1e-4:
+            pts.append(P[i])
+            continue
+        t = want[i] * min(f[i - 1], f[i])
+        R = t / math.tan(0.5 * th[i])
+        u, v = U[i - 1], U[i]
+        w = unit(v - (u @ v) * u)
+        O = P[i] - t * u + R * w
+        ph = np.linspace(0.0, th[i], max(2, int(math.ceil(math.degrees(th[i]) / 3.0))) + 1)
+        pts += list(O[None] - R * np.cos(ph)[:, None] * w[None] + R * np.sin(ph)[:, None] * u[None])
+    pts.append(P[-1])
+    out = [pts[0]]
+    for a, b in zip(pts[:-1], pts[1:]):
+        d = float(np.linalg.norm(b - a))
+        if d < 1e-7:
+            continue
+        k = int(math.ceil(d / max_step))
+        out += [a + (b - a) * j / k for j in range(1, k + 1)]
+    return np.array(out)
+
+
+def two_face_prism(PA, PB, xa, xb, mat):
+    """a solid between the polygon PA (n, 2: y, z) in the plane x = xa and PB (as many points, nearly the same shape)
+    in x = xb: both faces and the sides, turned out"""
+    PA, PB = np.asarray(PA, float), np.asarray(PB, float)
+    if area2d(PA) < 0:
+        PA, PB = PA[::-1], PB[::-1]
+    if area2d(PB) <= 0:
+        raise ValueError("two_face_prism: its faces wind opposite ways")
+    n = len(PA)
+    # each face triangulated on its own (a triangle of one can fold over in the other where a step is a hair wide)
+    V = np.concatenate([np.c_[np.full(n, xa), PA], np.c_[np.full(n, xb), PB]])
+    F = [tuple(n + i for i in t) for t in loft.ear_clip(PB)] + [tuple(t[::-1]) for t in loft.ear_clip(PA)]
+    F += [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    T = fan_tris(F)
+    vol = float(np.einsum("ij,ij->i", V[T[:, 0]], np.cross(V[T[:, 1]], V[T[:, 2]])).sum())
+    if vol < 0:
+        F = [f[::-1] for f in F]
+    return V, F, [mat] * len(F)
+
+
+def saddle_top(segs, y_a, y_b, z_e):
+    """a saddle's top across y_a..y_b, one shape its whole length: the lowest of the spar's undersides over it (its
+    sections segs, as envelope_samples takes them: round or square alike) where that is under z_e, flat at z_e either
+    side. Returns the ys and the top's z there"""
+    br = [y_a, y_b]
+    for seg in segs:
+        e = seg[:, :, 0].ravel()
+        br += list(e[(e > y_a) & (e < y_b)])
+    br = np.round(br, 7)
+    ys = np.unique(np.concatenate([br, np.clip(br - 1e-6, y_a, y_b), np.clip(br + 1e-6, y_a, y_b)]))
+    Z = np.stack([lower_envelope(seg, ys) for seg in segs if len(seg)])
+    z = np.where(np.isnan(Z), np.inf, Z).min(0)
+    # where it crosses z_e between two samples (it runs straight between them): a sample there
+    d = z - z_e
+    i = np.nonzero(np.isfinite(d[:-1]) & np.isfinite(d[1:]) & (d[:-1] * d[1:] < 0))[0]
+    if len(i):
+        yc = ys[i] + (ys[i + 1] - ys[i]) * d[i] / (d[i] - d[i + 1])
+        ys, z = np.concatenate([ys, yc]), np.concatenate([z, np.full(len(yc), z_e)])
+        o = np.argsort(ys, kind="stable")
+        ys, z = ys[o], z[o]
+    z = np.minimum(z, z_e)
+    keep = rdp_keep(ys, z[None], 0.0002)
+    return ys[keep], z[keep]
+
+
+def notched_bottom(ya, yb, z_cb, spars_):
+    """an underside from ya to yb, flat at z_cb but hollowed over each spar (y, z of its axis, R) up round its top"""
+    pts = [(ya, z_cb)]
+    for ys, zs, R in sorted(spars_):
+        h = z_cb - zs
+        a0 = math.asin(min(1.0, math.sqrt(max(0.0, R * R - h * h)) / R))
+        pts += [(ys + R * math.sin(a), zs + R * math.cos(a)) for a in np.linspace(-a0, a0, 15)]
+    pts.append((yb, z_cb))
+    return np.array(pts)
+
+
+class _Splicer:
+    """anchors.py's eyebolt and spliced eye, for the gripes"""
+    from anchors import Anchors as _A
+    _eyebolt = _A._eyebolt
+    _spliced_eye = _A._spliced_eye
+    _rope_between = staticmethod(_A._rope_between)
+    del _A
+
+
+class Boats:
+    """The boats stowed over the open waist (card['stowage']; the module's docstring): the spare spars on saddles on
+    the waist's beams, each boat level on two cradles across her own two spars (the launch in the middle, a cutter
+    either side as close as gap_between_boats_in allows), the gig nested in the starboard cutter on two chocks across
+    its thwarts, the stream anchor and the large kedge in the launch and the small kedge in the port cutter (each
+    turned down about its stock on her gunwales until it rests on something in her), and a gripe over each boat (and
+    what rides in her) at each cradle, spliced to eyebolts in its ends. sk, rig, dk: the built skin, rig (spars.Rig)
+    and spar deck (deck.Deck). parts(): name -> (V, F, M, frame): a boat's vertices in her own frame (frame (origin,
+    axes) in the ship), the rest in the ship's frame (frame None); info: where everything is and the checks"""
+
+    BOATS = ("Launch", "Cutter_S", "Cutter_P", "Gig")
+    ANCHORS = {"stream": "StreamAnchor", "kedge_large": "KedgeLarge", "kedge_small": "KedgeSmall"}
+
+    def __init__(self, sk, rig, dk, card=None):
+        import anchors as AN
+        self.card = card or load_card()
+        self.st = self.card["stowage"]
+        self.sk, self.rig, self.dk, self.AN = sk, rig, dk, AN
+        self.acard = AN.load_card()
+        self.info = {}
+        self.x_mid = 0.5 * (dk.e1 + dk.fc)
+        self.thick = dk.c["deck"]["planking"]["thick_in"] * IN
+        self.beam_sided = dk.c["waist"]["beam_sided_in"] * IN
+        self.beams = [(float(x), float(dk.z(x)) - self.thick) for x in dk.beams_x]   # each waist beam: x, its top
+        self.units = {}
+
+    def build(self):
+        self.hulls()
+        self.spare_spars()
+        for name in ("Launch", "Cutter_S", "Cutter_P"):
+            self.cradle_boat(name)
+        self.nest_gig()
+        self.stow_anchors()
+        for name in ("Launch", "Cutter_S", "Cutter_P"):
+            self.gripes(name)
+        self.place()
+        self.checks()
+        return self
+
+    # --- the boats ------------------------------------------------------------------------------------------------------
+    def hulls(self):
+        """each kind of boat built once (the two cutters are alike), her own clash check and the drawing's check"""
+        self.built = {}
+        for key in sorted({v["boat"] for v in self.st["boats"].values()}):
+            bt = Boat(self.card, key).build()
+            bt.room_ = bt.room_check()
+            bt.lines_ = bt.ln.check()
+            V, F, _ = bt.mesh.arrays()
+            bt.T_ = fan_tris(F)
+            bt.V_ = V
+            bt.tree_ = _bvh(V, bt.T_)
+            self.built[key] = bt
+
+    def unit(self, name):
+        """the boat name's stowage: her boat, its origin (x, z in the ship's frame; y off her own middle line, placed
+        later), her spars and what rides in her"""
+        if name not in self.units:
+            b = self.st["boats"][name]
+            bt = self.built[b["boat"]]
+            V = bt.V_
+            x0 = self.x_mid - 0.5 * float(V[:, 0].min() + V[:, 0].max())
+            self.units[name] = {"name": name, "bt": bt, "o": np.array([x0, 0.0, 0.0]), "pieces": {}, "spars": []}
+        return self.units[name]
+
+    @staticmethod
+    def add(u, obj, V, F, M):
+        """a piece of the object obj (in the unit's frame) to the unit u"""
+        u["pieces"].setdefault(obj, Mesh())
+        u["pieces"][obj].add(V, F, M)
+
+    # --- the spare spars and their saddles ---------------------------------------------------------------------------
+    def spar_shape(self, sp):
+        """a spare spar in its own frame (along X, its middle at the origin, its top up) as the rig builds it: its mesh
+        (V, F, M) and its radius along it (a function of x)"""
+        import spars
+        rig = self.rig
+        L, d = sp["length_ft"] * FT, sp["diam_in"] * IN
+        kind, path = sp["kind"], sp["spar"].split(".")
+        if kind == "yard":
+            on = rig.sp["yards"][path[1]]["on"]
+            V, F, M = rig.yard_mesh(path[1], L, d, 0.0, (on in ("lower", "topmast"), on), False).arrays()
+            V = np.stack([V[:, 1], -V[:, 0], V[:, 2]], -1)                 # its length (the yard's Y) fore and aft
+            yt = spars.taper(rig.sp["taper"]["yard"])
+            return (V, F, M), (lambda x: 0.5 * d * float(yt(min(1.0, abs(x) / (0.5 * L)))))
+        mesh = spars.Mesh()
+        o = np.array([-0.5 * L, 0.0, 0.0])
+        if kind == "mast":                                                  # its heel aft
+            m = rig.masts[path[1]]
+            t0, D = m["s_tg0"], m["D_tg"]
+            L = m["s_pole"] - t0
+            o = np.array([-0.5 * L, 0.0, 0.0])
+            spars.spar(mesh, o, EX, EY, [(0.0, D / 2), (1.6 * D, D / 2)], rig.mat_wood, shape="square")
+            nt = rig.nseg(D)
+            ss = [1.6 * D - 0.01] + list(np.linspace(m["s_tmcap1"] - t0, m["s_stop"] - t0, 7))
+            spars.spar(mesh, o, EX, EY, [(s, m["R_tg"](s + t0)) for s in ss], rig.mat_wood, nt)
+            spars.spar(mesh, o, EX, EY, [(m["s_stop"] - t0, m["R_tg"](m["s_stop"] + 1e-6)), (L, m["R_tg"](m["s_pole"]))],
+                       rig.mat_wood, nt)
+            ss = np.linspace(0.0, L, 200)
+            Rs = np.array([D / 2 if s < 1.6 * D else m["R_tg"](s + t0) for s in ss])
+            sp["length_ft"] = round(L / FT, 2)
+        else:                                                               # a studding sail boom, its heel aft
+            st_ = [(0.0, 0.42 * d), (0.06 * L, 0.5 * d), (0.85 * L, 0.45 * d), (L, 0.35 * d)]
+            spars.spar(mesh, o, EX, EY, st_, rig.mat_wood, rig.nseg(d))
+            ss, Rs = np.array([s for s, _ in st_]), np.array([r for _, r in st_])
+        V, F, M = mesh.arrays()
+        return (V, F, M), (lambda x: float(np.interp(x + 0.5 * L, ss, Rs)))
+
+    def spare_spars(self):
+        """each boat's two spars level, their middles at the waist's middle, their tops at its middle at one height: the
+        least that leaves every saddle under them saddle_min_in thick on every beam each crosses (a beam crossed where
+        the spar runs on past its saddle 2 in). The saddles: a beam's siding long, the spar's diameter and saddle_in[1]
+        wide, hollowed to the spar"""
+        st = self.st
+        by = {sp["name"]: sp for sp in st["spars"]}
+        s_min = st["saddle_min_in"] * IN
+        self.spar_info = {}
+        for name in ("Launch", "Cutter_S", "Cutter_P"):
+            u = self.unit(name)
+            sps = []
+            for sname, y_off in st["boats"][name]["spars"]:
+                sp = dict(by[sname])
+                (V, F, M), R = self.spar_shape(sp)
+                L = float(V[:, 0].max() - V[:, 0].min())
+                beams = [(xb, zb) for xb, zb in self.beams
+                         if abs(xb - self.x_mid) + 0.5 * self.beam_sided + 2 * IN <= 0.5 * L]
+                sps.append({"name": sname, "y": float(y_off), "R": R, "L": L, "mesh": (V, F, M), "beams": beams,
+                            "d_in": sp["diam_in"], "length_ft": sp["length_ft"], "kind": sp["kind"]})
+            z_top = max(zb + s_min + sp["R"](xb - self.x_mid) + sp["R"](0.0) for sp in sps for xb, zb in sp["beams"])
+            for sp in sps:
+                sp["z"] = z_top - sp["R"](0.0)                               # its axis
+                V, F, M = sp["mesh"]
+                Vw = V + [self.x_mid, sp["y"], sp["z"]]
+                self.add(u, "SpareSpars", Vw, F, M)
+                Tw = fan_tris(F)
+                th = []
+                for xb, zb in sp["beams"]:
+                    r = sp["R"](xb - self.x_mid)
+                    w = 2 * r + st["saddle_in"][1] * IN
+                    x0, x1 = xb - 0.5 * self.beam_sided, xb + 0.5 * self.beam_sided
+                    # its sections over the saddle's length: its faces and either side of each ring between (a mast's
+                    # square heel running into its round, a yard's taper)
+                    xr = np.unique(np.round(Vw[(Vw[:, 0] > x0) & (Vw[:, 0] < x1), 0], 5))
+                    xc = np.clip(np.concatenate([[x0, x1], xr - 1e-4, xr + 1e-4]), x0, x1)
+                    ys, Z = saddle_top([plane_cut(Vw, Tw, xx) for xx in np.unique(xc)], sp["y"] - 0.5 * w,
+                                       sp["y"] + 0.5 * w, sp["z"] - r * math.cos(math.radians(50.0)))
+                    P2 = np.concatenate([[(sp["y"] - 0.5 * w, zb), (sp["y"] + 0.5 * w, zb)], np.c_[ys[::-1], Z[::-1]]])
+                    V2, F2, M2 = two_face_prism(P2, P2, x0, x1, "Oak")
+                    self.add(u, "SparSaddles", V2, F2, M2)
+                    th.append(round(float(Z.min() - zb) / IN, 2))
+                self.spar_info[sp["name"]] = {"boat": name, "kind": sp["kind"], "length_ft": sp["length_ft"],
+                                              "diam_in": sp["d_in"], "y_off_boat_m": sp["y"],
+                                              "axis_z_m": round(sp["z"], 4), "beams": len(sp["beams"]),
+                                              "saddles_in": [min(th), max(th)]}
+            u["spars"] = sps
+
+    # --- each boat on her cradles ----------------------------------------------------------------------------------------
+    def section(self, bt, extra, x_l):
+        """her section (y, z segments, her frame) at x_l: her own triangles' and those of extra ((V, T) in her frame)"""
+        segs = [plane_cut(bt.V_, bt.T_, x_l)] + [plane_cut(V, T, x_l) for V, T in extra]
+        return np.concatenate([s for s in segs if len(s)]) if any(len(s) for s in segs) else np.zeros((0, 2, 2))
+
+    def cradle_boat(self, name):
+        """her two cradles at cradle.at of her straight keel, each across her spars (its ends beyond_spar_in past
+        them), notched over them an inch, its top cut to her outside (her keel in its slot, a clinker boat's lands
+        stepped); she sits level, her keel under_keel_in over the higher cradle's underside"""
+        u = self.unit(name)
+        bt, cr = u["bt"], self.st["cradle"]
+        xa_k, xf_k, kb = bt.keel_run
+        half_t = 0.5 * cr["thick_in"] * IN
+        beyond = cr["beyond_spar_in"] * IN
+        sps = u["spars"]
+        ya = min(sp["y"] - sp["R"](0.0) for sp in sps) - beyond
+        yb = max(sp["y"] + sp["R"](0.0) for sp in sps) + beyond
+        xs_l = [xa_k + f * (xf_k - xa_k) for f in cr["at"]]
+        # her height: each cradle's underside an inch under its lower spar's top there
+        z_cb = []
+        for x_l in xs_l:
+            x = u["o"][0] + x_l
+            z_cb.append(min(sp["z"] + sp["R"](x - self.x_mid) for sp in sps) - 1.0 * IN)
+        z_keel = max(z_cb) + cr["under_keel_in"] * IN
+        u["o"][2] = z_keel - kb
+        u["cradles"] = []
+        for x_l, zc in zip(xs_l, z_cb):
+            x = u["o"][0] + x_l
+            segA = self.section(bt, [], x_l - half_t)
+            segB = self.section(bt, [], x_l + half_t)
+            ys, Z = envelope_samples([segA, segB], ya, yb)
+            if np.isnan(Z).any():
+                raise ValueError(f"{name}'s cradle at {x_l:.3f} m reaches past her outside")
+            Z = Z + u["o"][2]
+            bot = notched_bottom(ya, yb, zc, [(sp["y"], sp["z"], sp["R"](x - self.x_mid)) for sp in sps])
+            PA = np.concatenate([bot, np.c_[ys[::-1], Z[0][::-1]]])
+            PB = np.concatenate([bot, np.c_[ys[::-1], Z[1][::-1]]])
+            if (Z.min(0) - zc).min() < 0.5 * IN:
+                raise ValueError(f"{name}'s cradle at {x_l:.3f} m is too thin")
+            V, F, M = two_face_prism(PA, PB, x - half_t, x + half_t, "Oak")
+            self.add(u, "BoatCradles", V, F, M)
+            u["cradles"].append({"x": x, "x_l": x_l, "ya": ya, "yb": yb, "z_cb": zc, "top_ends": [float(Z[:, 0].min()),
+                                                                                                    float(Z[:, -1].min())]})
+        self.info.setdefault("boats", {})[name] = {
+            "boat": self.st["boats"][name]["boat"], "keel_bottom_z_m": round(z_keel, 4),
+            "cradles_x_m": [round(c["x"], 3) for c in u["cradles"]],
+            "under_keel_in": [round((z_keel - c["z_cb"]) / IN, 2) for c in u["cradles"]]}
+
+    # --- the gig nested in the starboard cutter ------------------------------------------------------------------------
+    @staticmethod
+    def heights(V, T, cell, top):
+        """the triangles' surface rasterised on a plan grid (x, y cells cell square): each cell's highest point (top)
+        or lowest: {(i, j): z}"""
+        import deck
+        P = deck.surface_points(V, T, 0.7 * cell)
+        ij = np.floor(P[:, :2] / cell).astype(np.int64)
+        key = ij[:, 0] * 100000 + ij[:, 1]
+        order = np.argsort(key, kind="stable")
+        key, z = key[order], P[order, 2]
+        uk, start = np.unique(key, return_index=True)
+        zz = (np.maximum if top else np.minimum).reduceat(z, start)
+        return dict(zip(uk.tolist(), zz.tolist()))
+
+    def nest_gig(self):
+        """the gig on two chocks across the starboard cutter's thwarts (on_thwarts), level, her keel nest_chock_in[1]
+        over the higher thwart's top: placed along her straight keel where she clears everything in the cutter by an
+        inch (raised on deeper chocks only if she clears nowhere). Each chock nest_chock_in[0] fore and aft on its
+        thwart, its top cut to her outside, its ends where her bottom has risen chock_rise_in over her keel or an inch
+        short of the cutter's oars"""
+        g = self.st["boats"]["Gig"]
+        host = self.unit(g["in"])
+        cb, gb = host["bt"], self.built[g["boat"]]
+        w_c, under = (v * IN for v in self.st["nest_chock_in"])
+        rise = self.st.get("chock_rise_in", 6.0) * IN
+        ths = [cb.thwarts[i] for i in g["on_thwarts"]]
+        tops = [cb.thwart_z(th)[1] for th in ths]
+        xa_k, xf_k, kb = gb.keel_run
+        margin = 0.5 * w_c + 2 * IN
+        z0 = max(tops) + under - kb                    # her origin's height in the cutter's frame on the chocks
+        cell = 0.01
+        cut = self.heights(cb.V_, cb.T_, cell, True)
+        gig = self.heights(gb.V_, gb.T_, cell, False)
+        gk = np.array(list(gig.keys()))
+        gi = (gk + 50000) // 100000
+        gj, gz = gk - gi * 100000, np.array(list(gig.values()))
+        lo = max(th["x"] for th in ths) - (xf_k - margin)
+        hi = min(th["x"] for th in ths) - (xa_k + margin)
+        best = None
+        for di in range(int(math.ceil(lo / cell)), int(math.floor(hi / cell)) + 1, 2):
+            k = (gi + di) * 100000 + gj
+            need = -np.inf
+            for kk, z in zip(k.tolist(), gz.tolist()):
+                c = cut.get(kk)
+                if c is not None:
+                    need = max(need, c + 1.0 * IN - z)
+            lift = max(0.0, need - z0)
+            if best is None or lift < best[0] - 1e-9 or (abs(lift - best[0]) < 1e-9 and
+                                                         abs(di * cell - 0.5 * (lo + hi)) < abs(best[1] - 0.5 * (lo + hi))):
+                best = (lift, di * cell)
+        lift, dx = best
+        zg = z0 + lift
+        host["gig"] = {"bt": gb, "o": host["o"] + [dx, 0.0, zg]}
+        # the chocks
+        for th, zt in zip(ths, tops):
+            x_l = th["x"]
+            xg = x_l - dx
+            segs = [self.section(gb, [], xg - 0.5 * w_c), self.section(gb, [], xg + 0.5 * w_c)]
+            # her bottom's rise either side of her keel: the chock ends where it has risen `rise`
+            ys = np.linspace(0.0, 1.5, 301)
+            env = np.nanmax(np.stack([lower_envelope(s, ys) for s in segs]), 0)
+            y_end = float(ys[np.nonzero(~(env <= kb + rise))[0][0] - 1]) if (~(env <= kb + rise)).any() else 0.5
+            for sg in (1, -1):
+                oi = cb.oars_inner(x_l, sg)
+                if oi is not None:
+                    y_end = min(y_end, oi[0] - 1.0 * IN)
+            ys, Z = envelope_samples(segs, -y_end, y_end)
+            Z = Z + zg
+            bot = np.array([(-y_end, zt), (y_end, zt)])
+            PA = np.concatenate([bot, np.c_[ys[::-1], Z[0][::-1]]])
+            PB = np.concatenate([bot, np.c_[ys[::-1], Z[1][::-1]]])
+            x = host["o"][0] + x_l
+            V, F, M = two_face_prism(PA + [0.0, host["o"][2]], PB + [0.0, host["o"][2]], x - 0.5 * w_c,
+                                     x + 0.5 * w_c, "Oak")
+            self.add(host, "GigChocks", V, F, M)
+        self.info["gig"] = {"in": g["in"], "on_thwarts": g["on_thwarts"], "x_off_m": round(dx, 3),
+                            "keel_over_thwart_in": round((zg + kb - max(tops)) / IN, 2), "lifted_in": round(lift / IN, 2)}
+
+    # --- the anchors in the boats ----------------------------------------------------------------------------------------
+    def stow_anchors(self):
+        """the stream anchor and the large kedge in the launch, the small kedge in the port cutter (stowage anchors),
+        each with what is already in her as something to rest on"""
+        self.info["anchors"] = {}
+        for key, a in self.st["anchors"].items():
+            if not isinstance(a, dict):
+                continue
+            u = self.unit(a["boat"])
+            u.setdefault("loads", [])
+            mesh, pose = self.stow_anchor(u["bt"], key, a["stock"], u["loads"])
+            V, F, M = mesh.arrays()
+            u["loads"].append((V, fan_tris(F)))
+            self.add(u, self.ANCHORS[key], V + u["o"], F, M)
+            self.info["anchors"][key] = dict(pose, boat=a["boat"])
+
+    def stow_anchor(self, bt, key, end, loads):
+        """the anchor key in the boat bt (her frame): its stock across her gunwales near her end ('aft' or 'fore'),
+        resting on their tops (her cappings, or a cutter's washstrakes where she has them), where her breadth over the
+        cappings is the stock's length less stock_overhang_in each side, or as near there as lets it lie clear of her
+        thole pins and the like (toward her middle only while it still overhangs 3 in); its shank along her middle line
+        toward her middle, its arms upright; turned down about the stock (rolling on her gunwales) from crown up until
+        its crown, an arm or its shank first touches something in her (loads: what lies in her already, (V, T) in her
+        frame), never its stock; its ring hanging from the eye, swung about the eye's axis until clear. Returns its mesh
+        (her frame) and where it lies"""
+        import deck
+        an = self.AN.Anchor(self.acard, self.acard["anchors"][key]["lb"], pudden=0.0, name=key).solve()
+        k = an.key
+        half_b = 0.5 * k["stock_len"] - self.st["anchors"]["stock_overhang_in"] * IN
+        half_min = 0.5 * k["stock_len"] - 3.0 * IN
+        lt = bt.label_tris()
+        gun = [n for n in ("cappings", "washstrake") if n in lt]
+
+        def joined(names):
+            Vs_, Ts_, off = [], [], 0
+            for n in names:
+                Vs_.append(lt[n][0])
+                Ts_.append(lt[n][1] + off)
+                off += len(lt[n][0])
+            return np.concatenate(Vs_), np.concatenate(Ts_)
+        # her gunwales' tops on a plan grid: the stock rests on the highest of the cells under it
+        cell = 0.01
+        sup = self.heights(*joined(gun), cell, True)
+        K = np.array(sorted(sup), np.int64)
+        Zc = np.array([sup[c] for c in K.tolist()])
+        others = [n for n in lt if n not in gun]
+        obst = [_bvh(*joined(others))] + [_bvh(V, T) for V, T in loads]
+        C = np.array([s[0, 0] for s in bt.cap_secs])
+        x_lo, x_hi = float(C.min()), float(C.max())
+        x_mid = 0.5 * (x_lo + x_hi)
+        sgn = 1.0 if end == "aft" else -1.0                       # the shank's way from the stock toward her middle
+        xs = np.linspace(x_lo, x_mid, 600) if end == "aft" else np.linspace(x_hi, x_mid, 600)
+        x_b = next(float(x) for x in xs if bt.cap_at(x)[1] >= half_b)
+        Vs, Fs, _ = an.stock.arrays()
+        Ts = fan_tris(Fs)
+        S = deck.surface_points(Vs, Ts, 0.01)
+        Vi, Fi, _ = an.iron.arrays()
+        Vk = np.concatenate([Vi, Vs])
+        Tk = np.concatenate([fan_tris(Fi), Ts + len(Vi)])
+
+        def rot(phi):
+            c_, s_ = math.cos(phi), math.sin(phi)
+            Z = np.array([-sgn * c_, 0.0, s_])                     # up the shank, crown to ring: toward her end
+            X = np.cross(EY, Z)
+            return np.stack([X, EY, Z], 1)
+
+        def pose(phi, xs_):
+            """the anchor turned phi about its stock (down from the shank level), its stock's middle over xs_ and its
+            stock on her gunwales' tops on both sides (None where it doesn't reach them)"""
+            R = rot(phi)
+            P0 = R @ np.array([0.0, 0.0, k["stock_z"]])
+            Q = S @ R.T
+            tx = xs_ - P0[0]
+            kk = np.floor((Q[:, 0] + tx) / cell).astype(np.int64) * 100000 + np.floor(Q[:, 1] / cell).astype(np.int64)
+            i = np.minimum(np.searchsorted(K, kk), len(K) - 1)
+            on = K[i] == kk
+            if not ((Q[on, 1] > 0).any() and (Q[on, 1] < 0).any()):
+                return None
+            return R, np.array([tx, 0.0, float((Zc[i[on]] - Q[on, 2]).max())])
+
+        def hits(phi, xs_, V, T):
+            R, t = pose(phi, xs_)
+            tr = _bvh(V @ R.T + t, T)
+            return any(len(tr.overlap(o)) for o in obst)
+
+        def settle(xs_):
+            """its rest turning down from crown up with its stock over xs_: (the last clear turn, the first touching),
+            or None where its stock would stand in something or it rests on nothing"""
+            top = math.radians(-84.0)
+            if pose(top, xs_) is None or hits(top, xs_, Vk, Tk):
+                return None
+            prev = top
+            for deg in np.arange(-82.0, 89.0, 2.0):
+                ph = math.radians(deg)
+                if pose(ph, xs_) is None:
+                    return None
+                if hits(ph, xs_, Vk, Tk):
+                    a_, b_ = prev, ph
+                    for _ in range(13):
+                        m_ = 0.5 * (a_ + b_)
+                        a_, b_ = (m_, b_) if not hits(m_, xs_, Vk, Tk) else (a_, m_)
+                    return None if hits(b_, xs_, Vs, Ts) else (a_, b_)
+                prev = ph
+            return None
+
+        def ring_clear(R, t):
+            """the ring hanging from the eye, swung about the eye's axis (the stock's way) until clear of her, what lies
+            in her and its own stock, then back toward hanging until it rests: its swing, or None"""
+            down = R.T @ np.array([0.0, 0.0, -1.0])
+            down = unit(down - (down @ EY) * EY)
+            side = np.cross(EY, down)
+            trees = [bt.tree_, _bvh(Vs @ R.T + t, Ts)] + obst[1:]
+
+            def ring_hits(psi):
+                an.build_ring(k["eye"], math.cos(psi) * down + math.sin(psi) * side)
+                Vr, Fr, _ = an.ring.arrays()
+                tr = _bvh(Vr @ R.T + t, fan_tris(Fr))
+                return any(len(tr.overlap(o)) for o in trees)
+            psi = None
+            for deg in np.arange(0.0, 150.0, 2.0):
+                for s_ in ((1.0, -1.0) if deg else (1.0,)):
+                    if not ring_hits(math.radians(s_ * deg)):
+                        psi = math.radians(s_ * deg)
+                        break
+                if psi is not None:
+                    break
+            if psi is None:
+                return None
+            if abs(psi) > 0:
+                a_, b_ = psi, psi - math.copysign(math.radians(2.0), psi)
+                for _ in range(10):
+                    m_ = 0.5 * (a_ + b_)
+                    a_, b_ = (m_, b_) if not ring_hits(m_) else (a_, m_)
+                psi = a_
+            ring_hits(psi)
+            return psi
+
+        found = None
+        for n in range(0, 121):                                   # 1 cm steps, the nearer side first
+            for d in ((0.0,) if n == 0 else (-sgn * 0.01 * n, sgn * 0.01 * n)):
+                xs_ = x_b + d
+                if not (x_lo <= xs_ <= x_hi) or bt.cap_at(xs_)[1] > half_min:
+                    continue
+                st_ = settle(xs_)
+                if st_ is None:
+                    continue
+                R, t = pose(st_[0], xs_)
+                psi = ring_clear(R, t)
+                if psi is not None:
+                    found = (xs_, st_, R, t, psi)
+                    break
+            if found:
+                break
+        if found is None:
+            raise ValueError(f"{key} finds no place across {bt.key}'s gunwales")
+        x_s, (phi, phi_in), R, t, psi = found
+        # what it rests on (its pose just past touching)
+        R1, t1 = pose(phi_in, x_s)
+        tr = _bvh(Vk @ R1.T + t1, Tk)
+        on = sorted(n for n in others if len(tr.overlap(_bvh(*lt[n]))))
+        on += ["a load"] * any(len(tr.overlap(o)) for o in obst[1:])
+        out = Mesh()
+        for part in (an.iron, an.stock, an.ring):
+            V, F, M = part.arrays()
+            out.add(V @ R.T + t, F, M)
+        y_o = bt.cap_at(x_s)[1]
+        return out, {"stock_x_m": round(x_s, 3), "stock_off_m": round(x_s - x_b, 3),
+                     "shank_down_deg": round(math.degrees(phi), 2), "rests_on": on,
+                     "ring_swing_deg": round(math.degrees(psi), 1), "stock_len_ft": round(k["stock_len"] / FT, 2),
+                     "breadth_over_cappings_ft": round(2 * y_o / FT, 2),
+                     "overhang_in": round((0.5 * k["stock_len"] - y_o) / IN, 1),
+                     "stock_on": "+".join(gun)}
+
+    # --- the gripes --------------------------------------------------------------------------------------------------------
+    def unit_meshes(self, u, skip=()):
+        """every mesh of the unit u in its frame: (V, T), her boat, the gig in her, and each of her pieces"""
+        out = [(u["bt"].V_ + u["o"], u["bt"].T_)]
+        if "gig" in u:
+            out.append((u["gig"]["bt"].V_ + u["gig"]["o"], u["gig"]["bt"].T_))
+        for obj, m in u["pieces"].items():
+            if obj in skip:
+                continue
+            V, F, _ = m.arrays()
+            out.append((V, fan_tris(F)))
+        return out
+
+    def gripes(self, name):
+        """a gripe at each of her cradles: from an eyebolt in one end of the cradle up her side, over her gunwales and
+        whatever rides in her, down to an eyebolt in its other end, set up taut: over their section's convex hull at the
+        cradle (the rope's own thickness clear of it), each end spliced round its eyebolt's eye"""
+        u = self.unit(name)
+        gc = self.st["gripes"]
+        r = 0.5 * gc["circ_in"] / math.pi * IN
+        R_e, r_b = 0.5 * gc["eye_in"][0] * IN, 0.5 * gc["eye_in"][1] * IN
+        stand = 0.25 * IN + r_b + R_e
+        meshes = self.unit_meshes(u, skip=("SpareSpars", "SparSaddles", "BoatGripes", "BoatCradles"))
+        SP = _Splicer()
+        u["gripes"] = []
+        for c in u["cradles"]:
+            x = c["x"]
+            faces, eyes = [], []
+            for yy, sg, ztop in ((c["ya"], -1.0, c["top_ends"][0]), (c["yb"], 1.0, c["top_ends"][1])):
+                Q = np.array([x, yy, c["z_cb"] + 0.4 * (ztop - c["z_cb"])])
+                faces.append((Q, np.array([0.0, sg, 0.0])))
+                eyes.append(Q + [0.0, sg * stand, 0.0])
+            pts = []
+            for dxx in (-r - 0.5 * IN, 0.0, r + 0.5 * IN):
+                for V, T in meshes:
+                    s = plane_cut(V, T, x + dxx)
+                    if len(s):
+                        pts.append(s.reshape(-1, 2))
+            pts = np.concatenate(pts + [np.array([[e[1], e[2]] for e in eyes])])
+            H = ConvexHull(pts).vertices                     # counter-clockwise (y right, z up)
+            ia, ib = len(pts) - 2, len(pts) - 1
+            H = list(H)
+            if ia not in H or ib not in H:
+                raise ValueError(f"{name}'s gripe at {x:.2f}: an eyebolt inside the outline")
+            ka, kb_ = H.index(ia), H.index(ib)
+            chain = []
+            k = kb_
+            while True:                                      # counter-clockwise from the starboard eye over the top
+                k = (k + 1) % len(H)
+                if k == ka:
+                    break
+                chain.append(pts[H[k]])
+            chain = np.array(chain[::-1])                    # from the port eye's side over to the starboard's
+            poly = np.concatenate([[eyes[0][1:]], chain, [eyes[1][1:]]])
+            seg = np.diff(poly, axis=0)
+            nrm = np.stack([seg[:, 1], -seg[:, 0]], -1)
+            nrm = nrm / np.linalg.norm(nrm, axis=1)[:, None]
+            ctr = pts[H].mean(0)                             # each segment's normal turned away from the hull's middle
+            nrm = np.where((((poly[:-1] + poly[1:]) / 2 - ctr) * nrm).sum(1)[:, None] < 0, -nrm, nrm)
+            vn = unit(nrm[:-1] + nrm[1:])
+            rho = r + 0.05 * IN                              # its centre line off the outline: lying on it
+            ch = chain + rho * vn / np.maximum(0.5, (vn * nrm[1:]).sum(1))[:, None]
+            # the offset outline's corners (a point every 2 mm at most)
+            keep = [0]
+            for i in range(1, len(ch)):
+                if np.linalg.norm(ch[i] - ch[keep[-1]]) >= 0.002:
+                    keep.append(i)
+            ch = ch[keep]
+            mid = np.c_[np.full(len(ch), x), ch]
+            mb = Mesh()
+            mb.cur = "gripe eyebolt"
+            ends = []
+            for (Q, n_), tw in zip(faces, (mid[0], mid[-1])):
+                ends.append(SP._spliced_eye(mb, Q, n_, tw, EX, gc))
+            # the course starts beyond each splice's lead
+            la, lb = ends[0][1], ends[1][1]
+            mid = mid[(np.linalg.norm(mid - la, axis=1) > 0.05) & (np.linalg.norm(mid - lb, axis=1) > 0.05)]
+            # turned round each corner on rho (about the outline's corner itself: a rope bent round an edge), so it
+            # lies on its corners without cutting them; its arcs kept whole
+            (sa, la, _), (sb, lb, _) = ends
+            P = turned_course(np.concatenate([[sa[-1], la], mid, [lb, sb[-1]]]), rho, 0.1)
+            P = np.concatenate([sa[:-1], P, sb[::-1][1:]])
+            Vt, Ft = self.AN._tube_open(P, r, 8)
+            mb.cur = "gripe"
+            mb.add(Vt, Ft, "Hemp")
+            V, F, M = mb.arrays()
+            self.add(u, "BoatGripes", V, F, M)
+            u["gripes"].append({"x_m": round(x, 3), "length_m": round(float(np.linalg.norm(np.diff(P, axis=0), axis=1).sum()), 2)})
+
+    # --- placed in the ship ----------------------------------------------------------------------------------------------
+    def place(self):
+        """the launch on the middle line (her y_m), each cutter to her side as close as gap_between_boats_in allows
+        between the launch's every piece (her boat, what rides in her, her cradles and gripes) and the cutter's, at
+        every height all along them (3 cm bins, each the worst of its neighbours too); then everything into the ship's
+        frame"""
+        import deck
+        gap = self.st["gap_between_boats_in"] * IN
+        b = 0.03
+
+        def extremes(u):
+            P = np.concatenate([deck.surface_points(V, T, 0.015) for V, T in
+                                self.unit_meshes(u, ("SpareSpars", "SparSaddles"))])
+            key = np.floor(P[:, 0] / b).astype(np.int64) * 100000 + np.floor(P[:, 2] / b).astype(np.int64)
+            order = np.argsort(key, kind="stable")
+            key, y = key[order], P[order, 1]
+            uk, start = np.unique(key, return_index=True)
+            return dict(zip(uk.tolist(), np.maximum.reduceat(y, start).tolist())), \
+                dict(zip(uk.tolist(), np.minimum.reduceat(y, start).tolist()))
+
+        def grown(d, f):
+            out = {}
+            for k, v in d.items():
+                for di in (-100000, 0, 100000):
+                    for dj in (-1, 0, 1):
+                        kk = k + di + dj
+                        out[kk] = f(out[kk], v) if kk in out else v
+            return out
+        L = self.unit("Launch")
+        L["y"] = float(self.st["boats"]["Launch"].get("y_m", 0.0))
+        lmax, lmin = extremes(L)
+        lmax, lmin = grown(lmax, max), grown(lmin, min)
+        self.info["gaps"] = {}
+        for name in ("Cutter_S", "Cutter_P"):
+            u = self.unit(name)
+            cmax, cmin = extremes(u)
+            if self.st["boats"][name]["side"] > 0:
+                y = max(lmax[k] - v for k, v in cmin.items() if k in lmax) + gap
+            else:
+                y = min(lmin[k] - v for k, v in cmax.items() if k in lmin) - gap
+            u["y"] = L["y"] + y
+            self.info["gaps"][name] = round(u["y"], 4)
+        self.objs, self.frames = {}, {}
+        for name in ("Launch", "Cutter_S", "Cutter_P"):
+            u = self.units[name]
+            dy = np.array([0.0, u["y"], 0.0])
+            self.frames[name] = (u["bt"], u["o"] + dy)
+            if "gig" in u:
+                self.frames["Gig"] = (u["gig"]["bt"], u["gig"]["o"] + dy)
+            for obj, m in u["pieces"].items():
+                V, F, M = m.arrays()
+                self.objs.setdefault(obj, Mesh()).add(V + dy, F, M)
+            self.info["boats"][name].update({"y_m": round(u["y"], 4), "origin_m": np.round(u["o"] + dy, 4).tolist(),
+                                             "gripes": u.get("gripes", [])})
+        self.info["boats"]["Gig"] = {"boat": "gig", "origin_m": np.round(self.frames["Gig"][1], 4).tolist(),
+                                     **self.info["gig"]}
+        self.info["spars"] = self.spar_info
+        for name, (bt, o) in self.frames.items():
+            self.info["boats"][name]["built"] = bt.info
+
+    def parts(self):
+        """name -> (V, F, M, frame): each boat in her own frame (frame: her origin in the ship and her axes, the ship's),
+        the rest in the ship's frame (frame None)"""
+        out = {}
+        for name, (bt, o) in self.frames.items():
+            V, F, M = bt.mesh.arrays()
+            out[name] = (V, F, M, (np.asarray(o, float), np.eye(3)))
+        for obj, m in self.objs.items():
+            V, F, M = m.arrays()
+            out[obj] = (V, F, M, None)
+        return out
+
+    def world(self):
+        """every object's triangles in the ship's frame: name -> (V, T)"""
+        out = {}
+        for name, (V, F, M, fr) in self.parts().items():
+            out[name] = (V + fr[0] if fr is not None else V, fan_tris(F))
+        return out
+
+    # --- the checks ----------------------------------------------------------------------------------------------------
+    def checks(self):
+        """each boat's own clash check and the drawing's; her size as built against the card's (within 5%); the gangways'
+        clear width under the boats up to headroom over their deck (at least gangway_clear_min_ft); the ladders'
+        headroom over every tread and their head (at least ladder_headroom_ft); every spar and saddle an inch inside
+        the waist's coamings; the triangles against budget_tris. The boats against the ship and each other is
+        build_frigate.py's boats_room"""
+        import deck
+        st, dk = self.st, self.dk
+        out = {"inside": {k: bt.room_["meet"] for k, bt in self.built.items()},
+               "inside_by_design": {k: len(bt.room_["by_design"]) for k, bt in self.built.items()},
+               "lines_worst_in": {k: bt.lines_["worst_in"] for k, bt in self.built.items()}}
+        sizes = {}
+        for k, bt in self.built.items():
+            b = bt.b
+            row = {"length_ft": [bt.info["length_ft"], b["length_ft"]]}
+            if b.get("breadth_moulded_ft"):
+                row["breadth_moulded_ft"] = [bt.info["breadth_moulded_ft"], b["breadth_moulded_ft"]]
+            sizes[k] = {q: v + [round(abs(v[0] / v[1] - 1.0) * 100, 1)] for q, v in row.items()}
+        out["sizes"] = sizes
+        out["sizes_off"] = [[k, q] for k, r in sizes.items() for q, v in r.items() if v[2] > 5.0]
+        W = self.world()
+        P = np.concatenate([deck.surface_points(V, T, 0.03) for V, T in W.values()])
+        head = st["ladder_headroom_ft"] * FT
+        # the gangways
+        y_in = dk.y_open + dk.t_coam
+        least = {}
+        for sg, side in ((1.0, "starboard"), (-1.0, "port")):
+            Q = P[(sg * P[:, 1] > y_in)]
+            worst = (math.inf, None)
+            for x in np.arange(dk.e1, dk.fc, 0.05):
+                zd = float(dk.z(x))
+                m = (np.abs(Q[:, 0] - x) < 0.025) & (Q[:, 2] < zd + head)
+                y_out = float(dk.y_side(x))
+                w = y_out - (float(np.max(sg * Q[m, 1])) if m.any() else y_in)
+                if w < worst[0]:
+                    worst = (w, round(float(x), 2))
+            least[side] = {"clear_ft": round(worst[0] / FT, 2), "at_x_m": worst[1]}
+        out["gangways"] = least
+        out["gangways_narrow"] = [s for s, v in least.items() if v["clear_ft"] < st["gangway_clear_min_ft"]]
+        # the ladders
+        lc = dk.c["ladders"]
+        wi, td = lc["width_in"] * IN, lc["tread_in"][0] * IN
+        ang, rise = math.radians(lc["angle_deg"]), lc["rise_in"] * IN
+        ladders = []
+        for li in dk.ladder_info:
+            xe, y0 = li["top_x_m"], li["y_m"]
+            d = 1.0 if li["break"] == "quarterdeck" else -1.0
+            zt = float(dk.z(xe))
+            n = int(round(li["drop_m"] / rise))
+            rr = li["drop_m"] / n
+            steps = [(xe - d * 0.3, zt, 0.6)] + [(xe + d * (k * rr) / math.tan(ang), zt - k * rr, td)
+                                                 for k in range(1, n)]
+            low = math.inf
+            for x, z, depth in steps:
+                m = (np.abs(P[:, 0] - x) <= 0.5 * depth) & (np.abs(P[:, 1] - y0) <= 0.5 * wi) & (P[:, 2] > z)
+                if m.any():
+                    low = min(low, float(P[m, 2].min() - z))
+            ladders.append({"break": li["break"], "y_m": y0, "headroom_ft": round(low / FT, 2) if low < math.inf else None})
+        out["ladders"] = ladders
+        out["ladders_low"] = [lad for lad in ladders if lad["headroom_ft"] is not None and
+                              lad["headroom_ft"] < st["ladder_headroom_ft"]]
+        # the coamings
+        Vs = np.concatenate([W[n][0] for n in ("SpareSpars", "SparSaddles")])
+        out["coaming_clear_in"] = round((dk.y_open - float(np.abs(Vs[:, 1]).max())) / IN, 2)
+        # triangles
+        tris_ = {n: int(len(T)) for n, (V, T) in W.items()}
+        out["triangles"] = tris_
+        out["triangles_total"] = sum(tris_.values())
+        out["over_budget"] = out["triangles_total"] > st["budget_tris"]
+        self.info["checks"] = out
+        return out
+
+    def failures(self):
+        """what the checks found wrong (empty when all pass)"""
+        c = self.info["checks"]
+        bad = {}
+        for k in ("sizes_off", "gangways_narrow", "ladders_low"):
+            if c[k]:
+                bad[k] = c[k]
+        if any(c["inside"].values()):
+            bad["inside"] = {k: v for k, v in c["inside"].items() if v}
+        if c["coaming_clear_in"] < 1.0:
+            bad["coaming_clear_in"] = c["coaming_clear_in"]
+        if c["over_budget"]:
+            bad["triangles_total"] = c["triangles_total"]
+        return bad
