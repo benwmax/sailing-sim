@@ -1981,6 +1981,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.OnChanged_Lambda([](int32 I) { SailUI::SetUiMode(SailUI::EUiMode(FMath::Clamp(I, 0, 2))); })
 			.Note(TEXT("Helpful shows the full text and explains what the boat is doing. Natural keeps a glimpse of what is hard to see, "
 				"with few words. Off shows only warnings (aground, capsized). H cycles it while sailing.")));
+		Add(SNew(SSailChoice).Label(TEXT("Night colours")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bNightHud ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bNightHud = I == 1; S->Save(); })
+			.Note(TEXT("After dark the instruments turn red, as a boat's do, so your eyes keep their night sight.")));
 		static const TArray<int32> Sizes = { 85, 100, 115, 130 };
 		Add(SNew(SSailChoice).Label(TEXT("HUD size")).Options({ TEXT("85%"), TEXT("100%"), TEXT("115%"), TEXT("130%") })
 			.Index_Lambda([S, IndexOf]() { return IndexOf(Sizes, S->HudScale); })

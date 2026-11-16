@@ -205,6 +205,21 @@ Until now a medal was a sentence in the quiz's debrief and a certificate a line 
   brass double rule, "Certificate", the certificate's name in the title face and the date awarded, above the line that
   says what it opens (`certificate.jpg`).
 
+## Phase 6: the night palette
+
+A boat's instruments turn red after dark so the eye keeps its night sight; the HUD now does the same.
+
+- **When.** The red follows the sky, not the clock: nothing at sunset, coming in as civil twilight ends (the sun about
+  5 degrees down) and full by 9.5 degrees down (`SSailHud::NightHudAmount`, from the environment's night amount).
+- **How.** Every HUD colour goes through `SSailHud::NightColor`: red takes the colour's brightness, green and blue are
+  cut to a fifth and a seventh. So the aqua needle, the green of starboard and the cream text all stay readable, as
+  reds of their own brightness; port's red and the shallow-water warning stay the brightest things on the HUD. The
+  panels and their text are tinted once, inside the cached HUD; the instruments drawn live (compass tape, wind dial,
+  minimap, sail trim) tint each colour as they draw.
+- **All three modes.** Helpful and Natural turn red alike; Off shows only its warnings, red too.
+- **Off switch.** Settings > Display > Night colours (save `display.nightHud`, on by default).
+- Stills: `-SailingNightHud=<0..1>` forces it (`hud-night.jpg`, `hud-natural-night.jpg`).
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be

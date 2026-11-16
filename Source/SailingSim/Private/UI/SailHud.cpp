@@ -9,6 +9,9 @@
 #include "SailingGameMode.h"
 #include "SailingHUD.h"
 #include "SailingSettings.h"
+#include "SailingEnvironment.h"
+#include "EngineUtils.h"
+#include "Styling/StyleDefaults.h"
 #include "SailingBindings.h"
 #include "SailSession.h"
 #include "Drills.h"
@@ -42,6 +45,20 @@ int32 SSailHud::Mode = 0;
 namespace SailHudImpl
 {
 	using namespace SailUI;
+
+	/** The night palette's strength now (0 by day, 1 in the dark): SSailHud::Tick sets it, the leaf instruments read it
+	 *  as they draw. */
+	float NightHud = 0.f;
+	FLinearColor NightCol(const FLinearColor& C) { return SSailHud::NightColor(C, NightHud); }
+	/** A text colour's attribute with red lifted to its brightness, so aqua and green words survive the panel's red tint. */
+	TAttribute<FSlateColor> NightLift(TAttribute<FSlateColor> Color)
+	{
+		return TAttribute<FSlateColor>::CreateLambda([Color]()
+		{
+			const FSlateColor C = Color.Get();
+			return NightHud > 0.f && C.IsColorSpecified() ? FSlateColor(SSailHud::NightColor(C.GetSpecifiedColor(), NightHud, false)) : C;
+		});
+	}
 
 	/** Target speed for the true wind and angle, from the boat's reference polar (bilinear in TWS and TWA). */
 	double TargetKnots(int32 Type, double Tws, double TwaDeg)
@@ -79,7 +96,7 @@ namespace SailHudImpl
 			const bool bBare = Bare.Get(false);
 			const FVector2f Drop(1.f, 1.5f);
 			const FLinearColor DropColor(0.f, 0.f, 0.f, 0.7f);
-			if (!bBare) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(IsLow() ? PanelSolid : Panel, RadiusButton), ESlateDrawEffect::None, IsLow() ? PanelSolid : Panel);
+			if (!bBare) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(IsLow() ? PanelSolid : Panel, RadiusButton), ESlateDrawEffect::None, NightCol(IsLow() ? PanelSolid : Panel));
 			for (int32 D = FMath::FloorToInt((H - 62.f) / 5.f) * 5; D <= H + 62.f; D += 5)
 			{
 				const float X = Cx + (D - H) * PxPerDeg;
@@ -88,16 +105,16 @@ namespace SailHudImpl
 				const float Fade = bBare ? FMath::Min(1.f, Edge * 2.2f) : Edge;
 				const int32 N = ((D % 360) + 360) % 360;
 				const bool bBig = N % 30 == 0;
-				if (bBare) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f) + Drop, FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) + Drop }, ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.8f * Fade), true, 3.f);
-				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, (bBare ? Fg : Muted).CopyWithNewOpacity(Fade), true, bBare ? 2.f : 1.f);
+				if (bBare) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f) + Drop, FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) + Drop }, ESlateDrawEffect::None, NightCol(DropColor.CopyWithNewOpacity(0.8f * Fade)), true, 3.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, NightCol((bBare ? Fg : Muted).CopyWithNewOpacity(Fade)), true, bBare ? 2.f : 1.f);
 				if (bBig)
 				{
 					const TCHAR* Card = N == 0 ? TEXT("N") : N == 90 ? TEXT("E") : N == 180 ? TEXT("S") : N == 270 ? TEXT("W") : nullptr;
 					const FString L = Card ? FString(Card) : FString::FromInt(N);
 					if (bBare) FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(40.f, 20.f), FSlateLayoutTransform(FVector2f(X - L.Len() * 4.f, 6.f) + Drop)), L, Font(EType::Label),
-						ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.7f * Fade));
+						ESlateDrawEffect::None, NightCol(DropColor.CopyWithNewOpacity(0.7f * Fade)));
 					FSlateDrawElement::MakeText(Out, Layer + 1, G.ToPaintGeometry(FVector2f(40.f, 20.f), FSlateLayoutTransform(FVector2f(X - L.Len() * 4.f, 6.f))), L, Font(EType::Label),
-						ESlateDrawEffect::None, (Card ? Accent : Fg).CopyWithNewOpacity(Fade));
+						ESlateDrawEffect::None, NightCol((Card ? Accent : Fg).CopyWithNewOpacity(Fade)));
 				}
 			}
 			// The true wind: where it comes from.
@@ -105,9 +122,9 @@ namespace SailHudImpl
 			if (FMath::Abs(W) < 60.f)
 			{
 				const float X = Cx + W * PxPerDeg;
-				FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { FVector2f(X - 6.f, 2.f), FVector2f(X, 12.f), FVector2f(X + 6.f, 2.f) }, ESlateDrawEffect::None, WindTrue, true, 2.5f);
+				FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { FVector2f(X - 6.f, 2.f), FVector2f(X, 12.f), FVector2f(X + 6.f, 2.f) }, ESlateDrawEffect::None, NightCol(WindTrue), true, 2.5f);
 			}
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { FVector2f(Cx - 7.f, S.Y), FVector2f(Cx, S.Y - 10.f), FVector2f(Cx + 7.f, S.Y) }, ESlateDrawEffect::None, Accent, true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { FVector2f(Cx - 7.f, S.Y), FVector2f(Cx, S.Y - 10.f), FVector2f(Cx + 7.f, S.Y) }, ESlateDrawEffect::None, NightCol(Accent), true, 2.5f);
 			return Layer + 3;
 		}
 	private:
@@ -143,19 +160,19 @@ namespace SailHudImpl
 			{
 				TArray<FVector2f> P;
 				for (float A = A0; A <= A1 + 0.01f; A += 2.f) P.Add(Pt(A, Rad));
-				FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, Col, true, W);
+				FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, NightCol(Col), true, W);
 			};
 			if (Bare.Get(false))
 			{
 				const float Face = R + 6.f;
 				const FLinearColor FaceColor = Ink.CopyWithNewOpacity(0.5f);
-				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Face * 2.f, Face * 2.f), FSlateLayoutTransform(C - FVector2f(Face, Face))), Rounded(FaceColor, Face), ESlateDrawEffect::None, FaceColor);
+				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(Face * 2.f, Face * 2.f), FSlateLayoutTransform(C - FVector2f(Face, Face))), Rounded(FaceColor, Face), ESlateDrawEffect::None, NightCol(FaceColor));
 			}
 			Arc(0.f, 360.f, R, Line, 2.f);
 			Arc(-20.f, 20.f, R - 5.f, Muted.CopyWithNewOpacity(0.6f), 7.f);
 			Arc(20.f, 60.f, R - 5.f, Starboard, 7.f);
 			Arc(-60.f, -20.f, R - 5.f, Port, 7.f);
-			for (int32 D = 0; D < 360; D += 30) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(D, R - 12.f), Pt(D, R - 2.f) }, ESlateDrawEffect::None, Muted, true, 1.f);
+			for (int32 D = 0; D < 360; D += 30) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(D, R - 12.f), Pt(D, R - 2.f) }, ESlateDrawEffect::None, NightCol(Muted), true, 1.f);
 			// The no-go cue around the true wind.
 			{
 				const float W = Twa.Get(0.f), Half = NoGo.Get(35.f);
@@ -166,20 +183,20 @@ namespace SailHudImpl
 				if (bWide)
 				{
 					for (const float E : { W - Half, W + Half })
-						FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(E, R * 0.22f), Pt(E, R - 12.f) }, ESlateDrawEffect::None, Col.CopyWithNewOpacity(0.8f), true, 2.f);
+						FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { Pt(E, R * 0.22f), Pt(E, R - 12.f) }, ESlateDrawEffect::None, NightCol(Col.CopyWithNewOpacity(0.8f)), true, 2.f);
 				}
 			}
 			// The boat.
 			const TArray<FVector2f> Hull = { C + FVector2f(0.f, -R * 0.45f), C + FVector2f(R * 0.14f, -R * 0.1f), C + FVector2f(R * 0.12f, R * 0.38f),
 				C + FVector2f(-R * 0.12f, R * 0.38f), C + FVector2f(-R * 0.14f, -R * 0.1f), C + FVector2f(0.f, -R * 0.45f) };
-			FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, Fg, true, 2.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, NightCol(Fg), true, 2.f);
 			// True wind tick, apparent wind arrow.
 			const float T = Twa.Get(0.f), A = Awa.Get(0.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { Pt(T, R + 2.f), Pt(T, R - 14.f) }, ESlateDrawEffect::None, WindTrue, true, 4.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { Pt(T, R + 2.f), Pt(T, R - 14.f) }, ESlateDrawEffect::None, NightCol(WindTrue), true, 4.f);
 			const FVector2f Tail = Pt(A, R - 2.f), Head = Pt(A, R * 0.5f);
 			const FVector2f D = (Head - Tail).GetSafeNormal(), Sd(-D.Y, D.X);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tail, Head }, ESlateDrawEffect::None, Accent, true, 3.5f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Head - D * 10.f + Sd * 7.f, Head, Head - D * 10.f - Sd * 7.f }, ESlateDrawEffect::None, Accent, true, 3.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tail, Head }, ESlateDrawEffect::None, NightCol(Accent), true, 3.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Head - D * 10.f + Sd * 7.f, Head, Head - D * 10.f - Sd * 7.f }, ESlateDrawEffect::None, NightCol(Accent), true, 3.5f);
 			return Layer + 3;
 		}
 	private:
@@ -201,7 +218,7 @@ namespace SailHudImpl
 		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle&, bool) const override
 		{
 			const FVector2D S = G.GetLocalSize();
-			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Water, 14.f, Line, 2.f), ESlateDrawEffect::None, Water);
+			FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Water, 14.f, Line, 2.f), ESlateDrawEffect::None, NightCol(Water));
 			const ASailboatPawn* Boat = Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 			const ASailingGameMode* GM = Player.IsValid() ? Player->GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
 			if (!Boat || !GM || !Map.IsValid() || Map->ImageSize.X <= 0) return Layer;
@@ -212,17 +229,17 @@ namespace SailHudImpl
 			const float SpanU = float(W.SpanM / W.GridWidthM), SpanV = float(W.SpanM / W.GridHeightM);
 			FSlateBrush Crop = *Map;
 			Crop.SetUVRegion(FBox2f(FVector2f(U - SpanU * 0.5f, V - SpanV * 0.5f), FVector2f(U + SpanU * 0.5f, V + SpanV * 0.5f)));
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(S.X - 8.f, S.Y - 8.f), FSlateLayoutTransform(FVector2f(4.f, 4.f))), &Crop, ESlateDrawEffect::None, FLinearColor::White);
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(S.X - 8.f, S.Y - 8.f), FSlateLayoutTransform(FVector2f(4.f, 4.f))), &Crop, ESlateDrawEffect::None, NightCol(FLinearColor::White));
 			const FVector2f C(S.X * 0.5f, S.Y * 0.5f);
 			const float H = FMath::DegreesToRadians(float(Boat->GetHeadingTrueDeg()));
 			const FVector2f F(FMath::Sin(H), -FMath::Cos(H)), Sd(-F.Y, F.X);
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f },
-				ESlateDrawEffect::None, Accent, true, 3.f);
+				ESlateDrawEffect::None, NightCol(Accent), true, 3.f);
 			const float Wd = FMath::DegreesToRadians(float(GM->GetWeatherState().Wind.FromDegrees));
 			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd));
 			const FVector2f Tip = FVector2f(S.X - 28.f, 28.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, WindTrue, true, 3.f);
-			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, Ink);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { Tip + WF * 16.f, Tip - WF * 12.f }, ESlateDrawEffect::None, NightCol(WindTrue), true, 3.f);
+			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(10.f, 8.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, NightCol(Ink));
 			// #602 (the #400 audit): a drill's marks still to round and the person in the water, on the map: a triangle's marks
 			// could only be found by the panel's distance, and an overboard drill is about keeping them in sight. The next
 			// mark larger; one off the map sits on its edge, so its direction shows. Filled dots under the boat (her arrow
@@ -240,7 +257,7 @@ namespace SailHudImpl
 					const float Rd = bClamped ? R * 0.75f : R;
 					if (bClamped) Q = SSailHud::MiniMapClearOf(Q, Rd, Keep, MapOrigin, MapSize);
 					FSlateDrawElement::MakeBox(Out, Layer + 2, G.ToPaintGeometry(FVector2f(2.f * Rd, 2.f * Rd), FSlateLayoutTransform(Q - FVector2f(Rd, Rd))),
-						Rounded(Col, Rd), ESlateDrawEffect::None, Col);
+						Rounded(Col, Rd), ESlateDrawEffect::None, NightCol(Col));
 				};
 				const TArray<FVector2D>& Marks = D.GetMarks();
 				for (int32 K = D.GetNextMark(); K < Marks.Num(); ++K) Dot(Marks[K], K == D.GetNextMark() ? 4.5f : 3.f, Warn);
@@ -289,7 +306,7 @@ namespace SailHudImpl
 			if (bHelpful)
 			{
 				const FLinearColor Bg = IsLow() ? PanelSolid : Panel;
-				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Bg, RadiusCard, Line, 1.f), ESlateDrawEffect::None, Bg);
+				FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(), Rounded(Bg, RadiusCard, Line, 1.f), ESlateDrawEffect::None, NightCol(Bg));
 				const FSlateFontInfo LabelFont = Font(EType::Label);
 				const float LabelW = PaintText(Out, Layer + 1, G, TEXT("TELLTALES"), LabelFont, Muted, FVector2f(Pad, 10.f), 0.f);
 				PaintText(Out, Layer + 1, G, Point.Get().ToString(), Font(EType::Small), Muted, FVector2f(S.X - Pad, 10.f), S.X - Pad * 2.f - LabelW - 12.f, true);
@@ -301,7 +318,7 @@ namespace SailHudImpl
 				// Judged with the tip card, at the HUD's 10 Hz text rate (SSailHud::Refresh), so the two read the same moment.
 				const SSailHud::FTrimVerdict V = Verdict.Get();
 				const FLinearColor Tone = V.bNeutral ? Muted : V.bGood ? WindTrue : Warn;
-				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, Tone);
+				FSlateDrawElement::MakeBox(Out, Layer + 5, G.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(Pad + 1.f, Lay.HeadTop + Lay.HeadH * 0.5f - 4.5f))), Rounded(Tone, 4.5f), ESlateDrawEffect::None, NightCol(Tone));
 				PaintText(Out, Layer + 5, G, V.Head, Font(EType::Ui), Fg, FVector2f(Pad + 16.f, Lay.HeadTop), S.X - Pad * 2.f - 16.f);
 				if (*V.Say) PaintText(Out, Layer + 5, G, V.Say, Font(EType::Small), Hex(0xC3D0D7), FVector2f(Pad, Lay.SayTop), S.X - Pad * 2.f);
 			}
@@ -370,7 +387,7 @@ namespace SailHudImpl
 				At += FVector2f(FMath::Cos(H), FMath::Sin(H)) * (Len / N);
 				P.Add(At);
 			}
-			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, Col, true, Width);
+			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), P, ESlateDrawEffect::None, NightCol(Col), true, Width);
 		}
 
 		/** Text at At (its top left, or its top right when bRight), shrunk to fit MaxW when MaxW > 0. Returns its width. */
@@ -388,7 +405,7 @@ namespace SailHudImpl
 				}
 			}
 			const FVector2f Pos = bRight ? FVector2f(At.X - W, At.Y) : At;
-			FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(FMath::Max(W, 1.f) + 4.f, 30.f), FSlateLayoutTransform(Pos)), Str, F, ESlateDrawEffect::None, Col);
+			FSlateDrawElement::MakeText(Out, Layer, G.ToPaintGeometry(FVector2f(FMath::Max(W, 1.f) + 4.f, 30.f), FSlateLayoutTransform(Pos)), Str, F, ESlateDrawEffect::None, NightCol(Col));
 			return W;
 		}
 
@@ -397,12 +414,12 @@ namespace SailHudImpl
 			// A hairline round the window. Lines, not a box: MakeBox paints its tint as the fill (CLAUDE.md), and a rounded
 			// outline brush tinted white covered the whole window (#712's first Mac stills).
 			const FVector2f A = At + FVector2f(0.5f, 0.5f), B = At + FVector2f(W - 0.5f, WinH - 0.5f);
-			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { A, FVector2f(B.X, A.Y), B, FVector2f(A.X, B.Y), A }, ESlateDrawEffect::None, Hex(0x000000, 0.35f), true, 1.f);
+			FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { A, FVector2f(B.X, A.Y), B, FVector2f(A.X, B.Y), A }, ESlateDrawEffect::None, NightCol(Hex(0x000000, 0.35f)), true, 1.f);
 		}
 		void Shadow(FSlateWindowElementList& Out, int32 Layer, const FGeometry& G, FVector2f At, float W) const
 		{
 			// UI Natural has no panel: a soft drop shadow keeps the windows off a bright sky.
-			if (!bHelpful) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(W, WinH), FSlateLayoutTransform(At + FVector2f(2.f, 3.f))), Rounded(Hex(0x000000, 0.35f), 4.f), ESlateDrawEffect::None, Hex(0x000000, 0.35f));
+			if (!bHelpful) FSlateDrawElement::MakeBox(Out, Layer, G.ToPaintGeometry(FVector2f(W, WinH), FSlateLayoutTransform(At + FVector2f(2.f, 3.f))), Rounded(Hex(0x000000, 0.35f), 4.f), ESlateDrawEffect::None, NightCol(Hex(0x000000, 0.35f)));
 		}
 
 		/** Sailcloth, lit from the cockpit: a shade at the luff tape, a little darker toward the far edge. */
@@ -423,10 +440,10 @@ namespace SailHudImpl
 			Cloth(Out, Layer + 1, G, At, FVector2f(JibW, WinH));
 			for (int32 I = 0; I < 3; ++I)   // panel seams
 			{
-				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { At + FVector2f(40.f + I * 70.f, 0.f), At + FVector2f(20.f + I * 70.f, WinH) }, ESlateDrawEffect::None, Hex(0x3C464B, 0.1f), true, 1.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { At + FVector2f(40.f + I * 70.f, 0.f), At + FVector2f(20.f + I * 70.f, WinH) }, ESlateDrawEffect::None, NightCol(Hex(0x3C464B, 0.1f)), true, 1.f);
 			}
-			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, Hex(0xBCC4C5));   // luff tape
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { At + FVector2f(4.f, 0.f), At + FVector2f(4.f, WinH) }, ESlateDrawEffect::None, Hex(0x56636A), true, 2.f);   // forestay
+			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(9.f, WinH), FSlateLayoutTransform(At)), White(), ESlateDrawEffect::None, NightCol(Hex(0xBCC4C5)));   // luff tape
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), { At + FVector2f(4.f, 0.f), At + FVector2f(4.f, WinH) }, ESlateDrawEffect::None, NightCol(Hex(0x56636A)), true, 2.f);   // forestay
 			// A cat rig (Sunfish, ILCA) shows her one sail's luff here and its leech in the other window.
 			if (bHelpful) PaintText(Out, Layer + 2, G, T.NumJibStrips > 0 ? TEXT("JIB") : TEXT("LUFF"), Font(EType::Label), Hex(0x7F8B90), At + FVector2f(JibW - 8.f, 4.f), 0.f, true);
 			// The windward face is the side the wind comes from: green to starboard, red to port, as on a real boat.
@@ -451,7 +468,7 @@ namespace SailHudImpl
 				const float Sev = 1.f - 0.08f * K;
 				DrawYarn(Out, Layer + 3, G, Root, Len, Win, Sev, Time, Ph, Hex(0x000000, 0.18f), 4.6f);
 				DrawYarn(Out, Layer + 3, G, Root, Len, Win, Sev, Time, Ph, Near, 3.2f);
-				FSlateDrawElement::MakeBox(Out, Layer + 4, G.ToPaintGeometry(FVector2f(7.f, 7.f), FSlateLayoutTransform(Root - FVector2f(3.5f, 3.5f))), Rounded(Hex(0xF7F8F5), 3.5f, Hex(0x000000, 0.22f), 1.f), ESlateDrawEffect::None, Hex(0xF7F8F5));
+				FSlateDrawElement::MakeBox(Out, Layer + 4, G.ToPaintGeometry(FVector2f(7.f, 7.f), FSlateLayoutTransform(Root - FVector2f(3.5f, 3.5f))), Rounded(Hex(0xF7F8F5), 3.5f, Hex(0x000000, 0.22f), 1.f), ESlateDrawEffect::None, NightCol(Hex(0xF7F8F5)));
 			}
 			Out.PopClip();
 			Frame(Out, Layer + 4, G, At, JibW);
@@ -471,11 +488,11 @@ namespace SailHudImpl
 			for (int32 B = 0; B < Bands; ++B)
 			{
 				const float F = (B + 0.5f) / Bands, H = WinH / Bands;
-				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(LeechX(F), H + 0.5f), FSlateLayoutTransform(At + FVector2f(0.f, B * H))), White(), ESlateDrawEffect::None, Hex(0xE4E7E3));
+				FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(FVector2f(LeechX(F), H + 0.5f), FSlateLayoutTransform(At + FVector2f(0.f, B * H))), White(), ESlateDrawEffect::None, NightCol(Hex(0xE4E7E3)));
 			}
 			TArray<FVector2f> Leech;
 			for (int32 I = 0; I <= 10; ++I) Leech.Add(At + FVector2f(LeechX(I / 10.f) - 1.f, WinH * I / 10.f));
-			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, Hex(0xAAB3B5), true, 2.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 2, G.ToPaintGeometry(), Leech, ESlateDrawEffect::None, NightCol(Hex(0xAAB3B5)), true, 2.f);
 			// Three ribbons at the battens, one for each third of the leech, top first; the top one clear of the label.
 			for (int32 K = 0; K < 3 && T.NumMainStrips > 0; ++K)
 			{
@@ -502,7 +519,7 @@ namespace SailHudImpl
 	}
 
 	TAttribute<FText> Attr(const FText& Ref) { return TAttribute<FText>::CreateLambda([&Ref]() { return Ref; }); }
-	TAttribute<FSlateColor> ColorAttr(const FLinearColor& Ref) { return TAttribute<FSlateColor>::CreateLambda([&Ref]() { return FSlateColor(Ref); }); }
+	TAttribute<FSlateColor> ColorAttr(const FLinearColor& Ref) { return NightLift(TAttribute<FSlateColor>::CreateLambda([&Ref]() { return FSlateColor(Ref); })); }
 
 	/** Settings > Display > HUD size as a scale (0.85 to 1.3); -SailingHudScale=<percent> overrides it for layout stills
 	 *  (docs/hud-layout/). The argument is read once per command line (it is swapped by bench lists). */
@@ -524,7 +541,7 @@ namespace SailHudImpl
 	 *  meets bright water or sky. */
 	TSharedRef<SWidget> ShadowText(TAttribute<FText> S, EType Type, TAttribute<FSlateColor> Color, bool bWrap)
 	{
-		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(NightLift(Color)).AutoWrapText(bWrap)
 			.ShadowOffset(FVector2D(1.5, 1.5)).ShadowColorAndOpacity(FLinearColor(0.f, 0.f, 0.f, 0.85f))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
@@ -596,6 +613,11 @@ void SSailHud::Construct(const FArguments& A)
 		[
 		// Settings > Display > HUD size scales every panel around its anchor.
 		SNew(SDPIScaler).DPIScale_Lambda([]() { return HudScaleNow(); })
+		[
+		// The night palette (docs/ui-overhaul/, Phase 6): after dark every panel and word is tinted red, so the eye keeps
+		// its night sight. The tint sits inside the invalidation panel, so a change repaints the cached HUD.
+		SNew(SBorder).BorderImage(FStyleDefaults::GetNoBrush()).Padding(0.f).Visibility(EVisibility::SelfHitTestInvisible)
+		.ColorAndOpacity_Lambda([]() { return SSailHud::NightColor(FLinearColor::White, NightHud); })
 		[
 		SNew(SOverlay).Visibility_Lambda([this]()
 		{
@@ -852,6 +874,7 @@ void SSailHud::Construct(const FArguments& A)
 		]
 		]
 		]
+		]
 	];
 	Refresh();
 }
@@ -874,10 +897,50 @@ ASailboatPawn* SSailHud::Pawn() const
 	return Player.IsValid() ? Cast<ASailboatPawn>(Player->GetPawn()) : nullptr;
 }
 
+FLinearColor SSailHud::NightColor(const FLinearColor& C, float Amount, bool bTint)
+{
+	if (Amount <= 0.f) return C;
+	// Red carries the colour's brightness (an aqua needle or a green word would otherwise go black), then green and blue
+	// are cut: what is left is the deep red a chart table's night lamp gives.
+	const float Lum = 0.2126f * C.R + 0.7152f * C.G + 0.0722f * C.B;
+	FLinearColor N(FMath::Max(C.R, Lum), C.G, C.B, C.A);
+	if (bTint) { N.G *= NightTintGreen; N.B *= NightTintBlue; }
+	return FMath::Lerp(C, N, FMath::Clamp(Amount, 0.f, 1.f));
+}
+
+float SSailHud::NightHudAmount(float NightAmount, bool bEnabled)
+{
+	// The environment's night runs 0 at a sun 2 degrees down to 1 at 12; the red comes in through the middle of it
+	// (about 5 to 9.5 degrees down: the end of civil twilight), in 1/16 steps so the cached HUD repaints a few times, not
+	// every frame of the dusk.
+	if (!bEnabled) return 0.f;
+	return FMath::RoundToFloat(FMath::SmoothStep(0.3f, 0.75f, NightAmount) * 16.f) / 16.f;
+}
+
 void SSailHud::Tick(const FGeometry& G, const double Now, const float Dt)
 {
 	SCompoundWidget::Tick(G, Now, Dt);
 	SAILING_PERF_SCOPE(Hud);
+	{
+		// -SailingNightHud=<0..1> forces the palette for stills (0 holds the day colours at night).
+		static uint32 ArgGen = MAX_uint32;
+		static float ArgNight = -1.f;
+		if (ArgGen != SailingArgs::Generation())
+		{
+			ArgGen = SailingArgs::Generation();
+			ArgNight = -1.f;
+			float V = 0.f;
+			if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingNightHud="), V)) ArgNight = FMath::Clamp(V, 0.f, 1.f);
+		}
+		float NightNow = 0.f;
+		if (ArgNight >= 0.f) NightNow = ArgNight;
+		else if (const UWorld* World = Player.IsValid() ? Player->GetWorld() : nullptr)
+		{
+			if (!Environment.IsValid()) for (TActorIterator<ASailingEnvironment> It(World); It; ++It) Environment = *It;
+			if (Environment.IsValid()) NightNow = NightHudAmount(Environment->GetNightAmount(), USailingSettings::Get()->bNightHud);
+		}
+		SailHudImpl::NightHud = NightNow;
+	}
 	LayoutWidth = float(G.GetLocalSize().X) / SailHudImpl::HudScaleNow();
 	// The right-hand column: shed whole lines, one fit level at a time, while the panels outgrow the room between the
 	// minimap and the sail trim panel; take them back once the room holds the height measured before each level. A level
