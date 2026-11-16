@@ -611,6 +611,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	MainCloth.Init(C.Main, ESailKind::Main);
 	JibCloth.Init(C.Jib, ESailKind::Jib);
 	SpinCloth.Init(C.Spinnaker, ESailKind::Spinnaker);
+	SpinRig = FSpinnakerRig();   // feedback #25: a new boat's rig starts from her own side and wind
 	ClothMainHeadZ = C.Main.NumStrips > 0 ? C.Main.Strips[C.Main.NumStrips - 1].ZTop : -1.0;
 	TelltaleRibbons->ClearAllMeshSections();
 	bTelltalesBuilt = false;
@@ -1136,6 +1137,7 @@ void ASailboatPawn::ResetBoat()
 	MainCloth.Reset();
 	JibCloth.Reset();
 	SpinCloth.Reset();
+	SpinRig = FSpinnakerRig();   // (and the drawn spinnaker's side and wind: feedback #25)
 	ApplyStateToTransform();
 	Plot.Start(GetMapPosition(), Time); // the departure is a known position
 	if (!bTrafficBoat) BeginRun(TEXT("Sail"));

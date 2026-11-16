@@ -524,19 +524,21 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 						TestTrue(FString::Printf(TEXT("%s: the sail not far ahead (x %.0f, bow %.0f)"), *Shown, Ahead, H.BowX * CmPerMeter), Ahead <= (H.BowX + 1.5) * CmPerMeter);
 						TestTrue(FString::Printf(TEXT("%s: the foot clear of the deck (%.0f cm up, sheer %.0f)"), *Shown, Low, H.SheerHeight(C.MastX) * CmPerMeter),
 							Low > H.SheerHeight(C.MastX) * CmPerMeter + 30.0);
-						// QA on #728: where the sail crosses the centreline under the jib's head it passes ahead of the forestay (the
+						// QA on #728: where the sail's lower body crosses the centreline (the lower four fifths of the jib's luff; above,
+						// the leech closes on the head at the mast, behind the forestay by design) it passes ahead of the forestay (the
 						// jib's luff), not through it and the jib's tack (squared back on a dead run both corners are aft of it).
 						if (Jib && !bSimulate)
 						{
 							double Worst = 1e9, WorstZ = 0.0;
+							const double CheckTopCm = (Jib->FootZ() + 0.8 * (Jib->TopZ() - Jib->FootZ())) * CmPerMeter;
 							for (int32 R = 0; R < Rows - 1; ++R)
 							{
 								for (int32 Col = 1; Col < Cols; ++Col)
 								{
 									const FVector& V = P[R * Cols + Col];
-									if (FMath::Abs(V.Y - H.CenterY * CmPerMeter) > 30.0 || V.Z > Jib->TopZ() * CmPerMeter || V.Z < Jib->FootZ() * CmPerMeter) continue;
-									const double Ahead = V.X - Jib->LuffXAt(V.Z / CmPerMeter, 0) * CmPerMeter;
-									if (Ahead < Worst) { Worst = Ahead; WorstZ = V.Z; }
+									if (FMath::Abs(V.Y - H.CenterY * CmPerMeter) > 30.0 || V.Z > CheckTopCm || V.Z < Jib->FootZ() * CmPerMeter) continue;
+									const double Fore = V.X - Jib->LuffXAt(V.Z / CmPerMeter, 0) * CmPerMeter;
+									if (Fore < Worst) { Worst = Fore; WorstZ = V.Z; }
 								}
 							}
 							TestTrue(FString::Printf(TEXT("%s: the cloth ahead of the forestay at the centreline (worst %.1f cm at %.0f cm up)"), *Shown, Worst, WorstZ), Worst >= 5.0);
