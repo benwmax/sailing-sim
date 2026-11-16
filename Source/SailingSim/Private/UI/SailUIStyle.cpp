@@ -310,13 +310,13 @@ namespace SailUI
 		if (FColor* Px = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE)))
 		{
 			// Light fibres are white, dark specks are ink; the alpha carries how much (at most about 7% of the sheet).
-			const FColor Ink = PaperInk.ToFColor(true);
+			const FColor SpeckInk = PaperInk.ToFColor(true);
 			for (int32 Y = 0; Y < N; ++Y)
 			{
 				for (int32 X = 0; X < N; ++X)
 				{
 					const float G = PaperGrainValue(X, Y, N);
-					FColor C = G >= 0.f ? FColor::White : Ink;
+					FColor C = G >= 0.f ? FColor::White : SpeckInk;
 					C.A = uint8(FMath::Clamp(FMath::RoundToInt(FMath::Abs(G) * (G >= 0.f ? 30.f : 22.f)), 0, 255));
 					Px[Y * N + X] = C;
 				}
