@@ -276,10 +276,10 @@ namespace SailHudImpl
 			const float H = FMath::DegreesToRadians(float(Boat->GetHeadingTrueDeg()));
 			const FVector2f F(FMath::Sin(H), -FMath::Cos(H)), Sd(-F.Y, F.X);
 			// The boat: her heading line ahead, then her outline in ink over a halo, so she reads on water and on land.
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 14.f, C + F * 38.f }, ESlateDrawEffect::None, InkCol.CopyWithNewOpacity(0.6f), true, 1.f);
+			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { C + F * 14.f, C + F * 38.f }, ESlateDrawEffect::None, InkCol.CopyWithNewOpacity(0.85f), true, 1.5f);
 			const TArray<FVector2f> Hull = { C + F * 11.f, C - F * 8.f + Sd * 7.f, C - F * 4.f, C - F * 8.f - Sd * 7.f, C + F * 11.f };
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, HaloCol, true, 7.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, InkCol, true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Hull, ESlateDrawEffect::None, InkCol, true, 2.5f);
 			// The true wind, top right: an arrow flying downwind, in the wind's colour over a halo.
 			const float Wd = FMath::DegreesToRadians(float(GM->GetWeatherState().Wind.FromDegrees));
 			const FVector2f WF(FMath::Sin(Wd), -FMath::Cos(Wd)), WS(-WF.Y, WF.X);
@@ -290,8 +290,8 @@ namespace SailHudImpl
 			const FLinearColor WindCol = NightCol(FMath::Lerp(AccentDeep, WindTrue, NightHud));
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Shaft, ESlateDrawEffect::None, HaloCol, true, 6.f);
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Barb, ESlateDrawEffect::None, HaloCol, true, 6.f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Shaft, ESlateDrawEffect::None, WindCol, true, 2.5f);
-			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Barb, ESlateDrawEffect::None, WindCol, true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Shaft, ESlateDrawEffect::None, WindCol, true, 2.5f);
+			FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Barb, ESlateDrawEffect::None, WindCol, true, 2.5f);
 			// North, top left: the letter under a small arrowhead.
 			FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), { FVector2f(12.f, 16.f), FVector2f(17.f, 9.f), FVector2f(22.f, 16.f) }, ESlateDrawEffect::None, InkCol, true, 1.5f);
 			FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(20.f, 20.f), FSlateLayoutTransform(FVector2f(12.f, 16.f))), FString(TEXT("N")), Font(EType::Label), ESlateDrawEffect::None, InkCol);
@@ -299,12 +299,13 @@ namespace SailHudImpl
 			{
 				float BarPx = 0.f;
 				const FString BarText = SSailHud::MiniMapScaleBar(W.SpanM, MapSize.X, BarPx);
-				const FVector2f B0 = MapOrigin + FVector2f(8.f, MapSize.Y - 9.f), B1 = B0 + FVector2f(BarPx, 0.f);
+				const FVector2f B0 = MapOrigin + FVector2f(8.f, MapSize.Y - 12.f), B1 = B0 + FVector2f(BarPx, 0.f);
 				const TArray<FVector2f> Bar = { B0 - FVector2f(0.f, 4.f), B0, B1, B1 - FVector2f(0.f, 4.f) };
 				FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Bar, ESlateDrawEffect::None, HaloCol, true, 5.f);
-				FSlateDrawElement::MakeLines(Out, Layer + 3, G.ToPaintGeometry(), Bar, ESlateDrawEffect::None, InkCol, true, 1.5f);
+				FSlateDrawElement::MakeLines(Out, Layer + 4, G.ToPaintGeometry(), Bar, ESlateDrawEffect::None, InkCol, true, 2.f);
 				FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(80.f, 20.f), FSlateLayoutTransform(B0 + FVector2f(1.f, -22.f) + FVector2f(1.f, 1.f))), BarText, Font(EType::Label), ESlateDrawEffect::None, HaloCol);
-				FSlateDrawElement::MakeText(Out, Layer + 3, G.ToPaintGeometry(FVector2f(80.f, 20.f), FSlateLayoutTransform(B0 + FVector2f(1.f, -22.f))), BarText, Font(EType::Label), ESlateDrawEffect::None, InkCol);
+				FSlateDrawElement::MakeText(Out, Layer + 4, G.ToPaintGeometry(FVector2f(80.f, 20.f), FSlateLayoutTransform(B0 + FVector2f(1.f, -22.f))), BarText, Font(EType::Label), ESlateDrawEffect::None, InkCol);
+				// (the ink strokes sit a layer above their halos: within one layer Slate does not keep the order of batches)
 			}
 			// #602 (the #400 audit): a drill's marks still to round and the person in the water, on the map: a triangle's marks
 			// could only be found by the panel's distance, and an overboard drill is about keeping them in sight. The next
@@ -330,7 +331,7 @@ namespace SailHudImpl
 				for (int32 K = D.GetNextMark(); K < Marks.Num(); ++K) Dot(Marks[K], K == D.GetNextMark() ? 4.5f : 3.f, Warn);
 				if (D.HasDummy()) Dot(D.GetDummy(), 4.5f, Port);
 			}
-			return Layer + 3;
+			return Layer + 4;
 		}
 	private:
 		TWeakObjectPtr<APlayerController> Player;
@@ -991,7 +992,7 @@ FString SSailHud::MiniMapScaleBar(double SpanM, float WidthPx, float& OutBarPx)
 	static const TCHAR* Names[] = { TEXT("5 nm"), TEXT("2 nm"), TEXT("1 nm"), TEXT("0.5 nm"), TEXT("0.25 nm"), TEXT("0.1 nm") };
 	const double PxPerM = SpanM > 0.0 ? double(WidthPx) / SpanM : 0.0;
 	int32 Pick = int32(UE_ARRAY_COUNT(Lengths)) - 1;
-	for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Lengths)); ++I)
+	if (PxPerM > 0.0) for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Lengths)); ++I)
 	{
 		if (Lengths[I] * 1852.0 * PxPerM <= double(WidthPx) * 0.4) { Pick = I; break; }
 	}
