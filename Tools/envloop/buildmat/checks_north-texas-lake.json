@@ -409,741 +409,1482 @@
   "note": "per pixel: colour, normal, mask, and the noise twice (1 m and 0.25 m); glass one atlas read. Today's house materials read no textures, so this is new cost: unmeasured until the Mac gate after 21 Nov."
  },
  "blind": {
-  "round": 1,
-  "date": "2026-11-16",
-  "reviewers": 3,
-  "what": "fresh reviewers, images only, key hidden: 14 before/after pairs at 15 m (A/B shuffled) and 12 wear ladders (levels shuffled under V-Z)",
-  "pairs": {
-   "pair_00_midday.jpg": {
-    "house": "cottage_lap",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+  "rounds": [
+   {
+    "round": 1,
+    "date": "2026-11-16",
+    "reviewers": 3,
+    "what": "fresh reviewers, images only, key hidden: 14 before/after pairs at 15 m (A/B shuffled) and 12 wear ladders (levels shuffled under V-Z)",
+    "pairs": {
+     "pair_00_midday.jpg": {
+      "house": "cottage_lap",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
      },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+     "pair_00_overcast.jpg": {
+      "house": "cottage_lap",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
      },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+     "pair_01_midday.jpg": {
+      "house": "farm_stone",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_01_overcast.jpg": {
+      "house": "farm_stone",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_02_midday.jpg": {
+      "house": "modern_bb",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_02_overcast.jpg": {
+      "house": "modern_bb",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_03_midday.jpg": {
+      "house": "ranch_brown",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_03_overcast.jpg": {
+      "house": "ranch_brown",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_04_midday.jpg": {
+      "house": "ranch_buff",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_04_overcast.jpg": {
+      "house": "ranch_buff",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_05_midday.jpg": {
+      "house": "ranch_red",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_05_overcast.jpg": {
+      "house": "ranch_red",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_06_midday.jpg": {
+      "house": "stucco",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_06_overcast.jpg": {
+      "house": "stucco",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
      }
-    ]
+    },
+    "ladders": {
+     "board_batten": [
+      {
+       "order": "ZWVYX",
+       "levels": [
+        "L3",
+        "L0",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.4
+      },
+      {
+       "order": "WZVYX",
+       "levels": [
+        "L0",
+        "L3",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.7
+      },
+      {
+       "order": "WVZYX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "brick_brown": [
+      {
+       "order": "WXYVZ",
+       "levels": [
+        "L3",
+        "L1",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.3
+      },
+      {
+       "order": "XWYVZ",
+       "levels": [
+        "L1",
+        "L3",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.5
+      },
+      {
+       "order": "WXYVZ",
+       "levels": [
+        "L3",
+        "L1",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.3
+      }
+     ],
+     "brick_buff": [
+      {
+       "order": "VWZXY",
+       "levels": [
+        "L1",
+        "L3",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.5
+      },
+      {
+       "order": "VWZXY",
+       "levels": [
+        "L1",
+        "L3",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.5
+      },
+      {
+       "order": "VWXZY",
+       "levels": [
+        "L1",
+        "L3",
+        "L2",
+        "L0",
+        "L4"
+       ],
+       "spearman": 0.3
+      }
+     ],
+     "brick_red": [
+      {
+       "order": "YWZVX",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "WYZVX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "ZYWVX",
+       "levels": [
+        "L3",
+        "L1",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.3
+      }
+     ],
+     "lap_siding": [
+      {
+       "order": "VXYWZ",
+       "levels": [
+        "L0",
+        "L3",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.7
+      },
+      {
+       "order": "VXYWZ",
+       "levels": [
+        "L0",
+        "L3",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.7
+      },
+      {
+       "order": "XVYWZ",
+       "levels": [
+        "L3",
+        "L0",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.4
+      }
+     ],
+     "limestone": [
+      {
+       "order": "WVYXZ",
+       "levels": [
+        "L0",
+        "L2",
+        "L1",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "WVYXZ",
+       "levels": [
+        "L0",
+        "L2",
+        "L1",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "WVXYZ",
+       "levels": [
+        "L0",
+        "L2",
+        "L3",
+        "L1",
+        "L4"
+       ],
+       "spearman": 0.7
+      }
+     ],
+     "membrane_flat": [
+      {
+       "order": "ZWYVX",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "WZYVX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "ZWYVX",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      }
+     ],
+     "metal_seam": [
+      {
+       "order": "WYVXZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L4",
+        "L3"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "WYVXZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L4",
+        "L3"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "WYVXZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L4",
+        "L3"
+       ],
+       "spearman": 0.8
+      }
+     ],
+     "shingle_barkwood": [
+      {
+       "order": "WZXYV",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "WZXYV",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "ZWXYV",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "shingle_charcoal": [
+      {
+       "order": "VYXWZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VYXWZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "YVXWZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      }
+     ],
+     "shingle_weathered_wood": [
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      },
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      },
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      }
+     ],
+     "stucco": [
+      {
+       "order": "YXVWZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      },
+      {
+       "order": "YXWVZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "XYWVZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      }
+     ]
+    },
+    "summary": {
+     "after_chosen": "42 of 42",
+     "mean_score_after": 3.4,
+     "mean_score_before": 2.0,
+     "ladder_mean_spearman": 0.73,
+     "ladder_ends_right": "28 of 36",
+     "findings": [
+      "weathering spots (mildew, peeling, lichen, membrane stains) read as hard-edged stencilled blobs, the same shape on every finish",
+      "efflorescence on brick reads as white smoke puffs mid-wall, not salt bloom low at the base",
+      "buff brick and limestone barely age across the levels",
+      "metal roof seams too black; no rust or chalking on the neglected roof",
+      "walls still flat at 15 m: little relief or eave shadow (lighting and trim belong partly to the parts kit)"
+     ]
+    }
    },
-   "pair_00_overcast.jpg": {
-    "house": "cottage_lap",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+   {
+    "round": 2,
+    "date": "2026-11-16",
+    "reviewers": 3,
+    "what": "fresh reviewers after the round 1 fixes (softer clustered weathering, salt bloom low and mortar-led, seams no longer black, rain soiling on masonry); reshuffled (seed 2)",
+    "pairs": {
+     "pair_00_midday.jpg": {
+      "house": "cottage_lap",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
      },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+     "pair_00_overcast.jpg": {
+      "house": "cottage_lap",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
      },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
+     "pair_01_midday.jpg": {
+      "house": "farm_stone",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_01_overcast.jpg": {
+      "house": "farm_stone",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_02_midday.jpg": {
+      "house": "modern_bb",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_02_overcast.jpg": {
+      "house": "modern_bb",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_03_midday.jpg": {
+      "house": "ranch_brown",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_03_overcast.jpg": {
+      "house": "ranch_brown",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_04_midday.jpg": {
+      "house": "ranch_buff",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 3
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 3
+       }
+      ]
+     },
+     "pair_04_overcast.jpg": {
+      "house": "ranch_buff",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 3
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 3,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_05_midday.jpg": {
+      "house": "ranch_red",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_05_overcast.jpg": {
+      "house": "ranch_red",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_06_midday.jpg": {
+      "house": "stucco",
+      "light": "midday",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
+     },
+     "pair_06_overcast.jpg": {
+      "house": "stucco",
+      "light": "overcast",
+      "reviews": [
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       },
+       {
+        "chose_after": true,
+        "score_after": 4,
+        "score_before": 2
+       }
+      ]
      }
-    ]
-   },
-   "pair_01_midday.jpg": {
-    "house": "farm_stone",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_01_overcast.jpg": {
-    "house": "farm_stone",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_02_midday.jpg": {
-    "house": "modern_bb",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_02_overcast.jpg": {
-    "house": "modern_bb",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_03_midday.jpg": {
-    "house": "ranch_brown",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_03_overcast.jpg": {
-    "house": "ranch_brown",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_04_midday.jpg": {
-    "house": "ranch_buff",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_04_overcast.jpg": {
-    "house": "ranch_buff",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_05_midday.jpg": {
-    "house": "ranch_red",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_05_overcast.jpg": {
-    "house": "ranch_red",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_06_midday.jpg": {
-    "house": "stucco",
-    "light": "midday",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
-   },
-   "pair_06_overcast.jpg": {
-    "house": "stucco",
-    "light": "overcast",
-    "reviews": [
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 4,
-      "score_before": 2
-     },
-     {
-      "chose_after": true,
-      "score_after": 3,
-      "score_before": 2
-     }
-    ]
+    },
+    "ladders": {
+     "board_batten": [
+      {
+       "order": "WVXYZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "brick_brown": [
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L1",
+        "L3",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.5
+      },
+      {
+       "order": "XVWYZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VXWYZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      }
+     ],
+     "brick_buff": [
+      {
+       "order": "ZYXVW",
+       "levels": [
+        "L2",
+        "L3",
+        "L1",
+        "L0",
+        "L4"
+       ],
+       "spearman": 0.1
+      },
+      {
+       "order": "XVYZW",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "YZXVW",
+       "levels": [
+        "L3",
+        "L2",
+        "L1",
+        "L0",
+        "L4"
+       ],
+       "spearman": 0.0
+      }
+     ],
+     "brick_red": [
+      {
+       "order": "ZYWXV",
+       "levels": [
+        "L3",
+        "L1",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.3
+      },
+      {
+       "order": "WYZXV",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "ZYWXV",
+       "levels": [
+        "L3",
+        "L1",
+        "L0",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.3
+      }
+     ],
+     "lap_siding": [
+      {
+       "order": "XVZWY",
+       "levels": [
+        "L0",
+        "L3",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.7
+      },
+      {
+       "order": "XZVWY",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VXZWY",
+       "levels": [
+        "L3",
+        "L0",
+        "L1",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.4
+      }
+     ],
+     "limestone": [
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L4",
+        "L3",
+        "L0",
+        "L1",
+        "L2"
+       ],
+       "spearman": -0.6
+      },
+      {
+       "order": "XYWZV",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWXYZ",
+       "levels": [
+        "L4",
+        "L3",
+        "L0",
+        "L1",
+        "L2"
+       ],
+       "spearman": -0.6
+      }
+     ],
+     "membrane_flat": [
+      {
+       "order": "YVXWZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "YVXWZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.8
+      },
+      {
+       "order": "VYXWZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "metal_seam": [
+      {
+       "order": "WVYXZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWYXZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      },
+      {
+       "order": "WVYXZ",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "shingle_barkwood": [
+      {
+       "order": "WXZYV",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "WXZYV",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "WXZYV",
+       "levels": [
+        "L1",
+        "L0",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "shingle_charcoal": [
+      {
+       "order": "VYZWX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VYZWX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VYZWX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "shingle_weathered_wood": [
+      {
+       "order": "VWYXZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L4",
+        "L3"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWYZX",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      },
+      {
+       "order": "VWYXZ",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L4",
+        "L3"
+       ],
+       "spearman": 0.9
+      }
+     ],
+     "stucco": [
+      {
+       "order": "VWZYX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWZYX",
+       "levels": [
+        "L0",
+        "L1",
+        "L3",
+        "L2",
+        "L4"
+       ],
+       "spearman": 0.9
+      },
+      {
+       "order": "VWYZX",
+       "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+       ],
+       "spearman": 1.0
+      }
+     ]
+    },
+    "summary": {
+     "after_chosen": "42 of 42",
+     "mean_score_after": 3.64,
+     "mean_score_before": 2.07,
+     "ladder_mean_spearman": 0.7,
+     "ladder_ends_right": "27 of 36",
+     "findings": [
+      "still: limestone, buff and brown brick age too little to see on a 1.6 m swatch",
+      "lichen on shingles reads as white paint flecks; membrane and batten stains still hard-edged",
+      "walls flat at 15 m: no large-scale staining or eave shading; shingle tab shading looks procedural",
+      "a bare metal roof reflects the sky dark navy at midday and fades into an overcast sky"
+     ]
+    }
    }
-  },
-  "ladders": {
-   "board_batten": [
-    {
-     "order": "ZWVYX",
-     "levels": [
-      "L3",
-      "L0",
-      "L1",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.4
-    },
-    {
-     "order": "WZVYX",
-     "levels": [
-      "L0",
-      "L3",
-      "L1",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.7
-    },
-    {
-     "order": "WVZYX",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    }
-   ],
-   "brick_brown": [
-    {
-     "order": "WXYVZ",
-     "levels": [
-      "L3",
-      "L1",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.3
-    },
-    {
-     "order": "XWYVZ",
-     "levels": [
-      "L1",
-      "L3",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.5
-    },
-    {
-     "order": "WXYVZ",
-     "levels": [
-      "L3",
-      "L1",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.3
-    }
-   ],
-   "brick_buff": [
-    {
-     "order": "VWZXY",
-     "levels": [
-      "L1",
-      "L3",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.5
-    },
-    {
-     "order": "VWZXY",
-     "levels": [
-      "L1",
-      "L3",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.5
-    },
-    {
-     "order": "VWXZY",
-     "levels": [
-      "L1",
-      "L3",
-      "L2",
-      "L0",
-      "L4"
-     ],
-     "spearman": 0.3
-    }
-   ],
-   "brick_red": [
-    {
-     "order": "YWZVX",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "WYZVX",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "ZYWVX",
-     "levels": [
-      "L3",
-      "L1",
-      "L0",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.3
-    }
-   ],
-   "lap_siding": [
-    {
-     "order": "VXYWZ",
-     "levels": [
-      "L0",
-      "L3",
-      "L1",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.7
-    },
-    {
-     "order": "VXYWZ",
-     "levels": [
-      "L0",
-      "L3",
-      "L1",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.7
-    },
-    {
-     "order": "XVYWZ",
-     "levels": [
-      "L3",
-      "L0",
-      "L1",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.4
-    }
-   ],
-   "limestone": [
-    {
-     "order": "WVYXZ",
-     "levels": [
-      "L0",
-      "L2",
-      "L1",
-      "L3",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "WVYXZ",
-     "levels": [
-      "L0",
-      "L2",
-      "L1",
-      "L3",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "WVXYZ",
-     "levels": [
-      "L0",
-      "L2",
-      "L3",
-      "L1",
-      "L4"
-     ],
-     "spearman": 0.7
-    }
-   ],
-   "membrane_flat": [
-    {
-     "order": "ZWYVX",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "WZYVX",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "ZWYVX",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    }
-   ],
-   "metal_seam": [
-    {
-     "order": "WYVXZ",
-     "levels": [
-      "L1",
-      "L0",
-      "L2",
-      "L4",
-      "L3"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "WYVXZ",
-     "levels": [
-      "L1",
-      "L0",
-      "L2",
-      "L4",
-      "L3"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "WYVXZ",
-     "levels": [
-      "L1",
-      "L0",
-      "L2",
-      "L4",
-      "L3"
-     ],
-     "spearman": 0.8
-    }
-   ],
-   "shingle_barkwood": [
-    {
-     "order": "WZXYV",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "WZXYV",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    },
-    {
-     "order": "ZWXYV",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    }
-   ],
-   "shingle_charcoal": [
-    {
-     "order": "VYXWZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "VYXWZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "YVXWZ",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    }
-   ],
-   "shingle_weathered_wood": [
-    {
-     "order": "VWXYZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L2",
-      "L3",
-      "L4"
-     ],
-     "spearman": 1.0
-    },
-    {
-     "order": "VWXYZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L2",
-      "L3",
-      "L4"
-     ],
-     "spearman": 1.0
-    },
-    {
-     "order": "VWXYZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L2",
-      "L3",
-      "L4"
-     ],
-     "spearman": 1.0
-    }
-   ],
-   "stucco": [
-    {
-     "order": "YXVWZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L2",
-      "L3",
-      "L4"
-     ],
-     "spearman": 1.0
-    },
-    {
-     "order": "YXWVZ",
-     "levels": [
-      "L0",
-      "L1",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.9
-    },
-    {
-     "order": "XYWVZ",
-     "levels": [
-      "L1",
-      "L0",
-      "L3",
-      "L2",
-      "L4"
-     ],
-     "spearman": 0.8
-    }
-   ]
-  },
-  "summary": {
-   "after_chosen": "42 of 42",
-   "mean_score_after": 3.4,
-   "mean_score_before": 2.0,
-   "ladder_mean_spearman": 0.73,
-   "ladder_ends_right": "28 of 36",
-   "findings": [
-    "weathering spots (mildew, peeling, lichen, membrane stains) read as hard-edged stencilled blobs, the same shape on every finish",
-    "efflorescence on brick reads as white smoke puffs mid-wall, not salt bloom low at the base",
-    "buff brick and limestone barely age across the levels",
-    "metal roof seams too black; no rust or chalking on the neglected roof",
-    "walls still flat at 15 m: little relief or eave shadow (lighting and trim belong partly to the parts kit)"
-   ]
-  }
+  ]
  }
 }
