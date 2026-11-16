@@ -286,13 +286,31 @@ def hydrostatics(n=300):
             "beam_wl": bwl, "canoe_depth": CANOE_D[0]}
 
 
+_STUB = []      # the keel stub's net volume (keel_c22.stub_volume), measured at the last depth solved
+
+
 def target_volume():
+    """What the hull under the design waterline must hold: the game's design volume less the swing keel's iron and
+    the keel stub's moulding under the hull, plus the water in its trunk inside the hull (slice 3, docs/c22-4)."""
     g = CARD["game"]
-    return g["design_volume_m3"] - CARD["targets"]["keel_kg"] / IRON_KG_M3
+    return g["design_volume_m3"] - CARD["targets"]["keel_kg"] / IRON_KG_M3 - (_STUB[0] if _STUB else 0.0)
 
 
 def solve_depth():
-    """The canoe depth that floats her at the design waterline (bisection on the volume)."""
+    """The canoe depth that floats her at the design waterline. The stub's volume depends on where the hull's bottom
+    is, so: solve without it, measure it there, solve again, twice (the second pass moves the depth under 0.1 mm)."""
+    import keel_c22 as KC
+    _STUB.clear()
+    _solve_depth()
+    for _ in range(2):
+        solid, flooded = KC.stub_volume()
+        _STUB[:] = [solid - flooded]
+        _solve_depth()
+    return CANOE_D[0]
+
+
+def _solve_depth():
+    """The canoe depth whose volume is target_volume() (bisection)."""
     want = target_volume()
     lo, hi = 0.18, 0.40
     for d in (lo, hi):

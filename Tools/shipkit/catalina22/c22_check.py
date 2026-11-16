@@ -15,9 +15,12 @@ How each is measured:
   length of hull, beam    the hull object's bounds (stats.json 'hull'); the beam is the shell's, without a rub rail.
                           The hull object must be the bare shell: a deck or trunk merged into it moves the sheer.
   waterline length        measure.py's cut of the hull at the design waterline (z = 0), stem to stern ('lwl')
-  draft, keel down        the keel section's lowest point, keel down being the build's default pose. The model floats
-                          at the game's waterline, with its 227 kg crew aboard: published drafts are for the empty boat,
-                          2 to 3 cm less, inside the tolerance.
+  draft, keel down        the keel section's lowest point, keel down being the build's default pose, less the crew's
+                          sink (the card's game.crew_sink_m): the model floats at the game's waterline with its 227 kg
+                          crew aboard, and published drafts are for the empty boat
+  draft, keel up          the same for the raised keel (C22_KeelUp, hidden in the build; with --keel-up the build's
+                          C22_Keel is the raised one and C22_KeelDown the down one; slice 3)
+  keel weight             the build report's keel_kg: the plate's mesh volume times cast iron (slice 3)
   displacement            the canoe body's volume under z = 0 (the build's report) times 1,000 kg/m^3, less the crew the
                           game floats her with (the card's game.crew_kg): the physics floats every boat in water of
                           1,000 kg/m^3 (kWaterDensity) and its design volume is the boat's mass with her crew. Only the
@@ -57,10 +60,22 @@ def measure(stats, sockets, card):
         m["beam_m"] = hull.get("beam")
         if hull.get("lwl"):
             m["length_waterline_m"] = hull["lwl"]
-    keel = [o for o in stats.get("objects", {}).values() if o.get("section") == "keel"]
-    if keel:
-        m["draft_keel_down_m"] = -min(o["min"][2] for o in keel)
+    sink = card["game"].get("crew_sink_m", 0.0)
+    obs = stats.get("objects", {})
+    # a --keel-up build names the raised keel C22_Keel (in the keel section) and hides the down one as C22_KeelDown
+    down = [o for n, o in obs.items() if n.endswith("KeelDown")]
+    up = [o for n, o in obs.items() if n.endswith("KeelUp")]
+    if down:
+        up = [o for n, o in obs.items() if n == "C22_Keel"]
+    else:
+        down = [o for o in obs.values() if o.get("section") == "keel"]
+    if down:
+        m["draft_keel_down_m"] = -min(o["min"][2] for o in down) - sink
+    if up:
+        m["draft_keel_up_m"] = -min(o["min"][2] for o in up) - sink
     phys = stats.get("physics") or {}
+    if phys.get("keel_kg"):
+        m["keel_kg"] = phys["keel_kg"]
     if phys.get("canoe_volume_m3"):
         m["displacement_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3 - card["game"]["crew_kg"]
     if sockets:

@@ -4,7 +4,7 @@
  "build_args": "blender -b --factory-startup -P build_c22.py -- <out dir> --fleet <dir with build_fleet.py's Catalina22_shape.blend>: reads <out>/c22.blend",
  "hull_object": "C22_Hull",
  "report": "c22_report.json",
- "note": "The Catalina 22's rebuild (docs/c22-2 on). Slice 1 built the hull shell (C22_Hull); slice 2 (docs/c22-3) the deck, rubrail, cockpit well, cabin trunk, ports, drop boards, fore hatch and the pop-top (closed; C22_PopTopRaised, the raised one, is 'other' and hidden in the .blend: build_c22.py --raised builds it as C22_PopTop instead). The keel and rudder are today's (Catalina22_Board, SM_Catalina22_Rudder from the fleet's shape .blend) until slice 3. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig). The keel and rudder sections are filled only when build_c22.py runs with --fleet; without it the size check reports the draft as not measured.",
+ "note": "The Catalina 22's rebuild (docs/c22-2 on). Slice 1 built the hull shell (C22_Hull); slice 2 (docs/c22-3) the deck, rubrail, cockpit well, cabin trunk, ports, drop boards, fore hatch and the pop-top (closed; C22_PopTopRaised, the raised one, is 'other' and hidden in the .blend: build_c22.py --raised builds it as C22_PopTop instead); slice 3 (docs/c22-4) the swing keel and its stub and trunk, the kick-up rudder with its tiller and gudgeons, and the outboard on its bracket (C22_KeelUp and C22_RudderUp, the keel raised and the blade kicked up, are 'other' and hidden: --keel-up builds them in place and hides the down ones as C22_KeelDown and C22_RudderDown). The mast and boom are today's (from the fleet's shape .blend with --fleet) until slice 4. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig).",
  "sections": {
   "hull": {
    "objects": [
@@ -18,7 +18,9 @@
    ],
    "borders": [
     "deck",
-    "keel"
+    "keel",
+    "rudder",
+    "outboard"
    ]
   },
   "deck": {
@@ -73,10 +75,13 @@
   },
   "keel": {
    "objects": [
-    "Catalina22_Board"
+    "C22_Keel",
+    "C22_KeelStub"
    ],
    "owns": [
-    "link_fleet"
+    "build_keel",
+    "build_stub",
+    "plate"
    ],
    "borders": [
     "hull"
@@ -84,12 +89,29 @@
   },
   "rudder": {
    "objects": [
-    "SM_Catalina22_Rudder"
+    "C22_Rudder",
+    "C22_Gudgeons"
    ],
    "owns": [
-    "link_fleet"
+    "build_rudder",
+    "build_tiller",
+    "build_gudgeons"
    ],
-   "borders": []
+   "borders": [
+    "hull"
+   ]
+  },
+  "outboard": {
+   "objects": [
+    "C22_Outboard"
+   ],
+   "owns": [
+    "build_outboard",
+    "kit_into"
+   ],
+   "borders": [
+    "hull"
+   ]
   }
  },
  "joins": [
@@ -116,7 +138,11 @@
   [
    "C22_Cabin",
    "C22_PopTop"
+  ],
+  [
+   "C22_Hull",
+   "C22_KeelStub"
   ]
  ],
- "joins_note": "Slice 2: the hull and deck meet under the rubrail, which overlaps both (C22_Hull|C22_Rubrail and C22_Rubrail|C22_Deck are the seam; the deck's edge is the hull's rim exactly). The cockpit hangs from the deck's opening, the trunk stands on the deck and meets the cockpit at the bulkhead, and the pop-top's flange rests on the trunk top. Slice 3 adds the keel trunk."
+ "joins_note": "Slice 2: the hull and deck meet under the rubrail, which overlaps both (C22_Hull|C22_Rubrail and C22_Rubrail|C22_Deck are the seam; the deck's edge is the hull's rim exactly). The cockpit hangs from the deck's opening, the trunk stands on the deck and meets the cockpit at the bulkhead, and the pop-top's flange rests on the trunk top. Slice 3: the keel stub rises 1.5 cm into the hull along its top and its ends fair into the hull's bottom (C22_Hull|C22_KeelStub). The gudgeons and the outboard's bracket stand 1 mm into the transom; they are fittings, not joins."
 }
