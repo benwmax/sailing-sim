@@ -250,7 +250,7 @@ namespace SailUI
 					break;
 				case EPadGlyph::Trigger:
 					Fill(Out, Layer, Geo, At, FVector2f(W, GlyphH), RoundedCorners(Body, FVector4(4.f, 4.f, 11.f, 11.f), Edge, 1.5f), Tint);
-					Letters(Out, Layer + 1, Geo, G.Label, Mid - FVector2f(0.f, 1.f), 9.f, Tint * Lit);
+					Letters(Out, Layer + 1, Geo, G.Label, Mid + FVector2f(0.f, 0.5f), 9.f, Tint * Lit);
 					break;
 				case EPadGlyph::Dpad:
 				{
@@ -271,13 +271,13 @@ namespace SailUI
 					const bool bClick = G.Kind == EPadGlyph::StickClick;
 					// With directions the ring makes room for the chevrons above and below (or beside).
 					const float Ring = G.Arms != 0 ? 16.f : GlyphH;
-					Fill(Out, Layer, Geo, Mid - FVector2f(Ring, Ring) * 0.5f, FVector2f(Ring, Ring), Rounded(FLinearColor::Transparent, Ring * 0.5f, Edge, 1.5f), Tint);
+					Fill(Out, Layer, Geo, Mid - FVector2f(Ring, Ring) * 0.5f, FVector2f(Ring, Ring), Rounded(FLinearColor::Transparent, Ring * 0.5f, G.Arms != 0 ? Lit : Edge, 1.5f), Tint);	// the small ring with chevrons was the faintest glyph
 					const float Cap = Ring - 8.f;
 					Fill(Out, Layer + 1, Geo, Mid - FVector2f(Cap, Cap) * 0.5f, FVector2f(Cap, Cap), Rounded(bClick ? Lit : Body, Cap * 0.5f, bClick ? Lit : Edge, 1.f), Tint);
 					if (G.Arms == 0) Letters(Out, Layer + 2, Geo, G.Label, Mid, 8.f, Tint * (bClick ? Ink : Lit));
 					const float R = Ring * 0.5f + 1.5f, C = 2.5f;
-					if (G.Arms & 1) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, -R), Mid + FVector2f(0.f, -R - C), Mid + FVector2f(C, -R) }, Tint * Lit, 1.5f);
-					if (G.Arms & 2) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, R), Mid + FVector2f(0.f, R + C), Mid + FVector2f(C, R) }, Tint * Lit, 1.5f);
+					if (G.Arms & 1) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, -R), Mid + FVector2f(0.f, -R - C), Mid + FVector2f(C, -R) }, Tint * Lit, 2.f);
+					if (G.Arms & 2) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, R), Mid + FVector2f(0.f, R + C), Mid + FVector2f(C, R) }, Tint * Lit, 2.f);
 					if (G.Arms & 4) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-R, -C), Mid + FVector2f(-R - C, 0.f), Mid + FVector2f(-R, C) }, Tint * Lit, 1.5f);
 					if (G.Arms & 8) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(R, -C), Mid + FVector2f(R + C, 0.f), Mid + FVector2f(R, C) }, Tint * Lit, 1.5f);
 					break;
