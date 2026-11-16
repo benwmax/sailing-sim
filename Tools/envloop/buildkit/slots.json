@@ -1,0 +1,176 @@
+{
+ "_about": "Track E (building parts kit) hand-off between the parts thread and the materials thread (shore plan, Nov 16 2026). The parts kit (Tools/envloop/buildkit) writes meshes with these slots, UV rules and paint roles; the materials thread fills the Wall, Roof and Glass looks and the wear. Changing a name here changes both halves: say so in both threads.",
+ "version": 2,
+ "units": "metres; Z up; a part's origin on the wall plane it mounts to, +Y out of the wall (toward the street or yard), +X along the wall to the right when facing the house",
+ "slots": {
+  "Trim": {
+   "material": "MI_HouseKit_Trim",
+   "owner": "parts",
+   "uv0": "trim sheet (trim.json bands), true scale 4 px/cm",
+   "notes": "every painted, metal, wood, vinyl and concrete part; colour from the paint role (vertex colour R) unless the band is unpainted"
+  },
+  "Glass": {
+   "material": "MI_HouseKit_Glass",
+   "owner": "materials",
+   "uv0": "pane-local 0..1 (u right, v up, seen from outside)",
+   "uv1": "pane size in metres (u width, v height), constant over the pane",
+   "notes": "fake interior (room atlas 4x4, depth one window width by default), reflections, lit at dusk; vertex colour G = window seed 0..1 (same for every pane of one window), B = 1 for obscure (bathroom) glass, A = 1 when the pane is a door light. Muntins and grilles are Trim geometry in front of the glass."
+  },
+  "Wall": {
+   "material": "MI_HouseKit_Wall",
+   "owner": "materials",
+   "uv0": "world metres along the wall (u) and up from the ground line (v), so courses line up across parts and the house wall",
+   "notes": "chimney bodies, dormer cheeks, porch knee walls, gable fill; finish code in vertex colour G (wall_finishes index / 255)"
+  },
+  "Roof": {
+   "material": "MI_HouseKit_Roof",
+   "owner": "materials",
+   "uv0": "metres along the eave (u) and up the slope from the eave (v)",
+   "notes": "dormer and porch roofs; finish code in vertex colour G (roof_finishes index / 255)"
+  }
+ },
+ "vertex_colour": {
+  "R": "paint role index / 255 (paint_roles); Trim slot only",
+  "G": "Wall/Roof: finish index / 255. Glass: room seed",
+  "B": "Glass: obscure glass flag. Others: 0",
+  "A": "Glass: door-light flag. Others: 1"
+ },
+ "paint_roles": [
+  {
+   "id": 0,
+   "name": "trim",
+   "what": "casings, fascia, frieze, corner boards, porch columns and rails, soffit"
+  },
+  {
+   "id": 1,
+   "name": "door",
+   "what": "front door slab and panels"
+  },
+  {
+   "id": 2,
+   "name": "shutter",
+   "what": "shutters, accent boards"
+  },
+  {
+   "id": 3,
+   "name": "sash",
+   "what": "window frames and sashes (white vinyl, almond, bronze or black)"
+  },
+  {
+   "id": 4,
+   "name": "garage",
+   "what": "garage door panels (usually the trim colour or white)"
+  },
+  {
+   "id": 5,
+   "name": "metal",
+   "what": "gutters and downspouts (white, brown or galvanised), flashing"
+  },
+  {
+   "id": 6,
+   "name": "fixed",
+   "what": "own colour from the trim sheet's colour map: concrete, iron, brass, galvanised, rubber, cedar"
+  }
+ ],
+ "per_house_paint": "the game passes one colour per paint role 0..5 per house (instance custom data, 6 x RGB); the style recipes in styles/*.json give the palettes",
+ "wall_finishes": [
+  {
+   "id": 0,
+   "name": "brick_red",
+   "tile_m": [
+    1.626,
+    0.813
+   ],
+   "course_mm": 76,
+   "module": "king size 244 x 70 mm faces, 10 mm joints, 76 mm course (materials thread)"
+  },
+  {
+   "id": 1,
+   "name": "brick_brown",
+   "tile_m": [
+    1.626,
+    0.813
+   ],
+   "course_mm": 76,
+   "module": "1990s brown flashed blend, same module"
+  },
+  {
+   "id": 2,
+   "name": "brick_buff",
+   "tile_m": [
+    1.626,
+    0.813
+   ],
+   "course_mm": 76,
+   "module": "Texas buff / tan blend, same module"
+  },
+  {
+   "id": 3,
+   "name": "limestone",
+   "tile_m": [
+    2.0,
+    1.0
+   ],
+   "course_mm": 100,
+   "module": "chopped limestone veneer, random ashlar"
+  },
+  {
+   "id": 4,
+   "name": "lap_siding",
+   "tile_m": [
+    3.66,
+    1.2
+   ],
+   "course_mm": 150,
+   "module": "fibre-cement lap, 150 mm exposure"
+  },
+  {
+   "id": 5,
+   "name": "board_batten",
+   "tile_m": [
+    2.44,
+    2.44
+   ],
+   "course_mm": 305,
+   "module": "vertical boards, 64 mm battens at 305 mm centres"
+  },
+  {
+   "id": 6,
+   "name": "stucco",
+   "tile_m": [
+    3.0,
+    3.0
+   ],
+   "course_mm": 0,
+   "module": "sand finish"
+  }
+ ],
+ "roof_finishes": [
+  {
+   "id": 0,
+   "name": "shingle_weathered_wood",
+   "row_mm": 143,
+   "tab_mm": 333
+  },
+  {
+   "id": 1,
+   "name": "shingle_charcoal",
+   "row_mm": 143,
+   "tab_mm": 333
+  },
+  {
+   "id": 2,
+   "name": "shingle_barkwood",
+   "row_mm": 143,
+   "tab_mm": 333
+  },
+  {
+   "id": 3,
+   "name": "metal_seam",
+   "rib_mm": 406,
+   "rib_h_mm": 38
+  }
+ ],
+ "trim_sheet": "trim.json (written by make_trim_sheet.py): bands and cells with their pixel and UV rectangles",
+ "painted_trim_colours": "styles/*.json palettes: role colours as sRGB hex; the materials thread may reuse them for painted siding"
+}
