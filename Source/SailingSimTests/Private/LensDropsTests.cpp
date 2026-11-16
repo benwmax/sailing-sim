@@ -211,16 +211,17 @@ bool FVisualLensDropsTest::RunTest(const FString&)
 	TestTrue(FString::Printf(TEXT("Points under a drop: %d"), Covering), Covering > 1000);
 	TestEqual(TEXT("Drops reaching a point from outside its four searched cells"), Missed, 0);
 
-	// The air over the glass is low-passed, so a camera's turn (head-on air to crosswind) or the boat's pitch doesn't rewrite
-	// every drop's life in one frame; a cut, teleport or origin rebase brings no air at all.
+	// The air over the glass is low-passed, so a gust or a sudden change of camera speed doesn't rewrite every drop's life in
+	// one frame (a turn of the camera alone doesn't change the air's whole speed); a cut, teleport or origin rebase brings no air.
+	// A drop that starts running as the air builds slides from where it sat: a small rise in the air moves no drop far.
 	{
 		SailingLens::FLensAir A;
 		A.Update(FVector2f(0.f, 3.f), 3.f, 1.f / 60.f);
 		TestTrue(TEXT("Lens air: the first frame takes the air as it is"), A.bPrimed && FMath::IsNearlyEqual(A.Speed, 3.f));
 		A.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
 		TestTrue(FString::Printf(TEXT("Lens air: one frame after a jump from 3 to 15 m/s, %.2f m/s"), A.Speed), A.Speed < 3.2f);
-		for (int32 F = 0; F < 600; ++F) A.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
-		TestTrue(FString::Printf(TEXT("Lens air: ten seconds on, %.2f m/s"), A.Speed), FMath::IsNearlyEqual(A.Speed, 15.f, 0.1f));
+		for (int32 F = 0; F < 1200; ++F) A.Update(FVector2f(15.f, 3.f), 15.f, 1.f / 60.f);
+		TestTrue(FString::Printf(TEXT("Lens air: twenty seconds on, %.2f m/s"), A.Speed), FMath::IsNearlyEqual(A.Speed, 15.f, 0.1f));
 		// Drops whose life changes much in the frame after the jump, with the filter.
 		int32 Changed = 0, Seen = 0;
 		SailingLens::FLensAir B;
@@ -235,8 +236,20 @@ bool FVisualLensDropsTest::RunTest(const FString&)
 			++Seen;
 			Changed += FMath::Abs(D1.Present * D1.Life - D0.Present * D0.Life) > 0.1f ? 1 : 0;
 		}
-		TestTrue(FString::Printf(TEXT("A camera turn from head-on to crosswind air: %d of %d drops change by over 0.1 in a frame"), Changed, Seen),
+		TestTrue(FString::Printf(TEXT("The air over the glass jumping from 3 to 15 m/s: %d of %d drops change by over 0.1 in a frame"), Changed, Seen),
 			Seen > 50 && Changed * 50 < Seen);
+		// Running eases in: across a small step in the air no running drop moves more than 0.02 of a cell.
+		float WorstSlide = 0.f;
+		for (int32 Cell = 0; Cell < 4000; ++Cell)
+		{
+			for (float Air = 4.f; Air < 16.f; Air += 0.5f)
+			{
+				const SailingLens::FLensDrop D0 = SailingLens::DropAt(Cell % 60, Cell / 60, 1, 91.f, 1.f, 0.f, Air, FVector2f(0.6f, 0.8f));
+				const SailingLens::FLensDrop D1 = SailingLens::DropAt(Cell % 60, Cell / 60, 1, 91.f, 1.f, 0.f, Air + 0.01f, FVector2f(0.6f, 0.8f));
+				if (D0.Present > 0.f) WorstSlide = FMath::Max(WorstSlide, (D1.Centre - D0.Centre).Size());
+			}
+		}
+		TestTrue(FString::Printf(TEXT("0.01 m/s more air moves a drop at most %.4f of a cell"), WorstSlide), WorstSlide < 0.02f);
 		TestTrue(TEXT("A camera cut (a 19.2 km origin rebase in a frame) brings no air"),
 			SailingLens::LensCameraVelocity(FVector(19200.0, 0.0, 0.0), 1.f / 60.f).IsNearlyZero());
 		TestTrue(TEXT("A fast boat's camera (15 m/s) keeps its air"),
@@ -260,8 +273,8 @@ bool FVisualLensDropsTest::RunTest(const FString&)
 					 TEXT("(splash ? 6.0f : 4.5f) * (0.6 + 0.8 * r[0])"), TEXT("float tt = T / period + r[1]"),
 					 TEXT("saturate(age / 0.03) * (1.0 - smoothstep(0.6 * visible, visible, age)) * (splash ? Spray : 1.0f)"),
 					 TEXT("(splash ? 0.18 + 0.14 * r[3] : 0.07 + 0.23 * r[3] * r[3]) * (1.0 - 0.35 * smoothstep(0.5 * visible, visible, age))"),
-					 TEXT("0.8 + 0.25 * r[8]"), TEXT("float2(r[4], r[5]) * 0.6 + 0.2"), TEXT("!splash && r[6] < 0.7 * windShare"),
-					 TEXT("(0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age)"), TEXT("runs ? 2.0f : 0.6 * windShare"),
+					 TEXT("0.8 + 0.25 * r[8]"), TEXT("float2(r[4], r[5]) * 0.6 + 0.2"), TEXT("splash ? 0.0f : saturate((0.7 * windShare - r[6]) / 0.05)"),
+					 TEXT("(0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age) * runW"), TEXT("lerp(0.6 * windShare, 2.0, runW)"),
 					 TEXT("0.66 / (rad * 1.1)"), TEXT("float2(0.37, 0.61) * layer"), TEXT("cos(0.7 * layer)"), TEXT("floor(p - 0.5)") })
 				TestTrue(FString::Printf(TEXT("LENS_CODE has %s (LensDrops.h's twin)"), Must), Code.Contains(Must, ESearchCase::CaseSensitive));
 		}

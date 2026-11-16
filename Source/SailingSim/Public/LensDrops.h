@@ -122,7 +122,8 @@ namespace SailingLens
 		float StretchMax = 1.f;     // its tail never takes it past 0.66 of a cell from its centre
 		float Tail = 0.f;           // the shader's stretch is min(1 + Tail * (0..1), StretchMax)
 		float Reach = 0.f;          // the farthest its outline gets from its centre (wobble included), cells
-		bool bRuns = false;
+		bool bRuns = false;         // RunWeight > 0
+		float RunWeight = 0.f;      // 0..1: eases in over 0.05 of the draw, so a drop that starts running slides
 		float Rand[12] = {};        // the draws, in the shader's order (rim wobble and glint use 7..11)
 	};
 
@@ -153,17 +154,18 @@ namespace SailingLens
 		D.Aspect = 0.8f + 0.25f * D.Rand[8];
 		D.StretchMax = 0.66f / (D.Radius * 1.1f);
 		const FVector2f C0 = FVector2f(D.Rand[4], D.Rand[5]) * 0.6f + FVector2f(0.2f, 0.2f);
-		D.bRuns = !bSplash && D.Rand[6] < 0.7f * WindShare(AirMs);
+		D.RunWeight = bSplash ? 0.f : FMath::Clamp((0.7f * WindShare(AirMs) - D.Rand[6]) / 0.05f, 0.f, 1.f);
+		D.bRuns = D.RunWeight > 0.f;
 		float Run = 0.f;
 		if (D.bRuns)
 		{
 			// As far along the push as the box its centre lives in allows (0.2 to 0.8 of the cell), so it stays findable.
 			const float Rx = WindLayer.X > 0.f ? (0.8f - C0.X) / FMath::Max(WindLayer.X, 1e-4f) : (C0.X - 0.2f) / FMath::Max(-WindLayer.X, 1e-4f);
 			const float Ry = WindLayer.Y > 0.f ? (0.8f - C0.Y) / FMath::Max(WindLayer.Y, 1e-4f) : (C0.Y - 0.2f) / FMath::Max(-WindLayer.Y, 1e-4f);
-			Run = FMath::Min(Rx, Ry) * (0.5f + 0.5f * D.Rand[7]) * FMath::SmoothStep(0.15f, L, D.Age);
+			Run = FMath::Min(Rx, Ry) * (0.5f + 0.5f * D.Rand[7]) * FMath::SmoothStep(0.15f, L, D.Age) * D.RunWeight;
 		}
 		D.Centre = C0 + WindLayer * Run;
-		D.Tail = D.bRuns ? 2.f : 0.6f * WindShare(AirMs);
+		D.Tail = FMath::Lerp(0.6f * WindShare(AirMs), 2.f, D.RunWeight);
 		D.Reach = D.Radius * 1.1f * FMath::Max(FMath::Min(1.f + D.Tail, D.StretchMax), D.Aspect);
 		return D;
 	}

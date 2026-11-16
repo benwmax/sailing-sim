@@ -44,7 +44,7 @@ Each layer now hashes four cells instead of one, 16 per pixel. That is a few hun
 
 ## Fix: the drops read as a repeating pattern (feedback #28, Nov 16)
 
-A tester on the 4090 (Ultra, Ray Hubbard thunderstorm, 27 kn) found the near drops "too consistent and constant, so they
+A tester on the 4090 (Ultra, thunderstorm, 27 kn, Ray Hubbard per the report's telemetry) found the near drops "too consistent and constant, so they
 look like a repeating pattern". Three causes, all in `LENS_CODE`:
 
 - **They never left.** Each layer's lattice scrolled with the wind as a whole, and a cell's drop was drawn once for ever
@@ -75,7 +75,7 @@ checks `LENS_CODE` still carries the same constants):
   push in the screen. Both are low-passed over 2 s on the CPU (`SailingLens::FLensAir`): drops last a few seconds, and
   read live, a camera turn from head-on air to crosswind rewrote every drop's life in one frame (half of them faded or came
   back together; the boat's pitch and the buffet made them breathe). A camera move faster than 60 m/s in a frame (a cut, a
-  teleport, an origin rebase, the first frame) brings no air. From 3 m/s up to 15 m/s a drop's stay falls from 0.9 to 0.4 of its epoch (about 3 s to 1.4 s on average) and up
+  teleport, an origin rebase, the first frame) brings no air. From still air (3 m/s with gravity's share) up to 15 m/s a drop's stay falls from 0.9 to 0.4 of its epoch (about 3 s to 1.4 s on average) and up
   to 70% of them run downwind, dragging a tail, as far as their cell allows. In still air none run. The lattices no longer
   scroll.
 - **Dry glass is cheaper.** A layer whose chance is under 0.002 is skipped (the pass, the film and the scene samples still

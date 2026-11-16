@@ -5117,18 +5117,19 @@ for (int layer = 0; layer < 4; layer++)
                 float rad = (splash ? 0.18 + 0.14 * r[3] : 0.07 + 0.23 * r[3] * r[3]) * (1.0 - 0.35 * smoothstep(0.5 * visible, visible, age));
                 float aspectD = 0.8 + 0.25 * r[8];
                 float2 c = float2(r[4], r[5]) * 0.6 + 0.2;
-                bool runs = !splash && r[6] < 0.7 * windShare;
-                if (runs)
+                // Runs once the air is strong enough for it, easing in (a drop starting to run mid-life slides, never jumps).
+                float runW = splash ? 0.0f : saturate((0.7 * windShare - r[6]) / 0.05);
+                if (runW > 0.0)
                 {
                     // As far along the push as the centre's box allows.
                     float rx = wl.x > 0.0 ? (0.8 - c.x) / max(wl.x, 1e-4) : (c.x - 0.2) / max(-wl.x, 1e-4);
                     float ry = wl.y > 0.0 ? (0.8 - c.y) / max(wl.y, 1e-4) : (c.y - 0.2) / max(-wl.y, 1e-4);
-                    c += wl * (min(rx, ry) * (0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age));
+                    c += wl * (min(rx, ry) * (0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age) * runW);
                 }
                 float2 d = p - cell - c;
                 // Streaked along the way it runs (a running drop drags a tail; a sitting one only leans), never past 0.66 of a cell.
                 float along = dot(d, wl), across = dot(d, float2(-wl.y, wl.x));
-                float tail = runs ? 2.0f : 0.6 * windShare;
+                float tail = lerp(0.6 * windShare, 2.0, runW);
                 float stretch = min(1.0 + tail * saturate(along * 4.0 + 0.5), 0.66 / (rad * 1.1));
                 float2 q = float2(along / stretch, across / aspectD) / rad;   // the drop's own frame, its rim near 1
                 // No drop on glass is a perfect circle: a wobble of up to 10% on its outline (worked out only near it: past
