@@ -1,5 +1,5 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails.
 
     blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
 
@@ -8,7 +8,8 @@ rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from d
 them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
 its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
 rudder kicked up, under the down ones' names), and the mast, boom, wires and their kit fittings from rig_c22.py
-(build_rig_c22.py). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
+(build_rig_c22.py), and the sails in each of their states from sails_c22.py (build_sails_c22.py: all hidden but the
+mainsail under its cover). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
 linked (the mast and boom).
 
 Writes <out>/c22.blend (objects C22_Hull and the deck's, the keel's and the rig's: build_deck_c22.py,
@@ -32,6 +33,7 @@ import hull_c22 as H  # noqa: E402
 import build_deck_c22 as BD  # noqa: E402
 import build_keel_c22 as BK  # noqa: E402
 import build_rig_c22 as BR  # noqa: E402
+import build_sails_c22 as BS  # noqa: E402
 import keel_c22 as KC  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -114,7 +116,10 @@ SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail":
             "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
             "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82), "Keel": (0.24, 0.23, 0.22),
             "Antifouling": (0.16, 0.2, 0.3), "Topsides": (0.92, 0.92, 0.9), "Wood": (0.55, 0.36, 0.2),
-            "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9), "Wire": (0.7, 0.71, 0.73)}
+            "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9), "Wire": (0.7, 0.71, 0.73),
+            "ClothMain": (0.93, 0.92, 0.88), "ClothJib": (0.93, 0.92, 0.88), "ClothGenoa": (0.93, 0.92, 0.88),
+            "ClothSpinnaker": (0.13, 0.33, 0.62), "SailHeap": (0.9, 0.89, 0.85), "SailPatch": (0.9, 0.89, 0.85),
+            "SailLine": (0.25, 0.33, 0.55), "SailBag": (0.18, 0.22, 0.32)}
 
 
 def deck_materials():
@@ -150,6 +155,7 @@ def main():
     keel_obs = BK.build_all(deck_materials(), keel_up=KEEL_UP)
     keel = next(o for o in keel_obs if o.name == ("C22_KeelDown" if KEEL_UP else "C22_Keel"))
     _, socks = BR.build_all(deck_materials())
+    BS.build_all(deck_materials())
     json.dump(socks, open(os.path.join(OUT, "c22_sockets.json"), "w"), indent=1)
     h = H.hydrostatics()
     g = H.CARD["game"]
