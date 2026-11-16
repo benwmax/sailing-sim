@@ -316,3 +316,13 @@ shapes, the D-pad is a cross with the arms that matter lit, a stick is a ring an
 direction), View and Menu carry their marks; anything else stays a text pill. `KeyCap` shows the keyboard's cap or the
 glyphs by the last device used. `-SailingPad` shows the controller's prompts without one plugged in (stills).
 `SailingSim.UI.PadGlyphs` holds every label the prompts use to a drawn glyph.
+
+## Phase 12: the minimap as a paper chart
+
+`T_MiniMap_<World>` was the launch map's print (blue water shaded by depth, tan land) under a wash of paper. It is now
+drawn as a chart (`chart_sheet` in `Tools/ui/make_ui_art.py`): deep water is left as paper, water under 5 m and under
+2 m takes two blue tints, fine depth lines run at 2, 5 and 10 m, the shoreline is ink, bridges are dark brown. The lines
+and edges come from the smoothed height field itself (the distance to a level is |h - level| / |grad h|), so they are
+anti-aliased and an even width on the lake's 5 m grid and the coast's coarser ones. The launch maps (`T_Map_<World>`)
+are unchanged. Rebuild with `Tools/venv/bin/python -I Tools/ui/make_ui_art.py`, then
+`UI_ART_ONLY=T_MiniMap scripts/import_ui_art.py`.

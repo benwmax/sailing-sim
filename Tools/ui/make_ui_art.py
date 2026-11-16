@@ -4,7 +4,9 @@
                                    bridges and causeways in brown, place names in tracked capitals (Saira), a magenta
                                    compass rose. The map covers the world's whole height grid, north up, so the game
                                    places pins by the grid's extent (Content/TerrainData/<World>.json "grid").
-  Artifacts/ui/T_MiniMap_<World>.png  the same chart for the HUD's minimap, 4096 px, no names (and the Gulf passage's).
+  Artifacts/ui/T_MiniMap_<World>.png  the HUD's minimap, 4096 px, drawn as a paper chart (docs/ui-overhaul, Phase 12): deep
+                                   water left as paper, water under 5 m and under 2 m tinted blue, fine depth lines at 2,
+                                   5 and 10 m, an ink shoreline, no names (and the Gulf passage's).
   Artifacts/ui/T_Card_<World>.jpg  world card art and T_Load_<World>_<n>.jpg loading images, cropped from the bench
                                    screenshots in docs/ (the game itself, never photos).
 
@@ -55,6 +57,50 @@ def load(world):
     return meta, h, (nx, ny, cell, x0, y0)
 
 
+# The minimap's paper chart (the UI overhaul's "chart table": paper ashore, the HUD's map a sheet of chart paper).
+CHART_LAND = (0xD9, 0xC8, 0x9A)
+CHART_PAPER = (0xF1, 0xEA, 0xD6)
+CHART_SHOAL = (0xA9, 0xD0, 0xE0)    # under 2 m
+CHART_MID = (0xD3, 0xE5, 0xE6)      # 2 to 5 m
+CHART_INK = (0x3A, 0x34, 0x28)
+CHART_LINE = (0x5E, 0x93, 0xAE)
+CHART_BRIDGE = (0x6B, 0x55, 0x3A)
+
+
+def chart_sheet(small):
+    """The heights (m, water below 0) as a paper chart. Lines and edges come from the smoothed height field itself
+    (distance to a level = |h - level| / |grad h|), so they are anti-aliased and an even width at any grid size."""
+    k = np.exp(-0.5 * (np.arange(-4, 5) / 1.2) ** 2)
+    k /= k.sum()
+    sm = small.astype(np.float64)
+    for axis in (1, 0):
+        sm = np.apply_along_axis(lambda r: np.convolve(np.pad(r, 4, mode="edge"), k, "valid"), axis, sm)
+    gy, gx = np.gradient(sm)
+    g = np.maximum(np.hypot(gx, gy), 1e-4)
+
+    def band(level, half):    # coverage of a line of half-width `half` px along the level
+        return np.clip(half + 0.5 - np.abs(sm - level) / g, 0, 1)
+
+    def below(level):         # anti-aliased "deeper than the level"
+        return np.clip(0.5 + (level - sm) / g, 0, 1)
+
+    rgb = np.empty(sm.shape + (3,), float)
+    rgb[:] = CHART_SHOAL
+    for level, col in ((-2.0, CHART_MID), (-5.0, CHART_PAPER)):
+        a = below(level)[..., None]
+        rgb = rgb * (1 - a) + np.array(col, float) * a
+    ly, lx = np.gradient(np.where(sm < 0, 0, sm))
+    shade = np.clip(1.0 + 0.04 * (lx - ly), 0.92, 1.06)[..., None]
+    a = (1 - below(0.0))[..., None]
+    rgb = rgb * (1 - a) + np.array(CHART_LAND, float) * shade * a
+    for level, strength in ((-2.0, 0.75), (-5.0, 0.75), (-10.0, 0.6)):
+        a = (band(level, 0.3) * strength * (sm < -0.5))[..., None]
+        rgb = rgb * (1 - a) + np.array(CHART_LINE, float) * a
+    a = band(0.0, 0.75)[..., None]
+    rgb = rgb * (1 - a) + np.array(CHART_INK, float) * a
+    return Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB")
+
+
 def make_map(world, long_side=1800, mini=False):
     meta, h, (nx, ny, cell, x0, y0) = load(world)
     # North up: grid rows run north, so flip; columns run east.
@@ -75,6 +121,8 @@ def make_map(world, long_side=1800, mini=False):
     # The shoreline: the water mask's edge.
     edge = Image.fromarray((water * 255).astype(np.uint8)).filter(ImageFilter.FIND_EDGES)
     im.paste(Image.new("RGB", im.size, SHORE), mask=edge)
+    if mini:
+        im = chart_sheet(small)
     d = ImageDraw.Draw(im)
 
     def px(n, e):
@@ -83,9 +131,9 @@ def make_map(world, long_side=1800, mini=False):
     for b in meta.get("bridges", []):
         pts = [px(p[0], p[1]) for p in b.get("points", [])]
         if len(pts) > 1:
-            d.line(pts, fill=ROAD, width=max(3, int(6 * scale * 10 / cell)))
+            d.line(pts, fill=CHART_BRIDGE if mini else ROAD, width=max(3, int(6 * scale * 10 / cell)))
     if mini:
-        # The HUD's minimap: the same chart without names or rose (it shows a few km around the boat).
+        # The HUD's minimap: the paper chart without names or rose (it shows a few km around the boat).
         im.save(os.path.join(OUT, f"T_MiniMap_{world}.png"))
         print(f"T_MiniMap_{world}: {w}x{hh}")
         return
