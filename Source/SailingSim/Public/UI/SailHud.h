@@ -13,6 +13,9 @@ namespace Sailing { class FScriptedScene; }
  * compass tape and heading, learning tip card, drill panel, toast line, sail trim panel, instrument cluster (speed,
  * apparent wind dial, depth), minimap and key hints. Dials, tape and map are painted every frame; text refreshes at
  * 10 Hz (a real instrument's damping, and no text rebuilt each frame). H cycles Full, Minimal and Off.
+ * Layout (docs/hud-layout/, Bean Nov 15 2026): minimap top right above the drill, race and navigation panels; speed,
+ * apparent wind and depth bottom left; the bottom centre left clear for the boat; messages (the captain's call, toasts,
+ * rules points, signals heard, sound captions) on solid cards centre right, left of the right-hand panels when they show.
  */
 class SAILINGSIM_API SSailHud : public SCompoundWidget
 {
@@ -37,6 +40,15 @@ public:
 	static FVector2f MiniMapClearOf(const FVector2f& Q, float Radius, TArrayView<const FBox2f> Keep, const FVector2f& Origin, const FVector2f& Size);
 
 	ASailboatPawn* Pawn() const;
+	/** The right-hand column's width (minimap, drill, race and navigation panels) and the gap the messages keep from it. */
+	static constexpr float RightColumnWidth = 365.f;
+	static constexpr float MessageGap = 20.f;
+	/** The centre-right message stack's widest card: no wider than MessageMaxWidth, and kept right of the screen's centre
+	 *  (the boat) where the screen allows, never narrower than MessageMinWidth. LayoutWidth is the HUD's own width (after
+	 *  Settings > HUD size). */
+	static constexpr float MessageMaxWidth = 460.f;
+	static constexpr float MessageMinWidth = 300.f;
+	static float MessageWidthFor(float LayoutWidth, bool bRightPanels);
 
 private:
 	void Refresh();
@@ -44,6 +56,10 @@ private:
 	void RefreshScene(const ASailboatPawn& P, const class ASailingGameMode& GM);
 	TWeakObjectPtr<APlayerController> Player;
 	double NextRefresh = 0.0;
+	/** Whether the right-hand column shows a panel under the minimap (the messages then sit left of it). */
+	bool RightPanelsShown() const;
+	/** The HUD's width in its own units (Settings > HUD size applied), from the last tick. */
+	float LayoutWidth = 1920.f;
 	// Text refreshed at 10 Hz.
 	FText TimeText, WindText, SkyText, TideText, HeadingText, SpeedText, SpeedSub, DepthText, DepthSub, AwaText, AwsText,
 		PointText, SpeedUnitText, DepthUnitText, TipTitle, TipBody, ToastText, DrillTitle, DrillFooter, HintsText;
@@ -58,12 +74,33 @@ private:
 	double TipShownAt = 0.0;
 	TArray<TTuple<FString, int32, FString>> DrillSteps;   // text, 0 upcoming 1 current 2 done, coach line
 	TSharedPtr<class SVerticalBox> DrillList;
+	// The right-hand column's panels (drill, race, navigation) and the room they have between the minimap and the sail trim
+	// panel. When they need more than that room they shed whole lines, one fit level at a time (RightFit, 0 = everything):
+	// 1 the drill footer's mode, 2 the coach's lines, 3 every step but the current one, 4 the race's detail lines and the
+	// navigation text, 5 the navigation panel, 6 the drill's step and the race score, 7 the race's task (its headline
+	// stays). A level is undone once the room holds the height measured before it (RightFitHeights). Never a cut line.
+	TSharedPtr<class SBox> RightPanels, RightPanelsRoom;
+	static constexpr int32 RightFitMax = 7;
+	int32 RightFit = 0;
+	float RightFitHeights[RightFitMax] = {};
+	uint32 RightFitKey = 0;
+	double RightFitHold = 0.0;
+	bool Fit(int32 Level) const { return RightFit >= Level; }
+	// The left-hand column's cards (strip, tip, rules callout) and their room above the instruments: bCompactLeft drops the
+	// explainer lines (the callout's reason, the tip card's footer) until the room holds FullLeftHeight again.
+	TSharedPtr<class SBox> LeftPanels, LeftPanelsRoom;
+	bool bCompactLeft = false;
+	float FullLeftHeight = 0.f;
 	TSharedPtr<struct FSlateBrush> MapBrush;
 	// Traffic (the rules coach's callout and the signals heard), the race and the coast's navigation panel.
 	bool bCoach = false, bSignals = false, bRace = false, bNav = false, bCoast = false;
 	// Sound captions (USoundCaptions), refreshed with the rest at 10 Hz.
 	bool bCaptions = false;
 	FText CaptionsText;
+	// The latest rules judgment as its own points card ("+20", what it was for), kept 8 s.
+	bool bPoints = false;
+	FText PointsValue, PointsText;
+	FLinearColor PointsColor = FLinearColor::White;
 	FText CoachWho, CoachRole, CoachReason, CoachAction, CoachCpa, SignalsText, ScoreText, RaceHead, RaceTask, RaceLine, RaceResults, NavText, NextText;
 	FLinearColor CoachRoleColor = FLinearColor::White, CoachCpaColor = FLinearColor::White, RaceHeadColor = FLinearColor::White, RaceTaskColor = FLinearColor::White,
 		RaceLineColor = FLinearColor::White, ScoreColor = FLinearColor::White;
