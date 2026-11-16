@@ -1,13 +1,14 @@
-"""The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell.
+"""The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin.
 
-    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>]
+    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised]
 
-Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight) and a flat,
-cambered placeholder deck so renders read as a boat; the deck, cockpit and cabin are slice 2. With --fleet <dir> (a
+Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight) and the deck,
+rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from deck_c22.py (build_deck_c22.py meshes
+them; --raised builds the pop-top up, under the closed one's name). With --fleet <dir> (a
 build_fleet.py FLEET_SHAPE_BLEND=1 output: Catalina22_shape.blend) it also links today's keel, rudder, mast and boom as
 they are, so the shape loop's views show the hull with today's appendages until slice 3 and 4 replace them.
 
-Writes <out>/c22.blend (objects C22_Hull, C22_DeckPlaceholder, and with --fleet today's Catalina22_Board,
+Writes <out>/c22.blend (objects C22_Hull, the deck's (build_deck_c22.py lists them), and with --fleet today's Catalina22_Board,
 SM_Catalina22_Rudder, SM_Catalina22_Mast, SM_Catalina22_Boom), <out>/c22_report.json (the canoe body's volume and
 centre of buoyancy beside the game's: the shape loop's report format) and <out>/hydrostatics.json.
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
@@ -24,10 +25,12 @@ import bmesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_c22 as H  # noqa: E402
+import build_deck_c22 as BD  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
 FLEET = ARGS[ARGS.index("--fleet") + 1] if "--fleet" in ARGS else None
+RAISED = "--raised" in ARGS
 os.makedirs(OUT, exist_ok=True)
 
 N_STATIONS, N_GIRTH = 180, 64         # stations along her length, girth steps per side (bunched: hull_c22.girth)
@@ -99,28 +102,13 @@ def build_hull():
     return ob
 
 
-def build_deck_placeholder():
-    """A flat deck with 4 cm of camber over the sheer: only so the renders read as a boat (slice 2 builds the deck)."""
-    bm = bmesh.new()
-    rows = []
-    n = 24
-    for x in H.stations(N_STATIONS):
-        hb, zs = H.half_beam(x) - 0.002, H.sheer_z(x)
-        row = []
-        for j in range(-n, n + 1):
-            t = j / n
-            row.append(bm.verts.new((x, -hb * t, zs + 0.04 * (1 - t * t) * min(1.0, hb / 0.6))))
-        rows.append(row)
-    for a, b in zip(rows[:-1], rows[1:]):
-        for j in range(len(a) - 1):
-            bm.faces.new((a[j], b[j], b[j + 1], a[j + 1]))
-    bm.faces.new(rows[0])                                      # its camber over the transom's top, closed
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    ob = mesh_object("C22_DeckPlaceholder", bm, material("DeckPlaceholder", (0.8, 0.78, 0.72)))
-    for p in ob.data.polygons:
-        p.use_smooth = len(p.vertices) == 4
-    return ob
+SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail": (0.85, 0.85, 0.83),
+            "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
+            "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82)}
+
+
+def deck_materials():
+    return {k: material(k, v) for k, v in SLOT_RGB.items()}
 
 
 def link_fleet(path):
@@ -151,7 +139,7 @@ def main():
     clear_scene()
     depth = H.solve_depth()
     hull = build_hull()
-    build_deck_placeholder()
+    BD.build_all(deck_materials(), raised=RAISED)
     if FLEET:
         link_fleet(FLEET)
     h = H.hydrostatics()
