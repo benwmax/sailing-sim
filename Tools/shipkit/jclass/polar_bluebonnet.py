@@ -7,16 +7,15 @@
 
 No polar exists for an invented yacht, so the fleet's two measured keelboat polars are scaled to her as the maxi's
 were (Tools/boats/maxi/estimate_polar.py: Froude scaling of speed and wind, the wind made stronger for her sail area
-against her weight, ITTC-57 friction at her Reynolds number), and averaged. One number differs: the J/22's sail area.
-estimate_polar.py has (20.7 + 9.2) m^2 for her main and jib, which counts the jib twice (20.7 m^2, 223 sq ft, is main
-and jib together: her published upwind area, and FBoatConfig's main 11.5 and jib 9.2); even main and 150% genoa make
-only about 24.6. Here she has 20.7 (J22_SAIL_AREA_M2), and with it the two scaled references agree to within 7% at
-every point of Bluebonnet's polar (with 29.9 they were up to 25% apart). The maxi's own estimate still uses 29.9.
+against her weight, ITTC-57 friction at her Reynolds number), and averaged. The J/22's sail area there is 20.7 m^2
+(223 sq ft, main and jib together: FBoatConfig's main 11.5 and jib 9.2); with it the two scaled references agree to
+within 7% at every point of Bluebonnet's polar. (estimate_polar.py had counted the jib twice, 29.9, until Nov 16 2026;
+slice 13 first found it here, where the two references then came out up to 25% apart.)
 
 Her displacement-length ratio (243) lies between the J/22's (151) and the Catalina 30's (317), inside the method's
 range. Its own check, the Catalina 30 scaled to the J/22 (method_check), is rougher with the jib counted once: the
-J/22 sails 10% faster than the scaled Catalina 30 on average and 4 to 20% at each point (estimate_polar.py's 4% came
-from the doubled jib). So each point allows 20%: the method's own worst point, and the fleet's tolerance for a
+J/22 sails 10% faster than the scaled Catalina 30 on average and 4 to 20% at each point (the 4% once quoted came from
+the doubled jib). So each point allows 20%: the method's own worst point, and the fleet's tolerance for a
 hand-built estimate (PolarReference.h). Points the trial misses by more are listed in GAPS with the reason, as known
 gaps for the Mac's tuning, never by widening their tolerance. Two kinds of point are weaker than the rest:
   - in 6 kn the references are read at 3.3 kn (the J/22) and 3.9 kn (the Catalina 30), under their lightest measured
@@ -44,9 +43,6 @@ _spec = importlib.util.spec_from_file_location("estimate_polar", os.path.join(RE
 EP = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(EP)
 
-# The J/22's main and jib counted once (see above); the rest of her row (LWL, volume) is estimate_polar.py's.
-J22_SAIL_AREA_M2 = 20.7
-EP.BOATS["j22"] = (EP.BOATS["j22"][0], J22_SAIL_AREA_M2, EP.BOATS["j22"][2])
 
 TWS = [6, 10, 16]
 TOLERANCE = 0.20

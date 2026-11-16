@@ -98,18 +98,18 @@ that the blade's load barely moves it.
 30's ORC certificate, scaled to her by Froude's law (speeds and winds by the square root of the length), the wind made
 stronger for her sail area against her weight, friction at her size, then averaged.
 
-**One number differs from the maxi's.** `estimate_polar.py` has (20.7 + 9.2) m² for the J/22's main and jib, which
+**One number this slice found wrong.** `estimate_polar.py` had (20.7 + 9.2) m² for the J/22's main and jib, which
 counts her jib twice: 20.7 m² (223 sq ft) is her main and jib together, her published upwind area and the physics'
-main 11.5 plus jib 9.2. Even with a 150% genoa she carries only about 24.6. Here the J/22 has 20.7, and with it the two
-scaled references agree within 7% at every point of Bluebonnet's polar (with 29.9 they were up to 25% apart), and
-the estimate agrees with *Ranger*'s 1937 record race (below). The maxi's own estimate still uses 29.9, which reads the
-J/22 too weak: a note for her.
+main 11.5 plus jib 9.2. Even with a 150% genoa she carries only about 24.6. With 20.7 the two scaled references agree
+within 7% at every point of Bluebonnet's polar (with 29.9 they were up to 25% apart), and the estimate agrees with
+*Ranger*'s 1937 record race (below). The maxi's tool now has 11.5 + 9.2 too, and her reference polar rose 2 to 9% with
+it (the follow-up to this slice).
 
 **How far to trust it.** Her displacement-length ratio, 243, is inside the method's range (the J/22's 151 and the
 Catalina 30's 317). The method's own check, the Catalina 30 scaled to the J/22, is rougher with the jib counted once:
-the scaled Catalina 30 comes out 10% under the J/22 on average and 4 to 20% under at each point (`estimate_polar.py`'s
-4% came from the doubled jib). So each point allows 20%, the method's own worst, which is also the fleet's tolerance for
-a hand-built estimate (`PolarReference.h`). Points the trial misses by more are listed in `GAPS` with their reason,
+the scaled Catalina 30 comes out 10% under the J/22 on average and 4 to 20% under at each point (the 4% first quoted
+for it came from the doubled jib). So each point allows 20%, the method's own worst, which is also the fleet's
+tolerance for a hand-built estimate (`PolarReference.h`). Points the trial misses by more are listed in `GAPS` with their reason,
 reported by the rule check rather than failed, and left at 20% for the Mac to close by tuning: no point's tolerance is
 widened to fit. Two kinds of point are weaker than the rest:
 
@@ -273,7 +273,7 @@ Tools/shipkit/jclass/trial/probes.sh <out> > docs/jclass-13/baseline/probes.txt 
 | --- | --- |
 | `Tools/shipkit/jclass/physics.py` | new: her physics sheet from a build (sections cut at the canoe line, the keel's volume, the weights scaled and placed, the lateral plane, the rudder as the keel's flap, the rig and sails, windage, resistance), `physics.json` and the two `.inl` files |
 | `Tools/shipkit/jclass/physics_bluebonnet.json` | new: the knobs only sailing her settles (crew, sails' aerodynamics, foils' aspect and balance, trimmer, resistance, helm), each with its reason |
-| `Tools/shipkit/jclass/polar_bluebonnet.py` | new: the estimated polar (the maxi's method, the J/22's sail area counted once), its 20% tolerance and `GAPS` (points known to be outside it, with their reason), the races and the method's own check |
+| `Tools/shipkit/jclass/polar_bluebonnet.py` | new: the estimated polar (the maxi's method), its 20% tolerance and `GAPS` (points known to be outside it, with their reason), the races and the method's own check |
 | `Tools/shipkit/jclass/polar_compare.py` | new: the trial against the estimate and the races, the stiffness comparison, the charts and `baseline/` |
 | `Tools/shipkit/jclass/trial/trial_sail.cpp`, `trial.sh` | new: the standalone trial sail (statics, stiffness, the polar's points and the VMG searches on all cores; `TRIAL_SET` knobs) |
 | `Tools/shipkit/jclass/trial/probes.sh` | new: the knob probes in the table above |
