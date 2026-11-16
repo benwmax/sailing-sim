@@ -221,7 +221,8 @@ A boat's instruments turn red after dark so the eye keeps its night sight; the H
   over an ink halo so it reads on the land.
 - **All three modes.** Helpful and Natural turn red alike; Off shows only its warnings, red too.
 - **Off switch.** Settings > Display > Night colours (save `display.nightHud`, on by default).
-- Stills: `-SailingNightHud=<0..1>` forces it (`hud-night.jpg`, `hud-natural-night.jpg`).
+- Stills: `hud-night.jpg` and `hud-natural-night.jpg` (22:00, the real night); `-SailingNightHud=<0..1>` forces it
+  (`hud-half.jpg` is 0.5 by day, to show the blend).
 
 ## What comes next
 
