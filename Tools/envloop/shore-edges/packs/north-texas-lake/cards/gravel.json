@@ -1,0 +1,43 @@
+{
+ "part": "gravel",
+ "name": "Gravel and shell beach",
+ "in_game": "Replaces the 'sand strip' on beaches and points (terrain plus scatter)",
+ "real": "A beach of limestone gravel, chert and ironstone, 1:8 to 1:12, a small berm at the wrack line, the face steeper under the water; Asian clam valves bleached white in drifts; sticks and leaves along the berm.",
+ "measures": {
+  "slope": {
+   "range": [
+    0.08333333333333333,
+    0.125
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "berm_z": {
+   "range": [
+    0.1,
+    0.4
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 50000,
+  "note": "pebbles near the camera only (they fade into the ground texture past 30 m)"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos"
+}

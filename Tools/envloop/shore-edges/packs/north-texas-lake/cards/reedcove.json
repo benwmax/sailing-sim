@@ -1,0 +1,36 @@
+{
+ "part": "reedcove",
+ "name": "Reed cove: a shallow cove with cattails and rushes",
+ "in_game": "Coves and creek mouths by rule (shallow, sheltered): ground is terrain, the plants are Track B's (these are stand-ins)",
+ "real": "A sheltered cove less than half a metre deep, soft mud banks, a patchy stand of cattails 1.2-2.4 m with brown heads and rushes nearer the bank, open channels through it, a drift of dead stems and leaves at the edge.",
+ "measures": {
+  "stems": {
+   "range": [
+    300,
+    4000
+   ],
+   "source": "stand-in count over 16 m; Track B sets the real density"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 15000,
+  "note": "stand-in blades only"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos"
+}

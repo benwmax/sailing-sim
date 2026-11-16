@@ -1,0 +1,51 @@
+{
+ "part": "timber",
+ "name": "Timber wall: treated posts and horizontal boards",
+ "in_game": "New: a bank kind for older lots and small coves (HouseKit, by seed)",
+ "real": "Treated pine piles 8 in across every 8 ft, 2x10 boards stacked behind them, a cap board on top. Weathered silver-grey, boards bowed and gapped, posts out of plumb, darker and slimed below the pool.",
+ "measures": {
+  "board_h": {
+   "target": 0.235,
+   "tol": 0.05,
+   "source": "2x10 nominal: 9.25 in actual (US lumber sizes)"
+  },
+  "post_dia": {
+   "target": 0.2,
+   "tol": 0.05,
+   "source": "8 in piling, typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "post_spacing": {
+   "target": 2.4,
+   "tol": 0.05,
+   "source": "8 ft, typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "wall_above_pool": {
+   "range": [
+    0.5,
+    1.0
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 8000
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos",
+ "periodic_by_design": "posts every 2.4 m"
+}
