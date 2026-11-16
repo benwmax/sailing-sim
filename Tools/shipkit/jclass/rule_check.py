@@ -38,9 +38,13 @@ weight and centre are printed: what slice 10 must weigh, and where, to keep the 
 interior aft must close too (its five objects), the same crossing and support checks cover it, the saloon and the
 owner's end must have standing headroom, the companion stairs' rise may not pass interior_bluebonnet.json's
 'rise_max' (nor 0.27 m), every door aft must open at least 1.6 m high, the triangles below aft stay within slice 10's
-900,000,
-and the accommodation forward and aft together, measured, must weigh no more than the card's and replace its estimate
-in the weight check, the trimming ballast taking what it leaves.
+900,000, and the accommodation forward and aft together, measured, must weigh no more than the card's and replace its
+estimate in the weight check, the trimming ballast taking what it leaves. From slice 11 every material the build makes
+must be dressed by a texture card or named unweathered (glass, lenses, mirrors, bulbs, flags) and every card's
+material must be built, the five wear levels must be there with L0 all new, and her own detail maps must tile
+without a seam (TILING_MAX) or a repeat a player would see (REPEAT_MAX), hold at least 4 px/mm (the closest camera)
+and their patterns' sizes must be the card's, and they must fit the texture budget: TEXTURE_HIGH_MB on High, none on
+Medium.
 Plain Python: no Blender needed.
 """
 import json
@@ -60,6 +64,10 @@ INTERIOR_AFT = ("Aft.Structure", "Aft.Panelling", "Aft.Joinery", "Aft.Fittings",
 DOOR_MIN_M = 1.6            # the least height of a door's opening below (slice 10)
 STAIR_RISE_MAX_M = 0.27     # the companion stairs' steepest rise (slice 10): the json's 'rise_max' may only be less
 SLICE_10_TRIANGLES = 900000  # below decks aft's budget (the plan's), whatever the build says
+TEXTURE_HIGH_MB = 6.0        # her own detail maps on High (slice 11; the plan's, whatever the cards say); Medium none
+TILING_MAX = 1.0             # a map's wrap step over the largest of its steps inside (textures.py)
+REPEAT_MAX = 0.2             # a map's share of variance at four cycles a tile or fewer (textures.py)
+PX_PER_MM_MIN = 4.0          # the texture loop's sharpness at the closest camera
 AFT_ROOMS = ("Pantry", "Saloon", "Aft cabins")
 # the least headroom between the beams on the centreline in each room forward (slice 9): standing room (6 ft) where the
 # crew live and work, stooping room in the sail locker, sitting room in the washroom, and none asked of the forepeak,
@@ -431,6 +439,40 @@ if __name__ == "__main__":
                       f"{SLICE_10_TRIANGLES}; the build's budget {bud}), streamed in with slice 9's "
                       f"{b.get('triangles_slice_9_below')}")
                 ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 11:
+            # slice 11: the wear over every material, the five levels, her maps' tiling, sharpness and budget
+            tx = b.get("textures") or {}
+            good = (tx.get("uncovered") == [] and tx.get("not_built") == [] and bool(tx.get("dressed")))
+            print(f"{'ok  ' if good else 'FAIL'} the wear dresses {len(tx.get('dressed') or [])} materials, "
+                  f"{len(tx.get('unweathered') or [])} left unweathered by design; uncovered {tx.get('uncovered')}, "
+                  f"cards for materials not built {tx.get('not_built')}")
+            ok = good
+            lv = tx.get("levels") or {}
+            good = (sorted(lv) == ["L0", "L1", "L2", "L3", "L4"]
+                    and all(v == 0.0 for terms in (lv.get("L0") or {"x": {"x": 1.0}}).values() for v in terms.values()))
+            print(f"{'ok  ' if good else 'FAIL'} the wear levels {sorted(lv)}, L0 new (every term 0)")
+            ok = ok and good
+            for name, mp in (tx.get("maps_own") or {}).items():
+                size = mp.get("size") or {}
+                size_ok = bool(size) and all(v.get("pass") for v in size.values())
+                sizes = ", ".join(f"{k} {v.get('mm')} mm" for k, v in size.items())
+                good = (max(mp.get("tiling_N", 9.0), mp.get("tiling_M", 9.0)) <= TILING_MAX
+                        and max(mp.get("repeat_N", 9.0), mp.get("repeat_M", 9.0)) < REPEAT_MAX
+                        and mp.get("px_per_mm", 0.0) >= PX_PER_MM_MIN and size_ok)
+                print(f"{'ok  ' if good else 'FAIL'} map {name}: tiling {mp.get('tiling_N')} / {mp.get('tiling_M')} "
+                      f"(at most {TILING_MAX}), repeat {mp.get('repeat_N')} / {mp.get('repeat_M')} (under "
+                      f"{REPEAT_MAX}), {mp.get('px_per_mm')} px/mm (at least {PX_PER_MM_MIN}), {mp.get('mb_high')} MB; "
+                      f"pattern sizes ({sizes}) the card's: {size_ok}")
+                ok = ok and good
+            bud = tx.get("budget") or {}
+            good = (bool(tx.get("maps_own")) and bud.get("high_mb", 99.0) <= TEXTURE_HIGH_MB
+                    and bud.get("high_cap_mb") == TEXTURE_HIGH_MB and bud.get("medium_mb", 99.0) == 0.0)
+            print(f"{'ok  ' if good else 'FAIL'} her own maps take {bud.get('high_mb')} MB on High (slice 11's "
+                  f"{TEXTURE_HIGH_MB}; the cards' {bud.get('high_cap_mb')}) and {bud.get('medium_mb')} on Medium; the "
+                  f"shared library's {tx.get('maps_shared')} are already in the game")
+            ok = ok and good
             if not ok:
                 r["pass"] = False
     print(report(r))

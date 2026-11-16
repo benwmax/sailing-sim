@@ -1,0 +1,1963 @@
+{
+ "ladder": {
+  "paint.enamel": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 3.9,
+    "L2": 20.2,
+    "L3": 14.2,
+    "L4": 31.0
+   },
+   "kept_vs_neglected": 17.1,
+   "pixels": 312817,
+   "materials": {
+    "Bootstripe": {
+     "lab": {
+      "L0": [
+       92.3,
+       -0.9,
+       5.7
+      ],
+      "L1": [
+       89.1,
+       -0.8,
+       5.7
+      ],
+      "L2": [
+       82.5,
+       -0.8,
+       5.3
+      ],
+      "L3": [
+       90.3,
+       -0.7,
+       5.3
+      ],
+      "L4": [
+       79.7,
+       -0.9,
+       4.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 3.2,
+      "L2": 9.8,
+      "L3": 2.0,
+      "L4": 12.6
+     },
+     "kept_vs_neglected": 10.7,
+     "pixels": 30027
+    },
+    "Topsides": {
+     "lab": {
+      "L0": [
+       22.7,
+       19.0,
+       -42.3
+      ],
+      "L1": [
+       24.7,
+       17.0,
+       -39.6
+      ],
+      "L2": [
+       34.2,
+       10.1,
+       -26.8
+      ],
+      "L3": [
+       31.2,
+       11.8,
+       -31.7
+      ],
+      "L4": [
+       41.2,
+       6.6,
+       -17.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 3.9,
+      "L2": 21.3,
+      "L3": 15.4,
+      "L4": 33.1
+     },
+     "kept_vs_neglected": 17.9,
+     "pixels": 275523
+    },
+    "Black": {
+     "lab": {
+      "L0": [
+       7.3,
+       0.0,
+       0.0
+      ],
+      "L1": [
+       12.4,
+       0.2,
+       -1.4
+      ],
+      "L2": [
+       28.4,
+       3.0,
+       -1.1
+      ],
+      "L3": [
+       23.9,
+       0.3,
+       -3.3
+      ],
+      "L4": [
+       35.5,
+       4.7,
+       -0.4
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 5.3,
+      "L2": 21.4,
+      "L3": 17.0,
+      "L4": 28.6
+     },
+     "kept_vs_neglected": 12.7,
+     "pixels": 7267
+    }
+   },
+   "pass": true
+  },
+  "paint.antifouling": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 5.7,
+    "L2": 26.8,
+    "L3": 22.5,
+    "L4": 38.4
+   },
+   "kept_vs_neglected": 18.4,
+   "pixels": 199675,
+   "materials": {
+    "Antifouling": {
+     "lab": {
+      "L0": [
+       25.8,
+       34.0,
+       23.0
+      ],
+      "L1": [
+       27.4,
+       30.6,
+       18.8
+      ],
+      "L2": [
+       36.0,
+       15.8,
+       6.2
+      ],
+      "L3": [
+       34.7,
+       20.7,
+       7.2
+      ],
+      "L4": [
+       45.1,
+       5.6,
+       5.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 5.7,
+      "L2": 26.8,
+      "L3": 22.5,
+      "L4": 38.4
+     },
+     "kept_vs_neglected": 18.4,
+     "pixels": 198427
+    },
+    "Keel": {
+     "lab": {
+      "L0": [
+       25.8,
+       34.0,
+       23.0
+      ],
+      "L1": [
+       27.3,
+       31.7,
+       18.8
+      ],
+      "L2": [
+       35.7,
+       18.1,
+       6.1
+      ],
+      "L3": [
+       34.5,
+       21.2,
+       7.2
+      ],
+      "L4": [
+       47.5,
+       6.4,
+       6.7
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 5.0,
+      "L2": 25.2,
+      "L3": 22.2,
+      "L4": 38.7
+     },
+     "kept_vs_neglected": 19.7,
+     "pixels": 1248
+    }
+   },
+   "pass": true
+  },
+  "paint.gilt": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.5,
+    "L2": 14.7,
+    "L3": 1.2,
+    "L4": 36.4
+   },
+   "kept_vs_neglected": 35.6,
+   "pixels": 3820,
+   "materials": {
+    "CoveStripe": {
+     "lab": {
+      "L0": [
+       70.6,
+       6.6,
+       57.0
+      ],
+      "L1": [
+       69.1,
+       6.9,
+       56.7
+      ],
+      "L2": [
+       62.9,
+       7.7,
+       44.5
+      ],
+      "L3": [
+       69.5,
+       6.8,
+       56.6
+      ],
+      "L4": [
+       53.7,
+       9.1,
+       24.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.5,
+      "L2": 14.7,
+      "L3": 1.2,
+      "L4": 36.4
+     },
+     "kept_vs_neglected": 35.6,
+     "pixels": 3820
+    }
+   },
+   "pass": true
+  },
+  "paint.interior": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.9,
+    "L2": 4.6,
+    "L3": 3.3,
+    "L4": 9.8
+   },
+   "kept_vs_neglected": 7.2,
+   "pixels": 696431,
+   "materials": {
+    "WhitePaint": {
+     "lab": {
+      "L0": [
+       89.8,
+       -1.1,
+       5.1
+      ],
+      "L1": [
+       89.3,
+       -1.1,
+       5.8
+      ],
+      "L2": [
+       86.4,
+       -1.1,
+       8.2
+      ],
+      "L3": [
+       88.6,
+       -1.2,
+       8.2
+      ],
+      "L4": [
+       82.1,
+       -0.8,
+       11.1
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.9,
+      "L2": 4.6,
+      "L3": 3.3,
+      "L4": 9.8
+     },
+     "kept_vs_neglected": 7.2,
+     "pixels": 696431
+    }
+   },
+   "pass": true
+  },
+  "teak.deck": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 13.6,
+    "L2": 25.2,
+    "L3": 21.5,
+    "L4": 33.2
+   },
+   "kept_vs_neglected": 27.0,
+   "pixels": 1122590,
+   "materials": {
+    "Teak": {
+     "lab": {
+      "L0": [
+       58.8,
+       11.9,
+       29.9
+      ],
+      "L1": [
+       62.7,
+       6.0,
+       18.2
+      ],
+      "L2": [
+       52.9,
+       1.3,
+       7.7
+      ],
+      "L3": [
+       65.6,
+       1.4,
+       12.3
+      ],
+      "L4": [
+       39.5,
+       0.6,
+       5.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 13.6,
+      "L2": 25.2,
+      "L3": 21.5,
+      "L4": 33.2
+     },
+     "kept_vs_neglected": 27.0,
+     "pixels": 1122590
+    }
+   },
+   "pass": true
+  },
+  "teak.sole": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 4.1,
+    "L2": 12.5,
+    "L3": 9.8,
+    "L4": 18.8
+   },
+   "kept_vs_neglected": 13.4,
+   "pixels": 137576,
+   "materials": {
+    "Pine": {
+     "lab": {
+      "L0": [
+       68.7,
+       6.9,
+       30.2
+      ],
+      "L1": [
+       68.5,
+       5.9,
+       26.3
+      ],
+      "L2": [
+       61.2,
+       4.5,
+       20.6
+      ],
+      "L3": [
+       67.2,
+       4.3,
+       21.0
+      ],
+      "L4": [
+       54.0,
+       3.9,
+       19.0
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 4.1,
+      "L2": 12.5,
+      "L3": 9.8,
+      "L4": 18.8
+     },
+     "kept_vs_neglected": 13.4,
+     "pixels": 137576
+    }
+   },
+   "pass": true
+  },
+  "varnish.exterior": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.6,
+    "L2": 8.5,
+    "L3": 3.9,
+    "L4": 29.8
+   },
+   "kept_vs_neglected": 29.3,
+   "pixels": 339754,
+   "materials": {
+    "Wood": {
+     "lab": {
+      "L0": [
+       36.5,
+       20.1,
+       32.7
+      ],
+      "L1": [
+       36.8,
+       19.5,
+       31.3
+      ],
+      "L2": [
+       35.0,
+       16.5,
+       25.1
+      ],
+      "L3": [
+       33.0,
+       20.2,
+       31.0
+      ],
+      "L4": [
+       41.9,
+       3.3,
+       8.7
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.6,
+      "L2": 8.5,
+      "L3": 3.9,
+      "L4": 29.8
+     },
+     "kept_vs_neglected": 29.3,
+     "pixels": 339754
+    }
+   },
+   "pass": true
+  },
+  "varnish.interior": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.2,
+    "L2": 4.1,
+    "L3": 5.9,
+    "L4": 18.4
+   },
+   "kept_vs_neglected": 19.7,
+   "pixels": 1093801,
+   "materials": {
+    "Mahogany": {
+     "lab": {
+      "L0": [
+       27.7,
+       24.9,
+       22.5
+      ],
+      "L1": [
+       27.3,
+       24.0,
+       21.8
+      ],
+      "L2": [
+       25.3,
+       22.4,
+       20.8
+      ],
+      "L3": [
+       22.3,
+       23.3,
+       22.1
+      ],
+      "L4": [
+       34.9,
+       12.1,
+       10.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.2,
+      "L2": 3.9,
+      "L3": 5.6,
+      "L4": 18.6
+     },
+     "kept_vs_neglected": 20.2,
+     "pixels": 988953
+    },
+    "Varnish": {
+     "lab": {
+      "L0": [
+       45.8,
+       19.7,
+       37.4
+      ],
+      "L1": [
+       44.6,
+       19.4,
+       36.2
+      ],
+      "L2": [
+       40.8,
+       19.1,
+       34.0
+      ],
+      "L3": [
+       37.2,
+       20.8,
+       35.1
+      ],
+      "L4": [
+       42.7,
+       14.7,
+       22.5
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.7,
+      "L2": 6.1,
+      "L3": 9.0,
+      "L4": 16.0
+     },
+     "kept_vs_neglected": 15.1,
+     "pixels": 104848
+    }
+   },
+   "pass": true
+  },
+  "bronze.bronze": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 10.2,
+    "L2": 13.9,
+    "L3": 5.6,
+    "L4": 28.4
+   },
+   "kept_vs_neglected": 23.5,
+   "pixels": 103364,
+   "materials": {
+    "Bronze": {
+     "lab": {
+      "L0": [
+       47.9,
+       13.5,
+       31.9
+      ],
+      "L1": [
+       39.4,
+       11.5,
+       26.5
+      ],
+      "L2": [
+       37.6,
+       9.4,
+       23.4
+      ],
+      "L3": [
+       43.2,
+       12.4,
+       28.9
+      ],
+      "L4": [
+       33.3,
+       -0.8,
+       12.2
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 10.2,
+      "L2": 13.9,
+      "L3": 5.6,
+      "L4": 28.4
+     },
+     "kept_vs_neglected": 23.5,
+     "pixels": 103364
+    }
+   },
+   "pass": true
+  },
+  "bronze.brass": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 17.3,
+    "L2": 22.3,
+    "L3": 9.5,
+    "L4": 43.4
+   },
+   "kept_vs_neglected": 34.4,
+   "pixels": 1262,
+   "materials": {
+    "Brass": {
+     "lab": {
+      "L0": [
+       67.1,
+       4.7,
+       47.3
+      ],
+      "L1": [
+       52.7,
+       5.1,
+       37.6
+      ],
+      "L2": [
+       49.4,
+       4.0,
+       33.6
+      ],
+      "L3": [
+       59.1,
+       4.8,
+       42.0
+      ],
+      "L4": [
+       37.9,
+       -2.5,
+       15.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 17.3,
+      "L2": 22.3,
+      "L3": 9.5,
+      "L4": 43.4
+     },
+     "kept_vs_neglected": 34.4,
+     "pixels": 1262
+    }
+   },
+   "pass": true
+  },
+  "duralumin.spar": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.5,
+    "L2": 5.6,
+    "L3": 1.3,
+    "L4": 8.2
+   },
+   "kept_vs_neglected": 9.5,
+   "pixels": 306464,
+   "materials": {
+    "Spar": {
+     "lab": {
+      "L0": [
+       81.0,
+       -0.2,
+       17.8
+      ],
+      "L1": [
+       80.8,
+       -0.3,
+       18.2
+      ],
+      "L2": [
+       81.7,
+       -0.3,
+       12.3
+      ],
+      "L3": [
+       80.6,
+       -0.2,
+       19.0
+      ],
+      "L4": [
+       81.4,
+       -0.4,
+       9.6
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.5,
+      "L2": 5.6,
+      "L3": 1.3,
+      "L4": 8.2
+     },
+     "kept_vs_neglected": 9.5,
+     "pixels": 306464
+    }
+   },
+   "pass": true
+  },
+  "cotton.sail": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 4.8,
+    "L2": 12.4,
+    "L3": 5.3,
+    "L4": 19.1
+   },
+   "kept_vs_neglected": 15.0,
+   "pixels": 214150,
+   "materials": {
+    "ClothGenoa": {
+     "lab": {
+      "L0": [
+       87.8,
+       -0.8,
+       13.9
+      ],
+      "L1": [
+       83.4,
+       -0.5,
+       14.8
+      ],
+      "L2": [
+       76.3,
+       -0.0,
+       17.0
+      ],
+      "L3": [
+       84.4,
+       -0.7,
+       17.7
+      ],
+      "L4": [
+       70.0,
+       0.4,
+       18.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 4.6,
+      "L2": 11.9,
+      "L3": 5.2,
+      "L4": 18.4
+     },
+     "kept_vs_neglected": 14.4,
+     "pixels": 190180
+    },
+    "ClothMainsail": {
+     "lab": {
+      "L0": [
+       88.2,
+       -0.8,
+       13.9
+      ],
+      "L1": [
+       82.3,
+       -0.3,
+       15.2
+      ],
+      "L2": [
+       72.7,
+       0.5,
+       17.9
+      ],
+      "L3": [
+       83.8,
+       -0.6,
+       17.9
+      ],
+      "L4": [
+       64.4,
+       1.2,
+       19.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 6.1,
+      "L2": 16.0,
+      "L3": 5.9,
+      "L4": 24.6
+     },
+     "kept_vs_neglected": 19.6,
+     "pixels": 23970
+    }
+   },
+   "pass": true
+  },
+  "cotton.stowed": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 4.4,
+    "L2": 12.3,
+    "L3": 5.1,
+    "L4": 19.8
+   },
+   "kept_vs_neglected": 16.0,
+   "pixels": 105863,
+   "materials": {
+    "SailHeap": {
+     "lab": {
+      "L0": [
+       88.6,
+       -0.8,
+       14.0
+      ],
+      "L1": [
+       84.4,
+       -0.5,
+       14.9
+      ],
+      "L2": [
+       76.7,
+       -0.0,
+       16.9
+      ],
+      "L3": [
+       85.3,
+       -0.7,
+       17.9
+      ],
+      "L4": [
+       69.3,
+       0.3,
+       18.0
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 4.4,
+      "L2": 12.3,
+      "L3": 5.1,
+      "L4": 19.8
+     },
+     "kept_vs_neglected": 16.0,
+     "pixels": 105863
+    }
+   },
+   "pass": true
+  },
+  "cotton.canvas": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 4.2,
+    "L2": 11.9,
+    "L3": 4.7,
+    "L4": 19.1
+   },
+   "kept_vs_neglected": 15.7,
+   "pixels": 93963,
+   "materials": {
+    "Canvas": {
+     "lab": {
+      "L0": [
+       80.9,
+       -0.7,
+       16.5
+      ],
+      "L1": [
+       76.7,
+       -0.3,
+       17.2
+      ],
+      "L2": [
+       69.1,
+       0.2,
+       18.6
+      ],
+      "L3": [
+       77.6,
+       -0.4,
+       19.9
+      ],
+      "L4": [
+       62.0,
+       0.6,
+       19.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 4.2,
+      "L2": 11.9,
+      "L3": 4.7,
+      "L4": 19.1
+     },
+     "kept_vs_neglected": 15.7,
+     "pixels": 93963
+    }
+   },
+   "pass": true
+  },
+  "manila.rope": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 4.0,
+    "L2": 15.8,
+    "L3": 8.7,
+    "L4": 26.8
+   },
+   "kept_vs_neglected": 18.1,
+   "pixels": 54234,
+   "materials": {
+    "Rope": {
+     "lab": {
+      "L0": [
+       69.9,
+       3.0,
+       21.0
+      ],
+      "L1": [
+       66.4,
+       2.6,
+       18.9
+      ],
+      "L2": [
+       55.9,
+       1.7,
+       13.7
+      ],
+      "L3": [
+       62.3,
+       2.2,
+       16.6
+      ],
+      "L4": [
+       45.6,
+       0.5,
+       9.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 4.0,
+      "L2": 15.8,
+      "L3": 8.7,
+      "L4": 26.8
+     },
+     "kept_vs_neglected": 18.1,
+     "pixels": 54234
+    }
+   },
+   "pass": true
+  },
+  "wire.wire": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 3.0,
+    "L2": 9.8,
+    "L3": 12.3,
+    "L4": 19.2
+   },
+   "kept_vs_neglected": 12.7,
+   "pixels": 16213,
+   "materials": {
+    "Wire": {
+     "lab": {
+      "L0": [
+       62.6,
+       -1.1,
+       0.8
+      ],
+      "L1": [
+       59.0,
+       -1.0,
+       0.8
+      ],
+      "L2": [
+       65.8,
+       -0.8,
+       1.9
+      ],
+      "L3": [
+       47.7,
+       -0.9,
+       0.7
+      ],
+      "L4": [
+       42.6,
+       6.7,
+       8.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 3.7,
+      "L2": 3.4,
+      "L3": 14.9,
+      "L4": 23.0
+     },
+     "kept_vs_neglected": 12.3,
+     "pixels": 4227
+    },
+    "WireRope": {
+     "lab": {
+      "L0": [
+       49.9,
+       -1.0,
+       1.5
+      ],
+      "L1": [
+       47.1,
+       -0.9,
+       1.5
+      ],
+      "L2": [
+       61.9,
+       -0.7,
+       2.4
+      ],
+      "L3": [
+       38.5,
+       -0.8,
+       1.3
+      ],
+      "L4": [
+       37.4,
+       8.2,
+       10.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.8,
+      "L2": 12.1,
+      "L3": 11.4,
+      "L4": 17.8
+     },
+     "kept_vs_neglected": 12.8,
+     "pixels": 11986
+    }
+   },
+   "pass": true
+  },
+  "wire.galvanised": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 3.2,
+    "L2": 6.5,
+    "L3": 13.5,
+    "L4": 18.9
+   },
+   "kept_vs_neglected": 9.1,
+   "pixels": 28444,
+   "materials": {
+    "Galvanised": {
+     "lab": {
+      "L0": [
+       66.4,
+       -1.1,
+       0.8
+      ],
+      "L1": [
+       63.2,
+       -1.0,
+       0.8
+      ],
+      "L2": [
+       72.8,
+       -0.9,
+       2.2
+      ],
+      "L3": [
+       52.9,
+       -0.9,
+       0.8
+      ],
+      "L4": [
+       49.5,
+       4.3,
+       7.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 3.2,
+      "L2": 6.5,
+      "L3": 13.5,
+      "L4": 18.9
+     },
+     "kept_vs_neglected": 9.1,
+     "pixels": 28444
+    }
+   },
+   "pass": true
+  },
+  "wire.zinc": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.1,
+    "L2": 6.6,
+    "L3": 0.7,
+    "L4": 12.2
+   },
+   "kept_vs_neglected": 12.9,
+   "pixels": 6942,
+   "materials": {
+    "Zinc": {
+     "lab": {
+      "L0": [
+       70.0,
+       -1.5,
+       1.8
+      ],
+      "L1": [
+       69.9,
+       -1.4,
+       1.8
+      ],
+      "L2": [
+       76.6,
+       -1.2,
+       2.3
+      ],
+      "L3": [
+       70.7,
+       -1.3,
+       2.0
+      ],
+      "L4": [
+       57.8,
+       -1.1,
+       1.7
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.1,
+      "L2": 6.6,
+      "L3": 0.7,
+      "L4": 12.2
+     },
+     "kept_vs_neglected": 12.9,
+     "pixels": 6942
+    }
+   },
+   "pass": true
+  },
+  "furnishings.velvet": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.3,
+    "L2": 8.4,
+    "L3": 9.2,
+    "L4": 22.2
+   },
+   "kept_vs_neglected": 13.0,
+   "pixels": 31716,
+   "materials": {
+    "Upholstery": {
+     "lab": {
+      "L0": [
+       25.1,
+       7.9,
+       -29.4
+      ],
+      "L1": [
+       26.3,
+       7.2,
+       -27.6
+      ],
+      "L2": [
+       29.5,
+       5.7,
+       -22.7
+      ],
+      "L3": [
+       29.8,
+       5.4,
+       -21.9
+      ],
+      "L4": [
+       36.0,
+       1.0,
+       -11.4
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.3,
+      "L2": 8.4,
+      "L3": 9.2,
+      "L4": 22.2
+     },
+     "kept_vs_neglected": 13.0,
+     "pixels": 31716
+    }
+   },
+   "pass": true
+  },
+  "furnishings.carpet": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 3.8,
+    "L2": 12.4,
+    "L3": 12.3,
+    "L4": 25.2
+   },
+   "kept_vs_neglected": 13.3,
+   "pixels": 109105,
+   "materials": {
+    "Carpet": {
+     "lab": {
+      "L0": [
+       25.9,
+       34.5,
+       17.9
+      ],
+      "L1": [
+       27.2,
+       31.6,
+       15.9
+      ],
+      "L2": [
+       30.2,
+       24.3,
+       12.3
+      ],
+      "L3": [
+       30.5,
+       24.8,
+       12.1
+      ],
+      "L4": [
+       35.9,
+       12.8,
+       10.1
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 3.8,
+      "L2": 12.4,
+      "L3": 12.3,
+      "L4": 25.2
+     },
+     "kept_vs_neglected": 13.3,
+     "pixels": 109105
+    }
+   },
+   "pass": true
+  },
+  "furnishings.leather": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.8,
+    "L2": 10.0,
+    "L3": 10.8,
+    "L4": 21.4
+   },
+   "kept_vs_neglected": 11.2,
+   "pixels": 38119,
+   "materials": {
+    "Leather": {
+     "lab": {
+      "L0": [
+       23.3,
+       22.9,
+       17.8
+      ],
+      "L1": [
+       24.7,
+       21.3,
+       16.0
+      ],
+      "L2": [
+       28.3,
+       16.6,
+       12.0
+      ],
+      "L3": [
+       28.5,
+       15.9,
+       11.4
+      ],
+      "L4": [
+       35.3,
+       7.1,
+       9.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.8,
+      "L2": 10.0,
+      "L3": 10.8,
+      "L4": 21.4
+     },
+     "kept_vs_neglected": 11.2,
+     "pixels": 38119
+    }
+   },
+   "pass": true
+  },
+  "furnishings.linen": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.8,
+    "L2": 5.0,
+    "L3": 1.8,
+    "L4": 12.9
+   },
+   "kept_vs_neglected": 11.3,
+   "pixels": 64196,
+   "materials": {
+    "Linen": {
+     "lab": {
+      "L0": [
+       90.5,
+       -1.0,
+       7.3
+      ],
+      "L1": [
+       88.8,
+       -1.1,
+       7.5
+      ],
+      "L2": [
+       85.5,
+       -1.1,
+       7.4
+      ],
+      "L3": [
+       88.9,
+       -0.9,
+       6.5
+      ],
+      "L4": [
+       77.7,
+       -1.7,
+       7.7
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.8,
+      "L2": 5.0,
+      "L3": 1.8,
+      "L4": 12.9
+     },
+     "kept_vs_neglected": 11.3,
+     "pixels": 64196
+    }
+   },
+   "pass": true
+  },
+  "furnishings.porcelain": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.5,
+    "L2": 8.8,
+    "L3": 2.7,
+    "L4": 17.8
+   },
+   "kept_vs_neglected": 15.1,
+   "pixels": 4562,
+   "materials": {
+    "Porcelain": {
+     "lab": {
+      "L0": [
+       93.4,
+       -0.4,
+       3.1
+      ],
+      "L1": [
+       92.9,
+       -0.4,
+       3.1
+      ],
+      "L2": [
+       84.8,
+       -0.0,
+       5.1
+      ],
+      "L3": [
+       90.7,
+       -0.3,
+       3.4
+      ],
+      "L4": [
+       76.1,
+       0.4,
+       7.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.5,
+      "L2": 8.8,
+      "L3": 2.7,
+      "L4": 17.8
+     },
+     "kept_vs_neglected": 15.1,
+     "pixels": 4562
+    }
+   },
+   "pass": true
+  }
+ },
+ "colour": [
+  {
+   "surface": "paint",
+   "for": "rust",
+   "level": "L4",
+   "refs": [
+    "rusty_painted_metal",
+    "rust_coarse_01",
+    "Rust009"
+   ],
+   "target": [
+    33.59,
+    20.04,
+    25.37
+   ],
+   "ours": [
+    33.84,
+    22.61,
+    27.87
+   ],
+   "what": "the rust colour",
+   "d_ab": 3.6,
+   "d_L": 0.3,
+   "pass_": true
+  },
+  {
+   "surface": "teak",
+   "for": "deck",
+   "level": "L0",
+   "refs": [
+    "teak_veneer"
+   ],
+   "target": [
+    57.97,
+    12.26,
+    30.2
+   ],
+   "ours": [
+    58.77,
+    11.85,
+    29.86
+   ],
+   "what": "teak.deck at L0",
+   "d_ab": 0.5,
+   "d_L": 0.8,
+   "pass_": true
+  },
+  {
+   "surface": "teak",
+   "for": "deck",
+   "level": "L2",
+   "refs": [
+    "wood_planks_grey"
+   ],
+   "target": [
+    29.61,
+    -0.24,
+    2.98
+   ],
+   "ours": [
+    52.92,
+    1.33,
+    7.73
+   ],
+   "what": "teak.deck at L2",
+   "d_ab": 5.0,
+   "d_L": 23.3,
+   "pass_": true
+  },
+  {
+   "surface": "teak",
+   "for": "deck",
+   "level": "L4",
+   "refs": [
+    "weathered_planks"
+   ],
+   "target": [
+    29.97,
+    3.75,
+    7.41
+   ],
+   "ours": [
+    39.52,
+    0.57,
+    5.32
+   ],
+   "what": "teak.deck at L4",
+   "d_ab": 3.8,
+   "d_L": 9.5,
+   "pass_": true
+  },
+  {
+   "surface": "varnish",
+   "for": "exterior",
+   "level": "L4",
+   "refs": [
+    "weathered_peeling_timber"
+   ],
+   "target": [
+    46.54,
+    0.92,
+    7.13
+   ],
+   "ours": [
+    41.9,
+    3.32,
+    8.72
+   ],
+   "what": "varnish.exterior at L4",
+   "d_ab": 2.9,
+   "d_L": -4.6,
+   "pass_": true
+  },
+  {
+   "surface": "bronze",
+   "for": "bronze",
+   "level": "L4",
+   "refs": [
+    "Metal013",
+    "Metal015",
+    "Metal017"
+   ],
+   "target": [
+    49.01,
+    2.75,
+    9.12
+   ],
+   "ours": [
+    33.25,
+    -0.75,
+    12.2
+   ],
+   "what": "bronze.bronze at L4",
+   "d_ab": 4.7,
+   "d_L": -15.8,
+   "pass_": true
+  },
+  {
+   "surface": "manila",
+   "for": "rope",
+   "level": "L0",
+   "refs": [
+    "Rope001"
+   ],
+   "target": [
+    46.71,
+    1.69,
+    18.35
+   ],
+   "ours": [
+    69.85,
+    2.96,
+    20.97
+   ],
+   "what": "manila.rope at L0",
+   "d_ab": 2.9,
+   "d_L": 23.1,
+   "pass_": true
+  },
+  {
+   "surface": "manila",
+   "for": "rope",
+   "level": "L2",
+   "refs": [
+    "Rope003"
+   ],
+   "target": [
+    19.86,
+    -1.46,
+    16.41
+   ],
+   "ours": [
+    55.93,
+    1.66,
+    13.68
+   ],
+   "what": "manila.rope at L2",
+   "d_ab": 4.1,
+   "d_L": 36.1,
+   "pass_": true
+  },
+  {
+   "surface": "wire",
+   "for": "wire",
+   "level": "L1",
+   "refs": [
+    "Rope002"
+   ],
+   "target": [
+    38.21,
+    -0.3,
+    1.64
+   ],
+   "ours": [
+    50.6,
+    -0.96,
+    1.22
+   ],
+   "what": "wire.wire at L1",
+   "d_ab": 0.8,
+   "d_L": 12.4,
+   "pass_": true
+  }
+ ],
+ "maps": {
+  "CastBronze": {
+   "same_as_generator": true,
+   "px": [
+    1024,
+    1024
+   ],
+   "px_per_mm": 10.24,
+   "tiling_N": 0.886,
+   "tiling_M": 0.912,
+   "repeat_N": 0.0,
+   "repeat_M": 0.0,
+   "size": {
+    "sand_grain": {
+     "mm": 0.347,
+     "asked_mm": [
+      0.2,
+      0.6
+     ],
+     "pass": true
+    }
+   },
+   "mb_high": 2.0,
+   "pass_": true
+  },
+  "Cotton": {
+   "same_as_generator": true,
+   "px": [
+    1024,
+    1024
+   ],
+   "px_per_mm": 25.6,
+   "tiling_N": 0.495,
+   "tiling_M": 0.979,
+   "repeat_N": 0.0,
+   "repeat_M": 0.005,
+   "size": {
+    "warp_pitch": {
+     "mm": 0.3846,
+     "asked_mm": 0.385,
+     "pass": true
+    },
+    "weft_pitch": {
+     "mm": 0.5,
+     "asked_mm": 0.5,
+     "pass": true
+    },
+    "slub": {
+     "mm": 10.0,
+     "asked_mm": [
+      5,
+      20
+     ],
+     "pass": true
+    }
+   },
+   "mb_high": 2.0,
+   "pass_": true
+  },
+  "Manila": {
+   "same_as_generator": true,
+   "px": [
+    1024,
+    512
+   ],
+   "px_per_mm": 17.07,
+   "tiling_N": 0.478,
+   "tiling_M": 0.515,
+   "repeat_N": 0.003,
+   "repeat_M": 0.051,
+   "size": {
+    "fibre_width": {
+     "mm": 0.319,
+     "asked_mm": [
+      0.1,
+      0.4
+     ],
+     "pass": true
+    }
+   },
+   "mb_high": 1.0,
+   "pass_": true
+  }
+ },
+ "budget": {
+  "high_mb": 5.0,
+  "cap_mb": 6.0,
+  "medium_mb": 0,
+  "medium_cap_mb": 0.0,
+  "pass_": true
+ },
+ "blind": {
+  "status": "reviewed",
+  "verdicts": {
+   "paint": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "teak": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "varnish": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "bronze": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "duralumin": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "cotton": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "manila": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "wire": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   },
+   "furnishings": {
+    "r1": "all five",
+    "r2": "all five",
+    "r3": "all five"
+   }
+  },
+  "reviewers": {
+   "paint": "reviewed by 3",
+   "teak": "reviewed by 3",
+   "varnish": "reviewed by 3",
+   "bronze": "reviewed by 3",
+   "duralumin": "reviewed by 3",
+   "cotton": "reviewed by 3",
+   "manila": "reviewed by 3",
+   "wire": "reviewed by 3",
+   "furnishings": "reviewed by 3"
+  },
+  "pass": {
+   "paint": true,
+   "teak": true,
+   "varnish": true,
+   "bronze": true,
+   "duralumin": true,
+   "cotton": true,
+   "manila": true,
+   "wire": true,
+   "furnishings": true
+  }
+ },
+ "ab": "none: this is her first wear round, so there is no earlier version to hold it against",
+ "seen_in": {
+  "Brass": [
+   "bathroom",
+   "saloon",
+   "stateroom"
+  ],
+  "Bronze": [
+   "bathroom",
+   "chainplates",
+   "deck",
+   "doghouse",
+   "galley",
+   "gooseneck",
+   "hull",
+   "sail",
+   "saloon",
+   "winch"
+  ],
+  "Mahogany": [
+   "bathroom",
+   "saloon",
+   "stateroom"
+  ],
+  "Pine": [
+   "bathroom",
+   "cot",
+   "galley",
+   "saloon",
+   "stateroom"
+  ],
+  "Porcelain": [
+   "bathroom",
+   "galley",
+   "stateroom"
+  ],
+  "Varnish": [
+   "bathroom",
+   "cot",
+   "galley",
+   "saloon",
+   "stateroom"
+  ],
+  "Antifouling": [
+   "chainplates",
+   "hull",
+   "sail"
+  ],
+  "Bootstripe": [
+   "chainplates",
+   "hull",
+   "sail"
+  ],
+  "ClothGenoa": [
+   "chainplates",
+   "sail"
+  ],
+  "CoveStripe": [
+   "chainplates",
+   "hull"
+  ],
+  "Galvanised": [
+   "chainplates",
+   "cot",
+   "gooseneck"
+  ],
+  "Keel": [
+   "chainplates",
+   "hull"
+  ],
+  "Rope": [
+   "chainplates",
+   "cot",
+   "doghouse",
+   "gooseneck",
+   "sail",
+   "winch"
+  ],
+  "Spar": [
+   "chainplates",
+   "deck",
+   "doghouse",
+   "galley",
+   "gooseneck",
+   "hull",
+   "sail"
+  ],
+  "Teak": [
+   "chainplates",
+   "deck",
+   "doghouse",
+   "gooseneck",
+   "sail",
+   "winch"
+  ],
+  "Topsides": [
+   "chainplates",
+   "hull",
+   "sail"
+  ],
+  "Wire": [
+   "chainplates",
+   "deck",
+   "gooseneck"
+  ],
+  "WireRope": [
+   "chainplates",
+   "deck",
+   "doghouse",
+   "gooseneck"
+  ],
+  "Wood": [
+   "chainplates",
+   "deck",
+   "doghouse",
+   "gooseneck",
+   "hull",
+   "sail",
+   "saloon",
+   "winch"
+  ],
+  "Canvas": [
+   "cot"
+  ],
+  "WhitePaint": [
+   "cot",
+   "galley",
+   "saloon",
+   "stateroom"
+  ],
+  "ClothMainsail": [
+   "doghouse",
+   "sail"
+  ],
+  "Black": [
+   "galley"
+  ],
+  "Zinc": [
+   "galley"
+  ],
+  "SailHeap": [
+   "gooseneck"
+  ],
+  "Carpet": [
+   "saloon",
+   "stateroom"
+  ],
+  "Leather": [
+   "saloon"
+  ],
+  "Upholstery": [
+   "saloon"
+  ],
+  "Linen": [
+   "stateroom"
+  ]
+ },
+ "not_in_any_view": [
+  "ClothQuadrilateral",
+  "ClothSpinnaker",
+  "ClothStaysail",
+  "CowlRed",
+  "Gilt",
+  "Iron",
+  "SailBag",
+  "SailLine"
+ ],
+ "fails": []
+}
