@@ -43,6 +43,13 @@ settees, tables, chairs, sideboards, bookcases and lamps; the lobby under the do
 the navigator's desk; the owner's stateroom and bathroom and the guest cabin and heads behind mahogany partitions
 scribed under the beams. Every piece closes, is checked clear of the rest and held up, and the accommodation forward
 and aft replace the size card's estimate in her weight, the trimming ballast taking up the difference.
+Slice 11 dresses every material in the wear of the texture loop's five levels (weathering.py, textures.py,
+textures_bluebonnet.json, Inputs/jclass-detail): steel paint with rust weeping from the rivets, chips, chalk, weed and
+barnacles at the waterline; teak silvering, scrubbed blond or blackened, its seams failing; varnish ambering and
+failing; bronze browning, polished or green; the duralumin spars' paint chalking and flaking; cotton dingy, mildewed
+and rust-marked; manila greying and furred; wire dulled, oiled or rusting; the saloon's furnishings faded and worn.
+Every wear term is a value node named "wear:<term>" that render_jclass.py's --wear sets level by level; the .blend is
+left at L0 (new). A material no card covers stops the build.
 The .blend is saved under main and genoa with the other states hidden.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
@@ -52,13 +59,14 @@ the deck's parts are their own closed pieces) and <out>/build.json (triangles, t
 the rule check, the weights, the finish's and the deck's checks, the displacement as built, the rudder's, the wheel's,
 the boom's and the pole's frames, the rig's measures, sweeps and attachment points, the sails' measures, weights and
 suit checks, the running rigging's leads, room and weights, the hardware's checks and weights, the interior's report,
-overlaps, headroom and weights), plus the drawings from
+overlaps, headroom and weights, and the textures' coverage, maps, budget and wear amounts), plus the drawings from
 drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png, deck_profile.png, sail_plan.png, rigging_plan.png,
 sail_cut.png, sail_suits.png, running_plan.png, hardware_plan.png, interior_plan.png, interior_aft_plan.png; they need
 matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
 of the load waterline. Edit loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py, winches.py,
-running.py, hardware.py, hardware_materials.py, interior.py, furniture.py, saloon.py and the json files, never the
-.blend. The moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the fairness check measures it.
+running.py, hardware.py, hardware_materials.py, interior.py, furniture.py, saloon.py, weathering.py, textures.py and
+the json files, never the .blend. The moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the
+fairness check measures it.
 """
 import json
 import math
@@ -85,6 +93,7 @@ import hardware  # noqa: E402
 import hardware_materials  # noqa: E402
 import interior  # noqa: E402
 import drawings_jclass  # noqa: E402
+import weathering  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -2591,6 +2600,17 @@ def main():
                                "positive_turn_about_X_in_blender_moves_its_top":
                                    "to starboard (+y): clockwise as the helmsman sees it, the bow to starboard"
                                    if t1[1] > t0[1] else "to port (-y): anticlockwise as the helmsman sees it"}
+    # slice 11: the wear (weathering.py, textures_bluebonnet.json): every material a card covers takes its detail maps
+    # and the five levels' wear, left at L0 (new) in the .blend; a material no card covers stops the build
+    tex_done = weathering.dress()
+    tex_rep = weathering.report([m.name for m in bpy.data.materials if not m.name.startswith("J_")])
+    tex_rep["dressed"] = tex_done
+    if tex_rep["not_built"] or tex_rep["budget"]["high_mb"] > tex_rep["budget"]["high_cap_mb"]:
+        raise SystemExit(f"textures: cards for materials the build does not make {tex_rep['not_built']}, or the maps' "
+                         f"{tex_rep['budget']['high_mb']} MB over the {tex_rep['budget']['high_cap_mb']} MB budget")
+    for img in bpy.data.images:                       # the detail maps travel with the .blend, not by the repo's path
+        if img.source == "FILE" and img.filepath and not img.packed_file:
+            img.pack()
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
     write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
     rig_shown = [rig_obs[k] for k in rigging.OBJECTS + rigging.SAILING]
@@ -2612,7 +2632,7 @@ def main():
     in_tris = {k: tri_count(ob) for k, ob in in_obs.items()}
     slice9 = sum(v for k, v in in_tris.items() if k not in interior.AFT_OBJECTS)
     slice10 = sum(v for k, v in in_tris.items() if k in interior.AFT_OBJECTS)
-    build = {"slice": 10, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+    build = {"slice": 11, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
              "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
              "budget_slice_4": 250000, "triangles_slice_5": slice5, "budget_slice_5": 250000,
              "triangles_slice_6_by_suit": slice6, "triangles_slice_6_states": sail_tris,
@@ -2638,7 +2658,7 @@ def main():
              "rig": rig, "rigging": spars.rnd(rr), "sails": spars.rnd({k: v for k, v in srep.items()
                                                                        if not k.startswith("_")}),
              "running": spars.rnd(running.summary(rnrep)), "hardware": spars.rnd(hardware.summary(hwrep)),
-             "interior": spars.rnd(inrep)}
+             "interior": spars.rnd(inrep), "textures": spars.rnd(tex_rep)}
     if (slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]
             or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]
             or max(slice7.values()) > build["budget_slice_7"] or max(slice8.values()) > build["budget_slice_8"]

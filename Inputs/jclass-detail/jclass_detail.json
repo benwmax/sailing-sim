@@ -1,0 +1,103 @@
+{
+ "_about": "Bluebonnet's own detail maps (docs/jclass-11, Tools/shipkit/jclass/textures.py); each tiles at tile_m (x, y) metres; normals OpenGL. Medium draws none of them (textures_bluebonnet.json budget).",
+ "CastBronze": {
+  "tile_m": [
+   0.1,
+   0.1
+  ],
+  "px": [
+   1024,
+   1024
+  ],
+  "px_per_mm": 10.24,
+  "normal_strength": 1.0,
+  "fade_m": [
+   0.8,
+   3.0
+  ],
+  "tiling_N": 0.886,
+  "tiling_M": 0.912,
+  "repeat_N": 0.0,
+  "repeat_M": 0.0,
+  "size": {
+   "sand_grain": {
+    "mm": 0.347,
+    "asked_mm": [
+     0.2,
+     0.6
+    ],
+    "pass": true
+   }
+  }
+ },
+ "Cotton": {
+  "tile_m": [
+   0.04,
+   0.04
+  ],
+  "px": [
+   1024,
+   1024
+  ],
+  "px_per_mm": 25.6,
+  "normal_strength": 0.8,
+  "fade_m": [
+   1.0,
+   4.0
+  ],
+  "tiling_N": 0.495,
+  "tiling_M": 0.979,
+  "repeat_N": 0.0,
+  "repeat_M": 0.005,
+  "size": {
+   "warp_pitch": {
+    "mm": 0.3846,
+    "asked_mm": 0.385,
+    "pass": true
+   },
+   "weft_pitch": {
+    "mm": 0.5,
+    "asked_mm": 0.5,
+    "pass": true
+   },
+   "slub": {
+    "mm": 10.0,
+    "asked_mm": [
+     5,
+     20
+    ],
+    "pass": true
+   }
+  }
+ },
+ "Manila": {
+  "tile_m": [
+   0.06,
+   0.03
+  ],
+  "px": [
+   1024,
+   512
+  ],
+  "px_per_mm": 17.07,
+  "normal_strength": 1.0,
+  "fade_m": [
+   0.6,
+   2.5
+  ],
+  "tiling_N": 0.478,
+  "tiling_M": 0.515,
+  "repeat_N": 0.003,
+  "repeat_M": 0.051,
+  "size": {
+   "fibre_width": {
+    "mm": 0.319,
+    "asked_mm": [
+     0.1,
+     0.4
+    ],
+    "pass": true
+   }
+  }
+ }
+}

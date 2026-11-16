@@ -1,7 +1,7 @@
 """Clay, zebra, afloat, paint, deck, rig, rigging, sails, running rigging, deck hardware and below-decks renders of
-Bluebonnet for the docs and the blind reviews (docs/jclass-1 to jclass-10).
+Bluebonnet for the docs and the blind reviews (docs/jclass-1 to jclass-11).
 
-    python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name]
+    python render_jclass.py <jclass.blend> <out dir> [--res 1600] [--only name,name] [--wear L0..L4]
 
 Cameras are placed from the yacht's own size (she is 40 m long: the shape loop's render_set.py frames J/22-sized
 boats), the same every round so before and after line up:
@@ -66,6 +66,16 @@ boats), the same every round so before and after line up:
                                              forward and aft, the pantry, the lobby from the stairs, the stairs up to
                                              the doghouse, the navigator's desk, the owner's stateroom and bathroom,
                                              the guest cabin and heads, and the bookcase
+  wear_<view>_<level>[_albedo], wear_<view>_id
+                                             slice 11's wear ladder: nine of the close views above (the hull's
+                                             plating amidships, the deck by the mast, a winch, the chainplates, the
+                                             doghouse, the gooseneck, the genoa, a cot, the saloon) at each of the
+                                             texture loop's five levels, then each as its materials' colours alone
+                                             (albedo) and once as flat material ids (wear_ids.json), which
+                                             wear_check.py measures; three more (the galley, the owner's
+                                             stateroom and bathroom) as albedo and ids only, for the zinc, the linen
+                                             and the porcelain. --wear sets the level of every other shot (L0, new,
+                                             by default)
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -81,12 +91,18 @@ import sys
 import bpy
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import weathering  # noqa: E402
+
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 SRC, OUT = ARGS[0], ARGS[1]
 RES = int(ARGS[ARGS.index("--res") + 1]) if "--res" in ARGS else 1600
 ONLY = set(ARGS[ARGS.index("--only") + 1].split(",")) if "--only" in ARGS else None
+WEAR = ARGS[ARGS.index("--wear") + 1] if "--wear" in ARGS else "L0"
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=SRC)
+if not any(m.get("j_surface") for m in bpy.data.materials):     # a build from before slice 11: dress it here
+    weathering.dress()
 SC = bpy.context.scene
 SC.render.engine = "CYCLES"
 SC.cycles.device = "CPU"
@@ -331,7 +347,7 @@ def bulbs_lit(on):
 
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
          upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0, clip=None, work=False,
-         view="Standard", exposure=0.0, lamps=False, work_aft=False):
+         view="Standard", exposure=0.0, lamps=False, work_aft=False, wear=None, albedo=False, ids=False):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
@@ -339,9 +355,14 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     with the boom and the pole posed as the suit has them. clip: the camera's near clip (a cut through the model, for
     the sections below); work: slice 9's work lights on below; lamps: slice 10's lamps lit; work_aft: slice 10's
     work lights on. view, exposure: the colour
-    management's view transform and exposure (stops); the earlier slices' shots keep Standard at 0."""
+    management's view transform and exposure (stops); the earlier slices' shots keep Standard at 0. wear: the wear
+    level (slice 11: "L0" to "L4"; the --wear option otherwise, L0 by default); albedo: each dressed material's colour
+    alone, unlit, for measuring (wear_check.py); ids: each dressed material in its own flat colour, to tell them apart
+    in the measure."""
     if ONLY and name not in ONLY:
         return
+    weathering.apply_level(wear or WEAR)
+    weathering.albedo_mode("id" if ids else albedo)
     if suit is not None:
         boom = -SUITS[suit]["boom_deg"]
         pole = "stowed" if SUITS[suit].get("pole") == "stowed" else SUITS[suit]["pole_deg"]
@@ -384,8 +405,21 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     SC.cycles.samples = samples
     SC.cycles.max_bounces = 2 if kind == "zebra" else 3
     SC.view_settings.view_transform, SC.view_settings.look, SC.view_settings.exposure = view, "None", exposure
+    SC.render.dither_intensity = 0.0 if (albedo or ids) else 1.0
+    if albedo or ids:                                     # the colours alone: no light, a few samples are enough
+        WN.nodes["Background"].inputs[1].default_value = 0.0
+        set_sun((0.0, 0.0, -1.0), 0.0)
+        for lo in WORK + WORK_AFT + LAMPS:
+            lo.hide_render = True
+        bulbs_lit(False)
+        SC.cycles.samples = 1 if ids else 4
+        SC.cycles.use_denoising = False
+        SC.render.filter_size = 0.01 if ids else 1.5     # an id pixel is one material, not a blend at the edges
+        SC.view_settings.view_transform, SC.view_settings.exposure = "Standard", 0.0
     SC.render.filepath = os.path.join(OUT, name + ".png")
     bpy.ops.render.render(write_still=True)
+    SC.cycles.use_denoising = True
+    SC.render.filter_size = 1.5
     for o in meshes:                      # put the model's own materials back (clearing them resets the faces' slots)
         if o.name in saved:
             mats, idx = saved[o.name]
@@ -656,4 +690,43 @@ shot("below_aft_bathroom", "paint", (-6.45, -2.05, 1.25), (-7.45, -1.25, 0.1), l
 shot("below_aft_guest", "paint", (-4.6, 1.4, 1.2), (-6.3, 2.4, 0.0), lens=15, **ba)
 shot("below_aft_heads", "paint", (-6.45, 1.15, 1.3), (-7.3, 1.6, -0.4), lens=12, **ba)
 shot("below_aft_bookcase", "paint", (-2.6, 1.0, 0.5), (-3.6, 2.2, 0.1), lens=24, **ba)
+# slice 11: the wear ladder, each view at the five levels (Tools/texloop/levels.json), then as its colours alone
+# (albedo) and once as flat material ids, which wear_check.py reads to measure each material's colour level by level.
+# The views are the earlier slices' close ones, so a level's change reads against pictures already seen
+SC.render.use_persistent_data = True              # one view's levels only change the materials' values
+WEAR_VIEWS = {
+    "hull": dict(loc=(1.5, -7.6, 0.55), target=(-1.5, -3.2, 0.35), lens=35, suit="Moored", sun_dir=AFT_SUN, sun=3.0),
+    "deck": dict(loc=(6.5, 2.8, 3.2), target=(2.9, 0.0, 1.8), lens=28, suit="Genoa", sun_dir=LEE_SUN, sun=3.0),
+    "winch": dict(loc=(-6.6, 3.3, 2.6), target=(-8.1, 2.1, 1.75), lens=35, suit="Genoa", sun_dir=LEE_SUN, sun=3.0),
+    "chainplates": dict(loc=(6.6, -5.8, 3.2), target=(3.05, -3.1, 1.8), lens=35, suit="Genoa", sun_dir=RSUN,
+                        sun=3.0),
+    "doghouse": dict(loc=(-1.2, -3.1, 3.0), target=(-6.0, 0.0, 1.85), lens=30, suit="Genoa", sun_dir=DSUN, sun=2.4),
+    "gooseneck": dict(loc=(-0.6, -2.7, 4.7), target=(2.55, 0.0, 3.7), lens=35, suit="Lowered", sun_dir=RSUN,
+                      sun=3.0),
+    "sail": dict(loc=(-0.5, 7.5, 4.5), target=(-3.5, 3.0, 3.0), lens=35, suit="Genoa", sun_dir=LEE_SUN, sun=3.0),
+    "cot": dict(loc=(6.0, -0.9, 0.85), target=(5.45, -1.9, 0.35), lens=24, suit="Moored", sun_dir=WW_SUN, sun=1.5,
+                work=True, view="AgX"),
+    "saloon": dict(loc=(-0.3, -0.4, 0.9), target=(-3.7, 0.0, 0.2), lens=16, suit="Moored", sun_dir=WW_SUN, sun=1.5,
+                   lamps=True, work_aft=True, view="AgX"),
+    # measured only (their id and albedo shots: wear_check.py's ladder needs every kind in a view, and these three
+    # show the galley's zinc, the owner's linen and the bathroom's porcelain, which no view above does)
+    "galley": dict(loc=(4.55, -0.35, 1.0), target=(2.7, 2.0, 0.3), lens=18, suit="Moored", sun_dir=WW_SUN, sun=1.5,
+                   work=True, view="AgX"),
+    "stateroom": dict(loc=(-4.6, -1.4, 1.2), target=(-6.3, -2.4, 0.0), lens=15, suit="Moored", sun_dir=WW_SUN,
+                      sun=1.5, lamps=True, work_aft=True, view="AgX"),
+    "bathroom": dict(loc=(-6.45, -2.05, 1.25), target=(-7.45, -1.25, 0.1), lens=14, suit="Moored", sun_dir=WW_SUN,
+                     sun=1.5, lamps=True, work_aft=True, view="AgX"),
+}
+MEASURE_ONLY = ("galley", "stateroom", "bathroom")
+for vname, v in WEAR_VIEWS.items():
+    kw = dict(v)
+    loc, target = kw.pop("loc"), kw.pop("target")
+    shot(f"wear_{vname}_id", "paint", loc, target, upto=11, ids=True, **kw)
+    for lv in ("L0", "L1", "L2", "L3", "L4"):
+        if vname not in MEASURE_ONLY:
+            shot(f"wear_{vname}_{lv}", "paint", loc, target, samples=64, upto=11, wear=lv, **kw)
+        shot(f"wear_{vname}_{lv}_albedo", "paint", loc, target, upto=11, wear=lv, albedo=True, **kw)
+weathering.albedo_mode(False)
+json.dump({k: m.name for k, m in enumerate(weathering.dressed(), 1)}, open(os.path.join(OUT, "wear_ids.json"), "w"),
+          indent=1)
 print("render_jclass: done")

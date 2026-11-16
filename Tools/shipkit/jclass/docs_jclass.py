@@ -1,6 +1,6 @@
-"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-10).
+"""Copies a build's checks and renders into a docs page's baseline folder (docs/jclass-1 to docs/jclass-11).
 
-    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8|9|10]
+    python docs_jclass.py <out dir> <docs baseline dir> [--slice 2|3|4|5|6|7|8|9|10|11]
 
 <out dir> is where loft.py, build_jclass.py, fairness.py and render_jclass.py wrote (renders in <out>/renders). Slice 1
 (the default) copies build.json, hydrostatics.json, sections.json and fairness.json and writes the clay, zebra and
@@ -15,7 +15,9 @@ Slice 7 copies the same three jsons and writes the running rigging's renders and
 copies the same three jsons and writes the deck hardware's renders and its plan (hardware_plan.png). Slice 9 copies
 the same three jsons and writes the renders below decks forward and the arrangement drawing (interior_plan.png).
 Slice 10 copies the same three jsons and writes the renders below decks aft, lit by the cabins' lamps, and the
-arrangement drawing aft (interior_aft_plan.png). Each image is a JPEG under 300 KB (docs images are plain git, not
+arrangement drawing aft (interior_aft_plan.png). Slice 11 copies build.json and wear_check.json (from the renders) and
+writes only a contact sheet of the wear views, each at L0, L2 and L4 (new, six years half kept, twenty neglected) in
+a row; its ladders are wear_check.py's sheets. Each image is a JPEG under 300 KB (docs images are plain git, not
 LFS), with a contact sheet of the renders. Needs Pillow.
 """
 import os
@@ -35,8 +37,8 @@ for _a in _it:
         raise SystemExit(f"docs_jclass.py: unknown option {_a}")
     else:
         ARGS.append(_a)
-if len(ARGS) != 2 or SLICE not in range(1, 11):
-    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|...|10]")
+if len(ARGS) != 2 or SLICE not in range(1, 12):
+    raise SystemExit("usage: docs_jclass.py <out dir> <docs baseline dir> [--slice 1|2|...|11]")
 OUT, DOCS = ARGS
 RENDERS = {
     1: ["clay_profile", "clay_plan", "clay_bow34", "clay_stern34", "clay_bow", "clay_stern", "clay_under",
@@ -67,12 +69,17 @@ RENDERS = {
          "below_aft_saloon_aft", "below_aft_pantry", "below_aft_bookcase", "below_aft_lobby", "below_aft_stairs",
          "below_aft_doghouse_up", "below_aft_desk", "below_aft_stateroom", "below_aft_bathroom", "below_aft_guest",
          "below_aft_heads"],
+    11: [f"wear_{v}_{lv}" for v in ("hull", "deck", "winch", "chainplates", "doghouse", "gooseneck", "sail", "cot",
+                                    "saloon") for lv in ("L0", "L2", "L4")],
 }[SLICE]
 JSONS = {1: [("build.json", "build.json"), ("hydrostatics.json", "hydrostatics.json"),
              ("sections.json", "sections.json"), ("fairness.json", "fairness.json")],
          2: [("build.json", "build.json"), ("fairness.json", "fairness.json"),
              (os.path.join("shell", "fairness.json"), "fairness_shell.json")]}
-JSONS = JSONS[min(SLICE, 2)]
+if SLICE < 11:
+    JSONS = JSONS[min(SLICE, 2)]
+else:
+    JSONS = [("build.json", "build.json"), (os.path.join("renders", "wear_check.json"), "wear_check.json")]
 DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             2: [("plating.png", "plating.jpg", 1800), ("rudder_sections.png", "rudder_sections.jpg", 1600)],
             3: [("deck_plan.png", "deck_plan.jpg", 2000), ("deck_profile.png", "deck_profile.jpg", 1800)],
@@ -82,7 +89,7 @@ DRAWINGS = {1: [("lines.png", "lines.jpg", 1800)],
             7: [("running_plan.png", "running_plan.jpg", 2000)],
             8: [("hardware_plan.png", "hardware_plan.jpg", 2000)],
             9: [("interior_plan.png", "interior_plan.jpg", 2000)],
-            10: [("interior_aft_plan.png", "interior_aft_plan.jpg", 2000)]}[SLICE]
+            10: [("interior_aft_plan.png", "interior_aft_plan.jpg", 2000)], 11: []}[SLICE]
 LIMIT = 290_000
 
 
@@ -100,7 +107,7 @@ def main():
     os.makedirs(DOCS, exist_ok=True)
     for src, dst in JSONS:
         shutil.copy(os.path.join(OUT, src), os.path.join(DOCS, dst))
-    for n in RENDERS:
+    for n in RENDERS if SLICE < 11 else []:
         save(Image.open(os.path.join(OUT, "renders", n + ".png")), os.path.join(DOCS, n + ".jpg"), 1200)
     for src, dst, width in DRAWINGS:
         save(Image.open(os.path.join(OUT, src)), os.path.join(DOCS, dst), width)

@@ -1,0 +1,557 @@
+{
+ "about": "Slice 11 (docs/jclass-11): Bluebonnet's textures and wear, by the texture loop (docs/texture-loop). One card per surface the plan names (steel paint, teak, varnish, bronze, duralumin, cotton sails, manila and wire rope) plus the saloon's furnishings: which of her materials it covers, the closest a camera comes, the pattern's real size, the detail maps it draws (her own, made by textures.py, or the boats' shared library), and what each of the five wear levels (Tools/texloop/levels.json) looks like on her. How much of each wear term a level gets is weathering.py's (amounts), from the loop's time and dirt numbers (Tools/texloop/wear.py); where it falls on the boat is the materials' (weathering.py dress). 'refs' are CC0 scans from Poly Haven and ambientCG whose mean albedo is a colour target for one level (the refs that share a surface, level and target are averaged, as the loop takes the photos' median); they are measured (wear_check.py), never shipped, and a surface with no fitting scan says so in 'refs_note'. Every material in the build is either in a card or in 'unweathered' with its reason: build_jclass.py stops otherwise.",
+ "salt": "Galveston: she lives in salt water (Bolivar Roads), so rust weeps, verdigris and the waterline's weed and barnacles come at the salt-water rate, not the lake's third",
+ "levels": {
+  "L0": "launched, spring 1937: wet-look enamel, golden new teak, deep glossy varnish, new cast bronze, cream cotton, straw-gold manila, bright galvanised wire",
+  "L1": "her first season: the enamel's gloss a touch softer, the deck paling, rope and sails a shade greyer, bronze dulling to brown",
+  "L2": "six years a working yacht, half kept: enamel dull and chalky with rust weeps at the rivet lines, a silver-grey deck, varnish thin and grey at the edges, brown bronze polished where hands and rope touch, dingy sails, grey-brown rope, white zinc bloom on the wire",
+  "L3": "a kept classic thirty years on: everything renewed and polished, but the enamel faded, the deck scrubbed pale with its grain standing proud, the varnish deepened to dark amber, bronze bright with dark patina in the recesses, cotton yellowed a little, the wire oiled dark",
+  "L4": "twenty years laid up and neglected: chalked enamel with rust bleeding from every seam and chips at the sheer, weed and barnacles at the boot top, a black and green deck, varnish peeled to grey wood, verdigris on the bronze, paint flaking off the mast, mildewed sails, rotten-grey rope and rusting wire"
+ },
+ "surfaces": {
+  "paint": {
+   "title": "Steel paint",
+   "what": "Enamel over the riveted steel plating (slice 2's Plating relief stays): the deep blue topsides, the white boot top, the red cowl mouths, black iron; the red antifouling on the bottom and the lead; the gold-leaf cove line and lettering; the white enamel below decks",
+   "kinds": {
+    "enamel": [
+     "Topsides",
+     "Bootstripe",
+     "CowlRed",
+     "Black",
+     "Iron"
+    ],
+    "antifouling": [
+     "Antifouling",
+     "Keel"
+    ],
+    "gilt": [
+     "CoveStripe",
+     "Gilt"
+    ],
+    "interior": [
+     "WhitePaint"
+    ]
+   },
+   "closest_camera_m": 0.6,
+   "closest_camera_note": "the boot top from a dinghy alongside, the cabin's white paint from a berth",
+   "pattern_mm": {
+    "orange_peel": [
+     1,
+     3
+    ],
+    "rust_weep_width": [
+     5,
+     40
+    ],
+    "chip": [
+     3,
+     30
+    ],
+    "chalk_blotch": [
+     200,
+     600
+    ]
+   },
+   "maps": [
+    "Gelcoat"
+   ],
+   "levels": {
+    "L0": "wet-look blue enamel, the plating's seams and rivets only in a raking light",
+    "L1": "the gloss a little softer, a faint tan scum line on the boot top",
+    "L2": "dull, chalky blue in blotches; thin rust weeps from rivet lines and from under the chainplates and fairleads; the boot top's weed line; the antifouling faded pink-red; the white paint below yellowing",
+    "L3": "polished but faded, slightly chalky blue; no rust; the boot top kept clean; the cove line's gold leaf renewed",
+    "L4": "heavily chalked grey-blue, rust bleeding in runs from the seams and rivet rows and from chips at the sheer; green weed along the boot top; the antifouling below chalky and crusted with barnacles; the white paint below yellow and stained with rust at the frames"
+   },
+   "refs": [
+    {
+     "id": "rusty_painted_metal",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "rust",
+     "note": "rust bleeding through paint"
+    },
+    {
+     "id": "rust_coarse_01",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "rust",
+     "note": "coarse rust"
+    },
+    {
+     "id": "Rust009",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "rust",
+     "note": "rusted steel"
+    }
+   ]
+  },
+  "teak": {
+   "title": "Teak deck",
+   "what": "The laid teak deck (slice 3's Planking: planks, king plank, covering boards and black seams), the hatch lids and the cockpit's sole; the scrubbed pine soles below decks",
+   "kinds": {
+    "deck": [
+     "Teak"
+    ],
+    "sole": [
+     "Pine"
+    ]
+   },
+   "closest_camera_m": 1.0,
+   "closest_camera_note": "a crew member's eye standing on deck (the helm's is 1.7 m)",
+   "pattern_mm": {
+    "plank_width": 64,
+    "ring_spacing": [
+     3,
+     6
+    ],
+    "check_length": [
+     25,
+     110
+    ]
+   },
+   "maps": [
+    "TeakWeathered"
+   ],
+   "levels": {
+    "L0": "golden-brown new teak, the black seams crisp and flush",
+    "L1": "the gold paling where the sun reaches it",
+    "L2": "silver-grey, darker in the soft grain, a few seams cracked open",
+    "L3": "scrubbed pale, almost white-blond, the soft grain worn down so the hard grain stands proud; seams sound",
+    "L4": "dark grey-black with green algae and black mildew in the grain, open checks, failed seams standing grey and proud"
+   },
+   "refs": [
+    {
+     "id": "teak_veneer",
+     "site": "polyhaven",
+     "level": "L0",
+     "for": "deck",
+     "note": "new teak's colour"
+    },
+    {
+     "id": "wood_planks_grey",
+     "site": "polyhaven",
+     "level": "L2",
+     "for": "deck",
+     "note": "silver-grey weathered boards"
+    },
+    {
+     "id": "weathered_planks",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "deck",
+     "note": "dark weathered boards"
+    }
+   ]
+  },
+  "varnish": {
+   "title": "Varnish",
+   "what": "Varnished brightwork on deck (teak coamings, houses, toe rail, wheel: the 'Wood' slot) and below (the saloon's mahogany panelling and joinery, varnished pine and teak trim)",
+   "kinds": {
+    "exterior": [
+     "Wood"
+    ],
+    "interior": [
+     "Varnish",
+     "Mahogany"
+    ]
+   },
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "the helmsman's hands on the wheel; a sitter's eye on the saloon's panelling",
+   "pattern_mm": {
+    "grain_along": 250,
+    "pores": [
+     0.2,
+     0.6
+    ],
+    "film_failure": [
+     10,
+     120
+    ]
+   },
+   "maps": [
+    "WoodVarnish"
+   ],
+   "levels": {
+    "L0": "deep, wet amber gloss over the grain",
+    "L1": "a slight dulling and haze on the tops of the coamings and where hands go",
+    "L2": "on deck the film thin and greyed at edges and tops, a few failed patches showing grey wood; below, dulled at the handholds",
+    "L3": "glossy again (revarnished each spring) over wood darkened to deep amber with the years",
+    "L4": "on deck the varnish peeled in flakes and the wood grey and black-stained under it; below, white bloom where damp got under the film, water rings and mildew specks"
+   },
+   "refs": [
+    {
+     "id": "weathered_peeling_timber",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "exterior",
+     "note": "grey wood where the finish has gone"
+    }
+   ]
+  },
+  "bronze": {
+   "title": "Bronze",
+   "what": "Cast bronze: the winches, blocks, cleats, fairleads, tracks, portlights, the binnacle and the steering gear's box, the deck fittings; the brass lamps and fittings below",
+   "kinds": {
+    "bronze": [
+     "Bronze"
+    ],
+    "brass": [
+     "Brass"
+    ]
+   },
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "a grinder's eye over a primary winch",
+   "pattern_mm": {
+    "sand_grain": [
+     0.2,
+     0.6
+    ],
+    "pore": [
+     0.3,
+     1.2
+    ]
+   },
+   "maps": [
+    "CastBronze"
+   ],
+   "levels": {
+    "L0": "new cast bronze, a golden pink sheen",
+    "L1": "dulling to a warm brown",
+    "L2": "brown patina, polished bright where hands and rope work it (the winch drums, cleat horns)",
+    "L3": "polished bright, as a kept classic's brightwork is, with dark, almost black patina left in the recesses",
+    "L4": "dark brown-black with green verdigris in the recesses and crust on the tops"
+   },
+   "refs": [
+    {
+     "id": "Metal013",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "bronze",
+     "note": "old eroded bronze, dark"
+    },
+    {
+     "id": "Metal015",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "bronze",
+     "note": "old eroded bronze, brown"
+    },
+    {
+     "id": "Metal017",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "bronze",
+     "note": "old scratched bronze"
+    }
+   ]
+  },
+  "duralumin": {
+   "title": "Duralumin spars",
+   "what": "The riveted duralumin mast, boom and spinnaker pole and their spreaders and struts, painted pale buff (slice 4's SparPlating relief stays)",
+   "kinds": {
+    "spar": [
+     "Spar"
+    ]
+   },
+   "closest_camera_m": 0.8,
+   "closest_camera_note": "the mast's foot from the deck",
+   "pattern_mm": {
+    "halyard_slap_marks": [
+     5,
+     30
+    ],
+    "corrosion_blister": [
+     2,
+     15
+    ]
+   },
+   "maps": [
+    "Gelcoat",
+    "Metal"
+   ],
+   "levels": {
+    "L0": "smooth glossy buff paint",
+    "L1": "the gloss softening, faint grey marks where halyards slap",
+    "L2": "chalky flat buff, grey slap marks and grime runs under the fittings, the odd flake of paint gone",
+    "L3": "repainted and clean, a little yellowed",
+    "L4": "paint flaking off to grey duralumin with white corrosion powder round the rivets and fittings"
+   },
+   "refs": [],
+   "refs_note": "Painted buff over duralumin: no CC0 scan of the period's mast paint; the blind ladder judges it."
+  },
+  "cotton": {
+   "title": "Cotton sails",
+   "what": "The cream Egyptian cotton sails (slice 6's cloth with its seams drawn from the UVs), the flaked and bagged sails, the bags and the cotton line; the canvas of the cots below",
+   "kinds": {
+    "sail": [
+     "ClothMainsail",
+     "ClothGenoa",
+     "ClothQuadrilateral",
+     "ClothStaysail",
+     "ClothSpinnaker"
+    ],
+    "stowed": [
+     "SailHeap",
+     "SailBag",
+     "SailLine"
+    ],
+    "canvas": [
+     "Canvas"
+    ]
+   },
+   "closest_camera_m": 1.0,
+   "closest_camera_note": "the genoa's tack and the main's foot from the deck",
+   "pattern_mm": {
+    "warp_pitch": 0.385,
+    "weft_pitch": 0.5,
+    "slub": [
+     5,
+     20
+    ],
+    "mildew_spot": [
+     1,
+     6
+    ]
+   },
+   "maps": [
+    "Cotton"
+   ],
+   "levels": {
+    "L0": "new cream cotton, crisp and even",
+    "L1": "a shade greyer, faint smudges along the foot",
+    "L2": "dingy grey-cream, brown grime along the foot and where the sail lies on deck, a scatter of mildew specks",
+    "L3": "clean, dried and stowed properly, but yellowed a little with age",
+    "L4": "grey with black mildew spotting in drifts, rust streaks from the hanks and thimbles"
+   },
+   "refs": [],
+   "refs_note": "No CC0 scan is undyed cream sail cotton (the linens and cottons on Poly Haven and ambientCG are dyed or modern bleached cloth), so cotton has no colour target; the blind ladder judges it."
+  },
+  "manila": {
+   "title": "Manila rope",
+   "what": "Three-strand manila for the sheets, guys, tails, the falls of the tackles and the coils",
+   "kinds": {
+    "rope": [
+     "Rope"
+    ]
+   },
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "a tail on a winch's drum",
+   "pattern_mm": {
+    "fibre_width": [
+     0.1,
+     0.4
+    ],
+    "lay": "3.4 diameters a turn (standing_bluebonnet.json)"
+   },
+   "maps": [
+    "Manila"
+   ],
+   "levels": {
+    "L0": "new straw-gold manila, a little sheen, the lay crisp",
+    "L1": "a touch greyer, a few hairs standing off",
+    "L2": "grey-brown and hairy, darker where hands and the drums work it",
+    "L3": "kept yachts renew their running rigging every few seasons: rope a season or two old, a little grey and hairy but sound and clean",
+    "L4": "grey-black with green and black mildew, fuzzy, frayed"
+   },
+   "refs": [
+    {
+     "id": "Rope001",
+     "site": "ambientcg",
+     "level": "L0",
+     "for": "rope",
+     "note": "beige natural-fibre rope"
+    },
+    {
+     "id": "Rope003",
+     "site": "ambientcg",
+     "level": "L2",
+     "for": "rope",
+     "note": "darker natural-fibre rope"
+    }
+   ]
+  },
+  "wire": {
+   "title": "Wire rope",
+   "what": "Galvanised plough-steel wire: the 1x19 standing rigging, the 7x19 runners, checkstays and halyards; the galvanised shackles, thimbles, pipe and chain, and the galley's zinc (its own kind: no iron in it to rust)",
+   "kinds": {
+    "wire": [
+     "Wire",
+     "WireRope"
+    ],
+    "galvanised": [
+     "Galvanised"
+    ],
+    "zinc": [
+     "Zinc"
+    ]
+   },
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "a shroud's lower end at the chainplate",
+   "pattern_mm": {
+    "zinc_spangle": [
+     2,
+     10
+    ],
+    "rust_spot": [
+     1,
+     8
+    ]
+   },
+   "maps": [
+    "Metal"
+   ],
+   "levels": {
+    "L0": "bright galvanised, a silvery spangle",
+    "L1": "the zinc dulling to grey",
+    "L2": "dull grey with white zinc oxide in the grooves",
+    "L3": "kept wire is oiled: darker, with a soft sheen",
+    "L4": "rust in the grooves and brown runs along the lay; the galvanised fittings rusting; the galley's zinc white and grey with oxide"
+   },
+   "refs": [
+    {
+     "id": "Rope002",
+     "site": "ambientcg",
+     "level": "L1",
+     "for": "wire",
+     "note": "steel wire rope"
+    }
+   ]
+  },
+  "furnishings": {
+   "title": "Furnishings below",
+   "what": "The saloon's and cabins' blue velvet, red carpet, the books' leather, the berths' linen and the porcelain basins and WCs",
+   "kinds": {
+    "velvet": [
+     "Upholstery"
+    ],
+    "carpet": [
+     "Carpet"
+    ],
+    "leather": [
+     "Leather"
+    ],
+    "linen": [
+     "Linen"
+    ],
+    "porcelain": [
+     "Porcelain"
+    ]
+   },
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "sitting on a settee",
+   "pattern_mm": {
+    "wear_patch": [
+     150,
+     400
+    ]
+   },
+   "maps": [],
+   "levels": {
+    "L0": "new: deep blue velvet, rich red carpet, crisp white linen",
+    "L1": "nearly new: the velvet's pile a little flattened on the seat fronts, the linen a shade off-white",
+    "L2": "the velvet's pile worn shiny on the seat fronts, the carpet worn along the gangway, the linen greyer",
+    "L3": "renewed, the colours a little faded by the light from the skylights",
+    "L4": "faded, stained, mildew on the velvet and the leather, the carpet threadbare in the gangway, the porcelain crazed and stained"
+   },
+   "refs": [],
+   "refs_note": "The CC0 velvets and carpets are other colours (red velvet, beige carpet), so the furnishings have no colour target; the blind ladder judges them."
+  }
+ },
+ "unweathered": {
+  "CabinWindow": "glass: the ports and skylights stay clear at every level (the game's glass draws its own film)",
+  "DeckGlass": "the deck prisms' glass",
+  "LensClear": "a lantern's lens",
+  "LensGreen": "a lantern's lens",
+  "LensRed": "a lantern's lens",
+  "Mirror": "the cabins' mirrors",
+  "Bulb": "a lamp's frosted bulb, lit",
+  "Ensign": "flags are renewed every season",
+  "Burgee": "flags are renewed every season"
+ },
+ "maps": {
+  "about": "Her own maps are made by textures.py into Inputs/jclass-detail (plain git, as Inputs/boat-detail); the shared ones are the boats' library (Inputs/boat-detail, Tools/boats/make_detail_textures.py), already in the game's memory for the J/22, so they cost her nothing more. Every map is box-projected in each part's own frame at its real size (tile_mm) and fades out between fade_m metres from the camera.",
+  "own": {
+   "CastBronze": {
+    "tile_mm": [
+     100,
+     100
+    ],
+    "pores_per_cm2": 1.5,
+    "normal_strength": 1.0,
+    "fade_m": [
+     0.8,
+     3.0
+    ]
+   },
+   "Cotton": {
+    "tile_mm": [
+     40,
+     40
+    ],
+    "warp_per_cm": 26,
+    "weft_per_cm": 20,
+    "normal_strength": 0.8,
+    "fade_m": [
+     1.0,
+     4.0
+    ]
+   },
+   "Manila": {
+    "tile_mm": [
+     60,
+     30
+    ],
+    "hairs_per_cm2": 3.0,
+    "normal_strength": 1.0,
+    "fade_m": [
+     0.6,
+     2.5
+    ]
+   }
+  },
+  "shared": {
+   "Gelcoat": {
+    "tile_mm": [
+     250,
+     250
+    ],
+    "use": "the enamels' orange peel and buffing marks, the spars' paint"
+   },
+   "TeakWeathered": {
+    "tile_mm": [
+     250,
+     125
+    ],
+    "use": "the laid deck's grain, rings and checks; the pine soles"
+   },
+   "WoodVarnish": {
+    "tile_mm": [
+     250,
+     125
+    ],
+    "use": "the grain and pores under the varnish (deck and below)"
+   },
+   "Metal": {
+    "tile_mm": [
+     100,
+     100
+    ],
+    "use": "bare duralumin where the paint is gone, galvanised wire and fittings"
+   },
+   "Canvas": {
+    "tile_mm": [
+     50,
+     50
+    ],
+    "use": "the bags' and the cots' canvas"
+   }
+  }
+ },
+ "budget": {
+  "about": "Texture memory (the plan left it to this slice): her own maps only, since the shared library is already resident for the J/22. Block-compressed sizes with mips: BC5 normals and BC1 masks at full size on High and Ultra (the Vehicle texture groups, docs/boat-tex-medium); Medium draws no detail maps on her (colour and roughness math only, as the boats' Medium material does). Cap: 6 MB on High and Ultra, 0 on Medium.",
+  "high_mb": 6.0,
+  "medium_mb": 0.0
+ },
+ "closest_px_per_mm": 4.0
+}
