@@ -285,7 +285,7 @@ namespace SailUI
 		const int32 PX = ((X % N) + N) % N, PY = ((Y % N) + N) % N;
 		const float U = float(PX) / N, V = float(PY) / N;
 		// Mottle (the sheet's uneven tone), a finer tooth, and per-texel fibre specks, stretched a little along X.
-		const float Mottle = GrainLattice(U, V, 6, 11u) - 0.5f;
+		const float Mottle = GrainLattice(U, V, 6, 42u) - 0.5f;	// a seed whose 36 lattice values average 0.5
 		const float Tooth = GrainLattice(U, V, 48, 23u) - 0.5f;
 		const float Speck = GrainUnit(uint32(PX / 2), uint32(PY), 37u) - 0.5f;
 		return FMath::Clamp(Mottle * 1.1f + Tooth * 0.7f + Speck * 0.5f, -1.f, 1.f);
