@@ -83,11 +83,13 @@ namespace SailHudImpl
 			for (int32 D = FMath::FloorToInt((H - 62.f) / 5.f) * 5; D <= H + 62.f; D += 5)
 			{
 				const float X = Cx + (D - H) * PxPerDeg;
-				const float Fade = FMath::Clamp(1.f - FMath::Abs(X - Cx) / (S.X * 0.5f), 0.f, 1.f);
+				// Bare (UI Natural) the tape has no panel behind it, so it fades later toward its ends and its ticks are heavier.
+				const float Edge = FMath::Clamp(1.f - FMath::Abs(X - Cx) / (S.X * 0.5f), 0.f, 1.f);
+				const float Fade = bBare ? FMath::Min(1.f, Edge * 2.2f) : Edge;
 				const int32 N = ((D % 360) + 360) % 360;
 				const bool bBig = N % 30 == 0;
-				if (bBare) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f) + Drop, FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) + Drop }, ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.7f * Fade), true, 2.f);
-				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, (bBare ? Fg : Muted).CopyWithNewOpacity(Fade), true, bBare ? 1.5f : 1.f);
+				if (bBare) FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f) + Drop, FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) + Drop }, ESlateDrawEffect::None, DropColor.CopyWithNewOpacity(0.8f * Fade), true, 3.f);
+				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), { FVector2f(X, S.Y - 2.f), FVector2f(X, S.Y - (bBig ? 14.f : 7.f)) }, ESlateDrawEffect::None, (bBare ? Fg : Muted).CopyWithNewOpacity(Fade), true, bBare ? 2.f : 1.f);
 				if (bBig)
 				{
 					const TCHAR* Card = N == 0 ? TEXT("N") : N == 90 ? TEXT("E") : N == 180 ? TEXT("S") : N == 270 ? TEXT("W") : nullptr;
