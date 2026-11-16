@@ -94,6 +94,20 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("High: cloud view sample scale 0.65"), CloudViewSampleScale(ESailingQuality::High), 0.65f);
 	TestEqual(TEXT("High: cloud shadow sample scale 0.5"), CloudShadowSampleScale(ESailingQuality::High), 0.5f);
 	TestEqual(TEXT("Ultra: cloud shadow sample scale 4"), CloudShadowSampleScale(ESailingQuality::Ultra), 4.f);
+	// A tier switch applies the new tier's pair (ApplyTierCloudScales on every quality change): High -> Medium -> Ultra.
+	{
+		float V = 0.f, Sh = 0.f;
+		CloudTierSampleScales(ESailingQuality::High, false, V, Sh);
+		TestTrue(TEXT("Switch: High 0.65 / 0.5"), FMath::IsNearlyEqual(V, 0.65f) && FMath::IsNearlyEqual(Sh, 0.5f));
+		CloudTierSampleScales(ESailingQuality::Medium, false, V, Sh);
+		TestTrue(TEXT("Switch: then Medium 1 / 1"), FMath::IsNearlyEqual(V, 1.f) && FMath::IsNearlyEqual(Sh, 1.f));
+		CloudTierSampleScales(ESailingQuality::Ultra, false, V, Sh);
+		TestTrue(TEXT("Switch: then Ultra 3 / 4"), FMath::IsNearlyEqual(V, 3.f) && FMath::IsNearlyEqual(Sh, 4.f));
+		CloudTierSampleScales(ESailingQuality::High, true, V, Sh);
+		TestTrue(TEXT("-SailingFullStormSamples on High: 1 / 1"), FMath::IsNearlyEqual(V, 1.f) && FMath::IsNearlyEqual(Sh, 1.f));
+		CloudTierSampleScales(ESailingQuality::Ultra, true, V, Sh);
+		TestTrue(TEXT("-SailingFullStormSamples leaves Ultra 3 / 4"), FMath::IsNearlyEqual(V, 3.f) && FMath::IsNearlyEqual(Sh, 4.f));
+	}
 	for (ESailingQuality Q : { ESailingQuality::Low, ESailingQuality::Medium })
 	{
 		TestEqual(TEXT("Medium and Low: cloud shadow sample scale 1"), CloudShadowSampleScale(Q), 1.f);

@@ -40,6 +40,13 @@ float CloudShadowSampleScale(ESailingQuality Quality)
 	return Quality == ESailingQuality::Ultra ? 4.f : (Quality == ESailingQuality::High ? 0.5f : 1.f);
 }
 
+void CloudTierSampleScales(ESailingQuality Quality, bool bFullStormSamples, float& OutView, float& OutShadow)
+{
+	const bool bFull = bFullStormSamples && Quality == ESailingQuality::High;
+	OutView = bFull ? 1.f : CloudViewSampleScale(Quality);
+	OutShadow = bFull ? 1.f : CloudShadowSampleScale(Quality);
+}
+
 float CloudCapStepFloorM(ESailingQuality Quality)
 {
 	return Quality == ESailingQuality::Ultra ? 150.f : 0.f;

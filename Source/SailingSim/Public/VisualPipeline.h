@@ -44,6 +44,11 @@ SAILINGSIM_API float CloudViewSampleScale(ESailingQuality Quality);
  *  (docs/slip-clouds/), Medium and Low 1. */
 SAILINGSIM_API float CloudShadowSampleScale(ESailingQuality Quality);
 
+/** The cloud component's two sample scales a tier starts from (view, shadow): the two above, or 1 and 1 on High with
+ *  -SailingFullStormSamples (the comparison run's full samples, as before docs/slip-clouds/). Applied at BeginPlay and on
+ *  every quality change (ASailingEnvironment::ApplyTierCloudScales); -SailingCloudScale overrides it there. */
+SAILINGSIM_API void CloudTierSampleScales(ESailingQuality Quality, bool bFullStormSamples, float& OutView, float& OutShadow);
+
 /** The cumulus step-depth cap's minimum step (m, M_CloudLayers' CloudCapStepFloor; docs/near-cloud-grain): each near
  *  step's opacity is capped as if the step were at least this long, so a cloud base closes over several steps and its
  *  grain averages out. Ultra 150 m (docs/cloud-shimmer); 0 (the material's default, off) elsewhere. */
