@@ -76,6 +76,15 @@ boats), the same every round so before and after line up:
                                              stateroom and bathroom) as albedo and ids only, for the zinc, the linen
                                              and the porcelain. --wear sets the level of every other shot (L0, new,
                                              by default)
+  light_<dist>_<bearing>_{hero,light}[_id], light_noise, light_wire_<view>_{hero,light}
+                                             slice 12's light copy (light.py) against the detailed boat: each view
+                                             at a 4K screen's own pixels (3840 wide, the game's narrowest 60 degree
+                                             field of view), cropped to the boat, from 50, 100 and 300 m abeam and
+                                             off the bow, under main and genoa at L2, with an id shot of each for
+                                             the boat's outline and the hero again with another noise seed (how
+                                             much two renders of one model differ); light_compare.py measures and
+                                             lays out the pairs. Then wireframes of the triangles close to, detailed
+                                             and light: the bow, the mast's foot with its winches, and the counter
 Each shot shows the objects of its own slice and the ones before it (an object's "slice" property), so the earlier
 slices' shots stay as they were and are framed on the hull as before; what the build hid (slice 1's moulded hull, kept
 as the measured reference) stays hidden in every shot.
@@ -89,6 +98,7 @@ import os
 import sys
 
 import bpy
+from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -188,6 +198,18 @@ def material(kind):
         p.inputs["Base Color"].default_value = (0.05, 0.12, 0.16, 1)
         p.inputs["Roughness"].default_value = 0.08
         nt.links.new(p.outputs[0], out.inputs[0])
+    elif kind == "wire":                     # clay with its triangles' edges drawn a pixel wide (slice 12)
+        d = nt.nodes.new("ShaderNodeBsdfDiffuse")
+        d.inputs[0].default_value = (0.75, 0.75, 0.72, 1)
+        e = nt.nodes.new("ShaderNodeBsdfDiffuse")
+        e.inputs[0].default_value = (0.03, 0.05, 0.12, 1)
+        w = nt.nodes.new("ShaderNodeWireframe")
+        w.use_pixel_size, w.inputs[0].default_value = True, 1.0
+        mx = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(w.outputs[0], mx.inputs[0])
+        nt.links.new(d.outputs[0], mx.inputs[1])
+        nt.links.new(e.outputs[0], mx.inputs[2])
+        nt.links.new(mx.outputs[0], out.inputs[0])
     else:
         d = nt.nodes.new("ShaderNodeBsdfDiffuse")
         d.inputs[0].default_value = (0.75, 0.75, 0.72, 1)
@@ -231,7 +253,7 @@ def set_sun(direction, strength):
 def turn_rudder(deg):
     """Turn the rudder and its stock about the stock line (their own Z): positive moves the trailing edge to starboard,
     which turns the bow to starboard (the game's positive rudder)."""
-    for nm in ("Rudder", "RudderStock"):
+    for nm in ("Rudder", "RudderStock", "Rudder_Light", "RudderStock_Light"):
         ob = bpy.data.objects.get(nm)
         if ob is None:
             continue
@@ -242,14 +264,16 @@ def turn_rudder(deg):
 
 
 def turn_about_z(name, deg):
-    """Turn an object about its own Z from where the build put it (its "frame"), degrees, right-handed in Blender."""
-    ob = bpy.data.objects.get(name)
-    if ob is None:
-        return
-    if "frame" not in ob:
-        ob["frame"] = [c for row in ob.matrix_world for c in row]
-    M = Matrix([ob["frame"][k:k + 4] for k in range(0, 16, 4)])
-    ob.matrix_world = M @ Matrix.Rotation(math.radians(deg), 4, "Z")
+    """Turn an object (and its light twin, slice 12) about its own Z from where the build put it (its "frame"), degrees,
+    right-handed in Blender."""
+    for nm in (name, name + "_Light"):
+        ob = bpy.data.objects.get(nm)
+        if ob is None:
+            continue
+        if "frame" not in ob:
+            ob["frame"] = [c for row in ob.matrix_world for c in row]
+        M = Matrix([ob["frame"][k:k + 4] for k in range(0, 16, 4)])
+        ob.matrix_world = M @ Matrix.Rotation(math.radians(deg), 4, "Z")
 
 
 def swing_boom(deg):
@@ -258,7 +282,7 @@ def swing_boom(deg):
     it (built in the boom's frame)."""
     turn_about_z("Boom", deg)
     for o in meshes:
-        if o.get("on_boom"):
+        if o.get("on_boom") and o.get("light_of") is None:
             turn_about_z(o.name, deg)
 
 
@@ -266,18 +290,26 @@ def set_pole(deg):
     """Set the spinnaker pole deg from the bow, positive to starboard, negative to port. The build sets it 70 degrees
     to starboard, and a positive turn about its own Z in Blender takes its end to port. "stowed": lashed down on the
     starboard side deck (the build's "stowed" matrix)."""
-    ob = bpy.data.objects.get("SpinnakerPole")
     if deg == "stowed":
-        ob.matrix_world = Matrix([ob["stowed"][k:k + 4] for k in range(0, 16, 4)])
+        for nm in ("SpinnakerPole", "SpinnakerPole_Light"):
+            ob = bpy.data.objects.get(nm)
+            if ob is not None:
+                ob.matrix_world = Matrix([ob["stowed"][k:k + 4] for k in range(0, 16, 4)])
         return
     turn_about_z("SpinnakerPole", 70.0 - deg)
 
 
-def shown(o, upto, tack, suit=None):
+def shown(o, upto, tack, suit=None, light=False, below=True):
     """Whether an object shows in a shot: its slice is no later than `upto`, the build did not hide it, a runner's or
     a checkstay's state shows set on the tack's side (windward) and let off on the other, and a sail's state shows
-    when it is in the shot's suit (sails_bluebonnet.json's suits)."""
-    if o.get("slice", 1) > upto:
+    when it is in the shot's suit (sails_bluebonnet.json's suits). With `light` each part that has a light twin
+    (slice 12) gives its place to the twin; otherwise the twins never show. below=False leaves out below decks
+    (slices 9 and 10), as the game does unless the camera is below."""
+    if o.get("light_of") is not None:
+        return light and shown(bpy.data.objects[o["light_of"]], upto, tack, suit)
+    if light and bpy.data.objects.get(o.name + "_Light") is not None:
+        return False
+    if o.get("slice", 1) > upto or (not below and o.get("slice", 1) in (9, 10)):
         return False
     if o.get("sail") is not None:
         return suit is not None and suit in o["suits"].split(",")
@@ -347,7 +379,8 @@ def bulbs_lit(on):
 
 def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, sun=0.0, samples=32, rudder=0.0,
          upto=3, boom=0.0, pole=70.0, tack="starboard", suit=None, sea_size=1.0, clip=None, work=False,
-         view="Standard", exposure=0.0, lamps=False, work_aft=False, wear=None, albedo=False, ids=False):
+         view="Standard", exposure=0.0, lamps=False, work_aft=False, wear=None, albedo=False, ids=False, light=False,
+         fov=None, res=None, crop=False, seed=0, below=True):
     """kind: clay (one grey material), zebra (mirror hull in a striped world), paint (the model's own materials).
     rudder: the rudder's turn for this shot, degrees (positive: trailing edge to starboard). upto: the last slice whose
     objects show. boom: the boom's swing, degrees (positive: to starboard); pole: the pole's set from the bow (positive:
@@ -358,7 +391,10 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
     management's view transform and exposure (stops); the earlier slices' shots keep Standard at 0. wear: the wear
     level (slice 11: "L0" to "L4"; the --wear option otherwise, L0 by default); albedo: each dressed material's colour
     alone, unlit, for measuring (wear_check.py); ids: each dressed material in its own flat colour, to tell them apart
-    in the measure."""
+    in the measure. light: slice 12's light twins in their parts' places; fov: a horizontal field of view (degrees) in
+    place of `lens`; res: (width, height) in place of --res; crop: render only the box round the boat's parts (detailed
+    and light alike, so the two shots of a view match pixel for pixel);
+    seed: Cycles' noise seed; below: False leaves out below decks (slices 9 and 10), as the game does from outside."""
     if ONLY and name not in ONLY:
         return
     weathering.apply_level(wear or WEAR)
@@ -367,7 +403,7 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
         boom = -SUITS[suit]["boom_deg"]
         pole = "stowed" if SUITS[suit].get("pole") == "stowed" else SUITS[suit]["pole_deg"]
     for o in meshes:
-        o.hide_render = not shown(o, upto, tack, suit)
+        o.hide_render = not shown(o, upto, tack, suit, light, below)
     turn_rudder(rudder)
     swing_boom(boom)
     set_pole(pole)
@@ -386,7 +422,7 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
             o.data.materials.clear()
             o.data.materials.append(material("clay"))
     elif kind != "paint":
-        bpy.context.view_layer.material_override = material("zebra" if kind == "zebra" else "clay")
+        bpy.context.view_layer.material_override = material(kind if kind in ("zebra", "wire") else "clay")
     cam.location = loc
     cam.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
     cd = cam.data
@@ -402,6 +438,23 @@ def shot(name, kind, loc, target, lens=50, ortho=None, sea=False, sun_dir=None, 
         cd.type, cd.ortho_scale = "ORTHO", ortho
     else:
         cd.type, cd.lens = "PERSP", lens
+        if fov:
+            cd.sensor_fit, cd.sensor_width = "HORIZONTAL", 36.0
+            cd.lens = 18.0 / math.tan(math.radians(fov) / 2)
+    SC.render.resolution_x, SC.render.resolution_y = res or (RES, RES * 9 // 16)
+    SC.render.use_border = SC.render.use_crop_to_border = bool(crop)
+    if crop:
+        bpy.context.view_layer.update()
+        # the box round both the detailed parts and their twins, so a view's detailed and light shots share one crop
+        pts = [world_to_camera_view(SC, cam, o.matrix_world @ Vector(c)) for o in meshes
+               if shown(o, upto, tack, suit, False, below) or shown(o, upto, tack, suit, True, below)
+               for c in o.bound_box]
+        pad = 0.01
+        SC.render.border_min_x = max(0.0, min(p.x for p in pts) - pad)
+        SC.render.border_max_x = min(1.0, max(p.x for p in pts) + pad)
+        SC.render.border_min_y = max(0.0, min(p.y for p in pts) - pad)
+        SC.render.border_max_y = min(1.0, max(p.y for p in pts) + pad)
+    SC.cycles.seed = seed
     SC.cycles.samples = samples
     SC.cycles.max_bounces = 2 if kind == "zebra" else 3
     SC.view_settings.view_transform, SC.view_settings.look, SC.view_settings.exposure = view, "None", exposure
@@ -729,4 +782,33 @@ for vname, v in WEAR_VIEWS.items():
 weathering.albedo_mode(False)
 json.dump({k: m.name for k, m in enumerate(weathering.dressed(), 1)}, open(os.path.join(OUT, "wear_ids.json"), "w"),
           indent=1)
+# slice 12: the light copy against the detailed boat, at a 4K screen's own pixels with the game's narrowest field of
+# view (60 degrees), under main and genoa at L2 on a sea past the horizon, from an eye 3 m over the water on her lee
+# (port) side: abeam and 40 degrees off the bow, at 50, 100 and 300 m from a point 10 m up her mast (at 50 m the frame
+# takes her from the water to about 26 m up, as the game's would). Each pair is rendered alike (the same seed);
+# light_compare.py measures them over the boat's outline from the id shots. Below decks is left out of both, as the game
+# leaves it out unless the camera is below: the light shell may lie up to the tolerance inside the detailed one, where
+# the frames stand
+if any(o.get("light_of") is not None for o in meshes):
+    lc = dict(fov=60.0, res=(3840, 2160), crop=True, sea=True, sea_size=30.0, samples=48, upto=12, suit="Genoa",
+              sun_dir=LEE_SUN, sun=3.0, wear="L2", below=False)
+    AIM = Vector((MIDA.x, 0.0, 10.0))
+    for dist in (50, 100, 300):
+        for bname, deg in (("abeam", 90.0), ("bow", 40.0)):
+            a = math.radians(deg)
+            eye = (AIM.x + dist * math.cos(a), dist * math.sin(a), 3.0)
+            for which in ("hero", "light"):
+                is_light = which == "light"
+                shot(f"light_{dist}_{bname}_{which}", "paint", eye, AIM, light=is_light, **lc)
+                shot(f"light_{dist}_{bname}_{which}_id", "paint", eye, AIM, light=is_light, ids=True,
+                     **{k: v for k, v in lc.items() if k != "samples"})
+            if dist == 100 and bname == "abeam":
+                shot("light_noise", "paint", eye, AIM, seed=7, **lc)
+    weathering.albedo_mode(False)
+    wire = dict(sun_dir=WW_SUN, sun=3.0, samples=16, upto=12, suit="Genoa", below=False)
+    for vname, loc, target, lens in (("bow", (24.0, -9.0, 6.0), (15.0, 0.0, 2.0), 30),
+                                     ("mast_foot", (6.5, 2.8, 3.2), (2.9, 0.0, 1.8), 28),
+                                     ("counter", (-27.0, -7.0, 5.0), (-19.0, 0.0, 1.5), 32)):
+        for which in ("hero", "light"):
+            shot(f"light_wire_{vname}_{which}", "wire", loc, target, lens=lens, light=which == "light", **wire)
 print("render_jclass: done")

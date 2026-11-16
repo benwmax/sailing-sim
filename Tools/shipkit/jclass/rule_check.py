@@ -44,7 +44,12 @@ must be dressed by a texture card or named unweathered (glass, lenses, mirrors, 
 material must be built, the five wear levels must be there with L0 all new, and her own detail maps must tile
 without a seam (TILING_MAX) or a repeat a player would see (REPEAT_MAX), hold at least 4 px/mm (the closest camera)
 and their patterns' sizes must be the card's, and they must fit the texture budget: TEXTURE_HIGH_MB on High, none on
-Medium.
+Medium. From slice 12 every part seen from outside must have its light twin (light.py: as many twins as outside
+parts, the light copy's own verdict good) within the tolerance, one pixel of a 4K screen at the game's narrowest field
+of view from 50 m (LIGHT_TOL_MM, worked out here, not read from the build): its surface, its paint lines, its drawn
+paint (the 99th percentile of how far it slides) and no face turned over wider than that; and in every suit
+(sails_bluebonnet.json's, all of them) the twins together must come to no more than a quarter of the detailed boat's
+triangles (LIGHT_SHARE_MAX, the plan's) and no more than the plan's 650,000 (LIGHT_TRIANGLES_MAX).
 Plain Python: no Blender needed.
 """
 import json
@@ -65,6 +70,9 @@ DOOR_MIN_M = 1.6            # the least height of a door's opening below (slice 
 STAIR_RISE_MAX_M = 0.27     # the companion stairs' steepest rise (slice 10): the json's 'rise_max' may only be less
 SLICE_10_TRIANGLES = 900000  # below decks aft's budget (the plan's), whatever the build says
 TEXTURE_HIGH_MB = 6.0        # her own detail maps on High (slice 11; the plan's, whatever the cards say); Medium none
+LIGHT_TOL_MM = 2 * 50.0 * math.tan(math.radians(30.0)) / 3840 * 1000   # slice 12: a pixel at 50 m, 4K, 60 deg
+LIGHT_SHARE_MAX = 0.25       # the light copy's share of the detailed boat in any suit (slice 12: the plan's quarter)
+LIGHT_TRIANGLES_MAX = 650000  # and its triangles in any suit (the plan's budget for the light copy)
 TILING_MAX = 1.0             # a map's wrap step over the largest of its steps inside (textures.py)
 REPEAT_MAX = 0.2             # a map's share of variance at four cycles a tile or fewer (textures.py)
 PX_PER_MM_MIN = 4.0          # the texture loop's sharpness at the closest camera
@@ -473,6 +481,37 @@ if __name__ == "__main__":
                   f"{TEXTURE_HIGH_MB}; the cards' {bud.get('high_cap_mb')}) and {bud.get('medium_mb')} on Medium; the "
                   f"shared library's {tx.get('maps_shared')} are already in the game")
             ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if sl >= 12:
+            # slice 12: every outside part's light twin within a pixel from 50 m, and the copy within its budget
+            lt = b.get("light") or {}
+            tol = lt.get("tolerance_mm")
+            good = tol is not None and abs(tol - LIGHT_TOL_MM) < 0.01
+            print(f"{'ok  ' if good else 'FAIL'} the light copy's tolerance {tol} mm is a pixel at 50 m on a 4K screen "
+                  f"at 60 degrees ({LIGHT_TOL_MM:.2f} mm)")
+            ok = good
+            err, slide = lt.get("worst_error_mm"), lt.get("worst_paint_slide_p99_mm")
+            good = (lt.get("failing") == [] and lt.get("ok") is True
+                    and isinstance(lt.get("twins"), int) and lt.get("twins") > 0
+                    and lt.get("twins") == lt.get("parts_outside")
+                    and err is not None and err <= LIGHT_TOL_MM and slide is not None and slide <= LIGHT_TOL_MM)
+            print(f"{'ok  ' if good else 'FAIL'} {lt.get('twins')} light twins for {lt.get('parts_outside')} parts "
+                  f"seen from outside, none failing ({lt.get('failing')}, the copy's verdict {lt.get('ok')}); the "
+                  f"worst surface error {err} mm ({lt.get('worst_part')}), the worst paint slide {slide} mm (99th "
+                  f"percentile), both within {LIGHT_TOL_MM:.2f}")
+            ok = ok and good
+            suits = [k for k in json.load(open(os.path.join(HERE, "sails_bluebonnet.json")))["suits"] if k != "note"]
+            missing = sorted(set(suits) - set(lt.get("suits") or {}))
+            if missing:
+                print(f"FAIL the light copy has no count for the suits {missing}")
+                ok = False
+            for suit, v in (lt.get("suits") or {}).items():
+                good = v.get("share", 9.0) <= LIGHT_SHARE_MAX and v.get("light_triangles", 1e9) <= LIGHT_TRIANGLES_MAX
+                print(f"{'ok  ' if good else 'FAIL'} light copy under {suit}: {v.get('light_triangles')} triangles of "
+                      f"{v.get('hero_triangles')} ({v.get('share')}; at most {LIGHT_SHARE_MAX} and "
+                      f"{LIGHT_TRIANGLES_MAX})")
+                ok = ok and good
             if not ok:
                 r["pass"] = False
     print(report(r))

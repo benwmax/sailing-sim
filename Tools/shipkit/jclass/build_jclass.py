@@ -1,4 +1,4 @@
-"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-9).
+"""Builds the J-Class yacht Bluebonnet in Blender (docs/jclass-1 to docs/jclass-12).
 
 Slice 1 lofted the hull's lines (loft.py); slice 2 finished it (shell.py, finish_bluebonnet.json): the shell split at
 its paint lines (bottom, boot top, topsides, gold cove) and the lead casting's top, the plating drawn in the paint from
@@ -50,6 +50,11 @@ failing; bronze browning, polished or green; the duralumin spars' paint chalking
 and rust-marked; manila greying and furred; wire dulled, oiled or rusting; the saloon's furnishings faded and worn.
 Every wear term is a value node named "wear:<term>" that render_jclass.py's --wear sets level by level; the .blend is
 left at L0 (new). A material no card covers stops the build.
+Slice 12 adds the light copy for distant and AI boats (light.py, light_bluebonnet.json): every part seen from outside
+gets a hidden twin '<name>_Light' in the collection 'Light', held to one pixel of a 4K screen at the game's narrowest
+field of view from 50 m out (1.5 cm): specks left out, ropes and wires built again with fewer sides, the rest
+collapsed with its paint lines kept in place and sewn shut, the part's normals carried over. A twin over the
+tolerance, or a suit whose twins come to more than a quarter of its triangles, stops the build.
 The .blend is saved under main and genoa with the other states hidden.
 
     python build_jclass.py <out dir>      (Blender's Python: pip bpy, or blender -b -P build_jclass.py -- <out>)
@@ -64,9 +69,9 @@ drawings_jclass.py (plating.png, rudder_sections.png, deck_plan.png, deck_profil
 sail_cut.png, sail_suits.png, running_plan.png, hardware_plan.png, interior_plan.png, interior_aft_plan.png; they need
 matplotlib). Units are metres in the hull's frame (X forward, Y starboard, Z up), origin on the centreline at the middle
 of the load waterline. Edit loft.py, shell.py, deck.py, spars.py, rigging.py, sails.py, sail_materials.py, winches.py,
-running.py, hardware.py, hardware_materials.py, interior.py, furniture.py, saloon.py, weathering.py, textures.py and
-the json files, never the .blend. The moulded hull of slice 1 stays in the .blend as `Hull`, hidden from renders: the
-fairness check measures it.
+running.py, hardware.py, hardware_materials.py, interior.py, furniture.py, saloon.py, weathering.py, textures.py,
+light.py and the json files, never the .blend. The moulded hull of slice 1 stays in the .blend as `Hull`, hidden from
+renders: the fairness check measures it.
 """
 import json
 import math
@@ -94,6 +99,7 @@ import hardware_materials  # noqa: E402
 import interior  # noqa: E402
 import drawings_jclass  # noqa: E402
 import weathering  # noqa: E402
+import light  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0] if ARGS else os.path.join(HERE, "out")
@@ -2611,6 +2617,14 @@ def main():
     for img in bpy.data.images:                       # the detail maps travel with the .blend, not by the repo's path
         if img.source == "FILE" and img.filepath and not img.packed_file:
             img.pack()
+    # slice 12: the light copy (light.py, light_bluebonnet.json): a hidden twin of every part seen from outside, held to
+    # one pixel at 50 m; a twin over the tolerance or a suit over the budget stops the build
+    light_rep = light.build()
+    if not light_rep["ok"]:
+        raise SystemExit(f"light copy: parts {light_rep['failing']} over the tolerance, or the largest suit's share "
+                         f"{light_rep['largest_share']} over {light_rep['budget_share']}")
+    with open(os.path.join(OUT, "light.json"), "w") as f:
+        json.dump(light_rep, f, indent=1)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "jclass.blend"))
     write_obj(os.path.join(OUT, "jclass.obj"), (shell_ob, transom, deck_ob))
     rig_shown = [rig_obs[k] for k in rigging.OBJECTS + rigging.SAILING]
@@ -2632,7 +2646,7 @@ def main():
     in_tris = {k: tri_count(ob) for k, ob in in_obs.items()}
     slice9 = sum(v for k, v in in_tris.items() if k not in interior.AFT_OBJECTS)
     slice10 = sum(v for k, v in in_tris.items() if k in interior.AFT_OBJECTS)
-    build = {"slice": 11, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
+    build = {"slice": 12, "grid_slice_1": [NU, NV], "triangles": tris, "triangles_total": sum(tris.values()),
              "triangles_slice_3": slice3, "budget_slice_3": 500000, "triangles_slice_4": slice4,
              "budget_slice_4": 250000, "triangles_slice_5": slice5, "budget_slice_5": 250000,
              "triangles_slice_6_by_suit": slice6, "triangles_slice_6_states": sail_tris,
@@ -2658,7 +2672,8 @@ def main():
              "rig": rig, "rigging": spars.rnd(rr), "sails": spars.rnd({k: v for k, v in srep.items()
                                                                        if not k.startswith("_")}),
              "running": spars.rnd(running.summary(rnrep)), "hardware": spars.rnd(hardware.summary(hwrep)),
-             "interior": spars.rnd(inrep), "textures": spars.rnd(tex_rep)}
+             "interior": spars.rnd(inrep), "textures": spars.rnd(tex_rep),
+             "light": {k: v for k, v in light_rep.items() if k != "parts"}}
     if (slice3 > build["budget_slice_3"] or slice4 > build["budget_slice_4"]
             or slice5 > build["budget_slice_5"] or max(slice6.values()) > build["budget_slice_6"]
             or max(slice7.values()) > build["budget_slice_7"] or max(slice8.values()) > build["budget_slice_8"]
