@@ -354,4 +354,5 @@ ships on.
 | `Tools/shipkit/frigate/boats.py` | a draught's lines lofted strake by strake (`Lines`); a boat planked, framed and fitted out, her gear stowed in her and her own checks (`Boat`); the spare spars, saddles, cradles, chocks, anchors and gripes over the waist, their places and checks (`Boats`) |
 | `Tools/shipkit/frigate/boats_1797.json` | the two draughts' traced lines; each boat's sizes, scantlings and fittings; the stowage; the meets by design; every value with its source or marked an estimate |
 | `Tools/shipkit/frigate/build_frigate.py` | builds the boats after the deck, gives the running rigging, brace limits, sails and guns the new parts, checks their room (`boats_room`) and folds, and writes their counts and places in `build.json` and `boats.json` |
+| `Tools/shipkit/frigate/anchors.py` | a spliced eye's end may lie a little clear of its standing part (`gap`), so a gripe drawn as one rope does not touch itself; slice 10's splices keep no gap and come out the same |
 | `docs/shipkit-11/baseline/` | `build.json`, `boats.json` and renders |
