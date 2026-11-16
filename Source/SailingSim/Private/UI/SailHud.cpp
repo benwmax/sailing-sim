@@ -422,14 +422,16 @@ namespace SailHudImpl
 				const EYarn Win = bTied ? EYarn::Hang : LuffYarn(SSailHud::TrimYarnState(Strips, N, Band, SSailHud::ETrimYarn::LuffWindward));
 				const EYarn Lee = bTied ? EYarn::Hang : LuffYarn(SSailHud::TrimYarnState(Strips, N, Band, SSailHud::ETrimYarn::LuffLeeward));
 				const FVector2f Root = At + FVector2f(44.f, 15.f + 30.f * K);
+				// Hanging at the dock a full-length yarn would run into the one below (#712's 130% still): it hangs short.
+				const float Len = bTied ? 24.f : 62.f;
 				const float Ph = K * 1.3f;
 				// The far yarn, seen through the cloth: a soft wide shadow and a faint line.
-				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), 62.f, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.14f), 6.f);
-				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), 62.f, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.4f), 2.6f);
+				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), Len, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.14f), 6.f);
+				DrawYarn(Out, Layer + 2, G, Root + FVector2f(0.f, 1.f), Len, Lee, 1.f, Time, Ph + 1.1f, Far.CopyWithNewOpacity(0.4f), 2.6f);
 				// The near yarn: solid wool with a little shadow on the cloth.
 				const float Sev = 1.f - 0.08f * K;
-				DrawYarn(Out, Layer + 3, G, Root, 62.f, Win, Sev, Time, Ph, Hex(0x000000, 0.18f), 4.6f);
-				DrawYarn(Out, Layer + 3, G, Root, 62.f, Win, Sev, Time, Ph, Near, 3.2f);
+				DrawYarn(Out, Layer + 3, G, Root, Len, Win, Sev, Time, Ph, Hex(0x000000, 0.18f), 4.6f);
+				DrawYarn(Out, Layer + 3, G, Root, Len, Win, Sev, Time, Ph, Near, 3.2f);
 				FSlateDrawElement::MakeBox(Out, Layer + 4, G.ToPaintGeometry(FVector2f(7.f, 7.f), FSlateLayoutTransform(Root - FVector2f(3.5f, 3.5f))), Rounded(Hex(0xF7F8F5), 3.5f, Hex(0x000000, 0.22f), 1.f), ESlateDrawEffect::None, Hex(0xF7F8F5));
 			}
 			Out.PopClip();
@@ -460,7 +462,7 @@ namespace SailHudImpl
 			{
 				const float F = 0.34f + 0.23f * K;
 				const EYarn Kind = bTied ? EYarn::Hang : LeechYarn(SSailHud::TrimYarnState(T.MainStrips, T.NumMainStrips, 2 - K, SSailHud::ETrimYarn::Leech));
-				DrawYarn(Out, Layer + 3, G, At + FVector2f(LeechX(F), WinH * F), 28.f, Kind, 1.f, Time, 2.2f * K + 0.7f, Hex(0xC8281E), 2.6f);
+				DrawYarn(Out, Layer + 3, G, At + FVector2f(LeechX(F), WinH * F), bTied ? 16.f : 28.f, Kind, 1.f, Time, 2.2f * K + 0.7f, Hex(0xC8281E), 2.6f);
 			}
 			Out.PopClip();
 			if (bHelpful) PaintText(Out, Layer + 4, G, T.NumJibStrips > 0 ? TEXT("MAIN") : TEXT("LEECH"), Font(EType::Label), Hex(0x4B5D68), At + FVector2f(MainW - 6.f, 4.f), 0.f, true);
