@@ -1,0 +1,72 @@
+{
+ "id": "PostOak",
+ "name": "post oak",
+ "latin": "Quercus stellata",
+ "usda": "https://plants.usda.gov/plant-profile/QUST",
+ "tile": 0,
+ "where": "Upland banks, lawns and the club grounds: the commonest big tree on the lake's cross-timbers shore.",
+ "height_m": [
+  9,
+  15
+ ],
+ "crown_w_over_h": 1.0,
+ "clear_trunk_m": [
+  2.0,
+  3.5
+ ],
+ "trunk_dbh_m": [
+  0.35,
+  0.7
+ ],
+ "form": "Crooked, twisting limbs; a broad, irregular crown about as wide as tall; open-grown trees keep low, near-level limbs.",
+ "leaf": {
+  "set": "ambientcg/LeafSet016",
+  "length_cm": [
+   10,
+   15
+  ],
+  "look": "Leathery, dark green, cross-shaped (two big middle lobes).",
+  "card_m": 1.0,
+  "per_twig": 6,
+  "twigs": 9,
+  "colour": [
+   0.82,
+   0.92,
+   0.72
+  ]
+ },
+ "winter": {
+  "set": "ambientcg/LeafSet012",
+  "look": "Many keep dry brown leaves into winter (marcescent): a share of cards keep the dried tile."
+ },
+ "bark": {
+  "set": "ambientcg/Bark001",
+  "tile_m": [
+   0.7,
+   0.7
+  ],
+  "tile_estimated": true,
+  "tint": [
+   0.62,
+   0.6,
+   0.58
+  ],
+  "look": "Light grey, thick blocky ridges in a loose grid."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/PostOak/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}
