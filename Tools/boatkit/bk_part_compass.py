@@ -2,19 +2,19 @@
 
 With the interface off the boat herself has to tell the helm the heading: a dinghy sailor glances at the wrist compass,
 a keelboat carries this. It is the common small-keelboat bulkhead compass, generic (no maker's shape or name): a black
-flanged bezel screwed over a round cutout, a spherical bowl half through the bulkhead, and inside it a conical card on
+flanged pod screwed to the bulkhead's face, a spherical bowl inside it, and in the bowl a conical card on
 a pivot, read at its near (aft) edge against a lubber line. A card read from aft is printed half a turn round: the
 figure at the aft edge is the heading, so the mark for 0 (N) sits at the card's south.
 
-Frame of the mount: the origin is the centre of the cutout on the bulkhead's aft face, +Z out of the bulkhead (aft, at
+Frame of the mount: the origin is the centre of its foot on the bulkhead's aft face, +Z out of the bulkhead (aft, at
 the helm), +X up the bulkhead. The card is its own part (BulkheadCompassCard): origin at the pivot, +Z up, +X toward
 the card's north, east at -Y (Blender's +Y is port). The game holds the card level and north, so the boat turns round
 it; the kit also has the fixed part alone (BulkheadCompassMount) and the dome alone (BulkheadCompassDome, which the game
 draws with a clear material: the kit's library has only smoked acrylic).
 
-Sockets: Mount (the cutout's centre), Pivot (the card's pivot), Lubber (the top of the aft lubber line).
+Sockets: Mount (the foot's centre), Pivot (the card's pivot), Lubber (the top of the aft lubber line).
 
-Sizes: a 100 mm class bowl (92 mm sphere, 76 mm card) under a 124 mm bezel. No catalogue was fetched for it; the
+Sizes: a 100 mm class bowl (92 mm sphere, 76 mm card) in a 124 mm pod standing 38 mm off the bulkhead. No catalogue was fetched for it; the
 proportions are the usual ones and a part-detail-loop round against photos can tighten them.
 """
 import math
@@ -28,7 +28,7 @@ import bk_parts as P
 # mm
 BEZEL_R = 62.0
 BOWL_R = 46.0            # the sphere's inside radius
-PIVOT_OUT = 12.0         # the pivot (the sphere's centre) aft of the bulkhead's face
+PIVOT_OUT = 44.0         # the pivot (the sphere's centre) aft of the bulkhead's face: the whole bowl stands proud of it
 CARD_R = 38.0
 CARD_TOP_R = 21.0
 CARD_RISE = 9.5          # the cone: the rim sits this far below the top
@@ -166,26 +166,30 @@ def _to_mount(objs, heading=0.0):
 
 
 def _mount():
-    """The fixed part: bezel, bowl, pivot post, lubber lines."""
+    """The fixed part: pod, bowl, pivot post, lubber lines."""
     blk, wht, ss = P.M("BlackPlastic"), P.M("WhitePlastic"), P.M("Stainless")
     objs = []
-    lip = 6.0
-    prof = [(0, -40.0), (BOWL_R + 4, -40.0), (BOWL_R + 4, 0.0), (BEZEL_R, 0.0), (BEZEL_R, 3.6), (BEZEL_R - 1.8, lip), (BOWL_R + 3.2, lip)]
+    # A pod standing on the bulkhead (no cutout in the boat: let in flush, the hull's own face hid the bowl and the
+    # card's forward half): the flange, a tapered wall out to the lip, then the bowl's inside, a sphere about the pivot
+    # down to a flat floor just clear of the bulkhead.
+    lip = PIVOT_OUT - 6.0
+    prof = [(0, 0.0), (BEZEL_R, 0.0), (BEZEL_R, 3.6), (BEZEL_R - 1.8, 6.0), (BEZEL_R - 8.0, 6.0), (BOWL_R + 4.5, lip - 2.0), (BOWL_R + 3.2, lip)]
     n = 14
     z_top = lip - 0.8
-    z_bot = PIVOT_OUT - BOWL_R
-    for i in range(n + 1):                      # the bowl's inside: a sphere about the pivot, from the lip to its back
+    z_bot = max(PIVOT_OUT - BOWL_R, 1.0)
+    for i in range(n + 1):
         z = z_top + (z_bot - z_top) * (i / n) ** 0.8
         r = math.sqrt(max(BOWL_R ** 2 - (z - PIVOT_OUT) ** 2, 0.0))
-        prof.append((r, z))
-    prof[-1] = (0, z_bot)
+        if r > 1e-3:
+            prof.append((r, z))
+    prof.append((0, z_bot))
     bowl = G.lathe("bezel_bowl", prof, blk, 64)
     bowl.data.transform(Matrix.Scale(0.001, 4))
     objs.append(G.finish(bowl, 0.0006, segs=2))
     pts = []
     for k in range(4):
         a = math.radians(45 + 90 * k)
-        pts.append(_mm((BEZEL_R - 6.5) * math.cos(a), (BEZEL_R - 6.5) * math.sin(a), lip))
+        pts.append(_mm((BEZEL_R - 4.9) * math.cos(a), (BEZEL_R - 4.9) * math.sin(a), 6.0))
     objs += G.screw_heads("bezel_screw", pts, ss, 0.0030, 0.0012)
     # the pivot post, up from the bowl's floor (the mount's -X is down) to just under the card
     objs.append(G.cyl("pivot_post", _mm(-(BOWL_R - 1.0), 0, PIVOT_OUT), _mm(CARD_RISE - 5.5, 0, PIVOT_OUT), 1.5 / 1000, ss, 12,
@@ -194,11 +198,12 @@ def _mount():
     # into the bowl's wall; the aft pin is the one the helm reads against, and one each side at 45 degrees serves
     # sitting out to windward
     ring_r, foot_x = CARD_R + 2.6, -5.0
-    wall_r = math.sqrt(BOWL_R ** 2 - foot_x ** 2 - (PIVOT_OUT - 5.0) ** 2) + 0.5     # the wall where the hoop ends (z = 5)
-    end = math.acos((5.0 - PIVOT_OUT) / ring_r)
-    path = [_mm(foot_x, -wall_r, 5.0)]
+    end_z = PIVOT_OUT - 7.0                                                # the hoop ends just inside the lip
+    wall_r = math.sqrt(BOWL_R ** 2 - foot_x ** 2 - (PIVOT_OUT - end_z) ** 2) + 0.5
+    end = math.acos((end_z - PIVOT_OUT) / ring_r)
+    path = [_mm(foot_x, -wall_r, end_z)]
     path += [_mm(foot_x, -ring_r * math.sin(end - 2 * end * i / 40), PIVOT_OUT + ring_r * math.cos(end - 2 * end * i / 40)) for i in range(41)]
-    path.append(_mm(foot_x, wall_r, 5.0))
+    path.append(_mm(foot_x, wall_r, end_z))
     objs.append(G.tube("lubber_hoop", path, 0.8 / 1000, blk, 8))
     for name, ang in (("lubber", 0.0), ("lubber_port", 45.0), ("lubber_stbd", -45.0)):
         a = math.radians(ang)
@@ -210,7 +215,7 @@ def _mount():
 
 def _dome():
     """The clear dome: the sphere's aft half from the bezel's lip out."""
-    z0 = 5.2
+    z0 = PIVOT_OUT - 6.8
     n = 16
     prof = []
     a0 = math.asin((z0 - PIVOT_OUT) / (BOWL_R + 0.8))
@@ -223,7 +228,7 @@ def _dome():
     return [G.finish(dome, 0)]
 
 
-@P.part("BulkheadCompass", "instrument", "Bulkhead steering compass, 100 mm class: flanged bezel, spherical bowl, conical card read at its aft edge, three lubber lines (shown without its dome)")
+@P.part("BulkheadCompass", "instrument", "Bulkhead steering compass, 100 mm class: flanged pod, spherical bowl, conical card read at its aft edge, three lubber lines (shown without its dome)")
 def bulkhead_compass(heading=320.0):
     objs, socks = _mount()
     objs += _to_mount(_card(), heading)
@@ -238,7 +243,7 @@ def bulkhead_compass_card():
     return P.done("BulkheadCompassCard", _card(), [("Pivot", (0.0, 0.0, 0.0))])
 
 
-@P.part("BulkheadCompassMount", "instrument", "The bulkhead compass's fixed part: bezel, bowl, pivot post and lubber lines (the card goes on its Pivot socket)")
+@P.part("BulkheadCompassMount", "instrument", "The bulkhead compass's fixed part: pod, bowl, pivot post and lubber lines (the card goes on its Pivot socket)")
 def bulkhead_compass_mount():
     objs, socks = _mount()
     return P.done("BulkheadCompassMount", objs, socks)

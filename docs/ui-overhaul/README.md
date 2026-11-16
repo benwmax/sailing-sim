@@ -332,7 +332,7 @@ line, so the levels sit 3 cm deep. `SMiniMap`'s paper wash over the print droppe
 ## Phase 13: the compass on the bulkhead
 
 With the interface off a dinghy sailor has the wrist compass; a keelboat now carries her own. The kit has a bulkhead
-steering compass (`Tools/boatkit/bk_part_compass.py`): a black flanged bezel over a spherical bowl, a conical card on a
+steering compass (`Tools/boatkit/bk_part_compass.py`): a black flanged pod standing on the bulkhead with a spherical bowl in it, a conical card on a
 pivot and three lubber lines on a wire hoop (aft, and 45 degrees either side for sitting out to windward). It is a
 generic shape with no maker's name, and it needs no texture: the card's ticks and figures are geometry in the kit's
 white plastic, so it uses the materials the kit already has.

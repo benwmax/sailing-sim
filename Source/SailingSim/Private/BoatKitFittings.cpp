@@ -121,7 +121,7 @@ void ASailboatPawn::BuildKitFittings()
 			CompassMount = Add(BowlMesh, nullptr);
 			CompassMount->SetRelativeLocationAndRotation(At, Facing);
 			CompassCard = Add(CardMesh, nullptr);
-			CompassCard->SetRelativeLocation(At + Facing.RotateVector(KitFitSocketCm(BowlMesh, TEXT("Pivot"), FVector(0.0, 0.0, 1.2))));
+			CompassCard->SetRelativeLocation(At + Facing.RotateVector(KitFitSocketCm(BowlMesh, TEXT("Pivot"), FVector(0.0, 0.0, 4.4))));
 			CompassCard->SetCastShadow(false);   // inside its bowl
 		}
 	}
