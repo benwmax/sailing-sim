@@ -1,11 +1,11 @@
-"""Fetches Track D's CC0 leaf and bark sets named in cards/*.json (and the dried oak for post oak's winter) into
+"""Fetches Track D's CC0 leaf and bark sets named in a region pack's cards (packs/<pack>/cards/*.json) (and the dried oak for post oak's winter) into
 Inputs/trees/<source>/<set>/, the folder the atlas and the materials read. Both sources are CC0, so the files may live in
 the public repo (through Git LFS: the Mac or PC commits them; cloud sessions can't push LFS).
 
   ambientcg/<Id>     https://ambientcg.com/get?file=<Id>_1K-JPG.zip  -> <Id>_1K-JPG_{Color,NormalGL,NormalDX,Opacity,Roughness}.jpg
   polyhaven/<slug>   https://api.polyhaven.com/files/<slug> 1k jpg    -> <slug>_{diff,nor_gl,nor_dx,rough}_1k.jpg
 
-Usage: python3 -I Tools/envloop/trees/fetch_sets.py [--root <dir>] [--dry-run]
+Usage: python3 -I Tools/envloop/trees/fetch_sets.py [--pack north-texas-lake] [--root <dir>] [--dry-run]
 Already present files are kept. Prints one line per set and the licence rows for docs/licences/assets.csv.
 """
 import argparse
@@ -24,9 +24,9 @@ ACG_MAPS = ("Color", "NormalGL", "NormalDX", "Opacity", "Roughness")
 PH_MAPS = {"Diffuse": "diff", "nor_gl": "nor_gl", "nor_dx": "nor_dx", "Rough": "rough"}
 
 
-def sets_from_cards():
+def sets_from_cards(pack):
     out = set()
-    for path in sorted(glob.glob(os.path.join(HERE, "cards", "*.json"))):
+    for path in sorted(glob.glob(os.path.join(HERE, "packs", pack, "cards", "*.json"))):
         card = json.load(open(path))
         for key in ("leaf", "bark", "winter"):
             s = (card.get(key) or {}).get("set")
@@ -78,9 +78,10 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--root", default=os.path.join(REPO, "Inputs", "trees"))
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--pack", default="north-texas-lake")
     a = p.parse_args()
     rows = []
-    for s in sets_from_cards():
+    for s in sets_from_cards(a.pack):
         source, asset = s.split("/", 1)
         dest = os.path.join(a.root, source, asset)
         how = fetch_ambientcg(asset, dest, a.dry_run) if source == "ambientcg" else fetch_polyhaven(asset, dest, a.dry_run)

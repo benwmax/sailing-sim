@@ -46,6 +46,7 @@ def parse():
     p.add_argument("--season", default="summer", choices=("summer", "winter"))
     p.add_argument("--no-metrics", action="store_true")
     p.add_argument("--core", default="", help="d generator: crown fill override (none, shell, v6)")
+    p.add_argument("--pack", default="north-texas-lake", help="d generator: the region pack (packs/<pack>)")
     return p.parse_args(argv)
 
 
@@ -67,6 +68,7 @@ def build_tree(args):
         far.bm.free()
     else:
         import build_trees_d as bd
+        bd.load_pack(args.pack)
         if args.core:
             bd.CORE_MODE = args.core
         obj, tris, info = bd.build(args.species, args.variant)

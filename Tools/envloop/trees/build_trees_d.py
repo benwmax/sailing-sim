@@ -1,5 +1,5 @@
 """Track D's trees and shrubs, built in Blender from code: V6/T2's skeleton-and-cards trees (Tools/blender/build_trees.py)
-remade for the hero band (0 to 30 m), species by species from cards/*.json.
+remade for the hero band (0 to 30 m), species by species from a region pack (packs/<pack>/pack.json and its cards).
 
 What changes against build_trees.py:
   - The crown's inside. V6 filled each crown with opaque balls (the far crown's blobs at half size, `hollow`) to save the
@@ -19,7 +19,7 @@ What changes against build_trees.py:
 Vertex colours as V6: R = how far out (sway; the leaf material's shade), G = flutter phase, B = per-card tint, A 1 on
 cards and bark, 0 on the shell. Units metres. Prints "TreesD: <name> <tris>" per model.
 
-  blender -b --factory-startup -P Tools/envloop/trees/build_trees_d.py -- <out dir> [Species,...]
+  blender -b --factory-startup -P Tools/envloop/trees/build_trees_d.py -- <out dir> [Species,...] [--pack north-texas-lake]
   (or import it: build(species, variant) -> (object, triangles, info))
 """
 import glob
@@ -42,42 +42,40 @@ CARD_FILL = 0.85      # outer cards: V6's leaf area per twig point, scaled for t
 ATLAS_COLS = 4
 
 
-def load_cards():
-    out = {}
-    for p in sorted(glob.glob(os.path.join(HERE, "cards", "*.json"))):
+PACKS = os.path.join(HERE, "packs")
+PACK = os.environ.get("TREES_PACK", "north-texas-lake")
+CARDS, SHAPE, SHRUBS, BANK_SPECIES, PACK_DATA = {}, {}, {}, set(), {}
+
+
+def load_pack(name):
+    """Region packs are data (the shore plan's rule 1): packs/<name>/pack.json names the species, their growth knobs,
+    the shrubs, the bank species and the atlas layout; packs/<name>/cards/*.json the real sizes and photo sets. Sets
+    the module's tables; every tool takes --pack (default north-texas-lake, or TREES_PACK)."""
+    global PACK
+    PACK = name
+    root = os.path.join(PACKS, name)
+    data = json.load(open(os.path.join(root, "pack.json")))
+    CARDS.clear()
+    for p in sorted(glob.glob(os.path.join(root, data.get("cards", "cards"), "*.json"))):
         c = json.load(open(p))
-        out[c["id"]] = c
-    return out
+        CARDS[c["id"]] = c
+    SHAPE.clear()
+    SHAPE.update({k: {kk: (tuple(vv) if isinstance(vv, list) else vv) for kk, vv in v.items()} for k, v in data["growth"].items()})
+    SHRUBS.clear()
+    SHRUBS.update({k: (v["card"], {kk: (tuple(vv) if isinstance(vv, list) else vv) for kk, vv in v["growth"].items()}, tuple(v["height_m"]))
+                   for k, v in data.get("shrubs", {}).items()})
+    BANK_SPECIES.clear()
+    BANK_SPECIES.update(data.get("bank_species", []))
+    PACK_DATA.clear()
+    PACK_DATA.update(data)
+    return data
 
 
-CARDS = load_cards()
+load_pack(PACK)
 
-# Shape knobs per species (the cards hold the real sizes; these are how the skeleton grows them). Keys as V6's SPECIES:
-# limbs per trunk, limb rise (deg), recursion levels, card density, droop, kind, and for stemmed trees stems/splay/lean.
-SHAPE = {
-    "PostOak":     dict(limbs=(4, 6), rise=(25, 50), levels=3, dens=1.0, droop=0.10, kind="broad", wobble=0.32),
-    "LiveOak":     dict(limbs=(4, 6), rise=(10, 28), levels=3, dens=1.15, droop=0.14, kind="broad", wobble=0.22),
-    "CedarElm":    dict(limbs=(5, 7), rise=(55, 75), levels=3, dens=1.0, droop=0.06, kind="broad", wobble=0.2),
-    "Pecan":       dict(limbs=(5, 7), rise=(40, 62), levels=3, dens=0.9, droop=0.06, kind="broad", wobble=0.18),
-    "Mesquite":    dict(limbs=(3, 4), rise=(15, 40), levels=3, dens=0.35, droop=0.22, kind="stemmed", stems=(1, 3), splay=(18, 40), lean=8, wobble=0.45),
-    "RedCedar":    dict(kind="cone", dens=1.0, leader_r=0.16),
-    "BlackWillow": dict(limbs=(5, 7), rise=(20, 45), levels=3, dens=0.85, droop=0.28, kind="stemmed", stems=(2, 3), splay=(12, 28), lean=24, wobble=0.25),
-    "Cottonwood":  dict(limbs=(5, 7), rise=(40, 65), levels=3, dens=0.8, droop=0.06, kind="stemmed", stems=(1, 1), splay=(0, 3), lean=4, wobble=0.2),
-    "Sugarberry":  dict(limbs=(4, 6), rise=(35, 60), levels=3, dens=0.95, droop=0.1, kind="broad", wobble=0.25),
-    "SaltCedar":   dict(limbs=(2, 3), rise=(55, 80), levels=2, dens=1.2, droop=0.25, kind="stemmed", stems=(6, 9), splay=(15, 40), lean=5, wobble=0.25),
-}
-# The wooded shore's understory (Tools/blender/build_understory.py's SM_Shrub_* and SM_Sapling_*), same names, grown
-# from their cards: name -> (card, shape, height range override). One model each (variant 0).
-SHRUBS = {
-    "Shrub_0": ("Yaupon", dict(limbs=(2, 3), rise=(45, 75), levels=2, dens=1.6, droop=0.12, kind="stemmed", stems=(6, 8), splay=(10, 30), lean=0), (2.6, 3.4)),
-    "Shrub_1": ("Yaupon", dict(limbs=(2, 3), rise=(35, 65), levels=2, dens=1.6, droop=0.15, kind="stemmed", stems=(5, 7), splay=(15, 35), lean=0), (2.0, 2.8)),
-    "Shrub_2": ("Dogwood", dict(limbs=(2, 3), rise=(25, 55), levels=2, dens=1.4, droop=0.2, kind="stemmed", stems=(6, 9), splay=(25, 50), lean=0), (1.6, 2.2)),
-    "Shrub_3": ("Dogwood", dict(limbs=(2, 2), rise=(15, 40), levels=1, dens=1.8, droop=0.25, kind="stemmed", stems=(7, 10), splay=(35, 60), lean=0), (0.9, 1.3)),
-    "Sapling_0": ("CedarElm", dict(limbs=(4, 5), rise=(50, 70), levels=2, dens=1.0, droop=0.05, kind="stemmed", stems=(1, 1), splay=(0, 4), lean=2), (3.6, 4.4)),
-    "Sapling_1": ("RedCedar", dict(kind="cone", dens=0.35, leader_r=0.05), (2.3, 2.7)),
-}
-# Species whose third model stands on an eroded bank (roots out over the water side).
-BANK_SPECIES = {"BlackWillow", "Cottonwood", "Sugarberry", "PostOak", "CedarElm", "Pecan"}
+
+
+
 
 
 def tile_uv(tile):
@@ -606,6 +604,10 @@ def export(obj, path):
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
+    if "--pack" in args:
+        k = args.index("--pack")
+        load_pack(args[k + 1])
+        del args[k:k + 2]
     out = args[0]
     only = set(args[1].split(",")) if len(args) > 1 else None
     os.makedirs(out, exist_ok=True)

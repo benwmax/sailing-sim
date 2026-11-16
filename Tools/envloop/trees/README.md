@@ -6,7 +6,8 @@ Plan: the shore, grass and buildings plan (Track D), approved by Bean on 16 Nov 
 
 | File | What it does |
 |---|---|
-| `cards/<Species>.json` | One card per species and shrub (environment loop step 1): real heights, crown shape, trunk, leaf size, the CC0 leaf and bark sets, bark tile size, distance bands, budget, USDA PLANTS link. The generator and the atlas read them. |
+| `packs/<pack>/pack.json` | A region pack (the shore plan's rule: regions are data, not code). `north-texas-lake` lists the species, their growth knobs, the shrubs, which species stand on banks, the atlas layout and the placement rules (from map data: height above pool, distance to water, cover, slope). Every tool takes `--pack`. A new region is a new pack folder: cards, growth and placement rules, with no code change. |
+| `packs/<pack>/cards/<Species>.json` | One card per species and shrub (environment loop step 1): real heights, crown shape, trunk, leaf size, the CC0 leaf and bark sets, bark tile size, distance bands, budget, USDA PLANTS link. The generator and the atlas read them. |
 | `fetch_sets.py` | Downloads the CC0 sets the cards name into `Inputs/trees/{ambientcg,polyhaven}/` (Git LFS: the Mac or PC commits them). |
 | `make_leaf_atlas_d.py` | `T_LeafAtlasD` (4096 x 4096, 4 x 4 tiles) and its normal map: a leafy-branch spray per species with leaves at true size, a dense "clump" per species for the crown's inside, and post oak's dried winter leaves. |
 | `build_trees_d.py` | The trees (10 species x 3 models + `_Far` crowns) and the understory (`SM_Shrub_0..3`, `SM_Sapling_0..1`), from the cards. |

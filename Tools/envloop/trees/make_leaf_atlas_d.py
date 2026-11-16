@@ -2,7 +2,7 @@
 inside (the masked shell that replaces V6's opaque core ball), and post oak's dried winter leaves.
 
 Layout, 4096 x 4096, sixteen 1024 px tiles (row-major, tile t at column t % 4, row t // 4):
-  0-11  one spray per card (cards/*.json "tile"): a 1024 px tile spans the card's `card_m` metres, so a leaf of
+  0-11  one spray per card (packs/<pack>/cards/*.json "tile"): a 1024 px tile spans the card's `card_m` metres, so a leaf of
         `length_cm` is length_cm / 100 * 1024 / card_m pixels (the size card: within 5 %)
   12-14 the clumps: each a 2 x 2 of 512 px sub-tiles, card tile i at tile 12 + i // 4, quadrant i % 4 (column, row),
         at the same metres per pixel as the species' spray (a 512 px clump spans card_m / 2)
@@ -15,7 +15,7 @@ bipinnate frond (a stalk forking into two pinnae of tiny leaflets).
 Colour: each tile's mean leaf colour is scaled to the V6/T2 atlas's mean (the game's tree tone, TREE_LOOK tints on top),
 then by the card's `colour` (hue and brightness between species).
 
-Usage: python3 -I Tools/envloop/trees/make_leaf_atlas_d.py <out png> [--sources Inputs/trees]   (numpy, Pillow)
+Usage: python3 -I Tools/envloop/trees/make_leaf_atlas_d.py <out png> [--sources Inputs/trees] [--pack north-texas-lake]   (numpy, Pillow)
 """
 import glob
 import json
@@ -36,9 +36,13 @@ COLS = 4
 REF_MEAN = (35.0, 79.0, 25.0)
 
 
+PACK = "north-texas-lake"
+
+
 def cards():
+    """The pack's cards (packs/<pack>/cards): every species or shrub with a leaf and an atlas tile."""
     out = {}
-    for p in sorted(glob.glob(os.path.join(HERE, "cards", "*.json"))):
+    for p in sorted(glob.glob(os.path.join(HERE, "packs", PACK, "cards", "*.json"))):
         c = json.load(open(p))
         if c.get("leaf") and c.get("tile") is not None:
             out[c["id"]] = c
@@ -303,6 +307,9 @@ def tone(img, colour, ref=REF_MEAN):
 
 
 def main(argv):
+    global PACK
+    if "--pack" in argv:
+        PACK = argv[argv.index("--pack") + 1]
     out = argv[0]
     sources = os.path.join(REPO, "Inputs", "trees")
     if "--sources" in argv:
