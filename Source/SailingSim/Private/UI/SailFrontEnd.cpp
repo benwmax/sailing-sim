@@ -1394,7 +1394,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	];
 
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 44;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 36 : 44;
 	E.Content = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()
 		[
@@ -1529,7 +1529,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			}))
 		: ActionButton(TEXT("Next: mode"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Mode); }));
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 40;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 31 : 40;	// Besley is wider than Saira: 40 ran past the panel
 	// Keys and the pad move focus down the column: it scrolls to keep the focused row in view (rows under the fold are out
 	// of the hit-test grid that navigation searches: Down used to stop at the sky).
 	TSharedRef<SScrollBox> Scroll = SNew(SScrollBox).ScrollBarThickness(FVector2D(4.f, 4.f))
@@ -2418,14 +2418,14 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBriefing()
 		Calls->AddSlot().AutoHeight().Padding(0.f, 4.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Reply.IsEmpty() ? FString::Printf(TEXT("“%s”"), *C.Call) : FString::Printf(TEXT("“%s”  →  “%s”"), *C.Call, *C.Reply), EType::Value, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Reply.IsEmpty() ? FString::Printf(TEXT("“%s”"), *C.Call) : FString::Printf(TEXT("“%s”  →  “%s”"), *C.Call, *C.Reply), EType::Button, Fg, true) ]
 			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(C.Meaning, EType::Small, Muted, true) ]
 		];
 	}
 	TSharedRef<SVerticalBox> Left = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(FString::Printf(TEXT("Drill briefing · %s"), *B->AsaSkill), EType::Eyebrow, Accent) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 14.f)[ SailUI::Text(B->Name, B->Name.Len() > 18 ? EType::CardTitle : EType::ScreenTitle, Fg, true) ]
-		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Value, Fg, true) ]
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(B->Goal, EType::Button, Fg, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ SailUI::Text(B->Why, EType::Body, Muted, true) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Para(TEXT("Setup"), B->Setup, Fg) ];
 	if (B->Commands.Num()) Left->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)

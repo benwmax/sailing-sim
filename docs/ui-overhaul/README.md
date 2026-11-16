@@ -290,3 +290,9 @@ Saira Condensed was the stand-in's face. The overhaul's three:
 
 The HUD's own files (`SailHud.cpp`) are not touched in this phase: the HUD layout (#710) and the trim panel (#712) are in
 flight there, and the HUD pass lands after them.
+
+After the first stills with the faces on (`faces/`): Atkinson has no arrows, so its family takes U+2190..21FF from B612
+(the prompts' "← →" and the showroom's turn buttons drew as boxes); the screens that set their own title size take a
+smaller one with Besley ("Set the conditions" ran past its panel); the flow steps are 122 px wide and labels are tracked
+30 ("4 CONDITIONS" touched "5 MODE"); the briefing's goal and calls are text, not instrument figures; the trim window's
+point-of-sail note may shrink to 8 pt beside the wider label.

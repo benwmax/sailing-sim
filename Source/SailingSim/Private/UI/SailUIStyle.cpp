@@ -98,8 +98,22 @@ namespace SailUI
 		}
 		const TSharedPtr<const FCompositeFont>& Atkinson()
 		{
-			static TSharedPtr<const FCompositeFont> F = Family(TEXT("Atkinson Hyperlegible Next"), { { TEXT("Regular"), TEXT("AtkinsonHyperlegibleNext-Regular.ttf") },
-				{ TEXT("Medium"), TEXT("AtkinsonHyperlegibleNext-Medium.ttf") }, { TEXT("SemiBold"), TEXT("AtkinsonHyperlegibleNext-SemiBold.ttf") } });
+			// Atkinson has no arrows (the prompts' "← →", the showroom's turn buttons, the wind's arrow drew as boxes on
+			// the first stills): those come from B612, which has them.
+			static TSharedPtr<const FCompositeFont> F = []()
+			{
+				TSharedRef<FStandaloneCompositeFont> Comp = MakeShared<FStandaloneCompositeFont>();
+				const FString Dir = FPaths::ProjectContentDir() / TEXT("UI/Fonts");
+				Comp->DefaultTypeface.AppendFont(TEXT("Regular"), Dir / TEXT("AtkinsonHyperlegibleNext-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Comp->DefaultTypeface.AppendFont(TEXT("Medium"), Dir / TEXT("AtkinsonHyperlegibleNext-Medium.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Comp->DefaultTypeface.AppendFont(TEXT("SemiBold"), Dir / TEXT("AtkinsonHyperlegibleNext-SemiBold.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				FCompositeSubFont& Arrows = Comp->SubTypefaces.AddDefaulted_GetRef();
+				Arrows.CharacterRanges.Add(FInt32Range(FInt32Range::BoundsType::Inclusive(0x2190), FInt32Range::BoundsType::Inclusive(0x21FF)));
+				Arrows.Typeface.AppendFont(TEXT("Regular"), Dir / TEXT("B612-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Arrows.Typeface.AppendFont(TEXT("Medium"), Dir / TEXT("B612-Regular.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Arrows.Typeface.AppendFont(TEXT("SemiBold"), Dir / TEXT("B612-Bold.ttf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				return TSharedPtr<const FCompositeFont>(Comp);
+			}();
 			return F;
 		}
 		const TSharedPtr<const FCompositeFont>& B612()
@@ -158,7 +172,7 @@ namespace SailUI
 			case EType::CardTitleS: return Make(Besley(), TEXT("SemiBold"), 20 * S, 0);
 			case EType::MenuItem: return Make(Besley(), TEXT("SemiBold"), 25, 0);
 			case EType::Eyebrow: return Make(Atkinson(), TEXT("SemiBold"), 15 * S, 80);
-			case EType::Label: return Make(Atkinson(), TEXT("SemiBold"), 15 * S, 50);
+			case EType::Label: return Make(Atkinson(), TEXT("SemiBold"), 15 * S, 30);
 			case EType::Ui: return Make(Atkinson(), TEXT("Medium"), 18 * S, 0);
 			case EType::Button: return Make(Atkinson(), TEXT("SemiBold"), 18 * S, 0);
 			case EType::Value: return Make(B612(), TEXT("Bold"), 18 * S, 0);

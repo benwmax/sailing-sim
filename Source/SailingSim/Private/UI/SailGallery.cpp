@@ -588,7 +588,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildGallery()
 
 	// Over the viewer: the asset's name (44 px) and tags; the light, compare and full screen buttons.
 	FSlateFontInfo TitleFont = Font(EType::ScreenTitle);
-	TitleFont.Size = 44;
+	TitleFont.Size = SailUI::HasOverhaulFonts() ? 36 : 44;
 	TSharedRef<SWidget> Title = SNew(SBox).MaxDesiredWidth(760.f)
 	[
 		SNew(SVerticalBox)
