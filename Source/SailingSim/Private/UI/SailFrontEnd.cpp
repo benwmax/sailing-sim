@@ -2257,6 +2257,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLogbook()
 	};
 
 	// Left: the totals, and the sails already in the book (each session's file in Saved/Logbook, newest first).
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *(FPaths::ProjectSavedDir() / TEXT("Logbook") / TEXT("*.json")), true, false);
+	Files.Sort([](const FString& A, const FString& B) { return A > B; });   // "<date> <time> <area>": the newest first
+	// The save counts finished sails; a sail whose file is in the book counts too (so the number never reads under the list).
+	const int32 SailCount = FMath::Max(Saved.LogbookSessions, Files.Num());
 	TSharedRef<SVerticalBox> Totals = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("In all"), EType::Eyebrow, Accent) ]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
@@ -2269,35 +2274,38 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLogbook()
 		+ SVerticalBox::Slot().AutoHeight()
 		[
 			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Saved.LogbookSessions), TEXT("Sails")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(SailCount), TEXT("Sails")) ]
 			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Medals), TEXT("Medals")) ]
 			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Saved.Certificates.Num()), TEXT("Certificates")) ]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 8.f)[ SailUI::Text(TEXT("Sails in the book"), EType::Eyebrow, Accent) ];
-	TArray<FString> Files;
-	IFileManager::Get().FindFiles(Files, *(FPaths::ProjectSavedDir() / TEXT("Logbook") / TEXT("*.json")), true, false);
-	Files.Sort([](const FString& A, const FString& B) { return A > B; });   // "<date> <time> <area>": the newest first
-	const int32 Shown = FMath::Min(Files.Num(), 12);
+	const int32 Shown = FMath::Min(Files.Num(), 60);
+	TSharedRef<SVerticalBox> Sails = SNew(SVerticalBox);
 	for (int32 I = 0; I < Shown; ++I)
 	{
 		// "2026-11-14 1502 Ray Hubbard.json" reads "14 Nov 2026, 15:02" and the water.
 		const FString Name = FPaths::GetBaseFilename(Files[I]);
-		FString When = Name.Left(15), Where = Name.Mid(16);
+		// The file name's water has underscores for everything but letters and digits: "Lake_Ray_Hubbard__Rush_Creek_YC_"
+		// reads "Lake Ray Hubbard, Rush Creek YC".
+		FString When = Name.Left(15), Where = Name.Mid(16).Replace(TEXT("__"), TEXT(", ")).Replace(TEXT("_"), TEXT(" ")).TrimStartAndEnd();
+		Where.RemoveFromEnd(TEXT(","));
 		FDateTime Date;
 		if (Name.Len() >= 15 && FDateTime::Parse(Name.Left(10) + TEXT(" ") + Name.Mid(11, 2) + TEXT(":") + Name.Mid(13, 2) + TEXT(":00"), Date))
 		{
 			static const TCHAR* Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
 			When = FString::Printf(TEXT("%d %s %d, %02d:%02d"), Date.GetDay(), Months[FMath::Clamp(Date.GetMonth() - 1, 0, 11)], Date.GetYear(), Date.GetHour(), Date.GetMinute());
 		}
-		Totals->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)
+		Sails->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)
 		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(When, EType::Small, Fg) ]
-			+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Where, EType::Small, Muted) ]
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(When, EType::Small, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Where, EType::Small, Muted, true) ]
 		];
 	}
-	if (Shown == 0) Totals->AddSlot().AutoHeight()[ SailUI::Text(TEXT("None yet. Every sail is written here as it goes."), EType::Small, Muted, true) ];
-	else if (Files.Num() > Shown) Totals->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(FString::Printf(TEXT("and %d earlier"), Files.Num() - Shown), EType::Small, Muted) ];
+	if (Shown == 0) Sails->AddSlot().AutoHeight()[ SailUI::Text(TEXT("None yet. Every sail is written here as it goes."), EType::Small, Muted, true) ];
+	else if (Files.Num() > Shown) Sails->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(FString::Printf(TEXT("and %d earlier"), Files.Num() - Shown), EType::Small, Muted) ];
+	// The list scrolls inside the sheet (the mouse wheel; the keys scroll this sail's page).
+	Totals->AddSlot().FillHeight(1.f)[ SNew(SScrollBox) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Sails ] ];
 	const TSharedRef<SWidget> TotalsSheet = PanelBox(Totals, FMargin(26.f, 22.f));
 
 	// Right: this sail's page. Watch entries in ink, events (a fix, a drill, a grounding, a mark) in red, as in a paper log.
@@ -2332,6 +2340,11 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLogbook()
 			Page->AddSlot().AutoHeight().Padding(0.f, 7.f, 0.f, 7.f)[ Line7(Cells, L.Remarks.IsEmpty() ? FString(TEXT("Watch")) : L.Remarks, EType::Small, bWatch ? Fg : Port) ];
 			Page->AddSlot().AutoHeight()[ Rule() ];
 		}
+	}
+	if (Page->NumSlots() == 0)
+	{
+		Page->AddSlot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ SailUI::Text(P ? TEXT("Nothing in the log yet. Cast off, and the first entry is written here.")
+			: TEXT("No sail yet. Cast off, and the first entry is written here."), EType::Body, Muted, true) ];
 	}
 	FString HeadCells[7];
 	for (int32 I = 0; I < 7; ++I) HeadCells[I] = Heads[I];

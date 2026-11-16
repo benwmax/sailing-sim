@@ -157,7 +157,8 @@ From the stills of main at b2f515a6 (`world.jpg`, `launch.jpg`, `mode.jpg`, `con
   menus, and the chosen pin (paper with a deep-aqua edge) was lost on the paper-coloured land. Pins are now ink with a
   paper ring, and the chosen one is the aqua accent with an ink ring; the list's circles match. Chart magenta stays on
   the chart itself.
-- **Choose a world.** A locked card was dimmed to 45% and its reason could not be read. Disabled buttons are now 62%.
+- **Choose a world.** A locked card was dimmed to 45% and its reason could not be read. Disabled buttons are now 62%,
+  and a locked card keeps its whole glass panel (only its contents dim), so the scene no longer shows through its text.
 - **Customize.** The boat's name over the scene has the ink shadow (`TextOverScene`) and the title is sentence case
   ("Customize"), like the other screens.
 - **Controls.** The key list and its notes are two paper sheets, like Settings; the header and prompt bar stay on glass.
@@ -169,7 +170,8 @@ The logbook is the heart of the career (Bean, Nov 15). Until now it was one canv
 closing the menus. It is now a screen (`ESailScreen::Logbook`, `BuildLogbook`), opened from the title and the pause menu:
 
 - **Left sheet, "In all":** miles and hours in the big numerals, then sails, medals and certificates, and the sails
-  already in the book (the session files in `Saved/Logbook`, newest first, twelve shown).
+  already in the book (the session files in `Saved/Logbook`, newest first, in a list that scrolls inside the sheet;
+  the file name's water is shown as words). The sails count is the save's or the files', whichever is more.
 - **Right sheet, "Ship's log":** this sail's page as a ruled table (time, position, course, knots, log, wind, sea,
   remarks). Watch entries are in ink and events in red, the way a paper log is kept. It scrolls like Credits
   (`IsReadingScreen`).

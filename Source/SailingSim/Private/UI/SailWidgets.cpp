@@ -266,7 +266,9 @@ int32 SSailButton::OnPaint(const FPaintArgs& Args, const FGeometry& G, const FSl
 	switch (Look)
 	{
 	case SailUI::EButtonLook::Card:
-		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? SailUI::Paper : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusCard, C(bSel ? SailUI::Selected : SailUI::Line), bSel ? 1.5f : 1.f), T);
+		// A locked card keeps its whole panel (only what is on it is dimmed): at the dimmed tint the glass went thin and
+		// the scene showed through its text.
+		SailUI::Box(Out, Layer, G, FVector2D::ZeroVector, SailUI::Rounded(bPaper ? SailUI::Paper : (SailUI::IsLow() ? SailUI::PanelSolid : SailUI::Panel), SailUI::RadiusCard, C(bSel ? SailUI::Selected : SailUI::Line), bSel ? 1.5f : 1.f), Style.GetColorAndOpacityTint());
 		break;
 	case SailUI::EButtonLook::Pin:
 		// Ink on the paper map with a paper ring; the chosen pin is the accent with an ink ring (UI overhaul phase 3:
