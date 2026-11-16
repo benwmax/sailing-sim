@@ -149,7 +149,7 @@ def lens_now(T, rain, wind):
                 stretch = np.minimum(1.0 + tail * np.clip(along * 4.0 + 0.5, 0, 1), 0.66 / (rad * 1.1))
                 qx, qy = along / stretch / rad, across / aspd / rad
                 th = np.arctan2(qy, qx + 1e-5)
-                rr = np.hypot(qx, qy) / (1.0 + 0.06 * np.sin(3 * th + 6.2832 * r[7]) + 0.04 * np.sin(5 * th + 6.2832 * r[9]))
+                rr = np.hypot(qx, qy) / (1.0 + 0.03 * np.sin(2 * th + 6.2832 * r[7]) + 0.02 * np.sin(3 * th + 6.2832 * r[9]))
                 drop = smoothstep(1.0, 0.9, rr) * life * present
                 take = drop > mask
                 dsx, dsy = ca * dx + sa * dy, -sa * dx + ca * dy
@@ -158,7 +158,7 @@ def lens_now(T, rain, wind):
                 g = np.clip(1.0 - np.hypot(gx, gy) / 0.2, 0, 1)
                 off[take, 0] = (dsx / (scale * aspect) * (1 + LENS_FIELD) * drop)[take]
                 off[take, 1] = (dsy / scale * (1 + LENS_FIELD) * drop)[take]
-                gain[take] = ((1.0 - 0.6 * smoothstep(0.55, 0.95, rr)) + (0.8 + 0.8 * r[10]) * g * g)[take]
+                gain[take] = ((1.0 - 0.6 * smoothstep(0.55, 0.95, rr)) + (1.2 + 0.6 * r[10]) * g * g)[take]
                 mask[take] = drop[take]
     return off, mask, gain
 

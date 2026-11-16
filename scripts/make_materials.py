@@ -5132,13 +5132,14 @@ for (int layer = 0; layer < 4; layer++)
                 float tail = lerp(0.6 * windShare, 2.0, runW);
                 float stretch = min(1.0 + tail * saturate(along * 4.0 + 0.5), 0.66 / (rad * 1.1));
                 float2 q = float2(along / stretch, across / aspectD) / rad;   // the drop's own frame, its rim near 1
-                // No drop on glass is a perfect circle: a wobble of up to 10% on its outline (worked out only near it: past
-                // 1.15 the drop is nothing whatever the wobble).
+                // No drop on glass is a perfect circle: a gentle wobble of up to 5% on its outline, two and three lobes (the
+                // PC's 4K stills: five-lobe wobble at 10% read as faceted pebbles). Worked out only near the rim: past 1.15
+                // the drop is nothing whatever the wobble.
                 float rr = length(q);
                 if (rr < 1.15)
                 {
                     float th = atan2(q.y, q.x + 1e-5);
-                    rr /= 1.0 + 0.06 * sin(3.0 * th + 6.2832 * r[7]) + 0.04 * sin(5.0 * th + 6.2832 * r[9]);
+                    rr /= 1.0 + 0.03 * sin(2.0 * th + 6.2832 * r[7]) + 0.02 * sin(3.0 * th + 6.2832 * r[9]);
                 }
                 float drop = smoothstep(1.0, 0.9, rr) * life * present;
                 // A pixel looks through one drop, the strongest over it (the shifts of overlapping drops used to add up).
@@ -5153,7 +5154,7 @@ for (int layer = 0; layer < 4; layer++)
                     // different on each.
                     float2 gq = ds / rad - float2(-0.25 + 0.2 * (r[10] - 0.5), -0.45 + 0.15 * (r[11] - 0.5));
                     float g = saturate(1.0 - length(gq) / 0.2);
-                    gain = (1.0 - 0.6 * smoothstep(0.55, 0.95, rr)) + (0.8 + 0.8 * r[10]) * g * g;
+                    gain = (1.0 - 0.6 * smoothstep(0.55, 0.95, rr)) + (1.2 + 0.6 * r[10]) * g * g;
                     mask = drop;
                 }
             }

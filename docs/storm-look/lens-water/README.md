@@ -9,7 +9,7 @@ small lens of its own:
   `LENS_FIELD` (4) times the drop's own size.
 - **A dark rim.** Its steep edge turns the light inside away (total internal reflection). The light through it is
   multiplied by 1 at the centre, falling to 0.4 at the rim.
-- **A glint.** One sharp highlight sits high on the drop, toward the sky (up to x2.2; since #28, x1.8 to x2.6, moved a little on each drop).
+- **A glint.** One sharp highlight sits high on the drop, toward the sky (up to x2.2; since #28, x2.2 to x2.8, moved a little on each drop).
 - **A sharp edge.** The drop's edge on the glass is sharp: a 10% feather, where V5 used 40%.
 - **Slams.** A slam's spray (`Spray`, from `AWaterSurface::LensSpray`) throws big splashes (a fourth layer, scale 4.5 (5 since #28),
   as many as 0.35 x Spray squared). For a moment it also films the whole glass: up to 55% mask, the view through it
@@ -65,8 +65,9 @@ checks `LENS_CODE` still carries the same constants):
 - **The lattices don't line up.** Each layer's lattice is turned (0.7 rad a layer) and shifted, and the three rain scales
   are 11, 17 and 26 cells a screen height (no common grid).
 - **Every drop is its own.** Twelve independent draws per drop: many small ones and a few big ones (radius 0.07 to 0.3 of a
-  cell, by the square of a draw), a slightly oval outline with a wobble of up to 10% (no drop on glass is a circle), and
-  the glint moved and brightened a little on each.
+  cell, by the square of a draw), a slightly oval outline with a gentle wobble of up to 5% (two and three lobes; no drop on
+  glass is a circle; a five-lobe 10% wobble looked like faceted pebbles in the PC's 4K stills), and the glint moved and
+  brightened a little on each (x2.2 to x2.8).
 - **Fewer.** About 185 drops at full rain (a third of before); the rain rate sets how many (about 50 at 0.3). A drop's
   presence eases in over 0.05 of the chance, so a change in the rain or a slam's spray dying away fades drops rather than
   popping them. Screen cover (mask over 0.5) falls from about 7% to under 2%.
