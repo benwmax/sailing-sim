@@ -1,0 +1,239 @@
+{
+ "_track": "F",
+ "_conventions": "origin on the bank's bulkhead line at the pool (Z 0 = 435.5 ft), +X out over the water, deck tops at Z 1.0 (HouseKit.cpp Zd). Sizes in metres; expect = bounding box x, y (and z where given) the build must hold within tol (5%, the plan's check 1). Piling depth (to Z -2.6) is not part of z.",
+ "_rules": {
+  "rockwall_takeline": "Rockwall's Takeline Overlay District (UDC subsection 6, v4.2023, read through search excerpts only: rockwall.com is not reachable from the cloud): a boathouse needs a residential sublease, a seawall and a fixed pier; every stored boat under the roof; one boat lift or two PWC lifts inside; local builders say enclosed or fully decked-in boathouses are not allowed, covered open-sided ones are. A 15 ft / one storey height figure appears in excerpts. Heath's lake-edge ordinance (excerpt): fixed piers and dock decks on metal pilings.",
+  "dallas": "Dallas Water Utilities owns the lake and must concur with any construction on the take line. A search summary said Dallas bars boat lifts on its take line; Rockwall's code requires them inside boathouses and the game's own pc/shore-residential pass found lifts common, so lifts stay, and Bean's photo trip settles it.",
+  "unconfirmed": "No size cap for piers found. Sizes below are common practice and catalogue sizes, not code limits."
+ },
+ "_sources": [
+  "BH-USA 10,000 lb galvanized four-post pile-mount lift: 10 ft top beams, 12 ft 6 in cradle beams on the 6,000 lb model (bh-usa.com)",
+  "EZ Dock EZ Port 260 / 280 drive-on PWC ports: 156 x 60 x 15 in / 156 x 80 x 15 in (ez-dock.com)",
+  "deck boards 5/4x6 (140 x 25 mm) with 6 mm gaps; 2x8 rims and joists; 8 5/8 in steel pipe pilings (common Texas lake practice)",
+  "R-panel / PBR roofing: major ribs every 12 in (305 mm), 1 1/4 in high"
+ ],
+ "SM_ShoreDock_A": {
+  "what": "straight pier 4 x 40 ft with an 8 x 24 ft T head, swim ladder, post lights, cleats",
+  "where": "seawalled lots with water 1 m deep within 15 m, no boathouse",
+  "expect": [
+   14.87,
+   7.32
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "boat_0"
+  ]
+ },
+ "SM_ShoreDock_B": {
+  "what": "L pier: 30 ft walk, 10 x 12 ft side platform, a drive-on PWC port alongside",
+  "where": "seawalled lots, water 0.8 m deep within 12 m",
+  "expect": [
+   12.43,
+   3.92
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "pwc_port_0",
+   "pwc_0",
+   "chairs_0"
+  ]
+ },
+ "SM_ShoreDock_C": {
+  "what": "walk to an open 12 ft slip with fingers and a four-post pile-mount lift (no roof)",
+  "where": "lots with 1.2 m of water within 14 m",
+  "expect": [
+   13.5,
+   6.62
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "boat_0"
+  ]
+ },
+ "SM_ShoreDock_D": {
+  "what": "fixed landing, aluminium gangway, floating 8 x 20 ft dock on two pilings with sliding hoops, kayak rack",
+  "where": "riprap or natural banks and coves where the water swings (no seawall needed)",
+  "expect": [
+   14.15,
+   3.48
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "kayak_0",
+   "kayak_1",
+   "boat_0"
+  ]
+ },
+ "SM_ShoreDock_E": {
+  "what": "sundeck pier: walk to a 16 x 16 ft deck with rail, bench, bollard lights",
+  "where": "bigger lots, open water views",
+  "expect": [
+   13.1,
+   5.4
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "umbrella_0",
+   "chairs_0",
+   "boat_0"
+  ]
+ },
+ "SM_ShoreDock_F": {
+  "what": "short stub pier with an 8 x 13 ft head and two drive-on PWC ports",
+  "where": "small lots, shallow water",
+  "expect": [
+   9.5,
+   2.96
+  ],
+  "tris_max": 40000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "pwc_port_0",
+   "pwc_0",
+   "pwc_port_1",
+   "pwc_1"
+  ]
+ },
+ "SM_Boathouse_A": {
+  "what": "single covered 12 ft slip at the end of a 20 ft walk, ribbed steel gable roof (10 ft eave), lift, lights",
+  "where": "replaces HouseKit.cpp's boathouse (a third of banked lots, deep water, no charted dock near)",
+  "expect": [
+   15.1,
+   6.96
+  ],
+  "tris_max": 45000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "boat_0"
+  ]
+ },
+ "SM_Boathouse_B": {
+  "what": "two covered slips side by side, one wide gable roof, two lifts, a dock box, PWC port off the side",
+  "where": "wider lots, one in four boathouses",
+  "expect": [
+   15.1,
+   11.84
+  ],
+  "tris_max": 50000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "boat_0",
+   "boat_1",
+   "pwc_port_0",
+   "pwc_0"
+  ]
+ },
+ "SM_Boathouse_C": {
+  "what": "covered slip with a railed sundeck on its roof and a stair: the Texas lake classic",
+  "where": "one in four boathouses",
+  "expect": [
+   14.62,
+   7.84
+  ],
+  "tris_max": 45000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "sockets": [
+   "boat_0",
+   "umbrella_0",
+   "chairs_0"
+  ]
+ },
+ "SM_MarinaShed_Bay": {
+  "what": "one bay of a covered-slip shed on floating docks: main walk, finger, columns, single-slope ribbed roof; tiles every 4.58 m along +Y",
+  "where": "the lake's commercial marinas (not the club, which is open slips)",
+  "expect": [
+   11.24,
+   4.62
+  ],
+  "tris_max": 20000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 5,
+  "sockets": [
+   "boat_0"
+  ]
+ },
+ "SM_MarinaShed_End": {
+  "what": "the closing bay of a shed row (outer finger, end trim)",
+  "where": "each end of a shed row",
+  "expect": [
+   11.25,
+   4.64
+  ],
+  "tris_max": 20000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 5,
+  "sockets": [
+   "boat_0"
+  ]
+ },
+ "SM_ShorePWCPort": {
+  "what": "drive-on PWC port, EZ Port 280 class (156 x 80 in)",
+  "where": "docks' pwc_port sockets",
+  "expect": [
+   3.96,
+   2.21
+  ],
+  "tris_max": 5000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3
+ },
+ "SM_ShoreBoat_RunaboutCovered": {
+  "what": "21 ft bowrider (6.4 x 2.44 m) under its fitted canvas cover, outboard tilted up",
+  "where": "boat sockets on lifts and alongside",
+  "expect": [
+   7.5,
+   2.52
+  ],
+  "tris_max": 8000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3,
+  "note": "x includes the tilted outboard (1.1 m past the transom)"
+ },
+ "SM_ShoreBoat_RunaboutOpen": {
+  "what": "the same bowrider uncovered: windshield, console, seats",
+  "where": "boat sockets",
+  "expect": [
+   7.5,
+   2.5
+  ],
+  "tris_max": 8000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3
+ },
+ "SM_ShoreBoat_Pontoon": {
+  "what": "24 ft pontoon (7.3 x 2.6 m): two 25 in tubes, fence, couches, folded bimini",
+  "where": "boat sockets, marina sheds",
+  "expect": [
+   7.99,
+   2.64
+  ],
+  "tris_max": 8000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3
+ },
+ "SM_ShoreBoat_PWC": {
+  "what": "three-seat personal watercraft (3.35 x 1.25 m)",
+  "where": "pwc sockets on ports",
+  "expect": [
+   3.38,
+   1.24
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m and near 30-150 m: full mesh; mid 150-600 m: baked into the house tiles' light copies (Track I)",
+  "closest_m": 3
+ }
+}
