@@ -1138,13 +1138,13 @@ bool FSailingUIPaperGrainTest::RunTest(const FString&)
 		// Wrapping: texel N is texel 0.
 		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(N, Y, N) - SailUI::PaperGrainValue(0, Y, N)));
 		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(Y, N, N) - SailUI::PaperGrainValue(Y, 0, N)));
-		// The step across the tile's edge is no bigger than the grain's own texel-to-texel steps can be (specks: 0.5).
+		// The step across the tile's edge is no bigger than the grain's own texel-to-texel steps (tooth and specks).
 		WorstStep = FMath::Max(WorstStep, FMath::Abs(SailUI::PaperGrainValue(N - 1, Y, N) - SailUI::PaperGrainValue(N, Y, N)));
 	}
 	TestTrue(TEXT("The grain stays within -1..1"), Lo >= -1.f && Hi <= 1.f);
 	TestTrue(TEXT("It has both light fibres and dark specks"), Lo < -0.3f && Hi > 0.3f);
 	TestTrue(TEXT("It is balanced: the sheet keeps its tone"), FMath::Abs(Sum / double(N * N)) < 0.08);
 	TestTrue(TEXT("It wraps exactly"), WorstSeam < 1e-6f);
-	TestTrue(TEXT("No hard seam at the tile's edge"), WorstStep < 0.75f);
+	TestTrue(TEXT("No hard seam at the tile's edge"), WorstStep < 1.2f);
 	return true;
 }

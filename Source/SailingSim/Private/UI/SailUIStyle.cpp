@@ -286,9 +286,10 @@ namespace SailUI
 		const float U = float(PX) / N, V = float(PY) / N;
 		// Mottle (the sheet's uneven tone), a finer tooth, and per-texel fibre specks, stretched a little along X.
 		const float Mottle = GrainLattice(U, V, 6, 42u) - 0.5f;	// a seed whose 36 lattice values average 0.5
-		const float Tooth = GrainLattice(U, V, 48, 23u) - 0.5f;
+		const float Tooth = GrainLattice(U, V, 96, 23u) - 0.5f;
 		const float Speck = GrainUnit(uint32(PX / 2), uint32(PY), 37u) - 0.5f;
-		return FMath::Clamp(Mottle * 1.1f + Tooth * 0.7f + Speck * 0.5f, -1.f, 1.f);
+		// Mostly tooth and specks: with the mottle at 1.1 the first stills read as blotches 60 to 80 px across.
+		return FMath::Clamp(Mottle * 0.45f + Tooth * 1.0f + Speck * 0.7f, -1.f, 1.f);
 	}
 
 	const FSlateBrush* PaperGrain()

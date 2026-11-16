@@ -107,7 +107,7 @@ namespace SailUI
 		// percent the missing corner slivers do not show).
 		return SNew(SOverlay)
 			+ SOverlay::Slot()[ SNew(SBorder).BorderImage(Rounded(Fill, Radius, Outline, 1.f)) ]
-			+ SOverlay::Slot().Padding(FMath::Max(1.f, Radius * 0.3f))[ SNew(SImage).Image(Grain).Visibility(EVisibility::HitTestInvisible) ]
+			+ SOverlay::Slot().Padding(FMath::Max(1.f, Radius * 0.3f))[ SNew(SImage).Image(Grain).DesiredSizeOverride(FVector2D(1.0, 1.0)).Visibility(EVisibility::HitTestInvisible) ]	// or the sheet is never smaller than the 256 px tile (the title's Mode panel grew)
 			+ SOverlay::Slot().Padding(Padding)[ Content ];
 	}
 
