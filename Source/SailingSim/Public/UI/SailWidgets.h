@@ -130,6 +130,24 @@ namespace SailUI
 	TSharedRef<SWidget> PanelBox(TSharedRef<SWidget> Content, FMargin Padding = FMargin(20.f), float Radius = RadiusCard);
 	/** A paper sheet with the paper's grain laid over its fill and under its content (PaperGrain; plain without it). */
 	TSharedRef<SWidget> PaperSheet(TSharedRef<SWidget> Content, FMargin Padding, float Radius, const FLinearColor& Fill, const FLinearColor& Outline);
+	/**
+	 * Controller glyphs (UI overhaul phase 11), drawn in code: no platform artwork. A prompt's pad text ("A", "LB / RB",
+	 * "← →", "R stick", "View") parses into glyphs: face buttons as ringed discs, bumpers and triggers by their shape,
+	 * the D-pad as a cross with the arms that matter lit, sticks as a ring and cap (filled when it is a click), View and
+	 * Menu by their marks. Anything unknown stays a text pill.
+	 */
+	enum class EPadGlyph : uint8 { Face, Bumper, Trigger, Dpad, Stick, StickClick, View, Menu, Text };
+	struct FPadGlyph
+	{
+		EPadGlyph Kind = EPadGlyph::Text;
+		FString Label;      // the letter(s) drawn: "A", "LB", "R"; the whole text for Text
+		uint8 Arms = 0;     // D-pad arms lit or stick directions shown: 1 up, 2 down, 4 left, 8 right
+		bool operator==(const FPadGlyph& O) const { return Kind == O.Kind && Label == O.Label && Arms == O.Arms; }
+	};
+	SAILINGSIM_API TArray<FPadGlyph> ParsePadGlyphs(const FString& Pad);
+	/** The glyph's width in the prompt row (all are 24 px tall). */
+	SAILINGSIM_API float PadGlyphWidth(const FPadGlyph& Glyph);
+
 	/** A keycap glyph for an action: "Enter" / "A", "Esc" / "B" and so on, following the last device. */
 	TSharedRef<SWidget> KeyCap(const FString& Keyboard, const FString& Pad);
 	/** The footer: actions the screen handles, plus a hint on the right. */

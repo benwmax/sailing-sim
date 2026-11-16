@@ -11,6 +11,7 @@
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
 #include "UI/SailUIStyle.h"
+#include "UI/SailWidgets.h"
 #include "SailingHUD.h"
 #include "SailCloth.h"
 #include "EasyAssists.h"
@@ -1146,5 +1147,45 @@ bool FSailingUIPaperGrainTest::RunTest(const FString&)
 	TestTrue(TEXT("It is balanced: the sheet keeps its tone"), FMath::Abs(Sum / double(N * N)) < 0.08);
 	TestTrue(TEXT("It wraps exactly"), WorstSeam < 1e-6f);
 	TestTrue(TEXT("No hard seam at the tile's edge"), WorstStep < 1.2f);
+	return true;
+}
+
+// Controller glyphs (UI overhaul phase 11): every pad label the prompts use parses to a drawn glyph, not a text pill.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadGlyphsTest, "SailingSim.UI.PadGlyphs", UIFlags)
+bool FSailingUIPadGlyphsTest::RunTest(const FString&)
+{
+	using SailUI::EPadGlyph;
+	auto One = [this](const TCHAR* Pad, EPadGlyph Kind, const TCHAR* Label, uint8 Arms)
+	{
+		const TArray<SailUI::FPadGlyph> G = SailUI::ParsePadGlyphs(Pad);
+		TestEqual(FString::Printf(TEXT("'%s' is one glyph"), Pad), G.Num(), 1);
+		if (G.Num() != 1) return;
+		TestTrue(FString::Printf(TEXT("'%s' kind"), Pad), G[0].Kind == Kind);
+		TestEqual(FString::Printf(TEXT("'%s' label"), Pad), G[0].Label, FString(Label));
+		TestEqual(FString::Printf(TEXT("'%s' arms"), Pad), int32(G[0].Arms), int32(Arms));
+	};
+	One(TEXT("A"), EPadGlyph::Face, TEXT("A"), 0);
+	One(TEXT("Y"), EPadGlyph::Face, TEXT("Y"), 0);
+	One(TEXT("L3"), EPadGlyph::StickClick, TEXT("L"), 0);
+	One(TEXT("R"), EPadGlyph::Stick, TEXT("R"), 0);
+	One(TEXT("R stick"), EPadGlyph::Stick, TEXT("R"), 0);
+	One(TEXT("R ↕"), EPadGlyph::Stick, TEXT("R"), 3);
+	One(TEXT("D-pad"), EPadGlyph::Dpad, TEXT(""), 15);
+	One(TEXT("← →"), EPadGlyph::Dpad, TEXT(""), 12);
+	One(TEXT("↑ ↓"), EPadGlyph::Dpad, TEXT(""), 3);
+	One(TEXT("View"), EPadGlyph::View, TEXT(""), 0);
+	One(TEXT("Menu"), EPadGlyph::Menu, TEXT(""), 0);
+	One(TEXT("Hold View"), EPadGlyph::Text, TEXT("Hold View"), 0);
+
+	const TArray<SailUI::FPadGlyph> Pair = SailUI::ParsePadGlyphs(TEXT("LB / RB"));
+	TestEqual(TEXT("'LB / RB' is two bumpers"), Pair.Num(), 2);
+	if (Pair.Num() == 2)
+	{
+		TestTrue(TEXT("Both are bumpers"), Pair[0].Kind == EPadGlyph::Bumper && Pair[1].Kind == EPadGlyph::Bumper);
+		TestEqual(TEXT("The second is RB"), Pair[1].Label, FString(TEXT("RB")));
+	}
+	const TArray<SailUI::FPadGlyph> Triggers = SailUI::ParsePadGlyphs(TEXT("LT / RT"));
+	TestTrue(TEXT("'LT / RT' is two triggers"), Triggers.Num() == 2 && Triggers[0].Kind == EPadGlyph::Trigger && Triggers[1].Kind == EPadGlyph::Trigger);
+	TestTrue(TEXT("A bumper is wider than a face button"), SailUI::PadGlyphWidth(Pair.Num() ? Pair[0] : SailUI::FPadGlyph()) > 24.f);
 	return true;
 }
