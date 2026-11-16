@@ -82,6 +82,26 @@ if st:
     hull["transom_width"] = r(2 * st[0]["half_beam"])     # across the hull 0.5% of LOA (3.4 cm) forward of the transom
 
 
+def waterline_cut(ob, z=0.0):
+    """The hull's ends where the plane z (the design waterline, z = 0) cuts it: (aftmost x, foremost x) or None. A
+    straight line between the 21 stations cuts the corner where a hull's overhang meets the water and reads short, so
+    the waterline length comes from this cut (docs/c22-1)."""
+    bm = bmesh.new()
+    bm.from_object(ob, DG)
+    bm.transform(ob.matrix_world)
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, z), plane_no=(0, 0, 1), clear_inner=False, clear_outer=False)
+    xs = [v.co.x for v in res["geom_cut"] if isinstance(v, bmesh.types.BMVert)]
+    bm.free()
+    return (min(xs), max(xs)) if xs else None
+
+
+wl = waterline_cut(ob)
+if wl:
+    hull["waterline_x"] = [r(wl[0]), r(wl[1])]
+    hull["lwl"] = r(wl[1] - wl[0])
+
+
 def footwell(ob, x, dz=0.10):
     """The cockpit's footwell at station x: the gap between the seat fronts' inner faces dz over the sole's top (the
     sole's top is the cut's highest point within 10 cm of the centreline; the liner's underside lies 2 cm under it), and

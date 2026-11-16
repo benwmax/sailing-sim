@@ -75,7 +75,7 @@ SPEC = SPECS[TAG]
 # The shape loop's sections (docs/shape-loop): every face of the hull mesh remembers the part it was built in, so the
 # saved .blend can be split into objects by moulding. Only with FLEET_SHAPE_BLEND=1; the fbx export never carries it.
 SHAPE_BLEND = os.environ.get("FLEET_SHAPE_BLEND") == "1"
-SHAPE_PARTS = ["Fittings", "Hull", "Deck", "Well", "Board"]
+SHAPE_PARTS = ["Fittings", "Hull", "Deck", "Well", "Board", "Cabin"]
 _PART = ["Fittings"]
 
 
@@ -1545,9 +1545,12 @@ if TAG in ("Sunfish", "ILCA7"):
 
 elif TAG in ("Catalina22", "Catalina30"):
     ck, cb = SPEC["cockpit"], SPEC["cabin"]
-    deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])])
-    cockpit(MAIN, ck)
-    top, half = cabin(MAIN, cb)
+    with shape_part("Deck"):      # (the shape loop's sections for the Catalina 22's rebuild, docs/c22-1)
+        deck(MAIN, cuts=[(ck[0], ck[1], -ck[2], ck[2])])
+    with shape_part("Well"):
+        cockpit(MAIN, ck)
+    with shape_part("Cabin"):
+        top, half = cabin(MAIN, cb)
     mast_step_z = top(mast_x) - 0.04 + 0.035
     st, bw = MAIN.h["stern_x"], MAIN.h["bow_x"]
     lifelines(MAIN, st + 0.25, bw - 0.95)
