@@ -257,6 +257,25 @@ With the interface off there was no heading at all. Bean's note on the proposal:
   `Content` job (a card texture and a housing mesh) for later.
 - Stills: `-SailingHudMode=2 -SailingWrist` holds it up (`wrist.jpg`, `wrist-night.jpg`).
 
+## Phase 9: the faces
+
+Saira Condensed was the stand-in's face. The overhaul's three:
+
+| Use | Face | Styles |
+| --- | --- | --- |
+| Titles, the logo, menu items | Besley (a slab serif: the chart table's lettering) | Logo, ScreenTitle, CardTitle, CardTitleM, CardTitleS, MenuItem |
+| Text, labels, buttons | Atkinson Hyperlegible Next (drawn so similar letters cannot be confused) | Eyebrow, Label, Ui, Button, Body, Small |
+| Figures on instruments | B612 (drawn for aircraft displays) | Value, InstrumentBig |
+
+- All three are SIL OFL 1.1, to be confirmed from the licence file in each download before they enter
+  `Content/UI/Fonts` (rows in `docs/licences/assets.csv`, the OFL texts staged, a line in `CREDITS.md`). Static
+  instances only: Slate draws a variable font's lightest instance.
+- `SailUI::HasOverhaulFonts()` switches the styles only when all seven files are there, so the code is safe without
+  them; `-SailingClassicFonts` keeps Saira for compared stills.
+- Sizes: Saira is condensed and these are not, so titles are set at about 0.8 of Saira's pixel size, text at 0.88 and
+  figures at 0.84; the 15 px floor holds. Expect a tuning round from the stills of every screen.
+- Saira stays in the repo: the sail numbers, bow lettering and hardware plates are rasterized from it.
+
 ## What comes next
 
 1. Fonts (Besley for titles, Atkinson Hyperlegible Next for text, B612 for instrument numerals; all SIL OFL, to be
