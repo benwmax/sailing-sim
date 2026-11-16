@@ -1,0 +1,140 @@
+{
+ "about": "The Catalina 22's hull lines for her rebuild (docs/c22-2): drawn to the size card (specs_c22.json) and the look of the original swing-keel boat in photos. Nothing is traced from a drawing. hull_c22.py turns these curves into the hull shell. Units: metres. Frame: the game's body frame (X forward, Y starboard, Z up), origin on the centreline amidships, Z 0 on the game's design waterline, so today's sockets and physics still line up: the stem and the transom stay where today's model has them (x 3.30 and -3.25).",
+ "ends": {
+  "stem_x": 3.3,
+  "transom_x": -3.25,
+  "note": "The hull's length (6.55 m) is the card's. Where the waterline meets the stem and the transom comes from the overhangs below."
+ },
+ "waterline": {
+  "aft_x": -3.13,
+  "note": "Where the run aft crosses the design waterline: the run's knee is solved so it does, whatever canoe depth the volume asks for. The forward end is where the forefoot meets the water, an outcome of the stem and forefoot below (about x 2.79). Between them 5.92 m, the card's 19 ft 4 in (5.893 m) plus 0.5%."
+ },
+ "stem": {
+  "head_z": 0.9,
+  "rake": 0.56,
+  "forefoot_top_z": 0.15,
+  "forefoot_length": 0.7,
+  "note": "The stem's head 0.90 m over the waterline; rake = metres aft per metre down. The straight stem runs down to forefoot_top_z (m over the waterline) and turns into the bottom over forefoot_length (m along the profile): the profile from the lowest point to there is drawn by its turning angle (a slow turn for the rocker, a quicker one for the forefoot, both easing in and out), so its curvature has no steps. The forefoot's tightest radius comes out about 0.35 m."
+ },
+ "transom": {
+  "bottom_z": 0.02,
+  "note": "The transom's foot 2 cm over the waterline, so the run leaves the water just ahead of it (the blind reviewers of round 1 all asked for a flatter run with the transom's lower edge near the water); its top is the sheer's height there and its width the plan's (1.72 m). Drawn upright: whether hers rakes aft, and by how much, waits on a broadside photo (refs.json)."
+ },
+ "sheer": {
+  "points": [
+   [
+    -3.25,
+    0.765
+   ],
+   [
+    -2.4,
+    0.718
+   ],
+   [
+    -1.6,
+    0.697
+   ],
+   [
+    -0.8,
+    0.7
+   ],
+   [
+    0.2,
+    0.72
+   ],
+   [
+    1.2,
+    0.765
+   ],
+   [
+    2.3,
+    0.835
+   ],
+   [
+    3.3,
+    0.9
+   ]
+  ],
+  "note": "Height of the deck's edge over the waterline: a gentle spring, lowest about three quarters aft (near x -1.4, 0.696 m), lifting 7 cm to the transom and 20 cm to the bow."
+ },
+ "plan": {
+  "points": [
+   [
+    -3.25,
+    0.86
+   ],
+   [
+    -2.6,
+    0.99
+   ],
+   [
+    -1.8,
+    1.1
+   ],
+   [
+    -1.0,
+    1.155
+   ],
+   [
+    -0.3,
+    1.169
+   ],
+   [
+    0.4,
+    1.1565
+   ],
+   [
+    1.0,
+    1.0996
+   ],
+   [
+    1.5,
+    0.998
+   ],
+   [
+    2.0,
+    0.8315
+   ],
+   [
+    2.4,
+    0.6425
+   ],
+   [
+    2.75,
+    0.4308
+   ],
+   [
+    3.05,
+    0.2115
+   ],
+   [
+    3.3,
+    0.01
+   ]
+  ],
+  "note": "Half-breadth of the deck's edge seen from above: widest (2.337 m) a little aft of amidships, a wide transom, and forward of the widest point a bow that rounds ever tighter to the stem with no shoulder: the forward points lie on 1.169 (1 - u^2.77), u running 0 to 1 from x -0.3 to the stem, which meets the stem at about 39 degrees either side (the spline through these points; the curve itself would make 42)."
+ },
+ "bottom": {
+  "canoe_depth": 0.28,
+  "lowest_x": -0.6,
+  "note": "The canoe body's centreline below the waterline: deepest at lowest_x and flat there (no curvature, on both sides). Aft it stays flat, then straightens into a nearly straight run up to the transom's foot (hull_c22._run_shape; its knee solved so it crosses the water at waterline.aft_x); forward, see stem. canoe_depth is solved by hull_c22.py (solve_depth) so the hull floats at the design waterline with the game's crew aboard; the value here is only the start."
+ },
+ "section": {
+  "bilge_power": {
+   "stern": 4.5,
+   "mid": 6.0,
+   "bow": 1.5
+  },
+  "flare_power": {
+   "stern": 1.15,
+   "mid": 1.2,
+   "bow": 1.7
+  },
+  "mid_x": [
+   -1.0,
+   0.3
+  ],
+  "deadrise_deg": 6.0,
+  "note": "Each station's section: a flat bottom (deadrise_deg) turning through a firm bilge into straight, slightly flared topsides amidships, a little softer toward the transom and finer toward the stem. The half-breadth at girth fraction f (0 at the bottom's centreline, 1 at the sheer) is the plan's times (1 - (1 - f)^flare)^(1 / bilge): a high bilge power makes the bilge firm and the bottom flat, a flare power near 1 leans the topsides out to the sheer. Both powers hold their mid values between mid_x and ease (smootherstep) to their stern values at the transom and their bow values at the stem. Finer bow sections, or a quicker change to them, hollow the bow's waterlines (Tools/shapeloop/fairness.py counts the inflections): these keep every waterline convex, with a half-angle of entrance of about 25 degrees on the design waterline 30 to 50 cm back from the stem. Nearer the stem the waterlines round off (55 degrees 2 cm back): the sections' breadth grows as f^(1 / bilge) off the centreline, so the forefoot has a round nose rather than a sharp stem. A sharp stem needs hollow sections there; that waits for a bow photo (docs/c22-2)."
+ }
+}
