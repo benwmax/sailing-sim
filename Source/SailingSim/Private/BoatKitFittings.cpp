@@ -104,9 +104,9 @@ void ASailboatPawn::BuildKitFittings()
 	const bool bHeroJ22 = C.Type == EBoatType::J22 && ModelHull && ModelHull->GetStaticMesh() && ModelHull->GetStaticMesh()->GetName().StartsWith(TEXT("SM_J22H"));
 	if (bHeroJ22 && !bTrafficBoat && !bGhost)
 	{
-		UStaticMesh* Mount = KitFitMesh(TEXT("BulkheadCompassMount"), false);
-		UStaticMesh* Card = Mount ? KitFitMesh(TEXT("BulkheadCompassCard"), false) : nullptr;
-		if (Mount && Card)
+		UStaticMesh* BowlMesh = KitFitMesh(TEXT("BulkheadCompassMount"), false);
+		UStaticMesh* CardMesh = BowlMesh ? KitFitMesh(TEXT("BulkheadCompassCard"), false) : nullptr;
+		if (BowlMesh && CardMesh)
 		{
 			// -SailingCompassAt=<x>,<y>,<z> (boat frame, cm) moves it for stills while its place is being settled.
 			FVector At = KitFittings::CompassAtCm();
@@ -118,10 +118,10 @@ void ASailboatPawn::BuildKitFittings()
 				if (Parts.Num() == 3) At = FVector(FCString::Atod(*Parts[0]), FCString::Atod(*Parts[1]), FCString::Atod(*Parts[2]));
 			}
 			const FRotator Facing = KitFittings::CompassFacing();
-			CompassMount = Add(Mount, nullptr);
+			CompassMount = Add(BowlMesh, nullptr);
 			CompassMount->SetRelativeLocationAndRotation(At, Facing);
-			CompassCard = Add(Card, nullptr);
-			CompassCard->SetRelativeLocation(At + Facing.RotateVector(KitFitSocketCm(Mount, TEXT("Pivot"), FVector(0.0, 0.0, 1.2))));
+			CompassCard = Add(CardMesh, nullptr);
+			CompassCard->SetRelativeLocation(At + Facing.RotateVector(KitFitSocketCm(BowlMesh, TEXT("Pivot"), FVector(0.0, 0.0, 1.2))));
 			CompassCard->SetCastShadow(false);   // inside its bowl
 		}
 	}
