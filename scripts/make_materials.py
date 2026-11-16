@@ -5037,58 +5037,124 @@ def build_sky_dome():
 
 
 LENS_CODE = """
-// Visual V5 (High): water on the lens. Raindrops land and run across the glass with the apparent wind (WindScreen: the
-// screen direction the air pushes them, gravity included); spray after a wave leaves a burst of larger spots.
+// Visual V5 (High): water on the lens. Raindrops land on the glass, sit, and dry or run off with the apparent wind
+// (WindScreen: xy the screen direction the air pushes them, gravity included; z the air's whole speed over the glass,
+// head-on too, m/s; low-passed over 2 s on the CPU, SailingLens::FLensAir); spray after a wave leaves a burst of larger spots.
 // Storm look 5 (docs/storm-look/lens-water/; feedback #24: the drops read as grey discs): each drop is a lens, a cap of
 // water on the glass with a short focal length, so it shows the scene behind it upside down and wide (the sample point
 // mirrored through the drop's centre and spread over LENS_FIELD times its own size: the inverted horizon in every wet
 // action-camera frame), its rim dark where the light inside is turned away (total internal reflection at the steep
 // edge), with one sharp glint high on it toward the sky, and the edge of a drop on glass is sharp. A slam's spray
 // (Spray, from AWaterSurface::LensSpray) throws big splashes and leaves the whole glass filmed and wobbling a moment.
+// Feedback #28 (the drops read as a repeating pattern): every drop lives its own life. Each cell's time runs in epochs of
+// its own length and phase, and each epoch draws a new drop or none (place, size, shape, glint, whether it runs) from an
+// integer hash; the layers' lattices are turned and shifted so their grids never line up; fewer drops; the harder the
+// air over the glass (camera speed included) the shorter they last and the more run. SailingLens::DropAt (LensDrops.h)
+// is the CPU twin of the placement below and SailingSim.Visual.LensDrops holds it: keep them in step.
 // Returns the UV shift (xy), the water's mask (z) and the gain on the refracted light (w: the rim's shade and the glint).
 float2 uv = GetViewportUV(Parameters);
 float aspect = View.ViewSizeAndInvSize.x * View.ViewSizeAndInvSize.w;
 float2 wdir = normalize(Wind.xy + float2(0.0, 1e-3));
+float windShare = saturate((Wind.z - 3.0) / 12.0);
+float rain = saturate(Rain);
 float2 offset = float2(0.0, 0.0);
 float mask = 0.0, gain = 1.0;
 for (int layer = 0; layer < 4; layer++)
 {
     // Three sizes of rain drop, and a fourth of the big splashes a slam throws.
-    float scale = layer < 3 ? 9.0 + 9.0 * layer : 4.5;
-    float speed = Wind.z * (layer < 3 ? 0.08 + 0.05 * layer : 0.05);
-    float2 p = uv * float2(aspect, 1.0) * scale - wdir * T * speed * scale;
-    float chance = layer < 3 ? Rain * (0.18 + 0.06 * layer) + Spray * (layer == 0 ? 0.5 : 0.15) : 0.35 * Spray * Spray;
+    bool splash = layer == 3;
+    float scale = layer == 0 ? 11.0f : (layer == 1 ? 17.0f : (layer == 2 ? 26.0f : 5.0f));
+    float chance = splash ? 0.35 * Spray * Spray
+        : (layer == 0 ? 0.16 * rain + 0.35 * Spray : (layer == 1 ? 0.13 * rain + 0.12 * Spray : 0.10 * rain + 0.06 * Spray));
+    if (chance < 0.002)
+        continue;   // (nearly) dry glass: no drop layers
+    float visible = splash ? 0.9f : lerp(0.9, 0.4, windShare);
+    // The layer's lattice, turned and shifted so no two layers' grids line up.
+    float ca = cos(0.7 * layer), sa = sin(0.7 * layer);
+    float2 sp = uv * float2(aspect, 1.0) * scale;
+    float2 p = float2(ca * sp.x - sa * sp.y, sa * sp.x + ca * sp.y) + float2(0.37, 0.61) * layer;
+    float2 wl = float2(ca * wdir.x - sa * wdir.y, sa * wdir.x + ca * wdir.y);
     // A drop's tail runs past its own cell, so look in the four cells nearest this pixel. Every drop is kept within 0.66
-    // of a cell of its centre (centres sit 0.2 to 0.8 into their cell), so those four always hold it. Looked for in its own
-    // cell alone, a big drop was cut off square at the cell's edges (the Mac's slam stills, Nov 15).
+    // of a cell of its centre, and centres stay 0.2 to 0.8 into their cell (a running drop too), so those four always hold it.
     float2 base = floor(p - 0.5);
     for (int iy = 0; iy < 2; iy++)
     {
         for (int ix = 0; ix < 2; ix++)
         {
             float2 cell = base + float2(ix, iy);
-            float h = frac(sin(dot(cell + layer * 17.0, float2(127.1, 311.7))) * 43758.5453);
-            if (h < chance)
+            int2 ci = int2(cell);
+            uint seed = (uint(ci.x) * 0x8da6b343u) ^ (uint(ci.y) * 0xd8163841u) ^ (uint(layer) * 0xcb1ab31fu);
+            float r[12];
+            for (int k0 = 0; k0 < 12; k0++)
+                r[k0] = 0.0;
+            uint h = seed;
+            for (int k1 = 0; k1 < 2; k1++)
             {
-                float2 c = float2(frac(h * 13.1), frac(h * 7.3)) * 0.6 + 0.2;
+                h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;   // lowbias32
+                r[k1] = float(h >> 8) * (1.0 / 16777216.0);
+            }
+            // The cell's own clock: epochs of 0.6 to 1.4 times the layer's period, in its own phase; each draws anew.
+            float period = (splash ? 6.0f : 4.5f) * (0.6 + 0.8 * r[0]);
+            float tt = T / period + r[1];
+            float epoch = floor(tt);
+            float age = tt - epoch;
+            h = seed ^ (uint(epoch + 1.0) * 0x9e3779b9u);
+            h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+            r[2] = float(h >> 8) * (1.0 / 16777216.0);
+            if (r[2] < chance)
+            {
+                for (int k2 = 3; k2 < 12; k2++)
+                {
+                    h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+                    r[k2] = float(h >> 8) * (1.0 / 16777216.0);
+                }
+            }
+            float present = saturate((chance - r[2]) / 0.05);
+            if (present > 0.0)
+            {
+                float life = saturate(age / 0.03) * (1.0 - smoothstep(0.6 * visible, visible, age)) * (splash ? Spray : 1.0f);
+                // Many small drops, a few big ones; they shrink as they dry.
+                float rad = (splash ? 0.18 + 0.14 * r[3] : 0.07 + 0.23 * r[3] * r[3]) * (1.0 - 0.35 * smoothstep(0.5 * visible, visible, age));
+                float aspectD = 0.8 + 0.25 * r[8];
+                float2 c = float2(r[4], r[5]) * 0.6 + 0.2;
+                // Runs once the air is strong enough for it, easing in (a drop starting to run mid-life slides, never jumps).
+                float runW = splash ? 0.0f : saturate((0.7 * windShare - r[6]) / 0.05);
+                if (runW > 0.0)
+                {
+                    // As far along the push as the centre's box allows.
+                    float rx = wl.x > 0.0 ? (0.8 - c.x) / max(wl.x, 1e-4) : (c.x - 0.2) / max(-wl.x, 1e-4);
+                    float ry = wl.y > 0.0 ? (0.8 - c.y) / max(wl.y, 1e-4) : (c.y - 0.2) / max(-wl.y, 1e-4);
+                    c += wl * (min(rx, ry) * (0.5 + 0.5 * r[7]) * smoothstep(0.15, visible, age) * runW);
+                }
                 float2 d = p - cell - c;
-                // Streaked along the way it runs (longer the harder the air pushes), never past 0.66 of a cell.
-                float along = dot(d, wdir), across = dot(d, float2(-wdir.y, wdir.x));
-                float rad = layer < 3 ? 0.1 + 0.12 * frac(h * 3.3) : 0.18 + 0.12 * frac(h * 3.3);
-                float stretch = min(1.0 + 2.0 * saturate(Wind.z * 0.15) * saturate(along * 4.0 + 0.5), 0.66 / rad);
-                float2 q = float2(along / stretch, across) / rad;   // the drop's own frame, its rim at 1
-                float r = length(q);
-                float life = layer < 3 ? 1.0 - 0.6 * frac(T * 0.2 + h) : Spray;
-                float drop = smoothstep(1.0, 0.9, r) * life;
+                // Streaked along the way it runs (a running drop drags a tail; a sitting one only leans), never past 0.66 of a cell.
+                float along = dot(d, wl), across = dot(d, float2(-wl.y, wl.x));
+                float tail = lerp(0.6 * windShare, 2.0, runW);
+                float stretch = min(1.0 + tail * saturate(along * 4.0 + 0.5), 0.66 / (rad * 1.1));
+                float2 q = float2(along / stretch, across / aspectD) / rad;   // the drop's own frame, its rim near 1
+                // No drop on glass is a perfect circle: a gentle wobble of up to 5% on its outline, two and three lobes (the
+                // PC's 4K stills: five-lobe wobble at 10% read as faceted pebbles). Worked out only near the rim: past 1.15
+                // the drop is nothing whatever the wobble.
+                float rr = length(q);
+                if (rr < 1.15)
+                {
+                    float th = atan2(q.y, q.x + 1e-5);
+                    rr /= 1.0 + 0.03 * sin(2.0 * th + 6.2832 * r[7]) + 0.02 * sin(3.0 * th + 6.2832 * r[9]);
+                }
+                float drop = smoothstep(1.0, 0.9, rr) * life * present;
                 // A pixel looks through one drop, the strongest over it (the shifts of overlapping drops used to add up).
                 if (drop > mask)
                 {
+                    // Back to the screen's axes (cells).
+                    float2 ds = float2(ca * d.x + sa * d.y, -sa * d.x + ca * d.y);
                     // The lens: the view through it mirrored through its centre and spread (the shift from this pixel to there).
-                    float2 dUv = d / (scale * float2(aspect, 1.0));
+                    float2 dUv = ds / (scale * float2(aspect, 1.0));
                     offset = dUv * (1.0 + LENS_FIELD) * drop;
-                    // The rim's dark ring and the glint (high on the drop, toward the sky: screen up is -v).
-                    float g = saturate(1.0 - length(q - float2(-0.25, -0.45)) / 0.2);
-                    gain = (1.0 - 0.6 * smoothstep(0.55, 0.95, r)) + 1.2 * g * g;
+                    // The rim's dark ring and the glint, high on the drop toward the sky (screen up is -v), a little
+                    // different on each.
+                    float2 gq = ds / rad - float2(-0.25 + 0.2 * (r[10] - 0.5), -0.45 + 0.15 * (r[11] - 0.5));
+                    float g = saturate(1.0 - length(gq) / 0.2);
+                    gain = (1.0 - 0.6 * smoothstep(0.55, 0.95, rr)) + (1.2 + 0.6 * r[10]) * g * g;
                     mask = drop;
                 }
             }

@@ -1096,7 +1096,8 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 	{
 		// The air over the glass: the wind less the camera's own motion, in screen axes (+y down), with gravity.
 		const float Dt = FMath::Max(GetWorld()->GetDeltaSeconds(), 1e-3f);
-		const FVector CamVel = (CameraPos - LastCameraPos) / Dt / CmPerMeter;
+		// Feedback #28: a cut, teleport, origin rebase or the first frame is no air (it made half the drops blink).
+		const FVector CamVel = SailingLens::LensCameraVelocity((CameraPos - LastCameraPos) / CmPerMeter, Dt);
 		LastCameraPos = CameraPos;
 		const double From = W.Wind.FromDegrees * kDegToRad;
 		const FVector Air = FVector(-FMath::Cos(From), -FMath::Sin(From), 0.0) * (W.Wind.SpeedKnots * kKnot) - CamVel.GetClampedToMaxSize(30.0);
@@ -1107,12 +1108,15 @@ void ASailingEnvironment::UpdateRain(const FVector& CameraPos)
 			Right = FRotationMatrix(R).GetUnitAxis(EAxis::Y);
 			Up = FRotationMatrix(R).GetUnitAxis(EAxis::Z);
 		}
-		const FVector2D Screen(float(FVector::DotProduct(Air, Right)), float(-FVector::DotProduct(Air, Up)) + 3.f);
+		const FVector2f Screen(float(FVector::DotProduct(Air, Right)), float(-FVector::DotProduct(Air, Up)) + 3.f);
+		// The air's whole speed (head-on air dries and moves drops too), with gravity's 3 m/s; both low-passed over 2 s so a
+		// turn of the camera, the boat's pitch or the buffet don't fade the drops in and out together (feedback #28).
+		LensAir.Update(Screen, float(FMath::Sqrt(Air.SizeSquared() + 9.0)), Dt);
 		float Spray = 0.f;
 		for (TActorIterator<AWaterSurface> It(GetWorld()); It; ++It) Spray = It->GetLensSpray();
 		LensMaterial->SetScalarParameterValue(TEXT("Rain"), float(RainHere));
 		LensMaterial->SetScalarParameterValue(TEXT("Spray"), Spray);
-		LensMaterial->SetVectorParameterValue(TEXT("WindScreen"), FLinearColor(float(Screen.X), float(Screen.Y), float(Screen.Size()), 0.f));
+		LensMaterial->SetVectorParameterValue(TEXT("WindScreen"), FLinearColor(LensAir.Screen.X, LensAir.Screen.Y, LensAir.Speed, 0.f));
 	}
 	RainNear->SetVisibility(bRaining);
 	RainFar->SetVisibility(bRaining);
