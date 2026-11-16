@@ -149,11 +149,11 @@ void ASailingHUD::BeginPlay()
 			OpenFrontEnd(ESailScreen::FirstLaunch);
 			return;
 		}
-		if (Screen == TEXT("Credits") || Screen == TEXT("Career") || Screen == TEXT("Gallery") || Screen == TEXT("Components"))
+		if (Screen == TEXT("Credits") || Screen == TEXT("Career") || Screen == TEXT("Gallery") || Screen == TEXT("Components") || Screen == TEXT("Logbook"))
 		{
 			OpenFrontEnd(ESailScreen::Title);
 			FrontEnd->Push(Screen == TEXT("Career") ? ESailScreen::Career : Screen == TEXT("Gallery") ? ESailScreen::Gallery
-				: Screen == TEXT("Components") ? ESailScreen::Components : ESailScreen::Credits);
+				: Screen == TEXT("Components") ? ESailScreen::Components : Screen == TEXT("Logbook") ? ESailScreen::Logbook : ESailScreen::Credits);
 			return;
 		}
 		if (Screen == TEXT("Customize"))
@@ -606,8 +606,9 @@ void ASailingHUD::DrawLogbook(const ASailboatPawn& Boat)
 	const float W = 1240.f, H = Canvas->ClipY / UIScale - 80.f;
 	const float X = Canvas->ClipX / UIScale * 0.5f - W * 0.5f, Y = 40.f;
 	// Paper and ink.
-	DrawRect(FLinearColor(0.72f, 0.68f, 0.56f, 1.f), X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
-	const FLinearColor Ink(0.f, 0.f, 0.02f), Faint(0.12f, 0.11f, 0.09f), Red(0.45f, 0.02f, 0.01f);
+	// UI overhaul: the brand's chart paper and inks (the menus' Logbook screen is the full page; this is the quick look on Y).
+	DrawRect(SailUI::Paper, X * UIScale, Y * UIScale, W * UIScale, H * UIScale);
+	const FLinearColor Ink = SailUI::PaperInk, Faint = SailUI::PaperMuted, Red = SailUI::PaperPort;
 	Text(FString::Printf(TEXT("Ship's log: %s, %s"), *Log.GetBoat(), *Log.GetArea()), X + 20.f, Y + 12.f, Ink, 1.05f, true);
 	const TArray<FLogEntry>& E = Log.GetEntries();
 	const double Hours = E.Num() > 0 ? (E.Last().UnixTime - Log.SessionStartUnix) / 3600.0 : 0.0;

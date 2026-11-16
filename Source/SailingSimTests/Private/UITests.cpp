@@ -124,6 +124,8 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 		}
 		TSharedRef<SSailFrontEnd> Credits = SNew(SSailFrontEnd).Start(ESailScreen::Credits);
 		TestTrue(TEXT("Credits builds"), Credits->Current() == ESailScreen::Credits);
+		TSharedRef<SSailFrontEnd> LogScreen = SNew(SSailFrontEnd).Start(ESailScreen::Logbook);
+		TestTrue(TEXT("Logbook builds"), LogScreen->Current() == ESailScreen::Logbook);
 		TSharedRef<SSailHud> Hud = SNew(SSailHud);
 		TestTrue(TEXT("HUD builds"), Hud->Pawn() == nullptr);
 	}

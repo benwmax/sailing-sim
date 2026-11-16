@@ -163,7 +163,20 @@ From the stills of main at b2f515a6 (`world.jpg`, `launch.jpg`, `mode.jpg`, `con
 - **Controls.** The key list and its notes are two paper sheets, like Settings; the header and prompt bar stay on glass.
 - **Mode** needed nothing.
 
-Stills to retake: `world` (a locked card in view), `launch`, `controls`, `customize`.
+### The logbook
+
+The logbook is the heart of the career (Bean, Nov 15). Until now it was one canvas page in the engine's font, reached by
+closing the menus. It is now a screen (`ESailScreen::Logbook`, `BuildLogbook`), opened from the title and the pause menu:
+
+- **Left sheet, "In all":** miles and hours in the big numerals, then sails, medals and certificates, and the sails
+  already in the book (the session files in `Saved/Logbook`, newest first, twelve shown).
+- **Right sheet, "Ship's log":** this sail's page as a ruled table (time, position, course, knots, log, wind, sea,
+  remarks). Watch entries are in ink and events in red, the way a paper log is kept. It scrolls like Credits
+  (`IsReadingScreen`).
+- The quick look on Y while sailing is still the canvas page, now in the same paper and inks.
+
+Stills to retake: `world` (a locked card in view), `launch`, `controls`, `customize`; new: `logbook`
+(`-SailingFrontEnd=Logbook`, best after a few minutes of sailing so the page has entries).
 
 ## What comes next
 

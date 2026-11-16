@@ -19,6 +19,9 @@
 #include "Drills.h"
 #include "Learning.h"
 #include "Career.h"
+#include "Logbook.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
 #include "SailSave.h"
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
@@ -606,7 +609,7 @@ FReply SSailFrontEnd::OnKeyDown(const FGeometry&, const FKeyEvent& E)
 		// Credits and the world cards' descriptions (Bean's UI feedback, Oct 27: the cards cut their text off): arrows, the
 		// D-pad and the stick's flicks step a few lines, Page Up/Down a screen (and on Credits the shoulders and Space too;
 		// the world cards take Left and Right to move between cards, so only Up and Down scroll there).
-		const bool bCredits = Current() == ESailScreen::Credits;
+		const bool bCredits = IsReadingScreen();
 		const float Step = bCredits ? 60.f : 24.f, Page = FMath::Max(bCredits ? 200.f : 40.f, float(Scroll->GetCachedGeometry().GetLocalSize().Y) - (bCredits ? 80.f : 16.f));
 		float To = Scroll->GetScrollOffset();
 		if (K == EKeys::Down || K == EKeys::S || K == EKeys::Gamepad_DPad_Down || K == EKeys::Gamepad_LeftStick_Down) To += Step;
@@ -660,7 +663,7 @@ FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputE
 	// Credits: either stick scrolls (up is positive Y); the world cards: the right stick (the left one moves between cards).
 	// The timer runs while it is held.
 	const FKey K = E.GetKey();
-	if (K != EKeys::Gamepad_RightY && (K != EKeys::Gamepad_LeftY || Current() != ESailScreen::Credits)) return FReply::Unhandled();
+	if (K != EKeys::Gamepad_RightY && (K != EKeys::Gamepad_LeftY || !IsReadingScreen())) return FReply::Unhandled();
 	const float V = FMath::Abs(E.GetAnalogValue()) > 0.2f ? -E.GetAnalogValue() : 0.f;
 	if (V != 0.f && ScrollStick == 0.f) RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &SSailFrontEnd::ScrollActive));
 	ScrollStick = V;
@@ -670,6 +673,7 @@ FReply SSailFrontEnd::OnAnalogValueChanged(const FGeometry&, const FAnalogInputE
 TSharedPtr<SScrollBox> SSailFrontEnd::ActiveScroll() const
 {
 	if (Current() == ESailScreen::Credits) return CreditsScroll;
+	if (Current() == ESailScreen::Logbook) return LogScroll;
 	if (Current() != ESailScreen::World) return nullptr;
 	for (int32 I = 0; I < WorldCards.Num() && I < WorldScrolls.Num(); ++I)
 	{
@@ -682,7 +686,7 @@ EActiveTimerReturnType SSailFrontEnd::ScrollActive(double, float Delta)
 {
 	const TSharedPtr<SScrollBox> Scroll = ActiveScroll();
 	if (!Scroll.IsValid() || ScrollStick == 0.f) { ScrollStick = 0.f; return EActiveTimerReturnType::Stop; }
-	const float Speed = Current() == ESailScreen::Credits ? 900.f : 260.f;
+	const float Speed = IsReadingScreen() ? 900.f : 260.f;
 	Scroll->SetScrollOffset(FMath::Clamp(Scroll->GetScrollOffset() + ScrollStick * Speed * Delta, 0.f, Scroll->GetScrollOffsetOfEnd()));
 	return EActiveTimerReturnType::Continue;
 }
@@ -856,6 +860,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::Build(ESailScreen S)
 	case ESailScreen::Briefing: E = BuildBriefing(); break;
 	case ESailScreen::Quiz: if (Quiz.Num() == 0) StartQuiz(); E = BuildQuiz(); break;
 	case ESailScreen::Credits: E = BuildCredits(); break;
+	case ESailScreen::Logbook: E = BuildLogbook(); break;
 	case ESailScreen::Career: E = BuildCareer(); break;
 	case ESailScreen::Gallery: E = BuildGallery(); break;
 	case ESailScreen::FirstLaunch: E = BuildFirstLaunch(); break;
@@ -941,7 +946,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildTitle()
 	// #402: the separate "ASA 101 drills" item is gone: Career's lessons are the same six drills (the Mode screen's Drills
 	// card still sails any of them freely).
 	if (!USailingSettings::SliceOnly()) Item(TEXT("Race"), TEXT("vs five AI boats"), FSimpleDelegate::CreateLambda([this]() { Pending = USailSessionSubsystem::MakeDefault(); Pending.Mode = ESailMode::Race; Push(ESailScreen::World); }));
-	Item(TEXT("Logbook"), TEXT("This session's log"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* P = Pawn()) P->SetLogOpen(true); Close(); }));
+	Item(TEXT("Logbook"), TEXT("Your miles, hours and sails"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Logbook); }));
 	// #430: runs aren't kept across launches; with none yet this session the item is greyed and says why (it used to close
 	// the menus and play nothing).
 	const ASailboatPawn* RunPawn = Pawn();
@@ -1758,7 +1763,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildPause()
 		}));
 	Item(TEXT("Change conditions"), TEXT("No reload"), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::ConditionsInGame); }));
 	Item(TEXT("Chart"), TEXT("P"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* B = Pawn()) B->SetChartOpenFromUI(true); Close(); }));
-	Item(TEXT("Logbook"), TEXT("Y"), FSimpleDelegate::CreateLambda([this]() { if (ASailboatPawn* B = Pawn()) B->SetLogOpen(true); Close(); }));
+	Item(TEXT("Logbook"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Logbook); }));
 	Item(TEXT("Photo mode"), TEXT("9"), FSimpleDelegate::CreateLambda([this]() { Close(); if (ASailboatPawn* B = Pawn()) B->SetPhotoFromUI(true); }));
 	Item(TEXT("Settings"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Settings); }));
 	Item(TEXT("Controls"), FString(), FSimpleDelegate::CreateLambda([this]() { Push(ESailScreen::Controls); }));
@@ -2225,6 +2230,131 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCredits()
 	// No focus target: the front end itself takes the keys and scrolls.
 	E.Footer = PromptBar({ Prompt(TEXT("\u2191 \u2193"), TEXT("\u2191 \u2193"), TEXT("Scroll")), Prompt(TEXT("PgUp / PgDn"), TEXT("LB / RB"), TEXT("Page")),
 		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, FString());
+	return E;
+}
+
+// ---------------------------------------------------------------- Logbook (UI overhaul phase 3)
+
+SSailFrontEnd::FEntry SSailFrontEnd::BuildLogbook()
+{
+	using namespace SailUI;
+	using namespace SailFrontEndImpl;
+	FEntry E;
+	// The logbook is the heart of the career (Bean, Nov 15): what you have sailed in all, the sails you have logged, and
+	// this sail's page the way a navigator keeps one. Two sheets of chart paper; the header and prompt bar stay on glass.
+	const ASailboatPawn* P = Pawn();
+	const FSailSave::FProgress& Saved = SailSaveStore::Progress();
+	int32 Medals = 0;
+	for (const FSailSave::FLessonRecord& Lesson : Saved.Lessons) if (!Lesson.Medal.IsEmpty()) ++Medals;
+	TOptional<FScopedPaper> PaperScope;
+	PaperScope.Emplace();
+	auto Rule = []() -> TSharedRef<SWidget> { return SNew(SBox).HeightOverride(1.f)[ SNew(SBorder).BorderImage(Rounded(OnSurface(Line), 0.f)) ]; };
+	auto Big = [](const FString& Value, const FString& Label) -> TSharedRef<SWidget>
+	{
+		return SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Value, EType::InstrumentBig, Fg) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(Label, EType::Label, Muted) ];
+	};
+
+	// Left: the totals, and the sails already in the book (each session's file in Saved/Logbook, newest first).
+	TSharedRef<SVerticalBox> Totals = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("In all"), EType::Eyebrow, Accent) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Big(FString::Printf(TEXT("%.1f"), Saved.LogbookMiles), TEXT("Miles")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Big(FString::Printf(TEXT("%.1f"), Saved.HoursSailed), TEXT("Hours")) ]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 14.f)[ Rule() ]
+		+ SVerticalBox::Slot().AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Saved.LogbookSessions), TEXT("Sails")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Medals), TEXT("Medals")) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ Fact(FString::FromInt(Saved.Certificates.Num()), TEXT("Certificates")) ]
+		]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 8.f)[ SailUI::Text(TEXT("Sails in the book"), EType::Eyebrow, Accent) ];
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *(FPaths::ProjectSavedDir() / TEXT("Logbook") / TEXT("*.json")), true, false);
+	Files.Sort([](const FString& A, const FString& B) { return A > B; });   // "<date> <time> <area>": the newest first
+	const int32 Shown = FMath::Min(Files.Num(), 12);
+	for (int32 I = 0; I < Shown; ++I)
+	{
+		// "2026-11-14 1502 Ray Hubbard.json" reads "14 Nov 2026, 15:02" and the water.
+		const FString Name = FPaths::GetBaseFilename(Files[I]);
+		FString When = Name.Left(15), Where = Name.Mid(16);
+		FDateTime Date;
+		if (Name.Len() >= 15 && FDateTime::Parse(Name.Left(10) + TEXT(" ") + Name.Mid(11, 2) + TEXT(":") + Name.Mid(13, 2) + TEXT(":00"), Date))
+		{
+			static const TCHAR* Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
+			When = FString::Printf(TEXT("%d %s %d, %02d:%02d"), Date.GetDay(), Months[FMath::Clamp(Date.GetMonth() - 1, 0, 11)], Date.GetYear(), Date.GetHour(), Date.GetMinute());
+		}
+		Totals->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 6.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 14.f, 0.f)[ SailUI::Text(When, EType::Small, Fg) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(Where, EType::Small, Muted) ]
+		];
+	}
+	if (Shown == 0) Totals->AddSlot().AutoHeight()[ SailUI::Text(TEXT("None yet. Every sail is written here as it goes."), EType::Small, Muted, true) ];
+	else if (Files.Num() > Shown) Totals->AddSlot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ SailUI::Text(FString::Printf(TEXT("and %d earlier"), Files.Num() - Shown), EType::Small, Muted) ];
+	const TSharedRef<SWidget> TotalsSheet = PanelBox(Totals, FMargin(26.f, 22.f));
+
+	// Right: this sail's page. Watch entries in ink, events (a fix, a drill, a grounding, a mark) in red, as in a paper log.
+	const float ColW[] = { 70.f, 250.f, 80.f, 70.f, 70.f, 110.f, 70.f };
+	const TCHAR* Heads[] = { TEXT("Time"), TEXT("Position"), TEXT("Course"), TEXT("Knots"), TEXT("Log nm"), TEXT("Wind"), TEXT("Sea") };
+	auto Line7 = [&ColW](const FString Cells[7], const FString& Remarks, EType Type, const FLinearColor& Color) -> TSharedRef<SWidget>
+	{
+		TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
+		for (int32 I = 0; I < 7; ++I) Row->AddSlot().AutoWidth()[ SNew(SBox).WidthOverride(ColW[I])[ SailUI::Text(Cells[I], Type, Color) ] ];
+		Row->AddSlot().FillWidth(1.f)[ SailUI::Text(Remarks, Type, Color, true) ];
+		return Row;
+	};
+	TSharedRef<SVerticalBox> Page = SNew(SVerticalBox);
+	FString PageTitle = TEXT("This sail");
+	FString PageNote = TEXT("A watch entry is written every half hour of sailing, and one for anything that happens.");
+	if (P)
+	{
+		const FLogbook& Log = P->GetLogbook();
+		const TArray<FLogEntry>& Entries = Log.GetEntries();
+		if (!Log.GetBoat().IsEmpty()) PageTitle = FString::Printf(TEXT("%s, %s"), *Log.GetBoat(), *Log.GetArea());
+		if (Entries.Num() > 0)
+		{
+			const double Hours = (Entries.Last().UnixTime - Log.SessionStartUnix) / 3600.0;
+			PageNote = FString::Printf(TEXT("%.1f nm by the log in %.1f h. Best speed %.1f kn."), Entries.Last().LogNm, Hours, Log.MaxSpeedKnots);
+		}
+		for (const FLogEntry& L : Entries)
+		{
+			const FString Cells[7] = { L.Clock, FLogbook::FormatPosition(L.Latitude, L.Longitude), FString::Printf(TEXT("%03.0f T"), L.CourseTrue),
+				FString::Printf(TEXT("%.1f"), L.SpeedKnots), FString::Printf(TEXT("%.1f"), L.LogNm), FString::Printf(TEXT("%03.0f  %.0f kn"), L.WindFromDeg, L.WindKnots),
+				FString::Printf(TEXT("%.1f m"), L.SeaMeters) };
+			const bool bWatch = L.Kind == TEXT("Watch");
+			Page->AddSlot().AutoHeight().Padding(0.f, 7.f, 0.f, 7.f)[ Line7(Cells, L.Remarks.IsEmpty() ? FString(TEXT("Watch")) : L.Remarks, EType::Small, bWatch ? Fg : Port) ];
+			Page->AddSlot().AutoHeight()[ Rule() ];
+		}
+	}
+	FString HeadCells[7];
+	for (int32 I = 0; I < 7; ++I) HeadCells[I] = Heads[I];
+	LogScroll = SNew(SScrollBox).ScrollBarAlwaysVisible(true) + SScrollBox::Slot().Padding(0.f, 0.f, 18.f, 0.f)[ Page ];
+	const TSharedRef<SWidget> PageSheet = PanelBox(SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(TEXT("Ship's log"), EType::Eyebrow, Accent) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(PageTitle, EType::CardTitle, Fg) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 16.f)[ SailUI::Text(PageNote, EType::Body, Muted, true) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 18.f, 6.f)[ Line7(HeadCells, TEXT("Remarks"), EType::Label, Muted) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 18.f, 0.f)[ Rule() ]
+		+ SVerticalBox::Slot().FillHeight(1.f)[ LogScroll.ToSharedRef() ], FMargin(26.f, 22.f));
+	PaperScope.Reset();
+	E.Content = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight()[ Header(TEXT("Logbook"), TEXT("Your sailing"), 0) ]
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 24.f, 0.f, 90.f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(0.3f).Padding(0.f, 0.f, 20.f, 0.f)[ TotalsSheet ]
+			+ SHorizontalBox::Slot().FillWidth(0.7f)[ PageSheet ]
+		];
+	// No focus target: the front end itself takes the keys and scrolls the page.
+	E.Footer = PromptBar({ Prompt(TEXT("↑ ↓"), TEXT("↑ ↓"), TEXT("Scroll")), Prompt(TEXT("PgUp / PgDn"), TEXT("LB / RB"), TEXT("Page")),
+		Prompt(TEXT("Esc"), TEXT("B"), TEXT("Back")) }, TEXT("Each sail is also saved as a file in Saved/Logbook"));
 	return E;
 }
 
