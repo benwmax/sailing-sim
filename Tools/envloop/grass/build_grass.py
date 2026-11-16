@@ -1,6 +1,6 @@
 """Track B (shore plan, docs/envloop/grass/README.md): builds the grass and ground-plant meshes from grass_geo.py.
 
-    python Tools/envloop/grass/build_grass.py --out DIR [--only SM_Grass_Lawn_0,...]
+    python Tools/envloop/grass/build_grass.py --out DIR [--pack north-texas-lake] [--only SM_Grass_Lawn_0,...]
     blender -b --factory-startup -P Tools/envloop/grass/build_grass.py -- --out DIR
 
 Needs Blender's Python (the `bpy` module: pip install bpy==5.3.0 on Python 3.13, or Blender 5.x). Writes DIR/<mesh>.fbx
@@ -67,6 +67,7 @@ def stats(pl):
 def main(argv):
     out = argv[argv.index("--out") + 1]
     only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+    G.use_pack(argv[argv.index("--pack") + 1] if "--pack" in argv else None)
     os.makedirs(out, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True)
     report = {}

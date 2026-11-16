@@ -10,12 +10,18 @@ plan's frame-rate rule).
 
 | File | What it is |
 | --- | --- |
-| `Tools/envloop/grass/cards/*.json` | One card per plant: real sizes, where it grows on the lake, which distance bands it must hold, variants, triangle budgets, references wanted |
-| `Tools/envloop/grass/grass_look.json` | Blade colours per plant and season (linear albedo), translucency and roughness: the numbers the game's grass material will read |
-| `Tools/envloop/grass/grass_geo.py` | Every plant's shape, in plain Python (no Blender): blades, stalks, seed heads, flowers |
+| `Tools/envloop/grass/packs/north-texas-lake/` | The region pack: everything specific to a North Texas reservoir |
+| `.../pack.json` | Which plants the region has, each built from which archetype with which numbers and seed; the far-card atlas; distance bands; the stand rules (vigour, density, gaps, shorter toward the bank top); the bank mix |
+| `.../cards/*.json` | One card per plant: real sizes, where it grows on the lake, which distance bands it must hold, variants, triangle budgets, references wanted |
+| `.../look.json` | Blade colours per plant and season (linear albedo), translucency and roughness: the numbers the game's grass material will read |
+| `Tools/envloop/grass/grass_geo.py` | The plant archetypes in plain Python (no Blender): mown tile, rough tile, fine bunch, panicle clump, broadleaf cane, tussock, stalk weed, three rosettes; far crossed cards; reads the pack |
 | `Tools/envloop/grass/build_grass.py` | Builds the 33 meshes in Blender and writes FBX plus `grass_meshes.json` |
-| `Tools/envloop/grass/render_grass.py` | The standard renders: a natural lake bank from a boat at 3, 15 and 60 m, noon, low sun and overcast, summer and dormant, High and Ultra distances |
+| `Tools/envloop/grass/render_grass.py` | Bakes the far cards' atlas; the standard renders: a natural lake bank from a boat at 3, 15 and 60 m, noon, low sun and overcast, summer and dormant, High and Ultra distances |
 | `Tools/envloop/grass/check_grass.py` | The loop's automatic checks (size, colour against Track A's ground, repeat, variety, budget); `--solve` fits the lawn colours to Track A |
+
+Every tool takes `--pack <name>` (default `north-texas-lake`). A new region (a Gulf marsh, a Mediterranean harbour) is a
+new folder under `packs/` with its own species, numbers, colours and cards, built from the same archetypes: no code
+changes, as the plan's "Built to work for other locations" asks. Placement is by rule from map data only.
 
 Run them with Python that has Blender's `bpy` module (`pip install bpy==5.3.0` on Python 3.13; the checks need only
 numpy):
@@ -77,4 +83,4 @@ Results of this round: [results.md](results.md).
    mask and the lidar cover map; High and Ultra only (Bean's answer 10: Medium keeps bank grass only).
 3. Wind sway from the trees' far wind map (`BindTreeWind`).
 4. Station stills at Track 0's stations and a world gate on the Mac, with an on and off switch (`-SailingNoGrass`).
-5. Far cards for the bunch grasses past 60 m, baked from these meshes, if the Ultra 100 m band needs them.
+5. The far cards' atlas (`render_grass.py --bake-far`, `T_GrassFar_<season>`) imported as a texture.
