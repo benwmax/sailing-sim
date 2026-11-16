@@ -125,6 +125,29 @@ reads the copied `bench.json` files and writes `frame_cost.csv` with the GPU tim
 share, and the base slice's, where geometry and shadows land). The plan's proposed shares (Ultra 4.5 ms, High 3.0, Medium
 1.5) are checked against this at the worst station. Uncooked runs are not representative of frame rate.
 
+### Baseline, Nov 16 2026 (PC, before any track)
+
+RTX 4090, Development package of main 00b43920, Ultra, 1920x1080 windowed, one warm-up then the 20 runs
+(`baseline/frame_cost_pc_ultra_nov16.csv`, bench files on `inputs` 1a10160a `Inputs/bench/env-stations-nov16/cost/`).
+
+| Station (15 m) | fps | GPU ms, bank | GPU ms, open water | Shore's share ms | Base slice share ms |
+| --- | --- | --- | --- | --- | --- |
+| club-lawn | 58.9 | 7.35 | 7.41 | -0.06 | 0.12 |
+| club-beach | 54.3 | 7.28 | 7.08 | 0.20 | 0.28 |
+| breakwater | 55.0 | 7.70 | 7.47 | 0.23 | -0.07 |
+| residential-a | 60.5 | 7.19 | 7.07 | 0.12 | 0.22 |
+| residential-b | 57.9 | 7.73 | 7.35 | 0.38 | 0.24 |
+| bulkhead (old cameras) | 62.5 | 7.43 | 7.31 | 0.12 | 0.12 |
+| private-dock | 62.5 | 7.30 | 7.66 | -0.36 | -0.10 |
+| wooded | 59.2 | 7.33 | 7.49 | -0.16 | 0.10 |
+| clay-bank | 58.4 | 7.38 | 7.28 | 0.10 | 0.03 |
+| bridge | 64.3 | 6.91 | 6.98 | -0.07 | -0.08 |
+
+Today's shore costs nothing measurable: every station's share is within run-to-run noise (about +-0.4 ms), so the whole
+Ultra share (4.5 ms) is still free for the tracks. These runs are CPU-bound (render thread 15-18 ms, game 11.5-13.3 ms,
+GPU about 9 ms a frame), so fps here says nothing about the shore: judge each track by the GPU slices. A 4K run would
+make the GPU the limit if a track needs it.
+
 ## Region packs
 
 What each track makes for this lake, and where it goes, is listed in the region pack `Tools/envloop/packs/north-texas-lake/`
