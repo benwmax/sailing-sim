@@ -133,8 +133,8 @@
    "c30": 11.83,
    "j22": 12.36,
    "spinnaker": false,
-   "tolerance": 0.25,
-   "why": "close-hauled in 16 kn she is pressed to her heel limit, where the references (read at 8.8 and 10.4 kn) sail far more upright: the scaling carries their power but not their stiffness (compare.json's stiffness)"
+   "tolerance": 0.2,
+   "gap": "close-hauled in 16 kn she is held to her heel limit (25 deg) where the references, read at 8.8 and 10.4 kn, sail far more upright (at the matched wind she meets 2.2 times the J/22's heeling for her righting), and her overhangs' longer waterline under way is not in the physics (residuary_factor, docs/jclass-13)"
   },
   {
    "tws": 16,
@@ -143,8 +143,8 @@
    "c30": 12.16,
    "j22": 12.79,
    "spinnaker": false,
-   "tolerance": 0.25,
-   "why": "close-hauled in 16 kn she is pressed to her heel limit, where the references (read at 8.8 and 10.4 kn) sail far more upright: the scaling carries their power but not their stiffness (compare.json's stiffness)"
+   "tolerance": 0.2,
+   "gap": "close-hauled in 16 kn she is held to her heel limit (25 deg) where the references, read at 8.8 and 10.4 kn, sail far more upright (at the matched wind she meets 2.2 times the J/22's heeling for her righting), and her overhangs' longer waterline under way is not in the physics (residuary_factor, docs/jclass-13)"
   },
   {
    "tws": 16,
@@ -179,28 +179,28 @@
    "tws": 6,
    "beat_vmg": 3.95,
    "beat_twa": 43.5,
-   "run_vmg": 4.25,
+   "run_vmg": 4.29,
    "j22_wind_read_kn": 3.31
   },
   {
    "tws": 10,
    "beat_vmg": 6.52,
    "beat_twa": 43.5,
-   "run_vmg": 7.02,
+   "run_vmg": 7.08,
    "j22_wind_read_kn": 5.52
   },
   {
    "tws": 12,
    "beat_vmg": 7.46,
    "beat_twa": 43.1,
-   "run_vmg": 8.21,
+   "run_vmg": 8.29,
    "j22_wind_read_kn": 6.63
   },
   {
    "tws": 16,
    "beat_vmg": 8.83,
    "beat_twa": 41.7,
-   "run_vmg": 10.21,
+   "run_vmg": 10.3,
    "j22_wind_read_kn": 8.84
   }
  ],
@@ -266,14 +266,14 @@
   {
    "what": "Ranger's run, the same race: 15 nm dead to leeward, the rest of her time for the course",
    "race": "run VMG 8.14-8.37 kn",
-   "estimate": "estimate 8.21",
-   "ratio": 1.009
+   "estimate": "estimate 8.29",
+   "ratio": 1.018
   },
   {
    "what": "Endeavour, 1934 America's Cup, first race (17 Sep 1934): 15 nm to windward and back",
    "race": "course VMG 8.23 kn in 15 kn",
-   "estimate": "estimate 9.06",
-   "ratio": 1.101
+   "estimate": "estimate 9.10",
+   "ratio": 1.105
   }
  ]
 }

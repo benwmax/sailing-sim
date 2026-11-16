@@ -112,7 +112,7 @@ namespace
 		}
 	}
 
-	struct FPoint { double Tws, Twa; bool bSpin; FSteadyResult R; };
+	struct FPoint { double Tws, Twa; bool bSpin; FSteadyResult R; bool bAtEnd; };
 
 	// The polar's way (SailSteady) with a longer settle: she weighs 150 times the J/22.
 	FSteadyResult Sail(const FBoatConfig& C, double Tws, double Twa, bool bSpin, bool bQuick)
@@ -267,13 +267,15 @@ int main(int Argc, char** Argv)
 	std::vector<FPoint> Jobs;
 	for (double Tws : { 6.0, 10.0, 16.0 })
 	for (double Twa : { 52.0, 60.0, 90.0, 120.0, 150.0 })
-		Jobs.push_back({ Tws, Twa, Twa >= 120.0, {} });
+		Jobs.push_back({ Tws, Twa, Twa >= 120.0, {}, false });
 	const size_t NumGrid = Jobs.size();
 	const std::vector<double> VmgWinds = { 6.0, 10.0, 12.0, 16.0 };
+	// The VMG searches' angles: wide enough that the best is inside them (a best on an end is flagged).
+	const double kBeatFrom = 30.0, kBeatTo = 52.0, kRunFrom = 130.0, kRunTo = 180.0;
 	for (double Tws : VmgWinds)
 	{
-		for (double Twa = bQuick ? 38.0 : 36.0; Twa <= 52.0; Twa += bQuick ? 4.0 : 2.0) Jobs.push_back({ Tws, Twa, false, {} });
-		for (double Twa = 150.0; Twa <= 180.0; Twa += bQuick ? 10.0 : 5.0) Jobs.push_back({ Tws, Twa, true, {} });
+		for (double Twa = kBeatFrom; Twa <= kBeatTo; Twa += bQuick ? 4.0 : 2.0) Jobs.push_back({ Tws, Twa, false, {}, false });
+		for (double Twa = kRunFrom; Twa <= kRunTo; Twa += bQuick ? 10.0 : 5.0) Jobs.push_back({ Tws, Twa, true, {}, false });
 	}
 	std::atomic<size_t> Next(0);
 	std::vector<std::thread> Workers;
@@ -297,7 +299,7 @@ int main(int Argc, char** Argv)
 	std::vector<FPoint> Beat, Run;
 	for (double Tws : VmgWinds)
 	{
-		FPoint BestB{ Tws, 0.0, false, {} }, BestR{ Tws, 0.0, true, {} };
+		FPoint BestB{ Tws, 0.0, false, {}, false }, BestR{ Tws, 0.0, true, {}, false };
 		double VB = -1.0, VR = -1.0;
 		for (size_t I = NumGrid; I < Jobs.size(); ++I)
 		{
@@ -307,9 +309,11 @@ int main(int Argc, char** Argv)
 			if (!P.bSpin && V > VB) { VB = V; BestB = P; }
 			if (P.bSpin && -V > VR) { VR = -V; BestR = P; }
 		}
-		std::printf("TWS %4.1f: beat VMG %.2f kn at TWA %.0f (%.2f kn, heel %.1f, leeway %.1f, rudder %+.1f); run VMG %.2f kn at TWA %.0f (%.2f kn)\n",
-			Tws, VB, BestB.R.TrueWindAngleDeg, BestB.R.BoatSpeedKnots, BestB.R.HeelDeg, BestB.R.LeewayDeg, BestB.R.RudderDeg, VR, BestR.R.TrueWindAngleDeg,
-			BestR.R.BoatSpeedKnots);
+		BestB.bAtEnd = BestB.Twa == kBeatFrom || BestB.Twa == kBeatTo;
+		BestR.bAtEnd = BestR.Twa == kRunFrom || BestR.Twa == kRunTo;
+		std::printf("TWS %4.1f: beat VMG %.2f kn at TWA %.0f (%.2f kn, heel %.1f, leeway %.1f, rudder %+.1f)%s; run VMG %.2f kn at TWA %.0f (%.2f kn)%s\n",
+			Tws, VB, BestB.R.TrueWindAngleDeg, BestB.R.BoatSpeedKnots, BestB.R.HeelDeg, BestB.R.LeewayDeg, BestB.R.RudderDeg,
+			BestB.bAtEnd ? " AT THE SEARCH'S END" : "", VR, BestR.R.TrueWindAngleDeg, BestR.R.BoatSpeedKnots, BestR.bAtEnd ? " AT THE SEARCH'S END" : "");
 		Beat.push_back(BestB);
 		Run.push_back(BestR);
 	}
@@ -319,7 +323,7 @@ int main(int Argc, char** Argv)
 			+ Num(P.R.BoatSpeedKnots) + ", \"heel\": " + Num(P.R.HeelDeg) + ", \"leeway\": " + Num(P.R.LeewayDeg) + ", \"rudder\": "
 			+ Num(P.R.RudderDeg) + ", \"helm_n\": " + Num(P.R.HelmForceN) + ", \"twa_sailed\": " + Num(P.R.TrueWindAngleDeg) + ", \"vmg\": "
 			+ Num(std::fabs(P.R.BoatSpeedKnots * std::cos(P.R.TrueWindAngleDeg * kDegToRad)))
-			+ "}";
+			+ (P.bAtEnd ? ", \"at_search_end\": true" : "") + "}";
 	};
 	auto List = [&](const char* Name, const std::vector<FPoint>& V, bool bLast)
 	{

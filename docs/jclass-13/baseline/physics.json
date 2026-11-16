@@ -1,6 +1,6 @@
 {
  "about": "Bluebonnet for the game's physics (slice 13, the cloud half; docs/jclass-13): what FBoatConfig needs, measured on the model where the model says it ('measured'), and the tuning knobs' starting points where only sailing her will (physics_bluebonnet.json, 'spec'). Frame: metres, X forward, Y starboard, Z up, origin on the centreline at the middle of the load waterline (the physics' body frame).",
- "build": "d",
+ "build": "e",
  "water": {
   "density_kg_m3": 1000.0,
   "note": "the physics' water is fresh (SailingMath.h kWaterDensity), so she weighs what her hull displaces in it on her lines: every part of her budget scaled by 'scale'"
@@ -3385,6 +3385,7 @@
    6.317,
    4.112
   ],
+  "gm_lines_m": 2.0959,
   "inertia_kg_m2": [
    3788045.0,
    6126204.0,
@@ -3453,17 +3454,21 @@
    "stock_to_centre_m": 0.702,
    "geometric_aspect_ratio": 1.014,
    "flap": {
-    "chord_share": 0.1076,
-    "tau": 0.41,
-    "keel_increment_m2_per_rad": 35.2485,
+    "band_area_m2": 30.3329,
+    "band_depth_m": 2.7283,
+    "band_chord_m": 11.1178,
+    "chord_share": 0.1529,
+    "tau": 0.4849,
+    "lift_m2_per_rad": 19.835,
     "blade_m2_per_rad": 4.8562,
+    "blade_lift_share": 0.2448,
     "aspect_ratio": 2.0,
-    "area_m2": 15.4096
+    "area_m2": 7.6213
    },
-   "physics_area_m2": 15.41,
-   "physics_stock_to_cp_m": 0.1491,
-   "physics_profile_drag": 0.00149,
-   "note": "the blade as slice 2 built it (its area less the groove, shoulder and gaps); its profile between the stock and the post is what the keel's lateral plane loses to it. In the physics it is the keel's flap (rudder_as_flap): 'physics_area_m2' at aspect 'flap.aspect_ratio', its friction (profile drag) and hinge moment (stock to centre of pressure) scaled by the blade's share of that area, so they stay the blade's own"
+   "physics_area_m2": 7.621,
+   "physics_stock_to_cp_m": 0.1718,
+   "physics_profile_drag": 0.00043,
+   "note": "the blade as slice 2 built it (its area less the groove, shoulder and gaps); its profile between the stock and the post is what the keel's lateral plane loses to it. In the physics it is the keel's flap (rudder_as_flap, over the band of her lateral plane it spans): 'physics_area_m2' at aspect 'flap.aspect_ratio'. The physics takes a foil's hinge moment as its whole lift times RudderStockToCP, so that arm is scaled by the blade's own share of the lift (the wheel feels the blade's load, not the keel's); its profile drag by the blade's share of the area"
   }
  },
  "rig": {
@@ -3566,10 +3571,11 @@
    "rudder_blade_aspect_ratio": 1.0,
    "rudder_effective_aspect_ratio": 2.0,
    "rudder_stall_deg": 25.0,
-   "rudder_profile_drag": 0.007,
+   "rudder_profile_drag": 0.001,
+   "rudder_vent_depth": 0.9,
    "rudder_vent_start_deg": 60.0,
    "rudder_vent_end_deg": 85.0,
-   "note": "The keel foil is her whole lateral plane below the water (physics.py: canoe body and keel, less the rudder): geometric aspect draft^2 / area 0.32, doubled by the water's surface over it (0.64), a little more for the hull's flare: 0.9 to start; the Mac tunes it on her leeway. Low-aspect foils stall late (22 deg against a fin's 15). Its friction is in the hull's wetted area (the whole hull's, keel and all), so its profile drag is only the blunt bottom's form drag (0.001). The rudder hangs on the keel's after edge: it is the keel's trailing-edge flap (physics.py's rudder_as_flap), its own blade aspect 1.0 and as a flap end-plated by the keel ahead and the hull above 2.0; its blade's friction is 0.007 (both sides, ITTC-57 at 8 kn, the gaps). Sailed as a lone 3.3 m^2 blade she could not hold a course (the trial: rounded up through the wind on a reach in 10 kn with the wheel hard over); as the flap she holds every point. It never ventilates (its head is under the counter), so both vent angles are the defaults. Balance: the keel's centre is the lateral plane's centroid (no shift); HeelYawCoef 0.02, under the J/22's 0.06 and the maxi's 0.04: her waterlines are narrow and fine at both ends (LWL / beam 4.3 against the J/22's 2.9), much less lopsided heeled than a beamy modern hull's; 0.05 gave her 9 to 13 deg of weather helm close-hauled in 10 kn, 0.02 gives 3 to 4 deg (a J's). KeelDownwashFactor 1.0: the flap sits in the keel's own wake."
+   "note": "The keel foil is her whole lateral plane below the water (physics.py: canoe body and keel, less the rudder): geometric aspect draft^2 / area 0.32, doubled by the water's surface over it (0.64), a little more for the hull's flare: 0.9 to start; the Mac tunes it on her leeway. Low-aspect foils stall late (22 deg against a fin's 15). Its friction is in the hull's wetted area (the whole hull's, keel and all), so its profile drag is only the blunt bottom's form drag (0.001). The rudder hangs on the keel's after edge: it is the keel's trailing-edge flap (physics.py's rudder_as_flap, thin-aerofoil theory over the band of the lateral plane it spans, below its head), its own blade aspect 1.0 and as a flap end-plated by the keel ahead and the hull above 2.0. Its friction is in the hull's wetted area too (the lines run the keel's surface through it), so its profile drag is the keel's form drag (0.001). Sailed as a lone 3.3 m^2 blade she could not hold a course (the trial: rounded up through the wind on a reach in 10 kn with the wheel hard over); as the flap she holds every point, with 13 to 15 deg of weather helm in 16 kn: a heavy helm, as the Js had. A low aspect ratio raises a flap's effect above thin-aerofoil theory's (USAF DATCOM), which would lighten it: the Mac's knob for her feel (TRIAL_SET rudder_area). It never ventilates (its head is under the counter), so its vent angles and depth are FFoilDef's defaults (the fleet's Foil() gives rudders a dinghy's). Balance: the keel's centre is the lateral plane's centroid (no shift); HeelYawCoef 0.02, under the J/22's 0.06 and the maxi's 0.04: her waterlines are narrow and fine at both ends (LWL / beam 4.3 against the J/22's 2.9), much less lopsided heeled than a beamy modern hull's; in an earlier trial (the flap then reckoned over her whole lateral plane, twice today's) 0.05 gave her 9 to 13 deg of weather helm close-hauled in 10 kn against 3 to 4 at 0.02; with today's flap 0.02 gives 5 to 7. KeelDownwashFactor 1.0: the flap sits in the keel's own wake."
   },
   "trim": {
    "heel_limit_deg": 22.0,
@@ -3680,35 +3686,35 @@
    ],
    [
     0.1,
-    0.00038
+    0.00038474
    ],
    [
     0.15,
-    0.00096
+    0.00096184
    ],
    [
     0.2,
-    0.00231
+    0.0023084
    ],
    [
     0.25,
-    0.00481
+    0.0048092
    ],
    [
     0.3,
-    0.00962
+    0.0096184
    ],
    [
     0.35,
-    0.01924
+    0.019237
    ],
    [
     0.4,
-    0.04232
+    0.042321
    ],
    [
     0.45,
-    0.09234
+    0.092336
    ],
    [
     0.5,

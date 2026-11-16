@@ -24,24 +24,24 @@ static void ApplyBluebonnet(Sailing::FBoatConfig& C)
 	C.AppendageCentre = Vec3(kBluebonnetKeelX, 0.0, kBluebonnetKeelZ);
 	C.HullRigMass = 55952.9; C.HullRigCG = Vec3(-0.451, 0.001, 1.848);
 	C.RadiiOfGyration = Vec3(4.967, 6.317, 4.112);
-	C.Residuary = { { 0, 0 }, { 0.1, 0.0004 }, { 0.15, 0.001 }, { 0.2, 0.0023 }, { 0.25, 0.0048 }, { 0.3, 0.0096 }, { 0.35, 0.0192 }, { 0.4, 0.0423 }, { 0.45, 0.0923 }, { 0.5, 0.1539 }, { 0.55, 0.1924 }, { 0.6, 0.2116 }, { 0.7, 0.2693 }, { 0.8, 0.327 }, { 0.9, 0.3847 }, { 1, 0.4425 } };
+	C.Residuary = { { 0, 0 }, { 0.1, 0.000385 }, { 0.15, 0.000962 }, { 0.2, 0.002308 }, { 0.25, 0.004809 }, { 0.3, 0.009618 }, { 0.35, 0.019237 }, { 0.4, 0.042321 }, { 0.45, 0.092336 }, { 0.5, 0.15389 }, { 0.55, 0.19237 }, { 0.6, 0.2116 }, { 0.7, 0.26931 }, { 0.8, 0.32703 }, { 0.9, 0.38474 }, { 1, 0.44245 } };
 	C.WettedAreaCoef = 3.357; C.FormFactor = 1.06;
 	C.AddedResistanceCoef = 0.6;
 	C.HullLateralArea = 16.74; C.MunkAddedMass = 34400; C.YawDampingLinear = 266000; C.HeaveDamping = 1200;
 	FFoilDef Keel = Foil(EFoilRole::Keel, Vec3(0.061, 0.0, -1.679), 63.744, 14.1, 0.9, 22);
 	Keel.Params.ProfileDrag = 0.001;
 	Keel.ContactLeadingX = 1.9; Keel.ContactTrailingX = -6;
-	FFoilDef Rudder = Foil(EFoilRole::Rudder, Vec3(-6.154, 0, -3.416), 15.41, 1.7, 2, 25);   // the keel's flap (physics.json)
-	Rudder.Params.ProfileDrag = 0.0015; Rudder.VentStartDeg = 60; Rudder.VentEndDeg = 85;
+	FFoilDef Rudder = Foil(EFoilRole::Rudder, Vec3(-6.154, 0, -3.416), 7.621, 1.7, 2, 25);   // the keel's flap (physics.json)
+	Rudder.Params.ProfileDrag = 0.00043; Rudder.VentStartDeg = 60; Rudder.VentEndDeg = 85; Rudder.VentDepth = 0.9;
 	Keel.VentStartDeg = 60; Keel.VentEndDeg = 85;
 	C.Foils = { Keel, Rudder };
 	C.KeelDownwashFactor = 1; C.HeelYawCoef = 0.02;
-	C.MaxRudderAngleDeg = 35; C.RudderStockToCP = 0.1491; C.TillerLength = 0.5; C.HelmStiffness = 1000000; C.RudderResponseTime = 0.5;
+	C.MaxRudderAngleDeg = 35; C.RudderStockToCP = 0.1718; C.TillerLength = 0.5; C.HelmStiffness = 1000000; C.RudderResponseTime = 0.5;
 	C.WheelHardOverSeconds = 5;
 	C.MastX = 3; C.MastheadZ = 47.805; C.MastDiameter = 0.375;
-	SetMain(C, 3.973, 46.5104, 19.281, 0.3, 0.0576, 2.578, 1.4641, 444.9, 3.7, 6, 0.13);
+	SetMain(C, 3.973, 46.510418, 19.281, 0.3, 0.0576, 2.578, 1.464118, 444.9, 3.7, 6, 0.13);
 	C.BoomZ = 3.7298;
-	C.JibFootZ = 3.1421; C.JibHeadZ = 33.3541; C.JibFootChord = 22.8002; C.JibHeadChord = 0.15; C.JibLuffX = 18.4002; C.JibLuffXHead = 4.3415; C.JibArea = 341.8;
+	C.JibFootZ = 3.142084; C.JibHeadZ = 33.354097; C.JibFootChord = 22.800249; C.JibHeadChord = 0.15; C.JibLuffX = 18.400249; C.JibLuffXHead = 4.341524; C.JibArea = 341.8;
 	SetSail(C.Jib, C.JibFootZ, C.JibHeadZ, C.JibFootChord, C.JibHeadChord, C.JibLuffX, C.JibLuffXHead, C.JibArea, 4.1, 4.5, 0.13);
 	SetSail(C.Spinnaker, 3.744, 46.556, 30.48, 6.096, 18.24, 2.435, 1091.4, 2.6, 2.2, 0.2);
 	C.bAsymmetricSpinnaker = false;

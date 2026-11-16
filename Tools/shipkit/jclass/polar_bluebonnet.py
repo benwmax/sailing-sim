@@ -10,18 +10,20 @@ were (Tools/boats/maxi/estimate_polar.py: Froude scaling of speed and wind, the 
 against her weight, ITTC-57 friction at her Reynolds number), and averaged. One number differs: the J/22's sail area.
 estimate_polar.py has (20.7 + 9.2) m^2 for her main and jib, which counts the jib twice (20.7 m^2, 223 sq ft, is main
 and jib together: her published upwind area, and FBoatConfig's main 11.5 and jib 9.2); even main and 150% genoa make
-only about 24.6. Here she has 20.7 (J22_SAIL_AREA_M2), and with it the two scaled references agree to within 5% at
-every point of Bluebonnet's polar (with 29.9 they were up to a fifth apart). The maxi's own estimate still uses 29.9.
+only about 24.6. Here she has 20.7 (J22_SAIL_AREA_M2), and with it the two scaled references agree to within 7% at
+every point of Bluebonnet's polar (with 29.9 they were up to 25% apart). The maxi's own estimate still uses 29.9.
 
 Her displacement-length ratio (243) lies between the J/22's (151) and the Catalina 30's (317), inside the method's
-range. Its own check, the Catalina 30 scaled to the J/22 (method_check), lands 10% under the J/22 on average and each
-point 4 to 20% under, so the points take 20%: the method's own worst point, and the fleet's tolerance for a hand-built
-estimate (PolarReference.h). Two kinds of point are weaker than that, and say so:
+range. Its own check, the Catalina 30 scaled to the J/22 (method_check), is rougher with the jib counted once: the
+J/22 sails 10% faster than the scaled Catalina 30 on average and 4 to 20% at each point (estimate_polar.py's 4% came
+from the doubled jib). So each point allows 20%: the method's own worst point, and the fleet's tolerance for a
+hand-built estimate (PolarReference.h). Points the trial misses by more are listed in GAPS with the reason, as known
+gaps for the Mac's tuning, never by widening their tolerance. Two kinds of point are weaker than the rest:
   - in 6 kn the references are read at 3.3 kn (the J/22) and 3.9 kn (the Catalina 30), under their lightest measured
     wind (6 kn), where their tables are straight lines to zero;
-  - close-hauled in 16 kn they are read at 8.8 and 10.4 kn, where they sail far more upright than she does, pressed
-    to her trimmer's heel limit: the scaling carries their power (SA/D) but not their stiffness. Those two points take
-    25% (WIDER), and the trial's stiffness comparison (polar_compare.py) puts a number on it.
+  - in a breeze the references are read where they sail far more upright than she can (polar_compare.py's stiffness:
+    at the matched wind she meets 2.2 times the J/22's heeling against her righting), so close-hauled she is held to
+    her heel limit and the estimate runs ahead of her.
 
 The 1930s give two kinds of check, both rough: race times (a leg's length over its time is a VMG, tacks, sea and tide
 included, the wind a reporter's figure) and the modern Js' speeds under modern sails (an upper bound). The numbers and
@@ -48,15 +50,17 @@ EP.BOATS["j22"] = (EP.BOATS["j22"][0], J22_SAIL_AREA_M2, EP.BOATS["j22"][2])
 
 TWS = [6, 10, 16]
 TOLERANCE = 0.20
-# Points where the scaling is known to miss: (tws, twa) -> (tolerance, why).
-STIFF = ("close-hauled in 16 kn she is pressed to her heel limit, where the references (read at 8.8 and 10.4 kn) sail "
-         "far more upright: the scaling carries their power but not their stiffness (compare.json's stiffness)")
-WIDER = {(16, 52): (0.25, STIFF), (16, 60): (0.25, STIFF)}
+# Points the trial misses by more than TOLERANCE, with why: (tws, twa) -> reason. They are reported, not failed
+# (rule_check.py), and stay at TOLERANCE in the polar the Mac takes: closing them is the Mac's tuning.
+_PRESSED = ("close-hauled in 16 kn she is held to her heel limit (25 deg) where the references, read at 8.8 and 10.4 "
+            "kn, sail far more upright (at the matched wind she meets 2.2 times the J/22's heeling for her righting), "
+            "and her overhangs' longer waterline under way is not in the physics (residuary_factor, docs/jclass-13)")
+GAPS = {(16, 52): _PRESSED, (16, 60): _PRESSED}
 # The J/22's ORC beat and run (172 deg, spinnaker) VMGs at 6 / 10 / 15 kn (PolarReference.cpp's J22ReferencePolar).
 J22_BEAT = {6: [2.85], 10: [3.87], 15: [4.20]}
 J22_BEAT_TWA = {6: 43.5, 10: 40.9, 15: 38.6}
-J22_RUN = {6: [3.1 * math.cos(math.radians(8.0))], 10: [4.7 * math.cos(math.radians(8.0))],
-           15: [(5.8 + 1.3 / 6) * math.cos(math.radians(8.0))]}
+# The 172 deg speeds there are these VMGs over cos 8 deg, so these are the VMGs themselves.
+J22_RUN = {6: [3.1], 10: [4.7], 15: [5.8 + 1.3 / 6]}
 VMG_WINDS = [6, 10, 12, 16]
 
 # The races: what was timed, over what, in what wind; each with where the figure comes from. The newspaper archives
@@ -107,11 +111,10 @@ def estimate(sheet):
         for i, a in enumerate(EP.ANGLES):
             c30 = EP.scaled("c30", EP.C30, "bluebonnet", w, i)
             j22 = EP.scaled("j22", EP.J22, "bluebonnet", w, i)
-            tol, why = WIDER.get((w, a), (TOLERANCE, None))
             points.append({"tws": w, "twa": a, "speed": round(0.5 * (c30 + j22), 2), "c30": round(c30, 2),
-                           "j22": round(j22, 2), "spinnaker": a >= 120, "tolerance": tol})
-            if why:
-                points[-1]["why"] = why
+                           "j22": round(j22, 2), "spinnaker": a >= 120, "tolerance": TOLERANCE})
+            if (w, a) in GAPS:
+                points[-1]["gap"] = GAPS[(w, a)]
     vmg = []
     for w in VMG_WINDS:
         beat = EP.scaled("j22", J22_BEAT, "bluebonnet", w, 0)

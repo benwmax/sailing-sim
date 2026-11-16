@@ -73,9 +73,12 @@ def _girth_below(pts, z=0.0, skip_flat=True):
             continue
         if z0 >= z and z1 >= z:
             continue
-        if z0 < z <= z1 or z1 < z <= z0:
+        if z0 < z <= z1:                                  # up through z: keep the part below, from the start
             t = (z - z0) / (z1 - z0)
             y1, z1 = y0 + t * (y1 - y0), z
+        elif z1 < z <= z0:                                # down through z: keep the part below, to the end
+            t = (z - z0) / (z1 - z0)
+            y0, z0 = y0 + t * (y1 - y0), z
         g += math.hypot(y1 - y0, z1 - z0)
     return g
 
@@ -164,21 +167,38 @@ def helmbold(ar):
     return 2.0 * math.pi * ar / (2.0 + math.sqrt(ar * ar + 4.0))
 
 
-def rudder_as_flap(keel_area, keel_chord, keel_ar, blade_area, blade_chord, blade_ar, ar):
+def flapped_band(head_z, n=20001):
+    """The part of her lateral plane the rudder spans: below the rudder's head, down to the keel's bottom (loft.profile,
+    the centreline's lowest point; the rudder's own profile included, it is the band's after end). Area, depth and the
+    mean chord (area over depth)."""
+    xs = np.linspace(loft.END["transom_bottom"][0], loft.END["stem_head"][0], n)
+    zb = loft.profile(xs)
+    area = float(np.trapezoid(np.maximum(0.0, head_z - zb), xs))
+    depth = float(head_z - zb.min())
+    return {"head_z": head_z, "area_m2": area, "depth_m": depth, "chord_m": area / depth}
+
+
+def rudder_as_flap(band, keel_ar, blade_area, blade_chord, blade_ar, ar):
     """The rudder as the keel's trailing-edge flap, as one foil at the blade (FFoilDef has no flaps). Turning a flap
-    turns the flow over the whole foil ahead of it: thin-aerofoil theory gives the whole foil's lift slope times
-    tau = 1 - (theta - sin theta) / pi, theta = acos(2E - 1), E the flap's share of the chord (Abbott and von Doenhoff,
-    Theory of Wing Sections, 8.4). On a foil as slender as a J's lateral plane (geometric aspect 0.3) that lift is made
-    where the flap is (slender-body theory: the lift grows where the incidence changes along the chord), so it is put at
-    the blade, with the blade's own lift slope added, as one foil of aspect `ar` (an end-plated flap) whose area gives
-    the same lift per radian."""
-    E = blade_chord / (keel_chord + blade_chord)
+    turns the flow over the foil ahead of it: thin-aerofoil theory gives the lift per radian of flap as the foil's
+    own lift slope times tau = 1 - (theta - sin theta) / pi, theta = acos(2E - 1), E the flap's share of the chord
+    (Abbott and von Doenhoff, Theory of Wing Sections, 8.4); tau counts the flap's own load too. The blade spans only
+    the deep part of her lateral plane (flapped_band: below its head), so that band is the foil it flaps, E is the
+    blade's chord over the band's mean chord, and the slope is the whole plane's (`keel_ar`). On a foil as slender as
+    a J's lateral plane that lift is made where the flap is (slender-body theory: the lift grows where the incidence
+    changes along the chord), so it is put at the blade as one foil of aspect `ar` (an end-plated flap) whose area
+    gives the same lift per radian. This is thin-aerofoil theory's value; a low aspect ratio raises a flap's
+    effectiveness above it (USAF DATCOM's 3D flap factor), so the trial checks she can be steered with it.
+    The blade's own lift (its area at its own aspect, `blade_ar`) is its share of that load, which sets the wheel's
+    hinge moment (physics.py scales RudderStockToCP by it)."""
+    E = blade_chord / band["chord_m"]
     theta = math.acos(2.0 * E - 1.0)
     tau = 1.0 - (theta - math.sin(theta)) / math.pi
-    increment = keel_area * helmbold(keel_ar) * tau
+    lift = band["area_m2"] * helmbold(keel_ar) * tau
     blade = blade_area * helmbold(blade_ar)
-    return {"chord_share": E, "tau": tau, "keel_increment_m2_per_rad": increment, "blade_m2_per_rad": blade,
-            "aspect_ratio": ar, "area_m2": (increment + blade) / helmbold(ar)}
+    return {"band_area_m2": band["area_m2"], "band_depth_m": band["depth_m"], "band_chord_m": band["chord_m"],
+            "chord_share": E, "tau": tau, "lift_m2_per_rad": lift, "blade_m2_per_rad": blade,
+            "blade_lift_share": min(1.0, blade / lift), "aspect_ratio": ar, "area_m2": lift / helmbold(ar)}
 
 
 def _shoelace(poly):
@@ -497,9 +517,11 @@ def build(d):
     chord = f_a / span
     bot = loft.KEEL["bottom"]
     fk = spec["foils"]
-    fl = rudder_as_flap(f_a * fk["keel_area_factor"], chord, fk["keel_effective_aspect_ratio"], rud["built_area_m2"],
-                        rud["chord_m"], fk["rudder_blade_aspect_ratio"], fk["rudder_effective_aspect_ratio"])
-    share = rud["built_area_m2"] / fl["area_m2"]
+    band = flapped_band(max(p[1] for p in rud["polygon"]))
+    fl = rudder_as_flap(band, fk["keel_effective_aspect_ratio"], rud["built_area_m2"], rud["chord_m"],
+                        fk["rudder_blade_aspect_ratio"], fk["rudder_effective_aspect_ratio"])
+    area_share = rud["built_area_m2"] / fl["area_m2"]        # the blade's share of the foil's area: its drag
+    lift_share = fl["blade_lift_share"]                      # and of its lift: the hinge moment the wheel feels
 
     sheet = {
         "about": "Bluebonnet for the game's physics (slice 13, the cloud half; docs/jclass-13): what FBoatConfig "
@@ -540,6 +562,7 @@ def build(d):
             "hull_rig": {"kg": round(scale * rest_kg, 1), "centre": [round(float(v), 3) for v in rest_c]},
             "parts": by_part, "parts_moved_onto_weight_check_m": moved,
             "radii_of_gyration_m": [round(v, 3) for v in k],
+            "gm_lines_m": round(b["hydrostatics"]["vcb_m"] + b["hydrostatics"]["bm_t_m"] - float(cg[2]), 4),
             "inertia_kg_m2": [round(scale * v, 0) for v in inertia]},
         "foils": {
             "keel": {"measured": True, "area_m2": round(f_a, 3), "centre": [round(fx, 3), 0.0, round(fz, 3)],
@@ -559,14 +582,15 @@ def build(d):
                        "geometric_aspect_ratio": round(rud["span_m"] ** 2 / rud["built_area_m2"], 3),
                        "flap": {k: round(v, 4) for k, v in fl.items()},
                        "physics_area_m2": round(fl["area_m2"], 3),
-                       "physics_stock_to_cp_m": round(rud["stock_to_centre_m"] * share, 4),
-                       "physics_profile_drag": round(fk["rudder_profile_drag"] * share, 5),
+                       "physics_stock_to_cp_m": round(rud["stock_to_centre_m"] * lift_share, 4),
+                       "physics_profile_drag": round(fk["rudder_profile_drag"] * area_share, 6),
                        "note": "the blade as slice 2 built it (its area less the groove, shoulder and gaps); its "
                                "profile between the stock and the post is what the keel's lateral plane loses to "
-                               "it. In the physics it is the keel's flap (rudder_as_flap): 'physics_area_m2' at "
-                               "aspect 'flap.aspect_ratio', its friction (profile drag) and hinge moment (stock to "
-                               "centre of pressure) scaled by the blade's share of that area, so they stay the "
-                               "blade's own"}},
+                               "it. In the physics it is the keel's flap (rudder_as_flap, over the band of her "
+                               "lateral plane it spans): 'physics_area_m2' at aspect 'flap.aspect_ratio'. The "
+                               "physics takes a foil's hinge moment as its whole lift times RudderStockToCP, so that "
+                               "arm is scaled by the blade's own share of the lift (the wheel feels the blade's load, "
+                               "not the keel's); its profile drag by the blade's share of the area"}},
         "rig": {}, "spec": spec,
     }
     rig = b["rig"]
@@ -635,7 +659,7 @@ def windage(b, S, crew_count):
 
 
 def fmt(v):
-    return ("%.4f" % v).rstrip("0").rstrip(".") if abs(v) > 1e-9 else "0"
+    return ("%.6f" % v).rstrip("0").rstrip(".") if abs(v) > 1e-9 else "0"
 
 
 def write_inl(sheet, path):
@@ -733,8 +757,9 @@ def write_trial(sheet, path):
         "\tFFoilDef Rudder = Foil(EFoilRole::Rudder, %s, %s, %s, %s, %s);   // the keel's flap (physics.json)" % (
             v3(f["rudder"]["centre"]), fmt(f["rudder"]["physics_area_m2"]), fmt(f["rudder"]["chord_m"]),
             fmt(kz["rudder_effective_aspect_ratio"]), fmt(kz["rudder_stall_deg"])),
-        "\tRudder.Params.ProfileDrag = %s; Rudder.VentStartDeg = %s; Rudder.VentEndDeg = %s;" % (
-            fmt(f["rudder"]["physics_profile_drag"]), fmt(kz["rudder_vent_start_deg"]), fmt(kz["rudder_vent_end_deg"])),
+        "\tRudder.Params.ProfileDrag = %s; Rudder.VentStartDeg = %s; Rudder.VentEndDeg = %s; Rudder.VentDepth = %s;" % (
+            fmt(f["rudder"]["physics_profile_drag"]), fmt(kz["rudder_vent_start_deg"]), fmt(kz["rudder_vent_end_deg"]),
+            fmt(kz["rudder_vent_depth"])),
         "\tKeel.VentStartDeg = %s; Keel.VentEndDeg = %s;" % (
             fmt(kz["keel_vent_start_deg"]), fmt(kz["keel_vent_end_deg"])),
         "\tC.Foils = { Keel, Rudder };",
@@ -785,7 +810,7 @@ def resistance(sheet):
     slender = h["lwl_m"] / V ** (1 / 3)
     j22 = sp["j22_residuary"]
     f = (sp["j22_slenderness"] / slender) ** 3 * V / h["canoe_volume_m3"] * sp["residuary_factor"]
-    res = [[fn, round(c * f, 5)] for fn, c in j22]
+    res = [[fn, float("%.5g" % (c * f))] for fn, c in j22]
     maxi = sp["maxi"]
     return {"wetted_area_coef": round(h["wetted_loft_m2"] / math.sqrt(h["canoe_volume_m3"] * h["lwl_m"]), 3),
             "slenderness": round(slender, 3), "residuary_scale_from_j22": round(f, 4), "residuary": res,

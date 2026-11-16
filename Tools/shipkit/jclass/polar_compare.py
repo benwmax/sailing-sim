@@ -41,8 +41,8 @@ def compare(d):
                      "tolerance": e["tolerance"], "within": abs(ratio - 1.0) <= e["tolerance"],
                      "twa_sailed": round(t["twa_sailed"], 1),
                      "heel": round(t["heel"], 1), "leeway": round(t["leeway"], 1), "rudder": round(t["rudder"], 1)})
-        if "why" in e:
-            rows[-1]["why"] = e["why"]
+        if "gap" in e:
+            rows[-1]["gap"] = e["gap"]
     vmg = []
     for e in est["vmg"]:
         b = next(p for p in tri["beat"] if p["tws"] == e["tws"])
@@ -187,6 +187,7 @@ def polar_chart(est, tri, path):
 def main(d, docs=None):
     est, tri, out = compare(d)
     if docs:
+        os.makedirs(docs, exist_ok=True)
         sheet = json.load(open(os.path.join(d, "physics.json")))
         body_plan(sheet, os.path.join(docs, "body_plan.jpg"))
         polar_chart(est, tri, os.path.join(docs, "polar.jpg"))
