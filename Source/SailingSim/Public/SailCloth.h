@@ -106,8 +106,8 @@ SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVec
  *     run and back toward the leeward shrouds on a reach, a little forward when the sheet is eased, then held by the sheet:
  *     never further than ClewOutboardM outside the rail, ahead of the mainsail (ClewAheadOfMastM forward of the mast) and
  *     not past the bow (the cloth bellies out between corners closer than its foot);
- *   - the guy from the tack down to the twing block on the windward side deck by the shrouds and aft to its cleat beside
- *     the cockpit, the sheet from the clew to the leeward quarter block and forward to its cleat (the hero J/22's spinnaker
+ *   - the guy from the tack down to the twing block on the windward side deck by the shrouds, aft through the windward
+ *     quarter block and forward to its cleat beside the cockpit, the sheet from the clew to the leeward quarter block and forward to its cleat (the hero J/22's spinnaker
  *     gear in build_j22_hero.py, placed by the hull's shape for any boat).
  * The physics is unchanged. Gennakers (bAsymmetricSpinnaker: tacked to the bow or a sprit, no pole) get no rig (bValid false).
  */
@@ -126,11 +126,13 @@ struct FSpinnakerRig
 	bool bValid = false;
 	double PoleDeg = 0.0;   // the pole's angle from the bow toward windward
 	FVector PoleHeel = FVector::ZeroVector, Tack = FVector::ZeroVector, Clew = FVector::ZeroVector;
-	FVector GuyBlock = FVector::ZeroVector, GuyCleat = FVector::ZeroVector, SheetBlock = FVector::ZeroVector, SheetCleat = FVector::ZeroVector;
+	FVector GuyBlock = FVector::ZeroVector, GuyAft = FVector::ZeroVector, GuyCleat = FVector::ZeroVector, SheetBlock = FVector::ZeroVector, SheetCleat = FVector::ZeroVector;
 };
 /** Side: the side the sail flies on (+1 starboard, the physics' SpinSide); ApparentWindAngle in radians (either sign);
- *  SheetEase 0 (trimmed) to 1 (eased); FootChordM the drawn planform's foot (FSailCloth::FootChord, 0: FootPerJ x J). */
-SAILINGSIM_API FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double ApparentWindAngle, double SheetEase, double FootChordM);
+ *  SheetEase 0 (trimmed) to 1 (eased); FootChordM the drawn planform's foot (FSailCloth::FootChord, 0: FootPerJ x J);
+ *  MastFrontCm the model mast's front (its Hounds socket; used when forward of the mast's centre), else the config's. */
+SAILINGSIM_API FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double ApparentWindAngle, double SheetEase, double FootChordM,
+	const FVector* MastFrontCm = nullptr);
 /**
  * Feedback #20 follow-up: where the jib's head is drawn on a model with a forestay (boat frame, cm): at its top, the mast's
  * Hounds socket (the forestay's tang), a head shackle's length under it and on the mast's front. The physics jib's head

@@ -524,11 +524,28 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 						TestTrue(FString::Printf(TEXT("%s: the sail not far ahead (x %.0f, bow %.0f)"), *Shown, Ahead, H.BowX * CmPerMeter), Ahead <= (H.BowX + 1.5) * CmPerMeter);
 						TestTrue(FString::Printf(TEXT("%s: the foot clear of the deck (%.0f cm up, sheer %.0f)"), *Shown, Low, H.SheerHeight(C.MastX) * CmPerMeter),
 							Low > H.SheerHeight(C.MastX) * CmPerMeter + 30.0);
+						// QA on #728: where the sail crosses the centreline under the jib's head it passes ahead of the forestay (the
+						// jib's luff), not through it and the jib's tack (squared back on a dead run both corners are aft of it).
+						if (Jib && !bSimulate)
+						{
+							double Worst = 1e9, WorstZ = 0.0;
+							for (int32 R = 0; R < Rows - 1; ++R)
+							{
+								for (int32 Col = 1; Col < Cols; ++Col)
+								{
+									const FVector& V = P[R * Cols + Col];
+									if (FMath::Abs(V.Y - H.CenterY * CmPerMeter) > 30.0 || V.Z > Jib->TopZ() * CmPerMeter || V.Z < Jib->FootZ() * CmPerMeter) continue;
+									const double Ahead = V.X - Jib->LuffXAt(V.Z / CmPerMeter, 0) * CmPerMeter;
+									if (Ahead < Worst) { Worst = Ahead; WorstZ = V.Z; }
+								}
+							}
+							TestTrue(FString::Printf(TEXT("%s: the cloth ahead of the forestay at the centreline (worst %.1f cm at %.0f cm up)"), *Shown, Worst, WorstZ), Worst >= 5.0);
+						}
 					}
 				}
 			}
 		}
-		// The drawn sail without its corners (the physics' foot, as in build 40226d1c) on the repro's run, for the log.
+		// The drawn sail without its corners (the physics' foot, as in build 40226d1c) on the repro's run.
 		{
 			FSailCloth Old;
 			Old.Init(C.Spinnaker, ESailKind::Spinnaker);
@@ -538,8 +555,15 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 			Drawn.bSimulate = false;
 			Old.Step(Strips, 1, Drawn);
 			const FSpinnakerRig Rig = SpinnakerRigCm(C, 1, -162.0 * kDegToRad, 0.5, Old.FootChord());
-			AddInfo(FString::Printf(TEXT("%s on a run: the clew was drawn %.0f cm out to starboard, now %.0f (the rail %.0f)"), *BoatName,
-				Old.Positions()[Cols - 1].Y, Rig.Clew.Y, H.MaxHalfBeam * CmPerMeter));
+			// The bug: from the physics' foot the clew was drawn past the sheet's reach; between its corners it is within it.
+			TestTrue(FString::Printf(TEXT("%s on a run: the physics' foot drew the clew %.0f cm out to starboard, past the sheet's reach (%.0f)"), *BoatName,
+				Old.Positions()[Cols - 1].Y, RailOutCm), Old.Positions()[Cols - 1].Y > RailOutCm + 50.0);
+			TestTrue(FString::Printf(TEXT("%s on a run: the clew now %.0f cm out (reach %.0f)"), *BoatName, Rig.Clew.Y, RailOutCm), Rig.Clew.Y <= RailOutCm + 0.5);
+			// A model's mast front (the hero J/22's Hounds, 2 cm behind the config's): the pole's heel on it.
+			const FVector ModelFront(MastFront * CmPerMeter - 2.0, 0.0, 783.0);
+			const FSpinnakerRig OnModel = SpinnakerRigCm(C, 1, -162.0 * kDegToRad, 0.5, Old.FootChord(), &ModelFront);
+			TestTrue(FString::Printf(TEXT("%s: the pole's heel on the model mast's front (x %.1f, front %.1f)"), *BoatName, OnModel.PoleHeel.X, ModelFront.X),
+				OnModel.bValid && FMath::Abs(OnModel.PoleHeel.X - (ModelFront.X + 3.0)) < 0.5);
 		}
 	}
 	TestTrue(TEXT("Some boats fly a poled spinnaker"), Poled >= 2);

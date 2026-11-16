@@ -1149,17 +1149,21 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	}
 
 	// Feedback #25: a poled spinnaker's gear (SpinRig, from the sails' last update): the pole from its ring on the mast to the
-	// tack, the guy from the tack down to the windward twing block and aft to its cleat, the sheet from the clew to the leeward
+	// tack, the guy from the tack down to the windward twing block, aft through the windward quarter block and forward to its
+	// cleat, the sheet from the clew to the leeward
 	// quarter block and forward to its cleat (the hero J/22's spinnaker sheets are white with red flecks: colourway 0). Only
 	// while the spinnaker is up: hoisting or dropping it changes the sections' layout, rebuilt then.
-	if (SpinRig.bValid && SpinSail && SpinSail->IsVisible())
+	// (SpinRig is from the last frame's sails: a spinnaker dropped since then takes its gear down now, not a frame late.)
+	if (SpinRig.bValid && SpinSail && SpinSail->IsVisible() && T.NumSpinStrips > 0)
 	{
 		Wires.Add({ SpinRig.PoleHeel, SpinRig.Tack, 2.4f * FMath::Clamp(float(Boat.GetConfig().MastheadZ / 9.25), 0.8f, 2.4f), 0.f, RopeLook::Plain });
 		Label(Wires, TEXT("spinnaker pole"));
 		const float SpinSlack = FMath::Lerp(0.02f, 0.001f, Loaded);
 		Ropes.Add({ SpinRig.Tack, SpinRig.GuyBlock, 0.4f, 0.001f, RopeLook::Mainsheet });
 		Ropes.Last().EndBendCm = 2.f;   // round the twing's sheave
-		Ropes.Add({ SpinRig.GuyBlock, SpinRig.GuyCleat, 0.4f, 0.002f, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.GuyBlock, SpinRig.GuyAft, 0.4f, 0.002f, RopeLook::Mainsheet });
+		Ropes.Last().EndBendCm = 2.5f;  // round the windward quarter block
+		Ropes.Add({ SpinRig.GuyAft, SpinRig.GuyCleat, 0.4f, 0.002f, RopeLook::Mainsheet });
 		Label(Ropes, TEXT("spinnaker guy"));
 		Ropes.Add({ SpinRig.Clew, SpinRig.SheetBlock, 0.4f, SpinSlack, RopeLook::Mainsheet });
 		Ropes.Last().EndBendCm = 2.5f;  // round the quarter block's sheave

@@ -187,7 +187,7 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 	return FVector(X + SwivelCm, 0.0, Z * Sailing::CmPerMeter);
 }
 
-FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double ApparentWindAngle, double SheetEase, double FootChordM)
+FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double ApparentWindAngle, double SheetEase, double FootChordM, const FVector* MastFrontCm)
 {
 	using namespace SpinnakerRigLimits;
 	FSpinnakerRig R;
@@ -196,7 +196,10 @@ FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double A
 	const double Sd = Side >= 0 ? 1.0 : -1.0;   // the sail's side: the clew's; the pole goes to the other
 	// A sail's luff x at its foot (BuildSail lays the strips' luffs at their mid-heights).
 	auto FootLuffX = [](const Sailing::FSailGeometry& G) { return G.NumStrips > 1 ? G.Strips[0].LuffX - 0.5 * (G.Strips[1].LuffX - G.Strips[0].LuffX) : G.Strips[0].LuffX; };
-	const double MastFront = C.MastX + 0.5 * C.MastDiameter;
+	// The mast's front where the model draws it (QA on #728: the hero J/22's is 2 cm behind the config's, and the pole's end
+	// floated off it), else the config's.
+	const double MastFront = MastFrontCm && !MastFrontCm->ContainsNaN() && MastFrontCm->X > C.MastX * Sailing::CmPerMeter
+		? MastFrontCm->X / Sailing::CmPerMeter : C.MastX + 0.5 * C.MastDiameter;
 	// The pole is the J long: the forestay's tack (the jib's) to the mast's front.
 	const double J = FMath::Clamp((C.HasJib() ? FootLuffX(C.Jib) : FootLuffX(C.Spinnaker)) - MastFront, 0.5, 12.0);
 	const double PoleDeg = FMath::Clamp(FMath::RadiansToDegrees(FMath::Abs(ApparentWindAngle)) - 90.0, PoleMinDeg, PoleMaxDeg);
@@ -215,15 +218,16 @@ FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double A
 	Clew.Y = H.CenterY + Sd * FMath::Min(Sd * (Clew.Y - H.CenterY), H.MaxHalfBeam + ClewOutboardM);
 	Clew.X = FMath::Clamp(Clew.X, C.MastX + ClewAheadOfMastM, H.BowX);
 	// The gear (build_j22_hero.py's spinnaker gear): the twing block on the side deck 0.45 m aft of the mast, the quarter
-	// block 0.3 m in from the transom, the cleats beside the cockpit a quarter of her length forward of the stern.
+	// blocks 0.3 m in from the transom, the cleats beside the cockpit a quarter of her length forward of the stern.
 	auto OnDeck = [&H](double X, double InM, double Y, double UpM) { return FVector(X, Y * (H.DeckHalfBeam(X) - InM) + H.CenterY, H.SheerHeight(X) + UpM); };
 	const double TwingX = C.MastX - 0.45, QuarterX = H.SternX + 0.30, CleatX = H.SternX + 0.24 * (H.BowX - H.SternX);
 	R.GuyBlock = OnDeck(TwingX, 0.16, -Sd, 0.04);
+	R.GuyAft = OnDeck(QuarterX, 0.13, -Sd, 0.04);   // the guy is the windward sheet: through its quarter block too
 	R.GuyCleat = OnDeck(CleatX, 0.12, -Sd, 0.06);
 	R.SheetBlock = OnDeck(QuarterX, 0.13, Sd, 0.04);
 	R.SheetCleat = OnDeck(CleatX, 0.12, Sd, 0.06);
 	const double Cm = Sailing::CmPerMeter;
-	R.GuyBlock *= Cm; R.GuyCleat *= Cm; R.SheetBlock *= Cm; R.SheetCleat *= Cm;
+	R.GuyBlock *= Cm; R.GuyAft *= Cm; R.GuyCleat *= Cm; R.SheetBlock *= Cm; R.SheetCleat *= Cm;
 	R.PoleHeel = Heel * Cm;
 	R.Tack = Tack * Cm;
 	R.Clew = Clew * Cm;
@@ -303,6 +307,7 @@ void FSailCloth::ComputeCorneredTarget(const FSailStripState* Strips, int32 Side
 		const double Girth = RowChord[R];
 		const double Belly = Girth > RowSpan ? FMath::Sqrt(3.0 * RowSpan * (Girth - RowSpan) / 8.0) : 0.0;
 		const double Sign = Row.Camber < 0.0 ? -1.0 : 1.0;   // backed: to windward (RowAt)
+		double Depths[Cols];
 		for (int32 C = 0; C < Cols; ++C)
 		{
 			const double U = double(C) / (Cols - 1);
@@ -310,10 +315,36 @@ void FSailCloth::ComputeCorneredTarget(const FSailStripState* Strips, int32 Side
 			// The physics' section (as ComputeTarget's spinnaker: fuller than a jib's), or the cloth's belly if that is deeper,
 			// and the dome top to bottom; never deeper than 0.4 of the row's span.
 			const double Section = 1.5 * FMath::Abs(Row.Camber) * RowSpan * Shape * (1.0 + 0.3 * (1.0 - 2.0 * U));
-			double Depth = FMath::Max(Section, Belly * Shape)
+			const double Depth = FMath::Max(Section, Belly * Shape)
 				+ 0.09 * Height * FMath::Sin(PI * FMath::Min(V * 1.15, 1.0)) * FMath::Sqrt(FMath::Max(FMath::Sin(PI * U), 0.0));
-			Depth = Sign * FMath::Min(Depth, 0.4 * RowSpan);
-			const FVector P = FMath::Lerp(Luff, Leech, U) + Leeward * Depth;
+			Depths[C] = Sign * FMath::Min(Depth, 0.4 * RowSpan);
+		}
+		// QA on #728: squared back on a dead run both corners are aft of the forestay, and the foot (the rows under the jib's
+		// head) crossed the centreline behind it, through the forestay and the jib's tack. A row whose cloth crosses near the
+		// centreline (its middle, not the luff column, which is held above) goes out further downwind until it passes
+		// kAheadOfJibM ahead of the jib's luff there, as the foot of a set spinnaker flies ahead of the forestay.
+		if (bAheadOf && Sign > 0.0 && Z <= AheadZTop + 1e-6 && Leeward.X > 0.2)
+		{
+			double Extra = 0.0;
+			for (int32 C = 1; C < Cols - 1; ++C)
+			{
+				const double U = double(C) / (Cols - 1);
+				const double Shape = 4.0 * U * (1.0 - U);
+				const FVector P = FMath::Lerp(Luff, Leech, U) + Leeward * Depths[C];
+				if (Shape < 0.3 || FMath::Abs(P.Y) > kJibNearM) continue;
+				const double Clear = AheadX0 + AheadSlope * (P.Z - AheadZ0) + kAheadOfJibM;
+				if (P.X < Clear) Extra = FMath::Max(Extra, (Clear - P.X) / (Leeward.X * Shape));
+			}
+			Extra = FMath::Min(Extra, 0.5 * RowSpan);
+			for (int32 C = 0; C < Cols; ++C)
+			{
+				const double U = double(C) / (Cols - 1);
+				Depths[C] += Extra * 4.0 * U * (1.0 - U);
+			}
+		}
+		for (int32 C = 0; C < Cols; ++C)
+		{
+			const FVector P = FMath::Lerp(Luff, Leech, double(C) / (Cols - 1)) + Leeward * Depths[C];
 			Out[Index(R, C)] = P * Sailing::CmPerMeter;
 		}
 	}
