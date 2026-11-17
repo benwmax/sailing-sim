@@ -180,6 +180,16 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 	if (Jib && Jib->IsValid()) Z = FMath::Max(Z, Jib->TopZ() + 0.2);
 	else if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
 	Z = FMath::Min(Z, C.MastheadZ - 0.1);
+	// J-Class 14: a head the planform puts behind the config's mast front is where a raked mast's build hoists it (Bluebonnet's
+	// mast rakes 1.5 deg, 1.2 m aft at the truck: physics.py takes her head from the build, 0.25 m forward of the masthead
+	// crane's tip and 0.9 m under it, x 2.435 at 46.56 m). The config's front (x 3.19, at the deck) had put it 0.9 m ahead of
+	// the crane and 1.2 m ahead of the mast there; a socket low on the mast can't say where the masthead is. Every other
+	// boat's planform head is metres ahead of its mast (the physics' luff), so they keep the halyard point below.
+	if (S.NumStrips > 1)
+	{
+		const double PlanHeadX = S.Strips[S.NumStrips - 1].LuffX + 0.5 * (S.Strips[S.NumStrips - 1].LuffX - S.Strips[S.NumStrips - 2].LuffX);
+		if (PlanHeadX < C.MastX + 0.5 * C.MastDiameter) return FVector(PlanHeadX * Sailing::CmPerMeter, 0.0, Z * Sailing::CmPerMeter);
+	}
 	// The model's socket, when it is forward of the config's mast front (a bent mast); never inside the mast (the maxi's
 	// Hounds is near her mast's centre line, the J/22 hero's 2 cm behind the config's front).
 	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;

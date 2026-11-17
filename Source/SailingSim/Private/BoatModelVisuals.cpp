@@ -853,6 +853,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	auto Label = [](TArray<FRigLine>& Lines, const TCHAR* Name) { for (FRigLine& L : Lines) if (!*L.Name) L.Name = Name; };
 	// Standing rigging: forestay, uppers via the spreaders, lowers, backstay (each where the class has it).
 	const float WireR = 0.25f * FMath::Clamp(float(Boat.GetConfig().MastheadZ / 8.0), 0.8f, 2.4f);
+	// Running rigging's radii (cm): the small boats' (the J/22's 9 mm sheets); J-Class 14: Bluebonnet's are her build's
+	// (Tools/shipkit/jclass/running_bluebonnet.json "ropes": manila genoa sheet 28 mm, mainsheet and guy 26, spinnaker sheet
+	// 24). Her mainsheet's four parts keep their spacing in diameters.
+	const bool bJClass = Boat.GetConfig().Type == EBoatType::Bluebonnet;
+	const float JibSheetR = bJClass ? 1.4f : 0.45f, MainPartR = bJClass ? 1.3f : 0.35f, MainTailR = bJClass ? 1.3f : 0.4f;
+	const float SpinGuyR = bJClass ? 1.3f : 0.4f, SpinSheetR = bJClass ? 1.2f : 0.4f;
 	if (Has(ModelMast, TEXT("Hounds")))
 	{
 		const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds"));
@@ -915,6 +921,26 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		}
 	}
 
+	// J-Class 14: Bluebonnet's halyards (running_bluebonnet.json "halyards": 7x19 wire, the main's 16 mm, the headsail's 14).
+	// They run inside her mast, so what shows is the wire from its sheave box aloft to the sail's head: the headsail's from
+	// its box on the mast's forward face just under the hounds, 3.8 m down beside the forestay to the genoa's head, the
+	// main's from its box on the after face at 46.85 m to the headboard. The boxes' sheaves (where the wire leaves them,
+	// Tools/shipkit/jclass/running.py box_frame) relative to the forestay's tang, Hounds, which is on the same mast part.
+	// (The wire from the foot boxes to the reels is in her hull's mesh; a halyard out of use is hauled up to its box.)
+	auto HeadCm = [](const FSailCloth& Cloth)
+	{
+		const double Z = Cloth.TopZ();
+		return FVector(Cloth.LuffXAt(Z, FSailCloth::Rows - 1), 0.0, Z) * CmPerMeter;
+	};
+	if (bJClass && Has(ModelMast, TEXT("Hounds")))
+	{
+		const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds"));
+		if (Boat.GetConfig().HasJib() && JibCloth.IsValid()) Wires.Add({ Hounds + FVector(-8.7f, 0.f, -27.6f), HeadCm(JibCloth), 0.7f, 0.f });
+		Label(Wires, TEXT("headsail halyard"));
+		if (MainCloth.IsValid()) Wires.Add({ Hounds + FVector(-86.3f, 0.f, 941.0f), HeadCm(MainCloth), 0.8f, 0.f });
+		Label(Wires, TEXT("main halyard"));
+	}
+
 	// Rope realism 2 (docs/rope-lay/, RopeKnots.h): a knot drawn as a line of the rope it is tied in (its rings are the baked
 	// centreline, so it keeps its bends; same look and radius, so knot and sheet read as one rope). Returns where the live
 	// rope joins it. bCollapse (a stopper in a hand, which holds the tail on past it; a self-tacker's second bowline): a speck
@@ -965,12 +991,12 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const FVector To = bWorking ? Lead : LazyVia;
 				Vec3 KX, KY, KZ;
 				RopeKnots::Frame(ToVec3(To - JibClewCm), Vec3(0.0, 0.0, 1.0), KX, KY, KZ);
-				const FVector Beside = bSelfTacker ? FVector::ZeroVector : ToFVector(KZ) * ((Tag[0] == TEXT('S') ? 1.0 : -1.0) * 0.8 * 0.9);
-				ClewEnd = AddKnot(RopeKnots::EKnot::Bowline, JibClewCm + Beside, To - JibClewCm, 0.45f, Look, bSelfTacker && Tag[0] == TEXT('P'));
+				const FVector Beside = bSelfTacker ? FVector::ZeroVector : ToFVector(KZ) * ((Tag[0] == TEXT('S') ? 1.0 : -1.0) * 0.8 * (bJClass ? 2.0 * JibSheetR : 0.9));
+				ClewEnd = AddKnot(RopeKnots::EKnot::Bowline, JibClewCm + Beside, To - JibClewCm, JibSheetR, Look, bSelfTacker && Tag[0] == TEXT('P'));
 			}
 			if (bWorking)
 			{
-				Ropes.Add({ ClewEnd, Lead, 0.45f, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
+				Ropes.Add({ ClewEnd, Lead, JibSheetR, FMath::Lerp(0.02f, 0.0005f, Loaded) + 0.004f * float(Controls.JibSheet) * (1.f - Loaded), Look });
 				Ropes.Last().EndBendCm = 2.5f;   // round the lead block's sheave
 			}
 			else
@@ -980,9 +1006,9 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				// SailingSim.Visual.SheetClearance. Then it crosses over the cabin top aft of the mast, at the via's height on the
 				// centreline level with the clew, still in two pieces: LazyVia, above.)
 				const FVector Via = LazyVia;
-				Ropes.Add({ ClewEnd, Via, 0.45f, 0.03f, Look });
+				Ropes.Add({ ClewEnd, Via, JibSheetR, 0.03f, Look });
 				Ropes.Last().EndBendCm = 10.f;   // over the cabin top
-				Ropes.Add({ Via, Lead, 0.45f, 0.05f, Look });
+				Ropes.Add({ Via, Lead, JibSheetR, 0.05f, Look });
 				Ropes.Last().EndBendCm = 2.5f;
 			}
 			// Rope lay: on the player's boat a working sheet led to a winch goes on round its drum: in on the drum's tangent,
@@ -996,7 +1022,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const double Size = Drum / 3.2, Deck = Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type);
 				RopeLay::WinchWraps(ToVec3(Lead), ToVec3(Winch), Drum + 0.45, Deck + 3.4 * Size, Deck + 6.6 * Size, 3.0, 16, 0.0, 0.0, Turns);
 			}
-			Ropes.Add({ Lead, Turns.empty() ? Winch : ToFVector(Turns[0]), 0.45f, bWorking ? 0.f : 0.02f, Look });
+			Ropes.Add({ Lead, Turns.empty() ? Winch : ToFVector(Turns[0]), JibSheetR, bWorking ? 0.f : 0.02f, Look });
 			Ropes.Last().EndBendCm = !bWorking ? 0.f : Turns.empty() ? 1.f : 0.01f;
 			Label(Ropes, bWorking ? TEXT("jib sheet") : TEXT("lazy jib sheet"));
 			if (!Turns.empty())
@@ -1009,7 +1035,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 					for (int32 K = Half == 0 ? 0 : Mid; K <= (Half == 0 ? Mid : int32(Turns.size()) - 1); ++K) W.Path.Add(ToFVector(Turns[K]));
 					W.A = W.Path[0];
 					W.B = W.Path.Last();
-					W.RadiusCm = 0.45f;
+					W.RadiusCm = JibSheetR;
 					W.Slack = 0.f;
 					W.Look = Look;
 					W.EndBendCm = 0.01f;
@@ -1020,10 +1046,10 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 				const FVector Off = FVector(-FMath::Sin(ThetaE), FMath::Cos(ThetaE), 0.0) * 14.0;
 				// (its end high enough for the stopper in it to clear the deck: the knot is 0.93 diameters deep below its axis)
 				const FVector TailEnd(Top.X + Off.X, Top.Y + Off.Y, Winch.Z - WinchBaseDropCm(Boat.GetConfig().Type) + 0.95 * 0.9);
-				Ropes.Add({ Top, TailEnd, 0.45f, 0.03f, Look });
+				Ropes.Add({ Top, TailEnd, JibSheetR, 0.03f, Look });
 				// (and a figure eight in its end, so it can't run out through the lead: rope realism 2)
 				Ropes.Last().EndBendCm = 0.01f;
-				AddKnot(RopeKnots::EKnot::FigureEight, TailEnd, Level(Top - TailEnd), 0.45f, Look, false);
+				AddKnot(RopeKnots::EKnot::FigureEight, TailEnd, Level(Top - TailEnd), JibSheetR, Look, false);
 				Label(Ropes, TEXT("jib sheet tail"));
 			}
 		}
@@ -1050,14 +1076,14 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		const TCHAR* Rest = S.JibSide > 0 ? TEXT("JibTailRest_S") : TEXT("JibTailRest_P");
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
 			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
-		Ropes.Add({ Tailer, Tail, 0.45f, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
+		Ropes.Add({ Tailer, Tail, JibSheetR, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
 		if (bFineRopes)
 		{
 			// Rope realism 2: a figure eight in the tail's end where it lies; in a hand the tail runs on past the fist (the
 			// knot a speck inside it).
 			const bool bInHand = Hand && FVector::Dist(*Hand, Tailer) < 160.f;
 			Ropes.Last().EndBendCm = 0.01f;
-			AddKnot(RopeKnots::EKnot::FigureEight, Tail, Level(Tailer - Tail), 0.45f, Ropes.Last().Look, bInHand);
+			AddKnot(RopeKnots::EKnot::FigureEight, Tail, Level(Tailer - Tail), JibSheetR, Ropes.Last().Look, bInHand);
 		}
 		Label(Ropes, TEXT("jib sheet tail"));
 	}
@@ -1137,7 +1163,7 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	else
 	{
 		// (Always drawn, so the rig mesh keeps its vertex count: with no hand on it, a short tail onto the cockpit sole.)
-		Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), 0.4f, MainGripCm ? 0.01f : 0.04f });
+		Ropes.Add({ Car + FVector(0.f, 0.f, 3.f), MainGripCm ? *MainGripCm : Car + FVector(-28.f, 6.f, -6.f), MainTailR, MainGripCm ? 0.01f : 0.04f });
 	}
 	Label(Ropes, TEXT("mainsheet tail"));
 	// Bean's J/22 feedback 1: where the lower block stands on the car (the hero's fiddle, MainsheetBlock), the tackle
@@ -1153,8 +1179,8 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 	if (bTravelerHook) LowBlock = Car + FVector(0.f, 0.f, TravelerHookBiteCm + 0.6f);
 	for (int32 K = 0; K < (bSingle ? 1 : 4); ++K)
 	{
-		const FVector Off(0.f, bSingle ? 0.f : (K - 1.5f) * 1.2f, 0.f);
-		Ropes.Add({ BoomBlock + Off, LowBlock + Off, 0.35f, MainSlack });
+		const FVector Off(0.f, bSingle ? 0.f : (K - 1.5f) * (bJClass ? 1.2f * MainPartR / 0.35f : 1.2f), 0.f);
+		Ropes.Add({ BoomBlock + Off, LowBlock + Off, MainPartR, MainSlack });
 	}
 	Label(Ropes, TEXT("mainsheet"));
 	// Vang: a 3:1 tackle from the boom to the mast base, slack when eased off.
@@ -1180,16 +1206,28 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		Wires.Add({ SpinRig.PoleHeel, SpinRig.Tack, 2.4f * FMath::Clamp(float(Boat.GetConfig().MastheadZ / 9.25), 0.8f, 2.4f), 0.f, RopeLook::Plain });
 		Label(Wires, TEXT("spinnaker pole"));
 		const float SpinSlack = FMath::Lerp(0.02f, 0.001f, Loaded);
-		Ropes.Add({ SpinRig.Tack, SpinRig.GuyBlock, 0.4f, 0.001f, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.Tack, SpinRig.GuyBlock, SpinGuyR, 0.001f, RopeLook::Mainsheet });
 		Ropes.Last().EndBendCm = 2.f;   // round the twing's sheave
-		Ropes.Add({ SpinRig.GuyBlock, SpinRig.GuyAft, 0.4f, 0.002f, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.GuyBlock, SpinRig.GuyAft, SpinGuyR, 0.002f, RopeLook::Mainsheet });
 		Ropes.Last().EndBendCm = 2.5f;  // round the windward quarter block
-		Ropes.Add({ SpinRig.GuyAft, SpinRig.GuyCleat, 0.4f, 0.002f, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.GuyAft, SpinRig.GuyCleat, SpinGuyR, 0.002f, RopeLook::Mainsheet });
 		Label(Ropes, TEXT("spinnaker guy"));
-		Ropes.Add({ SpinRig.Clew, SpinRig.SheetBlock, 0.4f, SpinSlack, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.Clew, SpinRig.SheetBlock, SpinSheetR, SpinSlack, RopeLook::Mainsheet });
 		Ropes.Last().EndBendCm = 2.5f;  // round the quarter block's sheave
-		Ropes.Add({ SpinRig.SheetBlock, SpinRig.SheetCleat, 0.4f, 0.002f, RopeLook::Mainsheet });
+		Ropes.Add({ SpinRig.SheetBlock, SpinRig.SheetCleat, SpinSheetR, 0.002f, RopeLook::Mainsheet });
 		Label(Ropes, TEXT("spinnaker sheet"));
+	}
+
+	// J-Class 14: her spinnaker's head hangs from a block on a wire pendant under the masthead crane's tip (sails.py: 0.25 m
+	// forward of it and 0.9 m under); its halyard (12 mm wire) runs from the block up into its box on the mast's forward face
+	// under the crane. Only while the spinnaker is up (its head is SpinnakerHeadCm's, the cloth's top).
+	if (bJClass && SpinSail && SpinSail->IsVisible() && T.NumSpinStrips > 0 && SpinCloth.IsValid() && Has(ModelMast, TEXT("Hounds")))
+	{
+		const FVector Hounds = RigPoint(ModelMast, TEXT("Hounds")), SpinHead = HeadCm(SpinCloth);
+		Wires.Add({ Hounds + FVector(-27.4f, 0.f, 993.6f), SpinHead, 0.6f, 0.f });
+		Label(Wires, TEXT("spinnaker halyard pendant"));
+		Wires.Add({ SpinHead, Hounds + FVector(-43.6f, 0.f, 952.2f), 0.6f, 0.f });
+		Label(Wires, TEXT("spinnaker halyard"));
 	}
 
 	// Rope lay (bFineRopes): the player's boat's ropes' rings and where along its rope each line starts.
