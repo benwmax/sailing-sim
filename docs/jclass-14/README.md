@@ -98,10 +98,11 @@ build (`JCLASS_REBUILD=1` / `-RebuildJClass` forces it, `SKIP_JCLASS=1` skips he
 
 | Part | Origin (body frame, m) | What is in it | Triangles | Slots |
 |---|---|---|---|---|
-| `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering (the wheel box and binnacle), winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 510,758 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
+| `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering (the wheel box and binnacle), winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 507,238 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
 | `SM_Bluebonnet_Mast` | 3.0, 0, 1.475 (the partners) | mast and spreaders, shrouds, stays, runners and checkstays let off | 94,828 | Aluminium, Brass, PackFit |
 | `SM_Bluebonnet_Boom` | 2.351, 0, 3.730 (the boom's pin, the physics' gooseneck) | the boom on the centreline | 15,380 | PackFit, Brass |
 | `SM_Bluebonnet_Rudder` | -8.046, 0, 0 (stock axis at the waterline) | the rudder (the keel's after part) and its stock | 7,246 | PackCanoe, Brass |
+| `SM_Bluebonnet_Wheel` | -10.15, 0, 1.833 (the hub, on the shaft) | the wheel's rim, spokes, hub and shaft | 3,520 | WoodMahogany, Brass |
 
 Every part is Nanite with a fallback at 6% of its triangles, the mast too: her standing rigging is in it (the game
 draws no live standing rigging for her), 95k triangles, past the 40k a non-Nanite boat part may have
