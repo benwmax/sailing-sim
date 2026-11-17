@@ -24,6 +24,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "BoatLivery.h"
 #include "BoatPacks.h"
+#include "HullName.h"
+#include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -675,11 +677,40 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		// Rain deck stills: -SailingPuddle=<0..1> starts the deck's puddles that full.
 		float StartPuddle = 0.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingPuddle="), StartPuddle)) PuddleLevel = FMath::Clamp(StartPuddle, 0.f, 1.f);
+		// Name on the hull (docs/skins): the skin's lettering, drawn once into a texture and laid on the quarters by the
+		// hull's material (HullName.h). No name, no renderer or a class without a place for one: nothing is set, and the
+		// material's NameColour stays at alpha 0.
+		FHullNamePlace NamePlace;
+		// -SailingHullName="<name>" letters one for stills, whatever the skin says.
+		FString NameText = bHasSkin ? Skin.HullName() : FString();
+		const FLinearColor NameInk = bHasSkin ? Skin.HullNameColour() : FBoatSkin().HullNameColour();
+		if (FString NameArg; FParse::Value(SailingArgs::Dev(), TEXT("SailingHullName="), NameArg, false)) NameText = FBoatSkin::CleanHullName(NameArg);
+		if (bTrafficBoat || bGhost) NameText.Reset();
+		// (the texture is kept while the name is the same: drawing it stalls for a read-back, and the Customize screen
+		// rebuilds her on every change of the draft)
+		if (NameText.IsEmpty()) { HullNameTexture = nullptr; HullNameDrawn.Reset(); }
+		else if (!HullNameTexture || HullNameDrawn != NameText)
+		{
+			HullNameTexture = SailingHullName::Draw(this, NameText, HullNamePx);
+			HullNameDrawn = HullNameTexture ? NameText : FString();
+		}
+		if (HullNameTexture && !SailingHullName::Place(int32(Boat.GetConfig().Type), float(HullNamePx.X / HullNamePx.Y), NamePlace)) HullNameTexture = nullptr;
+		if (HullNameTexture)
+		{
+			SAIL_LOG(Log, TEXT("Hull name \"%s\": %.0f x %.0f px at aft %.1f, low %.1f, %.1f x %.1f cm on %s"), *NameText, HullNamePx.X, HullNamePx.Y,
+				NamePlace.XAftCm, NamePlace.ZLowCm, NamePlace.LengthCm, NamePlace.HeightCm, *GetNameSafe(ModelHull->GetStaticMesh()));
+		}
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
 			UMaterialInstanceDynamic* Mid = ModelHull->CreateDynamicMaterialInstance(I);
 			if (!Mid) continue;
+			if (HullNameTexture)
+			{
+				Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
+				Mid->SetVectorParameterValue(TEXT("NameRect"), NamePlace.AsParam());
+				Mid->SetVectorParameterValue(TEXT("NameColour"), FLinearColor(NameInk.R, NameInk.G, NameInk.B, 1.f));
+			}
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
 			// #405: the wear noise sized to the boat (M_BoatSurface's WearScale): the dinghies' 4 m decks take a finer grime.
 			Mid->SetScalarParameterValue(TEXT("WearScale"), (Boat.GetConfig().Type == EBoatType::Sunfish || Boat.GetConfig().Type == EBoatType::ILCA7) ? 0.7f : 1.f);

@@ -350,3 +350,12 @@ materials the kit already has.
 - `-SailingCompassAt=<x>,<y>,<z>` (boat frame, cm) moves it for stills. `SailingSim.Visual.KitFittings` holds the mount's
   facing and the reading at the lubber line to the heading.
 - After a change to the part: `scripts/make-boatkit.sh`, then `scripts/import_hardware_kit.py`.
+
+## Phase 14: her name on the hull, and "J/22" kept whole
+
+- **The name.** The boat's name, typed on the Customize screen's Paint tab, is lettered on both quarters of the hero
+  J/22 in the title face: `docs/skins/README.md`, "Name on the hull".
+- **Line breaks.** Wrapped text broke "J/22" after the slash ("J/" then "22"). `SailUI::Text`, `TextOverScene` and
+  `TextAttr` now wrap with the usual line breaks less the one after a slash inside a word (`FSlashKeptLineBreaks` in
+  `SailWidgets.cpp`); a slash followed by a space still breaks.
+- Left as it is: the real-day cards' second line (date, wind, sky) runs to two lines on the fall norther's card.
