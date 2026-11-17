@@ -3187,6 +3187,11 @@ float fade = saturate(1.0 - dist / Fade);
 // The long waves, from the vertices (V4_WPO).
 float sx = LongN.x, sy = LongN.y;
 float J = LongN.z;
+// Storm water look (docs/blow-sea/, sailing-feedback #27): StormWater.x is 0 below 18 kn of the air's mean wind and 1 from
+// 26 kn (AWaterSurface; 0 with -SailingClassicStormWater), .y the sea's significant height here. The long waves' faces
+// are tilted a little further in the normal (not in the mesh): the faces toward the camera reflect less of the storm's
+// sky and those away from it more, so the sea reads as waves, not as a slate.
+sx *= 1.0 + STORM_FACE_TILT * StormWater.x; sy *= 1.0 + STORM_FACE_TILT * StormWater.x;
 // Cat's paws: the wind's surface roughness map (local wind relative to 15 kn), against the sea's mean wind (WindP.z, what
 // the drawn waves were grown for). In a lee (the shelter map, a puff's edge) the short waves and ripples the local wind
 // raises are smaller.
@@ -3777,8 +3782,22 @@ Spec *= 1.0 - HULL_NEAR_SPEC * hullNear;
 // Storm water step 1: seen at a grazing angle the sea reflects most of the sky, so foam stands out less against it: the
 // foam's opacity falls with Schlick's Fresnel for the flat sea at this view (to 45% at the horizon), and the haze then
 // lies over both alike. Up close and from above nothing changes.
-Foam *= 1.0 - 0.55 * pow(1.0 - saturate(vdir.z), 5.0);
+Foam *= 1.0 - 0.55 * (1.0 - 0.5 * StormWater.x) * pow(1.0 - saturate(vdir.z), 5.0);
 OceanShare = om;
+// Storm water look (docs/blow-sea/): in a blow the foam stands out from the dark sea (#27: "small and grey"): the aged
+// lace keeps more of its white (residue 0.5 -> 0.7 at full strength), thin lace is a little more opaque (the cover, the
+// cap mask and -SailingDebugFoam are unchanged), less of it is lost to the sky's glare at grazing (above). The water body
+// lightens on the crests, where the light comes through thin water (to 1 + 0.35 STORM_CREST_LIFT of the albedo at
+// half the significant height up) and darkens in the troughs (1 - 0.35 STORM_TROUGH_DARK): the contrast between crest
+// and trough a storm sea shows. The height is the long waves' (zero where the mesh fades them, so far water is as before).
+{
+    float sW = StormWater.x;
+    float hN = LongN.w / max(StormWater.y, 0.1);
+    float crestUp = smoothstep(0.0, 0.5, hN), trough = 1.0 - smoothstep(-0.5, 0.0, hN);
+    FoamTone = lerp(FoamTone, 1.0 - 0.6 * (1.0 - FoamTone), sW);
+    Foam = saturate(Foam * (1.0 + STORM_FOAM_OPACITY * sW));
+    Dark += sW * (STORM_TROUGH_DARK * trough - STORM_CREST_LIFT * crestUp * (1.0 - Foam));
+}
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 // W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
 // the probability of its whitecap cover (a fixed hash of the pixel, so the temporal AA keeps it binary); the water is
@@ -3901,8 +3920,10 @@ def build_water_v4():
     shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2"))
                    .replace("STORM_FOAM_HOLES", os.environ.get("STORM_FOAM_HOLES", "0.3")).replace("STORM_FOAM_BUMP", os.environ.get("STORM_FOAM_BUMP", "1.0"))
                    .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")).replace("STORM_CAP_RAG", os.environ.get("STORM_CAP_RAG", "0.06"))
-                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife"],
+                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3"))
+                   .replace("STORM_FACE_TILT", os.environ.get("STORM_FACE_TILT", "0.35")).replace("STORM_FOAM_OPACITY", os.environ.get("STORM_FOAM_OPACITY", "0.35"))
+                   .replace("STORM_CREST_LIFT", os.environ.get("STORM_CREST_LIFT", "2.0")).replace("STORM_TROUGH_DARK", os.environ.get("STORM_TROUGH_DARK", "0.6")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife", "StormWater"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -3918,6 +3939,7 @@ def build_water_v4():
     connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")
     connect(scalar(mat, "FoamLife", 1.0, -2000, 1200), "", shade, "FoamLife")   # docs/storm-look/: 0 = -SailingClassicFoam
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
+    connect(vector(mat, "StormWater", (0, 0.5, 0, 0), -2000, 1250), "RGBA", shade, "StormWater")   # docs/blow-sea/: (strength, Hs m)
     for c in (wpo,):
         connect(chop, "", c, "Chop")
         for i, w in enumerate(waves[:NUM_LONG]):

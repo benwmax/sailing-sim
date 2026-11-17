@@ -62,6 +62,25 @@ chop is), and nothing the polars, reference checks, sea trials or SWAN tests use
 On the 20-28 kn ramp a change in the real wind moves the sea's wind up to 1.76 times as much, so the sea map (rebuilt at a
 5% change, on a worker) rebuilds up to about 1.6 times as often behind a gust front; no game-thread cost.
 
+## The storm water look (Bean, Nov 17: "bigger waves plus a storm water look")
+
+The PC's stills of the taller sea showed only a modest change: the water still read as dark slate. So M_WaterV4 (Medium,
+High, Ultra) gets `StormWater` (strength, Hs): from 18 to 26 kn of the air's mean wind (`AWaterSurface::StormWaterStrength`)
+it fades in
+
+- crest and trough: the water body's albedo rises on the crests (where the light comes through thin water) to 1.7 times at
+  half the significant height up, and falls to 0.79 in the troughs (`STORM_CREST_LIFT` 2.0, `STORM_TROUGH_DARK` 0.6, on the
+  material's `Dark` term, so foam and the far water are untouched: the long waves' height fades out with the mesh);
+- the faces: the long waves' slopes are tilted 35% further in the normal only (`STORM_FACE_TILT`), so faces toward the
+  camera reflect less of the storm's sky and faces away more;
+- the foam: aged lace keeps more of its white (residue 0.5 -> 0.7), thin lace is 35% more opaque (`STORM_FOAM_OPACITY`),
+  and only half as much of it is lost to the glare at grazing. The cap mask, the Monahan cover, `-SailingDebugFoam` and the
+  whitecap tests don't change: only how the foam is drawn.
+
+The knobs are `make_materials.py` environment values (as the storm look's). `-SailingClassicStormWater` draws the water as
+before. Low (M_Water) is unchanged. It follows the air's wind on every water body (the bay, the Gulf and the prologue's
+gale too), not only the lake, since the blow sea's lift is not what it keys on.
+
 ## Comparing
 
 `-SailingClassicBlowSea` (or `-SailingBlowSea=0`) is the old sea; `-SailingBlowSea=<lift>` tries another (0 to 0.5).

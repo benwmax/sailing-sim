@@ -537,6 +537,11 @@ double AWaterSurface::FarCapSizeStepNext(double Cur, int32 Total, double SinceCh
 	return Lower < Cur ? Lower : Cur;
 }
 
+double AWaterSurface::StormWaterStrength(double AirKnots)
+{
+	return Sailing::SmoothStep(18.0, 26.0, AirKnots);
+}
+
 float AWaterSurface::FarCapSpriteWeight(double DistM, double HeightM)
 {
 	// (Keep in step with M_WaterV4's FCS_W and M_FarCap.)
@@ -2397,6 +2402,16 @@ void AWaterSurface::UpdateMaterial()
 		const float MeanMs = float(Waves->GetParams().AirWindKnots() * kKnot);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
 			WhitecapScaleHere()));
+	}
+	{
+		// Storm water look (docs/blow-sea/, sailing-feedback #27): M_WaterV4's StormWater (strength, Hs m). From 18 to 26 kn of
+		// the air's mean wind the foam keeps more of its white, the crests lighten and the troughs darken against the long
+		// waves' height over the sea's significant height near the camera. -SailingClassicStormWater draws the water as before.
+		static SailingArgs::FCachedFlag ClassicStormWaterArg(TEXT("SailingClassicStormWater"));
+		const double AirKn = Waves->GetParams().AirWindKnots();
+		const float Strength = ClassicStormWaterArg.Get() ? 0.f : float(StormWaterStrength(AirKn));
+		const float Hs = float(FMath::Max(Waves->SignificantHeightAt(GustCenter.X, GustCenter.Y), 0.1));
+		WaterMaterial->SetVectorParameterValue(TEXT("StormWater"), FLinearColor(Strength, Hs, 0.f, 0.f));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
