@@ -108,8 +108,8 @@
   "ratline_src": "rule: 13 to 16 in apart; every fifth one is carried to the aftermost shroud",
   "catharpins": [3, 3, 0],
   "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)",
-  "catharpins_bowse_in": [6.0, 6.0, 0.0],
-  "catharpins_bowse_src": "estimate: how far the catharpins pull every lower shroud in toward the middle line at the futtock stave (the stave, seized across them, carries the pull to each; the shroud bends there). The Encyclopaedia Britannica (1797), CAT-HARPINGS: 'a purchase of ropes employed to brace in the shrouds of the lower masts behind their yards', so the yards could be drawn round more obliquely close-hauled (Lever 1808 the same); by how much no source gives: a few inches, taken as half a foot. The mizzen has none, so its shrouds stay straight"
+  "catharpins_bowse_in": [0.0, 0.0, 0.0],
+  "catharpins_bowse_src": "how far the catharpins pull every lower shroud in toward the middle line at the futtock stave (the stave, seized across them, carries the pull to each; the shroud bends there): none, so they hold the shrouds straight against the futtock shrouds' pull. The Encyclopaedia Britannica (1797), CAT-HARPINGS: 'a purchase of ropes employed to brace in the shrouds of the lower masts behind their yards', so the yards could be drawn round more obliquely close-hauled (Lever 1808 the same), by a few inches no source gives. Measured on her (slice 12): bowsed in 6 in, the fore yard braces 37 degrees and the main 39.5 (33.5 and 36 straight), but the falls from the tops to the forecastle and quarterdeck rails come down just inside the foremost lower shrouds at the stave, and from 1 in the shrouds bear on them (their bull's eyes re-placed under the tops do not clear them). Bowsing in waits for those falls to be led nearer the mast. The mizzen has none"
  },
  "topmast": {
   "rim_from": 0.07,

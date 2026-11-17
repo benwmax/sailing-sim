@@ -1,7 +1,8 @@
 """The frigate's standing rigging (docs/shipkit-4): the ropes that hold the masts up and never move. The lower shrouds
 with their deadeyes, lanyards and chains to the channels; the topmast shrouds set up in the tops with futtock plates
 and futtock shrouds; the topgallant shrouds over the topmast crosstrees; the ratlines on all of them, the futtock staves
-and catharpins (which bowse the lower shrouds in at the stave, so the lower yards brace sharper); the topmast,
+and catharpins (which can bowse the lower shrouds in at the stave, so the lower yards brace sharper: the card's
+catharpins_bowse_in, none for now, as the falls from the tops pass just inside the shrouds there); the topmast,
 topgallant and royal backstays to the channels; every stay with its hearts and collar; and
 the bowsprit's shrouds, martingale stays and back ropes and the jibboom guys.
 

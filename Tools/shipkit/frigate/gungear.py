@@ -577,23 +577,37 @@ class GunGear:
                 # both edges), or past the clamp's ends hole_above_head_in over the port's head, on the outside or the
                 # inside, whichever is the higher; the hole's inner end at the same height (bored square through)
                 Xc, zbc, ztc = gd.clamp
-                if Xc[0] <= xm <= Xc[-1]:
-                    zb_, zt_ = float(np.interp(xm, Xc, zbc)), float(np.interp(xm, Xc, ztc))
-                    rim = (ly["bush_in"][0] / 2 + 0.25) * IN
-                    zh = zb_ + ly["hole_over_clamp_edge_in"] * IN
-                    zh = min(max(zh, zb_ + rim), zt_ - rim) if zt_ - zb_ >= 2 * rim else 0.5 * (zb_ + zt_)
-                    if zh < zb_ + ly["hole_over_clamp_edge_in"] * IN - 1e-6:
-                        self.info.setdefault("lanyard_holes_lowered_in", []).append(
-                            round((zb_ + ly["hole_over_clamp_edge_in"] * IN - zh) / IN, 2))
-                else:
-                    zh = max(float(gd.Shd(xm)), float(np.interp(xm, head_in[:, 0], head_in[:, 2]))) + \
-                        ly["hole_above_head_in"] * IN
-                zp = zh * gd.k
-                xp = gd.xpx(xm)
-                for _ in range(8):
-                    Q, NQ = sk.surf(np.array([xp]), np.array([zp]), True, 0, S.OUT)
-                    zp += (zh - Q[0][2]) * gd.k
-                    xp += (xm - Q[0][0]) / sk.m.sx
+                # the hole is bored square through the side, as the port itself is cut (its jambs where the side's
+                # thickness carries them: gundeck.wall), and level: toward the bow its inner end stands aft of the
+                # outside's, as the port's inner face does (bored athwartships, at the foremost ports it came in
+                # forward of the port's middle, between the housing bolts, so its lanyard crossed the housed gun's
+                # muzzle lashing). x_in: its inner end's x, which sets its height by the clamp there
+                x_in, low = xm, 0.0
+                for _ in range(4):
+                    if Xc[0] <= x_in <= Xc[-1]:
+                        zb_, zt_ = float(np.interp(x_in, Xc, zbc)), float(np.interp(x_in, Xc, ztc))
+                        rim = (ly["bush_in"][0] / 2 + 0.25) * IN
+                        zh = zb_ + ly["hole_over_clamp_edge_in"] * IN
+                        zh = min(max(zh, zb_ + rim), zt_ - rim) if zt_ - zb_ >= 2 * rim else 0.5 * (zb_ + zt_)
+                        low = zb_ + ly["hole_over_clamp_edge_in"] * IN - zh
+                    else:
+                        zh = max(float(gd.Shd(xm)), float(np.interp(x_in, head_in[:, 0], head_in[:, 2]))) + \
+                            ly["hole_above_head_in"] * IN
+                        low = 0.0
+                    zp = zh * gd.k
+                    xp = gd.xpx(xm)
+                    for _ in range(8):
+                        Q, NQ = sk.surf(np.array([xp]), np.array([zp]), True, 0, S.OUT)
+                        zp += (zh - Q[0][2]) * gd.k
+                        xp += (xm - Q[0][0]) / sk.m.sx
+                    x_new = float(gd.wall(np.array([(xp - gd.L.mid_px) * sk.m.sx]), np.array([zh]))[0][0, 0])
+                    done = abs(x_new - x_in) < 1e-4
+                    x_in = x_new
+                    if done:
+                        break
+                if low > 1e-6:
+                    self.info.setdefault("lanyard_holes_lowered_in", []).append(round(low / IN, 2))
+                self.info.setdefault("lanyard_holes_in_aft_of_out_in", []).append(round((xm - x_in) / IN, 2))
                 Q, NQ = sk.surf(np.array([xp]), np.array([zp]), True, 0, S.OUT)
                 bo, no = Q[0], unit(NQ[0])
                 # its rim on the planking's faces as built, over any seam it lands on (seat)
@@ -601,15 +615,15 @@ class GunGear:
                                         math.sin(a)) for f, k_ in ((0.5, 8), (0.85, 12))
                                        for a in np.linspace(0.0, 2 * math.pi, k_, endpoint=False)]
                 bo = bo + no * self.seat(bo, no, disc, self.skin_tree())
-                # its inner end on the side's inner face, or on the clamp's where the clamp covers that height: the
-                # hole is bored through both. The bush lies on the face square to it (the face's own normal: the side
-                # tumbles home amidships, as much as 1 in 4 at the ports, and flares at the bow), as the clamp's inner
-                # face does (the clamp stands off the side by its thickness, level, so its face leans as the side's)
-                Pi, ni = gd.wall_at(np.array([bo[0]]), np.array([bo[2]]), true=True)
+                # its inner end on the side's inner face at x_in, or on the clamp's where the clamp covers that height:
+                # the hole is bored through both. The bush lies on the face square to it (the face's own normal: the
+                # side tumbles home amidships, as much as 1 in 4 at the ports, and flares at the bow), as the clamp's
+                # inner face does (the clamp stands off the side by its thickness, level, so its face leans as the side's)
+                Pi, ni = gd.wall_at(np.array([x_in]), np.array([bo[2]]), true=True)
                 bi = Pi[0]
                 rb_ = ly["bush_in"][0] / 2 * IN
-                if np.interp(bo[0], Xc, zbc) - rb_ <= bo[2] <= np.interp(bo[0], Xc, ztc) + rb_:
-                    bi, _ = gd.clamp_inner(float(bo[0]), float(bo[2]))
+                if np.interp(x_in, Xc, zbc) - rb_ <= bo[2] <= np.interp(x_in, Xc, ztc) + rb_:
+                    bi, _ = gd.clamp_inner(x_in, float(bo[2]))
                 bi = bi + unit(ni[0]) * self.seat(bi, unit(ni[0]), disc)
                 # the cleat beside the port, out from the inner jamb on this strap's side, cleat_over_deck_in up
                 # (gundeck.lanyard_cleats; the hanging knees keep clear of it), lying on the side's face (its own
