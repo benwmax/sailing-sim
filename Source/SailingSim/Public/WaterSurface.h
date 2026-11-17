@@ -100,6 +100,9 @@ public:
 	static double StormWaterStrength(double AirKnots);
 	/** M_WaterV4's and M_FarCap's StormWater now: StormWaterStrength of the sea's air wind, 0 with -SailingClassicStormWater. */
 	float StormWaterNow() const;
+	/** The whitecap scale in a blow: Base (WhitecapScaleFor) raised toward kStormWhitecapScale by the storm water strength. */
+	static float StormWhitecapScale(float Base, float Storm);
+	static constexpr float kStormWhitecapScale = 0.8f;
 	/** The significant height of the LongComponents trains alone at a point (sea map ratios included): M_WaterV4's StormWater.y. */
 	static double LongSignificantHeightAt(const Sailing::FWaveField& Field, double X, double Y);
 	/** Storm water step 6 (docs/storm-water/gale-streaks/): what a gale tears off the caps, by the sea's mean wind. Gale

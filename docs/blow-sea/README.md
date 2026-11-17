@@ -84,6 +84,14 @@ it fades in
 
 Test: `SailingSim.Visual.StormWater` (the strength by wind).
 
+**More caps in a blow (after the first stills, Nov 17).** At those settings the Mac's and PC's stills still showed only
+a handful of caps at 26 kn: the lake's whitecap scale is 0.4 of Monahan's sea-water law (fresh water). That scale is
+mostly the foam bursting sooner (stage B); in a blow the actively breaking crests carry the cover, so the same `StormWater`
+strength raises the lake's (and bay's) scale toward 0.8 (`AWaterSurface::StormWhitecapScale`, through
+`WhitecapScaleHere`: the cap target, the far caps and `WindParams.w` alike). With the blow sea's lift that is about three
+times the caps at 26 kn: 3.2% cover, Beaufort 6 to 7's "white foam crests everywhere". The `Whitecaps` tests hold
+`WhitecapScaleFor` (unchanged) and `SailingSim.Visual.StormWater` the storm scale; `-SailingClassicStormWater` turns it off.
+
 The knobs are `make_materials.py` environment values (as the storm look's). `-SailingClassicStormWater` draws the water as
 before. Low (M_Water) is unchanged. It follows the air's wind on every water body (the bay, the Gulf and the prologue's
 gale too), not only the lake, since the blow sea's lift is not what it keys on.

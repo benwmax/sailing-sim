@@ -479,11 +479,22 @@ float AWaterSurface::WhitecapScaleHere() const
 	// World streaming: on the Texas coast the water is the bay's inside and the Gulf's outside, so the caps scale with
 	// the open sea's share where the boat is (the ocean mask: 0 in the bay, 1 offshore).
 	const int32 World = USailingSettings::Get()->World;
-	if (World != 4) return WhitecapScaleFor(World);
-	const FWaveField* W = GetWaves();
-	const FOcean* O = W ? W->GetOcean() : nullptr;
-	const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
-	return FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
+	float Base = WhitecapScaleFor(World);
+	if (World == 4)
+	{
+		const FWaveField* W = GetWaves();
+		const FOcean* O = W ? W->GetOcean() : nullptr;
+		const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
+		Base = FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
+	}
+	return StormWhitecapScale(Base, StormWaterNow());
+}
+
+float AWaterSurface::StormWhitecapScale(float Base, float Storm)
+{
+	// Storm water look (docs/blow-sea/, #27): fresh water's fewer caps are mostly its foam bursting sooner (stage B); in a
+	// blow the actively breaking crests (stage A) carry the cover, so the lake's and bay's scale rises toward kStormWhitecapScale.
+	return FMath::Lerp(Base, FMath::Max(Base, kStormWhitecapScale), FMath::Clamp(Storm, 0.f, 1.f));
 }
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)

@@ -29,6 +29,15 @@ bool FSailingStormWaterTest::RunTest(const FString& Parameters)
 		Last = S;
 	}
 	TestTrue(TEXT("Never falls as the wind rises"), bRising);
+
+	// The caps' scale in a blow: the lake's 0.4 and the bay's 0.7 rise to 0.8 at full strength, the sea's 1 stays, and
+	// nothing changes with the look off.
+	const float Lake = AWaterSurface::WhitecapScaleFor(0), Bay = AWaterSurface::WhitecapScaleFor(1), Sea = AWaterSurface::WhitecapScaleFor(2);
+	TestEqual(TEXT("Lake, no storm"), AWaterSurface::StormWhitecapScale(Lake, 0.f), Lake, 1e-6f);
+	TestEqual(TEXT("Lake, full storm"), AWaterSurface::StormWhitecapScale(Lake, 1.f), AWaterSurface::kStormWhitecapScale, 1e-6f);
+	TestEqual(TEXT("Lake, half storm"), AWaterSurface::StormWhitecapScale(Lake, 0.5f), 0.5f * (Lake + AWaterSurface::kStormWhitecapScale), 1e-6f);
+	TestEqual(TEXT("Bay, full storm"), AWaterSurface::StormWhitecapScale(Bay, 1.f), AWaterSurface::kStormWhitecapScale, 1e-6f);
+	TestEqual(TEXT("Sea unchanged"), AWaterSurface::StormWhitecapScale(Sea, 1.f), Sea, 1e-6f);
 	return true;
 }
 
