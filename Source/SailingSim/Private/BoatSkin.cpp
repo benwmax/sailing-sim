@@ -171,6 +171,35 @@ FString FBoatSkin::CleanName(const FString& In)
 	return Out;
 }
 
+FString FBoatSkin::CleanHullName(const FString& In)
+{
+	FString Out;
+	for (const TCHAR Ch : CleanName(In))
+	{
+		if (Out.Len() >= MaxHullNameChars) break;
+		if (Ch == TEXT(' ') && Out.EndsWith(TEXT(" "))) continue;
+		Out.AppendChar(Ch);
+	}
+	Out.TrimEndInline();
+	return Out;
+}
+
+const FString& FBoatSkin::HullName() const
+{
+	static const FString None;
+	return Lettering.Name.IsSet() ? Lettering.Name.GetValue() : None;
+}
+
+FLinearColor FBoatSkin::HullNameColour() const
+{
+	if (Lettering.Colour.IsSet()) return Lettering.Colour.GetValue();
+	FLinearColor Navy, White;
+	ParseHex(TEXT("#1C2A44"), Navy);
+	ParseHex(TEXT("#F2F0EA"), White);
+	const bool bDarkHull = Paint.Hull.IsSet() && Paint.Hull.GetValue().GetLuminance() < 0.25f;
+	return bDarkHull ? White : Navy;
+}
+
 // ---------------------------------------------------------------- the file
 
 FBoatSkin::EResult FBoatSkin::FromJson(const FString& Text, FBoatSkin& Out, FString* OutMessage)
@@ -266,6 +295,16 @@ FBoatSkin::EResult FBoatSkin::FromJson(const FString& Text, FBoatSkin& Out, FStr
 		// (a real boolean only: TryGetBoolField would read the text "yes")
 		if (S->HasTypedField<EJson::Boolean>(TEXT("classMark"))) Out.Sails.bClassMark = S->GetBoolField(TEXT("classMark"));
 	}
+	if (const TSharedPtr<FJsonObject> N = Child(*Root, TEXT("lettering")))
+	{
+		FString HullText;
+		if (N->TryGetStringField(TEXT("name"), HullText))
+		{
+			const FString Clean = CleanHullName(HullText);
+			if (!Clean.IsEmpty()) Out.Lettering.Name = Clean;
+		}
+		ReadColour(*N, TEXT("colour"), Out.Lettering.Colour);
+	}
 	if (const TSharedPtr<FJsonObject> L = Child(*Root, TEXT("lines")))
 	{
 		for (int32 I = 0; I < int32(ELine::Count); ++I)
@@ -322,6 +361,13 @@ FString FBoatSkin::ToJson() const
 		if (Sails.Number.IsSet()) S->SetStringField(TEXT("number"), Sails.Number.GetValue());
 		if (Sails.bClassMark.IsSet()) S->SetBoolField(TEXT("classMark"), Sails.bClassMark.GetValue());
 		Root->SetObjectField(TEXT("sails"), S);
+	}
+	if (!Lettering.IsEmpty())
+	{
+		TSharedRef<FJsonObject> N = MakeShared<FJsonObject>();
+		if (Lettering.Name.IsSet()) N->SetStringField(TEXT("name"), Lettering.Name.GetValue());
+		WriteColour(*N, TEXT("colour"), Lettering.Colour);
+		Root->SetObjectField(TEXT("lettering"), N);
 	}
 	if (!Lines.IsEmpty())
 	{

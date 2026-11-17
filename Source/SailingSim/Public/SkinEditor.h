@@ -55,6 +55,9 @@ struct SAILINGSIM_API FSkinEditor
 	void SetClassMark(const TOptional<bool>& bMark);
 	/** A rope role's colourway column, or -1 for the boat's own. */
 	void SetLine(FBoatSkin::ELine Line, int32 Column);
+	/** The name lettered on the hull (cleaned; empty: none) and its colour (unset: FBoatSkin::HullNameColour's choice). */
+	void SetHullName(const FString& Name);
+	void SetHullNameColour(const TOptional<FLinearColor>& Colour);
 	void SetName(const FString& Name);
 	/** A look at random from real ones: one of the class's built-in paint schemes, a wear level short of neglected, and
 	 *  rope colours (port red and starboard green kept, as the convention has them). One undo step. */

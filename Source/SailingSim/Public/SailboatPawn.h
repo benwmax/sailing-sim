@@ -603,6 +603,8 @@ private:
 	bool bHasSkin = false;
 	uint8 SkinRopeColumns[256] = {};
 	FBoatSkin PreviewSkin;
+	/** Name on the hull (HullName.h): the lettering's texture, kept for the hull's material. */
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> HullNameTexture;
 	bool bSkinPreview = false;
 	bool LoadMetaCrew();
 	class USkeletalMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);

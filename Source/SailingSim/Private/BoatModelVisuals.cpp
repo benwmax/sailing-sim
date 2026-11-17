@@ -24,6 +24,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "BoatLivery.h"
 #include "BoatPacks.h"
+#include "HullName.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -622,11 +624,32 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		// Rain deck stills: -SailingPuddle=<0..1> starts the deck's puddles that full.
 		float StartPuddle = 0.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingPuddle="), StartPuddle)) PuddleLevel = FMath::Clamp(StartPuddle, 0.f, 1.f);
+		// Name on the hull (docs/skins): the skin's lettering, drawn once into a texture and laid on the quarters by the
+		// hull's material (HullName.h). No name, no renderer or a class without a place for one: nothing is set, and the
+		// material's NameColour stays at alpha 0.
+		HullNameTexture = nullptr;
+		FHullNamePlace NamePlace;
+		// -SailingHullName="<name>" letters one for stills, whatever the skin says.
+		FString NameText = bHasSkin ? Skin.HullName() : FString();
+		const FLinearColor NameInk = bHasSkin ? Skin.HullNameColour() : FBoatSkin().HullNameColour();
+		if (FString NameArg; FParse::Value(SailingArgs::Dev(), TEXT("SailingHullName="), NameArg, false)) NameText = FBoatSkin::CleanHullName(NameArg);
+		if (!bTrafficBoat && !bGhost && !NameText.IsEmpty())
+		{
+			FVector2D NamePx(1.0, 1.0);
+			UTextureRenderTarget2D* NameTarget = SailingHullName::Draw(this, NameText, NamePx);
+			if (NameTarget && SailingHullName::Place(int32(Boat.GetConfig().Type), float(NamePx.X / NamePx.Y), NamePlace)) HullNameTexture = NameTarget;
+		}
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
 			UMaterialInstanceDynamic* Mid = ModelHull->CreateDynamicMaterialInstance(I);
 			if (!Mid) continue;
+			if (HullNameTexture)
+			{
+				Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
+				Mid->SetVectorParameterValue(TEXT("NameRect"), NamePlace.AsParam());
+				Mid->SetVectorParameterValue(TEXT("NameColour"), FLinearColor(NameInk.R, NameInk.G, NameInk.B, 1.f));
+			}
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
 			// #405: the wear noise sized to the boat (M_BoatSurface's WearScale): the dinghies' 4 m decks take a finer grime.
 			Mid->SetScalarParameterValue(TEXT("WearScale"), (Boat.GetConfig().Type == EBoatType::Sunfish || Boat.GetConfig().Type == EBoatType::ILCA7) ? 0.7f : 1.f);
