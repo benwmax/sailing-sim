@@ -1,7 +1,8 @@
 """The frigate's standing rigging (docs/shipkit-4): the ropes that hold the masts up and never move. The lower shrouds
 with their deadeyes, lanyards and chains to the channels; the topmast shrouds set up in the tops with futtock plates
 and futtock shrouds; the topgallant shrouds over the topmast crosstrees; the ratlines on all of them, the futtock staves
-and catharpins; the topmast, topgallant and royal backstays to the channels; every stay with its hearts and collar; and
+and catharpins (which bowse the lower shrouds in at the stave, so the lower yards brace sharper); the topmast,
+topgallant and royal backstays to the channels; every stay with its hearts and collar; and
 the bowsprit's shrouds, martingale stays and back ropes and the jibboom guys.
 
     from rigging import Standing;  st = Standing(rig, SK).build();  st.parts()
@@ -379,8 +380,11 @@ class Standing:
         self.stack = {}                  # head -> [(height, radius)] of the eyes laid over it
         self.spans = []                  # the free straight runs: (name, a, b, radius), for the checks
         self.paths = []                  # a leg's points from its eye to its upper deadeye: (set, mast, points, r)
-        self.report = {"channels": {}, "skipped": [], "deadeyes": 0, "hearts": 0, "chains_over_lanyard_holes": []}
-        self.shroud_lines = {}           # (mast, set, side) -> [(top, bottom, r)] fore to aft
+        self.report = {"channels": {}, "skipped": [], "deadeyes": 0, "hearts": 0, "chains_over_lanyard_holes": [],
+                       "catharpins_bowse_in": {}}
+        self.shroud_lines = {}           # (mast, set, side) -> [(top, bottom, r, upper deadeye, ...)] fore to aft; a
+        #                                  lower shroud bowsed in by the catharpins: top is its bend at the stave, fifth
+        #                                  its masthead end (the run above the bend)
         self.stave = {}                  # (mast, side) -> [point on each lower shroud's outside at the stave]
         self.tm_lines = {}
         self.chan_x = {}
@@ -983,35 +987,52 @@ class Standing:
         return S_b, top
 
     # ---- one leg to a channel: shroud or backstay ------------------------------------------------------------------
-    def channel_leg(self, mast, sgn, x_ft, D_u, D_l, r, head_fn, set_name, chain_in):
+    def channel_leg(self, mast, sgn, x_ft, D_u, D_l, r, head_fn, set_name, chain_in, kink=None):
         """A rope from a masthead (head_fn(target) gives its points from the eye) set up to the channel at x (ft):
         both deadeyes, the lanyard, the turn-in, the strop and chain (or, with D_u None, a thimble and a lanyard to an
-        eyebolt in the channel). Returns the top and bottom of its straight part and the upper deadeye's centre."""
+        eyebolt in the channel). Returns the top and bottom of its straight part and the upper deadeye's centre. With
+        kink (z, inches in metres: a lower shroud bowsed in by the catharpins, channel_geom) the rope bends in at K, two
+        straight runs (the head's, Mt to K, and the rest): returns Mt, the bottom, the upper deadeye's centre and K."""
         Mn = mast.capitalize()
         rope, fit = Side(self.mesh(f"Rigging_{Mn}"), sgn), Side(self.mesh(f"Deadeyes_{Mn}"), sgn)
         edge, hside = self.channel_edge(mast, x_ft)
         if D_u is None:
             return self.thimble_leg(rope, fit, mast, sgn, edge, hside, r, head_fn, set_name, x_ft)
-        hp, Mt, t, C_L, C_U = self.channel_geom(mast, x_ft, D_u, D_l, r, head_fn)
-        self.paths.append((set_name, mast, [np.asarray(p) * [1, sgn, 1] for p in hp + [C_U]], r))
+        g = self.channel_geom(mast, x_ft, D_u, D_l, r, head_fn, kink)
+        hp, Mt, t, C_L, C_U = g[:5]
+        K = g[5] if kink is not None else None
+        mid = [K] if K is not None else []
+        self.paths.append((set_name, mast, [np.asarray(p) * [1, sgn, 1] for p in hp + mid + [C_U]], r))
         Xl, Yl, Zl = self.deadeye_pair(fit, C_L, C_U, hside, D_u, D_l, rope_r(self.sp["rope_in"]["lanyard_of_rope"] * r / IN * 2 * math.pi))
         end, tp = self.turnin(fit, C_U, Xl, Yl, Zl, D_u, r)
-        tube(rope, fillet(hp + tp, 2.0 * r), r, self.ROPE)
-        slope = (Mt[0] - C_L[0]) / (Mt[2] - C_L[2])
+        tube(rope, fillet(hp + mid + tp, 2.0 * r), r, self.ROPE)
+        top = K if K is not None else Mt
+        slope = (top[0] - C_L[0]) / (top[2] - C_L[2])
         self.chain(fit, mast, C_L, Xl, Zl, D_l, C_L[0] / FT, slope, chain_in)
         nm = f"{set_name} {mast} {'stbd' if sgn > 0 else 'port'} at {x_ft:.1f} ft"
-        self.span(nm, *(np.array([Mt, end]) * [1, sgn, 1]), r)
-        return Mt, end, C_U
+        if K is None:
+            self.span(nm, *(np.array([Mt, end]) * [1, sgn, 1]), r)
+            return Mt, end, C_U
+        self.span(nm + " (head)", *(np.array([Mt, K]) * [1, sgn, 1]), r)
+        self.span(nm, *(np.array([K, end]) * [1, sgn, 1]), r)
+        return Mt, end, C_U, K
 
-    def channel_geom(self, mast, x_ft, D_u, D_l, r, head_fn):
+    def channel_geom(self, mast, x_ft, D_u, D_l, r, head_fn, kink=None):
         """Where a rope set up to the channel at x (ft) with deadeyes lies (the upper deadeye at the rail's top, the
-        lower on the channel): its head part, the top of its straight part, its direction and the deadeyes' centres."""
+        lower on the channel): its head part, the top of its straight part, its direction and the deadeyes' centres.
+        With kink (z, d): a lower shroud bowsed in by the catharpins, its straight line from the masthead to the channel
+        pulled in (square to the ship's side, toward the middle line) by d at height z (the futtock stave), so it runs
+        straight from the masthead to that point K and from K to its deadeyes (its direction there, and the deadeyes,
+        follow the lower run): K is returned too, sixth."""
         edge, hside = self.channel_edge(mast, x_ft)
         target = edge + EZ * 20 * FT
+        K = None
         for _ in range(3):
             hp = head_fn(target)
             Mt = hp[-1]
-            t = unit(Mt - edge)
+            if kink is not None:
+                K = point_at_z(edge, Mt, kink[0]) - EY * kink[1]
+            t = unit((Mt if K is None else K) - edge)
             Zl = unit(hside - (hside @ t) * t)
             Yl = np.cross(Zl, t)
             # the lower deadeye's lowest point (its rim's, on its inner face) half an inch over the channel's top
@@ -1019,8 +1040,8 @@ class Standing:
             C_L = edge + t * ((drop + 0.5 * IN) / t[2])
             z_u = self.rail_top_ft(C_L[0] / FT) * FT
             C_U = C_L + t * max((z_u - C_L[2]) / t[2], 1.5 * (D_l + D_u) / 2 + 0.6 * D_u)
-            target = C_U + t * 1.15 * D_u + r * Yl
-        return hp, Mt, t, C_L, C_U
+            target = C_U + t * 1.15 * D_u + r * Yl if K is None else K
+        return (hp, Mt, t, C_L, C_U) if K is None else (hp, Mt, t, C_L, C_U, K)
 
     def thimble_leg(self, rope, fit, mast, sgn, edge, hside, r, head_fn, set_name, x_ft):
         """A small backstay's foot: turned in round an iron thimble, set up with a lanyard of three turns to an eyebolt
@@ -1063,6 +1084,15 @@ class Standing:
         xs = [places[f"shroud_{k}"] for k in range(n)][::-1]          # fore to aft
         w = 2 * r + 0.15 * IN
         slots = self.slots(mast, "lower", [w] * n)
+        # bowsed in by the catharpins: where a mast has them, every shroud is pulled in toward the middle line at the
+        # futtock stave by catharpins_bowse_in (the stave, seized across them all, carries the catharpins' pull to each),
+        # so it bends there: kink (the stave's height, how far)
+        lw = S["lower"]
+        kink = None
+        if lw["catharpins"][i] > 0 and lw.get("catharpins_bowse_in", [0.0] * 3)[i] > 0:
+            m_ = self.rig.masts[mast]
+            z_top = (m_["O"] + m_["s_plat"] * m_["u"])[2]
+            kink = (z_top - lw["futtock_stave_below_top_ft"][i] * FT, lw["catharpins_bowse_in"][i] * IN)
         # the foremost leg clears the lower yard, squared, by CLEAR: the legs move aft on the bolster (packed closer if
         # they must). Its eye is the first or second laid (starboard, then port)
         yd = self.yard({"fore": "Yard_Fore", "main": "Yard_Main", "mizzen": "Yard_Crossjack"}[mast])
@@ -1072,8 +1102,9 @@ class Standing:
             c = np.inf
             for s_e in (base + r, base + 3 * r + EYE_GAP):
                 fn = lambda tg, s_e=s_e: self.head_leg(mast, "lower", x0, s_e, r, tg)
-                hp, Mt, t, C_L, C_U = self.channel_geom(mast, xs[0], D, D, r, fn)
-                c = min(c, yd.clearance(hp + [C_U + t * 1.15 * D], r, 1.0))
+                g = self.channel_geom(mast, xs[0], D, D, r, fn, kink)
+                hp, Mt, t, C_L, C_U = g[:5]
+                c = min(c, yd.clearance(hp + list(g[5:]) + [C_U + t * 1.15 * D], r, 1.0))
             return c
         x0 = solve_back(clear, slots[0])
         if x0 < slots[0] - 1e-6:
@@ -1089,8 +1120,9 @@ class Standing:
                 for j in range(n):
                     s_e = s_all[2 * (j // 2) + q]
                     fn = lambda tg, j=j, s_e=s_e: self.head_leg(mast, "lower", slots[j], s_e, r, tg, plan=True)
-                    hp, Mt, t, C_L, C_U = self.channel_geom(mast, xs[j], D, D, r, fn)
-                    legs.append((slots[j], s_e, r, C_U + t * 1.15 * D))
+                    g = self.channel_geom(mast, xs[j], D, D, r, fn, kink)
+                    hp, Mt, t, C_L, C_U = g[:5]
+                    legs.append((slots[j], s_e, r, g[5] if kink else C_U + t * 1.15 * D))
                 held = self.plan_fan(mast, "lower", legs)
                 if held and sgn > 0:
                     self.report["skipped"].append(f"{mast} lower head: {held} leg{'s' if held > 1 else ''} held in the bundle down the head "
@@ -1104,10 +1136,14 @@ class Standing:
                 self.eye_loop(Side(self.mesh(f"Rigging_{mast.capitalize()}"), sgn), mast, "lower", s_e, r)
                 for j in legs:
                     fn = lambda tg, j=j, s_e=s_e: self.head_leg(mast, "lower", slots[j], s_e, r, tg)
-                    Mt, end, C_U = self.channel_leg(mast, sgn, xs[j], D, D, r, fn, "lower shroud", bar)
-                    lines[sgn][j] = (Mt, end, r, C_U)
+                    res = self.channel_leg(mast, sgn, xs[j], D, D, r, fn, "lower shroud", bar, kink)
+                    # the line below the bend (the ratlines, stave and catharpins are on it), then the masthead's end
+                    lines[sgn][j] = (res[3], res[1], r, res[2], res[0]) if kink else (res[0], res[1], r, res[2])
         for sgn in (1, -1):
             self.shroud_lines[(mast, "lower", sgn)] = lines[sgn]
+        if kink:
+            self.report["catharpins_bowse_in"][mast] = {"stave_z_m": round(float(kink[0]), 3),
+                                                        "in_in": round(kink[1] / IN, 2)}
 
     # ---- ratlines ----------------------------------------------------------------------------------------------------
     def ratlines(self, mesh, lines, z0, z1, pitch, r_rat, every=5, skip_last=True):

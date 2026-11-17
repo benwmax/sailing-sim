@@ -1547,11 +1547,12 @@ class Anchors:
         self.info["painter"] = self._painter(bw["an"], bw["R"], bw["o"], self.card["painter"],
                                              self.mesh("ShankPainter", "stbd"), self.mesh("AnchorEyebolts", "stbd"))
 
-    def _painter(self, an, R, o, c, m, mb, z_loc=None):
+    def _painter(self, an, R, o, c, m, mb, z_loc=None, eyes_at=None):
         """A shank painter into m, its eyebolts into mb: a rope spliced to an eyebolt in the side above the anchor
         (an, in the ship at R, o), down round its shank (a round turn) and back up to a second eyebolt beside the
         first, spliced there too. c: the painter's card; z_loc: where it takes the shank, up from the crown (else
-        at_shank of the eye's height)"""
+        at_shank of the eye's height); eyes_at: (the point midway between the eyebolts on the face they are driven
+        into, its outward normal, the way they stand apart) for eyebolts elsewhere than on the planking rise_m above"""
         r_p = 0.5 * c["circ_in"] / math.pi * IN
         k = an.key
         if z_loc is None:
@@ -1562,12 +1563,18 @@ class Anchors:
         a_side = float(np.interp(z_loc, [zA + 0.6 * k["a_t"], k["stock_z"] - 0.5 * k["stock_middle"]], [k["a_t"], k["a_s"]]))
         Sp = R @ np.array([0.0, 0.0, z_loc]) + o
         ax = R @ EZ
-        # the eyebolts: on the planking rise_m above the shank's point, beside each other fore and aft
-        Pm, Nm = self.hd.hull_out(np.array([Sp[0]]), np.array([Sp[2] + c["rise_m"]]))
-        Pm, Nm = Pm[0], unit(Nm[0])
-        e_f = unit(np.cross(Nm, EZ))
-        e_f = e_f if e_f[0] > 0 else -e_f
-        faces = [self.to_hull((Pm + sg * 0.5 * c["eyes_apart_m"] * e_f)[None], Nm)[0] for sg in (1.0, -1.0)]
+        if eyes_at is None:
+            # the eyebolts: on the planking rise_m above the shank's point, beside each other fore and aft
+            Pm, Nm = self.hd.hull_out(np.array([Sp[0]]), np.array([Sp[2] + c["rise_m"]]))
+            Pm, Nm = Pm[0], unit(Nm[0])
+            e_f = unit(np.cross(Nm, EZ))
+            e_f = e_f if e_f[0] > 0 else -e_f
+            faces = [self.to_hull((Pm + sg * 0.5 * c["eyes_apart_m"] * e_f)[None], Nm)[0] for sg in (1.0, -1.0)]
+            along0 = EZ
+        else:
+            Pm, Nm, e_f = np.asarray(eyes_at[0], float), unit(eyes_at[1]), unit(eyes_at[2])
+            faces = [Pm + sg * 0.5 * c["eyes_apart_m"] * e_f for sg in (1.0, -1.0)]
+            along0 = e_f
         R_e, r_b = 0.5 * c["eye_in"][0] * IN, 0.5 * c["eye_in"][1] * IN
         eyes = [Q + Nm * (0.25 * IN + r_b + R_e) for Q in faces]
         mid = 0.5 * (eyes[0] + eyes[1])
@@ -1585,7 +1592,7 @@ class Anchors:
         Pl = octa[np.argmax(u @ octa.T, axis=1)] + (rc + r_p - 0.001) * u
         loop = o + np.stack([Pl[:, 0], Pl[:, 1], np.full(len(Pl), z_loc)], -1) @ R.T
         mb.cur = "painter eyebolt"
-        ends = [self._spliced_eye(mb, Q, Nm, L0, EZ, c) for Q, L0 in ((faces[0], loop[0]), (faces[1], loop[-1]))]
+        ends = [self._spliced_eye(mb, Q, Nm, L0, along0, c) for Q, L0 in ((faces[0], loop[0]), (faces[1], loop[-1]))]
         # each leg comes off the turn on a curve (a Hermite from jl up the leg to jl round the turn), and the whole
         # course is laid at an even step: the tube's rings never cross where it bends
         s_l = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(loop, axis=0), axis=1))])
@@ -1603,7 +1610,9 @@ class Anchors:
                                0.01)
         V, F = _tube_open(P, r_p, 8)
         m.add(V, F, "Hemp")
-        return {"circ_in": c["circ_in"], "on_shank_m": np.round(Sp, 3).tolist(), "eyes_m": np.round(eyes, 3).tolist()}
+        legs_deg = [math.degrees(math.asin(float(unit(E - L0)[2]))) for E, L0 in ((eyes[0], loop[0]), (eyes[1], loop[-1]))]
+        return {"circ_in": c["circ_in"], "on_shank_m": np.round(Sp, 3).tolist(), "eyes_m": np.round(eyes, 3).tolist(),
+                "legs_deg": np.round(legs_deg, 2).tolist()}
 
     # --- the sheet anchor, stowed abaft the fore chains (slice 12) ------------------------------------------------
     def channel_end(self, name):
@@ -1658,27 +1667,59 @@ class Anchors:
                 out[i] = hit[3] - 3.0
         return out
 
-    def sheet_pose(self, an, x_eye, z_s, c):
-        """The sheet anchor on the side (starboard): its shank level at z_s along the side (square to the planking's
-        normal at z_s between its crown and its eye, so parallel to the side), the eye's hole at x_eye, turned about the
-        shank so that its inner fluke (+X) rises toward the side and the lower end of its stock (+Y) comes down toward
-        it, and set out from the side so that the fluke rests on its billboard (the nearest of the fluke's points
-        bill_off_m off the planking) as the stock's end bears on the side (stock_gap_m off it as built). The roll and the
-        shank's distance out are solved together. Returns {R, o, roll_deg, out_m, bill, ...}"""
+    def side_top_over(self, x, z, half):
+        """the lowest edge of the side's top (the moulding along the plankshear, the bulwark's top) over the height z
+        within half of x (starboard), or None"""
+        tops = []
+        for name in ("Moulding", "BulwarkTop"):
+            Vm = np.asarray(self.skin[name][0], float)
+            sel = (np.abs(Vm[:, 0] - x) < half) & (Vm[:, 1] > 0) & (Vm[:, 2] > z)
+            if sel.any():
+                tops.append(float(Vm[sel, 2].min()))
+        return min(tops) if tops else None
+
+    def waist_rail_at(self, x):
+        """the waist's rail (skin.py waist_rail, starboard) at x: its cap's underside, the cap's outer edge (y) and the x
+        of each of its stanchions, from the skin's RailCap"""
+        V = np.asarray(self.skin["RailCap"][0], float)
+        V = V[V[:, 1] > 0]
+        near = V[np.abs(V[:, 0] - x) < 0.3]
+        if not len(near):
+            raise SystemExit(f"anchors: no rail over the side at x {x:.3f}")
+        ztop = float(near[:, 2].max())
+        cap = near[near[:, 2] > ztop - 0.13]                              # its sections' corners (4 1/2 in deep)
+        under = float(cap[:, 2].min())
+        foot = V[(np.abs(V[:, 0] - x) < 4.0) & (V[:, 2] < under - 0.6) & (V[:, 2] > under - 2.0)]
+        xs = np.sort(foot[:, 0])
+        groups = np.split(xs, np.nonzero(np.diff(xs) > 0.3)[0] + 1) if len(xs) else []    # 6 ft apart, 4 in square
+        return {"under_z": under, "edge_y": float(cap[:, 1].max()), "stanchions_x": [float(g.mean()) for g in groups],
+                "stanchions_half": [0.5 * float(g.max() - g.min()) for g in groups]}
+
+    def sheet_pose(self, an, x_eye, z_s, c, slope=0.0):
+        """The sheet anchor on the side (starboard): its shank along the side (square to the planking's normal between
+        its crown and its eye, so parallel to the side in plan), rising forward at slope (radians) to its eye, whose hole
+        is at x_eye, z_s; turned about the shank so that its inner fluke (+X) rises toward the side and the lower end of
+        its stock (+Y) comes down toward it, and set out from the side so that the fluke rests on its billboard (the
+        nearest of the fluke's points bill_off_m off the planking) as the stock's end bears on the side (stock_gap_m off
+        it as built). The roll and the shank's distance out are solved together. Returns {R, o, roll_deg, out_m, bill,
+        heel_clear_m (the anchor's lowest point over the sea with the ship heeled heel_deg to starboard), ...}"""
         k = an.key
         Vi = an.iron.arrays()[0]
         fluke = Vi[Vi[:, 0] > 0.55 * k["bill"][0][0]]                   # the inner arm's outer part, palm and bill
         Vs = an.stock.arrays()[0]
         low = Vs[Vs[:, 1] > 0.5 * k["stock_len"] - 0.3]                 # the stock's lower end
-        P2, _ = self.hd.hull_out(np.array([x_eye - k["eye"][2], x_eye]), np.array([z_s, z_s]))
+        z_c = z_s - k["eye"][2] * math.sin(slope)                       # the crown's height
+        P2, _ = self.hd.hull_out(np.array([x_eye - k["eye"][2] * math.cos(slope), x_eye]), np.array([z_c, z_s]))
         a = P2[1] - P2[0]
         a[2] = 0.0
         a = unit(a)
         nout = unit(np.cross(EZ, a))
         base = P2[1]
+        a = math.cos(slope) * a + math.sin(slope) * EZ                  # the shank's way, rising forward
+        up = np.cross(a, nout)                                          # square to it, upward
 
         def frame(D, phi):
-            X = math.cos(phi) * -nout + math.sin(phi) * EZ
+            X = math.cos(phi) * -nout + math.sin(phi) * up
             Y = np.cross(a, X)
             R = np.stack([X, Y, a], 1)
             H = base + D * nout
@@ -1687,7 +1728,13 @@ class Anchors:
 
         def gap_at(D, phi):
             R, o = frame(D, phi)
-            return self.over_side(low @ R.T + o, one_normal=True).min() - c["stock_gap_m"]
+            W = low @ R.T + o
+            g = float(self.over_side(W, one_normal=True).min())
+            if g > 8.0:                 # no planking within 3 m along the normal: deep inside the side, or far out
+                m = W.mean(0)
+                P, _ = self.hd.hull_out(np.array([m[0]]), np.array([m[2]]))
+                g = -3.0 if m[1] < P[0][1] else 3.0
+            return g - c["stock_gap_m"]
 
         def out_for(phi):
             # the stock's end moves off the side about one for one as the anchor moves out along nout: a secant search
@@ -1750,20 +1797,28 @@ class Anchors:
         j = int(idx[int(np.argmin(hts))])
         Pf, Nf = self.hd.hull_out(np.array([W[j][0]]), np.array([W[j][2]]))
         foot = self.to_hull(W[j][None], unit(Nf[0]))[0]
+        th = math.radians(c["heel_deg"])
+        Wa = np.concatenate([Vi, Vs]) @ R.T + o
+        over = Wa[:, 2] * math.cos(th) - Wa[:, 1] * math.sin(th)       # over the sea heeled th to starboard
         return {"R": R, "o": o, "roll_deg": math.degrees(phi), "out_m": D, "eye": R @ k["eye"] + o,
                 "bill": W[j], "bill_foot": foot, "bill_normal": unit(Nf[0]),
                 "stock_end_over_side_m": float(self.over_side(low @ R.T + o).min()),
-                "fluke_over_planking_m": float(hts.min())}
+                "fluke_over_planking_m": float(hts.min()), "heel_clear_m": float(over.min()),
+                "heel_lowest_m": Wa[int(np.argmin(over))], "slope": slope, "z_s": z_s}
 
     def sheet(self):
         """The sheet anchor (anchors_1797.json's sheet_stow; Bean's choice, Nov 16): outside on the starboard side abaft
-        the fore chains, as frigates of the period stowed it. Its shank lies level along the side shank_over_hinges_m
-        over the hinges of the gun deck lids under it (sheet_pose), its eye forward, its ring turned toward the fore
-        channel and lashed (lash_turns turns) to an eyebolt in the channel's after end; the bill of its inner fluke
-        rests on a billboard and the lower end of its stock bears on the wales; a shank painter from two eyebolts above,
-        coming down between two lids (sheet_painter_place), takes its weight. The eye's x is found so that the lashing
-        is lash_m long. Starboard only: parts SheetAnchor, SheetBillboard, SheetPainter, SheetEyebolts and SheetLashing
-        ('both': not mirrored)"""
+        the fore chains, as frigates of the period stowed it. Its shank rises forward along the side (sheet_pose), from
+        its crown, low over its billboard under the moulding, to its eye at the fore channel, as little as it needs to
+        keep the anchor's lowest point heel_clear_m over the sea with her heeled heel_deg to starboard (no more than
+        max_slope_deg) and shank_over_hinges_m over the hinges of the gun deck lids under it (pose_at); its ring is
+        turned toward the fore channel and lashed (lash_turns turns) to an eyebolt in the channel's after end; the bill
+        of its inner fluke rests on a billboard and the lower end of its stock bears on the wales; a shank painter from
+        two eyebolts in the waist rail's cap, coming down between two lids (sheet_painter_place), takes its weight (its
+        legs' load were it to take all of it, against the rope's breaking strain: min_safety). The eye's x is found so
+        that the lashing is lash_m long, then moved forward as far as the crown must go to come off a lid (no less than
+        lash_min_m left). Starboard only: parts SheetAnchor, SheetBillboard, SheetPainter, SheetEyebolts and
+        SheetLashing ('both': not mirrored)"""
         c, a = self.card["sheet_stow"], self.card["anchors"]["sheet"]
         if a["stow"] != "fore_channel":
             return
@@ -1783,28 +1838,87 @@ class Anchors:
         Rc = k["ring_R"]
         knuck = [(name, np.asarray(self.sk.knuckles[name], float)) for name, _, _, _ in self.sk.lid_groups]
 
+        th = math.radians(c["heel_deg"])
+        L_e, s_k = k["eye"][2], k["stock_z"]
+        w_bb = self.card["billboard"]["size_m"][0]
+        sx = loft.FT / self.sk.L.ppf
+        spans = {name: ((xa - self.sk.L.mid_px) * sx, (xf - self.sk.L.mid_px) * sx)
+                 for name, xa, xf, _ in self.sk.lid_groups}
+        hinge = {name: float(ks[:, 2].max()) for name, ks in knuck}
+        cl_l = c["painter"]["clear_of_lids_in"] * IN
+
+        def lid_floor(x_crown, x_eye, sl):
+            """the lowest the crown may lie for the shank's axis, rising forward at sl, to pass shank_over_hinges_m over
+            the hinges of every lid whose span (clear_of_lids_in beyond either edge) it crosses: (height, lids)"""
+            f, lids = -1e9, []
+            for name, (xa, xf) in spans.items():
+                lo, hi = max(xa - cl_l, x_crown), min(xf + cl_l, x_eye)
+                if lo < hi:
+                    lids.append(name)
+                    f = max(f, hinge[name] + c["shank_over_hinges_m"] - (lo - x_crown) * math.tan(sl))
+            return f, lids
+
+        def off_lid(x_crown):
+            """how far forward the crown must move to come off the span (clear_of_lids_in beyond it) of a lid it lies
+            over, or 0"""
+            return max([xf + cl_l - x_crown + 0.005 for xa, xf in spans.values() if xa - cl_l < x_crown < xf + cl_l],
+                       default=0.0)
+
         def pose_at(x_eye):
-            x_crown = x_eye - k["eye"][2]
-            under = [ks for _, ks in knuck if ks[:, 0].max() > x_crown - 0.6 and ks[:, 0].min() < x_eye + 0.6]
-            z_s = max(float(ks[:, 2].max()) for ks in under) + c["shank_over_hinges_m"]
-            return self.sheet_pose(an, x_eye, z_s, c), z_s
+            """the pose with the eye's hole at x_eye: the stock's centre z_k high enough for the anchor's lowest point to
+            stand heel_clear_m over the sea with her heeled heel_deg to starboard, the crown z_c as high as the
+            moulding over the bill lets it (bill_under_top_m under it) but no higher than the stock (the shank rises
+            forward, as little as that needs) and high enough for the lids under it (lid_floor). Returns (pose, the
+            eye's height, the lids under the shank)"""
+            z_c = z_k = lid_floor(x_eye - L_e, x_eye, 0.0)[0]
+            for _ in range(30):
+                sl = math.asin(min(0.5, (z_k - z_c) / s_k))
+                z_e = z_c + L_e * math.sin(sl)
+                p = self.sheet_pose(an, x_eye, z_e, c, sl)
+                top = self.side_top_over(p["bill"][0], p["bill"][2], 0.5 * w_bb + 0.05)
+                r1 = (top - 0.5 * IN - c["bill_under_top_m"] - p["bill"][2]) if top is not None else 1.0
+                r2 = c["heel_clear_m"] - p["heel_clear_m"]
+                fl, lids = lid_floor(p["o"][0], p["eye"][0], sl)
+                zk1 = z_k + r2 / math.cos(th)
+                zc1 = max(fl, min(zk1, z_c + r1))
+                zk1 = max(zk1, zc1)
+                if abs(zk1 - z_k) < 0.001 and abs(zc1 - z_c) < 0.001:
+                    break
+                z_c, z_k = zc1, zk1
+            else:
+                return p, z_e, lids, f"its pose does not settle (crown {z_c:.3f}, stock {z_k:.3f} m)"
+            if r2 > 0.003:
+                return p, z_e, lids, (f"its stock is {p['heel_clear_m']:.3f} m over the sea at {c['heel_deg']} deg of "
+                                      f"heel (sheet_stow.heel_clear_m {c['heel_clear_m']})")
+            if r1 < -0.003:
+                return p, z_e, lids, (f"its bill is too near the side's top for its billboard (bill z "
+                                      f"{p['bill'][2]:.3f}, the moulding {top:.3f}): the lids {lids} hold its crown up")
+            if math.degrees(sl) > c["max_slope_deg"]:
+                return p, z_e, lids, (f"its shank would rise {math.degrees(sl):.1f} deg to clear the sea "
+                                      f"(sheet_stow.max_slope_deg {c['max_slope_deg']})")
+            return p, z_e, lids, None
 
         def lashing(p, dx=0.0):
-            """the lashing's length with the anchor of pose p moved dx forward: (length, the ring's way up u, the ring's
-            far side Fr). The ring turns about the stock's axis Y in the eye, toward the eyebolt"""
+            """the lashing's length with the anchor of pose p moved dx forward: (length, the ring's way up u, the point
+            Fr of the ring's bar nearest the eyebolt, the bar's tangent there). The ring turns about the stock's axis Y
+            in the eye until the eyebolt lies in its plane (the lashing's pull then has no moment about Y), and the
+            lashing draws round to the part of the ring nearest the eyebolt, where its lead leaves the bar square"""
             eye = p["eye"] + dx * EX
             Y = p["R"][:, 1]
             u = unit((E - eye) - ((E - eye) @ Y) * Y)
-            Fr = eye + 2.0 * Rc * u
-            return float(np.linalg.norm(E - Fr)) - R_le - r_le - an.r_bar - an.pudden, u, Fr
+            C = eye + Rc * u
+            w = unit(E - C)
+            Fr = C + Rc * w
+            return (float(np.linalg.norm(E - Fr)) - R_le - r_le - an.r_bar - an.pudden, u, Fr,
+                    unit(np.cross(np.cross(u, Y), w)))
         # the eye's x for a lashing lash_m long. Moved along the side, the anchor keeps its pose nearly: find the shift
         # that gives lash_m with the pose held (the first root from aft, where the ring still points forward to the
         # eyebolt; the lashing shortens to a least length and then grows as the ring swings past), then solve the pose
         # there again, until the two agree
         x_eye = ce["x"] - 2.0 * Rc - c["lash_m"]
-        p, z_s = pose_at(x_eye)
+        p, z_s, lids, err = pose_at(x_eye)
         for _ in range(6):
-            gap, u, Fr = lashing(p)
+            gap, u, Fr, t_bar = lashing(p)
             if abs(gap - c["lash_m"]) < 0.002:
                 break
             ds = np.arange(-2.0, 1.0001, 0.01)
@@ -1821,10 +1935,23 @@ class Anchors:
                 else:
                     hi = mid
             x_eye += 0.5 * (lo + hi)
-            p, z_s = pose_at(x_eye)
+            p, z_s, lids, err = pose_at(x_eye)
         else:
             raise SystemExit(f"anchors: the sheet anchor's lashing does not settle at lash_m ({gap:.3f} m)")
-        Y = p["R"][:, 1]
+        # a crown low over the billboard can't lie over a lid (the lid would swing up into it): where the lashing's
+        # length would put it there, the anchor goes forward until it comes off the lid, its lashing shorter
+        for _ in range(3):
+            d = off_lid(float(p["o"][0]))
+            if d <= 0.0:
+                break
+            x_eye += d
+            p, z_s, lids, err = pose_at(x_eye)
+            gap, u, Fr, t_bar = lashing(p)
+        if gap < c["lash_min_m"]:
+            raise SystemExit(f"anchors: the sheet anchor's lashing is {gap:.3f} m, under lash_min_m, where its crown "
+                             f"comes off the lids")
+        if err:
+            raise SystemExit(f"anchors: the sheet anchor, its eye at x {x_eye:.3f}: {err}")
         R, o = p["R"], p["o"]
         an.build_ring(k["eye"], R.T @ u)
         T = np.eye(4)
@@ -1834,23 +1961,27 @@ class Anchors:
             m.extend(M, T)
         V, _, _ = m.arrays()
         # the waist's side is low here: the billboard's top stays half an inch under the lowest moulding or gunwale edge
-        # over the bill
-        w_bb = self.card["billboard"]["size_m"][0]
-        tops = []
-        for name in ("Moulding", "BulwarkTop"):
-            Vm = np.asarray(self.skin[name][0], float)
-            sel = (np.abs(Vm[:, 0] - p["bill"][0]) < 0.5 * w_bb + 0.05) & (Vm[:, 1] > 0) & (Vm[:, 2] > p["bill"][2])
-            if sel.any():
-                tops.append(float(Vm[sel, 2].min()))
-        if tops and min(tops) - 0.5 * IN < p["bill"][2] + c["bill_under_top_m"]:
-            raise SystemExit(f"anchors: the sheet anchor's bill is too near the side's top for its billboard (bill z "
-                             f"{p['bill'][2]:.3f}, the moulding {min(tops):.3f})")
+        # over the bill (pose_at holds the bill bill_under_top_m under that)
+        top = self.side_top_over(p["bill"][0], p["bill"][2], 0.5 * w_bb + 0.05)
         bb = self._billboard(self.mesh("SheetBillboard", "both"), p["bill_foot"], p["bill_normal"], p["bill"], V,
-                             top=min(tops) - 0.5 * IN if tops else None)
+                             top=top - 0.5 * IN if top is not None else None)
         z_p, stretch = self.sheet_painter_place(an, R, o, c["painter"], bb, w_bb)
+        # its eyebolts are driven up into the waist rail's cap, in_from_edge_in in from its outer edge, over where it
+        # takes the shank: its legs lead steeply up from the shank (sheet_painter_place keeps them off the stanchions)
+        Sp = R @ np.array([0.0, 0.0, z_p]) + o
+        wr = self.waist_rail_at(float(Sp[0]))
+        eyes_at = (np.array([Sp[0], wr["edge_y"] - c["painter"]["in_from_edge_in"] * IN, wr["under_z"]]), -EZ, EX)
         pt = self._painter(an, R, o, c["painter"], self.mesh("SheetPainter", "both"), self.mesh("SheetEyebolts", "both"),
-                           z_loc=z_p)
-        pt.update({"at_shank": round(float(z_p / k["eye"][2]), 3), "clear_stretch_x_m": stretch})
+                           z_loc=z_p, eyes_at=eyes_at)
+        # each leg's load were the painter to take her whole weight (the bill and the stock's foot bear on near
+        # upright faces), against the rope's breaking strain (break_tons_per_circ2 x its circumference squared)
+        W_kN = a["lb"] * 0.45359237 * 9.80665 / 1000.0
+        leg_kN = W_kN / (2.0 * math.sin(math.radians(min(pt["legs_deg"]))))
+        break_kN = c["painter"]["break_tons_per_circ2"] * c["painter"]["circ_in"] ** 2 * 2240 * 0.45359237 * 9.80665 / 1000
+        pt.update({"at_shank": round(float(z_p / k["eye"][2]), 3), "clear_stretch_x_m": stretch,
+                   "to": "the waist rail's cap", "rail_under_z_m": round(wr["under_z"], 3),
+                   "weight_kN": round(W_kN, 1), "leg_kN_if_it_took_her_weight": round(leg_kN, 1),
+                   "break_kN": round(break_kN, 1), "safety": round(break_kN / leg_kN, 2)})
         # the lashing: its eyebolt in the channel's end, turns round the ring's bar and through the eye
         mb = self.mesh("SheetEyebolts", "both")
         mb.cur = "lashing eyebolt"
@@ -1859,13 +1990,14 @@ class Anchors:
         if np.linalg.norm(np.cross(lead, ce["n"])) < 0.2:
             along = EZ
         self._eyebolt(mb, face, ce["n"], along, le)
-        self.sheet_lashing(Fr, Y, E, ce["n"], along, R_le, r_le, an)
+        self.sheet_lashing(Fr, t_bar, E, ce["n"], along, R_le, r_le, an)
         shank = R @ EZ
         self.info["sheet"] = {
             "lb": a["lb"], "iron_kg": round(an.iron_kg, 1), "shank_m": round(an.Ls, 3),
             "eye_m": np.round(p["eye"], 3).tolist(), "crown_m": np.round(o, 3).tolist(),
-            "shank_z_m": round(z_s, 3), "lids_under": [n for n, ks in knuck if ks[:, 0].max() > o[0] - 0.6 and
-                                                       ks[:, 0].min() < p["eye"][0] + 0.6],
+            "eye_z_m": round(z_s, 3), "crown_z_m": round(float(o[2]), 3), "lids_under": lids,
+            "heel": {"deg": c["heel_deg"], "lowest_over_sea_m": round(p["heel_clear_m"], 3),
+                     "lowest_point_m": np.round(p["heel_lowest_m"], 3).tolist()},
             "shank_slope_deg": round(math.degrees(math.asin(float(shank[2]))), 2),
             "roll_deg": round(p["roll_deg"], 2), "shank_out_from_side_m": round(p["out_m"], 3),
             "bill_m": np.round(p["bill"], 3).tolist(), "stock_end_over_side_m": round(p["stock_end_over_side_m"], 4),
@@ -1898,6 +2030,11 @@ class Anchors:
                    for _, xa, xf, _ in self.sk.lid_groups]
         xb = bb["centre_m"][0]
         blocked.append((xb - 0.5 * w_bb - cl - reach, xb + 0.5 * w_bb + cl + reach))
+        # the eyebolts hang under the waist rail's cap: an inch clear of its stanchions fore and aft
+        R_e = 0.5 * (c["eye_in"][0] + c["eye_in"][1]) * IN
+        wr = self.waist_rail_at(0.5 * (lo + hi))
+        for xs_, hw in zip(wr["stanchions_x"], wr["stanchions_half"]):
+            blocked.append((xs_ - hw - IN - 0.5 * c["eyes_apart_m"] - R_e, xs_ + hw + IN + 0.5 * c["eyes_apart_m"] + R_e))
         free = [(lo, hi)]
         for a, b in blocked:
             nxt = []

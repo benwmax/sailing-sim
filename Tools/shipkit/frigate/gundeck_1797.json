@@ -70,7 +70,7 @@
   }
  },
  "overhead": {
-  "note": "the spar deck's framing seen from the gun deck: its planks are 3 in thick (specs_1795.json inside.deck_slab_in: the placeholder's 8 in slab became the planks) on beams 14 in sided and 10 in moulded every other beam station (the waist's beams, deck_1797.json, carried on fore and aft), with a ledge between each two (6 by 5 in). Where a beam or ledge would cross an opening (a hatchway's coaming, the companion, a skylight, the chimney, a mast's partners, the capstan) it is cut: half beams from the side to a carling either side of the opening (8 by 8 in, fore and aft from the next whole beam to the next), and head ledges across between the carlings at the opening's ends. Under the gangways in the waist the stations between the waist's beams carry half beams to a carling under the opening's coaming. A breast beam under each break, its face flush with the deck's edge. The beams' ends rest on a clamp along the side (10 in deep, 5 in thick; over each gun port its lower edge stands at least clamp_over_port_in over the port's head, clear of the housing bolts over the port (guns_1797.json: 58.5 in over the deck, the heads 53.6 to 55.6 in) and the housed gun's muzzle lashing through them), held by a hanging knee under each beam that comes between two ports (7 in sided, arms 30 in, its foot clear of the ports' linings; one that would come within an inch of a lid lanyard's cleat slides along under its beam to the beam's face); a stanchion (6 in, turned) under every second beam on the middle line where the room allows (all estimate, period practice for a frigate's upper deck)",
+  "note": "the spar deck's framing seen from the gun deck: its planks are 3 in thick (specs_1795.json inside.deck_slab_in: the placeholder's 8 in slab became the planks) on beams 14 in sided and 10 in moulded every other beam station (the waist's beams, deck_1797.json, carried on fore and aft), with a ledge between each two (6 by 5 in). Where a beam or ledge would cross an opening (a hatchway's coaming, the companion, a skylight, the chimney, a mast's partners, the capstan) it is cut: half beams from the side to a carling either side of the opening (8 by 8 in, fore and aft from the next whole beam to the next), and head ledges across between the carlings at the opening's ends. Under the gangways in the waist the stations between the waist's beams carry ledges out from the side to a carling under the opening's coaming; the waist's own beams (deck.py, across the open waist, their tops at the planks' underside) rest on the same clamp, their ends cut to the side, with their knees and stanchions as the beams here. A breast beam under each break, its face flush with the deck's edge. The beams' ends rest on a clamp along the side (10 in deep, 5 in thick; over each gun port its lower edge stands at least clamp_over_port_in over the port's head, clear of the housing bolts over the port (guns_1797.json: 58.5 in over the deck, the heads 53.6 to 55.6 in) and the housed gun's muzzle lashing through them), held by a hanging knee under each beam that comes between two ports (7 in sided, arms 30 in, its foot clear of the ports' linings; one that would come within an inch of a lid lanyard's cleat slides along under its beam to the beam's face); a stanchion (6 in, turned) under every second beam on the middle line where the room allows (all estimate, period practice for a frigate's upper deck)",
   "beam_in": [
    14.0,
    10.0
@@ -83,6 +83,16 @@
    8.0,
    8.0
   ],
+  "chamfer_in": {
+   "beam": 1.0,
+   "ledge": 0.5,
+   "carling": 0.75
+  },
+  "chamfer_stop_m": {
+   "side": 0.85,
+   "inner": 0.1
+  },
+  "chamfer_note": "the beams', ledges' and carlings' lower edges chamfered (a beam's and a ledge's stopped short of the side, where the hanging and lodging knees and the clamp take its end, and of a carling; a carling's the whole way between the members its ends butt on): period joinery practice, sizes estimate",
   "opening_margin_in": 2.0,
   "clamp_in": [
    10.0,
@@ -94,6 +104,19 @@
    "arm_in": 30.0,
    "throat_in": 9.0,
    "port_clear_in": 4.0
+  },
+  "lodging_knee": {
+   "sided_in": 6.0,
+   "arm_beam_in": 30.0,
+   "arm_side_in": 20.0,
+   "breadth_in": 7.0,
+   "end_in": 4.5,
+   "throat_in": 4.0,
+   "clear_of_ports_m": 0.35,
+   "short_of_next_in": 1.0,
+   "least_side_arm_in": 12.0,
+   "side_within_deg": 30.0,
+   "note": "a lodging knee at each end of each beam forward of the cabin (the whole and half beams and the waist's), lying flat in the angle between the beam's face and the side, its top flush with the beam's under the planks and sided_in deep: one arm along the beam's face (arm_beam_in), the other along the side (arm_side_in, or short_of_next_in short of the next member where that comes first, and none shorter than least_side_arm_in), each breadth_in broad at the throat and end_in at its end, the throat rounded to throat_in. On the face toward the ship's middle where that bay is clear_of_ports_m clear of the ports (the bays over them hold the implements and the lanyards), else on the other face; none where the side turns more than side_within_deg from fore and aft (the bow). Estimate: period practice for a frigate's upper deck, sizes from the hanging knees'"
   },
   "stanchion_in": 6.0,
   "stanchion_clear_m": 0.2
@@ -170,8 +193,8 @@
   "coaming_thick_in": 5.0
  },
  "wells": {
-  "note": "under each opening a well down to the berth deck (slice 13 builds it): lined dark, its floor 6 ft 10 in below the gun deck's top (the berth deck's height: estimate). The ladders land on that floor",
-  "depth_ft": 6.8333
+  "note": "under each opening a well down to the berth deck (slice 13 builds it): lined dark, its floor 7 ft 2 in below the gun deck's top, the berth deck's top (slice 13's line, handed to the orlop slice: the 1926 midship section's spacing, which sets her berth deck 17 ft 0 in over the rabbet amidships, where the 1795 section drawn from Humphreys' specifications has its lower deck). The ladders land on that floor",
+  "depth_ft": 7.1667
  },
  "ladders": {
   "note": "a ladder down each ladderway to the berth deck, from the hatch's after coaming forward (estimate), as the spar deck's (deck_1797.json); the companion's ladder from the quarterdeck's companion down to this deck, landing aft (estimate). The spar deck's four ladders at the breaks land on this deck in the waist: nothing stands within clear_m of their feet",
@@ -209,7 +232,28 @@
    4.5,
    4.5,
    13.0
-  ]
+  ],
+  "bars": {
+   "long_ft": 12.0,
+   "square_in": 4.25,
+   "square_long_in": 14.0,
+   "round_in": [
+    4.0,
+    2.75
+   ],
+   "gap_in": 0.75,
+   "bars_a_bay": 3,
+   "out_of_side_m": 0.35,
+   "stirrup_in": [
+    1.5,
+    0.375
+   ],
+   "stirrups_from_side_m": [
+    1.0,
+    3.2
+   ],
+   "note": "the capstan's bars, one for each hole (bar_holes), stowed overhead athwartships when the capstan is not manned: bars_a_bay side by side (gap_in apart) in the bays nearest the capstan clear of the ports, lanterns and openings, half each side, their outboard ends out_of_side_m in from the side, each set in two iron stirrups (stirrup_in: wide, thick) from the planks at stirrups_from_side_m, the bars' tops under the lodging knees. Each bar long_ft long, square (square_in) for square_long_in at its inner end to fit the drumhead's hole, then round, tapering from round_in[0] to round_in[1] at the hand. Estimate: period practice (capstan bars were stowed in racks overhead between the beams), sizes from the drumhead's holes"
+  }
  },
  "pumps": {
   "note": "the 1849 plan's pumps either side of the main mast: aft of it the chain pumps (two chains in one case over the well, worked by a crank across the ship with a winch handle at each end; estimate: the period's chain pump), forward of it a pair of common (brake) pumps, their brakes pointing forward (estimate). Sizes estimate",
@@ -275,10 +319,12 @@
   "standard_in": [
    10.0,
    12.0
-  ]
+  ],
+  "chamfer_in": 1.5,
+  "bolt_head_in": 1.75
  },
  "galley": {
-  "note": "the galley under the forecastle, just abaft the riding bitts (where the 1849 plan has its after pair of bitts: bitts): an iron stove of the period's patent kind (Brodie's) on a brick hearth, its boilers' lids on top, the oven and fire doors on its fore face, a rail round it, its flue rising into the forecastle's chimney (deck_1797.json chimney) and meeting the chimney's plate. Sizes estimate",
+  "note": "the galley under the forecastle, just abaft the riding bitts (where the 1849 plan has its after pair of bitts: bitts): an iron stove of the period's patent kind (Brodie's) on a brick hearth, its boilers' lids on top, the fire's open mouth and the oven's door on its fore face, a rail round it, its flue rising into the forecastle's chimney (deck_1797.json chimney) and meeting the chimney's plate. Sizes estimate",
   "x_m": [
    16.55,
    18.23
@@ -297,7 +343,43 @@
    1.25
   ],
   "rail_high_in": 30.0,
-  "rail_out_in": 8.0
+  "rail_out_in": 8.0,
+  "detail": {
+   "bolt_in": 1.0,
+   "bolt_pitch_in": 6.0,
+   "angle_in": [
+    2.5,
+    0.5
+   ],
+   "band_in": [
+    2.5,
+    0.5
+   ],
+   "fiddle_in": [
+    1.5,
+    0.5
+   ],
+   "kerb_in": [
+    1.5,
+    0.375
+   ],
+   "grate_bar_in": 0.75,
+   "grate_bars": 5,
+   "ash_door_in": [
+    10.0,
+    4.0
+   ],
+   "damper_handle_in": 5.0,
+   "hinge": {
+    "strap_in": [
+     1.25,
+     0.15
+    ],
+    "knuckle_in": 0.75,
+    "strap_of_width": 0.7
+   },
+   "note": "how the stove is put together (estimate, from the period's cast-iron ship's stoves): cast plates bolted at angle irons (angle_in: leg, thickness) up the corners, round bolt heads bolt_in across at bolt_pitch_in; a band round the sides and after end at half height and a rib up each side's middle (band_in: width, proud); a fiddle bar round the top plate's edge (fiddle_in: high, square) to keep the pots on; an iron angle round the hearth's top edge (kerb_in: standing up, thick); the fire's open mouth with grate_bars bars grate_bar_in round across its lower part, the ash pit's door (ash_door_in) under it, and the oven's door on two strap hinges (hinge: strap width and thickness, knuckle, the strap's reach of the door's width) with a turned latch; a band and the damper's handle (damper_handle_in out) on the flue"
+  }
  },
  "bow": {
   "note": "the bowers' cables come in through the hawse holes (anchors_1797.json, the bores now open to the gun deck), over the manger (a low board across the bow aft of the holes that stops the water coming in with the cables running aft) and down the cable scuttles to the tiers below (slice 14), lead collars round the scuttles. Sizes estimate",
@@ -344,6 +426,19 @@
    }
   ],
   "door_in": 1.75,
+  "door_hang": {
+   "note": "each door hangs on two iron butt hinges at its outboard post, their pins' axis on the bulkhead's after face at the opening's edge (knuckle_in: diameter and length, 9 in in from the leaf's head and foot); the leaf is set recess_in in from that face, hinge_gap_in and latch_gap_in clear of its jambs (the latch side wide enough that the leaf's forward corner there clears the jamb as it swings), so it swings aft into the cabin clear of its jambs and casing up to open_deg. A low oak sill across the doorway sill_in over the deck; the leaf's foot under_in over the sill, or over the floor cloth where the deck rises aft under its swing if that is higher (all estimate, period joinery)",
+   "sill_in": 1.25,
+   "under_in": 0.25,
+   "recess_in": 0.3,
+   "hinge_gap_in": 0.25,
+   "latch_gap_in": 0.2,
+   "knuckle_in": [
+    0.5,
+    3.0
+   ],
+   "open_deg": 90.0
+  },
   "state_rooms": {
    "y_m": 2.6,
    "fore_x_m": -25.7,
@@ -358,7 +453,27 @@
   "seat": {
    "high_in": 17.0,
    "deep_in": 20.0,
-   "rudder_box_in": 2.0
+   "rudder_box_in": 2.0,
+   "top_in": 1.25,
+   "gap_in": 0.125,
+   "nosing_in": 0.75,
+   "hinge_rail_in": 3.0,
+   "middle_beyond_box_in": 2.0,
+   "lids_a_side": 2,
+   "hinge_in": [
+    1.5,
+    0.2
+   ],
+   "frame_proud_in": [
+    0.375,
+    0.25
+   ],
+   "stile_in": 2.5,
+   "bottom_rail_in": 3.5,
+   "top_rail_in": 2.5,
+   "panel_max_in": 22.0,
+   "field_inset_in": 0.6,
+   "note": "the window seat across the stern between the state rooms (estimate, period cabin joinery): deep_in deep and high_in high, the rudder's head boxed inside it (rudder_box_in clear); a hinge rail hinge_rail_in deep let into the after wall, lids_a_side lids each side before it on brass hinges (hinge_in: knuckle long and round; the piece over the rudder's head is fixed, middle_beyond_box_in past its box), gap_in between the pieces, the top top_in thick with its nosing (nosing_in over the front) rounded over; the front board framed (stile_in stiles, bottom_rail_in and top_rail_in rails) with raised and fielded panels no wider than panel_max_in (frame_proud_in: the frame's and the fields' faces off the board; field_inset_in the bevel's width)"
   },
   "floor_cloth": {
    "thick_in": 0.12,
@@ -428,7 +543,34 @@
   "after_wall": {
    "reveal_in": 1.0,
    "lining_in": 0.75,
-   "note": "the after wall (the stern's inside, raked as the gun rows end) with the three stern windows opened through it and the transom: each window's inside opening reveal_in larger all round than the glass, the reveal lined between them with lining_in board (an inch board planed, mitred at the corners), its face lining_in inside the glass's edge where it butts on the glass, behind the sash's frame"
+   "note": "the after wall (the stern's inside, raked as the gun rows end) with the three stern windows opened through it and the transom: each window's inside opening reveal_in larger all round than the glass, the reveal lined between them with lining_in board (an inch board planed, mitred at the corners), its face lining_in inside the glass's edge where it butts on the glass, behind the sash's frame",
+   "panelling": {
+    "clear_in": 1.0,
+    "cornice_in": 6.0,
+    "cornice_out_in": 2.0,
+    "fascia_out_in": 0.75,
+    "sill_out_in": 1.0,
+    "pilaster_in": [
+     12.0,
+     0.75
+    ],
+    "base_in": [
+     4.0,
+     0.75
+    ],
+    "capital_in": [
+     3.5,
+     1.0
+    ],
+    "stile_in": 3.0,
+    "head_in": [
+     2.5,
+     0.75
+    ],
+    "field_out_in": 0.25,
+    "field_inset_in": 0.75,
+    "note": "the after wall's joinery between the state rooms, laid on its rake (estimate, period cabin joinery: a captain's cabin was panelled and painted): a sill rail along the seat's top under the windows (sill_out_in out), a pilaster between each two windows (pilaster_in: wide, out) on a base (base_in: high, out past the pilaster) under a capital (capital_in: high, out past it) and a stile at each end (stile_in wide), a head moulding over each window (head_in: high, out) and a raised and fielded panel over that (field_out_in, field_inset_in), and a cornice under the spar deck's planks (cornice_in high, its fascia fascia_out_in out and its ovolo cornice_out_in out); every piece clear_in clear of a window's opening"
+   }
   },
   "lights_m": [
    [
@@ -439,7 +581,7 @@
   "lights_note": "the cabin's side light each side (slice 9's sash and glass, decor_1797.json cabin_window) is a port in the port band with no lid, cut through the side as the gun ports are (specs_1795.json cabin_lights_m): daylight comes in through it"
  },
  "lanterns": {
-  "note": "horn lanterns hung under the spar deck between each second pair of guns a side, and one over the cabin's table; each a light in the game data (gundeck.json lights): warm candle light, cast without shadows, so the gun deck's light costs what slice 12's light budget allows (the PC lighting lane tunes it). Sizes estimate",
+  "note": "horn lanterns: one between each second pair of guns a side (between_guns), hung between the spar deck's beams on a hook in the planks' underside, in the bay nearest the middle between the two ports that stands clear of both (clear_of_ports_m: the bays over the ports hold the guns' implements) and in_from_side_m in from the side's inner face, over the room between the two guns and out of the walk fore and aft inboard of them (fighting lanterns hung at the side between the guns: estimate); and one over the middle of the cabin's table, on a bar across between the carlings either side of the skylight over it (cabin_bar_in sided and moulded, its top cabin_bar_under_in under the planks). Each a light in the game data (gundeck.json lights): warm candle light. Sizes estimate",
   "between_guns": [
    [
     1,
@@ -470,7 +612,8 @@
     14
    ]
   ],
-  "y_m": 1.05,
+  "in_from_side_m": 1.15,
+  "clear_of_ports_m": 0.35,
   "body_in": [
    9.0,
    14.0
@@ -478,6 +621,11 @@
   "roof_in": 5.0,
   "ring_in": 2.0,
   "hook_in": 4.0,
+  "cabin_bar_in": [
+   3.0,
+   3.0
+  ],
+  "cabin_bar_under_in": 1.0,
   "light": {
    "colour_rgb": [
     1.0,
@@ -486,13 +634,20 @@
    ],
    "kelvin": 2200,
    "lumens": 180.0,
+   "lumens_note": "set for the game's exposure below decks, not a candle's: a tallow candle gives about 12 lm and a horn lantern passes less than that, so a period gun deck at night was far darker than the game shows it (the PC lighting lane tunes it against the exposure, VisualPipeline's incident meter)",
    "radius_m": 6.0,
    "cast_shadows": false,
    "blender_watts": 25.0
   },
+  "cabin_light": {
+   "radius_m": 4.0,
+   "cast_shadows": true,
+   "note": "the cabin's lantern hangs 1.5 m abaft the bulkhead: it casts shadows so its light stops at the bulkhead (unshadowed it lit the deck 5 m forward of it), out of its own lantern's mesh (which casts none)"
+  },
+  "zones_note": "each light is in a zone (gun_deck, great_cabin): in the game a light should light only the objects of its own zone (lighting channels: gundeck.json below.zones), or, unshadowed, it shines through the planks onto the spar deck's guns and the berth deck below, and through the side onto the sea and the channels. The deck's lanterns reach no further than the cabin's bulkhead (each one's radius_m stops short of its fore face) and the cabin's casts shadows, so neither shines through the bulkhead",
   "light_budget": {
    "max_lights": 16,
-   "note": "fourteen lanterns and the cabin's, all unshadowed point lights; the ports and hatches give daylight: no light probes or shadowing lights below in this slice (the PC lane's to add if the frame allows)"
+   "note": "fourteen lanterns, unshadowed, and the cabin's, shadowed (its radius 4 m); the ports and hatches give daylight: no light probes below in this slice (the PC lane's to add if the frame allows)"
   }
  },
  "gun_gear": {
@@ -617,8 +772,16 @@
    "cleat_out_of_jamb_in": 3.5,
    "cleat_over_deck_in": 40.0,
    "tail_in": 6.0,
-   "note": "two to a lid, over its hinges' straps: an eyebolt through the lid at the strap's end (ring_from_hinge_of_lid of the lid's height down from the hinge) with a ring in it; the lanyard (1.5 in rope) spliced to the ring, up to a hole 2.25 in across bored through the side and the clamp over the port (hole_over_clamp_edge_in over the clamp's lower edge there, which stands clear of the housing bolts; past the clamp's ends hole_above_head_in over the port's head, inside or out, whichever is the higher) and lined with lead (a bush each face, bush_in across and proud; a chain plate over the port stops an inch above the outer bush: standing_1797.json chain_note), in through it and down the inside to a cleat beside the port (cleat_out_of_jamb_in from the jamb, cleat_over_deck_in up), belayed there with its tail hanging. Outside it lies down the shut lid over the hinge, and runs taut to the open lid's ring"
+   "lay_off_in": 0.1,
+   "note": "two to a lid, over its hinges' straps: an eyebolt through the lid at the strap's end (ring_from_hinge_of_lid of the lid's height down from the hinge) with a ring in it; the lanyard (1.5 in rope) spliced to the ring, up to a hole 2.25 in across bored through the side and the clamp over the port (hole_over_clamp_edge_in over the clamp's lower edge there, which stands clear of the housing bolts, or lower where the clamp is eased so shallow over a port that the bush's rim would come within a quarter inch of its top; past the clamp's ends hole_above_head_in over the port's head, inside or out, whichever is the higher) and lined with lead (a bush each face, bush_in across and proud; a chain plate over the port stops an inch above the outer bush: standing_1797.json chain_note), in through it and down the inside to a cleat beside the port (cleat_out_of_jamb_in along the side's face from the jamb as it is on the inner face, cleat_over_deck_in up; the cleat and both bushes lie on the faces square to them and stand on the planking as built), belayed there with its tail hanging plumb; its runs down the inside (bush to cleat, and the tail) lie taut over the side's inner face, the clamp and the waterway, lay_off_in off them. Outside it lies down the shut lid over the hinge, and runs taut to the open lid's ring. The bushes and cleats are LanyardFittings, the rope inside (and outside the bridle ports' lids, which never open) LidLanyards"
   }
+ },
+ "port_stops": {
+  "proud_in": 0.75,
+  "deep_in": 2.0,
+  "off_lid_in": 0.1,
+  "let_in": 0.1,
+  "note": "a stop round the inside of each gun port with a lid, for the lid to close against: the lid is the planking's cut-out less a quarter inch all round and as thick as the planking, so it bears on the frames' outer face, and the port's opening through the frames is narrower than the cut-out by the stop's lap (the period's rabbet round a port, estimate). Each stop stands proud_in into the opening from the lining (lapping the shut lid by half an inch), deep_in along the side's normal, its outer face off_lid_in inboard of the lid's inner face, its back let let_in into the lining; the sill's and head's run from jamb to jamb and the jambs' between them. With the lid shut no daylight shows round it (build.json gundeck.lid_light); with it open the stops are the shoulder the lid sat on"
  },
  "budget_tris": 1200000,
  "budget_note": "the plan's figure for slice 12 (the gun deck, loaded only when below: build.json gundeck.triangles_below): a starting point, not a ceiling (Bean, Nov 12: frame rate is the only hard limit), so the build reports the count against it and never fails on it",
@@ -636,13 +799,16 @@
    [["CabinBulkhead"], ["GunWaterways"], "the cabin's bulkhead's ends are scribed down over the waterways", 0.55],
    [["CabinBulkhead"], ["SparDeck"], "the cabin's bulkhead's head under the spar deck's planks", 0.25],
    [["CabinFurniture"], ["FloorCloth"], "the cabin's table, chairs and lockers stand on the floor cloth", 0.25],
+   [["CapstanBars"], ["SparDeck"], "each stirrup's straps go up into the planks over the capstan bars, bolted through them", 0.65],
    [["Clamps"], ["DeckBeams"], "the spar deck's beams' ends rest on the clamp, let down into it", 0.5],
    [["Clamps"], ["GunWall"], "the clamp is bolted to the side's inner face, which curves under its back", 0.6],
    [["Clamps"], ["HangingKnees"], "each hanging knee's arm is fayed over the clamp", 0.75],
-   [["Clamps"], ["LidLanyards"], "the lid lanyards' holes are bored through the clamp over each port, lined with their lead bushes", 1.55],
+   [["Clamps"], ["LanyardFittings"], "the lid lanyards' holes are bored through the clamp over each port, lined with their lead bushes", 1.3],
    [["Clamps"], ["StateRooms"], "the state rooms' fore walls are scribed round the clamp at the side", 0.3],
+   [["Clamps"], ["WaistFrame"], "the waist's beams' ends rest on the clamp as the deck beams' do", 0.55],
    [["DeckBeams"], ["GunImplements"], "the rammers, sponges, worms and ladles hang on hooks driven into the beams", 0.65],
    [["DeckBeams"], ["HangingKnees"], "each hanging knee's upper arm is fayed to its beam's side", 0.6],
+   [["DeckBeams"], ["LodgingKnees"], "each lodging knee's arm is fayed to its beam's face", 0.35],
    [["DeckBeams"], ["SparDeck"], "the spar deck's planks are laid on its beams", 0.45],
    [["DeckBeams"], ["Stanchions"], "each stanchion's head is under its beam", 0.4],
    [["DeckBeams"], ["StateRooms"], "the state rooms' walls are stepped round the beams over them", 0.25],
@@ -674,18 +840,26 @@
    [["GunWaterways"], ["Manger"], "the manger's ends are scribed down over the waterways", 1.4],
    [["GunWaterways"], ["StateRooms"], "the state rooms' fore walls are scribed down over the waterway", 0.55],
    [["HangingKnees"], ["GunWall"], "each hanging knee's lower arm is fayed to the side's inner face", 0.6],
+   [["HangingKnees"], ["WaistFrame"], "each waist beam has its hanging knee at each end, fayed to its side", 0.25],
    [["HatchLadders"], ["Wells"], "the ladders down stand in their hatchways' wells", 0.25],
    [["Hatchways"], ["Wells"], "each coaming stands on its well", 0.25],
-   [["LidLanyards"], ["GunWall"], "the lanyards' cleats are let into the side's inner face, and their lead bushes go out through it", 1.85],
-   [["LidLanyards"], ["LidLanyards_Shut"], "each lanyard runs on out of its lead bush to its shut lid", 0.5],
+   [["LanyardFittings"], ["GunWall"], "the lanyards' cleats are let into the side's inner face, and their lead bushes go out through it", 0.8],
+   [["LanyardFittings"], ["LidLanyards"], "each lanyard comes in through its lead bush and is belayed round its cleat's horns", 0.5],
+   [["LanyardFittings"], ["LidLanyards_Shut"], "each lanyard runs on out of its lead bush to its shut lid", 0.5],
+   [["LanyardFittings"], ["Skin"], "the lanyards' lead bushes go out through the planking", 1.3],
    [["LidLanyards"], ["Lid_15_P", "Lid_15_S"], "the bridle ports have no gun and their lids stay shut: their lanyards are spliced to their rings", 0.45],
-   [["LidLanyards"], ["Skin"], "the lanyards' lead bushes go out through the planking", 1.3],
-   [["LidLanyards_Open"], ["Skin"], "each open lid's lanyard comes out of its bush in the planking", 1.1],
-   [["LidLanyards_Shut"], ["Skin"], "each shut lid's lanyard comes out of its bush in the planking", 1.1],
+   [["LidLanyards"], ["Skin"], "the bridle ports' lanyards come out of their bushes in the planking", 1.05],
+   [["LidLanyards_Open"], ["Skin"], "each open lid's lanyard comes out of its bush in the planking", 1.05],
    [["LidLanyards_Shut"], ["Lid_0[1-9]_[PS]", "Lid_1[0-4]_[PS]"], "each shut lid's lanyards are spliced to its rings", 0.5],
+   [["LidLanyards_Shut"], ["Skin"], "each shut lid's lanyard comes out of its bush in the planking", 1.05],
+   [["LodgingKnees"], ["GunWall"], "each lodging knee's arm along the side is fayed to the side's inner face", 0.35],
+   [["LodgingKnees"], ["SparDeck"], "the spar deck's planks are laid over the lodging knees as over the beams", 0.25],
+   [["LodgingKnees"], ["WaistFrame"], "the waist's beams have their lodging knees as the deck beams do, fayed to their faces", 0.35],
    [["Manger"], ["GunWall"], "the manger's ends are let into the side's inner face", 0.45],
    [["Manger"], ["Wells"], "the cable scuttles' collars and linings sit in their wells", 0.55],
    [["MastWedges"], ["Mast_Fore", "Mast_Main", "Mast_Mizzen"], "the wedges are driven in round each mast where it passes the deck and bear on it (the mast carries no hoop there: spars_1795.json hoops)", 0.45],
+   [["PortStops"], ["PortLinings"], "each port's stop is let into its lining all round", 0.35],
+   [["Stanchions"], ["WaistFrame"], "each waist beam has its stanchion under its middle, as the deck beams have", 0.25],
    [["StateRooms"], ["GunWall"], "the state rooms' fore walls are scribed to the side's inner face", 0.7],
    [["StateRooms"], ["SparDeck"], "the state rooms' walls' heads under the spar deck's planks", 0.3],
    [["StateRooms"], ["WindowSeat"], "the window seat's ends against the state rooms' walls", 0.25],
@@ -695,3 +869,4 @@
   ]
  }
 }
+

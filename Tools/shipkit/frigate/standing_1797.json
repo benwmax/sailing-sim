@@ -107,7 +107,9 @@
   "ratline_pitch_in": 15,
   "ratline_src": "rule: 13 to 16 in apart; every fifth one is carried to the aftermost shroud",
   "catharpins": [3, 3, 0],
-  "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)"
+  "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)",
+  "catharpins_bowse_in": [6.0, 6.0, 0.0],
+  "catharpins_bowse_src": "estimate: how far the catharpins pull every lower shroud in toward the middle line at the futtock stave (the stave, seized across them, carries the pull to each; the shroud bends there). The Encyclopaedia Britannica (1797), CAT-HARPINGS: 'a purchase of ropes employed to brace in the shrouds of the lower masts behind their yards', so the yards could be drawn round more obliquely close-hauled (Lever 1808 the same); by how much no source gives: a few inches, taken as half a foot. The mizzen has none, so its shrouds stay straight"
  },
  "topmast": {
   "rim_from": 0.07,
@@ -150,7 +152,7 @@
   "margin_deg": 1.0,
   "hoists": [0.0, 0.25, 0.5, 0.75, 1.0],
   "ease_step_in": 1.0,
-  "ease_max_ft": {"lower": 3.0, "topsail": 0.5, "topgallant": 0.0, "royal": 0.0, "spanker": 0.0, "spritsail": 0.0},
+  "ease_max_ft": {"lower": 3.0, "topsail": 0.75, "topgallant": 0.0, "royal": 0.0, "spanker": 0.0, "spritsail": 0.0},
   "src": "by eye"
  },
  "bowsprit": {

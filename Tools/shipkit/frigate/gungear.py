@@ -9,9 +9,10 @@ deck slice.
 * Its shot in a garland on the deck along the waterway's cove, in the space forward of its port (ShotGarlands).
 * Each lid's two lanyards: an eyebolt and ring at each hinge strap's end, built into the lid (lid_rings: they turn with
   it); the lanyard from the ring up to a lead-lined hole over the port, in through it and down to a cleat beside the
-  port (LidLanyards: the bushes, the inside and the cleats); the part outside in two poses, down the shut lid with the
-  guns housed (LidLanyards_Shut) and taut to the open lid with them run in or out (LidLanyards_Open, from the lids'
-  openings the guns' room check finds).
+  port (LanyardFittings: the lead bushes and the cleats; LidLanyards: the rope inside, laid taut down the side's true
+  inner face, and outside the bridle ports' lids, which never open); the part outside in two poses, down the shut lid
+  with the guns housed (LidLanyards_Shut) and taut to the open lid with them run in or out (LidLanyards_Open, from the
+  lids' openings the guns' room check finds).
 
     from gungear import GunGear;  gg = GunGear(gd);  rings = gg.lid_rings()   # {lid name: (V, F, M)}: the skin's lids
     gg.build(overhead, gn);  gg.parts(), gg.meshes, gg.instances()
@@ -35,6 +36,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 IN = G.IN
 EX, EY, EZ = np.eye(3)
 FLIP = np.array([1.0, -1.0, 1.0])
+# the rays laid_off casts for a ball's clearance: (across, across, the ball's depth there), in units of its radius
+LAY_DISC = [(0.0, 0.0, 1.0)] + [(rho * math.cos(a), rho * math.sin(a), math.sqrt(1.0 - rho * rho))
+                                for rho, k in ((0.55, 6), (0.97, 12)) for a in np.linspace(0, 2 * math.pi, k, endpoint=False)]
 
 
 def bvh(V, F):
@@ -381,8 +385,7 @@ class GunGear:
         gd, dk = self.gd, self.gd.dk
         zs = [gd.beam_bottom(x0), gd.beam_bottom(x1)]
         zs += [float(gd.zsu(x)) - m for x, s, m, kind in gd.members if x0 - s / 2 <= x <= x1 + s / 2]
-        thick = dk.c["deck"]["planking"]["thick_in"] * IN
-        zs += [float(dk.z(x)) - thick - dk.c["waist"]["beam_moulded_in"] * IN for x in dk.beams_x if x0 <= x <= x1]
+        zs += [dk.waist_beam_z(x)[1] for x in dk.beams_x if x0 <= x <= x1]
         return min(zs)
 
     def item_dims(self, it):
@@ -552,10 +555,10 @@ class GunGear:
         # the port's head on the side's inner face (the skin's row there): toward the bow the face leans in, and the
         # head there stands as much as 3.5 in over the outside's
         head_in = gd.rows["g_Shd"]
+        cleats = gd.lanyard_cleats()
         out = {}
         for k, (name, xa, xf, _) in enumerate(sk.lid_groups):
             w = xf - xa
-            a_m, f_m = gd.ports[k]
             recs = []
             for j, x in enumerate(xa + w * np.linspace(0.2, 0.8, n)):
                 z_top = float(sk.pr.Shd(np.array([x]))[0]) - sk.inset
@@ -569,12 +572,19 @@ class GunGear:
                 knuckle = P[0] + unit(N[0]) * 0.9 * IN
                 xm = float(P[1][0])
                 # the bush over the port: hole_over_clamp_edge_in over the clamp's lower edge there (eased over the
-                # port's head, clear of the housing bolts: gundeck.clamps), or past the clamp's ends hole_above_head_in
-                # over the port's head, on the outside or the inside, whichever is the higher; the hole's inner end at
-                # the same height (bored square through the side)
+                # port's head, clear of the housing bolts: gundeck.clamps), lower where the clamp is eased so shallow
+                # that the bush's rim would come within a quarter inch of its top (in the middle of it if it can't clear
+                # both edges), or past the clamp's ends hole_above_head_in over the port's head, on the outside or the
+                # inside, whichever is the higher; the hole's inner end at the same height (bored square through)
                 Xc, zbc, ztc = gd.clamp
                 if Xc[0] <= xm <= Xc[-1]:
-                    zh = float(np.interp(xm, Xc, zbc)) + ly["hole_over_clamp_edge_in"] * IN
+                    zb_, zt_ = float(np.interp(xm, Xc, zbc)), float(np.interp(xm, Xc, ztc))
+                    rim = (ly["bush_in"][0] / 2 + 0.25) * IN
+                    zh = zb_ + ly["hole_over_clamp_edge_in"] * IN
+                    zh = min(max(zh, zb_ + rim), zt_ - rim) if zt_ - zb_ >= 2 * rim else 0.5 * (zb_ + zt_)
+                    if zh < zb_ + ly["hole_over_clamp_edge_in"] * IN - 1e-6:
+                        self.info.setdefault("lanyard_holes_lowered_in", []).append(
+                            round((zb_ + ly["hole_over_clamp_edge_in"] * IN - zh) / IN, 2))
                 else:
                     zh = max(float(gd.Shd(xm)), float(np.interp(xm, head_in[:, 0], head_in[:, 2]))) + \
                         ly["hole_above_head_in"] * IN
@@ -586,25 +596,63 @@ class GunGear:
                     xp += (xm - Q[0][0]) / sk.m.sx
                 Q, NQ = sk.surf(np.array([xp]), np.array([zp]), True, 0, S.OUT)
                 bo, no = Q[0], unit(NQ[0])
+                # its rim on the planking's faces as built, over any seam it lands on (seat)
+                disc = [(0.0, 0.0)] + [(f * ly["bush_in"][0] / 2 * IN * math.cos(a), f * ly["bush_in"][0] / 2 * IN *
+                                        math.sin(a)) for f, k_ in ((0.5, 8), (0.85, 12))
+                                       for a in np.linspace(0.0, 2 * math.pi, k_, endpoint=False)]
+                bo = bo + no * self.seat(bo, no, disc, self.skin_tree())
                 # its inner end on the side's inner face, or on the clamp's where the clamp covers that height: the
-                # hole is bored through both
-                Pi, ni = gd.wall_at(np.array([bo[0]]), np.array([bo[2]]))
-                bi, ni = Pi[0], ni
+                # hole is bored through both. The bush lies on the face square to it (the face's own normal: the side
+                # tumbles home amidships, as much as 1 in 4 at the ports, and flares at the bow), as the clamp's inner
+                # face does (the clamp stands off the side by its thickness, level, so its face leans as the side's)
+                Pi, ni = gd.wall_at(np.array([bo[0]]), np.array([bo[2]]), true=True)
+                bi = Pi[0]
                 rb_ = ly["bush_in"][0] / 2 * IN
                 if np.interp(bo[0], Xc, zbc) - rb_ <= bo[2] <= np.interp(bo[0], Xc, ztc) + rb_:
-                    bi, nci = gd.clamp_inner(float(bo[0]), float(bo[2]))
-                    ni = nci[None]
-                # the cleat beside the port, out from the jamb on this strap's side, cleat_over_deck_in up (the
-                # hanging knees keep clear of it: gundeck.knees)
-                xj = a_m if j == 0 else f_m
-                xc = xj + (-1.0 if j == 0 else 1.0) * (ly["cleat_out_of_jamb_in"] + ly["cleat_in"][1] / 2) * IN
+                    bi, _ = gd.clamp_inner(float(bo[0]), float(bo[2]))
+                bi = bi + unit(ni[0]) * self.seat(bi, unit(ni[0]), disc)
+                # the cleat beside the port, out from the inner jamb on this strap's side, cleat_over_deck_in up
+                # (gundeck.lanyard_cleats; the hanging knees keep clear of it), lying on the side's face (its own
+                # normal, so the cleat's length runs up the face's slope) and seated on the planking as built (seat:
+                # the cleat and the rope's turns round it, out to the run coming down to it and the tail)
+                xc = cleats[k][0][j]
                 zc = float(gd.zg(xc)) + ly["cleat_over_deck_in"] * IN
-                Pc, nc = gd.wall_at(np.array([xc]), np.array([zc]))
+                Pc, nc = gd.wall_at(np.array([xc]), np.array([zc]), true=True)
+                rr_ = ly["circ_in"] / (2 * math.pi) * IN
+                hu, hv_ = ly["cleat_in"][1] / 2 * IN + rr_ + 0.4 * IN, ly["cleat_in"][0] / 2 * IN + 2.5 * IN
+                Pc = Pc + nc * self.seat(Pc[0], unit(nc[0]), [(b * hu, a * hv_) for a in np.linspace(-1.0, 1.0, 9)
+                                                              for b in np.linspace(-1.0, 1.0, 5)])
                 recs.append({"x_px": x, "eye_at": P[1], "up": up, "out": nrm, "knuckle": knuckle, "z_top": P[0],
                              "bush_out": bo, "n_out": no, "bush_in": bi, "n_in": ni[0], "cleat": Pc[0], "n_cleat": nc[0],
                              "aft": j == 0})
             out[name] = recs
         return out
+
+    def seat(self, c, n, offs, tree=None):
+        """how far the side's planking as built (side_tree) stands in from its true face (the point c on it, n its own
+        normal) under what is fastened there, at offs [(along the side, up its slope)] from c: between the drawn
+        stations the planking's flat faces lie as much as 0.3 in in from the curved face, so a cleat or a bush's rim
+        stands out by the most the planking under it does (outside, tree the skin_tree, a seam's groove under a bush
+        sinks the rim no further than the planks' faces). Raises if any of it is not on the side (in a port's
+        opening, past the clamp's edge), or if the planking anywhere under it lies more than half an inch behind the
+        true face (what is let into the side would not reach it)"""
+        u = unit(np.cross(EZ, n))
+        v = np.cross(n, u)
+        tree = tree or self.side_tree()
+        got = []
+        for du, dv in offs:
+            q = c + v * dv + u * du
+            loc = tree.ray_cast((q + n * 0.5).tolist(), (-n).tolist(), 0.5 + 1.0 * IN)[0]
+            if loc is None:
+                raise SystemExit(f"gungear: a lid lanyard's fitting at {np.round(c, 3).tolist()} is not all on the "
+                                 f"side (nothing under {np.round(q, 3).tolist()})")
+            got.append(float((np.array(loc) - q) @ n))
+        if min(got) < -0.5 * IN:
+            raise SystemExit(f"gungear: the side lies {-min(got) / IN:.2f} in behind its true face under a lid "
+                             f"lanyard's fitting at {np.round(c, 3).tolist()}")
+        rise = max(0.0, max(got))
+        self.info.setdefault("lanyard_seat_in", []).append(round(rise / IN, 3))
+        return rise
 
     def holes_out(self):
         """each starboard lid lanyard's hole on the side's outside: [(x, z, its lead bush's rim radius)] in metres, for
@@ -679,11 +727,88 @@ class GunGear:
                    [wc / 2 * 0.8, (Lc / 2 - 1.5 * IN) / 2 + 0.05 * IN, (hc - 0.85 * IN) / 2], "Oak")
         return u, v
 
+    def skin_tree(self):
+        """a BVH of the side's outside where the lanyards' holes come through it: the planking and its mouldings"""
+        if getattr(self, "_skin", None) is None:
+            sp = self.gd.skin_parts
+            Vs, Fs, n0 = [], [], 0
+            for n in ("Skin", "Moulding"):
+                V = np.asarray(sp[n][0], float)
+                Vs.append(V)
+                Fs += [[int(i) + n0 for i in f] for f in sp[n][1]]
+                n0 += len(V)
+            self._skin = bvh(np.concatenate(Vs), Fs)
+        return self._skin
+
+    def side_tree(self):
+        """a BVH of what the inside of the side is made of where the lanyards run down it: the skin's inner face
+        (GunWall) and port linings, the clamps, waterways and hanging knees"""
+        if getattr(self, "_side", None) is None:
+            sp, gp = self.gd.skin_parts, self.gd.parts_
+            meshes = [(sp[n][0], sp[n][1]) for n in ("GunWall", "PortLinings") if n in sp]
+            for n in ("Clamps", "GunWaterways", "HangingKnees"):
+                if n in gp:
+                    V, F, _, _ = gp[n].arrays()
+                    meshes.append((V, F))
+            Vs, Fs, n0 = [], [], 0
+            for V, F in meshes:
+                V = np.asarray(V, float)
+                Vs.append(V)
+                Fs += [[int(i) + n0 for i in f] for f in F]
+                n0 += len(V)
+            self._side = bvh(np.concatenate(Vs), Fs)
+        return self._side
+
+    def lay_need(self, q, n, t, b, off):
+        """how far q must move in from the side along n (the side's inward normal; t, b across it) for a ball of radius
+        off round it to clear the side's fabric: rays cast out at the side from the room through a disc of that radius,
+        each ray's first hit (the fabric nearest the room along it) setting how far in the ball's face must stand there"""
+        tree = self.side_tree()
+        L = 0.5
+        need = -1.0
+        for dt, db, h in LAY_DISC:
+            o = q + n * L + (t * dt + b * db) * off
+            loc = tree.ray_cast(o.tolist(), (-n).tolist(), L + off)[0]
+            if loc is not None:
+                need = max(need, (np.array(loc) - q) @ n + off * h)
+        return need
+
+    def laid_off(self, A, B, off, step=0.25 * IN, depth=0, free=False):
+        """a rope's centre line from A to B down the inside of the side, taut: where the straight run would come
+        nearer the side's fabric than off (or into it), it is laid over it as a string over the bumps, the worst place
+        first: that point moved in from the side, square to it (along the face's own normal there, never along the
+        side or up and down), until off clear (lay_need). With free, B is a loose end (a tail): moved in the same way
+        first if it would lie in the side. Points from A to B"""
+        _, nab = self.gd.wall_at(np.array([A[0], B[0]]), np.array([A[2], B[2]]), true=True)
+        n = unit(nab[0] + nab[1])
+        t = (B - A) - ((B - A) @ n) * n
+        t = unit(t) if np.linalg.norm(t) > 1e-9 else unit(np.cross(n, EZ))
+        b = np.cross(n, t)
+        if free:
+            need = self.lay_need(B, n, t, b, off)
+            if need > 0.0:
+                B = B + n * (need + 0.02 * IN)
+        m = max(2, int(np.linalg.norm(B - A) / step))
+        worst, wq = 0.005 * IN, None
+        for s in np.linspace(0.0, 1.0, m + 1)[1:-1]:
+            q = A + s * (B - A)
+            need = self.lay_need(q, n, t, b, off)
+            if need > worst:
+                worst, wq = need, q + n * (need + 0.02 * IN)
+        if wq is None:
+            return [A, B]
+        if depth >= 10:
+            raise SystemExit(f"gungear: a lanyard could not be laid off the side near {np.round(wq, 3).tolist()}")
+        return self.laid_off(A, wq, off, step, depth + 1)[:-1] + self.laid_off(wq, B, off, step, depth + 1)
+
     def lanyard_inside(self, M, r):
         """from the inner bush down the side to the cleat: under its upper horn, across its face, under the lower horn
-        and its tail hanging"""
+        and its tail hanging plumb. The cleat and its turns lie on the side's face, square to it; the run from the bush
+        to the cleat and the tail are laid off the side's true inner face (and the clamp, waterway and knees) by
+        lay_off_in (laid_off: where the side flares under the cleat, the tail lies down the face)"""
         ly = self.c["lanyard"]
         rr = ly["circ_in"] / (2 * math.pi) * IN
+        off = rr + ly["lay_off_in"] * IN
         n_in = unit(r["n_in"])
         c, nc = r["cleat"], unit(r["n_cleat"])
         u = unit(np.cross(EZ, nc))
@@ -703,8 +828,10 @@ class GunGear:
              c - v * (hv - 0.6 * IN) + u * (wc / 2 + rr + 0.1 * IN) + nc * (front - 0.3 * IN),
              c - v * hv + u * (wc / 2 + rr) + nc * under,
              c - v * hv - u * (wc / 2 + rr) + nc * under,
-             c - v * (hv + 1.0 * IN) - u * (wc / 2 + rr + 0.2 * IN) + nc * (under + 0.2 * IN),
-             c - v * (hv + ly["tail_in"] * IN) - u * (wc / 2 + rr + 0.2 * IN) + nc * (under + 0.2 * IN)]
+             c - v * (hv + 1.0 * IN) - u * (wc / 2 + rr + 0.2 * IN) + nc * (under + 0.2 * IN)]
+        run = self.laid_off(P[1], P[2], off)
+        tail = self.laid_off(P[10], P[10] - EZ * (ly["tail_in"] - 1.0) * IN, off, free=True)
+        P = [P[0]] + run[:-1] + P[2:10] + tail
         M.cur = "lanyard_in"
         tube(M, fillet(np.array(P), 0.5 * IN), rr, "Hemp", n=6)
 
@@ -746,20 +873,22 @@ class GunGear:
         tube(M, fillet(np.array(P), 0.6 * IN), rr, "Hemp", n=6)
         return float(np.linalg.norm(dvec) - Rk)
 
-    def lanyards(self, Mfix, Mshut):
+    def lanyards(self, Mfit, Mrope, Mshut):
+        """the lead bushes and cleats (Mfit), the lanyards inside (Mrope) and outside down the shut lids (Mshut; the
+        bridle ports', whose lids never open, in Mrope)"""
         if not hasattr(self, "lp"):
             self.lid_rings()
         gunless = []
         for k, (name, recs) in enumerate(self.lp.items()):
             # the bridle port has no gun, so its lid stays shut: its lanyards are fixed with it
-            shut = Mshut if k < len(self.gd.ports) - 1 else Mfix
-            if shut is Mfix:
+            shut = Mshut if k < len(self.gd.ports) - 1 else Mrope
+            if shut is Mrope:
                 gunless.append(name)
             for r in recs:
-                self.bush(Mfix, r["bush_out"], r["n_out"])
-                self.bush(Mfix, r["bush_in"], r["n_in"])
-                self.cleat(Mfix, r["cleat"], r["n_cleat"])
-                self.lanyard_inside(Mfix, r)
+                self.bush(Mfit, r["bush_out"], r["n_out"])
+                self.bush(Mfit, r["bush_in"], r["n_in"])
+                self.cleat(Mfit, r["cleat"], r["n_cleat"])
+                self.lanyard_inside(Mrope, r)
                 self.lanyard_shut(shut, r)
         self.info["lanyards"] = {"lids": len(self.lp), "each": 2, "always_shut": gunless}
 
@@ -792,13 +921,14 @@ class GunGear:
             self.gn = gn
         self.overhead_tree(overhead)
         self.meshes = {"Gun24_Tompion": G.scaled(self.tompion(), IN), "Gun24_Apron": G.scaled(self.apron(), IN)}
-        P = {n: G.GPart() for n in ("GunImplements", "ShotGarlands", "LidLanyards", "LidLanyards_Shut")}
+        P = {n: G.GPart() for n in ("GunImplements", "ShotGarlands", "LanyardFittings", "LidLanyards",
+                                    "LidLanyards_Shut")}
         self.implements(P["GunImplements"])
         self.garlands(P["ShotGarlands"])
         self.lid_rings()
-        self.lanyards(P["LidLanyards"], P["LidLanyards_Shut"])
+        self.lanyards(P["LanyardFittings"], P["LidLanyards"], P["LidLanyards_Shut"])
         both = {}
-        for n in ("LidLanyards", "LidLanyards_Shut"):
+        for n in ("LanyardFittings", "LidLanyards", "LidLanyards_Shut"):
             M = G.GPart()
             M.extend(P[n])
             M.extend(P[n].mirrored_y())
