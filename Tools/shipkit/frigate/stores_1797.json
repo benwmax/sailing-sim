@@ -525,27 +525,29 @@
      0.3
     ],
     [
-     "Cloth",
      "Nettles_aft",
+     "Cloth",
      "each nettle through its grommet in the cloth's end",
-     0.3
+     0.3,
+     "each"
     ],
     [
-     "Cloth",
      "Nettles_fore",
+     "Cloth",
      "each nettle through its grommet in the cloth's end",
-     0.3
+     0.3,
+     "each"
     ],
     [
      "Nettles_aft",
      "Rings",
-     "the outer nettles bear on the clew ring",
+     "the middle nettle bears on the clew ring",
      0.3
     ],
     [
      "Nettles_fore",
      "Rings",
-     "the outer nettles bear on the clew ring",
+     "the middle nettle bears on the clew ring",
      0.3
     ],
     [
@@ -558,13 +560,15 @@
      "Nettles_aft",
      "Seizing",
      "the nettles' ends seized together",
-     0.3
+     0.3,
+     "each"
     ],
     [
      "Nettles_fore",
      "Seizing",
      "the nettles' ends seized together",
-     0.3
+     0.3,
+     "each"
     ],
     [
      "Rings",
@@ -633,10 +637,11 @@
      0.25
     ],
     [
-     "Heap",
      "Shot",
+     "Heap",
      "the top layer's shot bedded in the heap",
-     0.35
+     0.35,
+     "each"
     ]
    ],
    "MagazineRack": [
@@ -715,10 +720,11 @@
      0.25
     ],
     [
-     "Heap",
      "Shot",
+     "Heap",
      "the top layer's shot bedded in the heap",
-     0.35
+     0.35,
+     "each"
     ]
    ],
    "Cask_Leaguer": [
@@ -836,7 +842,8 @@
     ]
    ]
   },
-  "note_assemblies": "between copies only: build_stores.py adds each copy's own contacts from its item's list"
+  "note_assemblies": "between copies only: build_stores.py adds each copy's own contacts from its item's list",
+  "note_each": "a fifth field 'each' means every connected part of the first piece (every nettle, every shot) must meet the second, not just one of them"
  },
  "bread": {
   "note": "a bag of ship's biscuit as stowed in the bread rooms: a canvas bag of about a hundredweight, lying flat (its bottom pressed flat by the bags on it, so they stack), its neck choked with a lashing at one end and the tail beyond. Size estimate",

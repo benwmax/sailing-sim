@@ -232,6 +232,26 @@ def held_check(objs, names, anchors, tol=0.02 * IN):
     return out
 
 
+def parts_missing(objs, x, B, tol=0.02 * IN):
+    """the connected parts of piece x that neither cross nor come within tol of any piece in B: [(label, a point)]"""
+    V, T = objs[x]
+    L = deck.islands(T, len(V))
+    hit = set()
+    for y in B:
+        Vb, Tb = objs[y]
+        tb = BVHTree.FromPolygons(Vb.tolist(), Tb.tolist(), all_triangles=True)
+        ta = BVHTree.FromPolygons(V.tolist(), T.tolist(), all_triangles=True)
+        hit |= {int(L[T[i][0]]) for i, _j in ta.overlap(tb)}
+        for vi in np.unique(T):
+            if int(L[vi]) not in hit and tb.find_nearest(V[vi].tolist(), tol)[0] is not None:
+                hit.add(int(L[vi]))
+    out = []
+    for k in np.unique(L[np.unique(T)]):
+        if int(k) not in hit:
+            out.append((int(k), [round(float(v), 4) for v in V[np.unique(T[L[T[:, 0]] == k])][0]]))
+    return out
+
+
 def run_checks(name, pieces, stands, meets, anchors):
     """the closed, crossing, room, held and standing checks for pieces {name: Part}; returns (report, failures)"""
     objs, fails, rep = {}, [], {"pieces": {}}
@@ -252,7 +272,7 @@ def run_checks(name, pieces, stands, meets, anchors):
     # the meets: a pair names two pieces, or patterns (fnmatch: an assembly's 'PowderBarrel#*.Cask'), expanded to the
     # pairs present
     mt, want = {}, []
-    for a, b, why, depth in meets:
+    for a, b, why, depth, *each in meets:
         A = [n for n in names if fnmatch.fnmatchcase(n, a)]
         B = [n for n in names if fnmatch.fnmatchcase(n, b)]
         if not A or not B:
@@ -261,18 +281,22 @@ def run_checks(name, pieces, stands, meets, anchors):
             for y in B:
                 if x != y:
                     mt[(x, y)] = (why, depth)
-        want.append((a, b, why, A, B))
+        want.append((a, b, why, A, B, bool(each and each[0] == "each")))
     rm = deck.room(objs, names, None, near=0.3, meets=mt)
     del objs["_far"]
     rep["room"] = {k: rm[k] for k in ("meet", "by_design")}
     for m_ in rm["meet"]:
         fails.append(f"{name}: {m_[0]} meets {m_[1]} " + (m_[3] if len(m_) > 3 else f"({m_[2]} pairs), not by design"))
     found = {(a, b) for a, b, *_ in rm["by_design"]} | {(b, a) for a, b, *_ in rm["by_design"]}
-    for a, b, why, A, B in want:
+    for a, b, why, A, B, each in want:
         # each piece on the first side meets one on the other (every barrel its chocks)
         for x in A:
             if not any((x, y) in found for y in B):
                 fails.append(f"{name}: {x} should meet {b} ({why}) and does not")
+            elif each:
+                # 'each': every connected part of x (every nettle, every shot) meets the other side, not just one
+                for k, p in parts_missing(objs, x, B):
+                    fails.append(f"{name}: a part of {x} near {p} should meet {b} ({why}) and does not")
     # every connected part held (by the deck, its anchors, or a chain of parts that touch)
     free = held_check(objs, names, ([("z", 0.0)] if stands else []) + list(anchors))
     rep["held_by_nothing"] = free

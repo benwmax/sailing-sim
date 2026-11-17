@@ -552,8 +552,17 @@ class Kit:
             fan = hc["clew_fan_in"] / 2 * IN
             for k_ in range(n):
                 f = -1.0 + 2.0 * k_ / (n - 1)
-                P, N = section(xe - s * 1.0 * IN, f * 0.96)
-                P = P - N * (t + 0.6 * nr)
+                # the grommet on the cloth as built (its grid and true normals, which tilt along X at the gathered end):
+                # the nettle starts in the middle of the cloth's thickness and runs out through it
+                gu = (xe - s * 1.0 * IN + Lx / 2) / Lx * (nu - 1)
+                gv = (f * 0.96 + 1.0) / 2 * (nv - 1)
+                i0, j0 = min(int(gu), nu - 2), min(int(gv), nv - 2)
+                du, dv = gu - i0, gv - j0
+                w = [(i0, j0, (1 - du) * (1 - dv)), (i0 + 1, j0, du * (1 - dv)), (i0, j0 + 1, (1 - du) * dv),
+                     (i0 + 1, j0 + 1, du * dv)]
+                Pt = sum(Top[a_, b_] * w_ for a_, b_, w_ in w)
+                Nt = unit(sum(Nm[a_, b_] * w_ for a_, b_, w_ in w))
+                P = Pt - Nt * t / 2
                 v = P - P_end
                 ang = math.atan2(float(v @ e2), float(v @ e1))
                 Q = Qc + fan * (math.cos(ang) * e1 + math.sin(ang) * e2)
@@ -895,9 +904,22 @@ class Kit:
         prof += [(x, R) for x in np.linspace(2.0 * IN, L - 2.0 * IN, 5)]
         # the choked tail: the flannel gathered to the neck, then flaring out into a ragged tuft
         prof += [(L - 0.9 * IN, 0.9 * R), (L - 0.2 * IN, 0.55 * R), (L + 0.3 * IN, nr), (L + 0.6 * IN, nr * 0.9),
-                 (L + 1.0 * IN, nr * 1.2), (L + 0.6 * tl, nr * 1.75), (L + tl - 0.25 * IN, nr * 2.0),
-                 (L + tl, nr * 1.5), (L + tl - 0.15 * IN, nr * 0.6), (L + tl - 0.15 * IN, 0.0)]
-        lathe(it.piece("Bag"), [x0, 0.0, R], EX, EZ, prof, "Fleece", 16)
+                 (L + 1.0 * IN, nr * 1.12), (L + 0.6 * tl, nr * 1.38), (L + tl - 0.25 * IN, nr * 1.55),
+                 (L + tl, nr * 1.25), (L + tl - 0.15 * IN, nr * 0.6), (L + tl - 0.15 * IN, 0.0)]
+        tmp = SPart()
+        lathe(tmp, [x0, 0.0, R], EX, EZ, prof, "Fleece", 24)
+        # the tuft gathered into folds: past the twine each ring is pushed in and out round its nine folds, more toward
+        # the ragged end (seam vertices move alike, so the seam stays shut)
+        for k, V_ in enumerate(tmp.V):
+            V_ = np.asarray(V_, float)
+            x = V_[:, 0] - x0
+            q = np.clip((x - (L + 1.0 * IN)) / (tl - 1.0 * IN), 0.0, 1.0)
+            ang = np.arctan2(V_[:, 1], V_[:, 2] - R)
+            f = 1.0 + 0.16 * q * np.cos(9 * ang)
+            V_[:, 1] *= f
+            V_[:, 2] = R + (V_[:, 2] - R) * f
+            tmp.V[k] = V_
+        it.piece("Bag").extend(tmp)
         th = np.linspace(0.0, 2 * math.pi, 13)[:-1]
         tr = 0.08 * IN
         x_t = x0 + L + 0.6 * IN
@@ -930,7 +952,7 @@ class Kit:
                     for c in range(pb):
                         xc = x0 + gap + cd / 2 + c * (cd + gap)
                         it.slots.append({"item": "Cartridge24", "name": f"bay{k + 1}_shelf{s + 1}_{c + 1}",
-                                         "at_m": [round(xc, 4), round(-(cl - deep) / 2, 4), round(z0 + sh, 4)],
+                                         "at_m": [round(xc, 6), round(-(cl - deep) / 2, 6), round(z0 + sh, 6)],
                                          "turn_deg": [0.0, 0.0, -90.0],
                                          "note": "the cartridge turned about Z so its tail points back (-Y), its "
                                                  "foot at the shelf's front edge"})
