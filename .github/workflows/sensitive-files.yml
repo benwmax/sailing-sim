@@ -11,6 +11,15 @@ name: Sensitive files
 # from a fork can't be approved this way (its pushes aren't in this repo's
 # log): Bean takes those over by hand. Security review, 11 Nov 2026.
 #
+# How it reports (17 Nov 2026): the verdict is a commit status named
+# "Sensitive files" on the head commit: pending while it waits for Bean, green
+# once approved. The job itself (named "Sensitive files scan") passes whenever
+# it managed to check, so waiting for the label no longer sends GitHub's
+# "Run failed" email. It fails only if something actually broke, and then the
+# status stays pending, so the pull request stays blocked. Branch protection
+# requires "Sensitive files", which a pending status never satisfies; the job
+# is deliberately NOT named that, or its green tick would satisfy it.
+#
 # pull_request_target runs THIS file as it is on main, so a pull request can't
 # switch the check off by editing it. It never checks out or runs the pull
 # request's code: it only reads the list of changed file names.
@@ -28,6 +37,7 @@ permissions:
   contents: read
   issues: write          # create the label once, remove a stale label
   pull-requests: write
+  statuses: write        # the "Sensitive files" verdict on the head commit
 
 concurrency:
   group: sensitive-files-${{ github.event.pull_request.number }}
@@ -35,7 +45,8 @@ concurrency:
 
 jobs:
   check:
-    name: Sensitive files
+    # Not "Sensitive files": that name belongs to the commit status below.
+    name: Sensitive files scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -51,6 +62,10 @@ jobs:
           LABEL: bean-approved
         run: |
           set -euo pipefail
+          # Block first: pending until this run decides.
+          gh api -X POST "repos/$REPO/statuses/$HEAD_SHA" -f state=pending \
+            -f context="Sensitive files" -f description="Checking the changed files" \
+            -f target_url="$GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID" > /dev/null
           gh label create "$LABEL" --repo "$REPO" --color 0E8A16 \
             --description "Bean approved the sensitive files in this PR" 2>/dev/null || true
           T="$RUNNER_TEMP"
@@ -147,12 +162,24 @@ jobs:
               print(line)
               summary.write(line + "\n")
 
+          RUN_URL = f"{env['GITHUB_SERVER_URL']}/{env['REPO']}/actions/runs/{env['GITHUB_RUN_ID']}"
+          def report(state, text):
+              """Set the "Sensitive files" status on the head commit, then end the run
+              green. Only "success" lets the pull request merge; "pending" blocks it
+              without a failed run (so no failure email). If this call fails, the run
+              fails and the status stays pending."""
+              subprocess.run(["gh", "api", "-X", "POST", f"repos/{env['REPO']}/statuses/{head}",
+                              "-f", f"state={state}", "-f", "context=Sensitive files",
+                              "-f", f"description={text[:140]}", "-f", f"target_url={RUN_URL}"],
+                             check=True, stdout=subprocess.DEVNULL)
+              sys.exit(0)
+
           if head_now and head_now != head:
               say(f"The pull request moved on to {head_now[:8]}; the run for that commit decides.")
-              sys.exit(1)
+              report("pending", f"Superseded: the run for {head_now[:8]} decides")
           if not hits:
               say(f"All {len(files)} changed files are game code under Source/ or pages under docs/.")
-              sys.exit(0)
+              report("success", "Only game code and docs changed")
           say("Files that need Bean's approval:")
           for h in hits:
               say(f"- `{h}`")
@@ -160,17 +187,17 @@ jobs:
           if label not in labels:
               say(f"Waiting for Bean: he adds the `{label}` label after reading these files. "
                   "Agents never add it.")
-              sys.exit(1)
+              report("pending", f"Waiting for the {label} label from Bean")
           verdict = approved_now()
           if verdict is True:
               say(f"Approved as of {head[:8]}.")
-              sys.exit(0)
+              report("success", f"Bean approved {head[:8]}")
           if verdict == "unknown":
               say("Couldn't confirm from GitHub's records that the label came after the last push, "
                   "so it doesn't count yet. Re-run this check in a minute, or add the label again.")
-              sys.exit(1)
+              report("pending", f"Label not confirmed after the last push yet; re-run or add {label} again")
           gh("-X", "DELETE", f"repos/{env['REPO']}/issues/{env['PR']}/labels/{label}")
           say(f"The pull request changed since `{label}` was added (new commits or a new base branch), "
               "so the label was taken off. Bean adds it again after looking.")
-          sys.exit(1)
+          report("pending", f"Changed since {label} was added; waiting for Bean to add it again")
           PY
