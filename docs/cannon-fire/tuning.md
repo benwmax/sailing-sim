@@ -127,3 +127,12 @@ units (2^-14.1, the exposure's offset) as it does the flash lights' candela.
 | `SmokeEdgeSoftness` | 0.5 | 0 billowed edges .. 1 a soft Gaussian |
 | `SmokeCoreGain` | 2.5 | a puff's core this much denser than its Gaussian |
 | `SmokeDepthFadeM` | 3 | m: the smoke fades into surfaces over this |
+
+## Open for the tuning window (Nov 30 to Dec 4)
+
+- **The smoke's foot from far off.** At 90 m the smoke still meets the water in a nearly straight line: the 3 m depth fade
+  covers only a few pixels at that range. Try more spread in each puff's height (`WaterLift`), or a fade that grows with
+  distance.
+- **The flame on camera.** No still has caught a muzzle flame yet: it lasts 75 ms. Check it in motion, or with a ripple
+  and a long flame for the still only: `-SailingBroadside=2,port,ripple -SailingCannonFx="FlashS=0.3" -SailingNoCameraShake`,
+  with the camera at the near end of the gun line.
