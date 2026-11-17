@@ -423,6 +423,22 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoValueDown"), EKeys::Gamepad_DPad_Left);
 	Add(TEXT("PhotoPageNext"), EKeys::PageDown);
 	Add(TEXT("PhotoPagePrev"), EKeys::PageUp);
+	// Walking a ship (docs/ship-walk/): the On deck view's own layer and context (above the boat's while you walk), so it
+	// shares keys with the boat's: WASD and the left stick walk, the mouse and right stick look as ever.
+	Add(TEXT("WalkForward"), EKeys::W);
+	Add(TEXT("WalkForward"), EKeys::S, -1.f);
+	Add(TEXT("WalkForward"), EKeys::Gamepad_LeftY);
+	Add(TEXT("WalkRight"), EKeys::D);
+	Add(TEXT("WalkRight"), EKeys::A, -1.f);
+	Add(TEXT("WalkRight"), EKeys::Gamepad_LeftX);
+	Add(TEXT("WalkRun"), EKeys::LeftShift);
+	Add(TEXT("WalkRun"), EKeys::Gamepad_LeftThumbstick);
+	Add(TEXT("WalkCrouch"), EKeys::LeftControl);
+	Add(TEXT("WalkCrouch"), EKeys::Gamepad_FaceButton_Right);
+	Add(TEXT("WalkUse"), EKeys::E);
+	Add(TEXT("WalkUse"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("WalkToHelm"), EKeys::F);
+	Add(TEXT("WalkToHelm"), EKeys::Gamepad_FaceButton_Top);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

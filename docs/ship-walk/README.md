@@ -54,6 +54,26 @@ origin at the spanker boom's height (up to 9 m), back 1.8 lengths or 1.55 masthe
 ship is in frame there too. Every boat before the frigate is under
 45 m, so their rigs don't move (`SailingSim.Visual.ChaseCamera.Rig`).
 
+## In the game (`ShipWalkVisuals.cpp`)
+
+* **Which boats**: one with a map at `Content/TerrainData/Ships/<her name>.walk` (by `FBoatConfig::Name` or her type's
+  name, letters and digits only), or any boat with `-SailingWalkMap=<name>` for tests. `RebuildBoatVisuals` loads it.
+* **Views**: no new `EView` (the tests pin Chase, Overview, Helm). On a ship the Helm view is you standing at the map's
+  `Helm` spot, looking about with the cockpit's look; Change view from there goes On deck (walking), then Chase. `\` or
+  F (pad Y) on deck goes back to the wheel.
+* **Keys** (`IMC_Walk`, priority 1 over the boat's context, rebindable): W/S and A/D or the left stick walk, Shift or
+  the left stick's click runs, Ctrl or B crouches, E or A takes a ladder, F or Y back to the wheel. The menu, the view,
+  the look and the controls card stay the boat's. While you walk the boat's held keys read zero.
+* **Her helmsman**: an `FAutopilot` holds the true wind angle she had when you left the wheel.
+* **The eye**: her frame's transform on the walker's eye; the head leans a third of her heel and pitch, as the cockpit's.
+  The felt gravity he walks in is the world's, less her acceleration at his feet (`FeltGravityShip`).
+* **Decks below**: `/Game/Boats/<Folder>/Decks/SM_<Folder>_<GunDeck|BerthDeck|Orlop|Hold>` (the frigate's folder is
+  `Frigate`), loaded asynchronously when the walker wants them (`DecksWanted`) and let go 10 s after; from outside, what
+  her top deck's `AlsoLoad` names (the gun deck, seen through the waist). A deck whose asset isn't in the project is
+  skipped.
+* **Prompts**: a ladder in reach shows on the status line (Helpful "E: take the ladder down to the gun deck", Natural
+  "E: ladder down", Off nothing).
+
 ## Tests
 
 `SailingSim.ShipWalk.*`: `File` (the format round trip and refusals), `Ladders`, `Beams`, `Heel`, `Wander` (ten minutes

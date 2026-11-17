@@ -48,6 +48,13 @@ namespace SailingBindings
 	SAILINGSIM_API bool IsPhotoAction(FName Action);
 	/** The photo panel's rows, values and pages (docs/photo-mode/pc/), part of that layer. */
 	SAILINGSIM_API bool IsPhotoPanelAction(FName Action);
+	/**
+	 * Walking a ship's layer (docs/ship-walk/): the On deck view's commands, live only while you walk her decks, where the
+	 * boat takes no input from the keys they share (WASD walks, E takes a ladder, F goes back to the wheel).
+	 */
+	SAILINGSIM_API bool IsWalkAction(FName Action);
+	/** The walking context (IMC_Walk, above the boat's while you walk): every walking command. */
+	SAILINGSIM_API bool InWalkContext(const FSailingKeyBinding& Binding);
 	SAILINGSIM_API bool SameLayer(FName A, FName B);
 	/** A pad button this command shares as a half-second hold (photo mode's toggle on View, the dock lines on the right
 	 *  stick's click): the other commands on that button in its context take the tap (ASailboatPawn::BuildContext). */

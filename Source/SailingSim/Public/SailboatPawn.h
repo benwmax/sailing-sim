@@ -29,6 +29,7 @@
 #include "Showroom.h"
 #include "PhotoSettings.h"
 #include "Feedback.h"
+#include "ShipWalk.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -298,6 +299,10 @@ public:
 	static UInputMappingContext* BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
 		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool bPhotoContext);
 	static constexpr int32 PhotoContextPriority = 1;
+	/** Walking a ship (docs/ship-walk/): the On deck view's context (IMC_Walk, above the boat's while you walk). */
+	static UInputMappingContext* BuildWalkContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
+	static constexpr int32 WalkContextPriority = 1;
 	/** The pad throttle's dead zone on the left stick's Y axis (the tiller is its X). */
 	static constexpr float ThrottleStickDeadZone = 0.5f;
 	/** The pad look's response curve (stick deflection to the power of this: fine aim near the centre). */
@@ -538,6 +543,48 @@ public:
 	void SetCameraView(ChaseCamera::EView View, bool bRemember);
 	const ChaseCamera::FRig& GetChaseRig() const { return ChaseRig; }
 	float GetChaseArmCm() const { return CameraDistance; }
+
+	/**
+	 * Walking a ship (docs/ship-walk/): a boat with a walk map (Content/TerrainData/Ships/<her name>.walk, or
+	 * -SailingWalkMap=<name> on any boat for tests) adds On deck to the view cycle after Helm: you walk her decks in the
+	 * first person (IMC_Walk), the helmsman keeps her on her course (her true wind angle when you left the wheel), and the
+	 * decks below load as you go down to them. Her Helm view is you standing at the wheel (the map's Helm spot).
+	 */
+	bool CanWalk() const { return WalkMap.IsLoaded(); }
+	bool IsWalking() const { return bWalking; }
+	void SetWalking(bool bOn, bool bAnnounce = true);
+	const Sailing::FWalkMap& GetWalkMap() const { return WalkMap; }
+	const Sailing::FShipWalker& GetWalker() const { return Walker; }
+	/** The HUD's line while walking ("E: take the ladder down to the gun deck"), empty when there is nothing to say. */
+	FString GetWalkPrompt() const;
+	/** Decks below with their meshes in (bit per walk-map deck), for the HUD's debug line and the tests. */
+	uint32 GetDecksShown() const;
+	/** The felt gravity in her frame (m/s^2, pointing down at rest): the world's, less her acceleration at the walker. */
+	Sailing::Vec3 FeltGravityShip() const;
+private:
+	Sailing::FWalkMap WalkMap;
+	FString WalkMapName;                     // the ship the map is for
+	Sailing::FShipWalker Walker;
+	bool bWalking = false;
+	bool bWalkUsePending = false;            // Use pressed since the last walk step
+	FVector2D WalkLook = FVector2D::ZeroVector;   // the look's turn since the last walk step (deg: yaw, pitch)
+	Sailing::FAutopilot WalkPilot;           // her helmsman while you walk
+	FString WalkPromptShown;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> WalkContext;
+	/** The decks below (index by walk-map deck): their mesh assets (null where the ship has none), meshes, async loads
+	 *  and when each stopped being wanted (platform seconds, -1 while wanted). */
+	TArray<FSoftObjectPath> DeckMeshPaths;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> DeckMeshes;
+	TArray<TSharedPtr<struct FStreamableHandle>> DeckLoads;
+	TArray<double> DeckUnwantedSince;
+	void ClearDeckMeshes();
+	void LoadWalkMap();
+	void PlaceWalkerAtHelm();
+	void UpdateWalk(float DeltaSeconds);
+	void UpdateWalkCamera(float DeltaSeconds);
+	void UpdateDeckStreaming();
+	/** A walking command while walking; true when it was one (OnButton stops there). */
+	bool OnWalkButton(FName Action);
 private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
