@@ -140,8 +140,8 @@ bottom, buff deck and spars, teak trim; one scheme and three wear looks (the fou
 sail number (her club's star).
 
 **Known gaps** (cosmetic; for after the release):
-- The boom turns about the physics' gooseneck (x 2.578); the model's pin is 0.227 m aft of it, so its jaw moves off the
-  mast as she eases.
+- ~~The boom turns about the physics' gooseneck (x 2.578); the model's pin is 0.227 m aft of it.~~ The physics' gooseneck
+  is now the pin (docs/jclass-upwind/); the export's boom pivot has to follow it.
 - The spinnaker's head is placed by the config's mast front (x 3.19), about 1 m ahead of her raked masthead.
 - The physics' genoa luff meets the deck 0.5 m ahead of the model's forestay (18.40 against 17.88), and with no live
   forestay there are no hanks.

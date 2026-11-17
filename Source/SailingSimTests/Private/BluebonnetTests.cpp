@@ -136,17 +136,95 @@ bool FSailingBluebonnetHullTest::RunTest(const FString&)
 }
 
 /**
+ * docs/jclass-upwind/: upwind in a breeze she was 12% under her estimate, held at 18 deg by the fleet's heeled drag. Her
+ * wave-making is read on her sailing length (her waves climbing her overhangs, by speed), her heeled drag is her own lines',
+ * and the boom swings on the build's gooseneck pin. Light air is about where it was; her beat in 12 kn stays under Ranger's
+ * 1937 record (7.26 kn VMG), the fastest J there was.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetUpwindTest, "SailingSim.Physics.BluebonnetUpwind", BluebonnetTestsLocal::Flags)
+bool FSailingBluebonnetUpwindTest::RunTest(const FString&)
+{
+	const TSharedPtr<FJsonObject> Sheet = BluebonnetTestsLocal::ReadSheet(*this);
+	if (!Sheet) return false;
+	const TSharedPtr<FJsonObject> Main = Sheet->GetObjectField(TEXT("rig"))->GetObjectField(TEXT("main"));
+	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
+
+	// The gooseneck: the boom's pin (slice 4's build, x 2.3508 at BoomZ), the clew and the area where the sheet has them.
+	const double SheetClew = Main->GetNumberField(TEXT("luff_x")) - Main->GetNumberField(TEXT("foot_chord"));
+	TestTrue(FString::Printf(TEXT("The gooseneck on the boom's pin (MainLuffX %.4f, build 2.3508)"), C.MainLuffX), FMath::Abs(C.MainLuffX - 2.3508) < 0.001);
+	TestTrue(FString::Printf(TEXT("... the clew where the sheet has it (%.3f, sheet %.3f)"), C.MainLuffX - C.MainFootChord, SheetClew),
+		FMath::Abs(C.MainLuffX - C.MainFootChord - SheetClew) < 0.001);
+	TestTrue(FString::Printf(TEXT("... the main's area kept (%.1f m^2, sheet %.1f)"), C.Main.TotalArea, Main->GetNumberField(TEXT("area_m2"))),
+		FMath::Abs(C.Main.TotalArea / Main->GetNumberField(TEXT("area_m2")) - 1.0) < 0.005);
+	TestTrue(TEXT("... its foot strip starting at the pin"), C.Main.Strips[0].LuffX < Main->GetNumberField(TEXT("luff_x")));
+
+	// Heeled drag from her lines; the fleet keeps its own.
+	const FBoatConfig J22 = FBoatConfig::J22();
+	TestEqual(TEXT("Her heeled friction (her lines: 0.6% more wetted area at 18 deg)"), C.HeelFrictionCoef, 0.02);
+	TestEqual(TEXT("Her heeled wave-making (her lines: 1.5% longer at 18 deg)"), C.HeelResiduaryCoef, 0.0);
+	TestTrue(TEXT("The J/22's heeled drag unchanged (0.4, 2.0)"), J22.HeelFrictionCoef == 0.4 && J22.HeelResiduaryCoef == 2.0);
+
+	// Her wave-making on her sailing length: about the sheet's in light air, much less fast, never falling with speed.
+	TArray<TPair<double, double>> Rest;
+	for (const TSharedPtr<FJsonValue>& Row : Sheet->GetObjectField(TEXT("resistance"))->GetArrayField(TEXT("residuary")))
+	{
+		const TArray<TSharedPtr<FJsonValue>>& P = Row->AsArray();
+		Rest.Add({ P[0]->AsNumber(), P[1]->AsNumber() });
+	}
+	auto SheetAt = [&Rest](double Fn)
+	{
+		for (int32 I = 1; I < Rest.Num(); ++I)
+			if (Fn <= Rest[I].Key) return Rest[I - 1].Value + (Rest[I].Value - Rest[I - 1].Value) * (Fn - Rest[I - 1].Key) / (Rest[I].Key - Rest[I - 1].Key);
+		return Rest.Last().Value;
+	};
+	auto HerAt = [&C](double Fn)
+	{
+		for (size_t I = 1; I < C.Residuary.size(); ++I)
+			if (Fn <= C.Residuary[I].first)
+				return C.Residuary[I - 1].second + (C.Residuary[I].second - C.Residuary[I - 1].second) * (Fn - C.Residuary[I - 1].first) / (C.Residuary[I].first - C.Residuary[I - 1].first);
+		return C.Residuary.back().second;
+	};
+	double Last = 0.0;
+	for (const std::pair<double, double>& R : C.Residuary)
+	{
+		TestTrue(FString::Printf(TEXT("Wave-making never falls with speed (Fn %.3f)"), R.first), R.second >= Last);
+		Last = R.second;
+	}
+	for (const double Fn : { 0.1, 0.2, 0.3, 0.35, 0.4, 0.45 })
+	{
+		const double Ratio = HerAt(Fn) / SheetAt(Fn);
+		AddInfo(FString::Printf(TEXT("Fn %.2f: %.2f of the sheet's (slice 13's flat factor 0.6)"), Fn, Ratio));
+		if (Fn <= 0.1) TestTrue(TEXT("Light air: within 10% of the sheet's"), Ratio > 0.9 && Ratio <= 1.0);
+		if (Fn >= 0.4) TestTrue(FString::Printf(TEXT("Fn %.2f: her waves up her overhangs halve it or more"), Fn), Ratio > 0.2 && Ratio < 0.5);
+	}
+
+	// Sailing: close-hauled in 16 kn at her working heel and within 7% of her estimate (12.09, was 12% under at 18 deg);
+	// her beat in 12 kn near, not past, Ranger's record.
+	const FSteadyResult Close = SailSteady(16.0, 52.0, C, true, false);
+	AddInfo(FString::Printf(TEXT("16 kn at 52 deg: %.2f kn (estimate 12.09), heel %.1f"), Close.BoatSpeedKnots, Close.HeelDeg));
+	TestTrue(TEXT("16 kn at 52 deg within 7% of the estimate"), FMath::Abs(Close.BoatSpeedKnots / 12.09 - 1.0) < 0.07);
+	TestTrue(TEXT("... heeled 20 to 27 deg, as the Js sailed"), Close.HeelDeg > 20.0 && Close.HeelDeg < 27.0);
+	const FSteadyResult Beat = SailSteady(12.0, 34.0, C, true, false);
+	const double Vmg = Beat.BoatSpeedKnots * FMath::Cos(FMath::DegreesToRadians(34.0));
+	AddInfo(FString::Printf(TEXT("12 kn at 34 deg: %.2f kn, VMG %.2f (Ranger 1937: 7.26)"), Beat.BoatSpeedKnots, Vmg));
+	TestTrue(TEXT("Her beat in 12 kn 0.95 to 1.0 of Ranger's"), Vmg > 0.95 * 7.26 && Vmg <= 7.26);
+	return true;
+}
+
+/**
  * docs/jclass-14/: her slow roll (8 s free) swings the apparent wind high on her rig, and a trimmer who chased each swing
  * fed it: she rolled 1 to 30 deg every 10 s from 13 kn upwind. Trimmed over her roll (FBoatConfig::TrimRollSeconds) she
- * holds her heel within a few degrees, with the game's hands and with the polar's ideal ones, up to 24 kn.
+ * holds her heel within a few degrees, with the game's hands and with the polar's ideal ones, up to 24 kn. Since her
+ * sailing length (docs/jclass-upwind/) she is faster in a breeze, and at 8 s the game's hands swung her 19 to 27 deg in
+ * 20 to 22 kn; she is trimmed over 10 s, and 22 kn is checked too.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetRollTest, "SailingSim.Physics.BluebonnetRoll", BluebonnetTestsLocal::Flags)
 bool FSailingBluebonnetRollTest::RunTest(const FString&)
 {
 	using namespace BluebonnetTestsLocal;
 	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
-	TestEqual(TEXT("Her free roll period"), C.TrimRollSeconds, 8.0);
-	for (const double Tws : { 12.0, 16.0, 20.0, 24.0 })
+	TestEqual(TEXT("Trimmed over 10 s (her free roll period 8 s, a quarter more since her sailing length: docs/jclass-upwind/)"), C.TrimRollSeconds, 10.0);
+	for (const double Tws : { 12.0, 16.0, 20.0, 22.0, 24.0 })
 	{
 		for (const bool bHands : { true, false })
 		{
