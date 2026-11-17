@@ -371,6 +371,8 @@ namespace Sailing
 		// Fixed appendages float their own volume (FBoatConfig::AppendageVolume); the canoe body carries the rest.
 		const double Target = Mass / kWaterDensity - Config.AppendageVolume;
 		double Lo = 0.02, Hi = 3.0;
+		// A ship's sections run deeper than the small boats' 3 m search (the frigate's 5.9 m): search past them.
+		for (const FHullShape& H : Config.Hulls) Hi = std::max(Hi, 1.5 * H.StationDepth);
 		for (int I = 0; I < 60; ++I)
 		{
 			const double Mid = 0.5 * (Lo + Hi);
