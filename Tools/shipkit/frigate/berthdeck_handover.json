@@ -1,6 +1,6 @@
 {
- "about": "slice 13's hand-over to the orlop slice (14): the berth deck's line, its beams' stations and sizes, and what passes through it. Metres in the ship's frame (x forward, y to starboard, z up, z = 0 at waterline A); sizes in inches where the name ends _in. Written Nov 17 2026 from the gun deck as built at 4e131bd4 (slice 12), revised the same day for the ladderways (revised); slice 13's build will write the same fields to build.json and this file will be kept current until it merges.",
- "sources": "the 1926 midship section (NARA, the orlop slice's reading): the berth deck's top 7 ft 2 in under the gun deck's top. The 1795 midship section drawn from Humphreys' specifications (NARA 75841360, measured at 4.0 px an inch from its keel's 18 by 24 in): lower deck plank to gun deck plank 6 ft 4 in on a gun deck 23 ft 3 in over the rabbet, the lower deck about 17 ft over it; our gun deck stands 7.37 m (24 ft 2 in) over the rabbet (the 1927 lines' port sills less 24 in), so 7 ft 2 in under it puts our berth deck 17 ft over the rabbet amidships, where the 1795 section has it (the 10 in more between our decks is our gun deck standing higher). Its beams: 14 in moulded (written '14 x 1?', the second figure unclear; 14 3/4 in drawn) and its planks 3 1/2 in yellow pine; the gun deck's beams '15 x 18' (15 in drawn deep). Read as moulded by sided",
+ "about": "slice 13's hand-over to the orlop slice (14): the berth deck's line, its own beams' stations and sizes, and what passes through it, written by build_frigate.py from the berth deck as built. Metres in the ship's frame (x forward, y to starboard, z up; the origin on the middle line at midships on the load waterline, waterline A); sizes in inches where the name ends _in",
+ "sources": "the 1926 midship section (NARA, the orlop slice's reading): the berth deck's top 7 ft 2 in under the gun deck's top. The 1795 midship section drawn from Humphreys' specifications (NARA 75841360, measured at 4.0 px an inch from its keel's 18 by 24 in): lower deck plank to gun deck plank 6 ft 4 in on a gun deck 23 ft 3 in over the rabbet, the lower deck about 17 ft over it; our gun deck stands 7.37 m (24 ft 2 in) over the rabbet (the 1927 lines' port sills less 24 in), so 7 ft 2 in under it puts our berth deck 17 ft over the rabbet amidships, where the 1795 section has it (the 10 in more between our decks is our gun deck standing higher). Its beams: 14 in moulded (written '14 x 1?', the second figure unclear; 14 3/4 in drawn) and its planks 3 1/2 in yellow pine; the gun deck's beams '15 x 18' (15 in drawn deep), read as moulded by sided",
  "deck": {
   "top_below_gun_deck_in": 86.0,
   "flat_across": true,
@@ -849,10 +849,10 @@
    ]
   ],
   "ends_m": [
-   -26.313,
-   25.627
+   -26.316,
+   25.626
   ],
-  "ends_note": "where the side's inside (the ceiling, 16 in in from the moulded surface) is 0.6 m out at the deck's top, as the gun deck's beams stop: aft the run closes in to the sternpost, forward the bow",
+  "ends_note": "where the side's inside (the ceiling, 16 in in from the moulded surface) is 0.6 m out at the deck's top (deck.beams_end_half_breadth_m), as the gun deck's beams stop: aft the run closes in to the sternpost, forward the bow. half_breadth_inside_at_top_m is that inside at the deck's top, every 0.25 m",
   "half_breadth_inside_at_top_m": [
    [
     -26.5,
@@ -860,7 +860,7 @@
    ],
    [
     -26.25,
-    0.72
+    0.719
    ],
    [
     -26.0,
@@ -876,7 +876,7 @@
    ],
    [
     -25.25,
-    2.191
+    2.19
    ],
    [
     -25.0,
@@ -892,11 +892,11 @@
    ],
    [
     -24.25,
-    3.069
+    3.068
    ],
    [
     -24.0,
-    3.219
+    3.218
    ],
    [
     -23.75,
@@ -916,7 +916,7 @@
    ],
    [
     -22.75,
-    3.709
+    3.708
    ],
    [
     -22.5,
@@ -1568,7 +1568,7 @@
    ],
    [
     18.0,
-    5.27
+    5.269
    ],
    [
     18.25,
@@ -1612,7 +1612,7 @@
    ],
    [
     20.75,
-    4.567
+    4.566
    ],
    [
     21.0,
@@ -1640,7 +1640,7 @@
    ],
    [
     22.5,
-    3.79
+    3.789
    ],
    [
     22.75,
@@ -1664,7 +1664,7 @@
    ],
    [
     24.0,
-    2.684
+    2.683
    ],
    [
     24.25,
@@ -1672,15 +1672,15 @@
    ],
    [
     24.5,
-    2.129
+    2.128
    ],
    [
     24.75,
-    1.808
+    1.807
    ],
    [
     25.0,
-    1.469
+    1.468
    ],
    [
     25.25,
@@ -1688,11 +1688,11 @@
    ],
    [
     25.5,
-    0.772
+    0.773
    ],
    [
     25.75,
-    0.434
+    0.435
    ]
   ]
  },
@@ -1732,7 +1732,7 @@
    23.1593,
    24.8217
   ],
-  "note": "the berth deck's beams (the orlop's overhead, built by the orlop slice): at the spar deck's and gun deck's stations carried down (gundeck.py stations, 0.8312 m apart), a beam every other station and a ledge between, so the stanchions on each deck stand over one another; down here the waist's stations are whole beams. Straight (no round up), their tops at the planks' underside. Cut where an opening below (openings) or a mast passes, the cut ends taken by carlings either side from the whole beam abaft to the one before it"
+  "note": "the berth deck's beams (the orlop's overhead, built by the orlop slice): at the spar deck's and gun deck's stations carried down (station_pitch_m apart), a beam every other station and a ledge between, so the stanchions on each deck stand over one another; down here the waist's stations are whole beams. Straight (no round up), their tops at the planks' underside. Cut where an opening below (openings) or a mast passes, the cut ends taken by carlings either side from the whole beam abaft to the one before it"
  },
  "ledges": {
   "sided_in": 6.0,
@@ -1774,13 +1774,15 @@
  },
  "carlings": {
   "sided_in": 8.0,
-  "moulded_in": 8.0
+  "moulded_in": 8.0,
+  "note": "the berth deck's own beams, ledges and carlings under its planks, which the orlop slice builds (berth_deck.json beams, ledges, carlings): 16 in sided (estimate) and 14 in moulded (the 1795 section), ledges and carlings as the gun deck's"
  },
  "station_pitch_m": 0.8312,
  "openings": [
   {
    "name": "SpiritHatch",
    "x_m": -11.3009,
+   "y_m": 0.0,
    "inside_m": [
     1.524,
     1.524
@@ -1789,9 +1791,16 @@
     1.6764,
     1.6764
    ],
+   "inside_x_m": [
+    -12.0629,
+    -10.5389
+   ],
+   "inside_y_m": [
+    -0.762,
+    0.762
+   ],
    "gun_deck_kind": "grating",
-   "ladder_down_to_orlop": false,
-   "y_m": 0.0
+   "ladder_down_to_orlop": false
   },
   {
    "name": "AfterLadderway",
@@ -1820,6 +1829,7 @@
   {
    "name": "MainHatch",
    "x_m": 2.0597,
+   "y_m": 0.0,
    "inside_m": [
     2.4638,
     1.9304
@@ -1828,13 +1838,21 @@
     2.6162,
     2.0828
    ],
+   "inside_x_m": [
+    0.8278,
+    3.2916
+   ],
+   "inside_y_m": [
+    -0.9652,
+    0.9652
+   ],
    "gun_deck_kind": "grating",
-   "ladder_down_to_orlop": false,
-   "y_m": 0.0
+   "ladder_down_to_orlop": false
   },
   {
    "name": "ForeHatchFore",
    "x_m": 13.242,
+   "y_m": 0.0,
    "inside_m": [
     1.434,
     1.5494
@@ -1843,24 +1861,27 @@
     1.5864,
     1.7018
    ],
-   "gun_deck_kind": "grating",
-   "ladder_down_to_orlop": true,
-   "y_m": 0.0,
    "inside_x_m": [
     12.525,
     13.959
    ],
-   "note": "the berth deck's opening under the gun deck's ForeHatchFore grating, its after end 0.014 m short of the gun deck's so its coaming stands clear of the room at the gun deck fore ladder's foot; the ladder down to the orlop hangs in it"
+   "inside_y_m": [
+    -0.7747,
+    0.7747
+   ],
+   "gun_deck_kind": "grating",
+   "ladder_down_to_orlop": true,
+   "note": "under the gun deck's ForeHatchFore grating, its after end a little short of the gun deck's (inside_x_m) so its coaming stands clear of the room at the gun deck fore ladder's foot; the ladder down to the orlop hangs in it"
   }
  ],
- "openings_note": "the openings through the berth deck (inside_m: the hole in the planks, [fore and aft, across]; with_coaming_m: with the berth deck's own coaming, 6 in high and 3 in thick as your orlop hatches'; y_m the middle's offset to starboard). The gun deck's SpiritHatch and MainHatch go on down one under the other at the gun deck's x and size, and ForeHatchFore a little shorter at its after end. The gun deck's AfterHatch and ForeHatch (its ladderways) stop at the berth deck: its planks run on under them, and the gun deck's ladders land there (gun_deck_ladders_land). The ladders down to the orlop are in AfterLadderway, the berth deck's own, and ForeHatchFore (ladders_down)",
+ "openings_note": "the openings through the berth deck (inside_m: the hole in the planks, [fore and aft, across], inside_x_m and inside_y_m its edges; with_coaming_m: with the berth deck's own coaming, 6 in high and 3 in thick as your orlop hatches'; y_m the middle's offset to starboard). The gun deck's SpiritHatch and MainHatch go on down one under the other at the gun deck's x and size, and ForeHatchFore a little shorter at its after end. The gun deck's AfterHatch and ForeHatch (its ladderways) stop at the berth deck: its planks run on under them, and the gun deck's ladders land there (gun_deck_ladders_land). The ladders down to the orlop are in AfterLadderway, the berth deck's own, and ForeHatchFore (ladders_down)",
  "stop_at_berth_deck": [
-  "WardroomSkylight",
-  "Scuttle",
   "AfterHatch",
-  "ForeHatch"
+  "ForeHatch",
+  "Scuttle",
+  "WardroomSkylight"
  ],
- "stop_note": "the wardroom's skylight lights the wardroom on the berth deck, and the fore scuttle comes down onto it: neither goes further; the gun deck's AfterHatch and ForeHatch, its ladderways, end on the berth deck's planks too: the gun deck's ladders land there (gun_deck_ladders_land)",
+ "stop_note": "the gun deck's openings that end on the berth deck's planks: the wardroom's skylight lights the wardroom, the fore scuttle comes down onto it, and the gun deck's AfterHatch and ForeHatch, its ladderways, land their ladders on it (gun_deck_ladders_land): none goes further",
  "ladders_down": [
   {
    "in": "AfterLadderway",
@@ -1868,17 +1889,18 @@
    "foot_x_m": -8.067,
    "y_m": 1.047,
    "goes": "aft",
+   "foot_z_m": -2.178,
+   "drop_m": 2.069,
    "between_stringers_in": 24.0,
    "outside_stringers_in": 28.5,
    "angle_deg": 62.0,
-   "foot_z_m": -2.178,
    "foot_stringers_x_m": [
-    -8.197,
+    -8.196,
     -7.938
    ],
    "keep_clear_m": {
     "x": [
-     -8.497,
+     -8.496,
      -7.938
     ],
     "y": [
@@ -1893,17 +1915,18 @@
    "foot_x_m": 13.614,
    "y_m": 0.0,
    "goes": "forward",
+   "foot_z_m": -2.115,
+   "drop_m": 2.048,
    "between_stringers_in": 24.0,
    "outside_stringers_in": 28.5,
    "angle_deg": 62.0,
-   "foot_z_m": -2.115,
    "foot_stringers_x_m": [
-    13.484,
+    13.485,
     13.743
    ],
    "keep_clear_m": {
     "x": [
-     13.484,
+     13.485,
      14.043
     ],
     "y": [
@@ -1913,27 +1936,45 @@
    }
   }
  ],
- "ladders_note": "slice 13's ladders from the berth deck to the orlop, 62 degrees as the gun deck's, each hung from the inside face of a coaming (6 in up): aft from AfterLadderway's forward edge going aft into the cockpit, to starboard of the middle line (y_m); forward from ForeHatchFore's after edge going forward onto the fore platform. foot_x_m is where the ladder's line meets the orlop's top (your 6 ft 4 in under the berth deck's); foot_stringers_x_m where its stringers stand; keep_clear_m the room to keep clear round each foot (the stringers and a foot beyond, the ladder's width)",
+ "ladders_note": "slice 13's ladders from the berth deck to the orlop, 62 degrees as the gun deck's, each hung from the inside face of a coaming (6 in up): aft from AfterLadderway's forward edge going aft into the cockpit, to starboard of the middle line (y_m); forward from ForeHatchFore's after edge going forward onto the fore platform. foot_x_m and foot_z_m are where the ladder's line meets the orlop's top (6 ft 4 in under the berth deck's top, keeping its sheer), drop_m its height from the coaming's top; foot_stringers_x_m where its stringers stand; keep_clear_m the room to keep clear round each foot (the stringers and a foot beyond, the ladder's width)",
+ "gun_deck_ladders_land": [
+  {
+   "from": "AfterHatch",
+   "top_x_m": -8.288,
+   "foot_x_m": -6.983,
+   "y_m": 0.0,
+   "goes": "forward",
+   "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
+  },
+  {
+   "from": "ForeHatch",
+   "top_x_m": 10.709,
+   "foot_x_m": 11.986,
+   "y_m": 0.0,
+   "goes": "forward",
+   "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
+  }
+ ],
  "masts": {
   "fore": {
    "axis_at_top_m": [
     21.0383,
     0.0,
-    0.1676
+    0.1673
    ],
-   "radius_at_top_m": 0.39,
+   "radius_at_top_m": 0.3882,
    "axis_at_beam_underside_m": [
     21.0422,
     0.0,
-    -0.2769
+    -0.2772
    ],
-   "radius_at_beam_underside_m": 0.3879,
+   "radius_at_beam_underside_m": 0.386,
    "axis": [
     -0.00873,
     0.0,
     0.99996
    ],
-   "hole_radius_m": 0.4027
+   "hole_radius_m": 0.4009
   },
   "main": {
    "axis_at_top_m": [
@@ -1941,46 +1982,102 @@
     0.0,
     -0.2993
    ],
-   "radius_at_top_m": 0.4393,
+   "radius_at_top_m": 0.4384,
    "axis_at_beam_underside_m": [
     -3.1962,
     0.0,
     -0.7438
    ],
-   "radius_at_beam_underside_m": 0.4369,
+   "radius_at_beam_underside_m": 0.436,
    "axis": [
     -0.02618,
     0.0,
     0.99966
    ],
-   "hole_radius_m": 0.452
+   "hole_radius_m": 0.4511
   },
   "mizzen": {
    "axis_at_top_m": [
-    -19.4402,
+    -19.4403,
     0.0,
-    -0.0126
+    -0.0121
    ],
-   "radius_at_top_m": 0.2831,
+   "radius_at_top_m": 0.2803,
    "axis_at_beam_underside_m": [
     -19.4208,
     0.0,
-    -0.4571
+    -0.4566
    ],
-   "radius_at_beam_underside_m": 0.2817,
+   "radius_at_beam_underside_m": 0.2786,
    "axis": [
     -0.04362,
     0.0,
     0.99905
    ],
-   "hole_radius_m": 0.2958
+   "hole_radius_m": 0.293
   }
  },
- "masts_note": "each mast where it passes the berth deck: its axis and radius at the deck's top and at its beams' underside (the axes as the rig has them; the heels move down onto your keelson steps in slice 13 without moving the axes). The hole in the planks is the mast's radius plus the gun deck's 0.5 in gap, wedged as the gun deck's",
+ "masts_note": "each mast where it passes the berth deck: its axis and radius at the deck's top and at its own beams' underside (the axes as the rig has them; the fore and mizzen heels stand on your keelson steps, the axes unmoved). The hole in the planks is the mast's radius plus the gun deck's 0.5 in gap, wedged as the gun deck's",
  "pumps": {
   "chain_x_m": -5.343,
   "brake_x_m": -1.845,
-  "note": "the gun deck's pumps (gundeck_1797.json pumps): the chain pumps' case aft of the main mast on the middle line, the pair of brake pumps forward of it (their 9 in tubes 12 in either side of the middle line). Their tubes come straight down through the berth deck (slice 13 cuts the holes and builds them to its planks' underside); from there down to the well they are yours"
+  "tubes": [
+   {
+    "name": "ChainPipe_0S",
+    "at_m": [
+     -5.6985,
+     0.4064
+    ],
+    "kind": "square",
+    "half_size_m": 0.127
+   },
+   {
+    "name": "ChainPipe_0P",
+    "at_m": [
+     -5.6985,
+     -0.4064
+    ],
+    "kind": "square",
+    "half_size_m": 0.127
+   },
+   {
+    "name": "ChainPipe_1S",
+    "at_m": [
+     -4.9873,
+     0.4064
+    ],
+    "kind": "square",
+    "half_size_m": 0.127
+   },
+   {
+    "name": "ChainPipe_1P",
+    "at_m": [
+     -4.9873,
+     -0.4064
+    ],
+    "kind": "square",
+    "half_size_m": 0.127
+   },
+   {
+    "name": "BrakeTree_S",
+    "at_m": [
+     -1.8447,
+     0.3048
+    ],
+    "kind": "round",
+    "half_size_m": 0.1143
+   },
+   {
+    "name": "BrakeTree_P",
+    "at_m": [
+     -1.8447,
+     -0.3048
+    ],
+    "kind": "round",
+    "half_size_m": 0.1143
+   }
+  ],
+  "note": "the gun deck's pumps (gundeck_1797.json pumps): the chain pumps' case aft of the main mast on the middle line, the pair of brake pumps forward of it. Their tubes come straight down through the berth deck (tubes: each one's middle and half size, the chain pumps' square pipes and the brake pumps' round trees; slice 13 cuts the holes and builds them to its planks' underside); from there down to the well they are yours"
  },
  "cable_scuttles": {
   "at_m": [
@@ -1991,14 +2088,14 @@
   "diam_in": 20.0,
   "half_breadth_inside_at_deck_m": 2.826
  },
- "cable_scuttles_note": "the cables' scuttles in the berth deck straight under the gun deck's (gundeck_1797.json bow), 20 in round with lead collars: the cables come down through both to your tiers",
+ "cable_scuttles_note": "the cables' scuttles in the berth deck straight under the gun deck's (gundeck_1797.json bow), 20 in round with lead collars, one each side of the middle line: the cables come down through both to your tiers",
  "ending_on_the_berth_deck": [
   "the capstan's spindle comes down through the gun deck to its step on the berth deck's planks, bolted through to a beam (slice 13): nothing below",
-  "the riding bitts' posts come down through the gun deck to the berth deck and are bolted to its beams' faces (slice 13): nothing below its planks",
+  "the riding bitts' posts come down through the gun deck to the berth deck and are let into its planks (slice 13): nothing below them",
   "the berth deck's cabins and partitions (slice 13) stand on its planks",
   "the gun deck's after and fore ladders land on the berth deck's planks (slice 12 as built), so under them the berth deck is planked and the beams and ledges run on whole (gun_deck_ladders_land)"
  ],
- "who_builds_what": "the boundary is the underside of the berth deck's planks: below it the orlop slice (the berth deck's beams, ledges, carlings, hanging and lodging knees, the clamp under the beams' ends, the ceiling up to the planks, the pillars on the orlop under the beams); above it slice 13 (the planks, waterways, the side's ceiling and spirketting up to the gun deck, the gun deck's beams, ledges, carlings, knees and clamp overhead, the stanchions on the berth deck, coamings, ladders down to the orlop, the pumps' tubes to the planks' underside, cabins and fittings)",
+ "who_builds_what": "the boundary is the underside of the berth deck's planks: below it the orlop slice (the berth deck's beams, ledges, carlings, hanging and lodging knees, the clamp under the beams' ends, the ceiling up to the planks, the pillars on the orlop under the beams); above it slice 13 (the planks, waterways, the side's ceiling up to the gun deck, the gun deck's beams, ledges, carlings, knees, chocks and clamp overhead, the stanchions on the berth deck, coamings, ladders down to the orlop, the pumps' tubes to the planks' underside, cabins and fittings)",
  "gun_deck_beams": {
   "sided_in": 18.0,
   "moulded_in": 15.0,
@@ -2845,7 +2942,7 @@
     2.3154
    ]
   ],
-  "note": "the berth deck's overhead (slice 13 builds it): the gun deck's beams under its 4 in planks at the same stations, a ledge between"
+  "note": "the berth deck's overhead (slice 13 builds it): the gun deck's beams under its 4 in planks at the same stations, a ledge between; underside is their underside every 0.25 m"
  },
  "headroom_m": {
   "under_gun_deck_beams_amidships": 1.702,
@@ -2854,24 +2951,5 @@
  "midships_m": {
   "gun_deck_top": 1.8539,
   "berth_deck_top": -0.3305
- },
- "gun_deck_ladders_land": [
-  {
-   "from": "AfterHatch",
-   "top_x_m": -8.288,
-   "foot_x_m": -6.986,
-   "y_m": 0.0,
-   "goes": "forward",
-   "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
-  },
-  {
-   "from": "ForeHatch",
-   "top_x_m": 10.709,
-   "foot_x_m": 11.995,
-   "y_m": 0.0,
-   "goes": "forward",
-   "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
-  }
- ],
- "revised": "Nov 17 2026: the gun deck's AfterHatch and ForeHatch no longer go on down through the berth deck (the gun deck's own ladders landed in them); AfterLadderway added; ForeHatchFore shortened at its after end; the ladders down to the orlop moved to land on your planks (your note of 05:40 UTC). The first version is berth_deck_v1.json beside this file"
+ }
 }

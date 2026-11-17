@@ -63,7 +63,7 @@
   "beam_pitch_ft": 4.0,
   "after_platform_px": [
    464.5,
-   1442.5
+   1438.5
   ],
   "fore_platform_px": [
    2610.0,
@@ -92,7 +92,8 @@
    4.0,
    2.0
   ],
-  "batten_gap_in": 2.0
+  "batten_gap_in": 2.0,
+  "after_platform_note": "the after platform's fore end (with the rooms against it and the pump well's after end) at 1438.5 px, 4 px (6 cm) abaft the plan's 1442.5, inside the registration's slack: the gun deck's chain pumps over it (slice 13's chain pipes) stand 4 cm abaft the plan's well end. There the well has no after wall of its own: the main hold's after bulkhead (hold plan 1444.5), just abaft the pipes, closes it, and the platform's end still covers that bulkhead"
  },
  "rooms": {
   "note": "the platforms' rooms, from the plan: each [x0, x1] px along, [y0, y1] px across (from the top of the sheet; the centreline is 509), mirrored where the plan draws a pair. Partitions 1.5 in deal on 3 in posts (estimate), doors as the gun deck's cabin doors' openings (2 ft 3 in by 5 ft, or the headroom less 3 in). The bread rooms and the magazine's filling room were lined with tin (the period's practice against rats and sparks): the look of their walls, not modelled sheet. Every wall over 4 ft long gets a doorway at its middle (a simplification: the plan's doors are not all registered). Left out or cut for slice 13's ladders down from the berth deck (its hand-over's keep_clear): the 1849 plan's coal and sand room (a steam-era store) under the fore ladder, and the dispensary's inboard side moved out to 614 px, clear of the after ladderway's ladder",
@@ -207,7 +208,7 @@
     "name": "SlopRoom",
     "x_px": [
      1313.5,
-     1442.5
+     1438.5
     ],
     "y_px": [
      302.0,
@@ -221,7 +222,7 @@
     "name": "CaptainsStoreRoom",
     "x_px": [
      1313.5,
-     1442.5
+     1438.5
     ],
     "y_px": [
      720.0,
@@ -234,7 +235,7 @@
     "name": "Dispensary",
     "x_px": [
      1313.5,
-     1442.5
+     1438.5
     ],
     "y_px": [
      614.0,
@@ -397,7 +398,7 @@
    {
     "name": "PumpWellAft",
     "x_px": [
-     1442.5,
+     1438.5,
      1557.0
     ],
     "kind": "pumps"
@@ -563,7 +564,7 @@
      "Ceiling"
     ],
     "the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13)",
-    5.3
+    5.2
    ],
    [
     [
@@ -736,7 +737,7 @@
      "TierBattens"
     ],
     "the cable tiers' battens on the orlop's beams",
-    3.55
+    3.4
    ],
    [
     [
@@ -817,7 +818,7 @@
      "Ceiling"
     ],
     "each hanging knee's arm down the side is scribed to the ceiling and bolted through it",
-    1.15
+    1.1
    ],
    [
     [
@@ -965,7 +966,27 @@
      "LimberBoards"
     ],
     "the chain pump's tubes are footed on the limber boards in the well",
+    0.6
+   ],
+   [
+    [
+     "HoldBulkheads"
+    ],
+    [
+     "MiddleLine"
+    ],
+    "the main hold's after bulkhead closes the pump well aft: the well's sides bedded on its fore face (orlop.after_platform_note)",
     0.35
+   ],
+   [
+    [
+     "MiddleLine"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the pump well's sides stand up under the after platform's end, against its planks",
+    0.25
    ]
   ]
  },
