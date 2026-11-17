@@ -29,8 +29,20 @@ A crew has at most `kMaxMetaHumanCrew` (5) MetaHumans (`CrewPose.h`: `CrewFigure
 - **Crew falls** (Ultra) apply to the MetaHumans only, since SK_Sailor has no physics asset. In a knockdown the forward
   hands on a big boat stay braced on deck. `HasMetaHumanCrew` now asks whether any figure is a MetaHuman, not only the first.
 
-Estimated, not measured yet: five MetaHumans in place of twelve saves about 5 ms of CPU. That would put her near 50 fps on
-the PC's Ultra and back over 45 on the Mac's High.
+## Measured
+
+The helm-eye view, the cap of five (this change) against `-SailingMetaCrew=12` (all twelve, as before), same build back to
+back:
+
+| | Mac High, full resolution: fps (p99 ms, GPU ms) | PC Ultra, 1080p: fps |
+|---|---|---|
+| *Bluebonnet*, five | **47.0** (23.9, 20.5) | **53.4** |
+| *Bluebonnet*, twelve | 43.0 (25.8, 23.2) | 43.9 |
+| Maxi, five | **47.0** (25.3, 19.6) | **57.0** |
+| Maxi, twelve | 43.5 (27.1, 21.9) | 42.4 |
+
+Both boats are back over the Mac's 45 floor on High. On the PC the cap saves 6 to 8 ms of game thread, and the GPU is
+unchanged (`Inputs/bench/pr781-50ee9917/` on `inputs`).
 
 ## Measuring
 
