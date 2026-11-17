@@ -149,10 +149,14 @@ class Orlop:
         self.ladder_boxes_orlop = []
         for lad in (berth or {}).get("ladders_down", []):
             w = lad["outside_stringers_in"] * IN / 2 + 3 * IN
+            y0 = lad.get("y_m", 0.0)
             a, b = sorted((lad["top_x_m"], lad["foot_x_m"]))
             land = self.c["overhead"]["ladder_landing_m"]
             a, b = (a, b + land) if lad["foot_x_m"] > lad["top_x_m"] else (a - land, b)
-            self.ladder_boxes_orlop.append((a, b, -w, w))
+            self.ladder_boxes_orlop.append((a, b, y0 - w, y0 + w))
+            kc = lad.get("keep_clear_m")
+            if kc:
+                self.ladder_boxes_orlop.append((kc["x"][0], kc["x"][1], kc["y"][0], kc["y"][1]))
         self.L = sk.L
         self.m = sk.m
         self.parts_ = {}
@@ -452,12 +456,12 @@ class Orlop:
 
     def beam(self, part, x, z_top, w, d, holes):
         """a beam across the ship at x, its top at z_top, ends let 2 in into the ceiling, cut clear of any hole it would
-        cross (the hole's outline widened by an inch)"""
+        cross (its sides an inch clear of the hole's; a face may stand on its end)"""
         y_end = float(self.ceil_y([x], [z_top - d / 2])[0]) + 2.0 * IN
         segs = [(-y_end, y_end)]
         for h in holes:
             h = np.asarray(h)
-            if h[:, 0].min() - w / 2 - IN < x < h[:, 0].max() + w / 2 + IN:
+            if h[:, 0].min() - w / 2 + 0.01 < x < h[:, 0].max() + w / 2 - 0.01:
                 ya, yb = h[:, 1].min() - IN, h[:, 1].max() + IN
                 new = []
                 for a, b in segs:
@@ -1205,7 +1209,7 @@ class Orlop:
         holes = []
         if self.berth is not None:
             for o in self.berth["openings"]:
-                holes.append(rect2(o["x_m"], 0.0, o["inside_m"][0], o["inside_m"][1]))
+                holes.append(rect2(o["x_m"], o.get("y_m", 0.0), o["inside_m"][0], o["inside_m"][1]))
             masts = [(m["axis_at_beam_underside_m"][0], m["hole_radius_m"]) for m in self.berth["masts"].values()]
         else:
             for k in oc["through_berth_deck"]:
@@ -1224,9 +1228,10 @@ class Orlop:
         n_carl = 0
         for h in list(holes):
             h = np.asarray(h)
-            hx0, hx1 = h[:, 0].min() - bw / 2 - IN, h[:, 0].max() + bw / 2 + IN
-            aft = [x for x in xs if x < hx0]
-            fwd = [x for x in xs if x > hx1]
+            # (a beam whose face is the opening's end counts: a coaming sits on it)
+            hx0, hx1 = h[:, 0].min() - bw / 2 + 0.01, h[:, 0].max() + bw / 2 - 0.01
+            aft = [x for x in xs if x <= hx0]
+            fwd = [x for x in xs if x >= hx1]
             if not aft or not fwd:
                 continue
             ca, cf = max(aft) + bw / 2, min(fwd) - bw / 2

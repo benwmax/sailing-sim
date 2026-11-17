@@ -94,7 +94,7 @@
   "batten_gap_in": 2.0
  },
  "rooms": {
-  "note": "the platforms' rooms, from the plan: each [x0, x1] px along, [y0, y1] px across (from the top of the sheet; the centreline is 509), mirrored where the plan draws a pair. Partitions 1.5 in deal on 3 in posts (estimate), doors as the gun deck's cabin doors' openings (2 ft 3 in by 5 ft, or the headroom less 3 in). The bread rooms and the magazine's filling room were lined with tin (the period's practice against rats and sparks): the look of their walls, not modelled sheet. Every wall over 4 ft long gets a doorway at its middle (a simplification: the plan's doors are not all registered)",
+  "note": "the platforms' rooms, from the plan: each [x0, x1] px along, [y0, y1] px across (from the top of the sheet; the centreline is 509), mirrored where the plan draws a pair. Partitions 1.5 in deal on 3 in posts (estimate), doors as the gun deck's cabin doors' openings (2 ft 3 in by 5 ft, or the headroom less 3 in). The bread rooms and the magazine's filling room were lined with tin (the period's practice against rats and sparks): the look of their walls, not modelled sheet. Every wall over 4 ft long gets a doorway at its middle (a simplification: the plan's doors are not all registered). Left out or cut for slice 13's ladders down from the berth deck (its hand-over's keep_clear): the 1849 plan's coal and sand room (a steam-era store) under the fore ladder, and the dispensary's inboard side moved out to 614 px, clear of the after ladderway's ladder",
   "partition_in": 1.5,
   "door_wide_in": 27.0,
   "after": [
@@ -236,7 +236,7 @@
      1442.5
     ],
     "y_px": [
-     575.0,
+     614.0,
      720.0
     ],
     "kind": "store",
@@ -258,19 +258,6 @@
     "kind": "sail",
     "mirror": true,
     "note": "10 ft 1 in long, the sails stowed rolled on shelves"
-   },
-   {
-    "name": "SandRoom",
-    "x_px": [
-     2610.0,
-     2701.5
-    ],
-    "y_px": [
-     444.0,
-     575.0
-    ],
-    "kind": "store",
-    "note": "the plan's coal and sand room: sand only in 1797 (holystoning, the galley's hearth)"
    },
    {
     "name": "GeneralStoreRoom",
