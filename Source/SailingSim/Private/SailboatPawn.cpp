@@ -591,17 +591,23 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// the helm is the last figure, the trimmer the one before, the rest work the bow. -SailingBlenderCrew opts out.
 	const bool bMeta = !bTrafficBoat && USailingSettings::Get()->Quality != ESailingQuality::Low
 		&& !FParse::Param(SailingArgs::Dev(), TEXT("SailingBlenderCrew")) && LoadMetaCrew();
-	for (int32 I = 0; I < C.CrewCount && bMeta; ++I)
+	// docs/crew-cost/: a big crew (the maxi's, Bluebonnet's twelve) has MetaHumans only aft (CrewFigureIsMetaHuman), SK_Sailor
+	// forward of them; -SailingMetaCrew=<n> sets how many for measuring. A MetaHuman that fails to build stands in as SK_Sailor.
+	int32 MetaCount = bMeta ? kMaxMetaHumanCrew : 0;
+	if (bMeta) FParse::Value(SailingArgs::Dev(), TEXT("SailingMetaCrew="), MetaCount);
+	for (int32 I = 0; I < C.CrewCount; ++I)
 	{
-		const int32 CrewRole = CrewMetaHumanRole(C.CrewCount, I);
-		if (USkeletalMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
+		if (CrewFigureIsMetaHuman(C.CrewCount, I, MetaCount))
 		{
-			Crew.Add(Figure);
-			CrewFigures.AddDefaulted_GetRef().Rig = CrewRole;
+			const int32 CrewRole = CrewMetaHumanRole(C.CrewCount, I);
+			if (USkeletalMeshComponent* Figure = AddMetaHumanFigure(CrewRole, I))
+			{
+				Crew.Add(Figure);
+				CrewFigures.AddDefaulted_GetRef().Rig = CrewRole;
+				continue;
+			}
 		}
-	}
-	for (int32 I = 0; I < C.CrewCount && SailorMesh && !bMeta; ++I)
-	{
+		if (!SailorMesh) continue;
 		USkeletalMeshComponent* Figure = NewCrewBody(SailorMesh, -1);
 		for (const TPair<FName, TObjectPtr<UMaterialInterface>>& M : CrewMaterials) Figure->SetMaterialByName(M.Key, M.Value);
 		// pc/crew-colours: the top in the crew's light polo colour and the life jacket bright (CrewOutfit.h), as the MetaHumans.
