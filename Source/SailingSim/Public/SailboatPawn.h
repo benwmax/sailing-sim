@@ -281,6 +281,14 @@ public:
 	const FPhotoSettings& GetPhotoSettings() const { return PhotoSettings; }
 	EPhotoRow GetPhotoRow() const { return PhotoRow; }
 	float GetPhotoFocusM() const { return PhotoFocusM; }
+	/** Camera views slice 3: the panel open (a tap of View or H opens and closes it; B closes it, then leaves; it opens
+	 *  closed in the Off UI mode), and the pointer shown over it while Alt is held, to click it. */
+	bool IsPhotoPanelOpen() const { return bPhotoPanelOpen; }
+	bool IsPhotoPointerShown() const { return bPhotoPointer; }
+	/** The panel's mouse: a click on a row, a tab, or a value's arrow (Dir +1 or -1 on the row it is on). */
+	void SelectPhotoRow(EPhotoRow Row);
+	void SelectPhotoPage(int32 Page);
+	void StepPhotoValue(int32 Dir);
 	bool IsPhotoNatural() const { return bPhoto && PhotoSettings.Look == EPhotoLook::Natural; }
 	/** A photo is being taken: nothing is drawn on the canvas over it (the hint and the toast come after). */
 	bool IsTakingPhoto() const { return GFrameCounter <= PhotoCleanFrame; }
@@ -359,6 +367,8 @@ private:
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
 	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
+	/** Whether this boat draws the rebuilt Catalina 22 (/Game/Boats/C22Hero, docs/c22-12) rather than the fleet model. */
+	bool UseC22Hero(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
 	/** A rig point in the boat frame (cm) from a socket on one of the model's parts; mast points follow its bend. */
@@ -504,6 +514,13 @@ private:
 	void ApplyMappingContexts();
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
 	bool bPhotoHideHints = false;
+	bool bPhotoPanelOpen = true;
+	bool bPhotoPointer = false;
+	/** X held (Alt on a keyboard): the left stick zooms, the right stick tilts, the D-pad's up and down set the speed. */
+	bool IsPhotoAltHeld() const;
+	float PhotoAltRoll = 0.f;   // the right stick's sideways push while X is held, for the tilt (taken each frame)
+	void UpdatePhotoPointer();
+	void StepPhotoSpeed(int32 Dir);
 	// The panel: settings kept for the session, the row it is on, the focus distance it eases to, the scene it hid.
 	FPhotoSettings PhotoSettings;
 	EPhotoRow PhotoRow = EPhotoRow::Focal;

@@ -160,6 +160,7 @@
   "fittings": {
    "objects": [
     "C22_Hardware",
+    "C22_LidRails*",
     "C22_Lifelines",
     "C22_MastHardware",
     "C22_Halyards",
@@ -179,6 +180,28 @@
     "cabin",
     "well",
     "rig"
+   ]
+  },
+  "interior": {
+   "objects": [
+    "C22_Interior*"
+   ],
+   "owns": [
+    "build_liner",
+    "cut_ports",
+    "reveals",
+    "build_interior",
+    "build_porta_potti",
+    "build_cushions",
+    "build_table",
+    "build_galley"
+   ],
+   "borders": [
+    "hull",
+    "deck",
+    "cabin",
+    "well",
+    "keel"
    ]
   }
  },

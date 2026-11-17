@@ -1,0 +1,862 @@
+{
+ "about": "The frigate Commonwealth's below-decks stores kit, 1797 (docs/shipkit-stores): the movable things her lower decks fill with, each a mesh in its own frame for the deck slices (the gun deck, the berth deck, the orlop and the hold) to place: mess tables, benches and kids, sea chests, hammocks slung and lashed with their hooks, casks of the navy's sizes with their quoins, shot lockers, the magazine's barrel rack, cartridges, their rack and the passing box. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m) or gallons (_gal). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. stores.py reads this file, build_stores.py builds and checks the kit",
+ "sources": {
+  "falconer_1780": "William Falconer, An Universal Dictionary of the Marine (1780 edition, public domain): HAMMOC, 'a piece of hempen cloth, six feet long and three feet wide, gathered or drawn together at the two ends', hung under the deck lengthways, with from 14 to 20 inches allowed between decks for each man's",
+  "gun_deck": "slice 12 (gundeck_1797.json): the 24-pounder's shot 5.55 in (the garlands), the bore 5.823 in (guns_1797.json); the carronade's bore 6.25 in",
+  "casks": "the navy's cask sizes as the period's accounts usually give them: leaguer about 150 (wine gallons of 231 cubic inches), butt 108, puncheon 72, hogshead 54, barrel 36 (beer and water in ale gallons of 282 cubic inches); their shapes (length over bilge, head over bilge) are the cooper's usual proportions. Estimate: not checked against a primary list",
+  "period": "estimate: the period's practice for an American or British frigate of the 1790s where no drawing or dictionary gives the size (the mess tables, forms and kids, the sea chests, the shot lockers, the magazine's racks, the cartridges and the passing box)"
+ },
+ "frame_note": "Every item is built in its own frame: metres, X along its length, Y across, Z up, its origin at the middle of the face it rests on (z 0 on the deck), or for a hung item at the middle between the points it hangs from (z 0 there). Every rest and slot places an item the same way: turned about X, then Y, then Z by turn_deg (degrees, R = Rz Ry Rx, right-handed), then moved by at_m. build_stores.py writes each item's box, rest, attach points and slots to stores.json; the deck slices turn and place them (linked copies) and check them against the ship with deck.room",
+ "materials_note": "every material is a name in build_frigate.py's PAINT (Ash, Tin and Fleece come with slice 12): scrubbed deal and ash in Ash, the chests and lockers in Oak, iron in Iron, the powder barrels' hoops in Copper, hammocks and bags in Canvas, bedding and cartridges' flannel in Fleece, line in Hemp, tarred line in Tarred, a hole's dark in Shadow",
+ "mess": {
+  "note": "a mess of eight men at a table hung between two guns (the berth deck: between two of its beams' bays): the table's outboard end on a hinge to a cleat on the side, its inboard end hung from the beam over it by two slings, so it hooks up out of the way; a form (bench) either side and the mess's kid, a staved tub with two ears, for its food. Sizes estimate",
+  "table": {
+   "size_in": [
+    72.0,
+    24.0
+   ],
+   "top_in": 1.5,
+   "high_in": 28.0,
+   "batten_in": [
+    2.5,
+    1.5
+   ],
+   "cleat_in": [
+    4.0,
+    3.0
+   ],
+   "hinge_in": [
+    9.0,
+    1.75,
+    0.25
+   ],
+   "eyebolt_in": [
+    1.6,
+    0.35
+   ],
+   "sling_in": 0.45,
+   "sling_to_ft": 5.5,
+   "sling_note": "sling_to_ft is the default height from the deck to the beam's underside the slings run to (the berth deck's figure is the berth deck slice's: stores.mess_table(sling_m) builds any length)"
+  },
+  "bench": {
+   "size_in": [
+    72.0,
+    10.0
+   ],
+   "top_in": 1.5,
+   "high_in": 17.0,
+   "leg_in": [
+    9.0,
+    1.5
+   ],
+   "leg_from_end_in": 7.0,
+   "notch_in": [
+    4.0,
+    2.5
+   ],
+   "rail_in": [
+    3.0,
+    1.0
+   ]
+  },
+  "kid": {
+   "top_in": 11.0,
+   "bottom_in": 13.0,
+   "high_in": 9.0,
+   "stave_in": 0.6,
+   "bottom_board_in": 0.75,
+   "hoops": [
+    [
+     1.0,
+     1.0
+    ],
+    [
+     7.5,
+     1.0
+    ]
+   ],
+   "hoop_in": 0.08,
+   "ear_in": [
+    3.0,
+    3.5,
+    0.6
+   ],
+   "ear_hole_in": 1.1
+  }
+ },
+ "chest": {
+  "note": "a seaman's chest of pine, painted, its front and back leaning in to a narrower lid (the sailor's chest stands steady in a seaway), the lid overhanging with a skirt round the body's top, a plinth round the foot, rope beckets through cleats at each end, a hasp and staple. Sizes estimate (period practice)",
+  "foot_in": [
+   36.0,
+   17.0
+  ],
+  "top_in": [
+   36.0,
+   14.5
+  ],
+  "high_in": 17.0,
+  "plinth_in": [
+   2.0,
+   0.5
+  ],
+  "lid_in": [
+   1.0,
+   0.6,
+   1.5
+  ],
+  "cleat_in": [
+   7.0,
+   1.25,
+   2.5
+  ],
+  "becket_in": [
+   0.4,
+   4.5,
+   3.0
+  ],
+  "hasp_in": [
+   1.0,
+   4.0,
+   0.12
+  ]
+ },
+ "hammock": {
+  "note": "Falconer's hammock, hempen cloth six feet by three, gathered at each end by its clews (the nettles: small lines from grommets along the end to an iron ring) and hung lengthways from two hooks in the beams by a lanyard at each ring; slung, with its bed in it, and lashed up for stowing in the nettings by day (seven turns of a lashing). Clew length, nettles and the span between hooks are estimate. The cloth is three feet wide where Falconer allowed each man 14 to 20 inches of beam: slung side by side the hammocks press against their neighbours, as they did (the deck slices sling them at the berth deck's spacing, not at the cloth's width)",
+  "cloth_ft": [
+   6.0,
+   3.0
+  ],
+  "cloth_in": 0.06,
+  "nettles": 11,
+  "nettle_in": 0.11,
+  "clew_ft": 2.25,
+  "ring_in": [
+   2.0,
+   0.22
+  ],
+  "lanyard_in": 0.16,
+  "span_ft": 11.0,
+  "sag_in": 7.0,
+  "drop_in": 14.0,
+  "chord_in": [
+   7.0,
+   24.0
+  ],
+  "bed": {
+   "in_from_ends_in": 6.0,
+   "across": 0.72,
+   "thick_in": 2.0,
+   "note": "the bed (a flock mattress) and the brown wool blanket over it lying in the cloth (its paint Hemp's brown, the nearest of the build's paints)",
+   "material": "Hemp"
+  },
+  "lashed": {
+   "length_in": 58.0,
+   "across_in": 10.5,
+   "turns": 7,
+   "turn_in": 0.18,
+   "note": "the hammock rolled round its bed and lashed with seven turns of a hammock lashing: the size stowed on end in the nettings (deck_1797.json)"
+  },
+  "hook": {
+   "plate_in": [
+    3.0,
+    1.0,
+    0.3
+   ],
+   "bar_in": 0.4,
+   "drop_in": 3.0,
+   "throat_in": 1.0,
+   "note": "an iron hook on a plate screwed to the beam's underside; the lanyard's eye over its bend"
+  },
+  "gather": 0.55,
+  "shape_note": "slung, the cloth hangs as a trough: each section a circular arc of the cloth's width across a chord (chord_in: at the ends, in the middle), the ends gathered by the nettles (the width drawn in by 'gather' at the very end); its middle sag_in under its ends, the ends drop_in under the hooks. Estimate, by eye from period drawings",
+  "clew_fan_in": 0.8,
+  "seizing_in": 1.0,
+  "clew_note": "the nettles gathered at the ring, their ends seized together round its bar with tarred spun yarn (estimate: the period's clews were made several ways)"
+ },
+ "casks": {
+  "note": "a staved cask, its staves bellied to the bilge, the heads let in 'chime_in' from each end, iron hoops (copper on the powder barrels, so they cannot strike a spark; whether the beer and water casks were hooped in iron or wood in 1797 is uncertain, iron is shown) at each chime, quarter and bilge, a bung in the bung stave at the bilge. Sizes from each kind's gallons and its length over bilge (L_over_D) and head over bilge (head_over_D): build_stores.py reports the computed gallons beside the card's",
+  "stave_in": 1.0,
+  "chime_in": 1.25,
+  "hoop_in": 0.12,
+  "bung_in": [
+   1.6,
+   0.4
+  ],
+  "hoops_at": [
+   [
+    0.0,
+    2.5
+   ],
+   [
+    0.12,
+    2.0
+   ],
+   [
+    0.3,
+    2.5
+   ],
+   [
+    0.7,
+    2.5
+   ],
+   [
+    0.88,
+    2.0
+   ],
+   [
+    1.0,
+    2.5
+   ]
+  ],
+  "hoops_note": "each hoop [its middle's place along the length 0..1, at the chimes held in by half its width; its width in inches]",
+  "kinds": {
+   "Leaguer": {
+    "gal": 150,
+    "L_over_D": 1.55,
+    "head_over_D": 0.82,
+    "hoop": "Iron",
+    "use": "water, the hold's ground tier",
+    "measure": "wine"
+   },
+   "Butt": {
+    "gal": 108,
+    "L_over_D": 1.35,
+    "head_over_D": 0.8,
+    "hoop": "Iron",
+    "use": "water and beer",
+    "measure": "ale"
+   },
+   "Puncheon": {
+    "gal": 72,
+    "L_over_D": 1.3,
+    "head_over_D": 0.8,
+    "hoop": "Iron",
+    "use": "spirits, water",
+    "measure": "ale"
+   },
+   "Hogshead": {
+    "gal": 54,
+    "L_over_D": 1.3,
+    "head_over_D": 0.8,
+    "hoop": "Iron",
+    "use": "provisions, water",
+    "measure": "ale"
+   },
+   "Barrel": {
+    "gal": 36,
+    "L_over_D": 1.3,
+    "head_over_D": 0.8,
+    "hoop": "Iron",
+    "use": "beef, pork, flour",
+    "measure": "ale"
+   },
+   "PowderBarrel": {
+    "gal": 13.5,
+    "L_over_D": 1.25,
+    "head_over_D": 0.84,
+    "hoop": "Copper",
+    "no_bung": true,
+    "use": "100 lb of powder, in the magazine (estimate: its gallons give its size, not a measure)",
+    "measure": "wine"
+   }
+  },
+  "quoin": {
+   "size_in": [
+    12.0,
+    4.0,
+    4.0
+   ],
+   "note": "an oak wedge chocking a cask lying on its bilge, one each side of each end"
+  },
+  "measures_in3": {
+   "wine": 231.0,
+   "ale": 282.0
+  },
+  "measures_note": "gallons are read in the measure each liquor was gauged in: the Navy's beer and water casks (butt, puncheon, hogshead, barrel) in the ale gallon of 282 cubic inches; the leaguer and the powder barrel in the wine gallon of 231 (the leaguer's size is the least certain: sources give 150 to 160 gallons; the powder barrel's 13.5 wine gallons, about 11 ale, is sized to hold 100 lb of powder and its air, an estimate)"
+ },
+ "shot_lockers": {
+  "note": "a bay of the hold's shot lockers: oak posts at the corners, planked ends and back, the front closed by loose boards dropped one above the other into grooves in the posts, filled with round shot; the top layer of shot shows over the boards. Sizes estimate",
+  "inside_in": [
+   48.0,
+   48.0,
+   42.0
+  ],
+  "post_in": 6.0,
+  "plank_in": 2.5,
+  "board_in": [
+   9.0,
+   2.0
+  ],
+  "board_gap_in": 0.25,
+  "groove_in": 0.75,
+  "fill_in": 36.0,
+  "fill_under_top_in": 0.5,
+  "kinds": {
+   "ShotLocker24": {
+    "shot_in": 5.55,
+    "note": "the long 24-pounders' shot (gundeck_1797.json garland)"
+   },
+   "ShotLocker32": {
+    "shot_in": 6.1,
+    "note": "the 32-pounder carronades' shot, the bore 6.25 in less its windage (estimate) (the carronade's bore comes from the gun-deck card, gundeck_1797.json)"
+   }
+  }
+ },
+ "magazine": {
+  "note": "the magazine's barrel rack: powder barrels lying on their bilges in two tiers, each barrel in two oak chocks hollowed to it, the chocks on bearers running the rack's length, the upper tier's bearers on uprights; the cartridge rack's shelves of filled flannel cartridges for the 24-pounders, and the passing box a boy carried one cartridge up in. Sizes estimate (period practice)",
+  "rack": {
+   "barrels": 4,
+   "tiers": 2,
+   "gap_in": 1.5,
+   "bearer_in": [
+    4.0,
+    4.0
+   ],
+   "chock_in": [
+    3.0,
+    1.5
+   ],
+   "upright_in": 4.0,
+   "tier_clear_in": 1.0
+  },
+  "cartridge": {
+   "across_in": 5.4,
+   "long_in": 12.0,
+   "choke_in": [
+    2.5,
+    1.2
+   ],
+   "note": "a 24-pounder's 8 lb charge in a flannel bag, its end choked (tied) round its neck: the bag a little under the bore (estimate)"
+  },
+  "cartridge_rack": {
+   "bays": 4,
+   "shelves": 3,
+   "per_bay": 3,
+   "shelf_in": 1.0,
+   "divider_in": 1.0,
+   "deep_in": 15.0,
+   "gap_in": 0.75,
+   "pitch_in": 8.0,
+   "top_in": 1.0
+  },
+  "passing_box": {
+   "across_in": 7.5,
+   "high_in": 18.0,
+   "wall_in": 0.4,
+   "lid_in": 1.5,
+   "becket_in": 0.35,
+   "note": "a wooden cylinder with a lid over its top: inside it a whole cartridge stands on end (its inside, high_in less the lid and the bottom's wall_in, is checked against the cartridge with its tail)"
+  },
+  "filling_bench": {
+   "note": "the filling room's bench where the cartridges were filled: oak, on four legs with stretchers, a low rim round its top so no powder runs off, the top inside the rim sheathed in copper, which strikes no spark. Estimate (period practice)",
+   "size_in": [
+    60.0,
+    24.0
+   ],
+   "high_in": 31.0,
+   "top_in": 1.5,
+   "rim_in": [
+    1.5,
+    1.0
+   ],
+   "sheet_in": 0.06,
+   "leg_in": 3.0,
+   "stretcher_in": [
+    3.0,
+    1.5
+   ],
+   "stretcher_high_in": 6.0
+  }
+ },
+ "budget_tris": {
+  "each": 6000,
+  "cask": 2500,
+  "note": "per unique mesh (they are placed as linked copies: a deck draws each copy, so the meshes copied most, the hammocks slung and lashed and the casks, are held lean); the light copy (slice 16) decimates them further. A figure to report against, not a ceiling (Bean, Nov 12: frame rate is the only hard limit): build_stores.py reports each mesh's count against it and never fails on it",
+  "hammock": 2500
+ },
+ "meets": {
+  "note": "each item's pieces that meet by design, each [piece, piece, why, the depth in inches either may go into the other (measured, plus a quarter inch, rounded up to a twentieth)]; every other meeting within an item fails the build (deck.room), and so does a pair listed here that no longer meets (a piece that should be let in or rest on another and hangs clear of it). 'items' lists them by item; 'assemblies' by build_stores.py's assemblies, the pieces named '<item>#<copy>.<piece>'",
+  "items": {
+   "MessTable": [
+    [
+     "Battens",
+     "Top",
+     "the battens fastened across the top's underside",
+     0.25
+    ],
+    [
+     "Hinges",
+     "Top",
+     "each hinge's upper leaf screwed to the top's underside",
+     0.25
+    ],
+    [
+     "Cleat",
+     "Hinges",
+     "each hinge's lower leaf screwed to the cleat's face",
+     0.25
+    ],
+    [
+     "Hinges",
+     "Knuckles",
+     "the leaves wrap the knuckle's pin",
+     0.35
+    ],
+    [
+     "Cleat",
+     "Knuckles",
+     "the knuckles lie in the corner against the cleat's face",
+     0.45
+    ],
+    [
+     "Eyebolts",
+     "Top",
+     "the table's eyebolts driven into the top",
+     0.25
+    ],
+    [
+     "Eyebolts",
+     "Eyes",
+     "each eye forged on its bolt",
+     0.35
+    ],
+    [
+     "Eyes",
+     "Slings",
+     "each sling's end through an eye",
+     0.3
+    ]
+   ],
+   "MessBench": [
+    [
+     "Legs",
+     "Top",
+     "the legs tenoned up into the top",
+     0.25
+    ],
+    [
+     "Legs",
+     "Rail",
+     "the rail tenoned through the legs",
+     0.25
+    ],
+    [
+     "Rail",
+     "Top",
+     "the rail under the top",
+     0.25
+    ]
+   ],
+   "MessKid": [
+    [
+     "Ears",
+     "Tub",
+     "the ears are staves of the tub, standing up over its rim",
+     0.55
+    ]
+   ],
+   "SeaChest": [
+    [
+     "Body",
+     "Plinth",
+     "the plinth nailed round the foot",
+     0.3
+    ],
+    [
+     "Body",
+     "Lid",
+     "the lid shut on the body's top",
+     0.25
+    ],
+    [
+     "Body",
+     "LidSkirt",
+     "the lid's skirt round the body's top",
+     0.3
+    ],
+    [
+     "Lid",
+     "LidSkirt",
+     "the skirt nailed under the lid's edge",
+     0.25
+    ],
+    [
+     "Body",
+     "Cleats",
+     "the becket cleats nailed to the ends",
+     0.25
+    ],
+    [
+     "Beckets",
+     "Cleats",
+     "each becket rove through its cleat's holes",
+     0.85
+    ],
+    [
+     "Body",
+     "Hasp",
+     "the hasp lies down the front",
+     0.3
+    ],
+    [
+     "Hasp",
+     "LidSkirt",
+     "the hasp hinged to the skirt",
+     0.35
+    ],
+    [
+     "Body",
+     "Staple",
+     "the staple driven into the front",
+     0.35
+    ],
+    [
+     "Hasp",
+     "Staple",
+     "the staple through the hasp's slot",
+     0.25
+    ]
+   ],
+   "HammockSlung": [
+    [
+     "Bed",
+     "Cloth",
+     "the bed lies in the cloth",
+     0.3
+    ],
+    [
+     "Nettles_aft",
+     "Cloth",
+     "each nettle through its grommet in the cloth's end",
+     0.3,
+     "each"
+    ],
+    [
+     "Nettles_fore",
+     "Cloth",
+     "each nettle through its grommet in the cloth's end",
+     0.3,
+     "each"
+    ],
+    [
+     "Nettles_aft",
+     "Rings",
+     "the middle nettle bears on the clew ring",
+     0.3
+    ],
+    [
+     "Nettles_fore",
+     "Rings",
+     "the middle nettle bears on the clew ring",
+     0.3
+    ],
+    [
+     "Lanyards",
+     "Rings",
+     "each lanyard spliced into its ring",
+     0.35
+    ],
+    [
+     "Nettles_aft",
+     "Seizing",
+     "the nettles' ends seized together",
+     0.3,
+     "each"
+    ],
+    [
+     "Nettles_fore",
+     "Seizing",
+     "the nettles' ends seized together",
+     0.3,
+     "each"
+    ],
+    [
+     "Rings",
+     "Seizing",
+     "the seizing bound round the ring's bar",
+     0.65
+    ]
+   ],
+   "HammockLashed": [
+    [
+     "Roll",
+     "Turns",
+     "each turn of the lashing drawn into the roll",
+     0.3
+    ],
+    [
+     "Roll",
+     "Run",
+     "the lashing's run lies along the roll",
+     0.3
+    ],
+    [
+     "Run",
+     "Turns",
+     "the run is the lashing's own line from turn to turn (its hitches)",
+     0.3
+    ]
+   ],
+   "HammockHook": [
+    [
+     "Hook",
+     "Plate",
+     "the hook forged into its plate",
+     0.4
+    ],
+    [
+     "Plate",
+     "Screws",
+     "the screws' heads on the plate",
+     0.35
+    ]
+   ],
+   "ShotLocker24": [
+    [
+     "Back",
+     "Posts",
+     "the back's planks nailed to the posts",
+     0.25
+    ],
+    [
+     "Ends",
+     "Posts",
+     "the ends' planks nailed to the posts",
+     0.25
+    ],
+    [
+     "Boards",
+     "Posts",
+     "the front boards' ends in the posts' grooves",
+     1.0
+    ],
+    [
+     "Boards",
+     "Ends",
+     "the front boards' ends against the end planks' edges in the grooves",
+     0.25
+    ],
+    [
+     "Shot",
+     "Heap",
+     "the top layer's shot bedded in the heap",
+     0.35,
+     "each"
+    ]
+   ],
+   "MagazineRack": [
+    [
+     "Bearers",
+     "Chocks",
+     "the chocks on the bearers",
+     0.25
+    ],
+    [
+     "Bearers",
+     "Uprights",
+     "the bearers' ends against the uprights",
+     0.25
+    ]
+   ],
+   "Cartridge24": [
+    [
+     "Bag",
+     "Tie",
+     "the twine choking the bag's neck",
+     0.35
+    ]
+   ],
+   "CartridgeRack": [
+    [
+     "Dividers",
+     "Shelves",
+     "the shelves let into the dividers",
+     0.25
+    ],
+    [
+     "Dividers",
+     "Top",
+     "the top on the dividers",
+     0.25
+    ]
+   ],
+   "PassingBox": [
+    [
+     "Box",
+     "Lid",
+     "the lid fitted over the box's top",
+     0.45
+    ],
+    [
+     "Becket",
+     "Lid",
+     "the becket rove through the lid",
+     0.65
+    ]
+   ],
+   "ShotLocker32": [
+    [
+     "Back",
+     "Posts",
+     "the back's planks nailed to the posts",
+     0.25
+    ],
+    [
+     "Ends",
+     "Posts",
+     "the ends' planks nailed to the posts",
+     0.25
+    ],
+    [
+     "Boards",
+     "Posts",
+     "the front boards' ends in the posts' grooves",
+     1.0
+    ],
+    [
+     "Boards",
+     "Ends",
+     "the front boards' ends against the end planks' edges in the grooves",
+     0.25
+    ],
+    [
+     "Shot",
+     "Heap",
+     "the top layer's shot bedded in the heap",
+     0.35,
+     "each"
+    ]
+   ],
+   "Cask_Leaguer": [
+    [
+     "Bung",
+     "Cask",
+     "the bung driven into the bung hole",
+     0.85
+    ]
+   ],
+   "Cask_Butt": [
+    [
+     "Bung",
+     "Cask",
+     "the bung driven into the bung hole",
+     0.85
+    ]
+   ],
+   "Cask_Puncheon": [
+    [
+     "Bung",
+     "Cask",
+     "the bung driven into the bung hole",
+     0.85
+    ]
+   ],
+   "Cask_Hogshead": [
+    [
+     "Bung",
+     "Cask",
+     "the bung driven into the bung hole",
+     0.85
+    ]
+   ],
+   "Cask_Barrel": [
+    [
+     "Bung",
+     "Cask",
+     "the bung driven into the bung hole",
+     0.85
+    ]
+   ],
+   "FillingBench": [
+    [
+     "Legs",
+     "Top",
+     "the legs tenoned into the top",
+     0.25
+    ],
+    [
+     "Legs",
+     "Stretchers",
+     "the stretchers tenoned into the legs",
+     0.25
+    ],
+    [
+     "Rim",
+     "Top",
+     "the rim nailed round the top's edge",
+     0.25
+    ],
+    [
+     "Sheet",
+     "Top",
+     "the copper sheet tacked to the top",
+     0.25
+    ],
+    [
+     "Rim",
+     "Sheet",
+     "the sheet's edges turned up under the rim",
+     0.25
+    ]
+   ],
+   "BreadBag": [
+    [
+     "Bag",
+     "Tie",
+     "the lashing choking the bag's neck",
+     0.4
+    ]
+   ]
+  },
+  "assemblies": {
+   "HammockOnHooks": [
+    [
+     "HammockHook#*.Hook",
+     "HammockSlung#0.Lanyards",
+     "each lanyard's eye over its hook's bight",
+     0.35
+    ]
+   ],
+   "MagazineRackFilled": [
+    [
+     "PowderBarrel#*.Cask",
+     "MagazineRack#0.Chocks",
+     "each barrel's bilge hoops bedded in its chocks",
+     0.4
+    ]
+   ],
+   "CartridgeRackFilled": [
+    [
+     "Cartridge24#*.Bag",
+     "CartridgeRack#0.Shelves",
+     "each cartridge lying on its shelf",
+     0.25
+    ]
+   ],
+   "ButtChocked": [
+    [
+     "Quoin#*.Wedge",
+     "Cask_Butt#0.Cask",
+     "each quoin's slope against a bilge hoop",
+     0.45
+    ]
+   ]
+  },
+  "note_assemblies": "between copies only: build_stores.py adds each copy's own contacts from its item's list",
+  "note_each": "a fifth field 'each' means every connected part of the first piece (every nettle, every shot) must meet the second, not just one of them"
+ },
+ "bread": {
+  "note": "a bag of ship's biscuit as stowed in the bread rooms: a canvas bag of about a hundredweight, lying flat (its bottom pressed flat by the bags on it, so they stack), its neck choked with a lashing at one end and the tail beyond. Size estimate",
+  "size_in": [
+   30.0,
+   18.0,
+   10.0
+  ],
+  "neck_in": [
+   1.4,
+   3.0
+  ],
+  "squareness": 3.2,
+  "tie_in": 0.18
+ }
+}

@@ -87,14 +87,14 @@ namespace SailingBindings
 		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
 			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
 			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack")
+			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack") || Action == TEXT("PhotoAlt")
 			|| IsPhotoPanelAction(Action);
 	}
 
 	bool IsPhotoPanelAction(FName Action)
 	{
 		return Action == TEXT("PhotoRowDown") || Action == TEXT("PhotoRowUp") || Action == TEXT("PhotoValueUp") || Action == TEXT("PhotoValueDown")
-			|| Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev");
+			|| Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev") || Action == TEXT("PhotoResetTab");
 	}
 
 	bool IsWalkAction(FName Action)
@@ -139,7 +139,7 @@ namespace SailingBindings
 
 	bool IsHoldAction(FName Action)
 	{
-		return Action == TEXT("Photo") || Action == TEXT("DockLines");
+		return Action == TEXT("Photo") || Action == TEXT("DockLines") || Action == TEXT("PhotoResetTab");
 	}
 
 	bool InPhotoContext(const FSailingKeyBinding& Binding)

@@ -488,15 +488,18 @@ void ASailingHUD::DrawHUD()
 		const float Y = Canvas->ClipY / UIScale - 40.f;
 		const FString Move = bPad ? L(TEXT("PhotoForward")) : L(TEXT("PhotoForward")) + L(TEXT("PhotoRight"), true) + L(TEXT("PhotoForward"), true) + L(TEXT("PhotoRight"));
 		const FString Leave = bPad ? L(TEXT("PhotoBack")) : L(TEXT("Photo"));
-		const FString Zoom = bPad ? FString::Printf(TEXT("%s / %s"), *L(TEXT("PhotoZoom"), true), *L(TEXT("PhotoZoom"))) : FString(TEXT("wheel"));
-		const FString Speed = bPad ? FString(TEXT("D-pad")) : FString::Printf(TEXT("%s / %s"), *L(TEXT("PhotoSpeed"), true), *L(TEXT("PhotoSpeed")));
+		// Camera views slice 3: on a pad the zoom is X held with the left stick, the speed X held with the D-pad's up and
+		// down (or the D-pad alone with the panel closed).
+		const FString Zoom = bPad ? FString::Printf(TEXT("hold %s + left stick"), *L(TEXT("PhotoAlt"))) : FString(TEXT("wheel"));
+		const FString Speed = bPad ? FString::Printf(TEXT("hold %s + D-pad"), *L(TEXT("PhotoAlt"))) : FString::Printf(TEXT("%s / %s"), *L(TEXT("PhotoSpeed"), true), *L(TEXT("PhotoSpeed")));
 		if (Now < Boat->GetPhotoHintUntil())
 		{
 			// Camera views slice 2: it opens orbiting the boat; the left stick (WASD) goes round and in, the look turns.
 			const FString Msg = Boat->GetStatusMessage();
+			const FString PanelNote = Boat->IsPhotoPanelOpen() ? FString() : FString::Printf(TEXT(" %s opens the panel."), *L(TEXT("PhotoHideUI")));
 			const FString Hint = bOrbit
-				? FString::Printf(TEXT("Orbit: %s round the boat and in, %s / %s over and under, %s zoom. %s flies free, %s takes a photo, %s leaves"),
-					*Move, *L(TEXT("PhotoUpDown"), true), *L(TEXT("PhotoUpDown")), *Zoom, *L(TEXT("PhotoOrbit")), *L(TEXT("PhotoShot")), *Leave)
+				? FString::Printf(TEXT("Orbit: %s round the boat and in, %s / %s over and under, %s zoom. %s flies free, %s takes a photo, %s leaves.%s"),
+					*Move, *L(TEXT("PhotoUpDown"), true), *L(TEXT("PhotoUpDown")), *Zoom, *L(TEXT("PhotoOrbit")), *L(TEXT("PhotoShot")), *Leave, *PanelNote)
 				: FString::Printf(TEXT("Fly: %s fly, %s / %s up and down, %s speed, %s fast, %s zoom, %s orbit, %s back to the boat, %s takes a photo, %s leaves"),
 					*Move, *L(TEXT("PhotoUpDown"), true), *L(TEXT("PhotoUpDown")), *Speed, *L(TEXT("PhotoBoost")), *Zoom,
 					*L(TEXT("PhotoOrbit")), *L(TEXT("PhotoToBoat")), *L(TEXT("PhotoShot")), *Leave);
@@ -1390,12 +1393,13 @@ void ASailingHUD::DrawControlsCard(const ASailboatPawn& Boat)
 		FLine{ TEXT("Photo mode (hold on the pad; B backs out), take a photo"), Kb(TEXT("Photo"), false) + TEXT(", ") + Kb(TEXT("PhotoShot"), false), Join(Pad(TEXT("Photo"), false), Pad(TEXT("PhotoShot"), false)) },
 		FLine{ TEXT("Photo: fly, up / down, roll"), Kb(TEXT("PhotoForward"), false) + Kb(TEXT("PhotoRight"), true) + Kb(TEXT("PhotoForward"), true) + Kb(TEXT("PhotoRight"), false)
 			+ TEXT(", ") + Join(Kb(TEXT("PhotoUpDown"), true), Kb(TEXT("PhotoUpDown"), false)) + TEXT(", ") + Join(Kb(TEXT("PhotoRoll"), true), Kb(TEXT("PhotoRoll"), false)),
-			Pad(TEXT("PhotoForward"), false) + TEXT(", ") + Join(Pad(TEXT("PhotoUpDown"), true), Pad(TEXT("PhotoUpDown"), false)) + TEXT(", ") + Join(Pad(TEXT("PhotoRoll"), true), Pad(TEXT("PhotoRoll"), false)) },
+			Pad(TEXT("PhotoForward"), false) + TEXT(", ") + Join(Pad(TEXT("PhotoUpDown"), true), Pad(TEXT("PhotoUpDown"), false)) + TEXT(", ") + Pad(TEXT("PhotoAlt"), false) + TEXT(" + right stick") },
 		FLine{ TEXT("Photo: zoom, speed, fast, orbit, back to the boat"), FString::Printf(TEXT("Wheel, %s, %s, %s, %s"), *Join(Kb(TEXT("PhotoSpeed"), true), Kb(TEXT("PhotoSpeed"), false)), *Kb(TEXT("PhotoBoost"), false), *Kb(TEXT("PhotoOrbit"), false), *Kb(TEXT("PhotoToBoat"), false)),
-			FString::Printf(TEXT("%s, D-pad, %s, %s, %s"), *Join(Pad(TEXT("PhotoZoom"), true), Pad(TEXT("PhotoZoom"), false)), *Pad(TEXT("PhotoBoost"), false), *Pad(TEXT("PhotoOrbit"), false), *Pad(TEXT("PhotoToBoat"), false)) },
-		FLine{ TEXT("Photo panel: row, change, page, hide"), FString::Printf(TEXT("%s %s, %s %s, %s %s, %s"), *Kb(TEXT("PhotoRowUp"), false), *Kb(TEXT("PhotoRowDown"), false),
-			*Kb(TEXT("PhotoValueDown"), false), *Kb(TEXT("PhotoValueUp"), false), *Kb(TEXT("PhotoPagePrev"), false), *Kb(TEXT("PhotoPageNext"), false), *Kb(TEXT("PhotoHideUI"), false)),
-			FString::Printf(TEXT("%s, %s %s, -, %s / %s"), *Pad(TEXT("PhotoRowDown"), false), *Pad(TEXT("PhotoValueDown"), false), *Pad(TEXT("PhotoValueUp"), false), *Pad(TEXT("PhotoBack"), false), *Pad(TEXT("PhotoHideUI"), false)) },
+			FString::Printf(TEXT("%s + left stick, %s + D-pad, %s, %s, %s"), *Pad(TEXT("PhotoAlt"), false), *Pad(TEXT("PhotoAlt"), false), *Pad(TEXT("PhotoBoost"), false), *Pad(TEXT("PhotoOrbit"), false), *Pad(TEXT("PhotoToBoat"), false)) },
+		FLine{ TEXT("Photo panel: tab, row, change, reset the tab, open / close"), FString::Printf(TEXT("%s %s, %s %s, %s %s, %s, %s"), *Kb(TEXT("PhotoPagePrev"), false), *Kb(TEXT("PhotoPageNext"), false),
+			*Kb(TEXT("PhotoRowUp"), false), *Kb(TEXT("PhotoRowDown"), false), *Kb(TEXT("PhotoValueDown"), false), *Kb(TEXT("PhotoValueUp"), false), *Kb(TEXT("PhotoResetTab"), false), *Kb(TEXT("PhotoHideUI"), false)),
+			FString::Printf(TEXT("%s %s, %s %s, %s %s, %s (hold), %s"), *Pad(TEXT("PhotoPagePrev"), false), *Pad(TEXT("PhotoPageNext"), false), *Pad(TEXT("PhotoRowUp"), false), *Pad(TEXT("PhotoRowDown"), false),
+				*Pad(TEXT("PhotoValueDown"), false), *Pad(TEXT("PhotoValueUp"), false), *Pad(TEXT("PhotoResetTab"), false), *Pad(TEXT("PhotoHideUI"), false)) },
 		One(TEXT("Learning mode"), TEXT("ToggleLearning")),
 		One(TEXT("Difficulty"), TEXT("ToggleDifficulty")),
 		One(TEXT("Settings (area, races, traffic, weather, keys)"), TEXT("Menu")),

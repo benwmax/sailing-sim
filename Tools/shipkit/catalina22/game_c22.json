@@ -1,0 +1,190 @@
+{
+  "about": "Catalina 22 rebuild, game wiring (slice 11's cloud half, docs/c22-12): the rebuild's build (build_c22.py's c22.blend) cut into the parts the game hangs a boat on (ASailboatPawn::ModelMeshesFor: SM_C22Hero_Hull, _Mast, _Boom, _Rudder and the cabin's _Interior, in /Game/Boats/C22Hero), for export_game_c22.py. Body frame metres (X forward, Y starboard, Z up, origin on the design waterline: the physics' frame). Which of the build's objects go in each part, the game slot (MI_Boat_*) of each of the build's materials, what stays out and why, and the sockets the game reads beyond the build's own c22_sockets.json. Edit this file, never the FBX.",
+  "parts": {
+    "SM_C22Hero_Hull": {
+      "note": "Everything fixed to the hull: the shell (its one gelcoat split at the paint lines, below), deck, cabin with the pop-top down, ports, keel (down) and its stub, gudgeons, outboard on its bracket, deck hardware, lifelines and the rig's fittings below the mast (chainplates, turnbuckles, stemhead, backstay plate). The pivot is the body frame's origin. Nanite.",
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "objects": [
+        "C22_Hull",
+        "C22_Deck",
+        "C22_Rubrail",
+        "C22_Well",
+        "C22_Cabin",
+        "C22_PopTop",
+        "C22_Ports",
+        "C22_DropBoards",
+        "C22_ForeHatch",
+        "C22_Keel",
+        "C22_KeelStub",
+        "C22_Gudgeons",
+        "C22_Outboard",
+        "C22_Hardware",
+        "C22_LidRails",
+        "C22_Lifelines",
+        "C22_RigFittings:hull"
+      ]
+    },
+    "SM_C22Hero_Mast": {
+      "note": "The mast, its fittings (spreaders, tangs, sheaves, cleats, the vang's foot), the rig fittings on it and the halyards as they lie at rest along it. The pivot is MastStep. Not Nanite: M_BoatMast bends it (scripts/import_boats.py), so it must stay under 40k triangles (checked here). The mast's own slot stays unpacked (MastAluminium on import).",
+      "pivot": "MastStep",
+      "keep": [
+        "Aluminium"
+      ],
+      "max_tris": 40000,
+      "objects": [
+        "C22_Mast",
+        "C22_MastHardware",
+        "C22_Halyards",
+        "C22_RigFittings:mast"
+      ]
+    },
+    "SM_C22Hero_Boom": {
+      "note": "The boom about the build's gooseneck (the rig's own origin for it, c22_sockets.json). The game hangs it on the physics' gooseneck (MainLuffX, BoomZ): the hull's Gooseneck socket records the build's, and SailingSim.Visual.C22HeroMesh holds the two together.",
+      "pivot": "Gooseneck",
+      "objects": [
+        "C22_Boom"
+      ]
+    },
+    "SM_C22Hero_Rudder": {
+      "note": "The kick-up rudder down, its head and the tiller, about the pintles' axis at the design waterline (RudderPivot): the game turns it about the vertical there.",
+      "pivot": "RudderPivot",
+      "objects": [
+        "C22_Rudder"
+      ]
+    },
+    "SM_C22Hero_Interior": {
+      "note": "The cabin below (slice 7: liner, headliner, berths, cushions, table, galley, porta-potti), same pivot as the hull. The game adds it on the player's boat only (BuildModelVisuals). Optional: written only when the build has slice 7's objects.",
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "optional": true,
+      "objects_prefix": "C22_Interior",
+      "objects_skip": [
+        "C22_Interior_TableDown",
+        "C22_Interior_GalleyOut"
+      ]
+    }
+  },
+  "split": {
+    "C22_RigFittings": {
+      "note": "One object of 200-odd loose fittings: those on the mast (centre above 1.2 m and within 0.85 m of the mast's axis in plan: tangs, spreader tips, the masthead's) go with the mast so they bend with it; the rest (chainplates, turnbuckles, stemhead, backstay) stay on the hull.",
+      "mast": {
+        "above_z": 1.2,
+        "within_m_of_mast": 0.85
+      }
+    }
+  },
+  "paint_lines": {
+    "note": "C22_Hull is one gelcoat (GelcoatHull) until slice 8's textures: it is cut at these heights over the design waterline and each face takes the fleet's paint slot (build_fleet.py's lines for the keelboats), so the livery (Inputs/g3/boat-catalogue.json) paints her topsides, boot stripe and bottom.",
+    "object": "C22_Hull",
+    "antifouling_top": 0.05,
+    "bootstripe_top": 0.11
+  },
+  "materials": {
+    "note": "Each of the build's materials to a slot of the game's boat library (make_materials.py BOAT_LIBRARY: MI_Boat_<slot>); pack_slots folds the packed ones (Tools/blender/boat_packs.json). The keel stub's bottom paint is Antifouling, so it joins the canoe the tests measure, as c22_report.json counts it. The cabin's (slice 7): the moulded liner and sole are the deck's gelcoat, the headliner and galley white, the joinery's laminate teak, cushions and curtain canvas.",
+    "GelcoatHull": "Topsides",
+    "Topsides": "Topsides",
+    "Antifouling": "Antifouling",
+    "Bootstripe": "Bootstripe",
+    "Deck": "Deck",
+    "NonSkid": "NonSkid",
+    "Teak": "Teak",
+    "Wood": "Wood",
+    "Graphics": "Graphics",
+    "CabinWindow": "CabinWindow",
+    "Rubrail": "Rubrail",
+    "Keel": "Keel",
+    "Stainless": "Stainless",
+    "Aluminium": "Aluminium",
+    "BlackPlastic": "BlackPlastic",
+    "Rubber": "Rubber",
+    "Lifeline": "WhitePlastic",
+    "Wire": "Stainless",
+    "RopeHalyard": "Rope",
+    "RopeSpin": "Rope",
+    "RopeSheet": "Rope",
+    "RopeControl": "Rope",
+    "SailCover": "SailCover",
+    "Liner": "Deck",
+    "Headliner": "WhitePlastic",
+    "Sole": "Deck",
+    "Laminate": "Teak",
+    "Galley": "WhitePlastic",
+    "Cushion": "Dacron",
+    "Curtain": "SailCoverTan",
+    "WhitePlastic": "WhitePlastic"
+  },
+  "left_out": {
+    "C22_Wires": "the standing rigging: the game draws it live from the sockets (forestay, backstay, uppers, lowers: BoatModelVisuals.cpp)",
+    "C22_Lines_*": "each state's running rigging: the game draws the sheets live from the sockets (jib sheets, mainsheet)",
+    "C22_Sail_*": "every sail and its cover: the game draws the sails as cloth from the physics' strips (FSailCloth)",
+    "C22_PopTopRaised, C22_LidRailsRaised": "the pop-top up: its lid sits above the boom, so it can only go up in the game with the boom lifted (a later state switch)",
+    "C22_KeelUp, C22_RudderUp, C22_KeelDown, C22_RudderDown": "the keel raised and the rudder kicked up: alternative states for a later switch",
+    "C22_Interior_TableDown, C22_Interior_GalleyOut": "the cabin's other states"
+  },
+  "sockets": {
+    "note": "Added to the build's c22_sockets.json (rig and hardware), whose owners SM_Catalina22_* are renamed SM_C22Hero_*. Slice 9 writes the final sockets; these follow keel_c22.json and rig_c22.json so the game's tiller, crew and boom have their points meanwhile.",
+    "RudderPivot": {
+      "part": "SM_C22Hero_Hull",
+      "from": "keel_c22.json rudder.pivot_x at z 0",
+      "why": "the pintles' axis at the design waterline: the rudder part's origin"
+    },
+    "RudderStock": {
+      "part": "SM_C22Hero_Rudder",
+      "from": "keel_c22.json rudder.pivot_x, the head's top",
+      "why": "the head's top, where the tiller leaves it (the extension's stowed line)"
+    },
+    "TillerEnd": {
+      "part": "SM_C22Hero_Rudder",
+      "from": "keel_c22.json rudder.tiller.end",
+      "why": "the tiller's end, where the extension is hinged and the helm's hand goes"
+    },
+    "Gooseneck": {
+      "part": "SM_C22Hero_Hull",
+      "from": "c22_sockets.json origins SM_Catalina22_Boom",
+      "why": "the build's gooseneck: the boom part's origin, held to the physics' (MainLuffX, BoomZ) by the test"
+    }
+  },
+  "required_sockets": {
+    "note": "What ASailboatPawn reads (BoatModelVisuals.cpp: the live rig, the sheets, the boom and the tiller); the export stops if one is missing.",
+    "SM_C22Hero_Hull": [
+      "MastStep",
+      "RudderPivot",
+      "ForestayTack",
+      "BackstayPlate",
+      "ChainplateUpper_S",
+      "ChainplateUpper_P",
+      "ChainplateLower_S",
+      "ChainplateLower_P",
+      "JibLead_S",
+      "JibLead_P",
+      "JibWinch_S",
+      "JibWinch_P",
+      "LazySheetVia",
+      "Traveler_C",
+      "Traveler_S",
+      "Gooseneck"
+    ],
+    "SM_C22Hero_Mast": [
+      "Hounds",
+      "MastheadAft",
+      "LowerTang",
+      "SpreaderTip_S",
+      "SpreaderTip_P",
+      "MastBase"
+    ],
+    "SM_C22Hero_Boom": [
+      "Boom_Mainsheet"
+    ],
+    "SM_C22Hero_Rudder": [
+      "TillerEnd",
+      "RudderStock"
+    ]
+  }
+}
