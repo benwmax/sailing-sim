@@ -1,4 +1,4 @@
-"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-12).
+"""Builds the frigate Commonwealth in Blender (docs/shipkit-1 to docs/shipkit-13).
 
 Slice 1 lofted the moulded hull (the frames' outside, as the 1927 lines give it). Slice 2 planks it (skin.py): copper
 to the main wale, the wales, black strakes, the ochre port band, the bulwarks to the rail, the gun deck and spar deck
@@ -60,17 +60,29 @@ is built, and every piece of them is checked for faces crossing themselves (a ro
 Slice 12 (gundeck.py, gungear.py, gundeck_1797.json) builds the gun deck, right after the anchors (the spar deck is
 built with it; its objects come later): the planked deck under the long guns (its 'Planking' and 'Margin' UVs as the
 spar deck's), its waterways, the spar deck's beams, ledges and carlings over it on their clamps and hanging knees, the
-stanchions, the hatchways with their coamings, gratings, wells and ladders, the gun deck's capstan (its head on its own
-frame), the chain and brake pumps, the riding bitts, the galley's stove, the manger and the cable scuttles (the cables
-led in from the hawse holes over the manger and down the scuttles), the captain's great cabin aft (the bulkhead and its two doors, each on its
-own frame, the state rooms, the after wall with the stern windows opened through it and the transom cut for them, the
-window seat, the floor cloth and the furniture) and the horn lanterns (each a light in gundeck.json); and the sheet
-anchor, stowed outside abaft the starboard fore channel (anchors.py). After the guns, their own gear (gungear.py): a
-tompion and an apron on each housed long gun (copies, in Guns_Housed), each gun's implements hung over it, its shot in a
-garland, each lid's lanyards (the rings on the lid, built into it; the bushes and cleats, LanyardFittings; the rope
-inside, LidLanyards; the lanyards outside lying down the shut lids, LidLanyards_Shut, or taut to the open ones,
-LidLanyards_Open, hidden). gundeck_room checks every part against the rest
-of the ship and each other, the meetings by design in gundeck_1797.json's meets.
+stanchions, the hatchways with their coamings, gratings and ladders (down onto the berth deck), the gun deck's capstan
+(its head on its own frame), the chain and brake pumps, the riding bitts, the galley's stove, the manger and the cable
+scuttles (the cables led in from the hawse holes over the manger and down the scuttles), the captain's great cabin aft
+(the bulkhead and its two doors, each on its own frame, the state rooms, the after wall with the stern windows opened
+through it and the transom cut for them, the window seat, the floor cloth and the furniture) and the horn lanterns (each
+a light in gundeck.json); and the sheet anchor, stowed outside abaft the starboard fore channel (anchors.py). After the
+guns, their own gear (gungear.py): a tompion and an apron on each housed long gun (copies, in Guns_Housed), each gun's
+implements hung over it, its shot in a garland, each lid's lanyards (the rings on the lid, built into it; the bushes and
+cleats, LanyardFittings; the rope inside, LidLanyards; the lanyards outside lying down the shut lids, LidLanyards_Shut,
+or taut to the open ones, LidLanyards_Open, hidden). gundeck_room checks every part against the rest of the ship and
+each other, the meetings by design in gundeck_1797.json's meets.
+Slice 13 (berthdeck.py, berthdeck_1797.json, the stores kit's stores.py) builds the berth deck under the gun deck, with
+it (the gun deck's ladders land on its planks and the cables go on down through its scuttles to the tiers): the planked
+deck 7 ft 2 in under the gun deck's, its waterways, the side's ceiling, the gun deck's beams, ledges and carlings over
+it on their clamp and hanging and lodging knees, the stanchions, the hatchways down to the orlop with their coamings,
+wells and ladders, what comes down through the gun deck (the capstan's spindle on its step, the riding bitts' posts, the
+pumps' tubes, the masts in their wedges, the cable scuttles), the wardroom aft with its state rooms and furniture, the
+steerage and the officers' rooms, the crew's deck with their hammocks slung by night (BerthDeck_Hammocks, hidden) and
+their messes by day (BerthDeck_Messes: the tables hung at the side, the benches, kids and sea chests), the sick bay
+forward with its cots, and the horn lanterns (each a light in berthdeck.json). The hammocks, hooks and the messes' gear
+are linked copies of the stores kit's items. Its objects are made after every other check, which see the ship as slice
+12 left it; berthdeck_room checks them against the whole ship and each other, the meetings by design in
+berthdeck_1797.json's meets.
 
     python build_frigate.py <out dir> [--place-running]
                                              (Blender's Python: pip bpy, or blender -b -P build_frigate.py -- <out>)
@@ -84,14 +96,17 @@ sizes), <out>/running.json (each line's path and stations, each block's pose, in
 <out>/guns.json (each gun's frame and pose, its lid, the unique meshes and what moves on each), <out>/anchors.json (each
 anchor's size, the bowers' hang, the catheads, the hawse holes, the cables, the stoppers' holes and the painters' eyes)
 <out>/boats.json (each boat's frame, cradles and gripes, the gig's nest, the spare spars, the anchors' places, the
-gangways' room) and <out>/gundeck.json (the gun deck's layout, the capstan's and the cabin doors' frames, the lanterns'
-lights, the gear's places and the lanyards' poses). Units are metres in Unreal's body frame (X forward, Y starboard, Z up), origin on the centreline at
-midships on the load waterline. The moulded hull stays in
-the .blend as "Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
+gangways' room), <out>/gundeck.json (the gun deck's layout, the capstan's and the cabin doors' frames, the lanterns'
+lights, the gear's places and the lanyards' poses), <out>/berthdeck.json (the berth deck's layout, the lanterns'
+lights and zones, the hammocks', hooks' and messes' copies) and <out>/berth_deck.json (the berth deck's hand-over to the
+orlop slice: its line, its own beams' stations, the openings and ladders down, what passes through it). Units are metres in Unreal's body frame (X forward, Y
+starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in the .blend as
+"Hull", hidden from renders: the shape tools measure it. Edit loft.py, skin.py, offsets.json and
 specs_1795.json, spars.py and spars_1795.json, rigging.py and standing_1797.json, sails.py and sails_1797.json,
 running.py and running_1797.json, deck.py and deck_1797.json, guns.py and guns_1797.json, head.py, stern.py, carve.py
 and decor_1797.json (make_figure.py remakes figure_hope.npz from the scan), anchors.py and anchors_1797.json, boats.py
-and boats_1797.json, gundeck.py, gungear.py and gundeck_1797.json, never the .blend.
+and boats_1797.json, gundeck.py, gungear.py and gundeck_1797.json, berthdeck.py, berthdeck_1797.json, stores.py and
+stores_1797.json, never the .blend.
 """
 import json
 import math
@@ -100,13 +115,14 @@ import sys
 
 import bpy
 import bmesh
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import anchors  # noqa: E402
+import berthdeck  # noqa: E402
 import boats  # noqa: E402
 import carve  # noqa: E402
 import deck  # noqa: E402
@@ -305,9 +321,17 @@ AN.cut_hawse(SKIN)
 # and the lanterns. It replaces the skin's placeholder deck (the guns stand on its own GunDeck, with the same top), cuts
 # the transom for the stern windows and leads the cables in from the hawse holes over the manger and down the cable
 # scuttles (its waterways stop short of the holes' linings). Each lid's two lanyard rings (gungear.py) are built into
-# the starboard lids, before the lids are made, so they turn with them
+# the starboard lids, before the lids are made, so they turn with them. It is built over the berth deck (berth: its
+# hatchways' ladders go down onto the berth deck's planks with no wells under them, and the cables on down through the
+# berth deck's own scuttles to the tiers)
 DK = deck.Deck(SK, RIG).build()
-GD = gundeck.GunDeck(SK, RIG, DK, SKIN, hawse_x=float(np.asarray(AN.parts()["HawseLining"][0], float)[:, 0].min())).build()
+GD = gundeck.GunDeck(SK, RIG, DK, SKIN, hawse_x=float(np.asarray(AN.parts()["HawseLining"][0], float)[:, 0].min()),
+                     berth=os.path.join(HERE, "berthdeck_1797.json")).build()
+# the berth deck (slice 13, berthdeck.py and berthdeck_1797.json) under it: the planked deck, the side's ceiling, the
+# gun deck's framing over it, the openings down to the orlop, what comes down through the gun deck, the wardroom, the
+# steerage, the officers' rooms, the crew's hammocks and messes, the sick bay and the lanterns. Its objects are made
+# after every other check (below), which see the ship as slice 12 left it
+BD = berthdeck.BerthDeck(GD).build()
 AN.lead_inboard(GD.cable_course(AN))
 SKIN.pop("GunDeck")
 GG = gungear.GunGear(GD, None)
@@ -1314,17 +1338,20 @@ BOAT_ROOM = boats_room()
 def folds(objs):
     """each connected piece of each object against itself: {name: [pairs of its faces that cross, sharing no corner,
     a point on the first]} (a rope bent tighter than its radius, or anything folded back through itself; the room
-    checks see only parts against other parts)"""
+    checks see only parts against other parts). Corners in the same place (to a tenth of a micron) count as one: a
+    turned piece's doubled seam, which the export welds, or a deck's two halves meeting at the middle line, where the
+    faces either side touch along the seam without crossing"""
     out = {}
     for name, (V, T) in objs.items():
         T = np.asarray(T, np.int64)
         lab = deck.islands(T, len(V))[T[:, 0]]
+        W = np.unique(np.round(np.asarray(V, float) * 1e7).astype(np.int64), axis=0, return_inverse=True)[1].reshape(-1)
         bad = []
         for k in np.unique(lab):
             Tk = T[lab == k]
             tree = BVHTree.FromPolygons(V.tolist(), Tk.tolist(), all_triangles=True)
             bad += [np.round(V[Tk[i]].mean(0), 3).tolist() for i, j in tree.overlap(tree)
-                    if i < j and not set(Tk[i].tolist()) & set(Tk[j].tolist())]
+                    if i < j and not set(W[Tk[i]].tolist()) & set(W[Tk[j]].tolist())]
         out[name] = {"pairs": len(bad), "at": bad[:5]}
     return out
 
@@ -1332,12 +1359,14 @@ def folds(objs):
 BOAT_FOLDS = folds(BT.world())
 
 
-POSE_GROUPS = (("Guns_Housed", "Guns_RunIn", "Guns_RunOut"), ("Carronades_RunOut", "Carronades_Recoil"))
+POSE_GROUPS = (("Guns_Housed", "Guns_RunIn", "Guns_RunOut"), ("Carronades_RunOut", "Carronades_Recoil"),
+               ("BerthDeck_Hammocks", "BerthDeck_Messes"))
 
 
 def apart(a, b):
     """objects a and b are never shown together: each is in one or more of a group's pose collections (the long guns
-    housed, run in or run out; the carronades run out or recoiled) and they share none of that group's"""
+    housed, run in or run out; the carronades run out or recoiled; the berth deck's hammocks slung by night or its
+    messes laid by day) and they share none of that group's"""
     ca = {c.name for c in bpy.data.objects[a].users_collection}
     cb = {c.name for c in bpy.data.objects[b].users_collection}
     for g in POSE_GROUPS:
@@ -1345,6 +1374,9 @@ def apart(a, b):
         if sa and sb and not sa & sb:
             return True
     return False
+
+
+ROOM_NAMES = {}                                         # the objects each deck's room check saw (unmet's patterns)
 
 
 def gundeck_room():
@@ -1358,6 +1390,7 @@ def gundeck_room():
     objs = ship_tris()
     gun_parts = {n for n in objs if n.startswith(("Gun24_", "Carr32_")) and n not in GEAR_COPIES}
     out = deck.room(objs, BELOW, GD.zg, meets=meets_of(GD.c, "gundeck_1797.json", sorted(objs)), flat=("GunDeck",))
+    ROOM_NAMES["gundeck"] = sorted(objs)
     out["meet"] = [m for m in out["meet"] if not ({m[0], m[1]} & set(GUNDECK) and {m[0], m[1]} & gun_parts)
                    and not apart(m[0], m[1])]
     out["by_design"] = [m for m in out["by_design"] if not apart(m[0], m[1])]
@@ -1511,6 +1544,138 @@ def decor_seated():
 
 DECOR_SEATED = decor_seated()
 
+# the berth deck's objects (slice 13, built above with the gun deck), after every other check: its parts in place in a
+# collection of their own, BerthDeck (berthdeck.json below), with the hooks under the beams (the hammocks' and the sick
+# bay's cots', copies of the stores kit's hook) and the lanterns' lights; the crew's hammocks slung by night
+# (BerthDeck_Hammocks, hidden) and their messes laid by day (BerthDeck_Messes: the tables let down, the benches, kids
+# and chests; shown), each a linked copy of the stores kit's item (stores.py: berthdeck.json copies, by its mesh's
+# name).
+# The deck's top carries 'Planking' and 'Margin' UVs as the gun deck's (its own planks' pattern, BD.planking()); the
+# lanterns' horn glows and casts no shadow, so their lights shine out through it
+MATS["BerthDeckPlanks"] = deck.planks_material(bpy, "BerthDeckPlanks", BD.planking(), DECK_PLANK, DECK_PITCH,
+                                               PAINT["Oak"][0])
+DECK_UV.update(BD.UV_PARTS)
+BERTH_COLS = {}
+for cn in ("BerthDeck", "BerthDeck_Hammocks", "BerthDeck_Messes"):
+    BERTH_COLS[cn] = bpy.data.collections.new(cn)
+    SC.collection.children.link(BERTH_COLS[cn])
+BERTHDECK = {}
+for name, (V, F, M, frame, uv) in BD.parts().items():
+    if name in bpy.data.objects:
+        raise SystemExit(f"the berth deck's part {name} is named as an object already made")
+    ob = make_deck_part(name, V, F, M, frame, uv)
+    SC.collection.objects.unlink(ob)
+    BERTH_COLS["BerthDeck"].objects.link(ob)
+    BERTHDECK[name] = ob
+BERTHDECK["BerthLanterns"].visible_shadow = False
+BERTH_MESHES = {}
+for name, item in BD.copy_items.items():
+    if name in bpy.data.meshes:
+        raise SystemExit(f"the berth deck's copied mesh {name} is named as a mesh already made")
+    V, F, M, _ = item.merged().arrays()
+    ob = make_painted(name, V, F, M)                # smoothed on an object of its own, then shared by every copy
+    smooth_soft(ob, 35, {"Hemp": 60, "Canvas": 60})
+    BERTH_MESHES[name] = ob.data
+    bpy.data.objects.remove(ob)
+BERTH_COPIES = {}
+for c in BD.copies_:
+    if c["name"] in bpy.data.objects or c["name"] in BERTH_COPIES:
+        raise SystemExit(f"the berth deck's copy {c['name']} is named as an object already made")
+    ob = bpy.data.objects.new(c["name"], BERTH_MESHES[c["item"]])
+    ob.matrix_world = Matrix([list(map(float, r)) for r in np.asarray(c["matrix"], float)])
+    BERTH_COLS[c["collection"]].objects.link(ob)
+    BERTH_COPIES[c["name"]] = ob
+BERTH_COLS["BerthDeck_Hammocks"].hide_render = True
+bpy.context.view_layer.layer_collection.children["BerthDeck_Hammocks"].hide_viewport = True
+BERTH_LIGHTS = []
+for li in BD.lights:
+    if li["name"] in bpy.data.objects:
+        raise SystemExit(f"the berth deck's light {li['name']} is named as an object already made")
+    ld = bpy.data.lights.new(li["name"], "POINT")
+    ld.color = li["colour_rgb"]
+    ld.energy = BD.c["lanterns"]["light"]["blender_watts"]
+    ld.shadow_soft_size = 0.04
+    ld.use_shadow = li["cast_shadows"]
+    lo = bpy.data.objects.new(li["name"], ld)
+    lo.location = li["pos_m"]
+    BERTH_COLS["BerthDeck"].objects.link(lo)
+    BERTH_LIGHTS.append(lo)
+BERTH = set(BERTHDECK) | set(BERTH_COPIES)
+
+
+def berthdeck_room():
+    """the berth deck's parts and copies (slice 13) against everything else in the ship (the sails, running rigging
+    and guns in every state and pose too) and each other: the pairs whose surfaces meet, less those that meet by design
+    (berthdeck_1797.json's meets: a beam's end on its clamp, a partition let into the deck, a hammock on its hooks...)
+    as deep as allowed, and every fitting standing on the berth deck as it rises along the sheer (deck.room, with the
+    berth deck's height); but for two things never shown together (apart: a hammock slung and a mess laid under it)"""
+    objs = ship_tris()
+    out = deck.room(objs, BERTH, BD.zg, meets=meets_of(BD.c, "berthdeck_1797.json", sorted(objs)), flat=("BerthDeck",))
+    ROOM_NAMES["berthdeck"] = sorted(objs)
+    out["meet"] = [m for m in out["meet"] if not apart(m[0], m[1])]
+    out["by_design"] = [m for m in out["by_design"] if not apart(m[0], m[1])]
+    return out
+
+
+BERTHDECK_ROOM = berthdeck_room()
+# each part, and each copied mesh once (every copy of it is the same mesh), against itself
+BERTH_FOLDS = folds(dict({n: world_tris(o) for n, o in BERTHDECK.items()},
+                         **{c["item"]: world_tris(BERTH_COPIES[c["name"]]) for c in BD.copies_}))
+
+
+def copy_kind(name):
+    """a berth deck copy's kind as a pattern for all of them (Hammock_017: Hammock_*)"""
+    return name.split("_")[0] + "_*"
+
+
+def berth_zones():
+    """which lights' zones (berthdeck.json lights' zone) each object facing into the berth deck is in, by where along
+    the ship its faces there lie: the wardroom between its bulkheads, the sick bay between its, the berth deck's own
+    zone the rest (the tiller room, the steerage, the officers' rooms, the crew's deck and the bow). The berth deck's
+    parts, its copies (each kind together: names ending in * are prefixes) and every other object with a corner inside
+    the berth deck's room (over its planks, up to the gun deck planks' underside, inside the ceiling and the clamp: the
+    gun deck's underside, the masts, the cables, the gun deck's ladders...)"""
+    X = BD.room_x
+    spans = {"wardroom": [(X["wardroom_aft"], X["wardroom_fore"])],
+             "sick_bay": [(X["sick_bay_aft"], X["sick_bay_fore"])],
+             "berth_deck": [(-1e9, X["wardroom_aft"]), (X["wardroom_fore"], X["sick_bay_aft"]),
+                            (X["sick_bay_fore"], 1e9)]}
+    if {li["zone"] for li in BD.lights} != set(spans):
+        raise SystemExit("berth_zones: the lanterns' zones are not the berth deck's three")
+
+    def zones_of(xs):
+        return [z for z in ("berth_deck", "wardroom", "sick_bay")
+                if any(((xs > a) & (xs < b)).any() for a, b in spans[z])]
+    out = {n: zones_of(world_tris(o)[0][:, 0]) for n, o in sorted(BERTHDECK.items())}
+    kinds = {}
+    for n, o in BERTH_COPIES.items():
+        kinds.setdefault(copy_kind(n), []).append(world_tris(o)[0][:, 0])
+    for k, xs in sorted(kinds.items()):
+        out[k] = zones_of(np.concatenate(xs))
+    z_lo = float(np.min(BD.deck_line[:, 1])) - 0.05
+    z_hi = float(np.max(GD.deck_line[:, 1]))
+    for o in SC.objects:
+        if o.type != "MESH" or o.name in REFERENCE or o.name in BERTH:
+            continue
+        bb = np.array([list(o.matrix_world @ Vector(c)) for c in o.bound_box])
+        if bb[:, 2].max() < z_lo or bb[:, 2].min() > z_hi:
+            continue
+        V = world_tris(o)[0]
+        z0, z1 = BD.zg(V[:, 0]), GD.zg(V[:, 0]) - BD.t_gun
+        sel = (V[:, 2] > z0 + 0.001) & (V[:, 2] < z1 + 0.001)
+        if not sel.any():
+            continue
+        lim, ok = BD.side_limit(V[sel, 0], V[sel, 2])
+        inside = ok & (np.abs(V[sel, 1]) < lim - 0.001)
+        if inside.any():
+            key = o.name if not o.name.startswith(("Gun24_", "Carr32_")) else o.name.split("_")[0] + "_*"
+            out[key] = sorted(set(out.get(key, [])) | set(zones_of(V[sel][inside, 0])),
+                              key=["berth_deck", "wardroom", "sick_bay"].index)
+    return out
+
+
+BERTH_ZONES = berth_zones()
+
 # a sun and sky so a quick look in Blender isn't black (render_set.py brings its own)
 SC.world = bpy.data.worlds.new("World")
 SC.world.color = (0.6, 0.65, 0.7)
@@ -1554,7 +1719,8 @@ def displacement(L):
 SAIL_STATE = {n: d["state"] for n, d in SV.objs.items()}
 RUN_STATE = {n: d[3] for n, d in RUN_OBJS.items()}
 stats = {"objects": {o.name: {"triangles": tris(o), "bounds_m": bounds(o)} for o in SC.objects
-                     if o.type == "MESH" and not o.name.startswith(("Gun24_", "Carr32_"))}}
+                     if o.type == "MESH" and not o.name.startswith(("Gun24_", "Carr32_"))
+                     and o.name not in BERTH_COPIES}}
 GUN_TRIS = GN.triangles()
 
 
@@ -1566,17 +1732,25 @@ def mesh_tris(me):
 # the tompions and aprons, a pair on each housed long gun (shown with the guns housed)
 GEAR_COPY_TRIS = {m: mesh_tris(GUN_MESHES[m]) for m in GG.meshes}
 GEAR_COPY_TOTAL = sum(GEAR_COPY_TRIS[m] for _, m, _, _ in GG.instances())
+# the berth deck's copies (slice 13): the hooks (BerthDeck, always shown), the hammocks slung (BerthDeck_Hammocks, by
+# night) and the messes laid (BerthDeck_Messes, by day)
+BERTH_COPY_TRIS = {m: mesh_tris(me) for m, me in BERTH_MESHES.items()}
+BERTH_COPY_BY_COL = {cn: sum(BERTH_COPY_TRIS[c["item"]] for c in BD.copies_ if c["collection"] == cn)
+                     for cn in BERTH_COLS}
 stats["triangles_model"] = sum(v["triangles"] for k, v in stats["objects"].items()
                                if k not in REFERENCE and SAIL_STATE.get(k) not in ("Clewed", "Furled")
                                and RUN_STATE.get(k) not in ("Clewed", "Furled") and k != "LidLanyards_Open") + \
-    GUN_TRIS["as_drawn"]["total"] + GEAR_COPY_TOTAL
+    GUN_TRIS["as_drawn"]["total"] + GEAR_COPY_TOTAL + BERTH_COPY_BY_COL["BerthDeck"] + \
+    BERTH_COPY_BY_COL["BerthDeck_Messes"]
 stats["triangles_model_note"] = ("as drawn, with the sails set: the hidden Clewed and Furled sails and running rigging "
                                  "are in triangles_sails and running.triangles (one state shows at a time); the guns "
                                  "as drawn (housed long guns, run-out carronades: guns.triangles) are counted in, their "
                                  "copies left out of objects, and so are the housed guns' tompions and aprons "
                                  "(gundeck.triangles_copies) and the lids' lanyards shut (LidLanyards_Open, hidden, "
                                  "is not); the gun deck below is in it (gundeck.triangles_below: the game loads it only "
-                                 "below)")
+                                 "below), and so is the berth deck under it (berthdeck.triangles_below) with its hooks "
+                                 "and its messes laid by day (BerthDeck_Messes, shown; its copies left out of objects "
+                                 "like the guns': the hammocks slung by night, BerthDeck_Hammocks, hidden, are not)")
 tri_state = {s: sum(stats["objects"][n]["triangles"] for n, st_ in SAIL_STATE.items() if st_ == s)
              for s in ("Head",) + sails.STATES}
 stats["triangles_sails"] = {"set": tri_state["Set"] + tri_state["Head"], "clewed": tri_state["Clewed"] + tri_state["Head"],
@@ -1635,6 +1809,19 @@ stats["gundeck"] = dict(GD.info, gear=GG.info, lights=GD.lights, lid_open_deg=LI
                         triangles_below_note="the gun deck's parts, the implements, garlands, the lanyards' bushes, "
                                              "inside parts and cleats, and the tompions and aprons: what the game loads "
                                              "when below (the lanyards outside go with the lids)")
+BD_TRIS = {n: stats["objects"][n]["triangles"] for n in BERTHDECK}
+BERTH_BELOW_TRIS = sum(BD_TRIS.values()) + BERTH_COPY_BY_COL["BerthDeck"] + \
+    max(BERTH_COPY_BY_COL["BerthDeck_Hammocks"], BERTH_COPY_BY_COL["BerthDeck_Messes"])
+stats["berthdeck"] = dict(BD.info, lights=BD.lights, room=BERTHDECK_ROOM,
+                          folds={n: v["pairs"] for n, v in BERTH_FOLDS.items()}, triangles=BD_TRIS,
+                          triangles_copies={"each": BERTH_COPY_TRIS, "by_collection": BERTH_COPY_BY_COL,
+                                            "copies": {cn: sum(1 for c in BD.copies_ if c["collection"] == cn)
+                                                       for cn in BERTH_COLS}},
+                          triangles_below=BERTH_BELOW_TRIS, budget_tris=BD.c["budget_tris"],
+                          share_of_budget=round(BERTH_BELOW_TRIS / BD.c["budget_tris"], 3),
+                          triangles_below_note="the berth deck's parts, the hooks under its beams and the more of its "
+                                               "two poses (the hammocks slung by night, the messes laid by day: one "
+                                               "shows at a time): what the game loads when below")
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -1800,6 +1987,41 @@ GD_GAME = dict(GD.info, lights=GD.lights, light_budget=GD.c["lanterns"]["light_b
                        for n, m, Mx, cn in GG.instances()])
 json.dump(dict({"note": GUNDECK_NOTE}, **GD_GAME), open(os.path.join(OUT, "gundeck.json"), "w"), indent=1,
           default=str)
+BERTHDECK_NOTE = (
+    "the berth deck (docs/shipkit-13), in the ship's frame (metres): layout and the builder's records of where its "
+    "parts fell (room_x, the bulkheads' places along the ship; berthing, the hammocks' rows and span; messes, the "
+    "tables' places; sick_bay, the cots; knees_x_m and lodging_knees, the hanging and lodging knees; and the rest); "
+    "lights, the lanterns' lights (a point light in each lantern's body: its zone, colour, kelvin, lumens, radius and "
+    "whether it casts shadows) within light_budget, light_zones_note saying how to light by zone; below, what the game "
+    "loads when below: the collection BerthDeck (objects, its parts; lights, the lanterns' lights; and the hooks under "
+    "the beams, copies shown day and night), the two pose collections (show one: the hammocks slung by night or the "
+    "messes laid by day), and zones, which lights' zones each object facing into the berth deck is in (names ending "
+    "in * are prefixes); planking, the deck's planks drawn from its 'Planking' and 'Margin' UVs as the gun deck's "
+    "(gundeck.json); copies, every linked copy of the stores kit's items (name, mesh, 4x4 in the ship's frame, "
+    "collection)")
+BERTH_BELOW = {
+    "collection": "BerthDeck",
+    "objects": sorted(BERTHDECK),
+    "lights": sorted(o.name for o in BERTH_LIGHTS),
+    "hooks": "the hammocks' and the cots' hooks (HammockHook_*, BerthCotHook_*) are copies in BerthDeck, shown day and "
+             "night",
+    "pose_collections": {
+        "BerthDeck_Hammocks": "the crew's hammocks slung, by night (hidden as built)",
+        "BerthDeck_Messes": "the crew's messes laid, by day: the tables let down on their slings, the benches, the "
+                            "mess kids and the sea chests (shown as built)"},
+    "seen_from_above": "the gun deck's hatchways and ladders look down onto it: near an open hatchway on the gun deck "
+                       "the deck under it is in view",
+    "zones": BERTH_ZONES}
+BD_GAME = dict(BD.info, lights=BD.lights, light_budget=BD.c["lanterns"]["light_budget"], planking=BD.planking(),
+               light_zones_note=BD.c["lanterns"]["zones_note"], room_x=BD.room_x, below=BERTH_BELOW,
+               copies=[{"name": c["name"], "mesh": c["item"],
+                        "matrix": np.round(np.asarray(c["matrix"], float), 6).tolist(), "collection": c["collection"]}
+                       for c in BD.copies_])
+json.dump(dict({"note": BERTHDECK_NOTE}, **BD_GAME), open(os.path.join(OUT, "berthdeck.json"), "w"), indent=1,
+          default=str)
+# the berth deck's hand-over to the orlop slice (14), from the deck as built (BerthDeck.handover; its notes are
+# berthdeck_1797.json's handover)
+json.dump(BD.handover(), open(os.path.join(OUT, "berth_deck.json"), "w"), indent=1)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
@@ -1839,16 +2061,30 @@ if ANCHOR_ROOM["meet"]:
                      json.dumps(ANCHOR_ROOM["meet"][:30]))
 
 
-def unmet(card, by_design):
+def unmet(card, by_design, names=None):
     """the whys of a card's meets pairs whose parts no longer meet (by_design: a room check's pairs that meet by
     design): a part meant to rest on, be let into or driven into another that no longer reaches it hangs clear of what
-    holds it. A pattern (Lid_*_S) stands for every part it matches"""
+    holds it. A pattern (Lid_*_S) stands for every part it matches, and with names (the objects the room check saw)
+    each of those must meet the other side: one hammock's hook hanging clear of its beam fails as all of them would
+    (the why then names the parts that don't meet)"""
     import fnmatch
 
     def hit(n, A):
         return any(fnmatch.fnmatchcase(n, a) for a in A)
-    return [why for A, B, why, _ in card["meets"]["pairs"]
-            if not any((hit(m[0], A) and hit(m[1], B)) or (hit(m[1], A) and hit(m[0], B)) for m in by_design)]
+    out = []
+    for A, B, why, _ in card["meets"]["pairs"]:
+        rows = [m for m in by_design if (hit(m[0], A) and hit(m[1], B)) or (hit(m[1], A) and hit(m[0], B))]
+        if not rows:
+            out.append(why)
+            continue
+        if names is None:
+            continue
+        met = {n for m in rows for n in m[:2]}
+        clear = sorted({n for side in (A, B) for a in side if any(ch in a for ch in "*?[")
+                        for n in fnmatch.filter(names, a) if n not in met})
+        if clear:
+            out.append(f"{why} (not {', '.join(clear[:8])}{' and more' if len(clear) > 8 else ''})")
+    return out
 
 
 ANCHOR_UNMET = unmet(AN.card, ANCHOR_ROOM["by_design"])
@@ -1877,7 +2113,7 @@ if SHUT_DOORS:
 if LID_LIGHT["leaks"]:
     raise SystemExit("daylight shows round a shut port lid: rays from inside reach the slit round it (build.json "
                      "gundeck.lid_light): " + json.dumps(LID_LIGHT["leaking"]))
-GUNDECK_UNMET = unmet(GD.c, GUNDECK_ROOM["by_design"])
+GUNDECK_UNMET = unmet(GD.c, GUNDECK_ROOM["by_design"], ROOM_NAMES["gundeck"])
 if GUNDECK_UNMET:
     raise SystemExit("a designed contact of the gun deck's parts no longer meets: a part hangs clear of what holds it "
                      "(gundeck_1797.json meets, build.json gundeck.room): " + json.dumps(GUNDECK_UNMET))
@@ -1889,6 +2125,21 @@ if GEAR_FOLDED:
 if GD.info["layout_close"]:
     raise SystemExit("two of the gun deck's fittings stand closer in plan than 0.15 m (build.json "
                      "gundeck.layout_close): " + json.dumps(GD.info["layout_close"]))
+if BERTHDECK_ROOM["meet"] or BERTHDECK_ROOM["floats"]:
+    raise SystemExit("the berth deck's parts or copies meet the ship or each other, or stand off the deck (build.json "
+                     "berthdeck.room): " +
+                     json.dumps({"meet": BERTHDECK_ROOM["meet"][:30], "floats": BERTHDECK_ROOM["floats"][:30]}))
+BERTHDECK_UNMET = unmet(BD.c, BERTHDECK_ROOM["by_design"], ROOM_NAMES["berthdeck"])
+if BERTHDECK_UNMET:
+    raise SystemExit("a designed contact of the berth deck's parts no longer meets: a part hangs clear of what holds "
+                     "it (berthdeck_1797.json meets, build.json berthdeck.room): " + json.dumps(BERTHDECK_UNMET))
+BERTH_FOLDED = {n: v for n, v in BERTH_FOLDS.items() if v["pairs"]}
+if BERTH_FOLDED:
+    raise SystemExit("a part of the berth deck or a copied item crosses itself (build.json berthdeck.folds): " +
+                     json.dumps(BERTH_FOLDED))
+if BD.info["layout_close"]:
+    raise SystemExit("two of the berth deck's fittings stand closer in plan than 0.15 m (build.json "
+                     "berthdeck.layout_close): " + json.dumps(BD.info["layout_close"]))
 if BT.failures():
     raise SystemExit("the boats fail their own checks (build.json boats.checks): " +
                      json.dumps(BT.failures(), default=str))

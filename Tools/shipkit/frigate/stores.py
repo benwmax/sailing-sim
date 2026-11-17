@@ -274,10 +274,12 @@ class Kit:
         return {it.name: it for it in items}
 
     # --- the mess ---------------------------------------------------------------------------------------------------------
-    def mess_table(self, sling_m=None):
+    def mess_table(self, sling_m=None, sling_y_m=None):
         """a mess table: its top (scrubbed deal), two battens under it, the hinge's cleat at its outboard end (+X: its
         outer face is the ship's side), two strap hinges, and at its inboard end two eyebolts with slings up to two
-        eyebolts in the beam over it (sling_m over the deck: the beam's underside)"""
+        eyebolts in the beam over it (sling_m over the deck: the beam's underside; sling_y_m: the eyebolts' and slings'
+        distance either side of the table's middle, kept inside the beam's sided breadth; by default 2.5 in in from
+        the table's sides)"""
         tb = self.c["mess"]["table"]
         L, W = (v * IN for v in tb["size_in"])
         tt, h = tb["top_in"] * IN, tb["high_in"] * IN
@@ -306,7 +308,8 @@ class Kit:
         er, eb = (v * IN for v in tb["eyebolt_in"])
         sr = tb["sling_in"] / 2 * IN
         xi = -L / 2 + 2.5 * IN
-        for y in (-W / 2 + 2.5 * IN, W / 2 - 2.5 * IN):
+        ye = W / 2 - 2.5 * IN if sling_y_m is None else sling_y_m
+        for y in (-ye, ye):
             for z_face, up in ((h, 1.0), (z_beam, -1.0)):
                 # an eyebolt: a shank into the wood, a collar on its face and the eye standing off it
                 lathe(it.piece("Eyebolts"), [xi, y, z_face - up * 1.5 * IN], EZ * up, EX,
@@ -453,7 +456,7 @@ class Kit:
         """Falconer's hammock slung lengthways (X) between two hooks span_ft apart (attach 'hook_aft', 'hook_fore', z 0
         there: the hooks' bights): the cloth hanging in a trough (its sides drawn up by the clews), the bed lying in it,
         at each end the nettles from grommets along the cloth's end to an iron ring, and the lanyard from the ring to
-        the hook"""
+        the hook (the clews made shorter where the hooks are too close for the card's: info clew_m)"""
         hc = self.c["hammock"]
         L, W = (v * FT for v in hc["cloth_ft"])
         span = (span_ft or hc["span_ft"]) * FT
@@ -526,15 +529,22 @@ class Kit:
         n = hc["nettles"]
         nr = hc["nettle_in"] / 2 * IN
         rr, rb = hc["ring_in"][0] / 2 * IN, hc["ring_in"][1] / 2 * IN
-        clew = hc["clew_ft"] * FT
         ly = hc["lanyard_in"] / 2 * IN
         hooks = {}
+        clews = []
         for s, tag in ((-1.0, "aft"), (1.0, "fore")):
             xe = s * Lx / 2
             P_end, _ = section(xe, 0.0)
             P_end = P_end + EZ * (W * (1 - hc["gather"]) / (2 * alpha(c_end, W * (1 - hc["gather"])))) * 0.35        # the end's middle, part way up its arc
             hook = np.array([s * span / 2, 0.0, 0.0])
             d = unit(hook - P_end)
+            # the clews as the card has them, or shorter where the hooks are closer than the cloth, the clews and the
+            # lanyard's least length allow (its ring would hang at or past the hook)
+            clew = min(hc["clew_ft"] * FT, float(np.linalg.norm(hook - P_end)) - rr - hc["lanyard_least_in"] * IN)
+            if clew < 0.5 * hc["clew_ft"] * FT:
+                raise SystemExit(f"stores: hooks {span:.3f} m apart leave the hammock's clews {clew / IN:.1f} in long, "
+                                 "under half the card's")
+            clews.append(clew)
             ring_c = P_end + d * clew
             # the ring in the plane of the hang (x, z), its near side toward the cloth
             a1 = d
@@ -570,8 +580,9 @@ class Kit:
             sl = hc["seizing_in"] * IN
             sz = fan + nr + 0.04 * IN
             lathe(it.piece("Seizing"), Qc - d * sl, d, e1, [(0.0, 0.0), (0.0, sz), (sl, sz), (sl, 0.0)], "Tarred", 10)
-            # the lanyard: from the ring to the hook, an eye round the hook's bar there (the bar runs along X at its
-            # bight, its middle bar_r + the lanyard's radius over the bight), its end seized back along the lanyard
+            # the lanyard: from the ring to the hook, an eye round the hook's bar there (the bar runs along X at the
+            # hook's bight, which is the lanyard's centreline under the bar: the bar's axis is bar_r + the lanyard's
+            # radius over it), its end seized back along the lanyard
             q0 = ring_c + d * rr
             hb = self.c["hammock"]["hook"]["bar_in"] / 2 * IN
             cbar = hook + EZ * (hb + ly)
@@ -584,6 +595,7 @@ class Kit:
             it.anchors.append(("p", cbar.tolist(), hb + 2.5 * ly))
         it.attach = hooks
         it.info = {"span_m": round(span, 4), "lowest_m": round(float(Top[nu // 2, nv // 2, 2]), 4),
+                   "clew_m": round(min(clews), 4),
                    "note": "the slung hammock with its bed: about 14 to 20 in of the beam's length a man (Falconer)"}
         return it
 
@@ -633,7 +645,8 @@ class Kit:
 
     def hammock_hook(self):
         """a hammock hook: an iron plate screwed to the beam's underside (z 0 its top, the beam's underside) and a hook
-        hanging from it, its bight (attach 'bight') where the lanyard's eye lies"""
+        hanging from it; attach 'bight': where a lanyard's eye round the hook's bar has its centreline just under the
+        bar (the bar's axis is bar_m + the lanyard's radius over it: hammock_slung's cbar)"""
         hk = self.c["hammock"]["hook"]
         pl, pw, pt = (v * IN for v in hk["plate_in"])
         br = hk["bar_in"] / 2 * IN
@@ -650,10 +663,10 @@ class Kit:
             pts.append([rc - rc * math.cos(a), 0.0, -dr + rc - rc * math.sin(a)])
         tube(it.piece("Hook"), np.array(pts), br, "Iron", n=8)
         lr = self.c["hammock"]["lanyard_in"] / 2 * IN
-        it.attach = {"bight": [rc, 0.0, -dr + br + lr]}
+        it.attach = {"bight": [rc, 0.0, -dr - br - lr], "bar": [rc, 0.0, -dr]}
         it.anchors = [("z", 0.0)]
-        it.info = {"bar_m": round(br, 5), "note": "the bar runs along X at the bight; a lanyard's eye round it lies with "
-                                                 "its centreline at 'bight'"}
+        it.info = {"bar_m": round(br, 5), "note": "the bar runs along X at the bight, its axis at 'bar'; a lanyard's eye "
+                                                 "round it passes under the bar with its centreline at 'bight'"}
         return it
 
     # --- casks --------------------------------------------------------------------------------------------------------------
