@@ -976,6 +976,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
+		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
 		const int32 N = Cfg.CrewCount;

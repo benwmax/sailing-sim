@@ -554,7 +554,7 @@ def write_config_inl(path, sheet):
         f.write("\n".join(L) + "\n")
 
 
-def main(build, out, limits_path=None):
+def main(build, out, limits_path=None, source=False):
     est = json.load(open(os.path.join(HERE, "physics_frigate.json")))
     limits = json.load(open(limits_path)) if limits_path else None
     rig = json.load(open(os.path.join(build, "rig.json")))["parts"]
@@ -674,16 +674,25 @@ def main(build, out, limits_path=None):
     write_hull_inl(os.path.join(out, "CommonwealthHullData.inl"), stations, hydro, prof)
     sheet["hull"] = hull
     write_config_inl(os.path.join(out, "commonwealth_trial.inl"), sheet)
+    if source:
+        # The game's copies (Fleet.cpp includes them for EBoatType::Commonwealth): the same two files.
+        here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "Source", "SailingPhysics", "Private")
+        write_hull_inl(os.path.join(here, "CommonwealthHullData.inl"), stations, hydro, prof)
+        write_config_inl(os.path.join(here, "CommonwealthConfig.inl"), sheet)
     print(json.dumps({"hydrostatics": sheet["hydrostatics"], "weights": sheet["weights"], "profile": prof,
                       "flap": sheet["rudder_flap"], "sails": sheet["sail_area_m2"], "tumblehome_added_m": clamp}, indent=1))
 
 
 if __name__ == "__main__":
-    # physics.py <build dir> [out dir] [--limits <limits.json>]
+    # physics.py <build dir> [out dir] [--limits <limits.json>] [--source]
+    # (--source also writes the game's copies into Source/SailingPhysics/Private.)
     args = sys.argv[1:]
+    source = "--source" in args
+    if source:
+        args.remove("--source")
     lim_path = None
     if "--limits" in args:
         k = args.index("--limits")
         lim_path = args[k + 1]
         del args[k:k + 2]
-    main(args[0], args[1] if len(args) > 1 else args[0], lim_path)
+    main(args[0], args[1] if len(args) > 1 else args[0], lim_path, source)

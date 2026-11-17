@@ -210,8 +210,27 @@ Two physics changes came with it. A square rig's windage is now spread over its 
 main mast alone), so the centre of windage is near her centre of effort; no fore-and-aft boat changes (the J/22's
 quick polar is byte-identical). And her sheet turns the waves' slope push off (`wave_slope: 0`, under the known gaps above).
 
+## In the game (EBoatType::Commonwealth)
+
+- `FBoatConfig::Make(EBoatType::Commonwealth)` (Fleet.cpp) is the sheet: `CommonwealthHullData.inl` and
+  `CommonwealthConfig.inl` in `Source/SailingPhysics/Private`, written by `physics.py <build> --source` (the config is the
+  trial's `commonwealth_trial.inl`). Her name is "Commonwealth" (the frigate wiring keys on it) and her eleven square sails
+  keep `sails.json`'s order. `IsSquareRigged(Type)` marks her; per-type crew, rig, cloth and camera tests skip her until
+  the frigate wiring teaches that code her rig.
+- Sail plans (`ShipSailPlans.h`): all plain sail, royals in, topgallants in, single- and double-reefed topsails,
+  close-reefed with the courses in. `SailShipSteady` sails the fastest she carries under her heel cap (the trim heel limit
+  plus 2 degrees); the trial uses the same code.
+- Reference polar (`FleetReferencePolar`): `polar_commonwealth.json`'s 35 points, 25% at 8 kn and 20% above.
+  `SailingSim.Fleet.Polar.Commonwealth` sails them by `SailShipSteady` (worst 19.0%, at 110 degrees in 12 kn; close-hauled
+  at 67.5 degrees she is 10 to 15% under, at 80 to 135 over). `SailingSim.Fleet.Ship.Manoeuvres` sails her tack (16 and
+  24 kn), the light-air tack that misses stays (8 kn), a wear (16 kn) and heaving to (12 kn) against the table above.
+  Both are heavy tests (`scripts/gate-heavy-tests.txt`).
+- The Boat screen has her card (`SailCatalog`'s words, in the slice's boats), but `MakeBoats` lists her only once the
+  frigate wiring sets `kShipsListed` with her model, rig and orders panel.
+
 ## Next
 
-Her `EBoatType::Commonwealth` in `Fleet.cpp` from the two generated files (after the J-Class's boat type merges, so
-the two don't collide), her reference polar from this table and its tests (the manoeuvres among them), the orders panel's
-calls into `FShipHandling`, and her deep-water start spots and Boat screen entry. The Mac runs the tests Nov 25 to 27 through the main sim thread.
+Deep-water start spots: she draws 6.5 m and wants 7.9 m under her (`LaunchSpotFits`); on Ray Hubbard the spots off Rush
+Creek, near the dam and at Chandlers Landing are deep enough (the club's own is a marina), and on Galveston Bay none is
+(Bolivar Roads is 6.0 m on the grid): a spot in the ship channel needs the coast's rebake on the Mac. The orders panel's
+calls into `FShipHandling` are the frigate wiring's. The Mac runs the tests Nov 25 to 27 through the main sim thread.

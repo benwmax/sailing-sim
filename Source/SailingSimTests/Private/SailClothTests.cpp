@@ -224,6 +224,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 	int32 Boats = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
 		if (!C.HasSpinnaker()) continue;
 		++Boats;
@@ -419,6 +420,7 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 	int32 Poled = 0, Gennakers = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
 		if (!C.HasSpinnaker()) continue;
 		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(C.Type));
@@ -670,6 +672,7 @@ bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 	int32 Jibs = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig F = FBoatConfig::Make(EBoatType(B));
 		if (!F.HasJib()) continue;
 		++Jibs;

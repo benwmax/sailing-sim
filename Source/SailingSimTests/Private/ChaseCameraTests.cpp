@@ -35,6 +35,7 @@ bool FSailingChaseCameraRigTest::RunTest(const FString&)
 	const double HalfV = HalfVerticalFovDeg();
 	for (int32 T = 0; T < int32(Sailing::EBoatType::Count); ++T)
 	{
+		if (Sailing::IsSquareRigged(Sailing::EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(T));
 		const FString Boat = UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(T)));
 		for (const ERig Kind : { ERig::Chase, ERig::Overview, ERig::Classic })
