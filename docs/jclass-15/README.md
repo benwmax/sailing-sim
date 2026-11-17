@@ -46,7 +46,11 @@ Rope001 scan as `weathering.py` does (`standing_bluebonnet.json`), teak 124 70 3
   - `export_game.py` keeps the maps on her teak's faces: UV2 Planking, UV3 Margin, and the Aft map's DA in UV1.y (UV1.x is
     the pack entry). Aft's s, how fast the covering board's edge crosses the planks, is YM's slope along U, which the
     material takes from the screen derivatives (YM is a function of x alone). A teak part without the maps gets its body-frame
-    x, y as Planking (plain planks, no boards).
+    x, y as Planking (plain planks, no boards). Unreal's FBX import flips V, so the export writes each map's v as 1 - v
+    (the first PC import, 63c2b4cc, read 1 - YM: every 'no covering board' 99 came in as -98 and the whole deck drew as one
+    plain covering board). The test reads the imported YM back and fails on a negative one. The meshes' non-Nanite vertex
+    buffers hold UVs at half precision (a few mm at |U| over 8 m); Nanite keeps its own, and ray-traced hits and Lumen take
+    the deck's average tone, so only a non-Nanite draw would show it.
   - The extra texture coordinates sit behind a static switch, `LaidDeck`, on only on `MI_Boat_LaidTeak`, so every other boat
     keeps its permutation without the interpolators. Its numbers are vector parameters `LaidA`..`LaidE` and `LaidCaulk`, read
     from `deck_bluebonnet.json` (planking, Caulking) and `game_bluebonnet.json`'s `laid_deck.mitre` (`BOAT_LAID`), which the

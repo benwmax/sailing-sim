@@ -327,14 +327,20 @@ def keep_deck_maps(me, slots, maps):
     total = np.empty(len(me.polygons), dtype=np.int64)
     me.polygons.foreach_get("loop_total", total)
     on = np.repeat(mi == laid, total)
+    # Unreal's FBX import flips V (v -> 1 - v: make_materials.py's ship topsides read 1 - y), so each v is written as 1 - v
+    # here and the material reads the deck's own numbers. (Written as they were, Ys, YM and DA came in as 1 - Ys, 1 - YM and
+    # 1 - DA: every 'no covering board here' 99 became -98, so the whole deck drew as one covering board, plain teak with
+    # no planks or seams: the PC stills at 63c2b4cc.)
     for name in ("Planking", "Margin"):
         lay = me.uv_layers.new(name=name)
-        lay.data.foreach_set("uv", np.where(on[:, None], maps[name], 0.0).ravel())
+        uv = np.where(on[:, None], maps[name], 0.0)
+        uv[on, 1] = 1.0 - uv[on, 1]
+        lay.data.foreach_set("uv", uv.ravel())
     pack = me.uv_layers["Pack"]
     a = np.empty(len(me.loops) * 2)
     pack.data.foreach_get("uv", a)
     a = a.reshape(-1, 2)
-    a[on, 1] = maps["Aft"][on, 0]
+    a[on, 1] = 1.0 - maps["Aft"][on, 0]
     pack.data.foreach_set("uv", a.ravel())
     if [u.name for u in me.uv_layers] != ["UVMap", "Pack", "Planking", "Margin"]:
         raise SystemExit(f"{me.name}: UV sets {[u.name for u in me.uv_layers]}, the game reads UVMap, Pack, Planking, Margin")

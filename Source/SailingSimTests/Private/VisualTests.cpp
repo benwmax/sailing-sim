@@ -1271,6 +1271,33 @@ bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("SM_Bluebonnet_Hull's deck wears MI_Boat_LaidTeak"), Hull->GetMaterial(LaidSlot) ? Hull->GetMaterial(LaidSlot)->GetName() : FString(), FString(TEXT("MI_Boat_LaidTeak")));
 	TestTrue(TEXT("SM_Bluebonnet_Hull carries the deck's maps (4 UV sets)"), Hull->GetNumUVChannels(0) >= 4);
+#if WITH_EDITORONLY_DATA
+	// The maps' numbers as the material reads them: the FBX import flips V, so export_game.py writes 1 - v. YM (UV3.y, |y| of
+	// the covering board's inner edge, or 99 where there is none) is never negative; read flipped (1 - YM) it was, and the
+	// whole deck drew as one covering board (the PC stills at 63c2b4cc).
+	if (const FMeshDescription* MD = const_cast<UStaticMesh*>(Hull)->GetMeshDescription(0); MD && Hull->GetNumUVChannels(0) >= 4)
+	{
+		FStaticMeshConstAttributes Attr(*MD);
+		const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+		const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
+		float MinYM = 1e9f, MaxYs = -1e9f, MinYs = 1e9f;
+		int32 Count = 0;
+		for (const FTriangleID T : MD->Triangles().GetElementIDs())
+		{
+			if (Slots[MD->GetTrianglePolygonGroup(T)] != FName(TEXT("LaidTeak"))) continue;
+			for (const FVertexInstanceID V : MD->GetTriangleVertexInstances(T))
+			{
+				MinYM = FMath::Min(MinYM, UVs.Get(V, 3).Y);
+				MinYs = FMath::Min(MinYs, UVs.Get(V, 2).Y);
+				MaxYs = FMath::Max(MaxYs, UVs.Get(V, 2).Y);
+				++Count;
+			}
+		}
+		TestTrue(TEXT("SM_Bluebonnet_Hull has laid deck faces"), Count > 0);
+		TestTrue(FString::Printf(TEXT("the laid deck's YM is never negative (min %.3f: a negative one is the import's V flip)"), MinYM), MinYM > -0.01f);
+		TestTrue(FString::Printf(TEXT("the laid deck's Ys spans both sides of the king plank (%.2f .. %.2f m)"), MinYs, MaxYs), MinYs < -1.f && MaxYs > 1.f);
+	}
+#endif
 	return true;
 }
 
