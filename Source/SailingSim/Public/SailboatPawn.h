@@ -31,6 +31,7 @@
 #include "Feedback.h"
 #include "ShipWalk.h"
 #include "ShipOrders.h"
+#include "ShipRig.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -47,6 +48,17 @@ class UMaterialInterface;
 class UAudioComponent;
 class USailingSynthWave;
 class AWaterSurface;
+
+/** A part of a ship's model that her rig moves (docs/ship-rig/, ShipModelVisuals.cpp). */
+struct FShipRigPart
+{
+	TWeakObjectPtr<UStaticMeshComponent> Mesh;
+	FTransform Rest;          // its transform in BoatRoot's frame as built (the ship's frame at rest)
+	FTransform Applied;       // what was last put on it
+	int32 Spar = -1;          // the spar it is (Object 0) or rides on
+	int32 Sail = -1;
+	uint8 Object = 0;         // 0 the spar, 1 the sail's head, 2 set, 3 clewed, 4 furled
+};
 
 /**
  * The player's boat (any of the fleet; the J/22 by default). Physics (Sailing::FBoatModel) steps at a fixed
@@ -593,6 +605,9 @@ public:
 	FString GetOrdersPanelText(int32 Part) const;
 	/** Her helmsman has the wheel (you walk, or told him to take her). */
 	bool HasShipHelmsman() const { return bShipHelmsman; }
+	/** A ship's rig on the model (docs/ship-rig/): her table (null for a boat without one) and its pose now. */
+	const Sailing::FShipRigData* GetShipRig() const { return ShipRig; }
+	const Sailing::FShipRigPose& GetShipRigPose() const { return ShipRigPose; }
 private:
 	Sailing::FWalkMap WalkMap;
 	FString WalkMapName;                     // the ship the map is for
@@ -626,6 +641,18 @@ private:
 	void UpdateDeckStreaming();
 	/** A walking command while walking; true when it was one (OnButton stops there). */
 	bool OnWalkButton(FName Action);
+	/** A ship's rig on the model (docs/ship-rig/, ShipModelVisuals.cpp): the table, its pose, the parts it moves (on the
+	 *  boat already or loaded for it) and the load of the missing ones. */
+	const Sailing::FShipRigData* ShipRig = nullptr;
+	Sailing::FShipRigPose ShipRigPose;
+	TArray<FShipRigPart> ShipRigParts;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> ShipRigOwnMeshes;
+	TArray<FSoftObjectPath> ShipRigPending;
+	TArray<FShipRigPart> ShipRigPendingParts;
+	TSharedPtr<struct FStreamableHandle> ShipRigLoad;
+	void ClearShipRig();
+	void BindShipRig();
+	void UpdateShipRig(float DeltaSeconds);
 private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
