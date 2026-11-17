@@ -1,0 +1,1 @@
+TimingInsights.ExportTimerStatistics "D:/dev/ss-fix/Artifacts/bench/prmain-424b580b/insights/GameThread-main.csv" -threads=GameThread -startTime=13.806 -endTime=33.806

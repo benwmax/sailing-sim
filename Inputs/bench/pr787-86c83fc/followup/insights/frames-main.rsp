@@ -1,0 +1,1 @@
+TimingInsights.ExportTimingEvents "D:/dev/ss-fix/Artifacts/bench/prmain-424b580b/insights/frames-main.csv" -threads=GameThread -timers="FEngineLoop::Tick" -columns=ThreadName,TimerName,StartTime,EndTime,Duration,Depth
