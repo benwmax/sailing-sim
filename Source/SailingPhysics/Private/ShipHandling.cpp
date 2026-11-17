@@ -39,7 +39,9 @@ namespace Sailing
 		Helm = Boat.GetState().RudderAngle / std::max(Boat.GetConfig().MaxRudderAngleDeg * kDegToRad, 1e-3);
 		Ordered = std::fabs(T.TrueWindAngle) * kRadToDeg;
 		for (int M = 0; M < kMaxMasts; ++M) HeldBrace[M] = FromSide;
-		bCoursesRisen = false;
+		// The courses and spanker as a cancelled or re-issued order left them are put back at the next update (courses
+		// still clewed up from "rise tacks and sheets" keep their held set, so a second tack does not take Clewed as it).
+		bRestorePending = true;
 		bWayOn = false;
 		Pilot.MaxTiller = Settings.PilotMaxTiller;
 		Pilot.bKeepShortOfStall = Settings.PilotMaxTiller <= 0.6;
@@ -86,10 +88,22 @@ namespace Sailing
 		HelmToward(Boat, Controls, Pilot.Update(Boat), Dt);
 	}
 
+	void FShipHandling::Brail(FBoatControls& Controls, bool bDown)
+	{
+		Controls.bMainDown = bDown;
+		bSpankerBrailed = bDown;
+	}
+
 	bool FShipHandling::Update(const FBoatModel& Boat, FBoatControls& Controls, double Dt)
 	{
-		if (!IsActive()) return false;
 		const FBoatConfig& C = Boat.GetConfig();
+		if (bRestorePending)
+		{
+			bRestorePending = false;
+			LowerCourses(C, Controls);
+			if (bSpankerBrailed) Brail(Controls, false);
+		}
+		if (!IsActive()) return false;
 		const FBoatTelemetry& T = Boat.GetTelemetry();
 		const double S = FromSide;
 		const double Twa = T.TrueWindAngle * kRadToDeg;
@@ -153,11 +167,11 @@ namespace Sailing
 				if (T.ForwardSpeed > Settings.WayOnShare * SpeedBefore) bWayOn = true;
 				const double Course = Settings.CloseHauledDeg + (bWayOn ? 0.0 : Settings.FullDeg);
 				// Paying her off, the spanker is brailed in (it would hold her stern down to leeward).
-				Controls.bMainDown = !bWayOn && Settings.bBrailToPayOff;
+				Brail(Controls, !bWayOn && Settings.bBrailToPayOff);
 				SteerFor(Boat, Controls, -S * Course, Dt);
 				if ((bWayOn && Up < -(Settings.CloseHauledDeg - 8.0)) || StepTime > Settings.GatherWaySeconds)
 				{
-					Controls.bMainDown = false;
+					Brail(Controls, false);
 					Go(EShipManoeuvreStep::Done);
 				}
 				return true;
@@ -179,10 +193,15 @@ namespace Sailing
 			if (StepNow == EShipManoeuvreStep::BearAway && Round >= 160.0) Go(EShipManoeuvreStep::Gybing);
 			if (StepNow == EShipManoeuvreStep::Gybing && Round >= 200.0) Go(EShipManoeuvreStep::HaulUp);
 			// The spanker brailed up until she is round (it would hold her stern up to the wind).
-			Controls.bMainDown = StepNow != EShipManoeuvreStep::HaulUp;
+			Brail(Controls, StepNow != EShipManoeuvreStep::HaulUp);
 			SteerFor(Boat, Controls, Target, Dt);
 			if (StepNow == EShipManoeuvreStep::HaulUp && Ordered >= End && std::fabs(Twa - Target) < 8.0) Go(EShipManoeuvreStep::Done);
-			if (Time > Settings.WearGiveUpSeconds) Go(EShipManoeuvreStep::Done);
+			if (Time > Settings.WearGiveUpSeconds)
+			{
+				// Given up (she will not come round): the spanker set again and the helm handed back.
+				Brail(Controls, false);
+				Go(EShipManoeuvreStep::Done);
+			}
 			return true;
 		}
 

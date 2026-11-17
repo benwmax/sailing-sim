@@ -75,7 +75,8 @@ namespace Sailing
 	public:
 		FShipHandlingSettings Settings;
 
-		/** Starts a manoeuvre from where she is (the tack she is on is the side the wind is on now). None ends one. */
+		/** Starts a manoeuvre from where she is (the tack she is on is the side the wind is on now). None ends one; the
+		 *  courses and spanker an earlier order took in are set again at the next Update (call it once after None). */
 		void Start(EShipManoeuvre Manoeuvre, const FBoatModel& Boat);
 		/** Gives this step's orders over the controls the trimmer and the helmsman set (a no-op when idle or done).
 		 *  Returns true while it holds the helm; the caller steers by its own helmsman otherwise. */
@@ -96,6 +97,8 @@ namespace Sailing
 		void LowerCourses(const FBoatConfig& C, FBoatControls& Controls);
 		/** Tacking: the main mast's lowest set sail is full on the new tack. */
 		bool MainDraws(const FBoatModel& Boat) const;
+		/** The spanker brailed up (or set again), remembered so a cancelled order sets it again. */
+		void Brail(FBoatControls& Controls, bool bDown);
 		/** The helm at the wheel's pace toward a share of hard over (+ = bow to starboard). */
 		void HelmToward(const FBoatModel& Boat, FBoatControls& Controls, double Target, double Dt);
 		/** The helm steering for a true wind angle (deg, signed) at the wheel's pace. */
@@ -111,6 +114,8 @@ namespace Sailing
 		double HeldBrace[kMaxMasts] = { 0, 0, 0 }; // tacking: the yards as they were when the helm went over
 		ESailSet HeldSet[kMaxSquareSails] = {}; // tacking: the square sails as they were before "rise tacks and sheets"
 		bool bCoursesRisen = false;
+		bool bSpankerBrailed = false; // the spanker is brailed up by an order
+		bool bRestorePending = false; // a new order (or None): put the courses and spanker back at the next update
 		bool bWayOn = false;     // tacking: way on again after "let go and haul"
 		double SpeedBefore = 0.0; // her speed through the water when the manoeuvre started (m/s)
 		FAutopilot Pilot;        // the helmsman when the order is a course

@@ -1894,18 +1894,20 @@ namespace Sailing
 		const FHullShape& Hull = C.Hulls.front();
 		std::pair<Vec3, double> Windage[kMaxMasts + 1];
 		int NumWindage = 0;
-		Windage[NumWindage++] = { Vec3(Hull.WaterlineMidX - 0.35, 0.0, Hull.SheerZ + 0.18), C.HullWindageCdA };
+		const int WindageMasts = C.HasSquareRig() ? std::min(C.Square.NumMasts, kMaxMasts) : 0;
 		double RigArea = 0.0;
-		if (C.HasSquareRig()) for (int M = 0; M < C.Square.NumMasts; ++M) RigArea += C.Square.AreaOn(M);
+		for (int M = 0; M < WindageMasts; ++M) RigArea += C.Square.AreaOn(M);
+		// The rig first, then the hull: the order the forces were always summed in (a fore-and-aft boat bit for bit).
 		if (RigArea > 0.0)
 		{
-			for (int M = 0; M < C.Square.NumMasts; ++M)
+			for (int M = 0; M < WindageMasts; ++M)
 				Windage[NumWindage++] = { Vec3(C.Square.MastX[M], 0.0, 0.432 * C.MastheadZ), C.RigWindageCdA * C.Square.AreaOn(M) / RigArea };
 		}
 		else
 		{
 			Windage[NumWindage++] = { Vec3(C.MastX, 0.0, 0.432 * C.MastheadZ), C.RigWindageCdA };
 		}
+		Windage[NumWindage++] = { Vec3(Hull.WaterlineMidX - 0.35, 0.0, Hull.SheerZ + 0.18), C.HullWindageCdA };
 		for (int W = 0; W < NumWindage; ++W)
 		{
 			const Vec3& Point = Windage[W].first;

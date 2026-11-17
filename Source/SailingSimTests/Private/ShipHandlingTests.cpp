@@ -114,6 +114,24 @@ bool FSailingShipTackOrdersTest::RunTest(const FString&)
 	for (int I = 0; I < int(C.Square.Sails.size()); ++I)
 		TestTrue(TEXT("tacks and sheets hauled down again"), Controls.SquareSet[I] == ESailSet::Set);
 	TestEqual(TEXT("step names for the orders panel"), FString(UTF8_TO_TCHAR(FShipHandling::StepName(H.Step()))), FString(TEXT("Let go and haul")));
+
+	// An order cancelled after "rise tacks and sheets": the courses set again and the spanker no longer brailed.
+	Underway(Boat, Wind, 65.0);
+	FShipHandling Cancel;
+	FBoatControls K;
+	Cancel.Start(EShipManoeuvre::Tack, Boat);
+	Boat.Reset(0.0, 0.0, -30.0 * kDegToRad, 1.0);
+	Boat.Step(PhysicsDt, K, Wind);
+	Cancel.Update(Boat, K, PhysicsDt);
+	bool bAnyClewed = false;
+	for (int I = 0; I < int(C.Square.Sails.size()); ++I) bAnyClewed |= K.SquareSet[I] == ESailSet::Clewed;
+	TestTrue(TEXT("courses clewed up near the wind"), bAnyClewed);
+	Cancel.Start(EShipManoeuvre::Tack, Boat); // re-issued: the held set must stay the one from before the first rise
+	Cancel.Update(Boat, K, PhysicsDt);
+	K.bMainDown = true;
+	Cancel.Start(EShipManoeuvre::None, Boat);
+	TestFalse(TEXT("cancelled: the caller keeps the helm"), Cancel.Update(Boat, K, PhysicsDt));
+	for (int I = 0; I < int(C.Square.Sails.size()); ++I) TestTrue(TEXT("cancelled: courses set again"), K.SquareSet[I] == ESailSet::Set);
 	return true;
 }
 

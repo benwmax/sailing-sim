@@ -372,8 +372,8 @@ namespace
 					if (V == 2) { Name = "fore-and-aft sails down"; K.bMainDown = K.bJibDown = K.bStaysailDown = true; }
 					if (V == 3) { Name = "rudder amidships"; K.Tiller = 0.0; }
 					if (V == 4) { Name = "rudder other way"; K.Tiller = -K.Tiller; }
-					if (V == 5) { Name = "fore square sails only"; for (int Q = 0; Q < kMaxSquareSails; ++Q) if (C.Square.Sails[Q].Mast != 0) K.SquareSet[Q] = ESailSet::Furled; }
-					if (V == 6) { Name = "after square sails only"; for (int Q = 0; Q < kMaxSquareSails; ++Q) if (C.Square.Sails[Q].Mast == 0) K.SquareSet[Q] = ESailSet::Furled; }
+					if (V == 5) { Name = "fore square sails only"; for (int Q = 0; Q < int(C.Square.Sails.size()) && Q < kMaxSquareSails; ++Q) if (C.Square.Sails[Q].Mast != 0) K.SquareSet[Q] = ESailSet::Furled; }
+					if (V == 6) { Name = "after square sails only"; for (int Q = 0; Q < int(C.Square.Sails.size()) && Q < kMaxSquareSails; ++Q) if (C.Square.Sails[Q].Mast == 0) K.SquareSet[Q] = ESailSet::Furled; }
 					for (int Q = 0; Q < int(C.Square.Sails.size()); ++Q) if (K.SquareSet[Q] != ESailSet::Set) Copy.GetMutableState().SquareOut[Q] = 0.0;
 					if (V == 7) Name = "no waves";
 					if (V == 8) Name = "no wind, no waves";
@@ -439,7 +439,7 @@ int main(int Argc, char** Argv)
 			Ctl.Tiller = Helm;
 			for (int I = 0; I < int(30.0 * PhysicsHz); ++I)
 			{
-				// Keep her moving at V along her axis (a tow), so only the helm turns her.
+				// Started at V along her axis with every sail in, so only the helm turns her (her way decays as she goes).
 				Boat.Step(PhysicsDt, Ctl, Wind);
 				if (I % int(5.0 * PhysicsHz) == 0)
 					std::printf("speed %+.1f m/s  t %4.1f  ahead %+5.2f m/s  turn %+6.3f deg/s  rudder %+5.1f\n", V, I * PhysicsDt,
