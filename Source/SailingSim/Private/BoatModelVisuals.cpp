@@ -1104,8 +1104,11 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 		// (Only into a hand that holds it: led to the nearer hand resting on a knee it ran through the thigh.)
 		const TOptional<FVector> Hand = JibGripCm;
 		const TCHAR* Rest = S.JibSide > 0 ? TEXT("JibTailRest_S") : TEXT("JibTailRest_P");
+		// (Bluebonnet's JibTailRest is 1 cm over her deck, room for a small boat's stopper; her 28 mm sheet's figure eight, 35 cm
+		// long over her cambered deck, went 3 cm into it (RigClearance on #763), so her tail's end lies 4 cm higher.)
+		const FVector RestLift(0.f, 0.f, bJClass ? 4.f : 0.f);
 		const FVector Tail = Hand && FVector::Dist(*Hand, Tailer) < 160.f ? *Hand
-			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
+			: Has(ModelHull, Rest) ? RigPoint(ModelHull, Rest) + RestLift : Tailer + FVector(-30.f, (S.JibSide > 0 ? -1.f : 1.f) * 12.f, -16.f);
 		Ropes.Add({ Tailer, Tail, JibSheetR, 0.03f, S.JibSide > 0 ? RopeLook::JibStbd : RopeLook::JibPort });
 		if (bFineRopes)
 		{
