@@ -16,6 +16,7 @@ namespace ShipOrdersTestsLocal
 	{
 		Sailing::FShipOrderContext C;
 		C.bSquareRig = true;
+		C.bManoeuvres = true;
 		C.bHasGuns = true;
 		C.bHelmsman = true;
 		C.TrueWindAngleDeg = 90.0;
@@ -50,6 +51,10 @@ bool FShipOrdersRulesTest::RunTest(const FString& Parameters)
 	FShipOrderContext NoRig = C;
 	NoRig.bSquareRig = false;
 	TestNotNull(TEXT("no sail orders without the square rig"), ShipOrderBlocked(EShipOrder::MakeSail, EOrderSide::Both, NoRig));
+	FShipOrderContext Undrilled = C;
+	Undrilled.bManoeuvres = false;
+	TestNotNull(TEXT("no tack until the crew can"), ShipOrderBlocked(EShipOrder::Tack, EOrderSide::Both, Undrilled));
+	TestNull(TEXT("sail plans meanwhile"), ShipOrderBlocked(EShipOrder::ShortenSail, EOrderSide::Both, Undrilled));
 
 	// The helm: points of the compass, never closer than she sails or past dead downwind, on her own tack.
 	TestEqual(TEXT("luff a point"), HelmTargetAfter(EShipOrder::LuffPoint, 90.0, C), 78.75);
@@ -75,6 +80,36 @@ bool FShipOrdersRulesTest::RunTest(const FString& Parameters)
 	FShipOrderContext Unarmed = C;
 	Unarmed.bHasGuns = false;
 	TestNotNull(TEXT("no guns, no gun orders"), ShipOrderBlocked(EShipOrder::CastLoose, EOrderSide::Both, Unarmed));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipOrdersSailPlanTest, "SailingSim.ShipOrders.SailPlan", ShipOrdersTestsLocal::Flags)
+bool FShipOrdersSailPlanTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	FBoatConfig Config;
+	FBoatControls Controls;
+	TestFalse(TEXT("no square rig, no sail plan"), ApplySailPlan(EShipOrder::FurlAll, Config, Controls));
+	const ESquareSailKind Kinds[4] = { ESquareSailKind::Course, ESquareSailKind::Topsail, ESquareSailKind::Topgallant, ESquareSailKind::Royal };
+	for (int32 K = 0; K < 4; ++K)
+	{
+		FSquareSailDef S;
+		S.Kind = Kinds[K];
+		if (S.Kind == ESquareSailKind::Topsail) S.ReefAreaFraction = { 0.9, 0.8 };
+		Config.Square.Sails.push_back(S);
+	}
+	TestFalse(TEXT("only the sail plans"), ApplySailPlan(EShipOrder::Tack, Config, Controls));
+	TestTrue(TEXT("fighting sail"), ApplySailPlan(EShipOrder::FightingSail, Config, Controls));
+	TestTrue(TEXT("topsails only, the courses clewed up"), Controls.SquareSet[0] == ESailSet::Clewed && Controls.SquareSet[1] == ESailSet::Set
+		&& Controls.SquareSet[2] == ESailSet::Furled && Controls.SquareSet[3] == ESailSet::Furled);
+	TestTrue(TEXT("jibs and spanker kept, staysails down"), !Controls.bJibDown && !Controls.bMainDown && Controls.bStaysailDown);
+	ApplySailPlan(EShipOrder::MakeSail, Config, Controls);
+	TestTrue(TEXT("all sail"), Controls.SquareSet[0] == ESailSet::Set && Controls.SquareSet[3] == ESailSet::Set && !Controls.bStaysailDown);
+	ApplySailPlan(EShipOrder::ShortenSail, Config, Controls);
+	TestTrue(TEXT("light sails in, a reef in the topsail, the course kept"), Controls.SquareSet[2] == ESailSet::Furled && Controls.SquareSet[3] == ESailSet::Furled
+		&& Controls.SquareReef[1] == 1 && Controls.SquareSet[0] == ESailSet::Set && Controls.SquareReef[0] == 0);
+	ApplySailPlan(EShipOrder::FurlAll, Config, Controls);
+	TestTrue(TEXT("everything furled"), Controls.SquareSet[0] == ESailSet::Furled && Controls.SquareSet[1] == ESailSet::Furled && Controls.bMainDown && Controls.bJibDown);
 	return true;
 }
 

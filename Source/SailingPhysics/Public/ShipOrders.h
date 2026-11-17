@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SailingPhysicsApi.h"
+#include "BoatModel.h"
 
 #include <cstdint>
 #include <string>
@@ -70,6 +71,7 @@ namespace Sailing
 	struct SAILINGPHYSICS_API FShipOrderContext
 	{
 		bool bSquareRig = false;       // the square rig's sail orders are carried out (the physics has them)
+		bool bManoeuvres = false;      // tacking, wearing and heaving to are carried out (FShipHandling)
 		bool bManoeuvring = false;     // a tack, a wear or heaving to under way: the sail orders wait for it
 		bool bHoveTo = false;
 		bool bHelmsman = false;        // her helmsman has the wheel (the captain isn't steering)
@@ -82,6 +84,11 @@ namespace Sailing
 
 	/** Why an order can't be given now, or nullptr when it can. */
 	SAILINGPHYSICS_API const char* ShipOrderBlocked(EShipOrder Order, EOrderSide Side, const FShipOrderContext& Context);
+
+	/** A sail plan order (make all sail, fighting sail, shorten sail, furl all) on a square rig's controls: which square
+	 *  sails are set, clewed up or furled, the topsails' reefs and the fore-and-aft sails up or down. False for any other
+	 *  order or a boat without a square rig (nothing changed). */
+	SAILINGPHYSICS_API bool ApplySailPlan(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls);
 
 	/** The helmsman's new wind angle after a helm order (signed like the TWA; held between the closest she sails and dead
 	 *  downwind, on the same tack). Other orders leave it. */
