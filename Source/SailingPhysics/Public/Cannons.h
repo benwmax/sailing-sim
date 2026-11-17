@@ -165,6 +165,14 @@ namespace Sailing
 		int32_t Sparks = 20;             // burning grains thrown out with the flame
 		double SparkSpeedMs = 55.0;
 		double SparkLifeS = 0.35;
+		// The look (M_CannonSmoke, M_CannonFlash: ACannonBattery pushes these into the materials' instances).
+		double FlameNits = 60000.0;      // cd/m^2: the flame's core at its peak (black powder ~2,000 K; the sun's disc is 1.6e9)
+		double SparkNits = 20000.0;      // cd/m^2: a burning grain
+		double SmokeGlowNits = 4000.0;   // cd/m^2: smoke at the flash, lit from inside
+		double SmokeAlbedo = 0.85;       // powder smoke: pale grey-white (potassium salts)
+		double SmokeForwardScatter = 0.6;   // Henyey-Greenstein g toward the sun (fine particles: bright looking sunward)
+		double SmokeEdgeSoftness = 0.5;  // 0 hard cauliflower edges .. 1 a soft Gaussian
+		double SmokeDepthFadeM = 1.5;    // m: fades into the water, hull and sails over this
 
 		/** Set a parameter by name (case-insensitive). False for an unknown name. */
 		bool Set(const std::string& Key, double Value);
