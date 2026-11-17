@@ -112,7 +112,7 @@
   "brake_tree_in": 9.0,
   "scuttle_in": 20.0,
   "collar_in": [2.5, 0.5],
-  "scuttle_well_ft": 0.0
+  "scuttle_well_ft": 3.0
  },
  "tiller": {
   "note": "not built in this slice: the counter closes round the rudder head only at the gun deck's height, so this deck does not reach it, and where the tiller goes (hung under the quarterdeck's beams in the great cabin, the lower stern reshaped so it sits here as on Constitution, or none) is still to be decided. As drawn for this deck: the iron tiller (museum_1812: an iron tiller on the berth deck aft of the wardroom) in the rudder head's mortise in the slot between the wing transom's ceiled top and the gun deck's beams, led forward just under the beams (gap_under_beams_in) along her sheer to its end over the tiller room, square to the middle line with the helm amidships; the tiller ropes from the wheel come down through the gun deck in lead bushes (deck.py tiller_legs) through lead-lined holes in the gun deck's members, round a sheave block under each (hung from the member's side) and out to a block at the side abaft them (side_blocks_x_m, side_block_in from the ceiling), then in to an iron eye at the tiller's end. Hard over the end swings hard_over_deg either way, clear of the side and the bulkhead (checked). Iron forged square tapering to the end (sizes estimate, period practice: a 44's tiller about 18 ft long)",

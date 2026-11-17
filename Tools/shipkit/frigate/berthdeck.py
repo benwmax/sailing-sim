@@ -1140,12 +1140,13 @@ class BerthDeck(GunDeck):
 
     def cable_scuttles(self, part, wells):
         """the cables' scuttles in these planks straight under the gun deck's: a lead collar round each and its lining
-        down the hole, through the planks or scuttle_well_ft if more (the cable tiers under it are the orlop slice's)"""
+        down the hole through the planks (the cable tiers under it are the orlop slice's; scuttle_well_ft is only how far
+        down the gun deck leads the cable, GunDeck.cable_course)"""
         th = self.c["through"]
         xs, ys = self.scuttles()
         r = th["scuttle_in"] / 2 * IN
         cw, ct = (v * IN for v in th["collar_in"])
-        wd = max(th["scuttle_well_ft"] * FT, self.c["deck"]["thick_in"] * IN)
+        wd = self.c["deck"]["thick_in"] * IN
         for sy in (1.0, -1.0):
             c = np.array([xs, sy * ys, float(self.zg(xs))])
             k0 = len(part.V)
