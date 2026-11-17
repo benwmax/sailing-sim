@@ -129,6 +129,47 @@ namespace Sailing
 		return Port && Stbd ? Port : nullptr;
 	}
 
+	EGunsReady GunsReadyFor(const FCannonSideStatus& Status)
+	{
+		auto RankOf = [](EGunState S) -> int
+		{
+			switch (S)
+			{
+			case EGunState::Housed: case EGunState::ClosingLid: case EGunState::Securing: return 0;
+			case EGunState::CastingLoose: case EGunState::Waiting: case EGunState::Sponging: case EGunState::Loading: return 1;
+			case EGunState::Loaded: case EGunState::OpeningLid: case EGunState::RunningOut: case EGunState::RunningIn: return 2;
+			default: return 3;   // Ready, Lock, Recoil, Spent: out, or just fired from out
+			}
+		};
+		int Least = 3;
+		bool bAny = false;
+		for (int K = 0; K < int(EGunState::Count); ++K)
+		{
+			if (Status.ByState[K] <= 0) continue;
+			bAny = true;
+			Least = std::min(Least, RankOf(EGunState(K)));
+		}
+		return bAny ? EGunsReady(Least) : EGunsReady::Housed;
+	}
+
+	ECannonOrder CannonOrderFor(EShipOrder Order)
+	{
+		switch (Order)
+		{
+		case EShipOrder::Load: return ECannonOrder::Load;
+		case EShipOrder::RunOut: return ECannonOrder::RunOut;
+		case EShipOrder::Fire: return ECannonOrder::Fire;
+		case EShipOrder::CeaseFire: return ECannonOrder::CeaseFire;
+		case EShipOrder::Secure: return ECannonOrder::Secure;
+		default: return ECannonOrder::CastLoose;
+		}
+	}
+
+	ECannonSide CannonSideFor(EOrderSide Side)
+	{
+		return Side == EOrderSide::Port ? ECannonSide::Port : (Side == EOrderSide::Starboard ? ECannonSide::Starboard : ECannonSide::Both);
+	}
+
 	bool ApplySailPlan(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls)
 	{
 		if (!Config.HasSquareRig()) return false;

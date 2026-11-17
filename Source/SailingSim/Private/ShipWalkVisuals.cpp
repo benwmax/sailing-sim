@@ -3,6 +3,7 @@
 // his eye, lets her helmsman hold the course while you walk, and streams the decks below as you go down to them.
 #include "SailboatPawn.h"
 #include "SailingSim.h"
+#include "CannonBattery.h"
 #include "SailingSettings.h"
 #include "SailingBindings.h"
 #include "BenchRunner.h"
@@ -383,11 +384,18 @@ void ASailboatPawn::ShipHelmsmanTakes()
 Sailing::FShipOrderContext ASailboatPawn::GetShipOrderContext() const
 {
 	Sailing::FShipOrderContext C;
-	// The square rig's sail plans are carried out (ApplySailPlan); tacking, wearing and heaving to join with the crew's
-	// manoeuvres (FShipHandling), the guns with the battery: until then their orders show, with the reason they can't yet.
+	// The square rig's sail plans are carried out (ApplySailPlan) and the guns by her battery; tacking, wearing and heaving
+	// to join with the crew's manoeuvres (FShipHandling): until then their orders show, with the reason they can't yet.
 	C.bSquareRig = Boat.GetConfig().HasSquareRig();
 	C.bManoeuvres = false;
-	C.bHasGuns = false;
+	C.bHasGuns = ShipBattery != nullptr;
+	if (ShipBattery)
+	{
+		C.Guns[0] = Sailing::GunsReadyFor(ShipBattery->GetSideStatus(Sailing::ECannonSide::Port));
+		C.Guns[1] = Sailing::GunsReadyFor(ShipBattery->GetSideStatus(Sailing::ECannonSide::Starboard));
+		C.bFiring[0] = bShipGunsFiring[0];
+		C.bFiring[1] = bShipGunsFiring[1];
+	}
 	C.bHelmsman = bShipHelmsman;
 	C.TrueWindAngleDeg = bShipHelmsman ? WalkPilot.TargetTWADeg : Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
 	return C;
@@ -443,8 +451,28 @@ void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
 		// The crew set, clew up or furl each sail at their pace (the physics' SquareOut, the model's ShipRigPose).
 		Sailing::ApplySailPlan(Order.Order, Boat.GetConfig(), Controls);
 		break;
+	case EShipOrder::CastLoose:
+	case EShipOrder::Load:
+	case EShipOrder::RunOut:
+	case EShipOrder::Fire:
+	case EShipOrder::CeaseFire:
+	case EShipOrder::Secure:
+		if (ShipBattery)
+		{
+			// The guns' crews do the drill at their pace; a fire order keeps them firing (reload, run out, fire) until
+			// cease fire or secure.
+			ShipBattery->Order(Sailing::CannonOrderFor(Order.Order), Sailing::CannonSideFor(Order.Side));
+			const bool bSide[2] = { Order.Side != Sailing::EOrderSide::Starboard, Order.Side != Sailing::EOrderSide::Port };
+			for (int32 K = 0; K < 2; ++K)
+			{
+				if (!bSide[K]) continue;
+				if (Order.Order == EShipOrder::Fire) bShipGunsFiring[K] = true;
+				else if (Order.Order == EShipOrder::CeaseFire || Order.Order == EShipOrder::Secure) bShipGunsFiring[K] = false;
+			}
+		}
+		break;
 	default:
-		// (manoeuvres and gun orders: refused by GetShipOrderContext until they are wired)
+		// (manoeuvres: refused by GetShipOrderContext until they are wired)
 		break;
 	}
 	// The captain's call, in every HUD mode: it is what you said.

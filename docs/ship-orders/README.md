@@ -15,7 +15,11 @@ gives the order, and Backspace (B) or G closes it. The order's call goes on the 
   point" move that angle by 11.25 degrees, between six points off the wind and dead downwind. "I have the helm" takes the
   wheel back (and walks you back to it from on deck). Walking about hands her to the helmsman too.
 * **Guns**: cast loose, load, run out, fire, cease fire, secure, to port, starboard or both sides (the first row picks the
-  side). The gun battery (`ACannonBattery`, PR #765) carries them out once it is spawned on the frigate.
+  side). The player's ship spawns her battery (`ACannonBattery`, `docs/cannon-fire/`) on her root when she is built, and
+  the orders go to it (`CannonOrderFor`, `CannonSideFor`). The panel reads each side from the battery's counts
+  (`GunsReadyFor`: the side's least ready gun) and remembers which sides were told to fire, for cease fire. Each shot kicks
+  the camera's buffet (Settings > Camera shake), hardest for a gun beside the camera and fading past about 15 m. The
+  recoil's push on the ship (`GetForceOnShip`) isn't in her physics yet.
 
 What can be ordered follows her state (`Sailing::ShipOrderBlocked`): no sail orders during a manoeuvre, fill away only when
 hove to, no luffing past close-hauled, and the guns' drill one step at a time on each side (an order to both sides goes to
@@ -26,4 +30,4 @@ UI Helpful adds each order's plain line and the keys under the rows. Natural and
 Code: `Source/SailingPhysics/Public/ShipOrders.h` (the orders, their calls, the rules, the panel's state), the pawn's
 `GetShipOrderContext`, `OnOrdersButton`, `GiveShipOrder` and `GetOrdersPanelText` (`ShipWalkVisuals.cpp`), and the HUD's
 card (`SSailHud`, top of the centre-right messages). Keys: `IMC_Ship` (the panel's key, on any ship), `IMC_Walk` above it
-while walking, and `IMC_Orders` above both while the panel is open. Tests: `SailingSim.ShipOrders.Rules`, `.SailPlan`, `.Panel`.
+while walking, and `IMC_Orders` above both while the panel is open. Tests: `SailingSim.ShipOrders.Rules`, `.SailPlan`, `.Guns`, `.Panel`.

@@ -3,6 +3,8 @@
 // the model's parts (or loads them), and puts each frame's pose on them.
 #include "SailboatPawn.h"
 #include "SailingSim.h"
+#include "CannonBattery.h"
+#include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StaticMesh.h"
@@ -72,6 +74,13 @@ void ASailboatPawn::ClearShipRig()
 	if (ShipRigLoad.IsValid()) ShipRigLoad->CancelHandle();
 	ShipRigLoad.Reset();
 	ShipRig = nullptr;
+	if (ShipBattery)
+	{
+		ShipBattery->OnGunFired.RemoveAll(this);
+		ShipBattery->Destroy();
+	}
+	ShipBattery = nullptr;
+	bShipGunsFiring[0] = bShipGunsFiring[1] = false;
 }
 
 void ASailboatPawn::BindShipRig()
@@ -80,6 +89,12 @@ void ASailboatPawn::BindShipRig()
 	ShipRig = Sailing::ShipRigFor(Boat.GetConfig().Name);
 	if (!ShipRig || !BoatRoot) return;
 	ShipRigPose.Reset(*ShipRig);
+	// Her guns, housed (the player's ship: the battery's drill, smoke and lights are not for AI ships or the ghost).
+	if (!bTrafficBoat && !bGhost)
+	{
+		ShipBattery = ACannonBattery::SpawnBattery(BoatRoot.Get());
+		if (ShipBattery) ShipBattery->OnGunFired.AddUObject(this, &ASailboatPawn::OnShipGunFired);
+	}
 	const FString Folder = ShipRigGame::ModelFolder(Boat.GetConfig().Name);
 
 	// Every object the rig moves: each spar, and each sail's head and states.
@@ -211,4 +226,15 @@ void ASailboatPawn::UpdateShipRig(float DeltaSeconds)
 		Mesh->SetRelativeTransform(Want);
 		Part.Applied = Want;
 	}
+}
+
+void ASailboatPawn::OnShipGunFired(const FCannonFiredEvent& Event)
+{
+	// A gun's report through the deck: a kick of the camera's buffet (Settings > Camera shake), as hard as a slam for a gun
+	// fired beside the camera, fading past about 15 m. A flash in the pan shakes nothing.
+	if (Event.bMisfire || Event.ImpulseNs <= 0.0) return;
+	const FVector Eye = Camera ? Camera->GetComponentLocation() : GetActorLocation();
+	const double DistanceM = FVector::Dist(Eye, Event.MuzzleWorld) / Sailing::CmPerMeter;
+	const double Kick = FMath::Clamp(Event.ImpulseNs / 8000.0, 0.2, 1.0) * FMath::Clamp(15.0 / FMath::Max(DistanceM, 15.0), 0.0, 1.0);
+	CameraBuffet.Kick(Kick);
 }

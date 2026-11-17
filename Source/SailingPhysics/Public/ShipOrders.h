@@ -2,6 +2,7 @@
 
 #include "SailingPhysicsApi.h"
 #include "BoatModel.h"
+#include "Cannons.h"
 
 #include <cstdint>
 #include <string>
@@ -66,6 +67,13 @@ namespace Sailing
 
 	/** How the battery's guns stand on one side (the least ready gun on it), for what can be ordered next. */
 	enum class EGunsReady : uint8_t { Housed, CastLoose, Loaded, RunOut };
+
+	/** How a side stands for the panel, from the battery's counts: its least ready gun (each gun counted by where its drill
+	 *  has got to: casting loose or reloading counts as cast loose, running out as loaded, ready or just fired as run out). */
+	SAILINGPHYSICS_API EGunsReady GunsReadyFor(const FCannonSideStatus& Status);
+	/** A gun order as the battery's (CastLoose..Secure), and a side as the battery's. */
+	SAILINGPHYSICS_API ECannonOrder CannonOrderFor(EShipOrder Order);
+	SAILINGPHYSICS_API ECannonSide CannonSideFor(EOrderSide Side);
 
 	/** What she can do now: the game fills it each frame from the boat, her helmsman and the battery. */
 	struct SAILINGPHYSICS_API FShipOrderContext
