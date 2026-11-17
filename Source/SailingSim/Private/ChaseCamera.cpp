@@ -43,7 +43,29 @@ namespace ChaseCamera
 			}
 			break;
 		}
+		if (Loa >= ShipLoaM && Rig != ERig::Classic) ScaleForShip(R, Rig, Loa, float(MastheadZM), float(BoomZM));
 		return R;
+	}
+
+	void ScaleForShip(FRig& R, ERig Rig, float Loa, float MastheadZM, float BoomZM)
+	{
+		// A ship (the frigate, 62 m over her jib boom, her main truck about 60 m up: docs/ship-walk/): the small boats'
+		// clamps would park the lens inside her rigging. The same framing rules without them: the arm's origin at her
+		// quarterdeck's height (the spanker boom's, at most 9 m), far enough back for the trucks, never in closer than
+		// half her length.
+		R.MinArmCm = Loa * 0.6f * 100.f;
+		R.MaxArmCm = FMath::Min(Loa * 6.f, 450.f) * 100.f;
+		if (Rig == ERig::Chase)
+		{
+			R.PivotUpCm = FMath::Clamp(BoomZM, 0.6f, 9.f) * 100.f;
+			R.ArmCm = FMath::Max(Loa * 1.8f, MastheadZM * 1.55f) * 100.f;
+		}
+		else
+		{
+			R.ArmCm = Loa * 2.4f * 100.f;
+			R.SocketPerArm = MastheadZM * 0.33f * 100.f / R.ArmCm;
+		}
+		R.ArmCm = FMath::Clamp(R.ArmCm, R.MinArmCm, R.MaxArmCm);
 	}
 
 	float SocketUpCm(const FRig& Rig, float ArmCm)
