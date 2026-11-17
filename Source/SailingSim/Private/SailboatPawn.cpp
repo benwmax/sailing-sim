@@ -62,6 +62,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Misc/ConfigCacheIni.h"
+#include "TrafficRigRate.h"
 
 using namespace Sailing;
 
@@ -3802,6 +3803,41 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 
+	// docs/traffic-rig-rate/ (TrafficRigRate.h): an AI boat's or the ghost's rig lines, sails and telltales (procedural mesh
+	// sections; each rebuild is an upload the render thread waits on) are rebuilt every frame near the camera and less often
+	// farther off, holding their last shape in the boat's frame in between (the boom holds with them, so the sheets and the
+	// main's foot stay on it). Sails changing sides, a sail set or dropped, or the boat coming back on screen rebuild at once.
+	// The player's boat and the gallery's display are never paced; nor is any boat without a player camera (tests).
+	const float FrameDt = DeltaSeconds;   // (the bow wave and wetness always step by the frame)
+	float RigDt = DeltaSeconds;
+	bool bRigDue = true;
+	if (bTrafficBoat && !bGalleryDisplay)
+	{
+		const UWorld* World = GetWorld();
+		const APlayerController* ViewPC = World ? World->GetFirstPlayerController() : nullptr;
+		const APlayerCameraManager* Cam = ViewPC ? ViewPC->PlayerCameraManager.Get() : nullptr;
+		const int32 Key = (S.MainSide >= 0 ? 1 : 0) | (S.JibSide >= 0 ? 2 : 0) | (S.SpinSide >= 0 ? 4 : 0) | (T.NumSpinStrips > 0 ? 8 : 0)
+			| (bSailsStowed && IsTiedUp() ? 16 : 0);
+		RigVisualPending += DeltaSeconds;
+		if (Cam && RigVisualBuiltAt >= 0.0)
+		{
+			const UPrimitiveComponent* Seen = ModelHull ? static_cast<const UPrimitiveComponent*>(ModelHull.Get()) : static_cast<const UPrimitiveComponent*>(HullMesh.Get());
+			const bool bOnScreen = !Seen || Seen->WasRecentlyRendered(0.25f);
+			const double DistM = FVector::Dist(Cam->GetCameraLocation(), GetActorLocation()) / CmPerMeter;
+			const bool bForce = Key != RigVisualKey || (bOnScreen && !bRigVisualOnScreen);
+			bRigVisualOnScreen = bOnScreen;
+			bRigDue = bForce || TrafficRigRate::Due(TrafficRigRate::IntervalSeconds(DistM, bOnScreen), TrafficRigRate::Phase(GetUniqueID()),
+				RigVisualBuiltAt, VisualTime);
+		}
+		if (bRigDue)
+		{
+			RigDt = RigVisualPending;
+			RigVisualPending = 0.f;
+			RigVisualBuiltAt = VisualTime;
+			RigVisualKey = Key;
+		}
+	}
+
 	// Graphics G6: tied up in her slip, a keelboat's sails are stowed (the berthed dress), the boom on the centreline.
 	const bool bStowed = bSailsStowed && StowedDress && IsTiedUp();
 	if (bStowed != bStowedShown)
@@ -3817,7 +3853,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
-	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
+	if (bRigDue) BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
 	// (A raked stock, Bluebonnet's: the rudder turns about its own axis, RudderAxes, rather than the vertical.)
 	for (int32 K = 0; K < RudderPivots.Num(); ++K)
 	{
@@ -3842,10 +3878,10 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		UpdateCrewGroomLOD();
 	}
 
-	if (ModelHull)
+	if (ModelHull && bRigDue)
 	{
 		SAILING_PERF_SCOPE(RigLines);
-		UpdateModelRig(DeltaSeconds);
+		UpdateModelRig(RigDt);
 	}
 	// Probes: -SailingSailsDown with -SailingMooring strikes the player's sails: no cloth stepped or drawn, while the
 	// physics, boom and hull ride the mooring as before (docs/budget/perf-sun-setters-2026-10-17.md, the parked VSM lead).
@@ -3857,12 +3893,19 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		JibSail->SetVisibility(false);
 		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
 	}
+	if (!bRigDue)
+	{
+		// (paced: the sails, telltales and fittings hold their last shape this frame)
+		if (ModelHull) UpdateBoatWetness(FrameDt);
+		return;
+	}
+	DeltaSeconds = RigDt;   // the sails' cloth and the spinnaker's gybe timing take the time since they were last built
 	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
 		SpinRig = FSpinnakerRig();
 		UpdateKitFittings(); // the hanks and the head shackle go with the jib
-		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
+		if (ModelHull) UpdateBoatWetness(FrameDt);
 		return;
 	}
 	SAILING_PERF_SCOPE_BEGIN(Sails);
@@ -3924,7 +3967,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	{ SAILING_PERF_SCOPE(Telltales); UpdateTelltaleRibbons(); }
 	if (ModelHull)
 	{
-		UpdateBoatWetness(DeltaSeconds);
+		UpdateBoatWetness(FrameDt);
 	}
 }
 
