@@ -403,6 +403,7 @@
   "about": "materials of slices 12 to 14 (gun deck, berth deck, orlop and hold), dressed as each lands on main: listed so the outside build's check passes before then",
   "names": [
    "GunDeckPlanks",
+   "BerthDeckPlanks",
    "FloorCloth",
    "Ash",
    "Brick",

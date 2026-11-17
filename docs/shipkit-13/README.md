@@ -433,4 +433,5 @@ in into it.
 | `Tools/shipkit/frigate/spars.py`, `spars_1795.json` | the lower masts' heels on the orlop slice's keelson, their mastheads where they were; the hoops clear of every deck's partners |
 | `Tools/shipkit/frigate/build_frigate.py` | builds the berth deck with the gun deck, makes its objects in `BerthDeck` and the two pose collections after every other check, checks its room, folds and designed contacts, and writes `berthdeck.json`, the orlop slice's `berth_deck.json` and the berth deck's records in `build.json` |
 | `Tools/shipkit/frigate/standing_1797.json`, `running.py`, `running_1797.json`, `running_places_1797.json` | the catharpins bowse the fore and main lower shrouds in 4 in; the falls from the tops led to the fife rails' longer arms near the mast, the fore's in a new order, their bull's eyes under the tops re-placed |
+| `Tools/shipkit/frigate/textures_1797.json` | `BerthDeckPlanks`, the berth deck's one new material, in `below_decks`, so the textures' coverage check passes with the berth deck built until slice 15 dresses it |
 | `docs/shipkit-13/baseline/` | `build.json`, `berthdeck.json`, `berth_deck.json` and renders |
