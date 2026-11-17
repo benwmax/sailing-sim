@@ -272,8 +272,25 @@ bool FSailingBluebonnetStartsTest::RunTest(const FString&)
 			if (Reason.IsEmpty()) ++Fits;
 			else TestTrue(FString::Printf(TEXT("... names a deep spot at %s"), *W.Spots[S].Name), Reason.Contains(WorldIndex == 1 ? TEXT("Bolivar Roads") : TEXT("near the dam")));
 		}
-		TestEqual(FString::Printf(TEXT("%s: Bluebonnet's spots"), *W.Name), Fits, WorldIndex == 1 ? 1 : 4);
+		// (Galveston: Bolivar Roads, and the ship channel's spot for the frigate, docs/frigate-physics/.)
+		TestEqual(FString::Printf(TEXT("%s: Bluebonnet's spots"), *W.Name), Fits, WorldIndex == 1 ? 2 : 4);
+
+		// docs/frigate-physics/: the frigate (6.5 m draft, 65.5 m long) wants 7.9 m and two lengths of open water to the
+		// nearest dock: on the lake the open spots off Rush Creek, near the dam and off Chandlers Landing (not the club's own,
+		// 114 m from its docks); on Galveston Bay only the ship channel inside Bolivar Roads.
+		const FBoatConfig Ship = FBoatConfig::Make(EBoatType::Commonwealth);
+		TArray<FString> ShipSpots;
+		for (const SailCatalog::FSpot& Spot : W.Spots)
+		{
+			AddInfo(FString::Printf(TEXT("Commonwealth at %s: %.1f m deep, %.0f m clear"), *Spot.Name, Spot.DepthM, Spot.ClearM));
+			if (LaunchSpotFits(Spot.DepthM, Ship.Draft, Spot.ClearM, Ship.LengthOverall)) ShipSpots.Add(Spot.Name);
+		}
+		if (WorldIndex == 1) TestTrue(TEXT("Galveston Bay: the frigate starts in the ship channel"), ShipSpots.Num() == 1 && ShipSpots[0].Contains(TEXT("ship channel")));
+		else TestEqual(TEXT("Lake Ray Hubbard: the frigate's three open-water spots"), ShipSpots.Num(), 3);
+		if (WorldIndex == 0) for (const FString& Name : ShipSpots) TestFalse(TEXT("... not the club's own"), Name.Contains(TEXT("Yacht Club")));
 	}
+	TestFalse(TEXT("No room for a 65 m ship 114 m from the docks"), LaunchSpotFits(10.0, 6.5, 114.0, 65.5));
+	TestTrue(TEXT("A spot without a clearance has room"), LaunchSpotFits(10.0, 6.5, -1.0, 65.5));
 	TestTrue(TEXT("A spot without a depth fits any boat"), LaunchSpotFits(-1.0, 10.0));
 	return true;
 }

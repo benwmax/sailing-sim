@@ -160,6 +160,9 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 		Dock.bClosed = Dock.Points.Num() > 3 && FVector2D::Distance(Dock.Points[0], Dock.Points.Last()) < 0.05;
 		if (Dock.Points.Num() >= 2) Docks.Add(MoveTemp(Dock));
 	}
+	// The room at each launch spot, from the bake's docks alone (as SailCatalog reads it, so the Boat screen and the start
+	// agree; the piers and the marina added later don't change it).
+	for (FLaunchSpot& Spot : LaunchSpots) Spot.ClearM = LaunchSpotClearance(Docks, Spot.X, Spot.Y);
 	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("bridges")))
 	{
 		const TSharedPtr<FJsonObject> O = V->AsObject();
@@ -652,4 +655,22 @@ void FLakeData::LoadCoast(const FJsonObject& Root, const FString& Directory, con
 		Tides.bHasCurrent = FFileHelper::LoadFileToArray(CurrentBytes, *(Directory / (SourceFor(TEXT("current")) + TEXT(".current"))))
 			&& Tides.LoadCurrentField(CurrentBytes.GetData(), CurrentBytes.Num());
 	}
+}
+
+double LaunchSpotClearance(const TArray<FLakeDock>& Docks, double X, double Y)
+{
+	const FVector2D P(X, Y);
+	double Best = -1.0;
+	for (const FLakeDock& Dock : Docks)
+	{
+		for (int32 I = 0; I + 1 < Dock.Points.Num(); ++I)
+		{
+			const FVector2D A = Dock.Points[I], B = Dock.Points[I + 1], AB = B - A;
+			const double Len2 = AB.SizeSquared();
+			const double T = Len2 > 0.0 ? FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Len2, 0.0, 1.0) : 0.0;
+			const double D = FVector2D::Distance(P, A + AB * T);
+			if (Best < 0.0 || D < Best) Best = D;
+		}
+	}
+	return Best;
 }

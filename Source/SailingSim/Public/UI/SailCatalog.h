@@ -32,6 +32,7 @@ namespace SailCatalog
 		 *  the save's fallback when a spot id is gone. Shown nowhere yet. */
 		double Lat = 0.0, Lon = 0.0;
 		double DepthM = -1.0;      // the bake's depth_m (LaunchSpotFits); -1 when it gives none
+		double ClearM = -1.0;      // metres of open water to the nearest dock or pier (LaunchSpotClearance); -1 when none
 	};
 
 	struct FWorld

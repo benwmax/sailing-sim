@@ -57,6 +57,24 @@ namespace SailCatalog
 			{
 				W.Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*W.File));
 			}
+			// The bake's docks, piers and breakwaters: the room a big boat has at each spot (LaunchSpotClearance).
+			TArray<FLakeDock> Docks;
+			const TArray<TSharedPtr<FJsonValue>>* DockValues = nullptr;
+			if (Root->TryGetArrayField(TEXT("docks"), DockValues))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *DockValues)
+				{
+					const TSharedPtr<FJsonObject> O = V->AsObject();
+					const TArray<TSharedPtr<FJsonValue>>* Points = nullptr;
+					if (!O.IsValid() || !O->TryGetArrayField(TEXT("points"), Points)) continue;
+					FLakeDock& D = Docks.AddDefaulted_GetRef();
+					for (const TSharedPtr<FJsonValue>& P : *Points)
+					{
+						const TArray<TSharedPtr<FJsonValue>>& XY = P->AsArray();
+						if (XY.Num() >= 2) D.Points.Add(FVector2D(XY[0]->AsNumber(), XY[1]->AsNumber()));
+					}
+				}
+			}
 			const TArray<TSharedPtr<FJsonValue>>* Spots = nullptr;
 			if (Root->TryGetArrayField(TEXT("launch_spots"), Spots))
 			{
@@ -72,6 +90,7 @@ namespace SailCatalog
 					S.East = XY[1]->AsNumber();
 					S.Heading = O->GetNumberField(TEXT("heading"));
 					O->TryGetNumberField(TEXT("depth_m"), S.DepthM);
+					S.ClearM = LaunchSpotClearance(Docks, S.North, S.East);
 					const Sailing::FLatLon Geo = W.Anchor.ToLatLon({ S.North, S.East });
 					S.Lat = FMath::RoundToDouble(Geo.LatDeg * 1e8) / 1e8;
 					S.Lon = FMath::RoundToDouble(Geo.LonDeg * 1e8) / 1e8;
@@ -587,12 +606,14 @@ namespace SailCatalog
 		const FWorld& W = World(WorldIndex);
 		const TArray<FBoat>& Fleet = Boats();
 		if (!W.Spots.IsValidIndex(Spot) || !Fleet.IsValidIndex(BoatType)) return FString();
-		const double Draft = Fleet[BoatType].DraftM;
-		if (LaunchSpotFits(W.Spots[Spot].DepthM, Draft)) return FString();
-		// (The deepest spot named: the start the game falls back to, ASailingGameMode::GetLaunchSpot.)
+		const double Draft = Fleet[BoatType].DraftM, Length = Fleet[BoatType].LengthM;
+		const FSpot& Here = W.Spots[Spot];
+		if (LaunchSpotFits(Here.DepthM, Draft, Here.ClearM, Length)) return FString();
+		// (The deepest spot she fits: the start the game falls back to, ASailingGameMode::GetLaunchSpot.)
 		const FSpot* Deepest = nullptr;
-		for (const FSpot& S : W.Spots) if (LaunchSpotFits(S.DepthM, Draft) && (!Deepest || S.DepthM > Deepest->DepthM)) Deepest = &S;
-		const FString Need = FString::Printf(TEXT("She draws %.1f m: too shallow here."), Draft);
+		for (const FSpot& S : W.Spots) if (LaunchSpotFits(S.DepthM, Draft, S.ClearM, Length) && (!Deepest || S.DepthM > Deepest->DepthM)) Deepest = &S;
+		const FString Need = LaunchSpotFits(Here.DepthM, Draft) ? FString::Printf(TEXT("She is %.0f m long: no room for her here."), Length)
+			: FString::Printf(TEXT("She draws %.1f m: too shallow here."), Draft);
 		return Deepest ? FString::Printf(TEXT("%s Start from %s."), *Need, *Deepest->Name) : Need;
 	}
 }
