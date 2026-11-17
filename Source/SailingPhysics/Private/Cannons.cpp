@@ -107,6 +107,7 @@ namespace Sailing
 				{ "SmokeAlbedo", &FCannonParams::SmokeAlbedo, nullptr, "the smoke's colour (0..1 grey)" },
 				{ "SmokeForwardScatter", &FCannonParams::SmokeForwardScatter, nullptr, "Henyey-Greenstein g of the smoke toward the sun" },
 				{ "SmokeEdgeSoftness", &FCannonParams::SmokeEdgeSoftness, nullptr, "0 billowed edges .. 1 a soft Gaussian" },
+				{ "SmokeCoreGain", &FCannonParams::SmokeCoreGain, nullptr, "a puff's core this much denser than its Gaussian" },
 				{ "SmokeDepthFadeM", &FCannonParams::SmokeDepthFadeM, nullptr, "m: the smoke fades into surfaces over this" },
 			};
 			return Rows;

@@ -225,6 +225,7 @@ void ACannonBattery::PushLook()
 		SmokeMID->SetScalarParameterValue(TEXT("Albedo"), float(Params.SmokeAlbedo));
 		SmokeMID->SetScalarParameterValue(TEXT("ForwardScatter"), float(Params.SmokeForwardScatter));
 		SmokeMID->SetScalarParameterValue(TEXT("EdgeSoftness"), float(Params.SmokeEdgeSoftness));
+		SmokeMID->SetScalarParameterValue(TEXT("CoreGain"), float(Params.SmokeCoreGain));
 		SmokeMID->SetScalarParameterValue(TEXT("DepthFadeCm"), float(Params.SmokeDepthFadeM * CmPerMeter));
 	}
 	if (FlashMID)

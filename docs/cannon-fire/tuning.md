@@ -92,14 +92,14 @@ units (2^-14.1, the exposure's offset) as it does the flash lights' candela.
 | `SmokePerChargeKg` | 0.55 | kg of smoke per kg of powder (black powder 0.55) |
 | `SmokeExtinction` | 500 | m^2/kg: how much a kg of smoke hides |
 | `SmokeOpacityCap` | 0.85 | the most one puff hides |
-| `PuffsLong` | 18 | puffs from a long gun's muzzle |
-| `PuffsCarronade` | 12 | puffs from a carronade's muzzle |
-| `PuffsVent` | 2 | puffs from the vent and pan |
+| `PuffsLong` | 6 | puffs from a long gun's muzzle |
+| `PuffsCarronade` | 4 | puffs from a carronade's muzzle |
+| `PuffsVent` | 1 | puffs from the vent and pan |
 | `JetSpeedMs` | 75 | m/s: the blast's leading puff (long 24's charge) |
 | `JetSpreadDeg` | 10 | deg: the jet's cone |
 | `JetDecayS` | 0.22 | s: the jet slows to the wind in about this |
 | `RingShare` | 0.3 | share of the puffs thrown round the muzzle |
-| `SigmaStartM` | 0.5 | m: a puff's sigma at the muzzle |
+| `SigmaStartM` | 1.2 | m: a puff's sigma at the muzzle |
 | `Diffusivity` | 0.1 | m^2/s: eddy diffusivity at sigma 1 m |
 | `DiffusivityPower` | 1.333 | K grows as sigma^this |
 | `BuoyancyMs2` | 1.2 | m/s^2: the hot smoke's lift at first |
@@ -125,4 +125,5 @@ units (2^-14.1, the exposure's offset) as it does the flash lights' candela.
 | `SmokeAlbedo` | 0.85 | the smoke's colour (0..1 grey) |
 | `SmokeForwardScatter` | 0.6 | Henyey-Greenstein g of the smoke toward the sun |
 | `SmokeEdgeSoftness` | 0.5 | 0 billowed edges .. 1 a soft Gaussian |
+| `SmokeCoreGain` | 2.5 | a puff's core this much denser than its Gaussian |
 | `SmokeDepthFadeM` | 1.5 | m: the smoke fades into surfaces over this |

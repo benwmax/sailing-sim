@@ -139,14 +139,16 @@ namespace Sailing
 		double SmokePerChargeKg = 0.55;
 		double SmokeExtinction = 500.0;  // m^2 per kg of smoke (black powder smoke measures 1,000-3,000: kept lower so a broadside thins in a minute or two)
 		double SmokeOpacityCap = 0.85;   // the most one puff hides (overlap gives the depth)
-		int32_t PuffsLong = 18;          // puffs per shot from a long gun's muzzle
-		int32_t PuffsCarronade = 12;
-		int32_t PuffsVent = 2;           // from the vent and pan
+		// (Few and big: each puff draws as a lumpy ball, and hundreds of small ones overlapping read as a flat fog bank:
+		// the first stills, Nov 17.)
+		int32_t PuffsLong = 6;           // puffs per shot from a long gun's muzzle
+		int32_t PuffsCarronade = 4;
+		int32_t PuffsVent = 1;           // from the vent and pan
 		double JetSpeedMs = 75.0;        // the blast's leading puff
 		double JetSpreadDeg = 10.0;
 		double JetDecayS = 0.22;         // the jet's speed relaxes to the wind's in about this
 		double RingShare = 0.3;          // the share of a shot's puffs thrown out round the muzzle (the blast's ring)
-		double SigmaStartM = 0.5;        // a puff's size at the muzzle (Gaussian sigma)
+		double SigmaStartM = 1.2;        // a puff's size at the muzzle (Gaussian sigma)
 		double Diffusivity = 0.1;        // m^2/s, the eddy diffusivity at sigma 1 m (~2 m^2/s at 10 m: the sea breeze's surface layer)
 		double DiffusivityPower = 1.333; // grows as sigma^(4/3) (Richardson): bigger puffs spread faster
 		double BuoyancyMs2 = 1.2;        // the hot smoke's lift at first
@@ -171,7 +173,8 @@ namespace Sailing
 		double SmokeGlowNits = 4000.0;   // cd/m^2: smoke at the flash, lit from inside
 		double SmokeAlbedo = 0.85;       // powder smoke: pale grey-white (potassium salts)
 		double SmokeForwardScatter = 0.6;   // Henyey-Greenstein g toward the sun (fine particles: bright looking sunward)
-		double SmokeEdgeSoftness = 0.5;  // 0 hard cauliflower edges .. 1 a soft Gaussian
+		double SmokeEdgeSoftness = 0.5;  // 0 hard cauliflower edges .. 1 a soft Gaussian (old smoke; fresh is always billowed)
+		double SmokeCoreGain = 2.5;      // a puff's core made this much denser than its Gaussian (its outer third is cut away)
 		double SmokeDepthFadeM = 1.5;    // m: fades into the water, hull and sails over this
 
 		/** Set a parameter by name (case-insensitive). False for an unknown name. */

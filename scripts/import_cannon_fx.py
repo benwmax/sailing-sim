@@ -106,43 +106,47 @@ def instance_data(mat, names, x, y):
 
 
 SMOKE_CODE = r"""
-// docs/cannon-fire/: one Gaussian puff of powder smoke (Sailing::FCannonSmoke), a quad spanning +-2.5 sigma.
+// docs/cannon-fire/: one Gaussian puff of powder smoke (Sailing::FCannonSmoke), a quad spanning +-2.5 sigma, turned to the
+// camera (ACannonBattery::UpdateSmokeVisuals: its x along Side = V x up, its y along V x Side, which is down).
 // The quad's own position (the engine plane spans -50..50 cm): uv 0..1 with v down, as the atlas's rows run.
 float2 q = Local.xy / 50.0;
-float2 uv = float2(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5);
+float2 uv = q * 0.5 + 0.5;
 // Seed picks one of the atlas's 4 x 4 puffs (an inset keeps the mips from bleeding the neighbours in).
 float tile = floor(saturate(Seed) * 15.999);
 float2 cell = float2(fmod(tile, 4.0), floor(tile / 4.0));
 float2 tuv = (cell + 0.02 + 0.96 * saturate(uv)) / 4.0;
 float4 t = Texture2DSample(Tex, TexSampler, tuv);
 // Fresh smoke is billowed (R); old smoke spreads toward the soft Gaussian (B), as far as EdgeSoftness lets it.
-float billowed = saturate(Fresh + (1.0 - EdgeSoftness));
-float d = lerp(t.b, t.r, billowed);
+float soft = EdgeSoftness * (1.0 - Fresh);
+float d = lerp(t.r, t.b, soft);
 // Wisps where it thins: the fine detail (A) eats the edge, never the core.
 d *= lerp(1.0, saturate(t.a * 2.0), saturate(1.0 - d * 2.5) * 0.6);
-// The puff's peak opacity is the column's 1 - exp(-tau) through its centre (FSmokePuff::Opacity, the near fade in it);
-// the texture's density scales tau.
-float tau = -log(max(1.0 - saturate(Op), 1e-3));
-float alpha = 1.0 - exp(-tau * d);
-// Lit here, not by the engine: unlit, so it is lit at any distance (the translucency lighting volume ends 50 m out, and
-// past it the first stills were an unlit tan fog wall). Smoke scatters many times, so a thick puff's sunlit side is
-// about as bright as a white surface (E albedo / pi), its own density shading it from the sun (G is lit from above:
-// with a low sun it counts for less), the rest of the cloud between it and the sun (SunT: ACannonBattery marches it
-// through the puffs' mass) and the sky's light all round.
-float up = saturate(L.z * 1.5);
-float self = lerp(0.75, lerp(0.35, 1.0, t.g), up);
-float core = lerp(1.0, 0.65, saturate(tau * d * 0.4));
-float3 sunLit = E * Albedo * (self * core * SunT / 3.14159);
+// A puff of gun smoke is a lumpy ball with an edge, not a Gaussian haze: the density's outer third is cut away (less as it
+// ages and softens), the rest made dense. Hundreds of soft Gaussians overlapping read as one flat fog bank (the first stills).
+float th = 0.3 * (1.0 - soft);
+float shape = saturate((d - th) / (1.0 - th));
+// The puff's peak opacity is the column's 1 - exp(-tau) through its centre (FSmokePuff::Opacity, the near fade in it).
+float tau = -log(max(1.0 - saturate(Op), 1e-3)) * CoreGain;
+float alpha = 1.0 - exp(-tau * shape);
+// Lit here, not by the engine: unlit, so it is lit at any distance (the translucency lighting volume ends 50 m out).
+// Shaded as a ball (its normal from the quad's place, facing the camera at the middle), so the sunward side of every lump
+// is bright and the far side grey, with the texture's own shading from above (G) on it, and the rest of the cloud between
+// it and the sun (SunT: ACannonBattery marches it through the puffs' mass). Smoke scatters many times: a sunlit lump is
+// about as bright as a white surface (E albedo / pi). The sky's light all round.
+float3 side = normalize(cross(V, float3(0.0, 0.0, 1.0)) + float3(1e-5, 0.0, 0.0));
+float3 down = cross(V, side);
+float3 n = normalize(q.x * side + q.y * down + sqrt(saturate(1.0 - dot(q, q))) * V);
+float lambert = saturate(dot(n, L) * 0.6 + 0.4);
+float3 sunLit = E * Albedo * (lambert * lerp(0.6, 1.0, t.g) * SunT * 1.3 / 3.14159);
 // The sun through it (Henyey-Greenstein, g ForwardScatter): looking sunward the thin edges glow. Only the excess over an
-// isotropic phase, weighted by the light that gets through (thin smoke scatters, a thick core blocks). V points at the camera.
+// isotropic phase, weighted by the light that gets through (thin smoke scatters, a thick core blocks).
 float mu = dot(-V, L);
 float g = clamp(ForwardScatter, 0.0, 0.95);
 float hg = (1.0 - g * g) / pow(max(1.0 + g * g - 2.0 * g * mu, 1e-3), 1.5) / 12.566;
-float3 forward = E * Albedo * max(hg - 0.0796, 0.0) * exp(-tau * d) * SunT * 2.0;
-// The sky's light (the luminance the clouds take as their ambient).
+float3 forward = E * Albedo * max(hg - 0.0796, 0.0) * exp(-tau * shape) * SunT * 2.0;
 float3 sky = Sky * Albedo * lerp(0.6, 1.0, t.g);
 // Lit from inside by a flash: warm, brightest in the core.
-float3 glow = GlowNits * Glow * d * float3(1.0, 0.55, 0.22);
+float3 glow = GlowNits * Glow * shape * float3(1.0, 0.55, 0.22);
 // (Translucent blending multiplies the colour by the opacity itself: not premultiplied here.)
 Emis = sunLit + forward + sky + glow;
 return alpha;
@@ -161,6 +165,7 @@ def build_smoke(tex):
     ins["Tex"] = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1100, 560, parameter_name="Puffs", texture=tex,
                       sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     ins["EdgeSoftness"] = scalar(mat, "EdgeSoftness", 0.5, -1100, 650)
+    ins["CoreGain"] = scalar(mat, "CoreGain", 2.5, -1100, 690)
     ins["ForwardScatter"] = scalar(mat, "ForwardScatter", 0.6, -1100, 730)
     ins["Albedo"] = scalar(mat, "Albedo", 0.85, -1100, 810)
     ins["GlowNits"] = scalar(mat, "GlowNits", 4000.0 * TO_SCENE, -1100, 890)
