@@ -31,7 +31,7 @@ against the mast, driving her astern: how a square-rigger tacks, heaves to and b
   by their offset), `SquareSet[sail]` (furled, clewed up, set), `SquareReef[sail]`, and `bMainDown`, `bJibDown`,
   `bStaysailDown` for the spanker, jibs and staysails. The yards swing at 2 degrees a second, a sail sets in a minute
   and clews up in 20 s. `FBoatState::SquareOut` is how far each sail is drawing (what the model draws from).
-- Interference: running, the masts abaft a sail blanket it (0.3 of the wind at a dead run); close-hauled, each mast
+- Interference: running, the masts abaft a sail blanket it (each takes 0.3 of the wind's speed off it at a dead run); close-hauled, each mast
   ahead heads the wind of the masts aft by 2 degrees.
 - **Setting past the yard:** braced up, the cloth sets sharper than its yard: a course's tack is hauled forward and
   down to the chesstree, a topsail's weather leech is hauled forward on its bowline. The working chord turns past the

@@ -68,9 +68,9 @@ namespace Sailing
 		double BackedLiftShare = 0.6;    // aback: pressed flat against the mast and rigging
 		double BackedDragShare = 0.85;
 		double ClewedCdAShare = 0.06;    // a sail hanging in its gear: windage as this share of its area
-		// Interference: running, the after masts' sails blanket the ones before them (wind speed share kept at a dead
+		// Interference: running, the after masts' sails blanket the ones before them (wind speed share taken off at a dead
 		// run); close-hauled, the after masts sail in the forward masts' downwash (deg the flow is headed per mast ahead).
-		double BlanketShare = 0.3;
+		double BlanketShare = 0.3;      // share of the wind's speed taken off a sail by each mast abaft it, at a dead run
 		double DownwashDegPerMast = 2.0;
 		// The crew's pace.
 		double BraceDegPerSecond = 2.0;  // a mast's yards swung round together
@@ -100,5 +100,5 @@ namespace Sailing
 
 	/** The brace control that puts a mast's lowest yard at an angle of attack AlphaDeg to an apparent wind angle AwaRad
 	 *  (signed, + from starboard), clamped to -1..1 (the trimmer's target). */
-	SAILINGPHYSICS_API double BraceForAlpha(const FSquareRig& Rig, int Mast, double AwaRad, double AlphaDeg);
+	SAILINGPHYSICS_API double BraceForAlpha(const FSquareRig& Rig, int Mast, double AwaRad, double AlphaDeg, int Sail = -1);
 }

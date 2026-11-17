@@ -88,15 +88,18 @@ namespace Sailing
 		return Clamp(Deg, -S.BraceLimitDeg, S.BraceLimitDeg) * kDegToRad;
 	}
 
-	double BraceForAlpha(const FSquareRig& Rig, int Mast, double AwaRad, double AlphaDeg)
+	double BraceForAlpha(const FSquareRig& Rig, int Mast, double AwaRad, double AlphaDeg, int Sail)
 	{
 		const int Low = Rig.LowestOn(Mast);
 		if (Low < 0) return 0.0;
+		const int Own = Sail >= 0 && Sail < int(Rig.Sails.size()) && Rig.Sails[Sail].Mast == Mast ? Sail : Low;
 		const double A = std::fabs(AwaRad) * kRadToDeg;
-		const FSquareSailDef& S = Rig.Sails[Low];
+		const FSquareSailDef& S = Rig.Sails[Own];
 		// A + psi - 90 = alpha on the sail's working chord (its yard and what it sets past it); never braced the wrong way.
 		const double Psi = std::max(0.0, 90.0 + AlphaDeg - A) / (1.0 + S.SetsPastYardDeg / std::max(S.BraceLimitDeg, 1.0));
+		// Its yard is braced squarer than the mast's lowest by its offset: the lowest yard goes that much further.
+		const double LowPsi = Psi > 0.0 ? Psi + (Own == Low ? 0.0 : S.BraceOffsetDeg) : 0.0;
 		const double Sign = AwaRad >= 0.0 ? 1.0 : -1.0;
-		return Clamp(Sign * Psi / S.BraceLimitDeg, -1.0, 1.0);
+		return Clamp(Sign * LowPsi / std::max(Rig.Sails[Low].BraceLimitDeg, 1e-3), -1.0, 1.0);
 	}
 }

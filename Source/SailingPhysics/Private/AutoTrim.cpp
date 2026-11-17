@@ -281,7 +281,7 @@ namespace Sailing
 				}
 				if (Low < 0) Low = R.LowestOn(M);
 				if (Low < 0 || Low >= T.NumSquareSails) continue;
-				Out.Brace[M] = BraceForAlpha(R, M, T.SquareStrips[Low].ApparentAngle, Target);
+				Out.Brace[M] = BraceForAlpha(R, M, T.SquareStrips[Low].ApparentAngle, Target, Low);
 			}
 		}
 		return Out;

@@ -1623,7 +1623,9 @@ namespace Sailing
 				const Vec3 SailNormal(std::cos(PsiSail), -std::sin(PsiSail), 0.0);
 				const bool bFull = FlowDir.Dot(SailNormal) > 0.0;
 				const Vec3 FaceNormal = bFull ? SailNormal : Normal;
-				const double Across = FlowDir.Dot(FaceNormal);       // > 0: the wind on its after face, full
+				// Between the two planes (the wind through the yard's after face, past the cloth's): it shakes.
+				const bool bBetween = !bFull && FlowDir.Dot(Normal) > 0.0;
+				const double Across = bBetween ? 0.0 : FlowDir.Dot(FaceNormal); // > 0: the wind on its after face, full
 				const double Alpha = std::asin(Clamp(std::fabs(Across), 0.0, 1.0));
 				double CL, CD;
 				ESailFlow Flow;
