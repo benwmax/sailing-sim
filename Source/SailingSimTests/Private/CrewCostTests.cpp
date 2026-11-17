@@ -53,7 +53,7 @@ bool FSailingMetaHumanCrewCapTest::RunTest(const FString&)
 			{
 				for (const double Twa : { 0.7, 2.8 })
 				{
-					double MetaAft = 1e9, StandInFwd = -1e9;
+					double MetaFwd = -1e9, StandInAft = 1e9;   // the forwardmost MetaHuman, the aftmost stand-in (+X forward)
 					for (int32 I = 0; I < N; ++I)
 					{
 						FCrewPlaceInput Place;
@@ -64,11 +64,11 @@ bool FSailingMetaHumanCrewCapTest::RunTest(const FString&)
 						Place.TrueWindAngle = Side * Twa;
 						FCrewPlacement Pl;
 						CrewPlacement(Place, Pl);
-						if (CrewFigureIsMetaHuman(N, I)) MetaAft = FMath::Min(MetaAft, Pl.Pelvis.X);
-						else StandInFwd = FMath::Max(StandInFwd, Pl.Pelvis.X);
+						if (CrewFigureIsMetaHuman(N, I)) MetaFwd = FMath::Max(MetaFwd, Pl.Pelvis.X);
+						else StandInAft = FMath::Min(StandInAft, Pl.Pelvis.X);
 					}
-					TestTrue(*FString::Printf(TEXT("%s (side %+.0f, hike %.0f, TWA %.0f deg): the MetaHumans aft of every stand-in (%.2f m vs %.2f m)"),
-						*Name, Side, Hike, FMath::RadiansToDegrees(Twa), MetaAft, StandInFwd), MetaAft > StandInFwd);
+					TestTrue(*FString::Printf(TEXT("%s (side %+.0f, hike %.0f, TWA %.0f deg): the MetaHumans aft of every stand-in (forwardmost MetaHuman at x %.2f m, aftmost stand-in at %.2f m)"),
+						*Name, Side, Hike, FMath::RadiansToDegrees(Twa), MetaFwd, StandInAft), MetaFwd < StandInAft);
 				}
 			}
 		}
