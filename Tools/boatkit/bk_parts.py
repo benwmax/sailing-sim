@@ -1387,38 +1387,49 @@ def stanchion(height=0.610):
 
 
 def _rail(name, path, feet, height, sockets):
-    """A welded 25 mm stainless rail: the tube along `path`, legs from `feet` (x, y) up to the rail's height, cast bases."""
+    """A welded 25 mm stainless rail: the tube along `path`, legs from `feet` (x, y), or (x, y, z) for a foot on a deck
+    higher or lower than the origin's, up to the rail's height, cast bases."""
     objs = [G.finish(G.tube("rail", path, 0.0127, M("Stainless"), 20))]
-    for i, (x, y) in enumerate(feet):
+    for i, ft in enumerate(feet):
+        x, y = ft[0], ft[1]
+        z = ft[2] if len(ft) > 2 else 0.0
         top = min(path, key=lambda p: (p[0] - x) ** 2 + (p[1] - y) ** 2)
-        objs.append(G.finish(G.tube(f"leg{i}", [(x, y, 0.010), (top[0], top[1], top[2])], 0.0127, M("Stainless"), 20)))
+        objs.append(G.finish(G.tube(f"leg{i}", [(x, y, z + 0.010), (top[0], top[1], top[2])], 0.0127, M("Stainless"), 20)))
         base = G.prism(f"base{i}", G.rrect(0.060, 0.050, 0.010), 0, 0.006, M("Stainless"), taper=0.92)
-        base.location = (x, y, 0)
+        base.location = (x, y, z)
         G.bake_xform(base)
         objs.append(G.finish(base, 0.001))
         objs.append(G.finish(G.lathe(f"boss{i}", [(0, 0), (0.0175, 0), (0.0165, 0.030), (0, 0.030)], M("Stainless"), 24), 0.0006))
-        objs[-1].location = (x, y, 0)
+        objs[-1].location = (x, y, z)
         G.bake_xform(objs[-1])
     return done(name, objs, sockets)
 
 
 @part("BowPulpit", "lifeline", "Bow pulpit: a 25 mm stainless hoop over the stemhead, four legs, 610 mm high; width and length options")
-def bow_pulpit(width=0.60, length=0.45, height=0.610):
+def bow_pulpit(width=0.60, length=0.45, height=0.610, hoop=None, legs=None):
+    """hoop and legs (optional): a boat's own plan, the rail's (x, y) points from its port aft end round the nose to
+    its starboard aft end, and the legs' feet (x, y), for a bow that narrows faster than the default's half-ellipse."""
     w = width / 2
     path = [(-0.0, -w, height)] + [(length * 0.55 + (length * 0.45) * math.sin(a), -w * math.cos(a), height) for a in [i * math.pi / 16 for i in range(17)]] + [(0.0, w, height)]
     feet = [(0.02, -w), (0.02, w), (length * 0.75, -w * 0.55), (length * 0.75, w * 0.55)]
+    if hoop:
+        path = [(x, y, height) for x, y in hoop]
+        feet = list(legs or feet)
+        length = max(x for x, _ in hoop)
+        return _rail("BowPulpit", path, feet, height, [("LifelineP", (*hoop[0], height)), ("LifelineS", (*hoop[-1], height)), ("Bow", (length, 0, height))])
     return _rail("BowPulpit", path, feet, height, [("LifelineP", (0.0, -w, height)), ("LifelineS", (0.0, w, height)), ("Bow", (length, 0, height))])
 
 
 @part("Pushpit", "lifeline", "Stern pushpit: a 25 mm stainless rail round the transom corners, four legs, 610 mm; width and depth options")
-def pushpit(width=1.50, depth=0.40, height=0.610):
+def pushpit(width=1.50, depth=0.40, height=0.610, legs=None):
+    """legs (optional): the four feet as (x, y, z), for a deck that isn't level under them."""
     w = width / 2
     path = [(0.0, -w, height), (-depth * 0.7, -w, height)] + G.arc_pts((-depth * 0.7, -w + depth * 0.3, height), depth * 0.3, -math.pi / 2, -math.pi, 8, "xy")[1:] \
         + [(-depth, -w * 0.3, height)]
     path = [(p[0], p[1], height) for p in path]
     mirrored = [(p[0], -p[1], p[2]) for p in reversed(path)]
     path = path + mirrored
-    feet = [(-0.02, -w), (-0.02, w), (-depth + 0.02, -w * 0.6), (-depth + 0.02, w * 0.6)]
+    feet = list(legs) if legs else [(-0.02, -w), (-0.02, w), (-depth + 0.02, -w * 0.6), (-depth + 0.02, w * 0.6)]
     return _rail("Pushpit", path, feet, height, [("LifelineP", (0.0, -w, height)), ("LifelineS", (0.0, w, height)), ("Centre", (-depth, 0, height))])
 
 

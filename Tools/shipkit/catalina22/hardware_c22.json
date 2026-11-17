@@ -1,0 +1,86 @@
+{
+ "about": "The Catalina 22's deck hardware and running rigging, for her rebuild's slice 6 (docs/c22-7). hardware_c22.py places every fitting and lays every line from these and checks them; build_hardware_c22.py meshes them. Frame: the game's body frame (X forward, Y starboard, Z up), metres; a fitting given for one side is mirrored to the other. The fittings are the shared boat kit's (Tools/boatkit), at the catalogue size given; the kit's light copy (a quarter of the triangles) is used for the cleats, tracks, stanchions and small parts, and a tenth for the padeyes and blocks, whose full copies are 6,700 to 29,000 triangles each (a padeye more than a winch) and of which each state carries its own. Positions are from today's model and sockets (Tools/blender/build_fleet.py), owners' descriptions of the original boat and the rig and sails of slices 4 and 5; nothing is traced. Photos decide (refs.json).",
+ "rope": {
+  "sheet_d": 0.0095,
+  "halyard_d": 0.008,
+  "control_d": 0.0064,
+  "mainsheet_d": 0.0095,
+  "spin_sheet_d": 0.008,
+  "note": "Line sizes: 3/8 in (9.5 mm) for the jib, genoa and main sheets, 5/16 in (8 mm) for the halyards and the spinnaker's sheet and guy, 1/4 in (6.4 mm) for the vang, topping lift, the pole's lift and foreguy (owners' lists for the C22; Catalina Direct's running rigging kit)."
+ },
+ "winch": {
+  "x": -1.05,
+  "out": 0.13,
+  "size": "8",
+  "note": "Two plain-top size 8 sheet winches (102 mm base), one a side on the deck beside the cockpit's forward end, 'out' outboard of the cockpit's edge: today's JibWinch sockets' place. The original boat came with small plain-top winches (owners mention Barient 10s and Lewmar 7s and 8s); the kit's WinchPlain at size 8 is the nearest. A winch handle lies in a moulded pocket in the starboard cockpit side."
+ },
+ "winch_cleat": {
+  "dx": -0.24,
+  "out": {"S": 0.045, "P": -0.02},
+  "size": "150",
+  "note": "A 6 in horn cleat aft of each winch ('dx' aft of its centre, 'out' outboard of it on each side), along the boat: the sheet's tail comes off the winch's drum and is made fast on it, the rest coiled in the cockpit."
+ },
+ "genoa_track": {
+  "x": [-1.20, -0.60],
+  "in": 0.075,
+  "note": "A 600 mm T-track a side on the deck just inside the rubrail ('in' from the deck's edge, along it), abreast of the cockpit's forward end: the genoa's sheeting points, the car in its middle, with the sheet led over its sheave aft to the winch. The track is placed so the car sits where the sheet, seen square to the sail, halves the clew's angle (hardware_c22.py checks it: under 1 deg off). The clew stands 8 cm outboard of the rail, so the sheet also leads 25 deg inboard of the sail's plane, as on a boat sheeting a 135% to the rail. Rail-mounted genoa tracks are what owners of older C22s describe."
+ },
+ "jib_track": {
+  "x": [0.63, 0.88],
+  "y": 0.35,
+  "corner": [-0.72, 0.545],
+  "turn": [-0.74, 0.82],
+  "note": "The 90% working jib's clew is only 0.33 m off the centreline over the cabin top (slice 5), so its lead is a short 250 mm track a side on the fixed cabin top forward of the pop-top's lid, inside the shrouds, the car in its middle where the sheet halves the clew's angle (8 deg off, seen square to the sail). From the car the sheet lies aft across the lid, through a bullseye fairlead on the fixed top at the trunk's aft corner ('corner': x, y), down to a turning block on a padeye on the side deck ('turn') and aft, level, to the winch. A photo of her jib set decides where the real lead is."
+ },
+ "traveller": {
+  "x": -2.70,
+  "length": 1.0,
+  "note": "The mainsheet's traveller across the cockpit's aft end on a moulded bridge from seat to seat (today's Traveler sockets: x -2.70): the kit's track and car. End-boom sheeting, as on the original boat."
+ },
+ "mainsheet": {
+  "parts": 4,
+  "note": "A 4:1 tackle: the kit's fiddle block (Fiddle40) on the boom's mainsheet bail, its fiddle with cam and becket (FiddleCam) on the traveller's car, the tail from the cam into the cockpit."
+ },
+ "vang": {
+  "parts": 4,
+  "note": "A 4:1 tackle from the boom's vang bail down to the tang on the mast's after face 8 cm over the step (slice 4), the same pair of fiddle blocks as the mainsheet at their light copies, the tail cleated in the lower block's cam."
+ },
+ "halyards": {
+  "cleat_z": [0.18, 0.18, 0.55],
+  "size": "150",
+  "note": "The main and jib halyards run inside the mast from its masthead sheaves (fore and aft, slice 4) and leave it through exit slots 0.15 m over their horn cleats, the main's on the mast's port side at 'cleat_z' [0] over the step, the jib's on the starboard side at [1], low on the mast with the slots' plates under the gooseneck (0.38 m over the step) so the boom clears them when it swings; the spinnaker's is external, from its block on the masthead's forward face down the front's starboard quarter (45 deg round from the front, clear of the pole lift's padeye) to a cleat there at [2], above the other two coils. Each is made fast with a cleat hitch and its tail coiled and hung over the cleat's upper horn. Owners led them aft to the cockpit later; the original boat cleated them on the mast."
+ },
+ "topping_lift": {
+  "note": "A fixed 1/4 in topping lift from the masthead's crane to the boom's end, holding the boom up when the sail is down: slack under sail, it is drawn bowed 0.25 m to leeward of the leech (forward of it on the run), where the wind blows it."
+ },
+ "handrails": {
+  "x": [-0.62, 0.22],
+  "in": 0.135,
+  "note": "A teak handrail a side along the pop-top's lid ('in' from the lid's edge), four loops, inboard of the working jib's sheet where it crosses the lid to its fairlead: the original's teak rails on the cabin top. The fixed top beside the lid is only 5 cm wide, so they stand on the lid and lift with it (a guess: photos decide)."
+ },
+ "cleats": {
+  "bow": [2.62, "200"],
+  "stern": [-2.78, 0.70, "150"],
+  "note": "An 8 in mooring cleat on the foredeck's centreline aft of the pulpit's legs ('bow': x, size), and a 6 in cleat a side on the side deck beside the cockpit's aft end, inboard of where the spinnaker's sheet and guy run forward from their quarter blocks to the winches ('stern': x, y, size), along the boat: the aft deck behind the cockpit is only 0.2 m deep and carries the stern rail's feet."
+ },
+ "lifelines": {
+  "pulpit": {"aft_x": 2.72, "nose_x": 3.20, "rail_in": 0.03, "nose_r": 0.09, "legs": [0.02, 0.62]},
+  "pushpit": [1500, 0.36],
+  "stanchions_x": [1.25, -1.30],
+  "in": 0.07,
+  "wire_d": 0.005,
+  "note": "A bow pulpit, the kit's hoop drawn to her bow's plan: from its aft legs at 'pulpit' aft_x, 'in' from the deck's edge, forward 'rail_in' inside the edge to a nose of radius nose_r at nose_x, round the forestay and the headsails' luffs (the stay leaves the stemhead under the nose); legs at the hoop's aft end and legs[1] of the way to the nose, a stern rail round the transom's corners (1500 mm wide, [1] deep), two 24 in stanchions a side 'in' from the deck's edge at 'stanchions_x', and a single 3/16 in (5 mm) vinyl-coated lifeline a side from the pulpit through the stanchions to the stern rail. The plan's assumption: many original boats had only the pulpits, and photos decide."
+ },
+ "spinnaker": {
+  "quarter_block": [-3.13, 0.08],
+  "lift_z": 5.50,
+  "foreguy": [1.15, 0.0],
+  "note": "The spinnaker's sheet and guy each run aft outside everything to a block on a padeye on the aft deck's corner ('quarter_block': x, in from the edge), then forward to the winch on its side. Its pole's topping lift runs from a block on the mast's front at 'lift_z' to the pole's middle, down the mast to a cam cleat beside the halyards; its foreguy from the pole's middle to a padeye and block on the foredeck ('foreguy': x, y) and aft to a cam cleat on the cabin top. Drawn only with the spinnaker set."
+ },
+ "deck_fittings": {
+  "vents": [1.31, 0.16],
+  "ladder": [-0.30, 0.32],
+  "scuppers": [0.25],
+  "note": "Two mushroom vents on the cabin top forward of the mast ('vents': their x and half spacing, today's places), the kit's fore hatch on slice 2's curb, a bow eye on the stem for the trailer's winch, the cockpit's two scuppers on the transom, and a folding stern ladder on the transom's port side ('ladder': its middle's y, its width), clear of the outboard on the starboard quarter."
+ }
+}
