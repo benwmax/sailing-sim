@@ -13,8 +13,8 @@ outside a light twin, for the game to draw when she is far off and for AI boats:
 15% of the detailed boat. Seen from 50 m on a 4K screen, its surface is nowhere further than a pixel from the detailed
 one's, and its drawn paint (the plating's seams, a sail's cloths) is within a pixel over 99% of its area. It also writes
 the plan's six frame-rate gate views. Like slices 1 to 11 it is tools and docs only: nothing is imported into Unreal
-yet, and the Mac's and PC's frame-rate gates run on these views once she is in the game (slice 14, after the vertical
-slice ships on November 21).
+yet, and the Mac's and PC's frame-rate gates run on these views once she is in the game (slice 14, before the vertical
+slice's Nov 27 feature freeze: `docs/slice/README.md`).
 
 ![Contact sheet: each light shot's detailed boat (left) beside her light copy (right)](baseline/sheet.jpg)
 
@@ -234,7 +234,7 @@ foot](light_wire_mast_foot.jpg), [the counter](light_wire_counter.jpg).
 - **Shading is reported, not held.** A collapsed deckhouse side still shades a little differently from the detailed
   one where its corners stand on the rounded foot (the crops at 50 m show it).
 - **The frame-rate gates are not run.** The six views are written for the Mac's and PC's gates once she is in the
-  game (slice 14, after November 21).
+  game (slice 14, before the Nov 27 feature freeze).
 
 ## How to run
 
