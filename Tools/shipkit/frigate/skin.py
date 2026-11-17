@@ -130,6 +130,24 @@ class Profile:
         self.rudder_aft = lambda z: float(reg.sheer_to_ship_x(r["x"], z))
         es = sk["entry_steps"]
         self.steps = (ship(es["x"][0], 80.0), ship(es["x"][1], 80.0), es["z_top"], es["z_bottom"], es["count"])
+        # the great cabin's side lights (slice 12): ports in the port band with no lid, [x aft, x fore] (px)
+        m2px = lambda xm: L.mid_px + xm / FT * L.ppf                                             # noqa: E731
+        self.lights = [(m2px(a), m2px(f)) for a, f in specs["inside"].get("cabin_lights_m", [])]
+        # the gun deck's line faired between gun_deck_fair_m (slice 12): a quintic in x matching the traced line's
+        # height, slope and curvature at both ends (coefficients of t = (x - a) / (b - a), px)
+        self._gq = None
+        fair = specs["inside"].get("gun_deck_fair_m")
+        if fair:
+            a, b = m2px(fair[0]), m2px(fair[1])
+            h = 0.3
+            g = lambda x: float(np.ravel(self._G0(np.array([x], float)))[0])                  # noqa: E731
+            d1 = lambda x: (g(x + h) - g(x - h)) / (2 * h)                                     # noqa: E731
+            d2 = lambda x: (g(x + h) - 2 * g(x) + g(x - h)) / (h * h)                          # noqa: E731
+            H = b - a
+            A = np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 2, 0, 0, 0], [1, 1, 1, 1, 1, 1],
+                          [0, 1, 2, 3, 4, 5], [0, 0, 2, 6, 12, 20]], float)
+            c = np.linalg.solve(A, [g(a), d1(a) * H, d2(a) * H * H, g(b), d1(b) * H, d2(b) * H * H])
+            self._gq = (a, b, c)
 
     def channel_top(self, name, x):
         """A channel's top along x: the spar port sill line moved to the traced heights at the channel's ends, but
@@ -175,9 +193,22 @@ class Profile:
         """String plank to channel wale."""
         return 0.5 * (self.Shd(x) + self.P(x))
 
-    def G(self, x):
-        """The gun deck (its planking's top)."""
+    def _G0(self, x):
+        """The gun deck as the sill line gives it: 24 in under it."""
         return self.S(x) - self.sp["inside"]["gun_deck_below_port_sill_in"] * self.pxin
+
+    def G(self, x):
+        """The gun deck (its planking's top): _G0, faired between specs' gun_deck_fair_m (slice 12)."""
+        g = self._G0(x)
+        if self._gq is None:
+            return g
+        a, b, c = self._gq
+        t = (np.asarray(x, float) - a) / (b - a)
+        inside = (t > 0.0) & (t < 1.0)
+        if not np.any(inside):
+            return g
+        tt = np.clip(t, 0.0, 1.0)
+        return np.where(inside, sum(c[i] * tt ** i for i in range(6)), g)
 
     def R1(self, x):
         """The rail line on the quarterdeck and forecastle; in the waist the sheer (no bulwark above it there)."""
@@ -772,6 +803,8 @@ class Skin:
         anchors = [self.Fa, self.Ff, self.L.joined, JOINED, pr.x_e0, pr.x_e1, pr.x_fc, m.x_sf66, m.x_post66]
         for a, f, _, _ in pr.gun:
             anchors += [a, f]
+        for a, f in pr.lights:
+            anchors += [a, f]
         for a, f in pr.spar:
             anchors += [a, f]
         xs_probe = np.linspace(300, 2380, 400)                  # where the rows cross the wing transom's height
@@ -885,8 +918,10 @@ class Skin:
 
     # --- ports -----------------------------------------------------------------------------------------------------
     def port_rects(self):
+        """the openings cut through the side: the gun deck's ports and the cabin's side lights (slice 12: a port in the
+        port band with no lid) [(x aft, x fore, sill(x), head(x))], and the spar deck's ports"""
         pr = self.pr
-        gun = [(a, f, pr.S, pr.Shd) for a, f, _, _ in pr.gun]
+        gun = [(a, f, pr.S, pr.Shd) for a, f, _, _ in pr.gun] + [(a, f, pr.S, pr.Shd) for a, f in pr.lights]
         spar = [(a, f, pr.Ssp, pr.H) for a, f in pr.spar]
         return gun, spar
 
@@ -1212,10 +1247,13 @@ class Skin:
         return F if np.dot(nrm, want) >= 0 else [f[::-1] for f in F]
 
     def bulkheads(self, part):
-        """Placeholders closing the inner faces at their ends (the transom's and the bow's inside): flat across."""
+        """Placeholders closing the inner faces at their ends (the transom's and the bow's inside): flat across. The gun
+        deck's aft end is left open: slice 12's after wall (gundeck.py) closes it, with the stern windows through it."""
         bottom, copper, top, gun, bul, K, upper = self.rows_
         for rows, mat in ((gun, "Interior"), (bul, "HullRed")):
             for end, want in ((0, 1.0), (-1, -1.0)):
+                if rows is gun and end == 0:
+                    continue
                 pts = []
                 for r in rows:
                     seg = r.segs[end]

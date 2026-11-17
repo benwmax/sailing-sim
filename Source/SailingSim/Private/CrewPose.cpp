@@ -982,6 +982,11 @@ bool CrewCockpitWell(const Sailing::FBoatConfig& C, FCrewCockpitWell& W, bool bT
 		// seats (the crew sit on the deck beside it or stand in it).
 		W.X0 = -14.6; W.X1 = -4.6; W.HalfWidth = 2.35; W.SoleZ = H.SheerHeight(-9.6) - 0.55;
 		return true;
+	case EBoatType::Bluebonnet:
+		// Her helmsman's cockpit (Tools/shipkit/jclass deck_bluebonnet.json): x -11.95 to -9.95, 1.8 m wide, 0.5 m deep, the
+		// wheel at its forward end; her crew work the deck, not a cockpit.
+		W.X0 = -11.95; W.X1 = -9.95; W.HalfWidth = 0.9; W.SoleZ = H.SheerHeight(-10.95) - 0.5;
+		return true;
 	default: return false;
 	}
 }
@@ -1013,6 +1018,8 @@ namespace CrewPoseDetail
 		// docs/crew-hull-clip/: the maxi's deck (Tools/boats/maxi ref.json "deck_camber"); her rail crew's feet were
 		// put on the sheer, 6 cm into it.
 		case Sailing::EBoatType::Maxi: return 0.12;
+		// Bluebonnet's deck (Tools/shipkit/jclass shell.py DECK_CAMBER: 0.11 m at her widest beam).
+		case Sailing::EBoatType::Bluebonnet: return 0.11;
 		default: return 0.0;
 		}
 	}
@@ -1187,6 +1194,7 @@ bool CrewCabinTrunk(const Sailing::FBoatConfig& C, FCrewCabinTrunk& Out, bool bT
 	case EBoatType::Catalina30: Out.X0 = -1.32; Out.X1 = 2.85; Out.HalfWidth = 0.92; Out.Height = 0.60; return true;
 	case EBoatType::Corsair880: Out.X0 = -0.95; Out.X1 = 2.20; Out.HalfWidth = 0.62; Out.Height = 0.48; return true;
 	case EBoatType::Maxi: Out.X0 = -4.6; Out.X1 = 3.6; Out.HalfWidth = 2.05; Out.Height = 0.52; return true;   // ref.json "coachroof"
+	case EBoatType::Bluebonnet: Out.X0 = -7.4; Out.X1 = -4.4; Out.HalfWidth = 1.0; Out.Height = 0.62; return true; // deck_bluebonnet.json doghouse
 	default: return false;
 	}
 }

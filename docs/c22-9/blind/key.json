@@ -1,0 +1,75 @@
+{
+ "key": {
+  "topsides": [
+   "L1",
+   "L2",
+   "L4",
+   "L0",
+   "L3"
+  ],
+  "bottom": [
+   "L1",
+   "L3",
+   "L4",
+   "L0",
+   "L2"
+  ],
+  "deck": [
+   "L3",
+   "L0",
+   "L2",
+   "L1",
+   "L4"
+  ],
+  "teak": [
+   "L4",
+   "L3",
+   "L0",
+   "L2",
+   "L1"
+  ],
+  "canvas": [
+   "L4",
+   "L1",
+   "L2",
+   "L3",
+   "L0"
+  ],
+  "liner": [
+   "L3",
+   "L1",
+   "L4",
+   "L0",
+   "L2"
+  ],
+  "headliner": [
+   "L0",
+   "L4",
+   "L1",
+   "L2",
+   "L3"
+  ],
+  "sole": [
+   "L1",
+   "L2",
+   "L3",
+   "L0",
+   "L4"
+  ],
+  "joinery": [
+   "L0",
+   "L3",
+   "L4",
+   "L2",
+   "L1"
+  ],
+  "cushions": [
+   "L2",
+   "L0",
+   "L1",
+   "L4",
+   "L3"
+  ]
+ },
+ "about": "the level shown under each letter A to E of blind/<sheet>.jpg"
+}

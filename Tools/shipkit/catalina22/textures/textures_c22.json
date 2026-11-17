@@ -1,0 +1,651 @@
+{
+ "about": "The Catalina 22's surfaces and their wear (docs/c22-9, slice 8 of her rebuild): one card per surface, the build's material slots each card covers (build_c22.SLOT_RGB, every mesh's material named by its slot), what each of the texture loop's five levels looks like on her, and her new finish. She is the original swing-keel boat with the pop-top (1970s to mid-1980s), kept on Lake Ray Hubbard: fresh water, hot Texas sun, red-brown clay in the water. weathering_c22.py reads this; wear_check_c22.py checks against it.",
+ "water": {
+  "rate": 0.33,
+  "note": "Fresh water: rust, tea staining and the waterline's growth come at about a third of the salt-water rate (docs/texture-loop, metal), and there are no barnacles. Zebra mussels are only 'suspect' in Lake Ray Hubbard (Texas Parks and Wildlife), so none are drawn. What a lake does instead: a tan to red-brown clay film along the waterline (the 'lake mustache') within a season, then green-brown slime."
+ },
+ "levels": {
+  "L0": "launched new: glossy white gelcoat, crisp beige non-skid, a deep even blue bottom, golden oiled teak, fresh tan canvas, white vinyl, bright cushions and curtains",
+  "L1": "her first season on the lake: the gelcoat's gloss a touch softer, a faint tan clay line at the waterline, dust in the non-skid, the teak paling, the cushions just used",
+  "L2": "six years a club or family boat, half kept: chalky topsides with black streaks under the fittings and windows, a brown clay mustache and slime at the waterline, grey teak, faded canvas, brown water stains on the headliner, worn varnish in the cabin's walkway, faded cushions",
+  "L3": "thirty years old and well kept: polished but faded and faintly yellow gelcoat with spider cracks at the stanchions and corners, the windows hazed and crazed, oiled teak, newer canvas, the vinyl yellowed, the sole's varnish deep amber",
+  "L4": "twenty years left on a trailer or a mooring: heavy chalk, black streaks everywhere, green slime and clay over a pale worn bottom, the keel's iron rusting through, black teak, rotten canvas, a stained and mildewed headliner, mildew on every surface below, the sole's varnish gone grey and black"
+ },
+ "surfaces": {
+  "gelcoat": {
+   "kinds": {
+    "topsides": [
+     "GelcoatHull",
+     "Topsides"
+    ],
+    "deck": [
+     "Deck"
+    ],
+    "liner": [
+     "Liner"
+    ]
+   },
+   "maps": [
+    "Gelcoat"
+   ],
+   "closest_m": 0.6,
+   "pattern_mm": {
+    "orange_peel": [
+     2,
+     8
+    ]
+   },
+   "look": "White polyester gelcoat. Outside it oxidises in the sun (chalk, the tops first), yellows a little with the decades, crazes in spider cracks where the moulding flexes (stanchion and cleat bases, the cockpit's and trunk's corners), takes black streaks down from every fitting and window, scuffs along the topsides where fenders and docks rub, and at the waterline takes the lake's clay line, then slime. Inside (the liner) it hardly sees the sun: hand grime at the companionway and handholds, mildew specks in corners when neglected.",
+   "levels": {
+    "L0": "mirror gloss, pure white, clean waterline",
+    "L1": "gloss a touch softer, a faint tan line at the waterline, a scuff or two at the rubrail",
+    "L2": "chalky and flat, a brown clay mustache with slime at the waterline, black streaks under fittings and ports, scuffs along the sides",
+    "L3": "polished but not new: faintly yellow, a little chalk, spider cracks at the corners and fittings, clean waterline",
+    "L4": "heavy chalk, black streaks everywhere, green slime and thick clay at the waterline, crazing and scuffs"
+   }
+  },
+  "nonskid": {
+   "kinds": {
+    "nonskid": [
+     "NonSkid"
+    ]
+   },
+   "maps": [
+    "NonSkid"
+   ],
+   "closest_m": 0.5,
+   "pattern_mm": {
+    "diamond": [
+     3,
+     6
+    ]
+   },
+   "look": "The moulded diamond pattern on the deck, cabin top and cockpit seats. Dirt packs into the pattern where shoes go; the peaks wear smooth and shiny on the paths; neglected, grey-green mildew and rust and leaf stains.",
+   "levels": {
+    "L0": "crisp beige pattern, clean",
+    "L1": "dust in the pattern on the walkways",
+    "L2": "grey-brown dirt packed in the pattern along the paths, chalky elsewhere",
+    "L3": "clean but worn smooth on the paths, faded",
+    "L4": "dark grey-green, mildew and stains, the pattern filled with dirt"
+   }
+  },
+  "bottom": {
+   "kinds": {
+    "antifouling": [
+     "Antifouling"
+    ],
+    "iron": [
+     "Keel"
+    ]
+   },
+   "maps": [
+    "Gelcoat"
+   ],
+   "closest_m": 0.8,
+   "look": "Ablative bottom paint below the waterline, and the same paint over the cast-iron swing keel. The paint's own colour fades and chalks as it wears (it is made to), the lake lays a clay film on it within a season and slime after; a kept boat is repainted every two years or so. Neglected, the paint wears through to grey primer and white gelcoat on the forefoot and keel edges, and the keel's iron rusts through it: orange bleed from the edges and the pivot, blisters on the flats.",
+   "levels": {
+    "L0": "deep even blue, smooth",
+    "L1": "a faint clay film, the blue a shade paler",
+    "L2": "faded and chalky, a brown clay film and slime, the paint thin at the edges; a rust spot or two on the keel's edges",
+    "L3": "freshly repainted: even blue, faintly chalky",
+    "L4": "pale, patchy blue worn through to grey and white, thick clay and slime; the keel rusting through in runs and blisters"
+   },
+   "refs": [
+    {
+     "id": "rusty_painted_metal",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "rust",
+     "note": "rust bleeding through paint"
+    },
+    {
+     "id": "Rust009",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "rust",
+     "note": "rusted steel"
+    }
+   ]
+  },
+  "teak": {
+   "kinds": {
+    "oiled": [
+     "Teak"
+    ],
+    "varnish": [
+     "Wood"
+    ]
+   },
+   "maps": [
+    "TeakWeathered",
+    "WoodVarnish"
+   ],
+   "closest_m": 0.5,
+   "look": "Her outside wood: the teak drop boards and trim (oiled, the way the factory left it) and the varnished laminated tiller. Bare teak silvers within a season; a kept boat's is oiled back to golden brown each spring. Neglected it goes grey then black with mildew, and checks. The tiller's varnish dulls on top, ambers, and when neglected peels to grey wood.",
+   "levels": {
+    "L0": "golden oiled teak, a glossy tiller",
+    "L1": "the teak paling and drying, the tiller's gloss softening on top",
+    "L2": "silver-grey teak with dark grain, the tiller dull and worn where hands go",
+    "L3": "oiled golden brown again, deeper; the tiller deep amber and glossy",
+    "L4": "black and green teak with open checks, the tiller's varnish peeled to grey wood"
+   },
+   "refs": [
+    {
+     "id": "teak_veneer",
+     "site": "polyhaven",
+     "level": "L0",
+     "for": "oiled",
+     "note": "new teak's colour"
+    },
+    {
+     "id": "wood_planks_grey",
+     "site": "polyhaven",
+     "level": "L2",
+     "for": "oiled",
+     "note": "silver-grey weathered boards"
+    },
+    {
+     "id": "weathered_planks",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "oiled",
+     "note": "dark weathered boards"
+    }
+   ]
+  },
+  "canvas": {
+   "kinds": {
+    "acrylic": [
+     "SailCover"
+    ],
+    "bag": [
+     "SailBag"
+    ]
+   },
+   "maps": [
+    "Canvas"
+   ],
+   "closest_m": 0.6,
+   "look": "Solution-dyed acrylic canvas: the pop-top's skirt and the sail cover (tan), the sail bags (navy). It fades in the sun, collects dirt and green-black streaks along its lower edges and folds, and mildew spots in the shade. A kept boat renews it about every eight years; on a neglected one it rots in the sun to thin, pale, frayed cloth.",
+   "levels": {
+    "L0": "even fresh colour",
+    "L1": "a shade dustier",
+    "L2": "faded on top, dirty streaks along the lower edges and folds, a few mildew spots",
+    "L3": "fairly new canvas: lightly faded",
+    "L4": "bleached and rotten, black mildew and green streaks"
+   }
+  },
+  "vinyl": {
+   "kinds": {
+    "headliner": [
+     "Headliner"
+    ],
+    "rubrail": [
+     "Rubrail",
+     "Lifeline"
+    ]
+   },
+   "maps": [
+    "Vinyl"
+   ],
+   "closest_m": 0.4,
+   "look": "Grained white vinyl: the cabin's headliner (the deck's and trunk's undersides), the rubrail's insert and the lifelines' coating. The headliner yellows with age and takes brown water stains where the deck fittings, windows and the pop-top leak, mildew dots when the cabin stays damp, and hand grime round the companionway and handholds. The rubrail chalks grey and is scuffed black by docks.",
+   "levels": {
+    "L0": "clean white vinyl",
+    "L1": "a little grime round the hatch",
+    "L2": "creamy, brown leak stains spreading from the windows and fittings, grime at the handholds",
+    "L3": "yellowed but clean, a faint old stain or two",
+    "L4": "yellow-brown, large leak stains, black mildew dots"
+   }
+  },
+  "sole": {
+   "kinds": {
+    "sole": [
+     "Sole"
+    ]
+   },
+   "maps": [
+    "WoodVarnish"
+   ],
+   "closest_m": 0.4,
+   "pattern_mm": {
+    "teak_strip": 50,
+    "holly_strip": 6
+   },
+   "look": "Teak-and-holly plywood, varnished: teak strips about 5 cm wide with a thin pale holly strip between them, running fore and aft. The varnish wears grey down the middle where feet go; water from the companionway and the bilge stains it dark at the keel trunk and edges; the holly yellows under the varnish. Neglected, the varnish goes and the veneer greys and blackens.",
+   "levels": {
+    "L0": "glossy, the holly strips bright cream",
+    "L1": "a dull path down the middle",
+    "L2": "the varnish worn grey down the middle, dark water stains at the edges and step",
+    "L3": "revarnished: deep amber, the holly honey-coloured",
+    "L4": "grey bare wood down the middle, black water stains and mildew, the holly dark"
+   }
+  },
+  "veneer": {
+   "kinds": {
+    "laminate": [
+     "Laminate"
+    ]
+   },
+   "maps": [
+    "WoodVarnish"
+   ],
+   "closest_m": 0.4,
+   "look": "The joinery's teak-veneered plywood (bulkhead, berth and dinette fronts), oiled as the factory left it. The oil dries out pale and grey unless renewed; hands darken the edges; water stains it black along the bottom where it meets the sole and the liner; neglected, the veneer lifts at the bottom edges.",
+   "levels": {
+    "L0": "warm golden-brown oiled veneer",
+    "L1": "a touch paler, dark marks on the edges",
+    "L2": "dry and pale, dark handmarks, black water lines along the bottom",
+    "L3": "re-oiled: deeper, darker brown",
+    "L4": "grey and dry, black stains rising from the bottom, mildew"
+   }
+  },
+  "fabric": {
+   "kinds": {
+    "cushion": [
+     "Cushion"
+    ],
+    "curtain": [
+     "Curtain"
+    ]
+   },
+   "maps": [
+    "Tweed"
+   ],
+   "closest_m": 0.4,
+   "pattern_mm": {
+    "weave": [
+     0.8,
+     1.6
+    ],
+    "plaid": 60
+   },
+   "look": "The cushions' woven tweed (olive and brown with a fine plaid, the earth tones of the period) and the V-berth curtain's cotton. Both fade where the sun through the windows and hatch reaches them; the cushions' fronts wear shiny and pilled; drinks and damp leave stains; mildew in black-green specks when the cabin stays shut and damp. A kept boat recovers her cushions now and then.",
+   "levels": {
+    "L0": "rich fresh colour, the plaid crisp",
+    "L1": "just used: a faint mark at a seat front",
+    "L2": "faded on top, worn fronts, a few stains",
+    "L3": "recovered cushions, lightly faded; a faded curtain",
+    "L4": "washed-out colour, dark stains, mildew specks"
+   }
+  },
+  "plastic": {
+   "kinds": {
+    "white": [
+     "WhitePlastic"
+    ],
+    "black": [
+     "BlackPlastic",
+     "Rubber"
+    ]
+   },
+   "maps": [],
+   "closest_m": 0.4,
+   "look": "Moulded plastics: the porta-potti's and fittings' white (it yellows with the years and scuffs) and the black blocks, cleats, caps and rubber (they bloom grey in the sun).",
+   "levels": {
+    "L0": "clean white, deep black",
+    "L1": "a faint scuff",
+    "L2": "white creamier and scuffed, black greying",
+    "L3": "white faintly yellow, black a soft grey",
+    "L4": "yellow-brown white with grime, chalky grey black"
+   }
+  },
+  "metal": {
+   "kinds": {
+    "stainless": [
+     "Stainless",
+     "Wire"
+    ],
+    "aluminium": [
+     "Aluminium"
+    ],
+    "painted": [
+     "PaintedAluminium"
+    ]
+   },
+   "maps": [
+    "Metal"
+   ],
+   "closest_m": 0.4,
+   "look": "Stainless rails, fittings and wire; the clear-anodised mast, boom and hatch frames; white painted aluminium. In fresh water stainless barely tea-stains; anodised aluminium dulls and, left alone, blooms white oxide and grime streaks; the paint chalks and flakes round fastenings.",
+   "levels": {
+    "L0": "bright stainless, satin silver aluminium",
+    "L1": "a touch duller",
+    "L2": "faint brown tea staining at welds and fastenings, the aluminium dull grey with grime runs",
+    "L3": "polished stainless, the aluminium dull but clean",
+    "L4": "rust spots on the stainless, white oxide powder and black streaks on the aluminium, flaking paint"
+   }
+  },
+  "acrylic": {
+   "kinds": {
+    "window": [
+     "CabinWindow"
+    ]
+   },
+   "maps": [],
+   "closest_m": 0.6,
+   "look": "Her smoked acrylic ports. The sun crazes and hazes old acrylic (a famous trait of old Catalina 22 windows), dirt dries round their frames, and a leaking port leaves a white sealant smear.",
+   "levels": {
+    "L0": "clear dark smoked glazing",
+    "L1": "a few water spots",
+    "L2": "faintly hazed, grime round the edges",
+    "L3": "hazed and finely crazed but clean",
+    "L4": "milky, crazed, grimy"
+   }
+  }
+ },
+ "unweathered": {
+  "ClothMain": "the sails age in M_SailCloth's own Age and Care (boat fidelity 4), not here",
+  "ClothJib": "the sails age in M_SailCloth",
+  "ClothGenoa": "the sails age in M_SailCloth",
+  "ClothSpinnaker": "the sails age in M_SailCloth",
+  "SailHeap": "a stowed sail: M_SailCloth",
+  "SailPatch": "the sails' corner patches: M_SailCloth",
+  "SailLine": "the sails' tapes and ties: they go with the sails",
+  "RopeSheet": "running rigging: the game draws her lines live (M_RigRope, rope realism) with their own wear",
+  "RopeHalyard": "running rigging: live rope in the game (M_RigRope)",
+  "RopeSpin": "running rigging: live rope in the game (M_RigRope)",
+  "RopeControl": "running rigging: live rope in the game (M_RigRope)",
+  "Graphics": "the boat kit's makers' marks and labels on its fittings: the kit's own (Tools/boatkit)"
+ },
+ "finish": {
+  "about": "Each slot's new finish (L0) for the renders, linear RGB with roughness, metallic and clear coat; slots the game's shared library has (scripts/make_materials.py BOAT_LIBRARY) take its values, so the renders and the game agree. 'game' names the library entry the game should use where the build's slot name would pick another colour (docs/c22-9: game-side entries).",
+  "GelcoatHull": {
+   "rgb": [
+    0.8,
+    0.8,
+    0.77
+   ],
+   "rough": 0.22,
+   "coat": 0.6,
+   "game": "Topsides"
+  },
+  "Topsides": {
+   "rgb": [
+    0.8,
+    0.8,
+    0.77
+   ],
+   "rough": 0.22,
+   "coat": 0.6
+  },
+  "Deck": {
+   "rgb": [
+    0.8,
+    0.8,
+    0.76
+   ],
+   "rough": 0.28,
+   "coat": 0.5
+  },
+  "Liner": {
+   "rgb": [
+    0.78,
+    0.77,
+    0.72
+   ],
+   "rough": 0.35,
+   "coat": 0.3,
+   "game": "new: Liner"
+  },
+  "NonSkid": {
+   "rgb": [
+    0.75,
+    0.68,
+    0.56
+   ],
+   "rough": 0.66
+  },
+  "Antifouling": {
+   "rgb": [
+    0.022,
+    0.045,
+    0.13
+   ],
+   "rough": 0.8,
+   "game": "new: AntifoulingBlue (the library's Antifouling is the J/22's near-black navy)"
+  },
+  "Keel": {
+   "rgb": [
+    0.022,
+    0.045,
+    0.13
+   ],
+   "rough": 0.75,
+   "game": "new: AntifoulingBlue"
+  },
+  "Teak": {
+   "rgb": [
+    0.453,
+    0.234,
+    0.101
+   ],
+   "rough": 0.62
+  },
+  "Wood": {
+   "rgb": [
+    0.33,
+    0.128,
+    0.042
+   ],
+   "rough": 0.2,
+   "coat": 0.8
+  },
+  "SailCover": {
+   "rgb": [
+    0.36,
+    0.3,
+    0.2
+   ],
+   "rough": 0.85,
+   "game": "SailCoverTan (the build's SailCover is tan; the library's is navy)"
+  },
+  "SailBag": {
+   "rgb": [
+    0.02,
+    0.05,
+    0.14
+   ],
+   "rough": 0.8,
+   "game": "SailCover"
+  },
+  "Headliner": {
+   "rgb": [
+    0.74,
+    0.73,
+    0.68
+   ],
+   "rough": 0.55,
+   "game": "new: Headliner"
+  },
+  "Rubrail": {
+   "rgb": [
+    0.7,
+    0.7,
+    0.68
+   ],
+   "rough": 0.5,
+   "game": "new: RubrailWhite (the library's Rubrail is black)"
+  },
+  "Lifeline": {
+   "rgb": [
+    0.72,
+    0.72,
+    0.7
+   ],
+   "rough": 0.35,
+   "coat": 0.3,
+   "game": "the live rig lines' wire, white-coated"
+  },
+  "Sole": {
+   "rgb": [
+    0.3,
+    0.15,
+    0.06
+   ],
+   "rough": 0.25,
+   "coat": 0.7,
+   "game": "new: Sole"
+  },
+  "Laminate": {
+   "rgb": [
+    0.36,
+    0.2,
+    0.09
+   ],
+   "rough": 0.5,
+   "game": "new: Laminate"
+  },
+  "Cushion": {
+   "rgb": [
+    0.11,
+    0.12,
+    0.065
+   ],
+   "rough": 0.9,
+   "game": "new: Cushion"
+  },
+  "Curtain": {
+   "rgb": [
+    0.42,
+    0.34,
+    0.2
+   ],
+   "rough": 0.9,
+   "game": "new: Curtain"
+  },
+  "WhitePlastic": {
+   "rgb": [
+    0.74,
+    0.72,
+    0.66
+   ],
+   "rough": 0.32
+  },
+  "BlackPlastic": {
+   "rgb": [
+    0.018,
+    0.018,
+    0.02
+   ],
+   "rough": 0.45
+  },
+  "Rubber": {
+   "rgb": [
+    0.025,
+    0.025,
+    0.026
+   ],
+   "rough": 0.7
+  },
+  "Stainless": {
+   "rgb": [
+    0.62,
+    0.62,
+    0.63
+   ],
+   "rough": 0.3,
+   "metal": 1.0
+  },
+  "Wire": {
+   "rgb": [
+    0.62,
+    0.62,
+    0.63
+   ],
+   "rough": 0.35,
+   "metal": 1.0,
+   "game": "the live rig lines' wire (M_RigWire)"
+  },
+  "Aluminium": {
+   "rgb": [
+    0.78,
+    0.79,
+    0.81
+   ],
+   "rough": 0.32,
+   "metal": 1.0
+  },
+  "PaintedAluminium": {
+   "rgb": [
+    0.8,
+    0.8,
+    0.78
+   ],
+   "rough": 0.35,
+   "coat": 0.6
+  },
+  "CabinWindow": {
+   "rgb": [
+    0.006,
+    0.008,
+    0.01
+   ],
+   "rough": 0.04,
+   "coat": 1.0
+  }
+ },
+ "maps": {
+  "own": {
+   "Vinyl": {
+    "tile_mm": [
+     60,
+     60
+    ],
+    "px": [
+     512,
+     512
+    ],
+    "pattern_mm": {
+     "grain": [
+      0.6,
+      1.6
+     ]
+    },
+    "fade_m": [
+     0.3,
+     1.2
+    ],
+    "note": "a fine pebbled leather grain, the moulded vinyl of the period's headliners and rubrail inserts; mask: R cavity, G roughness, B height"
+   },
+   "Tweed": {
+    "tile_mm": [
+     60,
+     60
+    ],
+    "px": [
+     1024,
+     1024
+    ],
+    "pattern_mm": {
+     "weave": [
+      0.8,
+      1.6
+     ],
+     "plaid": 60
+    },
+    "fade_m": [
+     0.8,
+     3.0
+    ],
+    "note": "a woven tweed with a 6 cm plaid: mask R plaid tone, G weave gaps, B height"
+   }
+  },
+  "shared": {
+   "Gelcoat": {},
+   "NonSkid": {},
+   "TeakWeathered": {},
+   "WoodVarnish": {},
+   "Metal": {},
+   "Canvas": {
+    "normal_only": true
+   }
+  }
+ },
+ "budget": {
+  "high_mb": 3.0,
+  "medium_mb": 0.0,
+  "note": "her own maps only (the shared library is already resident for the J/22): BC5 normal + BC1 mask with mips. Medium draws no detail maps, as the boats' Medium material does."
+ },
+ "closest_px_per_mm": 4.0
+}

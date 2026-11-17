@@ -29,6 +29,8 @@
 #include "Showroom.h"
 #include "PhotoSettings.h"
 #include "Feedback.h"
+#include "ShipWalk.h"
+#include "ShipOrders.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -306,6 +308,17 @@ public:
 	static UInputMappingContext* BuildContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
 		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool bPhotoContext);
 	static constexpr int32 PhotoContextPriority = 1;
+	/** Walking a ship (docs/ship-walk/): the On deck view's context (IMC_Walk, above the boat's while you walk). */
+	static UInputMappingContext* BuildWalkContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
+	/** A layer's context (walking, a ship's, the orders panel's): the bindings InLayer takes, buttons fired on the press. */
+	static UInputMappingContext* BuildLayerContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool (*InLayer)(const FSailingKeyBinding&));
+	/** A ship's (docs/ship-orders/): IMC_Ship whenever she is one, IMC_Walk over it while you walk, IMC_Orders over both while
+	 *  the orders panel is open. */
+	static constexpr int32 ShipContextPriority = 1;
+	static constexpr int32 WalkContextPriority = 2;
+	static constexpr int32 OrdersContextPriority = 3;
 	/** The pad throttle's dead zone on the left stick's Y axis (the tiller is its X). */
 	static constexpr float ThrottleStickDeadZone = 0.5f;
 	/** The pad look's response curve (stick deflection to the power of this: fine aim near the centre). */
@@ -352,8 +365,10 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
+	/** Whether this boat draws the rebuilt Catalina 22 (/Game/Boats/C22Hero, docs/c22-12) rather than the fleet model. */
+	bool UseC22Hero(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
 	/** A rig point in the boat frame (cm) from a socket on one of the model's parts; mast points follow its bend. */
@@ -576,6 +591,64 @@ public:
 	void SetCameraView(ChaseCamera::EView View, bool bRemember);
 	const ChaseCamera::FRig& GetChaseRig() const { return ChaseRig; }
 	float GetChaseArmCm() const { return CameraDistance; }
+
+	/**
+	 * Walking a ship (docs/ship-walk/): a boat with a walk map (Content/TerrainData/Ships/<her name>.walk, or
+	 * -SailingWalkMap=<name> on any boat for tests) adds On deck to the view cycle after Helm: you walk her decks in the
+	 * first person (IMC_Walk), the helmsman keeps her on her course (her true wind angle when you left the wheel), and the
+	 * decks below load as you go down to them. Her Helm view is you standing at the wheel (the map's Helm spot).
+	 */
+	bool CanWalk() const { return WalkMap.IsLoaded(); }
+	bool IsWalking() const { return bWalking; }
+	void SetWalking(bool bOn, bool bAnnounce = true);
+	const Sailing::FWalkMap& GetWalkMap() const { return WalkMap; }
+	const Sailing::FShipWalker& GetWalker() const { return Walker; }
+	/** The HUD's line while walking ("E: take the ladder down to the gun deck"), empty when there is nothing to say. */
+	FString GetWalkPrompt() const;
+	/** Decks below with their meshes in (bit per walk-map deck), for the HUD's debug line and the tests. */
+	uint32 GetDecksShown() const;
+	/** The felt gravity in her frame (m/s^2, pointing down at rest): the world's, less her acceleration at the walker. */
+	Sailing::Vec3 FeltGravityShip() const;
+	/** A ship's orders (docs/ship-orders/): the panel (G or the pad's X on a ship), what she can be ordered to do now, and
+	 *  the panel's lines for the HUD (0 the tabs, 1 the rows, 2 the row's line or why it can't be ordered now). */
+	const Sailing::FShipOrdersPanel& GetShipOrders() const { return ShipOrders; }
+	Sailing::FShipOrderContext GetShipOrderContext() const;
+	FString GetOrdersPanelText(int32 Part) const;
+	/** Her helmsman has the wheel (you walk, or told him to take her). */
+	bool HasShipHelmsman() const { return bShipHelmsman; }
+private:
+	Sailing::FWalkMap WalkMap;
+	FString WalkMapName;                     // the ship the map is for
+	Sailing::FShipWalker Walker;
+	bool bWalking = false;
+	bool bWalkUsePending = false;            // Use pressed since the last walk step
+	FVector2D WalkLook = FVector2D::ZeroVector;   // the look's turn since the last walk step (deg: yaw, pitch)
+	Sailing::FAutopilot WalkPilot;           // her helmsman while you walk
+	FString WalkPromptShown;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> WalkContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> ShipContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> OrdersContext;
+	Sailing::FShipOrdersPanel ShipOrders;
+	bool bShipHelmsman = false;
+	/** The helmsman takes her at the wind angle she has now. */
+	void ShipHelmsmanTakes();
+	/** An orders panel key (or the panel's own); true when it was one (OnButton stops there). */
+	bool OnOrdersButton(FName Action);
+	void GiveShipOrder(const Sailing::FIssuedOrder& Order);
+	/** The decks below (index by walk-map deck): their mesh assets (null where the ship has none), meshes, async loads
+	 *  and when each stopped being wanted (platform seconds, -1 while wanted). */
+	TArray<FSoftObjectPath> DeckMeshPaths;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> DeckMeshes;
+	TArray<TSharedPtr<struct FStreamableHandle>> DeckLoads;
+	TArray<double> DeckUnwantedSince;
+	void ClearDeckMeshes();
+	void LoadWalkMap();
+	void PlaceWalkerAtHelm();
+	void UpdateWalk(float DeltaSeconds);
+	void UpdateWalkCamera(float DeltaSeconds);
+	void UpdateDeckStreaming();
+	/** A walking command while walking; true when it was one (OnButton stops there). */
+	bool OnWalkButton(FName Action);
 private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;
@@ -710,6 +783,13 @@ private:
 	 *  the rudder: shown while stowed, hidden while the live one is in the helm's hand. Null where it is baked into the rudder
 	 *  or not modelled. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelTillerExt;
+	/** J-Class 14: a wheel as a part of its own (SM_Bluebonnet_Wheel), on WheelPivot at the hull's WheelHub socket, turned about
+	 *  WheelAxis (the shaft, toward the hull's WheelAxis socket) by WheelTurnsHardOver turns over the rudder's travel. Null
+	 *  where the wheel is in the hull's mesh (the maxi, the Catalina 30) or the boat has a tiller. */
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelWheel;
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> WheelPivot;
+	FVector WheelAxis = FVector::ForwardVector;  // boat frame, along the shaft toward the wheel box
+	float WheelRimRadiusCm = 0.f;                // the rim's centre line (WheelRim socket), 0 without a wheel part
 	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
 	 *  shown instead of the sails, mast and running rig while bSailsStowed. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> StowedDress;
@@ -756,6 +836,19 @@ private:
 public:
 	/** #618: the model's own stowed extension part (null if none) and whether it shows now. */
 	const UStaticMeshComponent* GetModelTillerExt() const { return ModelTillerExt; }
+	/** J-Class 14: the wheel part (null without one), its shaft's axis (boat frame) and its rim's radius. */
+	const UStaticMeshComponent* GetModelWheel() const { return ModelWheel; }
+	FVector GetWheelAxis() const { return WheelAxis; }
+	float GetWheelRimRadiusCm() const { return WheelRimRadiusCm; }
+	/** The wheel's turn (rad about WheelAxis, forward, where a positive turn takes its top to port) for a rudder angle (rad,
+	 *  positive bow to starboard): WheelTurnsHardOver turns from amidships to hard over (her worm gear: our estimate,
+	 *  1.5 turns, 3 lock to lock; 5 s hard over in the physics is 108 deg/s at the rim's hands), the top to starboard as the
+	 *  bow goes to starboard (deck_bluebonnet.json steering note). */
+	static constexpr double WheelTurnsHardOver = 1.5;
+	static double WheelTurnFor(double RudderAngle, double MaxRudderAngleDeg)
+	{
+		return MaxRudderAngleDeg > 0.0 ? -RudderAngle / FMath::DegreesToRadians(MaxRudderAngleDeg) * WheelTurnsHardOver * 2.0 * UE_DOUBLE_PI : 0.0;
+	}
 	/** #620 follow-up: where the helm's hand holds the tiller extension (boat frame, cm), unset when no shown helm holds it. */
 	TOptional<FVector> GetHelmGripCm() const { return HelmGripCm; }
 	bool IsModelTillerExtShown() const;
@@ -777,14 +870,18 @@ private:
 	FVector LastBowM = FVector::ZeroVector;
 	bool bHasLastBow = false;
 	bool bRigLinesBuilt = false;
-	/** Rig lines pacing: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm), the
-	 *  time an AI boat's paced rig has missed, and the frame its rig was last built. */
+	/** Rig lines: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm). */
 	TArray<FVector> RigLineKeys[3];
 	/** Each rig line section's layout as last built: per line, its look and ring count. A tack reorders the jib sheets'
 	 *  lines (the working side has fewer), so the colours and triangles, sent only at a build, are built again. */
 	TArray<uint32> RigLineLayout[3];
-	float RigPendingSeconds = 0.f;
-	uint64 RigBuiltFrame = 0;
+	/** docs/traffic-rig-rate/ (TrafficRigRate.h): an AI boat's or the ghost's rig lines, sails and telltales are rebuilt at a
+	 *  rate that falls with distance. When they were last rebuilt (VisualTime; -1 never), the seconds since, the sails' sides
+	 *  and set as last built (a change rebuilds at once) and whether she was on screen last frame. */
+	double RigVisualBuiltAt = -1.0;
+	float RigVisualPending = 0.f;
+	int32 RigVisualKey = 0;
+	bool bRigVisualOnScreen = false;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;
@@ -857,6 +954,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> CylinderMesh;
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> BoatParts;     // everything rebuilt with the boat
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
+	TArray<FVector> RudderAxes;   // each rudder's stock axis in the boat frame (up, unless the hull's RudderAxis socket rakes it)
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FlyBoxes;     // the stand-in fly (hidden under the kit's)

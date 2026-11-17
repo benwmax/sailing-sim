@@ -62,6 +62,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Misc/ConfigCacheIni.h"
+#include "TrafficRigRate.h"
 
 using namespace Sailing;
 
@@ -105,7 +106,8 @@ namespace
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
 			|| Action == TEXT("CockpitView") || Action == TEXT("ChangeView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action);
+			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action)
+			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm") || Action == TEXT("ShipOrders") || SailingBindings::IsOrdersAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -387,6 +389,7 @@ void ASailboatPawn::BuildHullMesh()
 	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
 	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
 	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
+	case EBoatType::Bluebonnet: HullColor = FLinearColor(0.03f, 0.07f, 0.24f); break; // her deep blue topsides (finish_bluebonnet.json)
 	default: if (bTrafficBoat) HullColor = TrafficHullColor; break;
 	}
 	for (int32 Section = 0; Section < 2; ++Section)
@@ -404,10 +407,15 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (USceneComponent* Part : BoatParts) if (Part) Part->DestroyComponent();
 	BoatParts.Reset();
 	RudderPivots.Reset();
+	RudderAxes.Reset();
 	Crew.Reset();
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	ModelTillerExt = nullptr;
+	ModelWheel = nullptr;
+	WheelPivot = nullptr;
+	WheelAxis = FVector::ForwardVector;
+	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -415,6 +423,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
 	RigLineKeys[2].Reset();
+	// The model's rig, which the model path rebuilds each frame: a boat drawn from her config (Bluebonnet before her import)
+	// had kept the last model boat's wires, so her sails kept off the maxi's shrouds and the rig tests read them as hers.
+	SailObstacles.Reset();
+	JibSailObstacles.Reset();
+	bJibInsideShrouds = false;
+	RigLineSamples.Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
@@ -469,6 +483,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		RudderAxes.Add(FVector::UpVector);
 		AddBoatPart(CubeMesh, ToCm(-0.25 * Chord, 0.0, F.Params.Center.Z), FVector(Chord, Thick, Span) * CmPerMeter, Dark, FRotator::ZeroRotator, Pivot);
 		if (C.TillerLength > 0.6) // tiller boats; wheel steering shows no tiller
 		{
@@ -636,6 +651,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Catalina22: return { 0.f, 4.f, 0.f, 0.9f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f, 1.0f, 1.f };
 		case EBoatType::Maxi: return { 4.f, 6.f, 1.f, 3.4f };
+		case EBoatType::Bluebonnet: return { 0.f, 4.f, 0.f, 0.6f };   // a 1937 J: cotton, short battens, narrow cloths, no window
 		default: return { 0.f, 4.f, 0.f, 0.9f, 1.f };    // the J/22
 		}
 	};
@@ -762,6 +778,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		NavLights.Add(Light);
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
+	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
 }
 
 void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
@@ -1301,6 +1318,13 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 		ApplyChaseRotation();
 	}
+	if (bShipHelmsman && !bDemo)
+	{
+		// docs/ship-walk/: while you walk her decks (or told him to take her), her helmsman holds the wind angle she had when
+		// you left the wheel, a point up or down as you order (docs/ship-orders/).
+		WalkPilot.Wind = &GetWind();
+		Controls.Tiller = WalkPilot.Update(Boat);
+	}
 
 	const FWindField& Wind = GetWind();
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1430,8 +1454,15 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
-	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	if (bCockpit && CanWalk() && !bTrafficBoat)
+	{
+		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her.
+		UpdateWalk(DeltaSeconds);
+		UpdateWalkCamera(DeltaSeconds);
+	}
+	else if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
 	else if (IsMountedView()) UpdateMountedCamera(DeltaSeconds);
+	if (!bTrafficBoat && !bGhost) UpdateDeckStreaming();
 	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
@@ -1800,6 +1831,14 @@ namespace
 			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next tab"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous tab"), TEXT("") } },
 			{ TEXT("PhotoResetTab"), { TEXT("Photo panel: reset the tab (hold on the pad)"), TEXT("") } },
 			{ TEXT("PhotoAlt"), { TEXT("Photo: hold for zoom, tilt and speed on the sticks (keyboard: the pointer)"), TEXT("") } },
+			{ TEXT("WalkForward"), { TEXT("On deck (ships): walk forward"), TEXT("On deck (ships): walk back") } },
+			{ TEXT("WalkRight"), { TEXT("On deck (ships): step right"), TEXT("On deck (ships): step left") } },
+			{ TEXT("WalkRun"), { TEXT("On deck (ships): run (hold)"), TEXT("") } }, { TEXT("WalkCrouch"), { TEXT("On deck (ships): crouch (hold)"), TEXT("") } },
+			{ TEXT("WalkUse"), { TEXT("On deck (ships): take the ladder"), TEXT("") } }, { TEXT("WalkToHelm"), { TEXT("On deck (ships): back to the wheel"), TEXT("") } },
+			{ TEXT("ShipOrders"), { TEXT("Ships: orders panel"), TEXT("") } },
+			{ TEXT("OrdersUp"), { TEXT("Orders panel: previous order"), TEXT("") } }, { TEXT("OrdersDown"), { TEXT("Orders panel: next order"), TEXT("") } },
+			{ TEXT("OrdersLeft"), { TEXT("Orders panel: previous tab"), TEXT("") } }, { TEXT("OrdersRight"), { TEXT("Orders panel: next tab"), TEXT("") } },
+			{ TEXT("OrdersSelect"), { TEXT("Orders panel: give the order"), TEXT("") } }, { TEXT("OrdersClose"), { TEXT("Orders panel: close"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ChangeView"), { TEXT("Change view (chase, overview, helm)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
@@ -2025,6 +2064,9 @@ void ASailboatPawn::ApplyMappingContexts()
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(MappingContext, 0);
 	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
+	if (CanWalk() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
+	if (bWalking && !bPhoto && WalkContext) Subsystem->AddMappingContext(WalkContext, WalkContextPriority);
+	if (ShipOrders.IsOpen() && CanWalk() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
 }
 
 void ASailboatPawn::RebuildMappings()
@@ -2033,6 +2075,9 @@ void ASailboatPawn::RebuildMappings()
 	const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat_Rebound"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo_Rebound"), Bindings, Actions, true);
+	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk_Rebound"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship_Rebound"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders_Rebound"), Bindings, Actions, &SailingBindings::InOrdersContext);
 	ApplyMappingContexts();
 }
 
@@ -2282,7 +2327,10 @@ void ASailboatPawn::SetWatching(bool bOn)
 
 void ASailboatPawn::SetCockpitView(bool bOn, bool bAnnounce)
 {
+	if (bOn) LeaveMountedView();   // (a ship's On deck, or any other way to the helm, from a mounted camera)
+	if (!bOn && bWalking) SetWalking(false, false);
 	bCockpit = bOn;
+	if (bOn && CanWalk()) PlaceWalkerAtHelm();
 	CockpitEye.bStarted = false;   // docs/cockpit-tack/: the steadied eye starts again where the head is
 	CockpitAccel = CockpitHead = FVector::ZeroVector;
 	CockpitPrevVel = FVector(Boat.GetState().Velocity.X, Boat.GetState().Velocity.Y, Boat.GetState().Velocity.Z);
@@ -3904,6 +3952,41 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 
+	// docs/traffic-rig-rate/ (TrafficRigRate.h): an AI boat's or the ghost's rig lines, sails and telltales (procedural mesh
+	// sections; each rebuild is an upload the render thread waits on) are rebuilt every frame near the camera and less often
+	// farther off, holding their last shape in the boat's frame in between (the boom holds with them, so the sheets and the
+	// main's foot stay on it). Sails changing sides, a sail set or dropped, or the boat coming back on screen rebuild at once.
+	// The player's boat and the gallery's display are never paced; nor is any boat without a player camera (tests).
+	const float FrameDt = DeltaSeconds;   // (the bow wave and wetness always step by the frame)
+	float RigDt = DeltaSeconds;
+	bool bRigDue = true;
+	if (bTrafficBoat && !bGalleryDisplay)
+	{
+		const UWorld* World = GetWorld();
+		const APlayerController* ViewPC = World ? World->GetFirstPlayerController() : nullptr;
+		const APlayerCameraManager* Cam = ViewPC ? ViewPC->PlayerCameraManager.Get() : nullptr;
+		const int32 Key = (S.MainSide >= 0 ? 1 : 0) | (S.JibSide >= 0 ? 2 : 0) | (S.SpinSide >= 0 ? 4 : 0) | (T.NumSpinStrips > 0 ? 8 : 0)
+			| (bSailsStowed && IsTiedUp() ? 16 : 0);
+		RigVisualPending += DeltaSeconds;
+		if (Cam && RigVisualBuiltAt >= 0.0)
+		{
+			const UPrimitiveComponent* Seen = ModelHull ? static_cast<const UPrimitiveComponent*>(ModelHull.Get()) : static_cast<const UPrimitiveComponent*>(HullMesh.Get());
+			const bool bOnScreen = !Seen || Seen->WasRecentlyRendered(0.25f);
+			const double DistM = FVector::Dist(Cam->GetCameraLocation(), GetActorLocation()) / CmPerMeter;
+			const bool bForce = Key != RigVisualKey || (bOnScreen && !bRigVisualOnScreen);
+			bRigVisualOnScreen = bOnScreen;
+			bRigDue = bForce || TrafficRigRate::Due(TrafficRigRate::IntervalSeconds(DistM, bOnScreen), TrafficRigRate::Phase(GetUniqueID()),
+				RigVisualBuiltAt, VisualTime);
+		}
+		if (bRigDue)
+		{
+			RigDt = RigVisualPending;
+			RigVisualPending = 0.f;
+			RigVisualBuiltAt = VisualTime;
+			RigVisualKey = Key;
+		}
+	}
+
 	// Graphics G6: tied up in her slip, a keelboat's sails are stowed (the berthed dress), the boom on the centreline.
 	const bool bStowed = bSailsStowed && StowedDress && IsTiedUp();
 	if (bStowed != bStowedShown)
@@ -3919,8 +4002,17 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	}
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
-	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
-	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+	if (bRigDue) BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
+	// (A raked stock, Bluebonnet's: the rudder turns about its own axis, RudderAxes, rather than the vertical.)
+	for (int32 K = 0; K < RudderPivots.Num(); ++K)
+	{
+		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
+		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
+	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
+	// as the bow goes to starboard).
+	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
@@ -3935,10 +4027,10 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		UpdateCrewGroomLOD();
 	}
 
-	if (ModelHull)
+	if (ModelHull && bRigDue)
 	{
 		SAILING_PERF_SCOPE(RigLines);
-		UpdateModelRig(DeltaSeconds);
+		UpdateModelRig(RigDt);
 	}
 	// Probes: -SailingSailsDown with -SailingMooring strikes the player's sails: no cloth stepped or drawn, while the
 	// physics, boom and hull ride the mooring as before (docs/budget/perf-sun-setters-2026-10-17.md, the parked VSM lead).
@@ -3950,12 +4042,19 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		JibSail->SetVisibility(false);
 		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
 	}
+	if (!bRigDue)
+	{
+		// (paced: the sails, telltales and fittings hold their last shape this frame)
+		if (ModelHull) UpdateBoatWetness(FrameDt);
+		return;
+	}
+	DeltaSeconds = RigDt;   // the sails' cloth and the spinnaker's gybe timing take the time since they were last built
 	if (bStowed || bSailsDown)
 	{
 		SpinSail->SetVisibility(false);
 		SpinRig = FSpinnakerRig();
 		UpdateKitFittings(); // the hanks and the head shackle go with the jib
-		if (ModelHull) UpdateBoatWetness(DeltaSeconds);
+		if (ModelHull) UpdateBoatWetness(FrameDt);
 		return;
 	}
 	SAILING_PERF_SCOPE_BEGIN(Sails);
@@ -4017,7 +4116,7 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	{ SAILING_PERF_SCOPE(Telltales); UpdateTelltaleRibbons(); }
 	if (ModelHull)
 	{
-		UpdateBoatWetness(DeltaSeconds);
+		UpdateBoatWetness(FrameDt);
 	}
 }
 
@@ -4223,7 +4322,8 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
 	auto Held = [this, bSimple](FName Action)
 	{
-		if (bMenuOpen || (bSimple && IsCrewHandled(Action))) return 0.f;
+		// (walking her decks, the keys are your feet's: the helmsman has her, WalkPilot)
+		if (bMenuOpen || bWalking || (bSimple && IsCrewHandled(Action))) return 0.f;
 		const float* V = HeldAxes.Find(Action);
 		return V ? *V : 0.f;
 	};
@@ -4330,6 +4430,12 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		ChartCenter += FVector2D(Raw.Y, Raw.X) * ChartMetersPerPixel * 4.0;
 		return;
 	}
+	if (bWalking)
+	{
+		// On deck the look is your head's (UpdateWalk hands it to the walker).
+		WalkLook += Delta;
+		return;
+	}
 	if (!Delta.IsNearlyZero()) LastLookSeconds = FPlatformTime::Seconds();   // the chase eases back behind her after a while
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	// (the cockpit look keeps its own range: UpdateCockpitCamera clamps it; the arm's limit is the chase camera's)
@@ -4393,6 +4499,12 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		SetPhoto(!bPhoto);
 		return;
 	}
+	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching && bWalking)
+	{
+		// (on deck, \ takes you back to the wheel)
+		SetWalking(false);
+		return;
+	}
 	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching)
 	{
 		// (\ goes straight to the helm and back to the last outside view)
@@ -4401,8 +4513,15 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("ChangeView") && !bPhoto && !bWatching && !IsCaptureMode())
 	{
-		// Camera views (docs/camera-views/): Chase, Overview, Drone, Chase boat, Masthead, Transom, Bow, Helm, round again.
-		SetCameraView(ChaseCamera::Next(GetCameraView()), true);
+		// Camera views (docs/camera-views/): Chase, Overview, Drone, Chase boat, Masthead, Transom, Bow, Helm, round again;
+		// a ship has On deck after Helm.
+		if (bWalking)
+		{
+			SetWalking(false, false);
+			SetCameraView(ChaseCamera::EView::Chase, true);
+		}
+		else if (CanWalk() && GetCameraView() == ChaseCamera::EView::Helm) SetWalking(true);
+		else SetCameraView(ChaseCamera::Next(GetCameraView()), true);
 		return;
 	}
 	if (Action == TEXT("Replay"))
@@ -4442,6 +4561,8 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
+	if (CanWalk() && OnOrdersButton(Action)) return;
+	if (bWalking && OnWalkButton(Action)) return;
 	if (bWatching)
 	{
 		// Scrub ten seconds at a time; play slower or faster.
@@ -4832,6 +4953,9 @@ void ASailboatPawn::CreateInput()
 	MakeActions(this, Bindings, Actions);
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo"), Bindings, Actions, true);
+	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders"), Bindings, Actions, &SailingBindings::InOrdersContext);
 }
 
 void ASailboatPawn::PawnClientRestart()

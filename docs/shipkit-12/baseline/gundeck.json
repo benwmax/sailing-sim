@@ -1,0 +1,4842 @@
+{
+ "note": "the gun deck (docs/shipkit-12), in the ship's frame (metres): frames, the parts on frames of their own (the capstan's head GunCapstan, origin on its axis at the deck, z up, turning about it; the great cabin's doors CabinDoor_S and CabinDoor_P, origin on the hinge at the deck, x across the leaf toward the latch, z up, opening as cabin_doors says); layout, where each fitting stands (x of its centre, its inside size); lights, the lanterns' lights (a point light in each lantern's body: its zone, colour, kelvin, lumens, radius and whether it casts shadows) within light_budget, light_zones_note and lumens_note saying how to light by zone and why so bright; below, what the game loads when below: the collection GunDeck (objects, its meshes; lights, the lanterns' lights), the long guns' copies in their pose collections with the lid lanyards that go with each pose, and zones, which lights' zones each object facing into the gun deck is in (names ending in * are prefixes); planking, the deck's planks drawn from its 'Planking' and 'Margin' UVs as the spar deck's (deck.json), and the floor cloth's squares from its 'Cloth' UV (a square a unit); cables, the cables' course on the deck from the hawse holes over the manger to the cable scuttles; gear, the guns' own gear: the implements over each gun, the shot garlands, the lids' lanyards (LanyardFittings, the bushes and cleats, and LidLanyards, the rope inside and the bridle ports' lanyards, always shown; outside, LidLanyards_Shut with the lids shut and the guns housed, LidLanyards_Open with them opened lid_open_deg as the guns run in and out: show the one that goes with the lids; each lid's two rings are built into it and turn with it); copies, each housed gun's tompion and apron (mesh, 4x4 in the ship's frame; shown with the guns housed, as guns.json's housed pose); the rest are the builder's records of where its parts fell (among them knees_x_m and lodging_knees, the hanging and lodging knees; capstan_bars, the bars stowed in racks overhead; galley; window_seat; after_wall with its panelling)",
+ "layout": {
+  "SpiritHatch": {
+   "x_m": -11.301,
+   "inside_m": [
+    1.524,
+    1.524
+   ],
+   "kind": "grating"
+  },
+  "AfterHatch": {
+   "x_m": -7.526,
+   "inside_m": [
+    1.524,
+    1.524
+   ],
+   "kind": "ladder"
+  },
+  "MainHatch": {
+   "x_m": 2.06,
+   "inside_m": [
+    2.464,
+    1.93
+   ],
+   "kind": "grating"
+  },
+  "ForeHatch": {
+   "x_m": 11.395,
+   "inside_m": [
+    1.372,
+    1.549
+   ],
+   "kind": "ladder"
+  },
+  "ForeHatchFore": {
+   "x_m": 13.235,
+   "inside_m": [
+    1.448,
+    1.549
+   ],
+   "kind": "grating"
+  },
+  "Scuttle": {
+   "x_m": 22.681,
+   "inside_m": [
+    0.914,
+    0.838
+   ],
+   "kind": "grating"
+  },
+  "WardroomSkylight": {
+   "x_m": -17.02,
+   "inside_m": [
+    1.473,
+    0.711
+   ],
+   "kind": "grating"
+  },
+  "GunCapstan": {
+   "x_m": -9.414
+  },
+  "ChainPumps": {
+   "x_m": -5.343
+  },
+  "BrakePumps": {
+   "x_m": -1.845
+  },
+  "masts_x_m": {
+   "mizzen": -19.536,
+   "main": -3.267,
+   "fore": 21.019
+  }
+ },
+ "rudder_notch_m": {
+  "x": [
+   -27.761,
+   -27.685
+  ],
+  "half_width": 0.305
+ },
+ "deck": {
+  "top_triangles": 12819,
+  "area_m2": 532.0,
+  "x_m": [
+   -27.761,
+   26.134
+  ]
+ },
+ "waterways": {
+  "fore_end_x_m": 25.314,
+  "short_of_hawse_x_m": 25.309
+ },
+ "spirketting": null,
+ "overhead": {
+  "members": 59,
+  "cut": {
+   "-25.05": 1.041,
+   "-24.219": 1.041,
+   "-20.063": 0.564,
+   "-19.232": 0.564,
+   "-16.738": 1.041,
+   "-15.907": 1.041,
+   "-15.076": 1.041,
+   "-14.245": 1.041,
+   "-11.751": 1.168,
+   "-10.92": 1.168,
+   "-9.258": 1.168,
+   "-8.426": 1.168,
+   "-7.595": 1.168,
+   "-6.764": 1.168,
+   "-3.439": 0.729,
+   "17.341": 0.965,
+   "18.172": 0.965,
+   "20.666": 0.677,
+   "21.497": 0.677
+  },
+  "groups": [
+   [
+    "SkylightCabin"
+   ],
+   [
+    "Mast_mizzen"
+   ],
+   [
+    "SkylightMizzen",
+    "Companion"
+   ],
+   [
+    "AfterHatch"
+   ],
+   [
+    "Capstan",
+    "ForeHatch"
+   ],
+   [
+    "Mast_main"
+   ],
+   [
+    "Chimney"
+   ],
+   [
+    "Mast_fore"
+   ]
+  ]
+ },
+ "clamp": {
+  "x_m": [
+   -28.603,
+   25.779
+  ],
+  "least_deep_in": 3.15
+ },
+ "knees_x_m": [
+  -28.375,
+  -26.713,
+  -25.05,
+  -23.388,
+  -20.063,
+  -16.738,
+  -13.414,
+  -10.089,
+  -6.764,
+  -5.19,
+  -3.439,
+  -2.043,
+  -0.114,
+  3.211,
+  6.535,
+  9.86,
+  13.185,
+  16.51,
+  19.834,
+  23.159
+ ],
+ "knees_clear_of_lanyards": {
+  "slid_to_beam_face_x_m": [
+   -5.19
+  ],
+  "left_out_at_beam_x_m": [
+   21.497
+  ]
+ },
+ "lodging_knees": {
+  "each_side": 15,
+  "by_beam": [
+   {
+    "beam_x_m": -20.063,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -16.738,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -13.414,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -10.089,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -6.764,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -5.102,
+    "face": "aft",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -3.439,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 13.185,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 16.51,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 19.834,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 21.497,
+    "face": "aft",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": -0.114,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 3.211,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 6.535,
+    "face": "fore",
+    "side_arm_m": 0.508
+   },
+   {
+    "beam_x_m": 9.86,
+    "face": "fore",
+    "side_arm_m": 0.508
+   }
+  ],
+  "none_at_beam_x_m": [
+   -21.726,
+   -18.401,
+   -15.076,
+   -11.751,
+   -8.426,
+   14.847,
+   18.172,
+   23.159,
+   24.822,
+   1.548,
+   4.873,
+   8.198
+  ]
+ },
+ "ladders": [
+  {
+   "from": "AfterHatch",
+   "top_x_m": -8.288,
+   "foot_x_m": -6.986,
+   "drop_m": 2.448
+  },
+  {
+   "from": "ForeHatch",
+   "top_x_m": 10.709,
+   "foot_x_m": 11.995,
+   "drop_m": 2.419
+  },
+  {
+   "from": "Companion",
+   "top_x_m": -14.385,
+   "foot_x_m": -15.595,
+   "drop_m": 2.276
+  }
+ ],
+ "galley": {
+  "x_m": [
+   16.55,
+   18.23
+  ],
+  "flue_x_m": 18.039,
+  "flue_m": [
+   3.255,
+   4.519
+  ],
+  "front_out_m": 0.057
+ },
+ "bow": {
+  "manger_x_m": 24.95,
+  "manger_half_m": 1.974
+ },
+ "port_stops": {
+  "ports_each_side": 15,
+  "lap_over_lid_in": 0.5,
+  "off_lid_in": 0.1,
+  "deep_in": 2.0,
+  "let_into_lining_in": 0.1
+ },
+ "after_wall": {
+  "z_m": [
+   2.444,
+   4.474
+  ],
+  "x_m": [
+   -29.161,
+   -27.761
+  ],
+  "rudder_notch_m": [
+   0.305,
+   2.737
+  ],
+  "panelling": {
+   "pilasters_y_m": [
+    -0.985,
+    0.985
+   ],
+   "cornice_m": [
+    4.322,
+    4.474
+   ],
+   "sill_rail_top_m": 2.962
+  }
+ },
+ "reveals": {
+  "lining_in": 0.75,
+  "glass_back_m": -0.005,
+  "windows": 3
+ },
+ "cabin_doors": {
+  "CabinDoor_S": {
+   "hinge_m": [
+    -22.7817,
+    0.95,
+    2.2787
+   ],
+   "width_m": 0.65,
+   "high_m": 1.676,
+   "foot_over_hinge_m": 0.037,
+   "sill_top_m": 2.3094,
+   "floor_under_swing_m": 2.3055,
+   "open_sign": -1.0,
+   "open_deg": 90.0,
+   "opens": "a turn about its own Z by open_sign x up to open_deg swings it aft into the cabin"
+  },
+  "CabinDoor_P": {
+   "hinge_m": [
+    -22.7817,
+    -0.95,
+    2.2787
+   ],
+   "width_m": 0.65,
+   "high_m": 1.676,
+   "foot_over_hinge_m": 0.037,
+   "sill_top_m": 2.3094,
+   "floor_under_swing_m": 2.3055,
+   "open_sign": 1.0,
+   "open_deg": 90.0,
+   "opens": "a turn about its own Z by open_sign x up to open_deg swings it aft into the cabin"
+  }
+ },
+ "state_rooms": {
+  "y_m": 2.6,
+  "fore_x_m": -25.7,
+  "door_x_m": [
+   -26.45,
+   -25.9
+  ]
+ },
+ "window_seat": {
+  "front_x_m": -27.634,
+  "top_z_m": 2.882,
+  "half_m": 2.581,
+  "lids": 4,
+  "panels": 10
+ },
+ "floor_cloth": {
+  "x_m": [
+   -27.609,
+   -22.807
+  ],
+  "triangles": 744
+ },
+ "furniture": {
+  "table_x_m": -24.3,
+  "chairs": 6,
+  "sideboard_x_m": [
+   -23.309,
+   -22.801
+  ]
+ },
+ "lanterns": [
+  {
+   "name": "Lantern_01_02_S",
+   "x_m": -19.597,
+   "y_m": 3.381,
+   "off_middle_m": -0.088,
+   "bay_m": [
+    -19.885,
+    -19.308
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.375,
+   "radius_m": 3.072
+  },
+  {
+   "name": "Lantern_01_02_P",
+   "x_m": -19.597,
+   "y_m": -3.381,
+   "off_middle_m": -0.088,
+   "bay_m": [
+    -19.885,
+    -19.308
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.375,
+   "radius_m": 3.072
+  },
+  {
+   "name": "Lantern_03_04_S",
+   "x_m": -12.947,
+   "y_m": 3.779,
+   "off_middle_m": -0.114,
+   "bay_m": [
+    -13.236,
+    -12.659
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.411,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_03_04_P",
+   "x_m": -12.947,
+   "y_m": -3.779,
+   "off_middle_m": -0.114,
+   "bay_m": [
+    -13.236,
+    -12.659
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.411,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_05_06_S",
+   "x_m": -6.298,
+   "y_m": 4.158,
+   "off_middle_m": -0.212,
+   "bay_m": [
+    -6.586,
+    -6.009
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.381,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_05_06_P",
+   "x_m": -6.298,
+   "y_m": -4.158,
+   "off_middle_m": -0.212,
+   "bay_m": [
+    -6.586,
+    -6.009
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.381,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_07_08_S",
+   "x_m": 0.352,
+   "y_m": 4.415,
+   "off_middle_m": -0.229,
+   "bay_m": [
+    0.064,
+    0.641
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.369,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_07_08_P",
+   "x_m": 0.352,
+   "y_m": -4.415,
+   "off_middle_m": -0.229,
+   "bay_m": [
+    0.064,
+    0.641
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.369,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_09_10_S",
+   "x_m": 7.002,
+   "y_m": 4.511,
+   "off_middle_m": -0.177,
+   "bay_m": [
+    6.713,
+    7.29
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.373,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_09_10_P",
+   "x_m": 7.002,
+   "y_m": -4.511,
+   "off_middle_m": -0.177,
+   "bay_m": [
+    6.713,
+    7.29
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.373,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_11_12_S",
+   "x_m": 13.651,
+   "y_m": 4.238,
+   "off_middle_m": -0.153,
+   "bay_m": [
+    13.363,
+    13.94
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.424,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_11_12_P",
+   "x_m": 13.651,
+   "y_m": -4.238,
+   "off_middle_m": -0.153,
+   "bay_m": [
+    13.363,
+    13.94
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.424,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_13_14_S",
+   "x_m": 20.301,
+   "y_m": 3.602,
+   "off_middle_m": -0.178,
+   "bay_m": [
+    20.012,
+    20.589
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.42,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_13_14_P",
+   "x_m": 20.301,
+   "y_m": -3.602,
+   "off_middle_m": -0.178,
+   "bay_m": [
+    20.012,
+    20.589
+   ],
+   "in_from_side_m": 1.15,
+   "bottom_over_deck_m": 1.42,
+   "radius_m": 6.0
+  },
+  {
+   "name": "Lantern_Cabin",
+   "x_m": -24.3,
+   "y_m": 0.0,
+   "off_middle_m": 0.0,
+   "bar": {
+    "between_y_m": [
+     -0.838,
+     0.838
+    ],
+    "top_under_planks_in": 1.0
+   },
+   "bottom_over_deck_m": 1.255,
+   "bottom_over_table_m": 0.519,
+   "radius_m": 4.0
+  }
+ ],
+ "capstan_bars": {
+  "bars": 12,
+  "long_m": 3.658,
+  "bays": [
+   {
+    "bay_m": [
+     -5.857,
+     -5.279
+    ],
+    "bars_a_side": 3,
+    "under_planks_m": 0.271
+   },
+   {
+    "bay_m": [
+     -3.261,
+     -2.684
+    ],
+    "bars_a_side": 3,
+    "under_planks_m": 0.27
+   }
+  ]
+ },
+ "stanchions_x_m": [
+  -18.401,
+  -13.414,
+  4.873,
+  6.535,
+  8.198,
+  9.86,
+  14.847
+ ],
+ "layout_close": [],
+ "cables": {
+  "course_m": [
+   [
+    23.731,
+    1.25,
+    1.806
+   ],
+   [
+    23.731,
+    1.25,
+    2.72
+   ],
+   [
+    24.95,
+    1.359,
+    3.092
+   ],
+   [
+    25.396,
+    1.4,
+    2.959
+   ],
+   [
+    25.473,
+    1.41,
+    2.939
+   ]
+  ],
+  "length_on_deck_m": 2.68,
+  "room_m": {
+   "manger": 0.003,
+   "deck": 0.0708,
+   "lip": 0.0541,
+   "lining": 0.0397
+  },
+  "least_bend_of_diameter": 1.5,
+  "lift_over_manger_m": 0.016,
+  "corner_over_scuttle_m": 0.12
+ },
+ "transom": {
+  "rows_retriangulated": [
+   21,
+   37
+  ],
+  "triangles": 1004
+ },
+ "lights": [
+  {
+   "name": "Lantern_01_02_S",
+   "pos_m": [
+    -19.5967,
+    3.381,
+    3.7558
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 3.072,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_01_02_P",
+   "pos_m": [
+    -19.5967,
+    -3.381,
+    3.7558
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 3.072,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_03_04_S",
+   "pos_m": [
+    -12.9471,
+    3.7789,
+    3.6305
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_03_04_P",
+   "pos_m": [
+    -12.9471,
+    -3.7789,
+    3.6305
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_05_06_S",
+   "pos_m": [
+    -6.2975,
+    4.1577,
+    3.4998
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_05_06_P",
+   "pos_m": [
+    -6.2975,
+    -4.1577,
+    3.4998
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_07_08_S",
+   "pos_m": [
+    0.3521,
+    4.4145,
+    3.4232
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_07_08_P",
+   "pos_m": [
+    0.3521,
+    -4.4145,
+    3.4232
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_09_10_S",
+   "pos_m": [
+    7.0017,
+    4.5106,
+    3.4144
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_09_10_P",
+   "pos_m": [
+    7.0017,
+    -4.5106,
+    3.4144
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_11_12_S",
+   "pos_m": [
+    13.6513,
+    4.2381,
+    3.6283
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_11_12_P",
+   "pos_m": [
+    13.6513,
+    -4.2381,
+    3.6283
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_13_14_S",
+   "pos_m": [
+    20.3009,
+    3.6016,
+    3.9198
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_13_14_P",
+   "pos_m": [
+    20.3009,
+    -3.6016,
+    3.9198
+   ],
+   "zone": "gun_deck",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 6.0,
+   "cast_shadows": false
+  },
+  {
+   "name": "Lantern_Cabin",
+   "pos_m": [
+    -24.3,
+    0.0,
+    3.7897
+   ],
+   "zone": "great_cabin",
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "kelvin": 2200,
+   "lumens": 180.0,
+   "radius_m": 4.0,
+   "cast_shadows": true
+  }
+ ],
+ "light_budget": {
+  "max_lights": 16,
+  "note": "fourteen lanterns, unshadowed, and the cabin's, shadowed (its radius 4 m); the ports and hatches give daylight: no light probes below in this slice (the PC lane's to add if the frame allows)"
+ },
+ "planking": {
+  "w": 0.1778,
+  "seam": 0.010160000000000002,
+  "x0": -1.7767376886486517,
+  "bp": 0.8312000667418808,
+  "Lb": 8,
+  "stagger": [
+   0,
+   4,
+   2,
+   6
+  ],
+  "plug_r": 0.012700000000000001,
+  "plug_off": 0.050800000000000005,
+  "nib": 0.4
+ },
+ "light_zones_note": "each light is in a zone (gun_deck, great_cabin): in the game a light should light only the objects of its own zone (lighting channels: gundeck.json below.zones), or, unshadowed, it shines through the planks onto the spar deck's guns and the berth deck below, and through the side onto the sea and the channels. The deck's lanterns reach no further than the cabin's bulkhead (each one's radius_m stops short of its fore face) and the cabin's casts shadows, so neither shines through the bulkhead",
+ "lumens_note": "set for the game's exposure below decks, not a candle's: a tallow candle gives about 12 lm and a horn lantern passes less than that, so a period gun deck at night was far darker than the game shows it (the PC lighting lane tunes it against the exposure, VisualPipeline's incident meter)",
+ "below": {
+  "collection": "GunDeck",
+  "objects": [
+   "AfterWall",
+   "CabinBulkhead",
+   "CabinDoor_P",
+   "CabinDoor_S",
+   "CabinFurniture",
+   "CapstanBars",
+   "Clamps",
+   "DeckBeams",
+   "FloorCloth",
+   "Galley",
+   "GunCapstan",
+   "GunCapstanPawls",
+   "GunDeck",
+   "GunImplements",
+   "GunWaterways",
+   "HangingKnees",
+   "HatchLadders",
+   "Hatchways",
+   "HornLanterns",
+   "LanyardFittings",
+   "LeadBushes",
+   "LidLanyards",
+   "LodgingKnees",
+   "Manger",
+   "MastWedges",
+   "PortStops",
+   "Pumps",
+   "RidingBitts",
+   "ShotGarlands",
+   "Stanchions",
+   "StateRooms",
+   "Wells",
+   "WindowReveals",
+   "WindowSeat"
+  ],
+  "lights": [
+   "Lantern_01_02_P",
+   "Lantern_01_02_S",
+   "Lantern_03_04_P",
+   "Lantern_03_04_S",
+   "Lantern_05_06_P",
+   "Lantern_05_06_S",
+   "Lantern_07_08_P",
+   "Lantern_07_08_S",
+   "Lantern_09_10_P",
+   "Lantern_09_10_S",
+   "Lantern_11_12_P",
+   "Lantern_11_12_S",
+   "Lantern_13_14_P",
+   "Lantern_13_14_S",
+   "Lantern_Cabin"
+  ],
+  "pose_collections": {
+   "Guns_Housed": "the long guns housed for sea, the lids shut, with LidLanyards_Shut and the copies' tompions and aprons (copies)",
+   "Guns_RunIn": "the long guns run in, the lids open lid_open_deg, with LidLanyards_Open",
+   "Guns_RunOut": "the long guns run out, the lids open as for Guns_RunIn, with LidLanyards_Open"
+  },
+  "irons": "each long gun's irons (Gun24_<side><port>_Irons) are in the collection Guns with the carronades' slides",
+  "seen_from_outside": "the waist and the hatchways look down into it from the spar deck, and the open ports and the stern and side windows into it from close alongside: the export lane's light copy covers those views",
+  "zones": {
+   "AfterWall": [
+    "great_cabin"
+   ],
+   "CabinBulkhead": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "CabinDoor_P": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "CabinDoor_S": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "CabinFurniture": [
+    "great_cabin"
+   ],
+   "CapstanBars": [
+    "gun_deck"
+   ],
+   "Clamps": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "DeckBeams": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "FloorCloth": [
+    "great_cabin"
+   ],
+   "Galley": [
+    "gun_deck"
+   ],
+   "GunCapstan": [
+    "gun_deck"
+   ],
+   "GunCapstanPawls": [
+    "gun_deck"
+   ],
+   "GunDeck": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "GunWaterways": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "HangingKnees": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "HatchLadders": [
+    "gun_deck"
+   ],
+   "Hatchways": [
+    "gun_deck"
+   ],
+   "HornLanterns": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "LeadBushes": [
+    "gun_deck"
+   ],
+   "LodgingKnees": [
+    "gun_deck"
+   ],
+   "Manger": [
+    "gun_deck"
+   ],
+   "MastWedges": [
+    "gun_deck"
+   ],
+   "PortStops": [
+    "gun_deck"
+   ],
+   "Pumps": [
+    "gun_deck"
+   ],
+   "RidingBitts": [
+    "gun_deck"
+   ],
+   "Stanchions": [
+    "gun_deck"
+   ],
+   "StateRooms": [
+    "great_cabin"
+   ],
+   "Wells": [
+    "gun_deck"
+   ],
+   "WindowReveals": [
+    "great_cabin"
+   ],
+   "WindowSeat": [
+    "great_cabin"
+   ],
+   "GunImplements": [
+    "gun_deck"
+   ],
+   "LanyardFittings": [
+    "gun_deck"
+   ],
+   "LidLanyards": [
+    "gun_deck"
+   ],
+   "ShotGarlands": [
+    "gun_deck"
+   ],
+   "Gun24_*": [
+    "gun_deck"
+   ],
+   "Lid_*": [
+    "gun_deck"
+   ],
+   "GunWall": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "PortLinings": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "SparDeck": [
+    "gun_deck",
+    "great_cabin"
+   ],
+   "WaistFrame": [
+    "gun_deck"
+   ],
+   "Mast_Fore": [
+    "gun_deck"
+   ],
+   "Mast_Main": [
+    "gun_deck"
+   ],
+   "Mast_Mizzen": [
+    "gun_deck"
+   ],
+   "Cable": [
+    "gun_deck"
+   ],
+   "HawseLining": [
+    "gun_deck"
+   ],
+   "HawsePlug": [
+    "gun_deck"
+   ],
+   "Transom": [
+    "great_cabin"
+   ],
+   "SternFrame": [
+    "great_cabin"
+   ],
+   "SternGlass": [
+    "great_cabin"
+   ],
+   "SternSash": [
+    "great_cabin"
+   ],
+   "CabinWindowFrame": [
+    "great_cabin"
+   ],
+   "CabinWindowGlass": [
+    "great_cabin"
+   ],
+   "CabinWindowSash": [
+    "great_cabin"
+   ]
+  }
+ },
+ "floor_cloth_square_m": 0.3048,
+ "frames": {
+  "GunCapstan": {
+   "origin_m": [
+    -9.41352,
+    0.0,
+    1.95542
+   ],
+   "x": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "y": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "z": [
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "CabinDoor_S": {
+   "origin_m": [
+    -22.78175,
+    0.95,
+    2.2787
+   ],
+   "x": [
+    -0.0,
+    -1.0,
+    -0.0
+   ],
+   "y": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "z": [
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "CabinDoor_P": {
+   "origin_m": [
+    -22.78175,
+    -0.95,
+    2.2787
+   ],
+   "x": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "y": [
+    -1.0,
+    0.0,
+    0.0
+   ],
+   "z": [
+    0.0,
+    0.0,
+    1.0
+   ]
+  }
+ },
+ "gear": {
+  "lanyard_holes_in_aft_of_out_in": [
+   -0.81,
+   -0.84,
+   -1.07,
+   -1.1,
+   -1.15,
+   -1.14,
+   -1.1,
+   -1.07,
+   -0.93,
+   -0.9,
+   -0.73,
+   -0.69,
+   -0.59,
+   -0.57,
+   -0.49,
+   -0.45,
+   -0.11,
+   -0.01,
+   0.42,
+   0.5,
+   0.79,
+   0.86,
+   1.32,
+   1.45,
+   2.02,
+   2.11,
+   6.56,
+   7.92,
+   12.22,
+   13.31,
+   -0.81,
+   -0.84,
+   -1.07,
+   -1.1,
+   -1.15,
+   -1.14,
+   -1.1,
+   -1.07,
+   -0.93,
+   -0.9,
+   -0.73,
+   -0.69,
+   -0.59,
+   -0.57,
+   -0.49,
+   -0.45,
+   -0.11,
+   -0.01,
+   0.42,
+   0.5,
+   0.79,
+   0.86,
+   1.32,
+   1.45,
+   2.02,
+   2.11,
+   6.56,
+   7.92,
+   12.22,
+   13.31
+  ],
+  "lanyard_seat_in": [
+   0.001,
+   0.003,
+   0.214,
+   0.002,
+   0.005,
+   0.232,
+   0.003,
+   0.001,
+   0.165,
+   0.002,
+   0.0,
+   0.131,
+   0.002,
+   0.0,
+   0.07,
+   0.003,
+   0.0,
+   0.029,
+   0.005,
+   0.001,
+   0.0,
+   0.004,
+   0.001,
+   0.014,
+   0.005,
+   0.0,
+   0.092,
+   0.005,
+   0.003,
+   0.155,
+   0.242,
+   0.001,
+   0.253,
+   0.276,
+   0.001,
+   0.285,
+   0.325,
+   0.0,
+   0.296,
+   0.319,
+   0.0,
+   0.288,
+   0.25,
+   0.0,
+   0.255,
+   0.228,
+   0.0,
+   0.23,
+   0.128,
+   0.0,
+   0.19,
+   0.112,
+   0.0,
+   0.174,
+   0.023,
+   0.0,
+   0.146,
+   0.009,
+   0.0,
+   0.114,
+   0.003,
+   0.0,
+   0.051,
+   0.004,
+   0.0,
+   0.033,
+   0.0,
+   0.001,
+   0.079,
+   0.0,
+   0.002,
+   0.088,
+   0.003,
+   0.0,
+   0.017,
+   0.006,
+   0.0,
+   0.0,
+   0.001,
+   0.008,
+   0.0,
+   0.003,
+   0.022,
+   0.0,
+   0.0,
+   0.011,
+   0.0,
+   0.0,
+   0.084,
+   0.14,
+   0.001,
+   0.003,
+   0.214,
+   0.002,
+   0.005,
+   0.232,
+   0.003,
+   0.001,
+   0.165,
+   0.002,
+   0.0,
+   0.131,
+   0.002,
+   0.0,
+   0.07,
+   0.003,
+   0.0,
+   0.029,
+   0.005,
+   0.001,
+   0.0,
+   0.004,
+   0.001,
+   0.014,
+   0.005,
+   0.0,
+   0.092,
+   0.005,
+   0.003,
+   0.155,
+   0.242,
+   0.001,
+   0.253,
+   0.276,
+   0.001,
+   0.285,
+   0.325,
+   0.0,
+   0.296,
+   0.319,
+   0.0,
+   0.288,
+   0.25,
+   0.0,
+   0.255,
+   0.228,
+   0.0,
+   0.23,
+   0.128,
+   0.0,
+   0.19,
+   0.112,
+   0.0,
+   0.174,
+   0.023,
+   0.0,
+   0.146,
+   0.009,
+   0.0,
+   0.114,
+   0.003,
+   0.0,
+   0.051,
+   0.004,
+   0.0,
+   0.033,
+   0.0,
+   0.001,
+   0.079,
+   0.0,
+   0.002,
+   0.088,
+   0.003,
+   0.0,
+   0.017,
+   0.006,
+   0.0,
+   0.0,
+   0.001,
+   0.008,
+   0.0,
+   0.003,
+   0.022,
+   0.0,
+   0.0,
+   0.011,
+   0.0,
+   0.0,
+   0.084,
+   0.14
+  ],
+  "lanyard_holes_lowered_in": [
+   0.05,
+   0.55,
+   0.62,
+   0.87,
+   0.9,
+   0.92,
+   0.91,
+   0.81,
+   0.79,
+   0.66,
+   0.63,
+   0.51,
+   0.45,
+   0.05,
+   0.55,
+   0.62,
+   0.87,
+   0.9,
+   0.92,
+   0.91,
+   0.81,
+   0.79,
+   0.66,
+   0.63,
+   0.51,
+   0.45
+  ],
+  "apron": {
+   "over_lock_in": 2.17,
+   "least_over_barrel_in": 0.09,
+   "s_in": [
+    -0.45,
+    11.55
+   ]
+  },
+  "implements": {
+   "sets": 14,
+   "set_width_in": 18.45,
+   "spacing_in": [
+    6.0,
+    4.5,
+    3.5
+   ],
+   "fore_and_aft_ports": [
+    7,
+    8,
+    9,
+    10
+   ],
+   "least_inboard_y_m": 0.914,
+   "by_item": [
+    {
+     "port": 1,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -21.377,
+      4.081,
+      3.887
+     ],
+     "to_m": [
+      -21.377,
+      1.033,
+      3.887
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.347,
+      0.347
+     ]
+    },
+    {
+     "port": 1,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -21.225,
+      4.087,
+      3.887
+     ],
+     "to_m": [
+      -21.225,
+      1.039,
+      3.887
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.342,
+      0.342
+     ]
+    },
+    {
+     "port": 1,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -21.11,
+      4.092,
+      3.881
+     ],
+     "to_m": [
+      -21.11,
+      2.264,
+      3.881
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 1,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -21.021,
+      4.096,
+      3.881
+     ],
+     "to_m": [
+      -21.021,
+      2.267,
+      3.881
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.343,
+      0.343
+     ]
+    },
+    {
+     "port": 2,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -18.11,
+      4.246,
+      3.808
+     ],
+     "to_m": [
+      -18.11,
+      1.198,
+      3.808
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 2,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -17.958,
+      4.254,
+      3.808
+     ],
+     "to_m": [
+      -17.958,
+      1.206,
+      3.808
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.342,
+      0.342
+     ]
+    },
+    {
+     "port": 2,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -17.843,
+      4.261,
+      3.801
+     ],
+     "to_m": [
+      -17.843,
+      2.432,
+      3.801
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 2,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -17.754,
+      4.266,
+      3.801
+     ],
+     "to_m": [
+      -17.754,
+      2.437,
+      3.801
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.344,
+      0.344
+     ]
+    },
+    {
+     "port": 3,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -14.727,
+      4.449,
+      3.746
+     ],
+     "to_m": [
+      -14.727,
+      1.401,
+      3.746
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 3,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -14.575,
+      4.458,
+      3.746
+     ],
+     "to_m": [
+      -14.575,
+      1.41,
+      3.746
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.342,
+      0.342
+     ]
+    },
+    {
+     "port": 3,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -14.461,
+      4.466,
+      3.74
+     ],
+     "to_m": [
+      -14.461,
+      2.637,
+      3.74
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.347,
+      0.347
+     ]
+    },
+    {
+     "port": 3,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -14.372,
+      4.471,
+      3.74
+     ],
+     "to_m": [
+      -14.372,
+      2.642,
+      3.74
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 4,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -11.403,
+      4.651,
+      3.689
+     ],
+     "to_m": [
+      -11.403,
+      1.603,
+      3.689
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 4,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -11.25,
+      4.66,
+      3.689
+     ],
+     "to_m": [
+      -11.25,
+      1.612,
+      3.689
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.342,
+      0.342
+     ]
+    },
+    {
+     "port": 4,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -11.136,
+      4.667,
+      3.682
+     ],
+     "to_m": [
+      -11.136,
+      2.839,
+      3.682
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 4,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -11.047,
+      4.672,
+      3.682
+     ],
+     "to_m": [
+      -11.047,
+      2.843,
+      3.682
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 5,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -8.078,
+      4.839,
+      3.62
+     ],
+     "to_m": [
+      -8.078,
+      1.791,
+      3.62
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 5,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -7.925,
+      4.846,
+      3.62
+     ],
+     "to_m": [
+      -7.925,
+      1.798,
+      3.62
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.342,
+      0.342
+     ]
+    },
+    {
+     "port": 5,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -7.811,
+      4.853,
+      3.614
+     ],
+     "to_m": [
+      -7.811,
+      3.025,
+      3.614
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 5,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -7.722,
+      4.858,
+      3.614
+     ],
+     "to_m": [
+      -7.722,
+      3.029,
+      3.614
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.344,
+      0.344
+     ]
+    },
+    {
+     "port": 6,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      -4.753,
+      5.0,
+      3.561
+     ],
+     "to_m": [
+      -4.753,
+      1.952,
+      3.561
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 6,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      -4.601,
+      5.005,
+      3.561
+     ],
+     "to_m": [
+      -4.601,
+      1.957,
+      3.561
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.343,
+      0.343
+     ]
+    },
+    {
+     "port": 6,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      -4.486,
+      5.012,
+      3.555
+     ],
+     "to_m": [
+      -4.486,
+      3.183,
+      3.555
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.347,
+      0.347
+     ]
+    },
+    {
+     "port": 6,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      -4.397,
+      5.015,
+      3.555
+     ],
+     "to_m": [
+      -4.397,
+      3.186,
+      3.555
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.346,
+      0.346
+     ]
+    },
+    {
+     "port": 7,
+     "item": "sponge_rammer",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      -2.538,
+      4.057,
+      3.511
+     ],
+     "to_m": [
+      0.51,
+      4.057,
+      3.511
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.362,
+      0.093
+     ]
+    },
+    {
+     "port": 7,
+     "item": "worm_ladle",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      -2.538,
+      3.905,
+      3.511
+     ],
+     "to_m": [
+      0.51,
+      3.905,
+      3.511
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.362,
+      0.093
+     ]
+    },
+    {
+     "port": 7,
+     "item": "handspike1",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      -1.929,
+      3.791,
+      3.509
+     ],
+     "to_m": [
+      -0.1,
+      3.791,
+      3.509
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.361,
+      0.353
+     ]
+    },
+    {
+     "port": 7,
+     "item": "handspike2",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      -1.929,
+      3.702,
+      3.509
+     ],
+     "to_m": [
+      -0.1,
+      3.702,
+      3.509
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.361,
+      0.353
+     ]
+    },
+    {
+     "port": 8,
+     "item": "sponge_rammer",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      0.653,
+      4.057,
+      3.5
+     ],
+     "to_m": [
+      3.701,
+      4.057,
+      3.5
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.094,
+      0.344
+     ]
+    },
+    {
+     "port": 8,
+     "item": "worm_ladle",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      0.653,
+      3.905,
+      3.5
+     ],
+     "to_m": [
+      3.701,
+      3.905,
+      3.5
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.094,
+      0.344
+     ]
+    },
+    {
+     "port": 8,
+     "item": "handspike1",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      1.262,
+      3.791,
+      3.494
+     ],
+     "to_m": [
+      3.091,
+      3.791,
+      3.494
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.1,
+      0.35
+     ]
+    },
+    {
+     "port": 8,
+     "item": "handspike2",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      1.262,
+      3.702,
+      3.494
+     ],
+     "to_m": [
+      3.091,
+      3.702,
+      3.494
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.1,
+      0.35
+     ]
+    },
+    {
+     "port": 9,
+     "item": "sponge_rammer",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      3.971,
+      4.057,
+      3.5
+     ],
+     "to_m": [
+      7.019,
+      4.057,
+      3.5
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.089,
+      0.345
+     ]
+    },
+    {
+     "port": 9,
+     "item": "worm_ladle",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      3.971,
+      3.905,
+      3.5
+     ],
+     "to_m": [
+      7.019,
+      3.905,
+      3.5
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.089,
+      0.345
+     ]
+    },
+    {
+     "port": 9,
+     "item": "handspike1",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      4.58,
+      3.791,
+      3.493
+     ],
+     "to_m": [
+      6.409,
+      3.791,
+      3.493
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.095,
+      0.35
+     ]
+    },
+    {
+     "port": 9,
+     "item": "handspike2",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      4.58,
+      3.702,
+      3.493
+     ],
+     "to_m": [
+      6.409,
+      3.702,
+      3.493
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.095,
+      0.35
+     ]
+    },
+    {
+     "port": 10,
+     "item": "sponge_rammer",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      7.338,
+      4.057,
+      3.505
+     ],
+     "to_m": [
+      10.386,
+      4.057,
+      3.505
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.101,
+      0.4
+     ]
+    },
+    {
+     "port": 10,
+     "item": "worm_ladle",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      7.338,
+      3.905,
+      3.505
+     ],
+     "to_m": [
+      10.386,
+      3.905,
+      3.505
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.101,
+      0.4
+     ]
+    },
+    {
+     "port": 10,
+     "item": "handspike1",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      7.947,
+      3.791,
+      3.506
+     ],
+     "to_m": [
+      9.776,
+      3.791,
+      3.506
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.359,
+      0.387
+     ]
+    },
+    {
+     "port": 10,
+     "item": "handspike2",
+     "stowed": "fore_and_aft",
+     "from_m": [
+      7.947,
+      3.702,
+      3.506
+     ],
+     "to_m": [
+      9.776,
+      3.702,
+      3.506
+     ],
+     "hangers_at": [
+      0.25,
+      0.75
+     ],
+     "hanger_drop_m": [
+      0.359,
+      0.387
+     ]
+    },
+    {
+     "port": 11,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      12.517,
+      5.077,
+      3.686
+     ],
+     "to_m": [
+      12.517,
+      2.029,
+      3.686
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.338,
+      0.338
+     ]
+    },
+    {
+     "port": 11,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      12.67,
+      5.07,
+      3.686
+     ],
+     "to_m": [
+      12.67,
+      2.022,
+      3.686
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.344,
+      0.344
+     ]
+    },
+    {
+     "port": 11,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      12.784,
+      5.066,
+      3.68
+     ],
+     "to_m": [
+      12.784,
+      3.237,
+      3.68
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.354,
+      0.354
+     ]
+    },
+    {
+     "port": 11,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      12.873,
+      5.062,
+      3.68
+     ],
+     "to_m": [
+      12.873,
+      3.233,
+      3.68
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.357,
+      0.357
+     ]
+    },
+    {
+     "port": 12,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      15.196,
+      4.913,
+      3.77
+     ],
+     "to_m": [
+      15.196,
+      1.865,
+      3.77
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.339,
+      0.339
+     ]
+    },
+    {
+     "port": 12,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      15.348,
+      4.902,
+      3.77
+     ],
+     "to_m": [
+      15.348,
+      1.854,
+      3.77
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.344,
+      0.344
+     ]
+    },
+    {
+     "port": 12,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      15.463,
+      4.895,
+      3.764
+     ],
+     "to_m": [
+      15.463,
+      3.066,
+      3.764
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.354,
+      0.354
+     ]
+    },
+    {
+     "port": 12,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      15.551,
+      4.889,
+      3.764
+     ],
+     "to_m": [
+      15.551,
+      3.06,
+      3.764
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.357,
+      0.357
+     ]
+    },
+    {
+     "port": 13,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      18.521,
+      4.611,
+      3.91
+     ],
+     "to_m": [
+      18.521,
+      1.563,
+      3.91
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.336,
+      0.336
+     ]
+    },
+    {
+     "port": 13,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      18.673,
+      4.595,
+      3.91
+     ],
+     "to_m": [
+      18.673,
+      1.547,
+      3.91
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.344,
+      0.344
+     ]
+    },
+    {
+     "port": 13,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      18.787,
+      4.584,
+      3.904
+     ],
+     "to_m": [
+      18.787,
+      2.755,
+      3.904
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.358,
+      0.358
+     ]
+    },
+    {
+     "port": 13,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      18.876,
+      4.574,
+      3.904
+     ],
+     "to_m": [
+      18.876,
+      2.746,
+      3.904
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.363,
+      0.363
+     ]
+    },
+    {
+     "port": 14,
+     "item": "sponge_rammer",
+     "stowed": "athwartships",
+     "from_m": [
+      21.845,
+      4.017,
+      4.141
+     ],
+     "to_m": [
+      21.845,
+      0.969,
+      4.141
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.332,
+      0.332
+     ]
+    },
+    {
+     "port": 14,
+     "item": "worm_ladle",
+     "stowed": "athwartships",
+     "from_m": [
+      21.998,
+      3.962,
+      4.141
+     ],
+     "to_m": [
+      21.998,
+      0.914,
+      4.141
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.345,
+      0.345
+     ]
+    },
+    {
+     "port": 14,
+     "item": "handspike1",
+     "stowed": "athwartships",
+     "from_m": [
+      22.112,
+      3.917,
+      4.135
+     ],
+     "to_m": [
+      22.112,
+      2.089,
+      4.135
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.363,
+      0.363
+     ]
+    },
+    {
+     "port": 14,
+     "item": "handspike2",
+     "stowed": "athwartships",
+     "from_m": [
+      22.201,
+      3.881,
+      4.135
+     ],
+     "to_m": [
+      22.201,
+      2.053,
+      4.135
+     ],
+     "hangers_at": [
+      0.22,
+      0.72
+     ],
+     "hanger_drop_m": [
+      0.371,
+      0.371
+     ]
+    }
+   ]
+  },
+  "garlands": [
+   {
+    "gun": 1,
+    "x_m": [
+     -20.149,
+     -18.828
+    ],
+    "port_clear_m": [
+     0.397,
+     0.397
+    ]
+   },
+   {
+    "gun": 2,
+    "x_m": [
+     -16.883,
+     -15.563
+    ],
+    "port_clear_m": [
+     0.587,
+     0.587
+    ]
+   },
+   {
+    "gun": 3,
+    "x_m": [
+     -13.488,
+     -12.167
+    ],
+    "port_clear_m": [
+     0.448,
+     0.448
+    ]
+   },
+   {
+    "gun": 4,
+    "x_m": [
+     -10.181,
+     -8.86
+    ],
+    "port_clear_m": [
+     0.524,
+     0.524
+    ]
+   },
+   {
+    "gun": 5,
+    "x_m": [
+     -6.752,
+     -5.432
+    ],
+    "port_clear_m": [
+     0.537,
+     0.537
+    ]
+   },
+   {
+    "gun": 6,
+    "x_m": [
+     -3.326,
+     -2.005
+    ],
+    "port_clear_m": [
+     0.495,
+     0.495
+    ]
+   },
+   {
+    "gun": 7,
+    "x_m": [
+     -0.079,
+     1.242
+    ],
+    "port_clear_m": [
+     0.44,
+     0.44
+    ]
+   },
+   {
+    "gun": 8,
+    "x_m": [
+     3.181,
+     4.502
+    ],
+    "port_clear_m": [
+     0.509,
+     0.509
+    ]
+   },
+   {
+    "gun": 9,
+    "x_m": [
+     6.502,
+     7.823
+    ],
+    "port_clear_m": [
+     0.523,
+     0.523
+    ]
+   },
+   {
+    "gun": 10,
+    "x_m": [
+     9.83,
+     11.151
+    ],
+    "port_clear_m": [
+     0.453,
+     0.453
+    ]
+   },
+   {
+    "gun": 11,
+    "x_m": [
+     13.136,
+     14.457
+    ],
+    "port_clear_m": [
+     0.534,
+     0.534
+    ]
+   },
+   {
+    "gun": 12,
+    "x_m": [
+     16.492,
+     17.813
+    ],
+    "port_clear_m": [
+     0.475,
+     0.475
+    ]
+   },
+   {
+    "gun": 13,
+    "x_m": [
+     19.838,
+     21.159
+    ],
+    "port_clear_m": [
+     0.612,
+     0.612
+    ]
+   },
+   {
+    "gun": 14,
+    "x_m": [
+     22.927,
+     24.248
+    ],
+    "port_clear_m": [
+     0.297,
+     0.297
+    ]
+   }
+  ],
+  "lanyards": {
+   "lids": 15,
+   "each": 2,
+   "always_shut": [
+    "Lid_15"
+   ]
+  },
+  "lanyards_open": {
+   "lids": [
+    "Lid_01_P",
+    "Lid_01_S",
+    "Lid_02_P",
+    "Lid_02_S",
+    "Lid_03_P",
+    "Lid_03_S",
+    "Lid_04_P",
+    "Lid_04_S",
+    "Lid_05_P",
+    "Lid_05_S",
+    "Lid_06_P",
+    "Lid_06_S",
+    "Lid_07_P",
+    "Lid_07_S",
+    "Lid_08_P",
+    "Lid_08_S",
+    "Lid_09_P",
+    "Lid_09_S",
+    "Lid_10_P",
+    "Lid_10_S",
+    "Lid_11_P",
+    "Lid_11_S",
+    "Lid_12_P",
+    "Lid_12_S",
+    "Lid_13_P",
+    "Lid_13_S",
+    "Lid_14_P",
+    "Lid_14_S"
+   ],
+   "least_clear_of_knuckle_in": 6.04
+  }
+ },
+ "lid_open_deg": {
+  "Lid_01_P": 130,
+  "Lid_02_P": 95,
+  "Lid_03_P": 90,
+  "Lid_04_P": 85,
+  "Lid_05_P": 85,
+  "Lid_06_P": 80,
+  "Lid_07_P": 80,
+  "Lid_08_P": 80,
+  "Lid_09_P": 80,
+  "Lid_10_P": 80,
+  "Lid_11_P": 80,
+  "Lid_12_P": 90,
+  "Lid_13_P": 95,
+  "Lid_14_P": 175,
+  "Lid_01_S": 130,
+  "Lid_02_S": 95,
+  "Lid_03_S": 90,
+  "Lid_04_S": 85,
+  "Lid_05_S": 85,
+  "Lid_06_S": 80,
+  "Lid_07_S": 80,
+  "Lid_08_S": 80,
+  "Lid_09_S": 80,
+  "Lid_10_S": 80,
+  "Lid_11_S": 80,
+  "Lid_12_S": 90,
+  "Lid_13_S": 95,
+  "Lid_14_S": 175
+ },
+ "copies": [
+  {
+   "name": "Gun24_P01_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.061981,
+     0.99724,
+     0.040884,
+     -20.911404
+    ],
+    [
+     -0.980906,
+     -0.068429,
+     0.182045,
+     -2.865803
+    ],
+    [
+     0.18434,
+     -0.02882,
+     0.98244,
+     3.171675
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P01_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.061981,
+     0.99724,
+     0.040884,
+     -20.911404
+    ],
+    [
+     -0.980906,
+     -0.068429,
+     0.182045,
+     -2.865803
+    ],
+    [
+     0.18434,
+     -0.02882,
+     0.98244,
+     3.171675
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P02_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.0675,
+     0.996956,
+     0.039028,
+     -17.785015
+    ],
+    [
+     -0.980596,
+     -0.073507,
+     0.181736,
+     -3.045598
+    ],
+    [
+     0.184052,
+     -0.026003,
+     0.982573,
+     3.07788
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P02_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.0675,
+     0.996956,
+     0.039028,
+     -17.785015
+    ],
+    [
+     -0.980596,
+     -0.073507,
+     0.181736,
+     -3.045598
+    ],
+    [
+     0.184052,
+     -0.026003,
+     0.982573,
+     3.07788
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P03_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.066309,
+     0.997229,
+     0.033734,
+     -14.294908
+    ],
+    [
+     -0.98075,
+     -0.071361,
+     0.181763,
+     -3.266367
+    ],
+    [
+     0.183667,
+     -0.021032,
+     0.982763,
+     2.99605
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P03_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.066309,
+     0.997229,
+     0.033734,
+     -14.294908
+    ],
+    [
+     -0.98075,
+     -0.071361,
+     0.181763,
+     -3.266367
+    ],
+    [
+     0.183667,
+     -0.021032,
+     0.982763,
+     2.99605
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P04_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.066278,
+     0.99736,
+     0.029673,
+     -11.052163
+    ],
+    [
+     -0.980804,
+     -0.070586,
+     0.181774,
+     -3.469165
+    ],
+    [
+     0.183388,
+     -0.017055,
+     0.982893,
+     2.934342
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P04_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.066278,
+     0.99736,
+     0.029673,
+     -11.052163
+    ],
+    [
+     -0.980804,
+     -0.070586,
+     0.181774,
+     -3.469165
+    ],
+    [
+     0.183388,
+     -0.017055,
+     0.982893,
+     2.934342
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P05_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.061175,
+     0.997834,
+     0.024176,
+     -7.665952
+    ],
+    [
+     -0.981204,
+     -0.064562,
+     0.181852,
+     -3.667261
+    ],
+    [
+     0.183019,
+     -0.012597,
+     0.983029,
+     2.884254
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P05_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.061175,
+     0.997834,
+     0.024176,
+     -7.665952
+    ],
+    [
+     -0.981204,
+     -0.064562,
+     0.181852,
+     -3.667261
+    ],
+    [
+     0.183019,
+     -0.012597,
+     0.983029,
+     2.884254
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P06_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.044968,
+     0.998832,
+     0.017679,
+     -4.24866
+    ],
+    [
+     -0.982149,
+     -0.047438,
+     0.182026,
+     -3.833532
+    ],
+    [
+     0.182652,
+     -0.009178,
+     0.983135,
+     2.847104
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P06_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.044968,
+     0.998832,
+     0.017679,
+     -4.24866
+    ],
+    [
+     -0.982149,
+     -0.047438,
+     0.182026,
+     -3.833532
+    ],
+    [
+     0.182652,
+     -0.009178,
+     0.983135,
+     2.847104
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P07_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.033006,
+     0.999326,
+     0.016084,
+     -0.931825
+    ],
+    [
+     -0.98264,
+     -0.035386,
+     0.182118,
+     -3.956772
+    ],
+    [
+     0.182564,
+     -0.009794,
+     0.983145,
+     2.815401
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P07_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.033006,
+     0.999326,
+     0.016084,
+     -0.931825
+    ],
+    [
+     -0.98264,
+     -0.035386,
+     0.182118,
+     -3.956772
+    ],
+    [
+     0.182564,
+     -0.009794,
+     0.983145,
+     2.815401
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P08_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.025053,
+     0.999624,
+     0.011105,
+     2.238807
+    ],
+    [
+     -0.982907,
+     -0.026658,
+     0.182164,
+     -4.053493
+    ],
+    [
+     0.182392,
+     -0.006351,
+     0.983205,
+     2.789001
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P08_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.025053,
+     0.999624,
+     0.011105,
+     2.238807
+    ],
+    [
+     -0.982907,
+     -0.026658,
+     0.182164,
+     -4.053493
+    ],
+    [
+     0.182392,
+     -0.006351,
+     0.983205,
+     2.789001
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P09_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.003821,
+     0.999989,
+     -0.002629,
+     5.501058
+    ],
+    [
+     -0.983256,
+     -0.003278,
+     0.182202,
+     -4.103747
+    ],
+    [
+     0.182191,
+     0.003281,
+     0.983258,
+     2.780289
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P09_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.003821,
+     0.999989,
+     -0.002629,
+     5.501058
+    ],
+    [
+     -0.983256,
+     -0.003278,
+     0.182202,
+     -4.103747
+    ],
+    [
+     0.182191,
+     0.003281,
+     0.983258,
+     2.780289
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P10_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.032216,
+     0.999137,
+     -0.026232,
+     8.773692
+    ],
+    [
+     -0.982607,
+     0.036464,
+     0.182083,
+     -4.055451
+    ],
+    [
+     0.182882,
+     0.01991,
+     0.982933,
+     2.818836
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P10_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.032216,
+     0.999137,
+     -0.026232,
+     8.773692
+    ],
+    [
+     -0.982607,
+     0.036464,
+     0.182083,
+     -4.055451
+    ],
+    [
+     0.182882,
+     0.01991,
+     0.982933,
+     2.818836
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P11_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.072177,
+     0.996423,
+     -0.043953,
+     11.919453
+    ],
+    [
+     -0.980183,
+     0.079014,
+     0.181653,
+     -3.919873
+    ],
+    [
+     0.184476,
+     0.029971,
+     0.98238,
+     2.899469
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P11_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.072177,
+     0.996423,
+     -0.043953,
+     11.919453
+    ],
+    [
+     -0.980183,
+     0.079014,
+     0.181653,
+     -3.919873
+    ],
+    [
+     0.184476,
+     0.029971,
+     0.98238,
+     2.899469
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P12_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.090568,
+     0.994528,
+     -0.05208,
+     15.281916
+    ],
+    [
+     -0.978464,
+     0.098602,
+     0.181344,
+     -3.6965
+    ],
+    [
+     0.185487,
+     0.034535,
+     0.98204,
+     3.008882
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P12_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.090568,
+     0.994528,
+     -0.05208,
+     15.281916
+    ],
+    [
+     -0.978464,
+     0.098602,
+     0.181344,
+     -3.6965
+    ],
+    [
+     0.185487,
+     0.034535,
+     0.98204,
+     3.008882
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P13_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.115084,
+     0.990601,
+     -0.073926,
+     18.47356
+    ],
+    [
+     -0.975323,
+     0.126798,
+     0.18074,
+     -3.385204
+    ],
+    [
+     0.188415,
+     0.051302,
+     0.980749,
+     3.13911
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P13_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.115084,
+     0.990601,
+     -0.073926,
+     18.47356
+    ],
+    [
+     -0.975323,
+     0.126798,
+     0.18074,
+     -3.385204
+    ],
+    [
+     0.188415,
+     0.051302,
+     0.980749,
+     3.13911
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P14_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.385278,
+     0.910137,
+     -0.152353,
+     21.356735
+    ],
+    [
+     -0.897733,
+     0.407888,
+     0.166442,
+     -2.84129
+    ],
+    [
+     0.213628,
+     0.072646,
+     0.97421,
+     3.333582
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_P14_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.385278,
+     0.910137,
+     -0.152353,
+     21.356735
+    ],
+    [
+     -0.897733,
+     0.407888,
+     0.166442,
+     -2.84129
+    ],
+    [
+     0.213628,
+     0.072646,
+     0.97421,
+     3.333582
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S01_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.061981,
+     -0.99724,
+     0.040884,
+     -20.911404
+    ],
+    [
+     0.980906,
+     -0.068429,
+     -0.182045,
+     2.865803
+    ],
+    [
+     0.18434,
+     0.02882,
+     0.98244,
+     3.171675
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S01_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.061981,
+     -0.99724,
+     0.040884,
+     -20.911404
+    ],
+    [
+     0.980906,
+     -0.068429,
+     -0.182045,
+     2.865803
+    ],
+    [
+     0.18434,
+     0.02882,
+     0.98244,
+     3.171675
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S02_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.0675,
+     -0.996956,
+     0.039028,
+     -17.785015
+    ],
+    [
+     0.980596,
+     -0.073507,
+     -0.181736,
+     3.045598
+    ],
+    [
+     0.184052,
+     0.026003,
+     0.982573,
+     3.07788
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S02_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.0675,
+     -0.996956,
+     0.039028,
+     -17.785015
+    ],
+    [
+     0.980596,
+     -0.073507,
+     -0.181736,
+     3.045598
+    ],
+    [
+     0.184052,
+     0.026003,
+     0.982573,
+     3.07788
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S03_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.066309,
+     -0.997229,
+     0.033734,
+     -14.294908
+    ],
+    [
+     0.98075,
+     -0.071361,
+     -0.181763,
+     3.266367
+    ],
+    [
+     0.183667,
+     0.021032,
+     0.982763,
+     2.99605
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S03_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.066309,
+     -0.997229,
+     0.033734,
+     -14.294908
+    ],
+    [
+     0.98075,
+     -0.071361,
+     -0.181763,
+     3.266367
+    ],
+    [
+     0.183667,
+     0.021032,
+     0.982763,
+     2.99605
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S04_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.066278,
+     -0.99736,
+     0.029673,
+     -11.052163
+    ],
+    [
+     0.980804,
+     -0.070586,
+     -0.181774,
+     3.469165
+    ],
+    [
+     0.183388,
+     0.017055,
+     0.982893,
+     2.934342
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S04_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.066278,
+     -0.99736,
+     0.029673,
+     -11.052163
+    ],
+    [
+     0.980804,
+     -0.070586,
+     -0.181774,
+     3.469165
+    ],
+    [
+     0.183388,
+     0.017055,
+     0.982893,
+     2.934342
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S05_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.061175,
+     -0.997834,
+     0.024176,
+     -7.665952
+    ],
+    [
+     0.981204,
+     -0.064562,
+     -0.181852,
+     3.667261
+    ],
+    [
+     0.183019,
+     0.012597,
+     0.983029,
+     2.884254
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S05_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.061175,
+     -0.997834,
+     0.024176,
+     -7.665952
+    ],
+    [
+     0.981204,
+     -0.064562,
+     -0.181852,
+     3.667261
+    ],
+    [
+     0.183019,
+     0.012597,
+     0.983029,
+     2.884254
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S06_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.044968,
+     -0.998832,
+     0.017679,
+     -4.24866
+    ],
+    [
+     0.982149,
+     -0.047438,
+     -0.182026,
+     3.833532
+    ],
+    [
+     0.182652,
+     0.009178,
+     0.983135,
+     2.847104
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S06_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.044968,
+     -0.998832,
+     0.017679,
+     -4.24866
+    ],
+    [
+     0.982149,
+     -0.047438,
+     -0.182026,
+     3.833532
+    ],
+    [
+     0.182652,
+     0.009178,
+     0.983135,
+     2.847104
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S07_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.033006,
+     -0.999326,
+     0.016084,
+     -0.931825
+    ],
+    [
+     0.98264,
+     -0.035386,
+     -0.182118,
+     3.956772
+    ],
+    [
+     0.182564,
+     0.009794,
+     0.983145,
+     2.815401
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S07_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.033006,
+     -0.999326,
+     0.016084,
+     -0.931825
+    ],
+    [
+     0.98264,
+     -0.035386,
+     -0.182118,
+     3.956772
+    ],
+    [
+     0.182564,
+     0.009794,
+     0.983145,
+     2.815401
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S08_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.025053,
+     -0.999624,
+     0.011105,
+     2.238807
+    ],
+    [
+     0.982907,
+     -0.026658,
+     -0.182164,
+     4.053493
+    ],
+    [
+     0.182392,
+     0.006351,
+     0.983205,
+     2.789001
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S08_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.025053,
+     -0.999624,
+     0.011105,
+     2.238807
+    ],
+    [
+     0.982907,
+     -0.026658,
+     -0.182164,
+     4.053493
+    ],
+    [
+     0.182392,
+     0.006351,
+     0.983205,
+     2.789001
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S09_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     -0.003821,
+     -0.999989,
+     -0.002629,
+     5.501058
+    ],
+    [
+     0.983256,
+     -0.003278,
+     -0.182202,
+     4.103747
+    ],
+    [
+     0.182191,
+     -0.003281,
+     0.983258,
+     2.780289
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S09_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     -0.003821,
+     -0.999989,
+     -0.002629,
+     5.501058
+    ],
+    [
+     0.983256,
+     -0.003278,
+     -0.182202,
+     4.103747
+    ],
+    [
+     0.182191,
+     -0.003281,
+     0.983258,
+     2.780289
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S10_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.032216,
+     -0.999137,
+     -0.026232,
+     8.773692
+    ],
+    [
+     0.982607,
+     0.036464,
+     -0.182083,
+     4.055451
+    ],
+    [
+     0.182882,
+     -0.01991,
+     0.982933,
+     2.818836
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S10_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.032216,
+     -0.999137,
+     -0.026232,
+     8.773692
+    ],
+    [
+     0.982607,
+     0.036464,
+     -0.182083,
+     4.055451
+    ],
+    [
+     0.182882,
+     -0.01991,
+     0.982933,
+     2.818836
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S11_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.072177,
+     -0.996423,
+     -0.043953,
+     11.919453
+    ],
+    [
+     0.980183,
+     0.079014,
+     -0.181653,
+     3.919873
+    ],
+    [
+     0.184476,
+     -0.029971,
+     0.98238,
+     2.899469
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S11_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.072177,
+     -0.996423,
+     -0.043953,
+     11.919453
+    ],
+    [
+     0.980183,
+     0.079014,
+     -0.181653,
+     3.919873
+    ],
+    [
+     0.184476,
+     -0.029971,
+     0.98238,
+     2.899469
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S12_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.090568,
+     -0.994528,
+     -0.05208,
+     15.281916
+    ],
+    [
+     0.978464,
+     0.098602,
+     -0.181344,
+     3.6965
+    ],
+    [
+     0.185487,
+     -0.034535,
+     0.98204,
+     3.008882
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S12_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.090568,
+     -0.994528,
+     -0.05208,
+     15.281916
+    ],
+    [
+     0.978464,
+     0.098602,
+     -0.181344,
+     3.6965
+    ],
+    [
+     0.185487,
+     -0.034535,
+     0.98204,
+     3.008882
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S13_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.115084,
+     -0.990601,
+     -0.073926,
+     18.47356
+    ],
+    [
+     0.975323,
+     0.126798,
+     -0.18074,
+     3.385204
+    ],
+    [
+     0.188415,
+     -0.051302,
+     0.980749,
+     3.13911
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S13_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.115084,
+     -0.990601,
+     -0.073926,
+     18.47356
+    ],
+    [
+     0.975323,
+     0.126798,
+     -0.18074,
+     3.385204
+    ],
+    [
+     0.188415,
+     -0.051302,
+     0.980749,
+     3.13911
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S14_Tompion",
+   "mesh": "Gun24_Tompion",
+   "matrix": [
+    [
+     0.385278,
+     -0.910137,
+     -0.152353,
+     21.356735
+    ],
+    [
+     0.897733,
+     0.407888,
+     -0.166442,
+     2.84129
+    ],
+    [
+     0.213628,
+     -0.072646,
+     0.97421,
+     3.333582
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  },
+  {
+   "name": "Gun24_S14_Apron",
+   "mesh": "Gun24_Apron",
+   "matrix": [
+    [
+     0.385278,
+     -0.910137,
+     -0.152353,
+     21.356735
+    ],
+    [
+     0.897733,
+     0.407888,
+     -0.166442,
+     2.84129
+    ],
+    [
+     0.213628,
+     -0.072646,
+     0.97421,
+     3.333582
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "collection": "Guns_Housed"
+  }
+ ]
+}
