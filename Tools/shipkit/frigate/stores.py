@@ -22,7 +22,7 @@ import os
 import numpy as np
 
 import loft
-from deck import Part, vbox, bar
+from deck import Part, vbox
 from rigging import tube
 from spars import box, unit
 
@@ -105,7 +105,10 @@ def lathe(part, o, axis, ref, prof, mats, n=24):
             else:
                 F.append((A[i], A[i + 1], B[i + 1], B[i]))
             M.append(mats[k])
+    k0 = part.n
     add_solid(part, np.array(V), F, M, np.array(U))
+    if hasattr(part, "seams"):                         # the doubled seam's vertices, to be welded in the exported mesh
+        part.seams += [(k0 + R[n], k0 + R[0]) for R in rings if len(R) > 1]
 
 
 def tessellate(loops):
@@ -216,22 +219,38 @@ def sphere(part, c, r, mat, n=8, rings=5):
 
 
 # ---- the kit ----------------------------------------------------------------------------------------------------------------
-class Item:
-    """one stores item: its pieces {name: Part}, its rests {name: {'turn_deg': [about x, y, z], 'lift_m'}}, its attach
-    points {name: [x, y, z]}, its slots [{'item', 'name', 'at_m', 'turn_deg'}], whether it stands on the deck (for
-    the standing check) and its notes"""
+class SPart(Part):
+    """a deck.Part that also keeps its seams: pairs of vertices (the one doubled for a turned piece's UVs, the one it
+    doubles) that are one vertex in the exported mesh, so a turned piece is closed and shades smooth across its seam"""
 
-    def __init__(self, name, note, stands=True):
-        self.name, self.note, self.stands = name, note, stands
+    def __init__(self):
+        super().__init__()
+        self.seams = []
+
+    def extend(self, other):
+        k0 = self.n
+        super().extend(other)
+        self.seams += [(k0 + a, k0 + b) for a, b in getattr(other, "seams", [])]
+
+
+class Item:
+    """one stores item: its pieces {name: SPart}; its rests {name: {'turn_deg', 'at_m'}} and slots [{'item', 'name',
+    'turn_deg', 'at_m'}], each placed the same way: turned about X, then Y, then Z (degrees, R = Rz Ry Rx), then moved
+    to at_m; its attach points {name: [x, y, z]}; whether it stands on the deck; its anchors (where the ship holds a hung
+    item, for the held check: ('z', z) a level plane, ('x', x) a plane square to X, ('p', point, r) a point); the card's
+    triangle figure it is reported against (budget_key) and its notes"""
+
+    def __init__(self, name, note, stands=True, budget_key="each"):
+        self.name, self.note, self.stands, self.budget_key = name, note, stands, budget_key
         self.pieces = {}
-        self.rests = {"as_built": {"turn_deg": [0.0, 0.0, 0.0], "lift_m": 0.0}}
-        self.attach, self.slots, self.info = {}, [], {}
+        self.rests = {"as_built": {"turn_deg": [0.0, 0.0, 0.0], "at_m": [0.0, 0.0, 0.0]}}
+        self.attach, self.slots, self.info, self.anchors = {}, [], {}, []
 
     def piece(self, name):
-        return self.pieces.setdefault(name, Part())
+        return self.pieces.setdefault(name, SPart())
 
     def merged(self):
-        P = Part()
+        P = SPart()
         for name in sorted(self.pieces):
             P.extend(self.pieces[name])
         return P
@@ -250,7 +269,8 @@ class Kit:
                  self.hammock_lashed(), self.hammock_hook(), self.quoin()]
         items += [self.cask(k) for k in self.c["casks"]["kinds"]]
         items += [self.shot_locker(k) for k in self.c["shot_lockers"]["kinds"]]
-        items += [self.magazine_rack(), self.cartridge(), self.cartridge_rack(), self.passing_box()]
+        items += [self.magazine_rack(), self.cartridge(), self.cartridge_rack(), self.passing_box(), self.filling_bench(),
+                  self.bread_bag()]
         return {it.name: it for it in items}
 
     # --- the mess ---------------------------------------------------------------------------------------------------------
@@ -296,12 +316,20 @@ class Kit:
                 th = np.linspace(0.0, 2 * math.pi, 13)[:-1]
                 tube(it.piece("Eyes"), c_eye + np.stack([np.zeros_like(th), np.cos(th) * er * 0.6, np.sin(th) * er * 0.6], 1),
                      eb * 0.9, "Iron", n=6, closed=True)
-            # the sling: from through the table's eye up to through the beam's, a hair beside the eyes' bars
-            za = h + 0.4 * IN + 2 * er * 0.6 + eb * 0.6
-            zb = z_beam - 0.4 * IN - 2 * er * 0.6 - eb * 0.6
-            tube(it.piece("Slings"), np.array([[xi + 0.1 * IN, y, za - 0.3 * IN], [xi + 0.1 * IN, y, zb + 0.3 * IN]]), sr,
-                 "Hemp", n=6)
+            # the sling: an eye round the far bar of the table's eye (down one side of the bar, under it through the
+            # eye, up the other side and seized to itself), straight up, and an eye round the near bar of the beam's
+            ra = eb * 0.9 + sr * 0.85                          # the sling's centreline round a bar, bearing on it
+            ca = np.array([xi, y, h + 0.4 * IN + 2 * er * 0.6 + eb * 0.6])          # the table eye's top bar
+            cb = np.array([xi, y, z_beam - 0.4 * IN - 2 * er * 0.6 - eb * 0.6])     # the beam eye's bottom bar
+            lo_eye = [ca + ra * np.array([math.cos(a), 0.0, -math.sin(a)]) for a in np.linspace(0.0, math.pi, 7)]
+            hi_eye = [cb + ra * np.array([-math.cos(a), 0.0, math.sin(a)]) for a in np.linspace(0.0, math.pi, 7)]
+            path = [lo_eye[-1] + EZ * 1.2 * IN] + lo_eye[::-1] + [ca + EX * ra + EZ * 1.5 * IN,
+                                                                   cb - EX * ra - EZ * 1.5 * IN] + hi_eye
+            path += [hi_eye[-1] - EZ * 1.2 * IN]
+            # the two legs of each eye lie side by side: the returning end a sling's breadth off the standing part
+            tube(it.piece("Slings"), np.array(path), sr, "Hemp", n=6)
         it.attach = {"side": [xc0 + cd, 0.0, z0 - ch / 2], "beam": [xi, 0.0, z_beam]}
+        it.anchors = [("x", xc0 + cd), ("z", z_beam)]
         it.info = {"sling_m": round(z_beam, 4), "top_m": round(h, 4), "seats": 8}
         return it
 
@@ -338,7 +366,6 @@ class Kit:
         prof = [(chime, 0.0), (chime, r(chime) - st), (0.0, r(0.0) - st)]
         mats = ["Oak", "Oak"]
         hoops = sorted(kc["hoops"])
-        z = 0.0
         prof.append((0.0, r(0.0)))
         mats.append("Oak")
         for zc, w in hoops:
@@ -408,11 +435,10 @@ class Kit:
         zt, zl = zb - ls + 0.5 * IN, zb - ls - hl + 1.0 * IN
         yf = lambda z: depth(z) / 2                         # noqa
         nrm = unit(np.array([0.0, 1.0, (Df - Dt) / 2 / zb]))
-        for z0_, z1_, grow, piece in ((zl, zt, 0.0, "Hasp"),):
-            # a plate lying on the front face from below the skirt up under it
-            c = np.array([0.0, yf(0.5 * (z0_ + z1_)), 0.5 * (z0_ + z1_)]) + nrm * (ht / 2 - 0.02 * IN)
-            up = unit(np.array([0.0, yf(z1_) - yf(z0_), z1_ - z0_]))
-            box(it.piece(piece), c, EX, nrm, up, hw / 2, ht / 2, (z1_ - z0_) / 2, "Iron")
+        # a plate lying on the front face from below the skirt up under it
+        c = np.array([0.0, yf(0.5 * (zl + zt)), 0.5 * (zl + zt)]) + nrm * (ht / 2 - 0.02 * IN)
+        up = unit(np.array([0.0, yf(zt) - yf(zl), zt - zl]))
+        box(it.piece("Hasp"), c, EX, nrm, up, hw / 2, ht / 2, (zt - zl) / 2, "Iron")
         zs = zl + 1.0 * IN
         c = np.array([0.0, yf(zs), zs]) + nrm * (ht + 0.25 * IN)
         th = np.linspace(0.0, math.pi, 7)
@@ -435,7 +461,7 @@ class Kit:
         sag, drop = hc["sag_in"] * IN, hc["drop_in"] * IN
         c_end, c_mid = (v * IN for v in hc["chord_in"])
         it = Item("HammockSlung", "a hammock slung between two hooks (hung: its origin midway between the hooks' bights)",
-                  stands=False)
+                  stands=False, budget_key="hammock")
         Lx = L * 0.985                                    # its length along X, a little under the cloth's for the sag
         nu, nv = 17, 11
         xs = np.linspace(-Lx / 2, Lx / 2, nu)
@@ -482,18 +508,19 @@ class Kit:
         # cloth (a hair into it), thickest along the middle
         bd = hc["bed"]
         e = bd["in_from_ends_in"] * IN
-        bu, bv = 13, 9
+        bu, bv = 15, 9
         bxs = np.linspace(-Lx / 2 + e, Lx / 2 - e, bu)
-        bfr = np.linspace(-bd["across"], bd["across"], bv)
         Bb = np.zeros((bu, bv, 3))
         Bt = np.zeros((bu, bv, 3))
         for i, x in enumerate(bxs):
-            for j, f in enumerate(bfr):
-                P, N = section(x, f)
-                k = (1.0 - (f / bd["across"]) ** 2) ** 0.5 * (1.0 - (2 * x / (Lx - 2 * e)) ** 2) ** 0.35
+            qx = (2 * x / (Lx - 2 * e)) ** 2
+            across = bd["across"] * (0.7 + 0.3 * math.sqrt(max(0.0, 1.0 - qx ** 2)))    # its ends rounded in plan
+            for j, f in enumerate(np.linspace(-1.0, 1.0, bv)):
+                P, N = section(x, f * across)
+                k = (1.0 - f ** 2) ** 0.5 * (1.0 - qx) ** 0.6                           # and in section and length
                 Bb[i, j] = P - N * 0.03 * IN
-                Bt[i, j] = P + N * (0.25 * IN + (bd["thick_in"] * IN - 0.25 * IN) * k)
-        shell(it.piece("Bed"), Bt, Bb, "Fleece")
+                Bt[i, j] = P + N * (0.1 * IN + (bd["thick_in"] * IN - 0.1 * IN) * k)
+        shell(it.piece("Bed"), Bt, Bb, bd["material"])
         # the clews: nettles from grommets 1 in inside the cloth's end to the ring, on the line from the end's middle to
         # the hook; then the lanyard on that line to the hook's bight
         n = hc["nettles"]
@@ -516,21 +543,36 @@ class Kit:
             tube(it.piece("Rings"), ring_c[None] + rr * (np.cos(th)[:, None] * a1[None] + np.sin(th)[:, None] *
                                                          np.cross(a2, a1)[None]), rb, "Iron", n=6, closed=True)
             # the nettles gathered into the clew at the ring's near side: each ends on a small circle round the hang's
-            # line there, at its grommet's own angle round that line, so they fan out to the cloth without crossing
+            # line there, at its grommet's own angle round that line, so they fan out to the cloth without crossing; a
+            # seizing of spun yarn binds them round the ring's bar. At the cloth each runs through its grommet and is
+            # knotted under the cloth
             e1 = EY
             e2 = unit(np.cross(d, EY))
             Qc = ring_c - d * rr * 0.75
+            fan = hc["clew_fan_in"] / 2 * IN
             for k_ in range(n):
                 f = -1.0 + 2.0 * k_ / (n - 1)
                 P, N = section(xe - s * 1.0 * IN, f * 0.96)
-                P = P - N * t / 2
+                P = P - N * (t + 0.6 * nr)
                 v = P - P_end
                 ang = math.atan2(float(v @ e2), float(v @ e1))
-                Q = Qc + 0.4 * IN * (math.cos(ang) * e1 + math.sin(ang) * e2)
+                Q = Qc + fan * (math.cos(ang) * e1 + math.sin(ang) * e2)
                 tube(it.piece("Nettles_" + tag), np.array([P, P + 0.5 * (Q - P), Q]), nr, "Hemp", n=4)
+            sl = hc["seizing_in"] * IN
+            sz = fan + nr + 0.04 * IN
+            lathe(it.piece("Seizing"), Qc - d * sl, d, e1, [(0.0, 0.0), (0.0, sz), (sl, sz), (sl, 0.0)], "Tarred", 10)
+            # the lanyard: from the ring to the hook, an eye round the hook's bar there (the bar runs along X at its
+            # bight, its middle bar_r + the lanyard's radius over the bight), its end seized back along the lanyard
             q0 = ring_c + d * rr
-            tube(it.piece("Lanyards"), np.array([q0 - d * rb * 0.5, hook]), ly, "Hemp", n=6)
+            hb = self.c["hammock"]["hook"]["bar_in"] / 2 * IN
+            cbar = hook + EZ * (hb + ly)
+            ra = hb + ly * 0.85
+            eye = [cbar + ra * np.array([0.0, math.cos(a), math.sin(a)])
+                   for a in np.linspace(-math.pi / 2, 1.5 * math.pi - 0.75, 12)]
+            tail = eye[-1] - d * 1.2 * IN - EY * 0.12 * IN
+            tube(it.piece("Lanyards"), np.array([q0 - d * rb * 0.5, hook - d * 0.6 * IN] + eye + [tail]), ly, "Hemp", n=6)
             hooks["hook_" + tag] = hook.tolist()
+            it.anchors.append(("p", cbar.tolist(), hb + 2.5 * ly))
         it.attach = hooks
         it.info = {"span_m": round(span, 4), "lowest_m": round(float(Top[nu // 2, nv // 2, 2]), 4),
                    "note": "the slung hammock with its bed: about 14 to 20 in of the beam's length a man (Falconer)"}
@@ -545,7 +587,8 @@ class Kit:
         R = D / 2
         tr = hl["turn_in"] / 2 * IN
         nt = hl["turns"]
-        it = Item("HammockLashed", "a hammock lashed up for stowing (in the nettings by day), lying along X")
+        it = Item("HammockLashed", "a hammock lashed up for stowing (in the nettings by day), lying along X",
+                  budget_key="hammock")
         xs_t = np.linspace(-L / 2 + 0.09 * L, L / 2 - 0.09 * L, nt)
         nip = 0.35 * IN                                    # how far each turn draws the roll in under it
         def r_at(x):                                       # noqa  the roll's radius: drawn in under each turn
@@ -553,23 +596,25 @@ class Kit:
             w = 1.8 * IN
             return R - nip * math.exp(-(d / w) ** 2)
         prof = [(-L / 2, 0.0), (-L / 2, 0.45 * R), (-L / 2 + 0.6 * IN, 0.78 * R), (-L / 2 + 2.0 * IN, 0.96 * R)]
-        xs = np.linspace(-L / 2 + 3.5 * IN, L / 2 - 3.5 * IN, 41)
+        # the roll between its ends: a ring at each turn (drawn in) and one midway between turns (full)
+        xs = sorted(set(np.round(np.concatenate([xs_t, 0.5 * (xs_t[1:] + xs_t[:-1]),
+                                                 [-L / 2 + 3.5 * IN, L / 2 - 3.5 * IN]]), 6)))
         prof += [(x, r_at(x)) for x in xs]
         prof += [(L / 2 - 2.0 * IN, 0.96 * R), (L / 2 - 0.6 * IN, 0.78 * R), (L / 2, 0.45 * R), (L / 2, 0.0)]
-        lift = R + 0.0
+        lift = R
         lathe(it.piece("Roll"), [0.0, 0.0, lift], EX, EZ, prof, "Canvas", 16)
         th = np.linspace(0.0, 2 * math.pi, 17)[:-1]
         tops = []
         for x in xs_t:
             rc = r_at(x) + tr * 0.55
             tube(it.piece("Turns"), np.stack([np.full_like(th, x), rc * np.sin(th), lift + rc * np.cos(th)], 1), tr, "Hemp",
-                 n=6, closed=True)
+                 n=5, closed=True)
             tops.append(np.array([x, 0.0, lift + rc]))
         for a, b in zip(tops[:-1], tops[1:]):
             # the run from one turn's top to the next, over the roll, starting and ending in the turns (its hitches)
             m = 0.5 * (a + b)
             m[2] = lift + r_at(m[0]) + tr * 0.6
-            tube(it.piece("Run"), np.array([a + EX * tr * 0.3, m, b - EX * tr * 0.3]), tr * 0.95, "Hemp", n=6)
+            tube(it.piece("Run"), np.array([a + EX * tr * 0.3, m, b - EX * tr * 0.3]), tr * 0.95, "Hemp", n=5)
         # it lies on its turns: lift it so the lowest point of everything is on the deck
         zmin = min(float(np.concatenate(p.V)[:, 2].min()) for p in it.pieces.values())
         for p in it.pieces.values():
@@ -597,6 +642,9 @@ class Kit:
         tube(it.piece("Hook"), np.array(pts), br, "Iron", n=8)
         lr = self.c["hammock"]["lanyard_in"] / 2 * IN
         it.attach = {"bight": [rc, 0.0, -dr + br + lr]}
+        it.anchors = [("z", 0.0)]
+        it.info = {"bar_m": round(br, 5), "note": "the bar runs along X at the bight; a lanyard's eye round it lies with "
+                                                 "its centreline at 'bight'"}
         return it
 
     # --- casks --------------------------------------------------------------------------------------------------------------
@@ -612,15 +660,16 @@ class Kit:
             d = k["head_over_D"] * D
             Li, Di, di = L - 2 * (ch + head), D - 2 * st, d - 2 * st
             return math.pi * Li / 12.0 * (2 * Di ** 2 + di ** 2)
+        gal_m3 = ck["measures_in3"][k["measure"]] * IN ** 3
         lo, hi = 0.05, 3.0
         for _ in range(80):
             m = 0.5 * (lo + hi)
-            if inside(m) < k["gal"] * GAL:
+            if inside(m) < k["gal"] * gal_m3:
                 lo = m
             else:
                 hi = m
         D = 0.5 * (lo + hi)
-        return D, k["head_over_D"] * D, k["L_over_D"] * D, inside(D) / GAL
+        return D, k["head_over_D"] * D, k["L_over_D"] * D, inside(D) / gal_m3
 
     def hoops(self, L):
         """the hoops [(middle, width)] (m) on a cask L long: each at its card's place, the chime hoops held in by half their
@@ -649,7 +698,8 @@ class Kit:
         D, d, L, gal = self.cask_size(kind)
         st, ch, th = ck["stave_in"] * IN, ck["chime_in"] * IN, ck["hoop_in"] * IN
         it = Item("Cask_" + kind if kind != "PowderBarrel" else "PowderBarrel",
-                  f"a {kind.lower()}: {k['use']}" if kind != "PowderBarrel" else "a powder barrel: " + k["use"])
+                  f"a {kind.lower()}: {k['use']}" if kind != "PowderBarrel" else "a powder barrel: " + k["use"],
+                  budget_key="cask")
         rb, rh = D / 2, d / 2
         r = lambda z: rh + (rb - rh) * (1.0 - (2 * z / L - 1.0) ** 2)     # noqa
         hoops = self.hoops(L)
@@ -671,7 +721,7 @@ class Kit:
                     prof.append((zz, r(zz)))
                     mats.append("Oak")
                 prof.append((z0, r(z0) + th))
-                mats.append("Oak" if False else k["hoop"])
+                mats.append(k["hoop"])
             first = False
             zm = 0.5 * (z0 + z1)
             prof += [(zm, r(zm) + th), (z1, r(z1) + th)]
@@ -690,15 +740,16 @@ class Kit:
                                                                      (0.6 * IN + bp, br - 0.1 * IN), (0.6 * IN + bp, 0.0)],
                   "Oak", 10)
         # lying on its side it bears on whatever stands out most: the bare bilge between the bilge hoops, or a hoop
-        r_out = max([rb] + [r(z_) + th for zc, w in hoops for z_ in (zc - w / 2, zc, zc + w / 2)])
+        r_out = max(r_ for _h, r_ in prof)
         it.rests["on_end"] = it.rests.pop("as_built")
-        it.rests["on_bilge"] = {"turn_deg": [0.0, 90.0, 0.0], "lift_m": round(r_out, 5),
-                                "note": "turned about Y so its length runs along X, then lifted so its bilge hoops are on "
-                                        "the deck; the deck slice turns it about Z to lie fore and aft or athwart, and "
-                                        "chocks it with quoins (Quoin), the bung up"}
+        it.rests["on_bilge"] = {"turn_deg": [0.0, -90.0, 0.0], "at_m": [round(L / 2, 5), 0.0, round(r_out, 5)],
+                                "note": "turned about Y so its length runs along X (centred on 0) with the bung up, and "
+                                        "lifted so it bears on the deck at its widest (bilge or bilge hoop); the deck "
+                                        "slice turns it about Z to lie fore and aft or athwart, and chocks it with quoins "
+                                        "(Quoin)"}
         it.info = {"bilge_m": round(D, 4), "head_m": round(d, 4), "length_m": round(L, 4), "gal": round(gal, 1),
                    "hoops_m": [[round(zc, 4), round(w, 4), round(r(zc) + th, 4)] for zc, w in hoops],
-                   "card_gal": k["gal"], "over_hoops_m": round(2 * r_out, 4)}
+                   "card_gal": k["gal"], "measure": k["measure"], "over_hoops_m": round(2 * r_out, 4)}
         return it
 
     def quoin(self):
@@ -736,16 +787,21 @@ class Kit:
         bdh, bdt = (v * IN for v in sc["board_in"])
         gv = sc["groove_in"] * IN
         fill = sc["fill_in"] * IN
-        z = 0.0
-        while z + bdh <= fill + 1e-6:
-            vbox(it.piece("Boards"), [-Wx / 2 - gv, Wy / 2, z], [Wx / 2 + gv, Wy / 2 + bdt, z + bdh], "Oak")
-            z += bdh + sc["board_gap_in"] * IN
         # the heap: up to the top layer's shot, sunk into it 0.35 of a shot
         sd = sk["shot_in"] * IN
         sr = sd / 2
         nx, ny = int(Wx // sd), int(Wy // sd)
         top = fill - sc["fill_under_top_in"] * IN
         heap_top = top - 0.65 * sd
+        # the boards dropped in one above another up to the top shot, the last one cut down to it
+        z, nbd = 0.0, 0
+        while z < top - 1e-6:
+            h = min(bdh, top - z)
+            vbox(it.piece("Boards"), [-Wx / 2 - gv, Wy / 2, z], [Wx / 2 + gv, Wy / 2 + bdt, z + h], "Oak")
+            z += h + sc["board_gap_in"] * IN
+            nbd += 1
+        boards_top = z - sc["board_gap_in"] * IN
+        assert boards_top >= top - 1e-6, (kind, boards_top, top)
         vbox(it.piece("Heap"), [-Wx / 2 + 0.1 * IN, -Wy / 2 + 0.1 * IN, 0.0], [Wx / 2 - 0.1 * IN, Wy / 2 - 0.1 * IN, heap_top],
              "Iron")
         px, py = Wx / nx, Wy / ny
@@ -755,9 +811,16 @@ class Kit:
                 c = [-Wx / 2 + px * (i + 0.5) + rng.uniform(-0.15, 0.15) * (px - sd),
                      -Wy / 2 + py * (j + 0.5) + rng.uniform(-0.15, 0.15) * (py - sd),
                      top - sr - rng.uniform(0.0, 0.08) * sd]
-                sphere(it.piece("Shot"), c, sr, "Blacking", 10, 6)
+                # only the shot's top shows: a cap cut 0.1 in down into the heap
+                zc = heap_top - 0.1 * IN - c[2]
+                prof = [(zc, 0.0), (zc, math.sqrt(sr * sr - zc * zc))]
+                a0 = math.asin(zc / sr)
+                prof += [(sr * math.sin(a), sr * math.cos(a)) for a in np.linspace(a0, math.pi / 2, 5)[1:-1]]
+                prof.append((sr, 0.0))
+                lathe(it.piece("Shot"), c, EZ, EX, prof, "Blacking", 10)
         it.info = {"shot_in": sk["shot_in"], "shot_shown": nx * ny,
-                   "holds_shot": int(nx * ny * (fill / sd) * 1.15), "boards": int(round(z / (bdh + 1e-9)))}
+                   "holds_shot": int(nx * ny * (fill / sd) * 1.15), "boards": nbd,
+                   "boards_top_m": round(boards_top, 4), "shot_top_m": round(top, 4)}
         return it
 
     # --- the magazine ------------------------------------------------------------------------------------------------------
@@ -780,8 +843,10 @@ class Kit:
         cw, cmin = (v * IN for v in mc["chock_in"])
         up = mc["upright_in"] * IN
         pitch = D + 2 * th + gap
+        mid = up + gap                                     # the room left between the middle barrels for the centre upright
         xs = (np.arange(nb) - (nb - 1) / 2) * pitch
-        span = nb * pitch
+        xs = xs + np.where(xs > 0, mid / 2, -mid / 2)
+        span = nb * pitch + mid
         ys = [hz - L / 2 for hz, _ in bilge]               # the bilge hoops across the rack (the barrel's middle at y 0)
         rr = [r(hz) + th for hz, _ in bilge]               # the hoops' outer radius there
         z_bear = 0.0
@@ -795,20 +860,18 @@ class Kit:
                     half = 0.42 * (D + 2 * th)
                     arc = [(x + ro * math.sin(a), zc - ro * math.cos(a)) for a in np.linspace(-math.asin(half / ro),
                                                                                              math.asin(half / ro), 9)]
-                    zt = arc[0][1]
-                    outline = [(x - half, z_bear + bh), (x + half, z_bear + bh)] + [p for p in arc[::-1]]
-                    outline = [(px, pz) for px, pz in outline]
+                    outline = [(x - half, z_bear + bh), (x + half, z_bear + bh)] + arc[::-1]
                     prism(it.piece("Chocks"), [np.array(outline)], [0.0, 0.0, 0.0], EX, EZ, y - cw / 2, y + cw / 2, "Oak")
-                    del zt
             tiers.append(zc)
             z_bear = zc + max(rr) + mc["tier_clear_in"] * IN
-        # the uprights at the rack's ends, under each upper bearer
+        # the uprights at the rack's ends and in its middle, under each upper bearer
         top = tiers[-1] - max(rr) - cmin
         for y in ys:
             for sx in (-1.0, 1.0):
                 x0 = sx * span / 2
                 vbox(it.piece("Uprights"), [min(x0, x0 + sx * up), y - bw / 2, 0.0], [max(x0, x0 + sx * up), y + bw / 2, top],
                      "Oak")
+            vbox(it.piece("Uprights"), [-up / 2, y - bw / 2, bh], [up / 2, y + bw / 2, top - bh], "Oak")
         for t_, zc in enumerate(tiers):
             for k_, x in enumerate(xs):
                 it.slots.append({"item": "PowderBarrel", "name": f"tier{t_ + 1}_{k_ + 1}",
@@ -830,8 +893,10 @@ class Kit:
         x0 = -(L + tl) / 2                                  # the origin under its middle
         prof = [(0.0, 0.0), (0.0, 0.55 * R), (0.25 * IN, 0.85 * R), (0.9 * IN, R)]
         prof += [(x, R) for x in np.linspace(2.0 * IN, L - 2.0 * IN, 5)]
+        # the choked tail: the flannel gathered to the neck, then flaring out into a ragged tuft
         prof += [(L - 0.9 * IN, 0.9 * R), (L - 0.2 * IN, 0.55 * R), (L + 0.3 * IN, nr), (L + 0.6 * IN, nr * 0.9),
-                 (L + 1.0 * IN, nr * 1.1), (L + tl - 0.3 * IN, nr * 1.25), (L + tl, nr * 0.9), (L + tl, 0.0)]
+                 (L + 1.0 * IN, nr * 1.2), (L + 0.6 * tl, nr * 1.75), (L + tl - 0.25 * IN, nr * 2.0),
+                 (L + tl, nr * 1.5), (L + tl - 0.15 * IN, nr * 0.6), (L + tl - 0.15 * IN, 0.0)]
         lathe(it.piece("Bag"), [x0, 0.0, R], EX, EZ, prof, "Fleece", 16)
         th = np.linspace(0.0, 2 * math.pi, 13)[:-1]
         tr = 0.08 * IN
@@ -883,6 +948,11 @@ class Kit:
         R, H = pc["across_in"] / 2 * IN, pc["high_in"] * IN
         lh = pc["lid_in"] * IN
         it = Item("PassingBox", "a passing box, standing on the deck, its lid on")
+        cc = self.c["magazine"]["cartridge"]
+        inside = H - lh - pc["wall_in"] * IN
+        need = (cc["long_in"] + cc["choke_in"][0]) * IN
+        assert inside >= need + 0.25 * IN, ("passing box too short for a cartridge", inside / IN, need / IN)
+        it.info = {"inside_m": round(inside, 4), "cartridge_m": round(need, 4)}
         th = 0.05 * IN
         prof = [(0.0, 0.0), (0.0, R)]
         mats = ["Oak"]
@@ -900,4 +970,101 @@ class Kit:
             pts.append([-1.2 * IN * math.cos(t), 0.0, H + 1.4 * IN * math.sin(t)])
         pts.append([1.2 * IN, 0.0, H - 0.4 * IN])
         tube(it.piece("Becket"), np.array(pts), br, "Hemp", n=6)
+        return it
+
+    def filling_bench(self):
+        """the filling room's bench: an oak top on four legs with stretchers, a low rim round it, the top inside the rim
+        sheathed in copper"""
+        fb = self.c["magazine"]["filling_bench"]
+        L, W = (v * IN for v in fb["size_in"])
+        H, tt = fb["high_in"] * IN, fb["top_in"] * IN
+        rh, rw = (v * IN for v in fb["rim_in"])
+        sh = fb["sheet_in"] * IN
+        lg = fb["leg_in"] * IN
+        sw, st = (v * IN for v in fb["stretcher_in"])
+        zs = fb["stretcher_high_in"] * IN
+        it = Item("FillingBench", "the filling room's bench, standing on the deck")
+        vbox(it.piece("Top"), [-L / 2, -W / 2, H - tt], [L / 2, W / 2, H], "Oak")
+        outer = np.array([[-L / 2, -W / 2], [L / 2, -W / 2], [L / 2, W / 2], [-L / 2, W / 2]])
+        inner = np.array([[-L / 2 + rw, -W / 2 + rw], [L / 2 - rw, -W / 2 + rw], [L / 2 - rw, W / 2 - rw],
+                          [-L / 2 + rw, W / 2 - rw]])
+        prism(it.piece("Rim"), [outer, inner[::-1]], [0.0, 0.0, 0.0], EX, EY, H, H + rh, "Oak")
+        vbox(it.piece("Sheet"), [-L / 2 + rw, -W / 2 + rw, H], [L / 2 - rw, W / 2 - rw, H + sh], "Copper")
+        xi, yi = L / 2 - 2.0 * IN - lg / 2, W / 2 - 2.0 * IN - lg / 2
+        for sx in (-1.0, 1.0):
+            for sy in (-1.0, 1.0):
+                vbox(it.piece("Legs"), [sx * xi - lg / 2, sy * yi - lg / 2, 0.0], [sx * xi + lg / 2, sy * yi + lg / 2, H - tt],
+                     "Oak")
+        for sy in (-1.0, 1.0):                              # the side stretchers, between the legs' faces
+            vbox(it.piece("Stretchers"), [-xi + lg / 2, sy * yi - st / 2, zs], [xi - lg / 2, sy * yi + st / 2, zs + sw], "Oak")
+        for sx in (-1.0, 1.0):                              # the end stretchers, a little lower so they miss the sides'
+            vbox(it.piece("Stretchers"), [sx * xi - st / 2, -yi + lg / 2, zs - sw - 0.5 * IN],
+                 [sx * xi + st / 2, yi - lg / 2, zs - 0.5 * IN], "Oak")
+        return it
+
+    def bread_bag(self):
+        """a bag of biscuit lying flat along X: a canvas pillow (its sections superellipses, flat underneath so the bags
+        stack), drawn in to its neck at +X, choked by a lashing, the tail beyond"""
+        bc = self.c["bread"]
+        L, W, H = (v * IN for v in bc["size_in"])
+        nr, tl = (v * IN for v in bc["neck_in"])
+        p = bc["squareness"]
+        it = Item("BreadBag", "a bag of ship's biscuit lying flat along X, its neck to +X")
+        n = 24
+        th = np.arange(n + 1) * 2 * math.pi / n
+        cs, sn = np.cos(th), np.sin(th)
+        x0 = -(L + tl) / 2                                  # the origin under its middle
+        xn = x0 + L                                         # the neck
+        draw = 8.0 * IN                                     # the length over which the bag is drawn in to its neck
+
+        def ring(x, a, b, folds=0.0, flat=True):
+            """a section at x: a superellipse of half sizes a, b about the bag's middle height, gathered into folds"""
+            r = 1.0 + folds * np.cos(8 * th)
+            y = a * r * np.sign(cs) * np.abs(cs) ** (2 / p)
+            z = H / 2 + b * r * np.sign(sn) * np.abs(sn) ** (2 / p)
+            P = np.stack([np.full(n + 1, x), y, z], 1)
+            if flat:
+                P[:, 2] = np.maximum(P[:, 2], 0.0)          # pressed flat underneath
+            return P
+        rings = []
+        for f in np.linspace(0.0, 1.0, 7)[1:]:              # the sewn foot, rounding out over 3 in
+            g = 0.35 + 0.65 * math.sin(f * math.pi / 2)
+            rings.append(ring(x0 + 3.0 * IN * (1 - math.cos(f * math.pi / 2)), W / 2 * g, H / 2 * g))
+        for x in np.linspace(x0 + 3.0 * IN, xn - draw, 6)[1:]:
+            rings.append(ring(x, W / 2, H / 2))
+        for f in np.linspace(0.0, 1.0, 8)[1:]:              # drawn in to the neck, the cloth gathering into folds
+            g = (1 + math.cos(f * math.pi)) / 2
+            rings.append(ring(xn - draw + f * draw, nr + (W / 2 - nr) * g, nr + (H / 2 - nr) * g,
+                              folds=0.25 * 4 * g * (1 - g) + 0.08 * (1 - g)))
+        # the tail beyond the lashing, flaring into its gathered folds
+        for x, r, fo in ((xn + 0.4 * IN, nr * 0.95, 0.05), (xn + 0.9 * IN, nr * 1.15, 0.12), (xn + tl * 0.6, nr * 1.6, 0.2),
+                         (xn + tl - 0.3 * IN, nr * 1.9, 0.22), (xn + tl, nr * 1.2, 0.15)):
+            rings.append(ring(x, r, r, folds=fo, flat=False))
+        foot = np.array([x0, 0.0, H / 2 * 0.35])
+        tip = np.array([xn + tl, 0.0, H / 2])
+        F = []
+        Vs = [foot] + [r_ for ring_ in rings for r_ in ring_] + [tip]
+        m = n + 1
+        for i in range(n):
+            F.append((0, 1 + i + 1, 1 + i))
+        for k in range(len(rings) - 1):
+            a0, b0 = 1 + k * m, 1 + (k + 1) * m
+            for i in range(n):
+                F.append((a0 + i, a0 + i + 1, b0 + i + 1, b0 + i))
+        last = 1 + (len(rings) - 1) * m
+        for i in range(n):
+            F.append((last + i, last + i + 1, len(Vs) - 1))
+        Vs = np.array(Vs)
+        # weld the seam (ring point n is point 0) so the solid is closed: point n of each ring onto point 0
+        remap = list(range(len(Vs)))
+        for k in range(len(rings)):
+            remap[1 + k * m + n] = 1 + k * m
+        F = [tuple(remap[i] for i in f) for f in F]
+        F = [f for f in F if len(set(f)) == len(f)]
+        add_solid(it.piece("Bag"), Vs, F, "Canvas")
+        tr = bc["tie_in"] / 2 * IN
+        thr = np.linspace(0.0, 2 * math.pi, 13)[:-1]
+        rc = nr * 0.95 + tr * 0.6
+        tube(it.piece("Tie"), np.stack([np.full_like(thr, xn + 0.4 * IN), rc * np.cos(thr), H / 2 + rc * np.sin(thr)], 1), tr,
+             "Hemp", n=5, closed=True)
         return it

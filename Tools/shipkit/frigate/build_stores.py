@@ -67,9 +67,15 @@ for name, (rgb, rough, metal) in PAINT.items():
 
 # ---- checks ---------------------------------------------------------------------------------------------------------------
 def triangles(part):
+    """a piece's vertices and triangles, its seams welded (each doubled seam vertex replaced by the one it doubles), as
+    the exported mesh has them"""
     V, F, M, U = part.arrays()
+    remap = np.arange(len(V))
+    for a, b in getattr(part, "seams", []):
+        remap[a] = b
     T = []
     for f in F:
+        f = [int(remap[i]) for i in f]
         for k in range(1, len(f) - 1):
             T.append((f[0], f[k], f[k + 1]))
     return V, np.array(T, int).reshape(-1, 3)
@@ -82,28 +88,34 @@ def welded(V, T, eps=1e-6):
 
 
 def closed_check(V, T):
-    """open or disagreeing edges, and closed pieces enclosing no positive volume"""
-    W = welded(V, T)
-    E = np.concatenate([W[:, [0, 1]], W[:, [1, 2]], W[:, [2, 0]]])
-    E = E[E[:, 0] != E[:, 1]]
-    fw = {}
-    for a, b in map(tuple, E):
+    """on the exported mesh's own vertices (no welding by position): edges not met by exactly two faces running opposite
+    ways, closed pieces enclosing no positive volume, and folds (two faces on one edge turned back on each other)"""
+    E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+    fid = np.concatenate([np.arange(len(T))] * 3)
+    fw, owner = {}, {}
+    for (a, b), f in zip(map(tuple, E), fid):
         fw[(a, b)] = fw.get((a, b), 0) + 1
-    bad = 0
-    for (a, b), n in fw.items():
-        if n != 1 or fw.get((b, a), 0) != 1:
-            bad += 1
-    lab = deck.islands(W, int(W.max()) + 1)
+        owner[(a, b)] = f
+    bad = sum(1 for (a, b), n in fw.items() if n != 1 or fw.get((b, a), 0) != 1)
+    N = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-15)
+    folds = 0
+    for (a, b), f in owner.items():
+        g = owner.get((b, a))
+        if g is not None and a < b and float(N[f] @ N[g]) < -0.9:
+            folds += 1
+    lab = deck.islands(T, len(V))
     vol = {}
-    for t, (a, b, c) in zip(T, W):
-        k = lab[a]
+    for t in T:
+        k = lab[t[0]]
         vol[k] = vol.get(k, 0.0) + float(np.dot(V[t[0]], np.cross(V[t[1]], V[t[2]]))) / 6.0
     inside_out = sum(1 for v in vol.values() if v <= 0)
-    return {"open_or_disagreeing_edges": bad, "inside_out_solids": inside_out, "solids": len(vol)}
+    return {"open_or_disagreeing_edges": bad, "inside_out_solids": inside_out, "solids": len(vol), "folds": folds}
 
 
 def self_crossing(V, T):
-    """pairs of a piece's triangles that meet but share no corner (welded)"""
+    """pairs of a piece's triangles that meet but share no corner (welded): a piece folded through itself, or two of its
+    solids running into each other (folds at a shared edge are closed_check's)"""
     W = welded(V, T)
     tr = BVHTree.FromPolygons(V.tolist(), T.tolist(), all_triangles=True)
     n = 0
@@ -118,20 +130,30 @@ def self_crossing(V, T):
     return n, worst
 
 
+def centroid(objs, names):
+    """the volume's middle of closed pieces"""
+    vs, cs = 0.0, np.zeros(3)
+    for n in names:
+        V, T = objs[n]
+        A, B, C = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
+        v = np.einsum("ij,ij->i", A, np.cross(B, C)) / 6.0
+        vs += v.sum()
+        cs += ((A + B + C) / 4.0 * v[:, None]).sum(0)
+    return cs / vs
+
+
 def stands_check(objs, names, tol=0.01 * IN):
-    """an item standing on the deck: its lowest point on z 0, and the middle of its vertices (plan) over the outline of
-    what touches the deck (within half an inch, for a round thing lying on a line)"""
+    """standing on the deck: its lowest point on z 0, and the middle of its volume (in plan) over the outline of what
+    touches the deck (or within half an inch of the line it touches along, for a round thing lying down)"""
     V = np.concatenate([objs[n][0] for n in names])
     zmin = float(V[:, 2].min())
     foot = V[V[:, 2] <= zmin + tol][:, :2]
-    c = V[:, :2].mean(0)
+    c = centroid(objs, names)[:2]
     off = 0.0
     if len(foot) >= 3:
         from scipy.spatial import ConvexHull, QhullError
         try:
-            h = ConvexHull(foot)
-            # the distance outside the hull (0 inside)
-            eq = h.equations
+            eq = ConvexHull(foot).equations
             off = max(0.0, float((eq[:, :2] @ c + eq[:, 2]).max()))
         except QhullError:                                   # the feet in a line: the distance off that line
             d = foot.max(0) - foot.min(0)
@@ -144,8 +166,74 @@ def stands_check(objs, names, tol=0.01 * IN):
             "fail": bool(abs(zmin) > tol or off > 0.5 * IN)}
 
 
-def run_checks(name, pieces, stands, meets):
-    """the closed, crossing and room checks for pieces {name: Part}; returns (report, failures)"""
+def held_check(objs, names, anchors, tol=0.02 * IN):
+    """every connected part of every piece is held: it touches the deck or another anchor (anchors: [('z', z) a plane
+    level at z, ('x', x) a plane square to X, ('p', [x, y, z], r) a point]) or touches, through a chain of parts that
+    touch, one that does. Returns the parts held by nothing [(piece, a point of it)]"""
+    nodes, lab, trees = [], {}, {}
+    for n in names:
+        V, T = objs[n]
+        L = deck.islands(T, len(V))
+        lab[n] = L
+        used = np.unique(T)
+        for k in np.unique(L[used]):
+            nodes.append((n, int(k)))
+        trees[n] = BVHTree.FromPolygons(V.tolist(), T.tolist(), all_triangles=True)
+    idx = {nd: i for i, nd in enumerate(nodes)}
+    adj = [set() for _ in nodes]
+    for i_, a in enumerate(names):
+        Ta = objs[a][1]
+        for b in names[i_:]:
+            Tb = objs[b][1]
+            for i, j in trees[a].overlap(trees[b]):
+                x, y = (a, int(lab[a][Ta[i][0]])), (b, int(lab[b][Tb[j][0]]))
+                if x != y:
+                    adj[idx[x]].add(idx[y])
+                    adj[idx[y]].add(idx[x])
+    # faces that only lie on each other (a post on a bearer) are not an overlap to the BVH: a vertex within tol of
+    # another part's surface touches it too
+    for a in names:
+        Va, Ta = objs[a]
+        for vi in np.unique(Ta):
+            x = (a, int(lab[a][vi]))
+            for b in names:
+                Tb = objs[b][1]
+                for _co, _n, fi, _d in trees[b].find_nearest_range(Va[vi].tolist(), tol):
+                    y = (b, int(lab[b][Tb[fi][0]]))
+                    if x != y:
+                        adj[idx[x]].add(idx[y])
+                        adj[idx[y]].add(idx[x])
+    held = []
+    for (n, k) in nodes:
+        V, T = objs[n]
+        P = V[np.unique(T[lab[n][T[:, 0]] == k])]
+        ok = False
+        for an in anchors:
+            if an[0] == "z":
+                ok = ok or bool(np.any(np.abs(P[:, 2] - an[1]) <= tol) or (P[:, 2].min() < an[1] < P[:, 2].max()))
+            elif an[0] == "x":
+                ok = ok or bool(np.any(np.abs(P[:, 0] - an[1]) <= tol))
+            else:
+                ok = ok or bool(np.any(np.linalg.norm(P - np.asarray(an[1]), axis=1) <= an[2]))
+        held.append(ok)
+    seen = [i for i, h in enumerate(held) if h]
+    reach = set(seen)
+    while seen:
+        i = seen.pop()
+        for j in adj[i]:
+            if j not in reach:
+                reach.add(j)
+                seen.append(j)
+    out = []
+    for i, (n, k) in enumerate(nodes):
+        if i not in reach:
+            V, T = objs[n]
+            out.append([n, np.round(V[T[lab[n][T[:, 0]] == k][0][0]], 4).tolist()])
+    return out
+
+
+def run_checks(name, pieces, stands, meets, anchors):
+    """the closed, crossing, room, held and standing checks for pieces {name: Part}; returns (report, failures)"""
     objs, fails, rep = {}, [], {"pieces": {}}
     for pn, part in pieces.items():
         V, T = triangles(part)
@@ -153,16 +241,16 @@ def run_checks(name, pieces, stands, meets):
         cc = closed_check(V, T)
         nx, where = self_crossing(V, T)
         rep["pieces"][pn] = {"triangles": int(len(T)), **cc, "crossing_itself": nx}
-        if cc["open_or_disagreeing_edges"] or cc["inside_out_solids"]:
-            fails.append(f"{name}.{pn}: not closed or faces in ({cc})")
+        if cc["open_or_disagreeing_edges"] or cc["inside_out_solids"] or cc["folds"]:
+            fails.append(f"{name}.{pn}: not closed, faces in or folded ({cc})")
         if nx:
             fails.append(f"{name}.{pn}: crosses itself ({nx} pairs, first near {where})")
+    names = list(objs)
     # a tiny solid far off, so deck.room has something that is not the item's (it needs one)
     objs["_far"] = (np.array([[100.0, 100, 100], [100.01, 100, 100], [100, 100.01, 100], [100, 100, 100.01]]),
                     np.array([[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]]))
     # the meets: a pair names two pieces, or patterns (fnmatch: an assembly's 'PowderBarrel#*.Cask'), expanded to the
     # pairs present
-    names = [k for k in objs if k != "_far"]
     mt, want = {}, []
     for a, b, why, depth in meets:
         A = [n for n in names if fnmatch.fnmatchcase(n, a)]
@@ -175,7 +263,8 @@ def run_checks(name, pieces, stands, meets):
                     mt[(x, y)] = (why, depth)
         want.append((a, b, why, A, B))
     rm = deck.room(objs, names, None, near=0.3, meets=mt)
-    rep["room"] = rm
+    del objs["_far"]
+    rep["room"] = {k: rm[k] for k in ("meet", "by_design")}
     for m_ in rm["meet"]:
         fails.append(f"{name}: {m_[0]} meets {m_[1]} " + (m_[3] if len(m_) > 3 else f"({m_[2]} pairs), not by design"))
     found = {(a, b) for a, b, *_ in rm["by_design"]} | {(b, a) for a, b, *_ in rm["by_design"]}
@@ -184,18 +273,31 @@ def run_checks(name, pieces, stands, meets):
         for x in A:
             if not any((x, y) in found for y in B):
                 fails.append(f"{name}: {x} should meet {b} ({why}) and does not")
+    # every connected part held (by the deck, its anchors, or a chain of parts that touch)
+    free = held_check(objs, names, ([("z", 0.0)] if stands else []) + list(anchors))
+    rep["held_by_nothing"] = free
+    for f_ in free:
+        fails.append(f"{name}: {f_[0]} has a part held by nothing, at {f_[1]}")
     if stands:
         rep["stands"] = stands_check(objs, names)
         if rep["stands"]["fail"]:
             fails.append(f"{name}: does not stand on the deck ({rep['stands']})")
-    return rep, fails
+    return rep, fails, objs
 
 
 # ---- Blender ------------------------------------------------------------------------------------------------------------------
 def make_mesh(name, part):
+    """the Blender mesh of a part: its seams welded (one vertex each), a UV per face corner (so a turned piece's seam
+    keeps its two u's), a material slot per paint"""
     V, F, M, U = part.arrays()
+    remap = np.arange(len(V))
+    for a, b in getattr(part, "seams", []):
+        remap[a] = b
+    keep = np.unique(remap)
+    new = np.full(len(V), -1)
+    new[keep] = np.arange(len(keep))
     me = bpy.data.meshes.new(name)
-    me.from_pydata([tuple(map(float, v)) for v in V], [], [list(map(int, f)) for f in F])
+    me.from_pydata([tuple(map(float, v)) for v in V[keep]], [], [[int(new[remap[i]]) for i in f] for f in F])
     names = sorted(set(M))
     for n in names:
         me.materials.append(MATS[n])
@@ -209,8 +311,9 @@ def make_mesh(name, part):
         P = V[list(f)]
         nrm = np.cross(P[1] - P[0], P[-1] - P[0])
         ax = int(np.argmax(np.abs(nrm)))
+        own = any(np.any(U[i, :2] != 0) for i in f)     # a part gave this face its own UVs (one corner may be 0, 0)
         for i in f:
-            if np.any(U[i, :2] != 0):
+            if own:
                 loops.append((U[i, 0], U[i, 1]))
             else:
                 p = V[i]
@@ -224,19 +327,34 @@ def make_mesh(name, part):
 
 
 def turn_matrix(turn_deg, at):
+    """stores.json's placing convention: turned about X, then Y, then Z (degrees; R = Rz Ry Rx), then moved to at"""
     rx, ry, rz = (math.radians(a) for a in turn_deg)
     R = Matrix.Rotation(rz, 4, "Z") @ Matrix.Rotation(ry, 4, "Y") @ Matrix.Rotation(rx, 4, "X")
     return Matrix.Translation(Vector(at)) @ R
 
 
 def placed(part, Mx):
-    """a copy of part moved by the 4x4 Mx (for the assemblies' checks)"""
-    P = deck.Part()
+    """a copy of part moved by the 4x4 Mx, its seams kept"""
+    P = stores.SPart()
     V, F, M, U = part.arrays()
     A = np.array(Mx)
     V2 = V @ A[:3, :3].T + A[:3, 3]
     P.V, P.F, P.M, P.U, P.n = [V2], list(F), list(M), [U], len(V2)
+    P.seams = list(getattr(part, "seams", []))
     return P
+
+
+def moved_anchors(anchors, Mx):
+    """an item's anchors carried by Mx (planes stay planes only unturned: a turned item's planes become its points')"""
+    out = []
+    A = np.array(Mx)
+    for an in anchors:
+        if an[0] == "p":
+            out.append(("p", (A[:3, :3] @ np.asarray(an[1]) + A[:3, 3]).tolist(), an[2]))
+        elif np.allclose(A[:3, :3], np.eye(3)):
+            k = 2 if an[0] == "z" else 0
+            out.append((an[0], an[1] + A[k, 3]))
+    return out
 
 
 # ---- build ------------------------------------------------------------------------------------------------------------------
@@ -250,8 +368,20 @@ SC.collection.children.link(coll)
 meshes, report, failures = {}, {"items": {}, "assemblies": {}}, []
 x_show = 0.0
 for name, it in items.items():
-    rep, fails = run_checks(name, it.pieces, it.stands, meets_all.get(name, []))
+    rep, fails, objs = run_checks(name, it.pieces, it.stands, meets_all.get(name, []), it.anchors)
     failures += fails
+    # each rest other than as built (a cask on its bilge): turned and placed, it stands on the deck
+    for rn, r_ in it.rests.items():
+        if r_["turn_deg"] == [0.0, 0.0, 0.0] and r_["at_m"] == [0.0, 0.0, 0.0]:
+            continue
+        A = np.array(turn_matrix(r_["turn_deg"], r_["at_m"]))
+        o2 = {k: (V @ A[:3, :3].T + A[:3, 3], T) for k, (V, T) in objs.items()}
+        st = stands_check(o2, list(o2))
+        Vall = np.concatenate([V for V, T in o2.values()])
+        st["middle_off_origin_in"] = np.round((Vall.min(0) + Vall.max(0))[:2] / 2 / IN, 2).tolist()
+        rep.setdefault("rests", {})[rn] = st
+        if st["fail"] or max(abs(v) for v in st["middle_off_origin_in"]) > 0.5:
+            failures.append(f"{name}: rest {rn} does not stand centred on the deck ({st})")
     P = it.merged()
     me = make_mesh(name, P)
     meshes[name] = me
@@ -260,15 +390,15 @@ for name, it in items.items():
     lo, hi = it.box()
     ob.location = (x_show - lo[0], 0.0, 0.0)
     x_show += (hi[0] - lo[0]) + 0.4
-    key = "hammock_slung" if name == "HammockSlung" else "cask" if name.startswith("Cask_") or name == "PowderBarrel" \
-        else "each"
+    key = it.budget_key
     tris = P.tris()
     report["items"][name] = {
         "note": it.note, "box_m": [np.round(lo, 4).tolist(), np.round(hi, 4).tolist()],
         "size_m": np.round(hi - lo, 4).tolist(), "size_in": np.round((hi - lo) / IN, 2).tolist(),
         "stands_on_deck": it.stands, "rests": it.rests, "attach_m": it.attach, "slots": it.slots,
         "triangles": tris, "budget_triangles": budget[key], "materials": sorted(set(P.M)), "info": it.info,
-        "pieces": rep["pieces"], "by_design": rep["room"]["by_design"],
+        "pieces": rep["pieces"], "by_design": rep["room"]["by_design"], "rest_checks": rep.get("rests", {}),
+        "stands": rep.get("stands"),
     }
 
 # ---- assemblies ----------------------------------------------------------------------------------------------------------
@@ -277,16 +407,21 @@ SC.collection.children.link(acoll)
 y_show = -3.0
 
 
-def assembly(aname, members, meets):
-    """members [(item name, 4x4)]: each copy a linked object; the copies' pieces checked against each other"""
+def assembly(aname, members, meets, stands):
+    """members [(item name, 4x4)]: each copy a linked object; the copies' pieces checked against each other, held by
+    the deck (stands) or their own items' anchors"""
     global y_show
-    pieces = {}
+    pieces, anchors = {}, []
     for k, (iname, Mx) in enumerate(members):
         it = items[iname]
         for pn, part in it.pieces.items():
             pieces[f"{iname}#{k}.{pn}"] = placed(part, Mx)
-    rep, fails = run_checks(aname, pieces, stands=False, meets=meets)
-    report["assemblies"][aname] = {"members": [m[0] for m in members], "room": rep["room"],
+        anchors += moved_anchors(it.anchors, Mx)
+    # each copy's own designed contacts come from its item; the card lists only those between copies
+    meets = list(meets) + [[f"{iname}#{k}.{m[0]}", f"{iname}#{k}.{m[1]}"] + list(m[2:])
+                           for k, (iname, _M) in enumerate(members) for m in meets_all.get(iname, [])]
+    rep, fails, _ = run_checks(aname, pieces, stands, meets, anchors)
+    report["assemblies"][aname] = {"members": [m[0] for m in members], "room": rep["room"], "stands": rep.get("stands"),
                                    "triangles_drawn": int(sum(items[m[0]].merged().tris() for m in members))}
     failures.extend(fails)
     sub = bpy.data.collections.new(aname)
@@ -298,43 +433,43 @@ def assembly(aname, members, meets):
     y_show -= 3.0
 
 
-# a hammock on its two hooks: each hook turned so its bight lies on the hammock's attach point, the hook's open side
-# toward the hammock
+# a hammock on its two hooks: each hook turned so its bight lies on the hammock's attach point, the bight's open side
+# toward the hammock (the hook's bight is at its +x; the fore hook is turned 180 deg so its bight points aft)
 hm = items["HammockSlung"]
 hk = items["HammockHook"]
 bx, _, bz = hk.attach["bight"]
 mem = [("HammockSlung", Matrix.Identity(4))]
 for tag, s in (("hook_aft", -1.0), ("hook_fore", 1.0)):
     p = Vector(hm.attach[tag])
-    # the hook's bight is at +x of its plate; turn the aft hook 180 deg so its bight points forward (to the hammock)
     R = Matrix.Rotation(0.0 if s < 0 else math.pi, 4, "Z")
     off = R @ Vector((bx, 0.0, bz))
     mem.append(("HammockHook", Matrix.Translation(p - off) @ R))
-assembly("HammockOnHooks", mem, C["meets"]["assemblies"].get("HammockOnHooks", []))
+assembly("HammockOnHooks", mem, C["meets"]["assemblies"].get("HammockOnHooks", []), stands=False)
 
 # the magazine's rack with its barrels
 mr = items["MagazineRack"]
 mem = [("MagazineRack", Matrix.Identity(4))]
 for s in mr.slots:
     mem.append((s["item"], turn_matrix(s["turn_deg"], s["at_m"])))
-assembly("MagazineRackFilled", mem, C["meets"]["assemblies"].get("MagazineRackFilled", []))
+assembly("MagazineRackFilled", mem, C["meets"]["assemblies"].get("MagazineRackFilled", []), stands=True)
 
 # the cartridge rack filled
 cr = items["CartridgeRack"]
 mem = [("CartridgeRack", Matrix.Identity(4))]
 for s in cr.slots:
     mem.append((s["item"], turn_matrix(s["turn_deg"], s["at_m"])))
-assembly("CartridgeRackFilled", mem, C["meets"]["assemblies"].get("CartridgeRackFilled", []))
+assembly("CartridgeRackFilled", mem, C["meets"]["assemblies"].get("CartridgeRackFilled", []), stands=True)
 
-# a butt on its bilge, chocked with a quoin each side under each bilge hoop, the quoin's slope bearing on the hoop
+# a butt on its bilge (its rest 'on_bilge', the bung up), chocked with a quoin each side under each bilge hoop, the
+# quoin's slope bearing on the hoop
 bt = items["Cask_Butt"]
 ob_ = bt.rests["on_bilge"]
-D, d, L, _ = kit.cask_size("Butt")
-Mc = turn_matrix(ob_["turn_deg"], [-L / 2, 0.0, ob_["lift_m"]])     # turned about Y: its foot at -L/2, along +X
+L = bt.info["length_m"]
+Mc = turn_matrix(ob_["turn_deg"], ob_["at_m"])
 mem = [("Cask_Butt", Mc)]
 qL, qW, qH = (v * IN for v in C["casks"]["quoin"]["size_in"])
 toe = 0.6 * IN
-ro = ob_["lift_m"]
+ro = ob_["at_m"][2]                                                  # the cask's axis over the deck
 bite = 0.05 * IN                                                     # how far the slope is pressed into the hoop
 
 
@@ -357,12 +492,12 @@ for zc, w, rh in bt.info["hoops_m"]:
                 hi_ = m_
             else:
                 lo_ = m_
-        x = -L / 2 + zc
+        x = (Mc @ Vector((0.0, 0.0, zc))).x
         for s in (-1.0, 1.0):
             # +X of the quoin (its toe) toward the cask's middle
             R = Matrix.Rotation(math.radians(-90.0 if s > 0 else 90.0), 4, "Z")
             mem.append(("Quoin", Matrix.Translation(Vector((x, s * hi_, 0.0))) @ R))
-assembly("ButtChocked", mem, C["meets"]["assemblies"].get("ButtChocked", []))
+assembly("ButtChocked", mem, C["meets"]["assemblies"].get("ButtChocked", []), stands=True)
 
 # ---- write -------------------------------------------------------------------------------------------------------------------
 report["failures"] = failures
