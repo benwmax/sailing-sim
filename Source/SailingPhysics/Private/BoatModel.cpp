@@ -32,6 +32,7 @@ namespace Sailing
 		case EBoatType::Lagoon42: return "Lagoon 42";
 		case EBoatType::Maxi: return "Maxi 100";
 		case EBoatType::Bluebonnet: return "Bluebonnet";
+		case EBoatType::Commonwealth: return "Commonwealth";
 		default: return "Boat";
 		}
 	}

@@ -199,6 +199,7 @@ namespace SailCatalog
 				{ TEXT("Cruising catamaran"), TEXT("Forty-two feet of steady platform with two engines. No heel, slow to tack, a lot of windage at the dock."), 3, { TEXT("Twin engines"), TEXT("Wheel") }, false, 16.f, 22.f },
 				{ TEXT("Racing maxi · 12 crew"), TEXT("The prologue's 100-foot offshore racer: twin wheels, three grinders, a 6 m keel and black membrane sails. Fast and heavy, and every trim is a crew job."), 5, { TEXT("Wheel"), TEXT("Grinders"), TEXT("Inboard") }, false, 18.f, 25.f },
 				{ TEXT("J-Class yacht · 1937"), TEXT("Bluebonnet, our own J-Class: 131 feet of varnish and cotton, a 157-foot mast, a wheel and thirty crew. No engine, and she needs deep water under her 15-foot keel."), 5, { TEXT("Wheel"), TEXT("Spinnaker"), TEXT("No engine") }, false, 16.f, 22.f },
+				{ TEXT("Frigate · 1797"), TEXT("Commonwealth, our own heavy frigate: 215 feet overall, three masts of square sails, a deck of 24-pounders and 450 crew. You give the orders; she tacks in minutes, not seconds, and needs deep water under her 21-foot keel."), 5, { TEXT("Square rig"), TEXT("Wheel"), TEXT("No engine") }, false, 18.f, 26.f },
 			};
 			return W[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(W)) - 1)];
 		}
@@ -208,6 +209,10 @@ namespace SailCatalog
 			TArray<FBoat> Out;
 			for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 			{
+				// The frigate (docs/frigate-physics/) is listed once the game draws and works her square rig: the frigate
+				// wiring turns kShipsListed on with her model, rig and orders panel.
+				constexpr bool kShipsListed = false;
+				if (IsSquareRigged(EBoatType(T)) && !kShipsListed) continue;
 				const FBoatConfig C = FBoatConfig::Make(EBoatType(T));
 				const FWords& W = Words(T);
 				FBoat B;
@@ -566,9 +571,10 @@ namespace SailCatalog
 	bool InSliceBoat(int32 Type)
 	{
 		using Sailing::EBoatType;
-		// (Bluebonnet, the J-Class, joined the slice on Bean's word, Nov 17 2026: docs/jclass-14/.)
+		// (Bluebonnet, the J-Class, joined the slice on Bean's word, Nov 17 2026: docs/jclass-14/; the frigate Commonwealth
+		// on his word the same day, listed once the game draws her: MakeBoats' kShipsListed.)
 		return !USailingSettings::SliceOnly() || Type == int32(EBoatType::J22) || Type == int32(EBoatType::Sunfish) || Type == int32(EBoatType::Catalina22)
-			|| Type == int32(EBoatType::Bluebonnet);
+			|| Type == int32(EBoatType::Bluebonnet) || Type == int32(EBoatType::Commonwealth);
 	}
 
 	bool InSliceTier(const FString& TierId)
