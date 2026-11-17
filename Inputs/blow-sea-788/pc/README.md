@@ -65,12 +65,12 @@
 - **Settings:** `-SailingBenchWarmup=60`, 20 s measured.
 - **Files:** `bench4k-10b10e2/*.bench.json`, with the command lines in `args.csv`.
 
-| Run | fps | p99 ms | game ms | render ms | GPU frame ms | water ms | foreground | render_pct |
+| Run | fps | p99 ms | game ms | render ms | GPU frame ms | water GPU ms / water CPU ms | foreground | render_pct |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| classic-1 | 48.5 | 22.64 | 9.49 | 20.63 | 20.06 |  | 0 | 100 |
-| default-1 | 49 | 22.64 | 9.42 | 20.4 | 19.84 |  | 0 | 100 |
-| classic-2 | 50.2 | 22.1 | 9.32 | 19.92 | 19.36 |  | 0 | 100 |
-| default-2 | 49.4 | 22.84 | 10.16 | 20.22 | 19.64 |  | 0 | 100 |
+| classic-1 | 48.5 | 22.64 | 9.49 | 20.63 | 20.06 | 1.73 / 1.339 | 0 | 100 |
+| default-1 | 49 | 22.64 | 9.42 | 20.4 | 19.84 | 1.54 / 1.383 | 0 | 100 |
+| classic-2 | 50.2 | 22.1 | 9.32 | 19.92 | 19.36 | 1.67 / 1.37 | 0 | 100 |
+| default-2 | 49.4 | 22.84 | 10.16 | 20.22 | 19.64 | 1.55 / 1.517 | 0 | 100 |
 
 - **Means:**
   - classic: 49.35 fps (48.5, 50.2)
