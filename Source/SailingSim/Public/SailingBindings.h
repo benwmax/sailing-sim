@@ -53,8 +53,14 @@ namespace SailingBindings
 	 * boat takes no input from the keys they share (WASD walks, E takes a ladder, F goes back to the wheel).
 	 */
 	SAILINGSIM_API bool IsWalkAction(FName Action);
-	/** The walking context (IMC_Walk, above the boat's while you walk): every walking command. */
+	/** A ship's orders panel's own keys (docs/ship-orders/: rows, tabs, give the order, close), live only while it is open. */
+	SAILINGSIM_API bool IsOrdersAction(FName Action);
+	/** The walking context (IMC_Walk, above the boat's while you walk): every walking command but the orders panel's key. */
 	SAILINGSIM_API bool InWalkContext(const FSailingKeyBinding& Binding);
+	/** A ship's context (IMC_Ship, above the boat's whenever she is a ship you can walk): the orders panel's key. */
+	SAILINGSIM_API bool InShipContext(const FSailingKeyBinding& Binding);
+	/** The orders panel's context (IMC_Orders, above the others while it is open). */
+	SAILINGSIM_API bool InOrdersContext(const FSailingKeyBinding& Binding);
 	SAILINGSIM_API bool SameLayer(FName A, FName B);
 	/** A pad button this command shares as a half-second hold (photo mode's toggle on View, the dock lines on the right
 	 *  stick's click): the other commands on that button in its context take the tap (ASailboatPawn::BuildContext). */

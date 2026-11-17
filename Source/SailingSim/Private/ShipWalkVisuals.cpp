@@ -126,6 +126,8 @@ void ASailboatPawn::LoadWalkMap()
 	WalkMap = Sailing::FWalkMap();
 	WalkMapName.Reset();
 	bWalking = false;
+	bShipHelmsman = false;
+	ShipOrders.Close();
 	if (bWasWalking) ApplyMappingContexts();
 }
 
@@ -150,17 +152,17 @@ void ASailboatPawn::SetWalking(bool bOn, bool bAnnounce)
 	for (const FName Axis : { FName(TEXT("WalkForward")), FName(TEXT("WalkRight")), FName(TEXT("WalkRun")), FName(TEXT("WalkCrouch")) }) HeldAxes.FindOrAdd(Axis) = 0.f;
 	WalkLook = FVector2D::ZeroVector;
 	bWalkUsePending = false;
-	const double TwaDeg = Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
 	if (bOn)
 	{
 		// From the wheel: you set off the way you were looking; her helmsman takes her at the wind angle she had.
 		const Sailing::Vec3 Feet = Walker.GetFeet();
 		Walker.Reset(WalkMap, Walker.GetDeck(), Feet.X, Feet.Y, Walker.GetYawDeg() + CameraYaw);
-		WalkPilot = Sailing::FAutopilot();
-		WalkPilot.TargetTWADeg = TwaDeg;
+		if (!bShipHelmsman) ShipHelmsmanTakes();
 	}
 	else
 	{
+		// Back at the wheel, you steer.
+		bShipHelmsman = false;
 		PlaceWalkerAtHelm();
 		CameraYaw = 0.f;
 		CameraPitch = -8.f;
@@ -173,7 +175,7 @@ void ASailboatPawn::SetWalking(bool bOn, bool bAnnounce)
 		StatusMessage = SailUI::UiMode() == SailUI::EUiMode::Helpful
 			? FString::Printf(TEXT("On deck: %s to walk, %s for a ladder, %s back to the wheel. The helmsman holds her %.0f degrees off the wind"),
 				*SailingBindings::Label(TEXT("WalkForward"), false, bPad), *SailingBindings::Label(TEXT("WalkUse"), false, bPad),
-				*SailingBindings::Label(TEXT("WalkToHelm"), false, bPad), FMath::Abs(TwaDeg))
+				*SailingBindings::Label(TEXT("WalkToHelm"), false, bPad), FMath::Abs(WalkPilot.TargetTWADeg))
 			: FString(TEXT("On deck"));
 	}
 	else
@@ -333,10 +335,16 @@ UInputMappingContext* ASailboatPawn::BuildWalkContext(UObject* Outer, FName Name
 {
 	// The walking keys alone (SailingBindings::InWalkContext), above the boat's context while you walk: the menu, the
 	// view, the look and the controls card stay the boat context's.
+	return BuildLayerContext(Outer, Name, Bindings, InActions, &SailingBindings::InWalkContext);
+}
+
+UInputMappingContext* ASailboatPawn::BuildLayerContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+	const TMap<FName, TObjectPtr<UInputAction>>& InActions, bool (*InLayer)(const FSailingKeyBinding&))
+{
 	UInputMappingContext* Context = NewObject<UInputMappingContext>(Outer, MakeUniqueObjectName(Outer, UInputMappingContext::StaticClass(), Name));
 	for (const FSailingKeyBinding& Binding : Bindings)
 	{
-		if (!SailingBindings::InWalkContext(Binding)) continue;
+		if (!InLayer || !InLayer(Binding)) continue;
 		const TObjectPtr<UInputAction>* Action = InActions.Find(Binding.Action);
 		if (!Action || !*Action) continue;
 		FEnhancedActionKeyMapping& Mapping = Context->MapKey(*Action, Binding.Key);
@@ -356,7 +364,143 @@ UInputMappingContext* ASailboatPawn::BuildWalkContext(UObject* Outer, FName Name
 			Dead->Type = EDeadZoneType::Axial;
 			Mapping.Modifiers.Insert(Dead, 0);
 		}
-		if (Binding.Action == TEXT("WalkUse") || Binding.Action == TEXT("WalkToHelm")) Mapping.Triggers.Add(NewObject<UInputTriggerPressed>(Context));
+		const bool bButton = Binding.Action == TEXT("WalkUse") || Binding.Action == TEXT("WalkToHelm") || Binding.Action == TEXT("ShipOrders")
+			|| SailingBindings::IsOrdersAction(Binding.Action);
+		if (bButton) Mapping.Triggers.Add(NewObject<UInputTriggerPressed>(Context));
 	}
 	return Context;
+}
+
+// ---- a ship's orders (docs/ship-orders/) ------------------------------------------------------------------------------
+
+void ASailboatPawn::ShipHelmsmanTakes()
+{
+	bShipHelmsman = true;
+	WalkPilot = Sailing::FAutopilot();
+	WalkPilot.TargetTWADeg = Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
+}
+
+Sailing::FShipOrderContext ASailboatPawn::GetShipOrderContext() const
+{
+	Sailing::FShipOrderContext C;
+	// The square rig's manoeuvres and the gun battery join as they land (the physics thread's rig, PR #765's battery):
+	// until then their orders show, with the reason they can't be given yet.
+	C.bSquareRig = false;
+	C.bHasGuns = false;
+	C.bHelmsman = bShipHelmsman;
+	C.TrueWindAngleDeg = bShipHelmsman ? WalkPilot.TargetTWADeg : Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
+	return C;
+}
+
+bool ASailboatPawn::OnOrdersButton(FName Action)
+{
+	if (Action == TEXT("ShipOrders"))
+	{
+		ShipOrders.Toggle();
+		ApplyMappingContexts();
+		return true;
+	}
+	if (!ShipOrders.IsOpen() || !SailingBindings::IsOrdersAction(Action)) return false;
+	if (Action == TEXT("OrdersUp")) ShipOrders.MoveRow(-1);
+	else if (Action == TEXT("OrdersDown")) ShipOrders.MoveRow(1);
+	else if (Action == TEXT("OrdersLeft")) ShipOrders.MoveGroup(-1);
+	else if (Action == TEXT("OrdersRight")) ShipOrders.MoveGroup(1);
+	else if (Action == TEXT("OrdersClose"))
+	{
+		ShipOrders.Close();
+		ApplyMappingContexts();
+	}
+	else if (Action == TEXT("OrdersSelect"))
+	{
+		Sailing::FIssuedOrder Order;
+		if (ShipOrders.Select(GetShipOrderContext(), Boat.GetState().Time, Order)) GiveShipOrder(Order);
+	}
+	return true;
+}
+
+void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
+{
+	using Sailing::EShipOrder;
+	switch (Order.Order)
+	{
+	case EShipOrder::TakeHelm:
+		ShipHelmsmanTakes();
+		break;
+	case EShipOrder::MyHelm:
+		// You take the wheel: from on deck that is the walk back to it.
+		if (bWalking) SetWalking(false, false);
+		bShipHelmsman = false;
+		break;
+	case EShipOrder::LuffPoint:
+	case EShipOrder::BearAwayPoint:
+		WalkPilot.TargetTWADeg = Sailing::HelmTargetAfter(Order.Order, WalkPilot.TargetTWADeg, GetShipOrderContext());
+		break;
+	default:
+		// (sail and gun orders: refused by GetShipOrderContext until the rig and the battery are wired)
+		break;
+	}
+	// The captain's call, in every HUD mode: it is what you said.
+	const Sailing::FShipOrderInfo& Info = Sailing::ShipOrderInfo(Order.Order);
+	FString Call = UTF8_TO_TCHAR(Info.Call);
+	if (Info.bSided && Order.Side != Sailing::EOrderSide::Both) Call = FString(UTF8_TO_TCHAR(Sailing::OrderSideName(Order.Side))) + TEXT(" side: ") + Call;
+	StatusMessage = TEXT("Captain: ") + Call;
+	StatusUntil = Boat.GetState().Time + 4.0;
+}
+
+FString ASailboatPawn::GetOrdersPanelText(int32 Part) const
+{
+	using namespace Sailing;
+	if (!ShipOrders.IsOpen()) return FString();
+	const EShipOrderGroup Group = ShipOrders.GetGroup();
+	if (Part == 0)
+	{
+		// The tabs, the open one in brackets.
+		FString Tabs = TEXT("ORDERS  ");
+		for (int32 G = 0; G < int32(EShipOrderGroup::Count); ++G)
+		{
+			const FString Name = UTF8_TO_TCHAR(ShipOrderGroupName(EShipOrderGroup(G)));
+			Tabs += EShipOrderGroup(G) == Group ? FString::Printf(TEXT("  [%s]"), *Name.ToUpper()) : FString::Printf(TEXT("  %s"), *Name.ToUpper());
+		}
+		return Tabs;
+	}
+	const FShipOrderContext Context = GetShipOrderContext();
+	if (Part == 1)
+	{
+		// The rows: the chosen one marked; one that can't be ordered now in parentheses.
+		TArray<FString> Lines;
+		for (int32 R = 0; R < ShipOrders.NumRows(Group); ++R)
+		{
+			const FString Mark = R == ShipOrders.GetRow() ? TEXT("> ") : TEXT("   ");
+			EShipOrder Order = EShipOrder::MakeSail;
+			if (ShipOrders.IsSideRow(Group, R)) Lines.Add(Mark + TEXT("Side: ") + UTF8_TO_TCHAR(OrderSideName(ShipOrders.GetSide())));
+			else if (ShipOrders.RowOrder(Group, R, Order))
+			{
+				const FString Label = UTF8_TO_TCHAR(ShipOrderInfo(Order).Label);
+				const bool bBlocked = ShipOrderBlocked(Order, ShipOrderInfo(Order).bSided ? ShipOrders.GetSide() : EOrderSide::Both, Context) != nullptr;
+				Lines.Add(Mark + (bBlocked ? TEXT("(") + Label + TEXT(")") : Label));
+			}
+		}
+		return FString::Join(Lines, TEXT("\n"));
+	}
+	// The line under the rows: why the last order wasn't given, or why this one can't be, then (Helpful) what it does and
+	// the keys.
+	TArray<FString> Lines;
+	if (!ShipOrders.GetRefusal().empty()) Lines.Add(UTF8_TO_TCHAR(ShipOrders.GetRefusal().c_str()));
+	EShipOrder Order = EShipOrder::MakeSail;
+	const bool bOrderRow = ShipOrders.RowOrder(Group, ShipOrders.GetRow(), Order);
+	if (bOrderRow && ShipOrders.GetRefusal().empty())
+	{
+		if (const char* Why = ShipOrderBlocked(Order, ShipOrderInfo(Order).bSided ? ShipOrders.GetSide() : EOrderSide::Both, Context)) Lines.Add(UTF8_TO_TCHAR(Why));
+	}
+	if (SailUI::UiMode() == SailUI::EUiMode::Helpful)
+	{
+		if (bOrderRow) Lines.Add(UTF8_TO_TCHAR(ShipOrderInfo(Order).Explain));
+		else Lines.Add(TEXT("Which side's guns the orders go to"));
+		const bool bPad = SailUI::UsingGamepad();
+		Lines.Add(FString::Printf(TEXT("%s/%s choose   %s/%s tabs   %s order   %s close"),
+			*SailingBindings::Label(TEXT("OrdersUp"), false, bPad), *SailingBindings::Label(TEXT("OrdersDown"), false, bPad),
+			*SailingBindings::Label(TEXT("OrdersLeft"), false, bPad), *SailingBindings::Label(TEXT("OrdersRight"), false, bPad),
+			*SailingBindings::Label(TEXT("OrdersSelect"), false, bPad), *SailingBindings::Label(TEXT("OrdersClose"), false, bPad)));
+	}
+	return FString::Join(Lines, TEXT("\n"));
 }

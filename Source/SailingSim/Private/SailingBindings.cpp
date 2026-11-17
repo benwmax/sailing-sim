@@ -100,12 +100,28 @@ namespace SailingBindings
 	bool IsWalkAction(FName Action)
 	{
 		return Action == TEXT("WalkForward") || Action == TEXT("WalkRight") || Action == TEXT("WalkRun") || Action == TEXT("WalkCrouch")
-			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm");
+			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm") || Action == TEXT("ShipOrders");
+	}
+
+	bool IsOrdersAction(FName Action)
+	{
+		return Action == TEXT("OrdersUp") || Action == TEXT("OrdersDown") || Action == TEXT("OrdersLeft") || Action == TEXT("OrdersRight")
+			|| Action == TEXT("OrdersSelect") || Action == TEXT("OrdersClose");
 	}
 
 	bool InWalkContext(const FSailingKeyBinding& Binding)
 	{
-		return IsWalkAction(Binding.Action);
+		return IsWalkAction(Binding.Action) && Binding.Action != TEXT("ShipOrders");
+	}
+
+	bool InShipContext(const FSailingKeyBinding& Binding)
+	{
+		return Binding.Action == TEXT("ShipOrders");
+	}
+
+	bool InOrdersContext(const FSailingKeyBinding& Binding)
+	{
+		return IsOrdersAction(Binding.Action);
 	}
 
 	bool SameLayer(FName A, FName B)
@@ -115,6 +131,7 @@ namespace SailingBindings
 		// Walking a ship (docs/ship-walk/): its own layer too (the menu, the view and the controls card are the boat
 		// context's keys, which stay live under it, so walking keys must not take theirs).
 		auto Shared = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard") || N == TEXT("ChangeView") || N == TEXT("Look"); };
+		if (IsOrdersAction(A) || IsOrdersAction(B)) return IsOrdersAction(A) == IsOrdersAction(B) || Shared(A) || Shared(B);
 		if (IsWalkAction(A) || IsWalkAction(B)) return IsWalkAction(A) == IsWalkAction(B) || Shared(A) || Shared(B);
 		auto Global = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard"); };
 		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
@@ -132,7 +149,7 @@ namespace SailingBindings
 
 	bool InBoatContext(const FSailingKeyBinding& Binding)
 	{
-		if (IsWalkAction(Binding.Action)) return false;
+		if (IsWalkAction(Binding.Action) || IsOrdersAction(Binding.Action)) return false;
 		return !IsPhotoAction(Binding.Action) || (Binding.Action == TEXT("PhotoShot") && !Binding.Key.IsGamepadKey());
 	}
 

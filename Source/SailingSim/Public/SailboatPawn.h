@@ -30,6 +30,7 @@
 #include "PhotoSettings.h"
 #include "Feedback.h"
 #include "ShipWalk.h"
+#include "ShipOrders.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -302,7 +303,14 @@ public:
 	/** Walking a ship (docs/ship-walk/): the On deck view's context (IMC_Walk, above the boat's while you walk). */
 	static UInputMappingContext* BuildWalkContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
 		const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
-	static constexpr int32 WalkContextPriority = 1;
+	/** A layer's context (walking, a ship's, the orders panel's): the bindings InLayer takes, buttons fired on the press. */
+	static UInputMappingContext* BuildLayerContext(UObject* Outer, FName Name, const TArray<FSailingKeyBinding>& Bindings,
+		const TMap<FName, TObjectPtr<class UInputAction>>& InActions, bool (*InLayer)(const FSailingKeyBinding&));
+	/** A ship's (docs/ship-orders/): IMC_Ship whenever she is one, IMC_Walk over it while you walk, IMC_Orders over both while
+	 *  the orders panel is open. */
+	static constexpr int32 ShipContextPriority = 1;
+	static constexpr int32 WalkContextPriority = 2;
+	static constexpr int32 OrdersContextPriority = 3;
 	/** The pad throttle's dead zone on the left stick's Y axis (the tiller is its X). */
 	static constexpr float ThrottleStickDeadZone = 0.5f;
 	/** The pad look's response curve (stick deflection to the power of this: fine aim near the centre). */
@@ -561,6 +569,13 @@ public:
 	uint32 GetDecksShown() const;
 	/** The felt gravity in her frame (m/s^2, pointing down at rest): the world's, less her acceleration at the walker. */
 	Sailing::Vec3 FeltGravityShip() const;
+	/** A ship's orders (docs/ship-orders/): the panel (G or the pad's X on a ship), what she can be ordered to do now, and
+	 *  the panel's lines for the HUD (0 the tabs, 1 the rows, 2 the row's line or why it can't be ordered now). */
+	const Sailing::FShipOrdersPanel& GetShipOrders() const { return ShipOrders; }
+	Sailing::FShipOrderContext GetShipOrderContext() const;
+	FString GetOrdersPanelText(int32 Part) const;
+	/** Her helmsman has the wheel (you walk, or told him to take her). */
+	bool HasShipHelmsman() const { return bShipHelmsman; }
 private:
 	Sailing::FWalkMap WalkMap;
 	FString WalkMapName;                     // the ship the map is for
@@ -571,6 +586,15 @@ private:
 	Sailing::FAutopilot WalkPilot;           // her helmsman while you walk
 	FString WalkPromptShown;
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> WalkContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> ShipContext;
+	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> OrdersContext;
+	Sailing::FShipOrdersPanel ShipOrders;
+	bool bShipHelmsman = false;
+	/** The helmsman takes her at the wind angle she has now. */
+	void ShipHelmsmanTakes();
+	/** An orders panel key (or the panel's own); true when it was one (OnButton stops there). */
+	bool OnOrdersButton(FName Action);
+	void GiveShipOrder(const Sailing::FIssuedOrder& Order);
 	/** The decks below (index by walk-map deck): their mesh assets (null where the ship has none), meshes, async loads
 	 *  and when each stopped being wanted (platform seconds, -1 while wanted). */
 	TArray<FSoftObjectPath> DeckMeshPaths;

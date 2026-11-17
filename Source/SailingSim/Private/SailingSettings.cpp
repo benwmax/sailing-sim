@@ -439,6 +439,21 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("WalkUse"), EKeys::Gamepad_FaceButton_Bottom);
 	Add(TEXT("WalkToHelm"), EKeys::F);
 	Add(TEXT("WalkToHelm"), EKeys::Gamepad_FaceButton_Top);
+	// A ship's orders panel (docs/ship-orders/): its key on a ship in place of wing on wing's; its own keys while it is open.
+	Add(TEXT("ShipOrders"), EKeys::G);
+	Add(TEXT("ShipOrders"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("OrdersUp"), EKeys::Up);
+	Add(TEXT("OrdersUp"), EKeys::Gamepad_DPad_Up);
+	Add(TEXT("OrdersDown"), EKeys::Down);
+	Add(TEXT("OrdersDown"), EKeys::Gamepad_DPad_Down);
+	Add(TEXT("OrdersLeft"), EKeys::Left);
+	Add(TEXT("OrdersLeft"), EKeys::Gamepad_DPad_Left);
+	Add(TEXT("OrdersRight"), EKeys::Right);
+	Add(TEXT("OrdersRight"), EKeys::Gamepad_DPad_Right);
+	Add(TEXT("OrdersSelect"), EKeys::Enter);
+	Add(TEXT("OrdersSelect"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("OrdersClose"), EKeys::BackSpace);
+	Add(TEXT("OrdersClose"), EKeys::Gamepad_FaceButton_Right);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

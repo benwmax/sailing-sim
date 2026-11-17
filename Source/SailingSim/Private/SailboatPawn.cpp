@@ -105,7 +105,7 @@ namespace
 			|| Action == TEXT("CockpitView") || Action == TEXT("ChangeView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
 			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action)
-			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm");
+			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm") || Action == TEXT("ShipOrders") || SailingBindings::IsOrdersAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -1283,9 +1283,10 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 		ApplyChaseRotation();
 	}
-	if (bWalking && !bDemo)
+	if (bShipHelmsman && !bDemo)
 	{
-		// docs/ship-walk/: while you walk her decks, her helmsman holds the wind angle she had when you left the wheel.
+		// docs/ship-walk/: while you walk her decks (or told him to take her), her helmsman holds the wind angle she had when
+		// you left the wheel, a point up or down as you order (docs/ship-orders/).
 		WalkPilot.Wind = &GetWind();
 		Controls.Tiller = WalkPilot.Update(Boat);
 	}
@@ -1796,6 +1797,10 @@ namespace
 			{ TEXT("WalkRight"), { TEXT("On deck (ships): step right"), TEXT("On deck (ships): step left") } },
 			{ TEXT("WalkRun"), { TEXT("On deck (ships): run (hold)"), TEXT("") } }, { TEXT("WalkCrouch"), { TEXT("On deck (ships): crouch (hold)"), TEXT("") } },
 			{ TEXT("WalkUse"), { TEXT("On deck (ships): take the ladder"), TEXT("") } }, { TEXT("WalkToHelm"), { TEXT("On deck (ships): back to the wheel"), TEXT("") } },
+			{ TEXT("ShipOrders"), { TEXT("Ships: orders panel"), TEXT("") } },
+			{ TEXT("OrdersUp"), { TEXT("Orders panel: previous order"), TEXT("") } }, { TEXT("OrdersDown"), { TEXT("Orders panel: next order"), TEXT("") } },
+			{ TEXT("OrdersLeft"), { TEXT("Orders panel: previous tab"), TEXT("") } }, { TEXT("OrdersRight"), { TEXT("Orders panel: next tab"), TEXT("") } },
+			{ TEXT("OrdersSelect"), { TEXT("Orders panel: give the order"), TEXT("") } }, { TEXT("OrdersClose"), { TEXT("Orders panel: close"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ChangeView"), { TEXT("Change view (chase, overview, helm)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
@@ -2021,7 +2026,9 @@ void ASailboatPawn::ApplyMappingContexts()
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(MappingContext, 0);
 	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
+	if (CanWalk() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
 	if (bWalking && !bPhoto && WalkContext) Subsystem->AddMappingContext(WalkContext, WalkContextPriority);
+	if (ShipOrders.IsOpen() && CanWalk() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
 }
 
 void ASailboatPawn::RebuildMappings()
@@ -2031,6 +2038,8 @@ void ASailboatPawn::RebuildMappings()
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat_Rebound"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo_Rebound"), Bindings, Actions, true);
 	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk_Rebound"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship_Rebound"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders_Rebound"), Bindings, Actions, &SailingBindings::InOrdersContext);
 	ApplyMappingContexts();
 }
 
@@ -4240,6 +4249,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
+	if (CanWalk() && OnOrdersButton(Action)) return;
 	if (bWalking && OnWalkButton(Action)) return;
 	if (bWatching)
 	{
@@ -4632,6 +4642,8 @@ void ASailboatPawn::CreateInput()
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo"), Bindings, Actions, true);
 	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders"), Bindings, Actions, &SailingBindings::InOrdersContext);
 }
 
 void ASailboatPawn::PawnClientRestart()
