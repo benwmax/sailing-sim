@@ -165,7 +165,9 @@ double FSailCloth::LuffXAt(double Z, int32 Row) const
 	// Feedback #20: straight from the tack up to the head on its halyard, held ahead of the jib's luff below the jib's head.
 	const double V = FMath::Clamp((Z - ZFoot) / FMath::Max(HeadZ - ZFoot, 1e-3), 0.0, 1.0);
 	double X = FootLuffX + (HeadX - FootLuffX) * V;
-	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
+	// (Not the foot's row: the tack stays where the physics puts it, as ComputeCorneredTarget keeps it on the pole. Every
+	// boat's tack is well ahead of the jib's luff; Bluebonnet's, high over her bow, is 16 cm ahead, and the hold moved it.)
+	if (bAheadOf && Row > 0 && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
 	return X;
 }
 
@@ -201,7 +203,7 @@ FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double A
 	const double MastFront = MastFrontCm && !MastFrontCm->ContainsNaN() && MastFrontCm->X > C.MastX * Sailing::CmPerMeter
 		? MastFrontCm->X / Sailing::CmPerMeter : C.MastX + 0.5 * C.MastDiameter;
 	// The pole is the J long: the forestay's tack (the jib's) to the mast's front.
-	const double J = FMath::Clamp((C.HasJib() ? FootLuffX(C.Jib) : FootLuffX(C.Spinnaker)) - MastFront, 0.5, 12.0);
+	const double J = FMath::Clamp((C.HasJib() ? FootLuffX(C.Jib) : FootLuffX(C.Spinnaker)) - MastFront, 0.5, 20.0);   // (Bluebonnet's J is 15.2 m)
 	const double PoleDeg = FMath::Clamp(FMath::RadiansToDegrees(FMath::Abs(ApparentWindAngle)) - 90.0, PoleMinDeg, PoleMaxDeg);
 	const double Pole = FMath::DegreesToRadians(PoleDeg);
 	const double PoleZ = FMath::Max(C.Spinnaker.Strips[0].ZBottom, H.SheerHeight(C.MastX) + PoleOverSheerM);
