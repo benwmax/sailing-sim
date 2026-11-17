@@ -624,8 +624,11 @@ private:
 	bool LoadMetaCrew();
 	class USkeletalMeshComponent* AddMetaHumanFigure(int32 CrewRole, int32 Index);
 public:
-	/** Whether the crew are MetaHumans (for the tests and the bench). */
-	bool HasMetaHumanCrew() const { return CrewFigures.Num() > 0 && CrewFigures[0].Rig >= 0; }
+	/** Whether any of the crew are MetaHumans (for the tests, the bench and the falls). A big crew has them aft only
+	 *  (docs/crew-cost/: CrewFigureIsMetaHuman), so the first figure, forward, may be SK_Sailor. */
+	bool HasMetaHumanCrew() const { return CrewFigures.ContainsByPredicate([](const FCrewFigure& F) { return F.Rig >= 0; }); }
+	/** How many of the crew are MetaHumans (docs/crew-cost/). */
+	int32 NumMetaHumanCrew() const { int32 N = 0; for (const FCrewFigure& F : CrewFigures) { if (F.Rig >= 0) ++N; } return N; }
 	const TArray<TObjectPtr<class USkeletalMeshComponent>>& GetCrewMeshes() const { return Crew; }
 	const FBoatLivery& GetLivery() const { return Livery; }
 	/** Boat skins: shows a skin on this boat without saving it (the Customize screen), and rebuilds her look. */
