@@ -81,6 +81,15 @@ static const FLiveryScheme Schemes_maxi[] = {
 static const FLiveryWear Wear_maxi = { 0.00f, 1.00f, 0.00f, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } }, { { 0.15f, 0.30f }, { 0.10f, 0.20f }, { 0.25f, 0.50f }, { 0.00f, 0.05f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
 static const FLiveryNumbers Numbers_maxi = { false, 0.00f, 1, 99, TEXT("{n}") };
 
+static const FLiveryScheme Schemes_bluebonnet[] = {
+	{ 1.000f, FLinearColor(0.0130f, 0.0296f, 0.1812f), FLinearColor(0.4342f, 0.2623f, 0.1329f), FLinearColor(0.4342f, 0.2623f, 0.1329f), FLinearColor(0.1620f, 0.0160f, 0.0116f), true, FLinearColor(0.8388f, 0.8148f, 0.7305f), true, FLinearColor(0.6584f, 0.3813f, 0.0513f), false, FLinearColor(0.0116f, 0.0232f, 0.0578f), true, FLinearColor(0.4342f, 0.2623f, 0.1329f) }, // bluebonnet
+};
+static const FLiveryWear Wear_bluebonnet = { 0.00f, 1.00f, 0.00f, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.05f, 0.15f }, { 0.05f, 0.15f }, { 0.05f, 0.15f }, { 0.00f, 0.05f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } }, { { 0.00f, 0.00f }, { 0.00f, 0.00f }, { 0.00f, 0.00f } } };
+static const FLiveryNumbers Numbers_bluebonnet = { false, 0.00f, 1, 99, TEXT("{n}") };
+static const FLiverySpar Spars_bluebonnet[] = {
+	{ 1.000f, FLinearColor(0.6724f, 0.5776f, 0.3916f), true }, // buff
+};
+
 static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_j22, UE_ARRAY_COUNT(Schemes_j22), &Wear_j22, &Numbers_j22, Spars_j22, UE_ARRAY_COUNT(Spars_j22) },
 	{ Schemes_sunfish, UE_ARRAY_COUNT(Schemes_sunfish), &Wear_sunfish, &Numbers_sunfish, nullptr, 0 },
@@ -91,4 +100,5 @@ static const FLiveryClass LiveryClasses[] = {
 	{ Schemes_corsair880, UE_ARRAY_COUNT(Schemes_corsair880), &Wear_corsair880, &Numbers_corsair880, nullptr, 0 },
 	{ Schemes_lagoon42, UE_ARRAY_COUNT(Schemes_lagoon42), &Wear_lagoon42, &Numbers_lagoon42, nullptr, 0 },
 	{ Schemes_maxi, UE_ARRAY_COUNT(Schemes_maxi), &Wear_maxi, &Numbers_maxi, nullptr, 0 },
+	{ Schemes_bluebonnet, UE_ARRAY_COUNT(Schemes_bluebonnet), &Wear_bluebonnet, &Numbers_bluebonnet, Spars_bluebonnet, UE_ARRAY_COUNT(Spars_bluebonnet) },
 };

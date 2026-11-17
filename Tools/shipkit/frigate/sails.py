@@ -342,6 +342,25 @@ class Sails:
                 r.append(np.zeros(len(C)))
                 names += [nm] * len(C)
         self.obst_P, self.obst_r, self.obst_name = np.concatenate(P), np.concatenate(r), np.array(names)
+        # and braced (square sails' roach): the standing rigging's surface round and under the tops (the topmast
+        # shrouds' deadeyes on the rims, the futtock shrouds and staves, the shrouds' heads), from 9 ft under the lowest
+        # top up
+        z_low = min(float((m["O"] + m["s_plat"] * m["u"])[2]) for m in rig.masts.values()) - 9 * FT
+        P, names = [], []
+        for nm, me in st.meshes.items():
+            if not nm.startswith(("Rigging_", "Deadeyes_")) or nm == "Rigging_Bowsprit":
+                continue
+            V, F, _ = me.arrays()
+            V = np.asarray(V, float)
+            keep = [f for f in F if max(V[k][2] for k in f) > z_low]
+            if keep:
+                C = surface_points(V, keep, 4.0 * IN)
+                C = C[C[:, 2] > z_low]
+                P.append(C)
+                names += [nm] * len(C)
+        self.brace_P = np.concatenate(P) if P else np.zeros((0, 3))
+        self.brace_r = np.zeros(len(self.brace_P))
+        self.brace_name = np.array(names, dtype=self.obst_name.dtype if len(names) == 0 else None)
 
     # ---- helpers ------------------------------------------------------------------------------------------------------
     def obj(self, name, frame, parent, key, state):
@@ -551,25 +570,69 @@ class Sails:
         # the foot's roach, cut deep enough that the set sail clears the stays and the head of the mast below (as
         # sailmakers cut it): every stay point or spar's corner that would lie at the cloth (within its radius and
         # S["roach_clear_in"] of the cloth, its middle 80%) goes under the foot by that much, at least the table's roach
-        Pl = (self.obst_P - o) @ R
         cl = S["roach_clear_in"] * IN
-        sel = (np.abs(Pl[:, 1]) < 0.8 * yc) & ((Pl - fm) @ up > -cl) & ((Pl - fm) @ up < depth * 0.6)
-        Pl, rl, nl = Pl[sel], self.obst_r[sel], self.obst_name[sel]
-        roach_table, roach_for = roach, set()
-        for _ in range(9):
-            Gs = set_f(np.linspace(-1, 1, 61), np.linspace(0, 1, 91)).reshape(-1, 3)
-            ip = LinearNDInterpolator(np.stack([Gs[:, 1], (Gs - fm) @ up], 1), (Gs - fm) @ nf)
-            Yp, Up, Fp = Pl[:, 1], (Pl - fm) @ up, (Pl - fm) @ nf
-            above = Up > roach * (1 - (Yp / yc) ** 2) - r_foot
-            f = ip(Yp, Up)
-            at = above & ~np.isnan(f) & (np.abs(Fp - np.nan_to_num(f)) < rl + cl)
-            if not at.any():
+        r_max = S["roach_max_of_foot"] * 2 * yk
+
+        def near(Pl, rl, nl):
+            sel = (np.abs(Pl[:, 1]) < 0.8 * yc) & ((Pl - fm) @ up > -cl) & ((Pl - fm) @ up < depth * 0.6)
+            return Pl[sel], rl[sel], nl[sel]
+
+        def cut(Pl, rl, nl):
+            """deepen the roach (from its value now) until the cloth clears points Pl (the sail's frame): (whether it
+            could within roach_max_of_foot, what it was cut for, and what it could not clear)"""
+            nonlocal roach
+            got = set()
+            for _ in range(9):
+                Gs = set_f(np.linspace(-1, 1, 61), np.linspace(0, 1, 91)).reshape(-1, 3)
+                ip = LinearNDInterpolator(np.stack([Gs[:, 1], (Gs - fm) @ up], 1), (Gs - fm) @ nf)
+                Yp, Up, Fp = Pl[:, 1], (Pl - fm) @ up, (Pl - fm) @ nf
+                above = Up > roach * (1 - (Yp / yc) ** 2) - r_foot
+                f = ip(Yp, Up)
+                at = above & ~np.isnan(f) & (np.abs(Fp - np.nan_to_num(f)) < rl + cl)
+                if not at.any():
+                    return True, got, set()
+                if _ == 8 or roach >= r_max:
+                    return False, got, set(nl[at])
+                needs = (Up[at] + rl[at] + cl + r_foot) / (1 - (Yp[at] / yc) ** 2)
+                got.add(str(nl[at][int(np.argmax(needs))]))
+                roach = min(max(roach, float(needs.max())) + 0.5 * IN, r_max)
+            return False, got, set()
+        roach_table = roach
+        ok, roach_for, left = cut(*near((self.obst_P - o) @ R, self.obst_r, self.obst_name))
+        if not ok:
+            raise RuntimeError(f"{key}: no roach up to roach_max_of_foot clears {sorted(left)}")
+        # and braced: turned with its yard each way to the yard's brace limit (eased forward as the yard is), the foot
+        # clears the top below, its deadeyes and the rigging round it as well (sailmakers roached a topsail's foot to
+        # clear the top and stays as the yards were braced); where no roach within roach_max_of_foot does, as far round
+        # as one does (roach_braced_deg)
+        m_y = self.rig.meta.get(yn, {})
+        lim = max([abs(v) for v in m_y.get("brace_deg", [0.0, 0.0])])
+        etb = np.array(m_y.get("ease_m") or [[0.0, 0.0]], float)
+        base_P = np.concatenate([self.obst_P, self.brace_P])
+        base_r = np.concatenate([self.obst_r, self.brace_r])
+        base_n = np.concatenate([self.obst_name, self.brace_name])
+        Q0 = (base_P - o) @ R
+        roach_sq, braced_deg, braced_left = roach, 0.0, []
+        while lim > 0.0:
+            Ps, rs, ns = [], [], []
+            for th in sorted(set(np.round(np.r_[np.arange(0.0, lim, 2.0), lim], 3).tolist())):
+                e = float(np.interp(th, etb[:, 0], etb[:, 1]))
+                for sg in ((1.0, -1.0) if th > 0 else (1.0,)):
+                    c_, s_ = math.cos(math.radians(sg * th)), math.sin(math.radians(sg * th))
+                    Q = Q0 - np.array([e, 0.0, 0.0])
+                    Ql = np.stack([c_ * Q[:, 0] + s_ * Q[:, 1], -s_ * Q[:, 0] + c_ * Q[:, 1], Q[:, 2]], 1)
+                    a_, b_, n_ = near(Ql, base_r, base_n)
+                    Ps.append(a_)
+                    rs.append(b_)
+                    ns.append(n_)
+            ok, got, left = cut(np.concatenate(Ps), np.concatenate(rs), np.concatenate(ns))
+            if ok:
+                roach_for |= {g_ + " (braced)" for g_ in got}
+                braced_deg = lim
                 break
-            if _ == 8 or roach >= S["roach_max_of_foot"] * 2 * yk:
-                raise RuntimeError(f"{key}: no roach up to roach_max_of_foot clears {sorted(set(nl[at]))}")
-            needs = (Up[at] + rl[at] + cl + r_foot) / (1 - (Yp[at] / yc) ** 2)
-            roach_for.add(str(nl[at][int(np.argmax(needs))]))
-            roach = min(max(roach, float(needs.max())) + 0.5 * IN, S["roach_max_of_foot"] * 2 * yk)
+            braced_left = sorted(left)
+            roach = roach_sq
+            lim = max(0.0, lim - 2.0)
 
         nv = int(np.clip(round(depth / 0.55), 10, 40))
         tt = np.linspace(0, 1, nv + 1)
@@ -761,7 +824,8 @@ class Sails:
                           "depth_ft": round(depth_k / FT, 2), "belly_ft": round(D / FT, 2),
                           "clews_set_apart_ft": round(2 * yc / FT, 2),
                           "roach_ft": round(roach / FT, 2), "roach_table_ft": round(roach_table / FT, 2),
-                          "roach_clears": sorted(roach_for), "reefs": S["reefs"][kind],
+                          "roach_clears": sorted(roach_for), "roach_braced_deg": round(braced_deg, 2),
+                          "roach_braced_short_of": braced_left, "reefs": S["reefs"][kind],
                           "clew_local_m": np.round(clew, 3).tolist(), "clew_cut_local_m": np.round(kclew, 3).tolist(),
                           "head_earing_local_m": np.round(head(np.array([1.0]))[0], 3).tolist(),
                           "clew_block_local_m": np.round(foot_target(np.array([1.0]))[0], 3).tolist(),

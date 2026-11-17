@@ -23,25 +23,30 @@ namespace ChaseCamera
 		case ERig::Overview:
 		case ERig::Classic:
 		default:
+		{
 			// The view the game had: two and a half boat lengths off, looking at a third of the mast's height.
 			R.PivotUpCm = 0.f;
-			R.ArmCm = FMath::Clamp(Loa * 2.4f, 9.f, 40.f) * 100.f;
+			const float LookUpCm = float(MastheadZM) * 0.33f * 100.f;
+			// (docs/jclass-14/: from the old 40 m cap, Bluebonnet's 48 m rig looks up so steeply that her hull leaves the frame's
+			// bottom 8 deg; the arm keeps that look-up within 21.2 deg. Every other boat, the maxi's 46.7 m too, keeps the old arm.)
+			R.ArmCm = FMath::Max(FMath::Clamp(Loa * 2.4f, 9.f, 40.f) * 100.f, LookUpCm / FMath::Tan(FMath::DegreesToRadians(21.2f)));
 			R.PitchDeg = -14.f;
 			if (Rig == ERig::Classic)
 			{
 				R.MinArmCm = 400.f;
-				R.MaxArmCm = 4000.f;
-				R.SocketFixedCm = float(MastheadZM) * 0.33f * 100.f;
+				R.MaxArmCm = FMath::Max(4000.f, R.ArmCm);
+				R.SocketFixedCm = LookUpCm;
 				R.bSmoothYaw = false;
 			}
 			else
 			{
 				R.MinArmCm = FMath::Clamp(Loa * 0.6f, 4.f, 20.f) * 100.f;
 				R.MaxArmCm = FMath::Clamp(Loa * 6.f, 40.f, 150.f) * 100.f;
-				R.SocketPerArm = float(MastheadZM) * 0.33f * 100.f / R.ArmCm;
+				R.SocketPerArm = LookUpCm / R.ArmCm;
 				R.bSmoothYaw = true;
 			}
 			break;
+		}
 		}
 		return R;
 	}

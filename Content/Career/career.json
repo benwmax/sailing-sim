@@ -159,7 +159,7 @@
       "boats": ["Sunfish", "J22"],
       "opens_after": { "lessons": ["day-sailor.leave-the-dock", "day-sailor.sail-a-triangle", "day-sailor.heave-to"], "medal": "bronze",
         "reason": "Sail Day Sailor's first three lessons" },
-      "notes": "These lessons are sailed in the Sunfish (the tier's first boat). J/22 racing lessons (starts, mark roundings, the rules) are still to come.",
+      "notes": "These lessons are sailed in the Sunfish (the tier's first boat). J/22 racing lessons (starts, mark roundings, the rules) are still to come. Its certificate opens the ILCA 7 and Bluebonnet, the club's 1937 J-Class (Bean, Nov 17 2026: she is in the career; docs/jclass-14).",
       "lessons": [
         {
           "id": "club-racer.sunfish-leave-the-dock",
@@ -250,7 +250,7 @@
         }
       },
       "certificate": { "id": "club-racer", "name": "Club Racer certificate" },
-      "unlocks": { "tiers": [], "worlds": [], "boats": ["ILCA7"] }
+      "unlocks": { "tiers": [], "worlds": [], "boats": ["ILCA7", "Bluebonnet"] }
     },
     {
       "id": "coastal-cruiser",

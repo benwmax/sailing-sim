@@ -9,6 +9,7 @@
 #include "SailingHUD.h"
 #include "UI/SailHud.h"
 #include "UI/SailUIStyle.h"
+#include "Framework/Application/SlateApplication.h"
 #include "SailSession.h"
 #include "SailSave.h"
 #include "GroomComponent.h"
@@ -386,6 +387,7 @@ void ASailboatPawn::BuildHullMesh()
 	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
 	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
 	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
+	case EBoatType::Bluebonnet: HullColor = FLinearColor(0.03f, 0.07f, 0.24f); break; // her deep blue topsides (finish_bluebonnet.json)
 	default: if (bTrafficBoat) HullColor = TrafficHullColor; break;
 	}
 	for (int32 Section = 0; Section < 2; ++Section)
@@ -403,10 +405,15 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (USceneComponent* Part : BoatParts) if (Part) Part->DestroyComponent();
 	BoatParts.Reset();
 	RudderPivots.Reset();
+	RudderAxes.Reset();
 	Crew.Reset();
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	ModelTillerExt = nullptr;
+	ModelWheel = nullptr;
+	WheelPivot = nullptr;
+	WheelAxis = FVector::ForwardVector;
+	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -414,6 +421,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
 	RigLineKeys[2].Reset();
+	// The model's rig, which the model path rebuilds each frame: a boat drawn from her config (Bluebonnet before her import)
+	// had kept the last model boat's wires, so her sails kept off the maxi's shrouds and the rig tests read them as hers.
+	SailObstacles.Reset();
+	JibSailObstacles.Reset();
+	bJibInsideShrouds = false;
+	RigLineSamples.Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
@@ -468,6 +481,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		RudderAxes.Add(FVector::UpVector);
 		AddBoatPart(CubeMesh, ToCm(-0.25 * Chord, 0.0, F.Params.Center.Z), FVector(Chord, Thick, Span) * CmPerMeter, Dark, FRotator::ZeroRotator, Pivot);
 		if (C.TillerLength > 0.6) // tiller boats; wheel steering shows no tiller
 		{
@@ -635,6 +649,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Catalina22: return { 0.f, 4.f, 0.f, 0.9f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f, 1.0f, 1.f };
 		case EBoatType::Maxi: return { 4.f, 6.f, 1.f, 3.4f };
+		case EBoatType::Bluebonnet: return { 0.f, 4.f, 0.f, 0.6f };   // a 1937 J: cotton, short battens, narrow cloths, no window
 		default: return { 0.f, 4.f, 0.f, 0.9f, 1.f };    // the J/22
 		}
 	};
@@ -1226,9 +1241,25 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			In.Roll = HeldAxes.FindRef(TEXT("PhotoRoll"));
 			In.bBoost = HeldAxes.FindRef(TEXT("PhotoBoost")) > 0.5f;
 			In.bSlow = HeldAxes.FindRef(TEXT("PhotoSlow")) > 0.5f;
+			UCameraComponent* Lens = FreeCam->GetCamera();
+			UpdatePhotoPointer();
+			if (IsPhotoAltHeld())
+			{
+				// X held (camera views slice 3): the left stick zooms the lens (a full push doubles the focal length in a
+				// second), the right stick tilts; the camera holds its place meanwhile.
+				const float Push = SailUI::UsingGamepad() ? float(In.Move.Y) : 0.f;
+				if (FMath::Abs(Push) > 0.05f)
+				{
+					const float Focal = PhotoMath::FocalForFov(Lens->FieldOfView) * FMath::Pow(2.f, Push * DeltaSeconds);
+					Lens->SetFieldOfView(FMath::Clamp(PhotoMath::FovForFocal(FMath::Clamp(Focal, PhotoMath::FocalMarks()[0], PhotoMath::FocalMarks().Last())), 10.f, 110.f));
+					PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+				}
+				In.Move = FVector2D::ZeroVector;
+				In.Roll = FMath::Clamp(In.Roll + PhotoAltRoll, -1.f, 1.f);
+			}
+			PhotoAltRoll = 0.f;
 			FreeCam->Update(DeltaSeconds, In);
 			// The lens: [ and ] (the twin-engine pivot keys) zoom in and out.
-			UCameraComponent* Lens = FreeCam->GetCamera();
 			const float Zoom = HeldAxes.FindRef(TEXT("ThrottleSplit"));
 			if (Zoom != 0.f) Lens->SetFieldOfView(FMath::Clamp(Lens->FieldOfView - Zoom * 30.f * DeltaSeconds, 10.f, 110.f));
 			UpdatePhotoLens();
@@ -1774,9 +1805,11 @@ namespace
 			{ TEXT("PhotoSpeed"), { TEXT("Photo: faster"), TEXT("Photo: slower") } }, { TEXT("PhotoToBoat"), { TEXT("Photo: back to the boat"), TEXT("") } },
 			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the panel and hints"), TEXT("") } },
 			{ TEXT("PhotoZoom"), { TEXT("Photo: zoom the lens in"), TEXT("Photo: zoom the lens out") } }, { TEXT("PhotoBack"), { TEXT("Photo: back (the panel, then out)"), TEXT("") } },
-			{ TEXT("PhotoRowDown"), { TEXT("Photo panel: next row"), TEXT("") } }, { TEXT("PhotoRowUp"), { TEXT("Photo panel: previous row"), TEXT("") } },
+			{ TEXT("PhotoRowDown"), { TEXT("Photo panel: next row (closed: slower)"), TEXT("") } }, { TEXT("PhotoRowUp"), { TEXT("Photo panel: previous row (closed: faster)"), TEXT("") } },
 			{ TEXT("PhotoValueUp"), { TEXT("Photo panel: more"), TEXT("") } }, { TEXT("PhotoValueDown"), { TEXT("Photo panel: less"), TEXT("") } },
-			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next page"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous page"), TEXT("") } },
+			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next tab"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous tab"), TEXT("") } },
+			{ TEXT("PhotoResetTab"), { TEXT("Photo panel: reset the tab (hold on the pad)"), TEXT("") } },
+			{ TEXT("PhotoAlt"), { TEXT("Photo: hold for zoom, tilt and speed on the sticks (keyboard: the pointer)"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ChangeView"), { TEXT("Change view (chase, overview, helm)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
@@ -2555,15 +2588,43 @@ bool ASailboatPawn::PhotoHighTier()
 
 void ASailboatPawn::StepPhotoPanel(FName Action)
 {
-	// Rows run through the pages in order (X on a pad walks them all); Page Up/Down jumps to a page's first row.
-	const int32 N = int32(EPhotoRow::Count);
-	if (Action == TEXT("PhotoRowDown")) PhotoRow = EPhotoRow((int32(PhotoRow) + 1) % N);
-	else if (Action == TEXT("PhotoRowUp")) PhotoRow = EPhotoRow((int32(PhotoRow) + N - 1) % N);
-	else if (Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev"))
+	// Camera views slice 3: the bumpers (Page Up/Down) change the tab, the D-pad's up and down (the arrows) the row on
+	// it, its sides the value. With the panel closed, or X held, the D-pad's up and down set the speed instead, and a
+	// bumper opens the panel where it was.
+	const bool bRowKey = Action == TEXT("PhotoRowDown") || Action == TEXT("PhotoRowUp");
+	if (bRowKey && (!bPhotoPanelOpen || IsPhotoAltHeld()))
+	{
+		StepPhotoSpeed(Action == TEXT("PhotoRowUp") ? 1 : -1);
+		return;
+	}
+	const bool bPageKey = Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev");
+	if (!bPhotoPanelOpen)
+	{
+		if (bPageKey) { bPhotoPanelOpen = true; bPhotoHideHints = false; }
+		return;   // (closed, the value keys and the reset do nothing: nothing changes out of sight)
+	}
+	if (bRowKey) PhotoRow = PhotoMath::StepRowOnPage(PhotoRow, Action == TEXT("PhotoRowDown") ? 1 : -1);
+	else if (bPageKey)
 	{
 		const int32 Page = (PhotoMath::PageOf(PhotoRow) + (Action == TEXT("PhotoPageNext") ? 1 : PhotoMath::NumPages - 1)) % PhotoMath::NumPages;
 		PhotoRow = PhotoMath::FirstRowOf(Page);
 	}
+	else if (Action == TEXT("PhotoResetTab") && FreeCam)
+	{
+		// R (the right stick's click, held): this tab's rows back as photo mode opens them.
+		UCameraComponent* Lens = FreeCam->GetCamera();
+		float Fov = Lens->FieldOfView, Roll = FreeCam->GetRollDeg();
+		const FPhotoSettings Was = PhotoSettings;
+		PhotoMath::ResetPage(PhotoSettings, PhotoMath::PageOf(PhotoRow), Fov, Roll, Camera->FieldOfView);
+		Lens->SetFieldOfView(FMath::Clamp(Fov, 10.f, 110.f));
+		FreeCam->SetRollDeg(Roll);
+		if (PhotoSettings.bHideMyBoat != Was.bHideMyBoat || PhotoSettings.bHideOthers != Was.bHideOthers || PhotoSettings.bHideCrew != Was.bHideCrew
+			|| PhotoSettings.SunHour != Was.SunHour) ApplyPhotoScene(true);
+		UpdatePhotoLens();
+		SAIL_LOG(Display, TEXT("Photo panel: %s tab reset"), PhotoMath::PageName(PhotoMath::PageOf(PhotoRow)));
+		return;
+	}
+	else if (Action == TEXT("PhotoResetTab")) return;
 	else if (FreeCam)
 	{
 		UCameraComponent* Lens = FreeCam->GetCamera();
@@ -2581,6 +2642,66 @@ void ASailboatPawn::StepPhotoPanel(FName Action)
 	{
 		SAIL_LOG(Display, TEXT("Photo panel: %s = %s"), PhotoMath::RowLabel(PhotoRow),
 			*PhotoMath::RowValue(PhotoSettings, PhotoRow, FreeCam->GetCamera()->FieldOfView, FreeCam->GetRollDeg(), PhotoFocusM, PhotoHighTier()));
+	}
+}
+
+void ASailboatPawn::SelectPhotoRow(EPhotoRow Row)
+{
+	if (!bPhoto || !bPhotoPanelOpen || Row >= EPhotoRow::Count) return;
+	PhotoRow = Row;
+}
+
+void ASailboatPawn::SelectPhotoPage(int32 Page)
+{
+	if (!bPhoto || !bPhotoPanelOpen || Page < 0 || Page >= PhotoMath::NumPages) return;
+	if (PhotoMath::PageOf(PhotoRow) != Page) PhotoRow = PhotoMath::FirstRowOf(Page);
+}
+
+void ASailboatPawn::StepPhotoValue(int32 Dir)
+{
+	if (bPhoto && bPhotoPanelOpen) StepPhotoPanel(Dir > 0 ? FName(TEXT("PhotoValueUp")) : FName(TEXT("PhotoValueDown")));
+}
+
+bool ASailboatPawn::IsPhotoAltHeld() const
+{
+	return bPhoto && HeldAxes.FindRef(TEXT("PhotoAlt")) > 0.5f;
+}
+
+void ASailboatPawn::StepPhotoSpeed(int32 Dir)
+{
+	// The base speed in eight steps; in orbit, the distance. Held keys repeat.
+	if (!FreeCam || FPlatformTime::Seconds() < NextPhotoSpeedStep) return;
+	FreeCam->StepSpeed(Dir > 0 ? 1 : -1);
+	NextPhotoSpeedStep = FPlatformTime::Seconds() + 0.15;
+	PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+	if (FreeCam->GetMode() == EFreeCameraMode::Fly && USailingSettings::Get()->PhotoSpeed != FreeCam->GetSpeedIndex())
+	{
+		USailingSettings::Get()->PhotoSpeed = FreeCam->GetSpeedIndex();   // kept for the next photo session
+		USailingSettings::Get()->Save();
+	}
+}
+
+void ASailboatPawn::UpdatePhotoPointer()
+{
+	// Alt held on a keyboard (camera views slice 3): the pointer comes out over the panel, to click a tab, a row or a
+	// value's arrows; let go, the mouse looks again. On a pad, X is the camera modifier and the pointer stays away.
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	const ASailingHUD* Hud = PC ? PC->GetHUD<ASailingHUD>() : nullptr;
+	const bool bWant = bPhoto && bPhotoPanelOpen && IsPhotoAltHeld() && !SailUI::UsingGamepad() && !(Hud && Hud->IsFrontEndOpen());
+	if (bWant == bPhotoPointer || !PC) return;
+	bPhotoPointer = bWant;
+	PC->SetShowMouseCursor(bWant);
+	if (bWant)
+	{
+		FInputModeGameAndUI Mode;
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+		Mode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(Mode);
+	}
+	else
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
 	}
 }
 
@@ -2707,13 +2828,18 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		}
 		PhotoHintUntil = FPlatformTime::Seconds() + 5.0;
 		PhotoReadoutUntil = PhotoHintUntil;
-		bPhotoHideHints = false;   // (B hides the panel, then leaves: each visit starts with it shown)
+		// (B closes the panel, then leaves: each visit starts with it open, or closed in the Off UI mode, where a tap of
+		// View or H opens it)
+		bPhotoPanelOpen = SailUI::UiMode() != SailUI::EUiMode::Off;
+		bPhotoHideHints = false;
 	}
 	else if (PC)
 	{
 		// Back on the chase camera (untouched while flying), the boat where she was.
 		PC->SetViewTargetWithBlend(this, 0.3f);
 	}
+	HeldAxes.FindOrAdd(TEXT("PhotoAlt")) = 0.f;   // (a release while the context changes never arrives)
+	UpdatePhotoPointer();
 	ApplyMappingContexts();
 }
 
@@ -3692,7 +3818,16 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
 	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
-	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+	// (A raked stock, Bluebonnet's: the rudder turns about its own axis, RudderAxes, rather than the vertical.)
+	for (int32 K = 0; K < RudderPivots.Num(); ++K)
+	{
+		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
+		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
+	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
+	// as the bow goes to starboard).
+	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
@@ -4044,20 +4179,16 @@ void ASailboatPawn::OnAxis(const FInputActionValue& Value, FName Action)
 	HeldAxes.FindOrAdd(Action) = V;
 	if (Action == TEXT("PhotoSpeed") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoSpeedStep)
 	{
-		// The wheel (or the D-pad, held) steps the base speed; in orbit, the distance.
-		FreeCam->StepSpeed(V > 0.f ? 1 : -1);
-		NextPhotoSpeedStep = FPlatformTime::Seconds() + 0.15;
-		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
-		if (FreeCam->GetMode() == EFreeCameraMode::Fly && USailingSettings::Get()->PhotoSpeed != FreeCam->GetSpeedIndex())
-		{
-			USailingSettings::Get()->PhotoSpeed = FreeCam->GetSpeedIndex();   // kept for the next photo session
-			USailingSettings::Get()->Save();
-		}
+		StepPhotoSpeed(V > 0.f ? 1 : -1);   // = and - (held, they repeat)
 	}
-	if (Action == TEXT("PhotoZoom") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoZoomStep)
+	if (Action == TEXT("PhotoZoom") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && IsPhotoAltHeld())
 	{
-		// Camera views slice 2: the wheel or the bumpers (held, they repeat) zoom the lens from one focal mark to the next
-		// (the panel's Lens row: 14 to 200 mm on full frame).
+		StepPhotoSpeed(V > 0.f ? 1 : -1);   // Alt and the wheel: the speed
+	}
+	else if (Action == TEXT("PhotoZoom") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoZoomStep)
+	{
+		// Camera views slice 2: the wheel zooms the lens from one focal mark to the next (the panel's Lens row: 14 to
+		// 200 mm on full frame).
 		UCameraComponent* Lens = FreeCam->GetCamera();
 		Lens->SetFieldOfView(FMath::Clamp(PhotoMath::FovForFocal(PhotoMath::StepFocal(PhotoMath::FocalForFov(Lens->FieldOfView), V > 0.f ? 1 : -1)), 10.f, 110.f));
 		NextPhotoZoomStep = FPlatformTime::Seconds() + 0.12;
@@ -4090,6 +4221,13 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 	}
 	if (bPhoto)
 	{
+		// X held (camera views slice 3): the right stick's sideways push tilts the horizon instead (the look is per second:
+		// back to the stick's push); with the pointer out (Alt), the mouse is the pointer's.
+		if (IsPhotoAltHeld())
+		{
+			if (SailUI::UsingGamepad()) PhotoAltRoll = FMath::Clamp(float(Raw.X) / FMath::Max(60.f * GetWorld()->GetDeltaSeconds(), 1e-3f), -1.f, 1.f);
+			return;
+		}
 		if (FreeCam) FreeCam->AddLook(Delta);
 		return;
 	}
@@ -4188,11 +4326,16 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 			PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
 		}
 		else if (Action == TEXT("PhotoRollReset") && FreeCam) FreeCam->ResetRoll();
-		else if (Action == TEXT("PhotoHideUI")) bPhotoHideHints = !bPhotoHideHints;
+		else if (Action == TEXT("PhotoHideUI"))
+		{
+			// A tap of View (H) opens or closes the panel; closed, the hints go with it for a clean frame.
+			bPhotoPanelOpen = !bPhotoPanelOpen;
+			bPhotoHideHints = !bPhotoPanelOpen;
+		}
 		else if (Action == TEXT("PhotoBack"))
 		{
 			// Bean's pick: B closes the panel first, then leaves.
-			if (!bPhotoHideHints) bPhotoHideHints = true;
+			if (bPhotoPanelOpen || !bPhotoHideHints) { bPhotoPanelOpen = false; bPhotoHideHints = true; }
 			else SetPhoto(false);
 		}
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);

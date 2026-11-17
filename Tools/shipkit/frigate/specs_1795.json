@@ -34,7 +34,12 @@
   "bulwark_inner_face_in": 8,
   "gun_deck_below_port_sill_in": 24,
   "spar_deck_below_plankshear_in": 4,
-  "deck_slab_in": 8
+  "deck_slab_in": 3,
+  "deck_slab_note": "the spar deck's planks (3 in); its beams are framed under them from the gun deck (slice 12, gundeck.py). It was an 8 in placeholder slab until slice 12",
+  "gun_deck_fair_m": [3.0, 18.0],
+  "gun_deck_fair_note": "the gun deck's line (24 in under the traced port sills) faired between these x (m): a quintic matching its height, slope and curvature at both ends, so the deck no longer climbs 4 in in 5 m by port 10 where the traced sills kink (slice 8's known gap). The deck moves 0.5 in down to 1 in up; the sills stay where traced",
+  "cabin_lights_m": [[-24.8, -23.78]],
+  "cabin_lights_note": "the great cabin's side light each side (x aft, fore, m): a port in the port band with no lid, cut through the side and lined as the gun ports are; its sash and glass are slice 9's (decor_1797.json cabin_window), the opening slice 12's"
  },
  "rail": {
   "note": "'Waist or main rail 14 x 4 1/2': the cap on the bulwark's top, waist, quarterdeck and forecastle alike",
