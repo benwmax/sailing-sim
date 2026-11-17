@@ -16,7 +16,7 @@
                   "Checkstay.Port.LetOff", "Checkstay.Starboard.LetOff"]
     },
     "SM_Bluebonnet_Boom": {
-      "note": "The boom in its rest pose (its 'frame' from the build: along the centreline), about the physics' gooseneck (MainLuffX, BoomZ): the game turns the boom about that point with the physics' boom angle and draws the mainsail's cloth from the same point. The build's own pin is 0.227 m further aft, so the boom's jaw moves off it as she eases (a known gap: docs/jclass-14).",
+      "note": "The boom in its rest pose (its 'frame' from the build: along the centreline), about its own pin, the rest frame's origin (x 2.3508, z 3.7298), which is the physics' gooseneck (MainLuffX since J-Class upwind; BoomZ): the game turns the boom about that point with the physics' boom angle and draws the mainsail's cloth from the same point.",
       "pivot": "gooseneck",
       "pose": {"Boom": "frame"},
       "objects": ["Boom"]

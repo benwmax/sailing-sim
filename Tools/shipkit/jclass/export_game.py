@@ -350,7 +350,12 @@ def main():
         bad.append(f"the hounds ({hounds.z:.3f}) under the genoa's head ({P['jib_head_z']:.3f}): the game would lower it")
     if bad:
         raise SystemExit("Bluebonnet's export does not match her physics:\n  " + "\n  ".join(bad))
-    pivots = {"mast_step": socks["MastStep"][1], "gooseneck": Vector((P["main_luff_x"], 0.0, P["boom_z"])),
+    # The gooseneck: the boom's own pin, its rest frame's origin (the physics' MainLuffX, 2.3508 since J-Class upwind,
+    # Fleet.cpp Bluebonnet(); the .inl's SetMain luff, 2.578, is the sail plan's, not the pin). Its height is held to BoomZ.
+    goose = B(bpy.data.objects["Boom"].matrix_world.translation)
+    if abs(goose.y) > 0.01 or abs(goose.z - P["boom_z"]) > 0.02:
+        raise SystemExit(f"the boom's pin ({goose.x:.4f}, {goose.y:.4f}, {goose.z:.4f}) is off the centreline or BoomZ {P['boom_z']}")
+    pivots = {"mast_step": socks["MastStep"][1], "gooseneck": goose,
               "rudder_pivot": socks["RudderPivot"][1], "wheel_hub": socks["WheelHub"][1]}
     if abs(pivots["mast_step"].x - P["mast_x"]) > 0.01:
         raise SystemExit(f"MastStep x {pivots['mast_step'].x} is not the physics' MastX {P['mast_x']}")

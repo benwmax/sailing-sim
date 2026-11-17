@@ -100,7 +100,7 @@ build (`JCLASS_REBUILD=1` / `-RebuildJClass` forces it, `SKIP_JCLASS=1` skips he
 |---|---|---|---|---|
 | `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering (the wheel box and binnacle), winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 510,758 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
 | `SM_Bluebonnet_Mast` | 3.0, 0, 1.475 (the partners) | mast and spreaders, shrouds, stays, runners and checkstays let off | 94,828 | Aluminium, Brass, PackFit |
-| `SM_Bluebonnet_Boom` | 2.578, 0, 3.730 (the physics' gooseneck) | the boom on the centreline | 15,380 | PackFit, Brass |
+| `SM_Bluebonnet_Boom` | 2.351, 0, 3.730 (the boom's pin, the physics' gooseneck) | the boom on the centreline | 15,380 | PackFit, Brass |
 | `SM_Bluebonnet_Rudder` | -8.046, 0, 0 (stock axis at the waterline) | the rudder (the keel's after part) and its stock | 7,246 | PackCanoe, Brass |
 
 Every part is Nanite with a fallback at 6% of its triangles, the mast too: her standing rigging is in it (the game
@@ -154,8 +154,6 @@ bottom, buff deck and spars, teak trim; one scheme and three wear looks (the fou
 sail number (her club's star).
 
 **Known gaps** (cosmetic; for after the release):
-- The boom turns about the physics' gooseneck (x 2.578); the model's pin is 0.227 m aft of it, so its jaw moves off the
-  mast as she eases.
 - The spinnaker's head is placed by the config's mast front (x 3.19), about 1 m ahead of her raked masthead.
 - The physics' genoa luff meets the deck 0.5 m ahead of the model's forestay (18.40 against 17.88), and with no live
   forestay there are no hanks.
