@@ -1281,12 +1281,20 @@ col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0
 rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
 float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
+// J-Class 15: a laid deck's planks are quarter-sawn, so their grain runs nearly straight, and each plank has its own (the
+// part's wandering figure ran across the seams and, foreshortened along the deck, drew chevrons: the Mac's 1e96e56d helm still).
+if (Surface > 17.5)
+{
+    float gwP = floor((abs(LUV2.y) - LaidA.w) / max(LaidA.x, 1e-3f)) + (LUV2.y > 0.0f ? 50.0f : 0.0f);
+    float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
+    gw = LP.y * 0.9 + 40.0 * gwH + 0.4 * sin(LP.x * 0.021 + 6.3 * gwH) + 0.15 * sin(LP.x * 0.083 + 3.0 * gwH);
+}
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 // The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
-// Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 1 to 3 radians of phase a pixel.
+// Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 0.75 to 2 radians of phase a pixel (gone well before Nyquist's pi).
 // (A ray-traced hit or Lumen's card capture has no derivatives and keeps them; wood_port.py's swatches are sharp, so it has no term.)
 #if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
-ring = lerp(ring, 0.5, smoothstep(1.0, 3.0, 6.0 * fwidth(gw)));
+ring = lerp(ring, 0.5, smoothstep(0.75, 2.0, 6.0 * fwidth(gw)));
 #endif
 float fleck = saturate(vn * 3.0 - 1.9);
 // Texture loop, wood: close up on High the varnish's detail map carries the fine grain, so this broad figure steps back

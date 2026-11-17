@@ -53,8 +53,10 @@ Rope001 scan as `weathering.py` does (`standing_bluebonnet.json`), teak 124 70 3
     the deck's average tone, so only a non-Nanite draw would show it. YM dips to about -0.35 m at the stem (the half
     breadth runs out under the board's width), so the test holds it over -2 m: a flipped import reads -98.
   - The woven look past a few metres (PC stills at 48028ddc) was `BOAT_CODE`'s wood grain rings, about a centimetre apart,
-    aliasing once a pixel covers half a ring. They now fade to their mean from 1 to 3 radians of phase a pixel (`fwidth`),
-    for every boat's wood, not only hers; ray-traced hits and Lumen's card capture keep them as before.
+    aliasing once a pixel covers half a ring. They now fade to their mean from 0.75 to 2 radians of phase a pixel (`fwidth`),
+    for every boat's wood, not only hers; ray-traced hits and Lumen's card capture keep them as before. On the laid deck the
+    grain is each plank's own and nearly straight (quarter-sawn): the part's wandering figure ran across the seams and,
+    foreshortened along the deck, drew chevrons (the Mac's 1e96e56d helm still).
   - The extra texture coordinates sit behind a static switch, `LaidDeck`, on only on `MI_Boat_LaidTeak`, so every other boat
     keeps its permutation without the interpolators. Its numbers are vector parameters `LaidA`..`LaidE` and `LaidCaulk`, read
     from `deck_bluebonnet.json` (planking, Caulking) and `game_bluebonnet.json`'s `laid_deck.mitre` (`BOAT_LAID`), which the
