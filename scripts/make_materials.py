@@ -3139,6 +3139,7 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
+    LongH *= k;
 }
 // Inside the player's hulls: the drawn sea must not show in her cockpit, cabin or hulls. Where the water surface is
 // inside a hull, above its bottom (FHullClipMap: every hull's FHullShape::BottomZ, sheer and deck edge on one grid in
@@ -3627,6 +3628,7 @@ float fleck = 0.0;
     fleck *= 1.0 - FarCapSprites * FCS_W;
 }
 capsDrawn = lerp(capsDrawn, max(fleck, residue), useTable);
+float capsOnly = capsDrawn;   // docs/blow-sea/: the whitecaps without the boats' trails, for the storm water look's foam
 FoamTone = lerp(FoamTone, lerp(0.5, lerp(0.75, 0.5, trailAge), FoamLife), saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
 // docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
@@ -3797,14 +3799,14 @@ OceanShare = om;
 // is lost to the sky's glare at grazing (above). Only the caps' share of the foam (not the rain's veil, windrows, gale
 // streaks or the boats' white water); the cover, the cap mask and -SailingDebugFoam are unchanged. The water body
 // lightens on the crests, where the light comes through thin water (to 1 + 0.35 STORM_CREST_LIFT of the albedo at half the
-// significant height up) and darkens in the troughs (1 - 0.35 STORM_TROUGH_DARK): the contrast between crest and trough a
+// long waves' significant height up: StormWater.y, AWaterSurface::LongSignificantHeightAt) and darkens in the troughs (1 - 0.35 STORM_TROUGH_DARK): the contrast between crest and trough a
 // storm sea shows. The height is the long waves' alone (LongH: faded out with the mesh, so far water is as before; the
 // chop, the wakes and the FFT ocean's swell don't count), and the dark band along a hull (hullNear) is kept.
 {
     float sW = StormWater.x;
-    float capShare = saturate(capsDrawn / max(Foam, 1e-3)) * swF;
+    float capShare = saturate(capsOnly / max(Foam, 1e-3)) * swF;
     FoamTone = lerp(FoamTone, 1.0 - 0.6 * (1.0 - FoamTone), capShare);
-    Foam = saturate(Foam + STORM_FOAM_OPACITY * swF * min(capsDrawn, Foam));
+    Foam = saturate(Foam + STORM_FOAM_OPACITY * swF * min(capsOnly, Foam));
     float hN = LongH / max(StormWater.y, 0.1);
     float crestUp = smoothstep(0.0, 0.5, hN), trough = 1.0 - smoothstep(-0.5, 0.0, hN);
     Dark += sW * (STORM_TROUGH_DARK * trough - STORM_CREST_LIFT * crestUp * (1.0 - Foam) * (1.0 - saturate(hullNear)));

@@ -542,6 +542,23 @@ double AWaterSurface::StormWaterStrength(double AirKnots)
 	return Sailing::SmoothStep(18.0, 26.0, AirKnots);
 }
 
+double AWaterSurface::LongSignificantHeightAt(const Sailing::FWaveField& Field, double X, double Y)
+{
+	// The trains M_WaterV4's vertices draw (LongH), with the sea map's ratios there, as FWaveField::SignificantHeightAt
+	// does for all of them; no chop, no ocean.
+	static_assert(LongComponents <= kSeaLongComponents, "each long train has its own sea map ratio");
+	float Ratio[kSeaChannels];
+	Field.SeaRatiosAt(X, Y, Ratio);
+	const FWaveComponent* C = Field.GetComponents();
+	double Variance = 0.0;
+	for (int32 I = 0; I < LongComponents; ++I)
+	{
+		const double A = C[I].Amplitude * Ratio[I];
+		Variance += 0.5 * A * A;
+	}
+	return 4.0 * FMath::Sqrt(Variance);
+}
+
 float AWaterSurface::StormWaterNow() const
 {
 	static SailingArgs::FCachedFlag ClassicStormWaterArg(TEXT("SailingClassicStormWater"));
@@ -2416,7 +2433,7 @@ void AWaterSurface::UpdateMaterial()
 		// the air's mean wind the foam keeps more of its white, the crests lighten and the troughs darken against the long
 		// waves' height over the sea's significant height near the camera. -SailingClassicStormWater draws the water as before.
 		const float Strength = StormWaterNow();
-		const float Hs = float(FMath::Max(Waves->SignificantHeightAt(GustCenter.X, GustCenter.Y), 0.1));
+		const float Hs = float(FMath::Max(LongSignificantHeightAt(*Waves, GustCenter.X, GustCenter.Y), 0.1));
 		WaterMaterial->SetVectorParameterValue(TEXT("StormWater"), FLinearColor(Strength, Hs, 0.f, 0.f));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
