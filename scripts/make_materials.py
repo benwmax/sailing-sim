@@ -1282,6 +1282,12 @@ rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
 float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
+// The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
+// Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 1 to 3 radians of phase a pixel.
+// (A ray-traced hit or Lumen's card capture has no derivatives and keeps them; wood_port.py's swatches are sharp, so it has no term.)
+#if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
+ring = lerp(ring, 0.5, smoothstep(1.0, 3.0, 6.0 * fwidth(gw)));
+#endif
 float fleck = saturate(vn * 3.0 - 1.9);
 // Texture loop, wood: close up on High the varnish's detail map carries the fine grain, so this broad figure steps back
 // there (the grain then measures 3.4 mm across, as ash and sapele do: Tools/texloop/refs/wood.json).
