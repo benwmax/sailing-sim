@@ -79,9 +79,11 @@ bool FShipRigMotionTest::RunTest(const FString& Parameters)
 		&& Topsail.HoistLowered < -9.0);
 	double Lo = 0.0, Hi = 0.0;
 	RigBraceLimits(Rig, Rig.SparNamed("Yard_ForeTopsail"), 0.0, -1, Lo, Hi);
-	TestTrue(TEXT("lowered it braces only a little"), Lo == -6.0 && Hi == 6.0);
+	const auto& Rows = Topsail.BraceByHoist;
+	TestTrue(TEXT("the topsail yard's limits by hoist"), Topsail.NumBraceByHoist == 5 && Rows[2][0] == 0.5 && Rows[3][0] == 0.75);
+	TestTrue(TEXT("lowered it braces only a little"), Lo == Rows[0][1] && Hi == Rows[0][2] && Hi < 0.5 * Topsail.BraceHi);
 	RigBraceLimits(Rig, Rig.SparNamed("Yard_ForeTopsail"), 0.6, -1, Lo, Hi);
-	TestTrue(TEXT("between two hoists, the narrower"), Lo == -13.0 && Hi == 13.5);
+	TestTrue(TEXT("between two hoists, the narrower"), Lo == FMath::Max(Rows[2][1], Rows[3][1]) && Hi == FMath::Min(Rows[2][2], Rows[3][2]));
 
 	const FRigSail& Jib = Rig.Sails[Rig.SailNamed("jib")];
 	const FRigMotion Mirror = RigSailMirror(Jib);
@@ -125,7 +127,7 @@ bool FShipRigPoseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("clewed up, the yard comes down"), P.GetShown(ForeTopSail) == ESailShown::Clewed && P.GetHoist(ForeTop) < 1.0);
 	for (int32 K = 0; K < 40; ++K) P.Update(Rig, In, 1.0);
 	TestTrue(TEXT("lowered and furled"), P.GetHoist(ForeTop) == 0.0 && P.GetShown(ForeTopSail) == ESailShown::Furled);
-	TestEqual(TEXT("lowered, nearly square"), P.GetTurnDeg(ForeTop), -6.0, 1e-9);
+	TestEqual(TEXT("lowered, braced only to its lowered limit"), P.GetTurnDeg(ForeTop), Rig.Spars[ForeTop].BraceByHoist[0][1], 1e-9);
 	In.bSquareFurl[1] = false;
 	P.Update(Rig, In, 1.0);
 	TestTrue(TEXT("loosed, she hoists it"), P.GetShown(ForeTopSail) == ESailShown::Clewed && P.GetHoist(ForeTop) > 0.0);
