@@ -65,7 +65,7 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("Galveston launch spots match GalvestonBay.json"), Worlds[1].Spots.Num(), JsonSpots(TEXT("GalvestonBay")));
 	TestTrue(TEXT("Marseille launch spots match Marseille.json"), Worlds.Num() > 2 && Worlds[2].Index == 3 && Worlds[2].Spots.Num() == JsonSpots(TEXT("Marseille")));
 	TestTrue(TEXT("The lake's first spot is home"), Worlds[0].Spots.Num() > 0 && Worlds[0].Spots[0].Tag == TEXT("Home"));
-	TestEqual(TEXT("Nine boats (the fleet and the prologue's maxi)"), SailCatalog::Boats().Num(), 9);
+	TestEqual(TEXT("Ten boats (the fleet, the prologue's maxi and Bluebonnet)"), SailCatalog::Boats().Num(), 10);
 	TestEqual(TEXT("J/22 length 22'6\""), SailCatalog::Boat(0).Length, FString(TEXT("22′6″")));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats()) TestFalse(FString::Printf(TEXT("%s has a close-hauled speed"), *B.Name), B.CloseHauled == TEXT("–"));
 	TestEqual(TEXT("Six condition presets"), USailSessionSubsystem::Presets().Num(), 6);
@@ -468,6 +468,7 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("The J/22"), SailCatalog::InSliceBoat(int32(EBoatType::J22)));
 	TestTrue(TEXT("The Sunfish"), SailCatalog::InSliceBoat(int32(EBoatType::Sunfish)));
 	TestTrue(TEXT("The Catalina 22 (the stretch)"), SailCatalog::InSliceBoat(int32(EBoatType::Catalina22)));
+	TestTrue(TEXT("Bluebonnet, the J-Class (Bean, Nov 17 2026: docs/jclass-14)"), SailCatalog::InSliceBoat(int32(EBoatType::Bluebonnet)));
 	for (const EBoatType T : { EBoatType::ILCA7, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
 		TestFalse(*FString::Printf(TEXT("No %hs"), Sailing::BoatTypeName(T)), SailCatalog::InSliceBoat(int32(T)));
 	TestTrue(TEXT("Day Sailor"), SailCatalog::InSliceTier(TEXT("day-sailor")));

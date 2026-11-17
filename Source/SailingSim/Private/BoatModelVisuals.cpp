@@ -507,9 +507,11 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt"))) Paths.Add(FSoftObjectPath(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt")));
 		return Paths;
 	}
-	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi"), TEXT("Bluebonnet") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return Paths;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	// Bluebonnet's parts come from her shipkit build (Tools/shipkit/jclass): until they are imported she is drawn from her config.
+	if (Type == EBoatType::Bluebonnet && !FPackageName::DoesPackageExist(TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull"))) return Paths;
 	for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") })
 	{
 		Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
@@ -517,6 +519,9 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 	// #618: a stowed tiller extension of its own (the Sunfish's), where the class has one.
 	const FString Ext = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt"), Tag, Tag);
 	if (FPackageName::DoesPackageExist(Ext)) Paths.Add(FSoftObjectPath(Ext + FString::Printf(TEXT(".SM_%s_TillerExt"), Tag)));
+	// J-Class 14: a wheel of its own (Bluebonnet's), where the class has one.
+	const FString Wheel = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_Wheel"), Tag, Tag);
+	if (FPackageName::DoesPackageExist(Wheel)) Paths.Add(FSoftObjectPath(Wheel + FString::Printf(TEXT(".SM_%s_Wheel"), Tag)));
 	return Paths;
 }
 
@@ -584,9 +589,10 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	// prologue's maxi is the PC's hero model (Tools/boats/maxi/build_maxi.py, imported by import_boats.py `maxi`) on every
 	// boat: her deck gear is in the hull, the traveller lies on the cockpit floor, the diesel is inboard and her canted twin
 	// rudders are one blade, mirrored on the starboard stock.
-	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi"), TEXT("Bluebonnet") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	if (Type == EBoatType::Bluebonnet && !FPackageName::DoesPackageExist(TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull"))) return M;
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
 	M.Hull = Load(TEXT("Hull"));
 	M.Mast = Load(TEXT("Mast"));
@@ -595,12 +601,21 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) return FBoatModelMeshes();
 	// #618: the stowed tiller extension, a part of its own where the class has one (build_fleet.py: the Sunfish).
 	M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt.SM_%s_TillerExt"), Tag, Tag, Tag), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	// J-Class 14: a wheel of its own that turns with the rudder (Bluebonnet's: export_game.py), where the class has one. (Only
+	// when the package exists, as ModelAssetPaths checks; the hull must carry WheelHub to hang it on.)
+	const FString WheelPath = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_Wheel"), Tag, Tag);
+	if (FPackageName::DoesPackageExist(WheelPath) && M.Hull->FindSocket(TEXT("WheelHub")))
+	{
+		M.Wheel = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *(WheelPath + FString::Printf(TEXT(".SM_%s_Wheel"), Tag)), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	}
 	if (Type == EBoatType::Maxi)
 	{
 		M.bOwnOutboard = true;
 		M.bTravelerBridge = false;
 		M.bMirrorTwinRudder = true;
 	}
+	// Bluebonnet (Tools/shipkit/jclass): no engine; her mainsheet horse is on deck aft of the wheel, not across a cockpit.
+	if (Type == EBoatType::Bluebonnet) M.bTravelerBridge = false;
 	return M;
 }
 
@@ -733,6 +748,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	// pc/j22-detail: painted spars where the livery has them (the player's J/22: white, as on Bean's club boats).
 	PaintSpars(ModelMast, Livery);
 	PaintSpars(ModelBoom, Livery);
+	// (Bluebonnet's spinnaker pole lies stowed on her deck, in the hull's mesh: the same buff paint.)
+	if (Boat.GetConfig().Type == EBoatType::Bluebonnet) PaintSpars(ModelHull, Livery);
 	// Every rudder (the cats have two: RudderPivot, RudderPivot_1) turns on its own stock; the mesh is the same.
 	for (int32 K = 0; ; ++K)
 	{
@@ -740,10 +757,21 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		if (!Model.Hull->FindSocket(Name)) break;
 		USceneComponent* Pivot = NewObject<USceneComponent>(this);
 		Pivot->SetupAttachment(BoatRoot);
-		Pivot->SetRelativeLocation(ModelHull->GetSocketTransform(Name, RTS_Component).GetLocation());
+		const FVector Stock = ModelHull->GetSocketTransform(Name, RTS_Component).GetLocation();
+		Pivot->SetRelativeLocation(Stock);
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		// J-Class 14: a raked stock (Bluebonnet's, 39 deg aft) has a second socket up its axis, RudderAxis(_n); the blade turns
+		// about the line through the two (the tick's FQuat). Without one it turns about the vertical, as before.
+		const FName AxisName = K == 0 ? FName(TEXT("RudderAxis")) : FName(*FString::Printf(TEXT("RudderAxis_%d"), K));
+		FVector Axis = FVector::UpVector;
+		if (Model.Hull->FindSocket(AxisName))
+		{
+			const FVector Up = (ModelHull->GetSocketTransform(AxisName, RTS_Component).GetLocation() - Stock).GetSafeNormal();
+			if (Up.Z > 0.1) Axis = Up;
+		}
+		RudderAxes.Add(Axis);
 		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
 		if (K > 0 && Model.bMirrorTwinRudder) Blade->SetRelativeScale3D(FVector(1.f, -1.f, 1.f)); // canted outboard each side
 		if (K == 0) ModelRudder = Blade;
@@ -754,6 +782,26 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			ModelTillerExt = AddModelPart(Model.TillerExt, Pivot, FVector::ZeroVector);
 			AgeDevPart(ModelTillerExt);
 		}
+	}
+	// J-Class 14: the wheel on its shaft (WheelHub, the part's origin), turned in the tick about the line to WheelAxis
+	// (WheelTurnFor); its WheelRim socket, at the rim's top with the king spoke upright, gives the radius the helm's hands take.
+	if (Model.Wheel && Model.Hull->FindSocket(TEXT("WheelHub")))
+	{
+		WheelPivot = NewObject<USceneComponent>(this);
+		WheelPivot->SetupAttachment(BoatRoot);
+		const FVector Hub = ModelHull->GetSocketTransform(TEXT("WheelHub"), RTS_Component).GetLocation();
+		WheelPivot->SetRelativeLocation(Hub);
+		WheelPivot->RegisterComponent();
+		BoatParts.Add(WheelPivot);
+		WheelAxis = FVector::ForwardVector;
+		if (Model.Hull->FindSocket(TEXT("WheelAxis")))
+		{
+			const FVector Along = (ModelHull->GetSocketTransform(TEXT("WheelAxis"), RTS_Component).GetLocation() - Hub).GetSafeNormal();
+			if (!Along.IsNearlyZero()) WheelAxis = Along;
+		}
+		ModelWheel = AddModelPart(Model.Wheel, WheelPivot, FVector::ZeroVector); // built about its hub
+		WheelRimRadiusCm = Model.Wheel->FindSocket(TEXT("WheelRim")) ? float(ModelWheel->GetSocketTransform(TEXT("WheelRim"), RTS_Component).GetLocation().Size()) : 0.f;
+		AgeDevPart(ModelWheel);
 	}
 	AgeDevPart(ModelMast);
 	AgeDevPart(ModelBoom);
@@ -816,6 +864,9 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 
 	// Mast bend: the backstay pulls the middle forward; the breeze adds to it (cm at mid-height).
 	MastBendCm = FMath::FInterpTo(MastBendCm, 2.f + 7.f * float(Controls.Backstay) + 4.f * Breeze * Breeze, DeltaSeconds, 2.f);
+	// J-Class 14: Bluebonnet's mast stands straight (her runners hold it): her standing rigging and fittings are in the mast's
+	// mesh as built (Tools/shipkit/jclass/export_game.py) and would not bend with M_BoatMast.
+	if (Boat.GetConfig().Type == EBoatType::Bluebonnet) MastBendCm = 0.f;
 	if (MastMaterial)
 	{
 		MastMaterial->SetScalarParameterValue(TEXT("BendCm"), MastBendCm);
@@ -2143,7 +2194,30 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
 			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
-			if (bHelm && bTiller && Cfg.WheelHardOverSeconds > 0.0)
+			if (bHelm && WheelPivot && WheelRimRadiusCm > 0.f)
+			{
+				// J-Class 14: both hands on a wheel part's rim (Bluebonnet's) on the helm's side, each at the rim's point nearest
+				// its shoulder (the rim is a circle about the shaft, so that point is on it however far the wheel has turned:
+				// the rim runs through the hands): the inboard hand on the upper quarter, 15 to 60 deg off the top, the
+				// outboard one lower, 60 to 110. Out of reach, a hand stays on the knee.
+				const FVector Hub = WheelPivot->GetRelativeLocation();
+				const FVector Up = FVector::VectorPlaneProject(FVector::UpVector, WheelAxis).GetSafeNormal();
+				const FVector Across = (FVector::RightVector - WheelAxis * FVector::DotProduct(FVector::RightVector, WheelAxis)
+					- Up * FVector::DotProduct(FVector::RightVector, Up)).GetSafeNormal();
+				const double RimSide = (Shoulder[0].Y + Shoulder[1].Y) < 0.0 ? -1.0 : 1.0;
+				TOptional<FVector> Lower;
+				for (int32 Hand = 0; Hand < 2; ++Hand)
+				{
+					const bool bInboard = FMath::Abs(Shoulder[Hand].Y) < FMath::Abs(Shoulder[1 - Hand].Y);
+					const FVector Rel = Shoulder[Hand] - Hub;
+					const double Off = FMath::Atan2(RimSide * FVector::DotProduct(Rel, Across), FVector::DotProduct(Rel, Up));
+					const double A = bInboard ? FMath::Clamp(Off, FMath::DegreesToRadians(15.0), FMath::DegreesToRadians(60.0))
+						: FMath::Clamp(Off, FMath::DegreesToRadians(60.0), FMath::DegreesToRadians(110.0));
+					const FVector At = Hub + WheelRimRadiusCm * (FMath::Cos(A) * Up + RimSide * FMath::Sin(A) * Across);
+					if (Hold(Hand, At, bInboard ? HelmGripCm : Lower, FVector::ZeroVector)) Tension[Hand] = 0.5f * HelmLoad;
+				}
+			}
+			else if (bHelm && bTiller && Cfg.WheelHardOverSeconds > 0.0)
 			{
 				// The maxi: the aft hand on the wheel's rim (TillerEnd), where it can reach it.
 				if (Hold(Aft, TillerEnd, HelmGripCm, FVector::ZeroVector)) Tension[Aft] = HelmLoad;

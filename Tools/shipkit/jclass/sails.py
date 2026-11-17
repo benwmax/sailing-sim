@@ -53,6 +53,9 @@ from scipy.interpolate import PchipInterpolator
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import ConvexHull, cKDTree
 
+# np.trapezoid is numpy 2.0's name; Blender 4.2 (the PC's) ships numpy 1.24, where it is np.trapz.
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import deck  # noqa: E402
@@ -617,11 +620,11 @@ class Mainsail:
 
     def area(self):
         y = np.linspace(0.0, self.yH, 2001)
-        return float(np.trapezoid(self.xE(y) - self.xL(y), y))
+        return float(_trapezoid(self.xE(y) - self.xL(y), y))
 
     def roach_area(self):
         u = np.linspace(0, 1, 2001)
-        return float(np.trapezoid(self.roach(u), u) * self.leech_len)
+        return float(_trapezoid(self.roach(u), u) * self.leech_len)
 
     def backstay_room(self, backstay):
         """The roach's room under the backstay with the boom amidships: the least distance aft of the leech (in the
@@ -1148,7 +1151,7 @@ class Spinnaker:
 
     def area(self):
         v = np.linspace(0.0, 1.0, 2001)
-        return float(np.trapezoid(self.width(v), v * self.Hc))
+        return float(_trapezoid(self.width(v), v * self.Hc))
 
     def dress(self, part, sh):
         r = SL["ropes"]["spinnaker_tape"]

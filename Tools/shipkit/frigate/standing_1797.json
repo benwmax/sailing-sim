@@ -98,7 +98,7 @@
   "upper_deadeye": "rail",
   "upper_deadeye_note": "draught: the upper deadeyes stand at the rail's top, their lanyards spanning the spar deck ports' height (about 5 ft): the 1817 channels are low, under the ports",
   "chain_below_channel_ft": 5.0,
-  "chain_note": "draught: the chains reach about 5 ft below the channel's top; one that would land over a gun deck port stops above its head",
+  "chain_note": "draught: the chains reach about 5 ft below the channel's top; one that would land over a gun deck port stops above its head (0.3 ft over it), and an inch clear above the lead bush of that port lid's lanyard hole where its line passes over one (slice 12: gungear.py bores the holes over the ports; build.json standing.chains_over_lanyard_holes lists those raised)",
   "eye_over_bolster": true,
   "futtock_stave_below_top_ft": [7.0, 7.8, 6.0],
   "futtock_src": "draught: the main futtock shrouds meet the shrouds about 7.8 ft under the top; the fore's and mizzen's by eye, in proportion",
@@ -107,7 +107,9 @@
   "ratline_pitch_in": 15,
   "ratline_src": "rule: 13 to 16 in apart; every fifth one is carried to the aftermost shroud",
   "catharpins": [3, 3, 0],
-  "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)"
+  "catharpins_src": "by eye: three on the fore and main; none on the mizzen, whose catharpins would cross the spanker under its gaff (its luff is laced to the mast there: slice 5)",
+  "catharpins_bowse_in": [0.0, 0.0, 0.0],
+  "catharpins_bowse_src": "how far the catharpins pull every lower shroud in toward the middle line at the futtock stave (the stave, seized across them, carries the pull to each; the shroud bends there): none, so they hold the shrouds straight against the futtock shrouds' pull. The Encyclopaedia Britannica (1797), CAT-HARPINGS: 'a purchase of ropes employed to brace in the shrouds of the lower masts behind their yards', so the yards could be drawn round more obliquely close-hauled (Lever 1808 the same), by a few inches no source gives. Measured on her (slice 12): bowsed in 6 in, the fore yard braces 37 degrees and the main 39.5 (33.5 and 36 straight), but the falls from the tops to the forecastle and quarterdeck rails come down just inside the foremost lower shrouds at the stave, and from 1 in the shrouds bear on them (their bull's eyes re-placed under the tops do not clear them). Bowsing in waits for those falls to be led nearer the mast. The mizzen has none"
  },
  "topmast": {
   "rim_from": 0.07,
@@ -150,7 +152,7 @@
   "margin_deg": 1.0,
   "hoists": [0.0, 0.25, 0.5, 0.75, 1.0],
   "ease_step_in": 1.0,
-  "ease_max_ft": {"lower": 3.0, "topsail": 0.5, "topgallant": 0.0, "royal": 0.0, "spanker": 0.0, "spritsail": 0.0},
+  "ease_max_ft": {"lower": 3.0, "topsail": 0.75, "topgallant": 0.0, "royal": 0.0, "spanker": 0.0, "spritsail": 0.0},
   "src": "by eye"
  },
  "bowsprit": {

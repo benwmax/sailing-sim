@@ -100,9 +100,11 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
 - Fonts: Saira (The Saira Project Authors), Source Sans 3 (Adobe), Besley (The Besley Project Authors), Atkinson
   Hyperlegible Next (The Atkinson Hyperlegible Next Project Authors) and B612 (The B612 Project Authors), SIL Open
   Font License 1.1; the licence texts ship with them.
+- Bluebonnet's name and port on her stern are cut from Libre Baskerville (Copyright 2012 The Libre Baskerville Project
+  Authors), SIL Open Font License 1.1.
 - Crew: MetaHumans by Epic Games, used under the MetaHuman licence (Unreal Engine products only; not redistributed).
 - Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.
-- Boat class and brand names (J/22, J/Boats, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) and ASA 101 are
+- Boat class and brand names (J/22, J/Boats, J Class, Catalina, Hobie, Corsair, Lagoon, ILCA, Sunfish) and ASA 101 are
   trademarks of their owners, used to describe the boats and the course; no endorsement is implied.
 
 ## Sound and map credits

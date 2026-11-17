@@ -150,8 +150,9 @@ namespace SailFrontEndImpl
 			struct FShape { float Hull, Mast, Main, Jib; bool bMulti, bLateen, bCabin; };
 			static const FShape Shapes[] = { { 0.62f, 0.62f, 0.32f, 0.22f, false, false, false }, { 0.42f, 0.42f, 0.36f, 0.f, false, true, false },
 				{ 0.44f, 0.56f, 0.30f, 0.f, false, false, false }, { 0.58f, 0.55f, 0.28f, 0.22f, false, false, true }, { 0.70f, 0.70f, 0.30f, 0.28f, false, false, true },
-				{ 0.52f, 0.62f, 0.30f, 0.16f, true, false, false }, { 0.70f, 0.70f, 0.30f, 0.24f, true, false, true }, { 0.80f, 0.68f, 0.30f, 0.26f, true, false, true } };
-			const FShape& F = Shapes[FMath::Clamp(Type, 0, 7)];
+				{ 0.52f, 0.62f, 0.30f, 0.16f, true, false, false }, { 0.70f, 0.70f, 0.30f, 0.24f, true, false, true }, { 0.80f, 0.68f, 0.30f, 0.26f, true, false, true },
+				{ 0.84f, 0.80f, 0.30f, 0.26f, false, false, true }, { 0.88f, 0.88f, 0.30f, 0.26f, false, false, false } };   // the maxi; Bluebonnet, flush-decked
+			const FShape& F = Shapes[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(Shapes)) - 1)];
 			auto DrawLine = [&](TArray<FVector2f> P, const FLinearColor& C, float W)
 			{
 				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), P, ESlateDrawEffect::None, C * Style.GetColorAndOpacityTint(), true, W);
@@ -1208,20 +1209,26 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	BoatCardTypes.Reset();
 	const TArray<SailCatalog::FBoat>& Fleet = SailCatalog::Boats();
 	float MaxLen = 1.f, MaxBeam = 1.f, MaxKg = 1.f, MaxKn = 1.f;
-	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
+	// (The bars are scaled to the club fleet: the maxi and Bluebonnet, three to five times the next boat's weight, fill theirs.)
+	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi) && B.Type != int32(Sailing::EBoatType::Bluebonnet)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
 	auto Cur = [this]() -> const SailCatalog::FBoat& { return SailCatalog::Boat(FocusedBoat); };
 	auto Attr = [Cur](TFunction<FString(const SailCatalog::FBoat&)> F) { return TAttribute<FText>::CreateLambda([Cur, F]() { return FText::FromString(F(Cur())); }); };
-	auto LockOf = [Career](int32 T) { return Career.BoatLockReason(FSailSave::BoatId(T)); };
+	// A career lock first; then a keel too deep for the chosen launch spot (docs/jclass-14/: Bluebonnet's 4.5 m).
+	auto LockOf = [this, Career](int32 T)
+	{
+		const FString Reason = Career.BoatLockReason(FSailSave::BoatId(T));
+		return Reason.IsEmpty() ? SailCatalog::DepthLockReason(Pending.World, Pending.LaunchSpot, T) : Reason;
+	};
 	auto Panels = [this]() { return bViewMode ? EVisibility::Hidden : EVisibility::Visible; };
 
-	// The strip: eight compact cards, LB/RB (and Q/E) at its ends.
+	// The strip: the fleet in compact cards (nine with Bluebonnet), LB/RB (and Q/E) at its ends.
 	TSharedRef<SHorizontalBox> Strip = SNew(SHorizontalBox);
 	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)
 	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(-1); })[ KeyCap(TEXT("Q"), TEXT("LB")) ] ];
 	for (const SailCatalog::FBoat& B : Fleet)
 	{
 		const int32 T = B.Type;
-		// The fleet of eight: the prologue's maxi isn't in the strip (brief section 8).
+		// The fleet: the prologue's maxi isn't in the strip (brief section 8).
 		if (T == int32(Sailing::EBoatType::Maxi)) continue;
 		if (!SailCatalog::InSliceBoat(T)) continue;   // #399: the slice's boats only in a slice build
 		const FString Locked = LockOf(T);

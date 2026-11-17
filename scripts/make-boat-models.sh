@@ -42,6 +42,21 @@ done
 "$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/boats/maxi/build_maxi.py" -- "$MODELS" > "$ARTIFACTS/blender-maxi.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/blender-maxi.log"; exit 1; }
 grep -E "^Maxi:" "$ARTIFACTS/blender-maxi.log" || true
+# J-Class 14: Bluebonnet, our 1937 J. Her shipkit build (Tools/shipkit/jclass/build_jclass.py, about 20 to 40 min), then
+# its game parts (export_game.py: the four parts and her sockets, checked against her physics). The build is made again
+# only when a source in Tools/shipkit/jclass is newer than it (JCLASS_REBUILD=1 forces it); SKIP_JCLASS=1 leaves her out.
+if [[ -z "${SKIP_JCLASS:-}" ]]; then
+	JBUILD="$ARTIFACTS/jclass-build"
+	JSRC="$REPO_ROOT/Tools/shipkit/jclass"
+	if [[ -n "${JCLASS_REBUILD:-}" || ! -f "$JBUILD/jclass.blend" ]] \
+		|| [[ -n "$(find "$JSRC" -maxdepth 1 \( -name '*.py' -o -name '*.json' \) ! -name export_game.py ! -name game_bluebonnet.json -newer "$JBUILD/jclass.blend" | head -1)" ]]; then
+		"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/shipkit/jclass/build_jclass.py" -- "$JBUILD" > "$ARTIFACTS/blender-jclass.log" 2>&1 \
+			|| { tail -30 "$ARTIFACTS/blender-jclass.log"; exit 1; }
+	fi
+	"$BLENDER" -b --factory-startup -noaudio -P "$REPO_ROOT/Tools/shipkit/jclass/export_game.py" -- "$JBUILD" "$MODELS" > "$ARTIFACTS/blender-bluebonnet.log" 2>&1 \
+		|| { tail -30 "$ARTIFACTS/blender-bluebonnet.log"; exit 1; }
+	grep -E "^Bluebonnet:" "$ARTIFACTS/blender-bluebonnet.log" || true
+fi
 [[ "${1:-}" == "--no-import" ]] && exit 0
 "$EDITOR_CMD" "$PROJECT" -run=pythonscript -script="$REPO_ROOT/scripts/import_boats.py ${IMPORT_ARGS:-}" -unattended -nosplash -nosound -NoP4 -stdout -FullStdOutLogOutput > "$ARTIFACTS/import-boats.log" 2>&1 \
 	|| { tail -30 "$ARTIFACTS/import-boats.log"; exit 1; }

@@ -388,6 +388,7 @@ void ASailboatPawn::BuildHullMesh()
 	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
 	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
 	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
+	case EBoatType::Bluebonnet: HullColor = FLinearColor(0.03f, 0.07f, 0.24f); break; // her deep blue topsides (finish_bluebonnet.json)
 	default: if (bTrafficBoat) HullColor = TrafficHullColor; break;
 	}
 	for (int32 Section = 0; Section < 2; ++Section)
@@ -405,10 +406,15 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (USceneComponent* Part : BoatParts) if (Part) Part->DestroyComponent();
 	BoatParts.Reset();
 	RudderPivots.Reset();
+	RudderAxes.Reset();
 	Crew.Reset();
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	ModelTillerExt = nullptr;
+	ModelWheel = nullptr;
+	WheelPivot = nullptr;
+	WheelAxis = FVector::ForwardVector;
+	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -416,6 +422,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
 	RigLineKeys[2].Reset();
+	// The model's rig, which the model path rebuilds each frame: a boat drawn from her config (Bluebonnet before her import)
+	// had kept the last model boat's wires, so her sails kept off the maxi's shrouds and the rig tests read them as hers.
+	SailObstacles.Reset();
+	JibSailObstacles.Reset();
+	bJibInsideShrouds = false;
+	RigLineSamples.Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
@@ -470,6 +482,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		RudderAxes.Add(FVector::UpVector);
 		AddBoatPart(CubeMesh, ToCm(-0.25 * Chord, 0.0, F.Params.Center.Z), FVector(Chord, Thick, Span) * CmPerMeter, Dark, FRotator::ZeroRotator, Pivot);
 		if (C.TillerLength > 0.6) // tiller boats; wheel steering shows no tiller
 		{
@@ -637,6 +650,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Catalina22: return { 0.f, 4.f, 0.f, 0.9f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f, 1.0f, 1.f };
 		case EBoatType::Maxi: return { 4.f, 6.f, 1.f, 3.4f };
+		case EBoatType::Bluebonnet: return { 0.f, 4.f, 0.f, 0.6f };   // a 1937 J: cotton, short battens, narrow cloths, no window
 		default: return { 0.f, 4.f, 0.f, 0.9f, 1.f };    // the J/22
 		}
 	};
@@ -3840,7 +3854,16 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
 	if (bRigDue) BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
-	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+	// (A raked stock, Bluebonnet's: the rudder turns about its own axis, RudderAxes, rather than the vertical.)
+	for (int32 K = 0; K < RudderPivots.Num(); ++K)
+	{
+		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
+		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
+	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
+	// as the bow goes to starboard).
+	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 

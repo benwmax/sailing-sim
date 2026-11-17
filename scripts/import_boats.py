@@ -78,9 +78,11 @@ def add_lods(mesh, nanite):
         mesh.set_editor_property("nanite_settings", ns)
 
 
-def import_boat(tag, dest, lods=False, berthed=True):
+def import_boat(tag, dest, lods=False, berthed=True, nanite_mast=False):
+    """nanite_mast: a mast whose bend the game holds at zero (Bluebonnet's: her standing rigging is in the mast's part, 95k
+    triangles, past the 40k a non-Nanite part may have: docs/boat-fidelity-0). M_BoatMast is used_with_nanite."""
     meta = json.load(open(os.path.join(MODELS, f"{tag}_sockets.json")))
-    for name, nanite in ((f"SM_{tag}_Hull", True), (f"SM_{tag}_Mast", False), (f"SM_{tag}_Boom", True), (f"SM_{tag}_Rudder", True)):
+    for name, nanite in ((f"SM_{tag}_Hull", True), (f"SM_{tag}_Mast", nanite_mast), (f"SM_{tag}_Boom", True), (f"SM_{tag}_Rudder", True)):
         mesh = import_fbx(os.path.join(MODELS, name + ".fbx"), dest, name)
         origin = meta["origins"][name]
         sockets = {s: [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]] for s, p in meta["sockets"].items() if meta["owner"][s] == name}
@@ -96,6 +98,17 @@ def import_boat(tag, dest, lods=False, berthed=True):
         mesh = import_fbx(os.path.join(MODELS, ext + ".fbx"), dest, ext)
         setup(mesh, True, {}, {})
         unreal.log(f"Imported {ext}")
+    # J-Class 14: a wheel of its own (Bluebonnet's: export_game.py), turned by the game with the rudder about the hull's
+    # WheelHub/WheelAxis sockets, with its WheelRim socket for the helm's hands. As the extension: only when this build made one.
+    wheel = f"SM_{tag}_Wheel"
+    if wheel in meta["origins"]:
+        mesh = import_fbx(os.path.join(MODELS, wheel + ".fbx"), dest, wheel)
+        origin = meta["origins"][wheel]
+        sockets = {s: [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]] for s, p in meta["sockets"].items() if meta["owner"][s] == wheel}
+        if lods:
+            add_lods(mesh, True)
+        setup(mesh, True, {}, sockets)
+        unreal.log(f"Imported {wheel}: {len(sockets)} sockets")
     # Catalina 22 rebuild (docs/c22-12): the cabin below as a part of its own (Nanite, same pivot as the hull), drawn by the
     # game on the player's boat only. Only when this build made one (its origin in the sockets json).
     interior = f"SM_{tag}_Interior"
@@ -195,6 +208,10 @@ elif "maxi" in sys.argv:
     # The prologue's maxi (Tools/boats/maxi/build_maxi.py): Nanite with LODs under it, no berthed dress.
     import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")
+elif "bluebonnet" in sys.argv:
+    # J-Class 14: Bluebonnet, our 1937 J (Tools/shipkit/jclass: build_jclass.py, then export_game.py), as the maxi.
+    import_boat("Bluebonnet", "/Game/Boats/Bluebonnet", lods=True, berthed=False, nanite_mast=True)
+    unreal.log("Import done")
 elif "dress" in sys.argv or "gearonly" in sys.argv or "j22only" in sys.argv:
     # Graphics G6: `-- dress` imports only the berthed dresses of the keelboats, `-- gearonly` only the crew's gear.
     if "dress" in sys.argv:
@@ -225,6 +242,8 @@ else:
             import_boat(tag, f"/Game/Boats/{tag}", berthed=only is None or "berthed" in sys.argv)
     if not only_fleet and os.path.exists(os.path.join(MODELS, "Maxi_sockets.json")):   # `fleet` is the seven; `maxi` imports her
         import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
+    if not only_fleet and os.path.exists(os.path.join(MODELS, "Bluebonnet_sockets.json")):   # `bluebonnet` imports only her
+        import_boat("Bluebonnet", "/Game/Boats/Bluebonnet", lods=True, berthed=False, nanite_mast=True)
     unreal.log("Import done")
     if sys.platform != "win32":  # see above: on Windows let -run=pythonscript return
         os._exit(0)

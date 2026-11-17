@@ -31,6 +31,7 @@ namespace SailCatalog
 		/** The spot on the earth, from the world's anchor (docs/geo-anchor; rounded to 1e-8 degrees, about a millimetre):
 		 *  the save's fallback when a spot id is gone. Shown nowhere yet. */
 		double Lat = 0.0, Lon = 0.0;
+		double DepthM = -1.0;      // the bake's depth_m (LaunchSpotFits); -1 when it gives none
 	};
 
 	struct FWorld
@@ -60,6 +61,7 @@ namespace SailCatalog
 		TArray<FString> Flags;
 		FString Length, Beam, Draft, Weight, CloseHauled;
 		float LengthM = 0.f, BeamM = 0.f, WeightKg = 0.f, CloseHauledKn = 0.f;   // the same as numbers (the showroom's bars)
+		float DraftM = 0.f;        // keel or board down (LaunchSpotFits)
 		int32 Handling = 3;        // 1 easy .. 5 demanding (a designer rating)
 		bool bDinghy = false, bMultihull = false;
 		float ReefKn = 18.f, ComfortKn = 12.f;   // the "what to expect" bands
@@ -78,6 +80,9 @@ namespace SailCatalog
 	SAILINGSIM_API bool InSliceWorld(int32 Index);
 	SAILINGSIM_API bool InSliceBoat(int32 Type);
 	SAILINGSIM_API bool InSliceTier(const FString& TierId);
+	/** docs/jclass-14/: why a boat can't start from a world's launch spot (too shallow for her keel, LaunchSpotFits), naming the
+	 *  spots she can start from; empty when she can. */
+	SAILINGSIM_API FString DepthLockReason(int32 WorldIndex, int32 Spot, int32 BoatType);
 	/** The HUD minimap for a settings world (0 lake, 1 Galveston Bay, 2 the Gulf passage): its texture and grid extent. */
 	struct FMiniMap
 	{
