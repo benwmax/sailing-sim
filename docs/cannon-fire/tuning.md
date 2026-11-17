@@ -16,7 +16,7 @@ its comment.
 
 | What | How |
 |---|---|
-| A battery without the frigate | `-SailingCannonStage` (60 m to starboard of the player's boat) or `-SailingCannonStage=<fwd m>,<right m>,<heading deg>` |
+| A battery without the frigate | `-SailingCannonStage` (60 m to starboard of the player's boat, keeping station with her as she sails) or `-SailingCannonStage=<fwd m>,<right m>,<heading deg relative to hers>`; any boat works (the stage draws the guns alone, no hull) |
 | Fire on a timer | `-SailingBroadside=<s after start>[,port\|starboard\|both[,broadside\|ripple\|atwill]]`, again every `-SailingBroadsideEvery=<s>` (the guns start run out and loaded) |
 | Fire now | console `sailing.Broadside [side] [mode]` |
 | Orders as the panel gives them | console `sailing.CannonOrder <CastLoose\|Load\|RunOut\|Fire\|CeaseFire\|Secure> [side]` |
@@ -26,8 +26,12 @@ its comment.
 
 A still for tuning, with the uncooked game:
 
-    scripts/run-game.sh 14 -SailingCannonStage=30,40,90 -SailingBroadside=6,starboard -SailingBroadsideEvery=20 \
-        -SailingCamYaw=90 -SailingQuality=High -SailingShot=cannon-broadside
+    scripts/run-game.sh 14 -SailingCannonStage=10,70,0 -SailingBroadside=6,port -SailingCamYaw=90 -SailingCamPitch=-5 \
+        -SailingNoHud -SailingQuality=High -SailingShot=cannon-broadside
+
+The stage sails alongside 70 m to starboard and its port guns fire toward the camera (looking to starboard), so the still
+(taken at the end, 8 s after the broadside) shows the cloud drifting between. The flame lasts 75 ms, so a still rarely
+catches it: `-SailingBroadside=10,port,ripple` keeps guns going off through the last seconds.
 
 ## The bench
 

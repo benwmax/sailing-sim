@@ -104,6 +104,8 @@ private:
 	/** The look's parameters into the materials' instances. */
 	void PushLook();
 	void RunBenchArgs(double Now);
+	/** -SailingCannonStage: keep station off the player's boat. */
+	void FollowStage();
 	double SimNow() const;
 	/** The ship's frame (m) to the render's world (cm). */
 	FVector ShipToWorld(const Sailing::Vec3& P) const;
@@ -143,6 +145,8 @@ private:
 	Sailing::ECannonSide BenchSide = Sailing::ECannonSide::Starboard;
 	Sailing::ECannonFireMode BenchMode = Sailing::ECannonFireMode::Broadside;
 	bool bStage = false;
+	FVector StageOffsetCm = FVector::ZeroVector;   // ahead, to starboard of the player's boat
+	double StageHeadingDeg = 0.0;
 	bool bNoSmoke = false, bNoLights = false, bDebug = false;
 	bool bBuilt = false;
 	double LastNow = -1.0;

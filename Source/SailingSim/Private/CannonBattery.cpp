@@ -169,9 +169,25 @@ ACannonBattery* ACannonBattery::SpawnStageIfAsked(UWorld* World)
 	FActorSpawnParameters Spawn;
 	Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	ACannonBattery* B = World->SpawnActor<ACannonBattery>(At, Rot, Spawn);
-	if (B) B->bStage = true;
-	SAIL_LOG(Display, TEXT("Cannon stage at %s, heading %.0f"), *At.ToString(), Rot.Yaw);
+	if (B)
+	{
+		// It keeps station off the player's boat (her pawn may not exist yet at StartPlay: FollowStage places it each frame).
+		B->bStage = true;
+		B->StageOffsetCm = FVector(Fwd, Right, 0.0) * CmPerMeter;
+		B->StageHeadingDeg = Heading;
+	}
+	SAIL_LOG(Display, TEXT("Cannon stage %.0f m ahead, %.0f m to starboard, heading %+.0f"), Fwd, Right, Heading);
 	return B;
+}
+
+void ACannonBattery::FollowStage()
+{
+	const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!Player) return;
+	const FRotator Yaw(0.0, Player->GetActorRotation().Yaw, 0.0);
+	FVector At = Player->GetActorLocation() + Yaw.RotateVector(StageOffsetCm);
+	At.Z = WaterZ0;
+	SetActorLocationAndRotation(At, FRotator(0.0, Yaw.Yaw + StageHeadingDeg, 0.0));
 }
 
 void ACannonBattery::InitParams()
@@ -561,6 +577,7 @@ void ACannonBattery::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (!bBuilt) return;
 	const double Start = FPlatformTime::Seconds();
+	if (bStage) FollowStage();
 	const double Now = SimNow();
 	const double Dt = LastNow < 0.0 ? 0.0 : FMath::Clamp(Now - LastNow, 0.0, 0.1);
 	LastNow = Now;
