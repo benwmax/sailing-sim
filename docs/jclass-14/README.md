@@ -155,11 +155,20 @@ bottom, buff deck and spars, teak trim; one scheme and three wear looks (the fou
 sail number (her club's star).
 
 **Known gaps** (cosmetic; for after the release):
-- The spinnaker's head is placed by the config's mast front (x 3.19), about 1 m ahead of her raked masthead.
 - The physics' genoa luff meets the deck 0.5 m ahead of the model's forestay (18.40 against 17.88), and with no live
   forestay there are no hanks.
 - The main's cloth is kept off the lowest spreaders only, not her static shrouds above them.
-- Her live sheets are J/22-sized rope, and no halyards are drawn.
+
+**Ropes, halyards and the spinnaker's head** (fixed after the first list): her live sheets, mainsheet and spinnaker gear are
+her build's sizes (`running_bluebonnet.json` "ropes": genoa sheet 28 mm, mainsheet and guy 26, spinnaker sheet 24; the
+J/22's 9 mm before), her mainsheet's four parts spaced to match. Her halyards are drawn where they show: they are wire inside
+the mast, so the headsail's runs from its box just under the hounds 3.8 m down beside the forestay to the genoa's head, the
+main's from its box on the mast's after face to the headboard, and with the spinnaker up its halyard runs from the head's block
+up into its box under the masthead crane, the block hanging on its pendant from the crane's tip (`BoatModelVisuals.cpp`; the
+boxes' points from `running.py`'s `box_frame`, relative to the Hounds socket). The spinnaker's head is now where her build
+hoists it (x 2.435 at 46.56 m, under the crane): `SpinnakerHeadCm` keeps a planform head that lies behind the config's mast front
+(a raked mast's; no other boat's does), where it had put it 1.2 m ahead of her raked masthead. `SailingSim.Visual.SpinnakerHead`
+checks it with and without her Hounds.
 
 The Mac's rig tests that loop over every boat (`SailingSim.Visual.RigClearance`, `SailShrouds`, `SheetClearance`,
 `TrimmerTailsJib`) now see her model and may list some of these.
