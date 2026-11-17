@@ -1977,18 +1977,22 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Note(TEXT("The camera jolts when the bow slams a wave or green water comes aboard, and trembles in a gale. Turn it off if motion bothers you.")));
 		// Camera views (docs/camera-views/): the view you start in (and the one F5 or the right stick's click last chose),
 		// the look's speed and direction, and whether the camera eases back behind the boat.
-		Add(SNew(SSailChoice).Label(TEXT("Camera")).Options({ TEXT("Chase"), TEXT("Overview"), TEXT("Helm") })
-			.Index_Lambda([S]() { return FMath::Clamp(S->CameraView, 0, 2); })
+		// (listed in the cycle's order, far outside to aboard; the setting holds the view's own number)
+		TArray<FString> ViewNames;
+		for (const ChaseCamera::EView V : ChaseCamera::CycleOrder()) ViewNames.Add(ChaseCamera::DisplayName(V));
+		Add(SNew(SSailChoice).Label(TEXT("Camera")).Options(ViewNames)
+			.Index_Lambda([S]() { return ChaseCamera::CycleIndex(ChaseCamera::EView(FMath::Clamp(S->CameraView, 0, int32(ChaseCamera::EView::Count) - 1))); })
 			.OnChanged_Lambda([this, S](int32 I)
 			{
-				S->CameraView = FMath::Clamp(I, 0, 2);
+				S->CameraView = int32(ChaseCamera::CycleOrder()[FMath::Clamp(I, 0, ChaseCamera::CycleOrder().Num() - 1)]);
 				S->Save();
 				// In game (the pause menu), the boat's camera changes now; elsewhere the next sail starts in it.
 				ASailboatPawn* P = bMenusInGame ? Pawn() : nullptr;
 				if (P && IsValid(P) && P->GetShowroomStage() == EShowroomStage::None) P->SetCameraView(ChaseCamera::EView(S->CameraView), false);
 			})
 			.Note(TEXT("Chase sits low behind the boat, about where you'd stand in the cockpit. Overview is the high view, for your angle "
-				"to the wind and the marks. Helm is the helmsman's eyes. F5, the middle mouse button or a tap of the right stick changes it while you sail.")));
+				"to the wind and the marks. Drone and Chase boat film you from off the boat; Masthead, Transom cam and Bow are cameras "
+				"on her. Helm is the helmsman's eyes. F5, the middle mouse button or a tap of the right stick changes it while you sail.")));
 		Add(SNew(SSailSlider).Label(TEXT("Look speed")).Min(25.f).Max(300.f).Step(25.f)
 			.Value_Lambda([S]() { return FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f; })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), FMath::RoundToInt32(FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f)); })

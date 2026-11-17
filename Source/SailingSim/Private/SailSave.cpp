@@ -204,7 +204,7 @@ FString FSailSave::ToJson() const
 	Display->SetBoolField(TEXT("cinematicLook"), S.bCinematicLook);
 	Display->SetBoolField(TEXT("lensWater"), S.bLensWater);
 	Display->SetBoolField(TEXT("cameraShake"), S.bCameraShake);
-	Display->SetStringField(TEXT("cameraView"), FString(ChaseCamera::Name(ChaseCamera::EView(FMath::Clamp(S.CameraView, 0, 2)))).ToLower());
+	Display->SetStringField(TEXT("cameraView"), FString(ChaseCamera::Name(ChaseCamera::EView(FMath::Clamp(S.CameraView, 0, int32(ChaseCamera::EView::Count) - 1)))).ToLower());
 	Display->SetNumberField(TEXT("lookSpeed"), S.LookSpeed);
 	Display->SetBoolField(TEXT("invertLook"), S.bInvertLook);
 	Display->SetBoolField(TEXT("cameraRecentre"), S.bCameraRecentre);
@@ -809,7 +809,7 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bCinematicLook = S.bCinematicLook;
 	Out.bLensWater = S.bLensWater;
 	Out.bCameraShake = S.bCameraShake;
-	Out.CameraView = FMath::Clamp(S.CameraView, 0, 2);
+	Out.CameraView = FMath::Clamp(S.CameraView, 0, int32(ChaseCamera::EView::Count) - 1);
 	Out.LookSpeed = FMath::Clamp(S.LookSpeed, 0.25f, 3.f);
 	Out.bInvertLook = S.bInvertLook;
 	Out.bCameraRecentre = S.bCameraRecentre;

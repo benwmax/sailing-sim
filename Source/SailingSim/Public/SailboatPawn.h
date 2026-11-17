@@ -488,6 +488,25 @@ private:
 	float CockpitLastYaw = 0.f;
 	double CockpitLookedAt = -1e9;           // when the player last turned the view
 	void UpdateCockpitCamera(float DeltaSeconds);
+	// Camera views slice 4 (ChaseCamera::MountFor): the mounted camera in use (Chase: none), placed in the world each frame
+	// by UpdateMountedCamera on the pawn's own Camera (photo mode opens from it, as from the others).
+	ChaseCamera::EView MountedView = ChaseCamera::EView::Chase;
+	ChaseCamera::EView StartView = ChaseCamera::EView::Chase;   // the view a sail starts in (BeginPlay)
+	ChaseCamera::FMount Mount;
+	float MountFov = 90.f;
+	float MountBearing = 0.f;       // a world camera's bearing off her bow now (0..360, the stern side: ChaseCamera::SideBearingDeg)
+	float MountLeeward = 1.f;       // the side it stands on (+1 starboard)
+	float MountOtherTackS = 0.f;    // how long she has been on the tack that wants the other side
+	float MountHeading = 0.f;       // her heading as the world camera follows it (deg)
+	float MountWaterZ = 0.f;        // her mean waterline as it follows it (cm, world)
+	bool bMountStarted = false;
+	void EnterMountedView(ChaseCamera::EView View);
+	void LeaveMountedView();
+	void UpdateMountedCamera(float DeltaSeconds);
+	/** The lens is placed in the world each frame (the helm view or an onboard mount), not on the chase arm. */
+	bool IsCameraPlaced() const { return bCockpit || IsMountedView(); }
+	/** An onboard mount (masthead, transom, bow): no shore lift, as the helm view. */
+	bool IsOnboardMount() const { return IsMountedView() && Mount.bOnboard; }
 	/** Storm look (docs/storm-look/camera-buffet/): Settings > Camera shake: slams, seas coming aboard and strong wind
 	 *  buffet the chase and cockpit views (FCameraBuffet), fed by UpdateBoatWetness's bow and rail tests. */
 	void UpdateCameraBuffet(float DeltaSeconds);
@@ -546,9 +565,13 @@ private:
 	double NextPhotoSpeedStep = 0.0, NextPhotoZoomStep = 0.0, PhotoReadoutUntil = 0.0;
 public:
 	bool IsCockpitView() const { return bCockpit; }
+	/** Camera views slice 4: a mounted camera (drone, chase boat, masthead, transom, bow) is in use. */
+	bool IsMountedView() const { return MountedView != ChaseCamera::EView::Chase; }
+	/** The mounted camera's field of view (deg; the wheel zooms it). */
+	float GetMountFov() const { return MountFov; }
 	/** The helm's eyes on or off (bAnnounce: the status line says so). */
 	void SetCockpitView(bool bOn, bool bAnnounce = true);
-	/** Camera views (docs/camera-views/): Chase, Overview or Helm; bRemember saves it (Settings > Camera) and says so. */
+	/** Camera views (docs/camera-views/): any view (Chase, Overview, Helm or a mounted camera); bRemember saves it (Settings > Camera) and says so. */
 	ChaseCamera::EView GetCameraView() const;
 	void SetCameraView(ChaseCamera::EView View, bool bRemember);
 	const ChaseCamera::FRig& GetChaseRig() const { return ChaseRig; }

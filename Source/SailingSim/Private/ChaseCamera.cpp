@@ -1,4 +1,5 @@
 #include "ChaseCamera.h"
+#include "ReferenceCapture.h"
 
 namespace ChaseCamera
 {
@@ -69,9 +70,31 @@ namespace ChaseCamera
 		return FMath::Abs(Back) < 0.05f ? 0.f : Back;
 	}
 
+	namespace
+	{
+		// Far outside to aboard (slice 4), the order racing games keep: chase, far chase, helicopter, TV side camera, then
+		// the cameras on the boat, the cockpit last.
+		constexpr EView kCycle[] = { EView::Chase, EView::Overview, EView::Drone, EView::ChaseBoat, EView::Masthead, EView::Transom, EView::Bow, EView::Helm };
+		static_assert(UE_ARRAY_COUNT(kCycle) == size_t(EView::Count), "every view is in the cycle");
+	}
+
+	TArrayView<const EView> CycleOrder()
+	{
+		return TArrayView<const EView>(kCycle, UE_ARRAY_COUNT(kCycle));
+	}
+
+	int32 CycleIndex(EView View)
+	{
+		for (int32 I = 0; I < int32(UE_ARRAY_COUNT(kCycle)); ++I)
+		{
+			if (kCycle[I] == View) return I;
+		}
+		return 0;
+	}
+
 	EView Next(EView View)
 	{
-		return EView((uint8(View) + 1) % uint8(EView::Count));
+		return kCycle[(CycleIndex(View) + 1) % int32(UE_ARRAY_COUNT(kCycle))];
 	}
 
 	const TCHAR* Name(EView View)
@@ -81,16 +104,127 @@ namespace ChaseCamera
 		case EView::Chase: return TEXT("Chase");
 		case EView::Overview: return TEXT("Overview");
 		case EView::Helm: return TEXT("Helm");
+		case EView::Drone: return TEXT("Drone");
+		case EView::ChaseBoat: return TEXT("ChaseBoat");
+		case EView::Masthead: return TEXT("Masthead");
+		case EView::Transom: return TEXT("Transom");
+		case EView::Bow: return TEXT("Bow");
 		default: return TEXT("Chase");
+		}
+	}
+
+	const TCHAR* DisplayName(EView View)
+	{
+		switch (View)
+		{
+		case EView::ChaseBoat: return TEXT("Chase boat");
+		case EView::Transom: return TEXT("Transom cam");
+		default: return Name(View);
 		}
 	}
 
 	bool Parse(const FString& Text, EView& Out)
 	{
+		const FString Key = Text.Replace(TEXT(" "), TEXT(""));
 		for (uint8 I = 0; I < uint8(EView::Count); ++I)
 		{
-			if (Text.Equals(Name(EView(I)), ESearchCase::IgnoreCase)) { Out = EView(I); return true; }
+			const FString Display = FString(DisplayName(EView(I))).Replace(TEXT(" "), TEXT(""));
+			if (Key.Equals(Name(EView(I)), ESearchCase::IgnoreCase) || Key.Equals(Display, ESearchCase::IgnoreCase)) { Out = EView(I); return true; }
 		}
 		return false;
+	}
+
+	bool IsMounted(EView View)
+	{
+		return View != EView::Chase && View != EView::Overview && View != EView::Helm && View < EView::Count;
+	}
+
+	FMount MountFor(EView View, const Sailing::FBoatConfig& C)
+	{
+		static const Sailing::FHullShape NoHull;
+		const Sailing::FHullShape& Hull = C.Hulls.empty() ? NoHull : C.Hulls[0];
+		auto SheerAt = [&](double X) { return C.bMultihull ? Hull.SheerZ : Hull.SheerHeight(X); };
+		const float Mast = float(FMath::Max(C.MastheadZ, 2.0));
+		FMount M;
+		switch (View)
+		{
+		case EView::Bow:
+		{
+			// The bumper camera: on the stem head, ahead of the jib's tack (behind it the lens would be inside the jib's foot),
+			// a little over the deck, looking forward and a little down at the waves. On a multihull, between the bows.
+			const double X = Hull.BowX - 0.05;
+			M.LocationM = FVector(X, 0.0, SheerAt(X) + FMath::Clamp(0.04 * C.LengthOverall, 0.25, 0.9));
+			M.MountPitchDeg = -8.f;
+			M.FovDeg = 95.f;
+			break;
+		}
+		case EView::Transom:
+		{
+			// The reference captures' action camera (OnboardCameraMount), looking forward over the cockpit at crew and sails.
+			FVector L; FRotator R;
+			OnboardCameraMount(ECapturePreset::ActionCam, C, 1.f, L, R);
+			M.LocationM = L / 100.0;   // (cm to m)
+			M.MountPitchDeg = float(R.Pitch);
+			M.FovDeg = 100.f;
+			break;
+		}
+		case EView::Masthead:
+		{
+			// The TV shot: just over the masthead, a little aft of the mast (clear of its section and the main's head), looking
+			// down at her deck halfway between the mast and the stern, so the boom, the cockpit and the crew are in the middle.
+			const double AimX = 0.5 * (C.MastX + Hull.SternX);
+			M.LocationM = FVector(C.MastX - 0.35, 0.0, C.MastheadZ + 0.35);
+			M.bAim = true;
+			M.AimM = FVector(AimX, 0.0, SheerAt(AimX));
+			M.FovDeg = 80.f;
+			break;
+		}
+		case EView::ChaseBoat:
+		{
+			// A camera boat to leeward just ahead of abeam, 1.5 m over the water (a RIB's camera), far enough off to frame her
+			// rig: the reference captures' chase range, aimed a little under half the mast so the masthead and the waterline fit.
+			M.bOnboard = false;
+			M.RangeM = FMath::Max(15.f, 1.9f * Mast);
+			M.HeightM = 1.5f;
+			M.BearingDeg = 80.f;
+			M.AimUpM = 0.45f * Mast;
+			M.FollowTauS = 1.f;
+			M.FovDeg = 65.f;
+			break;
+		}
+		case EView::Drone:
+		default:
+		{
+			// The reference captures' drone, on her leeward quarter: 30 m up and 30 m off (more for a big boat), following slowly.
+			M.bOnboard = false;
+			M.RangeM = FMath::Max(30.f, 3.f * float(C.LengthOverall));
+			M.HeightM = FMath::Max(30.f, 2.f * Mast);
+			M.BearingDeg = 135.f;
+			M.AimUpM = 0.2f * Mast;
+			M.FollowTauS = 2.f;
+			M.FovDeg = 70.f;
+			break;
+		}
+		}
+		return M;
+	}
+
+	float ZoomFov(float FovDeg, float Notches)
+	{
+		return FMath::Clamp(FovDeg * FMath::Pow(ZoomRatio, Notches), MountMinFovDeg, MountMaxFovDeg);
+	}
+
+	float SideBearingDeg(const FMount& Mount, float LeewardSign)
+	{
+		return LeewardSign >= 0.f ? Mount.BearingDeg : 360.f - Mount.BearingDeg;
+	}
+
+	float EaseBearing(float BearingDeg, float TargetDeg, float DeltaS, float TauS)
+	{
+		// (both on 0..360 measured from the bow: the straight line between them passes the stern, never the bow)
+		if (DeltaS <= 0.f) return BearingDeg;
+		const float K = 1.f - FMath::Exp(-DeltaS / FMath::Max(TauS, 1e-3f));
+		const float B = BearingDeg + (TargetDeg - BearingDeg) * K;
+		return FMath::Abs(TargetDeg - B) < 0.05f ? TargetDeg : B;
 	}
 }

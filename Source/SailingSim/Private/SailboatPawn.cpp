@@ -933,7 +933,8 @@ void ASailboatPawn::BeginPlay()
 		if (Match >= 0) USailingSettings::Get()->BoatType = Match;
 		else SAIL_LOG(Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
 	}
-	// Camera views (docs/camera-views/): the player's last view (Settings > Camera), or -SailingView=Chase|Overview|Helm.
+	// Camera views (docs/camera-views/): the player's last view (Settings > Camera), or -SailingView=Chase|Overview|Helm|Drone|
+	// ChaseBoat|Masthead|Transom|Bow.
 	// A measured run or the demo that names no view keeps the old chase rig exactly (Classic), so benches don't move.
 	{
 		ChaseCamera::EView View = ChaseCamera::EView(FMath::Clamp(USailingSettings::Get()->CameraView, 0, int32(ChaseCamera::EView::Count) - 1));
@@ -946,6 +947,7 @@ void ASailboatPawn::BeginPlay()
 		}
 		else ChaseRigKind = View == ChaseCamera::EView::Overview ? ChaseCamera::ERig::Overview : ChaseCamera::ERig::Chase;
 		bStartInHelm = View == ChaseCamera::EView::Helm;
+		StartView = View;
 	}
 	SetBoat(USailingSettings::Get()->BoatType);
 	// The rig's own pitch to start (Chase looks 4 deg down; Classic keeps the old 14); -SailingCamPitch below beats it.
@@ -970,6 +972,7 @@ void ASailboatPawn::BeginPlay()
 
 	bDemo = FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"));
 	if (!bTrafficBoat && (bStartInHelm || FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit")))) SetCockpitView(true, false);
+	else if (!bTrafficBoat && ChaseCamera::IsMounted(StartView)) SetCameraView(StartView, false);   // (-SailingCamYaw/Pitch below turn it)
 	float HoldTwa = 0.f;
 	if (bDemo)
 	{
@@ -1265,7 +1268,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	}
 	// Settings > Field of view: the chase camera follows the row as it changes (photo mode keeps its lens, the capture
 	// presets theirs, the cockpit sets its own each frame).
-	if (!bCockpit && !IsCaptureMode() && Camera && Camera->FieldOfView != USailingSettings::Get()->ChaseFov()) Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
+	if (!IsCameraPlaced() && !IsCaptureMode() && Camera && Camera->FieldOfView != USailingSettings::Get()->ChaseFov()) Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
 	UpdateChaseFollow(DeltaSeconds);
 	ApplyHeldInputs(DeltaSeconds);
 	if (Controls.bRighting && FMath::Abs(Boat.GetTelemetry().Heel) < 20.0 * kDegToRad && Boat.GetState().CrewOffsetZ > -0.05)
@@ -1428,6 +1431,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
 	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	else if (IsMountedView()) UpdateMountedCamera(DeltaSeconds);
 	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
@@ -2163,7 +2167,7 @@ float ASailboatPawn::ShoreLiftStep(float CurrentCm, float TargetCm, float DeltaT
 FVector ASailboatPawn::ViewLocation() const
 {
 	if (IsCaptureMode()) return Camera->GetComponentLocation();
-	return LiftedOverWater(Camera->GetComponentLocation() + FVector(0.f, 0.f, bCockpit ? 0.f : CameraShoreLiftCm));
+	return LiftedOverWater(Camera->GetComponentLocation() + FVector(0.f, 0.f, bCockpit || IsOnboardMount() ? 0.f : CameraShoreLiftCm));
 }
 
 void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
@@ -2173,8 +2177,9 @@ void ASailboatPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 	if (IsCaptureMode()) return;
 	// #498: zoomed out near the shore, the chase view goes over the ground and the docks instead of into them, and under a
 	// bridge deck rather than into it, eased
-	// (ShoreLiftStep). The cockpit view is untouched, and open water has no floor.
-	if (bCockpit)
+	// (ShoreLiftStep). The cockpit view and the cameras on the boat are untouched, and open water has no floor; the drone
+	// and the chase boat are lifted as the chase camera is.
+	if (bCockpit || IsOnboardMount())
 	{
 		CameraShoreLiftCm = 0.f;
 	}
@@ -2311,7 +2316,7 @@ void ASailboatPawn::SetCockpitView(bool bOn, bool bAnnounce)
 void ASailboatPawn::UpdateChaseFollow(float DeltaSeconds)
 {
 	if (!CameraBoom) return;
-	if (bCockpit || IsCaptureMode() || bDemo)
+	if (IsCameraPlaced() || IsCaptureMode() || bDemo)
 	{
 		CameraBoom->bEnableCameraRotationLag = false;
 		return;
@@ -2363,6 +2368,7 @@ void ASailboatPawn::ApplyChaseRig(bool bResetDistance, bool bResetPitch)
 ChaseCamera::EView ASailboatPawn::GetCameraView() const
 {
 	if (bCockpit) return ChaseCamera::EView::Helm;
+	if (IsMountedView()) return MountedView;
 	return ChaseRigKind == ChaseCamera::ERig::Overview ? ChaseCamera::EView::Overview : ChaseCamera::EView::Chase;
 }
 
@@ -2370,10 +2376,17 @@ void ASailboatPawn::SetCameraView(ChaseCamera::EView View, bool bRemember)
 {
 	if (View == ChaseCamera::EView::Helm)
 	{
+		LeaveMountedView();
 		if (!bCockpit) SetCockpitView(true, false);
+	}
+	else if (ChaseCamera::IsMounted(View))
+	{
+		if (bCockpit) SetCockpitView(false, false);
+		EnterMountedView(View);
 	}
 	else
 	{
+		LeaveMountedView();
 		const ChaseCamera::ERig Kind = View == ChaseCamera::EView::Overview ? ChaseCamera::ERig::Overview : ChaseCamera::ERig::Chase;
 		ChaseRigKind = Kind;
 		if (bCockpit) SetCockpitView(false, false);
@@ -2387,9 +2400,19 @@ void ASailboatPawn::SetCameraView(ChaseCamera::EView View, bool bRemember)
 	Settings->CameraView = int32(View);
 	Settings->Save();
 	const FString Key = SailingBindings::Label(TEXT("ChangeView"), false, SailUI::UsingGamepad());
-	StatusMessage = View == ChaseCamera::EView::Helm ? FString::Printf(TEXT("Helm view: you are at the helm (%s changes the view)"), *Key)
-		: View == ChaseCamera::EView::Overview ? FString::Printf(TEXT("Overview: the high view, for your angle to the wind and the marks (%s changes the view)"), *Key)
-		: FString::Printf(TEXT("Chase camera (%s changes the view)"), *Key);
+	const TCHAR* What = TEXT("Chase camera");
+	switch (View)
+	{
+	case ChaseCamera::EView::Helm: What = TEXT("Helm view: you are at the helm"); break;
+	case ChaseCamera::EView::Overview: What = TEXT("Overview: the high view, for your angle to the wind and the marks"); break;
+	case ChaseCamera::EView::Drone: What = TEXT("Drone: high off your leeward quarter"); break;
+	case ChaseCamera::EView::ChaseBoat: What = TEXT("Chase boat: alongside to leeward"); break;
+	case ChaseCamera::EView::Masthead: What = TEXT("Masthead camera: looking down on the deck"); break;
+	case ChaseCamera::EView::Transom: What = TEXT("Transom cam: looking forward over the cockpit"); break;
+	case ChaseCamera::EView::Bow: What = TEXT("Bow camera: on the bow, looking ahead"); break;
+	default: break;
+	}
+	StatusMessage = FString::Printf(TEXT("%s (%s changes the view)"), What, *Key);
 	StatusUntil = Boat.GetState().Time + 3.0;
 }
 
@@ -2473,6 +2496,98 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard
 }
 
+void ASailboatPawn::EnterMountedView(ChaseCamera::EView View)
+{
+	if (!Camera || !ChaseCamera::IsMounted(View)) return;
+	MountedView = View;
+	Mount = ChaseCamera::MountFor(View, Boat.GetConfig());
+	MountFov = Mount.FovDeg;
+	bMountStarted = false;
+	// (placed in the world each frame, as the helm view's head is; the look starts on the mount's own aim)
+	Camera->SetUsingAbsoluteLocation(true);
+	Camera->SetUsingAbsoluteRotation(true);
+	CameraBoom->bEnableCameraRotationLag = false;
+	CameraYaw = 0.f;
+	CameraPitch = 0.f;
+	UpdateMountedCamera(0.f);
+}
+
+void ASailboatPawn::LeaveMountedView()
+{
+	if (!IsMountedView()) return;
+	MountedView = ChaseCamera::EView::Chase;
+	bMountStarted = false;
+	if (!Camera) return;
+	Camera->SetUsingAbsoluteLocation(false);
+	Camera->SetUsingAbsoluteRotation(false);
+	Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
+}
+
+void ASailboatPawn::UpdateMountedCamera(float DeltaSeconds)
+{
+	// Camera views slice 4 (docs/camera-views/): the mount from her config each frame (a boat change keeps the view), the
+	// player's look as an offset from its aim that eases back after a while (Settings > Camera returns behind), the wheel's zoom.
+	if (!IsMountedView() || !Camera || !BoatRoot) return;
+	Mount = ChaseCamera::MountFor(MountedView, Boat.GetConfig());
+	const float Dt = FMath::Max(DeltaSeconds, 0.f);
+	if (LastLookSeconds > 0.0 && USailingSettings::Get()->bCameraRecentre && !bDemo)
+	{
+		const float SinceLook = float(FPlatformTime::Seconds() - LastLookSeconds);
+		CameraYaw = ChaseCamera::RecentreYaw(CameraYaw, Dt, SinceLook);
+		CameraPitch = ChaseCamera::RecentreYaw(CameraPitch, Dt, SinceLook);
+	}
+	const FTransform Xf = BoatRoot->GetComponentTransform();
+	const FRotator BoatRot = Xf.Rotator();
+	FVector Location;
+	FRotator Rotation;
+	if (Mount.bOnboard)
+	{
+		// On her: the lens rides the mount; its horizon follows a third of her heel and pitch (motion sickness: the helm
+		// view's share), its aim her own (the masthead looks at her deck wherever the masthead has swung to).
+		Location = Xf.TransformPosition(Mount.LocationM * CmPerMeter);
+		if (Mount.bAim) Rotation = (Xf.TransformPosition(Mount.AimM * CmPerMeter) - Location).Rotation();
+		else Rotation = FRotator(Mount.MountPitchDeg + Mount.RollShare * BoatRot.Pitch, BoatRot.Yaw + Mount.MountYawDeg, 0.f);
+		Rotation.Roll = Mount.RollShare * BoatRot.Roll;
+		Rotation.Yaw += CameraYaw;
+	}
+	else
+	{
+		// Off her: her heading followed with a lag (the yaw in the waves smoothed), on her leeward side, which changes only
+		// after she has held a new tack a few seconds, swinging round her stern; at her mean waterline's height. The look
+		// orbits it round her.
+		const FVector Origin = Xf.GetLocation();
+		const float Leeward = Boat.GetState().WindwardSide >= 0 ? -1.f : 1.f;
+		if (!bMountStarted)
+		{
+			MountLeeward = Leeward;
+			MountBearing = ChaseCamera::SideBearingDeg(Mount, MountLeeward);
+			MountHeading = float(BoatRot.Yaw);
+			MountWaterZ = float(Origin.Z);
+			MountOtherTackS = 0.f;
+			bMountStarted = true;
+		}
+		MountOtherTackS = Leeward != MountLeeward ? MountOtherTackS + Dt : 0.f;
+		if (MountOtherTackS > ChaseCamera::SideHoldS)
+		{
+			MountLeeward = Leeward;
+			MountOtherTackS = 0.f;
+		}
+		MountBearing = ChaseCamera::EaseBearing(MountBearing, ChaseCamera::SideBearingDeg(Mount, MountLeeward), Dt, ChaseCamera::SideSwingTauS);
+		const float Follow = Dt > 0.f ? 1.f - FMath::Exp(-Dt / FMath::Max(Mount.FollowTauS, 0.05f)) : 0.f;
+		MountHeading = FMath::UnwindDegrees(MountHeading + FMath::UnwindDegrees(float(BoatRot.Yaw) - MountHeading) * Follow);
+		MountWaterZ += (float(Origin.Z) - MountWaterZ) * (Dt > 0.f ? 1.f - FMath::Exp(-Dt / 1.5f) : 0.f);
+		const float Bearing = FMath::DegreesToRadians(MountHeading + MountBearing + CameraYaw);
+		const double Range = double(Mount.RangeM) * CmPerMeter;
+		Location = FVector(Origin.X + Range * FMath::Cos(Bearing), Origin.Y + Range * FMath::Sin(Bearing), MountWaterZ + double(Mount.HeightM) * CmPerMeter);
+		Rotation = (FVector(Origin.X, Origin.Y, MountWaterZ + double(Mount.AimUpM) * CmPerMeter) - Location).Rotation();
+		Rotation.Roll = 0.f;
+	}
+	Rotation.Pitch = FMath::Clamp(Rotation.Pitch + double(CameraPitch), -89.0, 60.0);
+	Camera->SetWorldLocationAndRotation(Location, Rotation);
+	Camera->SetFieldOfView(MountFov);
+}
+
 void ASailboatPawn::UpdateCameraBuffet(float DeltaSeconds)
 {
 	// Storm look (docs/storm-look/camera-buffet/): the slams and seas UpdateBoatWetness saw this frame, and the wind on the
@@ -2480,11 +2595,12 @@ void ASailboatPawn::UpdateCameraBuffet(float DeltaSeconds)
 	// the capture mode or a measured run (benches and stills stay steady). The chase camera sits at its arm's end with
 	// nothing else in its relative transform; the cockpit view is placed each frame, so the shake is added after it.
 	static SailingArgs::FCachedFlag NoShakeArg(TEXT("SailingNoCameraShake"));
+	// (the drone and the chase boat aren't on her: they don't shake)
 	const bool bOn = USailingSettings::Get()->bCameraShake && !USailingSettings::IsMeasuring() && !IsCaptureMode() && !bPhoto && !bWatching
-		&& !NoShakeArg.Get() && Camera;
+		&& !NoShakeArg.Get() && Camera && !(IsMountedView() && !Mount.bOnboard);
 	if (!bOn)
 	{
-		if (bBuffetApplied && Camera && !bCockpit) Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+		if (bBuffetApplied && Camera && !IsCameraPlaced()) Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		bBuffetApplied = false;
 		CameraBuffet.Reset();
 		return;
@@ -2498,7 +2614,7 @@ void ASailboatPawn::UpdateCameraBuffet(float DeltaSeconds)
 	CameraBuffet.Step(In);
 	const FVector Offset = FVector(CameraBuffet.OffsetX, CameraBuffet.OffsetY, CameraBuffet.OffsetZ) * CmPerMeter;
 	const FRotator Turn(float(CameraBuffet.PitchDeg), float(CameraBuffet.YawDeg), float(CameraBuffet.RollDeg));
-	if (bCockpit)
+	if (IsCameraPlaced())
 	{
 		Camera->AddLocalOffset(Offset);
 		Camera->AddLocalRotation(Turn);
@@ -4217,7 +4333,9 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 	if (!Delta.IsNearlyZero()) LastLookSeconds = FPlatformTime::Seconds();   // the chase eases back behind her after a while
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	// (the cockpit look keeps its own range: UpdateCockpitCamera clamps it; the arm's limit is the chase camera's)
-	CameraPitch = bCockpit ? FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f) : ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
+	// (a mounted camera's look is an offset from its own aim: UpdateMountedCamera)
+	CameraPitch = bCockpit ? FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f) : IsMountedView() ? FMath::Clamp(CameraPitch + Delta.Y, -60.f, 45.f)
+		: ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
 	ApplyChaseRotation();
 }
 
@@ -4234,6 +4352,12 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 		return;
 	}
 	if (bPhoto) return; // the wheel is photo mode's speed (PhotoSpeed, in its own context)
+	if (IsMountedView())
+	{
+		// (a mounted camera stays where it is mounted: the wheel zooms its lens)
+		MountFov = ChaseCamera::ZoomFov(MountFov, Value.Get<float>());
+		return;
+	}
 	// By ratio inside the rig's range (docs/camera-views/): a notch is the same share of the way near and far, and the
 	// socket's push grows with the arm, so the boat keeps her place on screen.
 	CameraDistance = ChaseCamera::Zoom(ChaseRig, CameraDistance, Value.Get<float>());
@@ -4277,7 +4401,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("ChangeView") && !bPhoto && !bWatching && !IsCaptureMode())
 	{
-		// Camera views (docs/camera-views/): Chase, Overview, Helm, round again.
+		// Camera views (docs/camera-views/): Chase, Overview, Drone, Chase boat, Masthead, Transom, Bow, Helm, round again.
 		SetCameraView(ChaseCamera::Next(GetCameraView()), true);
 		return;
 	}
