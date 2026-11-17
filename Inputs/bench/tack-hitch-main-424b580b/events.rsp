@@ -1,0 +1,1 @@
+TimingInsights.ExportTimingEvents "D:/dev/ss-fix/Artifacts/bench/tackhitch-424b580b/game-events.csv" -threads=GameThread -columns=TimerName,StartTime,EndTime,Duration,Depth
