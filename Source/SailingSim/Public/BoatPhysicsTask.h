@@ -29,6 +29,11 @@ struct FBoatPose
 	Sailing::Quat Orientation;
 	double Time = 0.0;
 	bool bValid = false;
+
+	/** Blends from this pose (the step before) to the pose now (InOutOrigin, InOutQ at T1) at RenderTime. False, and nothing
+	 *  changed, when the two are not one step apart or she jumped (MaxMoveM, or MaxTurnRad of turn in one step: a re-place,
+	 *  a knockdown set by hand, a capsize righted in place). */
+	bool BlendTo(Sailing::Vec3& InOutOrigin, Sailing::Quat& InOutQ, double T1, double RenderTime, double StepDt, double MaxMoveM, double MaxTurnRad, double& OutTime) const;
 };
 
 /** One frame's fixed steps exactly as the pawn's tick ran them: the trim assist (or the simple layout's crew) trims,

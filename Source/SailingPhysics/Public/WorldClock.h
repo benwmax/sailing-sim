@@ -37,7 +37,8 @@ namespace Sailing
 		double GetRenderTime() const
 		{
 			const double A = Stepper.Alpha();
-			return GetTime() - (1.0 - (A < 0.0 ? 0.0 : A > 1.0 ? 1.0 : A)) * Stepper.GetStepDt();
+			const double R = GetTime() - (1.0 - (A < 0.0 ? 0.0 : A > 1.0 ? 1.0 : A)) * Stepper.GetStepDt();
+			return R > Base ? R : Base;   // (not before the start: "unset" sentinels below zero stay unset)
 		}
 		double GetStepDt() const { return Stepper.GetStepDt(); }
 

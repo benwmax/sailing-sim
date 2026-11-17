@@ -440,6 +440,8 @@ private:
 	Sailing::Vec3 DrawnOrigin;
 	Sailing::Quat DrawnOrientation;
 	double DrawnTime = 0.0;
+	/** Drawn rotation less her physics rotation (pitch, yaw, roll in degrees): what a view placed from the telemetry adds. */
+	FRotator DrawnRotationOffset() const;
 	/** A point in her body frame where she is drawn (BodyToWorld at the drawn pose). */
 	Sailing::Vec3 DrawnBodyToWorld(const Sailing::Vec3& BodyPoint) const { return DrawnOrigin + DrawnOrientation.Rotate(BodyPoint); }
 	Sailing::FAutoTrim TrimAssist;
@@ -966,6 +968,8 @@ private:
 	static constexpr double ChaseSnapJumpCm = 5000.0;
 	/** Beyond this move (m) in her last step she was put somewhere, not sailed: drawn where she is, not between (#26). */
 	static constexpr double kDrawBetweenStepsMaxM = 2.0;
+	/** ... or this turn (rad, 30 deg) in one step: set over by hand (a knockdown, a capsize righted in place). */
+	static constexpr double kDrawBetweenStepsMaxTurnRad = 0.5235987755982988;
 	bool bChaseCameraLag = true;   // off for -SailingCamTarget stills
 	bool bChaseSnapPending = false;
 	uint64 ChaseSnapFrame = 0;

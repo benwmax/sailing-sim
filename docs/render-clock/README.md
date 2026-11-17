@@ -33,19 +33,33 @@ Simulated with the game's stepper (`FFixedStepper`):
 - The player's boat is drawn between the pose before her last step (`FBoatPose`, written by `FBoatStepJob`) and her
   pose now, at the render time (`ASailboatPawn::ApplyStateToTransform(true)`), so she and the camera move as smoothly as
   the water and stay on the drawn waves. Not in the showroom (she is put back on her spot between steps), a
-  `-SailingRun` slide, after a re-place or reset, or across a move of 2 m or more in one step.
-- The water's hull clip and her bow wave follow where and when she is drawn (`GetDrawnOrigin`/`GetDrawnOrientation`,
-  `DrawnBodyToWorld`, `DrawnTime`), not the physics.
+  `-SailingRun` slide, after a re-place or reset, or across a move of 2 m or a turn of 30 degrees in one step (set there by hand).
+- The water's hull clip, her bow wave and the drips off her sheer follow where and when she is drawn
+  (`GetDrawnOrigin`/`GetDrawnOrientation`, `DrawnBodyToWorld`, `DrawnTime`), and so do the helm view's heading and pitch
+  and the capture presets' framing (`DrawnRotationOffset`): placed from the telemetry they turned up to a step ahead of
+  the hull they sit in.
+- AI sailboats are stepped to the clock by the traffic simulation, which keeps no pose before: they are drawn back along
+  their velocity and turn by the clock's lag (at most a step; straight lines are exact enough over 8 ms). Power vessels
+  are drawn back along their course the same way. Buoys and the camera's floor over the waves read the sea at the
+  render time.
+- Left on the physics on purpose: the wake grid's hull patches and the spray's emission (stepped simulations whose
+  sources are a few centimetres ahead at most, inside a wake cell or a spray burst) and the far caps (planned every half
+  second). The ghost is a traffic-mode pawn, so it is drawn back like an AI boat along the velocity its replay frame
+  carries.
 
-The physics, the boats' steps and everything they read are unchanged; only what is drawn moves (by up to one step).
-AI boats, power vessels and the ghost are still drawn at their stepped poses (up to 8 ms ahead of the drawn water: a
-few millimetres of heave); they are far from the camera.
+The physics, the boats' steps and everything they read are unchanged; only what is drawn moves, by up to one step. What
+you see is on average about 4 ms later than before (half a step); the controls act on the next step as before.
 
-Test: `SailingSim.Physics.WorldClockRenderTime` (the stepped clock is uneven at these frame times; the render time moves
-by every frame's length and stays within one step behind).
+Tests: `SailingSim.Physics.WorldClockRenderTime` (the stepped clock is uneven at these frame times; the render time moves
+by every frame's length and stays within one step behind, never before the start) and `SailingSim.Physics.DrawBetweenSteps`
+(the step job's pose before her last step, `FBoatPose::BlendTo`: drawn between steps she moves by her speed times each
+frame's length, never back in time, and is not blended across a 5 m jump, a 40 degree turn set by hand or a stale pose).
+
+Reviewed by an independent QA pass before merge (PR #787): it found the helm view, AI boats, power vessels, buoys, the
+camera floor, drips and capture framing still on the stepped clock; all moved above.
 
 ## Checking it
 
 On the repro (`-SailingWorld=ray-hubbard -SailingBoat=J22 "-SailingStartAt=8825,-367,163" -SailingWind=20
 -SailingTWA=-160`, Ultra, vsync off) with `-SailingBenchTrace`, with and without `-SailingClassicClock`: frame times
-should match, and the water should look smooth by eye in the second run only.
+should match, and the water should look smooth by eye only in the run without the flag.

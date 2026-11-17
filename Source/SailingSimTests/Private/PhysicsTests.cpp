@@ -436,6 +436,8 @@ bool FSailingWorldClockRenderTimeTest::RunTest(const FString& Parameters)
 	FWorldClock Clock;
 	int32 Uneven = 0, Off = 0;
 	double MaxBehind = 0.0, MinBehind = 1e9;
+	TestEqual(TEXT("Before the first frame the render time is the start (never before it)"), Clock.GetRenderTime(), 0.0);
+	Clock.Advance(1.0 / 60.0);
 	double LastT = Clock.GetTime(), LastR = Clock.GetRenderTime();
 	for (int32 I = 0; I < 3000; ++I)
 	{

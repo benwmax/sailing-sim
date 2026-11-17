@@ -1792,7 +1792,7 @@ void ASailboatPawn::UpdateDrips(float DeltaSeconds)
 			// Off the sheer, either side, into the sea.
 			const double X = FMath::Lerp(Hull.SternX, Hull.BowX, double(FMath::FRandRange(0.1f, 0.85f)));
 			const double S = FMath::FRand() < 0.5f ? -1.0 : 1.0;
-			const Vec3 W = Boat.BodyToWorld(Vec3(X, Hull.CenterY + S * (Hull.DeckHalfBeam(X) + 0.01), Hull.SheerHeight(X)));
+			const Vec3 W = DrawnBodyToWorld(Vec3(X, Hull.CenterY + S * (Hull.DeckHalfBeam(X) + 0.01), Hull.SheerHeight(X)));
 			D.P = SailingFrame::ToWorld(GetWorld(), W.X, W.Y, 0.0);
 			D.P.Z = WaterSurfaceZ + W.Z * CmPerMeter;
 			D.KillZ = float(WaterSurfaceZ - 20.0);

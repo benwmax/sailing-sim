@@ -2135,7 +2135,7 @@ FVector ASailboatPawn::LiftedOverWater(const FVector& WorldCm) const
 	const ASailingGameMode* GM = World->GetAuthGameMode<ASailingGameMode>();
 	if (!GM) return WorldCm;
 	const FVector Map = SailingFrame::ToMapCm(World, WorldCm) / 100.0;
-	const double FloorM = GM->GetWaves().Height(Map.X, Map.Y, GM->GetSimTime()) + CameraWaterClearM;
+	const double FloorM = GM->GetWaves().Height(Map.X, Map.Y, GM->GetRenderTime()) + CameraWaterClearM;   // the sea as drawn (#26)
 	return Map.Z < FloorM ? WorldCm + FVector(0.f, 0.f, float((FloorM - Map.Z) * 100.0)) : WorldCm;
 }
 
@@ -2515,14 +2515,17 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 	CockpitRoll += (FMath::Clamp(Heel * 0.33f, -8.f, 8.f) - CockpitRoll) * FMath::Clamp(Dt / 0.4f, 0.f, 1.f);
 	const FTransform BoatXf = BoatRoot->GetComponentTransform();
 	const FVector World = BoatXf.TransformPosition(Eye + CockpitHead);
-	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + (bDemo ? 0.f : CameraYaw) + LeadDeg;
+	// Feedback #26 (QA on #787): the heading and pitch she is drawn at (between her steps), not her last step's, or the
+	// view turned up to a step ahead of the cockpit it sits in (a shake of a third of a degree in a tack).
+	const FRotator DrawnOff = DrawnRotationOffset();
+	const float Yaw = float(FMath::RadiansToDegrees(Boat.GetTelemetry().Heading)) + DrawnOff.Yaw + (bDemo ? 0.f : CameraYaw) + LeadDeg;
 	// You are the helm: the helm's own figure is not drawn from inside it, but still posed (its head is the eye).
 	if (Helm)
 	{
 		Helm->SetVisibility(false, true);
 		Helm->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	}
-	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch));
+	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * (float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch)) + DrawnOff.Pitch);
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
 	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard
 }
@@ -3824,23 +3827,33 @@ void ASailboatPawn::ApplyStateToTransform(bool bBetweenSteps)
 	// 16.7 or 25 ms as the frame times scattered about the step boundaries: a stutter on fine water at 60 fps. Drawn at
 	// the clock's render time, between the pose before her last step and her pose now, she moves by each frame's length.
 	// (Not in the showroom, which puts her back on her spot between steps, nor in a -SailingRun slide.)
-	const ASailingGameMode* GM = bBetweenSteps ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
-	const double T1 = Boat.GetState().Time, T0 = PoseBeforeLast.Time;
-	if (GM && PoseBeforeLast.bValid && !bRunning && ShowroomStage == EShowroomStage::None
-		&& T1 - T0 > 0.5 * Stepper.GetStepDt() && T1 - T0 < 1.5 * Stepper.GetStepDt()
-		&& (Origin - PoseBeforeLast.Origin).Length() < kDrawBetweenStepsMaxM)
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	if (bBetweenSteps)
 	{
-		const double A = FMath::Clamp((GM->GetRenderTime() - T0) / (T1 - T0), 0.0, 1.0);
-		DrawnTime = FMath::Lerp(T0, T1, A);
-		const Vec3& P = PoseBeforeLast.Origin;
-		Origin = Vec3(FMath::Lerp(P.X, Origin.X, A), FMath::Lerp(P.Y, Origin.Y, A), FMath::Lerp(P.Z, Origin.Z, A));
-		const Quat& B = PoseBeforeLast.Orientation;
-		const FQuat Q2 = FQuat::Slerp(FQuat(B.X, B.Y, B.Z, B.W), FQuat(Q.X, Q.Y, Q.Z, Q.W), A);
-		Q = Quat(Q2.X, Q2.Y, Q2.Z, Q2.W);
+		if (!GM || bRunning || ShowroomStage != EShowroomStage::None
+			|| !PoseBeforeLast.BlendTo(Origin, Q, Boat.GetState().Time, GM->GetRenderTime(), Stepper.GetStepDt(), kDrawBetweenStepsMaxM, kDrawBetweenStepsMaxTurnRad, DrawnTime))
+		{
+			DrawnTime = Boat.GetState().Time;   // (drawn where she is)
+		}
 	}
-	else if (!bBetweenSteps)
+	else
 	{
 		PoseBeforeLast.bValid = false;   // re-placed, reset or not hers to step: from here, not from before
+		if (bTrafficBoat && GM)
+		{
+			// An AI boat is stepped to the clock by the traffic simulation, which keeps no pose before: drawn back along her
+			// velocity and turn to the render time (at most a step, 8 ms: straight lines are exact enough), so she moves
+			// as smoothly as the water and the camera now do (QA on #787: alongside at a start she jittered 2-3 cm).
+			const double Lag = FMath::Clamp(GM->GetSimTime() - GM->GetRenderTime(), 0.0, 2.0 * Stepper.GetStepDt());
+			if (Lag > 0.0)
+			{
+				const FBoatState& St = Boat.GetState();
+				Origin = Origin - St.Velocity * Lag;
+				const double Rate = St.AngularVelocity.Length();   // body frame
+				if (Rate * Lag > 1e-7) Q = (Q * Quat::FromAxisAngle(St.AngularVelocity, -Rate * Lag)).Normalized();
+				DrawnTime = St.Time - Lag;
+			}
+		}
 	}
 	DrawnOrigin = Origin;
 	DrawnOrientation = Q;
@@ -3849,6 +3862,14 @@ void ASailboatPawn::ApplyStateToTransform(bool bBetweenSteps)
 	// Put somewhere new (not sailed there): the chase camera starts at her rather than flying over (SnapChaseCamera).
 	if (FVector::DistSquared(To, GetActorLocation()) > FMath::Square(ChaseSnapJumpCm)) SnapChaseCamera();
 	SetActorLocationAndRotation(To, FQuat(Q.X, Q.Y, Q.Z, Q.W));
+}
+
+FRotator ASailboatPawn::DrawnRotationOffset() const
+{
+	const Quat& P = Boat.GetState().Orientation;
+	const FRotator Phys = FQuat(P.X, P.Y, P.Z, P.W).Rotator();
+	const FRotator Drawn = FQuat(DrawnOrientation.X, DrawnOrientation.Y, DrawnOrientation.Z, DrawnOrientation.W).Rotator();
+	return FRotator(FRotator::NormalizeAxis(Drawn.Pitch - Phys.Pitch), FRotator::NormalizeAxis(Drawn.Yaw - Phys.Yaw), FRotator::NormalizeAxis(Drawn.Roll - Phys.Roll));
 }
 
 void ASailboatPawn::SnapChaseCamera()
@@ -5019,9 +5040,10 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		}
 		bCaptureBearingResolved = true;
 		const float Bearing = FMath::IsNaN(CaptureBearing) ? -90.f : CaptureBearing;
-		const Vec3 O = Boat.OriginPosition();
+		// Where she is drawn (between her steps, #26), so the framing holds her steady.
+		const Vec3 O = DrawnOrigin;
 		const FVector Origin = SailingFrame::ToWorld(GetWorld(), O.X, O.Y, 0.0);
-		const float Heading = float(FMath::RadiansToDegrees(T.Heading));
+		const float Heading = float(FMath::RadiansToDegrees(T.Heading)) + DrawnRotationOffset().Yaw;
 		FVector Location;
 		FRotator Rotation;
 		WorldCameraPose(CapturePreset, Origin, Heading, Bearing, float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
