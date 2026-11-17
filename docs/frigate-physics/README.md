@@ -179,7 +179,9 @@ one; `Update` returns true while it holds the helm, and after it the helmsman st
   sternway and the helm is shifted for it. "Let go and haul" once she is 12 degrees past the wind with the main yards
   drawing (or 25 past whatever they do): the fore yards round, the courses set, the spanker brailed and her head kept
   15 degrees free until she is back to 60% of her speed, then up to close-hauled. Still on the old side 150 s after the
-  helm went over, she has missed stays and wears instead.
+  helm went over, she has missed stays and wears instead: first she is boxed off (lying in irons and going astern, the
+  head yards braced round aback for the other tack and the after yards squared to shiver, until she has fallen 80
+  degrees off the wind), then worn as below, on a clock of its own.
 - **Wear.** The spanker brailed, the course ordered round at 1.5 degrees a second (never more than 30 ahead of her)
   through the run and up to close-hauled on the new tack, the trimmer squaring and bracing the yards as she turns.
 - **Heave to.** The main yards laid square and aback, the fore and mizzen braced up and drawing, the spanker's sheet
@@ -191,8 +193,8 @@ chop (the time to "done" is from the order until she is close-hauled again with 
 
 | Wind | Tack: head to wind, through, done | after a minute | Wear: done, to leeward | Hove to |
 |---|---|---|---|---|
-| 8 kn | misses stays, wears (15 min and more) | | 4.9 min, 190 m | 0.7 kn |
-| 10 kn | misses stays, wears: 14.6 min | | 3.6 min, 150 m | 0.4 kn |
+| 8 kn | misses stays, boxed off and worn: 17.4 min | 3.4 kn of 3.1 | 4.9 min, 190 m | 0.7 kn |
+| 10 kn | misses stays, boxed off and worn: 12.4 min | 4.0 of 3.9 | 3.6 min, 150 m | 0.4 kn |
 | 12 kn | 2.1 min, 3.3, 7.6 min | 3.8 kn of 4.6 | 2.8 min, 125 m | 0.6 kn |
 | 16 kn | 1.3 min, 2.1, 5.1 min | 4.9 of 5.9 | 2.5 min, 175 m | 1.0 kn |
 | 20 kn | 0.9 min, 1.5, 3.9 min | 6.0 of 7.2 | 2.5 min, 245 m | 1.5 kn |
@@ -200,7 +202,9 @@ chop (the time to "done" is from the order until she is close-hauled again with 
 
 That is the period's picture: a frigate tacked surely in a working breeze and lost little ground doing it, missed
 stays in light air (the officers wore her instead), and wearing cost her a few hundred metres to leeward. Hove to she
-forereaches a knot or so, five points off the wind.
+forereaches a knot or so, five points off the wind. (Before boxing off, in 8 kn she lay in irons going astern for more
+than ten minutes with every yard braced up and aback, the after sails holding her near the wind; in 10 kn the wear took
+14.6 min.) In light air the order to give is wear, not tack.
 
 Two physics changes came with it. A square rig's windage is now spread over its masts by their canvas (it sat at the
 main mast alone), so the centre of windage is near her centre of effort; no fore-and-aft boat changes (the J/22's

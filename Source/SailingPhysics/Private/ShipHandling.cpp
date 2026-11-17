@@ -43,6 +43,7 @@ namespace Sailing
 		// still clewed up from "rise tacks and sheets" keep their held set, so a second tack does not take Clewed as it).
 		bRestorePending = true;
 		bWayOn = false;
+		bBoxingOff = false;
 		Pilot.MaxTiller = Settings.PilotMaxTiller;
 		Pilot.bKeepShortOfStall = Settings.PilotMaxTiller <= 0.6;
 		SpeedBefore = std::max(T.ForwardSpeed, 0.5);
@@ -125,6 +126,8 @@ namespace Sailing
 					// Wear ship.
 					Current = EShipManoeuvre::Wear;
 					Ordered = Up;
+					bBoxingOff = true;
+					Time = 0.0; // the wear's own time from here (WearGiveUpSeconds)
 					Go(EShipManoeuvreStep::MissedStays);
 					return Update(Boat, Controls, 0.0);
 				}
@@ -192,6 +195,15 @@ namespace Sailing
 			if (StepNow == EShipManoeuvreStep::MissedStays && StepTime > 5.0) Go(EShipManoeuvreStep::BearAway);
 			if (StepNow == EShipManoeuvreStep::BearAway && Round >= 160.0) Go(EShipManoeuvreStep::Gybing);
 			if (StepNow == EShipManoeuvreStep::Gybing && Round >= 200.0) Go(EShipManoeuvreStep::HaulUp);
+			// Missed stays: she lies near the wind with her yards braced up and aback, the after sails holding her there. Box
+			// her off: the head yards braced round for the other tack, aback, to push her bow off, and the after yards
+			// squared to shiver, until she has fallen off enough for the trimmer to fill them again.
+			if (bBoxingOff && Round >= Settings.BoxOffUntilDeg) bBoxingOff = false;
+			if (bSquare && bBoxingOff)
+			{
+				Controls.Brace[0] = -S;
+				for (int M = 1; M < kMaxMasts; ++M) Controls.Brace[M] = 0.0;
+			}
 			// The spanker brailed up until she is round (it would hold her stern up to the wind).
 			Brail(Controls, StepNow != EShipManoeuvreStep::HaulUp);
 			SteerFor(Boat, Controls, Target, Dt);

@@ -63,6 +63,9 @@ namespace Sailing
 		// Wearing.
 		double WearTurnDegPerSecond = 1.5; // how fast the officer of the watch brings her round (the course ordered)
 		double WearLeadDeg = 30.0;       // the course ordered at most this far ahead of where she is
+		// Boxing her off after missed stays (lying in irons, going astern): the fore yards braced aback for the other tack to
+		// push her head off, the main and mizzen yards squared to shiver, until she has fallen off this far from the wind.
+		double BoxOffUntilDeg = 80.0;
 		double WearGiveUpSeconds = 900.0; // a wear not round in this long ends (the helmsman takes her on whatever tack she is)
 		// Heaving to.
 		double HoveToBraceShare = 0.0;   // the main yards laid square, aback (a share past 0: braced for the other tack)
@@ -116,6 +119,7 @@ namespace Sailing
 		bool bCoursesRisen = false;
 		bool bSpankerBrailed = false; // the spanker is brailed up by an order
 		bool bRestorePending = false; // a new order (or None): put the courses and spanker back at the next update
+		bool bBoxingOff = false; // wearing after missed stays: boxing her head off the wind
 		bool bWayOn = false;     // tacking: way on again after "let go and haul"
 		double SpeedBefore = 0.0; // her speed through the water when the manoeuvre started (m/s)
 		FAutopilot Pilot;        // the helmsman when the order is a course
