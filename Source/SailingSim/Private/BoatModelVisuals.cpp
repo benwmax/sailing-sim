@@ -806,25 +806,9 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 {
 	// Boat skins: no boat's rope colours until this one's rope sections are built below (never left pointing at a boat).
 	GSkinRopeColumns = nullptr;
-	// Rig lines pacing (the PC's Ultra bench had the rig lines at 0.9 ms of boat_visuals' 2.0, most of it AI boats'): an AI
-	// boat's rig is rebuilt every frame within 30 m of the camera, every 2nd to 150 m, 4th to 600 m, 8th beyond, and every
-	// 15th while it is off screen, staggered by boat. Between rebuilds the lines stay drawn where they were, in the boat's
-	// frame (the mesh keeps its vertex count). The player's boat is rebuilt every frame.
-	if (bTrafficBoat && bRigLinesBuilt)
-	{
-		int32 Every = 15;
-		if (ModelHull && ModelHull->WasRecentlyRendered(0.25f))
-		{
-			const APlayerController* PC = GetWorld()->GetFirstPlayerController();
-			const double Dist = PC && PC->PlayerCameraManager ? FVector::Dist(PC->PlayerCameraManager->GetCameraLocation(), GetActorLocation()) / CmPerMeter : 0.0;
-			Every = Dist < 30.0 ? 1 : Dist < 150.0 ? 2 : Dist < 600.0 ? 4 : 8;
-		}
-		RigPendingSeconds += DeltaSeconds;
-		if ((GFrameCounter + GetUniqueID()) % uint64(Every) != 0 && GFrameCounter - RigBuiltFrame < uint64(Every)) return;
-		DeltaSeconds = RigPendingSeconds;
-	}
-	RigPendingSeconds = 0.f;
-	RigBuiltFrame = GFrameCounter;
+	// AI boats and the ghost come here at their paced rate (UpdateRigVisuals, docs/traffic-rig-rate/), DeltaSeconds the time
+	// since their last build; between builds the lines stay drawn where they were, in the boat's frame (the mesh keeps its
+	// vertex count). The player's boat is rebuilt every frame.
 	const FBoatState& S = Boat.GetState();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
 	const float Aws = float(T.ApparentWindSpeed / 0.514444); // knots

@@ -756,14 +756,18 @@ private:
 	FVector LastBowM = FVector::ZeroVector;
 	bool bHasLastBow = false;
 	bool bRigLinesBuilt = false;
-	/** Rig lines pacing: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm), the
-	 *  time an AI boat's paced rig has missed, and the frame its rig was last built. */
+	/** Rig lines: each section's lines as last uploaded (A, B and the mid-span sag per line, boat frame cm). */
 	TArray<FVector> RigLineKeys[3];
 	/** Each rig line section's layout as last built: per line, its look and ring count. A tack reorders the jib sheets'
 	 *  lines (the working side has fewer), so the colours and triangles, sent only at a build, are built again. */
 	TArray<uint32> RigLineLayout[3];
-	float RigPendingSeconds = 0.f;
-	uint64 RigBuiltFrame = 0;
+	/** docs/traffic-rig-rate/ (TrafficRigRate.h): an AI boat's or the ghost's rig lines, sails and telltales are rebuilt at a
+	 *  rate that falls with distance. When they were last rebuilt (VisualTime; -1 never), the seconds since, the sails' sides
+	 *  and set as last built (a change rebuilds at once) and whether she was on screen last frame. */
+	double RigVisualBuiltAt = -1.0;
+	float RigVisualPending = 0.f;
+	int32 RigVisualKey = 0;
+	bool bRigVisualOnScreen = false;
 	double StatusUntil = 0.0;
 	bool bDemoTacks = true;
 	bool bMenuOpen = false;

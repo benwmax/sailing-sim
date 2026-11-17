@@ -13,6 +13,7 @@
 #include "SailboatPawn.h"
 #include "Traffic.h"
 #include "TrafficScenarios.h"
+#include "TrafficRigRate.h"
 #include "Wind.h"
 #include <random>
 
@@ -509,6 +510,60 @@ bool FSailingTrafficHobieRunTest::RunTest(const FString&)
 	TestFalse(TEXT("The AI Hobie stays upright through a gusty run"), R.bCapsized);
 	TestTrue(TEXT("Kept off dead downwind"), R.DeepestTwaDeg < 172.0);
 	TestTrue(TEXT("And gets there"), R.bArrived);
+	return true;
+}
+
+// docs/traffic-rig-rate/: an AI boat's rig lines, sails and telltales are rebuilt every frame near the camera, less often
+// farther off, on a time grid (the same count at any frame rate), staggered between boats.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FTrafficRigRebuildRateTest, "SailingSim.Traffic.RigRebuildRate", Flags)
+bool FTrafficRigRebuildRateTest::RunTest(const FString& Parameters)
+{
+	using namespace TrafficRigRate;
+	TestEqual(TEXT("Near the camera: every frame"), IntervalSeconds(20.0, true), 0.0);
+	TestTrue(TEXT("Past 100 m: a few Hz"), IntervalSeconds(150.0, true) >= 1.0 / 10.0 && IntervalSeconds(150.0, true) <= 1.0 / 4.0);
+	TestTrue(TEXT("Far: all but static (seconds between)"), IntervalSeconds(2000.0, true) >= 2.0);
+	TestTrue(TEXT("Off screen: about once a second"), IntervalSeconds(20.0, false) >= 0.5);
+	double Prev = -1.0;
+	bool bMonotonic = true;
+	for (double D = 0.0; D < 3000.0; D += 10.0)
+	{
+		const double I = IntervalSeconds(D, true);
+		bMonotonic &= I >= Prev;
+		Prev = I;
+	}
+	TestTrue(TEXT("The interval never shortens with distance"), bMonotonic);
+
+	// Rebuilds counted over 10 s of frames: the same at 60 and 37 fps; every frame at an interval of 0.
+	auto Count = [](double Interval, double Phase01, double Fps, TArray<int32>* Frames = nullptr)
+	{
+		int32 N = 0;
+		double Last = -1.0;
+		const int32 NumFrames = int32(10.0 * Fps);
+		for (int32 F = 1; F <= NumFrames; ++F)
+		{
+			const double Now = F / Fps;
+			if (Due(Interval, Phase01, Last, Now))
+			{
+				++N;
+				Last = Now;
+				if (Frames) Frames->Add(F);
+			}
+		}
+		return N;
+	};
+	TestEqual(TEXT("Interval 0: every frame"), Count(0.0, 0.3, 60.0), 600);
+	const int32 At60 = Count(1.0 / 8.0, 0.3, 60.0), At37 = Count(1.0 / 8.0, 0.3, 37.0);
+	TestTrue(FString::Printf(TEXT("8 Hz: about 80 rebuilds in 10 s at 60 fps (%d) and at 37 fps (%d)"), At60, At37),
+		FMath::Abs(At60 - 80) <= 1 && FMath::Abs(At37 - 80) <= 1);
+	TestTrue(TEXT("Never built: due at once"), Due(4.0, 0.5, -1.0, 0.01));
+
+	// Two boats at 8 Hz with their own phases mostly rebuild on different frames.
+	TArray<int32> A, B;
+	Count(1.0 / 8.0, Phase(1001), 60.0, &A);
+	Count(1.0 / 8.0, Phase(1002), 60.0, &B);
+	int32 Shared = 0;
+	for (int32 F : A) Shared += B.Contains(F) ? 1 : 0;
+	TestTrue(FString::Printf(TEXT("Staggered: %d of %d rebuild frames shared"), Shared, A.Num()), Shared < A.Num() / 4);
 	return true;
 }
 
