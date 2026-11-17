@@ -66,7 +66,7 @@ namespace Sailing
 		FRigRow SetEase[kMaxRigRows];
 	};
 
-	struct FShipRigData
+	struct SAILINGPHYSICS_API FShipRigData
 	{
 		const FRigSpar* Spars = nullptr;
 		int NumSpars = 0;
