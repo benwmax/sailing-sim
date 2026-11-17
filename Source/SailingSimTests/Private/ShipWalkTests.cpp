@@ -65,6 +65,11 @@ namespace
 		L.Top = Sailing::Vec3(-0.4, 0.0, 4.05);
 		L.Name = "AfterHatch";
 		M.Links.push_back(L);
+		Sailing::FWalkSpot Helm;
+		Helm.Name = "Helm";
+		Helm.Deck = 0;
+		Helm.X = -6.0;
+		M.Spots.push_back(Helm);
 		M.Finish();
 		return M;
 	}
@@ -94,6 +99,18 @@ bool FShipWalkFileTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("open sky stays open"), !std::isfinite(M.Decks[0].OverheadAt(3.0, 0.0)));
 	TestTrue(TEXT("no floor in the hatch"), !std::isfinite(M.Decks[0].FloorAt(0.7, 0.0)));
 	TestTrue(TEXT("the ladder's name"), M.Links[0].Name == "AfterHatch");
+	const FWalkSpot* Helm = M.SpotNamed("Helm");
+	TestTrue(TEXT("the helm spot"), Helm && Helm->Deck == 0 && Helm->X == -6.0 && Helm->YawDeg == 0.0);
+	TestTrue(TEXT("no spot by another name"), M.SpotNamed("Galley") == nullptr);
+	// A version 1 file (before the spots) still reads, with none: the same bytes less the spots, version 1.
+	{
+		const size_t SpotBytes = 4 + 1 + 1 + 4 + 3 * 8;
+		std::vector<uint8_t> V1(Bytes.begin(), Bytes.end() - std::ptrdiff_t(SpotBytes));
+		V1[4] = 1;
+		FWalkMap Old;
+		std::string OldError;
+		TestTrue(FString::Printf(TEXT("a version 1 file reads (%hs)"), OldError.c_str()), Old.Parse(V1.data(), V1.size(), &OldError) && Old.Spots.empty() && Old.Links.size() == 1);
+	}
 	// Where a body fits: clear of the hatch's edge and the ship's side by its radius.
 	TestFalse(TEXT("no standing at the hatch's lip"), M.Decks[0].CanStand(-0.1, 0.0));
 	TestTrue(TEXT("standing at the ladder's top"), M.Decks[0].CanStand(-0.4, 0.0));

@@ -112,21 +112,33 @@ namespace Sailing
 		return -1;
 	}
 
+	const FWalkSpot* FWalkMap::SpotNamed(const char* Name) const
+	{
+		for (const FWalkSpot& S : Spots)
+		{
+			if (S.Name == Name) return &S;
+		}
+		return nullptr;
+	}
+
 	bool FWalkMap::Parse(const uint8_t* Bytes, size_t Size, std::string* Error)
 	{
 		Decks.clear();
 		Links.clear();
+		Spots.clear();
 		auto Fail = [&](const char* Why)
 		{
 			if (Error) *Error = Why;
 			Decks.clear();
 			Links.clear();
+			Spots.clear();
 			return false;
 		};
 		if (!Bytes) return Fail("no bytes");
 		FReader R{ Bytes, Bytes + Size };
 		if (R.Get<uint32_t>() != Magic) return Fail("not a walk file");
-		if (R.Get<uint32_t>() != Version) return Fail("unknown walk file version");
+		const uint32_t FileVersion = R.Get<uint32_t>();
+		if (FileVersion < 1 || FileVersion > Version) return Fail("unknown walk file version");
 		const uint32_t NumDecks = R.Get<uint32_t>(), NumLinks = R.Get<uint32_t>();
 		if (!R.bOk || NumDecks == 0 || NumDecks > 32 || NumLinks > 256) return Fail("bad counts");
 		Decks.resize(NumDecks);
@@ -174,6 +186,22 @@ namespace Sailing
 			if (L.Lower >= int(NumDecks) || L.Upper >= int(NumDecks) || L.Lower == L.Upper || L.Kind > EWalkLink::Steps) return Fail("bad link");
 			if (!(L.Length() > 0.1) || !(L.Length() < 1e3)) return Fail("bad link length");
 		}
+		if (FileVersion >= 2)
+		{
+			const uint32_t NumSpots = R.Get<uint32_t>();
+			if (!R.bOk || NumSpots > 256) return Fail("bad spot count");
+			Spots.resize(NumSpots);
+			for (FWalkSpot& S : Spots)
+			{
+				S.Deck = R.Get<uint8_t>();
+				S.Name = R.Text();
+				S.X = R.Get<double>();
+				S.Y = R.Get<double>();
+				S.YawDeg = R.Get<double>();
+				if (!R.bOk) return Fail("spot cut short");
+				if (S.Deck >= int(NumDecks) || !(std::abs(S.X) < 1e4) || !(std::abs(S.Y) < 1e4) || !(std::abs(S.YawDeg) <= 360.0)) return Fail("bad spot");
+			}
+		}
 		if (R.P != R.End) return Fail("trailing bytes");
 		Finish();
 		return true;
@@ -216,6 +244,13 @@ namespace Sailing
 			Put<uint8_t>(Out, uint8_t(L.Upper));
 			PutText(Out, L.Name);
 			for (double V : { L.Foot.X, L.Foot.Y, L.Foot.Z, L.Top.X, L.Top.Y, L.Top.Z, L.HalfWidth }) Put<double>(Out, V);
+		}
+		Put<uint32_t>(Out, uint32_t(Spots.size()));
+		for (const FWalkSpot& S : Spots)
+		{
+			Put<uint8_t>(Out, uint8_t(S.Deck));
+			PutText(Out, S.Name);
+			for (double V : { S.X, S.Y, S.YawDeg }) Put<double>(Out, V);
 		}
 		return Out;
 	}

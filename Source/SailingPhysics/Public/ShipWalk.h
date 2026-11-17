@@ -55,19 +55,29 @@ namespace Sailing
 		double Length() const { return (Top - Foot).Length(); }
 	};
 
+	/** A named place to put a walker: "Helm" (where you stand at the wheel, facing forward). */
+	struct SAILINGPHYSICS_API FWalkSpot
+	{
+		std::string Name;
+		int Deck = 0;
+		double X = 0.0, Y = 0.0, YawDeg = 0.0;   // ship frame; yaw 0 forward, + to starboard
+	};
+
 	struct SAILINGPHYSICS_API FWalkMap
 	{
 		static constexpr uint32_t Magic = 0x4B4C5753u;   // "SWLK" little-endian
-		static constexpr uint32_t Version = 1u;
+		static constexpr uint32_t Version = 2u;           // 2 added the spots (1 still reads, with none)
 		static constexpr double BodyRadius = 0.22;       // m: shoulders turned, a sailor's half width
 		static constexpr double MaxStep = 0.32;          // m: the most a foot steps up or down (a coaming, a sill)
 		static constexpr double MinHeadroom = 1.25;      // m: lower than this he would have to crawl
 
 		std::vector<FWalkDeck> Decks;
 		std::vector<FWalkLink> Links;
+		std::vector<FWalkSpot> Spots;
 
 		bool IsLoaded() const { return !Decks.empty(); }
 		int DeckNamed(const char* Name) const;
+		const FWalkSpot* SpotNamed(const char* Name) const;
 
 		/**
 		 * Reads a walk file's bytes (the format is written by walk.py; little-endian):
@@ -75,6 +85,7 @@ namespace Sailing
 		 *   per deck: u8 name length, name, f64 X0, Y0, Cell, BaseZ, i32 NX, NY, u32 AlsoLoad,
 		 *             i16 floor[NX NY] (mm over BaseZ; -32768 none), i16 overhead[NX NY] (mm over BaseZ; 32767 open)
 		 *   per link: u8 kind, u8 lower, u8 upper, u8 name length, name, f64 foot xyz, top xyz, half width
+		 *   (version 2) u32 spots; per spot: u8 deck, u8 name length, name, f64 x, y, yaw deg
 		 * then Finish(). False (and Error set) on anything malformed; the map is left empty.
 		 */
 		bool Parse(const uint8_t* Bytes, size_t Size, std::string* Error = nullptr);

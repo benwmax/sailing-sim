@@ -15,6 +15,7 @@ costs a capsule sweep against millions of triangles, and can't be tested without
 * **The map** (`FWalkMap`): each deck's floor height and what is overhead on a 10 cm grid, and the ladders between the
   decks, each with its foot on the lower deck and its top on the upper. `Finish()` marks where a body fits: a floor,
   1.25 m of headroom, and every floor within 0.22 m (half a sailor's shoulders) within a 0.32 m step of it.
+  Named spots (file version 2) put a walker somewhere: `Helm`, where you stand at the wheel.
 * **Walking** (`FShipWalker::Step`): 1.4 m/s, 3 m/s running, 0.8 m/s crouched, 1.0 m/s under a beam; he slides along
   whatever stops him and moves in half-cell steps so nothing thin is stepped through.
 * **Heel**: the felt gravity in the ship's frame (the game passes the physics' own) tilts the deck under him. Uphill he
