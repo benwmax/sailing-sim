@@ -75,6 +75,10 @@ namespace Sailing
 		// bHinge false until the model's guns.json carries it (the lid then stays drawn shut).
 		bool bHinge = false;
 		Vec3 HingeOrigin, HingeX = Vec3(1, 0, 0), HingeY = Vec3(0, 1, 0), HingeZ = Vec3(0, 0, 1);
+		// A housed long gun's tompion (in the muzzle) and lead apron (over the vent), when gundeck.json lists them: each its
+		// mesh's place in the ship (origin and the mesh's x, y, z columns, scale in them). They come out when cast loose.
+		int32_t HousedCovers = 0;   // bits: 1 the tompion (CoverX/Y/Z[0]), 2 the apron ([1])
+		Vec3 CoverOrigin[2], CoverX[2], CoverY[2], CoverZ[2];
 	};
 
 	/** The frigate Commonwealth's 50 guns as built (FrigateGunData.inl, from Tools/shipkit/frigate/cannon_data.py). */

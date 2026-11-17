@@ -187,8 +187,19 @@ namespace Sailing
 			M.HingeY = AY;
 			M.HingeZ = AZ;
 		};
+		auto Cover = [&Out](int32_t Which, const Vec3& Origin, const Vec3& CX, const Vec3& CY, const Vec3& CZ)
+		{
+			if (Out.empty() || Which < 0 || Which > 1) return;
+			FCannonMount& M = Out.back();
+			M.CoverOrigin[Which] = Origin;
+			M.CoverX[Which] = CX;
+			M.CoverY[Which] = CY;
+			M.CoverZ[Which] = CZ;
+			M.HousedCovers |= 1 << Which;
+		};
 #include "FrigateGunData.inl"
-		(void)Hinge;   // (no Hinge rows until the model's guns.json gives the lids' frames)
+		(void)Hinge;
+		(void)Cover;
 		return Out;
 	}
 

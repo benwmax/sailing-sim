@@ -124,6 +124,8 @@ private:
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> Root;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> PartISMs;   // by EPart
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Gear;                 // one per gun (its pose's gear)
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Lids;                 // one per gun with its own lid mesh (SM_Frigate_Lid_NN_S)
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> CoverISMs;   // the housed guns' tompions and aprons
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMesh>> GearMeshes;                    // gun x 3 poses (housed/run in/run out; carronade -/recoil/run out)
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> SmokeISM;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> FlashISM;
@@ -135,7 +137,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> QuadMesh;
 	TArray<FPartMesh> Parts;
 	/** Each gun's instance in its parts' ISMs (-1: none) and the pose its gear shows. */
-	struct FGunDraw { int32 Barrel = -1, Carriage = -1, Quoin = -1, Trucks[4] = { -1, -1, -1, -1 }, Bed = -1, Slide = -1, Lid = -1; int32 GearPose = -1; double LastX = 1e9, LastElev = 1e9, LastLid = 1e9, LastTurn = 1e9; };
+	struct FGunDraw { int32 Barrel = -1, Carriage = -1, Quoin = -1, Trucks[4] = { -1, -1, -1, -1 }, Bed = -1, Slide = -1, Lid = -1, Covers[2] = { -1, -1 }; int32 GearPose = -1, CoversShown = -1; double LastX = 1e9, LastElev = 1e9, LastLid = 1e9, LastTurn = 1e9; };
 	TArray<FGunDraw> Draw;
 	TArray<int32> SmokeOrder;
 	int32 SmokePool = 0, FlashPool = 0;

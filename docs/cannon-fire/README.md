@@ -33,7 +33,10 @@ When the model's `guns.json` changes (a new build of the frigate):
     python3 -I Tools/shipkit/frigate/cannon_data.py <build dir or guns.json>
 
 then `scripts/cannon-check.sh --drill` and `scripts/test.sh SailingSim.Physics.Cannons`. `lid_frame` rows (the lid's
-hinge) are used when guns.json has them.
+hinge) are used when guns.json has them; `gundeck.json` beside it gives each housed gun's tompion and lead apron
+(`Gun24_<id>_Tompion`/`_Apron` copies), drawn only while the gun is housed. Meshes the battery loads when they exist:
+`/Game/Boats/Frigate/Guns/SM_Frigate_Lid_<NN>_<P|S>` (one per lid, else the shared stand-in lid) and
+`SM_Frigate_Gun24_Tompion`/`_Apron` (skipped when missing).
 
 ## Tests
 

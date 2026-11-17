@@ -329,6 +329,23 @@ void ACannonBattery::BuildGunVisuals()
 	// The lids' own meshes (SM_Frigate_Lid_NN_S): one ISM per lid would be many; each is its own component instead.
 	Draw.SetNum(Battery.Num());
 	Gear.SetNum(Battery.Num());
+	Lids.SetNum(Battery.Num());
+	// The housed guns' tompions and lead aprons (shared meshes, placed by gundeck.json's copies), drawn until cast loose.
+	CoverISMs.SetNum(2);
+	for (int32 C = 0; C < 2; ++C)
+	{
+		const TCHAR* CoverPath = C == 0 ? TEXT("/Game/Boats/Frigate/Guns/SM_Frigate_Gun24_Tompion.SM_Frigate_Gun24_Tompion") : TEXT("/Game/Boats/Frigate/Guns/SM_Frigate_Gun24_Apron.SM_Frigate_Gun24_Apron");
+		UStaticMesh* CoverMesh = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, CoverPath, nullptr, LOAD_NoWarn | LOAD_Quiet));
+		if (!CoverMesh) continue;
+		UInstancedStaticMeshComponent* ISM = NewObject<UInstancedStaticMeshComponent>(this);
+		ISM->SetMobility(EComponentMobility::Movable);
+		ISM->SetupAttachment(Root);
+		ISM->SetStaticMesh(CoverMesh);
+		ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ISM->SetCanEverAffectNavigation(false);
+		ISM->RegisterComponent();
+		CoverISMs[C] = ISM;
+	}
 	GearMeshes.SetNum(Battery.Num() * 3);
 	for (int32 I = 0; I < Battery.Num(); ++I)
 	{
@@ -342,7 +359,28 @@ void ACannonBattery::BuildGunVisuals()
 			D.Carriage = PartISMs[LongCarriage]->AddInstance(Id);
 			D.Quoin = PartISMs[LongQuoin]->AddInstance(Id);
 			for (int32 T = 0; T < 4; ++T) D.Trucks[T] = PartISMs[T < 2 ? TruckFore : TruckHind]->AddInstance(Id);
-			if (G.Mount.bHinge) D.Lid = PartISMs[Lid]->AddInstance(Id);
+			if (G.Mount.bHinge)
+			{
+				// The lid's own mesh (pivoted on its hinge: guns.json lid_frame), or the shared stand-in.
+				const FString LidName = FString::Printf(TEXT("Lid_%02d_%s"), G.Mount.Port, G.Mount.Side == Sailing::ECannonSide::Port ? TEXT("P") : TEXT("S"));
+				const FString LidPath = FString::Printf(TEXT("/Game/Boats/Frigate/Guns/SM_Frigate_%s.SM_Frigate_%s"), *LidName, *LidName);
+				if (UStaticMesh* LidMesh = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *LidPath, nullptr, LOAD_NoWarn | LOAD_Quiet)))
+				{
+					UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+					C->SetMobility(EComponentMobility::Movable);
+					C->SetupAttachment(Root);
+					C->SetStaticMesh(LidMesh);
+					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					C->RegisterComponent();
+					Lids[I] = C;
+				}
+				else
+				{
+					D.Lid = PartISMs[Lid]->AddInstance(Id);
+				}
+			}
+			for (int32 C = 0; C < 2; ++C)
+				if ((G.Mount.HousedCovers & (1 << C)) && CoverISMs[C]) D.Covers[C] = CoverISMs[C]->AddInstance(Id);
 		}
 		else
 		{
@@ -449,6 +487,22 @@ void ACannonBattery::UpdateGunVisuals(bool bAll)
 		FGunDraw& D = Draw[I];
 		const bool bMoved = bAll || FMath::Abs(G.X - D.LastX) > 1e-4 || FMath::Abs(G.ElevationDeg - D.LastElev) > 1e-3
 			|| FMath::Abs(G.LidDeg - D.LastLid) > 1e-2 || FMath::Abs(G.TruckTurn - D.LastTurn) > 1e-3;
+		// The tompion and apron while housed (they come out when she's cast loose).
+		const int32 Shown = G.State == Sailing::EGunState::Housed ? 1 : 0;
+		if (Shown != D.CoversShown)
+		{
+			D.CoversShown = Shown;
+			const Sailing::FCannonMount& M = G.Mount;
+			for (int32 C = 0; C < 2; ++C)
+			{
+				if (D.Covers[C] < 0) continue;
+				const FMatrix CM(FVector(M.CoverX[C].X, M.CoverX[C].Y, M.CoverX[C].Z), FVector(M.CoverY[C].X, M.CoverY[C].Y, M.CoverY[C].Z),
+					FVector(M.CoverZ[C].X, M.CoverZ[C].Y, M.CoverZ[C].Z), FVector(M.CoverOrigin[C].X, M.CoverOrigin[C].Y, M.CoverOrigin[C].Z) * CmPerMeter);
+				FTransform CT(CM);
+				if (!Shown) CT.SetScale3D(FVector::ZeroVector);
+				CoverISMs[C]->UpdateInstanceTransform(D.Covers[C], CT, false, true, true);
+			}
+		}
 		if (!bMoved) continue;
 		D.LastX = G.X;
 		D.LastElev = G.ElevationDeg;
@@ -475,11 +529,13 @@ void ACannonBattery::UpdateGunVisuals(bool bAll)
 				const double Turn = -FMath::RadiansToDegrees(G.TruckTurn * LongK.TruckRadiusFore / R);
 				Put(T < 2 ? TruckFore : TruckHind, D.Trucks[T], FTransform(FRotator(Turn, 0.0, 0.0), CannonFx::TruckOrigins[T] * CmPerMeter) * Carriage);
 			}
-			if (D.Lid >= 0)
+			if (G.Mount.bHinge)
 			{
+				// Opened by a turn about the hinge's +x (roll: y toward z, guns.json's sense).
 				const Sailing::FCannonMount& M = G.Mount;
-				const FTransform Hinge = CannonFx::FrameOf(M.HingeOrigin, M.HingeX, M.HingeY, M.HingeZ);
-				Put(Lid, D.Lid, FTransform(FRotator(0.0, 0.0, G.LidDeg)) * Hinge);   // a turn about the hinge's +X (roll)
+				const FTransform Hinge = FTransform(FRotator(0.0, 0.0, G.LidDeg)) * CannonFx::FrameOf(M.HingeOrigin, M.HingeX, M.HingeY, M.HingeZ);
+				if (Lids.IsValidIndex(I) && Lids[I]) Lids[I]->SetRelativeTransform(Hinge);
+				else Put(Lid, D.Lid, Hinge);
 			}
 		}
 		else
