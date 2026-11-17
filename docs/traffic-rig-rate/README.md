@@ -41,9 +41,13 @@ Crew and traffic views, `-SailingTraffic=0` and `=1`, on the PC (Ultra 1080p) an
 |---|---|---|---|---|---|
 | PC Ultra 1080p | crew | 49.1 | 58.2 | 59.1 | 60.7 |
 | PC Ultra 1080p | traffic (lake-busy) | 52.9 | 72.7 | 69.5 | 70.5 |
-| Mac High | crew, traffic | (pending) | | | |
+| Mac High | crew | (not run) | | 50.2 | 50.6 |
+| Mac High | traffic (lake-busy) | (not run) | | 61.1 | 61.4 |
 
 PC data: `Inputs/bench/pr778-7d62a930/` on `inputs` (90cba375). Insights trace of the crew view with traffic on: section
 uploads 7.0 a frame at 2.39 ms of render thread (main 16.5 at 5.3 ms; the player's boat alone is 6.0), so the three AI
 boats now rebuild about one section a frame between them. The runs were not in the foreground: treat 1-2 fps as noise.
 MSVC build clean; RopeLay 10/10, Traffic 8/8, Race 2/2 on Windows.
+
+Mac (Nov 17): build, RopeLay 10/10, Traffic 8/8, Race 2/2, boats gate passed 392/392. With traffic on and off within half
+an fps at High, the Mac was not limited by the AI boats there (main was not re-run: its packaged app was stale).
