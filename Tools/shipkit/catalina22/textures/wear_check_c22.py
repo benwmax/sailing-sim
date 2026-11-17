@@ -58,7 +58,7 @@ SHEETS = {"topsides": ("hull", ("GelcoatHull",)),
           "canvas": ("poptop", ("SailCover",)),
           "liner": ("vberth", ("Liner",)),
           "headliner": ("aft", ("Headliner",)),
-          "sole": ("saloon", ("Sole",)),
+          "sole": ("aft", ("Sole",)),
           "joinery": ("saloon", ("Laminate",)),
           "cushions": ("vberth", ("Cushion", "Curtain"))}
 SHEET_PX = 360

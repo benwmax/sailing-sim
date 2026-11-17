@@ -53,6 +53,12 @@ def renewed_age(age, care, every):
     return min(age, every / max(care, 0.05))
 
 
+def PATINA(age):
+    """What no care takes off an old boat: the moulding's corners dirty for good, the paths worn, the edges handled.
+    It follows age alone, so a kept thirty-year-old boat never reads as new."""
+    return ramp(age, 8.0, 25.0)
+
+
 def amounts(surface, kind, age, care):
     """Each wear term, 0 to 1, for one surface and kind at E1's Age (years) and Care (0..1). As Bluebonnet's:
     a first season's marks go as the square root of dirt_k (which is near its first-year value by then), times
@@ -65,7 +71,8 @@ def amounts(surface, kind, age, care):
     if surface == "gelcoat":
         if kind == "liner":                                       # inside: no sun, no rain, hands and damp
             return {"gloss": sat(0.4 * first + 0.15 * t), "chalk": 0.25 * max(d * fresh, 0.3 * t), "yellow": 0.9 * t,
-                    "craze": 0.4 * ramp(t, 0.3, 0.9), "grime": sat(1.2 * first), "mildew": ramp(d, 0.6, 0.95)}
+                    "craze": 0.4 * ramp(t, 0.3, 0.9), "grime": sat(1.2 * first), "mildew": ramp(d, 0.6, 0.95),
+                    "patina": PATINA(age)}
         a = {"gloss": sat(0.8 * first + 0.2 * t),                 # the shine goes; compounded and waxed it comes back
              "chalk": loop.chalk_k(age, care) * (1.0 if kind == "topsides" else 0.9) * (0.5 + 0.5 * fresh),
              "yellow": t,                                         # the sun's yellowing: kept or not
@@ -73,7 +80,8 @@ def amounts(surface, kind, age, care):
              "streak": ramp(d, 0.1, 0.8) * fresh,                 # black runs under fittings and ports: washed off
              "scuff": sat(1.4 * first + 0.35 * t),                # dock rash: buffed, but the deep ones stay
              "dirt": ramp(d, 0.2, 0.9) * fresh,                   # a grey-brown film of dust and pollen, washed off
-             "mildew": ramp(d, 0.55, 0.95)}                       # grey-green on the decks' flats, left alone
+             "mildew": ramp(d, 0.55, 0.95),                       # grey-green on the decks' flats, left alone
+             "patina": PATINA(age)}
         if kind == "topsides":
             a.update(clay=sat(1.8 * first),                       # the lake's tan line within a season
                      slime=RATE * 3.0 * ramp(d, 0.3, 0.9))        # then green-brown slime (fresh water: slower)
@@ -82,7 +90,7 @@ def amounts(surface, kind, age, care):
         return {"dirt": sat(1.3 * first), "chalk": max(d * fresh, 0.3 * t) * 0.8,
                 "worn": t,                                        # the peaks worn smooth where feet go, the colour
                 "faded": t,                                       # faded pale by the sun
-                "mildew": ramp(d, 0.4, 0.9), "stain": ramp(d, 0.3, 0.9)}
+                "mildew": ramp(d, 0.4, 0.9), "stain": ramp(d, 0.3, 0.9), "patina": PATINA(age)}
     if surface == "bottom":
         paint = renewed_age(age, care, 1.5)                       # a kept boat is repainted every two years or so
         pd = loop.dirt_k(paint, care)
@@ -116,12 +124,12 @@ def amounts(surface, kind, age, care):
                 "mildew": ramp(d, 0.6, 0.95)}
     if surface == "sole":
         return {"amber": t, "worn": sat(1.2 * first + 0.3 * ramp(d, 0.3, 0.9)),
-                "stain": d ** 1.4, "grime": sat(1.1 * first), "rot": ramp(d, 0.6, 0.95)}
+                "stain": d ** 1.4, "grime": sat(1.1 * first), "rot": ramp(d, 0.6, 0.95), "patina": PATINA(age)}
     if surface == "veneer":
         oil = care ** 2 * ramp(age, 0.5, 2.0)
         return {"dry": sat(2.0 * t) * (1.0 - 0.9 * oil) * (0.4 + 0.6 * (1.0 - care)),
                 "oiled": oil * sat(2.0 * t), "hands": sat(1.2 * first), "water": ramp(d, 0.25, 0.9),
-                "mildew": ramp(d, 0.65, 0.95)}
+                "mildew": ramp(d, 0.65, 0.95), "patina": PATINA(age)}
     if surface == "fabric":
         own = renewed_age(age, care, 3.0) if kind == "cushion" else renewed_age(age, care, 5.0)
         ft = loop.time_k(own, care)
@@ -325,14 +333,17 @@ def gelcoat(w, sh, kind):
     sh.col = w.mix(sh.col, w.lin(CHALK_LIN), w.mul(w.sat(ch), 0.6))
     sh.rough = w.lerp(sh.rough, 0.72, w.sat(ch))
     sh.coat = w.lerp(sh.coat, 0.0, w.sat(ch))
-    old = (1.0, 0.93, 0.76)                         # thirty years of sun: a cream, not the loop's faint tint
+    old = (1.0, 0.93, 0.76) if out else (1.0, 0.9, 0.7)   # thirty years: a cream (inside, the resin's own amber)
     sh.col = w.mix(sh.col, w.scale(sh.col, old), w.mul(w.term("yellow"), w.add(0.6, w.mul(up, 0.4)) if out else 1.0))
     # spider cracks: star-shaped networks of fine cracks where the moulding flexes, round the fittings' bases (their
     # crevices) and on the trunk's and cockpit's corners, dirt dark in the cracks
     near = w.sat(w.add(w.crevice(0.08, 0.45, 0.95), w.mul(w.edge(0.008), 0.7)))
     craze = w.mul(w.voronoi_edge(pos, 0.012), w.patches(pos, 0.12, 0.3, seed=5.0, detail=2.0, soft=0.2),
-                  w.add(0.15, near), w.term("craze"), w.fade(0.5, 3.0))
+                  w.add(0.15, near), w.term("craze"), w.fade(1.0, 5.0))
     sh.col = w.mix(sh.col, w.scale(sh.col, 0.62), w.sat(w.mul(craze, 1.4)))
+    # old dirt in the moulding's corners and joints that no polish reaches
+    pat = w.mul(w.term("patina"), w.sat(w.add(w.mul(w.crevice(0.12, 0.4, 0.95), 1.2), w.mul(w.edge(0.01), 0.4))))
+    sh.col = w.mix(sh.col, w.scale(sh.col, (0.78, 0.75, 0.68)), w.mul(pat, 0.55))
     if not out:
         # hand grime round the companionway and the handholds, mildew specks in the corners
         # (by place, not by crevice: the ambient occlusion's own noise would read as grime on these broad faces)
@@ -365,10 +376,14 @@ def gelcoat(w, sh, kind):
         sh.col = w.mix(sh.col, w.scale(sh.col, 0.72), w.mul(sc, 0.8))
         # the lake's line: a tan clay band just over the paint line, ragged along its top and darkest at its top
         # (the tide mark of the lake's level), then green-brown slime hanging from it into the water
-        wob = w.mul(w.m("SUBTRACT", w.noise(w.comb(w.sep(pos)[0], 0.0, 0.0), 0.6, 15.0, detail=2.0), 0.5), 0.03)
-        top = w.add(PAINT_LINE + 0.03, w.mul(w.term("clay"), 0.06), wob)
+        xs = w.comb(w.sep(pos)[0], 0.0, 0.0)
+        wob = w.add(w.mul(w.m("SUBTRACT", w.noise(xs, 0.5, 15.0, detail=1.0), 0.5), 0.05),
+                    w.mul(w.m("SUBTRACT", w.noise(xs, 0.12, 16.0, detail=1.0), 0.5), 0.04))   # wavelets' ragged edge
+        bow = w.smooth(w.sep(pos)[0], 0.8, 2.6)                          # the bow wave lifts it forward
+        top = w.add(PAINT_LINE + 0.03, w.mul(w.term("clay"), w.add(0.05, w.mul(bow, 0.05))), wob)
+        feather = w.mul(w.noise(pos, 0.1, 18.0, detail=1.0), 0.02)        # splash marks feathering up
         line = w.mul(w.smooth(z, PAINT_LINE - 0.01, PAINT_LINE + 0.005), w.m("SUBTRACT", 1.0, w.smooth(z, w.m(
-            "SUBTRACT", top, 0.015), top)))
+            "SUBTRACT", top, 0.03), w.add(top, feather))))
         clay = w.mul(line, w.term("clay"), w.add(0.85, w.mul(w.blot(pos, 0.8, 17.0, detail=1.0, stretch=(4.0, 4.0, 1.0)), 0.15)))
         sh.col = w.mix(sh.col, w.mix(w.lin(CLAY_GREY_LIN), w.lin(CLAY_LIN), 0.9), w.mul(w.sat(clay), 0.95))
         sl = w.mul(w.smooth(z, PAINT_LINE - 0.02, PAINT_LINE + 0.01), w.m("SUBTRACT", 1.0, w.smooth(
@@ -386,13 +401,14 @@ def nonskid(w, sh, kind):
     path = w.add(0.35, w.mul(w.blot(pos, 0.5, 21.0, detail=1.0), 0.65))     # where feet go more
     dirt = w.mul(w.term("dirt"), w.add(w.mul(cav, 0.9), 0.15), w.add(0.75, w.mul(path, 0.25)))
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.62, 0.58, 0.52)), w.sat(dirt))
+    sh.col = w.mix(sh.col, w.scale(sh.col, (0.72, 0.69, 0.62)), w.mul(w.term("patina"), w.add(w.mul(cav, 0.8), 0.15), 0.6))
     worn = w.mul(w.term("worn"), w.m("SUBTRACT", 1.0, cav), path)
     sh.rough = w.lerp(sh.rough, 0.42, w.sat(worn))
     sh.col = w.mix(sh.col, w.scale(sh.col, 1.06), w.mul(w.sat(worn), 0.5))
     ch = w.mul(w.term("chalk"), w.add(0.6, w.mul(w.blot(pos, 0.4, 23.0), 0.4)))
     sh.col = w.mix(sh.col, w.lin((0.76, 0.72, 0.64)), w.mul(w.sat(ch), 0.5))
     lm = w.lum(sh.col)
-    sh.col = w.mix(sh.col, w.mix(w.comb(lm, lm, lm), (222, 218, 206), 0.4), w.mul(w.term("faded"), 0.55))
+    sh.col = w.mix(sh.col, w.mix(w.comb(lm, lm, lm), (190, 186, 176), 0.5), w.mul(w.term("faded"), 0.55))   # chalky grey
     mil = w.mul(w.term("mildew"), w.add(w.mul(cav, 0.6), 0.25, w.mul(w.blot(pos, 0.7, 25.0, detail=1.0), 0.35)))
     sh.col = w.mix(sh.col, (88, 92, 76), w.mul(w.sat(mil), 0.7))
     st = w.patches(pos, 0.08, w.mul(w.term("stain"), 0.06), seed=27.0, detail=1.0, soft=0.5)
@@ -428,10 +444,10 @@ def bottom(w, sh, kind):
         # the iron rusts through: orange bleeding from the edges and the pivot, running down the flats in streaks,
         # broad soft patches where the paint has gone; blisters on the flats
         bleed = w.mul(edge, w.add(0.3, w.mul(w.blot(pos, 0.1, 39.0), 0.7)))
-        run = w.smooth(w.noise(pos, 0.05, 41.0, detail=2.0, stretch=(1.0, 1.0, 8.0)), 0.55, 0.68)
-        patch = w.mul(w.blot(pos, 0.4, 42.0, detail=1.0, stretch=(1.0, 1.0, 3.0)), 0.6)   # a broad wash where the paint thinned
+        run = w.smooth(w.noise(pos, 0.04, 41.0, detail=2.0, stretch=(1.0, 1.0, 10.0)), 0.52, 0.62)
+        patch = w.mul(w.blot(pos, 0.4, 42.0, detail=1.0, stretch=(1.0, 1.0, 3.0)), 0.2)   # a thin wash where the paint thinned
         rr = w.term("rust")                       # the edges first; runs and patches only once it is well on
-        r = w.sat(w.add(w.mul(rr, bleed, 1.2), w.mul(rr, rr, w.add(w.mul(run, 0.45), w.mul(patch, 1.0)))))
+        r = w.sat(w.add(w.mul(rr, bleed, 1.4), w.mul(rr, rr, w.add(w.mul(run, 0.8), patch))))
         sh.col = w.mix(sh.col, w.mix(RUST, RUST_DARK, w.add(0.3, w.mul(w.blot(pos, 0.2, 43.0, detail=1.0), 0.5))), r)
         sh.rough = w.lerp(sh.rough, 0.9, r)
         bl = w.patches(pos, 0.015, w.mul(w.term("blister"), 0.15), seed=45.0, detail=1.0, soft=0.05)
@@ -528,6 +544,7 @@ def vinyl(w, sh, kind):
     gr = w.mul(w.term("grime"), w.add(w.mul(w.edge(0.012), 0.6), w.mul(w.blot(pos, 0.35, 75.0), 0.35),
                                       w.mul(cav, 0.3, w.fade(0.3, 0.8))))       # the grain's dirt only up close
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.7, 0.66, 0.6)), w.sat(gr))
+    sh.col = w.mix(sh.col, w.scale(sh.col, (0.86, 0.78, 0.6)), w.mul(w.term("mildew"), 0.55))   # gone yellow-brown
     sh.col = w.mix(sh.col, MILDEW, mildew(w, pos, w.term("mildew"), 79.0, extra=w.crevice(0.15, 0.4, 0.95)))
 
 
@@ -542,12 +559,12 @@ def sole(w, sh, kind):
     tone, _ = w.hash(w.comb(w.m("FLOOR", q), 0.0, 0.0), 81.0)
     figure = w.m("SUBTRACT", r, 0.5)
     sh.col = w.scale(sh.col, w.add(0.88, w.mul(tone, 0.24), w.mul(figure, 0.6)))
-    hc = w.mix(HOLLY, HONEY, w.term("amber"))
+    hc = w.mix(w.mix(HOLLY, HONEY, w.term("amber")), (66, 58, 44), w.mul(w.term("stain"), 0.8))   # neglected: dark holly
     sh.col = w.mix(sh.col, hc, holly)
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.7, 0.54, 0.36)), w.mul(w.term("amber"), w.m("SUBTRACT", 1.0, holly), 0.85))
     # the varnish worn grey down the middle where feet go
     path = w.m("SUBTRACT", 1.0, w.smooth(w.m("ABSOLUTE", y), 0.12, 0.3))
-    worn = w.mul(w.term("worn"), path, w.add(0.5, w.mul(w.blot(pos, 0.12, 83.0, stretch=(3.0, 1.0, 1.0)), 0.6)))
+    worn = w.mul(w.add(w.term("worn"), w.mul(w.term("patina"), 0.5)), path, w.add(0.5, w.mul(w.blot(pos, 0.12, 83.0, stretch=(3.0, 1.0, 1.0)), 0.6)))
     sh.rough = w.lerp(sh.rough, 0.7, w.sat(worn))
     sh.coat = w.lerp(sh.coat, 0.0, w.sat(worn))
     sh.col = w.mix(sh.col, w.scale(w.mix(GREY_WOOD, sh.col, 0.4), w.add(1.0, w.mul(figure, 0.6))), w.mul(w.sat(worn),
@@ -574,7 +591,8 @@ def veneer(w, sh, kind):
     sh.col = w.mix(sh.col, w.mix(w.comb(lm, lm, lm), (178, 160, 136), 0.6), w.mul(w.term("dry"), 0.55))
     sh.rough = w.lerp(sh.rough, 0.8, w.term("dry"))
     sh.col = w.mix(sh.col, w.scale(sh.col, (0.66, 0.52, 0.38)), w.mul(w.term("oiled"), 0.85))
-    hands = w.mul(w.term("hands"), w.add(w.mul(w.edge(0.015), 0.9), w.mul(w.blot(pos, 0.25, 91.0), 0.3)))
+    hands = w.mul(w.add(w.term("hands"), w.mul(w.term("patina"), 0.7)),
+                  w.add(w.mul(w.edge(0.015), 0.9), w.mul(w.blot(pos, 0.25, 91.0), 0.3)))
     sh.col = w.mix(sh.col, w.scale(sh.col, 0.62), w.sat(hands))
     # water rises black from the sole and the bilge: a ragged tide line a few centimetres up
     rise = w.add(-0.08, w.mul(w.term("water"), 0.3), w.mul(w.m("SUBTRACT", w.noise(pos, 0.06, 93.0), 0.5), 0.08))

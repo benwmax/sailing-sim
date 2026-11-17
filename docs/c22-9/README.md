@@ -140,7 +140,107 @@ Her own maps only, block compressed with mips (BC5 normals, BC1 masks):
 | High and Ultra | 3 MB | 2.5 MB: Vinyl 0.5, Tweed 2.0 |
 | Medium | 0 MB | none: Medium draws no detail maps, only the colour and roughness math |
 
-RESULTS
+## Checks
+
+`wear_check_c22.py` measures the renders (88 of them: eight views at five levels, lit and as albedo, plus an id shot
+each), as Bluebonnet's `wear_check.py` does, and writes `wear_check.json`:
+
+| Check | What passes | Result |
+| --- | --- | --- |
+| Coverage | every material the build makes has a card or a reason in `unweathered` | pass |
+| The ladder, 20 kinds | each level's mean colour (CIELAB, measured per material in the albedo shots and averaged by pixels) at least 8 from new at L4 and 4 at L2, L1 no further than L2 and L2 no further than L4, and the kept L3 at least 6 from the neglected L4 | all pass (stainless held to fresh water's slower steps, below) |
+| Colour targets, 4 | each within 6 in colour (a, b) of the CC0 scans' mean albedo | all pass |
+| Her maps | tiling, no big repeat, 4 px a mm or more, the pattern the card's size | both pass |
+| Budget | High 3 MB, Medium 0 MB | 2.5 MB and 0 MB: pass |
+| Blind ladder | three reviewers, each putting all five levels right or swapping only two neighbours, on every sheet | eight of ten sheets pass; the bottom (one reviewer swapped her first season and the kept old boat) and the deck (two swapped new and kept old) do not |
+
+The ladder, as each level's colour distance from new (and the kept L3's from the neglected L4):
+
+| Kind | L1 | L2 | L3 | L4 | L3 to L4 |
+| --- | --- | --- | --- | --- | --- |
+| gelcoat.topsides | 1.5 | 6.9 | 4.2 | 10.6 | 6.9 |
+| gelcoat.deck | 0.7 | 5.2 | 6.2 | 11.1 | 7.0 |
+| gelcoat.liner | 1.9 | 6.4 | 8.2 | 11.7 | 6.2 |
+| nonskid.nonskid | 2.7 | 11.4 | 5.3 | 24.2 | 19.8 |
+| bottom.antifouling | 13.0 | 25.9 | 13.9 | 31.2 | 18.9 |
+| bottom.iron | 12.8 | 23.8 | 13.3 | 29.1 | 18.9 |
+| teak.oiled | 19.1 | 29.8 | 13.1 | 43.5 | 30.9 |
+| teak.varnish | 0.5 | 6.6 | 5.2 | 30.9 | 30.9 |
+| canvas.acrylic | 0.5 | 9.5 | 1.7 | 16.3 | 16.9 |
+| vinyl.headliner | 1.4 | 9.7 | 8.2 | 19.2 | 13.0 |
+| vinyl.rubrail | 2.7 | 10.9 | 5.4 | 15.1 | 9.7 |
+| sole.sole | 1.4 | 8.2 | 9.3 | 14.6 | 8.0 |
+| veneer.laminate | 1.5 | 7.1 | 8.9 | 13.2 | 14.8 |
+| fabric.cushion | 1.5 | 7.7 | 4.3 | 13.8 | 9.6 |
+| fabric.curtain | 1.4 | 6.0 | 6.0 | 9.9 | 7.5 |
+| plastic.white | 1.0 | 10.0 | 10.4 | 16.3 | 8.8 |
+| plastic.black | 1.6 | 13.6 | 8.4 | 18.3 | 9.9 |
+| metal.stainless | 0.0 | 1.7 | 0.5 | 2.3 | 1.8 |
+| metal.aluminium | 0.7 | 7.9 | 3.0 | 11.7 | 8.9 |
+| acrylic.window | 6.3 | 20.0 | 19.0 | 28.1 | 9.2 |
+
+Stainless is the one kind held to smaller steps: in fresh water it hardly changes colour in twenty years (its tea
+staining and rust come at a third of the salt-water rate), so its ladder is judged by its own steps (2, 1, 1), not the
+loop's. Two kinds are in no view at her mooring and are listed, not failed: the sail bags (`canvas.bag`, seen only under
+sail) and `PaintedAluminium` (no part of the rebuilt boat uses it yet).
+
+The colour targets (distance in a and b; the lightness, d_L, is reported, not held: a scan's lighting is not hers):
+
+| Target | Scans | d_ab | d_L |
+| --- | --- | --- | --- |
+| the keel's rust colour | rusty_painted_metal, Rust009 | 1.7 | -1.9 |
+| teak.oiled at L0 | teak_veneer | 0.5 | 1.7 |
+| teak.oiled at L2 | wood_planks_grey | 5.1 | 14.2 |
+| teak.oiled at L4 | weathered_planks | 5.7 | -2.0 |
+
+The ladder sheets, each surface's crop from the view that shows it best, new (L0) to twenty years neglected (L4) left
+to right; the blind sheets the reviewers saw are the same crops shuffled under A to E (`blind/`, key in
+`blind/key.json`):
+
+![Topsides and the lake's line](ladder_topsides.jpg)
+![The bottom and the swing keel](ladder_bottom.jpg)
+![The deck: non-skid and the cabin top](ladder_deck.jpg)
+![The cockpit: teak drop boards and the tiller](ladder_teak.jpg)
+![The pop-top's canvas and the sail cover](ladder_canvas.jpg)
+![The liner in the V-berth](ladder_liner.jpg)
+![The headliner, looking aft](ladder_headliner.jpg)
+![The sole, from the V-berth looking aft](ladder_sole.jpg)
+![The joinery and table](ladder_joinery.jpg)
+![The cushions and the curtain](ladder_cushions.jpg)
+
+## Review
+
+Four blind rounds, each with three new reviewers who saw only the shuffled sheets and the cards' words
+(`reviews_c22.json` keeps every round's answers and notes). Between rounds the checks were run again and the notes
+answered:
+
+| Round | Sheets all three put in order | What the notes said, and what changed after |
+| --- | --- | --- |
+| 1 | topsides, bottom | the waterline clay a row of stamped blobs; the keel's rust leopard spots; mildew a leopard print on the headliner; the window's crazing and the vinyl's grain a granite speckle; camouflage on the deck and the old teak; a hair-like fringe of black streaks under the coamings; and new, first season and kept old mixed up on six surfaces. Changed: the clay and slime a continuous band, mildew sparse soft dots thickest where damp lies, the fine detail faded at arm's length, the deck's film even, the streaks fewer and wider, and stronger first-season and kept-old cues (teak greys within weeks, a kept boat's teak, sole and joinery oiled or varnished a deeper brown, a creamier old gelcoat, a chalkier old non-skid) |
+| 2 | topsides, canvas, cushions | new and kept old still swapped on the deck, liner, sole and joinery; the sole hidden behind a post. Changed: what no care takes off an old boat (`patina`, by age alone: dirt for good in the moulding's corners and the non-skid, the sole's path, handled edges), a yellow-brown neglected headliner, the sole judged from the V-berth looking aft |
+| 3 | teak, canvas, headliner, sole, joinery, cushions | the waterline a ruler-straight band; the keel's rust an even wash. Changed: the line ragged with the wavelets and higher at the bow, the rust in runs from the edges |
+| 4 | topsides, teak, canvas, liner, headliner, sole, joinery, cushions | the bottom: one reviewer took the freshly repainted kept bottom (L3) for the first season (L1), which the cards make close; the deck: two swapped new and kept old |
+
+## Known gaps
+
+- **The deck's and the bottom's blind ladders.** The kept old deck is still read as new by some reviewers: its fading
+  and patina are too quiet beside new beige non-skid. The kept bottom is repainted, so it is meant to look nearly
+  new; the cards could give L3 an older paint line or worn keel edges to tell it from L1. Both for the next wear round.
+- **What the last round's reviewers still found least real**, for the next round: the waterline still too even along
+  its length; the black streaks soft smudges that do not start at the fittings; the keel's rust runs too regular, like
+  a barcode; the old deck's dirt a cloudy camouflage that ignores where feet and water go, and the non-skid pattern not
+  visible at a few metres; the drop boards flat colour without grain or checks, the black one like painted plywood; the
+  canvas changing in tone only (no fold-line dirt or mildew spots that read); leak stains on the headliner spread
+  everywhere rather than running down from the windows; the old sole losing its holly evenly rather than down a worn
+  path; the old veneer a desaturated wash without a tide line; and the tweed's plaid too faint at a few metres.
+- **No blind A/B.** This is her first wear round, so there is no earlier round to hold it against.
+- **Colour targets for four only.** No CC0 scan is really her white gelcoat, beige non-skid, tan acrylic, vinyl, 1970s
+  plaid or veneer; the blind ladder judges those.
+- **Gloss is judged by eye.** The colour checks read the albedo, which has no shine.
+- **The game's twin.** The wear is in Blender's nodes here; the boat materials' HLSL twin and her import are the game
+  wiring slices'.
+- **Slice 9 cuts the hull.** `C22_Hull` is now Topsides above z = +0.04 m and Antifouling below (cabin thread, PR #774),
+  so `GelcoatHull` goes; the cards cover both halves and the GelcoatHull branch in `dress()` goes unused.
 
 ## The game's side
 
@@ -169,7 +269,8 @@ The same venv as slices 1 to 7 (Python with pip `bpy`, numpy, scipy, pillow). Fr
 python3 -I Tools/shipkit/catalina22/textures/textures_c22.py              # her two maps into Inputs/c22-detail
 <venv>/bin/python Tools/shipkit/catalina22/build_c22.py <out>              # the boat (slices 1 to 7)
 blender -b -P Tools/shipkit/catalina22/textures/render_wear_c22.py -- <out>/c22.blend <out>/wear
-python3 -I Tools/shipkit/catalina22/textures/wear_check_c22.py <out>/wear --fetch --sheets docs/c22-9
+python3 -I Tools/shipkit/catalina22/textures/wear_check_c22.py <out>/wear --fetch --sheets docs/c22-9 \
+    --blind-key docs/c22-9/blind/key.json
 ```
 
 With the pip `bpy` module, `<venv>/bin/python Tools/shipkit/catalina22/textures/render_wear_c22.py <blend> <out>` runs
@@ -186,7 +287,7 @@ about 45 minutes at 900 pixels on the cloud's CPU. `--fetch` downloads the CC0 c
 | `Tools/shipkit/catalina22/textures/textures_c22.py` | new: her two detail maps (vinyl, tweed) and their measures |
 | `Tools/shipkit/catalina22/textures/render_wear_c22.py` | new: the eight wear views at five levels, lit, as albedo and as ids |
 | `Tools/shipkit/catalina22/textures/wear_check_c22.py` | new: the ladder, colour, maps, budget and blind checks, and the ladder and blind sheets |
-| `Tools/shipkit/catalina22/textures/reviews_c22.json` | new: the blind reviewers' answers and least-real notes |
+| `Tools/shipkit/catalina22/textures/reviews_c22.json` | new: the blind reviewers' answers and least-real notes, all four rounds |
 | `Inputs/c22-detail/` | new: the two maps (normal and mask PNGs, plain git) and `c22_detail.json` |
 | `docs/licences/assets.csv` | a row for `Inputs/c22-detail` (generated, our own) |
 | `docs/c22-9/` | this page, the contact sheet, the ladder sheets, the blind sheets and their key, `wear_check.json` |
