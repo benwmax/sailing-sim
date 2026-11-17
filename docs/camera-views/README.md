@@ -1,8 +1,9 @@
 # Camera views
 
 Plan: the "Camera Views Plan" page (Nov 16 2026). Bean's answer to its nine questions: "go with your picks".
-Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3, the new cameras (masthead,
-bow, low water, side, drone), comes after the vertical slice.
+Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3 is photo mode's menu. Slice 4,
+the new cameras (bow, transom, masthead, chase boat, drone), follows. With the first release moved to the end of
+November (Bean, Nov 16), slices 3 and 4 aim for the Fri Nov 27 build.
 
 ## Slice 1: the chase camera and the view cycle
 
@@ -89,11 +90,36 @@ than zooming, and on the pad the bumpers tilted the horizon while B hid the pane
 Saved key lists get the new commands (`USailingInputSettings::AddMissingActions`), but not on a button another command
 in the same layer already holds there. A hold and a tap may share a button.
 
-Stills placed with `-SailingPhotoCam` fly, as before. The panel sliding aside when it covers the boat comes with the
-menu redesign (slice 3).
+Stills placed with `-SailingPhotoCam` fly, as before. Slice 3 moved the lens zoom off the bumpers (below).
 
 Tests:
 
 - `SailingSim.UI.PhotoFreeFly.Limits`: the eight speeds.
 - `SailingSim.UI.PhotoFreeFly.Camera`: the orbit's moves (dolly, round, over) and that it keeps facing the boat.
 - `SailingSim.UI.PhotoFreeFly.Input`: the new buttons.
+
+## Slice 3: photo mode's menu
+
+The panel walked 16 rows in one loop on X, the D-pad's up and down set the speed, its hints were plain text, it could
+not be clicked and it sat over the boat. Bean's picks, as built (`SSailPhotoPanel`, `PhotoSettings.h`):
+
+- **Tabs in plain words:** Lens, Focus, Light, Scene, Frame, on the bumpers (Page Up, Page Down), between their glyphs.
+  The rows go round on their tab with the D-pad's up and down (the arrow keys); its sides change the value.
+- **The UI modes:** Helpful shows every row on the tab and a line under the current one on what it does
+  (`PhotoMath::RowHelp`); Natural shows the tabs and the current row only; Off opens photo mode with the panel closed.
+- **Open and close:** a tap of View (H) opens or closes the panel; closed, the hints go too, and B leaves. A bumper
+  opens a closed panel where it was.
+- **Prompts as glyphs:** the card ends in the drawn controller glyphs (`KeyCap`), rebuilt when a key is rebound, the
+  device changes or the UI mode changes.
+- **X held (pad):** the left stick zooms the lens (a full push doubles the focal length in a second), the right stick
+  tilts, the D-pad's up and down set the speed. With the panel closed the D-pad's up and down set the speed alone.
+- **Alt held (keyboard):** the pointer comes out to click a tab, a row or a value's arrows; the wheel sets the speed.
+- **Reset the tab:** R, or hold the right stick's click (its tap is still back to the boat) (`PhotoMath::ResetPage`).
+- **Out of the way:** the card slides to the other side when the boat comes into its third of the screen, and back
+  only once she is in the far third (`PhotoMath::PanelOnRight`).
+
+A key list saved with slice 2's pad layout is moved to this one once (`USailingInputSettings::AddMissingActions`: the
+old pad defaults come off and the new ones go where nothing else in photo mode holds the button).
+
+Tests: `SailingSim.UI.PhotoPanel` (tabs, rows round their tab, help lines, the tab reset, the side, glyph text) and
+`SailingSim.UI.PhotoFreeFly.Input` (the new buttons, the saved list moved once).

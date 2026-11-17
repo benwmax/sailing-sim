@@ -707,7 +707,8 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 
 // No two default controller bindings share a button or axis in the same layer (SailingBindings::SameLayer), except photo
 // mode's pad toggle, a half-second hold of the controls card's button, and the dock lines, a hold of the right stick's
-// click whose tap changes the view (ASailboatPawn::BuildContext). A saved key list from
+// click whose tap changes the view, and photo mode's tab reset, a hold of the click that goes back to the boat
+// (ASailboatPawn::BuildContext). A saved key list from
 // before the stick throttle gets it, and the throttle mapping carries its dead zone.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadNoCollisionsTest, "SailingSim.UI.PadNoCollisions", UIFlags)
 bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
@@ -726,7 +727,8 @@ bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
 			if (B.Key != A.Key || !IsRowAction(B.Action) || !SameLayer(A.Action, B.Action)) continue;
 			if (A.Action == B.Action && (A.Scale < 0.f) == (B.Scale < 0.f)) continue;
 			auto Pair = [&A, &B](const TCHAR* Hold, const TCHAR* Tap) { return (A.Action == Hold && B.Action == Tap) || (A.Action == Tap && B.Action == Hold); };
-			const bool bHoldTap = Pair(TEXT("Photo"), TEXT("ControlsCard")) || Pair(TEXT("DockLines"), TEXT("ChangeView"));
+			const bool bHoldTap = Pair(TEXT("Photo"), TEXT("ControlsCard")) || Pair(TEXT("DockLines"), TEXT("ChangeView"))
+				|| Pair(TEXT("PhotoResetTab"), TEXT("PhotoToBoat"));
 			if (bHoldTap) continue;
 			AddError(FString::Printf(TEXT("%s is on both %s%s and %s%s"), *PadLabel(A.Key), *A.Action.ToString(), A.Scale < 0.f ? TEXT(" (-)") : TEXT(""),
 				*B.Action.ToString(), B.Scale < 0.f ? TEXT(" (-)") : TEXT("")));

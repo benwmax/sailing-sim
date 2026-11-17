@@ -279,6 +279,14 @@ public:
 	const FPhotoSettings& GetPhotoSettings() const { return PhotoSettings; }
 	EPhotoRow GetPhotoRow() const { return PhotoRow; }
 	float GetPhotoFocusM() const { return PhotoFocusM; }
+	/** Camera views slice 3: the panel open (a tap of View or H opens and closes it; B closes it, then leaves; it opens
+	 *  closed in the Off UI mode), and the pointer shown over it while Alt is held, to click it. */
+	bool IsPhotoPanelOpen() const { return bPhotoPanelOpen; }
+	bool IsPhotoPointerShown() const { return bPhotoPointer; }
+	/** The panel's mouse: a click on a row, a tab, or a value's arrow (Dir +1 or -1 on the row it is on). */
+	void SelectPhotoRow(EPhotoRow Row);
+	void SelectPhotoPage(int32 Page);
+	void StepPhotoValue(int32 Dir);
 	bool IsPhotoNatural() const { return bPhoto && PhotoSettings.Look == EPhotoLook::Natural; }
 	/** A photo is being taken: nothing is drawn on the canvas over it (the hint and the toast come after). */
 	bool IsTakingPhoto() const { return GFrameCounter <= PhotoCleanFrame; }
@@ -491,6 +499,13 @@ private:
 	void ApplyMappingContexts();
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
 	bool bPhotoHideHints = false;
+	bool bPhotoPanelOpen = true;
+	bool bPhotoPointer = false;
+	/** X held (Alt on a keyboard): the left stick zooms, the right stick tilts, the D-pad's up and down set the speed. */
+	bool IsPhotoAltHeld() const;
+	float PhotoAltRoll = 0.f;   // the right stick's sideways push while X is held, for the tilt (taken each frame)
+	void UpdatePhotoPointer();
+	void StepPhotoSpeed(int32 Dir);
 	// The panel: settings kept for the session, the row it is on, the focus distance it eases to, the scene it hid.
 	FPhotoSettings PhotoSettings;
 	EPhotoRow PhotoRow = EPhotoRow::Focal;
