@@ -27,7 +27,8 @@ checks for `SM_Bluebonnet_Hull` first).
   0.6 of the J/22's scaled one (slice 13's tuning), `TrimRollSeconds` 8.0 (below) and 12 crew figures drawn.
 - **Reference polar.** Slice 13's estimate (6, 10 and 16 knots; 52, 60, 90, 120 and 150 degrees; spinnaker from 120),
   at 20% tolerance as an estimate. `SailingSim.Fleet.Polar.Bluebonnet` sails it (a heavy test).
-- **Wheel and crew.** She steers with a wheel on the centreline aft (the helm stands at x -10.85, 1.1 m off it). Her
+- **Wheel and crew.** She steers with a wheel on the centreline aft, a part of its own that turns with the rudder (below); the helm sits on
+  the windward coaming of her cockpit at x -10.45, 0.92 m off the centreline, with both hands on the rim. Her
   crew stand on deck like the maxi's (`bDeckCrew` in `CrewPlacement`); her cockpit well, doghouse and deck camber are in
   `CrewPose.cpp` from her deck plan (`deck_bluebonnet.json`). The Boat screen strip shows her (dark blue hull,
   flush-decked icon); her card says she draws 15 feet and has no engine.
@@ -87,7 +88,7 @@ induced aspect ratios) are listed there. The J/22 is unchanged: `scripts/polar.s
 ## Her model in the game (step 2)
 
 `Tools/shipkit/jclass/export_game.py` opens her build (`jclass.blend` from `build_jclass.py`, slices 1 to 12), poses it
-and writes the four parts `ASailboatPawn::ModelMeshesFor` hangs a boat on, as FBX, and `Bluebonnet_sockets.json` (the
+and writes the four parts `ASailboatPawn::ModelMeshesFor` hangs a boat on, and her wheel, as FBX, and `Bluebonnet_sockets.json` (the
 points the game reads, the part that owns each, each part's origin) into `Artifacts/models`. What goes in each part,
 how the moving ones are posed, the game slot of each of the build's materials, what stays out and why, and every
 socket are in `Tools/shipkit/jclass/game_bluebonnet.json`: edit that, never the FBX. `scripts/make-boat-models.sh` (and
@@ -97,7 +98,7 @@ build (`JCLASS_REBUILD=1` / `-RebuildJClass` forces it, `SKIP_JCLASS=1` skips he
 
 | Part | Origin (body frame, m) | What is in it | Triangles | Slots |
 |---|---|---|---|---|
-| `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering, wheel, winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 510,758 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
+| `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering (the wheel box and binnacle), winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 510,758 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
 | `SM_Bluebonnet_Mast` | 3.0, 0, 1.475 (the partners) | mast and spreaders, shrouds, stays, runners and checkstays let off | 94,828 | Aluminium, Brass, PackFit |
 | `SM_Bluebonnet_Boom` | 2.578, 0, 3.730 (the physics' gooseneck) | the boom on the centreline | 15,380 | PackFit, Brass |
 | `SM_Bluebonnet_Rudder` | -8.046, 0, 0 (stock axis at the waterline) | the rudder (the keel's after part) and its stock | 7,246 | PackCanoe, Brass |
@@ -119,17 +120,30 @@ partners at `MastX`; every socket within its fitting's surface; every material w
 | Centre of buoyancy | x -0.678, z -1.030 | x -0.675, z -1.035 (6 mm) |
 | Length, beam, draft | 39.929, 6.556, 4.521 m | 39.929, 6.556, 4.521 m |
 
-**Sockets** (21): on the hull `MastStep`, `RudderPivot` and `RudderAxis` (a second point 1 m up her raked stock),
+**Sockets** (24): on the hull `MastStep`, `RudderPivot` and `RudderAxis` (a second point 1 m up her raked stock),
 `JibLead_S/P` (the genoa cars), `JibWinch_S/P`, `JibTailer_S/P`, `JibTailRest_S/P`, `LazySheetVia` (2.6 m up, over the
 doghouse's roof), `Traveler_C` and `Traveler_S` (inside the mainsheet's after block on the counter: she has no traveller,
 so the game's car hides in it); on the mast `MastBase`, `Hounds`, `SpreaderTip_S/P`; on the boom `Boom_Mainsheet`; on the
-rudder `TillerEnd` (the helm's hand at the wheel's rim, on the stock's axis) and `RudderStock`. No `ForestayTack`,
+rudder `TillerEnd` (a point on the stock's axis at the rim's top) and `RudderStock`; `WheelHub` and `WheelAxis` on the
+ hull (the hub, and a point 25 cm up the shaft) and `WheelRim` on the wheel (the rim's top, 0.6 m up). No `ForestayTack`,
 `Chainplate*` or `BackstayPlate`, so nothing is drawn twice, and no crew sockets: her crew's places come from her deck.
 
 **Game code for her model.**
 - *A raked rudder.* Her stock leans 39 degrees aft. When a hull has a `RudderAxis` (or `RudderAxis_<n>`) socket the pawn
   turns that rudder about the line from its pivot to it (`ASailboatPawn::RudderAxes`); every other boat turns about
   the vertical as before.
+- *Her wheel turns* (the wheel and helm hands follow-up). `SM_Bluebonnet_Wheel` (rim, spokes, hub and shaft, about the
+  hub) hangs on the hull's `WheelHub` and turns about the line to `WheelAxis` with the rudder: 1.5 turns from amidships
+  to hard over (`ASailboatPawn::WheelTurnFor`; her worm gear's ratio is our estimate, and her 5 s hard over in the
+  physics turns the rim at 108 degrees a second), the top to starboard as her bow goes to starboard. `import_boats.py`
+  imports a `SM_<tag>_Wheel` only when the build made one (its origin in the sockets json); without one the game draws
+  no wheel part and nothing else changes.
+- *The helm's hands on the rim.* At x -10.85 and 1.1 m out the helm's shoulders were up to 0.95 m from the rim, past the
+  60 cm the hands reach, so both stayed on the knees. The helm now sits on the windward coaming (x -10.45, 0.92 m out,
+  0.12 m up), 0.3 m aft of the wheel, and each hand takes the rim's point nearest its shoulder on the helm's side (the
+  inboard hand 15 to 60 degrees off the top, the outboard 60 to 110), so the rim runs through the hands as the wheel
+  turns. `SailingSim.Visual.BluebonnetHelmReach` holds both hands within reach (shoulders estimated from the place:
+  0.45 and 0.6 m) and the wheel's direction; the posed figure's reach is the Mac's to see.
 - *No mast bend for her* (`MastBendCm` held at 0): her wires and fittings are in the mast's mesh and would not bend
   with it.
 - *Her spars painted*, and the stowed pole on the hull's part with them (`PaintSpars` on the hull for her).
@@ -147,7 +161,6 @@ sail number (her club's star).
   forestay there are no hanks.
 - The main's cloth is kept off the lowest spreaders only, not her static shrouds above them.
 - Her live sheets are J/22-sized rope, and no halyards are drawn.
-- The helm stands 0.7 m aft of the wheel; the hand may fall short of the rim.
 
 The Mac's rig tests that loop over every boat (`SailingSim.Visual.RigClearance`, `SailShrouds`, `SheetClearance`,
 `TrimmerTailsJib`) now see her model and may list some of these.
@@ -183,6 +196,10 @@ then commit `Content/Boats/Bluebonnet` (Git LFS) to this branch and run the Wind
   (displacement 2%, centre of buoyancy 5 cm, length, beam and draft 2 cm), the sockets on their parts, `MastStep` at
   `MastX`, the hounds over the genoa's head, the rudder's axis raked 39 degrees aft, no live-wire sockets, every part
   Nanite within 8 slots of `MI_Boat_*`, and the mast's `Aluminium` slot. Skipped with a warning until the PC imports her.
+  Since the wheel follow-up: `SM_Bluebonnet_Wheel` imported, its hub at x -10.15 on the centreline, its shaft forward
+  and level, `WheelRim` 60 cm straight up, and the part no bigger than the wheel and its shaft.
+- `SailingSim.Visual.BluebonnetHelmReach`: the helm's place puts both shoulders within the hands' reach of the rim on
+  both tacks, clear of it, and a helm to starboard turns the wheel's top to starboard (1.5 turns hard over).
 - `SailingSim.Career.Content`, `SailingSim.Career.Unlocks`: the Club Racer certificate opens her.
 
 Nothing here is compiled or run in the cloud except the physics (standalone, as CI does) and the export (Blender's
