@@ -14,6 +14,7 @@
 #include "LakeData.h"
 #include "SailingSettings.h"
 #include "PhotoSettings.h"
+#include "UI/SailPhotoPanel.h"
 #include "SailingFrame.h"
 #include "SailingAngles.h"
 #include "Camera/CameraTypes.h"
@@ -255,15 +256,21 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	TestTrue(TEXT("Sailing: hold View for photo mode"), HasTrigger<UInputTriggerHold>(Boat, EKeys::Gamepad_Special_Left, TEXT("Photo")));
 	TestTrue(TEXT("Sailing: tap View for the controls card"), HasTrigger<UInputTriggerTap>(Boat, EKeys::Gamepad_Special_Left, TEXT("ControlsCard")));
 	TestTrue(TEXT("Photo mode: hold View leaves"), HasTrigger<UInputTriggerHold>(Photo, EKeys::Gamepad_Special_Left, TEXT("Photo")));
-	// Camera views slice 2 (Bean's picks): a tap of View hides the panel and hints, Y orbits, B is back (the panel, then
-	// out), the bumpers and the wheel zoom the lens, the right stick's click is back to the boat's view.
+	// Camera views slices 2 and 3 (Bean's picks): a tap of View opens or closes the panel, Y orbits, B is back (the panel,
+	// then out), the bumpers change the panel's tab, the wheel zooms the lens, X held is the camera modifier (Alt the
+	// pointer), the right stick's click is back to the boat's view and, held, resets the tab.
 	TestTrue(TEXT("Photo mode: tap View hides the panel"), HasTrigger<UInputTriggerTap>(Photo, EKeys::Gamepad_Special_Left, TEXT("PhotoHideUI")));
 	TestTrue(TEXT("Photo mode: Y orbits"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Top), TEXT("PhotoOrbit")));
 	TestTrue(TEXT("Photo mode: B is back"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Right), TEXT("PhotoBack")));
-	TestTrue(TEXT("Photo mode: RB zooms in"), Only(ActionsOn(Photo, EKeys::Gamepad_RightShoulder), TEXT("PhotoZoom")));
-	TestTrue(TEXT("Photo mode: LB zooms out"), Only(ActionsOn(Photo, EKeys::Gamepad_LeftShoulder), TEXT("PhotoZoom")));
+	TestTrue(TEXT("Photo mode: RB is the next tab"), Only(ActionsOn(Photo, EKeys::Gamepad_RightShoulder), TEXT("PhotoPageNext")));
+	TestTrue(TEXT("Photo mode: LB the previous one"), Only(ActionsOn(Photo, EKeys::Gamepad_LeftShoulder), TEXT("PhotoPagePrev")));
 	TestTrue(TEXT("Photo mode: the wheel zooms"), Only(ActionsOn(Photo, EKeys::MouseWheelAxis), TEXT("PhotoZoom")));
-	TestTrue(TEXT("Photo mode: the right stick's click is back to the boat"), Only(ActionsOn(Photo, EKeys::Gamepad_RightThumbstick), TEXT("PhotoToBoat")));
+	TestTrue(TEXT("Photo mode: X is the camera modifier"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Left), TEXT("PhotoAlt")));
+	TestTrue(TEXT("Photo mode: Alt is the pointer"), Only(ActionsOn(Photo, EKeys::LeftAlt), TEXT("PhotoAlt")));
+	TestTrue(TEXT("Photo mode: the D-pad's up is the row (or the speed)"), Only(ActionsOn(Photo, EKeys::Gamepad_DPad_Up), TEXT("PhotoRowUp")));
+	TestTrue(TEXT("Photo mode: tap the right stick's click: back to the boat"), HasTrigger<UInputTriggerTap>(Photo, EKeys::Gamepad_RightThumbstick, TEXT("PhotoToBoat")));
+	TestTrue(TEXT("Photo mode: hold it: reset the tab"), HasTrigger<UInputTriggerHold>(Photo, EKeys::Gamepad_RightThumbstick, TEXT("PhotoResetTab")));
+	TestTrue(TEXT("Photo mode: R resets the tab on the press"), HasTrigger<UInputTriggerPressed>(Photo, EKeys::R, TEXT("PhotoResetTab")));
 	TestTrue(TEXT("9 toggles on the press"), HasTrigger<UInputTriggerPressed>(Boat, EKeys::Nine, TEXT("Photo")));
 	TestTrue(TEXT("Esc opens the menu on the press"), HasTrigger<UInputTriggerPressed>(Boat, EKeys::Escape, TEXT("Menu")));
 	TestFalse(TEXT("Sailing, A is not the shutter"), ActionsOn(Boat, EKeys::Gamepad_FaceButton_Bottom).Contains(TEXT("PhotoShot")));
@@ -280,7 +287,7 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	for (const FSailingKeyBinding& B : Defaults)
 	{
 		if (!IsPhotoAction(B.Action)) continue;
-		const FString K = B.Key.ToString();
+		const FString K = B.Key.ToString() + (IsHoldAction(B.Action) ? TEXT(" (hold)") : TEXT(""));   // a hold beside a tap may share a button
 		if (Seen.Contains(K)) { bUnique = false; AddInfo(FString::Printf(TEXT("%s twice in photo mode"), *K)); }
 		Seen.Add(K);
 	}
@@ -297,6 +304,44 @@ bool FSailingPhotoInputTest::RunTest(const FString&)
 	Settings->PostReloadConfig(nullptr);
 	TestEqual(TEXT("An old list: the free camera's keys added"), Find(Settings->Bindings, TEXT("PhotoToBoat"), false, EColumn::Keyboard), EKeys::F);
 	TestEqual(TEXT("And nothing else"), Settings->Bindings.Num(), Defaults.Num());
+
+	// Camera views slice 3: a list saved with slice 2's pad layout (bumpers zoom, D-pad up and down the speed, X the rows)
+	// gets the new one: the old defaults off, the tabs on the bumpers, the rows on the D-pad, X the modifier.
+	TArray<FSailingKeyBinding> Old = Defaults.FilterByPredicate([](const FSailingKeyBinding& B)
+	{
+		return !(B.Key.IsGamepadKey() && (B.Action == TEXT("PhotoPageNext") || B.Action == TEXT("PhotoPagePrev") || B.Action == TEXT("PhotoRowUp")
+			|| B.Action == TEXT("PhotoRowDown") || B.Action == TEXT("PhotoAlt")));
+	});
+	auto Bind = [&Old](const TCHAR* Action, const FKey& Key, float Scale)
+	{
+		FSailingKeyBinding B;
+		B.Action = Action;
+		B.Key = Key;
+		B.Scale = Scale;
+		Old.Add(B);
+	};
+	Bind(TEXT("PhotoZoom"), EKeys::Gamepad_RightShoulder, 1.f);
+	Bind(TEXT("PhotoZoom"), EKeys::Gamepad_LeftShoulder, -1.f);
+	Bind(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up, 1.f);
+	Bind(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Down, -1.f);
+	Bind(TEXT("PhotoRowDown"), EKeys::Gamepad_FaceButton_Left, 1.f);
+	Settings->Bindings = Old;
+	Settings->PostReloadConfig(nullptr);
+	auto Has = [Settings](const TCHAR* Action, const FKey& Key)
+	{
+		return Settings->Bindings.ContainsByPredicate([Action, &Key](const FSailingKeyBinding& B) { return B.Action == FName(Action) && B.Key == Key; });
+	};
+	TestFalse(TEXT("Slice 2's list: the bumpers no longer zoom"), Has(TEXT("PhotoZoom"), EKeys::Gamepad_RightShoulder));
+	TestTrue(TEXT("They change the tab"), Has(TEXT("PhotoPageNext"), EKeys::Gamepad_RightShoulder) && Has(TEXT("PhotoPagePrev"), EKeys::Gamepad_LeftShoulder));
+	TestTrue(TEXT("The D-pad's up and down are the rows"), Has(TEXT("PhotoRowUp"), EKeys::Gamepad_DPad_Up) && !Has(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up));
+	TestTrue(TEXT("X is the modifier"), Has(TEXT("PhotoAlt"), EKeys::Gamepad_FaceButton_Left) && !Has(TEXT("PhotoRowDown"), EKeys::Gamepad_FaceButton_Left));
+	const int32 Migrated = Settings->Bindings.Num();
+	Settings->PostReloadConfig(nullptr);
+	TestEqual(TEXT("Moved once"), Settings->Bindings.Num(), Migrated);
+	// A pad key taken off later stays off (nothing old left to trigger the move).
+	Settings->Bindings.RemoveAll([](const FSailingKeyBinding& B) { return B.Action == TEXT("PhotoPageNext") && B.Key.IsGamepadKey(); });
+	Settings->PostReloadConfig(nullptr);
+	TestFalse(TEXT("A tab key someone took off stays off"), Has(TEXT("PhotoPageNext"), EKeys::Gamepad_RightShoulder));
 	Settings->Bindings = Saved;
 	return true;
 }
@@ -520,6 +565,36 @@ bool FSailingPhotoPanelTest::RunTest(const FString&)
 	for (int32 R = 0; R < int32(EPhotoRow::Count); ++R) { const int32 P = PageOf(EPhotoRow(R)); bOrdered &= P >= LastPage && P < NumPages; LastPage = P; }
 	TestTrue(TEXT("Rows run through the pages in order"), bOrdered && LastPage == NumPages - 1);
 	TestTrue(TEXT("Frame starts at the grid"), FirstRowOf(4) == EPhotoRow::Grid);
+	TestEqual(TEXT("The tabs in plain words"), FString(PageName(0)) + PageName(1) + PageName(2) + PageName(3) + PageName(4), FString(TEXT("LensFocusLightSceneFrame")));
+	// Camera views slice 3: the rows go round on their tab (the bumpers change the tab), and every row says what it does.
+	TestTrue(TEXT("Down from Tilt goes round to Focal length"), StepRowOnPage(EPhotoRow::Roll, 1) == EPhotoRow::Focal);
+	TestTrue(TEXT("Up from Exposure goes round to Look"), StepRowOnPage(EPhotoRow::Exposure, -1) == EPhotoRow::Look);
+	TestTrue(TEXT("Down from Grid is Crop guide"), StepRowOnPage(EPhotoRow::Grid, 1) == EPhotoRow::Crop);
+	bool bHelped = true;
+	for (int32 R = 0; R < int32(EPhotoRow::Count); ++R) bHelped &= FCString::Strlen(RowHelp(EPhotoRow(R))) > 10;
+	TestTrue(TEXT("Every row has a help line"), bHelped);
+	// Reset a tab: only that tab's rows go back.
+	{
+		FPhotoSettings T;
+		float TFov = 20.f, TRoll = 10.f;
+		T.ApertureStop = 6; T.ExposureEV = 1.5f; T.Look = EPhotoLook::Mono; T.bLookTaken = true; T.bHideOthers = true; T.bGrid = true;
+		ResetPage(T, 2, TFov, TRoll, 90.f);
+		TestTrue(TEXT("Light reset: metered, cinematic, the scene's look read again"), T.ExposureEV == 0.f && T.Look == EPhotoLook::Cinematic && !T.bLookTaken);
+		TestTrue(TEXT("The other tabs untouched"), T.ApertureStop == 6 && T.bHideOthers && T.bGrid && TFov == 20.f && TRoll == 10.f);
+		ResetPage(T, 0, TFov, TRoll, 90.f);
+		TestTrue(TEXT("Lens reset: the view's lens, level"), TFov == 90.f && TRoll == 0.f);
+		ResetPage(T, 3, TFov, TRoll, 90.f);
+		TestFalse(TEXT("Scene reset: the other boats back"), T.bHideOthers);
+	}
+	// Out of the way: the panel crosses when the boat is in its third, and comes back only from the far third.
+	TestTrue(TEXT("Boat behind the left panel: it moves right"), PanelOnRight(false, 0.2f));
+	TestFalse(TEXT("Boat in the middle: it stays left"), PanelOnRight(false, 0.5f));
+	TestTrue(TEXT("On the right, the boat drifting to the middle: it stays"), PanelOnRight(true, 0.6f));
+	TestFalse(TEXT("The boat behind it on the right: back left"), PanelOnRight(true, 0.8f));
+	// The prompt glyphs: the D-pad's arms, the sticks' clicks.
+	TestEqual(TEXT("D-pad up is an arrow"), SSailPhotoPanel::GlyphText(TEXT("D-pad up")), FString(TEXT("\u2191")));
+	TestEqual(TEXT("The right stick's click is R3"), SSailPhotoPanel::GlyphText(TEXT("Right stick press")), FString(TEXT("R3")));
+	TestEqual(TEXT("A stays A"), SSailPhotoPanel::GlyphText(TEXT("A")), FString(TEXT("A")));
 
 	// Crop guides: the largest centred rectangle.
 	const FVector4f Sq = CropRect(EPhotoCrop::Square, 1920.f, 1080.f);
@@ -527,7 +602,7 @@ bool FSailingPhotoPanelTest::RunTest(const FString&)
 	const FVector4f Cin = CropRect(EPhotoCrop::Cinema219, 1920.f, 1080.f);
 	TestTrue(TEXT("21:9 is full width, letterboxed"), FMath::IsNearlyEqual(Cin.Z, 1920.f) && FMath::IsNearlyEqual(Cin.W, 1920.f * 9.f / 21.f, 0.01f));
 
-	// Keys: arrows and Page Up/Down in photo mode's context (the boat's arrows are the menus'); X and the D-pad's sides on a pad.
+	// Keys: arrows and Page Up/Down in photo mode's context (the boat's arrows are the menus'); the D-pad and bumpers on a pad.
 	const TArray<FSailingKeyBinding>& Defaults = GetDefault<USailingInputSettings>()->GetDefaults();
 	UObject* Outer = NewObject<UInputMappingContext>(GetTransientPackage());
 	TMap<FName, TObjectPtr<UInputAction>> Actions;
@@ -536,7 +611,8 @@ bool FSailingPhotoPanelTest::RunTest(const FString&)
 	TestTrue(TEXT("Down steps the rows"), Only(ActionsOn(Photo, EKeys::Down), TEXT("PhotoRowDown")));
 	TestTrue(TEXT("Right raises the value"), Only(ActionsOn(Photo, EKeys::Right), TEXT("PhotoValueUp")));
 	TestTrue(TEXT("Page Down turns the page"), Only(ActionsOn(Photo, EKeys::PageDown), TEXT("PhotoPageNext")));
-	TestTrue(TEXT("X on a pad steps the rows"), Only(ActionsOn(Photo, EKeys::Gamepad_FaceButton_Left), TEXT("PhotoRowDown")));
+	TestTrue(TEXT("The D-pad's down steps the rows"), Only(ActionsOn(Photo, EKeys::Gamepad_DPad_Down), TEXT("PhotoRowDown")));
+	TestTrue(TEXT("RB turns the tab"), Only(ActionsOn(Photo, EKeys::Gamepad_RightShoulder), TEXT("PhotoPageNext")));
 	TestTrue(TEXT("The D-pad's left lowers the value"), Only(ActionsOn(Photo, EKeys::Gamepad_DPad_Left), TEXT("PhotoValueDown")));
 	TestTrue(TEXT("Panel keys fire on the press"), HasTrigger<UInputTriggerPressed>(Photo, EKeys::Right, TEXT("PhotoValueUp")));
 

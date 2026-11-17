@@ -12,7 +12,7 @@ enum class EPhotoFocus : uint8 { Auto, Boat, Manual };
 enum class EPhotoLook : uint8 { Natural, Cinematic, Mono };
 enum class EPhotoCrop : uint8 { None, Wide169, Photo32, Square, Cinema219 };
 
-/** The panel's rows, page by page (Camera, Focus, Exposure, Scene, Frame). */
+/** The panel's rows, tab by tab (Lens, Focus, Light, Scene, Frame: docs/camera-views/ slice 3). */
 enum class EPhotoRow : uint8
 {
 	Focal, Roll,
@@ -57,6 +57,17 @@ namespace PhotoMath
 	static constexpr int32 NumPages = 5;
 	SAILINGSIM_API EPhotoRow FirstRowOf(int32 Page);
 	SAILINGSIM_API const TCHAR* RowLabel(EPhotoRow Row);
+	/** One plain line on what the row does (the panel shows it under the row it is on in the Helpful UI mode). */
+	SAILINGSIM_API const TCHAR* RowHelp(EPhotoRow Row);
+	/** The next row up (Dir < 0) or down on the same tab, round again (the bumpers change the tab). */
+	SAILINGSIM_API EPhotoRow StepRowOnPage(EPhotoRow Row, int32 Dir);
+	/** Puts one tab's rows back as photo mode opens them: the lens to DefaultFovDeg and level, focus on auto at f/2.8,
+	 *  the light metered (vignette and grain read from the scene's look again: bLookTaken cleared), nothing hidden and the
+	 *  clock's hour, no guides at 1x. */
+	SAILINGSIM_API void ResetPage(FPhotoSettings& S, int32 Page, float& FovDeg, float& RollDeg, float DefaultFovDeg);
+	/** Which side the panel sits on: it moves across when the boat comes behind it (BoatX01, the boat's place across the
+	 *  screen, 0 left to 1 right), with a margin so it doesn't swing back and forth as she drifts near the middle. */
+	SAILINGSIM_API bool PanelOnRight(bool bOnRightNow, float BoatX01);
 
 	/** Steps one row's value (Dir +1 or -1); FovDeg and RollDeg are the lens's, the rest is the settings. Rows that
 	 *  only exist on some tiers (2x capture on High and Ultra) take bHighTier. The time of day steps by half hours from

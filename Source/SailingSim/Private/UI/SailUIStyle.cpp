@@ -2,6 +2,7 @@
 #include "SailingSim.h"
 #include "SailingSettings.h"
 #include "UI/SailHud.h"
+#include "BenchRunner.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Fonts/CompositeFont.h"
@@ -336,7 +337,17 @@ namespace SailUI
 
 	EUiMode UiMode()
 	{
-		return EUiMode(FMath::Clamp(USailingSettings::Get()->UiMode, 0, 2));
+		// -SailingUiMode=helpful|natural|off for stills (photo mode's panel, docs/camera-views/); the setting otherwise.
+		static SailingArgs::FOnce ArgRead;
+		static int32 Arg = -1;
+		if (ArgRead.Take())
+		{
+			FString V;
+			Arg = !FParse::Value(SailingArgs::Dev(), TEXT("SailingUiMode="), V) ? -1
+				: V.Equals(TEXT("natural"), ESearchCase::IgnoreCase) ? 1 : V.Equals(TEXT("off"), ESearchCase::IgnoreCase) ? 2
+				: V.Equals(TEXT("helpful"), ESearchCase::IgnoreCase) ? 0 : -1;
+		}
+		return EUiMode(FMath::Clamp(Arg >= 0 ? Arg : USailingSettings::Get()->UiMode, 0, 2));
 	}
 
 	void SetUiMode(EUiMode Mode)
