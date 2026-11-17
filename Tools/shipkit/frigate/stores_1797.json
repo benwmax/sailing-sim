@@ -171,7 +171,8 @@
   "shape_note": "slung, the cloth hangs as a trough: each section a circular arc of the cloth's width across a chord (chord_in: at the ends, in the middle), the ends gathered by the nettles (the width drawn in by 'gather' at the very end); its middle sag_in under its ends, the ends drop_in under the hooks. Estimate, by eye from period drawings",
   "clew_fan_in": 0.8,
   "seizing_in": 1.0,
-  "clew_note": "the nettles gathered at the ring, their ends seized together round its bar with tarred spun yarn (estimate: the period's clews were made several ways)"
+  "clew_note": "the nettles gathered at the ring, their ends seized together round its bar with tarred spun yarn (estimate: the period's clews were made several ways). clew_ft is the clews' length where the hooks are far enough apart; slung between hooks closer than the cloth, the clews and lanyard_least_in allow (the berth deck's, two beams apart), the clews are shorter to suit, the hammock hanging as high (the men made up their own clews and lanyards: estimate)",
+  "lanyard_least_in": 3.0
  },
  "casks": {
   "note": "a staved cask, its staves bellied to the bilge, the heads let in 'chime_in' from each end, iron hoops (copper on the powder barrels, so they cannot strike a spark; whether the beer and water casks were hooped in iron or wood in 1797 is uncertain, iron is shown) at each chime, quarter and bilge, a bung in the bung stave at the bilge. Sizes from each kind's gallons and its length over bilge (L_over_D) and head over bilge (head_over_D): build_stores.py reports the computed gallons beside the card's",

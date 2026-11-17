@@ -269,9 +269,17 @@ class Rig:
         O = np.array([x0, 0.0, zd]) * FT                           # on the axis at the spar deck
         lo, tp, tm, tg = S["lower"], S["top"], S["topmast"], S["topgallant"]
         D = lo["diam_in"] * IN
-        s_step = ((self.rabbet_ft(x0) + self.sp["step"]["keelson_over_rabbet_ft"]) - zd) * FT / math.cos(r)
+        s_card = ((self.rabbet_ft(x0) + self.sp["step"]["keelson_over_rabbet_ft"]) - zd) * FT / math.cos(r)
         s_gun = (self.gun_deck_ft(x0) - zd) * FT / math.cos(r)
-        s_top = s_step + lo["length_ft"] * FT                      # the masthead's top
+        s_top = s_card + lo["length_ft"] * FT                      # the masthead's top
+        kt = self.sp["step"].get("keelson_top_m", {}).get(name)
+        s_step = s_card if kt is None else (kt - O[2]) / u[2]       # the heel on the keelson's top as the orlop has it
+        # the decks the mast passes through (the spar deck, the gun deck and those under it): the heel stands under the
+        # lowest of them
+        decks = [0.0, s_gun] + [s_gun - d * IN / math.cos(r) for d in fit["hoops"]["decks_below_gun_deck_in"]]
+        if not s_card <= s_step < min(decks):
+            raise SystemExit(f"spars: the {name} mast's heel on the keelson ({kt} m) is under the card's step or not "
+                             "under the lowest deck it passes through")
         head = lo["head_ft"] * FT
         s_h = s_top - head                                         # the hounds: the trestletrees sit here
         mt = taper(self.sp["taper"]["mast"])
@@ -311,13 +319,16 @@ class Rig:
                     P2 = P2[::-1]
                 rings.append(frame_ring(O + s * u, f, Y, P2))
             loft_solid(M, rings, B)
-        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft, none at either deck's partners
-        # (the spar deck and its mast coat, slice 7's deck.py; the gun deck and its wedges, slice 12's gundeck.py)
+        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft, none at any deck's partners
+        # (the spar deck and its mast coat, slice 7's deck.py; the gun deck and its wedges, slice 12's gundeck.py; the
+        # decks below the gun deck and their wedges, slice 13's berthdeck.py on). They keep their places from the
+        # card's step (s_card), so a heel standing higher on the keelson only drops those under it: the made mast's
+        # hoops above stay where the brace limits, the boom's jaws and the falls were checked against
         hp = fit["hoops"]
         p0, p1 = (v * IN for v in hp["clear_of_partners_in"])
-        for s in np.arange(s_step + 2 * FT, s_h - c_len - 0.5 * FT, hp["pitch_ft"] * FT):
+        for s in np.arange(s_card + 2 * FT, s_h - c_len - 0.5 * FT, hp["pitch_ft"] * FT):
             hb = hp["broad_in"] / 2 * IN
-            if any(s + hb > sd + p0 and s - hb < sd + p1 for sd in (0.0, s_gun)):
+            if s < s_step + 2 * FT - 1e-9 or any(s + hb > sd + p0 and s - hb < sd + p1 for sd in decks):
                 continue
             ring_band(M, O, u, f, s, R_lower(s), hp["broad_in"] * IN, hp["thick_in"] * IN, I, n)
 

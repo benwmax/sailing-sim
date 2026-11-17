@@ -483,9 +483,11 @@ they came out over two builds):
 
 * **The lower yards brace no sharper than before.** Catharpins bowsed in 6 in would take the fore yard from 33.5 to
   37 degrees and the main from 36 to 39.5, but first the falls from the tops must be led clear of the bowsed shrouds,
-  nearer the mast (Bracing sharper).
+  nearer the mast (Bracing sharper). Slice 13 does: the falls led to the fife rails near the mast, the shrouds
+  bowsed in 4 in, the fore yard to 36 degrees and the main to 38.5 (docs/shipkit-13, Bracing sharper).
 * **The berth deck is not built.** The wells under the hatchways go down to where it will be, and the ladders land
-  on their floors; slice 13 builds it (to the interface `berth_deck.json` handed to the orlop's slice, 14).
+  on their floors; slice 13 builds it (to the interface `berth_deck.json` handed to the orlop's slice, 14), and
+  with it the wells give way and the ladders land on its planks (docs/shipkit-13).
 * **The state rooms are shut.** Their doors are drawn shut in their walls and there is nothing inside them (no cot,
   desk or washstand).
 * **No arms racks, fire buckets or scuttlebutt.** A frigate's gun deck had muskets and pikes racked round the masts

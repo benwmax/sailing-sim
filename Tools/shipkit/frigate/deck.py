@@ -661,7 +661,7 @@ MEETS = {
     # the deck's own parts
     ("Waterways", "SparDeck"): ("the waterway is let into the deck", 0.55),
     ("WaistFrame", "SparDeck"): ("the gangways' coamings stand in the deck's edge, and the waist's beams run on under "
-                                 "the gangways' planks, their tops at the planks' underside", 0.55),
+                                 "the gangways' planks, their tops at the planks' underside", 0.3),
     ("Hatches", "SparDeck"): ("the hatchways' coamings stand in the deck's openings, their outsides its sides", 0.1),
     ("Companion", "SparDeck"): ("the companion's coaming stands in the deck's opening, its outside the opening's sides", 0.1),
     ("Skylights", "SparDeck"): ("the skylights' coamings stand in the deck's openings, their outsides its sides", 0.1),
@@ -1316,13 +1316,18 @@ class Deck:
         for k in range(1, wa["beams"] + 1):
             x = self.e1 + 2 * k * self.beam_pitch
             x0, x1 = x - sided / 2, x + sided / 2
-            ztop, zbot = self.waist_beam_z(x)
-            if end is None:
-                yt = yb = float(min(np.interp(xx, self.und[:, 0], self.und[:, 1]) for xx in (x0, x1))) - 0.005
-            else:
-                yt, yb = end(x0, x1, ztop), end(x0, x1, zbot)
-            ring = lambda xx: np.array([[xx, -yb, zbot], [xx, yb, zbot], [xx, yt, ztop], [xx, -yt, ztop]])
-            solid(part, [ring(x0), ring(x1)], "Oak")
+            rings = []
+            for xx in (x0, x1):
+                # each face at its own height: the beam follows the sheer along its siding, as the gun deck's own beams
+                # do, so its top lies on the planks' underside and its underside on the clamp across all 14 in (laid
+                # level, the forward beams stood up to 0.28 in off both at one face)
+                ztop, zbot = self.waist_beam_z(xx)
+                if end is None:
+                    yt = yb = float(min(np.interp(xe, self.und[:, 0], self.und[:, 1]) for xe in (x0, x1))) - 0.005
+                else:
+                    yt, yb = end(x0, x1, ztop), end(x0, x1, zbot)
+                rings.append(np.array([[xx, -yb, zbot], [xx, yb, zbot], [xx, yt, ztop], [xx, -yt, ztop]]))
+            solid(part, rings, "Oak")
             self.beams_x.append(round(x, 4))
 
     def waist_beam_z(self, x):

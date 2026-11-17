@@ -1357,7 +1357,7 @@ class Anchors:
         g = math.radians(c["clinch_tilt_deg"])                 # the cable through the ring askew: turned about the bar
         n_a = math.cos(g) * n_r + math.sin(g) * r_o
         r_o = -math.sin(g) * n_r + math.cos(g) * r_o
-        rho = an.r_bar + an.pudden + r_c
+        rho = an.r_bar + an.pudden + r_c + c["clinch_gap_in"] * IN       # clear of the pudden whatever the lay's turn
         p1, tail = c["eye_lead_m"], c["tail_m"]
 
         def X(pq):

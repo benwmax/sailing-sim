@@ -391,13 +391,13 @@
   "fife": {
     "fore": [
       0.45,
-      -1.3,
+      -1.75,
       1.0,
       "fwd"
     ],
     "main": [
       0.4,
-      -1.3,
+      -2.2,
       1.05,
       "fwd"
     ],
@@ -407,7 +407,7 @@
       0.85,
       "aft"
     ],
-    "note": "each mast's fife rail (m from the mast's axis at the deck): forward and after ends of its arms, the arms' half spacing, its open end. The main's opens forward at the quarterdeck's break, the fore's toward the bowsprit's heel, the mizzen's aft toward the spanker's boom (estimate)"
+    "note": "each mast's fife rail (m from the mast's axis at the deck): forward and after ends of its arms, the arms' half spacing, its open end. The main's opens forward at the quarterdeck's break, the fore's toward the bowsprit's heel, the mizzen's aft toward the spanker's boom. The fore's and main's arms run 1.75 and 2.2 m abaft the mast so the falls that come down through the tops just inside the lower shrouds (the topsail buntlines, and the lifts, clewlines and sheets of the sails above) belay near the mast, clear of the shrouds the catharpins bowse in (estimate)"
   },
   "mesh": {
     "simplify_of_r": 0.3,

@@ -3678,7 +3678,11 @@ class Boats:
                     if len(cut):
                         zs.append(cut.reshape(-1, 2)[:, 1])
                 return min(float(z.min()) for z in zs if len(z))
-            z_top = max(zb + s_min - low(sp, xb) + sp["R"](0.0) for sp in sps for xb, zb in sp["beams"])
+            def top_hi(xb):
+                """the beam's top at the higher of its faces (it follows the sheer along its siding: deck.py's waist),
+                so each saddle is saddle_min_in thick at least across its whole length"""
+                return max(self.dk.waist_beam_z(xb + s * 0.5 * self.beam_sided)[0] for s in (-1.0, 1.0))
+            z_top = max(top_hi(xb) + s_min - low(sp, xb) + sp["R"](0.0) for sp in sps for xb, _ in sp["beams"])
             for sp in sps:
                 sp["z"] = z_top - sp["R"](0.0)                               # its axis
                 V, F, M = sp["mesh"]
@@ -3696,10 +3700,15 @@ class Boats:
                     xc = np.clip(np.concatenate([[x0, x1], xr - 1e-4, xr + 1e-4]), x0, x1)
                     ys, Z = saddle_top([plane_cut(Vw, Tw, xx) for xx in np.unique(xc)], sp["y"] - 0.5 * w,
                                        sp["y"] + 0.5 * w, sp["z"] - r * math.cos(math.radians(50.0)))
-                    P2 = np.concatenate([[(sp["y"] - 0.5 * w, zb), (sp["y"] + 0.5 * w, zb)], np.c_[ys[::-1], Z[::-1]]])
-                    V2, F2, M2 = two_face_prism(P2, P2, x0, x1, "Oak")
+                    # its foot on the beam's top at each face (the beam follows the sheer along its siding: deck.py's
+                    # waist), its seat under the spar the same at both
+                    za, zf = self.dk.waist_beam_z(x0)[0], self.dk.waist_beam_z(x1)[0]
+                    seat = np.c_[ys[::-1], Z[::-1]]
+                    Pa = np.concatenate([[(sp["y"] - 0.5 * w, za), (sp["y"] + 0.5 * w, za)], seat])
+                    Pf = np.concatenate([[(sp["y"] - 0.5 * w, zf), (sp["y"] + 0.5 * w, zf)], seat])
+                    V2, F2, M2 = two_face_prism(Pa, Pf, x0, x1, "Oak")
                     self.add(u, "SparSaddles", V2, F2, M2)
-                    th.append(round(float(Z.min() - zb) / IN, 2))
+                    th.append(round(float(Z.min() - max(za, zf)) / IN, 2))
                 self.spar_info[sp["name"]] = {"boat": name, "kind": sp["kind"], "length_ft": sp["length_ft"],
                                               "diam_in": sp["d_in"], "y_off_boat_m": sp["y"],
                                               "axis_z_m": round(sp["z"], 4), "beams": len(sp["beams"]),
