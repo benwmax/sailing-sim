@@ -2525,7 +2525,7 @@ void ASailboatPawn::UpdateCockpitCamera(float DeltaSeconds)
 		Helm->SetVisibility(false, true);
 		Helm->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	}
-	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * (float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch)) + DrawnOff.Pitch);
+	const float Pitch = FMath::Clamp(CameraPitch, -45.f, 30.f) + 0.3f * (float(FMath::RadiansToDegrees(Boat.GetTelemetry().Pitch)) - DrawnOff.Pitch);   // (telemetry pitch is bow-down)
 	Camera->SetWorldLocationAndRotation(World, FRotator(Pitch, Yaw, -CockpitRoll * Side));
 	Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov() - 10.f);   // Settings > Field of view, 10 deg narrower aboard
 }
@@ -3839,12 +3839,14 @@ void ASailboatPawn::ApplyStateToTransform(bool bBetweenSteps)
 	else
 	{
 		PoseBeforeLast.bValid = false;   // re-placed, reset or not hers to step: from here, not from before
-		if (bTrafficBoat && GM)
+		if (bTrafficBoat && !bGhost && GM)
 		{
 			// An AI boat is stepped to the clock by the traffic simulation, which keeps no pose before: drawn back along her
 			// velocity and turn to the render time (at most a step, 8 ms: straight lines are exact enough), so she moves
 			// as smoothly as the water and the camera now do (QA on #787: alongside at a start she jittered 2-3 cm).
-			const double Lag = FMath::Clamp(GM->GetSimTime() - GM->GetRenderTime(), 0.0, 2.0 * Stepper.GetStepDt());
+			// (From her own time: the traffic simulation's stepper can sit a step off the clock now and then. The ghost is
+			// drawn as its replay is sampled: smoothly in the debrief, at her steps in a ghost race.)
+			const double Lag = FMath::Clamp(Boat.GetState().Time - GM->GetRenderTime(), 0.0, 2.0 * Stepper.GetStepDt());
 			if (Lag > 0.0)
 			{
 				const FBoatState& St = Boat.GetState();

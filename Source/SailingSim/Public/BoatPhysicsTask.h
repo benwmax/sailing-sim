@@ -23,7 +23,7 @@ class ASailboatPawn;
 
 /** Where a boat was at one physics instant (map frame): the step before her last, for drawing her between the two
  *  (feedback #26: ASailboatPawn::ApplyStateToTransform at the world clock's render time). */
-struct FBoatPose
+struct SAILINGSIM_API FBoatPose
 {
 	Sailing::Vec3 Origin;
 	Sailing::Quat Orientation;

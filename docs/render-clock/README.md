@@ -44,8 +44,8 @@ Simulated with the game's stepper (`FFixedStepper`):
   render time.
 - Left on the physics on purpose: the wake grid's hull patches and the spray's emission (stepped simulations whose
   sources are a few centimetres ahead at most, inside a wake cell or a spray burst) and the far caps (planned every half
-  second). The ghost is a traffic-mode pawn, so it is drawn back like an AI boat along the velocity its replay frame
-  carries.
+  second). The ghost is drawn as its replay is sampled (smoothly at the watch time in the debrief; at the player's steps
+  in a ghost race).
 
 The physics, the boats' steps and everything they read are unchanged; only what is drawn moves, by up to one step. What
 you see is on average about 4 ms later than before (half a step); the controls act on the next step as before.
