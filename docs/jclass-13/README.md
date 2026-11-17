@@ -12,7 +12,7 @@ copy slice 12, [docs/jclass-12](../jclass-12/README.md)). Until now she was a mo
 half of making her a boat to sail: everything the game's physics needs about her, measured on the model; an estimated
 speed polar to hold her to (no polar exists for an invented yacht), checked against the 1930s races; and a trial sail
 of her in the game's own physics, built standalone from `Source/SailingPhysics` without Unreal. Like slices 1 to 12 it
-is tools and docs only: nothing in `Source/` changes. The Mac's half, after the vertical slice ships on November 21,
+is tools and docs only: nothing in `Source/` changes. The Mac's half, before the vertical slice's Nov 27 feature freeze (`docs/slice/README.md`),
 makes her an `EBoatType` in `Fleet.cpp` from the two generated `.inl` files, adds her reference polar and tests, and
 tunes her from these numbers.
 

@@ -473,10 +473,28 @@ namespace
 #include "J22CoilData.inl"
 }
 
+bool ASailboatPawn::UseC22Hero(EBoatType Type) const
+{
+	// The rebuilt Catalina 22 on the player's boat (and the gallery's) once imported; -SailingC22Hero puts it on AI boats
+	// too, -SailingClassicC22 keeps the fleet model for compared stills.
+	if (Type != EBoatType::Catalina22 || FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicC22"))) return false;
+	if ((bTrafficBoat || bGhost) && !bGalleryDisplay && !FParse::Param(SailingArgs::Dev(), TEXT("SailingC22Hero"))) return false;
+	return FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Hull"));
+}
+
 TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 {
 	// The same paths ModelMeshesFor loads (keep them in step): the showroom loads them asynchronously before SetBoat.
 	TArray<FSoftObjectPath> Paths;
+	if (UseC22Hero(Type))
+	{
+		for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") })
+		{
+			Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part)));
+		}
+		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior"))) Paths.Add(FSoftObjectPath(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior.SM_C22Hero_Interior")));
+		return Paths;
+	}
 	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
 		&& ((!bTrafficBoat && !bGhost) || bGalleryDisplay || FParse::Param(SailingArgs::Dev(), TEXT("SailingJ22Hero")));
 	if (bHero)
@@ -546,6 +564,26 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.Rudder = J22RudderMesh;
 		M.bOwnOutboard = J22HullMesh->FindSocket(TEXT("Outboard")) != nullptr; // build_j22.py draws one since round 12
 		return M;
+	}
+	// Catalina 22 rebuild (docs/c22-12): the rebuilt Catalina 22 (Tools/shipkit/catalina22, cut into the game's parts by
+	// export_game_c22.py and imported to /Game/Boats/C22Hero by scripts/make-c22-hero.sh) as the player's boat, once it is
+	// imported; until then (and on AI boats, the ghost, or with -SailingClassicC22) the fleet model below stands in.
+	if (UseC22Hero(Type))
+	{
+		auto LoadC22 = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part)); };
+		M.Hull = LoadC22(TEXT("Hull"));
+		M.Mast = LoadC22(TEXT("Mast"));
+		M.Boom = LoadC22(TEXT("Boom"));
+		M.Rudder = LoadC22(TEXT("Rudder"));
+		// The cabin below (slice 7; optional: a build before it has none). Her ports are opaque CabinWindow, so no glass part.
+		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior")))
+		{
+			M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior.SM_C22Hero_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		}
+		M.bOwnOutboard = true;      // on its bracket on the transom (keel_c22.py)
+		M.bTravelerBridge = false;  // her traveller is the build's own, across the cockpit (hardware_c22.py)
+		if (M.Hull && M.Mast && M.Boom && M.Rudder) return M;
+		M = FBoatModelMeshes();
 	}
 	// Visual V7: the other seven from Tools/blender/build_fleet.py (scripts/make-boat-models.sh), loaded by class. The
 	// prologue's maxi is the PC's hero model (Tools/boats/maxi/build_maxi.py, imported by import_boats.py `maxi`) on every

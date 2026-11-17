@@ -109,6 +109,15 @@ def import_boat(tag, dest, lods=False, berthed=True, nanite_mast=False):
             add_lods(mesh, True)
         setup(mesh, True, {}, sockets)
         unreal.log(f"Imported {wheel}: {len(sockets)} sockets")
+    # Catalina 22 rebuild (docs/c22-12): the cabin below as a part of its own (Nanite, same pivot as the hull), drawn by the
+    # game on the player's boat only. Only when this build made one (its origin in the sockets json).
+    interior = f"SM_{tag}_Interior"
+    if interior in meta["origins"]:
+        mesh = import_fbx(os.path.join(MODELS, interior + ".fbx"), dest, interior)
+        if lods:
+            add_lods(mesh, True)
+        setup(mesh, True, {}, {})
+        unreal.log(f"Imported {interior}")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
     if berthed:
         import_berthed(tag, dest)
@@ -187,7 +196,15 @@ import sys
 # Visual V7: the other seven boats (Tools/blender/build_fleet.py). `-- fleet` imports only them.
 FLEET = ("Sunfish", "ILCA7", "Catalina22", "Catalina30", "Hobie16", "Corsair880", "Lagoon42")
 only_fleet = "fleet" in sys.argv
-if "maxi" in sys.argv:
+if "c22hero" in sys.argv:
+    # The Catalina 22 rebuild (Tools/shipkit/catalina22: build_c22.py, then export_game_c22.py; scripts/make-c22-hero.sh):
+    # the player's Catalina 22 (ASailboatPawn::ModelMeshesFor), beside the fleet model, which AI boats keep. Nanite with a
+    # fallback under it (her hull is about 250k triangles), no berthed dress (the marina keeps the fleet's).
+    import_boat("C22Hero", "/Game/Boats/C22Hero", lods=True, berthed=False)
+    unreal.log("Import done")
+    if sys.platform != "win32":  # see below: on Windows let -run=pythonscript return
+        os._exit(0)
+elif "maxi" in sys.argv:
     # The prologue's maxi (Tools/boats/maxi/build_maxi.py): Nanite with LODs under it, no berthed dress.
     import_boat("Maxi", "/Game/Boats/Maxi", lods=True)
     unreal.log("Import done")
