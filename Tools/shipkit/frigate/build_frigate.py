@@ -494,7 +494,8 @@ for li in GD.lights:
 OB = orlop.Orlop(SK, RIG, DK, GD).build()
 ORLOP = {}
 for name, (V, F, M, frame, uv) in OB.parts().items():
-    assert name not in SKIN and name not in DK.parts() and name not in GD.parts() and name not in DECOR, name
+    if name in bpy.data.objects:            # a clash would be renamed .001 and the card's meets would miss it
+        raise SystemExit("an orlop part's name is already taken in the scene: " + name)
     ORLOP[name] = make_deck_part(name, V, F, M, frame, uv)
 for li in OB.lights:
     ld = bpy.data.lights.new(li["name"], "POINT")
@@ -1232,7 +1233,7 @@ def decor_room():
     design (decor_1797.json's meets: a gallery's back let into the planking, a sash in its casing...) as deep as allowed
     (deck.room, without the deck's standing check). The gun deck's parts and the guns' gear (slice 12) are gundeck_room's
     to check against these"""
-    return deck.room(ship_tris(BELOW), set(DECOR), None, meets=meets_of(HD.cfg, "decor_1797.json"))
+    return deck.room(ship_tris(BELOW | set(ORLOP)), set(DECOR), None, meets=meets_of(HD.cfg, "decor_1797.json"))
 
 
 DECOR_ROOM = decor_room()
@@ -1244,7 +1245,7 @@ def anchors_room():
     by design (anchors_1797.json's meets: the cathead let into the rail cap, a bill on its billboard, the cable bent to
     the ring...) as deep as allowed (deck.room, without the deck's standing check). The gun deck's parts and the guns'
     gear (slice 12) are gundeck_room's to check against these (the cables led in to the bitts)"""
-    return deck.room(ship_tris(BELOW), set(ANCHOR), None, meets=meets_of(AN.card, "anchors_1797.json"))
+    return deck.room(ship_tris(BELOW | set(ORLOP)), set(ANCHOR), None, meets=meets_of(AN.card, "anchors_1797.json"))
 
 
 ANCHOR_ROOM = anchors_room()
@@ -1277,7 +1278,7 @@ def boats_room():
     (boats_1797.json's stowage meets: a saddle on its beam, a boat on her cradles, a gripe over her...) as deep as
     allowed (deck.room, without the deck's standing check). Each boat's own parts are checked against each other by
     boats.py (build.json boats.checks.inside). The gun deck's parts and the guns' gear (slice 12) are gundeck_room's"""
-    return deck.room(ship_tris(BELOW), set(BOAT), None, meets=meets_of(BT.st, "boats_1797.json"))
+    return deck.room(ship_tris(BELOW | set(ORLOP)), set(BOAT), None, meets=meets_of(BT.st, "boats_1797.json"))
 
 
 BOAT_ROOM = boats_room()
@@ -1327,7 +1328,7 @@ def gundeck_room():
     sheer (deck.room, with the gun deck's height). A gun deck part against a gun is gun_room's (the guns' own meets,
     with the gun deck in place); the gear against the guns is checked here, but for two things never shown together
     (apart: a housed gun's tompion and the same gun run out)"""
-    objs = ship_tris()
+    objs = ship_tris(set(ORLOP))           # a pair with an orlop part is orlop_room's
     gun_parts = {n for n in objs if n.startswith(("Gun24_", "Carr32_")) and n not in GEAR_COPIES}
     out = deck.room(objs, BELOW, GD.zg, meets=meets_of(GD.c, "gundeck_1797.json", sorted(objs)), flat=("GunDeck",))
     out["meet"] = [m for m in out["meet"] if not ({m[0], m[1]} & set(GUNDECK) and {m[0], m[1]} & gun_parts)
