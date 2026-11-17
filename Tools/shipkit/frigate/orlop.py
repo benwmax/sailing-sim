@@ -296,22 +296,41 @@ class Orlop:
         st, e = cc["mesh_step_m"], cc["end_fine_m"]
         xs = np.unique(np.round(np.concatenate([np.arange(ea, xa + e, st / 4), np.arange(xa + e, xf - e, st),
                                                 np.arange(xf - e, ef, st / 4), [ef]]), 6))
-        hold_cols = [k for k, x in enumerate(xs) if xa - 1e-6 <= x <= xf + 1e-6]
         nz = 22
+        skipped = []
         rows_in, rows_out, flats_in, flats_out = [], [], [], []
         y_l = (self.c["keelson"]["sided_in"] / 2 + cc["limber_in"]) * IN
         for x in xs:
             z1 = float(self.z_berth(x)) - self.berth_plank()
             z0 = min(float(self.z_floor(x)[0]), z1 - cc["end_least_m"])
-            zz = z0 + (z1 - z0) * (1.0 - np.cos(np.linspace(0, math.pi / 2, nz))) ** 1.0
-            P, N = self.inner_at(np.full(nz, x), zz)
+            # (near the stem the inside face's solve can miss for the lowest rows, where the side turns in sharply:
+            # the foot is raised over them there)
+            for _ in range(8):
+                zz = z0 + (z1 - z0) * (1.0 - np.cos(np.linspace(0, math.pi / 2, nz))) ** 1.0
+                P, N = self.inner_at(np.full(nz, x), zz)
+                miss = (np.abs(P[:, 0] - x) > 1e-3) | (np.abs(P[:, 2] - zz) > 1e-3)
+                if not miss.any():
+                    break
+                z0 = float(zz[np.nonzero(miss)[0].max()]) + 0.02
+            else:
+                # (no column here: its neighbours carry the ceiling past it; never in the hold)
+                if xa - 1e-6 <= x <= xf + 1e-6:
+                    raise SystemExit("orlop: the ceiling's inside face can't be found at x %.3f" % x)
+                skipped.append(x)
+                continue
             rows_in.append(P)
-            rows_out.append(P + N * t)
+            # (its thickness square to the frames: in the bow an offset along the surface's normal leans forward)
+            Nt = np.array(N, float)
+            Nt[:, 0] = 0.0
+            Nt /= np.linalg.norm(Nt, axis=1, keepdims=True)
+            rows_out.append(P + Nt * t)
             # the limber strake: flat at the floor heads from the limber passage out to the side
             y0 = P[0, 1]
             ys = np.linspace(y_l, y0, 4)
             flats_in.append(np.column_stack([np.full(4, x), ys, np.full(4, z0)]))
             flats_out.append(np.column_stack([np.full(4, x), ys, np.full(4, z0 - t)]))
+        xs = np.array([x for x in xs if x not in skipped])
+        hold_cols = [k for k, x in enumerate(xs) if xa - 1e-6 <= x <= xf + 1e-6]
         A = np.stack(rows_in, 1)          # (rows up the side, cols along x, 3)
         B = np.stack(rows_out, 1)
         # the flat's outer edge meets the side's lowest row: share it
@@ -324,7 +343,8 @@ class Orlop:
             slab(part, A * s, B * s, "Ceiling")
             slab(part, Fi * s, Fo * s, "Ceiling")
         self.info["ceiling"] = {"x_m": [round(ea, 3), round(ef, 3)], "hold_x_m": [round(xa, 3), round(xf, 3)],
-                                "rows": nz, "cols": len(xs)}
+                                "rows": nz, "cols": len(xs),
+                                "columns_skipped_x_m": [round(x, 3) for x in skipped]}
         # the limber boards: loose boards across the passage from the keelson's side to the limber strake
         lb = 1.5 * IN
         ks = self.c["keelson"]["sided_in"] / 2 * IN
