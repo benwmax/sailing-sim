@@ -9,8 +9,8 @@ decks, cameras, crew and orders panel are their own thread.
 
 **In short:** she floats on her lines (2,131 t, 5.86 m canoe body against the sections' 5.87, trimmed level), with a GM
 of 0.9 m and a 17 s roll; she holds every point of her course on her own helm with 1 to 7 degrees of weather helm; and
-all 35 points of the trial fall within the estimate's tolerance (worst 19.6%). Close-hauled she makes her six points
-(5.5 kn at 68 degrees in 12 kn of wind), quartering and running match the logs within 10%, and on a beam or broad
+all 35 points of the trial fall within the estimate's tolerance (worst 19.3%). Close-hauled she makes her six points
+(5.4 kn at 68 degrees in 12 kn of wind), quartering and running match the logs within 10%, and on a beam or broad
 reach she is 12 to 20% faster than the estimate (listed below as the known gap).
 
 ## Square sails in the physics (Source/SailingPhysics)
@@ -94,6 +94,10 @@ made 3.6 kn, and the mizzen topsail (22.5 degrees) was aback even at 110 degrees
 yard's stop on the slice 12 rig and opened them with catharpins (the fore yard from 33.5 to 37 degrees, the main from
 36 to 39.5) and easier topsail parrels (`/mnt/project-files/tall-ship/brace-limits/limits.json`; the final build
 writes the same into build.json). With those stops and the sails setting past their yards she makes her six points.
+The model thread then found the bowsed shrouds crossing the falls from the tops (Nov 17, 08:05 UTC: the fore yard back
+to 33.5, the main to 36); that cost her 12 to 15% close-hauled and she missed stays in 12 kn. With the falls led
+clear and the lower shrouds bowsed in 4 in (12:27 UTC) the fore yard braces 36 degrees and the main 38.5, the numbers
+below.
 
 ## The estimated polar (Tools/shipkit/frigate/polar_commonwealth.py)
 
@@ -132,12 +136,12 @@ she sailed, her heel, the plan):
 
 | TWA | 8 kn | 12 | 16 | 20 | 24 |
 |---|---|---|---|---|---|
-| ~68 | 3.9 (-0%) | 5.5 (-5%) | 7.2 (-4%), 5 deg | 8.7 (+1%), 8 deg | 9.9 (+13%), 11 deg |
-| ~78 | 4.7 (+4%) | 7.3 (+7%) | 9.4 (+9%) | 11.2 (+12%) | 12.2 (+19%), 14 deg |
-| ~89 | 5.8 (+11%) | 8.7 (+12%) | 11.0 (+12%) | 12.5 (+12%) | 13.1 (+12%), reefed |
+| ~68 | 3.7 (-4%) | 5.4 (-8%) | 7.0 (-6%), 5 deg | 8.6 (-4%), 6 deg, reefed | 9.9 (+8%), 9 deg, reefed |
+| ~78 | 4.9 (+8%) | 7.3 (+6%) | 9.4 (+8%) | 11.1 (+12%) | 12.2 (+18%), 14 deg |
+| ~89 | 5.7 (+10%) | 8.6 (+11%) | 10.9 (+11%) | 12.5 (+12%) | 13.1 (+11%), reefed |
 | ~108 | 6.5 (+17%) | 9.9 (+20%) | 12.1 (+15%), 7 deg | 13.4 (+12%) | 14.3 (+14%), 13 deg |
-| ~134 | 5.4 (-0%) | 8.0 (-2%) | 11.0 (+3%) | 12.5 (+3%) | 13.7 (+6%) |
-| ~160 | 4.5 (-6%) | 7.0 (-4%) | 9.2 (-4%) | 11.2 (-0%) | 12.3 (+1%) |
+| ~134 | 5.4 (+0%) | 8.5 (+4%) | 10.9 (+3%) | 12.5 (+3%) | 13.7 (+6%) |
+| ~160 | 4.6 (-4%) | 7.0 (-4%) | 9.2 (-4%) | 11.1 (-1%) | 12.5 (+2%) |
 | 180 | 3.9 (-7%) | 5.9 (-9%) | 7.8 (-10%) | 9.5 (-8%) | 11.1 (-3%) |
 
 Close-hauled she carries courses, topsails, jibs, staysails and spanker (topgallants in), her lower sails 3 to 5
@@ -187,12 +191,12 @@ chop (the time to "done" is from the order until she is close-hauled again with 
 
 | Wind | Tack: head to wind, through, done | after a minute | Wear: done, to leeward | Hove to |
 |---|---|---|---|---|
-| 8 kn | misses stays, wears (15 min and more) | | 4.8 min, 190 m | 0.8 kn |
-| 10 kn | 2.7 min, misses stays, wears: 13.8 min | 4.1 kn | 3.5 min, 150 m | 0.4 kn |
-| 12 kn | 1.9 min, 3.2, 7.6 min | 4.0 kn of 4.8 | 2.8 min, 125 m | 0.5 kn |
-| 16 kn | 1.2 min, 2.0, 5.1 min | 5.2 of 6.2 | 2.5 min, 180 m | 1.0 kn |
-| 20 kn | 0.8 min, 1.3, 4.0 min | 6.4 of 7.6 | 2.5 min, 250 m | 1.6 kn |
-| 24 kn | 0.7 min, 0.9, 3.4 min | 7.6 of 8.9 | 2.5 min, 310 m | 1.5 kn |
+| 8 kn | misses stays, wears (15 min and more) | | 4.9 min, 190 m | 0.7 kn |
+| 10 kn | misses stays, wears: 14.6 min | | 3.6 min, 150 m | 0.4 kn |
+| 12 kn | 2.1 min, 3.3, 7.6 min | 3.8 kn of 4.6 | 2.8 min, 125 m | 0.6 kn |
+| 16 kn | 1.3 min, 2.1, 5.1 min | 4.9 of 5.9 | 2.5 min, 175 m | 1.0 kn |
+| 20 kn | 0.9 min, 1.5, 3.9 min | 6.0 of 7.2 | 2.5 min, 245 m | 1.5 kn |
+| 24 kn | 0.7 min, 0.9, 3.3 min | 7.2 of 8.5 | 2.5 min, 305 m | 1.4 kn |
 
 That is the period's picture: a frigate tacked surely in a working breeze and lost little ground doing it, missed
 stays in light air (the officers wore her instead), and wearing cost her a few hundred metres to leeward. Hove to she
@@ -200,7 +204,7 @@ forereaches a knot or so, five points off the wind.
 
 Two physics changes came with it. A square rig's windage is now spread over its masts by their canvas (it sat at the
 main mast alone), so the centre of windage is near her centre of effort; no fore-and-aft boat changes (the J/22's
-quick polar is byte-identical). And her sheet turns the waves' slope push off (`wave_slope: 0`, below).
+quick polar is byte-identical). And her sheet turns the waves' slope push off (`wave_slope: 0`, under the known gaps above).
 
 ## Next
 
