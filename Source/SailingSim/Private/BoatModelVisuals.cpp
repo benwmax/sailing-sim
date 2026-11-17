@@ -2182,16 +2182,16 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 				const FVector Up = FVector::VectorPlaneProject(FVector::UpVector, WheelAxis).GetSafeNormal();
 				const FVector Across = (FVector::RightVector - WheelAxis * FVector::DotProduct(FVector::RightVector, WheelAxis)
 					- Up * FVector::DotProduct(FVector::RightVector, Up)).GetSafeNormal();
-				const double HelmSide = (Shoulder[0].Y + Shoulder[1].Y) < 0.0 ? -1.0 : 1.0;
+				const double RimSide = (Shoulder[0].Y + Shoulder[1].Y) < 0.0 ? -1.0 : 1.0;
 				TOptional<FVector> Lower;
 				for (int32 Hand = 0; Hand < 2; ++Hand)
 				{
 					const bool bInboard = FMath::Abs(Shoulder[Hand].Y) < FMath::Abs(Shoulder[1 - Hand].Y);
 					const FVector Rel = Shoulder[Hand] - Hub;
-					const double Off = FMath::Atan2(HelmSide * FVector::DotProduct(Rel, Across), FVector::DotProduct(Rel, Up));
+					const double Off = FMath::Atan2(RimSide * FVector::DotProduct(Rel, Across), FVector::DotProduct(Rel, Up));
 					const double A = bInboard ? FMath::Clamp(Off, FMath::DegreesToRadians(15.0), FMath::DegreesToRadians(60.0))
 						: FMath::Clamp(Off, FMath::DegreesToRadians(60.0), FMath::DegreesToRadians(110.0));
-					const FVector At = Hub + WheelRimRadiusCm * (FMath::Cos(A) * Up + HelmSide * FMath::Sin(A) * Across);
+					const FVector At = Hub + WheelRimRadiusCm * (FMath::Cos(A) * Up + RimSide * FMath::Sin(A) * Across);
 					if (Hold(Hand, At, bInboard ? HelmGripCm : Lower, FVector::ZeroVector)) Tension[Hand] = 0.5f * HelmLoad;
 				}
 			}
