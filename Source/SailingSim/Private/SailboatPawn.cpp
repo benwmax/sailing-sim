@@ -404,6 +404,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	for (USceneComponent* Part : BoatParts) if (Part) Part->DestroyComponent();
 	BoatParts.Reset();
 	RudderPivots.Reset();
+	RudderAxes.Reset();
 	Crew.Reset();
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
@@ -469,6 +470,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		RudderAxes.Add(FVector::UpVector);
 		AddBoatPart(CubeMesh, ToCm(-0.25 * Chord, 0.0, F.Params.Center.Z), FVector(Chord, Thick, Span) * CmPerMeter, Dark, FRotator::ZeroRotator, Pivot);
 		if (C.TillerLength > 0.6) // tiller boats; wheel steering shows no tiller
 		{
@@ -3694,7 +3696,13 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 	// Boom along -X turned by yaw psi points at (-cos psi, -sin psi); the sail chord is (-cos a, side sin a).
 	// (Rig clearance: turned as the main's foot was last frame to keep it off the shrouds, FSailCloth::GetFootTurn.)
 	BoomPivot->SetRelativeRotation(FRotator(0.f, bStowed ? 0.f : -FMath::RadiansToDegrees(S.BoomAngle) + FMath::RadiansToDegrees(MainCloth.GetFootTurn()), 0.f));
-	for (USceneComponent* Pivot : RudderPivots) Pivot->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+	// (A raked stock, Bluebonnet's: the rudder turns about its own axis, RudderAxes, rather than the vertical.)
+	for (int32 K = 0; K < RudderPivots.Num(); ++K)
+	{
+		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
+		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
+		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 

@@ -11,6 +11,13 @@
 #include "PolarReference.h"
 #include "Waves.h"
 #include "UI/SailCatalog.h"
+#include "BoatPacks.h"
+#include "SailingSim.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshSocket.h"
+#include "Materials/MaterialInterface.h"
+#include "MeshDescription.h"
+#include "StaticMeshAttributes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -187,6 +194,149 @@ bool FSailingBluebonnetStartsTest::RunTest(const FString&)
 		TestEqual(FString::Printf(TEXT("%s: Bluebonnet's spots"), *W.Name), Fits, WorldIndex == 1 ? 1 : 4);
 	}
 	TestTrue(TEXT("A spot without a depth fits any boat"), LaunchSpotFits(-1.0, 10.0));
+	return true;
+}
+
+/**
+ * docs/jclass-14/ step 2: her model (Tools/shipkit/jclass/export_game.py on the build, imported to /Game/Boats/Bluebonnet by
+ * scripts/import_boats.py bluebonnet) held to her physics as FleetMesh holds the fleet's: the canoe as imported (the
+ * hull's and the rudder's canoe slots below the load waterline, the rudder at its pivot) displaces the physics' canoe and
+ * keel within 2% about the same centre (5 cm), and her length, beam and draft are the config's (2 cm). The points the game
+ * reads are on the parts it reads them from, the rudder turns about her raked stock, there are no live-wire sockets (her
+ * standing rigging is in the mast's part), and every part is Nanite within the 8-slot budget (BoatBudget). Skipped, with a
+ * warning, until the PC imports her.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetMeshTest, "SailingSim.Visual.BluebonnetMesh", BluebonnetTestsLocal::Flags)
+bool FSailingBluebonnetMeshTest::RunTest(const FString&)
+{
+	auto Load = [](const TCHAR* Part)
+	{
+		return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_%s.SM_Bluebonnet_%s"), Part, Part), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	};
+	UStaticMesh* Hull = Load(TEXT("Hull"));
+	if (!Hull)
+	{
+		AddWarning(TEXT("Bluebonnet's model isn't imported yet (scripts/make-boat-models.sh, J-Class 14 step 3); skipped"));
+		return true;
+	}
+	UStaticMesh* Mast = Load(TEXT("Mast"));
+	UStaticMesh* Boom = Load(TEXT("Boom"));
+	UStaticMesh* Rudder = Load(TEXT("Rudder"));
+	if (!TestNotNull(TEXT("SM_Bluebonnet_Mast"), Mast) || !TestNotNull(TEXT("SM_Bluebonnet_Boom"), Boom) || !TestNotNull(TEXT("SM_Bluebonnet_Rudder"), Rudder)) return false;
+	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
+	const FBoatModel Physics(C);
+
+	// The points the game reads, on their parts (sockets relative to each part's origin).
+	auto Socket = [this](UStaticMesh* Mesh, const TCHAR* Name, FVector& Out)
+	{
+		const UStaticMeshSocket* S = Mesh->FindSocket(Name);
+		TestNotNull(FString::Printf(TEXT("%s: socket %s"), *Mesh->GetName(), Name), S);
+		Out = S ? S->RelativeLocation : FVector::ZeroVector;
+		return S != nullptr;
+	};
+	FVector P = FVector::ZeroVector;
+	for (const TCHAR* Name : { TEXT("JibLead_P"), TEXT("JibWinch_S"), TEXT("JibWinch_P"), TEXT("JibTailer_S"), TEXT("JibTailer_P"), TEXT("JibTailRest_S"),
+		TEXT("JibTailRest_P"), TEXT("LazySheetVia"), TEXT("Traveler_C"), TEXT("Traveler_S") }) Socket(Hull, Name, P);
+	for (const TCHAR* Name : { TEXT("MastBase"), TEXT("SpreaderTip_S"), TEXT("SpreaderTip_P") }) Socket(Mast, Name, P);
+	Socket(Boom, TEXT("Boom_Mainsheet"), P);
+	for (const TCHAR* Name : { TEXT("TillerEnd"), TEXT("RudderStock") }) Socket(Rudder, Name, P);
+	FVector Step = FVector::ZeroVector, Pivot = FVector::ZeroVector, Axis = FVector::ZeroVector, Lead = FVector::ZeroVector, Hounds = FVector::ZeroVector;
+	if (Socket(Hull, TEXT("MastStep"), Step))
+	{
+		TestTrue(FString::Printf(TEXT("The mast stands at the physics' MastX (%.1f cm, physics %.1f)"), Step.X, C.MastX * Sailing::CmPerMeter),
+			FMath::Abs(Step.X - C.MastX * Sailing::CmPerMeter) < 1.0 && FMath::Abs(Step.Y) < 1.0);
+	}
+	if (Socket(Hull, TEXT("JibLead_S"), Lead)) TestTrue(TEXT("Starboard is +Y"), Lead.Y > 100.f);
+	if (Socket(Mast, TEXT("Hounds"), Hounds))
+	{
+		TestTrue(FString::Printf(TEXT("The hounds (%.0f cm) over the genoa's head (%.0f cm), so the game keeps its height"), Step.Z + Hounds.Z, C.JibHeadZ * Sailing::CmPerMeter),
+			Step.Z + Hounds.Z > C.JibHeadZ * Sailing::CmPerMeter);
+	}
+	if (Socket(Hull, TEXT("RudderPivot"), Pivot) && Socket(Hull, TEXT("RudderAxis"), Axis))
+	{
+		const FVector Up = (Axis - Pivot).GetSafeNormal();
+		const double Rake = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(double(Up.Z), -1.0, 1.0)));
+		TestTrue(FString::Printf(TEXT("The rudder's stock raked aft (%.1f deg, her lines 39)"), Rake), Up.X < 0.f && FMath::Abs(Rake - 39.0) < 3.0);
+		TestTrue(TEXT("... on the centreline, at the load waterline"), FMath::Abs(Pivot.Y) < 1.0 && FMath::Abs(Pivot.Z) < 1.0 && FMath::Abs(Up.Y) < 0.01);
+	}
+	for (const TCHAR* Name : { TEXT("ForestayTack"), TEXT("ChainplateUpper_S"), TEXT("ChainplateLower_S"), TEXT("BackstayPlate"), TEXT("RudderPivot_1") })
+	{
+		TestTrue(FString::Printf(TEXT("No %s: her standing rigging is in the mast's part, so the game draws none twice"), Name), Hull->FindSocket(Name) == nullptr);
+	}
+
+#if WITH_EDITORONLY_DATA
+	// The canoe: the canoe slots of the hull and of the rudder (at its pivot), cut at Z = 0, tetrahedra to the origin.
+	double Volume = 0.0, MinZ = 1e9;
+	FVector3d Moment(0.0);
+	FBox Canoe(ForceInit);
+	auto Add = [&](UStaticMesh* Mesh, const FVector3d& Offset, bool bExtent)
+	{
+		const FMeshDescription* MD = Mesh->GetMeshDescription(0);
+		if (!TestNotNull(FString::Printf(TEXT("%s: source mesh"), *Mesh->GetName()), MD)) return;
+		FStaticMeshConstAttributes Attr(*MD);
+		const TVertexAttributesConstRef<FVector3f> Pos = Attr.GetVertexPositions();
+		const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+		double V = 0.0;
+		FVector3d M(0.0);
+		for (const FTriangleID T : MD->Triangles().GetElementIDs())
+		{
+			if (!SailingBoatPacks::IsCanoeSlot(Slots[MD->GetTrianglePolygonGroup(T)])) continue;
+			const TArrayView<const FVertexID> Ids = MD->GetTriangleVertices(T);
+			FVector3d Q[3];
+			for (int32 K = 0; K < 3; ++K)
+			{
+				Q[K] = (FVector3d(Pos[Ids[K]]) + Offset) / Sailing::CmPerMeter;
+				MinZ = FMath::Min(MinZ, Q[K].Z);
+				if (bExtent) Canoe += FVector(Q[K]);
+			}
+			TArray<FVector3d, TInlineAllocator<4>> Poly;
+			for (int32 K = 0; K < 3; ++K)
+			{
+				const FVector3d& A = Q[K], & B = Q[(K + 1) % 3];
+				if (A.Z <= 0.0) Poly.Add(A);
+				if ((A.Z <= 0.0) != (B.Z <= 0.0)) Poly.Add(A + (B - A) * (-A.Z / (B.Z - A.Z)));
+			}
+			for (int32 K = 1; K + 1 < Poly.Num(); ++K)
+			{
+				const double Vol = FVector3d::DotProduct(Poly[0], FVector3d::CrossProduct(Poly[K], Poly[K + 1])) / 6.0;
+				V += Vol;
+				M += Vol * (Poly[0] + Poly[K] + Poly[K + 1]) / 4.0;
+			}
+		}
+		// Each part closed on its own (the rudder's face against the keel is in both), so each gets its own sign.
+		Volume += FMath::Abs(V);
+		Moment += V < 0.0 ? -M : M;
+	};
+	Add(Hull, FVector3d(0.0), true);
+	Add(Rudder, FVector3d(Pivot), false);
+	const double PhysVolume = Physics.DesignDisplacedVolume() + C.AppendageVolume;
+	const Vec3 CanoeCB = Physics.DesignBuoyancyCentre();
+	const Vec3 PhysCB = (CanoeCB * Physics.DesignDisplacedVolume() + C.AppendageCentre * C.AppendageVolume) * (1.0 / PhysVolume);
+	const FVector3d CB = Volume > 1e-9 ? Moment / Volume : FVector3d(0.0);
+	const double Tol = 0.02;
+	TestTrue(FString::Printf(TEXT("Length overall %.3f m (physics %.3f)"), Canoe.GetSize().X, C.LengthOverall), FMath::Abs(Canoe.GetSize().X - C.LengthOverall) < Tol);
+	TestTrue(FString::Printf(TEXT("Beam %.3f m (physics %.3f)"), Canoe.GetSize().Y, C.Beam), FMath::Abs(Canoe.GetSize().Y - C.Beam) < Tol);
+	TestTrue(FString::Printf(TEXT("Draft %.3f m (physics %.3f)"), -MinZ, C.Draft), FMath::Abs(-MinZ - C.Draft) < Tol);
+	TestTrue(FString::Printf(TEXT("Canoe and keel %.3f m^3 within 2%% of the physics %.3f (canoe %.3f, keel and rudder %.3f)"), Volume, PhysVolume,
+		Physics.DesignDisplacedVolume(), C.AppendageVolume), FMath::Abs(Volume - PhysVolume) < 0.02 * PhysVolume);
+	TestTrue(FString::Printf(TEXT("Centre of buoyancy (%.3f, %.3f, %.3f) within 5 cm of the physics (%.3f, %.3f, %.3f)"), CB.X, CB.Y, CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
+		FVector3d::Dist(CB, FVector3d(PhysCB.X, PhysCB.Y, PhysCB.Z)) < 0.05);
+#endif
+
+	// Nanite (the mast too: her bend is held at zero), within the 8-slot budget, every slot a boat material, the mast's
+	// bending slot where the game sets it.
+	for (UStaticMesh* Mesh : { Hull, Mast, Boom, Rudder })
+	{
+		TestTrue(FString::Printf(TEXT("%s is Nanite"), *Mesh->GetName()), Mesh->IsNaniteEnabled());
+		TestTrue(FString::Printf(TEXT("%s: %d material slots, at most 8"), *Mesh->GetName(), Mesh->GetStaticMaterials().Num()), Mesh->GetStaticMaterials().Num() <= 8);
+		for (const FStaticMaterial& M : Mesh->GetStaticMaterials())
+		{
+			TestTrue(FString::Printf(TEXT("%s: slot %s has a boat material"), *Mesh->GetName(), *M.MaterialSlotName.ToString()),
+				M.MaterialInterface && M.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
+		}
+	}
+	TestTrue(TEXT("The mast's Aluminium slot (the game's bend parameter) is MI_Boat_MastAluminium"), Mast->GetStaticMaterials().ContainsByPredicate([](const FStaticMaterial& M)
+		{ return M.MaterialSlotName == TEXT("Aluminium") && M.MaterialInterface && M.MaterialInterface->GetName() == TEXT("MI_Boat_MastAluminium"); }));
 	return true;
 }
 

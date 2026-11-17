@@ -86,6 +86,7 @@ bool FSailingCareerContentTest::RunTest(const FString&)
 		TestTrue(TEXT("Club Racer is ready"), Club->IsReady() && Club->Lessons.Num() == 4);
 		TestTrue(TEXT("... in the Sunfish first"), Club->Boats.Num() > 0 && Club->Boats[0] == TEXT("Sunfish"));
 		TestTrue(TEXT("... its certificate opens the ILCA 7"), Club->Unlocks.Boats.Contains(TEXT("ILCA7")));
+		TestTrue(TEXT("... and Bluebonnet, the club's J-Class (J-Class 14)"), Club->Unlocks.Boats.Contains(TEXT("Bluebonnet")));
 		FRandomStream ClubRng(3);
 		TestEqual(TEXT("... its checkride quiz length"), C->MakeCheckrideQuiz(*Club, Learning, ClubRng).Num(), Club->Checkride.Quiz.Questions);
 		for (const FCareerLesson& L : Club->Lessons) TestFalse(FString::Printf(TEXT("%s: no ASA in the title"), *L.Id), L.Title.Contains(TEXT("ASA")) || L.Title.Contains(TEXT("Rush Creek")));
@@ -294,6 +295,7 @@ bool FSailingCareerUnlocksTest::RunTest(const FString&)
 	TestEqual(TEXT("The J/22's triangle is still Day Sailor's"), Career.LessonForRun(Run(ESailingDrill::SailATriangle, FString(), 301.0)) ? Career.LessonForRun(Run(ESailingDrill::SailATriangle, FString(), 301.0))->Id : FString(),
 		FString(TEXT("day-sailor.sail-a-triangle")));
 	TestEqual(TEXT("The ILCA 7: the Club Racer certificate"), Career.BoatLockReason(TEXT("ILCA7")), FString(TEXT("Earn the Club Racer certificate")));
+	TestEqual(TEXT("Bluebonnet: the Club Racer certificate"), Career.BoatLockReason(TEXT("Bluebonnet")), FString(TEXT("Earn the Club Racer certificate")));
 	TestFalse(TEXT("The Gulf still locked"), Career.IsWorldOpen(TEXT("gulf")));
 	FSailSave::FCertificateRecord Coastal;
 	Coastal.Id = TEXT("coastal-cruiser");

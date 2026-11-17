@@ -819,6 +819,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> CylinderMesh;
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> BoatParts;     // everything rebuilt with the boat
 	UPROPERTY(Transient) TArray<TObjectPtr<USceneComponent>> RudderPivots;  // one per rudder
+	TArray<FVector> RudderAxes;   // each rudder's stock axis in the boat frame (up, unless the hull's RudderAxis socket rakes it)
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> BoomPivot;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> MastheadFly;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FlyBoxes;     // the stand-in fly (hidden under the kit's)

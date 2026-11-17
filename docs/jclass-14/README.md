@@ -1,17 +1,23 @@
-# J-Class 14: Bluebonnet in the game (the code half)
+# J-Class 14: Bluebonnet in the game
 
 Slice 14 of *Bluebonnet*, our own J-Class sloop of 1937 (plan and Bean's decisions:
 <https://claude.ai/artifact/WdUKp8somgyNJZDyESCgyU>; her physics sheet and estimated polar are slice 13,
 [docs/jclass-13](../jclass-13/README.md)). On November 17 Bean asked for her in the first slice release (since moved to
 the end of November), and chose where she sails: Galveston's Bolivar Roads and the lake's deep south end, plus a Career
-entry. This pull request is the code half: she is an `EBoatType` in the physics and the game, with her polar, her
-tests, her wheel and crew places, a Boat screen card and the deep-water rule for launch spots. It changes only
-`Source/` and this page.
+entry. Four steps, in this one pull request:
 
-Still to come, in their own pull requests: her model in the game (an export from her Blender build to
-`/Game/Boats/Bluebonnet`, sockets included, and her `career.json` entry, both needing Bean's label; then the PC's
-import). Until her model is imported she draws as the procedural stand-in every boat without a model gets
-(`ModelMeshesFor` checks for `SM_Bluebonnet_Hull` first).
+1. **The code** (below, "What is in"): she is an `EBoatType` in the physics and the game, with her polar, her tests,
+   her wheel and crew places, a Boat screen card and the deep-water rule for launch spots.
+2. **Her model's export and her Career entry** ("Her model in the game", "Career"): `Tools/shipkit/jclass/export_game.py`
+   cuts her Blender build into the game's four parts with their sockets; her paint is a livery class; the Club Racer
+   certificate opens her. These touch `Tools/`, `scripts/`, `Inputs/` and `Content/`, so the pull request needs Bean's
+   label.
+3. **The PC's import** ("Step 3 on the PC"): builds her, imports `/Game/Boats/Bluebonnet` and commits the assets (the
+   cloud can't push Git LFS), then the Windows check.
+4. **The Mac's gates**, then the merge.
+
+Until her model is imported she draws as the procedural stand-in every boat without a model gets (`ModelMeshesFor`
+checks for `SM_Bluebonnet_Hull` first).
 
 ## What is in
 
@@ -78,6 +84,92 @@ She tacks in 12.6 s in 8 knots, 9.3 in 12 and 8.9 in 16. `SailingSim.Physics.Blu
 She is still slow upwind in a breeze, as slice 13 found; the knobs that close it (keel aspect ratio, main and genoa
 induced aspect ratios) are listed there. The J/22 is unchanged: `scripts/polar.sh --quick` 0 of 39, worst 8.0%.
 
+## Her model in the game (step 2)
+
+`Tools/shipkit/jclass/export_game.py` opens her build (`jclass.blend` from `build_jclass.py`, slices 1 to 12), poses it
+and writes the four parts `ASailboatPawn::ModelMeshesFor` hangs a boat on, as FBX, and `Bluebonnet_sockets.json` (the
+points the game reads, the part that owns each, each part's origin) into `Artifacts/models`. What goes in each part,
+how the moving ones are posed, the game slot of each of the build's materials, what stays out and why, and every
+socket are in `Tools/shipkit/jclass/game_bluebonnet.json`: edit that, never the FBX. `scripts/make-boat-models.sh` (and
+`scripts\windows\make-boat-models.ps1`) rebuild her when a `Tools/shipkit/jclass` script or json is newer than the
+build (`JCLASS_REBUILD=1` / `-RebuildJClass` forces it, `SKIP_JCLASS=1` skips her), export her, and
+`scripts/import_boats.py bluebonnet` imports her (the default run imports her too when her sockets json is there).
+
+| Part | Origin (body frame, m) | What is in it | Triangles | Slots |
+|---|---|---|---|---|
+| `SM_Bluebonnet_Hull` | 0, 0, 0 | shell, transom and its letters, deck, toe rail, hatches, skylights, companionway, doghouse, cockpit, steering, wheel, winches, running fittings, deck hardware, the cowls' caps, the stowed spinnaker pole | 510,758 | PackCanoe, PackDeck, WoodMahogany, Brass, PackFit, PackCanvas, RedPlastic, WhitePlastic |
+| `SM_Bluebonnet_Mast` | 3.0, 0, 1.475 (the partners) | mast and spreaders, shrouds, stays, runners and checkstays let off | 94,828 | Aluminium, Brass, PackFit |
+| `SM_Bluebonnet_Boom` | 2.578, 0, 3.730 (the physics' gooseneck) | the boom on the centreline | 15,380 | PackFit, Brass |
+| `SM_Bluebonnet_Rudder` | -8.046, 0, 0 (stock axis at the waterline) | the rudder (the keel's after part) and its stock | 7,246 | PackCanoe, Brass |
+
+Every part is Nanite with a fallback at 6% of its triangles, the mast too: her standing rigging is in it (the game
+draws no live standing rigging for her), 95k triangles, past the 40k a non-Nanite boat part may have
+(`SailingSim.Visual.BoatBudget`), and her mast bend is held at zero so nothing moves in M_BoatMast (which is
+`used_with_nanite`). Her sails, sheets and the mainsheet are the game's own, drawn live from the physics; the build's
+sails, running rigging, flags, the light copies and below decks stay out.
+
+**What the export checks** (it stops, and the build is not imported, if any fails): the canoe as exported (the shell's
+paint, the lead keel painted with the bottom, and the rudder, cut at the load waterline) against her physics' canoe and
+keel; her length, beam and draft; the hounds above the genoa's head (else the game lowers the sail); the mast's
+partners at `MastX`; every socket within its fitting's surface; every material with a game slot. On the slice 12 build:
+
+| | Model | Physics |
+|---|---|---|
+| Displacement | 153.446 m³ | 153.513 m³ (canoe 128.048, keel and rudder 25.465): 0.04% |
+| Centre of buoyancy | x -0.678, z -1.030 | x -0.675, z -1.035 (6 mm) |
+| Length, beam, draft | 39.929, 6.556, 4.521 m | 39.929, 6.556, 4.521 m |
+
+**Sockets** (21): on the hull `MastStep`, `RudderPivot` and `RudderAxis` (a second point 1 m up her raked stock),
+`JibLead_S/P` (the genoa cars), `JibWinch_S/P`, `JibTailer_S/P`, `JibTailRest_S/P`, `LazySheetVia` (2.6 m up, over the
+doghouse's roof), `Traveler_C` and `Traveler_S` (inside the mainsheet's after block on the counter: she has no traveller,
+so the game's car hides in it); on the mast `MastBase`, `Hounds`, `SpreaderTip_S/P`; on the boom `Boom_Mainsheet`; on the
+rudder `TillerEnd` (the helm's hand at the wheel's rim, on the stock's axis) and `RudderStock`. No `ForestayTack`,
+`Chainplate*` or `BackstayPlate`, so nothing is drawn twice, and no crew sockets: her crew's places come from her deck.
+
+**Game code for her model.**
+- *A raked rudder.* Her stock leans 39 degrees aft. When a hull has a `RudderAxis` (or `RudderAxis_<n>`) socket the pawn
+  turns that rudder about the line from its pivot to it (`ASailboatPawn::RudderAxes`); every other boat turns about
+  the vertical as before.
+- *No mast bend for her* (`MastBendCm` held at 0): her wires and fittings are in the mast's mesh and would not bend
+  with it.
+- *Her spars painted*, and the stowed pole on the hull's part with them (`PaintSpars` on the hull for her).
+
+**Her paint** is a livery class (`Inputs/g3/boat-catalogue.json` class `bluebonnet`, `Tools/fleet/make_liveries.py`,
+`BoatLiveryData.inl` regenerated): dark blue topsides (#1E3076), a cream boot stripe and a gold cove line, red-brown
+bottom, buff deck and spars, teak trim; one scheme and three wear looks (the four `SailingSim.Skin.BuiltIn` wants), no
+sail number (her club's star).
+
+**Known gaps** (cosmetic; for after the release):
+- The boom turns about the physics' gooseneck (x 2.578); the model's pin is 0.227 m aft of it, so its jaw moves off the
+  mast as she eases.
+- The spinnaker's head is placed by the config's mast front (x 3.19), about 1 m ahead of her raked masthead.
+- The physics' genoa luff meets the deck 0.5 m ahead of the model's forestay (18.40 against 17.88), and with no live
+  forestay there are no hanks.
+- The main's cloth is kept off the lowest spreaders only, not her static shrouds above them.
+- Her live sheets are J/22-sized rope, and no halyards are drawn.
+- The helm stands 0.7 m aft of the wheel; the hand may fall short of the rim.
+
+The Mac's rig tests that loop over every boat (`SailingSim.Visual.RigClearance`, `SailShrouds`, `SheetClearance`,
+`TrimmerTailsJib`) now see her model and may list some of these.
+
+## Career
+
+The Club Racer certificate opens her, beside the ILCA 7 (`Content/Career/career.json`): the club's racing program
+ends with a turn on its racing yacht. With it she sails from the lake's deep spots, and from Bolivar Roads once the Day
+Sailor certificate has opened Galveston. Before it her Boat screen card says "Earn the Club Racer certificate"; Free
+Sail has her from the start. `docs/career/README.md` lists her; `SailingSim.Career.Content` and `SailingSim.Career.Unlocks`
+check it. (Moving her to the Day Sailor certificate is a one-line change in `career.json`, if Bean prefers.)
+
+## Step 3 on the PC
+
+```
+scripts\windows\make-boat-models.ps1 -Parts bluebonnet
+```
+
+builds her (`build_jclass.py`, about 20 to 40 minutes the first time), exports her and imports `/Game/Boats/Bluebonnet`;
+then commit `Content/Boats/Bluebonnet` (Git LFS) to this branch and run the Windows check. On the Mac the same is
+`IMPORT_ARGS=bluebonnet scripts/make-boat-models.sh` (it rebuilds every boat's FBX, then imports only her).
+
 ## Tests
 
 - `SailingSim.Physics.BluebonnetHull`: her config against slice 13's `physics.json` (mass, canoe depth, displaced
@@ -87,6 +179,13 @@ induced aspect ratios) are listed there. The J/22 is unchanged: `scripts/polar.s
 - `SailingSim.UI.DeepKeelStarts`: every spot of the lake and Galveston has a depth; every club boat fits each; she fits
   four lake spots and one at Galveston, and her lock names the dam or Bolivar Roads.
 - `SailingSim.Fleet.*`: her entry in the fleet table (length, sail area, engine, reef) and her polar (heavy list).
+- `SailingSim.Visual.BluebonnetMesh` (step 2): her imported model against her physics as `FleetMesh` holds the fleet
+  (displacement 2%, centre of buoyancy 5 cm, length, beam and draft 2 cm), the sockets on their parts, `MastStep` at
+  `MastX`, the hounds over the genoa's head, the rudder's axis raked 39 degrees aft, no live-wire sockets, every part
+  Nanite within 8 slots of `MI_Boat_*`, and the mast's `Aluminium` slot. Skipped with a warning until the PC imports her.
+- `SailingSim.Career.Content`, `SailingSim.Career.Unlocks`: the Club Racer certificate opens her.
 
-Nothing here is compiled or run in the cloud except the physics (standalone, as CI does); the game code and every test
-need the Mac's build, and the PC's MSVC build checks it on Windows.
+Nothing here is compiled or run in the cloud except the physics (standalone, as CI does) and the export (Blender's
+`bpy` module, on the slice 12 build: the numbers above); the game code and every test need the Mac's build, and the
+PC's MSVC build checks it on Windows. `python3 Tools/career/validate.py` and `scripts/licence-check.sh` pass (the
+licence table's Track D bark row had an unquoted comma; it is quoted now).

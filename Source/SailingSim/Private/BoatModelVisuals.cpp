@@ -700,6 +700,8 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 	// pc/j22-detail: painted spars where the livery has them (the player's J/22: white, as on Bean's club boats).
 	PaintSpars(ModelMast, Livery);
 	PaintSpars(ModelBoom, Livery);
+	// (Bluebonnet's spinnaker pole lies stowed on her deck, in the hull's mesh: the same buff paint.)
+	if (Boat.GetConfig().Type == EBoatType::Bluebonnet) PaintSpars(ModelHull, Livery);
 	// Every rudder (the cats have two: RudderPivot, RudderPivot_1) turns on its own stock; the mesh is the same.
 	for (int32 K = 0; ; ++K)
 	{
@@ -707,10 +709,21 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		if (!Model.Hull->FindSocket(Name)) break;
 		USceneComponent* Pivot = NewObject<USceneComponent>(this);
 		Pivot->SetupAttachment(BoatRoot);
-		Pivot->SetRelativeLocation(ModelHull->GetSocketTransform(Name, RTS_Component).GetLocation());
+		const FVector Stock = ModelHull->GetSocketTransform(Name, RTS_Component).GetLocation();
+		Pivot->SetRelativeLocation(Stock);
 		Pivot->RegisterComponent();
 		BoatParts.Add(Pivot);
 		RudderPivots.Add(Pivot);
+		// J-Class 14: a raked stock (Bluebonnet's, 39 deg aft) has a second socket up its axis, RudderAxis(_n); the blade turns
+		// about the line through the two (the tick's FQuat). Without one it turns about the vertical, as before.
+		const FName AxisName = K == 0 ? FName(TEXT("RudderAxis")) : FName(*FString::Printf(TEXT("RudderAxis_%d"), K));
+		FVector Axis = FVector::UpVector;
+		if (Model.Hull->FindSocket(AxisName))
+		{
+			const FVector Up = (ModelHull->GetSocketTransform(AxisName, RTS_Component).GetLocation() - Stock).GetSafeNormal();
+			if (Up.Z > 0.1) Axis = Up;
+		}
+		RudderAxes.Add(Axis);
 		UStaticMeshComponent* Blade = AddModelPart(Model.Rudder, Pivot, FVector::ZeroVector); // built about its own stock
 		if (K > 0 && Model.bMirrorTwinRudder) Blade->SetRelativeScale3D(FVector(1.f, -1.f, 1.f)); // canted outboard each side
 		if (K == 0) ModelRudder = Blade;
@@ -799,6 +812,9 @@ void ASailboatPawn::UpdateModelRig(float DeltaSeconds)
 
 	// Mast bend: the backstay pulls the middle forward; the breeze adds to it (cm at mid-height).
 	MastBendCm = FMath::FInterpTo(MastBendCm, 2.f + 7.f * float(Controls.Backstay) + 4.f * Breeze * Breeze, DeltaSeconds, 2.f);
+	// J-Class 14: Bluebonnet's mast stands straight (her runners hold it): her standing rigging and fittings are in the mast's
+	// mesh as built (Tools/shipkit/jclass/export_game.py) and would not bend with M_BoatMast.
+	if (Boat.GetConfig().Type == EBoatType::Bluebonnet) MastBendCm = 0.f;
 	if (MastMaterial)
 	{
 		MastMaterial->SetScalarParameterValue(TEXT("BendCm"), MastBendCm);

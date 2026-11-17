@@ -2899,6 +2899,89 @@
           "panel_layout": "membrane"
         }
       ]
+    },
+    {
+      "id": "bluebonnet",
+      "name": "Bluebonnet (J-Class, 1937, our own)",
+      "kind": "classic J-Class sloop",
+      "dimensions": {
+        "loa_m": 39.93,
+        "lwl_m": 26.02,
+        "beam_m": 6.56,
+        "draft_m": {"standard": 4.52},
+        "displacement_kg": 153513,
+        "sources": ["Tools/shipkit/jclass (her build, slices 0-12) and physics_bluebonnet.json (slice 13)"],
+        "notes": "Our own invented J of 1937 (docs/jclass-14): one boat, one dress. No real yacht's name, colours or number."
+      },
+      "colour_schemes": [
+        {
+          "id": "bluebonnet",
+          "weight": 1.0,
+          "hull_hex": "#1E3076",
+          "deck_hex": "#B08C66",
+          "nonskid_hex": "#B08C66",
+          "bottom_hex": "#70221C",
+          "stripes": [
+            {"zone": "boot", "hex": "#ECE9DE", "height_mm": 160},
+            {"zone": "cove", "hex": "#D4A640", "height_mm": 25}
+          ],
+          "trim": {"deck": "teak, laid", "handrails": "teak", "toerail": "varnished teak", "teak_hex": "#B08C66"},
+          "notes": "Her finish (finish_bluebonnet.json, deck_bluebonnet.json): deep blue topsides (the flower's colour), a white boot top, a gold cove line under the sheer, a dark red bottom with the lead keel painted the same, and a laid teak deck scrubbed pale.",
+          "confidence": "high (our own design)"
+        }
+      ],
+      "spars": {
+        "finishes": [
+          {
+            "id": "buff",
+            "weight": 1.0,
+            "hex": "#D6C8A8",
+            "finish": "painted",
+            "notes": "Spar colour, the period's buff paint (rig_bluebonnet.json colours: Spar)."
+          }
+        ],
+        "confidence": "high (our own design)"
+      },
+      "wear": {
+        "profile_weights": {"club": 0.0, "race": 1.0, "charter": 0.0},
+        "zones": [
+          {
+            "zone": "topsides",
+            "kind": "scuff",
+            "intensity": {"race": [0.05, 0.15]},
+            "notes": "A paid crew keeps her: the odd fender mark."
+          },
+          {
+            "zone": "deck",
+            "kind": "oxidation",
+            "intensity": {"race": [0.05, 0.15]},
+            "notes": "Varnish and paint kept up; the sun on them between coats."
+          },
+          {
+            "zone": "waterline",
+            "kind": "stain",
+            "intensity": {"race": [0.05, 0.15]},
+            "notes": "Scrubbed often; a faint line on the boot top."
+          },
+          {
+            "zone": "fittings",
+            "kind": "rust",
+            "intensity": {"race": [0.0, 0.05]},
+            "notes": "Bronze and galvanised steel: a little bloom on the steel."
+          }
+        ]
+      },
+      "sail_number": {
+        "required": false,
+        "probability": 0.0,
+        "format": "{n}",
+        "number_range": [1, 99],
+        "notes": "No number: her club's star in its place (sails_bluebonnet.json)."
+      },
+      "sails": [
+        {"sail": "main", "cloth": "cotton (Egyptian), cream", "panel_layout": "vertical"},
+        {"sail": "jib", "cloth": "cotton (Egyptian), cream", "panel_layout": "mitre"}
+      ]
     }
   ]
 }
