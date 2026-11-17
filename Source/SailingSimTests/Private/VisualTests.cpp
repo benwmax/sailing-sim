@@ -19,6 +19,7 @@
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
+#include "Engine/Texture.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "MeshDescription.h"
@@ -1091,6 +1092,66 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Hero deck takes Age (unset by default)"), Deck->GetScalarParameterValue(TEXT("Age"), Age) && Age < 0.f);
 	TestTrue(TEXT("Hero deck takes Care"), Deck->GetScalarParameterValue(TEXT("Care"), Care));
 	TestTrue(TEXT("Hero deck takes Wear"), Deck->GetVectorParameterValue(TEXT("Wear"), Wear));
+	return true;
+}
+
+// J-Class 15 (docs/jclass-15): Bluebonnet's own surfaces in the boat library. MI_Boat_CastBronze (kind 16) and MI_Boat_Manila
+// (kind 17) carry her maps as their own detail pair (make_materials.py BOAT_OWN_MAPS), MI_Boat_VarnishedTeak is varnished
+// wood (kind 6, the shared varnish map); the shared parent and every other slot keep the stand-ins, so no other boat loads
+// her maps; M_SailCloth takes the cotton switch and weave the pawn sets on her sails. Skipped (with a warning) before the
+// content is rebuilt.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJClassMaterialsTest, "SailingSim.Visual.JClassMaterials", VisualFlags)
+bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
+{
+	auto LoadMi = [](const TCHAR* Slot)
+	{
+		return LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), Slot, Slot), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	};
+	if (!LoadMi(TEXT("CastBronze")))
+	{
+		AddWarning(TEXT("No MI_Boat_CastBronze: run import_boat_detail.py, then make_materials.py (build_boat_library, build_sail_cloth)"));
+		return true;
+	}
+	const struct { const TCHAR* Slot; int32 Kind; const TCHAR* Own; } Slots[] = {
+		{ TEXT("CastBronze"), 16, TEXT("T_JClass_CastBronze") }, { TEXT("Manila"), 17, TEXT("T_JClass_Manila") }, { TEXT("VarnishedTeak"), 6, nullptr } };
+	for (const auto& S : Slots)
+	{
+		const UMaterialInterface* Mi = LoadMi(S.Slot);
+		if (!TestNotNull(FString::Printf(TEXT("MI_Boat_%s"), S.Slot), Mi)) continue;
+		float Surface = -1.f;
+		TestTrue(FString::Printf(TEXT("MI_Boat_%s has Surface"), S.Slot), Mi->GetScalarParameterValue(TEXT("Surface"), Surface));
+		TestEqual(FString::Printf(TEXT("MI_Boat_%s kind"), S.Slot), FMath::RoundToInt(Surface), S.Kind);
+		const TPair<const TCHAR*, const TCHAR*> Params[] = { { TEXT("OwnDetailN"), TEXT("N") }, { TEXT("OwnDetailM"), TEXT("M") } };
+		for (const TPair<const TCHAR*, const TCHAR*>& P : Params)
+		{
+			const TCHAR* Suffix = P.Value;
+			UTexture* Tex = nullptr;
+			TestTrue(FString::Printf(TEXT("MI_Boat_%s has OwnDetail%s"), S.Slot, Suffix), Mi->GetTextureParameterValue(P.Key, Tex));
+			const bool bHers = Tex && Tex->GetName().StartsWith(TEXT("T_JClass_"));
+			if (S.Own) TestEqual(FString::Printf(TEXT("MI_Boat_%s's own %s map"), S.Slot, Suffix), Tex ? Tex->GetName() : FString(), FString::Printf(TEXT("%s_%s"), S.Own, Suffix));
+			else TestFalse(FString::Printf(TEXT("MI_Boat_%s has no J-Class map"), S.Slot), bHers);
+		}
+	}
+	// No other slot (the J/22's, the fleet's) carries her maps.
+	if (const UMaterialInterface* Topsides = LoadMi(TEXT("Topsides")))
+	{
+		UTexture* Tex = nullptr;
+		Topsides->GetTextureParameterValue(TEXT("OwnDetailN"), Tex);
+		TestFalse(TEXT("MI_Boat_Topsides keeps the stand-in"), Tex && Tex->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	const UMaterialInterface* Sail = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/MI_Sail_Main.MI_Sail_Main"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (TestNotNull(TEXT("MI_Sail_Main"), Sail))
+	{
+		float Cloth = -1.f;
+		UTexture* Weave = nullptr;
+		TestTrue(TEXT("M_SailCloth has Cloth (0 by default)"), Sail->GetScalarParameterValue(TEXT("Cloth"), Cloth) && Cloth == 0.f);
+		TestTrue(TEXT("M_SailCloth has ClothN"), Sail->GetTextureParameterValue(TEXT("ClothN"), Weave));
+		TestFalse(TEXT("MI_Sail_Main keeps the stand-in weave"), Weave && Weave->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	for (const TCHAR* Name : { TEXT("T_JClass_Cotton_N"), TEXT("T_JClass_Cotton_M") })
+	{
+		TestNotNull(Name, LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/Boats/Detail/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	}
 	return true;
 }
 

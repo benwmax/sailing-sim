@@ -687,11 +687,32 @@ void ASailboatPawn::RebuildBoatVisuals()
 		// the showroom swaps boats on the same material).
 		Mid->SetScalarParameterValue(TEXT("Translucency"), C.Type == EBoatType::Sunfish ? 0.2f : 0.34f);
 	}
+	// J-Class 15 (docs/jclass-15): Bluebonnet's sails are cream Egyptian cotton (sails_bluebonnet.json), matt, with their own
+	// weave close up (M_SailCloth's Cloth 1 and T_JClass_Cotton, set only here, so no other boat's sails load the maps). Set
+	// every time: the showroom swaps boats on the same materials. Until the maps are imported she keeps the Dacron look.
+	const bool bCotton = C.Type == EBoatType::Bluebonnet;
+	UTexture* CottonN = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_N.T_JClass_Cotton_N"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	UTexture* CottonM = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_M.T_JClass_Cotton_M"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	const bool bCottonMaps = CottonN && CottonM;
+	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get() })
+	{
+		if (UMaterialInstanceDynamic* Mid = Sail ? Cast<UMaterialInstanceDynamic>(Sail->GetMaterial(0)) : nullptr)
+		{
+			Mid->SetScalarParameterValue(TEXT("Cloth"), bCottonMaps ? 1.f : 0.f);
+			Mid->SetScalarParameterValue(TEXT("Roughness"), bCotton ? 0.72f : 0.5f);   // (MI_Sail_Main's and MI_Sail_Jib's 0.5 for the rest)
+			if (bCottonMaps)
+			{
+				Mid->SetTextureParameterValue(TEXT("ClothN"), CottonN);
+				Mid->SetTextureParameterValue(TEXT("ClothM"), CottonM);
+			}
+		}
+	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
 	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
 	FLinearColor SailColor = Lay.Layout == 4.f ? FLinearColor(0.035f, 0.036f, 0.04f) : FLinearColor(0.70f, 0.68f, 0.63f);
-	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
+	// (Not Bluebonnet: a 1937 J's sails are cotton, whatever her profile.)
+	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7 && !bCotton)
 	{
 		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
 		if (Livery.Profile == 1 || (H % 100u) < 33u)
@@ -700,6 +721,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 			SailColor = Laminates[(H / 100u) % UE_ARRAY_COUNT(Laminates)];
 		}
 	}
+	// J-Class 15: her cotton's cream (sails_bluebonnet.json colour, sRGB 232 222 196, at the 0.77 the white Dacron is drawn at).
+	if (bCotton) SailColor = FLinearColor(0.621f, 0.562f, 0.426f);
 	// Boat skins: the skin's cloth colour. The class's white Dacron is drawn at 0.70 albedo, not the hex white's 0.9, so a
 	// skin's colour is scaled the same way (a skin's white is the cloth the boat already has).
 	if (bHasSkin && Skin.Sails.Cloth.IsSet())

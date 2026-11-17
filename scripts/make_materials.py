@@ -1413,11 +1413,13 @@ float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * 
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
 // 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
-// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing, 15 smoked acrylic): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing, 15 smoked acrylic,
+// 16 sand-cast bronze, 17 three-strand manila (16 and 17 are the J-Class's: their maps are the slot's own TOwnN/TOwnM)): first its weathering with ageK (anchored to the boat by the grime's noise), then,
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
 float woodFail = 0.0;   // texture loop, wood: the varnish's failed share here (the detail map darkens its pores)
+float bzVerd = 0.0, bzDark = 0.0, maFuzz = 0.0;   // J-Class: the bronze's verdigris and its recesses' patina, the manila's hairs (for their detail maps)
 float metalOut = Metal;    // rust is no metal: what it covers loses its metallic response (texture loop, rust lane)
 // Texture loop, rust lane (Tools/texloop/cards/rust.json): rust on the hardware itself. A 0.5 cm value noise (two octaves,
 // 1.3 and 0.45 cm) breaks it into patches on parts too small for the grime's noise; the rust is the colour measured from
@@ -1663,6 +1665,43 @@ else if (surf == 12)    // galvanised or plain steel (anchor, keel bolts and nut
     rough = lerp(rough, 0.85, max(stRust, 0.5 * stHalo));
     metalOut *= saturate(1.0 - stRust - 0.4 * stHalo - 0.8 * stFleck);
     coat *= 1.0 - stRust;
+}
+else if (surf == 16)    // J-Class 15: sand-cast bronze (Bluebonnet's winches, blocks, cleats, portlights, binnacle; her slice 11 card,
+{                       // Tools/shipkit/jclass/weathering.py bronze). New it is a golden metal; the years brown its open faces to a
+                        // patina (a kept yacht's are polished bright again), the recesses keep theirs and darken (bzDark, drawn in
+                        // the detail map's pits close up), and verdigris gathers where water stands and dries, salt water's more.
+                        // Age unset: time is the livery's oxidation channel, the verdigris its fittings channel (the catalogue).
+    float bzT = saturate(timeK * 2.5);
+    float bzKept = 0.85 * saturate(care) * (age >= 0.0 ? saturate(age / 3.0) : 1.0f);   // a kept yacht's bronze is polished
+    float bzOpen = bzT * (1.0 - bzKept) * (0.7 + 0.3 * saturate(vn * 2.0 - 0.4));       // blotchy over a fitting
+    float3 bzPat = lerp(float3(0.117, 0.054, 0.021), float3(0.034, 0.021, 0.012), saturate(bzT * (0.3 + 0.8 * vn)));   // brown, then dark
+    col = lerp(col, bzPat, bzOpen);
+    metalOut = lerp(metalOut, 0.7, bzOpen);
+    rough = lerp(rough, 0.62, 0.8 * bzOpen);
+    bzDark = saturate(timeK + dirtK);
+    bzVerd = age >= 0.0 ? smoothstep(0.5, 0.9, dirtK) * (0.4 + 0.6 * salt) : saturate(2.0 * wear.w);
+    // past the detail map's reach the verdigris is a thin soft bloom on the open faces, thicker in the grime noise's lows
+    float bzBloom = bzVerd * 0.12 * saturate(1.4 - vn);
+    col = lerp(col, float3(0.117, 0.305, 0.216), bzBloom);
+    metalOut *= 1.0 - bzBloom;
+    rough = lerp(rough, 0.9, bzBloom);
+}
+else if (surf == 17)    // J-Class 15: three-strand manila (Bluebonnet's sheets, guys, tails and coils; weathering.py manila). New,
+{                       // straw-gold with a little sheen; the sun and the years grey it, dirt darkens it and raises its hairs
+                        // (maFuzz: they fill the lay's grooves, the rope reads paler and duller), a left rope mildews. Kept yachts
+                        // renew their running rigging every few seasons: the rope's own age, as kind 9's.
+    float mCr = saturate(care);
+    float mA = age >= 0.0 ? min(age, 1.5 / max(mCr, 0.05)) : 0.0;
+    float mT = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-mA / 0.75)) + 0.75 * (1.0 - exp(-mA / 18.0))) : timeK;
+    float mD = age >= 0.0 ? saturate((1.0 - exp(-mA)) * (0.15 + 0.85 * (1.0 - mCr))) : dirtK;
+    float mGrey = saturate(0.6 * sqrt(mD) + 0.45 * mT);
+    maFuzz = saturate(0.8 * sqrt(mD) + 0.3 * mT);
+    col = lerp(col, float3(0.162, 0.138, 0.107), 0.85 * mGrey);
+    col = lerp(col, lerp(col, float3(0.430, 0.402, 0.332), 0.5), 0.35 * maFuzz);    // the hairs' pale halo
+    col = lerp(col, col * 0.6, saturate(mD * (0.2 + 0.9 * vn)));
+    float mMil = saturate((mD - 0.5) / 0.4) * smoothstep(0.5, 0.6, vn);
+    col = lerp(col, float3(0.018, 0.019, 0.014), 0.8 * mMil);
+    rough = lerp(rough, 0.95, maFuzz);
 }
 else if ((surf >= 9 && surf <= 11) || (surf == 14 && age < 0.0))     // sailcloth, canvas (rope is above; webbing with Age unset): dingy, and on a neglected boat specks of mildew
 {
@@ -1927,8 +1966,10 @@ col = lerp(col, float3(0.018, 0.022, 0.014), 0.85 * wbMil);
 float cav = 0.0;        // the detail's cavities: grime and standing water collect there
 if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 {
-    float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
-    float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
+    // (J-Class 15: her own maps fade nearer, as her slice 11 card has them: bronze 0.8-3 m, manila 0.6-2.5 m.)
+    float fadeN = surf == 16 ? 80.0f : surf == 17 ? 60.0f : 150.0f, fadeF = surf == 16 ? 300.0f : surf == 17 ? 250.0f : 600.0f;
+    float fadeD = 1.0 - saturate((Depth - fadeN) / (fadeF - fadeN));
+    float2 tile = surf == 16 ? float2(0.1f, 0.1f) : surf == 17 ? float2(0.06f, 0.03f) : (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : surf == 14 ? float2(0.02, 0.02) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
@@ -1952,6 +1993,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     else if (surf == 9) { BOAT_TRI(TBraidN, n0, n1, n2); }
     else if (surf == 10) { BOAT_TRI(TSailclothN, n0, n1, n2); }
     else if (surf == 11 || surf == 14) { BOAT_TRI(TCanvasN, n0, n1, n2); }   // webbing: the canvas weave at 2 cm (no new map)
+    else if (surf == 16 || surf == 17) { BOAT_TRI(TOwnN, n0, n1, n2); BOAT_TRI(TOwnM, m0, m1, m2); }   // the J-Class slot's own maps
     else { BOAT_TRI(TGelcoatN, n0, n1, n2); BOAT_TRI(TGelcoatM, m0, m1, m2); }
 #undef BOAT_TRI
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
@@ -1999,6 +2041,25 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     else if (surf == 1 || surf == 5)     // gelcoat and paint: orange peel, buffing scratches catching the light
     {
         rough = saturate(rough + fadeD * ((m.g - 0.5) * 0.15 + m.r * 0.15 * (0.3 + ageK)));
+    }
+    else if (surf == 16)                 // cast bronze (T_JClass_CastBronze: R 0 in a pit, G roughness, B height): the sand's pits and
+    {                                    // casting pores keep their patina whatever the polish, dark with the years, and verdigris first
+        cav = (1.0 - m.r) * fadeD;
+        rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
+        float pitP = cav * saturate(0.3 + bzDark);
+        col = lerp(col, lerp(float3(0.117, 0.054, 0.021), float3(0.034, 0.021, 0.012), bzDark), pitP);
+        float pitV = saturate(cav * 1.5) * bzVerd;
+        col = lerp(col, float3(0.117, 0.305, 0.216), pitV);
+        metalOut *= 1.0 - max(0.3 * pitP, pitV);
+        rough = lerp(rough, 0.9, pitV);
+    }
+    else if (surf == 17)                 // manila (T_JClass_Manila: R the fibres' tone, G hairs, B height): light and dark fibres along
+    {                                    // the strand, broken hairs catching the light within 2 m (more on an old rope), dirt in the lay
+        cav = (1.0 - m.b) * 0.6 * fadeD;
+        float lay = lerp(0.3, 0.1, maFuzz);
+        col *= lerp(1.0, 1.0 - 0.5 * lay + m.r * lay, fadeD);
+        float hair = m.g * (0.3 + 0.9 * maFuzz) * (1.0 - smoothstep(40.0, 200.0, Depth));
+        col = lerp(col, col * 1.25, saturate(hair));
     }
 }
 // Wet: standing water darkens the cavities first (non-skid grooves, checks, pores).
@@ -2168,6 +2229,37 @@ BOAT_DETAIL_MAPS = (("TGelcoatN", "T_Detail_Gelcoat_N"), ("TGelcoatM", "T_Detail
                     ("TWoodN", "T_Detail_WoodVarnish_N"), ("TWoodM", "T_Detail_WoodVarnish_M"), ("TTeakN", "T_Detail_TeakWeathered_N"),
                     ("TTeakM", "T_Detail_TeakWeathered_M"), ("TRubberN", "T_Detail_Rubber_N"), ("TBraidN", "T_Detail_Braid_N"),
                     ("TSailclothN", "T_Detail_Sailcloth_N"), ("TCanvasN", "T_Detail_Canvas_N"))
+# J-Class 15: a slot's own detail pair (kinds 16 and 17), texture parameters the slot's instance sets (BOAT_OWN_MAPS), so
+# M_BoatSurface itself references only stand-ins and no other boat loads them (Medium's boat texture budget).
+BOAT_OWN_PINS = (("TOwnN", "OwnDetailN"), ("TOwnM", "OwnDetailM"))
+# Each J-Class slot's own maps (Inputs/jclass-detail, made by Tools/shipkit/jclass/textures.py; imported to /Game/Boats/Detail
+# by import_boat_detail.py).
+BOAT_OWN_MAPS = {"CastBronze": ("T_JClass_CastBronze_N", "T_JClass_CastBronze_M"), "Manila": ("T_JClass_Manila_N", "T_JClass_Manila_M")}
+
+
+def masks_default():
+    """A tiny mid-grey masks texture (TC_Masks, linear): the stand-in for a masks texture parameter (the J-Class slots' own maps)."""
+    path = f"{BOAT_FOLDER}/T_MaskGrey"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        return unreal.load_asset(path)
+    import os, struct, tempfile, zlib
+    raw = b"".join(b"\x00" + b"\x80\x80\x80" * 4 for _ in range(4))
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 4, 4, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    file = os.path.join(tempfile.gettempdir(), "T_MaskGrey.png")
+    open(file, "wb").write(png)
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", file)
+    task.set_editor_property("destination_path", BOAT_FOLDER)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("save", False)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(path)
+    tex.set_editor_property("srgb", False)
+    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
 
 
 def build_boat_surface(name, bend, packed=False):
@@ -2230,6 +2322,13 @@ def build_boat_surface(name, bend, packed=False):
         fallback = not tex.get_path_name().startswith("/Game/") and not asset.endswith("_N")
         t.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if fallback else stype)
         detail_tex[pin] = t
+    # J-Class 15: the slot's own pair (kinds 16 and 17), stand-ins here; MI_Boat_<slot> sets them (BOAT_OWN_MAPS).
+    for i, (pin, pname) in enumerate(BOAT_OWN_PINS):
+        normal = pname.endswith("N")
+        t = node(mat, unreal.MaterialExpressionTextureObjectParameter, -2100, 200 + i * 90, parameter_name=pname,
+                 texture=unreal.load_asset("/Engine/EngineMaterials/DefaultNormal") if normal else masks_default(),
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if normal else unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
+        detail_tex[pin] = t
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     # The surface's per-slot values: a material instance's parameters, or in a pack the face's entry.
     hull = scalar(mat, "IsHull", 0.0, -1400, 1550)
@@ -2246,7 +2345,8 @@ def build_boat_surface(name, bend, packed=False):
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
+               + [pin for pin, _ in BOAT_OWN_PINS],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
@@ -2378,19 +2478,27 @@ BOAT_LIBRARY = {
     "MarkVinyl": ("M_BoatSurface", (0.83, 0.11, 0.013), 0.40, 0.0, 0.30, 0.0, 0.05),
     "MarkScum": ("M_BoatSurface", (0.11, 0.075, 0.025), 0.62, 0.0, 0.0, 0.0, 0.30),
     "MOBVinyl": ("M_BoatSurface", (0.83, 0.55, 0.012), 0.42, 0.0, 0.25, 0.0, 0.05),
+    # J-Class 15 (docs/jclass-15): Bluebonnet's own, at her slice 11 build's new colours (Tools/shipkit/jclass): sand-cast bronze
+    # (finish_bluebonnet.json Bronze, sRGB 150 104 60), three-strand manila (standing_bluebonnet.json Rope, sRGB 196 168 118 held
+    # to the Rope001 scan as weathering.py does) and varnished teak brightwork (deck_bluebonnet.json Wood, sRGB 124 70 32).
+    "CastBronze": ("M_BoatSurface", (0.305, 0.138, 0.045), 0.38, 1.0, 0.0, 0.0, 0.0),
+    "Manila": ("M_BoatSurface", (0.519, 0.392, 0.235), 0.80, 0.0, 0.0, 0.0, 0.50),
+    "VarnishedTeak": ("M_BoatSurface", (0.202, 0.061, 0.0144), 0.20, 0.0, 1.0, 0.0, 0.15),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
 # 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas,
 # 12 galvanised or plain steel, 13 black moulded plastic (texture loop: weathering only, no detail map), 14 woven webbing
 # (texture loop, webbing and rubber: the canvas weave at 2 cm), 15 smoked acrylic glazing (texture loop: weathering only,
-# no detail map); unlisted slots (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
+# no detail map), 16 sand-cast bronze and 17 three-strand manila (J-Class 15: their own maps, BOAT_OWN_MAPS); unlisted slots
+# (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
     "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "WoodMahogany": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
     "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
+    "CastBronze": 16, "Manila": 17, "VarnishedTeak": 6,
 }
 
 
@@ -2414,7 +2522,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak", "VarnishedTeak") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 
@@ -2437,6 +2545,13 @@ def build_boat_library():
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         for pname, value in values.items():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        # J-Class 15: the slot's own detail maps (kinds 16 and 17)
+        for (_pin, pname), asset in zip(BOAT_OWN_PINS, BOAT_OWN_MAPS.get(slot, ())):
+            path = f"/Game/Boats/Detail/{asset}"
+            if unreal.EditorAssetLibrary.does_asset_exist(path):
+                MEL.set_material_instance_texture_parameter_value(mi, pname, unreal.load_asset(path))
+            else:
+                unreal.log_warning(f"MI_Boat_{slot}: no {path} yet (run import_boat_detail.py, then build_boat_library)")
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
     packed = build_boat_surface("M_BoatPacked", False, packed=True)
@@ -2900,6 +3015,7 @@ if (Detail > 0.5 && Layout < 3.5)
     float patch = lerp(lerp(p00, p10, spm.x), lerp(p01, p11, spm.x), spm.y);
     float thC = 0.78 - 0.40 * ageC;   // patches over about a fifth of a new sail, a third at the default, two thirds of an old one
     float cover = smoothstep(thC - 0.12, thC + 0.12, patch) * (Age >= 0.0 ? saturate(sTime * 5.0) : 1.0f);   // none on a new sail
+    cover *= Cloth > 0.5 ? 0.0f : 1.0f;   // J-Class 15: cotton has no resin to break (its weave is the map's, below)
     float sAmp = 0.08 * (0.5 + ageC);   // the fold's peak slope (radians): 3.9 deg at the default age, 6 at an old sail's (0.11 still read embossed in a patch)
     float wd = 0.045;                    // the fold's half width in noise units: under a tenth of a cell (0.06 read as rounded bumps)
     float2 cg = float2(0.0, 0.0);
@@ -2931,11 +3047,25 @@ if (Detail > 0.5 && Layout < 3.5)
         cg += foldS * unitN;
         crinkle = max(crinkle, cover * fadeC * h);
     }
-    float weaveK = 1.0 - smoothstep(0.0002, 0.0004, pxC);
+    float weaveK = (1.0 - smoothstep(0.0002, 0.0004, pxC)) * (Cloth > 0.5 ? 0.0f : 1.0f);
     float2 wv = UV0 * (6.2831853 / 0.0006);
     cg += weaveK * 0.00002 * (6.2831853 / 0.0006) * float2(cos(wv.x) * sin(wv.y), sin(wv.x) * cos(wv.y));
     dhdu += cg.x;
     dhdv += cg.y;
+    // J-Class 15 (Cloth 1): Egyptian cotton duck (T_JClass_Cotton, a 40 mm tile of 26 warp by 20 weft threads a centimetre
+    // whose yarns thicken and thin: Tools/shipkit/jclass/textures.py), in UV0 metres, fading out from 1 to 4 m as her slice 11
+    // card has it (the mips average the weave first). M: R the gaps between the yarns (dirt sits there), G the yarn's tone.
+    float ckF = Cloth > 0.5 ? 1.0 - smoothstep(100.0f, 400.0f, Depth) : 0.0f;
+    if (ckF > 0.0)
+    {
+        SamplerState CS = View.MaterialTextureBilinearWrapedSampler;
+        float2 cuv = UV0 / 0.04;
+        float4 cn = Texture2DSample(ClothN, CS, cuv), cm = Texture2DSample(ClothM, CS, cuv);
+        dhdu -= (cn.x * 2.0 - 1.0) * 0.8 * ckF;
+        dhdv -= (cn.y * 2.0 - 1.0) * 0.8 * ckF;
+        col *= lerp(1.0, 0.97 + 0.06 * cm.g, ckF);
+        col *= 1.0 - ckF * cm.r * (0.06 + 0.25 * sDirt);
+    }
 }
 NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 // The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
@@ -2995,6 +3125,13 @@ def build_sail_cloth():
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1400, 1100)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
+    # J-Class 15: the cloth (0 resinated Dacron, laminate, nylon; 1 cotton) and a cotton sail's own weave, texture parameters
+    # the pawn sets on Bluebonnet's sails only (T_JClass_Cotton_N/_M), so no other boat's sails load them.
+    cloth = scalar(mat, "Cloth", 0.0, -1600, 1500)
+    cloth_n = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 1500, parameter_name="ClothN",
+                   texture=unreal.load_asset("/Engine/EngineMaterials/DefaultNormal"), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+    cloth_m = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 1650, parameter_name="ClothM",
+                   texture=masks_default(), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
@@ -3004,14 +3141,14 @@ def build_sail_cloth():
     camv = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1200)
     sundir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1600, 1300)
     c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
-                                  "Translucency", "VN", "CamV", "SunDir", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+                                  "Translucency", "VN", "CamV", "SunDir", "WP", "Cloth", "ClothN", "ClothM"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Metal", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
                      (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
                      (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir"),
-                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP")):
+                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP"), (cloth, "Cloth"), (cloth_n, "ClothN"), (cloth_m, "ClothM")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)

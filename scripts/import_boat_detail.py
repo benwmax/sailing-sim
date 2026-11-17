@@ -13,6 +13,9 @@ boats' surfaces. Run in the editor after make_materials.py: scripts\\windows\\ru
     Tools/boats/make_detail_textures.py), used by import_j22_hero.py's M_J22HeroSurface, and (boat fidelity 1) those
     plus _Metal/_WoodVarnish/_Rubber/_Braid/_Sailcloth, read by make_materials.py's M_BoatSurface: rerun
     `run-python.ps1 make_materials.py -Only build_boat_library` after importing them.
+    J-Class 15 (docs/jclass-15): Bluebonnet's own T_JClass_CastBronze/_Manila/_Cotton (Inputs/jclass-detail, made by
+    Tools/shipkit/jclass/textures.py) go to the same folder and groups: MI_Boat_CastBronze and MI_Boat_Manila set the first
+    two as their own maps (make_materials.py BOAT_OWN_MAPS), the pawn sets the cotton on her sails (M_SailCloth's ClothN/M).
 
 The pawn picks M_RigRope and M_RigWire up at BeginPlay when they exist (-SailingFlatRope keeps the old flat ones).
 """
@@ -23,6 +26,7 @@ import unreal
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROPE_SRC = os.path.join(REPO, "Inputs", "rope")
 DETAIL_SRC = os.path.join(REPO, "Inputs", "boat-detail")
+JCLASS_SRC = os.path.join(REPO, "Inputs", "jclass-detail")
 ROPE = "/Game/Boats/Rope"
 DETAIL = "/Game/Boats/Detail"
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
@@ -267,11 +271,12 @@ def main():
         tex["T_RopeColourways"] = import_texture(os.path.join(ROPE_SRC, "T_RopeColourways.png"), ROPE, "LUT")
         rope_material(tex)
         wire_material(tex)
-    for f in sorted(os.listdir(DETAIL_SRC)):
-        if f.startswith("T_Detail_") and f.endswith(("_N.png", "_M.png")):
-            if new_only and unreal.EditorAssetLibrary.does_asset_exist(f"{DETAIL}/{f[:-4]}"):
-                continue
-            import_texture(os.path.join(DETAIL_SRC, f), DETAIL, f[-5])
+    for src, prefix in ((DETAIL_SRC, "T_Detail_"), (JCLASS_SRC, "T_JClass_")):
+        for f in sorted(os.listdir(src)):
+            if f.startswith(prefix) and f.endswith(("_N.png", "_M.png")):
+                if new_only and unreal.EditorAssetLibrary.does_asset_exist(f"{DETAIL}/{f[:-4]}"):
+                    continue
+                import_texture(os.path.join(src, f), DETAIL, f[-5])
     unreal.log("Boat detail import done: M_RigRope, M_RigWire and the detail textures")
 
 
