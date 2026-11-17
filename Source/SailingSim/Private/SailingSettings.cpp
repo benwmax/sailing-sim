@@ -347,7 +347,7 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("Look"), EKeys::Gamepad_Right2D, 3.f);
 	Add(TEXT("Zoom"), EKeys::MouseWheelAxis);
 	// Camera views (docs/camera-views/): F5 (as in many games), the middle mouse button, or a tap of the right stick cycle
-	// Chase, Overview and Helm; a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
+	// the views (Chase to Helm); a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
 	Add(TEXT("ChangeView"), EKeys::F5);
 	Add(TEXT("ChangeView"), EKeys::MiddleMouseButton);
 	Add(TEXT("ChangeView"), EKeys::Gamepad_RightThumbstick);
