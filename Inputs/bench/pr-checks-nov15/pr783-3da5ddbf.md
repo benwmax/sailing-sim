@@ -77,7 +77,7 @@
 
 - **The link error is gone.** `FShipRigData` is now exported, and MSVC links clean.
 - **The earlier error, also gone:** the C4458 'Children' shadowing from 5195f847.
-- **Tests:** ShipRig, ShipOrders and UI all pass (49 tests). The only warning is Feedback.Jpeg's deliberate missing.png.
+- **Tests:** ShipRig, ShipOrders and UI all pass (50 tests: 3, 3 and 44). The only warning is Feedback.Jpeg's deliberate missing.png.
 
 The standing warnings are normal: the missing `S_*` sound samples, J22HeroMesh's tolerance notes, `GalvestonBay.detail` and Feedback.Jpeg's deliberate missing.png.
 
