@@ -409,6 +409,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	ModelTillerExt = nullptr;
+	ModelWheel = nullptr;
+	WheelPivot = nullptr;
+	WheelAxis = FVector::ForwardVector;
+	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -3709,6 +3713,9 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
 	}
+	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
+	// as the bow goes to starboard).
+	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 

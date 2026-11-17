@@ -1,9 +1,10 @@
-"""Bluebonnet's game parts (J-Class 14, step 2): her shipkit build cut into the four parts the game hangs a boat on.
+"""Bluebonnet's game parts (J-Class 14, step 2): her shipkit build cut into the parts the game hangs a boat on (the four
+every boat has, and her wheel, which turns with the rudder).
 
     blender -b --factory-startup -noaudio -P Tools/shipkit/jclass/export_game.py -- <build dir> <out dir>
     python Tools/shipkit/jclass/export_game.py <build dir> <out dir>          (the bpy module)
 
-Reads <build dir>/jclass.blend (build_jclass.py) and writes <out>/SM_Bluebonnet_{Hull,Mast,Boom,Rudder}.fbx and
+Reads <build dir>/jclass.blend (build_jclass.py) and writes <out>/SM_Bluebonnet_{Hull,Mast,Boom,Rudder,Wheel}.fbx and
 <out>/Bluebonnet_sockets.json in scripts/import_boats.py's form (sockets in cm in the body frame, each one's part, the
 parts' origins), as game_bluebonnet.json says: which of the build's objects go in each part, how the moving ones are posed,
 the game slot of each material, what stays out and why, and the sockets. Each part is joined, moved to its pivot, given
@@ -135,6 +136,18 @@ def on_axis(z):
     return o + d * ((z - o.z) / d.z)
 
 
+def wheel_frame():
+    """The wheel's hub and axes in the body frame: X forward along its shaft, Z up its king spoke (deck.py steering():
+    the 'Wheel' object's own frame, read before it is joined into its part)."""
+    M = bpy.data.objects["Wheel"].matrix_world
+    o = B(M.translation)
+    x = B(Vector((M[0][0], M[1][0], M[2][0]))).normalized()
+    z = B(Vector((M[0][2], M[1][2], M[2][2]))).normalized()
+    if abs(x.x) < 0.99 or z.z < 0.99:
+        raise SystemExit(f"the wheel's frame is not along the shaft and upright: X {tuple(x)}, Z {tuple(z)}")
+    return o, x, z
+
+
 # ---------------------------------------------------------------------------------------------------------------- sockets
 
 def top_or_bottom(names, x, y, r, top):
@@ -151,6 +164,10 @@ def top_or_bottom(names, x, y, r, top):
 
 
 def socket_point(name, s):
+    if "wheel_at" in s:
+        o, x, z = wheel_frame()
+        along, up = s["wheel_at"]
+        return o + x * along + z * up
     if "rudder_axis_z" in s:
         z = s["rudder_axis_z"]
         if isinstance(z, str):
@@ -333,8 +350,13 @@ def main():
         bad.append(f"the hounds ({hounds.z:.3f}) under the genoa's head ({P['jib_head_z']:.3f}): the game would lower it")
     if bad:
         raise SystemExit("Bluebonnet's export does not match her physics:\n  " + "\n  ".join(bad))
-    pivots = {"mast_step": socks["MastStep"][1], "gooseneck": Vector((P["main_luff_x"], 0.0, P["boom_z"])),
-              "rudder_pivot": socks["RudderPivot"][1]}
+    # The gooseneck: the boom's own pin, its rest frame's origin (the physics' MainLuffX, 2.3508 since J-Class upwind,
+    # Fleet.cpp Bluebonnet(); the .inl's SetMain luff, 2.578, is the sail plan's, not the pin). Its height is held to BoomZ.
+    goose = B(bpy.data.objects["Boom"].matrix_world.translation)
+    if abs(goose.y) > 0.01 or abs(goose.z - P["boom_z"]) > 0.02:
+        raise SystemExit(f"the boom's pin ({goose.x:.4f}, {goose.y:.4f}, {goose.z:.4f}) is off the centreline or BoomZ {P['boom_z']}")
+    pivots = {"mast_step": socks["MastStep"][1], "gooseneck": goose,
+              "rudder_pivot": socks["RudderPivot"][1], "wheel_hub": socks["WheelHub"][1]}
     if abs(pivots["mast_step"].x - P["mast_x"]) > 0.01:
         raise SystemExit(f"MastStep x {pivots['mast_step'].x} is not the physics' MastX {P['mast_x']}")
     origins, tris, slots = {}, {}, {}
