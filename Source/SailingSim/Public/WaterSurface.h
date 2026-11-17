@@ -235,6 +235,9 @@ private:
 	const Sailing::FWaveField* GetWaves() const;
 	const Sailing::FWindField* GetWind() const;
 	double GetSimTime() const;
+	/** The instant the sea is drawn at (ASailingGameMode::GetRenderTime, feedback #26): the long waves' WaveTime, the short
+	 *  waves' blend, the ocean's blend and the foam. The wake, spray and wind maps step on GetSimTime. */
+	double GetRenderTime() const;
 
 	UPROPERTY(Transient) TArray<TObjectPtr<UProceduralMeshComponent>> Rings;
 	UPROPERTY(VisibleAnywhere, Category = "Water") TObjectPtr<UProceduralMeshComponent> FarPlane;

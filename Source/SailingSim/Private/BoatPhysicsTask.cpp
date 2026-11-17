@@ -34,6 +34,14 @@ namespace
 
 void FBoatStepJob::Run() const
 {
+	auto MarkBeforeLast = [this](int32 I)
+	{
+		if (!BeforeLast || I != Steps - 1) return;
+		BeforeLast->Origin = Boat->OriginPosition();
+		BeforeLast->Orientation = Boat->GetState().Orientation;
+		BeforeLast->Time = Boat->GetState().Time;
+		BeforeLast->bValid = true;
+	};
 	if (Stations && Stations->IsActive())
 	{
 		// A crew station: the station merge is the crew and the player both; taps and the dump count once.
@@ -43,6 +51,7 @@ void FBoatStepJob::Run() const
 			*Controls = Stations->Step(*Boat, In, StepDt);
 			In.GrindTaps = 0;
 			In.bTravellerDump = false;
+			MarkBeforeLast(I);
 			Boat->Step(StepDt, *Controls, *Wind, Waves);
 		}
 		return;
@@ -86,6 +95,7 @@ void FBoatStepJob::Run() const
 			Controls->Tiller = Before.Tiller;
 			Controls->bWingOnWing = Before.bWingOnWing;
 		}
+		MarkBeforeLast(I);
 		if (Easy && EasyHelm && Easy->bEnabled) Boat->Step(StepDt, EasyHelm->Update(*Boat, *Controls, *Easy, StepDt), *Wind, Waves);
 		else Boat->Step(StepDt, *Controls, *Wind, Waves);
 	}

@@ -1880,7 +1880,8 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	BowWave->SetVisibility(true);
 	const FHullShape& Hull = Boat.GetConfig().Hulls[0];
 	const FWaveField& Waves = GM->GetWaves();
-	const double Time = Boat.GetState().Time;
+	// Where and when she is drawn (between her steps for the player's boat, feedback #26), so the sheet stays on her stem.
+	const double Time = DrawnTime;
 	const float Scale = FMath::Clamp(float(Hull.MaxHalfBeam) / 1.2f, 0.5f, 1.5f);
 	const float Head = FMath::Min(0.4f * Speed * Speed / (2.f * 9.81f), 0.5f) * Scale;    // m, at the crest (bow-curl-crest: 0.25 read as a wet film at 17 kn)
 	const float Fade = FMath::Clamp((Speed - 1.5f) / 1.5f, 0.f, 1.f);
@@ -1912,7 +1913,7 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			double YHull = Hull.CenterY + S * FMath::Max(Hull.DeckHalfBeam(X), 0.02);
 			auto SeaZ = [&](double Y)
 			{
-				const Vec3 Z0 = Boat.BodyToWorld(Vec3(X, Y, 0.0)), Z1 = Boat.BodyToWorld(Vec3(X, Y, 1.0));
+				const Vec3 Z0 = DrawnBodyToWorld(Vec3(X, Y, 0.0)), Z1 = DrawnBodyToWorld(Vec3(X, Y, 1.0));
 				const double Sea0 = Waves.Height(Z0.X, Z0.Y, Time);
 				return FMath::Abs(Z1.Z - Z0.Z) > 1e-3 ? FMath::Clamp((Sea0 - Z0.Z) / (Z1.Z - Z0.Z), -1.5, 1.5) : 0.0;
 			};
@@ -1933,8 +1934,8 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 				YHull = Hull.CenterY + S * FMath::Max(Hi, 0.02);
 				Zb = SeaZ(YHull);
 			}
-			const Vec3 Root = Boat.BodyToWorld(Vec3(X, YHull, Zb));
-			const Vec3 Off = Boat.BodyToWorld(Vec3(X, YHull + S, Zb));
+			const Vec3 Root = DrawnBodyToWorld(Vec3(X, YHull, Zb));
+			const Vec3 Off = DrawnBodyToWorld(Vec3(X, YHull + S, Zb));
 			FVector2D Out(Off.X - Root.X, Off.Y - Root.Y);
 			Out = Out.GetSafeNormal();
 			const double Width = 0.12 * Scale + 0.36 * Aft;                    // out to the Kelvin wedge

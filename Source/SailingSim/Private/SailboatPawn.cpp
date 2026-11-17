@@ -1353,7 +1353,11 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		ClockMode->AdvanceClock(DeltaSeconds);
 		const double Behind = ClockMode->GetSimTime() - Boat.GetState().Time;
 		const bool bStill = bHeldByUI && !bTrafficBoat && ShowroomStage == EShowroomStage::None;
-		if (bStill || FMath::Abs(Behind) > 1.0) Boat.GetMutableState().Time = ClockMode->GetSimTime();
+		if (bStill || FMath::Abs(Behind) > 1.0)
+		{
+			Boat.GetMutableState().Time = ClockMode->GetSimTime();
+			PoseBeforeLast.bValid = false;   // joined the clock where she is: nothing to draw her from
+		}
 		else Steps = FMath::Clamp(FMath::RoundToInt32(Behind / Stepper.GetStepDt()), 0, 12);
 	}
 	else if (!(bHeldByUI && !bTrafficBoat && ShowroomStage == EShowroomStage::None))
@@ -1377,6 +1381,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.Waves = Waves;
 	Job.Steps = Steps;
 	Job.StepDt = Stepper.GetStepDt();
+	Job.BeforeLast = &PoseBeforeLast;
 	Job.bTrimAssist = EasyAssists.bEnabled || USailingSettings::Get()->bTrimAssist; // IsTrimAssistActive, step by step
 	Job.LastManualTrimTime = LastManualTrimTime;
 	Job.LastManualHikeTime = LastManualHikeTime;
@@ -1441,7 +1446,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	if (!bTrafficBoat && !bGhost) TraceBoatState();
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
-	ApplyStateToTransform();
+	ApplyStateToTransform(true);
 	UpdateRigVisuals(DeltaSeconds);
 	UpdateShipRig(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
@@ -3810,10 +3815,35 @@ void ASailboatPawn::UpdateRun(float DeltaSeconds)
 	S.Position.Y += RunSign * Step * FMath::Sin(A);
 }
 
-void ASailboatPawn::ApplyStateToTransform()
+void ASailboatPawn::ApplyStateToTransform(bool bBetweenSteps)
 {
-	const Vec3 Origin = Boat.OriginPosition();
-	const Quat& Q = Boat.GetState().Orientation;
+	Vec3 Origin = Boat.OriginPosition();
+	Quat Q = Boat.GetState().Orientation;
+	DrawnTime = Boat.GetState().Time;
+	// Feedback #26: the world clock moves in whole 1/120 s steps, so a frame of 16.7 ms moved her (and the water) by 8.3,
+	// 16.7 or 25 ms as the frame times scattered about the step boundaries: a stutter on fine water at 60 fps. Drawn at
+	// the clock's render time, between the pose before her last step and her pose now, she moves by each frame's length.
+	// (Not in the showroom, which puts her back on her spot between steps, nor in a -SailingRun slide.)
+	const ASailingGameMode* GM = bBetweenSteps ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	const double T1 = Boat.GetState().Time, T0 = PoseBeforeLast.Time;
+	if (GM && PoseBeforeLast.bValid && !bRunning && ShowroomStage == EShowroomStage::None
+		&& T1 - T0 > 0.5 * Stepper.GetStepDt() && T1 - T0 < 1.5 * Stepper.GetStepDt()
+		&& (Origin - PoseBeforeLast.Origin).Length() < kDrawBetweenStepsMaxM)
+	{
+		const double A = FMath::Clamp((GM->GetRenderTime() - T0) / (T1 - T0), 0.0, 1.0);
+		DrawnTime = FMath::Lerp(T0, T1, A);
+		const Vec3& P = PoseBeforeLast.Origin;
+		Origin = Vec3(FMath::Lerp(P.X, Origin.X, A), FMath::Lerp(P.Y, Origin.Y, A), FMath::Lerp(P.Z, Origin.Z, A));
+		const Quat& B = PoseBeforeLast.Orientation;
+		const FQuat Q2 = FQuat::Slerp(FQuat(B.X, B.Y, B.Z, B.W), FQuat(Q.X, Q.Y, Q.Z, Q.W), A);
+		Q = Quat(Q2.X, Q2.Y, Q2.Z, Q2.W);
+	}
+	else if (!bBetweenSteps)
+	{
+		PoseBeforeLast.bValid = false;   // re-placed, reset or not hers to step: from here, not from before
+	}
+	DrawnOrigin = Origin;
+	DrawnOrientation = Q;
 	// World streaming: the physics is in the map frame (doubles), the actor in the render frame (SailingFrame.h).
 	const FVector To = SailingFrame::ToWorld(GetWorld(), Origin.X, Origin.Y, Origin.Z) + FVector(0.0, 0.0, WaterSurfaceZ);
 	// Put somewhere new (not sailed there): the chase camera starts at her rather than flying over (SnapChaseCamera).

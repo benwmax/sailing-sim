@@ -376,6 +376,12 @@ void ASailingGameMode::UpdateStreaming()
 	if (bWindowMarching) bWindowStale = false;
 }
 
+double ASailingGameMode::GetRenderTime() const
+{
+	static SailingArgs::FCachedFlag ClassicClockArg(TEXT("SailingClassicClock")); // measuring: the world drawn in whole steps
+	return ClassicClockArg.Get() ? Clock.GetTime() : Clock.GetRenderTime();
+}
+
 void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
 	if (ClockFrame == GFrameCounter) return;
