@@ -158,6 +158,19 @@ bool FSailingSquareRigForcesTest::RunTest(const FString&)
 	TestTrue(TEXT("... the course drives her ahead"), Reach.X > 0.0);
 	TestTrue(TEXT("... and pushes her to leeward (port)"), Reach.Y < 0.0);
 
+	{
+		// Braced up, a course set sharper than its yard (its tack hauled forward) meets the wind at more angle and drives more.
+		FBoatConfig Sharp = C;
+		Sharp.Square.Sails[0].SetsPastYardDeg = 8.0;
+		FBoatModel SharpBoat(Sharp);
+		const Vec3 Sharper = CourseForce(SharpBoat, -60.0, 1.0, ESailSet::Set);
+		const Vec3 AtYard = CourseForce(Boat, -60.0, 1.0, ESailSet::Set);
+		AddInfo(FString::Printf(TEXT("Sharp up, wind 60 deg on the bow: %.0f N ahead on the yard, %.0f N set 8 deg past it"), AtYard.X, Sharper.X));
+		TestTrue(TEXT("A course set past its yard drives more close-hauled"), Sharper.X > AtYard.X);
+		const double B2 = BraceForAlpha(Sharp.Square, 0, 70.0 * kDegToRad, 15.0);
+		const double Working = YardAngleFor(Sharp.Square, 0, B2) * kRadToDeg * (1.0 + 8.0 / 40.0);
+		TestTrue(TEXT("... and the trimmer braces its working chord, not its yard, to the angle asked"), FMath::IsNearlyEqual(70.0 + Working - 90.0, 15.0, 1e-6));
+	}
 	const Vec3 Backed = CourseForce(Boat, -60.0, -1.0, ESailSet::Set);
 	AddInfo(FString::Printf(TEXT("Braced for the other tack: %.0f N ahead"), Backed.X));
 	TestTrue(TEXT("Braced the wrong way the course is aback and drives her astern"), Backed.X < 0.0);

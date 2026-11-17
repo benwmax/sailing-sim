@@ -82,7 +82,9 @@ namespace Sailing
 		const double B = Clamp(Brace, -1.0, 1.0);
 		const double LowDeg = B * LowLimit;
 		// Squarer by the offset, never past square the other way, and no further than its own limit.
-		const double Deg = std::fabs(LowDeg) <= S.BraceOffsetDeg ? 0.0 : LowDeg - (LowDeg > 0.0 ? 1.0 : -1.0) * S.BraceOffsetDeg;
+		// The mast's lowest sail names the brace (the mizzen's topsail, its crossjack bare): no offset of its own.
+		const double Offset = Sail == Low ? 0.0 : S.BraceOffsetDeg;
+		const double Deg = std::fabs(LowDeg) <= Offset ? 0.0 : LowDeg - (LowDeg > 0.0 ? 1.0 : -1.0) * Offset;
 		return Clamp(Deg, -S.BraceLimitDeg, S.BraceLimitDeg) * kDegToRad;
 	}
 
@@ -91,8 +93,10 @@ namespace Sailing
 		const int Low = Rig.LowestOn(Mast);
 		if (Low < 0) return 0.0;
 		const double A = std::fabs(AwaRad) * kRadToDeg;
-		const double Psi = std::max(0.0, 90.0 + AlphaDeg - A); // A + psi - 90 = alpha; never braced the wrong way
+		const FSquareSailDef& S = Rig.Sails[Low];
+		// A + psi - 90 = alpha on the sail's working chord (its yard and what it sets past it); never braced the wrong way.
+		const double Psi = std::max(0.0, 90.0 + AlphaDeg - A) / (1.0 + S.SetsPastYardDeg / std::max(S.BraceLimitDeg, 1.0));
 		const double Sign = AwaRad >= 0.0 ? 1.0 : -1.0;
-		return Clamp(Sign * Psi / Rig.Sails[Low].BraceLimitDeg, -1.0, 1.0);
+		return Clamp(Sign * Psi / S.BraceLimitDeg, -1.0, 1.0);
 	}
 }

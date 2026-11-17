@@ -1617,8 +1617,13 @@ namespace Sailing
 			Vec3 F = FlowDir * (Q2 * R.ClewedCdAShare * S.Area * Clewed);
 			if (Out > 0.0)
 			{
-				const double Across = FlowDir.Dot(Normal);          // > 0: the wind on its after face, full
-				const bool bFull = Across > 0.0;
+				// Full, the cloth sets sharper than its yard (SetsPastYardDeg); aback it lies against the rigging on the yard.
+				const double Past = S.SetsPastYardDeg * kDegToRad * Clamp(std::fabs(Psi) / std::max(S.BraceLimitDeg * kDegToRad, 1e-3), 0.0, 1.0);
+				const double PsiSail = Psi + (Psi >= 0.0 ? Past : -Past);
+				const Vec3 SailNormal(std::cos(PsiSail), -std::sin(PsiSail), 0.0);
+				const bool bFull = FlowDir.Dot(SailNormal) > 0.0;
+				const Vec3 FaceNormal = bFull ? SailNormal : Normal;
+				const double Across = FlowDir.Dot(FaceNormal);       // > 0: the wind on its after face, full
 				const double Alpha = std::asin(Clamp(std::fabs(Across), 0.0, 1.0));
 				double CL, CD;
 				ESailFlow Flow;
@@ -1629,7 +1634,7 @@ namespace Sailing
 					CD *= R.BackedDragShare;
 					Flow = Alpha > 3.0 * kDegToRad ? ESailFlow::Backed : ESailFlow::Luffing;
 				}
-				const Vec3 Belly = bFull ? Normal : Normal * -1.0;      // the way the wind pushes the cloth
+				const Vec3 Belly = bFull ? FaceNormal : FaceNormal * -1.0; // the way the wind pushes the cloth
 				Vec3 Lift = Belly - FlowDir * Belly.Dot(FlowDir);
 				const double LiftLength = Lift.Length();
 				Lift = LiftLength > 1e-6 ? Lift / LiftLength : Vec3();

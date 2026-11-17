@@ -46,6 +46,9 @@ namespace Sailing
 		double Area = 1.0;           // m^2 as cut
 		double BraceLimitDeg = 35.0; // how far its yard braces from square with this sail set
 		double BraceOffsetDeg = 0.0; // braced this much squarer than its mast's lowest yard
+		// Braced up, the sail sets sharper than its yard: a course's tack hauled forward and down, a topsail's weather leech
+		// on its bowline. Its working chord turns this much past the yard at the brace limit (in proportion below it).
+		double SetsPastYardDeg = 0.0;
 		std::vector<double> ReefAreaFraction; // area left at each reef (empty: no reef bands)
 		double MidZ() const { return 0.5 * (FootZ + HeadZ); }
 	};
