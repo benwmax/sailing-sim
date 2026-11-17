@@ -1,5 +1,5 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below.
 
     blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
 
@@ -10,7 +10,8 @@ its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; -
 rudder kicked up, under the down ones' names), and the mast, boom, wires and their kit fittings from rig_c22.py
 (build_rig_c22.py), the sails in each of their states from sails_c22.py (build_sails_c22.py: all hidden but the
 mainsail under its cover), and the deck hardware and each state's running rigging from hardware_c22.py
-(build_hardware_c22.py: all states hidden but her rest at the mooring). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
+(build_hardware_c22.py: all states hidden but her rest at the mooring), and the cabin below from cabin_c22.py
+(build_cabin_c22.py: the liner, furniture, cushions, table and galley; its headroom goes in the report). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
 linked (the mast and boom).
 
 Writes <out>/c22.blend (objects C22_Hull and the deck's, the keel's and the rig's: build_deck_c22.py,
@@ -36,6 +37,7 @@ import build_keel_c22 as BK  # noqa: E402
 import build_rig_c22 as BR  # noqa: E402
 import build_sails_c22 as BS  # noqa: E402
 import build_hardware_c22 as BH  # noqa: E402
+import build_cabin_c22 as BC  # noqa: E402
 import keel_c22 as KC  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -121,7 +123,10 @@ SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail":
             "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9), "Wire": (0.7, 0.71, 0.73),
             "ClothMain": (0.93, 0.92, 0.88), "ClothJib": (0.93, 0.92, 0.88), "ClothGenoa": (0.93, 0.92, 0.88),
             "ClothSpinnaker": (0.13, 0.33, 0.62), "SailHeap": (0.9, 0.89, 0.85), "SailPatch": (0.9, 0.89, 0.85),
-            "SailLine": (0.25, 0.33, 0.55), "SailBag": (0.18, 0.22, 0.32)}
+            "SailLine": (0.25, 0.33, 0.55), "SailBag": (0.18, 0.22, 0.32),
+            "Liner": (0.9, 0.89, 0.86), "Headliner": (0.88, 0.86, 0.8), "Sole": (0.42, 0.27, 0.15),
+            "Laminate": (0.5, 0.34, 0.2), "Cushion": (0.36, 0.4, 0.3), "Curtain": (0.7, 0.62, 0.45),
+            "WhitePlastic": (0.92, 0.92, 0.9)}
 
 
 def deck_materials():
@@ -158,7 +163,8 @@ def main():
     keel = next(o for o in keel_obs if o.name == ("C22_KeelDown" if KEEL_UP else "C22_Keel"))
     _, socks = BR.build_all(deck_materials())
     BS.build_all(deck_materials())
-    _, hw = BH.build_all(deck_materials())
+    _, hw = BH.build_all(deck_materials(), raised=RAISED)
+    _, cabin = BC.build_all(deck_materials())
     socks["sockets"].update(hw["sockets"])
     socks["owner"].update(hw["owner"])
     socks["hardware_note"] = hw["note"]
@@ -174,7 +180,7 @@ def main():
               "stub_volume_m3": round(stub_solid, 4), "trunk_water_m3": round(trunk_water, 4),
               "keel_thickness_m": round(KC.thickness(), 4), "keel_raise_deg": round(math.degrees(KC.raise_angle()), 2),
               "physics_volume_m3": g["design_volume_m3"], "cb_x": round(h["cb"][0], 3), "cb_z": round(h["cb"][2], 3),
-              "physics_cb": [-0.112, -0.102],
+              "physics_cb": [-0.112, -0.102], **cabin,
               "note": "canoe_volume_m3 is what c22_check.py weighs: the hull mesh's volume under the design waterline "
                       "(hull_volume_m3), the keel plate's mesh volume less its pin's (keel_volume_m3, all "
                       "of it under the water: keel_kg of cast iron), the stub's moulding under the hull (stub_volume_m3, keel_c22.stub_volume) "
