@@ -81,6 +81,10 @@ public:
 
 	/** Physics time (s): the world clock (FWorldClock), which every boat, the wind, waves and water material run on. */
 	double GetSimTime() const { return Clock.GetTime(); }
+	/** The instant the world is drawn at (FWorldClock::GetRenderTime, feedback #26: at most one physics step behind
+	 *  GetSimTime, moving by each frame's own length): the water and the player's boat. -SailingClassicClock draws at
+	 *  GetSimTime(), in whole steps (compare the stutter). */
+	double GetRenderTime() const;
 	/** Moves the world clock by this frame's time, once a frame: the game mode's tick or the first boat to tick, whichever
 	 *  runs first (boats step until they reach it, so it has to have moved before they do). */
 	void AdvanceClock(float DeltaSeconds);
