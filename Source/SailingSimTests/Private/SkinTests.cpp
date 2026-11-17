@@ -358,7 +358,10 @@ bool FSailingSkinLetteringTest::RunTest(const FString&)
 	TestEqual(TEXT("Reads with a colour"), int32(FBoatSkin::FromJson(Out.ToJson(), Again)), int32(FBoatSkin::EResult::Ok));
 	TestTrue(TEXT("The colour comes back"), Again.Lettering.Colour.IsSet() && Again.HullNameColour().Equals(Red, 0.002f));
 	FBoatSkin Bad;
-	TestEqual(TEXT("A name of marks only reads"), int32(FBoatSkin::FromJson(TEXT("{\"version\":1,\"id\":\"x\",\"name\":\"X\",\"lettering\":{\"name\":\"<<>>\"}}"), Bad)), int32(FBoatSkin::EResult::Ok));
+	// (a real skin's own text, its name swapped for marks the cleaner drops)
+	const FString Marks = S.ToJson().Replace(TEXT("Bluebonnet"), TEXT("<<>>"));
+	TestTrue(TEXT("The marks are in the file"), Marks.Contains(TEXT("<<>>")));
+	TestEqual(TEXT("A name of marks only reads"), int32(FBoatSkin::FromJson(Marks, Bad)), int32(FBoatSkin::EResult::Ok));
 	TestTrue(TEXT("and is no name"), Bad.HullName().IsEmpty());
 
 	FSkinEditor E;
