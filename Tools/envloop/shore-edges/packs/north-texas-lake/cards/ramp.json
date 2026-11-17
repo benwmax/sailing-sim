@@ -1,0 +1,57 @@
+{
+ "part": "ramp",
+ "name": "Concrete boat launch ramp",
+ "in_game": "The club's ramp and the lake's public ramps (OSM slipways), placed from the map by rule (Track I)",
+ "real": "One or more 15 ft lanes of grooved concrete at about 14 percent, a flat apron to the parking lot, gravel or riprap shoulders, the toe well under the lowest water. Tyre tracks dark above the water, a dark green slick below it, the silt band and scum line on the sides.",
+ "measures": {
+  "lane_w": {
+   "range": [
+    3.7,
+    4.83
+   ],
+   "source": "12-15 ft lanes (state boating-access design guides)"
+  },
+  "slope_pct": {
+   "range": [
+    12.0,
+    15.0
+   ],
+   "source": "12-15 percent (state boating-access design guides)"
+  },
+  "slab_t": {
+   "range": [
+    0.15,
+    0.3
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "bottom_below_pool": {
+   "range": [
+    -2.5,
+    -1.5
+   ],
+   "source": "the toe at least 0.5 m under the October 2026 gauge (-0.98 m)"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 4000
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos",
+ "periodic_by_design": "one ramp, its two shoulders alike, in the frame"
+}

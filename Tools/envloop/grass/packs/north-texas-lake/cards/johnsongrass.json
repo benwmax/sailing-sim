@@ -1,0 +1,52 @@
+{
+ "plant": "johnsongrass",
+ "name": "Johnsongrass",
+ "latin": "Sorghum halepense",
+ "where": "Disturbed ground: ditches, roadsides, field edges, the rough above a natural bank; patches, not single plants",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra",
+  "far": "card past 60 m"
+ },
+ "real": {
+  "height_m": [
+   1.0,
+   2.0
+  ],
+  "blade_width_mm": [
+   10.0,
+   20.0
+  ],
+  "blade_length_m": [
+   0.25,
+   0.5
+  ],
+  "panicle_m": [
+   0.15,
+   0.35
+  ],
+  "habit": "coarse cane-like stems, broad leaves with a pale white midrib, arching; loose purplish to reddish-brown panicle; brown and broken over in winter"
+ },
+ "mesh": {
+  "names": "SM_Grass_Johnson_0..1, _Light, _Far",
+  "stems": [
+   6,
+   10
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 2,
+ "budget": {
+  "tris_lod0_max": 3000,
+  "tris_light_max": 800,
+  "tris_far_max": 4
+ },
+ "references": [
+  "johnson"
+ ],
+ "colour": "grass_look.json[johnsongrass]",
+ "card_version": 1
+}

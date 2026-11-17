@@ -3,6 +3,7 @@
 #include "SailingPhysicsApi.h"
 #include "BoatModel.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace Sailing
@@ -43,9 +44,15 @@ namespace Sailing
 		/**
 		 * How far M_WaterV4 drops the water surface at a point of it in the body frame (m, along the world's vertical),
 		 * mirroring its V4_WPO hull block: 1.1 times its immersion below the bottom plus 3 cm, faded to zero over the
-		 * last 5 cm inside the skin (15 cm over the sheer), capped at 2 m. UpZ is the body's up axis' world Z (the drop
-		 * is vertical, the immersion along the body's Z).
+		 * last 5 cm inside the skin (15 cm over the sheer), capped at MaxDrop. UpZ is the body's up axis' world Z (the
+		 * drop is vertical, the immersion along the body's Z).
 		 */
 		double Drop(double X, double Y, double Z, double UpZ) const;
+		/**
+		 * The drop's cap (m): 2 m, or 1.5 times the canoe depth plus 0.3 m for a deeper hull (J-Class 14: Bluebonnet's
+		 * 2.28 m canoe needs 2.54 m upright and 3.3 m at 40 deg of heel; under 2 m the cap left her hull half full).
+		 * The game passes it to M_WaterV4 as HullClipH.w (the shader takes at least 2 m).
+		 */
+		double MaxDrop() const { return std::max(2.0, 1.5 * MainDepth + 0.3); }
 	};
 }

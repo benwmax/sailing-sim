@@ -1,0 +1,248 @@
+{
+ "size_px": [
+  2048,
+  2048
+ ],
+ "px_per_m": 400.0,
+ "band_h_px": 128,
+ "u_tile_m": 5.12,
+ "band_h_m": 0.32,
+ "bands": {
+  "paint_smooth": {
+   "index": 0,
+   "v0_px": 0,
+   "v1_px": 128,
+   "v0": 0.9375,
+   "v1": 1.0,
+   "paint": 1,
+   "roughness": 0.55,
+   "what": "milled trim, fascia, casings, columns: roller-painted smooth"
+  },
+  "paint_grain": {
+   "index": 1,
+   "v0_px": 128,
+   "v1_px": 256,
+   "v0": 0.875,
+   "v1": 0.9375,
+   "paint": 1,
+   "roughness": 0.62,
+   "what": "fibre-cement trim boards with an embossed cedar grain"
+  },
+  "vinyl": {
+   "index": 2,
+   "v0_px": 256,
+   "v1_px": 384,
+   "v0": 0.8125,
+   "v1": 0.875,
+   "paint": 1,
+   "roughness": 0.38,
+   "what": "vinyl window frames and sashes, faint extrusion lines"
+  },
+  "aluminium": {
+   "index": 3,
+   "v0_px": 384,
+   "v1_px": 512,
+   "v0": 0.75,
+   "v1": 0.8125,
+   "paint": 1,
+   "roughness": 0.42,
+   "what": "painted seamless aluminium gutters and downspouts"
+  },
+  "galvanised": {
+   "index": 4,
+   "v0_px": 512,
+   "v1_px": 640,
+   "v0": 0.6875,
+   "v1": 0.75,
+   "paint": 0,
+   "roughness": 0.5,
+   "what": "galvanised steel: spangle, vents, flashing, meter bases, turbine vents"
+  },
+  "black_iron": {
+   "index": 5,
+   "v0_px": 640,
+   "v1_px": 768,
+   "v0": 0.625,
+   "v1": 0.6875,
+   "paint": 0,
+   "roughness": 0.62,
+   "what": "powder-coated iron and cast aluminium: rails, lamps, hinges, pulls"
+  },
+  "bronze": {
+   "index": 6,
+   "v0_px": 768,
+   "v1_px": 896,
+   "v0": 0.5625,
+   "v1": 0.625,
+   "paint": 0,
+   "roughness": 0.4,
+   "what": "dark bronze anodised aluminium: modern frames, slider frames"
+  },
+  "cedar": {
+   "index": 7,
+   "v0_px": 896,
+   "v1_px": 1024,
+   "v0": 0.5,
+   "v1": 0.5625,
+   "paint": 0,
+   "roughness": 0.7,
+   "what": "stained cedar: posts, plank doors, porch ceilings"
+  },
+  "concrete": {
+   "index": 8,
+   "v0_px": 1024,
+   "v1_px": 1152,
+   "v0": 0.4375,
+   "v1": 0.5,
+   "paint": 0,
+   "roughness": 0.85,
+   "what": "broom-finished concrete: steps, pads, slab edge"
+  },
+  "cast_stone": {
+   "index": 9,
+   "v0_px": 1152,
+   "v1_px": 1280,
+   "v0": 0.375,
+   "v1": 0.4375,
+   "paint": 0,
+   "roughness": 0.8,
+   "what": "cast stone sills and keystones on brick houses"
+  },
+  "rubber": {
+   "index": 10,
+   "v0_px": 1280,
+   "v1_px": 1408,
+   "v0": 0.3125,
+   "v1": 0.375,
+   "paint": 0,
+   "roughness": 0.9,
+   "what": "weatherstrip, garage door seal, line set insulation"
+  },
+  "screen": {
+   "index": 11,
+   "v0_px": 1408,
+   "v1_px": 1536,
+   "v0": 0.25,
+   "v1": 0.3125,
+   "paint": 0,
+   "roughness": 0.7,
+   "what": "insect screen, alpha 0.45 (A)"
+  },
+  "coil_guard": {
+   "index": 12,
+   "v0_px": 1536,
+   "v1_px": 1664,
+   "v0": 0.1875,
+   "v1": 0.25,
+   "paint": 0,
+   "roughness": 0.55,
+   "what": "condenser coil behind its wire guard"
+  },
+  "louvre": {
+   "index": 13,
+   "v0_px": 1664,
+   "v1_px": 1792,
+   "v0": 0.125,
+   "v1": 0.1875,
+   "paint": 1,
+   "roughness": 0.55,
+   "what": "louvre slats along U, 64 mm pitch: shutters and gable vents (U runs up the part)"
+  },
+  "lattice": {
+   "index": 14,
+   "v0_px": 1792,
+   "v1_px": 1920,
+   "v0": 0.0625,
+   "v1": 0.125,
+   "paint": 1,
+   "roughness": 0.5,
+   "what": "45 degree lattice, 38 mm strips, holes in A: pier-and-beam skirts"
+  }
+ },
+ "cells": {
+  "fan_grille": {
+   "rect_px": [
+    0,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.0,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  },
+  "meter_face": {
+   "rect_px": [
+    128,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.0625,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  },
+  "lamp_glass": {
+   "rect_px": [
+    256,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.125,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  },
+  "round_vent": {
+   "rect_px": [
+    384,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.1875,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  },
+  "kick_plate": {
+   "rect_px": [
+    512,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.25,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  },
+  "dial_gauge": {
+   "rect_px": [
+    640,
+    1920,
+    128,
+    128
+   ],
+   "rect_uv": [
+    0.3125,
+    0.0,
+    0.0625,
+    0.0625
+   ]
+  }
+ }
+}

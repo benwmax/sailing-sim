@@ -1,8 +1,14 @@
 #include "UI/SailWidgets.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/DrawElements.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
+#include "Fonts/FontMeasure.h"
+#include "Internationalization/BreakIterator.h"
+#include "Internationalization/IBreakIterator.h"
+#include "Rendering/SlateRenderer.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -58,10 +64,37 @@ namespace SailUI
 		};
 	}
 
+	namespace
+	{
+		/** The usual line breaks, less the one after a slash inside a word: "J/22" wrapped as "J/" and "22". (No face here
+		 *  has a no-break glyph to put in the text instead.) Each text block gets its own: an iterator holds its place. */
+		class FSlashKeptLineBreaks final : public IBreakIterator
+		{
+		public:
+			FSlashKeptLineBreaks() : Inner(FBreakIterator::CreateLineBreakIterator()) {}
+			virtual void SetString(FString&& InString) override { Kept = MoveTemp(InString); Inner->SetStringRef(FStringView(Kept)); }
+			virtual void SetStringRef(FStringView InString) override { Kept = FString(InString); Inner->SetStringRef(FStringView(Kept)); }
+			virtual int32 GetCurrentPosition() const override { return Inner->GetCurrentPosition(); }
+			virtual int32 ResetToBeginning() override { return Inner->ResetToBeginning(); }
+			virtual int32 ResetToEnd() override { return Inner->ResetToEnd(); }
+			virtual int32 MoveToPrevious() override { return Back(Inner->MoveToPrevious()); }
+			virtual int32 MoveToNext() override { return On(Inner->MoveToNext()); }
+			virtual int32 MoveToCandidateBefore(const int32 InIndex) override { return Back(Inner->MoveToCandidateBefore(InIndex)); }
+			virtual int32 MoveToCandidateAfter(const int32 InIndex) override { return On(Inner->MoveToCandidateAfter(InIndex)); }
+		private:
+			bool Glued(int32 At) const { return At > 0 && At < Kept.Len() && Kept[At - 1] == TCHAR('/') && !FChar::IsWhitespace(Kept[At]); }
+			int32 On(int32 At) { while (At != INDEX_NONE && Glued(At)) At = Inner->MoveToNext(); return At; }
+			int32 Back(int32 At) { while (At != INDEX_NONE && Glued(At)) At = Inner->MoveToPrevious(); return At; }
+			TSharedRef<IBreakIterator> Inner;
+			FString Kept;
+		};
+		TSharedPtr<IBreakIterator> LineBreaksFor(bool bWrap) { return bWrap ? TSharedPtr<IBreakIterator>(MakeShared<FSlashKeptLineBreaks>()) : TSharedPtr<IBreakIterator>(); }
+	}
+
 	TSharedRef<SWidget> Text(const FString& S, EType Type, const FLinearColor& Color, bool bWrap)
 	{
 		// (On a paper sheet the glass token becomes its paper twin: SailUI::Surface.)
-		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
@@ -69,7 +102,7 @@ namespace SailUI
 	{
 		// Text with no panel under it lies on whatever the world shows (a bright sky as often as dark water): an ink shadow
 		// keeps its edge.
-		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
@@ -81,7 +114,7 @@ namespace SailUI
 			const TAttribute<FSlateColor> Glass = Color;
 			Color = TAttribute<FSlateColor>::CreateLambda([Glass]() { return FSlateColor(Surface(true, Glass.Get(FSlateColor(Fg)).GetSpecifiedColor())); });
 		}
-		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
@@ -94,23 +127,226 @@ namespace SailUI
 	TSharedRef<SWidget> PanelBox(TSharedRef<SWidget> Content, FMargin Padding, float Radius)
 	{
 		// Built inside an FScopedPaper it is a sheet of chart paper.
-		return SNew(SBorder).BorderImage(Rounded(OnPaper() ? Paper : (IsLow() ? PanelSolid : Panel), Radius, OnSurface(Line), 1.f)).Padding(Padding)[ Content ];
+		if (OnPaper()) return PaperSheet(Content, Padding, Radius, Paper, PaperLine);
+		return SNew(SBorder).BorderImage(Rounded(IsLow() ? PanelSolid : Panel, Radius, OnSurface(Line), 1.f)).Padding(Padding)[ Content ];
+	}
+
+	TSharedRef<SWidget> PaperSheet(TSharedRef<SWidget> Content, FMargin Padding, float Radius, const FLinearColor& Fill, const FLinearColor& Outline)
+	{
+		const FSlateBrush* Grain = PaperGrain();
+		if (!Grain) return SNew(SBorder).BorderImage(Rounded(Fill, Radius, Outline, 1.f)).Padding(Padding)[ Content ];
+		// The grain is a square image: held inside the sheet's rounded corners by a third of the radius (at its few
+		// percent the missing corner slivers do not show).
+		return SNew(SOverlay)
+			+ SOverlay::Slot()[ SNew(SBorder).BorderImage(Rounded(Fill, Radius, Outline, 1.f)) ]
+			+ SOverlay::Slot().Padding(FMath::Max(1.f, Radius * 0.3f))[ SNew(SImage).Image(Grain).DesiredSizeOverride(FVector2D(1.0, 1.0)).Visibility(EVisibility::HitTestInvisible) ]	// or the sheet is never smaller than the 256 px tile (the title's Mode panel grew)
+			+ SOverlay::Slot().Padding(Padding)[ Content ];
+	}
+
+	TArray<FPadGlyph> ParsePadGlyphs(const FString& Pad)
+	{
+		TArray<FPadGlyph> Out;
+		TArray<FString> Tokens;
+		Pad.ParseIntoArray(Tokens, TEXT(" / "), true);
+		for (FString Token : Tokens)
+		{
+			Token.TrimStartAndEndInline();
+			if (Token.IsEmpty()) continue;
+			FPadGlyph G;
+			G.Label = Token;
+			// Arrows anywhere in the token are directions: on their own they are the D-pad, after a stick's letter the stick.
+			uint8 Arms = 0;
+			FString Rest;
+			for (const TCHAR Ch : Token)
+			{
+				if (Ch == TCHAR(0x2191)) Arms |= 1;
+				else if (Ch == TCHAR(0x2193)) Arms |= 2;
+				else if (Ch == TCHAR(0x2190)) Arms |= 4;
+				else if (Ch == TCHAR(0x2192)) Arms |= 8;
+				else if (Ch == TCHAR(0x2195)) Arms |= 3;
+				else if (Ch == TCHAR(0x2194)) Arms |= 12;
+				else Rest.AppendChar(Ch);
+			}
+			Rest.TrimStartAndEndInline();
+			const FString Up = Rest.ToUpper();
+			if (Up == TEXT("A") || Up == TEXT("B") || Up == TEXT("X") || Up == TEXT("Y")) { G.Kind = EPadGlyph::Face; G.Label = Up; }
+			else if (Up == TEXT("LB") || Up == TEXT("RB")) { G.Kind = EPadGlyph::Bumper; G.Label = Up; }
+			else if (Up == TEXT("LT") || Up == TEXT("RT")) { G.Kind = EPadGlyph::Trigger; G.Label = Up; }
+			else if (Up == TEXT("L3") || Up == TEXT("R3")) { G.Kind = EPadGlyph::StickClick; G.Label = Up.Left(1); }
+			else if (Up == TEXT("L") || Up == TEXT("R") || Up == TEXT("L STICK") || Up == TEXT("R STICK")) { G.Kind = EPadGlyph::Stick; G.Label = Up.Left(1); G.Arms = Arms; }
+			else if (Up == TEXT("D-PAD")) { G.Kind = EPadGlyph::Dpad; G.Label.Reset(); G.Arms = 15; }
+			else if (Up.IsEmpty() && Arms != 0) { G.Kind = EPadGlyph::Dpad; G.Label.Reset(); G.Arms = Arms; }
+			else if (Up == TEXT("VIEW")) { G.Kind = EPadGlyph::View; G.Label.Reset(); }
+			else if (Up == TEXT("MENU")) { G.Kind = EPadGlyph::Menu; G.Label.Reset(); }
+			Out.Add(G);
+		}
+		return Out;
+	}
+
+	float PadGlyphWidth(const FPadGlyph& Glyph)
+	{
+		switch (Glyph.Kind)
+		{
+		case EPadGlyph::Bumper: return 36.f;
+		case EPadGlyph::Trigger: return 30.f;
+		case EPadGlyph::View:
+		case EPadGlyph::Menu: return 30.f;
+		case EPadGlyph::Text: return 16.f + 8.5f * Glyph.Label.Len();
+		default: return 24.f;
+		}
+	}
+
+	namespace
+	{
+		// A box with a radius per corner (top left, top right, bottom right, bottom left): bumpers and triggers.
+		const FSlateBrush* RoundedCorners(const FLinearColor& Fill, const FVector4& Radii, const FLinearColor& Outline, float OutlineWidth)
+		{
+			static TMap<FString, TUniquePtr<FSlateRoundedBoxBrush>> Cache;
+			const FString Key = FString::Printf(TEXT("%s|%s|%s|%.1f"), *Fill.ToString(), *Radii.ToString(), *Outline.ToString(), OutlineWidth);
+			if (TUniquePtr<FSlateRoundedBoxBrush>* Found = Cache.Find(Key)) return Found->Get();
+			TUniquePtr<FSlateRoundedBoxBrush> B = MakeUnique<FSlateRoundedBoxBrush>(FSlateColor(Fill), Radii, FSlateColor(Outline), OutlineWidth);
+			const FSlateBrush* Made = B.Get();
+			Cache.Add(Key, MoveTemp(B));
+			return Made;
+		}
+
+		/** A prompt's controller glyphs in a row. */
+		class SPadGlyphs : public SLeafWidget
+		{
+		public:
+			SLATE_BEGIN_ARGS(SPadGlyphs) {}
+			SLATE_END_ARGS()
+			void Construct(const FArguments&, const FString& Pad) { Glyphs = ParsePadGlyphs(Pad); }
+			virtual FVector2D ComputeDesiredSize(float) const override
+			{
+				float W = 0.f;
+				for (const FPadGlyph& G : Glyphs) W += PadGlyphWidth(G);
+				return FVector2D(W + GlyphGap * FMath::Max(Glyphs.Num() - 1, 0), GlyphH);
+			}
+			virtual int32 OnPaint(const FPaintArgs&, const FGeometry& Geo, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer, const FWidgetStyle& Style, bool) const override
+			{
+				const FLinearColor Tint = Style.GetColorAndOpacityTint();
+				const float Top = (float(Geo.GetLocalSize().Y) - GlyphH) * 0.5f;
+				float X = 0.f;
+				for (const FPadGlyph& G : Glyphs)
+				{
+					const float W = PadGlyphWidth(G);
+					PaintOne(Out, Layer, Geo, G, FVector2f(X, Top), W, Tint);
+					X += W + GlyphGap;
+				}
+				return Layer + 3;
+			}
+
+		private:
+			static constexpr float GlyphH = 24.f;
+			static constexpr float GlyphGap = 5.f;
+
+			static void Fill(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, FVector2f At, FVector2f Size, const FSlateBrush* Brush, const FLinearColor& Tint)
+			{
+				FSlateDrawElement::MakeBox(Out, Layer, Geo.ToPaintGeometry(Size, FSlateLayoutTransform(At)), Brush, ESlateDrawEffect::None, Tint * Brush->TintColor.GetSpecifiedColor());
+			}
+			static void Stroke(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const TArray<FVector2f>& Points, const FLinearColor& Colour, float Thickness)
+			{
+				FSlateDrawElement::MakeLines(Out, Layer, Geo.ToPaintGeometry(), Points, ESlateDrawEffect::None, Colour, true, Thickness);
+			}
+			static void Letters(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FString& Str, FVector2f Centre, float Points, const FLinearColor& Colour)
+			{
+				FSlateFontInfo F = Font(EType::Label);
+				F.Size = static_cast<decltype(F.Size)>(Points);
+				F.LetterSpacing = 0;
+				FVector2f Size(Points * 0.62f * Str.Len(), Points * 1.35f);
+				if (FSlateApplication::IsInitialized()) Size = FVector2f(FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Str, F));
+				FSlateDrawElement::MakeText(Out, Layer, Geo.ToPaintGeometry(Size + FVector2f(2.f, 2.f), FSlateLayoutTransform(Centre - Size * 0.5f)), Str, F, ESlateDrawEffect::None, Colour);
+			}
+
+			static void PaintOne(FSlateWindowElementList& Out, int32 Layer, const FGeometry& Geo, const FPadGlyph& G, FVector2f At, float W, const FLinearColor& Tint)
+			{
+				const FLinearColor Body = Raise, Edge = Hex(0x8FA1AD), Lit = Fg, Unlit = Hex(0x5A6B77);
+				const FVector2f Mid = At + FVector2f(W * 0.5f, GlyphH * 0.5f);
+				switch (G.Kind)
+				{
+				case EPadGlyph::Face:
+				{
+					// The pad's own colours, softened, as the ring: the disc stays ink so the letter reads.
+					const FLinearColor Ring = G.Label == TEXT("A") ? Hex(0x58B87A) : G.Label == TEXT("B") ? Hex(0xE2685E) : G.Label == TEXT("X") ? Hex(0x5B9BE0) : Hex(0xE2B94A);
+					Fill(Out, Layer, Geo, At, FVector2f(GlyphH, GlyphH), Rounded(Body, GlyphH * 0.5f, Ring, 2.f), Tint);
+					Letters(Out, Layer + 1, Geo, G.Label, Mid, 10.f, Tint * Lit);
+					break;
+				}
+				case EPadGlyph::Bumper:
+					Fill(Out, Layer, Geo, At + FVector2f(0.f, 3.f), FVector2f(W, 18.f), RoundedCorners(Body, FVector4(9.f, 9.f, 3.f, 3.f), Edge, 1.5f), Tint);
+					Letters(Out, Layer + 1, Geo, G.Label, Mid, 9.f, Tint * Lit);
+					break;
+				case EPadGlyph::Trigger:
+					Fill(Out, Layer, Geo, At, FVector2f(W, GlyphH), RoundedCorners(Body, FVector4(4.f, 4.f, 11.f, 11.f), Edge, 1.5f), Tint);
+					Letters(Out, Layer + 1, Geo, G.Label, Mid + FVector2f(0.f, 0.5f), 9.f, Tint * Lit);
+					break;
+				case EPadGlyph::Dpad:
+				{
+					const float Arm = 8.f;
+					const FSlateBrush* Bar = Rounded(Unlit, 2.f);
+					Fill(Out, Layer, Geo, FVector2f(Mid.X - Arm * 0.5f, At.Y), FVector2f(Arm, GlyphH), Bar, Tint);
+					Fill(Out, Layer, Geo, FVector2f(At.X, Mid.Y - Arm * 0.5f), FVector2f(GlyphH, Arm), Bar, Tint);
+					const FSlateBrush* On = Rounded(Lit, 2.f);
+					if (G.Arms & 1) Fill(Out, Layer + 1, Geo, FVector2f(Mid.X - Arm * 0.5f, At.Y), FVector2f(Arm, Arm), On, Tint);
+					if (G.Arms & 2) Fill(Out, Layer + 1, Geo, FVector2f(Mid.X - Arm * 0.5f, At.Y + GlyphH - Arm), FVector2f(Arm, Arm), On, Tint);
+					if (G.Arms & 4) Fill(Out, Layer + 1, Geo, FVector2f(At.X, Mid.Y - Arm * 0.5f), FVector2f(Arm, Arm), On, Tint);
+					if (G.Arms & 8) Fill(Out, Layer + 1, Geo, FVector2f(At.X + GlyphH - Arm, Mid.Y - Arm * 0.5f), FVector2f(Arm, Arm), On, Tint);
+					break;
+				}
+				case EPadGlyph::Stick:
+				case EPadGlyph::StickClick:
+				{
+					const bool bClick = G.Kind == EPadGlyph::StickClick;
+					// With directions the ring makes room for the chevrons above and below (or beside).
+					const float Ring = G.Arms != 0 ? 16.f : GlyphH;
+					Fill(Out, Layer, Geo, Mid - FVector2f(Ring, Ring) * 0.5f, FVector2f(Ring, Ring), Rounded(FLinearColor::Transparent, Ring * 0.5f, G.Arms != 0 ? Lit : Edge, 1.5f), Tint);	// the small ring with chevrons was the faintest glyph
+					const float Cap = Ring - 8.f;
+					Fill(Out, Layer + 1, Geo, Mid - FVector2f(Cap, Cap) * 0.5f, FVector2f(Cap, Cap), Rounded(bClick ? Lit : Body, Cap * 0.5f, bClick ? Lit : Edge, 1.f), Tint);
+					if (G.Arms == 0) Letters(Out, Layer + 2, Geo, G.Label, Mid, 8.f, Tint * (bClick ? Ink : Lit));
+					const float R = Ring * 0.5f + 1.5f, C = 2.5f;
+					if (G.Arms & 1) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, -R), Mid + FVector2f(0.f, -R - C), Mid + FVector2f(C, -R) }, Tint * Lit, 2.f);
+					if (G.Arms & 2) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-C, R), Mid + FVector2f(0.f, R + C), Mid + FVector2f(C, R) }, Tint * Lit, 2.f);
+					if (G.Arms & 4) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(-R, -C), Mid + FVector2f(-R - C, 0.f), Mid + FVector2f(-R, C) }, Tint * Lit, 1.5f);
+					if (G.Arms & 8) Stroke(Out, Layer + 2, Geo, { Mid + FVector2f(R, -C), Mid + FVector2f(R + C, 0.f), Mid + FVector2f(R, C) }, Tint * Lit, 1.5f);
+					break;
+				}
+				case EPadGlyph::View:
+					Fill(Out, Layer, Geo, At + FVector2f(0.f, 3.f), FVector2f(W, 18.f), Rounded(Body, 9.f, Edge, 1.5f), Tint);
+					// Two overlapping windows.
+					Stroke(Out, Layer + 1, Geo, { Mid + FVector2f(-5.f, -1.f), Mid + FVector2f(-5.f, -4.f), Mid + FVector2f(2.f, -4.f), Mid + FVector2f(2.f, -1.f) }, Tint * Lit, 1.2f);
+					Stroke(Out, Layer + 1, Geo, { Mid + FVector2f(-2.f, -1.f), Mid + FVector2f(5.f, -1.f), Mid + FVector2f(5.f, 4.f), Mid + FVector2f(-2.f, 4.f), Mid + FVector2f(-2.f, -1.f) }, Tint * Lit, 1.2f);
+					break;
+				case EPadGlyph::Menu:
+					Fill(Out, Layer, Geo, At + FVector2f(0.f, 3.f), FVector2f(W, 18.f), Rounded(Body, 9.f, Edge, 1.5f), Tint);
+					for (int32 I = -1; I <= 1; ++I) Stroke(Out, Layer + 1, Geo, { Mid + FVector2f(-5.f, I * 3.5f), Mid + FVector2f(5.f, I * 3.5f) }, Tint * Lit, 1.3f);
+					break;
+				default:
+					Fill(Out, Layer, Geo, At + FVector2f(0.f, 2.f), FVector2f(W, 20.f), Rounded(Body, 10.f, Edge, 1.f), Tint);
+					Letters(Out, Layer + 1, Geo, G.Label, Mid, 10.f, Tint * Lit);
+					break;
+				}
+			}
+
+			TArray<FPadGlyph> Glyphs;
+		};
 	}
 
 	TSharedRef<SWidget> KeyCap(const FString& Keyboard, const FString& Pad)
 	{
 		const bool bPaper = OnPaper();
-		auto Label = [Keyboard, Pad]() { return FText::FromString(UsingGamepad() ? Pad : Keyboard); };
-		auto Fill = [Pad, bPaper]() -> const FSlateBrush*
-		{
-			if (!UsingGamepad()) return Rounded(Surface(bPaper, Raise), 5.f, Surface(bPaper, Line), 1.f);
-			// Xbox face buttons in their colours (the mockup's glyphs).
-			const FLinearColor C = Pad == TEXT("A") ? Hex(0x3BA55C) : Pad == TEXT("B") ? Hex(0xD9453C) : Pad == TEXT("X") ? Hex(0x2F7DD3)
-				: Pad == TEXT("Y") ? Hex(0xE3B321) : Raise;
-			return Rounded(C, 11.f, Line, 1.f);
-		};
-		return SNew(SBorder).BorderImage_Lambda(Fill).Padding(FMargin(8.f, 2.f)).VAlign(VAlign_Center)
-			[ SNew(STextBlock).Text_Lambda(Label).Font(Font(EType::Label)).ColorAndOpacity_Lambda([bPaper]() { return FSlateColor(UsingGamepad() ? Fg : Surface(bPaper, Fg)); }) ];
+		// The keyboard's cap and the controller's glyphs, whichever device was used last.
+		return SNew(SOverlay)
+			+ SOverlay::Slot().VAlign(VAlign_Center)
+			[
+				SNew(SBorder).BorderImage(Rounded(Surface(bPaper, Raise), 5.f, Surface(bPaper, Line), 1.f)).Padding(FMargin(8.f, 2.f)).VAlign(VAlign_Center)
+					.Visibility_Lambda([]() { return UsingGamepad() ? EVisibility::Collapsed : EVisibility::Visible; })
+				[ SNew(STextBlock).Text(FText::FromString(Keyboard)).Font(Font(EType::Label)).ColorAndOpacity(FSlateColor(Surface(bPaper, Fg))) ]
+			]
+			+ SOverlay::Slot().VAlign(VAlign_Center)
+			[
+				SNew(SPadGlyphs, Pad).Visibility_Lambda([]() { return UsingGamepad() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+			];
 	}
 
 	TSharedRef<SWidget> PromptBar(TArray<TTuple<FString, FString, FString>> Prompts, const FString& Hint)

@@ -77,7 +77,9 @@
     "tail_src": "practice: the clinch's end about two feet past the eye's throat, seized to the standing part with two seizings; the standing part lies straight alongside it all the way and lead_m past its end (estimate)",
     "seizing_in": 2.0,
     "seizing_turns": 3,
-    "clinch_tilt_deg": -40.0
+    "clinch_tilt_deg": -40.0,
+    "clinch_gap_in": 0.1,
+    "clinch_gap_src": "build: the clinch's turn round the ring stands this far off the ring's pudden (it lay exactly on it until slice 13), so the laid strands' facets clear it at any turn of the lay there; the lay's turn at the ring follows the cable's length inboard, which slice 13's lead on down through the berth deck's scuttle made 2.2 m longer and brought a strand into the pudden"
   },
   "hawse": {
     "holes": [[25.97, 2.84], [26.3, 2.84]],
@@ -148,21 +150,26 @@
     "throat_m": 0.06,
     "splice_m": 0.1,
     "splice_gap_in": 0.25,
-    "eye_src": "estimate: each eyebolt's eye [its centre-line diameter, its bar, the shank] in, big enough for the rope's splice to pass through it round the bar, standing square to the rope's lead; the splice's throat throat_m out from the bar, its end tucked back splice_m along the standing part, splice_gap_in clear of the iron",
+    "tail_gap_in": 0.05,
+    "eye_src": "estimate: each eyebolt's eye [its centre-line diameter, its bar, the shank] in, big enough for the rope's splice to pass through it round the bar, standing square to the rope's lead; the splice's throat throat_m out from the bar, its end tucked back splice_m along the standing part, splice_gap_in clear of the iron and tail_gap_in clear of the standing part (one rope drawn as one tube, so it must not touch itself: laid hard against it, the sheet anchor's painter crossed itself in slice 12's final build)",
     "src": "practice: the shank painter (a rope here; large ships' were often part chain) from an eyebolt in the bow rise_m above where it takes the shank (at_shank of the eye's height up from the crown), a round turn about the shank and back up to an eyebolt beside the first, each end spliced round its eyebolt"
   },
   "sheet_stow": {
     "channel": "fore",
     "shank_over_hinges_m": 0.2,
+    "heel_deg": 15.0,
+    "heel_clear_m": 0.15,
+    "max_slope_deg": 16.0,
     "bill_off_m": 0.105,
     "bill_under_top_m": 0.05,
     "stock_gap_m": 0.003,
     "lash_m": 0.5,
+    "lash_min_m": 0.2,
     "lash_turns": 3,
     "lash_circ_in": 3.0,
     "lash_eyebolt": {"out_m": 0.7, "eye_in": [4.0, 1.25, 1.25], "into_in": 6.0},
-    "painter": {"circ_in": 4.5, "at_shank": 0.5, "clear_of_lids_in": 4.0, "rise_m": 0.35, "eyes_apart_m": 0.16, "eye_in": [4.0, 1.0, 1.0], "into_in": 4.0, "throat_m": 0.06, "splice_m": 0.1, "splice_gap_in": 0.25},
-    "src": "practice (Bean's choice, Nov 16): the sheet anchor stowed outside on the starboard side abaft the fore chains. Its shank lies level along the side (parallel to it), its axis shank_over_hinges_m over the highest hinge of the gun deck lids under it, its eye forward, the ring turned toward the fore channel and lashed with lash_turns turns of lash_circ_in rope (lash_m between the ring's bar and the eyebolt's eye) to an eyebolt in the channel's after end, out_m out from the side. The ring turns about its eye's hole, along the stock, which stands nearly up and down: so it lies nearly level, about two feet under the channel, and its lashing can be no shorter than about 0.45 m (lash_m 0.5). The waist's side is low here (its gunwale 0.78 m over the lids' hinges): the shank lies as low as lets the lids open under it, and its billboard is moved down the side from under the bill until its top is half an inch under the moulding (the bill at least bill_under_top_m under that). It is turned about its shank until the bill of its inner fluke rests on a billboard (as the bowers': bill_off_m off the planking) and the lower end of its stock bears on the side (stock_gap_m off it): the roll and how far the shank lies out are solved together. A shank painter (as the bowers') from two eyebolts rise_m above (under the waist's moulding) takes its weight. Its legs run from the side over the lids out to the shank, and a lid swings out and up across its own span fore and aft, so the painter comes down between two lids: in the stretch of the shank clear of every lid (clear_of_lids_in beyond its edges, an estimate), the billboard and the stock by its own reach, the one whose middle is nearest at_shank of the eye's height up from the crown, at its middle (anchors.json sheet.painter says where)"
+    "painter": {"circ_in": 6.0, "at_shank": 0.5, "clear_of_lids_in": 4.0, "in_from_edge_in": 2.0, "break_tons_per_circ2": 0.2, "min_safety": 3.0, "eyes_apart_m": 0.18, "eye_in": [4.5, 1.25, 1.25], "into_in": 3.0, "throat_m": 0.07, "splice_m": 0.12, "splice_gap_in": 0.25, "tail_gap_in": 0.05},
+    "src": "practice (Bean's choice, Nov 16): the sheet anchor stowed outside on the starboard side abaft the fore chains (Steel 1794 stows the sheet anchors at the after part of the fore shrouds). Its eye is forward, the ring turned toward the fore channel and lashed with lash_turns turns of lash_circ_in rope (lash_m between the ring's bar and the eyebolt's eye) to an eyebolt in the channel's after end, out_m out from the side. It is turned about its shank until the bill of its inner fluke rests on a billboard (as the bowers': bill_off_m off the planking) and the lower end of its stock bears on the side (stock_gap_m off it): the roll and how far the shank lies out are solved together. Its stock is long (17.85 ft) and stands nearly up and down: the shank lies so high that the anchor's lowest point, the stock's lower end, stands heel_clear_m over the sea with the ship heeled heel_deg to starboard (a working heel; the stock's foot no longer dips at 8 deg). The waist's side is low here (its plankshear about 0.8 m over the gun deck lids' hinges, the open rail on stanchions above it), and the bill must stay bill_under_top_m under the moulding for its billboard (moved down the side from under the bill until its top is half an inch under the moulding): so the shank rises forward from its crown, low over the billboard, to its eye at the channel, as little as both need (no more than max_slope_deg), and passes shank_over_hinges_m over the hinges of every lid whose span (clear_of_lids_in beyond its edges) it crosses, so the lids open under it. A shank painter (as the bowers', but of circ_in rope: the sheet anchor's is the heavier and its legs the flatter) takes her weight from two eyebolts driven up into the waist rail's cap (in_from_edge_in in from its outer edge, into_in into it, clear of its stanchions), as high over the shank as the side reaches here: its legs lead up at about 40 to 44 deg (the shank stands 1.5 m out, where the stock's foot bears on the wales), so each would carry about 0.75 of her weight were it to take all of it, and the rope is sized for that at min_safety times under its breaking strain (break_tons_per_circ2 times its circumference squared, in long tons: a rule for good hemp; checked). Its legs run from the shank up past the lids, and a lid swings out and up across its own span fore and aft, so the painter comes down between two lids: in the stretch of the shank clear of every lid (clear_of_lids_in beyond its edges, an estimate), the billboard and the stock by its own reach, the one whose middle is nearest at_shank of the eye's height up from the crown, at its middle (anchors.json sheet.painter says where)"
   },
   "meets": {
     "note": "the anchors' parts that meet another part of the ship (or each other) by design, each pair with why and how far (in) either may go into the other; every other meeting fails the build (build_frigate's anchors_room, deck.room). Each entry: the parts on one side, the parts on the other, why, the depth allowed: the deepest the build measures over the entry's pairs (deck.room's measure, how far a vertex lies behind the other's nearest face, found within 0.3 m, so never more than 11.8 in) with a quarter inch over, a guard against a part moving deeper. A designed contact the build no longer finds fails it too: a part meant to be driven into, let into or resting on another that no longer reaches it hangs clear of what holds it",
@@ -179,13 +186,13 @@
       [["HawseLining"], ["HawsePlug"], "an oak plug is driven from inboard into each hawse hole that has no cable in it, through its lining, its head on the lining's inner lip (slice 12)", 0.45],
       [["AnchorEyebolts"], ["Skin"], "the shank painters' eyebolts are driven into the bow", 4.25],
       [["ShankPainter"], ["Bower"], "the painter's round turn bears on the shank", 0.29],
-      [["SheetBillboard"], ["Skin"], "the sheet anchor's billboard is bent to the side and let into the planking", 1.25],
-      [["SheetBillboard"], ["SheetAnchor"], "the bill of the sheet anchor's inner fluke rests on its billboard's iron plate", 0.25],
-      [["SheetEyebolts"], ["Skin"], "the sheet anchor's painter eyebolts are driven into the side", 0.25],
+      [["SheetBillboard"], ["Skin"], "the sheet anchor's billboard is bent to the side and let into the planking", 0.95],
+      [["SheetBillboard"], ["SheetAnchor"], "the bill of the sheet anchor's inner fluke rests on its billboard's iron plate", 0.3],
+      [["SheetEyebolts"], ["RailCap"], "the sheet anchor's painter eyebolts are driven up into the waist rail's cap", 2.05],
       [["SheetEyebolts"], ["Channels"], "the sheet anchor's lashing eyebolt is driven into the fore channel's after end", 3.05],
       [["SheetPainter"], ["SheetAnchor"], "the sheet anchor's painter's round turn bears on its shank", 0.35],
-      [["SheetLashing"], ["SheetAnchor"], "the sheet anchor's lashing is passed round its ring's bar", 1.1],
-      [["SheetLashing"], ["SheetEyebolts"], "the sheet anchor's lashing is rove through its eyebolt's eye in the fore channel", 0.75]
+      [["SheetLashing"], ["SheetAnchor"], "the sheet anchor's lashing is passed round its ring's bar", 0.4],
+      [["SheetLashing"], ["SheetEyebolts"], "the sheet anchor's lashing is rove through its eyebolt's eye in the fore channel", 0.8]
     ]
   }
 }

@@ -150,8 +150,9 @@ namespace SailFrontEndImpl
 			struct FShape { float Hull, Mast, Main, Jib; bool bMulti, bLateen, bCabin; };
 			static const FShape Shapes[] = { { 0.62f, 0.62f, 0.32f, 0.22f, false, false, false }, { 0.42f, 0.42f, 0.36f, 0.f, false, true, false },
 				{ 0.44f, 0.56f, 0.30f, 0.f, false, false, false }, { 0.58f, 0.55f, 0.28f, 0.22f, false, false, true }, { 0.70f, 0.70f, 0.30f, 0.28f, false, false, true },
-				{ 0.52f, 0.62f, 0.30f, 0.16f, true, false, false }, { 0.70f, 0.70f, 0.30f, 0.24f, true, false, true }, { 0.80f, 0.68f, 0.30f, 0.26f, true, false, true } };
-			const FShape& F = Shapes[FMath::Clamp(Type, 0, 7)];
+				{ 0.52f, 0.62f, 0.30f, 0.16f, true, false, false }, { 0.70f, 0.70f, 0.30f, 0.24f, true, false, true }, { 0.80f, 0.68f, 0.30f, 0.26f, true, false, true },
+				{ 0.84f, 0.80f, 0.30f, 0.26f, false, false, true }, { 0.88f, 0.88f, 0.30f, 0.26f, false, false, false } };   // the maxi; Bluebonnet, flush-decked
+			const FShape& F = Shapes[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(Shapes)) - 1)];
 			auto DrawLine = [&](TArray<FVector2f> P, const FLinearColor& C, float W)
 			{
 				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), P, ESlateDrawEffect::None, C * Style.GetColorAndOpacityTint(), true, W);
@@ -1152,7 +1153,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLaunch()
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ SailUI::Text(S.Name, EType::Ui, Fg) ]
-					+ SHorizontalBox::Slot().AutoWidth()[ Pill(S.Tag, S.Tag == TEXT("Home")) ]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(0.f, 0.f, 26.f, 0.f)[ Pill(S.Tag, S.Tag == TEXT("Home")) ]	// clear of the chosen row's tick
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ SailUI::Text(S.Detail, EType::Small, Muted) ]
 			]
@@ -1208,20 +1209,26 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	BoatCardTypes.Reset();
 	const TArray<SailCatalog::FBoat>& Fleet = SailCatalog::Boats();
 	float MaxLen = 1.f, MaxBeam = 1.f, MaxKg = 1.f, MaxKn = 1.f;
-	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
+	// (The bars are scaled to the club fleet: the maxi and Bluebonnet, three to five times the next boat's weight, fill theirs.)
+	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi) && B.Type != int32(Sailing::EBoatType::Bluebonnet)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
 	auto Cur = [this]() -> const SailCatalog::FBoat& { return SailCatalog::Boat(FocusedBoat); };
 	auto Attr = [Cur](TFunction<FString(const SailCatalog::FBoat&)> F) { return TAttribute<FText>::CreateLambda([Cur, F]() { return FText::FromString(F(Cur())); }); };
-	auto LockOf = [Career](int32 T) { return Career.BoatLockReason(FSailSave::BoatId(T)); };
+	// A career lock first; then a keel too deep for the chosen launch spot (docs/jclass-14/: Bluebonnet's 4.5 m).
+	auto LockOf = [this, Career](int32 T)
+	{
+		const FString Reason = Career.BoatLockReason(FSailSave::BoatId(T));
+		return Reason.IsEmpty() ? SailCatalog::DepthLockReason(Pending.World, Pending.LaunchSpot, T) : Reason;
+	};
 	auto Panels = [this]() { return bViewMode ? EVisibility::Hidden : EVisibility::Visible; };
 
-	// The strip: eight compact cards, LB/RB (and Q/E) at its ends.
+	// The strip: the fleet in compact cards (nine with Bluebonnet), LB/RB (and Q/E) at its ends.
 	TSharedRef<SHorizontalBox> Strip = SNew(SHorizontalBox);
 	Strip->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)
 	[ SNew(SSailButton).Look(EButtonLook::MenuItem).Padding(FMargin(6.f, 2.f)).OnClicked_Lambda([this]() { StepBoat(-1); })[ KeyCap(TEXT("Q"), TEXT("LB")) ] ];
 	for (const SailCatalog::FBoat& B : Fleet)
 	{
 		const int32 T = B.Type;
-		// The fleet of eight: the prologue's maxi isn't in the strip (brief section 8).
+		// The fleet: the prologue's maxi isn't in the strip (brief section 8).
 		if (T == int32(Sailing::EBoatType::Maxi)) continue;
 		if (!SailCatalog::InSliceBoat(T)) continue;   // #399: the slice's boats only in a slice build
 		const FString Locked = LockOf(T);
@@ -1468,6 +1475,10 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 	for (const SailCatalog::FRealDay& D : SailCatalog::RealDays())
 	{
 		const bool bOk = Pending.World == 0;
+		// The card's second line carries the date: the title drops its "(11 June 2023)", which wrapped it to three lines.
+		FString DayTitle = D.Title;
+		int32 Paren = INDEX_NONE;
+		if (DayTitle.FindChar(TCHAR('('), Paren) && Paren > 0) DayTitle = DayTitle.Left(Paren).TrimEnd();
 		TSharedRef<SSailButton> B = SNew(SSailButton).Padding(FMargin(12.f, 8.f)).IsEnabled(bOk)
 			.IsSelected_Lambda([this, Date = D.Date]() { return Pending.Conditions.RealDay == Date; })
 			.OnClicked_Lambda([this, D, bInGame]()
@@ -1483,7 +1494,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildConditions(bool bInGame)
 			})
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(D.Title, EType::Ui, Fg, true) ]
+			+ SVerticalBox::Slot().AutoHeight()[ SailUI::Text(DayTitle, EType::Ui, Fg, true) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ SailUI::Text(bOk ? D.Summary : FString(TEXT("Lake Ray Hubbard only")), EType::Small, Muted, true) ]
 		];
 		Days->AddSlot(Slot % 2, Slot / 2)[ B ];
@@ -1971,6 +1982,36 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 			.Index_Lambda([S]() { return S->bCameraShake ? 1 : 0; })
 			.OnChanged_Lambda([S](int32 I) { S->bCameraShake = I == 1; S->Save(); })
 			.Note(TEXT("The camera jolts when the bow slams a wave or green water comes aboard, and trembles in a gale. Turn it off if motion bothers you.")));
+		// Camera views (docs/camera-views/): the view you start in (and the one F5 or the right stick's click last chose),
+		// the look's speed and direction, and whether the camera eases back behind the boat.
+		// (listed in the cycle's order, far outside to aboard; the setting holds the view's own number)
+		TArray<FString> ViewNames;
+		for (const ChaseCamera::EView V : ChaseCamera::CycleOrder()) ViewNames.Add(ChaseCamera::DisplayName(V));
+		Add(SNew(SSailChoice).Label(TEXT("Camera")).Options(ViewNames)
+			.Index_Lambda([S]() { return ChaseCamera::CycleIndex(ChaseCamera::EView(FMath::Clamp(S->CameraView, 0, int32(ChaseCamera::EView::Count) - 1))); })
+			.OnChanged_Lambda([this, S](int32 I)
+			{
+				S->CameraView = int32(ChaseCamera::CycleOrder()[FMath::Clamp(I, 0, ChaseCamera::CycleOrder().Num() - 1)]);
+				S->Save();
+				// In game (the pause menu), the boat's camera changes now; elsewhere the next sail starts in it.
+				ASailboatPawn* P = bMenusInGame ? Pawn() : nullptr;
+				if (P && IsValid(P) && P->GetShowroomStage() == EShowroomStage::None) P->SetCameraView(ChaseCamera::EView(S->CameraView), false);
+			})
+			.Note(TEXT("Chase sits low behind the boat, about where you'd stand in the cockpit. Overview is the high view, for your angle "
+				"to the wind and the marks. Drone and Chase boat film you from off the boat; Masthead, Transom cam and Bow are cameras "
+				"on her. Helm is the helmsman's eyes. F5, the middle mouse button or a tap of the right stick changes it while you sail.")));
+		Add(SNew(SSailSlider).Label(TEXT("Look speed")).Min(25.f).Max(300.f).Step(25.f)
+			.Value_Lambda([S]() { return FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f; })
+			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), FMath::RoundToInt32(FMath::Clamp(S->LookSpeed, 0.25f, 3.f) * 100.f)); })
+			.OnChanged_Lambda([S](float V) { S->LookSpeed = FMath::Clamp(V / 100.f, 0.25f, 3.f); S->Save(); }));
+		Add(SNew(SSailChoice).Label(TEXT("Invert up and down")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bInvertLook ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bInvertLook = I == 1; S->Save(); })
+			.Note(TEXT("On: pushing up looks down, as in a flight game.")));
+		Add(SNew(SSailChoice).Label(TEXT("Camera returns behind")).Options({ TEXT("Off"), TEXT("On") })
+			.Index_Lambda([S]() { return S->bCameraRecentre ? 1 : 0; })
+			.OnChanged_Lambda([S](int32 I) { S->bCameraRecentre = I == 1; S->Save(); })
+			.Note(TEXT("On: a few seconds after you stop looking around, the camera swings back behind the boat.")));
 		Add(SNew(SSailSlider).Label(TEXT("Brightness")).Min(50.f).Max(150.f).Step(5.f)
 			.Value_Lambda([S]() { return float(S->Brightness); })
 			.ValueText_Lambda([S]() { return FString::Printf(TEXT("%d%%"), S->Brightness); })
@@ -2086,10 +2127,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildSettings()
 		];
 	}
 	const TSharedRef<SWidget> HelpSheet = PanelBox(SailUI::Text(Help, EType::Body, Muted, true));
-	const TSharedRef<SWidget> RowsSheet = SNew(SBorder).BorderImage(Rounded(Paper, RadiusCard, PaperLine, 1.f)).Padding(FMargin(18.f, 16.f, 8.f, 16.f))
-	[
-		SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Rows ]
-	];
+	const TSharedRef<SWidget> RowsSheet = PaperSheet(
+		SNew(SScrollBox).ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll).NavigationScrollPadding(24.f) + SScrollBox::Slot().Padding(0.f, 0.f, 12.f, 0.f)[ Rows ],
+		FMargin(18.f, 16.f, 8.f, 16.f), RadiusCard, Paper, PaperLine);
 	PaperScope.Reset();
 	// The PC's menu sweep (Nov 4): every list follows the keyboard's focus (Graphics and Gameplay run past 1080 lines, and
 	// the focus used to go on below the screen, unseen).

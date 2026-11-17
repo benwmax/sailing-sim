@@ -67,6 +67,8 @@ namespace Sailing
 		// answered at once; no rest between pulls.
 		const bool bInHand = Cfg.DinghyEasePerHeelDeg > 0.0 || Boat.TotalMass() < Set.HandSheetMassKg;
 		ReactionNow = bHands ? Lerp(Set.LightReactionSeconds, Set.ReactionSeconds, Breeze) : 0.0;
+		// A slow-rolling yacht's crew see the sails over half her roll (FBoatConfig::TrimRollSeconds), ideal hands too.
+		if (Cfg.TrimRollSeconds > 0.0) ReactionNow = std::max(ReactionNow, 0.5 * Cfg.TrimRollSeconds);
 		DeadBandNow = Lerp(Set.LightDeadBandDeg, Set.DeadBandDeg, Breeze);
 		RestNow = bInHand ? 0.0 : Set.RestSeconds * Breeze;
 
@@ -135,7 +137,9 @@ namespace Sailing
 		// upwind), blended in from 80 to 110 deg of true wind.
 		const double ReachShare = Cfg.TrimReachHeelLimitDeg > 0.0 ? SmoothStep(80.0, 110.0, std::fabs(T.TrueWindAngle) * kRadToDeg) : 0.0;
 		const double HeelLimitCfg = Lerp(Cfg.TrimHeelLimitDeg, Cfg.TrimReachHeelLimitDeg, ReachShare);
-		const double Excess = Heel + 0.3 * HeelRate - Set.HeelLimitDeg * HeelLimitCfg / 22.0;
+		// The heel read 0.3 s ahead by its rate; a quarter of her roll ahead on a slow-rolling yacht (TrimRollSeconds).
+		const double HeelLead = std::max(0.3, 0.25 * Cfg.TrimRollSeconds);
+		const double Excess = Heel + HeelLead * HeelRate - Set.HeelLimitDeg * HeelLimitCfg / 22.0;
 		const double EaseRate = 0.6 * std::sqrt(22.0 / HeelLimitCfg);
 		// Ease as the boat heels past the limit; trim back in slowly, or at once if it starts to heel to windward.
 		// (A dinghy sailor, dumping the sheet in the hand as she heels, keeps less of it out afterwards.)
@@ -196,7 +200,8 @@ namespace Sailing
 			const double Foot = See(MainFootSeen, bMainSeen, FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide), Dt) + MainEase + Dump;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
 			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
-			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0); // MainEase is 0 while the main is held
+			// MainEase is 0 while the main is held; a boom with no traveller (the frigate's spanker) is all sheet.
+			const double Traveler = Range > 0.0 ? Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0) : 0.0;
 			Out.Traveler = Work(TravelerHand, Current.Traveler, Clamp(Traveler, -1.0, 1.0), Cfg.TravelerRangeDeg, TravelerOut, TravelerIn, Dt);
 			// The sheet takes the boom the rest of the way from where the traveller car is (not where it is going).
 			const double Sheet = Clamp((Foot - (bHands ? Out.Traveler : Clamp(Traveler, -1.0, 1.0)) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);
@@ -261,6 +266,27 @@ namespace Sailing
 			// 1.4 s; the same once the lines were off, drifting or backing out at under a knot.
 			const bool bNoWay = std::fabs(T.SpeedThroughWater) < 0.8 * kKnot && std::fabs(T.Heel) < 8.0 * kDegToRad;
 			if (!Boat.GetMooringLines().empty() || bNoWay) Out.Hike = MoveToward(Current.Hike, -0.5, HikeRate * Dt);
+		}
+		// docs/frigate-physics/: a square rig's yards, each mast's braced so its lowest set sail meets its own wind (the
+		// masts ahead head the ones aft) at the stall less the margin; square before the wind. The yards swing at the
+		// crew's pace in the model, so the target is set at once. Which sails are set is the officer's call (the
+		// controls' SquareSet), not the trimmer's.
+		if (Cfg.HasSquareRig() && Set.bTrimMain)
+		{
+			const FSquareRig& R = Cfg.Square;
+			const double Target = SquareStallAlpha(R) * kRadToDeg - Set.AlphaMarginDeg;
+			for (int M = 0; M < std::min(R.NumMasts, kMaxMasts); ++M)
+			{
+				int Low = -1;
+				for (int I = 0; I < std::min(int(R.Sails.size()), T.NumSquareSails); ++I)
+				{
+					if (R.Sails[I].Mast != M || Current.SquareSet[I] != ESailSet::Set) continue;
+					if (Low < 0 || R.Sails[I].FootZ < R.Sails[Low].FootZ) Low = I;
+				}
+				if (Low < 0) Low = R.LowestOn(M);
+				if (Low < 0 || Low >= T.NumSquareSails) continue;
+				Out.Brace[M] = BraceForAlpha(R, M, T.SquareStrips[Low].ApparentAngle, Target, Low);
+			}
 		}
 		return Out;
 	}

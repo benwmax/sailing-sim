@@ -23,6 +23,7 @@ struct SAILINGSIM_API FBoatSkin
 	static constexpr int32 MaxNameChars = 32;
 	static constexpr int32 MaxIdChars = 40;
 	static constexpr int32 MaxSailDigits = 6;
+	static constexpr int32 MaxHullNameChars = 18;
 	static constexpr int32 NumWearLevels = 5;
 
 	/** The rope roles a skin can colour. */
@@ -63,6 +64,14 @@ struct SAILINGSIM_API FBoatSkin
 		bool IsEmpty() const { for (int32 C : Column) if (C >= 0) return false; return true; }
 	};
 
+	/** The boat's name on her hull (docs/skins/README.md, "Name on the hull"): vinyl lettering on both quarters. */
+	struct FLettering
+	{
+		TOptional<FString> Name;       // CleanHullName'd; unset or empty: no name
+		TOptional<FLinearColor> Colour; // unset: navy, or white on a dark hull (HullNameColour)
+		bool IsEmpty() const { return !Name.IsSet() && !Colour.IsSet(); }
+	};
+
 	int32 Version = CurrentVersion;
 	FString Id;        // lower-case letters, digits and hyphens; a built-in's starts "builtin-"
 	FString Name;      // what the player sees
@@ -72,6 +81,7 @@ struct SAILINGSIM_API FBoatSkin
 	FWear Wear;
 	FSails Sails;
 	FLines Lines;
+	FLettering Lettering;
 
 	enum class EResult : uint8 { Ok, Refused, Invalid };
 	/** Reads a skin's JSON text. Refused: over the size cap or a newer version. Invalid: not a skin. */
@@ -101,6 +111,12 @@ struct SAILINGSIM_API FBoatSkin
 	static FString CleanId(const FString& In);
 	/** Typed text made safe for a name: letters, digits, spaces and . , ' & - / at most MaxNameChars. */
 	static FString CleanName(const FString& In);
+	/** Typed text made safe for the hull: CleanName's letters and marks, runs of spaces as one, at most MaxHullNameChars. */
+	static FString CleanHullName(const FString& In);
+	/** The name this skin letters on the hull ("" for none) and its colour: the skin's own, else navy, or the gelcoat's
+	 *  white where the skin paints the hull dark (luminance under 0.25). */
+	const FString& HullName() const;
+	FLinearColor HullNameColour() const;
 };
 
 /**

@@ -2,13 +2,17 @@
 #include "SailingSim.h"
 #include "SailingSettings.h"
 #include "UI/SailHud.h"
+#include "BenchRunner.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Fonts/CompositeFont.h"
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/PlatformTime.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "TextureResource.h"
 #include "Engine/Texture2D.h"
 #include "UObject/GCObject.h"
 
@@ -253,9 +257,97 @@ namespace SailUI
 		return Tex;
 	}
 
+	namespace
+	{
+		uint32 GrainHash(uint32 X, uint32 Y, uint32 Seed)
+		{
+			uint32 H = X * 374761393u + Y * 668265263u + Seed * 2246822519u;
+			H = (H ^ (H >> 13)) * 1274126177u;
+			return H ^ (H >> 16);
+		}
+		float GrainUnit(uint32 X, uint32 Y, uint32 Seed)
+		{
+			return float(GrainHash(X, Y, Seed) & 0xFFFFu) / 65535.f;
+		}
+		// Value noise on a lattice of Cells x Cells that wraps, so the tile has no seam.
+		float GrainLattice(float U, float V, int32 Cells, uint32 Seed)
+		{
+			const float FX = U * Cells, FY = V * Cells;
+			const int32 X0 = FMath::FloorToInt(FX), Y0 = FMath::FloorToInt(FY);
+			const float TX = FMath::SmoothStep(0.f, 1.f, FX - X0), TY = FMath::SmoothStep(0.f, 1.f, FY - Y0);
+			auto At = [Cells, Seed](int32 X, int32 Y) { return GrainUnit(uint32(((X % Cells) + Cells) % Cells), uint32(((Y % Cells) + Cells) % Cells), Seed); };
+			return FMath::Lerp(FMath::Lerp(At(X0, Y0), At(X0 + 1, Y0), TX), FMath::Lerp(At(X0, Y0 + 1), At(X0 + 1, Y0 + 1), TX), TY);
+		}
+	}
+
+	float PaperGrainValue(int32 X, int32 Y, int32 Size)
+	{
+		const int32 N = FMath::Max(Size, 8);
+		const int32 PX = ((X % N) + N) % N, PY = ((Y % N) + N) % N;
+		const float U = float(PX) / N, V = float(PY) / N;
+		// Mottle (the sheet's uneven tone), a finer tooth, and per-texel fibre specks, stretched a little along X.
+		const float Mottle = GrainLattice(U, V, 6, 42u) - 0.5f;	// a seed whose 36 lattice values average 0.5
+		const float Tooth = GrainLattice(U, V, 96, 23u) - 0.5f;
+		const float Speck = GrainUnit(uint32(PX / 2), uint32(PY), 37u) - 0.5f;
+		// Mostly tooth and specks: with the mottle at 1.1 the first stills read as blotches 60 to 80 px across.
+		return FMath::Clamp(Mottle * 0.45f + Tooth * 1.0f + Speck * 0.7f, -1.f, 1.f);
+	}
+
+	const FSlateBrush* PaperGrain()
+	{
+		static const bool bOff = FParse::Param(FCommandLine::Get(), TEXT("SailingNoPaperGrain"));
+		if (bOff || !FSlateApplication::IsInitialized()) return nullptr;
+		static FKeptTextures Kept;
+		static FSlateBrush Brush;
+		const FString Key(TEXT("PaperGrain"));
+		if (TObjectPtr<UTexture2D>* Found = Kept.Textures.Find(Key); Found && *Found) return &Brush;
+		const int32 N = 256;
+		UTexture2D* Tex = UTexture2D::CreateTransient(N, N, PF_B8G8R8A8, TEXT("SailPaperGrain"));
+		if (!Tex || !Tex->GetPlatformData() || Tex->GetPlatformData()->Mips.Num() == 0) return nullptr;
+		Tex->SRGB = true;
+		Tex->Filter = TF_Bilinear;
+		Tex->AddressX = TA_Wrap;
+		Tex->AddressY = TA_Wrap;
+		FTexture2DMipMap& Mip = Tex->GetPlatformData()->Mips[0];
+		if (FColor* Px = static_cast<FColor*>(Mip.BulkData.Lock(LOCK_READ_WRITE)))
+		{
+			// Light fibres are white, dark specks are ink; the alpha carries how much (at most about 7% of the sheet).
+			const FColor SpeckInk = PaperInk.ToFColor(true);
+			for (int32 Y = 0; Y < N; ++Y)
+			{
+				for (int32 X = 0; X < N; ++X)
+				{
+					const float G = PaperGrainValue(X, Y, N);
+					FColor C = G >= 0.f ? FColor::White : SpeckInk;
+					C.A = uint8(FMath::Clamp(FMath::RoundToInt(FMath::Abs(G) * (G >= 0.f ? 30.f : 22.f)), 0, 255));
+					Px[Y * N + X] = C;
+				}
+			}
+		}
+		Mip.BulkData.Unlock();
+		Tex->UpdateResource();
+		Kept.Textures.Add(Key, Tex);
+		Brush = FSlateBrush();
+		Brush.SetResourceObject(Tex);
+		Brush.ImageSize = FVector2D(N, N);
+		Brush.DrawAs = ESlateBrushDrawType::Image;
+		Brush.Tiling = ESlateBrushTileType::Both;
+		return &Brush;
+	}
+
 	EUiMode UiMode()
 	{
-		return EUiMode(FMath::Clamp(USailingSettings::Get()->UiMode, 0, 2));
+		// -SailingUiMode=helpful|natural|off for stills (photo mode's panel, docs/camera-views/); the setting otherwise.
+		static SailingArgs::FOnce ArgRead;
+		static int32 Arg = -1;
+		if (ArgRead.Take())
+		{
+			FString V;
+			Arg = !FParse::Value(SailingArgs::Dev(), TEXT("SailingUiMode="), V) ? -1
+				: V.Equals(TEXT("natural"), ESearchCase::IgnoreCase) ? 1 : V.Equals(TEXT("off"), ESearchCase::IgnoreCase) ? 2
+				: V.Equals(TEXT("helpful"), ESearchCase::IgnoreCase) ? 0 : -1;
+		}
+		return EUiMode(FMath::Clamp(Arg >= 0 ? Arg : USailingSettings::Get()->UiMode, 0, 2));
 	}
 
 	void SetUiMode(EUiMode Mode)
@@ -324,7 +416,12 @@ namespace SailUI
 		};
 	}
 
-	bool UsingGamepad() { return GGamepad; }
+	bool UsingGamepad()
+	{
+		// -SailingPad shows the controller's prompts without one plugged in (stills).
+		static const bool bForce = FParse::Param(FCommandLine::Get(), TEXT("SailingPad"));
+		return bForce || GGamepad;
+	}
 	bool MouseIsActive() { return GMouseActive && FPlatformTime::Seconds() - GMouseMovedAt < MouseHoverWindowSeconds; }
 
 	void FocusByHover(const TSharedRef<SWidget>& Widget)

@@ -1,0 +1,164 @@
+{
+ "id": "cottage",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "Lake cottage",
+ "about": "The 1950s and 60s cabins that came with the lake (filled 1969) and were added to: small, lap siding, pier-and-beam with a lattice skirt, a simple gable, a window unit in a side window, a metal flue, a screened or open porch facing the water.",
+ "storeys": 1,
+ "plate_m": 2.5,
+ "roof": {
+  "type": [
+   "gable",
+   1.0
+  ],
+  "pitch_deg": 26.6,
+  "overhang_m": 0.3,
+  "finish": [
+   "shingle_barkwood",
+   0.4,
+   "metal_seam",
+   0.35,
+   "shingle_weathered_wood",
+   0.25
+  ],
+  "galvalume_chance": 0.5
+ },
+ "wall": {
+  "front": [
+   "lap_siding",
+   0.8,
+   "board_batten",
+   0.2
+  ],
+  "sides": "front",
+  "upper": "same",
+  "gables": "front",
+  "reveal_m": 0.0
+ },
+ "windows": {
+  "main": [
+   "WinSingleHung3050",
+   1.0
+  ],
+  "front_feature": [
+   "WinTwin3050",
+   1.0
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    1,
+    1
+   ],
+   0.5,
+   [
+    2,
+    2
+   ],
+   0.5
+  ],
+  "every_m": 2.8,
+  "sill_m": 0.95
+ },
+ "trim": {
+  "casing": "CasingFlat",
+  "sill": "none",
+  "corner_boards": true,
+  "frieze": false
+ },
+ "door": [
+  "DoorCraftsman",
+  0.5,
+  "DoorSixPanel",
+  0.5
+ ],
+ "garage": null,
+ "shutters": {
+  "chance": 0.3,
+  "part": [
+   "ShutterBoard",
+   0.5,
+   "ShutterPanel",
+   0.5
+  ],
+  "on": "front"
+ },
+ "chimney": {
+  "chance": 0.6,
+  "part": [
+   "ChimneyFlue",
+   1.0
+  ]
+ },
+ "porch": {
+  "kind": "full",
+  "columns": "ColumnSquare",
+  "rails": true,
+  "depth_m": 2.1,
+  "steps": 3,
+  "raised_m": 0.6,
+  "roof": "same"
+ },
+ "dormers": null,
+ "foundation": "SkirtLattice",
+ "raised_m": 0.6,
+ "gutters": {
+  "chance": 0.3
+ },
+ "roof_vents": {
+  "turbine": [
+   0,
+   1
+  ],
+  "box": [
+   0,
+   1
+  ],
+  "stacks": [
+   1,
+   1
+  ]
+ },
+ "lights": [
+  "LightCylinder",
+  0.4,
+  "LightCoach",
+  0.6
+ ],
+ "ac": [
+  "ACWindowUnit",
+  1
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#F4F1E8",
+   "door": "#A33A2A",
+   "shutter": "#4C6B7A",
+   "sash": "#F4F1E8",
+   "garage": "#F4F1E8",
+   "metal": "#F4F1E8",
+   "body": "#9DB4B8",
+   "roof": "#5E7468"
+  },
+  {
+   "trim": "#FAF8F2",
+   "door": "#2E4A3A",
+   "shutter": "#2E4A3A",
+   "sash": "#FAF8F2",
+   "garage": "#FAF8F2",
+   "metal": "#FAF8F2",
+   "body": "#D9C9A3",
+   "roof": "#5E7468"
+  },
+  {
+   "trim": "#EFEDE6",
+   "door": "#1F3550",
+   "shutter": "#1F3550",
+   "sash": "#EFEDE6",
+   "garage": "#EFEDE6",
+   "metal": "#EFEDE6",
+   "body": "#7E8C78",
+   "roof": "#5E7468"
+  }
+ ]
+}

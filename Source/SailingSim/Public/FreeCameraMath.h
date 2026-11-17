@@ -23,8 +23,18 @@ struct SAILINGSIM_API FFreeCameraLimits
 /** The free camera's arithmetic, apart from the actor so the tests hold it. */
 namespace FreeCameraMath
 {
-	/** Base speeds the wheel steps through (m/s): walking to a fast drone. */
-	inline constexpr int32 NumSpeeds = 5;
+	/** Base speeds the speed keys step through (m/s): a walk to a fast drone, each about twice the last (camera views
+	 *  slice 2: eight steps, the one you chose kept in the save). */
+	inline constexpr int32 NumSpeeds = 8;
+	/** The step a new camera starts on (2 m/s). */
+	inline constexpr int32 DefaultSpeedIndex = 2;
+	/** Orbit moves (camera views slice 2: the left stick and WASD in orbit, as in other games' photo modes): the stick's
+	 *  sides go round the subject at this rate (deg/s), up and down tilt over it (deg/s), forward and back dolly in and out
+	 *  by this share of the distance a second. Boost and slow scale them as they do the fly speed's, gentler. */
+	inline constexpr float OrbitTurnDegPerSec = 60.f;
+	inline constexpr float OrbitTiltDegPerSec = 40.f;
+	inline constexpr float OrbitDollyPerSec = 1.2f;
+	SAILINGSIM_API float OrbitRateScale(bool bBoost, bool bSlow);
 	SAILINGSIM_API double SpeedStep(int32 Index);
 	/** Shift: five times; Ctrl: a fifth. */
 	SAILINGSIM_API double Speed(int32 Index, bool bBoost, bool bSlow);

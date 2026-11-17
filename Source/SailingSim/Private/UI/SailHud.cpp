@@ -252,8 +252,8 @@ namespace SailHudImpl
 			FSlateBrush Crop = *Map;
 			Crop.SetUVRegion(FBox2f(FVector2f(U - SpanU * 0.5f, V - SpanV * 0.5f), FVector2f(U + SpanU * 0.5f, V + SpanV * 0.5f)));
 			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), &Crop, ESlateDrawEffect::None, NightDim(FLinearColor::White, 0.45f));
-			// A wash of the paper over the print: the map's saturated blue and tan settle toward a chart's pale tints.
-			const FLinearColor Wash = NightDim(Paper, 0.3f).CopyWithNewOpacity(0.24f);
+			// A light wash of the paper over the print ties it to the sheet (the texture is a pale chart already: Phase 12).
+			const FLinearColor Wash = NightDim(Paper, 0.3f).CopyWithNewOpacity(0.08f);
 			FSlateDrawElement::MakeBox(Out, Layer + 1, G.ToPaintGeometry(MapSize, FSlateLayoutTransform(MapOrigin)), White(), ESlateDrawEffect::None, Wash);
 			Neatline();
 			// Aids to navigation inside the crop, in their chart colours (a dot each: the chart page has the symbols).
@@ -971,6 +971,17 @@ void SSailHud::Construct(const FArguments& A)
 			SNew(SBox).WidthOverride_Lambda([this]() { return FOptionalSize(MessageWidthFor(LayoutWidth, RightPanelsShown())); })
 			[
 				SNew(SVerticalBox)
+				// A ship's orders panel (docs/ship-orders/): while it is open, in every HUD mode (it is a menu the player opened).
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
+				[
+					SNew(SBox).Visibility_Lambda([this]() { const ASailboatPawn* P = Pawn(); return P && P->GetShipOrders().IsOpen() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+					[
+						MessageCard([]() { return Accent; }, SNew(SVerticalBox)
+							+ SVerticalBox::Slot().AutoHeight()[ ShadowText(TAttribute<FText>::CreateLambda([this]() { const ASailboatPawn* P = Pawn(); return FText::FromString(P ? P->GetOrdersPanelText(0) : FString()); }), EType::Eyebrow, FSlateColor(Accent), false) ]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 6.f)[ ShadowText(TAttribute<FText>::CreateLambda([this]() { const ASailboatPawn* P = Pawn(); return FText::FromString(P ? P->GetOrdersPanelText(1) : FString()); }), EType::Ui, FSlateColor(Fg), false) ]
+							+ SVerticalBox::Slot().AutoHeight()[ ShadowText(TAttribute<FText>::CreateLambda([this]() { const ASailboatPawn* P = Pawn(); return FText::FromString(P ? P->GetOrdersPanelText(2) : FString()); }), EType::Small, FSlateColor(Muted), true) ])
+					]
+				]
 				// Prologue step 1: the captain's call; shown in every HUD mode (it is the scene).
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
 				[

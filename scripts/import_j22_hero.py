@@ -74,6 +74,15 @@ float pDeckGroup = (1.0 - step(0.5, IsHull)) * (1.0 - step(0.5, Waterline)) * pE
 c = lerp(c, PaintDeck.rgb * min(pLum / 0.871, 1.2), PaintDeck.a * pDeckGroup * gcAll);
 c = lerp(c, PaintNonSkid.rgb * min(pLum / 0.559, 1.3), PaintNonSkid.a * pDeckGroup * X.r);
 c = lerp(c, PaintTrim.rgb * min(pLum / 0.22, 1.5), PaintTrim.a * pDeckGroup * X.g);
+// Name on the hull (docs/skins, HullName.h): the skin's lettering, cut vinyl on both quarters. NameTex's red is the
+// letters' cover (white on black, drawn by the pawn); NameRect is its place in the hull's frame (cm: aft edge X, lower
+// edge Z, length, height), projected side-on so it follows the topsides, and read from each side with the bow end first
+// (from port the bow is to the left, so U runs aft; from starboard it runs forward). NameColour's alpha 0 (the
+// default): no name. It goes on before the wear, so chalk, grime and the splash line weather it with the gelcoat.
+float2 nameUV = float2(LP.y < 0.0 ? NameRect.x + NameRect.z - LP.x : LP.x - NameRect.x, NameRect.y + NameRect.w - zcm) / max(NameRect.zw, 1.0);
+float nameIn = step(0.0, nameUV.x) * step(nameUV.x, 1.0) * step(0.0, nameUV.y) * step(nameUV.y, 1.0) * step(0.5, IsHull) * pExt * NameColour.a;
+float nameCover = nameIn > 0.0 ? Texture2DSampleLevel(NameTex, NameTexSampler, saturate(nameUV), 0.0).r : 0.0;
+c = lerp(c, NameColour.rgb, saturate(nameCover) * nameIn);
 // Chalk, as M_BoatSurface: the tops first, in 40 cm blotches (wear.BLOT), pale gelcoat toward chalk.
 float ox = max(dirtK, 0.3 * timeK) * gcAll * (0.55 + 0.45 * up);
 float2 blq = LP.xz / 40.0 + LP.yy / 55.0, blqi = floor(blq), blqf = smoothstep(0.0, 1.0, frac(blq));
@@ -404,6 +413,18 @@ def hero_material(defaults):
         pv = node(mat, unreal.MaterialExpressionVectorParameter, -1300, 1620 + i * 80)
         pv.set_editor_property("parameter_name", pname)
         pv.set_editor_property("default_value", unreal.LinearColor(1, 1, 1, 0))
+        extra[pname] = (pv, "RGBA")
+    # Name on the hull (docs/skins, HullName.h): the lettering's texture (a render target the pawn draws; the default is
+    # only there so the material compiles), its place and its colour (alpha 0: none).
+    name_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1300, 2120)
+    name_tex.set_editor_property("parameter_name", "NameTex")
+    name_tex.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    name_tex.set_editor_property("texture", defaults["BaseColor"])
+    extra["NameTex"] = (name_tex, "")
+    for i, (pname, default) in enumerate((("NameRect", unreal.LinearColor(0, 0, 1, 1)), ("NameColour", unreal.LinearColor(0, 0, 0, 0)))):
+        pv = node(mat, unreal.MaterialExpressionVectorParameter, -1300, 2200 + i * 80)
+        pv.set_editor_property("parameter_name", pname)
+        pv.set_editor_property("default_value", default)
         extra[pname] = (pv, "RGBA")
     # Hero ageing (docs/hero-ageing): the waterline, blotches and grime are anchored to the part (cm; the hull's and the
     # rudder's pivots sit on the design waterline), as M_BoatSurface's LP.

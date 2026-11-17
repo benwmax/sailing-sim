@@ -1,0 +1,18 @@
+{
+ "about": "Reference pack for the Catalina 22's rebuild (docs/c22-1). Photos of real Catalina 22s for looking and measuring proportions only: nothing is traced into the model and no photo enters the repo. Public domain, CC0 or plain CC BY only (no NC, ND or SA), as for the J-Class and the frigate. Download with python3 -I Tools/shipkit/fetch_refs.py Tools/shipkit/catalina22/refs.json Data/Reference/raw/boats/Catalina22 (git-ignored; fetch_refs.py reads each file's licence on Commons first and refuses anything else). Bean's own photos of C22s at Rush Creek go in the same folder and are the main reference from slice 2 on.",
+ "status": "Nov 16 2026: Wikimedia Commons answered the cloud's requests with 'too many requests' all afternoon (other sessions share its limit), so the category's files and their licences were not read yet. Slice 1 fills 'drawings' from Category:Catalina 22 before it draws the hull.",
+ "drawings": [],
+ "to_check": [
+  {
+   "where": "https://commons.wikimedia.org/wiki/Category:Catalina_22",
+   "note": "About a dozen photos of the class, e.g. 'Catalina 22 at anchor.jpg' and 'Catalina 22 sailboat 4180.jpg'. Check each file's licence before listing it."
+  }
+ ],
+ "excluded": [
+  {
+   "file": "Catalina 22 sailboat on a trailer.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Catalina_22_sailboat_on_a_trailer.jpg",
+   "why": "CC BY-SA 1.0 and GFDL: share-alike, which the shipkit doesn't take. It would have been the best view of the swing keel's housing and the underbody: a photo of a C22 on a trailer from Bean, or a CC0 one, takes its place."
+  }
+ ]
+}

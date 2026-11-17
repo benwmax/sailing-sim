@@ -10,13 +10,18 @@ namespace FreeCameraMath
 {
 	double SpeedStep(int32 Index)
 	{
-		static const double Steps[NumSpeeds] = { 0.5, 2.0, 8.0, 30.0, 120.0 };
+		static const double Steps[NumSpeeds] = { 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 40.0, 120.0 };
 		return Steps[FMath::Clamp(Index, 0, NumSpeeds - 1)];
 	}
 
 	double Speed(int32 Index, bool bBoost, bool bSlow)
 	{
 		return SpeedStep(Index) * (bBoost ? 5.0 : 1.0) * (bSlow ? 0.2 : 1.0);
+	}
+
+	float OrbitRateScale(bool bBoost, bool bSlow)
+	{
+		return (bBoost ? 2.5f : 1.f) * (bSlow ? 0.3f : 1.f);
 	}
 
 	double EaseAlpha(double Dt, double EaseSeconds)
@@ -237,7 +242,17 @@ void AFreeCamera::Update(float DeltaSeconds, const FFreeCameraInput& Input)
 		SetActorLocationAndRotation(To, FRotator(Pitch, Yaw, Roll));
 		return;
 	}
-	// Orbit: the camera eases to its place on the sphere about the pivot and faces it; idle, it turns slowly round.
+	// Orbit: the stick (or WASD) goes round the subject and in and out, the triggers (or Q and E) over it and under; the
+	// camera eases to its place on the sphere about the pivot and faces it; idle, it turns slowly round.
+	const float Rate = FreeCameraMath::OrbitRateScale(Input.bBoost, Input.bSlow);
+	if (Input.Move.X != 0.f || Input.Move.Y != 0.f || Input.Vertical != 0.f)
+	{
+		// (pushed right the camera goes right, round the subject: its bearing from the pivot turns left)
+		Yaw = SailingAngles::WrapDegrees(Yaw - float(Input.Move.X) * FreeCameraMath::OrbitTurnDegPerSec * Rate * float(Dt));
+		Pitch = FMath::Clamp(Pitch - FMath::Clamp(Input.Vertical, -1.f, 1.f) * FreeCameraMath::OrbitTiltDegPerSec * Rate * float(Dt), Orbit.MinPitchDeg, Orbit.MaxPitchDeg);
+		Orbit.DistanceCm = FMath::Clamp(Orbit.DistanceCm * FMath::Exp(-float(Input.Move.Y) * FreeCameraMath::OrbitDollyPerSec * Rate * float(Dt)), Orbit.MinDistanceCm, Orbit.MaxDistanceCm);
+		SinceLookSeconds = 0.0;
+	}
 	if (Orbit.SpinDegPerSec != 0.f && SinceLookSeconds >= Orbit.SpinIdleSeconds) Yaw = SailingAngles::WrapDegrees(Yaw + Orbit.SpinDegPerSec * float(Dt));
 	const FVector P = Pivot();
 	const FVector Want = P - FRotator(Pitch, Yaw, 0.f).Vector() * Orbit.DistanceCm;

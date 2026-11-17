@@ -1,0 +1,140 @@
+{
+ "about": "The Catalina 22's size card (docs/c22-1): the targets every slice of her rebuild is checked against by c22_check.py. Bean chose the original swing-keel boat with the pop-top (Nov 16 2026): Frank Butler's 1969 design as built through the 1970s and early 1980s, the version on most Texas lakes and the one the game's physics already sails (Fleet.cpp, Catalina22()). Sizes are the published ones; where sources differ, 'sources' lists them and 'recheck' says what decides. Feet and inches are the class's units; metres are what the checks use.",
+ "boat": {
+  "class": "Catalina 22",
+  "version": "original swing keel, pop-top",
+  "years": "1969 to about 1986 (the 'New Design' of 1986-87 changed the ports, interior and rigging; the MkII of 1995 has a new, larger deck)",
+  "designer": "Frank V. Butler",
+  "rig": "masthead sloop, single spreaders, deck-stepped mast on a hinged step",
+  "keel": "cast-iron swing keel on a pivot pin, raised by a winch and cable through a turning ball",
+  "rudder": "kick-up rudder hung on the transom, wooden tiller",
+  "engine": "outboard on a transom bracket, starboard quarter",
+  "cabin": "pop-top on four legs over the main cabin; V-berth, dinette that drops into a berth, starboard settee and quarter berth, galley that slides aft under the cockpit, porta-potti under the V-berth",
+  "deck": "bow pulpit, stern rail, lifelines, teak handrails on the cabin top, sliding companionway hatch and drop boards, forward hatch, moulded non-skid panels"
+ },
+ "targets": {
+  "length_hull_m": 6.553,
+  "length_waterline_m": 5.893,
+  "beam_m": 2.337,
+  "draft_keel_down_m": 1.524,
+  "draft_keel_up_m": 0.61,
+  "displacement_kg": 1021,
+  "keel_kg": 249,
+  "I_m": 7.873,
+  "J_m": 2.438,
+  "P_m": 6.401,
+  "E_m": 2.944,
+  "headroom_popup_closed_m": 1.32,
+  "headroom_popup_raised_m": 1.7,
+  "tolerance": 0.03
+ },
+ "in_feet": {
+  "length_hull": "21 ft 6 in",
+  "length_waterline": "19 ft 4 in",
+  "beam": "7 ft 8 in",
+  "draft": "5 ft 0 in keel down, 2 ft 0 in keel up",
+  "displacement": "2,250 lb",
+  "keel": "550 lb cast iron",
+  "I J P E": "25.83, 8.00, 21.00, 9.66 ft",
+  "sail_area": "about 205 sq ft, main and 100% foretriangle",
+  "headroom": "4 ft 4 in under the closed pop-top, 5 ft 7 in raised"
+ },
+ "sources": {
+  "note": "Read through web search results on Nov 16 2026: the cloud cannot open the class site (catalina22.org), the maker's (catalinayachts.com), sailboatdata or Wikipedia, which are blocked by the session's network settings. Each number is a published fact; nothing is copied from a drawing.",
+  "length_hull": "class and maker spec sheets, sailboatdata, Practical Sailor: 21 ft 6 in. The 22 Sport's 23 ft 10 in overall includes its pulpit and rudder.",
+  "length_waterline": "19 ft 4 in in every source",
+  "beam": "7 ft 8 in in every source but one listing for the 1995 MkII (8 ft 4 in, not used)",
+  "displacement": "2,250 lb swing keel (sailboatdata, the encyclopedia entry); the fixed-keel boat is 2,490 lb with 800 lb of ballast",
+  "keel": "550 lb (sailboatdata, keelindex); 500 lb (the 22 Sport's sheet); 450 lb (one encyclopedia infobox). 550 kept: it is what the game's physics carries (250 kg).",
+  "draft": "5 ft 0 in down in every source; up 2 ft 0 in (sailboatdata), 1 ft 8 in (the Sport's sheet and the encyclopedia)",
+  "rig": "I 25.83, J 8.00, P 21.00, E 9.66 ft (Practical Sailor, the encyclopedia entry, sailboatdata's E 9.67)",
+  "headroom": "Practical Sailor's used-boat review: the pop-top (from 1973) lifts the coachroof on four stainless legs, from about 4 ft 4 in to 5 ft 7 in",
+  "keel_pivot": "Practical Sailor's keel overhaul: a 1 in pin in two bronze castings, bolted to stainless weldments glassed into the hull; the pivot changed about hull 250",
+  "versions": "Catalina's timeline and owners' forums (via search): the 'New Design' came in 1986 or 1987 (smoked acrylic ports in place of the aluminium-framed ones, a new interior layout, rigging changes); the MkII in 1995 (redesigned, enlarged deck, longer cabin trunk, new interior, same hull). Some sources call the 1995 boat the Mk III."
+ },
+ "recheck": [
+  "Freeboard at the bow, the mast and the transom, the cabin trunk's height and outline, and the pop-top's size: from Bean's photos or CC0 broadsides (slice 1 and 2).",
+  "Draft keel up (2 ft 0 in or 1 ft 8 in) and the keel's outline: from a photo of a C22 on her trailer (slice 3).",
+  "Mast height above the deck: I plus the deck's height at the mast, checked against the forestay's length (slice 4)."
+ ],
+ "game": {
+  "note": "What today's game boat is (Fleet.cpp Catalina22(), Catalina22_sockets.json): the physics hull is a formula fitted to the sizes above. Slice 10 replaces it with the new hull's sections; until then the new model must keep the sockets the game draws its rig and crew from (slice 9 writes the new file).",
+  "hull_rig_kg": 771,
+  "ballast_kg": 250,
+  "crew_kg": 227,
+  "crew_sink_m": 0.028,
+  "crew_sink_note": "How much deeper the model floats than the empty boat: the game's 227 kg crew over her 8.1 m^2 waterplane. Published drafts are the empty boat's, so c22_check.py takes this off the model's drafts, and keel_c22.py adds it to the keel's and rudder's (slice 3).",
+  "mast_x_m": 0.86,
+  "masthead_z_m": 8.84,
+  "boom_z_m": 1.45,
+  "draft_m": 1.52,
+  "canoe_depth_m": 0.282,
+  "design_volume_m3": 1.248,
+  "mast_diameter_m": 0.09
+ },
+ "budget_triangles": {
+  "note": "Triangles as built, per section of the shape loop (Tools/shapeloop/sections_c22.json and its successors): measure.py counts every copy, so a kit part used twice counts twice. The detailed boat's cap is 3 million (Bean, Nov 9 2026: docs/hardware-fit); frame rate decides. c22_check.py --slice N checks each section whose slice is N or earlier.",
+  "today_total": 420456,
+  "sections": {
+   "hull": {
+    "slice": 1,
+    "max": 250000
+   },
+   "deck": {
+    "slice": 2,
+    "max": 300000,
+    "with": [
+     "well",
+     "cabin"
+    ]
+   },
+   "keel": {
+    "slice": 3,
+    "max": 150000,
+    "with": [
+     "rudder",
+     "outboard"
+    ]
+   },
+   "rig": {
+    "slice": 4,
+    "max": 150000
+   },
+   "sails": {
+    "slice": 5,
+    "max": 150000
+   },
+   "fittings": {
+    "slice": 6,
+    "max": 250000
+   },
+   "interior": {
+    "slice": 7,
+    "max": 400000
+   }
+  },
+  "outside_total": 1250000,
+  "light_copy": 300000
+ },
+ "budget_textures": {
+  "high_mb": 4.0,
+  "medium_mb": 0.0,
+  "note": "Her own detail maps on High (slice 8); Medium uses the shared boat library only, as the J/22's hero does."
+ },
+ "measured_by": {
+  "note": "How c22_check.py gets each target. 'shape': from measure.py's stats; 'sockets': from the build's sockets file; 'later': not measured by the tool yet (the slice named adds it); 'build': checked by that slice's own build report, not a shape measure.",
+  "length_hull_m": "shape",
+  "length_waterline_m": "shape",
+  "beam_m": "shape",
+  "draft_keel_down_m": "shape",
+  "draft_keel_up_m": "shape",
+  "displacement_kg": "shape",
+  "keel_kg": "build: the keel plate's mesh volume x cast iron (c22_report.json keel_kg, slice 3)",
+  "I_m": "sockets",
+  "J_m": "sockets",
+  "P_m": "sockets: the mast's black bands' inner edges (BandTop less BandBoom, slice 4)",
+  "E_m": "sockets",
+  "headroom_popup_closed_m": "build: the cabin's report (c22_report.json headroom_popup_closed_m, slice 7)",
+  "headroom_popup_raised_m": "build: the cabin's report (c22_report.json headroom_popup_raised_m, slice 7)"
+ }
+}

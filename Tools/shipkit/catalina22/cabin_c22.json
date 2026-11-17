@@ -1,0 +1,96 @@
+{
+ "about": "The Catalina 22's cabin below, for her rebuild's slice 7 (docs/c22-8). cabin_c22.py lays out every piece from these and checks it; build_cabin_c22.py meshes it. Game frame: X forward, Y starboard, Z up, metres from amidships on the design waterline. The layout is the original swing-keel boat's as owners and Catalina's brochures describe it (specs_c22.json 'cabin'): V-berth with a curtain, a dinette to port that drops into a berth, a settee to starboard running aft into a quarter berth under the cockpit, a galley that slides out from under the port cockpit seat, and a porta-potti under the V-berth. Every size is a guess from the hull and the published headroom until a photo of her cabin; the README lists them.",
+ "liner": {
+  "hull": 0.012,
+  "deck": 0.025,
+  "cabin": 0.02,
+  "x": [-2.75, 3.05],
+  "note": "The inside of the hull, deck and trunk: each moulding's skin drawn again 'hull', 'deck' and 'cabin' inside its outer face (the laminate's thickness), facing in, so the cabin is closed from inside as well as out. The hull's from 'x' aft to forward, closed at both ends by a bulkhead (aft of the quarter berth's foot, and the forepeak's forward of the V-berth); the deck's and the trunk's whole, the trunk's open at its windows."
+ },
+ "sole": {
+  "z": -0.14,
+  "x": [-0.78, 1.05],
+  "note": "The cabin sole: a teak-and-holly board 'z' high, from the companionway bulkhead to the V-berth's front. Its height comes from the card's headroom: the closed pop-top's underside is 1.32 m over it (4 ft 4 in) and the raised one's 1.70 m (5 ft 7 in), the lid's 0.38 m lift. It meets the keel trunk's sides, which stand up through it down the middle."
+ },
+ "bulkhead": {
+  "x": 1.05,
+  "thick": 0.02,
+  "door_half_width": 0.3,
+  "door_top": 1.02,
+  "post_d": 0.07,
+  "note": "The main bulkhead across the cabin forward of the mast, with the V-berth's doorway in its middle ('door_half_width' a side, up to 'door_top'), and the mast's compression post, a round 'post_d' aluminium tube from the trunk's top to the top's underside under the mast step (deck_c22's mast_x)."
+ },
+ "vberth": {
+  "x": [1.06, 2.92],
+  "top": 0.2,
+  "cushion": 0.1,
+  "insert_x": [1.06, 1.5],
+  "insert_half_width": 0.28,
+  "min_width": 0.22,
+  "front_opening": 0.22,
+  "curtain_drop": 1.0,
+  "note": "The V-berth: a platform 'top' high from the bulkhead to the bow, where the cushions end at 'min_width' across; a removable centre insert ('insert_x', 'insert_half_width' a side: a cushion on a lift-out board) over the porta-potti, whose front shows through an opening 'front_opening' a side in the platform's front. A curtain on a rod across the doorway, drawn to port."
+ },
+ "porta_potti": {
+  "x": 1.13,
+  "size": [0.38, 0.34, 0.31],
+  "floor_past": 0.03,
+  "note": "A small portable toilet (about 15 by 13 by 12 in) under the insert, its front toward the doorway, on a floor board level with the sole from the V-berth's front to 'floor_past' beyond it."
+ },
+ "dinette": {
+  "side": -1,
+  "aft_seat": [-0.42, -0.02],
+  "table": [-0.02, 0.66],
+  "fwd_seat": [0.66, 1.04],
+  "inboard_y": 0.07,
+  "seat_top": 0.17,
+  "cushion": 0.12,
+  "back_thick": 0.05,
+  "back_height": 0.33,
+  "table_z": 0.58,
+  "table_down_z": 0.17,
+  "note": "The dinette to port: two seats facing each other across a table, the seats from the hull in to 'inboard_y' from the centreline (beside the keel trunk), their bases 'seat_top' high and cushions 'cushion' thick; the aft seat's back a low panel at its aft edge, the forward seat's the bulkhead. The table's top 'table_z' high on a leg on the sole beside the trunk; lowered to 'table_down_z', level with the seats' bases, it and its filler cushion make a short double berth, the cushions flush."
+ },
+ "settee": {
+  "x": [-0.76, 1.04],
+  "front_y": 0.32,
+  "top": 0.17,
+  "cushion": 0.12,
+  "back_height": 0.4,
+  "back_thick": 0.09,
+  "note": "The settee to starboard, from the companionway to the bulkhead: a base 'top' high, its front 'front_y' out from the centreline, a seat cushion and a back cushion leaning on the hull."
+ },
+ "quarter_berth": {
+  "x": [-2.6, -0.76],
+  "top": 0.0,
+  "cushion": 0.1,
+  "inboard_y": 0.33,
+  "note": "The quarter berth: aft from the settee, under the starboard cockpit seat, outboard of the footwell's side ('inboard_y'), its platform lower than the settee's so there is room under the seat over it."
+ },
+ "galley": {
+  "x": [-1.48, -0.8],
+  "y": [-0.79, -0.35],
+  "z": [0.0, 0.4],
+  "slide": 0.28,
+  "note": "The galley: a box under the port cockpit seat with a two-burner stove and a small sink in its top, on runners; pulled out 'slide' into the cabin when it is used (C22_Interior_GalleyOut), pushed home when sailing (C22_Interior_Galley)."
+ },
+ "steps": {
+  "x": [-0.75, -0.545],
+  "half_width": 0.22,
+  "top": 0.17,
+  "note": "The companionway step: a box just forward of the bulkhead (the cockpit well's front and its liner) under the sill, its top halfway between the sole and the sill (two even rises); the keel's winch stands on the trunk's aft end just forward of it."
+ },
+ "keel_winch": {
+  "socket_y": 0.12,
+  "socket_z": 0.02,
+  "boss_r": 0.032,
+  "note": "The swing keel's winch: a reel winch inside the companionway step, under the bridgedeck (Practical Sailor's review: the handle goes through a plywood facing), its cable straight forward into the keel trunk's aft end to the keel's top (slice 3's keel; neither is drawn, being inside). Only its crank socket shows, in a boss on the step's forward face, 'socket_y' to starboard and 'socket_z' high."
+ },
+ "trunk_cap": {
+  "thick": 0.012,
+  "skirt": 0.03,
+  "note": "A teak cap on the keel trunk's top in the cabin, 'thick' over it and 'skirt' down its sides, so it reads as the flat-topped box owners step over (slice 3's trunk is smooth-shaded fibreglass under it)."
+ },
+ "clear": 0.005,
+ "note": "Every piece stands clear of the liner by at least 'clear' (cabin_c22.py checks it), and none goes through another."
+}

@@ -164,6 +164,23 @@ public:
 	 *  views; never in photo mode, the capture mode or a measured run). On by default; off for anyone motion bothers. */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	bool bCameraShake = true;
+	/** Camera views (docs/camera-views/): the view the player sails in, ChaseCamera::EView (0 Chase, 1 Overview, 2 Helm, 3 Drone,
+	 *  4 Chase boat, 5 Masthead, 6 Transom, 7 Bow);
+	 *  F5, the middle mouse button or the right stick's click cycles them and the last one is kept. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	int32 CameraView = 0;
+	/** How fast the mouse and right stick turn the cameras (1 = the game's own; 0.25 to 3). */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	float LookSpeed = 1.f;
+	/** Up on the mouse or stick looks down. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	bool bInvertLook = false;
+	/** The chase views ease back behind the boat a couple of seconds after you stop turning them. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	bool bCameraRecentre = true;
+	/** Photo mode's speed step (FreeCameraMath::SpeedStep, 0 to 7), kept from one photo session to the next. */
+	UPROPERTY(config, EditAnywhere, Category = "Display")
+	int32 PhotoSpeed = 2;
 	/** UI overhaul (Bean, Nov 15 2026: "do it"): after dark the HUD turns red, as a boat's instruments do, so the eye
 	 *  keeps its night sight. On by default; off keeps the day colours all night. */
 	UPROPERTY(config, EditAnywhere, Category = "Display")

@@ -1,0 +1,2 @@
+# Plain git blobs: cloud sessions cannot upload to Git LFS
+*.png -filter -diff -merge binary

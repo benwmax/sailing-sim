@@ -1,0 +1,53 @@
+{
+ "_about": "CC0 scans used only for fine grain (Track E2). fetch_sources.py downloads them to the git-ignored Data/BuildMat/raw/<id>/. Every one is CC0: free for commercial use, no credit required (credited in docs/envloop/buildmat anyway). width_m is the real width the scan covers (Poly Haven's listed dimensions; ambientCG's plaster is taken as 2 m).",
+ "sources": {
+  "brickface": {
+   "site": "polyhaven",
+   "asset": "red_brick",
+   "page": "https://polyhaven.com/a/red_brick",
+   "licence": "CC0",
+   "use": "fired face grain and pits of every brick",
+   "width_m": 1.4
+  },
+  "mortar": {
+   "site": "ambientcg",
+   "asset": "Plaster001",
+   "page": "https://ambientcg.com/view?id=Plaster001",
+   "licence": "CC0",
+   "use": "sand grain in mortar joints",
+   "width_m": 2.0
+  },
+  "stucco": {
+   "site": "ambientcg",
+   "asset": "Plaster003",
+   "page": "https://ambientcg.com/view?id=Plaster003",
+   "licence": "CC0",
+   "use": "trowelled stucco and sand-finish grain",
+   "width_m": 2.0
+  },
+  "stone": {
+   "site": "polyhaven",
+   "asset": "castle_brick_02_white",
+   "page": "https://polyhaven.com/a/castle_brick_02_white",
+   "licence": "CC0",
+   "use": "chopped face of the limestone veneer",
+   "width_m": 2.5
+  },
+  "wood": {
+   "site": "polyhaven",
+   "asset": "weathered_plank_siding",
+   "page": "https://polyhaven.com/a/weathered_plank_siding",
+   "licence": "CC0",
+   "use": "wood grain embossed in fibre-cement siding and battens",
+   "width_m": 1.57
+  },
+  "metal": {
+   "site": "polyhaven",
+   "asset": "box_profile_metal_sheet",
+   "page": "https://polyhaven.com/a/box_profile_metal_sheet",
+   "licence": "CC0",
+   "use": "paint skin and roll marks on the steel roof",
+   "width_m": 2.0
+  }
+ }
+}

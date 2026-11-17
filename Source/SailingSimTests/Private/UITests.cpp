@@ -11,6 +11,7 @@
 #include "UI/SailFrontEnd.h"
 #include "UI/SailHud.h"
 #include "UI/SailUIStyle.h"
+#include "UI/SailWidgets.h"
 #include "SailingHUD.h"
 #include "SailCloth.h"
 #include "EasyAssists.h"
@@ -64,7 +65,7 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("Galveston launch spots match GalvestonBay.json"), Worlds[1].Spots.Num(), JsonSpots(TEXT("GalvestonBay")));
 	TestTrue(TEXT("Marseille launch spots match Marseille.json"), Worlds.Num() > 2 && Worlds[2].Index == 3 && Worlds[2].Spots.Num() == JsonSpots(TEXT("Marseille")));
 	TestTrue(TEXT("The lake's first spot is home"), Worlds[0].Spots.Num() > 0 && Worlds[0].Spots[0].Tag == TEXT("Home"));
-	TestEqual(TEXT("Nine boats (the fleet and the prologue's maxi)"), SailCatalog::Boats().Num(), 9);
+	TestEqual(TEXT("Ten boats (the fleet, the prologue's maxi and Bluebonnet)"), SailCatalog::Boats().Num(), 10);
 	TestEqual(TEXT("J/22 length 22'6\""), SailCatalog::Boat(0).Length, FString(TEXT("22′6″")));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats()) TestFalse(FString::Printf(TEXT("%s has a close-hauled speed"), *B.Name), B.CloseHauled == TEXT("–"));
 	TestEqual(TEXT("Six condition presets"), USailSessionSubsystem::Presets().Num(), 6);
@@ -467,6 +468,7 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("The J/22"), SailCatalog::InSliceBoat(int32(EBoatType::J22)));
 	TestTrue(TEXT("The Sunfish"), SailCatalog::InSliceBoat(int32(EBoatType::Sunfish)));
 	TestTrue(TEXT("The Catalina 22 (the stretch)"), SailCatalog::InSliceBoat(int32(EBoatType::Catalina22)));
+	TestTrue(TEXT("Bluebonnet, the J-Class (Bean, Nov 17 2026: docs/jclass-14)"), SailCatalog::InSliceBoat(int32(EBoatType::Bluebonnet)));
 	for (const EBoatType T : { EBoatType::ILCA7, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
 		TestFalse(*FString::Printf(TEXT("No %hs"), Sailing::BoatTypeName(T)), SailCatalog::InSliceBoat(int32(T)));
 	TestTrue(TEXT("Day Sailor"), SailCatalog::InSliceTier(TEXT("day-sailor")));
@@ -705,7 +707,9 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 }
 
 // No two default controller bindings share a button or axis in the same layer (SailingBindings::SameLayer), except photo
-// mode's pad toggle, a half-second hold of the controls card's button (ASailboatPawn::BuildContext). A saved key list from
+// mode's pad toggle, a half-second hold of the controls card's button, and the dock lines, a hold of the right stick's
+// click whose tap changes the view, and photo mode's tab reset, a hold of the click that goes back to the boat
+// (ASailboatPawn::BuildContext). A saved key list from
 // before the stick throttle gets it, and the throttle mapping carries its dead zone.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadNoCollisionsTest, "SailingSim.UI.PadNoCollisions", UIFlags)
 bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
@@ -723,7 +727,9 @@ bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
 			const FSailingKeyBinding& B = Defaults[J];
 			if (B.Key != A.Key || !IsRowAction(B.Action) || !SameLayer(A.Action, B.Action)) continue;
 			if (A.Action == B.Action && (A.Scale < 0.f) == (B.Scale < 0.f)) continue;
-			const bool bHoldTap = (A.Action == TEXT("Photo") && B.Action == TEXT("ControlsCard")) || (A.Action == TEXT("ControlsCard") && B.Action == TEXT("Photo"));
+			auto Pair = [&A, &B](const TCHAR* Hold, const TCHAR* Tap) { return (A.Action == Hold && B.Action == Tap) || (A.Action == Tap && B.Action == Hold); };
+			const bool bHoldTap = Pair(TEXT("Photo"), TEXT("ControlsCard")) || Pair(TEXT("DockLines"), TEXT("ChangeView"))
+				|| Pair(TEXT("PhotoResetTab"), TEXT("PhotoToBoat"));
 			if (bHoldTap) continue;
 			AddError(FString::Printf(TEXT("%s is on both %s%s and %s%s"), *PadLabel(A.Key), *A.Action.ToString(), A.Scale < 0.f ? TEXT(" (-)") : TEXT(""),
 				*B.Action.ToString(), B.Scale < 0.f ? TEXT(" (-)") : TEXT("")));
@@ -1115,5 +1121,76 @@ bool FSailingUITrimVerdictTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("The sweep ran"), Cases > 500);
 	TestEqual(TEXT("Headline and tips disagree in no case"), Failures, 0);
+	return true;
+}
+
+// The paper's grain (UI overhaul phase 10): it tiles without a seam, stays in range, and is balanced (it must not tint
+// the sheet lighter or darker on average).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPaperGrainTest, "SailingSim.UI.PaperGrain", UIFlags)
+bool FSailingUIPaperGrainTest::RunTest(const FString&)
+{
+	const int32 N = 256;
+	double Sum = 0.0;
+	float Lo = 1.f, Hi = -1.f, WorstSeam = 0.f, WorstStep = 0.f;
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const float G = SailUI::PaperGrainValue(X, Y, N);
+			Sum += G;
+			Lo = FMath::Min(Lo, G);
+			Hi = FMath::Max(Hi, G);
+		}
+		// Wrapping: texel N is texel 0.
+		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(N, Y, N) - SailUI::PaperGrainValue(0, Y, N)));
+		WorstSeam = FMath::Max(WorstSeam, FMath::Abs(SailUI::PaperGrainValue(Y, N, N) - SailUI::PaperGrainValue(Y, 0, N)));
+		// The step across the tile's edge is no bigger than the grain's own texel-to-texel steps (tooth and specks).
+		WorstStep = FMath::Max(WorstStep, FMath::Abs(SailUI::PaperGrainValue(N - 1, Y, N) - SailUI::PaperGrainValue(N, Y, N)));
+	}
+	TestTrue(TEXT("The grain stays within -1..1"), Lo >= -1.f && Hi <= 1.f);
+	TestTrue(TEXT("It has both light fibres and dark specks"), Lo < -0.3f && Hi > 0.3f);
+	TestTrue(TEXT("It is balanced: the sheet keeps its tone"), FMath::Abs(Sum / double(N * N)) < 0.08);
+	TestTrue(TEXT("It wraps exactly"), WorstSeam < 1e-6f);
+	TestTrue(TEXT("No hard seam at the tile's edge"), WorstStep < 1.2f);
+	return true;
+}
+
+// Controller glyphs (UI overhaul phase 11): every pad label the prompts use parses to a drawn glyph, not a text pill.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadGlyphsTest, "SailingSim.UI.PadGlyphs", UIFlags)
+bool FSailingUIPadGlyphsTest::RunTest(const FString&)
+{
+	using SailUI::EPadGlyph;
+	auto One = [this](const TCHAR* Pad, EPadGlyph Kind, const TCHAR* Label, uint8 Arms)
+	{
+		const TArray<SailUI::FPadGlyph> G = SailUI::ParsePadGlyphs(Pad);
+		TestEqual(FString::Printf(TEXT("'%s' is one glyph"), Pad), G.Num(), 1);
+		if (G.Num() != 1) return;
+		TestTrue(FString::Printf(TEXT("'%s' kind"), Pad), G[0].Kind == Kind);
+		TestEqual(FString::Printf(TEXT("'%s' label"), Pad), G[0].Label, FString(Label));
+		TestEqual(FString::Printf(TEXT("'%s' arms"), Pad), int32(G[0].Arms), int32(Arms));
+	};
+	One(TEXT("A"), EPadGlyph::Face, TEXT("A"), 0);
+	One(TEXT("Y"), EPadGlyph::Face, TEXT("Y"), 0);
+	One(TEXT("L3"), EPadGlyph::StickClick, TEXT("L"), 0);
+	One(TEXT("R"), EPadGlyph::Stick, TEXT("R"), 0);
+	One(TEXT("R stick"), EPadGlyph::Stick, TEXT("R"), 0);
+	One(TEXT("R ↕"), EPadGlyph::Stick, TEXT("R"), 3);
+	One(TEXT("D-pad"), EPadGlyph::Dpad, TEXT(""), 15);
+	One(TEXT("← →"), EPadGlyph::Dpad, TEXT(""), 12);
+	One(TEXT("↑ ↓"), EPadGlyph::Dpad, TEXT(""), 3);
+	One(TEXT("View"), EPadGlyph::View, TEXT(""), 0);
+	One(TEXT("Menu"), EPadGlyph::Menu, TEXT(""), 0);
+	One(TEXT("Hold View"), EPadGlyph::Text, TEXT("Hold View"), 0);
+
+	const TArray<SailUI::FPadGlyph> Pair = SailUI::ParsePadGlyphs(TEXT("LB / RB"));
+	TestEqual(TEXT("'LB / RB' is two bumpers"), Pair.Num(), 2);
+	if (Pair.Num() == 2)
+	{
+		TestTrue(TEXT("Both are bumpers"), Pair[0].Kind == EPadGlyph::Bumper && Pair[1].Kind == EPadGlyph::Bumper);
+		TestEqual(TEXT("The second is RB"), Pair[1].Label, FString(TEXT("RB")));
+	}
+	const TArray<SailUI::FPadGlyph> Triggers = SailUI::ParsePadGlyphs(TEXT("LT / RT"));
+	TestTrue(TEXT("'LT / RT' is two triggers"), Triggers.Num() == 2 && Triggers[0].Kind == EPadGlyph::Trigger && Triggers[1].Kind == EPadGlyph::Trigger);
+	TestTrue(TEXT("A bumper is wider than a face button"), SailUI::PadGlyphWidth(Pair.Num() ? Pair[0] : SailUI::FPadGlyph()) > 24.f);
 	return true;
 }

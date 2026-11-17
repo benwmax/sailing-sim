@@ -274,8 +274,10 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	// Round 11: a keelboat's crew sit beside the cockpit well with their feet in it, so the forward sailor (the J/22's bow,
 	// at x -0.65, was beside the cabin trunk, 7 cm forward of the well) comes back to its forward end.
 	FCrewCockpitWell KeelWell;
-	// (Not the maxi: her rail crew line the deck forward of her 10 m cockpit; the clamp would bunch them at its end.)
-	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && Cfg.Type != EBoatType::Maxi && CrewCockpitWell(Cfg, KeelWell))
+	// (Not the maxi: her rail crew line the deck forward of her 10 m cockpit; the clamp would bunch them at its end. Nor
+	// Bluebonnet, whose crew work her deck and whose 2 m cockpit is the helmsman's.)
+	const bool bDeckCrew = Cfg.Type == EBoatType::Maxi || Cfg.Type == EBoatType::Bluebonnet;
+	if (!bDinghy && !Cfg.bMultihull && I != N - 1 && !bDeckCrew && CrewCockpitWell(Cfg, KeelWell))
 	{
 		// The crew between the bow and the helm (the trimmer) sit 0.1 m further aft: with the bow brought back they were
 		// 0.36 m apart and their shoulders overlapped on the rail (docs/crew-pose/mac).
@@ -440,7 +442,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 	// apart fore and aft; at 0.12 m from the well's forward end the forward hip went into the cabin trunk's face.
 	// (Each a body's width, 0.42 m, further aft than the one forward of them: held all to the same 0.3 m they sat in each
 	// other. The J/22's two in the 0.95 m between her cabin and her traveler bridge sit on opposite seats instead: below.)
-	if (!bDinghy && !Cfg.bMultihull && Cfg.Type != EBoatType::Maxi && !Out.bHelm && KeelWell.X1 > KeelWell.X0 && (bCrossing || Off <= 0.55 * Rail))
+	if (!bDinghy && !Cfg.bMultihull && !bDeckCrew && !Out.bHelm && KeelWell.X1 > KeelWell.X0 && (bCrossing || Off <= 0.55 * Rail))
 	{
 		X = FMath::Min(X, KeelWell.X1 - 0.3 - (Cfg.Type == EBoatType::J22 ? 0.0 : 0.42 * I));
 	}
@@ -504,6 +506,13 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// docs/crew-hull-clip/: the maxi's helm aft of the windward wheel (ref.json "wheels": x -13.0, 2.15 m out), on the
 		// cockpit's edge with the legs in it; at x -9 on the rail their legs went down through 1.1 m of deck.
 		if (Cfg.Type == EBoatType::Maxi) Out.Pelvis = FVector(-13.7, Side * 2.55, CrewSeatSurfaceZ(Cfg, -13.7, Side * 2.55) + 0.07);
+		// Bluebonnet's helmsman sits on the windward coaming of her cockpit (deck_bluebonnet.json: the well 0.9 m out, its
+		// coaming 0.12 m high and 0.05 wide), 0.3 m aft of her wheel (on the centreline at x -10.15, its hub 0.33 m over the
+		// deck, the rim 0.6 m in radius), both hands on the rim's windward side (BoatModelVisuals.cpp, the wheel part's rim).
+		// J-Class 14: at x -10.85 and 1.1 m out (0.7 m aft) the rim was 0.7 m past the hands' reach (60 cm, shoulder to palm);
+		// here the shoulders come 0.45 to 0.6 m from it (SailingSim.Visual.BluebonnetHelmReach), and the knees pass about 0.1 m
+		// outboard of the rim. Their head is 0.3 m outboard of the rim, so the cockpit view looks past it, not through it.
+		if (Cfg.Type == EBoatType::Bluebonnet) Out.Pelvis = FVector(-10.45, Side * 0.92, CrewSeatSurfaceZ(Cfg, -10.45, Side * 0.92) + 0.12 + 0.07);
 		// docs/cockpit-eye/: the Catalina 30's helm behind her wheel (build_fleet.py SPECS: at x -3.45 in the well, which ends
 		// at -4.05), on the after deck to windward of its rim (0.42 m across: seated behind it the rim was at eye height), the
 		// legs in the well, on a helm seat 25 cm over the deck so they see over the rim. On the rail beside the wheel they faced the crew's row, and the cockpit camera, at their head,
@@ -512,9 +521,10 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// The Lagoon's helm on her helm seat (build_fleet.py lagoon_detail(): aft of the saloon on the starboard side,
 		// the cushion 0.49 m over the bridgedeck), not on a hull's deck aft.
 	}
-	else if (Off > 0.55 * Rail || (Cfg.Type == EBoatType::Maxi && !Out.bHelm))
+	else if (Off > 0.55 * Rail || (bDeckCrew && !Out.bHelm))
 	{
-		// (The maxi's crew forward of her cockpit have no seat but the side deck: her coachroof fills the middle.)
+		// (The maxi's crew forward of her cockpit have no seat but the side deck: her coachroof fills the middle. Bluebonnet's
+		// have no cockpit but the helmsman's.)
 		P.Stance = ECrewStance::RailHike;
 		// Sitting on the side deck a hand's width in from the edge, facing inboard (round 11: not on the edge, legs over).
 		// docs/crew-hull-clip/: inside the lifelines where the boat has them (stanchions 5 cm in from the edge, wires at
@@ -531,7 +541,7 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// On the maxi's cambered deck (the seat is its crown, not the sheer), and her twelve rail crew are not one pose
 		// repeated: a little more or less hiked, a little fore or aft, by their place on the rail.
 		if (!Cfg.bMultihull) Out.Pelvis.Z = CrewSeatSurfaceZ(Cfg, RailX, Out.Pelvis.Y) + 0.07;
-		if (Cfg.Type == EBoatType::Maxi)
+		if (bDeckCrew)
 		{
 			const float Vary = FMath::Frac(0.618034f * float(I + 1)) - 0.5f;
 			P.Hike = FMath::Clamp(P.Hike + 0.5f * Vary, 0.f, 1.f);

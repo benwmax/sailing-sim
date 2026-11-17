@@ -1,0 +1,174 @@
+{
+ "id": "ranch1970",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "1970s brick ranch",
+ "about": "The commonest house on Ray Hubbard's older shores (Rockwall, Heath, Garland side): one storey, all brick, low hip or gable roof with wide eaves, a front-facing double garage, louvred shutters, a brick chimney and a small stoop.",
+ "storeys": 1,
+ "plate_m": 2.6,
+ "roof": {
+  "type": [
+   "hip",
+   0.6,
+   "gable",
+   0.4
+  ],
+  "pitch_deg": 22.6,
+  "overhang_m": 0.45,
+  "finish": [
+   "shingle_weathered_wood",
+   0.5,
+   "shingle_barkwood",
+   0.3,
+   "shingle_charcoal",
+   0.2
+  ],
+  "galvalume_chance": 0.0
+ },
+ "wall": {
+  "front": [
+   "brick_red",
+   0.45,
+   "brick_buff",
+   0.3,
+   "brick_brown",
+   0.25
+  ],
+  "sides": "same",
+  "upper": "same",
+  "gables": [
+   "lap_siding",
+   1.0
+  ],
+  "reveal_m": 0.1
+ },
+ "windows": {
+  "main": [
+   "WinSingleHung3050",
+   0.7,
+   "WinSlider6040",
+   0.3
+  ],
+  "front_feature": [
+   "WinTwin3050",
+   0.6,
+   "WinPicture6050",
+   0.4
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    3,
+    2
+   ],
+   0.6,
+   [
+    1,
+    1
+   ],
+   0.4
+  ],
+  "every_m": 3.4,
+  "sill_m": 0.91
+ },
+ "trim": {
+  "casing": "none",
+  "sill": "SillCastStone",
+  "corner_boards": false,
+  "frieze": true
+ },
+ "door": [
+  "DoorSixPanel",
+  1.0
+ ],
+ "garage": {
+  "part": [
+   "GarageRaised16",
+   1.0
+  ],
+  "where": "front_wing"
+ },
+ "shutters": {
+  "chance": 0.75,
+  "part": [
+   "ShutterLouvre",
+   0.7,
+   "ShutterPanel",
+   0.3
+  ],
+  "on": "front"
+ },
+ "chimney": {
+  "chance": 0.8,
+  "part": [
+   "ChimneyBrick",
+   1.0
+  ]
+ },
+ "porch": {
+  "kind": "stoop",
+  "columns": "ColumnSquare",
+  "rails": false,
+  "depth_m": 1.5,
+  "steps": 1
+ },
+ "dormers": null,
+ "foundation": "FoundationSlab",
+ "gutters": {
+  "chance": 0.7
+ },
+ "roof_vents": {
+  "turbine": [
+   1,
+   3
+  ],
+  "box": [
+   0,
+   2
+  ],
+  "stacks": [
+   1,
+   2
+  ]
+ },
+ "lights": [
+  "LightCoach",
+  1.0
+ ],
+ "ac": [
+  "ACCondenser",
+  1
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#F2EFE6",
+   "door": "#5A3A22",
+   "shutter": "#2F3B2F",
+   "sash": "#F4F2EC",
+   "garage": "#F2EFE6",
+   "metal": "#F2EFE6",
+   "body": "#E8E2D4",
+   "roof": "#3C3C3C"
+  },
+  {
+   "trim": "#E8DCC4",
+   "door": "#7A2E22",
+   "shutter": "#5B3B28",
+   "sash": "#E8DCC4",
+   "garage": "#E8DCC4",
+   "metal": "#E8DCC4",
+   "body": "#E8E2D4",
+   "roof": "#3C3C3C"
+  },
+  {
+   "trim": "#6B5444",
+   "door": "#3B2A20",
+   "shutter": "#2A2522",
+   "sash": "#E9E4DA",
+   "garage": "#D9CDB8",
+   "metal": "#6B5444",
+   "body": "#E8E2D4",
+   "roof": "#3C3C3C"
+  }
+ ]
+}

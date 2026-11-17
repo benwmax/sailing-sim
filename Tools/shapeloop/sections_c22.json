@@ -1,0 +1,104 @@
+{
+ "boat": "Catalina22",
+ "build": "Tools/blender/build_fleet.py",
+ "build_args": "FLEET_SHAPE_BLEND=1, then <catalina22.json from Tools/BoatExport> Catalina22 <out dir>: reads <out>/Catalina22_shape.blend",
+ "hull_object": "Catalina22_Hull",
+ "report": "Catalina22_shape_report.json",
+ "note": "Today's Catalina 22 (the shared fleet template, docs/c22-1): the 'before' every slice of the rebuild is compared against. build_fleet.py builds her hull shell into Catalina22_Hull, the deck moulding into Catalina22_Deck, the cockpit well into Catalina22_Well, the cabin trunk into Catalina22_Cabin (tagged with shape_part since docs/c22-1), the swing keel into Catalina22_Board, and everything else (lifelines, pulpits, deck and cockpit detail, the kit hardware) into Catalina22_Fittings; the rudder, mast and boom are their own objects as in the game. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig).",
+ "sections": {
+  "hull": {
+   "objects": [
+    "Catalina22_Hull"
+   ],
+   "owns": [
+    "Hull",
+    "shell"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": [
+    "deck",
+    "keel"
+   ]
+  },
+  "deck": {
+   "objects": [
+    "Catalina22_Deck"
+   ],
+   "owns": [
+    "deck"
+   ],
+   "borders": [
+    "hull",
+    "well",
+    "cabin",
+    "fittings"
+   ]
+  },
+  "well": {
+   "objects": [
+    "Catalina22_Well"
+   ],
+   "owns": [
+    "cockpit"
+   ],
+   "borders": [
+    "deck",
+    "fittings"
+   ]
+  },
+  "cabin": {
+   "objects": [
+    "Catalina22_Cabin"
+   ],
+   "owns": [
+    "cabin"
+   ],
+   "borders": [
+    "deck",
+    "fittings"
+   ]
+  },
+  "keel": {
+   "objects": [
+    "Catalina22_Board"
+   ],
+   "owns": [
+    "board"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "SM_Catalina22_Rudder"
+   ],
+   "owns": [
+    "build_rudder"
+   ],
+   "borders": []
+  },
+  "fittings": {
+   "objects": [
+    "Catalina22_Fittings"
+   ],
+   "owns": [
+    "lifelines",
+    "keelboat_deck_detail",
+    "keelboat_cockpit_detail",
+    "c22_hardware",
+    "c22_traveller_and_ladder",
+    "winch"
+   ],
+   "borders": [
+    "deck",
+    "well",
+    "cabin"
+   ]
+  }
+ },
+ "joins": [],
+ "joins_note": "No joins checked for today's model; slice 1 lists the new hull's joins (hull to deck at the sheer, keel trunk to hull)."
+}

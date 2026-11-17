@@ -1,0 +1,11 @@
+station,avg_fps,gpu_ms,base_ms,water_view_gpu_ms,water_view_base_ms,shore_share_ms,shore_base_ms
+env-breakwater-15m,55.0,7.7,2.78,7.47,2.85,0.23,-0.07
+env-bridge-15m,64.3,6.91,2.74,6.98,2.82,-0.07,-0.08
+env-bulkhead-15m,62.5,7.43,2.95,7.31,2.83,0.12,0.12
+env-clay-bank-15m,58.4,7.38,2.75,7.28,2.72,0.1,0.03
+env-club-beach-15m,54.3,7.28,2.85,7.08,2.57,0.2,0.28
+env-club-lawn-15m,58.9,7.35,2.89,7.41,2.77,-0.06,0.12
+env-private-dock-15m,62.5,7.3,3.1,7.66,3.2,-0.36,-0.1
+env-residential-a-15m,60.5,7.19,3.15,7.07,2.93,0.12,0.22
+env-residential-b-15m,57.9,7.73,3.35,7.35,3.11,0.38,0.24
+env-wooded-15m,59.2,7.33,2.76,7.49,2.66,-0.16,0.1

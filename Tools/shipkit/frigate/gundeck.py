@@ -15,8 +15,9 @@ specs_1795.json's gun_deck_fair_m), one surface cut round the hatchways (their c
 capstan's barrel and the cable scuttles (Blender's constrained Delaunay triangulation, so this module runs in Blender's
 Python), carrying the 'Planking' and 'Margin' UVs the material draws its planks from (build_frigate.py's
 GunDeckPlanks), with its underside a plank's thickness below. Over it the spar deck's beams and ledges (the waist's beams
-are deck.py's), cut round the spar deck's openings onto carlings and head ledges, their ends on a clamp along each side
-held by hanging knees between the ports, and stanchions on the middle line.
+are deck.py's, made again here with their ends cut to the side), cut round the spar deck's openings onto carlings and
+head ledges, their ends on a clamp along each side held by hanging knees between the ports, and stanchions on the
+middle line.
 
 The capstan's head turns on a frame of its own (origin on its axis at the deck, Z up), with the spar deck's capstan;
 everything else is built in place. The great cabin's after wall replaces the skin's placeholder there, and the
@@ -115,19 +116,35 @@ def quad(part, P, want, mat):
     part.add(P, F, mat)
 
 
+def bolt_head(part, P, n, d, mat="Iron", seg=8):
+    """a round bolt head (or rivet) d across on a face at P, facing along n, its shank let a quarter inch into the face"""
+    n = unit(np.asarray(n, float))
+    lathe(part, np.asarray(P, float) - n * 0.25 * IN, n, np.cross(n, EZ) if abs(n[2]) < 0.9 else EX,
+          [(0.0, d / 2), (0.25 * IN, d / 2), (0.25 * IN + 0.2 * d, 0.4 * d), (0.25 * IN + 0.35 * d, 0.15 * d)], mat, seg)
+
+
 class GunDeck:
     # the parts that carry UVs (parts()): the deck's 'Planking' and 'Margin', the floor cloth's 'Cloth' (squares)
     UV_PARTS = {"GunDeck": ("Planking", "Margin"), "FloorCloth": ("Cloth",)}
 
     """The gun deck and its fittings for the skin sk (skin.Skin, built), the rig (spars.Rig, built), the spar deck dk
-    (deck.Deck, built) and the skin's parts (skin.Skin.parts(): the rudder's head stands up through the deck aft)."""
+    (deck.Deck, built) and the skin's parts (skin.Skin.parts(): the rudder's head stands up through the deck aft).
+    berth: the berth deck's card (berthdeck_1797.json's path) when slice 13's berth deck (berthdeck.py) is built under
+    this one: the stand-in wells under the openings give way to it (none built: the ladders land on its planks, the
+    gratings look down onto it), the cable scuttles' linings stop under these planks and the cables go on down through
+    its own scuttles; None: the wells (wells depth_ft) and the scuttles' short wells as slice 12 built them."""
 
-    def __init__(self, sk, rig, dk, skin_parts, path=os.path.join(HERE, "gundeck_1797.json"), hawse_x=None):
+    def __init__(self, sk, rig, dk, skin_parts, path=os.path.join(HERE, "gundeck_1797.json"), hawse_x=None, berth=None):
         import skin as SKM
         self.sk, self.rig, self.dk, self.SKM = sk, rig, dk, SKM
         self.skin_parts = skin_parts
         self.hawse_x = hawse_x                             # the hawse holes' linings' aftmost point (anchors.py), or None
         self.c = json.load(open(path))
+        self.berth = json.load(open(berth)) if berth else None
+        if self.berth is not None:
+            # the berth deck's top this far under this deck's; the meetings with the wells go with them
+            self.berth_drop = self.berth["deck"]["top_below_gun_deck_in"] * IN
+            self.c["meets"]["pairs"] = [pr for pr in self.c["meets"]["pairs"] if "Wells" not in pr[0] + pr[1]]
         self.decor = json.load(open(os.path.join(HERE, "decor_1797.json")))
         import stern
         self.face = stern.Face(sk.L)
@@ -186,9 +203,10 @@ class GunDeck:
         """the gun port head line (the draught's, on the side's outside)"""
         return np.asarray(self.pr.Shd(self.xpx(x)), float) / self.k
 
-    def wall(self, x, z):
+    def wall(self, x, z, true=False):
         """points on the gun deck's side (its inner face, starboard) at x and height z (arrays alike): (points (n, 3),
-        horizontal unit normals pointing inboard)"""
+        unit normals pointing inboard: horizontal, or with true the face's own, square to it, which tilt down where the
+        side tumbles home and up where it flares)"""
         x = np.atleast_1d(np.asarray(x, float))
         z = np.broadcast_to(np.atleast_1d(np.asarray(z, float)), x.shape).copy()
         X = self.xpx(x)
@@ -199,18 +217,21 @@ class GunDeck:
         P, N = self.sk.surf(X, zp, True, 0, self.SKM.GUN)
         n = np.column_stack([N[:, 0], N[:, 1], np.zeros(len(N))])
         n /= np.linalg.norm(n, axis=1)[:, None]
-        n = np.where((n[:, 1] > 0)[:, None], -n, n)
+        inb = (n[:, 1] > 0)[:, None]
+        if true:
+            n = np.asarray(N, float) / np.linalg.norm(N, axis=1)[:, None]
+        n = np.where(inb, -n, n)
         return P, n
 
-    def wall_at(self, x, z):
+    def wall_at(self, x, z, true=False):
         """the side's inner face exactly at x and z (arrays alike): wall's point for an x lies fore or aft of it where the
         side leans fore and aft (its inner face stands off the moulded surface along that surface's normal: at the bow
-        by as much as 0.3 m), so the x asked of wall is moved until its point lands on x. (points, normals)"""
+        by as much as 0.3 m), so the x asked of wall is moved until its point lands on x. (points, normals: as wall's)"""
         x = np.atleast_1d(np.asarray(x, float))
         z = np.broadcast_to(np.atleast_1d(np.asarray(z, float)), x.shape).copy()
         xq = x.copy()
         for _ in range(12):
-            P, n = self.wall(xq, z)
+            P, n = self.wall(xq, z, true)
             d = x - P[:, 0]
             if np.abs(d).max() < 1e-6:
                 break
@@ -640,10 +661,9 @@ class GunDeck:
                 spans = [(Y, ye), (-ye, -Y)]
             else:
                 spans = [(-ye, ye)]
+            ch = oh["chamfer_in"]["beam" if kind in ("beam", "breast") else "ledge"] * IN
             for ya, yb in spans:
-                rings = [np.array([[xx, ya, zt - m], [xx, yb, zt - m], [xx, yb, zt], [xx, ya, zt]])
-                         for xx, zt in ((x0, zt0), (x1, zt1))]
-                solid(part, rings, "Oak")
+                self.member(part, x0, x1, zt0, zt1, m, ya, yb, ch, ye)
             self.overhead_info["members"].append({"x_m": round(x, 4), "kind": kind,
                                                   "spans_y_m": [[round(a, 3), round(b, 3)] for a, b in spans]})
         self.members = members
@@ -667,10 +687,7 @@ class GunDeck:
                 for a, b in runs:
                     if b - a < 0.02:
                         continue
-                    rings = [np.array([[xx, yc - cs_ / 2, float(self.zsu(xx)) - cm], [xx, yc + cs_ / 2, float(self.zsu(xx)) - cm],
-                                       [xx, yc + cs_ / 2, float(self.zsu(xx))], [xx, yc - cs_ / 2, float(self.zsu(xx))]])
-                             for xx in np.linspace(a, b, max(2, int(math.ceil((b - a) / 0.5)) + 1))]
-                    solid(part, rings, "Oak")
+                    self.carling(part, yc, a, b, max(2, int(math.ceil((b - a) / 0.5)) + 1))
                     self.overhead_info["carlings"].append({"y_m": round(yc, 3), "x_m": [round(a, 3), round(b, 3)]})
             # head ledges: at each opening's ends, between the carlings, where no member already stands there
             for bx in g["boxes"]:
@@ -690,19 +707,59 @@ class GunDeck:
         faces = [self.e1] + [v for x in wb for v in (x - bs / 2, x + bs / 2)] + [self.fc]
         for sy in (1.0, -1.0):
             for a, b in zip(faces[0::2], faces[1::2]):
-                rings = [np.array([[xx, sy * yo - cs_ / 2, float(self.zsu(xx)) - cm],
-                                   [xx, sy * yo + cs_ / 2, float(self.zsu(xx)) - cm],
-                                   [xx, sy * yo + cs_ / 2, float(self.zsu(xx))], [xx, sy * yo - cs_ / 2, float(self.zsu(xx))]])
-                         for xx in np.linspace(a, b, 3)]
-                solid(part, rings, "Oak")
+                self.carling(part, sy * yo, a, b, 3)
         self.groups = merged
         self.info["overhead"] = {"members": len(members), "cut": {round(members[i][0], 3): round(y, 3)
                                                                   for i, y in sorted(cut.items())},
                                  "groups": [[b[3] for b in g["boxes"]] for g in merged]}
 
+    def member(self, part, x0, x1, zt0, zt1, m, ya, yb, ch, ye):
+        """one beam or ledge (or one half of it) between its faces x0 and x1, its top at the planks' underside (zt0, zt1
+        there), m deep, from ya to yb across: its two lower edges chamfered ch, each chamfer stopped short of the member's
+        ends (overhead chamfer_stop_m: at the side, where the hanging and lodging knees and the clamp take the end, and
+        at a carling) and dying out over twice its own size. The stopped length keeps a sliver of a chamfer (a
+        millimetre) so that no face there has no area"""
+        st = self.c["overhead"]["chamfer_stop_m"]
+        tiny = 0.001
+
+        def ring(y, c):
+            def zb(x):
+                return zt0 - m + (zt1 - zt0) * (x - x0) / (x1 - x0)
+            return np.array([[x0, y, zb(x0) + c], [x0 + c, y, zb(x0 + c)], [x1 - c, y, zb(x1 - c)], [x1, y, zb(x1) + c],
+                             [x1, y, zt1], [x0, y, zt0]])
+        sa = st["side"] if abs(abs(ya) - ye) < 0.01 else st["inner"]
+        sb = st["side"] if abs(abs(yb) - ye) < 0.01 else st["inner"]
+        run = 2.0 * ch
+        if ch <= tiny or yb - ya < sa + sb + 2 * run + 0.1:
+            rings = [np.array([[x0, y, zt0 - m], [x1, y, zt1 - m], [x1, y, zt1], [x0, y, zt0]]) for y in (ya, yb)]
+        else:
+            rings = [ring(y, c) for y, c in ((ya, tiny), (ya + sa, tiny), (ya + sa + run, ch), (yb - sb - run, ch),
+                                             (yb - sb, tiny), (yb, tiny))]
+        solid(part, rings, "Oak")
+
+    def carling(self, part, yc, a, b, n):
+        """a carling centred at yc from x a to b (its top at the planks' underside, sampled n times along), its two lower
+        edges chamfered (overhead chamfer_in carling) the whole way: its ends butt on the members' faces"""
+        oh = self.c["overhead"]
+        cs_, cm = (v * IN for v in oh["carling_in"])
+        c = oh["chamfer_in"]["carling"] * IN
+        rings = []
+        for xx in np.linspace(a, b, n):
+            zt = float(self.zsu(xx))
+            rings.append(np.array([[xx, yc - cs_ / 2, zt - cm + c], [xx, yc - cs_ / 2 + c, zt - cm],
+                                   [xx, yc + cs_ / 2 - c, zt - cm], [xx, yc + cs_ / 2, zt - cm + c],
+                                   [xx, yc + cs_ / 2, zt], [xx, yc - cs_ / 2, zt]]))
+        solid(part, rings, "Oak")
+
     def beam_bottom(self, x):
         """the beams' underside at x"""
         return float(self.zsu(x)) - self.c["overhead"]["beam_in"][1] * IN
+
+    def waist_members(self):
+        """the waist's beams (deck.py's, across the open waist: their tops at the spar deck's underside, their ends on
+        this deck's clamp) as members (x, sided, moulded, 'waist'), for the knees and stanchions under them"""
+        wa = self.dk.c["waist"]
+        return [(x, wa["beam_sided_in"] * IN, wa["beam_moulded_in"] * IN, "waist") for x in self.dk.beams_x]
 
     def clamps(self, part):
         """the clamp along each side under the beams' ends, its depth eased over the ports' heads"""
@@ -733,45 +790,71 @@ class GunDeck:
         self.info["clamp"] = {"x_m": [round(float(X[0]), 3), round(float(X[-1]), 3)],
                               "least_deep_in": round(float((zt - zb).min() / IN), 2)}
 
+    def lanyard_cleats(self):
+        """each port's two lid lanyard cleats on the side's inner face: [((x of the aft cleat, x of the fore one), ((the
+        aft lanyard's room, lo, hi), (the fore's)))]. The port's jambs on the inner face lie where the side's thickness
+        carries them (the opening is cut through at the drawing's stations, and toward the bow the inner face stands
+        several inches aft of the outside's), so each cleat stands cleat_out_of_jamb_in along the face from the inner
+        jamb, cleat_over_deck_in up; its room (the cleat, the rope's turns round it and an inch more) is what the hanging
+        knees keep out of (knees)"""
+        lan = self.c["gun_gear"]["lanyard"]
+        rr = lan["circ_in"] / (2 * math.pi) * IN
+        d_c = (lan["cleat_out_of_jamb_in"] + lan["cleat_in"][1] / 2) * IN
+        d_r = (lan["cleat_out_of_jamb_in"] + lan["cleat_in"][1] + 0.4 + 1.0) * IN + rr
+        out = []
+        for a, f in self.ports:
+            xs, rooms = [], []
+            for xj, sg in ((a, -1.0), (f, 1.0)):
+                zc = float(self.zg(xj)) + lan["cleat_over_deck_in"] * IN
+                P, n = self.wall(np.array([xj]), np.array([zc]))
+                xi, k = float(P[0, 0]), 1.0 / max(abs(float(n[0, 1])), 0.2)     # along the face, not along x
+                xs.append(xi + sg * d_c * k)
+                rooms.append(tuple(sorted((xi, xi + sg * d_r * k))))
+            out.append((tuple(xs), tuple(rooms)))
+        return out
+
     def clamp_inner(self, x, z):
         """the clamp's inner face (starboard) at x, z"""
         P, n = self.wall_at(np.array([x]), np.array([z]))
         return P[0] + n[0] * self.c["overhead"]["clamp_in"][1] * IN, n[0]
 
     def knees(self, part):
-        """a hanging knee under each beam end (whole beams and half beams, both sides) that comes between two ports:
-        its upright arm down the clamp and the side, its other arm along the beam's underside. Beside each port the
-        lid's lanyard comes down the side to its cleat (gun_gear's lanyard: cleat_out_of_jamb_in out from the jamb, the
-        rope round it) at the height of the knees' feet: a knee that would come within an inch of that slides along
-        under its beam, away from the port, to the beam's face (or is left out if that is not far enough)"""
+        """a hanging knee under each beam end (whole beams, half beams and the waist's beams, both sides) that comes
+        between two ports: its upright arm down the clamp and the side, its other arm along the beam's underside. Beside
+        each port the lid's lanyard comes down the side to its cleat (gun_gear's lanyard: cleat_out_of_jamb_in out from
+        the jamb, the rope round it) at the height of the knees' feet: a knee that would come within an inch of that
+        slides along under its beam, away from the port, to the beam's face (or is left out if that is not far enough)"""
         oh = self.c["overhead"]
         kn = oh["knee"]
         sd = kn["sided_in"] * IN
         arm = kn["arm_in"] * IN
         thr = kn["throat_in"] * IN
         clear = kn["port_clear_in"] * IN
-        lan = self.c["gun_gear"]["lanyard"]
-        room = (lan["cleat_out_of_jamb_in"] + lan["cleat_in"][1] + 0.4 + 1.0) * IN + lan["circ_in"] / (2 * math.pi) * IN
+        rooms = [r for _, r in self.lanyard_cleats()]
         dep, th = (v * IN for v in oh["clamp_in"])
         Xc, Zb, Zt = self.clamp
+        # the arm's top let 2 mm up into the beam's underside, as the lodging knees are into the beam's face: a face
+        # lying exactly on another is not seen to meet it, so a knee fayed to a beam that follows the sheer as it does
+        # (the waist's) would read as hanging clear of it
+        fay = 0.002
         placed, slid, left_out = [], [], []
 
         def in_room(xk):
-            """the side toward the port whose lanyard's room the knee at xk comes into (-1 aft of a port, +1 forward of
-            one), or 0"""
-            for a, f in self.ports:
-                if xk < a and xk + sd / 2 > a - room:
+            """the side toward the port whose lanyard's room (lanyard_cleats) the knee at xk comes into (-1 aft of a
+            port, +1 forward of one), or 0"""
+            for (ra, rf) in rooms:
+                if xk + sd / 2 > ra[0] and xk - sd / 2 < ra[1]:
                     return -1
-                if xk > f and xk - sd / 2 < f + room:
+                if xk - sd / 2 < rf[1] and xk + sd / 2 > rf[0]:
                     return 1
             return 0
 
-        for i, (x, s, m, kind) in enumerate(self.members):
-            if kind not in ("beam", "breast"):
+        for i, (x, s, m, kind) in enumerate(self.members + self.waist_members()):
+            if kind not in ("beam", "breast", "waist"):
                 continue
             if self.port_near(x, clear + sd / 2) is not None or self.port_near(x, 0.0) is not None:
                 continue
-            for x_k in ((x,) if kind == "beam" else ((x - s / 2 + sd / 2,) if x < 0 else (x + s / 2 - sd / 2,))):
+            for x_k in ((x,) if kind in ("beam", "waist") else ((x - s / 2 + sd / 2,) if x < 0 else (x + s / 2 - sd / 2,))):
                 side = in_room(x_k)
                 if side:
                     x_k = x + side * (s / 2 - sd / 2)
@@ -780,7 +863,6 @@ class GunDeck:
                         continue
                     slid.append(round(x_k, 3))
                 zbb = self.beam_bottom(x_k)
-                zcb = float(np.interp(x_k, Xc, Zb))
                 foot = zbb - arm
                 if foot < float(self.zg(x_k)) + 0.5:
                     continue
@@ -788,30 +870,111 @@ class GunDeck:
                     """the knee's outline in (y, z) on its face at xf, starboard: down the clamp's face, out onto the
                     side, down it to the foot, back in along the foot, up the throat to the beam's underside at the
                     arm's end. Each face fits the side at its own x: forward the side narrows by as much as 2 in across
-                    the knee's 7 in"""
-                    zz = np.linspace(foot, zcb, 6)
+                    the knee's 7 in. And each lies under the beam's underside at its own x: the beams rise with the
+                    sheer along their siding (a level arm left a wedge open under one face, a third of an inch at the
+                    bow), so the whole knee is that much higher there"""
+                    zbf = self.beam_bottom(xf)
+                    zcf = float(np.interp(xf, Xc, Zb))
+                    ftf = zbf - arm
+                    zz = np.linspace(ftf, zcf, 6)
                     yw = self.wall_at(np.full(len(zz), xf), zz)[0][:, 1]
-                    yc, _ = self.clamp_inner(xf, zbb)
-                    ycb, _ = self.clamp_inner(xf, zcb)
+                    yc, _ = self.clamp_inner(xf, zbf)
+                    ycb, _ = self.clamp_inner(xf, zcf)
                     y_in = min(yc[1], ycb[1])
                     y_end = y_in - (arm - th)
                     toe = 3.0 * IN
-                    outer = [(y_in, zbb), (y_in, zcb)] + [(yw[j] + 0.002, zz[j]) for j in range(len(zz) - 1, -1, -1)]
-                    foot_in = (yw[0] - toe, foot)
-                    head_in = (y_end, zbb - toe)
-                    corner = np.array([y_in - thr, zbb - thr])
+                    outer = [(y_in, zbf + fay), (y_in, zcf)] + [(yw[j] + 0.002, zz[j]) for j in range(len(zz) - 1, -1, -1)]
+                    foot_in = (yw[0] - toe, ftf)
+                    head_in = (y_end, zbf - toe)
+                    corner = np.array([y_in - thr, zbf - thr])
                     curve = []
                     for t in np.linspace(0.0, 1.0, 9)[1:-1]:
                         p = (1 - t) ** 2 * np.array(foot_in) + 2 * (1 - t) * t * corner + t ** 2 * np.array(head_in)
                         curve.append(tuple(p))
-                    return np.array(outer + [foot_in] + curve + [head_in, (y_end, zbb)])
+                    return np.array(outer + [foot_in] + curve + [head_in, (y_end, zbf + fay)])
 
                 P0, P1 = profile(x_k - sd / 2), profile(x_k + sd / 2)
                 for sgn in (1.0, -1.0):
                     prism2(part, P0 * [sgn, 1.0], P1 * [sgn, 1.0], x_k - sd / 2, x_k + sd / 2, "Oak")
                 placed.append(round(x_k, 3))
-        self.info["knees_x_m"] = placed
+        self.info["knees_x_m"] = sorted(placed)
         self.info["knees_clear_of_lanyards"] = {"slid_to_beam_face_x_m": slid, "left_out_at_beam_x_m": left_out}
+
+    def bay_faces(self):
+        """every overhead member's faces along the ship [(aft face, fore face)], the waist's beams among them, sorted"""
+        return sorted((x - s_ / 2, x + s_ / 2) for x, s_, m, kind in list(self.members) + list(self.waist_members()))
+
+    def lodging_from_x(self):
+        """the lodging knees stand at the beams forward of this x (the cabin bulkhead's fore face)"""
+        cb = self.c["cabin"]
+        return cb["bulkhead_x_m"] + cb["bulkhead_in"] / 2 * IN
+
+    def stanchions_from_x(self):
+        """the stanchions stand under the beams forward of this x (the cabin's bulkhead)"""
+        return self.c["cabin"]["bulkhead_x_m"]
+
+    def lodging_knees(self, part):
+        """a lodging knee at each end of each beam forward of the cabin's bulkhead (the whole and half beams and the
+        waist's), lying flat in the angle between the beam's face and the side, its top flush with the beam's under the
+        planks (overhead lodging_knee): one arm fayed along the beam's face, the other along the side, stopping short of
+        the next member, the throat between them rounded. It goes on the face toward the ship's middle where that bay is
+        clear of the ports (the bays over the ports hold the guns' implements and the lids' lanyards), else on the other
+        face; none where both bays are over ports, where the arm along the side would be too short, or where the side
+        turns too far from fore and aft to lie along (the bow)"""
+        lk = self.c["overhead"]["lodging_knee"]
+        sd = lk["sided_in"] * IN
+        ab, asd = lk["arm_beam_in"] * IN, lk["arm_side_in"] * IN
+        bt_, be, rf = lk["breadth_in"] * IN, lk["end_in"] * IN, lk["throat_in"] * IN
+        cp = lk["clear_of_ports_m"]
+        x_bk = self.lodging_from_x()
+        faces = self.bay_faces()
+        fay = 0.002
+        placed, skipped = [], []
+        for x, s_, m, kind in list(self.members) + list(self.waist_members()):
+            if kind not in ("beam", "waist"):
+                continue
+            if x - s_ / 2 < x_bk + 0.3:
+                continue
+            got = None
+            for d in ((-1.0, 1.0) if x > 0 else (1.0, -1.0)):
+                xf = x + d * s_ / 2
+                nxt = (min((a for a, f in faces if a > xf + 1e-6), default=xf + 2 * asd) if d > 0
+                       else max((f for a, f in faces if f < xf - 1e-6), default=xf - 2 * asd))
+                L = min(asd, abs(nxt - xf) - lk["short_of_next_in"] * IN)
+                lo, hi = sorted((xf, xf + d * L))
+                if L < lk["least_side_arm_in"] * IN or any(lo < f + cp and hi > a - cp for a, f in self.ports):
+                    continue
+                got = (d, xf, L)
+                break
+            if got is None:
+                skipped.append(round(x, 3))
+                continue
+            d, xf, L = got
+            zt0 = float(self.zsu(xf))
+            n_mid = self.wall_at(np.array([xf + d * L / 2]), np.array([zt0 - sd / 2]))[1][0]
+            if abs(float(n_mid[1])) < math.cos(math.radians(lk["side_within_deg"])):
+                skipped.append(round(x, 3))
+                continue
+            # the outline in (u along d from the beam's face, v in from the side's inner face), round the knee
+            arc = [(bt_ + rf + rf * math.cos(a), bt_ + rf + rf * math.sin(a))
+                   for a in np.linspace(math.pi, 1.5 * math.pi, 7)]
+            side_u = list(np.linspace(L, -fay, 5))
+            uv = [(-fay, ab), (be, ab)] + arc + [(L, be)] + [(u, -fay) for u in side_u]
+
+            def ring(z_of):
+                out = []
+                for u, v in uv:
+                    xx = xf + d * u
+                    zz = z_of(xx)
+                    yw = float(self.wall_at(np.array([xx]), np.array([zz]))[0][0, 1])
+                    out.append([xx, yw - v, zz])
+                return np.array(out)
+            top = ring(lambda xx: float(self.zsu(xx)))
+            bot = ring(lambda xx: float(self.zsu(xx)) - sd)
+            for sg in (1.0, -1.0):
+                solid(part, [bot * [1.0, sg, 1.0], top * [1.0, sg, 1.0]], "Oak")
+            placed.append({"beam_x_m": round(x, 3), "face": "fore" if d > 0 else "aft", "side_arm_m": round(L, 3)})
+        self.info["lodging_knees"] = {"each_side": len(placed), "by_beam": placed, "none_at_beam_x_m": skipped}
 
     def stanchions(self, part, footprints):
         """a turned stanchion on the middle line under each whole beam where it stands clear of the fittings'
@@ -819,26 +982,31 @@ class GunDeck:
         oh = self.c["overhead"]
         r = oh["stanchion_in"] / 2 * IN
         clear = oh["stanchion_clear_m"]
-        xb = self.c["cabin"]["bulkhead_x_m"]
+        xb = self.stanchions_from_x()
         placed = []
-        whole = [m for i, m in enumerate(self.members) if m[3] == "beam" and i not in self.cut]
+        whole = [m for i, m in enumerate(self.members) if m[3] == "beam" and i not in self.cut] + self.waist_members()
         for x, s, m, kind in whole:
             if x < xb + 0.3:
                 continue
             p = np.array([[x, 0.0]])
             if any(in_poly(p, F)[0] or seg_dist(p, F)[0] < r + clear for F in footprints.values()):
                 continue
-            z0, z1 = float(self.zg(x)), self.beam_bottom(x)
+            # the head let 2 mm up into the beam's underside (as the knees' arms are), so it is seen to meet it
+            z0, z1 = float(self.zg(x)), self.beam_bottom(x) + 0.002
             h = z1 - z0
             prof = [(0.0, r + 1.5 * IN), (2.0 * IN, r + 1.5 * IN), (2.5 * IN, r + 0.5 * IN), (4.0 * IN, r),
                     (h - 4.0 * IN, r), (h - 2.5 * IN, r + 0.5 * IN), (h - 2.0 * IN, r + 1.5 * IN), (h, r + 1.5 * IN)]
             k0 = len(part.V)
             lathe(part, [x, 0.0, z0], EZ, EX, prof, "Oak", 16)
-            for V in part.V[k0:]:                          # the foot on the deck's sheer, eased out half way up
-                w = np.clip(1.0 - (V[:, 2] - z0) / (0.5 * h), 0.0, 1.0)
-                V[:, 2] += w * (self.zg(V[:, 0]) - z0)
+            for V in part.V[k0:]:
+                # the foot on the deck's sheer and the head under its beam's underside (which rises with the sheer
+                # along the beam's siding), each eased out half way along
+                lo = np.clip(1.0 - (V[:, 2] - z0) / (0.5 * h), 0.0, 1.0)
+                hi = np.clip((V[:, 2] - z0) / (0.5 * h) - 1.0, 0.0, 1.0)
+                zb = np.array([self.beam_bottom(float(v)) + 0.002 for v in V[:, 0]])
+                V[:, 2] += lo * (self.zg(V[:, 0]) - z0) + hi * (zb - z1)
             placed.append(round(x, 3))
-        self.info["stanchions_x_m"] = placed
+        self.info["stanchions_x_m"] = sorted(placed)
 
     # --- hatchways: coamings, gratings, wells and ladders ---------------------------------------------------------------
     def drape(self, part, k0, z_flat):
@@ -867,8 +1035,11 @@ class GunDeck:
         return zt
 
     def well(self, part, v):
-        """the well under an opening down to the berth deck's height (slice 13 builds that deck): its sides lined (1 in,
-        dim) under the coaming, its floor (3 in) across the bottom; returns the floor's top"""
+        """the well under an opening down to the berth deck's height: its sides lined (1 in, dim) under the coaming, its
+        floor (3 in) across the bottom; returns the floor's top. With the berth deck built under this one (berth), none:
+        returns that deck's top under the opening's middle"""
+        if self.berth is not None:
+            return float(self.zg(v["x"])) - self.berth_drop
         th = self.c["deck"]["thick_in"] * IN
         x0, L, W = v["x"], v["L"], v["W"]
         t = 1.0 * IN
@@ -926,7 +1097,8 @@ class GunDeck:
         return xf, drop
 
     def hatchways(self, part, wells, ladders):
-        """each opening's coaming, its grating (deck.Deck.grating) or its ladder down, and its well; the companion's
+        """each opening's coaming, its grating (deck.Deck.grating) or its ladder down, and its well (or, with the berth
+        deck built under this one, the ladder down onto its planks as they rise along the sheer); the companion's
         ladder from the quarterdeck down to this deck"""
         lc = self.c["ladders"]
         self.ladder_info = []
@@ -937,7 +1109,9 @@ class GunDeck:
                 self.dk.grating(part, dict(v, L=v["L"], W=v["W"]), zt)
             else:
                 xt = v["x"] - v["L"] / 2
-                xf, drop = self.ladder(ladders, xt, zt(xt), 1.0, 0.0, lambda x: zf, lc)
+                floor = (lambda x: float(self.zg(x)) - self.berth_drop) if self.berth is not None else \
+                    (lambda x, zf=zf: zf)
+                xf, drop = self.ladder(ladders, xt, zt(xt), 1.0, 0.0, floor, lc)
                 self.ladder_info.append({"from": k, "top_x_m": round(xt, 3), "foot_x_m": round(xf, 3),
                                          "drop_m": round(drop, 3)})
         # the companion's ladder: its top at the companion's fore coaming (inside), down aft to this deck
@@ -1113,8 +1287,10 @@ class GunDeck:
 
     # --- the riding bitts -----------------------------------------------------------------------------------------------
     def bitts(self, part):
-        """the riding bitts abaft the fore mast: two posts down through the deck, the cross piece on their fore faces
-        and a standard behind each"""
+        """the riding bitts abaft the fore mast: two posts down through the deck (their edges chamfered, their heads
+        rounded over), the cross piece on their fore faces (its fore edges chamfered, its ends rounded down), a standard
+        behind each, and the iron bolts through them (round heads: two through the cross piece into each post, two down
+        through each standard's arm into the deck)"""
         bt = self.c["bitts"]
         x0 = bt["x_m"]
         p = bt["post_in"] * IN
@@ -1126,17 +1302,34 @@ class GunDeck:
         so, sm = (v * IN for v in bt["standard_in"])
         out = bt["cross_out_in"] * IN
         yb = bt["y_in"] * IN
+        ch = bt["chamfer_in"] * IN
+        bh = bt["bolt_head_in"] * IN
+
+        def section(cxy, hx, hy, c):
+            """a rectangle hx by hy half sizes about cxy, its corners chamfered c"""
+            x_, y_ = cxy
+            return np.array([[x_ + hx, y_ - hy + c], [x_ + hx, y_ + hy - c], [x_ + hx - c, y_ + hy], [x_ - hx + c, y_ + hy],
+                             [x_ - hx, y_ + hy - c], [x_ - hx, y_ - hy + c], [x_ - hx + c, y_ - hy], [x_ + hx - c, y_ - hy]])
+
+        def bolt(P, n):
+            lathe(part, P - n * 0.25 * IN, n, np.cross(n, EZ) if abs(n[2]) < 0.9 else EX,
+                  [(0.0, bh / 2), (0.3 * IN, bh / 2), (0.55 * IN, 0.4 * bh), (0.7 * IN, 0.2 * bh)], "Iron", 10)
+
+        zc1 = z0 + hh - bt["cross_below_head_in"] * IN
         for sy in (1.0, -1.0):
             y = sy * yb
-            # the post, its head rounded over a little
-            vbox(part, [x0 - p / 2, y - p / 2, z0 - th - 0.15], [x0 + p / 2, y + p / 2, z0 + hh - 1.5 * IN], "Oak")
-            vbox(part, [x0 - p / 2 + 1.0 * IN, y - p / 2 + 1.0 * IN, z0 + hh - 1.5 * IN],
-                 [x0 + p / 2 - 1.0 * IN, y + p / 2 - 1.0 * IN, z0 + hh], "Oak")
+            # the post: chamfered up to its head, which rounds over in four steps to a flat crown
+            rings = []
+            for z, k in ((z0 - th - 0.15, 1.0), (z0 + hh - 2.5 * IN, 1.0), (z0 + hh - 1.2 * IN, 0.94), (z0 + hh - 0.4 * IN, 0.8),
+                         (z0 + hh, 0.55)):
+                S2 = section((x0, y), k * p / 2, k * p / 2, ch * k)
+                rings.append(np.column_stack([S2, np.full(len(S2), z)]))
+            solid(part, rings, "Oak")
             # the standard: up the post's after face, along the deck aft; a knee's throat between
             arm_up = hh - 8.0 * IN
             arm_aft = self.bitt_standard_m
             prof = [(0.0, 0.0), (0.0, arm_up), (-sm, arm_up)]
-            for t in np.linspace(0.0, 1.0, 7)[1:-1]:
+            for t in np.linspace(0.0, 1.0, 9)[1:-1]:
                 q = (1 - t) ** 2 * np.array([-sm, arm_up - 4.0 * IN]) + 2 * (1 - t) * t * np.array([-sm - 4.0 * IN, sm + 4.0 * IN]) \
                     + t ** 2 * np.array([-arm_aft + 4.0 * IN, sm])
                 prof.append((float(q[0]), float(q[1])))
@@ -1144,34 +1337,114 @@ class GunDeck:
             P = np.array([[x0 - p / 2 + a_, z0 + b_] for a_, b_ in prof])
             P[:, 1] -= 0.25 * IN
             prism(part, P, y - so / 2, y + so / 2, "Oak", axis=1)
-        # the cross piece on the posts' fore faces, its top cross_below_head under the heads, its ends rounded down
-        zc1 = z0 + hh - bt["cross_below_head_in"] * IN
+            # its bolts: down through the arm along the deck, square to its top
+            tx, tz = P[2:-1, 0][::-1], P[2:-1, 1][::-1]
+            for d in (arm_aft - 7.0 * IN, arm_aft - 15.0 * IN):
+                xb_ = x0 - p / 2 - d
+                zt_ = float(np.interp(xb_, tx, tz))
+                sl = (float(np.interp(xb_ + 0.5 * IN, tx, tz)) - float(np.interp(xb_ - 0.5 * IN, tx, tz))) / IN
+                bolt(np.array([xb_, y, zt_]), unit(np.array([-sl, 0.0, 1.0])))
+            # two bolts through the cross piece into the post, their heads on its fore face
+            for dz in (0.3, 0.7):
+                bolt(np.array([x0 + p / 2 + cx, y, zc1 - dz * cz]), EX)
+        # the cross piece on the posts' fore faces, its top cross_below_head under the heads, its fore edges chamfered,
+        # its ends rounded down (a quarter round of half its depth over the end)
         ye = yb + p / 2 + out
-        vbox(part, [x0 + p / 2, -ye, zc1 - cz], [x0 + p / 2 + cx, ye, zc1], "Oak")
+        r = 0.5 * cz
+        q = np.linspace(0.0, 0.5 * math.pi, 6)
+        top = [(ye - r + r * math.sin(a_), zc1 - r + r * math.cos(a_)) for a_ in q]
+        prof = np.array([(-y_, z_) for y_, z_ in top[::-1]] + top + [(ye, zc1 - cz), (-ye, zc1 - cz)])
+        inner = np.column_stack([prof[:, 0] * (ye - ch) / ye, zc1 - cz + ch + (prof[:, 1] - (zc1 - cz)) * (cz - 2 * ch) / cz])
+        solid(part, [np.column_stack([np.full(len(Q), xx), Q]) for xx, Q in
+                     ((x0 + p / 2, prof), (x0 + p / 2 + cx - ch, prof), (x0 + p / 2 + cx, inner))], "Oak")
         self.drape(part, k0, z0)
         self.bitts_box = (x0 - p / 2 - self.bitt_standard_m, x0 + p / 2 + cx, ye)
 
     # --- the galley -----------------------------------------------------------------------------------------------------
     def galley(self, part):
-        """the galley's iron stove on its brick hearth under the forecastle, its boilers' lids on top, the fire and oven
-        doors on its fore face, an iron rail round its sides and after end, and its flue up into the forecastle's
-        chimney, meeting its plate"""
+        """the galley's iron stove (Brodie's patent kind) on its brick hearth under the forecastle: cast plates bolted at
+        angle irons up the corners, a band round its sides and after end at half height and a rib up the middle of each
+        side, every joint on round bolt heads; the top plate with a fiddle bar round its edge and the boilers' lids in it;
+        on its fore face the fire's open mouth with the grate's bars across it, the ash pit's door under it and the
+        oven's door beside it, each in its frame, the oven door on two strap hinges with a latch; an iron kerb round the
+        hearth's top edge, an iron rail round the sides and after end, and its flue up into the forecastle's chimney,
+        meeting its plate, with a band and the damper's handle"""
         gl = self.c["galley"]
+        dt = gl["detail"]
         xa, xf = gl["x_m"]
         W = gl["width_in"] * IN
         Hs = gl["high_in"] * IN
         ht, hm = (v * IN for v in gl["hearth_in"])
+        bd = dt["bolt_in"] * IN
         k0 = len(part.V)
         z0 = float(self.zg(0.5 * (xa + xf)))
         # the hearth, a course of brick set in mortar, and the stove on it (built level, then laid along the sheer)
         vbox(part, [xa - hm, -W / 2 - hm, z0 - 0.5 * IN], [xf + hm, W / 2 + hm, z0 + ht], "Brick")
         zb = z0 + ht
+        # the hearth's kerb: an iron angle round its top edge (its upright leg standing up off the bricks)
+        kl, kt = (v * IN for v in dt["kerb_in"])
+        ko = 0.05 * IN                                     # its faces a hair proud of the bricks' sides
+        xk0, xk1, yk = xa - hm - ko, xf + hm + ko, W / 2 + hm + ko
+        for (a_, b_), (c_, d_) in (((xk0, xk1), (-yk, -yk + kt)), ((xk0, xk1), (yk - kt, yk)),
+                                   ((xk0, xk0 + kt), (-yk + kt, yk - kt)), ((xk1 - kt, xk1), (-yk + kt, yk - kt))):
+            vbox(part, [a_, c_, zb - 0.6 * IN], [b_, d_, zb + kl], "Iron")
         vbox(part, [xa, -W / 2, zb - 0.25 * IN], [xf, W / 2, zb + Hs - 1.0 * IN], "Iron")
         vbox(part, [xa - 0.75 * IN, -W / 2 - 0.75 * IN, zb + Hs - 1.0 * IN], [xf + 0.75 * IN, W / 2 + 0.75 * IN, zb + Hs],
              "Iron")
         # a moulding round the foot
         vbox(part, [xa - 0.75 * IN, -W / 2 - 0.75 * IN, zb - 0.25 * IN], [xf + 0.75 * IN, W / 2 + 0.75 * IN, zb + 2.0 * IN],
              "Iron")
+        # the corners' angle irons, from the foot's moulding to the top plate, bolted along each leg
+        al, at_ = (v * IN for v in dt["angle_in"])
+        z_lo, z_hi = zb + 2.0 * IN, zb + Hs - 1.0 * IN
+        nb = max(2, int(round((z_hi - z_lo) / (dt["bolt_pitch_in"] * IN))))
+        zbs = z_lo + (np.arange(nb) + 0.5) * (z_hi - z_lo) / nb
+        for cx_, sx in ((xa, -1.0), (xf, 1.0)):
+            for sy in (-1.0, 1.0):
+                cy_ = sy * W / 2
+                # the leg on the end face (square to x) and the leg on the side (square to y)
+                vbox(part, [min(cx_, cx_ + sx * at_), min(cy_, cy_ - sy * al), z_lo],
+                     [max(cx_, cx_ + sx * at_), max(cy_, cy_ - sy * al), z_hi], "Iron")
+                vbox(part, [min(cx_, cx_ - sx * al), min(cy_, cy_ + sy * at_), z_lo],
+                     [max(cx_, cx_ - sx * al), max(cy_, cy_ + sy * at_), z_hi], "Iron")
+                for zz in zbs:
+                    if not (sx > 0 and abs(zz - (zb + 0.45 * Hs)) < 9.0 * IN):
+                        bolt_head(part, [cx_ + sx * at_, cy_ - sy * al / 2, zz], sx * EX, bd)
+                    bolt_head(part, [cx_ - sx * al / 2, cy_ + sy * at_, zz], sy * EY, bd)
+        # the band round the sides and after end at half height, and a rib up the middle of each side
+        bw_, bt_ = (v * IN for v in dt["band_in"])
+        zm = zb + 0.5 * (Hs + 1.0 * IN)
+        xm = 0.5 * (xa + xf)
+        for sy in (-1.0, 1.0):
+            vbox(part, [xa + al, min(sy * W / 2, sy * (W / 2 + bt_)), zm - bw_ / 2],
+                 [xf - al, max(sy * W / 2, sy * (W / 2 + bt_)), zm + bw_ / 2], "Iron")
+            br_ = bt_ - 0.1 * IN                           # the rib a little less proud than the band it passes under
+            vbox(part, [xm - bw_ / 2, min(sy * W / 2, sy * (W / 2 + br_)), z_lo],
+                 [xm + bw_ / 2, max(sy * W / 2, sy * (W / 2 + br_)), z_hi], "Iron")
+            for x_b in np.linspace(xa + al + 3.0 * IN, xf - al - 3.0 * IN, 5):
+                if abs(x_b - xm) > bw_:
+                    bolt_head(part, [x_b, sy * (W / 2 + bt_), zm], sy * EY, bd)
+            for zz in zbs:
+                if abs(zz - zm) > bw_:
+                    bolt_head(part, [xm, sy * (W / 2 + br_), zz], sy * EY, bd)
+            bolt_head(part, [xm, sy * (W / 2 + bt_), zm], sy * EY, 1.3 * bd)
+        vbox(part, [xa - bt_, -W / 2 + al, zm - bw_ / 2], [xa, W / 2 - al, zm + bw_ / 2], "Iron")
+        for y_b in np.linspace(-W / 2 + al + 3.0 * IN, W / 2 - al - 3.0 * IN, 4):
+            bolt_head(part, [xa - bt_, y_b, zm], -EX, bd)
+        # the top plate's fiddle bar round its edge, on short posts
+        fh, ft = (v * IN for v in dt["fiddle_in"])
+        zt = zb + Hs
+        xa_t, xf_t, yt = xa - 0.75 * IN, xf + 0.75 * IN, W / 2 + 0.75 * IN
+        ring = np.array([[xa_t + ft / 2, -yt + ft / 2], [xf_t - ft / 2, -yt + ft / 2], [xf_t - ft / 2, yt - ft / 2],
+                         [xa_t + ft / 2, yt - ft / 2]])
+        for j in range(4):
+            a_, b_ = ring[j], ring[(j + 1) % 4]
+            d = unit(np.append(b_ - a_, 0.0))
+            bar(part, np.append(a_, zt + fh - ft / 2) - d * ft / 2, np.append(b_, zt + fh - ft / 2) + d * ft / 2, ft, ft,
+                "Iron")
+        for a_ in ring:
+            vbox(part, [a_[0] - ft / 2, a_[1] - ft / 2, zt - 0.1 * IN], [a_[0] + ft / 2, a_[1] + ft / 2, zt + fh - ft],
+                 "Iron")
         # the boilers' lids, each with a ring handle
         rl = gl["lid_in"] / 2 * IN
         nl = gl["lids"]
@@ -1183,20 +1456,36 @@ class GunDeck:
             lathe(part, [x, 0.0, zb + Hs - 0.1 * IN], EZ, EX, [(0.0, rl), (0.6 * IN, rl), (0.9 * IN, rl - 1.0 * IN),
                                                                 (1.2 * IN, 2.0 * IN), (1.6 * IN, 1.0 * IN)], "Iron", 24)
             ring_band(part, np.array([x, 0.0, zb + Hs + 2.2 * IN]), EY, EX, 0.0, 1.6 * IN, 0.4 * IN, 0.4 * IN, "Iron", 12)
-        # the fore face: the fire door (its opening glowing dark) and the oven door beside it, each in a frame
+        # the fore face: the fire's mouth (open, its grate's bars across it) and the oven's door beside it, each in a
+        # frame; the ash pit's door under the fire
         xface = xf + 0.75 * IN
-        for yc, (dw, dh), zc, shut in ((-W / 4, (12.0 * IN, 10.0 * IN), zb + 0.45 * Hs, False),
-                                       (W / 4, (14.0 * IN, 12.0 * IN), zb + 0.45 * Hs, True)):
+        fz = zb + 0.45 * Hs
+        hg = dt["hinge"]
+        for yc, (dw, dh), zc, shut in ((-W / 4, (12.0 * IN, 10.0 * IN), fz, False),
+                                       (W / 4, (14.0 * IN, 12.0 * IN), fz, True)):
             vbox(part, [xf - 0.5 * IN, yc - dw / 2 - 1.5 * IN, zc - dh / 2 - 1.5 * IN],
                  [xface, yc + dw / 2 + 1.5 * IN, zc + dh / 2 + 1.5 * IN], "Iron")
+            for sy_, sz_ in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+                bolt_head(part, [xface, yc + sy_ * (dw / 2 + 0.75 * IN), zc + sz_ * (dh / 2 + 0.75 * IN)], EX, bd)
             if shut:
                 vbox(part, [xface, yc - dw / 2, zc - dh / 2], [xface + 0.5 * IN, yc + dw / 2, zc + dh / 2], "Iron")
-                lathe(part, [xface + 0.5 * IN, yc + dw / 2 - 2.0 * IN, zc], EX, EY, [(0.0, 0.5 * IN), (1.5 * IN, 0.5 * IN)],
-                      "Iron", 8)
+                self.door_furniture(part, xface + 0.5 * IN, yc - dw / 2, yc + dw / 2, zc, dh, hg)
             else:
                 quad(part, [[xface + 0.02 * IN, yc - dw / 2, zc - dh / 2], [xface + 0.02 * IN, yc + dw / 2, zc - dh / 2],
                             [xface + 0.02 * IN, yc + dw / 2, zc + dh / 2], [xface + 0.02 * IN, yc - dw / 2, zc + dh / 2]],
                      EX, "Shadow")
+                gr = dt["grate_bar_in"] / 2 * IN
+                for zg_ in np.linspace(zc - dh / 2 + 1.0 * IN, zc + 1.0 * IN, dt["grate_bars"]):
+                    lathe(part, [xface + 0.35 * IN, yc - dw / 2 - 0.5 * IN, zg_], EY, EZ,
+                          [(0.0, gr), (dw + 1.0 * IN, gr)], "Iron", 6)
+                # the ash pit's door under it
+                aw, ah = (v * IN for v in dt["ash_door_in"])
+                za = zb + 2.0 * IN + 1.25 * IN + ah / 2
+                vbox(part, [xf - 0.5 * IN, yc - aw / 2 - 1.0 * IN, za - ah / 2 - 1.0 * IN],
+                     [xface, yc + aw / 2 + 1.0 * IN, za + ah / 2 + 1.0 * IN], "Iron")
+                vbox(part, [xface, yc - aw / 2, za - ah / 2], [xface + 0.4 * IN, yc + aw / 2, za + ah / 2], "Iron")
+                lathe(part, [xface + 0.4 * IN, yc + aw / 2 - 1.5 * IN, za], EX, EY,
+                      [(0.0, 0.45 * IN), (0.6 * IN, 0.3 * IN), (0.9 * IN, 0.55 * IN), (1.2 * IN, 0.4 * IN)], "Iron", 8)
         # the rail: round the sides and the after end on iron stanchions, open across the front
         rw, rt_ = (v * IN for v in gl["rail_in"])
         ro = gl["rail_out_in"] * IN
@@ -1212,7 +1501,8 @@ class GunDeck:
             lathe(part, [x, y, z0 - 0.5 * IN], EZ, EX, [(0.0, 1.5 * IN), (0.5 * IN, 1.5 * IN), (0.6 * IN, 0.6 * IN),
                                                         (zr - z0 - rt_ / 2 + 0.5 * IN, 0.6 * IN)], "Iron", 8)
         self.drape(part, k0, z0)
-        # the flue: from the stove's top (laid on the sheer) straight up into the chimney's plate, a collar at its foot
+        # the flue: from the stove's top (laid on the sheer) straight up into the chimney's plate, a collar at its foot,
+        # a band at its middle and the damper's handle out of its fore side
         zst = zb + Hs + float(self.zg(xflue)) - z0
         zch = self.dk.chimney_plate_z(xflue) if hasattr(self.dk, "chimney_plate_z") else None
         if zch is None:
@@ -1221,12 +1511,44 @@ class GunDeck:
         lathe(part, [xflue, 0.0, zst - 0.2 * IN], EZ, EX, [(0.0, rflue + 2.0 * IN), (0.8 * IN, rflue + 2.0 * IN),
                                                             (1.2 * IN, rflue), (zch - zst + 0.2 * IN + 0.25 * IN, rflue)],
               "Iron", 24)
+        zmid = zst + 0.45 * (zch - zst)
+        ring_band(part, np.array([xflue, 0.0, zmid]), EZ, EX, 0.0, rflue, 1.5 * IN, 0.35 * IN, "Iron", 24)
+        for zz in (zmid - 0.5 * IN, zmid + 0.5 * IN):
+            for a_ in np.arange(6) * math.pi / 3:
+                bolt_head(part, [xflue + (rflue + 0.35 * IN) * math.cos(a_), (rflue + 0.35 * IN) * math.sin(a_), zz],
+                          [math.cos(a_), math.sin(a_), 0.0], 0.55 * bd, seg=6)
+        zd = zst + 0.25 * (zch - zst)
+        dl = dt["damper_handle_in"] * IN
+        lathe(part, [xflue + rflue - 0.5 * IN, 0.0, zd], EX, EY, [(0.0, 0.3 * IN), (dl, 0.3 * IN)], "Iron", 8)
+        lathe(part, [xflue + rflue - 0.5 * IN + dl, 0.0, zd], EX, EY,
+              [(0.0, 0.6 * IN), (0.6 * IN, 0.75 * IN), (1.6 * IN, 0.75 * IN), (2.0 * IN, 0.45 * IN)], "Iron", 10)
         self.galley_box = (xa - hm - ro - 1.0 * IN, xf + 1.0 * IN + 0.5 * IN, yr + 1.0 * IN)
-        self.info["galley"] = {"x_m": [xa, xf], "flue_x_m": round(xflue, 3), "flue_m": [round(zst, 3), round(zch, 3)]}
+        self.info["galley"] = {"x_m": [xa, xf], "flue_x_m": round(xflue, 3), "flue_m": [round(zst, 3), round(zch, 3)],
+                               "front_out_m": round(xface + 1.5 * IN - xf, 3)}
+
+    def door_furniture(self, part, x_face, y_hinge, y_latch, zc, dh, hg):
+        """an iron door's two strap hinges (knuckle on its hinge edge y_hinge, the strap reaching hg['strap_of_width']
+        across) and its latch (a turned knob near y_latch), on its face at x_face"""
+        sw, st_ = (v * IN for v in hg["strap_in"])
+        rk = hg["knuckle_in"] / 2 * IN
+        L = (y_latch - y_hinge) * hg["strap_of_width"]
+        for zz in (zc - dh / 2 + 1.5 * IN + sw / 2, zc + dh / 2 - 1.5 * IN - sw / 2):
+            prism(part, [(y_hinge, zz - sw / 2), (y_hinge + L - sw, zz - sw / 2), (y_hinge + L, zz),
+                         (y_hinge + L - sw, zz + sw / 2), (y_hinge, zz + sw / 2)], x_face - 0.05 * IN, x_face + st_, "Iron",
+                  axis=0)
+            lathe(part, [x_face + rk - 0.1 * IN, y_hinge - rk, zz - sw], EZ, EX, [(0.0, rk), (2 * sw, rk)], "Iron", 10)
+            for f in (0.3, 0.6):
+                bolt_head(part, [x_face + st_, y_hinge + f * L, zz], EX, 0.5 * sw, seg=6)
+        lathe(part, [x_face, y_latch - 2.0 * IN, zc], EX, EY, [(0.0, 0.5 * IN), (0.8 * IN, 0.35 * IN), (1.2 * IN, 0.7 * IN),
+                                                                (1.5 * IN, 0.5 * IN)], "Iron", 10)
+        vbox(part, [x_face - 0.05 * IN, y_latch - 3.2 * IN, zc - 0.35 * IN], [x_face + 0.3 * IN, y_latch - 0.8 * IN,
+                                                                                zc + 0.35 * IN], "Iron")
 
     # --- the bow --------------------------------------------------------------------------------------------------------
     def bow(self, part, wells):
-        """the manger across the bow abaft the hawse holes, the cable scuttles' lead collars and their short wells"""
+        """the manger across the bow abaft the hawse holes, the cable scuttles' lead collars and their short wells (with
+        the berth deck built under this one, their linings only through these planks: the cables go on down through
+        that deck's scuttles, berthdeck.py's)"""
         bw = self.c["bow"]
         xm = bw["manger_x_m"]
         hm, tm = (v * IN for v in bw["manger_in"])
@@ -1251,11 +1573,13 @@ class GunDeck:
             # forward: the collar's 2 ft across rises 2.5 in)
             k0 = len(part.V)
             ring_band(part, c, EZ, EX, ct / 2 - 0.02 * IN, r, ct, cw, "Lead", 32)
-            # the lead lining down the hole and a short well below (the cable tier is slice 14's)
-            revolve(part, c - EZ * (bw["well_ft"] * FT), EZ, EX, [(0.0, r - 0.25 * IN), (bw["well_ft"] * FT + 0.0, r - 0.25 * IN)],
-                    "Lead", 32, want_out=False)
+            # the lead lining down the hole and a short well below (the cable tier is slice 14's); over the berth deck,
+            # the lining through the planks to a quarter inch under them and no well
+            wd = bw["well_ft"] * FT if self.berth is None else self.c["deck"]["thick_in"] * IN + 0.25 * IN
+            revolve(part, c - EZ * wd, EZ, EX, [(0.0, r - 0.25 * IN), (wd, r - 0.25 * IN)], "Lead", 32, want_out=False)
             k1 = len(wells.V)
-            disc(wells, c - EZ * (bw["well_ft"] * FT), EZ, r, "Shadow", 24)
+            if self.berth is None:
+                disc(wells, c - EZ * wd, EZ, r, "Shadow", 24)
             self.drape(part, k0, float(c[2]))
             self.drape(wells, k1, float(c[2]))
         self.info["bow"] = {"manger_x_m": xm, "manger_half_m": round(ye, 3)}
@@ -1263,11 +1587,12 @@ class GunDeck:
     # --- the bowers' cables -----------------------------------------------------------------------------------------------
     def cable_course(self, an):
         """the bowers' cables led in on this deck (starboard; anchors.py lays both): from where each lies in its bore's
-        inner mouth (an.bore_lie) out over the lip, over the manger's top and down its cable scuttle into the well, each
-        turn bent no tighter than the cable's least bend (anchors_1797.json); the lift over the manger, the corner over
-        the scuttle and the place the cable goes down it are the first (shortest) that clear the board, the deck, the
-        scuttle's lead collar and its lining. Returns the course from its inboard end (in the well) to the bore, for
-        an.lead_inboard"""
+        inner mouth (an.bore_lie) out over the lip, over the manger's top and down its cable scuttle into the well (with
+        the berth deck built under this one, straight on down through its scuttle into the short well under that, its
+        lining as this one's), each turn bent no tighter than the cable's least bend (anchors_1797.json); the lift over
+        the manger, the corner over the scuttle and the place the cable goes down it are the first (shortest) that
+        clear the board, the deck, the scuttle's lead collar and its lining (and the berth deck's, the same size
+        straight under it). Returns the course from its inboard end (in the well) to the bore, for an.lead_inboard"""
         import anchors as anm
         bw = self.c["bow"]
         xm, tm, ye = self.manger
@@ -1277,6 +1602,11 @@ class GunDeck:
         r = bw["scuttle_in"] / 2 * IN
         cw, ct = (v * IN for v in bw["collar_in"])
         well = bw["well_ft"] * FT
+        if self.berth is not None:
+            bth = self.berth["through"]
+            if bth["scuttle_in"] != bw["scuttle_in"] or bth["collar_in"] != bw["collar_in"]:
+                raise SystemExit("gundeck: the berth deck's cable scuttles are not the gun deck's size")
+            well = self.berth_drop + bth["scuttle_well_ft"] * FT
         zsd = float(self.zg(xs))
         top = zm + hm
         B, d_in, r_c = an.bore_lie(np.array([xm, ys, top]))
@@ -1345,6 +1675,47 @@ class GunDeck:
             c = np.array([x, y, float(self.zg(x))])
             ring_band(part, c, EZ, EX, -th / 2 + 0.1 * IN, rr + 0.25 * IN, th + 0.2 * IN, 0.5 * IN, "Lead", 16)
             ring_band(part, c, EZ, EX, 0.125 * IN - 0.02 * IN, rr + 0.25 * IN, 0.25 * IN, 1.75 * IN, "Lead", 16)
+
+    def port_stops(self, part):
+        """a stop round the inside of each gun port with a lid (card port_stops), for the shut lid to close against: the
+        sill's and the head's from jamb to jamb, the jambs' between them (each a solid of its own, lapping the others).
+        Laid on the side as the skin lays its lids (skin.Skin.lids: param x and z in px, the lid inset a quarter inch
+        all round): each point on the moulded surface moved along its normal to the lid's inner face (the planking's
+        thickness read at the nearest point of the lid, since the strakes under the sill and over the head are thicker
+        than the port's band), then the stop's own depth in from there; mirrored to port. info port_stops: its sizes"""
+        ps = self.c["port_stops"]
+        sk, pr, SKM = self.sk, self.pr, self.SKM
+        pin, e = pr.pxin, sk.inset
+        p, s, off, let = ps["proud_in"], ps["deep_in"], ps["off_lid_in"], ps["let_in"]
+        d_out, d_in = -off, -off - s                     # inches along the normal from the lid's inner face
+        lo, hi = pr.S, pr.Shd                            # the sill and head lines (px; pr.gun's own ends are numbers)
+        C = sk.C
+
+        def pts(X, Z, dd, a, b):
+            X, Z = np.asarray(X, float), np.asarray(Z, float)
+            P, N = sk.surf(X, Z, True, 0, SKM.MOULD)
+            Xc = np.clip(X, a + e, b - e)
+            Zc = np.clip(Z, lo(Xc) + e, hi(Xc) - e)
+            d = sk.pl.thick_in(Xc, Zc, np.ones(len(X), bool), np.zeros(len(X), int), grooves=False) - sk.lid_t
+            return P + N * ((d + np.asarray(dd, float)) * IN)[:, None]
+
+        dd = np.array([d_in, d_in, d_out, d_out])
+        n = 0
+        for a, b, _, _ in pr.gun:
+            X = np.concatenate([[a - let * pin], C[(C > a + 0.15) & (C < b - 0.15)], [b + let * pin]])
+            S, H = lo(X), hi(X)
+            rings = [[pts([x] * 4, [z0, z1, z1, z0], dd, a, b) for x, z0, z1 in zip(X, S - let * pin, S + p * pin)],
+                     [pts([x] * 4, [z0, z1, z1, z0], dd, a, b) for x, z0, z1 in zip(X, H - p * pin, H + let * pin)]]
+            for x, x0, x1 in ((a, a - let * pin, a + p * pin), (b, b - p * pin, b + let * pin)):
+                zs, zh = float(lo(np.array([x]))[0]), float(hi(np.array([x]))[0])
+                rings.append([pts([x0, x1, x1, x0], [z] * 4, dd, a, b)
+                              for z in np.linspace(zs + (p - 0.1) * pin, zh - (p - 0.1) * pin, 9)])
+            for R in rings:
+                for sgn in (1.0, -1.0):
+                    solid(part, [r * [1.0, sgn, 1.0] for r in R], "HullRed")
+            n += 1
+        self.info["port_stops"] = {"ports_each_side": n, "lap_over_lid_in": round(p - 0.25, 2),
+                                   "off_lid_in": off, "deep_in": s, "let_into_lining_in": let}
 
     # --- the great cabin ------------------------------------------------------------------------------------------------
     def aft_rows(self):
@@ -1544,7 +1915,10 @@ class GunDeck:
 
     def bulkhead(self, part, doors_part):
         """the great cabin's bulkhead across the ship: panelled on both faces, a door either side of the tiller rope's
-        legs (each door its own part, hinged on its outboard post: a turn about its own Z opens it into the cabin)"""
+        legs (each door its own part, hung on its outboard post: a turn about its own Z opens it aft into the cabin).
+        Each door's hinge pins stand on the bulkhead's after face at the opening's outboard edge, the leaf set in from
+        that face (door_hang), so it swings aft clear of its jamb and casing; a low sill across the doorway, and the
+        leaf's foot clear of the sill and of the floor cloth where the deck rises aft under its swing"""
         cb = self.c["cabin"]
         xb = cb["bulkhead_x_m"]
         t = cb["bulkhead_in"] * IN
@@ -1594,37 +1968,64 @@ class GunDeck:
                 stiles += [y, -y]
             for y in stiles:
                 vbox(part, [x0, y - sw / 2, zg], [x1, y + sw / 2, z_rails[-1] + sw / 2 - lap], "Interior")
-        # the doors: each a leaf in its opening, shut, on its own frame (origin on the hinge at the deck, X across the
-        # leaf toward the latch, Y forward, Z up)
+        # the doors: each a leaf in its opening, shut, on its own frame (origin on its hinge pins' axis at the deck, X
+        # across the leaf toward the latch, Z up, Y = Z x X: forward for the starboard door, aft for the port one)
         dt = cb["door_in"] * IN
+        dh = cb["door_hang"]
+        sill, under, recess = (dh[k] * IN for k in ("sill_in", "under_in", "recess_in"))
+        g_hinge, g_latch = dh["hinge_gap_in"] * IN, dh["latch_gap_in"] * IN
+        k_d, k_l = (v * IN for v in dh["knuckle_in"])
+        cloth = cb["floor_cloth"]["thick_in"] * IN
+        let = 0.25 * IN
+        x_a = xb - t / 2                                           # the bulkhead's after face: the pins' axis
         self.door_frames = {}
         for (a, b, h), side in zip(ds, ("S", "P")):
             hinge_y = b if side == "S" else a                      # the outboard post
             latch = -1.0 if side == "S" else 1.0
-            o = np.array([xb, hinge_y, zg])
+            wd = b - a
+            z0 = float(self.zg(x_a))
+            o = np.array([x_a, hinge_y, z0])
             X = latch * EY
             Z = EZ
             Y = np.cross(Z, X)
             R = np.column_stack([X, Y, Z])
-            wd = b - a
+            fwd = float(Y @ EX)                                    # +1 when the frame's Y points forward
+            # the sill across the doorway, let into the deck; the floor under the leaf's swing aft (the deck rising
+            # aft, the cloth on it); the leaf's foot under_in over the higher of the two
+            vbox(part, [x_a, a, zg - let], [x_a + t, b, zg + sill], "Oak")
+            xs = np.linspace(x_a - wd - 0.05, x_a, 40)
+            floor = float(np.max(self.zg(xs))) + cloth
+            foot = max(zg + sill, floor) + under - z0
+            top = zg + h - 0.15 * IN - z0
+            # the leaf, set in recess_in from the after face (toward the bulkhead's middle)
+            y0_, y1_ = sorted((fwd * recess, fwd * (recess + dt)))
+            yc = 0.5 * (y0_ + y1_)
             dp = Part()
-            vbox(dp, [0.15 * IN, -dt / 2, 0.25 * IN], [wd - 0.15 * IN, dt / 2, h - 0.15 * IN], "Interior")
-            for zc, hh in ((0.28 * h, 0.4 * h), (0.74 * h, 0.36 * h)):          # two raised panels each face
+            vbox(dp, [g_hinge, y0_, foot], [wd - g_latch, y1_, top], "Interior")
+            hl = top - foot
+            for zc, hh in ((foot + 0.28 * hl, 0.4 * hl), (foot + 0.74 * hl, 0.36 * hl)):   # two raised panels each face
                 for fy in (1.0, -1.0):
-                    yy = fy * dt / 2
+                    yy = yc + fy * dt / 2
                     vbox(dp, [0.2 * wd, min(yy, yy + fy * 0.3 * IN), zc - hh / 2], [0.8 * wd, max(yy, yy + fy * 0.3 * IN),
                                                                                    zc + hh / 2], "Interior")
             for fy in (1.0, -1.0):                                   # a brass knob each side near the latch
-                lathe(dp, [wd - 3.0 * IN, fy * dt / 2 - fy * 0.1 * IN, 36.0 * IN], fy * EY, EX,
+                lathe(dp, [wd - 3.0 * IN, yc + fy * dt / 2 - fy * 0.1 * IN, 36.0 * IN], fy * EY, EX,
                       [(0.0, 0.4 * IN), (0.9 * IN, 0.35 * IN), (1.2 * IN, 0.9 * IN), (2.0 * IN, 0.9 * IN),
                        (2.2 * IN, 0.5 * IN)], "Bronze", 12)
+            # the hinges' knuckles on the pins' axis, against the casing (the bulkhead's: they stay as the leaf turns)
+            for zk in (foot + 9.0 * IN, top - 9.0 * IN):
+                lathe(part, [x_a, hinge_y, z0 + zk - k_l / 2], EZ, EX,
+                      [(0.0, k_d / 2), (k_l, k_d / 2)], "Iron", 10)
             name = "CabinDoor_" + side
             self.parts_[name] = dp
             self.frames[name] = (o, R)
+            sign = -1.0 if side == "S" else 1.0
             self.door_frames[name] = {"hinge_m": [round(float(v), 4) for v in o], "width_m": round(wd, 3),
-                                      "high_m": round(h, 3), "opens": "a turn about its own Z: negative swings it aft "
-                                                                    "into the cabin" if side == "S" else
-                                      "a turn about its own Z: positive swings it aft into the cabin"}
+                                      "high_m": round(h, 3), "foot_over_hinge_m": round(foot, 4),
+                                      "sill_top_m": round(zg + sill, 4), "floor_under_swing_m": round(floor, 4),
+                                      "open_sign": sign, "open_deg": dh["open_deg"],
+                                      "opens": "a turn about its own Z by open_sign x up to open_deg swings it aft "
+                                               "into the cabin"}
         self.info["cabin_doors"] = self.door_frames
 
     def top_under_members(self, xs, y):
@@ -1705,8 +2106,11 @@ class GunDeck:
         self.info["state_rooms"] = {"y_m": ys, "fore_x_m": xf, "door_x_m": [round(d0, 3), round(d1, 3)]}
 
     def window_seat(self, part):
-        """the seat across the stern under the windows between the state rooms: its top from the after wall (let in) to
-        the front with a nosing, its front board down to the deck; the rudder's head boxed inside it"""
+        """the seat across the stern under the windows between the state rooms: a hinge rail along the after wall (let
+        into it), the lids before it on brass hinges (lids_a_side each side; the piece over the rudder's head is fixed),
+        each with a rounded nosing over the front, and the front board under them framed and panelled (raised and
+        fielded panels no wider than panel_max_in between stiles and rails) down to the deck; the rudder's head boxed
+        inside it"""
         st = self.c["cabin"]["seat"]
         sr = self.c["cabin"]["state_rooms"]
         ys = sr["y_m"] - sr["wall_in"] / 2 * IN
@@ -1715,16 +2119,143 @@ class GunDeck:
         b = 1.0 * IN
         zt = float(self.zg(self.x_aft)) + st["high_in"] * IN
         x_f = max(float(self.wall_x(zt)) + st["deep_in"] * IN, xr + st["rudder_box_in"] * IN + b)
-        if ztr > zt - 1.25 * IN - st["rudder_box_in"] * IN:
+        tt = st["top_in"] * IN
+        if ztr > zt - tt - st["rudder_box_in"] * IN:
             raise SystemExit(f"gundeck: the window seat ({zt:.3f}) is too low over the rudder's head ({ztr:.3f})")
-        tt = 1.25 * IN
-        poly = [(x_f + 0.75 * IN, zt - tt), (x_f + 0.75 * IN, zt), (float(self.wall_x(zt)) - let, zt),
-                (float(self.wall_x(zt - tt)) - let, zt - tt)]
-        prism(part, np.array(poly), -ys, ys, "Interior", axis=1)
+        gap = st["gap_in"] * IN
+        x_n = x_f + st["nosing_in"] * IN
+        r = tt / 2
+        x_hr = float(self.wall_x(zt)) + st["hinge_rail_in"] * IN
+        # the hinge rail, let into the wall
+        prism(part, [(float(self.wall_x(zt - tt)) - let, zt - tt), (x_hr, zt - tt), (x_hr, zt), (float(self.wall_x(zt)) - let, zt)],
+              -ys, ys, "Interior", axis=1)
+        # the lids and the fixed middle, each with its nosing rounded over
+        arc = [(x_n - r + r * math.cos(a), zt - r + r * math.sin(a)) for a in np.linspace(-math.pi / 2, math.pi / 2, 9)]
+        poly = [(x_hr + gap, zt - tt)] + arc + [(x_hr + gap, zt)]
+        y_mid = yr + st["rudder_box_in"] * IN + b + st["middle_beyond_box_in"] * IN
+        n_l = st["lids_a_side"]
+        side = [y_mid + k * (ys - y_mid) / n_l for k in range(n_l + 1)]
+        edges = [-y for y in side[::-1]] + side
+        pieces = list(zip(edges[:-1], edges[1:]))
+        hinges = []
+        for a, c in pieces:
+            a_ = a if a <= -ys + 1e-9 else a + gap / 2
+            c_ = c if c >= ys - 1e-9 else c - gap / 2
+            prism(part, poly, a_, c_, "Interior", axis=1)
+            if abs(a + y_mid) < 1e-9 and abs(c - y_mid) < 1e-9:
+                continue                                            # the fixed middle over the rudder's head
+            for f in (0.2, 0.8):
+                hinges.append(a_ + f * (c_ - a_))
+        hl, hr = (v * IN for v in st["hinge_in"])
+        for y in hinges:
+            lathe(part, [x_hr + gap / 2, y - hl / 2, zt - hr], EY, EX, [(0.0, hr), (hl, hr)], "Bronze", 10)
+        # the front board, framed and panelled
         zf = float(self.zg(x_f))
         vbox(part, [x_f - b, -ys, zf - let], [x_f, ys, zt - tt], "Interior")
+        fp_, ff = (v * IN for v in st["frame_proud_in"])           # the frame's and the fields' faces off the board
+        sw = st["stile_in"] * IN
+        zr0, zr1 = zf + 0.25 * IN, zf + st["bottom_rail_in"] * IN
+        zr2, zr3 = zt - tt - st["top_rail_in"] * IN, zt - tt - 0.02 * IN
+        for z0_, z1_ in ((zr0, zr1), (zr2, zr3)):
+            vbox(part, [x_f - 0.05 * IN, -ys + 0.05 * IN, z0_], [x_f + fp_, ys - 0.05 * IN, z1_], "Interior")
+        cs = [-ys + 0.05 * IN + sw / 2]
+        for a, c in pieces:
+            n_p = max(1, int(math.ceil((c - a) / (st["panel_max_in"] * IN))))
+            cs += [a + k * (c - a) / n_p for k in range(1, n_p)] + [c]
+        cs[-1] = ys - 0.05 * IN - sw / 2
+        for yc in cs:
+            vbox(part, [x_f - 0.05 * IN, yc - sw / 2, zr1 - 0.02 * IN], [x_f + fp_, yc + sw / 2, zr2 + 0.02 * IN], "Interior")
+        ins = st["field_inset_in"] * IN
+        for y0_, y1_ in zip(cs[:-1], cs[1:]):
+            a, c = y0_ + sw / 2, y1_ - sw / 2
+            back = np.array([[x_f - 0.05 * IN, a, zr1], [x_f - 0.05 * IN, c, zr1], [x_f - 0.05 * IN, c, zr2],
+                             [x_f - 0.05 * IN, a, zr2]])
+            front = np.array([[x_f + ff, a + ins, zr1 + ins], [x_f + ff, c - ins, zr1 + ins], [x_f + ff, c - ins, zr2 - ins],
+                              [x_f + ff, a + ins, zr2 - ins]])
+            solid(part, [back, front], "Interior")
         self.seat = (x_f, zt, ys)
-        self.info["window_seat"] = {"front_x_m": round(x_f, 3), "top_z_m": round(zt, 3), "half_m": round(ys, 3)}
+        self.info["window_seat"] = {"front_x_m": round(x_f, 3), "top_z_m": round(zt, 3), "half_m": round(ys, 3),
+                                    "lids": len(pieces) - 1, "panels": len(cs) - 1}
+
+    def after_panelling(self, part):
+        """the after wall's joinery between the state rooms (cabin after_wall panelling), laid on the wall's rake: a
+        sill rail across under the windows on the seat's top, a pilaster (its base and capital) between each two
+        windows and a stile at each end, a head moulding over each window and a raised and fielded panel over that, and
+        a cornice along the top under the spar deck's planks. Each piece stands clear of the windows' openings (their
+        linings) by clear_in"""
+        aw = self.c["cabin"]["after_wall"]
+        ap = aw["panelling"]
+        rv = aw["reveal_in"] * IN
+        _, zt_seat, ys = self.seat
+        z_top = float(self.aft_rows()[-1, 2])
+        e = 0.05 * IN
+        cl = ap["clear_in"] * IN
+        y_end = ys - 0.1 * IN
+        opens = sorted((a - rv, b_ + rv, v0 - rv, v1 + rv) for a, b_, v0, v1 in self.window_rects())
+        z_sill = min(o[2] for o in opens) - 0.5 * IN
+        wx = self.wall_x
+
+        def on_wall(y, z, out):
+            return [float(wx(z)) + out, y, z]
+
+        def strip_v(y0, y1, z0, z1, t):
+            zz = np.linspace(z0, z1, max(2, int(math.ceil((z1 - z0) / 0.25)) + 1))
+            solid(part, [np.array([on_wall(y0, z, -e), on_wall(y1, z, -e), on_wall(y1, z, t), on_wall(y0, z, t)])
+                         for z in zz], "Interior")
+
+        def strip_h(y0, y1, prof):
+            """along y from y0 to y1, its section prof [(out, z)]"""
+            solid(part, [np.array([on_wall(y, z, o) for o, z in prof]) for y in (y0, y1)], "Interior")
+
+        def field(y0, y1, z0, z1, t, ins):
+            back = np.array([on_wall(y0, z0, -e), on_wall(y1, z0, -e), on_wall(y1, z1, -e), on_wall(y0, z1, -e)])
+            front = np.array([on_wall(y0 + ins, z0 + ins, t), on_wall(y1 - ins, z0 + ins, t), on_wall(y1 - ins, z1 - ins, t),
+                              on_wall(y0 + ins, z1 - ins, t)])
+            solid(part, [back, front], "Interior")
+        # the cornice, its section from the wall: a fascia, then an ovolo out to its full projection under the planks
+        ch_ = ap["cornice_in"] * IN
+        cp = ap["cornice_out_in"] * IN
+        fo = ap["fascia_out_in"] * IN
+        zc0 = z_top - ch_
+        ovolo = [(fo + (cp - fo) * math.sin(a), z_top - 0.45 * ch_ + 0.35 * ch_ * (1 - math.cos(a)))
+                 for a in np.linspace(0.0, math.pi / 2, 5)]
+        prof = [(-e, zc0), (fo, zc0)] + ovolo + [(cp, z_top), (-e, z_top)]
+        strip_h(-y_end, y_end, prof)
+        # the sill rail on the seat's top
+        sp = ap["sill_out_in"] * IN
+        strip_h(-y_end, y_end, [(-e, zt_seat), (sp, zt_seat), (sp, z_sill - 0.4 * IN), (sp - 0.4 * IN, z_sill), (-e, z_sill)])
+        # the pilasters between the windows, with base and capital, and a stile at each end
+        pw, pt = (v * IN for v in ap["pilaster_in"])
+        bh_, bo = (v * IN for v in ap["base_in"])
+        kh, ko = (v * IN for v in ap["capital_in"])
+        pil = []
+        for o0, o1 in zip(opens[:-1], opens[1:]):
+            g0, g1 = o0[1] + cl, o1[0] - cl
+            if g1 - g0 < 3.0 * IN:
+                continue
+            w = min(pw, g1 - g0 - 2 * max(bo, ko))
+            yc = 0.5 * (g0 + g1)
+            strip_v(yc - w / 2, yc + w / 2, z_sill + bh_ - 0.1 * IN, zc0 - kh + 0.1 * IN, pt)
+            strip_v(yc - w / 2 - bo, yc + w / 2 + bo, z_sill, z_sill + bh_, pt + bo)
+            strip_v(yc - w / 2 - ko, yc + w / 2 + ko, zc0 - kh, zc0, pt + ko)
+            pil.append(round(yc, 3))
+        sw = ap["stile_in"] * IN
+        for sg in (-1.0, 1.0):
+            y_in = sg * (y_end - sw)
+            if any(o[0] - cl < max(y_in, sg * y_end) and o[1] + cl > min(y_in, sg * y_end) for o in opens):
+                raise SystemExit("gundeck: the after wall's end stile comes into a window's opening")
+            strip_v(min(y_in, sg * y_end), max(y_in, sg * y_end), z_sill, zc0, pt * 0.6)
+        # over each window a head moulding and a raised panel
+        hh, ho = (v * IN for v in ap["head_in"])
+        for u0, u1, v0, v1 in opens:
+            z0_ = v1 + cl
+            strip_h(u0 - 1.0 * IN, u1 + 1.0 * IN, [(-e, z0_), (ho, z0_), (ho, z0_ + hh - 0.4 * IN), (ho - 0.4 * IN, z0_ + hh),
+                                                  (-e, z0_ + hh)])
+            zp0, zp1 = z0_ + hh + 2.0 * IN, zc0 - 2.0 * IN
+            if zp1 - zp0 > 4.0 * IN:
+                field(u0, u1, zp0, zp1, ap["field_out_in"] * IN, ap["field_inset_in"] * IN)
+        self.info["after_wall"]["panelling"] = {"pilasters_y_m": pil, "cornice_m": [round(zc0, 3), round(z_top, 3)],
+                                                "sill_rail_top_m": round(z_sill, 3)}
 
     def floor_cloth(self, part):
         """the painted floor cloth over the cabin's deck (black and white squares: its 'Cloth' UV counts squares), from
@@ -1849,28 +2380,18 @@ class GunDeck:
         self.info["furniture"] = {"table_x_m": x0, "chairs": len(cb["chairs"]), "sideboard_x_m": [round(x_0, 3), round(x1, 3)]}
 
     # --- the lanterns ---------------------------------------------------------------------------------------------------
-    def hangers_over(self):
-        """everything athwartships a lantern can hang from: [(x, underside z, [(y0, y1)] where it runs)], the gun deck's
-        beams, ledges and breast beams (whole, or each half out from its carling) and the waist's beams (deck.py)"""
-        out = []
-        for (x, s, m, kind), rec in zip(self.members, self.overhead_info["members"]):
-            out.append((x, float(self.zsu(x)) - m, rec["spans_y_m"]))
-        wa = self.dk.c["waist"]
-        thick = self.dk.c["deck"]["planking"]["thick_in"] * IN
-        for x in self.dk.beams_x:
-            out.append((x, float(self.dk.z(x)) - thick - wa["beam_moulded_in"] * IN, [[-9.0, 9.0]]))
-        return out
-
-    def lantern(self, part, H):
-        """a horn lantern hung from H (on a member's underside): a screw eye and hook, the ring on its roof, the cone
-        roof, the six-sided body (tin posts and bands, horn panes) and its dish; returns the light's place (the body's
-        middle)"""
-        lt = self.c["lanterns"]
+    def lantern(self, part, H, lt=None):
+        """a horn lantern hung from H (the planks' or a bar's underside): a screw eye and hook (its shank screwed
+        0.75 in up into what it hangs from, through an iron rose against its underside), the ring on its roof, the cone
+        roof, the six-sided body (tin posts and bands, horn panes) and its dish, its sizes lanterns' (or lt's: body_in,
+        roof_in, ring_in, hook_in); returns the light's place (the body's middle) and the dish's underside"""
+        lt = self.c["lanterns"] if lt is None else lt
         across, high = (v * IN for v in lt["body_in"])
         roof, ring, hook = (lt[k] * IN for k in ("roof_in", "ring_in", "hook_in"))
         R = across / 2
         H = np.asarray(H, float)
-        ring_band(part, H - EZ * 0.3 * IN, EZ, EX, -0.3 * IN, 0.35 * IN, 0.3 * IN, 0.2 * IN, "Iron", 8)
+        ring_band(part, H, EZ, EX, -0.15 * IN, 0.1 * IN, 0.3 * IN, 0.45 * IN, "Iron", 8)
+        tube(part, np.array([H + EZ * 0.75 * IN, H - EZ * 0.3 * IN]), 0.12 * IN, "Iron", n=6)
         z_ring = H[2] - hook
         tube(part, np.array([H - EZ * 0.3 * IN, H - EZ * (hook - ring * 0.4), H - EZ * (hook - ring * 0.45) + EX * 0.25 * IN]),
              0.12 * IN, "Iron", n=6)
@@ -1902,34 +2423,160 @@ class GunDeck:
         return np.array([H[0], H[1], 0.5 * (z_bot + z_top)]), z_bot - 1.0 * IN
 
     def lanterns(self, part):
-        """one hung between each second pair of guns a side (lanterns.between_guns), y_m out from the middle line,
-        from the member nearest the middle between the two ports that runs out that far, and one over the cabin's
-        table; each a light in the game data (self.lights)"""
+        """one hung between each second pair of guns a side (lanterns.between_guns), between the spar deck's beams on a
+        hook in the planks' underside: in the bay (between two members overhead, the waist's beams and the gangways'
+        ledges among them) whose middle lies nearest the middle between the two ports and which stands clear of both
+        (clear_of_ports_m: the bays over the ports hold the guns' implements), in_from_side_m in from the side's inner
+        face, over the room between the two guns and out of the walk inboard of them; and one over the middle of the
+        cabin's table, from a bar (in DeckBeams) across between the carlings either side of the skylight over it. Each a
+        light in the game data (self.lights) in its zone: the deck's lanterns, unshadowed, reach no further than the
+        cabin's bulkhead (radius_m, less where one stands nearer), the cabin's casts shadows, so neither shines through
+        the bulkhead"""
         lt = self.c["lanterns"]
-        li = lt["light"]
-        over = self.hangers_over()
+        li, lc = lt["light"], lt["cabin_light"]
+        cb = self.c["cabin"]
         mids = [0.5 * (a + f) for a, f in self.ports]
-        want = [(0.5 * (mids[a - 1] + mids[b - 1]), lt["y_m"], f"Lantern_{a:02d}_{b:02d}") for a, b in lt["between_guns"]]
-        want.append((self.c["cabin"]["table"]["x_m"], 0.0, "Lantern_Cabin"))
+        faces = sorted((x - s / 2, x + s / 2) for x, s, m, kind in list(self.members) + list(self.waist_members()))
+        bays = [(f0[1], f1[0]) for f0, f1 in zip(faces[:-1], faces[1:])]
+        R_l = 0.5 * lt["body_in"][0] * IN + 0.45 * IN                 # the roof's brim
+        drop = (lt["hook_in"] + 0.5 * lt["ring_in"] + lt["roof_in"] + 0.5 * lt["body_in"][1]) * IN
+        cp = lt["clear_of_ports_m"]
+        x_bk = cb["bulkhead_x_m"] + cb["bulkhead_in"] / 2 * IN           # the bulkhead's fore face
+        cs_ = self.c["overhead"]["carling_in"][0] * IN
+        y_gang = self.dk.y_open + self.dk.t_coam / 2 + cs_ / 2         # the waist's carlings' outer faces
         placed = []
-        for xw, yw, name in want:
-            for sd, sgn in (("S", 1.0), ("P", -1.0)) if yw > 0 else (("", 1.0),):
-                y = sgn * yw
-                cand = [(abs(x - xw), x, zb) for x, zb, spans in over if any(a + 0.15 <= y <= b - 0.15 for a, b in spans)]
-                if not cand:
-                    raise SystemExit(f"gundeck: nothing over the lantern {name} to hang it from")
-                _, x, zb = min(cand)
-                c, z_low = self.lantern(part, [x, y, zb])
-                nm = name + ("_" + sd if sd else "")
-                self.lights.append({"name": nm, "pos_m": [round(float(v), 4) for v in c], "colour_rgb": li["colour_rgb"],
-                                    "kelvin": li["kelvin"], "lumens": li["lumens"], "radius_m": li["radius_m"],
-                                    "cast_shadows": li["cast_shadows"]})
-                placed.append({"name": nm, "x_m": round(x, 3), "off_middle_m": round(x - xw, 3),
-                               "bottom_over_deck_m": round(z_low - float(self.zg(x)), 3)})
+
+        def light(nm, c, zone, radius, shadows):
+            self.lights.append({"name": nm, "pos_m": [round(float(v), 4) for v in c], "zone": zone,
+                                "colour_rgb": li["colour_rgb"], "kelvin": li["kelvin"], "lumens": li["lumens"],
+                                "radius_m": round(float(radius), 3), "cast_shadows": shadows})
+
+        for a, b in lt["between_guns"]:
+            xw = 0.5 * (mids[a - 1] + mids[b - 1])
+            ok = [(lo, hi) for lo, hi in bays if hi - lo >= 2 * R_l + 0.1
+                  and not any(lo < f + cp and hi > p0 - cp for p0, f in self.ports)]
+            if not ok:
+                raise SystemExit(f"gundeck: no bay between the ports {a} and {b} to hang a lantern in")
+            lo, hi = min(ok, key=lambda bb: abs(0.5 * (bb[0] + bb[1]) - xw))
+            x = 0.5 * (lo + hi)
+            z0 = float(self.zsu(x))
+            P, _ = self.wall_at(np.array([x]), np.array([z0 - drop]))
+            y = float(P[0, 1]) - lt["in_from_side_m"]
+            if self.e1 < x < self.fc and y - R_l < y_gang + 0.05:
+                raise SystemExit(f"gundeck: the lantern between the ports {a} and {b} would hang under the waist's "
+                                 f"opening (y {y:.3f})")
+            if abs(x - xw) > 0.6:
+                raise SystemExit(f"gundeck: the lantern between the ports {a} and {b} hangs {x - xw:.2f} m off their "
+                                 f"middle")
+            for sd, sgn in (("S", 1.0), ("P", -1.0)):
+                c, z_low = self.lantern(part, [x, sgn * y, z0])
+                nm = f"Lantern_{a:02d}_{b:02d}_{sd}"
+                radius = min(li["radius_m"], float(c[0]) - x_bk - 0.05)
+                light(nm, c, "gun_deck", radius, li["cast_shadows"])
+                placed.append({"name": nm, "x_m": round(x, 3), "y_m": round(sgn * y, 3), "off_middle_m": round(x - xw, 3),
+                               "bay_m": [round(lo, 3), round(hi, 3)], "in_from_side_m": lt["in_from_side_m"],
+                               "bottom_over_deck_m": round(float(z_low - self.zg(x)), 3), "radius_m": round(radius, 3)})
+        # the cabin's: a bar across between the carlings either side of the skylight, over the table's middle
+        x_t = cb["table"]["x_m"]
+        ys = [cr["y_m"] for cr in self.overhead_info["carlings"] if cr["x_m"][0] + 0.05 < x_t < cr["x_m"][1] - 0.05]
+        yp, yq = [y_ for y_ in ys if y_ > 0], [y_ for y_ in ys if y_ < 0]
+        if not yp or not yq:
+            raise SystemExit("gundeck: no carlings either side of the cabin's table to hang its lantern from")
+        yi = min(min(yp), -max(yq)) - cs_ / 2                          # the carlings' inner faces
+        bs_, bm_ = (v * IN for v in lt["cabin_bar_in"])
+        zt = float(self.zsu(x_t)) - lt["cabin_bar_under_in"] * IN
+        vbox(self.parts_["DeckBeams"], [x_t - bs_ / 2, -yi, zt - bm_], [x_t + bs_ / 2, yi, zt], "Oak")
+        c, z_low = self.lantern(part, [x_t, 0.0, zt - bm_])
+        light("Lantern_Cabin", c, "great_cabin", lc["radius_m"], lc["cast_shadows"])
+        top = float(self.zg(x_t)) + (cb["table"]["high_in"]) * IN
+        placed.append({"name": "Lantern_Cabin", "x_m": round(x_t, 3), "y_m": 0.0, "off_middle_m": 0.0,
+                       "bar": {"between_y_m": [round(-yi, 3), round(yi, 3)], "top_under_planks_in": lt["cabin_bar_under_in"]},
+                       "bottom_over_deck_m": round(float(z_low - self.zg(x_t)), 3),
+                       "bottom_over_table_m": round(float(z_low - top), 3), "radius_m": lc["radius_m"]})
         if len(self.lights) > lt["light_budget"]["max_lights"]:
             raise SystemExit(f"gundeck: {len(self.lights)} lights over the gun deck's budget of "
                              f"{lt['light_budget']['max_lights']}")
         self.info["lanterns"] = placed
+
+    # --- the capstan bars -------------------------------------------------------------------------------------------------
+    def capstan_bars(self, part):
+        """the capstan's bars (capstan bars: one for each hole) stowed overhead athwartships, bars_a_bay to a bay in
+        the bays nearest the capstan, half each side: each bay clear of the ports (the implements' and the lids'
+        lanyards' bays), with no lantern, forward of the cabin and outside the waist, and long enough across to the
+        nearest carling; each set in two iron stirrups from the planks, the bars' tops under the lodging knees, from
+        out_of_side_m in from the side inboard"""
+        cs = self.c["capstan"]
+        cbar = cs["bars"]
+        nb = cs["bar_holes"]
+        Lb = cbar["long_ft"] * FT
+        sq = cbar["square_in"] * IN
+        sq_l = cbar["square_long_in"] * IN
+        d1, d2 = (v * IN for v in cbar["round_in"])
+        gap = cbar["gap_in"] * IN
+        per = cbar["bars_a_bay"]
+        v0 = cbar["out_of_side_m"]
+        sw_, st_ = (v * IN for v in cbar["stirrup_in"])
+        sd = self.c["overhead"]["lodging_knee"]["sided_in"] * IN
+        cp = self.c["lanterns"]["clear_of_ports_m"]
+        cb = self.c["cabin"]
+        x_bk = cb["bulkhead_x_m"] + cb["bulkhead_in"] / 2 * IN
+        lantern_bays = [tuple(li["bay_m"]) for li in self.info["lanterns"] if "bay_m" in li]
+        faces = self.bay_faces()
+        set_w = per * sq + (per - 1) * gap
+        bays = []
+        for (p0, p1), (q0, q1) in zip(faces[:-1], faces[1:]):
+            lo, hi = p1, q0
+            mid = 0.5 * (lo + hi)
+            if hi - lo < set_w + 2 * (sw_ + 1.5 * IN) or lo < x_bk + 0.3 or self.e1 - 0.05 < mid < self.fc + 0.05:
+                continue
+            if any(lo < f + cp and hi > a - cp for a, f in self.ports):
+                continue
+            if any(abs(mid - 0.5 * (a + b)) < 0.05 for a, b in lantern_bays):
+                continue
+            zt = float(min(self.zsu(lo), self.zsu(hi)))
+            z_top = zt - sd - 0.25 * IN
+            yw = float(self.wall_at(np.array([mid]), np.array([z_top - sq / 2]))[0][0, 1])
+            y_in = yw - v0 - Lb
+            # the half members either side: the carling their cut stops at must lie inboard of the bars' inner ends
+            cuts = [self.cut[i] for i, mb in enumerate(self.members)
+                    if i in self.cut and (abs(mb[0] + mb[1] / 2 - lo) < 1e-6 or abs(mb[0] - mb[1] / 2 - hi) < 1e-6)]
+            if cuts and max(cuts) + 0.05 > y_in:
+                continue
+            bays.append((abs(mid - self.x_capstan), lo, hi, z_top, yw))
+        bays.sort()
+        need = int(math.ceil(nb / 2 / per))
+        if len(bays) < need:
+            raise SystemExit(f"gundeck: only {len(bays)} bays to stow the capstan's bars in ({need} wanted a side)")
+        stowed = []
+        left = nb // 2
+        for _, lo, hi, z_top, yw in bays[:need]:
+            k = min(per, left)
+            left -= k
+            mid = 0.5 * (lo + hi)
+            us = mid + (np.arange(k) - (k - 1) / 2) * (sq + gap)
+            zc = z_top - sq / 2
+            for sg in (1.0, -1.0):
+                for xb in us:
+                    y_out = yw - v0
+                    # the square inner end (it goes into the drumhead's hole), then round, tapering to the hand
+                    y_sq = y_out - Lb + sq_l
+                    vbox(part, [xb - sq / 2, min(sg * (y_out - Lb), sg * y_sq), zc - sq / 2],
+                         [xb + sq / 2, max(sg * (y_out - Lb), sg * y_sq), zc + sq / 2], "Oak")
+                    lathe(part, [xb, sg * y_sq, zc], sg * EY, EZ,
+                          [(-0.5 * IN, d1 / 2), (0.0, d1 / 2), (Lb - sq_l - 2.0 * IN, d2 / 2), (Lb - sq_l - 0.5 * IN, d2 / 2 - 0.2 * IN),
+                           (Lb - sq_l, d2 / 2 - 0.6 * IN)], "Oak", 10)
+                # two stirrups: straps down from the planks round the set
+                for vs in cbar["stirrups_from_side_m"]:
+                    y_s = sg * (yw - vs)
+                    xa_, xf_ = us[0] - sq / 2 - st_, us[-1] + sq / 2 + st_
+                    zb_ = zc - sq / 2 - st_
+                    zt_ = float(self.zsu(mid)) + 0.25 * IN
+                    for x_l in (xa_, xf_ - st_):
+                        vbox(part, [x_l, y_s - sw_ / 2, zb_], [x_l + st_, y_s + sw_ / 2, zt_], "Iron")
+                    vbox(part, [xa_, y_s - sw_ / 2, zb_], [xf_, y_s + sw_ / 2, zb_ + st_], "Iron")
+            stowed.append({"bay_m": [round(lo, 3), round(hi, 3)], "bars_a_side": k, "under_planks_m": round(
+                float(self.zsu(mid)) - (zc - sq / 2), 3)})
+        self.info["capstan_bars"] = {"bars": nb, "long_m": round(Lb, 3), "bays": stowed}
 
     # --- the layout check -----------------------------------------------------------------------------------------------
     def footprints(self):
@@ -1992,13 +2639,17 @@ class GunDeck:
         names = ("GunDeck", "GunWaterways", "DeckBeams", "Clamps", "HangingKnees", "Stanchions", "Hatchways", "Wells",
                  "HatchLadders", "MastWedges", "GunCapstan", "GunCapstanPawls", "Pumps", "RidingBitts", "Galley",
                  "Manger", "LeadBushes", "AfterWall", "WindowReveals", "CabinBulkhead", "StateRooms", "WindowSeat",
-                 "FloorCloth", "CabinFurniture", "HornLanterns")
+                 "FloorCloth", "CabinFurniture", "HornLanterns", "PortStops", "LodgingKnees", "CapstanBars")
         P = {n: Part() for n in names}
+        # the waist's beams (deck.py's) made again with their ends cut to this deck's side, over its clamp
+        self.dk.rebuild_waist(lambda x0, x1, z: float(self.wall_at(np.array([x0, x1]), np.array([z, z]))[0][:, 1].min())
+                              - 0.002)
         self.surface(P["GunDeck"])
         self.waterways(P["GunWaterways"])
         self.overhead(P["DeckBeams"])
         self.clamps(P["Clamps"])
         self.knees(P["HangingKnees"])
+        self.lodging_knees(P["LodgingKnees"])
         self.hatchways(P["Hatchways"], P["Wells"], P["HatchLadders"])
         self.mast_wedges(P["MastWedges"])
         self.capstan(P["GunCapstan"], P["GunCapstanPawls"])
@@ -2011,7 +2662,12 @@ class GunDeck:
         self.bitt_standard_m = min(36.0 * IN, room - 4.0 * IN)
         self.bitts(P["RidingBitts"])
         self.bow(P["Manger"], P["Wells"])
+        if self.berth is not None:
+            if len(P["Wells"].V):
+                raise SystemExit("gundeck: wells built over the berth deck")
+            del P["Wells"]
         self.lead_bushes(P["LeadBushes"])
+        self.port_stops(P["PortStops"])
         # the great cabin
         self.parts_ = P
         self.after_wall(P["AfterWall"])
@@ -2019,9 +2675,11 @@ class GunDeck:
         self.bulkhead(P["CabinBulkhead"], None)
         self.state_rooms(P["StateRooms"])
         self.window_seat(P["WindowSeat"])
+        self.after_panelling(P["AfterWall"])
         self.floor_cloth(P["FloorCloth"])
         self.furniture(P["CabinFurniture"])
         self.lanterns(P["HornLanterns"])
+        self.capstan_bars(P["CapstanBars"])
         fp = self.footprints()
         self.stanchions(P["Stanchions"], fp)
         self.info["layout_close"] = self.layout_check(fp)

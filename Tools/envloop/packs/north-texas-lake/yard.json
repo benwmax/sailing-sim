@@ -1,0 +1,568 @@
+{
+ "pack": "north-texas-lake",
+ "track": "H",
+ "note": "Yard and shore props. Assets are Track H's meshes (Tools/envloop/yard/cards.json). Sparse (Bean, Oct 16 2026): per_lot is how many a lot gets, picked by seed per lot from the houses bake, weighted within each group; dock props can also fill the docks' sockets (fills). Per-yard colours through the Plastic, Canvas and Paint slots (pack.json material_slots). Weights favour what a Ray Hubbard yard shows most (chairs, grills, kayaks, a car); rare items (hammock, flagpole, pool fence) under 1. Near band only, to 150 m.",
+ "per_lot": [
+  0,
+  4
+ ],
+ "entries": [
+  {
+   "id": "yard-patio-table-set",
+   "asset": "SM_Yard_PatioTableSet",
+   "group": "patio",
+   "weight": 2,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-adirondack-pair",
+   "asset": "SM_Yard_AdirondackPair",
+   "group": "patio",
+   "weight": 3,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "chairs_0"
+   ]
+  },
+  {
+   "id": "yard-chaise",
+   "asset": "SM_Yard_Chaise",
+   "group": "patio",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "chairs_0"
+   ]
+  },
+  {
+   "id": "yard-kettle-grill",
+   "asset": "SM_Yard_KettleGrill",
+   "group": "patio",
+   "weight": 2,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-gas-grill",
+   "asset": "SM_Yard_GasGrill",
+   "group": "patio",
+   "weight": 2,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-umbrella-open",
+   "asset": "SM_Yard_UmbrellaOpen",
+   "group": "patio",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "umbrella_0"
+   ]
+  },
+  {
+   "id": "yard-umbrella-closed",
+   "asset": "SM_Yard_UmbrellaClosed",
+   "group": "patio",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-fire-pit",
+   "asset": "SM_Yard_FirePit",
+   "group": "patio",
+   "weight": 2,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-kayak",
+   "asset": "SM_Yard_Kayak",
+   "group": "water",
+   "weight": 3,
+   "where": {
+    "water_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "kayak_N"
+   ]
+  },
+  {
+   "id": "yard-paddleboard",
+   "asset": "SM_Yard_Paddleboard",
+   "group": "water",
+   "weight": 2,
+   "where": {
+    "water_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "kayak_N"
+   ]
+  },
+  {
+   "id": "yard-canoe",
+   "asset": "SM_Yard_Canoe",
+   "group": "water",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "fills": [
+    "kayak_N"
+   ]
+  },
+  {
+   "id": "yard-boat-trailer",
+   "asset": "SM_Yard_BoatTrailer",
+   "group": "drive",
+   "weight": 2,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-pwc-trailer",
+   "asset": "SM_Yard_PWCTrailer",
+   "group": "drive",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-suv",
+   "asset": "SM_Yard_SUV",
+   "group": "drive",
+   "weight": 3,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-golf-cart",
+   "asset": "SM_Yard_GolfCart",
+   "group": "drive",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-swing-set",
+   "asset": "SM_Yard_SwingSet",
+   "group": "play",
+   "weight": 2,
+   "where": {
+    "house_m": [
+     5,
+     40
+    ],
+    "lot": [
+     "house"
+    ],
+    "slope_deg": [
+     0,
+     8
+    ]
+   },
+   "where_text": "lawn behind the house, flat ground"
+  },
+  {
+   "id": "yard-trampoline",
+   "asset": "SM_Yard_Trampoline",
+   "group": "play",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     5,
+     40
+    ],
+    "lot": [
+     "house"
+    ],
+    "slope_deg": [
+     0,
+     8
+    ]
+   },
+   "where_text": "lawn behind the house, flat ground"
+  },
+  {
+   "id": "yard-flagpole",
+   "asset": "SM_Yard_Flagpole",
+   "group": "garden",
+   "weight": 0.5,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-pool-fence",
+   "asset": "SM_Yard_PoolFence",
+   "group": "pool",
+   "weight": 0.3,
+   "where": {
+    "house_m": [
+     2,
+     20
+    ],
+    "lot": [
+     "house"
+    ]
+   },
+   "where_text": "round a pool: no pool data yet, so rare until one exists"
+  },
+  {
+   "id": "yard-planter",
+   "asset": "SM_Yard_Planter",
+   "group": "garden",
+   "weight": 2,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-raised-bed",
+   "asset": "SM_Yard_RaisedBed",
+   "group": "garden",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-trash-cart",
+   "asset": "SM_Yard_TrashCart",
+   "group": "drive",
+   "weight": 0.5,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ],
+    "street_side": true
+   },
+   "where_text": "by the drive; at the street only on collection day if Bean wants it"
+  },
+  {
+   "id": "yard-mailbox",
+   "asset": "SM_Yard_Mailbox",
+   "group": "drive",
+   "weight": 2,
+   "where": {
+    "lot": [
+     "house"
+    ],
+    "street_side": true
+   },
+   "where_text": "at the street edge of the lot (needs the lots' street side; house_m stands in until a street rule exists)"
+  },
+  {
+   "id": "yard-wheelbarrow",
+   "asset": "SM_Yard_Wheelbarrow",
+   "group": "garden",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-hose-reel",
+   "asset": "SM_Yard_HoseReel",
+   "group": "garden",
+   "weight": 2,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-cooler",
+   "asset": "SM_Yard_Cooler",
+   "group": "water",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-bird-bath",
+   "asset": "SM_Yard_BirdBath",
+   "group": "garden",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-bench",
+   "asset": "SM_Yard_Bench",
+   "group": "patio",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-picnic-table",
+   "asset": "SM_Yard_PicnicTable",
+   "group": "patio",
+   "weight": 1,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-basketball-hoop",
+   "asset": "SM_Yard_BasketballHoop",
+   "group": "drive",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-lawn-mower",
+   "asset": "SM_Yard_LawnMower",
+   "group": "garden",
+   "weight": 1,
+   "where": {
+    "house_m": [
+     0,
+     30
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  },
+  {
+   "id": "yard-hammock",
+   "asset": "SM_Yard_Hammock",
+   "group": "patio",
+   "weight": 0.5,
+   "where": {
+    "water_m": [
+     0,
+     60
+    ],
+    "house_m": [
+     0,
+     25
+    ],
+    "lot": [
+     "house"
+    ]
+   }
+  }
+ ],
+ "bands": {
+  "near_m": 150,
+  "medium": "dock props only (those with fills)"
+ }
+}

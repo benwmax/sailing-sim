@@ -39,7 +39,7 @@
   }
  },
  "waist": {
-  "note": "the open waist between the gangways: the spar deck's beams carried across it every other beam, at the planks' underside (the 'spar deck' is named for the spare spars stowed on them; the boats go on them in slice 11). The 1849 plan draws six across its long hatchway, 14 in sided, 5 1/2 ft apart; ours is 43 ft 8 in long, so seven. A coaming round the opening on the deck",
+  "note": "the open waist between the gangways: the spar deck's beams carried across it every other beam, their tops at the planks' underside, their ends on the gun deck's clamp (gundeck.py makes them again, cut to the side, with their knees and stanchions) (the 'spar deck' is named for the spare spars stowed on them; the boats go on them in slice 11). The 1849 plan draws six across its long hatchway, 14 in sided, 5 1/2 ft apart; ours is 43 ft 8 in long, so seven. A coaming round the opening on the deck",
   "beams": 7,
   "beam_sided_in": 14.0,
   "beam_moulded_in": 10.0,

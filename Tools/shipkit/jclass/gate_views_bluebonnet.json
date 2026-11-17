@@ -1,0 +1,33 @@
+{
+ "note": "Bluebonnet's six frame-rate gate views (slice 12, docs/jclass-12; the plan's list). The Mac gates them on Medium (60 fps) and High (45 fps) and the PC on Ultra at 4K once she is in the game (slice 14, after the vertical slice ships). Cameras are in metres, X forward, Y starboard, Z up, the origin on the centreline at the middle of the load waterline (the build's frame; Blender's y is turned over), in one of two frames: 'boat', aboard and heeled with her (the wheel, the masthead, the saloon), or 'level', a chase camera off the boat, level and turning with her heading, with her heeled heel_deg inside it (positive: starboard side up, heeled to port, as on starboard tack). gate_views.py adds what each view should draw: each outside part's detailed or light copy by its screen size there (light.json's ue_screen_size), the triangles, and the camera as a look direction, pitch and distance for the bench's arguments.",
+ "fov_deg": 90.0,
+ "note_fov": "the game's chase camera's field of view when measuring (SailingSettings.h ChaseFov: 90 deg for every bench and gate)",
+ "screen": {"width_px": 3840, "aspect": 1.7778},
+ "views": [
+  {"name": "broadside_80",
+   "what": "Broadside at 80 m from her lee side, heeled under main and genoa: the whole boat on screen",
+   "suit": "Genoa", "tack": "starboard", "heel_deg": 15.0, "frame": "level",
+   "eye_m": [0.0, -80.0, 4.0], "target_m": [0.0, 0.0, 14.0]},
+  {"name": "helm_forward",
+   "what": "At the wheel looking forward: the deck, the winches and the rigging all in view",
+   "suit": "Genoa", "tack": "starboard", "heel_deg": 15.0, "frame": "boat",
+   "eye_m": [-11.3, 0.0, 2.65], "target_m": [10.0, 0.0, 6.0]},
+  {"name": "spinnaker_astern_60",
+   "what": "Running under spinnaker, from 60 m astern of her counter",
+   "suit": "Spinnaker", "tack": "starboard", "heel_deg": 3.0, "frame": "level",
+   "eye_m": [-81.0, 0.0, 6.0], "target_m": [0.0, 0.0, 16.0]},
+  {"name": "saloon_lamps",
+   "what": "In the saloon below, lamps lit (slice 10's own light budget): below decks streamed in, all of it detailed",
+   "suit": "Moored", "tack": "starboard", "heel_deg": 0.0, "below": true, "frame": "boat",
+   "eye_m": [-0.3, 0.4, 0.9], "target_m": [-3.7, 0.0, 0.2]},
+  {"name": "masthead_down",
+   "what": "From the masthead looking down at the deck",
+   "suit": "Genoa", "tack": "starboard", "heel_deg": 15.0, "frame": "boat",
+   "eye_m": [1.0, 0.0, 48.6], "target_m": [-2.0, 0.0, 1.5]},
+  {"name": "far_300_with_j22",
+   "what": "At 300 m with a J/22 sailing 40 m from the camera: Bluebonnet all light, the J/22's hero beside her for scale",
+   "suit": "Genoa", "tack": "starboard", "heel_deg": 15.0, "frame": "level",
+   "eye_m": [0.0, -300.0, 4.0], "target_m": [0.0, 0.0, 12.0],
+   "with": {"boat": "J22", "at_m": [12.0, -260.0, 0.0], "heading_deg": 0.0}}
+ ]
+}

@@ -1,0 +1,66 @@
+{
+ "_about": "The Catalina 22's own detail maps (docs/c22-9, Tools/shipkit/catalina22/textures/textures_c22.py); each tiles at tile_m (x, y) metres; normals OpenGL. Medium draws none of them.",
+ "Vinyl": {
+  "tile_m": [
+   0.06,
+   0.06
+  ],
+  "px": [
+   512,
+   512
+  ],
+  "px_per_mm": 8.53,
+  "fade_m": [
+   0.3,
+   1.2
+  ],
+  "tiling_N": 0.643,
+  "tiling_M": 0.837,
+  "repeat_N": 0.001,
+  "repeat_M": 0.083,
+  "size": {
+   "grain": {
+    "mm": 0.756,
+    "asked_mm": [
+     0.6,
+     1.6
+    ],
+    "pass": true
+   }
+  }
+ },
+ "Tweed": {
+  "tile_m": [
+   0.06,
+   0.06
+  ],
+  "px": [
+   1024,
+   1024
+  ],
+  "px_per_mm": 17.07,
+  "fade_m": [
+   0.8,
+   3.0
+  ],
+  "tiling_N": 0.536,
+  "tiling_M": 0.91,
+  "repeat_N": 0.0,
+  "repeat_M": 0.309,
+  "size": {
+   "weave": {
+    "mm": 1.2,
+    "asked_mm": [
+     0.8,
+     1.6
+    ],
+    "pass": true
+   },
+   "plaid": {
+    "mm": 60.0,
+    "asked_mm": 60,
+    "pass": true
+   }
+  }
+ }
+}

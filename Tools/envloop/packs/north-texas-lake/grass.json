@@ -1,0 +1,14 @@
+{
+ "pack": "north-texas-lake", "track": "B",
+ "note": "3D grass and ground plants. Assets are Track B's plant cards (Tools/envloop/grass/cards/<asset>.json).",
+ "entries": [
+  {"id": "bermuda-lawn", "asset": "lawn_bermuda", "latin": "Cynodon dactylon", "group": "lawn", "weight": 3, "seasons": ["summer", "dormant"], "where": {"landuse": ["lawn", "yard", "park"], "slope_deg": [0, 18]}},
+  {"id": "rough-lawn", "asset": "lawn_rough", "group": "lawn", "weight": 1, "seasons": ["summer", "dormant"], "where": {"landuse": ["lawn", "yard", "park", "road_verge"], "house_m": [25, 1000]}},
+  {"id": "lawn-weeds", "asset": "lawn_weeds", "group": "lawn_patches", "weight": 1, "where": {"landuse": ["lawn", "yard", "park"]}},
+  {"id": "little-bluestem", "asset": "bluestem", "latin": "Schizachyrium scoparium", "group": "rough", "weight": 2, "seasons": ["summer", "dormant"], "where": {"landuse": ["field", "shore"], "cover": ["open", "canopy_edge"]}},
+  {"id": "switchgrass", "asset": "switchgrass", "latin": "Panicum virgatum", "group": "rough", "weight": 1, "seasons": ["summer", "dormant"], "where": {"water_m": [0, 40], "landuse": ["field", "shore"]}},
+  {"id": "johnsongrass", "asset": "johnsongrass", "latin": "Sorghum halepense", "group": "rough", "weight": 2, "seasons": ["summer", "dormant"], "where": {"landuse": ["field", "road_verge", "shore"]}},
+  {"id": "sedge", "asset": "sedge", "latin": "Carex spp.", "group": "water_edge", "weight": 1, "where": {"above_water_m": [-0.2, 0.6], "lot_edge": ["natural", "none"]}},
+  {"id": "horseweed", "asset": "horseweed", "latin": "Conyza canadensis", "group": "rough_patches", "weight": 1, "seasons": ["summer"], "where": {"landuse": ["field", "road_verge"]}}
+ ]
+}

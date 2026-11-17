@@ -253,8 +253,8 @@ With the interface off there was no heading at all. Bean's note on the proposal:
   aqua lubber mark at twelve, north in red, a tick each 30 degrees; the heading in figures at the centre (magnetic
   where the chart has variation, as the HUD's) and the time under it.
 - **Night.** It reddens with the rest of the HUD.
-- The masthead fly on the keelboats already shows the apparent wind; a bulkhead compass on the boat itself is a
-  `Content` job (a card texture and a housing mesh) for later.
+- The masthead fly on the keelboats already shows the apparent wind; the bulkhead compass on the boat itself is
+  Phase 13.
 - Stills: `-SailingHudMode=2 -SailingWrist` holds it up (`wrist.jpg`, `wrist-night.jpg`).
 
 ## Phase 9: the faces
@@ -298,3 +298,64 @@ smaller one with Besley ("Set the conditions" ran past its panel); the flow step
 point-of-sail note may shrink to 8 pt beside the wider label.
 B612 sits about 3 px higher than Atkinson at the same size, so only figures keep it (the HUD's readouts, the boat's
 numbers): the Controls columns, quiz letters and step numbers are text. Labels and eyebrows are 14 px.
+
+## Phase 10: the paper's grain
+
+The paper sheets (settings, briefing, quiz, logbook, the focus cards) were a flat cream. `SailUI::PaperGrain()` is a
+tiling 256 px brush made at runtime (`PaperGrainValue`: a slow mottle, a finer tooth and fibre specks; white where
+lighter, ink where darker, at most about 7% of the sheet), so there is no asset and no licence row. `PanelBox` on paper
+and `PaperSheet` lay it over the sheet's fill and under its content. `-SailingNoPaperGrain` compares.
+`SailingSim.UI.PaperGrain` holds the tile seamless and balanced.
+
+## Phase 11: controller glyphs
+
+The prompts' controller side was coloured text pills. `SPadGlyphs` (`SailWidgets.cpp`) draws them in code, so there is
+no platform artwork to license: `ParsePadGlyphs` turns a prompt's pad text ("A", "LB / RB", "← →", "R stick", "R ↕",
+"View") into glyphs. Face buttons are ink discs ringed in the pad's colour (softened), bumpers and triggers have their
+shapes, the D-pad is a cross with the arms that matter lit, a stick is a ring and cap (filled for a click, chevrons for a
+direction), View and Menu carry their marks; anything else stays a text pill. `KeyCap` shows the keyboard's cap or the
+glyphs by the last device used. `-SailingPad` shows the controller's prompts without one plugged in (stills).
+`SailingSim.UI.PadGlyphs` holds every label the prompts use to a drawn glyph.
+
+## Phase 12: the minimap as a paper chart
+
+`T_MiniMap_<World>` was the launch map's print (blue water shaded by depth, tan land) under a wash of paper. It is now
+drawn as a chart (`chart_sheet` in `Tools/ui/make_ui_art.py`): deep water is a blue-white (left as paper it was lost against the HUD's cream sheet), water under 5 m and under
+2 m takes two stronger blue tints, fine depth lines run at 2, 5 and 10 m, the shoreline is ink, bridges are dark brown. The lines
+and edges come from the smoothed height field itself (the distance to a level is |h - level| / |grad h|), so they are
+anti-aliased and an even width on the lake's 5 m grid and the coast's coarser ones. The launch maps (`T_Map_<World>`)
+are unchanged. Rebuild with `Tools/venv/bin/python -I Tools/ui/make_ui_art.py`, then
+`UI_ART_ONLY=T_MiniMap scripts/import_ui_art.py`.
+A flat lying exactly on a level (a basin at 0 m, a channel dredged to a round depth) has no gradient and would fill with
+line, so the levels sit 3 cm deep. `SMiniMap`'s paper wash over the print dropped from 24% to 8%: the chart is pale already.
+
+## Phase 13: the compass on the bulkhead
+
+With the interface off a dinghy sailor has the wrist compass; a keelboat now carries her own. The kit has a bulkhead
+steering compass (`Tools/boatkit/bk_part_compass.py`): a black flanged pod standing on the bulkhead with a spherical bowl in it, a conical card on a
+pivot and three lubber lines on a wire hoop (aft, and 45 degrees either side for sitting out to windward). It is a
+generic shape with no maker's name, and it needs no texture: the card's ticks and figures are geometry in the kit's
+white plastic (the figures are B612 Bold, the HUD's instrument face, wrapped onto the card's cone), so it uses the
+materials the kit already has.
+
+- **Read from aft.** The helm sits behind the compass and reads the card's near edge, so the card is printed half a
+  turn round, as real ones are: the figure at the aft lubber line is the heading, and higher headings lie to the left.
+  A red arrow on the card's top points to its north.
+- **In the game.** Your hero J/22 carries it on the cabin's aft face to port of the companionway
+  (`KitFittings::CompassAtCm`, placed in `BuildKitFittings`). The card is a part of its own: `UpdateKitFittings` holds
+  it level and north (magnetic where the chart has variation, as the HUD's heading) while the boat turns, heels and
+  pitches round it. AI boats, the ghost and the classic J/22 model carry none.
+- **Parts.** `BulkheadCompass` (catalogue), `BulkheadCompassMount` and `BulkheadCompassCard` (the game's), and
+  `BulkheadCompassDome`: the kit's library has no clear material, so the game draws no dome yet.
+- `-SailingCompassAt=<x>,<y>,<z>` (boat frame, cm) moves it for stills. `SailingSim.Visual.KitFittings` holds the mount's
+  facing and the reading at the lubber line to the heading.
+- After a change to the part: `scripts/make-boatkit.sh`, then `scripts/import_hardware_kit.py`.
+
+## Phase 14: her name on the hull, and "J/22" kept whole
+
+- **The name.** The boat's name, typed on the Customize screen's Paint tab, is lettered on both quarters of the hero
+  J/22 in the title face: `docs/skins/README.md`, "Name on the hull".
+- **Line breaks.** Wrapped text broke "J/22" after the slash ("J/" then "22"). `SailUI::Text`, `TextOverScene` and
+  `TextAttr` now wrap with the usual line breaks less the one after a slash inside a word (`FSlashKeptLineBreaks` in
+  `SailWidgets.cpp`); a slash followed by a space still breaks.
+- Left as it is: the real-day cards' second line (date, wind, sky) runs to two lines on the fall norther's card.

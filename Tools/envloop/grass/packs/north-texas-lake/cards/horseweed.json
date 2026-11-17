@@ -1,0 +1,50 @@
+{
+ "plant": "horseweed",
+ "name": "Horseweed",
+ "latin": "Conyza canadensis",
+ "where": "Scattered single stalks in rough ground and the bank rough; breaks the even top of a grass stand",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra"
+ },
+ "real": {
+  "height_m": [
+   0.5,
+   1.5
+  ],
+  "stem_diameter_mm": [
+   5,
+   12
+  ],
+  "leaf_length_m": [
+   0.03,
+   0.1
+  ],
+  "leaf_width_mm": [
+   3,
+   10
+  ],
+  "habit": "one upright stem crowded with narrow leaves, branching at the top into many small whitish flower heads; a dead brown stalk standing all winter"
+ },
+ "mesh": {
+  "names": "SM_Weed_Horseweed_0..1",
+  "leaves": [
+   80,
+   140
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 2,
+ "budget": {
+  "tris_lod0_max": 1500,
+  "tris_light_max": 500
+ },
+ "references": [
+  "horseweed"
+ ],
+ "colour": "grass_look.json[horseweed]",
+ "card_version": 1
+}

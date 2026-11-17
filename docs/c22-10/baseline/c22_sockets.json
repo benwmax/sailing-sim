@@ -1,0 +1,464 @@
+{
+ "sockets": {
+  "MastStep": [
+   86.0,
+   0,
+   118.69
+  ],
+  "MastHeel": [
+   86.0,
+   0,
+   124.44
+  ],
+  "MastBase": [
+   79.9,
+   0.0,
+   126.69
+  ],
+  "Hounds": [
+   93.0,
+   0.0,
+   881.94
+  ],
+  "MastheadAft": [
+   74.5,
+   0.0,
+   882.94
+  ],
+  "ForestayTack": [
+   328.85,
+   0.0,
+   93.48
+  ],
+  "BackstayPlate": [
+   -316.83,
+   -20.08,
+   83.67
+  ],
+  "ForestayFoot": [
+   323.73,
+   0.0,
+   110.59
+  ],
+  "BackstayFoot": [
+   -308.97,
+   -19.67,
+   99.71
+  ],
+  "SpreaderTip_S": [
+   86.0,
+   75.38,
+   512.67
+  ],
+  "CapTang_S": [
+   86.0,
+   3.55,
+   869.44
+  ],
+  "LowerTangFwd_S": [
+   87.75,
+   3.55,
+   496.0
+  ],
+  "LowerTangAft_S": [
+   84.25,
+   3.55,
+   496.0
+  ],
+  "ChainplateUpper_S": [
+   83.97,
+   103.13,
+   96.02
+  ],
+  "ChainplatePinUpper_S": [
+   83.88,
+   104.31,
+   78.2
+  ],
+  "ChainplateLower_S": [
+   51.31,
+   103.04,
+   93.95
+  ],
+  "ChainplatePinLower_S": [
+   49.9,
+   107.32,
+   76.66
+  ],
+  "ChainplateLowerFwd_S": [
+   120.45,
+   94.49,
+   97.61
+  ],
+  "ChainplatePinLowerFwd_S": [
+   121.88,
+   98.45,
+   80.25
+  ],
+  "SpreaderTip_P": [
+   86.0,
+   -75.38,
+   512.67
+  ],
+  "CapTang_P": [
+   86.0,
+   -3.55,
+   869.44
+  ],
+  "LowerTangFwd_P": [
+   87.75,
+   -3.55,
+   496.0
+  ],
+  "LowerTangAft_P": [
+   84.25,
+   -3.55,
+   496.0
+  ],
+  "ChainplateUpper_P": [
+   83.97,
+   -103.13,
+   96.02
+  ],
+  "ChainplatePinUpper_P": [
+   83.88,
+   -104.31,
+   78.2
+  ],
+  "ChainplateLower_P": [
+   51.31,
+   -103.04,
+   93.95
+  ],
+  "ChainplatePinLower_P": [
+   49.9,
+   -107.32,
+   76.66
+  ],
+  "ChainplateLowerFwd_P": [
+   120.45,
+   -94.49,
+   97.61
+  ],
+  "ChainplatePinLowerFwd_P": [
+   121.88,
+   -98.45,
+   80.25
+  ],
+  "LowerTang": [
+   86.0,
+   0,
+   496.0
+  ],
+  "Boom_Clew": [
+   -212.9,
+   0,
+   160.5
+  ],
+  "Boom_Vang": [
+   27.0,
+   0,
+   152.5
+  ],
+  "Boom_Mainsheet": [
+   -215.0,
+   0,
+   152.5
+  ],
+  "BandBoom": [
+   86.0,
+   0,
+   160.5
+  ],
+  "BandTop": [
+   86.0,
+   0,
+   800.6
+  ],
+  "JibWinch_S": [
+   -133.29,
+   76.31,
+   75.86
+  ],
+  "WinchCleat_S": [
+   -153.99,
+   80.75,
+   75.98
+  ],
+  "JibTailer_S": [
+   -133.3,
+   76.48,
+   78.84
+  ],
+  "JibTailRest_S": [
+   -153.99,
+   80.75,
+   75.98
+  ],
+  "JibLead_S": [
+   -129.03,
+   106.93,
+   74.73
+  ],
+  "WorkingJibLead_S": [
+   76.37,
+   35.39,
+   121.38
+  ],
+  "JibFairlead_S": [
+   -72.0,
+   54.61,
+   114.13
+  ],
+  "JibTurn_S": [
+   -74.03,
+   82.13,
+   74.68
+  ],
+  "QuarterBlock_S": [
+   -312.91,
+   80.75,
+   78.72
+  ],
+  "SternCleat_S": [
+   -277.83,
+   70.3,
+   79.91
+  ],
+  "PulpitLifeline_S": [
+   272.0,
+   36.75,
+   150.17
+  ],
+  "SternRailLifeline_S": [
+   -289.0,
+   86.08,
+   140.59
+  ],
+  "JibWinch_P": [
+   -126.74,
+   -76.1,
+   75.9
+  ],
+  "WinchCleat_P": [
+   -153.99,
+   -74.23,
+   76.38
+  ],
+  "JibTailer_P": [
+   -126.76,
+   -76.27,
+   78.88
+  ],
+  "JibTailRest_P": [
+   -153.99,
+   -74.23,
+   76.38
+  ],
+  "JibLead_P": [
+   -129.03,
+   -106.93,
+   74.73
+  ],
+  "WorkingJibLead_P": [
+   76.37,
+   -35.39,
+   121.38
+  ],
+  "JibFairlead_P": [
+   -72.0,
+   -54.61,
+   114.13
+  ],
+  "JibTurn_P": [
+   -74.03,
+   -82.13,
+   74.68
+  ],
+  "QuarterBlock_P": [
+   -312.91,
+   -80.75,
+   78.72
+  ],
+  "SternCleat_P": [
+   -277.83,
+   -70.3,
+   79.91
+  ],
+  "PulpitLifeline_P": [
+   272.0,
+   -36.75,
+   150.17
+  ],
+  "SternRailLifeline_P": [
+   -289.0,
+   -86.08,
+   140.59
+  ],
+  "LazySheetVia": [
+   145.0,
+   0.0,
+   113.08
+  ],
+  "Traveler_C": [
+   -270.0,
+   0.0,
+   53.37
+  ],
+  "Traveler_S": [
+   -270.0,
+   44.0,
+   53.37
+  ],
+  "Traveler_P": [
+   -270.0,
+   -44.0,
+   53.37
+  ],
+  "MainsheetBlock": [
+   -270.0,
+   0.0,
+   53.37
+  ],
+  "MainsheetCam": [
+   -263.11,
+   0.0,
+   57.31
+  ],
+  "BowCleat": [
+   261.93,
+   0.0,
+   95.19
+  ],
+  "BowEye": [
+   313.2,
+   0.0,
+   60.0
+  ],
+  "ForeguyPadeye": [
+   114.92,
+   0.0,
+   121.79
+  ],
+  "MainHalyardCleat": [
+   86.0,
+   -7.2,
+   136.69
+  ],
+  "JibHalyardCleat": [
+   86.0,
+   7.2,
+   136.69
+  ],
+  "SpinHalyardCleat": [
+   91.51,
+   5.67,
+   173.69
+  ],
+  "PoleLift": [
+   92.6,
+   0.0,
+   550.0
+  ],
+  "PoleLiftCam": [
+   89.77,
+   -2.96,
+   193.69
+  ],
+  "VangCam": [
+   72.0,
+   0.0,
+   125.94
+  ]
+ },
+ "owner": {
+  "MastStep": "SM_Catalina22_Hull",
+  "MastHeel": "SM_Catalina22_Mast",
+  "MastBase": "SM_Catalina22_Mast",
+  "Hounds": "SM_Catalina22_Mast",
+  "MastheadAft": "SM_Catalina22_Mast",
+  "ForestayTack": "SM_Catalina22_Hull",
+  "BackstayPlate": "SM_Catalina22_Hull",
+  "ForestayFoot": "SM_Catalina22_Hull",
+  "BackstayFoot": "SM_Catalina22_Hull",
+  "SpreaderTip_S": "SM_Catalina22_Mast",
+  "CapTang_S": "SM_Catalina22_Mast",
+  "LowerTangFwd_S": "SM_Catalina22_Mast",
+  "LowerTangAft_S": "SM_Catalina22_Mast",
+  "ChainplateUpper_S": "SM_Catalina22_Hull",
+  "ChainplatePinUpper_S": "SM_Catalina22_Hull",
+  "ChainplateLower_S": "SM_Catalina22_Hull",
+  "ChainplatePinLower_S": "SM_Catalina22_Hull",
+  "ChainplateLowerFwd_S": "SM_Catalina22_Hull",
+  "ChainplatePinLowerFwd_S": "SM_Catalina22_Hull",
+  "SpreaderTip_P": "SM_Catalina22_Mast",
+  "CapTang_P": "SM_Catalina22_Mast",
+  "LowerTangFwd_P": "SM_Catalina22_Mast",
+  "LowerTangAft_P": "SM_Catalina22_Mast",
+  "ChainplateUpper_P": "SM_Catalina22_Hull",
+  "ChainplatePinUpper_P": "SM_Catalina22_Hull",
+  "ChainplateLower_P": "SM_Catalina22_Hull",
+  "ChainplatePinLower_P": "SM_Catalina22_Hull",
+  "ChainplateLowerFwd_P": "SM_Catalina22_Hull",
+  "ChainplatePinLowerFwd_P": "SM_Catalina22_Hull",
+  "LowerTang": "SM_Catalina22_Mast",
+  "Boom_Clew": "SM_Catalina22_Boom",
+  "Boom_Vang": "SM_Catalina22_Boom",
+  "Boom_Mainsheet": "SM_Catalina22_Boom",
+  "BandBoom": "SM_Catalina22_Mast",
+  "BandTop": "SM_Catalina22_Mast",
+  "JibWinch_S": "SM_Catalina22_Hull",
+  "WinchCleat_S": "SM_Catalina22_Hull",
+  "JibTailer_S": "SM_Catalina22_Hull",
+  "JibTailRest_S": "SM_Catalina22_Hull",
+  "JibLead_S": "SM_Catalina22_Hull",
+  "WorkingJibLead_S": "SM_Catalina22_Hull",
+  "JibFairlead_S": "SM_Catalina22_Hull",
+  "JibTurn_S": "SM_Catalina22_Hull",
+  "QuarterBlock_S": "SM_Catalina22_Hull",
+  "SternCleat_S": "SM_Catalina22_Hull",
+  "PulpitLifeline_S": "SM_Catalina22_Hull",
+  "SternRailLifeline_S": "SM_Catalina22_Hull",
+  "JibWinch_P": "SM_Catalina22_Hull",
+  "WinchCleat_P": "SM_Catalina22_Hull",
+  "JibTailer_P": "SM_Catalina22_Hull",
+  "JibTailRest_P": "SM_Catalina22_Hull",
+  "JibLead_P": "SM_Catalina22_Hull",
+  "WorkingJibLead_P": "SM_Catalina22_Hull",
+  "JibFairlead_P": "SM_Catalina22_Hull",
+  "JibTurn_P": "SM_Catalina22_Hull",
+  "QuarterBlock_P": "SM_Catalina22_Hull",
+  "SternCleat_P": "SM_Catalina22_Hull",
+  "PulpitLifeline_P": "SM_Catalina22_Hull",
+  "SternRailLifeline_P": "SM_Catalina22_Hull",
+  "LazySheetVia": "SM_Catalina22_Hull",
+  "Traveler_C": "SM_Catalina22_Hull",
+  "Traveler_S": "SM_Catalina22_Hull",
+  "Traveler_P": "SM_Catalina22_Hull",
+  "MainsheetBlock": "SM_Catalina22_Hull",
+  "MainsheetCam": "SM_Catalina22_Hull",
+  "BowCleat": "SM_Catalina22_Hull",
+  "BowEye": "SM_Catalina22_Hull",
+  "ForeguyPadeye": "SM_Catalina22_Hull",
+  "MainHalyardCleat": "SM_Catalina22_Mast",
+  "JibHalyardCleat": "SM_Catalina22_Mast",
+  "SpinHalyardCleat": "SM_Catalina22_Mast",
+  "PoleLift": "SM_Catalina22_Mast",
+  "PoleLiftCam": "SM_Catalina22_Mast",
+  "VangCam": "SM_Catalina22_Mast"
+ },
+ "origins": {
+  "SM_Catalina22_Mast": [
+   86.0,
+   0,
+   118.69
+  ],
+  "SM_Catalina22_Boom": [
+   78.0,
+   0.0,
+   156.5
+  ]
+ },
+ "note": "The rebuild's rig sockets (slice 4), in the game's sockets file shape: Unreal frame (X forward, Y starboard, Z up), centimetres, in the boat's frame. Not the game's file: slice 9 writes that. BandBoom and BandTop are the mast's black bands' inner edges (P), for c22_check.py. As in today's file, Chainplate{Upper,Lower}_* are the wires' feet (the turnbuckles' tops), ForestayTack and BackstayPlate the deck pins, LowerTang on the mast's centreline and MastBase the vang's foot on the after face. New: ChainplateLowerFwd_* (the game draws one lower a side, the aft one), ChainplatePin*_* (the chainplates' pins), CapTang_*, LowerTangFwd_*/LowerTangAft_* (where the model's wires end at the mast: the game draws the uppers from SpreaderTip to Hounds), MastHeel, and ForestayFoot/BackstayFoot (where the stays leave their turnbuckles: a live wire drawn to the deck pin would run through one).",
+ "hardware_note": "Slice 6's hardware sockets (docs/c22-7), Unreal frame, centimetres: where the game's live ropes end. JibWinch_* is where the headsails' sheets come onto the drum (its starboard side: the winches turn clockwise), JibTailer_* where the tail leaves its top turn for the trimmer's hand and JibTailRest_* where it lies out of a hand (the cleat's hitch), JibLead_* the genoa's car's sheave (today's name), WorkingJibLead_*, JibFairlead_* and JibTurn_* the working jib's lead over the cabin top, Traveler_C the car at the centre and Traveler_S/P its ends' stops, LazySheetVia where the lazy sheet crosses forward of the mast, the *Cleat* sockets each cleat's hitch."
+}

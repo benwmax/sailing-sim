@@ -1,0 +1,53 @@
+{
+ "id": "Dogwood",
+ "name": "roughleaf dogwood and coralberry",
+ "latin": "Cornus drummondii, Symphoricarpos orbiculatus",
+ "usda": "https://plants.usda.gov/plant-profile/CODR",
+ "tile": 11,
+ "where": "A lower deciduous thicket at the woods' edge (SM_Shrub_2, _3).",
+ "height_m": [
+  0.9,
+  2.2
+ ],
+ "leaf": {
+  "set": "ambientcg/LeafSet018",
+  "length_cm": [
+   4,
+   10
+  ],
+  "look": "Opposite, oval, curving veins, rough above.",
+  "card_m": 0.6,
+  "per_twig": 8,
+  "twigs": 8,
+  "colour": [
+   0.78,
+   0.86,
+   0.68
+  ]
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 6000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/Dogwood/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py",
+ "crown_w_over_h": 1.4,
+ "clear_trunk_m": [
+  0.2,
+  0.5
+ ],
+ "trunk_dbh_m": [
+  0.02,
+  0.05
+ ]
+}

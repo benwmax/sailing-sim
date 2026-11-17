@@ -661,7 +661,7 @@ MEETS = {
     # the deck's own parts
     ("Waterways", "SparDeck"): ("the waterway is let into the deck", 0.55),
     ("WaistFrame", "SparDeck"): ("the gangways' coamings stand in the deck's edge, and the waist's beams run on under "
-                                 "the gangways' planks, their tops at the planks' underside", 3.5),
+                                 "the gangways' planks, their tops at the planks' underside", 0.3),
     ("Hatches", "SparDeck"): ("the hatchways' coamings stand in the deck's openings, their outsides its sides", 0.1),
     ("Companion", "SparDeck"): ("the companion's coaming stands in the deck's opening, its outside the opening's sides", 0.1),
     ("Skylights", "SparDeck"): ("the skylights' coamings stand in the deck's openings, their outsides its sides", 0.1),
@@ -719,7 +719,9 @@ def room(objs, mine, z_deck, near=0.3, meets=None, flat=("SparDeck",)):
     * by_design: the pairs that meet by design, each with how deep the two go into each other: every vertex of either
       near where they meet (within 'near' of the box round the other's meeting triangles), measured behind the other's
       nearest face where that face lies square to it (within 'near'), so a part buried whole (an eyebolt's shank in
-      the deck) counts as well as one crossing the other's surface;
+      the deck) counts as well as one crossing the other's surface; where that face's piece is closed, the vertex
+      counts only if it is inside the piece by parity (one off a thin plate's edge lies square behind the edge's
+      narrow face, outside the plate);
     * floats: a piece of a deck part that reaches the deck's top must stand on it: none of its faces looking down (a
       foot) may hang between 0.1 in and 2.5 in over the deck (a flat foot left level on the sheer) unless it bears on
       something else, another object's surface within 0.3 in of it along the face's normal (a partition scribed into
@@ -770,7 +772,40 @@ def room(objs, mine, z_deck, near=0.3, meets=None, flat=("SparDeck",)):
                     pairs[(a, b)][0].append(i)
                     pairs[(a, b)][1].append(j)
 
+    pieces = {}
+
+    def piece(n, f):
+        """the closed piece of n that face f belongs to, as a tree of its own faces, or None where that piece is open
+        (a sheet, a disc), where a point's side of it can't be told by parity"""
+        key = (n, int(lab(n)[objs[n][1][f][0]]))
+        if key not in pieces:
+            V, T = objs[n]
+            Tp = T[lab(n)[T[:, 0]] == key[1]]
+            E = np.sort(np.concatenate([Tp[:, [0, 1]], Tp[:, [1, 2]], Tp[:, [2, 0]]]), axis=1)
+            closed = bool(len(Tp)) and bool((np.unique(E, axis=0, return_counts=True)[1] == 2).all())
+            pieces[key] = BVHTree.FromPolygons(V.tolist(), Tp.tolist(), all_triangles=True) if closed else None
+        return pieces[key]
+
+    def inside(t, p):
+        """p is inside the closed piece in tree t: the parity of its faces crossed along three rays, two of three"""
+        from mathutils import Vector
+        votes = 0
+        for d_ in ((0.5773, 0.5774, 0.5775), (-0.3112, 0.8231, -0.4751), (0.7071, -0.2911, -0.6443)):
+            d_ = Vector(d_).normalized()
+            o, n = Vector(np.asarray(p, float).tolist()), 0
+            while n < 200:
+                hit = t.ray_cast(o, d_)[0]
+                if hit is None:
+                    break
+                n += 1
+                o = hit + d_ * 1e-6
+            votes += n & 1
+        return votes >= 2
+
     def depth(a, b):
+        """how deep a and b go into each other: a vertex square behind the other's nearest face, where that face's
+        piece is closed only if the vertex is inside it by parity (a vertex off a thin plate's edge lies square behind
+        the edge's narrow face without being in the plate)"""
         d = 0.0
         for x, y, sel in ((a, b, pairs[(a, b)][1]), (b, a, pairs[(a, b)][0])):
             V = objs[x][0]
@@ -778,13 +813,19 @@ def room(objs, mine, z_deck, near=0.3, meets=None, flat=("SparDeck",)):
             P = Vy[Ty[np.unique(sel)]].reshape(-1, 3)
             vs = np.nonzero(np.all((V >= P.min(0) - near) & (V <= P.max(0) + near), axis=1))[0]
             ty = tree(y)
+            cand = []
             for v in vs:
-                co, nrm, _, dist = ty.find_nearest(V[v].tolist(), near)
+                co, nrm, f, dist = ty.find_nearest(V[v].tolist(), near)
                 if co is None:
                     continue
                 s_ = float((V[v] - np.array(co)) @ np.array(nrm))
-                if s_ < 0 and -s_ >= 0.95 * dist:
-                    d = max(d, -s_)
+                if s_ < 0 and -s_ >= 0.95 * dist and -s_ > d:
+                    cand.append((-s_, int(v), int(f)))
+            for s_, v, f in sorted(cand, reverse=True):
+                t = piece(y, f)
+                if t is None or inside(t, V[v]):
+                    d = max(d, s_)
+                    break
         return d
     ok = {}
     for k in pairs:
@@ -1253,9 +1294,12 @@ class Deck:
             solid(part, [r * f for r in rings], "Oak")
 
     # --- the waist ------------------------------------------------------------------------------------------------------
-    def waist(self, part):
+    def waist(self, part, end=None):
         """the coamings along the gangways' inner edges, and the beams across the open waist, carried on under the
-        gangways to the gun deck's side (their lower edge shows under the deck's underside there)"""
+        gangways to the gun deck's side: their tops at the spar deck's underside (as the gun deck's own beams,
+        gundeck.py), their undersides on the gun deck's clamp. end(x0, x1, z): how far out a beam spanning x0..x1 may
+        reach at height z (the side's inner face, less a hair); the gun deck gives it (rebuild_waist), so each end is
+        cut to the side as it leans; without it, the deck's underside row less 5 mm"""
         wa = self.c["waist"]
         yo, t = self.y_open, self.t_coam
         hi = wa["coaming_high_in"] * IN
@@ -1267,15 +1311,36 @@ class Deck:
                 rings.append(np.array([[x, sgn * yo, zb], [x, sgn * (yo + t), zb], [x, sgn * (yo + t), zt + hi],
                                        [x, sgn * yo, zt + hi]]))
             solid(part, rings, "Oak")
-        sided, moulded = wa["beam_sided_in"] * IN, wa["beam_moulded_in"] * IN
-        thick = self.c["deck"]["planking"]["thick_in"] * IN
+        sided = wa["beam_sided_in"] * IN
         self.beams_x = []
         for k in range(1, wa["beams"] + 1):
             x = self.e1 + 2 * k * self.beam_pitch
-            ztop = float(self.z(x)) - thick
-            ye = float(min(np.interp(xx, self.und[:, 0], self.und[:, 1]) for xx in (x - sided / 2, x + sided / 2)))
-            vbox(part, [x - sided / 2, -(ye - 0.005), ztop - moulded], [x + sided / 2, ye - 0.005, ztop], "Oak")
+            x0, x1 = x - sided / 2, x + sided / 2
+            rings = []
+            for xx in (x0, x1):
+                # each face at its own height: the beam follows the sheer along its siding, as the gun deck's own beams
+                # do, so its top lies on the planks' underside and its underside on the clamp across all 14 in (laid
+                # level, the forward beams stood up to 0.28 in off both at one face)
+                ztop, zbot = self.waist_beam_z(xx)
+                if end is None:
+                    yt = yb = float(min(np.interp(xe, self.und[:, 0], self.und[:, 1]) for xe in (x0, x1))) - 0.005
+                else:
+                    yt, yb = end(x0, x1, ztop), end(x0, x1, zbot)
+                rings.append(np.array([[xx, -yb, zbot], [xx, yb, zbot], [xx, yt, ztop], [xx, -yt, ztop]]))
+            solid(part, rings, "Oak")
             self.beams_x.append(round(x, 4))
+
+    def waist_beam_z(self, x):
+        """a waist beam's top (the spar deck's underside) and underside at x"""
+        top = float(self.zu(x))
+        return top, top - self.c["waist"]["beam_moulded_in"] * IN
+
+    def rebuild_waist(self, end):
+        """the waist's coamings and beams made again, each beam's ends cut to the side by end (waist's): the gun deck
+        (gundeck.py) calls this once it knows where its side's inner face is"""
+        P = Part()
+        self.waist(P, end)
+        self.parts_["WaistFrame"] = P
 
     def ladder_gaps(self):
         lc = self.c["ladders"]

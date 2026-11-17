@@ -1,6 +1,6 @@
 # First launch and the skipper's first job (#402, design)
 
-**Status: design, approved by Bean on Oct 31 2026 (the four decisions below, as written).** Part of the vertical slice (#399, Nov 21). The maxi prologue
+**Status: design, approved by Bean on Oct 31 2026 (the four decisions below, as written).** Part of the vertical slice (#399, Dec 11). The maxi prologue
 stays parked. The same design is in the Claude Doc "First launch and a guided first sail (design)"; this page is the
 repo's copy.
 
