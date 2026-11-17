@@ -4697,10 +4697,14 @@ def ladders(st):
         V, T = [], []
         f = np.array([1.0, float(sgn), 1.0])
         for a, b in zip(lines[:-1], lines[1:]):
-            n0 = len(V)
-            for P in (a[1], a[0], b[0], b[1]):
-                V.append(np.asarray(P, float) * f)
-            T += [(n0, n0 + 1, n0 + 2), (n0, n0 + 2, n0 + 3)]
+            quads = [(a[1], a[0], b[0], b[1])]
+            if sset == "lower" and len(a) > 4:          # bowsed in at the stave: the ladder goes on up to the masthead
+                quads.append((a[0], a[4], b[4], b[0]))
+            for q in quads:
+                n0 = len(V)
+                for P in q:
+                    V.append(np.asarray(P, float) * f)
+                T += [(n0, n0 + 1, n0 + 2), (n0, n0 + 2, n0 + 3)]
         if T:
             out.append((f"Ladder_{mast}_{sset}_{'s' if sgn > 0 else 'p'}", np.array(V), np.array(T)))
     return out

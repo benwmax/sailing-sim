@@ -134,7 +134,7 @@
   "J_m": "sockets",
   "P_m": "sockets: the mast's black bands' inner edges (BandTop less BandBoom, slice 4)",
   "E_m": "sockets",
-  "headroom_popup_closed_m": "build: slice 7 (cabin)",
-  "headroom_popup_raised_m": "build: slice 7 (cabin)"
+  "headroom_popup_closed_m": "build: the cabin's report (c22_report.json headroom_popup_closed_m, slice 7)",
+  "headroom_popup_raised_m": "build: the cabin's report (c22_report.json headroom_popup_raised_m, slice 7)"
  }
 }
