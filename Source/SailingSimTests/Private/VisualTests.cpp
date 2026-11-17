@@ -353,6 +353,92 @@ bool FVisualJ22HeroMeshTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Catalina 22 rebuild (docs/c22-12): the rebuilt Catalina 22 (/Game/Boats/C22Hero: Tools/shipkit/catalina22, cut by
+// export_game_c22.py, imported by scripts/make-c22-hero.sh) is the player's Catalina 22 once imported, so it is held to her
+// physics as J22Mesh holds the J/22: the canoe body (the hull part's paint slots, cut at the design waterline) to the
+// physics hull's length and beam and its volume (2%) and centre of buoyancy (2 cm), the draft (her swing keel down) to
+// FBoatConfig::Draft, and the rig to the physics' points the game hangs it on: MastStep on MastX, the build's gooseneck on
+// (MainLuffX, BoomZ). The sockets the pawn reads must be there, the hull Nanite, the mast not (M_BoatMast bends it), every
+// slot a boat material. Not imported, the fleet model stands in (FleetMesh holds it) and this is skipped with a warning.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualC22HeroMeshTest, "SailingSim.Visual.C22HeroMesh", VisualFlags)
+bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	auto Load = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part), nullptr, LOAD_NoWarn | LOAD_Quiet); };
+	UStaticMesh* Hull = Load(TEXT("Hull"));
+	if (!Hull)
+	{
+		AddWarning(TEXT("The rebuilt Catalina 22 isn't imported (scripts/make-c22-hero.sh); the fleet model stands in. Skipped"));
+		return true;
+	}
+	UStaticMesh* Mast = Load(TEXT("Mast"));
+	UStaticMesh* Boom = Load(TEXT("Boom"));
+	UStaticMesh* Rudder = Load(TEXT("Rudder"));
+	if (!TestNotNull(TEXT("SM_C22Hero_Mast"), Mast) || !TestNotNull(TEXT("SM_C22Hero_Boom"), Boom) || !TestNotNull(TEXT("SM_C22Hero_Rudder"), Rudder)) return false;
+	const FBoatConfig C = FBoatConfig::Make(EBoatType::Catalina22);
+	const FBoatModel Physics(C);
+	const double Tol = 0.02;
+#if WITH_EDITORONLY_DATA
+	const FCanoeMeasure M = MeasureCanoe(Hull, [](FName Slot) { return SailingBoatPacks::IsCanoeSlot(Slot); });
+	if (!TestTrue(TEXT("Source mesh"), M.bValid)) return false;
+	const FHullShape& H = C.Hulls[0];
+	const Vec3 PhysCB = Physics.DesignBuoyancyCentre();
+	TestTrue(FString::Printf(TEXT("Length %.3f m (physics hull %.3f)"), M.Canoe.GetSize().X, H.BowX - H.SternX), FMath::Abs(M.Canoe.GetSize().X - (H.BowX - H.SternX)) < Tol);
+	TestTrue(FString::Printf(TEXT("Beam %.3f m (physics hull %.3f)"), M.Canoe.GetSize().Y, 2.0 * H.MaxHalfBeam), FMath::Abs(M.Canoe.GetSize().Y - 2.0 * H.MaxHalfBeam) < Tol);
+	TestTrue(FString::Printf(TEXT("Draft %.3f m, keel down (physics %.3f)"), -M.MinZ, C.Draft), FMath::Abs(-M.MinZ - C.Draft) < Tol);
+	TestTrue(FString::Printf(TEXT("Canoe body volume %.3f m^3 within 2%% of the physics %.3f"), M.Volume, Physics.DesignDisplacedVolume()),
+		FMath::Abs(M.Volume - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
+	TestTrue(FString::Printf(TEXT("Centre of buoyancy (%.3f, %.3f, %.3f) within 2 cm of the physics (%.3f, %.3f, %.3f)"), M.CB.X, M.CB.Y, M.CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
+		FVector3d::Dist(M.CB, FVector3d(PhysCB.X, PhysCB.Y, PhysCB.Z)) < Tol);
+#endif
+	// The rig where the game hangs it: the mast part on MastStep (at the physics' MastX), the boom about the physics' gooseneck.
+	if (const UStaticMeshSocket* Step = Hull->FindSocket(TEXT("MastStep")))
+	{
+		TestTrue(FString::Printf(TEXT("MastStep x %.3f m (physics MastX %.3f)"), Step->RelativeLocation.X / 100.0, C.MastX), FMath::Abs(Step->RelativeLocation.X / 100.0 - C.MastX) < 0.01);
+	}
+	if (const UStaticMeshSocket* Goose = Hull->FindSocket(TEXT("Gooseneck")))
+	{
+		const FVector3d G = FVector3d(Goose->RelativeLocation) / 100.0;
+		TestTrue(FString::Printf(TEXT("Gooseneck (%.3f, %.3f) m within 2 cm of the physics' (MainLuffX %.3f, BoomZ %.3f)"), G.X, G.Z, C.MainLuffX, C.BoomZ),
+			FVector2d::Distance(FVector2d(G.X, G.Z), FVector2d(C.MainLuffX, C.BoomZ)) < Tol);
+	}
+	// Starboard is +Y, and the sockets the pawn reads (game_c22.json's required_sockets).
+	const UStaticMeshSocket* Stbd = Hull->FindSocket(TEXT("ChainplateUpper_S"));
+	const UStaticMeshSocket* Port = Hull->FindSocket(TEXT("ChainplateUpper_P"));
+	if (TestNotNull(TEXT("Rig sockets"), Stbd) && TestNotNull(TEXT("Rig sockets (port)"), Port))
+	{
+		TestTrue(TEXT("Starboard chainplate on +Y"), Stbd->RelativeLocation.Y > 50.f && Port->RelativeLocation.Y < -50.f);
+	}
+	struct FNeed { UStaticMesh* Part; TArray<const TCHAR*> Names; };
+	const FNeed Needs[] = {
+		{ Hull, { TEXT("MastStep"), TEXT("RudderPivot"), TEXT("ForestayTack"), TEXT("BackstayPlate"), TEXT("ChainplateLower_S"), TEXT("ChainplateLower_P"),
+			TEXT("JibLead_S"), TEXT("JibLead_P"), TEXT("JibWinch_S"), TEXT("JibWinch_P"), TEXT("LazySheetVia"), TEXT("Traveler_C"), TEXT("Traveler_S"), TEXT("Gooseneck") } },
+		{ Mast, { TEXT("Hounds"), TEXT("MastheadAft"), TEXT("LowerTang"), TEXT("SpreaderTip_S"), TEXT("SpreaderTip_P"), TEXT("MastBase") } },
+		{ Boom, { TEXT("Boom_Mainsheet") } },
+		{ Rudder, { TEXT("TillerEnd"), TEXT("RudderStock") } } };
+	for (const FNeed& Need : Needs)
+	{
+		for (const TCHAR* Name : Need.Names) TestNotNull(FString::Printf(TEXT("%s: socket %s"), *Need.Part->GetName(), Name), Need.Part->FindSocket(Name));
+	}
+	// The hounds over the genoa's head, or the game would lower the head to them (SetSail's head height).
+	if (const UStaticMeshSocket* Hounds = Mast->FindSocket(TEXT("Hounds")))
+	{
+		const UStaticMeshSocket* Step = Hull->FindSocket(TEXT("MastStep"));
+		const double HoundsZ = ((Step ? double(Step->RelativeLocation.Z) : 0.0) + double(Hounds->RelativeLocation.Z)) / 100.0;
+		TestTrue(FString::Printf(TEXT("Hounds %.2f m over the genoa's head %.2f"), HoundsZ, C.JibHeadZ), HoundsZ > C.JibHeadZ - 0.05);
+	}
+	TestTrue(TEXT("Hull is Nanite"), Hull->IsNaniteEnabled());
+	TestFalse(TEXT("Mast is not Nanite (M_BoatMast bends it)"), Mast->IsNaniteEnabled());
+	for (UStaticMesh* Part : { Hull, Mast, Boom, Rudder })
+	{
+		for (const FStaticMaterial& Mat : Part->GetStaticMaterials())
+		{
+			TestTrue(FString::Printf(TEXT("%s: slot %s has a boat material"), *Part->GetName(), *Mat.MaterialSlotName.ToString()), Mat.MaterialInterface && Mat.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
+		}
+	}
+	return true;
+}
+
 // Visual V7: the other seven boats (Tools/blender/build_fleet.py) are held to their physics like the J/22: the canoe
 // bodies' length and beam to the extent of the physics hulls, the draft (hull, keel or board, and the rudders where a
 // beach cat has no board) to FBoatConfig::Draft, and the displaced volume (2%) and centre of buoyancy (2 cm) to the
