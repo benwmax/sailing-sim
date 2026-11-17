@@ -1278,13 +1278,13 @@ bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
 	if (const FMeshDescription* MD = const_cast<UStaticMesh*>(Hull)->GetMeshDescription(0); MD && Hull->GetNumUVChannels(0) >= 4)
 	{
 		FStaticMeshConstAttributes Attr(*MD);
-		const TPolygonGroupAttributesConstRef<FName> Slots = Attr.GetPolygonGroupMaterialSlotNames();
+		const TPolygonGroupAttributesConstRef<FName> SlotNames = Attr.GetPolygonGroupMaterialSlotNames();
 		const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
 		float MinYM = 1e9f, MaxYs = -1e9f, MinYs = 1e9f;
 		int32 Count = 0;
 		for (const FTriangleID T : MD->Triangles().GetElementIDs())
 		{
-			if (Slots[MD->GetTrianglePolygonGroup(T)] != FName(TEXT("LaidTeak"))) continue;
+			if (SlotNames[MD->GetTrianglePolygonGroup(T)] != FName(TEXT("LaidTeak"))) continue;
 			for (const FVertexInstanceID V : MD->GetTriangleVertexInstances(T))
 			{
 				MinYM = FMath::Min(MinYM, UVs.Get(V, 3).Y);
