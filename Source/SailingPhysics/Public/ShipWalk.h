@@ -87,7 +87,7 @@ namespace Sailing
 	/** One frame's input to the walker (the game's stick or keys, already in the walker's own terms). */
 	struct FWalkInput
 	{
-		double Forward = 0.0, Right = 0.0;   // -1..1: move relative to where he faces; on a ladder Forward climbs
+		double Forward = 0.0, Right = 0.0;   // -1..1: move relative to where he faces; on a ladder Forward carries on the way he got on
 		double LookYawDeg = 0.0, LookPitchDeg = 0.0;   // this frame's turn of the head
 		bool bRun = false, bCrouch = false;
 		bool bUse = false;                   // a press: take the ladder in front of you
@@ -110,6 +110,8 @@ namespace Sailing
 		static constexpr double EyeStand = 1.62;          // m over the floor
 		static constexpr double EyeCrouch = 1.15;
 		static constexpr double EyeLowest = 0.9;
+		static constexpr double LadderEyeLowest = 0.3;   // m over the feet: on a ladder through a hatch the head bows lower
+		static constexpr double LadderKnee = 0.5;        // m: on a ladder, only what is higher over the feet bows the head
 		static constexpr double HeadOverEye = 0.14;       // m: the crown and a little room over the eye
 		static constexpr double EyeTau = 0.12;            // s: the eye eases to its height
 		static constexpr double GripSlopeDeg = 24.0;      // a slope past which he slides (a wet deck, bare feet)
@@ -148,6 +150,7 @@ namespace Sailing
 
 		int Deck = 0, Link = -1;
 		double LinkT = 0.0;
+		double ClimbSign = 1.0;            // +1 got on at the foot (Forward climbs), -1 at the top (Forward goes down)
 		double MountCooldown = 0.0;        // s after stepping off a ladder before another is taken
 		Vec3 Feet, Vel, Slide;
 		double Eye = EyeStand;

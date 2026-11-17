@@ -38,7 +38,7 @@ namespace ChaseCamera
 	/** Boats this long or longer (m) are ships: RigFor drops the small boats' clamps (ScaleForShip). Every boat before the
 	 *  frigate is under it, so their rigs are unchanged. */
 	static constexpr float ShipLoaM = 45.f;
-	/** A ship's Chase and Overview rigs (Classic keeps the old rig for measured runs). */
+	/** A ship's rigs: Chase and Overview rescaled; Classic keeps its fixed lift on an arm long enough to frame her. */
 	SAILINGSIM_API void ScaleForShip(FRig& R, ERig Rig, float LoaM, float MastheadZM, float BoomZM);
 	/** The lens's push up at the end of an arm of ArmCm. */
 	SAILINGSIM_API float SocketUpCm(const FRig& Rig, float ArmCm);

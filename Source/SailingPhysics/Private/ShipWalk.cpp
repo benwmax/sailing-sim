@@ -140,7 +140,8 @@ namespace Sailing
 			D.NX = R.Get<int32_t>();
 			D.NY = R.Get<int32_t>();
 			D.AlsoLoad = R.Get<uint32_t>();
-			if (!R.bOk || !(D.Cell > 0.005 && D.Cell < 2.0) || D.NX <= 0 || D.NY <= 0 || D.NX > 8192 || D.NY > 4096 || !std::isfinite(BaseZ))
+			if (!R.bOk || !(D.Cell > 0.005 && D.Cell < 2.0) || D.NX <= 0 || D.NY <= 0 || D.NX > 8192 || D.NY > 4096 || !std::isfinite(BaseZ)
+				|| !(std::abs(D.X0) < 1e4) || !(std::abs(D.Y0) < 1e4))
 			{
 				return Fail("bad deck header");
 			}
@@ -171,7 +172,7 @@ namespace Sailing
 			L.HalfWidth = R.Get<double>();
 			if (!R.bOk) return Fail("link cut short");
 			if (L.Lower >= int(NumDecks) || L.Upper >= int(NumDecks) || L.Lower == L.Upper || L.Kind > EWalkLink::Steps) return Fail("bad link");
-			if (!(L.Length() > 0.1)) return Fail("link too short");
+			if (!(L.Length() > 0.1) || !(L.Length() < 1e3)) return Fail("bad link length");
 		}
 		if (R.P != R.End) return Fail("trailing bytes");
 		Finish();
@@ -338,6 +339,9 @@ namespace Sailing
 		if (!bUse && !bWalkOn) return false;
 		Link = K;
 		LinkT = bAtFoot ? 0.0 : 1.0;
+		// Forward carries on the way he got on: up from the foot, down from the top (walking on toward the hatch and
+		// holding forward takes him down, not off again at the top).
+		ClimbSign = bAtFoot ? 1.0 : -1.0;
 		Feet = bAtFoot ? L.Foot : L.Top;
 		Vel = Slide = Vec3();
 		bSliding = false;
@@ -348,8 +352,19 @@ namespace Sailing
 	{
 		if (Link >= 0)
 		{
-			Eye = Dt > 0.0 ? Eye + (EyeStand - Eye) * (1.0 - std::exp(-Dt / EyeTau)) : EyeStand;
-			bDucking = false;
+			// On a ladder: under whatever is over him on either deck (the deck above's planking at a hatch's edge, a beam
+			// over the foot), counting only what is over his knees: lower than that it is the coaming he steps over.
+			const FWalkLink& L = Map.Links[Link];
+			double Room = EyeStand;
+			for (int K : { L.Lower, L.Upper })
+			{
+				const double Over = Map.Decks[K].OverheadAt(Feet.X, Feet.Y);
+				if (std::isfinite(Over) && Over > Feet.Z + LadderKnee) Room = std::min(Room, Over - Feet.Z - HeadOverEye);
+			}
+			bDucking = Room < EyeStand;
+			const double Want = std::max(LadderEyeLowest, Room);
+			Eye = Dt > 0.0 ? Eye + (Want - Eye) * (1.0 - std::exp(-Dt / EyeTau)) : Want;
+			Eye = std::max(LadderEyeLowest, std::min(Eye, Room));
 			return;
 		}
 		const FWalkDeck& D = Map.Decks[Deck];
@@ -387,7 +402,7 @@ namespace Sailing
 		{
 			const FWalkLink& L = Map.Links[Link];
 			const double Len = std::max(L.Length(), 0.1);
-			const double Rate = Clamp(In.Forward, -1.0, 1.0) * ClimbSpeed;
+			const double Rate = Clamp(In.Forward, -1.0, 1.0) * ClimbSign * ClimbSpeed;
 			LinkT += Rate / Len * Dt;
 			Vel = (L.Top - L.Foot) * (Rate / Len);
 			if (LinkT >= 1.0 || LinkT <= 0.0)

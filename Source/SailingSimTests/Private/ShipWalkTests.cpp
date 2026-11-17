@@ -43,7 +43,9 @@ namespace
 				const int K = D.Index(I, J);
 				D.Floor[K] = float(Z + 0.05 * (1.0 - (Y / 3.0) * (Y / 3.0)));   // 5 cm of camber
 				if (bGunDeck && FMath::Fmod(X + 100.0, 0.8) < 0.2) D.Overhead[K] = 3.72f;   // a beam, 1.67 m over the planks
-				if (!bGunDeck && X >= -0.05 && X <= 1.55 && FMath::Abs(Y) <= 0.75) D.Floor[K] = std::numeric_limits<float>::quiet_NaN();   // the hatch
+				const bool bHatch = X >= -0.05 && X <= 1.55 && FMath::Abs(Y) <= 0.75;
+				if (!bGunDeck && bHatch) D.Floor[K] = std::numeric_limits<float>::quiet_NaN();   // the hatch
+				if (bGunDeck && bHatch) D.Overhead[K] = std::numeric_limits<float>::infinity();    // open up through it
 				if (bGunDeck && FMath::Abs(X - 5.0) < 0.3 && FMath::Abs(Y) < 0.3) D.Floor[K] = std::numeric_limits<float>::quiet_NaN();     // a mast
 			}
 		}
@@ -88,7 +90,7 @@ bool FShipWalkFileTest::RunTest(const FString& Parameters)
 	if (!LoadShip(*this, M)) return false;
 	TestTrue(TEXT("two decks and a ladder"), M.Decks.size() == 2 && M.Links.size() == 1);
 	TestTrue(TEXT("floors to the millimetre"), FMath::Abs(M.Decks[0].FloorAt(3.0, 0.4) - Made.Decks[0].FloorAt(3.0, 0.4)) < 0.002);
-	TestTrue(TEXT("beams to the millimetre"), FMath::Abs(M.Decks[1].OverheadAt(0.05, 0.0) - 3.72) < 0.002);
+	TestTrue(TEXT("beams to the millimetre"), FMath::Abs(M.Decks[1].OverheadAt(2.45, 0.0) - 3.72) < 0.002);
 	TestTrue(TEXT("open sky stays open"), !std::isfinite(M.Decks[0].OverheadAt(3.0, 0.0)));
 	TestTrue(TEXT("no floor in the hatch"), !std::isfinite(M.Decks[0].FloorAt(0.7, 0.0)));
 	TestTrue(TEXT("the ladder's name"), M.Links[0].Name == "AfterHatch");
@@ -129,14 +131,14 @@ bool FShipWalkLadderTest::RunTest(const FString& Parameters)
 	for (int S = 0; S < 120 && W.GetLink() < 0; ++S) W.Step(M, In, kUpright, kFrame);
 	TestTrue(TEXT("on the ladder at its top"), W.GetLink() == 0 && W.GetLinkT() == 1.0);
 	TestTrue(TEXT("both decks wanted on the ladder"), W.DecksWanted(M) == 3u);
-	// Down it (back on the stick), and off at its foot.
-	In.Forward = -1.0;
+	// Down it, still holding forward (forward carries on the way he got on), and off at its foot.
 	int S = 0;
 	for (; S < 1200 && W.GetLink() >= 0; ++S) W.Step(M, In, kUpright, kFrame);
 	const double Seconds = S * kFrame;
 	TestTrue(FString::Printf(TEXT("down in %.1f s (a 3.1 m ladder at 0.8 m/s)"), Seconds), Seconds > 3.0 && Seconds < 5.0);
 	TestTrue(TEXT("on the gun deck at the foot"), W.GetDeck() == 1 && FMath::Abs(W.GetFeet().Z - 2.05) < 0.06);
-	// Backing off the foot doesn't put him straight back on it.
+	// Backing toward the ladder, facing away from it, doesn't put him straight back on it.
+	In.Forward = -1.0;
 	for (int K = 0; K < 60; ++K) W.Step(M, In, kUpright, kFrame);
 	TestTrue(TEXT("backing away stays on the deck"), W.GetLink() < 0 && W.GetDeck() == 1);
 	// Use takes it from the foot whichever way he faces.
@@ -150,7 +152,7 @@ bool FShipWalkLadderTest::RunTest(const FString& Parameters)
 	for (int K = 0; K < 1200 && W.GetLink() >= 0; ++K) W.Step(M, In, kUpright, kFrame);
 	TestTrue(TEXT("up and off on the spar deck"), W.GetDeck() == 0 && W.GetLink() < 0);
 	// Away from the ladder only his deck (and what it names) is wanted.
-	W.Reset(M, 1, 8.0, 0.0, 0.0);
+	W.Reset(M, 1, 8.5, 0.0, 0.0);
 	TestTrue(TEXT("far from the ladder: the gun deck alone"), W.DecksWanted(M) == 2u);
 	W.Reset(M, 0, 8.0, 0.0, 0.0);
 	TestTrue(TEXT("the spar deck keeps the gun deck (AlsoLoad)"), W.DecksWanted(M) == 3u);
@@ -265,7 +267,18 @@ bool FShipWalkWanderTest::RunTest(const FString& Parameters)
 		const int WasLink = W.GetLink();
 		W.Step(M, In, Heeled(20.0 * FMath::Sin(S * kFrame * 2.0 * PI / 9.0)), kFrame);
 		if (W.GetLink() >= 0 && WasLink < 0) ++Climbs;
-		if (W.GetLink() >= 0) continue;
+		if (W.GetLink() >= 0)
+		{
+			// On the ladder: his eye under whatever is over his feet on either deck.
+			const FWalkLink& L = M.Links[W.GetLink()];
+			const Vec3 F = W.GetFeet(), E = W.GetEye();
+			for (int K : { L.Lower, L.Upper })
+			{
+				const double Over = M.Decks[K].OverheadAt(F.X, F.Y);
+				if (std::isfinite(Over) && Over > F.Z + FShipWalker::LadderKnee && Over - E.Z < FShipWalker::HeadOverEye - 1e-6) { ++InBeam; break; }
+			}
+			continue;
+		}
 		const FWalkDeck& D = M.Decks[W.GetDeck()];
 		++Frames[W.GetDeck()];
 		if (!D.CanStand(W.GetFeet().X, W.GetFeet().Y)) ++Off;

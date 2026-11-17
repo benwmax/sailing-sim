@@ -25,8 +25,9 @@ costs a capsule sweep against millions of triangles, and can't be tested without
   1.62 m over the floor standing, 1.15 crouched, and never closer than 0.14 m under anything over him; it eases down
   (0.12 s) a pace before a beam, so a walk along the gun deck bobs under each one.
 * **Ladders**: walk onto one facing it (toward the hatch at its top, toward its foot from below) or press Use beside it;
-  forward climbs, back descends (0.8 m/s along it); off at either end. Backing off a ladder's foot, or walking past its
-  top, never takes it.
+  forward carries on the way you got on (up from the foot, down from the top), back returns (0.8 m/s along it); off
+  at either end. Backing off a ladder's foot, or walking past its top, never takes it. On the ladder the head bows
+  under anything over it (a hatch's edge, a beam over the foot), down to 0.3 m over the feet.
 * **Decks to load** (`DecksWanted`): his deck, both ends of his ladder, the deck any ladder within 6 m leads to, and what
   his deck's `AlsoLoad` names (the spar deck keeps the gun deck: it shows through the open waist and the hatches).
 
@@ -48,7 +49,8 @@ hatches' ladders down to it.
 A boat 45 m or longer is a ship: the chase and overview rigs drop the small boats' clamps (the chase arm stopped at
 75 m, the overview's at 40), which would park the lens inside her rigging. The same framing rules: the chase arm's
 origin at the spanker boom's height (up to 9 m), back 1.8 lengths or 1.55 masthead heights (about 112 m), zoom from
-0.6 lengths to 6 (450 m at most). Classic, the measured runs' rig, is unchanged. Every boat before the frigate is under
+0.6 lengths to 6 (450 m at most). Classic, the measured runs' rig, keeps its fixed lift (a third of the masthead) on a 2.4-length arm, so a
+ship is in frame there too. Every boat before the frigate is under
 45 m, so their rigs don't move (`SailingSim.Visual.ChaseCamera.Rig`).
 
 ## Tests
