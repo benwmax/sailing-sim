@@ -17,6 +17,7 @@
 #include "AutoTrim.h"
 #include "EasyAssists.h"
 #include "CrewStation.h"
+#include "ShipHandling.h"
 #include "BoatPhysicsTask.generated.h"
 
 class ASailboatPawn;
@@ -63,6 +64,9 @@ struct SAILINGSIM_API FBoatStepJob
 	Sailing::FStationInput StationInput;
 	/** Filled with the boat's pose just before her last step (left alone when there are no steps). */
 	FBoatPose* BeforeLast = nullptr;
+	/** A square-rigged ship's manoeuvre (docs/ship-orders/): her officers' orders on the braces, sails and helm, given after
+	 *  the trimmer each step (a no-op when none is under way). */
+	Sailing::FShipHandling* Handling = nullptr;
 	void Run() const;
 };
 

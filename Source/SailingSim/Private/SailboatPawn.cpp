@@ -1332,7 +1332,8 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 		ApplyChaseRotation();
 	}
-	if (bShipHelmsman && !bDemo)
+	if (!bTrafficBoat && !bGhost) UpdateShipManoeuvre();
+	if (bShipHelmsman && !bDemo && !ShipHandling.IsActive())
 	{
 		// docs/ship-walk/: while you walk her decks (or told him to take her), her helmsman holds the wind angle she had when
 		// you left the wheel, a point up or down as you order (docs/ship-orders/).
@@ -1410,6 +1411,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	Job.bSimple = bSimple;
 	Job.Easy = &EasyAssists;
 	Job.EasyHelm = &EasyHelm;
+	if (!bTrafficBoat && !bGhost && Boat.GetConfig().HasSquareRig()) Job.Handling = &ShipHandling;
 	UpdateStations(Job.StationInput);
 	if (Stations.IsActive())
 	{

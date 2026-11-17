@@ -81,6 +81,8 @@ void ASailboatPawn::ClearShipRig()
 	}
 	ShipBattery = nullptr;
 	bShipGunsFiring[0] = bShipGunsFiring[1] = false;
+	ShipHandling = Sailing::FShipHandling();   // a new boat starts on no manoeuvre
+	ShipHandlingCalled = Sailing::EShipManoeuvreStep::Idle;
 }
 
 void ASailboatPawn::BindShipRig()
