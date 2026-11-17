@@ -2,8 +2,8 @@
 
 Shore plan of Nov 16 2026 (Claude artifact "Shore, Grass and Buildings Plan"), Track F: six private dock layouts, three
 boathouses, covered marina sheds and the boats that sit in them, built by script and checked with the environment loop.
-**Nothing here is loaded by the game yet.** Placing them is Track I's integration pull request after the Nov 21 slice
-(one world gate on the Mac, booked through the main sim thread).
+**Nothing here is loaded by the game yet.** Placing them is Track I's integration pull request before the Nov 27 feature freeze
+(`docs/slice/README.md`; one world gate on the Mac, booked through the main sim thread).
 
 ## What is built
 

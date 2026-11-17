@@ -2,7 +2,7 @@
 
 Shore plan of Nov 16 2026, Track H: about thirty small props that lakefront lots, docks and the club's boat yard are
 dressed with, sparse and placed by seed (Bean's choice on Oct 16 2026). **Nothing here is loaded by the game yet**;
-Track I places them after the Nov 21 slice.
+Track I places them before the Nov 27 feature freeze (`docs/slice/README.md`).
 
 ## What is built (`Tools/envloop/yard/build_yard_props.py`, cards in `Tools/envloop/yard/cards.json`)
 

@@ -311,12 +311,13 @@ class Rig:
                     P2 = P2[::-1]
                 rings.append(frame_ring(O + s * u, f, Y, P2))
             loft_solid(M, rings, B)
-        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft, none at the spar deck's partners
-        # (the deck and its mast coat, slice 7's deck.py, stand there)
+        # iron hoops on the made mast: from the step up to the cheeks, every 4 ft, none at either deck's partners
+        # (the spar deck and its mast coat, slice 7's deck.py; the gun deck and its wedges, slice 12's gundeck.py)
         hp = fit["hoops"]
         p0, p1 = (v * IN for v in hp["clear_of_partners_in"])
         for s in np.arange(s_step + 2 * FT, s_h - c_len - 0.5 * FT, hp["pitch_ft"] * FT):
-            if s + hp["broad_in"] / 2 * IN > p0 and s - hp["broad_in"] / 2 * IN < p1:
+            hb = hp["broad_in"] / 2 * IN
+            if any(s + hb > sd + p0 and s - hb < sd + p1 for sd in (0.0, s_gun)):
                 continue
             ring_band(M, O, u, f, s, R_lower(s), hp["broad_in"] * IN, hp["thick_in"] * IN, I, n)
 

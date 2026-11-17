@@ -279,6 +279,14 @@ public:
 	const FPhotoSettings& GetPhotoSettings() const { return PhotoSettings; }
 	EPhotoRow GetPhotoRow() const { return PhotoRow; }
 	float GetPhotoFocusM() const { return PhotoFocusM; }
+	/** Camera views slice 3: the panel open (a tap of View or H opens and closes it; B closes it, then leaves; it opens
+	 *  closed in the Off UI mode), and the pointer shown over it while Alt is held, to click it. */
+	bool IsPhotoPanelOpen() const { return bPhotoPanelOpen; }
+	bool IsPhotoPointerShown() const { return bPhotoPointer; }
+	/** The panel's mouse: a click on a row, a tab, or a value's arrow (Dir +1 or -1 on the row it is on). */
+	void SelectPhotoRow(EPhotoRow Row);
+	void SelectPhotoPage(int32 Page);
+	void StepPhotoValue(int32 Dir);
 	bool IsPhotoNatural() const { return bPhoto && PhotoSettings.Look == EPhotoLook::Natural; }
 	/** A photo is being taken: nothing is drawn on the canvas over it (the hint and the toast come after). */
 	bool IsTakingPhoto() const { return GFrameCounter <= PhotoCleanFrame; }
@@ -344,8 +352,10 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
+	/** Whether this boat draws the rebuilt Catalina 22 (/Game/Boats/C22Hero, docs/c22-12) rather than the fleet model. */
+	bool UseC22Hero(Sailing::EBoatType Type) const;
 	void BuildModelVisuals(const FBoatModelMeshes& Model);
 	UStaticMeshComponent* AddModelPart(UStaticMesh* Mesh, USceneComponent* Parent, const FVector& LocationCm);
 	/** A rig point in the boat frame (cm) from a socket on one of the model's parts; mast points follow its bend. */
@@ -491,6 +501,13 @@ private:
 	void ApplyMappingContexts();
 	UPROPERTY(Transient) TObjectPtr<AFreeCamera> FreeCam;
 	bool bPhotoHideHints = false;
+	bool bPhotoPanelOpen = true;
+	bool bPhotoPointer = false;
+	/** X held (Alt on a keyboard): the left stick zooms, the right stick tilts, the D-pad's up and down set the speed. */
+	bool IsPhotoAltHeld() const;
+	float PhotoAltRoll = 0.f;   // the right stick's sideways push while X is held, for the tilt (taken each frame)
+	void UpdatePhotoPointer();
+	void StepPhotoSpeed(int32 Dir);
 	// The panel: settings kept for the session, the row it is on, the focus distance it eases to, the scene it hid.
 	FPhotoSettings PhotoSettings;
 	EPhotoRow PhotoRow = EPhotoRow::Focal;
@@ -672,6 +689,13 @@ private:
 	 *  the rudder: shown while stowed, hidden while the live one is in the helm's hand. Null where it is baked into the rudder
 	 *  or not modelled. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelTillerExt;
+	/** J-Class 14: a wheel as a part of its own (SM_Bluebonnet_Wheel), on WheelPivot at the hull's WheelHub socket, turned about
+	 *  WheelAxis (the shaft, toward the hull's WheelAxis socket) by WheelTurnsHardOver turns over the rudder's travel. Null
+	 *  where the wheel is in the hull's mesh (the maxi, the Catalina 30) or the boat has a tiller. */
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelWheel;
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> WheelPivot;
+	FVector WheelAxis = FVector::ForwardVector;  // boat frame, along the shaft toward the wheel box
+	float WheelRimRadiusCm = 0.f;                // the rim's centre line (WheelRim socket), 0 without a wheel part
 	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
 	 *  shown instead of the sails, mast and running rig while bSailsStowed. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> StowedDress;
@@ -718,6 +742,19 @@ private:
 public:
 	/** #618: the model's own stowed extension part (null if none) and whether it shows now. */
 	const UStaticMeshComponent* GetModelTillerExt() const { return ModelTillerExt; }
+	/** J-Class 14: the wheel part (null without one), its shaft's axis (boat frame) and its rim's radius. */
+	const UStaticMeshComponent* GetModelWheel() const { return ModelWheel; }
+	FVector GetWheelAxis() const { return WheelAxis; }
+	float GetWheelRimRadiusCm() const { return WheelRimRadiusCm; }
+	/** The wheel's turn (rad about WheelAxis, forward, where a positive turn takes its top to port) for a rudder angle (rad,
+	 *  positive bow to starboard): WheelTurnsHardOver turns from amidships to hard over (her worm gear: our estimate,
+	 *  1.5 turns, 3 lock to lock; 5 s hard over in the physics is 108 deg/s at the rim's hands), the top to starboard as the
+	 *  bow goes to starboard (deck_bluebonnet.json steering note). */
+	static constexpr double WheelTurnsHardOver = 1.5;
+	static double WheelTurnFor(double RudderAngle, double MaxRudderAngleDeg)
+	{
+		return MaxRudderAngleDeg > 0.0 ? -RudderAngle / FMath::DegreesToRadians(MaxRudderAngleDeg) * WheelTurnsHardOver * 2.0 * UE_DOUBLE_PI : 0.0;
+	}
 	/** #620 follow-up: where the helm's hand holds the tiller extension (boat frame, cm), unset when no shown helm holds it. */
 	TOptional<FVector> GetHelmGripCm() const { return HelmGripCm; }
 	bool IsModelTillerExtShown() const;

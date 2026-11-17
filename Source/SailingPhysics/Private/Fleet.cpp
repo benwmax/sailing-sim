@@ -549,12 +549,60 @@ namespace Sailing
 #include "BluebonnetConfig.inl"
 
 		// Her overhangs: a J's long, low ends lengthen her waterline under way as her bow and stern waves climb them (the
-		// Universal Rule measured the waterline at rest, which is why the Js have them), but the residuary table is read at
-		// her 26.0 m at rest. Ten percent more sailing length lowers her Froude number 5% (the table falls 15 to 20% at her
-		// close-hauled speed) and makes her 10% more slender (that scale falls by 1.1 cubed): 35 to 40% less wave-making
-		// together (docs/jclass-13, "For the Mac's half"). At the sheet's 1.0 her beat in 12 kn was 0.90 of Ranger's 1937
-		// record and close-hauled in 16 kn 0.76 of the estimate; 0.6 holds every point of her polar within its 20%.
-		constexpr double kBluebonnetResiduaryFactor = 0.6;
+		// Universal Rule measured the waterline at rest, which is why the Js had them), but the residuary table is read at
+		// her 26.0 m at rest. Her own sections give the length the water wets as it climbs both ends (a crest 0.5 m up wets
+		// 30.4 m, 17% more; heeled to 18 deg in still water she gains only 1.5%), and her waves climb higher the faster she
+		// goes: a crest is a share of the stagnation head V^2 / 2g (kBluebonnetCrestShare). So at each speed she makes waves
+		// as a longer hull would: a lower Froude number on that length and a more slender hull (the table's fall with
+		// slenderness cubed, physics.py's rule). Light air is barely touched (a 6 kn crest wets 7% more); close-hauled in a
+		// breeze she gains most, where slice 13's flat factor (0.6 at every speed) left her 12% under the estimate.
+		constexpr double kBluebonnetCrestShare = 0.25;
+
+		// The boom's pin on the gooseneck (slice 4's build, boom_frame.origin x).
+		constexpr double kBluebonnetGooseneckPinX = 2.3508;
+
+		// The length her sections wet with the water Rise metres above the DWL at both ends, upright.
+		double BluebonnetWetLength(double Rise)
+		{
+			auto Bottom = [](const FBluebonnetSection& S) { return *std::min_element(S.Z, S.Z + kBluebonnetSectionPoints); };
+			int First = -1, Last = -1;
+			for (int I = 0; I < kBluebonnetStations; ++I)
+				if (Bottom(kBluebonnetSections[I]) < Rise) { if (First < 0) First = I; Last = I; }
+			if (First < 0) return 0.0;
+			auto Cross = [&](int Wet, int Dry)
+			{
+				if (Dry < 0 || Dry >= kBluebonnetStations) return kBluebonnetSections[Wet].X;
+				const double A = Bottom(kBluebonnetSections[Wet]) - Rise, B = Bottom(kBluebonnetSections[Dry]) - Rise;
+				return kBluebonnetSections[Wet].X + (kBluebonnetSections[Dry].X - kBluebonnetSections[Wet].X) * A / (A - B);
+			};
+			return Cross(Last, Last + 1) - Cross(First, First - 1);
+		}
+
+		// Her residuary table re-read on her sailing length: at rest-length Froude number Fn her speed is Fn sqrt(g L0),
+		// her crest kBluebonnetCrestShare x V^2 / 2g up the overhangs, her sailing length L(crest); the wave-making per unit
+		// weight is the sheet's table at Fn sqrt(L0 / L) times (L0 / L)^3.
+		void BluebonnetSailingLength(FBoatConfig& C, double CrestShare)
+		{
+			const std::vector<std::pair<double, double>> Rest = C.Residuary;
+			auto At = [&Rest](double Fn)
+			{
+				if (Fn <= Rest.front().first) return Rest.front().second;
+				for (size_t I = 1; I < Rest.size(); ++I)
+					if (Fn < Rest[I].first)
+						return Rest[I - 1].second + (Rest[I].second - Rest[I - 1].second) * (Fn - Rest[I - 1].first) / (Rest[I].first - Rest[I - 1].first);
+				return Rest.back().second;
+			};
+			const double L0 = C.Hulls[0].WaterlineLength();
+			const double Wet0 = BluebonnetWetLength(0.0);
+			C.Residuary.clear();
+			for (int I = 0; I <= 40; ++I)
+			{
+				const double Fn = 0.025 * I;
+				const double Crest = CrestShare * 0.5 * Fn * Fn * L0;     // CrestShare x V^2 / 2g with V = Fn sqrt(g L0)
+				const double Grow = BluebonnetWetLength(Crest) / Wet0;
+				C.Residuary.push_back({ Fn, At(Fn / std::sqrt(Grow)) / (Grow * Grow * Grow) });
+			}
+		}
 
 		FBoatConfig Bluebonnet()
 		{
@@ -564,11 +612,27 @@ namespace Sailing
 			FBoatConfig C;
 			C.Type = EBoatType::Bluebonnet;
 			ApplyBluebonnet(C);
-			for (std::pair<double, double>& R : C.Residuary) R.second *= kBluebonnetResiduaryFactor;
+			BluebonnetSailingLength(C, kBluebonnetCrestShare);
+			// Heeled, her canoe body hardly changes: her own sections, heeled 18 deg and sunk to the same volume, wet 0.6% more
+			// area and 1.5% more length (22 deg: 1.0% and 1.8%), where the fleet's terms (fitted to the J/22's beamy hull) charge
+			// 12% more friction and 19% more wave-making. Her lines' figures instead: friction 0.02 sin heel, wave-making none.
+			// With the fleet's she sailed best at 18 deg; with her own at 22 to 25, as the Js did (docs/jclass-upwind/).
+			C.HeelFrictionCoef = 0.02;
+			C.HeelResiduaryCoef = 0.0;
+			// The boom swings on the build's gooseneck pin, 0.3 m abaft the mast's track (x 2.351 at BoomZ: the boom's frame
+			// origin in docs/jclass-5/baseline/build.json), not at the sail's tack on the track (the sheet's 2.578): the
+			// physics' gooseneck is MainLuffX at BoomZ, so the main's foot starts at the pin, its clew where the sheet has
+			// it (the foot 0.227 m shorter) and its head on the mast as before. BuildMain keeps the area.
+			const double Pin = kBluebonnetGooseneckPinX;
+			C.MainFootChord -= C.MainLuffX - Pin;
+			C.MainLuffX = Pin;
+			C.BuildMain(0);
 			// Her free roll period, sails down in calm water, is 8.0 s (the J/22's 1.7, the maxi's 7.1): her crew trim over it
 			// (TrimRollSeconds). Without it she rolled 1 to 30 deg every 10 s from 13 kn upwind; with it she holds 22 deg
-			// steady from 13 to 24 kn, with ideal hands and with the game's (docs/jclass-14/).
-			C.TrimRollSeconds = 8.0;
+			// steady from 13 to 24 kn, with ideal hands and with the game's (docs/jclass-14/). With her sailing length she is
+			// a knot faster upwind in a breeze, and at 8.0 the game's hands swung her 19 to 27 deg every 13 s in 20 to 22 kn;
+			// over 10 s (a quarter more) they hold her within 1.5 deg from 12 to 24 kn (docs/jclass-upwind/).
+			C.TrimRollSeconds = 10.0;
 			// The game draws 12 of her 30 crew (the maxi's figures); all 30 are in her weight and righting moment.
 			C.CrewCount = 12;
 			return C;

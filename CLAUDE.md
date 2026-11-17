@@ -310,7 +310,9 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   depth), so a hull shape change in the physics means rerunning `make-boat-models.sh`. `ASailboatPawn::ModelMeshesFor`
   picks a class's meshes: the player's J/22 is the hero (`/Game/Boats/J22Hero`) since round 12, AI boats and the ghost
   keep `SM_J22_*` and their liveries (`-SailingClassicJ22` compares, `-SailingJ22Hero` puts the hero on AI boats too); a
-  model that carries its own outboard sets `bOwnOutboard` (no stand-in box); the rig lines, traveler car, mast bend and wet line are in
+  model that carries its own outboard sets `bOwnOutboard` (no stand-in box); the player's Catalina 22 is the rebuild
+  (`/Game/Boats/C22Hero`, `scripts/make-c22-hero.sh`, `docs/c22-12/`: the fleet model stands in until it is imported;
+  `-SailingClassicC22`, `SailingSim.Visual.C22HeroMesh`); the rig lines, traveler car, mast bend and wet line are in
   `BoatModelVisuals.cpp`. `MI_Boat_*` instances are updated in place, never deleted (the meshes reference them).
   `line` is a reserved word in HLSL custom nodes; Substrate's slab wants a tangent-space normal (the meshes carry
   box-projected UVs for their tangent frame).

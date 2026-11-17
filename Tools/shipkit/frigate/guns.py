@@ -1820,7 +1820,9 @@ class Carr32:
         for nm, (a, b) in sl["transoms"].items():
             hexa(M, box8(xf - b, xf - a, -(so + rw), so + rw, self.chock_top if nm == "front" else zb, zlo), WOOD)
         M.cur = "fighting_bolt"
-        cylinder(M, [0, 0, -4.0], [0, 0, zlo + 0.6], sl["bolt_radius_in"], IRON, n=12)
+        # down into the deck's 3 in planks, its end half an inch above their underside (slice 12 framed the gun deck's
+        # ceiling: a deeper bolt would show under the planks between the beams)
+        cylinder(M, [0, 0, -2.5], [0, 0, zlo + 0.6], sl["bolt_radius_in"], IRON, n=12)
         cylinder(M, [0, 0, zlo], [0, 0, zlo + 0.6], sl["bolt_radius_in"] + 0.7, IRON, n=12)
         tk = sl["truck_in"]
         a, b = sl["transoms"]["rear"]
@@ -2103,7 +2105,7 @@ SHIP_MEETS = {
     ("ringbolt", "GunWall"): ("the gun deck's ringbolts driven into the side", 4.0),
     ("ringbolt", "BulwarkIn"): ("the carronades' ringbolts driven into the bulwark", 4.0),
     ("ringbolt", "GunDeck"): ("the train tackles' ringbolts driven into the gun deck", 3.0),
-    ("fighting_bolt", "SparDeck"): ("the fighting bolt driven down through the chock into the deck", 4.5),
+    ("fighting_bolt", "SparDeck"): ("the fighting bolt driven down through the chock into the deck's planks", 2.75),
     ("fighting_bolt", "Waterways"): ("the fighting bolt driven down through the chock and the waterway's inner edge "
                                      "into the deck (the period's way: guns_1797.json slide.chock), as deep in as its "
                                      "own thickness where the waterway is wide", 1.8),

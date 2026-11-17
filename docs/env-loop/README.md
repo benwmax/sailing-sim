@@ -66,9 +66,10 @@ decals and detail maps carry the rest. Ultra loads textures at full size, High a
    --after DIR --out sheet.jpg [--stations ...]`. This is the step that needs the PC or Mac.
 8. **Bean's look**: a one-page sheet at each track milestone; he says go, change or stop.
 
-Each track is cut into slices, one pull request each, with an independent review. Until the Nov 21 slice ships, only
-the cloud halves run: Tools and docs pull requests (each needs Bean's `bean-approved` label because it touches
-`Tools/`), nothing the game loads, no gate time.
+Each track is cut into slices, one pull request each, with an independent review. The cloud halves are Tools and docs
+pull requests (each needs Bean's `bean-approved` label because it touches `Tools/`). Since Nov 16 (Bean moved the slice
+to Dec 11) the tracks' game integration also lands before the slice, on the gate order in `docs/slice/README.md`;
+the feature freeze is Fri Nov 27 (the frigate's is Dec 8, the release Dec 11).
 
 ## The ten stations
 

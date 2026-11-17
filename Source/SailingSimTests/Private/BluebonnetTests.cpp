@@ -12,6 +12,9 @@
 #include "Waves.h"
 #include "UI/SailCatalog.h"
 #include "BoatPacks.h"
+#include "CrewMotion.h"
+#include "CrewPose.h"
+#include "SailboatPawn.h"
 #include "SailingSim.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
@@ -136,17 +139,95 @@ bool FSailingBluebonnetHullTest::RunTest(const FString&)
 }
 
 /**
+ * docs/jclass-upwind/: upwind in a breeze she was 12% under her estimate, held at 18 deg by the fleet's heeled drag. Her
+ * wave-making is read on her sailing length (her waves climbing her overhangs, by speed), her heeled drag is her own lines',
+ * and the boom swings on the build's gooseneck pin. Light air is about where it was; her beat in 12 kn stays under Ranger's
+ * 1937 record (7.26 kn VMG), the fastest J there was.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetUpwindTest, "SailingSim.Physics.BluebonnetUpwind", BluebonnetTestsLocal::Flags)
+bool FSailingBluebonnetUpwindTest::RunTest(const FString&)
+{
+	const TSharedPtr<FJsonObject> Sheet = BluebonnetTestsLocal::ReadSheet(*this);
+	if (!Sheet) return false;
+	const TSharedPtr<FJsonObject> Main = Sheet->GetObjectField(TEXT("rig"))->GetObjectField(TEXT("main"));
+	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
+
+	// The gooseneck: the boom's pin (slice 4's build, x 2.3508 at BoomZ), the clew and the area where the sheet has them.
+	const double SheetClew = Main->GetNumberField(TEXT("luff_x")) - Main->GetNumberField(TEXT("foot_chord"));
+	TestTrue(FString::Printf(TEXT("The gooseneck on the boom's pin (MainLuffX %.4f, build 2.3508)"), C.MainLuffX), FMath::Abs(C.MainLuffX - 2.3508) < 0.001);
+	TestTrue(FString::Printf(TEXT("... the clew where the sheet has it (%.3f, sheet %.3f)"), C.MainLuffX - C.MainFootChord, SheetClew),
+		FMath::Abs(C.MainLuffX - C.MainFootChord - SheetClew) < 0.001);
+	TestTrue(FString::Printf(TEXT("... the main's area kept (%.1f m^2, sheet %.1f)"), C.Main.TotalArea, Main->GetNumberField(TEXT("area_m2"))),
+		FMath::Abs(C.Main.TotalArea / Main->GetNumberField(TEXT("area_m2")) - 1.0) < 0.005);
+	TestTrue(TEXT("... its foot strip starting at the pin"), C.Main.Strips[0].LuffX < Main->GetNumberField(TEXT("luff_x")));
+
+	// Heeled drag from her lines; the fleet keeps its own.
+	const FBoatConfig J22 = FBoatConfig::J22();
+	TestEqual(TEXT("Her heeled friction (her lines: 0.6% more wetted area at 18 deg)"), C.HeelFrictionCoef, 0.02);
+	TestEqual(TEXT("Her heeled wave-making (her lines: 1.5% longer at 18 deg)"), C.HeelResiduaryCoef, 0.0);
+	TestTrue(TEXT("The J/22's heeled drag unchanged (0.4, 2.0)"), J22.HeelFrictionCoef == 0.4 && J22.HeelResiduaryCoef == 2.0);
+
+	// Her wave-making on her sailing length: about the sheet's in light air, much less fast, never falling with speed.
+	TArray<TPair<double, double>> Rest;
+	for (const TSharedPtr<FJsonValue>& Row : Sheet->GetObjectField(TEXT("resistance"))->GetArrayField(TEXT("residuary")))
+	{
+		const TArray<TSharedPtr<FJsonValue>>& P = Row->AsArray();
+		Rest.Add({ P[0]->AsNumber(), P[1]->AsNumber() });
+	}
+	auto SheetAt = [&Rest](double Fn)
+	{
+		for (int32 I = 1; I < Rest.Num(); ++I)
+			if (Fn <= Rest[I].Key) return Rest[I - 1].Value + (Rest[I].Value - Rest[I - 1].Value) * (Fn - Rest[I - 1].Key) / (Rest[I].Key - Rest[I - 1].Key);
+		return Rest.Last().Value;
+	};
+	auto HerAt = [&C](double Fn)
+	{
+		for (size_t I = 1; I < C.Residuary.size(); ++I)
+			if (Fn <= C.Residuary[I].first)
+				return C.Residuary[I - 1].second + (C.Residuary[I].second - C.Residuary[I - 1].second) * (Fn - C.Residuary[I - 1].first) / (C.Residuary[I].first - C.Residuary[I - 1].first);
+		return C.Residuary.back().second;
+	};
+	double Last = 0.0;
+	for (const std::pair<double, double>& R : C.Residuary)
+	{
+		TestTrue(FString::Printf(TEXT("Wave-making never falls with speed (Fn %.3f)"), R.first), R.second >= Last);
+		Last = R.second;
+	}
+	for (const double Fn : { 0.1, 0.2, 0.3, 0.35, 0.4, 0.45 })
+	{
+		const double Ratio = HerAt(Fn) / SheetAt(Fn);
+		AddInfo(FString::Printf(TEXT("Fn %.2f: %.2f of the sheet's (slice 13's flat factor 0.6)"), Fn, Ratio));
+		if (Fn <= 0.1) TestTrue(TEXT("Light air: within 10% of the sheet's"), Ratio > 0.9 && Ratio <= 1.0);
+		if (Fn >= 0.4) TestTrue(FString::Printf(TEXT("Fn %.2f: her waves up her overhangs halve it or more"), Fn), Ratio > 0.2 && Ratio < 0.5);
+	}
+
+	// Sailing: close-hauled in 16 kn at her working heel and within 7% of her estimate (12.09, was 12% under at 18 deg);
+	// her beat in 12 kn near, not past, Ranger's record.
+	const FSteadyResult Close = SailSteady(16.0, 52.0, C, true, false);
+	AddInfo(FString::Printf(TEXT("16 kn at 52 deg: %.2f kn (estimate 12.09), heel %.1f"), Close.BoatSpeedKnots, Close.HeelDeg));
+	TestTrue(TEXT("16 kn at 52 deg within 7% of the estimate"), FMath::Abs(Close.BoatSpeedKnots / 12.09 - 1.0) < 0.07);
+	TestTrue(TEXT("... heeled 20 to 27 deg, as the Js sailed"), Close.HeelDeg > 20.0 && Close.HeelDeg < 27.0);
+	const FSteadyResult Beat = SailSteady(12.0, 34.0, C, true, false);
+	const double Vmg = Beat.BoatSpeedKnots * FMath::Cos(FMath::DegreesToRadians(34.0));
+	AddInfo(FString::Printf(TEXT("12 kn at 34 deg: %.2f kn, VMG %.2f (Ranger 1937: 7.26)"), Beat.BoatSpeedKnots, Vmg));
+	TestTrue(TEXT("Her beat in 12 kn 0.95 to 1.0 of Ranger's"), Vmg > 0.95 * 7.26 && Vmg <= 7.26);
+	return true;
+}
+
+/**
  * docs/jclass-14/: her slow roll (8 s free) swings the apparent wind high on her rig, and a trimmer who chased each swing
  * fed it: she rolled 1 to 30 deg every 10 s from 13 kn upwind. Trimmed over her roll (FBoatConfig::TrimRollSeconds) she
- * holds her heel within a few degrees, with the game's hands and with the polar's ideal ones, up to 24 kn.
+ * holds her heel within a few degrees, with the game's hands and with the polar's ideal ones, up to 24 kn. Since her
+ * sailing length (docs/jclass-upwind/) she is faster in a breeze, and at 8 s the game's hands swung her 19 to 27 deg in
+ * 20 to 22 kn; she is trimmed over 10 s, and 22 kn is checked too.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetRollTest, "SailingSim.Physics.BluebonnetRoll", BluebonnetTestsLocal::Flags)
 bool FSailingBluebonnetRollTest::RunTest(const FString&)
 {
 	using namespace BluebonnetTestsLocal;
 	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
-	TestEqual(TEXT("Her free roll period"), C.TrimRollSeconds, 8.0);
-	for (const double Tws : { 12.0, 16.0, 20.0, 24.0 })
+	TestEqual(TEXT("Trimmed over 10 s (her free roll period 8 s, a quarter more since her sailing length: docs/jclass-upwind/)"), C.TrimRollSeconds, 10.0);
+	for (const double Tws : { 12.0, 16.0, 20.0, 22.0, 24.0 })
 	{
 		for (const bool bHands : { true, false })
 		{
@@ -240,6 +321,31 @@ bool FSailingBluebonnetMeshTest::RunTest(const FString&)
 	for (const TCHAR* Name : { TEXT("MastBase"), TEXT("SpreaderTip_S"), TEXT("SpreaderTip_P") }) Socket(Mast, Name, P);
 	Socket(Boom, TEXT("Boom_Mainsheet"), P);
 	for (const TCHAR* Name : { TEXT("TillerEnd"), TEXT("RudderStock") }) Socket(Rudder, Name, P);
+	// J-Class 14: her wheel, a part of its own on its shaft (export_game.py, deck_bluebonnet.json steering.wheel: x -10.15 on
+	// the centreline, the rim 0.6 m in radius), turned about the line from the hull's WheelHub to WheelAxis.
+	UStaticMesh* Wheel = Load(TEXT("Wheel"));
+	FVector Hub = FVector::ZeroVector, Shaft = FVector::ZeroVector, Rim = FVector::ZeroVector;
+	if (TestNotNull(TEXT("SM_Bluebonnet_Wheel (export_game.py's wheel part, imported by import_boats.py)"), Wheel))
+	{
+		if (Socket(Hull, TEXT("WheelHub"), Hub))
+		{
+			TestTrue(FString::Printf(TEXT("The wheel's hub at x %.1f cm on the centreline (her deck plan -1015)"), Hub.X), FMath::Abs(Hub.X + 1015.0) < 2.0 && FMath::Abs(Hub.Y) < 1.0);
+		}
+		if (Socket(Hull, TEXT("WheelAxis"), Shaft))
+		{
+			const FVector Along = (Shaft - Hub).GetSafeNormal();
+			TestTrue(FString::Printf(TEXT("The wheel's shaft runs forward and level (%.3f, %.3f, %.3f)"), Along.X, Along.Y, Along.Z), Along.X > 0.99);
+		}
+		if (Socket(Wheel, TEXT("WheelRim"), Rim))
+		{
+			TestTrue(FString::Printf(TEXT("WheelRim straight up from the hub at the rim's radius (%.1f, %.1f, %.1f cm; 60)"), Rim.X, Rim.Y, Rim.Z),
+				FMath::Abs(Rim.Z - 60.0) < 1.0 && FMath::Abs(Rim.X) < 1.0 && FMath::Abs(Rim.Y) < 1.0);
+		}
+		// Only the wheel (and its shaft back to the box): not a piece of the deck turning with it.
+		const FBox B = Wheel->GetBoundingBox();
+		TestTrue(FString::Printf(TEXT("The wheel part is the wheel: %.0f by %.0f by %.0f cm about its hub"), B.GetSize().X, B.GetSize().Y, B.GetSize().Z),
+			B.GetSize().Y < 130.0 && B.GetSize().Z < 130.0 && B.Max.X < 45.0 && B.Min.X > -20.0);
+	}
 	FVector Step = FVector::ZeroVector, Pivot = FVector::ZeroVector, Axis = FVector::ZeroVector, Lead = FVector::ZeroVector, Hounds = FVector::ZeroVector;
 	if (Socket(Hull, TEXT("MastStep"), Step))
 	{
@@ -325,7 +431,9 @@ bool FSailingBluebonnetMeshTest::RunTest(const FString&)
 
 	// Nanite (the mast too: her bend is held at zero), within the 8-slot budget, every slot a boat material, the mast's
 	// bending slot where the game sets it.
-	for (UStaticMesh* Mesh : { Hull, Mast, Boom, Rudder })
+	TArray<UStaticMesh*> Parts = { Hull, Mast, Boom, Rudder };
+	if (Wheel) Parts.Add(Wheel);
+	for (UStaticMesh* Mesh : Parts)
 	{
 		TestTrue(FString::Printf(TEXT("%s is Nanite"), *Mesh->GetName()), Mesh->IsNaniteEnabled());
 		TestTrue(FString::Printf(TEXT("%s: %d material slots, at most 8"), *Mesh->GetName(), Mesh->GetStaticMaterials().Num()), Mesh->GetStaticMaterials().Num() <= 8);
@@ -337,6 +445,51 @@ bool FSailingBluebonnetMeshTest::RunTest(const FString&)
 	}
 	TestTrue(TEXT("The mast's Aluminium slot (the game's bend parameter) is MI_Boat_MastAluminium"), Mast->GetStaticMaterials().ContainsByPredicate([](const FStaticMaterial& M)
 		{ return M.MaterialSlotName == TEXT("Aluminium") && M.MaterialInterface && M.MaterialInterface->GetName() == TEXT("MI_Boat_MastAluminium"); }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingBluebonnetHelmReachTest, "SailingSim.Visual.BluebonnetHelmReach", BluebonnetTestsLocal::Flags)
+bool FSailingBluebonnetHelmReachTest::RunTest(const FString&)
+{
+	// J-Class 14: her helm sits where both hands reach her wheel's rim (BoatModelVisuals.cpp: each hand at the rim's point
+	// nearest its shoulder on the helm's side, the inboard 15-60 deg off the top, the outboard 60-110, held within 63 cm of
+	// the shoulder). Shoulders estimated from the placement: 0.5 m over the pelvis, 0.17 m either side across the facing.
+	// (At x -10.85, 1.1 m out, the outboard hand was 0.95 m from the rim and both stayed on the knees.)
+	const FBoatConfig C = FBoatConfig::Make(EBoatType::Bluebonnet);
+	const FVector Hub(-10.15, 0.0, CrewSeatSurfaceZ(C, -10.15, 0.0) + 0.33);  // deck_bluebonnet.json steering.wheel
+	constexpr double RimR = 0.6, Reach = 0.63;
+	for (const int32 Windward : { 1, -1 })
+	{
+		FCrewPlaceInput In;
+		In.Config = &C;
+		In.Index = C.CrewCount - 1;
+		In.WindwardSide = Windward;
+		In.CrewOffset = Windward * 1.0;
+		FCrewPlacement Pl;
+		CrewPlacement(In, Pl);
+		if (!TestTrue(TEXT("The last figure is the helm"), Pl.bHelm)) continue;
+		const double Side = Pl.Pelvis.Y < 0.0 ? -1.0 : 1.0;
+		TestTrue(FString::Printf(TEXT("The helm sits clear of the rim (%.2f m out; the rim 0.6)"), FMath::Abs(Pl.Pelvis.Y)), FMath::Abs(Pl.Pelvis.Y) > RimR + 0.25);
+		const FVector Facing = FRotator(0.0, Pl.Yaw, 0.0).Vector(), Right(-Facing.Y, Facing.X, 0.0);
+		for (const double Across : { -0.17, 0.17 })
+		{
+			const FVector Shoulder = Pl.Pelvis + Right * Across + FVector(0.0, 0.0, 0.5);
+			const bool bInboard = FMath::Abs(Shoulder.Y) < FMath::Abs(Pl.Pelvis.Y);
+			const FVector Rel = Shoulder - Hub;
+			const double Off = FMath::Atan2(Side * Rel.Y, Rel.Z);
+			const double A = bInboard ? FMath::Clamp(Off, FMath::DegreesToRadians(15.0), FMath::DegreesToRadians(60.0))
+				: FMath::Clamp(Off, FMath::DegreesToRadians(60.0), FMath::DegreesToRadians(110.0));
+			const FVector At = Hub + RimR * FVector(0.0, Side * FMath::Sin(A), FMath::Cos(A));
+			const double D = FVector::Dist(Shoulder, At);
+			TestTrue(FString::Printf(TEXT("Windward %d, %s hand: the rim %.2f m from the shoulder (reach %.2f)"), Windward, bInboard ? TEXT("inboard") : TEXT("outboard"), D, Reach), D < Reach);
+		}
+	}
+	// The wheel turns 1.5 turns to hard over, its top to starboard as the bow goes to starboard (a positive helm).
+	const double Hard = FMath::DegreesToRadians(C.MaxRudderAngleDeg);
+	TestTrue(TEXT("Hard over to starboard turns the wheel 1.5 turns, top to starboard (negative about the forward shaft)"),
+		FMath::IsNearlyEqual(ASailboatPawn::WheelTurnFor(Hard, C.MaxRudderAngleDeg), -3.0 * UE_DOUBLE_PI, 1e-9));
+	const FVector Top = FQuat(FVector::ForwardVector, ASailboatPawn::WheelTurnFor(0.1, C.MaxRudderAngleDeg)).RotateVector(FVector::UpVector);
+	TestTrue(TEXT("... a little helm to starboard takes the top to starboard"), Top.Y > 0.0);
 	return true;
 }
 
