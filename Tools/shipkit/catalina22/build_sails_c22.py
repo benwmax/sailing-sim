@@ -149,10 +149,12 @@ def rings_solid(m, rings, slot, closed=False, caps=True):
             q = [vs[i][k], vs[i][k1], vs[i1][k1], vs[i1][k]]
             c = (Vector(rings[i][k]) + Vector(rings[i][k1]) + Vector(rings[i1][k1]) + Vector(rings[i1][k])) / 4
             m.face(q, slot, tuple(c - (mids[i] + mids[i1]) / 2))
-    if caps and not closed:
-        ax = mids[-1] - mids[0]
-        m.polygon(rings[0], slot, tuple(-ax))
-        m.polygon(rings[-1], slot, tuple(ax))
+    if caps and not closed:                         # each end a fan from its ring's centre (slice 9: the light
+        ax = mids[-1] - mids[0]                       # copy's tool knows a tube by its fans, light.py find_tubes)
+        for ring, mid, out in ((vs[0], mids[0], -ax), (vs[-1], mids[-1], ax)):
+            c = m.v(tuple(mid))
+            for k in range(n):
+                m.face([c, ring[k], ring[(k + 1) % n]], slot, tuple(out), flat=True)
 
 
 def torus(m, c, axis, R, r, slot, n=14, k=6):
