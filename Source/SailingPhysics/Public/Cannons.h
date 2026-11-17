@@ -156,7 +156,7 @@ namespace Sailing
 		double WindTakeS = 1.5;          // a still puff takes the wind's speed in about this
 		double SmokeMaxAgeS = 180.0;
 		double MinPuffOpacity = 0.006;   // fainter than this: gone
-		double WaterLift = 0.4;          // keeps a puff's centre this many sigmas off the water
+		double WaterLift = 1.1;          // keeps a puff's centre about this many sigmas off the water (each its own: 0.6-1.4 x)
 		// The flash.
 		double FlashS = 0.075;           // the flame's whole life (primary flash and the secondary burning in the air)
 		double FlashLengthPerCbrtKg = 2.3;   // m of flame per cube root of the charge (kg): ~3.5 m for a long 24
@@ -175,7 +175,7 @@ namespace Sailing
 		double SmokeForwardScatter = 0.6;   // Henyey-Greenstein g toward the sun (fine particles: bright looking sunward)
 		double SmokeEdgeSoftness = 0.5;  // 0 hard cauliflower edges .. 1 a soft Gaussian (old smoke; fresh is always billowed)
 		double SmokeCoreGain = 2.5;      // a puff's core made this much denser than its Gaussian (its outer third is cut away)
-		double SmokeDepthFadeM = 1.5;    // m: fades into the water, hull and sails over this
+		double SmokeDepthFadeM = 3.0;    // m: fades into the water, hull and sails over this
 
 		/** Set a parameter by name (case-insensitive). False for an unknown name. */
 		bool Set(const std::string& Key, double Value);

@@ -938,7 +938,9 @@ namespace Sailing
 			// Growth: the jet's own spreading (about a tenth of the distance it runs through the air) and eddy diffusion.
 			const double K = P.Diffusivity * std::pow(std::max(S.Sigma, 0.1), P.DiffusivityPower);
 			S.Sigma = std::sqrt(S.Sigma * S.Sigma + 2.0 * K * Dt) + 0.1 * RelSpeed * Dt;
-			const double Floor = World.WaterZ(S.P.X, S.P.Y, Now) + P.WaterLift * S.Sigma;
+			// Each puff rides at its own height over the water (a shared multiple of sigma lined every puff's lower edge up
+			// into one straight cut along the water: the second stills).
+			const double Floor = World.WaterZ(S.P.X, S.P.Y, Now) + P.WaterLift * (0.6 + 0.8 * double(S.Seed)) * S.Sigma;
 			if (S.P.Z < Floor) { S.P.Z = Floor; S.V.Z = std::max(S.V.Z, 0.0); }
 			S.Glow *= GlowDecay;
 			for (const auto& L : Lit)

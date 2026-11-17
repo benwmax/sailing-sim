@@ -107,7 +107,7 @@ units (2^-14.1, the exposure's offset) as it does the flash lights' candela.
 | `WindTakeS` | 1.5 | s: a slow puff takes the wind's speed |
 | `SmokeMaxAgeS` | 180 | s: the oldest smoke kept |
 | `MinPuffOpacity` | 0.006 | a puff fainter than this is dropped |
-| `WaterLift` | 0.4 | a puff's centre stays this many sigmas over the water |
+| `WaterLift` | 1.1 | a puff's centre stays about this many sigmas over the water (each its own, 0.6-1.4 x) |
 | **Flash** | | |
 | `FlashS` | 0.075 | s: the muzzle flame's life |
 | `FlashLengthPerCbrtKg` | 2.3 | m of flame per cube root of the charge (kg) |
@@ -126,4 +126,4 @@ units (2^-14.1, the exposure's offset) as it does the flash lights' candela.
 | `SmokeForwardScatter` | 0.6 | Henyey-Greenstein g of the smoke toward the sun |
 | `SmokeEdgeSoftness` | 0.5 | 0 billowed edges .. 1 a soft Gaussian |
 | `SmokeCoreGain` | 2.5 | a puff's core this much denser than its Gaussian |
-| `SmokeDepthFadeM` | 1.5 | m: the smoke fades into surfaces over this |
+| `SmokeDepthFadeM` | 3 | m: the smoke fades into surfaces over this |
