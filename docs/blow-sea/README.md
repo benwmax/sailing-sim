@@ -18,16 +18,17 @@ Standalone (SailingPhysics, `RayHubbard.height`), at the report's spot (north 89
 
 The sea already followed the SWAN bake of the lake within 10% (`SailingSim.Physics.WaveGrowthSwan`), and it was already
 as steep as young chop gets (Hs over the peak wavelength 0.054). The textbook formulas don't call for a bigger sea
-either. So this is a look and feel choice, tuned to what sailors report seeing on the lake in a blow and to Bean's eye
-on the stills, not a correction the wave models ask for. The fitted laws stay as they are; the game builds the sea in a
+either. So this is a look and feel choice, tuned to what sailors report seeing on the lake in a blow, for Bean to judge
+on stills, not a correction the wave models ask for. The fitted laws stay as they are; the game builds the sea in a
 stronger wind once it blows.
 
 ## The change
 
 `FWaveField::BlowSeaKnots(mean knots, lift)`: below 20 kn the wind itself; from 20 kn it rises by the lift (0.15) over
 8 kn on a smoothstep and holds it. `ASailingGameMode::UpdateWeather` hands the lifted wind to `FWaveField::SetWind` and the
-sea map, and keeps the air's own wind beside it (`FWaveParams::AirKnots`). Offshore (ocean mask over 0.5: the Gulf, the
-prologue's gale) nothing is lifted: the FFT ocean is the sea there.
+sea map, and keeps the air's own wind beside it (`FWaveParams::AirKnots`). Offshore (the Gulf, the prologue's gale) nothing is
+lifted: the FFT ocean is the sea there; the lift fades out across the ocean mask's 0.3 to 0.7 band at the boat, so a
+harbour mouth has no step.
 
 What follows the sea's (lifted) wind: the long waves' height and period (the boat floats on the same field the renderer
 draws, so her motion, added resistance, the HUD's and the logbook's wave height and the visible sea grow together; AI
@@ -36,7 +37,11 @@ boats slow a little more above 20 kn), the short waves (`FWaveDetail`), the whit
 
 What keeps the air's wind (`AirWindKnots`): `WindParams.z`, against which the water materials read the wind maps' gusts
 (the cap gain, the chop's calm and the dark puff patches; lifting it would have cancelled the extra caps and paled the
-gusts), and the gale spray's onsets (torn crests 22, gale spray 24, spindrift 33 kn, as #703 and #707 tuned them).
+gusts), and the gale spray's onsets (torn crests 22, gale spray 24, spindrift 33 kn, as the storm look, #703, tuned them).
+
+Left as is: `M_WaterV4`'s far roughness term (Cox-Munk slopes standing in for the waves the mesh can't draw) reads
+`WindParams.z`, the air's wind, while the near short waves are built in the sea's: past the near detail the glint is
+about 10% smoother than the near water's at 26 kn. Changing it is a `make_materials.py` edit.
 
 At the report's spot, 26 kn from 157.5 deg (standalone; `SailingSim.Physics.BlowSea` holds the 26 kn row):
 
