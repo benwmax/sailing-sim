@@ -112,6 +112,7 @@ import deck  # noqa: E402
 import guns  # noqa: E402
 import gundeck  # noqa: E402
 import gungear  # noqa: E402
+import orlop  # noqa: E402
 import head  # noqa: E402
 import loft  # noqa: E402
 import rigging  # noqa: E402
@@ -223,6 +224,12 @@ PAINT = {
     "Fleece": ((0.70, 0.66, 0.58), 0.95, 0.0),
     "ClearGlass": ((0.95, 0.97, 0.96), 0.02, 0.0),
     "Dim": ((0.09, 0.07, 0.05), 0.9, 0.0),
+    "Ceiling": ((0.36, 0.26, 0.15), 0.8, 0.0),          # the hold's ceiling and the orlop's planks (slice 14)
+    "OrlopPlanks": ((0.52, 0.43, 0.31), 0.8, 0.0),
+    "Deal": ((0.62, 0.52, 0.37), 0.75, 0.0),            # the orlop's partitions, the pump well's and lockers' boards
+    "Shingle": ((0.33, 0.31, 0.28), 0.95, 0.0),
+    "CaskWood": ((0.40, 0.28, 0.16), 0.75, 0.0),
+    "Powder": ((0.30, 0.24, 0.17), 0.8, 0.0),           # the powder barrels' staves (their hoops copper)
 }
 DECK_PLANK = (0.42, 0.36, 0.27)       # holystoned pine (Blender's look only: the game draws the deck from the same UVs)
 DECK_PITCH = (0.012, 0.010, 0.008)    # the seams
@@ -480,6 +487,23 @@ for li in GD.lights:
     ld.use_shadow = li["cast_shadows"]
     lo = bpy.data.objects.new(li["name"], ld)
     lo.location = li["pos_m"]
+    SC.collection.objects.link(lo)
+# the orlop and the hold (slice 14, orlop.py and orlop_1797.json): the berth deck's beams overhead, the orlop's platforms,
+# rooms and cable tiers, the hold's ceiling, keelson, mast steps, bulkheads, magazines, ballast and casks; each part in
+# place; the light rooms' and the cockpit's lanterns (orlop.json's lights)
+OB = orlop.Orlop(SK, RIG, DK, GD).build()
+ORLOP = {}
+for name, (V, F, M, frame, uv) in OB.parts().items():
+    assert name not in SKIN and name not in DK.parts() and name not in GD.parts() and name not in DECOR, name
+    ORLOP[name] = make_deck_part(name, V, F, M, frame, uv)
+for li in OB.lights:
+    ld = bpy.data.lights.new(li["name"], "POINT")
+    ld.color = li["colour_rgb"]
+    ld.energy = GD.c["lanterns"]["light"]["blender_watts"]
+    ld.shadow_soft_size = 0.04
+    ld.use_shadow = li["cast_shadows"]
+    lo = bpy.data.objects.new(li["name"], ld)
+    lo.location = li["at_m"]
     SC.collection.objects.link(lo)
 DECK_STATIC = [(name, *DK.world(name)) for name in DK.parts()]       # for the running rigging's clearances
 DECK_STATIC = [(name, V, running.tris_of(F)) for name, V, F in DECK_STATIC]
@@ -1313,6 +1337,19 @@ def gundeck_room():
 
 
 GUNDECK_ROOM = gundeck_room()
+
+
+def orlop_room():
+    """the orlop's and the hold's parts (slice 14) against everything else in the ship and each other: the pairs whose
+    surfaces meet, less those that meet by design (orlop_1797.json's meets: a beam's end let into the ceiling, a
+    partition on the planks, a cask bedded in the shingle...) as deep as allowed. No standing check: the platforms and
+    the hold's floors are its own parts (the meets hold what stands on them)"""
+    objs = ship_tris()
+    return deck.room(objs, set(ORLOP), None, meets=meets_of(OB.c, "orlop_1797.json", sorted(objs)))
+
+
+ORLOP_ROOM = orlop_room()
+ORLOP_FOLDS = folds({n: world_tris(o) for n, o in ORLOP.items()})
 GEAR_FOLDS = folds({n: world_tris(o) for n, o in GEAR.items()})
 GUNDECK_FOLDS = folds({n: world_tris(o) for n, o in GUNDECK.items()})
 DECK_FOLDS = folds({n: world_tris(bpy.data.objects[n]) for n in DECK_OBJS})      # (the spar deck's, slice 7, the same)
@@ -1455,6 +1492,11 @@ stats["gundeck"] = dict(GD.info, gear=GG.info, lights=GD.lights, lid_open_deg=LI
                         triangles_below_note="the gun deck's parts, the implements, garlands, the lanyards' bushes, "
                                              "inside parts and cleats, and the tompions and aprons: what the game loads "
                                              "when below (the lanyards outside go with the lids)")
+OB_TRIS = {n: stats["objects"][n]["triangles"] for n in ORLOP}
+stats["orlop"] = dict(OB.info, lights=OB.lights, room=ORLOP_ROOM,
+                      folds={n: v["pairs"] for n, v in ORLOP_FOLDS.items()}, triangles=OB_TRIS,
+                      triangles_total=sum(OB_TRIS.values()), budget_triangles=OB.c["budget_triangles"],
+                      share_of_budget=round(sum(OB_TRIS.values()) / OB.c["budget_triangles"], 3))
 json.dump(stats, open(os.path.join(OUT, "build.json"), "w"), indent=1, default=str)
 SAILS_NOTE = (
     "the sails (docs/shipkit-5): each sail's objects, one per state (Set, Clewed, Furled: show one, hide the others) and "
@@ -1582,6 +1624,11 @@ GD_GAME = dict(GD.info, lights=GD.lights, light_budget=GD.c["lanterns"]["light_b
                        for n, m, Mx, cn in GG.instances()])
 json.dump(dict({"note": GUNDECK_NOTE}, **GD_GAME), open(os.path.join(OUT, "gundeck.json"), "w"), indent=1,
           default=str)
+ORLOP_NOTE = ("the orlop and the hold (docs/shipkit-14): every part in place in the ship's frame; lights, the light rooms' "
+              "and the cockpit's lanterns (a warm point light each); mast_heels, where each lower mast bears on the "
+              "keelson; heights_m, the decks' and the hold's heights amidships")
+json.dump(dict({"note": ORLOP_NOTE}, **OB.info, lights=OB.lights, parts=sorted(ORLOP)),
+          open(os.path.join(OUT, "orlop.json"), "w"), indent=1, default=str)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
     raise SystemExit("the running rigging fouls the ship, the sails or itself (build.json running.room): " +
@@ -1660,6 +1707,17 @@ GEAR_FOLDED = {n: v for n, v in list(GEAR_FOLDS.items()) + list(GUNDECK_FOLDS.it
 if GEAR_FOLDED:
     raise SystemExit("a part of either deck or a piece of the guns' gear crosses itself (build.json gundeck.folds, "
                      "deck.folds): " + json.dumps(GEAR_FOLDED))
+if ORLOP_ROOM["meet"]:
+    raise SystemExit("the orlop's or the hold's parts meet the ship or each other (build.json orlop.room): " +
+                     json.dumps(ORLOP_ROOM["meet"][:30]))
+ORLOP_UNMET = unmet(OB.c, ORLOP_ROOM["by_design"])
+if ORLOP_UNMET:
+    raise SystemExit("a designed contact of the orlop's or the hold's parts no longer meets: a part hangs clear of what "
+                     "holds it (orlop_1797.json meets, build.json orlop.room): " + json.dumps(ORLOP_UNMET))
+ORLOP_FOLDED = {n: v for n, v in ORLOP_FOLDS.items() if v["pairs"]}
+if ORLOP_FOLDED:
+    raise SystemExit("a part of the orlop or the hold crosses itself (build.json orlop.folds): " +
+                     json.dumps(ORLOP_FOLDED))
 if GD.info["layout_close"]:
     raise SystemExit("two of the gun deck's fittings stand closer in plan than 0.15 m (build.json "
                      "gundeck.layout_close): " + json.dumps(GD.info["layout_close"]))

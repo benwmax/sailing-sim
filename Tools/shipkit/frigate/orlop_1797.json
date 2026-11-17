@@ -3,7 +3,8 @@
  "sources": {
   "orlop_1849": "NARA 75841362, 'Orlop Decks of the U.S. Frigate Constitution', Navy Yard Boston, May 1849, scale four feet to the inch (public domain; Commons' 3840 px rendering, measured only, never committed): stern on the left, starboard at the bottom. The after platform (light room, filling room, passage, bread rooms, the cockpit, the spirit room and after hatches, state rooms, store rooms, the slop room, the captain's store room, the dispensary), the open middle (the pumps and main mast in a casing, shot and chain lockers on the middle line, the cable tiers either side over the water in the hold, its beams drawn across) and the fore platform (coal and sand, the sail rooms, the general store room and its counter, the racks for stores, the fore mast, the scuttles to the light room, the magazine and the block room, the master's store room, marine clothing, the paint room)",
   "hold_1849": "NARA 75841358, 'Magazines and Hold of the U.S. Frigate Constitution', the same set and scale: the bread room, light room, passage and after magazine aft, the shell rooms and the spirit room, the main hold's water (numbered iron tanks by then) round the pump well, the main mast, the shot lockers and chain lockers, the forward magazine with its light room and passage, the fore peak and block room",
-  "period": "estimate: the period's practice for an American frigate of the 1790s where neither drawing shows a part, and where 1849 differs from 1797: water in casks (the iron tanks came in the 1810s), the anchor cables hemp (chain came in the 1820s and 30s, so the 1849 chain lockers are a spare cable's and the hawsers' tiers), no shell rooms (no shells in 1797: they are store rooms), no coal (the coal and sand room keeps sand for the decks), and the shingle ballast over iron pigs"
+  "period": "estimate: the period's practice for an American frigate of the 1790s where neither drawing shows a part, and where 1849 differs from 1797: water in casks (the iron tanks came in the 1810s), the anchor cables hemp (chain came in the 1820s and 30s, so the 1849 chain lockers are a spare cable's and the hawsers' tiers), no shell rooms (no shells in 1797: they are store rooms), no coal (the coal and sand room keeps sand for the decks), and the shingle ballast over iron pigs",
+  "midship_1926": "NARA 75841385, 'U.S. Frigate Constitution, Midship Section, looking forward', Navy Yard Boston, 1926 (public domain; Commons' 3840 px rendering, measured only, never committed): the decks' heights, the keelson and the ceiling at midships"
  },
  "registration": {
   "note": "each plan's 3840 px rendering, stern on the left, starboard at the bottom, carried to the ship by the masts as the gun deck's plan is (gundeck_1797.json): between the main and fore masts an item keeps its share of the way from one to the other, aft of the main mast and forward of the fore mast its distance from the mast at the plan's scale. The masts are where each one's axis passes the orlop's top (orlop) or the ceiling's top at the keelson (hold). The scales are the written sizes' (orlop: the bread room's 16 ft 3 in, the light room's 10 ft 0 in and the bread room's 12 ft 3 in across, 19.6 to 19.7 px a foot; hold: the forward light room's 17 ft 2 in and the magazine's 23 ft 4 in): the renderings differ, the sheets being scanned at different widths",
@@ -25,14 +26,15 @@
   }
  },
  "heights": {
-  "note": "the decks' heights at midships, all estimate until the midship section (NARA 75841385) is read: the berth deck's top from the berth deck slice (13) when it lands, until then the gun deck's well floor (gundeck_1797.json wells: 6 ft 10 in under the gun deck's top); the orlop's top under it by orlop_below_berth_ft, following the berth deck's sheer (each deck parallel to the one above it); the keelson's top 3 ft over the rabbet (spars_1795.json step: the masts step on it); the ceiling's inside face 16 in in from the moulded surface (the gun deck's wall: frames and ceiling, specs_1795.json inside), never lower than the floor heads' flat, floor_over_rabbet_in over the rabbet, beside the keelson",
-  "berth_below_gun_ft": 6.8333,
-  "orlop_below_berth_ft": 6.8333,
-  "keelson_over_rabbet_ft": 3.0,
-  "floor_over_rabbet_in": 22.0,
+  "note": "the decks' heights at midships from the 1926 midship section (sources midship_1926: scaled by its 22 ft 3 in half breadth outside the plank, its gun deck to rabbet 7.25 m against our lines' 7.37 m): the berth deck's top 7 ft 2 in under the gun deck's top until the berth deck slice (13) hands over its line, following the gun deck's sheer; the orlop's top 6 ft 4 in under the berth deck's (each deck parallel to the one above it); the ceiling beside the keelson (the limber strake's top) 33 in over the rabbet, rising over the deadwood in the ends; the keelson's top 4 ft over the rabbet (the 1926 section's keelson with its rider stands 5 ft: the rider is later work); the ceiling's inside face 16 in in from the moulded surface (the gun deck's wall: frames and ceiling, specs_1795.json inside)",
+  "berth_below_gun_ft": 7.1667,
+  "orlop_below_berth_ft": 6.3333,
+  "keelson_over_rabbet_ft": 4.0,
+  "floor_over_rabbet_in": 33.0,
   "ceiling_in_from_moulded_in": 16.0,
   "depth_of_hold_check_ft": 13.5,
-  "depth_of_hold_note": "Humphreys' 1794 proportions give the 44s a depth of hold of 13 ft 6 in (the ceiling at midships to the top of the lower deck's beams): build.json orlop.depth_of_hold_ft reports ours against it"
+  "depth_of_hold_note": "Humphreys' 1794 proportions give the 44s a depth of hold of 13 ft 6 in, the 1926 section 13 ft 10 in (the berth deck's top to the ceiling beside the keelson): build.json orlop.depth_of_hold_ft reports ours against them",
+  "depth_of_hold_section_ft": 13.83
  },
  "ceiling": {
   "note": "the hold's ceiling: the inside planking from the limber strake beside the keelson up to the orlop's clamp (the berth deck's own spirketting and clamp above it are slice 13's): oak 4 in thick, in strakes of 12 in with a seam between each (estimate), running from the after bread room's bulkhead to the fore peak's. Aft and forward of those the run and the bow close in to the deadwood: the after bread room and the fore peak are floored at the floor heads' flat",
@@ -44,9 +46,9 @@
   "end_fine_m": 4.0
  },
  "keelson": {
-  "note": "oak, 15 in sided and 15 in moulded on the floors (estimate: the period's proportion, a little over the keel's 14 in), scarphed, with a step for each mast: a chock on it with a mortise for the heel's tenon (spars.py: the tenon square, 0.3 of the mast's diameter, 0.25 of it long). Its top 3 ft over the rabbet (spars_1795.json step)",
-  "sided_in": 15.0,
-  "moulded_in": 15.0,
+  "note": "oak, 18 in sided and moulded on the floors (the 1926 midship section's keelson, 18 by 18 in), scarphed, with a step for each mast: two chocks and two cheeks on it round a mortise for the heel's tenon (spars.py: the tenon square, 0.3 of the mast's diameter, 0.25 of it long). Its top 4 ft over the rabbet amidships, 15 in over the ceiling beside it, riding up over the deadwood in the ends with the floors; each lower mast steps on it (mast_heels in orlop.json)",
+  "sided_in": 18.0,
+  "moulded_in": 18.0,
   "step_long_in": 36.0,
   "step_high_of_d": 0.25,
   "step_wide_in": 24.0
@@ -493,13 +495,13 @@
    ]
   },
   "ballast": {
-   "note": "iron pigs (3 ft by 6 in by 6 in, about 300 lb) laid fore and aft on the ceiling either side of the keelson, then shingle over them to the ground tier's bilge, levelled (estimate: the period's stowage)",
+   "note": "iron pigs (3 ft by 6 in by 6 in, about 300 lb) laid fore and aft on the ceiling either side of the keelson, then shingle over them 12 in deep, levelled to bed the ground tier (estimate: the period's stowage; two tiers of casks on it clear the orlop's beams)",
    "pig_in": [
     36.0,
     6.0,
     6.0
    ],
-   "shingle_over_ceiling_in": 18.0
+   "shingle_over_ceiling_in": 12.0
   },
   "bulkheads_note": "hold plan x px: the after light room's fore side and the passage (4 ft) aft of the after magazine, which the mizzen passes through to its step on the keelson; the magazine's fore bulkhead (23 ft 4 in on); the spirit room; the main hold's after bulkhead; the fore magazine and its passage. The spirit room's fore bulkhead stands at 1203, not the plan's 1154.5: registered by the masts, the orlop plan's spirit room hatch reaches 2 ft past the hold plan's bulkhead, and the hatch and its ladder lead into the spirit room"
  },
@@ -516,7 +518,7 @@
      "Ceiling"
     ],
     "the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13)",
-    4.15
+    4.6
    ],
    [
     [
@@ -638,7 +640,7 @@
      "MiddleLine"
     ],
     "the pump well's and lockers' boards stand on the keelson",
-    0.95
+    1.55
    ],
    [
     [
@@ -662,7 +664,7 @@
      "Mast_Mizzen"
     ],
     "each lower mast's heel in its step on the keelson (until slice 13 moves the fore and mizzen heels onto mast_heels.json's points, slice 12's heels stand lower)",
-    8.6
+    9.75
    ],
    [
     [
@@ -743,6 +745,16 @@
     ],
     "the ground tier's casks bedded in the shingle",
     0.25
+   ],
+   [
+    [
+     "Keelson"
+    ],
+    [
+     "Shingle"
+    ],
+    "the keelson stands 3 in proud of the shingle laid either side of it",
+    5.2
    ]
   ]
  },

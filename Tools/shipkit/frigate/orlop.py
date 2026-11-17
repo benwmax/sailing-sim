@@ -58,11 +58,13 @@ def slab(part, A, B, mat, mat_back=None):
 
 
 def flat_slab(part, outline, holes, z_top, thick, step, mat, mat_under=None):
-    """a flat plate: its top over the outline (n, 2) less the holes at z_top, its underside thick under it, the edges of
+    """a plate: its top over the outline (n, 2) less the holes at z_top (a height, or a function of x), its underside thick
+    under it, the edges of
     the outline and of each hole walled (one welded vertex set: cdt keeps the outline's and holes' points first)"""
     P2, T = cdt(outline, holes, step)
     N = len(P2)
-    V = np.concatenate([np.column_stack([P2, np.full(N, z_top)]), np.column_stack([P2, np.full(N, z_top - thick)])])
+    zt = z_top(P2[:, 0]) if callable(z_top) else np.full(N, z_top)
+    V = np.concatenate([np.column_stack([P2, zt]), np.column_stack([P2, zt - thick])])
     F = [tuple(int(i) for i in t) for t in T]
     Fu = [tuple(N + int(i) for i in t[::-1]) for t in T]
     W, k0 = [], 0
@@ -722,14 +724,16 @@ class Orlop:
         """water casks in two tiers either side of the middle line through the main hold, end on fore and aft on the
         shingle, as many as fit inside the side"""
         cs = self.c["hold"]["casks"]
+        o = self.c["orlop"]
         gap = cs["gap_in"] * IN
         x0 = self.hold_x["main_hold_aft"] + 0.15
         x1 = self.hold_x["fore_magazine_aft"] - 0.15
         hw = self.c["middle"]["half_width_px"] / self.c["registration"]["orlop"]["px_per_ft"] * FT + 2.5 * IN
         n = 0
-        zsh = self.shingle_z
         for tier, (L_, D, Dh) in enumerate((cs["leaguer_m"], cs["butt_m"])):
-            zc = zsh + D / 2 if tier == 0 else zsh + cs["leaguer_m"][1] + D / 2 - 0.12 * D
+            def zc_at(x):
+                zsh = float(np.max(self.shingle_z(np.array([x - L_ / 2, x + L_ / 2]))))
+                return zsh + D / 2 if tier == 0 else zsh + cs["leaguer_m"][1] + D / 2 - 0.12 * D
             yoff = 0.0 if tier == 0 else 0.5 * (cs["leaguer_m"][1] + gap)
             for sgn in (1.0, -1.0):
                 y = hw + D / 2 + yoff
@@ -740,7 +744,9 @@ class Orlop:
                         if self.in_middle(x, L_):
                             x += L_ + gap
                             continue
-                        if self.fits(x, y, zc, L_, D):
+                        zc = zc_at(x)
+                        z_under = float(self.z_orlop(x)) - (o["plank_in"] + o["beam_moulded_in"] + 1.0) * IN
+                        if zc + D / 2 < z_under and self.fits(x, y, zc, L_, D):
                             cask(part, (x, sgn * y, zc), EX, L_, D, Dh, "CaskWood", "Iron")
                             n += 1
                             placed = True
@@ -756,15 +762,15 @@ class Orlop:
         return False
 
     def shingle(self, part):
-        """the shingle ballast levelled over the iron pigs through the main hold, from bulkhead to bulkhead"""
+        """the shingle ballast over the iron pigs through the main hold, from bulkhead to bulkhead, its top a set depth over
+        the ceiling beside the keelson (levelled across, following the floor fore and aft)"""
         b = self.c["hold"]["ballast"]
         x0 = self.hold_x["main_hold_aft"] + 1.6 * IN
         x1 = self.hold_x["fore_magazine_aft"] - 1.6 * IN
-        z = float(max(self.z_floor(x0)[0], self.z_floor(x1)[0], self.z_floor(0.5 * (x0 + x1))[0])) + \
-            b["shingle_over_ceiling_in"] * IN
-        self.shingle_z = z
+        dz = b["shingle_over_ceiling_in"] * IN
+        self.shingle_z = lambda x: self.z_floor(x) + dz            # noqa: E731
         xs = np.linspace(x0, x1, 60)
-        ys = self.ceil_y(xs, np.full(60, z)) - 0.1 * IN
+        ys = self.ceil_y(xs, self.shingle_z(xs)) - 0.1 * IN
         outline = np.concatenate([np.column_stack([xs, -ys]), np.column_stack([xs[::-1], ys[::-1]])])
         hw = self.c["middle"]["half_width_px"] / self.c["registration"]["orlop"]["px_per_ft"] * FT
         runs = []
@@ -775,7 +781,7 @@ class Orlop:
                 runs.append([a, b])
         holes = [densify(rect2(0.5 * (a + b), 0.0, b - a, 2 * hw), 0.4) for a, b in runs if x0 + 0.1 < a and b < x1 - 0.1]
         # the shingle's top only (its body is down to the ceiling, unseen): a plate 2 in deep
-        flat_slab(part, outline, holes, z, 2.0 * IN, 0.4, "Shingle")
+        flat_slab(part, outline, holes, self.shingle_z, 2.0 * IN, 0.4, "Shingle")
 
     # --- ladders down into the hold --------------------------------------------------------------------------------
     def ladders(self, part):
@@ -831,7 +837,7 @@ class Orlop:
                     rad = rad[::-1]
                 ph = 0.7 * k + 0.4 * layer
                 P = np.column_stack([x + rad * np.cos(t + ph), yc + rad * np.sin(t + ph), np.full(len(t), z)])
-                tube(part, P, r, "Hemp", n=8)
+                tube(part, P, r, "Cable", n=8)
                 n_ += 1
         self.info["cable_coils"] = {"spirals": n_, "rope_r_m": round(r, 4)}
 
@@ -891,7 +897,7 @@ class Orlop:
         self.info["heights_m"] = {"berth_top": round(float(self.z_berth(0.0)), 3), "orlop_top": round(zm, 3),
                                   "keelson_top": round(float(self.z_keelson(0.0)[0]), 3),
                                   "floor_heads": round(float(self.z_floor(0.0)[0]), 3),
-                                  "shingle": round(self.shingle_z, 3)}
+                                  "shingle": round(float(self.shingle_z(0.0)[0]), 3)}
         # Humphreys' depth of hold: the ceiling at midships (the floor heads) to the berth deck's beams' tops
         self.info["depth_of_hold_ft"] = round((float(self.z_berth(0.0)) - self.berth_plank() -
                                                float(self.z_floor(0.0)[0])) / FT, 2)
