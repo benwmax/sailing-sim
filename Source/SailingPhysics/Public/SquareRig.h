@@ -79,10 +79,24 @@ namespace Sailing
 		double FurlSeconds = 90.0;       // from clewed up to furled (information only: no force either way)
 
 		bool Has() const { return !Sails.empty(); }
+		// Defined here, not in SquareRig.cpp: FSquareRig is not exported, and the tests module calls these across the DLL.
 		/** The lowest (largest) sail on a mast, whose yard the mast's brace angle names (its index, or -1). */
-		int LowestOn(int Mast) const;
+		int LowestOn(int Mast) const
+		{
+			int Best = -1;
+			for (int I = 0; I < int(Sails.size()); ++I)
+			{
+				if (Sails[I].Mast == Mast && (Best < 0 || Sails[I].FootZ < Sails[Best].FootZ)) Best = I;
+			}
+			return Best;
+		}
 		/** The mast's whole square canvas, set as cut (m^2). */
-		double AreaOn(int Mast) const;
+		double AreaOn(int Mast) const
+		{
+			double A = 0.0;
+			for (const FSquareSailDef& S : Sails) if (S.Mast == Mast) A += S.Area;
+			return A;
+		}
 	};
 
 	/**

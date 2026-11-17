@@ -4,29 +4,6 @@
 
 namespace Sailing
 {
-	int FSquareRig::LowestOn(int Mast) const
-	{
-		int Best = -1;
-		for (int I = 0; I < int(Sails.size()); ++I)
-		{
-			if (Sails[I].Mast == Mast && (Best < 0 || Sails[I].FootZ < Sails[Best].FootZ))
-			{
-				Best = I;
-			}
-		}
-		return Best;
-	}
-
-	double FSquareRig::AreaOn(int Mast) const
-	{
-		double A = 0.0;
-		for (const FSquareSailDef& S : Sails)
-		{
-			if (S.Mast == Mast) A += S.Area;
-		}
-		return A;
-	}
-
 	double SquareStallAlpha(const FSquareRig& Rig)
 	{
 		const double AR = Rig.AspectRatio;
