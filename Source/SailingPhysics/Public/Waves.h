@@ -79,6 +79,17 @@ namespace Sailing
 		 * wind, Plant 1982); 8 T^2 puts the 2.5 s peak of a 12 kn lake near the old 40 s, clamped to 5..300 s.
 		 */
 		static double GrowthSeconds(double PeriodSeconds);
+		/**
+		 * Blow sea (feedback #27, docs/blow-sea/): the wind the game builds a lake or bay sea in, for a mean sea wind in knots.
+		 * Under BlowFromKnots it is the wind itself (the SWAN-fitted laws stand); from there it rises by Lift (a share) over
+		 * BlowRampKnots on a smoothstep and holds it: the default 0.15 builds a 26 kn sea as at 29.3 kn (Hs +22%: the CEM
+		 * straight-line fetch's height at the report's spot) and a 28 kn+ sea at 1.15 times the wind (Hs +26%). The polars,
+		 * reference checks, sea trials and SWAN tests never call it.
+		 */
+		static double BlowSeaKnots(double MeanKnots, double Lift = kBlowLift);
+		static constexpr double kBlowLift = 0.15;
+		static constexpr double BlowFromKnots = 20.0;
+		static constexpr double BlowRampKnots = 8.0;
 		/** Period at the centre of a band (s), for tests. */
 		double BandPeriod(int Band) const { return 1.0 / BandFrequency[Band]; }
 		/** Jumps straight to the target sea state. */

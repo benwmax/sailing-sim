@@ -182,6 +182,9 @@ private:
 	/** The terrain the derived grids are built on: the window on a streamed world, the whole grid otherwise (a copy). */
 	Sailing::FLakeTerrain DerivedTerrain(double CenterX, double CenterY) const;
 	void UpdateWeather(float DeltaSeconds);
+	/** Feedback #27 (docs/blow-sea/): the blow sea's lift, FWaveField::kBlowLift unless -SailingBlowSea=<lift> or
+	 *  -SailingClassicBlowSea (0) says otherwise; read again after a command-line swap. */
+	static double BlowSeaLift();
 	void UpdateOcean(double WindKnots, double WindFromDeg);
 	TSharedPtr<Sailing::FOcean> Ocean;
 	bool bOceanConfigured = false;

@@ -938,6 +938,21 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 }
 
+double ASailingGameMode::BlowSeaLift()
+{
+	static uint32 Gen = MAX_uint32;
+	static double Lift = Sailing::FWaveField::kBlowLift;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Lift = Sailing::FWaveField::kBlowLift;
+		float Arg = 0.f;
+		if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingBlowSea="), Arg)) Lift = FMath::Clamp(double(Arg), 0.0, 0.5);
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicBlowSea"))) Lift = 0.0;
+	}
+	return Lift;
+}
+
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
 	const bool bEasy = USailingSettings::Get()->IsEasy();
@@ -1049,6 +1064,10 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
+	// Feedback #27 (docs/blow-sea/): from 20 kn the lake's (and the bay's) sea is built in a stronger wind than the mean
+	// (FWaveField::BlowSeaKnots), so a blow's chop stands taller, a little steeper and caps more. After the ocean: the
+	// Gulf's FFT sea keeps its own wind. -SailingBlowSea=<lift> (0 is off) and -SailingClassicBlowSea compare.
+	WaveParams.WindSpeedKnots = Sailing::FWaveField::BlowSeaKnots(WaveParams.WindSpeedKnots, BlowSeaLift());
 	// The wind lays the components' directions first (and, after a turn past 45 deg, again: in phase at the boat), then
 	// the sea map reads them.
 	WaveParams.HoldX = BoatPos.X;

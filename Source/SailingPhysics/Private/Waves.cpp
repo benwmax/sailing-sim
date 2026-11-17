@@ -343,6 +343,19 @@ namespace Sailing
 		for (double& A : TargetAmplitude) A *= Scale;
 	}
 
+	double FWaveField::BlowSeaKnots(double MeanKnots, double Lift)
+	{
+		// Feedback #27 (Ray Hubbard, 26 kn gusting 36 in a thunderstorm): the sea read small and soft against what sailors
+		// see on the lake in a blow. The laws here follow the SWAN bake (a steady wind, Saville's fetch over +/-45 deg) to
+		// within 10%; the CEM's straight-line fetch, which the reference checks' 8 mile case uses, gives 22% more at the
+		// report's spot (2.7 km straight upwind, 1.8 km effective), and a gusty blow's sea answers the wind's stress (U^2),
+		// which its gusts raise past the mean's. Rather than move the fitted laws, the game builds the sea in a stronger wind
+		// once it blows: height, period, caps and spray all follow from one wind, so the sea stays a sea of some real wind
+		// (Hs ~ U^1.66, Tp by Toba: a little steeper, as a harder blow's chop is). Below BlowFromKnots nothing changes.
+		if (!(MeanKnots > BlowFromKnots) || Lift <= 0.0) return MeanKnots;
+		return MeanKnots * (1.0 + Lift * SmoothStep(BlowFromKnots, BlowFromKnots + BlowRampKnots, MeanKnots));
+	}
+
 	double FWaveField::GrowthSeconds(double PeriodSeconds)
 	{
 		return Clamp(8.0 * PeriodSeconds * PeriodSeconds, 5.0, 300.0);
