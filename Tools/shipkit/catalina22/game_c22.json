@@ -81,9 +81,9 @@
     }
   },
   "paint_lines": {
-    "note": "C22_Hull is one gelcoat (GelcoatHull) until slice 8's textures: it is cut at these heights over the design waterline and each face takes the fleet's paint slot (build_fleet.py's lines for the keelboats), so the livery (Inputs/g3/boat-catalogue.json) paints her topsides, boot stripe and bottom.",
+    "note": "C22_Hull is cut at these heights over the design waterline and each face takes the fleet's paint slot (build_fleet.py's lines for the keelboats), so the livery (Inputs/g3/boat-catalogue.json) paints her topsides, boot stripe and bottom. The antifouling line is the build's own (slice 9 cuts C22_Hull at +0.04 into Topsides and Antifouling; before it the hull was one GelcoatHull), so the two agree.",
     "object": "C22_Hull",
-    "antifouling_top": 0.05,
+    "antifouling_top": 0.04,
     "bootstripe_top": 0.11
   },
   "materials": {
@@ -126,10 +126,11 @@
     "C22_Sail_*": "every sail and its cover: the game draws the sails as cloth from the physics' strips (FSailCloth)",
     "C22_PopTopRaised, C22_LidRailsRaised": "the pop-top up: its lid sits above the boom, so it can only go up in the game with the boom lifted (a later state switch)",
     "C22_KeelUp, C22_RudderUp, C22_KeelDown, C22_RudderDown": "the keel raised and the rudder kicked up: alternative states for a later switch",
-    "C22_Interior_TableDown, C22_Interior_GalleyOut": "the cabin's other states"
+    "C22_Interior_TableDown, C22_Interior_GalleyOut": "the cabin's other states",
+    "light_of": "the build's light twins (slice 9: objects carrying a light_of property, decimated copies of a full object); the export skips them, so each part is made of the full objects only"
   },
   "sockets": {
-    "note": "Added to the build's c22_sockets.json (rig and hardware), whose owners SM_Catalina22_* are renamed SM_C22Hero_*. Slice 9 writes the final sockets; these follow keel_c22.json and rig_c22.json so the game's tiller, crew and boom have their points meanwhile.",
+    "note": "Added to the build's c22_sockets.json (rig and hardware), whose owners SM_Catalina22_* are renamed SM_C22Hero_*. Slice 9 writes the final sockets; these follow keel_c22.json and rig_c22.json so the game's tiller, crew and boom have their points meanwhile. Every socket of the build passes through, so slice 9's JibTailer_S/P and JibTailRest_S/P (the trimmer's tail hand and where the tail rests) reach the hull without a change here; they are not required, since builds before slice 9 lack them.",
     "RudderPivot": {
       "part": "SM_C22Hero_Hull",
       "from": "keel_c22.json rudder.pivot_x at z 0",

@@ -301,7 +301,7 @@ def main():
     for name, part in G["parts"].items():
         if "objects_prefix" in part:
             names = sorted(o.name for o in O if o.type == "MESH" and o.name.startswith(part["objects_prefix"])
-                           and o.name not in part.get("objects_skip", []))
+                           and o.name not in part.get("objects_skip", []) and "light_of" not in o)   # (slice 9's light twins)
         else:
             names = [n for n in part["objects"] if n in O or not part.get("optional")]
         absent = [n for n in names if n not in O]
