@@ -25,7 +25,7 @@
 #include "BoatLivery.h"
 #include "BoatPacks.h"
 #include "HullName.h"
-#include "Engine/TextureRenderTarget2D.h"
+#include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "SailingSim.h"
 #include "SailingGameMode.h"
@@ -627,24 +627,26 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		// Name on the hull (docs/skins): the skin's lettering, drawn once into a texture and laid on the quarters by the
 		// hull's material (HullName.h). No name, no renderer or a class without a place for one: nothing is set, and the
 		// material's NameColour stays at alpha 0.
-		HullNameTexture = nullptr;
 		FHullNamePlace NamePlace;
 		// -SailingHullName="<name>" letters one for stills, whatever the skin says.
 		FString NameText = bHasSkin ? Skin.HullName() : FString();
 		const FLinearColor NameInk = bHasSkin ? Skin.HullNameColour() : FBoatSkin().HullNameColour();
 		if (FString NameArg; FParse::Value(SailingArgs::Dev(), TEXT("SailingHullName="), NameArg, false)) NameText = FBoatSkin::CleanHullName(NameArg);
-		if (!bTrafficBoat && !bGhost && !NameText.IsEmpty())
+		if (bTrafficBoat || bGhost) NameText.Reset();
+		// (the texture is kept while the name is the same: drawing it stalls for a read-back, and the Customize screen
+		// rebuilds her on every change of the draft)
+		if (NameText.IsEmpty()) { HullNameTexture = nullptr; HullNameDrawn.Reset(); }
+		else if (!HullNameTexture || HullNameDrawn != NameText)
 		{
-			FVector2D NamePx(1.0, 1.0);
-			UTextureRenderTarget2D* NameTarget = SailingHullName::Draw(this, NameText, NamePx);
-			const bool bPlaced = SailingHullName::Place(int32(Boat.GetConfig().Type), float(NamePx.X / NamePx.Y), NamePlace);
-			if (NameTarget && bPlaced) HullNameTexture = NameTarget;
-			SAIL_LOG(Log, TEXT("Hull name \"%s\": texture %s (%.0f x %.0f px), place %s (aft %.1f, low %.1f, %.1f x %.1f cm), hull %s"), *NameText,
-				NameTarget ? TEXT("drawn") : TEXT("none"), NamePx.X, NamePx.Y, bPlaced ? TEXT("yes") : TEXT("no"),
+			HullNameTexture = SailingHullName::Draw(this, NameText, HullNamePx);
+			HullNameDrawn = HullNameTexture ? NameText : FString();
+		}
+		if (HullNameTexture && !SailingHullName::Place(int32(Boat.GetConfig().Type), float(HullNamePx.X / HullNamePx.Y), NamePlace)) HullNameTexture = nullptr;
+		if (HullNameTexture)
+		{
+			SAIL_LOG(Log, TEXT("Hull name \"%s\": %.0f x %.0f px at aft %.1f, low %.1f, %.1f x %.1f cm on %s"), *NameText, HullNamePx.X, HullNamePx.Y,
 				NamePlace.XAftCm, NamePlace.ZLowCm, NamePlace.LengthCm, NamePlace.HeightCm, *GetNameSafe(ModelHull->GetStaticMesh()));
 		}
-		// -SailingHullNameDebug: the place without the lettering (the material's default texture fills the rectangle).
-		const bool bNameBlock = HullNameTexture && FParse::Param(SailingArgs::Dev(), TEXT("SailingHullNameDebug"));
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
@@ -652,11 +654,7 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			if (!Mid) continue;
 			if (HullNameTexture)
 			{
-				if (!bNameBlock) Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
-				FLinearColor HasRect;
-				UTexture* HasTex = nullptr;
-				SAIL_LOG(Log, TEXT("Hull name: slot %d %s (%s): NameRect %s, NameTex %s"), I, *Slots[I].ToString(), *GetNameSafe(Mid->GetBaseMaterial()),
-					Mid->GetVectorParameterValue(FName(TEXT("NameRect")), HasRect) ? TEXT("yes") : TEXT("no"), Mid->GetTextureParameterValue(FName(TEXT("NameTex")), HasTex) ? TEXT("yes") : TEXT("no"));
+				Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
 				Mid->SetVectorParameterValue(TEXT("NameRect"), NamePlace.AsParam());
 				Mid->SetVectorParameterValue(TEXT("NameColour"), FLinearColor(NameInk.R, NameInk.G, NameInk.B, 1.f));
 			}
