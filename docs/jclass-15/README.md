@@ -17,7 +17,12 @@ varnished teak the J/22 tiller's WoodMahogany. This puts her own surfaces into t
 
 The new slots' colours are her build's: bronze sRGB 150 104 60 (`finish_bluebonnet.json`), manila 196 168 118 held to the
 Rope001 scan as `weathering.py` does (`standing_bluebonnet.json`), teak 124 70 32 (`deck_bluebonnet.json`), cotton 232 222 196
-(`sails_bluebonnet.json`) at the 0.77 the game draws white Dacron at. The gilt stays Brass. The slots are unpacked.
+(`sails_bluebonnet.json`) at the 0.77 the game draws white Dacron at. The gilt stays Brass. CastBronze, Manila and LaidTeak are unpacked (their own maps and the LaidDeck switch are per
+instance). VarnishedTeak goes into a new pack, `PackTrim` (`boat_packs.json`, `BoatPacks.h`), with the lenses' RedPlastic
+and WhitePlastic and the gilt's Brass: unpacked, they took her hull to 11 slots, over the boat budget's 8 (BluebonnetMesh
+failed in the boats gate at f491dab6). Her hull is now PackCanoe, PackDeck, PackFit, PackCanvas, PackTrim, LaidTeak,
+CastBronze and Manila, and the export stops on any part over 8. Other boats fold those three slots into PackTrim the next
+time they are exported.
 
 ## How
 

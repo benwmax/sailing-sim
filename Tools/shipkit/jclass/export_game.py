@@ -353,6 +353,8 @@ def export_part(ob, keep):
     maps = deck_maps(ob.data, ob.location)
     box_uvs(ob.data)
     slots = pack_slots(ob.data, keep=tuple(keep))
+    if len(slots) > 8:   # (the boat budget: SailingSim.Visual.BluebonnetMesh and BoatBudget hold every part to 8 slots)
+        raise SystemExit(f"{ob.name}: {len(slots)} material slots {slots}, at most 8: pack more (Tools/blender/boat_packs.json)")
     keep_deck_maps(ob.data, slots, maps)
     # (a flat plate like the transom is one n-gon: triangulated here, not by the importer's guess)
     tri = ob.modifiers.new("Triangulate", "TRIANGULATE")
