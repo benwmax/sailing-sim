@@ -1002,8 +1002,12 @@ void ASailboatPawn::BeginPlay()
 		// is (it had been flipped again by the port start's sign: TWA -60 with HoldTWA -60 tacked onto starboard).
 		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : (HoldTwa < 0.f ? double(HoldTwa) : HoldTwa * DemoFirstSign);
 		DemoPilot.MaxTiller = 0.8;
-		CameraYaw = bDemoTacks ? 150.f : 210.f;
-		CameraPitch = -14.f;
+		// (the demo's chase angle off her bow; a mounted camera keeps its own aim: slice 4's stills ran with this added)
+		if (!ChaseCamera::IsMounted(StartView))
+		{
+			CameraYaw = bDemoTacks ? 150.f : 210.f;
+			CameraPitch = -14.f;
+		}
 		float CrudeAt = -1.f;
 		if (!bTrafficBoat && FParse::Value(SailingArgs::Dev(), TEXT("SailingCrudeTackAt="), CrudeAt)) CrudeTackAt = CrudeAt;
 	}
