@@ -31,6 +31,7 @@ namespace Sailing
 		case EBoatType::Corsair880: return "Corsair 880";
 		case EBoatType::Lagoon42: return "Lagoon 42";
 		case EBoatType::Maxi: return "Maxi 100";
+		case EBoatType::Bluebonnet: return "Bluebonnet";
 		default: return "Boat";
 		}
 	}

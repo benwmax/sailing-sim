@@ -489,9 +489,11 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt"))) Paths.Add(FSoftObjectPath(TEXT("/Game/Boats/J22Hero/SM_J22H_TillerExt.SM_J22H_TillerExt")));
 		return Paths;
 	}
-	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi"), TEXT("Bluebonnet") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return Paths;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	// Bluebonnet's parts come from her shipkit build (Tools/shipkit/jclass): until they are imported she is drawn from her config.
+	if (Type == EBoatType::Bluebonnet && !FPackageName::DoesPackageExist(TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull"))) return Paths;
 	for (const TCHAR* Part : { TEXT("Hull"), TEXT("Mast"), TEXT("Boom"), TEXT("Rudder") })
 	{
 		Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)));
@@ -546,9 +548,10 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	// prologue's maxi is the PC's hero model (Tools/boats/maxi/build_maxi.py, imported by import_boats.py `maxi`) on every
 	// boat: her deck gear is in the hull, the traveller lies on the cockpit floor, the diesel is inboard and her canted twin
 	// rudders are one blade, mirrored on the starboard stock.
-	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+	static const TCHAR* BoatTags[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"), TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi"), TEXT("Bluebonnet") };
 	if (int32(Type) <= 0 || int32(Type) >= int32(UE_ARRAY_COUNT(BoatTags)) || FParse::Param(SailingArgs::Dev(), TEXT("SailingProceduralBoats"))) return M;
 	const TCHAR* Tag = BoatTags[int32(Type)];
+	if (Type == EBoatType::Bluebonnet && !FPackageName::DoesPackageExist(TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull"))) return M;
 	auto Load = [Tag](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_%s.SM_%s_%s"), Tag, Tag, Part, Tag, Part)); };
 	M.Hull = Load(TEXT("Hull"));
 	M.Mast = Load(TEXT("Mast"));
@@ -563,6 +566,8 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		M.bTravelerBridge = false;
 		M.bMirrorTwinRudder = true;
 	}
+	// Bluebonnet (Tools/shipkit/jclass): no engine; her mainsheet horse is on deck aft of the wheel, not across a cockpit.
+	if (Type == EBoatType::Bluebonnet) M.bTravelerBridge = false;
 	return M;
 }
 

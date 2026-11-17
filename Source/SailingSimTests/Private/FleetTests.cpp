@@ -56,6 +56,8 @@ SAILING_FLEET_POLAR_TEST(FSailingPolarCatalina30, "Catalina30", EBoatType::Catal
 SAILING_FLEET_POLAR_TEST(FSailingPolarHobie16, "Hobie16", EBoatType::Hobie16)
 SAILING_FLEET_POLAR_TEST(FSailingPolarCorsair880, "Corsair880", EBoatType::Corsair880)
 SAILING_FLEET_POLAR_TEST(FSailingPolarLagoon42, "Lagoon42", EBoatType::Lagoon42)
+// Bluebonnet's polar is estimated (Tools/shipkit/jclass/polar_bluebonnet.py: docs/jclass-13/), 20% at every point.
+SAILING_FLEET_POLAR_TEST(FSailingPolarBluebonnet, "Bluebonnet", EBoatType::Bluebonnet)
 
 /**
  * Each boat's own settings reach its config: #250 had a comment swallow the ILCA's C.TrimMaxEaseDeg and C.Name on the
@@ -71,7 +73,7 @@ bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
 		{ EBoatType::ILCA7, "ILCA 7 (Laser)", 60.0, 8.0, 6.0, 4.0 }, { EBoatType::Catalina22, "Catalina 22", 25.0, 20.0, 0.0, 8.0 },
 		{ EBoatType::Catalina30, "Catalina 30", 25.0, 22.0, 0.0, 8.0 }, { EBoatType::Hobie16, "Hobie 16", 45.0, 10.7, 0.0, 22.0 },
 		{ EBoatType::Corsair880, "Corsair 880", 40.0, 10.0, 0.0, 15.0 }, { EBoatType::Lagoon42, "Lagoon 42", 35.0, 4.0, 0.0, 12.0 },
-		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 },
+		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 }, { EBoatType::Bluebonnet, "Bluebonnet", 25.0, 22.0, 0.0, 4.0 },
 	};
 	TSet<FString> Names;
 	for (const FWant& W : Want)
@@ -87,7 +89,7 @@ bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%hs: TrimReachHeelLimitDeg"), W.Name), C.TrimReachHeelLimitDeg, W.ReachHeelLimit);
 		TestEqual(FString::Printf(TEXT("%hs: TravelerRangeDeg"), W.Name), C.TravelerRangeDeg, W.Traveler);
 	}
-	TestEqual(TEXT("Every boat in the table"), int32(UE_ARRAY_COUNT(Want)), int32(EBoatType::Maxi) + 1);
+	TestEqual(TEXT("Every boat in the table"), int32(UE_ARRAY_COUNT(Want)), int32(EBoatType::Count));
 	return true;
 }
 

@@ -42,6 +42,7 @@ namespace Sailing
 	{
 		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
 		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
+		Bluebonnet, // the invented 1937 J-Class yacht (Tools/shipkit/jclass, docs/jclass-13): deep water only (4.5 m draft)
 		Count
 	};
 
@@ -247,6 +248,11 @@ namespace Sailing
 		double TrimHeelLimitDeg = 22.0;
 		double TrimReachHeelLimitDeg = 0.0; // the heel limit reaching (TWA 80 to 110 deg and on); 0 = TrimHeelLimitDeg
 		double TrimMaxEaseDeg = 25.0;
+		// A big yacht's slow roll swings the apparent wind high on her rig as much as the wind itself, and a trimmer who chased
+		// each swing (or eased on the heel's rate a moment ahead) fed the roll: Bluebonnet rolled 1 to 30 deg every 10 s in
+		// 16 kn upwind. Her crew trim to the wind, not her roll: they see the sails over half her roll period and read the
+		// heel a quarter of one ahead. Her free roll period in seconds (sails down, calm water); 0 = as every other boat.
+		double TrimRollSeconds = 0.0;
 		// A dinghy sailor holds the sheet in the hand and sails the boat flat (0 = a keelboat crew on winches and cleats):
 		// boom degrees dumped at once per degree of heel past the limit (and of the roll toward it), and the sheet's travel
 		// per second when dumping.

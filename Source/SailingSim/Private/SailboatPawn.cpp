@@ -386,6 +386,7 @@ void ASailboatPawn::BuildHullMesh()
 	case EBoatType::Sunfish: HullColor = FLinearColor(0.95f, 0.72f, 0.10f); break;
 	case EBoatType::Catalina30: HullColor = FLinearColor(0.08f, 0.13f, 0.30f); break;
 	case EBoatType::Hobie16: HullColor = FLinearColor(0.10f, 0.45f, 0.75f); break;
+	case EBoatType::Bluebonnet: HullColor = FLinearColor(0.03f, 0.07f, 0.24f); break; // her deep blue topsides (finish_bluebonnet.json)
 	default: if (bTrafficBoat) HullColor = TrafficHullColor; break;
 	}
 	for (int32 Section = 0; Section < 2; ++Section)
@@ -635,6 +636,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		case EBoatType::Catalina22: return { 0.f, 4.f, 0.f, 0.9f, 1.f };
 		case EBoatType::Catalina30: return { 0.f, 4.f, 0.f, 1.0f, 1.f };
 		case EBoatType::Maxi: return { 4.f, 6.f, 1.f, 3.4f };
+		case EBoatType::Bluebonnet: return { 0.f, 4.f, 0.f, 0.6f };   // a 1937 J: cotton, short battens, narrow cloths, no window
 		default: return { 0.f, 4.f, 0.f, 0.9f, 1.f };    // the J/22
 		}
 	};
