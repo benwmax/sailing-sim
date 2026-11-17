@@ -79,4 +79,28 @@ namespace KitFittings
 		const FVector X = Aft.ContainsNaN() ? FVector::ZeroVector : -Aft - Z * FVector::DotProduct(-Aft, Z);
 		return FTransform(SafeRotationYX(FVector::CrossProduct(Z, X), X), Head);
 	}
+
+	// The bulkhead compass (docs/ui-overhaul, Phase 13; Tools/boatkit/bk_part_compass.py).
+
+	/** Where the hero J/22 carries it, boat frame cm: on the cabin's aft face (build_j22_hero.py CABIN_AFT), to port
+	 *  between the companionway (26 cm out) and the cockpit's side (73 cm), above the seats (40 cm). */
+	inline FVector CompassAtCm() { return FVector(-55.0, -50.0, 61.0); }
+
+	/** The mount's frame is +X up the bulkhead, +Z out of it: pitched a quarter turn it stands on a bulkhead facing aft. */
+	inline FRotator CompassFacing() { return FRotator(90.f, 0.f, 0.f); }
+
+	/** The card's world yaw: its north to magnetic north (true north turned east by the variation). It has no pitch or
+	 *  roll: the card stays level while the boat heels round it. */
+	inline float CompassCardYawDeg(double VariationEastDeg) { return float(VariationEastDeg); }
+
+	/** The figure printed on the card at a bearing round it from its own north. A card read at its aft edge is printed
+	 *  half a turn round (the part's rule): the mark at the card's south is 0. */
+	inline double CompassFigureAtDeg(double CardBearingDeg) { return FMath::Fmod(CardBearingDeg + 180.0 + 720.0, 360.0); }
+
+	/** What the helm reads at the aft lubber line: the lubber lies aft of the pivot, so at the boat's heading plus half a
+	 *  turn in the world, and that far less the card's yaw round the card. */
+	inline double CompassReadingDeg(double BoatYawDeg, double CardYawDeg)
+	{
+		return CompassFigureAtDeg(FMath::Fmod(BoatYawDeg + 180.0 - CardYawDeg + 720.0, 360.0));
+	}
 }

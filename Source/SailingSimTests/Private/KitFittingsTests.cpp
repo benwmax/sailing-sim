@@ -70,6 +70,25 @@ bool FVisualKitFittingsTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A NaN head isn't placeable"), KitFittings::Placeable(KitFittings::HeadShackleTransform(Nan, Up, Aft)));
 	TestTrue(TEXT("Good frames are placeable"), KitFittings::Placeable(H) && KitFittings::Placeable(S) && KitFittings::Placeable(W));
 
+	// The bulkhead compass (docs/ui-overhaul, Phase 13): the mount faces aft with its top up, and with the card held
+	// north the figure at the aft lubber line is the heading (magnetic where there is variation).
+	const FRotator Facing = KitFittings::CompassFacing();
+	TestTrue(TEXT("The compass mount's face (local Z) looks aft"), Facing.RotateVector(FVector(0.0, 0.0, 1.0)).Equals(FVector(-1.0, 0.0, 0.0), 1e-4));
+	TestTrue(TEXT("The compass mount's top (local X) is up"), Facing.RotateVector(FVector(1.0, 0.0, 0.0)).Equals(FVector(0.0, 0.0, 1.0), 1e-4));
+	TestTrue(TEXT("The compass sits to port of the companionway, inside the cockpit"), KitFittings::CompassAtCm().Y < -26.0 - 6.2 && KitFittings::CompassAtCm().Y > -73.0 + 6.2);
+	for (const double Variation : { 0.0, 2.5, -11.0 })
+	{
+		const double CardYaw = double(KitFittings::CompassCardYawDeg(Variation));
+		for (const double Heading : { 0.0, 37.0, 90.0, 181.5, 270.0, 359.0 })
+		{
+			const double Want = FMath::Fmod(Heading - Variation + 720.0, 360.0);
+			const double Got = KitFittings::CompassReadingDeg(Heading, CardYaw);
+			const double Off = FMath::Abs(FMath::Fmod(Got - Want + 540.0, 360.0) - 180.0);
+			TestTrue(FString::Printf(TEXT("Heading %.1f with %.1f E variation reads %.1f at the lubber line (got %.1f)"), Heading, Variation, Want, Got), Off < 1e-6);
+		}
+	}
+	TestTrue(TEXT("The card's north arrow end reads 180: a card read from aft is printed half a turn round"), FMath::IsNearlyEqual(KitFittings::CompassFigureAtDeg(0.0), 180.0));
+
 	TestTrue(TEXT("Hanks spread from near the tack to near the head"),
 		FMath::IsNearlyEqual(KitFittings::HankV(0, 8), 0.0625f) && FMath::IsNearlyEqual(KitFittings::HankV(7, 8), 0.9375f));
 	return true;
