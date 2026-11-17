@@ -118,6 +118,9 @@ not be clicked and it sat over the boat. Bean's picks, as built (`SSailPhotoPane
 - **Out of the way:** the card slides to the other side when the boat comes into its third of the screen, and back
   only once she is in the far third (`PhotoMath::PanelOnRight`).
 
+Stills: `-SailingUiMode=helpful|natural|off` sets the UI mode the panel follows for one run (the setting is left as it
+is), for example `-SailingPhoto=8 -SailingView=Chase -SailingUiMode=natural`.
+
 A key list saved with slice 2's pad layout is moved to this one once (`USailingInputSettings::AddMissingActions`: the
 old pad defaults come off and the new ones go where nothing else in photo mode holds the button).
 

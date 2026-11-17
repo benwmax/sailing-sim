@@ -157,7 +157,7 @@ void SSailPhotoPanel::Construct(const FArguments& InArgs)
 		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(HudMargin, SafeTop, HudMargin, 0.f)
 		[
 			// On the left; Tick slides it across (a render transform, which hit testing follows) when the boat is behind it.
-			SAssignNew(CardHolder, SBox).WidthOverride(360.f).Visibility_Lambda(CardVisible)
+			SAssignNew(CardHolder, SBox).WidthOverride(400.f).Visibility_Lambda(CardVisible)
 		]
 	];
 	BuiltFor = Signature();
@@ -215,18 +215,20 @@ TSharedRef<SWidget> SSailPhotoPanel::BuildCard()
 	Tabs->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 6.f, 0.f)[ KeyCap(KeyText(TEXT("PhotoPagePrev")), PadText(TEXT("PhotoPagePrev"))) ];
 	for (int32 I = 0; I < PhotoMath::NumPages; ++I)
 	{
-		Tabs->AddSlot().FillWidth(1.f).VAlign(VAlign_Center)
+		// (sentence case at the Ui size: the tracked upper-case eyebrow cut the names short in 360 px, "Len Foc Ligi")
+		Tabs->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(1.f, 0.f)
 		[
 			SNew(SBorder)
 			.BorderImage_Lambda([Page, I]() { return Page() == I ? Rounded(Raise, RadiusButton) : Rounded(FLinearColor::Transparent, RadiusButton); })
-			.Padding(FMargin(4.f, 4.f)).HAlign(HAlign_Center)
+			.Padding(FMargin(6.f, 4.f)).HAlign(HAlign_Center)
 			.OnMouseButtonDown_Lambda(Click([PawnOf, I]() { if (ASailboatPawn* P = PawnOf()) P->SelectPhotoPage(I); }))
 			[
-				TextAttr(FText::FromString(PhotoMath::PageName(I)), EType::Eyebrow,
+				TextAttr(FText::FromString(PhotoMath::PageName(I)), EType::Small,
 					TAttribute<FSlateColor>::CreateLambda([Page, I]() { return FSlateColor(Page() == I ? Accent : Muted); }))
 			]
 		];
 	}
+	Tabs->AddSlot().FillWidth(1.f)[ SNew(SBox) ];
 	Tabs->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(6.f, 0.f, 0.f, 0.f)[ KeyCap(KeyText(TEXT("PhotoPageNext")), PadText(TEXT("PhotoPageNext"))) ];
 
 	// The rows on the tab: Helpful shows them all with a line on the current one; Natural only the current one. A row is
