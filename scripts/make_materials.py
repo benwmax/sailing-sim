@@ -3158,7 +3158,7 @@ float2 hr0 = p.xy - HullClipA.xy;
     float4 hc = HullClipMap.SampleLevel(HullClipMapSampler, (float2(hbx, hby) - HullClipRect.xy) / HullClipRect.zw, 0);
     float himm = hbz - hc.r;
     float hedge = saturate(min(hc.b, hc.a) / (hbz < hc.g ? 0.05 : 0.15));
-    hin = min(2.0, max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3)) * hedge;
+    hin = min(max(HullClipH.w, 2.0), max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3)) * hedge;
     // V7: 80% of the deck plan, flat, 2 m down.
     float2 hh = normalize(HullClipB.xy + float2(1e-6, 0.0));
     float2 hr = p.xy - HullClipA.xy;

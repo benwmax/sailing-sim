@@ -182,6 +182,36 @@ builds her (`build_jclass.py`, about 20 to 40 minutes the first time), exports h
 then commit `Content/Boats/Bluebonnet` (Git LFS) to this branch and run the Windows check. On the Mac the same is
 `IMPORT_ARGS=bluebonnet scripts/make-boat-models.sh` (it rebuilds every boat's FBX, then imports only her).
 
+## Fixes after the first Mac and PC run (step 1, dd4168a6)
+
+Both machines built step 1 clean (the PC's MSVC with no warnings) and passed her physics, polar and deep-water tests; six
+tests failed on her:
+
+- **Water in her hull** (`SailingSim.Visual.HullClip`, 762 samples). The water's hull clip dropped the sea at most 2 m;
+  her canoe body is 2.28 m deep. The cap is now `FHullClipMap::MaxDrop`: 2 m, or 1.5 times the canoe depth plus 0.3 m
+  (hers 3.72 m; she needs 2.54 m upright and 3.3 m at 40 degrees of heel), passed to `M_WaterV4` as `HullClipH.w` (the
+  shader takes at least 2 m). Every other boat but the Lagoon keeps 2 m (hers is 2.2). The Mac rebuilds `M_WaterV4`
+  (`MATERIALS_ONLY=build_water_v4`) and commits it here.
+- **Her main through a shroud, her mainsheet through a crew member** (`SailShrouds`, `SheetClearance`). Drawn from her
+  config (before her import) she has no rig lines, but she kept the maxi's: `RebuildBoatVisuals` never cleared the model
+  path's wires, so her sails kept off the maxi's shrouds and the tests read the maxi's last mainsheet against her crew.
+  The sail obstacles and recorded rig lines are cleared with the rest of the visuals now. With her model, both tests
+  check her own rig (her spreaders; she has no live shrouds).
+- **Her spinnaker pole** (`SpinnakerClew`). `SpinnakerRigCm` capped the pole at 12 m; her J is 15.2 m. The cap is 20 m.
+  With the pole the right length her sail is ahead of the forestay on a reach (it had been 0.9 m behind it). The test
+  measured "near the boat" both ways against the leeward limit: her pole's end, squared back, is 15 m to windward. It
+  measures the leeward side against the clew's limit and the windward side against the pole's end now. And it held
+  every spinnaker within 1.5 m of the bow, the J/22's number: her 43 m spinnaker on a run flies 2.7 m past her stem,
+  0.06 of its luff's height, where the J/22's flies 0.10 of hers; the limit is 1.5 m or a tenth of the luff's height.
+- **Her spinnaker's tack** (`SpinnakerHead`, 3 cm). The spinnaker's luff is held 15 cm ahead of the jib's below the
+  jib's head; her tack, high over her bow, is 16 cm ahead of it, and the hold moved it 3 cm. The foot's row is left out
+  of the hold now, as the poled sail's already was.
+- **The boat count** (`SailingSim.UI.SessionFlow`): ten boats.
+
+These were checked here before pushing: the hull clip on every boat standalone (no water above the bottom inside any
+hull), and both spinnaker tests' geometry on every poled boat with `SailCloth.cpp` built against a small stand-in for
+Unreal's core types (all pass, also with the halyard change of the rope thread's #763). The rig line fix needs the Mac.
+
 ## Tests
 
 - `SailingSim.Physics.BluebonnetHull`: her config against slice 13's `physics.json` (mass, canoe depth, displaced

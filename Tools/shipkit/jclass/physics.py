@@ -29,6 +29,9 @@ import sys
 
 import numpy as np
 
+# np.trapezoid is numpy 2.0's name; Blender 4.2 (the PC's) ships numpy 1.24, where it is np.trapz.
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import loft  # noqa: E402
@@ -121,16 +124,16 @@ def sections_volume(stations):
         Z.append(zc)
         G.append(2 * _girth_below(p))
     A, Z, G = np.array(A), np.array(Z), np.array(G)
-    V = float(np.trapezoid(A, xs))
-    return V, float(np.trapezoid(A * xs, xs) / V), float(np.trapezoid(A * Z, xs) / V), float(np.trapezoid(G, xs))
+    V = float(_trapezoid(A, xs))
+    return V, float(_trapezoid(A * xs, xs) / V), float(_trapezoid(A * Z, xs) / V), float(_trapezoid(G, xs))
 
 
 def canoe_lateral(stations):
     """The canoe body's lateral profile below the DWL (down to the canoe line on the centreline): area and centre."""
     xs = np.array([s["x"] for s in stations])
     d = np.array([max(0.0, -s["half_section"][0][1]) for s in stations])
-    a = float(np.trapezoid(d, xs))
-    return a, (float(np.trapezoid(d * xs, xs) / a), float(np.trapezoid(-0.5 * d * d, xs) / a))
+    a = float(_trapezoid(d, xs))
+    return a, (float(_trapezoid(d * xs, xs) / a), float(_trapezoid(-0.5 * d * d, xs) / a))
 
 
 def keel_appendage(S, n=600):
@@ -153,12 +156,12 @@ def keel_appendage(S, n=600):
         D.append(max(0.0, zc - zb))                      # the keel's depth below the canoe line here
         B.append(zb)
     A, Z, D = np.array(A), np.array(Z), np.array(D)
-    V = float(np.trapezoid(A, xs))
-    lat = float(np.trapezoid(D, xs))
+    V = float(_trapezoid(A, xs))
+    lat = float(_trapezoid(D, xs))
     zmid = np.array([min(float(loft.CANOE(x)), 0.0) for x in xs]) - 0.5 * D
-    return {"volume_m3": V, "centre": [float(np.trapezoid(A * xs, xs) / V), float(np.trapezoid(A * Z, xs) / V)],
-            "lateral_m2": lat, "lateral_centre": [float(np.trapezoid(D * xs, xs) / lat),
-                                                  float(np.trapezoid(D * zmid, xs) / lat)],
+    return {"volume_m3": V, "centre": [float(_trapezoid(A * xs, xs) / V), float(_trapezoid(A * Z, xs) / V)],
+            "lateral_m2": lat, "lateral_centre": [float(_trapezoid(D * xs, xs) / lat),
+                                                  float(_trapezoid(D * zmid, xs) / lat)],
             "xs": xs, "depth": D}
 
 
@@ -173,7 +176,7 @@ def flapped_band(head_z, n=20001):
     mean chord (area over depth)."""
     xs = np.linspace(loft.END["transom_bottom"][0], loft.END["stem_head"][0], n)
     zb = loft.profile(xs)
-    area = float(np.trapezoid(np.maximum(0.0, head_z - zb), xs))
+    area = float(_trapezoid(np.maximum(0.0, head_z - zb), xs))
     depth = float(head_z - zb.min())
     return {"head_z": head_z, "area_m2": area, "depth_m": depth, "chord_m": area / depth}
 

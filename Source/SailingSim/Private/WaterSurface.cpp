@@ -1300,7 +1300,8 @@ void AWaterSurface::UpdateHullClip()
 		Set(TEXT("HullClipE"), S.BowX, S.SternX, S.MaxBeamX, S.MaxHalfBeam);
 		Set(TEXT("HullClipF"), S.AftLength, S.TransomBeamLoss, S.CenterY, S.BilgePower);
 		Set(TEXT("HullClipG"), S.WaterlineMidX, S.WaterlineHalfLength, M.HullDepth() * S.DepthScale, S.DepthOffset);
-		Set(TEXT("HullClipH"), S.BowOverhangSlope, S.SternOverhangSlope, ClassicArg.Get() ? 1.0 : 0.0, 0.0);
+		// w: the drop's cap (FHullClipMap::MaxDrop: deeper for a deep canoe like Bluebonnet's).
+		Set(TEXT("HullClipH"), S.BowOverhangSlope, S.SternOverhangSlope, ClassicArg.Get() ? 1.0 : 0.0, HullClip.MaxDrop());
 		return;
 	}
 }

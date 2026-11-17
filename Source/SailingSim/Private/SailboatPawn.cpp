@@ -420,6 +420,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
 	RigLineKeys[2].Reset();
+	// The model's rig, which the model path rebuilds each frame: a boat drawn from her config (Bluebonnet before her import)
+	// had kept the last model boat's wires, so her sails kept off the maxi's shrouds and the rig tests read them as hers.
+	SailObstacles.Reset();
+	JibSailObstacles.Reset();
+	bJibInsideShrouds = false;
+	RigLineSamples.Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
