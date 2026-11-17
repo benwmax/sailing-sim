@@ -492,7 +492,7 @@ private:
 	// by UpdateMountedCamera on the pawn's own Camera (photo mode opens from it, as from the others).
 	ChaseCamera::EView MountedView = ChaseCamera::EView::Chase;
 	ChaseCamera::EView StartView = ChaseCamera::EView::Chase;   // the view a sail starts in (BeginPlay)
-	ChaseCamera::FMount Mount;
+	ChaseCamera::FMount ViewMount;
 	float MountFov = 90.f;
 	float MountBearing = 0.f;       // a world camera's bearing off her bow now (0..360, the stern side: ChaseCamera::SideBearingDeg)
 	float MountLeeward = 1.f;       // the side it stands on (+1 starboard)
@@ -506,7 +506,7 @@ private:
 	/** The lens is placed in the world each frame (the helm view or an onboard mount), not on the chase arm. */
 	bool IsCameraPlaced() const { return bCockpit || IsMountedView(); }
 	/** An onboard mount (masthead, transom, bow): no shore lift, as the helm view. */
-	bool IsOnboardMount() const { return IsMountedView() && Mount.bOnboard; }
+	bool IsOnboardMount() const { return IsMountedView() && ViewMount.bOnboard; }
 	/** Storm look (docs/storm-look/camera-buffet/): Settings > Camera shake: slams, seas coming aboard and strong wind
 	 *  buffet the chase and cockpit views (FCameraBuffet), fed by UpdateBoatWetness's bow and rail tests. */
 	void UpdateCameraBuffet(float DeltaSeconds);

@@ -2500,8 +2500,8 @@ void ASailboatPawn::EnterMountedView(ChaseCamera::EView View)
 {
 	if (!Camera || !ChaseCamera::IsMounted(View)) return;
 	MountedView = View;
-	Mount = ChaseCamera::MountFor(View, Boat.GetConfig());
-	MountFov = Mount.FovDeg;
+	ViewMount = ChaseCamera::MountFor(View, Boat.GetConfig());
+	MountFov = ViewMount.FovDeg;
 	bMountStarted = false;
 	// (placed in the world each frame, as the helm view's head is; the look starts on the mount's own aim)
 	Camera->SetUsingAbsoluteLocation(true);
@@ -2529,7 +2529,7 @@ void ASailboatPawn::UpdateMountedCamera(float DeltaSeconds)
 	// Camera views slice 4 (docs/camera-views/): the mount from her config each frame (a boat change keeps the view), the
 	// player's look as an offset from its aim that eases back after a while (Settings > Camera returns behind), the wheel's zoom.
 	if (!IsMountedView() || !Camera || !BoatRoot) return;
-	Mount = ChaseCamera::MountFor(MountedView, Boat.GetConfig());
+	ViewMount = ChaseCamera::MountFor(MountedView, Boat.GetConfig());
 	const float Dt = FMath::Max(DeltaSeconds, 0.f);
 	if (LastLookSeconds > 0.0 && USailingSettings::Get()->bCameraRecentre && !bDemo)
 	{
@@ -2541,14 +2541,14 @@ void ASailboatPawn::UpdateMountedCamera(float DeltaSeconds)
 	const FRotator BoatRot = Xf.Rotator();
 	FVector Location;
 	FRotator Rotation;
-	if (Mount.bOnboard)
+	if (ViewMount.bOnboard)
 	{
 		// On her: the lens rides the mount; its horizon follows a third of her heel and pitch (motion sickness: the helm
 		// view's share), its aim her own (the masthead looks at her deck wherever the masthead has swung to).
-		Location = Xf.TransformPosition(Mount.LocationM * CmPerMeter);
-		if (Mount.bAim) Rotation = (Xf.TransformPosition(Mount.AimM * CmPerMeter) - Location).Rotation();
-		else Rotation = FRotator(Mount.MountPitchDeg + Mount.RollShare * BoatRot.Pitch, BoatRot.Yaw + Mount.MountYawDeg, 0.f);
-		Rotation.Roll = Mount.RollShare * BoatRot.Roll;
+		Location = Xf.TransformPosition(ViewMount.LocationM * CmPerMeter);
+		if (ViewMount.bAim) Rotation = (Xf.TransformPosition(ViewMount.AimM * CmPerMeter) - Location).Rotation();
+		else Rotation = FRotator(ViewMount.MountPitchDeg + ViewMount.RollShare * BoatRot.Pitch, BoatRot.Yaw + ViewMount.MountYawDeg, 0.f);
+		Rotation.Roll = ViewMount.RollShare * BoatRot.Roll;
 		Rotation.Yaw += CameraYaw;
 	}
 	else
@@ -2561,7 +2561,7 @@ void ASailboatPawn::UpdateMountedCamera(float DeltaSeconds)
 		if (!bMountStarted)
 		{
 			MountLeeward = Leeward;
-			MountBearing = ChaseCamera::SideBearingDeg(Mount, MountLeeward);
+			MountBearing = ChaseCamera::SideBearingDeg(ViewMount, MountLeeward);
 			MountHeading = float(BoatRot.Yaw);
 			MountWaterZ = float(Origin.Z);
 			MountOtherTackS = 0.f;
@@ -2573,14 +2573,14 @@ void ASailboatPawn::UpdateMountedCamera(float DeltaSeconds)
 			MountLeeward = Leeward;
 			MountOtherTackS = 0.f;
 		}
-		MountBearing = ChaseCamera::EaseBearing(MountBearing, ChaseCamera::SideBearingDeg(Mount, MountLeeward), Dt, ChaseCamera::SideSwingTauS);
-		const float Follow = Dt > 0.f ? 1.f - FMath::Exp(-Dt / FMath::Max(Mount.FollowTauS, 0.05f)) : 0.f;
+		MountBearing = ChaseCamera::EaseBearing(MountBearing, ChaseCamera::SideBearingDeg(ViewMount, MountLeeward), Dt, ChaseCamera::SideSwingTauS);
+		const float Follow = Dt > 0.f ? 1.f - FMath::Exp(-Dt / FMath::Max(ViewMount.FollowTauS, 0.05f)) : 0.f;
 		MountHeading = FMath::UnwindDegrees(MountHeading + FMath::UnwindDegrees(float(BoatRot.Yaw) - MountHeading) * Follow);
 		MountWaterZ += (float(Origin.Z) - MountWaterZ) * (Dt > 0.f ? 1.f - FMath::Exp(-Dt / 1.5f) : 0.f);
 		const float Bearing = FMath::DegreesToRadians(MountHeading + MountBearing + CameraYaw);
-		const double Range = double(Mount.RangeM) * CmPerMeter;
-		Location = FVector(Origin.X + Range * FMath::Cos(Bearing), Origin.Y + Range * FMath::Sin(Bearing), MountWaterZ + double(Mount.HeightM) * CmPerMeter);
-		Rotation = (FVector(Origin.X, Origin.Y, MountWaterZ + double(Mount.AimUpM) * CmPerMeter) - Location).Rotation();
+		const double Range = double(ViewMount.RangeM) * CmPerMeter;
+		Location = FVector(Origin.X + Range * FMath::Cos(Bearing), Origin.Y + Range * FMath::Sin(Bearing), MountWaterZ + double(ViewMount.HeightM) * CmPerMeter);
+		Rotation = (FVector(Origin.X, Origin.Y, MountWaterZ + double(ViewMount.AimUpM) * CmPerMeter) - Location).Rotation();
 		Rotation.Roll = 0.f;
 	}
 	Rotation.Pitch = FMath::Clamp(Rotation.Pitch + double(CameraPitch), -89.0, 60.0);
@@ -2597,7 +2597,7 @@ void ASailboatPawn::UpdateCameraBuffet(float DeltaSeconds)
 	static SailingArgs::FCachedFlag NoShakeArg(TEXT("SailingNoCameraShake"));
 	// (the drone and the chase boat aren't on her: they don't shake)
 	const bool bOn = USailingSettings::Get()->bCameraShake && !USailingSettings::IsMeasuring() && !IsCaptureMode() && !bPhoto && !bWatching
-		&& !NoShakeArg.Get() && Camera && !(IsMountedView() && !Mount.bOnboard);
+		&& !NoShakeArg.Get() && Camera && !(IsMountedView() && !ViewMount.bOnboard);
 	if (!bOn)
 	{
 		if (bBuffetApplied && Camera && !IsCameraPlaced()) Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
