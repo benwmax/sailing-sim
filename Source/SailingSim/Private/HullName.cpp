@@ -1,5 +1,6 @@
 #include "HullName.h"
 #include "BoatModel.h"
+#include "SailingSim.h"
 #include "UI/SailUIStyle.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Fonts/FontMeasure.h"
@@ -29,7 +30,11 @@ bool SailingHullName::Place(int32 BoatType, float Aspect, FHullNamePlace& Out)
 
 UTextureRenderTarget2D* SailingHullName::Draw(UObject* Outer, const FString& Name, FVector2D& OutSizePx)
 {
-	if (Name.IsEmpty() || !FApp::CanEverRender() || !FSlateApplication::IsInitialized()) return nullptr;
+	if (Name.IsEmpty() || !FApp::CanEverRender() || !FSlateApplication::IsInitialized())
+	{
+		SAIL_LOG(Log, TEXT("Hull name: not drawn (name %d letters, can render %d, Slate %d)"), Name.Len(), FApp::CanEverRender() ? 1 : 0, FSlateApplication::IsInitialized() ? 1 : 0);
+		return nullptr;
+	}
 	// The menus' title face at its largest (Besley Bold; the fallback face before the overhaul's fonts are in).
 	const FSlateFontInfo Face = SailUI::Font(SailUI::EType::Logo);
 	const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();

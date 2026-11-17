@@ -637,8 +637,14 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		{
 			FVector2D NamePx(1.0, 1.0);
 			UTextureRenderTarget2D* NameTarget = SailingHullName::Draw(this, NameText, NamePx);
-			if (NameTarget && SailingHullName::Place(int32(Boat.GetConfig().Type), float(NamePx.X / NamePx.Y), NamePlace)) HullNameTexture = NameTarget;
+			const bool bPlaced = SailingHullName::Place(int32(Boat.GetConfig().Type), float(NamePx.X / NamePx.Y), NamePlace);
+			if (NameTarget && bPlaced) HullNameTexture = NameTarget;
+			SAIL_LOG(Log, TEXT("Hull name \"%s\": texture %s (%.0f x %.0f px), place %s (aft %.1f, low %.1f, %.1f x %.1f cm), hull %s"), *NameText,
+				NameTarget ? TEXT("drawn") : TEXT("none"), NamePx.X, NamePx.Y, bPlaced ? TEXT("yes") : TEXT("no"),
+				NamePlace.XAftCm, NamePlace.ZLowCm, NamePlace.LengthCm, NamePlace.HeightCm, *GetNameSafe(ModelHull->GetStaticMesh()));
 		}
+		// -SailingHullNameDebug: the place without the lettering (the material's default texture fills the rectangle).
+		const bool bNameBlock = HullNameTexture && FParse::Param(SailingArgs::Dev(), TEXT("SailingHullNameDebug"));
 		const TArray<FName> Slots = ModelHull->GetMaterialSlotNames();
 		for (int32 I = 0; I < Slots.Num(); ++I)
 		{
@@ -646,7 +652,11 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			if (!Mid) continue;
 			if (HullNameTexture)
 			{
-				Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
+				if (!bNameBlock) Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
+				FLinearColor HasRect;
+				UTexture* HasTex = nullptr;
+				SAIL_LOG(Log, TEXT("Hull name: slot %d %s (%s): NameRect %s, NameTex %s"), I, *Slots[I].ToString(), *GetNameSafe(Mid->GetBaseMaterial()),
+					Mid->GetVectorParameterValue(FName(TEXT("NameRect")), HasRect) ? TEXT("yes") : TEXT("no"), Mid->GetTextureParameterValue(FName(TEXT("NameTex")), HasTex) ? TEXT("yes") : TEXT("no"));
 				Mid->SetVectorParameterValue(TEXT("NameRect"), NamePlace.AsParam());
 				Mid->SetVectorParameterValue(TEXT("NameColour"), FLinearColor(NameInk.R, NameInk.G, NameInk.B, 1.f));
 			}
