@@ -1886,22 +1886,22 @@
   {
    "in": "AfterLadderway",
    "top_x_m": -6.967,
-   "foot_x_m": -8.067,
+   "foot_x_m": -8.02,
    "y_m": 1.047,
    "goes": "aft",
-   "foot_z_m": -2.178,
-   "drop_m": 2.069,
+   "foot_z_m": -2.09,
+   "drop_m": 1.981,
    "between_stringers_in": 24.0,
    "outside_stringers_in": 28.5,
    "angle_deg": 62.0,
    "foot_stringers_x_m": [
-    -8.196,
-    -7.938
+    -8.149,
+    -7.891
    ],
    "keep_clear_m": {
     "x": [
-     -8.496,
-     -7.938
+     -8.449,
+     -7.891
     ],
     "y": [
      0.685,
@@ -1912,22 +1912,22 @@
   {
    "in": "ForeHatchFore",
    "top_x_m": 12.525,
-   "foot_x_m": 13.614,
+   "foot_x_m": 13.528,
    "y_m": 0.0,
    "goes": "forward",
-   "foot_z_m": -2.115,
-   "drop_m": 2.048,
+   "foot_z_m": -1.953,
+   "drop_m": 1.886,
    "between_stringers_in": 24.0,
    "outside_stringers_in": 28.5,
    "angle_deg": 62.0,
    "foot_stringers_x_m": [
-    13.485,
-    13.743
+    13.399,
+    13.657
    ],
    "keep_clear_m": {
     "x": [
-     13.485,
-     14.043
+     13.399,
+     13.957
     ],
     "y": [
      -0.362,
@@ -1941,7 +1941,7 @@
   {
    "from": "AfterHatch",
    "top_x_m": -8.288,
-   "foot_x_m": -6.983,
+   "foot_x_m": -6.986,
    "y_m": 0.0,
    "goes": "forward",
    "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
@@ -1949,7 +1949,7 @@
   {
    "from": "ForeHatch",
    "top_x_m": 10.709,
-   "foot_x_m": 11.986,
+   "foot_x_m": 11.995,
    "y_m": 0.0,
    "goes": "forward",
    "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"

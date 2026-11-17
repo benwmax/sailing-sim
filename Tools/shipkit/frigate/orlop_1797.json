@@ -840,7 +840,7 @@
      "Mast_Fore"
     ],
     "the fore mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
-    8.65
+    1.0
    ],
    [
     [
@@ -852,7 +852,7 @@
      "Mast_Main"
     ],
     "the main mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
-    9.75
+    1.0
    ],
    [
     [
@@ -864,7 +864,7 @@
      "Mast_Mizzen"
     ],
     "the mizzen mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
-    6.5
+    2.05
    ],
    [
     [
@@ -987,6 +987,86 @@
     ],
     "the pump well's sides stand up under the after platform's end, against its planks",
     0.25
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthDeck"
+    ],
+    "the berth deck's planks (slice 13) lie on its beams, ledges, carlings, transom and hook",
+    0.4
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthCableScuttles"
+    ],
+    "the cable scuttles' lead linings come down through the planks onto the deck hook and the beams' faces",
+    0.3
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthHatchways"
+    ],
+    "the berth deck's coamings (slice 13) are let down onto the carlings and beams round each opening",
+    0.65
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthMastWedges"
+    ],
+    "the wedges round each mast in the berth deck's partners go down between the beams and carlings",
+    0.5
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "Wells"
+    ],
+    "the gun deck's hatchway linings (slice 12) come down through the berth deck's planks, up to 1.25 in into the beams and carlings under them (slice 12 ends them on its own line for the berth deck)",
+    1.5
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "BerthDeck"
+    ],
+    "the berth deck's planks' ends lie over the ceiling's top strake at the side",
+    0.3
+   ],
+   [
+    [
+     "OrlopDeck"
+    ],
+    [
+     "BerthLadders"
+    ],
+    "the berth deck's ladders (slice 13) stand on the orlop's platforms",
+    0.25
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "BerthPumpTubes"
+    ],
+    "the pumps' tubes carry on up through the berth deck's planks as slice 13's",
+    0.35
    ]
   ]
  },

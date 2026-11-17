@@ -442,6 +442,19 @@ class Orlop:
                 out.append(("Mast_" + name, np.stack([(R + g) / u[2] * np.cos(th) + pt[0], (R + g) * np.sin(th)], 1)))
         return out
 
+    def platform_levels(self):
+        """[(x0, x1, z)] of the after and fore platforms: each laid level fore and aft (and flat across) at the orlop's
+        height under the berth deck at its middle (the berth deck's slice reads them to land its ladders: no build
+        needed)"""
+        o = self.c["orlop"]
+        xh = self.hold_range()
+        out = []
+        for key in ("after_platform_px", "fore_platform_px"):
+            x0, x1 = (self.plan_x(p) for p in o[key])
+            x0, x1 = max(x0, xh[0] + 0.15), min(x1, xh[1] - 0.15)
+            out.append((x0, x1, float(self.z_orlop(0.5 * (x0 + x1)))))
+        return out
+
     def platforms(self, part, beams):
         """the after and fore platforms: planked, flat across at the orlop's height to the side, holed for the hatches and
         the masts, on beams across the ship at the card's pitch"""
@@ -449,10 +462,7 @@ class Orlop:
         th = o["plank_in"] * IN
         ops = self.openings()
         self.platform_x = {}
-        for key in ("after_platform_px", "fore_platform_px"):
-            x0, x1 = (self.plan_x(p) for p in o[key])
-            x0, x1 = max(x0, self.x_hold[0] + 0.15), min(x1, self.x_hold[1] - 0.15)
-            zt = float(self.z_orlop(0.5 * (x0 + x1)))
+        for key, (x0, x1, zt) in zip(("after_platform_px", "fore_platform_px"), self.platform_levels()):
             outline = self.side_outline(x0, x1, zt)
             holes = [h for n, h, _ in ops if x0 < h[:, 0].mean() < x1]
             holes += [h for n, h in self.mast_holes(x0, x1)]
