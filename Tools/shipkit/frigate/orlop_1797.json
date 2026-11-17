@@ -476,7 +476,7 @@
    "fore_passage_fwd": 3262.5
   },
   "casks": {
-   "note": "the water in casks, two tiers on the ballast in the main hold either side of the pump well and forward of it (the 1849 tanks' room): leaguers (150 gal) in the ground tier, butts (108 gal) over them in the cantlines, bung up, lying fore and aft, each bedded on the shingle (the period's stowage). Sizes [length, bilge, head] m are the stores kit's Cask_Leaguer, Cask_Butt and PowderBarrel (stores.json, Nov 17), whose meshes take their places when they land",
+   "note": "the hold's casks lie fore and aft bung up, the ground tier bedded on the shingle, the second in its cantlines (the period's stowage). Sizes [length, bilge, head] m are the stores kit's Cask_Leaguer, Cask_Butt, Cask_Puncheon, Cask_Hogshead, Cask_Barrel and PowderBarrel (stores.json, Nov 17), whose meshes take their places when they land",
    "gap_in": 1.0,
    "leaguer_m": [
     1.3429,
@@ -492,6 +492,21 @@
     0.5661,
     0.4529,
     0.3804
+   ],
+   "hogshead_m": [
+    0.8787,
+    0.6759,
+    0.5407
+   ],
+   "barrel_m": [
+    0.7784,
+    0.5987,
+    0.479
+   ],
+   "puncheon_m": [
+    0.9585,
+    0.7373,
+    0.5899
    ]
   },
   "ballast": {
@@ -503,7 +518,42 @@
    ],
    "shingle_over_ceiling_in": 12.0
   },
-  "bulkheads_note": "hold plan x px: the after light room's fore side and the passage (4 ft) aft of the after magazine, which the mizzen passes through to its step on the keelson; the magazine's fore bulkhead (23 ft 4 in on); the spirit room; the main hold's after bulkhead; the fore magazine and its passage. The spirit room's fore bulkhead stands at 1203, not the plan's 1154.5: registered by the masts, the orlop plan's spirit room hatch reaches 2 ft past the hold plan's bulkhead, and the hatch and its ladder lead into the spirit room"
+  "bulkheads_note": "hold plan x px: the after light room's fore side and the passage (4 ft) aft of the after magazine, which the mizzen passes through to its step on the keelson; the magazine's fore bulkhead (23 ft 4 in on); the spirit room; the main hold's after bulkhead; the fore magazine and its passage. The spirit room's fore bulkhead stands at 1203, not the plan's 1154.5: registered by the masts, the orlop plan's spirit room hatch reaches 2 ft past the hold plan's bulkhead, and the hatch and its ladder lead into the spirit room",
+  "stowage": [
+   {
+    "name": "water",
+    "from": "main_hold_aft",
+    "to": "fore_magazine_aft",
+    "casks": [
+     "leaguer_m",
+     "butt_m"
+    ],
+    "middle": "boxes",
+    "note": "the water in leaguers and butts either side of the pump well and lockers (1849: its iron tanks)"
+   },
+   {
+    "name": "spirits",
+    "from": "after_magazine_fwd",
+    "to": "spirit_fwd",
+    "casks": [
+     "hogshead_m",
+     "barrel_m"
+    ],
+    "middle": "keelson",
+    "note": "the spirit room: rum in hogsheads and barrels (the store rooms either side in 1849's shell rooms)"
+   },
+   {
+    "name": "provisions",
+    "from": "spirit_fwd",
+    "to": "main_hold_aft",
+    "casks": [
+     "puncheon_m",
+     "barrel_m"
+    ],
+    "middle": "keelson",
+    "note": "beef and pork in barrels, flour and pease in puncheons (estimate: the period's stowage aft of the main hold)"
+   }
+  ]
  },
  "budget_note": "the plan's figure for slice 14 (the orlop and hold, loaded only when below: build.json orlop.triangles): a starting point, not a ceiling (Bean, Nov 12: frame rate is the only hard limit), so the build reports the count against it and never fails on it",
  "budget_triangles": 800000,
@@ -755,6 +805,37 @@
     ],
     "the keelson stands 3 in proud of the shingle laid either side of it",
     5.2
+   ],
+   [
+    [
+     "BreadBags",
+     "RoomFittings"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the bread bags and the rooms' racks, cots, bench and counter stand on the orlop's planks",
+    0.25
+   ],
+   [
+    [
+     "RoomFittings"
+    ],
+    [
+     "Stores"
+    ],
+    "the boxes, kegs and sea chests stand on the shelves and the planks",
+    0.25
+   ],
+   [
+    [
+     "OrlopDeck"
+    ],
+    [
+     "Stores"
+    ],
+    "the sail bolts and sea chests lie on the orlop's planks",
+    0.25
    ]
   ]
  },
@@ -782,5 +863,64 @@
     "stbd"
    ]
   ]
+ },
+ "furnish": {
+  "note": "what the orlop's rooms hold (estimate: the period's stowage; sizes from the stores kit's stores.json where it has the item: BreadBag, SeaChest, FillingBench), each a clear inch off the walls and the side, an aisle down the room's middle and a gap at the middle of its length for the doors",
+  "clear_in": 1.0,
+  "aisle_m": 0.75,
+  "bread_bag_in": [
+   33.0,
+   18.13,
+   10.07
+  ],
+  "sea_chest_in": [
+   41.03,
+   18.0,
+   17.0
+  ],
+  "filling_bench_in": [
+   60.0,
+   24.0,
+   32.5
+  ],
+  "kinds": {
+   "bread": {
+    "fill": "bags",
+    "depth_m": 0.95,
+    "layers": 4
+   },
+   "sail": {
+    "fill": "bolts",
+    "depth_m": 1.1,
+    "layers": 2,
+    "bolt_d_m": 0.42
+   },
+   "store": {
+    "fill": "shelves",
+    "depth_m": 0.5,
+    "levels_m": [
+     0.35,
+     0.85,
+     1.35
+    ]
+   },
+   "boatswain": {
+    "fill": "shelves",
+    "depth_m": 0.55,
+    "levels_m": [
+     0.35,
+     0.85,
+     1.35
+    ]
+   },
+   "state": {
+    "fill": "cots",
+    "depth_m": 0.75
+   },
+   "filling": {
+    "fill": "filling",
+    "depth_m": 0.65
+   }
+  }
  }
 }

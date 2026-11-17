@@ -109,10 +109,10 @@ def cask(part, c, axis, length, bung_d, head_d, mat, hoop_mat=None, n=16, rings=
     if hoop_mat:
         for sh in (-0.42, -0.30, -0.12, 0.12, 0.30, 0.42):
             rr = 0.5 * head_d + 0.5 * (bung_d - head_d) * (1.0 - (2 * sh) ** 2) + 0.15 * IN
-            w = 1.25 * IN
+            w = min(1.25 * IN, 0.04 * length)
+            h0 = float(np.clip(sh * length, -0.5 * length + w + 0.2 * IN, 0.5 * length - w - 0.2 * IN))
             lathe(part, np.asarray(c, float), axis, ref,
-                  [(sh * length - w, 0.0), (sh * length - w, rr), (sh * length + w, rr), (sh * length + w, 0.0)],
-                  hoop_mat, n)
+                  [(h0 - w, 0.0), (h0 - w, rr), (h0 + w, rr), (h0 + w, 0.0)], hoop_mat, n)
 
 
 def sphere(part, c, r, mat, n=8):
@@ -532,6 +532,7 @@ class Orlop:
         t = rc["partition_in"] * IN
         dw = rc["door_wide_in"] * IN
         walls = {}
+        self.room_list = []
         for key, plat in (("after", "after_platform_px"), ("fore", "fore_platform_px")):
             xa, xf, zt = self.platform_x[plat]
             for r in rc[key]:
@@ -552,6 +553,8 @@ class Orlop:
                         ya, yb = (-yb if yb is not None else None), (-ya if ya is not None else None)
                     # an open edge (null) runs to the side; the partitions there are the ceiling's own
                     self.room_walls(walls, x0, x1, ya, yb, zt, t)
+                    self.room_list.append(dict(name=r["name"] + ("_" + side[0].upper() if r.get("mirror") else ""),
+                                               kind=r["kind"], x0=x0, x1=x1, ya=ya, yb=yb, zt=zt))
         # merge overlapping walls on one line and build them, each with a doorway near its middle if it faces inboard
         for (axis, pos), spans in sorted(walls.items()):
             spans.sort()
@@ -570,18 +573,24 @@ class Orlop:
     def room_walls(self, walls, x0, x1, ya, yb, zt, t):
         """collect a room's walls: athwartships at x0 and x1 (from ya to yb, or to the side), fore and aft along ya and yb
         (from x0 to x1)"""
-        def side_y(x, s):
-            return s * float(self.ceil_y([x], [zt + 1.0])[0])
-        lo = ya if ya is not None else None
-        hi = yb if yb is not None else None
         for x in (x0, x1):
-            a = lo if lo is not None else side_y(x, -1.0)
-            b = hi if hi is not None else side_y(x, 1.0)
+            a, b = self.room_span(x, ya, yb, zt)
             walls.setdefault(("x", round(x, 3)), []).append((a, b, zt))
         for y in (ya, yb):
             if y is None:
                 continue
             walls.setdefault(("y", round(y, 3)), []).append((x0, x1, zt))
+
+    def room_span(self, x, ya, yb, zt):
+        """a room's span across the ship at x: an open edge (None) runs to the side beyond the other edge (both open: side
+        to side)"""
+        side = float(self.ceil_y([x], [zt + 1.0])[0])
+        if ya is None and yb is None:
+            return -side, side
+        if ya is None or yb is None:
+            g = ya if ya is not None else yb
+            return tuple(sorted((g, math.copysign(side, g))))
+        return tuple(sorted((ya, yb)))
 
     def partition(self, part, axis, pos, a, b, zt, t, dw):
         """a partition along a line: axis 'x' stands across the ship at x = pos from y a to b; 'y' fore and aft at y = pos
@@ -721,67 +730,283 @@ class Orlop:
         return True
 
     def casks(self, part):
-        """water casks in two tiers either side of the middle line through the main hold, end on fore and aft on the
-        shingle, as many as fit inside the side"""
+        """the hold's casks, each stowage (card: hold.stowage) in two tiers either side of the middle line, lying fore and
+        aft on the shingle bung up, the second tier in the first's cantlines, as many as fit inside the side and under
+        the orlop's beams: the water in the main hold either side of the pump well and lockers, the spirits and the
+        provisions in their rooms aft either side of the keelson"""
         cs = self.c["hold"]["casks"]
         o = self.c["orlop"]
         gap = cs["gap_in"] * IN
-        x0 = self.hold_x["main_hold_aft"] + 0.15
-        x1 = self.hold_x["fore_magazine_aft"] - 0.15
-        hw = self.c["middle"]["half_width_px"] / self.c["registration"]["orlop"]["px_per_ft"] * FT + 2.5 * IN
-        n = 0
-        for tier, (L_, D, Dh) in enumerate((cs["leaguer_m"], cs["butt_m"])):
-            def zc_at(x):
-                zsh = float(np.max(self.shingle_z(np.array([x - L_ / 2, x + L_ / 2]))))
-                return zsh + D / 2 if tier == 0 else zsh + cs["leaguer_m"][1] + D / 2 - 0.12 * D
-            yoff = 0.0 if tier == 0 else 0.5 * (cs["leaguer_m"][1] + gap)
-            for sgn in (1.0, -1.0):
-                y = hw + D / 2 + yoff
-                while True:
-                    placed = False
-                    x = x0 + L_ / 2 + (0.5 * (L_ + gap) if tier == 1 else 0.0)
-                    while x < x1 - L_ / 2:
-                        if self.in_middle(x, L_):
-                            x += L_ + gap
-                            continue
-                        zc = zc_at(x)
-                        z_under = float(self.z_orlop(x)) - (o["plank_in"] + o["beam_moulded_in"] + 1.0) * IN
-                        if zc + D / 2 < z_under and self.fits(x, y, zc, L_, D):
-                            cask(part, (x, sgn * y, zc), EX, L_, D, Dh, "CaskWood", "Iron")
-                            n += 1
-                            placed = True
-                        x += L_ + gap
-                    if not placed:
-                        break
-                    y += D + gap
-        self.info["casks"] = n
+        self.info["casks"] = {}
+        for st in self.c["hold"]["stowage"]:
+            x0 = self.hold_x[st["from"]] + 0.15
+            x1 = self.hold_x[st["to"]] - 0.15
+            hw = self.stow_half_width(st) + 2.5 * IN
+            (L0, D0, _), _ = (cs[st["casks"][0]], None)
+            n = 0
+            for tier, key in enumerate(st["casks"]):
+                L_, D, Dh = cs[key]
 
-    def in_middle(self, x, L_):
-        """whether a cask at x would stand under the middle line's boxes' ends (it never does, they're inboard of the
-        casks: kept for the hatches' wells later)"""
-        return False
+                def zc_at(x):
+                    zsh = float(np.max(self.shingle_z(np.array([x - L_ / 2, x + L_ / 2]))))
+                    return zsh + D / 2 if tier == 0 else zsh + D0 + D / 2 - 0.12 * D
+                yoff = 0.0 if tier == 0 else 0.5 * (D0 + gap)
+                for sgn in (1.0, -1.0):
+                    y = hw + D / 2 + yoff
+                    while True:
+                        placed = False
+                        x = x0 + L_ / 2 + (0.5 * (L_ + gap) if tier == 1 else 0.0)
+                        while x < x1 - L_ / 2:
+                            zc = zc_at(x)
+                            z_under = float(self.z_orlop(x)) - (o["plank_in"] + o["beam_moulded_in"] + 1.0) * IN
+                            clear = not any(a < x + L_ / 2 and b > x - L_ / 2 and c_ < sgn * y + D / 2 and
+                                            d_ > sgn * y - D / 2 for a, b, c_, d_ in self.ladder_boxes)
+                            if clear and zc + D / 2 < z_under and self.fits(x, y, zc, L_, D):
+                                cask(part, (x, sgn * y, zc), EX, L_, D, Dh, "CaskWood", "Iron")
+                                n += 1
+                                placed = True
+                            x += L_ + gap
+                        if not placed:
+                            break
+                        y += D + gap
+            self.info["casks"][st["name"]] = n
+
+    def stow_half_width(self, st):
+        """the half width kept clear on the middle line of a stowage: the pump well's and lockers' boxes, or the keelson"""
+        if st["middle"] == "boxes":
+            return self.c["middle"]["half_width_px"] / self.c["registration"]["orlop"]["px_per_ft"] * FT
+        return self.c["keelson"]["sided_in"] / 2 * IN
 
     def shingle(self, part):
-        """the shingle ballast over the iron pigs through the main hold, from bulkhead to bulkhead, its top a set depth over
-        the ceiling beside the keelson (levelled across, following the floor fore and aft)"""
+        """the shingle ballast over the iron pigs under each stowage, from bulkhead to bulkhead, its top a set depth over
+        the ceiling beside the keelson (levelled across, following the floor fore and aft), holed round the pump well
+        and lockers in the main hold"""
         b = self.c["hold"]["ballast"]
-        x0 = self.hold_x["main_hold_aft"] + 1.6 * IN
-        x1 = self.hold_x["fore_magazine_aft"] - 1.6 * IN
         dz = b["shingle_over_ceiling_in"] * IN
         self.shingle_z = lambda x: self.z_floor(x) + dz            # noqa: E731
-        xs = np.linspace(x0, x1, 60)
-        ys = self.ceil_y(xs, self.shingle_z(xs)) - 0.1 * IN
-        outline = np.concatenate([np.column_stack([xs, -ys]), np.column_stack([xs[::-1], ys[::-1]])])
-        hw = self.c["middle"]["half_width_px"] / self.c["registration"]["orlop"]["px_per_ft"] * FT
+        hw = self.stow_half_width({"middle": "boxes"})
         runs = []
-        for a, b in sorted(self.box_x.values()):
+        for a, bb in sorted(self.box_x.values()):
             if runs and a < runs[-1][1] + 0.05:
-                runs[-1][1] = max(runs[-1][1], b)
+                runs[-1][1] = max(runs[-1][1], bb)
             else:
-                runs.append([a, b])
-        holes = [densify(rect2(0.5 * (a + b), 0.0, b - a, 2 * hw), 0.4) for a, b in runs if x0 + 0.1 < a and b < x1 - 0.1]
-        # the shingle's top only (its body is down to the ceiling, unseen): a plate 2 in deep
-        flat_slab(part, outline, holes, self.shingle_z, 2.0 * IN, 0.4, "Shingle")
+                runs.append([a, bb])
+        for st in self.c["hold"]["stowage"]:
+            x0 = self.hold_x[st["from"]] + 1.6 * IN
+            x1 = self.hold_x[st["to"]] - 1.6 * IN
+            xs = np.linspace(x0, x1, max(8, int((x1 - x0) / 0.3)))
+            ys = self.ceil_y(xs, self.shingle_z(xs)) - 0.1 * IN
+            outline = np.concatenate([np.column_stack([xs, -ys]), np.column_stack([xs[::-1], ys[::-1]])])
+            holes = [densify(rect2(0.5 * (a + bb), 0.0, bb - a, 2 * hw), 0.4) for a, bb in runs
+                     if x0 + 0.1 < a and bb < x1 - 0.1] if st["middle"] == "boxes" else []
+            # the shingle's top only (its body is down to the ceiling, unseen): a plate 2 in deep
+            flat_slab(part, outline, holes, self.shingle_z, 2.0 * IN, 0.4, "Shingle")
+
+    # --- the rooms' contents ---------------------------------------------------------------------------------------------
+    def furnish(self, bags, fittings, goods):
+        """what each orlop room holds, by its kind (card: furnish): the bread rooms' bags of biscuit stacked along the
+        walls, the sail rooms' sails rolled in bolts, the store rooms' shelves with their boxes and kegs, the boatswain's
+        counter and racks, the state rooms' cots and sea chests, the filling room's bench and cartridge racks. Each
+        stands on the planks a clear inch off the walls and the side, an aisle left down the room's middle to its door
+        (sizes from the stores kit, stores.json, where it has the item)"""
+        fc = self.c["furnish"]
+        c = fc["clear_in"] * IN
+        rng = np.random.default_rng(14)
+        n = {}
+        for r in self.room_list:
+            k = r["kind"]
+            if k not in fc["kinds"]:
+                continue
+            spec = fc["kinds"][k]
+            for strip in self.strips(r, spec["depth_m"], c, fc["aisle_m"]):
+                x0, x1, y0, y1, out = strip
+                getattr(self, "fill_" + spec["fill"])(bags if spec["fill"] == "bags" else
+                                                     goods if spec["fill"] in ("bolts",) else fittings,
+                                                     goods, x0, x1, y0, y1, r["zt"], out, spec, c, rng, n)
+            if k == "boatswain":
+                self.counter(fittings, r, c)
+        self.info["furnish"] = n
+
+    def strips(self, r, depth, c, aisle):
+        """the strips along a room's long walls where its contents stand: [(x0, x1, y0, y1, outboard sign)], a gap at
+        the middle of its length for the doors, the aisle down its middle clear; a narrow room keeps one strip, on its
+        outboard side"""
+        xm = 0.5 * (r["x0"] + r["x1"])
+        lo, hi = self.room_span(xm, r["ya"], r["yb"], r["zt"])
+        x0, x1 = r["x0"] + c + 1.0 * IN, r["x1"] - c - 1.0 * IN
+        gap = 0.5 if x1 - x0 > 2.4 else 0.0
+        xs = [(x0, xm - gap)] + [(xm + gap, x1)] if gap else [(x0, x1)]
+        w = hi - lo
+        out = []
+        for a, b in xs:
+            if w >= 2 * depth + aisle + 2 * c:
+                out.append((a, b, lo + c, lo + c + depth, -1.0))
+                out.append((a, b, hi - c - depth, hi - c, 1.0))
+            elif w >= depth + 2 * c + 0.3:
+                s = 1.0 if abs(hi) > abs(lo) else -1.0
+                out.append((a, b, hi - c - depth, hi - c, 1.0) if s > 0 else (a, b, lo + c, lo + c + depth, -1.0))
+        return out
+
+    def room_ok(self, x0, x1, y0, y1, z0, z1, c):
+        """whether a box x0..x1, y0..y1, z0..z1 stands inside the side, clear by c, at its four corners top and bottom"""
+        xs = np.array([x0, x1, x0, x1, x0, x1, x0, x1])
+        zs = np.array([z0, z0, z1, z1, z0, z0, z1, z1])
+        ys = np.array([y0, y0, y0, y0, y1, y1, y1, y1])
+        return bool(np.all(np.abs(ys) + c < self.ceil_y(xs, zs)))
+
+    def fill_bags(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
+        L_, W, H = (v * IN for v in self.c["furnish"]["bread_bag_in"])
+        layers = spec["layers"]
+        x = x0
+        while x + L_ <= x1:
+            y = y0
+            while y + W <= y1:
+                for k in range(layers):
+                    z = zt + k * H
+                    if not self.room_ok(x, x + L_, y, y + W, z, z + H, c):
+                        break
+                    j = 0.4 * IN * (rng.random() - 0.5)
+                    self.bag(part, x + 0.5 * L_ + j, y + 0.5 * W, z, L_ - 0.4 * IN, W - 0.4 * IN, H - 0.05 * IN)
+                    n["bread_bags"] = n.get("bread_bags", 0) + 1
+                y += W
+            x += L_
+
+    def bag(self, part, xc, yc, z, L_, W, H):
+        """a bag of biscuit lying flat: a pillow, its sides bulging, flat underneath so the next stacks on it"""
+        nx, ny = 6, 4
+        u = np.linspace(-1, 1, nx)
+        v = np.linspace(-1, 1, ny)
+        rings = []
+        for k, t in enumerate(np.linspace(0, 1, 5)):
+            zz = z + H * t
+            bul = 1.0 - 0.18 * (2 * t - 1) ** 2 if 0 < t < 1 else (0.9 if t == 0 else 0.78)
+            P = []
+            for a in u:
+                P.append((xc + 0.5 * L_ * a * bul, yc - 0.5 * W * bul, zz))
+            for b in v[1:]:
+                P.append((xc + 0.5 * L_ * bul, yc + 0.5 * W * b * bul, zz))
+            for a in u[::-1][1:]:
+                P.append((xc + 0.5 * L_ * a * bul, yc + 0.5 * W * bul, zz))
+            for b in v[::-1][1:-1]:
+                P.append((xc - 0.5 * L_ * bul, yc + 0.5 * W * b * bul, zz))
+            rings.append(np.array(P))
+        solid(part, rings, "Canvas")
+
+    def fill_shelves(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
+        """a rack of shelves along the strip: posts every 4 ft, shelves of deal, boxes and kegs on them at random"""
+        t, ph = 1.0 * IN, 2.0 * IN
+        # the shelves under the berth deck's beams, the top one leaving room for what stands on it
+        head = min(self.under_berth_beams(x) for x in (x0, x1)) - zt - 0.03
+        levels = [lv for lv in spec["levels_m"] if lv + t + 0.2 < head]
+        if not levels:
+            return
+        top = levels[-1] + t
+        posts = np.linspace(x0, x1, max(2, int(math.ceil((x1 - x0) / (4 * FT))) + 1))
+        # trim the rack where the side closes in over it
+        while y1 - y0 > 0.25 and not self.room_ok(x0, x1, y0, y1, zt, zt + top, c):
+            if out > 0:
+                y1 -= 0.05
+            else:
+                y0 += 0.05
+        if y1 - y0 <= 0.25:
+            return
+        post_x = []
+        for xp in posts:
+            xa = min(max(xp - ph / 2, x0), x1 - ph)
+            post_x.append((xa - 0.01, xa + ph + 0.01))
+            for yp in (y0, y1 - ph):
+                vbox(part, (xa, yp, zt), (xa + ph, yp + ph, zt + top), "Deal")
+        for lv in levels:
+            vbox(part, (x0, y0, zt + lv), (x1, y1, zt + lv + t), "Deal")
+            n["shelves"] = n.get("shelves", 0) + 1
+            # goods on it, clear of the posts and of the shelf over it
+            room_h = min([l2 for l2 in levels if l2 > lv] + [lv + 0.45, head]) - lv - t - 0.02
+            x = x0 + ph + 0.02
+            while x < x1 - ph - 0.25:
+                kind = rng.integers(0, 3)
+                w_ = 0.30 if kind == 0 else 0.45
+                hit = [b for a, b in post_x if a < x + w_ and b > x]
+                if hit:
+                    x = max(hit) + 0.01
+                    continue
+                if kind == 0:                       # a keg on end
+                    d_ = min(0.30, room_h / 1.2, y1 - y0 - 0.06)
+                    cask(goods, (x + d_ / 2, 0.5 * (y0 + y1), zt + lv + t + 0.6 * d_ + 0.001), EZ, 1.2 * d_, d_,
+                         0.85 * d_, "CaskWood", "Iron", n=10, rings=5)
+                    x += d_ + 0.04
+                else:                               # a box
+                    bl = 0.25 + 0.2 * rng.random()
+                    bh = min(room_h, 0.12 + 0.2 * rng.random())
+                    bw = min(y1 - y0 - 0.06, 0.25 + 0.15 * rng.random())
+                    yb = y0 + 0.03 if out < 0 else y1 - 0.03 - bw
+                    if x + bl > x1 - ph - 0.02 or any(a < x + bl and b > x for a, b in post_x):
+                        x += 0.05
+                        continue
+                    vbox(goods, (x, yb, zt + lv + t), (x + bl, yb + bw, zt + lv + t + bh), "Deal")
+                    x += bl + 0.03
+                n["goods"] = n.get("goods", 0) + 1
+
+    def fill_bolts(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
+        """sails rolled in bolts lying fore and aft along the strip, two layers, the upper in the lower's hollows"""
+        d_ = spec["bolt_d_m"]
+        L_ = x1 - x0
+        for k in range(spec["layers"]):
+            z = zt + d_ / 2 + 0.002 + k * d_ * math.sqrt(0.75)
+            y = (y0 if out < 0 else y1) - out * (d_ / 2 + k * d_ / 2)
+            while (y0 <= y - d_ / 2 and y + d_ / 2 <= y1):
+                if self.room_ok(x0, x1, y - d_ / 2, y + d_ / 2, z - d_ / 2, z + d_ / 2, c):
+                    lathe(goods, (0.5 * (x0 + x1), y, z), EX, EZ,
+                          [(-L_ / 2, 0.0), (-L_ / 2, d_ / 2 - 0.03), (-L_ / 2 + 0.03, d_ / 2), (L_ / 2 - 0.03, d_ / 2),
+                           (L_ / 2, d_ / 2 - 0.03), (L_ / 2, 0.0)], "Canvas", 14)
+                    n["sail_bolts"] = n.get("sail_bolts", 0) + 1
+                y -= out * d_
+
+    def fill_cots(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
+        """a state room's cot (a box bed on legs) along its outboard side and a sea chest at its foot"""
+        L_, W, H = 6.0 * FT, 2.25 * FT, 1.5 * FT
+        ya = y1 - W if out > 0 else y0
+        if x1 - x0 < L_ or not self.room_ok(x0, x0 + L_, ya, ya + W, zt, zt + H, c):
+            return
+        vbox(part, (x0, ya, zt + H - 0.25), (x0 + L_, ya + W, zt + H), "Deal")
+        for xl in (x0, x0 + L_ - 2 * IN):
+            for yl in (ya, ya + W - 2 * IN):
+                vbox(part, (xl, yl, zt), (xl + 2 * IN, yl + 2 * IN, zt + H - 0.25), "Deal")
+        vbox(part, (x0 + 0.25, ya + 0.06, zt + H), (x0 + L_ - 0.1, ya + W - 0.06, zt + H + 0.12), "Canvas")
+        n["cots"] = n.get("cots", 0) + 1
+        sc = self.c["furnish"]["sea_chest_in"]
+        if x0 + L_ + 0.05 + sc[0] * IN < x1:
+            vbox(goods, (x0 + L_ + 0.05, ya + 0.03, zt), (x0 + L_ + 0.05 + sc[0] * IN, ya + 0.03 + sc[1] * IN,
+                                                          zt + sc[2] * IN), "Mahogany")
+
+    def fill_filling(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
+        """the filling room: its bench (copper on the top) and a cartridge rack over it"""
+        L_, W, H = (v * IN for v in self.c["furnish"]["filling_bench_in"])
+        L_ = min(L_, x1 - x0)
+        ya = y1 - W if out > 0 else y0
+        if not self.room_ok(x0, x0 + L_, ya, ya + W, zt, zt + H, c):
+            return
+        vbox(part, (x0, ya, zt + H - 2 * IN), (x0 + L_, ya + W, zt + H - 0.1 * IN), "Deal")
+        vbox(part, (x0 + IN, ya + IN, zt + H - 0.1 * IN), (x0 + L_ - IN, ya + W - IN, zt + H), "Copper")
+        for xl in (x0, x0 + L_ - 2 * IN):
+            for yl in (ya, ya + W - 2 * IN):
+                vbox(part, (xl, yl, zt), (xl + 2 * IN, yl + 2 * IN, zt + H - 2 * IN), "Deal")
+        n["filling_bench"] = 1
+
+    def counter(self, part, r, c):
+        """the boatswain's counter down the middle of his store room, stopped short of a mast"""
+        x0, x1 = r["x0"] + 0.9, r["x1"] - 0.9
+        for name, h in self.mast_holes(x0 - 1.0, x1 + 1.0):
+            xa, xb = h[:, 0].min() - 0.3, h[:, 0].max() + 0.3
+            if xa < x1 and xb > x0:
+                x1 = min(x1, xa) if xa - x0 > x1 - xb else x1
+                x0 = max(x0, xb) if xa - x0 <= x1 - xb else x0
+        if x1 - x0 < 0.6:
+            return
+        vbox(part, (x0, -0.3, r["zt"]), (x1, 0.3, r["zt"] + 0.9), "Deal")
+
+    def under_berth_beams(self, x):
+        """the underside of the berth deck's beams at x"""
+        return float(self.z_berth(x)) - self.berth_plank() - self.berth_beam_d()
 
     # --- ladders down into the hold --------------------------------------------------------------------------------
     def ladders(self, part):
@@ -789,6 +1014,7 @@ class Orlop:
         gun deck's ladder: gundeck_1797.json's sizes)"""
         lc = self.gd.c["ladders"]
         self.ladder_feet = {}
+        self.ladder_boxes = []
         for name, outline, h in self.openings():
             if not h.get("ladder"):
                 continue
@@ -803,6 +1029,7 @@ class Orlop:
                 d, xt = -1.0, h["x"] + h["L"] / 2
             zt = float(self.z_orlop(xt))
             xf, drop = self.gd.ladder(part, xt, zt, d, h["y"], zk, lc)
+            self.ladder_boxes.append((min(xt, xf) - 0.6, max(xt, xf) + 0.6, h["y"] - 0.45, h["y"] + 0.45))
             self.ladder_feet[name] = {"x_m": round(xf, 3), "drop_m": round(drop, 3)}
         self.info["ladders"] = self.ladder_feet
 
@@ -876,7 +1103,7 @@ class Orlop:
         P = {n: Part() for n in ("Ceiling", "LimberBoards", "Keelson", "MastSteps", "OrlopDeck", "OrlopBeams",
                                  "TierBattens", "MiddleLine", "ShotPiles", "Partitions", "OrlopCoamings",
                                  "HoldBulkheads", "MagazineFloors", "PowderBarrels", "WaterCasks", "Shingle",
-                                 "BerthBeams", "HoldLadders", "Cables")}
+                                 "BerthBeams", "HoldLadders", "Cables", "BreadBags", "RoomFittings", "Stores")}
         self.x_hold = self.hold_range()
         self.ceiling(P["Ceiling"], P["LimberBoards"])
         self.keelson(P["Keelson"], P["MastSteps"])
@@ -887,10 +1114,11 @@ class Orlop:
         self.coamings(P["OrlopCoamings"])
         self.hold_rooms(P["HoldBulkheads"], P["MagazineFloors"], P["PowderBarrels"])
         self.shingle(P["Shingle"])
+        self.ladders(P["HoldLadders"])
         self.casks(P["WaterCasks"])
         self.overhead(P["BerthBeams"])
-        self.ladders(P["HoldLadders"])
         self.cable_coils(P["Cables"])
+        self.furnish(P["BreadBags"], P["RoomFittings"], P["Stores"])
         self.light_rooms()
         self.parts_ = P
         zm = float(self.z_orlop(0.0))
