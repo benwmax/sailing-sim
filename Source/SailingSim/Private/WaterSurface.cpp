@@ -542,6 +542,13 @@ double AWaterSurface::StormWaterStrength(double AirKnots)
 	return Sailing::SmoothStep(18.0, 26.0, AirKnots);
 }
 
+float AWaterSurface::StormWaterNow() const
+{
+	static SailingArgs::FCachedFlag ClassicStormWaterArg(TEXT("SailingClassicStormWater"));
+	const Sailing::FWaveField* Field = GetWaves();
+	return (!Field || ClassicStormWaterArg.Get()) ? 0.f : float(StormWaterStrength(Field->GetParams().AirWindKnots()));
+}
+
 float AWaterSurface::FarCapSpriteWeight(double DistM, double HeightM)
 {
 	// (Keep in step with M_WaterV4's FCS_W and M_FarCap.)
@@ -1757,6 +1764,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 				Tile->Mid->SetScalarParameterValue(TEXT("Size"), float(FMath::Sqrt(Tile->Size)));
 				Tile->Mid->SetScalarParameterValue(TEXT("CapH"), float(FMath::Lerp(0.2, 0.45, FMath::Clamp((Waves->GetParams().WindSpeedKnots - 12.0) / 10.0, 0.0, 1.0))) * (bDebug ? 10.f : 1.f));
 				// A cap rides a crest: stood at the mean level, the crests between it and a low eye hid it.
+				Tile->Mid->SetScalarParameterValue(TEXT("StormWater"), StormWaterNow());   // docs/blow-sea/: the caps' white, as M_WaterV4's
 				Tile->Mid->SetScalarParameterValue(TEXT("Lift"), float(0.6 * Waves->SignificantHeightAt(CX, CY) * CmPerMeter));
 			}
 		}
@@ -2407,9 +2415,7 @@ void AWaterSurface::UpdateMaterial()
 		// Storm water look (docs/blow-sea/, sailing-feedback #27): M_WaterV4's StormWater (strength, Hs m). From 18 to 26 kn of
 		// the air's mean wind the foam keeps more of its white, the crests lighten and the troughs darken against the long
 		// waves' height over the sea's significant height near the camera. -SailingClassicStormWater draws the water as before.
-		static SailingArgs::FCachedFlag ClassicStormWaterArg(TEXT("SailingClassicStormWater"));
-		const double AirKn = Waves->GetParams().AirWindKnots();
-		const float Strength = ClassicStormWaterArg.Get() ? 0.f : float(StormWaterStrength(AirKn));
+		const float Strength = StormWaterNow();
 		const float Hs = float(FMath::Max(Waves->SignificantHeightAt(GustCenter.X, GustCenter.Y), 0.1));
 		WaterMaterial->SetVectorParameterValue(TEXT("StormWater"), FLinearColor(Strength, Hs, 0.f, 0.f));
 	}

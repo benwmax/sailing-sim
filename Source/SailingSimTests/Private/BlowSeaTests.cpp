@@ -2,7 +2,6 @@
 #include "LakeData.h"
 #include "LakeTerrain.h"
 #include "Waves.h"
-#include "WaterSurface.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -58,12 +57,6 @@ bool FSailingBlowSeaTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Taller: at least 15% over the SWAN-fitted sea"), Hs1 > 1.15 * Hs0);
 	TestTrue(TEXT("... at the straight-line fetch's height within 10%"), FMath::Abs(Hs1 / StraightHs - 1.0) < 0.10);
 	TestTrue(TEXT("... and no less steep"), Hs1 / PeakWavelength(Tp1) >= Hs0 / PeakWavelength(Tp0));
-
-	// The storm water look (M_WaterV4's StormWater) by the air's wind: none to 18 kn, full from 26, rising between.
-	TestEqual(TEXT("Storm water: none at 18 kn"), AWaterSurface::StormWaterStrength(18.0), 0.0, 1e-12);
-	TestEqual(TEXT("Storm water: half at 22 kn"), AWaterSurface::StormWaterStrength(22.0), 0.5, 1e-12);
-	TestEqual(TEXT("Storm water: full at 26 kn"), AWaterSurface::StormWaterStrength(26.0), 1.0, 1e-12);
-	TestEqual(TEXT("Storm water: full at 40 kn"), AWaterSurface::StormWaterStrength(40.0), 1.0, 1e-12);
 	return true;
 }
 

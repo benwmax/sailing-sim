@@ -70,12 +70,19 @@ it fades in
 
 - crest and trough: the water body's albedo rises on the crests (where the light comes through thin water) to 1.7 times at
   half the significant height up, and falls to 0.79 in the troughs (`STORM_CREST_LIFT` 2.0, `STORM_TROUGH_DARK` 0.6, on the
-  material's `Dark` term, so foam and the far water are untouched: the long waves' height fades out with the mesh);
+  material's `Dark` term, clamped at 1.7 times). The height is the 24 long waves' alone (`LongH`, a second vertex
+  interpolator): the chop, the boats' wakes and the FFT ocean's swell don't count, it fades out with the mesh (far water is
+  as before), and the dark band along a hull stays;
 - the faces: the long waves' slopes are tilted 35% further in the normal only (`STORM_FACE_TILT`), so faces toward the
-  camera reflect less of the storm's sky and faces away more;
-- the foam: aged lace keeps more of its white (residue 0.5 -> 0.7), thin lace is 35% more opaque (`STORM_FOAM_OPACITY`),
-  and only half as much of it is lost to the glare at grazing. The cap mask, the Monahan cover, `-SailingDebugFoam` and the
-  whitecap tests don't change: only how the foam is drawn.
+  camera reflect less of the storm's sky and faces away more. Not the ocean's swell (the Gulf): crest, trough and tilt are
+  the lake's long waves' look;
+- the foam: the whitecaps' aged lace keeps more of its white (residue 0.5 -> 0.7), their thin lace is 35% more opaque
+  (`STORM_FOAM_OPACITY`), and only half as much is lost to the glare at grazing. Only the caps' share of the foam: the
+  rain's veil, windrows, gale streaks and the boats' white water are as before. The cap mask, the Monahan cover,
+  `-SailingDebugFoam` and the whitecap tests don't change. On High and Ultra the boosts give way to `M_FarCap`'s sprites
+  where they take the caps (300 m to 1.25 km), and the sprites lift their own white alike (`StormWater` on each tile).
+
+Test: `SailingSim.Visual.StormWater` (the strength by wind).
 
 The knobs are `make_materials.py` environment values (as the storm look's). `-SailingClassicStormWater` draws the water as
 before. Low (M_Water) is unchanged. It follows the air's wind on every water body (the bay, the Gulf and the prologue's
