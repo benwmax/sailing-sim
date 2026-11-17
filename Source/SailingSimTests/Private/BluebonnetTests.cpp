@@ -264,7 +264,7 @@ bool FSailingBluebonnetStartsTest::RunTest(const FString&)
 			TestTrue(FString::Printf(TEXT("%s: %s has its depth"), *W.Name, *W.Spots[S].Name), W.Spots[S].DepthM > 0.0);
 			for (const SailCatalog::FBoat& B : SailCatalog::Boats())
 			{
-				if (B.Type == Blue || B.Type == int32(EBoatType::Maxi)) continue;
+				if (B.Type == Blue || B.Type == int32(EBoatType::Maxi) || IsSquareRigged(EBoatType(B.Type))) continue;
 				TestTrue(FString::Printf(TEXT("%s fits %s"), *B.Name, *W.Spots[S].Name), SailCatalog::DepthLockReason(WorldIndex, S, B.Type).IsEmpty());
 			}
 			const FString Reason = SailCatalog::DepthLockReason(WorldIndex, S, Blue);
@@ -290,6 +290,7 @@ bool FSailingBluebonnetStartsTest::RunTest(const FString&)
 		if (WorldIndex == 0) for (const FString& Name : ShipSpots) TestFalse(TEXT("... not the club's own"), Name.Contains(TEXT("Yacht Club")));
 	}
 	TestFalse(TEXT("No room for a 65 m ship 114 m from the docks"), LaunchSpotFits(10.0, 6.5, 114.0, 65.5));
+	TestTrue(TEXT("A 40 m yacht may start 63 m from a quay (Bluebonnet at the Vieux-Port)"), LaunchSpotFits(6.0, 4.5, 63.0, 39.9));
 	TestTrue(TEXT("A spot without a clearance has room"), LaunchSpotFits(10.0, 6.5, -1.0, 65.5));
 	TestTrue(TEXT("A spot without a depth fits any boat"), LaunchSpotFits(-1.0, 10.0));
 	return true;

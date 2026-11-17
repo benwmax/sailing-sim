@@ -232,8 +232,9 @@ quick polar is byte-identical). And her sheet turns the waves' slope push off (`
 
 She draws 6.5 m and wants 7.9 m under her (`LaunchSpotFits`, docs/jclass-14/), and now room to swing too: two of her
 lengths (131 m) of open water to the bake's nearest dock, pier or breakwater (`LaunchSpotClearance`, read the same way by
-`FLakeData` for the start and by `SailCatalog` for the Boat screen). Every other boat is 17.5 m or less, so the rule
-changes nothing for them.
+`FLakeData` for the start and by `SailCatalog` for the Boat screen). The rule is for ships of 50 m or more
+(`kLaunchShipLengthM`), so it changes nothing for the yachts: Bluebonnet (40 m) still starts at Marseille's Vieux-Port,
+63 m from its quay, as a J-class would berth there.
 
 | World | Spot | Depth | Clear | The frigate |
 |---|---|---|---|---|

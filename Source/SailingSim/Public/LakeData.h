@@ -23,10 +23,13 @@ struct FLaunchSpot
 /** Is a launch spot deep enough for a boat that draws DraftM: a fifth of her draft under the keel (Bluebonnet's 4.5 m wants
  *  5.4 m: Bolivar Roads, the lake's deep south end). A spot without a depth fits every boat. docs/jclass-14/.
  *  And is there room for her: two of her lengths of open water to the nearest dock or pier (SpotClearM, LaunchSpotClearance;
- *  the frigate's 65 m keeps her out of the marinas, docs/frigate-physics/). A spot without a clearance has room. */
+ *  the frigate's 65 m keeps her out of the marinas, docs/frigate-physics/), for a ship of 50 m or more only. A spot without a
+ *  clearance has room. */
+constexpr double kLaunchShipLengthM = 50.0;   // the room rule is for ships; yachts up to Bluebonnet's 40 m use the marinas
 inline bool LaunchSpotFits(double SpotDepthM, double DraftM, double SpotClearM = -1.0, double LengthM = 0.0)
 {
-	return (SpotDepthM < 0.0 || SpotDepthM >= 1.2 * DraftM) && (SpotClearM < 0.0 || SpotClearM >= 2.0 * LengthM);
+	return (SpotDepthM < 0.0 || SpotDepthM >= 1.2 * DraftM)
+		&& (SpotClearM < 0.0 || LengthM < kLaunchShipLengthM || SpotClearM >= 2.0 * LengthM);
 }
 
 struct FLakeDock;
