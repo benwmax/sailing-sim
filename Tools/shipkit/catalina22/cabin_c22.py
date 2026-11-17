@@ -103,6 +103,14 @@ def trunk_out_top(x):
 TRUNK_W = KC.SL["half_width"] + KC.SL["wall"]
 
 
+def trunk_stations(step=0.03):
+    """Stations along the keel trunk in the cabin, its ends and slice 3's knots included."""
+    x0, x1 = KC.SL["x"]
+    xs = {x0, x1} | {x0 + step * i for i in range(int((x1 - x0) / step) + 1)}
+    xs |= {x for x, _ in KC.trunk_knots() if x0 <= x <= x1}
+    return sorted(xs)
+
+
 # ------------------------------------------------------------------ the pieces
 
 class Solid:
@@ -311,6 +319,8 @@ def measures():
         ("dinette seat height", dn_seat, 0.4, 0.48, ""),
         ("dinette berth length", dn_len, 1.42, 2.0, "aft seat to the bulkhead with the table down: a short double"),
         ("table height", table, 0.68, 0.76, "over the sole"),
+        ("dinette berth: filler to seat cushions", DN["table_down_z"] - DN["seat_top"], -0.005, 0.005,
+         "the filler cushion flush with the seat cushions"),
         ("companionway rises", max(rises), 0.0, 0.32, f"sole {zs:.2f} to step {STP['top']:.2f} to sill {sill:.3f}"),
         ("galley under the seat", g_room, 0.03, 0.3, "its top to the cockpit seat's underside, stowed"),
         ("galley out, clear of the dinette", -g_out, 0.0, 0.3, "its handle to the dinette's back, pulled out"),

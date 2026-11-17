@@ -48,8 +48,8 @@
   "back_thick": 0.05,
   "back_height": 0.33,
   "table_z": 0.58,
-  "table_down_z": 0.29,
-  "note": "The dinette to port: two seats facing each other across a table, the seats from the hull in to 'inboard_y' from the centreline (beside the keel trunk), their bases 'seat_top' high and cushions 'cushion' thick; the aft seat's back a low panel at its aft edge, the forward seat's the bulkhead. The table's top 'table_z' high on a leg on the sole beside the trunk; lowered to 'table_down_z', level with the seats, it and its own cushions make a short double berth."
+  "table_down_z": 0.17,
+  "note": "The dinette to port: two seats facing each other across a table, the seats from the hull in to 'inboard_y' from the centreline (beside the keel trunk), their bases 'seat_top' high and cushions 'cushion' thick; the aft seat's back a low panel at its aft edge, the forward seat's the bulkhead. The table's top 'table_z' high on a leg on the sole beside the trunk; lowered to 'table_down_z', level with the seats' bases, it and its filler cushion make a short double berth, the cushions flush."
  },
  "settee": {
   "x": [-0.76, 1.04],
@@ -81,10 +81,15 @@
   "note": "The companionway step: a box just forward of the bulkhead (the cockpit well's front and its liner) under the sill, its top halfway between the sole and the sill (two even rises); the keel's winch stands on the trunk's aft end just forward of it."
  },
  "keel_winch": {
-  "x": -0.42,
-  "drum_r": 0.04,
-  "drum_w": 0.07,
-  "note": "The swing keel's winch: a small geared drum on a bracket on the trunk's top, its crank socket to starboard, its cable down into the trunk through a fairlead to the keel's top (slice 3's keel; the cable inside the trunk isn't drawn)."
+  "socket_y": 0.12,
+  "socket_z": 0.02,
+  "boss_r": 0.032,
+  "note": "The swing keel's winch: a reel winch inside the companionway step, under the bridgedeck (Practical Sailor's review: the handle goes through a plywood facing), its cable straight forward into the keel trunk's aft end to the keel's top (slice 3's keel; neither is drawn, being inside). Only its crank socket shows, in a boss on the step's forward face, 'socket_y' to starboard and 'socket_z' high."
+ },
+ "trunk_cap": {
+  "thick": 0.012,
+  "skirt": 0.03,
+  "note": "A teak cap on the keel trunk's top in the cabin, 'thick' over it and 'skirt' down its sides, so it reads as the flat-topped box owners step over (slice 3's trunk is smooth-shaded fibreglass under it)."
  },
  "clear": 0.005,
  "note": "Every piece stands clear of the liner by at least 'clear' (cabin_c22.py checks it), and none goes through another."

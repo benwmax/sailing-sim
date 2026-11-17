@@ -9,7 +9,8 @@ Views:
   cutaway_stbd          from high on the port bow, the same: the starboard side (settee, quarter berth), galley out
   companionway          from the cockpit, down through the companionway with the drop boards out
   forward               standing under the raised pop-top, looking forward to the V-berth
-  aft                   from the V-berth's doorway, looking aft: the step, keel winch, galley pulled out, quarter berth
+  aft                   from the V-berth's doorway, looking aft: the step with the keel winch's socket, galley pulled out, quarter berth
+  galley                from the settee, the galley pulled out from under the port cockpit seat
   dinette_down          the dinette's table lowered with its filler cushion: the berth
   window                from outside, the starboard ports with the cabin behind them
 Frame: Blender's (X forward, Y to port, Z up). --clay draws everything in one clay, for the blind rounds.
@@ -153,6 +154,7 @@ setup(raised=True)
 shot("forward", (-0.6, 0.0, 1.45), (2.0, 0.0, 0.35), lens=14)
 setup(raised=True, galley_out=True)
 shot("aft", (0.72, -0.18, 0.95), (-1.6, 0.05, 0.15), lens=14)
+shot("galley", (-0.25, -0.25, 1.15), (-0.7, 0.55, 0.3), lens=18)
 setup(raised=True, table_down=True)
 shot("dinette_down", (0.25, -0.35, 0.95), (0.35, 0.55, 0.15), lens=16)
 setup()

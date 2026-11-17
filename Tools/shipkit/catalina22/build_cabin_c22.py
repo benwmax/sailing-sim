@@ -8,7 +8,8 @@ Objects (Blender frame, X forward, Y to port, Z up):
                              (the trunk, C22_Cabin, is cut open behind each window: the cabin shows through its glass)
   C22_Interior_PortaPotti    the porta-potti under the V-berth, on its floor board
   C22_Interior               sole, bulkheads (the main one with its doorway and compression post, and one closing each
-                             end of the liner), berth and seat fronts, the step, the keel's winch, the curtain on its rod
+                             end of the liner), berth and seat fronts, the step and the keel winch's socket in it,
+                             the teak cap on the keel trunk, the curtain on its rod
   C22_Interior_Cushions      every cushion, its edges rounded
   C22_Interior_Table         the dinette's table up, on its leg (C22_Interior_TableDown: lowered to make the berth, with
                              its filler cushion; hidden)
@@ -35,6 +36,7 @@ import build_sails_c22 as BS  # noqa: E402
 
 CUSHION_R = 0.018        # the cushions' rounded edges
 EDGE_DEG = 30.0          # an edge sharper than this between two faces is a corner (rounded on cushions)
+SHARP_DEG = 35.0         # an edge sharper than this on the liner and the keel trunk is drawn sharp
 
 
 # ------------------------------------------------------------------ the liner
@@ -199,6 +201,18 @@ def inner_copy(m, ob, t, slot, keep=None, foot=None):
     return m
 
 
+def sharpen(ob, deg=SHARP_DEG):
+    """Mark ob's edges sharper than deg as sharp, so smooth shading doesn't round a corner into a bolster."""
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    for e in bm.edges:
+        if len(e.link_faces) == 2 and math.degrees(e.link_faces[0].normal.angle(e.link_faces[1].normal, 0.0)) > deg:
+            e.smooth = False
+    bm.to_mesh(ob.data)
+    bm.free()
+    return ob
+
+
 def build_liner(mats):
     """The hull's and the well's insides (C22_Interior_Liner) and the deck's and trunk's (C22_Interior_Headliner)."""
     m = Mesh("C22_Interior_Liner")
@@ -218,7 +232,8 @@ def build_liner(mats):
     inner_copy(h, cabin, CC.LN["cabin"], "Headliner", foot=(at_foot, CC.LN["deck"]))
     reveals(h, cabin, loops, CC.LN["cabin"], "Headliner")
     print(f"C22 cabin: cut {n} deck faces from under the trunk, opened {len(loops)} windows")
-    return [m.finish(mats, weld=1e-5), h.finish(mats, weld=1e-5)]
+    sharpen(bpy.data.objects["C22_KeelStub"])            # the keel trunk in the cabin: a box, not a bolster
+    return [sharpen(m.finish(mats, weld=1e-5)), sharpen(h.finish(mats, weld=1e-5))]
 
 
 # ------------------------------------------------------------------ the pieces
@@ -323,7 +338,7 @@ def build_interior(mats, S):
         if s.name == "PortaPotti":
             continue
         solid(m, s)
-    # teak treads on the step and the trunk's top under the winch
+    # a teak tread on the step
     STP = CC.STP
     box(m, (STP["x"][0] + 0.005, -STP["half_width"] + 0.01, STP["top"]), (STP["x"][1] - 0.005, STP["half_width"] - 0.01,
                                                                           STP["top"] + 0.012), "Teak")
@@ -364,22 +379,28 @@ def build_interior(mats, S):
     for i in range(0, nu + 1, 3):                              # the rings on the rod
         p = rows[0][i]
         BS.torus(m, (rx, p[1], rz), (0, 1, 0), 0.012, 0.002, "Stainless", 10, 4)
-    # the keel's winch on the trunk's aft end: a base, two cheeks, the drum across, its crank socket to starboard, the
-    # cable forward to a fairlead into the trunk
+    # the keel's winch is inside the step (under the bridgedeck): only its crank socket shows, in a boss on the step's
+    # forward face; its cable runs straight forward into the trunk's aft end, unseen
     KW = CC.KW
-    wx = KW["x"]
-    zb = CC.trunk_out_top(wx)
-    box(m, (wx - 0.07, -0.05, zb), (wx + 0.07, 0.05, zb + 0.008), "Aluminium")
-    for sy in (-1, 1):
-        box(m, (wx - 0.05, sy * KW["drum_w"] / 2 + (0 if sy > 0 else -0.006), zb + 0.008),
-            (wx + 0.05, sy * KW["drum_w"] / 2 + (0.006 if sy > 0 else 0), zb + 0.1), "Aluminium")
-    zc = zb + 0.06
-    BK.cylinder_y(m, wx, zc, KW["drum_r"], -KW["drum_w"] / 2, KW["drum_w"] / 2, "Aluminium", 16)
-    BK.cylinder_y(m, wx, zc, 0.012, KW["drum_w"] / 2 + 0.006, KW["drum_w"] / 2 + 0.04, "Stainless", 8)
-    fx = wx + 0.16
-    BR.rod(m, (fx - 0.02, 0.0, CC.trunk_out_top(fx) - 0.004), (fx + 0.02, 0.0, CC.trunk_out_top(fx) + 0.018), 0.014,
+    fx = STP["x"][1]
+    BR.rod(m, (fx, KW["socket_y"], KW["socket_z"]), (fx + 0.012, KW["socket_y"], KW["socket_z"]), KW["boss_r"],
+           "Aluminium", 20)
+    BR.rod(m, (fx + 0.011, KW["socket_y"], KW["socket_z"]), (fx + 0.016, KW["socket_y"], KW["socket_z"]), 0.011,
            "BlackPlastic", 10)
-    BS.tube(m, [(wx, 0.0, zc - KW["drum_r"]), (fx, 0.0, CC.trunk_out_top(fx) + 0.01)], 0.003, "Wire", 6)
+    # a teak cap on the keel trunk's top: a flat-topped box over its smooth moulding
+    TC = CC.C["trunk_cap"]
+    w = CC.TRUNK_W + 0.004
+    xs = [x for x in CC.trunk_stations() if CC.trunk_out_top(x) is not None]
+    rows = []
+    for x in xs:
+        t = CC.trunk_out_top(x)
+        lo = max(t - TC["skirt"], CC.SO["z"] + 0.001)
+        rows.append([(x, -w, lo), (x, -w, t + TC["thick"]), (x, w, t + TC["thick"]), (x, w, lo)])
+    ring = [[r[k] for r in rows] for k in range(4)]
+    for k, out in enumerate(((0, -1, 0), (0, 0, 1), (0, 1, 0))):
+        m.grid([ring[k], ring[k + 1]], "Teak", lambda mid, out=out: out)
+    m.polygon(rows[0], "Teak", (-1, 0, 0))
+    m.polygon(rows[-1], "Teak", (1, 0, 0))
     return m.finish(mats)
 
 
