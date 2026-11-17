@@ -40,15 +40,15 @@ for Bean.
 `hardware_c22.py` places the fittings, lays every line and checks them (plain Python, no Blender). `build_hardware_c22.py`
 meshes them from the shared boat kit (`Tools/boatkit`), and `render_hardware_c22.py` draws the views here.
 
-- **Fittings.** Two size 8 plain-top winches beside the cockpit's forward end, each with a 6 in horn cleat aft of it. A
-  600 mm genoa track a side just inside the rubrail. A 250 mm jib track a side on the fixed cabin top forward of the
+- **Fittings.** Two size 8 plain-top winches beside the cockpit, half a metre aft of its forward end, each with a 6 in
+  horn cleat aft of it. A 600 mm genoa track a side just inside the rubrail, alongside the cockpit. A 250 mm jib track a side on the fixed cabin top forward of the
   lid, a fairlead at the trunk's aft corner and a turning block on the side deck. The traveller on a moulded bridge
   across the cockpit's aft end (end-boom sheeting, as on the original boat). An 8 in bow cleat, a 6 in stern cleat a
   side, teak handrails on the pop-top's lid, two mushroom vents, the fore hatch on slice 2's curb, a bow eye for the
   trailer, two scuppers, a winch handle pocket and a folding stern ladder on the transom's port side.
 - **Rails.** A bow pulpit drawn to her bow: it narrows with the deck, its nose rounds the forestay and the headsails'
-  luffs, and the stay leaves the stemhead under it. A stern rail round the transom's corners, two stanchions a side and a
-  single lifeline a side. All the feet stand on the deck, 7 cm inside its edge.
+  luffs, and the stay leaves the stemhead under it. A stern rail round the transom's corners, two stanchions a side (the aft
+  one at the cockpit's forward end) and a single lifeline a side. All the feet stand on the deck, 7 cm inside its edge.
 - **On the mast.** The main and jib halyards run inside the mast and leave through slots just under the gooseneck,
   to horn cleats low on its sides. The spinnaker halyard runs outside, down the front's starboard quarter to its own
   cleat. Each is made fast with a cleat hitch, and its tail is coiled and hung over the cleat's upper horn. The pole lift
@@ -69,7 +69,7 @@ meshes them from the shared boat kit (`Tools/boatkit`), and `render_hardware_c22
 - **Sizes of line:** 3/8 in sheets, 5/16 in halyards and spinnaker lines, 1/4 in control lines, and a 3/16 in lifeline
   (owners' lists and Catalina Direct's running rigging kit).
 
-![Details: the cockpit, winch, traveller, ladder, mast foot, bow, the genoa's and jib's leads, the outhaul and the reef](sheet.jpg)
+![Details: the cockpit, winch, traveller, ladder, mast foot, bow, the genoa's lead and tack, the jib's lead, the outhaul, the reef and the run from aft](sheet.jpg)
 
 ## Checks
 
@@ -77,7 +77,7 @@ meshes them from the shared boat kit (`Tools/boatkit`), and `render_hardware_c22
 - **The hardware** (`hardware_c22.py`, which fails if any of these does):
   - **Fittings sit on their surfaces.** Every deck fitting's base is within 6 mm of the surface under it. No two deck
     fittings' footprints overlap. The pulpit's and stern rail's feet are on the deck, at least 3 cm inside its edge.
-  - **Leads.** Each headsail's lead halves its clew's angle, seen square to the sail: the genoa 0.1° off, the jib 8.1°.
+  - **Leads.** Each headsail's lead halves its clew's angle, seen square to the sail: the genoa 5.4° off, the jib 8.1°.
     Every sheet meets its winch's drum between 80° and 95° to its axis (86° to 93°).
   - **Lines clear of the rig.** Every line and coil is at least 1 cm clear of the wires, mast, lifelines, stanchions,
     the pulpit's and stern rail's tubes and legs, and the boom. A line may touch only what it is led through.
@@ -85,7 +85,7 @@ meshes them from the shared boat kit (`Tools/boatkit`), and `render_hardware_c22
     3 mm. None goes into a fitting it isn't led through or made fast on. Lines lie over the coaming's and trunk's edges.
   - **No line passes through another or through a sail,** in any state.
   - **The boom is the sails' boom:** its end is within 20 cm of the mainsail's clew in each state.
-- **Triangles:** 213,850 for the hardware and lines, against the slice's budget of 250,000:
+- **Triangles:** 213,834 for the hardware and lines, against the slice's budget of 250,000:
 
   | Part | Triangles |
   |---|---|
@@ -94,13 +94,13 @@ meshes them from the shared boat kit (`Tools/boatkit`), and `render_hardware_c22
   | Mast hardware | 15,740 |
   | Halyards | 10,592 |
   | Lines at rest | 11,244 |
-  | Lines up | 18,017 |
+  | Lines up | 18,001 |
   | Lines jib | 19,129 |
   | Lines reef | 19,129 |
   | Lines run | 22,605 |
 
   Padeyes and blocks use a tenth of the kit's triangles (the full ones are 6,700 to 29,000 each). Cleats, tracks and
-  small parts use a quarter, as the kit's own light copies do. The boat is 460,814 in all, with every state's lines
+  small parts use a quarter, as the kit's own light copies do. The boat is 461,166 in all, with every state's lines
   counted.
 - **Joins** (`seams.py`): all closed, as in slice 5.
 
@@ -140,21 +140,31 @@ picks. A critique round on the colour views asked for:
 
 These fixes weren't shown to another blind round.
 
-## For Bean: the genoa against the pulpit and lifeline
+## The genoa, cut high (Bean's choice)
 
 Slice 5 cut the 135% genoa as a deck-sweeper sheeted to the rail, with its clew outside the lifeline. With the pulpit
-round its luff and a lifeline at its clew, the cloth can't miss them: on a real boat it lies on them.
+round its luff and the lifeline at its clew, the cloth couldn't miss them: it passed through the port lifeline and the
+pulpit's port legs. Bean chose to cut it higher (Nov 17), and it now clears them:
 
-- The model's genoa passes through the port lifeline and the pulpit's two port legs where they meet it.
-- `hardware_c22.py` reports this as a known contact rather than failing it.
-- Three ways on, in the pull request:
-  - drop the lifelines and stanchions (many original boats had only the pulpits);
-  - press the genoa onto them so it lies on them, with a crease;
-  - or cut the genoa with a higher clew on a short tack pennant, so it clears them.
+- **The tack** is on a 0.58 m (23 in) wire pennant from the stemhead fitting, so the foot starts just above the pulpit's
+  hoop. The pennant has a thimbled eye at each end and is shackled to the stemhead fitting. Lowered, the hanks stack
+  above the tack on the pennant.
+- **The clew** is 0.93 m above the deck, 24 cm over the lifeline where the foot crosses it.
+- **The size.** The luff is 0.58 m shorter, so the LP is 1.40 J (it was 1.35) to keep the area: 12.54 m², 2.8% under
+  the physics' 12.9 m². The game's genoa is unchanged.
+- **The lead.** A higher clew sheets further aft, so the genoa tracks moved 40 cm aft, to beside the cockpit (x −1.6 to
+  −1.0 m). The winches moved 25 cm aft with them (x −1.30 m), and the aft stanchions moved forward to the cockpit's forward end
+  (−0.70 m) to keep clear of the tracks. The lead is 5.4° off the clew's bisector.
+- **Checks.** No rail, stanchion, lifeline or line passes through any sail in any state. `hardware_c22.py` no longer
+  has an exception for the genoa. The cloth comes no nearer the rails than about 4 cm.
+
+![The genoa before (slice 5's deck-sweeper, left) and cut high (right): close-hauled, its lead, and its tack over the pulpit](genoa_recut.jpg)
 
 ## For slice 9 (light copy and sockets)
 
 - The winches' drums are 6 cm over their bases. The game's `JibWinchDrumCm` assumes 8.
+- `JibWinch_*` moved 25 cm aft with the winches (to x −127 and −133 cm), and `JibLead_*` 40 cm aft with the genoa's
+  cars (x −129 cm).
 - The new sockets are in `c22_sockets.json` under `hardware_note`: `MainsheetBlock` and `MainsheetCam`, the cars, the
   fairleads, the lifelines' ends, the cleats and the halyard cleats on the mast. They are where the game's live ropes
   should end.
@@ -183,9 +193,10 @@ blender -b -P Tools/shapeloop/seams.py -- <work>/s6/c22.blend Tools/shapeloop/se
 python3 -I Tools/shipkit/catalina22/c22_check.py <work>/s6/m/stats.json <work>/s6/c22_sockets.json --slice 6
 blender -b -P Tools/shipkit/catalina22/render_hardware_c22.py -- <work>/s6/c22.blend <work>/s6/hw --res 1000
 python3 Tools/shapeloop/make_sheet.py <work>/s6/hw_old <work>/s6/hw docs/c22-7/before_after.jpg rest_34 rest_quarter cockpit traveller --title "Catalina 22 hardware: today's (left), new (right)"
+python3 Tools/shapeloop/make_sheet.py <work>/s6_deck_sweeper/hw <work>/s6/hw docs/c22-7/genoa_recut.jpg up_34 genoa_lead genoa_tack --title "Catalina 22 genoa: deck-sweeper (left), cut high (right)"
 ```
 
-`<work>/s6/hw_old` is today's model with its live ropes drawn as straight lines from its sockets. `milestone_b.jpg` is four
+`<work>/s6_deck_sweeper` is this slice built before the genoa was recut (commit 7f086b4a). `<work>/s6/hw_old` is today's model with its live ropes drawn as straight lines from its sockets. `milestone_b.jpg` is four
 views and `sheet.jpg` the detail views, both saved smaller as JPEGs. `--clay` renders everything in one clay, as the blind
 rounds saw it. In the cloud, `blender -b -P <script> --` was a Python 3.13 venv with `pip install bpy`, as in slice 1.
 

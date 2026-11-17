@@ -7,8 +7,9 @@ Views (each names the state it shows):
   rest_34, rest_top, rest_quarter   at the mooring: the whole boat from the port bow, from above, from the port quarter
   cockpit, traveller, ladder        the cockpit from aft and up, the mainsheet's tackle, the stern ladder and rail (rest)
   mast_foot, bow                    the halyards' cleats, coils and the vang; the pulpit, bow cleat, vents and hatch
-  up_34, genoa_lead, winch, outhaul close-hauled under main and genoa: the boat, the genoa's car, sheet and winch,
-                                    the port winch's turns and cleat hitch, the outhaul at the boom's end
+  up_34, genoa_lead, genoa_tack,    close-hauled under main and genoa: the boat, the genoa's car, sheet and winch over
+  winch, outhaul                    the lifeline, its tack pennant over the pulpit, the port winch's turns and cleat
+                                    hitch, the outhaul at the boom's end
   jib_34, jib_lead                  under main and working jib: the boat, the jib's car, fairlead, turning block and winch
   reef_pennant                      reefed: the reef's clew pennant on the boom
   run_34, run_aft                   on a run under main and spinnaker: the guy, sheet, pole lift and foreguy
@@ -145,8 +146,9 @@ shot("mast_foot", (MX - 1.0, 1.25, 2.1), (MX, 0.0, 1.55), lens=30)
 shot("bow", (4.3, 1.6, 2.0), (2.55, 0.0, 0.95), lens=30)
 show("Up")
 shot("up_34", (-6.5, 6.0, 4.5), (0.0, 0.0, 2.0), lens=24)
-shot("genoa_lead", (-0.4, 2.3, 1.9), (-0.6, 1.05, 0.9), lens=26)
-shot("winch", (-1.25, 1.45, 1.25), (-1.08, 0.78, 0.74), lens=40)
+shot("genoa_lead", (-0.2, 3.0, 2.2), (-0.6, 1.0, 1.15), lens=22)
+shot("genoa_tack", (3.95, 1.25, 1.95), (3.1, 0.0, 1.25), lens=35)
+shot("winch", (-1.47, 1.45, 1.25), (-1.30, 0.78, 0.74), lens=40)
 shot("outhaul", (-1.5, -1.1, 2.1), (-2.0, 0.15, 1.55), lens=30)
 show("Jib")
 shot("jib_34", (-6.5, 6.0, 4.5), (0.0, 0.0, 2.0), lens=24)

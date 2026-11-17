@@ -9,10 +9,10 @@
   "note": "Line sizes: 3/8 in (9.5 mm) for the jib, genoa and main sheets, 5/16 in (8 mm) for the halyards and the spinnaker's sheet and guy, 1/4 in (6.4 mm) for the vang, topping lift, the pole's lift and foreguy (owners' lists for the C22; Catalina Direct's running rigging kit)."
  },
  "winch": {
-  "x": -1.05,
+  "x": -1.30,
   "out": 0.13,
   "size": "8",
-  "note": "Two plain-top size 8 sheet winches (102 mm base), one a side on the deck beside the cockpit's forward end, 'out' outboard of the cockpit's edge: today's JibWinch sockets' place. The original boat came with small plain-top winches (owners mention Barient 10s and Lewmar 7s and 8s); the kit's WinchPlain at size 8 is the nearest. A winch handle lies in a moulded pocket in the starboard cockpit side."
+  "note": "Two plain-top size 8 sheet winches (102 mm base), one a side on the deck beside the cockpit, half a metre aft of its forward end and 'out' outboard of its edge, abreast of the high-cut genoa's car (moved 25 cm aft of today's JibWinch sockets with it, Nov 17). The original boat came with small plain-top winches (owners mention Barient 10s and Lewmar 7s and 8s); the kit's WinchPlain at size 8 is the nearest. A winch handle lies in a moulded pocket in the starboard cockpit side."
  },
  "winch_cleat": {
   "dx": -0.24,
@@ -21,9 +21,9 @@
   "note": "A 6 in horn cleat aft of each winch ('dx' aft of its centre, 'out' outboard of it on each side), along the boat: the sheet's tail comes off the winch's drum and is made fast on it, the rest coiled in the cockpit."
  },
  "genoa_track": {
-  "x": [-1.20, -0.60],
+  "x": [-1.60, -1.00],
   "in": 0.075,
-  "note": "A 600 mm T-track a side on the deck just inside the rubrail ('in' from the deck's edge, along it), abreast of the cockpit's forward end: the genoa's sheeting points, the car in its middle, with the sheet led over its sheave aft to the winch. The track is placed so the car sits where the sheet, seen square to the sail, halves the clew's angle (hardware_c22.py checks it: under 1 deg off). The clew stands 8 cm outboard of the rail, so the sheet also leads 25 deg inboard of the sail's plane, as on a boat sheeting a 135% to the rail. Rail-mounted genoa tracks are what owners of older C22s describe."
+  "note": "A 600 mm T-track a side on the deck just inside the rubrail ('in' from the deck's edge, along it), alongside the cockpit, aft of the aft stanchion: the genoa's sheeting points, the car in its middle, with the sheet led over its sheave inboard to the winch. The track is placed so the car sits where the sheet, seen square to the sail, halves the clew's angle (hardware_c22.py checks it: 5 deg off, under 12). The genoa is cut high (its clew 0.9 m above the deck, sails_c22.json), so its lead is further aft than a deck-sweeper's; the clew stands 6 cm outboard of the rail, so the sheet also leads 24 deg inboard of the sail's plane. Rail-mounted genoa tracks are what owners of older C22s describe."
  },
  "jib_track": {
   "x": [0.63, 0.88],
@@ -66,10 +66,10 @@
  "lifelines": {
   "pulpit": {"aft_x": 2.72, "nose_x": 3.20, "rail_in": 0.03, "nose_r": 0.09, "legs": [0.02, 0.62]},
   "pushpit": [1500, 0.36],
-  "stanchions_x": [1.25, -1.30],
+  "stanchions_x": [1.25, -0.70],
   "in": 0.07,
   "wire_d": 0.005,
-  "note": "A bow pulpit, the kit's hoop drawn to her bow's plan: from its aft legs at 'pulpit' aft_x, 'in' from the deck's edge, forward 'rail_in' inside the edge to a nose of radius nose_r at nose_x, round the forestay and the headsails' luffs (the stay leaves the stemhead under the nose); legs at the hoop's aft end and legs[1] of the way to the nose, a stern rail round the transom's corners (1500 mm wide, [1] deep), two 24 in stanchions a side 'in' from the deck's edge at 'stanchions_x', and a single 3/16 in (5 mm) vinyl-coated lifeline a side from the pulpit through the stanchions to the stern rail. The plan's assumption: many original boats had only the pulpits, and photos decide."
+  "note": "A bow pulpit, the kit's hoop drawn to her bow's plan: from its aft legs at 'pulpit' aft_x, 'in' from the deck's edge, forward 'rail_in' inside the edge to a nose of radius nose_r at nose_x, round the forestay and the headsails' luffs (the stay leaves the stemhead under the nose); legs at the hoop's aft end and legs[1] of the way to the nose, a stern rail round the transom's corners (1500 mm wide, [1] deep), two 24 in stanchions a side 'in' from the deck's edge at 'stanchions_x' (the aft one at the cockpit's forward end, clear of the genoa's track), and a single 3/16 in (5 mm) vinyl-coated lifeline a side from the pulpit through the stanchions to the stern rail. The plan's assumption: many original boats had only the pulpits, and photos decide."
  },
  "spinnaker": {
   "quarter_block": [-3.13, 0.08],

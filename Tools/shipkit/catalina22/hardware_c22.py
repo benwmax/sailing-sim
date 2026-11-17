@@ -13,7 +13,7 @@ to a state of the boat:
 
   rest    at her mooring: the main flaked under its cover on a centred boom, the headsails bagged, the halyards made
           fast and coiled, the jib halyard clipped to the pulpit and the main's to the headboard at the gooseneck
-  up      close-hauled on starboard tack under main and the 135% genoa (slice 5's MainSet and GenoaSet)
+  up      close-hauled on starboard tack under main and the high-cut 140% genoa (slice 5's MainSet and GenoaSet)
   jib     the same under main and the 90% working jib (MainSet and JibSet)
   reef    reefed main and the working jib (MainReefed and JibSet)
   run     on a run under main and spinnaker (MainRun and SpinnakerSet), the pole squared to starboard
@@ -990,11 +990,9 @@ def check_surfaces(L, state, F, fails, report):
 
 STATE_SAILS = {"up": ("MainSet", "GenoaSet"), "jib": ("MainSet", "JibSet"), "reef": ("MainReefed", "JibSet"),
                "run": ("MainRun", "SpinnakerSet")}
-# The 135% genoa as slice 5 cut it, a deck-sweeper sheeted to the rail, its clew outside the lifeline: with the pulpit
-# round its luff and a lifeline at its clew, its cloth can't miss them (a real one lies on them). Reported, not failed,
-# until Bean decides (no lifelines, a higher-cut clew, or the cloth pressed onto them): docs/c22-7.
-KNOWN_SAIL_CONTACTS = {"GenoaSet": ("Lifeline_P", "PulpitRail", "PulpitLeg1", "PulpitLeg3", "Stanchion0_P",
-                                    "Stanchion1_P")}
+# Sail-on-rail contacts reported but not failed: none since the genoa was cut high (Bean, Nov 17: its tack on a pennant
+# over the pulpit, its clew above the lifeline; docs/c22-7).
+KNOWN_SAIL_CONTACTS = {}
 _SETS = {}
 
 
