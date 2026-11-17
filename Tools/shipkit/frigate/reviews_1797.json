@@ -219,5 +219,16 @@
   "3": "wood, deck, iron pass; paint, copper, rope, canvas, bright fail (the same swap)",
   "4": "deck, rope, canvas, iron pass; wood missed by one reviewer; paint, copper, bright fail: the cards' first-cruise copper ('a few sheets brighter') described the kept ship's renewed sheets, and new copper read orange",
   "5": "this file: every surface passes"
- }
+ },
+ "sheets_sha256": {
+  "paint": "e333f8db57162a71aa1d3c8d89ecaf607d7ef8135e2f210b395f82ac854fd8b7",
+  "copper": "18633871c4c5a643e4ab6ee5cd758c63d56f0674c7d0f3145aba0a8318bcc478",
+  "wood": "d53e144c9731a4b291c68e6c4c476f6ecc6ec0d8ffa900a55bfe5ccf1c2838e4",
+  "deck": "e788978e85d6f99d3294676d073c330b06f7ee4a7a61e3acca72f11dd4d6a395",
+  "rope": "617e8349fb5ed9526f5c908dc19e15cc0a1431acf6991660e8ce09dcd72d7486",
+  "canvas": "f8ead3763f2b5529c0669314bf2e164e050462c54ff972aedab996400a0b34f9",
+  "iron": "4dcc293fcb1c774fb330e9b5b4c26f60eff145f9b28dbe9385c0f2e72a57d726",
+  "bright": "ca9b8617e56d94e876e7d71a5d302acdd0d6aac137ea2830ba3ca6c5d71c6a6d"
+ },
+ "sheets_note": "the SHA-256 of each blind sheet the round's reviewers saw (wear_check.py --sheets, seed 11, from the renders of docs/shipkit-15): the blind check fails on any other sheets"
 }

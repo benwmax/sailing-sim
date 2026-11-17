@@ -4,8 +4,8 @@ photos, nothing to licence).
     python3 -I Tools/shipkit/frigate/textures.py [out dir] [--res 2048] [--check]
 
 Her other surfaces reuse the boats' shared library (Inputs/boat-detail: Metal for the copper's rolled skin and the
-wrought iron, Canvas for the flax, WoodVarnish for the grain under the paint) and the J-Class's (Inputs/jclass-detail:
-Manila for the hemp, CastBronze for the guns' sand-cast iron and the bronze), so only what neither has is made here
+wrought iron, WoodVarnish for the grain under the paint) and the J-Class's (Inputs/jclass-detail:
+Manila for the hemp, CastBronze for the guns' sand-cast iron and the bronze, Cotton for the flax), so only what neither has is made here
 (textures_1797.json 'maps'):
 
   T_Frigate_Oak_N/_M   400 x 200 mm, along the grain by across it: white oak (and the deck's pine draws from it too):

@@ -73,7 +73,9 @@ def amounts(surface, kind, age, care):
     """Each wear term, 0 to 1, for one surface and kind at E1's Age (years) and Care (0..1). The loop's dirt_k takes a
     year to come up and then holds, so a first season's marks (gloss going, salt, smudges, tar drips) go as its square
     root, times `fresh` where a kept ship's routine takes them away again; what neglect alone does (rust through the
-    paint, flaking, rot, mildew, weed) starts past a threshold of dirt_k that a kept ship never reaches."""
+    paint, flaking, rot, mildew, weed) starts past a threshold of dirt_k that a kept ship hardly reaches (the paint's
+    rust is 0.03 at L3, thirty years kept, and nothing else of neglect shows there); the iron's bloom is a first
+    season's mark, not neglect's, and a kept ship's re-blacking holds it to a trace."""
     t, d = loop.time_k(age, care), loop.dirt_k(age, care)
     young = 1.0 - math.exp(-age / 0.1)          # weeks in the weather: bare copper browns, fresh tar dulls
     fresh = 1.0 - 0.85 * refreshed(age, care)
@@ -153,7 +155,7 @@ def amounts(surface, kind, age, care):
         own = renewed(age, care, 4.0) if kind == "sail" else age          # a kept ship bends a newer suit
         st, sd = loop.time_k(own, care), loop.dirt_k(own, care)
         return {"dinge": sat(0.8 * math.sqrt(sd)), "grime": sat(1.2 * math.sqrt(sd)),
-                "mildew": ramp(sd, 0.3, 0.85), "yellow": 0.5 * st + 0.75 * care * ramp(age, 5.0, 25.0),
+                "mildew": ramp(sd, 0.3, 0.85), "yellow": sat(0.5 * st + 0.75 * care * ramp(age, 5.0, 25.0)),
                 "patches": sat(1.4 * sd + 0.5 * ramp(st, 0.3, 0.8) + 0.9 * care * ramp(age, 5.0, 25.0))
                 if kind == "sail" else 0.0,                               # (a kept ship's old suit, patched)
                 "stain": ramp(sd, 0.4, 0.9)}

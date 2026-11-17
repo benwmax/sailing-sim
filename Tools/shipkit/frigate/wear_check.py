@@ -186,15 +186,16 @@ def check_ladder(meas, mats):
             if not names:
                 res[key] = {"pass": key in UNSEEN_OK, "status": UNSEEN_OK.get(key, "not in any wear view")}
                 continue
-            per = {}
+            per, raw = {}, {}
             for n in names:
                 L, d, d34 = ladder_of(meas[n])
+                raw[n] = (d, d34)                               # judged unrounded: 7.95 is not 8
                 per[n] = {"lab": {lv: rnd(L[lv], 1) for lv in LEVELS},
                           "from_new": {lv: round(d[lv], 1) for lv in LEVELS},
                           "kept_vs_neglected": round(d34, 1), "pixels": int(meas[n]["L0"][1])}
             wt = np.array([per[n]["pixels"] for n in names], float)
-            d = {lv: float(np.dot(wt, [per[n]["from_new"][lv] for n in names]) / wt.sum()) for lv in LEVELS}
-            d34 = float(np.dot(wt, [per[n]["kept_vs_neglected"] for n in names]) / wt.sum())
+            d = {lv: float(np.dot(wt, [raw[n][0][lv] for n in names]) / wt.sum()) for lv in LEVELS}
+            d34 = float(np.dot(wt, [raw[n][1] for n in names]) / wt.sum())
             ok = d["L4"] >= 8 and d["L2"] >= 4 and d["L1"] <= d["L2"] <= d["L4"] and d34 >= 6
             res[key] = {"from_new": {lv: round(d[lv], 1) for lv in LEVELS}, "kept_vs_neglected": round(d34, 1),
                         "pixels": int(wt.sum()), "materials": per, "pass": bool(ok)}
@@ -202,7 +203,14 @@ def check_ladder(meas, mats):
 
 
 # kinds no wear view shows, and why that is acceptable
-UNSEEN_OK = {"iron.lead": "the lead is the gun deck's (the 24-pounders' aprons over the vents, slice 12): checked with the gun deck's textures once it merges"}
+UNSEEN_OK = {"iron.lead": "the lead outside is only the hawse holes' linings (slice 10), a hand's breadth inside each hole at "
+                         "the bow; the most of it is the 24-pounders' aprons on the gun deck (slice 12): its ladder is "
+                         "checked with the gun deck's textures"}
+
+
+def _sha(path):
+    import hashlib
+    return hashlib.sha256(open(path, "rb").read()).hexdigest() if os.path.exists(path) else None
 
 
 def check_colour(kinds, fetch_refs):
@@ -290,6 +298,12 @@ def check_blind(key_path, pending_ok=False):
         return {"status": "no blind/key.json given (--blind-key)", "pass": {s: False for s in SHEETS}}
     key = json.load(open(key_path))["key"]
     rv = json.load(open(path))
+    seen = rv.get("sheets_sha256", {})                    # the reviews hold for the sheets they saw, no others
+    sdir = os.path.dirname(key_path)
+    stale = [s for s in SHEETS if seen.get(s) != _sha(os.path.join(sdir, s + ".jpg"))]
+    if stale:
+        return {"status": f"the reviews are of other sheets than these ({', '.join(stale)}): review again",
+                "pass": {s: pending_ok for s in SHEETS}}
     rank = {lv: i for i, lv in enumerate(LEVELS)}
     out, why = {}, {}
     for s in SHEETS:
@@ -350,14 +364,14 @@ def crop_box(rdir, view, names, below=0.0):
     return int(left), int(top), int(left + bw), int(top + bh)
 
 
-def make_sheets(rdir, out):
+def make_sheets(rdir, out, seed=11):
     """docs: one sheet a surface, L0 to L4 left to right, labelled; blind: the same crops shuffled under the letters
     A to E (a fixed shuffle per surface), with blind/key.json the level behind each letter."""
     from PIL import ImageDraw, ImageFont
     font_path = os.path.join(REPO, "Tools", "shipkit", "jclass", "fonts", "LibreBaskerville-Regular.ttf")
     font = ImageFont.truetype(font_path, 22) if os.path.exists(font_path) else ImageFont.load_default()
     os.makedirs(os.path.join(out, "blind"), exist_ok=True)
-    rng = np.random.default_rng(11)
+    rng = np.random.default_rng(seed)                    # a new shuffle each round (--seed)
     key = {}
     for surface, (view, names, *below) in SHEETS.items():
         box = crop_box(rdir, view, names, *below)
@@ -390,10 +404,11 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--sheets", default=None, help="write the ladder and blind sheets to this folder")
     ap.add_argument("--blind-key", default=None, help="the sheets' blind/key.json (default: <sheets>/blind/key.json)")
+    ap.add_argument("--seed", type=int, default=11, help="the blind sheets' shuffle: a new one for each round")
     ap.add_argument("--pending-blind", action="store_true", help="no reviews yet: report the blind check as pending")
     a = ap.parse_args()
     if a.sheets:
-        make_sheets(a.renders, a.sheets)
+        make_sheets(a.renders, a.sheets, a.seed)
     key_path = a.blind_key or (os.path.join(a.sheets, "blind", "key.json") if a.sheets else None)
     meas, seen = measure(a.renders)
     kinds, mats = by_kind(meas)

@@ -58,7 +58,7 @@ The scans live in the git-ignored `Data/Reference/raw/textures/Commonwealth` (`w
 `Tools/shipkit/frigate/weathering.py` follows the J-Class's (`Tools/shipkit/jclass/weathering.py`, loaded by path):
 `amounts()` turns age and care into each surface's wear terms from the loop's time and dirt numbers, and the dressers
 put them on her in Blender's nodes. What neglect alone does (rust through the paint, flaking, rot, weed, mildew) starts
-past a dirt threshold a kept ship never reaches; a first season's marks grow as the square root of dirt; a kept ship's
+past a dirt threshold a kept ship hardly reaches (the paint's rust is 0.03 at L3); a first season's marks grow as the square root of dirt; a kept ship's
 routine (paint touched up, the deck holystoned each morning, the rigging re-tarred each refit, the copper renewed
 every few years, a newer suit of sails bent) undoes them again. Most of her parts have no UVs, so the wear is placed in
 her frame (by height over the waterline, which way a face looks, the crevices) and the paint's runs by a side
@@ -111,7 +111,7 @@ and the J-Class's (Manila, CastBronze, Cotton), which are already in the game's 
 
 | Check | What passes | Result |
 | --- | --- | --- |
-| The ladder, 19 kinds | each level's mean colour (CIELAB, per material in the albedo shots, averaged by pixels) at least 8 from new at L4 and 4 at L2, L1 no further than L2 and L2 no further than L4, and the kept L3 at least 6 from the neglected L4 | all pass (the lead is the gun deck's, checked when it merges) |
+| The ladder, 19 kinds | each level's mean colour (CIELAB, per material in the albedo shots, averaged by pixels) at least 8 from new at L4 and 4 at L2, L1 no further than L2 and L2 no further than L4, and the kept L3 at least 6 from the neglected L4 | all pass but the lead, in no view: outside it is only the hawse holes' linings, and its ladder is checked with the gun deck's textures (the aprons) |
 | Colour targets, 12 | each within 6 in colour (a, b) of the CC0 scans' mean albedo | all pass |
 | Her map | tiling, no big repeat, 4 px a mm or more, the pattern the card's size | pass (tiling 0.77, repeat 0.11, 5.1 px a mm) |
 | Budget | High 12 MB, Medium 6 MB | 4.0 MB: pass |
@@ -123,16 +123,16 @@ The ladder (each level's colour distance from new, and the kept L3's from the ne
 | --- | --- | --- | --- | --- | --- |
 | paint.black | 11.5 | 22.0 | 2.7 | 25.5 | 22.8 |
 | paint.ochre | 4.5 | 12.2 | 2.6 | 23.6 | 21.0 |
-| paint.red | 10.1 | 21.7 | 3.7 | 33.3 | 29.6 |
+| paint.red | 10.1 | 21.7 | 3.7 | 33.3 | 29.7 |
 | paint.white | 0.8 | 4.2 | 4.4 | 22.0 | 19.2 |
 | copper.sheathing | 25.9 | 44.2 | 35.1 | 46.6 | 24.9 |
 | wood.oak | 4.7 | 14.6 | 14.2 | 23.7 | 31.7 |
 | wood.blocks | 5.2 | 18.9 | 10.7 | 24.4 | 17.5 |
 | wood.spar | 1.6 | 6.8 | 5.9 | 19.4 | 18.4 |
 | deck.deck | 1.9 | 13.8 | 13.6 | 29.9 | 43.3 |
-| rope.tarred | 3.5 | 9.4 | 3.9 | 16.4 | 15.2 |
+| rope.tarred | 3.4 | 9.4 | 3.9 | 16.4 | 15.2 |
 | rope.hemp | 1.9 | 6.7 | 3.6 | 16.1 | 12.7 |
-| canvas.sail | 2.6 | 10.7 | 7.3 | 15.4 | 10.3 |
+| canvas.sail | 2.6 | 10.8 | 7.3 | 15.4 | 10.3 |
 | canvas.canvas | 1.3 | 7.3 | 6.8 | 11.1 | 8.4 |
 | canvas.tarpaulin | 1.0 | 8.5 | 3.5 | 11.6 | 8.1 |
 | iron.blacked | 0.7 | 15.1 | 0.3 | 33.6 | 33.3 |
@@ -179,10 +179,12 @@ floors). Metal035, a lightly oxidised copper sheet, stands for L1 (browned withi
 
 ## The blind ladder
 
-Each round three fresh reviewers saw only the eight blind sheets ([blind/](blind/), each surface's five levels in a
-shuffled order under the letters A to E; the order is in [blind/key.json](blind/key.json), which they never saw) and
+Each round three fresh reviewers saw only the eight blind sheets ([blind/](blind/) has round 5's, byte for byte, each
+surface's five levels in a shuffled order under the letters A to E; the order is in [blind/key.json](blind/key.json), which they never saw) and
 the cards' level descriptions, put each sheet in order and named the least convincing thing on it. Their answers are
-in `Tools/shipkit/frigate/reviews_1797.json`; `wear_check.py` scores them against the key.
+in `Tools/shipkit/frigate/reviews_1797.json` with each sheet's SHA-256; `wear_check.py` scores them against the
+key, and fails them on sheets other than those they saw (a new render needs a new round, `--seed` for a new shuffle;
+rounds 1 to 5 kept seed 11, with fresh reviewers each time).
 
 | Round | Passed | Failed, and what changed after |
 | --- | --- | --- |
@@ -198,7 +200,7 @@ new pine is not much yellower than the first cruise's scrubbed deck; the sails' 
 
 ## Running it
 
-    python -I Tools/shipkit/frigate/textures.py --check                 # her oak map (Inputs/frigate-detail)
+    python -I Tools/shipkit/frigate/textures.py --check                 # rebuilds her oak map (Inputs/frigate-detail) and checks it
     python -I Tools/shipkit/frigate/render_wear.py <build>/frigate.blend <renders> [--views a,b] [--save dressed.blend]
     python -I Tools/shipkit/frigate/wear_check.py <renders> --fetch --sheets <renders>/sheets
 
