@@ -87,6 +87,7 @@ namespace SailingBindings
 		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
 			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
 			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
+			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack")
 			|| IsPhotoPanelAction(Action);
 	}
 
@@ -102,6 +103,11 @@ namespace SailingBindings
 		if (IsPhotoAction(A) || IsPhotoAction(B)) return IsPhotoAction(A) == IsPhotoAction(B);
 		auto Global = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard"); };
 		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
+	}
+
+	bool IsHoldAction(FName Action)
+	{
+		return Action == TEXT("Photo") || Action == TEXT("DockLines");
 	}
 
 	bool InPhotoContext(const FSailingKeyBinding& Binding)

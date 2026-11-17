@@ -44,6 +44,7 @@
 #include "InputModifiers.h"
 #include "InputTriggers.h"
 #include "FreeCamera.h"
+#include "ChaseCamera.h"
 #include "Engine/AssetManager.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Materials/Material.h"
@@ -101,9 +102,9 @@ namespace
 			|| Action == TEXT("Spinnaker") || Action == TEXT("Reef") || Action == TEXT("Board") || Action == TEXT("Righting") || Action == TEXT("EngineNeutral")
 			|| Action == TEXT("Chart") || Action == TEXT("Bearing") || Action == TEXT("Gps") || Action == TEXT("ClearPlot") || Action == TEXT("Wrist")
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
-			|| Action == TEXT("CockpitView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
+			|| Action == TEXT("CockpitView") || Action == TEXT("ChangeView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| SailingBindings::IsPhotoPanelAction(Action);
+			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -184,6 +185,8 @@ ASailboatPawn::ASailboatPawn()
 	CameraBoom->bInheritRoll = false;
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 6.f;
+	CameraBoom->bEnableCameraRotationLag = false;   // the player's rigs turn it on while nobody looks (ChaseRig.bSmoothYaw)
+	CameraBoom->CameraRotationLagSpeed = ChaseCamera::YawLagSpeed;
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
@@ -307,13 +310,10 @@ void ASailboatPawn::SetBoat(int32 Type)
 	}
 	ApplyDifficulty();
 	RebuildBoatVisuals();
-	// Frame the boat: the camera stands off about two and a half boat lengths, looking at the middle of the rig.
+	// Frame the boat: the chase rig for her size (docs/camera-views/: Chase at boom height, Overview the old high view,
+	// Classic the old rig exactly for measured runs). A new arm and socket move the pitch limit with them (feedback #5).
 	const FBoatConfig& C = Boat.GetConfig();
-	CameraDistance = FMath::Clamp(float(C.LengthOverall) * 2.4f, 9.f, 40.f) * CmPerMeter;
-	CameraBoom->TargetArmLength = CameraDistance;
-	CameraBoom->SocketOffset = FVector(0.f, 0.f, float(C.MastheadZ) * 0.33f * CmPerMeter);
-	// (a new arm and socket: the chase camera's pitch limit moves with them, feedback #5)
-	if (!bCockpit) { CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f); CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f)); }
+	ApplyChaseRig(true, false);
 	ResetBoat();
 	// The Phase 4 gate asks that every boat loads fast: building one is physics setup plus a few dozen meshes.
 	UE_LOG(LogSailing, Log, TEXT("Boat ready: %hs in %.1f ms"), C.Name, (FPlatformTime::Seconds() - StartSeconds) * 1000.0);
@@ -932,7 +932,24 @@ void ASailboatPawn::BeginPlay()
 		if (Match >= 0) USailingSettings::Get()->BoatType = Match;
 		else SAIL_LOG(Warning, TEXT("-SailingBoat=%s matches no boat; sailing the %s"), *BoatArg, UTF8_TO_TCHAR(BoatTypeName(EBoatType(USailingSettings::Get()->BoatType))));
 	}
+	// Camera views (docs/camera-views/): the player's last view (Settings > Camera), or -SailingView=Chase|Overview|Helm.
+	// A measured run or the demo that names no view keeps the old chase rig exactly (Classic), so benches don't move.
+	{
+		ChaseCamera::EView View = ChaseCamera::EView(FMath::Clamp(USailingSettings::Get()->CameraView, 0, int32(ChaseCamera::EView::Count) - 1));
+		FString ViewArg;
+		const bool bNamed = SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingView="), ViewArg) && ChaseCamera::Parse(ViewArg, View);
+		if (!bNamed && (USailingSettings::IsMeasuring() || FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"))))
+		{
+			View = ChaseCamera::EView::Chase;
+			ChaseRigKind = ChaseCamera::ERig::Classic;
+		}
+		else ChaseRigKind = View == ChaseCamera::EView::Overview ? ChaseCamera::ERig::Overview : ChaseCamera::ERig::Chase;
+		bStartInHelm = View == ChaseCamera::EView::Helm;
+	}
 	SetBoat(USailingSettings::Get()->BoatType);
+	// The rig's own pitch to start (Chase looks 4 deg down; Classic keeps the old 14); -SailingCamPitch below beats it.
+	CameraPitch = ChaseRig.PitchDeg;
+	if (!bCockpit) ApplyChaseRig(false, false);
 	// -SailingHideBoat (stills): the player's boat and crew hidden, so the water's hull clip shows (docs/boat-water-clip/).
 	static SailingArgs::FCachedFlag HideBoatArg(TEXT("SailingHideBoat"));
 	if (HideBoatArg.Get()) SetActorHiddenInGame(true);
@@ -951,7 +968,7 @@ void ASailboatPawn::BeginPlay()
 	if (!bTrafficBoat) SailingSound::EnsureMasterLimiter(this);
 
 	bDemo = FParse::Param(SailingArgs::Dev(), TEXT("SailingDemo"));
-	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit"))) SetCockpitView(true);
+	if (!bTrafficBoat && (bStartInHelm || FParse::Param(SailingArgs::Dev(), TEXT("SailingCockpit")))) SetCockpitView(true, false);
 	float HoldTwa = 0.f;
 	if (bDemo)
 	{
@@ -982,8 +999,9 @@ void ASailboatPawn::BeginPlay()
 	{
 		CameraDistance = CamMeters * CmPerMeter;
 		CameraBoom->TargetArmLength = CameraDistance;
+		UpdateChaseSocket();
 	}
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	ApplyChaseRotation();
 	// Clean stills outside the capture mode (the blind tests' marina views): no HUD, no on-screen engine messages.
 	if (!bTrafficBoat && FParse::Param(SailingArgs::Dev(), TEXT("SailingNoHud")))
 	{
@@ -1007,7 +1025,7 @@ void ASailboatPawn::BeginPlay()
 	}
 	// (the chase camera's pitch from the arguments under the arm's limit too, feedback #5)
 	CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f);
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	ApplyChaseRotation();
 	FString CaptureArg;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCapture="), CaptureArg))
 	{
@@ -1186,6 +1204,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		PhotoCamArg.ParseIntoArray(V, TEXT(","));
 		if (FreeCam && V.Num() >= 3)
 		{
+			FreeCam->SetMode(EFreeCameraMode::Fly);   // (a still's place and look are its own: photo mode opens in orbit)
 			const FRotator Heading(0.f, GetActorRotation().Yaw, 0.f);
 			const FVector At = GetActorLocation() + Heading.RotateVector(FVector(FCString::Atod(*V[0]), FCString::Atod(*V[1]), FCString::Atod(*V[2])) * 100.0);
 			const FRotator Look = V.Num() >= 5 ? FRotator(FCString::Atof(*V[4]), Heading.Yaw + FCString::Atof(*V[3]), 0.f) : (CameraBoom->GetComponentLocation() - At).Rotation();
@@ -1230,6 +1249,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 	// Settings > Field of view: the chase camera follows the row as it changes (photo mode keeps its lens, the capture
 	// presets theirs, the cockpit sets its own each frame).
 	if (!bCockpit && !IsCaptureMode() && Camera && Camera->FieldOfView != USailingSettings::Get()->ChaseFov()) Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
+	UpdateChaseFollow(DeltaSeconds);
 	ApplyHeldInputs(DeltaSeconds);
 	if (Controls.bRighting && FMath::Abs(Boat.GetTelemetry().Heel) < 20.0 * kDegToRad && Boat.GetState().CrewOffsetZ > -0.05)
 	{
@@ -1259,7 +1279,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		{
 			CameraYaw = SailingAngles::WrapDegrees(CameraYaw + 4.f * DeltaSeconds);
 		}
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		ApplyChaseRotation();
 	}
 
 	const FWindField& Wind = GetWind();
@@ -1753,10 +1773,12 @@ namespace
 			{ TEXT("PhotoBoost"), { TEXT("Photo: fast (hold)"), TEXT("") } }, { TEXT("PhotoSlow"), { TEXT("Photo: slow (hold)"), TEXT("") } },
 			{ TEXT("PhotoSpeed"), { TEXT("Photo: faster"), TEXT("Photo: slower") } }, { TEXT("PhotoToBoat"), { TEXT("Photo: back to the boat"), TEXT("") } },
 			{ TEXT("PhotoOrbit"), { TEXT("Photo: orbit the boat / fly"), TEXT("") } }, { TEXT("PhotoHideUI"), { TEXT("Photo: hide the panel and hints"), TEXT("") } },
+			{ TEXT("PhotoZoom"), { TEXT("Photo: zoom the lens in"), TEXT("Photo: zoom the lens out") } }, { TEXT("PhotoBack"), { TEXT("Photo: back (the panel, then out)"), TEXT("") } },
 			{ TEXT("PhotoRowDown"), { TEXT("Photo panel: next row"), TEXT("") } }, { TEXT("PhotoRowUp"), { TEXT("Photo panel: previous row"), TEXT("") } },
 			{ TEXT("PhotoValueUp"), { TEXT("Photo panel: more"), TEXT("") } }, { TEXT("PhotoValueDown"), { TEXT("Photo panel: less"), TEXT("") } },
 			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next page"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous page"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
+			{ TEXT("ChangeView"), { TEXT("Change view (chase, overview, helm)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
 			{ TEXT("CrewAction"), { TEXT("Crew station: answer the captain"), TEXT("") } }, { TEXT("Grind"), { TEXT("Crew station: grind the jib winch"), TEXT("") } },
 			{ TEXT("TravellerDump"), { TEXT("Crew station: dump the traveller"), TEXT("") } }, { TEXT("Station"), { TEXT("Crew station: move to the next"), TEXT("") } },
@@ -1907,12 +1929,17 @@ UInputMappingContext* ASailboatPawn::BuildContext(UObject* Outer, FName Name, co
 	// A rebind builds new contexts while the old ones are still mapped: each gets a name of its own.
 	UInputMappingContext* Context = NewObject<UInputMappingContext>(Outer, MakeUniqueObjectName(Outer, UInputMappingContext::StaticClass(), Name));
 	// Photo mode's pad toggle is a half-second hold of its button (View): the controls card (and, in photo mode, the
-	// orbit toggle) keep that button's tap. Every other button fires once, on the press.
+	// orbit toggle) keep that button's tap. The dock lines are a hold of the right stick's click, whose tap changes the
+	// view (docs/camera-views/). Every other button fires once, on the press.
+	auto InThis = [bPhotoContext](const FSailingKeyBinding& B)
+	{
+		return bPhotoContext ? SailingBindings::InPhotoContext(B) : SailingBindings::InBoatContext(B);
+	};
 	TSet<FKey> HoldKeys;
-	for (const FSailingKeyBinding& B : Bindings) if (B.Action == TEXT("Photo") && B.Key.IsGamepadKey()) HoldKeys.Add(B.Key);
+	for (const FSailingKeyBinding& B : Bindings) if (SailingBindings::IsHoldAction(B.Action) && B.Key.IsGamepadKey() && InThis(B)) HoldKeys.Add(B.Key);
 	for (const FSailingKeyBinding& Binding : Bindings)
 	{
-		if (!(bPhotoContext ? SailingBindings::InPhotoContext(Binding) : SailingBindings::InBoatContext(Binding))) continue;
+		if (!InThis(Binding)) continue;
 		const TObjectPtr<UInputAction>* Action = InActions.Find(Binding.Action);
 		if (!Action || !*Action) continue;
 		FEnhancedActionKeyMapping& Mapping = Context->MapKey(*Action, Binding.Key);
@@ -1932,8 +1959,20 @@ UInputMappingContext* ASailboatPawn::BuildContext(UObject* Outer, FName Name, co
 			Dead->Type = EDeadZoneType::Axial;
 			Mapping.Modifiers.Insert(Dead, 0);
 		}
+		if (Binding.Action == NAME_Look && Binding.Key.IsGamepadKey())
+		{
+			// The pad's look (docs/camera-views/): a curve for fine aim near the centre, and degrees a second, not a frame,
+			// so the camera turns at the same speed at 30 fps as at 120 (its scale was set per frame at 60).
+			UInputModifierResponseCurveExponential* Curve = NewObject<UInputModifierResponseCurveExponential>(Context);
+			Curve->CurveExponent = FVector(PadLookCurve, PadLookCurve, 1.0);
+			Mapping.Modifiers.Insert(Curve, 0);
+			Mapping.Modifiers.Add(NewObject<UInputModifierScaleByDeltaTime>(Context));
+			UInputModifierScalar* PerSecond = NewObject<UInputModifierScalar>(Context);
+			PerSecond->Scalar = FVector(60.0);
+			Mapping.Modifiers.Add(PerSecond);
+		}
 		if (!IsButtonAction(Binding.Action)) continue;
-		if (HoldKeys.Contains(Binding.Key) && Binding.Action == TEXT("Photo"))
+		if (HoldKeys.Contains(Binding.Key) && SailingBindings::IsHoldAction(Binding.Action))
 		{
 			UInputTriggerHold* Hold = NewObject<UInputTriggerHold>(Context);
 			Hold->HoldTimeThreshold = 0.5f;
@@ -2160,11 +2199,13 @@ void ASailboatPawn::AddCameraOrbit(const FVector2D& Delta, float ZoomDelta)
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	if (ZoomDelta != 0.f)
 	{
-		CameraDistance = FMath::Clamp(CameraDistance - ZoomDelta * 150.f, 400.f, 8000.f);
+		// (by ratio, inside the rig's range: the replay's orbit zooms as the chase camera does)
+		CameraDistance = ChaseCamera::Zoom(ChaseRig, CameraDistance, ZoomDelta);
 		CameraBoom->TargetArmLength = CameraDistance;
+		UpdateChaseSocket();
 	}
 	CameraPitch = ClampChasePitch(CameraPitch + Delta.Y, -85.f, 20.f);
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	ApplyChaseRotation();
 }
 void ASailboatPawn::UpdateGhost(float DeltaSeconds)
 {
@@ -2215,7 +2256,7 @@ void ASailboatPawn::SetWatching(bool bOn)
 	}
 }
 
-void ASailboatPawn::SetCockpitView(bool bOn)
+void ASailboatPawn::SetCockpitView(bool bOn, bool bAnnounce)
 {
 	bCockpit = bOn;
 	CockpitEye.bStarted = false;   // docs/cockpit-tack/: the steadied eye starts again where the head is
@@ -2236,9 +2277,100 @@ void ASailboatPawn::SetCockpitView(bool bOn)
 		}
 		Camera->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
 		Camera->SetFieldOfView(USailingSettings::Get()->ChaseFov());
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		// (back behind her at the rig's own height, not the helm's look)
+		CameraPitch = ClampChasePitch(ChaseRig.PitchDeg, -85.f, 20.f);
+		CameraYaw = 0.f;
+		ApplyChaseRotation();
+		SnapChaseCamera();
 	}
-	StatusMessage = bOn ? TEXT("Cockpit view: you are at the helm. Look around with the mouse; press \\ for the chase camera") : TEXT("Chase camera");
+	if (!bAnnounce) return;
+	StatusMessage = bOn ? FString::Printf(TEXT("Helm view: you are at the helm. Look around; %s changes the view"), *SailingBindings::Label(TEXT("ChangeView"), false, SailUI::UsingGamepad()))
+		: FString(TEXT("Chase camera"));
+	StatusUntil = Boat.GetState().Time + 3.0;
+}
+
+void ASailboatPawn::UpdateChaseFollow(float DeltaSeconds)
+{
+	if (!CameraBoom) return;
+	if (bCockpit || IsCaptureMode() || bDemo)
+	{
+		CameraBoom->bEnableCameraRotationLag = false;
+		return;
+	}
+	// Camera views (docs/camera-views/): while nobody turns it, the arm's direction follows the hull's with a lag, so a
+	// tack turns the boat in the frame instead of spinning the world, and the yaw in the waves is smoothed; a look is direct.
+	const float SinceLook = float(FPlatformTime::Seconds() - LastLookSeconds);
+	CameraBoom->bEnableCameraRotationLag = ChaseRig.bSmoothYaw && bChaseCameraLag && !bChaseSnapPending && SinceLook > 0.5f;
+	CameraBoom->CameraRotationLagSpeed = ChaseCamera::YawLagSpeed;
+	// Settings > Camera returns behind: a while after the player looked away, the view eases back astern of her (only
+	// after a look: stills that set a yaw keep it).
+	if (ChaseRig.bSmoothYaw && LastLookSeconds > 0.0 && USailingSettings::Get()->bCameraRecentre)
+	{
+		const float Yaw = ChaseCamera::RecentreYaw(CameraYaw, DeltaSeconds, SinceLook);
+		if (Yaw != CameraYaw)
+		{
+			CameraYaw = Yaw;
+			ApplyChaseRotation();
+		}
+	}
+}
+
+void ASailboatPawn::ApplyChaseRotation()
+{
+	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+}
+
+void ASailboatPawn::UpdateChaseSocket()
+{
+	CameraBoom->SocketOffset = FVector(0.f, 0.f, ChaseCamera::SocketUpCm(ChaseRig, CameraBoom->TargetArmLength));
+}
+
+void ASailboatPawn::ApplyChaseRig(bool bResetDistance, bool bResetPitch)
+{
+	const FBoatConfig& C = Boat.GetConfig();
+	ChaseRig = ChaseCamera::RigFor(ChaseRigKind, C.LengthOverall, C.MastheadZ, C.BoomZ);
+	CameraDistance = bResetDistance ? ChaseRig.ArmCm : FMath::Clamp(CameraDistance, ChaseRig.MinArmCm, ChaseRig.MaxArmCm);
+	if (bResetPitch) CameraPitch = ChaseRig.PitchDeg;
+	CameraBoom->SetRelativeLocation(FVector(0.f, 0.f, ChaseRig.PivotUpCm));
+	CameraBoom->TargetArmLength = CameraDistance;
+	UpdateChaseSocket();
+	if (!bCockpit)
+	{
+		CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f);
+		ApplyChaseRotation();
+	}
+}
+
+ChaseCamera::EView ASailboatPawn::GetCameraView() const
+{
+	if (bCockpit) return ChaseCamera::EView::Helm;
+	return ChaseRigKind == ChaseCamera::ERig::Overview ? ChaseCamera::EView::Overview : ChaseCamera::EView::Chase;
+}
+
+void ASailboatPawn::SetCameraView(ChaseCamera::EView View, bool bRemember)
+{
+	if (View == ChaseCamera::EView::Helm)
+	{
+		if (!bCockpit) SetCockpitView(true, false);
+	}
+	else
+	{
+		const ChaseCamera::ERig Kind = View == ChaseCamera::EView::Overview ? ChaseCamera::ERig::Overview : ChaseCamera::ERig::Chase;
+		ChaseRigKind = Kind;
+		if (bCockpit) SetCockpitView(false, false);
+		CameraYaw = 0.f;
+		ApplyChaseRig(true, true);
+		SnapChaseCamera();
+	}
+	LastLookSeconds = -1e9;
+	if (!bRemember) return;
+	USailingSettings* Settings = USailingSettings::Get();
+	Settings->CameraView = int32(View);
+	Settings->Save();
+	const FString Key = SailingBindings::Label(TEXT("ChangeView"), false, SailUI::UsingGamepad());
+	StatusMessage = View == ChaseCamera::EView::Helm ? FString::Printf(TEXT("Helm view: you are at the helm (%s changes the view)"), *Key)
+		: View == ChaseCamera::EView::Overview ? FString::Printf(TEXT("Overview: the high view, for your angle to the wind and the marks (%s changes the view)"), *Key)
+		: FString::Printf(TEXT("Chase camera (%s changes the view)"), *Key);
 	StatusUntil = Boat.GetState().Time + 3.0;
 }
 
@@ -2560,8 +2692,11 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		{
 			FreeCam->Limits = FFreeCameraLimits();
 			FreeCam->SetAnchor(this, CameraBoom->GetComponentLocation() - GetActorLocation());
-			FreeCam->SetMode(EFreeCameraMode::Fly);
+			// Camera views slice 2 (Bean's pick): it opens orbiting the boat from where the view was, at the speed step
+			// last chosen; Y (or Tab) lets it fly free.
+			FreeCam->SetMode(EFreeCameraMode::Orbit);
 			FreeCam->SnapTo(ViewLocation(), Camera->GetComponentRotation());
+			FreeCam->SetSpeedIndex(USailingSettings::Get()->PhotoSpeed);
 			UCameraComponent* Lens = FreeCam->GetCamera();
 			Lens->PostProcessSettings = Camera->PostProcessSettings;
 			Lens->PostProcessBlendWeight = Camera->PostProcessBlendWeight;
@@ -2572,6 +2707,7 @@ void ASailboatPawn::SetPhoto(bool bOn)
 		}
 		PhotoHintUntil = FPlatformTime::Seconds() + 5.0;
 		PhotoReadoutUntil = PhotoHintUntil;
+		bPhotoHideHints = false;   // (B hides the panel, then leaves: each visit starts with it shown)
 	}
 	else if (PC)
 	{
@@ -3528,6 +3664,7 @@ void ASailboatPawn::SnapChaseCamera()
 {
 	if (!CameraBoom) return;
 	CameraBoom->bEnableCameraLag = false;
+	CameraBoom->bEnableCameraRotationLag = false;   // (Tick turns the yaw's lag back on once the snap is over)
 	bChaseSnapPending = true;
 	ChaseSnapFrame = GFrameCounter;
 }
@@ -3911,6 +4048,20 @@ void ASailboatPawn::OnAxis(const FInputActionValue& Value, FName Action)
 		FreeCam->StepSpeed(V > 0.f ? 1 : -1);
 		NextPhotoSpeedStep = FPlatformTime::Seconds() + 0.15;
 		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
+		if (FreeCam->GetMode() == EFreeCameraMode::Fly && USailingSettings::Get()->PhotoSpeed != FreeCam->GetSpeedIndex())
+		{
+			USailingSettings::Get()->PhotoSpeed = FreeCam->GetSpeedIndex();   // kept for the next photo session
+			USailingSettings::Get()->Save();
+		}
+	}
+	if (Action == TEXT("PhotoZoom") && FreeCam && bPhoto && FMath::Abs(V) > 0.5f && FPlatformTime::Seconds() >= NextPhotoZoomStep)
+	{
+		// Camera views slice 2: the wheel or the bumpers (held, they repeat) zoom the lens from one focal mark to the next
+		// (the panel's Lens row: 14 to 200 mm on full frame).
+		UCameraComponent* Lens = FreeCam->GetCamera();
+		Lens->SetFieldOfView(FMath::Clamp(PhotoMath::FovForFocal(PhotoMath::StepFocal(PhotoMath::FocalForFov(Lens->FieldOfView), V > 0.f ? 1 : -1)), 10.f, 110.f));
+		NextPhotoZoomStep = FPlatformTime::Seconds() + 0.12;
+		PhotoReadoutUntil = FPlatformTime::Seconds() + 2.0;
 	}
 }
 
@@ -3927,7 +4078,11 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 	{
 		return;
 	}
-	const FVector2D Delta = Value.Get<FVector2D>().ClampAxes(-10.0, 10.0);
+	const FVector2D Raw = Value.Get<FVector2D>().ClampAxes(-10.0, 10.0);
+	// Settings > Look speed and Invert up and down (docs/camera-views/) for the cameras; the chart pans by the raw move.
+	const USailingSettings* LookSettings = USailingSettings::Get();
+	const float LookSpeed = FMath::Clamp(LookSettings->LookSpeed, 0.25f, 3.f);
+	const FVector2D Delta(Raw.X * LookSpeed, Raw.Y * LookSpeed * (LookSettings->bInvertLook ? -1.f : 1.f));
 	if (bWatching && GhostBoat)
 	{
 		GhostBoat->AddCameraOrbit(Delta, 0.f);
@@ -3941,13 +4096,14 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 	if (bChartOpen)
 	{
 		// The crosshair stays in the middle; the chart slides under it (mouse right = look east, up = north).
-		ChartCenter += FVector2D(Delta.Y, Delta.X) * ChartMetersPerPixel * 4.0;
+		ChartCenter += FVector2D(Raw.Y, Raw.X) * ChartMetersPerPixel * 4.0;
 		return;
 	}
+	if (!Delta.IsNearlyZero()) LastLookSeconds = FPlatformTime::Seconds();   // the chase eases back behind her after a while
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	// (the cockpit look keeps its own range: UpdateCockpitCamera clamps it; the arm's limit is the chase camera's)
 	CameraPitch = bCockpit ? FMath::Clamp(CameraPitch + Delta.Y, -75.f, 5.f) : ClampChasePitch(CameraPitch + Delta.Y, -75.f, 5.f);
-	CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+	ApplyChaseRotation();
 }
 
 void ASailboatPawn::OnZoom(const FInputActionValue& Value)
@@ -3963,13 +4119,16 @@ void ASailboatPawn::OnZoom(const FInputActionValue& Value)
 		return;
 	}
 	if (bPhoto) return; // the wheel is photo mode's speed (PhotoSpeed, in its own context)
-	CameraDistance = FMath::Clamp(CameraDistance - Value.Get<float>() * 120.f, 400.f, 4000.f);
+	// By ratio inside the rig's range (docs/camera-views/): a notch is the same share of the way near and far, and the
+	// socket's push grows with the arm, so the boat keeps her place on screen.
+	CameraDistance = ChaseCamera::Zoom(ChaseRig, CameraDistance, Value.Get<float>());
 	CameraBoom->TargetArmLength = CameraDistance;
+	UpdateChaseSocket();
 	// (zoomed out, the pitch the limit allows is lower: the arm comes down with it rather than the lens going under)
 	if (!bCockpit)
 	{
 		CameraPitch = ClampChasePitch(CameraPitch, -75.f, 5.f);
-		CameraBoom->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.f));
+		ApplyChaseRotation();
 	}
 }
 
@@ -3997,7 +4156,14 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching)
 	{
-		SetCockpitView(!bCockpit);
+		// (\ goes straight to the helm and back to the last outside view)
+		SetCameraView(bCockpit ? (ChaseRigKind == ChaseCamera::ERig::Overview ? ChaseCamera::EView::Overview : ChaseCamera::EView::Chase) : ChaseCamera::EView::Helm, true);
+		return;
+	}
+	if (Action == TEXT("ChangeView") && !bPhoto && !bWatching && !IsCaptureMode())
+	{
+		// Camera views (docs/camera-views/): Chase, Overview, Helm, round again.
+		SetCameraView(ChaseCamera::Next(GetCameraView()), true);
 		return;
 	}
 	if (Action == TEXT("Replay"))
@@ -4023,6 +4189,12 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		}
 		else if (Action == TEXT("PhotoRollReset") && FreeCam) FreeCam->ResetRoll();
 		else if (Action == TEXT("PhotoHideUI")) bPhotoHideHints = !bPhotoHideHints;
+		else if (Action == TEXT("PhotoBack"))
+		{
+			// Bean's pick: B closes the panel first, then leaves.
+			if (!bPhotoHideHints) bPhotoHideHints = true;
+			else SetPhoto(false);
+		}
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
