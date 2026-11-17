@@ -106,7 +106,8 @@ namespace
 			|| Action == TEXT("Logbook") || Action == TEXT("Replay") || Action == TEXT("Photo") || Action == TEXT("PhotoShot")
 			|| Action == TEXT("CockpitView") || Action == TEXT("ChangeView") || Action == TEXT("CrewAction") || Action == TEXT("TravellerDump") || Action == TEXT("Station")
 			|| Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action);
+			|| Action == TEXT("PhotoBack") || SailingBindings::IsPhotoPanelAction(Action)
+			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm") || Action == TEXT("ShipOrders") || SailingBindings::IsOrdersAction(Action);
 	}
 
 	/** Controls the crew handles in the Simple layout. */
@@ -777,6 +778,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 		NavLights.Add(Light);
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
+	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
 }
 
 void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
@@ -1313,6 +1315,13 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		}
 		ApplyChaseRotation();
 	}
+	if (bShipHelmsman && !bDemo)
+	{
+		// docs/ship-walk/: while you walk her decks (or told him to take her), her helmsman holds the wind angle she had when
+		// you left the wheel, a point up or down as you order (docs/ship-orders/).
+		WalkPilot.Wind = &GetWind();
+		Controls.Tiller = WalkPilot.Update(Boat);
+	}
 
 	const FWindField& Wind = GetWind();
 	const ASailingGameMode* GameMode = GetWorld()->GetAuthGameMode<ASailingGameMode>();
@@ -1442,7 +1451,14 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
-	if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	if (bCockpit && CanWalk() && !bTrafficBoat)
+	{
+		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her.
+		UpdateWalk(DeltaSeconds);
+		UpdateWalkCamera(DeltaSeconds);
+	}
+	else if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
+	if (!bTrafficBoat && !bGhost) UpdateDeckStreaming();
 	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
@@ -1811,6 +1827,14 @@ namespace
 			{ TEXT("PhotoPageNext"), { TEXT("Photo panel: next tab"), TEXT("") } }, { TEXT("PhotoPagePrev"), { TEXT("Photo panel: previous tab"), TEXT("") } },
 			{ TEXT("PhotoResetTab"), { TEXT("Photo panel: reset the tab (hold on the pad)"), TEXT("") } },
 			{ TEXT("PhotoAlt"), { TEXT("Photo: hold for zoom, tilt and speed on the sticks (keyboard: the pointer)"), TEXT("") } },
+			{ TEXT("WalkForward"), { TEXT("On deck (ships): walk forward"), TEXT("On deck (ships): walk back") } },
+			{ TEXT("WalkRight"), { TEXT("On deck (ships): step right"), TEXT("On deck (ships): step left") } },
+			{ TEXT("WalkRun"), { TEXT("On deck (ships): run (hold)"), TEXT("") } }, { TEXT("WalkCrouch"), { TEXT("On deck (ships): crouch (hold)"), TEXT("") } },
+			{ TEXT("WalkUse"), { TEXT("On deck (ships): take the ladder"), TEXT("") } }, { TEXT("WalkToHelm"), { TEXT("On deck (ships): back to the wheel"), TEXT("") } },
+			{ TEXT("ShipOrders"), { TEXT("Ships: orders panel"), TEXT("") } },
+			{ TEXT("OrdersUp"), { TEXT("Orders panel: previous order"), TEXT("") } }, { TEXT("OrdersDown"), { TEXT("Orders panel: next order"), TEXT("") } },
+			{ TEXT("OrdersLeft"), { TEXT("Orders panel: previous tab"), TEXT("") } }, { TEXT("OrdersRight"), { TEXT("Orders panel: next tab"), TEXT("") } },
+			{ TEXT("OrdersSelect"), { TEXT("Orders panel: give the order"), TEXT("") } }, { TEXT("OrdersClose"), { TEXT("Orders panel: close"), TEXT("") } },
 			{ TEXT("CockpitView"), { TEXT("Cockpit view (the helm's eyes)"), TEXT("") } },
 			{ TEXT("ChangeView"), { TEXT("Change view (chase, overview, helm)"), TEXT("") } },
 			{ TEXT("ControlsCard"), { TEXT("Controls card"), TEXT("") } }, { TEXT("Menu"), { TEXT("Settings"), TEXT("") } },
@@ -2036,6 +2060,9 @@ void ASailboatPawn::ApplyMappingContexts()
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(MappingContext, 0);
 	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
+	if (CanWalk() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
+	if (bWalking && !bPhoto && WalkContext) Subsystem->AddMappingContext(WalkContext, WalkContextPriority);
+	if (ShipOrders.IsOpen() && CanWalk() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
 }
 
 void ASailboatPawn::RebuildMappings()
@@ -2044,6 +2071,9 @@ void ASailboatPawn::RebuildMappings()
 	const TArray<FSailingKeyBinding>& Bindings = GetDefault<USailingInputSettings>()->GetBindings();
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat_Rebound"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo_Rebound"), Bindings, Actions, true);
+	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk_Rebound"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship_Rebound"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders_Rebound"), Bindings, Actions, &SailingBindings::InOrdersContext);
 	ApplyMappingContexts();
 }
 
@@ -2292,7 +2322,9 @@ void ASailboatPawn::SetWatching(bool bOn)
 
 void ASailboatPawn::SetCockpitView(bool bOn, bool bAnnounce)
 {
+	if (!bOn && bWalking) SetWalking(false, false);
 	bCockpit = bOn;
+	if (bOn && CanWalk()) PlaceWalkerAtHelm();
 	CockpitEye.bStarted = false;   // docs/cockpit-tack/: the steadied eye starts again where the head is
 	CockpitAccel = CockpitHead = FVector::ZeroVector;
 	CockpitPrevVel = FVector(Boat.GetState().Velocity.X, Boat.GetState().Velocity.Y, Boat.GetState().Velocity.Z);
@@ -4173,7 +4205,8 @@ void ASailboatPawn::ApplyHeldInputs(float DeltaSeconds)
 	const bool bSimple = USailingSettings::Get()->UseSimpleControls();
 	auto Held = [this, bSimple](FName Action)
 	{
-		if (bMenuOpen || (bSimple && IsCrewHandled(Action))) return 0.f;
+		// (walking her decks, the keys are your feet's: the helmsman has her, WalkPilot)
+		if (bMenuOpen || bWalking || (bSimple && IsCrewHandled(Action))) return 0.f;
 		const float* V = HeldAxes.Find(Action);
 		return V ? *V : 0.f;
 	};
@@ -4280,6 +4313,12 @@ void ASailboatPawn::OnLook(const FInputActionValue& Value)
 		ChartCenter += FVector2D(Raw.Y, Raw.X) * ChartMetersPerPixel * 4.0;
 		return;
 	}
+	if (bWalking)
+	{
+		// On deck the look is your head's (UpdateWalk hands it to the walker).
+		WalkLook += Delta;
+		return;
+	}
 	if (!Delta.IsNearlyZero()) LastLookSeconds = FPlatformTime::Seconds();   // the chase eases back behind her after a while
 	CameraYaw = SailingAngles::WrapDegrees(CameraYaw + Delta.X);
 	// (the cockpit look keeps its own range: UpdateCockpitCamera clamps it; the arm's limit is the chase camera's)
@@ -4335,6 +4374,12 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		SetPhoto(!bPhoto);
 		return;
 	}
+	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching && bWalking)
+	{
+		// (on deck, \ takes you back to the wheel)
+		SetWalking(false);
+		return;
+	}
 	if (Action == TEXT("CockpitView") && !bPhoto && !bWatching)
 	{
 		// (\ goes straight to the helm and back to the last outside view)
@@ -4343,8 +4388,14 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 	}
 	if (Action == TEXT("ChangeView") && !bPhoto && !bWatching && !IsCaptureMode())
 	{
-		// Camera views (docs/camera-views/): Chase, Overview, Helm, round again.
-		SetCameraView(ChaseCamera::Next(GetCameraView()), true);
+		// Camera views (docs/camera-views/): Chase, Overview, Helm, round again; a ship has On deck after Helm.
+		if (bWalking)
+		{
+			SetWalking(false, false);
+			SetCameraView(ChaseCamera::EView::Chase, true);
+		}
+		else if (CanWalk() && GetCameraView() == ChaseCamera::EView::Helm) SetWalking(true);
+		else SetCameraView(ChaseCamera::Next(GetCameraView()), true);
 		return;
 	}
 	if (Action == TEXT("Replay"))
@@ -4384,6 +4435,8 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
+	if (CanWalk() && OnOrdersButton(Action)) return;
+	if (bWalking && OnWalkButton(Action)) return;
 	if (bWatching)
 	{
 		// Scrub ten seconds at a time; play slower or faster.
@@ -4774,6 +4827,9 @@ void ASailboatPawn::CreateInput()
 	MakeActions(this, Bindings, Actions);
 	MappingContext = BuildContext(this, TEXT("IMC_Sailboat"), Bindings, Actions, false);
 	PhotoContext = BuildContext(this, TEXT("IMC_Photo"), Bindings, Actions, true);
+	WalkContext = BuildWalkContext(this, TEXT("IMC_Walk"), Bindings, Actions);
+	ShipContext = BuildLayerContext(this, TEXT("IMC_Ship"), Bindings, Actions, &SailingBindings::InShipContext);
+	OrdersContext = BuildLayerContext(this, TEXT("IMC_Orders"), Bindings, Actions, &SailingBindings::InOrdersContext);
 }
 
 void ASailboatPawn::PawnClientRestart()
