@@ -288,17 +288,21 @@ class Orlop:
         cc = self.c["ceiling"]
         t = cc["thick_in"] * IN
         xa, xf = self.x_hold
+        # past the hold's ends, in the run and the bow, it goes on up the side under the berth deck to the deck's ends
+        # (the deck transom and the deck hook there), its foot on the floors as they rise
+        ea, ef = self.deck_ends()
         # columns mesh_step_m apart amidships, a quarter of that in the ends, where the side turns in fast: the chord
         # between columns stays within half an inch of the surface the parts against it are fitted to
         st, e = cc["mesh_step_m"], cc["end_fine_m"]
-        xs = np.unique(np.round(np.concatenate([np.arange(xa, xa + e, st / 4), np.arange(xa + e, xf - e, st),
-                                                np.arange(xf - e, xf, st / 4), [xf]]), 6))
+        xs = np.unique(np.round(np.concatenate([np.arange(ea, xa + e, st / 4), np.arange(xa + e, xf - e, st),
+                                                np.arange(xf - e, ef, st / 4), [ef]]), 6))
+        hold_cols = [k for k, x in enumerate(xs) if xa - 1e-6 <= x <= xf + 1e-6]
         nz = 22
         rows_in, rows_out, flats_in, flats_out = [], [], [], []
         y_l = (self.c["keelson"]["sided_in"] / 2 + cc["limber_in"]) * IN
         for x in xs:
-            z0 = float(self.z_floor(x)[0])
             z1 = float(self.z_berth(x)) - self.berth_plank()
+            z0 = min(float(self.z_floor(x)[0]), z1 - cc["end_least_m"])
             zz = z0 + (z1 - z0) * (1.0 - np.cos(np.linspace(0, math.pi / 2, nz))) ** 1.0
             P, N = self.inner_at(np.full(nz, x), zz)
             rows_in.append(P)
@@ -311,15 +315,16 @@ class Orlop:
         A = np.stack(rows_in, 1)          # (rows up the side, cols along x, 3)
         B = np.stack(rows_out, 1)
         # the flat's outer edge meets the side's lowest row: share it
-        Fi = np.stack(flats_in, 1)
-        Fo = np.stack(flats_out, 1)
-        Fi[-1] = A[0]
-        Fo[-1] = B[0]
+        Fi = np.stack(flats_in, 1)[:, hold_cols]
+        Fo = np.stack(flats_out, 1)[:, hold_cols]
+        Fi[-1] = A[0][hold_cols]
+        Fo[-1] = B[0][hold_cols]
         for sgn in (1.0, -1.0):
             s = np.array([1.0, sgn, 1.0])
             slab(part, A * s, B * s, "Ceiling")
             slab(part, Fi * s, Fo * s, "Ceiling")
-        self.info["ceiling"] = {"x_m": [round(xa, 3), round(xf, 3)], "rows": nz, "cols": len(xs)}
+        self.info["ceiling"] = {"x_m": [round(ea, 3), round(ef, 3)], "hold_x_m": [round(xa, 3), round(xf, 3)],
+                                "rows": nz, "cols": len(xs)}
         # the limber boards: loose boards across the passage from the keelson's side to the limber strake
         lb = 1.5 * IN
         ks = self.c["keelson"]["sided_in"] / 2 * IN
@@ -329,6 +334,12 @@ class Orlop:
             for sgn in (1.0, -1.0):
                 ya, yb = sorted((sgn * (ks + 0.1 * IN), sgn * (y_l + 1.0 * IN)))
                 vbox(part_limber, (x0, ya, zt), (x1, yb, zt + lb), "Oak")
+
+    def deck_ends(self):
+        """the berth deck's ends along the ship (slice 13's hand-over; else the hold's)"""
+        if self.berth is not None:
+            return tuple(self.berth["deck"]["ends_m"])
+        return self.x_hold
 
     def berth_plank(self):
         return self.c["overhead"]["berth_plank_in"] * IN
@@ -1200,7 +1211,7 @@ class Orlop:
         estimate): its beams at slice 13's stations with a hanging knee at each end, the ledges between, cut round the
         openings that go down through it and the masts, and carlings along their sides"""
         bw, bd = self.c["overhead"]["beam_sided_in"] * IN, self.berth_beam_d()
-        xa, xf = self.x_hold
+        xa, xf = self.deck_ends()
         if self.berth is not None and "beam_x" in self.berth:
             xs = [x for x in self.berth["beam_x"] if xa < x < xf]
         else:
@@ -1248,6 +1259,7 @@ class Orlop:
         for xl in ledges:
             self.beam(part, xl, float(self.z_berth(xl)) - self.berth_plank(), lw, ld, holes)
         self.info["berth_ledges"] = len(ledges)
+        self.deck_transom_and_hook(part)
         self.overhead_holes = holes
         kc = oc["hanging_knee"]
         n_knees = 0
@@ -1264,6 +1276,36 @@ class Orlop:
                     break
         self.info["berth_beams"] = len(xs)
         self.info["hanging_knees"] = n_knees
+
+    def deck_transom_and_hook(self, part):
+        """under the berth deck's planks' ends: aft the deck transom, a timber across the run from side to side; forward
+        the deck hook, a flat knee across the bow, its arms along the sides (card: overhead.deck_ends)"""
+        if self.berth is None:
+            return
+        dc = self.c["overhead"]["deck_ends"]
+        ea, ef = self.deck_ends()
+        w, d = dc["transom_sided_in"] * IN, dc["transom_moulded_in"] * IN
+        xt = ea + w / 2
+        self.beam(part, xt, float(self.z_berth(xt)) - self.berth_plank(), w, d, [])
+        # the hook: inside the ceiling's face (let half an inch into it) from the deck's end aft along each side, its
+        # throat a curve across
+        hd = dc["hook_moulded_in"] * IN
+        arm = dc["hook_arm_ft"] * FT
+        thr = dc["hook_throat_ft"] * FT
+        zt = float(self.z_berth(ef)) - self.berth_plank()
+        xs = np.linspace(ef - arm, ef, 24)
+        ys = self.ceil_y(xs, np.full(24, zt - hd / 2)) + 0.5 * IN
+        # the inner edge: an arm's width in from the side at the after end, curving in to the middle line a throat's
+        # length aft of the deck's end (a quarter ellipse)
+        t = np.clip((xs - xs[0]) / max(arm - thr, 0.1), 0.0, 1.0)
+        yi = np.clip((ys - dc["hook_arm_in"] * IN) * np.sqrt(1.0 - t ** 2), 0.0, None)
+        k = int(np.argmax(yi <= 0.02)) if np.any(yi <= 0.02) else len(xs)
+        inner = list(zip(xs[:k], yi[:k]))
+        # counter-clockwise: starboard side forward, larboard side aft, then in round the throat and back
+        poly = np.array([(x, -y) for x, y in zip(xs, ys)] + [(x, y) for x, y in zip(xs[::-1], ys[::-1])] +
+                        inner + [(x, -y) for x, y in inner[::-1]])
+        flat_slab(part, poly, [], lambda x: np.asarray(self.z_berth(x), float) - self.berth_plank() + 0.1 * IN, hd, 0.3, "Oak")
+        self.info["deck_ends"] = {"transom_x_m": round(xt, 3), "hook_x_m": [round(xs[0], 3), round(ef, 3)]}
 
     def pillars(self, part):
         """a pillar on the middle line under each of the berth deck's beams over a platform (6 in square, its heel on the

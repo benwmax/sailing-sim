@@ -43,7 +43,8 @@
   "mesh_step_m": 0.25,
   "limber_in": 9.0,
   "limber_note": "the limber passage either side of the keelson (water runs to the pump well along it), covered by the limber boards: 1.5 in, loose, laid from the keelson's side to the limber strake",
-  "end_fine_m": 4.0
+  "end_fine_m": 4.0,
+  "end_least_m": 0.3
  },
  "keelson": {
   "note": "oak, 18 in sided and moulded on the floors (the 1926 midship section's keelson, 18 by 18 in), scarphed, with a step for each mast: two chocks and two cheeks on it round a mortise for the heel's tenon (spars.py: the tenon square, 0.3 of the mast's diameter, 0.25 of it long). Its top 4 ft over the rabbet amidships, 15 in over the ceiling beside it, riding up over the deadwood in the ends with the floors; each lower mast steps on it (mast_heels in orlop.json); each step at least 9 in longer than the heel each way, and as wide as the limber passages allow, chocked down onto the limber boards past the keelson's sides",
@@ -562,7 +563,7 @@
      "Ceiling"
     ],
     "the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13)",
-    5.1
+    5.3
    ],
    [
     [
@@ -816,7 +817,7 @@
      "Ceiling"
     ],
     "each hanging knee's arm down the side is scribed to the ceiling and bolted through it",
-    0.6
+    1.15
    ],
    [
     [
@@ -1078,6 +1079,15 @@
    "note": "turned or square oak pillars on the middle line under the berth deck's beams over the platforms (estimate: 6 in square), clear of the rooms across the middle line, openings, masts, partitions and slice 13's ladders' landings",
    "sided_in": 6.0,
    "clear_m": 0.3
+  },
+  "deck_ends": {
+   "note": "slice 13 hand-over: the deck transom and deck hook under the berth deck planks' ends are slice 14's. Sizes are estimates scaled from the beams (no drawing gives them).",
+   "transom_sided_in": 12,
+   "transom_moulded_in": 14,
+   "hook_moulded_in": 14,
+   "hook_arm_ft": 4,
+   "hook_throat_ft": 1.5,
+   "hook_arm_in": 12
   }
  },
  "collections": {
