@@ -59,9 +59,7 @@ the game's hands and the ideal ones (`SailingSim.Physics.BluebonnetRoll`, now wi
 
 The physics' gooseneck is `MainLuffX` at `BoomZ` (the pawn's `BoomPivot`, the main's cloth, the crew's boom checks). It
 is now her boom's pin. Her model's export (`Tools/shipkit/jclass/export_game.py`, J-Class 14 step 2) places
-`SM_Bluebonnet_Boom`'s origin at the generated `BluebonnetConfig.inl`'s main luff (2.578), so before her model is imported
-the export's `gooseneck` pivot must become the boom's pin too (the build's boom frame origin), or the boom draws 0.227 m
-aft. That is a `Tools/` change for step 2's pull request (it needs Bean's label anyway).
+`SM_Bluebonnet_Boom`'s origin on the same pin (the build's boom frame origin, #770), so the boom turns about its own jaw.
 
 ## Tests
 
