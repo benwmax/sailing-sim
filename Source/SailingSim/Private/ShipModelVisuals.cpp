@@ -108,9 +108,9 @@ void ASailboatPawn::BindShipRig()
 
 	// The model's parts already on the boat (her outside meshes, straight under BoatRoot in her frame).
 	TSet<FString> Found;
-	TArray<USceneComponent*> Children;
-	BoatRoot->GetChildrenComponents(false, Children);
-	for (USceneComponent* Child : Children)
+	TArray<USceneComponent*> RootParts;
+	BoatRoot->GetChildrenComponents(false, RootParts);
+	for (USceneComponent* Child : RootParts)
 	{
 		UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child);
 		if (!Mesh || !Mesh->GetStaticMesh()) continue;
