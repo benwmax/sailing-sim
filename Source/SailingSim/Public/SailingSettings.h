@@ -164,7 +164,8 @@ public:
 	 *  views; never in photo mode, the capture mode or a measured run). On by default; off for anyone motion bothers. */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	bool bCameraShake = true;
-	/** Camera views (docs/camera-views/): the view the player sails in, 0 Chase, 1 Overview, 2 Helm (ChaseCamera::EView);
+	/** Camera views (docs/camera-views/): the view the player sails in, ChaseCamera::EView (0 Chase, 1 Overview, 2 Helm, 3 Drone,
+	 *  4 Chase boat, 5 Masthead, 6 Transom, 7 Bow);
 	 *  F5, the middle mouse button or the right stick's click cycles them and the last one is kept. */
 	UPROPERTY(config, EditAnywhere, Category = "Display")
 	int32 CameraView = 0;

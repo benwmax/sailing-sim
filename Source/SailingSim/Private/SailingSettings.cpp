@@ -347,7 +347,7 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("Look"), EKeys::Gamepad_Right2D, 3.f);
 	Add(TEXT("Zoom"), EKeys::MouseWheelAxis);
 	// Camera views (docs/camera-views/): F5 (as in many games), the middle mouse button, or a tap of the right stick cycle
-	// Chase, Overview and Helm; a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
+	// the views (Chase to Helm); a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
 	Add(TEXT("ChangeView"), EKeys::F5);
 	Add(TEXT("ChangeView"), EKeys::MiddleMouseButton);
 	Add(TEXT("ChangeView"), EKeys::Gamepad_RightThumbstick);
@@ -455,6 +455,37 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoPagePrev"), EKeys::Gamepad_LeftShoulder);
 	Add(TEXT("PhotoResetTab"), EKeys::R);
 	Add(TEXT("PhotoResetTab"), EKeys::Gamepad_RightThumbstick);   // held half a second (a tap is back to the boat)
+	// Walking a ship (docs/ship-walk/): the On deck view's own layer and context (above the boat's while you walk), so it
+	// shares keys with the boat's: WASD and the left stick walk, the mouse and right stick look as ever.
+	Add(TEXT("WalkForward"), EKeys::W);
+	Add(TEXT("WalkForward"), EKeys::S, -1.f);
+	Add(TEXT("WalkForward"), EKeys::Gamepad_LeftY);
+	Add(TEXT("WalkRight"), EKeys::D);
+	Add(TEXT("WalkRight"), EKeys::A, -1.f);
+	Add(TEXT("WalkRight"), EKeys::Gamepad_LeftX);
+	Add(TEXT("WalkRun"), EKeys::LeftShift);
+	Add(TEXT("WalkRun"), EKeys::Gamepad_LeftThumbstick);
+	Add(TEXT("WalkCrouch"), EKeys::LeftControl);
+	Add(TEXT("WalkCrouch"), EKeys::Gamepad_FaceButton_Right);
+	Add(TEXT("WalkUse"), EKeys::E);
+	Add(TEXT("WalkUse"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("WalkToHelm"), EKeys::F);
+	Add(TEXT("WalkToHelm"), EKeys::Gamepad_FaceButton_Top);
+	// A ship's orders panel (docs/ship-orders/): its key on a ship in place of wing on wing's; its own keys while it is open.
+	Add(TEXT("ShipOrders"), EKeys::G);
+	Add(TEXT("ShipOrders"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("OrdersUp"), EKeys::Up);
+	Add(TEXT("OrdersUp"), EKeys::Gamepad_DPad_Up);
+	Add(TEXT("OrdersDown"), EKeys::Down);
+	Add(TEXT("OrdersDown"), EKeys::Gamepad_DPad_Down);
+	Add(TEXT("OrdersLeft"), EKeys::Left);
+	Add(TEXT("OrdersLeft"), EKeys::Gamepad_DPad_Left);
+	Add(TEXT("OrdersRight"), EKeys::Right);
+	Add(TEXT("OrdersRight"), EKeys::Gamepad_DPad_Right);
+	Add(TEXT("OrdersSelect"), EKeys::Enter);
+	Add(TEXT("OrdersSelect"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("OrdersClose"), EKeys::BackSpace);
+	Add(TEXT("OrdersClose"), EKeys::Gamepad_FaceButton_Right);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

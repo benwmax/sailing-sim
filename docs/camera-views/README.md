@@ -1,8 +1,8 @@
 # Camera views
 
 Plan: the "Camera Views Plan" page (Nov 16 2026). Bean's answer to its nine questions: "go with your picks".
-Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3 is photo mode's menu. Slice 4,
-the new cameras (bow, transom, masthead, chase boat, drone), follows. With the first release moved to the end of
+Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3 is photo mode's menu. Slice 4
+is the new cameras (bow, transom, masthead, chase boat, drone). With the first release moved to the end of
 November (Bean, Nov 16), slices 3 and 4 aim for the Fri Nov 27 build.
 
 ## Slice 1: the chase camera and the view cycle
@@ -126,3 +126,39 @@ old pad defaults come off and the new ones go where nothing else in photo mode h
 
 Tests: `SailingSim.UI.PhotoPanel` (tabs, rows round their tab, help lines, the tab reset, the side, glyph text) and
 `SailingSim.UI.PhotoFreeFly.Input` (the new buttons, the saved list moved once).
+
+## Slice 4: the new cameras
+
+Five mounted cameras join the cycle, which now runs from far outside to aboard, as racing games order theirs:
+Chase, Overview, Drone, Chase boat, Masthead, Transom cam, Bow, Helm, then Chase again. Each is a row of numbers in
+`ChaseCamera::MountFor` (`ChaseCamera.h`), scaled from the boat's config, so all nine boats get them without new code.
+
+| View | Where | Looks at | Lens | Moves |
+| --- | --- | --- | --- | --- |
+| Drone | her leeward quarter (135 deg off the bow), 30 m off and 30 m up at least (3 boat lengths, 2 masthead heights) | a fifth of the way up the mast | 70 deg | follows her heading with a 2 s lag |
+| Chase boat | to leeward just ahead of abeam (80 deg), 1.5 m over the water, 1.9 masthead heights off (15 m at least) | 45% of the way up the mast | 65 deg | follows her heading with a 1 s lag |
+| Masthead | 0.35 m over the masthead, 0.35 m aft of the mast | her deck halfway from the mast to the stern | 80 deg | on her; the horizon follows a third of her heel |
+| Transom cam | the reference captures' action camera (`OnboardCameraMount`, `ActionCam`) | forward over the cockpit, 6 deg down | 100 deg | on her, steadied the same way |
+| Bow | on the stem head, ahead of the jib's tack | forward, 8 deg down | 95 deg | on her, steadied the same way |
+
+- The drone and the chase boat stay on her leeward side. When she tacks, they change sides only after she has held the
+  new tack for 4 s (`SideHoldS`), then swing round her stern (`SideBearingDeg`, `EaseBearing`), never across her bow.
+  They sit at her mean waterline's height (eased over 1.5 s), are lifted over the shore as the chase camera is, and
+  don't shake (Settings > Camera shake moves only the cameras on her).
+- The cameras on her roll and pitch a third as much as she does (Bean's pick on question 8, as the helm view does). The
+  masthead keeps looking at her deck wherever the masthead swings.
+- Look (mouse, right stick) turns a mounted camera from its own aim: round her for the drone and the chase boat, the
+  lens for the cameras on her. It eases back after 2.5 s when Settings > Camera returns behind is on. The wheel zooms
+  the lens (`ZoomFov`, 30 to 110 deg).
+- The pawn draws every view with its own `Camera`, placed in the world each frame (`UpdateMountedCamera`), so photo mode
+  opens where the view is, as from the others. The capture mode keeps its own presets.
+- Settings > Camera lists all eight views in the cycle's order. `CameraView` keeps each view's number (the first three
+  are unchanged) and the save writes names (`drone`, `chaseboat`, `masthead`, `transom`, `bow`).
+- Stills: `-SailingView=Drone|ChaseBoat|Masthead|Transom|Bow` (any case, display names too), with `-SailingCamYaw` and
+  `-SailingCamPitch` turning the view from its aim. Measured runs that name no view keep the Classic chase rig.
+
+Tests: `SailingSim.Visual.ChaseCamera.Mounts` puts every mount on every boat (the cameras on her over her deck and
+inside her length, the bow ahead of the mast, the masthead looking down at her deck; the drone and the chase boat with
+her masthead, bow, stern and waterline in a 16:9 frame from either side), the side change round the stern and the zoom
+range. `.Controls` holds the cycle, the names and the save; `.Pawn` cycles all eight views on the pawn and checks each
+lens's place, field of view and aim.
