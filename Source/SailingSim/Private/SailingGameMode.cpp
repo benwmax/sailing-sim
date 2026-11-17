@@ -1065,9 +1065,12 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
 	}
 	// Feedback #27 (docs/blow-sea/): from 20 kn the lake's (and the bay's) sea is built in a stronger wind than the mean
-	// (FWaveField::BlowSeaKnots), so a blow's chop stands taller, a little steeper and caps more. After the ocean: the
-	// Gulf's FFT sea keeps its own wind. -SailingBlowSea=<lift> (0 is off) and -SailingClassicBlowSea compare.
-	WaveParams.WindSpeedKnots = Sailing::FWaveField::BlowSeaKnots(WaveParams.WindSpeedKnots, BlowSeaLift());
+	// (FWaveField::BlowSeaKnots), so a blow's chop stands taller, a little steeper and caps more; the air's own wind is kept
+	// beside it (AirKnots: the wind maps' gusts and the spray's onsets read it). Not offshore: there the FFT ocean is the
+	// sea (and the prologue's gale is tuned on it). -SailingBlowSea=<lift> (0 is off) and -SailingClassicBlowSea compare.
+	WaveParams.AirKnots = WaveParams.WindSpeedKnots;
+	if (!(Ocean && Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5))
+		WaveParams.WindSpeedKnots = Sailing::FWaveField::BlowSeaKnots(WaveParams.WindSpeedKnots, BlowSeaLift());
 	// The wind lays the components' directions first (and, after a turn past 45 deg, again: in phase at the boat), then
 	// the sea map reads them.
 	WaveParams.HoldX = BoatPos.X;

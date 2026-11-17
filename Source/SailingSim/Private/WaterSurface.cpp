@@ -1562,6 +1562,10 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	const double CamH = (CamW.Z - SailingFrame::MapAnchor(GetWorld()).Z) / CmPerMeter;
 	const double T = GetSimTime();
 	const double Scale = WhitecapScaleHere(), Onset = WhitecapOnset(float(Waves->GetParams().WindSpeedKnots));
+	// Blow sea (docs/blow-sea/): the tiles read the air's wind from the wind maps; the sea is built in a stronger one, so
+	// their cover is scaled by the same ratio as the near water's cap target (UpdateDetail's MeanMs).
+	const double Air = Waves->GetParams().AirWindKnots();
+	const double Blow = Air > 0.1 ? Waves->GetParams().WindSpeedKnots / Air : 1.0;
 	const Sailing::FLakeTerrain* Terrain = GM && GM->GetLake().IsLoaded() ? &GM->GetLake().Terrain : nullptr;
 	const double WaterZ = Terrain ? -Terrain->GetLevelBelowPool() : 0.0;
 	constexpr double Near = 300.0, Far = 1250.0;
@@ -1599,7 +1603,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 			const double CX = X0 + 0.5 * TileM, CY = Y0 + 0.5 * TileM;
 			double From = 0.0, Factor = 1.0;
 			Wind->ReadableAt(CX, CY, T, From, Factor);
-			FPlan P{Key, FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor, Scale, Onset), CX, CY, 0};
+			FPlan P{Key, FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor * Blow, Scale, Onset), CX, CY, 0};
 			float Prob0 = 0.f;
 			FarCapTilePlan(P.Cover, Area, P.Slots, Prob0);
 			Total += P.Slots;
@@ -1761,7 +1765,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 		int32 Placed = 0;
 		for (const TPair<FIntPoint, FFarCapTile>& Tl : FarCapTiles) Placed += Tl.Value.Mesh ? Tl.Value.Mesh->GetInstanceCount() : 0;
 		SAIL_LOG(Display, TEXT("FarCaps: cam (%.0f, %.0f) h %.1f m, %d tiles wanted, %d held, %d sprites, water %.2f, cover at cam %.5f"), Cam.X, Cam.Y, CamH, Want.Num(), FarCapTiles.Num(), Placed, WaterZ,
-			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0, Scale, Onset));
+			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0 * Blow, Scale, Onset));
 	}
 	for (auto It = FarCapTiles.CreateIterator(); It; ++It)
 	{
@@ -2017,7 +2021,8 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	// sea, CapCalib's; the old fixed 0.45 below 24 kn, so a breezy day is as it was), more crests are tried, more is torn off
 	// each, and from Beaufort 8 their edges blow off as spindrift: low sheets of mist streaming downwind.
 	const double WindMs = FVector2D(WindAt2m.X, WindAt2m.Y).Size();
-	const FGaleSpray Gale = GaleSprayFor(Waves->GetParams().WindSpeedKnots);
+	// (Blow sea: the onsets Bean approved are in the air's wind, not the stronger one the sea is built in.)
+	const FGaleSpray Gale = GaleSprayFor(Waves->GetParams().AirWindKnots());
 	const bool bSolved = CapSlopeSmooth > 0.f;
 	const bool bCalmSea = bSolved && CapThrSmooth[0] < -0.5f;   // FWaveDetail::CapThreshold: nothing breaks
 	const double CapAt = FMath::Lerp(0.45, bSolved ? double(CapThrSmooth[0]) : 0.45, double(Gale.Gale));
@@ -2387,7 +2392,9 @@ void AWaterSurface::UpdateMaterial()
 		// W0: the sea's mean wind (what the drawn waves were grown for), not the wind at the boat: cat's paws darken and
 		// whitecaps gather against it, so a puff at the boat no longer turns the whole lake to a lull. W is the water
 		// body's whitecap scale.
-		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
+		// Blow sea (docs/blow-sea/): the air's mean, as the wind maps hold the air's wind; the stronger sea's extra caps come
+		// through the cap target (UpdateDetail), not through the gust ratio, which would cancel them and pale the gusts.
+		const float MeanMs = float(Waves->GetParams().AirWindKnots() * kKnot);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
 			WhitecapScaleHere()));
 	}

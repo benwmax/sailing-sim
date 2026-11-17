@@ -41,7 +41,7 @@ bool FSailingBlowSeaTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("... without a step"), bContinuous);
 
 	// The report's spot (north lake below the SH-66 causeway, 26 kn from 157.5 deg): the sea the game builds there now
-	// stands at the CEM straight-line fetch's height (within 10%), a little steeper than before (Hs over the peak's
+	// stands at the same law's height over the straight-line fetch (within 10%), a little steeper than before (Hs over the peak's
 	// wavelength), and its whitecap target (Monahan, U^3.41) rises by half.
 	FLakeData Lake;
 	if (!TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard")))) return false;
@@ -51,11 +51,11 @@ bool FSailingBlowSeaTest::RunTest(const FString& Parameters)
 	const double Ub = FWaveField::BlowSeaKnots(26.0) * kKnot;
 	const double Hs0 = FWaveField::TargetSignificantHeight(U, Effective), Hs1 = FWaveField::TargetSignificantHeight(Ub, Effective);
 	const double Tp0 = FWaveField::TargetPeakPeriod(U, Effective), Tp1 = FWaveField::TargetPeakPeriod(Ub, Effective);
-	const double Cem = FWaveField::TargetSignificantHeight(U, Straight);
-	AddInfo(FString::Printf(TEXT("Report spot, 26 kn: fetch %.0f m effective, %.0f m straight; Hs %.2f -> %.2f m (CEM straight %.2f), Tp %.2f -> %.2f s"),
-		Effective, Straight, Hs0, Hs1, Cem, Tp0, Tp1));
+	const double StraightHs = FWaveField::TargetSignificantHeight(U, Straight);
+	AddInfo(FString::Printf(TEXT("Report spot, 26 kn: fetch %.0f m effective, %.0f m straight; Hs %.2f -> %.2f m (law over the straight fetch %.2f), Tp %.2f -> %.2f s"),
+		Effective, Straight, Hs0, Hs1, StraightHs, Tp0, Tp1));
 	TestTrue(TEXT("Taller: at least 15% over the SWAN-fitted sea"), Hs1 > 1.15 * Hs0);
-	TestTrue(TEXT("... at the straight-line fetch's height within 10%"), FMath::Abs(Hs1 / Cem - 1.0) < 0.10);
+	TestTrue(TEXT("... at the straight-line fetch's height within 10%"), FMath::Abs(Hs1 / StraightHs - 1.0) < 0.10);
 	TestTrue(TEXT("... and no less steep"), Hs1 / PeakWavelength(Tp1) >= Hs0 / PeakWavelength(Tp0));
 	return true;
 }

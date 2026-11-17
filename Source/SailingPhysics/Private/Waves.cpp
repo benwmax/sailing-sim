@@ -347,11 +347,11 @@ namespace Sailing
 	{
 		// Feedback #27 (Ray Hubbard, 26 kn gusting 36 in a thunderstorm): the sea read small and soft against what sailors
 		// see on the lake in a blow. The laws here follow the SWAN bake (a steady wind, Saville's fetch over +/-45 deg) to
-		// within 10%; the CEM's straight-line fetch, which the reference checks' 8 mile case uses, gives 22% more at the
-		// report's spot (2.7 km straight upwind, 1.8 km effective), and a gusty blow's sea answers the wind's stress (U^2),
-		// which its gusts raise past the mean's. Rather than move the fitted laws, the game builds the sea in a stronger wind
-		// once it blows: height, period, caps and spray all follow from one wind, so the sea stays a sea of some real wind
-		// (Hs ~ U^1.66, Tp by Toba: a little steeper, as a harder blow's chop is). Below BlowFromKnots nothing changes.
+		// within 10%, and the textbook formulas don't ask for more, so this is a look and feel choice (Bean's, on stills),
+		// not a correction. Rather than move the fitted laws, the game builds the sea in a stronger wind once it blows:
+		// height, period and caps follow from one wind, so the sea stays a sea of some real wind (Hs ~ U^1.66, Tp by Toba:
+		// a little steeper, as a harder blow's chop is). At the report's spot 26 kn now gives the height of the same law
+		// over the straight-line fetch (2.7 km, against 1.8 km effective). Below BlowFromKnots nothing changes.
 		if (!(MeanKnots > BlowFromKnots) || Lift <= 0.0) return MeanKnots;
 		return MeanKnots * (1.0 + Lift * SmoothStep(BlowFromKnots, BlowFromKnots + BlowRampKnots, MeanKnots));
 	}
