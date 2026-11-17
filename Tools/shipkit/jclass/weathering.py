@@ -382,7 +382,7 @@ class W:
         n.inputs["Detail"].default_value = detail
         n.inputs["Roughness"].default_value = rough
         n.inputs["Distortion"].default_value = distort
-        return n.outputs["Factor"]
+        return n.outputs["Fac"]   # (its identifier: Blender 4.2 names it Fac, 5 Factor)
 
     def blot(self, vec, size_m, seed=0.0, detail=2.0, stretch=None):
         """Noise spread over 0..1 (two spreads each side of the mean): blotches that are really there or not, where the

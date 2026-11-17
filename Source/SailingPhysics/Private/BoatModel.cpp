@@ -31,6 +31,7 @@ namespace Sailing
 		case EBoatType::Corsair880: return "Corsair 880";
 		case EBoatType::Lagoon42: return "Lagoon 42";
 		case EBoatType::Maxi: return "Maxi 100";
+		case EBoatType::Bluebonnet: return "Bluebonnet";
 		default: return "Boat";
 		}
 	}
@@ -208,6 +209,7 @@ namespace Sailing
 	{
 		// J/22: LOA 22 ft 6 in, LWL 19 ft, beam 8 ft, 1,790 lb, 700 lb ballast. One hull, fin keel, transom rudder.
 		Hulls.push_back(J22Hull());
+		Staysail.NumStrips = 0; // only a ship has staysails (docs/frigate-physics/)
 
 		// Residuary resistance per unit weight against Froude number. Shape follows the Delft series for a
 		// light-displacement keelboat; tuned against the J/22 polar.
@@ -370,6 +372,8 @@ namespace Sailing
 		// Fixed appendages float their own volume (FBoatConfig::AppendageVolume); the canoe body carries the rest.
 		const double Target = Mass / kWaterDensity - Config.AppendageVolume;
 		double Lo = 0.02, Hi = 3.0;
+		// A ship's sections run deeper than the small boats' 3 m search (the frigate's 5.9 m): search past them.
+		for (const FHullShape& H : Config.Hulls) Hi = std::max(Hi, 1.5 * H.StationDepth);
 		for (int I = 0; I < 60; ++I)
 		{
 			const double Mid = 0.5 * (Lo + Hi);
@@ -572,6 +576,8 @@ namespace Sailing
 		Telemetry = FBoatTelemetry();
 		MainMeanLift = 0.0;
 		bColumnMeanFresh = true;
+		// A square rig starts with every sail drawing and the yards square (the controls set them from the first step).
+		for (int I = 0; I < int(Config.Square.Sails.size()) && I < kMaxSquareSails; ++I) State.SquareOut[I] = 1.0;
 	}
 
 	Vec3 FBoatModel::PointVelocityWorld(const Vec3& BodyPoint) const
@@ -868,10 +874,10 @@ namespace Sailing
 				const double Re = std::max(V * 0.7 * Lwl / kWaterViscosity, 1e4);
 				const double LogRe = std::log10(Re) - 2.0;
 				const double Cf = 0.075 / (LogRe * LogRe);
-				const double Friction = 0.5 * kWaterDensity * V * V * Wetted * Cf * C.FormFactor * (1.0 + 0.4 * std::sin(HeelAbs));
+				const double Friction = 0.5 * kWaterDensity * V * V * Wetted * Cf * C.FormFactor * (1.0 + C.HeelFrictionCoef * std::sin(HeelAbs));
 				MaxFroude = std::max(MaxFroude, Froude);
 				const double Carried = kWaterDensity * kGravity * Vol + Lift;
-				const double Residuary = Carried * ResistanceCoefficient(Froude) * (1.0 + 2.0 * std::sin(HeelAbs) * std::sin(HeelAbs));
+				const double Residuary = Carried * ResistanceCoefficient(Froude) * (1.0 + C.HeelResiduaryCoef * std::sin(HeelAbs) * std::sin(HeelAbs));
 				// Added resistance in waves, from the actual sea state.
 				double WaveResistance = 0.0;
 				if (Waves)
@@ -1524,6 +1530,132 @@ namespace Sailing
 		}
 	}
 
+	template <typename FApparent>
+	void FBoatModel::ComputeSquareSails(double Dt, const FBoatControls& Controls, const FApparent& Apparent, Vec3& ForceBody, Vec3& TorqueBody)
+	{
+		// docs/frigate-physics/: the square rig. Each sail is one panel at its centre, its chord the yard (SquareRig.h).
+		const FSquareRig& R = Config.Square;
+		const Quat& Q = State.Orientation;
+		const Vec3 Origin = OriginPosition();
+		FBoatTelemetry& T = Telemetry;
+		const int N = std::min(int(R.Sails.size()), kMaxSquareSails);
+		T.NumSquareSails = N;
+		auto AngleFrom = [](const Vec3& AirBody) { return std::atan2(-AirBody.Y, -AirBody.X); };
+
+		// The crew at the braces and the gear: yards and sails move toward the controls at their pace.
+		for (int I = 0; I < N; ++I)
+		{
+			const FSquareSailDef& S = R.Sails[I];
+			const double Target = YardAngleFor(R, I, Controls.Brace[std::min(std::max(S.Mast, 0), kMaxMasts - 1)]);
+			State.YardAngle[I] = MoveToward(State.YardAngle[I], Target, R.BraceDegPerSecond * kDegToRad * Dt);
+			const bool bSet = Controls.SquareSet[I] == ESailSet::Set;
+			State.SquareOut[I] = MoveToward(State.SquareOut[I], bSet ? 1.0 : 0.0, Dt / std::max(bSet ? R.SetSeconds : R.ClewSeconds, 0.1));
+		}
+
+		// Each mast's apparent wind (at its canvas's centre) and how much of its canvas is drawing, for the interference.
+		double MastAwa[kMaxMasts] = { 0, 0, 0 }, MastShare[kMaxMasts] = { 0, 0, 0 };
+		for (int M = 0; M < std::min(R.NumMasts, kMaxMasts); ++M)
+		{
+			double Z = 0.0, A = 0.0, Out = 0.0;
+			for (int I = 0; I < N; ++I)
+			{
+				if (R.Sails[I].Mast != M) continue;
+				Z += R.Sails[I].MidZ() * R.Sails[I].Area;
+				A += R.Sails[I].Area;
+				Out += State.SquareOut[I] * R.Sails[I].Area;
+			}
+			if (A <= 0.0) continue;
+			MastAwa[M] = AngleFrom(Apparent(Vec3(R.MastX[M], 0.0, Z / A)));
+			MastShare[M] = Out / A;
+		}
+
+		for (int I = 0; I < N; ++I)
+		{
+			const FSquareSailDef& S = R.Sails[I];
+			FSailStripState& St = T.SquareStrips[I];
+			const int M = std::min(std::max(S.Mast, 0), kMaxMasts - 1);
+			const double Psi = State.YardAngle[I];
+			const Vec3 Normal(std::cos(Psi), -std::sin(Psi), 0.0); // the sail's fore face (square: forward)
+			const Vec3 Centre(S.PivotX + Normal.X * S.ForeOffset, Normal.Y * S.ForeOffset, S.MidZ());
+			St.AngleFromCenterline = Psi;
+			St.CenterOfEffort = Centre;
+			St.Camber = R.Camber * State.SquareOut[I];
+			St.TwistFromFoot = 0.0;
+			St.Force = Vec3();
+			St.LiftCoefficient = St.DragCoefficient = 0.0;
+			St.Flow = ESailFlow::Luffing;
+			St.StallAlpha = SquareStallAlpha(R);
+			St.LuffAlpha = R.LuffDeg * kDegToRad;
+
+			const double Reef = (Controls.SquareReef[I] > 0 && int(Controls.SquareReef[I]) <= int(S.ReefAreaFraction.size()))
+				? S.ReefAreaFraction[Controls.SquareReef[I] - 1] : 1.0;
+			const double Out = State.SquareOut[I];
+			const double Clewed = Controls.SquareSet[I] == ESailSet::Clewed || (Controls.SquareSet[I] == ESailSet::Furled && Out > 0.0) ? 1.0 - Out : 0.0;
+			const Vec3 CentreWorld = Origin + Q.Rotate(Centre);
+			const double Dry = Controls.bSailsDown ? 0.0 : 1.0 - Clamp((WaterHeightAt(CentreWorld.X, CentreWorld.Y) - CentreWorld.Z) / 0.3 + 0.5, 0.0, 1.0);
+			Vec3 Air = Apparent(Centre);
+			double Speed = Vec3(Air.X, Air.Y, 0.0).Length();
+			double Awa = AngleFrom(Air);
+			// Running, the masts abaft this one blanket it; close-hauled, the masts before it head its wind.
+			double WindScale = 1.0;
+			int Ahead = 0;
+			for (int J = 0; J < std::min(R.NumMasts, kMaxMasts); ++J)
+			{
+				if (J > M) WindScale *= 1.0 - R.BlanketShare * MastShare[J] * SmoothStep(140.0 * kDegToRad, 175.0 * kDegToRad, std::fabs(MastAwa[J]));
+				if (J < M && MastShare[J] > 0.5) ++Ahead;
+			}
+			const double Head = R.DownwashDegPerMast * kDegToRad * Ahead * (1.0 - SmoothStep(90.0 * kDegToRad, 120.0 * kDegToRad, std::fabs(Awa)));
+			Awa -= (Awa >= 0.0 ? 1.0 : -1.0) * std::min(Head, std::fabs(Awa));
+			Speed *= WindScale;
+			const Vec3 U(-std::cos(Awa) * Speed, -std::sin(Awa) * Speed, 0.0);
+			St.ApparentSpeed = Speed;
+			St.ApparentAngle = Awa;
+			if (Speed < 1e-3 || Dry <= 0.0) continue;
+			const Vec3 FlowDir = U / Speed;
+			const double Q2 = 0.5 * kAirDensity * Speed * Speed * Dry;
+
+			// A sail hanging in its gear is windage only.
+			Vec3 F = FlowDir * (Q2 * R.ClewedCdAShare * S.Area * Clewed);
+			if (Out > 0.0)
+			{
+				// Full, the cloth sets sharper than its yard (SetsPastYardDeg); aback it lies against the rigging on the yard.
+				const double Past = S.SetsPastYardDeg * kDegToRad * Clamp(std::fabs(Psi) / std::max(S.BraceLimitDeg * kDegToRad, 1e-3), 0.0, 1.0);
+				const double PsiSail = Psi + (Psi >= 0.0 ? Past : -Past);
+				const Vec3 SailNormal(std::cos(PsiSail), -std::sin(PsiSail), 0.0);
+				const bool bFull = FlowDir.Dot(SailNormal) > 0.0;
+				const Vec3 FaceNormal = bFull ? SailNormal : Normal;
+				// Between the two planes (the wind through the yard's after face, past the cloth's): it shakes.
+				const bool bBetween = !bFull && FlowDir.Dot(Normal) > 0.0;
+				const double Across = bBetween ? 0.0 : FlowDir.Dot(FaceNormal); // > 0: the wind on its after face, full
+				const double Alpha = std::asin(Clamp(std::fabs(Across), 0.0, 1.0));
+				double CL, CD;
+				ESailFlow Flow;
+				SquareSailCoefficients(R, Alpha, CL, CD, Flow);
+				if (!bFull)
+				{
+					CL *= R.BackedLiftShare;
+					CD *= R.BackedDragShare;
+					Flow = Alpha > 3.0 * kDegToRad ? ESailFlow::Backed : ESailFlow::Luffing;
+				}
+				const Vec3 Belly = bFull ? FaceNormal : FaceNormal * -1.0; // the way the wind pushes the cloth
+				Vec3 Lift = Belly - FlowDir * Belly.Dot(FlowDir);
+				const double LiftLength = Lift.Length();
+				Lift = LiftLength > 1e-6 ? Lift / LiftLength : Vec3();
+				const double Area = S.Area * Reef * Out;
+				F += (Lift * CL + FlowDir * CD) * (Q2 * Area);
+				St.AlphaN = bFull ? Alpha : -Alpha;
+				St.LiftCoefficient = CL;
+				St.DragCoefficient = CD;
+				St.Flow = Flow;
+			}
+			St.Force = F;
+			ForceBody += F;
+			TorqueBody += (Centre - CenterOfGravity).Cross(F);
+			T.DriveForce += F.X;
+			T.HeelingForce += F.Y;
+		}
+	}
+
 	void FBoatModel::ComputeSails(double Dt, const FBoatControls& Controls, const FWindField& Wind, Vec3& ForceBody, Vec3& TorqueBody)
 	{
 		// Reefs: rebuild the main when the crew takes one in or shakes one out.
@@ -1566,6 +1698,7 @@ namespace Sailing
 		const double MainAWA = MeanAngle(C.Main);
 		const double JibAWA = C.HasJib() ? MeanAngle(C.Jib) : MainAWA;
 		const double SpinAWA = bSpin ? MeanAngle(C.Spinnaker) : MainAWA;
+		const double StayAWA = C.HasStaysail() ? MeanAngle(C.Staysail) : MainAWA;
 		auto UpdateSide = [](int& Side, double AWA)
 		{
 			const double A = std::fabs(AWA);
@@ -1577,6 +1710,11 @@ namespace Sailing
 		UpdateSide(State.MainSide, MainAWA);
 		UpdateSide(State.JibSide, JibAWA);
 		UpdateSide(State.SpinSide, SpinAWA);
+		UpdateSide(State.StaysailSide, StayAWA);
+		// Fore-and-aft sails handed (a ship's spanker brailed in, headsails or staysails hauled down) take a crew about 20 s.
+		State.MainOut = MoveToward(State.MainOut, Controls.bMainDown ? 0.0 : 1.0, Dt / 20.0);
+		State.JibOut = MoveToward(State.JibOut, Controls.bJibDown ? 0.0 : 1.0, Dt / 20.0);
+		State.StaysailOut = MoveToward(State.StaysailOut, Controls.bStaysailDown ? 0.0 : 1.0, Dt / 20.0);
 		// Backing the jib: hold it out on the windward side (heaving to, pushing the bow off when in irons).
 		// The sheet holds it on the side it was backed on (the windward side at that moment), whatever the boat does next.
 		const bool bBacked = Controls.bBackJib && C.HasJib();
@@ -1613,7 +1751,7 @@ namespace Sailing
 		const double JibTwist = (5.0 + 10.0 * JibSheet) * kDegToRad;
 		const double SpinTwist = (8.0 + 10.0 * SpinSheet) * kDegToRad;
 
-		enum class ESail { Main, Jib, Spin };
+		enum class ESail { Main, Jib, Spin, Stay };
 		auto Camber = [&](ESail Which, double H)
 		{
 			double Value;
@@ -1621,9 +1759,9 @@ namespace Sailing
 			{
 				Value = C.Main.BaseCamber + 0.01 - 0.02 * H - Outhaul * 0.05 * (1.0 - H) * (1.0 - H) - Cunningham * 0.015 - Backstay * 0.04 * H;
 			}
-			else if (Which == ESail::Jib)
+			else if (Which == ESail::Jib || Which == ESail::Stay)
 			{
-				Value = C.Jib.BaseCamber - Backstay * 0.03 + 0.02 * JibSheet;
+				Value = (Which == ESail::Stay ? C.Staysail.BaseCamber : C.Jib.BaseCamber) - Backstay * 0.03 + 0.02 * JibSheet;
 			}
 			else
 			{
@@ -1652,6 +1790,9 @@ namespace Sailing
 			: Clamp(std::min(JibLimit, NaturalAngle(JibAWA, 0.0, JibLuff)), 0.0, JibMax);
 		const double SpinLimit = (12.0 + SpinSheet * 85.0) * kDegToRad;
 		const double SpinTarget = Clamp(std::min(SpinLimit, NaturalAngle(SpinAWA, 0.0, SpinLuff)), 0.0, 97.0 * kDegToRad);
+		const double StayMin = C.StaysailMinAngleDeg * kDegToRad, StayMax = C.StaysailMaxAngleDeg * kDegToRad;
+		const double StayTarget = Clamp(std::min(StayMin + JibSheet * (StayMax - StayMin), NaturalAngle(StayAWA, 0.0, JibLuff)), 0.0, StayMax);
+		State.StaysailAngle = MoveToward(State.StaysailAngle, State.StaysailSide * StayTarget, 200.0 * kDegToRad * Dt);
 
 		State.BoomAngle = MoveToward(State.BoomAngle, State.MainSide * MainTarget, 150.0 * kDegToRad * Dt);
 		State.JibAngle = MoveToward(State.JibAngle, State.JibSide * JibTarget, 200.0 * kDegToRad * Dt);
@@ -1665,7 +1806,7 @@ namespace Sailing
 		// Foot angle is measured from the centerline toward the sail's side; slightly negative means the boom is
 		// pulled a little to windward of the centerline (traveler up in light air).
 		auto DoSail = [&](ESail Which, const FSailGeometry& Geo, int Side, double FootAngleSigned, double Twist, double StallDelta,
-			double DownwashAlpha, double DownwashMaxZ, double LiftScale, double WindScale, FSailStripState* Out)
+			double DownwashAlpha, double DownwashMaxZ, double LiftScale, double WindScale, FSailStripState* Out, double Set = 1.0)
 		{
 			const double Foot = FootAngleSigned * Side;
 			double MeanCL = 0.0;
@@ -1711,7 +1852,7 @@ namespace Sailing
 				S.DragCoefficient = CD;
 				MeanCL += std::max(CL, 0.0) / Geo.NumStrips;
 
-				const double Q2 = 0.5 * kAirDensity * Speed * Speed * G.Area * Dry;
+				const double Q2 = 0.5 * kAirDensity * Speed * Speed * G.Area * Dry * Set;
 				const Vec3 FlowDir = U / Speed;
 				const Vec3 LiftDir(-FlowDir.Y, FlowDir.X, 0.0);
 				S.Force = LiftDir * (-Side * CL * Q2) + FlowDir * (CD * Q2);
@@ -1728,14 +1869,23 @@ namespace Sailing
 		{
 			JibHeadZ = C.Jib.Strips[C.Jib.NumStrips - 1].ZTop;
 			const double JibUpwash = 1.0 + 0.08 * Clamp(MainMeanLift / 1.4, 0.0, 1.0);
-			const double JibCL = DoSail(ESail::Jib, C.Jib, State.JibSide, State.JibAngle, JibTwist, 0.0, 0.0, 0.0, JibUpwash, JibBlanket, T.JibStrips);
+			const double JibCL = DoSail(ESail::Jib, C.Jib, State.JibSide, State.JibAngle, JibTwist, 0.0, 0.0, 0.0, JibUpwash, JibBlanket, T.JibStrips, State.JibOut);
 			Downwash = 0.05 * JibCL;
 		}
 		if (bSpin)
 		{
 			DoSail(ESail::Spin, C.Spinnaker, State.SpinSide, State.SpinAngle, SpinTwist, 0.0, 0.0, 0.0, 1.0, SpinBlanket, T.SpinStrips);
 		}
-		MainMeanLift = DoSail(ESail::Main, C.Main, State.MainSide, State.BoomAngle, MainTwist, Cunningham * 2.0 * kDegToRad, Downwash, JibHeadZ, 1.0, 1.0, T.MainStrips);
+		MainMeanLift = DoSail(ESail::Main, C.Main, State.MainSide, State.BoomAngle, MainTwist, Cunningham * 2.0 * kDegToRad, Downwash, JibHeadZ, 1.0, 1.0, T.MainStrips, State.MainOut);
+		T.NumStaysailStrips = C.Staysail.NumStrips;
+		if (C.HasStaysail())
+		{
+			DoSail(ESail::Stay, C.Staysail, State.StaysailSide, State.StaysailAngle, JibTwist, 0.0, 0.0, 0.0, 1.0, JibBlanket, T.StaysailStrips, State.StaysailOut);
+		}
+		if (C.HasSquareRig())
+		{
+			ComputeSquareSails(Dt, Controls, Apparent, ForceBody, TorqueBody);
+		}
 
 		// Windage of the mast, rigging, topsides and crew.
 		const FHullShape& Hull = C.Hulls.front();

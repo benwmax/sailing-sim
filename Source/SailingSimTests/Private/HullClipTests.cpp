@@ -102,6 +102,7 @@ bool FVisualHullClipTest::RunTest(const FString& Parameters)
 	if (FFileHelper::LoadFileToString(Script, *FPaths::Combine(FPaths::ProjectDir(), TEXT("scripts/make_materials.py"))))
 	{
 		TestTrue(TEXT("M_WaterV4's drop is FHullClipMap::Drop's"), Script.Contains(TEXT("max(0.0, 1.1 * himm + 0.03 * saturate(himm / 0.05)) / max(HullClipD.z, 0.3)) * hedge")));
+		TestTrue(TEXT("M_WaterV4's cap is FHullClipMap::MaxDrop (HullClipH.w)"), Script.Contains(TEXT("hin = min(max(HullClipH.w, 2.0), ")));
 		TestTrue(TEXT("M_WaterV4's edge fade is FHullClipMap::Drop's"), Script.Contains(TEXT("saturate(min(hc.b, hc.a) / (hbz < hc.g ? 0.05 : 0.15))")));
 	}
 	return true;

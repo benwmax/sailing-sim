@@ -31,7 +31,8 @@ frame. Each texel holds the bottom (`FHullShape::BottomZ`, the sections for the 
 the deck edge and the ends, taken from the hull the point is most inside. `AWaterSurface::UpdateHullClip` builds it
 once per boat and canoe depth and uploads it as a float texture (`HullClipMap`, `HullClipRect`). `M_WaterV4`'s vertex
 shader samples it in place of the formula, with the same drop as before: 1.1 times the immersion plus 3 cm, capped at
-2 m, faded over the last 5 cm inside the deck edge and ends (15 cm over the sheer). Between a multihull's hulls the
+2 m (1.5 times the canoe depth plus 0.3 m for a deeper hull, `FHullClipMap::MaxDrop`, passed as `HullClipH.w`: J-Class 14,
+Bluebonnet's 2.28 m canoe), faded over the last 5 cm inside the deck edge and ends (15 cm over the sheer). Between a multihull's hulls the
 water is untouched. One texture fetch replaces the formula's maths for the vertices near the boat. `-SailingClassicHullClip`
 still draws V7's clip.
 

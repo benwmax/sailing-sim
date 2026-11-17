@@ -1,14 +1,18 @@
 # Regenerates the boat models on Windows. Windows twin of scripts/make-boat-models.sh: exports the physics geometry
 # (Tools/BoatExport, standalone C++, built with MSVC), builds the models in Blender headless (Tools/blender/build_*.py ->
 # Artifacts\models\*.fbx), then imports them with scripts/import_boats.py. Build the editor first.
-# Usage: scripts\windows\make-boat-models.ps1 [-Parts fleet,j22,gear,berthed,maxi] [-Fleet Sunfish,Catalina30] [-NoImport]
+# Usage: scripts\windows\make-boat-models.ps1 [-Parts fleet,j22,gear,berthed,maxi,bluebonnet] [-Fleet Sunfish,Catalina30] [-NoImport]
 #   -Parts: what to rebuild (default: all). -Fleet narrows the fleet to some classes. maxi: the prologue's hero maxi
 #   (Tools/boats/maxi/build_maxi.py; no physics export, her hull is the sections).
+#   bluebonnet: our 1937 J-Class (J-Class 14): her shipkit build (Tools/shipkit/jclass/build_jclass.py, made again only when
+#   a source there is newer than Artifacts\jclass-build\jclass.blend; -RebuildJClass forces it) and its game parts
+#   (export_game.py).
 #   Blender: $env:BLENDER, else the newest under C:\Program Files\Blender Foundation.
 param(
-	[string[]]$Parts = @('fleet', 'j22', 'gear', 'berthed', 'maxi'),
+	[string[]]$Parts = @('fleet', 'j22', 'gear', 'berthed', 'maxi', 'bluebonnet'),
 	[string[]]$Fleet = @('Sunfish', 'ILCA7', 'Catalina22', 'Catalina30', 'Hobie16', 'Corsair880', 'Lagoon42'),
-	[switch]$NoImport
+	[switch]$NoImport,
+	[switch]$RebuildJClass
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
 $Parts = @($Parts | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
@@ -66,6 +70,23 @@ if ($Parts -contains 'maxi') {
 	if ($C -ne 0) { throw "Blender build_maxi.py failed; see Artifacts\blender-maxi.log" }
 	Select-String -Path (Join-Path $Artifacts 'blender-maxi.log') -Pattern '^Maxi:' | ForEach-Object { $_.Line }
 }
+if ($Parts -contains 'bluebonnet') {
+	$JBuild = Join-Path $Artifacts 'jclass-build'
+	$JSrc = Join-Path $RepoRoot 'Tools\shipkit\jclass'
+	$Blend = Join-Path $JBuild 'jclass.blend'
+	$Stale = -not (Test-Path $Blend)
+	if (-not $Stale) {
+		$Built = (Get-Item $Blend).LastWriteTime
+		$Stale = [bool](Get-ChildItem $JSrc -File | Where-Object { ($_.Extension -in '.py', '.json') -and ($_.Name -notin 'export_game.py', 'game_bluebonnet.json') -and $_.LastWriteTime -gt $Built })
+	}
+	if ($RebuildJClass -or $Stale) {
+		$C = Invoke-Tool $Blender "-b --factory-startup -noaudio -P `"$JSrc\build_jclass.py`" -- `"$JBuild`"" (Join-Path $Artifacts 'blender-jclass.log') | Select-Object -Last 1
+		if ($C -ne 0) { throw "Blender build_jclass.py failed; see Artifacts\blender-jclass.log" }
+	}
+	$C = Invoke-Tool $Blender "-b --factory-startup -noaudio -P `"$JSrc\export_game.py`" -- `"$JBuild`" `"$Models`"" (Join-Path $Artifacts 'blender-bluebonnet.log') | Select-Object -Last 1
+	if ($C -ne 0) { throw "Blender export_game.py failed; see Artifacts\blender-bluebonnet.log" }
+	Select-String -Path (Join-Path $Artifacts 'blender-bluebonnet.log') -Pattern '^Bluebonnet:' | ForEach-Object { $_.Line }
+}
 if ($NoImport) { exit 0 }
 # import_boats.py, one run per part asked for: `fleet` (the seven fleet boats), `j22only`, `gearonly`, `dress` (the
 # keelboats' berthed dresses). The old single run passed `dress` whenever berthed was asked for, and that branch
@@ -76,5 +97,6 @@ if ($Parts -contains 'j22') { $Runs += 'j22only' }
 if ($Parts -contains 'gear') { $Runs += 'gearonly' }
 if ($Parts -contains 'berthed') { $Runs += 'dress' }
 if ($Parts -contains 'maxi') { $Runs += 'maxi' }
+if ($Parts -contains 'bluebonnet') { $Runs += 'bluebonnet' }
 foreach ($R in $Runs) { & (Join-Path $PSScriptRoot 'run-python.ps1') -Script import_boats.py -ScriptArgs $R }
 exit $LASTEXITCODE

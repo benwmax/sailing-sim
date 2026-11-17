@@ -1,0 +1,54 @@
+{
+ "part": "sheetpile",
+ "name": "Steel sheet-pile wall with a channel cap and tie-rods",
+ "in_game": "New: a bank kind for marinas, the dam and commercial frontage (placement by rule, Track I)",
+ "real": "Interlocking Z-profile steel sheets driven in a corrugated line, a steel channel capping the tops, a waler along the face with tie-rod nuts every few sheets. Mill scale going to rust, rust streaks under every nut, heavy rust and algae in the splash zone.",
+ "measures": {
+  "pair_w": {
+   "target": 1.118,
+   "tol": 0.05,
+   "source": "PZ22 sheet 22 in wide (manufacturer tables)"
+  },
+  "depth": {
+   "target": 0.229,
+   "tol": 0.05,
+   "source": "PZ22 depth 9 in"
+  },
+  "tie_spacing": {
+   "range": [
+    1.8,
+    3.1
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "wall_above_pool": {
+   "range": [
+    0.6,
+    1.25
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 40000,
+  "note": "the corrugation at 4 cm steps is for the close camera; a 0.15 m step is enough past 30 m"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos",
+ "periodic_by_design": "a pile pair every 1.118 m, tie-rods every 2.236 m"
+}

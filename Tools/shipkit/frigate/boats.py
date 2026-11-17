@@ -3559,9 +3559,8 @@ class Boats:
         self.acard = AN.load_card()
         self.info = {}
         self.x_mid = 0.5 * (dk.e1 + dk.fc)
-        self.thick = dk.c["deck"]["planking"]["thick_in"] * IN
         self.beam_sided = dk.c["waist"]["beam_sided_in"] * IN
-        self.beams = [(float(x), float(dk.z(x)) - self.thick) for x in dk.beams_x]   # each waist beam: x, its top
+        self.beams = [(float(x), dk.waist_beam_z(x)[0]) for x in dk.beams_x]   # each waist beam: x, its top
         self.units = {}
 
     def build(self):
