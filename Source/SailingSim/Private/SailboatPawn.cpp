@@ -2358,7 +2358,7 @@ void ASailboatPawn::ApplyChaseRig(bool bResetDistance, bool bResetPitch)
 	CameraBoom->SetRelativeLocation(FVector(0.f, 0.f, ChaseRig.PivotUpCm));
 	CameraBoom->TargetArmLength = CameraDistance;
 	UpdateChaseSocket();
-	if (!bCockpit)
+	if (!IsCameraPlaced())   // (the helm view's and the mounted cameras' look are their own)
 	{
 		CameraPitch = ClampChasePitch(CameraPitch, -85.f, 20.f);
 		ApplyChaseRotation();
