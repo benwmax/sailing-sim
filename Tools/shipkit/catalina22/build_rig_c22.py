@@ -100,8 +100,8 @@ def plank(m, c, X, Y, Z, hx, hy, hz, slot):
 
 def kit_frame(m, name, origin, X, Y, Z, light=False, **kw):
     """One of the kit's parts merged into m with its axes on the game-frame unit vectors X, Y, Z (right-handed) at
-    origin. light: collapsed to a quarter of its triangles, as the kit's own light copy is (build_kit.light_version).
-    Returns its sockets in the game frame."""
+    origin. light: collapsed to a quarter of its triangles, as the kit's own light copy is (build_kit.light_version),
+    or to the share given (a float). Returns its sockets in the game frame."""
     if KIT_DIR not in sys.path:
         sys.path.insert(0, KIT_DIR)
     import bk_parts as KP  # noqa: E402
@@ -114,7 +114,7 @@ def kit_frame(m, name, origin, X, Y, Z, light=False, **kw):
     if light:
         d = ob.modifiers.new("light", "DECIMATE")
         d.decimate_type = "COLLAPSE"
-        d.ratio = LIGHT_SHARE
+        d.ratio = light if isinstance(light, float) else LIGHT_SHARE
         d.use_collapse_triangulate = True
         KG.apply(ob)
     socks = {}

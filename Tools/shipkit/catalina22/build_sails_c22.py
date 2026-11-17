@@ -411,6 +411,22 @@ def headsail_trim(m, sh, name):
         up = Vector(tuple(G[0 if p is T else -1, 2])) - p
         torus(m, tuple(p + (q - p).normalized() * 0.025 + up.normalized() * 0.02), tuple((q - p).cross(up)), 0.011,
               0.0035, "Stainless")
+    tack_pennant(m, Vector(tuple(sh.extras["T"])))
+
+
+def tack_pennant(m, T):
+    """A sail cut with its tack above the stemhead fitting (the genoa, so its foot clears the pulpit) reaches it on a
+    3/16 in wire pennant: an eye spliced round a thimble at each end, the lower shackled to the fitting."""
+    F = Vector(tuple(SC.tack_fitting()))
+    if (T - F).length < 0.05:
+        return
+    d = (T - F).normalized()
+    side = d.cross(Vector((0.0, 1.0, 0.0))).normalized()
+    a, b = F + d * 0.035, T - d * 0.03
+    tube(m, [tuple(a), tuple(b)], 0.0024, "Stainless", 8)
+    for p, s in ((a, 1), (b, -1)):
+        torus(m, tuple(p - d * (s * 0.012)), tuple(side), 0.010, 0.0025, "Stainless", 12, 5)     # the thimbled eyes
+    BR.rod(m, tuple(F - d * 0.01), tuple(F + d * 0.012), 0.004, "Stainless", 10)                # its shackle's pin
 
 
 def build_headsail_set(mats, name, sheets):
@@ -430,7 +446,8 @@ def build_headsail_lowered(mats, name, sheets):
     m = BD.Mesh("C22_Sail_%s_Lowered" % name)
     area = sheets[name + "Set"].area()
     vol = area * SC.CL["dacron_mm"] / 1000 * SC.CL["bulk"] * 1.4            # a loose heap, not flaked
-    T = SC.headsail_corners(name)[0]
+    T = SC.tack_fitting()                                                  # the heap starts at the stemhead
+    Ts = SC.headsail_corners(name)[0]                                       # the tack itself, on its pennant if cut high
     FH = BD.DK.D["fore_hatch"]
     L = T[0] - 0.06 - (FH["x"] + FH["size"][0] / 2 + 0.05)                # ends 5 cm forward of the fore hatch
     n = 30
@@ -448,12 +465,14 @@ def build_headsail_lowered(mats, name, sheets):
     # the hanks bunched at the stay's foot, the luff tape running up into them
     foot, u, Ls = SC.stay()
     k_n = hank_count(sheets[name + "Set"])                                  # as many as the set luff carries
+    s0 = max(0.06, float(np.dot(Ts - foot, u)) + 0.03)                      # stacked, touching, above the tack
     for k in range(k_n):
-        s = 0.06 + 0.009 * k                                                # stacked, touching, above the tack
+        s = s0 + 0.009 * k
         c = Vector(tuple(foot)) + Vector(tuple(u)) * s
         torus(m, tuple(c + Vector((-0.006, 0, 0))), tuple(u), 0.015, 0.0022, "Stainless", 12, 5)   # clear of the stay
-    tube(m, [tuple(Vector(tuple(foot)) + Vector(tuple(u)) * (0.09 + 0.009 * k_n) + Vector((-0.02, 0, 0))),
+    tube(m, [tuple(Vector(tuple(foot)) + Vector(tuple(u)) * (s0 + 0.03 + 0.009 * k_n) + Vector((-0.02, 0, 0))),
           tuple(Vector(tuple(T)) + Vector((-0.06, 0, 0.03)))], 0.0045, "SailHeap", 8)
+    tack_pennant(m, Vector(tuple(Ts)))
     return m.finish(mats)
 
 

@@ -17,7 +17,7 @@ Sails and states (build_sails_c22.py builds one object per sail and state):
            tied), Covered (flaked under its cover)
   Jib      the working jib (90%: sails_c22.json says why): Set, Lowered (in a heap on the foredeck, still hanked on),
            Bagged
-  Genoa    the 135% genoa: Set, Lowered, Bagged
+  Genoa    the high-cut genoa (140% LP, tack pennant): Set, Lowered, Bagged
   Spinnaker  Set (on a run, with its pole), Bagged
 """
 import json
@@ -416,13 +416,22 @@ def stay():
     return foot, unit(top - foot), float(np.linalg.norm(top - foot))
 
 
+def tack_fitting():
+    """Where a headsail's tack shackles to the stemhead fitting (game frame): the headsails' own 'tack_over_deck' above the
+    deck, down the stay's line. A sail cut with its own higher tack (the genoa) reaches it on a wire pennant."""
+    foot, u, Ls = stay()
+    aft = unit(np.array([-1.0, 0.0, 0.0]) - u * (u @ np.array([-1.0, 0.0, 0.0])))
+    s = (floor_z(foot[0], 0.0) + HS["tack_over_deck"] - foot[2]) / u[2]
+    return foot + u * s + aft * HS["luff_aft_of_stay"]
+
+
 def headsail_corners(name):
     """Tack, head and clew of a headsail (game frame), its luff's plane basis and LP."""
     sp = HS[name]
     foot, u, Ls = stay()
     aft = unit(np.array([-1.0, 0.0, 0.0]) - u * (u @ np.array([-1.0, 0.0, 0.0])))
     o = HS["luff_aft_of_stay"]
-    s_tack = (floor_z(foot[0], 0.0) + HS["tack_over_deck"] - foot[2]) / u[2]  # down the stay's line to the stemhead
+    s_tack = (floor_z(foot[0], 0.0) + sp.get("tack_over_deck", HS["tack_over_deck"]) - foot[2]) / u[2]  # down the stay's line to the stemhead
     T = foot + u * s_tack + aft * o
     Hd = foot + u * (Ls - HS["head_below_hounds"]) + aft * o
     lp = sp["lp"] * J_M

@@ -1,5 +1,5 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging.
 
     blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
 
@@ -8,14 +8,15 @@ rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from d
 them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
 its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
 rudder kicked up, under the down ones' names), and the mast, boom, wires and their kit fittings from rig_c22.py
-(build_rig_c22.py), and the sails in each of their states from sails_c22.py (build_sails_c22.py: all hidden but the
-mainsail under its cover). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
+(build_rig_c22.py), the sails in each of their states from sails_c22.py (build_sails_c22.py: all hidden but the
+mainsail under its cover), and the deck hardware and each state's running rigging from hardware_c22.py
+(build_hardware_c22.py: all states hidden but her rest at the mooring). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
 linked (the mast and boom).
 
 Writes <out>/c22.blend (objects C22_Hull and the deck's, the keel's and the rig's: build_deck_c22.py,
 build_keel_c22.py and build_rig_c22.py list them), <out>/c22_report.json (the canoe body's volume and centre of
 buoyancy beside the game's: the shape loop's report format), <out>/hydrostatics.json and <out>/c22_sockets.json (the
-rig's sockets, for c22_check.py's I, J, P and E).
+rig's and the hardware's sockets, for c22_check.py's I, J, P and E and slice 9's live ropes).
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
 the shape loop's tools read it like the fleet's .blend.
 """
@@ -34,6 +35,7 @@ import build_deck_c22 as BD  # noqa: E402
 import build_keel_c22 as BK  # noqa: E402
 import build_rig_c22 as BR  # noqa: E402
 import build_sails_c22 as BS  # noqa: E402
+import build_hardware_c22 as BH  # noqa: E402
 import keel_c22 as KC  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -156,6 +158,10 @@ def main():
     keel = next(o for o in keel_obs if o.name == ("C22_KeelDown" if KEEL_UP else "C22_Keel"))
     _, socks = BR.build_all(deck_materials())
     BS.build_all(deck_materials())
+    _, hw = BH.build_all(deck_materials())
+    socks["sockets"].update(hw["sockets"])
+    socks["owner"].update(hw["owner"])
+    socks["hardware_note"] = hw["note"]
     json.dump(socks, open(os.path.join(OUT, "c22_sockets.json"), "w"), indent=1)
     h = H.hydrostatics()
     g = H.CARD["game"]

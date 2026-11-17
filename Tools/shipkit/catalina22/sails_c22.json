@@ -44,8 +44,9 @@
    "note": "The working jib, hanked on and sheeted inside the shrouds ('sheet_deg' off the centreline from the tack): its clew is only about 0.33 m off the centreline, over the cabin top, so its lead is a short track or a block on the cabin top beside the mast, not the side deck (slice 6 places it). The plan had a 110% jib, but with her forward and aft lowers a jib whose leech reaches aft of the mast can't set: the forward lower runs from the mast's side, under the spreaders, out to the side deck ahead of the mast, through where that leech would be (sails_c22.py finds every jib over about 92% crossing it). So the working jib is a 90% (LP 0.9 J), its clew just forward of the mast, as the fractional working jibs of boats with lowers forward of the mast are cut. A photo of her jib set decides."
   },
   "Genoa": {
-   "lp": 1.35,
-   "clew_z": 1.35,
+   "lp": 1.4,
+   "tack_over_deck": 0.65,
+   "clew_z": 1.65,
    "sheet_deg": 19.5,
    "foot_round": 0.03,
    "leech_hollow": 0.01,
@@ -54,7 +55,7 @@
    "area": 12.9,
    "depth": [[0.0, 0.09], [0.25, 0.12], [0.6, 0.125], [0.9, 0.09], [1.0, 0.05]],
    "draft_at": [[0.0, 0.42], [1.0, 0.38]],
-   "note": "The 135% genoa the physics sails with (Fleet.cpp: 12.9 m^2), hanked on, sheeted outside the shrouds to a track on the toe rail ('sheet_deg' 19.5 puts the clew over the rail, 0.6 m above the deck, where its foot comes off the shrouds without a kink; 15.5 left the clew inboard of the chainplates and the foot bent hard round them). It overlaps the mast and lies on the lee shrouds and spreader tip, as a genoa does: sails_c22.press pushes it clear of them."
+   "note": "The genoa the physics sails with (Fleet.cpp: 12.9 m^2), hanked on and cut high (Bean's choice, Nov 17): its tack on a wire pennant above the stemhead fitting ('tack_over_deck' 0.65: the tack clears the pulpit's hoop, 0.61 up) and its clew 1.65 m up, 0.93 m above the deck (24 cm over the lifeline), so its foot rises over the pulpit and the lifeline instead of lying on them (a deck-sweeper with its luff inside a pulpit and its clew outside the lifeline can't miss the rail). The shorter luff takes an LP of 1.4 J to keep the physics' area. Sheeted outside the shrouds to the track on the toe rail ('sheet_deg' 19.5 puts the clew just outboard of the rail), its car alongside the cockpit (hardware_c22.json). It overlaps the mast and lies on the lee shrouds and spreader tip, as a genoa does: sails_c22.press pushes it clear of them."
   },
   "note": "Both hank to the forestay ('hank_spacing' apart) with their luff 'luff_aft_of_stay' behind it; the tack shackled to the stemhead fitting behind the forestay's turnbuckle, 'tack_over_deck' above the deck (the luff's line carried down the stay), the head 'head_below_hounds' down the stay (the halyard's block and shackle). A headsail's clew is solved from its LP (the perpendicular from the clew to the luff, as a share of J), its height and its sheeting angle. Rows run parallel to the foot."
  },

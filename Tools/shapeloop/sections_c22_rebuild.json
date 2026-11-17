@@ -156,6 +156,30 @@
     "rig",
     "deck"
    ]
+  },
+  "fittings": {
+   "objects": [
+    "C22_Hardware",
+    "C22_Lifelines",
+    "C22_MastHardware",
+    "C22_Halyards",
+    "C22_Lines_"
+   ],
+   "owns": [
+    "build_hardware",
+    "build_lifelines",
+    "build_mast_hardware",
+    "build_halyards",
+    "build_state",
+    "place",
+    "rope"
+   ],
+   "borders": [
+    "deck",
+    "cabin",
+    "well",
+    "rig"
+   ]
   }
  },
  "joins": [
