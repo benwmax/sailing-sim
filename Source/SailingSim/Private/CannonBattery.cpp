@@ -12,6 +12,8 @@
 
 #include "Camera/PlayerCameraManager.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "UObject/UObjectIterator.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -414,7 +416,7 @@ void ACannonBattery::BuildGunVisuals()
 	};
 	SmokePool = Smoke.GetBudget();
 	FlashPool = CannonFx::kFlashPool;
-	SmokeISM = MakeQuads(TEXT("CannonSmoke"), SmokeMID ? static_cast<UMaterialInterface*>(SmokeMID.Get()) : SmokeMaterial.Get(), SmokePool, 4);
+	SmokeISM = MakeQuads(TEXT("CannonSmoke"), SmokeMID ? static_cast<UMaterialInterface*>(SmokeMID.Get()) : SmokeMaterial.Get(), SmokePool, 5);
 	FlashISM = MakeQuads(TEXT("CannonFlash"), FlashMID ? static_cast<UMaterialInterface*>(FlashMID.Get()) : FlashMaterial.Get(), FlashPool, 4);
 	const int32 NLights = bNoLights ? 0 : CannonFx::LightPoolFor(USailingSettings::Get()->Quality);
 	for (int32 I = 0; I < NLights; ++I)
@@ -639,6 +641,24 @@ void ACannonBattery::Tick(float DeltaSeconds)
 	CpuSeconds += FPlatformTime::Seconds() - Start;
 }
 
+FVector ACannonBattery::SunDirection()
+{
+	// Toward the sun (the atmosphere's light 0), looked up once a second; straight up without one.
+	const double T = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	if (T >= SunCheckT)
+	{
+		SunCheckT = T + 1.0;
+		SunToward = FVector::UpVector;
+		for (TObjectIterator<UDirectionalLightComponent> It; It; ++It)
+		{
+			if (It->GetWorld() != GetWorld() || !It->IsUsedAsAtmosphereSunLight() || It->GetAtmosphereSunLightIndex() != 0) continue;
+			SunToward = -It->GetForwardVector();
+			break;
+		}
+	}
+	return SunToward;
+}
+
 void ACannonBattery::UpdateSmokeVisuals(const FVector& Cam)
 {
 	const std::vector<Sailing::FSmokePuff>& Puffs = Smoke.Puffs();
@@ -656,9 +676,32 @@ void ACannonBattery::UpdateSmokeVisuals(const FVector& Cam)
 		Dist2[I] = FVector::DistSquared(At[I], Cam);
 	}
 	SmokeOrder.Sort([&Dist2](int32 A, int32 B) { return Dist2[A] > Dist2[B]; });
+	// The cloud's own shadow: each puff's sunlight through the smoke between it and the sun, marched through a coarse grid
+	// of the puffs' mass (a broadside's bank is lit on its sunward face and grey within, not one flat wall).
+	const FVector ToSun = SunDirection();
+	const double CellM = 4.0;
+	TMap<FIntVector, double> CellMass;
+	CellMass.Reserve(N);
+	auto CellOf = [CellM](const Sailing::Vec3& P) { return FIntVector(FMath::FloorToInt(P.X / CellM), FMath::FloorToInt(P.Y / CellM), FMath::FloorToInt(P.Z / CellM)); };
+	for (int32 I = 0; I < N; ++I) CellMass.FindOrAdd(CellOf(Puffs[size_t(I)].P)) += Puffs[size_t(I)].MassKg;
+	TArray<float> SunT;
+	SunT.SetNumUninitialized(N);
+	const double PerCell = Params.SmokeExtinction / (CellM * CellM);   // tau of a cell's mass crossed over one cell length
+	for (int32 I = 0; I < N; ++I)
+	{
+		const Sailing::FSmokePuff& S = Puffs[size_t(I)];
+		double Tau = 0.0;
+		for (int32 Step = 1; Step <= 10; ++Step)
+		{
+			const double Along = S.Sigma + Step * CellM;
+			const Sailing::Vec3 Q(S.P.X + ToSun.X * Along, S.P.Y + ToSun.Y * Along, S.P.Z + ToSun.Z * Along);
+			if (const double* M = CellMass.Find(CellOf(Q))) Tau += *M * PerCell;
+		}
+		SunT[I] = float(FMath::Exp(-Tau));
+	}
 	TArray<FTransform> Xf;
 	Xf.SetNumUninitialized(SmokePool);
-	float Data[4];
+	float Data[5];
 	for (int32 K = 0; K < SmokePool; ++K)
 	{
 		if (K >= N)
@@ -689,7 +732,8 @@ void ACannonBattery::UpdateSmokeVisuals(const FVector& Cam)
 		Data[1] = float(S.Glow);
 		Data[2] = S.Seed;
 		Data[3] = float(FMath::Exp(-S.Age / 6.0));   // fresh smoke: denser, billowing; old: smooth haze
-		SmokeISM->SetCustomData(K, MakeArrayView(Data, 4), false);
+		Data[4] = SunT[I];
+		SmokeISM->SetCustomData(K, MakeArrayView(Data, 5), false);
 	}
 	SmokeISM->BatchUpdateInstancesTransforms(0, Xf, true, true, true);
 }

@@ -2,9 +2,10 @@
 (Artifacts/cannon-fx, or the folder given last) into /Game/Materials/CannonFx and builds the two materials ACannonBattery
 draws with. Run by scripts/make-cannon-fx.sh (Mac) or scripts\\windows\\make-cannon-fx.ps1 (PC), after make-content.sh.
 
-  M_CannonSmoke  lit translucent quads facing the camera (ACannonBattery::UpdateSmokeVisuals), one per Gaussian puff of
+  M_CannonSmoke  translucent quads (unlit: lit in its own code by the sun and sky) facing the camera (ACannonBattery::UpdateSmokeVisuals), one per Gaussian puff of
                  Sailing::FCannonSmoke. Per-instance data: 0 the puff's peak opacity (the near fade in it), 1 its glow
-                 (lit by a flash, 0..1), 2 its seed (the atlas tile), 3 how fresh (1 at the muzzle, exp(-age / 6 s)).
+                 (lit by a flash, 0..1), 2 its seed (the atlas tile), 3 how fresh (1 at the muzzle, exp(-age / 6 s)),
+                 4 the sunlight reaching it through the rest of the cloud.
   M_CannonFlash  additive unlit quads (UpdateFlashVisuals). Per-instance data: 0 intensity, 1 kind (0 the muzzle's
                  flame along the bore, 1 a burning grain streaked along its motion, 2 the pan's spurt, 3 the round bloom
                  at the mouth), 2 seed, 3 age over its life (0..1).
@@ -123,19 +124,27 @@ d *= lerp(1.0, saturate(t.a * 2.0), saturate(1.0 - d * 2.5) * 0.6);
 // the texture's density scales tau.
 float tau = -log(max(1.0 - saturate(Op), 1e-3));
 float alpha = 1.0 - exp(-tau * d);
-// Colour: pale powder smoke, shaded by its own density from above (G), darker where thick.
-float shade = lerp(0.55, 1.0, t.g);
-Base = Albedo * shade * lerp(1.0, 0.8, saturate(tau * d * 0.5));
+// Lit here, not by the engine: unlit, so it is lit at any distance (the translucency lighting volume ends 50 m out, and
+// past it the first stills were an unlit tan fog wall). Smoke scatters many times, so a thick puff's sunlit side is
+// about as bright as a white surface (E albedo / pi), its own density shading it from the sun (G is lit from above:
+// with a low sun it counts for less), the rest of the cloud between it and the sun (SunT: ACannonBattery marches it
+// through the puffs' mass) and the sky's light all round.
+float up = saturate(L.z * 1.5);
+float self = lerp(0.75, lerp(0.35, 1.0, t.g), up);
+float core = lerp(1.0, 0.65, saturate(tau * d * 0.4));
+float3 sunLit = E * Albedo * (self * core * SunT / 3.14159);
 // The sun through it (Henyey-Greenstein, g ForwardScatter): looking sunward the thin edges glow. Only the excess over an
-// isotropic phase (the volumetric lighting gives that); weighted by the light that gets through (thin smoke scatters, a
-// thick core blocks). V points at the camera.
+// isotropic phase, weighted by the light that gets through (thin smoke scatters, a thick core blocks). V points at the camera.
 float mu = dot(-V, L);
 float g = clamp(ForwardScatter, 0.0, 0.95);
 float hg = (1.0 - g * g) / pow(max(1.0 + g * g - 2.0 * g * mu, 1e-3), 1.5) / 12.566;
-float3 sun = E * Albedo * max(hg - 0.0796, 0.0) * exp(-tau * d) * 2.0;
+float3 forward = E * Albedo * max(hg - 0.0796, 0.0) * exp(-tau * d) * SunT * 2.0;
+// The sky's light (the luminance the clouds take as their ambient).
+float3 sky = Sky * Albedo * lerp(0.6, 1.0, t.g);
 // Lit from inside by a flash: warm, brightest in the core.
 float3 glow = GlowNits * Glow * d * float3(1.0, 0.55, 0.22);
-Emis = (sun + glow) * alpha;
+// (Translucent blending multiplies the colour by the opacity itself: not premultiplied here.)
+Emis = sunLit + forward + sky + glow;
 return alpha;
 """
 
@@ -143,14 +152,13 @@ return alpha;
 def build_smoke(tex):
     mat = new_material("M_CannonSmoke")
     mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    # Lit per vertex from the translucency volume, directionally: sunlit sides bright, the shadow side dim, and the flash
-    # lights' pool on it, for the cost of a quad's four vertices.
-    mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_VOLUMETRIC_PER_VERTEX_DIRECTIONAL)
+    # Unlit, lit in SMOKE_CODE from the sun and the sky (the engine's translucency lighting volume stops 50 m out).
+    mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
     mat.set_editor_property("two_sided", True)
     mat.set_editor_property("used_with_instanced_static_meshes", True)
     ins = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -1100, 0)}
-    ins.update(instance_data(mat, ("Op", "Glow", "Seed", "Fresh"), -1100, 100))
-    ins["Tex"] = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1100, 500, parameter_name="Puffs", texture=tex,
+    ins.update(instance_data(mat, ("Op", "Glow", "Seed", "Fresh", "SunT"), -1100, 100))
+    ins["Tex"] = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1100, 560, parameter_name="Puffs", texture=tex,
                       sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     ins["EdgeSoftness"] = scalar(mat, "EdgeSoftness", 0.5, -1100, 650)
     ins["ForwardScatter"] = scalar(mat, "ForwardScatter", 0.6, -1100, 730)
@@ -159,14 +167,13 @@ def build_smoke(tex):
     ins["V"] = node(mat, unreal.MaterialExpressionCameraVectorWS, -1100, 970)
     ins["L"] = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1100, 1050)
     ins["E"] = node(mat, unreal.MaterialExpressionSkyAtmosphereLightIlluminance, -1100, 1130)
-    c = wire(mat, SMOKE_CODE, ins, F1, -600, 300, extra_outputs=(("Base", F3), ("Emis", F3)))
+    ins["Sky"] = node(mat, unreal.MaterialExpressionSkyAtmosphereDistantLightScatteredLuminance, -1100, 1210)
+    c = wire(mat, SMOKE_CODE, ins, F1, -600, 300, extra_outputs=(("Emis", F3),))
     # Faded where it meets the water, the hull and the sails (no hard line through a puff).
     fade = node(mat, unreal.MaterialExpressionDepthFade, -250, 300)
     connect(c, "", fade, "Opacity")
     connect(scalar(mat, "DepthFadeCm", 150.0, -600, 600), "", fade, "FadeDistance")
-    MEL.connect_material_property(c, "Base", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Emis", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    MEL.connect_material_property(node(mat, unreal.MaterialExpressionConstant, -250, 500, r=1.0), "", unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(fade, "", unreal.MaterialProperty.MP_OPACITY)
     MEL.recompile_material(mat)
     LIB.save_loaded_asset(mat)

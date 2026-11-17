@@ -98,6 +98,7 @@ private:
 	FPartMesh LoadPart(const TCHAR* Name, EPart Part) const;
 	void UpdateGunVisuals(bool bAll);
 	void UpdateSmokeVisuals(const FVector& Cam);
+	FVector SunDirection();
 	void UpdateFlashVisuals(const FVector& Cam, double Now);
 	void UpdateLights(double Now);
 	void PollTuningFile(float DeltaSeconds);
@@ -140,6 +141,8 @@ private:
 	int32 SmokePool = 0, FlashPool = 0;
 	double WaterZ0 = 0.0;          // the water actor's height (cm): the smoke's z datum
 	double TuneCheckT = 0.0;
+	double SunCheckT = -1.0;
+	FVector SunToward = FVector::UpVector;
 	FDateTime TuneStamp;
 	double NextBroadside = -1.0, BroadsideEvery = 0.0;
 	Sailing::ECannonSide BenchSide = Sailing::ECannonSide::Starboard;
