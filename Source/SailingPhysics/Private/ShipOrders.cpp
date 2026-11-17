@@ -90,6 +90,8 @@ namespace Sailing
 		if (I.Group == EShipOrderGroup::Sails)
 		{
 			if (!C.bSquareRig) return "Her sails can't be ordered yet";
+			if (!C.bManoeuvres && (Order == EShipOrder::Tack || Order == EShipOrder::Wear || Order == EShipOrder::HeaveTo || Order == EShipOrder::FillAway))
+				return "The crew aren't drilled for that yet";
 			if (C.bManoeuvring && Order != EShipOrder::FillAway) return "The crew are still at the last manoeuvre";
 			if (Order == EShipOrder::FillAway && !C.bHoveTo) return "She isn't hove to";
 			if (Order == EShipOrder::HeaveTo && C.bHoveTo) return "She is already hove to";
@@ -125,6 +127,46 @@ namespace Sailing
 		const char* Port = Can(0);
 		const char* Stbd = Can(1);
 		return Port && Stbd ? Port : nullptr;
+	}
+
+	bool ApplySailPlan(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls)
+	{
+		if (!Config.HasSquareRig()) return false;
+		if (Order != EShipOrder::MakeSail && Order != EShipOrder::FightingSail && Order != EShipOrder::ShortenSail && Order != EShipOrder::FurlAll) return false;
+		const int N = std::min(int(Config.Square.Sails.size()), kMaxSquareSails);
+		for (int K = 0; K < N; ++K)
+		{
+			const ESquareSailKind Kind = Config.Square.Sails[size_t(K)].Kind;
+			const bool bUpper = Kind == ESquareSailKind::Topgallant || Kind == ESquareSailKind::Royal;
+			switch (Order)
+			{
+			case EShipOrder::MakeSail:
+				Controls.SquareSet[K] = ESailSet::Set;
+				Controls.SquareReef[K] = 0;
+				break;
+			case EShipOrder::FightingSail:
+				// Topsails only: the courses clewed up (hanging from their yards, ready to set again), the light sails furled.
+				Controls.SquareSet[K] = Kind == ESquareSailKind::Topsail ? ESailSet::Set : (Kind == ESquareSailKind::Course ? ESailSet::Clewed : ESailSet::Furled);
+				break;
+			case EShipOrder::ShortenSail:
+				// The light sails in, a reef in the topsails; the courses as they were.
+				if (bUpper) Controls.SquareSet[K] = ESailSet::Furled;
+				if (Kind == ESquareSailKind::Topsail && !Config.Square.Sails[size_t(K)].ReefAreaFraction.empty()) Controls.SquareReef[K] = std::max<unsigned char>(Controls.SquareReef[K], 1);
+				break;
+			default:
+				Controls.SquareSet[K] = ESailSet::Furled;
+				break;
+			}
+		}
+		// Fighting sail keeps the jibs and spanker (she steers by them) and hauls the staysails down; shortening sail leaves
+		// the fore-and-aft sails as they are.
+		if (Order != EShipOrder::ShortenSail)
+		{
+			Controls.bMainDown = Order == EShipOrder::FurlAll;
+			Controls.bJibDown = Order == EShipOrder::FurlAll;
+			Controls.bStaysailDown = Order == EShipOrder::FurlAll || Order == EShipOrder::FightingSail;
+		}
+		return true;
 	}
 
 	double HelmTargetAfter(EShipOrder Order, double TargetTwaDeg, const FShipOrderContext& C)

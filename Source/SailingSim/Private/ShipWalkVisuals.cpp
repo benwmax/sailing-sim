@@ -383,9 +383,10 @@ void ASailboatPawn::ShipHelmsmanTakes()
 Sailing::FShipOrderContext ASailboatPawn::GetShipOrderContext() const
 {
 	Sailing::FShipOrderContext C;
-	// The square rig's manoeuvres and the gun battery join as they land (the physics thread's rig, PR #765's battery):
-	// until then their orders show, with the reason they can't be given yet.
-	C.bSquareRig = false;
+	// The square rig's sail plans are carried out (ApplySailPlan); tacking, wearing and heaving to join with the crew's
+	// manoeuvres (FShipHandling), the guns with the battery: until then their orders show, with the reason they can't yet.
+	C.bSquareRig = Boat.GetConfig().HasSquareRig();
+	C.bManoeuvres = false;
 	C.bHasGuns = false;
 	C.bHelmsman = bShipHelmsman;
 	C.TrueWindAngleDeg = bShipHelmsman ? WalkPilot.TargetTWADeg : Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
@@ -435,8 +436,15 @@ void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
 	case EShipOrder::BearAwayPoint:
 		WalkPilot.TargetTWADeg = Sailing::HelmTargetAfter(Order.Order, WalkPilot.TargetTWADeg, GetShipOrderContext());
 		break;
+	case EShipOrder::MakeSail:
+	case EShipOrder::FightingSail:
+	case EShipOrder::ShortenSail:
+	case EShipOrder::FurlAll:
+		// The crew set, clew up or furl each sail at their pace (the physics' SquareOut, the model's ShipRigPose).
+		Sailing::ApplySailPlan(Order.Order, Boat.GetConfig(), Controls);
+		break;
 	default:
-		// (sail and gun orders: refused by GetShipOrderContext until the rig and the battery are wired)
+		// (manoeuvres and gun orders: refused by GetShipOrderContext until they are wired)
 		break;
 	}
 	// The captain's call, in every HUD mode: it is what you said.

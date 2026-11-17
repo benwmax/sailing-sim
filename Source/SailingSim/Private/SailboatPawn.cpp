@@ -779,6 +779,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
 	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
+	BindShipRig();   // a ship's yards and sails on the model (docs/ship-rig/)
 }
 
 void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
@@ -1445,6 +1446,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform();
 	UpdateRigVisuals(DeltaSeconds);
+	UpdateShipRig(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
 
 	if (Water)
