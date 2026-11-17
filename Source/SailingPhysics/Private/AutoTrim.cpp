@@ -196,7 +196,8 @@ namespace Sailing
 			const double Foot = See(MainFootSeen, bMainSeen, FootAngleFor(T.MainStrips, T.NumMainStrips, S.BoomAngle * S.MainSide), Dt) + MainEase + Dump;
 			// Traveler carries the boom toward the centerline upwind; the sheet does the rest.
 			const double Range = Cfg.TravelerRangeDeg * kDegToRad;
-			const double Traveler = Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0); // MainEase is 0 while the main is held
+			// MainEase is 0 while the main is held; a boom with no traveller (the frigate's spanker) is all sheet.
+			const double Traveler = Range > 0.0 ? Clamp(Foot / Range, -1.0, 0.0) + Clamp(MainEase / Range, 0.0, 1.0) : 0.0;
 			Out.Traveler = Work(TravelerHand, Current.Traveler, Clamp(Traveler, -1.0, 1.0), Cfg.TravelerRangeDeg, TravelerOut, TravelerIn, Dt);
 			// The sheet takes the boom the rest of the way from where the traveller car is (not where it is going).
 			const double Sheet = Clamp((Foot - (bHands ? Out.Traveler : Clamp(Traveler, -1.0, 1.0)) * Range) / (Cfg.MainMaxEaseDeg * kDegToRad), 0.0, 1.0);
@@ -261,6 +262,27 @@ namespace Sailing
 			// 1.4 s; the same once the lines were off, drifting or backing out at under a knot.
 			const bool bNoWay = std::fabs(T.SpeedThroughWater) < 0.8 * kKnot && std::fabs(T.Heel) < 8.0 * kDegToRad;
 			if (!Boat.GetMooringLines().empty() || bNoWay) Out.Hike = MoveToward(Current.Hike, -0.5, HikeRate * Dt);
+		}
+		// docs/frigate-physics/: a square rig's yards, each mast's braced so its lowest set sail meets its own wind (the
+		// masts ahead head the ones aft) at the stall less the margin; square before the wind. The yards swing at the
+		// crew's pace in the model, so the target is set at once. Which sails are set is the officer's call (the
+		// controls' SquareSet), not the trimmer's.
+		if (Cfg.HasSquareRig() && Set.bTrimMain)
+		{
+			const FSquareRig& R = Cfg.Square;
+			const double Target = SquareStallAlpha(R) * kRadToDeg - Set.AlphaMarginDeg;
+			for (int M = 0; M < std::min(R.NumMasts, kMaxMasts); ++M)
+			{
+				int Low = -1;
+				for (int I = 0; I < std::min(int(R.Sails.size()), T.NumSquareSails); ++I)
+				{
+					if (R.Sails[I].Mast != M || Current.SquareSet[I] != ESailSet::Set) continue;
+					if (Low < 0 || R.Sails[I].FootZ < R.Sails[Low].FootZ) Low = I;
+				}
+				if (Low < 0) Low = R.LowestOn(M);
+				if (Low < 0 || Low >= T.NumSquareSails) continue;
+				Out.Brace[M] = BraceForAlpha(R, M, T.SquareStrips[Low].ApparentAngle, Target);
+			}
 		}
 		return Out;
 	}
