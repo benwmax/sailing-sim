@@ -575,7 +575,7 @@
      "Ceiling"
     ],
     "the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13)",
-    4.6
+    5.1
    ],
    [
     [
@@ -585,7 +585,7 @@
      "MiddleLine"
     ],
     "the pump well's and lockers' boards stand up under the berth deck's beams",
-    0.4
+    0.35
    ],
    [
     [
@@ -595,7 +595,7 @@
      "Partitions"
     ],
     "the orlop's partitions stand up under the berth deck's beams",
-    2.45
+    0.9
    ],
    [
     [
@@ -625,7 +625,7 @@
      "OrlopBeams"
     ],
     "the orlop's beams' ends let 2 in into the ceiling",
-    3.3
+    3.35
    ],
    [
     [
@@ -635,7 +635,7 @@
      "OrlopDeck"
     ],
     "the orlop's planks run out to the ceiling",
-    2.25
+    2.3
    ],
    [
     [
@@ -829,7 +829,7 @@
      "Ceiling"
     ],
     "each hanging knee's arm down the side is scribed to the ceiling and bolted through it",
-    0.65
+    0.6
    ],
    [
     [
@@ -938,6 +938,46 @@
     ],
     "the middle line's boxes come down onto the limber boards beside the keelson",
     0.5
+   ],
+   [
+    [
+     "Pillars"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "each pillar's heel is let into the orlop's planks",
+    0.5
+   ],
+   [
+    [
+     "Pillars"
+    ],
+    [
+     "BerthBeams"
+    ],
+    "each pillar's head is let into its beam",
+    0.35
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "Keelson"
+    ],
+    "the brake pumps' tubes are footed on the keelson's top",
+    0.45
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "LimberBoards"
+    ],
+    "the chain pump's tubes are footed on the limber boards in the well",
+    0.35
    ]
   ]
  },
@@ -1044,6 +1084,28 @@
   "carling_sided_in": 8.0,
   "beam_sided_in": 15.0,
   "beam_moulded_in": 13.0,
-  "berth_plank_in": 3.0
+  "berth_plank_in": 3.0,
+  "carling_moulded_in": 8.0,
+  "ladder_landing_m": 0.9,
+  "pillar": {
+   "note": "turned or square oak pillars on the middle line under the berth deck's beams over the platforms (estimate: 6 in square), clear of the rooms across the middle line, openings, masts, partitions and slice 13's ladders' landings",
+   "sided_in": 6.0,
+   "clear_m": 0.3
+  }
+ },
+ "collections": {
+  "note": "the Blender collections the game loads each deck below by (slice 13's ask): Hold lists the parts under the orlop's platforms; the rest (the berth deck's overhead, the platforms, rooms and their contents, the ceiling that walls them, the lanterns) are Orlop",
+  "Hold": [
+   "LimberBoards",
+   "Keelson",
+   "MastSteps",
+   "HoldBulkheads",
+   "MagazineFloors",
+   "PowderBarrels",
+   "WaterCasks",
+   "Shingle",
+   "HoldLadders",
+   "ShotPiles"
+  ]
  }
 }

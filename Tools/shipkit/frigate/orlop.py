@@ -133,7 +133,26 @@ class Orlop:
         import skin as SKM
         self.sk, self.rig, self.dk, self.gd, self.SKM = sk, rig, dk, gd, SKM
         self.c = json.load(open(path))
+        if berth is None and os.path.exists(os.path.join(HERE, "berthdeck_handover.json")):
+            berth = json.load(open(os.path.join(HERE, "berthdeck_handover.json")))
         self.berth = berth
+        if berth is not None:
+            # slice 13's hand-over: its deck's line and planks, beams, ledges and carlings take the card's estimates' places
+            ov = self.c["overhead"]
+            ov["berth_plank_in"] = berth["deck"]["plank_in"]
+            ov["beam_sided_in"], ov["beam_moulded_in"] = berth["beams"]["sided_in"], berth["beams"]["moulded_in"]
+            ov["carling_sided_in"], ov["carling_moulded_in"] = berth["carlings"]["sided_in"], berth["carlings"]["moulded_in"]
+            ov["through_berth_deck"] = [o["name"] for o in berth["openings"]]
+            self.berth = dict(berth, deck_line=berth["deck"]["line"], beam_x=berth["beams"]["x_m"],
+                              ledge_x=berth["ledges"]["x_m"])
+        # slice 13's ladders down onto the orlop: their run and a landing at the foot kept clear (x0, x1, y0, y1)
+        self.ladder_boxes_orlop = []
+        for lad in (berth or {}).get("ladders_down", []):
+            w = lad["outside_stringers_in"] * IN / 2 + 3 * IN
+            a, b = sorted((lad["top_x_m"], lad["foot_x_m"]))
+            land = self.c["overhead"]["ladder_landing_m"]
+            a, b = (a, b + land) if lad["foot_x_m"] > lad["top_x_m"] else (a - land, b)
+            self.ladder_boxes_orlop.append((a, b, -w, w))
         self.L = sk.L
         self.m = sk.m
         self.parts_ = {}
@@ -935,6 +954,8 @@ class Orlop:
         xs = np.array([x0, x1, x0, x1, x0, x1, x0, x1])
         zs = np.array([z0, z0, z1, z1, z0, z0, z1, z1])
         ys = np.array([y0, y0, y0, y0, y1, y1, y1, y1])
+        if any(a < x1 and b > x0 and c_ < y1 and d_ > y0 for a, b, c_, d_ in getattr(self, "keep_clear", [])):
+            return False
         return bool(np.all(np.abs(ys) + c < self.ceil_y(xs, zs)))
 
     def fill_bags(self, part, goods, x0, x1, y0, y1, zt, out, spec, c, rng, n):
@@ -1171,9 +1192,9 @@ class Orlop:
 
     # --- the berth deck's beams overhead --------------------------------------------------------------------------------
     def overhead(self, part, knees):
-        """the berth deck's beams over the orlop, 15 in sided and 13 in moulded under its 3 in planks (estimate until the
-        berth deck slice hands over its stations), at the platforms' pitch, cut round the gun deck's hatchways stacked
-        over this deck and the masts"""
+        """the berth deck's overhead over the orlop (below its planks' underside: slice 13's hand-over, else the card's
+        estimate): its beams at slice 13's stations with a hanging knee at each end, the ledges between, cut round the
+        openings that go down through it and the masts, and carlings along their sides"""
         bw, bd = self.c["overhead"]["beam_sided_in"] * IN, self.berth_beam_d()
         xa, xf = self.x_hold
         if self.berth is not None and "beam_x" in self.berth:
@@ -1182,12 +1203,25 @@ class Orlop:
             xs = list(np.arange(xa + 0.6, xf - 0.4, 4.0 * FT))
         oc = self.c["overhead"]
         holes = []
-        for k in oc["through_berth_deck"]:
-            v = self.gd.items[k]
-            holes.append(rect2(v["x"], 0.0, v["Lo"], v["Wo"]))
-        # the carlings: fore and aft timbers along each hatchway's sides from the beam abaft it to the beam before it,
-        # which take the ends of the beams cut short by it
+        if self.berth is not None:
+            for o in self.berth["openings"]:
+                holes.append(rect2(o["x_m"], 0.0, o["inside_m"][0], o["inside_m"][1]))
+            masts = [(m["axis_at_beam_underside_m"][0], m["hole_radius_m"]) for m in self.berth["masts"].values()]
+        else:
+            for k in oc["through_berth_deck"]:
+                v = self.gd.items[k]
+                holes.append(rect2(v["x"], 0.0, v["Lo"], v["Wo"]))
+            masts = [(float(np.mean(h[:, 0])), float(np.ptp(h[:, 1])) / 2) for n, h in self.mast_holes(xa, xf)]
+        for mx, mr in masts:
+            if xa < mx < xf:
+                holes.append(rect2(mx, 0.0, 2 * mr, 2 * mr))
+        # the pumps' tubes: a beam or ledge in their way is scored round them (no carlings)
+        tube_holes = [rect2(x, y, 2 * r + 2 * IN, 2 * r + 2 * IN) for x, y, r, _ in self.pump_tube_list()]
+        # the carlings: fore and aft timbers along each opening's sides from the whole beam abaft it to the one before
+        # it, which take the ends of the beams and ledges cut short by it, their tops at the planks' underside
         cw = oc["carling_sided_in"] * IN
+        cd = oc["carling_moulded_in"] * IN
+        n_carl = 0
         for h in list(holes):
             h = np.asarray(h)
             hx0, hx1 = h[:, 0].min() - bw / 2 - IN, h[:, 0].max() + bw / 2 + IN
@@ -1198,9 +1232,18 @@ class Orlop:
             ca, cf = max(aft) + bw / 2, min(fwd) - bw / 2
             zt = float(self.z_berth(0.5 * (ca + cf))) - self.berth_plank()
             for yy in (h[:, 1].min() - IN - cw / 2, h[:, 1].max() + IN + cw / 2):
-                vbox(part, (ca, yy - cw / 2, zt - bd), (cf, yy + cw / 2, zt), "Oak")
-        for n, h in self.mast_holes(xa, xf):
-            holes.append(h)
+                vbox(part, (ca, yy - cw / 2, zt - cd), (cf, yy + cw / 2, zt), "Oak")
+                n_carl += 1
+        self.info["berth_carlings"] = n_carl
+        holes = holes + tube_holes
+        # the ledges between the beams (slice 13's stations), their tops at the planks' underside, cut as the beams
+        lw, ld = (self.berth["ledges"]["sided_in"] * IN, self.berth["ledges"]["moulded_in"] * IN) \
+            if self.berth is not None else (6.0 * IN, 5.0 * IN)
+        ledges = [x for x in (self.berth or {}).get("ledge_x", []) if xa + 0.2 < x < xf - 0.2]
+        for xl in ledges:
+            self.beam(part, xl, float(self.z_berth(xl)) - self.berth_plank(), lw, ld, holes)
+        self.info["berth_ledges"] = len(ledges)
+        self.overhead_holes = holes
         kc = oc["hanging_knee"]
         n_knees = 0
         for xb in xs:
@@ -1216,6 +1259,62 @@ class Orlop:
                     break
         self.info["berth_beams"] = len(xs)
         self.info["hanging_knees"] = n_knees
+
+    def pillars(self, part):
+        """a pillar on the middle line under each of the berth deck's beams over a platform (6 in square, its heel on the
+        planks, its head under the beam), where no opening, mast, ladder or partition is in the way"""
+        pc = self.c["overhead"]["pillar"]
+        w = pc["sided_in"] * IN
+        bw, bd = self.c["overhead"]["beam_sided_in"] * IN, self.berth_beam_d()
+        xs = [x for x in (self.berth or {}).get("beam_x", [])]
+        n = 0
+        blocks = [np.asarray(h) for h in self.overhead_holes] + [np.asarray(o) for _, o, _ in self.openings()]
+        for xb in xs:
+            plat = [v for v in self.platform_x.values() if v[0] + 0.1 < xb < v[1] - 0.1]
+            if not plat:
+                continue
+            x0, x1, zp = plat[0]
+            if any(h[:, 0].min() - w < xb < h[:, 0].max() + w and h[:, 1].min() - w < 0 < h[:, 1].max() + w
+                   for h in blocks):
+                continue
+            if any(a - pc["clear_m"] < xb < b + pc["clear_m"] for a, b, c_, d_ in self.ladder_boxes_orlop):
+                continue
+            # (not in a room across the middle line: its counter and shelves stand there)
+            if any(r["x0"] - w < xb < r["x1"] + w and (r["ya"] or -9.0) < 0 < (r["yb"] or 9.0) for r in self.room_list):
+                continue
+            if any(abs(xb - px) < w / 2 + pt / 2 + IN for px, pt in self.partition_xs) or \
+                    any(abs(py) < w / 2 + pt / 2 + IN and a < xb < b for py, a, b, pt in self.partition_ys):
+                continue
+            zt = float(self.z_berth(xb)) - self.berth_plank() - bd
+            vbox(part, (xb - w / 2, -w / 2, zp - 0.25 * IN), (xb + w / 2, w / 2, zt + 0.1 * IN), "Oak")
+            self.keep_clear.append((xb - w / 2 - 0.1, xb + w / 2 + 0.1, -w / 2 - 0.1, w / 2 + 0.1))
+            n += 1
+        self.info["pillars"] = n
+
+    def pump_tube_list(self):
+        """[(x, y, r, foot)] of the pumps' tubes below the berth deck (none without slice 13's hand-over)"""
+        if self.berth is None:
+            return []
+        g = self.gd.c["pumps"]
+        r = g["brake"]["tube_in"] / 2 * IN
+        ks = self.c["keelson"]["sided_in"] / 2 * IN
+        tubes = [(self.berth["pumps"]["brake_x_m"], s * g["brake"]["y_in"] * IN, r, "keelson") for s in (1.0, -1.0)]
+        tubes += [(self.berth["pumps"]["chain_x_m"], s * (ks + r + 1.0 * IN), r, "limber") for s in (1.0, -1.0)]
+        return tubes
+
+    def pump_tubes(self, part):
+        """the pumps' tubes from the berth deck's planks down to the well (slice 13 brings them to its planks'
+        underside): the brake pumps' 9 in tubes 12 in either side of the middle line, footed on the keelson's top; the
+        chain pump's two (the chains' up and down tubes) either side of the keelson, footed on the limber boards"""
+        tubes = self.pump_tube_list()
+        for x, y, r, foot in tubes:
+            zt = float(self.z_berth(x)) - self.berth_plank()
+            zb = float(self.z_keelson(x)[0]) if foot == "keelson" else float(self.z_floor(x)[0]) + 1.5 * IN
+            th = np.linspace(0, 2 * math.pi, 16, endpoint=False)
+            rings = [np.column_stack([np.full(16, x) + r * np.cos(th), y + r * np.sin(th), np.full(16, z)])
+                     for z in (zb - 0.1 * IN, zt + 0.1 * IN)]
+            solid(part, rings, "Oak")
+        self.info["pump_tubes"] = len(tubes)
 
     def hanging_knee(self, part, x, z_under, sgn, kc):
         """a hanging knee at x (its middle; sided along x) under a beam whose underside is z_under, on the side sgn: its
@@ -1264,7 +1363,8 @@ class Orlop:
         P = {n: Part() for n in ("Ceiling", "LimberBoards", "Keelson", "MastSteps", "OrlopDeck", "OrlopBeams",
                                  "TierBattens", "MiddleLine", "ShotPiles", "Partitions", "OrlopCoamings",
                                  "HoldBulkheads", "MagazineFloors", "PowderBarrels", "WaterCasks", "Shingle",
-                                 "BerthBeams", "HoldLadders", "Cables", "BreadBags", "RoomFittings", "Stores", "BerthKnees")}
+                                 "BerthBeams", "HoldLadders", "Cables", "BreadBags", "RoomFittings", "Stores",
+                                 "BerthKnees", "Pillars", "PumpTubes")}
         self.x_hold = self.hold_range()
         self.ceiling(P["Ceiling"], P["LimberBoards"])
         self.keelson(P["Keelson"], P["MastSteps"])
@@ -1278,6 +1378,10 @@ class Orlop:
         self.ladders(P["HoldLadders"])
         self.casks(P["WaterCasks"])
         self.overhead(P["BerthBeams"], P["BerthKnees"])
+        self.keep_clear = list(self.ladder_boxes_orlop) + [
+            (o[:, 0].min(), o[:, 0].max(), o[:, 1].min(), o[:, 1].max()) for _, o, _ in self.openings()]
+        self.pillars(P["Pillars"])
+        self.pump_tubes(P["PumpTubes"])
         self.cable_coils(P["Cables"])
         self.furnish(P["BreadBags"], P["RoomFittings"], P["Stores"])
         self.light_rooms()

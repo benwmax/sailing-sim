@@ -497,6 +497,7 @@ for name, (V, F, M, frame, uv) in OB.parts().items():
     if name in bpy.data.objects:            # a clash would be renamed .001 and the card's meets would miss it
         raise SystemExit("an orlop part's name is already taken in the scene: " + name)
     ORLOP[name] = make_deck_part(name, V, F, M, frame, uv)
+ORLOP_LIGHTS = []
 for li in OB.lights:
     ld = bpy.data.lights.new(li["name"], "POINT")
     ld.color = li["colour_rgb"]
@@ -506,6 +507,18 @@ for li in OB.lights:
     lo = bpy.data.objects.new(li["name"], ld)
     lo.location = li["at_m"]
     SC.collection.objects.link(lo)
+    ORLOP_LIGHTS.append(lo)
+# the game loads each deck below by its collection (slice 13's ask): Orlop (the berth deck's overhead, the platforms and
+# their rooms, the ceiling, the lanterns) and Hold (everything under the orlop: orlop_1797.json collections)
+HOLD_PARTS = OB.c["collections"]["Hold"]
+for cname, members in (("Orlop", [n for n in ORLOP if n not in HOLD_PARTS] + [lo.name for lo in ORLOP_LIGHTS]),
+                       ("Hold", [n for n in ORLOP if n in HOLD_PARTS])):
+    col = bpy.data.collections.new(cname)
+    SC.collection.children.link(col)
+    for n in members:
+        ob = bpy.data.objects[n]
+        col.objects.link(ob)
+        SC.collection.objects.unlink(ob)
 DECK_STATIC = [(name, *DK.world(name)) for name in DK.parts()]       # for the running rigging's clearances
 DECK_STATIC = [(name, V, running.tris_of(F)) for name, V, F in DECK_STATIC]
 
@@ -1627,8 +1640,11 @@ json.dump(dict({"note": GUNDECK_NOTE}, **GD_GAME), open(os.path.join(OUT, "gunde
           default=str)
 ORLOP_NOTE = ("the orlop and the hold (docs/shipkit-14): every part in place in the ship's frame; lights, the light rooms' "
               "and the cockpit's lanterns (a warm point light each); mast_heels, where each lower mast bears on the "
-              "keelson; heights_m, the decks' and the hold's heights amidships")
-json.dump(dict({"note": ORLOP_NOTE}, **OB.info, lights=OB.lights, parts=sorted(ORLOP)),
+              "keelson; heights_m, the decks' and the hold's heights amidships; collections, the Blender collections "
+              "the game loads each deck below by")
+json.dump(dict({"note": ORLOP_NOTE}, **OB.info, lights=OB.lights, parts=sorted(ORLOP),
+               collections={c.name: sorted(o.name for o in c.objects) for c in SC.collection.children
+                            if c.name in ("Orlop", "Hold")}),
           open(os.path.join(OUT, "orlop.json"), "w"), indent=1, default=str)
 print(json.dumps(stats, indent=1))
 if RUN_ROOM["lines"] or RUN_ROOM["blocks"] or RUN_ROOM["fittings"] or RUN_ROOM["coils"]:
