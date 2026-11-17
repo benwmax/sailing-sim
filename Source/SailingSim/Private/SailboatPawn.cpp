@@ -595,7 +595,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// forward of them; -SailingMetaCrew=<n> sets how many for measuring. A MetaHuman that fails to build stands in as SK_Sailor.
 	int32 MetaCount = bMeta ? kMaxMetaHumanCrew : 0;
 	if (bMeta) FParse::Value(SailingArgs::Dev(), TEXT("SailingMetaCrew="), MetaCount);
-	for (int32 I = 0; I < C.CrewCount; ++I)
+	// A square-rigged ship's company (the frigate's 450) is not a small boat's crew placed along her cockpit: her deck watch
+	// stands at its stations (docs/ship-rig/), so none of these figures are made for her.
+	const int32 NumFigures = C.HasSquareRig() ? 0 : C.CrewCount;
+	for (int32 I = 0; I < NumFigures; ++I)
 	{
 		if (CrewFigureIsMetaHuman(C.CrewCount, I, MetaCount))
 		{
