@@ -43,3 +43,34 @@
 - **Foreground:** both (c) runs report **`foreground: 1`**, the game window in front. Every other run today, these (a) runs included, reports 0. I didn't send input or move windows, so something else on the desktop changed.
 - **Whether the drop is real:** one run with a different foreground state can't say.
 - **Next:** a repeat of both helm stills plus the 4K (a)-against-(c) A/B, queued after the #787 follow-up.
+
+## Repeat of the helm stills and the 4K A/B (same session as the #787 follow-up)
+
+- **Package:** the existing `Packaged/Windows-d59e3e0`, with the bench scripts from d59e3e00 and the same args.
+- **Saved:** held aside and restored (B57AA3AF).
+- **Foreground:** **1 on every run here**, as in the #787 follow-up just before.
+
+**Helm stills again** (`stills-repeat/`):
+
+| Still | fps | p99 ms | foreground |
+| --- | --- | --- | --- |
+| blow-a-old-helm | 68.0 | 21.24 | 1 |
+| blow-c-default-helm | 64.2 | 22.73 | 1 |
+
+- **With the window in front:** the *old* sea's helm view also runs at 68.0 here, against 76.4 in the first pc3 pass, which had the window behind.
+- **So most of the first pass's 75.3 to 68.9 helm "drop"** went with the foreground state, not the change.
+- **Like for like (both foreground 1):** default is 3.8 fps below old in this one pair. That is single runs and close to the spread.
+
+**4K Ultra A/B:** 3840x2160, `-SailingScreenPct=100`, 60 s warm-up, 20 s measured, (a), (c), (a), (c) back to back.
+
+| Run | fps | p99 ms | game ms | render ms | GPU frame ms | water GPU ms / water CPU ms | foreground |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| a-old-1 | 51.4 | 23.08 | 9.4 | 19.45 | 18.93 | 1.62 / 1.348 | 1 |
+| c-default-1 | 49.7 | 22.66 | 9.4 | 20.11 | 19.59 | 1.64 / 1.318 | 1 |
+| a-old-2 | 50.4 | 22.85 | 9.42 | 19.81 | 19.28 | 1.57 / 1.297 | 1 |
+| c-default-2 | 51.6 | 22.9 | 9.28 | 19.37 | 18.85 | 1.68 / 1.338 | 1 |
+
+- **Means:**
+  - (a) old: 50.9 fps (51.4, 50.4)
+  - (c) default: 50.65 fps (49.7, 51.6)
+- **Cost:** no measurable cost at 4K. The pairs cross over, and GPU frame and water time are within run-to-run spread.
