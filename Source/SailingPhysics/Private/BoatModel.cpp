@@ -869,10 +869,10 @@ namespace Sailing
 				const double Re = std::max(V * 0.7 * Lwl / kWaterViscosity, 1e4);
 				const double LogRe = std::log10(Re) - 2.0;
 				const double Cf = 0.075 / (LogRe * LogRe);
-				const double Friction = 0.5 * kWaterDensity * V * V * Wetted * Cf * C.FormFactor * (1.0 + 0.4 * std::sin(HeelAbs));
+				const double Friction = 0.5 * kWaterDensity * V * V * Wetted * Cf * C.FormFactor * (1.0 + C.HeelFrictionCoef * std::sin(HeelAbs));
 				MaxFroude = std::max(MaxFroude, Froude);
 				const double Carried = kWaterDensity * kGravity * Vol + Lift;
-				const double Residuary = Carried * ResistanceCoefficient(Froude) * (1.0 + 2.0 * std::sin(HeelAbs) * std::sin(HeelAbs));
+				const double Residuary = Carried * ResistanceCoefficient(Froude) * (1.0 + C.HeelResiduaryCoef * std::sin(HeelAbs) * std::sin(HeelAbs));
 				// Added resistance in waves, from the actual sea state.
 				double WaveResistance = 0.0;
 				if (Waves)

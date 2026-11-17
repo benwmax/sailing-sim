@@ -5,7 +5,7 @@
       "note": "Everything fixed to the hull, on deck and above it. The pivot is the body frame's origin. Nanite (import_boats.py). The stowed spinnaker pole lies on deck; the runners and checkstays are in the mast's part.",
       "pivot": [0.0, 0.0, 0.0],
       "objects": ["Shell", "Transom", "Letters_name", "Letters_port", "Deck", "ToeRail", "Hatches", "Skylights", "Companionway",
-                  "Doghouse", "Cockpit", "Steering", "Wheel", "Winches", "RunningFittings", "DeckHardware", "CowlCaps.Genoa",
+                  "Doghouse", "Cockpit", "Steering", "Winches", "RunningFittings", "DeckHardware", "CowlCaps.Genoa",
                   "SpinnakerPole"]
     },
     "SM_Bluebonnet_Mast": {
@@ -16,7 +16,7 @@
                   "Checkstay.Port.LetOff", "Checkstay.Starboard.LetOff"]
     },
     "SM_Bluebonnet_Boom": {
-      "note": "The boom in its rest pose (its 'frame' from the build: along the centreline), about the physics' gooseneck (MainLuffX, BoomZ): the game turns the boom about that point with the physics' boom angle and draws the mainsail's cloth from the same point. The build's own pin is 0.227 m further aft, so the boom's jaw moves off it as she eases (a known gap: docs/jclass-14).",
+      "note": "The boom in its rest pose (its 'frame' from the build: along the centreline), about its own pin, the rest frame's origin (x 2.3508, z 3.7298), which is the physics' gooseneck (MainLuffX since J-Class upwind; BoomZ): the game turns the boom about that point with the physics' boom angle and draws the mainsail's cloth from the same point.",
       "pivot": "gooseneck",
       "pose": {"Boom": "frame"},
       "objects": ["Boom"]
@@ -25,6 +25,11 @@
       "note": "The rudder (the keel's after part) and its stock, about the point where the stock's axis meets the load waterline. The axis is raked 39 degrees aft; the game turns the part about it (RudderAxis, a second point up the axis, BoatModelVisuals.cpp).",
       "pivot": "rudder_pivot",
       "objects": ["Rudder", "RudderStock"]
+    },
+    "SM_Bluebonnet_Wheel": {
+      "note": "The wheel (its rim and spokes, the hub and its shaft) about the hub's centre on the shaft's axis (wheel_hub: the build's 'Wheel' frame, deck_bluebonnet.json steering.wheel). The game turns it about the shaft (WheelHub to WheelAxis on the hull) with the rudder, the top to starboard as the bow goes to starboard (deck.py steering()), and the helm's hands take its rim (WheelRim gives the radius). Nanite (import_boats.py: imported because its origin is in the sockets json).",
+      "pivot": "wheel_hub",
+      "objects": ["Wheel"]
     }
   },
   "poses": {
@@ -65,7 +70,7 @@
     "Below.*, Aft.*": "below decks (slices 9 and 10): not in the game yet"
   },
   "sockets": {
-    "note": "The points the game reads, by part (owner). 'at' is a fixed point; 'z_top' puts the height on the top of the named objects' vertices within 'r' (plan) of the point, plus 'dz'; 'z_bottom' on their bottom, plus 'dz'; 'rudder_axis_z' puts the point on the rudder's stock axis at that height (a number, or the top of an object). Each is checked to lie within 'within' of the named 'near' object's surface, so a change to the build that moves a fitting stops the export. No crew sockets: the game derives her crew's places from the physics' deck (CrewMotion.cpp).",
+    "note": "The points the game reads, by part (owner). 'at' is a fixed point; 'z_top' puts the height on the top of the named objects' vertices within 'r' (plan) of the point, plus 'dz'; 'z_bottom' on their bottom, plus 'dz'; 'rudder_axis_z' puts the point on the rudder's stock axis at that height (a number, or the top of an object); 'wheel_at' [along, up] puts it 'along' metres forward up the wheel's shaft from the hub and 'up' metres up the king spoke (the build's 'Wheel' frame). Each is checked to lie within 'within' of the named 'near' object's surface, so a change to the build that moves a fitting stops the export. No crew sockets: the game derives her crew's places from the physics' deck (CrewMotion.cpp).",
     "MastStep": {"part": "SM_Bluebonnet_Hull", "at": [3.0, 0.0, 1.475], "near": "Mast", "within": 0.45, "why": "the mast's partners: the mast part's origin, at the physics' MastX on the deck"},
     "RudderPivot": {"part": "SM_Bluebonnet_Hull", "rudder_axis_z": 0.0, "near": "RudderStock", "within": 0.1, "why": "where the stock's axis meets the load waterline: the rudder part's origin"},
     "RudderAxis": {"part": "SM_Bluebonnet_Hull", "rudder_axis_z": 1.0, "near": "RudderStock", "within": 0.1, "why": "a second point up the raked stock: the game turns the rudder about the line between the two"},
@@ -85,6 +90,9 @@
     "SpreaderTip_S": {"part": "SM_Bluebonnet_Mast", "at": [2.727, 2.943, 11.975], "near": "Shrouds", "within": 0.03, "why": "the lowest spreader's tip, where the cap shroud crosses it: the mainsail's cloth is kept off the spreader"},
     "SpreaderTip_P": {"part": "SM_Bluebonnet_Mast", "at": [2.727, -2.943, 11.975], "near": "Shrouds", "within": 0.03},
     "Boom_Mainsheet": {"part": "SM_Bluebonnet_Boom", "at": [-16.72, 0.0], "z_bottom": ["Boom"], "r": 0.1, "dz": 0.0, "near": "Boom", "within": 0.03, "why": "under the boom's after mainsheet band (the mainsheet's upper end)"},
+    "WheelHub": {"part": "SM_Bluebonnet_Hull", "wheel_at": [0.0, 0.0], "near": "Wheel", "within": 0.1, "why": "the wheel's hub on its shaft's axis: the wheel part's origin"},
+    "WheelAxis": {"part": "SM_Bluebonnet_Hull", "wheel_at": [0.25, 0.0], "near": "Wheel", "within": 0.05, "why": "a point 25 cm forward up the shaft (inside it, toward the wheel box): the game turns the wheel about the line from WheelHub"},
+    "WheelRim": {"part": "SM_Bluebonnet_Wheel", "wheel_at": [0.0, 0.6], "near": "Wheel", "within": 0.04, "why": "the rim's centre line at its top with the king spoke upright (steering.wheel radius 0.6): the game reads the rim's radius from it and puts the helm's hands on the rim"},
     "TillerEnd": {"part": "SM_Bluebonnet_Rudder", "rudder_axis_z": "Wheel", "dz": -0.02, "near": "Wheel", "within": 0.2, "why": "the helm's hand on the wheel: on the stock's axis at the rim's top (10 cm forward of the rim's plane) so it stays put as the rudder turns"},
     "RudderStock": {"part": "SM_Bluebonnet_Rudder", "rudder_axis_z": "RudderStock", "dz": 0.0, "near": "RudderStock", "within": 0.1, "why": "the stock's head under the deck"}
   }

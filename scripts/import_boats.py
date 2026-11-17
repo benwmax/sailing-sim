@@ -98,6 +98,17 @@ def import_boat(tag, dest, lods=False, berthed=True, nanite_mast=False):
         mesh = import_fbx(os.path.join(MODELS, ext + ".fbx"), dest, ext)
         setup(mesh, True, {}, {})
         unreal.log(f"Imported {ext}")
+    # J-Class 14: a wheel of its own (Bluebonnet's: export_game.py), turned by the game with the rudder about the hull's
+    # WheelHub/WheelAxis sockets, with its WheelRim socket for the helm's hands. As the extension: only when this build made one.
+    wheel = f"SM_{tag}_Wheel"
+    if wheel in meta["origins"]:
+        mesh = import_fbx(os.path.join(MODELS, wheel + ".fbx"), dest, wheel)
+        origin = meta["origins"][wheel]
+        sockets = {s: [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]] for s, p in meta["sockets"].items() if meta["owner"][s] == wheel}
+        if lods:
+            add_lods(mesh, True)
+        setup(mesh, True, {}, sockets)
+        unreal.log(f"Imported {wheel}: {len(sockets)} sockets")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
     if berthed:
         import_berthed(tag, dest)

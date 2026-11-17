@@ -162,6 +162,9 @@ namespace Sailing
 		double FormFactor = 1.10;         // (1 + k) on ITTC-57 friction
 		// Residuary (wave-making) resistance per unit displacement weight against each hull's Froude number.
 		std::vector<std::pair<double, double>> Residuary;
+		// Heeled, friction grows by (1 + HeelFrictionCoef sin heel) and wave-making by (1 + HeelResiduaryCoef sin^2 heel): the
+		// fleet's 0.4 and 2.0 (calibrated with the J/22's polar). A boat whose own lines say otherwise sets its own (Bluebonnet).
+		double HeelFrictionCoef = 0.4, HeelResiduaryCoef = 2.0;
 		double HeaveDamping = 900.0;      // N s/m^3 per m^2 of submerged column (radiation damping stand-in)
 		double YawDampingLinear = 400.0;  // N m s, low-speed yaw damping
 		double HullLateralCd = 1.0;

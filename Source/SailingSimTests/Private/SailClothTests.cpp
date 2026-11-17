@@ -530,19 +530,27 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 						TestTrue(FString::Printf(TEXT("%s: the tack on the pole's end (%.1f cm off)"), *Shown, FVector::Dist(P[0], Rig.Tack)), FVector::Dist(P[0], Rig.Tack) < 1.0);
 						TestTrue(FString::Printf(TEXT("%s: the clew on its sheet (%.1f cm off)"), *Shown, FVector::Dist(P[Cols - 1], Rig.Clew)), FVector::Dist(P[Cols - 1], Rig.Clew) < 1.0);
 						TestTrue(FString::Printf(TEXT("%s: the head on its halyard (%.1f cm off)"), *Shown, FVector::Dist(P[(Rows - 1) * Cols], Head)), FVector::Dist(P[(Rows - 1) * Cols], Head) < 1.0);
-						// Out to leeward no further than the clew's limit and the belly (0.15 of the luff's height); ahead no
-						// further than a metre and a half past the bow.
+						// Out to leeward no further than the clew's limit and the belly (0.15 of the luff's height), to windward no
+						// further than the pole's end (or the rail) and the belly; ahead no further than a metre and a half past the
+						// bow, or a tenth of the luff's height on a big sail. (J-Class 14: Bluebonnet's 15 m pole squared back puts
+						// her tack 15 m to windward, and her 43 m spinnaker on a run flies 2.7 m past her stem, 0.06 of its luff;
+						// the J/22's flies 0.10 of hers ahead, 0.7 m. Both had been measured against the J/22's numbers.)
 						const double Belly = 0.15 * (Head.Z - Rig.Tack.Z);
-						double Out = -1e9, Ahead = -1e9, Low = 1e9;
+						const double TackOut = -Side * (Rig.Tack.Y - H.CenterY * CmPerMeter);
+						const double AheadCm = (H.BowX + FMath::Max(1.5, 0.1 * (Head.Z - Rig.Tack.Z) / CmPerMeter)) * CmPerMeter;
+						double Lee = -1e9, Wind = -1e9, Ahead = -1e9, Low = 1e9;
 						for (const FVector& V : P)
 						{
-							Out = FMath::Max(Out, FMath::Abs(V.Y - H.CenterY * CmPerMeter));
+							Lee = FMath::Max(Lee, Side * (V.Y - H.CenterY * CmPerMeter));
+							Wind = FMath::Max(Wind, -Side * (V.Y - H.CenterY * CmPerMeter));
 							Ahead = FMath::Max(Ahead, V.X);
 							Low = FMath::Min(Low, V.Z);
 						}
-						TestTrue(FString::Printf(TEXT("%s: the sail near the boat (%.0f cm from the centreline, limit %.0f)"), *Shown, Out, RailOutCm + Belly),
-							Out <= RailOutCm + Belly);
-						TestTrue(FString::Printf(TEXT("%s: the sail not far ahead (x %.0f, bow %.0f)"), *Shown, Ahead, H.BowX * CmPerMeter), Ahead <= (H.BowX + 1.5) * CmPerMeter);
+						TestTrue(FString::Printf(TEXT("%s: the sail near the boat to leeward (%.0f cm from the centreline, limit %.0f)"), *Shown, Lee, RailOutCm + Belly),
+							Lee <= RailOutCm + Belly);
+						TestTrue(FString::Printf(TEXT("%s: the sail no further to windward than its pole (%.0f cm, the pole's end %.0f, limit %.0f)"), *Shown, Wind, TackOut,
+							FMath::Max(TackOut, RailOutCm) + Belly), Wind <= FMath::Max(TackOut, RailOutCm) + Belly);
+						TestTrue(FString::Printf(TEXT("%s: the sail not far ahead (x %.0f, bow %.0f, limit %.0f)"), *Shown, Ahead, H.BowX * CmPerMeter, AheadCm), Ahead <= AheadCm);
 						TestTrue(FString::Printf(TEXT("%s: the foot clear of the deck (%.0f cm up, sheer %.0f)"), *Shown, Low, H.SheerHeight(C.MastX) * CmPerMeter),
 							Low > H.SheerHeight(C.MastX) * CmPerMeter + 30.0);
 						// QA on #728: where the sail's lower body crosses the centreline (the lower four fifths of the jib's luff; above,

@@ -506,9 +506,13 @@ void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 		// docs/crew-hull-clip/: the maxi's helm aft of the windward wheel (ref.json "wheels": x -13.0, 2.15 m out), on the
 		// cockpit's edge with the legs in it; at x -9 on the rail their legs went down through 1.1 m of deck.
 		if (Cfg.Type == EBoatType::Maxi) Out.Pelvis = FVector(-13.7, Side * 2.55, CrewSeatSurfaceZ(Cfg, -13.7, Side * 2.55) + 0.07);
-		// Bluebonnet's helmsman 0.7 m aft of her wheel as the maxi's (deck_bluebonnet.json: on the centreline at x -10.15, 1.2 m
-		// across the rim), on the windward edge of her cockpit (0.9 m out) with the legs in it, a hand on the rim's windward side.
-		if (Cfg.Type == EBoatType::Bluebonnet) Out.Pelvis = FVector(-10.85, Side * 1.1, CrewSeatSurfaceZ(Cfg, -10.85, Side * 1.1) + 0.07);
+		// Bluebonnet's helmsman sits on the windward coaming of her cockpit (deck_bluebonnet.json: the well 0.9 m out, its
+		// coaming 0.12 m high and 0.05 wide), 0.3 m aft of her wheel (on the centreline at x -10.15, its hub 0.33 m over the
+		// deck, the rim 0.6 m in radius), both hands on the rim's windward side (BoatModelVisuals.cpp, the wheel part's rim).
+		// J-Class 14: at x -10.85 and 1.1 m out (0.7 m aft) the rim was 0.7 m past the hands' reach (60 cm, shoulder to palm);
+		// here the shoulders come 0.45 to 0.6 m from it (SailingSim.Visual.BluebonnetHelmReach), and the knees pass about 0.1 m
+		// outboard of the rim. Their head is 0.3 m outboard of the rim, so the cockpit view looks past it, not through it.
+		if (Cfg.Type == EBoatType::Bluebonnet) Out.Pelvis = FVector(-10.45, Side * 0.92, CrewSeatSurfaceZ(Cfg, -10.45, Side * 0.92) + 0.12 + 0.07);
 		// docs/cockpit-eye/: the Catalina 30's helm behind her wheel (build_fleet.py SPECS: at x -3.45 in the well, which ends
 		// at -4.05), on the after deck to windward of its rim (0.42 m across: seated behind it the rim was at eye height), the
 		// legs in the well, on a helm seat 25 cm over the deck so they see over the rim. On the rail beside the wheel they faced the crew's row, and the cockpit camera, at their head,

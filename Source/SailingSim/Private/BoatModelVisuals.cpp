@@ -501,6 +501,9 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 	// #618: a stowed tiller extension of its own (the Sunfish's), where the class has one.
 	const FString Ext = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt"), Tag, Tag);
 	if (FPackageName::DoesPackageExist(Ext)) Paths.Add(FSoftObjectPath(Ext + FString::Printf(TEXT(".SM_%s_TillerExt"), Tag)));
+	// J-Class 14: a wheel of its own (Bluebonnet's), where the class has one.
+	const FString Wheel = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_Wheel"), Tag, Tag);
+	if (FPackageName::DoesPackageExist(Wheel)) Paths.Add(FSoftObjectPath(Wheel + FString::Printf(TEXT(".SM_%s_Wheel"), Tag)));
 	return Paths;
 }
 
@@ -560,6 +563,13 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 	if (!M.Hull || !M.Mast || !M.Boom || !M.Rudder) return FBoatModelMeshes();
 	// #618: the stowed tiller extension, a part of its own where the class has one (build_fleet.py: the Sunfish).
 	M.TillerExt = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *FString::Printf(TEXT("/Game/Boats/%s/SM_%s_TillerExt.SM_%s_TillerExt"), Tag, Tag, Tag), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	// J-Class 14: a wheel of its own that turns with the rudder (Bluebonnet's: export_game.py), where the class has one. (Only
+	// when the package exists, as ModelAssetPaths checks; the hull must carry WheelHub to hang it on.)
+	const FString WheelPath = FString::Printf(TEXT("/Game/Boats/%s/SM_%s_Wheel"), Tag, Tag);
+	if (FPackageName::DoesPackageExist(WheelPath) && M.Hull->FindSocket(TEXT("WheelHub")))
+	{
+		M.Wheel = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *(WheelPath + FString::Printf(TEXT(".SM_%s_Wheel"), Tag)), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	}
 	if (Type == EBoatType::Maxi)
 	{
 		M.bOwnOutboard = true;
@@ -734,6 +744,26 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			ModelTillerExt = AddModelPart(Model.TillerExt, Pivot, FVector::ZeroVector);
 			AgeDevPart(ModelTillerExt);
 		}
+	}
+	// J-Class 14: the wheel on its shaft (WheelHub, the part's origin), turned in the tick about the line to WheelAxis
+	// (WheelTurnFor); its WheelRim socket, at the rim's top with the king spoke upright, gives the radius the helm's hands take.
+	if (Model.Wheel && Model.Hull->FindSocket(TEXT("WheelHub")))
+	{
+		WheelPivot = NewObject<USceneComponent>(this);
+		WheelPivot->SetupAttachment(BoatRoot);
+		const FVector Hub = ModelHull->GetSocketTransform(TEXT("WheelHub"), RTS_Component).GetLocation();
+		WheelPivot->SetRelativeLocation(Hub);
+		WheelPivot->RegisterComponent();
+		BoatParts.Add(WheelPivot);
+		WheelAxis = FVector::ForwardVector;
+		if (Model.Hull->FindSocket(TEXT("WheelAxis")))
+		{
+			const FVector Along = (ModelHull->GetSocketTransform(TEXT("WheelAxis"), RTS_Component).GetLocation() - Hub).GetSafeNormal();
+			if (!Along.IsNearlyZero()) WheelAxis = Along;
+		}
+		ModelWheel = AddModelPart(Model.Wheel, WheelPivot, FVector::ZeroVector); // built about its hub
+		WheelRimRadiusCm = Model.Wheel->FindSocket(TEXT("WheelRim")) ? float(ModelWheel->GetSocketTransform(TEXT("WheelRim"), RTS_Component).GetLocation().Size()) : 0.f;
+		AgeDevPart(ModelWheel);
 	}
 	AgeDevPart(ModelMast);
 	AgeDevPart(ModelBoom);
@@ -2180,7 +2210,30 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		{
 			const int32 Aft = Shoulder[0].X < Shoulder[1].X ? 0 : 1;
 			const FVector Toward = FRotator(0.f, F.Yaw, 0.f).Vector();
-			if (bHelm && bTiller && Cfg.WheelHardOverSeconds > 0.0)
+			if (bHelm && WheelPivot && WheelRimRadiusCm > 0.f)
+			{
+				// J-Class 14: both hands on a wheel part's rim (Bluebonnet's) on the helm's side, each at the rim's point nearest
+				// its shoulder (the rim is a circle about the shaft, so that point is on it however far the wheel has turned:
+				// the rim runs through the hands): the inboard hand on the upper quarter, 15 to 60 deg off the top, the
+				// outboard one lower, 60 to 110. Out of reach, a hand stays on the knee.
+				const FVector Hub = WheelPivot->GetRelativeLocation();
+				const FVector Up = FVector::VectorPlaneProject(FVector::UpVector, WheelAxis).GetSafeNormal();
+				const FVector Across = (FVector::RightVector - WheelAxis * FVector::DotProduct(FVector::RightVector, WheelAxis)
+					- Up * FVector::DotProduct(FVector::RightVector, Up)).GetSafeNormal();
+				const double RimSide = (Shoulder[0].Y + Shoulder[1].Y) < 0.0 ? -1.0 : 1.0;
+				TOptional<FVector> Lower;
+				for (int32 Hand = 0; Hand < 2; ++Hand)
+				{
+					const bool bInboard = FMath::Abs(Shoulder[Hand].Y) < FMath::Abs(Shoulder[1 - Hand].Y);
+					const FVector Rel = Shoulder[Hand] - Hub;
+					const double Off = FMath::Atan2(RimSide * FVector::DotProduct(Rel, Across), FVector::DotProduct(Rel, Up));
+					const double A = bInboard ? FMath::Clamp(Off, FMath::DegreesToRadians(15.0), FMath::DegreesToRadians(60.0))
+						: FMath::Clamp(Off, FMath::DegreesToRadians(60.0), FMath::DegreesToRadians(110.0));
+					const FVector At = Hub + WheelRimRadiusCm * (FMath::Cos(A) * Up + RimSide * FMath::Sin(A) * Across);
+					if (Hold(Hand, At, bInboard ? HelmGripCm : Lower, FVector::ZeroVector)) Tension[Hand] = 0.5f * HelmLoad;
+				}
+			}
+			else if (bHelm && bTiller && Cfg.WheelHardOverSeconds > 0.0)
 			{
 				// The maxi: the aft hand on the wheel's rim (TillerEnd), where it can reach it.
 				if (Hold(Aft, TillerEnd, HelmGripCm, FVector::ZeroVector)) Tension[Aft] = HelmLoad;

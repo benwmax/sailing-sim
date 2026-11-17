@@ -409,6 +409,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 	CrewClothMids.Reset();
 	ModelHull = ModelMast = ModelBoom = ModelRudder = TravelerCar = nullptr;
 	ModelTillerExt = nullptr;
+	ModelWheel = nullptr;
+	WheelPivot = nullptr;
+	WheelAxis = FVector::ForwardVector;
+	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
 	MastMaterial = nullptr;
 	RigLines->ClearAllMeshSections();
@@ -416,6 +420,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	RigLineKeys[0].Reset();
 	RigLineKeys[1].Reset();
 	RigLineKeys[2].Reset();
+	// The model's rig, which the model path rebuilds each frame: a boat drawn from her config (Bluebonnet before her import)
+	// had kept the last model boat's wires, so her sails kept off the maxi's shrouds and the rig tests read them as hers.
+	SailObstacles.Reset();
+	JibSailObstacles.Reset();
+	bJibInsideShrouds = false;
+	RigLineSamples.Reset();
 	// Graphics G3: the livery (BoatLivery.h). The player's (and its ghost's) is the class's most common scheme as a club
 	// boat; each AI boat draws its own. -SailingLiverySeed=<n> picks one (stills).
 	{
@@ -3703,6 +3713,9 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
 	}
+	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
+	// as the bow goes to starboard).
+	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
 	// The fly points into the apparent wind (where it comes from).
 	MastheadFly->SetRelativeRotation(FRotator(0.f, FMath::RadiansToDegrees(T.ApparentWindAngle), 0.f));
 
