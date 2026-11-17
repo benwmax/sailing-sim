@@ -423,7 +423,7 @@ def split_seams(me):
         if f0.material_index != f1.material_index:
             mats.append(e)
             continue
-        if _uv_jump(e, names, lys, wraps):
+        if LC.get("uv_seams", True) and _uv_jump(e, names, lys, wraps):   # (off where no UV map draws a line)
             uvs.append(e)
     lay = bm.verts.layers.float.new(SEAM)              # the seams' vertices: by them a corner keeps its side
     for e in mats + uvs:
@@ -505,6 +505,16 @@ def open_off(me, own, step):
     if own is None:
         return math.inf
     return float(own.query(np.array(pts))[0].max())
+
+
+def crack_ok(me, open_m, open0, own, tol):
+    """Whether the collapse and the sewing left no crack: by default ("length") the open edges no longer than the
+    part's own (every seam sewn); with the settings' crack_rule "place", every point of them within a tolerance of the
+    part's own open edges, so a seam's stub left open where it runs into the part's edge is under a pixel from there
+    (a part that is a sheet with many open edges, the Catalina 22's deck, light_c22.json)."""
+    if LC.get("crack_rule") == "place":
+        return open_off(me, own, 0.25 * tol) <= tol
+    return open_m <= open0 * 1.001 + 1e-3
 
 
 def stitch(me, join, own=None, near=0.0, passes=3):
@@ -807,7 +817,7 @@ def twin(ob, tol):
             tried.append({"ratio": R[mid], "error_mm": m["error_mm"], "open_m": round(m["open_m"], 3),
                           "paint_slide_mm": sl["max_mm"], "paint_slide_p99_mm": sl["p99_mm"],
                           "turned_widest_mm": sl["turned_widest_mm"]})
-            if (m["ok"] and m["open_m"] <= open0 * 1.001 + 1e-3        # within the tolerance, every seam sewn,
+            if (m["ok"] and crack_ok(cand, m["open_m"], open0, own, tol)   # within the tolerance, every seam sewn,
                     and sl["p99_mm"] <= tol * 1000                         # the paint where the part has it,
                     and sl["turned_widest_mm"] <= tol * 1000):             # no face turned over wider than a pixel
                 if best is not None:
@@ -912,7 +922,8 @@ def twin(ob, tol):
                 "ue_screen_size": round(screen_size(radius, m["switch_error_mm"] / 1000), 4)})
     rep["ok"] = bool(m["ok"] and max(slide["p99_mm"], slide["turned_widest_mm"]) <= tol * 1000
                      and rep["frame_same"] and rep["uv_maps"] and rep["slots"]
-                     and loe[1] <= hoe[1] * 1.02 + 1e-3 and off_own <= LC["seam_join_share"] * tol)
+                     and (loe[1] <= hoe[1] * 1.02 + 1e-3 or LC.get("crack_rule") == "place")
+                     and off_own <= LC["seam_join_share"] * tol)
     return lob, rep
 
 

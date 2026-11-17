@@ -1,9 +1,11 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below; slice 9, the bottom paint's line (her light
+copy, light_c22.py, is made on the built .blend).
 
     blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
 
-Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight), the deck,
+Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight; cut along the bottom
+paint's line BOTTOM_Z, Topsides above and Antifouling below), the deck,
 rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from deck_c22.py (build_deck_c22.py meshes
 them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
 its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
@@ -110,12 +112,18 @@ def build_hull():
     if transom.normal.x > 0:                                   # a lone flat face: recalc can't orient it; face aft
         transom.normal_flip()
     transom.smooth = False
-    ob = mesh_object("C22_Hull", bm, material("GelcoatHull", (0.92, 0.92, 0.9)))
+    # the bottom paint's line: the shell cut along it, so the line is an edge (Topsides above, Antifouling below)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6, plane_co=(0.0, 0.0, BOTTOM_Z),
+                           plane_no=(0.0, 0.0, 1.0))
+    ob = mesh_object("C22_Hull", bm, material("Topsides", SLOT_RGB["Topsides"]))
+    ob.data.materials.append(material("Antifouling", SLOT_RGB["Antifouling"]))
     for p in ob.data.polygons:
-        p.use_smooth = len(p.vertices) == 4                    # the quads; the transom stays flat
+        p.use_smooth = len(p.vertices) < 20                    # the shell; the transom (one face) stays flat
+        p.material_index = 1 if p.center.z < BOTTOM_Z else 0
     return ob
 
 
+BOTTOM_Z = 0.04         # the antifouling's top over the design waterline (slice 9; the textures' line, docs/c22-10)
 SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail": (0.85, 0.85, 0.83),
             "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
             "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82), "Keel": (0.24, 0.23, 0.22),
