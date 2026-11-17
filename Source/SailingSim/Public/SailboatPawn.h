@@ -48,6 +48,8 @@ class UMaterialInterface;
 class UAudioComponent;
 class USailingSynthWave;
 class AWaterSurface;
+class ACannonBattery;
+struct FCannonFiredEvent;
 
 /** A part of a ship's model that her rig moves (docs/ship-rig/, ShipModelVisuals.cpp). */
 struct FShipRigPart
@@ -653,6 +655,11 @@ private:
 	void ClearShipRig();
 	void BindShipRig();
 	void UpdateShipRig(float DeltaSeconds);
+	/** Her guns (docs/cannon-fire/, the player's ship only): the battery on BoatRoot, whether each side was told to keep
+	 *  firing (the panel's cease fire), and its shots shaking the camera. */
+	UPROPERTY(Transient) TObjectPtr<ACannonBattery> ShipBattery;
+	bool bShipGunsFiring[2] = { false, false };
+	void OnShipGunFired(const FCannonFiredEvent& Event);
 private:
 	double WatchTime = 0.0;
 	float WatchSpeed = 1.f;

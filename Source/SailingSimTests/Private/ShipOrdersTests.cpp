@@ -113,6 +113,33 @@ bool FShipOrdersSailPlanTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipOrdersGunsTest, "SailingSim.ShipOrders.Guns", ShipOrdersTestsLocal::Flags)
+bool FShipOrdersGunsTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	// The battery's drill as the panel sees it: a side stands where its least ready gun is.
+	FCannonBattery Battery;
+	Battery.Init(FrigateCannonMounts(), 1);
+	TestTrue(TEXT("housed at sea"), GunsReadyFor(Battery.Status(ECannonSide::Port)) == EGunsReady::Housed);
+	Battery.MakeReady(ECannonSide::Starboard);
+	TestTrue(TEXT("made ready: run out"), GunsReadyFor(Battery.Status(ECannonSide::Starboard)) == EGunsReady::RunOut);
+	TestTrue(TEXT("the other side still housed"), GunsReadyFor(Battery.Status(ECannonSide::Port)) == EGunsReady::Housed);
+	Battery.Order(ECannonOrder::CastLoose, ECannonSide::Port, 0.0);
+	FCannonStepInput In;
+	In.Dt = 1.0 / 120.0;
+	for (int32 K = 0; K < 120 * 600; ++K)
+	{
+		In.Time = K * In.Dt;
+		Battery.Step(In);
+	}
+	TestTrue(TEXT("cast loose in ten minutes"), GunsReadyFor(Battery.Status(ECannonSide::Port)) == EGunsReady::CastLoose);
+	FCannonSideStatus Empty;
+	TestTrue(TEXT("no guns: housed"), GunsReadyFor(Empty) == EGunsReady::Housed);
+	TestTrue(TEXT("orders and sides map across"), CannonOrderFor(EShipOrder::Fire) == ECannonOrder::Fire && CannonOrderFor(EShipOrder::Secure) == ECannonOrder::Secure
+		&& CannonSideFor(EOrderSide::Starboard) == ECannonSide::Starboard && CannonSideFor(EOrderSide::Both) == ECannonSide::Both);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipOrdersPanelTest, "SailingSim.ShipOrders.Panel", ShipOrdersTestsLocal::Flags)
 bool FShipOrdersPanelTest::RunTest(const FString& Parameters)
 {
