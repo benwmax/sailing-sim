@@ -497,7 +497,7 @@ def write_config_inl(path, sheet):
     w(f"\tC.WettedAreaCoef = {_num(c['wetted_coef'])}; C.FormFactor = {_num(c['form_factor'])};")
     w(f"\tC.AddedResistanceCoef = {_num(c['added_resistance'])};")
     w(f"\tC.HullLateralArea = {_num(c['hull_lateral'])}; C.MunkAddedMass = {_num(c['munk'])}; C.YawDampingLinear = {_num(c['yaw_damping'])}; "
-      f"C.HeaveDamping = {_num(c['heave_damping'])};")
+      f"C.HeaveDamping = {_num(c['heave_damping'])}; C.WaveSlopeForceScale = {_num(c['wave_slope'])};")
     k, r = c["keel"], c["rudder"]
     w(f"\tFFoilDef Keel = Foil(EFoilRole::Keel, Vec3({_num(k['x'])}, 0.0, {_num(k['z'])}), {_num(k['area'])}, {_num(k['chord'])}, "
       f"{_num(k['ar'])}, {_num(k['stall'])});   // her whole lateral plane less the rudder")
@@ -632,7 +632,7 @@ def main(build, out, limits_path=None):
         "wetted_coef": round(wet / math.sqrt(vol * lwl), 4), "form_factor": K["form_factor"],
         "added_resistance": K["added_resistance"],
         "hull_lateral": round(K["hull_lateral_share"] * keel_area, 2), "munk": K["munk"], "yaw_damping": K["yaw_damping"],
-        "heave_damping": K["heave_damping"],
+        "heave_damping": K["heave_damping"], "wave_slope": K.get("wave_slope", 1.0),
         "keel": {"x": round(kx, 3), "z": round(kz, 3), "area": round(keel_area, 2), "chord": round(plane_chord, 2),
                  "ar": K["keel_ar"], "stall": K["keel_stall_deg"], "profile_drag": K["keel_profile_drag"],
                  "contact": [round(float(xs[0]) + 4.0, 2), round(float(stations[-1]["x"]) - 6.0, 2)]},

@@ -154,10 +154,56 @@ degrees into the wind on their working chords; her best beat is about 62 to 66 d
 - In 8 kn her best beat sits at the search's edge with the least canvas (the trial's light-air search, not a speed she
   makes); the reference polar's beat will be read at fixed angles.
 - The water is fresh (the physics' 1000 kg/m^3); at sea she would float 2.5% higher.
+- The waves' slope push is off for her. Each hull column's push is its immersion averaged over 8 s times the slope,
+  and the lagged average leaks a second-order force in quadrature with the slope (about 1/(omega tau) of it, largest
+  when she drifts with the waves and meets them slowly). On her long, deep columns, drifting astern after a tack in
+  the lake's chop, it pinned her 19 degrees past the wind with a 110 to 360 kN m turning moment, as much as her
+  rudder's; with the hull held still it averages to nothing. A 52 m ship does not surf the lake's chop; the push comes
+  back for the Gulf's swell with a filter that does not leak (the long boats, the maxi and the J-Class, may want it).
+- The tack in 8 to 10 kn falls back and wears slowly (she is near stopped head to wind); the officers wore her in
+  light air instead of tacking.
+
+## Tacking, wearing and heaving to by orders (Source/SailingPhysics/Public/ShipHandling.h)
+
+`FShipHandling` gives a square-rigged ship's manoeuvres as her officers ordered them, step by step on the helm,
+braces, sheets and the courses' clews (`FBoatControls`), after the trimmer each physics step (the orders panel starts
+one; `Update` returns true while it holds the helm, and after it the helmsman steers `CourseAfterDeg`):
+
+- **Tack.** "Helm's a-lee": the wheel over at its pace (12 s hard over), headsheets let fly, spanker amidships; "rise
+  tacks and sheets" at 35 degrees (the courses clewed up so they don't hold her back). "Mainsail haul" at 15 degrees:
+  the main and mizzen yards round for the new tack, the fore yards held aback to pay her head off; she gathers
+  sternway and the helm is shifted for it. "Let go and haul" once she is 12 degrees past the wind with the main yards
+  drawing (or 25 past whatever they do): the fore yards round, the courses set, the spanker brailed and her head kept
+  15 degrees free until she is back to 60% of her speed, then up to close-hauled. Still on the old side 150 s after the
+  helm went over, she has missed stays and wears instead.
+- **Wear.** The spanker brailed, the course ordered round at 1.5 degrees a second (never more than 30 ahead of her)
+  through the run and up to close-hauled on the new tack, the trimmer squaring and bracing the yards as she turns.
+- **Heave to.** The main yards laid square and aback, the fore and mizzen braced up and drawing, the spanker's sheet
+  eased, the helm keeping her about five points (60 degrees) off the wind.
+
+`trial.sh <dir> --manoeuvre <tack|wear|heaveto> <tws> [plan]` sails one from close-hauled on the starboard tack after
+three minutes settled (every 5 s printed; `TRIAL_SET` takes the settings by name). Under all plain sail in the lake's
+chop (the time to "done" is from the order until she is close-hauled again with way on):
+
+| Wind | Tack: head to wind, through, done | after a minute | Wear: done, to leeward | Hove to |
+|---|---|---|---|---|
+| 8 kn | misses stays, wears (15 min and more) | | 4.8 min, 190 m | 0.8 kn |
+| 10 kn | 2.7 min, misses stays, wears: 13.8 min | 4.1 kn | 3.5 min, 150 m | 0.4 kn |
+| 12 kn | 1.9 min, 3.2, 7.6 min | 4.0 kn of 4.8 | 2.8 min, 125 m | 0.5 kn |
+| 16 kn | 1.2 min, 2.0, 5.1 min | 5.2 of 6.2 | 2.5 min, 180 m | 1.0 kn |
+| 20 kn | 0.8 min, 1.3, 4.0 min | 6.4 of 7.6 | 2.5 min, 250 m | 1.6 kn |
+| 24 kn | 0.7 min, 0.9, 3.4 min | 7.6 of 8.9 | 2.5 min, 310 m | 1.5 kn |
+
+That is the period's picture: a frigate tacked surely in a working breeze and lost little ground doing it, missed
+stays in light air (the officers wore her instead), and wearing cost her a few hundred metres to leeward. Hove to she
+forereaches a knot or so, five points off the wind.
+
+Two physics changes came with it. A square rig's windage is now spread over its masts by their canvas (it sat at the
+main mast alone), so the centre of windage is near her centre of effort; no fore-and-aft boat changes (the J/22's
+quick polar is byte-identical). And her sheet turns the waves' slope push off (`wave_slope: 0`, below).
 
 ## Next
 
 Her `EBoatType::Commonwealth` in `Fleet.cpp` from the two generated files (after the J-Class's boat type merges, so
-the two don't collide), her reference polar from this table and its tests, tacking and wearing as sequences of orders
-on the brace, set and helm controls (which the orders panel calls), and her deep-water start spots and Boat screen
-entry. The Mac runs the tests Nov 25 to 27 through the main sim thread.
+the two don't collide), her reference polar from this table and its tests (the manoeuvres among them), the orders panel's
+calls into `FShipHandling`, and her deep-water start spots and Boat screen entry. The Mac runs the tests Nov 25 to 27 through the main sim thread.
