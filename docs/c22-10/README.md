@@ -82,6 +82,9 @@ buoyancy, level trim, the rig), `SailingSim.Physics.C22SwingKeel` (the table, le
 
 - The fleet model `SM_Catalina22_*` (`build_fleet.py` from BoatExport) is built from the physics hull, so
   `scripts/make-boat-models.sh` must be rerun for `SailingSim.Visual.FleetMesh` (its volume moves 2.2%, its draft 3 cm).
+  `build_fleet.py` now builds a hull that has sections (`hull_stations`, only the Catalina 22 in the fleet) on them, as
+  `build_j22.py` does: on the formula's stand-in fit its canoe was 1.008 m^3 against 1.220 and its CB 12 cm aft. Built
+  with the `bpy` module in the cloud: canoe 1.225 m^3, CB (-0.097, -0.088), LOA 6.550, beam 2.338, as the physics.
   Slice 11's hero (`SailingSim.Visual.C22HeroMesh`, PR #762) is held to these same numbers.
 - The physics' `Board` toggle (1 or 0.25 in the pawn today) now swings the keel: slice 11 can draw it and the rudder
   from `FFoilDef::SwingAt` and `FBoatTelemetry::RudderKick`.

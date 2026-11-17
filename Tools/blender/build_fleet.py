@@ -174,7 +174,94 @@ class Hull:
         return self.deck_z(x, self.cy + w) - depth
 
 
-HS = [Hull(h) for h in HULLS]
+class StationHull(Hull):
+    """C22 slice 10 (docs/c22-10): a fleet hull drawn by its sections (the Catalina 22's FHullShape::Stations, from
+    Catalina22HullData.inl), which BoatExport writes as "hull_stations". As in build_j22.py the hull is built on them
+    exactly as the physics reads them (straight between stations, and between a section's points by index, sunk by
+    canoe_depth - station_depth), so the canoe body's volume and centre of buoyancy are the physics'. Without this the
+    fleet model took the formula fields, which for a hull with stations are only a stand-in fit (17% short on the C22)."""
+
+    def __init__(self, h, st):
+        super().__init__(h)
+        self.st = st["list"]
+        self.sx = [s["x"] for s in self.st]
+        self.sink = MAIN_DEPTH - st["station_depth"]
+        self.np = len(self.st[0]["y"])
+
+    def _at(self, x):
+        x = min(max(x, self.sx[0]), self.sx[-1])
+        i = 0
+        while i < len(self.sx) - 2 and x > self.sx[i + 1]:
+            i += 1
+        return self.st[i], self.st[i + 1], (x - self.sx[i]) / max(self.sx[i + 1] - self.sx[i], 1e-9)
+
+    def _yz(self, x, u):
+        """The section at x, u from 0 on the keel to 1 at the sheer (along its points), as (half breadth, z)."""
+        a, b, t = self._at(x)
+        k = min(max(u, 0.0), 1.0) * (self.np - 1)
+        j = min(int(k), self.np - 2)
+        f = k - j
+        ya = a["y"][j] + (a["y"][j + 1] - a["y"][j]) * f
+        yb = b["y"][j] + (b["y"][j + 1] - b["y"][j]) * f
+        za = a["z"][j] + (a["z"][j + 1] - a["z"][j]) * f
+        zb = b["z"][j] + (b["z"][j + 1] - b["z"][j]) * f
+        return ya + (yb - ya) * t, za + (zb - za) * t - self.sink
+
+    def deck_half_beam(self, x):
+        if x < self.sx[0] or x > self.sx[-1]:
+            return 0.02
+        return max(self._yz(x, 1.0)[0], 0.02)
+
+    def sheer(self, x):
+        a, b, t = self._at(x)
+        return a["sheer"] + (b["sheer"] - a["sheer"]) * t
+
+    def keel_line_depth(self, x):
+        return -self._yz(x, 0.0)[1]
+
+    def sharp_half_beam(self, x):
+        return self.deck_half_beam(x)   # the sections are the real boat's entry already
+
+    def r_at_z(self, x, z):
+        if z <= self._yz(x, 0.0)[1]:
+            return 0.0
+        if z >= self._yz(x, 1.0)[1]:
+            return 1.0
+        lo, hi = 0.0, 1.0
+        for _ in range(40):
+            m = 0.5 * (lo + hi)
+            if self._yz(x, m)[1] < z:
+                lo = m
+            else:
+                hi = m
+        return 0.5 * (lo + hi)
+
+    def half_beam(self, x, z):
+        """The section's half breadth at height z (the formula hull's half_beam is the same near the sheer, where it is used)."""
+        return self._yz(x, self.r_at_z(x, z))[0]
+
+    def section_point(self, x, r):
+        y, z = self._yz(x, r)
+        return (x, self.cy + y, z), z
+
+    def bottom_z(self, x, y):
+        """The hull's underside at (x, y), as FHullShape::BottomZ reads the sections (by point index, straight between)."""
+        a, b, t = self._at(x)
+        ay = abs(y - self.cy)
+        py = pz = None
+        for k in range(self.np):
+            yk = a["y"][k] + (b["y"][k] - a["y"][k]) * t
+            zk = a["z"][k] + (b["z"][k] - a["z"][k]) * t
+            if py is not None and ay <= yk:
+                return pz + (zk - pz) * (ay - py) / max(yk - py, 1e-6) - self.sink
+            if py is None and ay <= yk:
+                return zk - self.sink
+            py, pz = yk, zk
+        return pz - self.sink
+
+
+_ST = CFG.get("hull_stations")
+HS = [StationHull(h, _ST) if (_ST and i == 0) else Hull(h) for i, h in enumerate(HULLS)]
 MAIN = HS[0]
 
 
