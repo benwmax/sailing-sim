@@ -113,6 +113,13 @@ stripe above it; its `antifouling_top` moves from 5 to 4 cm in the wiring thread
   line are no longer all four-sided: the copy now takes them too, or the liner would have a gap along the line).
 - **Joins** (`seams.py`): all closed.
 
+## Slice 8's wear in the build
+
+Since the textures (slice 8, `docs/c22-9`) are on main, `build_c22.py` ends by dressing every material with its finish
+and wear (`textures/weathering_c22.dress`) at `--wear`'s level: L2 unless given (six years a club boat, half kept),
+`--no-wear` for the flat slot colours. The wear only changes materials, so the light copy comes out the same (checked
+on the deck, the boom and the mainsail: the same twins). `render_light_c22.py` still renders the flat slot colours.
+
 ## For slice 10 (physics) and 11 (wiring)
 
 - The twins are the same parts as the hero's, so the export can write `SM_C22Hero_*_Light` from them. The wiring
