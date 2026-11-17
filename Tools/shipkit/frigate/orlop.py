@@ -533,6 +533,8 @@ class Orlop:
         dw = rc["door_wide_in"] * IN
         walls = {}
         self.room_list = []
+        self.partition_xs = []
+        self.partition_ys = []
         for key, plat in (("after", "after_platform_px"), ("fore", "fore_platform_px")):
             xa, xf, zt = self.platform_x[plat]
             for r in rc[key]:
@@ -598,6 +600,10 @@ class Orlop:
         door = (b - a) > 4.0 * FT
         mid = 0.5 * (a + b)
         segs = [(a, mid - dw / 2), (mid + dw / 2, b)] if door else [(a, b)]
+        if axis == "x":
+            self.partition_xs.append((pos, t))
+        else:
+            self.partition_ys.append((pos, a, b, t))
         for s0, s1 in segs:
             xm = pos if axis == "x" else 0.5 * (s0 + s1)
             z1 = float(self.z_berth(xm)) - self.berth_plank() - self.berth_beam_d()
@@ -1069,7 +1075,7 @@ class Orlop:
         self.info["cable_coils"] = {"spirals": n_, "rope_r_m": round(r, 4)}
 
     # --- the berth deck's beams overhead --------------------------------------------------------------------------------
-    def overhead(self, part):
+    def overhead(self, part, knees):
         """the berth deck's beams over the orlop, 15 in sided and 13 in moulded under its 3 in planks (estimate until the
         berth deck slice hands over its stations), at the platforms' pitch, cut round the gun deck's hatchways stacked
         over this deck and the masts"""
@@ -1084,10 +1090,54 @@ class Orlop:
             holes.append(rect2(v["x"], 0.0, v["Lo"], v["Wo"]))
         for n, h in self.mast_holes(xa, xf):
             holes.append(h)
+        kc = self.c["overhead"]["hanging_knee"]
+        n_knees = 0
         for xb in xs:
             zt = float(self.z_berth(xb)) - self.berth_plank()
             self.beam(part, xb, zt, bw, bd, holes)
+            # a hanging knee at each end against the beam's fore face, its arm down the side, its other under the beam
+            # (on its aft face where a partition across the ship stands at the fore one; none where both are taken)
+            kt = kc["sided_in"] * IN
+            for xk in (xb + bw / 2 + kt / 2, xb - bw / 2 - kt / 2):
+                if all(abs(xk - px) > kt / 2 + pt / 2 + 0.5 * IN for px, pt in self.partition_xs):
+                    for sgn in (1.0, -1.0):
+                        n_knees += bool(self.hanging_knee(knees, xk, zt - bd, sgn, kc))
+                    break
         self.info["berth_beams"] = len(xs)
+        self.info["hanging_knees"] = n_knees
+
+    def hanging_knee(self, part, x, z_under, sgn, kc):
+        """a hanging knee at x (its middle; sided along x) under a beam whose underside is z_under, on the side sgn: its
+        arm down the ceiling, its other arm under the beam, a hollow throat between them"""
+        from gundeck import prism
+        t = kc["sided_in"] * IN
+        m = kc["moulded_in"] * IN
+        down, arm = kc["down_ft"] * FT, kc["arm_ft"] * FT
+        zs = np.linspace(z_under, z_under - down, 8)
+        ys = np.minimum(self.ceil_y(np.full(8, x - t / 2), zs), self.ceil_y(np.full(8, x + t / 2), zs))
+        y_top = ys[0]
+        # the under arm stops half an inch short of a partition fore and aft on this side; too short a knee is left out
+        for py, a, b, pt in self.partition_ys:
+            if py * sgn > 0 and a - t / 2 < x < b + t / 2:
+                reach = abs(py) + pt / 2 + 0.5 * IN
+                arm = min(arm, y_top - reach)
+                if ys.min() - m < reach:
+                    return False
+        if arm < m + 6 * IN:
+            return False
+        # out along the ceiling from the beam down, back up the inner face, the throat, along under the beam
+        outer = [(y, z) for y, z in zip(ys, zs)]
+        inner = [(ys[-1] - m, zs[-1]), (ys[3] - m, zs[3])]
+        th = np.linspace(0, math.pi / 2, 5)
+        r = 0.5 * (y_top - m - (y_top - arm)) * 0.6
+        cy, cz = ys[3] - m - r, zs[3] + 0.0
+        throat = [(cy + r * math.cos(a), cz + r * math.sin(a) * (z_under - m - cz) / r) for a in th[1:]] if r > 0 else []
+        under = [(y_top - arm, z_under - m * 0.8), (y_top - arm, z_under)]
+        P = np.array(outer + inner + throat + under)
+        if sgn < 0:
+            P[:, 0] = -P[:, 0]
+        prism(part, P, x - t / 2, x + t / 2, "Oak", axis=0)
+        return True
 
     # --- the lanterns ---------------------------------------------------------------------------------------------------
     def light_rooms(self):
@@ -1103,7 +1153,7 @@ class Orlop:
         P = {n: Part() for n in ("Ceiling", "LimberBoards", "Keelson", "MastSteps", "OrlopDeck", "OrlopBeams",
                                  "TierBattens", "MiddleLine", "ShotPiles", "Partitions", "OrlopCoamings",
                                  "HoldBulkheads", "MagazineFloors", "PowderBarrels", "WaterCasks", "Shingle",
-                                 "BerthBeams", "HoldLadders", "Cables", "BreadBags", "RoomFittings", "Stores")}
+                                 "BerthBeams", "HoldLadders", "Cables", "BreadBags", "RoomFittings", "Stores", "BerthKnees")}
         self.x_hold = self.hold_range()
         self.ceiling(P["Ceiling"], P["LimberBoards"])
         self.keelson(P["Keelson"], P["MastSteps"])
@@ -1116,7 +1166,7 @@ class Orlop:
         self.shingle(P["Shingle"])
         self.ladders(P["HoldLadders"])
         self.casks(P["WaterCasks"])
-        self.overhead(P["BerthBeams"])
+        self.overhead(P["BerthBeams"], P["BerthKnees"])
         self.cable_coils(P["Cables"])
         self.furnish(P["BreadBags"], P["RoomFittings"], P["Stores"])
         self.light_rooms()

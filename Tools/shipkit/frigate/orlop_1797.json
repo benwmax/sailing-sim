@@ -836,6 +836,26 @@
     ],
     "the sail bolts and sea chests lie on the orlop's planks",
     0.25
+   ],
+   [
+    [
+     "BerthKnees"
+    ],
+    [
+     "Ceiling"
+    ],
+    "each hanging knee's arm down the side is scribed to the ceiling and bolted through it",
+    0.65
+   ],
+   [
+    [
+     "BerthKnees"
+    ],
+    [
+     "BerthBeams"
+    ],
+    "each hanging knee is bolted flat against its beam's face",
+    0.25
    ]
   ]
  },
@@ -921,6 +941,15 @@
     "fill": "filling",
     "depth_m": 0.65
    }
+  }
+ },
+ "overhead": {
+  "note": "the berth deck's beams over the orlop are this slice's (each deck slice builds the overhead above it); a hanging knee at each end of each beam against its fore face (its aft face where a partition across the ship stands there), its arm down the ceiling and its other arm under the beam (period practice for lower decks; sizes estimated from the beam)",
+  "hanging_knee": {
+   "sided_in": 7.0,
+   "moulded_in": 7.0,
+   "down_ft": 3.0,
+   "arm_ft": 3.0
   }
  }
 }
