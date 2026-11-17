@@ -1,0 +1,59 @@
+{
+ "part": "bulkhead",
+ "name": "Poured concrete bulkhead with a cap and weep holes: most of Ray Hubbard's developed shore",
+ "in_game": "HouseKit.cpp's lot bank (bBulkhead): today a plain wall and a kerb-like cap; after Nov 21 this piece replaces it (Track I)",
+ "real": "A vertical poured (or precast panel) wall, 0.6-1.2 m showing above the pool, a 300 mm cap poured on top a little proud of the face, PVC weep holes just above the pool every panel so the fill drains. Panel joints, form-tie marks, pinholes. Dark run-off under each weep hole, a silt stain band and a pale scum line, olive algae below the pool, a slick at the waterline.",
+ "measures": {
+  "cap_w": {
+   "target": 0.3,
+   "tol": 0.05,
+   "source": "plan size card: bulkhead cap 300 mm"
+  },
+  "cap_h": {
+   "target": 0.3,
+   "tol": 0.05,
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "weep_dia": {
+   "target": 0.075,
+   "tol": 0.05,
+   "source": "3 in PVC weep pipe, typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "weep_spacing": {
+   "range": [
+    1.8,
+    3.1
+   ],
+   "source": "one weep hole a panel, 6-10 ft, typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "wall_above_pool": {
+   "range": [
+    0.6,
+    1.25
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 20000,
+  "note": "Nanite; the face grid is fine only for the run-off (vertex colour B): the in-game piece can carry it in a mask texture instead"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos",
+ "periodic_by_design": "a panel joint and a weep hole every 2.44 m"
+}

@@ -1,0 +1,27 @@
+{
+ "part": "layers",
+ "name": "The water's marks shared by every edge type (edge_layer.py EDGE_LAYER_CODE)",
+ "levels": {
+  "PoolZ": "0: the 435.5 ft conservation pool",
+  "HighZ": "+0.30 m: top of the stain band (spring highs)",
+  "LowZ": "-1.25 m: the lowest recent water (dry autumns)",
+  "WrackZ": "+0.15 m: where sticks and leaves come to rest",
+  "Swash": "0.20 m: wet height above the water in a light breeze (Track I can drive it from fetch and wind)",
+  "WaterZ": "the lake now (MPC_World, the game's lake level; -0.98 m on the Oct 11 2026 gauge)"
+ },
+ "real": "A reservoir that rises and falls a metre or more marks everything on its edge: a silt band between its usual lowest and highest water, ringed by the steps of each fall, a pale dried scum at the top, olive algae on what is under water most of the year (a grey-green crust when a low lake leaves it dry), the wet line where the waves wash, run-off under drains and bolts, and a wrack line of sticks and leaves at the high water.",
+ "measures": {
+  "band_height_m": "HighZ - LowZ = 1.55",
+  "scum_line_mm": "12-24",
+  "wet_line_m": "Swash x 0.55-1.45 above the water"
+ },
+ "owned_elsewhere": {
+  "foam and ripple edge": "the water material, Mac, after Nov 21 (water edge)",
+  "zebra mussels": "unchecked for Ray Hubbard; a cluster layer below the pool if it is infested"
+ },
+ "references_wanted": [
+  "the bulkhead and the breakwater at a low lake: the whole band with the grey card",
+  "the scum line close up",
+  "the ramp's slick toe"
+ ]
+}

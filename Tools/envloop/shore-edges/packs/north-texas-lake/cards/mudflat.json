@@ -1,0 +1,36 @@
+{
+ "part": "mudflat",
+ "name": "Mud flat a low lake leaves",
+ "in_game": "Terrain: the lidar already has the shape; this is the look (Track A's wet mud and cracked mud) plus the scatter. Shows only when the lake is down",
+ "real": "A very gentle slope of silt and clay: dark and glossy at the water, paler and cracked into plates as it dries, ripple marks and shallow pans, a scatter of clam shells, a wrack line of sticks and leaves at the old high water, bird tracks.",
+ "measures": {
+  "slope": {
+   "range": [
+    0.01,
+    0.025
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 25000,
+  "note": "shells and debris only; the ground is terrain"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos"
+}
