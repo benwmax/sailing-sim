@@ -37,7 +37,13 @@ The old frame-count pacing inside `UpdateModelRig` (every 1/2/4/8/15 frames) is 
 Crew and traffic views, `-SailingTraffic=0` and `=1`, on the PC (Ultra 1080p) and the Mac (High). Test:
 `SailingSim.Traffic.RigRebuildRate` (the rate table, frame-rate independence, stagger). Results go in the table below.
 
-| Machine | View | Traffic 0 | Traffic 1 before | Traffic 1 after |
-|---|---|---|---|---|
-| PC Ultra 1080p | crew | 58.2 | 49.1 | (pending) |
-| Mac High | crew | (pending) | (pending) | (pending) |
+| Machine | View | Main, traffic on | Main, traffic off | #778, traffic on | #778, traffic off |
+|---|---|---|---|---|---|
+| PC Ultra 1080p | crew | 49.1 | 58.2 | 59.1 | 60.7 |
+| PC Ultra 1080p | traffic (lake-busy) | 52.9 | 72.7 | 69.5 | 70.5 |
+| Mac High | crew, traffic | (pending) | | | |
+
+PC data: `Inputs/bench/pr778-7d62a930/` on `inputs` (90cba375). Insights trace of the crew view with traffic on: section
+uploads 7.0 a frame at 2.39 ms of render thread (main 16.5 at 5.3 ms; the player's boat alone is 6.0), so the three AI
+boats now rebuild about one section a frame between them. The runs were not in the foreground: treat 1-2 fps as noise.
+MSVC build clean; RopeLay 10/10, Traffic 8/8, Race 2/2 on Windows.
