@@ -1732,12 +1732,15 @@ class Running:
 
     def rail_plan(self, mast):
         """the rails each family of falls belays to, by where the fall comes down through the top: near (the after part
-        of the lane) to the fife rail and the rail beside the mast, mid to the next rail aft, far further aft"""
+        of the lane) to the fife rail and the rail beside the mast, mid to the next rail aft, far further aft. On the fore and
+        main the mid and buntline families may take the fife rail too (its arms run well aft, so their falls belay near
+        the mast, clear of the lower shrouds the catharpins bowse in), and the fore's buntlines the forecastle's rails"""
         if mast == "main":
-            near, mid, far, bunt, ubunt = ["fife_main", "qd8"], ["qd7"], ["qd6", "qd5"], ["qd7", "qd6"], ["qd6", "qd5"]
+            near, mid, far, bunt, ubunt = ["fife_main", "qd8"], ["qd7", "qd8", "fife_main"], ["qd6", "qd5"], \
+                ["qd7", "qd6"], ["qd6", "qd5", "qd7", "fife_main"]
         elif mast == "fore":
-            near, mid, far, bunt, ubunt = ["fife_fore", "fc1"], ["fc1", "fife_fore"], ["fc1", "gw"], \
-                ["fife_fore", "fc1"], ["fife_fore", "fc1"]
+            near, mid, far, bunt, ubunt = ["fife_fore", "fc1"], ["fc1", "fife_fore", "fc2"], ["fc1", "gw"], \
+                ["fife_fore", "fc1", "fc2", "fc4"], ["fife_fore", "fc1", "fc2", "fc4"]
         else:
             near, mid, far, bunt, ubunt = ["fife_mizzen", "qd3"], ["qd3", "qd4"], ["qd4", "qd2", "qd5"], ["qd4", "qd3"], \
                 ["qd4", "qd2"]
@@ -3158,10 +3161,11 @@ class Running:
         short = self.allocate_pins(C, keep=True)
         return bumped, short
 
-    def repin_pairs(self, C, rounds=2, log=None):
+    def repin_pairs(self, C, rounds=2, log=None, only=None):
         """repin for the pairs of port and starboard falls on mirrored pins, keeping them mirrored: a pair whose lead
         down to a pin passes too close (on either side, in any state) moves to the free mirrored pins in its zones that
-        leave both clearest, or swaps pins with another mirrored pair when that leaves all four leads no worse"""
+        leave both clearest, or swaps pins with another mirrored pair when that leaves all four leads no worse. only:
+        the names of the lines that may move (a pair moves, or swaps with another, only when all its lines are in it)"""
         k_ = self._pin_kit(C)
         P = self.pins.pins
         mir = self.pin_mirror()
@@ -3171,7 +3175,7 @@ class Running:
         for nm, lp in tw.items():
             if nm.endswith(" port") and nm in fall and tw[nm].name in fall:
                 (lp, sp), (ls, ss) = fall[nm], fall[tw[nm].name]
-                if mir.get(sp["pin"]) == ss["pin"]:
+                if mir.get(sp["pin"]) == ss["pin"] and (only is None or (lp.name in only and ls.name in only)):
                     pairs.append((lp, sp, ls, ss))
 
         def free(pid):
@@ -3710,6 +3714,8 @@ class Running:
             single = {n for n in aff if n not in tw}
             if single:
                 self.repin(C, log=log, only=single)
+                self.solve()
+            if aff - single and self.repin_pairs(C, log=log, only=aff - single):     # the pairs among them, mirrored
                 self.solve()
             if self.uncross_pins(C, log=log, only=aff):
                 self.solve()
