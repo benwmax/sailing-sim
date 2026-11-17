@@ -28,6 +28,7 @@ bool FSailingMetaHumanCrewCapTest::RunTest(const FString&)
 	int32 Capped = 0;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
+		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FString Name = ANSI_TO_TCHAR(BoatTypeName(Cfg.Type));
 		const int32 N = Cfg.CrewCount;
