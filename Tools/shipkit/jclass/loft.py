@@ -25,6 +25,9 @@ import sys
 import numpy as np
 from scipy.interpolate import BSpline
 
+# np.trapezoid is numpy 2.0's name; Blender 4.2 (the PC's) ships numpy 1.24, where it is np.trapz.
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 LINES = json.load(open(os.path.join(HERE, "lines_bluebonnet.json")))
 SPECS = json.load(open(os.path.join(HERE, "specs_bluebonnet.json")))
@@ -397,13 +400,13 @@ def hydrostatics(S=None, n=400):
         A.append(2 * a); Ac.append(2 * max(a - keel, 0.0)); Zc.append(cz)
         B.append(_half_breadth_at(sec, 0.0) if a > 0 else 0.0)
     A, Ac, Zc, B = np.array(A), np.array(Ac), np.array(Zc), np.array(B)
-    V = float(np.trapezoid(A, xs))
-    lcb = float(np.trapezoid(A * xs, xs) / V)
-    vcb = float(np.trapezoid(A * Zc, xs) / V)
-    Aw = float(np.trapezoid(2 * B, xs))
-    lcf = float(np.trapezoid(2 * B * xs, xs) / Aw)
-    i_t = float(np.trapezoid(2 * B ** 3 / 3, xs))              # transverse second moment of the waterplane
-    i_l = float(np.trapezoid(2 * B * (xs - lcf) ** 2, xs))      # and fore and aft, about its centre
+    V = float(_trapezoid(A, xs))
+    lcb = float(_trapezoid(A * xs, xs) / V)
+    vcb = float(_trapezoid(A * Zc, xs) / V)
+    Aw = float(_trapezoid(2 * B, xs))
+    lcf = float(_trapezoid(2 * B * xs, xs) / Aw)
+    i_t = float(_trapezoid(2 * B ** 3 / 3, xs))              # transverse second moment of the waterplane
+    i_l = float(_trapezoid(2 * B * (xs - lcf) ** 2, xs))      # and fore and aft, about its centre
     Am = float(A.max())
     x_am = float(xs[int(A.argmax())])
     lwl = wl_fwd - wl_aft
@@ -418,7 +421,7 @@ def hydrostatics(S=None, n=400):
     qz = 0.25 * (q[1:, 1:, 2] + q[:-1, :-1, 2] + q[1:, :-1, 2] + q[:-1, 1:, 2])
     wetted = 2 * float(qa[qz < 0].sum())
     # the canoe body: the hull above its centreline line (the keel hangs below it), on its own depth
-    vc = float(np.trapezoid(Ac, xs))
+    vc = float(_trapezoid(Ac, xs))
     tc = -float(CANOE(np.linspace(wl_aft, wl_fwd, 801)).min())
     return {
         "loa_m": round(x_hi - x_lo, 3), "loa_ft": round((x_hi - x_lo) / FT, 2),
@@ -469,10 +472,10 @@ def volume_below(S, zcut, n=400, zfloor=None):
         A.append(2 * a)
         Z.append(cz)
     A, Z = np.array(A), np.array(Z)
-    V = float(np.trapezoid(A, xs))
+    V = float(_trapezoid(A, xs))
     if V <= 0:
         return 0.0, 0.0, 0.0
-    return V, float(np.trapezoid(A * xs, xs) / V), float(np.trapezoid(A * Z, xs) / V)
+    return V, float(_trapezoid(A * xs, xs) / V), float(_trapezoid(A * Z, xs) / V)
 
 
 def lead_keel(S, lead_t, rho_lead=11340.0):

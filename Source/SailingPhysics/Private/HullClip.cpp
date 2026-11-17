@@ -111,6 +111,6 @@ namespace Sailing
 		const double Immersion = Z - T.Bottom;
 		const double Fade = Z < T.Sheer ? 0.05 : 0.15;
 		const double Edge = Clamp(std::min(T.Side, T.End) / Fade, 0.0, 1.0);
-		return std::min(2.0, std::max(0.0, 1.1 * Immersion + 0.03 * Clamp(Immersion / 0.05, 0.0, 1.0)) / std::max(UpZ, 0.3)) * Edge;
+		return std::min(MaxDrop(), std::max(0.0, 1.1 * Immersion + 0.03 * Clamp(Immersion / 0.05, 0.0, 1.0)) / std::max(UpZ, 0.3)) * Edge;
 	}
 }

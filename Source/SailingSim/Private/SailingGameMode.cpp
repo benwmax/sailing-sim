@@ -503,6 +503,17 @@ bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 	}
 	if (Lake.LaunchSpots.Num() == 0) return false;
 	Out = Lake.LaunchSpots[FMath::Clamp(USailingSettings::Get()->LaunchSpot, 0, Lake.LaunchSpots.Num() - 1)];
+	// docs/jclass-14/: a boat whose keel the spot is too shallow for (Bluebonnet at a Galveston marina, from a saved session
+	// or a lesson's spot) starts at the world's deepest spot instead; the Boat screen won't offer it there.
+	const int32 KeelBoat = USailingSettings::Get()->BoatType;
+	if (Out.DepthM >= 0.0 && KeelBoat >= 0 && KeelBoat < int32(Sailing::EBoatType::Count))
+	{
+		const double Draft = Sailing::FBoatConfig::Make(Sailing::EBoatType(KeelBoat)).Draft;
+		if (!LaunchSpotFits(Out.DepthM, Draft))
+		{
+			for (const FLaunchSpot& Deep : Lake.LaunchSpots) if (Deep.DepthM > Out.DepthM) Out = Deep;
+		}
+	}
 	return true;
 }
 

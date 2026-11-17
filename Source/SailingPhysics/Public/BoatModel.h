@@ -42,6 +42,7 @@ namespace Sailing
 	{
 		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
 		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
+		Bluebonnet, // the invented 1937 J-Class yacht (Tools/shipkit/jclass, docs/jclass-13): deep water only (4.5 m draft)
 		Count
 	};
 
@@ -161,6 +162,9 @@ namespace Sailing
 		double FormFactor = 1.10;         // (1 + k) on ITTC-57 friction
 		// Residuary (wave-making) resistance per unit displacement weight against each hull's Froude number.
 		std::vector<std::pair<double, double>> Residuary;
+		// Heeled, friction grows by (1 + HeelFrictionCoef sin heel) and wave-making by (1 + HeelResiduaryCoef sin^2 heel): the
+		// fleet's 0.4 and 2.0 (calibrated with the J/22's polar). A boat whose own lines say otherwise sets its own (Bluebonnet).
+		double HeelFrictionCoef = 0.4, HeelResiduaryCoef = 2.0;
 		double HeaveDamping = 900.0;      // N s/m^3 per m^2 of submerged column (radiation damping stand-in)
 		double YawDampingLinear = 400.0;  // N m s, low-speed yaw damping
 		double HullLateralCd = 1.0;
@@ -247,6 +251,11 @@ namespace Sailing
 		double TrimHeelLimitDeg = 22.0;
 		double TrimReachHeelLimitDeg = 0.0; // the heel limit reaching (TWA 80 to 110 deg and on); 0 = TrimHeelLimitDeg
 		double TrimMaxEaseDeg = 25.0;
+		// A big yacht's slow roll swings the apparent wind high on her rig as much as the wind itself, and a trimmer who chased
+		// each swing (or eased on the heel's rate a moment ahead) fed the roll: Bluebonnet rolled 1 to 30 deg every 10 s in
+		// 16 kn upwind. Her crew trim to the wind, not her roll: they see the sails over half her roll period and read the
+		// heel a quarter of one ahead. Her free roll period in seconds (sails down, calm water); 0 = as every other boat.
+		double TrimRollSeconds = 0.0;
 		// A dinghy sailor holds the sheet in the hand and sails the boat flat (0 = a keelboat crew on winches and cleats):
 		// boom degrees dumped at once per degree of heel past the limit (and of the roll toward it), and the sheet's travel
 		// per second when dumping.
