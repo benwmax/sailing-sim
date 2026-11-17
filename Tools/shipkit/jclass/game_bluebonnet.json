@@ -31,13 +31,13 @@
     "SpinnakerPole": "stowed"
   },
   "materials": {
-    "note": "Each of the build's materials to a slot of the game's boat library (make_materials.py BOAT_LIBRARY: MI_Boat_<slot>); pack_slots folds the packed ones (Tools/blender/boat_packs.json). The paint takes the livery's colours (Inputs/g3/boat-catalogue.json, class bluebonnet): the lead keel is painted with the bottom, so it is Antifouling and the canoe slots close (PackCanoe: the volume the tests measure). Her spars are buff paint over the library's Aluminium entry (PaintSpars; the game paints her hull's entry too, for the stowed pole). J-Class 15 (docs/jclass-15): her bronze, manila and varnished teak are her own library slots (CastBronze and Manila with her own detail maps from Inputs/jclass-detail, VarnishedTeak at her build's teak colour), unpacked; the gilt stays Brass.",
+    "note": "Each of the build's materials to a slot of the game's boat library (make_materials.py BOAT_LIBRARY: MI_Boat_<slot>); pack_slots folds the packed ones (Tools/blender/boat_packs.json). The paint takes the livery's colours (Inputs/g3/boat-catalogue.json, class bluebonnet): the lead keel is painted with the bottom, so it is Antifouling and the canoe slots close (PackCanoe: the volume the tests measure). Her spars are buff paint over the library's Aluminium entry (PaintSpars; the game paints her hull's entry too, for the stowed pole). J-Class 15 (docs/jclass-15): her bronze, manila and varnished teak are her own library slots (CastBronze and Manila with her own detail maps from Inputs/jclass-detail, VarnishedTeak at her build's teak colour), unpacked; the gilt stays Brass. Her teak is LaidTeak (kind 18, unpacked): the export keeps the deck's Planking and Margin maps as UV2 and UV3 and the Aft map's DA in UV1.y on its faces, from which the material draws the planks, seams, butts, king plank and covering boards (laid_deck).",
     "Topsides": "Topsides",
     "CoveStripe": "CoveStripe",
     "Bootstripe": "Bootstripe",
     "Antifouling": "Antifouling",
     "Keel": "Antifouling",
-    "Teak": "Teak",
+    "Teak": "LaidTeak",
     "Wood": "VarnishedTeak",
     "CabinWindow": "CabinWindow",
     "DeckGlass": "CabinWindow",
@@ -53,6 +53,10 @@
     "Black": "BlackPlastic",
     "Rope": "Manila",
     "Spar": "Aluminium"
+  },
+  "laid_deck": {
+    "note": "J-Class 15 (docs/jclass-15): the after margin's mitre with the covering board (deck.py after_mitre: a D - b DA), as her build reports it (build.json deck.planking_mitre); make_materials.py sets it on MI_Boat_LaidTeak (LaidD) with deck_bluebonnet.json's planking, and the export stops if the build's differs.",
+    "mitre": [0.796334, 0.877556]
   },
   "left_out": {
     "Hull": "slice 1's moulded hull, hidden in the build: the fairness check's reference",

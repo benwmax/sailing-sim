@@ -644,7 +644,7 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			{
 				return Name == TEXT("Topsides") ? &L.Hull : Name == TEXT("Deck") ? &L.Deck : Name == TEXT("NonSkid") ? &L.NonSkid
 					: Name == TEXT("Antifouling") ? &L.Bottom : Name == TEXT("Bootstripe") ? &L.Boot : Name == TEXT("CoveStripe") ? &L.Cove
-					: Name == TEXT("Teak") ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails
+					: (Name == TEXT("Teak") || Name == TEXT("LaidTeak")) ? (L.bTeak ? &L.Teak : &L.Deck) : nullptr;   // Graphics G6: the toe rails; J-Class 15: her laid deck
 			};
 			// pc/boat-slots: a pack (BoatPacks.h) takes each of its entries' livery colours.
 			const TConstArrayView<const TCHAR*> Packed = SailingBoatPacks::Entries(Slots[I]);

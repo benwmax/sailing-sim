@@ -617,6 +617,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   J-Class 15 (`docs/jclass-15/`): kinds 16 (cast bronze) and 17 (manila) take the slot's own detail pair, texture
   parameters `OwnDetailN`/`OwnDetailM` set only on `MI_Boat_CastBronze`/`MI_Boat_Manila` (`BOAT_OWN_MAPS`), so no other boat
   loads them; `M_SailCloth`'s `Cloth` 1 is cotton with `ClothN`/`ClothM` (the pawn sets them on Bluebonnet's sails only).
+  Kind 18 is a laid deck (`MI_Boat_LaidTeak`, static switch `LaidDeck`): `BOAT_CODE` ports `deck.py`'s `planking_terms` from
+  the deck's UV maps the export keeps (UV2 Planking, UV3 Margin, UV1.y DA); numbers `LaidA..E` from `BOAT_LAID`'s jsons.
 - Rope lay (rope realism 1, `docs/rope-lay/`): the player's boat's ropes are laid by `RopeLay.h` (plain: continuous lift,
   hull, circular-arc bends, rounded across a rope's lines by `FRigLine::EndBendCm`, 24 rings x 12 sides, braid U runs on from
   the clew); `scripts/rope-check.sh` and `SailingSim.Visual.RopeLay.*`. Each rope section keeps a fixed vertex count: every

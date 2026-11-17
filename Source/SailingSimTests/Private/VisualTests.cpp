@@ -1098,8 +1098,8 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 // J-Class 15 (docs/jclass-15): Bluebonnet's own surfaces in the boat library. MI_Boat_CastBronze (kind 16) and MI_Boat_Manila
 // (kind 17) carry her maps as their own detail pair (make_materials.py BOAT_OWN_MAPS), MI_Boat_VarnishedTeak is varnished
 // wood (kind 6, the shared varnish map); the shared parent and every other slot keep the stand-ins, so no other boat loads
-// her maps; M_SailCloth takes the cotton switch and weave the pawn sets on her sails. Skipped (with a warning) before the
-// content is rebuilt.
+// her maps; M_SailCloth takes the cotton switch and weave the pawn sets on her sails; MI_Boat_LaidTeak (kind 18) draws her
+// laid deck from the deck's own UV maps. Skipped (with a warning) before the content is rebuilt.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJClassMaterialsTest, "SailingSim.Visual.JClassMaterials", VisualFlags)
 bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
 {
@@ -1152,6 +1152,39 @@ bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
 	{
 		TestNotNull(Name, LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/Boats/Detail/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet));
 	}
+	// Her laid deck (kind 18): MI_Boat_LaidTeak carries deck_bluebonnet.json's planking (LaidA: pitch, seam, plank length,
+	// half the king plank), and her hull draws it with the deck's maps (UV2, UV3: four UV sets, export_game.py).
+	const UMaterialInterface* Laid = LoadMi(TEXT("LaidTeak"));
+	if (!Laid)
+	{
+		AddWarning(TEXT("No MI_Boat_LaidTeak: run make_materials.py (build_boat_library)"));
+		return true;
+	}
+	float LaidKind = -1.f;
+	TestTrue(TEXT("MI_Boat_LaidTeak has Surface"), Laid->GetScalarParameterValue(TEXT("Surface"), LaidKind));
+	TestEqual(TEXT("MI_Boat_LaidTeak kind"), FMath::RoundToInt(LaidKind), 18);
+	FString DeckText;
+	TSharedPtr<FJsonObject> DeckJson;
+	if (TestTrue(TEXT("deck_bluebonnet.json reads"), FFileHelper::LoadFileToString(DeckText, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/shipkit/jclass/deck_bluebonnet.json")))
+		&& FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(DeckText), DeckJson) && DeckJson.IsValid()))
+	{
+		const TSharedPtr<FJsonObject> Planking = DeckJson->GetObjectField(TEXT("deck"))->GetObjectField(TEXT("planking"));
+		FLinearColor LaidA = FLinearColor::Black;
+		TestTrue(TEXT("MI_Boat_LaidTeak has LaidA"), Laid->GetVectorParameterValue(TEXT("LaidA"), LaidA));
+		TestTrue(TEXT("LaidA's plank pitch"), FMath::IsNearlyEqual(LaidA.R, float(Planking->GetNumberField(TEXT("pitch"))), 1e-5f));
+		TestTrue(TEXT("LaidA's seam"), FMath::IsNearlyEqual(LaidA.G, float(Planking->GetNumberField(TEXT("seam"))), 1e-5f));
+		TestTrue(TEXT("LaidA's plank length"), FMath::IsNearlyEqual(LaidA.B, float(Planking->GetNumberField(TEXT("plank_length"))), 1e-4f));
+		TestTrue(TEXT("LaidA's half king plank"), FMath::IsNearlyEqual(LaidA.A, float(Planking->GetNumberField(TEXT("king_plank")) / 2.0), 1e-5f));
+	}
+	const UStaticMesh* Hull = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull.SM_Bluebonnet_Hull"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	const int32 LaidSlot = Hull ? Hull->GetMaterialIndex(TEXT("LaidTeak")) : INDEX_NONE;
+	if (LaidSlot == INDEX_NONE)
+	{
+		AddWarning(TEXT("SM_Bluebonnet_Hull has no LaidTeak slot yet: re-export her (export_game.py) and reimport (import_boats.py bluebonnet)"));
+		return true;
+	}
+	TestEqual(TEXT("SM_Bluebonnet_Hull's deck wears MI_Boat_LaidTeak"), Hull->GetMaterial(LaidSlot) ? Hull->GetMaterial(LaidSlot)->GetName() : FString(), FString(TEXT("MI_Boat_LaidTeak")));
+	TestTrue(TEXT("SM_Bluebonnet_Hull carries the deck's maps (4 UV sets)"), Hull->GetNumUVChannels(0) >= 4);
 	return true;
 }
 
