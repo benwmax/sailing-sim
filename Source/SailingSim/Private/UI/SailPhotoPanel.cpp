@@ -100,6 +100,8 @@ namespace SailPhotoPanelImpl
 		if (K == TEXT("Down")) return TEXT("\u2193");
 		if (K == TEXT("Left")) return TEXT("\u2190");
 		if (K == TEXT("Right")) return TEXT("\u2192");
+		if (K == TEXT("Page Up")) return TEXT("PgUp");   // (the tab row has no room for the long names)
+		if (K == TEXT("Page Down")) return TEXT("PgDn");
 		return K;
 	}
 	FString PadText(const TCHAR* Action) { return SSailPhotoPanel::GlyphText(SailingBindings::Label(Action, false, true)); }
@@ -220,7 +222,7 @@ TSharedRef<SWidget> SSailPhotoPanel::BuildCard()
 		[
 			SNew(SBorder)
 			.BorderImage_Lambda([Page, I]() { return Page() == I ? Rounded(Raise, RadiusButton) : Rounded(FLinearColor::Transparent, RadiusButton); })
-			.Padding(FMargin(6.f, 4.f)).HAlign(HAlign_Center)
+			.Padding(FMargin(4.f, 4.f)).HAlign(HAlign_Center)
 			.OnMouseButtonDown_Lambda(Click([PawnOf, I]() { if (ASailboatPawn* P = PawnOf()) P->SelectPhotoPage(I); }))
 			[
 				TextAttr(FText::FromString(PhotoMath::PageName(I)), EType::Small,
