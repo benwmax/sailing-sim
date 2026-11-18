@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FGenericCrashContext>
+	<RuntimeProperties>
+		<CrashVersion>3</CrashVersion>
+		<ExecutionGuid>E3CBB2114E3F60BFA28C9E90F1784C37</ExecutionGuid>
+		<CrashGUID>UECC-Windows-E5E51DD349ACD2A1A79BEBA6DB4ADBF9_0000</CrashGUID>
+		<IsEnsure>true</IsEnsure>
+		<IsStall>false</IsStall>
+		<IsAssert>false</IsAssert>
+		<CrashType>Ensure</CrashType>
+		<ErrorMessage>Ensure condition failed: !IsComponentPSOPrecachingEnabled() || bPSOPrecacheCalled [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Engine\Private\PSOPrecache.cpp] [Line: 296] 
+
+Stack: 
+0x00007ff62f867bd5 SailingSim.exe!FPSOPrecacheComponentData::CheckPSOPrecachingAndBoostPriority() []
+0x00007ff633ba71c1 SailingSim.exe!UGroomComponent::CreateSceneProxy() []
+0x00007ff62eb9bead SailingSim.exe!FActorPrimitiveComponentInterface::CreateSceneProxy() []
+0x00007ff631360a82 SailingSim.exe!FScene::BatchAddPrimitivesInternal&lt;UPrimitiveComponent&gt;() []
+0x00007ff6313c1c79 SailingSim.exe!FScene::AddPrimitive() []
+0x00007ff62ec7e2ab SailingSim.exe!UPrimitiveComponent::CreateRenderState_Concurrent() []
+0x00007ff62eba337c SailingSim.exe!UActorComponent::ExecuteRegisterEvents() []
+0x00007ff62ebd3dc3 SailingSim.exe!UActorComponent::RegisterComponentWithWorld() []
+0x00007ff633e90c86 SailingSim.exe!ASailboatPawn::AddMetaHumanFigure() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:5559]
+0x00007ff633ed5e7b SailingSim.exe!ASailboatPawn::RebuildBoatVisuals() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:606]
+0x00007ff633eddd62 SailingSim.exe!ASailboatPawn::SetBoat() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:319]
+0x00007ff633e9999c SailingSim.exe!ASailboatPawn::BeginPlay() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:981]
+0x00007ff62e6e04a6 SailingSim.exe!AActor::DispatchBeginPlay() []
+0x00007ff62ffec489 SailingSim.exe!AWorldSettings::NotifyBeginPlay() []
+0x00007ff62f019541 SailingSim.exe!AGameStateBase::HandleBeginPlay() []
+0x00007ff633f55d32 SailingSim.exe!ASailingGameMode::StartPlay() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailingGameMode.cpp:1210]
+0x00007ff62feeaa4d SailingSim.exe!UWorld::BeginPlay() []
+0x00007ff63006d40b SailingSim.exe!UEngine::LoadMap() []
+0x00007ff63002e07f SailingSim.exe!UEngine::Browse() []
+0x00007ff62f04209b SailingSim.exe!UGameInstance::StartGameInstance() []
+0x00007ff62efc2d7b SailingSim.exe!UGameEngine::Start() []
+0x00007ff6332e3923 SailingSim.exe!FEngineLoop::Init() []
+0x00007ff6332e2d37 SailingSim.exe!GuardedMain() []
+0x00007ff6332e2efa SailingSim.exe!GuardedMainWrapper() []
+0x00007ff6332e6ae0 SailingSim.exe!LaunchWindowsStartup() []
+0x00007ff6332f58d4 SailingSim.exe!WinMain() []
+0x00007ff638c4f7c9 SailingSim.exe!__scrt_common_main_seh() [D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288]
+0x00007ffd8b67dda7 KERNEL32.DLL!UnknownFunction []
+0x00007ffd8d27ee4c ntdll.dll!UnknownFunction []
+</ErrorMessage>
+		<CrashReporterMessage />
+		<CrashReporterMessage>Attended</CrashReporterMessage>
+		<ProcessId>15544</ProcessId>
+		<SecondsSinceStart>0</SecondsSinceStart>
+		<IsInternalBuild>false</IsInternalBuild>
+		<IsPerforceBuild>false</IsPerforceBuild>
+		<IsWithDebugInfo>false</IsWithDebugInfo>
+		<IsSourceDistribution>false</IsSourceDistribution>
+		<GameName>UE-SailingSim</GameName>
+		<ExecutableName>SailingSim</ExecutableName>
+		<BuildConfiguration>Development</BuildConfiguration>
+		<GameSessionID />
+		<PlatformName>Windows</PlatformName>
+		<PlatformFullName>Win64 [Windows 11 (24H2) [10.0.26100.9711]  64b]</PlatformFullName>
+		<PlatformNameIni>Windows</PlatformNameIni>
+		<EngineMode>Game</EngineMode>
+		<EngineModeEx>Unset</EngineModeEx>
+		<DeploymentName />
+		<EngineVersion>5.8.4-58902052+++UE5+Release-5.8</EngineVersion>
+		<EngineCompatibleVersion>5.8.4-58902052+++UE5+Release-5.8</EngineCompatibleVersion>
+		<CommandLine>CommandLineRemoved</CommandLine>
+		<LanguageLCID>9</LanguageLCID>
+		<AppDefaultLocale>en-US</AppDefaultLocale>
+		<BuildVersion>++UE5+Release-5.8-CL-58902052</BuildVersion>
+		<Symbols>**UE5*Release-5.8-CL-58902052-Win64-Development</Symbols>
+		<IsUERelease>false</IsUERelease>
+		<IsRequestingExit>false</IsRequestingExit>
+		<UserName />
+		<BaseDir>D:/dev/ss-fix/Packaged/Windows-8a768667/SailingSim/Binaries/Win64/</BaseDir>
+		<RootDir>D:/dev/ss-fix/Packaged/Windows-8a768667/</RootDir>
+		<MachineId>6FCE816644049B8BA346C98BEF0F7EE5</MachineId>
+		<LoginId>6fce816644049b8ba346c98bef0f7ee5</LoginId>
+		<EpicAccountId>239276fc30284b6287c130f68776d070</EpicAccountId>
+		<SourceContext />
+		<UserDescription>Sent in the unattended mode</UserDescription>
+		<UserActivityHint />
+		<CrashDumpMode>0</CrashDumpMode>
+		<GameStateName />
+		<Misc.NumberOfCores>8</Misc.NumberOfCores>
+		<Misc.NumberOfCoresIncludingHyperthreads>16</Misc.NumberOfCoresIncludingHyperthreads>
+		<Misc.Is64bitOperatingSystem>1</Misc.Is64bitOperatingSystem>
+		<Misc.CPUVendor>GenuineIntel</Misc.CPUVendor>
+		<Misc.CPUBrand>Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz</Misc.CPUBrand>
+		<Misc.CPUModelID>27116</Misc.CPUModelID>
+		<Misc.CPUMicrocodeRevision>240</Misc.CPUMicrocodeRevision>
+		<Misc.PrimaryGPUBrand>NVIDIA GeForce RTX 4090</Misc.PrimaryGPUBrand>
+		<Misc.OSVersionMajor>Windows 11 (24H2) [10.0.26100.9711]</Misc.OSVersionMajor>
+		<Misc.OSVersionMinor />
+		<Misc.AnticheatProvider />
+		<MemoryStats.TotalPhysical>68653654016</MemoryStats.TotalPhysical>
+		<MemoryStats.TotalVirtual>72948621312</MemoryStats.TotalVirtual>
+		<MemoryStats.PageSize>4096</MemoryStats.PageSize>
+		<MemoryStats.TotalPhysicalGB>64</MemoryStats.TotalPhysicalGB>
+		<MemoryStats.AvailablePhysical>47123881984</MemoryStats.AvailablePhysical>
+		<MemoryStats.AvailableVirtual>41318477824</MemoryStats.AvailableVirtual>
+		<MemoryStats.UsedPhysical>3044872192</MemoryStats.UsedPhysical>
+		<MemoryStats.PeakUsedPhysical>3044872192</MemoryStats.PeakUsedPhysical>
+		<MemoryStats.UsedVirtual>3707138048</MemoryStats.UsedVirtual>
+		<MemoryStats.PeakUsedVirtual>3707138048</MemoryStats.PeakUsedVirtual>
+		<MemoryStats.bIsOOM>0</MemoryStats.bIsOOM>
+		<MemoryStats.OOMAllocationSize>0</MemoryStats.OOMAllocationSize>
+		<MemoryStats.OOMAllocationAlignment>0</MemoryStats.OOMAllocationAlignment>
+		<NumMinidumpFramesToIgnore>7</NumMinidumpFramesToIgnore>
+		<CallStack>SailingSim!FPSOPrecacheComponentData::CheckPSOPrecachingAndBoostPriority()
+SailingSim!UGroomComponent::CreateSceneProxy()
+SailingSim!FActorPrimitiveComponentInterface::CreateSceneProxy()
+SailingSim!FScene::BatchAddPrimitivesInternal&lt;UPrimitiveComponent&gt;()
+SailingSim!FScene::AddPrimitive()
+SailingSim!UPrimitiveComponent::CreateRenderState_Concurrent()
+SailingSim!UActorComponent::ExecuteRegisterEvents()
+SailingSim!UActorComponent::RegisterComponentWithWorld()
+SailingSim!ASailboatPawn::AddMetaHumanFigure() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:5559]
+SailingSim!ASailboatPawn::RebuildBoatVisuals() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:606]
+SailingSim!ASailboatPawn::SetBoat() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:319]
+SailingSim!ASailboatPawn::BeginPlay() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailboatPawn.cpp:981]
+SailingSim!AActor::DispatchBeginPlay()
+SailingSim!AWorldSettings::NotifyBeginPlay()
+SailingSim!AGameStateBase::HandleBeginPlay()
+SailingSim!ASailingGameMode::StartPlay() [D:\dev\ss-fix-wt\prmain-8a768667\Source\SailingSim\Private\SailingGameMode.cpp:1210]
+SailingSim!UWorld::BeginPlay()
+SailingSim!UEngine::LoadMap()
+SailingSim!UEngine::Browse()
+SailingSim!UGameInstance::StartGameInstance()
+SailingSim!UGameEngine::Start()
+SailingSim!FEngineLoop::Init()
+SailingSim!GuardedMain()
+SailingSim!GuardedMainWrapper()
+SailingSim!LaunchWindowsStartup()
+SailingSim!WinMain()
+SailingSim!__scrt_common_main_seh() [D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288]
+kernel32
+ntdll</CallStack>
+		<PCallStack>
+
+SailingSim 0x00007ff629b30000 + 5d37bd5 
+SailingSim 0x00007ff629b30000 + a0771c1 
+SailingSim 0x00007ff629b30000 + 506bead 
+SailingSim 0x00007ff629b30000 + 7830a82 
+SailingSim 0x00007ff629b30000 + 7891c79 
+SailingSim 0x00007ff629b30000 + 514e2ab 
+SailingSim 0x00007ff629b30000 + 507337c 
+SailingSim 0x00007ff629b30000 + 50a3dc3 
+SailingSim 0x00007ff629b30000 + a360c86 
+SailingSim 0x00007ff629b30000 + a3a5e7b 
+SailingSim 0x00007ff629b30000 + a3add62 
+SailingSim 0x00007ff629b30000 + a36999c 
+SailingSim 0x00007ff629b30000 + 4bb04a6 
+SailingSim 0x00007ff629b30000 + 64bc489 
+SailingSim 0x00007ff629b30000 + 54e9541 
+SailingSim 0x00007ff629b30000 + a425d32 
+SailingSim 0x00007ff629b30000 + 63baa4d 
+SailingSim 0x00007ff629b30000 + 653d40b 
+SailingSim 0x00007ff629b30000 + 64fe07f 
+SailingSim 0x00007ff629b30000 + 551209b 
+SailingSim 0x00007ff629b30000 + 5492d7b 
+SailingSim 0x00007ff629b30000 + 97b3923 
+SailingSim 0x00007ff629b30000 + 97b2d37 
+SailingSim 0x00007ff629b30000 + 97b2efa 
+SailingSim 0x00007ff629b30000 + 97b6ae0 
+SailingSim 0x00007ff629b30000 + 97c58d4 
+SailingSim 0x00007ff629b30000 + f11f7c9 
+KERNEL32 0x00007ffd8b650000 + 2dda7 
+</PCallStack>
+		<PCallStackHash>1AE8F3CF71FD71D40C7523D4A019AAA438545BAC</PCallStackHash>
+		<TimeOfCrash>639305795943150000</TimeOfCrash>
+		<bAllowToBeContacted>1</bAllowToBeContacted>
+		<CPUBrand>Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz</CPUBrand>
+		<CrashReportClientVersion>1.0</CrashReportClientVersion>
+		<Modules>D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\SailingSim.exe
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\DML\x64\DirectML.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Plugins\NNE\NNERuntimeORT\Binaries\ThirdParty\Onnxruntime\Win64\onnxruntime.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\NVIDIA\NVaftermath\Win64\GFSDK_Aftermath_Lib.x64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\D3D12\x64\D3D12Core.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbis_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\DbgHelp\dbghelp.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\tbbmalloc.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Ogg\Win64\VS2015\libogg_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbisfile_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Windows\WinPixEventRuntime\x64\WinPixEventRuntime.dll</Modules>
+	</RuntimeProperties>
+	<PlatformProperties>
+		<PlatformIsRunningWindows>1</PlatformIsRunningWindows>
+		<PlatformIsRunningWine>false</PlatformIsRunningWine>
+		<PlatformSupportsWindows11>false</PlatformSupportsWindows11>
+		<IsRunningOnBattery>false</IsRunningOnBattery>
+		<IsUsingBatterySaver>false</IsUsingBatterySaver>
+		<HostArchitecture>x64</HostArchitecture>
+		<IsDeviceHandheld>false</IsDeviceHandheld>
+		<PlatformCallbackResult>0</PlatformCallbackResult>
+		<CrashTrigger>0</CrashTrigger>
+	</PlatformProperties>
+	<EngineData>
+		<MatchingDPStatus>WindowsNo errors</MatchingDPStatus>
+		<RHI.IntegratedGPU>false</RHI.IntegratedGPU>
+		<RHI.DriverDenylisted>false</RHI.DriverDenylisted>
+		<RHI.D3DDebug>false</RHI.D3DDebug>
+		<RHI.DRED>false</RHI.DRED>
+		<RHI.DREDMarkersOnly>false</RHI.DREDMarkersOnly>
+		<RHI.DREDContext>false</RHI.DREDContext>
+		<RHI.Aftermath>true</RHI.Aftermath>
+		<RHI.RHIName>D3D12</RHI.RHIName>
+		<RHI.AdapterName>NVIDIA GeForce RTX 4090</RHI.AdapterName>
+		<RHI.UserDriverVersion>621.24</RHI.UserDriverVersion>
+		<RHI.InternalDriverVersion>32.0.16.2124</RHI.InternalDriverVersion>
+		<RHI.DriverDate>11-7-2026</RHI.DriverDate>
+		<RHI.FeatureLevel>SM6</RHI.FeatureLevel>
+		<RHI.IgnoredSM5Preference>False</RHI.IgnoredSM5Preference>
+		<RHI.GPUVendor>NVIDIA</RHI.GPUVendor>
+		<RHI.DeviceId>2684</RHI.DeviceId>
+		<DeviceProfile.Name>Windows</DeviceProfile.Name>
+	</EngineData>
+	<GameData>
+</GameData>
+</FGenericCrashContext>
