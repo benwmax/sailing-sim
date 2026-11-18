@@ -144,8 +144,7 @@ All three are on the **Commonwealth** (the frigate) only. Every other boat passe
 
 ## Full suite
 
-**Pending.** The full `SailingSim` suite on the same head runs after the 2-hour 4K soak (second check; prcheck always
-removes its worktree), and will be appended here.
+**Superseded:** #800 moved to d37eb38f (the frigate's HullClip and feet fixes) before its full suite ran. The full suite runs on d37eb38f instead: see `pr800-d37eb38f.md`.
 
 The standing warnings are normal: the missing `S_*` sound samples, J22HeroMesh's tolerance notes, `GalvestonBay.detail` and Feedback.Jpeg's deliberate missing.png.
 
