@@ -1,0 +1,410 @@
+{
+ "points": [
+  {
+   "tws": 6,
+   "twa": 52,
+   "spinnaker": false,
+   "estimate": 6.05,
+   "trial": 6.29,
+   "ratio": 1.039,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 51.8,
+   "heel": 7.0,
+   "leeway": 2.8,
+   "rudder": 2.0
+  },
+  {
+   "tws": 6,
+   "twa": 60,
+   "spinnaker": false,
+   "estimate": 6.42,
+   "trial": 6.64,
+   "ratio": 1.034,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 59.7,
+   "heel": 6.7,
+   "leeway": 2.3,
+   "rudder": 2.1
+  },
+  {
+   "tws": 6,
+   "twa": 90,
+   "spinnaker": false,
+   "estimate": 6.67,
+   "trial": 7.02,
+   "ratio": 1.053,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 89.3,
+   "heel": 4.1,
+   "leeway": 1.1,
+   "rudder": 2.0
+  },
+  {
+   "tws": 6,
+   "twa": 120,
+   "spinnaker": true,
+   "estimate": 6.29,
+   "trial": 6.89,
+   "ratio": 1.095,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 117.8,
+   "heel": 5.6,
+   "leeway": 0.7,
+   "rudder": 4.7
+  },
+  {
+   "tws": 6,
+   "twa": 150,
+   "spinnaker": true,
+   "estimate": 4.97,
+   "trial": 5.18,
+   "ratio": 1.043,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 147.9,
+   "heel": 1.6,
+   "leeway": 0.6,
+   "rudder": 3.6
+  },
+  {
+   "tws": 10,
+   "twa": 52,
+   "spinnaker": false,
+   "estimate": 9.69,
+   "trial": 8.52,
+   "ratio": 0.879,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 50.3,
+   "heel": 16.0,
+   "leeway": 2.4,
+   "rudder": 6.4
+  },
+  {
+   "tws": 10,
+   "twa": 60,
+   "spinnaker": false,
+   "estimate": 10.22,
+   "trial": 8.95,
+   "ratio": 0.876,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 58.0,
+   "heel": 16.3,
+   "leeway": 1.9,
+   "rudder": 6.9
+  },
+  {
+   "tws": 10,
+   "twa": 90,
+   "spinnaker": false,
+   "estimate": 10.59,
+   "trial": 9.71,
+   "ratio": 0.917,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 87.9,
+   "heel": 10.4,
+   "leeway": 0.5,
+   "rudder": 5.6
+  },
+  {
+   "tws": 10,
+   "twa": 120,
+   "spinnaker": true,
+   "estimate": 10.08,
+   "trial": 9.45,
+   "ratio": 0.938,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 114.8,
+   "heel": 13.6,
+   "leeway": 0.6,
+   "rudder": 10.8
+  },
+  {
+   "tws": 10,
+   "twa": 150,
+   "spinnaker": true,
+   "estimate": 8.12,
+   "trial": 8.15,
+   "ratio": 1.004,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 147.1,
+   "heel": 2.9,
+   "leeway": 1.0,
+   "rudder": 5.0
+  },
+  {
+   "tws": 16,
+   "twa": 52,
+   "spinnaker": false,
+   "estimate": 12.09,
+   "trial": 9.22,
+   "ratio": 0.762,
+   "tolerance": 0.2,
+   "within": false,
+   "twa_sailed": 47.4,
+   "heel": 25.4,
+   "leeway": 2.1,
+   "rudder": 12.9,
+   "gap": "close-hauled in 16 kn she is held to her heel limit (25 deg) where the references, read at 8.8 and 10.4 kn, sail far more upright (at the matched wind she meets 2.2 times the J/22's heeling for her righting), and her overhangs' longer waterline under way is not in the physics (residuary_factor, docs/jclass-13)"
+  },
+  {
+   "tws": 16,
+   "twa": 60,
+   "spinnaker": false,
+   "estimate": 12.47,
+   "trial": 9.54,
+   "ratio": 0.765,
+   "tolerance": 0.2,
+   "within": false,
+   "twa_sailed": 54.1,
+   "heel": 25.1,
+   "leeway": 1.2,
+   "rudder": 14.7,
+   "gap": "close-hauled in 16 kn she is held to her heel limit (25 deg) where the references, read at 8.8 and 10.4 kn, sail far more upright (at the matched wind she meets 2.2 times the J/22's heeling for her righting), and her overhangs' longer waterline under way is not in the physics (residuary_factor, docs/jclass-13)"
+  },
+  {
+   "tws": 16,
+   "twa": 90,
+   "spinnaker": false,
+   "estimate": 12.92,
+   "trial": 11.01,
+   "ratio": 0.852,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 84.0,
+   "heel": 18.5,
+   "leeway": 0.7,
+   "rudder": 13.2
+  },
+  {
+   "tws": 16,
+   "twa": 120,
+   "spinnaker": true,
+   "estimate": 12.85,
+   "trial": 10.95,
+   "ratio": 0.852,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 113.5,
+   "heel": 14.5,
+   "leeway": 1.7,
+   "rudder": 12.9
+  },
+  {
+   "tws": 16,
+   "twa": 150,
+   "spinnaker": true,
+   "estimate": 11.41,
+   "trial": 11.15,
+   "ratio": 0.977,
+   "tolerance": 0.2,
+   "within": true,
+   "twa_sailed": 143.7,
+   "heel": 5.4,
+   "leeway": 2.0,
+   "rudder": 10.4
+  }
+ ],
+ "within": 13,
+ "of": 15,
+ "stiffness": {
+  "bluebonnet": {
+   "righting_20_nm": 1098000.0,
+   "sail_area_m2": 786.7,
+   "sail_centre_m": 16.79,
+   "stiffness_pa": 83.17
+  },
+  "j22": {
+   "righting_20_nm": 4720,
+   "sail_area_m2": 20.7,
+   "sail_centre_m": 4.012,
+   "stiffness_pa": 56.84
+  },
+  "c30": {
+   "righting_20_nm": 14330.0,
+   "sail_area_m2": 55.42,
+   "sail_centre_m": 5.818,
+   "stiffness_pa": 44.43
+  }
+ },
+ "heel_ratio_at_read_wind": {
+  "j22": 2.24,
+  "c30": 1.26
+ },
+ "period": [
+  {
+   "what": "Ranger's beat, 1937 America's Cup, third race (4 Aug 1937, off Brenton Reef): 15 nm dead to windward",
+   "kind": "beat",
+   "wind_kn": 12.0,
+   "race_vmg_kn": 7.26,
+   "trial_vmg_kn": 6.52,
+   "ratio": 0.898
+  },
+  {
+   "what": "Ranger's run, the same race: 15 nm dead to leeward, the rest of her time for the course",
+   "kind": "run",
+   "wind_kn": 12.0,
+   "race_vmg_kn": 8.14,
+   "trial_vmg_kn": 7.8,
+   "ratio": 0.958
+  },
+  {
+   "what": "Endeavour, 1934 America's Cup, first race (17 Sep 1934): 15 nm to windward and back",
+   "kind": "course",
+   "wind_kn": 15.0,
+   "race_vmg_kn": 8.23,
+   "trial_vmg_kn": 7.85,
+   "ratio": 0.953
+  }
+ ],
+ "mean_ratio": 0.939,
+ "vmg": [
+  {
+   "tws": 6,
+   "beat_estimate": 3.95,
+   "beat_trial": 4.22,
+   "beat_twa": 38.3,
+   "beat_speed": 5.38,
+   "beat_heel": 6.7,
+   "beat_leeway": 4.0,
+   "beat_rudder": 1.2,
+   "run_estimate": 4.29,
+   "run_trial": 4.41,
+   "run_twa": 143,
+   "run_speed": 5.52
+  },
+  {
+   "tws": 10,
+   "beat_estimate": 6.52,
+   "beat_trial": 6.05,
+   "beat_twa": 35.3,
+   "beat_speed": 7.42,
+   "beat_heel": 17.3,
+   "beat_leeway": 4.3,
+   "beat_rudder": 5.2,
+   "run_estimate": 7.08,
+   "run_trial": 6.85,
+   "run_twa": 152,
+   "run_speed": 7.75
+  },
+  {
+   "tws": 12,
+   "beat_estimate": 7.46,
+   "beat_trial": 6.52,
+   "beat_twa": 33.9,
+   "beat_speed": 7.86,
+   "beat_heel": 19.1,
+   "beat_leeway": 4.6,
+   "beat_rudder": 4.8,
+   "run_estimate": 8.29,
+   "run_trial": 7.8,
+   "run_twa": 151.3,
+   "run_speed": 8.89
+  },
+  {
+   "tws": 16,
+   "beat_estimate": 8.83,
+   "beat_trial": 6.97,
+   "beat_twa": 31.6,
+   "beat_speed": 8.18,
+   "beat_heel": 26.0,
+   "beat_leeway": 5.7,
+   "beat_rudder": 6.9,
+   "run_estimate": 10.3,
+   "run_trial": 9.62,
+   "run_twa": 163.8,
+   "run_speed": 10.02
+  }
+ ],
+ "statics": {
+  "mass_kg": 153500.0,
+  "cg": [
+   -0.692,
+   0.0003645,
+   -1.308
+  ],
+  "canoe_depth_m": 2.279,
+  "station_depth_m": 2.268,
+  "design_canoe_volume_m3": 128,
+  "design_canoe_centre": [
+   -0.8331,
+   -0.7466
+  ],
+  "capsize_tilt_deg": 156.3,
+  "rest": {
+   "heel_deg": -0.9045,
+   "pitch_deg": -0.03086,
+   "sink_m": -0.0005638
+  },
+  "righting": [
+   [
+    5,
+    274200.0,
+    0.1822
+   ],
+   [
+    10,
+    545500.0,
+    0.3624
+   ],
+   [
+    15,
+    823300.0,
+    0.5469
+   ],
+   [
+    20,
+    1098000.0,
+    0.7296
+   ],
+   [
+    25,
+    1352000.0,
+    0.8978
+   ],
+   [
+    30,
+    1585000.0,
+    1.053
+   ],
+   [
+    40,
+    1898000.0,
+    1.261
+   ],
+   [
+    50,
+    2067000.0,
+    1.373
+   ],
+   [
+    60,
+    2134000.0,
+    1.418
+   ],
+   [
+    70,
+    2203000.0,
+    1.463
+   ],
+   [
+    80,
+    2329000.0,
+    1.547
+   ],
+   [
+    90,
+    2247000.0,
+    1.492
+   ]
+  ]
+ }
+}

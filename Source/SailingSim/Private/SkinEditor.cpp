@@ -220,6 +220,19 @@ void FSkinEditor::SetLine(FBoatSkin::ELine Line, int32 Column)
 	Record(0);
 }
 
+void FSkinEditor::SetHullName(const FString& Name)
+{
+	const FString Clean = FBoatSkin::CleanHullName(Name);
+	if (Clean.IsEmpty()) Draft.Lettering.Name.Reset(); else Draft.Lettering.Name = Clean;
+	Record(0);
+}
+
+void FSkinEditor::SetHullNameColour(const TOptional<FLinearColor>& Colour)
+{
+	Draft.Lettering.Colour = Colour;
+	Record(0);
+}
+
 void FSkinEditor::SetName(const FString& Name)
 {
 	Draft.Name = FBoatSkin::CleanName(Name);
@@ -266,7 +279,7 @@ bool FSkinEditor::Redo()
 
 FSkinEditor::ESavePlan FSkinEditor::SavePlan() const
 {
-	if (Draft.Paint.IsEmpty() && Draft.Wear.IsEmpty() && Draft.Sails.IsEmpty() && Draft.Lines.IsEmpty()) return ESavePlan::ClassLook;
+	if (Draft.Paint.IsEmpty() && Draft.Wear.IsEmpty() && Draft.Sails.IsEmpty() && Draft.Lines.IsEmpty() && Draft.Lettering.IsEmpty()) return ESavePlan::ClassLook;
 	if (!IsDirty() && !Baseline.Id.IsEmpty()) return ESavePlan::Existing;
 	if (!Baseline.Id.IsEmpty() && !Baseline.bBuiltIn) return ESavePlan::Overwrite;
 	return ESavePlan::NewFile;

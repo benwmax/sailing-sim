@@ -81,6 +81,10 @@ public:
 
 	/** Physics time (s): the world clock (FWorldClock), which every boat, the wind, waves and water material run on. */
 	double GetSimTime() const { return Clock.GetTime(); }
+	/** The instant the world is drawn at (FWorldClock::GetRenderTime, feedback #26: at most one physics step behind
+	 *  GetSimTime, moving by each frame's own length): the water and the player's boat. -SailingClassicClock draws at
+	 *  GetSimTime(), in whole steps (compare the stutter). */
+	double GetRenderTime() const;
 	/** Moves the world clock by this frame's time, once a frame: the game mode's tick or the first boat to tick, whichever
 	 *  runs first (boats step until they reach it, so it has to have moved before they do). */
 	void AdvanceClock(float DeltaSeconds);
@@ -182,6 +186,9 @@ private:
 	/** The terrain the derived grids are built on: the window on a streamed world, the whole grid otherwise (a copy). */
 	Sailing::FLakeTerrain DerivedTerrain(double CenterX, double CenterY) const;
 	void UpdateWeather(float DeltaSeconds);
+	/** Feedback #27 (docs/blow-sea/): the blow sea's lift, FWaveField::kBlowLift unless -SailingBlowSea=<lift> or
+	 *  -SailingClassicBlowSea (0) says otherwise; read again after a command-line swap. */
+	static double BlowSeaLift();
 	void UpdateOcean(double WindKnots, double WindFromDeg);
 	TSharedPtr<Sailing::FOcean> Ocean;
 	bool bOceanConfigured = false;
@@ -331,6 +338,7 @@ private:
 	double WaterSecondsAtStart = -1.0;
 	double WindMapSecondsAtStart = -1.0; // W2: the two-level wind map (bench.json windmap_cpu_ms)
 	double FarCapSecondsAtStart = -1.0; // far-cap sprites (bench.json farcap_cpu_ms)
+	double CannonSecondsAtStart = -1.0; // cannon fire (bench.json cannon_cpu_ms)
 	// Perf 1: stat unit's thread times over the measured window, and the game thread's slices at its start.
 	SailingPerf::FThreadTimes ThreadTimes;
 	double SlicesAtStart[int32(SailingPerf::ESlice::Count)] = {};

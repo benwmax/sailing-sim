@@ -63,9 +63,11 @@ namespace LearningLocal
 		const bool bNegative = Dir == TEXT("trim");
 		if (!Dir.IsEmpty() && Dir != TEXT("trim") && Dir != TEXT("ease") && Dir != TEXT("out")) return false;
 		// The live binding: the controller's while the player is on the pad, else the keyboard's.
-		const FString Name = SailingBindings::Label(FName(*Action), bNegative, SailUI::UsingGamepad());
+		const bool bPad = SailUI::UsingGamepad();
+		const FString Name = SailingBindings::Label(FName(*Action), bNegative, bPad);
 		if (Name == TEXT("?")) return false;
-		OutName = Name;
+		// A pad button shared as a hold (the dock lines on the right stick's click, whose tap changes the view) says so.
+		OutName = bPad && SailingBindings::IsHoldAction(FName(*Action)) ? Name + TEXT(" (hold)") : Name;
 		return true;
 	}
 }

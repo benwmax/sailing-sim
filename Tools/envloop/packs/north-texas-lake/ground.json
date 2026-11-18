@@ -1,0 +1,14 @@
+{
+ "pack": "north-texas-lake", "track": "A",
+ "note": "Ground surfaces and where each lies. Assets are Track A's surface ids (Tools/envloop/ground/).",
+ "entries": [
+  {"id": "mown-bermuda-lawn", "asset": "lawn", "group": "ground", "weight": 1, "seasons": ["summer", "dormant"], "where": {"landuse": ["lawn", "yard", "park"], "slope_deg": [0, 18], "above_water_m": [0.3, 40]}},
+  {"id": "rough-dry-grass", "asset": "dry_grass", "group": "ground", "weight": 1, "seasons": ["summer", "dormant"], "where": {"landuse": ["field", "road_verge", "shore"], "slope_deg": [0, 30]}},
+  {"id": "blackland-clay", "asset": "clay", "group": "ground", "weight": 1, "seasons": ["summer"], "where": {"slope_deg": [25, 90], "water_m": [0, 20]}},
+  {"id": "limestone-gravel", "asset": "gravel", "group": "ground", "weight": 1, "where": {"landuse": ["road_verge", "marina"]}},
+  {"id": "sand", "asset": "sand", "group": "ground", "weight": 1, "where": {"landuse": ["shore"], "slope_deg": [0, 8], "above_water_m": [-0.5, 0.8]}},
+  {"id": "wet-mud", "asset": "mud_wet", "group": "ground", "weight": 1, "where": {"above_water_m": [-0.3, 0.3], "lot_edge": ["natural", "none"]}},
+  {"id": "cracked-dry-mud", "asset": "mud_dry", "group": "ground", "weight": 1, "where": {"above_water_m": [0.3, 1.2], "lot_edge": ["natural", "none"], "slope_deg": [0, 6]}},
+  {"id": "leaf-litter", "asset": "leaf_litter", "group": "ground", "weight": 1, "where": {"cover": ["under_canopy"]}}
+ ]
+}

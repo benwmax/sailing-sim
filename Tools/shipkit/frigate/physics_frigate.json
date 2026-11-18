@@ -1,0 +1,68 @@
+{
+ "about": "Estimates for the frigate Commonwealth's physics sheet (Tools/shipkit/frigate/physics.py, docs/frigate-physics): her weights part by part (nothing on the model weighs her) and the knobs only sailing her can settle. Each block says where its numbers come from and how far to trust them. Metres and kilograms in the ship's frame (X forward from station 5, Z up from the load waterline).",
+ "weights": {
+  "note": "A heavy frigate of 1797 at her load line, stored for six months (a cruise). Period totals for the 44s are not to hand here (Marquardt's Anatomy of the Ship would give them), so each row is reasoned from the parts' own sizes, and the ballast is what makes up her displacement: if it comes out near the 100-200 t of iron and shingle these ships carried, the rest is about right. Her centre of gravity is checked against her metacentric height and roll period after.",
+  "deck_heights_m": {"note": "midships, above the load waterline: the spar deck from rig.json (14.69 ft at the fore mast), the gun deck 7 ft under it, the berth deck 6 ft 4 in under that, the orlop 6 ft under that, the hold's ceiling over the floors; estimates for decks the model has not built yet (slices 13 and 14)",
+                     "spar": 4.48, "gun": 2.35, "berth": 0.42, "orlop": -1.41, "hold": -4.6},
+  "hull_structure": {"kg": 1050000, "shell_share": 0.70,
+                     "deck_shares": {"spar": 0.07, "gun": 0.09, "berth": 0.08, "orlop": 0.06},
+                     "note": "live oak frames and knees, white oak planking inside and out, the four decks and their beams, iron and copper fastenings, copper sheathing, the rudder and the head: about 1,050 t, about half her displacement (period hulls ran 45-55% of a frigate's load displacement; at 1,150 t she came out crank, GM 0.66 m, heeling about 16 deg close-hauled under all plain sail in 20 kn). Seven tenths in the side and bottom, the rest in the decks and beams."},
+  "guns": {"rows": [
+    {"name": "long 24-pounders, gun deck", "per_side": 14, "kg_each": 3200, "deck": "gun", "above_deck_m": 0.75, "x_m": [-21.5, 19.0], "in_m": 1.6,
+     "note": "a 9 ft 6 in long 24-pounder about 5,500 lb (2,495 kg) on a carriage with its breeching and tackles about 700 kg; 28 guns (slice 12)"},
+    {"name": "32-pounder carronades, spar deck", "per_side": 11, "kg_each": 1450, "deck": "spar", "above_deck_m": 0.8, "x_m": [-24.0, 14.0], "in_m": 1.2,
+     "note": "a 32-pounder carronade about 2,200 lb (1,000 kg) on its slide about 450 kg"},
+    {"name": "long 24-pounder chase guns, forecastle", "per_side": 1, "kg_each": 3200, "deck": "spar", "above_deck_m": 0.75, "x_m": [21.0, 21.0], "in_m": 1.6,
+     "note": "two chase guns forward"}
+  ]},
+  "stores": {"rows": [
+    {"name": "water", "kg": 184000, "x_m": [-14.0, 14.0], "z_m": -3.9, "note": "about 48,600 US gallons in casks in the hold (the figure usually given for Constitution's 1812 cruise)"},
+    {"name": "provisions and casks", "kg": 150000, "x_m": [-18.0, 12.0], "z_m": -3.2, "note": "six months for 450 men at about 1.5 kg a man a day, casks a quarter more"},
+    {"name": "shot", "kg": 31000, "x_m": [-4.0, 2.0], "z_m": -3.8, "note": "60 rounds a long gun (24 lb) and 40 a carronade (32 lb) in the shot lockers by the main mast"},
+    {"name": "powder", "kg": 30000, "x_m": [14.0, 18.0], "z_m": -2.6, "note": "the magazines, fore and after, mostly forward"},
+    {"name": "cables", "kg": 36000, "x_m": [8.0, 16.0], "z_m": -1.9, "note": "four 22 in hemp cables of 120 fathoms in the cable tiers on the orlop"},
+    {"name": "boatswain's, carpenter's and gunner's stores, spare spars", "kg": 30000, "x_m": [-10.0, 18.0], "z_m": -1.6, "note": "estimate"},
+    {"name": "officers' stores, galley, hammocks and the crew's chests", "kg": 40000, "x_m": [-22.0, 18.0], "z_m": 1.5, "note": "estimate"}
+  ]},
+  "rig": {
+   "masts": {"fore": {"x_m": 20.9, "z_m": [-4.26, 50.0], "kg": 11000}, "main": {"x_m": -3.75, "z_m": [-4.71, 55.1], "kg": 14000},
+             "mizzen": {"x_m": -20.2, "z_m": [-4.82, 43.1], "kg": 6000},
+             "note": "lower mast, topmast and topgallant mast of each (spars_1795.json's lengths and diameters; pitch pine about 650 kg/m^3), tops, caps, crosstrees and hoops; heel to truck from build.json's rig, the mass falling off to a third up its length"},
+   "yards_kg": 25000,
+   "standing_running_sails": {"kg": 46000, "spread": [[20.9, 5.0, 45.0, 0.35], [-3.75, 5.0, 50.0, 0.42], [-20.2, 5.0, 38.0, 0.23]],
+                              "note": "standing and running rigging (hemp and blocks, about 30 t) and the set sails (about 10 t of canvas, slice 5's 29,500 sq ft at 0.35 kg/sq ft), each mast's share up its height"},
+   "bowsprit": {"kg": 8000, "heel_m": [23.2, 0.0, 5.0], "end_m": [41.0, 0.0, 12.5], "note": "64 ft x 34 in with its jibbooms"}
+  },
+  "fittings": {"rows": [
+    {"name": "anchors", "kg": 9600, "at_m": [24.5, 0.0, 4.0], "note": "two bowers and the sheet anchor at the bows (anchors.json: a bower's iron 2,405 kg), the stream and kedges with the boats"},
+    {"name": "boats", "kg": 6000, "at_m": [5.8, 0.0, 6.0], "note": "the launch, two cutters and the gig on the booms (slice 11)"},
+    {"name": "galley stove", "kg": 3000, "at_m": [17.0, 0.0, 2.6], "note": "the iron stove on the gun deck forward"},
+    {"name": "capstans, pumps, wheel", "kg": 8000, "at_m": [-9.4, 0.0, 2.8], "note": "estimate"}
+  ]},
+  "crew": {"count": 450, "kg_each": 100, "cg_m": [0.0, 0.0, 1.6], "note": "450 men at 75 kg with hammocks and clothes; at sea about half on deck"},
+  "ballast": {"x_m": [-2.0, 18.0], "z_m": -4.9, "note": "pig iron on the floors and shingle over them, made up to her displacement, stowed to trim her to her load line (the period's way: the ballast was the trim): from 14 m abaft to 10 m before midships she floated 1.5 deg by the stern, her centre of gravity 1.3 m abaft her centre of buoyancy"}
+ },
+ "foils": {
+  "keel_ar": 0.4, "keel_stall_deg": 22, "keel_profile_drag": 0.0005,
+  "blade_ar": 2.0, "rudder_ar": 2.0, "rudder_stall_deg": 25, "rudder_profile_drag": 0.0005,
+  "downwash": 1.0, "heel_yaw": 0.01, "max_rudder_deg": 35, "wheel_hard_over_s": 12,
+  "trim_heel_limit_deg": 12,
+  "hull_lateral_share": 0.25,
+  "form_factor": 1.15, "added_resistance": 0.3,
+  "munk": 800000, "yaw_damping": 60000000, "heave_damping": 1500, "wave_slope": 0.0,
+  "residuary": [[0.0, 0.0], [0.1, 0.00012], [0.15, 0.000375], [0.2, 0.0009], [0.25, 0.002025], [0.28, 0.0036], [0.3, 0.0051], [0.32, 0.0075], [0.35, 0.01275], [0.4, 0.0255], [0.45, 0.039], [0.5, 0.0495], [0.6, 0.063], [0.8, 0.084], [1.0, 0.102]],
+  "note": "Keel: her whole lateral plane less the rudder, its span her draft; the geometric aspect ratio is about 0.14, doubled by the water's surface over it and a little more for her bilges: 0.4 to start. Rudder: the plane's flap (physics.py rudder_as_flap); a period ship's wheel turned the rudder through tiller ropes in about 12 s hard over to hard over, about 35 deg either way. Heel yaw: a long, fine-ended hull barely changes shape heeled: half the J-Class's 0.02. Friction ITTC-57 with a form factor of 1.15 (a full midbody, the wales and the channels standing out). Residuary per unit weight (R / W against her Froude number), 1.5 times the first estimate after the trial (Nov 17): at the first she sailed a fifth faster than the period's logs on a reach (15.2 kn at 110 deg in 24 kn of wind against Endymion's 14.4 at her best), and Taylor's series puts a full hull's Cr near 0.005 at Fn 0.30, not 0.0035: a full-ended ship hull of L/B 4 and a prismatic coefficient near 0.62, from a residuary coefficient Cr (on her wetted area) of 0.0008 at Fn 0.20, 0.0035 at 0.30 and 0.016 at 0.40 (Taylor's standard series as ship texts quote it, raised for her short, beamy hull): R/W = Cr S Fn^2 L / 2V, with her wetted area from the lines (about 840 m^2) that is 10.3 Cr Fn^2. The J/22's table scaled by slenderness cubed (the J-Class's rule) gives 2 to 3 times this, which is a yacht's law far outside its range. Munk moment: 0.8e6 kg. Slender-body theory gives about 2.1e6 for her canoe body (rho pi T^2 L less A11), ships' measured yaw moments run about half of it, and her deep deadwood aft (the backbone, carried here in the keel foil at the plane's middle) takes more of it back. A good frigate steered with a few spokes of weather helm reaching under all plain sail: at 1.5e6 she wanted 12 deg of rudder at 16 kn, 110 deg, heeled 7 deg, and came up 10 deg off her course; at 0.8e6 she holds it with 2-3 deg. The knob for the Mac's tests if her helm reads wrong. Yaw damping: the J-Class's scaled. Added resistance in waves: ORC's length scaling falls to about 0.3 at her length. Wave slope push (FBoatConfig::WaveSlopeForceScale) off: each column's push is its 8 s mean immersion times the slope, and that lagged mean leaks a second-order force in quadrature with the slope (about 1/(omega tau) of it, worst when she drifts with the waves and meets them slowly); on her long, deep columns, drifting astern after a tack in the lake's chop, it held her pinned 19 deg past the wind with 110-360 kN m (as much as her rudder), with the hull held still it averages to nothing. A 52 m ship does not surf the lake's chop; the Gulf's swell push comes back with a filter that does not leak (docs/frigate-physics/, known gaps). Trim heel limit: a frigate's officers took in the light sails past about 10-12 deg of heel."
+ },
+ "sails": {
+  "brace_offset_deg": {"course": 0.0, "topsail": 2.0, "topgallant": 4.0, "royal": 6.0},
+  "sets_past_yard_deg": {"course": 8.0, "topsail": 5.0, "topgallant": 3.0, "royal": 2.0},
+  "square": {"camber": 0.10, "aspect_ratio": 1.6, "induced_ar": 2.2, "luff_deg": 5.0, "running_cd": 1.3,
+             "backed_lift": 0.6, "backed_drag": 0.85, "clewed_cda": 0.06, "blanket": 0.3, "downwash_deg": 2.0,
+             "brace_rate": 2.0, "set_s": 60.0, "clew_s": 20.0, "furl_s": 90.0},
+  "jib": {"lift_slope": 3.4, "ar": 2.8, "camber": 0.12, "min_deg": 12, "max_deg": 65},
+  "staysail": {"lift_slope": 3.2, "ar": 2.4, "camber": 0.12, "min_deg": 14, "max_deg": 60},
+  "spanker": {"lift_slope": 3.2, "ar": 2.0, "camber": 0.12},
+  "rig_windage_cda": 160.0, "hull_windage_cda": 120.0,
+  "note": "Square sails: SquareRig.h's coefficients for a soft sail cut with a tenth of its width in belly (sails.json: a course's belly 8.4 ft on 79 to 89 ft), aspect ratio about 1.6 (a sail 1.5 to 2 times as wide as deep, end-plated by the sails above and below it), a bluff plate's 1.3 square to the wind (Marchaj's square-sail tests: 1.2-1.4). The upper yards are braced squarer than the lower ones a little at each step (the period's practice: the wind is freer aloft), the brace offsets above. Braced sharp up a sail sets sharper than its yard (sets_past_yard_deg, at the brace limit and in proportion below it): the courses' tacks hauled forward and down to the chesstree and bumpkin turn the weather half of each course well fore and aft (8 deg), the bowlines haul the topsails' weather leeches forward (5), the light sails less (3, 2); the model thread's advice with the measured limits (limits.json, Nov 17), and how the period's frigates made six points with their yards at 35-40 deg. Bracing a mast's yards round with a frigate's crew at the braces about 2 deg a second (a full swing from sharp up on one tack to the other in about 35 s); setting a sail about a minute, clewing it up 20 s. Headsails, staysails and spanker: soft fore-and-aft sails of the period, flatter-cut than a yacht's (camber 0.12) and of low aspect. Windage: the spars, standing and running rigging (about 400 lines and wires, about 160 m^2 of drag area: 0.15 m^2 a metre of mast, the J-Class's measured rigging scaled by rope length) and the hull, nettings and boats above the water (120 m^2: her topsides about 250 m^2 abeam, CD 0.5 averaged over the angles)."
+ }
+}

@@ -16,7 +16,9 @@
  },
  "step": {
   "keelson_over_rabbet_ft": 3.0,
-  "note": "the lower masts step on the keelson: keel, floors and keelson about 3 ft over the rabbet (the hold slice builds them)"
+  "note": "the lower masts step on the keelson: keel, floors and keelson about 3 ft over the rabbet (the hold slice builds them)",
+  "keelson_top_m": {"fore": -3.5714, "main": -4.3978, "mizzen": -3.3241},
+  "keelson_top_note": "where each mast's axis meets the keelson's top as the orlop slice builds it (slice 14: 18 by 18 in, its top 4 ft over the rabbet amidships, riding up over the deadwood in the ends, the 1926 midship section; orlop-interface/mast_heels.json): the heel stands there. The masthead stays where lower.length_ft from the step at keelson_over_rabbet_ft puts it (the sail plan's heights), so each lower mast is that much shorter below the orlop: the fore about 0.69 m, the main 0.31 m, the mizzen 1.5 m"
  },
  "masts": {
   "fore": {
@@ -286,7 +288,8 @@
    "broad_in": 4.0,
    "thick_in": 0.6,
    "clear_of_partners_in": [-11.0, 12.0],
-   "note": "iron hoops on the made lower masts and the bowsprit; none at the spar deck's partners, from 11 in below the rig's deck line to 12 in above it (the deck, 8 in thick with its top within 2 in of that line, and its mast coat, are slice 7's: deck_1797.json)"
+   "decks_below_gun_deck_in": [86.0],
+   "note": "iron hoops on the made lower masts and the bowsprit; on a lower mast every pitch_ft from 2 ft over the step at keelson_over_rabbet_ft (the card's step: a heel standing higher on the keelson, step.keelson_top_m, only drops the hoops under it, so those above keep their places); none at any deck's partners, from 11 in below the deck's line to 12 in above it: at the spar deck the rig's deck line (the deck, 8 in thick with its top within 2 in of that line, and its mast coat, are slice 7's: deck_1797.json), at the gun deck its planking's top (the deck 4 in thick and the wedges round the mast, 3 in proud of it, are slice 12's: gundeck_1797.json), and at each deck below it, its planking's top this far under the gun deck's along the mast's line (decks_below_gun_deck_in: the berth deck's 86 in, 3.5 in thick with its wedges 3 in proud, slice 13's berthdeck_1797.json deck.top_below_gun_deck_in, which berthdeck.py holds this to)"
   }
  },
  "paint": {

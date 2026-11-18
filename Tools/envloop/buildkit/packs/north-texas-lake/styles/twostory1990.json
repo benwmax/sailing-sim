@@ -1,0 +1,180 @@
+{
+ "id": "twostory1990",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "1990s two-storey brick",
+ "about": "Rockwall and Rowlett subdivisions of the 1990s: two storeys, brick on the front and the ground floor, lap siding above on the sides and back, steep cross gables, an arch-top window over the door, colonial grilles, a siding-clad chimney chase with a metal shroud.",
+ "storeys": 2,
+ "plate_m": 2.9,
+ "roof": {
+  "type": [
+   "gable",
+   0.5,
+   "hip",
+   0.5
+  ],
+  "pitch_deg": 33.7,
+  "overhang_m": 0.3,
+  "finish": [
+   "shingle_charcoal",
+   0.45,
+   "shingle_weathered_wood",
+   0.35,
+   "shingle_barkwood",
+   0.2
+  ],
+  "galvalume_chance": 0.0
+ },
+ "wall": {
+  "front": [
+   "brick_brown",
+   0.45,
+   "brick_red",
+   0.35,
+   "brick_buff",
+   0.2
+  ],
+  "sides": "front",
+  "upper": [
+   "lap_siding",
+   1.0
+  ],
+  "upper_front": "front",
+  "gables": [
+   "lap_siding",
+   1.0
+  ],
+  "reveal_m": 0.1
+ },
+ "windows": {
+  "main": [
+   "WinSingleHung3060",
+   1.0
+  ],
+  "front_feature": [
+   "WinArchTop3060",
+   0.6,
+   "WinTwin3050",
+   0.4
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    2,
+    2
+   ],
+   0.7,
+   [
+    1,
+    1
+   ],
+   0.3
+  ],
+  "every_m": 3.2,
+  "sill_m": 0.85
+ },
+ "trim": {
+  "casing": "CasingBrickMould",
+  "sill": "SillCastStone",
+  "corner_boards": true,
+  "frieze": true
+ },
+ "door": [
+  "DoorSixPanel",
+  0.6,
+  "DoorCraftsman",
+  0.4
+ ],
+ "garage": {
+  "part": [
+   "GarageRaised16",
+   0.7,
+   "GarageRaised9",
+   0.3
+  ],
+  "where": "front_wing"
+ },
+ "shutters": {
+  "chance": 0.4,
+  "part": [
+   "ShutterPanel",
+   0.6,
+   "ShutterLouvre",
+   0.4
+  ],
+  "on": "front"
+ },
+ "chimney": {
+  "chance": 0.7,
+  "part": [
+   "ChimneyChase",
+   1.0
+  ]
+ },
+ "porch": {
+  "kind": "stoop",
+  "columns": "ColumnRound",
+  "rails": false,
+  "depth_m": 1.8,
+  "steps": 1
+ },
+ "dormers": null,
+ "foundation": "FoundationSlab",
+ "gutters": {
+  "chance": 0.9
+ },
+ "roof_vents": {
+  "turbine": [
+   0,
+   1
+  ],
+  "box": [
+   2,
+   4
+  ],
+  "stacks": [
+   2,
+   3
+  ]
+ },
+ "lights": [
+  "LightCoach",
+  1.0
+ ],
+ "ac": [
+  "ACCondenser",
+  2
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#F5F3EE",
+   "door": "#1F2A36",
+   "shutter": "#1F2A36",
+   "sash": "#F5F3EE",
+   "garage": "#F5F3EE",
+   "metal": "#F5F3EE",
+   "body": "#D9D2C2",
+   "roof": "#3C3C3C"
+  },
+  {
+   "trim": "#E6DFD0",
+   "door": "#4A2C20",
+   "shutter": "#3A3A36",
+   "sash": "#E6DFD0",
+   "garage": "#E6DFD0",
+   "metal": "#E6DFD0",
+   "body": "#D9D2C2",
+   "roof": "#3C3C3C"
+  },
+  {
+   "trim": "#D8CFC0",
+   "door": "#24402E",
+   "shutter": "#24402E",
+   "sash": "#ECE8DF",
+   "garage": "#D8CFC0",
+   "metal": "#8A7A66",
+   "body": "#D9D2C2",
+   "roof": "#3C3C3C"
+  }
+ ]
+}

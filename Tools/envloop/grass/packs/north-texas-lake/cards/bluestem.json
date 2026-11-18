@@ -1,0 +1,61 @@
+{
+ "plant": "bluestem",
+ "name": "Little bluestem bunch",
+ "latin": "Schizachyrium scoparium",
+ "where": "Prairie remnants and unmown banks on the east and north shores, park land, the dam's slopes",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra",
+  "far": "card past 60 m (Ultra to 100 m)"
+ },
+ "real": {
+  "height_m": [
+   0.45,
+   0.9
+  ],
+  "flower_stem_height_m": [
+   0.7,
+   1.1
+  ],
+  "clump_diameter_m": [
+   0.15,
+   0.3
+  ],
+  "blade_width_mm": [
+   3.0,
+   6.0
+  ],
+  "blade_length_m": [
+   0.15,
+   0.4
+  ],
+  "habit": "upright tight bunch, blades folded, flowering stems with fluffy silver-white seeds spaced along the top third in autumn; copper-red to orange when dormant (its winter look)"
+ },
+ "mesh": {
+  "names": "SM_Grass_Bluestem_0..2, _Light, _Far (two crossed cards)",
+  "blades": [
+   90,
+   130
+  ],
+  "flower_stems": [
+   8,
+   16
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 3,
+ "budget": {
+  "tris_lod0_max": 2600,
+  "tris_light_max": 700,
+  "tris_far_max": 4
+ },
+ "references": [
+  "bluestem",
+  "bluestem_winter"
+ ],
+ "colour": "grass_look.json[bluestem]",
+ "card_version": 1
+}

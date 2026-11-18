@@ -253,8 +253,8 @@ With the interface off there was no heading at all. Bean's note on the proposal:
   aqua lubber mark at twelve, north in red, a tick each 30 degrees; the heading in figures at the centre (magnetic
   where the chart has variation, as the HUD's) and the time under it.
 - **Night.** It reddens with the rest of the HUD.
-- The masthead fly on the keelboats already shows the apparent wind; a bulkhead compass on the boat itself is a
-  `Content` job (a card texture and a housing mesh) for later.
+- The masthead fly on the keelboats already shows the apparent wind; the bulkhead compass on the boat itself is
+  Phase 13.
 - Stills: `-SailingHudMode=2 -SailingWrist` holds it up (`wrist.jpg`, `wrist-night.jpg`).
 
 ## Phase 9: the faces
@@ -328,3 +328,34 @@ are unchanged. Rebuild with `Tools/venv/bin/python -I Tools/ui/make_ui_art.py`, 
 `UI_ART_ONLY=T_MiniMap scripts/import_ui_art.py`.
 A flat lying exactly on a level (a basin at 0 m, a channel dredged to a round depth) has no gradient and would fill with
 line, so the levels sit 3 cm deep. `SMiniMap`'s paper wash over the print dropped from 24% to 8%: the chart is pale already.
+
+## Phase 13: the compass on the bulkhead
+
+With the interface off a dinghy sailor has the wrist compass; a keelboat now carries her own. The kit has a bulkhead
+steering compass (`Tools/boatkit/bk_part_compass.py`): a black flanged pod standing on the bulkhead with a spherical bowl in it, a conical card on a
+pivot and three lubber lines on a wire hoop (aft, and 45 degrees either side for sitting out to windward). It is a
+generic shape with no maker's name, and it needs no texture: the card's ticks and figures are geometry in the kit's
+white plastic (the figures are B612 Bold, the HUD's instrument face, wrapped onto the card's cone), so it uses the
+materials the kit already has.
+
+- **Read from aft.** The helm sits behind the compass and reads the card's near edge, so the card is printed half a
+  turn round, as real ones are: the figure at the aft lubber line is the heading, and higher headings lie to the left.
+  A red arrow on the card's top points to its north.
+- **In the game.** Your hero J/22 carries it on the cabin's aft face to port of the companionway
+  (`KitFittings::CompassAtCm`, placed in `BuildKitFittings`). The card is a part of its own: `UpdateKitFittings` holds
+  it level and north (magnetic where the chart has variation, as the HUD's heading) while the boat turns, heels and
+  pitches round it. AI boats, the ghost and the classic J/22 model carry none.
+- **Parts.** `BulkheadCompass` (catalogue), `BulkheadCompassMount` and `BulkheadCompassCard` (the game's), and
+  `BulkheadCompassDome`: the kit's library has no clear material, so the game draws no dome yet.
+- `-SailingCompassAt=<x>,<y>,<z>` (boat frame, cm) moves it for stills. `SailingSim.Visual.KitFittings` holds the mount's
+  facing and the reading at the lubber line to the heading.
+- After a change to the part: `scripts/make-boatkit.sh`, then `scripts/import_hardware_kit.py`.
+
+## Phase 14: her name on the hull, and "J/22" kept whole
+
+- **The name.** The boat's name, typed on the Customize screen's Paint tab, is lettered on both quarters of the hero
+  J/22 in the title face: `docs/skins/README.md`, "Name on the hull".
+- **Line breaks.** Wrapped text broke "J/22" after the slash ("J/" then "22"). `SailUI::Text`, `TextOverScene` and
+  `TextAttr` now wrap with the usual line breaks less the one after a slash inside a word (`FSlashKeptLineBreaks` in
+  `SailWidgets.cpp`); a slash followed by a space still breaks.
+- Left as it is: the real-day cards' second line (date, wind, sky) runs to two lines on the fall norther's card.

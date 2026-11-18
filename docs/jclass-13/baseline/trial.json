@@ -1,0 +1,37 @@
+{
+"mass_kg": 1.535e+05, "cg": [-0.692, 0.0003645, -1.308],
+"canoe_depth_m": 2.279, "station_depth_m": 2.268,
+"design_canoe_volume_m3": 128, "design_canoe_centre": [-0.8331, -0.7466], "capsize_tilt_deg": 156.3,
+"rest": {"heel_deg": -0.9045, "pitch_deg": -0.03086, "sink_m": -0.0005638},
+"righting": [[5, 2.742e+05, 0.1822], [10, 5.455e+05, 0.3624], [15, 8.233e+05, 0.5469], [20, 1.098e+06, 0.7296], [25, 1.352e+06, 0.8978], [30, 1.585e+06, 1.053], [40, 1.898e+06, 1.261], [50, 2.067e+06, 1.373], [60, 2.134e+06, 1.418], [70, 2.203e+06, 1.463], [80, 2.329e+06, 1.547], [90, 2.247e+06, 1.492]],
+"stiffness": {"bluebonnet": {"righting_20_nm": 1.098e+06, "sail_area_m2": 786.7, "sail_centre_m": 16.79, "stiffness_pa": 83.17}, "j22": {"righting_20_nm": 4720, "sail_area_m2": 20.7, "sail_centre_m": 4.012, "stiffness_pa": 56.84}, "c30": {"righting_20_nm": 1.433e+04, "sail_area_m2": 55.42, "sail_centre_m": 5.818, "stiffness_pa": 44.43}},
+"points": [
+ {"tws": 6, "twa": 52, "spinnaker": false, "speed": 6.287, "heel": 6.975, "leeway": 2.8, "rudder": 1.969, "helm_n": 1296, "twa_sailed": 51.83, "vmg": 3.886},
+ {"tws": 6, "twa": 60, "spinnaker": false, "speed": 6.638, "heel": 6.706, "leeway": 2.32, "rudder": 2.138, "helm_n": 1545, "twa_sailed": 59.67, "vmg": 3.352},
+ {"tws": 6, "twa": 90, "spinnaker": false, "speed": 7.021, "heel": 4.126, "leeway": 1.145, "rudder": 1.988, "helm_n": 1578, "twa_sailed": 89.34, "vmg": 0.08043},
+ {"tws": 6, "twa": 120, "spinnaker": true, "speed": 6.89, "heel": 5.571, "leeway": 0.6531, "rudder": 4.67, "helm_n": 3494, "twa_sailed": 117.8, "vmg": 3.212},
+ {"tws": 6, "twa": 150, "spinnaker": true, "speed": 5.183, "heel": 1.563, "leeway": 0.604, "rudder": 3.569, "helm_n": 1490, "twa_sailed": 147.9, "vmg": 4.39},
+ {"tws": 10, "twa": 52, "spinnaker": false, "speed": 8.515, "heel": 16.03, "leeway": 2.387, "rudder": 6.367, "helm_n": 7377, "twa_sailed": 50.32, "vmg": 5.437},
+ {"tws": 10, "twa": 60, "spinnaker": false, "speed": 8.949, "heel": 16.34, "leeway": 1.881, "rudder": 6.926, "helm_n": 8815, "twa_sailed": 57.97, "vmg": 4.745},
+ {"tws": 10, "twa": 90, "spinnaker": false, "speed": 9.714, "heel": 10.42, "leeway": 0.5326, "rudder": 5.555, "helm_n": 8257, "twa_sailed": 87.91, "vmg": 0.3536},
+ {"tws": 10, "twa": 120, "spinnaker": true, "speed": 9.453, "heel": 13.63, "leeway": 0.5664, "rudder": 10.84, "helm_n": 1.522e+04, "twa_sailed": 114.8, "vmg": 3.972},
+ {"tws": 10, "twa": 150, "spinnaker": true, "speed": 8.15, "heel": 2.93, "leeway": 0.9759, "rudder": 5.025, "helm_n": 5186, "twa_sailed": 147.1, "vmg": 6.842},
+ {"tws": 16, "twa": 52, "spinnaker": false, "speed": 9.218, "heel": 25.4, "leeway": 2.064, "rudder": 12.88, "helm_n": 1.729e+04, "twa_sailed": 47.4, "vmg": 6.24},
+ {"tws": 16, "twa": 60, "spinnaker": false, "speed": 9.545, "heel": 25.15, "leeway": 1.208, "rudder": 14.66, "helm_n": 2.111e+04, "twa_sailed": 54.12, "vmg": 5.595},
+ {"tws": 16, "twa": 90, "spinnaker": false, "speed": 11.01, "heel": 18.53, "leeway": 0.6988, "rudder": 13.16, "helm_n": 2.498e+04, "twa_sailed": 83.95, "vmg": 1.161},
+ {"tws": 16, "twa": 120, "spinnaker": true, "speed": 10.95, "heel": 14.5, "leeway": 1.653, "rudder": 12.86, "helm_n": 2.388e+04, "twa_sailed": 113.5, "vmg": 4.365},
+ {"tws": 16, "twa": 150, "spinnaker": true, "speed": 11.15, "heel": 5.351, "leeway": 1.998, "rudder": 10.39, "helm_n": 2.011e+04, "twa_sailed": 143.7, "vmg": 8.981}
+],
+"beat": [
+ {"tws": 6, "twa": 38, "spinnaker": false, "speed": 5.382, "heel": 6.704, "leeway": 4.035, "rudder": 1.195, "helm_n": 625.3, "twa_sailed": 38.3, "vmg": 4.224},
+ {"tws": 10, "twa": 36, "spinnaker": false, "speed": 7.418, "heel": 17.28, "leeway": 4.302, "rudder": 5.217, "helm_n": 4679, "twa_sailed": 35.33, "vmg": 6.052},
+ {"tws": 12, "twa": 34, "spinnaker": false, "speed": 7.855, "heel": 19.06, "leeway": 4.634, "rudder": 4.823, "helm_n": 5020, "twa_sailed": 33.87, "vmg": 6.522},
+ {"tws": 16, "twa": 32, "spinnaker": false, "speed": 8.184, "heel": 25.96, "leeway": 5.724, "rudder": 6.895, "helm_n": 7522, "twa_sailed": 31.59, "vmg": 6.971}
+],
+"run": [
+ {"tws": 6, "twa": 145, "spinnaker": true, "speed": 5.517, "heel": 2.182, "leeway": 0.344, "rudder": 3.504, "helm_n": 1662, "twa_sailed": 143, "vmg": 4.408},
+ {"tws": 10, "twa": 155, "spinnaker": true, "speed": 7.755, "heel": 2.264, "leeway": 1.023, "rudder": 4.989, "helm_n": 4681, "twa_sailed": 152, "vmg": 6.848},
+ {"tws": 12, "twa": 155, "spinnaker": true, "speed": 8.894, "heel": 2.928, "leeway": 1.288, "rudder": 6.188, "helm_n": 7685, "twa_sailed": 151.3, "vmg": 7.8},
+ {"tws": 16, "twa": 170, "spinnaker": true, "speed": 10.02, "heel": 0.474, "leeway": 2.542, "rudder": 9.118, "helm_n": 1.421e+04, "twa_sailed": 163.8, "vmg": 9.623}
+]
+}

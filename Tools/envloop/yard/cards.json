@@ -1,0 +1,358 @@
+{
+ "_track": "H",
+ "_conventions": "origin on the ground at the footprint's centre, +X the front, Z up. expect = bounding box x, y, z in metres, tol 5%. Generic only: no logos, badges, plates. Per-yard colours via slots Plastic, Canvas, Paint (per-instance colour at integration).",
+ "_placement": "sparse (Bean, Oct 16 2026): by seed per lot from the houses bake, 0-4 props a lot, weighted by lot kind (lawn to the water, dock, pool). Track I writes the rule; Medium gets the dock props only.",
+ "SM_Yard_PatioTableSet": {
+  "what": "48 in round table, 4 sling chairs",
+  "expect": [
+   1.95,
+   1.95,
+   0.9
+  ],
+  "tris_max": 4000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_AdirondackPair": {
+  "what": "two poly-lumber Adirondack chairs and a side table",
+  "expect": [
+   1.3,
+   2.1,
+   1.14
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Chaise": {
+  "what": "aluminium chaise lounge with cushion, 2.0 x 0.7 m",
+  "expect": [
+   1.97,
+   0.71,
+   0.87
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_KettleGrill": {
+  "what": "22 in kettle grill",
+  "expect": [
+   0.68,
+   0.6,
+   0.99
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_GasGrill": {
+  "what": "three-burner cart gas grill with side shelves and tank",
+  "expect": [
+   0.64,
+   1.34,
+   1.21
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_UmbrellaOpen": {
+  "what": "9 ft market umbrella, open",
+  "expect": [
+   2.74,
+   2.74,
+   2.62
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_UmbrellaClosed": {
+  "what": "the same, furled",
+  "expect": [
+   0.5,
+   0.5,
+   2.5
+  ],
+  "tris_max": 1500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_FirePit": {
+  "what": "stacked limestone fire ring (1.1 m) with two benches",
+  "expect": [
+   3.75,
+   3.49,
+   0.46
+  ],
+  "tris_max": 6000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Kayak": {
+  "what": "10 ft sit-on-top kayak",
+  "expect": [
+   3.05,
+   0.76,
+   0.39
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Paddleboard": {
+  "what": "10 ft 6 in paddleboard and paddle",
+  "expect": [
+   3.2,
+   1.0,
+   0.22
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Canoe": {
+  "what": "16 ft canoe turned over on sawhorses",
+  "expect": [
+   4.9,
+   1.0,
+   1.26
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_BoatTrailer": {
+  "what": "single-axle bunk trailer for a 19-21 ft boat, empty",
+  "expect": [
+   6.43,
+   2.2,
+   1.15
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_PWCTrailer": {
+  "what": "double PWC trailer",
+  "expect": [
+   4.9,
+   2.72,
+   0.95
+  ],
+  "tris_max": 2500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_SUV": {
+  "what": "generic mid-size SUV, no badges (4.85 x 1.95 x 1.75 m class)",
+  "expect": [
+   4.94,
+   2.0,
+   1.8
+  ],
+  "tris_max": 6000,
+  "note": "build_props.py's SM_Car and SM_Pickup stay for the roads; this is the driveway car",
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_GolfCart": {
+  "what": "two-seat golf cart",
+  "expect": [
+   2.33,
+   1.24,
+   1.89
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_SwingSet": {
+  "what": "cedar swing set with fort, slide, two swings",
+  "expect": [
+   5.45,
+   2.4,
+   3.04
+  ],
+  "tris_max": 4000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Trampoline": {
+  "what": "14 ft trampoline with net",
+  "expect": [
+   4.42,
+   4.42,
+   2.72
+  ],
+  "tris_max": 3000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Flagpole": {
+  "what": "20 ft residential flagpole with a hanging flag (plain, no national flag pattern until Bean says)",
+  "expect": [
+   0.55,
+   0.5,
+   6.22
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_PoolFence": {
+  "what": "4 ft mesh pool safety fence panel, 15 ft",
+  "expect": [
+   0.034,
+   4.63,
+   1.35
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Planter": {
+  "what": "large glazed planter with a boxwood ball",
+  "expect": [
+   0.72,
+   0.7,
+   1.18
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_RaisedBed": {
+  "what": "cedar raised bed 8 x 4 ft",
+  "expect": [
+   2.44,
+   1.24,
+   0.71
+  ],
+  "tris_max": 1500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_TrashCart": {
+  "what": "96 gal wheeled refuse cart",
+  "expect": [
+   0.93,
+   0.76,
+   1.09
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Mailbox": {
+  "what": "rural mailbox on a 4x4 post (box bottom 41-45 in, USPS)",
+  "expect": [
+   0.6,
+   0.19,
+   1.32
+  ],
+  "tris_max": 500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Wheelbarrow": {
+  "what": "6 cu ft wheelbarrow",
+  "expect": [
+   1.5,
+   0.66,
+   0.67
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_HoseReel": {
+  "what": "hose reel cart",
+  "expect": [
+   0.55,
+   0.44,
+   0.87
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Cooler": {
+  "what": "70 qt marine cooler",
+  "expect": [
+   0.96,
+   0.46,
+   0.47
+  ],
+  "tris_max": 800,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_BirdBath": {
+  "what": "cast concrete bird bath",
+  "expect": [
+   0.64,
+   0.64,
+   0.74
+  ],
+  "tris_max": 800,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Bench": {
+  "what": "5 ft teak garden bench",
+  "expect": [
+   0.5,
+   1.53,
+   0.96
+  ],
+  "tris_max": 1500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_PicnicTable": {
+  "what": "6 ft picnic table with attached benches",
+  "expect": [
+   1.7,
+   1.83,
+   0.78
+  ],
+  "tris_max": 2000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_BasketballHoop": {
+  "what": "portable basketball hoop, rim 10 ft",
+  "expect": [
+   1.78,
+   1.2,
+   3.68
+  ],
+  "tris_max": 1500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_LawnMower": {
+  "what": "push lawn mower",
+  "expect": [
+   1.18,
+   0.61,
+   0.96
+  ],
+  "tris_max": 1500,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ },
+ "SM_Yard_Hammock": {
+  "what": "steel hammock stand with hammock",
+  "expect": [
+   4.66,
+   0.94,
+   1.26
+  ],
+  "tris_max": 1000,
+  "bands": "hero 0-30 m (lawn props are seen from the water at 15 m and from the club's grounds at 2-5 m); near: full mesh to 150 m; mid: dropped (too small for the house tiles)",
+  "closest_m": 2
+ }
+}

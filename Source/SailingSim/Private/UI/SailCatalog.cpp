@@ -57,6 +57,24 @@ namespace SailCatalog
 			{
 				W.Anchor = Sailing::FGeoAnchor::ForWorld(TCHAR_TO_UTF8(*W.File));
 			}
+			// The bake's docks, piers and breakwaters: the room a big boat has at each spot (LaunchSpotClearance).
+			TArray<FLakeDock> Docks;
+			const TArray<TSharedPtr<FJsonValue>>* DockValues = nullptr;
+			if (Root->TryGetArrayField(TEXT("docks"), DockValues))
+			{
+				for (const TSharedPtr<FJsonValue>& V : *DockValues)
+				{
+					const TSharedPtr<FJsonObject> O = V->AsObject();
+					const TArray<TSharedPtr<FJsonValue>>* Points = nullptr;
+					if (!O.IsValid() || !O->TryGetArrayField(TEXT("points"), Points)) continue;
+					FLakeDock& D = Docks.AddDefaulted_GetRef();
+					for (const TSharedPtr<FJsonValue>& P : *Points)
+					{
+						const TArray<TSharedPtr<FJsonValue>>& XY = P->AsArray();
+						if (XY.Num() >= 2) D.Points.Add(FVector2D(XY[0]->AsNumber(), XY[1]->AsNumber()));
+					}
+				}
+			}
 			const TArray<TSharedPtr<FJsonValue>>* Spots = nullptr;
 			if (Root->TryGetArrayField(TEXT("launch_spots"), Spots))
 			{
@@ -71,6 +89,8 @@ namespace SailCatalog
 					S.North = XY[0]->AsNumber();
 					S.East = XY[1]->AsNumber();
 					S.Heading = O->GetNumberField(TEXT("heading"));
+					O->TryGetNumberField(TEXT("depth_m"), S.DepthM);
+					S.ClearM = LaunchSpotClearance(Docks, S.North, S.East);
 					const Sailing::FLatLon Geo = W.Anchor.ToLatLon({ S.North, S.East });
 					S.Lat = FMath::RoundToDouble(Geo.LatDeg * 1e8) / 1e8;
 					S.Lon = FMath::RoundToDouble(Geo.LonDeg * 1e8) / 1e8;
@@ -197,6 +217,8 @@ namespace SailCatalog
 				{ TEXT("Trailerable trimaran"), TEXT("Folding amas and a big rig: double-digit speeds on a reach, a light touch on the helm."), 4, { TEXT("Outboard"), TEXT("Spinnaker") }, false, 14.f, 20.f },
 				{ TEXT("Cruising catamaran"), TEXT("Forty-two feet of steady platform with two engines. No heel, slow to tack, a lot of windage at the dock."), 3, { TEXT("Twin engines"), TEXT("Wheel") }, false, 16.f, 22.f },
 				{ TEXT("Racing maxi · 12 crew"), TEXT("The prologue's 100-foot offshore racer: twin wheels, three grinders, a 6 m keel and black membrane sails. Fast and heavy, and every trim is a crew job."), 5, { TEXT("Wheel"), TEXT("Grinders"), TEXT("Inboard") }, false, 18.f, 25.f },
+				{ TEXT("J-Class yacht · 1937"), TEXT("Bluebonnet, our own J-Class: 131 feet of varnish and cotton, a 157-foot mast, a wheel and thirty crew. No engine, and she needs deep water under her 15-foot keel."), 5, { TEXT("Wheel"), TEXT("Spinnaker"), TEXT("No engine") }, false, 16.f, 22.f },
+				{ TEXT("Frigate · 1797"), TEXT("Commonwealth, our own heavy frigate: 215 feet overall, three masts of square sails, a deck of 24-pounders and 450 crew. You give the orders; she tacks in minutes, not seconds, and needs deep water under her 21-foot keel."), 5, { TEXT("Square rig"), TEXT("Wheel"), TEXT("No engine") }, false, 18.f, 26.f },
 			};
 			return W[FMath::Clamp(Type, 0, int32(UE_ARRAY_COUNT(W)) - 1)];
 		}
@@ -206,6 +228,10 @@ namespace SailCatalog
 			TArray<FBoat> Out;
 			for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 			{
+				// The frigate (docs/frigate-physics/) is listed once the game draws and works her square rig: the frigate
+				// wiring turns kShipsListed on with her model, rig and orders panel.
+				constexpr bool kShipsListed = false;
+				if (IsSquareRigged(EBoatType(T)) && !kShipsListed) continue;
 				const FBoatConfig C = FBoatConfig::Make(EBoatType(T));
 				const FWords& W = Words(T);
 				FBoat B;
@@ -232,6 +258,7 @@ namespace SailCatalog
 				B.CloseHauled = Speed > 0.0 ? FString::Printf(TEXT("%.1f kn"), Speed * 12.0 / BestTws) : FString(TEXT("–"));
 				B.LengthM = float(C.LengthOverall); B.BeamM = float(C.Beam); B.WeightKg = float(C.HullRigMass + C.BallastMass);
 				B.CloseHauledKn = float(Speed * 12.0 / BestTws);
+				B.DraftM = float(C.Draft);
 				Out.Add(B);
 			}
 			return Out;
@@ -563,11 +590,30 @@ namespace SailCatalog
 	bool InSliceBoat(int32 Type)
 	{
 		using Sailing::EBoatType;
-		return !USailingSettings::SliceOnly() || Type == int32(EBoatType::J22) || Type == int32(EBoatType::Sunfish) || Type == int32(EBoatType::Catalina22);
+		// (Bluebonnet, the J-Class, joined the slice on Bean's word, Nov 17 2026: docs/jclass-14/; the frigate Commonwealth
+		// on his word the same day, listed once the game draws her: MakeBoats' kShipsListed.)
+		return !USailingSettings::SliceOnly() || Type == int32(EBoatType::J22) || Type == int32(EBoatType::Sunfish) || Type == int32(EBoatType::Catalina22)
+			|| Type == int32(EBoatType::Bluebonnet) || Type == int32(EBoatType::Commonwealth);
 	}
 
 	bool InSliceTier(const FString& TierId)
 	{
 		return !USailingSettings::SliceOnly() || TierId == TEXT("day-sailor") || TierId == TEXT("club-racer") || TierId == TEXT("coastal-cruiser");
+	}
+
+	FString DepthLockReason(int32 WorldIndex, int32 Spot, int32 BoatType)
+	{
+		const FWorld& W = World(WorldIndex);
+		const TArray<FBoat>& Fleet = Boats();
+		if (!W.Spots.IsValidIndex(Spot) || !Fleet.IsValidIndex(BoatType)) return FString();
+		const double Draft = Fleet[BoatType].DraftM, Length = Fleet[BoatType].LengthM;
+		const FSpot& Here = W.Spots[Spot];
+		if (LaunchSpotFits(Here.DepthM, Draft, Here.ClearM, Length)) return FString();
+		// (The deepest spot she fits: the start the game falls back to, ASailingGameMode::GetLaunchSpot.)
+		const FSpot* Deepest = nullptr;
+		for (const FSpot& S : W.Spots) if (LaunchSpotFits(S.DepthM, Draft, S.ClearM, Length) && (!Deepest || S.DepthM > Deepest->DepthM)) Deepest = &S;
+		const FString Need = LaunchSpotFits(Here.DepthM, Draft) ? FString::Printf(TEXT("She is %.0f m long: no room for her here."), Length)
+			: FString::Printf(TEXT("She draws %.1f m: too shallow here."), Draft);
+		return Deepest ? FString::Printf(TEXT("%s Start from %s."), *Need, *Deepest->Name) : Need;
 	}
 }

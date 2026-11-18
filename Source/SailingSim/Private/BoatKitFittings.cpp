@@ -7,6 +7,8 @@
 #include "SailboatPawn.h"
 #include "CourseMarks.h"
 #include "KitFittings.h"
+#include "BenchRunner.h"
+#include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
@@ -33,6 +35,7 @@ void ASailboatPawn::BuildKitFittings()
 {
 	// Components from the last boat went with BoatParts.
 	FlyKitMount = FlyKitVane = JibHeadShackle = nullptr;
+	CompassMount = CompassCard = nullptr;
 	JibHanks.Reset();
 	const FBoatConfig& C = Boat.GetConfig();
 	const bool bLight = bTrafficBoat || bGhost;
@@ -93,11 +96,47 @@ void ASailboatPawn::BuildKitFittings()
 			if (JibHeadShackle) JibHeadShackle->SetCullDistance(5000.f);
 		}
 	}
+	// The bulkhead compass (docs/ui-overhaul, Phase 13): with the interface off the boat herself gives the heading. On your
+	// hero J/22's cabin bulkhead, to port of the companionway (build_j22_hero.py: the aft face at CABIN_AFT -0.55 m, the
+	// opening 0.26 m either side of the centreline, the seats at 0.40 m and the cockpit's side 0.73 m out), where the helm
+	// sees it from either rail. The mount's frame is +X up the bulkhead and +Z out of it: pitched a quarter turn it faces
+	// aft. The card is a part of its own on the mount's Pivot socket.
+	const bool bHeroJ22 = C.Type == EBoatType::J22 && ModelHull && ModelHull->GetStaticMesh() && ModelHull->GetStaticMesh()->GetName().StartsWith(TEXT("SM_J22H"));
+	if (bHeroJ22 && !bTrafficBoat && !bGhost)
+	{
+		UStaticMesh* BowlMesh = KitFitMesh(TEXT("BulkheadCompassMount"), false);
+		UStaticMesh* CardMesh = BowlMesh ? KitFitMesh(TEXT("BulkheadCompassCard"), false) : nullptr;
+		if (BowlMesh && CardMesh)
+		{
+			// -SailingCompassAt=<x>,<y>,<z> (boat frame, cm) moves it for stills while its place is being settled.
+			FVector At = KitFittings::CompassAtCm();
+			FString Arg;
+			if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCompassAt="), Arg, false))
+			{
+				TArray<FString> Parts;
+				Arg.ParseIntoArray(Parts, TEXT(","));
+				if (Parts.Num() == 3) At = FVector(FCString::Atod(*Parts[0]), FCString::Atod(*Parts[1]), FCString::Atod(*Parts[2]));
+			}
+			const FRotator Facing = KitFittings::CompassFacing();
+			CompassMount = Add(BowlMesh, nullptr);
+			CompassMount->SetRelativeLocationAndRotation(At, Facing);
+			CompassCard = Add(CardMesh, nullptr);
+			CompassCard->SetRelativeLocation(At + Facing.RotateVector(KitFitSocketCm(BowlMesh, TEXT("Pivot"), FVector(0.0, 0.0, 4.4))));
+			CompassCard->SetCastShadow(false);   // inside its bowl
+		}
+	}
 	UpdateKitFittings();
 }
 
 void ASailboatPawn::UpdateKitFittings()
 {
+	// The compass card stays level and points north (magnetic where the chart has variation) while the boat turns,
+	// heels and pitches round it.
+	if (CompassCard)
+	{
+		const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		CompassCard->SetWorldRotation(FRotator(0.f, KitFittings::CompassCardYawDeg(GM ? GM->GetLake().VariationDeg : 0.0), 0.f));
+	}
 	// The fly: on the hero's FlyPivot socket (it bends with the mast; the boxes go there too when the kit vane isn't
 	// imported), else on a kit mount at the masthead. Tied up with the sails stowed the mast is the dress's: no fly.
 	const FBoatConfig& C = Boat.GetConfig();

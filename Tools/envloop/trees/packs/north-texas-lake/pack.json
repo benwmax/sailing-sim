@@ -1,0 +1,399 @@
+{
+ "id": "north-texas-lake",
+ "name": "North Texas lake shore (cross timbers on blackland clay)",
+ "about": "Lake Ray Hubbard and lakes like it: post oak and cedar elm uplands, willow and cottonwood at the water, live oaks in yards. Salt cedar is kept here for the Galveston worlds until a texas-gulf-coast pack exists.",
+ "worlds": [
+  "Lake",
+  "GalvestonBay",
+  "Gulf",
+  "TexasCoast"
+ ],
+ "cards": "cards",
+ "atlas": {
+  "name": "T_LeafAtlasD",
+  "tiles_per_side": 4,
+  "clump_tiles": [
+   12,
+   13,
+   14
+  ],
+  "winter_tiles": {
+   "PostOak": 15
+  }
+ },
+ "trees": [
+  "PostOak",
+  "LiveOak",
+  "CedarElm",
+  "Pecan",
+  "Mesquite",
+  "RedCedar",
+  "BlackWillow",
+  "Cottonwood",
+  "Sugarberry",
+  "SaltCedar"
+ ],
+ "growth": {
+  "PostOak": {
+   "limbs": [
+    4,
+    6
+   ],
+   "rise": [
+    25,
+    50
+   ],
+   "levels": 3,
+   "dens": 1.0,
+   "droop": 0.1,
+   "kind": "broad",
+   "wobble": 0.32
+  },
+  "LiveOak": {
+   "limbs": [
+    4,
+    6
+   ],
+   "rise": [
+    10,
+    28
+   ],
+   "levels": 3,
+   "dens": 1.15,
+   "droop": 0.14,
+   "kind": "broad",
+   "wobble": 0.22
+  },
+  "CedarElm": {
+   "limbs": [
+    5,
+    7
+   ],
+   "rise": [
+    55,
+    75
+   ],
+   "levels": 3,
+   "dens": 0.6,
+   "droop": 0.06,
+   "kind": "broad",
+   "wobble": 0.2
+  },
+  "Pecan": {
+   "limbs": [
+    5,
+    7
+   ],
+   "rise": [
+    40,
+    62
+   ],
+   "levels": 3,
+   "dens": 0.9,
+   "droop": 0.06,
+   "kind": "broad",
+   "wobble": 0.18
+  },
+  "Mesquite": {
+   "limbs": [
+    3,
+    4
+   ],
+   "rise": [
+    15,
+    40
+   ],
+   "levels": 3,
+   "dens": 0.35,
+   "droop": 0.22,
+   "kind": "stemmed",
+   "stems": [
+    1,
+    3
+   ],
+   "splay": [
+    18,
+    40
+   ],
+   "lean": 8,
+   "wobble": 0.45
+  },
+  "RedCedar": {
+   "kind": "cone",
+   "dens": 1.0,
+   "leader_r": 0.16
+  },
+  "BlackWillow": {
+   "limbs": [
+    5,
+    7
+   ],
+   "rise": [
+    20,
+    45
+   ],
+   "levels": 3,
+   "dens": 0.85,
+   "droop": 0.28,
+   "kind": "stemmed",
+   "stems": [
+    2,
+    3
+   ],
+   "splay": [
+    12,
+    28
+   ],
+   "lean": 24,
+   "wobble": 0.25
+  },
+  "Cottonwood": {
+   "limbs": [
+    5,
+    7
+   ],
+   "rise": [
+    40,
+    65
+   ],
+   "levels": 3,
+   "dens": 1.0,
+   "droop": 0.06,
+   "kind": "stemmed",
+   "stems": [
+    1,
+    1
+   ],
+   "splay": [
+    0,
+    3
+   ],
+   "lean": 4,
+   "wobble": 0.2
+  },
+  "Sugarberry": {
+   "limbs": [
+    4,
+    6
+   ],
+   "rise": [
+    35,
+    60
+   ],
+   "levels": 3,
+   "dens": 0.8,
+   "droop": 0.1,
+   "kind": "broad",
+   "wobble": 0.25
+  },
+  "SaltCedar": {
+   "limbs": [
+    2,
+    3
+   ],
+   "rise": [
+    55,
+    80
+   ],
+   "levels": 2,
+   "dens": 1.0,
+   "droop": 0.25,
+   "kind": "stemmed",
+   "stems": [
+    6,
+    9
+   ],
+   "splay": [
+    15,
+    40
+   ],
+   "lean": 5,
+   "wobble": 0.25
+  }
+ },
+ "bank_species": [
+  "BlackWillow",
+  "CedarElm",
+  "Cottonwood",
+  "Pecan",
+  "PostOak",
+  "Sugarberry"
+ ],
+ "shrubs": {
+  "Shrub_0": {
+   "card": "Yaupon",
+   "height_m": [
+    2.6,
+    3.4
+   ],
+   "growth": {
+    "limbs": [
+     2,
+     3
+    ],
+    "rise": [
+     45,
+     75
+    ],
+    "levels": 2,
+    "dens": 1.6,
+    "droop": 0.12,
+    "kind": "stemmed",
+    "stems": [
+     6,
+     8
+    ],
+    "splay": [
+     10,
+     30
+    ],
+    "lean": 0
+   }
+  },
+  "Shrub_1": {
+   "card": "Yaupon",
+   "height_m": [
+    2.0,
+    2.8
+   ],
+   "growth": {
+    "limbs": [
+     2,
+     3
+    ],
+    "rise": [
+     35,
+     65
+    ],
+    "levels": 2,
+    "dens": 1.6,
+    "droop": 0.15,
+    "kind": "stemmed",
+    "stems": [
+     5,
+     7
+    ],
+    "splay": [
+     15,
+     35
+    ],
+    "lean": 0
+   }
+  },
+  "Shrub_2": {
+   "card": "Dogwood",
+   "height_m": [
+    1.6,
+    2.2
+   ],
+   "growth": {
+    "limbs": [
+     2,
+     3
+    ],
+    "rise": [
+     25,
+     55
+    ],
+    "levels": 2,
+    "dens": 1.4,
+    "droop": 0.2,
+    "kind": "stemmed",
+    "stems": [
+     6,
+     9
+    ],
+    "splay": [
+     25,
+     50
+    ],
+    "lean": 0
+   }
+  },
+  "Shrub_3": {
+   "card": "Dogwood",
+   "height_m": [
+    0.9,
+    1.3
+   ],
+   "growth": {
+    "limbs": [
+     2,
+     2
+    ],
+    "rise": [
+     15,
+     40
+    ],
+    "levels": 1,
+    "dens": 1.8,
+    "droop": 0.25,
+    "kind": "stemmed",
+    "stems": [
+     7,
+     10
+    ],
+    "splay": [
+     35,
+     60
+    ],
+    "lean": 0
+   }
+  },
+  "Sapling_0": {
+   "card": "CedarElm",
+   "height_m": [
+    3.6,
+    4.4
+   ],
+   "growth": {
+    "limbs": [
+     4,
+     5
+    ],
+    "rise": [
+     50,
+     70
+    ],
+    "levels": 2,
+    "dens": 1.0,
+    "droop": 0.05,
+    "kind": "stemmed",
+    "stems": [
+     1,
+     1
+    ],
+    "splay": [
+     0,
+     4
+    ],
+    "lean": 2
+   }
+  },
+  "Sapling_1": {
+   "card": "RedCedar",
+   "height_m": [
+    2.3,
+    2.7
+   ],
+   "growth": {
+    "kind": "cone",
+    "dens": 0.35,
+    "leader_r": 0.05
+   }
+  }
+ },
+ "placement": {
+  "PostOak": "upland, lawns and woods off the water; the commonest big tree",
+  "CedarElm": "everywhere on clay; banks, yards, creek mouths",
+  "LiveOak": "yards and the club (planted); a few on limestone banks",
+  "Pecan": "bottomland within 300 m of a creek mouth, ground under 4 m above pool; old homesteads",
+  "Mesquite": "dry, open, unmown ground away from houses (cover map grass/pasture), slope under 10 %",
+  "RedCedar": "fence lines, banks, wood edges",
+  "BlackWillow": "ground under 2.5 m above pool within 15 m of the water",
+  "Cottonwood": "low ground by the water and creek bottoms",
+  "Sugarberry": "fence rows, creek banks, wood edges",
+  "SaltCedar": "Galveston worlds only: under 2 m above MLLW",
+  "third_model": "bank form where the ground drops to the water within 3 m, else open-grown on lawns"
+ }
+}

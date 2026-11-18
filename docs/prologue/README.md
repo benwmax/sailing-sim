@@ -244,8 +244,9 @@ and `sections.json`, copied here) and here as a physics class, `EBoatType::Maxi`
 - **Engine:** 150 hp diesel, 13 kN of bollard pull.
 - **The estimated polar** (`FleetReferencePolar`, `Tools/boats/maxi/estimate_polar.py`): no published polar, so the
   Catalina 30's and the J/22's ORC polars are scaled to her by Froude number, sail area / displacement and Reynolds
-  number and averaged; the same scaling from the Catalina 30 lands within 4% of the J/22's own polar on average (17% at
-  worst), and the maxi is far outside the fleet (displacement-length 43), so the tolerance is 30%. `scripts/polar.sh
+  number and averaged; the same scaling from the Catalina 30 lands 10% under the J/22's own polar on average (20% at
+  worst; the 4% first quoted here counted the J/22's jib twice, fixed Nov 16 2026), and the maxi is far outside the
+  fleet (displacement-length 43), so the tolerance is 30%. `scripts/polar.sh
   --boat maxi` sails it, `--scenarios` runs the heavy-air tacks and the gust.
 - **The scene's assisted limits:** `FSceneLimits` (`EasyAssists.h`): a 35 deg heel cap (FEasyAssists' righting assist),
   the rudders keeping three quarters of the grip they lose to ventilation, yaw damped twice as hard. The pawn applies it

@@ -1,0 +1,268 @@
+{
+ "pack": "north-texas-lake",
+ "about": "Track B region pack: everything about grass that is specific to a North Texas reservoir (Lake Ray Hubbard). The shapes in grass_geo.py are generic archetypes; this file says which plants this region has, built from which archetype with which numbers, their colours (look.json), cards (cards/), and how they grow on a bank (stand, bank_mix). Another region is a new folder beside this one; no code changes. Ground colours come from Track A's pack of the same name.",
+ "ground_pack": "north-texas-lake (Track A, Tools/envloop/ground)",
+ "meshes": [
+  {
+   "name": "SM_Grass_Lawn_{i}",
+   "card": "lawn_bermuda",
+   "archetype": "mown_tile",
+   "kind": "hero",
+   "seed": 100,
+   "variants": 4,
+   "args": {
+    "blades": 230
+   }
+  },
+  {
+   "name": "SM_Grass_Lawn_Light",
+   "card": "lawn_bermuda",
+   "archetype": "mown_tile",
+   "kind": "light",
+   "seed": 150,
+   "args": {
+    "blades": 80,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Grass_Rough_{i}",
+   "card": "lawn_rough",
+   "archetype": "rough_tile",
+   "kind": "hero",
+   "seed": 200,
+   "variants": 3,
+   "args": {
+    "blades": 220,
+    "stalks": 14
+   }
+  },
+  {
+   "name": "SM_Grass_Rough_Light",
+   "card": "lawn_rough",
+   "archetype": "rough_tile",
+   "kind": "light",
+   "seed": 250,
+   "args": {
+    "blades": 70,
+    "stalks": 8,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Grass_Bluestem_{i}",
+   "card": "bluestem",
+   "archetype": "fine_bunch",
+   "kind": "hero",
+   "seed": 300,
+   "variants": 3,
+   "args": {
+    "blades": 150,
+    "stems": 8
+   }
+  },
+  {
+   "name": "SM_Grass_Bluestem_Light",
+   "card": "bluestem",
+   "archetype": "fine_bunch",
+   "kind": "light",
+   "seed": 350,
+   "args": {
+    "blades": 90,
+    "stems": 6,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Grass_Switch_{i}",
+   "card": "switchgrass",
+   "archetype": "panicle_clump",
+   "kind": "hero",
+   "seed": 400,
+   "variants": 3,
+   "args": {
+    "stems": 22,
+    "panicles": 10
+   }
+  },
+  {
+   "name": "SM_Grass_Switch_Light",
+   "card": "switchgrass",
+   "archetype": "panicle_clump",
+   "kind": "light",
+   "seed": 450,
+   "args": {
+    "stems": 16,
+    "panicles": 0,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Grass_Johnson_{i}",
+   "card": "johnsongrass",
+   "archetype": "broadleaf_cane",
+   "kind": "hero",
+   "seed": 500,
+   "variants": 2,
+   "args": {
+    "stems": 8
+   }
+  },
+  {
+   "name": "SM_Grass_Johnson_Light",
+   "card": "johnsongrass",
+   "archetype": "broadleaf_cane",
+   "kind": "light",
+   "seed": 550,
+   "args": {
+    "stems": 7,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Grass_Sedge_{i}",
+   "card": "sedge",
+   "archetype": "tussock",
+   "kind": "hero",
+   "seed": 600,
+   "variants": 3,
+   "args": {
+    "blades": 110
+   }
+  },
+  {
+   "name": "SM_Grass_Sedge_Light",
+   "card": "sedge",
+   "archetype": "tussock",
+   "kind": "light",
+   "seed": 650,
+   "args": {
+    "blades": 60,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Weed_Horseweed_{i}",
+   "card": "horseweed",
+   "archetype": "stalk_weed",
+   "kind": "hero",
+   "seed": 700,
+   "variants": 2,
+   "args": {
+    "leaves": 110
+   }
+  },
+  {
+   "name": "SM_Weed_Horseweed_Light",
+   "card": "horseweed",
+   "archetype": "stalk_weed",
+   "kind": "light",
+   "seed": 750,
+   "args": {
+    "leaves": 110,
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Weed_Dandelion",
+   "card": "lawn_weeds",
+   "archetype": "lobed_rosette",
+   "kind": "hero",
+   "seed": 800
+  },
+  {
+   "name": "SM_Weed_Clover",
+   "card": "lawn_weeds",
+   "archetype": "trefoil_patch",
+   "kind": "hero",
+   "seed": 810
+  },
+  {
+   "name": "SM_Weed_Plantain",
+   "card": "lawn_weeds",
+   "archetype": "broad_rosette",
+   "kind": "hero",
+   "seed": 820
+  },
+  {
+   "name": "SM_Weed_Dandelion_Light",
+   "card": "lawn_weeds",
+   "archetype": "lobed_rosette",
+   "kind": "light",
+   "seed": 800,
+   "args": {
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Weed_Clover_Light",
+   "card": "lawn_weeds",
+   "archetype": "trefoil_patch",
+   "kind": "light",
+   "seed": 810,
+   "args": {
+    "light": true
+   }
+  },
+  {
+   "name": "SM_Weed_Plantain_Light",
+   "card": "lawn_weeds",
+   "archetype": "broad_rosette",
+   "kind": "light",
+   "seed": 820,
+   "args": {
+    "light": true
+   }
+  }
+ ],
+ "far": {
+  "atlas": [
+   "bluestem",
+   "switchgrass",
+   "johnsongrass",
+   "sedge",
+   "lawn_rough",
+   "horseweed"
+  ],
+  "source": {
+   "bluestem": "SM_Grass_Bluestem_0",
+   "switchgrass": "SM_Grass_Switch_0",
+   "johnsongrass": "SM_Grass_Johnson_0",
+   "sedge": "SM_Grass_Sedge_0",
+   "lawn_rough": "SM_Grass_Rough_0",
+   "horseweed": "SM_Weed_Horseweed_0"
+  }
+ },
+ "bands": {
+  "hero_m": 30,
+  "lawn_hero_m": 8,
+  "lawn_light_m": 20,
+  "High": {
+   "light": 60,
+   "far": 150
+  },
+  "Ultra": {
+   "light": 100,
+   "far": 200
+  }
+ },
+ "stand": {
+  "vigour_seed": 41,
+  "scale_low": 0.8,
+  "scale_high": 1.25,
+  "density_low": 0.9,
+  "density_high": 1.0,
+  "top_shrink": 0.15,
+  "gap_below": 0.03
+ },
+ "bank_mix": {
+  "_about": "which bunch grass grows where on an unmown bank, from two smooth patch fields f and g (0..1) and the height up the bank",
+  "switchgrass": "g > 0.66",
+  "johnsongrass": "f < 0.32 and g < 0.5",
+  "horseweed": "3 percent of the rest",
+  "sedge": "lowest 2 m of the bank where f < 0.5",
+  "bluestem": "everything else",
+  "water_edge": "sedge, three rows, bare clay where the edge field is low"
+ },
+ "lawn_weeds_share": 0.025
+}

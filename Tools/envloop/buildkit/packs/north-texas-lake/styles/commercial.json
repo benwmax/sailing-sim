@@ -1,0 +1,122 @@
+{
+ "id": "commercial",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "Plain commercial",
+ "about": "Marinas' offices, bait shops and the strip by the bridges: one storey, buff brick or tan stucco, flat roof behind a parapet with coping, bronze storefront glass, wall-pack lights, units on the roof.",
+ "storeys": 1,
+ "plate_m": 3.6,
+ "roof": {
+  "type": [
+   "flat",
+   1.0
+  ],
+  "pitch_deg": 0.0,
+  "overhang_m": 0.0,
+  "finish": [
+   "membrane_flat",
+   1.0
+  ],
+  "galvalume_chance": 0.5
+ },
+ "wall": {
+  "front": [
+   "brick_buff",
+   0.5,
+   "stucco",
+   0.5
+  ],
+  "sides": "front",
+  "upper": "same",
+  "gables": "front",
+  "reveal_m": 0.08
+ },
+ "windows": {
+  "main": [
+   "WinSlider6040",
+   1.0
+  ],
+  "front_feature": [
+   "WinPicture6050",
+   1.0
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    1,
+    1
+   ],
+   1.0
+  ],
+  "every_m": 4.5,
+  "sill_m": 0.6
+ },
+ "trim": {
+  "casing": "none",
+  "sill": "none",
+  "corner_boards": false,
+  "frieze": false,
+  "parapet": true
+ },
+ "door": [
+  "DoorPatioSlider",
+  1.0
+ ],
+ "garage": null,
+ "shutters": null,
+ "chimney": null,
+ "porch": {
+  "kind": "canopy",
+  "depth_m": 1.2,
+  "steps": 0
+ },
+ "dormers": null,
+ "foundation": "FoundationSlab",
+ "gutters": {
+  "chance": 0.0
+ },
+ "roof_vents": {
+  "turbine": [
+   0,
+   0
+  ],
+  "box": [
+   0,
+   0
+  ],
+  "stacks": [
+   1,
+   2
+  ]
+ },
+ "lights": [
+  "LightCylinder",
+  1.0
+ ],
+ "ac": [
+  "ACCondenser",
+  1
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#6E5A46",
+   "door": "#2A221C",
+   "shutter": "#2A221C",
+   "sash": "#2A221C",
+   "garage": "#E2DACB",
+   "metal": "#6E5A46",
+   "body": "#CDBFA6",
+   "roof": "#7A7A76"
+  },
+  {
+   "trim": "#E9E4D8",
+   "door": "#3B3B3B",
+   "shutter": "#3B3B3B",
+   "sash": "#3B3B3B",
+   "garage": "#E9E4D8",
+   "metal": "#9A9A96",
+   "body": "#CDBFA6",
+   "roof": "#7A7A76"
+  }
+ ]
+}

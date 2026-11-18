@@ -1,0 +1,183 @@
+{
+ "id": "farmhouse",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "Stone and metal-roof farmhouse",
+ "about": "Newer lake builds (2015 on): limestone and white board and batten, a steep standing-seam metal roof, black windows with simple grids, a full-width front porch on cedar posts, a carriage garage, gooseneck lights, gable dormers.",
+ "storeys": 1,
+ "plate_m": 3.0,
+ "roof": {
+  "type": [
+   "gable",
+   1.0
+  ],
+  "pitch_deg": 39.8,
+  "overhang_m": 0.35,
+  "finish": [
+   "metal_seam",
+   0.6,
+   "shingle_charcoal",
+   0.4
+  ],
+  "galvalume_chance": 0.4
+ },
+ "wall": {
+  "front": [
+   "board_batten",
+   0.6,
+   "limestone",
+   0.4
+  ],
+  "sides": [
+   "board_batten",
+   1.0
+  ],
+  "upper": "same",
+  "gables": [
+   "board_batten",
+   1.0
+  ],
+  "wainscot": [
+   "limestone",
+   0.5
+  ],
+  "reveal_m": 0.03
+ },
+ "windows": {
+  "main": [
+   "WinSingleHung3060",
+   0.7,
+   "WinCasement2470",
+   0.3
+  ],
+  "front_feature": [
+   "WinTwin3050",
+   1.0
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    2,
+    2
+   ],
+   0.6,
+   [
+    1,
+    1
+   ],
+   0.4
+  ],
+  "every_m": 3.0,
+  "sill_m": 0.75,
+  "sash_override": "#1B1B1B"
+ },
+ "trim": {
+  "casing": "CasingFlat",
+  "sill": "none",
+  "corner_boards": true,
+  "frieze": true
+ },
+ "door": [
+  "DoorPlankGlass",
+  1.0
+ ],
+ "garage": {
+  "part": [
+   "GarageCarriage16",
+   0.6,
+   "GarageCarriage9",
+   0.4
+  ],
+  "where": "front_wing"
+ },
+ "shutters": {
+  "chance": 0.35,
+  "part": [
+   "ShutterBoard",
+   1.0
+  ],
+  "on": "front"
+ },
+ "chimney": {
+  "chance": 0.5,
+  "part": [
+   "ChimneyBrick",
+   1.0
+  ],
+  "finish": "limestone"
+ },
+ "porch": {
+  "kind": "full",
+  "columns": "PostCedar",
+  "rails": false,
+  "depth_m": 2.4,
+  "steps": 1,
+  "roof": "metal_seam"
+ },
+ "dormers": {
+  "chance": 0.5,
+  "part": "DormerGable",
+  "count": [
+   2,
+   2
+  ]
+ },
+ "foundation": "FoundationSlab",
+ "gutters": {
+  "chance": 0.6
+ },
+ "roof_vents": {
+  "turbine": [
+   0,
+   0
+  ],
+  "box": [
+   0,
+   0
+  ],
+  "stacks": [
+   1,
+   2
+  ]
+ },
+ "lights": [
+  "LightGooseneck",
+  1.0
+ ],
+ "ac": [
+  "ACCondenser",
+  1
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#F6F5F0",
+   "door": "#4B3020",
+   "shutter": "#2B2B2B",
+   "sash": "#1B1B1B",
+   "garage": "#5E4430",
+   "metal": "#1B1B1B",
+   "body": "#F4F3EE",
+   "roof": "#2B2B2B"
+  },
+  {
+   "trim": "#EDEDE8",
+   "door": "#1B1B1B",
+   "shutter": "#1B1B1B",
+   "sash": "#1B1B1B",
+   "garage": "#1B1B1B",
+   "metal": "#1B1B1B",
+   "body": "#F4F3EE",
+   "roof": "#2B2B2B"
+  },
+  {
+   "trim": "#E3E1D8",
+   "door": "#6E4B32",
+   "shutter": "#4D5A52",
+   "sash": "#222222",
+   "garage": "#E3E1D8",
+   "metal": "#222222",
+   "body": "#F4F3EE",
+   "roof": "#2B2B2B"
+  }
+ ]
+}

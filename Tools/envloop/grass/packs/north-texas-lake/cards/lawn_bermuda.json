@@ -1,0 +1,54 @@
+{
+ "plant": "lawn_bermuda",
+ "name": "Mown bermuda lawn",
+ "latin": "Cynodon dactylon",
+ "where": "Club lawn, every mown residential lawn down to the bank; the commonest ground cover on the lake",
+ "bands": {
+  "hero": "blades 0 to 20 m (High and Ultra)",
+  "near": "ground texture only (Track A)",
+  "medium_tier": "none: Track A's texture"
+ },
+ "real": {
+  "mown_height_m": [
+   0.04,
+   0.06
+  ],
+  "blade_length_m": [
+   0.025,
+   0.06
+  ],
+  "blade_width_mm": [
+   1.5,
+   3.0
+  ],
+  "habit": "fine flat leaves from creeping stolons, many blades lying over; mowing leaves cut, square tips on half the blades; runners visible at edges and thin spots"
+ },
+ "mesh": {
+  "names": "SM_Grass_Lawn_0..3 (0.5 m square tiles), SM_Grass_Lawn_Light (a third of the blades, for 8 to 20 m)",
+  "tile_m": 0.5,
+  "blades": [
+   200,
+   260
+  ],
+  "light_blades": [
+   70,
+   90
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 4,
+ "budget": {
+  "tris_lod0_max": 900,
+  "tris_light_max": 300
+ },
+ "references": [
+  "bermuda",
+  "bermuda_dormant",
+  "lawn_close"
+ ],
+ "colour": "grass_look.json[lawn_bermuda]",
+ "card_version": 1
+}

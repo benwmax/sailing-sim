@@ -1,0 +1,60 @@
+{
+ "plant": "switchgrass",
+ "name": "Switchgrass clump",
+ "latin": "Panicum virgatum",
+ "where": "Damp bank tops and low ground near coves, roadsides by the bridges",
+ "bands": {
+  "hero": "0 to 30 m",
+  "near": "to 60 m High, 100 m Ultra",
+  "far": "card past 60 m"
+ },
+ "real": {
+  "height_m": [
+   1.0,
+   1.8
+  ],
+  "clump_diameter_m": [
+   0.3,
+   0.6
+  ],
+  "blade_width_mm": [
+   6.0,
+   12.0
+  ],
+  "blade_length_m": [
+   0.3,
+   0.6
+  ],
+  "panicle_m": [
+   0.25,
+   0.5
+  ],
+  "habit": "tall upright stems, leaves arching out, an airy open panicle of tiny seeds that looks like a haze above the clump; straw gold when dormant"
+ },
+ "mesh": {
+  "names": "SM_Grass_Switch_0..2, _Light, _Far",
+  "stems": [
+   18,
+   28
+  ],
+  "panicles": [
+   8,
+   14
+  ]
+ },
+ "seasons": [
+  "summer",
+  "dormant"
+ ],
+ "variants_min": 3,
+ "budget": {
+  "tris_lod0_max": 3500,
+  "tris_light_max": 900,
+  "tris_far_max": 4
+ },
+ "references": [
+  "switch"
+ ],
+ "colour": "grass_look.json[switchgrass]",
+ "card_version": 1
+}

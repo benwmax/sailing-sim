@@ -1,0 +1,149 @@
+{
+ "id": "modern",
+ "_about": "Weights are relative; a house picks by its seed. Palettes are sRGB hex per paint role (slots.json). Sizes in metres.",
+ "name": "Modern",
+ "about": "Recent infill on the lake's waterfront lots: white stucco boxes with cedar-toned or dark board accents, low shed or flat roofs, tall black casements and big fixed glass, a pivot door, flush garage with a row of lites, cylinder lights, no shutters.",
+ "storeys": 2,
+ "plate_m": 3.0,
+ "roof": {
+  "type": [
+   "shed",
+   0.6,
+   "flat",
+   0.4
+  ],
+  "pitch_deg": 10.0,
+  "overhang_m": 0.6,
+  "finish": [
+   "metal_seam",
+   0.6,
+   "membrane_flat",
+   0.4
+  ],
+  "galvalume_chance": 0.3
+ },
+ "wall": {
+  "front": [
+   "stucco",
+   0.7,
+   "board_batten",
+   0.3
+  ],
+  "sides": [
+   "stucco",
+   1.0
+  ],
+  "upper": [
+   "board_batten",
+   0.5,
+   "stucco",
+   0.5
+  ],
+  "gables": "front",
+  "reveal_m": 0.05
+ },
+ "windows": {
+  "main": [
+   "WinCasement2470",
+   0.7,
+   "WinPicture6050",
+   0.3
+  ],
+  "front_feature": [
+   "WinPicture6050",
+   1.0
+  ],
+  "bath": "WinSmall2030",
+  "grid": [
+   [
+    1,
+    1
+   ],
+   1.0
+  ],
+  "every_m": 2.6,
+  "sill_m": 0.45,
+  "sash_override": "#141414"
+ },
+ "trim": {
+  "casing": "none",
+  "sill": "none",
+  "corner_boards": false,
+  "frieze": false,
+  "parapet": true
+ },
+ "door": [
+  "DoorPivotModern",
+  1.0
+ ],
+ "garage": {
+  "part": [
+   "GarageFlush16",
+   1.0
+  ],
+  "where": "front_wing"
+ },
+ "shutters": null,
+ "chimney": {
+  "chance": 0.3,
+  "part": [
+   "ChimneyFlue",
+   1.0
+  ]
+ },
+ "porch": {
+  "kind": "canopy",
+  "depth_m": 1.4,
+  "steps": 0
+ },
+ "dormers": null,
+ "foundation": "FoundationSlab",
+ "gutters": {
+  "chance": 0.0
+ },
+ "roof_vents": {
+  "turbine": [
+   0,
+   0
+  ],
+  "box": [
+   0,
+   0
+  ],
+  "stacks": [
+   0,
+   1
+  ]
+ },
+ "lights": [
+  "LightCylinder",
+  1.0
+ ],
+ "ac": [
+  "ACCondenser",
+  2
+ ],
+ "meters": true,
+ "palettes": [
+  {
+   "trim": "#141414",
+   "door": "#7A5236",
+   "shutter": "#141414",
+   "sash": "#141414",
+   "garage": "#3A3A3A",
+   "metal": "#141414",
+   "body": "#ECEBE6",
+   "roof": "#2A2A2A"
+  },
+  {
+   "trim": "#2A2A2A",
+   "door": "#2A2A2A",
+   "shutter": "#2A2A2A",
+   "sash": "#141414",
+   "garage": "#8A6A4C",
+   "metal": "#2A2A2A",
+   "body": "#ECEBE6",
+   "roof": "#2A2A2A"
+  }
+ ]
+}

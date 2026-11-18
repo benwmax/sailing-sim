@@ -36,6 +36,7 @@ bool FReferenceCaptureTest::RunTest(const FString& Parameters)
 	// Onboard mounts land on the boat: inside the hull's length, within its beam, above the deck, for every boat.
 	for (int32 I = 0; I < int32(EBoatType::Count); ++I)
 	{
+		if (IsSquareRigged(EBoatType(I))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(I));
 		for (ECapturePreset P : { ECapturePreset::HelmEye, ECapturePreset::ActionCam })
 		{

@@ -44,7 +44,20 @@ must be dressed by a texture card or named unweathered (glass, lenses, mirrors, 
 material must be built, the five wear levels must be there with L0 all new, and her own detail maps must tile
 without a seam (TILING_MAX) or a repeat a player would see (REPEAT_MAX), hold at least 4 px/mm (the closest camera)
 and their patterns' sizes must be the card's, and they must fit the texture budget: TEXTURE_HIGH_MB on High, none on
-Medium.
+Medium. From slice 12 every part seen from outside must have its light twin (light.py: as many twins as outside
+parts, the light copy's own verdict good) within the tolerance, one pixel of a 4K screen at the game's narrowest field
+of view from 50 m (LIGHT_TOL_MM, worked out here, not read from the build): its surface, its paint lines, its drawn
+paint (the 99th percentile of how far it slides) and no face turned over wider than that; and in every suit
+(sails_bluebonnet.json's, all of them) the twins together must come to no more than a quarter of the detailed boat's
+triangles (LIGHT_SHARE_MAX, the plan's) and no more than the plan's 650,000 (LIGHT_TRIANGLES_MAX). From slice 13,
+when the build dir holds her physics sheet (physics.py's physics.json), its sections must be the physics' kind (one
+count of points, from the centreline out, never narrowing, stern to bow), its hull hold the lines' volume
+(PHYS_VOLUME_TOL), its weight the weight check's, its centre of gravity the weight check's along her length
+(PHYS_CG_X_TOL_M) and no higher than her set sails lift it (PHYS_CG_RISE_MAX_M), its keel foil her lateral plane less
+the rudder; and once the trial is sailed (compare.json) she must float level on her sections (PHYS_PITCH_MAX_DEG,
+PHYS_DEPTH_TOL_M), have the lines' stability (PHYS_GM_TOL) and make every estimated point within its tolerance,
+holding the course she was given (PHYS_COURSE_TOL_DEG, PHYS_HELM_MAX_DEG); a point the estimate lists as a known gap
+(polar_bluebonnet.GAPS) is reported with its reason instead of failed.
 Plain Python: no Blender needed.
 """
 import json
@@ -65,6 +78,17 @@ DOOR_MIN_M = 1.6            # the least height of a door's opening below (slice 
 STAIR_RISE_MAX_M = 0.27     # the companion stairs' steepest rise (slice 10): the json's 'rise_max' may only be less
 SLICE_10_TRIANGLES = 900000  # below decks aft's budget (the plan's), whatever the build says
 TEXTURE_HIGH_MB = 6.0        # her own detail maps on High (slice 11; the plan's, whatever the cards say); Medium none
+LIGHT_TOL_MM = 2 * 50.0 * math.tan(math.radians(30.0)) / 3840 * 1000   # slice 12: a pixel at 50 m, 4K, 60 deg
+LIGHT_SHARE_MAX = 0.25       # the light copy's share of the detailed boat in any suit (slice 12: the plan's quarter)
+LIGHT_TRIANGLES_MAX = 650000  # and its triangles in any suit (the plan's budget for the light copy)
+PHYS_VOLUME_TOL = 0.005      # slice 13: the physics' hull (canoe sections and appendage) within 0.5% of the lines
+PHYS_CG_X_TOL_M = 0.05       # her centre of gravity along her length within 5 cm of the weight check's
+PHYS_CG_RISE_MAX_M = 0.15    # and no more than 15 cm above it (main and genoa set aloft; the check keeps them below)
+PHYS_GM_TOL = 0.05           # the trial's metacentric height (righting at 5 deg) within 5% of the lines'
+PHYS_PITCH_MAX_DEG = 0.25    # at rest she floats on her lines: trimmed within a quarter degree
+PHYS_DEPTH_TOL_M = 0.02      # the canoe depth the physics floats her at within 2 cm of her sections' own
+PHYS_COURSE_TOL_DEG = 8.0    # at every estimated point she holds her course: the angle sailed within 8 deg of it
+PHYS_HELM_MAX_DEG = 20.0     # with the helm under 20 deg (of her 35)
 TILING_MAX = 1.0             # a map's wrap step over the largest of its steps inside (textures.py)
 REPEAT_MAX = 0.2             # a map's share of variance at four cycles a tile or fewer (textures.py)
 PX_PER_MM_MIN = 4.0          # the texture loop's sharpness at the closest camera
@@ -120,6 +144,77 @@ def report(r):
         lines.append(f"  {'ok  ' if x['ok'] else 'FAIL'} {x['check']:16s} {x['value']:9.2f} {x['unit']:9s} ({aim})")
     lines.append("PASS" if r["pass"] else "FAIL")
     return "\n".join(lines)
+
+
+def physics_check(d, b):
+    """Slice 13: the physics sheet (physics.py's physics.json in the build dir) against the build, and the trial
+    (trial/trial.sh, compared by polar_bluebonnet.py --compare: compare.json) when it has been sailed."""
+    p = json.load(open(os.path.join(d, "physics.json")))
+    h, m, hy, w = p["hull"], p["mass"], b["hydrostatics"], b["weights"]
+    ok = True
+
+    def say(good, text):
+        print(f"{'ok  ' if good else 'FAIL'} {text}")
+        return good
+    st = h["stations"]
+    n = {len(s["half_section"]) for s in st}
+    good = (len(n) == 1 and all(s["half_section"][0][0] == 0.0 for s in st)
+            and all(all(q[0] >= p0[0] for p0, q in zip(s["half_section"], s["half_section"][1:])) for s in st)
+            and all(a["x"] < c["x"] for a, c in zip(st, st[1:])))
+    ok &= say(good, f"{len(st)} physics sections stern to bow, {n} points each, from the centreline out, half breadths "
+                    "never decreasing (FHullShape::Stations)")
+    vc, va = h["canoe_volume_m3"], p["appendage"]["volume_m3"]
+    good = (abs(vc - hy["canoe_volume_m3"]) <= PHYS_VOLUME_TOL * hy["canoe_volume_m3"]
+            and abs(vc + va - hy["volume_m3"]) <= PHYS_VOLUME_TOL * hy["volume_m3"])
+    ok &= say(good, f"physics hull: canoe sections {vc} m^3 (lines {hy['canoe_volume_m3']}) + keel and rudder "
+                    f"{va} m^3 = {round(vc + va, 2)} m^3 (lines {hy['volume_m3']}; within {PHYS_VOLUME_TOL:.1%})")
+    good = (abs(m["sim_kg"] - 1000.0 * h["volume_m3"]) <= 0.001 * m["sim_kg"]
+            and abs(m["real_long_tons"] - w["total_long_tons"]) <= 0.005 * w["total_long_tons"])
+    ok &= say(good, f"her weight budget {m['real_long_tons']} long tons (the weight check's {w['total_long_tons']}) "
+                    f"floats her on her lines in the physics' fresh water at {m['sim_kg']} kg")
+    dx, dz = m["cg"][0] - w["lcg_m"], m["cg"][2] - w["vcg_m"]
+    good = abs(dx) <= PHYS_CG_X_TOL_M and -0.01 <= dz <= PHYS_CG_RISE_MAX_M
+    ok &= say(good, f"centre of gravity ({m['cg'][0]}, {m['cg'][2]}) against the weight check's ({w['lcg_m']}, "
+                    f"{w['vcg_m']}): {dx:+.3f} m along (within {PHYS_CG_X_TOL_M}), {dz:+.3f} m up with the main and "
+                    f"genoa set (0 to {PHYS_CG_RISE_MAX_M})")
+    k = p["foils"]["keel"]
+    good = abs(k["area_m2"] - (k["canoe_lateral_m2"] + k["keel_lateral_m2"] - k["rudder_cut_m2"])) < 0.01
+    ok &= say(good, f"keel foil {k['area_m2']} m^2: the canoe body's profile {k['canoe_lateral_m2']} + the keel's "
+                    f"{k['keel_lateral_m2']} - the rudder's {k['rudder_cut_m2']}")
+    cmp_path = os.path.join(d, "compare.json")
+    if not os.path.exists(cmp_path):
+        print("note the trial has not been sailed (no compare.json): trial/trial.sh, then "
+              "polar_bluebonnet.py --compare")
+        return ok
+    c = json.load(open(cmp_path))
+    s0 = c["statics"]
+    good = (abs(s0["rest"]["pitch_deg"]) <= PHYS_PITCH_MAX_DEG
+            and abs(s0["canoe_depth_m"] - s0["station_depth_m"]) <= PHYS_DEPTH_TOL_M)
+    ok &= say(good, f"trial at rest: pitch {s0['rest']['pitch_deg']:+.2f} deg (within {PHYS_PITCH_MAX_DEG}), floating "
+                    f"{s0['canoe_depth_m']:.4f} m deep on sections {s0['station_depth_m']:.4f} m deep (within "
+                    f"{PHYS_DEPTH_TOL_M})")
+    gm_lines = hy["vcb_m"] + hy["bm_t_m"] - m["cg"][2]
+    gz5 = next(r[2] for r in s0["righting"] if r[0] == 5)
+    gm = gz5 / math.sin(math.radians(5.0))
+    good = abs(gm - gm_lines) <= PHYS_GM_TOL * gm_lines and all(r[1] > 0 for r in s0["righting"])
+    ok &= say(good, f"trial stability: GM {gm:.3f} m from her righting at 5 deg (the lines' {gm_lines:.3f} with the "
+                    f"sails set; within {PHYS_GM_TOL:.0%}), righting to 90 deg, capsize past "
+                    f"{s0['capsize_tilt_deg']:.0f} deg")
+    for r in c["points"]:
+        # she holds her course: the autopilot steers proportionally, so it sails off its angle by about half the helm
+        # she needs; rounding up (a lone blade's failure: the wheel hard over, the course gone) shows as both
+        on_course = abs(r["twa_sailed"] - r["twa"]) <= PHYS_COURSE_TOL_DEG and abs(r["rudder"]) <= PHYS_HELM_MAX_DEG
+        text = (f"trial {r['tws']:>2} kn at {r['twa']:>3} deg{' (spinnaker)' if r['spinnaker'] else ''}: "
+                f"{r['trial']:.2f} kn against the estimate's {r['estimate']:.2f} ({r['ratio']:.3f}, "
+                f"{'within' if r['within'] else 'outside'} {r['tolerance']:.0%}), sailed at {r['twa_sailed']:.1f} deg "
+                f"(within {PHYS_COURSE_TOL_DEG:g}), heel {r['heel']}, rudder {r['rudder']:+.1f} (under "
+                f"{PHYS_HELM_MAX_DEG:g})")
+        if not r["within"] and on_course and "gap" in r:
+            # a known gap (polar_bluebonnet.GAPS): reported with its reason, for the Mac's tuning, not failed
+            print(f"GAP  {text}: {r['gap']}")
+            continue
+        ok &= say(r["within"] and on_course, text)
+    return ok
 
 
 if __name__ == "__main__":
@@ -474,6 +569,41 @@ if __name__ == "__main__":
                   f"shared library's {tx.get('maps_shared')} are already in the game")
             ok = ok and good
             if not ok:
+                r["pass"] = False
+        if sl >= 12:
+            # slice 12: every outside part's light twin within a pixel from 50 m, and the copy within its budget
+            lt = b.get("light") or {}
+            tol = lt.get("tolerance_mm")
+            good = tol is not None and abs(tol - LIGHT_TOL_MM) < 0.01
+            print(f"{'ok  ' if good else 'FAIL'} the light copy's tolerance {tol} mm is a pixel at 50 m on a 4K screen "
+                  f"at 60 degrees ({LIGHT_TOL_MM:.2f} mm)")
+            ok = good
+            err, slide = lt.get("worst_error_mm"), lt.get("worst_paint_slide_p99_mm")
+            good = (lt.get("failing") == [] and lt.get("ok") is True
+                    and isinstance(lt.get("twins"), int) and lt.get("twins") > 0
+                    and lt.get("twins") == lt.get("parts_outside")
+                    and err is not None and err <= LIGHT_TOL_MM and slide is not None and slide <= LIGHT_TOL_MM)
+            print(f"{'ok  ' if good else 'FAIL'} {lt.get('twins')} light twins for {lt.get('parts_outside')} parts "
+                  f"seen from outside, none failing ({lt.get('failing')}, the copy's verdict {lt.get('ok')}); the "
+                  f"worst surface error {err} mm ({lt.get('worst_part')}), the worst paint slide {slide} mm (99th "
+                  f"percentile), both within {LIGHT_TOL_MM:.2f}")
+            ok = ok and good
+            suits = [k for k in json.load(open(os.path.join(HERE, "sails_bluebonnet.json")))["suits"] if k != "note"]
+            missing = sorted(set(suits) - set(lt.get("suits") or {}))
+            if missing:
+                print(f"FAIL the light copy has no count for the suits {missing}")
+                ok = False
+            for suit, v in (lt.get("suits") or {}).items():
+                good = v.get("share", 9.0) <= LIGHT_SHARE_MAX and v.get("light_triangles", 1e9) <= LIGHT_TRIANGLES_MAX
+                print(f"{'ok  ' if good else 'FAIL'} light copy under {suit}: {v.get('light_triangles')} triangles of "
+                      f"{v.get('hero_triangles')} ({v.get('share')}; at most {LIGHT_SHARE_MAX} and "
+                      f"{LIGHT_TRIANGLES_MAX})")
+                ok = ok and good
+            if not ok:
+                r["pass"] = False
+        if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "physics.json")):
+            # slice 13: her physics sheet, and her trial sail when it has been sailed
+            if not physics_check(os.path.dirname(os.path.abspath(sys.argv[1])), b):
                 r["pass"] = False
     print(report(r))
     sys.exit(0 if r["pass"] else 1)

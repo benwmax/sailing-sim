@@ -1,0 +1,1200 @@
+{
+ "about": "The orlop and the hold of the frigate Commonwealth as built, 1797 (docs/shipkit-14): the berth deck's beams overhead, the orlop's after and fore platforms with their rooms, the cable tiers amidships between them, and the hold under them: the ceiling, the keelson and its mast steps, the limbers, the ballast, the pump well, the casks in their tiers, the shot lockers, the magazines with their light rooms and filling room, the spirit room, the bread rooms and the store rooms. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m) or pixels (_px). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. orlop.py reads this file",
+ "sources": {
+  "orlop_1849": "NARA 75841362, 'Orlop Decks of the U.S. Frigate Constitution', Navy Yard Boston, May 1849, scale four feet to the inch (public domain; Commons' 3840 px rendering, measured only, never committed): stern on the left, starboard at the bottom. The after platform (light room, filling room, passage, bread rooms, the cockpit, the spirit room and after hatches, state rooms, store rooms, the slop room, the captain's store room, the dispensary), the open middle (the pumps and main mast in a casing, shot and chain lockers on the middle line, the cable tiers either side over the water in the hold, its beams drawn across) and the fore platform (coal and sand, the sail rooms, the general store room and its counter, the racks for stores, the fore mast, the scuttles to the light room, the magazine and the block room, the master's store room, marine clothing, the paint room)",
+  "hold_1849": "NARA 75841358, 'Magazines and Hold of the U.S. Frigate Constitution', the same set and scale: the bread room, light room, passage and after magazine aft, the shell rooms and the spirit room, the main hold's water (numbered iron tanks by then) round the pump well, the main mast, the shot lockers and chain lockers, the forward magazine with its light room and passage, the fore peak and block room",
+  "period": "estimate: the period's practice for an American frigate of the 1790s where neither drawing shows a part, and where 1849 differs from 1797: water in casks (the iron tanks came in the 1810s), the anchor cables hemp (chain came in the 1820s and 30s, so the 1849 chain lockers are a spare cable's and the hawsers' tiers), no shell rooms (no shells in 1797: they are store rooms), no coal (the coal and sand room keeps sand for the decks), and the shingle ballast over iron pigs",
+  "midship_1926": "NARA 75841385, 'U.S. Frigate Constitution, Midship Section, looking forward', Navy Yard Boston, 1926 (public domain; Commons' 3840 px rendering, measured only, never committed): the decks' heights, the keelson and the ceiling at midships"
+ },
+ "registration": {
+  "note": "each plan's 3840 px rendering, stern on the left, starboard at the bottom, carried to the ship by the masts as the gun deck's plan is (gundeck_1797.json): between the main and fore masts an item keeps its share of the way from one to the other, aft of the main mast and forward of the fore mast its distance from the mast at the plan's scale. The masts are where each one's axis passes the orlop's top (orlop) or the keelson's top (hold). The scales are the written sizes' (orlop: the bread room's 16 ft 3 in, the light room's 10 ft 0 in and the bread room's 12 ft 3 in across, 19.6 to 19.7 px a foot; hold: the forward light room's 17 ft 2 in and the magazine's 23 ft 4 in): the renderings differ, the sheets being scanned at different widths",
+  "orlop": {
+   "px_per_ft": 19.65,
+   "centreline_px": 509,
+   "masts_px": {
+    "main": 1612.0,
+    "fore": 3155.0
+   }
+  },
+  "hold": {
+   "px_per_ft": 21.3,
+   "centreline_px": 566,
+   "masts_px": {
+    "main": 1642.5,
+    "fore": 3311.0
+   }
+  }
+ },
+ "heights": {
+  "note": "the decks' heights at midships from the 1926 midship section (sources midship_1926: scaled by its 22 ft 3 in half breadth outside the plank, its gun deck to rabbet 7.25 m against our lines' 7.37 m): the berth deck's top 7 ft 2 in under the gun deck's top until the berth deck slice (13) hands over its line, following the gun deck's sheer; the orlop's top 6 ft 4 in under the berth deck's (each deck parallel to the one above it); the ceiling beside the keelson (the limber strake's top) 33 in over the rabbet, rising over the deadwood in the ends; the keelson's top 4 ft over the rabbet (the 1926 section's keelson with its rider stands 5 ft: the rider is later work); the ceiling's inside face 16 in in from the moulded surface (the gun deck's wall: frames and ceiling, specs_1795.json inside)",
+  "berth_below_gun_ft": 7.1667,
+  "orlop_below_berth_ft": 6.3333,
+  "keelson_over_rabbet_ft": 4.0,
+  "floor_over_rabbet_in": 33.0,
+  "ceiling_in_from_moulded_in": 16.0,
+  "depth_of_hold_check_ft": 13.5,
+  "depth_of_hold_note": "Humphreys' 1794 proportions give the 44s a depth of hold of 13 ft 6 in, the 1926 section 13 ft 10 in (the berth deck's top to the ceiling beside the keelson): build.json orlop.depth_of_hold_ft reports ours against them. Ours is measured the same way, the berth deck's top at midships over the ceiling beside the keelson",
+  "depth_of_hold_section_ft": 13.83
+ },
+ "ceiling": {
+  "note": "the hold's ceiling: the inside planking from the limber strake beside the keelson up to the underside of the berth deck's planks: the orlop's sides, with the berth deck's beams let into it (it stands for the berth deck's clamp until slice 13 hands over its own; the berth deck's spirketting above the planks is slice 13's): oak 4 in thick, in strakes of 12 in with a seam between each (estimate), running from the after bread room's bulkhead to the fore peak's. Aft and forward of those the run and the bow close in to the deadwood: the after bread room and the fore peak are floored at the floor heads' flat",
+  "thick_in": 4.0,
+  "strake_in": 12.0,
+  "mesh_step_m": 0.25,
+  "limber_in": 9.0,
+  "limber_note": "the limber passage either side of the keelson (water runs to the pump well along it), covered by the limber boards: 1.5 in, loose, laid from the keelson's side to the limber strake",
+  "end_fine_m": 4.0,
+  "end_least_m": 0.3
+ },
+ "keelson": {
+  "note": "oak, 18 in sided and moulded on the floors (the 1926 midship section's keelson, 18 by 18 in), scarphed, with a step for each mast: two chocks and two cheeks on it round a mortise for the heel's tenon (spars.py: the tenon square, 0.3 of the mast's diameter, 0.25 of it long). Its top 4 ft over the rabbet amidships, 15 in over the ceiling beside it, riding up over the deadwood in the ends with the floors; each lower mast steps on it (mast_heels in orlop.json); each step at least 9 in longer than the heel each way, and as wide as the limber passages allow, chocked down onto the limber boards past the keelson's sides",
+  "sided_in": 18.0,
+  "moulded_in": 18.0,
+  "step_long_in": 36.0,
+  "step_high_of_d": 0.25,
+  "step_wide_in": 24.0,
+  "step_past_heel_in": 9.0
+ },
+ "orlop": {
+  "note": "the orlop's after and fore platforms, planked flat across (pine, 3 in, on beams 10 in sided, 9 in moulded, 4 ft apart: estimate), each from its end bulkhead to the side; amidships between them the cable tiers: beams only (the plan's four across the middle), each tier floored with battens on them where the cables lie (2 by 4 in, 2 in apart: estimate), and the shot and cable lockers on the middle line. The after platform reaches aft over the light room, filling room and passage (464.5 px) and the fore one aft over the sand room (2610 px): the plan's rooms there stand on them",
+  "plank_in": 3.0,
+  "beam_sided_in": 10.0,
+  "beam_moulded_in": 9.0,
+  "beam_pitch_ft": 4.0,
+  "after_platform_px": [
+   464.5,
+   1438.5
+  ],
+  "fore_platform_px": [
+   2610.0,
+   3465.0
+  ],
+  "tier_beams_px": [
+   [
+    1557.0,
+    1579.0
+   ],
+   [
+    1657.0,
+    1677.0
+   ],
+   [
+    1765.0,
+    1785.0
+   ],
+   [
+    1841.0,
+    1861.0
+   ]
+  ],
+  "tier_beams_note": "the plan draws four beams across the middle (an inch, 20 px wide each): those in the open between the pumps' casing and the shot lockers. The rest of the middle's beams follow at the platforms' pitch",
+  "batten_in": [
+   4.0,
+   2.0
+  ],
+  "batten_gap_in": 2.0,
+  "after_platform_note": "the after platform's fore end (with the rooms against it and the pump well's after end) at 1438.5 px, 4 px (6 cm) abaft the plan's 1442.5, inside the registration's slack: the gun deck's chain pumps over it (slice 13's chain pipes) stand 4 cm abaft the plan's well end. There the well has no after wall of its own: the main hold's after bulkhead (hold plan 1444.5), just abaft the pipes, closes it, and the platform's end still covers that bulkhead"
+ },
+ "rooms": {
+  "note": "the platforms' rooms, from the plan: each [x0, x1] px along, [y0, y1] px across (from the top of the sheet; the centreline is 509), mirrored where the plan draws a pair. Partitions 1.5 in deal on 3 in posts (estimate), doors as the gun deck's cabin doors' openings (2 ft 3 in by 5 ft, or the headroom less 3 in). The bread rooms and the magazine's filling room were lined with tin (the period's practice against rats and sparks): the look of their walls, not modelled sheet. Every wall over 4 ft long gets a doorway at its middle (a simplification: the plan's doors are not all registered). Left out or cut for slice 13's ladders down from the berth deck (its hand-over's keep_clear): the 1849 plan's coal and sand room (a steam-era store) under the fore ladder, and the dispensary's inboard side moved out to 614 px, clear of the after ladderway's ladder",
+  "partition_in": 1.5,
+  "door_wide_in": 27.0,
+  "after": [
+   {
+    "name": "LightRoomAft",
+    "x_px": [
+     464.5,
+     533.5
+    ],
+    "y_px": [
+     406.5,
+     608.0
+    ],
+    "kind": "light",
+    "note": "the light room: a lantern behind a glazed window in the bulkhead lights the after magazine beside it, so no flame enters the magazine (the period's arrangement)"
+   },
+   {
+    "name": "FillingRoom",
+    "x_px": [
+     533.5,
+     613.0
+    ],
+    "y_px": [
+     406.5,
+     482.0
+    ],
+    "kind": "filling",
+    "note": "the filling room over the after magazine: cartridges filled here, lined with tin, the scuttle down to the magazine"
+   },
+   {
+    "name": "PassageAft",
+    "x_px": [
+     533.5,
+     613.0
+    ],
+    "y_px": [
+     482.0,
+     608.0
+    ],
+    "kind": "passage"
+   },
+   {
+    "name": "BreadRoomMid",
+    "x_px": [
+     674.5,
+     996.5
+    ],
+    "y_px": [
+     388.0,
+     630.0
+    ],
+    "kind": "bread",
+    "note": "16 ft 3 in by 12 ft 3 in, tin-lined"
+   },
+   {
+    "name": "BreadRoomSide",
+    "x_px": [
+     613.0,
+     996.5
+    ],
+    "y_px": [
+     388.0,
+     null
+    ],
+    "kind": "bread",
+    "mirror": true,
+    "note": "each side outboard of the middle bread room, from the after bulkhead to the cabins"
+   },
+   {
+    "name": "StoreRoomAft",
+    "x_px": [
+     996.5,
+     1072.0
+    ],
+    "y_px": [
+     302.0,
+     null
+    ],
+    "kind": "store",
+    "mirror": true
+   },
+   {
+    "name": "StateRoom1",
+    "x_px": [
+     1072.0,
+     1193.0
+    ],
+    "y_px": [
+     302.0,
+     null
+    ],
+    "kind": "state",
+    "mirror": true
+   },
+   {
+    "name": "StateRoom2",
+    "x_px": [
+     1193.0,
+     1313.5
+    ],
+    "y_px": [
+     302.0,
+     null
+    ],
+    "kind": "state",
+    "mirror": true
+   },
+   {
+    "name": "SlopRoom",
+    "x_px": [
+     1313.5,
+     1438.5
+    ],
+    "y_px": [
+     302.0,
+     null
+    ],
+    "kind": "store",
+    "side": "port",
+    "note": "the purser's slops (clothing)"
+   },
+   {
+    "name": "CaptainsStoreRoom",
+    "x_px": [
+     1313.5,
+     1438.5
+    ],
+    "y_px": [
+     720.0,
+     null
+    ],
+    "kind": "store",
+    "side": "stbd"
+   },
+   {
+    "name": "Dispensary",
+    "x_px": [
+     1313.5,
+     1438.5
+    ],
+    "y_px": [
+     614.0,
+     720.0
+    ],
+    "kind": "store",
+    "side": "stbd",
+    "note": "the surgeon's dispensary next to the cockpit"
+   }
+  ],
+  "fore": [
+   {
+    "name": "SailRoom",
+    "x_px": [
+     2701.5,
+     2903.5
+    ],
+    "y_px": [
+     null,
+     420.0
+    ],
+    "kind": "sail",
+    "mirror": true,
+    "note": "10 ft 1 in long, the sails stowed rolled on shelves"
+   },
+   {
+    "name": "GeneralStoreRoom",
+    "x_px": [
+     2903.5,
+     3247.5
+    ],
+    "y_px": [
+     302.0,
+     716.0
+    ],
+    "kind": "boatswain",
+    "note": "the boatswain's general store room: a counter on the middle line, racks for stores curving along each side"
+   },
+   {
+    "name": "MastersStoreRoom",
+    "x_px": [
+     3285.0,
+     3382.5
+    ],
+    "y_px": [
+     null,
+     488.0
+    ],
+    "kind": "store",
+    "side": "port"
+   },
+   {
+    "name": "MarineClothing",
+    "x_px": [
+     3285.0,
+     3382.5
+    ],
+    "y_px": [
+     530.0,
+     null
+    ],
+    "kind": "store",
+    "side": "stbd"
+   },
+   {
+    "name": "PaintRoom",
+    "x_px": [
+     3382.5,
+     3465.0
+    ],
+    "y_px": [
+     null,
+     null
+    ],
+    "kind": "store",
+    "note": "left out: on the plan's registration it lies past the hold's forward end, where the fore platform stops (orlop.json rooms_off_platform)"
+   }
+  ]
+ },
+ "hatches": {
+  "note": "the orlop's hatches, inside sizes as written on the plan: the spirit room hatch (5 ft 6 in by 5 ft 1 in) and the after hatch (5 ft 4 in by 5 ft 1 in) in the cockpit, the scuttles down to the hold's store rooms (written 1 ft 9 in square), the scuttles forward to the light room (1 ft 10 in by 1 ft 10 in), the magazine (2 ft 4 in square) and the block room (2 ft 8 in square). Coamings 6 in high, 3 in thick (estimate); ladders down where a hatch leads to a room people work in. Two scuttles moved off the partitions the plan draws through them: the light room's to y 275 px (outboard of the store room's wall at 302), the block room's to x 3212 px (inside the boatswain's store room, abaft its fore wall at 3247.5)",
+  "coaming_high_in": 6.0,
+  "coaming_thick_in": 3.0,
+  "items": [
+   {
+    "name": "SpiritRoomHatch",
+    "x_px": 1148.0,
+    "y_px": 509.0,
+    "inside_ft": [
+     5.5,
+     5.0833
+    ],
+    "ladder": true
+   },
+   {
+    "name": "AfterHatchOrlop",
+    "x_px": 1367.0,
+    "y_px": 509.0,
+    "inside_ft": [
+     5.3333,
+     5.0833
+    ],
+    "ladder": true
+   },
+   {
+    "name": "StoreScuttle_P",
+    "x_px": 1128.0,
+    "y_px": 383.0,
+    "inside_ft": [
+     1.75,
+     1.75
+    ],
+    "ladder": false
+   },
+   {
+    "name": "StoreScuttle_S",
+    "x_px": 1128.0,
+    "y_px": 635.0,
+    "inside_ft": [
+     1.75,
+     1.75
+    ],
+    "ladder": false
+   },
+   {
+    "name": "LightRoomScuttle",
+    "x_px": 2945.0,
+    "y_px": 275.0,
+    "inside_ft": [
+     1.8333,
+     1.8333
+    ],
+    "ladder": false
+   },
+   {
+    "name": "MagazineScuttle",
+    "x_px": 2853.0,
+    "y_px": 690.0,
+    "inside_ft": [
+     2.3333,
+     2.3333
+    ],
+    "ladder": false
+   },
+   {
+    "name": "BlockRoomScuttle",
+    "x_px": 3212.0,
+    "y_px": 509.0,
+    "inside_ft": [
+     2.6667,
+     2.6667
+    ],
+    "ladder": false
+   }
+  ]
+ },
+ "middle": {
+  "note": "the middle line between the platforms (plan): a casing round the pumps and the main mast down to the well (6 ft 8 in across), then the shot lockers (4 ft 6 in and 5 ft 4 in long) and the cable lockers (5 ft 3 in and 6 ft 0 in; the 1849 chain lockers), each a box of 2 in deal on posts from the hold's ceiling up to the berth deck's beams, open over the orlop's beams where the shot is passed up. Each [x0, x1] px, the half width 3 ft 4 in",
+  "half_width_px": 66.0,
+  "boxes": [
+   {
+    "name": "PumpWellAft",
+    "x_px": [
+     1438.5,
+     1557.0
+    ],
+    "kind": "pumps"
+   },
+   {
+    "name": "MastCasing",
+    "x_px": [
+     1557.0,
+     1677.5
+    ],
+    "kind": "mast"
+   },
+   {
+    "name": "PumpWellFwd",
+    "x_px": [
+     1677.5,
+     1745.5
+    ],
+    "kind": "pumps"
+   },
+   {
+    "name": "ShotLockerAft",
+    "x_px": [
+     1745.5,
+     1839.0
+    ],
+    "kind": "shot"
+   },
+   {
+    "name": "ShotLockerFwd",
+    "x_px": [
+     1839.0,
+     1951.0
+    ],
+    "kind": "shot"
+   },
+   {
+    "name": "CableLockerAft",
+    "x_px": [
+     1951.0,
+     2057.5
+    ],
+    "kind": "cable"
+   },
+   {
+    "name": "CableLockerFwd",
+    "x_px": [
+     2057.5,
+     2180.5
+    ],
+    "kind": "cable"
+   }
+  ]
+ },
+ "hold": {
+  "note": "the hold's rooms (hold plan, x px along it): aft the bread room in the run, the light room, the passage and the after magazine; then the store rooms (the 1849 shell rooms) either side and the spirit room between them; the main hold from its after bulkhead to the forward magazine's, with the pump well round the main mast and the pumps; then the forward magazine with its light room over its after part on the starboard side... and its passage, the fore peak and the block room under the fore mast",
+  "bulkheads_px": {
+   "after_passage_aft": 452.5,
+   "after_magazine_aft": 542.0,
+   "after_magazine_fwd": 1045.0,
+   "spirit_fwd": 1203.0,
+   "main_hold_aft": 1444.5,
+   "fore_magazine_aft": 2818.0,
+   "fore_magazine_fwd": 3191.5,
+   "fore_passage_fwd": 3262.5
+  },
+  "casks": {
+   "note": "the hold's casks lie fore and aft bung up, the ground tier bedded on the shingle, the second in its cantlines (the period's stowage). Sizes [length, bilge, head] m are the stores kit's Cask_Leaguer, Cask_Butt, Cask_Puncheon, Cask_Hogshead, Cask_Barrel and PowderBarrel (stores.json, Nov 17), whose meshes take their places when they land",
+   "gap_in": 1.0,
+   "leaguer_m": [
+    1.3429,
+    0.8664,
+    0.7104
+   ],
+   "butt_m": [
+    1.1826,
+    0.876,
+    0.7008
+   ],
+   "powder_m": [
+    0.5661,
+    0.4529,
+    0.3804
+   ],
+   "hogshead_m": [
+    0.8787,
+    0.6759,
+    0.5407
+   ],
+   "barrel_m": [
+    0.7784,
+    0.5987,
+    0.479
+   ],
+   "puncheon_m": [
+    0.9585,
+    0.7373,
+    0.5899
+   ]
+  },
+  "ballast": {
+   "note": "iron pigs (3 ft by 6 in by 6 in, about 300 lb: not modelled, being buried) laid fore and aft on the ceiling either side of the keelson, then shingle over them 12 in deep (only its top is modelled), levelled to bed the ground tier (estimate: the period's stowage; two tiers of casks on it clear the orlop's beams)",
+   "pig_in": [
+    36.0,
+    6.0,
+    6.0
+   ],
+   "shingle_over_ceiling_in": 12.0
+  },
+  "bulkheads_note": "hold plan x px: the after light room's fore side and the passage (4 ft) aft of the after magazine, which the mizzen passes through to its step on the keelson; the magazine's fore bulkhead (23 ft 4 in on); the spirit room; the main hold's after bulkhead; the fore magazine and its passage. The spirit room's fore bulkhead stands at 1203, not the plan's 1154.5: registered by the masts, the orlop plan's spirit room hatch reaches 2 ft past the hold plan's bulkhead, and the hatch and its ladder lead into the spirit room",
+  "stowage": [
+   {
+    "name": "water",
+    "from": "main_hold_aft",
+    "to": "fore_magazine_aft",
+    "casks": [
+     "leaguer_m",
+     "butt_m"
+    ],
+    "middle": "boxes",
+    "note": "the water in leaguers and butts either side of the pump well and lockers (1849: its iron tanks)"
+   },
+   {
+    "name": "spirits",
+    "from": "after_magazine_fwd",
+    "to": "spirit_fwd",
+    "casks": [
+     "hogshead_m",
+     "barrel_m"
+    ],
+    "middle": "keelson",
+    "note": "the spirit room: rum in hogsheads and barrels (the store rooms either side in 1849's shell rooms)"
+   },
+   {
+    "name": "provisions",
+    "from": "spirit_fwd",
+    "to": "main_hold_aft",
+    "casks": [
+     "puncheon_m",
+     "barrel_m"
+    ],
+    "middle": "keelson",
+    "note": "beef and pork in barrels, flour and pease in puncheons (estimate: the period's stowage aft of the main hold)"
+   }
+  ],
+  "magazine": {
+   "note": "each magazine's floor raised on floor timbers across (scribed to the ceiling, notched over the keelson) 3 ft apart, 2 in over the keelson's top; the powder barrels in two tiers, the second in the first's cantlines (estimate)",
+   "floor_over_keelson_in": 2.0,
+   "joist_sided_in": 6.0,
+   "joist_pitch_ft": 3.0
+  }
+ },
+ "budget_note": "the plan's figure for slice 14 (the orlop and hold, loaded only when below: build.json orlop.triangles): a starting point, not a ceiling (Bean, Nov 12: frame rate is the only hard limit), so the build reports the count against it and never fails on it",
+ "budget_triangles": 800000,
+ "meets": {
+  "note": "the orlop's and hold's parts that meet another part of the ship (or each other) by design, each pair with why and how far (in) either may go into the other; every other meeting fails the build (build_frigate's orlop_room, deck.room), as gundeck_1797.json's meets",
+  "pairs": [
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "Ceiling"
+    ],
+    "the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13)",
+    5.2
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "MiddleLine"
+    ],
+    "the pump well's and lockers' boards stand up under the berth deck's beams",
+    0.35
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "Partitions"
+    ],
+    "the orlop's partitions stand up under the berth deck's beams",
+    0.9
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "HoldBulkheads"
+    ],
+    "the hold's bulkheads' edges against the ceiling, their feet on the limber strake",
+    0.65
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "LimberBoards"
+    ],
+    "the limber boards' outer ends rest on the limber strake",
+    1.25
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "OrlopBeams"
+    ],
+    "the orlop's beams' ends let 2 in into the ceiling",
+    3.35
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the orlop's planks run out to the ceiling",
+    2.3
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "Partitions"
+    ],
+    "the orlop's partitions scribed to the ceiling, the fore platform's end at the ceiling's end",
+    0.6
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "Shingle"
+    ],
+    "the shingle ballast lies out to the ceiling",
+    2.15
+   ],
+   [
+    [
+     "HoldBulkheads"
+    ],
+    [
+     "Keelson",
+     "LimberBoards",
+     "MastSteps"
+    ],
+    "the hold's bulkheads stand over the keelson, the limber boards and the mizzen's step",
+    1.25
+   ],
+   [
+    [
+     "HoldBulkheads"
+    ],
+    [
+     "OrlopBeams",
+     "OrlopDeck"
+    ],
+    "the hold's bulkheads stand up to the orlop's planks under a platform, between and against its beams (under its beams in the cable tiers)",
+    2.95
+   ],
+   [
+    [
+     "Keelson"
+    ],
+    [
+     "MastSteps"
+    ],
+    "the mast steps bolted down on the keelson",
+    5.3
+   ],
+   [
+    [
+     "Keelson"
+    ],
+    [
+     "MiddleLine"
+    ],
+    "the pump well's and lockers' boards stand on the keelson",
+    1.55
+   ],
+   [
+    [
+     "Keelson"
+    ],
+    [
+     "ShotPiles"
+    ],
+    "the shot lockers' floors on the keelson",
+    0.75
+   ],
+   [
+    [
+     "MiddleLine"
+    ],
+    [
+     "Shingle"
+    ],
+    "the pump well and the lockers stand down through the ballast to the keelson",
+    0.25
+   ],
+   [
+    [
+     "MiddleLine"
+    ],
+    [
+     "ShotPiles"
+    ],
+    "the shot fills the lockers to their boards",
+    1.0
+   ],
+   [
+    [
+     "OrlopBeams"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the orlop's planks on its beams",
+    0.25
+   ],
+   [
+    [
+     "OrlopBeams"
+    ],
+    [
+     "TierBattens"
+    ],
+    "the cable tiers' battens on the orlop's beams",
+    3.4
+   ],
+   [
+    [
+     "OrlopCoamings"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the coamings stand in the orlop's openings",
+    0.25
+   ],
+   [
+    [
+     "OrlopDeck"
+    ],
+    [
+     "Partitions"
+    ],
+    "the partitions stand on the orlop's planks",
+    0.25
+   ],
+   [
+    [
+     "Shingle"
+    ],
+    [
+     "WaterCasks"
+    ],
+    "the ground tier's casks bedded in the shingle",
+    0.65
+   ],
+   [
+    [
+     "Keelson"
+    ],
+    [
+     "Shingle"
+    ],
+    "the keelson stands 3 in proud of the shingle laid either side of it",
+    5.25
+   ],
+   [
+    [
+     "BreadBags",
+     "RoomFittings"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the bread bags and the rooms' racks, cots, bench and counter stand on the orlop's planks",
+    0.25
+   ],
+   [
+    [
+     "RoomFittings"
+    ],
+    [
+     "Stores"
+    ],
+    "the boxes, kegs and sea chests stand on the shelves and the planks",
+    0.25
+   ],
+   [
+    [
+     "OrlopDeck"
+    ],
+    [
+     "Stores"
+    ],
+    "the sail bolts and sea chests lie on the orlop's planks",
+    0.35
+   ],
+   [
+    [
+     "BerthKnees"
+    ],
+    [
+     "Ceiling"
+    ],
+    "each hanging knee's arm down the side is scribed to the ceiling and bolted through it",
+    1.1
+   ],
+   [
+    [
+     "BerthKnees"
+    ],
+    [
+     "BerthBeams"
+    ],
+    "each hanging knee is bolted flat against its beam's face",
+    0.25
+   ],
+   [
+    [
+     "Keelson",
+     "LimberBoards",
+     "MastSteps"
+    ],
+    [
+     "Mast_Fore"
+    ],
+    "the fore mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
+    1.0
+   ],
+   [
+    [
+     "Keelson",
+     "LimberBoards",
+     "MastSteps"
+    ],
+    [
+     "Mast_Main"
+    ],
+    "the main mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
+    1.0
+   ],
+   [
+    [
+     "Keelson",
+     "LimberBoards",
+     "MastSteps"
+    ],
+    [
+     "Mast_Mizzen"
+    ],
+    "the mizzen mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json)",
+    2.05
+   ],
+   [
+    [
+     "MastSteps"
+    ],
+    [
+     "LimberBoards"
+    ],
+    "each step is chocked down onto the limber boards past the keelson's sides",
+    1.6
+   ],
+   [
+    [
+     "MagazineFloors"
+    ],
+    [
+     "Ceiling",
+     "Keelson",
+     "LimberBoards"
+    ],
+    "the magazines' floor timbers are scribed to the ceiling and notched over the keelson and the limber boards",
+    1.25
+   ],
+   [
+    [
+     "MagazineFloors"
+    ],
+    [
+     "HoldBulkheads"
+    ],
+    "the magazines' floors run to their bulkheads",
+    0.25
+   ],
+   [
+    [
+     "PowderBarrels"
+    ],
+    [
+     "MagazineFloors"
+    ],
+    "the powder barrels lie on the magazines' floors",
+    0.35
+   ],
+   [
+    [
+     "HoldLadders"
+    ],
+    [
+     "Shingle"
+    ],
+    "a hold ladder's chocks stand on the shingle where it is laid",
+    0.45
+   ],
+   [
+    [
+     "LimberBoards"
+    ],
+    [
+     "MiddleLine"
+    ],
+    "the middle line's boxes come down onto the limber boards beside the keelson",
+    0.5
+   ],
+   [
+    [
+     "Pillars"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "each pillar's heel is let into the orlop's planks",
+    0.5
+   ],
+   [
+    [
+     "Pillars"
+    ],
+    [
+     "BerthBeams"
+    ],
+    "each pillar's head is let into its beam",
+    0.35
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "Keelson"
+    ],
+    "the brake pumps' tubes are footed on the keelson's top",
+    0.45
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "LimberBoards"
+    ],
+    "the chain pump's tubes are footed on the limber boards in the well",
+    0.6
+   ],
+   [
+    [
+     "HoldBulkheads"
+    ],
+    [
+     "MiddleLine"
+    ],
+    "the main hold's after bulkhead closes the pump well aft: the well's sides bedded on its fore face (orlop.after_platform_note)",
+    0.35
+   ],
+   [
+    [
+     "MiddleLine"
+    ],
+    [
+     "OrlopDeck"
+    ],
+    "the pump well's sides stand up under the after platform's end, against its planks",
+    0.25
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthDeck"
+    ],
+    "the berth deck's planks (slice 13) lie on its beams, ledges, carlings, transom and hook",
+    0.4
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthCableScuttles"
+    ],
+    "the cable scuttles' lead linings come down through the planks and on under them beside the berth deck's beams",
+    0.3
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthHatchways"
+    ],
+    "the berth deck's coamings (slice 13) are let down onto the carlings and beams round each opening",
+    0.65
+   ],
+   [
+    [
+     "BerthBeams"
+    ],
+    [
+     "BerthMastWedges"
+    ],
+    "the wedges round each mast in the berth deck's partners go down between the beams and carlings",
+    0.5
+   ],
+   [
+    [
+     "Ceiling"
+    ],
+    [
+     "BerthDeck"
+    ],
+    "the berth deck's planks' ends lie over the ceiling's top strake at the side",
+    0.3
+   ],
+   [
+    [
+     "OrlopDeck"
+    ],
+    [
+     "BerthLadders"
+    ],
+    "the berth deck's ladders (slice 13) stand on the orlop's platforms",
+    0.25
+   ],
+   [
+    [
+     "PumpTubes"
+    ],
+    [
+     "BerthPumpTubes"
+    ],
+    "the pumps' tubes carry on up through the berth deck's planks as slice 13's",
+    0.35
+   ]
+  ]
+ },
+ "cables": {
+  "note": "the hemp cables (22 in: the 44-gun frigate's bower, period tables) flaked down in the tiers: two coils each side of the middle line, each 120 fathoms (a cable's length) flaked down about 3.2 m across in as many flat-spiral layers as that takes, up to the headroom under the berth deck's beams (build.json orlop.cable_coils.fathoms; estimate). The cables come down the berth deck's cable scuttles from the manger (slice 13 hands over where)",
+  "circ_in": 22.0,
+  "inner_m": 0.45,
+  "outer_m": 1.6,
+  "coils": [
+   [
+    0.27,
+    "port"
+   ],
+   [
+    0.27,
+    "stbd"
+   ],
+   [
+    0.73,
+    "port"
+   ],
+   [
+    0.73,
+    "stbd"
+   ]
+  ],
+  "length_fathoms": 120.0,
+  "clear_under_beams_m": 0.3
+ },
+ "furnish": {
+  "note": "what the orlop's rooms hold (estimate: the period's stowage; sizes from the stores kit's stores.json where it has the item: BreadBag, SeaChest, FillingBench), each a clear inch off the walls and the side, an aisle down the room's middle and a gap at the middle of its length for the doors",
+  "clear_in": 1.0,
+  "aisle_m": 0.75,
+  "bread_bag_in": [
+   33.0,
+   18.13,
+   10.07
+  ],
+  "sea_chest_in": [
+   41.03,
+   18.0,
+   17.0
+  ],
+  "filling_bench_in": [
+   60.0,
+   24.0,
+   32.5
+  ],
+  "kinds": {
+   "bread": {
+    "fill": "bags",
+    "depth_m": 0.95,
+    "layers": 4
+   },
+   "sail": {
+    "fill": "bolts",
+    "depth_m": 1.1,
+    "layers": 2,
+    "bolt_d_m": 0.42
+   },
+   "store": {
+    "fill": "shelves",
+    "depth_m": 0.5,
+    "levels_m": [
+     0.35,
+     0.85,
+     1.35
+    ]
+   },
+   "boatswain": {
+    "fill": "shelves",
+    "depth_m": 0.55,
+    "levels_m": [
+     0.35,
+     0.85,
+     1.35
+    ]
+   },
+   "state": {
+    "fill": "cots",
+    "depth_m": 0.75
+   },
+   "filling": {
+    "fill": "filling",
+    "depth_m": 0.65
+   }
+  }
+ },
+ "overhead": {
+  "note": "the berth deck's beams over the orlop are this slice's (each deck slice builds the overhead above it); a hanging knee at each end of each beam against its fore face (its aft face where a partition across the ship stands there), its arm down the ceiling and its other arm under the beam (period practice for lower decks; sizes estimated from the beam); the gun deck's hatchways that go down through the berth deck (the wardroom skylight and the fore scuttle stop at it) cut the beams, each framed by a carling either side from beam to beam. The beams 15 in sided and 13 in moulded under 3 in planks (estimate until slice 13 hands over its stations)",
+  "hanging_knee": {
+   "sided_in": 10.0,
+   "moulded_in": 7.0,
+   "down_ft": 3.0,
+   "arm_ft": 3.0
+  },
+  "through_berth_deck": [
+   "SpiritHatch",
+   "AfterHatch",
+   "MainHatch",
+   "ForeHatch",
+   "ForeHatchFore"
+  ],
+  "carling_sided_in": 8.0,
+  "beam_sided_in": 15.0,
+  "beam_moulded_in": 13.0,
+  "berth_plank_in": 3.0,
+  "carling_moulded_in": 8.0,
+  "ladder_landing_m": 0.9,
+  "pillar": {
+   "note": "turned or square oak pillars on the middle line under the berth deck's beams over the platforms (estimate: 6 in square), clear of the rooms across the middle line, openings, masts, partitions and slice 13's ladders' landings",
+   "sided_in": 6.0,
+   "clear_m": 0.3
+  },
+  "deck_ends": {
+   "note": "slice 13 hand-over: the deck transom and deck hook under the berth deck planks' ends are slice 14's. Sizes are estimates scaled from the beams (no drawing gives them).",
+   "transom_sided_in": 12,
+   "transom_moulded_in": 14,
+   "hook_moulded_in": 14,
+   "hook_arm_ft": 4,
+   "hook_throat_ft": 1.5,
+   "hook_arm_in": 12
+  }
+ },
+ "collections": {
+  "note": "the Blender collections the game loads each deck below by (slice 13's ask): Hold lists the parts under the orlop's platforms; the rest (the berth deck's overhead, the platforms, rooms and their contents, the ceiling that walls them, the lanterns) are Orlop",
+  "Hold": [
+   "LimberBoards",
+   "Keelson",
+   "MastSteps",
+   "HoldBulkheads",
+   "MagazineFloors",
+   "PowderBarrels",
+   "WaterCasks",
+   "Shingle",
+   "HoldLadders",
+   "ShotPiles"
+  ]
+ }
+}

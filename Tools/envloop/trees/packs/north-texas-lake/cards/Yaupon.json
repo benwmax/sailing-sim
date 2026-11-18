@@ -1,0 +1,53 @@
+{
+ "id": "Yaupon",
+ "name": "yaupon holly",
+ "latin": "Ilex vomitoria",
+ "usda": "https://plants.usda.gov/plant-profile/ILVO",
+ "tile": 10,
+ "where": "The wooded shore's evergreen understory (SM_Shrub_0, _1).",
+ "height_m": [
+  2,
+  3.5
+ ],
+ "leaf": {
+  "set": "ambientcg/LeafSet002",
+  "length_cm": [
+   1.5,
+   3.5
+  ],
+  "look": "Small, oval, round-toothed, dark glossy evergreen.",
+  "card_m": 0.5,
+  "per_twig": 10,
+  "twigs": 9,
+  "colour": [
+   0.7,
+   0.8,
+   0.66
+  ]
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 6000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/Yaupon/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py",
+ "crown_w_over_h": 0.9,
+ "clear_trunk_m": [
+  0.4,
+  0.8
+ ],
+ "trunk_dbh_m": [
+  0.04,
+  0.07
+ ]
+}

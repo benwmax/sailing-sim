@@ -1,0 +1,73 @@
+{
+ "id": "SaltCedar",
+ "name": "salt cedar",
+ "latin": "Tamarix ramosissima",
+ "usda": "https://plants.usda.gov/plant-profile/TARA",
+ "tile": 9,
+ "where": "Galveston's low ground by the water only (kept for the coast).",
+ "height_m": [
+  3.5,
+  6
+ ],
+ "crown_w_over_h": 1.1,
+ "clear_trunk_m": [
+  0.5,
+  1.5
+ ],
+ "trunk_dbh_m": [
+  0.08,
+  0.2
+ ],
+ "form": "A shrubby clump of many thin stems, fine feathery grey-green sprays.",
+ "leaf": {
+  "set": "ambientcg/LeafSet019",
+  "length_cm": [
+   10,
+   20
+  ],
+  "look": "Fine scale-leaf sprays, grey-green.",
+  "card_m": 0.8,
+  "per_twig": 4,
+  "twigs": 13,
+  "colour": [
+   0.8,
+   0.86,
+   0.9
+  ],
+  "fine": true
+ },
+ "winter": {
+  "set": null,
+  "look": "Bare."
+ },
+ "bark": {
+  "set": "ambientcg/Bark014",
+  "tile_m": [
+   1.2,
+   1.2
+  ],
+  "tile_estimated": false,
+  "tint": [
+   0.55,
+   0.45,
+   0.42
+  ],
+  "look": "Red-brown, smooth on young stems."
+ },
+ "bands": {
+  "hero_0_30m": "full model: leaves at true size, the species' bark, roots and low limbs",
+  "near_30_150m": "same model; the masked shell carries the crown's inside",
+  "mid_150_600m": "the _Far opaque crown (unchanged band rules: docs/graphics-6, docs/ultra-far-shore)"
+ },
+ "budget": {
+  "near_tris_max": 26000,
+  "frame_ms_note": "Track D's share of the shore budget (plan: shore Ultra 4.5 / High 3.0 / Medium 1.5 ms) is set at the Mac gate; offline it is held to the depth-pass layer count of today's trees (metrics.csv 'layers')."
+ },
+ "checks": {
+  "sizes_within_pct": 5,
+  "repeat_frame_m": 40,
+  "blind_reviewers": 3
+ },
+ "reference_pack": "Data/Reference/raw/trees/SaltCedar/ (git-ignored: Bean's bark-at-arm's-length and leafy-branch photos with the grey card; links and measurements here)",
+ "licence": "CC0 (ambientCG / Poly Haven); fetched by fetch_sets.py"
+}

@@ -2,6 +2,7 @@
 #include "SailingSim.h"
 #include "BenchRunner.h"
 #include "BoatModel.h"
+#include "ChaseCamera.h"
 #include "Drills.h"
 #include "Learning.h"
 #include "ScriptedScene.h"
@@ -18,7 +19,7 @@ namespace SailSaveLocal
 {
 	// The boats' save ids are EBoatType's names: a new boat is appended there and here, never renamed.
 	const TCHAR* const BoatIds[] = { TEXT("J22"), TEXT("Sunfish"), TEXT("ILCA7"), TEXT("Catalina22"), TEXT("Catalina30"), TEXT("Hobie16"),
-		TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi") };
+		TEXT("Corsair880"), TEXT("Lagoon42"), TEXT("Maxi"), TEXT("Bluebonnet"), TEXT("Commonwealth") };
 	static_assert(UE_ARRAY_COUNT(BoatIds) == int32(Sailing::EBoatType::Count), "every boat needs a save id");
 	const TCHAR* const WorldIds[] = { TEXT("ray-hubbard"), TEXT("galveston-bay"), TEXT("gulf"), TEXT("marseille"), TEXT("texas-coast") };
 	const TCHAR* const SpeedIds[] = { TEXT("kn"), TEXT("mph"), TEXT("kmh") };
@@ -203,6 +204,11 @@ FString FSailSave::ToJson() const
 	Display->SetBoolField(TEXT("cinematicLook"), S.bCinematicLook);
 	Display->SetBoolField(TEXT("lensWater"), S.bLensWater);
 	Display->SetBoolField(TEXT("cameraShake"), S.bCameraShake);
+	Display->SetStringField(TEXT("cameraView"), FString(ChaseCamera::Name(ChaseCamera::EView(FMath::Clamp(S.CameraView, 0, int32(ChaseCamera::EView::Count) - 1)))).ToLower());
+	Display->SetNumberField(TEXT("lookSpeed"), S.LookSpeed);
+	Display->SetBoolField(TEXT("invertLook"), S.bInvertLook);
+	Display->SetBoolField(TEXT("cameraRecentre"), S.bCameraRecentre);
+	Display->SetNumberField(TEXT("photoSpeed"), S.PhotoSpeed);
 	Display->SetBoolField(TEXT("nightHud"), S.bNightHud);
 	TSharedRef<FJsonObject> Graphics = Obj();
 	Graphics->SetNumberField(TEXT("antiAliasing"), S.AntiAliasing);
@@ -489,6 +495,11 @@ FSailSave::EResult FSailSave::FromJson(const FString& Text, FSailSave& Out, FStr
 			Read(*D, TEXT("cinematicLook"), S.bCinematicLook);
 			Read(*D, TEXT("lensWater"), S.bLensWater);
 			Read(*D, TEXT("cameraShake"), S.bCameraShake);
+			{ FString View; ChaseCamera::EView Parsed; if (D->TryGetStringField(TEXT("cameraView"), View) && ChaseCamera::Parse(View, Parsed)) S.CameraView = int32(Parsed); }
+			Read(*D, TEXT("lookSpeed"), S.LookSpeed);
+			Read(*D, TEXT("invertLook"), S.bInvertLook);
+			Read(*D, TEXT("cameraRecentre"), S.bCameraRecentre);
+			Read(*D, TEXT("photoSpeed"), S.PhotoSpeed);
 			Read(*D, TEXT("nightHud"), S.bNightHud);
 			Read(*D, TEXT("hudScale"), S.HudScale);
 			Read(*D, TEXT("textScale"), S.TextScale);
@@ -702,6 +713,11 @@ void FSailSave::Capture(const USailingSettings& In, const USailSessionSave& InSe
 	S.bCinematicLook = In.bCinematicLook;
 	S.bLensWater = In.bLensWater;
 	S.bCameraShake = In.bCameraShake;
+	S.CameraView = In.CameraView;
+	S.LookSpeed = In.LookSpeed;
+	S.bInvertLook = In.bInvertLook;
+	S.bCameraRecentre = In.bCameraRecentre;
+	S.PhotoSpeed = In.PhotoSpeed;
 	S.bNightHud = In.bNightHud;
 	S.AntiAliasing = In.AntiAliasing;
  	S.ShadowQuality = In.ShadowQuality;
@@ -793,6 +809,11 @@ void FSailSave::Apply(USailingSettings& Out, USailSessionSave& OutSession) const
 	Out.bCinematicLook = S.bCinematicLook;
 	Out.bLensWater = S.bLensWater;
 	Out.bCameraShake = S.bCameraShake;
+	Out.CameraView = FMath::Clamp(S.CameraView, 0, int32(ChaseCamera::EView::Count) - 1);
+	Out.LookSpeed = FMath::Clamp(S.LookSpeed, 0.25f, 3.f);
+	Out.bInvertLook = S.bInvertLook;
+	Out.bCameraRecentre = S.bCameraRecentre;
+	Out.PhotoSpeed = FMath::Clamp(S.PhotoSpeed, 0, 7);
 	Out.bNightHud = S.bNightHud;
 	Out.AntiAliasing = S.AntiAliasing;
  	Out.ShadowQuality = S.ShadowQuality;

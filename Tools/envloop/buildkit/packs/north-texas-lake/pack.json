@@ -1,0 +1,14 @@
+{
+ "pack": "north-texas-lake",
+ "about": "Lake Ray Hubbard and the North Texas lakes: 1970s brick ranches, 1990s two-storey brick, stone and metal-roof farmhouses, lake cottages, a few modern infills and plain commercial boxes by the marinas.",
+ "styles": [
+  "ranch1970",
+  "twostory1990",
+  "farmhouse",
+  "cottage",
+  "modern",
+  "commercial"
+ ],
+ "finishes": "Tools/envloop/buildmat/packs/north-texas-lake.json (materials thread): wall ids 0..6, roof ids 0..4, the same ids as slots.json",
+ "notes": "Everything specific to this region lives in this folder: the style recipes (roof shapes and pitches, wall and roof finishes, which windows and doors, porches, palettes). The parts, trim sheet and builder are shared. Another region copies this folder, names it, and adds parts only where its houses need a shape the kit lacks."
+}

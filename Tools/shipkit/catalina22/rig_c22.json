@@ -1,0 +1,75 @@
+{
+ "about": "The Catalina 22's mast, boom and standing rigging, for her rebuild's slice 4 (docs/c22-5). rig_c22.py turns these into points and checks them; build_rig_c22.py meshes them. Frame: the game's body frame (X forward, Y starboard, Z up), metres, origin amidships on the design waterline. Nothing here is traced from a drawing: the sizes come from the size card (I, J, P, E), the game's physics and sockets (Fleet.cpp Catalina22(), Catalina22_sockets.json), owners' reports and a 1980s rigging list posted by an owner (refs.json), and photos decide the rest.",
+ "mast": {
+  "length": 7.62,
+  "section": [
+   0.09,
+   0.058
+  ],
+  "groove": [
+   0.007,
+   0.01
+  ],
+  "note": "A deck-stepped aluminium extrusion 25 ft 0 in long (owners and mast makers give 25 ft), heel to cap, on the kit's hinged MastStep at the physics' mast x (0.86) on the cabin top. That puts the masthead 8.87 m (29.1 ft) over the design waterline, an older owner's manual's figure, against the physics' 8.84. The section is an ellipse 90 mm fore and aft (the card's game.mast_diameter_m) by 58 mm across (round 1's three blind reviewers read 64 mm as a round tube and asked for a clear fore-and-aft oval), with the mainsail's groove up its after face (groove: width, depth). The section is a guess at a 1970s small-boat extrusion; a photo of the mast's foot decides."
+ },
+ "masthead": {
+  "height": 0.1,
+  "forestay_below_top": 0.045,
+  "forestay_out": 0.025,
+  "crane": 0.07,
+  "cap_tang_below_top": 0.17,
+  "note": "A flat-topped cast aluminium cap following the mast's section, with two halyard sheaves in slots across its top (the jib's forward, the main's aft), a lug on its forward face for the forestay (its pin is the Hounds socket: I is measured to it), a short tapered crane aft for the backstay (crane: how far its pin stands aft of the mast's after face), and the cap shrouds' strap tangs flat on the mast's sides below it, each pinned across (cap_tang_below_top). Round 1's reviewers asked for the flat-topped casting in place of a domed cap, a stubby crane, and tangs lying on the mast; the final round's for a lower cap, its sheave slots let into the top rather than standing on it, and the forestay's pin up level with the backstay's."
+ },
+ "spreaders": {
+  "z": 5.03,
+  "half_span": 0.76,
+  "chord": 0.032,
+  "thickness": 0.016,
+  "root": 0.06,
+  "note": "One pair of aluminium spreaders straight across the boat at today's SpreaderTip height. Owners measure 29 to 36 in from the mast's middle to the tip; 30 in is used, the shortest that keeps the uppers' bend at the tip modest. Each tip is tilted up so it bisects the upper's angle there (rig_c22.spreader_tilt), as a rigger sets them, and wears a tip cap over the wire. Round 1's reviewers asked for slimmer spreaders (about 1 in by 0.6 in), a compact root socket and small taped tips."
+ },
+ "shrouds": {
+  "wire_d": 0.0032,
+  "inboard": 0.08,
+  "upper_x": 0.84,
+  "lower_x": [
+   1.22,
+   0.5
+  ],
+  "lower_tang_below_spreader": 0.07,
+  "lower_tang_spread": 0.035,
+  "note": "Masthead uppers over the spreaders and a forward and an aft lower each side, all 1/8 in 1x19 stainless (an owner's 1980s rigging list: uppers and both lowers 1/8 in), each on the kit's open-body Turnbuckle (its smallest size, for 4 mm wire) on the kit's Chainplate. The chainplates stand on the side deck, inboard of the deck's edge by 'inboard': the uppers' in line with the mast, the lowers' forward and aft of it (lower_x), the aft one where today's ChainplateLower socket is. The lowers leave one tang under the spreaders each side (its two holes 'spread' apart). The chainplates' places wait on a photo of her side deck."
+ },
+ "forestay": {
+  "wire_d": 0.0032,
+  "note": "1/8 in 1x19 from the masthead's forward lug to the kit's Stemhead (the bar down the stem's face, bk_part_bow.py, laid on this hull's stem), with a turnbuckle pinned in the stemhead's tang. The tang's pin is 12 mm behind the stem's top, so J (the pin to the mast's front) is 2.38 m against the card's 2.438 (8 ft 0 in), 2.2% short: the physics' mast x (0.86) may sit a little far forward. Slice 9 and slice 10 settle the mast's place with the sail plan."
+ },
+ "backstay": {
+  "wire_d": 0.0032,
+  "plate": [
+   -3.17,
+   -0.2
+  ],
+  "note": "A single backstay from the masthead's crane to a chainplate on the transom's top, off the centreline to port, as owners of 1970s boats describe theirs (the rudder's head and the tiller are on the centreline, the outboard to starboard). Many owners have since fitted a split backstay; the original is drawn."
+ },
+ "boom": {
+  "gooseneck_z": 1.565,
+  "section": [
+   0.08,
+   0.05
+  ],
+  "gooseneck_aft": 0.035,
+  "end": 0.11,
+  "vang_x": 0.27,
+  "mainsheet_x": -2.15,
+  "note": "An aluminium boom 80 mm deep by 50 mm wide (the final round's reviewers read the first draft's 95 mm as deeper than the mast; owners' booms run about 3 in by 2 in) on a gooseneck on the mast's after face 11.5 cm (4.5 in) over the physics' boom height (card game.boom_z_m, 1.45): Bean, Nov 16, from the slice 4 renders, 'the boom does sit too low, looks maybe 4-5 inch too low', and a final-round reviewer read it as too low too. Slice 10 lifts the physics' BoomZ, MainFootZ and MainHeadZ to match; with its black band at E (9 ft 8 in) from the mast's after face (the Boom_Clew socket: E is measured to it), a cast end with the outhaul's sheave beyond, and bails for the mainsheet (today's Boom_Mainsheet socket) and the vang (today's Boom_Vang). The vang's foot is a tang on the mast's after face 8 cm over the step (rig_c22.vang_foot). The vang's tackle and every line are slice 6's running rigging."
+ },
+ "bands": {
+  "width": 0.025,
+  "note": "The black measurement bands: on the mast at the boom's top (the foot of P) and P above it (the main's head may not be hoisted past it), and on the boom at E. P is the card's 21 ft 0 in."
+ },
+ "mast_step": {
+  "kit_mast_z": 0.06,
+  "note": "The kit's MastStep (a cast plate with a hinge pin and two halyard turning eyes) on the cabin top at the mast: its Mast socket, 6 cm over the cabin top, is where the mast's heel sits. The C22's mast is stepped on deck and lowered aft on a hinge for trailering: two cheeks on the step either side of the heel and a pivot bolt through them and the mast, aft of its middle (the final round's reviewers asked for the hinge)."
+ }
+}

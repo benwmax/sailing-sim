@@ -16,7 +16,26 @@ struct FLaunchSpot
 	FString Name;
 	double X = 0.0, Y = 0.0;    // world meters (X north, Y east)
 	double HeadingDeg = 0.0;    // compass heading of the bow
+	double DepthM = -1.0;       // the bake's depth_m (at the pool or MLLW); -1 when the bake gives none
+	double ClearM = -1.0;       // metres to the bake's nearest dock or pier (LaunchSpotClearance); -1 when it has none
 };
+
+/** Is a launch spot deep enough for a boat that draws DraftM: a fifth of her draft under the keel (Bluebonnet's 4.5 m wants
+ *  5.4 m: Bolivar Roads, the lake's deep south end). A spot without a depth fits every boat. docs/jclass-14/.
+ *  And is there room for her: two of her lengths of open water to the nearest dock or pier (SpotClearM, LaunchSpotClearance;
+ *  the frigate's 65 m keeps her out of the marinas, docs/frigate-physics/), for a ship of 50 m or more only. A spot without a
+ *  clearance has room. */
+constexpr double kLaunchShipLengthM = 50.0;   // the room rule is for ships; yachts up to Bluebonnet's 40 m use the marinas
+inline bool LaunchSpotFits(double SpotDepthM, double DraftM, double SpotClearM = -1.0, double LengthM = 0.0)
+{
+	return (SpotDepthM < 0.0 || SpotDepthM >= 1.2 * DraftM)
+		&& (SpotClearM < 0.0 || LengthM < kLaunchShipLengthM || SpotClearM >= 2.0 * LengthM);
+}
+
+struct FLakeDock;
+
+/** Metres from a spot (map X north, Y east) to the nearest dock, pier or breakwater line; -1 when there are none. */
+SAILINGSIM_API double LaunchSpotClearance(const TArray<FLakeDock>& Docks, double X, double Y);
 
 /** A building near the shore, as a box. */
 struct FLakeBuilding

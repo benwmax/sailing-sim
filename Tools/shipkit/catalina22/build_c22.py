@@ -1,16 +1,27 @@
-"""The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin.
+"""The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below; slice 9, the bottom paint's line (her light
+copy, light_c22.py, is made on the built .blend). Every material then takes slice 8's finish and wear
+(textures/weathering_c22.dress) at --wear's level (L2 unless given: a six-year-old club boat; apply_level switches it
+later), or none with --no-wear.
 
-    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised]
+    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up] [--wear L0..L4 | --no-wear]
 
-Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight) and the deck,
+Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight; cut along the bottom
+paint's line BOTTOM_Z, Topsides above and Antifouling below), the deck,
 rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from deck_c22.py (build_deck_c22.py meshes
-them; --raised builds the pop-top up, under the closed one's name). With --fleet <dir> (a
-build_fleet.py FLEET_SHAPE_BLEND=1 output: Catalina22_shape.blend) it also links today's keel, rudder, mast and boom as
-they are, so the shape loop's views show the hull with today's appendages until slice 3 and 4 replace them.
+them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
+its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
+rudder kicked up, under the down ones' names), and the mast, boom, wires and their kit fittings from rig_c22.py
+(build_rig_c22.py), the sails in each of their states from sails_c22.py (build_sails_c22.py: all hidden but the
+mainsail under its cover), and the deck hardware and each state's running rigging from hardware_c22.py
+(build_hardware_c22.py: all states hidden but her rest at the mooring), and the cabin below from cabin_c22.py
+(build_cabin_c22.py: the liner, furniture, cushions, table and galley; its headroom goes in the report). --fleet <dir> is accepted and ignored since slice 4, which replaced the last of today's parts it
+linked (the mast and boom).
 
-Writes <out>/c22.blend (objects C22_Hull, the deck's (build_deck_c22.py lists them), and with --fleet today's Catalina22_Board,
-SM_Catalina22_Rudder, SM_Catalina22_Mast, SM_Catalina22_Boom), <out>/c22_report.json (the canoe body's volume and
-centre of buoyancy beside the game's: the shape loop's report format) and <out>/hydrostatics.json.
+Writes <out>/c22.blend (objects C22_Hull and the deck's, the keel's and the rig's: build_deck_c22.py,
+build_keel_c22.py and build_rig_c22.py list them), <out>/c22_report.json (the canoe body's volume and centre of
+buoyancy beside the game's: the shape loop's report format), <out>/hydrostatics.json and <out>/c22_sockets.json (the
+rig's and the hardware's sockets, for c22_check.py's I, J, P and E and slice 9's live ropes).
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
 the shape loop's tools read it like the fleet's .blend.
 """
@@ -26,11 +37,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_c22 as H  # noqa: E402
 import build_deck_c22 as BD  # noqa: E402
+import build_keel_c22 as BK  # noqa: E402
+import build_rig_c22 as BR  # noqa: E402
+import build_sails_c22 as BS  # noqa: E402
+import build_hardware_c22 as BH  # noqa: E402
+import build_cabin_c22 as BC  # noqa: E402
+import keel_c22 as KC  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
 FLEET = ARGS[ARGS.index("--fleet") + 1] if "--fleet" in ARGS else None
 RAISED = "--raised" in ARGS
+KEEL_UP = "--keel-up" in ARGS
+WEAR = None if "--no-wear" in ARGS else (ARGS[ARGS.index("--wear") + 1] if "--wear" in ARGS else "L2")
 os.makedirs(OUT, exist_ok=True)
 
 N_STATIONS, N_GIRTH = 180, 64         # stations along her length, girth steps per side (bunched: hull_c22.girth)
@@ -96,30 +115,33 @@ def build_hull():
     if transom.normal.x > 0:                                   # a lone flat face: recalc can't orient it; face aft
         transom.normal_flip()
     transom.smooth = False
-    ob = mesh_object("C22_Hull", bm, material("GelcoatHull", (0.92, 0.92, 0.9)))
+    # the bottom paint's line: the shell cut along it, so the line is an edge (Topsides above, Antifouling below)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6, plane_co=(0.0, 0.0, BOTTOM_Z),
+                           plane_no=(0.0, 0.0, 1.0))
+    ob = mesh_object("C22_Hull", bm, material("Topsides", SLOT_RGB["Topsides"]))
+    ob.data.materials.append(material("Antifouling", SLOT_RGB["Antifouling"]))
     for p in ob.data.polygons:
-        p.use_smooth = len(p.vertices) == 4                    # the quads; the transom stays flat
+        p.use_smooth = len(p.vertices) < 20                    # the shell; the transom (one face) stays flat
+        p.material_index = 1 if p.center.z < BOTTOM_Z else 0
     return ob
 
 
+BOTTOM_Z = 0.04         # the antifouling's top over the design waterline (slice 9; the textures' line, docs/c22-10)
 SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail": (0.85, 0.85, 0.83),
             "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
-            "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82)}
+            "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82), "Keel": (0.24, 0.23, 0.22),
+            "Antifouling": (0.16, 0.2, 0.3), "Topsides": (0.92, 0.92, 0.9), "Wood": (0.55, 0.36, 0.2),
+            "BlackPlastic": (0.05, 0.05, 0.05), "Rubber": (0.08, 0.08, 0.08), "PaintedAluminium": (0.9, 0.9, 0.9), "Wire": (0.7, 0.71, 0.73),
+            "ClothMain": (0.93, 0.92, 0.88), "ClothJib": (0.93, 0.92, 0.88), "ClothGenoa": (0.93, 0.92, 0.88),
+            "ClothSpinnaker": (0.13, 0.33, 0.62), "SailHeap": (0.9, 0.89, 0.85), "SailPatch": (0.9, 0.89, 0.85),
+            "SailLine": (0.25, 0.33, 0.55), "SailBag": (0.18, 0.22, 0.32),
+            "Liner": (0.9, 0.89, 0.86), "Headliner": (0.88, 0.86, 0.8), "Sole": (0.42, 0.27, 0.15),
+            "Laminate": (0.5, 0.34, 0.2), "Cushion": (0.36, 0.4, 0.3), "Curtain": (0.7, 0.62, 0.45),
+            "WhitePlastic": (0.92, 0.92, 0.9)}
 
 
 def deck_materials():
     return {k: material(k, v) for k, v in SLOT_RGB.items()}
-
-
-def link_fleet(path):
-    """Today's keel, rudder, mast and boom from the fleet's shape .blend, as they are."""
-    blend = os.path.join(path, "Catalina22_shape.blend")
-    want = ["Catalina22_Board", "SM_Catalina22_Rudder", "SM_Catalina22_Mast", "SM_Catalina22_Boom"]
-    with bpy.data.libraries.load(blend, link=False) as (src, dst):
-        dst.objects = [n for n in src.objects if n in want]
-    for o in dst.objects:
-        if o is not None:
-            bpy.context.scene.collection.objects.link(o)
 
 
 def mesh_volume_below(ob, z=0.0):
@@ -135,31 +157,56 @@ def mesh_volume_below(ob, z=0.0):
     return v
 
 
+def closed_volume(ob):
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    v = bm.calc_volume(signed=False)
+    bm.free()
+    return v
+
+
 def main():
     clear_scene()
     depth = H.solve_depth()
     hull = build_hull()
     BD.build_all(deck_materials(), raised=RAISED)
-    if FLEET:
-        link_fleet(FLEET)
+    keel_obs = BK.build_all(deck_materials(), keel_up=KEEL_UP)
+    keel = next(o for o in keel_obs if o.name == ("C22_KeelDown" if KEEL_UP else "C22_Keel"))
+    _, socks = BR.build_all(deck_materials())
+    BS.build_all(deck_materials())
+    _, hw = BH.build_all(deck_materials(), raised=RAISED)
+    _, cabin = BC.build_all(deck_materials())
+    socks["sockets"].update(hw["sockets"])
+    socks["owner"].update(hw["owner"])
+    socks["hardware_note"] = hw["note"]
+    json.dump(socks, open(os.path.join(OUT, "c22_sockets.json"), "w"), indent=1)
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)
-    report = {"canoe_volume_m3": round(mesh_v + H.CARD["targets"]["keel_kg"] / H.IRON_KG_M3, 4),
+    keel_v = closed_volume(keel) - BK.pin_volume()
+    stub_solid, trunk_water = KC.stub_volume()
+    report = {"canoe_volume_m3": round(mesh_v + keel_v + stub_solid - trunk_water, 4),
               "hull_volume_m3": round(mesh_v, 4), "design_hull_volume_m3": round(h["volume_m3"], 4),
-              "keel_volume_m3": round(H.CARD["targets"]["keel_kg"] / H.IRON_KG_M3, 4),
+              "keel_volume_m3": round(keel_v, 4), "keel_kg": round(keel_v * KC.KL["iron_kg_m3"], 1),
+              "stub_volume_m3": round(stub_solid, 4), "trunk_water_m3": round(trunk_water, 4),
+              "keel_thickness_m": round(KC.thickness(), 4), "keel_raise_deg": round(math.degrees(KC.raise_angle()), 2),
               "physics_volume_m3": g["design_volume_m3"], "cb_x": round(h["cb"][0], 3), "cb_z": round(h["cb"][2], 3),
-              "physics_cb": [-0.112, -0.102],
-              "note": "canoe_volume_m3 is the hull mesh's volume under the design waterline (hull_volume_m3, measured on "
-                      "the mesh) plus the swing keel's (249 kg of cast iron), which slice 3 hangs below it: what "
-                      "c22_check.py weighs. design_hull_volume_m3 is the drawing's own integral (hull_c22.hydrostatics), "
-                      "which solve_depth sets to the target."}
+              "physics_cb": [-0.112, -0.102], **cabin,
+              "note": "canoe_volume_m3 is what c22_check.py weighs: the hull mesh's volume under the design waterline "
+                      "(hull_volume_m3), the keel plate's mesh volume less its pin's (keel_volume_m3, all "
+                      "of it under the water: keel_kg of cast iron), the stub's moulding under the hull (stub_volume_m3, keel_c22.stub_volume) "
+                      "less the water in the trunk inside the hull's skin (trunk_water_m3). design_hull_volume_m3 is "
+                      "the drawing's own integral (hull_c22.hydrostatics), which solve_depth sets to the target."}
     json.dump(report, open(os.path.join(OUT, "c22_report.json"), "w"), indent=1)
     h["canoe_depth"] = depth
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     print(f"C22: canoe depth {depth:.4f} m, hull volume {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f}, "
           f"LWL {h['lwl']:.3f} m, BWL {h['beam_wl']:.3f} m, hull triangles {tris}")
+    if WEAR:                          # slice 8's finish and wear on every material (textures/weathering_c22.py)
+        sys.path.insert(0, os.path.join(HERE, "textures"))
+        import weathering_c22 as WC
+        print(f"C22: dressed {len(WC.dress(WEAR))} materials at {WEAR}")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "c22.blend"))
 
 

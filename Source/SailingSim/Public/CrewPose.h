@@ -74,6 +74,20 @@ inline int32 CrewMetaHumanRole(int32 N, int32 I)
 	return N > 4 ? I % NumMetaHumanRoles : 2;
 }
 
+/** docs/crew-cost/: at most this many of a crew are MetaHumans. Each one is a body, face, outfit, polo, shoes, vest, cap and
+ *  grooms, ticked, moved with the boat and sent to the renderer every frame: about 0.7 ms of frame on the CPU (game, render
+ *  and RHI threads; the GPU hardly notices). The maxi's and Bluebonnet's twelve took her helm-eye view from 60 to 41 fps
+ *  (PC Ultra, Nov 17) and 43 on the Mac's High, under its 45. Five keeps every smaller crew whole (the J/22's three, the
+ *  Lagoon's four, the Catalina 30's five). -SailingMetaCrew=<n> sets it for measuring. */
+constexpr int32 kMaxMetaHumanCrew = 5;
+/** Whether figure I of a crew of N is one of its Meta MetaHumans: the aftmost (CrewPlacement puts each figure aft of the one
+ *  before, the helm last), so the helm, the trimmer and the hands nearest them, the ones the helm's eye and the chase camera
+ *  see closest. The others are SK_Sailor in the same colours (CrewOutfit.h). */
+inline bool CrewFigureIsMetaHuman(int32 N, int32 I, int32 Meta = kMaxMetaHumanCrew)
+{
+	return I >= 0 && I < N && I >= N - Meta;
+}
+
 /** Loads a role's built MetaHuman (body, face, outfit under /Game/Crew/MetaHumans, git-ignored); false if not built. */
 SAILINGSIM_API bool LoadMetaHumanCrew(int32 Role, class USkeletalMesh*& Body, class USkeletalMesh*& Face, class USkeletalMesh*& Outfit);
 /** Graphics G3: a MetaHuman's grooms (hair, brows, beard) with their face bindings, from its Grooms folder. */
