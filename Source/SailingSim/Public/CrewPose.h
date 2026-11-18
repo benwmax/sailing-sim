@@ -119,6 +119,7 @@ struct SAILINGSIM_API FCrewGround
 	bool bSeated = false;       // round 12: sitting (not hiking under a dinghy's straps): a foot on the floor lies flat
 	bool bTravelerBridge = true; // the drawn model has the cockpit's traveler bridge (the light J/22); false: the hero J/22's own cockpit
 	bool bFeetDown = false;     // sitting in a cockpit (Helm, Cockpit): a foot hanging over the well's sole or a seat goes down onto it
+	bool bStanding = false;     // docs/ship-rig/: on the feet at a station (Stand): the soles level on the deck as a seated foot's do
 	bool bFlatDeck = false;     // docs/crew-followups/: sitting with the feet on the deck (FCrewPoseParams::bFlatDeck): never sent into a well
 };
 

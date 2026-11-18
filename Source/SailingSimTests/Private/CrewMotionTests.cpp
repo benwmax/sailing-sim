@@ -262,11 +262,10 @@ bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0, Braced = 0, Ducked = 0;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
 		const FBoatModel Model(Cfg);
 		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
@@ -727,11 +726,10 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 	TMap<FString, int32> Worst;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
 		const FBoatModel Model(Cfg);
 		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
@@ -860,9 +858,8 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 	int32 Pairs = 0;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		const double Up = Cfg.CrewSitOut * 0.8, Hiked = Cfg.CrewSitOut + Cfg.CrewHikeOut;
 		struct FCase { double Offset, BoomAngle, Twa; const TCHAR* Name; };
 		const FCase Cases[] = { { Up, 0.3, 0.8, TEXT("sitting up") }, { Hiked, 0.25, 0.8, TEXT("hiked") }, { 0.3, 0.6, 1.6, TEXT("light air, leeward seat") },

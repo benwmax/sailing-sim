@@ -263,6 +263,11 @@ int32 ShipWatchCount(const Sailing::FBoatConfig& Config)
 	return Config.HasSquareRig() ? 8 : 0;
 }
 
+int32 CrewFigureCount(const Sailing::FBoatConfig& Config)
+{
+	return Config.HasSquareRig() ? ShipWatchCount(Config) : Config.CrewCount;
+}
+
 namespace
 {
 	/** docs/ship-rig/: a square-rigged ship's deck watch at their stations (ship frame, m), on their feet. The stations keep
@@ -1014,6 +1019,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike || bUnderStrap;
 		Ground.bTravelerBridge = In.bTravelerBridge;
 		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
+		Ground.bStanding = St == ECrewStance::Stand;
 		Ground.bFlatDeck = In.Params.bFlatDeck;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}

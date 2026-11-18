@@ -22,7 +22,6 @@ bool FVisualHullClipTest::RunTest(const FString& Parameters)
 	using namespace Sailing;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
-		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
 		const double Depth = Model.HullDepth();
@@ -56,15 +55,24 @@ bool FVisualHullClipTest::RunTest(const FString& Parameters)
 				if (Margin > 2.0 * FMath::Max(CellX, CellY) + 0.05)
 				{
 					++Inside;
+					// A texel can't follow a feature finer than itself (the frigate: her 22 x 11 cm texels across the near-vertical
+					// deadwood and the run up to her counter, where the skin drops 2 m in one texel): the allowance grows by the
+					// bottom's change across a texel. Small boats' hulls change a centimetre or two per texel.
+					const FHullShape& S = Cfg.Hulls[In];
+					double Var = 0.0;
+					for (const FVector2D& D : { FVector2D(CellX, 0.0), FVector2D(-CellX, 0.0), FVector2D(0.0, CellY), FVector2D(0.0, -CellY) })
+					{
+						Var = FMath::Max(Var, FMath::Abs(S.BottomZ(X + D.X, Y + D.Y - S.CenterY, Depth) - Bottom));
+					}
 					// Where the water can reach (the bottom up to 10 cm above the calm sea), the map is the hull.
 					const double Err = Bottom < 0.1 ? FMath::Abs(Map.Sample(X, Y).Bottom - Bottom) : 0.0;
-					WorstBottom = FMath::Max(WorstBottom, Err);
-					BadBottom += Err > 0.03 ? 1 : 0;
+					WorstBottom = FMath::Max(WorstBottom, FMath::Max(Err - Var, 0.0));
+					BadBottom += Err > 0.03 + Var ? 1 : 0;
 					// Where the bottom is under the water, the water must end up under the bottom (5 mm: the filter).
 					if (Bottom < -0.02)
 					{
 						++HullsSeen[In];
-						Wet += -Drop > Bottom + 0.005 ? 1 : 0;
+						Wet += -Drop > Bottom + 0.005 + Var ? 1 : 0;
 					}
 				}
 				else if (Margin < -FMath::Max(CellX, CellY))
@@ -76,7 +84,7 @@ bool FVisualHullClipTest::RunTest(const FString& Parameters)
 			}
 		}
 		TestTrue(FString::Printf(TEXT("%s: samples inside (%d) and outside (%d)"), *Name, Inside, Outside), Inside > 100 && Outside > 100);
-		TestEqual(FString::Printf(TEXT("%s: map bottom off the hull by > 3 cm (worst %.3f m)"), *Name, WorstBottom), BadBottom, 0);
+		TestEqual(FString::Printf(TEXT("%s: map bottom off the hull by > 3 cm past a texel's own change (worst %.3f m)"), *Name, WorstBottom), BadBottom, 0);
 		TestEqual(FString::Printf(TEXT("%s: water left above the bottom inside a hull"), *Name), Wet, 0);
 		TestEqual(FString::Printf(TEXT("%s: water dropped outside the hulls (worst %.3f m)"), *Name, WorstPit), Pits, 0);
 		for (int32 H = 0; H < HullsSeen.Num(); ++H)

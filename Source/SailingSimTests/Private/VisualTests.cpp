@@ -976,10 +976,9 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
-		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
@@ -1020,6 +1019,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
 						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
+						Ground.bStanding = P.Stance == ECrewStance::Stand;
 						Ground.bFlatDeck = P.bFlatDeck;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;

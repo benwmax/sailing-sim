@@ -598,7 +598,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// A square-rigged ship's company (the frigate's 450) is not a small boat's crew placed along her cockpit: her deck watch
 	// (ShipWatchCount, CrewPlacement's stations: docs/ship-rig/) stands at its stations, SK_Sailor stand-ins all (a MetaHuman
 	// is 1.5 ms of CPU each: docs/crew-cost/).
-	const int32 NumFigures = C.HasSquareRig() ? ShipWatchCount(C) : C.CrewCount;
+	const int32 NumFigures = CrewFigureCount(C);
 	if (C.HasSquareRig()) MetaCount = 0;
 	for (int32 I = 0; I < NumFigures; ++I)
 	{

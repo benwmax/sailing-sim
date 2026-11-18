@@ -98,6 +98,15 @@ namespace Sailing
 	 *  order or a boat without a square rig (nothing changed). */
 	SAILINGPHYSICS_API bool ApplySailPlan(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls);
 
+	/** The sail plan orders on her officers' ladder (ShipSailPlans.h, the plans the trial and the polar sail her under):
+	 *  make sail is all plain sail (the spanker brailed up before the wind, bRunning); shorten sail is the next plan down
+	 *  from the one she carries, Plan (0 all plain sail .. NumShipSailPlans() - 1 close-reefed topsails; -1 off the ladder,
+	 *  under fighting sail or all furled, from where shortening sail goes to single-reefed topsails); fighting sail and
+	 *  furl all are ApplySailPlan's and leave the ladder. Plan is kept up to date. False as ApplySailPlan. */
+	SAILINGPHYSICS_API bool ApplySailOrder(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls, int& Plan, bool bRunning);
+	/** The ladder plan's name ("single-reefed topsails"), nullptr off the ladder. */
+	SAILINGPHYSICS_API const char* SailOrderPlanName(int Plan);
+
 	/** The helmsman's new wind angle after a helm order (signed like the TWA; held between the closest she sails and dead
 	 *  downwind, on the same tack). Other orders leave it. */
 	SAILINGPHYSICS_API double HelmTargetAfter(EShipOrder Order, double TargetTwaDeg, const FShipOrderContext& Context);
