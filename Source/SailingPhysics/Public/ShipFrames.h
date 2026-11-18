@@ -73,7 +73,7 @@ namespace Sailing
 	/** A rope part's motion from its rest to its pose at a helm angle (the two nearest whole degrees blended; the run's
 	 *  own X stretched). Identity for a part that is not in the table. */
 	SAILINGPHYSICS_API FRigMotion RopePartMotion(const FShipFramesData& Data, const FShipFrame& Frame, double HelmDeg);
-	/** A walker this near a door's hinge in plan (m) and on its deck wants it open. */
+	/** A walker this near a door's hinge in plan (m) and on its deck (not the one over or under it) wants it open. */
 	SAILINGPHYSICS_API bool ShipDoorNear(const FShipFrame& Door, const Vec3& Feet, double WithinM);
 
 	/**

@@ -119,7 +119,8 @@ namespace Sailing
 	bool ShipDoorNear(const FShipFrame& Door, const Vec3& Feet, double WithinM)
 	{
 		const Vec3 D = Feet - Door.Origin;
-		return D.LengthXY() < WithinM && D.Z > -2.5 && D.Z < 2.5;
+		// (his feet a step below the hinge on the gun deck; not from the quarterdeck 1.8 m over it or the berth deck under it)
+		return D.LengthXY() < WithinM && D.Z > -1.2 && D.Z < 0.6;
 	}
 
 	void FShipFramesPose::Reset(const FShipFramesData& Data)
