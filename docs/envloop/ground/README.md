@@ -132,6 +132,13 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   colour only, the two mixed by weight (2); nothing past it; the bands cross-fade over 10 m. The normal and RHA arrays
   are trilinear (anisotropic filtering on ground seen at a grazing angle ran its full tap count on every fetch; the colour
   keeps it), and ray-traced hits (Lumen's hit lighting) take the card colours. The numpy twin has the same bands.
+- **From the PC's Ultra stills (Nov 18, `Inputs/bench/ground-797/pc-0c1d9669/`).** Shingle patches on the club beach had
+  box-straight sides (value noise keeps its lattice in its features): the 3.1 m and 11 m patch noises now sit on
+  lattices turned 34 and -52 degrees off the map's axes. A pale column ran up the clay bank: the mowing stripes
+  multiplied the whole ground by the lawn's weight, so a half-weight lawn over soil striped the soil; they now need the
+  lawn to own the pixel. Wet limestone shingle sparkled in the sun: its wet roughness goes from 0.4 to 0.55. The
+  ruler-straight waterline in the 5 m stills is the 1 m mesh meeting the water plane (Track C's edge types and the
+  shore mesh, not the material).
 - **Far colour.** The card colours are measured albedos, darker and less yellow than today's vertex colours (today's
   lawn is a bright yellow-green, linear 0.36, 0.36, 0.16). Past 150 m `M_Ground` draws the card colours, so the far
   band changes too; `M_FarLand` (the far ring past the grid) should take the same table in Track I, or there is a step

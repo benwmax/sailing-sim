@@ -86,9 +86,13 @@ def weights(P, N, C, Near, WaterZ, Mown):
     x, y, z = P[..., 0], P[..., 1], P[..., 2]
     h = z - WaterZ                      # height over the water now
     slope = 1.0 - N[..., 2]
-    n1 = vnoise(x / 3.1, y / 3.1)
+    # The patch noises' lattices are turned off the map's axes (value noise keeps its grid in its features: at 5 m the
+    # PC's Ultra stills showed shingle patches with box-straight sides).
+    x1, y1 = 0.8253 * x - 0.5646 * y, 0.5646 * x + 0.8253 * y      # 34.4 deg
+    x3, y3 = 0.6216 * x + 0.7833 * y, -0.7833 * x + 0.6216 * y     # -51.6 deg
+    n1 = vnoise(x1 / 3.1, y1 / 3.1)
     n2 = vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0)
-    n3 = vnoise(x / 11.0 - 4.0, y / 11.0 + 9.0)
+    n3 = vnoise(x3 / 11.0 - 4.0, y3 / 11.0 + 9.0)
     n4 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)    # round 2: a 31 m wander in every band's top, so no zone edge runs straight
     # Decode the vertex colour. Canopy: the upland tone runs (0.36,0.36,0.16) open to (0.16,0.22,0.08) under trees, so
     # red over green falls from 1 to 0.73. Sandy bank (0.50,0.42,0.30) against clay bank (0.42,0.30,0.20): green over red.
@@ -261,7 +265,7 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
     # texture; reviewers saw a face with no layers). Only on clay and only on the steep part.
     slope = 1.0 - N[:, 2]
     face = w[:, S["clay"]] * smoothstep(0.25, 0.5, slope)
-    strata = np.sin(P[:, 2] / 0.18 * 6.2831853 + 1.5 * vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0) + 0.4 * vnoise(x / 3.1, y / 3.1))
+    strata = np.sin(P[:, 2] / 0.18 * 6.2831853 + 1.5 * vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0) + 0.4 * vnoise((0.8253 * x - 0.5646 * y) / 3.1, (0.5646 * x + 0.8253 * y) / 3.1))
     base *= (1.0 + 0.14 * strata * face)[:, None]
     grassy = w[:, S["lawn"]] + w[:, S["rough"]]
     straw = ALB_DORMANT[S["rough"]] / ALB_SUMMER[S["rough"]]
@@ -272,10 +276,11 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
     bx, by = np.floor(x / 40.0), np.floor(y / 40.0)
     ang = 6.2831853 * hash2(bx + 0.13, by + 0.71)
     stripe = np.where(((x * np.cos(ang) + y * np.sin(ang)) / 5.0) % 1.0 < 0.5, -1.0, 1.0)
-    base *= (1.0 + 0.04 * stripe * w[:, S["lawn"]])[:, None]
+    # Only where the lawn owns the ground: a half-weight lawn over a bank showed the stripes as pale columns up the soil.
+    base *= (1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[:, S["lawn"]]))[:, None]
     # The wet band (as today's M_Terrain: up the swash about half a metre, ragged) and the algae film just over the line.
     h = P[:, 2] - WaterZ
-    n_ = vnoise(x / 3.1, y / 3.1)
+    n_ = vnoise((0.8253 * x - 0.5646 * y) / 3.1, (0.5646 * x + 0.8253 * y) / 3.1)   # = weights()' n1
     wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n_, h)) * np.maximum(Near, h < 0.05)
     dark = w @ DARKEN
     base *= (1.0 - dark * wet)[:, None]
