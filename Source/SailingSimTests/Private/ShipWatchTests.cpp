@@ -148,7 +148,7 @@ bool FShipWatchStationsTest::RunTest(const FString& Parameters)
 	Stand.StandYaw = 37.f;
 	TMap<FName, FQuat> Joints, Officer;
 	CrewJointRotations(Stand, Joints);
-	TestTrue(TEXT("the stance poses the legs and arms"), Joints.Contains(TEXT("thigh_l")) && Joints.Contains(TEXT("calf_r")) && Joints.Contains(TEXT("upperarm_l")) && Joints.Contains(TEXT("lowerarm_r")));
+	TestTrue(TEXT("the stance poses the legs and arms"), Joints.Contains(TEXT("thigh_l")) && Joints.Contains(TEXT("calf_r")) && Joints.Contains(TEXT("upperarm_l")) && Joints.Contains(TEXT("forearm_r")));
 	TestEqual(TEXT("faces the yaw given"), CrewFacingYaw(Stand), 37.f, 1e-6f);
 	Stand.Hike = 1.f;
 	CrewJointRotations(Stand, Officer);
