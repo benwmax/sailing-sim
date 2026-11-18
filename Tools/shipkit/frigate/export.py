@@ -173,6 +173,36 @@ def frame_matrix(f):
     return m
 
 
+def helm_table(d, frames):
+    """gundeck.json's tiller and tiller_ropes in the sockets file's terms (cm, quaternions): the tiller turns about its
+    frame's +Z by the helm's degree; the six rope parts (TillerEye_S/P, TillerRun_S/P, TillerWrap_S/P) take the frame
+    listed for that degree (poses: o, R with the part's axes as columns; a run's X scaled by scale_x). The Tiller mesh's
+    'turns' note comes from here too."""
+    t, r = d["tiller"], d["tiller_ropes"]
+    if "Tiller" in frames:
+        frames["Tiller"]["turns"] = t["turns"]
+    poses = []
+    for q in r["poses"]:
+        row = {"helm_deg": q["helm_deg"]}
+        for name, v in q.items():
+            if name == "helm_deg":
+                continue
+            m = Matrix.Identity(4)
+            for i in range(3):
+                for k in range(3):
+                    m[k][i] = v["R"][k][i]
+            m.translation = v["o"]
+            row[name] = dict(xform(m), scale=[round(v.get("scale_x", 1.0), 5), 1.0, 1.0])
+        poses.append(row)
+    return {"note": ("the tiller (Decks/SM_Frigate_Tiller) turns about its own frame's +Z by the helm's degree (hard over "
+                     "hard_over_deg; a positive turn takes the tiller to starboard and the ship's head to port); at each "
+                     "whole degree the six rope parts take the frame in 'poses' (location_cm, rotation_xyzw in the ship's "
+                     "frame, a run's X scale); between degrees take the nearer pose or blend two; TillerRopeLeads and "
+                     "TillerSheaves stay. From docs/frigate-tiller's gundeck.json (tiller, tiller_ropes)"),
+            "tiller": "SM_Frigate_Tiller", "hard_over_deg": t["hard_over_deg"],
+            "wheel_turns_lock_to_lock": r.get("wheel_turns_lock_to_lock"), "moves": r.get("moves"), "poses": poses}
+
+
 def export(out, only=None, dry=False, log=lambda m: print(m, flush=True), frames=None, shut_lids=()):
     """frames: the parts that turn below (gundeck.json 'frames': the capstan's head, the cabin doors), each exported
     on its own in its frame instead of merged into its deck."""
@@ -319,18 +349,27 @@ def main():
     spar = os.path.join(bdir, EC["outside_json"])
     if os.path.exists(spar):                  # the spar deck's turning parts (deck.json 'frames': the wheel, capstan)
         frames.update(json.load(open(spar)).get("frames") or {})
+    read, helm = set(), None
     for deck, rule in EC["decks"].items():    # each deck's file from the build (gundeck.json, berthdeck.json, ...)
         path = os.path.join(bdir, rule.get("json", ""))
         built = any(c in bpy.data.collections for c in rule["collections"])
         if built and rule.get("json") and not os.path.exists(path):
             raise SystemExit(f"{deck} is built but {path} is missing: its turning parts' frames and lanterns come "
                              f"from it (give the build's folder with --build <dir>)")
-        if rule.get("json") and os.path.exists(path):
+        if rule.get("json") and os.path.exists(path) and path not in read:   # (orlop.json serves the orlop and
+            read.add(path)                                                   # the hold: read once)
             d = json.load(open(path))
             frames.update(d.get("frames") or {})
-            lights += [dict(L, deck=deck) for L in d.get("lights") or []]
+            for L in d.get("lights") or []:
+                L = dict(L, deck=deck)
+                if "pos_m" not in L and "at_m" in L:       # slice 14's lanterns give at_m and no zone, kelvin,
+                    L["pos_m"] = L.pop("at_m")              # lumens or radius (the gun and berth decks' do)
+                L.setdefault("zone", rule["property"])
+                lights.append(L)
             if d.get("light_budget"):
                 budgets[deck] = d["light_budget"]
+            if d.get("tiller") and d.get("tiller_ropes"):   # the tiller build (docs/frigate-tiller): the tiller's
+                helm = helm_table(d, frames)                 # turn and the rope parts' frames at each degree of helm
     g = json.load(open(guns_json))
     meshes, placed, groups, twins = export(out, only, dry, frames=frames,
                                            shut_lids=sorted((g.get("long24") or {}).get("shut_lids") or {}))
@@ -352,6 +391,13 @@ def main():
                                 location_cm=[round(v * CM, 2) for v in L["pos_m"]],
                                 radius_cm=round(L.get("radius_m", 0) * CM, 1)) for L in lights]
         socks["light_budget"] = budgets
+    if helm:
+        socks["helm"] = helm
+        short = [L["name"] for L in lights if "lumens" not in L or "radius_m" not in L]
+        if short:
+            socks["lights_note"] = ("without kelvin, lumens and radius_cm (slice 14's orlop.json gives only the place "
+                                    "and colour; take the gun deck's 2200 K, 180 lm and a 3 m radius until the model "
+                                    "thread adds them): " + ", ".join(short))
     json.dump(socks, open(os.path.join(out, f"{TAG}_sockets.json"), "w"), indent=1)
     json.dump(materials_table(), open(os.path.join(out, f"{TAG}_materials.json"), "w"), indent=1)
     tot = {g: sum(r["triangles"] for r in meshes.values() if r["group"] == g) for g in EC["groups"]}

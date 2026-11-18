@@ -54,7 +54,8 @@
     "Deck_Hold",
     "Hold"
    ],
-   "json": "hold.json"
+   "json": "orlop.json",
+   "note": "slice 14 writes one file for the orlop and the hold (docs/shipkit-14): read once, its lanterns are the orlop's"
   }
  },
  "note_decks": "a part goes to a deck by its collection (the model thread's GunDeck, BerthDeck, Orlop, Hold) or a custom property 'deck'. Everything else is Outside. The gun deck has light twins (seen through the waist and ports); the decks under it do not. A deck's linked copies (the berth deck's hammocks, hooks and messes) are one mesh each in its own frame, every copy placed in the sockets file; a deck's pose collections ('poses': by night, by day) are merged apart as SM_Frigate_<Deck>_<Pose>; each deck's build file ('json') gives its turning parts' frames and its lanterns",
