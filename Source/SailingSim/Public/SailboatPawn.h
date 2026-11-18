@@ -32,6 +32,7 @@
 #include "ShipWalk.h"
 #include "ShipOrders.h"
 #include "ShipRig.h"
+#include "ShipFrames.h"
 #include "ShipHandling.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
@@ -61,6 +62,16 @@ struct FShipRigPart
 	int32 Spar = -1;          // the spar it is (Object 0) or rides on
 	int32 Sail = -1;
 	uint8 Object = 0;         // 0 the spar, 1 the sail's head, 2 set, 3 clewed, 4 furled
+};
+
+/** A moving part of a ship's model (docs/ship-frames/, ShipModelVisuals.cpp): the tiller, a rope part, a door, the wheel. */
+struct FShipFramePart
+{
+	TWeakObjectPtr<UStaticMeshComponent> Mesh;
+	FTransform Rest;          // its transform in BoatRoot's frame as built (helm amidships, doors shut)
+	FTransform Applied;       // what was last put on it
+	int32 Frame = -1;         // its row in the ship's frames table
+	bool bBelow = false;      // a gun deck part: shown with the gun deck's mesh
 };
 
 /**
@@ -651,6 +662,9 @@ public:
 	/** A ship's rig on the model (docs/ship-rig/): her table (null for a boat without one) and its pose now. */
 	const Sailing::FShipRigData* GetShipRig() const { return ShipRig; }
 	const Sailing::FShipRigPose& GetShipRigPose() const { return ShipRigPose; }
+	/** A ship's moving parts (docs/ship-frames/): her table (null for a boat without one) and their pose now. */
+	const Sailing::FShipFramesData* GetShipFrames() const { return ShipFrames; }
+	const Sailing::FShipFramesPose& GetShipFramesPose() const { return ShipFramesPose; }
 private:
 	Sailing::FWalkMap WalkMap;
 	FString WalkMapName;                     // the ship the map is for
@@ -703,6 +717,19 @@ private:
 	void ClearShipRig();
 	void BindShipRig();
 	void UpdateShipRig(float DeltaSeconds);
+	/** A ship's moving parts (docs/ship-frames/, ShipModelVisuals.cpp): the tiller and its ropes with the rudder, the wheel
+	 *  with them, the cabin doors for the walker. The table, their pose, the parts (found on the model or loaded for it)
+	 *  and the load of the missing ones. */
+	const Sailing::FShipFramesData* ShipFrames = nullptr;
+	Sailing::FShipFramesPose ShipFramesPose;
+	TArray<FShipFramePart> ShipFrameParts;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> ShipFrameOwnMeshes;
+	TArray<FSoftObjectPath> ShipFramesPending;
+	TArray<FShipFramePart> ShipFramesPendingParts;
+	TSharedPtr<struct FStreamableHandle> ShipFramesLoad;
+	void ClearShipFrames();
+	void BindShipFrames();
+	void UpdateShipFrames(float DeltaSeconds);
 	/** Her guns (docs/cannon-fire/, the player's ship only): the battery on BoatRoot, whether each side was told to keep
 	 *  firing (the panel's cease fire), and its shots shaking the camera. */
 	UPROPERTY(Transient) TObjectPtr<ACannonBattery> ShipBattery;
