@@ -284,11 +284,18 @@ def ladders(build, decks):
         if not os.path.exists(path):
             continue
         data = json.load(open(path))
-        for lad in data.get("ladders", []):
+        lads = data.get("ladders", [])
+        if isinstance(lads, dict):   # orlop.json: {hatch: {x_m, drop_m}}, straight down to the hold under it
+            lads = [dict(v, name=n, top_x_m=v["x_m"], foot_x_m=v["x_m"]) for n, v in lads.items()]
+        for lad in lads:
             if "break" in lad:   # deck.json: the breaks, from this deck down into the waist
                 up = k
                 name = f"{lad['break'].capitalize()}{'S' if lad['y_m'] > 0 else 'P'}"
                 y = lad["y_m"]
+            elif "from" not in lad:   # berthdeck.json's ladderways ("in"), the orlop's hatches: their top is on this deck
+                up = k
+                name = lad.get("in") or lad["name"]
+                y = lad.get("y_m", 0.0)
             else:   # a hatch's ladder: its top is on this deck if its layout has the hatch (gundeck.json's AfterHatch
                 # leads down to the berth deck), else on the deck above whose layout does (the spar deck's Companion)
                 hatch = lad["from"]
