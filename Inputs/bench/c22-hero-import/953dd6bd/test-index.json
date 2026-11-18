@@ -1,0 +1,44 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "06D7AE984C56AABCC25925868ECCBBE6",
+			"instanceName": "BEN-PC-15132",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.18-15.12.46",
+	"succeeded": 1,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.25137931108474731,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "C22HeroMesh",
+			"fullTestPath": "SailingSim.Visual.C22HeroMesh",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"06D7AE984C56AABCC25925868ECCBBE6"
+			],
+			"duration": 0.25137931108474731,
+			"dateTime": "2026.11.18-15.12.46",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

@@ -1,0 +1,4 @@
+Running tests 'SailingSim.Visual.C22HeroMesh' headless (a few minutes; the first run on a PC also compiles shaders)...
+Success  SailingSim.Visual.C22HeroMesh
+
+1 passed, 0 failed, 1 total

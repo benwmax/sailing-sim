@@ -1,0 +1,15 @@
+2026-11-18 09:04:42 H0 worktree at c7f1b59c (origin/main c7f1b59c) on branch claude/c22-hero-import; lfs pull exit 0; crew linked
+2026-11-18 09:07:34 H1 BUILD: Result: Succeeded; errors 0
+2026-11-18 09:12:12 H2 make-c22-hero.ps1: exit 0, 5 min; Content/Boats/C22Hero files 7; git status: ?? Content/Boats/C22Hero/
+2026-11-18 09:12:12   | C22 hardware triangles: C22_Hardware 73894, C22_Lifelines 14312, C22_MastHardware 14679, C22_LidRails 8232, C22_LidRailsRaised 8232, C22_Halyards 10616, C22_Lines_Rest 9640, C22_Lines_Up 15242, C22_Lines_Jib 16370, C22_Lines_Reef 16370, C22_Lines_Run 19006; 206593 in all
+2026-11-18 09:12:12   | C22 cabin: cut 836 deck faces from under the trunk, opened 2 windows
+2026-11-18 09:12:12   | C22 cabin triangles: C22_Interior_Liner 42472, C22_Interior_Headliner 14707, C22_Interior 6192, C22_Interior_PortaPotti 564, C22_Interior_Cushions 6900, C22_Interior_Table 228, C22_Interior_Galley 828, C22_Interior_TableDown 832, C22_Interior_GalleyOut 828; 73551 in all
+2026-11-18 09:12:12   | C22: canoe depth 0.2367 m, hull volume 1.2200 m^3 (mesh 1.2197), CB x -0.093, LWL 5.918 m, BWL 1.814 m, hull triangles 46813
+2026-11-18 09:12:12   | C22: dressed 24 materials at L2
+2026-11-18 09:12:12   | C22Hero: LOA 6.550 beam 2.338 draft 1.552; canoe 1.2382 m^3 at (-0.091, -0.092) (build's hull 1.2197 at (-0.093, -0.087)); tris {'SM_C22Hero_Hull': 230076, 'SM_C22Hero_Keel': 3820, 'SM_C22Hero_Mast': 29359, 'SM_C22Hero_Boom': 1052, 'SM_C22Hero_Rudder': 12972, 'SM_C22Hero_RudderBlade': 4400, 'SM_C22Hero_Interior': 71891}; 80 sockets
+2026-11-18 09:12:49 H3 TEST C22HeroMesh: Running tests 'SailingSim.Visual.C22HeroMesh' headless (a few minutes; the first run on a PC also compiles shaders)... / Success  SailingSim.Visual.C22HeroMesh / 1 passed, 0 failed, 1 total
+2026-11-18 09:12:49 Bean's Saved held
+2026-11-18 09:13:57 S c22hero-slip png True
+2026-11-18 09:15:09 S c22hero-sailing png True
+2026-11-18 09:15:11 Bean's Saved restored: profile B57AA3AF (want B57AA3AF), hold folder left False
+2026-11-18 09:15:11 C22HERO DONE (worktree kept for the commit)

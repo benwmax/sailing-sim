@@ -1,0 +1,3 @@
+shot,command_line
+c22hero-slip,"run-game.ps1 -Seconds 12 -NoDemo -GameArgs '-SailingWorld=Lake -SailingBoat=Catalina -SailingQuality=Ultra -ForceRes -SailingScreenPct=100 -SailingNoHud'"
+c22hero-sailing,"run-game.ps1 -Seconds 40 (demo) -GameArgs '-SailingWorld=Lake -SailingLaunch=1 -SailingBoat=Catalina -SailingQuality=Ultra -ForceRes -SailingScreenPct=100 -SailingNoHud'"
