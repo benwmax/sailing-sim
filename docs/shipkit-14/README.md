@@ -9,7 +9,7 @@ tiers. Like the slices before it, this is post-slice art: nothing here is in the
 
 Every render on this page is flipped left to right, so it shows her as the game will (docs/shipkit-9 says why).
 
-![The hold and orlop cut away along the ship a metre to port of the middle line, bow on the right: the gun deck and berth deck above, the orlop's platforms and rooms, the cable tiers between them over the hold, the magazines at each end, the spirit room and the main hold's water casks](baseline/section_hold.jpg)
+![The hold and orlop cut away along the ship a metre off the middle line: the gun deck and berth deck above, the orlop's platforms and rooms, the cable tiers between them over the hold, the magazines at each end, the spirit room and the main hold's water casks](baseline/section_hold.jpg)
 
 ![Closer on the middle of the same cut: the water casks in two tiers on the shingle, a cable flaked down in the tier over them, and the pump well and lockers on the middle line](baseline/section_main_hold.jpg)
 
