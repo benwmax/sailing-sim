@@ -121,6 +121,9 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   world position (as `make_materials.node()` does), or D3D SM6 refuses the Add and every piece draws the default checker
   while Metal may still compile it. `M_ShoreEdge` carries `used_with_nanite` and `used_with_instanced_static_meshes`.
   `scripts/make-shore-edges.sh --material-only` rebuilds the material and the marks in place without Blender or the FBX import.
+- **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
+  import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its
+  open back to the lake, seen from the water as black wedges.)
 - **Lakes only.** `ShoreEdgesOn` (`HouseKit.cpp`): the pack is a North Texas lake region, its pieces stand at the pool
   datum and read the lake's marks, so inland lakes get them and the tidal coasts (Galveston, the Gulf, Marseille) keep the
   tile's own concrete bulkhead until a coast pack exists. The first world gate (Nov 18) had Marseille's port view paying

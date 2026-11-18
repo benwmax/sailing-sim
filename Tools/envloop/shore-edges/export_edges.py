@@ -47,6 +47,12 @@ def piece_mesh(m):
 
 
 def to_object(V, F, C, S, name):
+    # Blender's Y is Unreal's -Y (the FBX import mirrors it back, as build_j22.py and build_fleet.py note): the kit's +y (the
+    # land) goes into Blender as -y and comes out of the import as Unreal's +y, where PlaceShoreEdges puts the land. The mirror
+    # turns each face over, so the winding is reversed to keep the faces pointing out (the PC saw the walls' open backs from the
+    # water at 23f283a2: every piece stood with its face to the land).
+    V = V * np.array([1.0, -1.0, 1.0])
+    F = F[:, ::-1]
     me = bpy.data.meshes.new(name)
     me.from_pydata(V.tolist(), [], F.tolist())
     me.polygons.foreach_set("use_smooth", S.tolist())
