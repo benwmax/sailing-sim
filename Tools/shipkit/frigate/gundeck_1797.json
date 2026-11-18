@@ -834,7 +834,7 @@
    [["AfterWall"], ["SparDeck"], "the after wall's top under the spar deck's planks", 0.25],
    [["AfterWall"], ["StateRooms"], "the state rooms' inboard walls run aft to the after wall, their ends let into its rake", 1.05],
    [["AfterWall"], ["WindowReveals"], "each window's lining fills the after wall's opening for it", 0.45],
-   [["AfterWall"], ["WindowSeat"], "the window seat's top is let into the after wall", 0.45],
+   [["AfterWall"], ["WindowSeat"], "the window seat's top is let into the after wall", 0.5],
    [["CabinBulkhead"], ["Clamps"], "the cabin's bulkhead is scribed round the clamp at the side", 0.3],
    [["CabinBulkhead"], ["GunDeck"], "the cabin's bulkhead stands on the deck, its foot let in where the sheer rises under it", 0.55],
    [["CabinBulkhead"], ["GunWall"], "the cabin's bulkhead's ends are scribed to the side's inner face", 0.75],

@@ -63,11 +63,13 @@ def prism(part, poly, x0, x1, mat, axis=0):
     tri = loft.ear_clip(P)
     F = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
     F += [tuple(t[::-1]) for t in tri] + [tuple(n + i for i in t) for t in tri]
-    # turn the whole set so its first side face points away from the polygon's middle
-    c = lift(P.mean(0)[None], 0.5 * (x0 + x1))[0]
-    f0 = F[0]
-    nrm = np.cross(V[f0[1]] - V[f0[0]], V[f0[3]] - V[f0[0]])
-    if nrm @ (0.5 * (V[f0[0]] + V[f0[2]]) - c) < 0:
+    # turn the whole set out: a closed solid's signed volume is positive with its faces out (the polygon's middle can
+    # lie outside a concave polygon, so no face's way from it decides)
+    vol = 0.0
+    for f in F:
+        for k in range(1, len(f) - 1):
+            vol += float(V[f[0]] @ np.cross(V[f[k]], V[f[k + 1]]))
+    if vol < 0:
         F = [f[::-1] for f in F]
     part.add(V, F, mat)
 
