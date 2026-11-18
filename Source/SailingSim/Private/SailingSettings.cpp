@@ -249,6 +249,33 @@ void USailingInputSettings::AddMissingActions()
 		if (!bTaken) Added.Add(B);
 	}
 	Bindings.Append(Added);
+	// Camera views slice 3: photo mode's pad layout moved (the bumpers from the lens to the panel's tabs, the D-pad's up
+	// and down from the speed to the rows, X from the rows to the camera modifier). A saved list still holding those old
+	// defaults has them taken off, and photo mode's new pad defaults go where nothing else in its layer holds the button.
+	// Only a list that still had an old default changes, so a pad key someone took off later stays off.
+	static const TPair<const TCHAR*, FKey> OldPhotoPad[] = {
+		{ TEXT("PhotoZoom"), EKeys::Gamepad_RightShoulder }, { TEXT("PhotoZoom"), EKeys::Gamepad_LeftShoulder },
+		{ TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up }, { TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Down },
+		{ TEXT("PhotoRowDown"), EKeys::Gamepad_FaceButton_Left } };
+	const int32 Before = Bindings.Num();
+	Bindings.RemoveAll([](const FSailingKeyBinding& B)
+	{
+		for (const TPair<const TCHAR*, FKey>& Old : OldPhotoPad) if (B.Action == FName(Old.Key) && B.Key == Old.Value) return true;
+		return false;
+	});
+	if (Bindings.Num() != Before)
+	{
+		for (const FSailingKeyBinding& D : Defaults)
+		{
+			if (!SailingBindings::IsPhotoAction(D.Action) || !D.Key.IsGamepadKey()) continue;
+			const bool bTaken = Bindings.ContainsByPredicate([&D](const FSailingKeyBinding& Have)
+			{
+				return Have.Key == D.Key && (Have.Action == D.Action || (SailingBindings::SameLayer(Have.Action, D.Action)
+					&& SailingBindings::IsHoldAction(Have.Action) == SailingBindings::IsHoldAction(D.Action)));
+			});
+			if (!bTaken) Bindings.Add(D);
+		}
+	}
 	// A pad stick or trigger can't be rebound from the Controls screen, so a saved list gets a known command's new
 	// default axis (the throttle's left stick) unless the command has one or another command in its layer holds it.
 	for (const FSailingKeyBinding& D : Defaults)
@@ -320,7 +347,7 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("Look"), EKeys::Gamepad_Right2D, 3.f);
 	Add(TEXT("Zoom"), EKeys::MouseWheelAxis);
 	// Camera views (docs/camera-views/): F5 (as in many games), the middle mouse button, or a tap of the right stick cycle
-	// Chase, Overview and Helm; a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
+	// the views (Chase to Helm); a half-second hold of the stick works the dock lines (ASailboatPawn::BuildContext).
 	Add(TEXT("ChangeView"), EKeys::F5);
 	Add(TEXT("ChangeView"), EKeys::MiddleMouseButton);
 	Add(TEXT("ChangeView"), EKeys::Gamepad_RightThumbstick);
@@ -388,22 +415,22 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoUpDown"), EKeys::Q, -1.f);
 	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_RightTriggerAxis);
 	Add(TEXT("PhotoUpDown"), EKeys::Gamepad_LeftTriggerAxis, -1.f);
-	// Camera views slice 2 (docs/camera-views/): the bumpers and the wheel zoom the lens (the tilt is Z and C, and the
-	// panel's Tilt row); the speed is the D-pad's up and down, or = and -; Y orbits, B is back (the panel, then out),
-	// a tap of View hides the panel and hints, the right stick's click goes back to the boat's view.
+	// Camera views slices 2 and 3 (docs/camera-views/): the wheel zooms the lens (the tilt is Z and C); on a pad, X held
+	// turns the left stick into the zoom, the right stick into the tilt and the D-pad's up and down into the speed (Alt
+	// on a keyboard shows the pointer to click the panel, and turns the wheel into the speed). The speed is also = and -,
+	// or the D-pad's up and down with the panel closed. Y orbits, B is back (the panel, then out), a tap of View opens
+	// or closes the panel, the right stick's click goes back to the boat's view (held, it resets the panel's tab).
 	Add(TEXT("PhotoRoll"), EKeys::C);
 	Add(TEXT("PhotoRoll"), EKeys::Z, -1.f);
 	Add(TEXT("PhotoRollReset"), EKeys::X);
 	Add(TEXT("PhotoZoom"), EKeys::MouseWheelAxis);
-	Add(TEXT("PhotoZoom"), EKeys::Gamepad_RightShoulder);
-	Add(TEXT("PhotoZoom"), EKeys::Gamepad_LeftShoulder, -1.f);
+	Add(TEXT("PhotoAlt"), EKeys::LeftAlt);
+	Add(TEXT("PhotoAlt"), EKeys::Gamepad_FaceButton_Left);
 	Add(TEXT("PhotoBoost"), EKeys::LeftShift);
 	Add(TEXT("PhotoBoost"), EKeys::Gamepad_LeftThumbstick);
 	Add(TEXT("PhotoSlow"), EKeys::LeftControl);
 	Add(TEXT("PhotoSpeed"), EKeys::Equals);
 	Add(TEXT("PhotoSpeed"), EKeys::Hyphen, -1.f);
-	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Up);
-	Add(TEXT("PhotoSpeed"), EKeys::Gamepad_DPad_Down, -1.f);
 	Add(TEXT("PhotoToBoat"), EKeys::F);
 	Add(TEXT("PhotoToBoat"), EKeys::Gamepad_RightThumbstick);
 	Add(TEXT("PhotoOrbit"), EKeys::Tab);
@@ -412,17 +439,53 @@ USailingInputSettings::USailingInputSettings()
 	Add(TEXT("PhotoHideUI"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("PhotoBack"), EKeys::BackSpace);
 	Add(TEXT("PhotoBack"), EKeys::Gamepad_FaceButton_Right);
-	// Its panel (docs/photo-mode/pc/): arrows for the row and its value, Page Up/Down for the page; X steps the rows
-	// on a pad and the D-pad's sides change the value (its up and down are the speed).
+	// Its panel (docs/photo-mode/pc/, camera views slice 3): the tabs on the bumpers (Page Up/Down), the rows on the
+	// D-pad's up and down (the arrows), the value on its sides; R resets the tab (the right stick's click, held).
 	Add(TEXT("PhotoRowDown"), EKeys::Down);
-	Add(TEXT("PhotoRowDown"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("PhotoRowDown"), EKeys::Gamepad_DPad_Down);
 	Add(TEXT("PhotoRowUp"), EKeys::Up);
+	Add(TEXT("PhotoRowUp"), EKeys::Gamepad_DPad_Up);
 	Add(TEXT("PhotoValueUp"), EKeys::Right);
 	Add(TEXT("PhotoValueUp"), EKeys::Gamepad_DPad_Right);
 	Add(TEXT("PhotoValueDown"), EKeys::Left);
 	Add(TEXT("PhotoValueDown"), EKeys::Gamepad_DPad_Left);
 	Add(TEXT("PhotoPageNext"), EKeys::PageDown);
+	Add(TEXT("PhotoPageNext"), EKeys::Gamepad_RightShoulder);
 	Add(TEXT("PhotoPagePrev"), EKeys::PageUp);
+	Add(TEXT("PhotoPagePrev"), EKeys::Gamepad_LeftShoulder);
+	Add(TEXT("PhotoResetTab"), EKeys::R);
+	Add(TEXT("PhotoResetTab"), EKeys::Gamepad_RightThumbstick);   // held half a second (a tap is back to the boat)
+	// Walking a ship (docs/ship-walk/): the On deck view's own layer and context (above the boat's while you walk), so it
+	// shares keys with the boat's: WASD and the left stick walk, the mouse and right stick look as ever.
+	Add(TEXT("WalkForward"), EKeys::W);
+	Add(TEXT("WalkForward"), EKeys::S, -1.f);
+	Add(TEXT("WalkForward"), EKeys::Gamepad_LeftY);
+	Add(TEXT("WalkRight"), EKeys::D);
+	Add(TEXT("WalkRight"), EKeys::A, -1.f);
+	Add(TEXT("WalkRight"), EKeys::Gamepad_LeftX);
+	Add(TEXT("WalkRun"), EKeys::LeftShift);
+	Add(TEXT("WalkRun"), EKeys::Gamepad_LeftThumbstick);
+	Add(TEXT("WalkCrouch"), EKeys::LeftControl);
+	Add(TEXT("WalkCrouch"), EKeys::Gamepad_FaceButton_Right);
+	Add(TEXT("WalkUse"), EKeys::E);
+	Add(TEXT("WalkUse"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("WalkToHelm"), EKeys::F);
+	Add(TEXT("WalkToHelm"), EKeys::Gamepad_FaceButton_Top);
+	// A ship's orders panel (docs/ship-orders/): its key on a ship in place of wing on wing's; its own keys while it is open.
+	Add(TEXT("ShipOrders"), EKeys::G);
+	Add(TEXT("ShipOrders"), EKeys::Gamepad_FaceButton_Left);
+	Add(TEXT("OrdersUp"), EKeys::Up);
+	Add(TEXT("OrdersUp"), EKeys::Gamepad_DPad_Up);
+	Add(TEXT("OrdersDown"), EKeys::Down);
+	Add(TEXT("OrdersDown"), EKeys::Gamepad_DPad_Down);
+	Add(TEXT("OrdersLeft"), EKeys::Left);
+	Add(TEXT("OrdersLeft"), EKeys::Gamepad_DPad_Left);
+	Add(TEXT("OrdersRight"), EKeys::Right);
+	Add(TEXT("OrdersRight"), EKeys::Gamepad_DPad_Right);
+	Add(TEXT("OrdersSelect"), EKeys::Enter);
+	Add(TEXT("OrdersSelect"), EKeys::Gamepad_FaceButton_Bottom);
+	Add(TEXT("OrdersClose"), EKeys::BackSpace);
+	Add(TEXT("OrdersClose"), EKeys::Gamepad_FaceButton_Right);
 	Add(TEXT("ControlsCard"), EKeys::Slash);
 	Add(TEXT("ControlsCard"), EKeys::Gamepad_Special_Left);
 	Add(TEXT("Menu"), EKeys::Tab);

@@ -142,7 +142,8 @@ bool FLakeData::Load(const FString& Directory, const FString& Name)
 	{
 		const TSharedPtr<FJsonObject> O = V->AsObject();
 		const TArray<TSharedPtr<FJsonValue>>& XY = O->GetArrayField(TEXT("xy"));
-		LaunchSpots.Add({ O->GetStringField(TEXT("name")), XY[0]->AsNumber(), XY[1]->AsNumber(), O->GetNumberField(TEXT("heading")) });
+		FLaunchSpot& Spot = LaunchSpots.Add_GetRef({ O->GetStringField(TEXT("name")), XY[0]->AsNumber(), XY[1]->AsNumber(), O->GetNumberField(TEXT("heading")) });
+		O->TryGetNumberField(TEXT("depth_m"), Spot.DepthM);
 	}
 	for (const TSharedPtr<FJsonValue>& V : Root->GetArrayField(TEXT("checkpoints")))
 	{

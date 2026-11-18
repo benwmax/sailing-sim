@@ -2,6 +2,7 @@
 #include "BoatSkin.h"
 #include "BoatLivery.h"
 #include "BoatModel.h"
+#include "HullName.h"
 #include "SailSave.h"
 #include "SkinEditor.h"
 #include "UI/SailFrontEnd.h"
@@ -326,6 +327,60 @@ bool FSailingSkinRopeColourwaysTest::RunTest(const FString&)
 	}
 	TestEqual(TEXT("Unknown colourway"), FBoatSkin::RopeColourwayIndex(TEXT("chrome")), -1);
 	for (int32 L = 0; L < FBoatSkin::NumWearLevels; ++L) TestEqual(FString::Printf(TEXT("Wear level %d by id"), L), FBoatSkin::WearLevelIndex(FBoatSkin::WearLevelId(L)), L);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSkinLetteringTest, "SailingSim.Skin.Lettering", SailSkinTestsLocal::SkinFlags)
+bool FSailingSkinLetteringTest::RunTest(const FString&)
+{
+	// Name on the hull: the name is cleaned and capped, round-trips through the file, takes navy on a light hull and
+	// white on a dark one unless the skin names a colour, counts as a look of its own, and has a place on the J/22.
+	TestEqual(TEXT("Cleaned"), FBoatSkin::CleanHullName(TEXT("  Blue   <b>Bonnet</b>!  ")), FString(TEXT("Blue bBonnet/b")));
+	TestEqual(TEXT("Capped"), FBoatSkin::CleanHullName(TEXT("A very long name for a small boat")).Len(), FBoatSkin::MaxHullNameChars);
+	FBoatSkin S;
+	S.Id = TEXT("my-name");
+	S.Name = TEXT("My name");
+	TestTrue(TEXT("No name by default"), S.HullName().IsEmpty() && S.Lettering.IsEmpty());
+	S.Lettering.Name = FString(TEXT("Bluebonnet"));
+	FBoatSkin Out;
+	TestEqual(TEXT("Reads"), int32(FBoatSkin::FromJson(S.ToJson(), Out)), int32(FBoatSkin::EResult::Ok));
+	TestEqual(TEXT("The name comes back"), Out.HullName(), FString(TEXT("Bluebonnet")));
+	TestFalse(TEXT("No colour was named"), Out.Lettering.Colour.IsSet());
+	FLinearColor Navy, White, Red;
+	FBoatSkin::ParseHex(TEXT("#1C2A44"), Navy);
+	FBoatSkin::ParseHex(TEXT("#F2F0EA"), White);
+	FBoatSkin::ParseHex(TEXT("#B3201B"), Red);
+	TestTrue(TEXT("Navy on the class's hull"), Out.HullNameColour().Equals(Navy, 0.002f));
+	Out.Paint.Hull = Navy;
+	TestTrue(TEXT("White on a dark hull"), Out.HullNameColour().Equals(White, 0.002f));
+	Out.Lettering.Colour = Red;
+	FBoatSkin Again;
+	TestEqual(TEXT("Reads with a colour"), int32(FBoatSkin::FromJson(Out.ToJson(), Again)), int32(FBoatSkin::EResult::Ok));
+	TestTrue(TEXT("The colour comes back"), Again.Lettering.Colour.IsSet() && Again.HullNameColour().Equals(Red, 0.002f));
+	FBoatSkin Bad;
+	// (a real skin's own text, its name swapped for marks the cleaner drops)
+	const FString Marks = S.ToJson().Replace(TEXT("Bluebonnet"), TEXT("<<>>"));
+	TestTrue(TEXT("The marks are in the file"), Marks.Contains(TEXT("<<>>")));
+	TestEqual(TEXT("A name of marks only reads"), int32(FBoatSkin::FromJson(Marks, Bad)), int32(FBoatSkin::EResult::Ok));
+	TestTrue(TEXT("and is no name"), Bad.HullName().IsEmpty());
+
+	FSkinEditor E;
+	E.OpenWith(int32(Sailing::EBoatType::J22), nullptr);
+	TestEqual(TEXT("Nothing to save at first"), int32(E.SavePlan()), int32(FSkinEditor::ESavePlan::ClassLook));
+	E.SetHullName(TEXT("Bluebonnet"));
+	TestEqual(TEXT("A name alone is a look to save"), int32(E.SavePlan()), int32(FSkinEditor::ESavePlan::NewFile));
+	TestTrue(TEXT("Undo takes the name off"), E.Undo() && E.GetDraft().HullName().IsEmpty());
+	E.SetHullName(TEXT("Bluebonnet"));
+	E.SetHullName(FString());
+	TestTrue(TEXT("An empty name is none"), E.GetDraft().Lettering.IsEmpty());
+
+	FHullNamePlace Short, Long, None;
+	TestTrue(TEXT("The J/22 has a place"), SailingHullName::Place(int32(Sailing::EBoatType::J22), 4.f, Short));
+	TestTrue(TEXT("A short name at full height, clear of the boot stripe and the sheer"), FMath::IsNearlyEqual(Short.HeightCm, 15.f, 0.01f) && Short.ZLowCm > 12.f && Short.ZLowCm + Short.HeightCm < 50.f);
+	TestTrue(TEXT("A long name is made smaller to fit"), SailingHullName::Place(int32(Sailing::EBoatType::J22), 12.f, Long) && Long.LengthCm <= 125.01f && Long.HeightCm < Short.HeightCm
+		&& FMath::IsNearlyEqual(Long.LengthCm / Long.HeightCm, 12.f, 0.01f) && FMath::IsNearlyEqual(Long.ZLowCm + 0.5f * Long.HeightCm, Short.ZLowCm + 0.5f * Short.HeightCm, 0.01f));
+	TestTrue(TEXT("Forward of the transom"), Short.XAftCm > -346.f && Long.XAftCm + Long.LengthCm < -190.f);
+	TestFalse(TEXT("The Sunfish has none yet"), SailingHullName::Place(int32(Sailing::EBoatType::Sunfish), 4.f, None));
 	return true;
 }
 

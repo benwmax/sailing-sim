@@ -166,6 +166,7 @@ One command takes main to a zip for Bean and the testers (slice issue #406):
 scripts\windows\friday.ps1                  # origin/main, fetched and checked out detached
 scripts\windows\friday.ps1 -Commit 29ecd2b6 # a given commit
 scripts\windows\friday.ps1 -NoCheckout      # what's checked out (a dry run of a branch)
+scripts\windows\friday.ps1 -Since 40226d1c  # list the merges since that build in BUILD.md
 ```
 
 It refuses a tree with tracked changes, and a commit that already has a `Packaged\Shipping-<commit>` folder: a build is
@@ -182,7 +183,8 @@ they end. Then, in about 15 minutes on the 4090:
    - Title > Gallery opens and renders its thumbnails (more than 100 in `Saved\GalleryThumbs`);
    - two Ultra Lake benches of 30 s (`-BenchSeconds`), the second reported: the first after a full cook runs slow.
 3. `Packaged\Shipping-<commit>\BUILD.md`: the commit, date, fps, the checks, where crash logs go, and what merged since
-   the last Friday build (the newest other `Packaged\Shipping-*\BUILD.md`'s commit, by `git log --first-parent`).
+   the last Friday build (the newest other `Packaged\Shipping-*\BUILD.md`'s commit, by `git log --first-parent`; a
+   worktree build also searches the main checkout's `Packaged`, and `-Since <sha>` names the last shared build instead).
 4. `Packaged\SailingSim-<commit>-Win64.zip`: the `Windows` folder with `BUILD.md` and
    [TESTER-GUIDE.md](TESTER-GUIDE.md) (install, the first-launch shader wait, controls, reporting, crash logs). Windows'
    own `tar.exe` writes it: the .ucas is over 2 GB, past PowerShell 5's `Compress-Archive`.

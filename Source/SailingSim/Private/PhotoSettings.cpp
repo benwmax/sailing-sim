@@ -50,7 +50,7 @@ namespace PhotoMath
 
 	const TCHAR* PageName(int32 Page)
 	{
-		static const TCHAR* Names[NumPages] = { TEXT("Camera"), TEXT("Focus"), TEXT("Exposure"), TEXT("Scene"), TEXT("Frame") };
+		static const TCHAR* Names[NumPages] = { TEXT("Lens"), TEXT("Focus"), TEXT("Light"), TEXT("Scene"), TEXT("Frame") };
 		return Names[FMath::Clamp(Page, 0, NumPages - 1)];
 	}
 
@@ -82,6 +82,59 @@ namespace PhotoMath
 		case EPhotoRow::Capture: return TEXT("Capture size");
 		default: return TEXT("");
 		}
+	}
+
+	const TCHAR* RowHelp(EPhotoRow Row)
+	{
+		switch (Row)
+		{
+		case EPhotoRow::Focal: return TEXT("Lower numbers see wider; higher ones bring the boat closer and flatten the waves behind her.");
+		case EPhotoRow::Roll: return TEXT("Tips the horizon for a livelier shot. Level is how the eye sees it.");
+		case EPhotoRow::FocusMode: return TEXT("What stays sharp: the middle of the frame, your boat wherever she is, or a distance you set.");
+		case EPhotoRow::FocusDistance: return TEXT("How far away the sharp spot is, when focus is manual.");
+		case EPhotoRow::Aperture: return TEXT("Lower numbers blur the background more. f/2.8 is a soft background; f/11 keeps the shore sharp.");
+		case EPhotoRow::Exposure: return TEXT("Brighter or darker than the meter's reading, in half stops.");
+		case EPhotoRow::Vignette: return TEXT("Darkens the corners to draw the eye in.");
+		case EPhotoRow::Grain: return TEXT("Film grain over the picture.");
+		case EPhotoRow::Look: return TEXT("The colour grade: natural, the game's cinematic look, or black and white.");
+		case EPhotoRow::HideBoat: return TEXT("Takes your boat out of the picture, for a shot of the water or the shore.");
+		case EPhotoRow::HideOthers: return TEXT("Takes the other boats and ships out of the picture.");
+		case EPhotoRow::HideCrew: return TEXT("Takes the crew off your boat.");
+		case EPhotoRow::SunHour: return TEXT("Moves the sun for the picture only. The clock and the weather don't change.");
+		case EPhotoRow::Grid: return TEXT("Lines at thirds, to place the boat and the horizon.");
+		case EPhotoRow::Crop: return TEXT("Shows the frame of a print shape. The photo keeps the whole screen.");
+		case EPhotoRow::Capture: return TEXT("2x saves the photo at twice the screen's size (High and Ultra).");
+		default: return TEXT("");
+		}
+	}
+
+	EPhotoRow StepRowOnPage(EPhotoRow Row, int32 Dir)
+	{
+		const int32 Page = PageOf(Row);
+		int32 First = int32(FirstRowOf(Page)), Last = First;
+		while (Last + 1 < int32(EPhotoRow::Count) && PageOf(EPhotoRow(Last + 1)) == Page) ++Last;
+		const int32 N = Last - First + 1;
+		return EPhotoRow(First + ((int32(Row) - First + (Dir > 0 ? 1 : N - 1)) % N));
+	}
+
+	void ResetPage(FPhotoSettings& S, int32 Page, float& FovDeg, float& RollDeg, float DefaultFovDeg)
+	{
+		const FPhotoSettings D;
+		switch (Page)
+		{
+		case 0: FovDeg = DefaultFovDeg; RollDeg = 0.f; break;
+		case 1: S.Focus = D.Focus; S.ManualFocusM = D.ManualFocusM; S.ApertureStop = D.ApertureStop; break;
+		case 2: S.ExposureEV = D.ExposureEV; S.Vignette = D.Vignette; S.Grain = D.Grain; S.Look = D.Look; S.bLookTaken = false; break;
+		case 3: S.bHideMyBoat = D.bHideMyBoat; S.bHideOthers = D.bHideOthers; S.bHideCrew = D.bHideCrew; S.SunHour = D.SunHour; break;
+		default: S.bGrid = D.bGrid; S.Crop = D.Crop; S.CaptureScale = D.CaptureScale; break;
+		}
+	}
+
+	bool PanelOnRight(bool bOnRightNow, float BoatX01)
+	{
+		// The panel is about a fifth of the screen wide: it moves when the boat is inside its third of the screen, and
+		// comes back only once she is well into the other third.
+		return bOnRightNow ? BoatX01 <= 0.66f : BoatX01 < 0.34f;
 	}
 
 	float StepSunHour(float SunHour, int32 Dir, float ClockHour)

@@ -1,8 +1,9 @@
 # Camera views
 
 Plan: the "Camera Views Plan" page (Nov 16 2026). Bean's answer to its nine questions: "go with your picks".
-Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3, the new cameras (masthead,
-bow, low water, side, drone), comes after the vertical slice.
+Slice 1 is the chase camera and the view cycle. Slice 2 is photo mode's movement. Slice 3 is photo mode's menu. Slice 4
+is the new cameras (bow, transom, masthead, chase boat, drone). With the first release moved to the end of
+November (Bean, Nov 16), slices 3 and 4 aim for the Fri Nov 27 build.
 
 ## Slice 1: the chase camera and the view cycle
 
@@ -89,11 +90,75 @@ than zooming, and on the pad the bumpers tilted the horizon while B hid the pane
 Saved key lists get the new commands (`USailingInputSettings::AddMissingActions`), but not on a button another command
 in the same layer already holds there. A hold and a tap may share a button.
 
-Stills placed with `-SailingPhotoCam` fly, as before. The panel sliding aside when it covers the boat comes with the
-menu redesign (slice 3).
+Stills placed with `-SailingPhotoCam` fly, as before. Slice 3 moved the lens zoom off the bumpers (below).
 
 Tests:
 
 - `SailingSim.UI.PhotoFreeFly.Limits`: the eight speeds.
 - `SailingSim.UI.PhotoFreeFly.Camera`: the orbit's moves (dolly, round, over) and that it keeps facing the boat.
 - `SailingSim.UI.PhotoFreeFly.Input`: the new buttons.
+
+## Slice 3: photo mode's menu
+
+The panel walked 16 rows in one loop on X, the D-pad's up and down set the speed, its hints were plain text, it could
+not be clicked and it sat over the boat. Bean's picks, as built (`SSailPhotoPanel`, `PhotoSettings.h`):
+
+- **Tabs in plain words:** Lens, Focus, Light, Scene, Frame, on the bumpers (Page Up, Page Down), between their glyphs.
+  The rows go round on their tab with the D-pad's up and down (the arrow keys); its sides change the value.
+- **The UI modes:** Helpful shows every row on the tab and a line under the current one on what it does
+  (`PhotoMath::RowHelp`); Natural shows the tabs and the current row only; Off opens photo mode with the panel closed.
+- **Open and close:** a tap of View (H) opens or closes the panel; closed, the hints go too, and B leaves. A bumper
+  opens a closed panel where it was.
+- **Prompts as glyphs:** the card ends in the drawn controller glyphs (`KeyCap`), rebuilt when a key is rebound, the
+  device changes or the UI mode changes.
+- **X held (pad):** the left stick zooms the lens (a full push doubles the focal length in a second), the right stick
+  tilts, the D-pad's up and down set the speed. With the panel closed the D-pad's up and down set the speed alone.
+- **Alt held (keyboard):** the pointer comes out to click a tab, a row or a value's arrows; the wheel sets the speed.
+- **Reset the tab:** R, or hold the right stick's click (its tap is still back to the boat) (`PhotoMath::ResetPage`).
+- **Out of the way:** the card slides to the other side when the boat comes into its third of the screen, and back
+  only once she is in the far third (`PhotoMath::PanelOnRight`).
+
+Stills: `-SailingUiMode=helpful|natural|off` sets the UI mode the panel follows for one run (the setting is left as it
+is), for example `-SailingPhoto=8 -SailingView=Chase -SailingUiMode=natural`.
+
+A key list saved with slice 2's pad layout is moved to this one once (`USailingInputSettings::AddMissingActions`: the
+old pad defaults come off and the new ones go where nothing else in photo mode holds the button).
+
+Tests: `SailingSim.UI.PhotoPanel` (tabs, rows round their tab, help lines, the tab reset, the side, glyph text) and
+`SailingSim.UI.PhotoFreeFly.Input` (the new buttons, the saved list moved once).
+
+## Slice 4: the new cameras
+
+Five mounted cameras join the cycle, which now runs from far outside to aboard, as racing games order theirs:
+Chase, Overview, Drone, Chase boat, Masthead, Transom cam, Bow, Helm, then Chase again. Each is a row of numbers in
+`ChaseCamera::MountFor` (`ChaseCamera.h`), scaled from the boat's config, so all nine boats get them without new code.
+
+| View | Where | Looks at | Lens | Moves |
+| --- | --- | --- | --- | --- |
+| Drone | her leeward quarter (135 deg off the bow), 30 m off and 30 m up at least (3 boat lengths, 2 masthead heights) | a fifth of the way up the mast | 70 deg | follows her heading with a 2 s lag |
+| Chase boat | to leeward just ahead of abeam (80 deg), 1.5 m over the water, 1.9 masthead heights off (15 m at least) | 45% of the way up the mast | 65 deg | follows her heading with a 1 s lag |
+| Masthead | 0.35 m over the masthead, 0.35 m aft of the mast | her deck halfway from the mast to the stern | 80 deg | on her; the horizon follows a third of her heel |
+| Transom cam | the reference captures' action camera (`OnboardCameraMount`, `ActionCam`) | forward over the cockpit, 6 deg down | 100 deg | on her, steadied the same way |
+| Bow | on the stem head, ahead of the jib's tack | forward, 8 deg down | 95 deg | on her, steadied the same way |
+
+- The drone and the chase boat stay on her leeward side. When she tacks, they change sides only after she has held the
+  new tack for 4 s (`SideHoldS`), then swing round her stern (`SideBearingDeg`, `EaseBearing`), never across her bow.
+  They sit at her mean waterline's height (eased over 1.5 s), are lifted over the shore as the chase camera is, and
+  don't shake (Settings > Camera shake moves only the cameras on her).
+- The cameras on her roll and pitch a third as much as she does (Bean's pick on question 8, as the helm view does). The
+  masthead keeps looking at her deck wherever the masthead swings.
+- Look (mouse, right stick) turns a mounted camera from its own aim: round her for the drone and the chase boat, the
+  lens for the cameras on her. It eases back after 2.5 s when Settings > Camera returns behind is on. The wheel zooms
+  the lens (`ZoomFov`, 30 to 110 deg).
+- The pawn draws every view with its own `Camera`, placed in the world each frame (`UpdateMountedCamera`), so photo mode
+  opens where the view is, as from the others. The capture mode keeps its own presets.
+- Settings > Camera lists all eight views in the cycle's order. `CameraView` keeps each view's number (the first three
+  are unchanged) and the save writes names (`drone`, `chaseboat`, `masthead`, `transom`, `bow`).
+- Stills: `-SailingView=Drone|ChaseBoat|Masthead|Transom|Bow` (any case, display names too), with `-SailingCamYaw` and
+  `-SailingCamPitch` turning the view from its aim. Measured runs that name no view keep the Classic chase rig.
+
+Tests: `SailingSim.Visual.ChaseCamera.Mounts` puts every mount on every boat (the cameras on her over her deck and
+inside her length, the bow ahead of the mast, the masthead looking down at her deck; the drone and the chase boat with
+her masthead, bow, stern and waterline in a 16:9 frame from either side), the side change round the stern and the zoom
+range. `.Controls` holds the cycle, the names and the save; `.Pawn` cycles all eight views on the pawn and checks each
+lens's place, field of view and aim.

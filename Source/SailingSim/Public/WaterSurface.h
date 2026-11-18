@@ -95,6 +95,16 @@ public:
 	 *  from 300 to 400 m out, faded again from 1100 to 1250 m (under a third of a pixel), and only seen low (from above the
 	 *  flat flecks are right, an upright sprite edge-on): gone as the view's rise passes 0.05 to 0.14 of the distance. */
 	static float FarCapSpriteWeight(double DistM, double HeightM);
+	/** Storm water look (docs/blow-sea/, feedback #27): M_WaterV4's StormWater strength by the air's mean wind in knots,
+	 *  0 to 18 kn, a smoothstep to 1 at 26 kn. */
+	static double StormWaterStrength(double AirKnots);
+	/** M_WaterV4's and M_FarCap's StormWater now: StormWaterStrength of the sea's air wind, 0 with -SailingClassicStormWater. */
+	float StormWaterNow() const;
+	/** The whitecap scale in a blow: Base (WhitecapScaleFor) raised toward kStormWhitecapScale by the storm water strength. */
+	static float StormWhitecapScale(float Base, float Storm);
+	static constexpr float kStormWhitecapScale = 0.8f;
+	/** The significant height of the LongComponents trains alone at a point (sea map ratios included): M_WaterV4's StormWater.y. */
+	static double LongSignificantHeightAt(const Sailing::FWaveField& Field, double X, double Y);
 	/** Storm water step 6 (docs/storm-water/gale-streaks/): what a gale tears off the caps, by the sea's mean wind. Gale
 	 *  0..1 fades in from 24 to 32 kn (Beaufort 7; M_WaterV4's streaks fade in alike), Spindrift 0..1 from 33 to 41 kn
 	 *  (Beaufort 8: the crests' edges blow off), Samples the crest points UpdateSpray tries a frame (24, four times that in a
@@ -235,6 +245,9 @@ private:
 	const Sailing::FWaveField* GetWaves() const;
 	const Sailing::FWindField* GetWind() const;
 	double GetSimTime() const;
+	/** The instant the sea is drawn at (ASailingGameMode::GetRenderTime, feedback #26): the long waves' WaveTime, the short
+	 *  waves' blend, the ocean's blend and the foam. The wake, spray and wind maps step on GetSimTime. */
+	double GetRenderTime() const;
 
 	UPROPERTY(Transient) TArray<TObjectPtr<UProceduralMeshComponent>> Rings;
 	UPROPERTY(VisibleAnywhere, Category = "Water") TObjectPtr<UProceduralMeshComponent> FarPlane;

@@ -4,7 +4,8 @@ Bean's ask: use the deep-pass loop on the shore (rocks, the waterline, ground, g
 trees, debris) so it holds up when a player is close: a boat a few metres off the bank, photo mode down to a metre. The
 plan with its slices, review points, photo wishes and costs is the Claude Doc "Close-up shore deep pass: shoreline,
 foliage and rocks" (https://claude.ai/artifact/DNyAodguK2JnBLmm7Dkx5y). Bean chose to start slice 0 (this page,
-stations, cards, tools) and slice 1 (the lake rock kit) before the Nov 21 slice ships; the rest waits until after it.
+stations, cards, tools) and slice 1 (the lake rock kit) before the slice; on Nov 16 Bean moved the slice to Dec 11 and asked for the shore work in it, so
+the rest follows `docs/slice/README.md`.
 
 ## The loop
 

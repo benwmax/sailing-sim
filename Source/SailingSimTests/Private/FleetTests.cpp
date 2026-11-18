@@ -2,6 +2,11 @@
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "PolarReference.h"
+#include "AutoTrim.h"
+#include "ShipHandling.h"
+#include "ShipSailPlans.h"
+#include "Waves.h"
+#include "Async/ParallelFor.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -56,6 +61,160 @@ SAILING_FLEET_POLAR_TEST(FSailingPolarCatalina30, "Catalina30", EBoatType::Catal
 SAILING_FLEET_POLAR_TEST(FSailingPolarHobie16, "Hobie16", EBoatType::Hobie16)
 SAILING_FLEET_POLAR_TEST(FSailingPolarCorsair880, "Corsair880", EBoatType::Corsair880)
 SAILING_FLEET_POLAR_TEST(FSailingPolarLagoon42, "Lagoon42", EBoatType::Lagoon42)
+// Bluebonnet's polar is estimated (Tools/shipkit/jclass/polar_bluebonnet.py: docs/jclass-13/), 20% at every point.
+SAILING_FLEET_POLAR_TEST(FSailingPolarBluebonnet, "Bluebonnet", EBoatType::Bluebonnet)
+
+/**
+ * docs/frigate-physics/: the frigate Commonwealth against her estimated polar (polar_commonwealth.json), sailed as her
+ * trial sails her: the fastest sail plan her officers would carry under the heel cap (ShipSailPlans.h), three minutes to
+ * settle (she is slow to gather way) and 40 s averaged. The points run in parallel (each is a few plans of 220 s).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPolarCommonwealth, "SailingSim.Fleet.Polar.Commonwealth", Flags)
+bool FSailingPolarCommonwealth::RunTest(const FString& Parameters)
+{
+	const FBoatConfig Config = FBoatConfig::Make(EBoatType::Commonwealth);
+	TestTrue(TEXT("Commonwealth is square-rigged"), Config.HasSquareRig() && IsSquareRigged(EBoatType::Commonwealth));
+	TestEqual(TEXT("Her eleven square sails (the frigate wiring's rig table keeps sails.json's order)"), int32(Config.Square.Sails.size()), 11);
+	const std::vector<FPolarPoint>& Points = FleetReferencePolar(EBoatType::Commonwealth);
+	TArray<FShipSteadyResult> Results;
+	Results.SetNum(int32(Points.size()));
+	ParallelFor(Results.Num(), [&](int32 I) { Results[I] = SailShipSteady(Config, Points[I].TrueWindKnots, Points[I].TrueWindAngleDeg); });
+	AddInfo(TEXT("Commonwealth: TWS TWA polar model err% heel leeway plan"));
+	double Worst = 0.0;
+	for (int32 I = 0; I < Results.Num(); ++I)
+	{
+		const FPolarPoint& P = Points[I];
+		const FSteadyResult& R = Results[I].R;
+		const double Err = (R.BoatSpeedKnots - P.BoatSpeedKnots) / P.BoatSpeedKnots;
+		Worst = FMath::Max(Worst, FMath::Abs(Err));
+		AddInfo(FString::Printf(TEXT("%4.0f %5.1f %5.2f %5.2f %+5.1f %4.1f %4.1f  %hs"), P.TrueWindKnots, P.TrueWindAngleDeg, P.BoatSpeedKnots, R.BoatSpeedKnots,
+			Err * 100.0, R.HeelDeg, R.LeewayDeg, ShipSailPlan(Results[I].Plan).Name));
+		TestTrue(FString::Printf(TEXT("%.0f kn at %.0f deg within %.0f%% (%.2f vs %.2f kn)"), P.TrueWindKnots, P.TrueWindAngleDeg, P.Tolerance * 100.0,
+			R.BoatSpeedKnots, P.BoatSpeedKnots), FMath::Abs(Err) <= P.Tolerance);
+		TestTrue(FString::Printf(TEXT("%.0f kn at %.0f deg: under the heel cap"), P.TrueWindKnots, P.TrueWindAngleDeg), R.HeelDeg <= ShipHeelCapDeg(Config));
+	}
+	AddInfo(FString::Printf(TEXT("Worst error %.1f%%"), Worst * 100.0));
+	return true;
+}
+
+namespace
+{
+	struct FShipOrderRun { double Done = -1.0, SpeedBefore = 0.0, SpeedAfter = 0.0, FinalTwa = 0.0; bool bMissed = false; EShipManoeuvre Ended = EShipManoeuvre::None; };
+
+	/** docs/frigate-physics/: Commonwealth close-hauled on the starboard tack under all plain sail in the polar's lake chop,
+	 *  settled three minutes, then the order; she is followed to a minute after Done (or 5 minutes hove to). */
+	FShipOrderRun SailShipOrder(EShipManoeuvre What, double Tws)
+	{
+		const FBoatConfig C = FBoatConfig::Make(EBoatType::Commonwealth);
+		const FWindField Wind = WindFrom(Tws, 0.0);
+		FWaveField Waves(7);
+		FWaveParams WaveParams;
+		WaveParams.WindSpeedKnots = Tws;
+		WaveParams.FetchMeters = kPolarFetchMeters;
+		WaveParams.bCalibrationSea = true;
+		Waves.SetWind(WaveParams);
+		Waves.SnapToTarget();
+		const double Twa = 67.5;
+		FBoatModel Boat(C);
+		Boat.Reset(0.0, 0.0, -Twa * kDegToRad, FMath::Min(0.4 * Tws, 9.0) * kKnot);
+		Boat.GetMutableState().WindwardSide = 1;
+		FAutopilot Pilot;
+		Pilot.TargetTWADeg = Twa;
+		FAutoTrim Trim;
+		Trim.Settings.bHands = false;
+		Trim.Settings.bHike = false;
+		FBoatControls Ctl;
+		Ctl.MainSheet = Ctl.JibSheet = Twa / 180.0;
+		ApplyShipSailPlan(C, 0, Ctl, false);
+		for (int32 M = 0; M < kMaxMasts; ++M) Ctl.Brace[M] = 1.0;
+		for (int32 I = 0; I < int32(C.Square.Sails.size()); ++I)
+		{
+			Boat.GetMutableState().YardAngle[I] = YardAngleFor(C.Square, I, 1.0);
+			Boat.GetMutableState().SquareOut[I] = Ctl.SquareSet[I] == ESailSet::Set ? 1.0 : 0.0;
+		}
+		FShipHandling H;
+		FShipOrderRun Out;
+		const double Settle = 180.0, Limit = 1300.0;
+		double SpeedSum = 0.0;
+		int32 SpeedN = 0;
+		bool bStarted = false;
+		for (int32 I = 0; I < int32((Settle + Limit) * PhysicsHz); ++I)
+		{
+			const double Tm = I * PhysicsDt;
+			if (!bStarted && Tm >= Settle)
+			{
+				H.Start(What, Boat);
+				bStarted = true;
+				Out.SpeedBefore = SpeedSum / FMath::Max(SpeedN, 1);
+			}
+			Ctl = Trim.Update(Boat, Ctl, PhysicsDt);
+			const bool bHeld = bStarted && H.Update(Boat, Ctl, PhysicsDt);
+			if (!bHeld)
+			{
+				if (bStarted) Pilot.TargetTWADeg = H.CourseAfterDeg();
+				Ctl.Tiller = Pilot.Update(Boat);
+			}
+			Boat.Step(PhysicsDt, Ctl, Wind, &Waves);
+			const double Kn = Boat.GetTelemetry().ForwardSpeed / kKnot;
+			if (!bStarted)
+			{
+				if (Tm > Settle - 30.0) { SpeedSum += Kn; ++SpeedN; }
+				continue;
+			}
+			const double Ts = Tm - Settle;
+			if (H.Step() == EShipManoeuvreStep::MissedStays) Out.bMissed = true;
+			const bool bHoveTo = What == EShipManoeuvre::HeaveTo && Ts >= 300.0;
+			if (Out.Done < 0.0 && !H.IsActive() && What != EShipManoeuvre::HeaveTo) Out.Done = Ts;
+			if (bHoveTo || (Out.Done >= 0.0 && Ts >= Out.Done + 60.0))
+			{
+				if (bHoveTo) Out.Done = Ts;
+				Out.SpeedAfter = Kn;
+				break;
+			}
+		}
+		Out.FinalTwa = Boat.GetTelemetry().TrueWindAngle * kRadToDeg;
+		Out.Ended = H.Manoeuvre();
+		return Out;
+	}
+}
+
+/**
+ * docs/frigate-physics/: Commonwealth's manoeuvres by orders (ShipHandling.h) on her own config, as the trial measured them
+ * (Nov 17 2026): she tacks in 16 kn inside 6 minutes and in 24 kn inside 4; in 8 kn she misses stays, is boxed off and
+ * wears instead, ending on the new tack inside 20 minutes (17.4 in the trial); she wears in 16 kn inside 4 minutes; hove to in 12 kn she lies near-stopped (under 1.5 kn).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShipManoeuvresTest, "SailingSim.Fleet.Ship.Manoeuvres", Flags)
+bool FSailingShipManoeuvresTest::RunTest(const FString& Parameters)
+{
+	struct FCase { EShipManoeuvre What; double Tws; double MaxSeconds; bool bMayMiss; const TCHAR* Name; };
+	const FCase Cases[] = {
+		{ EShipManoeuvre::Tack, 16.0, 360.0, false, TEXT("tack, 16 kn") }, { EShipManoeuvre::Tack, 24.0, 240.0, false, TEXT("tack, 24 kn") },
+		{ EShipManoeuvre::Tack, 8.0, 1200.0, true, TEXT("tack, 8 kn (missed stays: boxed off and wore)") }, { EShipManoeuvre::Wear, 16.0, 240.0, false, TEXT("wear, 16 kn") },
+		{ EShipManoeuvre::HeaveTo, 12.0, 300.0, false, TEXT("heave to, 12 kn") },
+	};
+	TArray<FShipOrderRun> Runs;
+	Runs.SetNum(UE_ARRAY_COUNT(Cases));
+	ParallelFor(Runs.Num(), [&](int32 I) { Runs[I] = SailShipOrder(Cases[I].What, Cases[I].Tws); });
+	for (int32 I = 0; I < Runs.Num(); ++I)
+	{
+		const FCase& K = Cases[I];
+		const FShipOrderRun& R = Runs[I];
+		AddInfo(FString::Printf(TEXT("%s: done %.0f s, %.2f kn before, %.2f a minute after, TWA %.1f%s"), K.Name, R.Done, R.SpeedBefore, R.SpeedAfter, R.FinalTwa,
+			R.bMissed ? TEXT(" (missed stays: wore)") : TEXT("")));
+		if (K.What == EShipManoeuvre::HeaveTo)
+		{
+			TestTrue(FString::Printf(TEXT("%s: lying near-stopped"), K.Name), FMath::Abs(R.SpeedAfter) < 1.5);
+			TestTrue(FString::Printf(TEXT("%s: still on the starboard tack"), K.Name), R.FinalTwa > 0.0);
+			continue;
+		}
+		TestTrue(FString::Printf(TEXT("%s: done inside %.0f s"), K.Name, K.MaxSeconds), R.Done >= 0.0 && R.Done <= K.MaxSeconds);
+		TestTrue(FString::Printf(TEXT("%s: on the port tack after"), K.Name), R.FinalTwa < 0.0);
+		TestTrue(FString::Printf(TEXT("%s: way on again"), K.Name), R.SpeedAfter > 0.5 * R.SpeedBefore);
+		if (!K.bMayMiss) TestFalse(FString::Printf(TEXT("%s: without missing stays"), K.Name), R.bMissed);
+		else TestTrue(FString::Printf(TEXT("%s: missed stays and wore"), K.Name), R.bMissed && R.Ended == EShipManoeuvre::Wear);
+	}
+	return true;
+}
 
 /**
  * Each boat's own settings reach its config: #250 had a comment swallow the ILCA's C.TrimMaxEaseDeg and C.Name on the
@@ -71,7 +230,8 @@ bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
 		{ EBoatType::ILCA7, "ILCA 7 (Laser)", 60.0, 8.0, 6.0, 4.0 }, { EBoatType::Catalina22, "Catalina 22", 25.0, 20.0, 0.0, 8.0 },
 		{ EBoatType::Catalina30, "Catalina 30", 25.0, 22.0, 0.0, 8.0 }, { EBoatType::Hobie16, "Hobie 16", 45.0, 10.7, 0.0, 22.0 },
 		{ EBoatType::Corsair880, "Corsair 880", 40.0, 10.0, 0.0, 15.0 }, { EBoatType::Lagoon42, "Lagoon 42", 35.0, 4.0, 0.0, 12.0 },
-		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 },
+		{ EBoatType::Maxi, "Maxi 100", 25.0, 18.0, 0.0, 9.0 }, { EBoatType::Bluebonnet, "Bluebonnet", 25.0, 22.0, 0.0, 4.0 },
+		{ EBoatType::Commonwealth, "Commonwealth", 25.0, 12.0, 0.0, 0.0 },
 	};
 	TSet<FString> Names;
 	for (const FWant& W : Want)
@@ -87,7 +247,7 @@ bool FSailingFleetConfigsTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%hs: TrimReachHeelLimitDeg"), W.Name), C.TrimReachHeelLimitDeg, W.ReachHeelLimit);
 		TestEqual(FString::Printf(TEXT("%hs: TravelerRangeDeg"), W.Name), C.TravelerRangeDeg, W.Traveler);
 	}
-	TestEqual(TEXT("Every boat in the table"), int32(UE_ARRAY_COUNT(Want)), int32(EBoatType::Maxi) + 1);
+	TestEqual(TEXT("Every boat in the table"), int32(UE_ARRAY_COUNT(Want)), int32(EBoatType::Count));
 	return true;
 }
 

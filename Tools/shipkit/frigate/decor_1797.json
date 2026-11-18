@@ -156,6 +156,8 @@
    "frames": "HullOchre",
    "sash": "FigurePaint",
    "glass": "Glass",
+   "clear_glass": "ClearGlass",
+   "clear_glass_note": "slice 12: the stern windows' and the cabin's side lights' glass is clear (daylight comes into the great cabin through it, and it is seen through from inside and out); the galleries' and the lanterns' keep Glass",
    "carving": "Gilt",
    "iron": "Iron",
    "src": "practice: a black stern, the windows' casings and pilasters yellow ochre like the side's band, the sashes white, the carving gilt"
@@ -285,11 +287,10 @@
   },
   "cabin_window": {
    "x_m": [-24.8, -23.78],
-   "z_m": [2.78, 3.67],
    "panes": [3, 2],
    "casing_m": 0.07,
    "casing_proud_m": 0.06,
-   "src": "lines_1927 (sheer plan): a glazed sash of six panes the size of a gun port, forward of the gallery (the cabin's side light); 1.02 m wide, centred between the mizzen's second and third chains (4 cm clear of each)"
+   "src": "lines_1927 (sheer plan): a glazed sash of six panes the size of a gun port, forward of the gallery (the cabin's side light); 1.02 m wide, centred between the mizzen's second and third chains (4 cm clear of each). Slice 12: the skin cuts a port for it in the port band (specs_1795.json cabin_lights_m, the same x) and the sash fills it, its sill and head the port's along the sheer (the level 2.78 to 3.67 m it had stood a little low)"
   },
   "lanterns": {
    "foot_z_m": 5.98,
@@ -348,7 +349,9 @@
    [["Gallery"], ["QuarterPieces"], "the quarter piece runs down the gallery's after edge", 2.04],
    [["CabinWindowFrame", "CabinWindowSash", "CabinWindowGlass"], ["Skin"], "the cabin's side light let into the side", 1.14],
    [["CabinWindowFrame"], ["CabinWindowSash", "CabinWindowGlass"], "the sash and its glass sit in the casing", 0.25],
-   [["CabinWindowSash"], ["CabinWindowGlass"], "the glass sits in the sash's rebates", 0.58],
+   [["CabinWindowSash"], ["CabinWindowGlass"], "the glass sits in the sash's rebates", 0.95],
+   [["CabinWindowFrame"], ["PortLinings"], "the casing round the cabin's side light lies on the side round its port (slice 12: a port with no lid), its back let about two thirds of an inch into the planking at the lining's edge; the lining is one sheet facing into the port, so the measure finds the casing's rails behind it, in the planking, as deep as they are broad", 3.05],
+   [["CabinWindowSash", "CabinWindowGlass"], ["PortLinings"], "the sash and its glass fill the cabin light's port against its lining (slice 12)", 0.3],
    [["Lanterns"], ["QuarterPieces"], "the lantern's bracket is let into the quarter piece", 1.05],
    [["LanternGlass"], ["Lanterns"], "the glass panes sit in the lantern's frame", 0.25]
   ]

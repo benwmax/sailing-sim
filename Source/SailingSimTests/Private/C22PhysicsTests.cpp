@@ -1,4 +1,4 @@
-// The rebuilt Catalina 22 in the physics (slice 10, docs/c22-10): her hull is the model's sections, her swing keel turns
+// The rebuilt Catalina 22 in the physics (slice 10, docs/c22-11): her hull is the model's sections, her swing keel turns
 // about its pin with its iron, her rudder kicks up on the bottom, and her rig is the model's (the boom 11.5 cm higher).
 #include "Misc/AutomationTest.h"
 #include "AutoTrim.h"

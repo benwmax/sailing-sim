@@ -1,0 +1,48 @@
+{
+ "part": "limestone",
+ "name": "Stacked limestone block wall",
+ "in_game": "New: a bank kind for newer and higher-end lots (HouseKit, by seed)",
+ "real": "Cut limestone blocks about 0.6 x 0.6 x 1.2 m in courses, each course stepped back a few cm, joints a few cm, chipped arrises and rough-split faces. Cream when new, greyer with dark lichen above the high water, the silt band below.",
+ "measures": {
+  "course_h": {
+   "target": 0.6,
+   "tol": 0.05,
+   "source": "2 ft retaining-wall blocks, typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "setback": {
+   "range": [
+    0.03,
+    0.08
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "wall_above_pool": {
+   "range": [
+    0.5,
+    1.25
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 70000,
+  "note": "each block a rounded grid at 6 cm; Nanite. A light copy per block for the 150-600 m band (Track I)"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos"
+}

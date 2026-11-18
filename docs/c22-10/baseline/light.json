@@ -1,0 +1,761 @@
+{
+ "tolerance_mm": 15.04,
+ "screen": {
+  "width_px": 3840,
+  "aspect": 1.7778,
+  "fov_deg": 60.0,
+  "fov_max_deg": 120.0,
+  "note_fov_max": "the widest Field of view setting. Unreal switches a part by its whole bounding sphere's screen size, measured from the sphere's centre, which shrinks as the field of view widens: so each part's switch (light.json's ue_screen_size) is set where its twin's error is within a pixel at the sphere's nearest point (a radius nearer than its centre) in the widest view, and so in every view"
+ },
+ "from_m": 50.0,
+ "pixels": 1.0,
+ "suits": {
+  "Rest": {
+   "hero_triangles": 308448,
+   "light_triangles": 35492,
+   "share": 0.1151
+  },
+  "Up": {
+   "hero_triangles": 325865,
+   "light_triangles": 39144,
+   "share": 0.1201
+  },
+  "Jib": {
+   "hero_triangles": 326805,
+   "light_triangles": 39445,
+   "share": 0.1207
+  },
+  "Reef": {
+   "hero_triangles": 328053,
+   "light_triangles": 39427,
+   "share": 0.1202
+  },
+  "Run": {
+   "hero_triangles": 330381,
+   "light_triangles": 41068,
+   "share": 0.1243
+  }
+ },
+ "largest_share": 0.1243,
+ "budget_share": 0.25,
+ "worst_error_mm": 14.95,
+ "worst_part": "C22_Sail_Jib_Lowered",
+ "worst_paint_slide_mm": 0.0,
+ "worst_paint_slide_p99_mm": 0.0,
+ "twins": 45,
+ "parts_outside": 45,
+ "worst_switch_error_mm": 14.95,
+ "one_pixel_from_m": {
+  "4K at 60 deg": 49.7,
+  "4K at 90 deg": 28.7,
+  "1080p at 90 deg": 14.4
+ },
+ "failing": [],
+ "ok": true,
+ "parts": {
+  "C22_Boom": {
+   "hero_triangles": 1052,
+   "light_triangles": 210,
+   "share": 0.1996,
+   "error_mm": 6.33,
+   "switch_error_mm": 6.33,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1837,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Cabin": {
+   "hero_triangles": 3852,
+   "light_triangles": 138,
+   "share": 0.0358,
+   "error_mm": 9.61,
+   "switch_error_mm": 9.61,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1222,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Deck": {
+   "hero_triangles": 10743,
+   "light_triangles": 69,
+   "share": 0.0064,
+   "error_mm": 6.85,
+   "switch_error_mm": 6.85,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.3166,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_DropBoards": {
+   "hero_triangles": 60,
+   "light_triangles": 24,
+   "share": 0.4,
+   "error_mm": 12.2,
+   "switch_error_mm": 12.2,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0328,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_ForeHatch": {
+   "hero_triangles": 60,
+   "light_triangles": 12,
+   "share": 0.2,
+   "error_mm": 6.85,
+   "switch_error_mm": 6.85,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0435,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Gudgeons": {
+   "hero_triangles": 13160,
+   "light_triangles": 797,
+   "share": 0.0606,
+   "error_mm": 8.76,
+   "switch_error_mm": 8.76,
+   "specks": 0,
+   "tubes": 16,
+   "ue_screen_size": 0.0266,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Halyards": {
+   "hero_triangles": 10616,
+   "light_triangles": 2816,
+   "share": 0.2653,
+   "error_mm": 8.25,
+   "switch_error_mm": 8.25,
+   "specks": 0,
+   "tubes": 6,
+   "ue_screen_size": 0.301,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Hardware": {
+   "hero_triangles": 74866,
+   "light_triangles": 2997,
+   "share": 0.04,
+   "error_mm": 10.23,
+   "switch_error_mm": 10.23,
+   "specks": 413,
+   "tubes": 12,
+   "ue_screen_size": 0.2316,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Hull": {
+   "hero_triangles": 46813,
+   "light_triangles": 18735,
+   "share": 0.4002,
+   "error_mm": 0.41,
+   "switch_error_mm": 0.41,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.9058,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Keel": {
+   "hero_triangles": 3820,
+   "light_triangles": 30,
+   "share": 0.0079,
+   "error_mm": 13.94,
+   "switch_error_mm": 13.94,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0468,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_KeelStub": {
+   "hero_triangles": 6430,
+   "light_triangles": 79,
+   "share": 0.0123,
+   "error_mm": 12.59,
+   "switch_error_mm": 12.59,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.069,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_KeelUp": {
+   "hero_triangles": 3820,
+   "light_triangles": 30,
+   "share": 0.0079,
+   "error_mm": 12.96,
+   "switch_error_mm": 12.96,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0502,
+   "states": [],
+   "ok": true
+  },
+  "C22_LidRails": {
+   "hero_triangles": 8232,
+   "light_triangles": 108,
+   "share": 0.0131,
+   "error_mm": 14.19,
+   "switch_error_mm": 14.19,
+   "specks": 10,
+   "tubes": 0,
+   "ue_screen_size": 0.0365,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_LidRailsRaised": {
+   "hero_triangles": 8232,
+   "light_triangles": 108,
+   "share": 0.0131,
+   "error_mm": 14.53,
+   "switch_error_mm": 14.53,
+   "specks": 10,
+   "tubes": 0,
+   "ue_screen_size": 0.0357,
+   "states": [],
+   "ok": true
+  },
+  "C22_Lifelines": {
+   "hero_triangles": 14312,
+   "light_triangles": 404,
+   "share": 0.0282,
+   "error_mm": 12.69,
+   "switch_error_mm": 12.69,
+   "specks": 16,
+   "tubes": 10,
+   "ue_screen_size": 0.197,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Lines_Jib": {
+   "hero_triangles": 19205,
+   "light_triangles": 7512,
+   "share": 0.3911,
+   "error_mm": 8.38,
+   "switch_error_mm": 8.38,
+   "specks": 66,
+   "tubes": 15,
+   "ue_screen_size": 0.3447,
+   "states": [
+    "Jib"
+   ],
+   "ok": true
+  },
+  "C22_Lines_Reef": {
+   "hero_triangles": 19205,
+   "light_triangles": 7517,
+   "share": 0.3914,
+   "error_mm": 8.67,
+   "switch_error_mm": 8.67,
+   "specks": 66,
+   "tubes": 15,
+   "ue_screen_size": 0.3369,
+   "states": [
+    "Reef"
+   ],
+   "ok": true
+  },
+  "C22_Lines_Rest": {
+   "hero_triangles": 11304,
+   "light_triangles": 4416,
+   "share": 0.3907,
+   "error_mm": 8.57,
+   "switch_error_mm": 8.57,
+   "specks": 60,
+   "tubes": 15,
+   "ue_screen_size": 0.3561,
+   "states": [
+    "Rest"
+   ],
+   "ok": true
+  },
+  "C22_Lines_Run": {
+   "hero_triangles": 22689,
+   "light_triangles": 8843,
+   "share": 0.3897,
+   "error_mm": 8.78,
+   "switch_error_mm": 8.78,
+   "specks": 84,
+   "tubes": 17,
+   "ue_screen_size": 0.3357,
+   "states": [
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Lines_Up": {
+   "hero_triangles": 18077,
+   "light_triangles": 7102,
+   "share": 0.3929,
+   "error_mm": 8.38,
+   "switch_error_mm": 8.38,
+   "specks": 62,
+   "tubes": 15,
+   "ue_screen_size": 0.3474,
+   "states": [
+    "Up"
+   ],
+   "ok": true
+  },
+  "C22_Mast": {
+   "hero_triangles": 1960,
+   "light_triangles": 156,
+   "share": 0.0796,
+   "error_mm": 12.7,
+   "switch_error_mm": 12.7,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.2187,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_MastHardware": {
+   "hero_triangles": 15740,
+   "light_triangles": 975,
+   "share": 0.0619,
+   "error_mm": 8.47,
+   "switch_error_mm": 8.47,
+   "specks": 31,
+   "tubes": 0,
+   "ue_screen_size": 0.1887,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Outboard": {
+   "hero_triangles": 6016,
+   "light_triangles": 372,
+   "share": 0.0618,
+   "error_mm": 12.19,
+   "switch_error_mm": 12.19,
+   "specks": 4,
+   "tubes": 0,
+   "ue_screen_size": 0.0386,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_PopTop": {
+   "hero_triangles": 2460,
+   "light_triangles": 146,
+   "share": 0.0593,
+   "error_mm": 6.57,
+   "switch_error_mm": 6.57,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1143,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_PopTopRaised": {
+   "hero_triangles": 2748,
+   "light_triangles": 235,
+   "share": 0.0855,
+   "error_mm": 5.75,
+   "switch_error_mm": 5.75,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1306,
+   "states": [],
+   "ok": true
+  },
+  "C22_Ports": {
+   "hero_triangles": 952,
+   "light_triangles": 76,
+   "share": 0.0798,
+   "error_mm": 8.14,
+   "switch_error_mm": 8.14,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1085,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_RigFittings": {
+   "hero_triangles": 46732,
+   "light_triangles": 1304,
+   "share": 0.0279,
+   "error_mm": 7.03,
+   "switch_error_mm": 7.03,
+   "specks": 106,
+   "tubes": 8,
+   "ue_screen_size": 0.408,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Rubrail": {
+   "hero_triangles": 5060,
+   "light_triangles": 150,
+   "share": 0.0296,
+   "error_mm": 14.39,
+   "switch_error_mm": 14.39,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1787,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Rudder": {
+   "hero_triangles": 17372,
+   "light_triangles": 1366,
+   "share": 0.0786,
+   "error_mm": 9.41,
+   "switch_error_mm": 9.41,
+   "specks": 8,
+   "tubes": 20,
+   "ue_screen_size": 0.1021,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_RudderUp": {
+   "hero_triangles": 17372,
+   "light_triangles": 1366,
+   "share": 0.0786,
+   "error_mm": 9.41,
+   "switch_error_mm": 9.41,
+   "specks": 8,
+   "tubes": 20,
+   "ue_screen_size": 0.1022,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Genoa_Bagged": {
+   "hero_triangles": 552,
+   "light_triangles": 82,
+   "share": 0.1486,
+   "error_mm": 10.67,
+   "switch_error_mm": 10.67,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.026,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Genoa_Lowered": {
+   "hero_triangles": 2860,
+   "light_triangles": 590,
+   "share": 0.2063,
+   "error_mm": 14.32,
+   "switch_error_mm": 14.32,
+   "specks": 0,
+   "tubes": 2,
+   "ue_screen_size": 0.0374,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Genoa_Set": {
+   "hero_triangles": 6660,
+   "light_triangles": 399,
+   "share": 0.0599,
+   "error_mm": 11.55,
+   "switch_error_mm": 11.55,
+   "specks": 0,
+   "tubes": 2,
+   "ue_screen_size": 0.2552,
+   "states": [
+    "Up"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Jib_Bagged": {
+   "hero_triangles": 552,
+   "light_triangles": 54,
+   "share": 0.0978,
+   "error_mm": 13.65,
+   "switch_error_mm": 13.65,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0179,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Jib_Lowered": {
+   "hero_triangles": 2672,
+   "light_triangles": 544,
+   "share": 0.2036,
+   "error_mm": 14.95,
+   "switch_error_mm": 14.95,
+   "specks": 0,
+   "tubes": 1,
+   "ue_screen_size": 0.0282,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Jib_Set": {
+   "hero_triangles": 6472,
+   "light_triangles": 290,
+   "share": 0.0448,
+   "error_mm": 9.67,
+   "switch_error_mm": 9.67,
+   "specks": 0,
+   "tubes": 1,
+   "ue_screen_size": 0.2779,
+   "states": [
+    "Jib",
+    "Reef"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Main_Covered": {
+   "hero_triangles": 2204,
+   "light_triangles": 50,
+   "share": 0.0227,
+   "error_mm": 10.7,
+   "switch_error_mm": 10.7,
+   "specks": 0,
+   "tubes": 1,
+   "ue_screen_size": 0.1159,
+   "states": [
+    "Rest"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Main_Flaked": {
+   "hero_triangles": 2316,
+   "light_triangles": 288,
+   "share": 0.1244,
+   "error_mm": 11.91,
+   "switch_error_mm": 11.91,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1003,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Main_Reefed": {
+   "hero_triangles": 7436,
+   "light_triangles": 594,
+   "share": 0.0799,
+   "error_mm": 7.97,
+   "switch_error_mm": 7.97,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.2527,
+   "states": [
+    "Reef"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Main_Run": {
+   "hero_triangles": 6188,
+   "light_triangles": 530,
+   "share": 0.0856,
+   "error_mm": 12.75,
+   "switch_error_mm": 12.75,
+   "specks": 0,
+   "tubes": 10,
+   "ue_screen_size": 0.2049,
+   "states": [
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Main_Set": {
+   "hero_triangles": 6188,
+   "light_triangles": 617,
+   "share": 0.0997,
+   "error_mm": 7.68,
+   "switch_error_mm": 7.68,
+   "specks": 0,
+   "tubes": 10,
+   "ue_screen_size": 0.3009,
+   "states": [
+    "Up",
+    "Jib"
+   ],
+   "ok": true
+  },
+  "C22_Sail_Spinnaker_Bagged": {
+   "hero_triangles": 552,
+   "light_triangles": 68,
+   "share": 0.1232,
+   "error_mm": 12.79,
+   "switch_error_mm": 12.79,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.0163,
+   "states": [],
+   "ok": true
+  },
+  "C22_Sail_Spinnaker_Set": {
+   "hero_triangles": 6564,
+   "light_triangles": 669,
+   "share": 0.1019,
+   "error_mm": 14.43,
+   "switch_error_mm": 14.43,
+   "specks": 0,
+   "tubes": 1,
+   "ue_screen_size": 0.2116,
+   "states": [
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Well": {
+   "hero_triangles": 4352,
+   "light_triangles": 42,
+   "share": 0.0097,
+   "error_mm": 7.02,
+   "switch_error_mm": 7.02,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.1507,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  },
+  "C22_Wires": {
+   "hero_triangles": 280,
+   "light_triangles": 20,
+   "share": 0.0714,
+   "error_mm": 7.52,
+   "switch_error_mm": 7.52,
+   "specks": 0,
+   "tubes": 0,
+   "ue_screen_size": 0.3851,
+   "states": [
+    "Rest",
+    "Up",
+    "Jib",
+    "Reef",
+    "Run"
+   ],
+   "ok": true
+  }
+ }
+}

@@ -399,6 +399,20 @@ class Lead:
 
 
 # ------------------------------------------------------------------------------------------------ the plan mask
+
+def inside_polygon(poly, P):
+    """Which points P (n x 2) are inside the closed polygon poly (m x 2), by the even-odd rule: matplotlib's
+    Path.contains_points without matplotlib, which Blender 4.2's Python (the PC's) does not have."""
+    x, y = P[:, 0], P[:, 1]
+    inside = np.zeros(len(P), bool)
+    for (xa, ya), (xb, yb) in zip(poly, np.roll(poly, -1, axis=0)):
+        if ya == yb:
+            continue
+        crosses = (ya > y) != (yb > y)
+        inside ^= crosses & (x < xa + (y - ya) * (xb - xa) / (yb - ya))
+    return inside
+
+
 class PlanMask:
     """What stands on the deck up to `zmax` above it, on a plan grid (`cell`), and the deck's edge: where a coil may
     lie."""
@@ -450,13 +464,12 @@ class PlanMask:
             self._mark(P[(P[:, 2] < dzp + self.zmax) & (P[:, 2] > dzp + 0.003)][:, :2])
 
     def add_poly(self, poly):
-        from matplotlib.path import Path
         poly = np.asarray(poly, float)[:, :2]
         lo, hi = poly.min(0), poly.max(0)
         xs = np.arange(lo[0] - self.c, hi[0] + self.c, self.c / 2)
         ys = np.arange(lo[1] - self.c, hi[1] + self.c, self.c / 2)
         G = np.array(np.meshgrid(xs, ys)).reshape(2, -1).T
-        self._mark(G[Path(poly).contains_points(G)])
+        self._mark(G[inside_polygon(poly, G)])
 
     def add_path(self, P, r):
         P = np.asarray(P, float)

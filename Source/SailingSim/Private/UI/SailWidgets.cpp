@@ -3,6 +3,8 @@
 #include "Rendering/DrawElements.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Fonts/FontMeasure.h"
+#include "Internationalization/BreakIterator.h"
+#include "Internationalization/IBreakIterator.h"
 #include "Rendering/SlateRenderer.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
@@ -62,10 +64,37 @@ namespace SailUI
 		};
 	}
 
+	namespace
+	{
+		/** The usual line breaks, less the one after a slash inside a word: "J/22" wrapped as "J/" and "22". (No face here
+		 *  has a no-break glyph to put in the text instead.) Each text block gets its own: an iterator holds its place. */
+		class FSlashKeptLineBreaks final : public IBreakIterator
+		{
+		public:
+			FSlashKeptLineBreaks() : Inner(FBreakIterator::CreateLineBreakIterator()) {}
+			virtual void SetString(FString&& InString) override { Kept = MoveTemp(InString); Inner->SetStringRef(FStringView(Kept)); }
+			virtual void SetStringRef(FStringView InString) override { Kept = FString(InString); Inner->SetStringRef(FStringView(Kept)); }
+			virtual int32 GetCurrentPosition() const override { return Inner->GetCurrentPosition(); }
+			virtual int32 ResetToBeginning() override { return Inner->ResetToBeginning(); }
+			virtual int32 ResetToEnd() override { return Inner->ResetToEnd(); }
+			virtual int32 MoveToPrevious() override { return Back(Inner->MoveToPrevious()); }
+			virtual int32 MoveToNext() override { return On(Inner->MoveToNext()); }
+			virtual int32 MoveToCandidateBefore(const int32 InIndex) override { return Back(Inner->MoveToCandidateBefore(InIndex)); }
+			virtual int32 MoveToCandidateAfter(const int32 InIndex) override { return On(Inner->MoveToCandidateAfter(InIndex)); }
+		private:
+			bool Glued(int32 At) const { return At > 0 && At < Kept.Len() && Kept[At - 1] == TCHAR('/') && !FChar::IsWhitespace(Kept[At]); }
+			int32 On(int32 At) { while (At != INDEX_NONE && Glued(At)) At = Inner->MoveToNext(); return At; }
+			int32 Back(int32 At) { while (At != INDEX_NONE && Glued(At)) At = Inner->MoveToPrevious(); return At; }
+			TSharedRef<IBreakIterator> Inner;
+			FString Kept;
+		};
+		TSharedPtr<IBreakIterator> LineBreaksFor(bool bWrap) { return bWrap ? TSharedPtr<IBreakIterator>(MakeShared<FSlashKeptLineBreaks>()) : TSharedPtr<IBreakIterator>(); }
+	}
+
 	TSharedRef<SWidget> Text(const FString& S, EType Type, const FLinearColor& Color, bool bWrap)
 	{
 		// (On a paper sheet the glass token becomes its paper twin: SailUI::Surface.)
-		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(OnSurface(Color)).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 
@@ -73,7 +102,7 @@ namespace SailUI
 	{
 		// Text with no panel under it lies on whatever the world shows (a bright sky as often as dark water): an ink shadow
 		// keeps its edge.
-		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(Txt(S, Type)).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.ShadowOffset(FVector2D(1.f, 1.5f)).ShadowColorAndOpacity(Ink.CopyWithNewOpacity(0.7f))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
@@ -85,7 +114,7 @@ namespace SailUI
 			const TAttribute<FSlateColor> Glass = Color;
 			Color = TAttribute<FSlateColor>::CreateLambda([Glass]() { return FSlateColor(Surface(true, Glass.Get(FSlateColor(Fg)).GetSpecifiedColor())); });
 		}
-		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap)
+		return SNew(STextBlock).Text(S).Font(Font(Type)).ColorAndOpacity(Color).AutoWrapText(bWrap).LineBreakPolicy(LineBreaksFor(bWrap))
 			.LineHeightPercentage(Type == EType::Body || Type == EType::Small ? 1.3f : 1.f);
 	}
 

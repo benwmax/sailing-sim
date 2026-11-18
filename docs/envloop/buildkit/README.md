@@ -1,8 +1,8 @@
 # Building parts kit: results (Track E, parts half)
 
 Plan: "Shore, Grass and Buildings" (Nov 16 2026), Track E. Tools and how to run them: `Tools/envloop/buildkit/README.md`.
-Review page with every render: https://claude.ai/artifact/EuV8wLy5cTwEkoimabCtRM. Nothing here is loaded by the game yet; the integration step (after the
-Nov 21 slice) swaps `HouseKit.cpp`'s flat window and door rectangles for these parts and re-bakes the mid-band tiles.
+Review page with every render: https://claude.ai/artifact/EuV8wLy5cTwEkoimabCtRM. Nothing here is loaded by the game yet; the integration step (before the
+Nov 27 feature freeze, `docs/slice/README.md`) swaps `HouseKit.cpp`'s flat window and door rectangles for these parts and re-bakes the mid-band tiles.
 
 ## What is in it
 
@@ -27,7 +27,7 @@ Nov 21 slice) swaps `HouseKit.cpp`'s flat window and door rectangles for these p
 | Colour against a grey card | Waits for Bean's lake-house photos |
 | No repeat in a 40 m frame | Three seeds side by side per style; the commercial box repeats its shape (only its finish and openings move) |
 | Variety counts | 8 windows, 5 doors, 5 garage doors, 6 styles: met |
-| Blind review | Fair only on in-game stills, after Nov 21 |
+| Blind review | Fair only on in-game stills, after the integration |
 | Budget per house | 3.1k to 11.3k triangles at seed 1 (table below), and three seeds per style stay between 3.1k and 11.8k |
 
 | Style | Triangles | Parts placed | Roof | Front wall |
@@ -55,7 +55,7 @@ pack format when it lands.
 
 ## Next
 
-1. After Nov 21: integration in `HouseKit.cpp` (same openings, kit parts), the mid-band re-bake, in-game stills at Track
+1. Before the Nov 27 feature freeze (`docs/slice/README.md`): integration in `HouseKit.cpp` (same openings, kit parts), the mid-band re-bake, in-game stills at Track
    0's stations, then the blind review.
 2. Bean's lake-house photos: colour check against a grey card, and the size card checked against real houses.
 3. Swap the preview's wall, roof and glass for the materials thread's once PR #750 merges.

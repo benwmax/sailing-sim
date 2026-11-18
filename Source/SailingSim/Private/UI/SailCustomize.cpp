@@ -6,6 +6,7 @@
 #include "BoatLivery.h"
 #include "BoatModel.h"
 #include "BoatSkin.h"
+#include "HullName.h"
 #include "SailboatPawn.h"
 #include "SailingSim.h"
 #include "SkinEditor.h"
@@ -41,6 +42,10 @@ namespace SailCustomizeImpl
 	const FSwatch ClothSwatches[] = {
 		{ TEXT("White Dacron"), 0xFFFFFF }, { TEXT("Cream"), 0xEDE6D3 }, { TEXT("Tanbark"), 0x7A3B2E }, { TEXT("Light grey"), 0xC9CCCF },
 		{ TEXT("Carbon grey"), 0x3A3F45 }, { TEXT("Pale blue"), 0xBFD4E6 }, { TEXT("Yellow"), 0xE8C84A }, { TEXT("Red"), 0xB3201B } };
+	// Cut vinyl's colours, for the name on the hull.
+	const FSwatch LetterSwatches[] = {
+		{ TEXT("Navy"), 0x1C2A44 }, { TEXT("Black"), 0x16181B }, { TEXT("Gelcoat white"), 0xF2F0EA }, { TEXT("Red"), 0xB3201B },
+		{ TEXT("Forest green"), 0x1F4D36 }, { TEXT("Royal blue"), 0x1F4E9C }, { TEXT("Burgundy"), 0x5E1B24 }, { TEXT("Gold leaf"), 0xB8923A } };
 	const TCHAR* const TabNames[] = { TEXT("Skins"), TEXT("Paint"), TEXT("Sails"), TEXT("Lines"), TEXT("Wear") };
 	constexpr int32 NumTabs = 5;
 	const TCHAR* const WearNotes[FBoatSkin::NumWearLevels] = {
@@ -431,6 +436,28 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		Slide(TEXT("Hue"), 0, 0.f, 355.f, 5.f, TEXT("°"));
 		Slide(TEXT("Strength"), 1, 0.f, 100.f * MaxStrength, 5.f, TEXT("%"));
 		Slide(TEXT("Lightness"), 2, 100.f * MinLight, 100.f * MaxLight, 5.f, TEXT("%"));
+		// Name on the hull (HullName.h): only where the class has a place for one.
+		if (FHullNamePlace HullPlace; SailingHullName::Place(Type, 1.f, HullPlace))
+		{
+			Section(TEXT("Name on the hull"));
+			TSharedRef<SEditableTextBox> HullNameBox = SNew(SEditableTextBox).Font(Font(EType::Body))
+				.HintText(FText::FromString(FString::Printf(TEXT("Up to %d letters"), FBoatSkin::MaxHullNameChars)))
+				.Text_Lambda([this]() { return FText::FromString(SkinEdit.GetDraft().HullName()); })
+				.ClearKeyboardFocusOnCommit(false)
+				.OnTextCommitted_Lambda([this](const FText& T, ETextCommit::Type)
+				{
+					if (FBoatSkin::CleanHullName(T.ToString()) != SkinEdit.GetDraft().HullName()) SkinEdit.SetHullName(T.ToString());
+				});
+			CustomTextBoxes.Add(HullNameBox);
+			Add(SNew(SBox).HeightOverride(40.f)[ HullNameBox ], 6.f);
+			Add(SwatchRows(LetterSwatches, int32(UE_ARRAY_COUNT(LetterSwatches)),
+				[this](const FLinearColor& C) { const TOptional<FLinearColor>& Now = SkinEdit.GetDraft().Lettering.Colour; return Now.IsSet() && SameColour(Now.GetValue(), C); },
+				[this](const FLinearColor& C) { SkinEdit.SetHullNameColour(C); }), 2.f);
+			Add(SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 6.f, 0.f)[ SmallButton(TEXT("Usual colour"), [this]() { SkinEdit.SetHullNameColour(TOptional<FLinearColor>()); }) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SmallButton(TEXT("No name"), [this]() { SkinEdit.SetHullName(FString()); }) ], 8.f);
+			Note(TEXT("Lettered on both quarters, navy on a light hull and white on a dark one unless you pick a colour."));
+		}
 		break;
 	}
 	case 2:

@@ -16,7 +16,12 @@ struct FLaunchSpot
 	FString Name;
 	double X = 0.0, Y = 0.0;    // world meters (X north, Y east)
 	double HeadingDeg = 0.0;    // compass heading of the bow
+	double DepthM = -1.0;       // the bake's depth_m (at the pool or MLLW); -1 when the bake gives none
 };
+
+/** Is a launch spot deep enough for a boat that draws DraftM: a fifth of her draft under the keel (Bluebonnet's 4.5 m wants
+ *  5.4 m: Bolivar Roads, the lake's deep south end). A spot without a depth fits every boat. docs/jclass-14/. */
+inline bool LaunchSpotFits(double SpotDepthM, double DraftM) { return SpotDepthM < 0.0 || SpotDepthM >= 1.2 * DraftM; }
 
 /** A building near the shore, as a box. */
 struct FLakeBuilding

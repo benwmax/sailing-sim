@@ -165,7 +165,9 @@ double FSailCloth::LuffXAt(double Z, int32 Row) const
 	// Feedback #20: straight from the tack up to the head on its halyard, held ahead of the jib's luff below the jib's head.
 	const double V = FMath::Clamp((Z - ZFoot) / FMath::Max(HeadZ - ZFoot, 1e-3), 0.0, 1.0);
 	double X = FootLuffX + (HeadX - FootLuffX) * V;
-	if (bAheadOf && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
+	// (Not the foot's row: the tack stays where the physics puts it, as ComputeCorneredTarget keeps it on the pole. Every
+	// boat's tack is well ahead of the jib's luff; Bluebonnet's, high over her bow, is 16 cm ahead, and the hold moved it.)
+	if (bAheadOf && Row > 0 && Row < Rows - 1 && Z <= AheadZTop + 1e-6) X = FMath::Max(X, AheadX0 + AheadSlope * (Z - AheadZ0) + kAheadOfJibM);
 	return X;
 }
 
@@ -180,6 +182,16 @@ FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontC
 	if (Jib && Jib->IsValid()) Z = FMath::Max(Z, Jib->TopZ() + 0.2);
 	else if (C.HasJib()) Z = FMath::Max(Z, C.Jib.Strips[C.Jib.NumStrips - 1].ZTop + 0.2);
 	Z = FMath::Min(Z, C.MastheadZ - 0.1);
+	// J-Class 14: a head the planform puts behind the config's mast front is where a raked mast's build hoists it (Bluebonnet's
+	// mast rakes 1.5 deg, 1.2 m aft at the truck: physics.py takes her head from the build, 0.25 m forward of the masthead
+	// crane's tip and 0.9 m under it, x 2.435 at 46.56 m). The config's front (x 3.19, at the deck) had put it 0.9 m ahead of
+	// the crane and 1.2 m ahead of the mast there; a socket low on the mast can't say where the masthead is. Every other
+	// boat's planform head is metres ahead of its mast (the physics' luff), so they keep the halyard point below.
+	if (S.NumStrips > 1)
+	{
+		const double PlanHeadX = S.Strips[S.NumStrips - 1].LuffX + 0.5 * (S.Strips[S.NumStrips - 1].LuffX - S.Strips[S.NumStrips - 2].LuffX);
+		if (PlanHeadX < C.MastX + 0.5 * C.MastDiameter) return FVector(PlanHeadX * Sailing::CmPerMeter, 0.0, Z * Sailing::CmPerMeter);
+	}
 	// The model's socket, when it is forward of the config's mast front (a bent mast); never inside the mast (the maxi's
 	// Hounds is near her mast's centre line, the J/22 hero's 2 cm behind the config's front).
 	const double ConfigFront = (C.MastX + 0.5 * C.MastDiameter) * Sailing::CmPerMeter;
@@ -201,7 +213,7 @@ FSpinnakerRig SpinnakerRigCm(const Sailing::FBoatConfig& C, int32 Side, double A
 	const double MastFront = MastFrontCm && !MastFrontCm->ContainsNaN() && MastFrontCm->X > C.MastX * Sailing::CmPerMeter
 		? MastFrontCm->X / Sailing::CmPerMeter : C.MastX + 0.5 * C.MastDiameter;
 	// The pole is the J long: the forestay's tack (the jib's) to the mast's front.
-	const double J = FMath::Clamp((C.HasJib() ? FootLuffX(C.Jib) : FootLuffX(C.Spinnaker)) - MastFront, 0.5, 12.0);
+	const double J = FMath::Clamp((C.HasJib() ? FootLuffX(C.Jib) : FootLuffX(C.Spinnaker)) - MastFront, 0.5, 20.0);   // (Bluebonnet's J is 15.2 m)
 	const double PoleDeg = FMath::Clamp(FMath::RadiansToDegrees(FMath::Abs(ApparentWindAngle)) - 90.0, PoleMinDeg, PoleMaxDeg);
 	const double Pole = FMath::DegreesToRadians(PoleDeg);
 	const double PoleZ = FMath::Max(C.Spinnaker.Strips[0].ZBottom, H.SheerHeight(C.MastX) + PoleOverSheerM);

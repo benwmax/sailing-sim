@@ -411,7 +411,7 @@ class Stern:
                   w["casing_proud_m"], self.paint["frames"], 0.05)
             self.sash(sash, self.fmap, a, b, v0, v1, w["panes"], w["sash_m"], -0.005, w["sash_proud_m"],
                       self.paint["sash"])
-            plate(glass, self.fmap, rect(a, b, v0, v1), [], -0.005, w["glass_proud_m"], self.paint["glass"], 0.08)
+            plate(glass, self.fmap, rect(a, b, v0, v1), [], -0.005, w["glass_proud_m"], self.paint["clear_glass"], 0.08)
             hh, hp, ho = w["head_m"]
             plate(frame, self.fmap, rect(a - cw - ho, b + cw + ho, v1 + cw, v1 + cw + hh), [], -0.005, hp,
                   self.paint["frames"], 0.05)
@@ -836,9 +836,20 @@ class Stern:
 
     # ---- the cabin's side light ---------------------------------------------------------------------------------------
     def cabin_window(self):
+        """the great cabin's side light: the sash and its glass fill the port the skin cuts for it in the port band
+        (slice 12: specs_1795.json cabin_lights_m, a port with no lid), its sill and head following the port's along the
+        sheer (the window is drawn in a chart sheared to them), the casing round it on the side"""
         cw_ = self.c["cabin_window"]
         x0, x1 = cw_["x_m"]
-        z0, z1 = cw_["z_m"]
+        lights = self.sk.sp["inside"].get("cabin_lights_m", [])
+        if not any(abs(a - x0) < 1e-3 and abs(f - x1) < 1e-3 for a, f in lights):
+            raise SystemExit(f"stern: the cabin window's x {cw_['x_m']} is not a port the skin cuts {lights}")
+        L, k, pr = self.L, self.face.k, self.sk.pr
+        sill = lambda x: float(pr.S(np.array([L.mid_px + x / FT * L.ppf]))[0]) / k     # noqa: E731
+        head = lambda x: float(pr.Shd(np.array([L.mid_px + x / FT * L.ppf]))[0]) / k     # noqa: E731
+        xc = 0.5 * (x0 + x1)
+        slope = (sill(x1) - sill(x0)) / (x1 - x0)
+        z0, z1 = sill(xc), head(xc)
         frame = self.mesh("CabinWindowFrame", "stbd")
         sash = self.mesh("CabinWindowSash", "stbd")
         glass = self.mesh("CabinWindowGlass", "stbd")
@@ -846,17 +857,25 @@ class Stern:
         c = cw_["casing_m"]
         # laid on the smooth side lifted to the thickest strake under it, the casing's back sunk into the thinnest
         gx, gz = np.meshgrid(np.linspace(x0 - c, x1 + c, 12), np.linspace(z0 - c, z1 + c, 16))
+        gz = gz + slope * (gx - xc)
         e = float(self.excess(gx.ravel(), gz.ravel()).max())
 
         def smap(P2, d):
             P2 = np.atleast_2d(np.asarray(P2, float))
             d = np.broadcast_to(np.asarray(d, float), (len(P2),))
-            S, N = self.side(P2[:, 0], P2[:, 1], smooth=True)
+            S, N = self.side(P2[:, 0], P2[:, 1] + slope * (P2[:, 0] - xc), smooth=True)
             return S + (e + d)[:, None] * N
         plate(frame, smap, rect(x0 - c, x1 + c, z0 - c, z1 + c), [rect(x0, x1, z0, z1)], -0.01 - e,
               cw_["casing_proud_m"], self.paint["ground"], 0.05)
         self.sash(sash, smap, x0, x1, z0, z1, cw_["panes"], self.c["windows"]["sash_m"], -0.01, 0.035, self.paint["sash"])
-        plate(glass, smap, rect(x0, x1, z0, z1), [], -0.01, 0.012, self.paint["glass"], 0.08)
+        plate(glass, smap, rect(x0, x1, z0, z1), [], -0.01, 0.012, self.paint["clear_glass"], 0.08)
+        worst = max(abs(sill(x) - (z0 + slope * (x - xc))) + abs(head(x) - (z1 + slope * (x - xc)))
+                    for x in np.linspace(x0, x1, 9))
+        self.info["cabin_window"] = {"x_m": [x0, x1], "sill_m": [round(sill(x0), 3), round(sill(x1), 3)],
+                                     "head_m": [round(head(x0), 3), round(head(x1), 3)],
+                                     "off_port_mm": round(worst * 1000, 2)}
+        if worst > 0.003:
+            raise SystemExit(f"stern: the cabin window strays {worst * 1000:.1f} mm off its port's sill and head")
 
     # ---- the lanterns -------------------------------------------------------------------------------------------------
     def lanterns(self):

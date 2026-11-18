@@ -4,6 +4,7 @@
 #include "SailingMath.h"
 #include "Foil.h"
 #include "Sail.h"
+#include "SquareRig.h"
 #include "Wind.h"
 #include "Waves.h"
 #include "LakeTerrain.h"
@@ -34,6 +35,16 @@ namespace Sailing
 		int Reef = 0;            // mainsail reefs taken in (0 = full main)
 		double Board = 1.0;      // centerboard / daggerboard / swing keel: 1 = fully down, 0 = up
 		double Throttle = 0.0;   // engine(s): -1 full astern .. 1 full ahead (0 = neutral)
+		// A square rig (SquareRig.h; the frigate): each mast's yards braced together, -1..1 of its lowest yard's limit
+		// (+ = braced up for a wind from starboard), and what the crew have done with each square sail and reef.
+		double Brace[kMaxMasts] = { 0.0, 0.0, 0.0 };
+		ESailSet SquareSet[kMaxSquareSails] = { ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set,
+			ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set, ESailSet::Set };
+		unsigned char SquareReef[kMaxSquareSails] = {};
+		// Fore-and-aft sails handed (the frigate's spanker brailed in, her headsails or staysails hauled down).
+		bool bMainDown = false;
+		bool bJibDown = false;
+		bool bStaysailDown = false;
 		double ThrottleSplit = 0.0; // twin engines: + = more thrust on the port engine (turns the bow to starboard)
 		bool bRighting = false;  // capsized: crew on the centerboard (dinghy) or on the righting line (beach cat)
 	};
@@ -42,10 +53,16 @@ namespace Sailing
 	{
 		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
 		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
+		Bluebonnet, // the invented 1937 J-Class yacht (Tools/shipkit/jclass, docs/jclass-13): deep water only (4.5 m draft)
+		Commonwealth, // the invented 1797 frigate (Tools/shipkit/frigate, docs/frigate-physics): a square rig, deep water only (6.5 m draft)
 		Count
 	};
 
 	SAILINGPHYSICS_API const char* BoatTypeName(EBoatType Type);
+
+	/** A square-rigged ship (the frigate): her sails are yards and braces, not sheets (ShipSailPlans.h, ShipHandling.h).
+	 *  Per-type crew and visual code that assumes a fore-and-aft rig skips her until it learns hers. */
+	inline bool IsSquareRigged(EBoatType Type) { return Type == EBoatType::Commonwealth; }
 
 	/**
 	 * One hull's shape in the boat frame (origin at the design waterline, midships of the waterline; X fwd, Y stbd,
@@ -113,7 +130,7 @@ namespace Sailing
 		double Span() const { return Params.Area / std::max(Params.Chord, 1e-3); }
 
 		/**
-		 * A swing keel (docs/c22-10): with bRetractable and this table, Board turns the plate about its pin instead of
+		 * A swing keel (docs/c22-11): with bRetractable and this table, Board turns the plate about its pin instead of
 		 * sliding a board up. Each point, Board 0 (up) to 1 (down, Params' place), holds the plate's area the water sees
 		 * (below the stub and hull), its centre (x at the quarter chord), its lowest point (grounding follows it) and the
 		 * whole plate's centroid: SwingMass kg of it (part of BallastMass, whose CG is the keel down) moves with it.
@@ -122,7 +139,7 @@ namespace Sailing
 		std::vector<FSwingPoint> Swing;
 		double SwingMass = 0.0;
 		/**
-		 * A kick-up rudder (docs/c22-10): the blade from down (Kick 0, Params' place) to kicked up (1), turned about its
+		 * A kick-up rudder (docs/c22-11): the blade from down (Kick 0, Params' place) to kicked up (1), turned about its
 		 * bolt: its area under the water, its centre and its lowest point. Where the bottom comes up under it the blade
 		 * kicks up as far as it must instead of grounding the boat, and drops back over KickDownSeconds once clear.
 		 */
@@ -216,6 +233,9 @@ namespace Sailing
 		double FormFactor = 1.10;         // (1 + k) on ITTC-57 friction
 		// Residuary (wave-making) resistance per unit displacement weight against each hull's Froude number.
 		std::vector<std::pair<double, double>> Residuary;
+		// Heeled, friction grows by (1 + HeelFrictionCoef sin heel) and wave-making by (1 + HeelResiduaryCoef sin^2 heel): the
+		// fleet's 0.4 and 2.0 (calibrated with the J/22's polar). A boat whose own lines say otherwise sets its own (Bluebonnet).
+		double HeelFrictionCoef = 0.4, HeelResiduaryCoef = 2.0;
 		double HeaveDamping = 900.0;      // N s/m^3 per m^2 of submerged column (radiation damping stand-in)
 		double YawDampingLinear = 400.0;  // N m s, low-speed yaw damping
 		double HullLateralCd = 1.0;
@@ -272,6 +292,12 @@ namespace Sailing
 		FSailGeometry Jib;
 		FSailGeometry Spinnaker;
 		bool bAsymmetricSpinnaker = false; // gennaker or screacher tacked to the bow or a sprit (no pole)
+		// A ship's staysails between her masts (the frigate): fore-and-aft sails trimmed with the jib sheet between these
+		// angles, on their own side (NumStrips 0 = none).
+		FSailGeometry Staysail;
+		double StaysailMinAngleDeg = 10.0, StaysailMaxAngleDeg = 60.0;
+		// A square rig (SquareRig.h): yards, square sails and how the crew handle them. Empty for every fore-and-aft boat.
+		FSquareRig Square;
 		double MastX = 1.0;
 		double MastheadZ = 9.25;
 		double MastDiameter = 0.10;       // m; a sealed mast floats a little when the boat is on its side
@@ -302,6 +328,11 @@ namespace Sailing
 		double TrimHeelLimitDeg = 22.0;
 		double TrimReachHeelLimitDeg = 0.0; // the heel limit reaching (TWA 80 to 110 deg and on); 0 = TrimHeelLimitDeg
 		double TrimMaxEaseDeg = 25.0;
+		// A big yacht's slow roll swings the apparent wind high on her rig as much as the wind itself, and a trimmer who chased
+		// each swing (or eased on the heel's rate a moment ahead) fed the roll: Bluebonnet rolled 1 to 30 deg every 10 s in
+		// 16 kn upwind. Her crew trim to the wind, not her roll: they see the sails over half her roll period and read the
+		// heel a quarter of one ahead. Her free roll period in seconds (sails down, calm water); 0 = as every other boat.
+		double TrimRollSeconds = 0.0;
 		// A dinghy sailor holds the sheet in the hand and sails the boat flat (0 = a keelboat crew on winches and cleats):
 		// boom degrees dumped at once per degree of heel past the limit (and of the roll toward it), and the sheet's travel
 		// per second when dumping.
@@ -316,6 +347,8 @@ namespace Sailing
 		void BuildMain(int Reefs);
 		bool HasJib() const { return Jib.NumStrips > 0; }
 		bool HasSpinnaker() const { return Spinnaker.NumStrips > 0; }
+		bool HasStaysail() const { return Staysail.NumStrips > 0; }
+		bool HasSquareRig() const { return Square.Has(); }
 		bool HasBoard() const;
 	};
 
@@ -361,6 +394,13 @@ namespace Sailing
 		double SpinAngle = 0.0;     // rad, spinnaker chord angle, positive = starboard
 		int SpinSide = 1;
 		int Reef = 0;               // reefs in the main as currently built
+		// The square rig (SquareRig.h): each yard's angle (rad, + = starboard yardarm forward) and how much of each sail is
+		// out (0 furled or clewed up, 1 drawing), moving at the crew's pace toward the controls.
+		double YardAngle[kMaxSquareSails] = {};
+		double SquareOut[kMaxSquareSails] = {};
+		double StaysailAngle = 0.0; // rad, + = clew to starboard
+		int StaysailSide = 1;
+		double MainOut = 1.0, JibOut = 1.0, StaysailOut = 1.0; // fore-and-aft sails: share set (they come down when handed)
 		double EngineThrust[4] = { 0, 0, 0, 0 }; // N, each engine, lagging the throttle
 		double CapsizedTime = 0.0;  // s spent past the capsize tilt (FBoatModel::CapsizeTilt)
 		int WindwardSide = 1;       // +1 = wind from starboard (starboard tack), -1 = from port
@@ -412,6 +452,11 @@ namespace Sailing
 		FSailStripState JibStrips[kMaxSailStrips];
 		FSailStripState SpinStrips[kMaxSailStrips];
 		int NumMainStrips = 0, NumJibStrips = 0, NumSpinStrips = 0;
+		// A square rig: one state per square sail (its centre; Force zero when furled) and the staysails' strips.
+		FSailStripState SquareStrips[kMaxSquareSails];
+		int NumSquareSails = 0;
+		FSailStripState StaysailStrips[kMaxSailStrips];
+		int NumStaysailStrips = 0;
 		Vec3 MastheadWindBody;        // apparent wind at the masthead, body frame (air velocity)
 		// Crew C1: what the crew feel. The centre of gravity's acceleration (at rest afloat it reads zero) and the
 		// angular acceleration, both body frame, each a 25 ms mean so one contact step does not spike them; the turn
@@ -494,6 +539,9 @@ namespace Sailing
 		void BuildHull();
 		double SubmergedVolumeUpright(double Depth) const;
 		void ComputeSails(double Dt, const FBoatControls& Controls, const FWindField& Wind, Vec3& InOutForceBody, Vec3& InOutTorqueBody);
+		/** The square rig's yards and sails (SquareRig.h), Apparent(body point) giving the air's velocity there (body frame). */
+		template <typename FApparent>
+		void ComputeSquareSails(double Dt, const FBoatControls& Controls, const FApparent& Apparent, Vec3& InOutForceBody, Vec3& InOutTorqueBody);
 		Vec3 PointVelocityWorld(const Vec3& BodyPoint) const;
 		/** Velocity of a body point relative to the water (over ground minus the current and the waves' orbital flow). */
 		Vec3 PointVelocityThroughWater(const Vec3& BodyPoint) const { return PointVelocityWorld(BodyPoint) - WaterCurrent - OrbitalFlowAt(BodyPoint); }

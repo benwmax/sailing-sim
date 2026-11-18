@@ -6,6 +6,7 @@ Objects:
   C22_Hardware        the deck's kit fittings (winches and their cleats, the genoa's and jib's tracks, fairleads and
                       padeyes, the traveller on its moulded bridge, the mooring cleats, handrails, vents, the fore
                       hatch on slice 2's curb, the bow eye, scuppers, the handle's pocket) and the folding stern ladder
+  C22_LidRails        the pop-top lid's teak handrails, closed; C22_LidRailsRaised the same raised with the lid (hidden)
   C22_Lifelines       the bow pulpit, stern rail, stanchions and the lifeline wires
   C22_MastHardware    the halyards' cleats and exit plates, the pole lift's padeye and cam: the mast's, they lower with it
   C22_Halyards        the halyards' falls, hitches and hung coils (in every state)
@@ -30,7 +31,7 @@ import rig_c22 as RC
 
 ROPE_N, COIL_N, WIRE_N = 8, 6, 6     # sides of a working line, of a coil's rope, of a lifeline's wire
 SIMPLIFY = 0.0015                   # a line's points kept where it bends more than this (m) off the straight
-SHOWN = ("C22_Hardware", "C22_Lifelines", "C22_MastHardware", "C22_Halyards", "C22_Lines_Rest")
+SHOWN = ("C22_Hardware", "C22_LidRails", "C22_Lifelines", "C22_MastHardware", "C22_Halyards", "C22_Lines_Rest")
 STATE_OB = {"rest": "Rest", "up": "Up", "jib": "Jib", "reef": "Reef", "run": "Run"}
 SLOT_RGB = {"RopeSheet": (0.55, 0.64, 0.78), "RopeHalyard": (0.85, 0.84, 0.78), "RopeSpin": (0.75, 0.18, 0.15),
             "RopeControl": (0.2, 0.25, 0.45), "Lifeline": (0.85, 0.86, 0.87)}
@@ -113,9 +114,32 @@ def build_hardware(mats, F):
     m.seal()
     socks = {}
     for f in F:
-        if f.group == "fittings" and f.kit not in ("BowPulpit", "Pushpit", "Stanchion"):
+        if f.group == "fittings" and f.kit not in ("BowPulpit", "Pushpit", "Stanchion", "HandrailTeak"):
             socks[f.name] = place(m, f)
     return m.finish(mats), socks
+
+
+def build_lid_rails(mats, F, raised=False):
+    """The pop-top's handrails, on the lid closed (C22_LidRails) and raised (C22_LidRailsRaised, hidden): they go up
+    with it, as C22_PopTop and C22_PopTopRaised do. raised (build_c22.py --raised): only the raised ones, named
+    C22_LidRails, as build_deck_c22 names the raised lid C22_PopTop."""
+    rails = [f for f in F if f.kit == "HandrailTeak"]
+    socks, obs = {}, []
+    if not raised:
+        m = BK.Mesh("C22_LidRails")
+        socks = {f.name: place(m, f) for f in rails}
+        obs.append(m.finish(mats))
+    up = BK.Mesh("C22_LidRails" if raised else "C22_LidRailsRaised")
+    lift = HC.V((0.0, 0.0, D.PT["lift"]))
+    for f in rails:
+        o = f.o
+        f.o = o + lift
+        s = place(up, f)
+        f.o = o
+        if raised:
+            socks[f.name] = s
+    obs.append(up.finish(mats))
+    return obs, socks
 
 
 def build_lifelines(mats, F, L):
@@ -183,6 +207,10 @@ def sockets(F, L):
         # clockwise), not the kit's Drum socket, which is on the side a line from aft comes on
         put("JibWinch_" + t, HC.winch_wraps(Fn["Winch_" + t], Fn["GenoaTrack_" + t].s("Sheave"), HC.RP["sheet_d"])[0])
         put("WinchCleat_" + t, Fn["WinchCleat_" + t].s("Wrap"))
+        # the trimmer's tail: where it leaves the drum's top turn (aft side) and, out of a hand, where it lies (the
+        # cleat's hitch behind the winch, as the baked lines lay it)
+        put("JibTailer_" + t, HC.winch_wraps(Fn["Winch_" + t], Fn["GenoaTrack_" + t].s("Sheave"), HC.RP["sheet_d"])[-1])
+        put("JibTailRest_" + t, Fn["WinchCleat_" + t].s("Wrap"))
         put("JibLead_" + t, Fn["GenoaTrack_" + t].s("Sheave"))                 # the genoa's car (today's name)
         put("WorkingJibLead_" + t, Fn["JibTrack_" + t].s("Sheave"))
         put("JibFairlead_" + t, Fn["JibFairlead_" + t].s("Line"))
@@ -211,13 +239,14 @@ def sockets(F, L):
     return {"sockets": s, "owner": own,
             "note": "Slice 6's hardware sockets (docs/c22-7), Unreal frame, centimetres: where the game's live ropes "
                     "end. JibWinch_* is where the headsails' sheets come onto the drum (its starboard side: the winches turn "
-                    "clockwise), JibLead_* the genoa's car's sheave (today's "
+                    "clockwise), JibTailer_* where the tail leaves its top turn for the trimmer's hand and JibTailRest_* where it "
+                    "lies out of a hand (the cleat's hitch), JibLead_* the genoa's car's sheave (today's "
                     "name), WorkingJibLead_*, JibFairlead_* and JibTurn_* the working jib's lead over the cabin top, "
                     "Traveler_C the car at the centre and Traveler_S/P its ends' stops, LazySheetVia where the lazy "
                     "sheet crosses forward of the mast, the *Cleat* sockets each cleat's hitch."}
 
 
-def build_all(mats):
+def build_all(mats, raised=False):
     mats = Mats(mats)
     F = HC.fittings()
     L = HC.lines()
@@ -227,6 +256,9 @@ def build_all(mats):
         ob, s = fn()
         obs.append(ob)
         socks.update(s)
+    rails, s = build_lid_rails(mats, F, raised)
+    obs += rails
+    socks.update(s)
     obs.append(build_halyards(mats, L))
     for st in HC.STATES:
         ob, s = build_state(mats, st, L)

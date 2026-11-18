@@ -1,91 +1,144 @@
-# Catalina 22 rebuild, slice 10: she sails on the new model
+# Catalina 22 rebuild, slice 9: light copy, sockets and the bottom paint's line
 
-Slice 10 gives the game's Catalina 22 the rebuilt boat's own hull, swing keel, kick-up rudder and sail plan, so the
-boat the player sails is the boat the player sees. Plan: <https://claude.ai/artifact/3oMiRWywPhitATHvGxs51a>. The
-model itself is slices 1 to 9 (`docs/c22-1` to `docs/c22-8`); the PC imports it in slice 11.
+Slice 9 gets the rebuilt Catalina 22 ready for the game's wiring (slice 11, `docs/c22-12`) and her textures (slice 8):
+
+- a **light copy**: a lighter twin of every part seen from outside, for boats 50 m off or further (AI boats, marina
+  neighbours, distant boats);
+- the **jib sheet's tail** sockets the game's trimmer reads;
+- the **bottom paint's line** cut into the hull, so the textures' antifouling ends on an edge of the mesh.
+
+Plan: <https://claude.ai/artifact/3oMiRWywPhitATHvGxs51a>. Nothing is imported into Unreal and nothing in the game
+changes. The files are under `Tools/`, so the pull request needs Bean's `bean-approved` label.
+
+![Under main and genoa from 50 m abeam, on a 4K screen at the game's narrowest field of view: the detailed boat (left), the light copy (right) and their difference, four times brighter (below)](light_50_abeam.jpg)
 
 ## Words used here
 
-- **Polar:** a table of how fast a boat sails at each wind speed and angle. The game holds each boat to a reference
-  polar within a tolerance (here 15%, because the Catalina 22's reference is an estimate from her handicap).
-- **Board:** the game's control for a centreboard, daggerboard or swing keel: 1 fully down, 0 fully up.
-- **Leeway:** how far the boat slides sideways while sailing upwind. A keel stops most of it.
-- **Righting moment:** how hard the boat pushes back upright when heeled. More is a stiffer boat.
+- **Light copy (LOD):** a simpler version of a model that the game draws when it is far enough away that nobody can
+  see the difference. Here it is held to one pixel: no point of it is further than one pixel's width from the
+  detailed boat, on a 4K screen at the game's narrowest field of view (60 degrees), 50 m away. That pixel is 15 mm.
+- **Triangles:** the flat pieces every 3D model is made of. Fewer triangles draw faster.
+- **Socket:** a named point on the model where the game attaches something, here a rope's end.
+- **Antifouling:** the bottom paint, which stops weed growing. On a Catalina 22 it ends a few centimetres above the
+  waterline.
 
-## What changed
+## What's built
 
-| | Before | Now |
-|---|---|---|
-| Hull | a formula fitted to her sizes | the model's 31 sections (`hull_c22.section`), canoe depth 0.237 m |
-| Floats | 0.56 deg by the stern | level on her drawn waterline (her hull and rig's weight placed over the model's centre of buoyancy) |
-| Wetted area | the J/22's coefficient (7.4 m^2) | the sections' own girth (8.8 m^2) |
-| Keel | a 0.60 m^2 board that slid straight up | the 0.63 m^2 cast-iron plate turning 60 deg aft about its pin; its foot, area and its 249 kg of iron follow it |
-| Keel up | no keel at all, grounding still at 5 ft | 0.16 m^2 still below the stub, grounding at 2 ft (plus the crew's sink), the iron 0.58 m higher |
-| Rudder | 0.25 m^2, fixed | the 0.29 m^2 kick-up blade: the bottom pushes it up instead of grounding her, it drops back over 2 s in deep water |
-| Boom | 1.45 m | 1.565 m, 11.5 cm higher (Bean, Nov 16: "the boom does sit too low") |
-| Main | tack 0.82 | tack at the gooseneck, 0.78; luff P and foot E as before, 9.42 m^2 |
-| Genoa | 135%, tack 0.85 m up, 12.9 m^2 | Bean's high-cut 140% on its pennant, tack 1.55 m up, 12.54 m^2 as drawn |
-| Masthead | 8.84 m | 8.864 m (the 25 ft mast on its step) |
-| Draft | 1.52 m | 1.552 m (5 ft plus the crew's 2.8 cm sink) |
+`light_c22.py` runs the J-Class's light copy tool (`Tools/shipkit/jclass/light.py`, `docs/jclass-12`) on the built
+`c22.blend` with the Catalina's settings (`light_c22.json`) and her five sail states (Rest, Up, Jib, Reef, Run). Every
+mesh but the cabin below gets a twin named `<part>_Light`, hidden, in the collection `Light`, with `light_of` naming
+its part. The cabin below has none: the game draws it only up close, from inside.
 
-The genoa takes the drawn sail's 12.54 m^2, not the old physics' 12.9: the cloth the player sees is what drives her.
+The tool works part by part:
 
-## How it's made
+- **Specks** (a pin, a shackle, anything under a pixel across) are dropped: 944 of them.
+- **Tubes** (ropes, wires, rails) are rebuilt with four sides round their own centreline: 197 of them.
+- **The rest** is simplified as far as it stays within the pixel, its paint lines kept in place.
 
-`Tools/shipkit/catalina22/export_physics_c22.py` reads the rebuild's own scripts (`hull_c22`, `keel_c22`, `rig_c22`,
-`sails_c22`) and writes `Source/SailingPhysics/Private/Catalina22HullData.inl`: the sections, the hull's particulars,
-the swing keel's table (11 positions, up to down), the rudder's kick table (11 positions) and the rig's numbers.
-`Fleet.cpp`'s `Catalina22()` builds her from it, the way the maxi and the J-Class are built. Edit the slice's JSON or
-the script, never the `.inl`; `export_physics_c22.py --check` says whether the `.inl` is current.
+| | detailed | light copy | share |
+| --- | ---: | ---: | ---: |
+| at rest | 308,448 | 35,492 | 11.5% |
+| main and genoa (Up) | 325,865 | 39,144 | 12.0% |
+| main and jib | 326,805 | 39,445 | 12.1% |
+| reefed | 328,053 | 39,427 | 12.0% |
+| main and spinnaker | 330,381 | 41,068 | 12.4% |
 
-In the physics (`BoatModel.h`, `FFoilDef`): a foil with a `Swing` table turns with the Board control instead of
-sliding, its iron (`SwingMass`) adding the moment of its weight moved up and aft; a foil with a `KickUp` table kicks up
-on the bottom (`FBoatTelemetry::RudderKick`, 0 down to 1 up, for the model's blade in slice 11). Every other boat is
-unchanged: none has either table.
+The plan allowed a quarter. All 45 twins are within the pixel; the worst is 14.95 mm, the lowered jib's.
+`baseline/light.json` lists each part's triangles, error, the states it shows in, and `ue_screen_size`: the screen
+size below which the game may switch to the twin, which holds the pixel even at the widest field of view.
 
-## Measured (standalone, `scripts/polar.sh --boat "Catalina 22"`)
+Two settings differ from the J-Class's, and the tool now takes both (with the J-Class's behaviour as the default):
 
-All 15 polar points stay inside 15%. Before and after (model speed in knots, error against the reference):
+- **UV seams are not cut.** The Catalina's UV maps are box projections, used only for the tangent frame; no
+  material of hers reads them, and the game projects her detail by position. Cut at every projection's edge, her parts
+  would hardly simplify (the deck stayed at 10,741 of 10,743 triangles). Only the lines where two materials meet are
+  kept exactly.
+- **Cracks are judged by where they are, not their length** (`crack_rule: place`). The deck, cabin and well are
+  sheets whose open edges meet the hull's and each other's. Where a paint line runs into such an edge, the tool can
+  leave a stub of a few millimetres unsewn. That is accepted when every open edge lies within a pixel of the part's
+  own edge, where it is hidden by the neighbouring part.
 
-| TWS | TWA | reference | before | now |
-|---|---|---|---|---|
-| 6 | 52 | 4.03 | 3.70 (-8.1%) | 3.59 (-10.9%) |
-| 6 | 60 | 4.26 | 3.84 (-9.9%) | 3.82 (-10.3%) |
-| 6 | 90 | 4.32 | 4.22 (-2.3%) | 4.14 (-4.2%) |
-| 10 | 52 | 5.19 | 5.08 (-2.2%) | 5.03 (-3.0%) |
-| 10 | 90 | 5.52 | 5.50 (-0.4%) | 5.47 (-1.0%) |
-| 10 | 150 | 4.81 | 5.26 (+9.5%) | 5.09 (+5.9%) |
-| 16 | 52 | 5.56 | 5.19 (-6.6%) | 5.19 (-6.6%) |
-| 16 | 90 | 5.99 | 6.24 (+4.2%) | 6.24 (+4.1%) |
-| 16 | 120 | 6.25 | 6.93 (+10.9%) | 7.13 (+14.1%) |
-| 16 | 150 | 5.89 | 6.55 (+11.2%) | 6.50 (+10.3%) |
+Ropes and wires used to end in a flat polygon. They now end in a fan of triangles from the centre, which looks the
+same but lets the tool recognise them as tubes (`build_sails_c22.rings_solid`). Before that change, ropes were
+simplified like solids and came out as flat ribbons, thinner than the rope from some sides.
 
-- She is stiffer: righting moment at 10 deg 2,200 N m against 1,470 (the drawn hull's flat, firm bilge), so she heels
-  less (16 kn close-hauled 16 deg against 23) and carries the genoa harder on a breezy reach: the 16 kn reach at 120 deg
-  is now +14.1%, near the 15% line. Nothing was retuned to pull it back: the reference there is a handicap estimate.
-- Light air upwind she is 1 to 3% slower than before: the sections' wetted area is 19% more than the old coefficient gave.
-- Reference checks (`scripts/reference-checks.sh --quick`): her Portsmouth ratios are unchanged (1.07 and 1.15); her
-  knockdown recovery is 1.0 deg 30 s later (2.2 before). The one check out (the Sunfish 20 s after a capsize, 145.2 deg
-  against 145) is out on main too, in the cloud without `Wind.mann`.
-- Swing keel at 12 kn, 50 deg: keel down 5.36 kn with 6.3 deg of leeway, keel up 5.50 kn through the water with 14.6
-  deg (worse made good). Becalmed with her crew on one side she lists 3.7 deg keel down, 4.2 up.
-- In 1 m of water she grounds keel down and sails on keel up; in 0.8 m the rudder kicks up about a third and drops back
-  down in deep water.
+### The sockets
 
-## Tests
+`c22_sockets.json` gains four, all on the hull:
 
-`Source/SailingSimTests/Private/C22PhysicsTests.cpp`: `SailingSim.Physics.C22Hull` (sizes, volume, centre of
-buoyancy, level trim, the rig), `SailingSim.Physics.C22SwingKeel` (the table, leeway, list, the shoal),
-`SailingSim.Physics.C22KickUpRudder`. `SailingSim.Fleet.PolarCatalina22` holds the polar as before.
+| socket | where |
+| --- | --- |
+| `JibTailer_S`, `JibTailer_P` | where the jib sheet's tail leaves the winch's top turn: the game draws the tail from here to the trimmer's hand |
+| `JibTailRest_S`, `JibTailRest_P` | the cleat behind the winch, where the tail lies when nobody holds it |
 
-## For the Mac and the PC
+The wiring thread adds them to its expected sockets once this is on main.
 
-- The fleet model `SM_Catalina22_*` (`build_fleet.py` from BoatExport) is built from the physics hull, so
-  `scripts/make-boat-models.sh` must be rerun for `SailingSim.Visual.FleetMesh` (its volume moves 2.2%, its draft 3 cm).
-  `build_fleet.py` now builds a hull that has sections (`hull_stations`, only the Catalina 22 in the fleet) on them, as
-  `build_j22.py` does: on the formula's stand-in fit its canoe was 1.008 m^3 against 1.220 and its CB 12 cm aft. Built
-  with the `bpy` module in the cloud: canoe 1.225 m^3, CB (-0.097, -0.088), LOA 6.550, beam 2.338, as the physics.
-  Slice 11's hero (`SailingSim.Visual.C22HeroMesh`, PR #762) is held to these same numbers.
-- The physics' `Board` toggle (1 or 0.25 in the pawn today) now swings the keel: slice 11 can draw it and the rudder
-  from `FFoilDef::SwingAt` and `FBoatTelemetry::RudderKick`.
-- `RudderStockToCP` stays the old 0.09 m (the helm's feel); the blade's quarter chord is 0.18 m behind its pintles.
+### The bottom paint's line
+
+`build_c22.py` cuts the hull at 4 cm above the design waterline (`BOTTOM_Z`): material `Topsides` above, `Antifouling`
+below. The single `GelcoatHull` material is gone. The line is the one the textures thread paints, so its cards for
+`Topsides` and `Antifouling` apply directly. The game's export (`export_game_c22.py`, slice 11) cuts its own boot
+stripe above it; its `antifouling_top` moves from 5 to 4 cm in the wiring thread's follow-up.
+
+## Checks
+
+- **Light copy:** `light.json` passes (45 of 45 twins within 15.04 mm, largest state share 12.4%).
+- **Renders against the detailed boat** (`render_light_c22.py`, then the J-Class's `light_compare.py`): under main and
+  genoa, at a 4K screen's own pixels with a 60 degree field of view, from 50 and 100 m, abeam and 40 degrees off the
+  bow. Each pixel's difference is out of 255:
+
+  | view | mean | 99th percentile | pixels differing visibly (over 16) |
+  | --- | ---: | ---: | ---: |
+  | 50 m abeam | 1.78 | 32 | 2.4% |
+  | 50 m off the bow | 1.56 | 33 | 2.4% |
+  | 100 m abeam | 1.61 | 24 | 1.5% |
+  | 100 m off the bow | 1.41 | 25 | 1.8% |
+  | the renderer's own noise (two seeds) | 0.90 | 8 | 0.1% |
+
+  The difference image shows where they differ: the lifelines, stays and shrouds (under a pixel wide, so a four-sided
+  wire covers a slightly different share of its pixels), the sheer's highlight, which moves by about a pixel, and the
+  keel's leading edge, whose shading is flatter. This is a larger difference than the J-Class's (mean 0.42 there, also
+  against noise of about 0.7). The J-Class's parts are larger and smoother, so a pixel is a smaller share of them.
+  If it shows in the game, the fix is a tighter tolerance (`pixels` in `light_c22.json`): the budget has room for
+  twice the triangles.
+
+![The worst 480 by 200 pixels from 50 m off the bow, at the screen's own pixels shown twice size: detailed above, light copy below](light_50_bow_px.jpg)
+
+![Wireframes close to: the detailed boat (left) and the light copy (right), from the port quarter](light_wire_quarter.jpg)
+
+![Wireframes at the mast's foot](light_wire_mast_foot.jpg)
+
+- **Size check** (`c22_check.py --slice 9`): passes. All sizes are as in slice 7. The detailed boat is 542,359
+  triangles: the rope ends add 628 and the cabin's liner 744 (it is copied from the hull's skin, whose faces along the paint
+  line are no longer all four-sided: the copy now takes them too, or the liner would have a gap along the line).
+- **Joins** (`seams.py`): all closed.
+
+## Slice 8's wear in the build
+
+Since the textures (slice 8, `docs/c22-9`) are on main, `build_c22.py` ends by dressing every material with its finish
+and wear (`textures/weathering_c22.dress`) at `--wear`'s level: L2 unless given (six years a club boat, half kept),
+`--no-wear` for the flat slot colours. The wear only changes materials, so the light copy comes out the same (checked
+on the deck, the boom and the mainsail: the same twins). `render_light_c22.py` still renders the flat slot colours.
+
+## For slice 10 (physics) and 11 (wiring)
+
+- The twins are the same parts as the hero's, so the export can write `SM_C22Hero_*_Light` from them. The wiring
+  thread keeps AI boats on the fleet model for now.
+- The hull's twin is the biggest (18,735 triangles, 40% of its part): the paint line's 453 cut edges hold the
+  simplification back. A boot stripe cut in the build, not the export, would need the same care.
+
+## Reproduce
+
+```
+<venv>/bin/python Tools/shipkit/catalina22/build_c22.py -- <work>/s9          # or blender -b --factory-startup -P
+<venv>/bin/python Tools/shipkit/catalina22/light_c22.py -- <work>/s9          # about 30 min on the cloud's CPU
+blender -b -P Tools/shapeloop/measure.py -- <work>/s9/c22.blend Tools/shapeloop/sections_c22_rebuild.json <work>/s9/m
+blender -b -P Tools/shapeloop/seams.py -- <work>/s9/c22.blend Tools/shapeloop/sections_c22_rebuild.json <work>/s9/m
+python3 -I Tools/shipkit/catalina22/c22_check.py <work>/s9/m/stats.json <work>/s9/c22_sockets.json --slice 9
+<venv>/bin/python Tools/shipkit/catalina22/render_light_c22.py -- <work>/s9/c22.blend <work>/s9/lt
+python3 -I Tools/shipkit/jclass/light_compare.py <work>/s9/lt docs/c22-10
+```
+
+`<venv>` is a Python with the `bpy` module (5.3), numpy, scipy and pillow, as for the J-Class.
+`baseline/` holds the light copy's report (each part's summary), the renders' measures (`compare.json`) and the
+sockets file.

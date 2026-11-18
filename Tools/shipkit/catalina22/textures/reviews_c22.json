@@ -1,0 +1,1046 @@
+{
+ "method": "Three fresh reviewers a round, each given only the ten blind sheets (docs/c22-9/blind/<sheet>.jpg) and the cards' level descriptions, put each sheet's letters A to E in level order (each level once) and named the least convincing thing on each sheet. Rule (wear_check_c22.py): a reviewer passes a sheet with all five right or one swap of neighbouring levels; a sheet passes when at least three reviewers do. Each round's reviewers were new; the rounds' renders differ (the fixes between them are in docs/c22-9).",
+ "round": 4,
+ "reviewers": {
+  "r1": {
+   "ladder": {
+    "topsides": {
+     "A": "L1",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "bottom": {
+     "A": "L3",
+     "B": "L1",
+     "C": "L4",
+     "D": "L0",
+     "E": "L2"
+    },
+    "deck": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L2",
+     "D": "L1",
+     "E": "L4"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L3",
+     "C": "L0",
+     "D": "L2",
+     "E": "L1"
+    },
+    "canvas": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "liner": {
+     "A": "L3",
+     "B": "L0",
+     "C": "L4",
+     "D": "L1",
+     "E": "L2"
+    },
+    "headliner": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L2",
+     "E": "L3"
+    },
+    "sole": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L3",
+     "D": "L1",
+     "E": "L4"
+    },
+    "joinery": {
+     "A": "L1",
+     "B": "L3",
+     "C": "L4",
+     "D": "L2",
+     "E": "L0"
+    },
+    "cushions": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L1",
+     "D": "L4",
+     "E": "L3"
+    }
+   },
+   "least_real": {
+    "topsides": "the clay band a flat uniform brown stripe with a fuzzy top edge, like a painted boot stripe; streaks soft blobs not starting at fittings; L1 and L3 hard to separate",
+    "bottom": "the keel rust regular vertical red pinstripes like a barcode, no blisters or scale; the slime an even tint",
+    "deck": "E's dirt large cloudy blotch noise over cabin top and walkways alike, camouflage; non-skid never shows",
+    "teak": "the drop boards flat-coloured planks with no grain or checks; L4 a uniform charcoal panel like painted plywood",
+    "canvas": "changes only in tint; no fold lines, stitching or edge streaks; rotten just slightly darker",
+    "liner": "C's grime a low-frequency sepia smear like a dirty lens; no drips, crazing or corner build-up",
+    "headliner": "leak stains big beige cloud blotches over every surface, not running down from windows",
+    "sole": "E's grey wear covers the whole strip, not a path; the holly lines disappear; the table edge a speckled stucco",
+    "joinery": "a flat grainless colour field at every level; water lines a faint gradient, not a tide mark",
+    "cushions": "the plaid reads as dark green felt; washed-out a grey-beige desaturation of the whole frame"
+   }
+  },
+  "r2": {
+   "ladder": {
+    "topsides": {
+     "A": "L1",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "bottom": {
+     "A": "L1",
+     "B": "L3",
+     "C": "L4",
+     "D": "L0",
+     "E": "L2"
+    },
+    "deck": {
+     "A": "L3",
+     "B": "L0",
+     "C": "L2",
+     "D": "L1",
+     "E": "L4"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L3",
+     "C": "L0",
+     "D": "L2",
+     "E": "L1"
+    },
+    "canvas": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "liner": {
+     "A": "L3",
+     "B": "L0",
+     "C": "L4",
+     "D": "L1",
+     "E": "L2"
+    },
+    "headliner": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L2",
+     "E": "L3"
+    },
+    "sole": {
+     "A": "L1",
+     "B": "L2",
+     "C": "L3",
+     "D": "L0",
+     "E": "L4"
+    },
+    "joinery": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L4",
+     "D": "L2",
+     "E": "L1"
+    },
+    "cushions": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L1",
+     "D": "L4",
+     "E": "L3"
+    }
+   },
+   "least_real": {
+    "topsides": "the mustache a perfectly level uniform-height band with a fuzzy top, like a painted stripe; streaks barely visible smudges; no yellowing or crazing, so L1 and L3 look alike",
+    "bottom": "the keel rust vertical red pinstripes evenly spaced like a barcode; the slime a flat uniform tint",
+    "deck": "the worst deck's dirt large blotchy cloud noise (camouflage) over everything; the non-skid not visible at any level",
+    "teak": "the drop boards flat single-colour panels; the black one a dark grey fill; cockpit grime an all-over mottle",
+    "canvas": "barely changes; the rotten one only slightly darker, no bleaching, mildew or fold streaks",
+    "liner": "the worst liner's grime a smeared blurry brown wash along the shelf edge, a low-res smudge",
+    "headliner": "leak stains big cloud blotches over every surface at one density, a tiled noise mask",
+    "sole": "the worst sole a uniform dark-brown tint with the holly fading away; the table top a speckled gritty noise",
+    "joinery": "weathered veneer just desaturated and greyed evenly; no handmarks or water lines; reads as painted MDF",
+    "cushions": "the plaid only visible on the newest; the stained one soft grey cloud blotches; the curtain changes far less"
+   }
+  },
+  "r3": {
+   "ladder": {
+    "topsides": {
+     "A": "L1",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "bottom": {
+     "A": "L1",
+     "B": "L3",
+     "C": "L4",
+     "D": "L0",
+     "E": "L2"
+    },
+    "deck": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L2",
+     "D": "L3",
+     "E": "L4"
+    },
+    "teak": {
+     "A": "L4",
+     "B": "L3",
+     "C": "L0",
+     "D": "L2",
+     "E": "L1"
+    },
+    "canvas": {
+     "A": "L4",
+     "B": "L1",
+     "C": "L2",
+     "D": "L3",
+     "E": "L0"
+    },
+    "liner": {
+     "A": "L3",
+     "B": "L0",
+     "C": "L4",
+     "D": "L1",
+     "E": "L2"
+    },
+    "headliner": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L2",
+     "E": "L3"
+    },
+    "sole": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L3",
+     "D": "L1",
+     "E": "L4"
+    },
+    "joinery": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L4",
+     "D": "L2",
+     "E": "L1"
+    },
+    "cushions": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L1",
+     "D": "L4",
+     "E": "L3"
+    }
+   },
+   "least_real": {
+    "topsides": "a perfectly straight uniform-height brown stripe with a fuzzy top edge, like a painted boot stripe; streaks vague grey smudges mid-panel",
+    "bottom": "C's keel rust regular vertical red pinstripes like a barcode; the slime an even tint with no build-up near the waterline",
+    "deck": "E's mildew a large tan/grey camouflage blotch pattern stamped evenly; the non-skid pattern never visible",
+    "teak": "the drop boards flat single-colour panels with no grain, seams or checking; the black one a uniform dark-grey slab",
+    "canvas": "barely changes apart from tone; the rotten one evenly darker with no bleaching, mildew or green streaks",
+    "liner": "C's grime a uniform grey-beige wash with lighter blotches along the beam like tiling; the far wall's speckle noise",
+    "headliner": "B's leak stains large evenly toned camouflage blotches over the panels, window frames included",
+    "sole": "E a uniform pinkish-brown tint with the holly faded out; the table a coarse sandy speckle",
+    "joinery": "C's veneer desaturated grey-tan with a faint blotchy overlay; no grain, tide line or handmarks",
+    "cushions": "the plaid soft and low-contrast; D's mildew an even dull wash; A's stains blotchy noise over the whole top"
+   }
+  }
+ },
+ "earlier": {
+  "round_1": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L2",
+      "D": "L3",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L0",
+      "D": "L2",
+      "E": "L3"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L4",
+      "D": "L1",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L3",
+      "B": "L2",
+      "C": "L0",
+      "D": "L1",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L3",
+      "B": "L1",
+      "C": "L4",
+      "D": "L2",
+      "E": "L0"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L3",
+      "D": "L4",
+      "E": "L1"
+     }
+    },
+    "least_real": {
+     "topsides": "the waterline clay is a row of evenly spaced brown blobs, like a stencilled dotted band",
+     "bottom": "keel rust bright orange blotches over blue, like camouflage paint, not runs and blisters",
+     "deck": "L4 dirt a uniform blotchy cloud texture over everything, a grunge overlay",
+     "teak": "vertical comb-like fringe of dark streaks under the coamings looks like hair or grass",
+     "canvas": "the levels barely differ; L4's black streaks straight vertical pencil lines",
+     "liner": "L4 liner a uniform granite-like speckle; black sole spots like scattered pepper",
+     "headliner": "bulkhead goes to a grey camouflage blotch pattern with no source",
+     "sole": "L4 black stains a single blotch patch pasted on the floor; other levels nearly indistinguishable",
+     "joinery": "L4 veneer a flat even grey with no grain or rising stain, a desaturated filter",
+     "cushions": "mildew at the cushion edge clumped like coffee grounds; fabric differences too faint to read"
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L0",
+      "D": "L2",
+      "E": "L3"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L2",
+      "E": "L1"
+     },
+     "sole": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L0",
+      "D": "L3",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L2",
+      "E": "L3"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "The waterline 'clay mustache' on B and C is a regular row of evenly spaced, identically sized brown blobs, like a repeated stamp, not a continuous scum band. B and C are almost indistinguishable, and the L3 'spider cracks' and yellowing are not visible at all.",
+     "bottom": "C's keel rust is a uniform orange leopard-spot noise pasted evenly over the whole blade, with no runs, blisters or edge concentration. The hull's green slime is a flat tint, and the brown fouling along the top edge repeats the same blob pattern as the topsides.",
+     "deck": "E's mildew is large soft cloudy blotches of tiling noise spread evenly over the flat cabin top as well as the walkways, like a dirty camo overlay. Nothing follows the traffic paths or drainage, and A, B and D are nearly identical.",
+     "teak": "The L4 drop boards (A) are a flat black-grey mottle with no grain or checks. On A and D the cockpit coaming has vertical streaks that look like a stretched, smeared texture (curtain-like fringes), not water streaks.",
+     "canvas": "A's dirt is fine vertical dark pinstripes, perfectly even across the panel, like a brushed-metal texture. The L0-L3 variants differ only in a barely perceptible tint shift.",
+     "liner": "C's speckled grey noise over the whole headliner and liner reads as a sandpaper texture, not mildew. The black mildew spots dumped on the sole by the post are uniform dark flecks with no relation to where water would sit.",
+     "headliner": "B's mildew on the bulkhead panel is a hard-edged rectangle of grey camo noise. The leak stains in B and D are pale, hard-edged blotches pasted across the white mouldings, not stains spreading from the windows and fittings. A, C and E barely differ.",
+     "sole": "On E the grey-black mildew is a hard-edged smudge that clips abruptly at the post and the mat edge. The holly strips stay perfectly crisp and parallel through it, so it looks like a decal over the floor, not wear in the wood.",
+     "joinery": "The veneer is a flat, grainless orange-brown plane on every level, so L0, L1 and L3 differ only by hue. C's 'grey and dry' state reads as a desaturated filter, not weathered wood. The cushions' dirt is a large blurry cloud pattern.",
+     "cushions": "The plaid is a soft blurry checker at almost no visible scale, with no weave. D's stains are the same speckle as the sole's mildew, scattered at the floor edge. A's 'stains' are diffuse clouds of tiling noise across the whole seat, not marks at the seat fronts."
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L0",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L3",
+      "B": "L2",
+      "C": "L1",
+      "D": "L0",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L2",
+      "E": "L3"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "evenly spaced row of brown blotches on a ruler-straight line, like a stamped pattern; no gloss at the mirror-gloss level",
+     "bottom": "keel rust a uniform orange speckle tiled over the whole blade like wallpaper, no runs or blisters",
+     "deck": "L4 grime large soft camouflage blotches spread evenly over cabin sides and non-skid alike; no visible non-skid relief",
+     "teak": "a curtain of vertical grey drip streaks under the coaming like fringe/grass; black teak a cloudy overlay with no grain or checks",
+     "canvas": "a vertical scratchy streak texture over the panels, running full height rather than collecting at the lower edges",
+     "liner": "coarse speckled stucco noise on the L4 liner; floor stains black flecks like coffee grounds",
+     "headliner": "leak stains flat cream/grey patches with hard map-like edges; the bulkhead a black-grey camouflage blotch",
+     "sole": "L4 black splotches like burnt holes in one spot; no worn path down the middle; A-D barely distinguishable",
+     "joinery": "L4 a uniform grey-beige desaturation, no handmarks or rising stains, a colour filter",
+     "cushions": "almost no visible weave or plaid; stains faint cloudy noise over the whole surface rather than marks at the seat fronts"
+    }
+   }
+  },
+  "round_2": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L0",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L4",
+      "D": "L1",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L1",
+      "D": "L3",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L4",
+      "D": "L2",
+      "E": "L1"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the waterline clay/slime a perfectly straight, uniform-height painted band with a hard top edge; the grey streaks soft blurry blobs, not runs from a fitting",
+     "bottom": "the keel rust an even orange smear over the whole blade; no runs, blisters or flaking; the hull's film a uniform tint",
+     "deck": "E's dirt a large cloudy noise over cabin top, sides and walkways alike, not in paths or recesses; no non-skid pattern visible",
+     "teak": "A's drop boards a flat uniform black slab, no grain, checks or green: painted black, not weathered teak",
+     "canvas": "the canvas barely changes apart from a darker tint at the worst; no edge streaks or mildew; rotten canvas looks like clean canvas in shadow",
+     "liner": "stains pale blotchy cloud noise along the moulding, not running from fittings; no visible crazing",
+     "headliner": "leak stains big map-like tan blobs scattered across panels, not from windows or fittings; no dark tide-lines",
+     "sole": "the crop is mostly cushion and moulding; the sole tiny and nearly identical across four levels; holly bright at L4",
+     "joinery": "C's veneer uniformly desaturated pinkish-grey, no rising stains, handmarks or mildew: a colour shift",
+     "cushions": "stains uniform blotchy noise over the whole top, not at the seat fronts; the plaid floats under them"
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L3",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L0",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L0",
+      "D": "L3",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L2",
+      "E": "L3"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the clay a perfectly straight uniform band like a painted stripe; real scum wobbles, thickens at the bow and fades up; streaks blurry smudges",
+     "bottom": "L4 keel rust a flat orange-brown wash, no blisters, runs or pits; slime an even tint",
+     "deck": "L4 dirt cloud-noise blotches spread evenly, not in paths, corners or low spots; non-skid barely visible",
+     "teak": "L4 drop boards a flat uniform black slab, no grain, checks or green; levels differ by a hue swap",
+     "canvas": "levels nearly indistinguishable; rotten canvas just darker, no bleaching, mildew or streaks",
+     "liner": "stains soft blotchy procedural noise unrelated to leak paths",
+     "headliner": "leak stains large cloudy blobs over every panel instead of rings from windows and fittings",
+     "sole": "the crop barely shows the sole; levels told apart by the cushions and a grey cast",
+     "joinery": "L4 veneer a uniform desaturated grey-beige, no rising stains, water lines or mildew: a colour filter",
+     "cushions": "stains large soft dark noise blotches tiled evenly over the seat, like camo, not at the front edge"
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L0",
+      "C": "L3",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L3",
+      "B": "L2",
+      "C": "L0",
+      "D": "L1",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L4",
+      "D": "L2",
+      "E": "L1"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the waterline clay/slime a perfectly straight, uniform ruler-drawn brown band with no splashes or variation; the black streaks soft blurry grey blobs, not streaks from fittings",
+     "bottom": "the keel rust a flat orange-brown overlay over the whole blade, not running from edges and blisters; the slime a uniform tint",
+     "deck": "E's mildew/dirt a large cloudy noise blotch across non-skid, gelcoat and cabin sides alike, not following the walkways; the non-skid pattern invisible at this scale",
+     "teak": "the drop boards flat slabs with no grain, checks or board joints; the black teak a uniform near-black paint",
+     "canvas": "the levels differ only by tint; no fold-line dirt, edge streaks or mildew spots even at the worst",
+     "liner": "C's grime a soft brown cloud unrelated to corners or fittings; A/B/D/E nearly indistinguishable",
+     "headliner": "leak stains pale blotchy patches with hard random outlines not starting at the windows or fittings; no darker tide-line rims",
+     "sole": "the crop is mostly a pole and cushion; the sole differences barely visible; E's greying a global desaturation",
+     "joinery": "C's grey veneer a uniform desaturated wash, no handmarks or rising water lines; no wood grain at any level",
+     "cushions": "D's mildew a fine uniform speckle over the whole cushion; the plaid fades evenly rather than on the sun-exposed top"
+    }
+   }
+  },
+  "round_3": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L3",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "bottom": {
+      "A": "L3",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L0",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L4",
+      "D": "L1",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L3",
+      "D": "L1",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L4",
+      "D": "L2",
+      "E": "L1"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the waterline mustache a perfectly straight, uniform ruler-edged brown band, a painted stripe, not clay; black streaks faint blurry smudges",
+     "bottom": "the keel rust an even orange-brown wash over the whole blade; the hull slime a uniform olive cast",
+     "deck": "E's dirt a large cloudy noise over everything, not packed in the pattern or along walkways; the non-skid barely readable",
+     "teak": "the L4 drop boards a flat near-black slab with no grain, checks or green: painted black",
+     "canvas": "barely changes except a slight darkening; no mildew, green streaks or bleaching; no weave or fold-line dirt",
+     "liner": "broad soft cloudy blotches over the whole liner at one scale, not streaks under fittings or along the hull-deck joint",
+     "headliner": "leak stains large tide-mark blobs spread uniformly over every panel; no source points at windows or fittings",
+     "sole": "E's holly strips lost into a uniform dark smear; the table edge a speckled sandpaper grain",
+     "joinery": "C's joinery a uniform desaturated grey-tan, no handmarks or rising stains: lowered saturation",
+     "cushions": "the plaid so low-contrast the levels are hard to read; stains vague dark clouds with no tide rings; no faded-top gradient"
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L0",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L3",
+      "D": "L1",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L4",
+      "D": "L2",
+      "E": "L1"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the mustache a dead-straight uniform brown band like a painted boot stripe; streaks blurry blobs",
+     "bottom": "the hull a uniform low-frequency cloudy mottle; the keel rust an even orange wash",
+     "deck": "E's grime large soft camouflage blotches over flat and vertical faces alike; non-skid barely visible",
+     "teak": "drop boards change only in flat colour; the black boards look like painted plywood",
+     "canvas": "a flat tinted plane at every level; no folds, seams or edge streaks",
+     "liner": "C's stains a smeared cloudy noise like a dirty lens, unrelated to fittings or drips",
+     "headliner": "leak stains huge beige cloud blotches spread evenly, not tide-marked rings from windows",
+     "sole": "E a uniformly darkened brown wash with the holly vanishing, no grey path; the table edge a coarse speckle",
+     "joinery": "C's mildew grey cloudy noise painted evenly up the bulkheads, no tide line",
+     "cushions": "the plaid so low-contrast it reads as murky solid fabric; stains generic blotches"
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L1",
+      "B": "L2",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "bottom": {
+      "A": "L1",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L2"
+     },
+     "deck": {
+      "A": "L3",
+      "B": "L0",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "teak": {
+      "A": "L4",
+      "B": "L3",
+      "C": "L0",
+      "D": "L2",
+      "E": "L1"
+     },
+     "canvas": {
+      "A": "L4",
+      "B": "L1",
+      "C": "L2",
+      "D": "L3",
+      "E": "L0"
+     },
+     "liner": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "headliner": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L1",
+      "D": "L2",
+      "E": "L3"
+     },
+     "sole": {
+      "A": "L0",
+      "B": "L2",
+      "C": "L3",
+      "D": "L1",
+      "E": "L4"
+     },
+     "joinery": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L4",
+      "D": "L2",
+      "E": "L1"
+     },
+     "cushions": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L1",
+      "D": "L4",
+      "E": "L3"
+     }
+    },
+    "least_real": {
+     "topsides": "the mustache a straight uniform band with a ruler-hard top edge, like masking tape; streaks blurry blobs",
+     "bottom": "the keel rust an even orange-brown wash like a texture swap; the hull slime a uniform olive tint",
+     "deck": "the worst deck's dirt a large blotchy cloud over everything equally; non-skid barely visible",
+     "teak": "the drop boards change only in flat colour, no grain or checks; the black boards look painted",
+     "canvas": "a flat untextured beige panel that only shifts tone; the rotten level just darker",
+     "liner": "stains large soft smudges unrelated to geometry; no spider cracks at the old levels",
+     "headliner": "leak stains big blurry tan clouds even over the window frames, no tide-line edges or origin",
+     "sole": "the worn sole a uniform dull brown with the holly nearly gone instead of a worn path; the table top speckled like sandpaper",
+     "joinery": "a uniform desaturation of the panel with soft blotches; no grain, edge wear or water line",
+     "cushions": "the plaid nearly invisible at every level; the worn level a flatter grey-brown blanket with blotchy noise"
+    }
+   }
+  }
+ }
+}

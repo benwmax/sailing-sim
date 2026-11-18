@@ -21,6 +21,8 @@ How each is measured:
   draft, keel up          the same for the raised keel (C22_KeelUp, hidden in the build; with --keel-up the build's
                           C22_Keel is the raised one and C22_KeelDown the down one; slice 3)
   keel weight             the build report's keel_kg: the plate's mesh volume times cast iron (slice 3)
+  headroom                the build report's headroom under the pop-top, closed and raised: the cabin sole to the
+                          lid's underside on the centreline (cabin_c22.headroom, slice 7)
   displacement            the canoe body's volume under z = 0 (the build's report) times 1,000 kg/m^3, less the crew the
                           game floats her with (the card's game.crew_kg): the physics floats every boat in water of
                           1,000 kg/m^3 (kWaterDensity) and its design volume is the boat's mass with her crew. Only the
@@ -79,6 +81,9 @@ def measure(stats, sockets, card):
     phys = stats.get("physics") or {}
     if phys.get("keel_kg"):
         m["keel_kg"] = phys["keel_kg"]
+    for k in ("headroom_popup_closed_m", "headroom_popup_raised_m"):
+        if phys.get(k):
+            m[k] = phys[k]
     if phys.get("canoe_volume_m3"):
         m["displacement_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3 - card["game"]["crew_kg"]
     if sockets:

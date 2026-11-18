@@ -175,7 +175,7 @@ class Hull:
 
 
 class StationHull(Hull):
-    """C22 slice 10 (docs/c22-10): a fleet hull drawn by its sections (the Catalina 22's FHullShape::Stations, from
+    """C22 slice 10 (docs/c22-11): a fleet hull drawn by its sections (the Catalina 22's FHullShape::Stations, from
     Catalina22HullData.inl), which BoatExport writes as "hull_stations". As in build_j22.py the hull is built on them
     exactly as the physics reads them (straight between stations, and between a section's points by index, sunk by
     canoe_depth - station_depth), so the canoe body's volume and centre of buoyancy are the physics'. Without this the

@@ -289,6 +289,12 @@ double AWaterSurface::GetSimTime() const
 	return GM ? GM->GetSimTime() : GetWorld()->GetTimeSeconds();
 }
 
+double AWaterSurface::GetRenderTime() const
+{
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	return GM ? GM->GetRenderTime() : GetWorld()->GetTimeSeconds();
+}
+
 void AWaterSurface::BeginPlay()
 {
 	Super::BeginPlay();
@@ -479,11 +485,22 @@ float AWaterSurface::WhitecapScaleHere() const
 	// World streaming: on the Texas coast the water is the bay's inside and the Gulf's outside, so the caps scale with
 	// the open sea's share where the boat is (the ocean mask: 0 in the bay, 1 offshore).
 	const int32 World = USailingSettings::Get()->World;
-	if (World != 4) return WhitecapScaleFor(World);
-	const FWaveField* W = GetWaves();
-	const FOcean* O = W ? W->GetOcean() : nullptr;
-	const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
-	return FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
+	float Base = WhitecapScaleFor(World);
+	if (World == 4)
+	{
+		const FWaveField* W = GetWaves();
+		const FOcean* O = W ? W->GetOcean() : nullptr;
+		const float Open = O ? float(FMath::Clamp(O->MaskAt(BoatPos.X, BoatPos.Y), 0.0, 1.0)) : 0.f;
+		Base = FMath::Lerp(WhitecapScaleFor(1), WhitecapScaleFor(2), Open);
+	}
+	return StormWhitecapScale(Base, StormWaterNow());
+}
+
+float AWaterSurface::StormWhitecapScale(float Base, float Storm)
+{
+	// Storm water look (docs/blow-sea/, #27): fresh water's fewer caps are mostly its foam bursting sooner (stage B); in a
+	// blow the actively breaking crests (stage A) carry the cover, so the lake's and bay's scale rises toward kStormWhitecapScale.
+	return FMath::Lerp(Base, FMath::Max(Base, kStormWhitecapScale), FMath::Clamp(Storm, 0.f, 1.f));
 }
 
 float AWaterSurface::DrawnFoldScaleAt(float MeanKnots)
@@ -535,6 +552,35 @@ double AWaterSurface::FarCapSizeStepNext(double Cur, int32 Total, double SinceCh
 	if (AtCur > 1.1 * Budget) return StepFor(double(Total), Budget);
 	const double Lower = FMath::Max(StepFor(double(Total), 0.9 * Budget), 1.0);
 	return Lower < Cur ? Lower : Cur;
+}
+
+double AWaterSurface::StormWaterStrength(double AirKnots)
+{
+	return Sailing::SmoothStep(18.0, 26.0, AirKnots);
+}
+
+double AWaterSurface::LongSignificantHeightAt(const Sailing::FWaveField& Field, double X, double Y)
+{
+	// The trains M_WaterV4's vertices draw (LongH), with the sea map's ratios there, as FWaveField::SignificantHeightAt
+	// does for all of them; no chop, no ocean.
+	static_assert(LongComponents <= kSeaLongComponents, "each long train has its own sea map ratio");
+	float Ratio[kSeaChannels];
+	Field.SeaRatiosAt(X, Y, Ratio);
+	const FWaveComponent* C = Field.GetComponents();
+	double Variance = 0.0;
+	for (int32 I = 0; I < LongComponents; ++I)
+	{
+		const double A = C[I].Amplitude * Ratio[I];
+		Variance += 0.5 * A * A;
+	}
+	return 4.0 * FMath::Sqrt(Variance);
+}
+
+float AWaterSurface::StormWaterNow() const
+{
+	static SailingArgs::FCachedFlag ClassicStormWaterArg(TEXT("SailingClassicStormWater"));
+	const Sailing::FWaveField* Field = GetWaves();
+	return (!Field || ClassicStormWaterArg.Get()) ? 0.f : float(StormWaterStrength(Field->GetParams().AirWindKnots()));
 }
 
 float AWaterSurface::FarCapSpriteWeight(double DistM, double HeightM)
@@ -896,7 +942,7 @@ void AWaterSurface::UpdateDetail()
 		if (LongIndex > 0 && LongIndex < D->NumCascades()) D->Evaluate(LongIndex, At, F->LongChop, Scale);
 		return F;
 	};
-	const double TNow = GetSimTime();
+	const double TNow = GetRenderTime();
 	// The first detail, or a new tier's grid size (the textures follow N): here, at once. A sea that moved: on a worker,
 	// the old detail drawn meanwhile (26-35 ms of game thread per reconfigure on the PC's 4K storm traces).
 	const bool bSyncConfigure = !Detail || Detail->Spec(0).N != DrawnChop().N;
@@ -972,7 +1018,7 @@ void AWaterSurface::UpdateDetail()
 		bFramePending = true;
 	};
 
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	if (!FramePrev || !FrameNext || T < FramePrev->Time - 1e-6 || T > FrameNext->Time + 3.0 * kDetailStep)
 	{
 		// Start (or a jump in time): the two frames around now on this thread, the next one in the background.
@@ -1260,8 +1306,9 @@ void AWaterSurface::UpdateHullClip()
 		const std::vector<FHullShape>& Hulls = M.GetConfig().Hulls;
 		if (Hulls.empty()) return;
 		const FHullShape& S = Hulls[0];
-		const Vec3 O = M.OriginPosition();
-		const Quat& Q = M.GetState().Orientation;
+		// Where she is drawn (between her steps at the render time, feedback #26), so the clip stays on the drawn hull.
+		const Vec3 O = It->GetDrawnOrigin();
+		const Quat& Q = It->GetDrawnOrientation();
 		const Vec3 Ax = Q.Rotate(Vec3(1.0, 0.0, 0.0)), Ay = Q.Rotate(Vec3(0.0, 1.0, 0.0)), Az = Q.Rotate(Vec3(0.0, 0.0, 1.0));
 		// Every hull on one map in her frame (a catamaran's two, a trimaran's amas, the maxi's sections), built once
 		// per boat and canoe depth.
@@ -1300,7 +1347,8 @@ void AWaterSurface::UpdateHullClip()
 		Set(TEXT("HullClipE"), S.BowX, S.SternX, S.MaxBeamX, S.MaxHalfBeam);
 		Set(TEXT("HullClipF"), S.AftLength, S.TransomBeamLoss, S.CenterY, S.BilgePower);
 		Set(TEXT("HullClipG"), S.WaterlineMidX, S.WaterlineHalfLength, M.HullDepth() * S.DepthScale, S.DepthOffset);
-		Set(TEXT("HullClipH"), S.BowOverhangSlope, S.SternOverhangSlope, ClassicArg.Get() ? 1.0 : 0.0, 0.0);
+		// w: the drop's cap (FHullClipMap::MaxDrop: deeper for a deep canoe like Bluebonnet's).
+		Set(TEXT("HullClipH"), S.BowOverhangSlope, S.SternOverhangSlope, ClassicArg.Get() ? 1.0 : 0.0, HullClip.MaxDrop());
 		return;
 	}
 }
@@ -1561,6 +1609,10 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 	const double CamH = (CamW.Z - SailingFrame::MapAnchor(GetWorld()).Z) / CmPerMeter;
 	const double T = GetSimTime();
 	const double Scale = WhitecapScaleHere(), Onset = WhitecapOnset(float(Waves->GetParams().WindSpeedKnots));
+	// Blow sea (docs/blow-sea/): the tiles read the air's wind from the wind maps; the sea is built in a stronger one, so
+	// their cover is scaled by the same ratio as the near water's cap target (UpdateDetail's MeanMs).
+	const double Air = Waves->GetParams().AirWindKnots();
+	const double Blow = Air > 0.1 ? Waves->GetParams().WindSpeedKnots / Air : 1.0;
 	const Sailing::FLakeTerrain* Terrain = GM && GM->GetLake().IsLoaded() ? &GM->GetLake().Terrain : nullptr;
 	const double WaterZ = Terrain ? -Terrain->GetLevelBelowPool() : 0.0;
 	constexpr double Near = 300.0, Far = 1250.0;
@@ -1598,7 +1650,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 			const double CX = X0 + 0.5 * TileM, CY = Y0 + 0.5 * TileM;
 			double From = 0.0, Factor = 1.0;
 			Wind->ReadableAt(CX, CY, T, From, Factor);
-			FPlan P{Key, FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor, Scale, Onset), CX, CY, 0};
+			FPlan P{Key, FarCapCover(Wind->MeanSurfaceRoughnessAt(CX, CY, T) * 8.0 * Factor * Blow, Scale, Onset), CX, CY, 0};
 			float Prob0 = 0.f;
 			FarCapTilePlan(P.Cover, Area, P.Slots, Prob0);
 			Total += P.Slots;
@@ -1747,6 +1799,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 				Tile->Mid->SetScalarParameterValue(TEXT("Size"), float(FMath::Sqrt(Tile->Size)));
 				Tile->Mid->SetScalarParameterValue(TEXT("CapH"), float(FMath::Lerp(0.2, 0.45, FMath::Clamp((Waves->GetParams().WindSpeedKnots - 12.0) / 10.0, 0.0, 1.0))) * (bDebug ? 10.f : 1.f));
 				// A cap rides a crest: stood at the mean level, the crests between it and a low eye hid it.
+				Tile->Mid->SetScalarParameterValue(TEXT("StormWater"), StormWaterNow());   // docs/blow-sea/: the caps' white, as M_WaterV4's
 				Tile->Mid->SetScalarParameterValue(TEXT("Lift"), float(0.6 * Waves->SignificantHeightAt(CX, CY) * CmPerMeter));
 			}
 		}
@@ -1760,7 +1813,7 @@ void AWaterSurface::UpdateFarCaps(float DeltaSeconds)
 		int32 Placed = 0;
 		for (const TPair<FIntPoint, FFarCapTile>& Tl : FarCapTiles) Placed += Tl.Value.Mesh ? Tl.Value.Mesh->GetInstanceCount() : 0;
 		SAIL_LOG(Display, TEXT("FarCaps: cam (%.0f, %.0f) h %.1f m, %d tiles wanted, %d held, %d sprites, water %.2f, cover at cam %.5f"), Cam.X, Cam.Y, CamH, Want.Num(), FarCapTiles.Num(), Placed, WaterZ,
-			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0, Scale, Onset));
+			FarCapCover(Wind->MeanSurfaceRoughnessAt(Cam.X, Cam.Y, T) * 8.0 * Blow, Scale, Onset));
 	}
 	for (auto It = FarCapTiles.CreateIterator(); It; ++It)
 	{
@@ -2016,7 +2069,8 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 	// sea, CapCalib's; the old fixed 0.45 below 24 kn, so a breezy day is as it was), more crests are tried, more is torn off
 	// each, and from Beaufort 8 their edges blow off as spindrift: low sheets of mist streaming downwind.
 	const double WindMs = FVector2D(WindAt2m.X, WindAt2m.Y).Size();
-	const FGaleSpray Gale = GaleSprayFor(Waves->GetParams().WindSpeedKnots);
+	// (Blow sea: the onsets Bean approved are in the air's wind, not the stronger one the sea is built in.)
+	const FGaleSpray Gale = GaleSprayFor(Waves->GetParams().AirWindKnots());
 	const bool bSolved = CapSlopeSmooth > 0.f;
 	const bool bCalmSea = bSolved && CapThrSmooth[0] < -0.5f;   // FWaveDetail::CapThreshold: nothing breaks
 	const double CapAt = FMath::Lerp(0.45, bSolved ? double(CapThrSmooth[0]) : 0.45, double(Gale.Gale));
@@ -2219,7 +2273,7 @@ void AWaterSurface::UpdateOcean()
 		WaterMaterial->SetVectorParameterValue(TEXT("OceanColor"), FLinearColor(0.012f, 0.05f, 0.06f)); // W2: blended by the swell mask
 	}
 	// The grids at the frame's time, blended between the ocean's 30 Hz evaluations exactly as the physics does.
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	const double T0 = FMath::FloorToDouble(T * 30.0) / 30.0, W = (T - T0) * 30.0;
 	TArray<float> Pixels;
 	Pixels.SetNumUninitialized(FOcean::N * FOcean::N * 4);
@@ -2354,7 +2408,7 @@ void AWaterSurface::UpdateMaterial()
 		WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("WaveAmp%02d"), I),
 			FLinearColor(C[4 * I].Amplitude, C[4 * I + 1].Amplitude, C[4 * I + 2].Amplitude, C[4 * I + 3].Amplitude));
 	}
-	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetSimTime()));
+	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetRenderTime()));
 	// W2: the near and far wind maps (centre, size; both wrap-around, sampled at world position / size) and the
 	// windrows' slow downwind direction.
 	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.Center.X, NearWind.Center.Y, NearWind.SizeM, 1.f));
@@ -2386,9 +2440,19 @@ void AWaterSurface::UpdateMaterial()
 		// W0: the sea's mean wind (what the drawn waves were grown for), not the wind at the boat: cat's paws darken and
 		// whitecaps gather against it, so a puff at the boat no longer turns the whole lake to a lull. W is the water
 		// body's whitecap scale.
-		const float MeanMs = float(Waves->GetParams().WindSpeedKnots * kKnot);
+		// Blow sea (docs/blow-sea/): the air's mean, as the wind maps hold the air's wind; the stronger sea's extra caps come
+		// through the cap target (UpdateDetail), not through the gust ratio, which would cancel them and pale the gusts.
+		const float MeanMs = float(Waves->GetParams().AirWindKnots() * kKnot);
 		WaterMaterial->SetVectorParameterValue(TEXT("WindParams"), FLinearColor(-FMath::Cos(From), -FMath::Sin(From), MeanMs,
 			WhitecapScaleHere()));
+	}
+	{
+		// Storm water look (docs/blow-sea/, sailing-feedback #27): M_WaterV4's StormWater (strength, Hs m). From 18 to 26 kn of
+		// the air's mean wind the foam keeps more of its white, the crests lighten and the troughs darken against the long
+		// waves' height over the sea's significant height near the camera. -SailingClassicStormWater draws the water as before.
+		const float Strength = StormWaterNow();
+		const float Hs = float(FMath::Max(LongSignificantHeightAt(*Waves, GustCenter.X, GustCenter.Y), 0.1));
+		WaterMaterial->SetVectorParameterValue(TEXT("StormWater"), FLinearColor(Strength, Hs, 0.f, 0.f));
 	}
 	if (const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>())
 	{
@@ -2679,13 +2743,13 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	}
 	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
 	// At the short waves' 30 Hz (the caps it takes in change at that rate; the residual foam fades and drifts over seconds).
-	const double FoamNow = GetSimTime();
+	const double FoamNow = GetRenderTime();
 	if (FoamStepAt >= 0.0 && FoamNow >= FoamStepAt && FoamNow - FoamStepAt < 0.999 * kDetailStep) return;
 	FoamStepAt = FoamNow;
 	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
 	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
 	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamCm);
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	FVector2D Drift = FVector2D::ZeroVector;
 	if (const FWindField* Wind = GetWind())
 	{

@@ -10,6 +10,7 @@
 #include "BoatModel.h"
 #include "BoatPhysicsTask.h"
 #include "FixedStepper.h"
+#include "WorldClock.h"
 #include "Ocean.h"
 #include "SailboatPawn.h"
 #include "Traffic.h"
@@ -183,6 +184,72 @@ bool FSailingTaskStepTest::RunTest(const FString& Parameters)
 		// (Not frozen: on her fixed tiller she rounds up into irons, sooner or later as the swell takes her; since
 		// docs/wave-physics/ its slope pushes her too, and 20 m was the edge.)
 		TestTrue(FString::Printf(TEXT("She sailed (%.1f m)"), Task.Boat.GetState().Position.LengthXY()), Task.Boat.GetState().Position.LengthXY() > 10.0);
+	}
+	return true;
+}
+
+// Feedback #26: the step job keeps her pose before her last step, and FBoatPose::BlendTo draws her between the two at the
+// world clock's render time (ASailboatPawn::ApplyStateToTransform). At frame times scattered about 60 fps her stepped pose
+// moves unevenly from frame to frame; the drawn one moves by her speed times each frame's length.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingDrawBetweenStepsTest, "SailingSim.Physics.DrawBetweenSteps", PerfFlags)
+bool FSailingDrawBetweenStepsTest::RunTest(const FString& Parameters)
+{
+	FSea Sea;
+	FSailor Sailor;
+	FWorldClock Clock;
+	FBoatPose Before;
+	const double StepDt = Sailor.Stepper.GetStepDt();
+	Vec3 LastStepped, LastDrawn;
+	double SteppedErr = 0.0, DrawnErr = 0.0, LastDrawnTime = -1.0;
+	int32 Measured = 0, Blended = 0;
+	bool bBackwards = false;
+	for (int32 F = 0; F < 900; ++F)
+	{
+		const double Dt = 1.0 / 60.0 + 0.0015 * FMath::Sin(1.7 * F) + 0.0008 * FMath::Sin(0.31 * F);
+		Clock.Advance(Dt);
+		const int32 Steps = FMath::Clamp(FMath::RoundToInt32((Clock.GetTime() - Sailor.Boat.GetState().Time) / StepDt), 0, 12);
+		FBoatStepJob Job = Sailor.Job(Sea, Steps, false, true);
+		Job.BeforeLast = &Before;
+		Job.Run();
+		Sea.Waves.Update(Dt);
+		if (Steps > 0) TestEqual(TEXT("The pose before is one step before her last"), Before.Time, Sailor.Boat.GetState().Time - StepDt, 1e-9);
+		Vec3 Drawn = Sailor.Boat.OriginPosition();
+		Quat Q = Sailor.Boat.GetState().Orientation;
+		double DrawnTime = Sailor.Boat.GetState().Time;
+		if (Before.BlendTo(Drawn, Q, Sailor.Boat.GetState().Time, Clock.GetRenderTime(), StepDt, 2.0, 0.5236, DrawnTime)) ++Blended;
+		if (LastDrawnTime >= 0.0 && DrawnTime < LastDrawnTime - 1e-9) bBackwards = true;
+		const Vec3 Stepped = Sailor.Boat.OriginPosition();
+		if (F >= 120)   // (under way)
+		{
+			const double Speed = Sailor.Boat.GetState().Velocity.LengthXY();
+			SteppedErr += FMath::Abs((Stepped - LastStepped).LengthXY() - Speed * Dt);
+			DrawnErr += FMath::Abs((Drawn - LastDrawn).LengthXY() - Speed * Dt);
+			++Measured;
+		}
+		LastStepped = Stepped;
+		LastDrawn = Drawn;
+		LastDrawnTime = DrawnTime;
+	}
+	SteppedErr /= FMath::Max(Measured, 1);
+	DrawnErr /= FMath::Max(Measured, 1);
+	AddInfo(FString::Printf(TEXT("Mean frame-to-frame error against speed x frame time: stepped %.2f mm, drawn %.2f mm (%d of 900 frames blended)"), SteppedErr * 1000.0, DrawnErr * 1000.0, Blended));
+	TestTrue(TEXT("Nearly every frame is drawn between steps"), Blended > 880);
+	TestFalse(TEXT("The drawn time never goes back"), bBackwards);
+	TestTrue(TEXT("Drawn between steps she moves far more evenly than stepped"), DrawnErr < 0.25 * SteppedErr);
+	// A pose from somewhere else (re-placed 5 m away, or turned 40 degrees by hand) is not blended from.
+	{
+		FBoatPose Far = Before;
+		Far.Origin = Far.Origin + Vec3(5.0, 0.0, 0.0);
+		Vec3 O = Sailor.Boat.OriginPosition();
+		Quat Q = Sailor.Boat.GetState().Orientation;
+		double T = 0.0;
+		TestFalse(TEXT("Not blended across a 5 m jump"), Far.BlendTo(O, Q, Sailor.Boat.GetState().Time, Clock.GetRenderTime(), StepDt, 2.0, 0.5236, T));
+		FBoatPose Turned = Before;
+		Turned.Orientation = (Turned.Orientation * Quat::FromAxisAngle(Vec3(1.0, 0.0, 0.0), 40.0 * kDegToRad)).Normalized();
+		TestFalse(TEXT("Not blended across a 40 degree turn"), Turned.BlendTo(O, Q, Sailor.Boat.GetState().Time, Clock.GetRenderTime(), StepDt, 2.0, 0.5236, T));
+		FBoatPose Old = Before;
+		Old.Time -= 1.0;
+		TestFalse(TEXT("Not blended from a pose a second old"), Old.BlendTo(O, Q, Sailor.Boat.GetState().Time, Clock.GetRenderTime(), StepDt, 2.0, 0.5236, T));
 	}
 	return true;
 }

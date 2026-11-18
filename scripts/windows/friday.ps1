@@ -1,5 +1,5 @@
 # The Friday tester build (slice issue #406): one command from main to a zip for Bean and the testers.
-# Usage: scripts\windows\friday.ps1 [-Commit <sha or ref>] [-NoCheckout] [-BenchSeconds 30]
+# Usage: scripts\windows\friday.ps1 [-Commit <sha or ref>] [-NoCheckout] [-BenchSeconds 30] [-Since <sha>]
 #   Checks out origin/main (fetched) or -Commit, detached; -NoCheckout builds whatever is checked out (a dry run of a
 #   branch). Refuses a tree with tracked changes, and stops when the running script differs from the commit's own.
 #   Then: build.ps1, a full-cook Shipping package into Packaged\Shipping-<commit> (never over one that exists), with the
@@ -7,7 +7,9 @@
 #   and UI script only (no synthetic input): the game reaches Title > Gallery and renders its thumbnails, and two Ultra
 #   Lake benches (the second reported: the first after a cook runs slow); the zip Packaged\ReadyAbout-<commit>-Win64.zip
 #   (Windows' own tar.exe: zip64, the .ucas is over 2 GB) with TESTER-GUIDE.md in it; Packaged\Shipping-<commit>\BUILD.md
-#   (commit, date, fps, the checks, the crash logs' place, what merged since the last Friday build).
+#   (commit, date, fps, the checks, the crash logs' place, what merged since the last Friday build: the newest other
+#   BUILD.md under this checkout's Packaged and the main checkout's, so a worktree build sees the PC's earlier builds;
+#   -Since <sha> names the last shared build instead).
 #   Crash reports: a Sentry DSN from Artifacts\sentry\dsn.txt (or $env:SENTRY_DSN) is appended to
 #   Config\Windows\WindowsEngine.ini for the cook and the file restored afterwards (the values quoted; the build stops
 #   unless the staged Dsn line reads back as a quoted https:// URL); the Shipping symbols go up with
@@ -20,7 +22,8 @@ param(
 	[string]$Commit = '',
 	[switch]$NoCheckout,
 	[switch]$FullGame,
-	[int]$BenchSeconds = 30
+	[int]$BenchSeconds = 30,
+	[string]$Since = ''
 )
 . (Join-Path $PSScriptRoot 'env.ps1')
 $Start = Get-Date
@@ -188,13 +191,30 @@ try {
 		}
 	}
 
-	# 4. BUILD.md, and what merged since the last Friday build (the newest other BUILD.md's commit).
-	$Previous = Get-ChildItem -Path $Packaged -Filter BUILD.md -Recurse -Depth 1 -ErrorAction SilentlyContinue |
-		Where-Object { $_.DirectoryName -ne $Folder } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+	# 4. BUILD.md, and what merged since the last Friday build: -Since, or the newest other BUILD.md's commit. A build
+	# from a worktree has an empty Packaged of its own, so the main checkout's Packaged (the parent of the common git dir)
+	# is searched too; without it the Nov 17 ecd4ed1c candidate listed "the last 20" instead of the 61 merges since 40226d1c.
 	$PrevSha = ''
-	if ($Previous) { $PrevSha = ((Select-String -Path $Previous.FullName -Pattern '^- Commit: `([0-9a-f]+)`' | Select-Object -First 1).Matches.Groups[1].Value) }
+	if ($Since) {
+		$PrevSha = (git rev-parse -q --verify --short=8 "$Since^{commit}")
+		if ($LASTEXITCODE -ne 0 -or -not $PrevSha) { throw "-Since ${Since}: not a commit in this repository" }
+		$PrevSha = $PrevSha.Trim()
+	} else {
+		$CommonDir = (git rev-parse --path-format=absolute --git-common-dir)
+		$MainPackaged = if ($CommonDir) { Join-Path (Split-Path $CommonDir.Trim() -Parent) 'Packaged' } else { '' }
+		$Roots = @($Packaged) + @(if ($MainPackaged -and $MainPackaged -ne $Packaged) { $MainPackaged })
+		$Previous = $Roots | Where-Object { Test-Path $_ } |
+			ForEach-Object { Get-ChildItem -Path $_ -Filter BUILD.md -Recurse -Depth 1 -ErrorAction SilentlyContinue } |
+			Where-Object { $_.DirectoryName -ne $Folder } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+		if ($Previous) {
+			$Found = (Select-String -Path $Previous.FullName -Pattern '^- Commit: `([0-9a-f]+)`' | Select-Object -First 1)
+			if ($Found) { $PrevSha = $Found.Matches.Groups[1].Value }
+		}
+		# A build the repository no longer has (a rewritten branch, or a sha from another clone) is no range start.
+		if ($PrevSha) { git rev-parse -q --verify "$PrevSha^{commit}" | Out-Null; if ($LASTEXITCODE -ne 0) { $PrevSha = '' } }
+	}
 	$Merged = if ($PrevSha) { @(git log --first-parent --format='- %s (%h)' "$PrevSha..HEAD") } else { @(git log --first-parent --format='- %s (%h)' -20 HEAD) }
-	$Since = if ($PrevSha) { "since the last Friday build, ``$PrevSha``" } else { 'the last 20 on main (no earlier Friday build on this PC)' }
+	$SinceText = if ($PrevSha) { "since the last Friday build, ``$PrevSha``" } else { 'the last 20 on main (no earlier Friday build found on this PC: pass -Since <sha>)' }
 	$Md = @(
 		"# Ready About: Sailing, Friday build $Sha",
 		'',
@@ -213,7 +233,7 @@ try {
 		"- Sentry: $(if ($Dsn) { "key staged (release sailing-sim@$Sha, environment tester; reports only once the game has the Sentry plugin)" } else { 'no key in this build' }). $Symbols.",
 		'`%LOCALAPPDATA%\SailingSim\Saved\Logs` (the log) and `%LOCALAPPDATA%\SailingSim\Saved\Crashes` (a folder per crash). Zip and send both with a report.',
 		'',
-		"## Merged $Since",
+		"## Merged $SinceText",
 		''
 	) + $Merged
 	Set-Content -Path (Join-Path $Folder 'BUILD.md') -Value $Md -Encoding UTF8

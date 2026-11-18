@@ -17,9 +17,25 @@
 #include "AutoTrim.h"
 #include "EasyAssists.h"
 #include "CrewStation.h"
+#include "ShipHandling.h"
 #include "BoatPhysicsTask.generated.h"
 
 class ASailboatPawn;
+
+/** Where a boat was at one physics instant (map frame): the step before her last, for drawing her between the two
+ *  (feedback #26: ASailboatPawn::ApplyStateToTransform at the world clock's render time). */
+struct SAILINGSIM_API FBoatPose
+{
+	Sailing::Vec3 Origin;
+	Sailing::Quat Orientation;
+	double Time = 0.0;
+	bool bValid = false;
+
+	/** Blends from this pose (the step before) to the pose now (InOutOrigin, InOutQ at T1) at RenderTime. False, and nothing
+	 *  changed, when the two are not one step apart or she jumped (MaxMoveM, or MaxTurnRad of turn in one step: a re-place,
+	 *  a knockdown set by hand, a capsize righted in place). */
+	bool BlendTo(Sailing::Vec3& InOutOrigin, Sailing::Quat& InOutQ, double T1, double RenderTime, double StepDt, double MaxMoveM, double MaxTurnRad, double& OutTime) const;
+};
 
 /** One frame's fixed steps exactly as the pawn's tick ran them: the trim assist (or the simple layout's crew) trims,
  *  the helm's tiller and wing-on-wing stay, Easy mode's helm help goes on a copy, then the boat steps. */
@@ -46,6 +62,11 @@ struct SAILINGSIM_API FBoatStepJob
 	/** Prologue step 2: at a crew station the merge steps the controls (the crew's and the player's hands) instead. */
 	Sailing::FStationControls* Stations = nullptr;
 	Sailing::FStationInput StationInput;
+	/** Filled with the boat's pose just before her last step (left alone when there are no steps). */
+	FBoatPose* BeforeLast = nullptr;
+	/** A square-rigged ship's manoeuvre (docs/ship-orders/): her officers' orders on the braces, sails and helm, given after
+	 *  the trimmer each step (a no-op when none is under way). */
+	Sailing::FShipHandling* Handling = nullptr;
 	void Run() const;
 };
 

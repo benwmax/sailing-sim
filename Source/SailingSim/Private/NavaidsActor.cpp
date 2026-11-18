@@ -317,7 +317,7 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	// and only partly the chop). Only those within 3 km move; the rest keep their last pose. Perf 2: each instance goes
 	// up as a delta (UpdateInstanceTransform queues it); rebuilding the whole component each frame (MarkRenderStateDirty)
 	// invalidated the shadow pages over all its buoys.
-	const double T = GM->GetSimTime();
+	const double T = GM->GetRenderTime();   // the sea as drawn (feedback #26)
 	TArray<double> Heave;
 	Heave.SetNumZeroed(Buoys.Num());
 	for (int32 I = 0; I < Buoys.Num(); ++I)

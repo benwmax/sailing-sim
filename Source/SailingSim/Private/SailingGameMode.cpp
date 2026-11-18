@@ -1,4 +1,5 @@
 #include "SailingGameMode.h"
+#include "CannonBattery.h"
 #include "SailingFrame.h"
 #include "EasyAssists.h"
 #include "BenchRunner.h"
@@ -375,6 +376,12 @@ void ASailingGameMode::UpdateStreaming()
 	if (bWindowMarching) bWindowStale = false;
 }
 
+double ASailingGameMode::GetRenderTime() const
+{
+	static SailingArgs::FCachedFlag ClassicClockArg(TEXT("SailingClassicClock")); // measuring: the world drawn in whole steps
+	return ClassicClockArg.Get() ? Clock.GetTime() : Clock.GetRenderTime();
+}
+
 void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
 	if (ClockFrame == GFrameCounter) return;
@@ -503,6 +510,17 @@ bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 	}
 	if (Lake.LaunchSpots.Num() == 0) return false;
 	Out = Lake.LaunchSpots[FMath::Clamp(USailingSettings::Get()->LaunchSpot, 0, Lake.LaunchSpots.Num() - 1)];
+	// docs/jclass-14/: a boat whose keel the spot is too shallow for (Bluebonnet at a Galveston marina, from a saved session
+	// or a lesson's spot) starts at the world's deepest spot instead; the Boat screen won't offer it there.
+	const int32 KeelBoat = USailingSettings::Get()->BoatType;
+	if (Out.DepthM >= 0.0 && KeelBoat >= 0 && KeelBoat < int32(Sailing::EBoatType::Count))
+	{
+		const double Draft = Sailing::FBoatConfig::Make(Sailing::EBoatType(KeelBoat)).Draft;
+		if (!LaunchSpotFits(Out.DepthM, Draft))
+		{
+			for (const FLaunchSpot& Deep : Lake.LaunchSpots) if (Deep.DepthM > Out.DepthM) Out = Deep;
+		}
+	}
 	return true;
 }
 
@@ -926,6 +944,21 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 }
 
+double ASailingGameMode::BlowSeaLift()
+{
+	static uint32 Gen = MAX_uint32;
+	static double Lift = Sailing::FWaveField::kBlowLift;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Lift = Sailing::FWaveField::kBlowLift;
+		float Arg = 0.f;
+		if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingBlowSea="), Arg)) Lift = FMath::Clamp(double(Arg), 0.0, 0.5);
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicBlowSea"))) Lift = 0.0;
+	}
+	return Lift;
+}
+
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
 	const bool bEasy = USailingSettings::Get()->IsEasy();
@@ -1036,6 +1069,16 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		// Offshore the wind sea and swell are the FFT ocean's; the chop components only make the sheltered water's.
 		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
+	}
+	// Feedback #27 (docs/blow-sea/): from 20 kn the lake's (and the bay's) sea is built in a stronger wind than the mean
+	// (FWaveField::BlowSeaKnots), so a blow's chop stands taller, a little steeper and caps more; the air's own wind is kept
+	// beside it (AirKnots: the wind maps' gusts and the spray's onsets read it). Not offshore: there the FFT ocean is the
+	// sea (and the prologue's gale is tuned on it), so the lift fades out across the ocean mask's 0.3-0.7 band (no step at
+	// a harbour mouth). -SailingBlowSea=<lift> (0 is off) and -SailingClassicBlowSea compare.
+	WaveParams.AirKnots = WaveParams.WindSpeedKnots;
+	{
+		const double Open = Ocean ? Sailing::SmoothStep(0.3, 0.7, Ocean->MaskAt(BoatPos.X, BoatPos.Y)) : 0.0;
+		WaveParams.WindSpeedKnots = Sailing::FWaveField::BlowSeaKnots(WaveParams.WindSpeedKnots, BlowSeaLift() * (1.0 - Open));
 	}
 	// The wind lays the components' directions first (and, after a turn past 45 deg, again: in phase at the boat), then
 	// the sea map reads them.
@@ -1157,6 +1200,8 @@ void ASailingGameMode::StartPlay()
 	ApplyQualitySettings();
 	ApplyWeatherSettings();
 	Super::StartPlay();
+	// Cannon fire (docs/cannon-fire/): -SailingCannonStage puts a battery off the player's boat, for tuning before the frigate.
+	ACannonBattery::SpawnStageIfAsked(GetWorld());
 	if (Lake.Navaids.Num() > 0)
 	{
 		GetWorld()->SpawnActor<ANavaidsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
@@ -1337,6 +1382,7 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		if (WaterSecondsAtStart < 0.0) WaterSecondsAtStart = AWaterSurface::WaterCpuSeconds;
 		if (WindMapSecondsAtStart < 0.0) WindMapSecondsAtStart = AWaterSurface::WindMapCpuSeconds;
 		if (FarCapSecondsAtStart < 0.0) FarCapSecondsAtStart = AWaterSurface::FarCapCpuSeconds;
+		if (CannonSecondsAtStart < 0.0) CannonSecondsAtStart = ACannonBattery::CpuSeconds;
 		if (!bSlicesStarted) { bSlicesStarted = true; FMemory::Memcpy(SlicesAtStart, SailingPerf::GSliceSeconds, sizeof(SlicesAtStart)); }
 		// (The thread times read here are the previous frame's, all of them inside the window but the first.)
 		ThreadTimes.Sample();
@@ -1470,6 +1516,9 @@ void ASailingGameMode::FinishBenchmark()
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"windmap_cpu_ms\":%.3f}"), (AWaterSurface::WindMapCpuSeconds - WindMapSecondsAtStart) * 1000.0 / N);
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"farcap_cpu_ms\":%.3f}"), (AWaterSurface::FarCapCpuSeconds - FarCapSecondsAtStart) * 1000.0 / N);
 		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"farcap_slots\":%d}"), AWaterSurface::FarCapSlotsHeld);
+		// Cannon fire (docs/cannon-fire/): the batteries' game-thread time and the smoke's puffs at the end.
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"cannon_cpu_ms\":%.3f,\"cannon_puffs\":%d}"),
+			CannonSecondsAtStart >= 0.0 ? (ACannonBattery::CpuSeconds - CannonSecondsAtStart) * 1000.0 / N : 0.0, ACannonBattery::PuffsAlive);
 		// World streaming (docs/world-streaming): what the loader, the re-centre and the chunks did over the run.
 		{
 			int32 Chunks = 0, Made = 0, Dropped = 0, FarDropped = 0;

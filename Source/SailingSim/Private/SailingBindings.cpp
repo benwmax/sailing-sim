@@ -87,27 +87,59 @@ namespace SailingBindings
 		return Action == TEXT("PhotoShot") || Action == TEXT("PhotoForward") || Action == TEXT("PhotoRight") || Action == TEXT("PhotoUpDown")
 			|| Action == TEXT("PhotoRoll") || Action == TEXT("PhotoRollReset") || Action == TEXT("PhotoBoost") || Action == TEXT("PhotoSlow")
 			|| Action == TEXT("PhotoSpeed") || Action == TEXT("PhotoToBoat") || Action == TEXT("PhotoOrbit") || Action == TEXT("PhotoHideUI")
-			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack")
+			|| Action == TEXT("PhotoZoom") || Action == TEXT("PhotoBack") || Action == TEXT("PhotoAlt")
 			|| IsPhotoPanelAction(Action);
 	}
 
 	bool IsPhotoPanelAction(FName Action)
 	{
 		return Action == TEXT("PhotoRowDown") || Action == TEXT("PhotoRowUp") || Action == TEXT("PhotoValueUp") || Action == TEXT("PhotoValueDown")
-			|| Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev");
+			|| Action == TEXT("PhotoPageNext") || Action == TEXT("PhotoPagePrev") || Action == TEXT("PhotoResetTab");
+	}
+
+	bool IsWalkAction(FName Action)
+	{
+		return Action == TEXT("WalkForward") || Action == TEXT("WalkRight") || Action == TEXT("WalkRun") || Action == TEXT("WalkCrouch")
+			|| Action == TEXT("WalkUse") || Action == TEXT("WalkToHelm") || Action == TEXT("ShipOrders");
+	}
+
+	bool IsOrdersAction(FName Action)
+	{
+		return Action == TEXT("OrdersUp") || Action == TEXT("OrdersDown") || Action == TEXT("OrdersLeft") || Action == TEXT("OrdersRight")
+			|| Action == TEXT("OrdersSelect") || Action == TEXT("OrdersClose");
+	}
+
+	bool InWalkContext(const FSailingKeyBinding& Binding)
+	{
+		return IsWalkAction(Binding.Action) && Binding.Action != TEXT("ShipOrders");
+	}
+
+	bool InShipContext(const FSailingKeyBinding& Binding)
+	{
+		return Binding.Action == TEXT("ShipOrders");
+	}
+
+	bool InOrdersContext(const FSailingKeyBinding& Binding)
+	{
+		return IsOrdersAction(Binding.Action);
 	}
 
 	bool SameLayer(FName A, FName B)
 	{
 		// The photo layer has its own keys for the menu (Tab orbits; Esc, fixed, still leaves).
 		if (IsPhotoAction(A) || IsPhotoAction(B)) return IsPhotoAction(A) == IsPhotoAction(B);
+		// Walking a ship (docs/ship-walk/): its own layer too (the menu, the view and the controls card are the boat
+		// context's keys, which stay live under it, so walking keys must not take theirs).
+		auto Shared = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard") || N == TEXT("ChangeView") || N == TEXT("Look"); };
+		if (IsOrdersAction(A) || IsOrdersAction(B)) return IsOrdersAction(A) == IsOrdersAction(B) || Shared(A) || Shared(B);
+		if (IsWalkAction(A) || IsWalkAction(B)) return IsWalkAction(A) == IsWalkAction(B) || Shared(A) || Shared(B);
 		auto Global = [](FName N) { return N == TEXT("Menu") || N == TEXT("ControlsCard"); };
 		return Global(A) || Global(B) || IsStationAction(A) == IsStationAction(B);
 	}
 
 	bool IsHoldAction(FName Action)
 	{
-		return Action == TEXT("Photo") || Action == TEXT("DockLines");
+		return Action == TEXT("Photo") || Action == TEXT("DockLines") || Action == TEXT("PhotoResetTab");
 	}
 
 	bool InPhotoContext(const FSailingKeyBinding& Binding)
@@ -117,6 +149,7 @@ namespace SailingBindings
 
 	bool InBoatContext(const FSailingKeyBinding& Binding)
 	{
+		if (IsWalkAction(Binding.Action) || IsOrdersAction(Binding.Action)) return false;
 		return !IsPhotoAction(Binding.Action) || (Binding.Action == TEXT("PhotoShot") && !Binding.Key.IsGamepadKey());
 	}
 

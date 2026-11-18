@@ -65,7 +65,7 @@ bool FSailingUISessionFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("Galveston launch spots match GalvestonBay.json"), Worlds[1].Spots.Num(), JsonSpots(TEXT("GalvestonBay")));
 	TestTrue(TEXT("Marseille launch spots match Marseille.json"), Worlds.Num() > 2 && Worlds[2].Index == 3 && Worlds[2].Spots.Num() == JsonSpots(TEXT("Marseille")));
 	TestTrue(TEXT("The lake's first spot is home"), Worlds[0].Spots.Num() > 0 && Worlds[0].Spots[0].Tag == TEXT("Home"));
-	TestEqual(TEXT("Nine boats (the fleet and the prologue's maxi)"), SailCatalog::Boats().Num(), 9);
+	TestEqual(TEXT("Ten boats (the fleet, the prologue's maxi and Bluebonnet)"), SailCatalog::Boats().Num(), 10);
 	TestEqual(TEXT("J/22 length 22'6\""), SailCatalog::Boat(0).Length, FString(TEXT("22′6″")));
 	for (const SailCatalog::FBoat& B : SailCatalog::Boats()) TestFalse(FString::Printf(TEXT("%s has a close-hauled speed"), *B.Name), B.CloseHauled == TEXT("–"));
 	TestEqual(TEXT("Six condition presets"), USailSessionSubsystem::Presets().Num(), 6);
@@ -468,6 +468,8 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("The J/22"), SailCatalog::InSliceBoat(int32(EBoatType::J22)));
 	TestTrue(TEXT("The Sunfish"), SailCatalog::InSliceBoat(int32(EBoatType::Sunfish)));
 	TestTrue(TEXT("The Catalina 22 (the stretch)"), SailCatalog::InSliceBoat(int32(EBoatType::Catalina22)));
+	TestTrue(TEXT("Bluebonnet, the J-Class (Bean, Nov 17 2026: docs/jclass-14)"), SailCatalog::InSliceBoat(int32(EBoatType::Bluebonnet)));
+	TestTrue(TEXT("Commonwealth, the frigate (Bean, Nov 17 2026: docs/frigate-physics)"), SailCatalog::InSliceBoat(int32(EBoatType::Commonwealth)));
 	for (const EBoatType T : { EBoatType::ILCA7, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
 		TestFalse(*FString::Printf(TEXT("No %hs"), Sailing::BoatTypeName(T)), SailCatalog::InSliceBoat(int32(T)));
 	TestTrue(TEXT("Day Sailor"), SailCatalog::InSliceTier(TEXT("day-sailor")));
@@ -707,7 +709,8 @@ bool FSailingUIPadCoversLessonKeysTest::RunTest(const FString&)
 
 // No two default controller bindings share a button or axis in the same layer (SailingBindings::SameLayer), except photo
 // mode's pad toggle, a half-second hold of the controls card's button, and the dock lines, a hold of the right stick's
-// click whose tap changes the view (ASailboatPawn::BuildContext). A saved key list from
+// click whose tap changes the view, and photo mode's tab reset, a hold of the click that goes back to the boat
+// (ASailboatPawn::BuildContext). A saved key list from
 // before the stick throttle gets it, and the throttle mapping carries its dead zone.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUIPadNoCollisionsTest, "SailingSim.UI.PadNoCollisions", UIFlags)
 bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
@@ -726,7 +729,8 @@ bool FSailingUIPadNoCollisionsTest::RunTest(const FString&)
 			if (B.Key != A.Key || !IsRowAction(B.Action) || !SameLayer(A.Action, B.Action)) continue;
 			if (A.Action == B.Action && (A.Scale < 0.f) == (B.Scale < 0.f)) continue;
 			auto Pair = [&A, &B](const TCHAR* Hold, const TCHAR* Tap) { return (A.Action == Hold && B.Action == Tap) || (A.Action == Tap && B.Action == Hold); };
-			const bool bHoldTap = Pair(TEXT("Photo"), TEXT("ControlsCard")) || Pair(TEXT("DockLines"), TEXT("ChangeView"));
+			const bool bHoldTap = Pair(TEXT("Photo"), TEXT("ControlsCard")) || Pair(TEXT("DockLines"), TEXT("ChangeView"))
+				|| Pair(TEXT("PhotoResetTab"), TEXT("PhotoToBoat"));
 			if (bHoldTap) continue;
 			AddError(FString::Printf(TEXT("%s is on both %s%s and %s%s"), *PadLabel(A.Key), *A.Action.ToString(), A.Scale < 0.f ? TEXT(" (-)") : TEXT(""),
 				*B.Action.ToString(), B.Scale < 0.f ? TEXT(" (-)") : TEXT("")));
