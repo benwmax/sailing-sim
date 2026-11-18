@@ -83,6 +83,7 @@ def weights(P, N, C, Near, WaterZ, Mown):
     n1 = vnoise(x / 3.1, y / 3.1)
     n2 = vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0)
     n3 = vnoise(x / 11.0 - 4.0, y / 11.0 + 9.0)
+    n4 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)    # round 2: a 31 m wander in every band's top, so no zone edge runs straight
     # Decode the vertex colour. Canopy: the upland tone runs (0.36,0.36,0.16) open to (0.16,0.22,0.08) under trees, so
     # red over green falls from 1 to 0.73. Sandy bank (0.50,0.42,0.30) against clay bank (0.42,0.30,0.20): green over red.
     rg = C[..., 0] / np.maximum(C[..., 1], 1e-3)
@@ -90,16 +91,16 @@ def weights(P, N, C, Near, WaterZ, Mown):
     sandy = sat((C[..., 1] / np.maximum(C[..., 0], 1e-3) - 0.74) / 0.10)
     w = np.zeros(P.shape[:-1] + (8,), np.float32)
     # Under water and the swash: mud. The swash top is ragged, 0.15 to 0.45 m.
-    swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1, h)) * np.maximum(Near, (h < 0.05))
+    swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1 + 0.08 * n3, h)) * np.maximum(Near, (h < 0.05))
     # Lake bed left dry under the pool (a drought gauge): cracked crust on the flats, from 0.15 m over the water.
     dry_bed = (smoothstep(-0.02, -0.12, z + 0.06 * n3) * smoothstep(0.08, 0.22 + 0.10 * n1, h)
                * (1.0 - smoothstep(0.10, 0.25, slope)))
     # The bank: within reach of open water and under 1.5 m; sand or clay by the vertex colour, with limestone shingle
     # in patches on the wave-washed band 0.1 to 0.7 m over the water.
-    top = 1.3 + 0.35 * n3 + 0.15 * n2              # where grass takes over: ragged, in tufts
+    top = 1.3 + 0.35 * n3 + 0.15 * n2 + 0.3 * n4   # where grass takes over: ragged, in tufts, wandering along the shore
     bank = Near * (1.0 - smoothstep(top - 0.35, top, h)) * (1.0 - dry_bed)
     shingle = (bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h))
-               * smoothstep(0.15, 0.45, 0.6 * n1 + 0.45 * n2 + 0.4 * n3))
+               * smoothstep(0.05, 0.6, 0.6 * n1 + 0.45 * n2 + 0.4 * n3))   # round 2: a wide feather, so stones thin out at a patch's edge instead of ending on a contour (they read as grey decals)
     # Bare slopes: the same 0.08 start as BuildChunk's slope tone, eroded faces are clay.
     bare = smoothstep(0.08, 0.24, slope + 0.04 * n2) * (1.0 - swash)
     w[..., S["mud"]] = swash
@@ -242,6 +243,12 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
     m1 = vnoise(x / 9.0 + 5.2, y / 9.0 + 1.3)
     m2 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)
     base *= (1.0 + MACRO_A * m1 + MACRO_B * m2)[:, None]
+    # Round 2: a cut bank's clay face carries strata, bands about 18 cm apart bent by the small noise (the scan is one even
+    # texture; reviewers saw a face with no layers). Only on clay and only on the steep part.
+    slope = 1.0 - N[:, 2]
+    face = w[:, S["clay"]] * smoothstep(0.25, 0.5, slope)
+    strata = np.sin(P[:, 2] / 0.18 * 6.2831853 + 1.5 * vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0) + 0.4 * vnoise(x / 3.1, y / 3.1))
+    base *= (1.0 + 0.14 * strata * face)[:, None]
     grassy = w[:, S["lawn"]] + w[:, S["rough"]]
     straw = ALB_DORMANT[S["rough"]] / ALB_SUMMER[S["rough"]]
     dry = smoothstep(0.2, 0.9, 0.5 * m1 + 0.5 * m2 + 0.3) * 0.35 * (1.0 - np.asarray(Season))

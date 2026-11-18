@@ -10,6 +10,7 @@
 #include "LakeData.h"
 #include "Marina.h"
 #include "TreePlacement.h"
+#include "GroundDress.h"
 #include "WorldKit.h"
 #include "FarRing.h"
 #include "Components/StaticMeshComponent.h"
@@ -92,9 +93,20 @@ ALakeTerrainActor::ALakeTerrainActor()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Shape(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	TerrainMaterial = Terrain.Object;
 	ShapeMaterial = Shape.Object;
+	// Track A (shore plan): the textured ground, built by scripts/import_ground.py on the Mac or PC (a hard reference so it
+	// is cooked; null until that script has run, and the chunks keep M_Terrain).
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Ground(TEXT("/Game/Materials/M_Ground.M_Ground"));
+	GroundMaterial = Ground.Object;
 	// Wide World Rendering PR 1: the far coast ring's land (a hard reference: cooked with the game).
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FarLand(TEXT("/Game/World/M_FarLand.M_FarLand"));
 	FarMaterialBase = FarLand.Object;
+}
+
+UMaterialInterface* ALakeTerrainActor::ChunkMaterial(const FLakeData& Lake) const
+{
+	static const bool bClassic = FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicGround"));
+	if (!GroundMaterial || bClassic || Lake.IsGarrigue() || USailingSettings::Get()->Quality == ESailingQuality::Low) return TerrainMaterial;
+	return GroundMaterial;
 }
 
 const FLakeData* ALakeTerrainActor::GetLake() const
@@ -223,6 +235,8 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FChunkSource& 
 			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
 			const int32 GR = (GridR0 + R) / Sub, GC = (GridC0 + C) / Sub; // the colour noise stays on the grid's cells at every level
 			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
+			// Track A: where the ground is mown, for M_Ground's lawn (UV0.x; the mesh carries no other UV).
+			M.UV0.Add(FVector2D(Src.Mown ? Src.Mown->At(OX + R * Cell, OY + C * Cell) : 0.f, 0.f));
 			// Graphics G6: how close open water is (1 at the edge, 0 past 14 m): the bare clay and sand band and the
 			// material's wet band (alpha) are the waterline's, not every low flat's. A cove's head a few decimetres above
 			// the pool read as a glossy mud plain hundreds of metres across from the drone.
@@ -264,8 +278,9 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FChunkSource& 
 			else if (Z < -0.3) Col = FLinearColor(0.20f, 0.17f, 0.12f);
 			else if (Z < 0.6)
 			{
-				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over).
-				const FLinearColor Bank = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(Rand01(uint32(GR * 31 + GC * 17))));
+				// Low ground back from the edge: sedge and lush grass (the lake's flats grow over). The bank's sand-or-clay tone
+				// runs in 20-40 m stretches (Track A: as a texture, each 5 m cell's own random read as a checkerboard).
+				const FLinearColor Bank = FMath::Lerp(FLinearColor(0.42f, 0.30f, 0.20f), FLinearColor(0.50f, 0.42f, 0.30f), float(SailingGround::BankTone(OX + R * Cell, OY + C * Cell)));
 				Col = FMath::Lerp(FLinearColor(0.24f, 0.28f, 0.12f), Bank, Near);
 			}
 			else Col = FMath::Lerp(FLinearColor(0.36f, 0.36f, 0.16f), FLinearColor(0.16f, 0.22f, 0.08f), float(Canopy));
@@ -294,10 +309,11 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FChunkSource& 
 		const FVector VA = M.Vertices[A], VB = M.Vertices[B], NA = M.Normals[A], NB = M.Normals[B];
 		if (VA.Z < HideBelow * CmPerMeter && VB.Z < HideBelow * CmPerMeter) return;
 		const FLinearColor CA = M.Colors[A], CB = M.Colors[B];
+		const FVector2D UA = M.UV0[A], UB = M.UV0[B];
 		const int32 SA = M.Vertices.Add(VA - FVector(0, 0, 400.0));
-		M.Normals.Add(NA); M.Colors.Add(CA);
+		M.Normals.Add(NA); M.Colors.Add(CA); M.UV0.Add(UA);
 		const int32 SB = M.Vertices.Add(VB - FVector(0, 0, 400.0));
-		M.Normals.Add(NB); M.Colors.Add(CB);
+		M.Normals.Add(NB); M.Colors.Add(CB); M.UV0.Add(UB);
 		if (bFlip) M.Triangles.Append({ A, SA, B, B, SA, SB, A, B, SA, B, SB, SA });
 		else M.Triangles.Append({ A, B, SA, B, SB, SA, A, SA, B, B, SA, SB });
 	};
@@ -609,6 +625,13 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 			FChunkSource Src;
 			Src.Terrain = Lake->Terrain;   // a copy: shares the heights, keeps the tiles it saw
 			Src.bGarrigue = Lake->IsGarrigue();
+			if (!MownSource)
+			{
+				auto Mown = std::make_shared<SailingGround::FMownSource>();
+				Mown->Build(*Lake);
+				MownSource = Mown;
+			}
+			Src.Mown = MownSource;
 			if (const FWorldStreamer* St = GetStreamer(); St && St->IsStreamed())
 			{
 				Src.Tile = St->GetTile(Ch.Tile);
@@ -648,7 +671,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		// until the chunk was rebuilt (a second 16 MB for a 1 m shore chunk; docs/budget/mac-soak-parked-2026-10-17.md).
 		FChunkMesh M = Ch.Future.Consume();
 		Ch.Mesh->ClearAllMeshSections();
-		Ch.Mesh->CreateMeshSection_LinearColor(0, M.Vertices, M.Triangles, M.Normals, {}, M.Colors, {}, false);
+		Ch.Mesh->CreateMeshSection_LinearColor(0, M.Vertices, M.Triangles, M.Normals, M.UV0, M.Colors, {}, false);
 		Ch.Lod = -2 - Ch.Lod;
 		// Only chunks within about 2 km cast shadows: farther, the shadows are under a pixel but every chunk is a
 		// draw in each cascade (facing the shore with Galveston Bay's 4,000 chunks cost 15 fps on the render thread).
@@ -713,7 +736,7 @@ int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, doub
 				Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				Mesh->bUseAsyncCooking = true;
 				Mesh->RegisterComponent();
-				Mesh->SetMaterial(0, TerrainMaterial);
+				Mesh->SetMaterial(0, ChunkMaterial(Lake));
 				Mesh->SetCullDistance(20000.f * 100.f); // past 20 km the land is a sliver on the horizon, under the haze
 				Ch->Mesh = Mesh;
 				Chunks.Add(Key, MoveTemp(Ch));

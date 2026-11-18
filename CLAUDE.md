@@ -389,6 +389,12 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   ambientCG scans (`Tools/fabrics/fetch_fabrics.sh` -> `Data/Fabrics/raw`, imported to `/Game/Crew/Fabric`): knit for
   the polo, polyester for the life jacket shell, woven cotton for the cap; normals fade past a few metres. Sampler types
   must match (`LINEAR_GRAYSCALE` for roughness) or the material falls back to the default checker.
+- Ground textures (shore plan Track A, `docs/envloop/ground/`): `scripts/import_ground.py` (own script, after
+  `make_materials.py`) imports the eight CC0 ground scans prepared by `Tools/envloop/ground/{fetch,prep}_ground.py` as three
+  `Texture2DArray`s and builds `M_Ground` from the committed `Tools/envloop/ground/M_Ground.hlsl` (regenerate with
+  `ground_hlsl.py` after changing `ground_material.py`; `test_ground.py` checks both). Chunks take it on Medium and up
+  (`ALakeTerrainActor::ChunkMaterial`; Low, the garrigue and `-SailingClassicGround` keep `M_Terrain`). `GroundDress.h`:
+  the Mown mask in UV0.x, the bank's 20-40 m sand-or-clay tone, `MPC_World.Season` (0 summer, 1 dormant).
 - Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
   2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
   (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed

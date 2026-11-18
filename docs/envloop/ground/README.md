@@ -99,20 +99,38 @@ strata, slumps or roots (shape is Track C's, the strata can be a clay-face layer
 repeating at 3 m; the wood's floor on the 60 m hill showing as a dark patch with hard edges (partly the test scene's
 square wood). Before and after page: https://claude.ai/artifact/T9SCPjdAAP92REkYXzzRRz (renders are not in git: images go through LFS, which cloud sessions cannot push; the commands below rebuild them).
 
-## What integration needs (after Nov 21, through the sim thread)
+## Round 2 (Nov 18 2026): the reviewers' three complaints, in the maths
 
-- **Import.** On the PC or Mac: fetch and prep, then import three 8-slice `Texture2DArray`s (colour sRGB BC1, normal
-  BC5, RHA linear BC1; 2048 on Ultra, 1024 on High, 512 on Medium by LOD bias) and build `M_Ground` in its own script
-  file (not `make_materials.py`) from `ground_hlsl.py`'s string. `tangent_space_normal` off: the terrain's procedural
-  mesh has no tangents, so the node outputs a world normal. Low keeps `M_Terrain`.
-- **Terrain inputs (C++, `LakeTerrainActor::BuildChunk`).** A Mown mask in UV1.x (houses' and the club's footprints:
-  mown within about 25 m of a house, the club lawn); the bank's sand-or-clay tone from a 20-40 m noise instead of each
-  5 m grid cell's own random (the renders use that change; with 5 m squares the bank reads as a checkerboard of sand and
-  clay); `Season` in `MPC_World` from the game date.
+Changed in `ground_material.py` and the HLSL together (the renders are in `Artifacts/envloop/ground/r2`, rebuilt by the
+commands above with `--out .../r2`): every band's top (the swash, the bank's grass line) now also wanders with a 31 m
+noise, so no zone edge runs straight along the shore; the shingle patches thin out over a wide feather instead of ending
+on a contour (they read as flat grey decals), and the height blend brings the sand up between the last stones; a clay face
+steeper than about 30 degrees carries strata, bands 18 cm apart bent by the small noise, at 14%. The crack and gravel
+tiles' repeat at 3 m and the wood's square floor are the test scene's (a 1.5 m scan seen from 3 m, a square wood) and
+wait for the in-game stills.
+
+## In the game (integration PR, Nov 18 2026)
+
+Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 27 freeze, in one pull request:
+
+- **Material.** `scripts/import_ground.py` (its own script, not `make_materials.py`) imports the eight prepared surfaces
+  as three 8-slice `Texture2DArray`s (`/Game/Materials/Ground/TA_Ground_{Albedo,Normal,RHA}`: colour sRGB BC1, normal
+  BC5, RHA linear; 2048 px, the tiers below through the World texture group's LOD bias) and builds `M_Ground` from the
+  committed `Tools/envloop/ground/M_Ground.hlsl` (`ground_hlsl.py`'s output; `test_ground.py` fails when it is stale).
+  `tangent_space_normal` is off: the terrain's procedural mesh has no tangents, so the node outputs a world normal.
+  `MPC_World.Season` is added by the same script.
+- **Terrain (C++).** `ALakeTerrainActor::ChunkMaterial` gives the chunks `M_Ground` on Medium and up on the lake's
+  dress; Low, the garrigue (Marseille's palette has its own decode) and `-SailingClassicGround` keep `M_Terrain`.
+  `BuildChunk` writes the Mown mask to UV0.x (`SailingGround::FMownSource`, `GroundDress.h`: mown within 26 m of a
+  full-detail house with a ragged 10 m edge, and the club's lawn 35 m round its buildings) and paints the bank's
+  sand-or-clay tone from `SailingGround::BankTone` (20-40 m stretches; scene.py's `smooth`) instead of each 5 m cell's
+  own random. `ASailingEnvironment` sets `Season` from the day of the year (`SeasonAmount`: dormant December to
+  mid-March, ramps through November and April). Test: `SailingSim.Visual.GroundDress`.
 - **Far colour.** The card colours are measured albedos, darker and less yellow than today's vertex colours (today's
   lawn is a bright yellow-green, linear 0.36, 0.36, 0.16). Past 150 m `M_Ground` draws the card colours, so the far
   band changes too; `M_FarLand` (the far ring past the grid) should take the same table in Track I, or there is a step
   in colour at the ring.
-- **Checks still owed.** Shader compile (Mac and PC), frame time at the stations (plan share: Medium 1.5 ms, High 3.0
-  ms for the whole shore; this material reads 12 texels inside 150 m and none past it), the in-game stills at Track 0's
-  stations, and the colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
+- **Still owed (Mac and PC, through the sim thread).** Run `import_ground.py` and commit the assets (LFS); shader
+  compile on Metal and D3D; frame time at the shore stations (plan share: Medium 1.5 ms, High 3.0 ms for the whole
+  shore; this material reads 12 texels inside 150 m and none past it); the in-game stills at Track 0's stations; and the
+  colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).

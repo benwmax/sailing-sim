@@ -2,12 +2,15 @@
 script; this file only writes the string). Line for line the maths of ground_material.py: change both together, and
 test_ground.py checks the constants and the structure.
 
-    python3 -I Tools/envloop/ground/ground_hlsl.py [pack] > Artifacts/envloop/ground/M_Ground.hlsl
+    python3 -I Tools/envloop/ground/ground_hlsl.py [pack] > Tools/envloop/ground/M_Ground.hlsl
+
+The integration script (scripts/import_ground.py) reads the committed copy Tools/envloop/ground/M_Ground.hlsl (the editor's
+Python has no numpy); test_ground.py fails when that copy is stale: regenerate it with the command above.
 
 Custom node inputs (positions in cm as the engine gives them, with MPC_World.RenderOrigin added as every world material
 does): P (world position), N (VertexNormalWS: fine on the terrain's procedural mesh), C (VertexColor RGB), CA
-(VertexColor A: Near), WaterZ (MPC_World), Cam (CameraPositionWS), Mown (from the terrain at integration: UV1.x is the
-plan), Season (MPC_World, 0 summer .. 1 dormant), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
+(VertexColor A: Near), WaterZ (MPC_World), Cam (CameraPositionWS), Mown (the terrain's UV0.x, written by
+LakeTerrainActor::BuildChunk from SailingGround::MownAt), Season (MPC_World, 0 summer .. 1 dormant), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
 the region pack's role order; sRGB colour, linear BC5 normal, linear RHA) with their samplers.
 Outputs: return value base colour; Rough; WN (world normal: the material sets tangent_space_normal off, because the
 terrain mesh carries no tangents); AO.
@@ -15,8 +18,11 @@ Sampling: Texture2DArraySampleGrad with gradients taken before the far branch (n
 the two strongest surfaces are sampled: 2 surfaces x 2 scales x 3 maps = 12 fetches inside 150 m, none past it.
 """
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 
 def arr3(rows):
@@ -87,16 +93,17 @@ float slope = 1.0 - N.z;
 float n1 = G.VNoise(p.xy / 3.1);
 float n2 = G.VNoise(p.xy / 0.9 + float2(17.0, -5.0));
 float n3 = G.VNoise(p.xy / 11.0 + float2(-4.0, 9.0));
+float n4 = G.VNoise(p.xy / 31.0 + float2(-7.7, 3.1));
 float rg = C.r / max(C.g, 1e-3);
 float canopy = saturate((1.0 - rg) / 0.27) * smoothstep(0.4, 0.9, p.z);
 float sandy = saturate((C.g / max(C.r, 1e-3) - 0.74) / 0.10);
 float wet0 = max(CA, h < 0.05 ? 1.0 : 0.0);
 float w[8];
-float swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1, h)) * wet0;
+float swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1 + 0.08 * n3, h)) * wet0;
 float dryBed = smoothstep(-0.02, -0.12, p.z + 0.06 * n3) * smoothstep(0.08, 0.22 + 0.10 * n1, h) * (1.0 - smoothstep(0.10, 0.25, slope));
-float top = 1.3 + 0.35 * n3 + 0.15 * n2;
+float top = 1.3 + 0.35 * n3 + 0.15 * n2 + 0.3 * n4;
 float bank = CA * (1.0 - smoothstep(top - 0.35, top, h)) * (1.0 - dryBed);
-float shingle = bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h)) * smoothstep(0.15, 0.45, 0.6 * n1 + 0.45 * n2 + 0.4 * n3);
+float shingle = bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h)) * smoothstep(0.05, 0.6, 0.6 * n1 + 0.45 * n2 + 0.4 * n3);
 float bare = smoothstep(0.08, 0.24, slope + 0.04 * n2) * (1.0 - swash);
 w[{MUD}] = swash;
 float rest = 1.0 - swash;
@@ -181,6 +188,9 @@ if (dist < TEX_FAR)
 float m1 = G.VNoise(p.xy / 9.0 + float2(5.2, 1.3));
 float m2 = G.VNoise(p.xy / 31.0 + float2(-7.7, 3.1));
 base *= 1.0 + {MACRO_A} * m1 + {MACRO_B} * m2;
+float face = w[{CLAY}] * smoothstep(0.25, 0.5, slope);
+float strata = sin(p.z / 0.18 * 6.2831853 + 1.5 * n2 + 0.4 * n1);
+base *= 1.0 + 0.14 * strata * face;
 float grassy = w[{LAWN}] + w[{ROUGH}];
 float3 straw = ALB_D[{ROUGH}] / ALB_S[{ROUGH}];
 float dry = smoothstep(0.2, 0.9, 0.5 * m1 + 0.5 * m2 + 0.3) * 0.35 * (1.0 - Season);
