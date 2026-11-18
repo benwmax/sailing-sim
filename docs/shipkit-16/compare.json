@@ -48,13 +48,13 @@
    "p95": 11.0,
    "p99": 30.0,
    "max": 166.0,
-   "share_over_step": 0.0293,
+   "share_over_step": 0.0294,
    "id_other_share": 0.0166,
    "outline_moved_share": 0.0073
   },
   "light_50_bow": {
-   "pixels": 7334292,
-   "mean": 1.61,
+   "pixels": 7334293,
+   "mean": 1.62,
    "p95": 8.0,
    "p99": 25.0,
    "max": 157.0,

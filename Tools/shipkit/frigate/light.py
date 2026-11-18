@@ -129,6 +129,26 @@ def _own_edges(me, step):
 JL.own_edges = _own_edges
 
 
+def _open_edges(me):
+    """JL.open_edges with the pinched edges (more than two faces) counted as open once per face (split_warped parts them into
+    one open edge per face before the collapse): so the crack check's allowance for the part's own open edges, measured on the
+    unsplit part, covers them, and a closed part with pinched edges is not held uncollapsible by them."""
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    n, length = 0, 0.0
+    for e in bm.edges:
+        if e.is_boundary:
+            n, length = n + 1, length + e.calc_length()
+        elif len(e.link_faces) > 2:                 # split into one open edge per face
+            n, length = n + len(e.link_faces), length + len(e.link_faces) * e.calc_length()
+    bm.free()
+    return n, float(length)
+
+
+JL.open_edges = _open_edges
+
+
 def _rim_points(me, step, pinched=True):
     """Points every `step` along the mesh's open edges (and its pinched ones)."""
     import bmesh
@@ -236,10 +256,11 @@ def split_warped(me, share=0.1):
     for i, f in zip(warped, faces):
         edges = {frozenset(e) for t in tris[i] for e in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0]))}
         rim = {frozenset((f.verts[j].index, f.verts[(j + 1) % len(f.verts)].index)) for j in range(len(f.verts))}
+        pool = {f}                                          # the warped face and what each cut leaves of it
         for a, b in (tuple(e) for e in edges - rim):        # the inner edges of its triangles, cut one by one
             for g in list(bm.verts[a].link_faces):
-                if bm.verts[b] in g.verts and len(g.verts) > 3:
-                    bmesh.utils.face_split(g, bm.verts[a], bm.verts[b])
+                if g in pool and bm.verts[b] in g.verts and len(g.verts) > 3:
+                    pool.add(bmesh.utils.face_split(g, bm.verts[a], bm.verts[b])[0])
                     cut += 1
                     break
     bm.to_mesh(out)
@@ -347,8 +368,10 @@ def tris(o):
 
 
 def below(o):
-    return any(c.name in LC["inside_collections"] or c.name.startswith(tuple(n + "_" for n in LC["inside_collections"]))
-               for c in o.users_collection)       # a deck's own sub-collections too (BerthDeck_Hammocks, _Messes)
+    inside = LC["inside_collections"]
+    return (str(o.get("deck", "")) in inside        # the export's 'deck' property, or the deck's collection and its
+            or any(c.name in inside or c.name.startswith(tuple(n + "_" for n in inside))   # sub-collections
+                   for c in o.users_collection))    # (BerthDeck_Hammocks, _Messes)
 
 
 def outside(objs=None):
@@ -438,8 +461,9 @@ def build(log=lambda m: print(m, flush=True), only=None, shard=None):
     for name, obs in by_mesh.items():
         first = obs[0]
         t1 = time.time()
-        _GUARD[0] = any(name.startswith(g) or first.name.startswith(g) or g in name for g in LC.get("guarded", []))
+        _GUARD[0] = any(g in name or first.name.startswith(g) for g in LC.get("guarded", []))
         piecewise = any(g in name or g in first.name for g in LC.get("piecewise", []))
+        better = False
         _PIECEWISE[0] = False
         lob, rep = _made(first, tol)
         if piecewise:                         # piece by piece as well, and the lighter of the two that pass: on some
@@ -454,7 +478,7 @@ def build(log=lambda m: print(m, flush=True), only=None, shard=None):
             bpy.data.objects.remove(lose)
             bpy.data.meshes.remove(me)
             lob.name = first.name + SUFFIX
-        rep["piecewise"] = bool(rep.get("plain_light_triangles"))
+        rep["piecewise"] = piecewise and better
         for subs in _PIECES.values():
             for sub, _ in subs:
                 bpy.data.meshes.remove(sub)
@@ -576,6 +600,8 @@ def main():
               f"largest difference {float(np.abs(a - b).max()) * 1000:.4f} mm")
         return
     if "--merge" in args:              # --merge a.blend,b.blend --reports a.json,b.json
+        if dst == src:
+            raise SystemExit("--merge needs an output .blend after the source (it would save the twins into the source build)")
         rep = merge([os.path.abspath(p) for p in args[args.index("--merge") + 1].split(",")],
                     args[args.index("--reports") + 1].split(","))
     else:

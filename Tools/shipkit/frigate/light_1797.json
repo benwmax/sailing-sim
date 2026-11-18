@@ -114,7 +114,7 @@
  "guarded": [
   "Skin"
  ],
- "note_guarded": "parts collapsed with light.py's guarded_collapse: the hull's skin, where the plain collapse opened a seam a metre off the part's own open edges amidships under the wale at every share under 0.65, so the search kept all 266k triangles. The guard holds the part's vertices near any stray or new open edge. (Tried on the guns' gear too: it held so much of each tackle that the twin came out larger.) Warped faces are cut on their drawn diagonal first, for every part.",
+ "note_guarded": "parts collapsed with light.py's guarded_collapse: the hull's skin, where the plain collapse opened a seam a metre off the part's own open edges amidships under the wale at every share under 0.65, so the search kept all 267,740 triangles. The guard holds the part's vertices near any stray or new open edge. (Tried on the guns' gear too: it held so much of each tackle that the twin came out larger.) Warped faces are cut on their drawn diagonal first, for every part.",
  "piecewise": [
   "_Gear",
   "Gun24_Carriage"

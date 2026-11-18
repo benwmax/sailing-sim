@@ -11,33 +11,33 @@
  "states": {
   "underway": {
    "hero_triangles": 4793086,
-   "light_triangles": 976682,
-   "share": 0.2038
+   "light_triangles": 959776,
+   "share": 0.2002
   },
   "action": {
    "hero_triangles": 4395006,
-   "light_triangles": 999544,
-   "share": 0.2274
+   "light_triangles": 982638,
+   "share": 0.2236
   },
   "clewed": {
    "hero_triangles": 4799902,
-   "light_triangles": 986043,
-   "share": 0.2054
+   "light_triangles": 969137,
+   "share": 0.2019
   },
   "anchored": {
    "hero_triangles": 4742050,
-   "light_triangles": 957633,
-   "share": 0.2019
+   "light_triangles": 940727,
+   "share": 0.1984
   }
  },
- "largest_share": 0.2274,
+ "largest_share": 0.2236,
  "budget_share": 0.25,
- "largest_light_triangles": 999544,
+ "largest_light_triangles": 982638,
  "budget_triangles": 1000000,
  "unique_meshes": 497,
  "twins": 1213,
  "parts_outside": 1213,
- "light_triangles_unique": 1347210,
+ "light_triangles_unique": 1330304,
  "hero_triangles_unique": 6637074,
  "worst_error_mm": 15.03,
  "worst_paint_slide_p99_mm": 14.47,
@@ -12789,9 +12789,9 @@
    },
    "solids": {
     "hero_triangles": 18080,
-    "light_triangles": 18080,
-    "ratio": 1.0,
-    "share_reached": 1.0,
+    "light_triangles": 1174,
+    "ratio": 0.065,
+    "share_reached": 0.0649,
     "seams_cut": 0,
     "uv_seams_cut": 0,
     "uv_wraps": [],
@@ -12801,7 +12801,7 @@
      "furthest_mm": 0.0,
      "passes": 1
     },
-    "error_mm": 1.77,
+    "error_mm": 11.73,
     "paint_slide": {
      "max_mm": 0.0,
      "p99_mm": 0.0,
@@ -12811,37 +12811,37 @@
      "settings_largest_error": {}
     },
     "uv_corners_fallen_back": 0,
-    "open_m": 0.0,
-    "hero_open_m": 0.0
+    "open_m": 74.276,
+    "hero_open_m": 74.375
    },
-   "light_triangles": 18080,
-   "share": 1.0,
+   "light_triangles": 1174,
+   "share": 0.0649,
    "measure": {
-    "hero_to_light_max_mm": 1.77,
-    "hero_to_light_p99_mm": 0.28,
-    "light_to_hero_max_mm": 1.77,
-    "light_to_hero_p99_mm": 0.28,
+    "hero_to_light_max_mm": 11.73,
+    "hero_to_light_p99_mm": 5.37,
+    "light_to_hero_max_mm": 10.81,
+    "light_to_hero_p99_mm": 4.95,
     "paint_line_max_mm": 0.0,
     "wrong_material_area_share": 0.0,
-    "error_mm": 1.77,
+    "error_mm": 11.73,
     "ok": true,
     "paint_slide_mm": 0.0,
     "paint_slide_p99_mm": 0.0,
     "turned_widest_mm": 0.0,
     "settings_largest_error": {},
-    "switch_error_mm": 1.77
+    "switch_error_mm": 11.73
    },
    "shading": {
-    "mean_deg": 0.0,
-    "p95_deg": 0.0,
-    "share_over_10_deg": 0.0
+    "mean_deg": 1.16,
+    "p95_deg": 5.0,
+    "share_over_10_deg": 0.0247
    },
    "open_edges": {
-    "hero": 0,
-    "light": 0,
-    "hero_m": 0.0,
-    "light_m": 0.0,
-    "light_off_own_mm": 0.0
+    "hero": 1248,
+    "light": 96,
+    "hero_m": 74.375,
+    "light_m": 74.276,
+    "light_off_own_mm": 3.5
    },
    "frame_same": true,
    "uv_maps": true,
@@ -12852,11 +12852,11 @@
     0.0,
     3.373
    ],
-   "ue_screen_size": 0.7721,
+   "ue_screen_size": 0.3225,
    "ok": true,
    "guarded": false,
    "piecewise": false,
-   "seconds": 17.4,
+   "seconds": 28.2,
    "objects": [
     "Gallery"
    ]
@@ -31822,7 +31822,7 @@
    "ok": true,
    "guarded": false,
    "piecewise": false,
-   "seconds": 110.0,
+   "seconds": 107.3,
    "objects": [
     "PinRails"
    ]
@@ -41158,7 +41158,7 @@
    "ok": true,
    "guarded": false,
    "piecewise": false,
-   "seconds": 15.6,
+   "seconds": 15.3,
    "objects": [
     "Sail_MizzenTopsail_Set"
    ]

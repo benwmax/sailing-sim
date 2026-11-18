@@ -6,7 +6,7 @@ and wear slice 15, [docs/shipkit-15](../shipkit-15/README.md)). Until now she ha
 4.8 million triangles seen from outside depending on her state (under sail with the guns housed, cleared for action,
 courses clewed up, at anchor). The plan's boat triangle cap is 3 million and her budget at a distance a million. This
 slice gives every part seen from outside a light twin, the way the J-Class got hers in slice 12
-([docs/jclass-12](../jclass-12/README.md)): **under a million triangles in every state** (957,633 at anchor to 999,544
+([docs/jclass-12](../jclass-12/README.md)): **under a million triangles in every state** (940,727 at anchor to 982,638
 cleared for action, a fifth to a quarter of the detailed ship), and seen from 50 m on a 4K screen its surface is nowhere
 further than a pixel from the detailed one's, its paint lines where the detailed ship has them. Like slices 1 to 15 it
 is tools and docs only: slice 17 exports her with the twins as each part's LOD, and the Mac's and PC's frame-rate gates
@@ -33,32 +33,33 @@ the chase camera's 90 degrees; the median part switches at a screen size of 0.16
   `BerthDeck_Messes`). Below the gun deck is drawn only when the player walks down, close to, where a twin would never
   show; the gun deck itself is seen through the open waist and every port and keeps its twins.
 - A gun's tackles run out (blocks, hooks, falls and the breeching: 88 loose pieces) collapsed no further than 40% of its
-  triangles: Blender's collapse takes one share for the whole part, and one piece that needed 40% set it for all, 10,200
-  triangles a gun, 277,000 for the 28 guns cleared for action. `piecewise_collapse` collapses each loose piece apart to
+  triangles: Blender's collapse takes one share for the whole part, and one piece that needed 40% set it for all, 9,900
+  triangles a gun on average, 277,000 for the 28 guns cleared for action. `piecewise_collapse` collapses each loose piece apart to
   the larger of the share asked for and its own smallest share that keeps the piece within the tolerance, then the
   whole part is sewn, painted and measured as before. A twin is made both ways and the lighter of the two that pass is
-  kept: 3,400 a gun. The carriages (51 pieces) gain the same way; on the pin rails' or deadeyes' hundreds of small
+  kept: 3,400 to 6,300 a gun, 4,300 on average, 120,000 for the 28. The carriages (51 pieces) gain the same way; on the pin rails' or deadeyes' hundreds of small
   identical pieces the whole part's collapse does better, so `piecewise` lists only the gun gear and carriages.
 
-Cleared for action is 456 triangles under the budget. That is tight; the margin belongs to the model threads (a heavier
-gun deck fitting would cross it), and the next saving if one is needed is the hull's skin, whose 108,675 twin
-triangles stand 4.7 mm from the detailed skin where 15 are allowed (the guard below is what stopped it).
+Cleared for action is 17,362 triangles under the budget (it was 456 until the review found the stern gallery held
+whole by a crack check miscounting its pinched edges: step 2 below). The margin belongs to the model threads (a heavier
+gun deck fitting would eat it), and the next saving if one is needed is the hull's skin, whose 108,675 twin triangles
+stand 4.7 mm from the detailed skin where 15 are allowed (the guard below is what stopped it).
 
 | state | shown | detailed | light | share |
 | --- | --- | ---: | ---: | ---: |
-| underway | sails set, guns housed, carronades run out | 4,793,086 | 976,682 | 0.204 |
-| cleared for action | sails set, guns and carronades run out | 4,395,006 | 999,544 | 0.227 |
-| courses clewed up | guns housed | 4,799,902 | 986,043 | 0.205 |
-| at anchor | sails furled, guns housed | 4,742,050 | 957,633 | 0.202 |
+| underway | sails set, guns housed, carronades run out | 4,793,086 | 959,776 | 0.200 |
+| cleared for action | sails set, guns and carronades run out | 4,395,006 | 982,638 | 0.224 |
+| courses clewed up | guns housed | 4,799,902 | 969,137 | 0.202 |
+| at anchor | sails furled, guns housed | 4,742,050 | 940,727 | 0.198 |
 
 Cleared for action, by kind of part:
 
 | kind | detailed | light | share |
 | --- | ---: | ---: | ---: |
-| guns and carronades (28 long guns run out, 14 carronades) | 1,808,488 | 253,240 | 0.14 |
+| guns and carronades (28 long guns run out, 22 carronades) | 1,808,488 | 253,240 | 0.14 |
 | spars and standing rigging | 597,595 | 220,927 | 0.37 |
 | deck and fittings | 888,670 | 136,840 | 0.15 |
-| hull | 348,044 | 134,637 | 0.39 |
+| hull | 348,044 | 117,731 | 0.34 |
 | gun deck (seen through the waist and ports) | 396,465 | 121,649 | 0.31 |
 | sails | 155,876 | 81,357 | 0.52 |
 | running rigging and blocks | 199,868 | 50,894 | 0.25 |
@@ -66,16 +67,16 @@ Cleared for action, by kind of part:
 The heaviest twins: the skin 108,675 (of 267,740, guarded, 4.7 mm off); the 84 long-gun barrels 1,026 each (of 7,808);
 the 84 carriages 708 (of 2,992, piece by piece); the pin rails 39,692 (of 96,064, 325 pins built again as tubes); the
 hammock nettings 36,601 (of 66,552); the 44 carronade barrels 804 each; the gun deck's implements 27,252 (of 167,440);
-the hatchways 24,070; the main and fore deadeyes 23,056 and 21,484. 30 of the 497 unique meshes could not collapse at
-all under the rule (the quarter galleries' carving, the spar deck's planking, where every triangle is already a pixel's
-worth) and keep every triangle; 818 specks (a pin, a rivet head under a pixel across: 384 triangles) are left out;
-6,407 round ropes, rods and pins are built again as tubes of 4 to 9 sides.
+the hatchways 24,070; the main and fore deadeyes 23,056 and 21,484. 29 of the 497 unique meshes could not collapse
+their solids at all under the rule (the spar deck's planking, the furled sails: every triangle already a pixel's
+worth), 19 of them keeping every triangle and the other ten losing only specks and tubes; 818 specks (a pin, a rivet head under a pixel across: 384 triangles) are left out;
+6,407 round ropes, rods and pins are built again as tubes of 4 to 16 sides (most 4 to 6).
 
 ## How a twin is made
 
 `Tools/shipkit/frigate/light.py` is the J-Class's `Tools/shipkit/jclass/light.py` loaded with this ship's settings
-(`light_1797.json`: the screen, 50 m, the ratios, the tubes, her states by collection) and four of its steps replaced
-where the frigate broke them. The steps are the J-Class's (specks, tubes, solids collapsed at their seams and sewn,
+(`light_1797.json`: the screen, 50 m, the ratios, the tubes, her states by collection) and five of its functions
+replaced where the frigate broke them (the nearest distance, the collapse, the open and own edges, the states). The steps are the J-Class's (specks, tubes, solids collapsed at their seams and sewn,
 paint carried from the detailed part, normals carried): [docs/jclass-12](../jclass-12/README.md#how-a-twin-is-made).
 What is new:
 
@@ -90,7 +91,11 @@ What is new:
    counter's, where the tuck meets the stern) cut on its other diagonal stood 46 mm off the part at every share, so the
    skin never collapsed. Each face warped by more than a tenth of the tolerance is cut first along the diagonal the part
    is drawn with, and each pinched edge (more than two faces: sheets touching) is split and counted as the part's own
-   open edge, which the twin's may lie on.
+   open edge, once per face, in the crack check's allowance and in the edges the twin's open edges may lie on.
+   Without the allowance a closed part with a pinched edge can never collapse, the split's new edges counting as a
+   crack: the stern gallery's carving (37 m of pinched edges, no open ones) kept all 18,080 triangles until the review
+   caught it; it is 1,174 now, 11.7 mm off. Four other parts the crack check had held (the skin, the pin rails, two
+   topsails) were re-run and came out the same: theirs were real cracks.
 3. **The guard** (`guarded_collapse`, the skin). Blender's collapse is global: one tight spot (the hawse holes, the
    stern's tuck) strayed five centimetres at every share while the rest was within a millimetre, so the search kept all
    267,740 triangles. Each pass finds where the collapsed skin strays past half the tolerance, either way, or opens an
@@ -116,7 +121,7 @@ none. The renderer's own noise (the detailed ship twice, two seeds) is measured 
 | view | pixels | mean | p99 | over 16 | other material | outline moved |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 50 m abeam | 8,006,211 | 1.99 | 30 | 2.9% | 1.7% | 0.7% |
-| 50 m bow | 7,334,292 | 1.61 | 25 | 2.2% | 1.2% | 0.4% |
+| 50 m bow | 7,334,293 | 1.62 | 25 | 2.2% | 1.2% | 0.4% |
 | 100 m abeam | 5,493,898 | 1.00 | 18 | 1.1% | 1.6% | 0.8% |
 | 100 m bow | 5,084,808 | 0.88 | 15 | 0.9% | 0.9% | 0.4% |
 | 300 m abeam | 790,926 | 0.65 | 10 | 0.4% | 1.6% | 0.9% |
@@ -176,7 +181,7 @@ destination: without one it saves into the source build. The renders take about 
 | `Tools/shipkit/frigate/light.py` | new: the J-Class's light.py with the exact distance, warped quads, the guard and piece-by-piece collapse; shards and merge |
 | `Tools/shipkit/frigate/light_1797.json` | new: the screen, 50 m, the budget, the ratios, tubes, her states by collection, what is inside, guarded and piecewise |
 | `Tools/shipkit/frigate/render_light.py` | new: the pairs and wireframes above, then light_compare.py |
-| `docs/shipkit-16/` | this page, `light.json`, `compare.json`, the pairs and crops |
+| `docs/shipkit-16/` | this page, `light.json` (the report less each part's list of shares tried, 1.4 MB with it), `compare.json`, the pairs and crops |
 
 ## Still to do
 

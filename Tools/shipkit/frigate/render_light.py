@@ -4,7 +4,7 @@
 
 As the J-Class's slice 12 (render_jclass.py, light_compare.py): at a 4K screen's own pixels with the game's narrowest
 field of view (60 degrees), in one state of the ship (light_1797.json's; underway: sails set, guns housed), dressed at
-wear level L2, on a dark sea, from an eye 3 m over the water on her port side, abeam and 40 degrees off the bow, at 50,
+wear level L2 by default (--level), on a dark sea, from an eye 3 m over the water on her port side, abeam and 40 degrees off the bow, at 50,
 100 and 300 m from a point 15 m up her mainmast. Each pair (light_<dist>_<bearing>_{hero,light}.png) is rendered alike
 (the same seed), cropped to the box round both, with an id shot of each (every dressed material in its own flat colour,
 the sea and sky black) for light_compare.py to measure over her outline; light_noise.png is the detailed ship again with
