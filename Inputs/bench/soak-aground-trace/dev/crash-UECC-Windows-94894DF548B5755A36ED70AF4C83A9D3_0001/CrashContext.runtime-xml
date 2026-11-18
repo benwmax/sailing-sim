@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FGenericCrashContext>
+	<RuntimeProperties>
+		<CrashVersion>3</CrashVersion>
+		<ExecutionGuid>369DE15642D71FD429264194EF3CAAED</ExecutionGuid>
+		<CrashGUID>UECC-Windows-94894DF548B5755A36ED70AF4C83A9D3_0001</CrashGUID>
+		<IsEnsure>true</IsEnsure>
+		<IsStall>false</IsStall>
+		<IsAssert>false</IsAssert>
+		<CrashType>Ensure</CrashType>
+		<ErrorMessage>Ensure condition failed: OriginX &lt;= OriginMax &amp;&amp; OriginY &lt;= OriginMax &amp;&amp; OriginZ &lt;= OriginMax [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Core\Private\Math\DoubleFloat.cpp] [Line: 19] 
+Found precision loss while converting matrix to GPU format, verify the input transforms. This error usually indicates the view transform is invalid, or the PreViewTranslation/ViewOrigin was not set up correctly.
+Stack: 
+0x00007ff72cdb3819 SailingSim.exe!`TSparseArray&lt;TSparseSetElement&lt;TTuple&lt;FTextKey,TMap&lt;FTextKey,FTextLocalizationResource::FEntry const * __ptr64,FDefaultSetAllocator,TDefaultMapHashableKeyFuncs&lt;FTextKey,FTextLocalizationResource::FEntry const * __ptr64,0&gt; &gt; &gt; &gt;,TSparseArrayAllocator&lt;TSizedDefaultAllocator&lt;32&gt;,FDefaultBitArrayAllocator&gt; &gt;::TRangedForIterator::operator!=&apos;::`2&apos;::&lt;lambda_1&gt;::operator()() []
+0x00007ff71f20483d SailingSim.exe!FDFMatrix::MakeToRelativeWorldMatrix() []
+0x00007ff72447e0bf SailingSim.exe!`FComputeShaderUtils::AddPass&lt;FVisualizeMeshDistanceFieldCS&gt;&apos;::`2&apos;::&lt;lambda_1&gt;::operator()() []
+0x00007ff71f555ac2 SailingSim.exe!ParallelForImpl::ParallelForInternal&lt;TFunctionRef&lt;void __cdecl(int)&gt;,`ParallelFor&apos;::`2&apos;::&lt;lambda_1&gt;,std::nullptr_t&gt;() []
+0x00007ff7244cc839 SailingSim.exe!FDistanceFieldSceneData::UpdateDistanceFieldObjectBuffers() []
+0x00007ff7244a7f63 SailingSim.exe!PrepareDistanceFieldScene() []
+0x00007ff7244356b8 SailingSim.exe!FDeferredShadingSceneRenderer::Render() []
+0x00007ff72536758c SailingSim.exe!FRendererModule::RenderPostResolvedSceneColorExtension() []
+0x00007ff72532acc0 SailingSim.exe!UE::RHI::GPUProfiler::TGPUStat&lt;TRHIGPUStatNameProvider_CrossGPUSync&gt;::`vector deleting destructor&apos;() []
+0x00007ff7253443a0 SailingSim.exe!`FComputeShaderUtils::AddPass&lt;FHZBBuildCS&gt;&apos;::`2&apos;::&lt;lambda_1&gt;::operator()() []
+0x00007ff724055a25 SailingSim.exe!ExcludeNonPipelinedShaderTypes() []
+0x00007ff72402ce26 SailingSim.exe!ConstructItems&lt;FGenericShaderStat,FGenericShaderStat,int&gt;() []
+0x00007ff7240477ea SailingSim.exe!`FRenderCommandPipeRegistry::StopRecording&apos;::`2&apos;::&lt;lambda_1&gt;::operator()() []
+0x00007ff7240562e8 SailingSim.exe!TGraphTask&lt;TFunctionGraphTaskImpl&lt;void __cdecl(void),1&gt; &gt;::ExecuteTask() []
+0x00007ff71eebc28a SailingSim.exe!UE::Tasks::Private::FTaskBase::TryExecuteTask() []
+0x00007ff71eeaf361 SailingSim.exe!FNamedTaskThread::ProcessTasksNamedThread() []
+0x00007ff71eeaf7fe SailingSim.exe!FNamedTaskThread::ProcessTasksUntilQuit() []
+0x00007ff724074a68 SailingSim.exe!RenderingThreadMain() []
+0x00007ff7240751e9 SailingSim.exe!FRenderingThread::Run() []
+0x00007ff71f5a6148 SailingSim.exe!FRunnableThreadWin::Run() []
+0x00007ff71f59fb45 SailingSim.exe!FRunnableThreadWin::GuardedRun() []
+0x00007ffd8b67dda7 KERNEL32.DLL!UnknownFunction []
+0x00007ffd8d27ee4c ntdll.dll!UnknownFunction []
+</ErrorMessage>
+		<CrashReporterMessage />
+		<CrashReporterMessage>Attended</CrashReporterMessage>
+		<ProcessId>25864</ProcessId>
+		<SecondsSinceStart>0</SecondsSinceStart>
+		<IsInternalBuild>false</IsInternalBuild>
+		<IsPerforceBuild>false</IsPerforceBuild>
+		<IsWithDebugInfo>false</IsWithDebugInfo>
+		<IsSourceDistribution>false</IsSourceDistribution>
+		<GameName>UE-SailingSim</GameName>
+		<ExecutableName>SailingSim</ExecutableName>
+		<BuildConfiguration>Development</BuildConfiguration>
+		<GameSessionID />
+		<PlatformName>Windows</PlatformName>
+		<PlatformFullName>Win64 [Windows 11 (24H2) [10.0.26100.9711]  64b]</PlatformFullName>
+		<PlatformNameIni>Windows</PlatformNameIni>
+		<EngineMode>Game</EngineMode>
+		<EngineModeEx>Unset</EngineModeEx>
+		<DeploymentName />
+		<EngineVersion>5.8.4-58902052+++UE5+Release-5.8</EngineVersion>
+		<EngineCompatibleVersion>5.8.4-58902052+++UE5+Release-5.8</EngineCompatibleVersion>
+		<CommandLine>CommandLineRemoved</CommandLine>
+		<LanguageLCID>9</LanguageLCID>
+		<AppDefaultLocale>en-US</AppDefaultLocale>
+		<BuildVersion>++UE5+Release-5.8-CL-58902052</BuildVersion>
+		<Symbols>**UE5*Release-5.8-CL-58902052-Win64-Development</Symbols>
+		<IsUERelease>false</IsUERelease>
+		<IsRequestingExit>false</IsRequestingExit>
+		<UserName />
+		<BaseDir>D:/dev/ss-fix/Packaged/Windows-8a768667/SailingSim/Binaries/Win64/</BaseDir>
+		<RootDir>D:/dev/ss-fix/Packaged/Windows-8a768667/</RootDir>
+		<MachineId>6FCE816644049B8BA346C98BEF0F7EE5</MachineId>
+		<LoginId>6fce816644049b8ba346c98bef0f7ee5</LoginId>
+		<EpicAccountId>239276fc30284b6287c130f68776d070</EpicAccountId>
+		<SourceContext />
+		<UserDescription>Sent in the unattended mode</UserDescription>
+		<UserActivityHint />
+		<CrashDumpMode>0</CrashDumpMode>
+		<GameStateName />
+		<Misc.NumberOfCores>8</Misc.NumberOfCores>
+		<Misc.NumberOfCoresIncludingHyperthreads>16</Misc.NumberOfCoresIncludingHyperthreads>
+		<Misc.Is64bitOperatingSystem>1</Misc.Is64bitOperatingSystem>
+		<Misc.CPUVendor>GenuineIntel</Misc.CPUVendor>
+		<Misc.CPUBrand>Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz</Misc.CPUBrand>
+		<Misc.CPUModelID>27116</Misc.CPUModelID>
+		<Misc.CPUMicrocodeRevision>240</Misc.CPUMicrocodeRevision>
+		<Misc.PrimaryGPUBrand>NVIDIA GeForce RTX 4090</Misc.PrimaryGPUBrand>
+		<Misc.OSVersionMajor>Windows 11 (24H2) [10.0.26100.9711]</Misc.OSVersionMajor>
+		<Misc.OSVersionMinor />
+		<Misc.AnticheatProvider />
+		<MemoryStats.TotalPhysical>68653654016</MemoryStats.TotalPhysical>
+		<MemoryStats.TotalVirtual>72948621312</MemoryStats.TotalVirtual>
+		<MemoryStats.PageSize>4096</MemoryStats.PageSize>
+		<MemoryStats.TotalPhysicalGB>64</MemoryStats.TotalPhysicalGB>
+		<MemoryStats.AvailablePhysical>46360834048</MemoryStats.AvailablePhysical>
+		<MemoryStats.AvailableVirtual>39705374720</MemoryStats.AvailableVirtual>
+		<MemoryStats.UsedPhysical>3348680704</MemoryStats.UsedPhysical>
+		<MemoryStats.PeakUsedPhysical>3348967424</MemoryStats.PeakUsedPhysical>
+		<MemoryStats.UsedVirtual>4519055360</MemoryStats.UsedVirtual>
+		<MemoryStats.PeakUsedVirtual>4519342080</MemoryStats.PeakUsedVirtual>
+		<MemoryStats.bIsOOM>0</MemoryStats.bIsOOM>
+		<MemoryStats.OOMAllocationSize>0</MemoryStats.OOMAllocationSize>
+		<MemoryStats.OOMAllocationAlignment>0</MemoryStats.OOMAllocationAlignment>
+		<NumMinidumpFramesToIgnore>8</NumMinidumpFramesToIgnore>
+		<CallStack>SailingSim!`TSparseArray&lt;TSparseSetElement&lt;TTuple&lt;FTextKey,TMap&lt;FTextKey,FTextLocalizationResource::FEntry const * __ptr64,FDefaultSetAllocator,TDefaultMapHashableKeyFuncs&lt;FTextKey,FTextLocalizationResource::FEntry const * __ptr64,0&gt; &gt; &gt; &gt;,TSparseArrayAlloca()
+SailingSim!FDFMatrix::MakeToRelativeWorldMatrix()
+SailingSim!`FComputeShaderUtils::AddPass&lt;FVisualizeMeshDistanceFieldCS&gt;&apos;::`2&apos;::&lt;lambda_1&gt;::operator()()
+SailingSim!ParallelForImpl::ParallelForInternal&lt;TFunctionRef&lt;void __cdecl(int)&gt;,`ParallelFor&apos;::`2&apos;::&lt;lambda_1&gt;,std::nullptr_t&gt;()
+SailingSim!FDistanceFieldSceneData::UpdateDistanceFieldObjectBuffers()
+SailingSim!PrepareDistanceFieldScene()
+SailingSim!FDeferredShadingSceneRenderer::Render()
+SailingSim!FRendererModule::RenderPostResolvedSceneColorExtension()
+SailingSim!UE::RHI::GPUProfiler::TGPUStat&lt;TRHIGPUStatNameProvider_CrossGPUSync&gt;::`vector deleting destructor&apos;()
+SailingSim!`FComputeShaderUtils::AddPass&lt;FHZBBuildCS&gt;&apos;::`2&apos;::&lt;lambda_1&gt;::operator()()
+SailingSim!ExcludeNonPipelinedShaderTypes()
+SailingSim!ConstructItems&lt;FGenericShaderStat,FGenericShaderStat,int&gt;()
+SailingSim!`FRenderCommandPipeRegistry::StopRecording&apos;::`2&apos;::&lt;lambda_1&gt;::operator()()
+SailingSim!TGraphTask&lt;TFunctionGraphTaskImpl&lt;void __cdecl(void),1&gt; &gt;::ExecuteTask()
+SailingSim!UE::Tasks::Private::FTaskBase::TryExecuteTask()
+SailingSim!FNamedTaskThread::ProcessTasksNamedThread()
+SailingSim!FNamedTaskThread::ProcessTasksUntilQuit()
+SailingSim!RenderingThreadMain()
+SailingSim!FRenderingThread::Run()
+SailingSim!FRunnableThreadWin::Run()</CallStack>
+		<PCallStack>
+
+SailingSim 0x00007ff71d9d0000 + f3e3819 
+SailingSim 0x00007ff71d9d0000 + 183483d 
+SailingSim 0x00007ff71d9d0000 + 6aae0bf 
+SailingSim 0x00007ff71d9d0000 + 1b85ac2 
+SailingSim 0x00007ff71d9d0000 + 6afc839 
+SailingSim 0x00007ff71d9d0000 + 6ad7f63 
+SailingSim 0x00007ff71d9d0000 + 6a656b8 
+SailingSim 0x00007ff71d9d0000 + 799758c 
+SailingSim 0x00007ff71d9d0000 + 795acc0 
+SailingSim 0x00007ff71d9d0000 + 79743a0 
+SailingSim 0x00007ff71d9d0000 + 6685a25 
+SailingSim 0x00007ff71d9d0000 + 665ce26 
+SailingSim 0x00007ff71d9d0000 + 66777ea 
+SailingSim 0x00007ff71d9d0000 + 66862e8 
+SailingSim 0x00007ff71d9d0000 + 14ec28a 
+SailingSim 0x00007ff71d9d0000 + 14df361 
+SailingSim 0x00007ff71d9d0000 + 14df7fe 
+SailingSim 0x00007ff71d9d0000 + 66a4a68 
+SailingSim 0x00007ff71d9d0000 + 66a51e9 
+SailingSim 0x00007ff71d9d0000 + 1bd6148 
+SailingSim 0x00007ff71d9d0000 + 1bcfb45 
+KERNEL32 0x00007ffd8b650000 + 2dda7 
+</PCallStack>
+		<PCallStackHash>6135DCB0A6B0C297F459E75CC5951CEC96A75CC6</PCallStackHash>
+		<TimeOfCrash>639305975041460000</TimeOfCrash>
+		<bAllowToBeContacted>1</bAllowToBeContacted>
+		<CPUBrand>Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz</CPUBrand>
+		<CrashReportClientVersion>1.0</CrashReportClientVersion>
+		<Modules>D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\SailingSim.exe
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\DML\x64\DirectML.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Plugins\NNE\NNERuntimeORT\Binaries\ThirdParty\Onnxruntime\Win64\onnxruntime.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\NVIDIA\NVaftermath\Win64\GFSDK_Aftermath_Lib.x64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\D3D12\x64\D3D12Core.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbis_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\DbgHelp\dbghelp.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\SailingSim\Binaries\Win64\tbbmalloc.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Ogg\Win64\VS2015\libogg_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbisfile_64.dll
+D:\dev\ss-fix\Packaged\Windows-8a768667\Engine\Binaries\ThirdParty\Windows\WinPixEventRuntime\x64\WinPixEventRuntime.dll</Modules>
+	</RuntimeProperties>
+	<PlatformProperties>
+		<PlatformIsRunningWindows>1</PlatformIsRunningWindows>
+		<PlatformIsRunningWine>false</PlatformIsRunningWine>
+		<PlatformSupportsWindows11>false</PlatformSupportsWindows11>
+		<IsRunningOnBattery>false</IsRunningOnBattery>
+		<IsUsingBatterySaver>false</IsUsingBatterySaver>
+		<HostArchitecture>x64</HostArchitecture>
+		<IsDeviceHandheld>false</IsDeviceHandheld>
+		<PlatformCallbackResult>0</PlatformCallbackResult>
+		<CrashTrigger>0</CrashTrigger>
+	</PlatformProperties>
+	<EngineData>
+		<MatchingDPStatus>WindowsNo errors</MatchingDPStatus>
+		<RHI.IntegratedGPU>false</RHI.IntegratedGPU>
+		<RHI.DriverDenylisted>false</RHI.DriverDenylisted>
+		<RHI.D3DDebug>false</RHI.D3DDebug>
+		<RHI.DRED>false</RHI.DRED>
+		<RHI.DREDMarkersOnly>false</RHI.DREDMarkersOnly>
+		<RHI.DREDContext>false</RHI.DREDContext>
+		<RHI.Aftermath>true</RHI.Aftermath>
+		<RHI.RHIName>D3D12</RHI.RHIName>
+		<RHI.AdapterName>NVIDIA GeForce RTX 4090</RHI.AdapterName>
+		<RHI.UserDriverVersion>621.24</RHI.UserDriverVersion>
+		<RHI.InternalDriverVersion>32.0.16.2124</RHI.InternalDriverVersion>
+		<RHI.DriverDate>11-7-2026</RHI.DriverDate>
+		<RHI.FeatureLevel>SM6</RHI.FeatureLevel>
+		<RHI.IgnoredSM5Preference>False</RHI.IgnoredSM5Preference>
+		<RHI.GPUVendor>NVIDIA</RHI.GPUVendor>
+		<RHI.DeviceId>2684</RHI.DeviceId>
+		<DeviceProfile.Name>Windows</DeviceProfile.Name>
+	</EngineData>
+	<GameData>
+</GameData>
+</FGenericCrashContext>
