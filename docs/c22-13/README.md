@@ -63,3 +63,12 @@ The export on the slice 9 build (cloud, bpy 5.3) reads:
 | Interior | 71,891 |
 
 It also reads a draft of 1.552 m, a canoe body of 1.2382 m^3 and 80 sockets.
+
+## AI boats (Nov 18)
+
+Bean chose the full rebuilt model for AI Catalinas too: `UseC22Hero` no longer leaves AI boats and the ghost on the
+fleet model (`-SailingClassicC22` still does, everywhere). Their keels and blades turn as the player's do; the cabin
+below stays the player's. The hull, keel, boom, rudder and blade are Nanite; the mast is not (M_BoatMast bends it) and
+has no LOD chain, so each AI Catalina adds its 30k mast triangles. A boats-scope gate after the import measures it; if
+it costs too much, the fix is a lighter mast for AI boats from the build's light copy (`light_c22.py`, about 12% of the
+triangles).
