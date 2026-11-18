@@ -18,7 +18,8 @@ namespace Sailing { struct FBoatConfig; }
  * the straps facing inboard, leaning back; the Hobie crew stands on the rail on the trapeze; to right a capsized dinghy
  * the sailor stands on the board leaning back.
  */
-enum class ECrewStance : uint8 { RailHike, Helm, Cockpit, Crossing, DinghyHike, Trapeze, Righting };
+/** Stand (docs/ship-rig/): a ship's deck watch on their feet at a station, facing FCrewPoseParams::StandYaw. */
+enum class ECrewStance : uint8 { RailHike, Helm, Cockpit, Crossing, DinghyHike, Trapeze, Righting, Stand };
 
 struct SAILINGSIM_API FCrewPoseParams
 {
@@ -30,6 +31,7 @@ struct SAILINGSIM_API FCrewPoseParams
 	// docs/crew-hull-clip/: sitting on a deck whose floor ahead of the sailor is as high as the seat (the maxi's deck
 	// beside her cockpit, a multihull's nets or bridgedeck): knees up and the feet on the deck, not down into a well.
 	bool bFlatDeck = false;
+	float StandYaw = 0.f;   // Stand: the yaw faced (deg, boat frame; 0 forward, + toward starboard). Hike 1 clasps the hands behind the back.
 };
 
 /** Joint rotations for a stance (character frame, applied about each joint, parent first). */
@@ -168,6 +170,10 @@ SAILINGSIM_API bool CrewNetSpan(const Sailing::FBoatConfig& Config, double& AftX
 /** What a multihull sailor sits on at (X, Y): a hull's crowned deck (its sheer in the cockpit well, where the keelboat
  *  stances' offsets apply), else the surface between the hulls, else the nearest hull's deck at its centreline. */
 SAILINGSIM_API double CrewSeatSurfaceZ(const Sailing::FBoatConfig& Config, double X, double Y);
+/** A square-rigged ship's spar deck (m): her sheer is the bulwark's rail, the planks CrewShipBulwarkM below it (the frigate's
+ *  walk map has the quarterdeck 4.0 m up and the forecastle 4.1 under a sheer of 5.5: Tools/shipkit/frigate). */
+constexpr double CrewShipBulwarkM = 1.4;
+SAILINGSIM_API double CrewShipDeckZ(const Sailing::FBoatConfig& Config, double X);
 /** A keelboat's cabin trunk (m, boat frame): from X0 to X1, Height over the sheer, its sides HalfWidth out (or the deck
  *  edge less SideDeck, or the plan table PlanX/PlanHalf when PlanN > 0). False where the drawn model has none. */
 struct SAILINGSIM_API FCrewCabinTrunk

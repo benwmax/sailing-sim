@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "CrewPose.h"
 #include "CrewClips.h"
+#include "ShipWalk.h"
 
 namespace Sailing { struct FBoatConfig; }
 struct FReferenceSkeleton;
@@ -64,7 +65,14 @@ struct SAILINGSIM_API FCrewPlaceInput
 	bool bTackCalled = false;      // docs/j22-crew-tack/: the crew are holding the main for a tack the helm called (FAutoTrim)
 	FCrewCrossing* Crossing = nullptr; // docs/crew-tack/: the scripted crossing's state (none: the crossing stance as before)
 	float Dt = 0.f;                // s since the last placement (the crossing's clock)
+	const Sailing::FWalkMap* WalkMap = nullptr; // a ship's decks (docs/ship-walk/): her watch stand on its floor and at its Helm spot
 };
+
+/** docs/ship-rig/: the figures drawn for a square-rigged ship's deck watch (her company of hundreds is not drawn), 0 for
+ *  any other boat. The stations are CrewPlacement's: two helmsmen at the wheel (the last figures: the cockpit eye without a
+ *  walk map is the last one's head), the officer of the watch and a lookout to starboard, hands at the fore and main pin
+ *  rails on both sides. */
+SAILINGSIM_API int32 ShipWatchCount(const Sailing::FBoatConfig& Config);
 
 struct SAILINGSIM_API FCrewPlacement
 {

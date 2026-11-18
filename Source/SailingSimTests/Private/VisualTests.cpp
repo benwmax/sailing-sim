@@ -806,7 +806,7 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		{ TEXT("forearm_l"), TEXT("hand_l"), TEXT("lowerarm_l"), TEXT("hand_l"), 15.f }, { TEXT("forearm_r"), TEXT("hand_r"), TEXT("lowerarm_r"), TEXT("hand_r"), 15.f },
 		{ TEXT("pelvis"), TEXT("neck"), TEXT("pelvis"), TEXT("neck_01"), 20.f },
 	};
-	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting };
+	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting, ECrewStance::Stand };
 	// The crew is git-ignored and optional on a fresh checkout (the PC without the Mac's zip): the game falls back to
 	// SK_Sailor, so only check it where it is installed.
 	if (!IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
