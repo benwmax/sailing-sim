@@ -45,14 +45,15 @@ namespace ShipWalkGame
 		return Ship;
 	}
 
-	/** A deck's mesh: /Game/Boats/<Folder>/Decks/SM_<Folder>_<GunDeck|BerthDeck|Orlop|Hold>; none for the spar deck (the
-	 *  outside model is it) or where the asset isn't in the project yet. */
+	/** A deck's mesh: /Game/Boats/<Folder>/Decks/SM_<Folder>_<GunDeck|BerthDeck|Orlop|Hold|Below> (a yacht's cabins are
+	 *  one deck, "Below": Bluebonnet's); none for the top deck (the outside model is it) or where the asset isn't in the
+	 *  project yet. */
 	FSoftObjectPath DeckMeshPath(const FString& Ship, const std::string& Deck)
 	{
 		const FString Name = UTF8_TO_TCHAR(Deck.c_str());
 		FString Part;
 		if (Name == TEXT("Gun") || Name == TEXT("Berth")) Part = Name + TEXT("Deck");
-		else if (Name == TEXT("Orlop") || Name == TEXT("Hold")) Part = Name;
+		else if (Name == TEXT("Orlop") || Name == TEXT("Hold") || Name == TEXT("Below")) Part = Name;
 		else return FSoftObjectPath();
 		const FString Folder = ModelFolder(Ship);
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Part);
@@ -61,11 +62,12 @@ namespace ShipWalkGame
 		return FSoftObjectPath(Package + TEXT(".") + Asset);
 	}
 
-	/** "gun deck", "orlop": a deck as the prompt names it. */
+	/** "gun deck", "orlop", "cabins": a deck as the prompt names it (Bluebonnet's are "Deck", "Cockpit" and "Below"). */
 	FString DeckLabel(const std::string& Deck)
 	{
 		const FString Name = UTF8_TO_TCHAR(Deck.c_str());
-		if (Name == TEXT("Orlop") || Name == TEXT("Hold")) return Name.ToLower();
+		if (Name == TEXT("Orlop") || Name == TEXT("Hold") || Name == TEXT("Deck") || Name == TEXT("Cockpit")) return Name.ToLower();
+		if (Name == TEXT("Below")) return TEXT("cabins");
 		return Name.ToLower() + TEXT(" deck");
 	}
 }
@@ -162,11 +164,12 @@ void ASailboatPawn::SetWalking(bool bOn, bool bAnnounce)
 	}
 	else
 	{
-		// Back at the wheel, you steer.
+		// Back at the wheel, you steer (a yacht's helm view starts its steadied eye again where the helm's head is).
 		bShipHelmsman = false;
 		PlaceWalkerAtHelm();
 		CameraYaw = 0.f;
 		CameraPitch = -8.f;
+		CockpitEye.bStarted = false;
 	}
 	ApplyMappingContexts();
 	if (!bAnnounce || SailUI::UiMode() == SailUI::EUiMode::Off) return;
@@ -239,8 +242,9 @@ FString ASailboatPawn::GetWalkPrompt() const
 	const Sailing::FWalkLink& L = WalkMap.Links[K];
 	const bool bDown = L.Upper == Walker.GetDeck();
 	const FString Key = SailingBindings::Label(TEXT("WalkUse"), false, SailUI::UsingGamepad());
-	if (SailUI::UiMode() == SailUI::EUiMode::Natural) return FString::Printf(TEXT("%s: ladder %s"), *Key, bDown ? TEXT("down") : TEXT("up"));
-	return FString::Printf(TEXT("%s: take the ladder %s to the %s"), *Key, bDown ? TEXT("down") : TEXT("up"),
+	const TCHAR* Way = L.Kind == Sailing::EWalkLink::Steps ? TEXT("steps") : TEXT("ladder");   // (Bluebonnet's companion stairs, her cockpit's step)
+	if (SailUI::UiMode() == SailUI::EUiMode::Natural) return FString::Printf(TEXT("%s: %s %s"), *Key, Way, bDown ? TEXT("down") : TEXT("up"));
+	return FString::Printf(TEXT("%s: take the %s %s to the %s"), *Key, Way, bDown ? TEXT("down") : TEXT("up"),
 		*ShipWalkGame::DeckLabel(WalkMap.Decks[bDown ? L.Lower : L.Upper].Name));
 }
 
@@ -272,9 +276,10 @@ void ASailboatPawn::UpdateDeckStreaming()
 {
 	const int32 N = DeckMeshPaths.Num();
 	if (!CanWalk() || N == 0 || DeckMeshes.Num() != N || DeckLoads.Num() != N || DeckUnwantedSince.Num() != N) return;
-	// Aboard (at the wheel or walking): the decks the walker wants (his, a ladder's other end, what shows through the
-	// hatches). Outside: what her top deck shows (the gun deck through the open waist).
-	const uint32 Want = bCockpit ? Walker.DecksWanted(WalkMap) : WalkMap.Decks[0].AlsoLoad;
+	// Aboard (walking, or at a ship's wheel): the decks the walker wants (his, a ladder's other end, what shows through
+	// the hatches). Outside, or in a yacht's own helm view: what her top deck shows (the frigate's gun deck through the
+	// open waist; nothing of Bluebonnet's cabins, which load only once you set off about her deck).
+	const uint32 Want = (bWalking || (bCockpit && HelmOnWalkMap())) ? Walker.DecksWanted(WalkMap) : WalkMap.Decks[0].AlsoLoad;
 	const double Now = FPlatformTime::Seconds();
 	for (int32 K = 0; K < N && K < 32; ++K)
 	{

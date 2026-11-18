@@ -78,4 +78,28 @@ ship is in frame there too. Every boat before the frigate is under
 
 `SailingSim.ShipWalk.*`: `File` (the format round trip and refusals), `Ladders`, `Beams`, `Heel`, `Wander` (ten minutes
 of a random walker rolling 20 deg each way, never off a floor or inside a beam), `Commonwealth` (the frigate's own map
-once it is in the tree: each ladder's ends somewhere to stand, every deck reached from the spar deck).
+once it is in the tree: each ladder's ends somewhere to stand, every deck reached from the spar deck),
+`Bluebonnet` (her map, once in the tree: from the wheel out of the cockpit, down the doghouse stairs, forward through
+the saloon, galley and fo'c'sle, up the crew's companionway, along the foredeck and back to the wheel, steering the
+walker along a standing path).
+
+## Bluebonnet (the J-Class)
+
+Bean asked on Nov 18 for her to be walkable too. She uses the same walker and views, with three differences: her Helm
+view stays the seated helmsman's (`HelmOnWalkMap()` is for square-riggers only: Change view from the Helm view goes On
+deck, then Chase), she has no orders panel (`HasShipOrders()`: G stays wing-on-wing on a sloop), and her ways between
+decks are stairs and steps as well as ladders (`EWalkLink::Steps`, "E: take the steps down to the cabins").
+
+* **Map** (`Tools/shipkit/jclass/walk_bluebonnet.py <build dir> <out .walk> [--summary json]`, 5 cm cells): decks `Deck`
+  (her flush deck), `Cockpit` (the sole inside the coaming, 0.56 m down) and `Below` (every room's sole from
+  `interior_bluebonnet.json`, 0.4 m to 2.1 m under the deck). Two rays per column, merged, so a plank seam under a
+  doorway doesn't read as a hole. Ways: `Companionway` (the crew's ladder forward of the mast), `Doghouse` (the owner's
+  stairs aft into the saloon), `Cockpit` (one step over the after coaming). `Helm` stands at her wheel.
+* **Doors open**: the build draws her companionway and doghouse shut. `entrances.py` (`open_entrances`, called by
+  `export_game.py` and the map script) hooks both pairs of door leaves back 170 deg and runs the slides forward,
+  finding each piece by its loose part where `game_bluebonnet.json` "entrances" says, so a moved door stops the export.
+* **Below**: `SM_Bluebonnet_Below` (her cabins: structure, joinery, fittings, canvas, upholstery; about 630k triangles,
+  six library slots) is exported to `Decks/` and imported by `scripts/import_boats.py bluebonnet` (`meta["decks"]`);
+  `DeckMeshPath` maps the `Below` deck to it. From outside nothing below is loaded.
+* **Not yet**: her forehatch and sail hatches stay shut, so the sail locker and the heads forward of about 10 m are
+  out of reach; below-deck light is the boat's own (check on the PC stills).

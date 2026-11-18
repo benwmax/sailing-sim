@@ -631,6 +631,11 @@ public:
 	 * decks below load as you go down to them. Her Helm view is you standing at the wheel (the map's Helm spot).
 	 */
 	bool CanWalk() const { return WalkMap.IsLoaded(); }
+	/** A square-rigger's Helm view is you standing at her wheel on the map, and she has the orders panel (G, the pad's X).
+	 *  A yacht with a walk map (Bluebonnet, docs/ship-walk/) keeps her seated helm view and her keys (G is wing on wing on
+	 *  a sloop): only On deck walks her. */
+	bool HelmOnWalkMap() const { return CanWalk() && Boat.GetConfig().HasSquareRig(); }
+	bool HasShipOrders() const { return HelmOnWalkMap(); }
 	bool IsWalking() const { return bWalking; }
 	void SetWalking(bool bOn, bool bAnnounce = true);
 	const Sailing::FWalkMap& GetWalkMap() const { return WalkMap; }

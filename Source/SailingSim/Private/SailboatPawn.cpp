@@ -1503,9 +1503,10 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
-	if (bCockpit && CanWalk() && !bTrafficBoat)
+	if (bCockpit && CanWalk() && !bTrafficBoat && (bWalking || HelmOnWalkMap()))
 	{
-		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her.
+		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her. A yacht's helm view
+		// is her own cockpit view (below), and On deck walks.
 		UpdateWalk(DeltaSeconds);
 		UpdateWalkCamera(DeltaSeconds);
 	}
@@ -2113,9 +2114,9 @@ void ASailboatPawn::ApplyMappingContexts()
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(MappingContext, 0);
 	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
-	if (CanWalk() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
+	if (HasShipOrders() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
 	if (bWalking && !bPhoto && WalkContext) Subsystem->AddMappingContext(WalkContext, WalkContextPriority);
-	if (ShipOrders.IsOpen() && CanWalk() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
+	if (ShipOrders.IsOpen() && HasShipOrders() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
 }
 
 void ASailboatPawn::RebuildMappings()
@@ -4676,7 +4677,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
-	if (CanWalk() && OnOrdersButton(Action)) return;
+	if (HasShipOrders() && OnOrdersButton(Action)) return;
 	if (bWalking && OnWalkButton(Action)) return;
 	if (bWatching)
 	{
