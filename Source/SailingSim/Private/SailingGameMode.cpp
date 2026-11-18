@@ -511,14 +511,20 @@ bool ASailingGameMode::GetLaunchSpot(FLaunchSpot& Out) const
 	if (Lake.LaunchSpots.Num() == 0) return false;
 	Out = Lake.LaunchSpots[FMath::Clamp(USailingSettings::Get()->LaunchSpot, 0, Lake.LaunchSpots.Num() - 1)];
 	// docs/jclass-14/: a boat whose keel the spot is too shallow for (Bluebonnet at a Galveston marina, from a saved session
-	// or a lesson's spot) starts at the world's deepest spot instead; the Boat screen won't offer it there.
+	// or a lesson's spot), or too big for the room it has (the frigate off a marina, docs/frigate-physics/), starts at the
+	// world's deepest spot she fits instead; the Boat screen won't offer it there.
 	const int32 KeelBoat = USailingSettings::Get()->BoatType;
-	if (Out.DepthM >= 0.0 && KeelBoat >= 0 && KeelBoat < int32(Sailing::EBoatType::Count))
+	if (KeelBoat >= 0 && KeelBoat < int32(Sailing::EBoatType::Count))
 	{
-		const double Draft = Sailing::FBoatConfig::Make(Sailing::EBoatType(KeelBoat)).Draft;
-		if (!LaunchSpotFits(Out.DepthM, Draft))
+		const Sailing::FBoatConfig Cfg = Sailing::FBoatConfig::Make(Sailing::EBoatType(KeelBoat));
+		auto Fits = [&](const FLaunchSpot& S) { return LaunchSpotFits(S.DepthM, Cfg.Draft, S.ClearM, Cfg.LengthOverall); };
+		if (!Fits(Out))
 		{
-			for (const FLaunchSpot& Deep : Lake.LaunchSpots) if (Deep.DepthM > Out.DepthM) Out = Deep;
+			const FLaunchSpot* Best = nullptr;
+			for (const FLaunchSpot& S : Lake.LaunchSpots) if (Fits(S) && (!Best || S.DepthM > Best->DepthM)) Best = &S;
+			// (None fits: the deepest, as before.)
+			if (!Best) for (const FLaunchSpot& S : Lake.LaunchSpots) if (!Best || S.DepthM > Best->DepthM) Best = &S;
+			if (Best) Out = *Best;
 		}
 	}
 	return true;
