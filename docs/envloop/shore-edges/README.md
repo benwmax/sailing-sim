@@ -121,6 +121,11 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   world position (as `make_materials.node()` does), or D3D SM6 refuses the Add and every piece draws the default checker
   while Metal may still compile it. `M_ShoreEdge` carries `used_with_nanite` and `used_with_instanced_static_meshes`.
   `scripts/make-shore-edges.sh --material-only` rebuilds the material and the marks in place without Blender or the FBX import.
+- **Straight walls, caps at the lawn (Nov 18, after the first in-game stills).** The lidar waterline zigzags by the metre,
+  so 2 m pieces laid along it stood at angles with gaps between, and the lidar's step (the real bulkhead) left the lawn
+  hanging over a wall built at the pool. `LotWallLine` (`HouseKit.cpp`) fits one straight line per lot in pieces of at most
+  4 m; `LotWallLift` raises the run (up to 0.6 m) so the cap meets the median lawn height 2 m behind; the house tile pours a
+  concrete fill from behind the bulkhead's cap up to the lawn, as its old wall had.
 - **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
   import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its
   open back to the lake, seen from the water as black wedges.)

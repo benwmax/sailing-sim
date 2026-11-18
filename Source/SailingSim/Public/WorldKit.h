@@ -152,10 +152,11 @@ SAILINGSIM_API void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<in
  *  z = 0 the pool). */
 struct FShoreEdgeRun
 {
-	TArray<FVector2D> Points;   // the waterline, map metres, about every 2 m
+	TArray<FVector2D> Points;   // the wall's line, map metres: straight along the lot, a point every 4 m at most
 	FVector2D Water;            // which side the water is
 	FName Type;                 // bulkhead, limestone, timber (riprap stays in the house tile)
 	uint32 Seed = 0;
+	double Lift = 0.0;          // m above the pool the pieces stand, so the cap meets the lawn (HouseKit's LotWallLift)
 };
 /** The kit bank a developed lot gets by its seed, the region pack's rule: bulkhead, riprap, limestone, timber, or None (natural). */
 /** Whether a world gets the kit shore edges (an inland lake: the pack is north-texas-lake); a coast keeps the tile's bank. */

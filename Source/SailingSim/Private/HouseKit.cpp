@@ -233,6 +233,43 @@ namespace
 		}
 		return Lot;
 	}
+
+	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is: the waterline's samples fitted by a line along the
+	 *  lot at their mean distance out, from the first to the last, in pieces of at most 4 m (the lidar waterline zigzags by
+	 *  the metre and pieces laid along it stood at angles to each other with gaps between). The house tile (the fill behind
+	 *  the cap) and ALakeTerrainActor::PlaceShoreEdges (the pieces) both take it, so they meet. */
+	void LotWallLine(const FLotShore& Lot, const FVector2D& Ctr, TArray<FVector2D>& Out)
+	{
+		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max(), D = 0.0;
+		for (const FVector2D& P : Lot.Line)
+		{
+			const FVector2D R = P - Ctr;
+			const double S = FVector2D::DotProduct(R, Lot.Across);
+			S0 = FMath::Min(S0, S);
+			S1 = FMath::Max(S1, S);
+			D += FVector2D::DotProduct(R, Lot.Water);
+		}
+		D /= double(Lot.Line.Num());
+		const double Len = S1 - S0;
+		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 4.0 - 1e-6));
+		for (int32 I = 0; I <= N; ++I) Out.Add(Ctr + Lot.Across * (S0 + Len * I / N) + Lot.Water * D);
+	}
+
+	/** The top of each kit wall above the pool (Tools/envloop/shore-edges/edge_kit.py: the bulkhead's face and cap, the
+	 *  limestone's three courses, the timber's top board). */
+	double KitWallTop(FName Type) { return Type == TEXT("bulkhead") ? 0.9 : Type == TEXT("limestone") ? 0.6 : 0.7; }
+
+	/** How far above the pool a lot's wall stands so its cap meets the lawn: the lidar kept the real bulkhead as a step, so
+	 *  the lawn two metres behind the waterline sits above a wall built at the pool and hung over it. The lift is the median
+	 *  lawn height less the wall's top, at most 0.6 m (the pieces' toes reach 1.3 m and more below the pool). */
+	double LotWallLift(const Sailing::FLakeTerrain& Terr, const TArray<FVector2D>& Line, const FVector2D& Water, FName Type)
+	{
+		TArray<double, TInlineAllocator<16>> H;
+		for (const FVector2D& P : Line) H.Add(Terr.HeightAt(P.X - Water.X * 2.0, P.Y - Water.Y * 2.0));
+		if (H.Num() == 0) return 0.0;
+		H.Sort();
+		return FMath::Clamp(H[H.Num() / 2] - KitWallTop(Type), 0.0, 0.6);
+	}
 }
 
 FName LotBankType(uint32 K)
@@ -273,7 +310,8 @@ void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out)
 		Run.Type = Bank;
 		Run.Seed = HouseHash(K, 59);
 		Run.Water = Lot.Water;
-		Run.Points.Append(Lot.Line.GetData(), Lot.Line.Num());
+		LotWallLine(Lot, FVector2D(H.X, H.Y), Run.Points);
+		Run.Lift = LotWallLift(Terr, Run.Points, Lot.Water, Bank);
 		Out.Add(MoveTemp(Run));
 	}
 }
@@ -796,6 +834,22 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 					Up(Rip, FVector(A + N * I0, Z0), FVector(B + N * I0, Z0), FVector(B + N * I1, Z1), FVector(A + N * I1, Z1));
 					Rip.Span(A + N * (I1 + 0.15), B + N * (I1 + 0.15), 0.4f, float(Z1 - 0.12), float(Z1 + 0.08));
 				}
+			}
+		}
+		if (!bTileWall && Bank == TEXT("bulkhead"))
+		{
+			// The kit bulkhead's fill: concrete from behind its cap up to the lawn two metres back, along the same straight line
+			// and at the same lift as the pieces, so the lidar's step doesn't hang over the cap as bare ground.
+			TArray<FVector2D> WL;
+			LotWallLine(Lot, Ctr, WL);
+			const double Zc = KitWallTop(Bank) + LotWallLift(Terr, WL, Water, Bank);
+			for (int32 I = 0; I + 1 < WL.Num(); ++I)
+			{
+				const FVector2D A = WL[I], B = WL[I + 1];
+				FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
+				if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
+				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
+				Up(Conc, FVector(A - N * 0.25, Zc), FVector(B - N * 0.25, Zc), FVector(B - N * 2.0, FMath::Max(ZB, Zc + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Zc + 0.05)));
 			}
 		}
 		// A boathouse on a third of the banked lots with water deep enough a few metres out, and none of the map's own docks

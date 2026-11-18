@@ -1363,8 +1363,8 @@ void ALakeTerrainActor::PlaceShoreEdges()
 	TMap<FName, TArray<TArray<FTransform>>> Out;   // by type, then variant
 	int32 Walls = 0, Natural = 0;
 	// A piece from A to B with the land on the side away from Water: x along the shore (stretched to the segment), +y toward
-	// the land (the kit's frame), at the pool datum (the walls stand on the bank whatever the lake does).
-	auto Lay = [&](FName Type, FVector2D A, FVector2D B, const FVector2D& Water, uint32 Seed)
+	// the land (the kit's frame), at the pool datum plus a lot wall's Lift (the walls stand on the bank whatever the lake does).
+	auto Lay = [&](FName Type, FVector2D A, FVector2D B, const FVector2D& Water, uint32 Seed, double Lift)
 	{
 		const TArray<UStaticMesh*>* List = Meshes.Find(Type);
 		if (!List || List->Num() == 0) return;
@@ -1377,16 +1377,16 @@ void ALakeTerrainActor::PlaceShoreEdges()
 		TArray<TArray<FTransform>>& Lists = Out.FindOrAdd(Type);
 		Lists.SetNum(List->Num());
 		Lists[Hash(Seed) % List->Num()].Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(T.Y, T.X))), 0.f),
-			FVector(Mid.X, Mid.Y, 0.0) * CmPerMeter, FVector(float(L / PieceM), 1.f, 1.f)));
+			FVector(Mid.X, Mid.Y, Lift) * CmPerMeter, FVector(float(L / PieceM), 1.f, 1.f)));
 	};
-	// 1. The developed lots' walls, along the waterline the house kit found (the same line its riprap steps down).
+	// 1. The developed lots' walls: straight along each lot (HouseKit's LotWallLine), lifted so the cap meets the lawn (Lift).
 	TArray<FShoreEdgeRun> Runs;
 	ShoreEdgeRuns(*Lake, Runs);
 	for (const FShoreEdgeRun& Run : Runs)
 	{
 		for (int32 I = 0; I + 1 < Run.Points.Num(); ++I)
 		{
-			Lay(Run.Type, Run.Points[I], Run.Points[I + 1], Run.Water, Run.Seed + 7919u * I);
+			Lay(Run.Type, Run.Points[I], Run.Points[I + 1], Run.Water, Run.Seed + 7919u * I, Run.Lift);
 			++Walls;
 		}
 	}
@@ -1434,7 +1434,7 @@ void ALakeTerrainActor::PlaceShoreEdges()
 			const double Shift = FMath::Clamp((H - 0.0) / Slope, -1.5 * T.GetCell(), 1.5 * T.GetCell());
 			const FVector2D P(X + Water.X * Shift, Y + Water.Y * Shift);
 			const FVector2D Along(-Water.Y, Water.X);
-			Lay(Type, P - Along * 0.5 * PieceM, P + Along * 0.5 * PieceM, Water, Hh);
+			Lay(Type, P - Along * 0.5 * PieceM, P + Along * 0.5 * PieceM, Water, Hh, 0.0);
 			++Natural;
 		}
 	}
