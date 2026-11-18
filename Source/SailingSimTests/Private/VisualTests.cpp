@@ -19,6 +19,7 @@
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
+#include "Engine/Texture.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "MeshDescription.h"
@@ -1178,6 +1179,127 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Hero deck takes Age (unset by default)"), Deck->GetScalarParameterValue(TEXT("Age"), Age) && Age < 0.f);
 	TestTrue(TEXT("Hero deck takes Care"), Deck->GetScalarParameterValue(TEXT("Care"), Care));
 	TestTrue(TEXT("Hero deck takes Wear"), Deck->GetVectorParameterValue(TEXT("Wear"), Wear));
+	return true;
+}
+
+// J-Class 15 (docs/jclass-15): Bluebonnet's own surfaces in the boat library. MI_Boat_CastBronze (kind 16) and MI_Boat_Manila
+// (kind 17) carry her maps as their own detail pair (make_materials.py BOAT_OWN_MAPS), MI_Boat_VarnishedTeak is varnished
+// wood (kind 6, the shared varnish map); the shared parent and every other slot keep the stand-ins, so no other boat loads
+// her maps; M_SailCloth takes the cotton switch and weave the pawn sets on her sails; MI_Boat_LaidTeak (kind 18) draws her
+// laid deck from the deck's own UV maps. Skipped (with a warning) before the content is rebuilt.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJClassMaterialsTest, "SailingSim.Visual.JClassMaterials", VisualFlags)
+bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
+{
+	auto LoadMi = [](const TCHAR* Slot)
+	{
+		return LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), Slot, Slot), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	};
+	if (!LoadMi(TEXT("CastBronze")))
+	{
+		AddWarning(TEXT("No MI_Boat_CastBronze: run import_boat_detail.py, then make_materials.py (build_boat_library, build_sail_cloth)"));
+		return true;
+	}
+	const struct { const TCHAR* Slot; int32 Kind; const TCHAR* Own; } Slots[] = {
+		{ TEXT("CastBronze"), 16, TEXT("T_JClass_CastBronze") }, { TEXT("Manila"), 17, TEXT("T_JClass_Manila") }, { TEXT("VarnishedTeak"), 6, nullptr } };
+	for (const auto& S : Slots)
+	{
+		const UMaterialInterface* Mi = LoadMi(S.Slot);
+		if (!TestNotNull(FString::Printf(TEXT("MI_Boat_%s"), S.Slot), Mi)) continue;
+		float Surface = -1.f;
+		TestTrue(FString::Printf(TEXT("MI_Boat_%s has Surface"), S.Slot), Mi->GetScalarParameterValue(TEXT("Surface"), Surface));
+		TestEqual(FString::Printf(TEXT("MI_Boat_%s kind"), S.Slot), FMath::RoundToInt(Surface), S.Kind);
+		const TPair<const TCHAR*, const TCHAR*> Params[] = { { TEXT("OwnDetailN"), TEXT("N") }, { TEXT("OwnDetailM"), TEXT("M") } };
+		for (const TPair<const TCHAR*, const TCHAR*>& P : Params)
+		{
+			const TCHAR* Suffix = P.Value;
+			UTexture* Tex = nullptr;
+			TestTrue(FString::Printf(TEXT("MI_Boat_%s has OwnDetail%s"), S.Slot, Suffix), Mi->GetTextureParameterValue(P.Key, Tex));
+			const bool bHers = Tex && Tex->GetName().StartsWith(TEXT("T_JClass_"));
+			if (S.Own) TestEqual(FString::Printf(TEXT("MI_Boat_%s's own %s map"), S.Slot, Suffix), Tex ? Tex->GetName() : FString(), FString::Printf(TEXT("%s_%s"), S.Own, Suffix));
+			else TestFalse(FString::Printf(TEXT("MI_Boat_%s has no J-Class map"), S.Slot), bHers);
+		}
+	}
+	// No other slot (the J/22's, the fleet's) carries her maps.
+	if (const UMaterialInterface* Topsides = LoadMi(TEXT("Topsides")))
+	{
+		UTexture* Tex = nullptr;
+		Topsides->GetTextureParameterValue(TEXT("OwnDetailN"), Tex);
+		TestFalse(TEXT("MI_Boat_Topsides keeps the stand-in"), Tex && Tex->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	const UMaterialInterface* Sail = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/MI_Sail_Main.MI_Sail_Main"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (TestNotNull(TEXT("MI_Sail_Main"), Sail))
+	{
+		float Cloth = -1.f;
+		UTexture* Weave = nullptr;
+		TestTrue(TEXT("M_SailCloth has Cloth (0 by default)"), Sail->GetScalarParameterValue(TEXT("Cloth"), Cloth) && Cloth == 0.f);
+		TestTrue(TEXT("M_SailCloth has ClothN"), Sail->GetTextureParameterValue(TEXT("ClothN"), Weave));
+		TestFalse(TEXT("MI_Sail_Main keeps the stand-in weave"), Weave && Weave->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	for (const TCHAR* Name : { TEXT("T_JClass_Cotton_N"), TEXT("T_JClass_Cotton_M") })
+	{
+		TestNotNull(Name, LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/Boats/Detail/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	}
+	// Her laid deck (kind 18): MI_Boat_LaidTeak carries deck_bluebonnet.json's planking (LaidA: pitch, seam, plank length,
+	// half the king plank), and her hull draws it with the deck's maps (UV2, UV3: four UV sets, export_game.py).
+	const UMaterialInterface* Laid = LoadMi(TEXT("LaidTeak"));
+	if (!Laid)
+	{
+		AddWarning(TEXT("No MI_Boat_LaidTeak: run make_materials.py (build_boat_library)"));
+		return true;
+	}
+	float LaidKind = -1.f;
+	TestTrue(TEXT("MI_Boat_LaidTeak has Surface"), Laid->GetScalarParameterValue(TEXT("Surface"), LaidKind));
+	TestEqual(TEXT("MI_Boat_LaidTeak kind"), FMath::RoundToInt(LaidKind), 18);
+	FString DeckText;
+	TSharedPtr<FJsonObject> DeckJson;
+	if (TestTrue(TEXT("deck_bluebonnet.json reads"), FFileHelper::LoadFileToString(DeckText, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/shipkit/jclass/deck_bluebonnet.json")))
+		&& FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(DeckText), DeckJson) && DeckJson.IsValid()))
+	{
+		const TSharedPtr<FJsonObject> Planking = DeckJson->GetObjectField(TEXT("deck"))->GetObjectField(TEXT("planking"));
+		FLinearColor LaidA = FLinearColor::Black;
+		TestTrue(TEXT("MI_Boat_LaidTeak has LaidA"), Laid->GetVectorParameterValue(TEXT("LaidA"), LaidA));
+		TestTrue(TEXT("LaidA's plank pitch"), FMath::IsNearlyEqual(LaidA.R, float(Planking->GetNumberField(TEXT("pitch"))), 1e-5f));
+		TestTrue(TEXT("LaidA's seam"), FMath::IsNearlyEqual(LaidA.G, float(Planking->GetNumberField(TEXT("seam"))), 1e-5f));
+		TestTrue(TEXT("LaidA's plank length"), FMath::IsNearlyEqual(LaidA.B, float(Planking->GetNumberField(TEXT("plank_length"))), 1e-4f));
+		TestTrue(TEXT("LaidA's half king plank"), FMath::IsNearlyEqual(LaidA.A, float(Planking->GetNumberField(TEXT("king_plank")) / 2.0), 1e-5f));
+	}
+	const UStaticMesh* Hull = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull.SM_Bluebonnet_Hull"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	const int32 LaidSlot = Hull ? Hull->GetMaterialIndex(TEXT("LaidTeak")) : INDEX_NONE;
+	if (LaidSlot == INDEX_NONE)
+	{
+		AddWarning(TEXT("SM_Bluebonnet_Hull has no LaidTeak slot yet: re-export her (export_game.py) and reimport (import_boats.py bluebonnet)"));
+		return true;
+	}
+	TestEqual(TEXT("SM_Bluebonnet_Hull's deck wears MI_Boat_LaidTeak"), Hull->GetMaterial(LaidSlot) ? Hull->GetMaterial(LaidSlot)->GetName() : FString(), FString(TEXT("MI_Boat_LaidTeak")));
+	TestTrue(TEXT("SM_Bluebonnet_Hull carries the deck's maps (4 UV sets)"), Hull->GetNumUVChannels(0) >= 4);
+#if WITH_EDITORONLY_DATA
+	// The maps' numbers as the material reads them: the FBX import flips V, so export_game.py writes 1 - v. YM (UV3.y, |y| of
+	// the covering board's inner edge, or 99 where there is none) dips a little below zero only at the stem, where the half
+	// breadth runs out under the board's width; read flipped (1 - YM) every 99 was -98, and the whole deck drew as one
+	// covering board (the PC stills at 63c2b4cc; deck.py's min is about -0.35).
+	if (const FMeshDescription* MD = const_cast<UStaticMesh*>(Hull)->GetMeshDescription(0); MD && Hull->GetNumUVChannels(0) >= 4)
+	{
+		FStaticMeshConstAttributes Attr(*MD);
+		const TPolygonGroupAttributesConstRef<FName> SlotNames = Attr.GetPolygonGroupMaterialSlotNames();
+		const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
+		float MinYM = 1e9f, MaxYs = -1e9f, MinYs = 1e9f;
+		int32 Count = 0;
+		for (const FTriangleID T : MD->Triangles().GetElementIDs())
+		{
+			if (SlotNames[MD->GetTrianglePolygonGroup(T)] != FName(TEXT("LaidTeak"))) continue;
+			for (const FVertexInstanceID V : MD->GetTriangleVertexInstances(T))
+			{
+				MinYM = FMath::Min(MinYM, UVs.Get(V, 3).Y);
+				MinYs = FMath::Min(MinYs, UVs.Get(V, 2).Y);
+				MaxYs = FMath::Max(MaxYs, UVs.Get(V, 2).Y);
+				++Count;
+			}
+		}
+		TestTrue(TEXT("SM_Bluebonnet_Hull has laid deck faces"), Count > 0);
+		TestTrue(FString::Printf(TEXT("the laid deck's YM is over -2 m (min %.3f: -98 is the import's V flip)"), MinYM), MinYM > -2.f);
+		TestTrue(FString::Printf(TEXT("the laid deck's Ys spans both sides of the king plank (%.2f .. %.2f m)"), MinYs, MaxYs), MinYs < -1.f && MaxYs > 1.f);
+	}
+#endif
 	return true;
 }
 
