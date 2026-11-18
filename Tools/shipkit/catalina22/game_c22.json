@@ -28,7 +28,7 @@
       ]
     },
     "SM_C22Hero_Keel": {
-      "note": "The swing keel down, about its pin (KeelPin, keel_c22.json keel.pivot). The game turns it aft about the pin as the physics raises it (FFoilDef::SwingAt: the angle between its foot at the Board and its foot down, seen from the pin), so the plate seen is the one the physics sails on. Nanite.",
+      "note": "The swing keel down, about its pin (KeelPin, keel_c22.json keel.pivot). The game turns it aft about the pin as the physics raises it (ASailboatPawn::KeelSwingTurn: the turn of its iron's centroid about the pin, from FFoilDef::SwingAt), so the plate seen is the one the physics sails on. Nanite.",
       "pivot": "KeelPin",
       "objects": [
         "C22_Keel"
