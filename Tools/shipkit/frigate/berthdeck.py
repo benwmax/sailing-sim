@@ -1049,36 +1049,24 @@ class BerthDeck(GunDeck):
         return zt
 
     def orlop_top(self, x):
-        """the orlop's top under this deck (openings orlop_below_in under this deck's top, so it keeps her sheer: the
-        line the orlop slice's deck is built to, berth_deck.json ladders_down)"""
-        return np.asarray(self.zg(x), float) - self.c["openings"]["orlop_below_in"] * IN
+        """the orlop's top under this deck: an orlop platform's level where one stands at x (orlop_levels, the orlop
+        slice's platform_levels: [(x0, x1, z)], laid level fore and aft), else openings orlop_below_in under this
+        deck's top (keeping her sheer): where berth_deck.json's ladders_down land"""
+        x = np.asarray(x, float)
+        z = np.asarray(self.zg(x), float) - self.c["openings"]["orlop_below_in"] * IN
+        for x0, x1, zp in getattr(self, "orlop_levels", []):
+            z = np.where((x >= x0) & (x <= x1), zp, z)
+        return z
 
     def well(self, part, v):
-        """the well under an opening down to the orlop's top (orlop_top), its sides lined (1 in, dim) under the coaming
-        and its floor across on that line: a stand-in the orlop slice's deck and hatches replace; returns the floor's
-        top as a function of x"""
-        th = self.c["deck"]["thick_in"] * IN
-        x0, y0, L, W = v["x"], v.get("y", 0.0), v["L"], v["W"]
-        t = 1.0 * IN
-        zf = lambda x: float(self.orlop_top(x))          # noqa: E731
-        zb = lambda x: float(self.zg(x)) - th - 0.01     # noqa: E731
-        xs = [x0 - L / 2 - t, x0 - L / 2, x0 + L / 2, x0 + L / 2 + t]
-        ys = [y0 - W / 2 - t, y0 - W / 2, y0 + W / 2, y0 + W / 2 + t]
-        for xa, xb_ in ((xs[0], xs[1]), (xs[2], xs[3])):
-            rings = [np.array([[x, ys[0], zf(x)], [x, ys[3], zf(x)], [x, ys[3], zb(x)], [x, ys[0], zb(x)]])
-                     for x in (xa, xb_)]
-            solid(part, rings, "Dim")
-        for ya, yb in ((ys[0], ys[1]), (ys[2], ys[3])):
-            rings = [np.array([[x, ya, zf(x)], [x, yb, zf(x)], [x, yb, zb(x)], [x, ya, zb(x)]]) for x in (xs[1], xs[2])]
-            solid(part, rings, "Dim")
-        rings = [np.array([[x, ys[0], zf(x) - 3.0 * IN], [x, ys[3], zf(x) - 3.0 * IN], [x, ys[3], zf(x)], [x, ys[0], zf(x)]])
-                 for x in (xs[0], xs[3])]
-        solid(part, rings, "Deck")
-        return zf
+        """the orlop's top under an opening (orlop_top) as a function of x, where its ladder lands: no well is built (the
+        orlop slice's overhead and platforms show under the opening)"""
+        return lambda x: float(self.orlop_top(x))          # noqa: E731
 
     def hatchways(self, part, wells, ladders):
         """each opening's coaming, its grating (deck.Deck.grating) or its ladder down to the orlop (hung from the inside
-        face of the coaming at the end it leaves from, going the way the opening's 'goes' says), and its well"""
+        face of the coaming at the end it leaves from, going the way the opening's 'goes' says, its foot on the orlop's
+        top: orlop_top)"""
         lc = self.c["ladders"]
         self.ladder_info = []
         for k, v in self.items.items():
@@ -1153,7 +1141,8 @@ class BerthDeck(GunDeck):
 
     def cable_scuttles(self, part, wells):
         """the cables' scuttles in these planks straight under the gun deck's: a lead collar round each, its lining down
-        the hole and a short dark well under it (through scuttle_well_ft: the cable tiers are the orlop slice's)"""
+        the hole and on scuttle_well_ft under it (as far as the gun deck leads the cable, GunDeck.cable_course), closed
+        dark at its foot (the cable tiers are the orlop slice's)"""
         th = self.c["through"]
         xs, ys = self.scuttles()
         r = th["scuttle_in"] / 2 * IN
@@ -1164,10 +1153,8 @@ class BerthDeck(GunDeck):
             k0 = len(part.V)
             ring_band(part, c, EZ, EX, ct / 2 - 0.02 * IN, r, ct, cw, "Lead", 32)
             revolve(part, c - EZ * wd, EZ, EX, [(0.0, r - 0.25 * IN), (wd, r - 0.25 * IN)], "Lead", 32, want_out=False)
-            k1 = len(wells.V)
-            disc(wells, c - EZ * wd, EZ, r, "Shadow", 24)
+            disc(part, c - EZ * wd, EZ, r - 0.25 * IN, "Shadow", 24)
             self.drape(part, k0, float(c[2]))
-            self.drape(wells, k1, float(c[2]))
 
     # --- the rooms ------------------------------------------------------------------------------------------------------
     def over_boxes(self):
@@ -2128,7 +2115,7 @@ class BerthDeck(GunDeck):
         through the gun deck; then the stanchions where they stand clear, and the room between the fittings"""
         self.layout()
         names = ("BerthDeck", "BerthWaterways", "BerthCeiling", "BerthOverhead", "BerthClamps", "BerthChocks",
-                 "BerthHangingKnees", "BerthLodgingKnees", "BerthStanchions", "BerthHatchways", "BerthWells", "BerthLadders",
+                 "BerthHangingKnees", "BerthLodgingKnees", "BerthStanchions", "BerthHatchways", "BerthLadders",
                  "BerthMastWedges", "BerthSpindle", "BerthBittPosts", "BerthPumpTubes", "BerthCableScuttles",
                  "BerthRooms", "BerthWardroom", "BerthSickBay", "BerthLanterns")
         P = {n: Part() for n in names}
@@ -2140,12 +2127,12 @@ class BerthDeck(GunDeck):
         self.ceiling(P["BerthCeiling"])
         self.chocks(P["BerthChocks"])
         self.lodging_knees(P["BerthLodgingKnees"])
-        self.hatchways(P["BerthHatchways"], P["BerthWells"], P["BerthLadders"])
+        self.hatchways(P["BerthHatchways"], None, P["BerthLadders"])
         self.mast_wedges(P["BerthMastWedges"])
         self.spindle(P["BerthSpindle"])
         self.bitt_posts(P["BerthBittPosts"])
         self.pump_trees(P["BerthPumpTubes"])
-        self.cable_scuttles(P["BerthCableScuttles"], P["BerthWells"])
+        self.cable_scuttles(P["BerthCableScuttles"], None)
         self.parts_ = P
         self.rooms(P["BerthRooms"])
         self.wardroom_furniture(P["BerthWardroom"])
