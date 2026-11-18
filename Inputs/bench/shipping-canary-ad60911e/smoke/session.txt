@@ -1,0 +1,38 @@
+Ready About: Sailing session log, 2026-11-18 06:12:08 UTC
+Build ad60911e, Nov 18 2026 canary, Shipping, engine 5.8.4-58902052+++UE5+Release-5.8, Windows 10.0.26100.1.256.64bit
+[+0.004] Lake Lake Ray Hubbard: 3277x5434 terrain, 35 docks, 0 decks, 0 moored boats, 40 bridges, 11719 buildings, 35165 houses, 5 launch spots, 0 navaids, 0 tide stations
+[+0.021] World streaming: RayHubbard, 15 tiles of 6.4 km over the whole grid (resident)
+[+0.562] Sea fetch map: 543 x 327 cells of 50 m, median depth 6.2 m, built in 541 ms
+[+0.573] Session: world ray-hubbard, spot 1, boat J22, mode free, weather ESailingWeather::AfternoonBreeze at 15.0 h (seed 2027), Realistic, Career; quality 3, 1920x1080 (window mode 2), RHI D3D12, GPU NVIDIA GeForce RTX 4090
+[+0.573] Quality 3: AA 4, screen 100%, VSM 1, ray tracing supported 1 enabled 1, Lumen HW 1, Substrate 1
+[+0.573] Sunset 17:24 local (day 322)
+[+0.823] Shelter map for wind from 180 built in 245 ms
+[+0.989] Trees: 271782 lidar crowns placed, 17044 canopy-map trees outside their band
+[+1.062] Trees: 3967 inside G2 houses removed
+[+1.125] Trees: 20353 young yard trees
+[+1.170] Trees: 305212 (Nanite models; leaf cards within 1000 m)
+[+1.824] Reeds: 70482 cattail, 16484 rush, 281546 bank grass, 3440 weed clumps and 77968 far strips (first at X=10542.049 Y=-4182.206 Z=0.103)
+[+2.364] Understory: 15084 crowns by the water; 29632 yaupon, 32250 dogwood, 32709 coralberry, 7086 saplings, 984 logs, 826 brush piles, 150 snags
+[+2.740] Houses: 35165 from the G2 footprints in 553 tiles (553 baked, 0 procedural)
+[+2.847] Buildings: 0 ranch, 0 two-storey, 0 blocks; 0 near the water modelled, 321 private docks
+[+2.848] Terrain instances: 553878 in 91 components: SM_Reeds_2 281546; SM_Reeds_4 77968; SM_Reeds_0 70482; SM_Shrub_3 32709; SM_Shrub_2 32250; SM_Shrub_1 19631; SM_Reeds_1 16484; SM_Shrub_0 10001; SM_Sapling_0 4017; SM_Reeds_3 3440; SM_Sapling_1 3069; SM_Deadfall_0 984;
+[+2.857] Water: tier 2, M_WaterV4
+[+3.062] Sound: sample pack, 14 loops and 23 one-shots
+[+3.062] Sound: 7 recorded samples in place of synth voices
+[+3.063] Sound: master limiter added by append (submix master; input +0.0 dB, output +0.0 dB, threshold -1.5 dB)
+[+3.518] Far lights: 0 lights (0 colours), 5443 shore sprites, 0 horizon ships on 0 lanes, 6 city domes
+[+3.552] Marina: 1146 dock kit instances in 9 meshes
+[+3.563] Marina Rush Creek Yacht Club: 3 rows, 122 slips (83 occupied), 2 buildings, 24 of 24 tiles baked, home slip rcyc.dock.b.n18
+[+3.585] Marina shore: 1334 pieces in 24 meshes (lake level offset 0.00 m)
+[+3.699] Riprap: 11640 boulders
+[+3.699] Bridges RayHubbard: 40 ways, 45922 quads in 93 tiles (93 baked), 88 lanes, 328 vehicles; shore 25060 quads in 19 tiles (19 baked)
+[+3.735] Night lights: 563 fixtures, a pool of 160
+[+3.736] SailingBench: measuring 60.0 s after 3.0 s warm-up
+[+4.399] Crew figures hidden (3)
+[+4.514] Trees: 423 components (407 tiles)
+[+4.598] Water: trees read the local wind (M_TreeBark)
+[+4.598] Water: trees read the local wind (M_TreeLeaves)
+[+4.598] Water: trees read the local wind (M_TreeCrown)
+[+6.879] Sky cache: first panorama in 0.99 s (8192x1024, 192 steps); live clouds now to 5.0 km
+[+12.341] World instances: 890776: LakeTerrainActor/SM_Reeds_2 281546; LakeTerrainActor/SM_Reeds_4 77968; LakeTerrainActor/SM_Reeds_0 70482; LakeTerrainActor/SM_PostOak_1_Far 41721; LakeTerrainActor/SM_PostOak_0_Far 41581; LakeTerrainActor/SM_Shrub_3 32709; LakeTerrainActor/SM_Shrub_2 32250; LakeTerrainActor/SM_LiveOak_1_Far 26867; LakeTerrainActor/SM_LiveOak_0_Far 26541; LakeTerrainActor/SM_CedarElm_1_Far 26160; LakeTerrainActor/SM_CedarElm_0_Far 25817; LakeTerrainActor/SM_Shrub_1 19631; LakeTerrainActor/SM_Sugarberry_0_Far 18491; LakeTerrainActor/SM_Sugarberry_1_Far 18481; LakeTerrainActor/SM_Reeds_1 16484; LakeTerrainActor/SM_BlackWillow_1_Far 15126;
+[+68.340] SailingBench result: {"frames":6627,"seconds":59.59,"avg_fps":111.2,"avg_ms":8.99,"p99_ms":13.58,"max_ms":22.83,"rhi":"D3D12","resolution":"1920x1080","quality":"Ultra","weather":"Afternoon breeze","hour":15.0,"cloth_cpu_ms":0.450,"wrinkle_cpu_ms":0.229,"water_cpu_ms":1.053,"windmap_cpu_ms":0.299,"farcap_cpu_ms":0.006,"farcap_slots":6084,"cannon_cpu_ms":0.000,"cannon_puffs":0,"world":{"streamed":false,"tiles_resident":15,"tile_mb":0.0,"tile_loads":0,"tile_drops":0,"loader_longest_ms":0.000,"recentres":0,"recentre_longest_ms":0.00,"window_marches":0,"chunks":4345,"chunks_made":4345,"chunks_dropped":0,"far_dropped":0,"boat_n":634,"boat_e":-493},"game_ms":7.27,"game_p99_ms":12.56,"render_ms":8.08,"rhi_ms":5.48,"gpu_frame_ms":8.00,"gt":{"boat_physics":0.184,"boat_visuals":2.677,"sails":0.924,"crew":0.213,"rig_lines":1.285,"telltales":0.028,"boat_sound":0.043,"boat_capture":0.000,"boat_learning":0.025,"water":1.362,"water_uploads":0.187,"terrain":0.168,"trees":0.002,"traffic":0.676,"traffic_step":0.621,"hud":0.005,"streaming":0.002},"easy":false,"heel_cap_deg":0.0,"max_heel_deg":0.0,"crude_tack":false,"tacked":false,"final_twa_deg":-24.2,"final_kn":4.04,"render_pct":100,"foreground":0.000,"mem_used_mb":3128,"mem_peak_mb":3522,"tex_mem_mb":3597}

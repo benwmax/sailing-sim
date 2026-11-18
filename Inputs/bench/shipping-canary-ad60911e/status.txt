@@ -1,0 +1,14 @@
+2026-11-18 00:03:03 C0 main tip ad60911e
+2026-11-18 00:03:17 C1 worktree at ad60911e; crew linked
+2026-11-18 00:06:15 C2 BUILD: Result: Succeeded; errors 0
+2026-11-18 00:06:15 C3 Sentry DSN staged, quoted: yes
+2026-11-18 00:10:01 C4 PACKAGE Shipping-ad60911e-canary exit 0, 4 min
+2026-11-18 00:10:02 C4 ini restored; git status Config/Content: 
+2026-11-18 00:10:02 C5 moved to Packaged\Shipping-ad60911e-canary (no zip)
+2026-11-18 00:10:02 C6 crew link removed (the link only)
+2026-11-18 00:10:05 C6 worktree removed: True; main checkout 40226d1c, dirty 0
+2026-11-18 00:10:05 Bean's Saved held
+2026-11-18 00:12:05 S warm: launcher exit 0, 120 s wall; stopped leftovers: 0; bench.json True; crashes 0
+2026-11-18 00:13:18 S smoke: launcher exit 0, 73 s wall; stopped leftovers: 0; bench.json True; crashes 0
+2026-11-18 00:13:21 Bean's Saved restored: profile B57AA3AF (want B57AA3AF), hold folder left False
+2026-11-18 00:13:21 CANARY DONE
