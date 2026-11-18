@@ -54,10 +54,15 @@ namespace Sailing
 		J22, Sunfish, ILCA7, Catalina22, Catalina30, Hobie16, Corsair880, Lagoon42,
 		Maxi, // the prologue's made-up 100 ft maxi (Tools/boats/maxi): in the catalogue only for the prologue for now
 		Bluebonnet, // the invented 1937 J-Class yacht (Tools/shipkit/jclass, docs/jclass-13): deep water only (4.5 m draft)
+		Commonwealth, // the invented 1797 frigate (Tools/shipkit/frigate, docs/frigate-physics): a square rig, deep water only (6.5 m draft)
 		Count
 	};
 
 	SAILINGPHYSICS_API const char* BoatTypeName(EBoatType Type);
+
+	/** A square-rigged ship (the frigate): her sails are yards and braces, not sheets (ShipSailPlans.h, ShipHandling.h).
+	 *  Per-type crew and visual code that assumes a fore-and-aft rig skips her until it learns hers. */
+	inline bool IsSquareRigged(EBoatType Type) { return Type == EBoatType::Commonwealth; }
 
 	/**
 	 * One hull's shape in the boat frame (origin at the design waterline, midships of the waterline; X fwd, Y stbd,

@@ -42,6 +42,10 @@ already on the boat named `SM_Frigate_<object>` (or its `_Light` twin) is used w
 transform moved by its spar's motion (a sail after its mirror), and only the sail's shown state is visible. A part is
 moved only when its transform changes, so still spars keep their cached shadows.
 
+Her crew: the pawn makes no small-boat crew figures for a square-rigged ship (`FBoatConfig::HasSquareRig`): placed along
+a cockpit, her company of 450 would be 450 figures in a line 250 m long. Her deck watch stands at its stations instead
+(to come).
+
 ## Known gaps
 
 - A square sail's `Set` turns rigidly with its own yard; braced, its clews part from the yard below by up to 0.7 m at

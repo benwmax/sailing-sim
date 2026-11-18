@@ -16,6 +16,7 @@
 #include "AutoTrim.h"
 #include "Waves.h"
 #include "ShipHandling.h"
+#include "ShipSailPlans.h"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -75,10 +76,10 @@ namespace
 
 	FBoatConfig Commonwealth()
 	{
-		// From the J/22's defaults like every boat of the fleet, as the maxi's type (a big wheel-steered ship: the type
-		// only names her here; the boat type comes with her Source step).
+		// From the J/22's defaults like every boat of the fleet, as Fleet.cpp's Commonwealth() builds her, but from the
+		// build dir's sheet (so a new sheet sails before it is copied into Source with physics.py --source).
 		FBoatConfig C;
-		C.Type = EBoatType::Maxi;
+		C.Type = EBoatType::Commonwealth;
 		ApplyCommonwealth(C);
 		return C;
 	}
@@ -140,139 +141,30 @@ namespace
 		}
 	}
 
-	// A frigate's sail plans, from all plain sail down: what her officers took in as the wind rose.
-	struct FPlan { const char* Name; bool bRoyals, bTopgallants; int TopsailReef; bool bCourses, bJib, bStaysails, bSpanker; };
-	const FPlan kPlans[] = {
-		{ "all plain sail", true, true, 0, true, true, true, true },
-		{ "royals in", false, true, 0, true, true, true, true },
-		{ "topgallants in", false, false, 0, true, true, true, true },
-		{ "single-reefed topsails", false, false, 1, true, true, false, true },
-		{ "double-reefed topsails", false, false, 2, true, true, false, true },
-		{ "close-reefed topsails, courses in", false, false, 4, false, false, false, true },
-	};
-	constexpr int kNumPlans = int(sizeof(kPlans) / sizeof(kPlans[0]));
+	// Her sail plans and steady sailing are the physics' own (ShipSailPlans.h), as the reference polar sails her.
+	using FRun = FShipSteadyResult;
 
-	void ApplyPlan(const FBoatConfig& C, const FPlan& P, FBoatControls& Ctl, bool bRunning)
-	{
-		for (int I = 0; I < int(C.Square.Sails.size()) && I < kMaxSquareSails; ++I)
-		{
-			const ESquareSailKind K = C.Square.Sails[I].Kind;
-			const bool bSet = K == ESquareSailKind::Royal ? P.bRoyals : K == ESquareSailKind::Topgallant ? P.bTopgallants
-				: K == ESquareSailKind::Course ? P.bCourses : true;
-			Ctl.SquareSet[I] = bSet ? ESailSet::Set : ESailSet::Clewed;
-			Ctl.SquareReef[I] = K == ESquareSailKind::Topsail ? (unsigned char)std::min<int>(P.TopsailReef, int(C.Square.Sails[I].ReefAreaFraction.size())) : 0;
-		}
-		// Before the wind the spanker is brailed up (it only blankets the main and makes her gripe).
-		Ctl.bMainDown = !P.bSpanker || bRunning;
-		Ctl.bJibDown = !P.bJib;
-		Ctl.bStaysailDown = !P.bStaysails;
-	}
-
-	struct FRun { FSteadyResult R; int Plan = 0; double Yard[kMaxMasts] = { 0, 0, 0 }; double Alpha[kMaxMasts] = { 0, 0, 0 }; };
-
-	FRun SailPlan(const FBoatConfig& C, double Tws, double Twa, int Plan, double Settle, double Average, bool bTrace = false)
-	{
-		FWindParams WindParams;
-		WindParams.SpeedKnots = Tws;
-		WindParams.FromDegrees = 0.0;
-		const FWindField Wind(WindParams);
-		FWaveField Waves(7);
-		FWaveParams WaveParams;
-		WaveParams.WindSpeedKnots = Tws;
-		WaveParams.FetchMeters = kPolarFetchMeters;
-		WaveParams.bCalibrationSea = true;
-		Waves.SetWind(WaveParams);
-		Waves.SnapToTarget();
-		FBoatModel Boat(C);
-		// Her speed at the start: about what the period's logs give, so the long settle is spent settling, not accelerating.
-		Boat.Reset(0.0, 0.0, -Twa * kDegToRad, std::min(0.45 * Tws, 11.0) * kKnot);
-		Boat.GetMutableState().WindwardSide = 1;
-		FAutopilot Pilot;
-		Pilot.TargetTWADeg = Twa;
-		FAutoTrim Trim;
-		Trim.Settings.bHands = false;
-		Trim.Settings.bHike = false;
-		FBoatControls Ctl;
-		Ctl.MainSheet = Ctl.JibSheet = Clamp(Twa / 180.0, 0.0, 1.0);
-		ApplyPlan(C, kPlans[Plan], Ctl, Twa > 155.0);
-		// The yards already braced for the course (the crew had them round before she bore away).
-		for (int M = 0; M < kMaxMasts; ++M) Ctl.Brace[M] = BraceForAlpha(C.Square, M, std::max(Twa - 15.0, 20.0) * kDegToRad, 20.0);
-		for (int I = 0; I < int(C.Square.Sails.size()); ++I)
-		{
-			Boat.GetMutableState().YardAngle[I] = YardAngleFor(C.Square, I, Ctl.Brace[C.Square.Sails[I].Mast]);
-			Boat.GetMutableState().SquareOut[I] = Ctl.SquareSet[I] == ESailSet::Set ? 1.0 : 0.0;
-		}
-		FRun Out;
-		Out.Plan = Plan;
-		const int SettleSteps = int(Settle * PhysicsHz), AverageSteps = int(Average * PhysicsHz);
-		double SumSq = 0.0;
-		for (int I = 0; I < SettleSteps + AverageSteps; ++I)
-		{
-			Ctl = Trim.Update(Boat, Ctl, PhysicsDt);
-			Ctl.Tiller = Pilot.Update(Boat);
-			Boat.Step(PhysicsDt, Ctl, Wind, &Waves);
-			const FBoatTelemetry& T = Boat.GetTelemetry();
-			const FBoatState& S = Boat.GetState();
-			if (bTrace && I % int(10.0 * PhysicsHz) == 0)
-			{
-				std::printf("t %4.0f  %5.2f kn  TWA %6.1f  AWA %5.1f  heel %5.1f  leeway %4.1f  rudder %+5.1f  drive %7.0f  heeling %8.0f  calm %7.0f  Fn %.3f  yards",
-					S.Time, T.BoatSpeed / kKnot, T.TrueWindAngle * kRadToDeg, T.ApparentWindAngle * kRadToDeg, T.Heel * kRadToDeg, T.Leeway * kRadToDeg,
-					T.RudderAngle * kRadToDeg, T.DriveForce, T.HeelingForce, T.CalmResistance, T.Froude);
-				for (int Q = 0; Q < T.NumSquareSails; ++Q)
-				{
-					const FSailStripState& St = T.SquareStrips[Q];
-					std::printf(" %s%.0f/%.0f", Q > 0 && C.Square.Sails[Q].Mast != C.Square.Sails[Q - 1].Mast ? "| " : "", S.YardAngle[Q] * kRadToDeg, St.AlphaN * kRadToDeg);
-				}
-				std::printf("\n");
-			}
-			if (I < SettleSteps) continue;
-			const double Speed = T.BoatSpeed / kKnot;
-			Out.R.BoatSpeedKnots += Speed;
-			SumSq += Speed * Speed;
-			Out.R.HeelDeg += std::fabs(T.Heel) * kRadToDeg;
-			Out.R.LeewayDeg += std::fabs(T.Leeway) * kRadToDeg;
-			Out.R.RudderDeg += -T.RudderAngle * kRadToDeg * (T.TrueWindAngle > 0.0 ? 1.0 : -1.0);
-			Out.R.HelmForceN += T.HelmForce;
-			Out.R.TrueWindAngleDeg += T.TrueWindAngle * kRadToDeg;
-			for (int M = 0; M < kMaxMasts; ++M)
-			{
-				const int L = C.Square.LowestOn(M);
-				if (L < 0) continue;
-				Out.Yard[M] += S.YardAngle[L] * kRadToDeg;
-				Out.Alpha[M] += T.SquareStrips[L].AlphaN * kRadToDeg;
-			}
-		}
-		const double N = AverageSteps;
-		Out.R.BoatSpeedKnots /= N;
-		Out.R.SpeedStdDev = std::sqrt(std::max(0.0, SumSq / N - Out.R.BoatSpeedKnots * Out.R.BoatSpeedKnots));
-		Out.R.HeelDeg /= N;
-		Out.R.LeewayDeg /= N;
-		Out.R.RudderDeg /= N;
-		Out.R.HelmForceN /= N;
-		Out.R.TrueWindAngleDeg /= N;
-		for (int M = 0; M < kMaxMasts; ++M) { Out.Yard[M] /= N; Out.Alpha[M] /= N; }
-		return Out;
-	}
-
-	// The heel her officers sailed her to: past it the light sails came in (physics_frigate.json's trim heel limit).
-	double HeelCap(const FBoatConfig& C) { return C.TrimHeelLimitDeg + 2.0; }
-
-	// The fastest plan she carries under the heel cap (the most canvas first; the light sails come in as she heels).
 	FRun Sail(const FBoatConfig& C, double Tws, double Twa, bool bQuick)
 	{
-		const double Settle = bQuick ? 120.0 : 180.0, Average = bQuick ? 20.0 : 40.0;
-		FRun Best;
-		bool bHave = false;
-		for (int P = 0; P < kNumPlans; ++P)
+		return SailShipSteady(C, Tws, Twa, bQuick ? 120.0 : 180.0, bQuick ? 20.0 : 40.0);
+	}
+
+	// Every 10 s of a --point run: her state and each square sail's yard and angle of attack.
+	void Trace(const FBoatConfig& C, const FBoatModel& Boat)
+	{
+		const FBoatTelemetry& T = Boat.GetTelemetry();
+		const FBoatState& S = Boat.GetState();
+		const int I = int(std::lround(S.Time * PhysicsHz)) - 1;
+		if (I % int(10.0 * PhysicsHz) != 0) return;
+		std::printf("t %4.0f  %5.2f kn  TWA %6.1f  AWA %5.1f  heel %5.1f  leeway %4.1f  rudder %+5.1f  drive %7.0f  heeling %8.0f  calm %7.0f  Fn %.3f  yards",
+			S.Time, T.BoatSpeed / kKnot, T.TrueWindAngle * kRadToDeg, T.ApparentWindAngle * kRadToDeg, T.Heel * kRadToDeg, T.Leeway * kRadToDeg,
+			T.RudderAngle * kRadToDeg, T.DriveForce, T.HeelingForce, T.CalmResistance, T.Froude);
+		for (int Q = 0; Q < T.NumSquareSails; ++Q)
 		{
-			const FRun R = SailPlan(C, Tws, Twa, P, Settle, Average);
-			const bool bOk = R.R.HeelDeg <= HeelCap(C);
-			if (bOk && (!bHave || R.R.BoatSpeedKnots > Best.R.BoatSpeedKnots)) { Best = R; bHave = true; }
-			if (!bHave && (P == 0 || R.R.HeelDeg < Best.R.HeelDeg)) Best = R;
-			// Each plan carries less canvas: once one is under the cap and slower than the best, the rest are slower still.
-			if (bHave && bOk && R.R.BoatSpeedKnots < Best.R.BoatSpeedKnots - 0.05) break;
+			const FSailStripState& St = T.SquareStrips[Q];
+			std::printf(" %s%.0f/%.0f", Q > 0 && C.Square.Sails[Q].Mast != C.Square.Sails[Q - 1].Mast ? "| " : "", S.YardAngle[Q] * kRadToDeg, St.AlphaN * kRadToDeg);
 		}
-		return Best;
+		std::printf("\n");
 	}
 
 	// docs/frigate-physics/: a manoeuvre by orders (ShipHandling.h) from close-hauled on the starboard tack, settled for
@@ -302,7 +194,7 @@ namespace
 		Trim.Settings.bHike = false;
 		FBoatControls Ctl;
 		Ctl.MainSheet = Ctl.JibSheet = Twa / 180.0;
-		ApplyPlan(C, kPlans[Plan], Ctl, false);
+		ApplyShipSailPlan(C, Plan, Ctl, false);
 		for (int M = 0; M < kMaxMasts; ++M) Ctl.Brace[M] = 1.0;
 		for (int I = 0; I < int(C.Square.Sails.size()); ++I)
 		{
@@ -312,7 +204,7 @@ namespace
 		FShipHandling H;
 		H.Settings = gHandling;
 		FManoeuvreResult Out;
-		const double Settle = 180.0, Limit = 900.0;
+		const double Settle = 180.0, Limit = 1500.0;
 		double SpeedSum = 0.0, Y0 = 0.0; int SpeedN = 0;
 		const Vec3 WindFrom(1.0, 0.0, 0.0); // the wind from the north (+X): to leeward is -X
 		bool bStarted = false;
@@ -416,10 +308,10 @@ int main(int Argc, char** Argv)
 	if (Argc > 4 && std::strcmp(Argv[2], "--point") == 0)
 	{
 		const int Plan = Argc > 5 ? std::atoi(Argv[5]) : 0;
-		const FRun R = SailPlan(C, std::atof(Argv[3]), std::atof(Argv[4]), Plan, 240.0, 40.0, true);
+		const FRun R = SailShipPlan(C, std::atof(Argv[3]), std::atof(Argv[4]), Plan, 240.0, 40.0, [&C](const FBoatModel& B) { Trace(C, B); });
 		std::printf("%s: %.2f kn at TWA %.1f, heel %.1f, leeway %.1f, rudder %+.1f; lower yards %.1f %.1f %.1f deg, alpha %.1f %.1f %.1f\n",
-			kPlans[Plan].Name, R.R.BoatSpeedKnots, R.R.TrueWindAngleDeg, R.R.HeelDeg, R.R.LeewayDeg, R.R.RudderDeg, R.Yard[0], R.Yard[1], R.Yard[2],
-			R.Alpha[0], R.Alpha[1], R.Alpha[2]);
+			ShipSailPlan(Plan).Name, R.R.BoatSpeedKnots, R.R.TrueWindAngleDeg, R.R.HeelDeg, R.R.LeewayDeg, R.R.RudderDeg, R.YardDeg[0], R.YardDeg[1], R.YardDeg[2],
+			R.AlphaDeg[0], R.AlphaDeg[1], R.AlphaDeg[2]);
 		return 0;
 	}
 	if (Argc > 3 && std::strcmp(Argv[2], "--astern") == 0)
@@ -456,7 +348,7 @@ int main(int Argc, char** Argv)
 		const int Seed = Argc > 6 ? std::atoi(Argv[6]) : 0;
 		const FManoeuvreResult R = SailManoeuvre(C, What, std::atof(Argv[4]), Plan, Seed, true);
 		std::printf("%s in %s kn under %s: head to wind %.0f s, through %.0f s, done %.0f s%s; %.2f kn before, %.2f at least, %.2f a minute after; "
-			"%.0f m to leeward\n", W.c_str(), Argv[4], kPlans[Plan].Name, R.ToWind, R.Through, R.Done, R.bMissed ? " (missed stays: wore)" : "",
+			"%.0f m to leeward\n", W.c_str(), Argv[4], ShipSailPlan(Plan).Name, R.ToWind, R.Through, R.Done, R.bMissed ? " (missed stays: wore)" : "",
 			R.SpeedBefore, R.MinSpeed, R.SpeedAfter, R.Leeward);
 		return 0;
 	}
@@ -530,7 +422,7 @@ int main(int Argc, char** Argv)
 	{
 		std::printf("TWS %4.1f TWA %5.1f: %5.2f kn (sailed at %5.1f, sd %.2f), heel %4.1f, leeway %4.1f, rudder %+5.1f (+ weather), lower yards %4.1f %4.1f %4.1f deg, "
 			"alpha %4.1f %4.1f %4.1f; %s\n", P.Tws, P.Twa, P.R.R.BoatSpeedKnots, P.R.R.TrueWindAngleDeg, P.R.R.SpeedStdDev, P.R.R.HeelDeg, P.R.R.LeewayDeg,
-			P.R.R.RudderDeg, P.R.Yard[0], P.R.Yard[1], P.R.Yard[2], P.R.Alpha[0], P.R.Alpha[1], P.R.Alpha[2], kPlans[P.R.Plan].Name);
+			P.R.R.RudderDeg, P.R.YardDeg[0], P.R.YardDeg[1], P.R.YardDeg[2], P.R.AlphaDeg[0], P.R.AlphaDeg[1], P.R.AlphaDeg[2], ShipSailPlan(P.R.Plan).Name);
 	};
 	const std::vector<FPoint> Points(Jobs.begin(), Jobs.begin() + NumGrid);
 	for (const FPoint& P : Points) Line(P);
@@ -550,7 +442,7 @@ int main(int Argc, char** Argv)
 		BestB.bAtEnd = BestB.Twa == kBeatFrom || BestB.Twa == kBeatTo;
 		BestR.bAtEnd = BestR.Twa == kRunFrom;
 		std::printf("TWS %4.1f: beat VMG %.2f kn at TWA %.0f (%.2f kn, heel %.1f, leeway %.1f, %s)%s; run VMG %.2f kn at TWA %.0f (%.2f kn)%s\n",
-			Tws, VB, BestB.R.R.TrueWindAngleDeg, BestB.R.R.BoatSpeedKnots, BestB.R.R.HeelDeg, BestB.R.R.LeewayDeg, kPlans[BestB.R.Plan].Name,
+			Tws, VB, BestB.R.R.TrueWindAngleDeg, BestB.R.R.BoatSpeedKnots, BestB.R.R.HeelDeg, BestB.R.R.LeewayDeg, ShipSailPlan(BestB.R.Plan).Name,
 			BestB.bAtEnd ? " AT THE SEARCH'S END" : "", VR, BestR.R.R.TrueWindAngleDeg, BestR.R.R.BoatSpeedKnots, BestR.bAtEnd ? " AT THE SEARCH'S END" : "");
 		Beat.push_back(BestB);
 		Run.push_back(BestR);
@@ -560,8 +452,8 @@ int main(int Argc, char** Argv)
 		return "{\"tws\": " + Num(P.Tws) + ", \"twa\": " + Num(P.Twa) + ", \"speed\": " + Num(P.R.R.BoatSpeedKnots) + ", \"heel\": " + Num(P.R.R.HeelDeg)
 			+ ", \"leeway\": " + Num(P.R.R.LeewayDeg) + ", \"rudder\": " + Num(P.R.R.RudderDeg) + ", \"helm_n\": " + Num(P.R.R.HelmForceN)
 			+ ", \"twa_sailed\": " + Num(P.R.R.TrueWindAngleDeg) + ", \"vmg\": " + Num(std::fabs(P.R.R.BoatSpeedKnots * std::cos(P.R.R.TrueWindAngleDeg * kDegToRad)))
-			+ ", \"plan\": \"" + kPlans[P.R.Plan].Name + "\", \"lower_yards_deg\": [" + Num(P.R.Yard[0]) + ", " + Num(P.R.Yard[1]) + ", " + Num(P.R.Yard[2])
-			+ "], \"lower_alpha_deg\": [" + Num(P.R.Alpha[0]) + ", " + Num(P.R.Alpha[1]) + ", " + Num(P.R.Alpha[2]) + "]"
+			+ ", \"plan\": \"" + ShipSailPlan(P.R.Plan).Name + "\", \"lower_yards_deg\": [" + Num(P.R.YardDeg[0]) + ", " + Num(P.R.YardDeg[1]) + ", " + Num(P.R.YardDeg[2])
+			+ "], \"lower_alpha_deg\": [" + Num(P.R.AlphaDeg[0]) + ", " + Num(P.R.AlphaDeg[1]) + ", " + Num(P.R.AlphaDeg[2]) + "]"
 			+ (P.bAtEnd ? ", \"at_search_end\": true" : "") + "}";
 	};
 	auto List = [&](const char* Name, const std::vector<FPoint>& V, bool bLast)

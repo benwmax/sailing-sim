@@ -289,6 +289,12 @@ double AWaterSurface::GetSimTime() const
 	return GM ? GM->GetSimTime() : GetWorld()->GetTimeSeconds();
 }
 
+double AWaterSurface::GetRenderTime() const
+{
+	const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	return GM ? GM->GetRenderTime() : GetWorld()->GetTimeSeconds();
+}
+
 void AWaterSurface::BeginPlay()
 {
 	Super::BeginPlay();
@@ -896,7 +902,7 @@ void AWaterSurface::UpdateDetail()
 		if (LongIndex > 0 && LongIndex < D->NumCascades()) D->Evaluate(LongIndex, At, F->LongChop, Scale);
 		return F;
 	};
-	const double TNow = GetSimTime();
+	const double TNow = GetRenderTime();
 	// The first detail, or a new tier's grid size (the textures follow N): here, at once. A sea that moved: on a worker,
 	// the old detail drawn meanwhile (26-35 ms of game thread per reconfigure on the PC's 4K storm traces).
 	const bool bSyncConfigure = !Detail || Detail->Spec(0).N != DrawnChop().N;
@@ -972,7 +978,7 @@ void AWaterSurface::UpdateDetail()
 		bFramePending = true;
 	};
 
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	if (!FramePrev || !FrameNext || T < FramePrev->Time - 1e-6 || T > FrameNext->Time + 3.0 * kDetailStep)
 	{
 		// Start (or a jump in time): the two frames around now on this thread, the next one in the background.
@@ -1260,8 +1266,9 @@ void AWaterSurface::UpdateHullClip()
 		const std::vector<FHullShape>& Hulls = M.GetConfig().Hulls;
 		if (Hulls.empty()) return;
 		const FHullShape& S = Hulls[0];
-		const Vec3 O = M.OriginPosition();
-		const Quat& Q = M.GetState().Orientation;
+		// Where she is drawn (between her steps at the render time, feedback #26), so the clip stays on the drawn hull.
+		const Vec3 O = It->GetDrawnOrigin();
+		const Quat& Q = It->GetDrawnOrientation();
 		const Vec3 Ax = Q.Rotate(Vec3(1.0, 0.0, 0.0)), Ay = Q.Rotate(Vec3(0.0, 1.0, 0.0)), Az = Q.Rotate(Vec3(0.0, 0.0, 1.0));
 		// Every hull on one map in her frame (a catamaran's two, a trimaran's amas, the maxi's sections), built once
 		// per boat and canoe depth.
@@ -2220,7 +2227,7 @@ void AWaterSurface::UpdateOcean()
 		WaterMaterial->SetVectorParameterValue(TEXT("OceanColor"), FLinearColor(0.012f, 0.05f, 0.06f)); // W2: blended by the swell mask
 	}
 	// The grids at the frame's time, blended between the ocean's 30 Hz evaluations exactly as the physics does.
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	const double T0 = FMath::FloorToDouble(T * 30.0) / 30.0, W = (T - T0) * 30.0;
 	TArray<float> Pixels;
 	Pixels.SetNumUninitialized(FOcean::N * FOcean::N * 4);
@@ -2355,7 +2362,7 @@ void AWaterSurface::UpdateMaterial()
 		WaterMaterial->SetVectorParameterValue(*FString::Printf(TEXT("WaveAmp%02d"), I),
 			FLinearColor(C[4 * I].Amplitude, C[4 * I + 1].Amplitude, C[4 * I + 2].Amplitude, C[4 * I + 3].Amplitude));
 	}
-	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetSimTime()));
+	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetRenderTime()));
 	// W2: the near and far wind maps (centre, size; both wrap-around, sampled at world position / size) and the
 	// windrows' slow downwind direction.
 	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.Center.X, NearWind.Center.Y, NearWind.SizeM, 1.f));
@@ -2680,13 +2687,13 @@ void AWaterSurface::UpdateFoamGrid(const FDetailUploadPtr& Done)
 	}
 	if (bFoamPending || !Done || Done->JCap.empty() || Done->N <= 0) return;
 	// At the short waves' 30 Hz (the caps it takes in change at that rate; the residual foam fades and drifts over seconds).
-	const double FoamNow = GetSimTime();
+	const double FoamNow = GetRenderTime();
 	if (FoamStepAt >= 0.0 && FoamNow >= FoamStepAt && FoamNow - FoamStepAt < 0.999 * kDetailStep) return;
 	FoamStepAt = FoamNow;
 	if (!FoamState) FoamState = MakeShared<FFoamGrid, ESPMode::ThreadSafe>();
 	const FVector CamCm = UGameplayStatics::GetPlayerCameraManager(this, 0) ? UGameplayStatics::GetPlayerCameraManager(this, 0)->GetCameraLocation() : GetActorLocation();
 	const FVector2D Cam = SailingFrame::ToMap(GetWorld(), CamCm);
-	const double T = GetSimTime();
+	const double T = GetRenderTime();
 	FVector2D Drift = FVector2D::ZeroVector;
 	if (const FWindField* Wind = GetWind())
 	{

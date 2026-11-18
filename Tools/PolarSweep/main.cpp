@@ -29,7 +29,8 @@ int main(int Argc, char** Argv)
 	EBoatType Type = EBoatType::J22;
 	if (Argc > 2 && std::strcmp(Argv[1], "--boat") == 0)
 	{
-		for (int I = 0; I < int(EBoatType::Count); ++I)
+		// The first match in the fleet's order ("co" is the Corsair 880, "comm" the frigate).
+		for (int I = int(EBoatType::Count) - 1; I >= 0; --I)
 		{
 			if (StartsWithNoCase(BoatTypeName(EBoatType(I)), Argv[2])) Type = EBoatType(I);
 		}

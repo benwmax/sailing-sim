@@ -117,6 +117,10 @@ public:
 	virtual void PawnClientRestart() override;
 
 	const Sailing::FBoatModel& GetBoatModel() const { return Boat; }
+	/** Where she is drawn (map frame): her physics pose, or for the player's boat the pose between her last two steps at
+	 *  the world's render time (feedback #26). The water's hull clip follows this, not the physics, so the two agree. */
+	const Sailing::Vec3& GetDrawnOrigin() const { return DrawnOrigin; }
+	const Sailing::Quat& GetDrawnOrientation() const { return DrawnOrientation; }
 	const Sailing::FBoatControls& GetControls() const { return Controls; }
 	const Sailing::FWindField& GetWind() const;
 	bool IsTrimAssistActive() const;
@@ -398,7 +402,11 @@ private:
 	void UpdateDrips(float DeltaSeconds);
 	/** Spray hull (docs/spray-hull): the bow wave's curl, a sheet of water standing off each side of the bow at speed. */
 	void UpdateBowWave(float DeltaSeconds);
-	void ApplyStateToTransform();
+	/** Puts the actor where the boat is. bBetweenSteps (the player's boat after her steps): drawn between the pose before
+	 *  her last step and her pose now at ASailingGameMode::GetRenderTime, so she moves by each frame's own length like
+	 *  the water (feedback #26). Otherwise (a reset, a re-place, traffic, the ghost) at her pose now, and the pose before
+	 *  is forgotten. */
+	void ApplyStateToTransform(bool bBetweenSteps = false);
 	void UpdateRigVisuals(float DeltaSeconds);
 	void BuildSailMesh(UProceduralMeshComponent* Mesh, const Sailing::FSailGeometry& Geo, const Sailing::FSailStripState* Strips, int32 Side, bool bMain);
 	// Visual V3: the sails as cloth (SailCloth.h) and the telltales as ribbons.
@@ -429,6 +437,15 @@ private:
 	Sailing::FBoatModel Boat;
 	Sailing::FBoatControls Controls;
 	Sailing::FFixedStepper Stepper;
+	/** Her pose just before her last physics step (written by the step job), and where she was last drawn. */
+	FBoatPose PoseBeforeLast;
+	Sailing::Vec3 DrawnOrigin;
+	Sailing::Quat DrawnOrientation;
+	double DrawnTime = 0.0;
+	/** Drawn rotation less her physics rotation (pitch, yaw, roll in degrees): what a view placed from the telemetry adds. */
+	FRotator DrawnRotationOffset() const;
+	/** A point in her body frame where she is drawn (BodyToWorld at the drawn pose). */
+	Sailing::Vec3 DrawnBodyToWorld(const Sailing::Vec3& BodyPoint) const { return DrawnOrigin + DrawnOrientation.Rotate(BodyPoint); }
 	Sailing::FAutoTrim TrimAssist;
 	Sailing::FEasyAssists EasyAssists;
 	Sailing::FEasyHelm EasyHelm;
@@ -982,6 +999,10 @@ private:
 	void SnapChaseCamera();
 	/** Beyond this jump (cm) in one ApplyStateToTransform the boat was put there, not sailed there: the camera snaps. */
 	static constexpr double ChaseSnapJumpCm = 5000.0;
+	/** Beyond this move (m) in her last step she was put somewhere, not sailed: drawn where she is, not between (#26). */
+	static constexpr double kDrawBetweenStepsMaxM = 2.0;
+	/** ... or this turn (rad, 30 deg) in one step: set over by hand (a knockdown, a capsize righted in place). */
+	static constexpr double kDrawBetweenStepsMaxTurnRad = 0.5235987755982988;
 	bool bChaseCameraLag = true;   // off for -SailingCamTarget stills
 	bool bChaseSnapPending = false;
 	uint64 ChaseSnapFrame = 0;

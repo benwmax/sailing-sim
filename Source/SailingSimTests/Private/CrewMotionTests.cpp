@@ -262,6 +262,7 @@ bool FVisualCrewMotionFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0, Braced = 0, Ducked = 0;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
 		const FBoatModel Model(Cfg);
 		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
@@ -726,6 +727,7 @@ bool FVisualCrewHullClearanceTest::RunTest(const FString& Parameters)
 	TMap<FString, int32> Worst;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
 		const FBoatModel Model(Cfg);
 		const FVector CG(Model.GetCenterOfGravity().X, Model.GetCenterOfGravity().Y, Model.GetCenterOfGravity().Z);
@@ -858,6 +860,7 @@ bool FVisualCrewHeldLineTest::RunTest(const FString& Parameters)
 	int32 Pairs = 0;
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(Type));
 		const int32 N = Cfg.CrewCount;
 		const double Up = Cfg.CrewSitOut * 0.8, Hiked = Cfg.CrewSitOut + Cfg.CrewHikeOut;

@@ -32,8 +32,31 @@ namespace
 	}
 }
 
+bool FBoatPose::BlendTo(Sailing::Vec3& InOutOrigin, Sailing::Quat& InOutQ, double T1, double RenderTime, double StepDt, double MaxMoveM, double MaxTurnRad, double& OutTime) const
+{
+	if (!bValid || !(T1 - Time > 0.5 * StepDt && T1 - Time < 1.5 * StepDt)) return false;
+	if ((InOutOrigin - Origin).Length() >= MaxMoveM) return false;
+	const Sailing::Quat& B = Orientation;
+	const double Dot = FMath::Abs(InOutQ.X * B.X + InOutQ.Y * B.Y + InOutQ.Z * B.Z + InOutQ.W * B.W);
+	if (Dot < FMath::Cos(0.5 * MaxTurnRad)) return false;
+	const double A = FMath::Clamp((RenderTime - Time) / (T1 - Time), 0.0, 1.0);
+	InOutOrigin = Sailing::Vec3(FMath::Lerp(Origin.X, InOutOrigin.X, A), FMath::Lerp(Origin.Y, InOutOrigin.Y, A), FMath::Lerp(Origin.Z, InOutOrigin.Z, A));
+	const FQuat Q2 = FQuat::Slerp(FQuat(B.X, B.Y, B.Z, B.W), FQuat(InOutQ.X, InOutQ.Y, InOutQ.Z, InOutQ.W), A);
+	InOutQ = Sailing::Quat(Q2.X, Q2.Y, Q2.Z, Q2.W);
+	OutTime = FMath::Lerp(Time, T1, A);
+	return true;
+}
+
 void FBoatStepJob::Run() const
 {
+	auto MarkBeforeLast = [this](int32 I)
+	{
+		if (!BeforeLast || I != Steps - 1) return;
+		BeforeLast->Origin = Boat->OriginPosition();
+		BeforeLast->Orientation = Boat->GetState().Orientation;
+		BeforeLast->Time = Boat->GetState().Time;
+		BeforeLast->bValid = true;
+	};
 	if (Stations && Stations->IsActive())
 	{
 		// A crew station: the station merge is the crew and the player both; taps and the dump count once.
@@ -43,6 +66,7 @@ void FBoatStepJob::Run() const
 			*Controls = Stations->Step(*Boat, In, StepDt);
 			In.GrindTaps = 0;
 			In.bTravellerDump = false;
+			MarkBeforeLast(I);
 			Boat->Step(StepDt, *Controls, *Wind, Waves);
 		}
 		return;
@@ -86,6 +110,7 @@ void FBoatStepJob::Run() const
 			Controls->Tiller = Before.Tiller;
 			Controls->bWingOnWing = Before.bWingOnWing;
 		}
+		MarkBeforeLast(I);
 		if (Easy && EasyHelm && Easy->bEnabled) Boat->Step(StepDt, EasyHelm->Update(*Boat, *Controls, *Easy, StepDt), *Wind, Waves);
 		else Boat->Step(StepDt, *Controls, *Wind, Waves);
 	}

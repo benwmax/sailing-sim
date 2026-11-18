@@ -428,6 +428,41 @@ bool FSailingWorldClockTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Feedback #26: the clock moves in whole steps, so frames scattered about 16.7 ms moved the drawn water by 8.3 or 25 ms
+// now and then (a stutter); the render time moves by each frame's own length and stays within a step behind the clock.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWorldClockRenderTimeTest, "SailingSim.Physics.WorldClockRenderTime", PhysicsTestFlags)
+bool FSailingWorldClockRenderTimeTest::RunTest(const FString& Parameters)
+{
+	FWorldClock Clock;
+	int32 Uneven = 0, Off = 0;
+	double MaxBehind = 0.0, MinBehind = 1e9;
+	TestEqual(TEXT("Before the first frame the render time is the start (never before it)"), Clock.GetRenderTime(), 0.0);
+	Clock.Advance(1.0 / 60.0);
+	double LastT = Clock.GetTime(), LastR = Clock.GetRenderTime();
+	for (int32 I = 0; I < 3000; ++I)
+	{
+		// About 60 fps, a millisecond or two either side (vsync off at 4K Ultra: the report's 47 to 68 fps).
+		const double Dt = 1.0 / 60.0 + 0.0015 * FMath::Sin(1.7 * I) + 0.0008 * FMath::Sin(0.31 * I);
+		Clock.Advance(Dt);
+		const double T = Clock.GetTime(), R = Clock.GetRenderTime();
+		if (FMath::Abs((T - LastT) - Dt) > 0.004) ++Uneven;
+		if (FMath::Abs((R - LastR) - Dt) > 1e-8) ++Off;
+		MaxBehind = FMath::Max(MaxBehind, T - R);
+		MinBehind = FMath::Min(MinBehind, T - R);
+		LastT = T;
+		LastR = R;
+	}
+	AddInfo(FString::Printf(TEXT("Frames the clock moved more than 4 ms off the frame: %d of 3000"), Uneven));
+	TestTrue(TEXT("The stepped clock does stutter at these frame times (what #26 saw)"), Uneven > 100);
+	TestEqual(TEXT("The render time moves by every frame's own length"), Off, 0);
+	TestTrue(TEXT("The render time is never ahead of the clock"), MinBehind >= -1e-9);
+	TestTrue(TEXT("The render time is less than a step behind the clock"), MaxBehind <= PhysicsDt + 1e-9);
+	// Held (photo mode, pause): no Advance, so the render time stands still too.
+	const double Held = Clock.GetRenderTime();
+	TestEqual(TEXT("Held, the render time stands"), Clock.GetRenderTime(), Held);
+	return true;
+}
+
 // Online readiness (rule 5): the seeded generator gives the same numbers on every machine. The expected values come from
 // the reference implementation (PCG32 seeded through SplitMix64); a change here changes every seeded sea and fleet.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingPortableRandomTest, "SailingSim.Physics.PortableRandom", PhysicsTestFlags)
