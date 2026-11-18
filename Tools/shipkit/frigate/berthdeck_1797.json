@@ -179,7 +179,7 @@
   "chest_note": "the chest's back this far off the side over its height, and its foot a tenth of an inch clear of the waterway's cove (which stands out 3 in from the side along the deck), whichever keeps it further in"
  },
  "lanterns": {
-  "note": "horn lanterns as the gun deck's (gundeck_1797.json lanterns) but smaller (size), hung on a short hook in the gun deck planks' underside in the bays listed (x_m: the bay's middle nearest that x, within max_shift_m (half a station: each x_m is its bay's middle as built) and its own room, whose y_m across is under the planks, clear of the carlings, head ledges and the openings through the gun deck): the crew's deck's over the middle line, where the beams are cut for the openings above and no hammocks hang (a lantern among the hammocks was a fire risk), the two forward ones either side of the fore hatchways, one in the steerage, the tiller room, the sick bay (two) and the bow; the wardroom's over its table from a bar between the skylight's carlings, shadowed so it stops at its bulkheads. Each a light in the game data (berthdeck.json lights) in its zone: berth_deck, wardroom, sick_bay",
+  "note": "horn lanterns as the gun deck's (gundeck_1797.json lanterns) but smaller (size), hung on a short hook in the gun deck planks' underside in the bays listed (x_m: the bay's middle nearest that x, within max_shift_m (half a station: each x_m is its bay's middle as built) and its own room, whose y_m across is under the planks, clear of the carlings, head ledges and the openings through the gun deck): the crew's deck's over the middle line, where the beams are cut for the openings above and no hammocks hang (a lantern among the hammocks was a fire risk), the two forward ones either side of the fore hatchways, one in the steerage, the tiller room, the sick bay (two) and the bow; the wardroom's over its table from a bar between the skylight's carlings (the gun deck's cabin_bar_in sided and moulded, its top wardroom_bar_under_in under the planks), shadowed so it stops at its bulkheads. Each a light in the game data (berthdeck.json lights) in its zone: berth_deck, wardroom, sick_bay",
   "hung": [
    {"name": "TillerRoom", "x_m": -23.88, "y_m": 1.6, "zone": "berth_deck"},
    {"name": "Steerage", "x_m": -12.922, "y_m": -1.4, "zone": "berth_deck", "cast_shadows": true},
@@ -202,6 +202,7 @@
    "blender_watts": 25.0
   },
   "wardroom_light": {"radius_m": 4.0, "cast_shadows": true},
+  "wardroom_bar_under_in": 1.0,
   "size": {"body_in": [7.0, 9.0], "roof_in": 3.0, "ring_in": 1.5, "hook_in": 1.5, "note": "the hung lanterns smaller than the gun deck's (body 7 in across and 9 in high, a 3 in roof) on a short hook (estimate: a small horn lantern below decks), so each one's dish hangs about level with the gun deck's beams' underside, the way a man walking the deck already stoops: whoever clears the beams clears the lanterns. The wardroom's, over its table, is the gun deck's size"},
   "dish_under_beams_in": 0.5,
   "max_shift_m": 0.45,
