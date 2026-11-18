@@ -131,7 +131,10 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   the two surfaces (12 fetches); to 75 m one scale each with their height, normal and roughness maps (6); to 150 m
   colour only, the two mixed by weight (2); nothing past it; the bands cross-fade over 10 m. The normal and RHA arrays
   are trilinear (anisotropic filtering on ground seen at a grazing angle ran its full tap count on every fetch; the colour
-  keeps it), and ray-traced hits (Lumen's hit lighting) take the card colours. The numpy twin has the same bands.
+  keeps it), and ray-traced hits (Lumen's hit lighting) and Lumen's surface-cache card captures (`LUMEN_CARD_CAPTURE`)
+  take the card colours: the second world gate (Nov 18) showed the cost mostly in Lumen (coast-day +2.4 ms, slip +1.6 ms,
+  the main pass +1.1 ms on coast-day), and the cards are what Lumen renders the material into. The numpy twin has the
+  same bands.
 - **From the PC's Ultra stills (Nov 18, `Inputs/bench/ground-797/pc-0c1d9669/`).** Shingle patches on the club beach had
   box-straight sides (value noise keeps its lattice in its features): the 3.1 m and 11 m patch noises now sit on
   lattices turned 34 and -52 degrees off the map's axes. A pale column ran up the clay bank: the mowing stripes

@@ -148,10 +148,11 @@ float3 nT = float3(0, 0, 1);
 float ao = 1.0;
 // Cost bands: the rotated second scale only inside BAND_A, the height, normal and roughness maps only inside BAND_B;
 // past it colour only, mixed by weight. 12 fetches a pixel inside 35 m, 6 to 75 m, 2 to 150 m, none past it. Ray-traced
-// hits (Lumen's hit lighting) take the card colours: nothing there is close enough to read a texture.
+// hits (Lumen's hit lighting) and Lumen's surface-cache captures (LUMEN_CARD_CAPTURE, as M_BoatSurface gates its grime) take
+// the card colours: nothing there is close enough to read a texture, and the second world gate's +2.4 ms was in Lumen.
 float kA = 1.0 - smoothstep(BAND_A.x, BAND_A.y, dist);
 float kB = 1.0 - smoothstep(BAND_B.x, BAND_B.y, dist);
-#if RAYHITGROUPSHADER
+#if RAYHITGROUPSHADER || defined(LUMEN_CARD_CAPTURE)
 const bool bTextured = false;
 #else
 const bool bTextured = dist < TEX_FAR;
