@@ -3437,7 +3437,7 @@ float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(len
 // it has faded to its means (patFade).
 // docs/storm-water/foam-cost/: the six taps cost 0.7-1.0 ms of water on the Mac's High, taken on every pixel near
 // enough to resolve the pattern, foam or not. The pattern only ever shapes foam, so it is taken at most once, where foam
-// is first drawn: FOAM_PAT, below (the caps, wake, trail, swash or a gale sea; the windrows).
+// is first drawn: FOAM_PAT, below (the caps, wake, trail or a gale sea; the windrows).
 float lace = FOAM_MEAN.x, foamStreak = FOAM_MEAN.y, cells = FOAM_MEAN.z;
 bool patDone = false;
 #define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
@@ -3531,7 +3531,7 @@ float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 // (The trail is drawn as 0.85 trail^1.2 at 0.45 of its pattern at least, so it reaches 1/255 from a trail of 0.022, and
 // trail <= persist: 0.004 there had kept the taps on wherever the foam grid had held foam at all.)
 [branch] if (patFade < 1.0 && (crest > FOAM_SEEN || 0.25 * residue > FOAM_SEEN || wakeBreak > FOAM_SEEN || persist > 0.022
-    || swash > FOAM_SEEN || meanKn > 24.0)) FOAM_PAT();
+    || meanKn > 24.0)) FOAM_PAT();
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
 float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
 crest *= saturate(0.8 + 1.3 * laceE);
@@ -3539,7 +3539,10 @@ residue *= patternE * 0.25;
 float caps = max(crest, residue);
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them
 // (swash, above).
-float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
+// sailing-feedback #30: broken by the wash's own bubble noise (WB_NOISE: soft value noise at 0.4 m, 0.14 m and 5 cm), not
+// the foam texture's lace. The lace's thin bubble films, multiplied in and also shifting the lapping's phase (which
+// multiplied their frequency), aliased a metre from the camera into a herringbone along a wall and a checker under a dock.
+float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + bubbles * 2.5)) * (0.45 + 0.55 * bubbles);
 // Heavy rain: splashes and mist grey the surface.
 // W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
 // measure; it is not touched here). Drawn straight as opacity over albedo 0.85, a cap at 0.3-0.5 cover read nearly as

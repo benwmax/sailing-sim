@@ -34,11 +34,20 @@ taken from the shore map's own cells: central differences one 1 m cell either wa
 - **Shelves:** a flat shallow shelf, whose depth hardly changes, draws no lapping at all.
 - **Cost:** four extra shore-map reads, only on pixels shallower than 35 cm.
 
+**Second half: the lapping's pattern.** The PC's reshoot of the waterline-only change (`render-bugs-nov17/pr805-c25fc326/`)
+cut the pattern back to the first metre off the wall, but it stayed in that strip. It also showed at the bridge bank's
+waterline, and as a checker band under a private dock. The lapping was broken up by the foam texture's lace (its R
+channel: thin bubble films), both multiplied in and added to the phase of its wave, which multiplied the films'
+frequency. A metre or so from the camera at a grazing angle, that aliased. It now uses the wash's bubble noise instead:
+`WB_NOISE`, soft value noise at 0.4 m, 0.14 m and 5 cm, the same the boats' wakes use. Its mean is about 0.25, the
+lace's mean, so the lapping keeps its brightness. Lapping alone no longer reads the foam texture, which saves its six
+taps on shore pixels.
+
 The B-spline reads and the bisect switch are not in the final change.
 
 ## Checks
 
-- **PC:** the four #30 stills (`env-bulkhead-05m`, `-near-20`, `-near-35`, `env-bridge-05m`, with the args in the
+- **PC:** the four #30 stills plus `private-dock-05m` and `club-beach-05m` (`env-bulkhead-05m`, `-near-20`, `-near-35`, `env-bridge-05m`, with the args in the
   issue) at Ultra 1080p, 1:1 against `crops/`. Also a look at a beach and the marina docks, to confirm the lapping line
   is still there.
 - **Mac:** `scripts/gate.sh --scope water`, and commit the rebuilt M_WaterV4.
