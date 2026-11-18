@@ -1,0 +1,12 @@
+[2026.11.18-14.21.53:878][  0]LogMaterial: Warning: [AssetLog] D:\dev\ss-fix-wt\pr798\Content\World\Edges\M_ShoreEdge.uasset: Failed to compile Material for platform PCD3D_SM6, Default Material will be used in game.
+	(Node Add) Arithmetic between types LWCVector3 and float4 are undefined
+	(Node Add) Invalid input types: FWSVector3, FWSVector3
+[2026.11.18-14.21.54:297][  0]LogSailing: Display: Shore edges: 23673 pieces (9063 lot wall segments on 674 lots, 14715 natural shore nodes), 21 of 21 meshes
+[2026.11.18-14.21.54:673][  0]LogSailing: Display: Understory: 15084 crowns by the water; 29632 yaupon, 32250 dogwood, 32709 coralberry, 7086 saplings, 984 logs, 826 brush piles, 150 snags
+[2026.11.18-14.21.55:476][  0]LogSailing: Display: Houses: 35165 from the G2 footprints in 553 tiles (553 baked, 0 procedural)
+[2026.11.18-14.22.01:877][  0]LogMaterial: Warning: Material /Game/World/Edges/M_ShoreEdge.M_ShoreEdge missing usage flag Nanite! Default Material will be used in game.
+[2026.11.18-14.22.01:877][  0]LogMaterial: Warning:      The material will recompile every editor launch until resaved.
+[2026.11.18-14.22.01:877][  0]LogMaterial: Warning: Material /Game/World/Edges/M_ShoreEdge.M_ShoreEdge missing usage flag InstancedStaticMeshes! Default Material will be used in game.
+[2026.11.18-14.22.01:877][  0]LogMaterial: Warning: Material /Game/World/Edges/M_ShoreEdge.M_ShoreEdge missing usage flag InstancedStaticMeshes! Default Material will be used in game.
+[2026.11.18-14.22.01:877][  0]LogMaterial: Warning:      The material will recompile every editor launch until resaved.
+[2026.11.18-14.22.02:091][  0]LogSlate: InvalidateAllWidgets triggered.  All widgets were invalidated
