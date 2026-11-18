@@ -1,0 +1,7 @@
+	Asset Name: /Game/Materials/M_Terrain.M_Terrain
+[2026.11.18-16.36.32:887][  0]LogFileHelpers: Saving Package: /Game/Materials/M_Terrain
+[2026.11.18-16.36.32:888][  0]Cmd: OBJ SAVEPACKAGE PACKAGE="/Game/Materials/M_Terrain" FILE="D:/dev/ss-fix-wt/pr804/Content/Materials/M_Terrain.uasset" SILENT=true
+[2026.11.18-16.36.32:895][  0]LogSavePackage: Moving output files for package: /Game/Materials/M_Terrain
+[2026.11.18-16.36.32:896][  0]LogSavePackage: Moving 'D:/dev/ss-fix-wt/pr804/Saved/M_Terrain3013949340647662972D4EA78C3799C0.tmp' to 'D:/dev/ss-fix-wt/pr804/Content/Materials/M_Terrain.uasset'
+[2026.11.18-16.36.32:905][  0]LogPython: Materials built: 1 builders
+[2026.11.18-16.36.32:905][  0]LogPythonScriptCommandlet: Display: Python script executed successfully
