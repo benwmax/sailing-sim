@@ -1033,7 +1033,16 @@ col = lerp(col, col * 0.5, wet);
 float film = (1.0 - smoothstep(0.02, 0.10 + 0.04 * f, h)) * step(-0.05, h) * CA;
 col = lerp(col, col * float3(0.62, 0.74, 0.46), film * 0.8);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
-Rough = lerp(0.92, 0.32, wet * (1.0 - under));
+// Feedback #29 (the cream glow on shaded banks at the waterline, bridge and wooded stations): at 0.32 the whole wet band
+// was a near mirror, and a glossy face's sky reflection is not shadowed. Where the bank grass, a bush or the bridge
+// shades the band (Lumen doesn't see the grass), a bank face turned toward the bright sky round the sun still mirrored it:
+// a soft cream blob sitting on the waterline, brightest in the shade, gone under overcast or an hour later. Water stands
+// only on the near-flat swash and drains off a sloping face, which stays damp and dull: gloss now only where the
+// ground is within about 15 deg of level (N: the chunk's vertex normal, world space on the procedural mesh), and even
+// there a touch less than a puddle's.
+float flatK = smoothstep(0.88, 0.97, N.z);
+float wetRough = lerp(0.62, 0.38, flatK);
+Rough = lerp(0.92, wetRough, wet * (1.0 - under));
 // Realism audit 1023 item 8 (pc/far-shore): past the 250 m where LakeTerrainActor::PlaceReeds' bank grass and weed stop
 // drawing, a grassy bank met the water as a clean lawn. Here the same band, from the waterline to about a metre up, is
 // painted as the rank grass, sedge and dead stems it stands for: darker and more olive than mown grass, in ragged clumps a
@@ -1051,8 +1060,9 @@ col = lerp(col, weed, cover);
 Rough = lerp(Rough, 0.95, cover);
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam", "N"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+    connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -800, 650), "", c, "N")
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
     connect(pos, "", c, "P")
