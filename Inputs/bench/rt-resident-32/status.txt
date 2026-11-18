@@ -1,0 +1,19 @@
+2026-11-18 10:39:33 Bean's Saved held
+2026-11-18 10:39:33 galveston started: launcher pid 21716
+2026-11-18 10:42:56 galveston ended: 204 s wall; stopped leftovers 0; dump csvs 2; bench.json True
+2026-11-18 10:42:56   | LogCsvProfiler: Display: Metadata set : commandline="" SailingSim -SailingBench=180 -SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingWorld=1 -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-galveston""
+2026-11-18 10:42:56   | LogInit: Command Line: -SailingBench=180 -SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingWorld=1 -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-galveston
+2026-11-18 10:42:57   | [2026.11.18-16.40.49:272][449]LogSailing: Display: SailingBench: at 60 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+2026-11-18 10:42:57   | [2026.11.18-16.40.49:291][449]LogRayTracingGeometryManager: List of unreferenced always-resident ray tracing geometries written to file '../../../SailingSim/Saved/Profiling/UnreferencedAlwaysResidentGeometries(20261118_104049).csv'
+2026-11-18 10:42:57   | [2026.11.18-16.42.39:259][381]LogSailing: Display: SailingBench: at 170 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+2026-11-18 10:42:57   | [2026.11.18-16.42.39:281][381]LogRayTracingGeometryManager: List of unreferenced always-resident ray tracing geometries written to file '../../../SailingSim/Saved/Profiling/UnreferencedAlwaysResidentGeometries(20261118_104239).csv'
+2026-11-18 10:42:57 lake started: launcher pid 36844
+2026-11-18 10:46:14 lake ended: 197 s wall; stopped leftovers 0; dump csvs 2; bench.json True
+2026-11-18 10:46:14   | LogCsvProfiler: Display: Metadata set : commandline="" SailingSim -SailingBench=180 -SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-lake""
+2026-11-18 10:46:14   | LogInit: Command Line: -SailingBench=180 -SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-lake
+2026-11-18 10:46:14   | [2026.11.18-16.44.05:351][987]LogSailing: Display: SailingBench: at 60 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+2026-11-18 10:46:14   | [2026.11.18-16.44.05:367][987]LogRayTracingGeometryManager: List of unreferenced always-resident ray tracing geometries written to file '../../../SailingSim/Saved/Profiling/UnreferencedAlwaysResidentGeometries(20261118_104405).csv'
+2026-11-18 10:46:14   | [2026.11.18-16.45.55:355][751]LogSailing: Display: SailingBench: at 170 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+2026-11-18 10:46:14   | [2026.11.18-16.45.55:373][751]LogRayTracingGeometryManager: List of unreferenced always-resident ray tracing geometries written to file '../../../SailingSim/Saved/Profiling/UnreferencedAlwaysResidentGeometries(20261118_104555).csv'
+2026-11-18 10:46:17 Bean's Saved restored: profile B57AA3AF (want B57AA3AF), hold folder left False
+2026-11-18 10:46:17 RT32 DONE

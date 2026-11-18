@@ -1,0 +1,3 @@
+run,command_line
+galveston,"Packaged\Windows-8a768667\SailingSim.exe -SailingBench=180 ""-SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries"" -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingWorld=1 -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-galveston"
+lake,"Packaged\Windows-8a768667\SailingSim.exe -SailingBench=180 ""-SailingExecAt=60:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;170:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries"" -SailingNoGpuSlices -windowed -ResX=1920 -ResY=1080 -SailingQuality=Ultra -SailingLaunch=1 -SailingDemo -SailingScreenPct=100 -SailingShot=rt32-lake"
