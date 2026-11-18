@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 #include "ShipOrders.h"
+#include "ShipSailPlans.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -110,6 +111,34 @@ bool FShipOrdersSailPlanTest::RunTest(const FString& Parameters)
 		&& Controls.SquareReef[1] == 1 && Controls.SquareSet[0] == ESailSet::Set && Controls.SquareReef[0] == 0);
 	ApplySailPlan(EShipOrder::FurlAll, Config, Controls);
 	TestTrue(TEXT("everything furled"), Controls.SquareSet[0] == ESailSet::Furled && Controls.SquareSet[1] == ESailSet::Furled && Controls.bMainDown && Controls.bJibDown);
+
+	// The officers' ladder (ShipSailPlans.h): make sail is all plain sail, each shorten sail the next plan down, to the last;
+	// before the wind the spanker is brailed up; fighting sail and furl all leave the ladder, and a shorten sail from there
+	// takes the first reef.
+	int Plan = -1;
+	FBoatConfig NoRig;
+	TestFalse(TEXT("no square rig, no ladder"), ApplySailOrder(EShipOrder::MakeSail, NoRig, Controls, Plan, false));
+	TestFalse(TEXT("only the sail plans on the ladder"), ApplySailOrder(EShipOrder::Wear, Config, Controls, Plan, false));
+	TestTrue(TEXT("make sail"), ApplySailOrder(EShipOrder::MakeSail, Config, Controls, Plan, false));
+	TestEqual(TEXT("all plain sail is the top of the ladder"), Plan, 0);
+	TestTrue(TEXT("every sail set, no reef, the spanker set"), Controls.SquareSet[0] == ESailSet::Set && Controls.SquareSet[3] == ESailSet::Set && Controls.SquareReef[1] == 0 && !Controls.bMainDown);
+	TestEqual(TEXT("named"), FString(UTF8_TO_TCHAR(SailOrderPlanName(Plan))), FString(TEXT("all plain sail")));
+	for (int32 Step = 1; Step < NumShipSailPlans() + 2; ++Step)
+	{
+		ApplySailOrder(EShipOrder::ShortenSail, Config, Controls, Plan, false);
+		TestEqual(FString::Printf(TEXT("shorten sail %d: a plan down, to the last"), Step), Plan, FMath::Min(Step, NumShipSailPlans() - 1));
+	}
+	TestTrue(TEXT("close reefed at the bottom: the courses in, the topsail at its last reef"), Controls.SquareSet[0] != ESailSet::Set && Controls.SquareReef[1] == 2);
+	ApplySailOrder(EShipOrder::MakeSail, Config, Controls, Plan, true);
+	TestTrue(TEXT("running: the spanker brailed up"), Controls.bMainDown && Plan == 0);
+	ApplySailOrder(EShipOrder::FightingSail, Config, Controls, Plan, false);
+	TestEqual(TEXT("fighting sail is off the ladder"), Plan, -1);
+	TestTrue(TEXT("and has no name"), SailOrderPlanName(Plan) == nullptr);
+	ApplySailOrder(EShipOrder::ShortenSail, Config, Controls, Plan, false);
+	TestEqual(TEXT("shortening from there takes the first reef"), Plan, 3);
+	TestTrue(TEXT("single-reefed topsails"), Controls.SquareReef[1] == 1 && Controls.SquareSet[2] == ESailSet::Clewed);
+	ApplySailOrder(EShipOrder::FurlAll, Config, Controls, Plan, false);
+	TestEqual(TEXT("furled is off the ladder"), Plan, -1);
 	return true;
 }
 

@@ -5,9 +5,12 @@ wheel or on deck. Its own keys work while it is open: up and down choose an orde
 gives the order, and Backspace (B) or G closes it. The order's call goes on the status line ("Captain: Luff a point!").
 
 * **Sails**: make all sail, fighting sail, shorten sail, furl all, tack, wear ship, heave to, fill away. The four sail plans
-  are carried out now (`Sailing::ApplySailPlan` on the square rig's controls): make all sail sets every sail and shakes out
-  the reefs; fighting sail keeps the topsails, jibs and spanker, clews up the courses, furls the topgallants and royals and
-  hauls the staysails down; shorten sail furls the topgallants and royals and takes a reef in the topsails; furl all takes
+  are carried out now (`Sailing::ApplySailOrder` on the square rig's controls, over the physics' `ApplySailPlan`): make all
+  sail is all plain sail (before the wind the spanker is brailed up: it only blankets the main); shorten sail takes her one
+  plan down her officers' ladder each time it is given (`ShipSailPlans.h`, the plans her trial and polar were sailed under:
+  royals in, topgallants in, single-reefed topsails, double-reefed, close-reefed with the courses in; the status line names
+  the plan), fighting sail keeps the topsails, jibs and spanker, clews up the courses, furls the topgallants and royals and
+  hauls the staysails down (off the ladder: a shorten sail from there goes to single-reefed topsails); furl all takes
   everything in. The crew work at the physics' pace (a sail takes about a minute to set) and the model follows
   (`docs/ship-rig/`). Tack, wear and heave to are her officers' manoeuvres (`Sailing::FShipHandling`,
   `docs/frigate-physics/`): the order hands the wheel to her helmsman, the handling works the braces, sails and helm after
