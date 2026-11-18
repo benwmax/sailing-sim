@@ -89,17 +89,51 @@ the project files (`shore-env/track-c/`) and on the Track C review page.
 | Blind review | three fresh reviewers, new beats old, "photo or game" at 15 m | after Nov 21, on in-game stills |
 | Budget | the edge's own triangles per 16 m against the card | see the round below |
 
-## After Nov 21 (Track I, through the main sim thread)
+## In the game (the wiring PR, before the Nov 27 freeze)
 
-1. A material script (`scripts/make_shore_edges.py` or Track 0's shared one) builds `M_ShoreEdge` from
-   `EDGE_LAYER_CODE`, its noise texture and per-type instances; `MPC_World` gets `PoolZ`, `HighZ`, `LowZ`, `WrackZ`,
-   `Swash` beside `WaterZ`.
-2. A Blender script exports each type as kit pieces (`SM_Edge_<Type>_<n>`, Nanite, light copies for 150-600 m).
-3. Placement by the pack's rules from map data: `HouseKit.cpp` picks a lot's bank by seed (bulkhead most, then
-   riprap, limestone, timber), marinas and the dam take sheet pile, the terrain's natural shore picks clay cut, gravel,
-   mud flat or reed cove by slope, fetch and shelter, and ramps come from OSM slipways.
-4. Stations: Track 0's bulkhead, natural clay bank and club beach stations, before and after, then the gate.
-5. The foam and ripple edge in the water material (Mac).
+Bean moved the slice to Fri Dec 11 (Nov 17), so the edges go into the game before the Nov 27 freeze instead of after the
+slice. The wiring is one PR of code, scripts and this page; the Mac imports the pieces and commits the assets.
+
+- **Pieces.** `Tools/envloop/shore-edges/export_edges.py` builds each type as 4 m of shore (three seeds a type) without
+  the stand-in ground and writes `SM_Edge_<Type>_<n>.fbx` plus a `_Light` copy at an eighth of the triangles;
+  `scripts/import_shore_edges.py` imports them to `/Game/World/Edges` with Nanite (`scripts/make-shore-edges.sh` runs
+  both). Seven types are pieces: bulkhead, limestone, timber (walls) and clay cut, gravel, mud flat, reed cove (the
+  scarp with its notch and slumped blocks; the shells, pebbles, wrack and reed clumps). Riprap stays the rock loop's
+  stones; sheet pile and the ramp wait for the marina and slipway placement.
+- **Material.** The same script builds `M_ShoreEdge` from `edge_layer.py`'s `EDGE_LAYER_CODE` (one Custom node; the
+  colours are vector parameters with the pack's values, the four noise scales and the streak noise are gradient noise
+  computed in their own Custom nodes from the map-frame position, `EDGE_NOISE_CODE`), and gives `MPC_World` the pack's
+  marks `PoolZ`, `HighZ`, `LowZ`, `WrackZ`, `Swash` (metres) beside the game's `WaterZ`, so the wet line follows the lake
+  level and the stain band stays where the water has been. Nothing in `scripts/make_materials.py` changes; the ground
+  textures PR (Track A) adds its own `Season` scalar the same way, so the two don't collide.
+- **Placement, by rule from map data.** `LotBankType` (`HouseKit.cpp`) gives every full-detail lakefront lot its bank by
+  its seed, the pack's `developed_lot` rule: bulkhead on half, riprap on a fifth, then limestone, timber, or a natural
+  bank. The house tile keeps the stepped riprap and drops its old plain wall and kerb; `ShoreEdgeRuns` returns the other
+  lots' waterlines (the same line the kit found for the riprap, every 2 m) and `ALakeTerrainActor::PlaceShoreEdges`
+  lays a piece on each segment, x along the shore and stretched to it, +y toward the land, at the pool datum. The
+  natural shore is picked per grid node outside the lots, the marina and the club by the bank's slope and the fetch
+  across the water in front of it (`pack.json placement.natural`): mud flat under 1:30, reed cove where the fetch is
+  under 300 m, clay cut on a bank over 30 degrees with a kilometre of fetch, gravel on a gentle exposed shore, clay cut
+  as the fallback for a steep bank; two nodes in three take a piece, laid across the slope at the waterline. Instanced
+  static meshes, static, no collision; the walls to 1.5 km and in ray tracing, the scatter to 300 m. Nothing is placed
+  by hand outside the home club. `-SailingNoShoreEdges` compares; Low keeps the old shore.
+- **Known gaps for the Mac stills.** The natural pieces' scatter follows the kit's own slope, not the terrain's, so on
+  a bank steeper or flatter than the card's a shell or stick can hover or sink a few centimetres; the clay scarp is a
+  fixed 1.2-1.9 m face standing in the lidar bank. Reeds are stand-ins until Track B's grass lands; the lawn behind the
+  walls is Track A's ground.
+
+### What the Mac does (about 3 hours, Nov 23-25)
+
+1. `scripts/build.sh`, then `scripts/make-content.sh` is not needed (no material script changes) but `MPC_World` must
+   exist; `scripts/make-shore-edges.sh` (Blender export, import, `M_ShoreEdge`, the marks); `scripts/make-houses.sh`
+   (the tiles lose the plain walls). Commit `/Game/World/Edges` and the rebuilt house tiles to the branch.
+2. Station stills before and after: Track 0's bulkhead lot, natural clay bank and club beach stations
+   (`Tools/envloop/stations.csv`), `SCENES=... scripts/capture-scenes.sh 8` on main and the branch.
+3. `scripts/gate.sh --scope world`; a view under its floor is benched beside main.
+4. The PC: a Windows build and an Ultra look at the bulkhead and clay bank stations (about an hour).
+
+Then the blind review on the stills (three fresh reviewers, new beats old) and the colour check when Bean's grey-card
+photos come. The foam and ripple edge in the water material is still the Mac's, after the freeze.
 
 ## Rounds
 
@@ -128,3 +162,18 @@ Seen in the sheets, for round 2:
   station should look down a little);
 - the mud flat's ripples are too regular; the reeds are thin stand-ins (Track B);
 - the lawn behind the walls is a flat stand-in (Track A).
+
+Round 2 (Nov 18): the fixes above and the game pieces. Sheets in `shore-env/track-c/round2/`. All checks that can run
+pass again; the 60 m repeat scores fell where the noise changed (bulkhead 0.76 to 0.35, limestone 0.23 to 0.34, mudflat
+0.27 to 0.36, gravel 0.56 to 0.47, claycut 0.44 to 0.48; the piled walls keep their pitch by design). Triangle counts are
+unchanged.
+
+- Gradient noise (two octaves, equalised) replaces the value noise in the renders (`grad_noise`): the soft squares in the
+  algae crust and the wet band are gone; the game computes the same noise in `M_ShoreEdge` (`EDGE_NOISE_CODE`).
+- Limestone: a sharper arris (superellipsoid power 18, half the chipping) and lichen as soft blotches at 0.5 m instead of
+  10 cm specks. The blocks still read a little soft at 3 m: the next step is a flat-shaded face with a chamfer.
+- Mud flat: ripple wavelength drifts 0.35-0.55 m, the crests wander and split, the amplitude is patchy.
+- The 3 m view looks down a little at the sheet pile (0.55 m) and the bulkhead (0.2 m), so the hold station shows the
+  piles' feet at the pool, not the waler alone (`LOOK_DOWN`).
+- The scatter (pebbles, shells) is clipped to the piece's length, so a 4 m game piece carries only its own.
+

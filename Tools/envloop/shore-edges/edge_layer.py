@@ -29,8 +29,6 @@ Colours are linear albedo, first estimates from typical published values and the
 club photos (Bean's) replace them in the pack through the colour check.
 """
 
-import numpy as np
-
 EDGE_LAYER_CODE = """
 float sid = floor(VC.x * 16.0);
 float shade = VC.y;
@@ -73,7 +71,7 @@ float3 cSteel = lerp(SteelScale, lerp(RustDark, RustLight, n01), rust) * (0.85 +
 // Cream limestone: bedding lines, pits, dark lichen above the high water.
 float bed = 1.0 - smoothstep(0.02, 0.06, abs(frac(zz * 7.0 + n05 * 0.8) - 0.5));
 float3 cLime = Limestone * (0.78 + 0.3 * n05) * (0.9 + 0.2 * n003) * (0.75 + 0.5 * shade) * (1.0 - 0.12 * bed) * (1.0 - 0.4 * step(0.84, n003));
-cLime = lerp(cLime, Lichen, 0.55 * step(0.8, n01) * step(HighZ + 0.1, zz));
+cLime = lerp(cLime, Lichen, 0.5 * smoothstep(0.6, 0.78, n05 * 0.65 + n01 * 0.35) * step(HighZ + 0.1, zz));
 // Weathered treated pine: grey, grain along the board, each board its own.
 float grain = 0.88 + 0.12 * sin(UVm.y * 700.0 + n01 * 18.0);
 float3 cTimb = lerp(TimberDark, TimberLight, shade) * grain * (0.85 + 0.25 * n05);
@@ -146,7 +144,45 @@ r = lerp(r, 0.22, wet * saturate(porous + 0.3));
 def values(pack, level="pool"):
     """The uniforms for a region pack (packs/<name>/pack.json: its marks and colours) at a lake level (a name from the
     pack's levels, or metres from the pool). In game these are MPC_World (levels) and the material instance (colours)."""
+    import numpy as np   # here, not at the top: scripts/import_shore_edges.py reads this module in the editor's Python
     u = dict(pack["marks"])
     u["WaterZ"] = pack["levels"][level] if isinstance(level, str) else float(level)
     u.update({k: np.array(v, float) for k, v in pack["colours"].items()})
     return u
+
+
+# The game's noise (scripts/import_shore_edges.py): the four scales and the streak noise are gradient noise computed in the
+# material from the world position, one Custom node a scale (no texture, so nothing to import; the pieces are a small part
+# of any frame). Two octaves, as render_edges.grad_noise, and the same lattice hash, so the stills and the renders agree.
+# `{scale}` is the cell in metres (a float3 for the streak noise), `{seed}` an integer. Output 0..1 (clamped; the
+# renders equalise instead, which the thresholds were set on: the Mac's stills check the difference).
+EDGE_NOISE_CODE = """
+float3 q = P / {scale};
+float acc = 0.0;
+float amp = 1.0;
+float sd = {seed};
+for (int oct = 0; oct < 2; ++oct)
+{{
+    float3 i = floor(q);
+    float3 f = q - i;
+    float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float n = 0.0;
+    for (int k = 0; k < 8; ++k)
+    {{
+        float3 d = float3(k & 1, (k >> 1) & 1, (k >> 2) & 1);
+        float3 c = i + d;
+        float h = frac(sin(dot(c, float3(127.1, 311.7, 74.7)) + sd * 0.37) * 43758.5453);
+        float th = h * 6.2831853;
+        float z = frac(h * 57.31) * 2.0 - 1.0;
+        float s = sqrt(max(1.0 - z * z, 0.0));
+        float3 g = float3(s * cos(th), s * sin(th), z);
+        float w = (d.x > 0.5 ? u.x : 1.0 - u.x) * (d.y > 0.5 ? u.y : 1.0 - u.y) * (d.z > 0.5 ? u.z : 1.0 - u.z);
+        n += w * dot(g, f - d);
+    }}
+    acc += amp * n;
+    amp = 0.45;
+    q = q * 2.03 + 11.7;
+    sd += 31.0;
+}}
+return saturate(0.5 + acc * 0.9);
+"""
