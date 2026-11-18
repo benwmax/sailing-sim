@@ -1,0 +1,12 @@
+2026-11-18 10:26:30 I0 8 runs over 2 stations
+2026-11-18 10:26:30 Bean's Saved held
+2026-11-18 10:27:23 S iso3-bridge-05m-base png True
+2026-11-18 10:27:45 S iso3-bridge-05m-ReflEnv0 png True
+2026-11-18 10:28:07 S iso3-bridge-05m-Specular0 png True
+2026-11-18 10:28:30 S iso3-bridge-05m-LumenRefl0 png True
+2026-11-18 10:28:52 S iso3-wooded-15m-base png True
+2026-11-18 10:29:16 S iso3-wooded-15m-ReflEnv0 png True
+2026-11-18 10:29:38 S iso3-wooded-15m-Specular0 png True
+2026-11-18 10:30:01 S iso3-wooded-15m-LumenRefl0 png True
+2026-11-18 10:30:03 Bean's Saved restored: profile B57AA3AF (want B57AA3AF), hold folder left False
+2026-11-18 10:30:03 ISOLATE DONE
