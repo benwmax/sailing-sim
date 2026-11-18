@@ -405,7 +405,7 @@
   "well_ft": 3.0
  },
  "cabin": {
-  "note": "the captain's great cabin under the quarterdeck (1849 plan: the bulkhead and the state rooms; the 1797 cabin was the captain's on this deck, estimate): a panelled bulkhead across abaft the first guns with a door either side of the middle line (64 in high: the tiller's end and the tiller ropes sweep over their swing just above their heads, build.json gundeck.tiller_swing), the tiller ropes' runs aft through it in lead bushes near each side (tiller_ropes); inside, the dining cabin with the side lights, and aft the stern cabin under the windows with a state room in each quarter, a seat and lockers under the windows over the rudder's head. The deck covered with a painted floor cloth in black and white squares; a table and chairs, a sideboard and a lantern. All sizes estimate (period practice)",
+  "note": "the captain's great cabin under the quarterdeck (1849 plan: the bulkhead and the state rooms; the 1797 cabin was the captain's on this deck, estimate): a panelled bulkhead across abaft the first guns with a door either side of the middle line (64 in high: the tiller's end and its ropes sweep just above them at every opening and every angle of the helm, build.json gundeck.door_helm), the tiller ropes' runs aft through it in lead bushes near each side (tiller_ropes); inside, the dining cabin with the side lights, and aft the stern cabin under the windows with a state room in each quarter, a seat and lockers under the windows over the rudder's head. The deck covered with a painted floor cloth in black and white squares; a table and chairs, a sideboard and a lantern. All sizes estimate (period practice)",
   "bulkhead_x_m": -22.75,
   "bulkhead_in": 2.5,
   "panel": {
@@ -602,11 +602,14 @@
   "hard_over_deg": 35.0
  },
  "tiller_ropes": {
-  "note": "the tiller rope (deck_1797.json wheel: tiller_rope_in round, wound rope_turns on the barrel) from the wheel's two legs to the tiller's end eye: each leg (the starboard leg abaft the port one, deck_1797.json wheel legs_x_m) comes down through the quarterdeck's planks between the cheeks of its leading sheave's chock, bolted up under the deck in the bay before the cabin's bulkhead, which turns it out athwartships under the beams; run_off_middle_m out from the middle line a side sheave turns it aft, along under the beams and through a lead bush in the cabin's bulkhead (bush_in: bore, rim across, rim proud, the lining's wall), to an after sheave abaft the tiller's end at after_x_m that turns it in to the end eye, where it is spliced round the ring's bar (eye_in: the eye's inside length past the bar, the splice's length). Hauling in the starboard rope takes the tiller to starboard (deck.py wheel: a turn of the wheel's top to port hauls it in). Every sheave (sheave_in: across its rim and thick, the rope's middle rope_in_groove_in in from the rim, in a groove 0.05 in clear of it) turns on an iron pin (pin_in: round, its head across and thick) between two oak cheeks (cheek_in: thick, their rim out past the sheave's) slot_clear_in clear of it each side, an oak crown between them crown_clear_in clear of the rope (crown_in thick); the level sheaves hang under the planks on an oak stool (stool_in square, let_in into the planks), the leading ones' cheeks run up into the planks. Every run lies level with the end eye's ring at rest, under the beams. The after sheaves stand abaft the tiller's end, where the two ropes from them to the eye never ask for more rope than amidships at any angle of the helm (the build fails if they do): the easing rope takes up the difference as slack (build.json gundeck.tiller_ropes.slack_in, by angle). As the helm goes over each rope's eye slides round the ring to face its sheave and its run (from the sheave to the splice) swings and shortens or lengthens: TillerEye_S and TillerEye_P turn on their frames, TillerRun_S and TillerRun_P are posed and stretched along their own X, every degree (gundeck.json tiller_ropes.poses); the build turns them all with the tiller, step by step, and fails on a touch or less than half an inch. All sizes estimate (period practice: blocks for a 3 in rope about 10 to 12 in long)",
+  "note": "the tiller rope (deck_1797.json wheel: tiller_rope_in round, wound rope_turns on the barrel) from the wheel's two legs to the tiller's end eye: each leg (the starboard leg abaft the port one, deck_1797.json wheel legs_x_m) comes down through the quarterdeck's planks (from leg_into_deck_in inside them) between the cheeks of its leading sheave's chock, bolted up under the deck in the bay before the cabin's bulkhead, which turns it out athwartships under the beams; run_off_middle_m out from the middle line a side sheave turns it aft, along under the beams and through a lead bush in the cabin's bulkhead (bush_in: bore, rim across, rim proud, the lining's wall), to an after sheave abaft the tiller's end at after_x_m that turns it in to the end eye, where it is spliced round the ring's bar (eye_in: the eye's inside length past the bar, the splice's length; its bight eye_clear_in off the bar, on which it bears but for the facets of both). Hauling in the starboard rope takes the tiller to starboard (deck.py wheel: a turn of the wheel's top to port hauls it in). Every sheave (sheave_in: across its rim and thick, the rope's middle rope_in_groove_in in from the rim) is scored with a round bottom groove_clear_in clear of the rope and sides flaring groove_flare_deg out to the rim, and turns on an iron pin (pin_in: round, its head across and thick) between two oak cheeks (cheek_in: thick, their rim out past the sheave's) slot_clear_in clear of it each side, an oak crown between them crown_clear_in clear of the rope (crown_in thick); the level sheaves hang under the planks on an oak stool (stool_in square, let_in into the planks), the leading ones' cheeks run up into the planks. The runs lie runs_below_eye_in under the end eye's ring at rest, under the beams: the head's axis rakes, so the tiller's end drops about 4 in hard over, and the runs to it leave their after sheaves within about 4 degrees of level at every angle (build.json gundeck.tiller_ropes.runs_most_off_level_deg), which the grooves' flare takes. The after sheaves stand abaft the tiller's end, where the two ropes from them to the eye never ask for more rope than amidships at any angle of the helm (the build fails if they do): the easing rope takes up the difference as slack (build.json gundeck.tiller_ropes.slack_in, by angle). As the helm goes over each rope's eye slides round the ring to face its sheave, its run (from the sheave to the splice) swings and shortens or lengthens, and the point where it leaves the sheave moves round it: TillerEye_S and TillerEye_P turn on their frames, TillerRun_S and TillerRun_P are posed and stretched along their own X, and TillerWrap_S and TillerWrap_P (the rope round each after sheave, from inside the end of the fixed lead, which stops a degree short of the soonest the run leaves at any angle, to where it leaves now) turn about their sheave's pin, every degree (gundeck.json tiller_ropes.poses). The build turns them all with the tiller, step by step, and fails on a touch or less than half an inch (build.json gundeck.tiller_swing), and swings the cabin's doors through their openings against them at every angle (build.json gundeck.door_helm). All sizes estimate (period practice: blocks for a 3 in rope about 10 to 12 in long)",
   "run_off_middle_m": 3.5,
   "after_x_m": -23.80,
+  "runs_below_eye_in": 2.0,
   "sheave_in": [7.0, 1.5],
   "rope_in_groove_in": 0.2,
+  "groove_clear_in": 0.05,
+  "groove_flare_deg": 20.0,
   "slot_clear_in": 0.5,
   "cheek_in": [1.25, 1.5],
   "crown_clear_in": 0.3,
@@ -616,6 +619,7 @@
   "pin_in": [1.0, 2.0, 0.4],
   "bush_in": [1.65, 3.25, 0.2, 0.25],
   "eye_in": [2.0, 6.0],
+  "eye_clear_in": 0.03,
   "leg_into_deck_in": 0.5
  },
  "lanterns": {
@@ -850,7 +854,6 @@
    [["DeckBeams"], ["SparDeck"], "the spar deck's planks are laid on its beams", 0.45],
    [["DeckBeams"], ["Stanchions"], "each stanchion's head is under its beam", 0.35],
    [["DeckBeams"], ["StateRooms"], "the state rooms' walls are stepped round the beams over them", 0.25],
-   [["DeckBeams"], ["TillerRope"], "the tiller rope's legs come down the fore face of the beam under their holes in the spar deck", 0.25],
    [["DeckBeams"], ["WaistFrame"], "the carlings and ledges under the gangways are framed into the waist's beams (deck.py's)", 0.3],
    [["FloorCloth"], ["GunDeck"], "the floor cloth is laid on the deck", 0.3],
    [["Galley"], ["Chimney"], "the galley's flue goes up into the forecastle's chimney, meeting its plate", 0.45],
@@ -863,7 +866,6 @@
    [["GunDeck"], ["HatchLadders"], "the ladder down the after hatchway hangs from its coaming, its head against the deck's opening", 0.4],
    [["GunDeck"], ["Hatchways"], "the coamings stand in the deck's openings", 0.25],
    [["GunDeck"], ["Ladders"], "the ladders up to the spar deck stand on this deck, their feet let in", 0.6],
-   [["GunDeck"], ["LeadBushes"], "the tiller rope's lead bushes line its holes through the deck, their flanges on it", 0.35],
    [["GunDeck"], ["Manger"], "the manger stands on the deck, its foot let in, and the cable scuttles' lead collars are let into the deck", 0.75],
    [["GunDeck"], ["MastWedges"], "the wedges are driven into the gap between each mast and its partners in the deck", 1.0],
    [["GunDeck"], ["Pumps"], "the pumps' chambers go down through the deck", 0.85],
@@ -903,7 +905,16 @@
    [["StateRooms"], ["GunWall"], "the state rooms' fore walls are scribed to the side's inner face", 0.7],
    [["StateRooms"], ["SparDeck"], "the state rooms' walls' heads under the spar deck's planks", 0.3],
    [["StateRooms"], ["WindowSeat"], "the window seat's ends against the state rooms' walls", 0.25],
-   [["Tiller"], ["Rudder"], "the rudder's head stands on the blade's top, let down into it (one timber: the game turns the head with the tiller, never the blade)", 1.3],
+   [["Tiller"], ["Rudder"], "the rudder's head stands on the blade's top, let down into it (tiller head_into_blade_in at the axis; its foot is square to the raked axis, so deeper aft; one timber: the game turns the head with the tiller, never the blade)", 3.1],
+   [["TillerEye_P"], ["TillerRun_P"], "the port tiller rope's run ends half an inch inside its eye's splice (one rope)", 0.75],
+   [["TillerEye_S"], ["TillerRun_S"], "the starboard tiller rope's run ends half an inch inside its eye's splice (one rope)", 0.75],
+   [["TillerRopeLeads"], ["SparDeck"], "each tiller rope's leg starts half an inch inside the quarterdeck's planks, where the wheel's leg goes down into them (tiller_ropes leg_into_deck_in)", 0.8],
+   [["TillerRopeLeads"], ["TillerWrap_P"], "the port rope round its after sheave runs on from the fixed lead, lying inside its end (one rope)", 0.4],
+   [["TillerRopeLeads"], ["TillerWrap_S"], "the starboard rope round its after sheave runs on from the fixed lead, lying inside its end (one rope)", 0.4],
+   [["TillerRun_P"], ["TillerWrap_P"], "the port run starts a fifth of an inch back round its after sheave, over the rope round it (one rope)", 0.45],
+   [["TillerRun_S"], ["TillerWrap_S"], "the starboard run starts a fifth of an inch back round its after sheave, over the rope round it (one rope)", 0.45],
+   [["TillerSheaves"], ["CabinBulkhead"], "the lead bushes' rims are let into the cabin's bulkhead's faces", 0.3],
+   [["TillerSheaves"], ["SparDeck"], "the level sheaves' stools and the leading sheaves' cheeks are let into the quarterdeck's planks", 0.45],
    [["WindowReveals"], ["SternFrame"], "each window's lining ends in its casing's opening", 0.25],
    [["WindowReveals"], ["SternGlass"], "each window's lining butts on the glass's back", 0.3],
    [["WindowReveals"], ["SternSash"], "each window's lining butts on the sash's back", 0.3]

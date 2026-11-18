@@ -1,10 +1,10 @@
 {
- "about": "The berth deck of the frigate Commonwealth as built, 1797 (docs/shipkit-13): the planked deck 7 ft 2 in under the gun deck, the side's ceiling up to the gun deck, the gun deck's beams over it, its hatchways, ladders and the fittings that come down through it (the capstan's spindle, the riding bitts' posts, the pumps' trees, the masts and the cables), the tiller room aft (where the iron tiller goes is still to be decided: tiller), the wardroom with its state rooms, the steerage and the officers' rooms forward of it, the crew's deck where the men slung their hammocks by night (about 110 here: berthing) and ate at mess tables by day, the sick bay forward, and the lanterns. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. berthdeck.py reads this file; what it hands the orlop slice (14) is the build's berth_deck.json, written from the deck as built (handover)",
+ "about": "The berth deck of the frigate Commonwealth as built, 1797 (docs/shipkit-13): the planked deck 7 ft 2 in under the gun deck, the side's ceiling up to the gun deck, the gun deck's beams over it, its hatchways, ladders and the fittings that come down through it (the capstan's spindle, the riding bitts' posts, the pumps' trees, the masts and the cables), the tiller room aft (named for Constitution's, where her tiller worked; this ship's tiller is overhead in the great cabin on the gun deck: tiller), the wardroom with its state rooms, the steerage and the officers' rooms forward of it, the crew's deck where the men slung their hammocks by night (about 110 here: berthing) and ate at mess tables by day, the sick bay forward, and the lanterns. Lengths in feet (_ft) and inches (_in) unless a key says metres (_m). Each value carries its source; 'estimate' means period practice or proportion, not a drawing. berthdeck.py reads this file; what it hands the orlop slice (14) is the build's berth_deck.json, written from the deck as built (handover)",
  "sources": {
   "profile_1849": "NARA 75841356, the inboard profile in the Navy Yard Boston set of 1849 (public domain; local copy in Data/Reference, measured only): the berth deck's bulkheads aft of the main mast (the wardroom with its state rooms either side, the steerage forward of it, the rooms forward of that) and the sick bay forward; read for the arrangement, the 1797 rooms placed between this ship's own beams (estimate)",
   "midship_1795": "NARA 75841360, the midship section drawn from Humphreys' specifications, and the 1926 midship section (the orlop slice's reading): the deck 7 ft 2 in under the gun deck, its planks 3 1/2 in yellow pine, the gun deck's beams 15 by 18 in over it (berth_deck.json sources)",
   "museum_1812": "the USS Constitution Museum's description of the ship in 1812: steered from the spar deck by a double wheel through tiller ropes to an iron tiller on the berth deck aft of the wardroom; the crew slept in hammocks on the berth deck, 14 in apart, and messed there",
-  "period": "estimate: period practice for an American or British frigate of the 1790s where neither drawing shows a part (the framing's sizes, the ceiling, the rooms' joinery, the tiller's iron, the cots, the lanterns)"
+  "period": "estimate: period practice for an American or British frigate of the 1790s where neither drawing shows a part (the framing's sizes, the ceiling, the rooms' joinery, the cots, the lanterns)"
  },
  "deck": {
   "note": "the deck flat across, its top the gun deck's less 7 ft 2 in all along (so it keeps her sheer: berth_deck.json deck), its planks 3 1/2 in (yellow pine, the 1795 section) laid as the gun deck's. It runs aft and forward to where the side's inside closes in to the middle line (the run aft, the bow forward), its ends over the orlop slice's framing (the berth deck's beams, ledges, deck transom and deck hook under the planks are slice 14's: berth_deck.json). The openings (openings) go down to the orlop; the masts, the pumps' trees and the cable scuttles pass through holes; the capstan's spindle and the bitts' posts stand on it",
@@ -70,7 +70,7 @@
    "short_of_next_in": 1.0,
    "least_side_arm_in": 12.0,
    "side_within_deg": 30.0,
-   "note": "as the gun deck's (gundeck_1797.json overhead.lodging_knee) at the gun deck's beams forward of the wardroom's fore bulkhead (in the wardroom the state rooms' joinery is in their bays; in the tiller room the bays are left for the tiller ropes' blocks, which wait on where the tiller goes): estimate"
+   "note": "as the gun deck's (gundeck_1797.json overhead.lodging_knee) at the gun deck's beams forward of the wardroom's fore bulkhead (in the wardroom the state rooms' joinery is in their bays; none yet in the tiller room abaft it, whose bays were kept for the tiller ropes' blocks until the tiller went overhead in the great cabin: still to come, as a knee at its first beam reaches forward past the wardroom's after bulkhead): estimate"
   },
   "bay_max_shift_m": 0.15,
   "bay_note": "the most a bulkhead or partition (wardroom, steerage, officers_rooms, sick_bay x_m) may move from its card x to stand in a bay between the beams, head ledges and knees overhead (berthdeck.py bay_x): more fails the build, the card giving each its x in a bay",
@@ -115,23 +115,10 @@
   "scuttle_well_ft": 3.0
  },
  "tiller": {
-  "note": "not built in this slice: the counter closes round the rudder head only at the gun deck's height, so this deck does not reach it, and where the tiller goes (hung under the quarterdeck's beams in the great cabin, the lower stern reshaped so it sits here as on Constitution, or none) is still to be decided. As drawn for this deck: the iron tiller (museum_1812: an iron tiller on the berth deck aft of the wardroom) in the rudder head's mortise in the slot between the wing transom's ceiled top and the gun deck's beams, led forward just under the beams (gap_under_beams_in) along her sheer to its end over the tiller room, square to the middle line with the helm amidships; the tiller ropes from the wheel come down through the gun deck in lead bushes (deck.py tiller_legs) through lead-lined holes in the gun deck's members, round a sheave block under each (hung from the member's side) and out to a block at the side abaft them (side_blocks_x_m, side_block_in from the ceiling), then in to an iron eye at the tiller's end. Hard over the end swings hard_over_deg either way, clear of the side and the bulkhead (checked). Iron forged square tapering to the end (sizes estimate, period practice: a 44's tiller about 18 ft long)",
-  "mortise_in": [6.0, 5.0],
-  "root_in": [5.0, 4.5],
-  "end_in": [3.0, 2.75],
-  "end_x_m": -22.2,
-  "gap_under_beams_in": 1.0,
-  "end_eye_in": [3.5, 0.75],
-  "hard_over_deg": 35.0,
-  "rope_circ_in": 3.5,
-  "sheave_block_in": [12.0, 7.0, 5.0],
-  "side_blocks_x_m": -23.2,
-  "side_block_in": [14.0, 8.0, 6.0],
-  "side_block_off_ceiling_in": 3.0,
-  "rudder_axis_note": "the rudder turns about its pintles' line (skin.py's rudder); the tiller swings about that line's point at the tiller's height"
+  "note": "not on this deck: the tiller is overhead in the great cabin on the gun deck (gundeck_1797.json tiller and tiller_ropes; Bean's choice, Nov 18 2026), the rudder's head coming up through the window seat there, and the tiller ropes lead from the wheel under the quarterdeck's beams, so none come down through the gun deck. Constitution's own tiller worked on this deck aft of the wardroom (museum_1812): the room there keeps the name, the tiller room, and its lantern"
  },
  "wardroom": {
-  "note": "the wardroom (profile_1849: the officers' mess abaft the steerage, state rooms either side): across the ship from its after bulkhead (forward of the tiller ropes' legs and the hanging knee under the gun deck beam at -21.73) to its fore bulkhead; four state rooms a side, about 6 ft 2 in long (1.76 to 1.96 m as their partitions stand in the bays between the beams overhead), their inboard walls fore and aft wall_y_m out from the middle line with a door into the wardroom, partitions between them clear of the hanging knees. The mizzen comes down through the wardroom; its long table stands under the skylight (the gun deck's WardroomSkylight) with chairs round it, its lantern on a bar between the skylight's carlings. Deal joinery painted (Interior); all sizes estimate",
+  "note": "the wardroom (profile_1849: the officers' mess abaft the steerage, state rooms either side): across the ship from its after bulkhead (forward of the hanging knee under the gun deck beam at -21.73) to its fore bulkhead; four state rooms a side, about 6 ft 2 in long (1.76 to 1.96 m as their partitions stand in the bays between the beams overhead), their inboard walls fore and aft wall_y_m out from the middle line with a door into the wardroom, partitions between them clear of the hanging knees. The mizzen comes down through the wardroom; its long table stands under the skylight (the gun deck's WardroomSkylight) with chairs round it, its lantern on a bar between the skylight's carlings. Deal joinery painted (Interior); all sizes estimate",
   "after_bulkhead_x_m": -21.4,
   "fore_bulkhead_x_m": -13.78,
   "bulkhead_in": 2.0,
@@ -293,7 +280,6 @@
    [["BerthOverhead"], ["BerthStanchions"], "each stanchion's head is under its beam, its top following the beam's underside", 0.4],
    [["BerthOverhead"], ["GunDeck"], "the gun deck's planks lie on its beams, ledges and carlings", 0.5],
    [["BerthOverhead"], ["HammockHook_*"], "each hammock hook's plate is screwed to its beam", 0.35],
-   [["BerthOverhead"], ["LeadBushes"], "the tiller rope's lead bush down through the gun deck's planks (slice 12's) bears on the beam under them; where the tiller ropes lead waits on the tiller's place", 0.3],
    [["BerthOverhead"], ["MessTable_*"], "each mess table's slings' eyebolts are driven up into the beam over it", 1.9],
    [["BerthPumpTubes"], ["GunDeck"], "the pumps' tubes come down through the gun deck's planks", 0.8],
    [["BerthRooms"], ["BerthWaterways"], "the partitions are scribed a quarter inch into the waterway's cove", 0.5],

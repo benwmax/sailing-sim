@@ -31,9 +31,10 @@ import os
 import numpy as np
 
 import loft
+from head import slab
 from deck import Part, solid, vbox, bar, lathe, revolve, in_poly, seg_dist, densify, rect2, cdt, newell
-from rigging import tube
-from spars import box, circle, ring_band, clip_convex, unit
+from rigging import rope_r, tube
+from spars import box, circle, ring_band, clip_convex, frame_ring, unit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FT = loft.FT
@@ -123,6 +124,22 @@ def bolt_head(part, P, n, d, mat="Iron", seg=8):
           [(0.0, d / 2), (0.25 * IN, d / 2), (0.25 * IN + 0.2 * d, 0.4 * d), (0.25 * IN + 0.35 * d, 0.15 * d)], mat, seg)
 
 
+def ring_solid(mesh, o, u, a, loop, mat, n=24):
+    """a closed ring round the axis through o along u (a: across it): loop [(s along u, radius)] its section, a closed
+    outline either way round (spars.ring_band's, with any section); every face points out"""
+    loop = [(float(v), float(r)) for v, r in loop]
+    S = np.array(loop)
+    if np.sum(S[:, 0] * np.roll(S[:, 1], -1) - np.roll(S[:, 0], -1) * S[:, 1]) > 0:
+        loop = loop[::-1]                          # ring_band's way round: clockwise, s across and the radius up
+    o, u, a = np.asarray(o, float), unit(np.asarray(u, float)), unit(np.asarray(a, float))
+    b = np.cross(u, a)
+    rings = [frame_ring(o + v * u, a, b, circle(r, n)) for v, r in loop]
+    m = len(rings)
+    F = [(j * n + i, j * n + (i + 1) % n, ((j + 1) % m) * n + (i + 1) % n, ((j + 1) % m) * n + i)
+         for j in range(m) for i in range(n)]
+    mesh.add(np.concatenate(rings), F, mat)
+
+
 def turned(o, a, deg):
     """(o, R): a turn of deg about the line through o along a (P -> (P - o) @ R.T + o)"""
     a = unit(np.asarray(a, float))
@@ -131,54 +148,124 @@ def turned(o, a, deg):
     return np.asarray(o, float), np.eye(3) + math.sin(th) * K + (1.0 - math.cos(th)) * K @ K
 
 
-def swing(V, T, o, a, ways, near, reach=0.05):
-    """V, T (vertices and triangles in the ship's frame) turned about the line through o along a, each way of ways (a
-    name and its angles in degrees, in order from where it starts) step by step, against near ({name: (V, T)}, only the
-    faces near the sweep are kept): for each way the last angle it turns to clear of them all, what it meets past that,
-    and the least gap it keeps on the way (from its corners to their faces and theirs to its, out to reach)"""
+def _boxes_meet(lo0, hi0, lo1, hi1, pad):
+    return bool((lo0 <= hi1 + pad).all() and (lo1 <= hi0 + pad).all())
+
+
+def _least_gap(P, tree, reach, lo=None, hi=None):
+    """the least distance (m) from the points P (only those inside lo..hi, when given) to tree's faces, out to reach
+    (9.0 when none is that close)"""
+    if lo is not None:
+        P = P[((P >= lo - reach) & (P <= hi + reach)).all(1)]
+    least = 9.0
+    for p in P:
+        h = tree.find_nearest(p.tolist(), reach)
+        if h[0] is not None and h[3] < least:
+            least = h[3]
+    return least
+
+
+def swing_set(bodies, steps, near, joined=(), close=(), reach=0.05):
+    """bodies that move together with the helm, turned step by step against near ({name: (V, T)}, still, in the ship's
+    frame) and each other: bodies {name: (T, posed)}, posed(deg) its vertices in the ship's frame with the helm deg
+    over; steps {way: [deg, ...]} in order from amidships. joined: pairs of names that are one rope where they meet (not
+    checked against each other), close: pairs that lie closer than reach by design (checked for a touch only). For each
+    way: the last angle everything turns to clear, what meets past it ([deg, [[a, b], ...]]), the least gap on the way
+    (each one's corners to the other's faces, both ways, out to reach) and where ([deg, a, b]); near: the still objects
+    near any sweep"""
     from mathutils.bvhtree import BVHTree
-    V, T = np.asarray(V, float), np.asarray(T, np.int64)
-    posed = {}
-    for way, degs in ways.items():
-        posed[way] = []
-        for deg in degs:
-            c, R = turned(o, a, deg)
-            posed[way].append((deg, (V - c) @ R.T + c))
-    allp = np.concatenate([P for ps in posed.values() for _, P in ps])
-    lo, hi = allp.min(0) - reach, allp.max(0) + reach
+    joined = {frozenset(p) for p in joined}
+    close = {frozenset(p) for p in close}
+    names = sorted(bodies)
+    posed = {way: [(deg, {n: np.asarray(bodies[n][1](deg), float) for n in names}) for deg in degs]
+             for way, degs in steps.items()}
+    lo, hi = {}, {}
+    for ps in posed.values():
+        for _, Ps in ps:
+            for n, P in Ps.items():
+                lo[n] = np.minimum(lo[n], P.min(0)) if n in lo else P.min(0)
+                hi[n] = np.maximum(hi[n], P.max(0)) if n in hi else P.max(0)
     kept = {}
     for name, (Vo, To) in near.items():
         Vo, To = np.asarray(Vo, float), np.asarray(To, np.int64)
         if not len(To):
             continue
-        keep = (Vo[To].min(1) <= hi).all(1) & (Vo[To].max(1) >= lo).all(1)
+        tmin, tmax = Vo[To].min(1), Vo[To].max(1)
+        keep = np.zeros(len(To), bool)
+        for n in names:
+            if frozenset((n, name)) not in joined:
+                keep |= (tmin <= hi[n] + reach).all(1) & (tmax >= lo[n] - reach).all(1)
         if keep.any():
             kept[name] = (Vo, To[keep])
-    trees = {n: BVHTree.FromPolygons(Vo.tolist(), To.tolist(), all_triangles=True) for n, (Vo, To) in kept.items()}
-    corners = {n: Vo[np.unique(To)] for n, (Vo, To) in kept.items()}
+    trees = {m: BVHTree.FromPolygons(Vo.tolist(), To.tolist(), all_triangles=True) for m, (Vo, To) in kept.items()}
+    corners = {m: Vo[np.unique(To)] for m, (Vo, To) in kept.items()}
+    nbox = {m: (c.min(0), c.max(0)) for m, c in corners.items()}
+    pairs = [(a, b) for i, a in enumerate(names) for b in names[i + 1:] if frozenset((a, b)) not in joined]
     out = {}
     for way, ps in posed.items():
         clear_to, meets, least, where = None, None, 9.0, None
-        for deg, P in ps:
-            tree = BVHTree.FromPolygons(P.tolist(), T.tolist(), all_triangles=True)
-            hit = sorted(n for n, t in trees.items() if tree.overlap(t))
-            if hit:
-                meets = [deg, hit]
+        for deg, Ps in ps:
+            bt = {n: BVHTree.FromPolygons(Ps[n].tolist(), bodies[n][0].tolist(), all_triangles=True) for n in names}
+            bb = {n: (Ps[n].min(0), Ps[n].max(0)) for n in names}
+            hits = [[n, m] for n in names for m, t in trees.items()
+                    if frozenset((n, m)) not in joined and _boxes_meet(*bb[n], *nbox[m], 0.0) and bt[n].overlap(t)]
+            hits += [[a, b] for a, b in pairs if _boxes_meet(*bb[a], *bb[b], 0.0) and bt[a].overlap(bt[b])]
+            if hits:
+                meets = [deg, hits]
                 break
             clear_to = deg
-            for n, t in trees.items():
-                for p in P:
-                    h = t.find_nearest(p.tolist(), reach)
-                    if h[0] is not None and h[3] < least:
-                        least, where = h[3], [deg, n]
-                for p in corners[n]:
-                    h = tree.find_nearest(p.tolist(), reach)
-                    if h[0] is not None and h[3] < least:
-                        least, where = h[3], [deg, n]
+            for n in names:
+                for m, t in trees.items():
+                    pr = frozenset((n, m))
+                    if pr in joined or pr in close or not _boxes_meet(*bb[n], *nbox[m], reach):
+                        continue
+                    g = min(_least_gap(Ps[n], t, reach, *nbox[m]), _least_gap(corners[m], bt[n], reach, *bb[n]))
+                    if g < least:
+                        least, where = g, [deg, n, m]
+            for a, b in pairs:
+                if frozenset((a, b)) in close or not _boxes_meet(*bb[a], *bb[b], reach):
+                    continue
+                g = min(_least_gap(Ps[a], bt[b], reach, *bb[b]), _least_gap(Ps[b], bt[a], reach, *bb[a]))
+                if g < least:
+                    least, where = g, [deg, a, b]
         out[way] = {"to_deg": ps[-1][0], "clear_to_deg": clear_to, "meets_past_it": meets,
                     "least_gap_in": round(least / IN, 3), "least_gap_at": where}
     out["near"] = sorted(kept)
+    out["bodies"] = names
+    out["joined"] = sorted(sorted(p) for p in joined)
+    out["close"] = sorted(sorted(p) for p in close)
     return out
+
+
+def door_helm(doors, bodies, degs, reach=0.05):
+    """the cabin's doors at every opening against the bodies that move with the helm at every angle: doors {name: (T,
+    [(door_deg, V), ...])}, bodies {name: (T, posed)} (as swing_set's), degs the helm's angles. The least gap between
+    any door and any body (its corners to their faces both ways, out to reach) and where ([door, door_deg, helm_deg,
+    body]), and every pose where they touch"""
+    from mathutils.bvhtree import BVHTree
+    dposed = {d: [(dd, np.asarray(V, float), BVHTree.FromPolygons(np.asarray(V, float).tolist(), np.asarray(T).tolist(),
+                                                                  all_triangles=True)) for dd, V in poses]
+              for d, (T, poses) in doors.items()}
+    least, where, touch = 9.0, None, []
+    for deg in degs:
+        for n, (T, f) in sorted(bodies.items()):
+            P = np.asarray(f(deg), float)
+            lo, hi = P.min(0), P.max(0)
+            tb = None
+            for d, poses in sorted(dposed.items()):
+                for dd, V, td in poses:
+                    if not _boxes_meet(lo, hi, V.min(0), V.max(0), reach):
+                        continue
+                    if tb is None:
+                        tb = BVHTree.FromPolygons(P.tolist(), np.asarray(T).tolist(), all_triangles=True)
+                    if tb.overlap(td):
+                        touch.append([d, dd, deg, n])
+                        continue
+                    g = min(_least_gap(V, tb, reach, lo, hi), _least_gap(P, td, reach, V.min(0), V.max(0)))
+                    if g < least:
+                        least, where = g, [d, dd, deg, n]
+    return {"least_gap_in": round(least / IN, 3), "least_gap_at": where, "touch": touch,
+            "doors": sorted(doors), "bodies": sorted(bodies), "helm_deg": [degs[0], degs[-1]]}
 
 
 class GunDeck:
@@ -412,10 +499,6 @@ class GunDeck:
         p = (bt["post_in"] + 0.2) * IN
         for sy in (1.0, -1.0):
             out.append(("BittPost_" + ("S" if sy > 0 else "P"), rect2(bt["x_m"], sy * bt["y_in"] * IN, p, p), False))
-        # the tiller rope's legs from the wheel go on down through this deck to the tiller below (slice 13), each in a
-        # lead bush
-        for k, (x, y, rr) in enumerate(self.dk.tiller_legs):
-            out.append(("TillerLeg_%d" % k, circle(rr + 0.8 * IN, 12) + [x, y], True))
         return out
 
     def outline(self):
@@ -1725,15 +1808,6 @@ class GunDeck:
                                "lift_over_manger_m": round(knobs[0], 3), "corner_over_scuttle_m": round(knobs[1], 3)}
         return poly
 
-    def lead_bushes(self, part):
-        """a lead bush round each of the tiller rope's legs where they pass down through this deck: lining the hole,
-        its flange on the deck"""
-        th = self.c["deck"]["thick_in"] * IN
-        for x, y, rr in self.dk.tiller_legs:
-            c = np.array([x, y, float(self.zg(x))])
-            ring_band(part, c, EZ, EX, -th / 2 + 0.1 * IN, rr + 0.25 * IN, th + 0.2 * IN, 0.5 * IN, "Lead", 16)
-            ring_band(part, c, EZ, EX, 0.125 * IN - 0.02 * IN, rr + 0.25 * IN, 0.25 * IN, 1.75 * IN, "Lead", 16)
-
     def port_stops(self, part):
         """a stop round the inside of each gun port with a lid (card port_stops), for the shut lid to close against: the
         sill's and the head's from jamb to jamb, the jambs' between them (each a solid of its own, lapping the others).
@@ -2121,6 +2195,381 @@ class GunDeck:
             "top_z_m": [round(float(top[:, 2].min()), 3), round(float(top[:, 2].max()), 3)],
             "room_over_top_in": round(self.tl_room[0] / IN, 2)}
 
+    # --- the tiller ropes (tiller_ropes) --------------------------------------------------------------------------------
+    def rope_setup(self):
+        """the tiller ropes' sizes and where their sheaves stand (tiller_ropes; after tiller(): the runs lie
+        runs_below_eye_in under the end eye's ring at rest). self.tr holds the rope's radius r, the sheave's size (D
+        across, ts thick) and rs (from its pin to the rope's middle), the slot's half-width g between the cheeks, their
+        thickness ct, their reach Rc from the pin and a (the crown's inner face from it), the runs' height zr, how far out
+        they run Y, the after sheaves' x xb, R0 (the rope's middle on the wheel's barrel: its legs' y), the eye's sizes
+        (rho: the bight's middle off the bar's, lt: the throat from the bar, ls: the splice's length) and, each side (sg
+        1 starboard, -1 port), its leg (x, y: deck.py tiller_legs) and the middles of its leading sheave (cL: its pin
+        along x, under the leg), its side sheave (cS) and its after sheave (cA: their pins upright); phi0: where each
+        rope leaves its after sheave with the helm amidships (rope_pose), phi_lo and phi_hi the least and most of that
+        over the helm's swing (whole degrees)"""
+        tc = self.c["tiller_ropes"]
+        r = rope_r(self.dk.c["wheel"]["tiller_rope_in"])
+        D, ts = (v * IN for v in tc["sheave_in"])
+        rs = D / 2 - tc["rope_in_groove_in"] * IN
+        ct, rim = (v * IN for v in tc["cheek_in"])
+        zr = float(np.asarray(self.tiller_ends["eye_m"], float)[2]) - tc["runs_below_eye_in"] * IN
+        Y, xb = tc["run_off_middle_m"], tc["after_x_m"]
+        legs = self.dk.tiller_legs
+        if len(legs) != 2 or not legs[0][1] > 0.0 > legs[1][1] or max(abs(lg[2] - r) for lg in legs) > 1e-6:
+            raise SystemExit("gundeck: deck.py's tiller_legs must be the wheel's starboard leg then its port one, of "
+                             "the tiller rope (deck_1797.json wheel tiller_rope_in)")
+        sides = {}
+        for sg, (xl, yl, _) in zip((1.0, -1.0), legs):
+            sides[sg] = {"leg": (xl, yl), "cL": np.array([xl, yl + sg * rs, zr + rs]),
+                         "cS": np.array([xl - rs, sg * (Y - rs), zr]), "cA": np.array([xb, sg * (Y - rs), zr])}
+        bar = self.tiller_ends["bar_m"]
+        rho = bar / 2 + r + tc["eye_clear_in"] * IN
+        self.tr = {"r": r, "D": D, "ts": ts, "rs": rs, "g": ts / 2 + tc["slot_clear_in"] * IN, "ct": ct,
+                   "Rc": D / 2 + rim, "a": rs + r + tc["crown_clear_in"] * IN, "zr": zr, "Y": Y, "xb": xb,
+                   "R0": abs(legs[0][1]), "rho": rho, "lt": rho + tc["eye_in"][0] * IN, "ls": tc["eye_in"][1] * IN,
+                   "sides": sides}
+        self.tr["phi0"] = {sg: p["phi"] for sg, p in self.rope_pose(0.0).items()}
+        hard = int(round(self.c["tiller"]["hard_over_deg"]))
+        phis = [self.rope_pose(math.radians(d)) for d in range(-hard, hard + 1)]
+        self.tr["phi_lo"] = {sg: min(p[sg]["phi"] for p in phis) for sg in sides}
+        self.tr["phi_hi"] = {sg: max(p[sg]["phi"] for p in phis) for sg in sides}
+        for sg in sides:
+            if not math.pi / 2 + 0.2 < self.tr["phi_lo"][sg] <= self.tr["phi_hi"][sg] < 1.5 * math.pi:
+                raise SystemExit(f"gundeck: the {'starboard' if sg > 0 else 'port'} tiller rope doesn't lead round its "
+                                 f"after sheave to the tiller's end at every angle of the helm (tiller_ropes after_x_m, "
+                                 f"run_off_middle_m)")
+
+    def bush_holes(self):
+        """the holes through the cabin's bulkhead for the tiller ropes' runs aft [(y, z, radius)]: each a little wider
+        than its lead bush's lining (tiller_ropes bush_in)"""
+        bi = self.c["tiller_ropes"]["bush_in"]
+        rh = (bi[0] / 2 + bi[3] + 0.05) * IN
+        return [(sg * self.tr["Y"], self.tr["zr"], rh) for sg in (1.0, -1.0)]
+
+    def rope_pose(self, th):
+        """the tiller ropes with the helm th radians over (positive: the tiller to starboard), each side (sg): where its
+        eye sits on the end eye's ring (Q: the bar's middle there; the eye slides round the ring to face its after
+        sheave), the way from it to that sheave (u, unit), the point the rope leaves the sheave (A, phi round it from its
+        forward side: at phi 90 deg, its outboard side, the run along the side comes on), the rope round it (wrap) and
+        its length from where it comes on to the eye (|A - Q| + rs wrap, for the slack); the eye's frame (Q, [u, Z x u,
+        Z]: Z the ring's plane's up made square to u, Y along the bar) and the run's (from S0, 0.2 in back along the
+        rope from A, to the splice's end less 0.5 in: its origin S0, X along it, Z up square to X, and its length)"""
+        tr = self.tr
+        rs, Rm = tr["rs"], self.tiller_ends["ring_radius_m"]
+        _, Rt = turned(self.hd["p0"], self.hd["a"], math.degrees(th))
+        ce = self.turn(np.asarray(self.tiller_ends["eye_m"], float)[None], th)[0]
+        nn = Rt @ self.tl_n
+        out = {}
+        for sg, sd in tr["sides"].items():
+            c = sd["cA"]
+            A = c - np.array([rs, 0.0, 0.0])
+            for _ in range(60):
+                v = A - ce
+                v = v - (v @ nn) * nn
+                Q = ce + Rm * unit(v)
+                d = (Q - c)[:2] * np.array([1.0, sg])
+                L = math.sqrt(max(float(d @ d) - rs * rs, 0.0))
+                phi = math.atan2(d[1], d[0]) - math.atan2(L, rs)
+                A1 = c + np.array([rs * math.cos(phi), sg * rs * math.sin(phi), 0.0])
+                moved = float(np.linalg.norm(A1 - A))
+                A = A1
+                if moved < 1e-10:
+                    break
+            else:
+                raise SystemExit("gundeck: the tiller rope's lead from its after sheave to the eye did not settle")
+            phi %= 2 * math.pi
+            u = unit(A - Q)
+            Z = unit(nn - (nn @ u) * u)
+            S0 = A + 0.2 * IN * u
+            E = Q + u * (tr["lt"] + tr["ls"] - 0.5 * IN)
+            X = unit(E - S0)
+            Zr = unit(EZ - (EZ @ X) * X)
+            out[sg] = {"Q": Q, "A": A, "u": u, "phi": phi, "wrap": phi - math.pi / 2,
+                       "length": float(np.linalg.norm(A - Q)) + rs * (phi - math.pi / 2),
+                       "eye": (Q, np.column_stack([u, np.cross(Z, u), Z])),
+                       "run": (S0, np.column_stack([X, np.cross(Zr, X), Zr]), float(np.linalg.norm(E - S0)))}
+        return out
+
+    def members_over(self, x0, x1, y):
+        """the beams and ledges over this deck whose faces lie across x0..x1 at |y| (their x)"""
+        out = []
+        for i, (x, s, m, kind) in enumerate(self.members):
+            if kind == "gangway" or (i in self.cut and abs(y) < self.cut[i]):
+                continue
+            if x + s / 2 > x0 and x - s / 2 < x1:
+                out.append(round(x, 3))
+        return out
+
+    def rope_leads(self, part):
+        """the tiller ropes that don't move with the helm (TillerRopeLeads): each side's from half an inch inside the
+        quarterdeck's planks (where the wheel's leg goes down into them: deck.py wheel) down to its leading sheave, round
+        under it and out athwartships to the side sheave, round that and aft under the beams through the bulkhead's bush
+        to the after sheave, and round that to a degree short of the soonest it leaves it at any angle of the helm (from
+        there the rope round the sheave and the run to the eye move with the helm: TillerWrap_S and _P, TillerRun_S and
+        _P)"""
+        tr = self.tr
+        rs, r = tr["rs"], tr["r"]
+        leg_in = self.c["tiller_ropes"]["leg_into_deck_in"] * IN
+        for sg, sd in tr["sides"].items():
+            xl, yl = sd["leg"]
+            cL, cS, cA = sd["cL"], sd["cS"], sd["cA"]
+            P = [np.array([xl, yl, float(self.zsu(xl)) + leg_in])]
+            P += [cL + rs * np.array([0.0, sg * math.cos(f), math.sin(f)]) for f in np.radians(np.linspace(180, 270, 10))]
+            P += [cS + rs * np.array([math.cos(f), sg * math.sin(f), 0.0]) for f in np.radians(np.linspace(0, 90, 10))]
+            f0 = tr["phi_lo"][sg] - math.radians(1.0)
+            n = max(2, int(math.ceil(math.degrees(f0 - math.pi / 2) / 9.0)) + 1)
+            P += [cA + rs * np.array([math.cos(f), sg * math.sin(f), 0.0]) for f in np.linspace(math.pi / 2, f0, n)]
+            tube(part, np.array(P), r, "Hemp", 12)
+
+    def sheave(self, part, c, ax, ref):
+        """a sheave of lignum vitae (tiller_ropes sheave_in) on the pin through c along ax, bored for the pin and scored
+        round for the rope: a round bottom groove_clear_in clear of the rope (its middle rs from the pin) and straight
+        sides flaring groove_flare_deg off square to the pin from where they leave it out to the rim, so a rope that
+        leaves the sheave a little out of its plane (the runs to the tiller's end, as the end rises and falls with the
+        helm) clears the groove's edges"""
+        tr, tc = self.tr, self.c["tiller_ropes"]
+        Ro, h, rs = tr["D"] / 2, tr["ts"] / 2, tr["rs"]
+        rg = tr["r"] + tc["groove_clear_in"] * IN
+        ri = (tc["pin_in"][0] / 2 + 0.03) * IN
+        b = math.radians(tc["groove_flare_deg"])
+        zt = rg * math.cos(b) + (Ro - rs + rg * math.sin(b)) * math.tan(b)     # the groove's half-width at the rim
+        if zt > h - 0.05 * IN:
+            raise SystemExit(f"gundeck: the tiller ropes' sheaves leave {(h - zt) / IN:.3f} in of rim beside the groove "
+                             "(tiller_ropes sheave_in, groove_clear_in, groove_flare_deg)")
+        g1 = math.pi / 2 - b
+        loop = [(-h, ri), (-h, Ro), (-zt, Ro)]
+        loop += [(rg * math.sin(gg), rs - rg * math.cos(gg)) for gg in np.linspace(-g1, g1, 13)]
+        loop += [(zt, Ro), (h, Ro), (h, ri)]
+        ring_solid(part, c, ax, ref, loop, "Sheave", 24)
+
+    def pin(self, part, c, ax, ref, s0, s1, head0=True, head1=True):
+        """an iron pin through c along ax from s0 to s1 (the cheeks' outer faces), with a head (tiller_ropes pin_in:
+        round, its head across and thick) on each end that shows"""
+        pr, ph, pt = (v * IN for v in self.c["tiller_ropes"]["pin_in"])
+        prof = [(s0 - pt, 0.8 * ph / 2), (s0 - 0.6 * pt, ph / 2), (s0 + 0.02 * IN, ph / 2)] if head0 else []
+        prof += [(s0 + 0.02 * IN if head0 else s0, pr / 2), (s1 - 0.02 * IN if head1 else s1, pr / 2)]
+        if head1:
+            prof += [(s1 - 0.02 * IN, ph / 2), (s1 + 0.6 * pt, ph / 2), (s1 + pt, 0.8 * ph / 2)]
+        lathe(part, c, ax, ref, prof, "Iron", 12)
+
+    def level_chock(self, part, c, C):
+        """a level sheave's chock (the side and after sheaves: the pin upright through c): two oak cheeks over and under
+        the sheave, each a D (round on the side the rope comes and goes, square out toward C, where the rope bears, to
+        the crown), the crown between them there crown_clear_in clear of the rope, and the stool from the upper cheek up
+        to the planks' underside (let_in into them) the chock is bolted to; the sheave and its pin (its head under the
+        lower cheek, its upper end in the stool)"""
+        tr = self.tr
+        tc = self.c["tiller_ropes"]
+        g, ct, Rc, a = tr["g"], tr["ct"], tr["Rc"], tr["a"]
+        dc, rk = a + tc["crown_in"] * IN, 1.0 * IN
+        C = unit(np.array([C[0], C[1]], float))
+        W = np.array([-C[1], C[0]])
+        zr = tr["zr"]
+
+        def plan(q, w):
+            return c[:2] + np.outer(q, C) + np.outer(w, W)
+        t = np.linspace(math.pi / 2, 1.5 * math.pi, 17)
+        cq, cw = [Rc * np.cos(t)], [Rc * np.sin(t)]
+        kq, kw = [], []                              # the crown's two rounded corners
+        for (q0, w0), a0 in (((dc - rk, -Rc + rk), -math.pi / 2), ((dc - rk, Rc - rk), 0.0)):
+            s = np.linspace(a0, a0 + math.pi / 2, 5)
+            kq.append(q0 + rk * np.cos(s))
+            kw.append(w0 + rk * np.sin(s))
+        D2 = plan(np.concatenate(cq + kq), np.concatenate(cw + kw))
+        crown = plan(np.concatenate([[a]] + kq + [[a]]), np.concatenate([[-Rc]] + kw + [[Rc]]))
+
+        def lift(P2, z):
+            return np.column_stack([P2, np.full(len(P2), z)])
+        for z0, z1 in ((zr - g - ct, zr - g), (zr + g, zr + g + ct)):
+            solid(part, [lift(D2, z0), lift(D2, z1)], "Oak")
+        solid(part, [lift(crown, zr - g - 0.02 * IN), lift(crown, zr + g + 0.02 * IN)], "Oak")
+        # the stool: square on the pin, from the upper cheek up into the planks
+        h = tc["stool_in"] / 2 * IN
+        sq = np.array([[-h, -h], [h, -h], [h, h], [-h, h]]) + c[:2]
+        x0, x1 = float(sq[:, 0].min()), float(sq[:, 0].max())
+        over = self.members_over(x0, x1, float(c[1]))
+        if over:
+            raise SystemExit(f"gundeck: a tiller rope's sheave's stool at x {c[0]:.3f} comes under the member at {over} "
+                             "(tiller_ropes after_x_m, deck_1797.json wheel legs_x_m)")
+        top = np.column_stack([sq, [float(self.zsu(p[0])) + tc["let_in"] * IN for p in sq]])
+        solid(part, [lift(sq, zr + g + ct - 0.02 * IN), top], "Oak")
+        self.sheave(part, c, EZ, EX)
+        self.pin(part, c, EZ, EX, -g - ct, g + ct + 1.0 * IN, head0=True, head1=False)
+        return D2
+
+    def leading_chock(self, part, sd, sg):
+        """a leading sheave's chock (under a leg of the wheel's rope, its pin along x): two oak cheeks fore and aft of the
+        sheave from the planks' underside (let_in into them) down round under it, and between them inboard of the leg
+        the chock's back (crown_clear_in clear of the rope down the leg and round under the sheave); the sheave and its
+        pin, a head on each cheek"""
+        tr = self.tr
+        tc = self.c["tiller_ropes"]
+        g, ct, Rc, a, rs, r = tr["g"], tr["ct"], tr["Rc"], tr["a"], tr["rs"], tr["r"]
+        cL = sd["cL"]
+        xl = float(cL[0])
+        yc, zc = float(cL[1]), float(cL[2])
+        let = tc["let_in"] * IN
+        over = self.members_over(xl - g - ct - 0.5 * IN, xl + g + ct + 0.5 * IN, yc)
+        if over:
+            raise SystemExit(f"gundeck: the tiller rope's leading sheave at x {xl:.3f} comes under the member at {over} "
+                             "(deck_1797.json wheel legs_x_m)")
+
+        def yz(yp, zp):                      # the chock's (outboard, up) from the sheave's middle to the ship's (y, z)
+            return np.column_stack([yc + sg * np.asarray(yp, float), zc + np.asarray(zp, float)])
+        t = np.linspace(math.pi, 2 * math.pi, 17)
+        for x0, x1 in ((xl - g - ct, xl - g), (xl + g, xl + g + ct)):
+            rings = []
+            for x in (x0, x1):
+                top = float(self.zsu(x)) + let - zc
+                P = yz(np.concatenate([[-Rc, -Rc], Rc * np.cos(t), [Rc, Rc]]),
+                       np.concatenate([[top, 0.0], Rc * np.sin(t), [0.0, top]]))
+                rings.append(np.column_stack([np.full(len(P), x), P]))
+            solid(part, rings, "Oak")
+        # the back between the cheeks: inboard of the leg from the planks down, and round under the sheave as far as it
+        # stays crown_clear_in clear of the rope there (a chord a off the pin, square to the way between the rope's
+        # two leads)
+        yb = -(rs + r + tc["crown_clear_in"] * IN)
+        top = max(float(self.zsu(xl - g)), float(self.zsu(xl + g))) + let - zc
+        k = math.sqrt(2.0) * a                       # the chord: -y' - z' = k (a off the pin, toward inboard and down)
+        if a >= Rc or yb > -a + 1e-9:
+            raise SystemExit("gundeck: the tiller rope's leading chock has no room for its back (tiller_ropes cheek_in)")
+        ang = 1.25 * math.pi + math.acos(a / Rc)     # where the chord meets the cheeks' round
+        tt = np.linspace(math.pi, ang, 9)
+        poly = yz(np.concatenate([[-Rc], Rc * np.cos(tt), [yb, yb]]),
+                  np.concatenate([[top], Rc * np.sin(tt), [-k - yb, top]]))
+        prism(part, poly, xl - g - 0.02 * IN, xl + g + 0.02 * IN, "Oak", axis=0)
+        self.sheave(part, cL, EX, EY)
+        self.pin(part, cL, EX, EY, -g - ct, g + ct)
+
+    def rope_chocks(self, part):
+        """the tiller ropes' sheaves in their chocks (TillerSheaves): each side's leading sheave under its leg, its side
+        sheave run_off_middle_m out and its after sheave abaft the tiller's end (each chock's crown toward where its
+        rope bears: the side sheave's forward and outboard, the after sheave's aft and outboard, square to the way
+        between its two leads with the helm amidships), and the lead bushes in the cabin's bulkhead (bush_in: a lining
+        through it, a rim proud of each face let a little into it)"""
+        tr = self.tr
+        self.rope_plans = {}
+        for sg, sd in tr["sides"].items():
+            self.leading_chock(part, sd, sg)
+            self.rope_plans["side", sg] = self.level_chock(part, sd["cS"], (1.0, sg))
+            f0 = tr["phi0"][sg]
+            out_ = np.array([-math.sin(f0), sg * math.cos(f0)])          # the rope's way off the after sheave
+            self.rope_plans["after", sg] = self.level_chock(part, sd["cA"], -(np.array([1.0, 0.0]) + out_))
+        cb = self.c["cabin"]
+        xk, t = cb["bulkhead_x_m"], cb["bulkhead_in"] * IN
+        bi = self.c["tiller_ropes"]["bush_in"]
+        ri, Rr, p, w = bi[0] / 2 * IN, bi[1] / 2 * IN, bi[2] * IN, bi[3] * IN
+        let, h = 0.05 * IN, t / 2
+        loop = [(-h - p, ri), (-h - p, Rr), (-h + let, Rr), (-h + let, ri + w), (h - let, ri + w), (h - let, Rr),
+                (h + p, Rr), (h + p, ri)]
+        for yh, zh, _ in self.bush_holes():
+            ring_solid(part, np.array([xk, yh, zh]), EX, EY, loop, "Lead", 24)
+
+    def rope_moving(self):
+        """the tiller ropes' parts that move with the helm, each its own part on its own frame (frames): the eyes
+        (TillerEye_S, TillerEye_P: the bight round the end eye's bar and the splice, built in rope_pose's eye frame with
+        the helm amidships: origin on the bar's middle, X toward the after sheave, Y along the bar, Z up the ring's
+        plane), the runs from the after sheaves to the splices (TillerRun_S, TillerRun_P: a straight rope along its own
+        X from 0 to its length with the helm amidships; the game sets its frame and stretches it along X every degree)
+        and the rope round each after sheave up to where the run leaves it (TillerWrap_S, TillerWrap_P: an arc round the
+        pin, origin on it, that turns about the pin as that point moves round the sheave, from the run back to inside the
+        fixed lead, which ends a degree short of the soonest the run leaves at any angle; a hair thinner than the rope,
+        so where the two lie together the lead hides it). info tiller_ropes: the poses every degree, the slack in the
+        easing rope and the wheel's turns by the helm's angle, and where the eyes come on the ring"""
+        tr = self.tr
+        r, rho, lt, ls, rs = tr["r"], tr["rho"], tr["lt"], tr["ls"], tr["rs"]
+        rest = self.rope_pose(0.0)
+        span = {sg: tr["phi_hi"][sg] - tr["phi_lo"][sg] + math.radians(2.0) for sg in (1.0, -1.0)}
+        for sg in (1.0, -1.0):
+            sd = "S" if sg > 0 else "P"
+            ep = Part()
+            Dt = math.hypot(lt, r)
+            ang = math.atan2(r, lt) + math.acos(rho / Dt)       # the bight's upper tangent point (from +X toward +Z)
+            P = [[lt + 0.25 * IN, 0.0, r], [lt, 0.0, r]]
+            P += [[rho * math.cos(a), 0.0, rho * math.sin(a)] for a in np.linspace(ang, 2 * math.pi - ang, 25)]
+            P += [[lt, 0.0, -r], [lt + 0.25 * IN, 0.0, -r]]
+            tube(ep, np.array(P), r, "Hemp", 12)
+            th = np.linspace(0.0, 2 * math.pi, 12, endpoint=False)
+            st = [(lt - 0.15 * IN, 1.3, 2.3), (lt + 0.6 * IN, 1.3, 2.2), (lt + 2.0 * IN, 1.25, 1.75),
+                  (lt + 3.5 * IN, 1.18, 1.4), (lt + 5.0 * IN, 1.12, 1.18), (lt + ls, 1.08, 1.08)]
+            solid(ep, [np.column_stack([np.full(12, x), ay * r * np.cos(th), az * r * np.sin(th)]) for x, ay, az in st],
+                  "Hemp")
+            self.parts_["TillerEye_" + sd] = ep
+            self.frames["TillerEye_" + sd] = rest[sg]["eye"]
+            rp = Part()
+            S0, R, L0 = rest[sg]["run"]
+            tube(rp, np.array([[0.0, 0.0, 0.0], [L0, 0.0, 0.0]]), r, "Hemp", 12)
+            self.parts_["TillerRun_" + sd] = rp
+            self.frames["TillerRun_" + sd] = (S0, R)
+            tr["L0", sg] = L0
+            wp = Part()
+            f1 = tr["phi0"][sg]
+            n = max(2, int(math.ceil(math.degrees(span[sg]) / 3.0)) + 1)
+            tube(wp, np.array([rs * np.array([math.cos(f), sg * math.sin(f), 0.0])
+                               for f in np.linspace(f1 - span[sg], f1, n)]), 0.955 * r, "Hemp", 12)
+            self.parts_["TillerWrap_" + sd] = wp
+            self.frames["TillerWrap_" + sd] = (tr["sides"][sg]["cA"].copy(), np.eye(3))
+        # every degree of the helm: the poses, the slack and the wheel's turns (the hauling rope's change over the
+        # barrel's round: R0 to the rope's middle)
+        hard = int(round(self.c["tiller"]["hard_over_deg"]))
+        poses, slack, turns = [], {}, {}
+        S_rest = {sg: rest[sg]["length"] for sg in rest}
+        far_neck, apart, fleet = 360.0, 360.0, 0.0
+        for d in range(-hard, hard + 1):
+            ps = self.rope_pose(math.radians(d))
+            row = {"helm_deg": d}
+            for sg, p in ps.items():
+                sd = "S" if sg > 0 else "P"
+                if p["wrap"] < 0.1:
+                    raise SystemExit(f"gundeck: at {d} deg of helm the {sd} tiller rope leaves its after sheave before "
+                                     "it comes on to it")
+                Q, Re = p["eye"]
+                S0, R, L = p["run"]
+                fleet = max(fleet, math.degrees(math.asin(min(1.0, abs(float(R[2, 0]))))))
+                row["TillerEye_" + sd] = {"o": np.round(Q, 5).tolist(), "R": np.round(Re, 6).tolist()}
+                row["TillerRun_" + sd] = {"o": np.round(S0, 5).tolist(), "R": np.round(R, 6).tolist(),
+                                          "scale_x": round(L / tr["L0", sg], 6)}
+                b = sg * (p["phi"] - tr["phi0"][sg])
+                row["TillerWrap_" + sd] = {"o": np.round(tr["sides"][sg]["cA"], 5).tolist(),
+                                           "R": np.round([[math.cos(b), -math.sin(b), 0.0], [math.sin(b), math.cos(b), 0.0],
+                                                          [0.0, 0.0, 1.0]], 6).tolist()}
+            poses.append(row)
+            tot = sum(p["length"] for p in ps.values()) - sum(S_rest.values())
+            if tot > 1e-4:
+                raise SystemExit(f"gundeck: at {d} deg of helm the tiller ropes would need {tot / IN:.2f} in more rope "
+                                 "than amidships (tiller_ropes after_x_m)")
+            slack[d] = round(-tot / IN, 2)
+            haul = 1.0 if d >= 0 else -1.0
+            turns[d] = round(haul * (S_rest[haul] - ps[haul]["length"]) / (2 * math.pi * tr["R0"]), 3)
+            # the eyes on the ring: each eye's way from the ring's middle, from the neck's (aft, along the tiller) and
+            # from the other eye's
+            _, Rt = turned(self.hd["p0"], self.hd["a"], float(d))
+            ce = self.turn(np.asarray(self.tiller_ends["eye_m"], float)[None], math.radians(d))[0]
+            back = -(Rt @ self.tl_t)
+            w = {sg: unit(p["Q"] - ce) for sg, p in ps.items()}
+            for v in w.values():
+                far_neck = min(far_neck, math.degrees(math.acos(float(np.clip(v @ back, -1, 1)))))
+            apart = min(apart, math.degrees(math.acos(float(np.clip(w[1.0] @ w[-1.0], -1, 1)))))
+        self.info["tiller_ropes"] = {
+            "rope_in": self.dk.c["wheel"]["tiller_rope_in"], "runs_z_m": round(tr["zr"], 4),
+            "sheaves_m": {("S" if sg > 0 else "P"): {k: np.round(sd[k], 4).tolist() for k in ("cL", "cS", "cA")}
+                          for sg, sd in tr["sides"].items()},
+            "leaves_after_sheave_deg_at_rest": {("S" if sg > 0 else "P"): round(math.degrees(f), 2)
+                                                for sg, f in tr["phi0"].items()},
+            "slack_in": {str(d): v for d, v in slack.items()}, "most_slack_in": max(slack.values()),
+            "wheel_turns": {str(d): v for d, v in turns.items()},
+            "wheel_turns_lock_to_lock": round(turns[hard] - turns[-hard], 2),
+            "eyes_least_from_neck_deg": round(far_neck, 1), "eyes_least_apart_deg": round(apart, 1),
+            "runs_most_off_level_deg": round(fleet, 2),
+            "run_length_at_rest_m": {("S" if sg > 0 else "P"): round(tr["L0", sg], 4) for sg in (1.0, -1.0)},
+            "poses": poses,
+            "wrap_span_deg": {("S" if sg > 0 else "P"): round(math.degrees(span[sg]), 2) for sg in (1.0, -1.0)},
+            "moves": "TillerEye_S/P and TillerWrap_S/P: set each frame to poses[k] (o, R: columns its axes in the ship) "
+                     "for the helm's degree (poses[k].helm_deg); TillerRun_S/P: likewise, its X scaled by scale_x (it runs "
+                     "along its own X from 0); the rest (TillerRopeLeads, TillerSheaves) stays. Between whole degrees "
+                     "take the nearer pose or blend two. The easing rope's slack (slack_in) is not drawn: its run stays "
+                     "straight"}
+
     def head_sweep(self, z0, z1, dz=0.005):
         """the head's outline at every height from z0 to z1 (and no higher than its top) at every angle of the helm:
         points (k, 3), and its axis's (x, y) at the middle height"""
@@ -2294,11 +2743,11 @@ class GunDeck:
         self.info["transom"] = {"rows_retriangulated": [j0, j1], "triangles": len(Tn)}
         return Vn, keep + [tuple(int(i) for i in t) for t in Tn]
 
-    def partition(self, part, x, t, y_in, doors=(), mat="Interior"):
+    def partition(self, part, x, t, y_in, doors=(), mat="Interior", holes=()):
         """a partition across the ship at x, t thick: from y_in out to the starboard side (y_in None: from side to
         side), sitting a quarter inch into the deck and up to the spar deck's planks; at the side scribed a quarter inch
         into the waterway's cove, let a quarter inch into the side and the clamp; doors [(y0, y1, height)] notched up
-        from its foot. Returns its outline (y, z)"""
+        from its foot; round holes [(y, z, radius)] through it. Returns its outline (y, z)"""
         let = 0.25 * IN
         zg, zt = float(self.zg(x)), float(self.zsu(x))
         prof = np.array(self.c["deck"]["waterway"]["profile_in"], float) * IN
@@ -2331,12 +2780,21 @@ class GunDeck:
         else:
             poly = [(y0, zg - let)] + bottom + st + [(y0, zt)]
         P = np.array(poly)
-        prism(part, P, x - t / 2, x + t / 2, mat, axis=0)
+        if not holes:
+            prism(part, P, x - t / 2, x + t / 2, mat, axis=0)
+            return P
+        H = [circle(rh, 24) + [yh, zh] for yh, zh, rh in holes]
+        for h in H:
+            if not in_poly(h, P).all() or seg_dist(h, P).min() < 0.02:
+                raise SystemExit(f"gundeck: a hole through the partition at x {x:.3f} is not well inside it")
+        slab(part, P, H, 0.6, lambda Q, d: np.column_stack([np.broadcast_to(x + np.asarray(d, float), (len(Q),)),
+                                                            Q[:, 0], Q[:, 1]]),
+             lambda Q: np.full(len(Q), t / 2), mat)
         return P
 
     def bulkhead(self, part, doors_part):
-        """the great cabin's bulkhead across the ship: panelled on both faces, a door either side of the tiller rope's
-        legs (each door its own part, hung on its outboard post: a turn about its own Z opens it aft into the cabin).
+        """the great cabin's bulkhead across the ship: panelled on both faces, a door either side of the middle line
+        (each door its own part, hung on its outboard post: a turn about its own Z opens it aft into the cabin).
         Each door's hinge pins stand on the bulkhead's after face at the opening's outboard edge, the leaf set in from
         that face (door_hang), so it swings aft clear of its jamb and casing; a low sill across the doorway, and the
         leaf's foot clear of the sill and of the floor cloth where the deck rises aft under its swing"""
@@ -2348,8 +2806,8 @@ class GunDeck:
         for d in cb["doors"]:
             y0, y1 = d["y_m"]
             ds += [(y0, y1, d["high_in"] * IN), (-y1, -y0, d["high_in"] * IN)]
-        self.partition(part, xb, t, None, ds)
-        # the panelling: stiles and rails proud of each face, broken at the doors
+        self.partition(part, xb, t, None, ds, holes=self.bush_holes())
+        # the panelling: stiles and rails proud of each face, broken at the doors (and clear of the tiller ropes' bushes)
         pn = cb["panel"]
         sw, pr = pn["stile_in"] * IN, pn["proud_in"] * IN
         H = zt - zg
@@ -3085,8 +3543,6 @@ class GunDeck:
             fp["LadderFoot_%s_%s" % (li["break"], "S" if li["y_m"] > 0 else "P")] = rect2(xf + d * cl / 2, li["y_m"], cl, w)
         xf, w = self.companion_foot
         fp["LadderFoot_companion"] = rect2(xf - cl / 2, 0.0, cl, w)
-        for k, (x, y, rr) in enumerate(self.dk.tiller_legs):
-            fp["TillerLeg_%d" % k] = circle(rr + 2.0 * IN, 12) + [x, y]
         return fp
 
     def layout_check(self, fp, gap=0.15):
@@ -3109,8 +3565,9 @@ class GunDeck:
         self.layout()
         names = ("GunDeck", "GunWaterways", "DeckBeams", "Clamps", "HangingKnees", "Stanchions", "Hatchways", "Wells",
                  "HatchLadders", "MastWedges", "GunCapstan", "GunCapstanPawls", "Pumps", "RidingBitts", "Galley",
-                 "Manger", "LeadBushes", "AfterWall", "WindowReveals", "CabinBulkhead", "StateRooms", "WindowSeat",
-                 "FloorCloth", "CabinFurniture", "HornLanterns", "PortStops", "LodgingKnees", "CapstanBars", "Tiller")
+                 "Manger", "AfterWall", "WindowReveals", "CabinBulkhead", "StateRooms", "WindowSeat", "FloorCloth",
+                 "CabinFurniture", "HornLanterns", "PortStops", "LodgingKnees", "CapstanBars", "Tiller", "TillerRopeLeads",
+                 "TillerSheaves")
         P = {n: Part() for n in names}
         # the waist's beams (deck.py's) made again with their ends cut to this deck's side, over its clamp
         self.dk.rebuild_waist(lambda x0, x1, z: float(self.wall_at(np.array([x0, x1]), np.array([z, z]))[0][:, 1].min())
@@ -3137,7 +3594,6 @@ class GunDeck:
             if len(P["Wells"].V):
                 raise SystemExit("gundeck: wells built over the berth deck")
             del P["Wells"]
-        self.lead_bushes(P["LeadBushes"])
         self.port_stops(P["PortStops"])
         # the rudder's head and the tiller (overhead in the great cabin: tiller), placed under the spar deck's framing:
         # one object (Tiller) on the axis the game turns them about, the head standing on the blade's top (the game
@@ -3146,8 +3602,15 @@ class GunDeck:
         self.place_tiller(P["DeckBeams"])
         self.head_mesh(P["Tiller"], P["Tiller"])
         self.tiller(P["Tiller"])
-        # the great cabin
+        # the tiller ropes from the wheel's legs under the quarterdeck to the tiller's end (tiller_ropes): the parts that
+        # stay (the ropes as far as the after sheaves, the sheaves in their chocks and the bulkhead's bushes), and the eyes,
+        # the runs to them and the rope round the after sheaves, each on its own frame, that the game moves with the helm
+        self.rope_setup()
+        self.rope_leads(P["TillerRopeLeads"])
+        self.rope_chocks(P["TillerSheaves"])
         self.parts_ = P
+        self.rope_moving()
+        # the great cabin
         self.after_wall(P["AfterWall"])
         self.reveals(P["WindowReveals"])
         self.bulkhead(P["CabinBulkhead"], None)
