@@ -310,7 +310,8 @@
      null,
      null
     ],
-    "kind": "store"
+    "kind": "store",
+    "note": "left out: on the plan's registration it lies past the hold's forward end, where the fore platform stops (orlop.json rooms_off_platform)"
    }
   ]
  },
@@ -1005,7 +1006,7 @@
     [
      "BerthCableScuttles"
     ],
-    "the cable scuttles' lead linings come down through the planks onto the deck hook and the beams' faces",
+    "the cable scuttles' lead linings come down through the planks and on under them beside the berth deck's beams",
     0.3
    ],
    [

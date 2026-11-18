@@ -88,11 +88,11 @@
   ],
   "coaming_high_in": 6.0,
   "coaming_thick_in": 3.0,
-  "wells_note": "no wells: under each opening the orlop slice's (14) overhead and platforms show. A ladder down lands on the orlop's top: an orlop platform's level where one stands under its foot (orlop.py platform_levels: the platforms are laid level fore and aft), else orlop_below_in under this deck's top (keeping her sheer)",
+  "wells_note": "no wells: under each opening the orlop slice's (14) overhead and platforms show (the cable scuttles keep their lead lining down scuttle_well_ft, as far as the gun deck leads the cable). A ladder down lands on the orlop's top: an orlop platform's level where one stands under its foot (orlop.py platform_levels: the platforms are laid level fore and aft), else orlop_below_in under this deck's top (keeping her sheer)",
   "orlop_below_in": 76.0
  },
  "ladders": {
-  "note": "a ladder down each ladderway to the orlop, hung from the inside face of its coaming, 62 degrees as the gun deck's, its foot on the orlop's top (openings orlop_below_in: berth_deck.json ladders_down); the gun deck's ladders land on this deck: nothing stands within clear_m beyond their feet",
+  "note": "a ladder down each ladderway to the orlop, hung from the inside face of its coaming, 62 degrees as the gun deck's, its foot on the orlop's top (an orlop platform's level, else openings orlop_below_in: berth_deck.json ladders_down); the gun deck's ladders land on this deck: nothing stands within clear_m beyond their feet",
   "width_in": 24.0,
   "angle_deg": 62.0,
   "stringer_in": [9.0, 2.25],

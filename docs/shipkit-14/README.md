@@ -19,8 +19,8 @@ The 1926 midship section (NARA 75841385) gives the heights below the gun deck: t
 the gun deck's, the orlop's 6 ft 4 in under the berth deck's, the ceiling beside the keelson (the limber strake's top)
 33 in over the rabbet and the keelson's top 4 ft over it. Scaled by its 22 ft 3 in half breadth, the section's gun deck
 stands 7.25 m over the rabbet against our lines' 7.37 m, so its heights carry across within 2%. Slice 13 checked the
-berth deck's line against the 1795 section drawn from Humphreys' specs (NARA 75841360) and hands it over in
-`berthdeck_handover.json`.
+berth deck's line against the 1795 section drawn from Humphreys' specs (NARA 75841360) and hands it over from the deck
+as built (`BerthDeck.handover()`, written out as `berth_deck.json`).
 
 The depth of hold, the berth deck's top amidships over the ceiling beside the keelson, comes out 14.25 ft. Humphreys'
 proportions give 13 ft 6 in and the 1926 section 13 ft 10 in; `build.json` reports ours beside them.
@@ -33,18 +33,25 @@ about 22.6 m aft of amidships to 23.7 m forward.
 ### The berth deck's overhead
 
 Slice 13's hand-over gives the berth deck's line, its 3.5 in planks, 31 beams (16 in sided, 14 in moulded) at the spar
-and gun decks' stations, a ledge between each pair, and the openings that go down through it. Under its planks this
-slice builds the beams with their ends let into the ceiling, the ledges, and 8 by 8 in carlings along each opening's
-sides from the beam the coaming sits on to the next. The masts are framed the same way. A hanging knee stands at each end
+and gun decks' stations, a ledge between each pair, the openings that go down through it and the pumps' tubes. Under its
+planks this slice builds the beams with their ends let into the ceiling, the ledges, and 8 by 8 in carlings along each
+opening's sides from the beam the coaming sits on to the next. The masts are framed the same way. Beams, ledges and
+carlings follow her sheer across their siding, so the planks bear on them all along. A hanging knee stands at each end
 of each beam on its fore face (its aft face where a partition across the ship stands there), its arm down the ceiling
-and its other arm under the beam, stopped short of the partitions. Where the pumps' tubes pass down, a beam or ledge is
-scored round them. Over the platforms, a pillar stands on the middle line under each beam wherever no opening, room,
-partition or ladder is in the way.
+and its other arm under the beam, stopped short of the partitions. Where the pumps' tubes pass down, a beam, ledge or
+carling is scored round them. At the deck's ends the deck transom crosses the run aft and the deck hook, a flat knee,
+crosses the bow (sizes estimated). Over the platforms, a pillar stands on the middle line under each beam wherever no
+opening, room, partition or ladder is in the way.
+
+The pumps' tubes come on down from slice 13's: the two brake pumps' round trees to the keelson's top and the chain
+pumps' four square pipes to the limber boards, inside the pump well.
 
 ### The orlop
 
 The orlop is drawn from the 1849 orlop plan (NARA 75841362), registered to the ship by the masts as the gun deck's plan
-is. Its after and fore platforms are planked flat across to the side on their own beams. The plan's rooms stand on them,
+is. Its after and fore platforms are planked flat across to the side on their own beams, each laid level fore and aft at
+the orlop's height (6 ft 4 in under the berth deck) at its middle: an estimate, since no drawing here shows the orlop in
+profile. Slice 13's ladders down land on them (`Orlop.platform_levels`). The plan's rooms stand on them,
 each with 1.5 in deal partitions up to the beams and a doorway in each wall over 4 ft. Aft are the light room, filling
 room and passage, the bread rooms, the cockpit with the spirit room and after hatches, the state rooms, the slop room,
 the captain's store room and the dispensary. Forward are the sail rooms, the boatswain's general store room with its
@@ -52,7 +59,9 @@ counter, the master's store room and the marine clothing room.
 
 Between the platforms lie the cable tiers: the plan's four beams across, with battens where the cables lie. Each of
 the four hemp cables (22 in) is flaked down in flat spirals as deep as the headroom allows. On the middle line, from
-the hold up to the berth deck's beams, stand the pump well round the pumps and the main mast, the shot lockers (24 pdr
+the hold up to the berth deck's beams, stand the pump well round the pumps and the main mast (its after end 6 cm abaft
+the plan's, with the after platform's end and the rooms against it, so the chain pumps' pipes over it come down inside
+the well; the main hold's after bulkhead closes it aft), the shot lockers (24 pdr
 shot close packed) and the cable lockers.
 
 The rooms are furnished from the stores kit's sizes (`stores.json`): bread bags stacked in the bread rooms, sails
@@ -63,10 +72,11 @@ the cockpit (`orlop.json` lights).
 
 ### The hold
 
-The ceiling (4 in oak) lines the side from the limber strake up to the berth deck's planks. The keelson (18 by 18 in)
+The ceiling (4 in oak) lines the side from the limber strake up to the berth deck's planks, and goes on past the hold's
+ends up the side under the berth deck to the deck transom and the deck hook. The keelson (18 by 18 in)
 runs the hold's length on the floors, with a step on it for each lower mast: two chocks and two cheeks round the heel's
 tenon, longer and wider than the heel, chocked down onto the limber boards beside the keelson. Each mast's heel stands
-on the keelson's top (`mast_heels` in `orlop.json`; slice 13 moves the rig's heels onto these points).
+on the keelson's top (`mast_heels` in `orlop.json`; the rig's heels stand on these points since slice 13).
 
 The hold plan (NARA 75841358) places the bulkheads. From aft they are the passage, which the mizzen passes through to
 its step, the after magazine, the spirit room, the provision room, the main hold, and the fore magazine with its passage. Each
@@ -92,7 +102,7 @@ load each deck below as it loads the gun deck. `orlop.json` lists both, the lant
 `orlop_room` checks every part against everything else in the ship and each other (`deck.room`). The only contacts
 allowed are the card's designed ones (`orlop_1797.json` meets), each no deeper than allowed: the deepest measured,
 plus a quarter inch. Every designed contact must still meet, or the build fails (a part would hang clear of what holds
-it). The masts' heels go 6.5 to 9.75 in into their steps until slice 13 moves the rig's heels onto the keelson.
+it). Pairs between an orlop part and the berth deck's are this check's too: the berth deck's own check skips them.
 
 | Parts | By design | Allowed (in) |
 | --- | --- | --- |
@@ -150,7 +160,7 @@ starting figure, not a cap).
 * **NARA 75841358**, 'Magazines and Hold' (the same set): the hold's bulkheads, the magazines, the spirit room, the pump
   well.
 * **NARA 75841385**, the 1926 midship section: the decks' heights, the ceiling, the keelson.
-* **Slice 13's hand-over** (`berthdeck_handover.json`): the berth deck's line, planks, beams, ledges, carlings,
+* **Slice 13's hand-over** (`BerthDeck.handover()`): the berth deck's line, planks, beams, ledges, carlings,
   openings, masts, pumps and ladders.
 * **The stores kit** (`stores.json`): the casks', bread bags', sea chests' and filling bench's sizes. Its meshes replace
   the stand-ins when they land.
@@ -166,7 +176,7 @@ is left out, where slice 13's fore ladder now lands. Its iron water tanks are dr
 python Tools/shipkit/frigate/build_frigate.py <out>
 ```
 
-(Blender's Python, pip `bpy`; about 48 minutes and over 11 GB of memory, so nothing else large should run beside it.)
+(Blender's Python, pip `bpy`; about 57 minutes and over 11 GB of memory, so nothing else large should run beside it.)
 The build fails if:
 
 * an orlop or hold part meets anything else, or another, except where they meet by design, or deeper than that contact
@@ -175,7 +185,8 @@ The build fails if:
 * any piece of an orlop or hold part crosses itself (`orlop.folds`);
 * an orlop part's name is already taken in the scene.
 
-Pairs with an orlop part belong to `orlop_room` alone; the decor's, anchors', boats' and gun deck's checks skip them.
+Pairs with an orlop part belong to `orlop_room` alone; the decor's, anchors', boats', gun deck's and berth deck's checks
+skip them. `orlop_room` runs once the berth deck is in the scene.
 
 ## Review
 
@@ -210,5 +221,9 @@ An independent review read the first build's code and card and found nineteen is
 
 * `Tools/shipkit/frigate/orlop.py`: the orlop, its overhead and the hold.
 * `Tools/shipkit/frigate/orlop_1797.json`: the card: heights, rooms, hatches, bulkheads, casks, stowage, meets.
-* `Tools/shipkit/frigate/berthdeck_handover.json`: slice 13's hand-over, as copied here until slice 13 merges.
+* `Tools/shipkit/frigate/berthdeck_handover.json`: a copy of the berth deck's hand-over, read only when the orlop is
+  built without the berth deck (development); the build passes `BerthDeck.handover()`.
 * `Tools/shipkit/frigate/build_frigate.py`: builds it, files the parts in the Orlop and Hold collections, checks it.
+* `Tools/shipkit/frigate/berthdeck.py`, `berthdeck_1797.json` (slice 13's): its stand-in wells under the openings go
+  (the orlop shows there now), its ladders land on the orlop's platforms, and the cable scuttles are lined through the
+  planks only.

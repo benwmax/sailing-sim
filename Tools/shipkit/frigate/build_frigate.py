@@ -74,8 +74,8 @@ each other, the meetings by design in gundeck_1797.json's meets.
 Slice 13 (berthdeck.py, berthdeck_1797.json, the stores kit's stores.py) builds the berth deck under the gun deck, with
 it (the gun deck's ladders land on its planks and the cables go on down through its scuttles to the tiers): the planked
 deck 7 ft 2 in under the gun deck's, its waterways, the side's ceiling, the gun deck's beams, ledges and carlings over
-it on their clamp and hanging and lodging knees, the stanchions, the hatchways down to the orlop with their coamings,
-wells and ladders, what comes down through the gun deck (the capstan's spindle on its step, the riding bitts' posts, the
+it on their clamp and hanging and lodging knees, the stanchions, the hatchways down to the orlop with their coamings
+and ladders (onto the orlop's platforms), what comes down through the gun deck (the capstan's spindle on its step, the riding bitts' posts, the
 pumps' tubes, the masts in their wedges, the cable scuttles), the wardroom aft with its state rooms and furniture, the
 steerage and the officers' rooms, the crew's deck with their hammocks slung by night (BerthDeck_Hammocks, hidden) and
 their messes by day (BerthDeck_Messes: the tables hung at the side, the benches, kids and sea chests), the sick bay
@@ -525,6 +525,9 @@ for li in GD.lights:
 # rooms and cable tiers, the hold's ceiling, keelson, mast steps, bulkheads, magazines, ballast and casks; each part in
 # place; the light rooms' and the cockpit's lanterns (orlop.json's lights)
 OB = orlop.Orlop(SK, RIG, DK, GD, berth=BD.handover()).build()      # under the berth deck as built (its hand-over)
+if any(abs(a - b) > 1e-3 for p, q in zip(OB.platform_levels(), BD.orlop_levels) for a, b in zip(p, q)):
+    raise SystemExit("the berth deck's ladders land on orlop levels that are not the orlop's as built: " +
+                     json.dumps({"orlop": OB.platform_levels(), "berth_deck": BD.orlop_levels}))
 ORLOP = {}
 for name, (V, F, M, frame, uv) in OB.parts().items():
     if name in bpy.data.objects:            # a clash would be renamed .001 and the card's meets would miss it

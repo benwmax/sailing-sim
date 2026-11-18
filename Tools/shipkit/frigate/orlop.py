@@ -497,7 +497,8 @@ class Orlop:
 
     def beam(self, part, x, z_top, w, d, holes, follow=None):
         """a beam across the ship at x, its top at z_top, ends let 2 in into the ceiling, cut clear of any hole it would
-        cross (its sides an inch clear of the hole's; a face may stand on its end). With follow (the top's height at an
+        cross (its sides an inch clear of the hole's; a beam whose face is within a centimetre of the hole's end is
+        not cut: a coaming stands on it). With follow (the top's height at an
         x), its top follows the deck's sheer across its siding, its underside flat d under z_top"""
         y_end = float(self.ceil_y([x], [z_top - d / 2])[0]) + 2.0 * IN
         segs = [(-y_end, y_end)]
@@ -1295,6 +1296,15 @@ class Orlop:
         for mx, mr in masts:
             if xa < mx < xf:
                 holes.append(rect2(mx, 0.0, 2 * mr, 2 * mr))
+        # the deck's ends, where the deck transom and the deck hook take the planks: no beam or ledge there
+        dc = oc["deck_ends"]
+        end_spans = [(xa, xa + dc["transom_sided_in"] * IN), (xf - dc["hook_arm_ft"] * FT, xf)]
+
+        def clear_of_ends(x, w):
+            return all(x + w / 2 <= a - 0.5 * IN or x - w / 2 >= b + 0.5 * IN for a, b in end_spans)
+        n_end = len(xs)
+        xs = [x for x in xs if clear_of_ends(x, bw)]
+        self.info["berth_beams_at_ends_left_out"] = n_end - len(xs)
         # the pumps' tubes: a beam or ledge in their way is scored round them (no carlings)
         tube_holes = [rect2(x, y, 2 * r + 2 * IN, 2 * r + 2 * IN) for x, y, r, _, _ in self.pump_tube_list()]
         # the carlings: fore and aft timbers along each opening's sides from the whole beam abaft it to the one before
@@ -1327,13 +1337,17 @@ class Orlop:
                     prism(part, [(a, zt - cd), (b, zt - cd)] + top, yy - cw / 2, yy + cw / 2, "Oak", axis=1)
                 n_carl += 1
         self.info["berth_carlings"] = n_carl
+        # (a ledge ends against the carling's outer face, not through it)
+        ledge_holes = [rect2(0.5 * (np.asarray(h)[:, 0].min() + np.asarray(h)[:, 0].max()), 0.0,
+                             float(np.ptp(np.asarray(h)[:, 0])), float(np.ptp(np.asarray(h)[:, 1])) + 2 * cw)
+                       for h in holes] + tube_holes
         holes = holes + tube_holes
         # the ledges between the beams (slice 13's stations), their tops at the planks' underside, cut as the beams
         lw, ld = (self.berth["ledges"]["sided_in"] * IN, self.berth["ledges"]["moulded_in"] * IN) \
             if self.berth is not None else (6.0 * IN, 5.0 * IN)
-        ledges = [x for x in (self.berth or {}).get("ledge_x", []) if xa + 0.2 < x < xf - 0.2]
+        ledges = [x for x in (self.berth or {}).get("ledge_x", []) if xa + 0.2 < x < xf - 0.2 and clear_of_ends(x, lw)]
         for xl in ledges:
-            self.beam(part, xl, float(self.z_berth(xl)) - self.berth_plank(), lw, ld, holes, self.berth_under)
+            self.beam(part, xl, float(self.z_berth(xl)) - self.berth_plank(), lw, ld, ledge_holes, self.berth_under)
         self.info["berth_ledges"] = len(ledges)
         self.deck_transom_and_hook(part)
         self.overhead_holes = holes
@@ -1422,8 +1436,11 @@ class Orlop:
             return []
         given = self.berth["pumps"].get("tubes")
         if given:
-            return [(t["at_m"][0], t["at_m"][1], t["half_size_m"], "keelson" if t["kind"] == "round" else "limber",
-                     t["kind"]) for t in given]
+            # (footed on the keelson's top where they stand over it at all, else on the limber boards; a tree hanging
+            # past the keelson's side gets a step under the overhang: pump_tubes)
+            ks = self.c["keelson"]["sided_in"] / 2 * IN
+            return [(t["at_m"][0], t["at_m"][1], t["half_size_m"],
+                     "keelson" if abs(t["at_m"][1]) - t["half_size_m"] < ks else "limber", t["kind"]) for t in given]
         g = self.gd.c["pumps"]
         r = g["brake"]["tube_in"] / 2 * IN
         ks = self.c["keelson"]["sided_in"] / 2 * IN
@@ -1439,6 +1456,14 @@ class Orlop:
         for x, y, r, foot, kind in tubes:
             zt = float(self.z_berth(x)) - self.berth_plank()
             zb = float(self.z_keelson(x)[0]) if foot == "keelson" else float(self.z_floor(x)[0]) + 1.5 * IN
+            ks = self.c["keelson"]["sided_in"] / 2 * IN
+            if foot == "keelson" and abs(y) + r > ks:
+                # the step under the part hanging past the keelson's side, down to the limber boards
+                sg = 1.0 if y > 0 else -1.0
+                y0, y1 = sorted((sg * (ks + 0.05 * IN), y + sg * r))   # (a hairline off the keelson's side)
+                vbox(part, (x - r, y0, float(self.z_floor(x)[0]) + 1.5 * IN), (x + r, y1, zb), "Oak")
+                self.info.setdefault("pump_steps", 0)
+                self.info["pump_steps"] += 1
             if kind == "square":
                 vbox(part, (x - r, y - r, zb - 0.1 * IN), (x + r, y + r, zt + 0.1 * IN), "Oak")
                 continue

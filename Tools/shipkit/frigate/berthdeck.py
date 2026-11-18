@@ -1065,7 +1065,8 @@ class BerthDeck(GunDeck):
 
     def hatchways(self, part, wells, ladders):
         """each opening's coaming, its grating (deck.Deck.grating) or its ladder down to the orlop (hung from the inside
-        face of the coaming at the end it leaves from, going the way the opening's 'goes' says), and its well"""
+        face of the coaming at the end it leaves from, going the way the opening's 'goes' says, its foot on the orlop's
+        top: orlop_top)"""
         lc = self.c["ladders"]
         self.ladder_info = []
         for k, v in self.items.items():
@@ -1139,25 +1140,20 @@ class BerthDeck(GunDeck):
                 ring_band(part, np.array([x, y, top(x) - 4.0 * IN]), EZ, EX, 0.0, h, 1.5 * IN, 0.3 * IN, "Iron", 16)
 
     def cable_scuttles(self, part, wells):
-        """the cables' scuttles in these planks straight under the gun deck's: a lead collar round each and its lining
-        down the hole through the planks (the cable tiers under it are the orlop slice's; scuttle_well_ft is only how far
-        down the gun deck leads the cable, GunDeck.cable_course)"""
+        """the cables' scuttles in these planks straight under the gun deck's: a lead collar round each, its lining down
+        the hole and on scuttle_well_ft under it (as far as the gun deck leads the cable, GunDeck.cable_course), closed
+        dark at its foot (the cable tiers are the orlop slice's)"""
         th = self.c["through"]
         xs, ys = self.scuttles()
         r = th["scuttle_in"] / 2 * IN
         cw, ct = (v * IN for v in th["collar_in"])
-        wd = self.c["deck"]["thick_in"] * IN
+        wd = th["scuttle_well_ft"] * FT
         for sy in (1.0, -1.0):
             c = np.array([xs, sy * ys, float(self.zg(xs))])
             k0 = len(part.V)
             ring_band(part, c, EZ, EX, ct / 2 - 0.02 * IN, r, ct, cw, "Lead", 32)
-            if wd > 0:
-                revolve(part, c - EZ * wd, EZ, EX, [(0.0, r - 0.25 * IN), (wd, r - 0.25 * IN)], "Lead", 32,
-                        want_out=False)
-            if wells is not None:
-                k1 = len(wells.V)
-                disc(wells, c - EZ * wd, EZ, r, "Shadow", 24)
-                self.drape(wells, k1, float(c[2]))
+            revolve(part, c - EZ * wd, EZ, EX, [(0.0, r - 0.25 * IN), (wd, r - 0.25 * IN)], "Lead", 32, want_out=False)
+            disc(part, c - EZ * wd, EZ, r - 0.25 * IN, "Shadow", 24)
             self.drape(part, k0, float(c[2]))
 
     # --- the rooms ------------------------------------------------------------------------------------------------------
