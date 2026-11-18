@@ -110,6 +110,7 @@ void FBoatStepJob::Run() const
 			Controls->Tiller = Before.Tiller;
 			Controls->bWingOnWing = Before.bWingOnWing;
 		}
+		if (Handling) Handling->Update(*Boat, *Controls, StepDt);
 		MarkBeforeLast(I);
 		if (Easy && EasyHelm && Easy->bEnabled) Boat->Step(StepDt, EasyHelm->Update(*Boat, *Controls, *Easy, StepDt), *Wind, Waves);
 		else Boat->Step(StepDt, *Controls, *Wind, Waves);

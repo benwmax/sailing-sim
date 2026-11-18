@@ -32,6 +32,7 @@
 #include "ShipWalk.h"
 #include "ShipOrders.h"
 #include "ShipRig.h"
+#include "ShipHandling.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
 
@@ -664,6 +665,12 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UInputMappingContext> OrdersContext;
 	Sailing::FShipOrdersPanel ShipOrders;
 	bool bShipHelmsman = false;
+	/** Her manoeuvres (tack, wear, heave to: FShipHandling, stepped with the physics), and the step last called out. */
+	Sailing::FShipHandling ShipHandling;
+	Sailing::EShipManoeuvreStep ShipHandlingCalled = Sailing::EShipManoeuvreStep::Idle;
+	/** Starts a manoeuvre with her helmsman at the wheel; follows it each frame (its calls, the course after it). */
+	void StartShipManoeuvre(Sailing::EShipManoeuvre Manoeuvre);
+	void UpdateShipManoeuvre();
 	/** The helmsman takes her at the wind angle she has now. */
 	void ShipHelmsmanTakes();
 	/** An orders panel key (or the panel's own); true when it was one (OnButton stops there). */
