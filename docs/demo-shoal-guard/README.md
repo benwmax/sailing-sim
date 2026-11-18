@@ -51,6 +51,10 @@ Standalone (scratch harness on the physics, clang, the real `.height` bakes), a 
 | Galveston launch 1, 6 kn from 180, 1 h | aground at 1,209 s near -1,320 N 1,130 E, then still for 40 min | 6 bear-aways, never aground, least water under the keel 0.83 m |
 | Ray Hubbard launch 1, 10 kn from 180, 1 h | aground at 2,028 s on the south shore, then shuffling along it | 6 bear-aways, never aground, least water under the keel 8.9 m |
 
+The same harness from both soak spots in eight winds (every 45 deg; Galveston 8 kn, Ray Hubbard 12 kn), one hour each
+with the guard: none of the 16 touched the bottom. The least water under the keel was 0.65 m at Galveston and 0.95 m on
+the lake, with 0 to 12 bear-aways an hour.
+
 `SailingSim.Physics.DemoShoalGuard.*`:
 - **`Logic`:** a synthetic lake.
   - In open water the course is untouched.
