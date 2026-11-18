@@ -1,0 +1,7 @@
+	Asset Name: /Game/Materials/M_WaterV4.M_WaterV4
+[2026.11.18-17.15.40:330][  0]LogFileHelpers: Saving Package: /Game/Materials/M_WaterV4
+[2026.11.18-17.15.40:330][  0]Cmd: OBJ SAVEPACKAGE PACKAGE="/Game/Materials/M_WaterV4" FILE="D:/dev/ss-fix-wt/pr805/Content/Materials/M_WaterV4.uasset" SILENT=true
+[2026.11.18-17.15.40:350][  0]LogSavePackage: Moving output files for package: /Game/Materials/M_WaterV4
+[2026.11.18-17.15.40:350][  0]LogSavePackage: Moving 'D:/dev/ss-fix-wt/pr805/Saved/M_WaterV41CADB9CC485B1FE41730C9A1EF21D75B.tmp' to 'D:/dev/ss-fix-wt/pr805/Content/Materials/M_WaterV4.uasset'
+[2026.11.18-17.15.40:360][  0]LogPython: Materials built: 1 builders
+[2026.11.18-17.15.40:360][  0]LogPythonScriptCommandlet: Display: Python script executed successfully
