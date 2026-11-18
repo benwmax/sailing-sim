@@ -1,0 +1,62 @@
+{
+ "club-3-midday": {
+  "A": "after",
+  "B": "before"
+ },
+ "club-15-midday": {
+  "A": "before",
+  "B": "after"
+ },
+ "club-15-lowsun": {
+  "A": "before",
+  "B": "after"
+ },
+ "club-15-overcast": {
+  "A": "after",
+  "B": "before"
+ },
+ "club-60-midday": {
+  "A": "after",
+  "B": "before"
+ },
+ "cutbank-3-midday": {
+  "A": "after",
+  "B": "before"
+ },
+ "cutbank-15-midday": {
+  "A": "before",
+  "B": "after"
+ },
+ "cutbank-15-lowsun": {
+  "A": "before",
+  "B": "after"
+ },
+ "cutbank-15-overcast": {
+  "A": "after",
+  "B": "before"
+ },
+ "cutbank-60-midday": {
+  "A": "after",
+  "B": "before"
+ },
+ "cove-3-midday": {
+  "A": "before",
+  "B": "after"
+ },
+ "cove-15-midday": {
+  "A": "after",
+  "B": "before"
+ },
+ "cove-15-lowsun": {
+  "A": "before",
+  "B": "after"
+ },
+ "cove-15-overcast": {
+  "A": "after",
+  "B": "before"
+ },
+ "cove-60-midday": {
+  "A": "after",
+  "B": "before"
+ }
+}
