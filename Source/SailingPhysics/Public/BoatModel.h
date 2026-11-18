@@ -128,6 +128,61 @@ namespace Sailing
 		double ContactLeadingX = 0.0, ContactTrailingX = 0.0;
 		bool HasContactFootprint() const { return ContactLeadingX != ContactTrailingX; }
 		double Span() const { return Params.Area / std::max(Params.Chord, 1e-3); }
+
+		/**
+		 * A swing keel (docs/c22-11): with bRetractable and this table, Board turns the plate about its pin instead of
+		 * sliding a board up. Each point, Board 0 (up) to 1 (down, Params' place), holds the plate's area the water sees
+		 * (below the stub and hull), its centre (x at the quarter chord), its lowest point (grounding follows it) and the
+		 * whole plate's centroid: SwingMass kg of it (part of BallastMass, whose CG is the keel down) moves with it.
+		 */
+		struct FSwingPoint { double Board = 1.0, Area = 0.0, X = 0.0, Z = 0.0, TipX = 0.0, TipZ = 0.0, MassX = 0.0, MassZ = 0.0; };
+		std::vector<FSwingPoint> Swing;
+		double SwingMass = 0.0;
+		/**
+		 * A kick-up rudder (docs/c22-11): the blade from down (Kick 0, Params' place) to kicked up (1), turned about its
+		 * bolt: its area under the water, its centre and its lowest point. Where the bottom comes up under it the blade
+		 * kicks up as far as it must instead of grounding the boat, and drops back over KickDownSeconds once clear.
+		 */
+		struct FKickPoint { double Kick = 0.0, Area = 0.0, X = 0.0, Z = 0.0, TipX = 0.0, TipZ = 0.0; };
+		std::vector<FKickPoint> KickUp;
+		double KickDownSeconds = 2.0;
+
+		/** The swing keel's point at this Board and the rudder's at this Kick, interpolated (the end points past them). */
+		FSwingPoint SwingAt(double Board) const
+		{
+			if (Swing.empty()) return FSwingPoint();
+			if (Board <= Swing.front().Board) return Swing.front();
+			for (size_t I = 1; I < Swing.size(); ++I)
+			{
+				const FSwingPoint& A = Swing[I - 1];
+				const FSwingPoint& B = Swing[I];
+				if (Board > B.Board) continue;
+				const double U = (Board - A.Board) / std::max(B.Board - A.Board, 1e-9);
+				auto L = [U](double P, double Q) { return P + (Q - P) * U; };
+				FSwingPoint R;
+				R.Board = Board; R.Area = L(A.Area, B.Area); R.X = L(A.X, B.X); R.Z = L(A.Z, B.Z);
+				R.TipX = L(A.TipX, B.TipX); R.TipZ = L(A.TipZ, B.TipZ); R.MassX = L(A.MassX, B.MassX); R.MassZ = L(A.MassZ, B.MassZ);
+				return R;
+			}
+			return Swing.back();
+		}
+		FKickPoint KickAt(double Kick) const
+		{
+			if (KickUp.empty()) return FKickPoint();
+			if (Kick <= KickUp.front().Kick) return KickUp.front();
+			for (size_t I = 1; I < KickUp.size(); ++I)
+			{
+				const FKickPoint& A = KickUp[I - 1];
+				const FKickPoint& B = KickUp[I];
+				if (Kick > B.Kick) continue;
+				const double U = (Kick - A.Kick) / std::max(B.Kick - A.Kick, 1e-9);
+				auto L = [U](double P, double Q) { return P + (Q - P) * U; };
+				FKickPoint R;
+				R.Kick = Kick; R.Area = L(A.Area, B.Area); R.X = L(A.X, B.X); R.Z = L(A.Z, B.Z); R.TipX = L(A.TipX, B.TipX); R.TipZ = L(A.TipZ, B.TipZ);
+				return R;
+			}
+			return KickUp.back();
+		}
 	};
 
 	/** An engine: propeller position (body frame), thrust and the hull it hangs on. */
@@ -375,6 +430,7 @@ namespace Sailing
 		bool bCollision = false;      // touching a dock, bridge or another vessel this step
 		bool bVesselContact = false;  // touching another vessel this step
 		double DepthUnderKeel = 100.0; // m of water below the keel tip
+		double RudderKick = 0.0;      // a kick-up rudder's blade: 0 down, 1 kicked up (FFoilDef::KickUp)
 		double SpeedThroughWater = 0.0; // m/s, forward speed relative to the water (the log); BoatSpeed is over ground
 		double CourseOverGround = 0.0;  // rad, direction of travel over the ground
 		bool bCapsized = false;       // lying on its side (or worse) for more than two seconds
@@ -512,6 +568,8 @@ namespace Sailing
 		std::vector<double> DesignHullVolume; // m^3 each hull displaces floating upright at rest
 		double DesignVolume = 0.0;
 		std::vector<Vec3> BottomPoints, OutlinePoints; // grounding and collision probes (body frame)
+		std::vector<int> BottomPointFoil; // per bottom point: 2 x its foil's index (+1 its trailing point), -1 a hull's
+		double RudderKick = 0.0;          // a kick-up rudder's blade, 0 down to 1 up (FFoilDef::KickUp)
 		/** The deck edge between neighbouring outline points, with its outward normal (body frame, horizontal): a pier end
 		 *  or a pile that comes in between two points meets the side here (OutlinePoints alone are up to 2 m apart). */
 		struct FOutlineEdge { int A = 0, B = 0; Vec3 Out; double HalfA = 0.0, HalfB = 0.0; }; // Half: each end's distance off the hull's centreline

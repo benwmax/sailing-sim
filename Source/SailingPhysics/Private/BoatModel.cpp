@@ -428,6 +428,7 @@ namespace Sailing
 	void FBoatModel::BuildContactPoints()
 	{
 		BottomPoints.clear();
+		BottomPointFoil.clear();
 		OutlinePoints.clear();
 		OutlineEdges.clear();
 		// Foil tips (leading and trailing edge) and points along each hull's keel line.
@@ -440,6 +441,9 @@ namespace Sailing
 			const double TrailX = F.HasContactFootprint() ? F.ContactTrailingX : F.Params.Center.X - Half;
 			BottomPoints.push_back(Vec3(LeadX, F.Params.Center.Y, TipZ));
 			BottomPoints.push_back(Vec3(TrailX, F.Params.Center.Y, TipZ));
+			const int Index = int(&F - Config.Foils.data());
+			BottomPointFoil.push_back(2 * Index);
+			BottomPointFoil.push_back(2 * Index + 1);
 		}
 		for (const FHullShape& H : Config.Hulls)
 		{
@@ -447,6 +451,7 @@ namespace Sailing
 			{
 				const double X = H.WaterlineMidX + U * H.WaterlineHalfLength;
 				BottomPoints.push_back(Vec3(X, H.CenterY, -H.KeelLineDepth(X, CanoeDepth)));
+				BottomPointFoil.push_back(-1);
 			}
 			// Deck edge at the rail: bow, three stations each side, the transom corners and middle.
 			const int First = int(OutlinePoints.size());
@@ -575,6 +580,7 @@ namespace Sailing
 		State.Position = Vec3(X, Y, 0.0) + State.Orientation.Rotate(CenterOfGravity);
 		State.Velocity = State.Orientation.Forward() * Speed;
 		Telemetry = FBoatTelemetry();
+		RudderKick = 0.0;
 		MainMeanLift = 0.0;
 		bColumnMeanFresh = true;
 		// A square rig starts with every sail drawing and the yards square (the controls set them from the first step).
@@ -843,6 +849,16 @@ namespace Sailing
 			TorqueWorld += CrewWorld.Cross(Vec3(0.0, 0.0, -C.CrewMass * kGravity));
 		}
 
+		// A swing keel's iron: the CG has it down, so raised it adds the moment of its weight moved up and aft (docs/c22-11).
+		for (const FFoilDef& F : C.Foils)
+		{
+			if (!F.bRetractable || F.Swing.size() < 2 || F.SwingMass <= 0.0) continue;
+			const FFoilDef::FSwingPoint Down = F.SwingAt(1.0);
+			const FFoilDef::FSwingPoint Now = F.SwingAt(Clamp(Controls.Board, 0.0, 1.0));
+			const Vec3 Moved = Q.Rotate(Vec3(Now.MassX - Down.MassX, 0.0, Now.MassZ - Down.MassZ));
+			TorqueWorld += Moved.Cross(Vec3(0.0, 0.0, -F.SwingMass * kGravity));
+		}
+
 		// Hull resistance per hull (ITTC-57 friction + residuary by Froude number), along the hull's motion.
 		const double HeelAbs = std::fabs(Q.Heel());
 		double MaxFroude = 0.0;
@@ -1031,12 +1047,30 @@ namespace Sailing
 					const bool bRudder = F.Role == EFoilRole::Rudder;
 					if (bRudder != (Pass == 1)) continue;
 					FFoilParams P = F.Params;
-					if (F.bRetractable)
+					if (F.bRetractable && !F.Swing.empty())
+					{
+						// A swing keel turns about its pin: what hangs below the stub at this Board, and where (docs/c22-11).
+						const FFoilDef::FSwingPoint S = F.SwingAt(Board);
+						if (S.Area < 0.01) continue;
+						P.Area = S.Area;
+						P.Center.X = S.X;
+						P.Center.Z = S.Z;
+					}
+					else if (F.bRetractable)
 					{
 						if (Board < 0.02) continue;
 						const double Span = F.Span();
 						P.Area *= Board;
 						P.Center.Z += 0.5 * (1.0 - Board) * Span;
+					}
+					if (!F.KickUp.empty() && RudderKick > 0.0)
+					{
+						// A kick-up rudder pushed up by the bottom: the blade's part still under the water (docs/c22-11).
+						const FFoilDef::FKickPoint K = F.KickAt(RudderKick);
+						if (K.Area < 0.005) continue;
+						P.Area = K.Area;
+						P.Center.X = K.X;
+						P.Center.Z = K.Z;
 					}
 					const double Wet = Immersion(P);
 					if (bRudder) RudderWet = std::max(RudderWet, Wet);
@@ -1195,10 +1229,45 @@ namespace Sailing
 		const double ContactScale = std::max(1.0, Mass / 1052.0); // stiffer contacts for heavier boats, same feel
 		// A contact with a bridge deck may add at most this much outward speed (m/s) to its point in one step.
 		const double kDeckOutSpeed = 3.0;
+		double KickNeeded = 0.0;
 		if (Terrain && Terrain->IsValid())
 		{
-			for (const Vec3& B : BottomPoints)
+			for (size_t K = 0; K < BottomPoints.size(); ++K)
 			{
+				Vec3 B = BottomPoints[K];
+				const int FoilIndex = K < BottomPointFoil.size() ? BottomPointFoil[K] : -1;
+				const FFoilDef* Foil = FoilIndex >= 0 ? &C.Foils[FoilIndex / 2] : nullptr;
+				const double Side = FoilIndex >= 0 && FoilIndex % 2 == 1 ? -1.0 : 1.0; // leading or trailing probe
+				if (Foil && Foil->bRetractable && !Foil->Swing.empty())
+				{
+					// The swing keel's foot where it is now: raised, she floats over shallows the keel down would hit.
+					const FFoilDef::FSwingPoint S = Foil->SwingAt(Clamp(Controls.Board, 0.0, 1.0));
+					B = Vec3(S.TipX + Side * 0.1, B.Y, S.TipZ);
+				}
+				if (Foil && !Foil->KickUp.empty())
+				{
+					// A kick-up rudder: the bottom pushes the blade up (the least kick that clears it) and never grounds her; only
+					// kicked right up and still touching would it (it can't: the blade is then out of the water).
+					auto TipWorld = [&](const FFoilDef::FKickPoint& KP) { return Origin + Q.Rotate(Vec3(KP.TipX + Side * 0.05, B.Y, KP.TipZ)); };
+					auto Clear = [&](const FFoilDef::FKickPoint& KP) { const Vec3 T = TipWorld(KP); return T.Z - Terrain->HeightAt(T.X, T.Y); };
+					double Need = 0.0;
+					if (Clear(Foil->KickAt(0.0)) < 0.0)
+					{
+						Need = 1.0;
+						double PrevKick = 0.0, PrevClear = -1.0;
+						for (const FFoilDef::FKickPoint& KP : Foil->KickUp)
+						{
+							const double Now = Clear(KP);
+							if (Now >= 0.0) { Need = PrevClear < 0.0 && Now > PrevClear ? PrevKick + (KP.Kick - PrevKick) * (-PrevClear) / (Now - PrevClear) : KP.Kick; break; }
+							PrevKick = KP.Kick; PrevClear = Now;
+						}
+					}
+					KickNeeded = std::max(KickNeeded, Need);
+					const double Depth = Clear(Foil->KickAt(std::max(RudderKick, Need)));
+					Telemetry.DepthUnderKeel = std::min(Telemetry.DepthUnderKeel, Depth);
+					if (Need >= 1.0 && Depth < 0.0) Telemetry.bAground = true;
+					continue;
+				}
 				const Vec3 P = Origin + Q.Rotate(B);
 				const double Ground = Terrain->HeightAt(P.X, P.Y);
 				Telemetry.DepthUnderKeel = std::min(Telemetry.DepthUnderKeel, P.Z - Ground);
@@ -1212,6 +1281,13 @@ namespace Sailing
 					Telemetry.bAground = true;
 				}
 			}
+		}
+		{
+			// The kick-up rudder goes up at once and drops back over KickDownSeconds once the bottom lets it.
+			double DownSeconds = 0.0;
+			for (const FFoilDef& F : C.Foils) if (!F.KickUp.empty()) DownSeconds = std::max(DownSeconds, F.KickDownSeconds);
+			RudderKick = KickNeeded >= RudderKick ? KickNeeded : std::max(KickNeeded, RudderKick - Dt / std::max(DownSeconds, 1e-3));
+			Telemetry.RudderKick = RudderKick;
 		}
 		if (Obstacles && !Obstacles->empty() && ObstacleRows > 0)
 		{
