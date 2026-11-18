@@ -1,0 +1,45 @@
+Ready About: Sailing session log, 2026-11-17 23:56:55 UTC
+Build 424b580b, Nov 17 2026 soak, Shipping, engine 5.8.4-58902052+++UE5+Release-5.8, Windows 10.0.26100.1.256.64bit
+[+0.004] Lake Lake Ray Hubbard: 3277x5434 terrain, 35 docks, 0 decks, 0 moored boats, 40 bridges, 11719 buildings, 35165 houses, 5 launch spots, 0 navaids, 0 tide stations
+[+0.022] World streaming: RayHubbard, 15 tiles of 6.4 km over the whole grid (resident)
+[+0.488] Sea fetch map: 543 x 327 cells of 50 m, median depth 6.2 m, built in 466 ms
+[+0.500] Session: world ray-hubbard, spot 1, boat J22, mode free, weather ESailingWeather::AfternoonBreeze at 15.0 h (seed 2027), Easy, Career; quality 3, 1920x1080 (window mode 2), RHI D3D12, GPU NVIDIA GeForce RTX 4090
+[+0.500] Quality 3: AA 4, screen 100%, VSM 1, ray tracing supported 1 enabled 1, Lumen HW 1, Substrate 1
+[+0.500] Sunset 17:25 local (day 321)
+[+0.787] Shelter map for wind from 180 built in 280 ms
+[+0.917] Trees: 271782 lidar crowns placed, 17044 canopy-map trees outside their band
+[+0.986] Trees: 3967 inside G2 houses removed
+[+1.053] Trees: 20353 young yard trees
+[+1.101] Trees: 305212 (Nanite models; leaf cards within 1000 m)
+[+1.859] Reeds: 70482 cattail, 16484 rush, 281546 bank grass, 3440 weed clumps and 77968 far strips (first at X=10542.049 Y=-4182.206 Z=0.103)
+[+2.495] Understory: 15084 crowns by the water; 29632 yaupon, 32250 dogwood, 32709 coralberry, 7086 saplings, 984 logs, 826 brush piles, 150 snags
+[+2.945] Houses: 35165 from the G2 footprints in 553 tiles (553 baked, 0 procedural)
+[+3.065] Buildings: 0 ranch, 0 two-storey, 0 blocks; 0 near the water modelled, 321 private docks
+[+3.066] Terrain instances: 553878 in 91 components: SM_Reeds_2 281546; SM_Reeds_4 77968; SM_Reeds_0 70482; SM_Shrub_3 32709; SM_Shrub_2 32250; SM_Shrub_1 19631; SM_Reeds_1 16484; SM_Shrub_0 10001; SM_Sapling_0 4017; SM_Reeds_3 3440; SM_Sapling_1 3069; SM_Deadfall_0 984;
+[+3.075] Water: tier 2, M_WaterV4
+[+3.291] Sound: sample pack, 14 loops and 23 one-shots
+[+3.291] Sound: 7 recorded samples in place of synth voices
+[+3.292] Sound: master limiter added by append (submix master; input +0.0 dB, output +0.0 dB, threshold -1.5 dB)
+[+3.760] Far lights: 0 lights (0 colours), 5443 shore sprites, 0 horizon ships on 0 lanes, 6 city domes
+[+3.796] Marina: 1146 dock kit instances in 9 meshes
+[+3.808] Marina Rush Creek Yacht Club: 3 rows, 122 slips (83 occupied), 2 buildings, 24 of 24 tiles baked, home slip rcyc.dock.b.n18
+[+3.832] Marina shore: 1334 pieces in 24 meshes (lake level offset 0.00 m)
+[+3.955] Riprap: 11640 boulders
+[+3.955] Bridges RayHubbard: 40 ways, 45922 quads in 93 tiles (93 baked), 88 lanes, 328 vehicles; shore 25060 quads in 19 tiles (19 baked)
+[+3.991] Night lights: 563 fixtures, a pool of 160
+[+4.789] Crew figures hidden (3)
+[+4.906] Trees: 423 components (407 tiles)
+[+5.030] Water: trees read the local wind (M_TreeBark)
+[+5.030] Water: trees read the local wind (M_TreeLeaves)
+[+5.030] Water: trees read the local wind (M_TreeCrown)
+[+7.260] Sky cache: first panorama in 0.99 s (8192x1024, 192 steps); live clouds now to 5.0 km
+[+12.726] World instances: 889956: LakeTerrainActor/SM_Reeds_2 281546; LakeTerrainActor/SM_Reeds_4 77968; LakeTerrainActor/SM_Reeds_0 70482; LakeTerrainActor/SM_PostOak_1_Far 41721; LakeTerrainActor/SM_PostOak_0_Far 41581; LakeTerrainActor/SM_Shrub_3 32709; LakeTerrainActor/SM_Shrub_2 32250; LakeTerrainActor/SM_LiveOak_1_Far 26867; LakeTerrainActor/SM_LiveOak_0_Far 26541; LakeTerrainActor/SM_CedarElm_1_Far 26160; LakeTerrainActor/SM_CedarElm_0_Far 25817; LakeTerrainActor/SM_Shrub_1 19631; LakeTerrainActor/SM_Sugarberry_0_Far 18491; LakeTerrainActor/SM_Sugarberry_1_Far 18481; LakeTerrainActor/SM_Reeds_1 16484; LakeTerrainActor/SM_BlackWillow_1_Far 15126;
+[+1340.337] Traffic: Runabout: One short blast: I am altering my course to starboard
+[+1690.084] Traffic: Runabout: One short blast: I am altering my course to starboard
+[+1952.583] Traffic: Tern: Five short blasts: danger, I doubt you are taking enough action to avoid collision
+[+2418.115] Traffic: Runabout: One short blast: I am altering my course to starboard
+[+2449.626] Traffic: Osprey alters to port to keep clear of you
+[+2687.548] Traffic: Runabout: One short blast: I am altering my course to starboard
+[+2878.981] Traffic: Bass boat: One short blast: I am altering my course to starboard
+[+3106.318] Traffic: Runabout: One short blast: I am altering my course to starboard
+

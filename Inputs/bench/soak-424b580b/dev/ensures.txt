@@ -1,0 +1,4 @@
+[2026.11.17-22.55.37:370][  0]LogOutputDevice: Error: === Handled ensure: ===
+[2026.11.17-22.55.37:370][  0]LogOutputDevice: Error: Ensure condition failed: !IsComponentPSOPrecachingEnabled() || bPSOPrecacheCalled  [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Engine\Private\PSOPrecache.cpp] [Line: 296] 
+[2026.11.17-22.55.38:761][  0]LogOutputDevice: Error: === Handled ensure: ===
+[2026.11.17-22.55.38:761][  0]LogOutputDevice: Error: Ensure condition failed: OriginX <= OriginMax && OriginY <= OriginMax && OriginZ <= OriginMax  [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Core\Private\Math\DoubleFloat.cpp] [Line: 19] 
