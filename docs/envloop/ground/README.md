@@ -1,0 +1,118 @@
+# Shore ground textures (Track A of the shore plan)
+
+Track A of the shore, grass and buildings plan (Bean approved Nov 16 2026): eight real ground surfaces and one layered
+ground material that replaces today's painted `M_Terrain` near the camera. This is the cloud half: the textures are
+chosen, the material's maths is written and rendered outside the engine, and the loop's checks are run. Nothing the game
+loads has changed. Building `M_Ground` in the editor, the terrain's new inputs and the Mac gate come after the Nov 21
+slice.
+
+## What changes on screen
+
+Today the ground is one material for the whole lake: the vertex colour the terrain builder paints (grass, woods, the
+clay and sand bank, the bed) with a few sine patterns over it. Nothing is a texture. Up close a lawn is one flat
+yellow-green, a bank is a smooth tan ramp, and the lake's edge is a darker stripe.
+
+The new material keeps the same inputs and the same layout (where grass, bank, woods and bed are does not move) and
+draws each place as a real photo-scanned surface:
+
+| Surface | Where | Source (CC0) | Real size |
+|---|---|---|---|
+| Mown bermuda lawn | yards and the club lawn (the Mown mask) | ambientCG Grass004 | 1.4 m |
+| Rough dry grass | fields, flats, verges, unmown banks | ambientCG Ground013 | about 2 m |
+| Blackland clay | eroded faces, bare bank | Poly Haven brown_mud_dry | 1.3 m |
+| Limestone gravel | wave-washed shingle on the bank | ambientCG Gravel023 | 1.5 m |
+| Sand | the club beach, sandy bank stretches | Poly Haven sand_01 | 1.5 m |
+| Wet mud | the swash and the bed under the surface | Poly Haven brown_mud_02 | 1.3 m |
+| Cracked dry mud | lake bed left dry under the pool | Poly Haven mud_cracked_dry_03 | 1.5 m |
+| Leaf litter | under woods | Poly Haven forest_leaves_02 | 3.0 m |
+
+All eight are CC0 (no attribution needed, commercial use allowed). Each scan is recoloured to a Texas colour on the card
+(the region pack `Tools/envloop/ground/packs/north-texas-lake.json`), so the scan supplies the pattern and relief and the card decides the colour. The
+lawn and the rough grass each have a summer and a winter-dormant colour (`Season`, 0 to 1).
+
+## How the material works
+
+1. **Weights.** Eight weights from what the terrain already knows: height over the water and over the pool, slope, the
+   vertex colour (decoded back into canopy and sandy-or-clay), the Near alpha (open water within 14 m) and a new Mown
+   mask. Swash is mud, the dry bed under the pool is cracked crust, the bank is sand or clay with shingle patches,
+   steep faces are clay, woods are litter, mown ground is lawn, the rest is rough grass. Band edges are ragged (three
+   noise scales), so no zone ends on a straight line.
+2. **Two surfaces sampled, the rest flat.** Only the two strongest surfaces are read from the texture arrays; the others
+   are drawn as their card colour. The two are joined by their height maps, so grass grows through sand and stones
+   stand out of mud instead of a cross-fade.
+3. **No repeat.** Each surface is read twice: at its real size, and rotated at 1.618 times that size. A slow noise and
+   the height maps choose between them pixel by pixel, so neither tile's repeat survives across a 40 m frame.
+4. **Slow wash and stripes.** Brightness drifts by up to 10% at 9 m and 7% at 31 m, grass drifts toward straw in dry
+   patches in summer, and the lawn keeps today's mowing stripes at 4%.
+5. **Wet band and film.** Today's wet band and algae film, per surface (mud is already wet; sand and clay darken most).
+6. **Distance.** Textures fade into the card colours by 150 m (the near band's edge); past that no texture is read.
+   Because the card colours are the textures' exact means, the hand-over has no seam.
+
+`Tools/envloop/ground/ground_material.py` is the maths in numpy; `ground_hlsl.py` writes the same maths as the Custom
+node's HLSL (`python3 -I Tools/envloop/ground/ground_hlsl.py`). They are kept line for line; `test_ground.py` checks
+the card, the weights, the decode of the terrain's own tones and that the HLSL carries the card's constants.
+
+## Region packs (other lakes and coasts)
+
+Nothing in the maths names North Texas. The material has eight roles (lawn, rough, clay, gravel, sand, mud, cracked,
+litter) that the weights decide from the terrain; a region pack (`packs/<name>.json`) fills each role with that
+region's own scan, real size, summer and dormant colour, roughness and wetting. Every tool takes `--pack`
+(default `north-texas-lake`, or `$GROUND_PACK`), and fetched and prepared maps live under `Data/Ground/*/<pack>/`.
+A Galveston or Mediterranean pack is one new file plus a fetch, prep and render round; `test_ground.py` checks every
+pack in the folder. The terrain's vertex-colour decode is the one regional assumption left in the maths (it reads the
+lake's palette from `BuildChunk`); a new world's palette gets its own decode constants at integration. Track 0's
+shared pack layout replaces `pack.py`'s paths when it lands.
+
+## Running the loop
+
+```
+python3 -I Tools/envloop/ground/fetch_ground.py [--pack north-texas-lake]   # the eight scans, about 200 MB, into Data/Ground/raw/<pack> (git-ignored)
+python3 -I Tools/envloop/ground/prep_ground.py           # calibrated maps per tier into Data/Ground/prep/<pack> (needs scipy)
+python3 -I Tools/envloop/ground/test_ground.py           # self-checks, no textures needed
+cd Tools/envloop/ground && python3 render.py --out ../../../Artifacts/envloop/ground/r1   # about 15 min on 4 cores
+python3 -I Tools/envloop/ground/make_pack.py --renders Artifacts/envloop/ground/r1        # blind pack + sheets
+python3 -I Tools/envloop/ground/checks.py --renders Artifacts/envloop/ground/r1 --reviews Tools/envloop/ground/reviews/r1.json
+```
+
+`render.py` ray-casts a synthetic 160 m shore (`scene.py`: a club beach and lawn, a natural clay cut bank with a wood,
+a low cove with the drought's dry bed and a mown yard) whose vertex colours, Near and normals follow
+`LakeTerrainActor::BuildChunk` exactly. "Before" is today's `M_Terrain` ported line for line (`terrain_before.py`).
+Views: each bank from 3, 15 and 60 m off, the 15 m views in midday sun, low sun and overcast. Exposure follows an
+incident meter as the game's does on Medium and High.
+
+## Round 1 (Nov 16 2026)
+
+All six checks pass (`Tools/envloop/ground/scores/r1.json`), colour provisionally:
+
+| Check | Result |
+|---|---|
+| Size | Every scan's real width published except Ground013 (rough grass, set at 2 m from its tufts). 171 to 1575 px per metre at every tier, so 1 cm per pixel or finer even on Medium; the smallest named feature is 2 px or more on High. |
+| Colour | Prepared maps' means equal the pack's colours. PROVISIONAL: judged, not measured; how far each was moved from its scan (Lab dE): mud 3, rough 11, sand 11, lawn 13, clay 13, litter 25, gravel 29, cracked 32. Needs Bean's grey-card ground photos. |
+| Repeat | Highest off-centre autocorrelation in a 40 m frame (high-passed at 1.5 m): lawn 0.18, yard 0.27, field 0.29, woods 0.31, limit 0.35. The same scan simply tiled: 0.99. |
+| Variety | All eight surfaces drawn; each bank kind shows six. |
+| Blind | 3 fresh reviewers, sides shuffled: the new ground won all 15 views for all three (45 of 45). Called "photo": 8 of 9 answers at 3 m, none at 15 or 60 m. |
+| Budget | Texture arrays 5.3 MB Medium, 21 MB High, 85 MB Ultra; 12 texel reads inside 150 m, none past it. Frame time is the Mac's, after Nov 21. |
+
+What the reviewers still saw at 15 and 60 m, for round 2: band edges along the shore that run too straight; the
+limestone shingle patches reading as flat grey decals with clean outlines; a cut bank that is one even texture with no
+strata, slumps or roots (shape is Track C's, the strata can be a clay-face layer here); the cracked-mud and gravel tiles
+repeating at 3 m; the wood's floor on the 60 m hill showing as a dark patch with hard edges (partly the test scene's
+square wood). Before and after page: https://claude.ai/artifact/T9SCPjdAAP92REkYXzzRRz (renders are not in git: images go through LFS, which cloud sessions cannot push; the commands below rebuild them).
+
+## What integration needs (after Nov 21, through the sim thread)
+
+- **Import.** On the PC or Mac: fetch and prep, then import three 8-slice `Texture2DArray`s (colour sRGB BC1, normal
+  BC5, RHA linear BC1; 2048 on Ultra, 1024 on High, 512 on Medium by LOD bias) and build `M_Ground` in its own script
+  file (not `make_materials.py`) from `ground_hlsl.py`'s string. `tangent_space_normal` off: the terrain's procedural
+  mesh has no tangents, so the node outputs a world normal. Low keeps `M_Terrain`.
+- **Terrain inputs (C++, `LakeTerrainActor::BuildChunk`).** A Mown mask in UV1.x (houses' and the club's footprints:
+  mown within about 25 m of a house, the club lawn); the bank's sand-or-clay tone from a 20-40 m noise instead of each
+  5 m grid cell's own random (the renders use that change; with 5 m squares the bank reads as a checkerboard of sand and
+  clay); `Season` in `MPC_World` from the game date.
+- **Far colour.** The card colours are measured albedos, darker and less yellow than today's vertex colours (today's
+  lawn is a bright yellow-green, linear 0.36, 0.36, 0.16). Past 150 m `M_Ground` draws the card colours, so the far
+  band changes too; `M_FarLand` (the far ring past the grid) should take the same table in Track I, or there is a step
+  in colour at the ring.
+- **Checks still owed.** Shader compile (Mac and PC), frame time at the stations (plan share: Medium 1.5 ms, High 3.0
+  ms for the whole shore; this material reads 12 texels inside 150 m and none past it), the in-game stills at Track 0's
+  stations, and the colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
