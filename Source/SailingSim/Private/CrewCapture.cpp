@@ -263,7 +263,7 @@ UAnimSequence* UCrewCaptureLibrary::MakeStanceClip(USkeletalMesh* Mesh, const FS
 		static const TMap<FString, ECrewStance> Stances = {
 			{ TEXT("RailHike"), ECrewStance::RailHike }, { TEXT("Helm"), ECrewStance::Helm }, { TEXT("Cockpit"), ECrewStance::Cockpit },
 			{ TEXT("Crossing"), ECrewStance::Crossing }, { TEXT("DinghyHike"), ECrewStance::DinghyHike }, { TEXT("Trapeze"), ECrewStance::Trapeze },
-			{ TEXT("Righting"), ECrewStance::Righting } };
+			{ TEXT("Righting"), ECrewStance::Righting }, { TEXT("Stand"), ECrewStance::Stand } };
 		const ECrewStance* S = Stances.Find(Name.TrimStartAndEnd());
 		if (!S) { UE_LOG(LogTemp, Warning, TEXT("MakeStanceClip: no stance %s"), *Name); return nullptr; }
 		FCrewPoseParams P;

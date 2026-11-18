@@ -79,6 +79,8 @@ float CrewClipStanceWeight(ECrewStance Stance, float Hike)
 	{
 	// Moving across, on the wire or righting: no idling.
 	case ECrewStance::Crossing: case ECrewStance::Trapeze: case ECrewStance::Righting: return 0.f;
+	// Standing at a station (the clips are seated crew): the reaction layer's sway alone.
+	case ECrewStance::Stand: return 0.f;
 	// Hiked hard there is no slack for fidgeting.
 	case ECrewStance::RailHike: return 1.f - 0.5f * FMath::Clamp(Hike, 0.f, 1.f);
 	case ECrewStance::DinghyHike: return 0.7f - 0.4f * FMath::Clamp(Hike, 0.f, 1.f);
