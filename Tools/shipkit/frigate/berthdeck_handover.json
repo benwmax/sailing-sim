@@ -1941,7 +1941,7 @@
   {
    "from": "AfterHatch",
    "top_x_m": -8.288,
-   "foot_x_m": -6.986,
+   "foot_x_m": -6.983,
    "y_m": 0.0,
    "goes": "forward",
    "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
@@ -1949,7 +1949,7 @@
   {
    "from": "ForeHatch",
    "top_x_m": 10.709,
-   "foot_x_m": 11.995,
+   "foot_x_m": 11.986,
    "y_m": 0.0,
    "goes": "forward",
    "note": "the gun deck's ladder lands on the berth deck's planks here (slice 12); slice 13 keeps 0.3 m clear beyond its foot and leaves out the stanchion it would meet"
