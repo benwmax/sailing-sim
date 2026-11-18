@@ -234,22 +234,24 @@ namespace
 		return Lot;
 	}
 
-	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is: the waterline's samples fitted by a line along the
-	 *  lot at their mean distance out, from the first to the last, in pieces of at most 4 m (the lidar waterline zigzags by
-	 *  the metre and pieces laid along it stood at angles to each other with gaps between). The house tile (the fill behind
-	 *  the cap) and ALakeTerrainActor::PlaceShoreEdges (the pieces) both take it, so they meet. */
+	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is: a line along the lot from the first waterline
+	 *  sample to the last, in pieces of at most 4 m (the lidar waterline zigzags by the metre and pieces laid along it stood
+	 *  at angles to each other with gaps between). It stands 0.3 m beyond the sample farthest out, so the whole run is in
+	 *  front of the bank: at the samples' mean distance the bank's bulges buried the pieces inside it and the wall came out as
+	 *  blocks with gaps (round 3's stills). The house tile (the fill behind the cap) and ALakeTerrainActor::PlaceShoreEdges
+	 *  (the pieces) both take it, so they meet. */
 	void LotWallLine(const FLotShore& Lot, const FVector2D& Ctr, TArray<FVector2D>& Out)
 	{
-		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max(), D = 0.0;
+		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max(), D = -TNumericLimits<double>::Max();
 		for (const FVector2D& P : Lot.Line)
 		{
 			const FVector2D R = P - Ctr;
 			const double S = FVector2D::DotProduct(R, Lot.Across);
 			S0 = FMath::Min(S0, S);
 			S1 = FMath::Max(S1, S);
-			D += FVector2D::DotProduct(R, Lot.Water);
+			D = FMath::Max(D, FVector2D::DotProduct(R, Lot.Water));
 		}
-		D /= double(Lot.Line.Num());
+		D += 0.3;
 		const double Len = S1 - S0;
 		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 4.0 - 1e-6));
 		for (int32 I = 0; I <= N; ++I) Out.Add(Ctr + Lot.Across * (S0 + Len * I / N) + Lot.Water * D);
