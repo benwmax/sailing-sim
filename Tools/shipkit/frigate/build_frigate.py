@@ -1199,7 +1199,7 @@ for ob in list(GUNDECK.values()) + [GEAR[n] for n in sorted(GEAR) if n not in ("
         + LANTERN_LIGHTS:
     SC.collection.objects.unlink(ob)
     GD_COL.objects.link(ob)
-CABIN_ONLY = ("AfterWall", "WindowReveals", "StateRooms", "WindowSeat", "FloorCloth", "CabinFurniture")
+CABIN_ONLY = ("AfterWall", "WindowReveals", "StateRooms", "WindowSeat", "FloorCloth", "CabinFurniture", "Tiller")
 
 
 def below_zones():
@@ -1459,6 +1459,42 @@ def door_swings(step=5.0):
 
 
 DOOR_SWINGS = door_swings()
+
+
+def tiller_swing(step=1.0):
+    """the rudder's head and the tiller (one object, Tiller, on its own frame: gundeck.json frames) turned about the
+    head's axis (the frame's Z) from amidships to hard over each way, step by step, against everything near its sweep
+    but the rudder's blade and its irons (the head stands on the blade's top: the same timber, which the game leaves as
+    built): the last angle it turns to clear each way, what it meets past that, and the least gap it keeps on the way
+    (gundeck.swing: from its corners to their faces and theirs to its)"""
+    V, T = world_tris(GUNDECK["Tiller"])
+    o, R = GD.frames["Tiller"]
+    ax = np.asarray(R, float)[:, 2]
+    n = int(round(GD.c["tiller"]["hard_over_deg"] / step))
+    ways = {"to_starboard": [k * step for k in range(n + 1)], "to_port": [-k * step for k in range(n + 1)]}
+    lo, hi = None, None
+    for degs in ways.values():
+        for d in degs:
+            c, Rm = gundeck.turned(o, ax, d)
+            P = (V - c) @ Rm.T + c
+            lo = P.min(0) if lo is None else np.minimum(lo, P.min(0))
+            hi = P.max(0) if hi is None else np.maximum(hi, P.max(0))
+    lo, hi = lo - 0.05, hi + 0.05
+    near = {}
+    for other in SC.objects:
+        if other.type != "MESH" or other.name in ("Tiller", "Rudder", "RudderIrons") or other.name in REFERENCE:
+            continue
+        Mw = np.array(other.matrix_world)
+        bb = np.array([tuple(c) for c in other.bound_box]) @ Mw[:3, :3].T + Mw[:3, 3]
+        if (bb.min(0) > hi).any() or (bb.max(0) < lo).any():
+            continue
+        Vo, To = world_tris(other)
+        if len(To):
+            near[other.name] = (Vo, To)
+    return gundeck.swing(V, T, o, ax, ways, near)
+
+
+TILLER_SWING = tiller_swing()
 
 
 def lid_light(along=0.004, across=0.001, perp=0.8, tilts=(15.0, 30.0, 45.0, 60.0)):
@@ -1800,7 +1836,7 @@ GEAR_TRIS = {n: stats["objects"][n]["triangles"] for n in GEAR}
 BELOW_TRIS = sum(GD_TRIS.values()) + sum(v for n, v in GEAR_TRIS.items() if not n.startswith("LidLanyards_")) + \
     GEAR_COPY_TOTAL
 stats["gundeck"] = dict(GD.info, gear=GG.info, lights=GD.lights, lid_open_deg=LID_OPEN, room=GUNDECK_ROOM,
-                        door_swings=DOOR_SWINGS, lid_light=LID_LIGHT,
+                        door_swings=DOOR_SWINGS, tiller_swing=TILLER_SWING, lid_light=LID_LIGHT,
                         folds={n: v["pairs"] for n, v in list(GUNDECK_FOLDS.items()) + list(GEAR_FOLDS.items())},
                         triangles=dict(GD_TRIS, **GEAR_TRIS), triangles_copies={"each": GEAR_COPY_TRIS,
                                                                                "total": GEAR_COPY_TOTAL},
@@ -2110,6 +2146,12 @@ SHUT_DOORS = {n: v for n, v in DOOR_SWINGS.items() if v["clear_to_deg"] is None 
 if SHUT_DOORS:
     raise SystemExit("a cabin door can't swing open clear of the floor, the sill, its jambs and casing or the furniture, "
                      "or comes within 0.1 in of them (build.json gundeck.door_swings): " + json.dumps(SHUT_DOORS))
+TILLER_FOUL = {w: v for w, v in TILLER_SWING.items() if w != "near" and (v["clear_to_deg"] != v["to_deg"] or
+                                                                        v["least_gap_in"] < 0.5)}
+if TILLER_FOUL:
+    raise SystemExit("the rudder's head and the tiller can't swing hard over each way clear of the beams, the window "
+                     "seat, the after wall, the cabin's lantern and the rest, or come within half an inch of them "
+                     "(build.json gundeck.tiller_swing): " + json.dumps(TILLER_FOUL))
 if LID_LIGHT["leaks"]:
     raise SystemExit("daylight shows round a shut port lid: rays from inside reach the slit round it (build.json "
                      "gundeck.lid_light): " + json.dumps(LID_LIGHT["leaking"]))

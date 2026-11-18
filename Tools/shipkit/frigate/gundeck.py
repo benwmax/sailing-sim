@@ -123,6 +123,64 @@ def bolt_head(part, P, n, d, mat="Iron", seg=8):
           [(0.0, d / 2), (0.25 * IN, d / 2), (0.25 * IN + 0.2 * d, 0.4 * d), (0.25 * IN + 0.35 * d, 0.15 * d)], mat, seg)
 
 
+def turned(o, a, deg):
+    """(o, R): a turn of deg about the line through o along a (P -> (P - o) @ R.T + o)"""
+    a = unit(np.asarray(a, float))
+    K = np.array([[0.0, -a[2], a[1]], [a[2], 0.0, -a[0]], [-a[1], a[0], 0.0]])
+    th = math.radians(deg)
+    return np.asarray(o, float), np.eye(3) + math.sin(th) * K + (1.0 - math.cos(th)) * K @ K
+
+
+def swing(V, T, o, a, ways, near, reach=0.05):
+    """V, T (vertices and triangles in the ship's frame) turned about the line through o along a, each way of ways (a
+    name and its angles in degrees, in order from where it starts) step by step, against near ({name: (V, T)}, only the
+    faces near the sweep are kept): for each way the last angle it turns to clear of them all, what it meets past that,
+    and the least gap it keeps on the way (from its corners to their faces and theirs to its, out to reach)"""
+    from mathutils.bvhtree import BVHTree
+    V, T = np.asarray(V, float), np.asarray(T, np.int64)
+    posed = {}
+    for way, degs in ways.items():
+        posed[way] = []
+        for deg in degs:
+            c, R = turned(o, a, deg)
+            posed[way].append((deg, (V - c) @ R.T + c))
+    allp = np.concatenate([P for ps in posed.values() for _, P in ps])
+    lo, hi = allp.min(0) - reach, allp.max(0) + reach
+    kept = {}
+    for name, (Vo, To) in near.items():
+        Vo, To = np.asarray(Vo, float), np.asarray(To, np.int64)
+        if not len(To):
+            continue
+        keep = (Vo[To].min(1) <= hi).all(1) & (Vo[To].max(1) >= lo).all(1)
+        if keep.any():
+            kept[name] = (Vo, To[keep])
+    trees = {n: BVHTree.FromPolygons(Vo.tolist(), To.tolist(), all_triangles=True) for n, (Vo, To) in kept.items()}
+    corners = {n: Vo[np.unique(To)] for n, (Vo, To) in kept.items()}
+    out = {}
+    for way, ps in posed.items():
+        clear_to, meets, least, where = None, None, 9.0, None
+        for deg, P in ps:
+            tree = BVHTree.FromPolygons(P.tolist(), T.tolist(), all_triangles=True)
+            hit = sorted(n for n, t in trees.items() if tree.overlap(t))
+            if hit:
+                meets = [deg, hit]
+                break
+            clear_to = deg
+            for n, t in trees.items():
+                for p in P:
+                    h = t.find_nearest(p.tolist(), reach)
+                    if h[0] is not None and h[3] < least:
+                        least, where = h[3], [deg, n]
+                for p in corners[n]:
+                    h = tree.find_nearest(p.tolist(), reach)
+                    if h[0] is not None and h[3] < least:
+                        least, where = h[3], [deg, n]
+        out[way] = {"to_deg": ps[-1][0], "clear_to_deg": clear_to, "meets_past_it": meets,
+                    "least_gap_in": round(least / IN, 3), "least_gap_at": where}
+    out["near"] = sorted(kept)
+    return out
+
+
 class GunDeck:
     # the parts that carry UVs (parts()): the deck's 'Planking' and 'Margin', the floor cloth's 'Cloth' (squares)
     UV_PARTS = {"GunDeck": ("Planking", "Margin"), "FloorCloth": ("Cloth",)}
@@ -1755,12 +1813,364 @@ class GunDeck:
         E = self.edges(a - grow, b + grow, v0 - grow, v1 + grow, step)
         return np.concatenate([e[:-1] for e in E])
 
-    def rudder_head(self):
-        """the rudder's head above the deck: (its fore face's x, its half-width, its top)"""
+    def blade_top(self):
+        """the rudder's blade above the deck (the head goes on up from its top: head_mesh): (its fore face's x, its
+        half-width, its top)"""
         V = np.asarray(self.skin_parts["Rudder"][0], float)
         za = float(self.gun[0, 2])
         m = V[:, 2] > za - 0.05
         return float(V[m, 0].max()), float(np.abs(V[m, 1]).max()), float(V[:, 2].max())
+
+    # --- the rudder's head and the tiller (tiller: overhead in the great cabin) ------------------------------------------
+    def head_setup(self):
+        """the rudder's head's frame and section (tiller head_in, head_corner_in) on the line the rudder turns about
+        (skin.Skin.rudder_axis): self.hd holds p0 (that line at the blade's top), a (up it), u (forward, square to it
+        in the middle plane), the section's fore and aft faces (along u), its half-width and its corners' radius, and
+        s0, how far up the axis the head starts (in the blade)"""
+        tl = self.c["tiller"]
+        p0, a, fore, off = self.sk.rudder_axis()
+        a = np.asarray(a, float)
+        D, B = (v * IN for v in tl["head_in"])
+        self.hd = {"p0": np.asarray(p0, float), "a": a, "u": np.array([a[2], 0.0, -a[0]]), "uf": fore,
+                   "ua": fore - D, "hw": B / 2, "rc": tl["head_corner_in"] * IN, "off": off,
+                   "s0": -tl["head_into_blade_in"] * IN}
+        self.hard = math.radians(tl["hard_over_deg"])
+        self.angles = np.radians(np.arange(-tl["hard_over_deg"], tl["hard_over_deg"] + 0.25, 1.0))
+
+    def head_loop(self, grow=0.0, w=None, n_arc=8):
+        """the head's section grown by grow (u forward, v starboard; counter-clockwise from above, from the fore face):
+        (k, 2) and, with w, the indices of the corners of a mortise w wide through the fore and aft faces (fp, fs: the
+        fore face's port and starboard; as_, ap: the aft face's)"""
+        h = self.hd
+        uf, ua, hw, rc = h["uf"] + grow, h["ua"] - grow, h["hw"] + grow, h["rc"] + grow
+
+        def arc(cu, cv, t0):
+            t = t0 + np.linspace(0.0, math.pi / 2, n_arc + 1)
+            return list(zip(cu + rc * np.cos(t), cv + rc * np.sin(t)))
+        P, idx = [], {}
+        if w is not None:
+            idx["fp"], idx["fs"] = 0, 1
+            P += [(uf, -w / 2), (uf, w / 2)]
+        P += arc(uf - rc, hw - rc, 0.0) + arc(ua + rc, hw - rc, math.pi / 2)
+        if w is not None:
+            idx["as_"], idx["ap"] = len(P), len(P) + 1
+            P += [(ua, w / 2), (ua, -w / 2)]
+        P += arc(ua + rc, -(hw - rc), math.pi) + arc(uf - rc, -(hw - rc), 1.5 * math.pi)
+        return np.array(P, float), idx
+
+    def head_at(self, Q, s):
+        """section points Q (k, 2: u, v) at s (one, or one each) up the axis from the blade's top, in the ship"""
+        h = self.hd
+        Q = np.asarray(Q, float).reshape(-1, 2)
+        s = np.broadcast_to(np.asarray(s, float), (len(Q),))
+        return h["p0"] + s[:, None] * h["a"] + Q[:, :1] * h["u"] + Q[:, 1:2] * EY
+
+    def head_s(self, Q, c):
+        """how far up the axis each section point (u, v) meets the plane c above the tiller's middle plane (through
+        its frame's origin, square to tl_n: it holds the tiller at rest and the athwartships line)"""
+        h = self.hd
+        Q = np.asarray(Q, float).reshape(-1, 2)
+        base = float((h["p0"] - self.tl_o) @ self.tl_n) + Q[:, 0] * float(h["u"] @ self.tl_n)
+        return (c - base) / float(h["a"] @ self.tl_n)
+
+    def turn(self, P, th):
+        """points P (k, 3) turned th radians about the head's axis (positive: the tiller to starboard)"""
+        h = self.hd
+        a = h["a"]
+        Q = np.asarray(P, float).reshape(-1, 3) - h["p0"]
+        c, s = math.cos(th), math.sin(th)
+        return h["p0"] + Q * c + np.cross(a, Q) * s + np.outer(Q @ a, a) * (1.0 - c)
+
+    def set_tiller(self, s_t, sig):
+        """the tiller's frame: its origin s_t up the head's axis, the tiller at rest sig radians under level forward
+        (tl_t), tl_n square to it and athwartships (up), and the planes on the head that go with it (tl_c)"""
+        tl = self.c["tiller"]
+        h = self.hd
+        self.tl_s, self.tl_sig = s_t, sig
+        self.tl_o = h["p0"] + s_t * h["a"]
+        self.tl_t = np.array([math.cos(sig), 0.0, -math.sin(sig)])
+        self.tl_n = np.array([math.sin(sig), 0.0, math.cos(sig)])
+        dr = tl["root_in"][1] * IN
+        g, (hb, ht), top = tl["hoop_gap_in"] * IN, (v * IN for v in tl["hoop_in"]), tl["top_over_hoop_in"] * IN
+        self.tl_c = {"mortise": (-dr / 2, dr / 2), "hoops": [(-dr / 2 - g - hb, -dr / 2 - g), (dr / 2 + g, dr / 2 + g + hb)],
+                     "top": dr / 2 + g + hb + top, "hoop_t": ht}
+
+    def tiller_lam(self, u):
+        """how far along the tiller (from its frame's origin) its middle line passes the head's section at u"""
+        return u / float(self.tl_t @ self.hd["u"])
+
+    def tiller_size(self, lam):
+        """the tiller's width and depth lam along it: the mortise's (root_in) and a bite through the head, tapering
+        from the head's fore face to end_in where the end eye begins"""
+        tl = self.c["tiller"]
+        wr, dr = (v * IN + 0.004 for v in tl["root_in"])
+        we, de = (v * IN for v in tl["end_in"])
+        l0, l1 = self.tiller_lam(self.hd["uf"]), self.tiller_l1()
+        f = np.clip((np.asarray(lam, float) - l0) / (l1 - l0), 0.0, 1.0)
+        return wr + (we - wr) * f, dr + (de - dr) * f
+
+    def tiller_l1(self):
+        """how far along the tiller its arm reaches end_in, where it begins to neck down into the end eye's ring"""
+        tl = self.c["tiller"]
+        ro, rb = (v * IN for v in tl["end_eye_in"])
+        return tl["length_m"] - (ro - rb) / 2 - tl["neck_in"][0] * IN
+
+    def head_tops(self):
+        """the head's and its gear's highest edges at rest (k, 3): its top's outline, the upper hoop's outer top edge
+        and the key's top abaft the head"""
+        tl = self.c["tiller"]
+        Q, _ = self.head_loop()
+        out = [self.head_at(Q, self.head_s(Q, self.tl_c["top"]))]
+        c1 = self.tl_c["hoops"][1][1]
+        Qh, _ = self.head_loop(grow=self.tl_c["hoop_t"])
+        out.append(self.head_at(Qh, self.head_s(Qh, c1)))
+        kt, kb, kl = (v * IN for v in tl["key_in"])
+        lam = self.tiller_lam(self.hd["ua"]) - np.array([0.0, kt])
+        for l in lam:
+            for v in (-kb / 2, kb / 2):
+                out.append((self.tl_o + l * self.tl_t + kl / 2 * self.tl_n + v * EY)[None])
+        return np.concatenate(out)
+
+    def tiller_tops(self, step=0.02):
+        """the tiller's top edges at rest (k, 3), every step along it, and its end eye's top rim"""
+        tl = self.c["tiller"]
+        l0, l1 = self.tiller_lam(self.hd["uf"]), self.tiller_l1()
+        lam = np.linspace(l0, l1, max(2, int(math.ceil((l1 - l0) / step)) + 1))
+        w, d = self.tiller_size(lam)
+        out = []
+        for sg in (-1.0, 1.0):
+            out.append(self.tl_o + lam[:, None] * self.tl_t + (d / 2)[:, None] * self.tl_n + (sg * w / 2)[:, None] * EY)
+        ro, rb = (v * IN for v in tl["end_eye_in"])
+        th = np.linspace(0.0, 2 * math.pi, 48, endpoint=False)
+        ce = self.tl_o + tl["length_m"] * self.tl_t + rb / 2 * self.tl_n
+        out.append(ce + (ro - rb) / 2 * (np.cos(th)[:, None] * self.tl_t + np.sin(th)[:, None] * EY))
+        return np.concatenate(out)
+
+    def tiller(self, part):
+        """the iron tiller (tiller), built at rest in its own frame (frames['Tiller']: origin on the head's axis in the
+        tiller's middle plane, Z up the axis, X forward square to it, Y to starboard; the game turns it about Z): forged
+        square, through the head's mortise (a bite into its sides), its tang tang_aft_in abaft the head with the key
+        through it bearing on the head's after face, tapering forward from root_in to end_in, then necking down
+        (neck_in) into the end eye's ring, which the tiller ropes are spliced round"""
+        tl = self.c["tiller"]
+        h = self.hd
+        o, t, n = self.tl_o, self.tl_t, self.tl_n
+        ro, rb = (v * IN for v in tl["end_eye_in"])
+        nl, nw, nd = (v * IN for v in tl["neck_in"])
+        Lt = tl["length_m"]
+        Rm = (ro - rb) / 2
+        l_aft = self.tiller_lam(h["ua"] - tl["tang_aft_in"] * IN)
+        l_ha, l_hf, l1 = self.tiller_lam(h["ua"]), self.tiller_lam(h["uf"]), self.tiller_l1()
+        lam = np.array([l_aft, l_ha, l_hf] + list(np.linspace(l_hf, l1, int(math.ceil((l1 - l_hf) / 0.25)) + 1)[1:]))
+        w, d = self.tiller_size(lam)
+        lam = np.append(lam, Lt - Rm)                               # the neck's end, in the ring's bar
+        w, d = np.append(w, nw), np.append(d, nd)
+        corners = np.array([[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]])
+        rings = [o + l * t + (cw * ww / 2)[:, None] * EY + (cd * dd / 2)[:, None] * n
+                 for l, ww, dd in zip(lam, w, d) for cw, cd in [(corners[:, 0], corners[:, 1])]]
+        solid(part, rings, "Iron")
+        # the ring of the end eye, square to the tiller's middle plane
+        th = np.linspace(0.0, 2 * math.pi, 24, endpoint=False)
+        ce = o + Lt * t
+        tube(part, ce + Rm * (np.cos(th)[:, None] * t + np.sin(th)[:, None] * EY), rb / 2, "Iron", n=10, closed=True)
+        # the key: a flat wedge down through the tang, bearing on the head's after face (a bite into it)
+        kt, kb, kl = (v * IN for v in tl["key_in"])
+        a, u = h["a"], h["u"]
+        kc = o + self.tiller_lam(h["ua"]) * t - u * (kt / 2 - 0.001)
+        box(part, kc, u, EY, a, kt / 2 + 0.001, kb / 2, kl / 2, "Iron")
+        R = np.column_stack([u, EY, a])
+        part.V = [(V - o) @ R for V in part.V]
+        self.frames["Tiller"] = (o, R)
+        self.tiller_ends = {"eye_m": ce, "ring_radius_m": Rm, "bar_m": rb}
+        zb = [float(self.zg(float((o + l * t)[0]))) for l in (l_hf, Lt)]
+        self.info["tiller"] = {
+            "frame_origin_m": np.round(o, 4).tolist(), "axis_up": np.round(a, 5).tolist(),
+            "turns": "the rudder's head and the tiller (one object, Tiller) about its frame's +Z (up the head's axis): a "
+                     "positive turn takes the tiller to starboard and the ship's head to port, as the wheel's positive "
+                     "turn does; the blade stays as built (its lower pintles stand off the axis)",
+            "hard_over_deg": tl["hard_over_deg"], "length_m": Lt,
+            "slope_deg": round(math.degrees(self.tl_sig), 3),
+            "end_eye_m": np.round(ce, 4).tolist(),
+            "top_z_m": [round(float((o + l_hf * t + d[2] / 2 * n)[2]), 3), round(float((ce + rb / 2 * n)[2]), 3)],
+            "under_over_deck_m": [round(float((o + l_hf * t - d[2] / 2 * n)[2]) - zb[0], 3),
+                                  round(float((ce - rb / 2 * n)[2]) - zb[1], 3)],
+            "room_under_beams_in": round(self.tl_room[1] / IN, 2)}
+
+    def tiller_top_z(self, x):
+        """the tiller's top at rest over x (its arm's)"""
+        lam = (x - self.tl_o[0]) / self.tl_t[0]
+        _, d = self.tiller_size(lam)
+        return float((self.tl_o + lam * self.tl_t + d / 2 * self.tl_n)[2])
+
+    def place_tiller(self, beams):
+        """where the tiller lies and how high the head goes (tiller): the tiller's middle as high up the head's axis as
+        the head's top (top_over_hoop_in over the upper hoop, the hoop hoop_gap_in over the mortise) lets it, head_clear_in
+        clear of the overhead (the spar deck's members and planks) at every angle, then sloped down forward only as far as
+        it must be to keep gap_under_beams_in clear of every member all along at every angle. beams: the DeckBeams part"""
+        from mathutils import Vector
+        from mathutils.bvhtree import BVHTree
+        tl = self.c["tiller"]
+        V, F, _, _ = beams.arrays()
+        T = [(int(f[0]), int(f[i]), int(f[i + 1])) for f in F for i in range(1, len(f) - 1)]
+        bvh = BVHTree.FromPolygons([tuple(map(float, v)) for v in V], T)
+        up = Vector((0.0, 0.0, 1.0))
+
+        def room(P):
+            """the least room over the points P (k, 3) at every angle: straight up to the overhead (negative in it), and
+            no more than the way to the nearest of its members (an arris just beside the way up)"""
+            least = 9.0
+            for th in self.angles:
+                for p in self.turn(P, th):
+                    r = float(self.zsu(p[0])) - float(p[2])
+                    hit = bvh.ray_cast(Vector(p), up, max(r, 0.0) + 0.01)
+                    if hit[0] is not None:
+                        r = min(r, hit[3] if hit[1][2] < 0 else -hit[3])
+                    if 0.0 < r < 0.1:
+                        hit = bvh.find_nearest(Vector(p), r)
+                        if hit[0] is not None:
+                            r = min(r, hit[3])
+                    least = min(least, r)
+            return least
+        g_head, g_till = tl["head_clear_in"] * IN, tl["gap_under_beams_in"] * IN
+        h = self.hd
+        az = float(h["a"][2])
+        sig = 0.0
+        for _ in range(3):
+            lo, hi = (3.4 - h["p0"][2]) / az, (4.45 - h["p0"][2]) / az
+            self.set_tiller(lo, sig)
+            if room(self.head_tops()) < g_head:
+                raise SystemExit("gundeck: the rudder's head has no room under the overhead")
+            for _ in range(24):
+                mid = 0.5 * (lo + hi)
+                self.set_tiller(mid, sig)
+                if room(self.head_tops()) >= g_head:
+                    lo = mid
+                else:
+                    hi = mid
+            s_t = lo
+            self.set_tiller(s_t, 0.0)
+            if room(self.tiller_tops()) >= g_till:
+                sig_new = 0.0
+            else:
+                a_, b_ = 0.0, math.radians(4.0)
+                self.set_tiller(s_t, b_)
+                if room(self.tiller_tops()) < g_till:
+                    raise SystemExit("gundeck: the tiller has no room under the beams")
+                for _ in range(20):
+                    m_ = 0.5 * (a_ + b_)
+                    self.set_tiller(s_t, m_)
+                    if room(self.tiller_tops()) >= g_till:
+                        b_ = m_
+                    else:
+                        a_ = m_
+                sig_new = b_
+            done = abs(sig_new - sig) < 1e-5
+            sig = sig_new
+            if done:
+                break
+        self.set_tiller(s_t, sig)
+        self.tl_room = (room(self.head_tops()), room(self.tiller_tops()))
+        if self.tl_room[0] < g_head - 1e-4 or self.tl_room[1] < g_till - 1e-4:
+            raise SystemExit(f"gundeck: the tiller's placing left too little room under the overhead {self.tl_room}")
+
+    def head_mesh(self, part, irons):
+        """the rudder's head (Oak) from s0 in the blade up its axis to its top (tl_c top above the tiller's middle,
+        parallel to it), the mortise through it fore and aft for the tiller (root_in), and its two iron hoops (irons)"""
+        tl = self.c["tiller"]
+        wr, _ = (v * IN for v in tl["root_in"])
+        Q, ix = self.head_loop(w=wr)
+        n = len(Q)
+        c_mb, c_mt = self.tl_c["mortise"]
+        rings = [self.head_at(Q, self.hd["s0"]), self.head_at(Q, self.head_s(Q, c_mb)),
+                 self.head_at(Q, self.head_s(Q, c_mt)), self.head_at(Q, self.head_s(Q, self.tl_c["top"]))]
+        qm = Q.mean(0)[None]
+        V = np.concatenate(rings + [self.head_at(qm, self.hd["s0"]), self.head_at(qm, self.head_s(qm, self.tl_c["top"]))])
+        F = []
+        for k in range(3):
+            for i in range(n):
+                if k == 1 and i in (ix["fp"], ix["as_"]):
+                    continue                                   # the mortise's mouths
+                j = (i + 1) % n
+                F.append((k * n + i, k * n + j, (k + 1) * n + j, (k + 1) * n + i))
+        r1, r2 = n, 2 * n
+        fp, fs, as_, ap = ix["fp"], ix["fs"], ix["as_"], ix["ap"]
+        F += [(r1 + ap, r1 + as_, r1 + fs, r1 + fp),          # the mortise's floor, facing up
+              (r2 + fp, r2 + fs, r2 + as_, r2 + ap),          # its roof, facing down
+              (r1 + fs, r2 + fs, r2 + as_, r1 + as_),         # its starboard side, facing to port
+              (r1 + fp, r1 + ap, r2 + ap, r2 + fp)]           # its port side
+        c0, c3 = 4 * n, 4 * n + 1
+        for i in range(n):
+            j = (i + 1) % n
+            F += [(c0, j, i), (c3, 3 * n + i, 3 * n + j)]
+        part.add(V, F, "Oak")
+        t = self.tl_c["hoop_t"]
+        Qo, _ = self.head_loop(grow=t)
+        Qi, _ = self.head_loop(grow=-0.002)
+        m = len(Qo)
+        for c0_, c1_ in self.tl_c["hoops"]:
+            loops = [self.head_at(Qo, self.head_s(Qo, c0_)), self.head_at(Qo, self.head_s(Qo, c1_)),
+                     self.head_at(Qi, self.head_s(Qi, c1_)), self.head_at(Qi, self.head_s(Qi, c0_))]
+            F = [(k * m + i, k * m + (i + 1) % m, ((k + 1) % 4) * m + (i + 1) % m, ((k + 1) % 4) * m + i)
+                 for k in range(4) for i in range(m)]
+            irons.add(np.concatenate(loops), F, "Iron")
+        top = self.head_at(Q, self.head_s(Q, self.tl_c["top"]))
+        self.info["rudder_head"] = {
+            "axis_point_m": np.round(self.hd["p0"], 4).tolist(), "axis_up": np.round(self.hd["a"], 5).tolist(),
+            "abaft_upright_deg": round(math.degrees(math.atan2(-self.hd["a"][0], self.hd["a"][2])), 2),
+            "pintles_off_axis_m": [round(v, 4) for v in self.hd["off"]],
+            "top_z_m": [round(float(top[:, 2].min()), 3), round(float(top[:, 2].max()), 3)],
+            "room_over_top_in": round(self.tl_room[0] / IN, 2)}
+
+    def head_sweep(self, z0, z1, dz=0.005):
+        """the head's outline at every height from z0 to z1 (and no higher than its top) at every angle of the helm:
+        points (k, 3), and its axis's (x, y) at the middle height"""
+        h = self.hd
+        Q = densify(self.head_loop(n_arc=16)[0], 0.01)
+        out = []
+        for th in self.angles:
+            c, s = math.cos(th), math.sin(th)
+            Qr = np.column_stack([Q[:, 0] * c - Q[:, 1] * s, Q[:, 0] * s + Q[:, 1] * c])
+            top = self.head_at(Qr, self.head_s(Q, self.tl_c["top"]))[:, 2]     # the top turns with the head
+            for z in np.arange(z0, z1 + dz / 2, dz):
+                sz = (z - h["p0"][2] - Qr[:, 0] * h["u"][2]) / h["a"][2]
+                P = self.head_at(Qr, sz)
+                out.append(P[P[:, 2] <= top + 1e-9])
+        zm = 0.5 * (z0 + z1)
+        ax = h["p0"] + (zm - h["p0"][2]) / h["a"][2] * h["a"]
+        return np.concatenate(out), ax[:2]
+
+    def sweep_outline(self, z0, z1, grow, n=360, dz=0.005):
+        """the outline of all the head's section grown by grow sweeps between the heights z0 and z1 at every angle of the
+        helm: n points counter-clockwise round the axis's (x, y) at the middle height, each the farthest any turned grown
+        section reaches in its direction (worked exactly from each section's polygon: every one holds the axis, so the
+        union is seen whole from it), and that (x, y). Growing the section, not the outline, keeps grow clear square to
+        every face (grown along each direction from the axis it would stand off a face running nearly along that
+        direction by far less)"""
+        h = self.hd
+        Q = densify(self.head_loop(grow=grow, n_arc=16)[0], 0.01)
+        if float(np.sum(Q[:, 0] * np.roll(Q[:, 1], -1) - np.roll(Q[:, 0], -1) * Q[:, 1])) < 0:
+            Q = Q[::-1]
+        a, p0 = h["a"], h["p0"]
+        k = float(h["u"][0] - h["u"][2] * a[0] / a[2])          # a section's u along x at a given height
+        zm = 0.5 * (z0 + z1)
+        c = (p0 + (zm - p0[2]) / a[2] * a)[:2]
+        t = -math.pi + (np.arange(n) + 0.5) * 2 * math.pi / n
+        D = np.column_stack([np.cos(t), np.sin(t)])
+        R = np.zeros(n)
+        for th in self.angles:
+            cs, sn = math.cos(th), math.sin(th)
+            Qr = np.column_stack([Q[:, 0] * cs - Q[:, 1] * sn, Q[:, 0] * sn + Q[:, 1] * cs])
+            for z in np.linspace(z0, z1, max(2, int(math.ceil((z1 - z0) / dz)) + 1)):
+                cx = float(p0[0] + (z - p0[2]) * a[0] / a[2])
+                G = np.column_stack([cx - c[0] + k * Qr[:, 0], Qr[:, 1] - c[1]])
+                E = np.roll(G, -1, axis=0) - G
+                N = np.column_stack([E[:, 1], -E[:, 0]])          # outward (counter-clockwise)
+                b = np.sum(N * G, axis=1)
+                nd = N @ D.T
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    r = np.where(nd > 1e-12, b[:, None] / nd, np.inf)
+                R = np.maximum(R, r.min(axis=0))
+        return c + R[:, None] * D, c
 
     def after_wall(self, part):
         """the after wall (the skin leaves the gun deck's aft end open for it): straight across between the gun rows'
@@ -1769,11 +2179,22 @@ class GunDeck:
         (the window seat boxes it in)"""
         A = self.aft_rows()
         rv = self.c["cabin"]["after_wall"]["reveal_in"] * IN
-        xr, yr, ztr = self.rudder_head()
+        xr, yr, ztr = self.blade_top()
         g = 1.0 * IN
         z0 = float(A[0, 2]) - 0.25 * IN                     # a quarter inch into the deck (straight down: wall_x)
         right = [(float(A[0, 1]), z0)] + [(float(p[1]), float(p[2])) for p in A]
-        notch = [(-yr - g, z0), (-yr - g, ztr + g), (yr + g, ztr + g), (yr + g, z0)]
+        # the notch takes the blade's top and the head as high as all it sweeps comes within g of the wall, g clear,
+        # under the window seat's top (let into the wall over it)
+        st = self.c["cabin"]["seat"]
+        zt = float(self.zg(self.x_aft)) + st["high_in"] * IN
+        P, _ = self.head_sweep(ztr - 0.1, zt)
+        near = P[P[:, 0] < self.wall_x(P[:, 2]) + g]
+        yn = max(yr, float(np.abs(near[:, 1]).max()) if len(near) else 0.0) + g
+        zn = max(ztr, float(near[:, 2].max()) if len(near) else 0.0) + g
+        if zn > zt - st["top_in"] * IN - 0.25 * IN:
+            raise SystemExit(f"gundeck: the after wall's notch for the rudder's head ({zn:.3f}) shows over the window "
+                             f"seat's top ({zt:.3f})")
+        notch = [(-yn, z0), (-yn, zn), (yn, zn), (yn, z0)]
         outline = [(-right[0][0], z0)] + notch + right + [(-y, z) for y, z in right[::-1]][:-1]
         holes = [self.window_loop(r, rv, 0.1) for r in self.window_rects()]
         P2, T = cdt(densify(np.array(outline), 0.3), holes, 0.25)
@@ -1783,7 +2204,7 @@ class GunDeck:
         part.add(V, F, "Interior")
         self.info["after_wall"] = {"z_m": [round(z0, 3), round(float(A[-1, 2]), 3)],
                                    "x_m": [round(float(A[-1, 0]), 3), round(float(A[0, 0]), 3)],
-                                   "rudder_notch_m": [round(yr + g, 3), round(ztr + g, 3)]}
+                                   "rudder_notch_m": [round(yn, 3), round(zn, 3)]}
 
     def reveals(self, part):
         """each stern window's reveal, lined with board lining_in thick: a closed frame of four boards mitred at the
@@ -2112,27 +2533,43 @@ class GunDeck:
         fielded panels no wider than panel_max_in between stiles and rails) down to the deck; the rudder's head boxed
         inside it"""
         st = self.c["cabin"]["seat"]
+        tl = self.c["tiller"]
         sr = self.c["cabin"]["state_rooms"]
         ys = sr["y_m"] - sr["wall_in"] / 2 * IN
-        xr, yr, ztr = self.rudder_head()
+        xr, yr, ztr = self.blade_top()
         let = 0.25 * IN
         b = 1.0 * IN
-        zt = float(self.zg(self.x_aft)) + st["high_in"] * IN
-        x_f = max(float(self.wall_x(zt)) + st["deep_in"] * IN, xr + st["rudder_box_in"] * IN + b)
+        zd = float(self.zg(self.x_aft))
+        zt = zd + st["high_in"] * IN
         tt = st["top_in"] * IN
+        # the rudder's head turns inside the seat: its front stands seat_front_clear_in before all the head sweeps
+        Pb, _ = self.head_sweep(zd, zt)
+        x_f = max(float(self.wall_x(zt)) + st["deep_in"] * IN, xr + st["rudder_box_in"] * IN + b,
+                  float(Pb[:, 0].max()) + tl["seat_front_clear_in"] * IN)
         if ztr > zt - tt - st["rudder_box_in"] * IN:
-            raise SystemExit(f"gundeck: the window seat ({zt:.3f}) is too low over the rudder's head ({ztr:.3f})")
+            raise SystemExit(f"gundeck: the window seat ({zt:.3f}) is too low over the rudder's blade ({ztr:.3f})")
         gap = st["gap_in"] * IN
         x_n = x_f + st["nosing_in"] * IN
         r = tt / 2
         x_hr = float(self.wall_x(zt)) + st["hinge_rail_in"] * IN
-        # the hinge rail, let into the wall
-        prism(part, [(float(self.wall_x(zt - tt)) - let, zt - tt), (x_hr, zt - tt), (x_hr, zt), (float(self.wall_x(zt)) - let, zt)],
-              -ys, ys, "Interior", axis=1)
-        # the lids and the fixed middle, each with its nosing rounded over
+        # the fixed middle is cut round all the head sweeps through the seat's top, seat_hole_clear_in clear, and is
+        # as wide as that hole and middle_beyond_box_in more; the hole keeps a strip of the top behind it, the sill rail
+        # (after_panelling) on that strip
+        hole, _ = self.sweep_outline(zt - tt, zt, tl["seat_hole_clear_in"] * IN)
+        y_mid = max(yr + st["rudder_box_in"] * IN + b, float(np.abs(hole[:, 1]).max())) + st["middle_beyond_box_in"] * IN
+        x_back = (float(self.wall_x(zt - tt)), float(self.wall_x(zt)))
+        strip = float(hole[:, 0].min()) - max(x_back)
+        sill = self.c["cabin"]["after_wall"]["panelling"]["sill_out_in"] * IN
+        if strip < sill + 0.5 * IN or float(hole[:, 0].max()) > x_n - r - b:
+            raise SystemExit(f"gundeck: the window seat's top has no room round the rudder's head (behind it "
+                             f"{strip:.3f} m, before it {x_n - r - float(hole[:, 0].max()):.3f} m)")
+        # the hinge rails, let into the wall either side of the fixed middle
+        rail = [(float(self.wall_x(zt - tt)) - let, zt - tt), (x_hr, zt - tt), (x_hr, zt), (float(self.wall_x(zt)) - let, zt)]
+        prism(part, rail, -ys, -y_mid, "Interior", axis=1)
+        prism(part, rail, y_mid, ys, "Interior", axis=1)
+        # the lids, each with its nosing rounded over; the fixed middle runs back into the wall, its hole round the head
         arc = [(x_n - r + r * math.cos(a), zt - r + r * math.sin(a)) for a in np.linspace(-math.pi / 2, math.pi / 2, 9)]
         poly = [(x_hr + gap, zt - tt)] + arc + [(x_hr + gap, zt)]
-        y_mid = yr + st["rudder_box_in"] * IN + b + st["middle_beyond_box_in"] * IN
         n_l = st["lids_a_side"]
         side = [y_mid + k * (ys - y_mid) / n_l for k in range(n_l + 1)]
         edges = [-y for y in side[::-1]] + side
@@ -2141,9 +2578,11 @@ class GunDeck:
         for a, c in pieces:
             a_ = a if a <= -ys + 1e-9 else a + gap / 2
             c_ = c if c >= ys - 1e-9 else c - gap / 2
+            if abs(a + y_mid) < 1e-9 and abs(c - y_mid) < 1e-9:     # the fixed middle round the rudder's head
+                self.seat_middle(part, x_back, x_n - r, zt, tt, a_, c_, hole, let)
+                prism(part, [(x_n - r - 0.001, zt - tt)] + arc + [(x_n - r - 0.001, zt)], a_, c_, "Interior", axis=1)
+                continue
             prism(part, poly, a_, c_, "Interior", axis=1)
-            if abs(a + y_mid) < 1e-9 and abs(c - y_mid) < 1e-9:
-                continue                                            # the fixed middle over the rudder's head
             for f in (0.2, 0.8):
                 hinges.append(a_ + f * (c_ - a_))
         hl, hr = (v * IN for v in st["hinge_in"])
@@ -2174,8 +2613,32 @@ class GunDeck:
                               [x_f + ff, a + ins, zr2 - ins]])
             solid(part, [back, front], "Interior")
         self.seat = (x_f, zt, ys)
+        self.seat_hole = hole
         self.info["window_seat"] = {"front_x_m": round(x_f, 3), "top_z_m": round(zt, 3), "half_m": round(ys, 3),
-                                    "lids": len(pieces) - 1, "panels": len(cs) - 1}
+                                    "lids": len(pieces) - 1, "panels": len(cs) - 1,
+                                    "middle_half_m": round(y_mid, 3),
+                                    "hole_round_rudder_head_m": {"x": [round(float(hole[:, 0].min()), 3),
+                                                                       round(float(hole[:, 0].max()), 3)],
+                                                                 "half": round(float(np.abs(hole[:, 1]).max()), 3)},
+                                    "top_behind_hole_m": round(strip, 3)}
+
+    def seat_middle(self, part, x_back, x_front, zt, tt, y0, y1, hole, let):
+        """the window seat's fixed middle: a board tt thick under zt from the after wall (let into it: x_back, the
+        wall's x at the board's underside and top) to x_front (where its nosing begins), y0 to y1 across, with the hole
+        (k, 2) round the rudder's head"""
+        from head import slab
+        xb0, xb1 = x_back[0] - let, x_back[1] - let
+        outline = np.array([(xb1, y0), (x_front, y0), (x_front, y1), (xb1, y1)])
+        zc = zt - tt / 2
+
+        def to3d(P2, d):
+            P2 = np.asarray(P2, float)
+            d = np.broadcast_to(np.asarray(d, float), (len(P2),))
+            x = P2[:, 0].copy()
+            back = x < xb1 + 1e-7                               # the back edge follows the wall's rake
+            x[back] += (xb0 - xb1) * (tt / 2 - d[back]) / tt
+            return np.column_stack([x, P2[:, 1], zc + d])
+        slab(part, outline, [hole], 0.05, to3d, lambda P2: np.full(len(P2), tt / 2), "Interior")
 
     def after_panelling(self, part):
         """the after wall's joinery between the state rooms (cabin after_wall panelling), laid on the wall's rake: a
@@ -2476,23 +2939,31 @@ class GunDeck:
                 placed.append({"name": nm, "x_m": round(x, 3), "y_m": round(sgn * y, 3), "off_middle_m": round(x - xw, 3),
                                "bay_m": [round(lo, 3), round(hi, 3)], "in_from_side_m": lt["in_from_side_m"],
                                "bottom_over_deck_m": round(float(z_low - self.zg(x)), 3), "radius_m": round(radius, 3)})
-        # the cabin's: a bar across between the carlings either side of the skylight, over the table's middle
-        x_t = cb["table"]["x_m"]
-        ys = [cr["y_m"] for cr in self.overhead_info["carlings"] if cr["x_m"][0] + 0.05 < x_t < cr["x_m"][1] - 0.05]
-        yp, yq = [y_ for y_ in ys if y_ > 0], [y_ for y_ in ys if y_ < 0]
-        if not yp or not yq:
-            raise SystemExit("gundeck: no carlings either side of the cabin's table to hang its lantern from")
-        yi = min(min(yp), -max(yq)) - cs_ / 2                          # the carlings' inner faces
+        # the cabin's: up in the skylight over the table (the tiller swings under the beams below it), from a bar
+        # across under the skylight's ridge (in the deck's Skylights), its ends let into the gable ends
+        sk = self.dk.items["SkylightCabin"]
+        x_t = sk["x"]
+        rid = self.dk.c["skylights"]["ridge_in"] * IN
+        z_apex = float(self.dk.z(x_t)) + sk["high"] + rid
         bs_, bm_ = (v * IN for v in lt["cabin_bar_in"])
-        zt = float(self.zsu(x_t)) - lt["cabin_bar_under_in"] * IN
-        vbox(self.parts_["DeckBeams"], [x_t - bs_ / 2, -yi, zt - bm_], [x_t + bs_ / 2, yi, zt], "Oak")
+        under = lt["cabin_bar_under_ridge_in"] * IN
+        if under < bs_ / 2 * rid / (sk["Lo"] / 2) + 0.1 * IN:
+            raise SystemExit("gundeck: the cabin lantern's bar would cut into the skylight's lids")
+        zt = z_apex - under
+        yb = sk["Wo"] / 2 - 1.3 * IN + 0.5 * IN                     # half an inch into each gable end
+        vbox(self.dk.parts_["Skylights"], [x_t - bs_ / 2, -yb, zt - bm_], [x_t + bs_ / 2, yb, zt], "Oak")
         c, z_low = self.lantern(part, [x_t, 0.0, zt - bm_])
         light("Lantern_Cabin", c, "great_cabin", lc["radius_m"], lc["cast_shadows"])
-        top = float(self.zg(x_t)) + (cb["table"]["high_in"]) * IN
+        top = float(self.zg(cb["table"]["x_m"])) + (cb["table"]["high_in"]) * IN
+        over_tiller = float(z_low) - self.tiller_top_z(x_t)
+        if over_tiller < 2.0 * IN:
+            raise SystemExit(f"gundeck: the cabin's lantern hangs {over_tiller:.3f} m over the tiller")
         placed.append({"name": "Lantern_Cabin", "x_m": round(x_t, 3), "y_m": 0.0, "off_middle_m": 0.0,
-                       "bar": {"between_y_m": [round(-yi, 3), round(yi, 3)], "top_under_planks_in": lt["cabin_bar_under_in"]},
+                       "bar": {"in": "the cabin's skylight, across under its ridge", "between_y_m": [round(-yb, 3), round(yb, 3)],
+                               "top_under_ridge_in": lt["cabin_bar_under_ridge_in"]},
                        "bottom_over_deck_m": round(float(z_low - self.zg(x_t)), 3),
-                       "bottom_over_table_m": round(float(z_low - top), 3), "radius_m": lc["radius_m"]})
+                       "bottom_over_table_m": round(float(z_low - top), 3),
+                       "bottom_over_tiller_m": round(over_tiller, 3), "radius_m": lc["radius_m"]})
         if len(self.lights) > lt["light_budget"]["max_lights"]:
             raise SystemExit(f"gundeck: {len(self.lights)} lights over the gun deck's budget of "
                              f"{lt['light_budget']['max_lights']}")
@@ -2639,7 +3110,7 @@ class GunDeck:
         names = ("GunDeck", "GunWaterways", "DeckBeams", "Clamps", "HangingKnees", "Stanchions", "Hatchways", "Wells",
                  "HatchLadders", "MastWedges", "GunCapstan", "GunCapstanPawls", "Pumps", "RidingBitts", "Galley",
                  "Manger", "LeadBushes", "AfterWall", "WindowReveals", "CabinBulkhead", "StateRooms", "WindowSeat",
-                 "FloorCloth", "CabinFurniture", "HornLanterns", "PortStops", "LodgingKnees", "CapstanBars")
+                 "FloorCloth", "CabinFurniture", "HornLanterns", "PortStops", "LodgingKnees", "CapstanBars", "Tiller")
         P = {n: Part() for n in names}
         # the waist's beams (deck.py's) made again with their ends cut to this deck's side, over its clamp
         self.dk.rebuild_waist(lambda x0, x1, z: float(self.wall_at(np.array([x0, x1]), np.array([z, z]))[0][:, 1].min())
@@ -2668,6 +3139,13 @@ class GunDeck:
             del P["Wells"]
         self.lead_bushes(P["LeadBushes"])
         self.port_stops(P["PortStops"])
+        # the rudder's head and the tiller (overhead in the great cabin: tiller), placed under the spar deck's framing:
+        # one object (Tiller) on the axis the game turns them about, the head standing on the blade's top (the game
+        # turns the head with the tiller, never the blade: its lower pintles stand off that axis)
+        self.head_setup()
+        self.place_tiller(P["DeckBeams"])
+        self.head_mesh(P["Tiller"], P["Tiller"])
+        self.tiller(P["Tiller"])
         # the great cabin
         self.parts_ = P
         self.after_wall(P["AfterWall"])
