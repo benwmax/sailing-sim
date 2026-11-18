@@ -1,0 +1,1 @@
+[2026.11.18-15.40.06:038][  0]LogSailing: Display: Shore edges: 23673 pieces (9063 lot wall segments on 674 lots, 14715 natural shore nodes), 21 of 21 meshes
