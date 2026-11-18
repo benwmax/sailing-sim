@@ -73,6 +73,8 @@ struct SAILINGSIM_API FCrewPlaceInput
  *  walk map is the last one's head), the officer of the watch and a lookout to starboard, hands at the fore and main pin
  *  rails on both sides. */
 SAILINGSIM_API int32 ShipWatchCount(const Sailing::FBoatConfig& Config);
+/** The figures the game draws for a boat: her crew, or a square-rigged ship's deck watch (ShipWatchCount). */
+SAILINGSIM_API int32 CrewFigureCount(const Sailing::FBoatConfig& Config);
 
 struct SAILINGSIM_API FCrewPlacement
 {

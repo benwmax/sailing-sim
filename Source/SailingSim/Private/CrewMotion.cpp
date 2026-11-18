@@ -263,6 +263,11 @@ int32 ShipWatchCount(const Sailing::FBoatConfig& Config)
 	return Config.HasSquareRig() ? 8 : 0;
 }
 
+int32 CrewFigureCount(const Sailing::FBoatConfig& Config)
+{
+	return Config.HasSquareRig() ? ShipWatchCount(Config) : Config.CrewCount;
+}
+
 namespace
 {
 	/** docs/ship-rig/: a square-rigged ship's deck watch at their stations (ship frame, m), on their feet. The stations keep

@@ -36,7 +36,6 @@ bool FReferenceCaptureTest::RunTest(const FString& Parameters)
 	// Onboard mounts land on the boat: inside the hull's length, within its beam, above the deck, for every boat.
 	for (int32 I = 0; I < int32(EBoatType::Count); ++I)
 	{
-		if (IsSquareRigged(EBoatType(I))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(I));
 		for (ECapturePreset P : { ECapturePreset::HelmEye, ECapturePreset::ActionCam })
 		{
@@ -47,7 +46,9 @@ bool FReferenceCaptureTest::RunTest(const FString& Parameters)
 			const FVector M = L / CmPerMeter;
 			TestTrue(FString::Printf(TEXT("%hs %s: along the hull (%.2f m)"), C.Name, CapturePresetInfo(P).Name, M.X), M.X > H.SternX - 0.01 && M.X < H.BowX);
 			TestTrue(FString::Printf(TEXT("%hs %s: within the beam (%.2f m)"), C.Name, CapturePresetInfo(P).Name, M.Y), FMath::Abs(M.Y) <= 0.5 * C.Beam + 0.01);
-			TestTrue(FString::Printf(TEXT("%hs %s: eye above the water (%.2f m)"), C.Name, CapturePresetInfo(P).Name, M.Z), M.Z > 0.5 && M.Z < 3.0);
+			// (a ship's eye is on her quarterdeck or taffrail, metres over the water: under a man's height over her sheer)
+			const double EyeMax = C.HasSquareRig() ? H.SheerHeight(M.X) + 1.0 : 3.0;
+			TestTrue(FString::Printf(TEXT("%hs %s: eye above the water (%.2f m)"), C.Name, CapturePresetInfo(P).Name, M.Z), M.Z > 0.5 && M.Z < EyeMax);
 		}
 		FVector Starboard, Port;
 		FRotator RS, RP;

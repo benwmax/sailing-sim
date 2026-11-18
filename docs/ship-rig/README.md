@@ -68,3 +68,9 @@ the fleet's polos and life jackets until the model thread dresses them.
 
 `SailingSim.ShipRig.Table`, `.Motion`, `.Pose` (`Source/SailingSimTests/Private/ShipRigTests.cpp`);
 `SailingSim.Visual.ShipWatch.Deck`, `.Stations` (`ShipWatchTests.cpp`).
+
+The fleet's per-boat checks run on her too (frigate wiring 11): the hull clip map, the chase camera rigs and mounts, the
+capture mounts (her helm eye is on her quarterdeck, so its ceiling is her sheer plus a man's height), the spinnaker and jib
+head rules, and the crew checks (feet, hull clearance, spacing, standing feet) over her deck watch (`CrewFigureCount`: the
+figures the game draws, her watch, not her 450). Still skipped until her model is in the game: the pawn-level rig clearance
+checks (`SailingSim.Visual.RigClearance*`) and the MetaHuman cap (her watch are stand-ins).
