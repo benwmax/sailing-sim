@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "AutoTrim.h"
+#include "DemoHelm.h"
 #include "EasyAssists.h"
 #include "CrewStation.h"
 #include "BoatModel.h"
@@ -828,7 +829,7 @@ public:
 	 *  line, named, plus the spreaders (not drawn as lines: the mast model has them) for the sails to clear. */
 	void HoldForTests(double TwaDeg, double WindKnots);
 	/** The autopilot's new true wind angle, sailing on (SailingSim.Visual.SheetClearance: through a tack or a gybe). */
-	void RetargetForTests(double TwaDeg) { DemoPilot.TargetTWADeg = TwaDeg; }
+	void RetargetForTests(double TwaDeg) { DemoPilot.TargetTWADeg = TwaDeg; DemoBaseTwa = TwaDeg; }
 	struct FRigLineSample { FVector A, B, Sag; float RadiusCm = 0.f; const TCHAR* Name = TEXT(""); TArray<FVector> Points; /* the drawn centreline */ };
 	const TArray<FRigLineSample>& GetRigLineSamples() const { return RigLineSamples; }
 	bool HasModelTravelerBridge() const { return bModelTravelerBridge; }
@@ -1003,6 +1004,12 @@ private:
 	double PrevMainSheet = 0.0, PrevJibSheet = 0.0;
 	Sailing::FAutopilot DemoPilot;
 	double DemoFirstSign = 1.0;
+	/** docs/demo-shoal-guard/ (sailing-feedback #31): the wind angle the demo sails on its own (the tack schedule's, or
+	 *  -SailingHoldTWA's), and its lookout, which bears away from shallows and shores ahead (-SailingNoDemoGuard: without). */
+	double DemoBaseTwa = 45.0;
+	Sailing::FDemoShoalGuard DemoGuard;
+	bool bDemoGuard = false;
+	int32 DemoGuardLogged = 0;
 	// Easy mode's gate runs: -SailingCrudeTackAt=<s> in a demo puts the tiller hard over for 4 s at that sim time, then
 	// lets it go (a beginner's tack, as SailingSim.Physics.EasyMode sails it); the run's max heel goes to bench.json.
 	double CrudeTackAt = -1.0;
