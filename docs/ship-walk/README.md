@@ -41,9 +41,11 @@ planking, anything with less than 1.25 m over it (a gun, the capstan, a mast) ta
 columns slip past (a bulkhead, a door's frame) found by short level rays at shin, waist and chest height, and grating
 holes closed. The great cabin's doors are baked open. Ladders come from the decks' json.
 
-Build b4 (spar and gun decks): spar deck 316 m2 to walk on, gun deck 314 m2, seven ladders: the four at the breaks of
-the quarterdeck and forecastle into the waist, the companion, and (when the berth deck lands) the after and fore
-hatches' ladders down to it.
+The tiller build (slices 12 and 13 with the tiller, Nov 18 2026; the hold is not built yet): spar deck 315 m2 to walk
+on, gun deck 314 m2 (the tiller overhead in the great cabin leaves 1.5 m under it: you duck), berth deck 369 m2, orlop
+120 m2; nine ladders: the four at the breaks of the quarterdeck and forecastle into the waist, the companion, the after
+and fore hatches down to the berth deck, the after ladderway and the fore hatch down to the orlop (the orlop's own
+hatches down to the hold come with it). `berthdeck.json` lists its ladderways by `in`, `orlop.json` its hatches by name.
 
 ## Cameras for a ship (`ChaseCamera::ScaleForShip`)
 
