@@ -61,7 +61,7 @@ namespace Sailing
 		bool IsAvoiding() const { return bAvoiding; }
 		double AvoidTwaDeg() const { return AvoidTwa; }
 		int Avoidances() const { return Count; }
-		void Reset() { bAvoiding = false; NextCheck = -1.0; Count = 0; }
+		void Reset() { bAvoiding = false; NextCheck = -1.0; Count = 0; ThinRef = -1.0; }
 		/** The water she keeps to from a place: her keel plus the margin, or, in thinner water than that already, no
 		 *  shallower than here (she then heads for the deepest water near: PickEscape). */
 		double NeedAt(double X, double Y) const;
@@ -84,6 +84,7 @@ namespace Sailing
 		mutable int Ray = 0;
 		bool bAvoiding = false;
 		double AvoidTwa = 0.0, AvoidSince = 0.0, PickedAt = 0.0, NextCheck = -1.0;
+		double ThinRef = -1.0;   // depth (m) when she came into thin water, raised as she finds deeper; -1 in deep enough water
 		int Count = 0;
 	};
 }

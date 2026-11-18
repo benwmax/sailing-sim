@@ -24,8 +24,10 @@ Every soak and long showcase run from those spots measured a boat sitting still.
   pier or bridge (`FLakeData::Obstacles`, on a 100 m grid, each one a closed-form ray and capsule test).
   - Bridge decks higher than her masthead plus 2 m are not in her way.
   - Already within 12 m of a dock (leaving the marina), she keeps 1.5 m from it instead: she can get out, not into it.
-  - In thinner water than that already (a shallow start, or blown onto a shoal), she keeps to water no shallower than where
-    she is, and a bear-away heads for the deepest water 25 to 50 m away.
+  - In thinner water than that already (a shallow start, or blown onto a shoal), she keeps to water no shallower than she
+    was in when she came into it (and never under her keel plus 0.1 m), and a bear-away heads for the deepest water 25 to
+    50 m away. Measured from each check's own depth instead, she crept down a gently shelving bed to the bottom: Clear
+    Lake at a 0.4 m low tide grounded at 740 s; now nothing grounds at 0.4, 0.5 or 0.6 m below datum.
 - **While the water is clear:** the demo's own course is returned unchanged, so open-water views are untouched.
 - **When it is not clear:** she bears away to the wind angle with the longest clear water, from 60, 90, 120 and 150 on
   either tack. Open water (950 m clear) counts the same in any direction; among those she picks the angle furthest from the

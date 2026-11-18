@@ -91,7 +91,12 @@ namespace Sailing
 		const double Full = Draft + KeelMarginM;
 		if (!Terrain) return Full;
 		const double Here = Terrain->DepthAt(X, Y);
-		return Here >= Full ? Full : Here - 0.02;
+		if (Here >= Full) return Full;
+		// No shallower than the water she was in when she came into thin water (ThinRef, raised as she finds deeper), and
+		// never under her keel plus 0.1 m unless she is already there: measured from each check's own depth instead, she
+		// could creep a couple of centimetres shallower every second down a gently shelving bed (a low tide in Clear Lake).
+		const double Floor = std::max(ThinRef > 0.0 ? ThinRef - 0.05 : Here - 0.02, Draft + 0.1);
+		return std::min(Floor, Here - 0.02);
 	}
 
 	double FDemoShoalGuard::ClearAhead(double X, double Y, double Heading, double MaxM) const
@@ -192,6 +197,11 @@ namespace Sailing
 		if (Time < StartAfterSeconds || (!Terrain && (!Obstacles || Obstacles->empty()))) return BaseTwaDeg;
 		if (Time < NextCheck) return bAvoiding ? AvoidTwa : BaseTwaDeg;
 		NextCheck = Time + CheckEverySeconds;
+		if (Terrain)
+		{
+			const double Here = Terrain->DepthAt(X, Y);
+			ThinRef = Here >= Draft + KeelMarginM ? -1.0 : std::max(ThinRef, Here);
+		}
 		const double Look = LookFor(SpeedMs);
 		if (!bAvoiding)
 		{
