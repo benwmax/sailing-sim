@@ -53,6 +53,10 @@ namespace SailUI
 	 *  -SailingClassicFonts is not given; otherwise the styles stay on Saira. */
 	SAILINGSIM_API bool HasOverhaulFonts();
 	SAILINGSIM_API FSlateFontInfo Font(EType Type);
+	/** Loads every style's font face now (the faces are lazy-loaded TTFs): the first text drawn in a style read its file and
+	 *  built its face on the game thread, 84 ms the first time a HUD card showed mid-session (feedback: font-load hitch).
+	 *  Called from the HUD's and the loading screen's construction; cheap after the first call. */
+	SAILINGSIM_API void PreloadFonts();
 	/** Upper-case styles are drawn upper case: the text helpers apply it. Only the short tracked labels (Eyebrow, Label)
 	 *  since the UI overhaul: sentence case reads faster from a couch. */
 	SAILINGSIM_API bool IsUpper(EType Type);

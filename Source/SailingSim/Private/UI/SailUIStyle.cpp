@@ -6,6 +6,8 @@
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Fonts/CompositeFont.h"
+#include "Fonts/FontMeasure.h"
+#include "Rendering/SlateRenderer.h"
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/PlatformTime.h"
@@ -208,6 +210,28 @@ namespace SailUI
 		case EType::Small: return Make(SairaSemi(), TEXT("Regular"), 17 * K, 0);
 		}
 		return Make(Sans(), TEXT("Regular"), 20, 0);
+	}
+
+	void PreloadFonts()
+	{
+		// Measuring a string walks the same path as the first draw: the composite font's face for each codepoint is loaded
+		// (the file read and the FreeType face) and kept by the font cache. The sample has the styles' letters, figures and
+		// the HUD's symbols, and the arrows that Atkinson takes from B612 (its sub-typeface loads only for those codepoints).
+		static bool bDone = false;
+		if (bDone || !FSlateApplication::IsInitialized()) return;
+		const TSharedPtr<FSlateRenderer> Renderer = FSlateApplication::Get().GetRenderer();
+		if (!Renderer.IsValid()) return;
+		const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
+		const double Start = FPlatformTime::Seconds();
+		static const FString Sample = FString(TEXT("Aa Gg Qq 0123456789 .,:;!?%+-/()")) + TCHAR(0x00B0) + TCHAR(0x00B7) + TCHAR(0x2013)
+			+ TCHAR(0x2190) + TCHAR(0x2192);
+		for (uint8 T = 0; T <= uint8(EType::Small); ++T)
+		{
+			Measure->Measure(Sample, Font(EType(T)));
+			Measure->Measure(Sample.ToUpper(), Font(EType(T)));
+		}
+		bDone = true;
+		UE_LOG(LogSailing, Log, TEXT("UI fonts preloaded in %.1f ms"), (FPlatformTime::Seconds() - Start) * 1000.0);
 	}
 
 	bool IsUpper(EType T)
