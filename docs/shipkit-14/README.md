@@ -9,7 +9,19 @@ tiers. Like the slices before it, this is post-slice art: nothing here is in the
 
 Every render on this page is flipped left to right, so it shows her as the game will (docs/shipkit-9 says why).
 
-<!-- renders: the final build's, added after the rebase onto slices 12 and 13 -->
+![The hold and orlop cut away along the ship a metre to port of the middle line, bow on the right: the gun deck and berth deck above, the orlop's platforms and rooms, the cable tiers between them over the hold, the magazines at each end, the spirit room and the main hold's water casks](baseline/section_hold.jpg)
+
+![Closer on the middle of the same cut: the water casks in two tiers on the shingle, a cable flaked down in the tier over them, and the pump well and lockers on the middle line](baseline/section_main_hold.jpg)
+
+![The after platform looking aft from the ladder: the hatches to the hold, the rooms either side and the berth deck's beams and knees overhead](baseline/orlop_aft.jpg)
+
+![The cable tiers: two cables flaked on the battens, the orlop's beams across with the water casks under them, the after platform and its ladder beyond](baseline/cable_tier.jpg)
+
+![Under the berth deck by the cable tiers: its beams and carlings overhead, a hanging knee under each beam's end against the ceiling](baseline/overhead_side.jpg)
+
+![The fore platform looking forward: a pillar under the beam, the sail rooms with sails in bolts](baseline/fore_platform.jpg)
+
+The renders are lit by work lamps for the review; in the game only the lanterns light these decks.
 
 ## What slice 14 builds
 
@@ -106,7 +118,7 @@ it). Pairs between an orlop part and the berth deck's are this check's too: the 
 
 | Parts | By design | Allowed (in) |
 | --- | --- | --- |
-| BerthBeams / Ceiling | the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13) | 5.1 |
+| BerthBeams / Ceiling | the berth deck's beams' ends let 2 in into the ceiling (on the clamp, slice 13) | 5.2 |
 | BerthBeams / MiddleLine | the pump well's and lockers' boards stand up under the berth deck's beams | 0.35 |
 | BerthBeams / Partitions | the orlop's partitions stand up under the berth deck's beams | 0.9 |
 | Ceiling / HoldBulkheads | the hold's bulkheads' edges against the ceiling, their feet on the limber strake | 0.65 |
@@ -123,7 +135,7 @@ it). Pairs between an orlop part and the berth deck's are this check's too: the 
 | MiddleLine / Shingle | the pump well and the lockers stand down through the ballast to the keelson | 0.25 |
 | MiddleLine / ShotPiles | the shot fills the lockers to their boards | 1 |
 | OrlopBeams / OrlopDeck | the orlop's planks on its beams | 0.25 |
-| OrlopBeams / TierBattens | the cable tiers' battens on the orlop's beams | 3.55 |
+| OrlopBeams / TierBattens | the cable tiers' battens on the orlop's beams | 3.4 |
 | OrlopCoamings / OrlopDeck | the coamings stand in the orlop's openings | 0.25 |
 | OrlopDeck / Partitions | the partitions stand on the orlop's planks | 0.25 |
 | Shingle / WaterCasks | the ground tier's casks bedded in the shingle | 0.65 |
@@ -131,11 +143,11 @@ it). Pairs between an orlop part and the berth deck's are this check's too: the 
 | BreadBags, RoomFittings / OrlopDeck | the bread bags and the rooms' racks, cots, bench and counter stand on the orlop's planks | 0.25 |
 | RoomFittings / Stores | the boxes, kegs and sea chests stand on the shelves and the planks | 0.25 |
 | OrlopDeck / Stores | the sail bolts and sea chests lie on the orlop's planks | 0.35 |
-| BerthKnees / Ceiling | each hanging knee's arm down the side is scribed to the ceiling and bolted through it | 0.6 |
+| BerthKnees / Ceiling | each hanging knee's arm down the side is scribed to the ceiling and bolted through it | 1.1 |
 | BerthKnees / BerthBeams | each hanging knee is bolted flat against its beam's face | 0.25 |
-| Keelson, LimberBoards, MastSteps / Mast_Fore | the fore mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 8.65 |
-| Keelson, LimberBoards, MastSteps / Mast_Main | the main mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 9.75 |
-| Keelson, LimberBoards, MastSteps / Mast_Mizzen | the mizzen mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 6.5 |
+| Keelson, LimberBoards, MastSteps / Mast_Fore | the fore mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 1 |
+| Keelson, LimberBoards, MastSteps / Mast_Main | the main mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 1 |
+| Keelson, LimberBoards, MastSteps / Mast_Mizzen | the mizzen mast's heel stands on the keelson in its step, its tenon in the mortise (slice 12's heel, deeper until slice 13 moves it onto the keelson: mast_heels.json) | 2.05 |
 | MastSteps / LimberBoards | each step is chocked down onto the limber boards past the keelson's sides | 1.6 |
 | MagazineFloors / Ceiling, Keelson, LimberBoards | the magazines' floor timbers are scribed to the ceiling and notched over the keelson and the limber boards | 1.25 |
 | MagazineFloors / HoldBulkheads | the magazines' floors run to their bulkheads | 0.25 |
@@ -145,12 +157,50 @@ it). Pairs between an orlop part and the berth deck's are this check's too: the 
 | Pillars / OrlopDeck | each pillar's heel is let into the orlop's planks | 0.5 |
 | Pillars / BerthBeams | each pillar's head is let into its beam | 0.35 |
 | PumpTubes / Keelson | the brake pumps' tubes are footed on the keelson's top | 0.45 |
-| PumpTubes / LimberBoards | the chain pump's tubes are footed on the limber boards in the well | 0.35 |
+| PumpTubes / LimberBoards | the chain pump's tubes are footed on the limber boards in the well | 0.6 |
+| HoldBulkheads / MiddleLine | the main hold's after bulkhead closes the pump well aft: the well's sides bedded on its fore face (orlop.after_platform_note) | 0.35 |
+| MiddleLine / OrlopDeck | the pump well's sides stand up under the after platform's end, against its planks | 0.25 |
+| BerthBeams / BerthDeck | the berth deck's planks (slice 13) lie on its beams, ledges, carlings, transom and hook | 0.4 |
+| BerthBeams / BerthCableScuttles | the cable scuttles' lead linings come down through the planks and on under them beside the berth deck's beams | 0.3 |
+| BerthBeams / BerthHatchways | the berth deck's coamings (slice 13) are let down onto the carlings and beams round each opening | 0.65 |
+| BerthBeams / BerthMastWedges | the wedges round each mast in the berth deck's partners go down between the beams and carlings | 0.5 |
+| Ceiling / BerthDeck | the berth deck's planks' ends lie over the ceiling's top strake at the side | 0.3 |
+| OrlopDeck / BerthLadders | the berth deck's ladders (slice 13) stand on the orlop's platforms | 0.25 |
+| PumpTubes / BerthPumpTubes | the pumps' tubes carry on up through the berth deck's planks as slice 13's | 0.35 |
 
 ## Triangles
 
-TRIANGLES: the final build's count goes here (about 534,000 in development; the plan's 800,000 for the deck below is a
-starting figure, not a cap).
+The final build's orlop and hold come to 550,660 triangles, 69% of the plan's 800,000 for
+the deck below (a starting figure, not a cap). The powder barrels are almost half of it: each is drawn whole, so the
+light copy can draw them as copies of one barrel, or the magazines can stay closed until a player goes in.
+
+| Part | Triangles |
+| --- | --- |
+| PowderBarrels | 241,080 |
+| Ceiling | 74,688 |
+| WaterCasks | 71,040 |
+| ShotPiles | 46,912 |
+| Cables | 46,464 |
+| Stores | 18,156 |
+| BreadBags | 9,984 |
+| Partitions | 9,916 |
+| OrlopDeck | 9,292 |
+| MagazineFloors | 4,556 |
+| BerthKnees | 3,480 |
+| LimberBoards | 2,944 |
+| Shingle | 2,608 |
+| BerthBeams | 1,840 |
+| HoldBulkheads | 1,248 |
+| RoomFittings | 1,168 |
+| MiddleLine | 1,104 |
+| TierBattens | 960 |
+| Keelson | 956 |
+| OrlopBeams | 864 |
+| OrlopCoamings | 448 |
+| HoldLadders | 416 |
+| MastSteps | 288 |
+| PumpTubes | 216 |
+| Pillars | 32 |
 
 ## Sources and estimates
 
@@ -208,6 +258,18 @@ An independent review read the first build's code and card and found nineteen is
 | The magazine bulkheads left a gap up to the planks | under a platform every hold bulkhead closes up to the planks |
 | One tier of powder; the cable a fraction of its length; light knees | two tiers; each cable flaked to the headroom (about 102 fathoms); knees 10 in sided |
 
+A second independent review read the build after the rebase onto slices 12 and 13 and found seven more:
+
+| The review found | Fixed |
+| --- | --- |
+| The deck hook lay over the foremost berth beam, and ledges ran through the carlings | beams and ledges are left out where the deck transom and hook span them (`orlop.json` lists them); ledges stop at the carlings |
+| The brake pumps' trees hung half off the keelson's side | each stands on the keelson's top with an oak step under the overhang, down to the limber boards |
+| Slice 13's cable scuttles ended open at the planks once its stand-in wells went | their lining comes down 3 ft again, toward the tiers |
+| The berth deck's ladders were landed on levels nobody checked against the orlop | the build passes the orlop's platform levels to slice 13 and stops if the built platforms differ by over 1 mm |
+| Notes on both cards still described the stand-in wells and old ladder landings | rewritten to what is built |
+| The paint room was dropped without a word | the card says why it is left out, and `orlop.json` reports it |
+| The middle line's boxes have no guard against a later change to the pump well | not fixed: their designed contacts (keelson, limber boards, berth beams) fail the build if they move |
+
 ## Known gaps
 
 * **No cable leads.** The cables come down slice 13's scuttles forward, but the run from there to the tiers is not
@@ -225,5 +287,5 @@ An independent review read the first build's code and card and found nineteen is
   built without the berth deck (development); the build passes `BerthDeck.handover()`.
 * `Tools/shipkit/frigate/build_frigate.py`: builds it, files the parts in the Orlop and Hold collections, checks it.
 * `Tools/shipkit/frigate/berthdeck.py`, `berthdeck_1797.json` (slice 13's): its stand-in wells under the openings go
-  (the orlop shows there now), its ladders land on the orlop's platforms, and the cable scuttles are lined through the
-  planks only.
+  (the orlop shows there now), its ladders land on the orlop's platforms (the build stops if the levels it was given
+  are not the orlop's), and the cable scuttles keep their lining down toward the tiers.
