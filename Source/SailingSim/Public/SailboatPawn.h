@@ -384,7 +384,7 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Keel = nullptr; UStaticMesh* RudderBlade = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	/** Whether this boat draws the rebuilt Catalina 22 (/Game/Boats/C22Hero, docs/c22-12) rather than the fleet model. */
 	bool UseC22Hero(Sailing::EBoatType Type) const;
@@ -854,6 +854,13 @@ private:
 	 *  where the wheel is in the hull's mesh (the maxi, the Catalina 30) or the boat has a tiller. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelWheel;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> WheelPivot;
+	/** Catalina 22 rebuild (docs/c22-13): the swing keel on its pin (the hull's KeelPin) and the rudder's blade on its bolt
+	 *  (the rudder part's RudderBolt), turned in the tick by KeelSwingTurn and BladeKickTurn. Null for every other model. */
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> KeelPivot;
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> BladePivot;
+	FVector2D KeelPinM = FVector2D::ZeroVector;  // the pin (body x, z; m)
+	double KeelTurnShown = 0.0;                  // rad: the keel as drawn, wound toward the physics' at KeelWindRate
+	static constexpr double KeelWindRate = 0.25; // rad/s: her winch winds the plate up or down in about 4 s (the look only)
 	FVector WheelAxis = FVector::ForwardVector;  // boat frame, along the shaft toward the wheel box
 	float WheelRimRadiusCm = 0.f;                // the rim's centre line (WheelRim socket), 0 without a wheel part
 	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
@@ -915,6 +922,19 @@ public:
 	{
 		return MaxRudderAngleDeg > 0.0 ? -RudderAngle / FMath::DegreesToRadians(MaxRudderAngleDeg) * WheelTurnsHardOver * 2.0 * UE_DOUBLE_PI : 0.0;
 	}
+	/** Catalina 22 rebuild (docs/c22-13): how far (rad, positive foot aft and up) a swing keel is turned from down at this
+	 *  Board, seen from its pin (PinX, PinZ: body frame, m): the turn of its iron's centroid (FFoilDef::SwingAt's MassX/MassZ),
+	 *  a fixed point of the plate, unlike its lowest point. 0 for a foil without a swing table. */
+	static double KeelSwingTurn(const Sailing::FFoilDef& Foil, double Board, double PinX, double PinZ)
+	{
+		if (Foil.Swing.size() < 2) return 0.0;
+		const Sailing::FFoilDef::FSwingPoint Down = Foil.SwingAt(1.0);
+		const Sailing::FFoilDef::FSwingPoint Now = Foil.SwingAt(FMath::Clamp(Board, 0.0, 1.0));
+		auto Aft = [PinX, PinZ](double X, double Z) { return FMath::Atan2(PinX - X, PinZ - Z); };   // 0 straight down, + aft
+		return FMath::Atan2(FMath::Sin(Aft(Now.MassX, Now.MassZ) - Aft(Down.MassX, Down.MassZ)), FMath::Cos(Aft(Now.MassX, Now.MassZ) - Aft(Down.MassX, Down.MassZ)));
+	}
+	/** A kick-up rudder's blade turn (rad, foot aft and up) for the physics' Kick (FBoatTelemetry::RudderKick, 0 down, 1 up). */
+	static double BladeKickTurn(const Sailing::FFoilDef& Foil, double Kick) { return FMath::Clamp(Kick, 0.0, 1.0) * Foil.KickUpAngle; }
 	/** #620 follow-up: where the helm's hand holds the tiller extension (boat frame, cm), unset when no shown helm holds it. */
 	TOptional<FVector> GetHelmGripCm() const { return HelmGripCm; }
 	bool IsModelTillerExtShown() const;
