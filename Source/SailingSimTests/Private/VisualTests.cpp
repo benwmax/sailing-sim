@@ -862,7 +862,7 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		{ TEXT("forearm_l"), TEXT("hand_l"), TEXT("lowerarm_l"), TEXT("hand_l"), 15.f }, { TEXT("forearm_r"), TEXT("hand_r"), TEXT("lowerarm_r"), TEXT("hand_r"), 15.f },
 		{ TEXT("pelvis"), TEXT("neck"), TEXT("pelvis"), TEXT("neck_01"), 20.f },
 	};
-	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting };
+	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting, ECrewStance::Stand };
 	// The crew is git-ignored and optional on a fresh checkout (the PC without the Mac's zip): the game falls back to
 	// SK_Sailor, so only check it where it is installed.
 	if (!IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
@@ -1032,10 +1032,9 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
-		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
@@ -1076,6 +1075,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
 						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
+						Ground.bStanding = P.Stance == ECrewStance::Stand;
 						Ground.bFlatDeck = P.bFlatDeck;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;

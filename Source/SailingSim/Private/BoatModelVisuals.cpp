@@ -2228,6 +2228,7 @@ void ASailboatPawn::UpdateCrewFigures(float DeltaSeconds)
 		// the player's sheet does the work (#641).
 		Place.bTackCalled = TrimAssist.IsHoldingForTack() && (bTrafficBoat || bGhost || ShowroomStage != EShowroomStage::None || IsTrimAssistActive());
 		Place.Dt = DeltaSeconds;
+		Place.WalkMap = CanWalk() ? &WalkMap : nullptr;   // a ship's watch stand on her decks' floor (docs/ship-rig/)
 		FCrewPlacement Pl;
 		CrewPlacement(Place, Pl);
 		const FCrewPoseParams& P = Pl.Params;

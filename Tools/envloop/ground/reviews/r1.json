@@ -1,0 +1,291 @@
+{
+ "round": "r1",
+ "method": "three fresh reviewers (separate sessions), blind A/B sides shuffled by make_pack.py seed 1; asked which side looks more like a real photo of a north Texas reservoir shore, photo or game, confidence, and the better side's worst flaw",
+ "reviewers": [
+  {
+   "id": "a",
+   "answers": {
+    "club-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "B's mud band is a uniformly tiled brown texture with a hard line against the grass, so it still looks like a game."
+    },
+    "club-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "B's grey gravel strip and light patches look like pasted decals with a hard edge to the grass."
+    },
+    "club-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "A's flat dark band and grey patches look like a pasted decal and the grass is too saturated."
+    },
+    "club-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 5,
+     "flaw": "A's pale gravel patches are a little too clean and the grass is slightly uniform."
+    },
+    "club-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "A's dark rectangular patch on the hill and the flat green grass read as artificial."
+    },
+    "cove-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "B's mud band is a repeating tiled texture with a straight sharp boundary to the grass."
+    },
+    "cove-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "A's grey gravel band is an unnaturally smooth strip and the mid-zone is a flat blur."
+    },
+    "cove-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "A's texture is repetitive noise and the grass is flat and over-green."
+    },
+    "cove-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 5,
+     "flaw": "B's gravel is too uniform and the blob-shaped mud patches look like texture-splat patterns."
+    },
+    "cove-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "A's saturated flat green grass and the dark patch on the hill look game-like."
+    },
+    "cutbank-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "B's bank is one repeating noisy texture with no real strata or roots, and the grass cap is a thin pasted strip."
+    },
+    "cutbank-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "B's bank texture is uniformly tiled, with a thin grass cap and an abrupt flat mud strip below."
+    },
+    "cutbank-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "A's bank is a uniform dark noisy texture with no strata and looks tiled, and the grass cap is a thin strip."
+    },
+    "cutbank-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 5,
+     "flaw": "A's cracked-mud tile is a little regular and the grass patch is tiny and smeared."
+    },
+    "cutbank-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "A's dark rectangular patch on the hilltop and flat green grass look artificial."
+    }
+   }
+  },
+  {
+   "id": "b",
+   "answers": {
+    "club-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "flat uniform strip, ruler-straight bottom edge, repeating texture, grass blurry"
+    },
+    "club-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "pale grey patches look like decals, gravel band edge too straight"
+    },
+    "club-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "uniform banding, flat grey patch, straight waterline, grass flat slab"
+    },
+    "club-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "cracked-mud tile repeats, gravel patch has a cartoon blob outline"
+    },
+    "club-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "thin flat strip, ruler-straight edge, grass flat slab"
+    },
+    "cove-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "evenly sharp repeating texture with no depth variation"
+    },
+    "cove-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "straight-edged grey gravel stripe, hard water edge"
+    },
+    "cove-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "gravel patch looks like a decal, mud tiles visibly"
+    },
+    "cove-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 3,
+     "flaw": "gravel uniform, no larger stones, patch edges blobby"
+    },
+    "cove-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "thin flat band, straight waterline, uniform green slab"
+    },
+    "cutbank-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "repeating flat texture, uniform vertical wall, no overhang or roots"
+    },
+    "cutbank-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "wall texture tiled, grass cap a thin even stripe, gravel blocks crisp-edged"
+    },
+    "cutbank-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 5,
+     "flaw": "bank too dark and tiled, straight-edged grey gravel block at base"
+    },
+    "cutbank-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 3,
+     "flaw": "pebbles stretched along the slope, cracked-mud tile repeats"
+    },
+    "cutbank-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "dark rectangular hard-edged patch on the hill, thin tiled strip"
+    }
+   }
+  },
+  {
+   "id": "c",
+   "answers": {
+    "club-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "uniform tiled pattern, hard straight band edges; reads as bare soil not lawn"
+    },
+    "club-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "flat grey patches, horizontal band seam, pebbles one repeated tile"
+    },
+    "club-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "hard-edged flat grey patch, straight seam band, texture repeats"
+    },
+    "club-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 4,
+     "flaw": "pale gravel patch outline too clean, crack pattern tiles"
+    },
+    "club-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "thin flat strip, blocky patches, ruler-straight edge"
+    },
+    "cove-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "busy uniform tiled noise with no larger-scale structure"
+    },
+    "cove-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "repeating noise, flat grey hard-edged patch, too-smooth mud bands"
+    },
+    "cove-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "pebbly texture repeats uniformly, banding looks painted"
+    },
+    "cove-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 4,
+     "flaw": "blotchy soft-edged dark patches, gravel evenly tiled"
+    },
+    "cove-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 2,
+     "flaw": "thin flat ribbon, no relief or vegetation"
+    },
+    "cutbank-15-lowsun": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "repeating noise on the face, uniform wall, no overhangs, roots or slumps"
+    },
+    "cutbank-15-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "bank too uniform, tiled, no erosion shape"
+    },
+    "cutbank-15-overcast": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 4,
+     "flaw": "flat extruded wall, straight band, repetitive, no overhanging grass or roots"
+    },
+    "cutbank-3-midday": {
+     "better": "after",
+     "after_photo_or_game": "photo",
+     "confidence": 4,
+     "flaw": "crack pattern tiled, gravel stretched along the slope"
+    },
+    "cutbank-60-midday": {
+     "better": "after",
+     "after_photo_or_game": "game",
+     "confidence": 3,
+     "flaw": "rectangular dark patch with sharp edges on the hill, flat strip"
+    }
+   }
+  }
+ ]
+}

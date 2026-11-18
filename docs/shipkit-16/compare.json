@@ -1,0 +1,76 @@
+{
+ "step": 16,
+ "grow_px": 2,
+ "views": {
+  "light_100_abeam": {
+   "pixels": 5493898,
+   "mean": 1.0,
+   "p95": 5.0,
+   "p99": 18.0,
+   "max": 138.0,
+   "share_over_step": 0.0115,
+   "id_other_share": 0.016,
+   "outline_moved_share": 0.0082
+  },
+  "light_100_bow": {
+   "pixels": 5084808,
+   "mean": 0.88,
+   "p95": 4.0,
+   "p99": 15.0,
+   "max": 161.0,
+   "share_over_step": 0.0088,
+   "id_other_share": 0.0088,
+   "outline_moved_share": 0.0037
+  },
+  "light_300_abeam": {
+   "pixels": 790926,
+   "mean": 0.65,
+   "p95": 3.0,
+   "p99": 10.0,
+   "max": 86.0,
+   "share_over_step": 0.0037,
+   "id_other_share": 0.0156,
+   "outline_moved_share": 0.0091
+  },
+  "light_300_bow": {
+   "pixels": 686434,
+   "mean": 0.52,
+   "p95": 2.0,
+   "p99": 7.0,
+   "max": 77.0,
+   "share_over_step": 0.0015,
+   "id_other_share": 0.0077,
+   "outline_moved_share": 0.0028
+  },
+  "light_50_abeam": {
+   "pixels": 8006211,
+   "mean": 1.99,
+   "p95": 11.0,
+   "p99": 30.0,
+   "max": 166.0,
+   "share_over_step": 0.0294,
+   "id_other_share": 0.0166,
+   "outline_moved_share": 0.0073
+  },
+  "light_50_bow": {
+   "pixels": 7334293,
+   "mean": 1.62,
+   "p95": 8.0,
+   "p99": 25.0,
+   "max": 157.0,
+   "share_over_step": 0.0216,
+   "id_other_share": 0.0116,
+   "outline_moved_share": 0.0041
+  }
+ },
+ "noise_100_abeam": {
+  "pixels": 5492336,
+  "mean": 0.99,
+  "p95": 5.0,
+  "p99": 12.0,
+  "max": 107.0,
+  "share_over_step": 0.0051,
+  "id_other_share": 0.0,
+  "outline_moved_share": 0.0
+ }
+}

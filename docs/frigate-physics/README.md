@@ -228,9 +228,32 @@ quick polar is byte-identical). And her sheet turns the waves' slope push off (`
 - The Boat screen has her card (`SailCatalog`'s words, in the slice's boats), but `MakeBoats` lists her only once the
   frigate wiring sets `kShipsListed` with her model, rig and orders panel.
 
+## Start spots
+
+She draws 6.5 m and wants 7.9 m under her (`LaunchSpotFits`, docs/jclass-14/), and now room to swing too: two of her
+lengths (131 m) of open water to the bake's nearest dock, pier or breakwater (`LaunchSpotClearance`, read the same way by
+`FLakeData` for the start and by `SailCatalog` for the Boat screen). The rule is for ships of 50 m or more
+(`kLaunchShipLengthM`), so it changes nothing for the yachts: Bluebonnet (40 m) still starts at Marseille's Vieux-Port,
+63 m from its quay, as a J-class would berth there.
+
+| World | Spot | Depth | Clear | The frigate |
+|---|---|---|---|---|
+| Ray Hubbard | Rush Creek Yacht Club | 8.2 m | 114 m | no room (the club's docks) |
+| Ray Hubbard | Off Rush Creek, open water | 10.2 m | 820 m | starts here |
+| Ray Hubbard | South lake, near the dam | 13.1 m | 1,465 m | starts here |
+| Ray Hubbard | Chandlers Landing | 9.1 m | 392 m | starts here |
+| Ray Hubbard | North lake, below the SH-66 causeway | 2.2 m | 2,471 m | too shallow |
+| Galveston Bay | the five bay and Clear Lake spots | 2.0 to 2.8 m | 35 to 3,109 m | too shallow |
+| Galveston Bay | Bolivar Roads | 6.0 m | 656 m | too shallow |
+| Galveston Bay | Bolivar Roads, the ship channel (new) | 12 to 13 m charted | 845 m | starts here |
+
+The ship channel spot (29.3522 N, 94.7809 W, heading 120) sits on the Houston Ship Channel inside Bolivar Roads, where
+the chart's soundings within 400 m read 12.4 to 13.6 m. It is a line in `Tools/coast/worlds/GalvestonBay.json`; the
+Mac's rebake (`build_coast.py GalvestonBay`) snaps it to the grid and writes its `depth_m` into the bake, and
+`SailingSim.UI.DeepKeelStarts` holds the table (Bluebonnet now fits two Galveston spots). A start the boat doesn't fit
+(a saved session, a lesson's spot) moves to the deepest spot she does fit.
+
 ## Next
 
-Deep-water start spots: she draws 6.5 m and wants 7.9 m under her (`LaunchSpotFits`); on Ray Hubbard the spots off Rush
-Creek, near the dam and at Chandlers Landing are deep enough (the club's own is a marina), and on Galveston Bay none is
-(Bolivar Roads is 6.0 m on the grid): a spot in the ship channel needs the coast's rebake on the Mac. The orders panel's
-calls into `FShipHandling` are the frigate wiring's. The Mac runs the tests Nov 25 to 27 through the main sim thread.
+The orders panel's calls into `FShipHandling` are the frigate wiring's. The Mac runs the tests Nov 25 to 27 through the
+main sim thread.

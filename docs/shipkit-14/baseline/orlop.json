@@ -1,0 +1,221 @@
+{
+ "note": "the orlop and the hold (docs/shipkit-14): every part in place in the ship's frame; lights, the light rooms' and the cockpit's lanterns (a warm point light each); mast_heels, where each lower mast bears on the keelson; heights_m, the decks' and the hold's heights amidships; collections, the Blender collections the game loads each deck below by",
+ "ceiling": {
+  "x_m": [
+   -26.316,
+   25.626
+  ],
+  "hold_x_m": [
+   -22.6,
+   23.7
+  ],
+  "rows": 22,
+  "cols": 373,
+  "columns_skipped_x_m": [
+   25.45
+  ]
+ },
+ "keelson": {
+  "top_over_rabbet_ft": 4.0,
+  "x_m": [
+   -22.6,
+   23.7
+  ]
+ },
+ "mast_heels": {
+  "fore": {
+   "heel_m": [
+    21.071,
+    0.0,
+    -3.5714
+   ],
+   "s_step": -8.0497,
+   "old_heel_m": [
+    21.071,
+    0.0,
+    -3.5714
+   ],
+   "shorter_below_m": -0.0,
+   "d_m": 0.7414
+  },
+  "main": {
+   "heel_m": [
+    -3.1005,
+    0.0,
+    -4.3978
+   ],
+   "s_step": -8.4738,
+   "old_heel_m": [
+    -3.1005,
+    0.0,
+    -4.3978
+   ],
+   "shorter_below_m": -0.0,
+   "d_m": 0.8354
+  },
+  "mizzen": {
+   "heel_m": [
+    -19.2956,
+    0.0,
+    -3.3241
+   ],
+   "s_step": -7.645,
+   "old_heel_m": [
+    -19.2956,
+    0.0,
+    -3.3241
+   ],
+   "shorter_below_m": 0.0,
+   "d_m": 0.5373
+  }
+ },
+ "rooms_off_platform": [
+  "PaintRoom"
+ ],
+ "powder_barrels": 287,
+ "ladders": {
+  "SpiritRoomHatch": {
+   "x_m": -9.94,
+   "drop_m": 2.355
+  },
+  "AfterHatchOrlop": {
+   "x_m": -6.542,
+   "drop_m": 2.309
+  }
+ },
+ "casks": {
+  "water": 50,
+  "spirits": 4,
+  "provisions": 6
+ },
+ "berth_beams_at_ends_left_out": 1,
+ "berth_carlings": 14,
+ "berth_ledges": 31,
+ "deck_ends": {
+  "transom_x_m": -26.164,
+  "hook_x_m": [
+   24.407,
+   25.626
+  ]
+ },
+ "berth_beams": 30,
+ "hanging_knees": 58,
+ "pillars": 2,
+ "pump_steps": 2,
+ "pump_tubes": 6,
+ "cable_coils": {
+  "spirals": 24,
+  "rope_r_m": 0.0889,
+  "fathoms": [
+   102.4,
+   102.4,
+   102.4,
+   102.4
+  ]
+ },
+ "furnish": {
+  "filling_bench": 1,
+  "bread_bags": 64,
+  "shelves": 20,
+  "goods": 48,
+  "sail_bolts": 23
+ },
+ "heights_m": {
+  "berth_top": -0.331,
+  "orlop_top": -2.261,
+  "keelson_top": -4.292,
+  "floor_heads": -4.673,
+  "shingle": -4.368
+ },
+ "depth_of_hold_ft": 14.25,
+ "lights": [
+  {
+   "name": "Lantern_LightRoomAft",
+   "at_m": [
+    -20.421,
+    0.0,
+    -0.51
+   ],
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "cast_shadows": true
+  },
+  {
+   "name": "Lantern_Cockpit",
+   "at_m": [
+    -8.772,
+    0.0,
+    -0.769
+   ],
+   "colour_rgb": [
+    1.0,
+    0.62,
+    0.3
+   ],
+   "cast_shadows": true
+  }
+ ],
+ "parts": [
+  "BerthBeams",
+  "BerthKnees",
+  "BreadBags",
+  "Cables",
+  "Ceiling",
+  "HoldBulkheads",
+  "HoldLadders",
+  "Keelson",
+  "LimberBoards",
+  "MagazineFloors",
+  "MastSteps",
+  "MiddleLine",
+  "OrlopBeams",
+  "OrlopCoamings",
+  "OrlopDeck",
+  "Partitions",
+  "Pillars",
+  "PowderBarrels",
+  "PumpTubes",
+  "RoomFittings",
+  "Shingle",
+  "ShotPiles",
+  "Stores",
+  "TierBattens",
+  "WaterCasks"
+ ],
+ "collections": {
+  "Orlop": [
+   "BerthBeams",
+   "BerthKnees",
+   "BreadBags",
+   "Cables",
+   "Ceiling",
+   "Lantern_Cockpit",
+   "Lantern_LightRoomAft",
+   "MiddleLine",
+   "OrlopBeams",
+   "OrlopCoamings",
+   "OrlopDeck",
+   "Partitions",
+   "Pillars",
+   "PumpTubes",
+   "RoomFittings",
+   "Stores",
+   "TierBattens"
+  ],
+  "Hold": [
+   "HoldBulkheads",
+   "HoldLadders",
+   "Keelson",
+   "LimberBoards",
+   "MagazineFloors",
+   "MastSteps",
+   "PowderBarrels",
+   "Shingle",
+   "ShotPiles",
+   "WaterCasks"
+  ]
+ }
+}

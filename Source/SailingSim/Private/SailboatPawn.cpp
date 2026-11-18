@@ -598,8 +598,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 	int32 MetaCount = bMeta ? kMaxMetaHumanCrew : 0;
 	if (bMeta) FParse::Value(SailingArgs::Dev(), TEXT("SailingMetaCrew="), MetaCount);
 	// A square-rigged ship's company (the frigate's 450) is not a small boat's crew placed along her cockpit: her deck watch
-	// stands at its stations (docs/ship-rig/), so none of these figures are made for her.
-	const int32 NumFigures = C.HasSquareRig() ? 0 : C.CrewCount;
+	// (ShipWatchCount, CrewPlacement's stations: docs/ship-rig/) stands at its stations, SK_Sailor stand-ins all (a MetaHuman
+	// is 1.5 ms of CPU each: docs/crew-cost/).
+	const int32 NumFigures = CrewFigureCount(C);
+	if (C.HasSquareRig()) MetaCount = 0;
 	for (int32 I = 0; I < NumFigures; ++I)
 	{
 		if (CrewFigureIsMetaHuman(C.CrewCount, I, MetaCount))

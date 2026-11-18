@@ -42,9 +42,19 @@ already on the boat named `SM_Frigate_<object>` (or its `_Light` twin) is used w
 transform moved by its spar's motion (a sail after its mirror), and only the sail's shown state is visible. A part is
 moved only when its transform changes, so still spars keep their cached shadows.
 
-Her crew: the pawn makes no small-boat crew figures for a square-rigged ship (`FBoatConfig::HasSquareRig`): placed along
-a cockpit, her company of 450 would be 450 figures in a line 250 m long. Her deck watch stands at its stations instead
-(to come).
+## The deck watch
+
+A square-rigged ship's company (the frigate's 450) is not drawn: placed along a cockpit as a small boat's crew, it would
+be 450 figures in a line 250 m long. The pawn draws her deck watch instead (`ShipWatchCount`, eight SK_Sailor stand-ins:
+a MetaHuman is 1.5 ms of CPU each, `docs/crew-cost/`), placed by `CrewPlacement`'s ship branch on their feet
+(`ECrewStance::Stand`, facing `FCrewPoseParams::StandYaw`): two helmsmen either side of the wheel (the walk map's `Helm`
+spot; the last figure, whose head is the cockpit eye without a map), the officer of the watch ahead of it to starboard
+with his hands behind his back, a lookout on the forecastle, and hands at the fore and main pin rails on both sides. The
+stations keep their side whatever the tack (a figure changing sides with the wind would jump 10 m across the deck). They
+stand on the walk map's top deck where she has one, else on her spar deck: her sheer is the bulwark's rail, the planks
+`CrewShipBulwarkM` (1.4 m) below it (`CrewShipDeckZ`; `CrewFloorZ` and `CrewInsideBoat` know it, so the feet are planted
+on the deck and the bulwarks are solid). Gaps: the watch doesn't move between stations or work the braces, and they wear
+the fleet's polos and life jackets until the model thread dresses them.
 
 ## Known gaps
 
@@ -56,4 +66,11 @@ a cockpit, her company of 450 would be 450 figures in a line 250 m long. Her dec
 
 ## Tests
 
-`SailingSim.ShipRig.Table`, `.Motion`, `.Pose` (`Source/SailingSimTests/Private/ShipRigTests.cpp`).
+`SailingSim.ShipRig.Table`, `.Motion`, `.Pose` (`Source/SailingSimTests/Private/ShipRigTests.cpp`);
+`SailingSim.Visual.ShipWatch.Deck`, `.Stations` (`ShipWatchTests.cpp`).
+
+The fleet's per-boat checks run on her too (frigate wiring 11): the hull clip map, the chase camera rigs and mounts, the
+capture mounts (her helm eye is on her quarterdeck, so its ceiling is her sheer plus a man's height), the spinnaker and jib
+head rules, and the crew checks (feet, hull clearance, spacing, standing feet) over her deck watch (`CrewFigureCount`: the
+figures the game draws, her watch, not her 450). Still skipped until her model is in the game: the pawn-level rig clearance
+checks (`SailingSim.Visual.RigClearance*`) and the MetaHuman cap (her watch are stand-ins).

@@ -37,6 +37,7 @@ namespace CrewMotionDetail
 		{
 		case ECrewStance::Crossing: HalfAcross = 0.16; HalfFore = 0.14; Height = 0.55; break;
 		case ECrewStance::Trapeze: case ECrewStance::Righting: HalfAcross = HalfFore = 0.0; Height = 1.0; break;
+		case ECrewStance::Stand: HalfAcross = 0.18; HalfFore = 0.12; Height = 1.0; break;   // on the feet, a little apart
 		default: HalfAcross = 0.20; HalfFore = 0.30; Height = 0.35; break;
 		}
 	}
@@ -257,10 +258,89 @@ static void CrewScriptCrossing(const Sailing::FBoatConfig& Cfg, FCrewCrossing& C
 	}
 }
 
+int32 ShipWatchCount(const Sailing::FBoatConfig& Config)
+{
+	return Config.HasSquareRig() ? 8 : 0;
+}
+
+int32 CrewFigureCount(const Sailing::FBoatConfig& Config)
+{
+	return Config.HasSquareRig() ? ShipWatchCount(Config) : Config.CrewCount;
+}
+
+namespace
+{
+	/** docs/ship-rig/: a square-rigged ship's deck watch at their stations (ship frame, m), on their feet. The stations keep
+	 *  their side of the deck whatever the tack (a figure that changed sides with the wind would cross 10 m of deck in a
+	 *  jump); the officer and the lookout take the starboard side. */
+	void ShipWatchPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
+	{
+		using namespace Sailing;
+		const FBoatConfig& Cfg = *In.Config;
+		const FHullShape& Hull = Cfg.Hulls[0];
+		const int32 N = ShipWatchCount(Cfg);
+		const int32 I = FMath::Clamp(In.Index, 0, N - 1);
+		// The wheel: the walk map's Helm spot (where you stand at it), else a fifth of her length forward of the stern
+		// (PlaceWalkerAtHelm's rule without one).
+		double WheelX = Hull.SternX + 0.2 * (Hull.BowX - Hull.SternX);
+		const FWalkSpot* HelmSpot = In.WalkMap ? In.WalkMap->SpotNamed("Helm") : nullptr;
+		if (HelmSpot) WheelX = HelmSpot->X;
+		const double Length = Hull.BowX - Hull.SternX;
+		const double ForeX = Cfg.Square.NumMasts > 0 ? Cfg.Square.MastX[0] : Hull.SternX + 0.78 * Length;
+		const double MainX = Cfg.Square.NumMasts > 1 ? Cfg.Square.MastX[1] : Hull.SternX + 0.42 * Length;
+		// X, the side (+ starboard, 0 the centreline), how far in from the bulwark (m; 0 at the centreline), the facing, the hands.
+		struct FStation { double X; double Side; double Inboard; double YawDeg; float Hands; };
+		const FStation Stations[8] = {
+			{ ForeX - 1.8, -1.0, 0.9, 90.0, 0.f },   // a hand at the fore pin rail, port, facing inboard
+			{ ForeX - 1.8, 1.0, 0.9, -90.0, 0.f },   // ... and starboard
+			{ MainX - 2.0, -1.0, 0.9, 90.0, 0.f },   // the main pin rail, port
+			{ MainX - 2.0, 1.0, 0.9, -90.0, 0.f },   // ... and starboard
+			{ ForeX + 2.5, 1.0, 1.6, 0.0, 0.f },     // the lookout on the forecastle
+			{ WheelX + 3.5, 1.0, 1.1, 0.0, 1.f },    // the officer of the watch, ahead of the wheel, hands behind the back
+			{ WheelX, -1.0, 0.0, 0.0, 0.f },         // the helmsmen either side of the wheel ...
+			{ WheelX, 1.0, 0.0, 0.0, 0.f },          // ... the last the cockpit eye's
+		};
+		const FStation& St = Stations[I];
+		const double X = FMath::Clamp(St.X, Hull.SternX + 0.5, Hull.BowX - 0.5);
+		const double Half = Hull.DeckHalfBeam(X);
+		double Y = St.Inboard > 0.0 ? St.Side * FMath::Max(Half - St.Inboard, 0.0) : St.Side * 0.8;
+		// The floor: the walk map's top deck where there is one (stepping inboard to where a sailor fits), else the spar
+		// deck under the sheer (CrewShipDeckZ, which is also where the feet are planted).
+		double Floor = CrewShipDeckZ(Cfg, X);
+		if (In.WalkMap && !In.WalkMap->Decks.empty())
+		{
+			const int32 DeckIndex = HelmSpot && HelmSpot->Deck >= 0 && HelmSpot->Deck < int32(In.WalkMap->Decks.size()) ? HelmSpot->Deck : 0;
+			const FWalkDeck& Deck = In.WalkMap->Decks[DeckIndex];
+			for (int32 Step = 0; Step < 8; ++Step)
+			{
+				const double Z = Deck.FloorAt(X, Y);
+				if (FMath::IsFinite(Z) && Deck.CanStand(X, Y)) { Floor = Z; break; }
+				if (FMath::Abs(Y) < 0.3) break;
+				Y -= FMath::Sign(Y) * 0.3;
+			}
+		}
+		Out.Params = FCrewPoseParams();
+		Out.Params.Stance = ECrewStance::Stand;
+		Out.Params.Side = Y >= 0.0 ? 1.f : -1.f;
+		Out.Params.StandYaw = float(St.YawDeg);
+		Out.Params.Hike = St.Hands;
+		// (The sailor's pelvis is 93 cm above the feet: UpdateCrewFigures puts the figure that much under it.)
+		Out.Pelvis = FVector(X, Y, Floor + 0.93);
+		Out.Yaw = float(St.YawDeg);
+		Out.Roll = 0.f;
+		Out.Duck = 0.f;
+		Out.bHelm = I == N - 1;
+		Out.bScripted = false;
+		Out.FootWeight = 0.f;
+		Out.HoldSide = -1;
+	}
+}
+
 void CrewPlacement(const FCrewPlaceInput& In, FCrewPlacement& Out)
 {
 	using namespace Sailing;
 	const FBoatConfig& Cfg = *In.Config;
+	if (Cfg.HasSquareRig()) { ShipWatchPlacement(In, Out); return; }
 	const FHullShape& Hull = Cfg.Hulls[0];
 	const int32 N = Cfg.CrewCount, I = In.Index;
 	const bool bDinghy = Cfg.Type == EBoatType::Sunfish || Cfg.Type == EBoatType::ILCA7 || Cfg.Type == EBoatType::Hobie16;
@@ -794,7 +874,8 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		const float Give = FMath::Clamp(B.Squat, -0.3f, 1.f);
 		PreMultiply(Joints, TEXT("spine"), Turn(FVector::RightVector, 7.f * Give));
 		PreMultiply(Joints, TEXT("chest"), Turn(FVector::RightVector, 4.f * Give));
-		const bool bOnFeet = In.Params.Stance == ECrewStance::Crossing || In.Params.Stance == ECrewStance::Trapeze || In.Params.Stance == ECrewStance::Righting;
+		const bool bOnFeet = In.Params.Stance == ECrewStance::Crossing || In.Params.Stance == ECrewStance::Trapeze || In.Params.Stance == ECrewStance::Righting
+			|| In.Params.Stance == ECrewStance::Stand;
 		if (bOnFeet)
 		{
 			for (const TCHAR* Sx : { TEXT("l"), TEXT("r") })
@@ -938,6 +1019,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike || bUnderStrap;
 		Ground.bTravelerBridge = In.bTravelerBridge;
 		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
+		Ground.bStanding = St == ECrewStance::Stand;
 		Ground.bFlatDeck = In.Params.bFlatDeck;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}

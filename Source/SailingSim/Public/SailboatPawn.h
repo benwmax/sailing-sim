@@ -668,6 +668,7 @@ private:
 	/** Her manoeuvres (tack, wear, heave to: FShipHandling, stepped with the physics), and the step last called out. */
 	Sailing::FShipHandling ShipHandling;
 	Sailing::EShipManoeuvreStep ShipHandlingCalled = Sailing::EShipManoeuvreStep::Idle;
+	int32 ShipSailPlan = 0;            // the plan she carries on her officers' ladder (Sailing::ApplySailOrder), -1 off it
 	/** Starts a manoeuvre with her helmsman at the wheel; follows it each frame (its calls, the course after it). */
 	void StartShipManoeuvre(Sailing::EShipManoeuvre Manoeuvre);
 	void UpdateShipManoeuvre();
