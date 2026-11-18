@@ -831,6 +831,8 @@ void ASailboatPawn::HoldForTests(double TwaDeg, double WindKnots)
 	bDemoTacks = false;
 	CrudeTackAt = -1.0;
 	DemoPilot.TargetTWADeg = TwaDeg;
+	DemoBaseTwa = TwaDeg;
+	bDemoGuard = false; // the tests hold their angle wherever the test world puts her
 	DemoPilot.MaxTiller = 0.8;
 	// The held states are the rig's own trim, as the polars sail them (docs/trimmer-hands/).
 	TrimAssist.Settings.bHands = false;
@@ -1013,6 +1015,11 @@ void ASailboatPawn::BeginPlay()
 		// is (it had been flipped again by the port start's sign: TWA -60 with HoldTWA -60 tacked onto starboard).
 		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : (HoldTwa < 0.f ? double(HoldTwa) : HoldTwa * DemoFirstSign);
 		DemoPilot.MaxTiller = 0.8;
+		DemoBaseTwa = DemoPilot.TargetTWADeg;
+		DemoGuard.Reset();
+		bDemoGuard = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoDemoGuard"));
+		// A held angle frames the bench views and stills on their course: the lookout starts after their first minute.
+		DemoGuard.StartAfterSeconds = bDemoTacks ? 0.0 : 60.0;
 		// (the demo's chase angle off her bow; a mounted camera keeps its own aim: slice 4's stills ran with this added)
 		if (!ChaseCamera::IsMounted(StartView))
 		{
@@ -1315,7 +1322,26 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		if (bDemoTacks)
 		{
 			const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
-			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+			DemoBaseTwa = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		}
+		DemoPilot.TargetTWADeg = DemoBaseTwa;
+		// docs/demo-shoal-guard/ (sailing-feedback #31): left alone the demo beats until it meets the shore upwind and sits
+		// there aground; its lookout reads the chart ahead and bears away while the water upwind is shallow.
+		const ASailingGameMode* GuardGM = bDemoGuard ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		if (GuardGM && GuardGM->GetLake().IsLoaded())
+		{
+			DemoGuard.Terrain = &GuardGM->GetLake().Terrain;
+			DemoGuard.Obstacles = &GuardGM->GetLake().Obstacles;
+			DemoGuard.Draft = Boat.GetConfig().Draft;
+			const Vec3 O = Boat.OriginPosition();
+			double FromRad = 0.0, Factor = 1.0;
+			GetWind().ReadableAt(O.X, O.Y, T, FromRad, Factor);
+			DemoPilot.TargetTWADeg = DemoGuard.Update(T, O.X, O.Y, FromRad, Boat.GetTelemetry().BoatSpeed, DemoBaseTwa, bDemoTacks);
+			if (DemoGuard.Avoidances() != DemoGuardLogged)
+			{
+				DemoGuardLogged = DemoGuard.Avoidances();
+				UE_LOG(LogSailing, Log, TEXT("Demo: shallow water ahead at %.0f N %.0f E (t %.0f s), bearing away to TWA %.0f"), O.X, O.Y, T, DemoGuard.AvoidTwaDeg());
+			}
 		}
 		// The run guard: off dead downwind by the gusts' margin (docs/hobie-run/); -SailingNoRunGuard compares without it.
 		static SailingArgs::FCachedFlag NoRunGuardArg(TEXT("SailingNoRunGuard"));
