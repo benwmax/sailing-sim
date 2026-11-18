@@ -381,13 +381,57 @@ void ASailboatPawn::ShipHelmsmanTakes()
 	WalkPilot.TargetTWADeg = Boat.GetTelemetry().TrueWindAngle * Sailing::kRadToDeg;
 }
 
+void ASailboatPawn::StartShipManoeuvre(Sailing::EShipManoeuvre Manoeuvre)
+{
+	using namespace Sailing;
+	// Her officers work the braces, sails and helm through it (FShipHandling, after the trimmer each physics step); the
+	// helmsman stands by at the wheel to take her after it. From the wheel, you hand her to him for it.
+	if (!bShipHelmsman) ShipHelmsmanTakes();
+	if (Manoeuvre == EShipManoeuvre::None)
+	{
+		// Filling away: the side she lies on now, a point free of close-hauled until she has way on.
+		const double Side = Boat.GetTelemetry().TrueWindAngle >= 0.0 ? 1.0 : -1.0;
+		WalkPilot = FAutopilot();
+		constexpr double FreeDeg = 11.25;   // a point free of close-hauled
+		WalkPilot.TargetTWADeg = Side * (ShipHandling.Settings.CloseHauledDeg + FreeDeg);
+	}
+	ShipHandling.Start(Manoeuvre, Boat);
+	ShipHandlingCalled = EShipManoeuvreStep::Idle;
+}
+
+void ASailboatPawn::UpdateShipManoeuvre()
+{
+	using namespace Sailing;
+	if (ShipHandling.Manoeuvre() == EShipManoeuvre::None) return;
+	const EShipManoeuvreStep Step = ShipHandling.Step();
+	if (Step != ShipHandlingCalled && Step != EShipManoeuvreStep::Idle && Step != EShipManoeuvreStep::Done)
+	{
+		// The officer of the watch's call at each step (in every HUD mode, like the captain's).
+		StatusMessage = FString(TEXT("Officer of the watch: ")) + UTF8_TO_TCHAR(FShipHandling::StepName(Step));
+		StatusUntil = Boat.GetState().Time + 5.0;
+	}
+	ShipHandlingCalled = Step;
+	if (Step == EShipManoeuvreStep::Done)
+	{
+		// Round: her helmsman takes her close-hauled on the new tack (the handling's courses and spanker set again at the
+		// next step).
+		const double After = ShipHandling.CourseAfterDeg();
+		WalkPilot = FAutopilot();
+		WalkPilot.TargetTWADeg = After;
+		ShipHandling.Start(EShipManoeuvre::None, Boat);
+		ShipHandlingCalled = EShipManoeuvreStep::Idle;
+	}
+}
+
 Sailing::FShipOrderContext ASailboatPawn::GetShipOrderContext() const
 {
 	Sailing::FShipOrderContext C;
-	// The square rig's sail plans are carried out (ApplySailPlan) and the guns by her battery; tacking, wearing and heaving
-	// to join with the crew's manoeuvres (FShipHandling): until then their orders show, with the reason they can't yet.
+	// The square rig's sail plans are carried out (ApplySailPlan), the guns by her battery, tacking, wearing and heaving to
+	// by her officers (FShipHandling).
 	C.bSquareRig = Boat.GetConfig().HasSquareRig();
-	C.bManoeuvres = false;
+	C.bManoeuvres = C.bSquareRig;
+	C.bHoveTo = ShipHandling.Manoeuvre() == Sailing::EShipManoeuvre::HeaveTo && ShipHandling.Step() == Sailing::EShipManoeuvreStep::HoveTo;
+	C.bManoeuvring = ShipHandling.IsActive() && !C.bHoveTo;
 	C.bHasGuns = ShipBattery != nullptr;
 	if (ShipBattery)
 	{
@@ -471,8 +515,20 @@ void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
 			}
 		}
 		break;
+	case EShipOrder::Tack:
+		StartShipManoeuvre(Sailing::EShipManoeuvre::Tack);
+		break;
+	case EShipOrder::Wear:
+		StartShipManoeuvre(Sailing::EShipManoeuvre::Wear);
+		break;
+	case EShipOrder::HeaveTo:
+		StartShipManoeuvre(Sailing::EShipManoeuvre::HeaveTo);
+		break;
+	case EShipOrder::FillAway:
+		// The main yards braced round to draw again; her helmsman takes her off close-hauled on the tack she lies on.
+		StartShipManoeuvre(Sailing::EShipManoeuvre::None);
+		break;
 	default:
-		// (manoeuvres: refused by GetShipOrderContext until they are wired)
 		break;
 	}
 	// The captain's call, in every HUD mode: it is what you said.

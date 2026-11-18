@@ -261,6 +261,12 @@ with it:
 | RubrailWhite | 8 rubber | Rubrail |
 | AntifoulingBlue | 0 (plain) | Antifouling, Keel |
 
+The entries are in `BOAT_LIBRARY` now, with Sole and Laminate taking the wood grain. Her slots still point at the old
+entries in `Tools/shipkit/catalina22/game_c22.json` ("materials") until the next export of her model moves them
+(Liner, Headliner, Sole, Laminate, Cushion, Curtain, Rubrail to their own entries). Antifouling and Keel are packed in
+`PackCanoe` and `PackDeck`, which the mesh tests measure, so AntifoulingBlue goes in with that export and a look at
+`SailingSim.Visual.C22HeroMesh`.
+
 ## How to run
 
 The same venv as slices 1 to 7 (Python with pip `bpy`, numpy, scipy, pillow). From the repo root:

@@ -9,8 +9,12 @@ gives the order, and Backspace (B) or G closes it. The order's call goes on the 
   the reefs; fighting sail keeps the topsails, jibs and spanker, clews up the courses, furls the topgallants and royals and
   hauls the staysails down; shorten sail furls the topgallants and royals and takes a reef in the topsails; furl all takes
   everything in. The crew work at the physics' pace (a sail takes about a minute to set) and the model follows
-  (`docs/ship-rig/`). Tack, wear, heave to and fill away wait for the crew's manoeuvres (`FShipHandling`, PR #782) and show
-  why meanwhile.
+  (`docs/ship-rig/`). Tack, wear and heave to are her officers' manoeuvres (`Sailing::FShipHandling`,
+  `docs/frigate-physics/`): the order hands the wheel to her helmsman, the handling works the braces, sails and helm after
+  the trimmer each physics step (`FBoatStepJob::Handling`), and each step is called on the status line ("Officer of the
+  watch: Mainsail haul"). Round, the helmsman takes her close-hauled on the new tack (`CourseAfterDeg`). Hove to she
+  lies until "fill away", which ends the manoeuvre and has the helmsman take her a point free of close-hauled on the tack
+  she lies on. While one is under way the other sail orders wait.
 * **Helm**: "Helmsman: hold her" hands her helmsman the wheel at her present wind angle. "Luff a point" and "Bear away a
   point" move that angle by 11.25 degrees, between six points off the wind and dead downwind. "I have the helm" takes the
   wheel back (and walks you back to it from on deck). Walking about hands her to the helmsman too.

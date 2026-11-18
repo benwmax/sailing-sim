@@ -868,9 +868,12 @@ return saturate(Live) * saturate(1.0 - x * x) * sqrt(saturate(1.0 - (y / hk) * (
     # (the dither) is untouched: AWaterSurface's tiles still carry Monahan's.
     color = custom(mat, """float ep = Time / 4.0 + Seed * 7.13;
 float br = 0.55 + 0.45 * frac(sin(dot(float2(Seed * 17.9, floor(ep) + 5.3), float2(127.1, 311.7))) * 43758.5453);
-return float3(0.85, 0.88, 0.9) * br * (1.0 - 0.4 * frac(ep));""", ["Seed", "Time"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 0)
+// docs/blow-sea/: in a blow (StormWater, AWaterSurface) the caps keep more of their white, as M_WaterV4's do (0.6 of the shortfall).
+br = lerp(br, 1.0 - 0.6 * (1.0 - br), StormWater);
+return float3(0.85, 0.88, 0.9) * br * (1.0 - 0.4 * frac(ep));""", ["Seed", "Time", "StormWater"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -300, 0)
     connect(node(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, -50, data_index=0), "", color, "Seed")
     connect(node(mat, unreal.MaterialExpressionTime, -600, -120), "", color, "Time")
+    connect(scalar(mat, "StormWater", 0.0, -600, -180), "", color, "StormWater")
     rough = node(mat, unreal.MaterialExpressionConstant, -300, 150, r=0.6)
     MEL.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
@@ -2378,6 +2381,18 @@ BOAT_LIBRARY = {
     "MarkVinyl": ("M_BoatSurface", (0.83, 0.11, 0.013), 0.40, 0.0, 0.30, 0.0, 0.05),
     "MarkScum": ("M_BoatSurface", (0.11, 0.075, 0.025), 0.62, 0.0, 0.0, 0.0, 0.30),
     "MOBVinyl": ("M_BoatSurface", (0.83, 0.55, 0.012), 0.42, 0.0, 0.25, 0.0, 0.05),
+    # Catalina 22 slice 8 (docs/c22-9): her new finishes (L0, Tools/shipkit/catalina22/textures/textures_c22.json "finish"),
+    # aged by BOAT_CODE's Age and Care. The moulded liner (an inside gelcoat, softer gloss), the vinyl headliner, the
+    # varnished teak-and-holly sole and the joinery's teak laminate, the cushions' olive and the curtain's tan
+    # upholstery fabric, the white vinyl rubrail and her blue ablative bottom paint (the J/22's Antifouling is near-black).
+    "Liner": ("M_BoatSurface", (0.78, 0.77, 0.72), 0.35, 0.0, 0.3, 0.0, 0.10),
+    "Headliner": ("M_BoatSurface", (0.74, 0.73, 0.68), 0.55, 0.0, 0.0, 0.0, 0.20),
+    "Sole": ("M_BoatSurface", (0.30, 0.15, 0.06), 0.25, 0.0, 0.7, 0.0, 0.15),
+    "Laminate": ("M_BoatSurface", (0.36, 0.20, 0.09), 0.50, 0.0, 0.0, 0.0, 0.15),
+    "Cushion": ("M_BoatSurface", (0.11, 0.12, 0.065), 0.90, 0.0, 0.0, 0.0, 0.60),
+    "Curtain": ("M_BoatSurface", (0.42, 0.34, 0.20), 0.90, 0.0, 0.0, 0.0, 0.60),
+    "RubrailWhite": ("M_BoatSurface", (0.70, 0.70, 0.68), 0.50, 0.0, 0.0, 0.0, 0.10),
+    "AntifoulingBlue": ("M_BoatSurface", (0.022, 0.045, 0.13), 0.80, 0.0, 0.0, 0.0, 0.60),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
@@ -2391,6 +2406,7 @@ BOAT_SURFACE = {
     "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
+    "Liner": 1, "Sole": 6, "Laminate": 6, "Cushion": 11, "Curtain": 11, "RubrailWhite": 8,   # Catalina 22 (docs/c22-9)
 }
 
 
@@ -2414,7 +2430,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak", "Sole", "Laminate") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 
@@ -3090,6 +3106,7 @@ float lsx = 0.0, lsy = 0.0, ljxx = 1.0, ljyy = 1.0, ljxy = 0.0;
 """ + SEA_ATLAS + sea_amps(NUM_LONG) + long_wave_terms() + """
 h *= fade; d *= fade;
 lsx *= fade; lsy *= fade;
+LongH = h;   // docs/blow-sea/: the long waves' own height (no chop, wake or ocean), for the storm water look's crests
 ljxx = lerp(1.0, ljxx, fade); ljyy = lerp(1.0, ljyy, fade); ljxy *= fade;
 // The short waves (FFT of the same spectrum, FWaveDetail), near the camera.
 float df = saturate(1.0 - dist / DetailP.z);
@@ -3135,6 +3152,7 @@ float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
     float sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
     float k = saturate(sd / 0.6) * (1.0 + 0.25 * saturate(1.0 - sd / 2.0));
     h *= k; d *= k; ho *= k;
+    LongH *= k;
 }
 // Inside the player's hulls: the drawn sea must not show in her cockpit, cabin or hulls. Where the water surface is
 // inside a hull, above its bottom (FHullClipMap: every hull's FHullShape::BottomZ, sheer and deck edge on one grid in
@@ -3187,6 +3205,11 @@ float fade = saturate(1.0 - dist / Fade);
 // The long waves, from the vertices (V4_WPO).
 float sx = LongN.x, sy = LongN.y;
 float J = LongN.z;
+// Storm water look (docs/blow-sea/, sailing-feedback #27): StormWater.x is 0 below 18 kn of the air's mean wind and 1 from
+// 26 kn (AWaterSurface; 0 with -SailingClassicStormWater), .y the sea's significant height here. The long waves' faces
+// are tilted a little further in the normal (not in the mesh): the faces toward the camera reflect less of the storm's
+// sky and those away from it more, so the sea reads as waves, not as a slate.
+sx *= 1.0 + STORM_FACE_TILT * StormWater.x; sy *= 1.0 + STORM_FACE_TILT * StormWater.x;
 // Cat's paws: the wind's surface roughness map (local wind relative to 15 kn), against the sea's mean wind (WindP.z, what
 // the drawn waves were grown for). In a lee (the shelter map, a puff's edge) the short waves and ripples the local wind
 // raises are smaller.
@@ -3618,6 +3641,7 @@ float fleck = 0.0;
     fleck *= 1.0 - FarCapSprites * FCS_W;
 }
 capsDrawn = lerp(capsDrawn, max(fleck, residue), useTable);
+float capsOnly = capsDrawn;   // docs/blow-sea/: the whitecaps without the boats' trails, for the storm water look's foam
 FoamTone = lerp(FoamTone, lerp(0.5, lerp(0.75, 0.5, trailAge), FoamLife), saturate(trailDrawn / max(capsDrawn + trailDrawn, 1e-3)));
 capsDrawn = max(capsDrawn, trailDrawn);
 // docs/spray/: the white water the player's boat makes, from the hull clip map in her frame (FHullClipMap, as V4_WPO's
@@ -3777,8 +3801,30 @@ Spec *= 1.0 - HULL_NEAR_SPEC * hullNear;
 // Storm water step 1: seen at a grazing angle the sea reflects most of the sky, so foam stands out less against it: the
 // foam's opacity falls with Schlick's Fresnel for the flat sea at this view (to 45% at the horizon), and the haze then
 // lies over both alike. Up close and from above nothing changes.
-Foam *= 1.0 - 0.55 * pow(1.0 - saturate(vdir.z), 5.0);
+// Storm water look (below): the foam's boosts give way where M_FarCap's sprites take the caps (High, Ultra), as the flecks
+// do (FCS_W), so the crossfade shows no step; the sprites lift their own white alike.
+float swFd = max(dist, 1.0);
+float swF = StormWater.x * (1.0 - FarCapSprites * smoothstep(300.0, 400.0, swFd) * (1.0 - smoothstep(1100.0, 1250.0, swFd)) * (1.0 - smoothstep(0.05, 0.14, (cam.z - p.z) / swFd)));
+Foam *= 1.0 - 0.55 * (1.0 - 0.5 * swF) * pow(1.0 - saturate(vdir.z), 5.0);
 OceanShare = om;
+// Storm water look (docs/blow-sea/): in a blow the whitecaps stand out from the dark sea (#27: "small and grey"): their
+// aged lace keeps more of its white (residue 0.5 -> 0.7 at full strength), thin lace is a little more opaque, less of it
+// is lost to the sky's glare at grazing (above). Only the caps' share of the foam (not the rain's veil, windrows, gale
+// streaks or the boats' white water); the cover, the cap mask and -SailingDebugFoam are unchanged. The water body
+// lightens on the crests, where the light comes through thin water (to 1 + 0.35 STORM_CREST_LIFT of the albedo at half the
+// long waves' significant height up: StormWater.y, AWaterSurface::LongSignificantHeightAt) and darkens in the troughs (1 - 0.35 STORM_TROUGH_DARK): the contrast between crest and trough a
+// storm sea shows. The height is the long waves' alone (LongH: faded out with the mesh, so far water is as before; the
+// chop, the wakes and the FFT ocean's swell don't count), and the dark band along a hull (hullNear) is kept.
+{
+    float sW = StormWater.x;
+    float capShare = saturate(capsOnly / max(Foam, 1e-3)) * swF;
+    FoamTone = lerp(FoamTone, 1.0 - 0.6 * (1.0 - FoamTone), capShare);
+    Foam = saturate(Foam + STORM_FOAM_OPACITY * swF * min(capsOnly, Foam));
+    float hN = LongH / max(StormWater.y, 0.1);
+    float crestUp = smoothstep(0.0, 0.5, hN), trough = 1.0 - smoothstep(-0.5, 0.0, hN);
+    Dark += sW * (STORM_TROUGH_DARK * trough - STORM_CREST_LIFT * crestUp * (1.0 - Foam) * (1.0 - saturate(hullNear)));
+    Dark = max(Dark, -2.0);   // albedo at most 1.7 times, whatever the knobs
+}
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
 // W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
 // the probability of its whitecap cover (a fixed hash of the pixel, so the temporal AA keeps it binary); the water is
@@ -3868,7 +3914,7 @@ def build_water_v4():
            "Sea", "SeaRect", "SeaP", "DetailD", "DetailQ"]
     hull_clip = [f"HullClip{c}" for c in "ABCDEFGH"]
     wpo = custom(mat, V4_WPO, common + hull_clip + ["HullClipMap", "HullClipRect"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, -400,
-                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4)])
+                 extra_outputs=[("LongN", unreal.CustomMaterialOutputType.CMOT_FLOAT4), ("LongH", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     # The player's boat (AWaterSurface::UpdateHullClip): A origin (m) and on, B/C/D her x/y/z axes in the world. The
     # rest is the main hull's shape for the V7 clip (-SailingClassicHullClip): B/C/D.w sheer z, sheer rise, sheer rise
     # from x; E bow x, stern x, widest x, half beam; F aft length, transom beam loss, centre y, bilge power; G waterline
@@ -3887,6 +3933,8 @@ def build_water_v4():
     hull_v = vector(mat, "HullClipV", (0, 0, 0, 0), -1800, 4100)
     interp = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -900)
     connect(wpo, "LongN", interp, "")
+    interp_h = node(mat, unreal.MaterialExpressionVertexInterpolator, -400, -800)
+    connect(wpo, "LongH", interp_h, "")
     white = unreal.load_asset("/Engine/EngineResources/WhiteSquareTexture")
     gust_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 700, parameter_name="GustMap", texture=white)
     gust_rect = vector(mat, "GustRect", (0, 0, 3200, 1), -1800, 800)
@@ -3901,8 +3949,10 @@ def build_water_v4():
     shade = custom(mat, V4_SHADE.replace("FOAM_MEAN", FOAM_MEAN).replace("HULL_NEAR_M", os.environ.get("HULL_NEAR_M", "0.35")).replace("HULL_NEAR_SPEC", os.environ.get("HULL_NEAR_SPEC", "0.5")).replace("HULL_NEAR_DARK", os.environ.get("HULL_NEAR_DARK", "1.2"))
                    .replace("STORM_FOAM_HOLES", os.environ.get("STORM_FOAM_HOLES", "0.3")).replace("STORM_FOAM_BUMP", os.environ.get("STORM_FOAM_BUMP", "1.0"))
                    .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")).replace("STORM_CAP_RAG", os.environ.get("STORM_CAP_RAG", "0.06"))
-                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife"],
+                   .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3"))
+                   .replace("STORM_FACE_TILT", os.environ.get("STORM_FACE_TILT", "0.35")).replace("STORM_FOAM_OPACITY", os.environ.get("STORM_FOAM_OPACITY", "0.35"))
+                   .replace("STORM_CREST_LIFT", os.environ.get("STORM_CREST_LIFT", "2.0")).replace("STORM_TROUGH_DARK", os.environ.get("STORM_TROUGH_DARK", "0.6")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife", "StormWater", "LongH"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -3918,6 +3968,7 @@ def build_water_v4():
     connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")
     connect(scalar(mat, "FoamLife", 1.0, -2000, 1200), "", shade, "FoamLife")   # docs/storm-look/: 0 = -SailingClassicFoam
     connect(scalar(mat, "DebugFoam", 0.0, -2000, 1100), "", shade, "DebugFoam")
+    connect(vector(mat, "StormWater", (0, 0.5, 0, 0), -2000, 1250), "RGBA", shade, "StormWater")   # docs/blow-sea/: (strength, Hs m)
     for c in (wpo,):
         connect(chop, "", c, "Chop")
         for i, w in enumerate(waves[:NUM_LONG]):
@@ -3930,6 +3981,7 @@ def build_water_v4():
         connect(time, "", c, "T")
         connect(fade, "", c, "Fade")
     connect(interp, "", shade, "LongN")
+    connect(interp_h, "", shade, "LongH")
     for c in (wpo, shade):
         for n in ("OceanA", "OceanB", "OceanMask", "DetailA", "WakeGrid", "ShoreMap", "DetailD"):
             connect(tx[n], "", c, n)
