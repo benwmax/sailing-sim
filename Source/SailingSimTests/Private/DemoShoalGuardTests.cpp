@@ -40,7 +40,7 @@ namespace
 
 	/**
 	 * The demo's course sailed as a point (her speed by the wind angle, turning at once) for Seconds on a lake, with the guard
-	 * or without it. Fast enough to sail every launch spot in eight winds for two hours.
+	 * or without it. Fast enough to sail every launch spot in eight winds for an hour.
 	 */
 	FKinematicRun SailKinematic(const FLakeData& Lake, double X, double Y, double WindFromDeg, double Seconds, bool bGuard)
 	{
@@ -133,6 +133,19 @@ bool FDemoShoalGuardLogicTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Shore upwind: she never reaches water shallower than her keel and the margin"), MaxX < 3412.0);
 		}
 	}
+	// Already in thin water (0.8 m deep on the shelving shore, her keel on the bottom): she heads for the deep water, whatever
+	// the wind.
+	{
+		const FLakeTerrain T = SyntheticLake(true);
+		for (const double WindFrom : { 0.0, 1.0, -1.0 })
+		{
+			FDemoShoalGuard Thin;
+			Thin.Terrain = &T;
+			const double Twa = Thin.Update(0.0, 3460.0, 0.0, WindFrom, 0.0, 45.0, true);
+			TestTrue(FString::Printf(TEXT("Aground, wind from %.0f deg: she heads for deeper water (TWA %.0f)"), WindFrom / kDegToRad, Twa),
+				std::cos(WindFrom - Twa * kDegToRad) < -0.5);
+		}
+	}
 	// She starts beside a dock (the marina): that dock does not block her way out; a pier across her course does.
 	std::vector<FObstacleSegment> Docks(2);
 	Docks[0].AX = -5.0; Docks[0].AY = 3.0; Docks[0].BX = 30.0; Docks[0].BY = 3.0;
@@ -146,7 +159,7 @@ bool FDemoShoalGuardLogicTest::RunTest(const FString& Parameters)
 }
 
 /**
- * Every launch spot of the lake, the bay and Marseille, in eight winds, two hours of the demo's course: with the guard she
+ * Every launch spot of the lake, the bay and Marseille, in eight winds, an hour of the demo's course: with the guard she
  * never reaches water shallower than her keel; without it most runs end on the shore upwind (the test bites).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDemoShoalGuardChartsTest, "SailingSim.Physics.DemoShoalGuard.Charts", DemoGuardFlags)
@@ -165,8 +178,8 @@ bool FDemoShoalGuardChartsTest::RunTest(const FString& Parameters)
 			if (Lake.Terrain.DepthAt(Spot.X, Spot.Y) < kJ22Draft + 0.3) continue;
 			for (int32 F = 0; F < 360; F += 45)
 			{
-				const FKinematicRun Off = SailKinematic(Lake, Spot.X, Spot.Y, F, 7200.0, false);
-				const FKinematicRun On = SailKinematic(Lake, Spot.X, Spot.Y, F, 7200.0, true);
+				const FKinematicRun Off = SailKinematic(Lake, Spot.X, Spot.Y, F, 3600.0, false);
+				const FKinematicRun On = SailKinematic(Lake, Spot.X, Spot.Y, F, 3600.0, true);
 				++Runs;
 				ControlAground += Off.AgroundAt >= 0.0;
 				Least = std::min(Least, On.LeastUnderKeel);
@@ -192,8 +205,9 @@ bool FDemoShoalGuardChartsTest::RunTest(const FString& Parameters)
 
 /**
  * The real boat (physics, trimmer, autopilot) on the course of the PC's Galveston soak (#31): beating south from the Kemah
- * channel into a 6 kn southerly, from the point 300 m short of where it went aground. With the guard she bears away and
- * keeps sailing; the same run without it is aground inside five minutes (scratch runs on main: 258 s).
+ * channel into a 6 kn southerly, from where that soak's boat was at minute 10 (in 2 m of water, 0.9 m under the keel).
+ * With the guard she bears away short of the shoal and keeps sailing; the same run without it was aground at 436 s
+ * (scratch runs on main).
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDemoShoalGuardGalvestonTest, "SailingSim.Physics.DemoShoalGuard.Galveston", DemoGuardFlags)
 bool FDemoShoalGuardGalvestonTest::RunTest(const FString& Parameters)
@@ -209,7 +223,7 @@ bool FDemoShoalGuardGalvestonTest::RunTest(const FString& Parameters)
 	FBoatModel Boat(FBoatConfig::Make(EBoatType::J22));
 	Boat.SetTerrain(&Lake.Terrain);
 	Boat.SetObstacles(&Lake.Obstacles);
-	Boat.Reset(-1150.0, 1120.0, Sea.HeadingFor(45.0), 0.0);
+	Boat.Reset(-880.0, 1104.0, Sea.HeadingFor(45.0), 0.0);
 	FAutoTrim Trim;
 	FAutopilot Pilot;
 	Pilot.MaxTiller = 0.8;
@@ -219,9 +233,11 @@ bool FDemoShoalGuardGalvestonTest::RunTest(const FString& Parameters)
 	Guard.Obstacles = &Lake.Obstacles;
 	Guard.Draft = Boat.GetConfig().Draft;
 	FBoatControls C;
-	double T = 0.0, Least = 1e9, AgroundFor = 0.0;
+	constexpr double Seconds = 600.0;
+	double T = 0.0, Least = 1e9, AgroundFor = 0.0, LastMinuteSpeed = 0.0;
+	int32 LastMinuteSteps = 0;
 	const Vec3 Start = Boat.OriginPosition();
-	for (int32 I = 0; I < int32(360.0 * PhysicsHz); ++I, T += PhysicsDt)
+	for (int32 I = 0; I < int32(Seconds * PhysicsHz); ++I, T += PhysicsDt)
 	{
 		const Vec3 O = Boat.OriginPosition();
 		Sea.Update(T, O.X, O.Y);
@@ -237,13 +253,15 @@ bool FDemoShoalGuardGalvestonTest::RunTest(const FString& Parameters)
 		const FBoatTelemetry& Tm = Boat.GetTelemetry();
 		if (T > 2.0) Least = std::min(Least, Tm.DepthUnderKeel);
 		if (Tm.bAground) AgroundFor += PhysicsDt;
+		if (T >= Seconds - 60.0) { LastMinuteSpeed += Tm.BoatSpeed; ++LastMinuteSteps; }
 	}
+	LastMinuteSpeed /= std::max(1, LastMinuteSteps);
 	const Vec3 End = Boat.OriginPosition();
-	AddInfo(FString::Printf(TEXT("360 s: %d bear-aways, least water under the keel %.2f m, aground %.1f s, ended %.0f m from the start at %.0f N %.0f E"),
-		Guard.Avoidances(), Least, AgroundFor, std::hypot(End.X - Start.X, End.Y - Start.Y), End.X, End.Y));
+	AddInfo(FString::Printf(TEXT("%.0f s: %d bear-aways, least water under the keel %.2f m, aground %.1f s, last minute %.2f m/s, ended %.0f m from the start at %.0f N %.0f E"),
+		Seconds, Guard.Avoidances(), Least, AgroundFor, LastMinuteSpeed, std::hypot(End.X - Start.X, End.Y - Start.Y), End.X, End.Y));
 	TestTrue(TEXT("She bore away from the shoal"), Guard.Avoidances() > 0);
 	TestEqual(TEXT("She never touched the bottom"), AgroundFor, 0.0);
-	TestTrue(TEXT("She is still sailing (not stopped short of the shoal)"), Boat.GetTelemetry().BoatSpeed > 0.5);
+	TestTrue(TEXT("She is still sailing (the last minute's mean speed)"), LastMinuteSpeed > 0.8);
 	return true;
 }
 

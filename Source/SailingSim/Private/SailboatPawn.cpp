@@ -1333,6 +1333,7 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 			DemoGuard.Terrain = &GuardGM->GetLake().Terrain;
 			DemoGuard.Obstacles = &GuardGM->GetLake().Obstacles;
 			DemoGuard.Draft = Boat.GetConfig().Draft;
+			DemoGuard.MastClearM = Boat.GetConfig().MastheadZ + 2.0;
 			const Vec3 O = Boat.OriginPosition();
 			double FromRad = 0.0, Factor = 1.0;
 			GetWind().ReadableAt(O.X, O.Y, T, FromRad, Factor);

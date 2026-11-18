@@ -28,6 +28,8 @@ namespace Sailing
 		double Draft = 1.16;            // m, the boat's deepest point (FBoatConfig::Draft)
 		double KeelMarginM = 0.6;       // water kept under the keel: the depth alarm's 2 ft (Galveston's bay is 2 to 3 m deep)
 		double ObstacleMarginM = 12.0;  // room kept from a dock, piling or bridge pier (past its own radius)
+		double CloseMarginM = 1.5;      // already nearer one than that (leaving the marina): the room kept from it instead
+		double MastClearM = 12.0;       // a bridge deck higher than this (her masthead plus room) is not in her way
 
 		// How far she looks: LookSeconds at her speed (MinLookM at least, MaxLookM at most); ScanM when choosing a course.
 		double LookSeconds = 90.0;
@@ -37,6 +39,8 @@ namespace Sailing
 		double ScanM = 1000.0;
 		double StepM = 5.0;
 		double HoldSeconds = 120.0;     // a bear-away is held at least this long
+		double RepickSeconds = 10.0;    // and not sooner than this after the last choice, unless the way is shut right ahead
+		double RepickM = 60.0;          // a bear-away's course is chosen again when it has less clear water than this (or the look)
 		double CheckEverySeconds = 1.0;
 		double BeatTwaDeg = 45.0;
 		/** The guard keeps watch from this time on (s, the Update clock). The game's views and stills that hold a set angle
@@ -58,11 +62,16 @@ namespace Sailing
 		double AvoidTwaDeg() const { return AvoidTwa; }
 		int Avoidances() const { return Count; }
 		void Reset() { bAvoiding = false; NextCheck = -1.0; Count = 0; }
+		/** The water she keeps to from a place: her keel plus the margin, or, in thinner water than that already, no
+		 *  shallower than here (she then heads for the deepest water near: PickEscape). */
+		double NeedAt(double X, double Y) const;
 
 	private:
 		double LookFor(double SpeedMs) const;
 		bool CourseClear(double X, double Y, double WindFromRad, double BaseTwaDeg, bool bBeating, double Look) const;
-		double PickEscape(double X, double Y, double WindFromRad, double BaseTwaDeg) const;
+		/** The bear-away's wind angle. Away from: the heading of the course being given up when choosing again (rad; 1e9 at the
+		 *  first choice, when sailing back the way she came is what she wants). */
+		double PickEscape(double X, double Y, double WindFromRad, double BaseTwaDeg, double AwayFrom) const;
 
 		/** The obstacles on a grid of BucketM cells (built the first time a ray meets them; again if the list changes). */
 		void IndexObstacles() const;
@@ -74,7 +83,7 @@ namespace Sailing
 
 		mutable int Ray = 0;
 		bool bAvoiding = false;
-		double AvoidTwa = 0.0, AvoidSince = 0.0, NextCheck = -1.0;
+		double AvoidTwa = 0.0, AvoidSince = 0.0, PickedAt = 0.0, NextCheck = -1.0;
 		int Count = 0;
 	};
 }
