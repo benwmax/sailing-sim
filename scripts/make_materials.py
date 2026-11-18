@@ -2378,6 +2378,18 @@ BOAT_LIBRARY = {
     "MarkVinyl": ("M_BoatSurface", (0.83, 0.11, 0.013), 0.40, 0.0, 0.30, 0.0, 0.05),
     "MarkScum": ("M_BoatSurface", (0.11, 0.075, 0.025), 0.62, 0.0, 0.0, 0.0, 0.30),
     "MOBVinyl": ("M_BoatSurface", (0.83, 0.55, 0.012), 0.42, 0.0, 0.25, 0.0, 0.05),
+    # Catalina 22 slice 8 (docs/c22-9): her new finishes (L0, Tools/shipkit/catalina22/textures/textures_c22.json "finish"),
+    # aged by BOAT_CODE's Age and Care. The moulded liner (an inside gelcoat, softer gloss), the vinyl headliner, the
+    # varnished teak-and-holly sole and the joinery's teak laminate, the cushions' olive and the curtain's tan
+    # upholstery fabric, the white vinyl rubrail and her blue ablative bottom paint (the J/22's Antifouling is near-black).
+    "Liner": ("M_BoatSurface", (0.78, 0.77, 0.72), 0.35, 0.0, 0.3, 0.0, 0.10),
+    "Headliner": ("M_BoatSurface", (0.74, 0.73, 0.68), 0.55, 0.0, 0.0, 0.0, 0.20),
+    "Sole": ("M_BoatSurface", (0.30, 0.15, 0.06), 0.25, 0.0, 0.7, 0.0, 0.15),
+    "Laminate": ("M_BoatSurface", (0.36, 0.20, 0.09), 0.50, 0.0, 0.0, 0.0, 0.15),
+    "Cushion": ("M_BoatSurface", (0.11, 0.12, 0.065), 0.90, 0.0, 0.0, 0.0, 0.60),
+    "Curtain": ("M_BoatSurface", (0.42, 0.34, 0.20), 0.90, 0.0, 0.0, 0.0, 0.60),
+    "RubrailWhite": ("M_BoatSurface", (0.70, 0.70, 0.68), 0.50, 0.0, 0.0, 0.0, 0.10),
+    "AntifoulingBlue": ("M_BoatSurface", (0.022, 0.045, 0.13), 0.80, 0.0, 0.0, 0.0, 0.60),
 }
 
 # Boat fidelity 1: each slot's kind in the shared library (BOAT_CODE's Surface): 1 gelcoat, 2 non-skid, 3 stainless,
@@ -2391,6 +2403,7 @@ BOAT_SURFACE = {
     "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
+    "Liner": 1, "Sole": 6, "Laminate": 6, "Cushion": 11, "Curtain": 11, "RubrailWhite": 8,   # Catalina 22 (docs/c22-9)
 }
 
 
@@ -2414,7 +2427,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak", "Sole", "Laminate") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 
