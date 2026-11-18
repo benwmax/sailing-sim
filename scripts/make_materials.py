@@ -270,8 +270,10 @@ float2 ldir = normalize(wMap.gb * 2.0 - 1.0 + float2(1e-4, 0.0));
 float slowMs = wMap.a * 20.0;
 float2 guv = p.xy / GustRect.z;
 float near = saturate(1.0 - dist / 1500.0);
-// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder; W2: along the local wind.
-float2 d = ldir;
+// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder. Along the sea's mean wind
+// (sailing-feedback #30): u and v are metres from the map's origin, so a local direction that varies across the wind map's
+// texels multiplied its change by that distance into moire.
+float2 d = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 n = float2(-d.y, d.x);
 float u = dot(p.xy, d), v = dot(p.xy, n);
 float rip = saturate(rough - 0.12) * 0.075 * near;
@@ -3405,7 +3407,13 @@ float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10
 // docs/calm-water/: a solved -1 is calm water (FWaveDetail::CapThreshold: nothing breaks); the clamp's 0.3 let the fine
 // ripples' folds through as a sprinkle of caps and the foam grid's blocks.
 float capThr = (solved && capBase < -0.5) ? -1.0 : clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
-float2 wd = ldir; // W2: the foam streaks lie along the local wind
+// sailing-feedback #30 (docs/near-water-lapping/): the patterns' frame is the sea's mean wind, not the local wind. Every
+// pattern below is laid in world coordinates turned to this direction (dot(p.xy, wd)), and p is metres from the map's
+// origin, so a direction that changes from place to place multiplies its own change by the distance: the wind map's
+// 8-bit direction, bilinear across 12.5 m texels, swung the lace, the lapping and the caps' variation by radians per
+// metre a few hundred metres out (chevrons along a wall, a checker under a dock, sharper with AA off). The ripples turn
+// to the local wind safely (two fixed frames, blended: above); the foam streaks follow the sea's wind.
+float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 wn = float2(-wd.y, wd.x);
 // W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
 // toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop

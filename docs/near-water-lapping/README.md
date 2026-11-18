@@ -43,6 +43,17 @@ frequency. A metre or so from the camera at a grazing angle, that aliased. It no
 lace's mean, so the lapping keeps its brightness. Lapping alone no longer reads the foam texture, which saves its six
 taps on shore pixels.
 
+**The root: the patterns' frame.** The bubble-noise reshoot (`pr805-f3b19f33/`) helped the beach but kept the bridge
+chevrons and the dock checker, and with temporal AA off (`pr805-f3b19f33-aa/`) both got sharper: the pattern is in the
+shading, not the anti-aliasing. Every foam pattern (the lace and cells, the lapping's wave, the caps' variation, the
+gale's strings) is laid in world coordinates turned to the wind, `dot(p.xy, wd)`, with `p` in metres from the map's
+origin. Since W2, `wd` was the local wind from the wind map, whose direction is 8-bit and bilinear across 12.5 m texels.
+A turned frame multiplies the change in its direction by the distance from the origin, so a few hundred metres out a
+small, texel-by-texel turn swung the patterns by radians per metre, in straight-sided pieces: chevrons along a wall,
+a checker under a dock. (The ripples already turn to the local wind safely: two fixed frames, blended.)
+The foam patterns now lie along the sea's mean wind (`WindParams`), a single direction. The same fix goes into M_Water's
+ripples and caps (Low), which had the same turned frame. The foam's amount still follows the local wind.
+
 The B-spline reads and the bisect switch are not in the final change.
 
 ## Checks
@@ -50,4 +61,4 @@ The B-spline reads and the bisect switch are not in the final change.
 - **PC:** the four #30 stills plus `private-dock-05m` and `club-beach-05m` (`env-bulkhead-05m`, `-near-20`, `-near-35`, `env-bridge-05m`, with the args in the
   issue) at Ultra 1080p, 1:1 against `crops/`. Also a look at a beach and the marina docks, to confirm the lapping line
   is still there.
-- **Mac:** `scripts/gate.sh --scope water`, and commit the rebuilt M_WaterV4.
+- **Mac:** `MATERIALS_ONLY=build_water,build_water_v4`, `scripts/gate.sh --scope water`, and commit the rebuilt M_Water and M_WaterV4.
