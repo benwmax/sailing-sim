@@ -18,7 +18,7 @@ import edge_layer as L  # noqa: E402  (no numpy at import: the editor's Python h
 
 MODELS = os.path.join(REPO, "Artifacts", "models", "edges")
 DEST = "/Game/World/Edges"
-MPC = "/Game/Materials/MPC_World"
+MPC = "/Game/World/MPC_World"
 PACK = os.environ.get("EDGE_PACK", "north-texas-lake")
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
@@ -38,7 +38,7 @@ def world_marks(pack):
     defaults are the pack's: a region's marks are data)."""
     mpc = unreal.load_asset(MPC)
     if not mpc:
-        raise RuntimeError("MPC_World missing: run scripts/make-content.sh first")
+        raise RuntimeError(f"{MPC} missing: run scripts/make-content.sh first")
     scalars = list(mpc.get_editor_property("scalar_parameters"))
     for name in MARKS:
         value = float(pack["marks"][name])
