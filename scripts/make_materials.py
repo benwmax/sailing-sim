@@ -270,8 +270,10 @@ float2 ldir = normalize(wMap.gb * 2.0 - 1.0 + float2(1e-4, 0.0));
 float slowMs = wMap.a * 20.0;
 float2 guv = p.xy / GustRect.z;
 float near = saturate(1.0 - dist / 1500.0);
-// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder; W2: along the local wind.
-float2 d = ldir;
+// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder. Along the sea's mean wind
+// (sailing-feedback #30): u and v are metres from the map's origin, so a local direction that varies across the wind map's
+// texels multiplied its change by that distance into moire.
+float2 d = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 n = float2(-d.y, d.x);
 float u = dot(p.xy, d), v = dot(p.xy, n);
 float rip = saturate(rough - 0.12) * 0.075 * near;
@@ -3691,7 +3693,13 @@ float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10
 // docs/calm-water/: a solved -1 is calm water (FWaveDetail::CapThreshold: nothing breaks); the clamp's 0.3 let the fine
 // ripples' folds through as a sprinkle of caps and the foam grid's blocks.
 float capThr = (solved && capBase < -0.5) ? -1.0 : clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
-float2 wd = ldir; // W2: the foam streaks lie along the local wind
+// sailing-feedback #30 (docs/near-water-lapping/): the patterns' frame is the sea's mean wind, not the local wind. Every
+// pattern below is laid in world coordinates turned to this direction (dot(p.xy, wd)), and p is metres from the map's
+// origin, so a direction that changes from place to place multiplies its own change by the distance: the wind map's
+// 8-bit direction, bilinear across 12.5 m texels, swung the lace, the lapping and the caps' variation by radians per
+// metre a few hundred metres out (chevrons along a wall, a checker under a dock, sharper with AA off). The ripples turn
+// to the local wind safely (two fixed frames, blended: above); the foam streaks follow the sea's wind.
+float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 wn = float2(-wd.y, wd.x);
 // W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
 // toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop
@@ -3723,7 +3731,7 @@ float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(len
 // it has faded to its means (patFade).
 // docs/storm-water/foam-cost/: the six taps cost 0.7-1.0 ms of water on the Mac's High, taken on every pixel near
 // enough to resolve the pattern, foam or not. The pattern only ever shapes foam, so it is taken at most once, where foam
-// is first drawn: FOAM_PAT, below (the caps, wake, trail, swash or a gale sea; the windrows).
+// is first drawn: FOAM_PAT, below (the caps, wake, trail or a gale sea; the windrows).
 float lace = FOAM_MEAN.x, foamStreak = FOAM_MEAN.y, cells = FOAM_MEAN.z;
 bool patDone = false;
 #define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
@@ -3789,7 +3797,23 @@ float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + floa
 float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // The shore's lapping line (lap, below).
-float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
+// sailing-feedback #30 (docs/near-water-lapping/): only along the waterline itself. Shallower than 35 cm was the whole
+// test, so a flat shallow shelf (the bulkhead lot, the bank by the I-30 bridge) drew a lapping band metres wide; its lace
+// read as a herringbone along the wall and as blocky grey patches nearer the camera. The distance to the waterline is the
+// depth over its slope, from the shore map's own cells (central differences one cell either way: 512 cells, AWaterSurface's
+// kShoreRes; land is 0 deep), so the line is held within about a metre of where the depth reaches 0 (a dock's stamp, 0.6 m
+// deeper a metre out, keeps its half metre), and a shelf whose depth hardly changes draws none.
+float swash = 0.0;
+[branch] if (sd < 0.35)
+{
+    float se = 1.0 / 512.0;
+    float2 suv = float2(su.y, su.x);
+    float sgx = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(0.0, se), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(0.0, se), 0).r;
+    float sgy = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(se, 0.0), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(se, 0.0), 0).r;
+    float sSlope = length(float2(sgx, sgy)) / (2.0 * ShoreRect.z * se);
+    float toLine = sd / max(sSlope, 0.02);
+    swash = saturate(1.0 - sd / 0.35) * (1.0 - smoothstep(0.4, 1.2, toLine)) * saturate(WindP.z / 4.0);
+}
 float persist = 0.0;
 float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 [branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
@@ -3801,7 +3825,7 @@ float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 // (The trail is drawn as 0.85 trail^1.2 at 0.45 of its pattern at least, so it reaches 1/255 from a trail of 0.022, and
 // trail <= persist: 0.004 there had kept the taps on wherever the foam grid had held foam at all.)
 [branch] if (patFade < 1.0 && (crest > FOAM_SEEN || 0.25 * residue > FOAM_SEEN || wakeBreak > FOAM_SEEN || persist > 0.022
-    || swash > FOAM_SEEN || meanKn > 24.0)) FOAM_PAT();
+    || meanKn > 24.0)) FOAM_PAT();
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
 float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
 crest *= saturate(0.8 + 1.3 * laceE);
@@ -3809,7 +3833,10 @@ residue *= patternE * 0.25;
 float caps = max(crest, residue);
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them
 // (swash, above).
-float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
+// sailing-feedback #30: broken by the wash's own bubble noise (WB_NOISE: soft value noise at 0.4 m, 0.14 m and 5 cm), not
+// the foam texture's lace. The lace's thin bubble films, multiplied in and also shifting the lapping's phase (which
+// multiplied their frequency), aliased a metre from the camera into a herringbone along a wall and a checker under a dock.
+float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + bubbles * 2.5)) * (0.45 + 0.55 * bubbles);
 // Heavy rain: splashes and mist grey the surface.
 // W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
 // measure; it is not touched here). Drawn straight as opacity over albedo 0.85, a cap at 0.3-0.5 cover read nearly as
