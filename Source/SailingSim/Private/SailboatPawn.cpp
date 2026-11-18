@@ -414,6 +414,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	ModelTillerExt = nullptr;
 	ModelWheel = nullptr;
 	WheelPivot = nullptr;
+	KeelPivot = BladePivot = nullptr;
+	KeelTurnShown = 0.0;
 	WheelAxis = FVector::ForwardVector;
 	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
@@ -4079,6 +4081,24 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
 		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
+	// Catalina 22 rebuild (docs/c22-13): the swing keel wound toward the physics' Board, the blade kicked up as the physics has it.
+	if (KeelPivot || BladePivot)
+	{
+		for (const FFoilDef& Foil : Boat.GetConfig().Foils)
+		{
+			if (KeelPivot && Foil.Swing.size() >= 2)
+			{
+				const double Target = KeelSwingTurn(Foil, Controls.Board, KeelPinM.X, KeelPinM.Y);
+				const double Step = KeelWindRate * FMath::Max(double(DeltaSeconds), 0.0);
+				KeelTurnShown = Target > KeelTurnShown ? FMath::Min(Target, KeelTurnShown + Step) : FMath::Max(Target, KeelTurnShown - Step);
+				KeelPivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(KeelTurnShown), 0.0, 0.0));   // (a negative pitch takes the foot aft)
+			}
+			if (BladePivot && Foil.KickUpAngle > 0.0)
+			{
+				BladePivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(BladeKickTurn(Foil, T.RudderKick)), 0.0, 0.0));
+			}
+		}
 	}
 	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
 	// as the bow goes to starboard).

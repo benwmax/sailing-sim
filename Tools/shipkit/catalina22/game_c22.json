@@ -2,7 +2,7 @@
   "about": "Catalina 22 rebuild, game wiring (slice 11's cloud half, docs/c22-12): the rebuild's build (build_c22.py's c22.blend) cut into the parts the game hangs a boat on (ASailboatPawn::ModelMeshesFor: SM_C22Hero_Hull, _Mast, _Boom, _Rudder and the cabin's _Interior, in /Game/Boats/C22Hero), for export_game_c22.py. Body frame metres (X forward, Y starboard, Z up, origin on the design waterline: the physics' frame). Which of the build's objects go in each part, the game slot (MI_Boat_*) of each of the build's materials, what stays out and why, and the sockets the game reads beyond the build's own c22_sockets.json. Edit this file, never the FBX.",
   "parts": {
     "SM_C22Hero_Hull": {
-      "note": "Everything fixed to the hull: the shell (its one gelcoat split at the paint lines, below), deck, cabin with the pop-top down, ports, keel (down) and its stub, gudgeons, outboard on its bracket, deck hardware, lifelines and the rig's fittings below the mast (chainplates, turnbuckles, stemhead, backstay plate). The pivot is the body frame's origin. Nanite.",
+      "note": "Everything fixed to the hull: the shell (its one gelcoat split at the paint lines, below), deck, cabin with the pop-top down, ports, the keel's stub (the keel is a part of its own), gudgeons, outboard on its bracket, deck hardware, lifelines and the rig's fittings below the mast (chainplates, turnbuckles, stemhead, backstay plate). The pivot is the body frame's origin. Nanite.",
       "pivot": [
         0.0,
         0.0,
@@ -18,7 +18,6 @@
         "C22_Ports",
         "C22_DropBoards",
         "C22_ForeHatch",
-        "C22_Keel",
         "C22_KeelStub",
         "C22_Gudgeons",
         "C22_Outboard",
@@ -26,6 +25,13 @@
         "C22_LidRails",
         "C22_Lifelines",
         "C22_RigFittings:hull"
+      ]
+    },
+    "SM_C22Hero_Keel": {
+      "note": "The swing keel down, about its pin (KeelPin, keel_c22.json keel.pivot). The game turns it aft about the pin as the physics raises it (FFoilDef::SwingAt: the angle between its foot at the Board and its foot down, seen from the pin), so the plate seen is the one the physics sails on. Nanite.",
+      "pivot": "KeelPin",
+      "objects": [
+        "C22_Keel"
       ]
     },
     "SM_C22Hero_Mast": {
@@ -50,10 +56,17 @@
       ]
     },
     "SM_C22Hero_Rudder": {
-      "note": "The kick-up rudder down, its head and the tiller, about the pintles' axis at the design waterline (RudderPivot): the game turns it about the vertical there.",
+      "note": "The kick-up rudder's head (its aluminium cheeks, bolts and pintles) and the tiller, about the pintles' axis at the design waterline (RudderPivot): the game turns it about the vertical there. The blade is a part of its own on the head's RudderBolt.",
       "pivot": "RudderPivot",
       "objects": [
-        "C22_Rudder"
+        "C22_Rudder:head"
+      ]
+    },
+    "SM_C22Hero_RudderBlade": {
+      "note": "The rudder's blade down, about its bolt in the head (RudderBolt). It hangs on the rudder part, so it steers with it, and the game kicks it up about the bolt as the physics does when the bottom comes up under it (FBoatTelemetry::RudderKick through FFoilDef::KickAt).",
+      "pivot": "RudderBolt",
+      "objects": [
+        "C22_Rudder:blade"
       ]
     },
     "SM_C22Hero_Interior": {
@@ -78,6 +91,14 @@
         "above_z": 1.2,
         "within_m_of_mast": 0.85
       }
+    }
+  },
+  "split_material": {
+    "C22_Rudder": {
+      "note": "One object in the build: the blade (its gelcoat, Topsides) kicks up about its bolt, so it is cut from the head by material into C22_Rudder:blade and C22_Rudder:head.",
+      "blade": [
+        "Topsides"
+      ]
     }
   },
   "paint_lines": {
@@ -125,7 +146,7 @@
     "C22_Lines_*": "each state's running rigging: the game draws the sheets live from the sockets (jib sheets, mainsheet)",
     "C22_Sail_*": "every sail and its cover: the game draws the sails as cloth from the physics' strips (FSailCloth)",
     "C22_PopTopRaised, C22_LidRailsRaised": "the pop-top up: its lid sits above the boom, so it can only go up in the game with the boom lifted (a later state switch)",
-    "C22_KeelUp, C22_RudderUp, C22_KeelDown, C22_RudderDown": "the keel raised and the rudder kicked up: alternative states for a later switch",
+    "C22_KeelUp, C22_RudderUp, C22_KeelDown, C22_RudderDown": "the keel raised and the rudder kicked up, and copies of both down: the game turns the keel and blade parts instead",
     "C22_Interior_TableDown, C22_Interior_GalleyOut": "the cabin's other states",
     "light_of": "the build's light twins (slice 9: objects carrying a light_of property, decimated copies of a full object); the export skips them, so each part is made of the full objects only"
   },
@@ -150,6 +171,16 @@
       "part": "SM_C22Hero_Hull",
       "from": "c22_sockets.json origins SM_Catalina22_Boom",
       "why": "the build's gooseneck: the boom part's origin, held to the physics' (MainLuffX, BoomZ) by the test"
+    },
+    "KeelPin": {
+      "part": "SM_C22Hero_Hull",
+      "from": "keel_c22.json keel.pivot",
+      "why": "the swing keel's pin: the keel part's origin, about which the game turns it"
+    },
+    "RudderBolt": {
+      "part": "SM_C22Hero_Rudder",
+      "from": "keel_c22.json rudder.pivot_x + head.bolt",
+      "why": "the blade's bolt in the head: the blade part's origin, about which the game kicks it up"
     }
   },
   "required_sockets": {
@@ -170,7 +201,8 @@
       "LazySheetVia",
       "Traveler_C",
       "Traveler_S",
-      "Gooseneck"
+      "Gooseneck",
+      "KeelPin"
     ],
     "SM_C22Hero_Mast": [
       "Hounds",
@@ -185,7 +217,8 @@
     ],
     "SM_C22Hero_Rudder": [
       "TillerEnd",
-      "RudderStock"
+      "RudderStock",
+      "RudderBolt"
     ]
   }
 }

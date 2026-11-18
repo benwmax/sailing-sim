@@ -494,7 +494,10 @@ TArray<FSoftObjectPath> ASailboatPawn::ModelAssetPaths(EBoatType Type) const
 		{
 			Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part)));
 		}
-		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior"))) Paths.Add(FSoftObjectPath(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior.SM_C22Hero_Interior")));
+		for (const TCHAR* Part : { TEXT("Interior"), TEXT("Keel"), TEXT("RudderBlade") })
+		{
+			if (FPackageName::DoesPackageExist(FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s"), Part))) Paths.Add(FSoftObjectPath(FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part)));
+		}
 		return Paths;
 	}
 	const bool bHero = Type == EBoatType::J22 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicJ22"))
@@ -581,6 +584,13 @@ ASailboatPawn::FBoatModelMeshes ASailboatPawn::ModelMeshesFor(EBoatType Type) co
 		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior")))
 		{
 			M.Interior = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, TEXT("/Game/Boats/C22Hero/SM_C22Hero_Interior.SM_C22Hero_Interior"), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		}
+		// Her swing keel and the rudder's blade as parts of their own (docs/c22-13), turned by the pawn as the physics swings
+		// and kicks them; an import from before them has both in the hull and rudder parts.
+		if (FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Keel")) && FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_RudderBlade")))
+		{
+			M.Keel = LoadC22(TEXT("Keel"));
+			M.RudderBlade = LoadC22(TEXT("RudderBlade"));
 		}
 		M.bOwnOutboard = true;      // on its bracket on the transom (keel_c22.py)
 		M.bTravelerBridge = false;  // her traveller is the build's own, across the cockpit (hardware_c22.py)
@@ -813,6 +823,28 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			ModelTillerExt = AddModelPart(Model.TillerExt, Pivot, FVector::ZeroVector);
 			AgeDevPart(ModelTillerExt);
 		}
+	}
+	// Catalina 22 rebuild (docs/c22-13): the swing keel on its pin, the blade on its bolt in the rudder's head (so it steers with
+	// it); the tick turns them (KeelSwingTurn, BladeKickTurn). Each part is built about its own pivot.
+	if (Model.Keel && Model.Hull->FindSocket(TEXT("KeelPin")))
+	{
+		KeelPivot = NewObject<USceneComponent>(this);
+		KeelPivot->SetupAttachment(BoatRoot);
+		const FVector Pin = ModelHull->GetSocketTransform(TEXT("KeelPin"), RTS_Component).GetLocation();
+		KeelPivot->SetRelativeLocation(Pin);
+		KeelPivot->RegisterComponent();
+		BoatParts.Add(KeelPivot);
+		KeelPinM = FVector2D(Pin.X, Pin.Z) / CmPerMeter;
+		AgeDevPart(AddModelPart(Model.Keel, KeelPivot, FVector::ZeroVector));
+	}
+	if (Model.RudderBlade && ModelRudder && Model.Rudder->FindSocket(TEXT("RudderBolt")))
+	{
+		BladePivot = NewObject<USceneComponent>(this);
+		BladePivot->SetupAttachment(ModelRudder.Get());
+		BladePivot->SetRelativeLocation(ModelRudder->GetSocketTransform(TEXT("RudderBolt"), RTS_Component).GetLocation());
+		BladePivot->RegisterComponent();
+		BoatParts.Add(BladePivot);
+		AgeDevPart(AddModelPart(Model.RudderBlade, BladePivot, FVector::ZeroVector));
 	}
 	// J-Class 14: the wheel on its shaft (WheelHub, the part's origin), turned in the tick about the line to WheelAxis
 	// (WheelTurnFor); its WheelRim socket, at the rim's top with the king spoke upright, gives the radius the helm's hands take.

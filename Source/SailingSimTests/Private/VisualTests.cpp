@@ -15,6 +15,7 @@
 #include "SailingSim.h"
 #include "BoatLivery.h"
 #include "BoatPacks.h"
+#include "SailboatPawn.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
@@ -365,6 +366,30 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 {
 	using namespace Sailing;
 	auto Load = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part), nullptr, LOAD_NoWarn | LOAD_Quiet); };
+	{
+		// The turns the pawn draws her keel and blade by (docs/c22-13), against the rebuild's own: the keel up 59.86 deg about its
+		// pin (keel_c22.json keel.pivot, 0.8, -0.37), evenly in the Board, and the blade kicked up 86 deg (blade.kick_up_deg).
+		const FBoatConfig C0 = FBoatConfig::Make(EBoatType::Catalina22);
+		const FFoilDef* SwingKeel = nullptr;
+		const FFoilDef* KickBlade = nullptr;
+		for (const FFoilDef& F : C0.Foils)
+		{
+			if (F.Swing.size() >= 2) SwingKeel = &F;
+			if (F.KickUpAngle > 0.0) KickBlade = &F;
+		}
+		if (TestNotNull(TEXT("Swing keel table"), SwingKeel))
+		{
+			const double Up = FMath::RadiansToDegrees(ASailboatPawn::KeelSwingTurn(*SwingKeel, 0.0, 0.8, -0.37));
+			const double Half = FMath::RadiansToDegrees(ASailboatPawn::KeelSwingTurn(*SwingKeel, 0.5, 0.8, -0.37));
+			TestTrue(FString::Printf(TEXT("Keel drawn up %.2f deg (the rebuild's 59.86)"), Up), FMath::Abs(Up - 59.86) < 0.5);
+			TestTrue(FString::Printf(TEXT("Keel drawn half up %.2f deg at Board 0.5"), Half), FMath::Abs(Half - 0.5 * Up) < 0.5);
+			TestTrue(TEXT("Keel drawn down at Board 1"), FMath::Abs(ASailboatPawn::KeelSwingTurn(*SwingKeel, 1.0, 0.8, -0.37)) < 1e-6);
+		}
+		if (TestNotNull(TEXT("Kick-up rudder"), KickBlade))
+		{
+			TestTrue(TEXT("Blade drawn up 86 deg at Kick 1"), FMath::Abs(FMath::RadiansToDegrees(ASailboatPawn::BladeKickTurn(*KickBlade, 1.0)) - 86.0) < 0.01);
+		}
+	}
 	UStaticMesh* Hull = Load(TEXT("Hull"));
 	if (!Hull)
 	{
@@ -375,6 +400,11 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	UStaticMesh* Boom = Load(TEXT("Boom"));
 	UStaticMesh* Rudder = Load(TEXT("Rudder"));
 	if (!TestNotNull(TEXT("SM_C22Hero_Mast"), Mast) || !TestNotNull(TEXT("SM_C22Hero_Boom"), Boom) || !TestNotNull(TEXT("SM_C22Hero_Rudder"), Rudder)) return false;
+	// The swing keel and the blade as parts of their own (docs/c22-13; an older import has them in the hull and rudder).
+	UStaticMesh* KeelPart = Load(TEXT("Keel"));
+	UStaticMesh* BladePart = Load(TEXT("RudderBlade"));
+	const UStaticMeshSocket* PinSocket = Hull->FindSocket(TEXT("KeelPin"));
+	const UStaticMeshSocket* BoltSocket = Rudder->FindSocket(TEXT("RudderBolt"));
 	const FBoatConfig C = FBoatConfig::Make(EBoatType::Catalina22);
 	const FBoatModel Physics(C);
 	const double Tol = 0.02;
@@ -385,7 +415,32 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	const Vec3 PhysCB = Physics.DesignBuoyancyCentre();
 	TestTrue(FString::Printf(TEXT("Length %.3f m (physics hull %.3f)"), M.Canoe.GetSize().X, H.BowX - H.SternX), FMath::Abs(M.Canoe.GetSize().X - (H.BowX - H.SternX)) < Tol);
 	TestTrue(FString::Printf(TEXT("Beam %.3f m (physics hull %.3f)"), M.Canoe.GetSize().Y, 2.0 * H.MaxHalfBeam), FMath::Abs(M.Canoe.GetSize().Y - 2.0 * H.MaxHalfBeam) < Tol);
-	TestTrue(FString::Printf(TEXT("Draft %.3f m, keel down (physics %.3f)"), -M.MinZ, C.Draft), FMath::Abs(-M.MinZ - C.Draft) < Tol);
+	double Lowest = M.MinZ;
+	if (KeelPart && PinSocket) Lowest = FMath::Min(Lowest, PinSocket->RelativeLocation.Z / 100.0 + MeasureCanoe(KeelPart, [](FName) { return false; }).MinZ);
+	TestTrue(FString::Printf(TEXT("Draft %.3f m, keel down (physics %.3f)"), -Lowest, C.Draft), FMath::Abs(-Lowest - C.Draft) < Tol);
+	// The keel on the physics' pin: its iron's centroid as far from the KeelPin socket keel up as keel down (the pawn turns it
+	// about the socket), and the blade's foot down where the physics has it under its bolt.
+	if (KeelPart && TestNotNull(TEXT("Hull socket KeelPin"), PinSocket))
+	{
+		for (const FFoilDef& F : C.Foils)
+		{
+			if (F.Swing.size() < 2) continue;
+			const FVector2d Pin(PinSocket->RelativeLocation.X / 100.0, PinSocket->RelativeLocation.Z / 100.0);
+			const FFoilDef::FSwingPoint Up = F.SwingAt(0.0), Down = F.SwingAt(1.0);
+			const double RUp = FVector2d::Distance(Pin, FVector2d(Up.MassX, Up.MassZ)), RDown = FVector2d::Distance(Pin, FVector2d(Down.MassX, Down.MassZ));
+			TestTrue(FString::Printf(TEXT("KeelPin (%.3f, %.3f) is the physics' pin: the iron %.3f m from it up, %.3f down"), Pin.X, Pin.Y, RUp, RDown), FMath::Abs(RUp - RDown) < 0.01);
+		}
+	}
+	if (BladePart && TestNotNull(TEXT("Rudder socket RudderBolt"), BoltSocket))
+	{
+		const UStaticMeshSocket* PivotSocket = Hull->FindSocket(TEXT("RudderPivot"));
+		for (const FFoilDef& F : C.Foils)
+		{
+			if (F.KickUp.empty() || !PivotSocket) continue;
+			const double FootZ = (PivotSocket->RelativeLocation.Z + BoltSocket->RelativeLocation.Z) / 100.0 + MeasureCanoe(BladePart, [](FName) { return false; }).MinZ;
+			TestTrue(FString::Printf(TEXT("Blade's foot %.3f m (physics %.3f)"), FootZ, F.KickAt(0.0).TipZ), FMath::Abs(FootZ - F.KickAt(0.0).TipZ) < Tol);
+		}
+	}
 	TestTrue(FString::Printf(TEXT("Canoe body volume %.3f m^3 within 2%% of the physics %.3f"), M.Volume, Physics.DesignDisplacedVolume()),
 		FMath::Abs(M.Volume - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
 	TestTrue(FString::Printf(TEXT("Centre of buoyancy (%.3f, %.3f, %.3f) within 2 cm of the physics (%.3f, %.3f, %.3f)"), M.CB.X, M.CB.Y, M.CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
@@ -429,8 +484,9 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Hull is Nanite"), Hull->IsNaniteEnabled());
 	TestFalse(TEXT("Mast is not Nanite (M_BoatMast bends it)"), Mast->IsNaniteEnabled());
-	for (UStaticMesh* Part : { Hull, Mast, Boom, Rudder })
+	for (UStaticMesh* Part : { Hull, Mast, Boom, Rudder, KeelPart, BladePart })
 	{
+		if (!Part) continue;
 		for (const FStaticMaterial& Mat : Part->GetStaticMaterials())
 		{
 			TestTrue(FString::Printf(TEXT("%s: slot %s has a boat material"), *Part->GetName(), *Mat.MaterialSlotName.ToString()), Mat.MaterialInterface && Mat.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));

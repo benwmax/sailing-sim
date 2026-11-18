@@ -234,6 +234,7 @@ namespace Sailing
 				P.Kick = K.Kick; P.Area = K.Area; P.X = K.X; P.Z = K.Z; P.TipX = K.TipX; P.TipZ = K.TipZ;
 				Rudder.KickUp.push_back(P);
 			}
+			Rudder.KickUpAngle = 86.0 * kDegToRad;   // keel_c22.json blade.kick_up_deg, the table's Kick 1 (the game's blade turns by it)
 			C.Foils = { Keel, Rudder };
 			C.MunkAddedMass = 260.0; C.HelmStiffness = 600.0;
 

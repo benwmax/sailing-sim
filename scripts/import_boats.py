@@ -111,13 +111,18 @@ def import_boat(tag, dest, lods=False, berthed=True, nanite_mast=False):
         unreal.log(f"Imported {wheel}: {len(sockets)} sockets")
     # Catalina 22 rebuild (docs/c22-12): the cabin below as a part of its own (Nanite, same pivot as the hull), drawn by the
     # game on the player's boat only. Only when this build made one (its origin in the sockets json).
-    interior = f"SM_{tag}_Interior"
-    if interior in meta["origins"]:
-        mesh = import_fbx(os.path.join(MODELS, interior + ".fbx"), dest, interior)
+    # And her moving appendages (docs/c22-13): the swing keel about the hull's KeelPin and the rudder's blade about the
+    # head's RudderBolt, each with the sockets it owns.
+    for part in (f"SM_{tag}_Interior", f"SM_{tag}_Keel", f"SM_{tag}_RudderBlade"):
+        if part not in meta["origins"]:
+            continue
+        mesh = import_fbx(os.path.join(MODELS, part + ".fbx"), dest, part)
+        origin = meta["origins"][part]
+        sockets = {s: [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]] for s, p in meta["sockets"].items() if meta["owner"][s] == part}
         if lods:
             add_lods(mesh, True)
-        setup(mesh, True, {}, {})
-        unreal.log(f"Imported {interior}")
+        setup(mesh, True, {}, sockets)
+        unreal.log(f"Imported {part}: {len(sockets)} sockets")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
     if berthed:
         import_berthed(tag, dest)
