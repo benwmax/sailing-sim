@@ -284,7 +284,10 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
     wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n_, h)) * np.maximum(Near, h < 0.05)
     dark = w @ DARKEN
     base *= (1.0 - dark * wet)[:, None]
-    rough = rough + (w @ ROUGH_WET - rough) * wet
+    # #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the wet gloss.
+    rwet = w @ ROUGH_WET
+    rwet = np.maximum(rwet, 0.62 + (rwet - 0.62) * smoothstep(0.88, 0.97, N[:, 2]))
+    rough = rough + (rwet - rough) * wet
     film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05) * np.maximum(Near, h < 0.05)
     base = base + (base * np.array([0.62, 0.74, 0.46]) - base) * (film * 0.8)[:, None]
     under = smoothstep(0.0, -0.35, h)

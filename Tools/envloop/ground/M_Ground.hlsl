@@ -165,6 +165,8 @@ float stripe = frac(dot(p.xy, float2(cos(ang), sin(ang))) / 5.0) < 0.5 ? -1.0 : 
 base *= 1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[0]);
 float wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n1, h)) * wet0;
 base *= 1.0 - dark * wet;
+// #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the scans' wet gloss.
+rwet = max(rwet, lerp(0.62, rwet, smoothstep(0.88, 0.97, N.z)));
 rough = lerp(rough, rwet, wet);
 float film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05 ? 1.0 : 0.0) * wet0;
 base = lerp(base, base * float3(0.62, 0.74, 0.46), film * 0.8);
