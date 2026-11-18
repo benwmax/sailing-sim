@@ -3197,11 +3197,6 @@ return float3(d.x * 100.0, d.y * 100.0, (h + ho - hin) * 100.0);
 FOAM_MEAN = "float3(0.2498, 0.1249, 0.2500)"
 
 V4_SHADE = """
-// sailing-feedback #30 bisect (docs/near-water-texels/): V4_DBG_MODE=<n> in make_materials.py's environment turns one
-// layer off to find what draws the near-water chevrons and blocks: 1 no foam, 2 flat normal, 3 no wake-grid slopes,
-// 4 no capillaries, 5 no ripples, 6 no chop, 7 roughness at least 0.35, 8 no foam bump, 9 no shore depth, 10 no lapping
-// foam. 0 (the default) is the shipped material; the constant folds away.
-#define V4DBG V4_DBG_MODE
 FoamTone = 1.0;
 float3 p = P * 0.01;
 float3 cam = Cam * 0.01;
@@ -3247,7 +3242,6 @@ calm *= 1.0 - 0.5 * Rain;
 float2 su = (p.xy - ShoreRect.xy) / ShoreRect.z;
 float sd = 100.0;
 [branch] if (ShoreRect.w > 0.0 && all(su > 0.0) && all(su < 1.0)) sd = ShoreMap.SampleLevel(ShoreMapSampler, float2(su.y, su.x), 0).r;
-if (V4DBG == 9) sd = 100.0;
 float shoal = saturate(1.0 - sd / 2.0) * saturate(sd / 0.1);
 // W4: shoaling waves break where they are high for the depth (McCowan: H over about 0.78 d), not wherever the bed is near:
 // the marina's shallow slips folded into "caps" at 6 kn (white water round the docks in the slip view). The fold the shoal adds
@@ -3259,36 +3253,11 @@ float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
 float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
 float capW = 0.0;
-// sailing-feedback #30 (docs/near-water-texels/): near the camera the slope maps' texels are bigger than a pixel (the chop's
-// 18 cm, the long chop's 48 cm, the ripples' 4.8 cm against 0.5-1.3 cm pixels 4 m out), and bilinear filtering is only C0:
-// the slopes are a patchwork of texel cells, and the sharp sun and sky highlights of calm, sheltered water drew those
-// cells as hard stair-stepped blocks, and the ripples' two turned frames (15 degrees apart) as a herringbone of crossed
-// cell rows along a nearby wall or bank. Where a map's texel spans more than about 1.5 pixels, it is read with a cubic
-// B-spline (C2: smooth slopes and highlights; four bilinear taps, Sigg and Hadwiger 2005), crossfaded back to the
-// hardware's filtered read (trilinear, LEAN) as the texel shrinks to a pixel; past that nothing changes. The B-spline
-// keeps each texel's mean, so the slope variance (b, a: LEAN) is read the same way.
-float mFoot = max(length(ddx(p.xy)), length(ddy(p.xy)));
-#define BSPL(T_, S_, uv_, N_, out_) { float2 x_ = (uv_) * (N_) - 0.5; float2 i_ = floor(x_); float2 f_ = x_ - i_; \
-    float2 f2_ = f_ * f_, f3_ = f2_ * f_; \
-    float2 w0_ = (-f3_ + 3.0 * f2_ - 3.0 * f_ + 1.0) / 6.0, w1_ = (3.0 * f3_ - 6.0 * f2_ + 4.0) / 6.0; \
-    float2 w2_ = (-3.0 * f3_ + 3.0 * f2_ + 3.0 * f_ + 1.0) / 6.0, w3_ = f3_ / 6.0; \
-    float2 g0_ = w0_ + w1_, g1_ = w2_ + w3_; \
-    float2 h0_ = (i_ - 0.5 + w1_ / g0_) / (N_), h1_ = (i_ + 1.5 + w3_ / g1_) / (N_); \
-    out_ = g0_.y * (g0_.x * Texture2DSampleLevel(T_, S_, h0_, 0) + g1_.x * Texture2DSampleLevel(T_, S_, float2(h1_.x, h0_.y), 0)) \
-         + g1_.y * (g0_.x * Texture2DSampleLevel(T_, S_, float2(h0_.x, h1_.y), 0) + g1_.x * Texture2DSampleLevel(T_, S_, h1_, 0)); }
-// The cubic's share for a map of N_ texels over tile_ metres: 1 where a texel spans 1.5 pixels or more, 0 from one pixel.
-#define BSPL_W(tile_, N_) (1.0 - smoothstep(0.67, 1.0, mFoot * (N_) / (tile_)))
-// (The filtered read stays outside the branch: its implicit derivatives need the whole pixel quad. The cubic reads mip 0
-// explicitly, so it can sit in one.)
-#define SMOOTH_READ(T_, S_, uv_, N_, tile_, out_) { float bw_ = BSPL_W(tile_, N_); out_ = Texture2DSample(T_, S_, uv_); \
-    [branch] if (bw_ > 0.0) { float4 c_; BSPL(T_, S_, uv_, N_, c_); out_ = lerp(out_, c_, bw_); } }
 float4 da = Texture2DSample(DetailA, DetailASampler, duv);
-float4 db;
-SMOOTH_READ(DetailB, DetailBSampler, duv, 128.0, DetailP.x, db);
+float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
 // W3: the chop as its fetch grew it here (the ripples below are the local wind's).
 """ + SEA_SHORT + """
 float chopK = calm * SShort;
-if (V4DBG == 6) chopK = 0.0;
 sx += db.r * chopK; sy += db.g * chopK;
 float jd = lerp(1.0, da.a, min(chopK, 2.0));
 float slopeVar = (max(db.b - db.r * db.r, 0.0) + max(db.a - db.g * db.g, 0.0)) * chopK * chopK;
@@ -3300,8 +3269,7 @@ float jB = 1.0;
     float2 lq = float2(DetailQ.y * p.x + DetailQ.z * p.y, -DetailQ.z * p.x + DetailQ.y * p.y);
     float2 lduv = float2(lq.y, lq.x) / DetailQ.x + 0.5 / 128.0;
     float4 dd = Texture2DSample(DetailD, DetailDSampler, lduv);
-    float4 de;
-    SMOOTH_READ(DetailE, DetailESampler, lduv, 128.0, DetailQ.x, de);
+    float4 de = Texture2DSample(DetailE, DetailESampler, lduv);
     sx += (DetailQ.y * de.r - DetailQ.z * de.g) * chopK;
     sy += (DetailQ.z * de.r + DetailQ.y * de.g) * chopK;
     slopeVar += (max(de.b - de.r * de.r, 0.0) + max(de.a - de.g * de.g, 0.0)) * chopK * chopK;
@@ -3323,7 +3291,6 @@ if (DetailP.w > 0.0)
     // docs/near-water/: the capillary-gravity wavelets (2-10 cm, CapillaryB) near the camera, in the same turned frames
     // (they face the local wind too), full to CapillaryP.y metres and faded out by .z.
     capW = CapillaryP.w * (1.0 - smoothstep(CapillaryP.y, CapillaryP.z, dist));
-    if (V4DBG == 4) capW = 0.0;
     float2 csum = float2(0.0, 0.0);
     float cvar = 0.0;
     for (int k = 0; k < 2; k++)
@@ -3331,8 +3298,7 @@ if (DetailP.w > 0.0)
         float a = (k0 + k) * 0.2618;
         float ca = cos(a), sa = sin(a);
         float2 q = float2(ca * p.x + sa * p.y, -sa * p.x + ca * p.y);
-        float4 rb;
-        SMOOTH_READ(RippleB, RippleBSampler, float2(q.y, q.x) / DetailP.y + 0.5 / 64.0, 64.0, DetailP.y, rb);
+        float4 rb = Texture2DSample(RippleB, RippleBSampler, float2(q.y, q.x) / DetailP.y + 0.5 / 64.0);
         float wgt = k == 0 ? 1.0 - (kf - k0) : kf - k0;
         rsum += float2(ca * rb.r - sa * rb.g, sa * rb.r + ca * rb.g) * wgt;
         rvar += (max(rb.b - rb.r * rb.r, 0.0) + max(rb.a - rb.g * rb.g, 0.0)) * wgt;
@@ -3343,7 +3309,6 @@ if (DetailP.w > 0.0)
             cvar += (max(cb.b - cb.r * cb.r, 0.0) + max(cb.a - cb.g * cb.g, 0.0)) * wgt;
         }
     }
-    if (V4DBG == 5) { rsum = float2(0.0, 0.0); rvar = 0.0; }
     sx += (rsum.x + csum.x * capW) * calm; sy += (rsum.y + csum.y * capW) * calm;
     slopeVar += (rvar + cvar * capW) * calm * calm;
 }
@@ -3366,7 +3331,7 @@ float wakeSlick = 0.0;
     float hx = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(0.0, e), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(0.0, e), 0).r;
     float hy = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(e, 0.0), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(e, 0.0), 0).r;
     float cell = WakeGridRect.z / WakeGridRect.w;
-    if (V4DBG != 3) { sx += hx / (2.0 * cell); sy += hy / (2.0 * cell); }
+    sx += hx / (2.0 * cell); sy += hy / (2.0 * cell);
     wakeFoam = c.g;
 }
 float om = 0.0;
@@ -3538,7 +3503,23 @@ float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + floa
 float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // The shore's lapping line (lap, below).
-float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
+// sailing-feedback #30 (docs/near-water-lapping/): only along the waterline itself. Shallower than 35 cm was the whole
+// test, so a flat shallow shelf (the bulkhead lot, the bank by the I-30 bridge) drew a lapping band metres wide; its lace
+// read as a herringbone along the wall and as blocky grey patches nearer the camera. The distance to the waterline is the
+// depth over its slope, from the shore map's own cells (central differences one cell either way: 512 cells, AWaterSurface's
+// kShoreRes; land is 0 deep), so the line is held within about a metre of where the depth reaches 0 (a dock's stamp, 0.6 m
+// deeper a metre out, keeps its half metre), and a shelf whose depth hardly changes draws none.
+float swash = 0.0;
+[branch] if (sd < 0.35)
+{
+    float se = 1.0 / 512.0;
+    float2 suv = float2(su.y, su.x);
+    float sgx = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(0.0, se), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(0.0, se), 0).r;
+    float sgy = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(se, 0.0), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(se, 0.0), 0).r;
+    float sSlope = length(float2(sgx, sgy)) / (2.0 * ShoreRect.z * se);
+    float toLine = sd / max(sSlope, 0.02);
+    swash = saturate(1.0 - sd / 0.35) * (1.0 - smoothstep(0.4, 1.2, toLine)) * saturate(WindP.z / 4.0);
+}
 float persist = 0.0;
 float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 [branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
@@ -3558,7 +3539,6 @@ residue *= patternE * 0.25;
 float caps = max(crest, residue);
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them
 // (swash, above).
-if (V4DBG == 10) swash = 0.0;
 float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
 // Heavy rain: splashes and mist grey the surface.
 // W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
@@ -3725,7 +3705,6 @@ FoamTone = lerp(FoamTone, 1.0, saturate(hullFoam * 2.0) * (1.0 - saturate(caps *
 float splashSeen = 0.8 * rainSplash * (1.0 - smoothstep(0.02, 0.05, footMip));
 FoamTone = lerp(FoamTone, 1.0, saturate(splashSeen * 2.0) * (1.0 - saturate(caps * 4.0)));
 Foam = saturate(max(capsDrawn + wakeBreak + hullFoam, 0.85 * lap) + 0.10 * Rain + splashSeen);
-if (V4DBG == 1) Foam = 0.0;
 Dark = saturate((gustRatio - 0.95) * 2.5);
 Dark = max(Dark, HULL_NEAR_DARK * hullNear);
 // Glassy calm: W2: where the local wind falls under about 3 m/s the capillaries die, and under 1.5 m/s the water is a
@@ -3810,7 +3789,7 @@ float galeFx = fwidth(across);
     float det = fdx.x * fdy.y - fdx.y * fdy.x;
     float2 fGrad = abs(det) > 1e-12 ? float2(fdy.y * hd.x - fdx.y * hd.y, fdx.x * hd.y - fdy.x * hd.x) / det : float2(0.0, 0.0);
     fGrad *= min(1.0, 0.4 / max(length(fGrad), 1e-5));
-    if (V4DBG != 8) { sx += fGrad.x; sy += fGrad.y; }
+    sx += fGrad.x; sy += fGrad.y;
 }
 // Glint: a calm morning's sharp sun path, broadening with the wind and the ripples it raises; rain flattens and greys.
 float r0 = lerp(lerp(0.015, 0.22, saturate((rough - 0.3) * 0.7)), 0.004, smoothing);
@@ -3863,8 +3842,6 @@ OceanShare = om;
     Dark = max(Dark, -2.0);   // albedo at most 1.7 times, whatever the knobs
 }
 Rough = sqrt(alpha) + 0.08 * saturate((gustRatio - 1.0) * 3.0) + Rain * 0.12;
-if (V4DBG == 7) Rough = max(Rough, 0.35);
-if (V4DBG == 1) Foam = 0.0;
 // W8: -SailingDebugFoam: the whitecaps alone, for counting on a screenshot (docs/water-8/whitecaps). A pixel is foam with
 // the probability of its whitecap cover (a fixed hash of the pixel, so the temporal AA keeps it binary); the water is
 // black (no reflection, albedo cut through Dark), flat.
@@ -3885,7 +3862,6 @@ if (V4DBG == 1) Foam = 0.0;
 // peppered with dark pixels. Where it would, the mirror direction is lifted to just above the horizon in the same
 // vertical plane and the normal is the half-vector to it (exact, and only on those pixels: glints toward a sun above
 // the horizon and the far caps' foam are untouched).
-if (V4DBG == 2) { sx = 0.0; sy = 0.0; }
 float3 nOut = normalize(float3(-sx, -sy, 1.0));
 float3 rOut = 2.0 * dot(nOut, vdir) * nOut - vdir;
 [branch] if (rOut.z < 0.02)
@@ -3991,7 +3967,7 @@ def build_water_v4():
                    .replace("STORM_CAP_VARY", os.environ.get("STORM_CAP_VARY", "0.8")).replace("STORM_CAP_RAG", os.environ.get("STORM_CAP_RAG", "0.06"))
                    .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3"))
                    .replace("STORM_FACE_TILT", os.environ.get("STORM_FACE_TILT", "0.35")).replace("STORM_FOAM_OPACITY", os.environ.get("STORM_FOAM_OPACITY", "0.35"))
-                   .replace("STORM_CREST_LIFT", os.environ.get("STORM_CREST_LIFT", "2.0")).replace("STORM_TROUGH_DARK", os.environ.get("STORM_TROUGH_DARK", "0.6")).replace("V4_DBG_MODE", os.environ.get("V4_DBG_MODE", "0")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
+                   .replace("STORM_CREST_LIFT", os.environ.get("STORM_CREST_LIFT", "2.0")).replace("STORM_TROUGH_DARK", os.environ.get("STORM_TROUGH_DARK", "0.6")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
                                                   "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife", "StormWater", "LongH"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
