@@ -1019,6 +1019,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
 						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
+						Ground.bStanding = P.Stance == ECrewStance::Stand;
 						Ground.bFlatDeck = P.bFlatDeck;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;

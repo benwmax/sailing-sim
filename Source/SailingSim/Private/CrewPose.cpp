@@ -520,8 +520,9 @@ namespace CrewSolver
 			if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
 			Solve(Ref, RestCS, Carried, CS, &D);
 		}
-		// Seated, flat on the floor, then onto it again (turning about the ankle lifts the heel or the toe a little).
-		if (Ground.bSeated && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
+		// Seated, flat on the floor, then onto it again (turning about the ankle lifts the heel or the toe a little). Standing
+		// too (the frigate's watch): a longer-legged figure's knees bend to the deck and the calves carry the toes down into it.
+		if ((Ground.bSeated || Ground.bStanding) && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
 		{
 			Solve(Ref, RestCS, Carried, CS, &D);
 			for (int32 Pass = 0; Pass < 2; ++Pass)

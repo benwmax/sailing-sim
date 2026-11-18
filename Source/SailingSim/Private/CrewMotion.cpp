@@ -1019,6 +1019,7 @@ void CrewMotionPose(const FReferenceSkeleton& Ref, const FCrewRig* Rig, const Sa
 		Ground.bSeated = St == ECrewStance::Helm || St == ECrewStance::Cockpit || St == ECrewStance::RailHike || bUnderStrap;
 		Ground.bTravelerBridge = In.bTravelerBridge;
 		Ground.bFeetDown = St == ECrewStance::Helm || St == ECrewStance::Cockpit;
+		Ground.bStanding = St == ECrewStance::Stand;
 		Ground.bFlatDeck = In.Params.bFlatDeck;
 		CrewSolver::PlantAllFeet(Ref, RestCS, CS, D, Frame, Ground, Carried);
 	}
