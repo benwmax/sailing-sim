@@ -679,9 +679,9 @@ MEETS = {
     ("BowspritStep", "SparDeck"): ("the bowsprit's step and bitts are let into the deck", 0.25),
     ("WheelStandards", "SparDeck"): ("the wheel's standards and the tiller rope's plates are let into the deck", 0.25),
     ("TillerRope", "SparDeck"): ("the tiller rope's legs go down into the plates' holes, ending a hair into the deck "
-                                 "(the gun deck's slice takes them on from its underside to the leading sheaves)", 0.35),
+                                 "(the gun deck's slice takes them on from its underside to the leading sheaves)", 0.4),
     ("TillerRope", "WheelStandards"): ("the tiller rope's legs go down through the plates' holes (each drawn as a dark "
-                                       "box the rope passes through)", 0.5),
+                                       "box the rope passes through)", 0.4),
     ("Wheel", "WheelStandards"): ("the wheel's axle turns in the standards' bearings", 1.3),
     ("Belfry", "BreastRails"): ("the forecastle's breast rail runs half an inch into the belfry's posts", 0.55),
     ("Ladders", "BreastRails"): ("the ladders' hand ropes are made fast to eye plates let into the breast rails' posts",
