@@ -90,3 +90,57 @@ A 90-minute `-statnamedevents` trace is too large for Insights on this 64 GB PC.
 - `dev/fps-per-minute.csv`, `dev/frames-over-30ms.csv`, `dev/frames-over-250ms.csv`: from `soak-aground.frames.csv`. That file is 16 MB and kept on the PC with game.log and the minidumps.
 - `dev/crashes.txt`, `dev/ensures.txt`, `dev/crash-*/CrashContext.runtime-xml`
 - `dev/soak-aground.png`: the end screenshot
+
+## Short traced run beside the grounding spot (Nov 18 07:02-07:23)
+
+**Setup:**
+
+- **Settings:** the same build and settings (Dev `Windows-8a768667`, Ultra 1080p, `-SailingDemo -SailingHour=15`, `-trace=cpu,frame -statnamedevents`), with `-SailingStartAt=-2219,79,135` (300 m north of the spot) and `-SailingBench=1200`.
+- **Trace:** `aground-short.utrace`, 5.9 GB, kept on the PC.
+- **Saved:** Bean's Saved was held aside and restored (profile hash checked).
+
+**Grounding:** the boat sailed south at about 100 m a minute and **grounded at about 200 s** (-2,517 N 96 E at 180 s, 5.8 m in the next minute). It stayed within about 30 m of the 4K soak's spot to the end, shuffling 3 to 40 m a minute.
+
+**Result:**
+
+- 68.7 fps, p99 20.2 ms, no crashes.
+- Frames over 30 ms (`short/frames-over-30ms.csv`): 11 in the 200 s sailing, 16 in the 1,000 s aground. Of the 16, 9 are one event at 598-600 s and 1 is the shutdown.
+- **This run did not reproduce the bursts.** The long runs had 300 to 500 slow frames per 10 minutes aground; this one had about 6 in 17 minutes aground, outside the 598 s event.
+- In the long runs the bursts began 10 to 20 minutes after the boat reached the spot (1080p: grounded by 3,000 s, bursts at 3,600-4,200 and 4,800-5,400 s). So 17 minutes aground may simply be too short.
+
+**Insights export:** it worked this time, with a 30 GB peak and 4 minutes. It exported the game thread around every frame over 50 ms, plus timer statistics for the sailing and aground parts (`short/stats-*.csv`).
+
+**The frames over 100 ms:**
+
+**1. 598.8 s: 921 ms (with a 129 ms frame before and an 81 ms frame after).**
+
+- Its top self times: `Frame Sync Time` 686.6 ms (the game thread waiting on the render thread: Sync_RenderingThread), `ProcessLocalPlayerSlateOperations` 167.4 ms, `Slate::DrawWindow` 32 ms, plus `QueryCursor` and `STAT_IsCursorDirectlyOverSlateWindow`.
+- The frame before: `ProcessLocalPlayerSlateOperations` 65.9 ms.
+- The frames after: `Sailing_WaterUploads` 21.6 ms and 28.2 ms, and `Sailing_BoatLearning` 10.4 ms.
+- **Reading:** Slate window, focus and cursor work plus a long render-thread wait. This looks like something happening to the game window on the desktop at 07:12:46 local, not the boat. It is not the grounding pattern. The long runs' slow frames were game-thread work with no render wait.
+
+**2. 64.4 s (sailing, before the grounding): 97.6 ms, then a 127 ms game-thread frame.**
+
+- `Load Font` 83.5 ms self, under `SBox [SailHud.cpp(1010)] > Text Layout`.
+- **Reading:** a font loaded the first time a HUD text was drawn. A first-use hitch, not the grounding.
+
+**Game-thread cost per frame, sailing against aground (inclusive ms per frame, and the worst single call):**
+
+| Scope | Sailing per frame | Aground per frame | Sailing worst | Aground worst |
+|---|---|---|---|---|
+| Sailing_BoatVisuals | 4.02 | 3.23 | 7.7 | 7.6 |
+| Sailing_Water | 1.95 | 1.81 | 35.2 | 35.0 |
+| Sailing_RigLines | 1.93 | 1.67 | 6.5 | 5.1 |
+| Sailing_Traffic | 1.31 | 1.09 | 9.2 | 9.0 |
+| Sailing_BoatPhysics | 0.45 | 0.32 | 3.4 | **10.6** |
+| Sailing_BoatLearning | 0.03 | 0.07 | 1.2 | **15.1** |
+| Sailing_WaterUploads | 0.39 | 0.35 | 34.2 | 33.7 |
+
+Aground, nothing costs more per frame. The only scopes whose worst call grows are the boat's physics (10.6 ms against 3.4) and the learning coach (15.1 ms against 1.2). The aground tip fires there.
+
+**Verdict:**
+
+- The short run confirms the grounding spot and the course. It does not catch the bursts, so it names no system for them.
+- The 4K and 1080p long runs still show the bursts only while aground.
+- **Candidates from this trace:** the boat physics' and the learning coach's occasional long calls aground. They are too small and rare here to make 60 to 170 ms frames.
+- **Next way to catch them (not run):** trace a long aground stretch with tracing started late. For example: the same start, `-trace=` off, `Trace.Start cpu,frame` over the trace control port after 15 minutes, then 20 minutes traced.
