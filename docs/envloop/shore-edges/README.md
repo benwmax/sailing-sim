@@ -117,6 +117,10 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   as the fallback for a steep bank; two nodes in three take a piece, laid across the slope at the waterline. Instanced
   static meshes, static, no collision; the walls to 1.5 km and in ray tracing, the scatter to 300 m. Nothing is placed
   by hand outside the home club. `-SailingNoShoreEdges` compares; Low keeps the old shore.
+- **Material gotchas (PC, Nov 18).** `MPC_World.RenderOrigin` is a float4: masked to rgb before it is added to the LWC
+  world position (as `make_materials.node()` does), or D3D SM6 refuses the Add and every piece draws the default checker
+  while Metal may still compile it. `M_ShoreEdge` carries `used_with_nanite` and `used_with_instanced_static_meshes`.
+  `scripts/make-shore-edges.sh --material-only` rebuilds the material and the marks in place without Blender or the FBX import.
 - **Lakes only.** `ShoreEdgesOn` (`HouseKit.cpp`): the pack is a North Texas lake region, its pieces stand at the pool
   datum and read the lake's marks, so inland lakes get them and the tidal coasts (Galveston, the Gulf, Marseille) keep the
   tile's own concrete bulkhead until a coast pack exists. The first world gate (Nov 18) had Marseille's port view paying

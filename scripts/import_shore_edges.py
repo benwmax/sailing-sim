@@ -3,7 +3,8 @@ Artifacts/models/edges/SM_Edge_*.fbx) into /Game/World/Edges with Nanite, builds
 (the same text the cloud renders run: the surface looks and the water's marks from height), and gives MPC_World the lake's
 marks (PoolZ, HighZ, LowZ, WrackZ, Swash, metres) from the region pack. Its own script, never scripts/make_materials.py
 (coordinator rule Nov 16 2026); the pack is data: EDGE_PACK=<name> (default north-texas-lake) picks the marks and colours.
-Run by scripts/make-shore-edges.sh. Returns normally (on Windows os._exit leaves a zombie editor: docs/windows/README.md).
+Run by scripts/make-shore-edges.sh; EDGE_MATERIAL_ONLY=1 (its --material-only) rebuilds the material and the marks and puts the
+material on the pieces already in /Game/World/Edges. Returns normally (on Windows os._exit leaves a zombie editor: docs/windows/README.md).
 """
 import json
 import os
@@ -20,6 +21,7 @@ MODELS = os.path.join(REPO, "Artifacts", "models", "edges")
 DEST = "/Game/World/Edges"
 MPC = "/Game/World/MPC_World"
 PACK = os.environ.get("EDGE_PACK", "north-texas-lake")
+MATERIAL_ONLY = os.environ.get("EDGE_MATERIAL_ONLY") == "1"   # rebuild M_ShoreEdge and the marks on the pieces already imported
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
@@ -90,15 +92,23 @@ def edge_material(pack, mpc):
     colours as vector parameters (a material instance per region could change them)."""
     path = f"{DEST}/M_ShoreEdge"
     if EAL.does_asset_exist(path):
-        EAL.delete_asset(path)
-    mat = ASSETS.create_asset("M_ShoreEdge", DEST, unreal.Material, unreal.MaterialFactoryNew())
+        mat = unreal.load_asset(path)   # rebuilt in place: the imported pieces keep their reference to it
+        MEL.delete_all_material_expressions(mat)
+    else:
+        mat = ASSETS.create_asset("M_ShoreEdge", DEST, unreal.Material, unreal.MaterialFactoryNew())
     mat.set_editor_property("two_sided", False)
+    mat.set_editor_property("used_with_nanite", True)                     # the pieces are Nanite (the _Light twins are not)
+    mat.set_editor_property("used_with_instanced_static_meshes", True)   # ALakeTerrainActor::PlaceShoreEdges lays them in ISMs
     # World position in map metres: (WorldPosition + RenderOrigin) * 0.01.
     wpos = node(mat, unreal.MaterialExpressionWorldPosition, -2000, -400)
     origin = node(mat, unreal.MaterialExpressionCollectionParameter, -2000, -300, collection=mpc, parameter_name="RenderOrigin")
+    # A collection vector is float4; masked to rgb before the add, as make_materials.node() does (the position is LWC float3:
+    # unmasked, D3D SM6 refuses "Arithmetic between types LWCVector3 and float4" and the pieces draw the default checker).
+    omask = node(mat, unreal.MaterialExpressionComponentMask, -1900, -300, r=True, g=True, b=True, a=False)
+    MEL.connect_material_expressions(origin, "", omask, "")
     add = node(mat, unreal.MaterialExpressionAdd, -1800, -350)
     MEL.connect_material_expressions(wpos, "", add, "A")
-    MEL.connect_material_expressions(origin, "", add, "B")
+    MEL.connect_material_expressions(omask, "", add, "B")
     cm = node(mat, unreal.MaterialExpressionConstant, -1800, -250, r=0.01)
     wp = node(mat, unreal.MaterialExpressionMultiply, -1600, -350)
     MEL.connect_material_expressions(add, "", wp, "A")
@@ -169,10 +179,29 @@ def import_fbx(path, dest, name):
     return mesh
 
 
+def rematerial(mat):
+    """EDGE_MATERIAL_ONLY: the imported pieces get the rebuilt material on every slot and are saved (a belt to the braces of
+    rebuilding it in place); no Blender, no FBX."""
+    count = 0
+    for path in EAL.list_assets(DEST, recursive=False, include_folder=False):
+        name = path.rsplit("/", 1)[-1].split(".")[0]
+        if not name.startswith("SM_Edge_"):
+            continue
+        mesh = unreal.load_asset(path)
+        for index in range(len(mesh.get_editor_property("static_materials"))):
+            mesh.set_material(index, mat)
+        EAL.save_loaded_asset(mesh)
+        count += 1
+    unreal.log(f"Gave {count} shore edge pieces in {DEST} the rebuilt M_ShoreEdge")
+
+
 def main():
     pack = load_pack(PACK)
     mpc = world_marks(pack)
     mat = edge_material(pack, mpc)
+    if MATERIAL_ONLY:
+        rematerial(mat)
+        return
     count = 0
     for f in sorted(os.listdir(MODELS)) if os.path.isdir(MODELS) else []:
         if not (f.startswith("SM_Edge_") and f.endswith(".fbx")):
