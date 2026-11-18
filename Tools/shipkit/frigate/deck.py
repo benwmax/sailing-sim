@@ -51,7 +51,12 @@ class Part:
         V = np.array(V, float).reshape(-1, 3)                  # a copy: seat() and drape() move it in place
         self.V.append(V)
         self.F += [tuple(self.n + int(i) for i in f) for f in F]
-        self.M += [mat] * len(F)
+        if isinstance(mat, (list, tuple)):                      # a material per face (head.slab gives its walls theirs)
+            if len(mat) != len(F):
+                raise SystemExit(f"deck: Part.add given {len(mat)} materials for {len(F)} faces")
+            self.M += list(mat)
+        else:
+            self.M += [mat] * len(F)
         U = np.zeros((len(V), 4))
         if uv is not None:
             uv = np.asarray(uv, float).reshape(len(V), -1)
