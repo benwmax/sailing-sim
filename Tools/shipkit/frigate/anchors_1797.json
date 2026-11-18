@@ -77,7 +77,9 @@
     "tail_src": "practice: the clinch's end about two feet past the eye's throat, seized to the standing part with two seizings; the standing part lies straight alongside it all the way and lead_m past its end (estimate)",
     "seizing_in": 2.0,
     "seizing_turns": 3,
-    "clinch_tilt_deg": -40.0
+    "clinch_tilt_deg": -40.0,
+    "clinch_gap_in": 0.1,
+    "clinch_gap_src": "build: the clinch's turn round the ring stands this far off the ring's pudden (it lay exactly on it until slice 13), so the laid strands' facets clear it at any turn of the lay there; the lay's turn at the ring follows the cable's length inboard, which slice 13's lead on down through the berth deck's scuttle made 2.2 m longer and brought a strand into the pudden"
   },
   "hawse": {
     "holes": [[25.97, 2.84], [26.3, 2.84]],

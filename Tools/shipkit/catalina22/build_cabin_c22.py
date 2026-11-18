@@ -218,7 +218,7 @@ def build_liner(mats):
     m = Mesh("C22_Interior_Liner")
     x0, x1 = CC.LN["x"]
     inner_copy(m, bpy.data.objects["C22_Hull"], CC.LN["hull"], "Liner",
-               keep=lambda p: x0 <= p.center.x <= x1 and len(p.vertices) == 4)
+               keep=lambda p: x0 <= p.center.x <= x1 and len(p.vertices) < 20)   # not the transom
     inner_copy(m, bpy.data.objects["C22_Well"], CC.LN["deck"], "Liner")
     deck = bpy.data.objects["C22_Deck"]
     n = cut_trunk_floor(deck)

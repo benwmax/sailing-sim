@@ -376,6 +376,12 @@ void ASailingGameMode::UpdateStreaming()
 	if (bWindowMarching) bWindowStale = false;
 }
 
+double ASailingGameMode::GetRenderTime() const
+{
+	static SailingArgs::FCachedFlag ClassicClockArg(TEXT("SailingClassicClock")); // measuring: the world drawn in whole steps
+	return ClassicClockArg.Get() ? Clock.GetTime() : Clock.GetRenderTime();
+}
+
 void ASailingGameMode::AdvanceClock(float DeltaSeconds)
 {
 	if (ClockFrame == GFrameCounter) return;
@@ -938,6 +944,21 @@ void ASailingGameMode::ApplyQualitySettings()
 	}
 }
 
+double ASailingGameMode::BlowSeaLift()
+{
+	static uint32 Gen = MAX_uint32;
+	static double Lift = Sailing::FWaveField::kBlowLift;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		Lift = Sailing::FWaveField::kBlowLift;
+		float Arg = 0.f;
+		if (SailingArgs::LastValue(SailingArgs::Dev(), TEXT("SailingBlowSea="), Arg)) Lift = FMath::Clamp(double(Arg), 0.0, 0.5);
+		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicBlowSea"))) Lift = 0.0;
+	}
+	return Lift;
+}
+
 void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 {
 	const bool bEasy = USailingSettings::Get()->IsEasy();
@@ -1048,6 +1069,16 @@ void ASailingGameMode::UpdateWeather(float DeltaSeconds)
 		// Offshore the wind sea and swell are the FFT ocean's; the chop components only make the sheltered water's.
 		if (Ocean->MaskAt(BoatPos.X, BoatPos.Y) > 0.5) WaveParams.FetchMeters = 200.0;
 		UpdateOcean(WaveParams.WindSpeedKnots, WaveParams.WindFromDegrees);
+	}
+	// Feedback #27 (docs/blow-sea/): from 20 kn the lake's (and the bay's) sea is built in a stronger wind than the mean
+	// (FWaveField::BlowSeaKnots), so a blow's chop stands taller, a little steeper and caps more; the air's own wind is kept
+	// beside it (AirKnots: the wind maps' gusts and the spray's onsets read it). Not offshore: there the FFT ocean is the
+	// sea (and the prologue's gale is tuned on it), so the lift fades out across the ocean mask's 0.3-0.7 band (no step at
+	// a harbour mouth). -SailingBlowSea=<lift> (0 is off) and -SailingClassicBlowSea compare.
+	WaveParams.AirKnots = WaveParams.WindSpeedKnots;
+	{
+		const double Open = Ocean ? Sailing::SmoothStep(0.3, 0.7, Ocean->MaskAt(BoatPos.X, BoatPos.Y)) : 0.0;
+		WaveParams.WindSpeedKnots = Sailing::FWaveField::BlowSeaKnots(WaveParams.WindSpeedKnots, BlowSeaLift() * (1.0 - Open));
 	}
 	// The wind lays the components' directions first (and, after a turn past 45 deg, again: in phase at the boat), then
 	// the sea map reads them.

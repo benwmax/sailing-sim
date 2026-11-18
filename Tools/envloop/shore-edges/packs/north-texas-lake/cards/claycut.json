@@ -1,0 +1,50 @@
+{
+ "part": "claycut",
+ "name": "Eroded blackland-clay cut bank with roots",
+ "in_game": "Replaces the 'natural bank' (terrain vertex paint + the wet band) on undeveloped and park shore facing a long fetch",
+ "real": "Waves at the pool cut a notch in the Blackland Prairie clay; the face above slumps in blocks and stands near vertical 1-2 m high, tan-grey with paler calcareous layers, dark topsoil and grass at the lip, roots hanging out of the top half metre. A narrow bench of clay, gravel and clam shells at the toe, slumped blocks lying on it, a wrack line of sticks.",
+ "measures": {
+  "scarp_h_min": {
+   "range": [
+    1.0,
+    1.6
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "scarp_h_max": {
+   "range": [
+    1.4,
+    2.2
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  },
+  "notch_depth": {
+   "range": [
+    0.15,
+    0.45
+   ],
+   "source": "typical lakefront construction in North Texas; to confirm against Bean's grey-card photos"
+  }
+ },
+ "budget": {
+  "piece_triangles_16m": 40000,
+  "note": "the bank grid replaces terrain triangles where it is placed"
+ },
+ "plan": "shore plan Track C (https://claude.ai/artifact/FMpfBPUrLhUvUmFr3eEf9B)",
+ "bands": {
+  "hero": "0-30 m: full piece",
+  "near": "30-150 m: full piece, scatter thinned",
+  "mid": "150-600 m: light copy (Track I)",
+  "far": "unchanged"
+ },
+ "design_distance_m": 15,
+ "hold_distance_m": 5,
+ "layers": "edge_layer.py: wet line, stain band, scum line, algae, run-off, wrack (cards/layers.json)",
+ "references_wanted": [
+  "the same stretch from a boat 15 m off, midday, grey card on the face or the ground",
+  "from 5 m, the waterline and the stain band, card in frame",
+  "a close-up (1 m) of the surface with a coin or the card for scale",
+  "the same place at a low lake (autumn) if possible: the band and what the water left"
+ ],
+ "colour_check": "waits on Bean's grey-card photos"
+}

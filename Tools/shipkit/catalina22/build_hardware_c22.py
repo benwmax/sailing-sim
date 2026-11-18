@@ -207,6 +207,10 @@ def sockets(F, L):
         # clockwise), not the kit's Drum socket, which is on the side a line from aft comes on
         put("JibWinch_" + t, HC.winch_wraps(Fn["Winch_" + t], Fn["GenoaTrack_" + t].s("Sheave"), HC.RP["sheet_d"])[0])
         put("WinchCleat_" + t, Fn["WinchCleat_" + t].s("Wrap"))
+        # the trimmer's tail: where it leaves the drum's top turn (aft side) and, out of a hand, where it lies (the
+        # cleat's hitch behind the winch, as the baked lines lay it)
+        put("JibTailer_" + t, HC.winch_wraps(Fn["Winch_" + t], Fn["GenoaTrack_" + t].s("Sheave"), HC.RP["sheet_d"])[-1])
+        put("JibTailRest_" + t, Fn["WinchCleat_" + t].s("Wrap"))
         put("JibLead_" + t, Fn["GenoaTrack_" + t].s("Sheave"))                 # the genoa's car (today's name)
         put("WorkingJibLead_" + t, Fn["JibTrack_" + t].s("Sheave"))
         put("JibFairlead_" + t, Fn["JibFairlead_" + t].s("Line"))
@@ -235,7 +239,8 @@ def sockets(F, L):
     return {"sockets": s, "owner": own,
             "note": "Slice 6's hardware sockets (docs/c22-7), Unreal frame, centimetres: where the game's live ropes "
                     "end. JibWinch_* is where the headsails' sheets come onto the drum (its starboard side: the winches turn "
-                    "clockwise), JibLead_* the genoa's car's sheave (today's "
+                    "clockwise), JibTailer_* where the tail leaves its top turn for the trimmer's hand and JibTailRest_* where it "
+                    "lies out of a hand (the cleat's hitch), JibLead_* the genoa's car's sheave (today's "
                     "name), WorkingJibLead_*, JibFairlead_* and JibTurn_* the working jib's lead over the cabin top, "
                     "Traveler_C the car at the centre and Traveler_S/P its ends' stops, LazySheetVia where the lazy "
                     "sheet crosses forward of the mast, the *Cleat* sockets each cleat's hitch."}

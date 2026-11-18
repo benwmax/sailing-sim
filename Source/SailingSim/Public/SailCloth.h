@@ -91,7 +91,8 @@ namespace Sailing { struct FBoatConfig; }
  * Feedback #20: where a boat's spinnaker (or gennaker) head is drawn (boat frame, cm): on the front of the mast, a swivel's
  * length ahead of it (MastFrontCm: the model mast's Hounds socket, the forestay's tang on its front face, never aft of the
  * config's mast front; nullptr: the config's mast), at the sail's own head height, or over the jib's head when the jib's is higher (so the spinnaker's luff
- * comes over it), and under the masthead.
+ * comes over it), and under the masthead. A planform head behind the config's mast front is a raked mast's (Bluebonnet's
+ * halyard block under her masthead crane, from her build): it is kept as it is.
  */
 SAILINGSIM_API FVector SpinnakerHeadCm(const Sailing::FBoatConfig& C, const FVector* MastFrontCm, const class FSailCloth* Jib = nullptr);
 

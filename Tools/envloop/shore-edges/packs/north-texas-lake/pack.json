@@ -1,0 +1,307 @@
+{
+ "pack": "north-texas-lake",
+ "region": "North Texas reservoirs on the Blackland Prairie (Lake Ray Hubbard first): clay banks, limestone, a lake that swings a metre or more",
+ "notes": "Everything region-specific for the shore edge kit lives here: which edge types the region has, their sizes, the lake's level history, the surfaces' colours (linear albedo) and the placement rules. The tools take --pack <name>; another region is a new folder beside this one. Colours are first estimates until the grey-card photos.",
+ "levels": {
+  "pool": 0.0,
+  "gauge": -0.98,
+  "_comment": "metres from the 435.5 ft conservation pool; gauge = Oct 11 2026 (432.3 ft)"
+ },
+ "marks": {
+  "PoolZ": 0.0,
+  "HighZ": 0.3,
+  "LowZ": -1.25,
+  "WrackZ": 0.15,
+  "Swash": 0.2
+ },
+ "types": [
+  "riprap",
+  "bulkhead",
+  "sheetpile",
+  "limestone",
+  "timber",
+  "claycut",
+  "mudflat",
+  "gravel",
+  "reedcove",
+  "ramp"
+ ],
+ "sizes": {
+  "bulkhead_cap_w": 0.3,
+  "bulkhead_cap_h": 0.3,
+  "bulkhead_face_above_pool": 0.6,
+  "weep_dia": 0.075,
+  "weep_spacing": 2.44,
+  "weep_z": 0.25,
+  "panel": 2.44,
+  "pile_pair_w": 1.118,
+  "pile_depth": 0.229,
+  "pile_top": 0.6,
+  "channel_h": 0.25,
+  "tie_spacing": 2.236,
+  "tie_z": 0.3,
+  "block_h": 0.6,
+  "block_d": 0.6,
+  "block_l": 1.2,
+  "block_setback": 0.05,
+  "post_dia": 0.2,
+  "post_spacing": 2.4,
+  "board_h": 0.235,
+  "board_t": 0.05,
+  "timber_top": 0.65,
+  "scarp_h": [
+   1.2,
+   1.9
+  ],
+  "notch_depth": 0.3,
+  "notch_h": 0.35,
+  "mud_slope": 0.016666666666666666,
+  "beach_slope": 0.1,
+  "berm_z": 0.25,
+  "lane_w": 4.6,
+  "ramp_slope": 0.14,
+  "ramp_t": 0.2,
+  "groove_pitch": 0.15,
+  "groove_w": 0.025
+ },
+ "colours": {
+  "SoilA": [
+   0.075,
+   0.064,
+   0.052
+  ],
+  "SoilB": [
+   0.12,
+   0.1,
+   0.08
+  ],
+  "LawnA": [
+   0.045,
+   0.085,
+   0.022
+  ],
+  "LawnB": [
+   0.075,
+   0.105,
+   0.035
+  ],
+  "LawnBrown": [
+   0.11,
+   0.1,
+   0.055
+  ],
+  "Concrete": [
+   0.3,
+   0.29,
+   0.26
+  ],
+  "SteelScale": [
+   0.05,
+   0.048,
+   0.045
+  ],
+  "RustDark": [
+   0.075,
+   0.04,
+   0.022
+  ],
+  "RustLight": [
+   0.13,
+   0.065,
+   0.032
+  ],
+  "Limestone": [
+   0.45,
+   0.4,
+   0.31
+  ],
+  "Lichen": [
+   0.07,
+   0.07,
+   0.06
+  ],
+  "TimberDark": [
+   0.13,
+   0.115,
+   0.095
+  ],
+  "TimberLight": [
+   0.26,
+   0.24,
+   0.2
+  ],
+  "ClayA": [
+   0.23,
+   0.195,
+   0.14
+  ],
+  "ClayB": [
+   0.31,
+   0.27,
+   0.2
+  ],
+  "ClayNodule": [
+   0.42,
+   0.39,
+   0.32
+  ],
+  "MudWet": [
+   0.085,
+   0.072,
+   0.055
+  ],
+  "MudDry": [
+   0.22,
+   0.19,
+   0.15
+  ],
+  "GravelDark": [
+   0.15,
+   0.14,
+   0.12
+  ],
+  "GravelMid": [
+   0.26,
+   0.23,
+   0.18
+  ],
+  "GravelPale": [
+   0.36,
+   0.33,
+   0.27
+  ],
+  "ShellBleached": [
+   0.5,
+   0.47,
+   0.41
+  ],
+  "ShellHash": [
+   0.48,
+   0.45,
+   0.39
+  ],
+  "Sand": [
+   0.32,
+   0.26,
+   0.175
+  ],
+  "RampConcrete": [
+   0.31,
+   0.3,
+   0.27
+  ],
+  "WoodDark": [
+   0.06,
+   0.05,
+   0.04
+  ],
+  "WoodLight": [
+   0.18,
+   0.15,
+   0.11
+  ],
+  "LeafA": [
+   0.2,
+   0.11,
+   0.04
+  ],
+  "LeafB": [
+   0.11,
+   0.095,
+   0.05
+  ],
+  "ReedGreen": [
+   0.09,
+   0.115,
+   0.035
+  ],
+  "ReedStraw": [
+   0.3,
+   0.25,
+   0.12
+  ],
+  "DryGrassA": [
+   0.29,
+   0.24,
+   0.14
+  ],
+  "DryGrassB": [
+   0.15,
+   0.14,
+   0.07
+  ],
+  "StainHigh": [
+   0.24,
+   0.19,
+   0.12
+  ],
+  "StainLow": [
+   0.12,
+   0.1,
+   0.065
+  ],
+  "Scum": [
+   0.46,
+   0.44,
+   0.38
+  ],
+  "AlgaeWet": [
+   0.035,
+   0.05,
+   0.022
+  ],
+  "AlgaeDry": [
+   0.15,
+   0.15,
+   0.11
+  ],
+  "RunOff": [
+   0.09,
+   0.08,
+   0.07
+  ],
+  "RunRust": [
+   0.17,
+   0.075,
+   0.03
+  ],
+  "Wrack": [
+   0.065,
+   0.05,
+   0.032
+  ]
+ },
+ "placement": {
+  "_comment": "Rules for Track I: every shore cell gets a type from map data, no hand placement outside the home club.",
+  "developed_lot": {
+   "when": "a house footprint within 60 m of the water (G2 houses)",
+   "pick_by_seed": {
+    "bulkhead": 0.5,
+    "riprap": 0.22,
+    "limestone": 0.1,
+    "timber": 0.08,
+    "none": 0.1
+   },
+   "older_lots_favour": "timber, riprap",
+   "newer_lots_favour": "limestone, bulkhead"
+  },
+  "marina_or_commercial": {
+   "when": "a marina, the dam or a commercial footprint",
+   "pick": {
+    "sheetpile": 0.5,
+    "bulkhead": 0.3,
+    "riprap": 0.2
+   }
+  },
+  "natural": {
+   "claycut": "slope over 30 degrees within 5 m of the water and fetch over 1 km",
+   "gravel": "points and fetch over 1 km with a gentle slope (under 1:6)",
+   "mudflat": "slope under 1:30 (shows when the lake is down)",
+   "reedcove": "fetch under 300 m, depth under 0.6 m within 10 m, sheltered",
+   "fallback": "claycut"
+  },
+  "ramp": {
+   "when": "OSM leisure=slipway, and the home club's ramp"
+  }
+ }
+}

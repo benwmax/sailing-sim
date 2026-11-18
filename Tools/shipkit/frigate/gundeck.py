@@ -128,14 +128,23 @@ class GunDeck:
     UV_PARTS = {"GunDeck": ("Planking", "Margin"), "FloorCloth": ("Cloth",)}
 
     """The gun deck and its fittings for the skin sk (skin.Skin, built), the rig (spars.Rig, built), the spar deck dk
-    (deck.Deck, built) and the skin's parts (skin.Skin.parts(): the rudder's head stands up through the deck aft)."""
+    (deck.Deck, built) and the skin's parts (skin.Skin.parts(): the rudder's head stands up through the deck aft).
+    berth: the berth deck's card (berthdeck_1797.json's path) when slice 13's berth deck (berthdeck.py) is built under
+    this one: the stand-in wells under the openings give way to it (none built: the ladders land on its planks, the
+    gratings look down onto it), the cable scuttles' linings stop under these planks and the cables go on down through
+    its own scuttles; None: the wells (wells depth_ft) and the scuttles' short wells as slice 12 built them."""
 
-    def __init__(self, sk, rig, dk, skin_parts, path=os.path.join(HERE, "gundeck_1797.json"), hawse_x=None):
+    def __init__(self, sk, rig, dk, skin_parts, path=os.path.join(HERE, "gundeck_1797.json"), hawse_x=None, berth=None):
         import skin as SKM
         self.sk, self.rig, self.dk, self.SKM = sk, rig, dk, SKM
         self.skin_parts = skin_parts
         self.hawse_x = hawse_x                             # the hawse holes' linings' aftmost point (anchors.py), or None
         self.c = json.load(open(path))
+        self.berth = json.load(open(berth)) if berth else None
+        if self.berth is not None:
+            # the berth deck's top this far under this deck's; the meetings with the wells go with them
+            self.berth_drop = self.berth["deck"]["top_below_gun_deck_in"] * IN
+            self.c["meets"]["pairs"] = [pr for pr in self.c["meets"]["pairs"] if "Wells" not in pr[0] + pr[1]]
         self.decor = json.load(open(os.path.join(HERE, "decor_1797.json")))
         import stern
         self.face = stern.Face(sk.L)
@@ -824,6 +833,10 @@ class GunDeck:
         rooms = [r for _, r in self.lanyard_cleats()]
         dep, th = (v * IN for v in oh["clamp_in"])
         Xc, Zb, Zt = self.clamp
+        # the arm's top let 2 mm up into the beam's underside, as the lodging knees are into the beam's face: a face
+        # lying exactly on another is not seen to meet it, so a knee fayed to a beam that follows the sheer as it does
+        # (the waist's) would read as hanging clear of it
+        fay = 0.002
         placed, slid, left_out = [], [], []
 
         def in_room(xk):
@@ -850,7 +863,6 @@ class GunDeck:
                         continue
                     slid.append(round(x_k, 3))
                 zbb = self.beam_bottom(x_k)
-                zcb = float(np.interp(x_k, Xc, Zb))
                 foot = zbb - arm
                 if foot < float(self.zg(x_k)) + 0.5:
                     continue
@@ -858,23 +870,28 @@ class GunDeck:
                     """the knee's outline in (y, z) on its face at xf, starboard: down the clamp's face, out onto the
                     side, down it to the foot, back in along the foot, up the throat to the beam's underside at the
                     arm's end. Each face fits the side at its own x: forward the side narrows by as much as 2 in across
-                    the knee's 7 in"""
-                    zz = np.linspace(foot, zcb, 6)
+                    the knee's 7 in. And each lies under the beam's underside at its own x: the beams rise with the
+                    sheer along their siding (a level arm left a wedge open under one face, a third of an inch at the
+                    bow), so the whole knee is that much higher there"""
+                    zbf = self.beam_bottom(xf)
+                    zcf = float(np.interp(xf, Xc, Zb))
+                    ftf = zbf - arm
+                    zz = np.linspace(ftf, zcf, 6)
                     yw = self.wall_at(np.full(len(zz), xf), zz)[0][:, 1]
-                    yc, _ = self.clamp_inner(xf, zbb)
-                    ycb, _ = self.clamp_inner(xf, zcb)
+                    yc, _ = self.clamp_inner(xf, zbf)
+                    ycb, _ = self.clamp_inner(xf, zcf)
                     y_in = min(yc[1], ycb[1])
                     y_end = y_in - (arm - th)
                     toe = 3.0 * IN
-                    outer = [(y_in, zbb), (y_in, zcb)] + [(yw[j] + 0.002, zz[j]) for j in range(len(zz) - 1, -1, -1)]
-                    foot_in = (yw[0] - toe, foot)
-                    head_in = (y_end, zbb - toe)
-                    corner = np.array([y_in - thr, zbb - thr])
+                    outer = [(y_in, zbf + fay), (y_in, zcf)] + [(yw[j] + 0.002, zz[j]) for j in range(len(zz) - 1, -1, -1)]
+                    foot_in = (yw[0] - toe, ftf)
+                    head_in = (y_end, zbf - toe)
+                    corner = np.array([y_in - thr, zbf - thr])
                     curve = []
                     for t in np.linspace(0.0, 1.0, 9)[1:-1]:
                         p = (1 - t) ** 2 * np.array(foot_in) + 2 * (1 - t) * t * corner + t ** 2 * np.array(head_in)
                         curve.append(tuple(p))
-                    return np.array(outer + [foot_in] + curve + [head_in, (y_end, zbb)])
+                    return np.array(outer + [foot_in] + curve + [head_in, (y_end, zbf + fay)])
 
                 P0, P1 = profile(x_k - sd / 2), profile(x_k + sd / 2)
                 for sgn in (1.0, -1.0):
@@ -886,6 +903,15 @@ class GunDeck:
     def bay_faces(self):
         """every overhead member's faces along the ship [(aft face, fore face)], the waist's beams among them, sorted"""
         return sorted((x - s_ / 2, x + s_ / 2) for x, s_, m, kind in list(self.members) + list(self.waist_members()))
+
+    def lodging_from_x(self):
+        """the lodging knees stand at the beams forward of this x (the cabin bulkhead's fore face)"""
+        cb = self.c["cabin"]
+        return cb["bulkhead_x_m"] + cb["bulkhead_in"] / 2 * IN
+
+    def stanchions_from_x(self):
+        """the stanchions stand under the beams forward of this x (the cabin's bulkhead)"""
+        return self.c["cabin"]["bulkhead_x_m"]
 
     def lodging_knees(self, part):
         """a lodging knee at each end of each beam forward of the cabin's bulkhead (the whole and half beams and the
@@ -900,8 +926,7 @@ class GunDeck:
         ab, asd = lk["arm_beam_in"] * IN, lk["arm_side_in"] * IN
         bt_, be, rf = lk["breadth_in"] * IN, lk["end_in"] * IN, lk["throat_in"] * IN
         cp = lk["clear_of_ports_m"]
-        cb = self.c["cabin"]
-        x_bk = cb["bulkhead_x_m"] + cb["bulkhead_in"] / 2 * IN
+        x_bk = self.lodging_from_x()
         faces = self.bay_faces()
         fay = 0.002
         placed, skipped = [], []
@@ -957,7 +982,7 @@ class GunDeck:
         oh = self.c["overhead"]
         r = oh["stanchion_in"] / 2 * IN
         clear = oh["stanchion_clear_m"]
-        xb = self.c["cabin"]["bulkhead_x_m"]
+        xb = self.stanchions_from_x()
         placed = []
         whole = [m for i, m in enumerate(self.members) if m[3] == "beam" and i not in self.cut] + self.waist_members()
         for x, s, m, kind in whole:
@@ -966,15 +991,20 @@ class GunDeck:
             p = np.array([[x, 0.0]])
             if any(in_poly(p, F)[0] or seg_dist(p, F)[0] < r + clear for F in footprints.values()):
                 continue
-            z0, z1 = float(self.zg(x)), self.beam_bottom(x)
+            # the head let 2 mm up into the beam's underside (as the knees' arms are), so it is seen to meet it
+            z0, z1 = float(self.zg(x)), self.beam_bottom(x) + 0.002
             h = z1 - z0
             prof = [(0.0, r + 1.5 * IN), (2.0 * IN, r + 1.5 * IN), (2.5 * IN, r + 0.5 * IN), (4.0 * IN, r),
                     (h - 4.0 * IN, r), (h - 2.5 * IN, r + 0.5 * IN), (h - 2.0 * IN, r + 1.5 * IN), (h, r + 1.5 * IN)]
             k0 = len(part.V)
             lathe(part, [x, 0.0, z0], EZ, EX, prof, "Oak", 16)
-            for V in part.V[k0:]:                          # the foot on the deck's sheer, eased out half way up
-                w = np.clip(1.0 - (V[:, 2] - z0) / (0.5 * h), 0.0, 1.0)
-                V[:, 2] += w * (self.zg(V[:, 0]) - z0)
+            for V in part.V[k0:]:
+                # the foot on the deck's sheer and the head under its beam's underside (which rises with the sheer
+                # along the beam's siding), each eased out half way along
+                lo = np.clip(1.0 - (V[:, 2] - z0) / (0.5 * h), 0.0, 1.0)
+                hi = np.clip((V[:, 2] - z0) / (0.5 * h) - 1.0, 0.0, 1.0)
+                zb = np.array([self.beam_bottom(float(v)) + 0.002 for v in V[:, 0]])
+                V[:, 2] += lo * (self.zg(V[:, 0]) - z0) + hi * (zb - z1)
             placed.append(round(x, 3))
         self.info["stanchions_x_m"] = sorted(placed)
 
@@ -1005,8 +1035,11 @@ class GunDeck:
         return zt
 
     def well(self, part, v):
-        """the well under an opening down to the berth deck's height (slice 13 builds that deck): its sides lined (1 in,
-        dim) under the coaming, its floor (3 in) across the bottom; returns the floor's top"""
+        """the well under an opening down to the berth deck's height: its sides lined (1 in, dim) under the coaming, its
+        floor (3 in) across the bottom; returns the floor's top. With the berth deck built under this one (berth), none:
+        returns that deck's top under the opening's middle"""
+        if self.berth is not None:
+            return float(self.zg(v["x"])) - self.berth_drop
         th = self.c["deck"]["thick_in"] * IN
         x0, L, W = v["x"], v["L"], v["W"]
         t = 1.0 * IN
@@ -1064,7 +1097,8 @@ class GunDeck:
         return xf, drop
 
     def hatchways(self, part, wells, ladders):
-        """each opening's coaming, its grating (deck.Deck.grating) or its ladder down, and its well; the companion's
+        """each opening's coaming, its grating (deck.Deck.grating) or its ladder down, and its well (or, with the berth
+        deck built under this one, the ladder down onto its planks as they rise along the sheer); the companion's
         ladder from the quarterdeck down to this deck"""
         lc = self.c["ladders"]
         self.ladder_info = []
@@ -1075,7 +1109,9 @@ class GunDeck:
                 self.dk.grating(part, dict(v, L=v["L"], W=v["W"]), zt)
             else:
                 xt = v["x"] - v["L"] / 2
-                xf, drop = self.ladder(ladders, xt, zt(xt), 1.0, 0.0, lambda x: zf, lc)
+                floor = (lambda x: float(self.zg(x)) - self.berth_drop) if self.berth is not None else \
+                    (lambda x, zf=zf: zf)
+                xf, drop = self.ladder(ladders, xt, zt(xt), 1.0, 0.0, floor, lc)
                 self.ladder_info.append({"from": k, "top_x_m": round(xt, 3), "foot_x_m": round(xf, 3),
                                          "drop_m": round(drop, 3)})
         # the companion's ladder: its top at the companion's fore coaming (inside), down aft to this deck
@@ -1510,7 +1546,9 @@ class GunDeck:
 
     # --- the bow --------------------------------------------------------------------------------------------------------
     def bow(self, part, wells):
-        """the manger across the bow abaft the hawse holes, the cable scuttles' lead collars and their short wells"""
+        """the manger across the bow abaft the hawse holes, the cable scuttles' lead collars and their short wells (with
+        the berth deck built under this one, their linings only through these planks: the cables go on down through
+        that deck's scuttles, berthdeck.py's)"""
         bw = self.c["bow"]
         xm = bw["manger_x_m"]
         hm, tm = (v * IN for v in bw["manger_in"])
@@ -1535,11 +1573,13 @@ class GunDeck:
             # forward: the collar's 2 ft across rises 2.5 in)
             k0 = len(part.V)
             ring_band(part, c, EZ, EX, ct / 2 - 0.02 * IN, r, ct, cw, "Lead", 32)
-            # the lead lining down the hole and a short well below (the cable tier is slice 14's)
-            revolve(part, c - EZ * (bw["well_ft"] * FT), EZ, EX, [(0.0, r - 0.25 * IN), (bw["well_ft"] * FT + 0.0, r - 0.25 * IN)],
-                    "Lead", 32, want_out=False)
+            # the lead lining down the hole and a short well below (the cable tier is slice 14's); over the berth deck,
+            # the lining through the planks to a quarter inch under them and no well
+            wd = bw["well_ft"] * FT if self.berth is None else self.c["deck"]["thick_in"] * IN + 0.25 * IN
+            revolve(part, c - EZ * wd, EZ, EX, [(0.0, r - 0.25 * IN), (wd, r - 0.25 * IN)], "Lead", 32, want_out=False)
             k1 = len(wells.V)
-            disc(wells, c - EZ * (bw["well_ft"] * FT), EZ, r, "Shadow", 24)
+            if self.berth is None:
+                disc(wells, c - EZ * wd, EZ, r, "Shadow", 24)
             self.drape(part, k0, float(c[2]))
             self.drape(wells, k1, float(c[2]))
         self.info["bow"] = {"manger_x_m": xm, "manger_half_m": round(ye, 3)}
@@ -1547,11 +1587,12 @@ class GunDeck:
     # --- the bowers' cables -----------------------------------------------------------------------------------------------
     def cable_course(self, an):
         """the bowers' cables led in on this deck (starboard; anchors.py lays both): from where each lies in its bore's
-        inner mouth (an.bore_lie) out over the lip, over the manger's top and down its cable scuttle into the well, each
-        turn bent no tighter than the cable's least bend (anchors_1797.json); the lift over the manger, the corner over
-        the scuttle and the place the cable goes down it are the first (shortest) that clear the board, the deck, the
-        scuttle's lead collar and its lining. Returns the course from its inboard end (in the well) to the bore, for
-        an.lead_inboard"""
+        inner mouth (an.bore_lie) out over the lip, over the manger's top and down its cable scuttle into the well (with
+        the berth deck built under this one, straight on down through its scuttle into the short well under that, its
+        lining as this one's), each turn bent no tighter than the cable's least bend (anchors_1797.json); the lift over
+        the manger, the corner over the scuttle and the place the cable goes down it are the first (shortest) that
+        clear the board, the deck, the scuttle's lead collar and its lining (and the berth deck's, the same size
+        straight under it). Returns the course from its inboard end (in the well) to the bore, for an.lead_inboard"""
         import anchors as anm
         bw = self.c["bow"]
         xm, tm, ye = self.manger
@@ -1561,6 +1602,11 @@ class GunDeck:
         r = bw["scuttle_in"] / 2 * IN
         cw, ct = (v * IN for v in bw["collar_in"])
         well = bw["well_ft"] * FT
+        if self.berth is not None:
+            bth = self.berth["through"]
+            if bth["scuttle_in"] != bw["scuttle_in"] or bth["collar_in"] != bw["collar_in"]:
+                raise SystemExit("gundeck: the berth deck's cable scuttles are not the gun deck's size")
+            well = self.berth_drop + bth["scuttle_well_ft"] * FT
         zsd = float(self.zg(xs))
         top = zm + hm
         B, d_in, r_c = an.bore_lie(np.array([xm, ys, top]))
@@ -2334,16 +2380,18 @@ class GunDeck:
         self.info["furniture"] = {"table_x_m": x0, "chairs": len(cb["chairs"]), "sideboard_x_m": [round(x_0, 3), round(x1, 3)]}
 
     # --- the lanterns ---------------------------------------------------------------------------------------------------
-    def lantern(self, part, H):
-        """a horn lantern hung from H (the planks' or a bar's underside): a screw eye and hook, the ring on its roof,
-        the cone roof, the six-sided body (tin posts and bands, horn panes) and its dish; returns the light's place
-        (the body's middle) and the dish's underside"""
-        lt = self.c["lanterns"]
+    def lantern(self, part, H, lt=None):
+        """a horn lantern hung from H (the planks' or a bar's underside): a screw eye and hook (its shank screwed
+        0.75 in up into what it hangs from, through an iron rose against its underside), the ring on its roof, the cone
+        roof, the six-sided body (tin posts and bands, horn panes) and its dish, its sizes lanterns' (or lt's: body_in,
+        roof_in, ring_in, hook_in); returns the light's place (the body's middle) and the dish's underside"""
+        lt = self.c["lanterns"] if lt is None else lt
         across, high = (v * IN for v in lt["body_in"])
         roof, ring, hook = (lt[k] * IN for k in ("roof_in", "ring_in", "hook_in"))
         R = across / 2
         H = np.asarray(H, float)
-        ring_band(part, H - EZ * 0.3 * IN, EZ, EX, -0.3 * IN, 0.35 * IN, 0.3 * IN, 0.2 * IN, "Iron", 8)
+        ring_band(part, H, EZ, EX, -0.15 * IN, 0.1 * IN, 0.3 * IN, 0.45 * IN, "Iron", 8)
+        tube(part, np.array([H + EZ * 0.75 * IN, H - EZ * 0.3 * IN]), 0.12 * IN, "Iron", n=6)
         z_ring = H[2] - hook
         tube(part, np.array([H - EZ * 0.3 * IN, H - EZ * (hook - ring * 0.4), H - EZ * (hook - ring * 0.45) + EX * 0.25 * IN]),
              0.12 * IN, "Iron", n=6)
@@ -2614,6 +2662,10 @@ class GunDeck:
         self.bitt_standard_m = min(36.0 * IN, room - 4.0 * IN)
         self.bitts(P["RidingBitts"])
         self.bow(P["Manger"], P["Wells"])
+        if self.berth is not None:
+            if len(P["Wells"].V):
+                raise SystemExit("gundeck: wells built over the berth deck")
+            del P["Wells"]
         self.lead_bushes(P["LeadBushes"])
         self.port_stops(P["PortStops"])
         # the great cabin

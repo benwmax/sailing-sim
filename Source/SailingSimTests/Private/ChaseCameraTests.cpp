@@ -35,6 +35,7 @@ bool FSailingChaseCameraRigTest::RunTest(const FString&)
 	const double HalfV = HalfVerticalFovDeg();
 	for (int32 T = 0; T < int32(Sailing::EBoatType::Count); ++T)
 	{
+		if (Sailing::IsSquareRigged(Sailing::EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(T));
 		const FString Boat = UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(T)));
 		for (const ERig Kind : { ERig::Chase, ERig::Overview, ERig::Classic })
@@ -110,13 +111,25 @@ bool FSailingChaseCameraControlsTest::RunTest(const FString&)
 	TestEqual(TEXT("Recentre: then exactly behind"), Yaw, 0.f);
 	TestTrue(TEXT("Recentre takes the short way round (350 deg goes up to 360, not down)"), RecentreYaw(350.f, 0.1f, 10.f) < 0.f && RecentreYaw(350.f, 0.1f, 10.f) > -10.f);
 
-	TestTrue(TEXT("Chase, then Overview"), Next(EView::Chase) == EView::Overview);
-	TestTrue(TEXT("Overview, then Helm"), Next(EView::Overview) == EView::Helm);
-	TestTrue(TEXT("Helm, then Chase again"), Next(EView::Helm) == EView::Chase);
+	// The cycle, far outside to aboard (slice 4): Chase, Overview, Drone, Chase boat, Masthead, Transom, Bow, Helm, round again.
+	const EView Want[] = { EView::Chase, EView::Overview, EView::Drone, EView::ChaseBoat, EView::Masthead, EView::Transom, EView::Bow, EView::Helm };
+	TestEqual(TEXT("Every view is in the cycle once"), CycleOrder().Num(), int32(EView::Count));
+	for (int32 I = 0; I < int32(UE_ARRAY_COUNT(Want)); ++I)
+	{
+		const EView Then = Want[(I + 1) % int32(UE_ARRAY_COUNT(Want))];
+		TestTrue(FString::Printf(TEXT("%s, then %s"), Name(Want[I]), Name(Then)), Next(Want[I]) == Then);
+		TestEqual(FString::Printf(TEXT("%s's place in the cycle"), Name(Want[I])), CycleIndex(Want[I]), I);
+	}
+	TestTrue(TEXT("The first three keep their numbers (saved settings)"), int32(EView::Chase) == 0 && int32(EView::Overview) == 1 && int32(EView::Helm) == 2);
 	EView Parsed = EView::Chase;
 	TestTrue(TEXT("Parses any case"), Parse(TEXT("overview"), Parsed) && Parsed == EView::Overview);
 	TestTrue(TEXT("Parses Helm"), Parse(TEXT("HELM"), Parsed) && Parsed == EView::Helm);
-	TestFalse(TEXT("Refuses others"), Parse(TEXT("Drone"), Parsed));
+	TestTrue(TEXT("Parses an id"), Parse(TEXT("ChaseBoat"), Parsed) && Parsed == EView::ChaseBoat);
+	TestTrue(TEXT("Parses a display name"), Parse(TEXT("transom cam"), Parsed) && Parsed == EView::Transom);
+	TestTrue(TEXT("Parses Drone"), Parse(TEXT("drone"), Parsed) && Parsed == EView::Drone);
+	TestFalse(TEXT("Refuses others"), Parse(TEXT("Periscope"), Parsed));
+	TestFalse(TEXT("Chase, Overview and Helm are not mounted"), IsMounted(EView::Chase) || IsMounted(EView::Overview) || IsMounted(EView::Helm));
+	TestTrue(TEXT("The five new views are"), IsMounted(EView::Drone) && IsMounted(EView::ChaseBoat) && IsMounted(EView::Masthead) && IsMounted(EView::Transom) && IsMounted(EView::Bow));
 
 	// The save keeps the view (by name, never an index), the look speed and the switches; out of range is clamped.
 	FSailSave A;
@@ -135,10 +148,118 @@ bool FSailingChaseCameraControlsTest::RunTest(const FString&)
 	FSailSave::FromJson(TEXT(R"({"version":1,"settings":{"display":{"cameraShake":true}}})"), Old);
 	TestEqual(TEXT("An older file starts in the chase camera"), Old.Settings.CameraView, int32(EView::Chase));
 	TestTrue(TEXT("... with the camera easing back"), Old.Settings.bCameraRecentre);
+	FSailSave NewView;
+	NewView.Settings.CameraView = int32(EView::ChaseBoat);
+	const FString NewText = NewView.ToJson();
+	TestTrue(TEXT("A new view is saved by name"), NewText.Contains(TEXT("chaseboat")));
+	FSailSave NewBack;
+	FSailSave::FromJson(NewText, NewBack);
+	TestEqual(TEXT("... and read back"), NewBack.Settings.CameraView, int32(EView::ChaseBoat));
 	return true;
 }
 
-// The pawn: a sail starts in the chase camera, the arm turning about boom height; the view cycles Chase, Overview, Helm;
+namespace
+{
+	/** Where a point sits in a lens's frame (deg right of and up from the middle). */
+	FVector2D OffCentreDeg(const FVector& Lens, const FRotator& Look, const FVector& Point)
+	{
+		const FVector L = Look.UnrotateVector(Point - Lens);
+		return FVector2D(FMath::RadiansToDegrees(FMath::Atan2(L.Y, L.X)), FMath::RadiansToDegrees(FMath::Atan2(L.Z, L.X)));
+	}
+}
+
+// Camera views slice 4: the five mounted cameras on every boat. The cameras on her sit on her (over the water, inside her
+// length, the bow camera ahead of the mast, the masthead over it looking down at her deck); the drone and the chase boat
+// frame her whole (masthead, bow, stern and waterline inside a 16:9 frame) on either side; a change of side swings round
+// her stern; the zoom stays in its range.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingChaseCameraMountsTest, "SailingSim.Visual.ChaseCamera.Mounts", ChaseCameraFlags)
+bool FSailingChaseCameraMountsTest::RunTest(const FString&)
+{
+	using namespace ChaseCamera;
+	for (int32 T = 0; T < int32(Sailing::EBoatType::Count); ++T)
+	{
+		if (Sailing::IsSquareRigged(Sailing::EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
+		const Sailing::FBoatConfig C = Sailing::FBoatConfig::Make(Sailing::EBoatType(T));
+		const FString Boat = UTF8_TO_TCHAR(Sailing::BoatTypeName(Sailing::EBoatType(T)));
+		const Sailing::FHullShape& H = C.Hulls[0];
+		auto SheerAt = [&](double X) { return C.bMultihull ? H.SheerZ : H.SheerHeight(X); };
+		for (const EView View : CycleOrder())
+		{
+			if (!IsMounted(View)) continue;
+			const FMount M = MountFor(View, C);
+			const TCHAR* ViewName = DisplayName(View);
+			TestTrue(FString::Printf(TEXT("%s %s: a lens between 60 and 100 deg (%.0f)"), *Boat, ViewName, M.FovDeg), M.FovDeg >= 60.f && M.FovDeg <= 100.f);
+			if (M.bOnboard)
+			{
+				const FVector P = M.LocationM;
+				TestTrue(FString::Printf(TEXT("%s %s: the lens on her length (%.2f m, hull %.2f to %.2f)"), *Boat, ViewName, P.X, H.SternX, H.BowX),
+					P.X >= H.SternX - 0.05 && P.X <= H.BowX + 0.05);
+				TestTrue(FString::Printf(TEXT("%s %s: the lens over her deck (%.2f m, the sheer %.2f)"), *Boat, ViewName, P.Z, SheerAt(P.X)),
+					P.Z >= SheerAt(P.X) + 0.2);
+				if (View == EView::Bow) TestTrue(FString::Printf(TEXT("%s Bow: ahead of the mast"), *Boat), P.X > C.MastX + 0.5);
+				if (View == EView::Transom) TestTrue(FString::Printf(TEXT("%s Transom cam: aft of the mast"), *Boat), P.X < C.MastX - 0.5);
+				if (View == EView::Masthead)
+				{
+					TestTrue(FString::Printf(TEXT("%s Masthead: over the masthead"), *Boat), P.Z > C.MastheadZ);
+					const double Down = FMath::RadiansToDegrees(FMath::Atan2(P.Z - M.AimM.Z, P.X - M.AimM.X));
+					TestTrue(FString::Printf(TEXT("%s Masthead: looking down at her deck (%.0f deg down, aft of the mast)"), *Boat, Down),
+						M.bAim && M.AimM.X < C.MastX && Down > 45.0 && Down < 89.0);
+				}
+				TestTrue(FString::Printf(TEXT("%s %s: steadied (rolls a third of the heel)"), *Boat, ViewName), FMath::IsNearlyEqual(M.RollShare, 1.f / 3.f));
+				continue;
+			}
+			// Off her: the whole boat in a 16:9 frame from either side, at rest.
+			const double HalfH = M.FovDeg * 0.5, HalfV = FMath::RadiansToDegrees(FMath::Atan(FMath::Tan(FMath::DegreesToRadians(HalfH)) * 9.0 / 16.0));
+			for (const float Side : { 1.f, -1.f })
+			{
+				const float B = FMath::DegreesToRadians(SideBearingDeg(M, Side));
+				const FVector Lens(M.RangeM * FMath::Cos(B), M.RangeM * FMath::Sin(B), M.HeightM);
+				const FRotator Look = (FVector(0.0, 0.0, M.AimUpM) - Lens).Rotation();
+				TestTrue(FString::Printf(TEXT("%s %s: to leeward (side %+.0f)"), *Boat, ViewName, Side), FMath::Sign(Lens.Y) == Side);
+				const struct { const TCHAR* What; FVector At; } Points[] = {
+					{ TEXT("masthead"), FVector(C.MastX, 0.0, C.MastheadZ) },
+					{ TEXT("bow"), FVector(H.BowX, 0.0, SheerAt(H.BowX)) },
+					{ TEXT("stern"), FVector(H.SternX, 0.0, SheerAt(H.SternX)) },
+					{ TEXT("waterline"), FVector(0.0, 0.0, 0.0) } };
+				for (const auto& Pt : Points)
+				{
+					const FVector2D Off = OffCentreDeg(Lens, Look, Pt.At);
+					TestTrue(FString::Printf(TEXT("%s %s (side %+.0f): her %s in frame (%.1f deg across of %.1f, %.1f up of %.1f)"), *Boat, ViewName, Side, Pt.What,
+						Off.X, HalfH, Off.Y, HalfV), FMath::Abs(Off.X) < HalfH - 1.0 && FMath::Abs(Off.Y) < HalfV - 1.0);
+				}
+			}
+			TestTrue(FString::Printf(TEXT("%s %s: over the water (%.1f m)"), *Boat, ViewName, M.HeightM), M.HeightM >= 1.f);
+		}
+	}
+	// The J/22: the chase boat 1.5 m up, abeam; the drone at least 30 m up and off, on her quarter.
+	const Sailing::FBoatConfig J22;
+	const FMount CB = MountFor(EView::ChaseBoat, J22), Dr = MountFor(EView::Drone, J22);
+	TestEqual(TEXT("J/22 chase boat: 1.5 m over the water"), CB.HeightM, 1.5f);
+	TestTrue(TEXT("J/22 chase boat: abeam, a little ahead"), CB.BearingDeg > 60.f && CB.BearingDeg < 100.f);
+	TestTrue(TEXT("J/22 drone: 30 m up and off, on her quarter"), Dr.HeightM >= 30.f && Dr.RangeM >= 30.f && Dr.BearingDeg > 100.f && Dr.BearingDeg < 170.f);
+
+	// A change of side swings round her stern, never across her bow.
+	float Bearing = SideBearingDeg(CB, 1.f);
+	const float To = SideBearingDeg(CB, -1.f);
+	bool bCrossedBow = false, bPassedStern = false;
+	for (int32 I = 0; I < 60 * 30; ++I)
+	{
+		Bearing = EaseBearing(Bearing, To, 1.f / 60.f, SideSwingTauS);
+		bCrossedBow |= Bearing < CB.BearingDeg - 0.01f || Bearing > 360.f - CB.BearingDeg + 0.01f;
+		bPassedStern |= FMath::Abs(Bearing - 180.f) < 2.f;
+	}
+	TestTrue(TEXT("Side change: round the stern"), bPassedStern && !bCrossedBow);
+	TestEqual(TEXT("... and there"), Bearing, To);
+
+	// The wheel zooms the lens by ratio, inside 30 to 110 deg.
+	TestEqual(TEXT("Zoom in a notch"), ZoomFov(90.f, 1.f), 90.f * ZoomRatio, 0.01f);
+	TestEqual(TEXT("All the way in"), ZoomFov(90.f, 100.f), MountMinFovDeg);
+	TestEqual(TEXT("All the way out"), ZoomFov(90.f, -100.f), MountMaxFovDeg);
+	return true;
+}
+
+// The pawn: a sail starts in the chase camera, the arm turning about boom height; the view cycles Chase, Overview, the five
+// mounted cameras (each lens where its mount puts it, the drone and chase boat aimed at her), Helm;
 // the lens is low and the boat in the middle of the frame; Overview is the high view; after a look the camera eases back.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingChaseCameraPawnTest, "SailingSim.Visual.ChaseCamera.Pawn", ChaseCameraFlags)
 bool FSailingChaseCameraPawnTest::RunTest(const FString&)
@@ -183,14 +304,38 @@ bool FSailingChaseCameraPawnTest::RunTest(const FString&)
 	TestTrue(TEXT("Then Overview"), Boat->GetCameraView() == EView::Overview);
 	const FMinimalViewInfo Over = Lens();
 	TestTrue(FString::Printf(TEXT("Overview is the high view (%.2f m against the chase's %.2f m)"), UpM(Over), UpM(Chase)), UpM(Over) > UpM(Chase) + 2.0);
+	// Slice 4: the mounted cameras, then the helm, then round again.
+	const FVector Hull = Boat->GetActorLocation();
+	for (const EView Mounted : { EView::Drone, EView::ChaseBoat, EView::Masthead, EView::Transom, EView::Bow })
+	{
+		Boat->SetCameraView(Next(Boat->GetCameraView()), false);
+		W.Tick(30);
+		TestTrue(FString::Printf(TEXT("Then %s"), DisplayName(Mounted)), Boat->GetCameraView() == Mounted);
+		TestTrue(TEXT("... a mounted camera"), Boat->IsMountedView() && !Boat->IsCockpitView());
+		const FMount M = MountFor(Mounted, J22);
+		const FMinimalViewInfo V = Lens();
+		const double Off = FVector::Dist(V.Location, Boat->GetActorLocation()) / 100.0;
+		const double WantOff = M.bOnboard ? M.LocationM.Size() : FMath::Sqrt(double(M.RangeM) * M.RangeM + double(M.HeightM) * M.HeightM);
+		TestTrue(FString::Printf(TEXT("... the lens where it is mounted (%.1f m off her origin, %.1f expected)"), Off, WantOff), FMath::Abs(Off - WantOff) < 0.15 * WantOff + 1.0);
+		TestEqual(TEXT("... its own lens"), V.FOV, M.FovDeg, 0.5f);
+		if (!M.bOnboard)
+		{
+			const FVector ToBoat = (Boat->GetActorLocation() + FVector(0.f, 0.f, M.AimUpM * 100.f) - V.Location).GetSafeNormal();
+			const double AimOff = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ToBoat, V.Rotation.Vector())));
+			TestTrue(FString::Printf(TEXT("... aimed at her (%.1f deg off)"), AimOff), AimOff < 5.0);
+		}
+	}
+	TestTrue(TEXT("(she stayed put)"), FVector::Dist(Hull, Boat->GetActorLocation()) < 2000.0);
 	Boat->SetCameraView(Next(Boat->GetCameraView()), false);
 	W.Tick(30);
 	TestTrue(TEXT("Then Helm"), Boat->GetCameraView() == EView::Helm);
 	TestTrue(TEXT("... the cockpit view"), Boat->IsCockpitView());
+	TestFalse(TEXT("... not a mounted camera"), Boat->IsMountedView());
 	Boat->SetCameraView(Next(Boat->GetCameraView()), false);
 	W.Tick(30);
 	TestTrue(TEXT("Then Chase again"), Boat->GetCameraView() == EView::Chase);
 	TestFalse(TEXT("... out of the cockpit"), Boat->IsCockpitView());
+	TestFalse(TEXT("... and off the mounts"), Boat->IsMountedView());
 	TestEqual(TEXT("... at the chase's own distance"), Boat->GetChaseArmCm(), Boat->GetChaseRig().ArmCm, 1.f);
 
 	// Zoom keeps the boat in the same place on screen.

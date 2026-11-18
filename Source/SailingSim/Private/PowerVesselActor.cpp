@@ -342,7 +342,10 @@ void APowerVesselActor::UpdateFrom(const FTrafficVessel& V, bool bDark, const FV
 	// A little pitch and roll so she is not frozen on the water; heavier vessels move less.
 	const float Motion = FMath::Clamp(6.f / float(V.Power.Type.Length), 0.02f, 0.6f);
 	const FRotator Rot(Motion * FMath::Sin(Time * 0.9f + S.Id), FMath::RadiansToDegrees(S.Heading), Motion * 1.6f * FMath::Sin(Time * 0.7f + 2.f * S.Id));
-	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), S.X, S.Y, 0.0), Rot);
+	// Feedback #26: drawn back along her course to the world's render time (at most a step), as the water and the boats are.
+	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
+	const double Lag = GM ? FMath::Clamp(GM->GetSimTime() - GM->GetRenderTime(), 0.0, 1.0 / 60.0) : 0.0;
+	SetActorLocationAndRotation(SailingFrame::ToWorld(GetWorld(), S.X - S.VX * Lag, S.Y - S.VY * Lag, 0.0), Rot);
 	const FVector D = Observer - GetActorLocation();
 	const float Rel = SailingAngles::WrapDegrees(FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X) - S.Heading));
 	const float Dist = float(D.Size()) / 100.f;

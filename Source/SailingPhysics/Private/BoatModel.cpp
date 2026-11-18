@@ -32,6 +32,7 @@ namespace Sailing
 		case EBoatType::Lagoon42: return "Lagoon 42";
 		case EBoatType::Maxi: return "Maxi 100";
 		case EBoatType::Bluebonnet: return "Bluebonnet";
+		case EBoatType::Commonwealth: return "Commonwealth";
 		default: return "Boat";
 		}
 	}
@@ -1887,11 +1888,31 @@ namespace Sailing
 			ComputeSquareSails(Dt, Controls, Apparent, ForceBody, TorqueBody);
 		}
 
-		// Windage of the mast, rigging, topsides and crew.
+		// Windage of the mast, rigging, topsides and crew. docs/frigate-physics/: a square rig's windage is spread over its
+		// masts by their sail area (each mast's spars and rigging scale with the canvas they carry), so a ship's centre of
+		// windage sits near her centre of effort, forward of the main mast, not at the main mast alone: lying a-hull or
+		// with way off in a tack she falls off the wind as a ship does, instead of weathercocking head to wind.
 		const FHullShape& Hull = C.Hulls.front();
-		for (const auto& [Point, CdA] : { std::pair<Vec3, double>(Vec3(C.MastX, 0.0, 0.432 * C.MastheadZ), C.RigWindageCdA),
-			std::pair<Vec3, double>(Vec3(Hull.WaterlineMidX - 0.35, 0.0, Hull.SheerZ + 0.18), C.HullWindageCdA) })
+		std::pair<Vec3, double> Windage[kMaxMasts + 1];
+		int NumWindage = 0;
+		const int WindageMasts = C.HasSquareRig() ? std::min(C.Square.NumMasts, kMaxMasts) : 0;
+		double RigArea = 0.0;
+		for (int M = 0; M < WindageMasts; ++M) RigArea += C.Square.AreaOn(M);
+		// The rig first, then the hull: the order the forces were always summed in (a fore-and-aft boat bit for bit).
+		if (RigArea > 0.0)
 		{
+			for (int M = 0; M < WindageMasts; ++M)
+				Windage[NumWindage++] = { Vec3(C.Square.MastX[M], 0.0, 0.432 * C.MastheadZ), C.RigWindageCdA * C.Square.AreaOn(M) / RigArea };
+		}
+		else
+		{
+			Windage[NumWindage++] = { Vec3(C.MastX, 0.0, 0.432 * C.MastheadZ), C.RigWindageCdA };
+		}
+		Windage[NumWindage++] = { Vec3(Hull.WaterlineMidX - 0.35, 0.0, Hull.SheerZ + 0.18), C.HullWindageCdA };
+		for (int W = 0; W < NumWindage; ++W)
+		{
+			const Vec3& Point = Windage[W].first;
+			const double CdA = Windage[W].second;
 			const Vec3 Air = Apparent(Point);
 			const Vec3 U(Air.X, Air.Y, 0.0);
 			const Vec3 F = U * (0.5 * kAirDensity * CdA * U.Length());

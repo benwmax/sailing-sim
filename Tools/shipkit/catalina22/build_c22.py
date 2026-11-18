@@ -1,9 +1,13 @@
 """The Catalina 22's rebuild in Blender (docs/c22-2 on): slice 1, the hull shell; slice 2, the deck and cabin; slice 3,
-the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below.
+the swing keel, kick-up rudder and outboard; slice 4, the mast, boom and standing rigging; slice 5, the sails; slice 6, the deck hardware and running rigging; slice 7, the cabin below; slice 9, the bottom paint's line (her light
+copy, light_c22.py, is made on the built .blend). Every material then takes slice 8's finish and wear
+(textures/weathering_c22.dress) at --wear's level (L2 unless given: a six-year-old club boat; apply_level switches it
+later), or none with --no-wear.
 
-    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up]
+    blender -b --factory-startup -P build_c22.py -- <out dir> [--fleet <dir>] [--raised] [--keel-up] [--wear L0..L4 | --no-wear]
 
-Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight), the deck,
+Builds the hull shell from hull_c22.py (lines_c22.json, the canoe depth solved for the card's weight; cut along the bottom
+paint's line BOTTOM_Z, Topsides above and Antifouling below), the deck,
 rubrail, cockpit, cabin trunk, ports, drop boards, fore hatch and pop-top from deck_c22.py (build_deck_c22.py meshes
 them; --raised builds the pop-top up, under the closed one's name), and the keel, its stub and trunk, the rudder with
 its tiller, the gudgeons and the outboard from keel_c22.py (build_keel_c22.py; --keel-up builds the keel raised and the
@@ -45,6 +49,7 @@ OUT = ARGS[0]
 FLEET = ARGS[ARGS.index("--fleet") + 1] if "--fleet" in ARGS else None
 RAISED = "--raised" in ARGS
 KEEL_UP = "--keel-up" in ARGS
+WEAR = None if "--no-wear" in ARGS else (ARGS[ARGS.index("--wear") + 1] if "--wear" in ARGS else "L2")
 os.makedirs(OUT, exist_ok=True)
 
 N_STATIONS, N_GIRTH = 180, 64         # stations along her length, girth steps per side (bunched: hull_c22.girth)
@@ -110,12 +115,18 @@ def build_hull():
     if transom.normal.x > 0:                                   # a lone flat face: recalc can't orient it; face aft
         transom.normal_flip()
     transom.smooth = False
-    ob = mesh_object("C22_Hull", bm, material("GelcoatHull", (0.92, 0.92, 0.9)))
+    # the bottom paint's line: the shell cut along it, so the line is an edge (Topsides above, Antifouling below)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], dist=1e-6, plane_co=(0.0, 0.0, BOTTOM_Z),
+                           plane_no=(0.0, 0.0, 1.0))
+    ob = mesh_object("C22_Hull", bm, material("Topsides", SLOT_RGB["Topsides"]))
+    ob.data.materials.append(material("Antifouling", SLOT_RGB["Antifouling"]))
     for p in ob.data.polygons:
-        p.use_smooth = len(p.vertices) == 4                    # the quads; the transom stays flat
+        p.use_smooth = len(p.vertices) < 20                    # the shell; the transom (one face) stays flat
+        p.material_index = 1 if p.center.z < BOTTOM_Z else 0
     return ob
 
 
+BOTTOM_Z = 0.04         # the antifouling's top over the design waterline (slice 9; the textures' line, docs/c22-10)
 SLOT_RGB = {"Deck": (0.9, 0.89, 0.85), "NonSkid": (0.84, 0.81, 0.74), "Rubrail": (0.85, 0.85, 0.83),
             "CabinWindow": (0.08, 0.09, 0.1), "Aluminium": (0.75, 0.76, 0.78), "Teak": (0.45, 0.28, 0.14),
             "SailCover": (0.75, 0.7, 0.58), "Stainless": (0.8, 0.8, 0.82), "Keel": (0.24, 0.23, 0.22),
@@ -192,6 +203,10 @@ def main():
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     print(f"C22: canoe depth {depth:.4f} m, hull volume {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f}, "
           f"LWL {h['lwl']:.3f} m, BWL {h['beam_wl']:.3f} m, hull triangles {tris}")
+    if WEAR:                          # slice 8's finish and wear on every material (textures/weathering_c22.py)
+        sys.path.insert(0, os.path.join(HERE, "textures"))
+        import weathering_c22 as WC
+        print(f"C22: dressed {len(WC.dress(WEAR))} materials at {WEAR}")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "c22.blend"))
 
 

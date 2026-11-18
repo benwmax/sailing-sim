@@ -106,7 +106,32 @@ it changes (`ASailboatPawn::SetSkinPreview`, at most eight times a second while 
 - Stills: `-SailingFrontEnd=Customize -SailingCustomTab=<0..4>`.
 
 Not in this version: a camera framing per tab, a name typed from the pad (the pad gets "My navy", "My navy 2"), sail
-stripes and designs, lettering and stickers.
+stripes and designs, stickers.
+
+## Name on the hull
+
+A skin's `"lettering": { "name": "Bluebonnet", "colour": "#1C2A44" }` letters the boat's name on her hull
+(`FBoatSkin::FLettering`, Nov 17 2026). The name is typed text, so it is cleaned as a skin's name is
+(`FBoatSkin::CleanHullName`: letters, digits, spaces and `. , ' & - /`, runs of spaces as one, at most 18); the colour
+is optional and falls to navy, or the gelcoat's white where the skin paints the hull dark (`HullNameColour`).
+
+- **Where.** On both quarters of the hero J/22, 7 cm capitals in the band between the boot stripe and the sheer, from
+  16 cm forward of the transom (`SailingHullName::Place`, `HullName.h`). Her transom carries the rudder and the
+  outboard bracket, so the quarters are where J/22s wear a name. A long name is made smaller to stay within 1.25 m.
+  The other boats have no place for one yet (the Paint tab shows the section only where there is one).
+- **How.** The pawn draws the name once per rebuild into a small render target with the menus' title face (Besley
+  Bold) through Slate (`SailingHullName::Draw`, `FWidgetRenderer`: the UMG module), white on black, and reads it back into a plain texture kept while the name is the same (a render target bound to the hull material sampled black in the game). `M_J22HeroSurface`
+  lays it on by a side-on projection in the hull's frame (`NameTex`, `NameRect`, `NameColour` in
+  `scripts/import_j22_hero.py`'s `DETAIL_CODE`), so it follows the topsides' curve as cut vinyl does, reads bow end
+  first on each side, and goes on before the wear, which weathers it with the gelcoat. No name: `NameColour`'s alpha
+  stays 0 and nothing changes.
+- **The screen.** Paint tab, "Name on the hull": the name, eight vinyl colours, Usual colour, No name. A name alone
+  is a look worth saving (`FSkinEditor::SavePlan`).
+- After a change to the material: `HERO_MATERIALS_ONLY=1` with `scripts/import_j22_hero.py`.
+- Before skins are seen by other players online the name needs the text check and the "default looks only" switch
+  the plan asks for; nothing here sends it anywhere.
+- Stills: `-SailingHullName="<name>"` letters a name whatever the skin says; `-SailingHullNameDraw=white` fills the rectangle (a check of the place).
+- Test: `SailingSim.Skin.Lettering`.
 
 ## Tests
 
@@ -137,6 +162,6 @@ design of Age and Care); a file of deeply nested brackets under the size cap is 
 
 ## Later (the plan's v2 on)
 
-Sunfish sail stripe colours (the palette is in `M_SailCloth`'s code: a material change), lettering and stickers,
+Sunfish sail stripe colours (the palette is in `M_SailCloth`'s code: a material change), a name on the other boats, stickers,
 finishes, wear that grows with hours sailed (the player can override it), export and import, skins seen by other
 players online with a "default looks only" switch.

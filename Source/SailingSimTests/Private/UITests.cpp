@@ -469,6 +469,7 @@ bool FSailingUISliceBuildTest::RunTest(const FString&)
 	TestTrue(TEXT("The Sunfish"), SailCatalog::InSliceBoat(int32(EBoatType::Sunfish)));
 	TestTrue(TEXT("The Catalina 22 (the stretch)"), SailCatalog::InSliceBoat(int32(EBoatType::Catalina22)));
 	TestTrue(TEXT("Bluebonnet, the J-Class (Bean, Nov 17 2026: docs/jclass-14)"), SailCatalog::InSliceBoat(int32(EBoatType::Bluebonnet)));
+	TestTrue(TEXT("Commonwealth, the frigate (Bean, Nov 17 2026: docs/frigate-physics)"), SailCatalog::InSliceBoat(int32(EBoatType::Commonwealth)));
 	for (const EBoatType T : { EBoatType::ILCA7, EBoatType::Catalina30, EBoatType::Hobie16, EBoatType::Corsair880, EBoatType::Lagoon42 })
 		TestFalse(*FString::Printf(TEXT("No %hs"), Sailing::BoatTypeName(T)), SailCatalog::InSliceBoat(int32(T)));
 	TestTrue(TEXT("Day Sailor"), SailCatalog::InSliceTier(TEXT("day-sailor")));

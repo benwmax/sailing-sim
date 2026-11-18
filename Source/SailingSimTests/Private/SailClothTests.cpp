@@ -224,6 +224,7 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 	int32 Boats = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
 		if (!C.HasSpinnaker()) continue;
 		++Boats;
@@ -249,13 +250,34 @@ bool FVisualSpinnakerHeadTest::RunTest(const FString& Parameters)
 		const FVector OnCentre(C.MastX * CmPerMeter, 0.0, SailHeadCm);
 		Cases.Add({ TEXT("socket on the mast's centre"), SpinnakerHeadCm(C, &OnCentre, Plan), false, Plan });
 
+		// J-Class 14: a planform head behind the config's mast front is a raked mast's, placed by its build (Bluebonnet's, under
+		// her masthead crane): kept, whatever the socket.
+		const FSailGeometry& SG = C.Spinnaker;
+		const double PlanHeadXCm = (SG.Strips[SG.NumStrips - 1].LuffX + 0.5 * (SG.Strips[SG.NumStrips - 1].LuffX - SG.Strips[SG.NumStrips - 2].LuffX)) * CmPerMeter;
+		const bool bBuiltHead = PlanHeadXCm < MastFrontCm;
+		if (C.Type == EBoatType::Bluebonnet)
+		{
+			TestTrue(FString::Printf(TEXT("%s: her head from her build, under the masthead crane (x %.0f cm)"), *BoatName, PlanHeadXCm), bBuiltHead);
+			// (the forestay's tang, Tools/shipkit/jclass/game_bluebonnet.json's Hounds: 9 m under the head and 0.7 m behind the
+			// config's front, the mast raked; the old rule put the head 0.9 m ahead of the crane)
+			const FVector Hounds(245.9, 0.0, 3743.4);
+			Cases.Add({ TEXT("her Hounds"), SpinnakerHeadCm(C, &Hounds, Plan), false, Plan });
+		}
+
 		// The halyard point: at the mast, not where the physics put the head; high enough; under the masthead.
 		for (const FCase& K : Cases)
 		{
 			const FString What = FString::Printf(TEXT("%s (%s)"), *BoatName, K.What);
 			const double Front = K.bHero ? FMath::Max(HeroHounds.X, MastFrontCm) : MastFrontCm;
-			TestTrue(FString::Printf(TEXT("%s: the head just ahead of the mast's front, x %.0f cm (front %.0f)"), *What, K.Head.X, Front),
-				K.Head.X > Front && K.Head.X <= Front + 10.0);
+			if (bBuiltHead)
+			{
+				TestEqual(FString::Printf(TEXT("%s: the head where her build hoists it, x %.0f cm"), *What, K.Head.X), K.Head.X, PlanHeadXCm, 0.5);
+			}
+			else
+			{
+				TestTrue(FString::Printf(TEXT("%s: the head just ahead of the mast's front, x %.0f cm (front %.0f)"), *What, K.Head.X, Front),
+					K.Head.X > Front && K.Head.X <= Front + 10.0);
+			}
 			TestEqual(FString::Printf(TEXT("%s: the head on the centreline"), *What), K.Head.Y, 0.0, 0.01);
 			TestTrue(FString::Printf(TEXT("%s: the head at least at the sail's own head height (%.0f cm, sail %.0f)"), *What, K.Head.Z, SailHeadCm), K.Head.Z >= SailHeadCm - 0.5);
 			TestTrue(FString::Printf(TEXT("%s: the head under the masthead (%.0f cm)"), *What, K.Head.Z), K.Head.Z < C.MastheadZ * CmPerMeter);
@@ -419,6 +441,7 @@ bool FVisualSpinnakerClewTest::RunTest(const FString& Parameters)
 	int32 Poled = 0, Gennakers = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig C = FBoatConfig::Make(EBoatType(B));
 		if (!C.HasSpinnaker()) continue;
 		const FString BoatName = ANSI_TO_TCHAR(BoatTypeName(C.Type));
@@ -670,6 +693,7 @@ bool FVisualJibHeadTest::RunTest(const FString& Parameters)
 	int32 Jibs = 0;
 	for (int32 B = 0; B < int32(EBoatType::Count); ++B)
 	{
+		if (IsSquareRigged(EBoatType(B))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig F = FBoatConfig::Make(EBoatType(B));
 		if (!F.HasJib()) continue;
 		++Jibs;

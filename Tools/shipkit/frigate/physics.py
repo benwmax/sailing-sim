@@ -497,7 +497,7 @@ def write_config_inl(path, sheet):
     w(f"\tC.WettedAreaCoef = {_num(c['wetted_coef'])}; C.FormFactor = {_num(c['form_factor'])};")
     w(f"\tC.AddedResistanceCoef = {_num(c['added_resistance'])};")
     w(f"\tC.HullLateralArea = {_num(c['hull_lateral'])}; C.MunkAddedMass = {_num(c['munk'])}; C.YawDampingLinear = {_num(c['yaw_damping'])}; "
-      f"C.HeaveDamping = {_num(c['heave_damping'])};")
+      f"C.HeaveDamping = {_num(c['heave_damping'])}; C.WaveSlopeForceScale = {_num(c['wave_slope'])};")
     k, r = c["keel"], c["rudder"]
     w(f"\tFFoilDef Keel = Foil(EFoilRole::Keel, Vec3({_num(k['x'])}, 0.0, {_num(k['z'])}), {_num(k['area'])}, {_num(k['chord'])}, "
       f"{_num(k['ar'])}, {_num(k['stall'])});   // her whole lateral plane less the rudder")
@@ -554,7 +554,7 @@ def write_config_inl(path, sheet):
         f.write("\n".join(L) + "\n")
 
 
-def main(build, out, limits_path=None):
+def main(build, out, limits_path=None, source=False):
     est = json.load(open(os.path.join(HERE, "physics_frigate.json")))
     limits = json.load(open(limits_path)) if limits_path else None
     rig = json.load(open(os.path.join(build, "rig.json")))["parts"]
@@ -632,7 +632,7 @@ def main(build, out, limits_path=None):
         "wetted_coef": round(wet / math.sqrt(vol * lwl), 4), "form_factor": K["form_factor"],
         "added_resistance": K["added_resistance"],
         "hull_lateral": round(K["hull_lateral_share"] * keel_area, 2), "munk": K["munk"], "yaw_damping": K["yaw_damping"],
-        "heave_damping": K["heave_damping"],
+        "heave_damping": K["heave_damping"], "wave_slope": K.get("wave_slope", 1.0),
         "keel": {"x": round(kx, 3), "z": round(kz, 3), "area": round(keel_area, 2), "chord": round(plane_chord, 2),
                  "ar": K["keel_ar"], "stall": K["keel_stall_deg"], "profile_drag": K["keel_profile_drag"],
                  "contact": [round(float(xs[0]) + 4.0, 2), round(float(stations[-1]["x"]) - 6.0, 2)]},
@@ -674,16 +674,25 @@ def main(build, out, limits_path=None):
     write_hull_inl(os.path.join(out, "CommonwealthHullData.inl"), stations, hydro, prof)
     sheet["hull"] = hull
     write_config_inl(os.path.join(out, "commonwealth_trial.inl"), sheet)
+    if source:
+        # The game's copies (Fleet.cpp includes them for EBoatType::Commonwealth): the same two files.
+        here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "Source", "SailingPhysics", "Private")
+        write_hull_inl(os.path.join(here, "CommonwealthHullData.inl"), stations, hydro, prof)
+        write_config_inl(os.path.join(here, "CommonwealthConfig.inl"), sheet)
     print(json.dumps({"hydrostatics": sheet["hydrostatics"], "weights": sheet["weights"], "profile": prof,
                       "flap": sheet["rudder_flap"], "sails": sheet["sail_area_m2"], "tumblehome_added_m": clamp}, indent=1))
 
 
 if __name__ == "__main__":
-    # physics.py <build dir> [out dir] [--limits <limits.json>]
+    # physics.py <build dir> [out dir] [--limits <limits.json>] [--source]
+    # (--source also writes the game's copies into Source/SailingPhysics/Private.)
     args = sys.argv[1:]
+    source = "--source" in args
+    if source:
+        args.remove("--source")
     lim_path = None
     if "--limits" in args:
         k = args.index("--limits")
         lim_path = args[k + 1]
         del args[k:k + 2]
-    main(args[0], args[1] if len(args) > 1 else args[0], lim_path)
+    main(args[0], args[1] if len(args) > 1 else args[0], lim_path, source)

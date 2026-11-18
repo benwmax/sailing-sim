@@ -1,0 +1,490 @@
+{
+ "about": "Slice 15: the frigate Commonwealth's textures and wear (weathering.py, docs/shipkit-15). One card per surface: which of her materials it covers (by kind), how close a camera comes, the pattern's real size, the detail maps it draws, and what each of the texture loop's five levels (Tools/texloop/levels.json) looks like on her. Every material the build makes is in a card, in 'unweathered' with its reason, or in 'below_decks' (dressed as slices 12 to 14 land); weathering.dress() stops otherwise.",
+ "salt": 1.0,
+ "salt_note": "she lives in salt water (Galveston's ship channel and offshore): rust, verdigris and the waterline's growth at the salt-water rate, not the lake's third (docs/texture-loop metal)",
+ "levels": {
+  "L0": "launched, autumn 1797: new paint glossy in linseed oil, bright salmon copper, yellow new pine and oak, the rigging fresh-tarred black and sticky, new buff canvas",
+  "L1": "her first cruise, a few months out: the paint's gloss softer and salt dried white under the ports, the copper browned, the deck holystoned pale, the tar dulled, the canvas a shade greyer",
+  "L2": "six years in commission, half kept (a working cruise, refitted between): faded chalky paint with rust and tar runs, the copper dark brown with green at the waterline, a grey deck, the rigging brown and rope-worn, sails dingy and patched",
+  "L3": "thirty years on, kept by a proud navy yard (a ship in ordinary kept smart, or a well-found old frigate): repainted, the deck holystoned white, the rigging re-tarred, the copper renewed brown; the oak's grain worn proud, the gilt renewed, every bright thing clean",
+  "L4": "twenty years laid up and neglected (a hulk): paint chalked and flaking to grey oak, rust and tar bleeding down the side, the copper green and lifting with weed and barnacles at the waterline, a black and green deck, the rigging grey and rotten, mildewed sails"
+ },
+ "surfaces": {
+  "paint": {
+   "title": "Oil paint on oak",
+   "what": "The side's black, the ochre band, the red inside the bulwarks and on the gun carriages, the figure and the window sashes' stone white: lamp black, yellow ochre, red ochre and white lead ground in linseed oil, brushed on the planking (her strakes are modelled, so the seams are the model's)",
+   "kinds": {
+    "black": [
+     "HullBlack"
+    ],
+    "ochre": [
+     "HullOchre"
+    ],
+    "red": [
+     "HullRed",
+     "Carriage"
+    ],
+    "white": [
+     "FigurePaint"
+    ]
+   },
+   "closest_camera_m": 0.6,
+   "closest_camera_note": "from a boat alongside, or leaning on the rail",
+   "pattern_mm": {
+    "fastening_pitch": 610,
+    "strake": 280,
+    "crack_cell": [
+     8,
+     30
+    ]
+   },
+   "pattern_note": "her fastenings are at every frame (room and space 2 ft), one bolt or treenail row per strake; old oil paint alligators into cells a centimetre or so across",
+   "maps": [
+    "WoodVarnish"
+   ],
+   "levels": {
+    "L0": "deep glossy black, a clean yellow ochre and a rich red, every brush stroke still wet-looking",
+    "L1": "the gloss softening; white salt dried in faint streaks under the ports and along the wales",
+    "L2": "faded and chalky (the black brownish grey, the ochre pale), rust runs from the fastenings, tar drips from above, scrapes along the wales",
+    "L3": "repainted over thirty years of coats: deep black, the grain and old coats showing through, touched up in glossier patches where it chafes, no salt, clean",
+    "L4": "chalked nearly grey, the paint alligatored and flaking to grey oak, rust and tar bleeding down in long runs, the seams opening"
+   },
+   "refs": [
+    {
+     "id": "black_painted_planks",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "black",
+     "note": "black paint worn and scratched on planks"
+    }
+   ]
+  },
+  "copper": {
+   "title": "Copper sheathing",
+   "what": "The bottom's copper sheets to the main wale's foot: sheets 4 ft by 14 in, laid in rows from aft forward with each row's seam half a sheet on from the last, lapped and nailed round their edges",
+   "kinds": {
+    "sheathing": [
+     "Copper"
+    ]
+   },
+   "closest_camera_m": 1.0,
+   "closest_camera_note": "from a boat alongside at the waterline",
+   "pattern_mm": {
+    "sheet": [
+     1219,
+     356
+    ],
+    "lap": 38,
+    "nail_pitch": 38
+   },
+   "maps": [
+    "Metal"
+   ],
+   "levels": {
+    "L0": "bright new salmon-pink copper, each sheet a little different, the laps and nail rows crisp",
+    "L1": "browned within weeks: an even warm brown with a dull sheen, the laps and nail rows still crisp",
+    "L2": "dark chocolate brown with green verdigris streaks at the waterline and a slimy band",
+    "L3": "renewed sheet by sheet over the years: dark old sheets with brighter new ones let in among them, clean, no weed",
+    "L4": "green and black, sheets lifting at the laps, weed and barnacles in a broad band at the waterline"
+   },
+   "refs": [
+    {
+     "id": "Metal035",
+     "site": "ambientcg",
+     "level": "L1",
+     "for": "sheathing",
+     "note": "copper browned (cuprite), the colour new sheathing takes in its first weeks"
+    },
+    {
+     "id": "green_metal_rust",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "sheathing",
+     "note": "verdigris"
+    }
+   ]
+  },
+  "wood": {
+   "title": "Bare and oiled wood",
+   "what": "Unpainted oak (the waterways, rails, coamings, gratings, capstan, wheel, catheads' and anchors' stocks, the boats' oak), the elm blocks and deadeyes with their lignum vitae sheaves and pins, and the spars: scraped and oiled bright (with the period's tar and oil)",
+   "kinds": {
+    "oak": [
+     "Oak",
+     "Rail"
+    ],
+    "blocks": [
+     "Block",
+     "Deadeye",
+     "Sheave",
+     "Pin"
+    ],
+    "spar": [
+     "Spar"
+    ]
+   },
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "the rail and the belaying pins at a hand's reach",
+   "pattern_mm": {
+    "grain_rays": [
+     2,
+     12
+    ],
+    "check_length": [
+     30,
+     200
+    ]
+   },
+   "maps": [
+    "Oak"
+   ],
+   "levels": {
+    "L0": "new oak's warm yellow-brown, the elm a pale tan, the spars golden in their oil",
+    "L1": "the oak greying where the sun and spray reach it; blocks darkening where hands and tar touch",
+    "L2": "silver-grey oak with dark grime in the grain, tar-blackened blocks, spars dull brown with tar streaks",
+    "L3": "scrubbed and oiled again, the grain standing proud, warm brown; the blocks dark and polished by hands",
+    "L4": "grey-black wet oak with green algae, open checks, black iron stains; spars grey and checked"
+   },
+   "refs": [
+    {
+     "id": "wood_planks_grey",
+     "site": "polyhaven",
+     "level": "L2",
+     "for": "oak",
+     "note": "silver-grey weathered boards"
+    },
+    {
+     "id": "weathered_planks",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "oak",
+     "note": "dark weathered boards"
+    }
+   ]
+  },
+  "deck": {
+   "title": "Holystoned pine deck",
+   "what": "The spar deck's laid pine (slice 7's Planking: planks, waterways' nibs and pitch seams)",
+   "kinds": {
+    "deck": [
+     "DeckPlanks"
+    ]
+   },
+   "closest_camera_m": 1.6,
+   "closest_camera_note": "a sailor's eye standing on deck",
+   "pattern_mm": {
+    "plank_width": 152,
+    "plank_length": 6650
+   },
+   "maps": [
+    "Oak"
+   ],
+   "levels": {
+    "L0": "new yellow pine with crisp black pitch seams",
+    "L1": "scrubbed paler, salt-dry in the sun, tar drips under the rigging",
+    "L2": "grey and dirty, darker in the gangways' traffic, tar spots and soft seams",
+    "L3": "holystoned almost white, the grain worn proud between hard seams: a navy's pride",
+    "L4": "black and green, rotten soft planks, the pitch seams cracked and lifting"
+   },
+   "refs": [
+    {
+     "id": "brown_planks_09",
+     "site": "polyhaven",
+     "level": "L1",
+     "for": "deck",
+     "note": "bare softwood deck boards, unvarnished (a scrubbed deck's colour; a holystoned one is paler)"
+    },
+    {
+     "id": "plank_flooring_03",
+     "site": "polyhaven",
+     "level": "L1",
+     "for": "deck",
+     "note": "raw, worn plank flooring"
+    },
+    {
+     "id": "weathered_planks",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "deck",
+     "note": "dark weathered boards"
+    }
+   ]
+  },
+  "rope": {
+   "title": "Tarred and untarred hemp",
+   "what": "The standing rigging and cables in Stockholm tar (black, glossy when fresh), the untarred lanyards and running rigging's hemp, the hammock nettings",
+   "kinds": {
+    "tarred": [
+     "Tarred",
+     "Cable"
+    ],
+    "hemp": [
+     "Hemp",
+     "Netting"
+    ]
+   },
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "the shrouds and lanyards at the rail",
+   "pattern_mm": {
+    "fibre_width": [
+     0.1,
+     0.4
+    ],
+    "fibre_length": [
+     20,
+     60
+    ]
+   },
+   "maps": [
+    "Manila"
+   ],
+   "maps_note": "the J-Class's manila fibre map (Inputs/jclass-detail) stands in for hemp's: both long hard fibres of that size",
+   "levels": {
+    "L0": "glossy fresh tar, nearly black; the untarred hemp a golden straw",
+    "L1": "the tar dulled to a deep brown-black; the hemp greying a little",
+    "L2": "brown tar worn to fibre where it is handled and rubbed, the hemp grey and hairy",
+    "L3": "re-tarred black with a soft sheen, the hemp renewed: a kept rig",
+    "L4": "grey bleached tar on top and rotten black below, the hemp dark grey and furred with mildew"
+   },
+   "refs": [
+    {
+     "id": "Rope001",
+     "site": "ambientcg",
+     "level": "L0",
+     "for": "hemp",
+     "note": "new natural fibre rope"
+    },
+    {
+     "id": "Rope003",
+     "site": "ambientcg",
+     "level": "L2",
+     "for": "hemp",
+     "note": "weathered rope"
+    }
+   ]
+  },
+  "canvas": {
+   "title": "Flax canvas",
+   "what": "The sails (flax duck, the cloths sewn 2 ft wide), the hammocks' canvas and the tarred tarpaulins over the hatches",
+   "kinds": {
+    "sail": [
+     "Sailcloth",
+     "SailclothFA"
+    ],
+    "canvas": [
+     "Canvas"
+    ],
+    "tarpaulin": [
+     "Tarpaulin"
+    ]
+   },
+   "closest_camera_m": 1.0,
+   "closest_camera_note": "the courses' feet over the deck",
+   "pattern_mm": {
+    "weave": 1.2,
+    "cloth": 610,
+    "patch": [
+     300,
+     900
+    ]
+   },
+   "maps": [
+    "Cotton"
+   ],
+   "levels": {
+    "L0": "new buff flax, crisp and even, the seams' double stitching bright",
+    "L1": "a shade greyer, a little dirt along the foot",
+    "L2": "dingy grey-buff, grimy along the foot and under the yards, patched with paler new cloths",
+    "L3": "a newer suit kept dry and clean: pale buff, a few patches",
+    "L4": "dark grey and black-spotted with mildew, brown stains, many patches"
+   },
+   "refs": [],
+   "maps_note": "the J-Class's cotton duck mask (Inputs/jclass-detail) stands in for the weave's gaps and tone: the boats' shared Canvas has a normal map only, and a flax canvas's coarser weave is under a pixel past a metre"
+  },
+  "iron": {
+   "title": "Iron and lead",
+   "what": "The blacked cast iron of the guns and anchors (lamp black in oil over the iron), the wrought iron fittings (chain plates, bands, eyebolts, hoops) and the hawse holes' lead",
+   "kinds": {
+    "blacked": [
+     "Blacking"
+    ],
+    "iron": [
+     "Iron"
+    ],
+    "lead": [
+     "Lead"
+    ]
+   },
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "a gun's breech at the gun deck's crew's eye",
+   "pattern_mm": {
+    "casting_pits": [
+     0.2,
+     1.2
+    ],
+    "rust_bloom": [
+     5,
+     60
+    ]
+   },
+   "maps": [
+    "CastBronze",
+    "Metal"
+   ],
+   "maps_note": "the J-Class's sand-cast bronze map (Inputs/jclass-detail) is a sand casting's skin: the guns' cast iron has the same",
+   "levels": {
+    "L0": "smooth dull black blacking over the iron, the lead bright grey",
+    "L1": "the black a little brown at the edges, a first orange bloom on the wrought iron",
+    "L2": "brown rust blooming through the black, orange at the edges and bolts, the lead whitening",
+    "L3": "freshly blacked again, the casting's skin showing, clean",
+    "L4": "flaking orange-brown rust all over, the black only in patches, the lead white and pitted"
+   },
+   "refs": [
+    {
+     "id": "rust_coarse_01",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "iron",
+     "note": "coarse rust"
+    },
+    {
+     "id": "Rust009",
+     "site": "ambientcg",
+     "level": "L4",
+     "for": "rust",
+     "note": "rust's colour"
+    },
+    {
+     "id": "rusty_painted_metal",
+     "site": "polyhaven",
+     "level": "L4",
+     "for": "blacked",
+     "note": "black-painted iron rusting through: the blacking neglected"
+    }
+   ]
+  },
+  "bright": {
+   "title": "Gilt and bronze",
+   "what": "The carved work's gold leaf (head, stern, quarter galleries) and the bronze (rudder's pintles, the bell, the compass bowls)",
+   "kinds": {
+    "gilt": [
+     "Gilt"
+    ],
+    "bronze": [
+     "Bronze"
+    ]
+   },
+   "closest_camera_m": 0.8,
+   "closest_camera_note": "the quarter gallery's carving from the deck, the bell at the belfry",
+   "pattern_mm": {
+    "leaf": 80
+   },
+   "maps": [
+    "CastBronze"
+   ],
+   "levels": {
+    "L0": "bright new gold leaf, the bronze new and golden",
+    "L1": "the gold a shade duller, dirt settling in the carving's hollows",
+    "L2": "dull gold with dark hollows and chips of red bole showing, the bronze brown",
+    "L3": "re-gilt bright, the hollows clean; the bronze polished",
+    "L4": "the gold mostly gone to grey wood and red bole, green verdigris on the bronze"
+   },
+   "refs": []
+  }
+ },
+ "unweathered": {
+  "Glass": "the window panes: cleaned every morning on a navy ship; salt haze on glass is left to the game's own wet look",
+  "CompassCard": "inside the binnacle's glass, out of the weather",
+  "Shadow": "the holes in the deadeyes and blocks: a dark stand-in for shadow, not a surface",
+  "Clay_Hull": "the moulded hull, hidden: the shape tools' reference",
+  "Deck": "slice 2's placeholder deck under the planking, never seen",
+  "Interior": "the gun deck's placeholder inside the ship (slice 2), replaced below decks by slice 12's parts; seen only through a port"
+ },
+ "below_decks": {
+  "about": "materials of slices 12 to 14 (gun deck, berth deck, orlop and hold), dressed as each lands on main: listed so the outside build's check passes before then",
+  "names": [
+   "GunDeckPlanks",
+   "BerthDeckPlanks",
+   "FloorCloth",
+   "Ash",
+   "Brick",
+   "Dim",
+   "Fleece",
+   "Horn",
+   "Mahogany",
+   "Tin",
+   "ClearGlass"
+  ]
+ },
+ "maps": {
+  "about": "Her own map is made by textures.py into Inputs/frigate-detail (plain git, as Inputs/boat-detail); the others are the boats' shared library (Inputs/boat-detail) and the J-Class's (Inputs/jclass-detail). Every map is box-projected in each part's own frame at its real size (tile_mm) and fades out between fade_m metres from the camera.",
+  "own": {
+   "Oak": {
+    "tile_mm": [
+     400,
+     200
+    ],
+    "normal_strength": 1.0,
+    "fade_m": [
+     1.0,
+     5.0
+    ],
+    "medium": true,
+    "note": "quarter-sawn and flat-sawn oak and pine together: ring-porous earlywood bands of pores, medullary ray flecks, checks; R grain tone, G checks, B height"
+   }
+  },
+  "jclass": {
+   "Manila": {
+    "tile_mm": [
+     60,
+     30
+    ],
+    "fade_m": [
+     0.6,
+     2.5
+    ]
+   },
+   "CastBronze": {
+    "tile_mm": [
+     100,
+     100
+    ],
+    "fade_m": [
+     0.8,
+     3.0
+    ]
+   },
+   "Cotton": {
+    "tile_mm": [
+     40,
+     40
+    ],
+    "fade_m": [
+     1.0,
+     4.0
+    ]
+   }
+  },
+  "shared": {
+   "Metal": {
+    "tile_mm": [
+     100,
+     100
+    ],
+    "use": "the copper sheets' rolled skin, wrought iron"
+   },
+   "WoodVarnish": {
+    "tile_mm": [
+     250,
+     125
+    ],
+    "use": "the grain under the paint"
+   }
+  }
+ },
+ "budget": {
+  "high_mb": 12.0,
+  "medium_mb": 6.0,
+  "note": "her own maps' memory with mips (BC5 normal + BC1 mask); the shared and J-Class maps are already in the game's memory"
+ },
+ "closest_px_per_mm": 4.0
+}
