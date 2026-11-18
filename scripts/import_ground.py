@@ -107,11 +107,16 @@ def world_collection():
     if mpc is None:
         raise RuntimeError("MPC_World missing: run make_materials.py first")
     scalars = list(mpc.get_editor_property("scalar_parameters"))
-    if not any(str(x.get_editor_property("parameter_name")) == "Season" for x in scalars):
+    added = False
+    for name, default in (("Season", 0.0), ("GroundDetail", 1.0)):
+        if any(str(x.get_editor_property("parameter_name")) == name for x in scalars):
+            continue
         s = unreal.CollectionScalarParameter()
-        s.set_editor_property("parameter_name", "Season")
-        s.set_editor_property("default_value", 0.0)
+        s.set_editor_property("parameter_name", name)
+        s.set_editor_property("default_value", default)
         scalars.append(s)
+        added = True
+    if added:
         mpc.set_editor_property("scalar_parameters", scalars)
         LIB.save_loaded_asset(mpc)
     return mpc
@@ -189,7 +194,7 @@ def build_material(arrays):
     mat.set_editor_property("tangent_space_normal", False)
     code = open(HLSL).read()
     f1, f3 = unreal.CustomMaterialOutputType.CMOT_FLOAT1, unreal.CustomMaterialOutputType.CMOT_FLOAT3
-    c = custom(mat, code, ["P", "N", "C", "CA", "WaterZ", "Cam", "Mown", "Season", "Alb", "Nrm", "Rha"], -300, 0,
+    c = custom(mat, code, ["P", "N", "C", "CA", "WaterZ", "Cam", "Mown", "Season", "Detail", "Alb", "Nrm", "Rha"], -300, 0,
                [("Rough", f1), ("WN", f3), ("AO", f1)])
     connect(node(mat, unreal.MaterialExpressionWorldPosition, -1100, -200), "", c, "P")
     connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -1100, -80), "", c, "N")
@@ -203,6 +208,7 @@ def build_material(arrays):
     connect(uv, "", mown, "")
     connect(mown, "", c, "Mown")
     connect(collection_param(mat, "Season", -1100, 440), "", c, "Season")
+    connect(collection_param(mat, "GroundDetail", -1100, 500), "", c, "Detail")
     for k, (pin, key) in enumerate((("Alb", "Albedo"), ("Nrm", "Normal"), ("Rha", "RHA"))):
         t = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1100, 560 + 120 * k, parameter_name=pin, texture=arrays[key])
         t.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if key == "Albedo" else

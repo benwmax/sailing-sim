@@ -10,7 +10,8 @@ Python has no numpy); test_ground.py fails when that copy is stale: regenerate i
 Custom node inputs (positions in cm as the engine gives them, with MPC_World.RenderOrigin added as every world material
 does): P (world position), N (VertexNormalWS: fine on the terrain's procedural mesh), C (VertexColor RGB), CA
 (VertexColor A: Near), WaterZ (MPC_World), Cam (CameraPositionWS), Mown (the terrain's UV0.x, written by
-LakeTerrainActor::BuildChunk from SailingGround::MownAt), Season (MPC_World, 0 summer .. 1 dormant), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
+LakeTerrainActor::BuildChunk from SailingGround::MownAt), Season (MPC_World, 0 summer .. 1 dormant), Detail (MPC_World.GroundDetail: 1 on
+Ultra keeps the rotated second scale inside BAND_A, 0 on the other tiers halves the near fetches), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
 the region pack's role order; sRGB colour, linear BC5 normal, linear RHA) with their samplers.
 Outputs: return value base colour; Rough; WN (world normal: the material sets tangent_space_normal off, because the
 terrain mesh carries no tangents); AO.
@@ -150,7 +151,7 @@ float ao = 1.0;
 // past it colour only, mixed by weight. 12 fetches a pixel inside 35 m, 6 to 75 m, 2 to 150 m, none past it. Ray-traced
 // hits (Lumen's hit lighting) and Lumen's surface-cache captures (LUMEN_CARD_CAPTURE, as M_BoatSurface gates its grime) take
 // the card colours: nothing there is close enough to read a texture, and the second world gate's +2.4 ms was in Lumen.
-float kA = 1.0 - smoothstep(BAND_A.x, BAND_A.y, dist);
+float kA = Detail * (1.0 - smoothstep(BAND_A.x, BAND_A.y, dist));   // Detail 0 (High and below): no second scale, 6 fetches near
 float kB = 1.0 - smoothstep(BAND_B.x, BAND_B.y, dist);
 #if RAYHITGROUPSHADER || defined(LUMEN_CARD_CAPTURE)
 const bool bTextured = false;

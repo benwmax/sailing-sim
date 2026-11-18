@@ -550,6 +550,13 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Spring"), SpringAmount(GM->GetDayOfYear()));
 		// Track A: the grass's season on the ground (M_Ground: 0 summer green, 1 winter dormant).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Season"), SailingGround::SeasonAmount(GM->GetDayOfYear()));
+		// M_Ground's second, rotated texture scale inside 35 m (12 fetches a pixel instead of 6): Ultra only, after the Mac's
+		// High world gate lost 8 fps on the shore views. -SailingGroundDetail=0|1 for compared stills.
+		{
+			float GroundDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1.f : 0.f;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingGroundDetail="), GroundDetail);
+			UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("GroundDetail"), GroundDetail);
+		}
 		// Street lamps, lit windows and vehicle lights come on through dusk (and under a storm's darkness).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
 			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));

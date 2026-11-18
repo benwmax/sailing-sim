@@ -189,7 +189,7 @@ class TexBank:
         return a + (b - a) * fy
 
 
-def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
+def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0):
     """P, N, C: (n,3); Near, Mown, footprint: (n,). footprint = metres per pixel at P (the GPU's derivatives).
     Returns base colour (n,3), roughness (n,), world normal (n,3), weights (n,8)."""
     w = weights(P, N, C, Near, WaterZ, Mown)
@@ -207,7 +207,7 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         order = np.argsort(-w[idx], axis=1)
         top = order[:, :2]
         x, y = P[idx, 0], P[idx, 1]
-        kA = 1.0 - smoothstep(BAND_A_M[0], BAND_A_M[1], dist[idx])
+        kA = detail * (1.0 - smoothstep(BAND_A_M[0], BAND_A_M[1], dist[idx]))   # detail 0 = the High tier: no second scale
         kB = 1.0 - smoothstep(BAND_B_M[0], BAND_B_M[1], dist[idx])
         layers, heights = [], []
         for k in range(2):

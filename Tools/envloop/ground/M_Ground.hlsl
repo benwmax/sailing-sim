@@ -88,7 +88,7 @@ float ao = 1.0;
 // past it colour only, mixed by weight. 12 fetches a pixel inside 35 m, 6 to 75 m, 2 to 150 m, none past it. Ray-traced
 // hits (Lumen's hit lighting) and Lumen's surface-cache captures (LUMEN_CARD_CAPTURE, as M_BoatSurface gates its grime) take
 // the card colours: nothing there is close enough to read a texture, and the second world gate's +2.4 ms was in Lumen.
-float kA = 1.0 - smoothstep(BAND_A.x, BAND_A.y, dist);
+float kA = Detail * (1.0 - smoothstep(BAND_A.x, BAND_A.y, dist));   // Detail 0 (High and below): no second scale, 6 fetches near
 float kB = 1.0 - smoothstep(BAND_B.x, BAND_B.y, dist);
 #if RAYHITGROUPSHADER || defined(LUMEN_CARD_CAPTURE)
 const bool bTextured = false;
