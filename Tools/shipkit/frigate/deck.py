@@ -51,7 +51,12 @@ class Part:
         V = np.array(V, float).reshape(-1, 3)                  # a copy: seat() and drape() move it in place
         self.V.append(V)
         self.F += [tuple(self.n + int(i) for i in f) for f in F]
-        self.M += [mat] * len(F)
+        if isinstance(mat, (list, tuple)):                      # a material per face (head.slab gives its walls theirs)
+            if len(mat) != len(F):
+                raise SystemExit(f"deck: Part.add given {len(mat)} materials for {len(F)} faces")
+            self.M += list(mat)
+        else:
+            self.M += [mat] * len(F)
         U = np.zeros((len(V), 4))
         if uv is not None:
             uv = np.asarray(uv, float).reshape(len(V), -1)
@@ -673,10 +678,10 @@ MEETS = {
     ("Binnacle", "SparDeck"): ("the binnacle is let into the deck", 0.15),
     ("BowspritStep", "SparDeck"): ("the bowsprit's step and bitts are let into the deck", 0.25),
     ("WheelStandards", "SparDeck"): ("the wheel's standards and the tiller rope's plates are let into the deck", 0.25),
-    ("TillerRope", "SparDeck"): ("the tiller rope's legs go down through the deck to the gun deck (slice 12: through "
-                                 "it in lead bushes to the tiller below)", 2.5),
+    ("TillerRope", "SparDeck"): ("the tiller rope's legs go down into the plates' holes, ending a hair into the deck "
+                                 "(the gun deck's slice takes them on from its underside to the leading sheaves)", 0.4),
     ("TillerRope", "WheelStandards"): ("the tiller rope's legs go down through the plates' holes (each drawn as a dark "
-                                       "box the rope passes through)", 0.5),
+                                       "box the rope passes through)", 0.4),
     ("Wheel", "WheelStandards"): ("the wheel's axle turns in the standards' bearings", 1.3),
     ("Belfry", "BreastRails"): ("the forecastle's breast rail runs half an inch into the belfry's posts", 0.55),
     ("Ladders", "BreastRails"): ("the ladders' hand ropes are made fast to eye plates let into the breast rails' posts",
@@ -1774,23 +1779,30 @@ class Deck:
               "Oak", 20)
         # the tiller rope: its turns round the barrel, coming up the starboard leg at the after end, over the top and
         # round, and leaving it at the forward end down the port leg (a turn of the wheel's top to port hauls in the
-        # starboard leg), a hair off the barrel so the barrel turns inside them (its chords too, 24 a turn)
+        # starboard leg), a hair off the barrel so the barrel turns inside them (its chords too, 24 a turn). The legs
+        # stand where the card puts them (legs_x_m: in the bay between the gun deck's overhead ledge and beam there)
         rr = rope_r(wh["tiller_rope_in"])
-        xa_, xf_ = -hb + 1.5 * IN, hb - 1.5 * IN
+        xa_, xf_ = (float(v) - xw for v in wh["legs_x_m"])
         turns = wh["rope_turns"]
+        if not (-hb + rr + 0.5 * IN <= xa_ < xf_ <= hb - rr - 0.5 * IN):
+            raise SystemExit(f"deck: the tiller rope's legs (wheel legs_x_m) must stand in order on the barrel, half an "
+                             f"inch in from its ends (its half-length {hb:.3f} m about x {xw})")
+        if (xf_ - xa_) / (turns - 0.5) < 2 * rr + 0.001:
+            raise SystemExit("deck: the tiller rope's turns on the barrel would lie on each other (wheel legs_x_m too "
+                             "close together for rope_turns)")
         th = np.linspace(0.0, (turns - 0.5) * 2 * math.pi, int(turns * 24) + 1)
         xx = xa_ + (xf_ - xa_) * th / th[-1]
         R0 = rb + rr + 0.08 * IN
         helix = np.stack([xx, R0 * np.cos(th), R0 * np.sin(th)], 1)
         tube(rope, helix + o, rr, "Hemp", 8)
         self.frames["Wheel"] = (o, np.eye(3))
-        # the legs, from the barrel's sides down through iron plates in the deck and on down through the gun deck's
-        # lead bushes (slice 12) to the tiller below (the berth deck's, slice 13), 2 in into the gun deck
+        # the legs, from the barrel's sides down into the iron plates' holes in the deck, ending a hair into it: the gun
+        # deck's slice takes them on from the deck's underside to the leading sheaves under it (gundeck.py tiller_ropes)
         self.tiller_legs = []
         for x_, y_ in ((xa_, R0), (xf_, -R0)):
             p = o + np.array([x_, y_, 0.0])
             zl = float(self.z(p[0]))
-            tube(rope, np.array([p + EZ * 0.002, [p[0], p[1], float(self.zg(p[0])) - 2.0 * IN]]), rr, "Hemp", 8)
+            tube(rope, np.array([p + EZ * 0.002, [p[0], p[1], zl - 0.1 * IN]]), rr, "Hemp", 8)
             self.tiller_legs.append((float(p[0]), float(p[1]), rr))
             k0 = len(still.V)
             for dx, dy, hx, hy in ((0.0, 2.2 * IN, 3.0 * IN, 1.0 * IN), (0.0, -2.2 * IN, 3.0 * IN, 1.0 * IN),

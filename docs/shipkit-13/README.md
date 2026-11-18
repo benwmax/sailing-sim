@@ -86,7 +86,8 @@ The Navy Yard Boston inboard profile of 1849 (NARA 75841356) draws the berth dec
 state rooms aft, the steerage forward of it, rooms forward of that, and the sick bay forward. Each bulkhead stands
 between the gun deck's members over it, its doors hooked back. The joinery is painted deal.
 
-* **The tiller room**, abaft the wardroom over the stern's shelf. The iron tiller is not built: see Known gaps.
+* **The tiller room**, abaft the wardroom over the stern's shelf. The tiller is not on this deck: since this slice
+  it swings overhead in the great cabin on the gun deck (`docs/frigate-tiller`), and the room keeps its name.
 * **The wardroom**, the officers' mess, from 21.4 m to 13.8 m abaft midships. Four state rooms a side, each 6 ft 2 in
   long, with their inboard walls 2.3 m out from the middle line and a door into the wardroom. The mizzen comes down
   through it. A mahogany table 10 ft by 3 ft 6 in stands under the skylight on six turned legs, with four chairs a side
@@ -293,8 +294,8 @@ the ship's frame (metres):
   span and the lowest one's height over the deck), `messes` (the tables' places), `sick_bay` (the cots), the hanging
   and lodging knees, and so on.
 
-Nothing on this deck turns yet: the bulkheads' doors are hooked back, the rooms' doors are shut, and the tiller,
-which would turn, is not built.
+Nothing on this deck turns yet: the bulkheads' doors are hooked back and the rooms' doors are shut. The tiller,
+which turns, is overhead in the great cabin on the gun deck (`docs/frigate-tiller`).
 
 ## For the orlop slice
 
@@ -402,10 +403,12 @@ in into it.
 
 ## Known gaps
 
-* **No tiller.** The 1812 description puts an iron tiller on the berth deck aft of the wardroom, but this ship's
-  counter closes round the rudder's head only at the gun deck's height, so the berth deck does not reach it. Where the
-  tiller goes (hung under the quarterdeck's beams in the great cabin, the lower stern reshaped so it sits here as on
-  Constitution, or none) is Bean's choice, still open; the card keeps its sizes for whichever.
+* **No tiller on this deck.** The 1812 description puts an iron tiller on the berth deck aft of the wardroom, but this
+  ship's counter closes round the rudder's head only at the gun deck's height, so the berth deck does not reach it.
+  Bean chose (Nov 18) to hang it under the quarterdeck's beams in the great cabin: `docs/frigate-tiller` builds it
+  there, and the lead bush that came down through the gun deck here is gone. The tiller room's bays still have no
+  lodging knees (they were kept for the tiller ropes' blocks): a knee at its first beam would reach forward past the
+  wardroom's after bulkhead, so they wait for a later pass.
 * **Hammocks for about 110 of a crew of about 450.** The 1812 description has the crew sleeping on the berth deck.
   The room between this deck's fittings, at 14 in a man, takes about 110 as the card spaces and clears them. Where the
   rest slung theirs (between the guns on the gun deck, by estimate, or closer together here) is not modelled.
