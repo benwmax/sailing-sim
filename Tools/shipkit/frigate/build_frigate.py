@@ -1564,8 +1564,9 @@ def tiller_swing(step=1.0):
     same timber, which the game leaves as built) and against each other (gundeck.swing_set): the last angle they all
     turn to clear each way, what meets past that and the least gap kept on the way. Joined (one rope where they meet:
     not checked against each other): each run with its eye, the fixed leads and its wrap, each wrap with the fixed
-    leads. Close by design (checked for a touch only): the eyes with the tiller's ring and each other, the runs and the
-    wraps with the sheaves they lie in"""
+    leads; of those, each wrap with the leads and its run and each run with its eye must keep meeting at every step (the
+    rope never comes apart: joins_most_apart_in). Close by design (checked for a touch only): the eyes with the tiller's
+    ring and each other, the runs and the wraps with the sheaves they lie in"""
     n = int(round(GD.c["tiller"]["hard_over_deg"] / step))
     steps = {"to_starboard": [k * step for k in range(n + 1)], "to_port": [-k * step for k in range(n + 1)]}
     lo, hi = None, None
@@ -1593,7 +1594,9 @@ def tiller_swing(step=1.0):
         [(f"TillerWrap_{s}", f"TillerRun_{s}") for s in "SP"]
     close = [("TillerEye_S", "Tiller"), ("TillerEye_P", "Tiller"), ("TillerEye_S", "TillerEye_P")] + \
         [(f"Tiller{k}_{s}", "TillerSheaves") for k in ("Run", "Wrap") for s in "SP"]
-    return gundeck.swing_set(HELM, steps, near, joined, close)
+    stay = [p for s in "SP" for p in ((f"TillerWrap_{s}", "TillerRopeLeads"), (f"TillerWrap_{s}", f"TillerRun_{s}"),
+                                       (f"TillerRun_{s}", f"TillerEye_{s}"))]
+    return gundeck.swing_set(HELM, steps, near, joined, close, stay=stay)
 
 
 TILLER_SWING = tiller_swing()
@@ -2281,11 +2284,13 @@ if SHUT_DOORS:
     raise SystemExit("a cabin door can't swing open clear of the floor, the sill, its jambs and casing or the furniture, "
                      "or comes within 0.1 in of them (build.json gundeck.door_swings): " + json.dumps(SHUT_DOORS))
 TILLER_FOUL = {w: v for w, v in TILLER_SWING.items() if w.startswith("to_") and (v["clear_to_deg"] != v["to_deg"] or
-                                                                                v["least_gap_in"] < 0.5)}
+                                                                                v["least_gap_in"] < 0.5 or
+                                                                                v["joins_most_apart_in"] > 0.05)}
 if TILLER_FOUL:
     raise SystemExit("the rudder's head, the tiller and its ropes can't swing hard over each way clear of the beams, the "
                      "window seat, the after wall, the cabin's lantern, the sheaves and each other, or come within half "
-                     "an inch of them (build.json gundeck.tiller_swing): " + json.dumps(TILLER_FOUL))
+                     "an inch of them, or a tiller rope's parts come more than a twentieth of an inch apart "
+                     "(build.json gundeck.tiller_swing): " + json.dumps(TILLER_FOUL))
 if DOOR_HELM["touch"] or DOOR_HELM["least_gap_in"] < 0.5:
     raise SystemExit("a cabin door meets the tiller or its ropes, or comes within half an inch of them, at some opening "
                      "and angle of the helm (build.json gundeck.door_helm): " +

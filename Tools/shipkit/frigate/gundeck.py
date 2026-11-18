@@ -165,16 +165,19 @@ def _least_gap(P, tree, reach, lo=None, hi=None):
     return least
 
 
-def swing_set(bodies, steps, near, joined=(), close=(), reach=0.05):
+def swing_set(bodies, steps, near, joined=(), close=(), reach=0.05, stay=()):
     """bodies that move together with the helm, turned step by step against near ({name: (V, T)}, still, in the ship's
     frame) and each other: bodies {name: (T, posed)}, posed(deg) its vertices in the ship's frame with the helm deg
     over; steps {way: [deg, ...]} in order from amidships. joined: pairs of names that are one rope where they meet (not
     checked against each other), close: pairs that lie closer than reach by design (checked for a touch only). For each
     way: the last angle everything turns to clear, what meets past it ([deg, [[a, b], ...]]), the least gap on the way
     (each one's corners to the other's faces, both ways, out to reach) and where ([deg, a, b]); near: the still objects
-    near any sweep"""
+    near any sweep. stay: pairs of joined names (a body and a body, or a body and a still object in near) that are one
+    rope where they meet and must keep meeting at every step: for each way, the most any of them comes apart (the least
+    gap between the two, both ways, out to reach: 9.0 when nothing is that close) and where ([deg, a, b])"""
     from mathutils.bvhtree import BVHTree
     joined = {frozenset(p) for p in joined}
+    stay = [tuple(p) for p in stay]
     close = {frozenset(p) for p in close}
     names = sorted(bodies)
     posed = {way: [(deg, {n: np.asarray(bodies[n][1](deg), float) for n in names}) for deg in degs]
@@ -201,12 +204,38 @@ def swing_set(bodies, steps, near, joined=(), close=(), reach=0.05):
     corners = {m: Vo[np.unique(To)] for m, (Vo, To) in kept.items()}
     nbox = {m: (c.min(0), c.max(0)) for m, c in corners.items()}
     pairs = [(a, b) for i, a in enumerate(names) for b in names[i + 1:] if frozenset((a, b)) not in joined]
+    # the still objects a body must keep meeting: their faces near any sweep of the bodies joined to them
+    held = {}
+    for a, b in stay:
+        if frozenset((a, b)) not in joined:
+            raise SystemExit(f"gundeck: swing_set: {a} and {b} must stay joined but are not a joined pair")
+        for m, n in ((a, b), (b, a)):
+            if m not in bodies:
+                held.setdefault(m, []).append(n)
+    st = {}
+    for m, ns in held.items():
+        Vo, To = np.asarray(near[m][0], float), np.asarray(near[m][1], np.int64)
+        tmin, tmax = Vo[To].min(1), Vo[To].max(1)
+        keep = np.zeros(len(To), bool)
+        for n in ns:
+            keep |= (tmin <= hi[n] + reach).all(1) & (tmax >= lo[n] - reach).all(1)
+        if not keep.any():
+            raise SystemExit(f"gundeck: swing_set: {m} lies nowhere near the sweep of {', '.join(ns)}, which must stay "
+                             "joined to it")
+        st[m] = (BVHTree.FromPolygons(Vo.tolist(), To[keep].tolist(), all_triangles=True), Vo[np.unique(To[keep])])
     out = {}
     for way, ps in posed.items():
-        clear_to, meets, least, where = None, None, 9.0, None
+        clear_to, meets, least, where, apart, apart_at = None, None, 9.0, None, 0.0, None
         for deg, Ps in ps:
             bt = {n: BVHTree.FromPolygons(Ps[n].tolist(), bodies[n][0].tolist(), all_triangles=True) for n in names}
             bb = {n: (Ps[n].min(0), Ps[n].max(0)) for n in names}
+            for a, b in stay:
+                ta, Pa = (bt[a], Ps[a]) if a in bodies else st[a]
+                tb, Pb = (bt[b], Ps[b]) if b in bodies else st[b]
+                g = min(_least_gap(Pa, tb, reach, Pb.min(0), Pb.max(0)),
+                        _least_gap(Pb, ta, reach, Pa.min(0), Pa.max(0)))
+                if g > apart:
+                    apart, apart_at = g, [deg, a, b]
             hits = [[n, m] for n in names for m, t in trees.items()
                     if frozenset((n, m)) not in joined and _boxes_meet(*bb[n], *nbox[m], 0.0) and bt[n].overlap(t)]
             hits += [[a, b] for a, b in pairs if _boxes_meet(*bb[a], *bb[b], 0.0) and bt[a].overlap(bt[b])]
@@ -230,10 +259,13 @@ def swing_set(bodies, steps, near, joined=(), close=(), reach=0.05):
                     least, where = g, [deg, a, b]
         out[way] = {"to_deg": ps[-1][0], "clear_to_deg": clear_to, "meets_past_it": meets,
                     "least_gap_in": round(least / IN, 3), "least_gap_at": where}
+        if stay:
+            out[way].update({"joins_most_apart_in": round(apart / IN, 3), "joins_most_apart_at": apart_at})
     out["near"] = sorted(kept)
     out["bodies"] = names
     out["joined"] = sorted(sorted(p) for p in joined)
     out["close"] = sorted(sorted(p) for p in close)
+    out["stay"] = [list(p) for p in stay]
     return out
 
 
