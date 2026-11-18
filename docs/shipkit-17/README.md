@@ -58,6 +58,23 @@ the game draws in a state is the sockets file's `states` and slice 16's budget (
 wear terms at each level (`weathering.amounts`, the same numbers the Blender dressing uses), for the PC to build the
 material instances (`MI_Frigate_*` over `M_BoatSurface`'s kinds, or a frigate master: the PC lane's call).
 
+## The tiller build
+
+Re-run on the model thread's tiller build (PR #799, `docs/frigate-tiller`, which carries slice 14's orlop and hold too)
+after its twins: the 30 parts that build changed or added above the berth deck (the tiller's nine, the cabin's bulkhead,
+doors, skylights, window seat, stanchions, the wheel's standards, the gun deck itself, eight tackles near the stern)
+got new twins by `light.py --only`, merged over slice 16's (first given wins), and every state stays under the budget:
+underway 962,170, cleared for action 985,222, courses clewed 971,531, at anchor 943,121 light triangles, worst error
+15.03 mm, nothing failing. The export is then **484 files, 254 MB**: Outside 246 (the tiller rope's still legs among
+them), Decks 20 (the tiller and its six rope parts on their own frames, `Decks/SM_Frigate_Orlop` 178,612 and `_Hold`
+372,048 triangles, no twins: both below), Guns 218; 1,352 placings; 29 lanterns (the orlop's two from `orlop.json`,
+which slice 14 writes for the orlop and the hold together: `export_1797.json` names it for both and the export reads it
+once; those two give only a place and colour, so `lights_note` says what to assume until the model thread adds kelvin,
+lumens and radius). New in the sockets file: **`helm`**, the tiller's turn (about its own +Z, hard over 35 degrees, 5.02
+wheel turns lock to lock) and, at each whole degree of helm, the frame each rope part takes (`poses`: 71 rows of
+`location_cm`, `rotation_xyzw` and a run's X scale, from `gundeck.json`'s `tiller_ropes`; the amidships row equals the
+parts' `placed` frames). It is at `/mnt/project-files/tall-ship/export-tiller/` for the PC import.
+
 ## Checks
 
 An independent review of the export found three labelling faults, fixed before this page's numbers: the lid lanyards
@@ -91,8 +108,8 @@ without one it stops and says which.
 
 | file | what |
 | --- | --- |
-| `Tools/shipkit/frigate/export.py` | new: the export above |
-| `Tools/shipkit/frigate/export_1797.json` | new: the groups, the decks' collections, properties, poses and build files, the gun parts, the lids' frame rule, the asset root |
+| `Tools/shipkit/frigate/export.py` | the export above; the tiller build's `helm` table and slice 14's lantern format |
+| `Tools/shipkit/frigate/export_1797.json` | the groups, the decks' collections, properties, poses and build files (the hold's is `orlop.json`), the gun parts, the lids' frame rule, the asset root |
 | `docs/shipkit-17/` | this page |
 
 The export itself (241 MB of FBX) is not in git: the PC lane runs the export on the model thread's build (or takes it
@@ -100,10 +117,6 @@ from `/mnt/project-files/tall-ship/`) and imports it; the cooked game carries th
 
 ## Still to do
 
-- The tiller build (model thread's PR #799): its seven moving parts export apart by the same rule (`SM_Frigate_Tiller`,
-  `_TillerEye_S/_P`, `_TillerRun_S/_P`, `_TillerWrap_S/_P`); the gun deck's twins are re-run on it and the budget
-  re-checked before the PC import.
-- The orlop and hold (slice 14): `Decks/SM_Frigate_Orlop` and `_Hold` by the same rule, with their lanterns, once their
-  build files' names are confirmed (`orlop.json`, `hold.json` assumed).
+- The orlop's two lanterns' kelvin, lumens and radius, once the model thread adds them to `orlop.json`.
 - The PC import (`scripts/import_boats.py` or a frigate importer): LOD 1 from each `_Light.fbx` at slice 16's switch
   sizes (`docs/shipkit-16/light.json`'s `ue_screen_size`), the material instances from `Frigate_materials.json`.
