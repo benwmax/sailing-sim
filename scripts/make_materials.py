@@ -3253,8 +3253,32 @@ float shoalBreak = shoal * smoothstep(3.7, 8.2, WindP.z);
 // textures carry the squared slopes too: LEAN mapping) becomes roughness, so the sun's glitter path keeps its width.
 float2 duv = float2(p.y, p.x) / DetailP.x + 0.5 / 128.0;
 float capW = 0.0;
+// sailing-feedback #30 (docs/near-water-texels/): near the camera the slope maps' texels are bigger than a pixel (the chop's
+// 18 cm, the long chop's 48 cm, the ripples' 4.8 cm against 0.5-1.3 cm pixels 4 m out), and bilinear filtering is only C0:
+// the slopes are a patchwork of texel cells, and the sharp sun and sky highlights of calm, sheltered water drew those
+// cells as hard stair-stepped blocks, and the ripples' two turned frames (15 degrees apart) as a herringbone of crossed
+// cell rows along a nearby wall or bank. Where a map's texel spans more than about 1.5 pixels, it is read with a cubic
+// B-spline (C2: smooth slopes and highlights; four bilinear taps, Sigg and Hadwiger 2005), crossfaded back to the
+// hardware's filtered read (trilinear, LEAN) as the texel shrinks to a pixel; past that nothing changes. The B-spline
+// keeps each texel's mean, so the slope variance (b, a: LEAN) is read the same way.
+float mFoot = max(length(ddx(p.xy)), length(ddy(p.xy)));
+#define BSPL(T_, S_, uv_, N_, out_) { float2 x_ = (uv_) * (N_) - 0.5; float2 i_ = floor(x_); float2 f_ = x_ - i_; \
+    float2 f2_ = f_ * f_, f3_ = f2_ * f_; \
+    float2 w0_ = (-f3_ + 3.0 * f2_ - 3.0 * f_ + 1.0) / 6.0, w1_ = (3.0 * f3_ - 6.0 * f2_ + 4.0) / 6.0; \
+    float2 w2_ = (-3.0 * f3_ + 3.0 * f2_ + 3.0 * f_ + 1.0) / 6.0, w3_ = f3_ / 6.0; \
+    float2 g0_ = w0_ + w1_, g1_ = w2_ + w3_; \
+    float2 h0_ = (i_ - 0.5 + w1_ / g0_) / (N_), h1_ = (i_ + 1.5 + w3_ / g1_) / (N_); \
+    out_ = g0_.y * (g0_.x * Texture2DSampleLevel(T_, S_, h0_, 0) + g1_.x * Texture2DSampleLevel(T_, S_, float2(h1_.x, h0_.y), 0)) \
+         + g1_.y * (g0_.x * Texture2DSampleLevel(T_, S_, float2(h0_.x, h1_.y), 0) + g1_.x * Texture2DSampleLevel(T_, S_, h1_, 0)); }
+// The cubic's share for a map of N_ texels over tile_ metres: 1 where a texel spans 1.5 pixels or more, 0 from one pixel.
+#define BSPL_W(tile_, N_) (1.0 - smoothstep(0.67, 1.0, mFoot * (N_) / (tile_)))
+// (The filtered read stays outside the branch: its implicit derivatives need the whole pixel quad. The cubic reads mip 0
+// explicitly, so it can sit in one.)
+#define SMOOTH_READ(T_, S_, uv_, N_, tile_, out_) { float bw_ = BSPL_W(tile_, N_); out_ = Texture2DSample(T_, S_, uv_); \
+    [branch] if (bw_ > 0.0) { float4 c_; BSPL(T_, S_, uv_, N_, c_); out_ = lerp(out_, c_, bw_); } }
 float4 da = Texture2DSample(DetailA, DetailASampler, duv);
-float4 db = Texture2DSample(DetailB, DetailBSampler, duv);
+float4 db;
+SMOOTH_READ(DetailB, DetailBSampler, duv, 128.0, DetailP.x, db);
 // W3: the chop as its fetch grew it here (the ripples below are the local wind's).
 """ + SEA_SHORT + """
 float chopK = calm * SShort;
@@ -3269,7 +3293,8 @@ float jB = 1.0;
     float2 lq = float2(DetailQ.y * p.x + DetailQ.z * p.y, -DetailQ.z * p.x + DetailQ.y * p.y);
     float2 lduv = float2(lq.y, lq.x) / DetailQ.x + 0.5 / 128.0;
     float4 dd = Texture2DSample(DetailD, DetailDSampler, lduv);
-    float4 de = Texture2DSample(DetailE, DetailESampler, lduv);
+    float4 de;
+    SMOOTH_READ(DetailE, DetailESampler, lduv, 128.0, DetailQ.x, de);
     sx += (DetailQ.y * de.r - DetailQ.z * de.g) * chopK;
     sy += (DetailQ.z * de.r + DetailQ.y * de.g) * chopK;
     slopeVar += (max(de.b - de.r * de.r, 0.0) + max(de.a - de.g * de.g, 0.0)) * chopK * chopK;
@@ -3298,7 +3323,8 @@ if (DetailP.w > 0.0)
         float a = (k0 + k) * 0.2618;
         float ca = cos(a), sa = sin(a);
         float2 q = float2(ca * p.x + sa * p.y, -sa * p.x + ca * p.y);
-        float4 rb = Texture2DSample(RippleB, RippleBSampler, float2(q.y, q.x) / DetailP.y + 0.5 / 64.0);
+        float4 rb;
+        SMOOTH_READ(RippleB, RippleBSampler, float2(q.y, q.x) / DetailP.y + 0.5 / 64.0, 64.0, DetailP.y, rb);
         float wgt = k == 0 ? 1.0 - (kf - k0) : kf - k0;
         rsum += float2(ca * rb.r - sa * rb.g, sa * rb.r + ca * rb.g) * wgt;
         rvar += (max(rb.b - rb.r * rb.r, 0.0) + max(rb.a - rb.g * rb.g, 0.0)) * wgt;
