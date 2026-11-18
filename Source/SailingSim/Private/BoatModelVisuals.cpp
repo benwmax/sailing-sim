@@ -478,7 +478,7 @@ namespace
 bool ASailboatPawn::UseC22Hero(EBoatType Type) const
 {
 	// The rebuilt Catalina 22 on every Catalina 22 once imported: the player's, the gallery's, AI boats and the ghost (Bean,
-	// Nov 18: AI boats too; docs/c22-14). The cabin below stays the player's (BuildModelVisuals). -SailingClassicC22 keeps
+	// Nov 18: AI boats too; docs/c22-13). The cabin below stays the player's (BuildModelVisuals). -SailingClassicC22 keeps
 	// the fleet model everywhere, for compared stills and benches.
 	if (Type != EBoatType::Catalina22 || FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicC22"))) return false;
 	return FPackageName::DoesPackageExist(TEXT("/Game/Boats/C22Hero/SM_C22Hero_Hull"));
