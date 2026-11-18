@@ -221,7 +221,7 @@ bool FShipFramesDoorsTest::RunTest(const FString& Parameters)
 		const Vec3 Open = FrameTurn(*Door, Door->Sign * D.DoorOpenDeg).Apply(Edge);
 		TestTrue(FString::Printf(TEXT("%s swings aft"), UTF8_TO_TCHAR(Door->Name)), Open.X < Door->Origin.X - 0.6 && std::fabs(Open.Y - Door->Origin.Y) < 1e-6 && std::fabs(Open.Z - Edge.Z) < 1e-9);
 		const Vec3 Wrong = FrameTurn(*Door, -Door->Sign * D.DoorOpenDeg).Apply(Edge);
-		TestTrue(FString::Printf(TEXT("the other way would be through the wall, forward"), UTF8_TO_TCHAR(Door->Name)), Wrong.X > Door->Origin.X + 0.6);
+		TestTrue(FString::Printf(TEXT("%s the other way would be through the wall, forward"), UTF8_TO_TCHAR(Door->Name)), Wrong.X > Door->Origin.X + 0.6);
 	}
 	TestTrue(TEXT("the doors swing opposite ways about their own Z"), DoorS.Sign == -DoorP.Sign);
 
