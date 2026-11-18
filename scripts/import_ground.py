@@ -18,6 +18,9 @@ What it makes:
                                                             editor's Python has no numpy, so the committed copy is read)
   MPC_World.Season                                            0 summer .. 1 dormant (ASailingEnvironment sets it)
 
+Cost (the Mac's world gate): 12 texture fetches a pixel inside 35 m, 6 to 75 m (no second scale), 2 to 150 m (colour
+only), none past it; the normal and RHA arrays are trilinear, the colour anisotropic; ray-traced hits read no texture.
+
 Environment: GROUND_PACK (default north-texas-lake), GROUND_RES (2048; the tiers below read smaller mips through the
 texture group's LOD bias), GROUND_MATERIAL_ONLY=1 rebuilds M_Ground without reimporting the textures.
 """
@@ -91,6 +94,10 @@ def make_array(name, slices, srgb, compression):
     arr.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_WORLD)
     arr.set_editor_property("address_x", unreal.TextureAddress.TA_WRAP)
     arr.set_editor_property("address_y", unreal.TextureAddress.TA_WRAP)
+    # The ground is always seen at a grazing angle, so anisotropic filtering runs its full tap count on every fetch. The
+    # colour keeps it (the sand's grain and the lawn's blades at 15 m); the normal and RHA arrays, whose detail is not
+    # legible at those angles, are trilinear (one tap set each: the world gate's cost cut).
+    arr.set_editor_property("filter", unreal.TextureFilter.TF_DEFAULT if srgb else unreal.TextureFilter.TF_TRILINEAR)
     LIB.save_loaded_asset(arr)
     return arr
 

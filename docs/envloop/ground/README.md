@@ -126,6 +126,12 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   sand-or-clay tone from `SailingGround::BankTone` (20-40 m stretches; scene.py's `smooth`) instead of each 5 m cell's
   own random. `ASailingEnvironment` sets `Season` from the day of the year (`SeasonAmount`: dormant December to
   mid-March, ramps through November and April). Test: `SailingSim.Visual.GroundDress`.
+- **Cost (the Mac's first world gate, Nov 18).** With 12 fetches on every pixel inside 150 m the High gate lost 9 fps on
+  coast-day and 4 on slip (both held at 45 on main). The material now reads by distance: inside 35 m both scales of
+  the two surfaces (12 fetches); to 75 m one scale each with their height, normal and roughness maps (6); to 150 m
+  colour only, the two mixed by weight (2); nothing past it; the bands cross-fade over 10 m. The normal and RHA arrays
+  are trilinear (anisotropic filtering on ground seen at a grazing angle ran its full tap count on every fetch; the colour
+  keeps it), and ray-traced hits (Lumen's hit lighting) take the card colours. The numpy twin has the same bands.
 - **Far colour.** The card colours are measured albedos, darker and less yellow than today's vertex colours (today's
   lawn is a bright yellow-green, linear 0.36, 0.36, 0.16). Past 150 m `M_Ground` draws the card colours, so the far
   band changes too; `M_FarLand` (the far ring past the grid) should take the same table in Track I, or there is a step

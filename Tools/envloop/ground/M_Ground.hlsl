@@ -11,6 +11,8 @@ const float SCALE2 = 1.6180;
 const float BLEND_DEPTH = 0.1800;
 const float TEX_FAR = 150.0;
 const float2 NFADE = float2(25.0, 80.0);
+const float2 BAND_A = float2(35.0, 45.0);
+const float2 BAND_B = float2(75.0, 85.0);
 
 struct GroundFn
 {
@@ -80,10 +82,19 @@ float dist = length(P - Cam) * 0.01;
 float2 dx = ddx(p.xy), dy = ddy(p.xy);
 float3 nT = float3(0, 0, 1);
 float ao = 1.0;
-if (dist < TEX_FAR)
+// Cost bands: the rotated second scale only inside BAND_A, the height, normal and roughness maps only inside BAND_B;
+// past it colour only, mixed by weight. 12 fetches a pixel inside 35 m, 6 to 75 m, 2 to 150 m, none past it. Ray-traced
+// hits (Lumen's hit lighting) take the card colours: nothing there is close enough to read a texture.
+float kA = 1.0 - smoothstep(BAND_A.x, BAND_A.y, dist);
+float kB = 1.0 - smoothstep(BAND_B.x, BAND_B.y, dist);
+#if RAYHITGROUPSHADER
+const bool bTextured = false;
+#else
+const bool bTextured = dist < TEX_FAR;
+#endif
+if (bTextured)
 {
     float4 L[2][2];     // per layer: albedo.rgb + height, then normal.xy, rough, ao
-    float H[2];
     [unroll] for (int j = 0; j < 2; ++j)
     {
         int s = j == 0 ? i1 : i2;
@@ -94,15 +105,25 @@ if (dist < TEX_FAR)
         float2 u2 = mul(R, p.xy) / (t * SCALE2) + float2(0.37, 0.71) * s;
         float2 d1x = dx / t, d1y = dy / t, d2x = mul(R, dx) / (t * SCALE2), d2y = mul(R, dy) / (t * SCALE2);
         float3 a = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u1, s), d1x, d1y).rgb;
-        float3 b = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u2, s), d2x, d2y).rgb;
-        float3 ra = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u1, s), d1x, d1y).rgb;
-        float3 rb = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u2, s), d2x, d2y).rgb;
-        float2 na = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u1, s), d1x, d1y).rg * 2.0 - 1.0;
-        float2 nb = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u2, s), d2x, d2y).rg * 2.0 - 1.0;
-        float m = G.VNoise(p.xy / 4.3 + float2(3.0, -2.0) * s);
-        float jn = smoothstep(-0.12, 0.12, (ra.g - rb.g) + 0.6 * m);
-        L[j][0] = float4(lerp(b, a, jn), lerp(rb.g, ra.g, jn));
-        L[j][1] = float4(lerp(nb, na, jn), lerp(rb.r, ra.r, jn), lerp(rb.b, ra.b, jn));
+        float3 ra = float3(ROUGHS[s], 0.5, 1.0);
+        float2 na = 0;
+        if (kB > 0.0)
+        {
+            ra = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u1, s), d1x, d1y).rgb;
+            na = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u1, s), d1x, d1y).rg * 2.0 - 1.0;
+        }
+        L[j][0] = float4(a, ra.g);
+        L[j][1] = float4(na, ra.r, ra.b);
+        if (kA > 0.0)
+        {
+            float3 b = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u2, s), d2x, d2y).rgb;
+            float3 rb = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u2, s), d2x, d2y).rgb;
+            float2 nb = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u2, s), d2x, d2y).rg * 2.0 - 1.0;
+            float m = G.VNoise(p.xy / 4.3 + float2(3.0, -2.0) * s);
+            float jn = smoothstep(-0.12, 0.12, (ra.g - rb.g) + 0.6 * m);
+            L[j][0] = lerp(L[j][0], float4(lerp(b, a, jn), lerp(rb.g, ra.g, jn)), kA);
+            L[j][1] = lerp(L[j][1], float4(lerp(nb, na, jn), lerp(rb.r, ra.r, jn), lerp(rb.b, ra.b, jn)), kA);
+        }
     }
     float w1 = w[i1], w2 = w[i2];
     float h1 = L[0][0].a + w1, h2 = L[1][0].a + w2;
@@ -111,8 +132,11 @@ if (dist < TEX_FAR)
     float bt = max(b1 + b2, 1e-6);
     b1 /= bt; b2 /= bt;
     float share = w1 + w2;
+    float wt = max(share, 1e-6);
+    b1 = lerp(w1 / wt, b1, kB); b2 = lerp(w2 / wt, b2, kB);
     float3 texCol = L[0][0].rgb * tint[i1] * b1 + L[1][0].rgb * tint[i2] * b2;
-    float texRough = L[0][1].b * b1 + L[1][1].b * b2;
+    float roughCard = ROUGHS[i1] * b1 + ROUGHS[i2] * b2;
+    float texRough = lerp(roughCard, L[0][1].b * b1 + L[1][1].b * b2, kB);
     float3 others = base - w1 * ALB_S[i1] * tint[i1] - w2 * ALB_S[i2] * tint[i2];
     float farK = smoothstep(TEX_FAR * 0.8, TEX_FAR, dist);
     base = lerp(texCol * share + others, base, farK);

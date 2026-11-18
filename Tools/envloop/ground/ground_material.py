@@ -50,6 +50,12 @@ BLEND_DEPTH = 0.18        # height blend: how far (in 0..1 height) one surface c
 MACRO_A, MACRO_B = 0.10, 0.07     # slow wash amplitudes at 9 m and 31 m
 TEXTURE_FAR_M = 150.0     # past this, card colours only (the near band's edge)
 NORMAL_FADE_M = (25.0, 80.0)
+# Cost bands (the Mac's world gate at 7307fe54: -9 fps on coast-day, -4 on slip at High with 12 fetches everywhere inside
+# 150 m): the second, rotated scale only inside BAND_A (the hero band, where a tile's repeat would show); the height
+# maps, normals and roughness (the RHA and normal arrays) only inside BAND_B; past it the two surfaces are colour only,
+# mixed by their weights. Fetches per pixel: 12 inside 35 m, 6 to 75 m, 2 to 150 m, none past it.
+BAND_A_M = (35.0, 45.0)
+BAND_B_M = (75.0, 85.0)
 
 
 def sat(x):
@@ -197,6 +203,8 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         order = np.argsort(-w[idx], axis=1)
         top = order[:, :2]
         x, y = P[idx, 0], P[idx, 1]
+        kA = 1.0 - smoothstep(BAND_A_M[0], BAND_A_M[1], dist[idx])
+        kB = 1.0 - smoothstep(BAND_B_M[0], BAND_B_M[1], dist[idx])
         layers, heights = [], []
         for k in range(2):
             si = top[:, k]
@@ -212,7 +220,8 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
             # Join the two samples by height, steered by a slow noise so neither scale shows its own repeat.
             m = vnoise(x / 4.3 + 3.0 * si, y / 4.3 - 2.0 * si)
             j = smoothstep(-0.12, 0.12, (a[:, 6] - b[:, 6]) + 0.6 * m)[:, None]
-            layer = b + (a - b) * j
+            two = b + (a - b) * j
+            layer = a + (two - a) * kA[:, None]     # the rotated scale fades out over BAND_A (the GPU stops fetching it)
             layers.append(layer)
             heights.append(layer[:, 6])
         w1 = w[idx, top[:, 0]]
@@ -226,9 +235,14 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         tot = np.maximum(b1 + b2, 1e-6)
         b1, b2 = b1 / tot, b2 / tot
         share = w1 + w2                                 # the rest keep their card colour
+        # Past BAND_B the height maps are not read: the two surfaces mix by their weights.
+        wtot = np.maximum(share, 1e-6)
+        b1 = w1 / wtot + (b1 - w1 / wtot) * kB
+        b2 = w2 / wtot + (b2 - w2 / wtot) * kB
         t1, t2 = tint[top[:, 0]], tint[top[:, 1]]
         tex_col = layers[0][:, 0:3] * t1 * b1[:, None] + layers[1][:, 0:3] * t2 * b2[:, None]
-        tex_rough = layers[0][:, 5] * b1 + layers[1][:, 5] * b2
+        rough_card = ROUGH[top[:, 0]] * b1 + ROUGH[top[:, 1]] * b2
+        tex_rough = rough_card + (layers[0][:, 5] * b1 + layers[1][:, 5] * b2 - rough_card) * kB
         others = base[idx] - w1[:, None] * card[top[:, 0]] - w2[:, None] * card[top[:, 1]]
         far_k = smoothstep(TEXTURE_FAR_M * 0.8, TEXTURE_FAR_M, dist[idx])[:, None]
         mix_col = tex_col * share[:, None] + others
