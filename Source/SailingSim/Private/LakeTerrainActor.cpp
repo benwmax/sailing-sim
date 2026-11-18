@@ -1331,6 +1331,7 @@ void ALakeTerrainActor::PlaceShoreEdges()
 {
 	const FLakeData* Lake = GetLake();
 	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || EdgeModels.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoShoreEdges"))) return;
+	if (!ShoreEdgesOn(*Lake)) return;   // a lake region pack: the coasts keep their tile banks until they have a pack (WorldKit.h)
 	// Shore Track C (docs/envloop/shore-edges): the shore had four edge types (a plain wall and kerb, riprap, painted "natural
 	// bank" and "sand strip"). The kit pieces /Game/World/Edges/SM_Edge_<Type>_<n> (Tools/envloop/shore-edges/export_edges.py:
 	// 4 m of shore each, x along it, +y toward the land, z = 0 the pool; three seeds a type) carry their own geometry and

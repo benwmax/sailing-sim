@@ -158,6 +158,8 @@ struct FShoreEdgeRun
 	uint32 Seed = 0;
 };
 /** The kit bank a developed lot gets by its seed, the region pack's rule: bulkhead, riprap, limestone, timber, or None (natural). */
+/** Whether a world gets the kit shore edges (an inland lake: the pack is north-texas-lake); a coast keeps the tile's bank. */
+SAILINGSIM_API bool ShoreEdgesOn(const FLakeData& Lake);
 SAILINGSIM_API FName LotBankType(uint32 HouseIndex);
 /** The lots whose bank is a kit piece, with their waterlines (HouseKit.cpp; the same line the tile's riprap follows). */
 SAILINGSIM_API void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out);

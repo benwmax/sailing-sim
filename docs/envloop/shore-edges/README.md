@@ -117,6 +117,10 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   as the fallback for a steep bank; two nodes in three take a piece, laid across the slope at the waterline. Instanced
   static meshes, static, no collision; the walls to 1.5 km and in ray tracing, the scatter to 300 m. Nothing is placed
   by hand outside the home club. `-SailingNoShoreEdges` compares; Low keeps the old shore.
+- **Lakes only.** `ShoreEdgesOn` (`HouseKit.cpp`): the pack is a North Texas lake region, its pieces stand at the pool
+  datum and read the lake's marks, so inland lakes get them and the tidal coasts (Galveston, the Gulf, Marseille) keep the
+  tile's own concrete bulkhead until a coast pack exists. The first world gate (Nov 18) had Marseille's port view paying
+  11 fps for a lake's edges along its whole coast; with the coasts out the gate is Ray Hubbard's cost alone.
 - **Known gaps for the Mac stills.** The natural pieces' scatter follows the kit's own slope, not the terrain's, so on
   a bank steeper or flatter than the card's a shell or stick can hover or sink a few centimetres; the clay scarp is a
   fixed 1.2-1.9 m face standing in the lidar bank. Reeds are stand-ins until Track B's grass lands; the lawn behind the
@@ -126,7 +130,7 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
 
 1. `scripts/build.sh`, then `scripts/make-content.sh` is not needed (no material script changes) but `MPC_World` must
    exist; `scripts/make-shore-edges.sh` (Blender export, import, `M_ShoreEdge`, the marks); `scripts/make-houses.sh`
-   (the tiles lose the plain walls). Commit `/Game/World/Edges` and the rebuilt house tiles to the branch.
+   (Ray Hubbard's tiles lose the plain walls; the coasts' keep them). Commit `/Game/World/Edges` and the rebuilt house tiles to the branch.
 2. Station stills before and after: Track 0's bulkhead lot, natural clay bank and club beach stations
    (`Tools/envloop/stations.csv`), `SCENES=... scripts/capture-scenes.sh 8` on main and the branch.
 3. `scripts/gate.sh --scope world`; a view under its floor is benched beside main.

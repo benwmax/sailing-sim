@@ -247,8 +247,17 @@ FName LotBankType(uint32 K)
 	return NAME_None;
 }
 
+bool ShoreEdgesOn(const FLakeData& Lake)
+{
+	// The kit's only region pack is north-texas-lake (Tools/envloop/shore-edges/packs): its pieces stand at the pool datum and
+	// read the lake's marks, so inland lakes get them and the tidal coasts (Galveston, the Gulf, Marseille) wait for a pack
+	// of their own. The pieces on a coast also cost the gate: Marseille's port view lost 11 fps to them (Nov 18 2026).
+	return !Lake.IsCoast();
+}
+
 void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out)
 {
+	if (!ShoreEdgesOn(Lake)) return;
 	const Sailing::FLakeTerrain& Terr = Lake.Terrain;
 	for (int32 K = 0; K < Lake.Houses.Num(); ++K)
 	{
@@ -757,17 +766,29 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 			}
 		}
 		if (Line.Num() < 3 || Bank.IsNone()) continue;   // a natural bank on some
-		// The bank. Shore Track C (docs/envloop/shore-edges): the bulkhead, limestone and timber walls are kit pieces
+		// The bank. Shore Track C (docs/envloop/shore-edges): on a lake the bulkhead, limestone and timber walls are kit pieces
 		// (SM_Edge_*) that ALakeTerrainActor::PlaceShoreEdges lays along the same waterline (ShoreEdgeRuns), with the water's
-		// marks drawn by height in M_ShoreEdge; only the riprap stays in the tile, stepped stone down the bank.
-		if (Bank == TEXT("riprap"))
+		// marks drawn by height in M_ShoreEdge; only the riprap stays in the tile, stepped stone down the bank. The kit is a
+		// North Texas lake region pack (its marks are the pool's), so a coast's lots keep the tile's own concrete bulkhead
+		// until a coast pack exists (the gate showed Marseille paying 11 fps for a lake's edges, Nov 18 2026).
+		const bool bTileWall = Bank != TEXT("riprap") && !ShoreEdgesOn(Lake);
+		for (int32 I = 0; I + 1 < Line.Num(); ++I)
 		{
-			for (int32 I = 0; I + 1 < Line.Num(); ++I)
+			const FVector2D A = Line[I], B = Line[I + 1];
+			if (FVector2D::Distance(A, B) > 4.5) continue;
+			FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
+			if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
+			if (bTileWall)
 			{
-				const FVector2D A = Line[I], B = Line[I + 1];
-				if (FVector2D::Distance(A, B) > 4.5) continue;
-				FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
-				if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
+				const double Top = 0.5;
+				WallQuad(Conc, A, B, -0.7, Top, N, 0.0, -0.7);
+				Conc.Span(A - N * 0.15, B - N * 0.15, 0.34f, float(Top), float(Top + 0.12));
+				// The fill behind it up to the lawn, so the cap doesn't stand alone as a kerb.
+				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
+				Up(Conc, FVector(A - N * 0.3, Top + 0.12), FVector(B - N * 0.3, Top + 0.12), FVector(B - N * 2.0, FMath::Max(ZB, Top + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Top + 0.05)));
+			}
+			else if (Bank == TEXT("riprap"))
+			{
 				// Riprap: a pile of stones down the bank, in steps so its face is broken, not a paved slope.
 				for (int32 St = 0; St < 3; ++St)
 				{
