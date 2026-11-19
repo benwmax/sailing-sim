@@ -1,0 +1,1076 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "43F0C09043CD2AA432F55D97BE0B65E0",
+			"instanceName": "BEN-PC-6108",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.19-07.14.55",
+	"succeeded": 18,
+	"succeededWithWarnings": 1,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 193.57704162597656,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "CanopySmooth",
+			"fullTestPath": "SailingSim.Lake.CanopySmooth",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.33593949675559998,
+			"dateTime": "2026.11.19-07.11.41",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "990 club-shore points checked",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.41"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ClubBerth",
+			"fullTestPath": "SailingSim.Lake.ClubBerth",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 2.7605774402618408,
+			"dateTime": "2026.11.19-07.11.41",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FindBerth (J/22, wind from 0): 577 ms",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Wind from 0: berth at (35, 165) m, 168.8 m from the club, 4 lines, 1.2 m under the keel",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FindBerth (J/22, wind from 90): 577 ms",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.43"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Wind from 90: berth at (35, 165) m, 168.8 m from the club, 4 lines, 1.2 m under the keel",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.43"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FindBerth (J/22, wind from 180): 577 ms",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.43"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Wind from 180: berth at (35, 165) m, 168.8 m from the club, 4 lines, 1.2 m under the keel",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.43"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "FindBerth (J/22, wind from 270): 577 ms",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.44"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Wind from 270: berth at (35, 165) m, 168.8 m from the club, 4 lines, 1.2 m under the keel",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.44"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Crowns",
+			"fullTestPath": "SailingSim.Lake.Crowns",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.54449242353439331,
+			"dateTime": "2026.11.19-07.11.44",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "288856 crowns, 227434 within 400 m of the water, 7366 red cedar",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.44"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "288826 trees: 271782 from crowns, 79417 tall (post oak 25086, live oak 8397, cedar elm 13326, sugarberry 6804, black willow 3642, cottonwood 17783)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "DockLinesHold",
+			"fullTestPath": "SailingSim.Lake.DockLinesHold",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.095978900790214539,
+			"dateTime": "2026.11.19-07.11.45",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Moved at most 1.27 m in 60 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "DocksAndBridgesStopTheBoat",
+			"fullTestPath": "SailingSim.Lake.DocksAndBridgesStopTheBoat",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.46451351046562195,
+			"dateTime": "2026.11.19-07.11.45",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Hobie 16 at the 5 m bridge: stopped at 49.6 m, tilted at most 23 deg",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Hobie 16 at the 7 m bridge: stopped at 49.6 m, tilted at most 19 deg",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Dock: stopped at 58.5 m. Low bridge: 51.2 m. 5 m bridge: 51.3 m. High bridge: sailed on to 119.5 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "GaugeLevel",
+			"fullTestPath": "SailingSim.Lake.GaugeLevel",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.29356899857521057,
+			"dateTime": "2026.11.19-07.11.45",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Gauge 2026-10-11: 432.32 ft, 0.97 m low; depth off Rush Creek 10.2 m at full pool, 9.2 m today",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.45"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "HeightAtNonFinite",
+			"fullTestPath": "SailingSim.Lake.HeightAtNonFinite",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.29568019509315491,
+			"dateTime": "2026.11.19-07.11.45",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Houses",
+			"fullTestPath": "SailingSim.Lake.Houses",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.30599939823150635,
+			"dateTime": "2026.11.19-07.11.46",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "35165 houses, 13479 in the full-detail band, 31445 with lidar roofs, 39291 wings",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.46"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Tile of 317 houses: 1550 wall quads checked, 0 facing in; 987 roof quads",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.46"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "105 lidar hip ridges checked, 0 off by over 0.6 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.11.46"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "InIronsAtLaunch",
+			"fullTestPath": "SailingSim.Lake.InIronsAtLaunch",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 179.91340637207031,
+			"dateTime": "2026.11.19-07.11.46",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "RayHubbard, Sunfish, Realistic: 600 s, ended at 7.1, -40.5 (3 m out at most), fastest 1.1 kn, in contact 0 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.12.06"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "RayHubbard, Sunfish, Easy: 900 s, ended at -1013.0, -934.3 (1357 m out at most), fastest 5.6 kn, in contact 0 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.12.35"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "RayHubbard, J/22, Easy: 600 s, ended at -1107.3, -1050.4 (1505 m out at most), fastest 6.1 kn, in contact 0 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.12.55"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "RayHubbard, Catalina 22, Easy: 600 s, ended at -521.6, -1534.1 (1587 m out at most), fastest 6.0 kn, in contact 0 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.13.16"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/pr813/Content/TerrainData/GalvestonBay.detail' error.",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.13.16"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "GalvestonBay, Sunfish, Realistic: 600 s, ended at 432.0, -4412.6 (3 m out at most), fastest 1.1 kn, in contact 0 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.13.35"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "GalvestonBay, Sunfish, Easy: 900 s, ended at 307.8, -4552.7 (190 m out at most), fastest 5.4 kn, in contact 581 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.05"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "GalvestonBay, J/22, Easy: 600 s, ended at 148.7, -4840.2 (514 m out at most), fastest 6.1 kn, in contact 54 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.26"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "GalvestonBay, Catalina 22, Easy: 600 s, ended at 373.8, -4629.5 (233 m out at most), fastest 5.9 kn, in contact 31 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.46"
+				}
+			],
+			"warnings": 1,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LeeShoreChop",
+			"fullTestPath": "SailingSim.Lake.LeeShoreChop",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.30027329921722412,
+			"dateTime": "2026.11.19-07.14.46",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Rush Creek, 14 kn northerly: fetch 190 m straight upwind, 1229 m effective; Hs 0.144 m (SWAN 0.133), Tp 1.43 s (SWAN 1.86)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.46"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Rush Creek, 14 kn southerly: Hs 0.185 m (SWAN 0.138)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.46"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "1 km off a straight shore: ray 1010 m, effective 1013 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.46"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Marina",
+			"fullTestPath": "SailingSim.Lake.Marina",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.35806238651275635,
+			"dateTime": "2026.11.19-07.14.46",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "122 slips (83 occupied), home rcyc.dock.b.n18 at (-26.0, 185.0) in 2.9 m; 0 slips under 1.2 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.47"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Ramp head 0.54 m up at (37.8, 133.5), dry for 3.9 of 14 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.47"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Ramp slab 13.9 m at 14.0 %: bed at most 0.00 m over it, 0.05 m under it; cut 0.39 m into the bank, fill 1.13 m; 0.000 m off the bank 3 m out",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.47"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RunsAgroundInShallows",
+			"fullTestPath": "SailingSim.Lake.RunsAgroundInShallows",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.13501709699630737,
+			"dateTime": "2026.11.19-07.14.47",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Stopped at x = 194.6 m, 0.05 kn, depth under keel -0.01 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.47"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SeaStateSwan",
+			"fullTestPath": "SailingSim.Lake.SeaStateSwan",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 5.6471295356750488,
+			"dateTime": "2026.11.19-07.14.47",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "5 kn: lake median Hs 0.048 m, SWAN 0.048 m (-0%)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.48"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "11 kn: lake median Hs 0.126 m, SWAN 0.125 m (+1%)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.50"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "18 kn: lake median Hs 0.230 m, SWAN 0.238 m (-3%)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.51"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "28 kn: lake median Hs 0.464 m, SWAN 0.493 m (-6%)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Rush Creek Yacht Club, northerly: Hs 0.130 m, SWAN 0.133 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Off Rush Creek, northerly: Hs 0.170 m, SWAN 0.165 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "South lake near the dam, northerly: Hs 0.273 m, SWAN 0.256 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Off Rush Creek, southerly: Hs 0.205 m, SWAN 0.197 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Chandlers Landing, southerly: Hs 0.209 m, SWAN 0.200 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.52"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShelterBandBehindTrees",
+			"fullTestPath": "SailingSim.Lake.ShelterBandBehindTrees",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.013902898877859116,
+			"dateTime": "2026.11.19-07.14.53",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Lee of a 12 m treeline: 0.38 at 3 heights, 0.48 at 10, 0.85 at 20, 1.00 at 32; open-water build 0.93 at 40 m, 1.00 at 1.2 km",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "100 m downwind of the bank: 1.00 bare, 0.46 behind houses",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShoreDetail",
+			"fullTestPath": "SailingSim.Lake.ShoreDetail",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.37723520398139954,
+			"dateTime": "2026.11.19-07.14.53",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "1831 shoreline points of the 5 m grid, 100.0% with 1 m detail",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "105 detail points; land |1 m - 5 m| median 0.17 m; steps over 1.5 m 0.018%; 181 tile edges, worst seam 0.000 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShorelineMatchesMapData",
+			"fullTestPath": "SailingSim.Lake.ShorelineMatchesMapData",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.3002839982509613,
+			"dateTime": "2026.11.19-07.14.53",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Rush Creek Yacht Club docks: water's edge 1.4 m from the map shoreline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Chandlers Landing: water's edge 3.1 m from the map shoreline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Harry Myers Park: water's edge 0.1 m from the map shoreline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Deepest point 14.0 m below the conservation pool",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.53"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShoreMapAtRamp",
+			"fullTestPath": "SailingSim.Lake.ShoreMapAtRamp",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.30286911129951477,
+			"dateTime": "2026.11.19-07.14.53",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Ramp head (37.8, 133.5), 0.54 m up, dry for 3.9 m; steps in the shore map: 0 (worst 0.00 m)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TiedUpSitsStill",
+			"fullTestPath": "SailingSim.Lake.TiedUpSitsStill",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 1.1236841678619385,
+			"dateTime": "2026.11.19-07.14.54",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "6 kn from 90: heel -2.02 .. -2.02 deg, roll rate up to 0.0 deg/s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "6 kn from 270: heel 2.12 .. 2.12 deg, roll rate up to 0.0 deg/s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 0 off the bow: 5 lines, heel -0.01 .. 0.02 deg, roll rate up to 0.0 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 90 off the bow: 5 lines, heel -0.15 .. 0.10 deg, roll rate up to 0.4 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 150 off the bow: 5 lines, heel -0.15 .. 0.20 deg, roll rate up to 0.4 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.54"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 180 off the bow: 5 lines, heel -0.19 .. 0.19 deg, roll rate up to 0.5 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.55"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 210 off the bow: 5 lines, heel -0.20 .. 0.16 deg, roll rate up to 0.4 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.55"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Home slip, 6 kn gusty from 270 off the bow: 5 lines, heel -0.11 .. 0.07 deg, roll rate up to 0.3 deg/s, in contact 0% of the time",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.55"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "WindShadowAndFetch",
+			"fullTestPath": "SailingSim.Lake.WindShadowAndFetch",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"43F0C09043CD2AA432F55D97BE0B65E0"
+			],
+			"duration": 0.0084326006472110748,
+			"dateTime": "2026.11.19-07.14.55",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Wind behind a 15 m bluff: 35% at 40 m, 59% at 200 m, 99% at 550 m (lee 100%, open-water build 99%)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.19-07.14.55"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
