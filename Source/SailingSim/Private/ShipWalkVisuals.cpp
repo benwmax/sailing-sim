@@ -426,7 +426,7 @@ void ASailboatPawn::UpdateShipManoeuvre()
 Sailing::FShipOrderContext ASailboatPawn::GetShipOrderContext() const
 {
 	Sailing::FShipOrderContext C;
-	// The square rig's sail plans are carried out (ApplySailPlan), the guns by her battery, tacking, wearing and heaving to
+	// The square rig's sail plans are carried out (ApplySailOrder), the guns by her battery, tacking, wearing and heaving to
 	// by her officers (FShipHandling).
 	C.bSquareRig = Boat.GetConfig().HasSquareRig();
 	C.bManoeuvres = C.bSquareRig;
@@ -492,8 +492,10 @@ void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
 	case EShipOrder::FightingSail:
 	case EShipOrder::ShortenSail:
 	case EShipOrder::FurlAll:
-		// The crew set, clew up or furl each sail at their pace (the physics' SquareOut, the model's ShipRigPose).
-		Sailing::ApplySailPlan(Order.Order, Boat.GetConfig(), Controls);
+		// The crew set, clew up or furl each sail at their pace (the physics' SquareOut, the model's ShipRigPose). Shorten
+		// sail takes her down her officers' ladder a plan at a time (ShipSailPlans.h), and before the wind the spanker is
+		// brailed up with the plan.
+		Sailing::ApplySailOrder(Order.Order, Boat.GetConfig(), Controls, ShipSailPlan, FMath::Abs(Boat.GetTelemetry().TrueWindAngle) * Sailing::kRadToDeg > 155.0);
 		break;
 	case EShipOrder::CastLoose:
 	case EShipOrder::Load:
@@ -535,6 +537,8 @@ void ASailboatPawn::GiveShipOrder(const Sailing::FIssuedOrder& Order)
 	const Sailing::FShipOrderInfo& Info = Sailing::ShipOrderInfo(Order.Order);
 	FString Call = UTF8_TO_TCHAR(Info.Call);
 	if (Info.bSided && Order.Side != Sailing::EOrderSide::Both) Call = FString(UTF8_TO_TCHAR(Sailing::OrderSideName(Order.Side))) + TEXT(" side: ") + Call;
+	// (shortening sail says which plan she is coming down to: "Shorten sail! (double-reefed topsails)")
+	if (Order.Order == EShipOrder::ShortenSail && Sailing::SailOrderPlanName(ShipSailPlan)) Call += FString::Printf(TEXT(" (%s)"), UTF8_TO_TCHAR(Sailing::SailOrderPlanName(ShipSailPlan)));
 	StatusMessage = TEXT("Captain: ") + Call;
 	StatusUntil = Boat.GetState().Time + 4.0;
 }

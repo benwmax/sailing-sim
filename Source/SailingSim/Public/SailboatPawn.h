@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "AutoTrim.h"
+#include "DemoHelm.h"
 #include "EasyAssists.h"
 #include "CrewStation.h"
 #include "BoatModel.h"
@@ -32,6 +33,7 @@
 #include "ShipWalk.h"
 #include "ShipOrders.h"
 #include "ShipRig.h"
+#include "ShipFrames.h"
 #include "ShipHandling.h"
 #include "Engine/StreamableManager.h"
 #include "SailboatPawn.generated.h"
@@ -61,6 +63,16 @@ struct FShipRigPart
 	int32 Spar = -1;          // the spar it is (Object 0) or rides on
 	int32 Sail = -1;
 	uint8 Object = 0;         // 0 the spar, 1 the sail's head, 2 set, 3 clewed, 4 furled
+};
+
+/** A moving part of a ship's model (docs/ship-frames/, ShipModelVisuals.cpp): the tiller, a rope part, a door, the wheel. */
+struct FShipFramePart
+{
+	TWeakObjectPtr<UStaticMeshComponent> Mesh;
+	FTransform Rest;          // its transform in BoatRoot's frame as built (helm amidships, doors shut)
+	FTransform Applied;       // what was last put on it
+	int32 Frame = -1;         // its row in the ship's frames table
+	bool bBelow = false;      // a gun deck part: shown with the gun deck's mesh
 };
 
 /**
@@ -384,7 +396,7 @@ private:
 	// and rudder meshes and the rig lines drawn from their sockets instead of the procedural hull and shapes.
 	// bOwnOutboard: the hull carries its own outboard (the pawn draws no stand-in box on the transom). bTravelerBridge: the
 	// cockpit has the light J/22's traveler bridge for the crew's feet (FCrewGround; the hero's track is on the sole).
-	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
+	struct FBoatModelMeshes { UStaticMesh* Hull = nullptr; UStaticMesh* Mast = nullptr; UStaticMesh* Boom = nullptr; UStaticMesh* Rudder = nullptr; UStaticMesh* Keel = nullptr; UStaticMesh* RudderBlade = nullptr; UStaticMesh* Interior = nullptr; UStaticMesh* Glass = nullptr; UStaticMesh* TillerExt = nullptr; UStaticMesh* Wheel = nullptr; bool bOwnOutboard = false; bool bTravelerBridge = true; bool bMirrorTwinRudder = false; };
 	FBoatModelMeshes ModelMeshesFor(Sailing::EBoatType Type) const;
 	/** Whether this boat draws the rebuilt Catalina 22 (/Game/Boats/C22Hero, docs/c22-12) rather than the fleet model. */
 	bool UseC22Hero(Sailing::EBoatType Type) const;
@@ -651,6 +663,9 @@ public:
 	/** A ship's rig on the model (docs/ship-rig/): her table (null for a boat without one) and its pose now. */
 	const Sailing::FShipRigData* GetShipRig() const { return ShipRig; }
 	const Sailing::FShipRigPose& GetShipRigPose() const { return ShipRigPose; }
+	/** A ship's moving parts (docs/ship-frames/): her table (null for a boat without one) and their pose now. */
+	const Sailing::FShipFramesData* GetShipFrames() const { return ShipFrames; }
+	const Sailing::FShipFramesPose& GetShipFramesPose() const { return ShipFramesPose; }
 private:
 	Sailing::FWalkMap WalkMap;
 	FString WalkMapName;                     // the ship the map is for
@@ -668,6 +683,7 @@ private:
 	/** Her manoeuvres (tack, wear, heave to: FShipHandling, stepped with the physics), and the step last called out. */
 	Sailing::FShipHandling ShipHandling;
 	Sailing::EShipManoeuvreStep ShipHandlingCalled = Sailing::EShipManoeuvreStep::Idle;
+	int32 ShipSailPlan = 0;            // the plan she carries on her officers' ladder (Sailing::ApplySailOrder), -1 off it
 	/** Starts a manoeuvre with her helmsman at the wheel; follows it each frame (its calls, the course after it). */
 	void StartShipManoeuvre(Sailing::EShipManoeuvre Manoeuvre);
 	void UpdateShipManoeuvre();
@@ -702,6 +718,19 @@ private:
 	void ClearShipRig();
 	void BindShipRig();
 	void UpdateShipRig(float DeltaSeconds);
+	/** A ship's moving parts (docs/ship-frames/, ShipModelVisuals.cpp): the tiller and its ropes with the rudder, the wheel
+	 *  with them, the cabin doors for the walker. The table, their pose, the parts (found on the model or loaded for it)
+	 *  and the load of the missing ones. */
+	const Sailing::FShipFramesData* ShipFrames = nullptr;
+	Sailing::FShipFramesPose ShipFramesPose;
+	TArray<FShipFramePart> ShipFrameParts;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> ShipFrameOwnMeshes;
+	TArray<FSoftObjectPath> ShipFramesPending;
+	TArray<FShipFramePart> ShipFramesPendingParts;
+	TSharedPtr<struct FStreamableHandle> ShipFramesLoad;
+	void ClearShipFrames();
+	void BindShipFrames();
+	void UpdateShipFrames(float DeltaSeconds);
 	/** Her guns (docs/cannon-fire/, the player's ship only): the battery on BoatRoot, whether each side was told to keep
 	 *  firing (the panel's cease fire), and its shots shaking the camera. */
 	UPROPERTY(Transient) TObjectPtr<ACannonBattery> ShipBattery;
@@ -800,7 +829,7 @@ public:
 	 *  line, named, plus the spreaders (not drawn as lines: the mast model has them) for the sails to clear. */
 	void HoldForTests(double TwaDeg, double WindKnots);
 	/** The autopilot's new true wind angle, sailing on (SailingSim.Visual.SheetClearance: through a tack or a gybe). */
-	void RetargetForTests(double TwaDeg) { DemoPilot.TargetTWADeg = TwaDeg; }
+	void RetargetForTests(double TwaDeg) { DemoPilot.TargetTWADeg = TwaDeg; DemoBaseTwa = TwaDeg; }
 	struct FRigLineSample { FVector A, B, Sag; float RadiusCm = 0.f; const TCHAR* Name = TEXT(""); TArray<FVector> Points; /* the drawn centreline */ };
 	const TArray<FRigLineSample>& GetRigLineSamples() const { return RigLineSamples; }
 	bool HasModelTravelerBridge() const { return bModelTravelerBridge; }
@@ -853,6 +882,13 @@ private:
 	 *  where the wheel is in the hull's mesh (the maxi, the Catalina 30) or the boat has a tiller. */
 	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> ModelWheel;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> WheelPivot;
+	/** Catalina 22 rebuild (docs/c22-13): the swing keel on its pin (the hull's KeelPin) and the rudder's blade on its bolt
+	 *  (the rudder part's RudderBolt), turned in the tick by KeelSwingTurn and BladeKickTurn. Null for every other model. */
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> KeelPivot;
+	UPROPERTY(Transient) TObjectPtr<USceneComponent> BladePivot;
+	FVector2D KeelPinM = FVector2D::ZeroVector;  // the pin (body x, z; m)
+	double KeelTurnShown = 0.0;                  // rad: the keel as drawn, wound toward the physics' at KeelWindRate
+	static constexpr double KeelWindRate = 0.25; // rad/s: her winch winds the plate up or down in about 4 s (the look only)
 	FVector WheelAxis = FVector::ForwardVector;  // boat frame, along the shaft toward the wheel box
 	float WheelRimRadiusCm = 0.f;                // the rim's centre line (WheelRim socket), 0 without a wheel part
 	/** Graphics G6: what a keelboat wears tied up in her slip (build_berthed.py: furled jib, sail cover, dock lines, fenders),
@@ -914,6 +950,19 @@ public:
 	{
 		return MaxRudderAngleDeg > 0.0 ? -RudderAngle / FMath::DegreesToRadians(MaxRudderAngleDeg) * WheelTurnsHardOver * 2.0 * UE_DOUBLE_PI : 0.0;
 	}
+	/** Catalina 22 rebuild (docs/c22-13): how far (rad, positive foot aft and up) a swing keel is turned from down at this
+	 *  Board, seen from its pin (PinX, PinZ: body frame, m): the turn of its iron's centroid (FFoilDef::SwingAt's MassX/MassZ),
+	 *  a fixed point of the plate, unlike its lowest point. 0 for a foil without a swing table. */
+	static double KeelSwingTurn(const Sailing::FFoilDef& Foil, double Board, double PinX, double PinZ)
+	{
+		if (Foil.Swing.size() < 2) return 0.0;
+		const Sailing::FFoilDef::FSwingPoint Down = Foil.SwingAt(1.0);
+		const Sailing::FFoilDef::FSwingPoint Now = Foil.SwingAt(FMath::Clamp(Board, 0.0, 1.0));
+		auto Aft = [PinX, PinZ](double X, double Z) { return FMath::Atan2(PinX - X, PinZ - Z); };   // 0 straight down, + aft
+		return FMath::Atan2(FMath::Sin(Aft(Now.MassX, Now.MassZ) - Aft(Down.MassX, Down.MassZ)), FMath::Cos(Aft(Now.MassX, Now.MassZ) - Aft(Down.MassX, Down.MassZ)));
+	}
+	/** A kick-up rudder's blade turn (rad, foot aft and up) for the physics' Kick (FBoatTelemetry::RudderKick, 0 down, 1 up). */
+	static double BladeKickTurn(const Sailing::FFoilDef& Foil, double Kick) { return FMath::Clamp(Kick, 0.0, 1.0) * Foil.KickUpAngle; }
 	/** #620 follow-up: where the helm's hand holds the tiller extension (boat frame, cm), unset when no shown helm holds it. */
 	TOptional<FVector> GetHelmGripCm() const { return HelmGripCm; }
 	bool IsModelTillerExtShown() const;
@@ -955,6 +1004,12 @@ private:
 	double PrevMainSheet = 0.0, PrevJibSheet = 0.0;
 	Sailing::FAutopilot DemoPilot;
 	double DemoFirstSign = 1.0;
+	/** docs/demo-shoal-guard/ (sailing-feedback #31): the wind angle the demo sails on its own (the tack schedule's, or
+	 *  -SailingHoldTWA's), and its lookout, which bears away from shallows and shores ahead (-SailingNoDemoGuard: without). */
+	double DemoBaseTwa = 45.0;
+	Sailing::FDemoShoalGuard DemoGuard;
+	bool bDemoGuard = false;
+	int32 DemoGuardLogged = 0;
 	// Easy mode's gate runs: -SailingCrudeTackAt=<s> in a demo puts the tiller hard over for 4 s at that sim time, then
 	// lets it go (a beginner's tack, as SailingSim.Physics.EasyMode sails it); the run's max heel goes to bench.json.
 	double CrudeTackAt = -1.0;

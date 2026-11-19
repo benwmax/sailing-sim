@@ -2955,7 +2955,7 @@
             "zone": "deck",
             "kind": "oxidation",
             "intensity": {"race": [0.05, 0.15]},
-            "notes": "Varnish and paint kept up; the sun on them between coats."
+            "notes": "Varnish and paint kept up; the sun on them between coats. On her (Age unset) this channel is also the years in her own surfaces (M_BoatSurface timeK, docs/jclass-15): the varnished teak ambers, the cast bronze browns to a patina in its recesses, the manila greys a little."
           },
           {
             "zone": "waterline",
@@ -2967,7 +2967,7 @@
             "zone": "fittings",
             "kind": "rust",
             "intensity": {"race": [0.0, 0.05]},
-            "notes": "Bronze and galvanised steel: a little bloom on the steel."
+            "notes": "Bronze and galvanised steel: a little bloom on the steel. On her this channel is also the verdigris in the cast bronze's pits (2x it; docs/jclass-15): a paid crew polishes it, so next to none, though she lives in salt water."
           }
         ]
       },

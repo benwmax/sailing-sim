@@ -1476,7 +1476,9 @@ void ASailingGameMode::FinishGpuSlices()
 	}
 	if (Sum.Frames > 0)
 	{
-		GpuSlicesJson = Sum.Average().ToJsonField();
+		const FGpuSlices Avg = Sum.Average();
+		GpuSlicesJson = Avg.ToJsonField();
+		UE_LOG(LogTemp, Log, TEXT("Bench GPU Lumen passes (ms): %s"), *Avg.LumenPassesText());
 	}
 	GpuCapture.Reset();
 }

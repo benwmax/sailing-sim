@@ -48,6 +48,7 @@ float CrewFacingYaw(const FCrewPoseParams& P)
 	case ECrewStance::Trapeze: return -10.f * P.Side;          // forward on the rail
 	case ECrewStance::Righting: return 90.f * P.Side;          // facing the boat (she lies to the other side)
 	case ECrewStance::DinghyHike: return -75.f * P.Side;       // inboard, turned a little toward the bow (Graphics G8)
+	case ECrewStance::Stand: return P.StandYaw;                // at a station on a ship's deck
 	default: return -90.f * P.Side;                           // facing inboard
 	}
 }
@@ -143,6 +144,16 @@ void CrewJointRotations(const FCrewPoseParams& P, TMap<FName, FQuat>& Out)
 		Out.Add(TEXT("neck"), Lean(25.f));
 		Arms(Out, 25.f, 75.f, 10.f, 25.f, 75.f, 10.f);
 		break;
+	case ECrewStance::Stand:
+	{
+		// On their feet at a station on a ship's deck (docs/ship-rig/): feet a little apart, the knees soft, the arms down
+		// at the sides; an officer (Hike 1) clasps the hands behind the back, the chest a little lifted.
+		Legs(Out, 4.f, 7.f, 7.f);
+		Out.Add(TEXT("spine"), Lean(-3.f * H));
+		Out.Add(TEXT("chest"), Lean(-3.f * H));
+		Arms(Out, 80.f - 10.f * H, 6.f - 30.f * H, 12.f + 48.f * H, 80.f - 10.f * H, 6.f - 30.f * H, 12.f + 48.f * H);
+		break;
+	}
 	}
 }
 
@@ -509,8 +520,9 @@ namespace CrewSolver
 			if (!PlantFeet(Ref, RestCS, CS, D, Frame, Ground, Carried)) break;
 			Solve(Ref, RestCS, Carried, CS, &D);
 		}
-		// Seated, flat on the floor, then onto it again (turning about the ankle lifts the heel or the toe a little).
-		if (Ground.bSeated && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
+		// Seated, flat on the floor, then onto it again (turning about the ankle lifts the heel or the toe a little). Standing
+		// too (the frigate's watch): a longer-legged figure's knees bend to the deck and the calves carry the toes down into it.
+		if ((Ground.bSeated || Ground.bStanding) && LevelFeet(Ref, RestCS, CS, D, Frame, Ground, Carried))
 		{
 			Solve(Ref, RestCS, Carried, CS, &D);
 			for (int32 Pass = 0; Pass < 2; ++Pass)
@@ -1069,8 +1081,19 @@ namespace
 	}
 }
 
+double CrewShipDeckZ(const Sailing::FBoatConfig& C, double X)
+{
+	return C.Hulls[0].SheerHeight(X) - CrewShipBulwarkM;
+}
+
 double CrewFloorZ(const Sailing::FBoatConfig& C, double X, double Y, bool bTravelerBridge)
 {
+	// A square-rigged ship: her spar deck, inside the bulwarks (docs/ship-rig/).
+	if (C.HasSquareRig())
+	{
+		const Sailing::FHullShape& H = C.Hulls[0];
+		if (X >= H.SternX && X <= H.BowX && FMath::Abs(Y) < H.DeckHalfBeam(X)) return CrewShipDeckZ(C, X);
+	}
 	// (The Lagoon's raised helm deck and its step: the helm's feet rest on them, not on the deck under them.)
 	const double HelmDeck = LagoonHelmDeckZ(C, X, Y);
 	if (HelmDeck >= 0.0) return LagoonBridgedeckZ(C) + HelmDeck;
@@ -1216,6 +1239,14 @@ bool CrewInsideBoat(const Sailing::FBoatConfig& C, double HullDepth, const FVect
 		if (P.X < H.SternX || P.X > H.BowX || Y >= Half) continue;
 		// docs/crew-hull-clip/: the cabin trunk on the main hull, and the deck's crown (the maxi's 12 cm).
 		const double Sheer = H.SheerHeight(P.X);
+		// A square-rigged ship (docs/ship-rig/): solid below her spar deck, and her bulwarks (0.15 m thick) up to the sheer.
+		if (K == 0 && C.HasSquareRig())
+		{
+			if (P.Z <= H.BottomZ(P.X, Y, HullDepth)) continue;
+			if (P.Z < CrewShipDeckZ(C, P.X)) return true;
+			if (P.Z < Sheer && Y > Half - 0.15) return true;
+			continue;
+		}
 		if (K == 0 && bTrunk && P.X > Trunk.X0 && P.X < Trunk.X1 && Y < Trunk.HalfAt(P.X, Half)
 			&& P.Z < Sheer + Trunk.HeightAt(P.X) && P.Z > Sheer - 0.05)
 		{

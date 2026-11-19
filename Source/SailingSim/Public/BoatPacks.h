@@ -19,13 +19,17 @@ namespace SailingBoatPacks
 		if (Slot == TEXT("PackDeck")) return Deck;
 		if (Slot == TEXT("PackFit")) return Fit;
 		if (Slot == TEXT("PackCanvas")) return Canvas;
+		// J-Class 15: lenses, gilt and varnished teak, which kept Bluebonnet's hull over the 8 slots (her own bronze, manila
+		// and laid deck can't be packed: their own maps and the LaidDeck switch are per instance).
+		static const TCHAR* Trim[] = { TEXT("RedPlastic"), TEXT("WhitePlastic"), TEXT("Brass"), TEXT("VarnishedTeak") };
+		if (Slot == TEXT("PackTrim")) return Trim;
 		// The hero J/22's hardware pack (Inputs/j22-hero/J22H_packs.json; only the metal pack is read here, for the spars).
 		static const TCHAR* HeroMetal[] = { TEXT("Stainless"), TEXT("Chrome"), TEXT("CastAlu"), TEXT("Aluminium"), TEXT("SheaveGrey"), TEXT("RigTape"), TEXT("TeakVarnish"), TEXT("Gelcoat") };
 		if (Slot == TEXT("J22H_PackMetal")) return HeroMetal;
 		return {};
 	}
 
-	inline const TCHAR* const PackNames[] = { TEXT("PackCanoe"), TEXT("PackDeck"), TEXT("PackFit"), TEXT("PackCanvas") };
+	inline const TCHAR* const PackNames[] = { TEXT("PackCanoe"), TEXT("PackDeck"), TEXT("PackFit"), TEXT("PackCanvas"), TEXT("PackTrim") };
 
 	/** Entry K's colour parameter on a pack's material. */
 	inline FName ColourParam(int32 K) { return FName(*FString::Printf(TEXT("P%dC"), K)); }

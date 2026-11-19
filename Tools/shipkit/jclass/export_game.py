@@ -289,12 +289,73 @@ def join_part(name, obs, pivot):
     return ob
 
 
+FAR = 99.0   # deck.py's 'no covering board / after margin here'
+
+
+def deck_maps(me, pivot):
+    """The laid deck's three UV maps per loop (deck.py: Planking (U, Ys), Margin (D, YM), Aft (DA, s)), before box_uvs drops
+    them. A loop whose object had none (a teak part built elsewhere: all three 0 after the join) gets its body-frame x, y as
+    Planking and no covering board or after margin."""
+    n = len(me.loops)
+    vi = np.empty(n, dtype=np.int64)
+    me.loops.foreach_get("vertex_index", vi)
+    co = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", co)
+    body = (co.reshape(-1, 3)[vi] + np.array(pivot)) * np.array([1.0, -1.0, 1.0])   # (the mesh is about the part's pivot)
+    out = {"Planking": np.zeros((n, 2)), "Margin": np.zeros((n, 2)), "Aft": np.zeros((n, 2))}
+    for name in out:
+        if name in me.uv_layers:
+            a = np.empty(n * 2)
+            me.uv_layers[name].data.foreach_get("uv", a)
+            out[name] = a.reshape(-1, 2)
+    none = ~np.any(np.hstack(list(out.values())) != 0.0, axis=1)
+    out["Planking"][none] = body[none, :2]
+    out["Margin"][none] = FAR
+    out["Aft"][none] = (FAR, 0.0)
+    return out
+
+
+def keep_deck_maps(me, slots, maps):
+    """J-Class 15 (docs/jclass-15/): the laid deck's faces (game slot LaidTeak) keep its maps for M_BoatSurface's kind 18:
+    UV2 Planking, UV3 Margin and the Aft map's DA in the pack set's v (UV1.y; its u is the pack entry). Aft's slope is the
+    margin's slope along the planks, which the material takes from the screen derivatives. Elsewhere they are 0."""
+    if "LaidTeak" not in slots:
+        return
+    laid = slots.index("LaidTeak")
+    mi = np.empty(len(me.polygons), dtype=np.int64)
+    me.polygons.foreach_get("material_index", mi)
+    total = np.empty(len(me.polygons), dtype=np.int64)
+    me.polygons.foreach_get("loop_total", total)
+    on = np.repeat(mi == laid, total)
+    # Unreal's FBX import flips V (v -> 1 - v: make_materials.py's ship topsides read 1 - y), so each v is written as 1 - v
+    # here and the material reads the deck's own numbers. (Written as they were, Ys, YM and DA came in as 1 - Ys, 1 - YM and
+    # 1 - DA: every 'no covering board here' 99 became -98, so the whole deck drew as one covering board, plain teak with
+    # no planks or seams: the PC stills at 63c2b4cc.)
+    for name in ("Planking", "Margin"):
+        lay = me.uv_layers.new(name=name)
+        uv = np.where(on[:, None], maps[name], 0.0)
+        uv[on, 1] = 1.0 - uv[on, 1]
+        lay.data.foreach_set("uv", uv.ravel())
+    pack = me.uv_layers["Pack"]
+    a = np.empty(len(me.loops) * 2)
+    pack.data.foreach_get("uv", a)
+    a = a.reshape(-1, 2)
+    a[on, 1] = 1.0 - maps["Aft"][on, 0]
+    pack.data.foreach_set("uv", a.ravel())
+    if [u.name for u in me.uv_layers] != ["UVMap", "Pack", "Planking", "Margin"]:
+        raise SystemExit(f"{me.name}: UV sets {[u.name for u in me.uv_layers]}, the game reads UVMap, Pack, Planking, Margin")
+
+
 def export_part(ob, keep):
     bpy.ops.object.select_all(action="DESELECT")
     ob.select_set(True)
     bpy.context.view_layer.objects.active = ob
+    maps = deck_maps(ob.data, ob.location)
     box_uvs(ob.data)
     slots = pack_slots(ob.data, keep=tuple(keep))
+    if len(slots) > 8:   # (the boat budget: SailingSim.Visual.BluebonnetMesh and BoatBudget hold every part to 8 slots)
+        raise SystemExit(f"{ob.name}: {len(slots)} material slots {slots}, at most 8: pack more (Tools/blender/boat_packs.json)")
+    keep_deck_maps(ob.data, slots, maps)
     # (a flat plate like the transom is one n-gon: triangulated here, not by the importer's guess)
     tri = ob.modifiers.new("Triangulate", "TRIANGULATE")
     tri.min_vertices = 5
@@ -318,6 +379,11 @@ def main():
     if not hasattr(bpy.ops.export_scene, "fbx"):
         bpy.ops.preferences.addon_enable(module="io_scene_fbx")
     P = physics()
+    # J-Class 15: the laid deck's mitre in the game (make_materials.py LaidD) is her build's (build.json deck.planking_mitre)
+    built = json.load(open(os.path.join(BUILD, "build.json")))["deck"]["planking_mitre"]
+    if any(abs(a - b) > 1e-4 for a, b in zip(built, G["laid_deck"]["mitre"])):
+        raise SystemExit(f"game_bluebonnet.json laid_deck.mitre {G['laid_deck']['mitre']} is not the build's {built}: "
+                         "update it (make_materials.py reads it for MI_Boat_LaidTeak) and rebuild the boat library")
     pose()
     O = bpy.data.objects
     # The canoe as exported: the shell's paint (the lead keel painted with the bottom) and the rudder, below the waterline.

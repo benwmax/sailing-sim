@@ -32,9 +32,10 @@ in the game when this lands; it changes the day the Mac or the PC runs `scripts/
 
 ## In the game
 
-`ASailboatPawn::UseC22Hero`: the player's Catalina 22 (and the gallery's) draws `/Game/Boats/C22Hero` once it exists;
-AI boats, the ghost and marina neighbours keep the fleet model. `-SailingClassicC22` keeps the fleet model for compared
-stills, `-SailingC22Hero` puts the rebuilt one on AI boats too. The showroom's async load (`ModelAssetPaths`) follows
+`ASailboatPawn::UseC22Hero`: every Catalina 22 under sail (the player's, the gallery's, AI boats and the ghost; AI boats
+since Nov 18, Bean's choice) draws `/Game/Boats/C22Hero` once it exists. The cabin below stays on the player's boat only.
+Marina neighbours tied up in their slips keep their berthed dress (`SM_Catalina22_Berthed_*`, on her new hull since
+slice 10). `-SailingClassicC22` keeps the fleet model everywhere, for compared stills and benches. The showroom's async load (`ModelAssetPaths`) follows
 the same choice. The hull carries its own outboard and traveller (`bOwnOutboard`, no traveller bridge).
 
 She is already on the Boat screen in a slice build (`SailCatalog::InSliceBoat`) and in the career (Coastal Cruiser's

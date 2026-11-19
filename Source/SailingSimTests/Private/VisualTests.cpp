@@ -15,10 +15,12 @@
 #include "SailingSim.h"
 #include "BoatLivery.h"
 #include "BoatPacks.h"
+#include "SailboatPawn.h"
 #include "Engine/SkeletalMesh.h"
 #include "Wind.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshSocket.h"
+#include "Engine/Texture.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "MeshDescription.h"
@@ -189,6 +191,12 @@ bool FVisualGpuSlicesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Post"), S.PostMs, 2.5, 1e-6);
 	TestEqual(TEXT("Other = outside Scene"), S.OtherMs, 14.0 - 13.6 + (13.6 - (0.5 + 1.1 + 0.3 + 3.0 + 4.4 + 0.1 + 2.5 + 1.7)), 1e-6);
 	TestEqual(TEXT("Water draws in the base pass until V4"), S.WaterMs, 0.0, 1e-9);
+	TestEqual(TEXT("Lumen passes named: scene lighting"), S.LumenPasses.FindRef(TEXT("LumenSceneLighting")), 0.3, 1e-6);
+	TestEqual(TEXT("Lumen passes named: diffuse indirect"), S.LumenPasses.FindRef(TEXT("DiffuseIndirectAndAO")), 2.5, 1e-6);
+	TestEqual(TEXT("Lumen passes named: the gather under it"), S.LumenPasses.FindRef(TEXT("LumenScreenProbeGather")), 1.5, 1e-6);
+	TestEqual(TEXT("Lumen passes: only Lumen's"), S.LumenPasses.Num(), 3);
+	TestTrue(TEXT("Lumen passes in the JSON"), S.ToJsonField().Contains(TEXT("\"lumen_passes\":{\"DiffuseIndirectAndAO\":2.50,\"LumenSceneLighting\":0.30,\"LumenScreenProbeGather\":1.50}")));
+	TestTrue(TEXT("Lumen passes text, largest first"), S.LumenPassesText().StartsWith(TEXT("DiffuseIndirectAndAO 2.50, LumenScreenProbeGather 1.50")));
 	TestFalse(TEXT("No Scene, no slices"), ParseProfileGpu({ Row(1.0, 0, TEXT("<root>")) }, S));
 	FGpuSlices Sum;
 	FGpuSlices A; A.TotalMs = 10.0; A.Frames = 1;
@@ -365,6 +373,30 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 {
 	using namespace Sailing;
 	auto Load = [](const TCHAR* Part) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Boats/C22Hero/SM_C22Hero_%s.SM_C22Hero_%s"), Part, Part), nullptr, LOAD_NoWarn | LOAD_Quiet); };
+	{
+		// The turns the pawn draws her keel and blade by (docs/c22-13), against the rebuild's own: the keel up 59.86 deg about its
+		// pin (keel_c22.json keel.pivot, 0.8, -0.37), evenly in the Board, and the blade kicked up 86 deg (blade.kick_up_deg).
+		const FBoatConfig C0 = FBoatConfig::Make(EBoatType::Catalina22);
+		const FFoilDef* SwingKeel = nullptr;
+		const FFoilDef* KickBlade = nullptr;
+		for (const FFoilDef& F : C0.Foils)
+		{
+			if (F.Swing.size() >= 2) SwingKeel = &F;
+			if (F.KickUpAngle > 0.0) KickBlade = &F;
+		}
+		if (TestNotNull(TEXT("Swing keel table"), SwingKeel))
+		{
+			const double Up = FMath::RadiansToDegrees(ASailboatPawn::KeelSwingTurn(*SwingKeel, 0.0, 0.8, -0.37));
+			const double Half = FMath::RadiansToDegrees(ASailboatPawn::KeelSwingTurn(*SwingKeel, 0.5, 0.8, -0.37));
+			TestTrue(FString::Printf(TEXT("Keel drawn up %.2f deg (the rebuild's 59.86)"), Up), FMath::Abs(Up - 59.86) < 0.5);
+			TestTrue(FString::Printf(TEXT("Keel drawn half up %.2f deg at Board 0.5"), Half), FMath::Abs(Half - 0.5 * Up) < 0.5);
+			TestTrue(TEXT("Keel drawn down at Board 1"), FMath::Abs(ASailboatPawn::KeelSwingTurn(*SwingKeel, 1.0, 0.8, -0.37)) < 1e-6);
+		}
+		if (TestNotNull(TEXT("Kick-up rudder"), KickBlade))
+		{
+			TestTrue(TEXT("Blade drawn up 86 deg at Kick 1"), FMath::Abs(FMath::RadiansToDegrees(ASailboatPawn::BladeKickTurn(*KickBlade, 1.0)) - 86.0) < 0.01);
+		}
+	}
 	UStaticMesh* Hull = Load(TEXT("Hull"));
 	if (!Hull)
 	{
@@ -375,6 +407,11 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	UStaticMesh* Boom = Load(TEXT("Boom"));
 	UStaticMesh* Rudder = Load(TEXT("Rudder"));
 	if (!TestNotNull(TEXT("SM_C22Hero_Mast"), Mast) || !TestNotNull(TEXT("SM_C22Hero_Boom"), Boom) || !TestNotNull(TEXT("SM_C22Hero_Rudder"), Rudder)) return false;
+	// The swing keel and the blade as parts of their own (docs/c22-13; an older import has them in the hull and rudder).
+	UStaticMesh* KeelPart = Load(TEXT("Keel"));
+	UStaticMesh* BladePart = Load(TEXT("RudderBlade"));
+	const UStaticMeshSocket* PinSocket = Hull->FindSocket(TEXT("KeelPin"));
+	const UStaticMeshSocket* BoltSocket = Rudder->FindSocket(TEXT("RudderBolt"));
 	const FBoatConfig C = FBoatConfig::Make(EBoatType::Catalina22);
 	const FBoatModel Physics(C);
 	const double Tol = 0.02;
@@ -385,7 +422,32 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	const Vec3 PhysCB = Physics.DesignBuoyancyCentre();
 	TestTrue(FString::Printf(TEXT("Length %.3f m (physics hull %.3f)"), M.Canoe.GetSize().X, H.BowX - H.SternX), FMath::Abs(M.Canoe.GetSize().X - (H.BowX - H.SternX)) < Tol);
 	TestTrue(FString::Printf(TEXT("Beam %.3f m (physics hull %.3f)"), M.Canoe.GetSize().Y, 2.0 * H.MaxHalfBeam), FMath::Abs(M.Canoe.GetSize().Y - 2.0 * H.MaxHalfBeam) < Tol);
-	TestTrue(FString::Printf(TEXT("Draft %.3f m, keel down (physics %.3f)"), -M.MinZ, C.Draft), FMath::Abs(-M.MinZ - C.Draft) < Tol);
+	double Lowest = M.MinZ;
+	if (KeelPart && PinSocket) Lowest = FMath::Min(Lowest, PinSocket->RelativeLocation.Z / 100.0 + MeasureCanoe(KeelPart, [](FName) { return false; }).MinZ);
+	TestTrue(FString::Printf(TEXT("Draft %.3f m, keel down (physics %.3f)"), -Lowest, C.Draft), FMath::Abs(-Lowest - C.Draft) < Tol);
+	// The keel on the physics' pin: its iron's centroid as far from the KeelPin socket keel up as keel down (the pawn turns it
+	// about the socket), and the blade's foot down where the physics has it under its bolt.
+	if (KeelPart && TestNotNull(TEXT("Hull socket KeelPin"), PinSocket))
+	{
+		for (const FFoilDef& F : C.Foils)
+		{
+			if (F.Swing.size() < 2) continue;
+			const FVector2d Pin(PinSocket->RelativeLocation.X / 100.0, PinSocket->RelativeLocation.Z / 100.0);
+			const FFoilDef::FSwingPoint Up = F.SwingAt(0.0), Down = F.SwingAt(1.0);
+			const double RUp = FVector2d::Distance(Pin, FVector2d(Up.MassX, Up.MassZ)), RDown = FVector2d::Distance(Pin, FVector2d(Down.MassX, Down.MassZ));
+			TestTrue(FString::Printf(TEXT("KeelPin (%.3f, %.3f) is the physics' pin: the iron %.3f m from it up, %.3f down"), Pin.X, Pin.Y, RUp, RDown), FMath::Abs(RUp - RDown) < 0.01);
+		}
+	}
+	if (BladePart && TestNotNull(TEXT("Rudder socket RudderBolt"), BoltSocket))
+	{
+		const UStaticMeshSocket* PivotSocket = Hull->FindSocket(TEXT("RudderPivot"));
+		for (const FFoilDef& F : C.Foils)
+		{
+			if (F.KickUp.empty() || !PivotSocket) continue;
+			const double FootZ = (PivotSocket->RelativeLocation.Z + BoltSocket->RelativeLocation.Z) / 100.0 + MeasureCanoe(BladePart, [](FName) { return false; }).MinZ;
+			TestTrue(FString::Printf(TEXT("Blade's foot %.3f m (physics %.3f)"), FootZ, F.KickAt(0.0).TipZ), FMath::Abs(FootZ - F.KickAt(0.0).TipZ) < Tol);
+		}
+	}
 	TestTrue(FString::Printf(TEXT("Canoe body volume %.3f m^3 within 2%% of the physics %.3f"), M.Volume, Physics.DesignDisplacedVolume()),
 		FMath::Abs(M.Volume - Physics.DesignDisplacedVolume()) < 0.02 * Physics.DesignDisplacedVolume());
 	TestTrue(FString::Printf(TEXT("Centre of buoyancy (%.3f, %.3f, %.3f) within 2 cm of the physics (%.3f, %.3f, %.3f)"), M.CB.X, M.CB.Y, M.CB.Z, PhysCB.X, PhysCB.Y, PhysCB.Z),
@@ -429,8 +491,9 @@ bool FVisualC22HeroMeshTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Hull is Nanite"), Hull->IsNaniteEnabled());
 	TestFalse(TEXT("Mast is not Nanite (M_BoatMast bends it)"), Mast->IsNaniteEnabled());
-	for (UStaticMesh* Part : { Hull, Mast, Boom, Rudder })
+	for (UStaticMesh* Part : { Hull, Mast, Boom, Rudder, KeelPart, BladePart })
 	{
+		if (!Part) continue;
 		for (const FStaticMaterial& Mat : Part->GetStaticMaterials())
 		{
 			TestTrue(FString::Printf(TEXT("%s: slot %s has a boat material"), *Part->GetName(), *Mat.MaterialSlotName.ToString()), Mat.MaterialInterface && Mat.MaterialInterface->GetName().StartsWith(TEXT("MI_Boat_")));
@@ -806,7 +869,7 @@ bool FVisualMetaHumanCrewTest::RunTest(const FString& Parameters)
 		{ TEXT("forearm_l"), TEXT("hand_l"), TEXT("lowerarm_l"), TEXT("hand_l"), 15.f }, { TEXT("forearm_r"), TEXT("hand_r"), TEXT("lowerarm_r"), TEXT("hand_r"), 15.f },
 		{ TEXT("pelvis"), TEXT("neck"), TEXT("pelvis"), TEXT("neck_01"), 20.f },
 	};
-	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting };
+	const ECrewStance Stances[] = { ECrewStance::RailHike, ECrewStance::Helm, ECrewStance::Cockpit, ECrewStance::Crossing, ECrewStance::DinghyHike, ECrewStance::Trapeze, ECrewStance::Righting, ECrewStance::Stand };
 	// The crew is git-ignored and optional on a fresh checkout (the PC without the Mac's zip): the game falls back to
 	// SK_Sailor, so only check it where it is installed.
 	if (!IFileManager::Get().DirectoryExists(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Crew/MetaHumans"))))
@@ -976,10 +1039,9 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 	int32 Checked = 0;
 	for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 	{
-		if (IsSquareRigged(EBoatType(T))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
 		const FBoatConfig Cfg = FBoatConfig::Make(EBoatType(T));
 		const FBoatModel Model(Cfg);
-		const int32 N = Cfg.CrewCount;
+		const int32 N = CrewFigureCount(Cfg);   // (the frigate: her deck watch, not her 450)
 		for (int32 I = 0; I < N; ++I)
 		{
 			const bool bHelm = I == N - 1;
@@ -1020,6 +1082,7 @@ bool FVisualCrewFeetTest::RunTest(const FString& Parameters)
 						Ground.bSeated = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit || P.Stance == ECrewStance::RailHike; // as CrewMotionPose sets it
 						Ground.bTravelerBridge = bBridge;
 						Ground.bFeetDown = P.Stance == ECrewStance::Helm || P.Stance == ECrewStance::Cockpit;
+						Ground.bStanding = P.Stance == ECrewStance::Stand;
 						Ground.bFlatDeck = P.bFlatDeck;
 						FCrewHands Hands;
 						Hands.Ground = &Ground;
@@ -1178,6 +1241,127 @@ bool FVisualBoatLibraryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Hero deck takes Age (unset by default)"), Deck->GetScalarParameterValue(TEXT("Age"), Age) && Age < 0.f);
 	TestTrue(TEXT("Hero deck takes Care"), Deck->GetScalarParameterValue(TEXT("Care"), Care));
 	TestTrue(TEXT("Hero deck takes Wear"), Deck->GetVectorParameterValue(TEXT("Wear"), Wear));
+	return true;
+}
+
+// J-Class 15 (docs/jclass-15): Bluebonnet's own surfaces in the boat library. MI_Boat_CastBronze (kind 16) and MI_Boat_Manila
+// (kind 17) carry her maps as their own detail pair (make_materials.py BOAT_OWN_MAPS), MI_Boat_VarnishedTeak is varnished
+// wood (kind 6, the shared varnish map); the shared parent and every other slot keep the stand-ins, so no other boat loads
+// her maps; M_SailCloth takes the cotton switch and weave the pawn sets on her sails; MI_Boat_LaidTeak (kind 18) draws her
+// laid deck from the deck's own UV maps. Skipped (with a warning) before the content is rebuilt.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualJClassMaterialsTest, "SailingSim.Visual.JClassMaterials", VisualFlags)
+bool FVisualJClassMaterialsTest::RunTest(const FString& Parameters)
+{
+	auto LoadMi = [](const TCHAR* Slot)
+	{
+		return LoadObject<UMaterialInterface>(nullptr, *FString::Printf(TEXT("/Game/Boats/Materials/MI_Boat_%s.MI_Boat_%s"), Slot, Slot), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	};
+	if (!LoadMi(TEXT("CastBronze")))
+	{
+		AddWarning(TEXT("No MI_Boat_CastBronze: run import_boat_detail.py, then make_materials.py (build_boat_library, build_sail_cloth)"));
+		return true;
+	}
+	const struct { const TCHAR* Slot; int32 Kind; const TCHAR* Own; } Slots[] = {
+		{ TEXT("CastBronze"), 16, TEXT("T_JClass_CastBronze") }, { TEXT("Manila"), 17, TEXT("T_JClass_Manila") }, { TEXT("VarnishedTeak"), 6, nullptr } };
+	for (const auto& S : Slots)
+	{
+		const UMaterialInterface* Mi = LoadMi(S.Slot);
+		if (!TestNotNull(FString::Printf(TEXT("MI_Boat_%s"), S.Slot), Mi)) continue;
+		float Surface = -1.f;
+		TestTrue(FString::Printf(TEXT("MI_Boat_%s has Surface"), S.Slot), Mi->GetScalarParameterValue(TEXT("Surface"), Surface));
+		TestEqual(FString::Printf(TEXT("MI_Boat_%s kind"), S.Slot), FMath::RoundToInt(Surface), S.Kind);
+		const TPair<const TCHAR*, const TCHAR*> Params[] = { { TEXT("OwnDetailN"), TEXT("N") }, { TEXT("OwnDetailM"), TEXT("M") } };
+		for (const TPair<const TCHAR*, const TCHAR*>& P : Params)
+		{
+			const TCHAR* Suffix = P.Value;
+			UTexture* Tex = nullptr;
+			TestTrue(FString::Printf(TEXT("MI_Boat_%s has OwnDetail%s"), S.Slot, Suffix), Mi->GetTextureParameterValue(P.Key, Tex));
+			const bool bHers = Tex && Tex->GetName().StartsWith(TEXT("T_JClass_"));
+			if (S.Own) TestEqual(FString::Printf(TEXT("MI_Boat_%s's own %s map"), S.Slot, Suffix), Tex ? Tex->GetName() : FString(), FString::Printf(TEXT("%s_%s"), S.Own, Suffix));
+			else TestFalse(FString::Printf(TEXT("MI_Boat_%s has no J-Class map"), S.Slot), bHers);
+		}
+	}
+	// No other slot (the J/22's, the fleet's) carries her maps.
+	if (const UMaterialInterface* Topsides = LoadMi(TEXT("Topsides")))
+	{
+		UTexture* Tex = nullptr;
+		Topsides->GetTextureParameterValue(TEXT("OwnDetailN"), Tex);
+		TestFalse(TEXT("MI_Boat_Topsides keeps the stand-in"), Tex && Tex->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	const UMaterialInterface* Sail = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/MI_Sail_Main.MI_Sail_Main"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (TestNotNull(TEXT("MI_Sail_Main"), Sail))
+	{
+		float Cloth = -1.f;
+		UTexture* Weave = nullptr;
+		TestTrue(TEXT("M_SailCloth has Cloth (0 by default)"), Sail->GetScalarParameterValue(TEXT("Cloth"), Cloth) && Cloth == 0.f);
+		TestTrue(TEXT("M_SailCloth has ClothN"), Sail->GetTextureParameterValue(TEXT("ClothN"), Weave));
+		TestFalse(TEXT("MI_Sail_Main keeps the stand-in weave"), Weave && Weave->GetName().StartsWith(TEXT("T_JClass_")));
+	}
+	for (const TCHAR* Name : { TEXT("T_JClass_Cotton_N"), TEXT("T_JClass_Cotton_M") })
+	{
+		TestNotNull(Name, LoadObject<UTexture>(nullptr, *FString::Printf(TEXT("/Game/Boats/Detail/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet));
+	}
+	// Her laid deck (kind 18): MI_Boat_LaidTeak carries deck_bluebonnet.json's planking (LaidA: pitch, seam, plank length,
+	// half the king plank), and her hull draws it with the deck's maps (UV2, UV3: four UV sets, export_game.py).
+	const UMaterialInterface* Laid = LoadMi(TEXT("LaidTeak"));
+	if (!Laid)
+	{
+		AddWarning(TEXT("No MI_Boat_LaidTeak: run make_materials.py (build_boat_library)"));
+		return true;
+	}
+	float LaidKind = -1.f;
+	TestTrue(TEXT("MI_Boat_LaidTeak has Surface"), Laid->GetScalarParameterValue(TEXT("Surface"), LaidKind));
+	TestEqual(TEXT("MI_Boat_LaidTeak kind"), FMath::RoundToInt(LaidKind), 18);
+	FString DeckText;
+	TSharedPtr<FJsonObject> DeckJson;
+	if (TestTrue(TEXT("deck_bluebonnet.json reads"), FFileHelper::LoadFileToString(DeckText, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/shipkit/jclass/deck_bluebonnet.json")))
+		&& FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(DeckText), DeckJson) && DeckJson.IsValid()))
+	{
+		const TSharedPtr<FJsonObject> Planking = DeckJson->GetObjectField(TEXT("deck"))->GetObjectField(TEXT("planking"));
+		FLinearColor LaidA = FLinearColor::Black;
+		TestTrue(TEXT("MI_Boat_LaidTeak has LaidA"), Laid->GetVectorParameterValue(TEXT("LaidA"), LaidA));
+		TestTrue(TEXT("LaidA's plank pitch"), FMath::IsNearlyEqual(LaidA.R, float(Planking->GetNumberField(TEXT("pitch"))), 1e-5f));
+		TestTrue(TEXT("LaidA's seam"), FMath::IsNearlyEqual(LaidA.G, float(Planking->GetNumberField(TEXT("seam"))), 1e-5f));
+		TestTrue(TEXT("LaidA's plank length"), FMath::IsNearlyEqual(LaidA.B, float(Planking->GetNumberField(TEXT("plank_length"))), 1e-4f));
+		TestTrue(TEXT("LaidA's half king plank"), FMath::IsNearlyEqual(LaidA.A, float(Planking->GetNumberField(TEXT("king_plank")) / 2.0), 1e-5f));
+	}
+	const UStaticMesh* Hull = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Boats/Bluebonnet/SM_Bluebonnet_Hull.SM_Bluebonnet_Hull"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	const int32 LaidSlot = Hull ? Hull->GetMaterialIndex(TEXT("LaidTeak")) : INDEX_NONE;
+	if (LaidSlot == INDEX_NONE)
+	{
+		AddWarning(TEXT("SM_Bluebonnet_Hull has no LaidTeak slot yet: re-export her (export_game.py) and reimport (import_boats.py bluebonnet)"));
+		return true;
+	}
+	TestEqual(TEXT("SM_Bluebonnet_Hull's deck wears MI_Boat_LaidTeak"), Hull->GetMaterial(LaidSlot) ? Hull->GetMaterial(LaidSlot)->GetName() : FString(), FString(TEXT("MI_Boat_LaidTeak")));
+	TestTrue(TEXT("SM_Bluebonnet_Hull carries the deck's maps (4 UV sets)"), Hull->GetNumUVChannels(0) >= 4);
+#if WITH_EDITORONLY_DATA
+	// The maps' numbers as the material reads them: the FBX import flips V, so export_game.py writes 1 - v. YM (UV3.y, |y| of
+	// the covering board's inner edge, or 99 where there is none) dips a little below zero only at the stem, where the half
+	// breadth runs out under the board's width; read flipped (1 - YM) every 99 was -98, and the whole deck drew as one
+	// covering board (the PC stills at 63c2b4cc; deck.py's min is about -0.35).
+	if (const FMeshDescription* MD = const_cast<UStaticMesh*>(Hull)->GetMeshDescription(0); MD && Hull->GetNumUVChannels(0) >= 4)
+	{
+		FStaticMeshConstAttributes Attr(*MD);
+		const TPolygonGroupAttributesConstRef<FName> SlotNames = Attr.GetPolygonGroupMaterialSlotNames();
+		const TVertexInstanceAttributesConstRef<FVector2f> UVs = Attr.GetVertexInstanceUVs();
+		float MinYM = 1e9f, MaxYs = -1e9f, MinYs = 1e9f;
+		int32 Count = 0;
+		for (const FTriangleID T : MD->Triangles().GetElementIDs())
+		{
+			if (SlotNames[MD->GetTrianglePolygonGroup(T)] != FName(TEXT("LaidTeak"))) continue;
+			for (const FVertexInstanceID V : MD->GetTriangleVertexInstances(T))
+			{
+				MinYM = FMath::Min(MinYM, UVs.Get(V, 3).Y);
+				MinYs = FMath::Min(MinYs, UVs.Get(V, 2).Y);
+				MaxYs = FMath::Max(MaxYs, UVs.Get(V, 2).Y);
+				++Count;
+			}
+		}
+		TestTrue(TEXT("SM_Bluebonnet_Hull has laid deck faces"), Count > 0);
+		TestTrue(FString::Printf(TEXT("the laid deck's YM is over -2 m (min %.3f: -98 is the import's V flip)"), MinYM), MinYM > -2.f);
+		TestTrue(FString::Printf(TEXT("the laid deck's Ys spans both sides of the king plank (%.2f .. %.2f m)"), MinYs, MaxYs), MinYs < -1.f && MaxYs > 1.f);
+	}
+#endif
 	return true;
 }
 

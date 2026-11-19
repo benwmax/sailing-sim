@@ -414,6 +414,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	ModelTillerExt = nullptr;
 	ModelWheel = nullptr;
 	WheelPivot = nullptr;
+	KeelPivot = BladePivot = nullptr;
+	KeelTurnShown = 0.0;
 	WheelAxis = FVector::ForwardVector;
 	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
@@ -596,8 +598,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 	int32 MetaCount = bMeta ? kMaxMetaHumanCrew : 0;
 	if (bMeta) FParse::Value(SailingArgs::Dev(), TEXT("SailingMetaCrew="), MetaCount);
 	// A square-rigged ship's company (the frigate's 450) is not a small boat's crew placed along her cockpit: her deck watch
-	// stands at its stations (docs/ship-rig/), so none of these figures are made for her.
-	const int32 NumFigures = C.HasSquareRig() ? 0 : C.CrewCount;
+	// (ShipWatchCount, CrewPlacement's stations: docs/ship-rig/) stands at its stations, SK_Sailor stand-ins all (a MetaHuman
+	// is 1.5 ms of CPU each: docs/crew-cost/).
+	const int32 NumFigures = CrewFigureCount(C);
+	if (C.HasSquareRig()) MetaCount = 0;
 	for (int32 I = 0; I < NumFigures; ++I)
 	{
 		if (CrewFigureIsMetaHuman(C.CrewCount, I, MetaCount))
@@ -709,11 +713,32 @@ void ASailboatPawn::RebuildBoatVisuals()
 		// the showroom swaps boats on the same material).
 		Mid->SetScalarParameterValue(TEXT("Translucency"), C.Type == EBoatType::Sunfish ? 0.2f : 0.34f);
 	}
+	// J-Class 15 (docs/jclass-15): Bluebonnet's sails are cream Egyptian cotton (sails_bluebonnet.json), matt, with their own
+	// weave close up (M_SailCloth's Cloth 1 and T_JClass_Cotton, set only here, so no other boat's sails load the maps). Set
+	// every time: the showroom swaps boats on the same materials. Until the maps are imported she keeps the Dacron look.
+	const bool bCotton = C.Type == EBoatType::Bluebonnet;
+	UTexture* CottonN = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_N.T_JClass_Cotton_N"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	UTexture* CottonM = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_M.T_JClass_Cotton_M"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	const bool bCottonMaps = CottonN && CottonM;
+	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get() })
+	{
+		if (UMaterialInstanceDynamic* Mid = Sail ? Cast<UMaterialInstanceDynamic>(Sail->GetMaterial(0)) : nullptr)
+		{
+			Mid->SetScalarParameterValue(TEXT("Cloth"), bCottonMaps ? 1.f : 0.f);
+			Mid->SetScalarParameterValue(TEXT("Roughness"), bCotton ? 0.72f : 0.5f);   // (MI_Sail_Main's and MI_Sail_Jib's 0.5 for the rest)
+			if (bCottonMaps)
+			{
+				Mid->SetTextureParameterValue(TEXT("ClothN"), CottonN);
+				Mid->SetTextureParameterValue(TEXT("ClothM"), CottonM);
+			}
+		}
+	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
 	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
 	FLinearColor SailColor = Lay.Layout == 4.f ? FLinearColor(0.035f, 0.036f, 0.04f) : FLinearColor(0.70f, 0.68f, 0.63f);
-	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
+	// (Not Bluebonnet: a 1937 J's sails are cotton, whatever her profile.)
+	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7 && !bCotton)
 	{
 		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
 		if (Livery.Profile == 1 || (H % 100u) < 33u)
@@ -722,6 +747,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 			SailColor = Laminates[(H / 100u) % UE_ARRAY_COUNT(Laminates)];
 		}
 	}
+	// J-Class 15: her cotton's cream (sails_bluebonnet.json colour, sRGB 232 222 196, at the 0.77 the white Dacron is drawn at).
+	if (bCotton) SailColor = FLinearColor(0.621f, 0.562f, 0.426f);
 	// Boat skins: the skin's cloth colour. The class's white Dacron is drawn at 0.70 albedo, not the hex white's 0.9, so a
 	// skin's colour is scaled the same way (a skin's white is the cloth the boat already has).
 	if (bHasSkin && Skin.Sails.Cloth.IsSet())
@@ -789,6 +816,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
 	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
 	BindShipRig();   // a ship's yards and sails on the model (docs/ship-rig/)
+	BindShipFrames();   // her tiller, wheel, doors and capstans (docs/ship-frames/)
 }
 
 void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
@@ -829,6 +857,8 @@ void ASailboatPawn::HoldForTests(double TwaDeg, double WindKnots)
 	bDemoTacks = false;
 	CrudeTackAt = -1.0;
 	DemoPilot.TargetTWADeg = TwaDeg;
+	DemoBaseTwa = TwaDeg;
+	bDemoGuard = false; // the tests hold their angle wherever the test world puts her
 	DemoPilot.MaxTiller = 0.8;
 	// The held states are the rig's own trim, as the polars sail them (docs/trimmer-hands/).
 	TrimAssist.Settings.bHands = false;
@@ -1011,6 +1041,11 @@ void ASailboatPawn::BeginPlay()
 		// is (it had been flipped again by the port start's sign: TWA -60 with HoldTWA -60 tacked onto starboard).
 		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : (HoldTwa < 0.f ? double(HoldTwa) : HoldTwa * DemoFirstSign);
 		DemoPilot.MaxTiller = 0.8;
+		DemoBaseTwa = DemoPilot.TargetTWADeg;
+		DemoGuard.Reset();
+		bDemoGuard = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoDemoGuard"));
+		// A held angle frames the bench views and stills on their course: the lookout starts after their first minute.
+		DemoGuard.StartAfterSeconds = bDemoTacks ? 0.0 : 60.0;
 		// (the demo's chase angle off her bow; a mounted camera keeps its own aim: slice 4's stills ran with this added)
 		if (!ChaseCamera::IsMounted(StartView))
 		{
@@ -1313,7 +1348,27 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		if (bDemoTacks)
 		{
 			const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
-			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+			DemoBaseTwa = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		}
+		DemoPilot.TargetTWADeg = DemoBaseTwa;
+		// docs/demo-shoal-guard/ (sailing-feedback #31): left alone the demo beats until it meets the shore upwind and sits
+		// there aground; its lookout reads the chart ahead and bears away while the water upwind is shallow.
+		const ASailingGameMode* GuardGM = bDemoGuard ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		if (GuardGM && GuardGM->GetLake().IsLoaded())
+		{
+			DemoGuard.Terrain = &GuardGM->GetLake().Terrain;
+			DemoGuard.Obstacles = &GuardGM->GetLake().Obstacles;
+			DemoGuard.Draft = Boat.GetConfig().Draft;
+			DemoGuard.MastClearM = Boat.GetConfig().MastheadZ + 2.0;
+			const Vec3 O = Boat.OriginPosition();
+			double FromRad = 0.0, Factor = 1.0;
+			GetWind().ReadableAt(O.X, O.Y, T, FromRad, Factor);
+			DemoPilot.TargetTWADeg = DemoGuard.Update(T, O.X, O.Y, FromRad, Boat.GetTelemetry().BoatSpeed, DemoBaseTwa, bDemoTacks);
+			if (DemoGuard.Avoidances() != DemoGuardLogged)
+			{
+				DemoGuardLogged = DemoGuard.Avoidances();
+				UE_LOG(LogSailing, Log, TEXT("Demo: shallow water ahead at %.0f N %.0f E (t %.0f s), bearing away to TWA %.0f"), O.X, O.Y, T, DemoGuard.AvoidTwaDeg());
+			}
 		}
 		// The run guard: off dead downwind by the gusts' margin (docs/hobie-run/); -SailingNoRunGuard compares without it.
 		static SailingArgs::FCachedFlag NoRunGuardArg(TEXT("SailingNoRunGuard"));
@@ -1467,6 +1522,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	ApplyStateToTransform(true);
 	UpdateRigVisuals(DeltaSeconds);
 	UpdateShipRig(DeltaSeconds);
+	UpdateShipFrames(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
 
 	if (Water)
@@ -4079,6 +4135,24 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		const FVector Axis = RudderAxes.IsValidIndex(K) ? RudderAxes[K] : FVector::UpVector;
 		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
+	}
+	// Catalina 22 rebuild (docs/c22-13): the swing keel wound toward the physics' Board, the blade kicked up as the physics has it.
+	if (KeelPivot || BladePivot)
+	{
+		for (const FFoilDef& Foil : Boat.GetConfig().Foils)
+		{
+			if (KeelPivot && Foil.Swing.size() >= 2)
+			{
+				const double Target = KeelSwingTurn(Foil, Controls.Board, KeelPinM.X, KeelPinM.Y);
+				const double Step = KeelWindRate * FMath::Max(double(DeltaSeconds), 0.0);
+				KeelTurnShown = Target > KeelTurnShown ? FMath::Min(Target, KeelTurnShown + Step) : FMath::Max(Target, KeelTurnShown - Step);
+				KeelPivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(KeelTurnShown), 0.0, 0.0));   // (a negative pitch takes the foot aft)
+			}
+			if (BladePivot && Foil.KickUpAngle > 0.0)
+			{
+				BladePivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(BladeKickTurn(Foil, T.RudderKick)), 0.0, 0.0));
+			}
+		}
 	}
 	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
 	// as the bow goes to starboard).

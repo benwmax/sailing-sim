@@ -1,0 +1,124 @@
+{
+ "note": "Commonwealth's light copy (slice 16, light.py, docs/shipkit-16): a lighter twin of every part seen from outside, for her at a distance (another ship's view, the chart table's approach, the showroom's far camera). Each twin is held to one pixel of the screen below from 'from_m' out, as the J-Class's is (Tools/shipkit/jclass/light.py does the work).",
+ "screen": {
+  "width_px": 3840,
+  "aspect": 1.7778,
+  "fov_deg": 60.0,
+  "note": "a 4K screen at the game's narrowest Field of view setting (Settings > Field of view runs 60 to 120 deg, SailingSettings.h): the view in which a centimetre covers the most pixels, outside photo mode's zoom",
+  "fov_max_deg": 120.0,
+  "note_fov_max": "the widest Field of view setting. Unreal switches a part by its whole bounding sphere's screen size, measured from the sphere's centre, which shrinks as the field of view widens: so each part's switch (light.json's ue_screen_size) is set where its twin's error is within a pixel at the sphere's nearest point (a radius nearer than its centre) in the widest view, and so in every view"
+ },
+ "from_m": 50.0,
+ "pixels": 1.0,
+ "note_from": "1 pixel at 50 m on that screen is 1.5 cm: the twin may stand in for any part 50 m off or further; the game sets each part's switch by its own screen size (light.json's ue_screen_size)",
+ "budget_share": 0.25,
+ "note_budget": "the plan's ceiling: about a million triangles in every state (and a quarter of the detailed ship's, budget_share), the J-Class light copy's way",
+ "speck_share": 1.0,
+ "note_speck": "a separate piece (a pin, a split ring, a rivet head) whose bounding box's diagonal is under this many tolerances is left out: under a pixel from 'from_m'",
+ "seam_join_share": 2.0,
+ "note_seam": "paint lines: the faces either side of a line between two materials, or of a seam in a UV map (where the drawn paint jumps: the plating's, a sail's cloths), are simplified apart, so the line keeps its place exactly, and then sewn together again: each vertex on one side is put into the other side's edge if it lies within this many tolerances of it (each side may stray a tolerance), the nearest edge winning. A UV jump of a whole turn (a spar's wrap round seam) is no seam: it is left whole",
+ "tube": {
+  "min_sides": 4,
+  "radius_share": 0.3,
+  "flat_share": 0.5,
+  "hero_sides_from": 6,
+  "roundness": 1.5,
+  "round_median": 1.03,
+  "line_share": 0.5,
+  "note": "a rope, a wire or a round rod (the detailed part's tube: rings of the same count capped by a fan to each end's centre, most of them round to round_median, none further from round than 'roundness', largest over least distance from the centre: a mitred bend's ring is an ellipse) is built again round its own centreline with the fewest sides (at least min_sides) whose corners, standing at the mean radius r 2 / (1 + cos(pi / sides)), and flats lie within flat_share of the tolerance and within radius_share of its radius of the round tube (as far outside it as inside: for four sides 17% of the radius), so its width from every side is within that of the round tube's; its paint is carried from the detailed tube's as a solid's is; its rings are thinned to those the centreline and radius need to stay within line_share of the tolerance. A tube built again that strays further than the tolerance from the detailed one, or whose paint slides further (the 99th percentile by area: a winch drum's, round which the paint jumps back within one face), or one of fewer than hero_sides_from sides, is simplified with the solids."
+ },
+ "ratios": [
+  0.004,
+  0.006,
+  0.008,
+  0.01,
+  0.0125,
+  0.015,
+  0.02,
+  0.025,
+  0.03,
+  0.04,
+  0.05,
+  0.065,
+  0.08,
+  0.1,
+  0.125,
+  0.15,
+  0.2,
+  0.25,
+  0.3,
+  0.4,
+  0.5,
+  0.65,
+  0.8,
+  1.0
+ ],
+ "note_ratios": "each part's solids are collapsed to the smallest of these shares of their triangles that keeps the part within the tolerance (Blender's quadric collapse, the paint lines held as above), every seam sewn, its drawn paint within the tolerance too (the 99th percentile of how far a UV number's lines slide) and no face turned over wider than the tolerance",
+ "uv_read_in_game": [
+  "UV1"
+ ],
+ "note_uv_read_in_game": "maps a part's paint is held to though its Blender material does not read them, because the game's does: UV1, the sails' planform (the share along the row and up the sail), from which the game's M_SailCloth draws a tri-radial's seams, the insignia and the number",
+ "uv_numbers": {
+  "Margin.v": "metres",
+  "SparG.u": "metres",
+  "Aft.v": "setting",
+  "SparG.v": "setting"
+ },
+ "note_uv_numbers": "the UV numbers that draw no lines of their own (every other number's lines are where it takes a value, and the paint's slide is how far those lines move: its error over its rate). 'metres': a length the material reads (the deck's Margin v, the margin plank's inner edge's distance out at that point: where the planks' nibs end; SparG u, the spar's girth there: the share round times it places the plating's lines), so its error is itself how far a line moves. 'setting': a number that sets something else (the deck's Aft v, the margin's slope: the nibs' angle; SparG v, 1 where a spar is plated and -1 on its fittings), whose largest error is reported, not held",
+ "skip": [
+  "Hull"
+ ],
+ "note_skip": "the lofted hull (Clay_Hull) is the skin's reference, hidden, never shown",
+ "budget_triangles": 1000000,
+ "states": {
+  "underway": [
+   "Sails_Head",
+   "Sails_Set",
+   "Running_Set",
+   "Guns",
+   "Guns_Housed",
+   "Carronades_RunOut"
+  ],
+  "action": [
+   "Sails_Head",
+   "Sails_Set",
+   "Running_Set",
+   "Guns",
+   "Guns_RunOut",
+   "Carronades_RunOut"
+  ],
+  "clewed": [
+   "Sails_Head",
+   "Sails_Clewed",
+   "Running_Clewed",
+   "Guns",
+   "Guns_Housed",
+   "Carronades_RunOut"
+  ],
+  "anchored": [
+   "Sails_Head",
+   "Sails_Furled",
+   "Running_Furled",
+   "Guns",
+   "Guns_Housed",
+   "Carronades_RunOut"
+  ]
+ },
+ "note_states": "her states as the game shows them (collections of the build; a part in the scene's own collection shows in every state): under sail with the guns housed, cleared for action with the guns run out, the courses clewed up, and at anchor with everything furled. Guns_RunIn and Carronades_Recoil are moments in a broadside, each part as large as its run-out twin's; every collection's parts get twins",
+ "inside_collections": [
+  "BerthDeck",
+  "Orlop",
+  "Hold"
+ ],
+ "note_inside": "the decks below the gun deck (slices 13 and 14's collections) are drawn only when the player walks down, close to: their parts get no twin. The gun deck (collection GunDeck) is seen from outside through the open waist and every open port, so its parts get twins like the outside's, as do the guns, carriages and lids",
+ "guarded": [
+  "Skin"
+ ],
+ "note_guarded": "parts collapsed with light.py's guarded_collapse: the hull's skin, where the plain collapse opened a seam a metre off the part's own open edges amidships under the wale at every share under 0.65, so the search kept all 267,740 triangles. The guard holds the part's vertices near any stray or new open edge. (Tried on the guns' gear too: it held so much of each tackle that the twin came out larger.) Warped faces are cut on their drawn diagonal first, for every part.",
+ "piecewise": [
+  "_Gear",
+  "Gun24_Carriage"
+ ],
+ "piece_share": 1.0,
+ "note_piecewise": "parts also collapsed piece by piece (light.py's piecewise_collapse: each loose piece to its own smallest share that keeps it within piece_share of the tolerance, then the part's own search and checks over the whole as before), the lighter of the two twins kept. On a gun's tackles run out (blocks, hooks, falls and the breeching: 88 pieces) one piece needed 0.4 and set it for the whole: 10.2k triangles a gun, 3.4k piece by piece. On the many small identical pieces of a pin rail or a stay's deadeyes the whole part's collapse does better, so they are not listed"
+}

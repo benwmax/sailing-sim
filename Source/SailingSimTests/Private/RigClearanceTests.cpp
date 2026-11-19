@@ -142,7 +142,7 @@ bool FVisualRigClearanceTest::RunTest(const FString& Parameters)
 
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate: her rig and crew are checked once her model is in the game (docs/ship-rig/).
 		Pawn->SetBoat(Type);
 		Tick(2);
 		const FBoatConfig& Cfg = Pawn->GetBoatModel().GetConfig();
@@ -383,7 +383,7 @@ bool FVisualSailShroudsTest::RunTest(const FString& Parameters)
 	for (const ESailingQuality Tier : { ESailingQuality::Medium, ESailingQuality::High })
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate: her rig and crew are checked once her model is in the game (docs/ship-rig/).
 		USailingSettings::Get()->Quality = Tier;
 		Pawn->SetBoat(Type);
 		Tick(2);
@@ -588,7 +588,7 @@ bool FVisualSheetClearanceTest::RunTest(const FString& Parameters)
 
 	for (int32 Type = 0; Type < int32(EBoatType::Count); ++Type)
 	{
-		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate's square rig, crew and cameras come with the frigate wiring (IsSquareRigged).
+		if (IsSquareRigged(EBoatType(Type))) continue; // The frigate: her rig and crew are checked once her model is in the game (docs/ship-rig/).
 		Pawn->SetBoat(Type);
 		Tick(2);
 		const FBoatConfig& Cfg = Pawn->GetBoatModel().GetConfig();

@@ -2,12 +2,16 @@
 script; this file only writes the string). Line for line the maths of ground_material.py: change both together, and
 test_ground.py checks the constants and the structure.
 
-    python3 -I Tools/envloop/ground/ground_hlsl.py [pack] > Artifacts/envloop/ground/M_Ground.hlsl
+    python3 -I Tools/envloop/ground/ground_hlsl.py [pack] > Tools/envloop/ground/M_Ground.hlsl
+
+The integration script (scripts/import_ground.py) reads the committed copy Tools/envloop/ground/M_Ground.hlsl (the editor's
+Python has no numpy); test_ground.py fails when that copy is stale: regenerate it with the command above.
 
 Custom node inputs (positions in cm as the engine gives them, with MPC_World.RenderOrigin added as every world material
 does): P (world position), N (VertexNormalWS: fine on the terrain's procedural mesh), C (VertexColor RGB), CA
-(VertexColor A: Near), WaterZ (MPC_World), Cam (CameraPositionWS), Mown (from the terrain at integration: UV1.x is the
-plan), Season (MPC_World, 0 summer .. 1 dormant), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
+(VertexColor A: Near), WaterZ (MPC_World), Cam (CameraPositionWS), Mown (the terrain's UV0.x, written by
+LakeTerrainActor::BuildChunk from SailingGround::MownAt), Season (MPC_World, 0 summer .. 1 dormant), Detail (MPC_World.GroundDetail: 1 on
+Ultra keeps the rotated second scale inside BAND_A, 0 on the other tiers halves the near fetches), and three Texture2DArray objects Alb, Nrm, Rha (8 slices in
 the region pack's role order; sRGB colour, linear BC5 normal, linear RHA) with their samplers.
 Outputs: return value base colour; Rough; WN (world normal: the material sets tangent_space_normal off, because the
 terrain mesh carries no tangents); AO.
@@ -15,8 +19,11 @@ Sampling: Texture2DArraySampleGrad with gradients taken before the far branch (n
 the two strongest surfaces are sampled: 2 surfaces x 2 scales x 3 maps = 12 fetches inside 150 m, none past it.
 """
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 
 def arr3(rows):
@@ -58,6 +65,8 @@ def build(pack=None):
         f"const float BLEND_DEPTH = {gm.BLEND_DEPTH:.4f};",
         f"const float TEX_FAR = {gm.TEXTURE_FAR_M:.1f};",
         f"const float2 NFADE = float2({gm.NORMAL_FADE_M[0]:.1f}, {gm.NORMAL_FADE_M[1]:.1f});",
+        f"const float2 BAND_A = float2({gm.BAND_A_M[0]:.1f}, {gm.BAND_A_M[1]:.1f});",
+        f"const float2 BAND_B = float2({gm.BAND_B_M[0]:.1f}, {gm.BAND_B_M[1]:.1f});",
     ])
     body = BODY
     for k, v in idx.items():
@@ -84,19 +93,22 @@ GroundFn G;
 float3 p = P * 0.01;
 float h = (P.z - WaterZ) * 0.01;
 float slope = 1.0 - N.z;
-float n1 = G.VNoise(p.xy / 3.1);
+float2 p1 = float2(0.8253 * p.x - 0.5646 * p.y, 0.5646 * p.x + 0.8253 * p.y);
+float2 p3 = float2(0.6216 * p.x + 0.7833 * p.y, -0.7833 * p.x + 0.6216 * p.y);
+float n1 = G.VNoise(p1 / 3.1);
 float n2 = G.VNoise(p.xy / 0.9 + float2(17.0, -5.0));
-float n3 = G.VNoise(p.xy / 11.0 + float2(-4.0, 9.0));
+float n3 = G.VNoise(p3 / 11.0 + float2(-4.0, 9.0));
+float n4 = G.VNoise(p.xy / 31.0 + float2(-7.7, 3.1));
 float rg = C.r / max(C.g, 1e-3);
 float canopy = saturate((1.0 - rg) / 0.27) * smoothstep(0.4, 0.9, p.z);
 float sandy = saturate((C.g / max(C.r, 1e-3) - 0.74) / 0.10);
 float wet0 = max(CA, h < 0.05 ? 1.0 : 0.0);
 float w[8];
-float swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1, h)) * wet0;
+float swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1 + 0.08 * n3, h)) * wet0;
 float dryBed = smoothstep(-0.02, -0.12, p.z + 0.06 * n3) * smoothstep(0.08, 0.22 + 0.10 * n1, h) * (1.0 - smoothstep(0.10, 0.25, slope));
-float top = 1.3 + 0.35 * n3 + 0.15 * n2;
+float top = 1.3 + 0.35 * n3 + 0.15 * n2 + 0.3 * n4;
 float bank = CA * (1.0 - smoothstep(top - 0.35, top, h)) * (1.0 - dryBed);
-float shingle = bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h)) * smoothstep(0.15, 0.45, 0.6 * n1 + 0.45 * n2 + 0.4 * n3);
+float shingle = bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h)) * smoothstep(0.05, 0.6, 0.6 * n1 + 0.45 * n2 + 0.4 * n3);
 float bare = smoothstep(0.08, 0.24, slope + 0.04 * n2) * (1.0 - swash);
 w[{MUD}] = swash;
 float rest = 1.0 - swash;
@@ -135,10 +147,20 @@ float dist = length(P - Cam) * 0.01;
 float2 dx = ddx(p.xy), dy = ddy(p.xy);
 float3 nT = float3(0, 0, 1);
 float ao = 1.0;
-if (dist < TEX_FAR)
+// Cost bands: the rotated second scale only inside BAND_A, the height, normal and roughness maps only inside BAND_B;
+// past it colour only, mixed by weight. 12 fetches a pixel inside 35 m, 6 to 75 m, 2 to 150 m, none past it. Ray-traced
+// hits (Lumen's hit lighting) and Lumen's surface-cache captures (LUMEN_CARD_CAPTURE, as M_BoatSurface gates its grime) take
+// the card colours: nothing there is close enough to read a texture, and the second world gate's +2.4 ms was in Lumen.
+float kA = Detail * (1.0 - smoothstep(BAND_A.x, BAND_A.y, dist));   // Detail 0 (High and below): no second scale, 6 fetches near
+float kB = 1.0 - smoothstep(BAND_B.x, BAND_B.y, dist);
+#if RAYHITGROUPSHADER || defined(LUMEN_CARD_CAPTURE)
+const bool bTextured = false;
+#else
+const bool bTextured = dist < TEX_FAR;
+#endif
+if (bTextured)
 {
     float4 L[2][2];     // per layer: albedo.rgb + height, then normal.xy, rough, ao
-    float H[2];
     [unroll] for (int j = 0; j < 2; ++j)
     {
         int s = j == 0 ? i1 : i2;
@@ -149,15 +171,25 @@ if (dist < TEX_FAR)
         float2 u2 = mul(R, p.xy) / (t * SCALE2) + float2(0.37, 0.71) * s;
         float2 d1x = dx / t, d1y = dy / t, d2x = mul(R, dx) / (t * SCALE2), d2y = mul(R, dy) / (t * SCALE2);
         float3 a = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u1, s), d1x, d1y).rgb;
-        float3 b = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u2, s), d2x, d2y).rgb;
-        float3 ra = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u1, s), d1x, d1y).rgb;
-        float3 rb = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u2, s), d2x, d2y).rgb;
-        float2 na = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u1, s), d1x, d1y).rg * 2.0 - 1.0;
-        float2 nb = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u2, s), d2x, d2y).rg * 2.0 - 1.0;
-        float m = G.VNoise(p.xy / 4.3 + float2(3.0, -2.0) * s);
-        float jn = smoothstep(-0.12, 0.12, (ra.g - rb.g) + 0.6 * m);
-        L[j][0] = float4(lerp(b, a, jn), lerp(rb.g, ra.g, jn));
-        L[j][1] = float4(lerp(nb, na, jn), lerp(rb.r, ra.r, jn), lerp(rb.b, ra.b, jn));
+        float3 ra = float3(ROUGHS[s], 0.5, 1.0);
+        float2 na = 0;
+        if (kB > 0.0)
+        {
+            ra = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u1, s), d1x, d1y).rgb;
+            na = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u1, s), d1x, d1y).rg * 2.0 - 1.0;
+        }
+        L[j][0] = float4(a, ra.g);
+        L[j][1] = float4(na, ra.r, ra.b);
+        if (kA > 0.0)
+        {
+            float3 b = Texture2DArraySampleGrad(Alb, AlbSampler, float3(u2, s), d2x, d2y).rgb;
+            float3 rb = Texture2DArraySampleGrad(Rha, RhaSampler, float3(u2, s), d2x, d2y).rgb;
+            float2 nb = Texture2DArraySampleGrad(Nrm, NrmSampler, float3(u2, s), d2x, d2y).rg * 2.0 - 1.0;
+            float m = G.VNoise(p.xy / 4.3 + float2(3.0, -2.0) * s);
+            float jn = smoothstep(-0.12, 0.12, (ra.g - rb.g) + 0.6 * m);
+            L[j][0] = lerp(L[j][0], float4(lerp(b, a, jn), lerp(rb.g, ra.g, jn)), kA);
+            L[j][1] = lerp(L[j][1], float4(lerp(nb, na, jn), lerp(rb.r, ra.r, jn), lerp(rb.b, ra.b, jn)), kA);
+        }
     }
     float w1 = w[i1], w2 = w[i2];
     float h1 = L[0][0].a + w1, h2 = L[1][0].a + w2;
@@ -166,8 +198,11 @@ if (dist < TEX_FAR)
     float bt = max(b1 + b2, 1e-6);
     b1 /= bt; b2 /= bt;
     float share = w1 + w2;
+    float wt = max(share, 1e-6);
+    b1 = lerp(w1 / wt, b1, kB); b2 = lerp(w2 / wt, b2, kB);
     float3 texCol = L[0][0].rgb * tint[i1] * b1 + L[1][0].rgb * tint[i2] * b2;
-    float texRough = L[0][1].b * b1 + L[1][1].b * b2;
+    float roughCard = ROUGHS[i1] * b1 + ROUGHS[i2] * b2;
+    float texRough = lerp(roughCard, L[0][1].b * b1 + L[1][1].b * b2, kB);
     float3 others = base - w1 * ALB_S[i1] * tint[i1] - w2 * ALB_S[i2] * tint[i2];
     float farK = smoothstep(TEX_FAR * 0.8, TEX_FAR, dist);
     base = lerp(texCol * share + others, base, farK);
@@ -181,6 +216,9 @@ if (dist < TEX_FAR)
 float m1 = G.VNoise(p.xy / 9.0 + float2(5.2, 1.3));
 float m2 = G.VNoise(p.xy / 31.0 + float2(-7.7, 3.1));
 base *= 1.0 + {MACRO_A} * m1 + {MACRO_B} * m2;
+float face = w[{CLAY}] * smoothstep(0.25, 0.5, slope);
+float strata = sin(p.z / 0.18 * 6.2831853 + 1.5 * n2 + 0.4 * n1);
+base *= 1.0 + 0.14 * strata * face;
 float grassy = w[{LAWN}] + w[{ROUGH}];
 float3 straw = ALB_D[{ROUGH}] / ALB_S[{ROUGH}];
 float dry = smoothstep(0.2, 0.9, 0.5 * m1 + 0.5 * m2 + 0.3) * 0.35 * (1.0 - Season);
@@ -188,13 +226,18 @@ base *= 1.0 + grassy * dry * (straw - 1.0);
 float2 blk = floor(p.xy / 40.0);
 float ang = 6.2831853 * G.Hash(blk + float2(0.13, 0.71));
 float stripe = frac(dot(p.xy, float2(cos(ang), sin(ang))) / 5.0) < 0.5 ? -1.0 : 1.0;
-base *= 1.0 + 0.04 * stripe * w[{LAWN}];
+base *= 1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[{LAWN}]);
 float wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n1, h)) * wet0;
 base *= 1.0 - dark * wet;
-rough = lerp(rough, rwet, wet);
+// #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the scans' wet gloss.
+rwet = max(rwet, lerp(0.62, rwet, smoothstep(0.88, 0.97, N.z)));
+// The bed under the water is matte and flat, as M_Terrain's: wet gloss and the scans' relief there put every visible
+// bed pixel under Lumen's reflection roughness (traced reflections and more probe work behind the water: round 4 gate).
+float under = smoothstep(0.0, -0.35, h);
+rough = lerp(lerp(rough, rwet, wet * (1.0 - under)), 0.92, under);
+nT = lerp(nT, float3(0, 0, 1), under);
 float film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05 ? 1.0 : 0.0) * wet0;
 base = lerp(base, base * float3(0.62, 0.74, 0.46), film * 0.8);
-float under = smoothstep(0.0, -0.35, h);
 base = lerp(base, base * float3(0.55, 0.6, 0.45), under);
 float3 T = normalize(float3(1, 0, 0) - N * N.x);
 float3 B = cross(N, T);

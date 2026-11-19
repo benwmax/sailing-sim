@@ -1,4 +1,5 @@
 #include "ShipOrders.h"
+#include "ShipSailPlans.h"
 
 #include <algorithm>
 #include <cmath>
@@ -208,6 +209,39 @@ namespace Sailing
 			Controls.bStaysailDown = Order == EShipOrder::FurlAll || Order == EShipOrder::FightingSail;
 		}
 		return true;
+	}
+
+	bool ApplySailOrder(EShipOrder Order, const FBoatConfig& Config, FBoatControls& Controls, int& Plan, bool bRunning)
+	{
+		if (!Config.HasSquareRig()) return false;
+		switch (Order)
+		{
+		case EShipOrder::MakeSail:
+			Plan = 0;
+			ApplyShipSailPlan(Config, Plan, Controls, bRunning);
+			return true;
+		case EShipOrder::ShortenSail:
+			// Off the ladder (fighting sail: the light sails in already), shortening sail goes to the first reefed plan.
+			if (Plan < 0)
+			{
+				Plan = NumShipSailPlans() - 1;
+				for (int K = 0; K < NumShipSailPlans(); ++K) if (ShipSailPlan(K).TopsailReef > 0) { Plan = K; break; }
+			}
+			else Plan = std::min(Plan + 1, NumShipSailPlans() - 1);
+			ApplyShipSailPlan(Config, Plan, Controls, bRunning);
+			return true;
+		case EShipOrder::FightingSail:
+		case EShipOrder::FurlAll:
+			Plan = -1;
+			return ApplySailPlan(Order, Config, Controls);
+		default:
+			return false;
+		}
+	}
+
+	const char* SailOrderPlanName(int Plan)
+	{
+		return Plan >= 0 && Plan < NumShipSailPlans() ? ShipSailPlan(Plan).Name : nullptr;
 	}
 
 	double HelmTargetAfter(EShipOrder Order, double TargetTwaDeg, const FShipOrderContext& C)
