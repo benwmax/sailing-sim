@@ -693,7 +693,7 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 		FHullNamePlace NamePlace;
 		// -SailingHullName="<name>" letters one for stills, whatever the skin says.
 		FString NameText = bHasSkin ? Skin.HullName() : FString();
-		const FLinearColor NameInk = bHasSkin ? Skin.HullNameColour() : FBoatSkin().HullNameColour();
+		const FLinearColor NameInk = (bHasSkin ? Skin : FBoatSkin()).HullNameColour(L.Hull);   // (against the hull she wears: the livery, with the skin applied)
 		if (FString NameArg; FParse::Value(SailingArgs::Dev(), TEXT("SailingHullName="), NameArg, false)) NameText = FBoatSkin::CleanHullName(NameArg);
 		if (bTrafficBoat || bGhost) NameText.Reset();
 		// (the texture is kept while the name is the same: drawing it stalls for a read-back, and the Customize screen

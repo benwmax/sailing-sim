@@ -353,6 +353,8 @@ bool FSailingSkinLetteringTest::RunTest(const FString&)
 	TestTrue(TEXT("Navy on the class's hull"), Out.HullNameColour().Equals(Navy, 0.002f));
 	Out.Paint.Hull = Navy;
 	TestTrue(TEXT("White on a dark hull"), Out.HullNameColour().Equals(White, 0.002f));
+	TestTrue(TEXT("White on a class whose own hull is dark, with no paint in the skin"), FBoatSkin().HullNameColour(Navy).Equals(White, 0.002f));
+	TestTrue(TEXT("Navy on a white hull"), FBoatSkin().HullNameColour(White).Equals(Navy, 0.002f));
 	Out.Lettering.Colour = Red;
 	FBoatSkin Again;
 	TestEqual(TEXT("Reads with a colour"), int32(FBoatSkin::FromJson(Out.ToJson(), Again)), int32(FBoatSkin::EResult::Ok));
