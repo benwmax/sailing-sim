@@ -137,7 +137,10 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
 - **Welded pieces.** The kit builds each stone, board and cap as separate face sheets sharing positions but not vertices;
   `export_edges.py` welds them (0.1 mm) before export. Unwelded, Unreal's Nanite fallback (relative error 1, drawn
   wherever Nanite doesn't) and the `_Light` decimation turned the limestone's stones into hollow open boxes with missing
-  faces, seen in the game as short blocks with gaps (round 5). Welded, a stone is a closed manifold and decimates to a box.
+  faces, seen in the game as short blocks with gaps (round 5). Welded, a stone is a closed manifold and decimates to a box. The stones' faces were also all wound
+  inward (`rough_block`; the kit's own Cycles renders draw both sides, so it never showed), which Nanite culls: round 6's
+  stills had every stone as an open shell showing its far faces. Audit any new part with a winding check (face normal
+  against the part's centre) before an export, not with a render.
   Every part is also clipped to the 4 m piece (the caps, blocks, boards and debris used to run on to 2.9-10 m).
 - **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
   import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its

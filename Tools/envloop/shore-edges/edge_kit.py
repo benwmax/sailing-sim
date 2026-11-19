@@ -359,7 +359,7 @@ def rough_block(m, c, size, rng, seed, surface="limestone", res=0.06):
             P[..., a2] = Vv
             allV.append(P.reshape(-1, 3))
             F = grid_faces(n[a1], n[a2])
-            if (sign > 0) != (ax == 1):
+            if (sign > 0) == (ax == 1):   # outward (every face pointed in: Nanite culled the stones' lake faces, round 6)
                 F = F[:, ::-1]
             allF.append(F + off)
             off += P.shape[0] * P.shape[1]
