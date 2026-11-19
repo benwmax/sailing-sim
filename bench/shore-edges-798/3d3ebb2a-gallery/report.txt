@@ -1,0 +1,26 @@
+Auto-merging Content/World/MPC_World.uasset
+CONFLICT (content): Merge conflict in Content/World/MPC_World.uasset
+Auto-merging Source/SailingSim/Private/LakeTerrainActor.cpp
+Auto-merging Source/SailingSim/Public/LakeTerrainActor.h
+Encountered 1 file that should have been a pointer, but wasn't:
+	Content/World/MPC_World.uasset
+Automatic merge failed; fix conflicts and then commit the result.
+merge with main conflicted: 3d3ebb2a alone
+build ok (the worktree held main since the diagnostics)
+EDGENANITE SM_Edge_Bulkhead_0: tris 3419 lods 1 nanite_enabled True fallback_percent_triangles 1.0 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.AUTO: 0>
+EDGENANITE SM_Edge_Limestone_0: tris 1314 lods 1 nanite_enabled True fallback_percent_triangles 1.0 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.AUTO: 0>
+shot gallery-SM_Edge_Limestone_0: gallery-SM_Edge_Limestone_0.png 
+  gallery-SM_Edge_Limestone_0 nanite: r.Nanite.ProjectEnabled:1]];
+shot gallery-SM_Edge_Limestone_0-compare: gallery-SM_Edge_Limestone_0-compare-compare.png gallery-SM_Edge_Limestone_0-compare.png 
+  gallery-SM_Edge_Limestone_0-compare nanite: r.Nanite.ProjectEnabled:1]];
+shot gallery-SM_Edge_Bulkhead_0: gallery-SM_Edge_Bulkhead_0.png 
+  gallery-SM_Edge_Bulkhead_0 nanite: r.Nanite.ProjectEnabled:1]];
+shot gallery-SM_Edge_Bulkhead_0-compare: gallery-SM_Edge_Bulkhead_0-compare-compare.png gallery-SM_Edge_Bulkhead_0-compare.png 
+  gallery-SM_Edge_Bulkhead_0-compare nanite: r.Nanite.ProjectEnabled:1]];
+shot lot26891-water: lot26891-water.png 
+  lot26891-water nanite: r.Nanite.ProjectEnabled:1]];
+shot lot26891-above: lot26891-above.png 
+  lot26891-above nanite: r.Nanite.ProjectEnabled:1]];
+Shore edges: 19392 pieces (4677 lot wall segments on 674 lots, 14715 natural shore nodes), 21 of 21 meshes
+nanite log lines (lot26891-water):
+LogConfig: Set CVar [[r.Nanite.ProjectEnabled:1]]
