@@ -88,3 +88,17 @@ There's no cream blob at any of the four. Main reads darker still, because the #
 
 - **Fixed in the world, not on screen:** it moves with the ground when the camera turns, so it isn't a screen-aligned Lumen or shadow step.
 - **From M_Ground's path:** it goes away with the classic ground, and the near-detail switch doesn't touch it. So it comes from M_Ground's own inputs, most likely a chunk or tile boundary in its masks or textures at that spot.
+
+### Lawn step, set 2 (`lawn-step/set2/`)
+
+**`env-club-beach-05m` with `-SailingNoShoreDetail`** (all 5 m grid; `crops/compare-noshoredetail.png`):
+
+- The step is **still there, fainter**. It's at the same place, about x 1400 of the full still.
+- So it isn't only the 1 m lidar band's edge.
+
+**Top-down drone, `"-SailingCamWorld=128,40,60,0,-89"`**, plain and with `-SailingClassicGround` (`crops/compare-topdown.png` half size; `crops/topdown-patches*.png` 1:1):
+
+- **Wrong spot:** `-SailingCamWorld` is an offset from the boat's start spot, not a map position. The camera landed at map **N 240.3, E 1.4, 60 m up** (start 112.3, -38.6 plus 128, 40; `lawn-topdown.camera.json`), over the backyards about 115 m north of the beach still's camera (N 124.4, E -5.7). So this frame doesn't contain the beach step itself.
+- **What it shows:** the same kind of artifact. Under M_Ground the lawn has **lighter rectangles with straight, map-axis-aligned edges**, roughly 8 x 12 m. The clearest is at full-frame x 1260-1420, y 370-600, which at about 0.052 m per pixel (80 deg hfov from 60 m, north up) is **map E 17 to 25 m, N 237 to 249 m**. Others sit at the top of the frame.
+- **Classic ground:** `-SailingClassicGround` shows none of them.
+- **Reading:** M_Ground has rectangular, axis-aligned tiles in one of its inputs (a mask or palette lookup on a coarse grid), not a lighting effect.
