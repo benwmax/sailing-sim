@@ -121,7 +121,11 @@ is optional and falls to navy, or the gelcoat's white where the skin paints the 
   Every other class (Nov 19 2026) takes that place scaled by her hull length from her physics hull: 16 cm (scaled)
   forward of the stern, the band's middle at 58% of the freeboard there and at most 45% of it tall, so the capitals run
   from about 2 in on the Sunfish to about 15 in on the J-Class. Only topsides facing outboard are lettered, so a
-  catamaran wears it on both hulls' outer sides; a trimaran only on her main hull (`MaxSideCm`, the material's
+  catamaran wears it on both hulls' outer sides; a hull drawn from her sections (Catalina 22, maxi, Bluebonnet) keeps the
+  band on her topside proper, above where the side turns under (85% of the half-breadth) and under the sheer, and on a
+  long counter (Bluebonnet's) moves forward, up to a fifth of her length, until there is room (the first stills had her
+  name half under water on the counter's curve). The usual colour is judged against the hull she wears (white on
+  Bluebonnet's navy); a trimaran only on her main hull (`MaxSideCm`, the material's
   `NameSpan`). A long name is made smaller to stay within the place's length. The frigate has none: her name is carved
   on her stern.
 - **How.** The pawn draws the name once per rebuild into a small render target with the menus' title face (Besley
