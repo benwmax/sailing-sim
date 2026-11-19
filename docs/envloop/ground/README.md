@@ -138,6 +138,12 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   (`MPC_World.GroundDetail`, set by ASailingEnvironment; `-SailingGroundDetail=0|1` compares): High reads 6 fetches a
   pixel near, and the bench now names the Lumen passes (`gpu.lumen_passes` in bench.json, "Bench GPU Lumen passes" in
   the log) so the next gate says which Lumen pass moved. The numpy twin has the same bands (`shade(..., detail=)`).
+- **Lumen's cost was the bed under the water (round 4 gate, Nov 18).** With the same package and only the material
+  swapped (`-SailingClassicGround`), the Lumen passes that moved were screen-space: ScreenProbeGather +1.2 ms and
+  LumenReflections +1.2 ms on coast-day; card captures, scene lighting and card rasterising were equal. `M_Ground` had
+  treated everything below the waterline as wet (the mud's wet roughness, 0.25 to 0.45, and the scans' relief), so every
+  bed pixel seen through the water sat under Lumen's reflection roughness (0.4) and was traced. `M_Terrain` draws the
+  bed at 0.92 and flat; `M_Ground` now does the same (`under`): the wet gloss and the relief stop at the waterline.
 - **From the PC's Ultra stills (Nov 18, `Inputs/bench/ground-797/pc-0c1d9669/`).** Shingle patches on the club beach had
   box-straight sides (value noise keeps its lattice in its features): the 3.1 m and 11 m patch noises now sit on
   lattices turned 34 and -52 degrees off the map's axes. A pale column ran up the clay bank: the mowing stripes

@@ -287,10 +287,14 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0)
     # #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the wet gloss.
     rwet = w @ ROUGH_WET
     rwet = np.maximum(rwet, 0.62 + (rwet - 0.62) * smoothstep(0.88, 0.97, N[:, 2]))
-    rough = rough + (rwet - rough) * wet
+    # The bed under the water is matte and flat, as M_Terrain's (wet gloss and relief there put every visible bed pixel
+    # under Lumen's reflection roughness: round 4 gate).
+    under = smoothstep(0.0, -0.35, h)
+    rough = rough + (rwet - rough) * (wet * (1.0 - under))
+    rough = rough + (0.92 - rough) * under
+    nrm_t = nrm_t * (1.0 - under)[:, None]
     film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05) * np.maximum(Near, h < 0.05)
     base = base + (base * np.array([0.62, 0.74, 0.46]) - base) * (film * 0.8)[:, None]
-    under = smoothstep(0.0, -0.35, h)
     base = base + (base * np.array([0.55, 0.6, 0.45]) - base) * under[:, None]
     # Relief: the scans' tangent normals on the mesh normal (the terrain's tangent frame is world X/Y on the slope).
     Nw = perturb(N, nrm_t)

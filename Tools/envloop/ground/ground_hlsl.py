@@ -231,10 +231,13 @@ float wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n1, h)) * wet0;
 base *= 1.0 - dark * wet;
 // #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the scans' wet gloss.
 rwet = max(rwet, lerp(0.62, rwet, smoothstep(0.88, 0.97, N.z)));
-rough = lerp(rough, rwet, wet);
+// The bed under the water is matte and flat, as M_Terrain's: wet gloss and the scans' relief there put every visible
+// bed pixel under Lumen's reflection roughness (traced reflections and more probe work behind the water: round 4 gate).
+float under = smoothstep(0.0, -0.35, h);
+rough = lerp(lerp(rough, rwet, wet * (1.0 - under)), 0.92, under);
+nT = lerp(nT, float3(0, 0, 1), under);
 float film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05 ? 1.0 : 0.0) * wet0;
 base = lerp(base, base * float3(0.62, 0.74, 0.46), film * 0.8);
-float under = smoothstep(0.0, -0.35, h);
 base = lerp(base, base * float3(0.55, 0.6, 0.45), under);
 float3 T = normalize(float3(1, 0, 0) - N * N.x);
 float3 B = cross(N, T);
