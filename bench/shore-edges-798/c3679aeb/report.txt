@@ -1,0 +1,62 @@
+head 67d528d4 07:03:43; main in it: yes
+build ok
+make-shore-edges exit 0 07:04:43
+LogPython: Built M_ShoreEdge from pack north-texas-lake (41 colours)
+LogPython: Imported 42 shore edge pieces into /Game/World/Edges
+commit: edges       43
+left out (       0):
+pushed c3679aebc8e6876207966d634ce5fc56be29a196
+licence-check exit 0: licence check: every file under Content/, Audio/ and Inputs/ has a row (100 rows)
+EDGEBOUNDS SM_Edge_Bulkhead_0: origin <Struct 'Vector' (0xb6ad04b1c20) {x: 0.000000, y: 12.500000, z: -30.000000}> extent <Struct 'Vector' (0xb6ad04b1c38) {x: 200.000000, y: 15.000000, z: 120.000000}>
+EDGEBOUNDS SM_Edge_Claycut_0: origin <Struct 'Vector' (0xb6ad05a0f40) {x: -0.712730, y: -173.346485, z: 38.125481}> extent <Struct 'Vector' (0xb6ad05a0f58) {x: 201.276726, y: 254.046947, z: 129.371880}>
+EDGEBOUNDS SM_Edge_Limestone_0: origin <Struct 'Vector' (0xb6ad05a07c0) {x: 0.374168, y: 35.003600, z: -30.230347}> extent <Struct 'Vector' (0xb6ad05a07d8) {x: 199.361015, y: 37.190484, z: 91.046532}>
+EDGEBOUNDS SM_Edge_Timber_0: origin <Struct 'Vector' (0xb6ad05a0040) {x: 0.000000, y: 0.890212, z: -41.491550}> extent <Struct 'Vector' (0xb6ad05a0058) {x: 200.000000, y: 24.109788, z: 118.639080}>
+EDGENANITE SM_Edge_Bulkhead_0: tris 3419 lods 1 nanite_enabled True fallback_percent_triangles 1.0 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.AUTO: 0>
+EDGENANITE SM_Edge_Limestone_0: tris 1552 lods 1 nanite_enabled True fallback_percent_triangles 1.0 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.AUTO: 0>
+world gate exit 0 07:29:10
+433 passed, 0 failed, 433 total
+[gate 1023 s] package: Content changed, full recook
+[gate 1203 s] bench marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day,marseille-port,far-coast,far-coast-night,stream-run on High
+[gate 1438 s] bench done
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.3   19.57    17.6  ok
+coast-day      High      51.6   20.39   18.55  ok
+coast-night    High      57.0   18.31    16.8  ok
+helm-eye       High      55.2   19.77   17.53  ok
+slip           High      46.9   22.58   20.67  ok
+bridge         High      60.0   17.75   16.01  ok
+marina-night   High      55.7   19.08   17.38  ok
+far-coast      High      62.7   16.88   14.93  ok
+far-coast-night High      78.4    13.4   11.52  ok
+marseille-port High      53.0   20.71   18.56  ok
+stream-run     High      51.7   20.81   18.63  ok
+gate: pass
+[gate 1438 s] gate passed
+gpu slices:
+view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms
+marina,High,54.3,19.57,17.6,7.44,2.18,4.05,1.96,0.0,0.73,1.23
+coast-day,High,51.6,20.39,18.55,7.89,2.53,4.28,1.81,0.0,0.86,1.17
+coast-night,High,57.0,18.31,16.8,6.71,2.68,3.65,2.02,0.0,0.83,0.91
+helm-eye,High,55.2,19.77,17.53,7.7,3.53,2.85,1.17,0.0,0.63,1.66
+slip,High,46.9,22.58,20.67,9.42,3.41,3.64,1.97,0.0,0.81,1.41
+bridge,High,60.0,17.75,16.01,6.22,2.29,4.09,1.29,0.0,0.83,1.29
+marina-night,High,55.7,19.08,17.38,7.81,3.12,3.22,1.23,0.0,0.82,1.19
+far-coast,High,62.7,16.88,14.93,5.44,2.08,4.06,1.63,0.0,0.82,0.9
+far-coast-night,High,78.4,13.4,11.52,3.19,1.91,3.75,1.18,0.0,0.83,0.66
+marseille-port,High,53.0,20.71,18.56,7.88,2.49,3.85,2.42,0.0,0.78,1.13
+stream-run,High,51.7,20.81,18.63,8.28,2.63,3.71,2.28,0.0,0.76,0.97
+shot env-bulkhead-05m-after
+shot env-bulkhead-15m-after
+shot env-bulkhead-60m-after
+shot lot26891-water
+shot lot26891-above
+shot gallery-limestone
+capture log lines (ShoreEdge / Nanite warnings):
+   6 LogSailing: Display: Shore edges: 19723 pieces (5008 lot wall segments in 754 runs, 14715 natural shore nodes), 21 of 21 meshes
+   1 LogSailing: Display: Gallery: open, studio at 1000 m over the water, the lake presets at (138, -56)
+   1 LogSailing: Display: Gallery show Edge limestone 1: load 13 ms; 15572 triangles (Nanite), 1 LODs, 1 materials, 3.99 x 0.74 x 1.82 m
+   1 LogSailing: Display: Gallery index: 249 assets, 11 categories, 77 in Other (4067 meshes in the registry)
+   1 LogSailing: Display: Gallery compare: tiers 0 and 2 captured at 1440 x 1080
+   1 LogSailing: Display: Gallery compare saved to ../../../../../../ben/myProjects/sailing-sim/Artifacts/wt-code/Saved/Bench/gallery-limestone-compare.png
+   1 LogInit: Command Line: -nocrashreports -windowed -ResX=1440 -ResY=1080 -SailingBench=10 -SailingDemo -SailingBoat=J22 -SailingWorld=Lake -SailingQuality=High -SailingGallery=/Game/World/Edges/SM_Edge_Limestone_0 -SailingGalleryCompare=Low,High -SailingShot=gallery-limestone -game
+   1 LogCsvProfiler: Display: Metadata set : commandline="" /Users/ben/myProjects/sailing-sim/Artifacts/wt-code/SailingSim.uproject -game -nocrashreports -windowed -ResX=1440 -ResY=1080 -SailingBench=10 -SailingDemo -SailingBoat=J22 -SailingWorld=Lake -SailingQuality=High -SailingGallery=/Game/World/Edges/SM_Edge_Limestone_0 -SailingGalleryCompare=Low,High -SailingShot=gallery-limestone""
