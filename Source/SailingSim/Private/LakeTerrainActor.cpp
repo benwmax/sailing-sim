@@ -232,7 +232,9 @@ ALakeTerrainActor::FChunkMesh ALakeTerrainActor::BuildChunk(const FChunkSource& 
 			// Texas cross-timbers colors: muddy lake bed, red-brown clay and sand at the waterline, rock on steep
 			// banks, dry grass above, darker under woods.
 			const double Slope = 1.0 - Nrm.Z;
-			const double Canopy = T.CanopyAt(OX + R * Cell, OY + C * Cell) / 12.0;
+			// Interpolated: the nearest 20 m cell showed as lighter rectangles on the lawns under M_Ground (its litter
+			// threshold made the raster's steps hard edges on the 1 m shore mesh).
+			const double Canopy = T.CanopyAtSmooth(OX + R * Cell, OY + C * Cell) / 12.0;
 			const int32 GR = (GridR0 + R) / Sub, GC = (GridC0 + C) / Sub; // the colour noise stays on the grid's cells at every level
 			const float Noise = 0.9f + 0.2f * Rand01(uint32(GR * 7919 + GC * 104729));
 			// Track A: where the ground is mown, for M_Ground's lawn (UV0.x; the mesh carries no other UV).

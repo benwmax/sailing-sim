@@ -159,3 +159,10 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   compile on Metal and D3D; frame time at the shore stations (plan share: Medium 1.5 ms, High 3.0 ms for the whole
   shore; this material reads 12 texels inside 150 m and none past it); the in-game stills at Track 0's stations; and the
   colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
+- **Lawn rectangles (PC Ultra stills of main 91c8c80d, Nov 19, `Inputs/bench/main-91c8c80d/lawn-step/`).** Lighter
+  straight-edged rectangles about 8 by 12 m, square to the map's axes, lay on the lawns near trees and moved with the
+  world, not the camera. They were the tree-canopy raster: the terrain mesh coloured each vertex by the nearest 20 m cell
+  (`FLakeTerrain::CanopyAt`), and on the 1 m shore mesh the cell edges came through as steps. `M_Terrain` only darkened
+  the grass softly by that value; `M_Ground` thresholds it into leaf litter, so the steps became edges. `BuildChunk` now
+  reads `CanopyAtSmooth` (bilinear between cell centres; `SailingSim.Lake.CanopySmooth`). Tree placement and the wind's
+  shelter keep the nearest cell.
