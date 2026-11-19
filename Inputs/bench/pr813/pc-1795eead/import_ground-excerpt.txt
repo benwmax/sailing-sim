@@ -1,0 +1,7 @@
+	Asset Name: /Game/Materials/M_Ground.M_Ground
+[2026.11.19-07.54.39:048][  0]LogFileHelpers: Saving Package: /Game/Materials/M_Ground
+[2026.11.19-07.54.39:048][  0]Cmd: OBJ SAVEPACKAGE PACKAGE="/Game/Materials/M_Ground" FILE="D:/dev/ss-fix-wt/pr813/Content/Materials/M_Ground.uasset" SILENT=true
+[2026.11.19-07.54.39:057][  0]LogSavePackage: Moving output files for package: /Game/Materials/M_Ground
+[2026.11.19-07.54.39:057][  0]LogSavePackage: Moving 'D:/dev/ss-fix-wt/pr813/Saved/M_Ground5EB330D744C2AB23C36F99A5AD904FDE.tmp' to 'D:/dev/ss-fix-wt/pr813/Content/Materials/M_Ground.uasset'
+[2026.11.19-07.54.39:057][  0]LogPython: Ground: M_Ground built from D:\dev\ss-fix-wt\pr813\Tools\envloop\ground\M_Ground.hlsl (north-texas-lake)
+[2026.11.19-07.54.39:058][  0]LogPythonScriptCommandlet: Display: Python script executed successfully
