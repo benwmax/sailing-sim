@@ -262,7 +262,12 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0)
     # straw patches as 8 x 12 m rectangles square to the map on every lawn (PC Ultra stills, Nov 19 2026).
     p1x, p1y = 0.8253 * x - 0.5646 * y, 0.5646 * x + 0.8253 * y
     p3x, p3y = 0.6216 * x + 0.7833 * y, -0.7833 * x + 0.6216 * y
-    m1 = 0.65 * vnoise(p1x / 9.0 + 5.2, p1y / 9.0 + 1.3) + 0.5 * vnoise(p3x / 6.3 - 2.1, p3y / 6.3 + 4.7)
+    # Turned alone, a lone high cell still showed as a diamond: bend the lattices by the 11 m and 31 m noises (about 3 m).
+    n3 = vnoise(p3x / 11.0 - 4.0, p3y / 11.0 + 9.0)
+    n4 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)
+    wx, wy = 0.35 * n3, 0.35 * n4
+    m1 = (0.65 * vnoise(p1x / 9.0 + 5.2 + wx, p1y / 9.0 + 1.3 + wy)
+          + 0.5 * vnoise(p3x / 6.3 - 2.1 + wy, p3y / 6.3 + 4.7 - wx))
     m2 = vnoise(p3x / 31.0 - 7.7, p3y / 31.0 + 3.1)
     base *= (1.0 + MACRO_A * m1 + MACRO_B * m2)[:, None]
     # Round 2: a cut bank's clay face carries strata, bands about 18 cm apart bent by the small noise (the scan is one even

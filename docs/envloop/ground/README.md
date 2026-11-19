@@ -168,6 +168,9 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   the mowing stripes change direction at every 40 m block seam, and a seam square to the map ran as a straight edge
   across the lawn. Now the straw noise runs on two turned lattices (p1 at 34 deg over 9 m and p3 at -52 deg over 6.3 m),
   the stripe blocks sit on the turned p1 frame and the stripes fade out over the 3 m inside each seam (the headland pass).
+  The PC's stills at 1795eead (`Inputs/bench/pr813/pc-1795eead/`) showed the step and the rectangles gone, but one lone
+  high cell still read as a faint diamond (the turned square): the straw lattices are now bent by the 11 m and 31 m
+  noises by about 3 m, so no patch keeps a straight side.
   Not the cause, but kept: the terrain mesh's canopy colour now interpolates the 20 m tree raster (`CanopyAtSmooth`,
   `SailingSim.Lake.CanopySmooth`); the raster is flat 0.27 across those yards, so M_Ground's litter term was never on
   there.
