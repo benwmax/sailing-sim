@@ -18,18 +18,49 @@
 
 bool SailingHullName::Place(int32 BoatType, float Aspect, FHullNamePlace& Out)
 {
-	if (BoatType != int32(Sailing::EBoatType::J22) || !(Aspect > 0.f)) return false;
-	// The J/22's quarters: the band between the boot stripe (to 9.65 cm) and the sheer (56.8 cm aft), from 16 cm
-	// forward of the transom (X -346). Letters about 7 cm tall (3 in, what a 22-footer wears); a long name is made
-	// smaller rather than run forward of the cockpit.
-	constexpr float AftCm = -330.f;
-	constexpr float MidCm = 33.f;
-	constexpr float HeightCm = 15.f;
-	constexpr float MaxLengthCm = 125.f;
+	using Sailing::EBoatType;
+	if (!(Aspect > 0.f) || BoatType < 0 || BoatType >= int32(EBoatType::Count)) return false;
+	const EBoatType Type = EBoatType(BoatType);
+	// The frigate's name is her own, carved on her stern with the rest of her carving (Tools/shipkit/frigate), not vinyl.
+	if (Type == EBoatType::Commonwealth) return false;
+	Out = FHullNamePlace();
+	if (Type == EBoatType::J22)
+	{
+		// The hero J/22's quarters (measured on her): the band between the boot stripe (to 9.65 cm) and the sheer (56.8 cm
+		// aft), from 16 cm forward of the transom (X -346). Letters about 7 cm tall (3 in, what a 22-footer wears); a long
+		// name is made smaller rather than run forward of the cockpit.
+		constexpr float AftCm = -330.f;
+		constexpr float MidCm = 33.f;
+		constexpr float HeightCm = 15.f;
+		constexpr float MaxLengthCm = 125.f;
+		Out.LengthCm = FMath::Min(Aspect * HeightCm, MaxLengthCm);
+		Out.HeightCm = Out.LengthCm / Aspect;
+		Out.XAftCm = AftCm;
+		Out.ZLowCm = MidCm - 0.5f * Out.HeightCm;
+		return true;
+	}
+	// Every other class from her physics hull (the models are that hull below the waterline and follow its sheer): the
+	// J/22's place scaled by length overall, so the capitals are what owners letter (about 2 in on a dinghy, 4 to 5 on a
+	// 40-footer, a foot and more on the J-Class and the maxi), on her main hull's quarters: 16 cm (scaled) forward of the
+	// stern, the band's middle at 58% of the freeboard there (the J/22's 33 of 56.8 cm) and at most 45% of it tall, so
+	// a low dinghy's name stays between her waterline and her deck edge.
+	const Sailing::FBoatConfig Config = Sailing::FBoatConfig::Make(Type);
+	if (Config.Hulls.empty()) return false;
+	const Sailing::FHullShape& Main = Config.Hulls[0];
+	const float Scale = float(FMath::Max(Config.LengthOverall - Config.Bowsprit, 1.0) / 6.86);   // (the hulls' length: a fixed sprit is in LOA, metres)
+	const float AftCm = float(Main.SternX) * 100.f + 16.f * Scale;
+	const float MaxLengthCm = 125.f * Scale;
+	// (the freeboard read a little forward of the aft edge, where the letters' middle sits on a usual name)
+	const float FreeboardCm = float(Main.SheerHeight((AftCm + 0.35f * MaxLengthCm) / 100.f)) * 100.f;
+	if (!(FreeboardCm > 8.f)) return false;
+	const float HeightCm = FMath::Min(15.f * Scale, 0.45f * FreeboardCm);
 	Out.LengthCm = FMath::Min(Aspect * HeightCm, MaxLengthCm);
 	Out.HeightCm = Out.LengthCm / Aspect;
 	Out.XAftCm = AftCm;
-	Out.ZLowCm = MidCm - 0.5f * Out.HeightCm;
+	Out.ZLowCm = 0.58f * FreeboardCm - 0.5f * Out.HeightCm;
+	// A trimaran wears it on her main hull only, not on the floats' outboard sides (a catamaran on both hulls' outboard
+	// sides: her hulls are alike).
+	if (Config.Hulls.size() >= 3) Out.MaxSideCm = float(Main.MaxHalfBeam) * 100.f + 30.f;
 	return true;
 }
 

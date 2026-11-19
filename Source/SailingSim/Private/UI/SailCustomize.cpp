@@ -436,7 +436,7 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildCustomize()
 		Slide(TEXT("Hue"), 0, 0.f, 355.f, 5.f, TEXT("°"));
 		Slide(TEXT("Strength"), 1, 0.f, 100.f * MaxStrength, 5.f, TEXT("%"));
 		Slide(TEXT("Lightness"), 2, 100.f * MinLight, 100.f * MaxLight, 5.f, TEXT("%"));
-		// Name on the hull (HullName.h): only where the class has a place for one.
+		// Name on the hull (HullName.h): every class but the frigate (her name is carved on her stern).
 		if (FHullNamePlace HullPlace; SailingHullName::Place(Type, 1.f, HullPlace))
 		{
 			Section(TEXT("Name on the hull"));

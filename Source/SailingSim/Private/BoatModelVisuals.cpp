@@ -719,6 +719,7 @@ void ASailboatPawn::BuildModelVisuals(const FBoatModelMeshes& Model)
 			{
 				Mid->SetTextureParameterValue(TEXT("NameTex"), HullNameTexture);
 				Mid->SetVectorParameterValue(TEXT("NameRect"), NamePlace.AsParam());
+				Mid->SetVectorParameterValue(TEXT("NameSpan"), NamePlace.AsSpan());
 				Mid->SetVectorParameterValue(TEXT("NameColour"), FLinearColor(NameInk.R, NameInk.G, NameInk.B, 1.f));
 			}
 			Mid->SetVectorParameterValue(TEXT("Wear"), FLinearColor(L.Wear.X, L.Wear.Y, L.Wear.Z, L.Wear.W));
