@@ -1,0 +1,37 @@
+head 891d4af5 04:25:10
+build ok
+make_materials exit 0
+[2026.11.19-04.26.04:398][  0]LogPython: Materials built: 1 builders
+[2026.11.19-04.26.04:398][  0]LogInit: Display: Success - 0 error(s), 2 warning(s)
+compile/sampler error lines:        0
+  Content/Boats/Materials/M_BoatMast.uasset size 148961 -> 152850
+  Content/Boats/Materials/M_BoatPacked.uasset size 165395 -> 169284
+  Content/Boats/Materials/M_BoatSurface.uasset size 146905 -> 150794
+left out (      74): 74 MI_Boat_* re-saves; others:
+pushed ef2821bd58a8350e4ded1ed03d2645610399ef2d
+SailingSim.Skin: 10 passed, 0 failed, 10 total 04:26:27
+SailingSim.Visual: 106 passed, 0 failed, 106 total 04:30:15
+shot pr812-sunfish-port
+shot pr812-sunfish-starboard
+shot pr812-catalina22-port
+shot pr812-catalina22-starboard
+shot pr812-hobie16-port
+shot pr812-hobie16-starboard
+shot pr812-corsair880-port
+shot pr812-corsair880-starboard
+shot pr812-lagoon42-port
+shot pr812-lagoon42-starboard
+shot pr812-bluebonnet-port
+shot pr812-bluebonnet-starboard
+pr812-sunfish-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -199.2, low 8.2, 31.1 x 9.2 cm on SM_Sunfish_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-sunfish-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -199.2, low 8.2, 31.1 x 9.2 cm on SM_Sunfish_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-catalina22-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -309.7, low 35.3, 48.6 x 14.3 cm on SM_C22Hero_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-catalina22-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -309.7, low 35.3, 48.6 x 14.3 cm on SM_C22Hero_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-hobie16-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -240.2, low 20.6, 37.4 x 11.0 cm on SM_Hobie16_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-hobie16-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -240.2, low 20.6, 37.4 x 11.0 cm on SM_Hobie16_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-corsair880-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -416.6, low 48.4, 64.9 x 19.1 cm on SM_Corsair880_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-corsair880-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -416.6, low 48.4, 64.9 x 19.1 cm on SM_Corsair880_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-lagoon42-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -609.2, low 75.9, 94.9 x 28.0 cm on SM_Lagoon42_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-lagoon42-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -609.2, low 75.9, 94.9 x 28.0 cm on SM_Lagoon42_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-bluebonnet-port: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -1959.2, low 59.8, 257.3 x 75.8 cm on SM_Bluebonnet_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
+pr812-bluebonnet-starboard: LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -1959.2, low 59.8, 257.3 x 75.8 cm on SM_Bluebonnet_Hull LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit 
