@@ -1,0 +1,192 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "A0DC41F14567DE21199D178C945C61FC",
+			"instanceName": "BEN-PC-34156",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.19-07.21.03",
+	"succeeded": 9,
+	"succeededWithWarnings": 0,
+	"failed": 1,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.60740137100219727,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "Apply",
+			"fullTestPath": "SailingSim.Skin.Apply",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0075584016740322113,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BadFiles",
+			"fullTestPath": "SailingSim.Skin.BadFiles",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0083413012325763702,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BuiltIn",
+			"fullTestPath": "SailingSim.Skin.BuiltIn",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0082801990211009979,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Editor",
+			"fullTestPath": "SailingSim.Skin.Editor",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0081661008298397064,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Ids",
+			"fullTestPath": "SailingSim.Skin.Ids",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0086124986410140991,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Lettering",
+			"fullTestPath": "SailingSim.Skin.Lettering",
+			"tags": [],
+			"state": "Fail",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.11239810287952423,
+			"dateTime": "2026.11.19-07.21.02",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Error",
+						"message": "Expected 'Bluebonnet: letters a reader can see' to be true.",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "D:\\dev\\ss-fix-wt\\pr812\\Source\\SailingSimTests\\Private\\SkinTests.cpp",
+					"lineNumber": 402,
+					"timestamp": "2026.11.19-07.21.03"
+				}
+			],
+			"warnings": 0,
+			"errors": 1,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RopeColourways",
+			"fullTestPath": "SailingSim.Skin.RopeColourways",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0084571987390518188,
+			"dateTime": "2026.11.19-07.21.03",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RoundTrip",
+			"fullTestPath": "SailingSim.Skin.RoundTrip",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0079067982733249664,
+			"dateTime": "2026.11.19-07.21.03",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SaveField",
+			"fullTestPath": "SailingSim.Skin.SaveField",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.0083459988236427307,
+			"dateTime": "2026.11.19-07.21.03",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Screen",
+			"fullTestPath": "SailingSim.Skin.Screen",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A0DC41F14567DE21199D178C945C61FC"
+			],
+			"duration": 0.42933478951454163,
+			"dateTime": "2026.11.19-07.21.03",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

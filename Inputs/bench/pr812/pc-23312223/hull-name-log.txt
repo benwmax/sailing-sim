@@ -1,0 +1,2 @@
+[2026.11.19-07.23.26:852][  0]LogSailing: Hull name: "Bluebonnet" 604 x 161 px in 628 x 185, read 116180 px, 18317 lit
+[2026.11.19-07.23.26:854][  0]LogSailing: Hull name "Bluebonnet": 628 x 185 px at aft -416.6, low 48.4, 64.9 x 19.1 cm on SM_Corsair880_Hull
