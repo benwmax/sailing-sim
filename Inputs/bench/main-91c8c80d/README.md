@@ -70,3 +70,21 @@ There's no cream blob at any of the four. Main reads darker still, because the #
 
 - **Banks:** sand, pebbles, soil and grass on the banks, gravel and rocky soil on the bridge bank, with darker wet bands at the waterline.
 - **To look at:** on nv-club-beach-05m the lawn above the sand shows a straight, slightly lighter colour step about halfway across (full still about x 1400). It looks like a texture tile or blend edge.
+
+## Lawn step on the club beach: triage (Nov 19, `lawn-step/`)
+
+**Stills:** three more uncooked Ultra 1080p stills of `env-club-beach-05m` in the same worktree, same camera as the job 3 still (`lawn-step/args.csv`).
+
+**Compare sheet:** `lawn-step/crops/compare-lawn-step.png` stacks the job 3 still and the three new ones, 1:1 at x 1050-1750, y 330-620. The step sits at about x 1400.
+
+| Still | Step |
+|---|---|
+| job 3 (M_Ground, Ultra detail) | **present** |
+| `-SailingClassicGround` (the old M_Terrain path) | **gone:** uniform grass |
+| `-SailingGroundDetail=0` (High's near path) | **present**, same place |
+| heading +1 deg (`-SailingCamWorld` 69.8 -> 70.8) | **present**. It moves left with the scene by about 23 px, the same as the houses behind it. |
+
+**Verdict:**
+
+- **Fixed in the world, not on screen:** it moves with the ground when the camera turns, so it isn't a screen-aligned Lumen or shadow step.
+- **From M_Ground's path:** it goes away with the classic ground, and the near-detail switch doesn't touch it. So it comes from M_Ground's own inputs, most likely a chunk or tile boundary in its masks or textures at that spot.
