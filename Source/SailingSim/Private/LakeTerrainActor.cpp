@@ -147,6 +147,7 @@ void ALakeTerrainActor::BeginPlay()
 	if (FarLoader.Start(Lake->FileName)) SAIL_LOG(Display, TEXT("Far ring: loading %s's tiles"), *Lake->FileName);
 	PlaceTrees();
 	PlaceReeds();
+	PlaceShoreEdges();
 	PlaceUnderstory();
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
@@ -1349,6 +1350,147 @@ void ALakeTerrainActor::PlaceReeds()
 	}
 	SAIL_LOG(Display, TEXT("Reeds: %d cattail, %d rush, %d bank grass, %d weed clumps and %d far strips (first at %s)"), Out[0].Num(), Out[1].Num(), Out[2].Num(), Out[3].Num(), Out[4].Num(),
 		Out[0].Num() ? *(Out[0][Out[0].Num() / 2].GetLocation() / CmPerMeter).ToString() : TEXT("-"));
+}
+
+void ALakeTerrainActor::PlaceShoreEdges()
+{
+	const FLakeData* Lake = GetLake();
+	if (!Lake || USailingSettings::Get()->Quality == ESailingQuality::Low || EdgeModels.Num() > 0 || FParse::Param(SailingArgs::Dev(), TEXT("SailingNoShoreEdges"))) return;
+	if (!ShoreEdgesOn(*Lake)) return;   // a lake region pack: the coasts keep their tile banks until they have a pack (WorldKit.h)
+	// Shore Track C (docs/envloop/shore-edges): the shore had four edge types (a plain wall and kerb, riprap, painted "natural
+	// bank" and "sand strip"). The kit pieces /Game/World/Edges/SM_Edge_<Type>_<n> (Tools/envloop/shore-edges/export_edges.py:
+	// 4 m of shore each, x along it, +y toward the land, z = 0 the pool; three seeds a type) carry their own geometry and
+	// M_ShoreEdge draws the water's marks from height (MPC_World PoolZ, HighZ, LowZ, WrackZ, Swash beside WaterZ). The lots'
+	// walls follow HouseKit's waterline (the tile keeps the riprap); the natural shore is picked per grid node by slope and
+	// fetch, the north-texas-lake pack's rules. Nothing is placed by hand outside the home club.
+	static const TCHAR* Types[] = { TEXT("bulkhead"), TEXT("limestone"), TEXT("timber"), TEXT("claycut"), TEXT("gravel"), TEXT("mudflat"), TEXT("reedcove") };
+	constexpr int32 Variants = 3;
+	constexpr double PieceM = 4.0;
+	TMap<FName, TArray<UStaticMesh*>> Meshes;
+	int32 Loaded = 0;
+	for (const TCHAR* T : Types)
+	{
+		FString Cap(T);
+		Cap[0] = FChar::ToUpper(Cap[0]);
+		TArray<UStaticMesh*>& List = Meshes.Add(FName(T));
+		for (int32 N = 0; N < Variants; ++N)
+		{
+			const FString Path = FString::Printf(TEXT("/Game/World/Edges/SM_Edge_%s_%d.SM_Edge_%s_%d"), *Cap, N, *Cap, N);
+			if (UStaticMesh* M = Cast<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet))) { List.Add(M); ++Loaded; }
+		}
+	}
+	if (Loaded == 0)
+	{
+		SAIL_LOG(Display, TEXT("Shore edges: no SM_Edge_* pieces imported (scripts/make-shore-edges.sh); the lots' kit banks are not drawn"));
+		return;
+	}
+	auto Hash = [](uint32 X) { X ^= X >> 16; X *= 0x7feb352dU; X ^= X >> 15; X *= 0x846ca68bU; X ^= X >> 16; return X; };
+	TMap<FName, TArray<TArray<FTransform>>> Out;   // by type, then variant
+	int32 Walls = 0, Natural = 0;
+	// A piece from A to B with the land on the side away from Water: x along the shore (stretched to the segment), +y toward
+	// the land (the kit's frame), at the pool datum plus a lot wall's Lift (the walls stand on the bank whatever the lake does).
+	auto Lay = [&](FName Type, FVector2D A, FVector2D B, const FVector2D& Water, uint32 Seed, double Lift)
+	{
+		const TArray<UStaticMesh*>* List = Meshes.Find(Type);
+		if (!List || List->Num() == 0) return;
+		FVector2D T = B - A;
+		const double L = T.Size();
+		if (L < 0.5 || L > 4.5) return;
+		T /= L;
+		if (FVector2D::DotProduct(FVector2D(-T.Y, T.X), Water) > 0.0) { Swap(A, B); T = -T; }   // local +y must be the land
+		const FVector2D Mid = 0.5 * (A + B);
+		TArray<TArray<FTransform>>& Lists = Out.FindOrAdd(Type);
+		Lists.SetNum(List->Num());
+		Lists[Hash(Seed) % List->Num()].Add(FTransform(FRotator(0.f, float(FMath::RadiansToDegrees(FMath::Atan2(T.Y, T.X))), 0.f),
+			FVector(Mid.X, Mid.Y, Lift) * CmPerMeter, FVector(float(L / PieceM), 1.f, 1.f)));
+	};
+	// 1. The developed lots' walls: straight along each lot (HouseKit's LotWallLine), lifted so the cap meets the lawn (Lift).
+	TArray<FShoreEdgeRun> Runs;
+	ShoreEdgeRuns(*Lake, Runs);
+	for (const FShoreEdgeRun& Run : Runs)
+	{
+		for (int32 I = 0; I + 1 < Run.Points.Num(); ++I)
+		{
+			Lay(Run.Type, Run.Points[I], Run.Points[I + 1], Run.Water, Run.Seed + 7919u * I, Run.Lift);
+			++Walls;
+		}
+	}
+	// 2. The natural shore: at every grid node on the waterline outside the lots, the marina and the club, a type by the bank's
+	// slope and the fetch across the water in front of it (pack.json placement.natural): a clay cut where a steep bank meets a
+	// long fetch, gravel on a gentle exposed shore, a mud flat where the bed is nearly level, a reed cove in shelter. Rotated
+	// along the shore (across the slope), a piece per node about two in three, so the line isn't continuous kit.
+	const FLakeTerrain& T = Lake->Terrain;
+	TSet<FIntPoint> Lots;
+	for (const FLakeHouse& Hs : Lake->Houses)
+	{
+		if (!Hs.bFullDetail || Hs.bCommercial) continue;
+		const FIntPoint Cell(FMath::FloorToInt32(Hs.X / 25.0), FMath::FloorToInt32(Hs.Y / 25.0));
+		for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Lots.Add(Cell + FIntPoint(Dx, Dy));
+	}
+	const bool bCoarse = T.GetCell() >= 9.99;
+	for (int32 R = 4; R < T.GetRows() - 4; ++R)
+	{
+		for (int32 C = 4; C < T.GetCols() - 4; ++C)
+		{
+			const double H = T.NodeHeight(R, C);
+			if (H < -0.25 || H > 0.45) continue;
+			const double X = T.GetOriginX() + R * T.GetCell(), Y = T.GetOriginY() + C * T.GetCell();
+			if (X * X + Y * Y < 350.0 * 350.0) continue;
+			if (Lots.Contains(FIntPoint(FMath::FloorToInt32(X / 25.0), FMath::FloorToInt32(Y / 25.0)))) continue;
+			const double Gx = T.NodeHeight(R + 1, C) - T.NodeHeight(R - 1, C), Gy = T.NodeHeight(R, C + 1) - T.NodeHeight(R, C - 1);
+			const double Gm = FMath::Sqrt(Gx * Gx + Gy * Gy);
+			if (Gm < 1e-6) continue;
+			const double Slope = Gm / (2.0 * T.GetCell());
+			// Open water within three cells (the node is the edge, not a puddle on the bank).
+			const double Wet3 = FMath::Min(FMath::Min(T.NodeHeight(R + 3, C), T.NodeHeight(R - 3, C)), FMath::Min(T.NodeHeight(R, C + 3), T.NodeHeight(R, C - 3)));
+			if (Wet3 > -0.2) continue;
+			const uint32 Hh = Hash(uint32(R) * 73856093u ^ uint32(C) * 19349663u ^ 0x5edcu);
+			if ((Hh & 1023) > (bCoarse ? 340u : 680u)) continue;
+			const FVector2D Water(-Gx / Gm, -Gy / Gm);   // downhill: toward the water
+			const double Fetch = T.FetchToward(X, Y, FMath::Atan2(Water.Y, Water.X), 5000.0);
+			FName Type;
+			if (Slope < 0.034) Type = TEXT("mudflat");                           // under 1:30
+			else if (Fetch < 300.0 && Slope < 0.15) Type = TEXT("reedcove");    // sheltered, shallow
+			else if (Slope > 0.58 && Fetch > 1000.0) Type = TEXT("claycut");    // over 30 degrees, a long fetch
+			else if (Slope < 0.17 && Fetch > 1000.0) Type = TEXT("gravel");     // gentle (under 1:6) and exposed
+			else if (Slope > 0.3) Type = TEXT("claycut");                       // the fallback for a bank
+			else continue;
+			// Slid down (or up) the slope to the waterline, as the far weed is, then laid across the slope.
+			const double Shift = FMath::Clamp((H - 0.0) / Slope, -1.5 * T.GetCell(), 1.5 * T.GetCell());
+			const FVector2D P(X + Water.X * Shift, Y + Water.Y * Shift);
+			const FVector2D Along(-Water.Y, Water.X);
+			Lay(Type, P - Along * 0.5 * PieceM, P + Along * 0.5 * PieceM, Water, Hh, 0.0);
+			++Natural;
+		}
+	}
+	int32 Instances = 0;
+	for (TPair<FName, TArray<TArray<FTransform>>>& Pair : Out)
+	{
+		const TArray<UStaticMesh*>& List = Meshes[Pair.Key];
+		const bool bWall = Pair.Key == TEXT("bulkhead") || Pair.Key == TEXT("limestone") || Pair.Key == TEXT("timber");
+		for (int32 V = 0; V < Pair.Value.Num(); ++V)
+		{
+			if (Pair.Value[V].Num() == 0) continue;
+			UInstancedStaticMeshComponent* Comp = NewObject<UInstancedStaticMeshComponent>(this);
+			Comp->SetupAttachment(RootComponent);
+			Comp->SetStaticMesh(List[V]);
+			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Comp->SetMobility(EComponentMobility::Static);
+			// The walls are seen from the water a long way off; the scatter (shells, sticks, slumped clay, reed clumps) is small.
+			Comp->SetCullDistances(0, (bWall ? 1500.f : 300.f) * 100.f);
+			Comp->bAffectDistanceFieldLighting = bWall;
+			Comp->bVisibleInRayTracing = bWall;
+			if (!bWall) Comp->bAffectDynamicIndirectLighting = false;
+			Comp->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+			Comp->SetUseConservativeBounds(true);
+			Comp->SetCanEverAffectNavigation(false);
+			Comp->RegisterComponent();
+			Comp->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Pair.Value[V]), false, true);
+			Instances += Pair.Value[V].Num();
+			EdgeModels.Add(Comp);
+		}
+	}
+	SAIL_LOG(Display, TEXT("Shore edges: %d pieces (%d lot wall segments in %d runs, %d natural shore nodes), %d of %d meshes"), Instances, Walls, Runs.Num(), Natural, Loaded, int32(UE_ARRAY_COUNT(Types)) * Variants);
 }
 
 void ALakeTerrainActor::PlaceUnderstory()

@@ -125,6 +125,10 @@ private:
 	void PlaceTrees();
 	/** Graphics G2 (Medium and up): cattail and rush clumps in the shallows and at the water's edge. */
 	void PlaceReeds();
+	/** Shore Track C (docs/envloop/shore-edges, Medium and up): the kit shore edges, SM_Edge_<Type>_<n> pieces along the
+	 *  developed lots' waterlines (bulkhead, limestone, timber: HouseKit's ShoreEdgeRuns) and the natural shore's clay cut,
+	 *  gravel, mud flat and reed cove picked by slope and fetch (the region pack's rules); -SailingNoShoreEdges leaves them out. */
+	void PlaceShoreEdges();
 	/** Near-shore phase 2 (High and Ultra): shrubs, saplings, deadfall and snags under and around the lidar crowns along the water. */
 	void PlaceUnderstory();
 	bool PlaceHouseModels(const struct FLakeData& Lake);
@@ -171,6 +175,7 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
 	bool bLoggedInstances = false;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> EdgeModels; // shore Track C: kit shore edge pieces
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> UnderstoryModels; // near-shore phase 2
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows

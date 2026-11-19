@@ -71,6 +71,7 @@ class Mesh:
         self.n = 0
         self.parts = {}
         self.part_tris = {}
+        self.part_of = []   # the part of each add() call (export_edges.py drops the ground parts)
 
     def add(self, V, F, C, smooth=True, part=None):
         V = np.asarray(V, float).reshape(-1, 3)
@@ -80,6 +81,7 @@ class Mesh:
         self.F.append(F + self.n)
         self.C.append(C)
         self.S.append(np.full(len(F), bool(smooth)))
+        self.part_of.append(part)
         if part:
             self.part_tris[part] = self.part_tris.get(part, 0) + len(F)
             lo, hi = V.min(0), V.max(0)
@@ -221,7 +223,7 @@ def debris_line(m, rng, length, zfn, y_lo, y_hi, wrack_z, per_m=8.0, near=None):
         pts[:, 1] += np.array([0, rng.gauss(0, 0.01), rng.gauss(0, 0.01), 0])
         pts[:, 2] = zfn(pts[:, 0], pts[:, 1]) + r * 0.7
         tube(m, pts, np.linspace(r, r * 0.6, 4), "wood", rng.random(), sides=5, part="debris")
-    lim = near if near else length / 2
+    lim = min(near, length / 2) if near else length / 2   # never past the piece's ends (the game's 4 m pieces)
     for _ in range(int(per_m * 3.0 * 2 * lim)):
         x = rng.uniform(-lim, lim)
         y = np.interp(x, xs, yline) + rng.gauss(0, 0.18)
@@ -284,7 +286,8 @@ def build_bulkhead(m, length, rng, seed):
     # The cap: 300 mm wide, 300 mm tall, a 25 mm lip proud of the face, in pours one panel long.
     cw, ch = S["bulkhead_cap_w"], S["bulkhead_cap_h"]
     for x in np.arange(-length / 2, length / 2, S["panel"]):
-        box(m, (x + S["panel"] / 2, cw / 2 - 0.025, top + ch / 2), (S["panel"] / 2 - 0.006, cw / 2, ch / 2), "concrete",
+        x1 = min(x + S["panel"], length / 2)   # the last pour ends with the piece
+        box(m, ((x + x1) / 2, cw / 2 - 0.025, top + ch / 2), ((x1 - x) / 2 - 0.006, cw / 2, ch / 2), "concrete",
             rng.uniform(0.3, 0.7), part="cap")
     # Weep holes: a dark recess (the pipe's end) 75 mm across, a few mm proud.
     for x in holes:
@@ -356,21 +359,21 @@ def rough_block(m, c, size, rng, seed, surface="limestone", res=0.06):
             P[..., a2] = Vv
             allV.append(P.reshape(-1, 3))
             F = grid_faces(n[a1], n[a2])
-            if (sign > 0) != (ax == 1):
+            if (sign > 0) == (ax == 1):   # outward (every face pointed in: Nanite culled the stones' lake faces, round 6)
                 F = F[:, ::-1]
             allF.append(F + off)
             off += P.shape[0] * P.shape[1]
     P = np.concatenate(allV)
     F = np.concatenate(allF)
     # Round the box: a superellipsoid-ish squeeze of the corners, then scale and chip.
-    q = np.abs(P) ** 8
-    rr = (q.sum(1, keepdims=True)) ** (1 / 8)
+    q = np.abs(P) ** 18       # round 2: a sharper arris (8 read pillowy)
+    rr = (q.sum(1, keepdims=True)) ** (1 / 18)
     P = P / rr
     half = np.array([sx, sy, sz])
     W = P * half
     nrm = P / np.maximum(np.linalg.norm(P, axis=1, keepdims=True), 1e-9)
-    d = 0.02 * fbm(W * 4.0 + seed * 7.1, 3, seed) + 0.012 * np.abs(perlin(W * 11.0, seed + 5))
-    W = W + nrm * d[:, None] - nrm * 0.01
+    d = 0.012 * fbm(W * 4.0 + seed * 7.1, 3, seed) + 0.008 * np.abs(perlin(W * 11.0, seed + 5))
+    W = W + nrm * d[:, None] - nrm * 0.006
     m.add(W + np.asarray(c, float), F, col(surface, rng.random()), True, "blocks")
 
 
@@ -384,8 +387,10 @@ def build_limestone(m, length, rng, seed):
         while x < length / 2:
             L = S["block_l"] * rng.uniform(0.75, 1.25)
             gap = rng.uniform(0.01, 0.03)
-            c = (x + L / 2, y0 + d / 2 + rng.gauss(0, 0.012), z0 + h / 2 + rng.gauss(0, 0.008))
-            rough_block(m, c, (L - gap, d * rng.uniform(0.95, 1.05), h * rng.uniform(0.96, 1.02)), rng, seed + int(x * 10))
+            x0, x1 = max(x, -length / 2), min(x + L, length / 2)   # the end blocks are cut to the piece
+            if x1 - x0 > 0.12:
+                c = ((x0 + x1) / 2, y0 + d / 2 + rng.gauss(0, 0.012), z0 + h / 2 + rng.gauss(0, 0.008))
+                rough_block(m, c, (x1 - x0 - gap, d * rng.uniform(0.95, 1.05), h * rng.uniform(0.96, 1.02)), rng, seed + int(x * 10))
             x += L
     top = courses[-1][0] + h
     back_lot(m, length, 2 * setback + d * 0.9, top - 0.02, seed)
@@ -405,7 +410,11 @@ def build_timber(m, length, rng, seed):
             L = 6.0 if rng.random() < 0.8 else rng.uniform(2.0, 4.8)
             bow = rng.gauss(0, 0.006)
             nseg = 8
-            xs = np.linspace(x + 0.004, x + L - 0.004, nseg + 1)
+            x0, x1 = max(x, -length / 2), min(x + L, length / 2)   # boards end with the piece
+            if x1 - x0 < 0.1:
+                x += L
+                continue
+            xs = np.linspace(x0 + 0.004, x1 - 0.004, nseg + 1)
             yb = bow * np.sin(np.linspace(0, math.pi, nseg + 1))
             V, F = [], []
             for i, (xx, yy) in enumerate(zip(xs, yb)):
@@ -502,7 +511,7 @@ def build_claycut(m, length, rng, seed):
         tube(m, pts, r0 * (1 - 0.6 * t), "wood", 0.3 + 0.4 * rng.random(), sides=5, part="roots")
     zb = lambda X, Y: np.interp(Y, [-4.0, -2.2, -1.0, -0.3, 0.0], [-0.9, -0.35, -0.08, 0.04, 0.08]) + 0 * X
     debris_line(m, rng, length, lambda X, Y: zb(X, Y - np.interp(X, xs, off)), -2.0, -0.2, 0.0, per_m=5.0, near=10.0)
-    pebbles(m, rng, int(220 * min(length, 16) / 16), (-6, 6, -1.6, -0.4), lambda X, Y: zb(X, Y - np.interp(X, xs, off)) + 0.0,
+    pebbles(m, rng, int(220 * min(length, 16) / 16), (-min(6.0, length / 2), min(6.0, length / 2), -1.6, -0.4), lambda X, Y: zb(X, Y - np.interp(X, xs, off)) + 0.0,
             surface="shell", size=(0.012, 0.025), part="shells")
     return dict(scarp_h_min=float(H.min()), scarp_h_max=float(H.max()), notch_depth=float(nd.mean()))
 
@@ -512,7 +521,11 @@ def build_mudflat(m, length, rng, seed):
     # The flat: 1:60 from the old bank (an eroded edge at y ~ 12) out under the water; ripples and shallow pans.
     def z(X, Y):
         base = -0.45 + (Y + 15.0) * S["mud_slope"]
-        rip = 0.012 * np.sin(Y * 2 * math.pi / 0.45 + 2.0 * noise2(X, Y, 3.0, seed)) * np.clip(0.3 - base, 0, 0.3) / 0.3
+        # Ripples: wavelength drifting 0.35-0.55 m, crests wandering and splitting, amplitude patchy (round 2: the
+        # even sine of round 1 read as corrugated iron).
+        lam = 0.45 * (1.0 + 0.25 * noise2(X, Y, 2.5, seed + 8))
+        amp = 0.012 * np.clip(0.55 + 0.6 * noise2(X, Y, 1.5, seed + 7), 0.1, 1.0)
+        rip = amp * np.sin(Y * 2 * math.pi / lam + 3.0 * noise2(X, Y, 1.2, seed) + 0.8 * noise2(X, Y, 0.3, seed + 9)) * np.clip(0.3 - base, 0, 0.3) / 0.3
         pans = -0.035 * np.clip(noise2(X, Y, 2.2, seed + 1) - 0.25, 0, 1)
         bank = np.clip((Y - 12.0) / 1.2, 0, 1) * 0.6
         return base + rip + pans + 0.02 * noise2(X, Y, 0.7, seed + 2) + bank
@@ -523,7 +536,7 @@ def build_mudflat(m, length, rng, seed):
     back_lot(m, length, 14.0, float(z(np.array(0.0), np.array(14.0))), seed, surface="drygrass")
     # The wrack at the high-water line, and clam shells scattered over the flat.
     debris_line(m, rng, length, z, -15.0, 13.0, 0.15, per_m=6.0, near=10.0)
-    pebbles(m, rng, int(500 * min(length, 16) / 16), (-6, 6, -6.0, 6.0), z, surface="shell", size=(0.012, 0.028), part="shells")
+    pebbles(m, rng, int(500 * min(length, 16) / 16), (-min(6.0, length / 2), min(6.0, length / 2), -6.0, 6.0), z, surface="shell", size=(0.012, 0.028), part="shells")
     return dict(slope=S["mud_slope"], flat_width_above_gauge=float((0.0 - (-1.0)) / S["mud_slope"]))
 
 
@@ -542,8 +555,8 @@ def build_gravel(m, length, rng, seed):
                 lambda X, Y: 0.5 + 0.5 * noise2(X, Y, 0.8, seed + 3), part="beach")
     back_lot(m, length, 9.0, float(z(np.array(0.0), np.array(9.0))), seed, surface="drygrass")
     debris_line(m, rng, length, z, -2.0, 6.0, S["berm_z"], per_m=7.0, near=10.0)
-    pebbles(m, rng, int(900 * min(length, 16) / 16), (-6, 6, -2.5, 4.0), z, size=(0.02, 0.08))
-    pebbles(m, rng, int(500 * min(length, 16) / 16), (-6, 6, -2.0, 4.0), z, surface="shell", size=(0.012, 0.028), part="shells")
+    pebbles(m, rng, int(900 * min(length, 16) / 16), (-min(6.0, length / 2), min(6.0, length / 2), -2.5, 4.0), z, size=(0.02, 0.08))
+    pebbles(m, rng, int(500 * min(length, 16) / 16), (-min(6.0, length / 2), min(6.0, length / 2), -2.0, 4.0), z, surface="shell", size=(0.012, 0.028), part="shells")
     return dict(slope=S["beach_slope"], berm_z=S["berm_z"])
 
 

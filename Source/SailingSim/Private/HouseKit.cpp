@@ -21,6 +21,18 @@ namespace
 	}
 	float Hash01(uint32 K, uint32 Salt) { return float(HouseHash(K, Salt) & 0xFFFFFF) / float(0xFFFFFF); }
 
+	struct FWingFrame;
+
+	/** A full-detail lot's side toward the water and its waterline (shore Track C: shared by the kit's bank and the shore
+	 *  edge pieces placed at runtime, so both agree on where the bank is). */
+	struct FLotShore
+	{
+		FVector2D Water = FVector2D(1.0, 0.0), Across = FVector2D(0.0, 1.0);   // toward the water; along the shore
+		double Front = 0.0, SideW = 0.0;   // the house's reach toward the water and to either side of it
+		double Shore = -1.0;               // metres from the house's centre to the water straight out front (-1: none in reach)
+		TArray<FVector2D, TInlineAllocator<20>> Line;   // the waterline across the lot, every 2 m
+	};
+
 	FColor Srgb(const FLinearColor& L) { return L.ToFColor(true); }
 
 	struct FWingFrame
@@ -163,6 +175,192 @@ namespace
 		FacedQuad(Hull, P(0, -WC[0], ZC), P(0, WC[0], ZC), P(0, WG[0], ZG), P(0, -WG[0], ZG), FVector(-Fwd, 0.0), { 0, 0 }, { Beam, 0 }, { Beam, 0.5 }, { 0, 0.5 });
 		FacedQuad(Cover, P(-0.02, -WG[0] - 0.04, ZG - 0.08), P(-0.02, WG[0] + 0.04, ZG - 0.08), P(-0.02, 0.0, ZT), P(-0.02, 0.0, ZT), FVector(-Fwd, 0.0), { 0, 0 }, { Beam, 0 }, { Beam * 0.5, 0.6 }, { Beam * 0.5, 0.6 });
 	}
+
+	/** The wings' frames of a house (centre, long axis, across, half sizes). */
+	void WingsOf(const FLakeHouse& H, TArray<FWingFrame, TInlineAllocator<4>>& Wings)
+	{
+		for (const FLakeHouse::FWing& W : H.Wings)
+		{
+			const double Yaw = FMath::DegreesToRadians(W.YawDeg);
+			Wings.Add(FWingFrame{ FVector2D(W.X, W.Y), FVector2D(FMath::Cos(Yaw), FMath::Sin(Yaw)), FVector2D(-FMath::Sin(Yaw), FMath::Cos(Yaw)), W.HalfLength, W.HalfWidth });
+		}
+	}
+
+	/** Which way a lot faces the water, how far the house reaches, where the shore is out front and the waterline across the lot. */
+	FLotShore LotShore(const Sailing::FLakeTerrain& Terr, const FLakeHouse& H, const TArray<FWingFrame, TInlineAllocator<4>>& Wings)
+	{
+		FLotShore Lot;
+		// The street side: away from the nearest water (the lakefront houses face the road).
+		FVector2D Street = -Wings[0].V;
+		for (double R = 25.0; R <= 400.0; R += 25.0)
+		{
+			bool bFound = false;
+			for (int32 A = 0; A < 16 && !bFound; ++A)
+			{
+				const FVector2D Dir(FMath::Cos(A * UE_DOUBLE_PI / 8.0), FMath::Sin(A * UE_DOUBLE_PI / 8.0));
+				if (Terr.HeightAt(H.X + R * Dir.X, H.Y + R * Dir.Y) < -0.3) { Street = -Dir; bFound = true; }
+			}
+			if (bFound) break;
+		}
+		Lot.Water = -Street;
+		Lot.Across = FVector2D(-Street.Y, Street.X);
+		const FVector2D Ctr(H.X, H.Y);
+		// The house's reach toward the water and to either side of it, all wings.
+		for (const FWingFrame& F : Wings)
+		{
+			for (int32 Cn = 0; Cn < 4; ++Cn)
+			{
+				const FVector2D P = F.At((Cn & 1) ? F.HL : -F.HL, (Cn & 2) ? F.HW : -F.HW) - Ctr;
+				Lot.Front = FMath::Max(Lot.Front, FVector2D::DotProduct(P, Lot.Water));
+				Lot.SideW = FMath::Max(Lot.SideW, FMath::Abs(FVector2D::DotProduct(P, Lot.Across)));
+			}
+		}
+		// The shore straight out from the house's front (metres from its centre), if there's one within reach of a lawn.
+		for (double D = Lot.Front + 2.0; D < Lot.Front + 70.0; D += 1.0)
+		{
+			if (Terr.HeightAt(Ctr.X + Lot.Water.X * D, Ctr.Y + Lot.Water.Y * D) < -0.05) { Lot.Shore = D; break; }
+		}
+		if (Lot.Shore < 0.0) return Lot;
+		// The waterline along the lot: from points across it, the first wet sample marching out.
+		const double Half = FMath::Clamp(Lot.SideW + 5.0, 8.0, 18.0);
+		for (double S = -Half; S <= Half + 0.01; S += 2.0)
+		{
+			for (double D = Lot.Shore - 10.0; D < Lot.Shore + 10.0; D += 0.5)
+			{
+				const FVector2D P = Ctr + Lot.Across * S + Lot.Water * D;
+				if (Terr.HeightAt(P.X, P.Y) < -0.02) { Lot.Line.Add(P); break; }
+			}
+		}
+		return Lot;
+	}
+
+	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is, in pieces of at most 4 m (the lidar waterline
+	 *  zigzags by the metre and pieces laid along it stood at angles to each other with gaps between). It runs the way the
+	 *  lot's shore runs: a Theil-Sen line through the waterline samples (median of the pairwise slopes, median intercept),
+	 *  because the house's Water direction is snapped to 22.5 degrees and the real shore crosses many lots at an angle; a
+	 *  line square to the house sat buried in the bank at one end and 3 m out in the lake at the other (round 5's stills).
+	 *  The line then stands 0.3 m beyond the farthest of the samples within 2.5 m of it, so the whole run is in front of
+	 *  the bank (at the mean the bank's bulges buried the pieces, round 3; at the farthest sample of all one stray sample by
+	 *  a dock put a lot's whole wall in the lake, round 4). The house tile (the fill behind the cap) and
+	 *  ALakeTerrainActor::PlaceShoreEdges (the pieces) both take it, so they meet. */
+	void LotWallLine(const FLotShore& Lot, const FVector2D& Ctr, TArray<FVector2D>& Out)
+	{
+		TArray<double, TInlineAllocator<20>> S, D;
+		for (const FVector2D& P : Lot.Line)
+		{
+			const FVector2D R = P - Ctr;
+			S.Add(FVector2D::DotProduct(R, Lot.Across));
+			D.Add(FVector2D::DotProduct(R, Lot.Water));
+		}
+		TArray<double, TInlineAllocator<200>> Slopes;
+		for (int32 I = 0; I < S.Num(); ++I)
+		{
+			for (int32 J = I + 1; J < S.Num(); ++J)
+			{
+				if (FMath::Abs(S[J] - S[I]) > 1e-3) Slopes.Add((D[J] - D[I]) / (S[J] - S[I]));
+			}
+		}
+		double B = 0.0;
+		if (Slopes.Num() > 0)
+		{
+			Slopes.Sort();
+			B = FMath::Clamp(Slopes[Slopes.Num() / 2], -1.0, 1.0);   // a shore steeper than 45 deg to the lot is not this lot's front
+		}
+		TArray<double, TInlineAllocator<20>> Res;
+		for (int32 I = 0; I < S.Num(); ++I) Res.Add(D[I] - B * S[I]);
+		Res.Sort();
+		const double Median = Res[Res.Num() / 2];
+		double A = Median;
+		for (const double R : Res) if (R <= Median + 2.5) A = FMath::Max(A, R);
+		A += 0.3;
+		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max();
+		for (const double Si : S) { S0 = FMath::Min(S0, Si); S1 = FMath::Max(S1, Si); }
+		const double Len = (S1 - S0) * FMath::Sqrt(1.0 + B * B);
+		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 4.0 - 1e-6));
+		for (int32 I = 0; I <= N; ++I)
+		{
+			const double Si = S0 + (S1 - S0) * I / N;
+			Out.Add(Ctr + Lot.Across * Si + Lot.Water * (A + B * Si));
+		}
+	}
+
+	/** The top of each kit wall above the pool (Tools/envloop/shore-edges/edge_kit.py: the bulkhead's face and cap, the
+	 *  limestone's three courses, the timber's top board). */
+	double KitWallTop(FName Type) { return Type == TEXT("bulkhead") ? 0.9 : Type == TEXT("limestone") ? 0.6 : 0.7; }
+
+	/** How far above the pool a lot's wall stands so its cap meets the lawn: the lidar kept the real bulkhead as a step, so
+	 *  the lawn two metres behind the waterline sits above a wall built at the pool and hung over it. The lift is the median
+	 *  lawn height less the wall's top, at most 0.6 m (the pieces' toes reach 1.3 m and more below the pool). */
+	double LotWallLift(const Sailing::FLakeTerrain& Terr, const TArray<FVector2D>& Line, const FVector2D& Water, FName Type)
+	{
+		TArray<double, TInlineAllocator<16>> H;
+		for (const FVector2D& P : Line) H.Add(Terr.HeightAt(P.X - Water.X * 2.0, P.Y - Water.Y * 2.0));
+		if (H.Num() == 0) return 0.0;
+		H.Sort();
+		return FMath::Clamp(H[H.Num() / 2] - KitWallTop(Type), 0.0, 0.6);
+	}
+}
+
+FName LotBankType(uint32 K)
+{
+	// The north-texas-lake pack's rule (Tools/envloop/shore-edges/packs/north-texas-lake/pack.json, placement.developed_lot):
+	// by the lot's seed, a concrete bulkhead on half, riprap on a fifth, then stacked limestone, a timber wall, or a natural bank.
+	const float Edge = Hash01(K, 51);
+	if (Edge < 0.50f) return TEXT("bulkhead");
+	if (Edge < 0.72f) return TEXT("riprap");
+	if (Edge < 0.82f) return TEXT("limestone");
+	if (Edge < 0.90f) return TEXT("timber");
+	return NAME_None;
+}
+
+bool ShoreEdgesOn(const FLakeData& Lake)
+{
+	// The kit's only region pack is north-texas-lake (Tools/envloop/shore-edges/packs): its pieces stand at the pool datum and
+	// read the lake's marks, so inland lakes get them and the tidal coasts (Galveston, the Gulf, Marseille) wait for a pack
+	// of their own. The pieces on a coast also cost the gate: Marseille's port view lost 11 fps to them (Nov 18 2026).
+	return !Lake.IsCoast();
+}
+
+void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out)
+{
+	if (!ShoreEdgesOn(Lake)) return;
+	const Sailing::FLakeTerrain& Terr = Lake.Terrain;
+	for (int32 K = 0; K < Lake.Houses.Num(); ++K)
+	{
+		const FLakeHouse& H = Lake.Houses[K];
+		if (!H.bFullDetail || H.bCommercial || H.Wings.Num() == 0) continue;
+		const FName Bank = LotBankType(K);
+		if (Bank.IsNone() || Bank == TEXT("riprap")) continue;   // the tile draws the riprap; a natural bank is the terrain's
+		TArray<FWingFrame, TInlineAllocator<4>> Wings;
+		WingsOf(H, Wings);
+		const FLotShore Lot = LotShore(Terr, H, Wings);
+		if (Lot.Line.Num() < 3) continue;
+		FShoreEdgeRun Run;
+		Run.Type = Bank;
+		Run.Seed = HouseHash(K, 59);
+		Run.Water = Lot.Water;
+		TArray<FVector2D> Line;
+		LotWallLine(Lot, FVector2D(H.X, H.Y), Line);
+		Run.Lift = LotWallLift(Terr, Line, Lot.Water, Bank);
+		// Only where there is a bank to hold: a stretch with open water two metres behind it (the line crossing a cove or
+		// a boat slip cut into the lot) gets no pieces, and the run breaks there.
+		auto Banked = [&](const FVector2D& P) { return Terr.HeightAt(P.X - Lot.Water.X * 2.0, P.Y - Lot.Water.Y * 2.0) > -0.5; };
+		for (int32 I = 0; I + 1 < Line.Num(); ++I)
+		{
+			if (Banked(Line[I]) || Banked(Line[I + 1]))
+			{
+				if (Run.Points.Num() == 0) Run.Points.Add(Line[I]);
+				Run.Points.Add(Line[I + 1]);
+			}
+			else if (Run.Points.Num() > 1)
+			{
+				FShoreEdgeRun Part = Run;
+				Out.Add(MoveTemp(Part));
+				Run.Points.Reset();
+			}
+		}
+		if (Run.Points.Num() > 1) Out.Add(MoveTemp(Run));
+	}
 }
 
 void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int32>>& Out)
@@ -242,17 +440,15 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		const bool bTall = Storeys >= 4;
 		const bool bBalconies = Hash01(K, 30) < 0.7f;
 		TArray<FWingFrame, TInlineAllocator<4>> Wings;
+		WingsOf(H, Wings);
 		double Base = G;
-		for (const FLakeHouse::FWing& W : H.Wings)
+		for (const FWingFrame& F : Wings)
 		{
-			const double Yaw = FMath::DegreesToRadians(W.YawDeg);
-			FWingFrame F{ FVector2D(W.X, W.Y), FVector2D(FMath::Cos(Yaw), FMath::Sin(Yaw)), FVector2D(-FMath::Sin(Yaw), FMath::Cos(Yaw)), W.HalfLength, W.HalfWidth };
 			for (int32 Cn = 0; Cn < 4; ++Cn)
 			{
 				const FVector2D P = F.At((Cn & 1) ? F.HL : -F.HL, (Cn & 2) ? F.HW : -F.HW);
 				Base = FMath::Min(Base, double(Terr.HeightAt(P.X, P.Y)));
 			}
-			Wings.Add(F);
 		}
 		Base = OnDeck ? G - 0.35 : Base - 0.4;
 		// Finish and colours.
@@ -395,17 +591,8 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		}
 		if (!bFull) continue;
 		// The street side: away from the nearest water (the lakefront houses face the road).
-		FVector2D Street = -Wings[0].V;
-		for (double R = 25.0; R <= 400.0; R += 25.0)
-		{
-			bool bFound = false;
-			for (int32 A = 0; A < 16 && !bFound; ++A)
-			{
-				const FVector2D Dir(FMath::Cos(A * UE_DOUBLE_PI / 8.0), FMath::Sin(A * UE_DOUBLE_PI / 8.0));
-				if (Terr.HeightAt(H.X + R * Dir.X, H.Y + R * Dir.Y) < -0.3) { Street = -Dir; bFound = true; }
-			}
-			if (bFound) break;
-		}
+		const FLotShore Lot = LotShore(Terr, H, Wings);
+		const FVector2D Street = -Lot.Water;
 		// A chimney on a quarter of the pitched houses: brick, through the main roof near its ridge.
 		if (H.Roof != FLakeHouse::Flat && !H.bCommercial && Hash01(K, 5) < 0.25f)
 		{
@@ -546,29 +733,13 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 		FKitSection& Pale = Trim;
 		const FColor WoodPaint = [&] { FColor C = Srgb(FLinearColor(0.30f, 0.21f, 0.13f) * (0.75f + 0.5f * Hash01(K, 58))); C.A = Siding; return C; }();
 		Wall.Paint = WoodPaint; Wall.Tag = FVector2D(2.4, 0.5);
-		const FVector2D Water = -Street, Across(-Street.Y, Street.X), Ctr(H.X, H.Y);
+		const FVector2D Water = Lot.Water, Across = Lot.Across, Ctr(H.X, H.Y);
 		const float WaterYaw = float(FMath::RadiansToDegrees(FMath::Atan2(Water.Y, Water.X)));
 		auto Up = [](FKitSection& S, const FVector& A, const FVector& B, const FVector& C, const FVector& D)
 		{
 			FacedQuad(S, A, B, C, D, FVector::UpVector, { 0, 0 }, { float(FVector::Dist(A, B)), 0 }, { float(FVector::Dist(A, B)), float(FVector::Dist(B, C)) }, { 0, float(FVector::Dist(B, C)) });
 		};
-		// The house's reach toward the water and to either side of it, all wings.
-		double Front = 0.0, SideW = 0.0;
-		for (const FWingFrame& F : Wings)
-		{
-			for (int32 Cn = 0; Cn < 4; ++Cn)
-			{
-				const FVector2D P = F.At((Cn & 1) ? F.HL : -F.HL, (Cn & 2) ? F.HW : -F.HW) - Ctr;
-				Front = FMath::Max(Front, FVector2D::DotProduct(P, Water));
-				SideW = FMath::Max(SideW, FMath::Abs(FVector2D::DotProduct(P, Across)));
-			}
-		}
-		// The shore straight out from the house's front (metres from its centre), if there's one within reach of a lawn.
-		double Shore = -1.0;
-		for (double D = Front + 2.0; D < Front + 70.0; D += 1.0)
-		{
-			if (Terr.HeightAt(Ctr.X + Water.X * D, Ctr.Y + Water.Y * D) < -0.05) { Shore = D; break; }
-		}
+		const double Front = Lot.Front, SideW = Lot.SideW, Shore = Lot.Shore;
 		// The driveway: concrete from the garage door out toward the street, following the ground.
 		if (GarageOut.SizeSquared() > 0.0)
 		{
@@ -663,18 +834,8 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 				}
 			}
 		}
-		// The waterline along the lot: from points across it, the first wet sample marching out.
-		const double Half = FMath::Clamp(SideW + 5.0, 8.0, 18.0);
-		TArray<FVector2D, TInlineAllocator<20>> Line;
-		for (double S = -Half; S <= Half + 0.01; S += 2.0)
-		{
-			for (double D = Shore - 10.0; D < Shore + 10.0; D += 0.5)
-			{
-				const FVector2D P = Ctr + Across * S + Water * D;
-				if (Terr.HeightAt(P.X, P.Y) < -0.02) { Line.Add(P); break; }
-			}
-		}
-		const float Edge = Hash01(K, 51);
+		const TArray<FVector2D, TInlineAllocator<20>>& Line = Lot.Line;
+		const FName Bank = LotBankType(K);
 		// A concrete path down the lawn to the water (or to the dock).
 		if (Hash01(K, 52) < 0.6f)
 		{
@@ -689,16 +850,20 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 				Up(Conc, FVector(A - Across * 0.5, ZA), FVector(A + Across * 0.5, ZA), FVector(B + Across * 0.5, ZB), FVector(B - Across * 0.5, ZB));
 			}
 		}
-		if (Line.Num() < 3 || Edge > 0.85f) continue;   // a natural bank on some
-		// The bank: a concrete bulkhead (most of the lake's developed shore) or riprap.
-		const bool bBulkhead = Edge < 0.55f;
+		if (Line.Num() < 3 || Bank.IsNone()) continue;   // a natural bank on some
+		// The bank. Shore Track C (docs/envloop/shore-edges): on a lake the bulkhead, limestone and timber walls are kit pieces
+		// (SM_Edge_*) that ALakeTerrainActor::PlaceShoreEdges lays along the same waterline (ShoreEdgeRuns), with the water's
+		// marks drawn by height in M_ShoreEdge; only the riprap stays in the tile, stepped stone down the bank. The kit is a
+		// North Texas lake region pack (its marks are the pool's), so a coast's lots keep the tile's own concrete bulkhead
+		// until a coast pack exists (the gate showed Marseille paying 11 fps for a lake's edges, Nov 18 2026).
+		const bool bTileWall = Bank != TEXT("riprap") && !ShoreEdgesOn(Lake);
 		for (int32 I = 0; I + 1 < Line.Num(); ++I)
 		{
 			const FVector2D A = Line[I], B = Line[I + 1];
 			if (FVector2D::Distance(A, B) > 4.5) continue;
 			FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
 			if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
-			if (bBulkhead)
+			if (bTileWall)
 			{
 				const double Top = 0.5;
 				WallQuad(Conc, A, B, -0.7, Top, N, 0.0, -0.7);
@@ -707,7 +872,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
 				Up(Conc, FVector(A - N * 0.3, Top + 0.12), FVector(B - N * 0.3, Top + 0.12), FVector(B - N * 2.0, FMath::Max(ZB, Top + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Top + 0.05)));
 			}
-			else
+			else if (Bank == TEXT("riprap"))
 			{
 				// Riprap: a pile of stones down the bank, in steps so its face is broken, not a paved slope.
 				for (int32 St = 0; St < 3; ++St)
@@ -716,6 +881,23 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 					Up(Rip, FVector(A + N * I0, Z0), FVector(B + N * I0, Z0), FVector(B + N * I1, Z1), FVector(A + N * I1, Z1));
 					Rip.Span(A + N * (I1 + 0.15), B + N * (I1 + 0.15), 0.4f, float(Z1 - 0.12), float(Z1 + 0.08));
 				}
+			}
+		}
+		if (!bTileWall && Bank == TEXT("bulkhead"))
+		{
+			// The kit bulkhead's fill: concrete from behind its cap up to the lawn two metres back, along the same straight line
+			// and at the same lift as the pieces, so the lidar's step doesn't hang over the cap as bare ground.
+			TArray<FVector2D> WL;
+			LotWallLine(Lot, Ctr, WL);
+			const double Zc = KitWallTop(Bank) + LotWallLift(Terr, WL, Water, Bank);
+			for (int32 I = 0; I + 1 < WL.Num(); ++I)
+			{
+				const FVector2D A = WL[I], B = WL[I + 1];
+				FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
+				if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
+				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
+				if (ZA < Zc - 0.4 && ZB < Zc - 0.4) continue;   // no bank behind this stretch to fill against (a stray run would get a shelf)
+				Up(Conc, FVector(A - N * 0.25, Zc), FVector(B - N * 0.25, Zc), FVector(B - N * 2.0, FMath::Max(ZB, Zc + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Zc + 0.05)));
 			}
 		}
 		// A boathouse on a third of the banked lots with water deep enough a few metres out, and none of the map's own docks

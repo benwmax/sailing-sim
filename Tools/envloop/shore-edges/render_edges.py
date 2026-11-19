@@ -35,9 +35,10 @@ import hlsl_np as H  # noqa: E402
 import render_rocks as RR  # noqa: E402
 import edge_kit as K  # noqa: E402
 import edge_layer as L  # noqa: E402
-from rock_kit import _hash, _u01  # noqa: E402
+from rock_kit import perlin  # noqa: E402
 
 DISTS = (3, 15, 60)
+LOOK_DOWN = {"sheetpile": -0.55, "bulkhead": -0.2}   # metres off the 3 m view's aim, per type
 LENGTH = {3: 16.0, 15: 40.0, 60: 100.0}
 LENS = {3: 24.0, 15: 50.0, 60: 54.0}           # mm on a 36 mm sensor: 74, 40 and 37 degrees; at 60 m the frame is the plan's 40 m repeat check
 LIGHTS = [("midday", "pool"), ("lowsun", "pool"), ("overcast", "pool"), ("midday-low-lake", "gauge")]
@@ -87,20 +88,12 @@ def to_blender(m, name="edge"):
     return o
 
 
-def value_noise(P, scale, seed, foot):
-    """Value noise in 0..1 at points P (H, W, 3) metres, cells `scale` metres; flattened toward 0.5 where a pixel covers
-    more than a cell (what the game's mipped noise texture does)."""
+def grad_noise(P, scale, seed, foot):
+    """Gradient (Perlin) noise in 0..1 at points P (H, W, 3) metres, cells `scale` metres, two octaves so no cell shows
+    as a square (round 1's value noise did); histogram-equalised, then flattened toward 0.5 where a pixel covers more
+    than a cell (what the game's mipped noise texture does)."""
     q = P.reshape(-1, 3) / np.asarray(scale, float)
-    i = np.floor(q).astype(np.int64)
-    f = q - i
-    u = f * f * (3 - 2 * f)
-    out = 0.0
-    for dz in (0, 1):
-        for dy in (0, 1):
-            for dx in (0, 1):
-                v = _u01(_hash(i[:, 0] + dx, i[:, 1] + dy, i[:, 2] + dz, seed))
-                wgt = (u[:, 0] if dx else 1 - u[:, 0]) * (u[:, 1] if dy else 1 - u[:, 1]) * (u[:, 2] if dz else 1 - u[:, 2])
-                out = out + v * wgt
+    out = perlin(q, seed) + 0.45 * perlin(q * 2.03 + 11.7, seed + 31)
     # Equalise to a uniform 0..1 (the game's noise texture is authored equalised): thresholds then mean what they say.
     rank = np.empty(len(out))
     rank[np.argsort(out, kind="stable")] = (np.arange(len(out)) + 0.5) / len(out)
@@ -108,6 +101,9 @@ def value_noise(P, scale, seed, foot):
     s = float(np.min(scale))
     amp = np.clip(s / (2.0 * np.maximum(foot, 1e-6)) - 0.5, 0.0, 1.0)
     return 0.5 + (out - 0.5) * amp
+
+
+value_noise = grad_noise   # round 1's name, kept for callers
 
 
 def shade(passes, level, eye, px_angle, pack):
@@ -171,6 +167,9 @@ def camera(kind, dist, wz):
     ye = edge_y(kind, wz)
     eye = (0.0, ye - dist, wz + 1.5)
     tz = {3: 0.35, 15: 0.55, 60: 0.9}[dist] + wz
+    if dist == 3:
+        # The hold station looks a little down at a wall whose cap and waler hide the face from eye height.
+        tz += LOOK_DOWN.get(kind, 0.0)
     tgt = np.array([0.0, ye + (0.8 if dist == 3 else 1.5), tz])
     d = tgt - np.array(eye)
     d /= np.linalg.norm(d)
