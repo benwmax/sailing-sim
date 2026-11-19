@@ -60,6 +60,7 @@ void FGpuSlices::Accumulate(const FGpuSlices& F)
 	TotalMs += F.TotalMs; BaseMs += F.BaseMs; LumenMs += F.LumenMs; WaterMs += F.WaterMs;
 	CloudsFogMs += F.CloudsFogMs; NiagaraMs += F.NiagaraMs; PostMs += F.PostMs; OtherMs += F.OtherMs;
 	Frames += FMath::Max(F.Frames, 1);
+	for (const TPair<FString, double>& P : F.LumenPasses) LumenPasses.FindOrAdd(P.Key) += P.Value;
 }
 
 FGpuSlices FGpuSlices::Average() const
@@ -73,13 +74,32 @@ FGpuSlices FGpuSlices::Average() const
 	A.TotalMs = TotalMs * K; A.BaseMs = BaseMs * K; A.LumenMs = LumenMs * K; A.WaterMs = WaterMs * K;
 	A.CloudsFogMs = CloudsFogMs * K; A.NiagaraMs = NiagaraMs * K; A.PostMs = PostMs * K; A.OtherMs = OtherMs * K;
 	A.Frames = Frames;
+	for (const TPair<FString, double>& P : LumenPasses) A.LumenPasses.Add(P.Key, P.Value * K);
 	return A;
 }
 
 FString FGpuSlices::ToJsonField() const
 {
-	return FString::Printf(TEXT("\"gpu\":{\"frames\":%d,\"total_ms\":%.2f,\"base_ms\":%.2f,\"lumen_ms\":%.2f,\"water_ms\":%.2f,\"clouds_fog_ms\":%.2f,\"niagara_ms\":%.2f,\"post_ms\":%.2f,\"other_ms\":%.2f}"),
-		Frames, TotalMs, BaseMs, LumenMs, WaterMs, CloudsFogMs, NiagaraMs, PostMs, OtherMs);
+	FString Passes;
+	TArray<FString> Names;
+	LumenPasses.GenerateKeyArray(Names);
+	Names.Sort();
+	for (const FString& Name : Names)
+	{
+		Passes += FString::Printf(TEXT("%s\"%s\":%.2f"), Passes.IsEmpty() ? TEXT("") : TEXT(","), *Name.ReplaceCharWithEscapedChar(), LumenPasses[Name]);
+	}
+	return FString::Printf(TEXT("\"gpu\":{\"frames\":%d,\"total_ms\":%.2f,\"base_ms\":%.2f,\"lumen_ms\":%.2f,\"water_ms\":%.2f,\"clouds_fog_ms\":%.2f,\"niagara_ms\":%.2f,\"post_ms\":%.2f,\"other_ms\":%.2f,\"lumen_passes\":{%s}}"),
+		Frames, TotalMs, BaseMs, LumenMs, WaterMs, CloudsFogMs, NiagaraMs, PostMs, OtherMs, *Passes);
+}
+
+FString FGpuSlices::LumenPassesText() const
+{
+	TArray<FString> Names;
+	LumenPasses.GenerateKeyArray(Names);
+	Names.Sort([this](const FString& A, const FString& B) { return LumenPasses[A] > LumenPasses[B]; });
+	FString Text;
+	for (const FString& Name : Names) Text += FString::Printf(TEXT("%s%s %.2f"), Text.IsEmpty() ? TEXT("") : TEXT(", "), *Name, LumenPasses[Name]);
+	return Text;
 }
 
 EGpuSlice ClassifyGpuPass(const FString& N)
@@ -116,6 +136,7 @@ bool ParseProfileGpu(const TArray<FString>& Lines, FGpuSlices& Out)
 	for (int32 I = SceneIndex + 1; I < Passes.Num() && Passes[I].Depth > SceneDepth; ++I)
 	{
 		const FGpuPass& P = Passes[I];
+		if (P.Depth <= SceneDepth + 3 && ClassifyGpuPass(P.Name) == EGpuSlice::Lumen) Out.LumenPasses.FindOrAdd(P.Name) += P.InclusiveMs;
 		if (P.Depth != SceneDepth + 1)
 		{
 			continue;

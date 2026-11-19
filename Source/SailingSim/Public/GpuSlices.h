@@ -21,13 +21,20 @@ struct SAILINGSIM_API FGpuSlices
 {
 	double TotalMs = 0.0, BaseMs = 0.0, LumenMs = 0.0, WaterMs = 0.0, CloudsFogMs = 0.0, NiagaraMs = 0.0, PostMs = 0.0, OtherMs = 0.0;
 	int32 Frames = 0;
+	/**
+	 * The Lumen slice's passes by name (inclusive ms; up to three levels under Scene: LumenSceneLighting, the card
+	 * captures, DiffuseIndirectAndAO's gather, the reflections), so a gate that moved the Lumen slice says which pass.
+	 */
+	TMap<FString, double> LumenPasses;
 
 	/** Adds another frame's slices (for averaging). */
 	void Accumulate(const FGpuSlices& Frame);
 	/** The average of the accumulated frames. */
 	FGpuSlices Average() const;
-	/** `"gpu":{"frames":3,"total_ms":13.9,"base_ms":...}` (without the braces of an enclosing object). */
+	/** `"gpu":{"frames":3,"total_ms":13.9,"base_ms":...,"lumen_passes":{...}}` (without the braces of an enclosing object). */
 	FString ToJsonField() const;
+	/** The Lumen passes, largest first: `LumenScreenProbeGather 1.50, LumenSceneLighting 0.30` (for the log). */
+	FString LumenPassesText() const;
 };
 
 /** Which slice a pass directly under Scene belongs to (by its name). */

@@ -191,6 +191,12 @@ bool FVisualGpuSlicesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Post"), S.PostMs, 2.5, 1e-6);
 	TestEqual(TEXT("Other = outside Scene"), S.OtherMs, 14.0 - 13.6 + (13.6 - (0.5 + 1.1 + 0.3 + 3.0 + 4.4 + 0.1 + 2.5 + 1.7)), 1e-6);
 	TestEqual(TEXT("Water draws in the base pass until V4"), S.WaterMs, 0.0, 1e-9);
+	TestEqual(TEXT("Lumen passes named: scene lighting"), S.LumenPasses.FindRef(TEXT("LumenSceneLighting")), 0.3, 1e-6);
+	TestEqual(TEXT("Lumen passes named: diffuse indirect"), S.LumenPasses.FindRef(TEXT("DiffuseIndirectAndAO")), 2.5, 1e-6);
+	TestEqual(TEXT("Lumen passes named: the gather under it"), S.LumenPasses.FindRef(TEXT("LumenScreenProbeGather")), 1.5, 1e-6);
+	TestEqual(TEXT("Lumen passes: only Lumen's"), S.LumenPasses.Num(), 3);
+	TestTrue(TEXT("Lumen passes in the JSON"), S.ToJsonField().Contains(TEXT("\"lumen_passes\":{\"DiffuseIndirectAndAO\":2.50,\"LumenSceneLighting\":0.30,\"LumenScreenProbeGather\":1.50}")));
+	TestTrue(TEXT("Lumen passes text, largest first"), S.LumenPassesText().StartsWith(TEXT("DiffuseIndirectAndAO 2.50, LumenScreenProbeGather 1.50")));
 	TestFalse(TEXT("No Scene, no slices"), ParseProfileGpu({ Row(1.0, 0, TEXT("<root>")) }, S));
 	FGpuSlices Sum;
 	FGpuSlices A; A.TotalMs = 10.0; A.Frames = 1;
