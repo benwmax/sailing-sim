@@ -192,12 +192,16 @@ const FString& FBoatSkin::HullName() const
 
 FLinearColor FBoatSkin::HullNameColour() const
 {
+	return HullNameColour(Paint.Hull.IsSet() ? Paint.Hull.GetValue() : FLinearColor::White);
+}
+
+FLinearColor FBoatSkin::HullNameColour(const FLinearColor& HullColour) const
+{
 	if (Lettering.Colour.IsSet()) return Lettering.Colour.GetValue();
 	FLinearColor Navy, White;
 	ParseHex(TEXT("#1C2A44"), Navy);
 	ParseHex(TEXT("#F2F0EA"), White);
-	const bool bDarkHull = Paint.Hull.IsSet() && Paint.Hull.GetValue().GetLuminance() < 0.25f;
-	return bDarkHull ? White : Navy;
+	return HullColour.GetLuminance() < 0.25f ? White : Navy;
 }
 
 // ---------------------------------------------------------------- the file

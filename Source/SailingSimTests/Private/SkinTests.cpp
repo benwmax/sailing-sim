@@ -334,7 +334,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingSkinLetteringTest, "SailingSim.Skin.Let
 bool FSailingSkinLetteringTest::RunTest(const FString&)
 {
 	// Name on the hull: the name is cleaned and capped, round-trips through the file, takes navy on a light hull and
-	// white on a dark one unless the skin names a colour, counts as a look of its own, and has a place on the J/22.
+	// white on a dark one unless the skin names a colour, counts as a look of its own, and has a place on every boat.
 	TestEqual(TEXT("Cleaned"), FBoatSkin::CleanHullName(TEXT("  Blue   <b>Bonnet</b>!  ")), FString(TEXT("Blue bBonnet/b")));
 	TestEqual(TEXT("Capped"), FBoatSkin::CleanHullName(TEXT("A very long name for a small boat")).Len(), FBoatSkin::MaxHullNameChars);
 	FBoatSkin S;
@@ -353,6 +353,8 @@ bool FSailingSkinLetteringTest::RunTest(const FString&)
 	TestTrue(TEXT("Navy on the class's hull"), Out.HullNameColour().Equals(Navy, 0.002f));
 	Out.Paint.Hull = Navy;
 	TestTrue(TEXT("White on a dark hull"), Out.HullNameColour().Equals(White, 0.002f));
+	TestTrue(TEXT("White on a class whose own hull is dark, with no paint in the skin"), FBoatSkin().HullNameColour(Navy).Equals(White, 0.002f));
+	TestTrue(TEXT("Navy on a white hull"), FBoatSkin().HullNameColour(White).Equals(Navy, 0.002f));
 	Out.Lettering.Colour = Red;
 	FBoatSkin Again;
 	TestEqual(TEXT("Reads with a colour"), int32(FBoatSkin::FromJson(Out.ToJson(), Again)), int32(FBoatSkin::EResult::Ok));
@@ -380,7 +382,28 @@ bool FSailingSkinLetteringTest::RunTest(const FString&)
 	TestTrue(TEXT("A long name is made smaller to fit"), SailingHullName::Place(int32(Sailing::EBoatType::J22), 12.f, Long) && Long.LengthCm <= 125.01f && Long.HeightCm < Short.HeightCm
 		&& FMath::IsNearlyEqual(Long.LengthCm / Long.HeightCm, 12.f, 0.01f) && FMath::IsNearlyEqual(Long.ZLowCm + 0.5f * Long.HeightCm, Short.ZLowCm + 0.5f * Short.HeightCm, 0.01f));
 	TestTrue(TEXT("Forward of the transom"), Short.XAftCm > -346.f && Long.XAftCm + Long.LengthCm < -190.f);
-	TestFalse(TEXT("The Sunfish has none yet"), SailingHullName::Place(int32(Sailing::EBoatType::Sunfish), 4.f, None));
+	// Every other class has one too, from her own hull: on her quarters, inside her freeboard, bigger on a bigger boat; the
+	// frigate's name is carved on her stern instead.
+	TestFalse(TEXT("The frigate wears her carved name"), SailingHullName::Place(int32(Sailing::EBoatType::Commonwealth), 4.f, None));
+	float LastHeight = 0.f;
+	for (int32 T = 0; T < int32(Sailing::EBoatType::Count); ++T)
+	{
+		const Sailing::EBoatType Type = Sailing::EBoatType(T);
+		if (Type == Sailing::EBoatType::Commonwealth) continue;
+		const Sailing::FBoatConfig Config = Sailing::FBoatConfig::Make(Type);
+		const Sailing::FHullShape& Main = Config.Hulls[0];
+		const FString Name = UTF8_TO_TCHAR(Sailing::BoatTypeName(Type));
+		FHullNamePlace P;
+		if (!TestTrue(FString::Printf(TEXT("%s has a place"), *Name), SailingHullName::Place(T, 7.f, P))) continue;
+		const float SternCm = float(Main.SternX) * 100.f, LengthCm = float(Config.LengthOverall - Config.Bowsprit) * 100.f;
+		TestTrue(FString::Printf(TEXT("%s: on her quarters"), *Name), P.XAftCm > SternCm && P.XAftCm + P.LengthCm < SternCm + 0.45f * LengthCm);   // (Bluebonnet's goes forward of her long counter)
+		const float FreeboardCm = float(Main.SheerHeight(0.01 * (P.XAftCm + 0.5f * P.LengthCm))) * 100.f;
+		TestTrue(FString::Printf(TEXT("%s: between her waterline and her deck edge"), *Name), P.ZLowCm > 0.2f * FreeboardCm && P.ZLowCm + P.HeightCm < 0.9f * FreeboardCm);
+		TestTrue(FString::Printf(TEXT("%s: letters a reader can see"), *Name), P.HeightCm > 0.008f * LengthCm && P.HeightCm < 0.03f * LengthCm);   // (a long counter leaves Bluebonnet about 1.1%)
+		TestEqual(FString::Printf(TEXT("%s: a trimaran's floats stay bare"), *Name), P.MaxSideCm < 1.0e5f, Config.Hulls.size() >= 3);
+		if (Type == Sailing::EBoatType::Bluebonnet) TestTrue(TEXT("The J-Class letters bigger than a dinghy"), P.HeightCm > 3.f * LastHeight);
+		if (Type == Sailing::EBoatType::Sunfish) LastHeight = P.HeightCm;
+	}
 	return true;
 }
 

@@ -1205,6 +1205,17 @@ float wetAll = saturate(max(wet, deckWet * 0.8));
 float4 wear = CD0 >= 0.0 ? float4(CD0, CD1, CD2, CD3) : Wear;
 float3 col = (IsHull > 0.5 && CD4 >= 0.0) ? float3(CD4, CD5, CD6) : C.rgb;
 float zcm = LP.z;
+// Name on the hull (docs/skins, HullName.h): the skin's lettering as cut vinyl on the quarters of every boat but the hero
+// J/22 (M_J22HeroSurface has its own). NameTex's red is the letters' cover (white on black, drawn by the pawn); NameRect
+// its place in the hull's frame (cm: aft edge X, lower edge Z, length, height), laid by a side-on projection so it follows
+// the topsides' curve and reads bow end first on each side (from port the bow is to the left, so U runs aft). Only on
+// topsides facing outboard (a catamaran's outer sides) and within NameSpan.y of the centreline (a trimaran's main hull).
+// NameColour's alpha 0 (the default, and every boat without a name): nothing. Before the wear, which weathers it.
+float nameOut = step(0.0, LP.y * dot(N, LY)) * step(abs(LP.y), NameSpan.y);
+float2 nameUV = float2(LP.y < 0.0 ? NameRect.x + NameRect.z - LP.x : LP.x - NameRect.x, NameRect.y + NameRect.w - zcm) / max(NameRect.zw, 1.0);
+float nameIn = step(0.0, nameUV.x) * step(nameUV.x, 1.0) * step(0.0, nameUV.y) * step(nameUV.y, 1.0) * step(0.5, IsHull) * nameOut * NameColour.a;
+float nameCover = nameIn > 0.0 ? Texture2DSampleLevel(NameTex, NameTexSampler, saturate(nameUV), 0.0).r : 0.0;
+col = lerp(col, NameColour.rgb, saturate(nameCover) * nameIn);
 float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid)) * (1.0 - Grain);   // texture loop, wood: varnish isn't gelcoat (it chalked)
 float rough = R, coat = Coat;
 // E1 (docs/environment-1): the rest of the berthed boats' wear seed, per instance (custom data 12-15; -1 = none, as on
@@ -2491,7 +2502,8 @@ def build_boat_surface(name, bend, packed=False):
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
-               + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS],
+               + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
+               + ["NameTex", "NameRect", "NameColour", "NameSpan"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
@@ -2512,6 +2524,15 @@ def build_boat_surface(name, bend, packed=False):
         connect(sw, "", c, pin)
     for i, (pin, default) in enumerate(BOAT_LAID_PARAMS):
         connect(vector(mat, pin, default, -1700, 2900 + 90 * i), "RGBA", c, pin)
+    # Name on the hull (docs/skins, HullName.h): the lettering's texture (the pawn's; the default is only there so the
+    # material compiles), its place, its colour (alpha 0: none) and the sides' reach. The material already samples 16
+    # textures, so the name takes the shared clamp sampler.
+    name_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -2100, 400, parameter_name="NameTex",
+                    texture=unreal.load_asset("/Engine/EngineResources/Black"), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    name_tex.set_editor_property("sampler_source", unreal.SamplerSourceMode.SSM_CLAMP_WORLD_GROUP_SETTINGS)
+    connect(name_tex, "", c, "NameTex")
+    for i, (pin, default) in enumerate((("NameRect", (0, 0, 1, 1)), ("NameColour", (0, 0, 0, 0)), ("NameSpan", (0, 1.0e6, 0, 0)))):
+        connect(vector(mat, pin, default, -2100, 480 + 80 * i), "RGBA", c, pin)
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
     connect(scalar(mat, "WearScale", 1.0, -1400, 1530), "", c, "WearScale")   # #405: the wear noise's size per class

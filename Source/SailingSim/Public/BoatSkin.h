@@ -117,6 +117,9 @@ struct SAILINGSIM_API FBoatSkin
 	 *  white where the skin paints the hull dark (luminance under 0.25). */
 	const FString& HullName() const;
 	FLinearColor HullNameColour() const;
+	/** The same choice against the hull as she is drawn (her livery with this skin applied): a class whose own hull is dark,
+	 *  like Bluebonnet's navy, takes white letters even when the skin paints nothing. */
+	FLinearColor HullNameColour(const FLinearColor& HullColour) const;
 };
 
 /**
