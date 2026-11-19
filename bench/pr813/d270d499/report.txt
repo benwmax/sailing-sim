@@ -1,0 +1,31 @@
+head 79ee1a70 11:09:50
+build ok
+SailingSim.Lake: 19 passed, 0 failed, 19 total
+import exit 0
+import error lines:        0
+M_Ground size 31696 -> 32845; left out (       0)
+pushed d270d499d189ab954d0698e415e4015ce32c55ef
+world gate exit 0 12:14:51
+450 passed, 0 failed, 450 total
+[gate 3361 s] package: Content changed, full recook
+[gate 3531 s] bench marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day,marseille-port,far-coast,far-coast-night,stream-run on High
+[gate 3763 s] bench done
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.3   19.48   17.97  ok
+coast-day      High      51.8   20.83    18.2  ok
+coast-night    High      56.6   18.42   16.82  ok
+helm-eye       High      55.5   19.52    17.0  ok
+slip           High      47.7   22.27   20.32  ok
+bridge         High      60.0   17.86   15.63  ok
+marina-night   High      55.3   19.21   17.07  ok
+far-coast      High      63.1   16.75   14.88  ok
+far-coast-night High      78.9   13.32   11.35  ok
+marseille-port High      52.2   21.15   18.05  ok
+stream-run     High      51.7    20.9   18.66  ok
+gate: pass
+[gate 3763 s] gate passed
+shot pr813-club-beach-with
+shot pr813-backyards-topdown-with
+main 91c8c80d built for the -main stills
+shot pr813-club-beach-main
+shot pr813-backyards-topdown-main
