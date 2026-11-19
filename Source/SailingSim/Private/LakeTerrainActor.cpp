@@ -1488,7 +1488,7 @@ void ALakeTerrainActor::PlaceShoreEdges()
 			EdgeModels.Add(Comp);
 		}
 	}
-	SAIL_LOG(Display, TEXT("Shore edges: %d pieces (%d lot wall segments on %d lots, %d natural shore nodes), %d of %d meshes"), Instances, Walls, Runs.Num(), Natural, Loaded, int32(UE_ARRAY_COUNT(Types)) * Variants);
+	SAIL_LOG(Display, TEXT("Shore edges: %d pieces (%d lot wall segments in %d runs, %d natural shore nodes), %d of %d meshes"), Instances, Walls, Runs.Num(), Natural, Loaded, int32(UE_ARRAY_COUNT(Types)) * Variants);
 }
 
 void ALakeTerrainActor::PlaceUnderstory()

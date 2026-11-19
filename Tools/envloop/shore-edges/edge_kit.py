@@ -223,7 +223,7 @@ def debris_line(m, rng, length, zfn, y_lo, y_hi, wrack_z, per_m=8.0, near=None):
         pts[:, 1] += np.array([0, rng.gauss(0, 0.01), rng.gauss(0, 0.01), 0])
         pts[:, 2] = zfn(pts[:, 0], pts[:, 1]) + r * 0.7
         tube(m, pts, np.linspace(r, r * 0.6, 4), "wood", rng.random(), sides=5, part="debris")
-    lim = near if near else length / 2
+    lim = min(near, length / 2) if near else length / 2   # never past the piece's ends (the game's 4 m pieces)
     for _ in range(int(per_m * 3.0 * 2 * lim)):
         x = rng.uniform(-lim, lim)
         y = np.interp(x, xs, yline) + rng.gauss(0, 0.18)
@@ -286,7 +286,8 @@ def build_bulkhead(m, length, rng, seed):
     # The cap: 300 mm wide, 300 mm tall, a 25 mm lip proud of the face, in pours one panel long.
     cw, ch = S["bulkhead_cap_w"], S["bulkhead_cap_h"]
     for x in np.arange(-length / 2, length / 2, S["panel"]):
-        box(m, (x + S["panel"] / 2, cw / 2 - 0.025, top + ch / 2), (S["panel"] / 2 - 0.006, cw / 2, ch / 2), "concrete",
+        x1 = min(x + S["panel"], length / 2)   # the last pour ends with the piece
+        box(m, ((x + x1) / 2, cw / 2 - 0.025, top + ch / 2), ((x1 - x) / 2 - 0.006, cw / 2, ch / 2), "concrete",
             rng.uniform(0.3, 0.7), part="cap")
     # Weep holes: a dark recess (the pipe's end) 75 mm across, a few mm proud.
     for x in holes:
@@ -386,8 +387,10 @@ def build_limestone(m, length, rng, seed):
         while x < length / 2:
             L = S["block_l"] * rng.uniform(0.75, 1.25)
             gap = rng.uniform(0.01, 0.03)
-            c = (x + L / 2, y0 + d / 2 + rng.gauss(0, 0.012), z0 + h / 2 + rng.gauss(0, 0.008))
-            rough_block(m, c, (L - gap, d * rng.uniform(0.95, 1.05), h * rng.uniform(0.96, 1.02)), rng, seed + int(x * 10))
+            x0, x1 = max(x, -length / 2), min(x + L, length / 2)   # the end blocks are cut to the piece
+            if x1 - x0 > 0.12:
+                c = ((x0 + x1) / 2, y0 + d / 2 + rng.gauss(0, 0.012), z0 + h / 2 + rng.gauss(0, 0.008))
+                rough_block(m, c, (x1 - x0 - gap, d * rng.uniform(0.95, 1.05), h * rng.uniform(0.96, 1.02)), rng, seed + int(x * 10))
             x += L
     top = courses[-1][0] + h
     back_lot(m, length, 2 * setback + d * 0.9, top - 0.02, seed)
@@ -407,7 +410,11 @@ def build_timber(m, length, rng, seed):
             L = 6.0 if rng.random() < 0.8 else rng.uniform(2.0, 4.8)
             bow = rng.gauss(0, 0.006)
             nseg = 8
-            xs = np.linspace(x + 0.004, x + L - 0.004, nseg + 1)
+            x0, x1 = max(x, -length / 2), min(x + L, length / 2)   # boards end with the piece
+            if x1 - x0 < 0.1:
+                x += L
+                continue
+            xs = np.linspace(x0 + 0.004, x1 - 0.004, nseg + 1)
             yb = bow * np.sin(np.linspace(0, math.pi, nseg + 1))
             V, F = [], []
             for i, (xx, yy) in enumerate(zip(xs, yb)):

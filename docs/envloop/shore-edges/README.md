@@ -121,13 +121,24 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   world position (as `make_materials.node()` does), or D3D SM6 refuses the Add and every piece draws the default checker
   while Metal may still compile it. `M_ShoreEdge` carries `used_with_nanite` and `used_with_instanced_static_meshes`.
   `scripts/make-shore-edges.sh --material-only` rebuilds the material and the marks in place without Blender or the FBX import.
-- **Straight walls, caps at the lawn (Nov 18, after the first in-game stills).** The lidar waterline zigzags by the metre,
-  so 2 m pieces laid along it stood at angles with gaps between, and the lidar's step (the real bulkhead) left the lawn
-  hanging over a wall built at the pool. `LotWallLine` (`HouseKit.cpp`) lays one straight line per lot in pieces of at most
-  4 m, 0.3 m beyond the farthest waterline sample within 2.5 m of the median, so no piece is buried in a bulge of the bank
-  (at the mean distance the wall came out as blocks with gaps) and one stray sample out by a dock cannot put the wall in
-  the lake (it did); `LotWallLift` raises the run (up to 0.6 m) so the cap meets the median lawn height 2 m behind; the house tile pours a
-  concrete fill from behind the bulkhead's cap up to the lawn, as its old wall had.
+- **Straight walls along the shore, caps at the lawn (Nov 18-19, after the in-game stills).** The lidar waterline zigzags
+  by the metre, so 2 m pieces laid along it stood at angles with gaps between, and the lidar's step (the real bulkhead) left
+  the lawn hanging over a wall built at the pool. `LotWallLine` (`HouseKit.cpp`) lays one straight line per lot in pieces
+  of at most 4 m. The line runs the way the lot's shore runs (a Theil-Sen fit through the waterline samples: the house's
+  Water direction is snapped to 22.5 degrees and the shore crosses the station lots at 20-37 degrees to it, so a line
+  square to the house was buried in the bank at one end and stood 3 m out in the lake at the other), 0.3 m beyond the
+  farthest sample within 2.5 m of the fit, so no piece is buried in a bulge of the bank and one stray sample out by a dock
+  cannot put the wall in the lake (both happened). `LotWallLift` raises the run (up to 0.6 m) so the cap meets the median
+  lawn height 2 m behind; a stretch with open water 2 m behind it (a slip cut into the lot) gets no pieces; the house
+  tile pours a concrete fill from behind the bulkhead's cap up to the lawn where there is a bank to fill against.
+  Replaying the placement standalone on the bakes (`FLakeTerrain` plus the `.houses` records, the 1 m detail inflated
+  from its `SSDZ` zlib) is the quick way to see where a lot's wall lands: the capture stations' lots are 26891
+  (limestone) and 26893 (bulkhead).
+- **Welded pieces.** The kit builds each stone, board and cap as separate face sheets sharing positions but not vertices;
+  `export_edges.py` welds them (0.1 mm) before export. Unwelded, Unreal's Nanite fallback (relative error 1, drawn
+  wherever Nanite doesn't) and the `_Light` decimation turned the limestone's stones into hollow open boxes with missing
+  faces, seen in the game as short blocks with gaps (round 5). Welded, a stone is a closed manifold and decimates to a box.
+  Every part is also clipped to the 4 m piece (the caps, blocks, boards and debris used to run on to 2.9-10 m).
 - **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
   import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its
   open back to the lake, seen from the water as black wedges.)

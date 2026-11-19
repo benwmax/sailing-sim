@@ -234,33 +234,54 @@ namespace
 		return Lot;
 	}
 
-	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is: a line along the lot from the first waterline
-	 *  sample to the last, in pieces of at most 4 m (the lidar waterline zigzags by the metre and pieces laid along it stood
-	 *  at angles to each other with gaps between). It stands 0.3 m beyond the farthest of the samples within 2.5 m of their
-	 *  median, so the whole run is in front of the bank: at the samples' mean distance the bank's bulges buried the pieces
-	 *  inside it and the wall came out as blocks with gaps (round 3's stills), and at the farthest sample of all one stray
-	 *  sample out by a dock put a lot's whole wall in the lake (round 4's). The house tile (the fill behind the cap) and
+	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is, in pieces of at most 4 m (the lidar waterline
+	 *  zigzags by the metre and pieces laid along it stood at angles to each other with gaps between). It runs the way the
+	 *  lot's shore runs: a Theil-Sen line through the waterline samples (median of the pairwise slopes, median intercept),
+	 *  because the house's Water direction is snapped to 22.5 degrees and the real shore crosses many lots at an angle; a
+	 *  line square to the house sat buried in the bank at one end and 3 m out in the lake at the other (round 5's stills).
+	 *  The line then stands 0.3 m beyond the farthest of the samples within 2.5 m of it, so the whole run is in front of
+	 *  the bank (at the mean the bank's bulges buried the pieces, round 3; at the farthest sample of all one stray sample by
+	 *  a dock put a lot's whole wall in the lake, round 4). The house tile (the fill behind the cap) and
 	 *  ALakeTerrainActor::PlaceShoreEdges (the pieces) both take it, so they meet. */
 	void LotWallLine(const FLotShore& Lot, const FVector2D& Ctr, TArray<FVector2D>& Out)
 	{
-		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max();
-		TArray<double, TInlineAllocator<20>> Ds;
+		TArray<double, TInlineAllocator<20>> S, D;
 		for (const FVector2D& P : Lot.Line)
 		{
 			const FVector2D R = P - Ctr;
-			const double S = FVector2D::DotProduct(R, Lot.Across);
-			S0 = FMath::Min(S0, S);
-			S1 = FMath::Max(S1, S);
-			Ds.Add(FVector2D::DotProduct(R, Lot.Water));
+			S.Add(FVector2D::DotProduct(R, Lot.Across));
+			D.Add(FVector2D::DotProduct(R, Lot.Water));
 		}
-		Ds.Sort();
-		const double Median = Ds[Ds.Num() / 2];
-		double D = Median;
-		for (const double Di : Ds) if (Di <= Median + 2.5) D = FMath::Max(D, Di);
-		D += 0.3;
-		const double Len = S1 - S0;
+		TArray<double, TInlineAllocator<200>> Slopes;
+		for (int32 I = 0; I < S.Num(); ++I)
+		{
+			for (int32 J = I + 1; J < S.Num(); ++J)
+			{
+				if (FMath::Abs(S[J] - S[I]) > 1e-3) Slopes.Add((D[J] - D[I]) / (S[J] - S[I]));
+			}
+		}
+		double B = 0.0;
+		if (Slopes.Num() > 0)
+		{
+			Slopes.Sort();
+			B = FMath::Clamp(Slopes[Slopes.Num() / 2], -1.0, 1.0);   // a shore steeper than 45 deg to the lot is not this lot's front
+		}
+		TArray<double, TInlineAllocator<20>> Res;
+		for (int32 I = 0; I < S.Num(); ++I) Res.Add(D[I] - B * S[I]);
+		Res.Sort();
+		const double Median = Res[Res.Num() / 2];
+		double A = Median;
+		for (const double R : Res) if (R <= Median + 2.5) A = FMath::Max(A, R);
+		A += 0.3;
+		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max();
+		for (const double Si : S) { S0 = FMath::Min(S0, Si); S1 = FMath::Max(S1, Si); }
+		const double Len = (S1 - S0) * FMath::Sqrt(1.0 + B * B);
 		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 4.0 - 1e-6));
-		for (int32 I = 0; I <= N; ++I) Out.Add(Ctr + Lot.Across * (S0 + Len * I / N) + Lot.Water * D);
+		for (int32 I = 0; I <= N; ++I)
+		{
+			const double Si = S0 + (S1 - S0) * I / N;
+			Out.Add(Ctr + Lot.Across * Si + Lot.Water * (A + B * Si));
+		}
 	}
 
 	/** The top of each kit wall above the pool (Tools/envloop/shore-edges/edge_kit.py: the bulkhead's face and cap, the
@@ -318,9 +339,27 @@ void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out)
 		Run.Type = Bank;
 		Run.Seed = HouseHash(K, 59);
 		Run.Water = Lot.Water;
-		LotWallLine(Lot, FVector2D(H.X, H.Y), Run.Points);
-		Run.Lift = LotWallLift(Terr, Run.Points, Lot.Water, Bank);
-		Out.Add(MoveTemp(Run));
+		TArray<FVector2D> Line;
+		LotWallLine(Lot, FVector2D(H.X, H.Y), Line);
+		Run.Lift = LotWallLift(Terr, Line, Lot.Water, Bank);
+		// Only where there is a bank to hold: a stretch with open water two metres behind it (the line crossing a cove or
+		// a boat slip cut into the lot) gets no pieces, and the run breaks there.
+		auto Banked = [&](const FVector2D& P) { return Terr.HeightAt(P.X - Lot.Water.X * 2.0, P.Y - Lot.Water.Y * 2.0) > -0.5; };
+		for (int32 I = 0; I + 1 < Line.Num(); ++I)
+		{
+			if (Banked(Line[I]) || Banked(Line[I + 1]))
+			{
+				if (Run.Points.Num() == 0) Run.Points.Add(Line[I]);
+				Run.Points.Add(Line[I + 1]);
+			}
+			else if (Run.Points.Num() > 1)
+			{
+				FShoreEdgeRun Part = Run;
+				Out.Add(MoveTemp(Part));
+				Run.Points.Reset();
+			}
+		}
+		if (Run.Points.Num() > 1) Out.Add(MoveTemp(Run));
 	}
 }
 

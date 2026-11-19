@@ -53,6 +53,15 @@ def to_object(V, F, C, S, name):
     # water at 23f283a2: every piece stood with its face to the land).
     V = V * np.array([1.0, -1.0, 1.0])
     F = F[:, ::-1]
+    # Welded: the kit builds each stone, board and cap as separate face sheets (rough_block's six grids, box's six quads)
+    # that share positions but not vertices. Unwelded, every simplifier sees open sheets: Unreal's Nanite fallback (relative
+    # error 1, the mesh drawn where Nanite doesn't) and the _Light decimation turned the stones into hollow open boxes with
+    # missing faces (round 5's stills: the limestone's top course as short blocks with gaps). Vertices within 0.1 mm merge.
+    key = np.round(V / 1e-4).astype(np.int64)
+    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
+    V, C, F = V[first], C[first], inv.reshape(-1)[F]
+    ok = (F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])
+    F, S = F[ok], S[ok]
     me = bpy.data.meshes.new(name)
     me.from_pydata(V.tolist(), [], F.tolist())
     me.polygons.foreach_set("use_smooth", S.tolist())
