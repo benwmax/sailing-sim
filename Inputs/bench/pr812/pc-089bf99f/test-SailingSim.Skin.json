@@ -1,0 +1,179 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "5554AC5A41906ED2362414A078827375",
+			"instanceName": "BEN-PC-32640",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.19-07.00.30",
+	"succeeded": 10,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.50227618217468262,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "Apply",
+			"fullTestPath": "SailingSim.Skin.Apply",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0077935010194778442,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BadFiles",
+			"fullTestPath": "SailingSim.Skin.BadFiles",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.008253198117017746,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BuiltIn",
+			"fullTestPath": "SailingSim.Skin.BuiltIn",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0082590021193027496,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Editor",
+			"fullTestPath": "SailingSim.Skin.Editor",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0080339014530181885,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Ids",
+			"fullTestPath": "SailingSim.Skin.Ids",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0083232969045639038,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Lettering",
+			"fullTestPath": "SailingSim.Skin.Lettering",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0081679001450538635,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RopeColourways",
+			"fullTestPath": "SailingSim.Skin.RopeColourways",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0082157999277114868,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RoundTrip",
+			"fullTestPath": "SailingSim.Skin.RoundTrip",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0081396028399467468,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SaveField",
+			"fullTestPath": "SailingSim.Skin.SaveField",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.0081814974546432495,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Screen",
+			"fullTestPath": "SailingSim.Skin.Screen",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"5554AC5A41906ED2362414A078827375"
+			],
+			"duration": 0.42890849709510803,
+			"dateTime": "2026.11.19-07.00.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
