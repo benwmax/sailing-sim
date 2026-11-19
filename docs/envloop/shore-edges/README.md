@@ -124,8 +124,9 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
 - **Straight walls, caps at the lawn (Nov 18, after the first in-game stills).** The lidar waterline zigzags by the metre,
   so 2 m pieces laid along it stood at angles with gaps between, and the lidar's step (the real bulkhead) left the lawn
   hanging over a wall built at the pool. `LotWallLine` (`HouseKit.cpp`) lays one straight line per lot in pieces of at most
-  4 m, 0.3 m beyond the waterline's farthest sample so no piece is buried in a bulge of the bank (at the mean distance the
-  wall came out as blocks with gaps); `LotWallLift` raises the run (up to 0.6 m) so the cap meets the median lawn height 2 m behind; the house tile pours a
+  4 m, 0.3 m beyond the farthest waterline sample within 2.5 m of the median, so no piece is buried in a bulge of the bank
+  (at the mean distance the wall came out as blocks with gaps) and one stray sample out by a dock cannot put the wall in
+  the lake (it did); `LotWallLift` raises the run (up to 0.6 m) so the cap meets the median lawn height 2 m behind; the house tile pours a
   concrete fill from behind the bulkhead's cap up to the lawn, as its old wall had.
 - **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
   import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its

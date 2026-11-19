@@ -236,21 +236,27 @@ namespace
 
 	/** Shore Track C: a lot's kit wall is straight, as a built bulkhead is: a line along the lot from the first waterline
 	 *  sample to the last, in pieces of at most 4 m (the lidar waterline zigzags by the metre and pieces laid along it stood
-	 *  at angles to each other with gaps between). It stands 0.3 m beyond the sample farthest out, so the whole run is in
-	 *  front of the bank: at the samples' mean distance the bank's bulges buried the pieces inside it and the wall came out as
-	 *  blocks with gaps (round 3's stills). The house tile (the fill behind the cap) and ALakeTerrainActor::PlaceShoreEdges
-	 *  (the pieces) both take it, so they meet. */
+	 *  at angles to each other with gaps between). It stands 0.3 m beyond the farthest of the samples within 2.5 m of their
+	 *  median, so the whole run is in front of the bank: at the samples' mean distance the bank's bulges buried the pieces
+	 *  inside it and the wall came out as blocks with gaps (round 3's stills), and at the farthest sample of all one stray
+	 *  sample out by a dock put a lot's whole wall in the lake (round 4's). The house tile (the fill behind the cap) and
+	 *  ALakeTerrainActor::PlaceShoreEdges (the pieces) both take it, so they meet. */
 	void LotWallLine(const FLotShore& Lot, const FVector2D& Ctr, TArray<FVector2D>& Out)
 	{
-		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max(), D = -TNumericLimits<double>::Max();
+		double S0 = TNumericLimits<double>::Max(), S1 = -TNumericLimits<double>::Max();
+		TArray<double, TInlineAllocator<20>> Ds;
 		for (const FVector2D& P : Lot.Line)
 		{
 			const FVector2D R = P - Ctr;
 			const double S = FVector2D::DotProduct(R, Lot.Across);
 			S0 = FMath::Min(S0, S);
 			S1 = FMath::Max(S1, S);
-			D = FMath::Max(D, FVector2D::DotProduct(R, Lot.Water));
+			Ds.Add(FVector2D::DotProduct(R, Lot.Water));
 		}
+		Ds.Sort();
+		const double Median = Ds[Ds.Num() / 2];
+		double D = Median;
+		for (const double Di : Ds) if (Di <= Median + 2.5) D = FMath::Max(D, Di);
 		D += 0.3;
 		const double Len = S1 - S0;
 		const int32 N = FMath::Max(1, FMath::CeilToInt32(Len / 4.0 - 1e-6));
@@ -851,6 +857,7 @@ void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Indices, F
 				FVector2D N = FVector2D(-(B - A).Y, (B - A).X).GetSafeNormal();
 				if (FVector2D::DotProduct(N, Water) < 0.0) N = -N;
 				const double ZA = Terr.HeightAt((A - N * 2.0).X, (A - N * 2.0).Y), ZB = Terr.HeightAt((B - N * 2.0).X, (B - N * 2.0).Y);
+				if (ZA < Zc - 0.4 && ZB < Zc - 0.4) continue;   // no bank behind this stretch to fill against (a stray run would get a shelf)
 				Up(Conc, FVector(A - N * 0.25, Zc), FVector(B - N * 0.25, Zc), FVector(B - N * 2.0, FMath::Max(ZB, Zc + 0.05)), FVector(A - N * 2.0, FMath::Max(ZA, Zc + 0.05)));
 			}
 		}
