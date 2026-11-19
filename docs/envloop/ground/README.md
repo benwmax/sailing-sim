@@ -170,7 +170,9 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   the stripe blocks sit on the turned p1 frame and the stripes fade out over the 3 m inside each seam (the headland pass).
   The PC's stills at 1795eead (`Inputs/bench/pr813/pc-1795eead/`) showed the step and the rectangles gone, but one lone
   high cell still read as a faint diamond (the turned square): the straw lattices are now bent by the 11 m and 31 m
-  noises by about 3 m, so no patch keeps a straight side.
+  noises by about 3 m, so no patch keeps a straight side. That diamond was fainter but still there at 556aa91a, in the
+  same place: it was not the straw at all but the lawn's thin, weedy patches (`lawn`, a smoothstep of value noise on
+  the 3.1 m p1 lattice, 3 m cells), which now run on that lattice bent by the 11 m, 31 m and 0.9 m noises.
   Not the cause, but kept: the terrain mesh's canopy colour now interpolates the 20 m tree raster (`CanopyAtSmooth`,
   `SailingSim.Lake.CanopySmooth`); the raster is flat 0.27 across those yards, so M_Ground's litter term was never on
   there.

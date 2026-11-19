@@ -128,7 +128,9 @@ def weights(P, N, C, Near, WaterZ, Mown):
     # weedy patches (n1), a field a few short-grazed ones.
     # Under woods the floor is litter; under a yard tree the mown grass mostly carries on, thinning.
     litter = smoothstep(0.45, 0.95, canopy + 0.2 * n2) * (1.0 - 0.6 * sat(Mown))
-    lawn = (1.0 - litter) * sat(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, n1))
+    # The thin patches' 3.1 m lattice is bent by the 11 m, 31 m and 0.9 m noises (unbent, a lone high cell drew a 3 m diamond).
+    n_thin = vnoise(x1 / 3.1 + 0.3 * n3 + 0.12 * n2, y1 / 3.1 + 0.3 * n4 - 0.12 * n2)
+    lawn = (1.0 - litter) * sat(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, n_thin))
     w[..., S["litter"]] = rest * litter
     w[..., S["lawn"]] = rest * lawn
     w[..., S["rough"]] = rest * (1.0 - litter - lawn)

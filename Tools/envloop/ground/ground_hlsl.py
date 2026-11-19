@@ -122,7 +122,10 @@ w[{SAND}] = rest * sand;
 w[{CLAY}] = rest * (soil - sand);
 rest *= 1.0 - soil;
 float litter = smoothstep(0.45, 0.95, canopy + 0.2 * n2) * (1.0 - 0.6 * saturate(Mown));
-float lawn = (1.0 - litter) * saturate(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, n1));
+// A lawn's thin patches run on the 3.1 m p1 lattice bent by the 11 m, 31 m and 0.9 m noises: unbent, a lone high cell
+// drew a 3 m diamond on the backyards (PC Ultra stills of 1795eead and 556aa91a, Nov 19 2026).
+float nThin = G.VNoise(p1 / 3.1 + 0.3 * float2(n3, n4) + 0.12 * float2(n2, -n2));
+float lawn = (1.0 - litter) * saturate(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, nThin));
 w[{LITTER}] = rest * litter;
 w[{LAWN}] = rest * lawn;
 w[{ROUGH}] = rest * (1.0 - litter - lawn);
