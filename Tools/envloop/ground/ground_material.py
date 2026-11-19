@@ -258,8 +258,12 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0)
         ao[idx] = 1.0 + ((layers[0][:, 7] * b1 + layers[1][:, 7] * b2) - 1.0) * share * nfade[:, 0]
     # Slow wash: brightness and, on grass, a drift toward straw, so a lawn is never one colour across 40 m.
     x, y = P[:, 0], P[:, 1]
-    m1 = vnoise(x / 9.0 + 5.2, y / 9.0 + 1.3)
-    m2 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)
+    # Two turned lattices (34 and -52 deg, the shader's p1 and p3): value noise on a map-aligned 9 m lattice drew its
+    # straw patches as 8 x 12 m rectangles square to the map on every lawn (PC Ultra stills, Nov 19 2026).
+    p1x, p1y = 0.8253 * x - 0.5646 * y, 0.5646 * x + 0.8253 * y
+    p3x, p3y = 0.6216 * x + 0.7833 * y, -0.7833 * x + 0.6216 * y
+    m1 = 0.65 * vnoise(p1x / 9.0 + 5.2, p1y / 9.0 + 1.3) + 0.5 * vnoise(p3x / 6.3 - 2.1, p3y / 6.3 + 4.7)
+    m2 = vnoise(p3x / 31.0 - 7.7, p3y / 31.0 + 3.1)
     base *= (1.0 + MACRO_A * m1 + MACRO_B * m2)[:, None]
     # Round 2: a cut bank's clay face carries strata, bands about 18 cm apart bent by the small noise (the scan is one even
     # texture; reviewers saw a face with no layers). Only on clay and only on the steep part.
@@ -273,11 +277,15 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0)
     base *= 1.0 + (grassy * dry)[:, None] * (straw - 1.0)
     # Mowing stripes on the lawn (as today's M_Terrain: 2.5 m wide, each 40 m block mown its own way), only +-4%: the
     # light on bent blades, not paint.
-    bx, by = np.floor(x / 40.0), np.floor(y / 40.0)
+    # The blocks sit on the turned p1 frame (a seam square to the map ran as a straight step across the club lawn) and
+    # the stripes fade out over the 3 m inside each seam: the headland pass a mower makes round the edge.
+    bqx, bqy = p1x / 40.0, p1y / 40.0
+    bx, by = np.floor(bqx), np.floor(bqy)
+    edge_m = 20.0 - np.maximum(np.abs(bqx % 1.0 - 0.5), np.abs(bqy % 1.0 - 0.5)) * 40.0
     ang = 6.2831853 * hash2(bx + 0.13, by + 0.71)
     stripe = np.where(((x * np.cos(ang) + y * np.sin(ang)) / 5.0) % 1.0 < 0.5, -1.0, 1.0)
     # Only where the lawn owns the ground: a half-weight lawn over a bank showed the stripes as pale columns up the soil.
-    base *= (1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[:, S["lawn"]]))[:, None]
+    base *= (1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[:, S["lawn"]]) * smoothstep(0.0, 3.0, edge_m))[:, None]
     # The wet band (as today's M_Terrain: up the swash about half a metre, ragged) and the algae film just over the line.
     h = P[:, 2] - WaterZ
     n_ = vnoise((0.8253 * x - 0.5646 * y) / 3.1, (0.5646 * x + 0.8253 * y) / 3.1)   # = weights()' n1

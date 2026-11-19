@@ -150,8 +150,10 @@ if (bTextured)
     nT = float3(nxy, sqrt(saturate(1.0 - dot(nxy, nxy))));
     ao = 1.0 + ((L[0][1].a * b1 + L[1][1].a * b2) - 1.0) * share * nf;
 }
-float m1 = G.VNoise(p.xy / 9.0 + float2(5.2, 1.3));
-float m2 = G.VNoise(p.xy / 31.0 + float2(-7.7, 3.1));
+// Two turned lattices (p1 34 deg, p3 -52 deg): value noise on a map-aligned 9 m lattice drew its straw patches as
+// 8 x 12 m rectangles square to the map on every lawn (PC Ultra stills, Nov 19 2026: Inputs/bench/pr813).
+float m1 = 0.65 * G.VNoise(p1 / 9.0 + float2(5.2, 1.3)) + 0.5 * G.VNoise(p3 / 6.3 + float2(-2.1, 4.7));
+float m2 = G.VNoise(p3 / 31.0 + float2(-7.7, 3.1));
 base *= 1.0 + 0.1000 * m1 + 0.0700 * m2;
 float face = w[2] * smoothstep(0.25, 0.5, slope);
 float strata = sin(p.z / 0.18 * 6.2831853 + 1.5 * n2 + 0.4 * n1);
@@ -160,10 +162,15 @@ float grassy = w[0] + w[1];
 float3 straw = ALB_D[1] / ALB_S[1];
 float dry = smoothstep(0.2, 0.9, 0.5 * m1 + 0.5 * m2 + 0.3) * 0.35 * (1.0 - Season);
 base *= 1.0 + grassy * dry * (straw - 1.0);
-float2 blk = floor(p.xy / 40.0);
+// The 40 m blocks sit on the turned p1 frame (a seam square to the map ran as a straight step across the club lawn), and
+// the stripes fade out over the 3 m inside each seam: the headland pass a mower makes round the edge.
+float2 bq = p1 / 40.0;
+float2 blk = floor(bq);
+float2 bf = abs(frac(bq) - 0.5) * 40.0;
+float edgeM = 20.0 - max(bf.x, bf.y);
 float ang = 6.2831853 * G.Hash(blk + float2(0.13, 0.71));
 float stripe = frac(dot(p.xy, float2(cos(ang), sin(ang))) / 5.0) < 0.5 ? -1.0 : 1.0;
-base *= 1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[0]);
+base *= 1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[0]) * smoothstep(0.0, 3.0, edgeM);
 float wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n1, h)) * wet0;
 base *= 1.0 - dark * wet;
 // #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the scans' wet gloss.

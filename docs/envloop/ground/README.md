@@ -159,10 +159,15 @@ Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 
   compile on Metal and D3D; frame time at the shore stations (plan share: Medium 1.5 ms, High 3.0 ms for the whole
   shore; this material reads 12 texels inside 150 m and none past it); the in-game stills at Track 0's stations; and the
   colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
-- **Lawn rectangles (PC Ultra stills of main 91c8c80d, Nov 19, `Inputs/bench/main-91c8c80d/lawn-step/`).** Lighter
-  straight-edged rectangles about 8 by 12 m, square to the map's axes, lay on the lawns near trees and moved with the
-  world, not the camera. They were the tree-canopy raster: the terrain mesh coloured each vertex by the nearest 20 m cell
-  (`FLakeTerrain::CanopyAt`), and on the 1 m shore mesh the cell edges came through as steps. `M_Terrain` only darkened
-  the grass softly by that value; `M_Ground` thresholds it into leaf litter, so the steps became edges. `BuildChunk` now
-  reads `CanopyAtSmooth` (bilinear between cell centres; `SailingSim.Lake.CanopySmooth`). Tree placement and the wind's
-  shelter keep the nearest cell.
+- **Lawn rectangles and the club-lawn step (PC Ultra stills of main 91c8c80d, Nov 19, `Inputs/bench/main-91c8c80d/lawn-step/`,
+  diagnostics in `Inputs/bench/pr813/`).** Lighter, yellower rectangles about 8 by 12 m, square to the map, lay on the
+  lawns, and a straight step crossed the club lawn in the beach view; both survived `viewmode unlit` and Lumen's diffuse
+  GI off and vanished with `-SailingClassicGround`, so they were in M_Ground's base colour. They were the shader's own
+  macro patterns: the straw patches (`dry`) are a smoothstep of value noise on a map-aligned 9 m lattice, and a value
+  noise bump is the shape of its lattice cell, so each patch was a rounded rectangle with sides along north and east;
+  the mowing stripes change direction at every 40 m block seam, and a seam square to the map ran as a straight edge
+  across the lawn. Now the straw noise runs on two turned lattices (p1 at 34 deg over 9 m and p3 at -52 deg over 6.3 m),
+  the stripe blocks sit on the turned p1 frame and the stripes fade out over the 3 m inside each seam (the headland pass).
+  Not the cause, but kept: the terrain mesh's canopy colour now interpolates the 20 m tree raster (`CanopyAtSmooth`,
+  `SailingSim.Lake.CanopySmooth`); the raster is flat 0.27 across those yards, so M_Ground's litter term was never on
+  there.
