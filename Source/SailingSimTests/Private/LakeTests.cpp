@@ -142,6 +142,56 @@ bool FSailingNonFiniteHeightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCanopySmoothTest, "SailingSim.Lake.CanopySmooth", Flags)
+bool FSailingCanopySmoothTest::RunTest(const FString& Parameters)
+{
+	// The terrain mesh colours its vertices by the tree canopy. CanopyAt is the nearest 20 m cell, and on the 1 m shore
+	// mesh that drew the raster as lighter rectangles on the lawns (PC Ultra stills, Nov 2026). CanopyAtSmooth
+	// interpolates between cell centres: equal to the cell at its centre, continuous across a cell edge, 0 off the raster.
+	FLakeTerrain T;
+	T.InitSyntheticTrees(3, 3, 20.0, 100.0, -40.0, { 0, 0, 0, 0, 255, 0, 0, 0, 0 });
+	const double CX = 100.0 + 1.5 * 20.0, CY = -40.0 + 1.5 * 20.0; // the centre of the one wooded cell
+	TestEqual(TEXT("At a cell centre the smooth canopy is the cell's"), T.CanopyAtSmooth(CX, CY), T.CanopyAt(CX, CY));
+	TestEqual(TEXT("A full cell reads 12 m of canopy"), T.CanopyAtSmooth(CX, CY), 12.0);
+	TestEqual(TEXT("Halfway to the next centre it is half"), T.CanopyAtSmooth(CX + 10.0, CY), 6.0);
+	TestEqual(TEXT("Halfway on the diagonal it is a quarter"), T.CanopyAtSmooth(CX + 10.0, CY + 10.0), 3.0);
+	TestEqual(TEXT("The empty neighbour's centre reads 0"), T.CanopyAtSmooth(CX + 20.0, CY), 0.0);
+	// Continuous across the cell edge where the nearest cell steps from 12 to 0.
+	const double Step = FMath::Abs(T.CanopyAt(CX + 9.99, CY) - T.CanopyAt(CX + 10.01, CY));
+	const double Smooth = FMath::Abs(T.CanopyAtSmooth(CX + 9.99, CY) - T.CanopyAtSmooth(CX + 10.01, CY));
+	TestTrue(TEXT("The nearest cell steps at the edge"), Step > 11.0);
+	TestTrue(TEXT("The smooth canopy does not"), Smooth < 0.05);
+	// Monotone between the centres (no overshoot), and 0 past the raster's edge and off the map.
+	double Prev = 12.0;
+	for (double D = 0.0; D <= 20.0; D += 1.0)
+	{
+		const double V = T.CanopyAtSmooth(CX + D, CY);
+		TestTrue(TEXT("Falls monotonically from the wooded centre"), V <= Prev + 1e-9 && V >= 0.0);
+		Prev = V;
+	}
+	TestEqual(TEXT("Past the raster's edge"), T.CanopyAtSmooth(100.0 - 25.0, CY), 0.0);
+	TestEqual(TEXT("Far off the map"), T.CanopyAtSmooth(1.0e7, 1.0e7), 0.0);
+	TestEqual(TEXT("Non-finite"), T.CanopyAtSmooth(std::numeric_limits<double>::quiet_NaN(), 0.0), 0.0);
+	TestEqual(TEXT("No trees"), FLakeTerrain().CanopyAtSmooth(0.0, 0.0), 0.0);
+	// On the real bake the two agree where the raster is flat and the smooth one never exceeds the densest neighbour.
+	FLakeData Lake;
+	if (TestTrue(TEXT("Lake Ray Hubbard data loads"), Lake.Load(FLakeData::DefaultDirectory(), TEXT("RayHubbard"))))
+	{
+		int Checked = 0;
+		for (double X = -600.0; X <= 600.0; X += 37.0)
+			for (double Y = -600.0; Y <= 600.0; Y += 41.0)
+			{
+				double MaxNear = 0.0;
+				for (double DX = -20.0; DX <= 20.0; DX += 20.0)
+					for (double DY = -20.0; DY <= 20.0; DY += 20.0) MaxNear = FMath::Max(MaxNear, Lake.Terrain.CanopyAt(X + DX, Y + DY));
+				TestTrue(TEXT("Never above the densest neighbouring cell"), Lake.Terrain.CanopyAtSmooth(X, Y) <= MaxNear + 1e-9);
+				++Checked;
+			}
+		AddInfo(FString::Printf(TEXT("%d club-shore points checked"), Checked));
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingShoreDetailTest, "SailingSim.Lake.ShoreDetail", Flags)
 bool FSailingShoreDetailTest::RunTest(const FString& Parameters)
 {

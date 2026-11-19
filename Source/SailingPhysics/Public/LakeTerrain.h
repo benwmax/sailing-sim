@@ -142,6 +142,9 @@ namespace Sailing
 		double DepthAt(double X, double Y, double WaterLevel = 0.0) const { const double H = HeightAt(X, Y); return H < WaterLevel ? WaterLevel - H : 0.0; }
 		/** Tree canopy height (m) at a world XY: density x 12 m (post oak / cedar elm / red cedar). */
 		double CanopyAt(double X, double Y) const;
+		/** The same canopy interpolated between the raster's cell centres (0 past its edge): the terrain mesh colours
+		 *  every vertex by it, and the nearest cell drew the 20 m raster as hard-edged rectangles on a 1 m shore mesh. */
+		double CanopyAtSmooth(double X, double Y) const;
 		/** Open water distance (m) from a point toward where the wind comes from, until land; capped at MaxDistance. */
 		double FetchToward(double X, double Y, double FromRadians, double MaxDistance = 15000.0) const;
 		/**
