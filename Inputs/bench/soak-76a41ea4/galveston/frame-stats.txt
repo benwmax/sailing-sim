@@ -1,0 +1,11 @@
+ALL n 191769 fps 53.2 median 18.72 p99 21.97 >30 11 >100 3 >250 3 gpu mean 18.26 game mean 12.54 render mean 18.76
+block 0 (0-10 min): n 31877 fps 53.1 p99 22.36 >30 4 >100 1 >250 1
+block 1 (10-20 min): n 31966 fps 53.3 p99 22.03 >30 0 >100 0 >250 0
+block 2 (20-30 min): n 31763 fps 52.9 p99 22.05 >30 0 >100 0 >250 0
+block 3 (30-40 min): n 31373 fps 52.3 p99 22.25 >30 0 >100 0 >250 0
+block 4 (40-50 min): n 32193 fps 53.7 p99 21.61 >30 5 >100 1 >250 1
+block 5 (50-60 min): n 32563 fps 54.3 p99 21.27 >30 0 >100 0 >250 0
+block 6 (60-70 min): n 34 fps 19.7 p99 1107.84 >30 2 >100 1 >250 1
+  big frame t 574.1 s frame 359.1 game 43.8 render 368.5 gpu 18.1
+  big frame t 2712.1 s frame 381.9 game 41.6 render 381.1 gpu 18.3
+  big frame t 3603.4 s frame 1107.8 game 10.3 render 6.1 gpu 21.0

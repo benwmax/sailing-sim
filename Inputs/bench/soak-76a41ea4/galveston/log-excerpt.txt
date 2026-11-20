@@ -1,0 +1,74 @@
+LogCsvProfiler: Display: Metadata set : commandline="" SailingSim -SailingBench=3600 -windowed -ResX=3840 -ResY=2160 -ForceRes -SailingShot=soak76a-galveston -SailingQuality=Ultra -SailingWorld=1 -SailingStartAt=-20900,23500,120 -SailingDemo -SailingBenchTrace -SailingScreenPct=100 -SailingHour=15 -SailingExecAt=300:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;3300:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries""
+LogInit: Command Line: -SailingBench=3600 -windowed -ResX=3840 -ResY=2160 -ForceRes -SailingShot=soak76a-galveston -SailingQuality=Ultra -SailingWorld=1 -SailingStartAt=-20900,23500,120 -SailingDemo -SailingBenchTrace -SailingScreenPct=100 -SailingHour=15 -SailingExecAt=300:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries;3300:r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+[2026.11.20-19.26.54:922][  1]LogSailing: Display: SailingBench: at 0 s: boat at -20900.1 N 23500.1 E, 0.0 m since the last line
+[2026.11.20-19.27.54:752][ 91]LogSailing: Display: SailingBench: at 60 s: boat at -20959.5 N 23517.8 E, 62.0 m since the last line
+[2026.11.20-19.28.54:756][277]LogSailing: Display: SailingBench: at 120 s: boat at -21020.8 N 23508.3 E, 62.1 m since the last line
+[2026.11.20-19.29.54:754][492]LogSailing: Display: SailingBench: at 180 s: boat at -21076.3 N 23513.9 E, 55.8 m since the last line
+[2026.11.20-19.30.54:755][630]LogSailing: Display: SailingBench: at 240 s: boat at -21148.3 N 23502.6 E, 72.8 m since the last line
+[2026.11.20-19.31.54:755][745]LogSailing: Display: SailingBench: at 300 s: boat at -21213.0 N 23505.4 E, 64.7 m since the last line
+[2026.11.20-19.31.54:755][745]LogSailing: Display: SailingBench: at 300 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+[2026.11.20-19.32.54:738][929]LogSailing: Display: SailingBench: at 360 s: boat at -21281.9 N 23502.3 E, 69.0 m since the last line
+[2026.11.20-19.33.54:739][145]LogSailing: Display: SailingBench: at 420 s: boat at -21347.6 N 23506.6 E, 65.9 m since the last line
+[2026.11.20-19.34.54:750][346]LogSailing: Display: SailingBench: at 480 s: boat at -21409.1 N 23483.0 E, 65.8 m since the last line
+[2026.11.20-19.35.54:756][589]LogSailing: Display: SailingBench: at 540 s: boat at -21476.7 N 23473.7 E, 68.3 m since the last line
+[2026.11.20-19.36.54:752][798]LogSailing: Display: SailingBench: at 600 s: boat at -21555.1 N 23439.3 E, 85.6 m since the last line
+[2026.11.20-19.37.54:747][998]LogSailing: Display: SailingBench: at 660 s: boat at -21638.2 N 23432.8 E, 83.3 m since the last line
+[2026.11.20-19.38.54:751][206]LogSailing: Display: SailingBench: at 720 s: boat at -21726.1 N 23394.1 E, 96.0 m since the last line
+[2026.11.20-19.39.54:737][409]LogSailing: Display: SailingBench: at 780 s: boat at -21809.4 N 23402.4 E, 83.7 m since the last line
+[2026.11.20-19.40.54:746][623]LogSailing: Display: SailingBench: at 840 s: boat at -21886.6 N 23359.0 E, 88.6 m since the last line
+[2026.11.20-19.41.54:752][843]LogSailing: Display: SailingBench: at 900 s: boat at -21976.2 N 23322.4 E, 96.8 m since the last line
+[2026.11.20-19.42.54:749][ 85]LogSailing: Display: SailingBench: at 960 s: boat at -22059.8 N 23261.5 E, 103.4 m since the last line
+[2026.11.20-19.43.54:742][298]LogSailing: Display: SailingBench: at 1020 s: boat at -22150.4 N 23254.8 E, 90.8 m since the last line
+[2026.11.20-19.44.54:758][535]LogSailing: Display: SailingBench: at 1080 s: boat at -22249.1 N 23202.1 E, 111.9 m since the last line
+[2026.11.20-19.45.54:760][675]LogSailing: Display: SailingBench: at 1140 s: boat at -22351.4 N 23173.4 E, 106.2 m since the last line
+[2026.11.20-19.46.26:894][341]LogSailing: Demo: shallow water ahead at -22398 N 23139 E (t 1171 s), bearing away to TWA -150
+[2026.11.20-19.46.54:756][770]LogSailing: Display: SailingBench: at 1200 s: boat at -22345.6 N 23090.6 E, 83.1 m since the last line
+[2026.11.20-19.47.54:746][969]LogSailing: Display: SailingBench: at 1260 s: boat at -22212.2 N 23003.9 E, 159.0 m since the last line
+[2026.11.20-19.48.54:756][168]LogSailing: Display: SailingBench: at 1320 s: boat at -22059.2 N 22933.7 E, 168.4 m since the last line
+[2026.11.20-19.49.54:742][375]LogSailing: Display: SailingBench: at 1380 s: boat at -21882.1 N 22854.9 E, 193.8 m since the last line
+[2026.11.20-19.50.54:741][615]LogSailing: Display: SailingBench: at 1440 s: boat at -21708.3 N 22767.0 E, 194.7 m since the last line
+[2026.11.20-19.51.54:750][792]LogSailing: Display: SailingBench: at 1500 s: boat at -21545.3 N 22680.8 E, 184.4 m since the last line
+[2026.11.20-19.52.54:739][975]LogSailing: Display: SailingBench: at 1560 s: boat at -21617.2 N 22645.1 E, 80.3 m since the last line
+[2026.11.20-19.53.54:742][165]LogSailing: Display: SailingBench: at 1620 s: boat at -21716.8 N 22621.1 E, 102.5 m since the last line
+[2026.11.20-19.54.54:737][354]LogSailing: Display: SailingBench: at 1680 s: boat at -21802.9 N 22559.9 E, 105.7 m since the last line
+[2026.11.20-19.55.54:743][435]LogSailing: Display: SailingBench: at 1740 s: boat at -21905.9 N 22526.1 E, 108.4 m since the last line
+[2026.11.20-19.56.06:029][ 14]LogSailing: Demo: shallow water ahead at -21925 N 22505 E (t 1750 s), bearing away to TWA 150
+[2026.11.20-19.56.54:751][537]LogSailing: Display: SailingBench: at 1800 s: boat at -21841.8 N 22562.5 E, 73.7 m since the last line
+[2026.11.20-19.57.54:754][646]LogSailing: Display: SailingBench: at 1860 s: boat at -21688.1 N 22624.9 E, 165.9 m since the last line
+[2026.11.20-19.58.54:755][760]LogSailing: Display: SailingBench: at 1920 s: boat at -21679.1 N 22625.2 E, 9.0 m since the last line
+[2026.11.20-19.59.54:748][889]LogSailing: Display: SailingBench: at 1980 s: boat at -21770.1 N 22622.8 E, 91.1 m since the last line
+[2026.11.20-20.00.54:752][  1]LogSailing: Display: SailingBench: at 2040 s: boat at -21859.7 N 22593.4 E, 94.3 m since the last line
+[2026.11.20-20.01.18:108][194]LogSailing: Demo: shallow water ahead at -21897 N 22587 E (t 2062 s), bearing away to TWA 150
+[2026.11.20-20.01.54:748][ 61]LogSailing: Display: SailingBench: at 2100 s: boat at -21853.0 N 22623.6 E, 30.9 m since the last line
+[2026.11.20-20.02.54:737][242]LogSailing: Display: SailingBench: at 2160 s: boat at -21721.9 N 22688.0 E, 146.1 m since the last line
+[2026.11.20-20.03.54:739][399]LogSailing: Display: SailingBench: at 2220 s: boat at -21704.8 N 22729.6 E, 45.0 m since the last line
+[2026.11.20-20.04.54:735][562]LogSailing: Display: SailingBench: at 2280 s: boat at -21779.0 N 22700.4 E, 79.8 m since the last line
+[2026.11.20-20.05.54:743][731]LogSailing: Display: SailingBench: at 2340 s: boat at -21864.9 N 22704.1 E, 86.0 m since the last line
+[2026.11.20-20.06.48:853][597]LogSailing: Demo: shallow water ahead at -21960 N 22691 E (t 2393 s), bearing away to TWA -150
+[2026.11.20-20.06.54:743][902]LogSailing: Display: SailingBench: at 2400 s: boat at -21965.1 N 22675.0 E, 104.3 m since the last line
+[2026.11.20-20.07.54:728][ 59]LogSailing: Display: SailingBench: at 2460 s: boat at -21826.2 N 22574.7 E, 171.4 m since the last line
+[2026.11.20-20.08.54:727][264]LogSailing: Display: SailingBench: at 2520 s: boat at -21706.8 N 22482.4 E, 150.9 m since the last line
+[2026.11.20-20.09.54:730][493]LogSailing: Display: SailingBench: at 2580 s: boat at -21786.4 N 22462.0 E, 82.2 m since the last line
+[2026.11.20-20.10.50:069][470]LogSailing: Demo: shallow water ahead at -21873 N 22423 E (t 2634 s), bearing away to TWA -150
+[2026.11.20-20.10.54:727][721]LogSailing: Display: SailingBench: at 2640 s: boat at -21880.4 N 22410.5 E, 107.2 m since the last line
+[2026.11.20-20.11.54:739][983]LogSailing: Display: SailingBench: at 2700 s: boat at -21748.2 N 22283.8 E, 183.1 m since the last line
+[2026.11.20-20.12.54:726][188]LogSailing: Display: SailingBench: at 2760 s: boat at -21620.3 N 22180.0 E, 164.7 m since the last line
+[2026.11.20-20.13.54:745][458]LogSailing: Display: SailingBench: at 2820 s: boat at -21495.1 N 22075.1 E, 163.3 m since the last line
+[2026.11.20-20.14.54:745][751]LogSailing: Display: SailingBench: at 2880 s: boat at -21385.9 N 21965.9 E, 154.5 m since the last line
+[2026.11.20-20.15.54:746][944]LogSailing: Display: SailingBench: at 2940 s: boat at -21423.7 N 21932.6 E, 50.4 m since the last line
+[2026.11.20-20.16.49:350][818]LogSailing: Demo: shallow water ahead at -21516 N 21921 E (t 2993 s), bearing away to TWA -150
+[2026.11.20-20.16.54:740][100]LogSailing: Display: SailingBench: at 3000 s: boat at -21521.4 N 21907.9 E, 100.7 m since the last line
+[2026.11.20-20.17.54:735][340]LogSailing: Display: SailingBench: at 3060 s: boat at -21375.6 N 21831.4 E, 164.5 m since the last line
+[2026.11.20-20.18.54:731][598]LogSailing: Display: SailingBench: at 3120 s: boat at -21238.2 N 21737.8 E, 166.4 m since the last line
+[2026.11.20-20.19.54:722][899]LogSailing: Display: SailingBench: at 3180 s: boat at -21238.3 N 21692.3 E, 45.4 m since the last line
+[2026.11.20-20.20.54:722][146]LogSailing: Display: SailingBench: at 3240 s: boat at -21336.3 N 21681.4 E, 98.6 m since the last line
+[2026.11.20-20.20.54:722][146]LogSailing: Demo: shallow water ahead at -21336 N 21681 E (t 3239 s), bearing away to TWA 150
+[2026.11.20-20.21.54:730][415]LogSailing: Display: SailingBench: at 3300 s: boat at -21240.9 N 21730.3 E, 107.2 m since the last line
+[2026.11.20-20.21.54:730][415]LogSailing: Display: SailingBench: at 3300 s: r.RayTracing.DumpUnreferencedAlwaysResidentGeometries
+[2026.11.20-20.22.54:721][666]LogSailing: Display: SailingBench: at 3360 s: boat at -21093.5 N 21776.7 E, 154.5 m since the last line
+[2026.11.20-20.23.54:725][914]LogSailing: Display: SailingBench: at 3420 s: boat at -21151.8 N 21796.6 E, 61.6 m since the last line
+[2026.11.20-20.24.54:733][169]LogSailing: Display: SailingBench: at 3480 s: boat at -21256.0 N 21767.4 E, 108.1 m since the last line
+[2026.11.20-20.25.54:734][407]LogSailing: Display: SailingBench: at 3540 s: boat at -21360.3 N 21762.0 E, 104.5 m since the last line
+[2026.11.20-20.26.04:823][949]LogSailing: Demo: shallow water ahead at -21379 N 21752 E (t 3549 s), bearing away to TWA -150
+[2026.11.20-20.26.54:735][658]LogSailing: Display: SailingBench: at 3600 s: boat at -21272.0 N 21673.8 E, 124.8 m since the last line
+[2026.11.20-20.26.59:518][850]LogSailing: Display: SailingBench result: {"frames":191687,"seconds":3599.08,"avg_fps":53.3,"avg_ms":18.78,"p99_ms":21.97,"max_ms":381.95,"rhi":"D3D12","resolution":"3840x2160","quality":"Ultra","weather":"Afternoon breeze","hour":16.0,"cloth_cpu_ms":0.691,"wrinkle_cpu_ms":0.353,"water_cpu_ms":1.654,"windmap_cpu_ms":0.537,"farcap_cpu_ms":0.016,"farcap_slots":13297,"cannon_cpu_ms":0.000,"cannon_puffs":0,"world":{"streamed":false,"tiles_resident":56,"tile_mb":0.0,"tile_loads":0,"tile_drops":0,"loader_longest_ms":0.000,"recentres":1,"recentre_longest_ms":0.12,"window_marches":0,"chunks":256,"chunks_made":457,"chunks_dropped":201,"far_dropped":0,"boat_n":-21264,"boat_e":21668},"game_ms":12.54,"game_p99_ms":19.04,"render_ms":18.76,"rhi_ms":7.43,"gpu_frame_ms":18.26,"gt":{"boat_physics":1.305,"boat_visuals":3.817,"sails":1.082,"crew":0.296,"rig_lines":1.662,"telltales":0.026,"boat_sound":0.042,"boat_capture":0.000,"boat_learning":0.057,"water":2.215,"water_uploads":0.437,"terrain":0.009,"trees":0.003,"traffic":1.738,"traffic_step":1.588,"hud":0.015,"streaming":0.002},"gpu":{"frames":4,"total_ms":14.58,"base_ms":3.87,"lumen_ms":1.07,"water_ms":1.54,"clouds_fog_ms":4.02,"niagara_ms":0.01,"post_ms":2.65,"other_ms":1.43,"lumen_passes":{"ClearBuffer(Lumen.CardTileAllocator Size=4bytes)":0.00,"ClearBuffer(Lumen.CompactedFeedback Size=8192bytes)":0.00,"ClearBuffer(Lumen.DirectLighting.ShadowTraceAllocator Size=4bytes)":0.00,"ClearBuffer(Lumen.Feedback Size=259200bytes)":0.00,"ClearBuffer(Lumen.FeedbackAllocator Size=4bytes)":0.01,"ClearBuffer(Lumen.HashTableElementCounts Size=8192bytes)":0.00,"ClearBuffer(Lumen.HashTableKeys Size=8192bytes)":0.00,"ClearBuffer(Lumen.RadiosityTileAllocator Size=4bytes)":0.00,"ClearBuffer(Lumen.ScreenProbeGather.CompactedTraceTexelAllocator Size=4bytes)":0.00,"ClearBuffer(Lumen.ScreenProbeGather.NumAdaptiveScreenProbes Size=4bytes)":0.00,"ClearTextureUint(Lumen.ScreenProbeGather.ScreenTileAdaptiveProbeHeader R32_UINT 240x135 Mip=0)":0.00,"DiffuseIndirectAndAO":0.68,"DiffuseIndirectComposite(ScreenProbeGather)(Complex) 3840x2160":0.02,"DiffuseIndirectComposite(ScreenProbeGather)(Simple) 3840x2160":0.04,"DiffuseIndirectComposite(ScreenProbeGather)(Single) 3840x2160":0.02,"LumenFrontLayerTranslucencyReflections":0.19,"LumenReflections":0.63,"LumenSceneLighting":0.09,"LumenSceneUpdate: 20 card captures 0.005M texels":0.12,"LumenSceneUpdate: 25 card captures 0.021M texels":0.06,"LumenScreenProbeGather":0.36,"LumenScreenProbeGatherHardwareRayTracingIndirectArgsCS":0.00,"LumenShadeCS":0.02,"Nanite::LumenMeshCapturePass":0.03,"Nanite::RasterizeLumenCards":0.08,"ScatterUpload (Resource: Lumen.Cards)":0.00,"ScatterUpload (Resource: Lumen.MeshCards)":0.00,"ScatterUpload (Resource: Lumen.SceneInstanceIndexToMeshCardsIndexBuffer)":0.00,"SLW::LumenReflections":0.25,"StochasticLighting":0.08,"Submit Lumen surface cache feedback":0.02}},"gpu_skipped_frames":48,"easy":false,"heel_cap_deg":0.0,"max_heel_deg":23.3,"crude_tack":false,"tacked":false,"final_twa_deg":-141.7,"final_kn":5.07,"render_pct":100,"foreground":1.000,"mem_used_mb":3765,"mem_peak_mb":5498,"tex_mem_mb":6597}
