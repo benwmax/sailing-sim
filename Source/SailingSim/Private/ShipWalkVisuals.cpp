@@ -146,6 +146,33 @@ void ASailboatPawn::PlaceWalkerAtHelm()
 	Walker.Reset(WalkMap, 0, H.SternX + 0.2 * (H.BowX - H.SternX), 0.0, 0.0);
 }
 
+void ASailboatPawn::ApplyWalkAt()
+{
+	// Stills of her decks below (docs/ship-walk/): -SailingWalkAt=Below,-2,0,0 stands you in Bluebonnet's saloon facing
+	// forward. Once, a second into the sail (after the start's resets).
+	if (bWalkAtDone || !CanWalk() || Boat.GetState().Time < 1.0) return;
+	bWalkAtDone = true;
+	FString At;
+	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingWalkAt="), At, false) || At.IsEmpty()) return;
+	TArray<FString> Parts;
+	At.ParseIntoArray(Parts, TEXT(","));
+	const int32 Deck = Parts.Num() >= 3 ? WalkMap.DeckNamed(TCHAR_TO_UTF8(*Parts[0])) : -1;
+	if (Deck < 0)
+	{
+		SAIL_LOG(Warning, TEXT("-SailingWalkAt=%s: want <deck>,<x>,<y>[,<yaw>] with a deck of %s's map"), *At, *WalkMapName);
+		return;
+	}
+	const double X = FCString::Atod(*Parts[1]), Y = FCString::Atod(*Parts[2]);
+	const double Yaw = Parts.Num() >= 4 ? FCString::Atod(*Parts[3]) : 0.0;
+	SetWalking(true, false);
+	if (!bWalking || !Walker.Reset(WalkMap, Deck, X, Y, Yaw))
+	{
+		SAIL_LOG(Warning, TEXT("-SailingWalkAt=%s: nowhere to stand there"), *At);
+		return;
+	}
+	SAIL_LOG(Log, TEXT("-SailingWalkAt: walking on %s at (%.2f, %.2f) facing %.0f"), *Parts[0], X, Y, Yaw);
+}
+
 void ASailboatPawn::SetWalking(bool bOn, bool bAnnounce)
 {
 	if (bOn && (!CanWalk() || bTrafficBoat || bGhost)) return;

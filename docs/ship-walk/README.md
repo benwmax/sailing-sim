@@ -101,5 +101,8 @@ decks are stairs and steps as well as ladders (`EWalkLink::Steps`, "E: take the 
 * **Below**: `SM_Bluebonnet_Below` (her cabins: structure, joinery, fittings, canvas, upholstery; about 630k triangles,
   six library slots) is exported to `Decks/` and imported by `scripts/import_boats.py bluebonnet` (`meta["decks"]`);
   `DeckMeshPath` maps the `Below` deck to it. From outside nothing below is loaded.
+* **Stills below**: `-SailingWalkAt=<deck>,<x>,<y>[,<yaw>]` (any walk map) puts you walking there a second in, e.g.
+  `-SailingWalkAt=Below,-2,0,0` (saloon), `Below,3,0.8,0` (galley), `Below,5.3,0,0` (fo'c'sle), `Below,-6.2,0,180` (the
+  doghouse stairs' foot, looking aft up them).
 * **Not yet**: her forehatch and sail hatches stay shut, so the sail locker and the heads forward of about 10 m are
   out of reach; below-deck light is the boat's own (check on the PC stills).

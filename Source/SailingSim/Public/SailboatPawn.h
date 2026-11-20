@@ -691,6 +691,9 @@ private:
 	void ClearDeckMeshes();
 	void LoadWalkMap();
 	void PlaceWalkerAtHelm();
+	/** -SailingWalkAt=<deck>,<x>,<y>[,<yaw>] (stills): once, a second in, walking on that deck at that spot in her frame. */
+	void ApplyWalkAt();
+	bool bWalkAtDone = false;
 	void UpdateWalk(float DeltaSeconds);
 	void UpdateWalkCamera(float DeltaSeconds);
 	void UpdateDeckStreaming();
