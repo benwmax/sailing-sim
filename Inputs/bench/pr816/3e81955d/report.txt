@@ -1,0 +1,77 @@
+head cdcb2b70 22:04:38; main in it: yes
+build ok
+make-shore-edges exit 0 22:05:48
+LogPython: Built M_ShoreEdge from pack north-texas-lake (41 colours)
+LogPython: Imported 42 shore edge pieces into /Game/World/Edges
+commit: edges       43
+left out (       0):
+pushed 3e81955d7d649a932256f1a874fa6f36febe8a86
+licence-check exit 0: licence check: every file under Content/, Audio/ and Inputs/ has a row (101 rows)
+EDGEBOUNDS SM_Edge_Bulkhead_0: origin <Struct 'Vector' (0x8bd3e5a3d40) {x: 0.000000, y: 12.500000, z: -30.000000}> extent <Struct 'Vector' (0x8bd3e5a3d58) {x: 200.000000, y: 15.000000, z: 120.000000}>
+EDGEBOUNDS SM_Edge_Claycut_0: origin <Struct 'Vector' (0x8bd3e5a49c0) {x: -0.712730, y: -173.346485, z: 38.125481}> extent <Struct 'Vector' (0x8bd3e5a49d8) {x: 201.276726, y: 254.046947, z: 129.371880}>
+EDGEBOUNDS SM_Edge_Limestone_0: origin <Struct 'Vector' (0x8bd3e5a4240) {x: 0.374168, y: 35.003600, z: -30.230347}> extent <Struct 'Vector' (0x8bd3e5a4258) {x: 199.361015, y: 37.190484, z: 91.046532}>
+EDGEBOUNDS SM_Edge_Timber_0: origin <Struct 'Vector' (0x8bd3e5e2850) {x: 0.000000, y: 0.890212, z: -41.491550}> extent <Struct 'Vector' (0x8bd3e5e2868) {x: 200.000000, y: 24.109788, z: 118.639080}>
+EDGENANITE SM_Edge_Bulkhead_0: tris 429 lods 1 nanite_enabled True fallback_percent_triangles 0.125 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.PERCENT_TRIANGLES: 1>
+EDGENANITE SM_Edge_Limestone_0: tris 1946 lods 1 nanite_enabled True fallback_percent_triangles 0.125 fallback_relative_error 1.0 fallback_target <NaniteFallbackTarget.PERCENT_TRIANGLES: 1>
+world gate exit 0 22:29:34
+435 passed, 0 failed, 435 total
+[gate 994 s] package: Content changed, full recook
+[gate 1167 s] bench marina,bridge,coast-night,marina-night,helm-eye,slip,coast-day,marseille-port,far-coast,far-coast-night,stream-run on High
+[gate 1398 s] bench done
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.3   19.42   17.44  ok
+coast-day      High      51.4   20.36    18.5  ok
+coast-night    High      56.3    18.5   16.92  ok
+helm-eye       High      55.2   19.54   17.25  ok
+slip           High      46.6   22.55    20.7  ok
+bridge         High      59.5   17.76   15.61  ok
+marina-night   High      55.5   19.02   17.67  ok
+far-coast      High      62.8   16.81   14.94  ok
+far-coast-night High      78.9   13.26   11.77  ok
+marseille-port High      52.9   20.92   18.42  ok
+stream-run     High      51.2   20.98   19.03  ok
+gate: pass
+[gate 1398 s] gate passed
+gpu slices:
+view,quality,avg_fps,p99_ms,gpu_ms,base_ms,lumen_ms,water_ms,clouds_fog_ms,niagara_ms,post_ms,other_ms
+marina,High,54.3,19.42,17.44,7.53,2.23,3.73,2.04,0.0,0.84,1.07
+coast-day,High,51.4,20.36,18.5,8.1,2.5,4.17,1.81,0.0,0.87,1.05
+coast-night,High,56.3,18.5,16.92,6.82,2.55,3.75,2.03,0.0,0.84,0.93
+helm-eye,High,55.2,19.54,17.25,7.54,3.42,2.92,1.24,0.0,0.6,1.52
+slip,High,46.6,22.55,20.7,9.36,3.4,3.68,1.89,0.0,0.79,1.58
+bridge,High,59.5,17.76,15.61,6.02,2.24,4.12,1.29,0.0,0.82,1.13
+marina-night,High,55.5,19.02,17.67,7.89,3.16,3.47,1.24,0.0,0.81,1.11
+far-coast,High,62.8,16.81,14.94,5.12,2.19,3.93,1.76,0.0,0.83,1.1
+far-coast-night,High,78.9,13.26,11.77,3.1,1.88,3.72,1.18,0.0,0.97,0.91
+marseille-port,High,52.9,20.92,18.42,7.57,2.59,3.9,2.33,0.0,0.79,1.25
+stream-run,High,51.2,20.98,19.03,8.11,2.99,3.81,2.15,0.0,0.97,1.0
+shot env-bulkhead-05m
+shot env-clay-bank-05m
+shot env-bridge-05m
+shot gallery-limestone
+capture log lines (ShoreEdge / Nanite warnings):
+   4 LogSailing: Display: Shore edges: 17738 pieces (5008 lot wall segments in 754 runs, 12730 natural shore nodes), 21 of 21 meshes
+   1 LogSailing: Display: Gallery: open, studio at 1000 m over the water, the lake presets at (138, -56)
+   1 LogSailing: Display: Gallery show Edge limestone 1: load 354 ms; 15572 triangles (Nanite), 1 LODs, 1 materials, 3.99 x 0.74 x 1.82 m
+   1 LogSailing: Display: Gallery index: 250 assets, 11 categories, 78 in Other (4068 meshes in the registry)
+   1 LogSailing: Display: Gallery compare: tiers 0 and 2 captured at 1440 x 1080
+   1 LogSailing: Display: Gallery compare saved to ../../../../../../ben/myProjects/sailing-sim/Artifacts/wt-code/Saved/Bench/gallery-limestone-compare.png
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.7% ┊          │  0.203 ms ┃     0 │      0 │    0 │    0 │   0.7% ┊          │  0.203 ms ┃                               RenderLight Light::StandardDeferred(Simple): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.6% ┊          │  0.174 ms ┃     0 │      0 │    0 │    0 │   0.6% ┊          │  0.174 ms ┃                               RenderLight Light::StandardDeferred(Simple): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.5% ┊          │  0.151 ms ┃     0 │      0 │    0 │    0 │   0.5% ┊          │  0.151 ms ┃                               RenderLight Light::StandardDeferred(Simple): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.1% ┊          │  0.030 ms ┃     0 │      0 │    0 │    0 │   0.1% ┊          │  0.030 ms ┃                               RenderLight Light::StandardDeferred(Single): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.1% ┊          │  0.029 ms ┃     0 │      0 │    0 │    0 │   0.1% ┊          │  0.029 ms ┃                               RenderLight Light::StandardDeferred(Single): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.1% ┊          │  0.028 ms ┃     0 │      0 │    0 │    0 │   0.1% ┊          │  0.028 ms ┃                               RenderLight Light::StandardDeferred(Single): GalleryStage_0                                                            ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.002 ms ┃     0 │      0 │    0 │    0 │   8.3% ┊ ▋        │  2.322 ms ┃                      Nanite Cubemap Lake.GalleryStage_0 512x512                                                                                      ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.002 ms ┃     0 │      0 │    0 │    0 │   8.2% ┊ ▋        │  2.300 ms ┃                      Nanite Cubemap Lake.GalleryStage_0 512x512                                                                                      ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.002 ms ┃     0 │      0 │    0 │    0 │   8.0% ┊ ▋        │  2.237 ms ┃                      Nanite Cubemap Lake.GalleryStage_0 512x512                                                                                      ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.001 ms ┃     0 │      0 │    0 │    0 │   8.5% ┊ ▋        │  2.390 ms ┃                   Cubemap Lake.GalleryStage_0 512^2                                                                                                  ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   8.6% ┊ ▋        │  2.404 ms ┃                   Cubemap Lake.GalleryStage_0 512^2                                                                                                  ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   8.2% ┊ ▋        │  2.306 ms ┃                   Cubemap Lake.GalleryStage_0 512^2                                                                                                  ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   1.2% ┊          │  0.345 ms ┃                            Lake.GalleryStage_0                                                                                                       ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   1.1% ┊          │  0.317 ms ┃                            Lake.GalleryStage_0                                                                                                       ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   1.1% ┊          │  0.299 ms ┃                            Lake.GalleryStage_0                                                                                                       ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   0.4% ┊          │  0.105 ms ┃                                     Lake.GalleryStage_0                                                                                              ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   0.4% ┊          │  0.101 ms ┃                                     Lake.GalleryStage_0                                                                                              ┃
+   1 LogRHI: Display:     ┃     0 │      0 │    0 │    0 │  0.0% ┊          │  0.000 ms ┃     0 │      0 │    0 │    0 │   0.4% ┊          │  0.100 ms ┃                                     Lake.GalleryStage_0                                                                                              ┃
+   1 LogInit: Command Line: -nocrashreports -windowed -ResX=1440 -ResY=1080 -SailingBench=10 -SailingDemo -SailingBoat=J22 -SailingWorld=Lake -SailingQuality=High -SailingGallery=/Game/World/Edges/SM_Edge_Limestone_0 -SailingGalleryCompare=Low,High -SailingShot=gallery-limestone -game
