@@ -15,7 +15,8 @@ costs a capsule sweep against millions of triangles, and can't be tested without
 * **The map** (`FWalkMap`): each deck's floor height and what is overhead on a 10 cm grid, and the ladders between the
   decks, each with its foot on the lower deck and its top on the upper. `Finish()` marks where a body fits: a floor,
   1.25 m of headroom, and every floor within 0.22 m (half a sailor's shoulders) within a 0.32 m step of it.
-  Named spots (file version 2) put a walker somewhere: `Helm`, where you stand at the wheel.
+  Named spots (file version 2; version 3 gives each a height) put a walker somewhere: `Helm`, where you stand at the
+  wheel; `Lamp` is a cabin lamp's bulb.
 * **Walking** (`FShipWalker::Step`): 1.4 m/s, 3 m/s running, 0.8 m/s crouched, 1.0 m/s under a beam; he slides along
   whatever stops him and moves in half-cell steps so nothing thin is stepped through.
 * **Heel**: the felt gravity in the ship's frame (the game passes the physics' own) tilts the deck under him. Uphill he
@@ -80,4 +81,36 @@ ship is in frame there too. Every boat before the frigate is under
 
 `SailingSim.ShipWalk.*`: `File` (the format round trip and refusals), `Ladders`, `Beams`, `Heel`, `Wander` (ten minutes
 of a random walker rolling 20 deg each way, never off a floor or inside a beam), `Commonwealth` (the frigate's own map
-once it is in the tree: each ladder's ends somewhere to stand, every deck reached from the spar deck).
+once it is in the tree: each ladder's ends somewhere to stand, every deck reached from the spar deck),
+`Bluebonnet` (her map, once in the tree: from the wheel out of the cockpit, down the doghouse stairs, forward through
+the saloon, galley and fo'c'sle, up the crew's companionway, along the foredeck and back to the wheel, steering the
+walker along a standing path).
+
+## Bluebonnet (the J-Class)
+
+Bean asked on Nov 18 for her to be walkable too. She uses the same walker and views, with three differences: her Helm
+view stays the seated helmsman's (`HelmOnWalkMap()` is for square-riggers only: Change view from the Helm view goes On
+deck, then Chase), she has no orders panel (`HasShipOrders()`: G stays wing-on-wing on a sloop), and her ways between
+decks are stairs and steps as well as ladders (`EWalkLink::Steps`, "E: take the steps down to the cabins").
+
+* **Map** (`Tools/shipkit/jclass/walk_bluebonnet.py <build dir> <out .walk> [--summary json]`, 5 cm cells): decks `Deck`
+  (her flush deck), `Cockpit` (the sole inside the coaming, 0.56 m down) and `Below` (every room's sole from
+  `interior_bluebonnet.json`, 0.4 m to 2.1 m under the deck). Two rays per column, merged, so a plank seam under a
+  doorway doesn't read as a hole. Ways: `Companionway` (the crew's ladder forward of the mast), `Doghouse` (the owner's
+  stairs aft into the saloon), `Cockpit` (one step over the after coaming). `Helm` stands at her wheel.
+* **Doors open**: the build draws her companionway and doghouse shut. `entrances.py` (`open_entrances`, called by
+  `export_game.py` and the map script) hooks both pairs of door leaves back 170 deg and runs the slides forward,
+  finding each piece by its loose part where `game_bluebonnet.json` "entrances" says, so a moved door stops the export.
+* **Below**: `SM_Bluebonnet_Below` (her cabins: structure, joinery, fittings, canvas, upholstery; about 630k triangles,
+  six library slots) is exported to `Decks/` and imported by `scripts/import_boats.py bluebonnet` (`meta["decks"]`);
+  `DeckMeshPath` maps the `Below` deck to it. From outside nothing below is loaded.
+* **Stills below**: `-SailingWalkAt=<deck>,<x>,<y>[,<yaw>]` (any walk map) puts you walking there a second in, e.g.
+  `-SailingWalkAt=Below,-2,0,0` (saloon), `Below,3,0.8,-90` (galley), `Below,5.3,0,0` (fo'c'sle), `Below,-6.2,0,180` (the
+  doghouse stairs' foot, looking aft up them).
+* **Light below**: the PC's first stills (ae64479b) were nearly black aft (mean luma 3 in the saloon): the exposure was
+  held within a stop of the outside light. Now the eye adapts: walking under a deckhead opens the exposure by up to six
+  stops over 2.5 s (`GetBelowDecksAdapt`, `kBelowDecksStops` in `SailingEnvironment.cpp`; the frigate's decks below too),
+  and her ten brass lamps aft are lit while her cabins are shown (walk map `Lamp` spots from the bulbs' faces: 250 lm,
+  2700 K, 4.5 m, shadowed).
+* **Not yet**: her forehatch and sail hatches stay shut, so the sail locker and the heads forward of about 10 m are
+  out of reach.

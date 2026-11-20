@@ -4,11 +4,15 @@ every boat has, and her wheel, which turns with the rudder).
     blender -b --factory-startup -noaudio -P Tools/shipkit/jclass/export_game.py -- <build dir> <out dir>
     python Tools/shipkit/jclass/export_game.py <build dir> <out dir>          (the bpy module)
 
-Reads <build dir>/jclass.blend (build_jclass.py) and writes <out>/SM_Bluebonnet_{Hull,Mast,Boom,Rudder,Wheel}.fbx and
+Reads <build dir>/jclass.blend (build_jclass.py) and writes <out>/SM_Bluebonnet_{Hull,Mast,Boom,Rudder,Wheel,Below}.fbx and
 <out>/Bluebonnet_sockets.json in scripts/import_boats.py's form (sockets in cm in the body frame, each one's part, the
 parts' origins), as game_bluebonnet.json says: which of the build's objects go in each part, how the moving ones are posed,
 the game slot of each material, what stays out and why, and the sockets. Each part is joined, moved to its pivot, given
 box-projected UVs (the boat library's tangent frame) and its slots folded into the packs (Tools/blender/boat_packs.py).
+
+Walking (docs/ship-walk/): her companionway's and doghouse's doors are opened and their slides run forward first
+(entrances.py, game_bluebonnet.json "entrances"), and her cabins go out as SM_Bluebonnet_Below, a deck the game streams
+in only when you go below (listed under "decks" in the sockets json; import_boats.py puts it in Decks/).
 
 Checks, each stopping the export: every material has a game slot; every socket lies within its 'within' of its 'near'
 object; the canoe as exported (the shell's paint, keel included, and the rudder below the load waterline) holds her
@@ -33,6 +37,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, os.path.join(REPO, "Tools", "blender"))
 from boat_packs import pack_slots  # noqa: E402 (pc/boat-slots)
+sys.path.insert(0, HERE)
+from entrances import open_entrances  # noqa: E402 (walking: her way below, open)
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 if len(ARGS) < 2:
@@ -385,6 +391,7 @@ def main():
         raise SystemExit(f"game_bluebonnet.json laid_deck.mitre {G['laid_deck']['mitre']} is not the build's {built}: "
                          "update it (make_materials.py reads it for MI_Boat_LaidTeak) and rebuild the boat library")
     pose()
+    opened = open_entrances(bpy, G["entrances"])
     O = bpy.data.objects
     # The canoe as exported: the shell's paint (the lead keel painted with the bottom) and the rudder, below the waterline.
     canoe = [s for s, t in G["materials"].items() if t in ("Topsides", "Bootstripe", "CoveStripe", "Antifouling")]
@@ -425,8 +432,10 @@ def main():
               "rudder_pivot": socks["RudderPivot"][1], "wheel_hub": socks["WheelHub"][1]}
     if abs(pivots["mast_step"].x - P["mast_x"]) > 0.01:
         raise SystemExit(f"MastStep x {pivots['mast_step'].x} is not the physics' MastX {P['mast_x']}")
-    origins, tris, slots = {}, {}, {}
+    origins, tris, slots, decks = {}, {}, {}, []
     for name, part in G["parts"].items():
+        if part.get("folder") == "Decks":
+            decks.append(name)   # (walking: a deck below, imported to /Game/Boats/Bluebonnet/Decks and streamed by the game)
         pv = part["pivot"]
         pv = Vector(pv) if isinstance(pv, list) else pivots[pv]
         for o in part["objects"]:
@@ -439,6 +448,8 @@ def main():
     meta = {"sockets": {n: cm(p) for n, (o, p) in socks.items()},
             "owner": {n: o for n, (o, p) in socks.items()},
             "origins": {n: cm(p) for n, p in origins.items()},
+            "decks": decks,
+            "entrances": opened,
             "measures": dict(meas, tris=tris, slots=slots, physics={k: (list(v) if isinstance(v, Vector) else v) for k, v in P.items()},
                              rudder_axis=list(axis)),
             "live": {"ropes": "FRigLine (BoatModelVisuals.cpp) from these sockets: her genoa sheets and mainsheet",

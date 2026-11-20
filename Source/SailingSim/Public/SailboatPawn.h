@@ -41,6 +41,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UPointLightComponent;
 class UProceduralMeshComponent;
 class UInstancedStaticMeshComponent;
 class UInputAction;
@@ -643,6 +644,11 @@ public:
 	 * decks below load as you go down to them. Her Helm view is you standing at the wheel (the map's Helm spot).
 	 */
 	bool CanWalk() const { return WalkMap.IsLoaded(); }
+	/** A square-rigger's Helm view is you standing at her wheel on the map, and she has the orders panel (G, the pad's X).
+	 *  A yacht with a walk map (Bluebonnet, docs/ship-walk/) keeps her seated helm view and her keys (G is wing on wing on
+	 *  a sloop): only On deck walks her. */
+	bool HelmOnWalkMap() const { return CanWalk() && Boat.GetConfig().HasSquareRig(); }
+	bool HasShipOrders() const { return HelmOnWalkMap(); }
 	bool IsWalking() const { return bWalking; }
 	void SetWalking(bool bOn, bool bAnnounce = true);
 	const Sailing::FWalkMap& GetWalkMap() const { return WalkMap; }
@@ -660,6 +666,9 @@ public:
 	FString GetOrdersPanelText(int32 Part) const;
 	/** Her helmsman has the wheel (you walk, or told him to take her). */
 	bool HasShipHelmsman() const { return bShipHelmsman; }
+	/** 0 on deck to 1 a few seconds after you go below (under a deckhead): the exposure opens by up to
+	 *  ASailingEnvironment's kBelowDecksStops as an eye adapts to a cabin. */
+	float GetBelowDecksAdapt() const { return BelowAdapt; }
 	/** A ship's rig on the model (docs/ship-rig/): her table (null for a boat without one) and its pose now. */
 	const Sailing::FShipRigData* GetShipRig() const { return ShipRig; }
 	const Sailing::FShipRigPose& GetShipRigPose() const { return ShipRigPose; }
@@ -701,6 +710,15 @@ private:
 	void ClearDeckMeshes();
 	void LoadWalkMap();
 	void PlaceWalkerAtHelm();
+	/** -SailingWalkAt=<deck>,<x>,<y>[,<yaw>] (stills): once, a second in, walking on that deck at that spot in her frame. */
+	void ApplyWalkAt();
+	bool bWalkAtDone = false;
+	/** The cabin lamps (walk map "Lamp" spots) of each shown deck: lit with its mesh, gone with it. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UPointLightComponent>> DeckLamps;
+	TArray<int32> DeckLampDecks;
+	void SetDeckLamps(int32 Deck, bool bOn);
+	float BelowAdapt = 0.f;
+	void UpdateBelowAdapt(float DeltaSeconds);
 	void UpdateWalk(float DeltaSeconds);
 	void UpdateWalkCamera(float DeltaSeconds);
 	void UpdateDeckStreaming();

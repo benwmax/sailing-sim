@@ -116,6 +116,9 @@ namespace
 	constexpr float kUltraCloudEdgeTop = 5.f;
 	// docs/exposure-band: the share of the exposure band the histogram may use on the dark side of the incident meter.
 	constexpr float kExposureBandDark = 0.2f;
+	/** Below decks (docs/ship-walk/): how far the exposure may open past the outside light's band, as an eye adapts to a
+	 *  cabin lit through its skylights and by its lamps (a daylit cabin is 5 to 8 stops under the deck in the sun). */
+	constexpr float kBelowDecksStops = 6.f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
 }
 ASailingEnvironment::ASailingEnvironment()
@@ -863,7 +866,9 @@ void ASailingEnvironment::UpdateSun(double Hour)
 					BandBright = FCString::Atof(*B);
 				}
 			}
-			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun;
+			const ASailboatPawn* Aboard = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+			const float Below = Aboard ? Aboard->GetBelowDecksAdapt() : 0.f;
+			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun - kBelowDecksStops * Below;
 			PP.AutoExposureMaxBrightness = float(EV) + Band * BandDark + 2.5f * IntoSun;
 			PP.AutoExposureBias = USailingSettings::Get()->BrightnessBias();   // Settings > Brightness
 			DumpExposureSettings(float(EV), Band, IntoSun);

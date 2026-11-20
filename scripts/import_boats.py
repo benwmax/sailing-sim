@@ -123,6 +123,14 @@ def import_boat(tag, dest, lods=False, berthed=True, nanite_mast=False):
             add_lods(mesh, True)
         setup(mesh, True, {}, sockets)
         unreal.log(f"Imported {part}: {len(sockets)} sockets")
+    # Walking (docs/ship-walk/): a deck below in Decks/ (Bluebonnet's cabins, SM_Bluebonnet_Below), in the body frame like
+    # the hull, streamed in by the game only when you go below. Only those this build lists under "decks".
+    for part in meta.get("decks", []):
+        mesh = import_fbx(os.path.join(MODELS, part + ".fbx"), f"{dest}/Decks", part)
+        if lods:
+            add_lods(mesh, True)
+        setup(mesh, True, {}, {})
+        unreal.log(f"Imported {dest}/Decks/{part}")
     json.dump(meta["origins"], open(os.path.join(MODELS, f"{tag}_origins.json"), "w"))
     if berthed:
         import_berthed(tag, dest)

@@ -3,13 +3,17 @@
 #include "Misc/Paths.h"
 #include "ShipWalk.h"
 
+#include <algorithm>
+#include <deque>
 #include <limits>
+#include <string>
+#include <vector>
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 /**
  * Walking a ship (docs/ship-walk/): the walker in the ship's frame on a baked walk map. A made-up two-deck ship here (a spar
- * deck with a hatch over a gun deck with beams every 0.8 m and a mast), then the frigate's own map when it is in the tree.
+ * deck with a hatch over a gun deck with beams every 0.8 m and a mast), then the frigate's and Bluebonnet's own maps when they are in the tree.
  */
 namespace
 {
@@ -104,12 +108,21 @@ bool FShipWalkFileTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("no spot by another name"), M.SpotNamed("Galley") == nullptr);
 	// A version 1 file (before the spots) still reads, with none: the same bytes less the spots, version 1.
 	{
-		const size_t SpotBytes = 4 + 1 + 1 + 4 + 3 * 8;
+		const size_t SpotBytes = 4 + 1 + 1 + 4 + 4 * 8;
 		std::vector<uint8_t> V1(Bytes.begin(), Bytes.end() - std::ptrdiff_t(SpotBytes));
 		V1[4] = 1;
 		FWalkMap Old;
 		std::string OldError;
 		TestTrue(FString::Printf(TEXT("a version 1 file reads (%hs)"), OldError.c_str()), Old.Parse(V1.data(), V1.size(), &OldError) && Old.Spots.empty() && Old.Links.size() == 1);
+	}
+	// A version 2 file (spots without their height) still reads, each spot at height 0.
+	{
+		std::vector<uint8_t> V2(Bytes.begin(), Bytes.end() - 8);
+		V2[4] = 2;
+		FWalkMap Old;
+		std::string OldError;
+		TestTrue(FString::Printf(TEXT("a version 2 file reads (%hs)"), OldError.c_str()),
+			Old.Parse(V2.data(), V2.size(), &OldError) && Old.Spots.size() == 1 && Old.Spots[0].X == -6.0 && Old.Spots[0].Z == 0.0);
 	}
 	// Where a body fits: clear of the hatch's edge and the ship's side by its radius.
 	TestFalse(TEXT("no standing at the hatch's lip"), M.Decks[0].CanStand(-0.1, 0.0));
@@ -346,6 +359,160 @@ bool FShipWalkCommonwealthTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(FString::Printf(TEXT("deck %hs is reached by ladder"), M.Decks[D].Name.c_str()), (Reached & (1u << D)) != 0);
 	}
+	return true;
+}
+
+namespace
+{
+	/** Cell centres of a shortest standing path on D from (X0, Y0) to (X1, Y1) (8-way, no corner cutting); empty if none. */
+	std::vector<std::pair<double, double>> StandPath(const Sailing::FWalkDeck& D, double X0, double Y0, double X1, double Y1)
+	{
+		int I0, J0, I1, J1;
+		D.CellOf(X0, Y0, I0, J0);
+		D.CellOf(X1, Y1, I1, J1);
+		std::vector<std::pair<double, double>> Out;
+		if (!D.InGrid(I0, J0) || !D.InGrid(I1, J1)) return Out;
+		std::vector<int> Prev(size_t(D.NX) * D.NY, -2);
+		std::deque<int> Queue;
+		Queue.push_back(D.Index(I0, J0));
+		Prev[D.Index(I0, J0)] = -1;
+		while (!Queue.empty())
+		{
+			const int K = Queue.front();
+			Queue.pop_front();
+			const int I = K % D.NX, J = K / D.NX;
+			if (I == I1 && J == J1) break;
+			for (int Dj = -1; Dj <= 1; ++Dj)
+			{
+				for (int Di = -1; Di <= 1; ++Di)
+				{
+					const int A = I + Di, B = J + Dj;
+					if ((Di == 0 && Dj == 0) || !D.InGrid(A, B)) continue;
+					const int N = D.Index(A, B);
+					if (Prev[N] != -2 || !D.Stand[N]) continue;
+					if (Di != 0 && Dj != 0 && (!D.Stand[D.Index(I + Di, J)] || !D.Stand[D.Index(I, J + Dj)])) continue;
+					Prev[N] = K;
+					Queue.push_back(N);
+				}
+			}
+		}
+		int K = D.Index(I1, J1);
+		if (Prev[K] == -2) return Out;
+		for (; K >= 0; K = Prev[K]) Out.push_back({ D.X0 + (K % D.NX) * D.Cell, D.Y0 + (K / D.NX) * D.Cell });
+		std::reverse(Out.begin(), Out.end());
+		return Out;
+	}
+
+	/** Steers the walker along a standing path to (X, Y) on his deck, a minute at most. True once he is within 15 cm, or
+	 * when he steps onto link Allow facing it; a test failure if he takes any other link, finds no path or sticks. */
+	bool WalkTo(FAutomationTestBase& Test, const Sailing::FWalkMap& M, Sailing::FShipWalker& W, double X, double Y, const FString& What, int Allow = -1)
+	{
+		using namespace Sailing;
+		const std::vector<std::pair<double, double>> P = StandPath(M.Decks[W.GetDeck()], W.GetFeet().X, W.GetFeet().Y, X, Y);
+		if (P.empty())
+		{
+			Test.AddError(FString::Printf(TEXT("%s: no standing path on %hs from (%.2f, %.2f) to (%.2f, %.2f)"), *What,
+				M.Decks[W.GetDeck()].Name.c_str(), W.GetFeet().X, W.GetFeet().Y, X, Y));
+			return false;
+		}
+		size_t K = 0;
+		for (int S = 0; S < 60 * 60; ++S)
+		{
+			const Vec3 F = W.GetFeet();
+			while (K + 1 < P.size() && FMath::Sqrt(FMath::Square(P[K].first - F.X) + FMath::Square(P[K].second - F.Y)) < 0.12) ++K;
+			const double Dx = P[K].first - F.X, Dy = P[K].second - F.Y;
+			if (K + 1 == P.size() && FMath::Sqrt(Dx * Dx + Dy * Dy) < 0.15) return true;
+			const double Turn = FMath::FindDeltaAngleDegrees(W.GetYawDeg(), FMath::RadiansToDegrees(FMath::Atan2(Dy, Dx)));
+			FWalkInput In;
+			In.LookYawDeg = Turn;
+			In.Forward = FMath::Abs(Turn) < 30.0 ? 0.6 : 0.0;
+			W.Step(M, In, kUpright, kFrame);
+			if (W.GetLink() >= 0 && W.GetLink() == Allow) return true;
+			if (W.GetLink() >= 0)
+			{
+				Test.AddError(FString::Printf(TEXT("%s: took the %hs on the way"), *What, M.Links[W.GetLink()].Name.c_str()));
+				return false;
+			}
+		}
+		Test.AddError(FString::Printf(TEXT("%s: stuck at (%.2f, %.2f) on the way to (%.2f, %.2f)"), *What, W.GetFeet().X, W.GetFeet().Y, X, Y));
+		return false;
+	}
+
+	/** Walks to link L's end on his deck, takes it with Use and climbs it to the other deck. */
+	bool TakeLink(FAutomationTestBase& Test, const Sailing::FWalkMap& M, Sailing::FShipWalker& W, int L)
+	{
+		using namespace Sailing;
+		if (L < 0)
+		{
+			Test.AddError(TEXT("a way between decks is missing"));
+			return false;
+		}
+		const FWalkLink& Link = M.Links[L];
+		const FString Name = UTF8_TO_TCHAR(Link.Name.c_str());
+		const bool bDown = W.GetDeck() == Link.Upper;
+		const Vec3 End = bDown ? Link.Top : Link.Foot;
+		if (!WalkTo(Test, M, W, End.X, End.Y, FString::Printf(TEXT("to the %s"), *Name), L)) return false;
+		if (W.GetLink() < 0)
+		{
+			const Vec3 Other = bDown ? Link.Foot : Link.Top;
+			FWalkInput Face;
+			Face.LookYawDeg = FMath::FindDeltaAngleDegrees(W.GetYawDeg(), FMath::RadiansToDegrees(FMath::Atan2(Other.Y - End.Y, Other.X - End.X)));
+			W.Step(M, Face, kUpright, kFrame);
+			FWalkInput Use;
+			Use.bUse = true;
+			W.Step(M, Use, kUpright, kFrame);
+		}
+		if (!Test.TestEqual(FString::Printf(TEXT("%s: Use takes it"), *Name), W.GetLink(), L)) return false;
+		for (int S = 0; S < 60 * 30 && W.GetLink() >= 0; ++S)
+		{
+			FWalkInput Go;
+			Go.Forward = 1.0;
+			W.Step(M, Go, kUpright, kFrame);
+		}
+		const int Target = bDown ? Link.Lower : Link.Upper;
+		return Test.TestTrue(FString::Printf(TEXT("%s %s: off it on the %hs"), *Name, bDown ? TEXT("down") : TEXT("up"), M.Decks[Target].Name.c_str()),
+			W.GetDeck() == Target && W.GetLink() < 0);
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipWalkBluebonnetTest, "SailingSim.ShipWalk.Bluebonnet", ShipWalkFlags)
+bool FShipWalkBluebonnetTest::RunTest(const FString& Parameters)
+{
+	using namespace Sailing;
+	// The J-Class's map (Tools/shipkit/jclass/walk_bluebonnet.py): from the wheel up out of the cockpit, down the doghouse
+	// stairs, forward through the saloon, the galley and the fo'c'sle, up the crew's companionway, along the foredeck and
+	// back down into the cockpit to the wheel.
+	const FString Path = FPaths::ProjectContentDir() / TEXT("TerrainData/Ships/Bluebonnet.walk");
+	TArray<uint8> Bytes;
+	if (!FFileHelper::LoadFileToArray(Bytes, *Path, FILEREAD_Silent))
+	{
+		AddInfo(TEXT("no Bluebonnet.walk in the tree yet: skipped"));
+		return true;
+	}
+	FWalkMap M;
+	std::string Error;
+	if (!TestTrue(TEXT("Bluebonnet.walk parses"), M.Parse(Bytes.GetData(), size_t(Bytes.Num()), &Error))) return false;
+	for (const char* Deck : { "Deck", "Cockpit", "Below" }) TestTrue(FString::Printf(TEXT("a %hs deck"), Deck), M.DeckNamed(Deck) >= 0);
+	for (const FWalkLink& L : M.Links)
+	{
+		const FString Name = UTF8_TO_TCHAR(L.Name.c_str());
+		TestTrue(FString::Printf(TEXT("%s: its foot is somewhere to stand"), *Name), M.Decks[L.Lower].CanStand(L.Foot.X, L.Foot.Y));
+		TestTrue(FString::Printf(TEXT("%s: its top is somewhere to stand"), *Name), M.Decks[L.Upper].CanStand(L.Top.X, L.Top.Y));
+	}
+	const FWalkSpot* Helm = M.SpotNamed("Helm");
+	FShipWalker W;
+	if (!TestTrue(TEXT("she has a helm spot to stand on"), Helm != nullptr && W.Reset(M, Helm->Deck, Helm->X, Helm->Y, Helm->YawDeg))) return false;
+	auto LinkNamed = [&M](const char* Name) { for (size_t K = 0; K < M.Links.size(); ++K) if (M.Links[K].Name == Name) return int(K); return -1; };
+	const bool bRound = TakeLink(*this, M, W, LinkNamed("Cockpit"))
+		&& TakeLink(*this, M, W, LinkNamed("Doghouse"))
+		&& WalkTo(*this, M, W, -2.0, 0.0, TEXT("the saloon"))
+		&& WalkTo(*this, M, W, 3.0, 0.8, TEXT("the galley"))
+		&& WalkTo(*this, M, W, 5.3, 0.0, TEXT("the fo'c'sle"))
+		&& TakeLink(*this, M, W, LinkNamed("Companionway"))
+		&& WalkTo(*this, M, W, 10.0, 1.5, TEXT("forward on deck"))
+		&& TakeLink(*this, M, W, LinkNamed("Cockpit"))
+		&& WalkTo(*this, M, W, Helm->X, Helm->Y, TEXT("back to the wheel"));
+	TestTrue(TEXT("round the boat, deck and below"), bRound);
 	return true;
 }
 
