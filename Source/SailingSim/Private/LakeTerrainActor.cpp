@@ -1453,7 +1453,9 @@ void ALakeTerrainActor::PlaceShoreEdges()
 			else if (Fetch < 300.0 && Slope < 0.15) Type = TEXT("reedcove");    // sheltered, shallow
 			else if (Slope > 0.58 && Fetch > 1000.0) Type = TEXT("claycut");    // over 30 degrees, a long fetch
 			else if (Slope < 0.17 && Fetch > 1000.0) Type = TEXT("gravel");     // gentle (under 1:6) and exposed
-			else if (Slope > 0.3) Type = TEXT("claycut");                       // the fallback for a bank
+			else if (Slope > 0.58) Type = TEXT("claycut");                      // a steep bank in shelter: still a cut
+			// A middling bank (1:6 to 30 degrees) stays bare terrain: the cut piece is 1.7 m tall over 2.5 m of depth,
+			// so on a 17 degree bank its top stood a metre proud of the ground (a dark box under the I-30 bridge, Nov 20).
 			else continue;
 			// Slid down (or up) the slope to the waterline, as the far weed is, then laid across the slope.
 			const double Shift = FMath::Clamp((H - 0.0) / Slope, -1.5 * T.GetCell(), 1.5 * T.GetCell());
