@@ -1,0 +1,39 @@
+head 046c5c05 17:14:01; main in it: no
+build ok
+SailingSim.ShipWalk: 7 passed, 0 failed, 7 total 17:14:57
+SailingSim.Visual: 105 passed, 0 failed, 105 total 17:18:39
+SailingSim.Smoke: 32 passed, 0 failed, 32 total 17:19:01
+boats gate exit 0 18:20:36
+view           tier       fps  p99 ms  gpu ms  gate
+beam8          High      59.1   19.07   15.88  ok
+beat15         High      49.7   22.86   19.06  ok
+marina         High      53.1   19.98   17.95  ok
+helm-eye       High      54.9   19.69   17.36  ok
+slip           High      46.3   22.73    20.7  ok
+crew           High      46.7   23.23    21.1  ok
+gate: pass
+[gate 3692 s] gate passed
+shot pr810-deck-high (photo cam -6,0,3.2,0,-15)
+  pr810-deck-high: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-deck-high: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.024 s
+shot pr810-cockpit-high (photo cam -11.5,0,2.4,0,-5)
+  pr810-cockpit-high: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-cockpit-high: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-below-high (photo cam -3,0,1.0,0,-5)
+  pr810-below-high: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-below-high: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-below-aft-high (photo cam 1.5,0,0.9,180,-5)
+  pr810-below-aft-high: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-below-aft-high: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-deck-medium (photo cam -6,0,3.2,0,-15)
+  pr810-deck-medium: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-deck-medium: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-cockpit-medium (photo cam -11.5,0,2.4,0,-5)
+  pr810-cockpit-medium: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-cockpit-medium: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-below-medium (photo cam -3,0,1.0,0,-5)
+  pr810-below-medium: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-below-medium: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
+shot pr810-below-aft-medium (photo cam 1.5,0,0.9,180,-5)
+  pr810-below-aft-medium: LogSailing: Walk map Bluebonnet: 3 decks, 3 ladders, 1 spots
+  pr810-below-aft-medium: LogStats: FPlatformStackWalk::StackWalkAndDump -  0.007 s
