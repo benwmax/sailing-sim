@@ -1,0 +1,37 @@
+2026-11-20 15:11:28 M0 worktree at 906c9034; lfs done; tracked changes 0; Below asset 16658934 B
+2026-11-20 15:12:44 M1 BUILD: Result: Succeeded; errors 0; warnings C4 0 in project code
+2026-11-20 15:13:06 M2 SailingSim.Skin: 10 tests, failed 0, with warnings 0
+2026-11-20 15:28:45 M2 SailingSim.Visual: 106 tests, failed 0, with warnings 3
+2026-11-20 15:28:45   WARN SailingSim.Visual.ChaseCamera.Pawn | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Wind.S_Wind' | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_GustRumble.S_GustRumble'
+2026-11-20 15:28:45   WARN SailingSim.Visual.J22HeroMesh | Canoe body volume 1.085 m^3 (physics 1.052) (outside J22Mesh's tolerance) | Centre of buoyancy (-0.264, -0.000, -0.096) (physics -0.277, -0.000, -0.077) (outside J22Mesh's tolerance)
+2026-11-20 15:28:45   WARN SailingSim.Visual.TreeSpecies | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/GalvestonBay.detail' error.
+2026-11-20 15:32:22 M2 SailingSim.Lake: 19 tests, failed 0, with warnings 1
+2026-11-20 15:32:22   WARN SailingSim.Lake.InIronsAtLaunch | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/GalvestonBay.detail' error.
+2026-11-20 15:33:22 M2 SailingSim.World: 8 tests, failed 0, with warnings 7
+2026-11-20 15:33:22   WARN SailingSim.World.Streaming.Recentre | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Wind.S_Wind' | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_GustRumble.S_GustRumble'
+2026-11-20 15:33:22   WARN SailingSim.World.Streaming.Sail | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/TexasCoast.height' error. | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/TexasCoast.detail' error.
+2026-11-20 15:33:22   WARN SailingSim.World.Streaming.Windows | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/TexasCoast.height' error. | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/TexasCoast.detail' error.
+2026-11-20 15:33:22   WARN SailingSim.World.FarLights | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/Marseille.detail' error.
+2026-11-20 15:33:22   WARN SailingSim.World.FarRing | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/GalvestonBay.detail' error. | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/GulfPassage.detail' error.
+2026-11-20 15:33:22   WARN SailingSim.World.Haze | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/Marseille.detail' error. | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/GalvestonBay.detail' error.
+2026-11-20 15:33:22   WARN SailingSim.World.Skyline | LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/main/Content/TerrainData/Marseille.detail' error.
+2026-11-20 15:33:57 M2 SailingSim.Smoke: 32 tests, failed 0, with warnings 1
+2026-11-20 15:33:57   WARN SailingSim.Smoke.AsyncPhysicsMatchesSync | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Wind.S_Wind' | LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_GustRumble.S_GustRumble'
+2026-11-20 15:34:16 M2 SailingSim.ShipWalk: 7 tests, failed 0, with warnings 0
+2026-11-20 15:34:16 M2 tests failed in all: 0
+2026-11-20 15:34:16 M9 pr810 crew link removed (the link only); crew files still 541
+2026-11-20 15:34:17 M9 pr810 tracked changes before removal: 0
+2026-11-20 15:34:18 M9 pr810 worktree removed: True
+2026-11-20 15:34:18 MAIN906 DONE (main worktree kept)
+2026-11-20 15:38:00 P1 PACKAGE Windows-906c9034 exit 0, exe True, 3 min
+2026-11-20 15:38:01 Bean's Saved held
+2026-11-20 15:39:24 P2 warm: bench.json True
+2026-11-20 15:47:16 V 16 bench.json; csv True
+2026-11-20 15:47:16 BENCH DONE
+2026-11-20 15:47:18 Bean's Saved restored: profile 7B5CA7BE (want B57AA3AF), hold folder left False
+2026-11-20 15:47:19 Bean's Saved held (below stills)
+2026-11-20 15:47:44 S bb-below-saloon png True, 25 s; walk: -SailingWalkAt: walking on Below at (-2.00, 0.00) facing 0; material failures 0
+2026-11-20 15:48:09 S bb-below-galley png True, 25 s; walk: -SailingWalkAt: walking on Below at (3.00, 0.80) facing 0; material failures 0
+2026-11-20 15:48:34 S bb-below-focsle png True, 25 s; walk: -SailingWalkAt: walking on Below at (5.30, 0.00) facing 0; material failures 0
+2026-11-20 15:48:36 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-20 15:48:36 MAIN906B DONE
