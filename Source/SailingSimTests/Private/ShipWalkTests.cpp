@@ -108,12 +108,21 @@ bool FShipWalkFileTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("no spot by another name"), M.SpotNamed("Galley") == nullptr);
 	// A version 1 file (before the spots) still reads, with none: the same bytes less the spots, version 1.
 	{
-		const size_t SpotBytes = 4 + 1 + 1 + 4 + 3 * 8;
+		const size_t SpotBytes = 4 + 1 + 1 + 4 + 4 * 8;
 		std::vector<uint8_t> V1(Bytes.begin(), Bytes.end() - std::ptrdiff_t(SpotBytes));
 		V1[4] = 1;
 		FWalkMap Old;
 		std::string OldError;
 		TestTrue(FString::Printf(TEXT("a version 1 file reads (%hs)"), OldError.c_str()), Old.Parse(V1.data(), V1.size(), &OldError) && Old.Spots.empty() && Old.Links.size() == 1);
+	}
+	// A version 2 file (spots without their height) still reads, each spot at height 0.
+	{
+		std::vector<uint8_t> V2(Bytes.begin(), Bytes.end() - 8);
+		V2[4] = 2;
+		FWalkMap Old;
+		std::string OldError;
+		TestTrue(FString::Printf(TEXT("a version 2 file reads (%hs)"), OldError.c_str()),
+			Old.Parse(V2.data(), V2.size(), &OldError) && Old.Spots.size() == 1 && Old.Spots[0].X == -6.0 && Old.Spots[0].Z == 0.0);
 	}
 	// Where a body fits: clear of the hatch's edge and the ship's side by its radius.
 	TestFalse(TEXT("no standing at the hatch's lip"), M.Decks[0].CanStand(-0.1, 0.0));

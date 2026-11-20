@@ -24,7 +24,8 @@ the hidden light copies left out). For each deck:
 The ways (WAYS): the crew's ladder down the companionway into the pantry, the companion stairs down from the doghouse's
 doors into the owner's lobby, and the cockpit's step over its after coaming. Each end is moved off the way, away from
 it, to the nearest place a body fits. The Helm spot is in the cockpit aft of the wheel, facing forward (where you set off
-from her helm view).
+from her helm view). A "Lamp" spot (file version 3: spots carry a height) at each cabin lamp's bulb, which the game
+lights while her cabins are shown.
 
     python -I Tools/shipkit/jclass/walk_bluebonnet.py <build dir with jclass.blend> <out .walk> [--summary <json>]
 
@@ -53,7 +54,7 @@ WALL_HEIGHTS = (0.3, 0.8, 1.2)   # m over the floor: shin, waist, chest
 
 CELL = 0.05   # m: half the frigate's: her doors (0.53 to 0.56 m) and the crew ladder's foot leave a body only a few cm
 MAGIC = 0x4B4C5753
-VERSION = 2
+VERSION = 3
 RAY_NUDGES = ((0.0013, 0.0013), (0.021, 0.037))   # m off each cell's centre for its two rays down
 SOLE_WINDOW = 0.08   # m: an upward face this near a room's sole is the sole (its planks, a carpet, a runner, a sill)
 
@@ -124,6 +125,42 @@ def gather(bpy):
         names.append(obj.name)
         ev.to_mesh_clear()
     return np.concatenate(verts), np.concatenate(polys), np.concatenate(owner), names
+
+
+def lamps(bpy):
+    """Each cabin lamp's bulb (the faces with a 'Bulb' material, grouped by shared vertices): its centre in the body
+    frame. The game lights a warm lamp at each while the cabins are shown."""
+    out = []
+    for ob in bpy.data.objects:
+        if ob.type != 'MESH' or ob.hide_render or ob.name.endswith("_Light"):
+            continue
+        slots = [i for i, s in enumerate(ob.material_slots) if s.material and "bulb" in s.material.name.lower()]
+        if not slots:
+            continue
+        me = ob.data
+        mi = np.empty(len(me.polygons), dtype=np.int32)
+        me.polygons.foreach_get("material_index", mi)
+        co = np.empty(len(me.vertices) * 3)
+        me.vertices.foreach_get("co", co)
+        m = np.array(ob.matrix_world)
+        co = co.reshape(-1, 3) @ m[:3, :3].T + m[:3, 3]
+        co[:, 1] *= -1.0
+        parent = {}
+
+        def find(a):
+            while parent.setdefault(a, a) != a:
+                a = parent[a]
+            return a
+        faces = [list(p.vertices) for p, k in zip(me.polygons, np.isin(mi, slots)) if k]
+        for f in faces:
+            for b in f[1:]:
+                parent[find(b)] = find(f[0])
+        groups = {}
+        for f in faces:
+            for a in f:
+                groups.setdefault(find(a), set()).add(a)
+        out += [co[sorted(g)].mean(0) for g in groups.values()]
+    return sorted(out, key=lambda c: (round(float(c[0]), 3), round(float(c[1]), 3)))
 
 
 def room_sole(rooms, x):
@@ -351,7 +388,7 @@ def write(path, decks, links, xs, ys, spots):
     for S in spots:
         name = S["name"].encode()
         out += struct.pack("<BB", S["deck"], len(name)) + name
-        out += struct.pack("<3d", S["x"], S["y"], S.get("yaw", 0.0))
+        out += struct.pack("<4d", S["x"], S["y"], S.get("yaw", 0.0), S.get("z", 0.0))
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "wb") as fh:
         fh.write(bytes(out))
@@ -367,6 +404,7 @@ def main(argv):
     t0 = time.time()
     bpy, opened = load(build)
     rooms = json.load(open(os.path.join(HERE, "interior_bluebonnet.json")))["rooms"]
+    bulbs = lamps(bpy)
     V, P, owner, names = gather(bpy)
     print(f"{len(names)} objects, {len(P)} triangles; opened {sorted(opened)}")
     # One grid for every deck: the deck's plan with a body's room round it.
@@ -411,6 +449,9 @@ def main(argv):
         raise SystemExit("no room for the Helm spot in the cockpit")
     spots = [{"name": "Helm", "deck": order.index(HELM["deck"]), "x": float(at[0]), "y": float(at[1]), "yaw": HELM["yaw"]}]
     print(f"  spot Helm: {HELM['deck']} ({at[0]:.2f}, {at[1]:.2f}, {at[2]:.2f})")
+    for c in bulbs:
+        spots.append({"name": "Lamp", "deck": order.index("Below"), "x": float(c[0]), "y": float(c[1]), "z": float(c[2])})
+    print(f"  {len(bulbs)} lamps below")
     size = write(out, baked, links, xs, ys, spots)
     print(f"wrote {out}: {size} bytes, {time.time() - t0:.0f} s")
     if summary_path:

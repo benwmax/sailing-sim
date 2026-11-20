@@ -9,6 +9,7 @@
 #include "BenchRunner.h"
 #include "UI/SailUIStyle.h"
 #include "Camera/CameraComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StaticMesh.h"
@@ -23,10 +24,18 @@
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 
+#include <cmath>
+
 namespace ShipWalkGame
 {
 	/** Seconds a deck below stays loaded after nobody wants it (a walker stepping back and forth at a ladder). */
 	constexpr double DeckUnloadDelay = 10.0;
+	/** A cabin lamp: a shaded 25 W bulb of the 1930s (about 250 lm), warm, its light carrying across a cabin. */
+	constexpr float LampLumens = 250.f;
+	constexpr float LampKelvin = 2700.f;
+	constexpr float LampReachCm = 450.f;
+	/** Seconds for the eye to come to a cabin from the deck (and back). */
+	constexpr float BelowAdaptSeconds = 2.5f;
 	/** The share of her heel and pitch the eye leans with (a sailor's head stays nearly upright: the cockpit's third). */
 	constexpr double EyeLean = 0.33;
 
@@ -75,6 +84,9 @@ namespace ShipWalkGame
 void ASailboatPawn::ClearDeckMeshes()
 {
 	for (UStaticMeshComponent* Mesh : DeckMeshes) if (Mesh) Mesh->DestroyComponent();
+	for (UPointLightComponent* Lamp : DeckLamps) if (Lamp) Lamp->DestroyComponent();
+	DeckLamps.Reset();
+	DeckLampDecks.Reset();
 	for (TSharedPtr<FStreamableHandle>& Load : DeckLoads) if (Load.IsValid()) Load->ReleaseHandle();
 	DeckMeshes.Reset();
 	DeckLoads.Reset();
@@ -332,6 +344,7 @@ void ASailboatPawn::UpdateDeckStreaming()
 			Part->SetCanEverAffectNavigation(false);
 			Part->RegisterComponent();
 			DeckMeshes[K] = Part;
+			SetDeckLamps(K, true);
 		}
 		else if (DeckMeshes[K] || DeckLoads[K].IsValid())
 		{
@@ -340,12 +353,57 @@ void ASailboatPawn::UpdateDeckStreaming()
 			{
 				if (DeckMeshes[K]) DeckMeshes[K]->DestroyComponent();
 				DeckMeshes[K] = nullptr;
+				SetDeckLamps(K, false);
 				if (DeckLoads[K].IsValid()) DeckLoads[K]->ReleaseHandle();
 				DeckLoads[K].Reset();
 				DeckUnwantedSince[K] = -1.0;
 			}
 		}
 	}
+}
+
+void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
+{
+	for (int32 I = DeckLamps.Num() - 1; I >= 0; --I)
+	{
+		if (DeckLampDecks[I] != Deck) continue;
+		if (DeckLamps[I]) DeckLamps[I]->DestroyComponent();
+		DeckLamps.RemoveAt(I);
+		DeckLampDecks.RemoveAt(I);
+	}
+	if (!bOn || !BoatRoot) return;
+	// Her cabin lamps (Bluebonnet's brass lamps, lit as in the renders): in her frame at each bulb, shadowed so a lamp
+	// lights its own cabin and not the next one through the bulkhead.
+	for (const Sailing::FWalkSpot& S : WalkMap.Spots)
+	{
+		if (S.Deck != Deck || S.Name != "Lamp") continue;
+		UPointLightComponent* Lamp = NewObject<UPointLightComponent>(this);
+		Lamp->SetupAttachment(BoatRoot.Get());
+		Lamp->SetRelativeLocation(FVector(S.X, S.Y, S.Z) * Sailing::CmPerMeter);
+		Lamp->SetMobility(EComponentMobility::Movable);
+		Lamp->IntensityUnits = ELightUnits::Lumens;
+		Lamp->Intensity = ShipWalkGame::LampLumens;
+		Lamp->bUseTemperature = true;
+		Lamp->Temperature = ShipWalkGame::LampKelvin;
+		Lamp->AttenuationRadius = ShipWalkGame::LampReachCm;
+		Lamp->SourceRadius = 2.f;
+		Lamp->SetCastShadows(true);
+		Lamp->RegisterComponent();
+		DeckLamps.Add(Lamp);
+		DeckLampDecks.Add(Deck);
+	}
+}
+
+void ASailboatPawn::UpdateBelowAdapt(float DeltaSeconds)
+{
+	// Below: walking with a deckhead over the eye (Bluebonnet's cabins, the frigate's decks under the spar deck).
+	bool bUnder = false;
+	if (bWalking && CanWalk() && Walker.GetDeck() >= 0 && Walker.GetDeck() < int32(WalkMap.Decks.size()))
+	{
+		const Sailing::Vec3 Eye = Walker.GetEye();
+		bUnder = std::isfinite(WalkMap.Decks[Walker.GetDeck()].OverheadAt(Eye.X, Eye.Y));
+	}
+	BelowAdapt = FMath::FInterpConstantTo(BelowAdapt, bUnder ? 1.f : 0.f, DeltaSeconds, 1.f / ShipWalkGame::BelowAdaptSeconds);
 }
 
 bool ASailboatPawn::OnWalkButton(FName Action)

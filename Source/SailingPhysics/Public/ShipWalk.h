@@ -55,18 +55,20 @@ namespace Sailing
 		double Length() const { return (Top - Foot).Length(); }
 	};
 
-	/** A named place to put a walker: "Helm" (where you stand at the wheel, facing forward). */
+	/** A named place: "Helm" (where a walker stands at the wheel, facing forward), "Lamp" (a cabin lamp's bulb, lit while
+	 *  its deck is shown: Bluebonnet's). */
 	struct SAILINGPHYSICS_API FWalkSpot
 	{
 		std::string Name;
 		int Deck = 0;
 		double X = 0.0, Y = 0.0, YawDeg = 0.0;   // ship frame; yaw 0 forward, + to starboard
+		double Z = 0.0;                           // ship frame (file version 3; 0 in older files)
 	};
 
 	struct SAILINGPHYSICS_API FWalkMap
 	{
 		static constexpr uint32_t Magic = 0x4B4C5753u;   // "SWLK" little-endian
-		static constexpr uint32_t Version = 2u;           // 2 added the spots (1 still reads, with none)
+		static constexpr uint32_t Version = 3u;           // 2 added the spots (1 still reads, with none), 3 their height
 		static constexpr double BodyRadius = 0.22;       // m: shoulders turned, a sailor's half width
 		static constexpr double MaxStep = 0.32;          // m: the most a foot steps up or down (a coaming, a sill)
 		static constexpr double MinHeadroom = 1.25;      // m: lower than this he would have to crawl

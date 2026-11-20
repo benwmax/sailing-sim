@@ -1516,6 +1516,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	{
 		ApplyWalkAt();
 		UpdateDeckStreaming();
+		UpdateBelowAdapt(DeltaSeconds);
 	}
 	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick

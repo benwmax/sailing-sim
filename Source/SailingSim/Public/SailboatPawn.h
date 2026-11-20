@@ -39,6 +39,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UPointLightComponent;
 class UProceduralMeshComponent;
 class UInstancedStaticMeshComponent;
 class UInputAction;
@@ -653,6 +654,9 @@ public:
 	FString GetOrdersPanelText(int32 Part) const;
 	/** Her helmsman has the wheel (you walk, or told him to take her). */
 	bool HasShipHelmsman() const { return bShipHelmsman; }
+	/** 0 on deck to 1 a few seconds after you go below (under a deckhead): the exposure opens by up to
+	 *  ASailingEnvironment's kBelowDecksStops as an eye adapts to a cabin. */
+	float GetBelowDecksAdapt() const { return BelowAdapt; }
 	/** A ship's rig on the model (docs/ship-rig/): her table (null for a boat without one) and its pose now. */
 	const Sailing::FShipRigData* GetShipRig() const { return ShipRig; }
 	const Sailing::FShipRigPose& GetShipRigPose() const { return ShipRigPose; }
@@ -694,6 +698,12 @@ private:
 	/** -SailingWalkAt=<deck>,<x>,<y>[,<yaw>] (stills): once, a second in, walking on that deck at that spot in her frame. */
 	void ApplyWalkAt();
 	bool bWalkAtDone = false;
+	/** The cabin lamps (walk map "Lamp" spots) of each shown deck: lit with its mesh, gone with it. */
+	UPROPERTY(Transient) TArray<TObjectPtr<UPointLightComponent>> DeckLamps;
+	TArray<int32> DeckLampDecks;
+	void SetDeckLamps(int32 Deck, bool bOn);
+	float BelowAdapt = 0.f;
+	void UpdateBelowAdapt(float DeltaSeconds);
 	void UpdateWalk(float DeltaSeconds);
 	void UpdateWalkCamera(float DeltaSeconds);
 	void UpdateDeckStreaming();
