@@ -1,0 +1,25 @@
+2026-11-20 15:50:42 Bean's Saved held
+2026-11-20 15:50:42 R0 desktop load at start (process, count, CPU s so far): chrome x23 1,149s, Spotify x7 4,079s, steam x1 149s, steamwebhelper x7 165s
+2026-11-20 15:51:12 S r1 far-coast 906c9034: 66.3 fps, game 11.94 render 15.07 rhi 7.07 gpu 8.61 ms, p99 23.09, 30 s
+2026-11-20 15:51:45 S r1 far-coast 91c8c80d: 66 fps, game 11.82 render 15.13 rhi 7.08 gpu 8.5 ms, p99 22.36, 34 s
+2026-11-20 15:52:15 S r1 far-coast-night 906c9034: 73.5 fps, game 11.11 render 13.58 rhi 6.1 gpu 6.95 ms, p99 20.78, 29 s
+2026-11-20 15:52:46 S r1 far-coast-night 91c8c80d: 74.9 fps, game 10.78 render 13.33 rhi 5.99 gpu 6.97 ms, p99 20.16, 30 s
+2026-11-20 15:53:21 S r1 marseille-port 906c9034: 71.9 fps, game 10.47 render 13.89 rhi 6.9 gpu 9.25 ms, p99 18.66, 35 s
+2026-11-20 15:53:57 S r1 marseille-port 91c8c80d: 73.2 fps, game 10.21 render 13.66 rhi 6.93 gpu 9.25 ms, p99 19.3, 36 s
+2026-11-20 15:53:57 R1 desktop load: chrome x18 1,142s, Spotify x7 4,080s, steam x1 150s, steamwebhelper x7 166s
+2026-11-20 15:54:27 S r2 far-coast 906c9034: 68.3 fps, game 11.36 render 14.62 rhi 6.97 gpu 8.4 ms, p99 21.31, 30 s
+2026-11-20 15:54:57 S r2 far-coast 91c8c80d: 67.7 fps, game 11.34 render 14.76 rhi 7.11 gpu 8.39 ms, p99 24.31, 29 s
+2026-11-20 15:55:27 S r2 far-coast-night 906c9034: 74.7 fps, game 10.84 render 13.37 rhi 6.05 gpu 6.96 ms, p99 19.6, 29 s
+2026-11-20 15:55:56 S r2 far-coast-night 91c8c80d: 75.6 fps, game 10.97 render 13.2 rhi 6.13 gpu 6.95 ms, p99 20.94, 30 s
+2026-11-20 15:56:32 S r2 marseille-port 906c9034: 75.5 fps, game 10.2 render 13.23 rhi 6.88 gpu 9.24 ms, p99 18.88, 36 s
+2026-11-20 15:57:07 S r2 marseille-port 91c8c80d: 72.1 fps, game 10.44 render 13.85 rhi 7.04 gpu 9.25 ms, p99 20.55, 35 s
+2026-11-20 15:57:07 R2 desktop load: chrome x18 1,144s, Spotify x7 4,082s, steam x1 151s, steamwebhelper x7 167s
+2026-11-20 15:57:37 S r3 far-coast 906c9034: 67.6 fps, game 11.38 render 14.76 rhi 7.09 gpu 8.39 ms, p99 22.96, 29 s
+2026-11-20 15:58:07 S r3 far-coast 91c8c80d: 67.5 fps, game 11.38 render 14.8 rhi 7.04 gpu 8.39 ms, p99 22.26, 29 s
+2026-11-20 15:58:36 S r3 far-coast-night 906c9034: 76.7 fps, game 10.79 render 13.01 rhi 6.15 gpu 6.96 ms, p99 19.79, 29 s
+2026-11-20 15:59:06 S r3 far-coast-night 91c8c80d: 75 fps, game 10.75 render 13.32 rhi 6.06 gpu 6.96 ms, p99 20.02, 30 s
+2026-11-20 15:59:41 S r3 marseille-port 906c9034: 71.4 fps, game 10.55 render 13.99 rhi 6.94 gpu 9.27 ms, p99 18.89, 36 s
+2026-11-20 16:00:17 S r3 marseille-port 91c8c80d: 62 fps, game 12.56 render 16.11 rhi 8.04 gpu 9.64 ms, p99 23.61, 36 s
+2026-11-20 16:00:17 R3 desktop load: chrome x18 1,145s, Spotify x7 4,083s, steam x1 151s, steamwebhelper x7 168s
+2026-11-20 16:00:19 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-20 16:00:19 REPEAT3 DONE
