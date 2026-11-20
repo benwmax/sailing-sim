@@ -21,6 +21,7 @@ MODELS = os.path.join(REPO, "Artifacts", "models", "edges")
 DEST = "/Game/World/Edges"
 MPC = "/Game/World/MPC_World"
 PACK = os.environ.get("EDGE_PACK", "north-texas-lake")
+FALLBACK_SHARE = float(os.environ.get("EDGE_FALLBACK_SHARE", "0.125"))   # Nanite fallback: share of the triangles (#814)
 MATERIAL_ONLY = os.environ.get("EDGE_MATERIAL_ONLY") == "1"   # rebuild M_ShoreEdge and the marks on the pieces already imported
 ASSETS = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
@@ -210,6 +211,13 @@ def main():
         mesh = import_fbx(os.path.join(MODELS, f), DEST, name)
         ns = mesh.get_editor_property("nanite_settings")
         ns.set_editor_property("enabled", not name.endswith("_Light"))
+        # The fallback mesh is what hardware ray tracing (High's and Ultra's Lumen) and every non-Nanite path draw. Left on
+        # Auto (relative error 1) it came out empty for these small pieces (#814: the gallery's Low half showed nothing, and
+        # Lumen's ray traced reflections and GI never saw the walls). An explicit share of the triangles, the _Light twins'
+        # eighth (export_edges.LIGHT_RATIO), keeps a closed stone a box; the target must be set too or the percentage is
+        # ignored (import_boats.add_lods).
+        ns.set_editor_property("fallback_target", unreal.NaniteFallbackTarget.PERCENT_TRIANGLES)
+        ns.set_editor_property("fallback_percent_triangles", FALLBACK_SHARE)
         mesh.set_editor_property("nanite_settings", ns)
         for index in range(len(mesh.get_editor_property("static_materials"))):
             mesh.set_material(index, mat)

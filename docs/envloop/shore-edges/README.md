@@ -141,6 +141,10 @@ slice. The wiring is one PR of code, scripts and this page; the Mac imports the 
   inward (`rough_block`; the kit's own Cycles renders draw both sides, so it never showed), which Nanite culls: round 6's
   stills had every stone as an open shell showing its far faces. Audit any new part with a winding check (face normal
   against the part's centre) before an export, not with a render.
+  The fallback itself is set explicitly (#814): `import_shore_edges.py` imports the pieces with `fallback_target`
+  PERCENT_TRIANGLES at 12.5% (`EDGE_FALLBACK_SHARE`, the `_Light` twins' share). On Auto it came out empty, so hardware
+  ray tracing (Lumen on High and Ultra) never saw the walls and the gallery's Low compare showed nothing. The game still
+  places no edges on Low (`PlaceShoreEdges` returns there, as before Track C).
   Every part is also clipped to the 4 m piece (the caps, blocks, boards and debris used to run on to 2.9-10 m).
 - **Axes.** Blender's Y is Unreal's -Y, so `export_edges.py` writes the kit mirrored in y with its faces re-wound and the
   import turns it back: +y is the land in Unreal too. (The PC's first stills had every wall with its face to the lawn and its
