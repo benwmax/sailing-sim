@@ -4,6 +4,7 @@
 #include "SailingFrame.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
+#include "VisualPipeline.h"
 #include "SailingSim.h"
 #include "Camera/CameraComponent.h"
 #include "Components/RectLightComponent.h"
@@ -16,6 +17,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "Rendering/NaniteResources.h"
 #include "StaticMeshResources.h"
@@ -97,6 +99,7 @@ void AGalleryStage::Open(APlayerController* PC)
 {
 	if (bOpen || !PC) return;
 	bOpen = true;
+	OpenedAt = GetWorld()->GetTimeSeconds();
 	Player = PC;
 	PreviousView = PC->GetViewTarget();
 	GraphicsOnOpen = SailGallery::FGraphicsSnapshot::Capture();
@@ -299,7 +302,20 @@ void AGalleryStage::ApplyMesh()
 
 void AGalleryStage::EnsureMaterials()
 {
-	if (!WireMaterial) WireMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_GalleryWire.M_GalleryWire"));
+	if (!WireMaterial)
+	{
+		WireMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_GalleryWire.M_GalleryWire"));
+		if (WireMaterial && IsReelRun())
+		{
+			// The reel's wire glows against the studio's metered exposure (at the material's own 1 it reads black):
+			// -SailingGalleryWireGlow=<times> (12).
+			float Glow = 12.f;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingGalleryWireGlow="), Glow);
+			UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(WireMaterial, this);
+			Mid->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.25f, 0.75f, 1.f) * Glow);
+			WireMaterial = Mid;
+		}
+	}
 	if (!StudioMaterial) StudioMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_GalleryStudio.M_GalleryStudio"));
 	if (!StudioMaterial) StudioMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 }
@@ -310,8 +326,19 @@ void AGalleryStage::ApplyView()
 	if (IsBoatShown())
 	{
 		// A whole boat's wire views are an overlay (her parts keep their liveries: overriding them would lose those).
+		// The reel's Wireframe is the wire alone (her own materials back after it).
+		const bool bWireOnly = ViewMode == EGalleryView::Wireframe && IsReelRun();
+		SetBoatWire(bWireOnly);
 		TInlineComponentArray<UMeshComponent*> Parts(BoatDisplay.Get());
-		for (UMeshComponent* P : Parts) P->SetOverlayMaterial(ViewMode != EGalleryView::Lit ? WireMaterial.Get() : nullptr);
+		for (UMeshComponent* P : Parts)
+		{
+			P->SetOverlayMaterial(ViewMode != EGalleryView::Lit && !bWireOnly ? WireMaterial.Get() : nullptr);
+			// The wireframe material can't draw Nanite (as for the display mesh).
+			if (UStaticMeshComponent* SM = Cast<UStaticMeshComponent>(P); SM && SM->GetStaticMesh() && SM->GetStaticMesh()->HasValidNaniteData() && IsReelRun())
+			{
+				SM->SetForceDisableNanite(ViewMode != EGalleryView::Lit);
+			}
+		}
 		return;
 	}
 	Display->EmptyOverrideMaterials();
@@ -324,6 +351,37 @@ void AGalleryStage::ApplyView()
 	else
 	{
 		Display->SetOverlayMaterial(WireMaterial);
+	}
+}
+
+void AGalleryStage::SetBoatWire(bool bWire)
+{
+	if (!bWire)
+	{
+		for (int32 I = 0; I < SavedSlots.Num(); ++I)
+		{
+			if (UMeshComponent* P = SavedSlots[I].Part.Get()) P->SetMaterial(SavedSlots[I].Slot, SavedMaterials[I]);
+		}
+		SavedSlots.Reset();
+		SavedMaterials.Reset();
+		return;
+	}
+	if (!WireMaterial || !IsBoatShown()) return;
+	// Run again each tick (Tick): the sails, rig lines and crew take their materials after the boat appears.
+	TInlineComponentArray<UMeshComponent*> Parts(BoatDisplay.Get());
+	for (UMeshComponent* P : Parts)
+	{
+		for (int32 Slot = 0; Slot < P->GetNumMaterials(); ++Slot)
+		{
+			UMaterialInterface* Was = P->GetMaterial(Slot);
+			if (Was == WireMaterial) continue;
+			if (!SavedSlots.ContainsByPredicate([P, Slot](const FSavedSlot& S) { return S.Part == P && S.Slot == Slot; }))
+			{
+				SavedSlots.Add({ P, Slot });
+				SavedMaterials.Add(Was);
+			}
+			P->SetMaterial(Slot, WireMaterial);
+		}
 	}
 }
 
@@ -395,13 +453,19 @@ void AGalleryStage::ApplyFraming(bool bKeepAngle)
 	O.MinPitchDeg = -80.f;
 	O.MaxPitchDeg = 10.f;
 	O.YawDeg = 135.f + 180.f;      // the three-quarter view
-	O.SpinDegPerSec = bAutoSpin ? 6.f : 0.f;   // the screen's Auto spin
-	O.SpinIdleSeconds = 4.f;
+	O.SpinDegPerSec = ReelSpinDegPerSec >= 0.f ? ReelSpinDegPerSec : (bAutoSpin ? 6.f : 0.f);   // the screen's Auto spin
+	O.SpinIdleSeconds = ReelSpinDegPerSec >= 0.f ? 0.f : 4.f;
 	O.EaseSeconds = 0.4f;
 	// The left panel takes a quarter of the screen (PanelShare): the asset sits in the middle of the rest (pivot left of
 	// the view); full screen, in the middle.
 	O.LateralOffsetCm = -PanelShare * D * FMath::Tan(FMath::DegreesToRadians(kCameraFovDeg * 0.5f)) + float(PanCm.X);
 	O.UpOffsetCm = float(PanCm.Y);
+	if (ReelPitchDeg > -90.f)
+	{
+		// The reel's hero angle (-SailingGalleryOrbit=<pitch deg>,<zoom>: 2 is twice as close).
+		O.PitchDeg = ReelPitchDeg;
+		O.DistanceCm = FMath::Clamp(D / FMath::Max(ReelZoom, 0.1f), O.MinDistanceCm, O.MaxDistanceCm);
+	}
 	if (bKeepAngle)
 	{
 		const FFreeCameraOrbit& Was = Camera->GetOrbit();
@@ -410,24 +474,33 @@ void AGalleryStage::ApplyFraming(bool bKeepAngle)
 		O.PitchDeg = float(Camera->GetActorRotation().Pitch);
 	}
 	Camera->SetOrbit(O);
-	// The studio's lights about the asset: key high on the right, fill low on the left, rim behind.
-	if (LightPreset == EGalleryLight::Studio)
+	PlaceStudioLights();
+}
+
+void AGalleryStage::PlaceStudioLights()
+{
+	// The studio's lights about the asset: key high on the right, fill low on the left, rim behind. Warmed (the reel), the
+	// key drops toward a low sun and goes amber, the fill turns to a cool sky, the rim burns.
+	if (LightPreset != EGalleryLight::Studio) return;
+	const FBoxSphereBounds B = SubjectBounds();
+	const float R = FMath::Max(float(B.SphereRadius), 2.f);
+	const FVector T = B.Origin;
+	const float W = Warmth;
+	auto Place = [&](URectLightComponent* L, float YawDeg, float ElevDeg, float DistR, float Lumens, float Kelvin)
 	{
-		const FVector T = B.Origin;
-		auto Place = [&](URectLightComponent* L, float YawDeg, float ElevDeg, float DistR, float Lumens)
-		{
-			const FVector Dir = FRotator(ElevDeg, YawDeg, 0.f).Vector();
-			const FVector At = T - Dir * (DistR * R);
-			L->SetWorldLocationAndRotation(At, (T - At).Rotation());
-			L->SetSourceWidth(R * 1.5f);
-			L->SetSourceHeight(R * 1.5f);
-			L->SetAttenuationRadius(R * 12.f);
-			L->SetIntensity(Lumens * FMath::Square(DistR * R / 300.f));
-		};
-		Place(Key, 135.f + 180.f + 45.f, -35.f, 3.f, 6000.f);
-		Place(Fill, 135.f + 180.f - 70.f, -12.f, 3.5f, 1800.f);
-		Place(Rim, 135.f, -40.f, 3.f, 4000.f);
-	}
+		const FVector Dir = FRotator(ElevDeg, YawDeg, 0.f).Vector();
+		const FVector At = T - Dir * (DistR * R);
+		L->SetWorldLocationAndRotation(At, (T - At).Rotation());
+		L->SetSourceWidth(R * 1.5f);
+		L->SetSourceHeight(R * 1.5f);
+		L->SetAttenuationRadius(R * 12.f);
+		L->SetIntensity(Lumens * FMath::Square(DistR * R / 300.f));
+		L->SetUseTemperature(W > 0.f);
+		L->SetTemperature(Kelvin);
+	};
+	Place(Key, 135.f + 180.f + 45.f, FMath::Lerp(-35.f, -12.f, W), 3.f, 6000.f * FMath::Lerp(1.f, 1.15f, W), FMath::Lerp(6500.f, 3200.f, W));
+	Place(Fill, 135.f + 180.f - 70.f, -12.f, 3.5f, 1800.f * FMath::Lerp(1.f, 0.6f, W), FMath::Lerp(6500.f, 9500.f, W));
+	Place(Rim, 135.f, -40.f, 3.f, 4000.f * FMath::Lerp(1.f, 1.6f, W), FMath::Lerp(6500.f, 2900.f, W));
 }
 
 void AGalleryStage::Orbit(const FVector2D& DeltaDeg)
@@ -660,6 +733,21 @@ void AGalleryStage::Tick(float DeltaSeconds)
 	if (SelectDebounce.Fire(FPlatformTime::Seconds())) Show(Pending);
 	if (Load.IsValid() && Load->HasLoadCompleted()) FinishLoad();
 	if (Camera) Camera->Update(DeltaSeconds, FFreeCameraInput());
+	if (WarmSeconds.Y > WarmSeconds.X)
+	{
+		// Game time, so a Movie Render Queue render (fixed steps) warms the same way every run.
+		const float Want = FMath::SmoothStep(float(WarmSeconds.X), float(WarmSeconds.Y), float(GetWorld()->GetTimeSeconds() - OpenedAt));
+		if (FMath::Abs(Want - Warmth) > 1e-3f || (Want >= 1.f && Warmth < 1.f))
+		{
+			Warmth = Want;
+			PlaceStudioLights();
+		}
+	}
+	if (IsReelRun() && ViewMode == EGalleryView::Wireframe && IsBoatShown()) SetBoatWire(true);
+	if (IsReelRun() && Camera)
+	{
+		ApplyReelLens(Camera->GetCamera()->PostProcessSettings, float(FVector::Dist(Camera->GetCamera()->GetComponentLocation(), SubjectBounds().Origin)));
+	}
 	TickCompare();
 }
 
@@ -723,6 +811,23 @@ AGalleryStage* AGalleryStage::OpenFromArgs(APlayerController* PC)
 	{
 		if (Arg.StartsWith(TEXT("Lod"))) { S->DetailMode = EGalleryDetail::Lod; S->DetailLod = FCString::Atoi(*Arg.Mid(3)); }
 		else S->DetailMode = Arg == TEXT("Fallback") ? EGalleryDetail::Fallback : Arg == TEXT("Light") ? EGalleryDetail::LightTwin : Arg == TEXT("Far") ? EGalleryDetail::FarTwin : EGalleryDetail::Auto;
+	}
+	if (IsReelRun())
+	{
+		// The reel: full screen, its own spin and warm ramp (docs/sim-reel/).
+		S->PanelShare = 0.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingGallerySpin="), S->ReelSpinDegPerSec);
+		FString OrbitArg, PitchArg, ZoomArg;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingGalleryOrbit="), OrbitArg, false) && OrbitArg.Split(TEXT(","), &PitchArg, &ZoomArg))
+		{
+			S->ReelPitchDeg = FCString::Atof(*PitchArg);
+			S->ReelZoom = FCString::Atof(*ZoomArg);
+		}
+		FString Warm, From, To;
+		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingGalleryWarm="), Warm, false) && Warm.Split(TEXT(","), &From, &To))
+		{
+			S->WarmSeconds = FVector2D(FCString::Atof(*From), FCString::Atof(*To));
+		}
 	}
 	if (Item) S->Show(*Item);
 	FString Cmp, A, B;

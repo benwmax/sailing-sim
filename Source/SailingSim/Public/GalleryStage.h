@@ -13,6 +13,7 @@ class UStaticMeshComponent;
 class UProceduralMeshComponent;
 class URectLightComponent;
 class UMaterialInterface;
+class UMeshComponent;
 class UTexture2D;
 
 UENUM()
@@ -107,6 +108,10 @@ public:
 	 * -SailingGalleryLight=Studio|Noon|GoldenHour|Overcast, -SailingGalleryView=Lit|Wireframe|LitWire,
 	 * -SailingGalleryDetail=Auto|Lod1|Lod2|Fallback|Light|Far, -SailingGalleryCompare=Low,Ultra (5 s in; saves
 	 * Saved/Bench/<shot>-compare.png, tier A left of the split, B right). Developer tools only (bShowDeveloperTools).
+	 * A reel render (-SailingReel, docs/sim-reel/) shows the asset full screen with the reel's lens and takes
+	 * -SailingGallerySpin=<deg/s> (from the first frame), -SailingGalleryOrbit=<pitch deg>,<zoom>, -SailingGalleryWireGlow=<x>
+	 * (the wire's brightness, 12) and -SailingGalleryWarm=<from s>,<to s> (the studio's light
+	 * warming to golden hour over those seconds of game time after the stage opens).
 	 */
 	static AGalleryStage* OpenFromArgs(APlayerController* PC);
 	/** A tier's name and back ("Low", "Medium", "High", "Ultra"); -1 for a name it doesn't know. */
@@ -154,6 +159,18 @@ private:
 	bool bAutoSpin = true;
 	float PanelShare = 0.25f;
 
+	// The reel (docs/sim-reel/): its spin (-1: the screen's Auto spin), the warm ramp's seconds after opening (none when
+	// To <= From), how far it has gone (0 studio, 1 golden hour), and the boat's own materials while a wire view replaces
+	// them (component, slot, material).
+	float ReelSpinDegPerSec = -1.f;
+	float ReelPitchDeg = -100.f, ReelZoom = 1.f;   // -SailingGalleryOrbit (pitch under -90: the gallery's own)
+	FVector2D WarmSeconds = FVector2D::ZeroVector;
+	float Warmth = 0.f;
+	double OpenedAt = 0.0;
+	struct FSavedSlot { TWeakObjectPtr<UMeshComponent> Part; int32 Slot = 0; };
+	TArray<FSavedSlot> SavedSlots;
+	UPROPERTY(Transient) TArray<TObjectPtr<UMaterialInterface>> SavedMaterials;
+
 	// Compare: the step (0 off), when this step started, the tiers, the tier to go back to, the captures.
 	int32 CompareStep = 0;
 	double CompareAt = 0.0;
@@ -172,6 +189,10 @@ private:
 	void ApplyMesh();
 	void ApplyView();
 	void ApplyFraming(bool bKeepAngle);
+	/** The studio's key, fill and rim about the subject, warmed by Warmth. */
+	void PlaceStudioLights();
+	/** A whole boat's wireframe view: her parts drawn in the wire material alone (true), or her own materials back. */
+	void SetBoatWire(bool bWire);
 	void PlaceForLight();
 	void BuildCyclorama(float RadiusCm);
 	void SetTier(uint8 Tier);
