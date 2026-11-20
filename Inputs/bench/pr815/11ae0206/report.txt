@@ -1,0 +1,21 @@
+head 11ae0206 16:40:42
+build ok
+SailingSim.Lake: 19 passed, 0 failed, 19 total
+SailingSim.World: 8 passed, 0 failed, 8 total
+world gate exit 0 17:06:38
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.2   19.41   17.84  ok
+coast-day      High      51.5   20.42   18.43  ok
+coast-night    High      56.4   18.43   16.82  ok
+helm-eye       High      55.0   19.55   17.47  ok
+slip           High      46.9   22.71   20.63  ok
+bridge         High      59.3   17.92   15.52  ok
+marina-night   High      55.4   19.02   17.69  ok
+far-coast      High      63.0   16.69   14.74  ok
+far-coast-night High      78.4   13.37   11.52  ok
+marseille-port High      53.1   21.01   17.86  ok
+stream-run     High      51.4   21.02   18.78  ok
+gate: pass
+[gate 1392 s] gate passed
+args: -SailingQuality=Ultra -SailingWorld=Lake -SailingLakeLevel=pool -SailingDate=2026-06-15 -SailingHour=15 -SailingWeather=AfternoonBreeze -SailingWind=8 -SailingKeepStart -SailingCaptureAbsolute -SailingNoHud -SailingNoGpuSlices -SailingStartAt=7200.8,786.9,327.2 -SailingCamWorld=29.4,-18.9,2.0,327.2,-6.0 -SailingCapture=Drone -SailingScreenPct=100
+shot env-bridge-05m-pr815 (Mac, Ultra, uncooked)
