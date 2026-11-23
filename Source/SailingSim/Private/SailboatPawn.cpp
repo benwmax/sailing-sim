@@ -5163,11 +5163,50 @@ void ASailboatPawn::SetupCapture()
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingEV="), CaptureEV);
 	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
 
+	// Film mode (FilmMode.h): the tripod's stand and lens, or the shot file's move (a shot that doesn't load falls back to
+	// the chase camera, with the reason in the log, rather than filming nothing).
+	float HFov = Info.HFovDeg;
+	if (CapturePreset == ECapturePreset::Tripod)
+	{
+		FString TripodArg;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTripod="), TripodArg, false);
+		FilmTripod = FFilmTripod::Parse(TripodArg);
+		HFov = float(FilmTripod.HFovDeg);
+	}
+	if (CapturePreset == ECapturePreset::Path)
+	{
+		FString ShotPath, Error;
+		if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShotFile="), ShotPath, false)) Error = TEXT("no -SailingShotFile=<path>");
+		else
+		{
+			ShotPath = ShotPath.TrimQuotes();
+			if (FPaths::IsRelative(ShotPath)) ShotPath = FPaths::ProjectSavedDir() / ShotPath;   // (relative to Saved, beside Bench)
+			FilmShot.Load(ShotPath, Error);
+		}
+		if (!Error.IsEmpty() || FilmShot.Keys.Num() == 0)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Film shot: %s; filming from the chase camera instead"), *Error);
+			CapturePreset = ECapturePreset::Chase;
+			HFov = CapturePresetInfo(CapturePreset).HFovDeg;
+		}
+		else
+		{
+			HFov = float(FilmShot.Keys[0].HFovDeg);
+			UE_LOG(LogTemp, Display, TEXT("Film shot: %s, %d keys over %.2f s"), *ShotPath, FilmShot.Keys.Num(), FilmShot.Duration());
+		}
+	}
+
 	Camera->SetActive(false);
 	CaptureCamera->SetActive(true);
-	CaptureCamera->SetFieldOfView(Info.HFovDeg);
+	CaptureCamera->SetFieldOfView(HFov);
 	CaptureCamera->bConstrainAspectRatio = false;
-	if (Info.bOnboard)
+	if (CapturePreset == ECapturePreset::Path && FilmShot.Frame == EFilmFrame::Mount)
+	{
+		// A locked mount: rigid on the hull, heeling and pitching with her (placed every frame along the move).
+		CaptureCamera->SetUsingAbsoluteLocation(false);
+		CaptureCamera->SetUsingAbsoluteRotation(false);
+	}
+	else if (Info.bOnboard)
 	{
 		FVector Location;
 		FRotator Rotation;
@@ -5183,11 +5222,29 @@ void ASailboatPawn::SetupCapture()
 		CaptureCamera->SetUsingAbsoluteRotation(true);
 	}
 
-	// A still that can be compared: exposure locked, no motion blur, no depth of field.
+	// A still that can be compared: exposure locked, no motion blur, no depth of field. Film mode keeps motion blur
+	// (-SailingMotionBlur=<amount>, or a 180 degree shutter with -SailingFilm) and boosts the offline quality.
 	FPostProcessSettings& PP = CaptureCamera->PostProcessSettings;
 	CaptureCamera->PostProcessBlendWeight = 1.f;
+	CaptureBlur = CaptureMotionBlurAmount(SailingArgs::Dev());
 	PP.bOverride_MotionBlurAmount = true;
-	PP.MotionBlurAmount = 0.f;
+	PP.MotionBlurAmount = CaptureBlur;
+	if (CaptureBlur > 0.f)
+	{
+		PP.bOverride_MotionBlurMax = true;
+		PP.MotionBlurMax = 5.f;   // percent of the screen width: a fast pan past the boat smears as a film camera's would
+		if (IConsoleVariable* BlurQuality = IConsoleManager::Get().FindConsoleVariable(TEXT("r.MotionBlurQuality")); BlurQuality && BlurQuality->GetInt() < 4) BlurQuality->Set(4, ECVF_SetByCode);
+	}
+	if (IsFilmMode())
+	{
+		// Film mode's offline boost on this camera (the console variables are FilmQualityCVars, applied with the tier):
+		// Lumen's reflections and final gather at their highest, reflections lit at the hit (the tripod run's dithered
+		// stripes in the water's reflection: Inputs/reel-test/README.md).
+		PP.bOverride_LumenReflectionQuality = PP.bOverride_LumenFinalGatherQuality = PP.bOverride_LumenRayLightingMode = true;
+		PP.LumenReflectionQuality = 2.f;
+		PP.LumenFinalGatherQuality = 2.f;
+		PP.LumenRayLightingMode = ELumenRayLightingModeOverride::HitLighting;
+	}
 	if (!FMath::IsNaN(CaptureEV))
 	{
 		PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
@@ -5204,8 +5261,9 @@ void ASailboatPawn::SetupCapture()
 
 	const FString Dir = FPaths::ProjectSavedDir() / TEXT("Bench");
 	CaptureTelemetry.Open(Dir / (CaptureName + TEXT(".telemetry.csv")));
-	UE_LOG(LogTemp, Display, TEXT("Reference capture: %s, %.0f deg, %s"), Info.Name, Info.HFovDeg,
-		FMath::IsNaN(CaptureEV) ? TEXT("auto exposure frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV));
+	UE_LOG(LogTemp, Display, TEXT("Reference capture: %s, %.0f deg, %s, motion blur %.2f%s"), CapturePresetInfo(CapturePreset).Name, HFov,
+		FMath::IsNaN(CaptureEV) ? TEXT("auto exposure frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV), CaptureBlur,
+		IsFilmMode() ? TEXT(", film quality") : TEXT(""));
 }
 
 void ASailboatPawn::UpdateCapture(float DeltaSeconds)
@@ -5250,7 +5308,25 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			}
 		}
 	}
-	if (!Info.bOnboard)
+	if (CapturePreset == ECapturePreset::Path)
+	{
+		// Film mode's keyframed move (FFilmShot), on the recording's own clock: shot time 0 is the first recorded frame,
+		// counted in frames under a fixed step (ASailingGameMode::GetFilmClock); without a bench, the capture's time.
+		const double Clock = GM ? GM->GetFilmClock() : NAN;
+		FFilmBoatPose Pose;
+		const Vec3 O = DrawnOrigin;   // where she is drawn (between her steps, #26), so the framing holds her steady
+		Pose.Origin = SailingFrame::ToWorld(GetWorld(), O.X, O.Y, 0.0);
+		Pose.Origin.Z = WaterSurfaceZ;
+		Pose.HeadingDeg = FMath::RadiansToDegrees(T.Heading) + DrawnRotationOffset().Yaw;
+		Pose.MastheadM = Boat.GetConfig().MastheadZ;
+		Pose.WorldAnchor = SailingFrame::FromMapCm(GetWorld(), StartLocation);   // (kept in the map frame: a re-centre moves the render frame)
+		Pose.WorldAnchor.Z = WaterSurfaceZ;
+		const FFilmCameraPose Cam = FilmShot.Evaluate(FMath::IsNaN(Clock) ? CaptureElapsed : Clock, Pose);
+		if (Cam.bRelativeToHull) CaptureCamera->SetRelativeLocationAndRotation(Cam.Location, Cam.Rotation);
+		else CaptureCamera->SetWorldLocationAndRotation(Cam.Location, Cam.Rotation);
+		if (!FMath::IsNearlyEqual(CaptureCamera->FieldOfView, float(Cam.HFovDeg))) CaptureCamera->SetFieldOfView(float(Cam.HFovDeg));
+	}
+	else if (!Info.bOnboard)
 	{
 		if (FMath::IsNaN(CaptureBearing) && CaptureElapsed > 0.2)
 		{
@@ -5272,7 +5348,13 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		FVector Location;
 		FRotator Rotation;
 		WorldCameraPose(CapturePreset, Origin, Heading, Bearing, float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
-		if (CapturePreset == ECapturePreset::ShoreTele)
+		if (CapturePreset == ECapturePreset::Tripod)
+		{
+			// Film mode's tripod: set up at -SailingTripod's distance and height off her bearing, then (below) it only pans.
+			WorldCameraPoseAt(Origin, Heading, Bearing, float(FilmTripod.DistanceM), float(FilmTripod.HeightM), 0.33f,
+				float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
+		}
+		if (CapturePreset == ECapturePreset::ShoreTele || CapturePreset == ECapturePreset::Tripod)
 		{
 			// A tripod: it stays where it was set up and only pans.
 			// (Kept in the map frame: a re-centre moves the render frame under it.)
@@ -5378,13 +5460,15 @@ void ASailboatPawn::WriteCaptureSettings() const
 		TEXT("  \"area\": \"%s\",\n  \"latitude\": %.4f,\n  \"longitude\": %.4f,\n  \"date\": \"%s\",\n  \"clock_hour\": %.2f,\n")
 		TEXT("  \"sun_elevation_deg\": %.1f,\n  \"sun_azimuth_deg\": %.1f,\n  \"sun_through_cloud\": %.2f,\n  \"meter_ev100\": %.2f,\n")
 		TEXT("  \"true_wind_kn\": %.1f,\n  \"true_wind_from_deg\": %.0f,\n  \"gust_intensity\": %.2f,\n")
-		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f\n}\n"),
-		Info.Name, Info.HFovDeg, Info.bBarrel ? TEXT("true") : TEXT("false"),
+		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f,\n")
+		TEXT("  \"motion_blur\": %.2f,\n  \"film_quality\": %s\n}\n"),
+		Info.Name, CaptureCamera->FieldOfView, Info.bBarrel ? TEXT("true") : TEXT("false"),
 		FMath::IsNaN(CaptureEV) ? TEXT("auto, frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV),
 		L.X / CmPerMeter, L.Y / CmPerMeter, L.Z / CmPerMeter, R.Pitch, R.Yaw, R.Roll, FMath::IsNaN(CaptureBearing) ? 0.f : CaptureBearing,
 		*Area, Latitude, Longitude, *Date, Hour, SunElevation, SunAzimuth, SunThroughCloud, MeterEV, // SunPosition works in degrees
 		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
-		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
+		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed,
+		CaptureBlur, IsFilmMode() ? TEXT("true") : TEXT("false"));
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
 }
 

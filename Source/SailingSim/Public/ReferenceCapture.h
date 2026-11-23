@@ -19,6 +19,8 @@ enum class ECapturePreset : uint8
 	Chase,      // 15 m off, 2 m above the water; 50 deg
 	Drone,      // 30 m up, 30 m off (45 deg down); 80 deg
 	ShoreTele,  // a tripod 200 m off, 3 m above the water, panning to follow; 15 deg
+	Tripod,     // film mode: a tripod at -SailingTripod's distance and height, panning to follow (FilmMode.h)
+	Path,       // film mode: a keyframed camera move from -SailingShotFile (FFilmShot)
 	Count
 };
 
@@ -44,6 +46,9 @@ SAILINGSIM_API void OnboardCameraMount(ECapturePreset Preset, const Sailing::FBo
  */
 SAILINGSIM_API void WorldCameraPose(ECapturePreset Preset, const FVector& BoatOrigin, float HeadingDeg, float BearingDeg,
 	float MastheadMeters, float WaterZ, FVector& OutLocation, FRotator& OutRotation);
+/** The same at a chosen range and height (m) off the boat, looking at AimFraction of the masthead (film mode's tripod). */
+SAILINGSIM_API void WorldCameraPoseAt(const FVector& BoatOrigin, float HeadingDeg, float BearingDeg, float RangeMeters, float HeightMeters,
+	float AimFraction, float MastheadMeters, float WaterZ, FVector& OutLocation, FRotator& OutRotation);
 
 /** One frame of the boat for the telemetry CSV (knots and degrees, as a sailor reads them). */
 struct SAILINGSIM_API FCaptureTelemetryRow

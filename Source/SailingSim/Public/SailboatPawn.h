@@ -18,6 +18,7 @@
 #include "Replay.h"
 #include "SailCloth.h"
 #include "ReferenceCapture.h"
+#include "FilmMode.h"
 #include "CrewPose.h"
 #include "CrewMotion.h"
 #include "CockpitEye.h"
@@ -534,6 +535,10 @@ private:
 	bool bCaptureBearingResolved = false;
 	float HelmSide = 0.f;             // helm eye: -1 port .. +1 starboard, moving across after a tack
 	FVector ShoreStand = FVector::ZeroVector;
+	// Film mode (FilmMode.h): -SailingTripod's stand and lens, -SailingShotFile's move.
+	FFilmTripod FilmTripod;
+	FFilmShot FilmShot;
+	float CaptureBlur = 0.f;          // the capture's motion blur (CaptureMotionBlurAmount)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> LensDistortionMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> LensDistortionAsset; // referenced for the cook
 	bool bGhostOn = false, bWatching = false, bPhoto = false;
