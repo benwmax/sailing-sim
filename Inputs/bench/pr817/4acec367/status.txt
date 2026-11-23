@@ -1,0 +1,13 @@
+2026-11-23 16:45:05 P0 worktree at 4acec367 (Film mode: log the live cloud and reflection settings); on main 906c9034; lfs done; crew linked; free RAM 39.7 GB; frigate python running 10
+2026-11-23 16:48:34 P1 BUILD: Result: Succeeded; errors 0
+2026-11-23 16:49:00 P2 SailingSim.Smoke.FilmMode: 4 tests, failed 0, with warnings 0; FrameClock=Success ShotMoves=Success ShotParse=Success Switches=Success
+2026-11-23 16:52:57 P3 Dev PACKAGE exit 0, exe True, 4 min; LogInit: Display: Success - 0 error(s), 1 warning(s)
+2026-11-23 16:52:57 Bean's Saved held
+2026-11-23 16:52:57 F cloudA-noblur started (launcher pid 26704); free RAM 41.4 GB
+2026-11-23 16:56:42 F cloudA-noblur ended after 3.8 min; frames 120 (frame_0000.png to frame_0119.png); 1.33 s per frame; 1.05 GB; errors in log 7; : Display: Film quality: r.VolumetricRenderTarget=1 r.VolumetricRenderTarget.Mode=3 r.VolumetricRenderTarget.UpsamplingMode=3 r.VolumetricCloud.ViewRaySampleMaxCount=512 r.Water.SingleLayer.Reflection.DownsampleFactor=1 r.Lumen.Reflections.DownsampleFactor=1 r.TSR.History.ScreenPercentage=200 r.AntiAliasingMethod=4 r.ScreenPercentage=100 / isplay: Reference capture: Tripod, 26 deg, auto exposure frozen at 2.5 s, motion blur 0.00, film quality / : Display: SailingRecord: fixed step 0.01667 s, 120 frames from frame 600, one every 1 / : Display: SailingRecord: 120 of 120 frames recorded
+2026-11-23 16:56:42 F cloudB-noblur-mode1 started (launcher pid 25000); free RAM 42.8 GB
+2026-11-23 16:59:57 F cloudB-noblur-mode1 ended after 3.2 min; frames 120 (frame_0000.png to frame_0119.png); 1.24 s per frame; 1.05 GB; errors in log 8; : Display: Film quality: r.VolumetricRenderTarget=1 r.VolumetricRenderTarget.Mode=1 r.VolumetricRenderTarget.UpsamplingMode=3 r.VolumetricCloud.ViewRaySampleMaxCount=512 r.Water.SingleLayer.Reflection.DownsampleFactor=1 r.Lumen.Reflections.DownsampleFactor=1 r.TSR.History.ScreenPercentage=200 r.AntiAliasingMethod=4 r.ScreenPercentage=100 / isplay: Reference capture: Tripod, 26 deg, auto exposure frozen at 2.5 s, motion blur 0.00, film quality / : Display: SailingRecord: fixed step 0.01667 s, 120 frames from frame 600, one every 1 / : Display: SailingRecord: 120 of 120 frames recorded
+2026-11-23 16:59:59 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-23 16:59:59 P9 crew link removed (the link only); crew files 541
+2026-11-23 17:00:02 P9 worktree removed: True
+2026-11-23 17:00:02 PR817 DONE
