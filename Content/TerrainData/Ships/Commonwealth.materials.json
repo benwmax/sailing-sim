@@ -1,0 +1,1738 @@
+{
+ "note": "each material slot of the export: its surface and kind on the cards (textures_1797.json) and the wear terms at each level (weathering.amounts: the same numbers the Blender dressing uses). base_colour_linear and roughness are the undressed material's",
+ "levels": {
+  "L0": {
+   "age": 0.0,
+   "care": 1.0
+  },
+  "L1": {
+   "age": 0.3,
+   "care": 0.9
+  },
+  "L2": {
+   "age": 6.0,
+   "care": 0.5
+  },
+  "L3": {
+   "age": 30.0,
+   "care": 0.9
+  },
+  "L4": {
+   "age": 20.0,
+   "care": 0.1
+  }
+ },
+ "materials": {
+  "Ash": {
+   "slot": "MI_Frigate_Ash",
+   "base_colour_linear": [
+    0.55,
+    0.45,
+    0.32
+   ],
+   "roughness": 0.6,
+   "surface": "below_decks"
+  },
+  "BerthDeckPlanks": {
+   "slot": "MI_Frigate_BerthDeckPlanks",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.5,
+   "surface": "below_decks"
+  },
+  "Blacking": {
+   "slot": "MI_Frigate_Blacking",
+   "base_colour_linear": [
+    0.035,
+    0.035,
+    0.037
+   ],
+   "roughness": 0.55,
+   "surface": "iron",
+   "kind": "blacked",
+   "wear": {
+    "L0": {
+     "brown": 0.0,
+     "bloom": 0.0,
+     "rust": 0.0,
+     "skin": 0.0
+    },
+    "L1": {
+     "brown": 0.41,
+     "bloom": 0.037,
+     "rust": 0.0,
+     "skin": 0.044
+    },
+    "L2": {
+     "brown": 0.66,
+     "bloom": 0.437,
+     "rust": 0.347,
+     "skin": 0.197
+    },
+    "L3": {
+     "brown": 0.117,
+     "bloom": 0.055,
+     "rust": 0.0,
+     "skin": 0.657
+    },
+    "L4": {
+     "brown": 0.932,
+     "bloom": 0.925,
+     "rust": 1.0,
+     "skin": 0.064
+    }
+   }
+  },
+  "Block": {
+   "slot": "MI_Frigate_Block",
+   "base_colour_linear": [
+    0.33,
+    0.22,
+    0.12
+   ],
+   "roughness": 0.7,
+   "surface": "wood",
+   "kind": "blocks",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.142,
+     "scrub": 0.0,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.393
+    },
+    "L2": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 1.0
+    },
+    "L3": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.641
+    },
+    "L4": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 1.0
+    }
+   }
+  },
+  "Brick": {
+   "slot": "MI_Frigate_Brick",
+   "base_colour_linear": [
+    0.42,
+    0.2,
+    0.13
+   ],
+   "roughness": 0.85,
+   "surface": "below_decks"
+  },
+  "Bronze": {
+   "slot": "MI_Frigate_Bronze",
+   "base_colour_linear": [
+    0.55,
+    0.4,
+    0.22
+   ],
+   "roughness": 0.35,
+   "surface": "bright",
+   "kind": "bronze",
+   "wear": {
+    "L0": {
+     "patina": 0.0,
+     "dark": 0.0,
+     "verdigris": 0.0
+    },
+    "L1": {
+     "patina": 0.487,
+     "dark": 0.156,
+     "verdigris": 0.0
+    },
+    "L2": {
+     "patina": 0.575,
+     "dark": 1.0,
+     "verdigris": 0.184
+    },
+    "L3": {
+     "patina": 0.235,
+     "dark": 1.0,
+     "verdigris": 0.0
+    },
+    "L4": {
+     "patina": 0.915,
+     "dark": 1.0,
+     "verdigris": 1.0
+    }
+   }
+  },
+  "Cable": {
+   "slot": "MI_Frigate_Cable",
+   "base_colour_linear": [
+    0.15,
+    0.105,
+    0.065
+   ],
+   "roughness": 0.8,
+   "surface": "rope",
+   "kind": "tarred",
+   "wear": {
+    "L0": {
+     "dull": 0.0,
+     "brown": 0.0,
+     "bleach": 0.0,
+     "fibre": 0.0,
+     "rot": 0.0,
+     "retar": 0.0
+    },
+    "L1": {
+     "dull": 0.789,
+     "brown": 0.205,
+     "bleach": 0.073,
+     "fibre": 0.34,
+     "rot": 0.0,
+     "retar": 0.0
+    },
+    "L2": {
+     "dull": 0.908,
+     "brown": 0.66,
+     "bleach": 0.656,
+     "fibre": 1.0,
+     "rot": 0.0,
+     "retar": 0.025
+    },
+    "L3": {
+     "dull": 0.887,
+     "brown": 0.435,
+     "bleach": 0.229,
+     "fibre": 0.625,
+     "rot": 0.0,
+     "retar": 0.9
+    },
+    "L4": {
+     "dull": 1.0,
+     "brown": 0.978,
+     "bleach": 1.0,
+     "fibre": 1.0,
+     "rot": 0.912,
+     "retar": 0.075
+    }
+   }
+  },
+  "Canvas": {
+   "slot": "MI_Frigate_Canvas",
+   "base_colour_linear": [
+    0.55,
+    0.5,
+    0.4
+   ],
+   "roughness": 0.9,
+   "surface": "canvas",
+   "kind": "canvas",
+   "wear": {
+    "L0": {
+     "dinge": 0.0,
+     "grime": 0.0,
+     "mildew": 0.0,
+     "yellow": 0.0,
+     "patches": 0.0,
+     "stain": 0.0
+    },
+    "L1": {
+     "dinge": 0.197,
+     "grime": 0.296,
+     "mildew": 0.0,
+     "yellow": 0.047,
+     "patches": 0.0,
+     "stain": 0.0
+    },
+    "L2": {
+     "dinge": 0.606,
+     "grime": 0.909,
+     "mildew": 0.497,
+     "yellow": 0.25,
+     "patches": 0.0,
+     "stain": 0.347
+    },
+    "L3": {
+     "dinge": 0.388,
+     "grime": 0.582,
+     "mildew": 0.0,
+     "yellow": 1.0,
+     "patches": 0.0,
+     "stain": 0.0
+    },
+    "L4": {
+     "dinge": 0.765,
+     "grime": 1.0,
+     "mildew": 1.0,
+     "yellow": 0.433,
+     "patches": 0.0,
+     "stain": 1.0
+    }
+   }
+  },
+  "Carriage": {
+   "slot": "MI_Frigate_Carriage",
+   "base_colour_linear": [
+    0.33,
+    0.11,
+    0.055
+   ],
+   "roughness": 0.65,
+   "surface": "paint",
+   "kind": "red",
+   "wear": {
+    "L0": {
+     "gloss": 0.0,
+     "chalk": 0.0,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.0,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.0
+    },
+    "L1": {
+     "gloss": 0.238,
+     "chalk": 0.061,
+     "salt": 0.395,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.296,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.051
+    },
+    "L2": {
+     "gloss": 0.641,
+     "chalk": 0.452,
+     "salt": 0.935,
+     "touchup": 0.025,
+     "rust": 0.514,
+     "tar": 0.765,
+     "scrape": 0.316,
+     "crack": 0.163,
+     "coats": 0.139
+    },
+    "L3": {
+     "gloss": 0.278,
+     "chalk": 0.129,
+     "salt": 0.068,
+     "touchup": 0.9,
+     "rust": 0.03,
+     "tar": 0.181,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.464
+    },
+    "L4": {
+     "gloss": 1.0,
+     "chalk": 0.907,
+     "salt": 0.94,
+     "touchup": 0.075,
+     "rust": 1.0,
+     "tar": 1.0,
+     "scrape": 0.936,
+     "crack": 0.922,
+     "coats": 0.045
+    }
+   }
+  },
+  "CaskWood": {
+   "slot": "MI_Frigate_CaskWood",
+   "base_colour_linear": [
+    0.4,
+    0.28,
+    0.16
+   ],
+   "roughness": 0.75,
+   "surface": "below_decks"
+  },
+  "Ceiling": {
+   "slot": "MI_Frigate_Ceiling",
+   "base_colour_linear": [
+    0.36,
+    0.26,
+    0.15
+   ],
+   "roughness": 0.8,
+   "surface": "below_decks"
+  },
+  "ClearGlass": {
+   "slot": "MI_Frigate_ClearGlass",
+   "base_colour_linear": [
+    0.95,
+    0.97,
+    0.96
+   ],
+   "roughness": 0.02,
+   "surface": "below_decks"
+  },
+  "CompassCard": {
+   "slot": "MI_Frigate_CompassCard",
+   "base_colour_linear": [
+    0.75,
+    0.72,
+    0.62
+   ],
+   "roughness": 0.6,
+   "surface": "unweathered"
+  },
+  "Copper": {
+   "slot": "MI_Frigate_Copper",
+   "base_colour_linear": [
+    0.62,
+    0.36,
+    0.22
+   ],
+   "roughness": 0.35,
+   "surface": "copper",
+   "kind": "sheathing",
+   "wear": {
+    "L0": {
+     "brown": 0.0,
+     "dark": 0.0,
+     "verdigris": 0.0,
+     "slime": 0.0,
+     "weed": 0.0,
+     "barnacles": 0.0,
+     "lift": 0.0,
+     "patchwork": 0.0
+    },
+    "L1": {
+     "brown": 0.95,
+     "dark": 0.154,
+     "verdigris": 0.002,
+     "slime": 0.37,
+     "weed": 0.0,
+     "barnacles": 0.0,
+     "lift": 0.0,
+     "patchwork": 0.0
+    },
+    "L2": {
+     "brown": 1.0,
+     "dark": 1.0,
+     "verdigris": 0.301,
+     "slime": 0.825,
+     "weed": 0.275,
+     "barnacles": 0.0,
+     "lift": 0.0,
+     "patchwork": 0.025
+    },
+    "L3": {
+     "brown": 1.0,
+     "dark": 0.682,
+     "verdigris": 0.046,
+     "slime": 0.313,
+     "weed": 0.0,
+     "barnacles": 0.0,
+     "lift": 0.0,
+     "patchwork": 0.9
+    },
+    "L4": {
+     "brown": 1.0,
+     "dark": 1.0,
+     "verdigris": 1.0,
+     "slime": 0.993,
+     "weed": 1.0,
+     "barnacles": 0.9,
+     "lift": 0.9,
+     "patchwork": 0.075
+    }
+   }
+  },
+  "Deadeye": {
+   "slot": "MI_Frigate_Deadeye",
+   "base_colour_linear": [
+    0.16,
+    0.1,
+    0.055
+   ],
+   "roughness": 0.6,
+   "surface": "wood",
+   "kind": "blocks",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.142,
+     "scrub": 0.0,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.393
+    },
+    "L2": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 1.0
+    },
+    "L3": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.641
+    },
+    "L4": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 1.0
+    }
+   }
+  },
+  "Deal": {
+   "slot": "MI_Frigate_Deal",
+   "base_colour_linear": [
+    0.62,
+    0.52,
+    0.37
+   ],
+   "roughness": 0.75,
+   "surface": "below_decks"
+  },
+  "Deck": {
+   "slot": "MI_Frigate_Deck",
+   "base_colour_linear": [
+    0.58,
+    0.52,
+    0.42
+   ],
+   "roughness": 0.75,
+   "surface": "unweathered"
+  },
+  "DeckPlanks": {
+   "slot": "MI_Frigate_DeckPlanks",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.5,
+   "surface": "deck",
+   "kind": "deck",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "white": 0.0,
+     "traffic": 0.0,
+     "dark": 0.0,
+     "tar": 0.0,
+     "seams": 0.0,
+     "green": 0.0,
+     "raised": 0.0
+    },
+    "L1": {
+     "silver": 0.284,
+     "white": 0.182,
+     "traffic": 0.247,
+     "dark": 0.026,
+     "tar": 0.165,
+     "seams": 0.0,
+     "green": 0.0,
+     "raised": 0.095
+    },
+    "L2": {
+     "silver": 1.0,
+     "white": 0.21,
+     "traffic": 0.596,
+     "dark": 0.485,
+     "tar": 0.659,
+     "seams": 0.247,
+     "green": 0.184,
+     "raised": 0.463
+    },
+    "L3": {
+     "silver": 1.0,
+     "white": 0.945,
+     "traffic": 0.151,
+     "dark": 0.152,
+     "tar": 0.101,
+     "seams": 0.0,
+     "green": 0.0,
+     "raised": 0.858
+    },
+    "L4": {
+     "silver": 1.0,
+     "white": 0.0,
+     "traffic": 0.948,
+     "dark": 0.891,
+     "tar": 0.994,
+     "seams": 0.93,
+     "green": 1.0,
+     "raised": 0.753
+    }
+   }
+  },
+  "FigurePaint": {
+   "slot": "MI_Frigate_FigurePaint",
+   "base_colour_linear": [
+    0.8,
+    0.78,
+    0.72
+   ],
+   "roughness": 0.55,
+   "surface": "paint",
+   "kind": "white",
+   "wear": {
+    "L0": {
+     "gloss": 0.0,
+     "chalk": 0.0,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.0,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.0,
+     "yellow": 0.0
+    },
+    "L1": {
+     "gloss": 0.238,
+     "chalk": 0.061,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.296,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.051,
+     "yellow": 0.081
+    },
+    "L2": {
+     "gloss": 0.641,
+     "chalk": 0.452,
+     "salt": 0.0,
+     "touchup": 0.025,
+     "rust": 0.514,
+     "tar": 0.765,
+     "scrape": 0.316,
+     "crack": 0.163,
+     "coats": 0.139,
+     "yellow": 0.344
+    },
+    "L3": {
+     "gloss": 0.278,
+     "chalk": 0.129,
+     "salt": 0.0,
+     "touchup": 0.9,
+     "rust": 0.03,
+     "tar": 0.181,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.464,
+     "yellow": 0.434
+    },
+    "L4": {
+     "gloss": 1.0,
+     "chalk": 0.907,
+     "salt": 0.0,
+     "touchup": 0.075,
+     "rust": 1.0,
+     "tar": 1.0,
+     "scrape": 0.936,
+     "crack": 0.922,
+     "coats": 0.045,
+     "yellow": 0.637
+    }
+   }
+  },
+  "Fleece": {
+   "slot": "MI_Frigate_Fleece",
+   "base_colour_linear": [
+    0.7,
+    0.66,
+    0.58
+   ],
+   "roughness": 0.95,
+   "surface": "below_decks"
+  },
+  "FloorCloth": {
+   "slot": "MI_Frigate_FloorCloth",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.45,
+   "surface": "below_decks"
+  },
+  "Gilt": {
+   "slot": "MI_Frigate_Gilt",
+   "base_colour_linear": [
+    0.8,
+    0.58,
+    0.24
+   ],
+   "roughness": 0.32,
+   "surface": "bright",
+   "kind": "gilt",
+   "wear": {
+    "L0": {
+     "dull": 0.0,
+     "dirt": 0.0,
+     "regilt": 0.0,
+     "chips": 0.0,
+     "gone": 0.0
+    },
+    "L1": {
+     "dull": 0.398,
+     "dirt": 0.494,
+     "regilt": 0.0,
+     "chips": 0.0,
+     "gone": 0.0
+    },
+    "L2": {
+     "dull": 1.0,
+     "dirt": 1.0,
+     "regilt": 0.015,
+     "chips": 0.547,
+     "gone": 0.0
+    },
+    "L3": {
+     "dull": 0.267,
+     "dirt": 0.302,
+     "regilt": 0.773,
+     "chips": 0.0,
+     "gone": 0.0
+    },
+    "L4": {
+     "dull": 1.0,
+     "dirt": 1.0,
+     "regilt": 0.075,
+     "chips": 1.0,
+     "gone": 0.9
+    }
+   }
+  },
+  "Glass": {
+   "slot": "MI_Frigate_Glass",
+   "base_colour_linear": [
+    0.05,
+    0.07,
+    0.07
+   ],
+   "roughness": 0.05,
+   "surface": "unweathered"
+  },
+  "GunDeckPlanks": {
+   "slot": "MI_Frigate_GunDeckPlanks",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.5,
+   "surface": "below_decks"
+  },
+  "Hemp": {
+   "slot": "MI_Frigate_Hemp",
+   "base_colour_linear": [
+    0.35,
+    0.28,
+    0.18
+   ],
+   "roughness": 0.85,
+   "surface": "rope",
+   "kind": "hemp",
+   "wear": {
+    "L0": {
+     "grey": 0.0,
+     "fuzz": 0.0,
+     "dark": 0.0,
+     "mildew": 0.0
+    },
+    "L1": {
+     "grey": 0.191,
+     "fuzz": 0.226,
+     "dark": 0.061,
+     "mildew": 0.0
+    },
+    "L2": {
+     "grey": 0.563,
+     "fuzz": 0.658,
+     "dark": 0.497,
+     "mildew": 0.0
+    },
+    "L3": {
+     "grey": 0.345,
+     "fuzz": 0.389,
+     "dark": 0.158,
+     "mildew": 0.0
+    },
+    "L4": {
+     "grey": 0.83,
+     "fuzz": 0.936,
+     "dark": 0.915,
+     "mildew": 1.0
+    }
+   }
+  },
+  "Horn": {
+   "slot": "MI_Frigate_Horn",
+   "base_colour_linear": [
+    0.8,
+    0.55,
+    0.25
+   ],
+   "roughness": 0.5,
+   "surface": "below_decks"
+  },
+  "HullBlack": {
+   "slot": "MI_Frigate_HullBlack",
+   "base_colour_linear": [
+    0.03,
+    0.028,
+    0.026
+   ],
+   "roughness": 0.55,
+   "surface": "paint",
+   "kind": "black",
+   "wear": {
+    "L0": {
+     "gloss": 0.0,
+     "chalk": 0.0,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.0,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.0
+    },
+    "L1": {
+     "gloss": 0.238,
+     "chalk": 0.061,
+     "salt": 0.395,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.296,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.051
+    },
+    "L2": {
+     "gloss": 0.641,
+     "chalk": 0.452,
+     "salt": 0.935,
+     "touchup": 0.025,
+     "rust": 0.514,
+     "tar": 0.765,
+     "scrape": 0.316,
+     "crack": 0.163,
+     "coats": 0.139
+    },
+    "L3": {
+     "gloss": 0.278,
+     "chalk": 0.129,
+     "salt": 0.068,
+     "touchup": 0.9,
+     "rust": 0.03,
+     "tar": 0.181,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.464
+    },
+    "L4": {
+     "gloss": 1.0,
+     "chalk": 0.907,
+     "salt": 0.94,
+     "touchup": 0.075,
+     "rust": 1.0,
+     "tar": 1.0,
+     "scrape": 0.936,
+     "crack": 0.922,
+     "coats": 0.045
+    }
+   }
+  },
+  "HullOchre": {
+   "slot": "MI_Frigate_HullOchre",
+   "base_colour_linear": [
+    0.6,
+    0.44,
+    0.17
+   ],
+   "roughness": 0.6,
+   "surface": "paint",
+   "kind": "ochre",
+   "wear": {
+    "L0": {
+     "gloss": 0.0,
+     "chalk": 0.0,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.0,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.0
+    },
+    "L1": {
+     "gloss": 0.238,
+     "chalk": 0.061,
+     "salt": 0.395,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.296,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.051
+    },
+    "L2": {
+     "gloss": 0.641,
+     "chalk": 0.452,
+     "salt": 0.935,
+     "touchup": 0.025,
+     "rust": 0.514,
+     "tar": 0.765,
+     "scrape": 0.316,
+     "crack": 0.163,
+     "coats": 0.139
+    },
+    "L3": {
+     "gloss": 0.278,
+     "chalk": 0.129,
+     "salt": 0.068,
+     "touchup": 0.9,
+     "rust": 0.03,
+     "tar": 0.181,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.464
+    },
+    "L4": {
+     "gloss": 1.0,
+     "chalk": 0.907,
+     "salt": 0.94,
+     "touchup": 0.075,
+     "rust": 1.0,
+     "tar": 1.0,
+     "scrape": 0.936,
+     "crack": 0.922,
+     "coats": 0.045
+    }
+   }
+  },
+  "HullRed": {
+   "slot": "MI_Frigate_HullRed",
+   "base_colour_linear": [
+    0.4,
+    0.07,
+    0.045
+   ],
+   "roughness": 0.6,
+   "surface": "paint",
+   "kind": "red",
+   "wear": {
+    "L0": {
+     "gloss": 0.0,
+     "chalk": 0.0,
+     "salt": 0.0,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.0,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.0
+    },
+    "L1": {
+     "gloss": 0.238,
+     "chalk": 0.061,
+     "salt": 0.395,
+     "touchup": 0.0,
+     "rust": 0.0,
+     "tar": 0.296,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.051
+    },
+    "L2": {
+     "gloss": 0.641,
+     "chalk": 0.452,
+     "salt": 0.935,
+     "touchup": 0.025,
+     "rust": 0.514,
+     "tar": 0.765,
+     "scrape": 0.316,
+     "crack": 0.163,
+     "coats": 0.139
+    },
+    "L3": {
+     "gloss": 0.278,
+     "chalk": 0.129,
+     "salt": 0.068,
+     "touchup": 0.9,
+     "rust": 0.03,
+     "tar": 0.181,
+     "scrape": 0.0,
+     "crack": 0.0,
+     "coats": 0.464
+    },
+    "L4": {
+     "gloss": 1.0,
+     "chalk": 0.907,
+     "salt": 0.94,
+     "touchup": 0.075,
+     "rust": 1.0,
+     "tar": 1.0,
+     "scrape": 0.936,
+     "crack": 0.922,
+     "coats": 0.045
+    }
+   }
+  },
+  "Interior": {
+   "slot": "MI_Frigate_Interior",
+   "base_colour_linear": [
+    0.66,
+    0.6,
+    0.5
+   ],
+   "roughness": 0.7,
+   "surface": "unweathered"
+  },
+  "Iron": {
+   "slot": "MI_Frigate_Iron",
+   "base_colour_linear": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "roughness": 0.5,
+   "surface": "iron",
+   "kind": "iron",
+   "wear": {
+    "L0": {
+     "brown": 0.0,
+     "bloom": 0.0,
+     "rust": 0.0,
+     "skin": 0.0
+    },
+    "L1": {
+     "brown": 0.41,
+     "bloom": 0.037,
+     "rust": 0.0,
+     "skin": 0.044
+    },
+    "L2": {
+     "brown": 0.66,
+     "bloom": 0.437,
+     "rust": 0.347,
+     "skin": 0.197
+    },
+    "L3": {
+     "brown": 0.117,
+     "bloom": 0.055,
+     "rust": 0.0,
+     "skin": 0.657
+    },
+    "L4": {
+     "brown": 0.932,
+     "bloom": 0.925,
+     "rust": 1.0,
+     "skin": 0.064
+    }
+   }
+  },
+  "Lead": {
+   "slot": "MI_Frigate_Lead",
+   "base_colour_linear": [
+    0.36,
+    0.36,
+    0.37
+   ],
+   "roughness": 0.65,
+   "surface": "iron",
+   "kind": "lead",
+   "wear": {
+    "L0": {
+     "dull": 0.0,
+     "oxide": 0.0,
+     "pits": 0.0
+    },
+    "L1": {
+     "dull": 1.0,
+     "oxide": 0.091,
+     "pits": 0.0
+    },
+    "L2": {
+     "dull": 1.0,
+     "oxide": 0.86,
+     "pits": 0.163
+    },
+    "L3": {
+     "dull": 1.0,
+     "oxide": 0.352,
+     "pits": 0.0
+    },
+    "L4": {
+     "dull": 1.0,
+     "oxide": 1.0,
+     "pits": 0.922
+    }
+   }
+  },
+  "Mahogany": {
+   "slot": "MI_Frigate_Mahogany",
+   "base_colour_linear": [
+    0.25,
+    0.1,
+    0.06
+   ],
+   "roughness": 0.45,
+   "surface": "below_decks"
+  },
+  "Netting": {
+   "slot": "MI_Frigate_Netting",
+   "base_colour_linear": [
+    0.3,
+    0.24,
+    0.15
+   ],
+   "roughness": 0.9,
+   "surface": "rope",
+   "kind": "hemp",
+   "wear": {
+    "L0": {
+     "grey": 0.0,
+     "fuzz": 0.0,
+     "dark": 0.0,
+     "mildew": 0.0
+    },
+    "L1": {
+     "grey": 0.191,
+     "fuzz": 0.226,
+     "dark": 0.061,
+     "mildew": 0.0
+    },
+    "L2": {
+     "grey": 0.563,
+     "fuzz": 0.658,
+     "dark": 0.497,
+     "mildew": 0.0
+    },
+    "L3": {
+     "grey": 0.345,
+     "fuzz": 0.389,
+     "dark": 0.158,
+     "mildew": 0.0
+    },
+    "L4": {
+     "grey": 0.83,
+     "fuzz": 0.936,
+     "dark": 0.915,
+     "mildew": 1.0
+    }
+   }
+  },
+  "Oak": {
+   "slot": "MI_Frigate_Oak",
+   "base_colour_linear": [
+    0.3,
+    0.2,
+    0.11
+   ],
+   "roughness": 0.7,
+   "surface": "wood",
+   "kind": "oak",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.284,
+     "scrub": 0.012,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.0
+    },
+    "L2": {
+     "silver": 1.0,
+     "scrub": 0.125,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 0.0
+    },
+    "L3": {
+     "silver": 1.0,
+     "scrub": 0.729,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.0
+    },
+    "L4": {
+     "silver": 1.0,
+     "scrub": 0.001,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 0.0
+    }
+   }
+  },
+  "OrlopPlanks": {
+   "slot": "MI_Frigate_OrlopPlanks",
+   "base_colour_linear": [
+    0.52,
+    0.43,
+    0.31
+   ],
+   "roughness": 0.8,
+   "surface": "below_decks"
+  },
+  "Pin": {
+   "slot": "MI_Frigate_Pin",
+   "base_colour_linear": [
+    0.17,
+    0.1,
+    0.055
+   ],
+   "roughness": 0.45,
+   "surface": "wood",
+   "kind": "blocks",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.142,
+     "scrub": 0.0,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.393
+    },
+    "L2": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 1.0
+    },
+    "L3": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.641
+    },
+    "L4": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 1.0
+    }
+   }
+  },
+  "Powder": {
+   "slot": "MI_Frigate_Powder",
+   "base_colour_linear": [
+    0.3,
+    0.24,
+    0.17
+   ],
+   "roughness": 0.8,
+   "surface": "below_decks"
+  },
+  "Rail": {
+   "slot": "MI_Frigate_Rail",
+   "base_colour_linear": [
+    0.4,
+    0.28,
+    0.16
+   ],
+   "roughness": 0.7,
+   "surface": "wood",
+   "kind": "oak",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.284,
+     "scrub": 0.012,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.0
+    },
+    "L2": {
+     "silver": 1.0,
+     "scrub": 0.125,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 0.0
+    },
+    "L3": {
+     "silver": 1.0,
+     "scrub": 0.729,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.0
+    },
+    "L4": {
+     "silver": 1.0,
+     "scrub": 0.001,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 0.0
+    }
+   }
+  },
+  "Sailcloth": {
+   "slot": "MI_Frigate_Sailcloth",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.9,
+   "surface": "canvas",
+   "kind": "sail",
+   "wear": {
+    "L0": {
+     "dinge": 0.0,
+     "grime": 0.0,
+     "mildew": 0.0,
+     "yellow": 0.0,
+     "patches": 0.0,
+     "stain": 0.0
+    },
+    "L1": {
+     "dinge": 0.197,
+     "grime": 0.296,
+     "mildew": 0.0,
+     "yellow": 0.047,
+     "patches": 0.085,
+     "stain": 0.0
+    },
+    "L2": {
+     "dinge": 0.601,
+     "grime": 0.902,
+     "mildew": 0.481,
+     "yellow": 0.218,
+     "patches": 0.911,
+     "stain": 0.329
+    },
+    "L3": {
+     "dinge": 0.366,
+     "grime": 0.549,
+     "mildew": 0.0,
+     "yellow": 0.837,
+     "patches": 1.0,
+     "stain": 0.0
+    },
+    "L4": {
+     "dinge": 0.765,
+     "grime": 1.0,
+     "mildew": 1.0,
+     "yellow": 0.433,
+     "patches": 1.0,
+     "stain": 1.0
+    }
+   }
+  },
+  "SailclothFA": {
+   "slot": "MI_Frigate_SailclothFA",
+   "base_colour_linear": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "roughness": 0.9,
+   "surface": "canvas",
+   "kind": "sail",
+   "wear": {
+    "L0": {
+     "dinge": 0.0,
+     "grime": 0.0,
+     "mildew": 0.0,
+     "yellow": 0.0,
+     "patches": 0.0,
+     "stain": 0.0
+    },
+    "L1": {
+     "dinge": 0.197,
+     "grime": 0.296,
+     "mildew": 0.0,
+     "yellow": 0.047,
+     "patches": 0.085,
+     "stain": 0.0
+    },
+    "L2": {
+     "dinge": 0.601,
+     "grime": 0.902,
+     "mildew": 0.481,
+     "yellow": 0.218,
+     "patches": 0.911,
+     "stain": 0.329
+    },
+    "L3": {
+     "dinge": 0.366,
+     "grime": 0.549,
+     "mildew": 0.0,
+     "yellow": 0.837,
+     "patches": 1.0,
+     "stain": 0.0
+    },
+    "L4": {
+     "dinge": 0.765,
+     "grime": 1.0,
+     "mildew": 1.0,
+     "yellow": 0.433,
+     "patches": 1.0,
+     "stain": 1.0
+    }
+   }
+  },
+  "Shadow": {
+   "slot": "MI_Frigate_Shadow",
+   "base_colour_linear": [
+    0.008,
+    0.007,
+    0.006
+   ],
+   "roughness": 0.9,
+   "surface": "unweathered"
+  },
+  "Sheave": {
+   "slot": "MI_Frigate_Sheave",
+   "base_colour_linear": [
+    0.13,
+    0.08,
+    0.045
+   ],
+   "roughness": 0.5,
+   "surface": "wood",
+   "kind": "blocks",
+   "wear": {
+    "L0": {
+     "silver": 0.0,
+     "scrub": 0.0,
+     "dark": 0.0,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.0,
+     "raised": 0.0,
+     "tar": 0.0
+    },
+    "L1": {
+     "silver": 0.142,
+     "scrub": 0.0,
+     "dark": 0.035,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.052,
+     "raised": 0.095,
+     "tar": 0.393
+    },
+    "L2": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.513,
+     "green": 0.275,
+     "stain": 0.456,
+     "checks": 0.347,
+     "raised": 0.463,
+     "tar": 1.0
+    },
+    "L3": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.176,
+     "green": 0.0,
+     "stain": 0.0,
+     "checks": 0.472,
+     "raised": 0.858,
+     "tar": 0.641
+    },
+    "L4": {
+     "silver": 0.5,
+     "scrub": 0.0,
+     "dark": 0.899,
+     "green": 1.0,
+     "stain": 1.0,
+     "checks": 0.715,
+     "raised": 0.753,
+     "tar": 1.0
+    }
+   }
+  },
+  "Shingle": {
+   "slot": "MI_Frigate_Shingle",
+   "base_colour_linear": [
+    0.33,
+    0.31,
+    0.28
+   ],
+   "roughness": 0.95,
+   "surface": "below_decks"
+  },
+  "Spar": {
+   "slot": "MI_Frigate_Spar",
+   "base_colour_linear": [
+    0.5,
+    0.36,
+    0.2
+   ],
+   "roughness": 0.5,
+   "surface": "wood",
+   "kind": "spar",
+   "wear": {
+    "L0": {
+     "amber": 0.0,
+     "dull": 0.0,
+     "fail": 0.0,
+     "tar": 0.0,
+     "dark": 0.0,
+     "checks": 0.0
+    },
+    "L1": {
+     "amber": 0.095,
+     "dull": 0.222,
+     "fail": 0.0,
+     "tar": 0.296,
+     "dark": 0.026,
+     "checks": 0.044
+    },
+    "L2": {
+     "amber": 0.463,
+     "dull": 0.537,
+     "fail": 0.275,
+     "tar": 0.855,
+     "dark": 0.485,
+     "checks": 0.324
+    },
+    "L3": {
+     "amber": 0.858,
+     "dull": 0.136,
+     "fail": 0.0,
+     "tar": 0.181,
+     "dark": 0.152,
+     "checks": 0.395
+    },
+    "L4": {
+     "amber": 0.753,
+     "dull": 0.854,
+     "fail": 1.0,
+     "tar": 1.0,
+     "dark": 0.891,
+     "checks": 0.708
+    }
+   }
+  },
+  "Tarpaulin": {
+   "slot": "MI_Frigate_Tarpaulin",
+   "base_colour_linear": [
+    0.06,
+    0.055,
+    0.05
+   ],
+   "roughness": 0.6,
+   "surface": "canvas",
+   "kind": "tarpaulin",
+   "wear": {
+    "L0": {
+     "dull": 0.0,
+     "crack": 0.0,
+     "grey": 0.0
+    },
+    "L1": {
+     "dull": 0.979,
+     "crack": 0.0,
+     "grey": 0.073
+    },
+    "L2": {
+     "dull": 1.0,
+     "crack": 0.456,
+     "grey": 0.688
+    },
+    "L3": {
+     "dull": 1.0,
+     "crack": 0.0,
+     "grey": 0.282
+    },
+    "L4": {
+     "dull": 1.0,
+     "crack": 1.0,
+     "grey": 1.0
+    }
+   }
+  },
+  "Tarred": {
+   "slot": "MI_Frigate_Tarred",
+   "base_colour_linear": [
+    0.055,
+    0.045,
+    0.035
+   ],
+   "roughness": 0.75,
+   "surface": "rope",
+   "kind": "tarred",
+   "wear": {
+    "L0": {
+     "dull": 0.0,
+     "brown": 0.0,
+     "bleach": 0.0,
+     "fibre": 0.0,
+     "rot": 0.0,
+     "retar": 0.0
+    },
+    "L1": {
+     "dull": 0.789,
+     "brown": 0.205,
+     "bleach": 0.073,
+     "fibre": 0.34,
+     "rot": 0.0,
+     "retar": 0.0
+    },
+    "L2": {
+     "dull": 0.908,
+     "brown": 0.66,
+     "bleach": 0.656,
+     "fibre": 1.0,
+     "rot": 0.0,
+     "retar": 0.025
+    },
+    "L3": {
+     "dull": 0.887,
+     "brown": 0.435,
+     "bleach": 0.229,
+     "fibre": 0.625,
+     "rot": 0.0,
+     "retar": 0.9
+    },
+    "L4": {
+     "dull": 1.0,
+     "brown": 0.978,
+     "bleach": 1.0,
+     "fibre": 1.0,
+     "rot": 0.912,
+     "retar": 0.075
+    }
+   }
+  },
+  "Tin": {
+   "slot": "MI_Frigate_Tin",
+   "base_colour_linear": [
+    0.55,
+    0.55,
+    0.56
+   ],
+   "roughness": 0.4,
+   "surface": "below_decks"
+  }
+ }
+}
