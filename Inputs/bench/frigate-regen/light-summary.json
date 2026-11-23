@@ -1,0 +1,52 @@
+{
+  "tolerance_mm": 15.04,
+  "screen": {
+    "width_px": 3840,
+    "aspect": 1.7778,
+    "fov_deg": 60.0,
+    "fov_max_deg": 120.0
+  },
+  "from_m": 50.0,
+  "pixels": 1.0,
+  "states": {
+    "underway": {
+      "hero_triangles": 4808586,
+      "light_triangles": 962320,
+      "share": 0.2001
+    },
+    "action": {
+      "hero_triangles": 4410506,
+      "light_triangles": 985314,
+      "share": 0.2234
+    },
+    "clewed": {
+      "hero_triangles": 4815402,
+      "light_triangles": 971342,
+      "share": 0.2017
+    },
+    "anchored": {
+      "hero_triangles": 4757550,
+      "light_triangles": 942955,
+      "share": 0.1982
+    }
+  },
+  "largest_share": 0.2234,
+  "budget_share": 0.25,
+  "largest_light_triangles": 985314,
+  "budget_triangles": 1000000,
+  "unique_meshes": 505,
+  "twins": 1221,
+  "parts_outside": 1221,
+  "light_triangles_unique": 1332673,
+  "hero_triangles_unique": 6652574,
+  "worst_error_mm": 15.03,
+  "worst_paint_slide_p99_mm": 14.47,
+  "worst_switch_error_mm": 15.03,
+  "one_pixel_from_m": {
+    "4K at 60 deg": 50.0,
+    "1080p at 90 deg": 14.4
+  },
+  "failing": [],
+  "seconds": 4665,
+  "ok": true
+}

@@ -1,0 +1,3373 @@
+00:00.703  blend            | Read blend: "D:\dev\frigate\lt\frigate_light.blend"
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_AnchorEyebolts.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_AnchorEyebolts_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_AnchorEyebolts.fbx                    1136 tris  light 170  (0 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Backbone.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Backbone_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_Backbone.fbx                          1484 tris  light 296  (1 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Belfry.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Belfry_Light.fbx'
+export finished in 0.0059 sec.
+Export: Outside\SM_Frigate_Belfry.fbx                            1024 tris  light 498  (1 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Billboard.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Billboard_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Billboard.fbx                         1528 tris  light 152  (2 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Binnacle.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Binnacle_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_Binnacle.fbx                           708 tris  light 336  (2 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Clewed.fbx'
+export finished in 0.0718 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Clewed_Light.fbx'
+export finished in 0.0324 sec.
+Export: Outside\SM_Frigate_Blocks_Fore_Clewed.fbx               55472 tris  light 13426  (3 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Furled.fbx'
+export finished in 0.0717 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Furled_Light.fbx'
+export finished in 0.0334 sec.
+Export: Outside\SM_Frigate_Blocks_Fore_Furled.fbx               55424 tris  light 13394  (3 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Set.fbx'
+export finished in 0.0777 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Fore_Set_Light.fbx'
+export finished in 0.0289 sec.
+Export: Outside\SM_Frigate_Blocks_Fore_Set.fbx                  55472 tris  light 10958  (4 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Headsails_Set.fbx'
+export finished in 0.0039 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Headsails_Set_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_Blocks_Headsails_Set.fbx               360 tris  light 54  (4 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Clewed.fbx'
+export finished in 0.0704 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Clewed_Light.fbx'
+export finished in 0.0321 sec.
+Export: Outside\SM_Frigate_Blocks_Main_Clewed.fbx               53920 tris  light 13032  (5 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Furled.fbx'
+export finished in 0.0707 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Furled_Light.fbx'
+export finished in 0.0374 sec.
+Export: Outside\SM_Frigate_Blocks_Main_Furled.fbx               53872 tris  light 15404  (5 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Set.fbx'
+export finished in 0.0712 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Main_Set_Light.fbx'
+export finished in 0.0324 sec.
+Export: Outside\SM_Frigate_Blocks_Main_Set.fbx                  53920 tris  light 13032  (6 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Clewed.fbx'
+export finished in 0.0580 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Clewed_Light.fbx'
+export finished in 0.0211 sec.
+Export: Outside\SM_Frigate_Blocks_Mizzen_Clewed.fbx             43928 tris  light 7698  (6 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Furled.fbx'
+export finished in 0.0589 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Furled_Light.fbx'
+export finished in 0.0205 sec.
+Export: Outside\SM_Frigate_Blocks_Mizzen_Furled.fbx             43928 tris  light 7698  (7 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Set.fbx'
+export finished in 0.0587 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Mizzen_Set_Light.fbx'
+export finished in 0.0217 sec.
+Export: Outside\SM_Frigate_Blocks_Mizzen_Set.fbx                43928 tris  light 7698  (7 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Clewed.fbx'
+export finished in 0.0143 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Clewed_Light.fbx'
+export finished in 0.0078 sec.
+Export: Outside\SM_Frigate_Blocks_Spanker_Clewed.fbx             7612 tris  light 1844  (8 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Furled.fbx'
+export finished in 0.0144 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Furled_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_Blocks_Spanker_Furled.fbx             7612 tris  light 1844  (8 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Set.fbx'
+export finished in 0.0144 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spanker_Set_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_Blocks_Spanker_Set.fbx                7612 tris  light 1844  (9 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Clewed.fbx'
+export finished in 0.0041 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Clewed_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_Blocks_Spritsail_Clewed.fbx            240 tris  light 30  (9 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Furled.fbx'
+export finished in 0.0038 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Furled_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Blocks_Spritsail_Furled.fbx            240 tris  light 30  (9 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Set.fbx'
+export finished in 0.0041 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Spritsail_Set_Light.fbx'
+export finished in 0.0036 sec.
+Export: Outside\SM_Frigate_Blocks_Spritsail_Set.fbx               240 tris  light 30  (10 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Clewed.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Clewed_Light.fbx'
+export finished in 0.0046 sec.
+Export: Outside\SM_Frigate_Blocks_Staysails_Clewed.fbx            896 tris  light 126  (10 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Furled.fbx'
+export finished in 0.0054 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Furled_Light.fbx'
+export finished in 0.0049 sec.
+Export: Outside\SM_Frigate_Blocks_Staysails_Furled.fbx            896 tris  light 126  (11 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Set.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Blocks_Staysails_Set_Light.fbx'
+export finished in 0.0047 sec.
+Export: Outside\SM_Frigate_Blocks_Staysails_Set.fbx               896 tris  light 126  (11 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BoatCradles.fbx'
+export finished in 0.0072 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BoatCradles_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_BoatCradles.fbx                       2532 tris  light 758  (12 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BoatGripes.fbx'
+export finished in 0.0286 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BoatGripes_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_BoatGripes.fbx                       24520 tris  light 734  (12 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bower.fbx'
+export finished in 0.0157 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bower_Light.fbx'
+export finished in 0.0091 sec.
+Export: Outside\SM_Frigate_Bower.fbx                             8976 tris  light 2692  (13 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bowsprit.fbx'
+export finished in 0.0102 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bowsprit_Light.fbx'
+export finished in 0.0071 sec.
+Export: Outside\SM_Frigate_Bowsprit.fbx                          4832 tris  light 1524  (13 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritBed.fbx'
+export finished in 0.0040 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritBed_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_BowspritBed.fbx                        224 tris  light 88  (13 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritCap.fbx'
+export finished in 0.0036 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritCap_Light.fbx'
+export finished in 0.0036 sec.
+Export: Outside\SM_Frigate_BowspritCap.fbx                         16 tris  light 12  (14 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritStep.fbx'
+export finished in 0.0039 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BowspritStep_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_BowspritStep.fbx                       188 tris  light 140  (14 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BreastRails.fbx'
+export finished in 0.0127 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BreastRails_Light.fbx'
+export finished in 0.0075 sec.
+Export: Outside\SM_Frigate_BreastRails.fbx                       8128 tris  light 3334  (15 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bulkheads.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Bulkheads_Light.fbx'
+export finished in 0.0044 sec.
+Export: Outside\SM_Frigate_Bulkheads.fbx                         1016 tris  light 20  (15 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BulwarkIn.fbx'
+export finished in 0.0184 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BulwarkIn_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_BulwarkIn.fbx                        13040 tris  light 521  (15 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BulwarkTop.fbx'
+export finished in 0.0077 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_BulwarkTop_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_BulwarkTop.fbx                        2792 tris  light 139  (16 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowFrame.fbx'
+export finished in 0.0059 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowFrame_Light.fbx'
+export finished in 0.0037 sec.
+Export: Outside\SM_Frigate_CabinWindowFrame.fbx                  1536 tris  light 76  (16 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowGlass.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowGlass_Light.fbx'
+export finished in 0.0036 sec.
+Export: Outside\SM_Frigate_CabinWindowGlass.fbx                  1216 tris  light 24  (17 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowSash.fbx'
+export finished in 0.0069 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CabinWindowSash_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_CabinWindowSash.fbx                   1896 tris  light 284  (17 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cable.fbx'
+export finished in 0.0755 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cable_Light.fbx'
+export finished in 0.0272 sec.
+Export: Outside\SM_Frigate_Cable.fbx                            67944 tris  light 10190  (18 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Capstan.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Capstan_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Capstan.fbx                           1544 tris  light 674  (18 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CapstanPawls.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CapstanPawls_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_CapstanPawls.fbx                       496 tris  light 210  (18 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Carr32_Chocks.fbx'
+export finished in 0.0097 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Carr32_Chocks_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Carr32_Chocks.fbx                     5456 tris  light 272  (19 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CatStopper.fbx'
+export finished in 0.0111 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_CatStopper_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_CatStopper.fbx                        6520 tris  light 194  (19 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cathead.fbx'
+export finished in 0.0128 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cathead_Light.fbx'
+export finished in 0.0059 sec.
+Export: Outside\SM_Frigate_Cathead.fbx                           7060 tris  light 810  (20 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Channels.fbx'
+export finished in 0.0109 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Channels_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_Channels.fbx                          5304 tris  light 264  (20 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Chimney.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Chimney_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_Chimney.fbx                           1474 tris  light 427  (20 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Companion.fbx'
+export finished in 0.0046 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Companion_Light.fbx'
+export finished in 0.0047 sec.
+Export: Outside\SM_Frigate_Companion.fbx                          368 tris  light 152  (21 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cutter_P.fbx'
+export finished in 0.0646 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cutter_P_Light.fbx'
+export finished in 0.0366 sec.
+Export: Outside\SM_Frigate_Cutter_P.fbx                         53032 tris  light 16581  (21 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cutter_S.fbx'
+export finished in 0.0648 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Cutter_S_Light.fbx'
+export finished in 0.0363 sec.
+Export: Outside\SM_Frigate_Cutter_S.fbx                         53032 tris  light 16581  (22 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Fore.fbx'
+export finished in 0.0557 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Fore_Light.fbx'
+export finished in 0.0451 sec.
+Export: Outside\SM_Frigate_Deadeyes_Fore.fbx                    40200 tris  light 21484  (22 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Main.fbx'
+export finished in 0.0584 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Main_Light.fbx'
+export finished in 0.0463 sec.
+Export: Outside\SM_Frigate_Deadeyes_Main.fbx                    42912 tris  light 23056  (23 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Mizzen.fbx'
+export finished in 0.0465 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Deadeyes_Mizzen_Light.fbx'
+export finished in 0.0294 sec.
+Export: Outside\SM_Frigate_Deadeyes_Mizzen.fbx                  31872 tris  light 14418  (23 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_EntrySteps.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_EntrySteps_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_EntrySteps.fbx                        1144 tris  light 286  (24 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_FigureBase.fbx'
+export finished in 0.0049 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_FigureBase_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_FigureBase.fbx                         788 tris  light 98  (24 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_FigureBaseGilt.fbx'
+export finished in 0.0076 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_FigureBaseGilt_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_FigureBaseGilt.fbx                    2672 tris  light 334  (25 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Figurehead.fbx'
+export finished in 0.2499 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Figurehead_Light.fbx'
+export finished in 0.0144 sec.
+Export: Outside\SM_Frigate_Figurehead.fbx                      150000 tris  light 3750  (25 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Gallery.fbx'
+export finished in 0.0312 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Gallery_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Gallery.fbx                          18080 tris  light 1174  (26 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryCarving.fbx'
+export finished in 0.0485 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryCarving_Light.fbx'
+export finished in 0.0222 sec.
+Export: Outside\SM_Frigate_GalleryCarving.fbx                   34464 tris  light 8616  (26 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryFrame.fbx'
+export finished in 0.0147 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryFrame_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_GalleryFrame.fbx                      6928 tris  light 554  (27 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryGlass.fbx'
+export finished in 0.0117 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GalleryGlass_Light.fbx'
+export finished in 0.0045 sec.
+Export: Outside\SM_Frigate_GalleryGlass.fbx                      4936 tris  light 246  (27 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GallerySash.fbx'
+export finished in 0.0158 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GallerySash_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_GallerySash.fbx                       7544 tris  light 1130  (27 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Gig.fbx'
+export finished in 0.0522 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Gig_Light.fbx'
+export finished in 0.0316 sec.
+Export: Outside\SM_Frigate_Gig.fbx                              42196 tris  light 12795  (28 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GigChocks.fbx'
+export finished in 0.0041 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GigChocks_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_GigChocks.fbx                          388 tris  light 116  (28 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GripeEyebolts.fbx'
+export finished in 0.0079 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GripeEyebolts_Light.fbx'
+export finished in 0.0054 sec.
+Export: Outside\SM_Frigate_GripeEyebolts.fbx                     3408 tris  light 510  (29 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GunWall.fbx'
+export finished in 0.0181 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_GunWall_Light.fbx'
+export finished in 0.0048 sec.
+Export: Outside\SM_Frigate_GunWall.fbx                          15140 tris  light 605  (29 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Hatches.fbx'
+export finished in 0.0198 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Hatches_Light.fbx'
+export finished in 0.0203 sec.
+Export: Outside\SM_Frigate_Hatches.fbx                          16104 tris  light 10466  (30 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawseBolster.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawseBolster_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_HawseBolster.fbx                       792 tris  light 236  (30 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawseLining.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawseLining_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_HawseLining.fbx                       1536 tris  light 460  (30 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawsePlug.fbx'
+export finished in 0.0040 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HawsePlug_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_HawsePlug.fbx                          384 tris  light 152  (31 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadCheeks.fbx'
+export finished in 0.0225 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadCheeks_Light.fbx'
+export finished in 0.0063 sec.
+Export: Outside\SM_Frigate_HeadCheeks.fbx                       14744 tris  light 1178  (31 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadGratings.fbx'
+export finished in 0.0096 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadGratings_Light.fbx'
+export finished in 0.0092 sec.
+Export: Outside\SM_Frigate_HeadGratings.fbx                      4400 tris  light 3520  (32 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadKnee.fbx'
+export finished in 0.0166 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadKnee_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_HeadKnee.fbx                         10052 tris  light 652  (32 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadRails.fbx'
+export finished in 0.0191 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadRails_Light.fbx'
+export finished in 0.0055 sec.
+Export: Outside\SM_Frigate_HeadRails.fbx                        12080 tris  light 966  (32 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadTimbers.fbx'
+export finished in 0.0048 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_HeadTimbers_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_HeadTimbers.fbx                        992 tris  light 248  (33 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Jibboom.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Jibboom_Light.fbx'
+export finished in 0.0044 sec.
+Export: Outside\SM_Frigate_Jibboom.fbx                           1808 tris  light 278  (33 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_KedgeLarge.fbx'
+export finished in 0.0084 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_KedgeLarge_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_KedgeLarge.fbx                        3504 tris  light 524  (34 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_KedgeSmall.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_KedgeSmall_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_KedgeSmall.fbx                        3492 tris  light 522  (34 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Knightheads.fbx'
+export finished in 0.0039 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Knightheads_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Knightheads.fbx                        328 tris  light 48  (34 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ladders.fbx'
+export finished in 0.0068 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ladders_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Ladders.fbx                           2176 tris  light 1280  (35 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LanternGlass.fbx'
+export finished in 0.0034 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LanternGlass_Light.fbx'
+export finished in 0.0036 sec.
+Export: Outside\SM_Frigate_LanternGlass.fbx                        40 tris  light 40  (35 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Lanterns.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Lanterns_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Lanterns.fbx                          1120 tris  light 448  (36 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Launch.fbx'
+export finished in 0.0634 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Launch_Light.fbx'
+export finished in 0.0299 sec.
+Export: Outside\SM_Frigate_Launch.fbx                           55028 tris  light 13859  (36 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LidLanyards_Open.fbx'
+export finished in 0.0083 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LidLanyards_Open_Light.fbx'
+export finished in 0.0054 sec.
+Export: Outside\SM_Frigate_LidLanyards_Open.fbx                  3408 tris  light 1344  (37 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LidLanyards_Shut.fbx'
+export finished in 0.0219 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_LidLanyards_Shut_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_LidLanyards_Shut.fbx                 16128 tris  light 2688  (37 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_MastCoats.fbx'
+export finished in 0.0093 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_MastCoats_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_MastCoats.fbx                         5184 tris  light 1036  (37 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Fore.fbx'
+export finished in 0.0130 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Fore_Light.fbx'
+export finished in 0.0077 sec.
+Export: Outside\SM_Frigate_Mast_Fore.fbx                         7856 tris  light 1986  (38 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Main.fbx'
+export finished in 0.0157 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Main_Light.fbx'
+export finished in 0.0095 sec.
+Export: Outside\SM_Frigate_Mast_Main.fbx                         9008 tris  light 3080  (38 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Mizzen.fbx'
+export finished in 0.0125 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Mast_Mizzen_Light.fbx'
+export finished in 0.0071 sec.
+Export: Outside\SM_Frigate_Mast_Mizzen.fbx                       7472 tris  light 1560  (39 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Moulding.fbx'
+export finished in 0.0411 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Moulding_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Moulding.fbx                         34572 tris  light 864  (39 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Nettings.fbx'
+export finished in 0.0806 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Nettings_Light.fbx'
+export finished in 0.0490 sec.
+Export: Outside\SM_Frigate_Nettings.fbx                         66552 tris  light 36601  (40 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_PinRails.fbx'
+export finished in 0.1128 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_PinRails_Light.fbx'
+export finished in 0.0719 sec.
+Export: Outside\SM_Frigate_PinRails.fbx                         96064 tris  light 39692  (40 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_PortLinings.fbx'
+export finished in 0.0097 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_PortLinings_Light.fbx'
+export finished in 0.0070 sec.
+Export: Outside\SM_Frigate_PortLinings.fbx                       3816 tris  light 1526  (41 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_QuarterPieces.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_QuarterPieces_Light.fbx'
+export finished in 0.0045 sec.
+Export: Outside\SM_Frigate_QuarterPieces.fbx                     1592 tris  light 318  (41 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_RailCap.fbx'
+export finished in 0.0170 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_RailCap_Light.fbx'
+export finished in 0.0054 sec.
+Export: Outside\SM_Frigate_RailCap.fbx                          11100 tris  light 720  (41 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Fore.fbx'
+export finished in 0.0253 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Fore_Light.fbx'
+export finished in 0.0117 sec.
+Export: Outside\SM_Frigate_Ratlines_Fore.fbx                    17370 tris  light 3474  (42 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Main.fbx'
+export finished in 0.0283 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Main_Light.fbx'
+export finished in 0.0133 sec.
+Export: Outside\SM_Frigate_Ratlines_Main.fbx                    20380 tris  light 4076  (42 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Mizzen.fbx'
+export finished in 0.0134 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Ratlines_Mizzen_Light.fbx'
+export finished in 0.0053 sec.
+Export: Outside\SM_Frigate_Ratlines_Mizzen.fbx                   7340 tris  light 706  (43 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Bowsprit.fbx'
+export finished in 0.0407 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Bowsprit_Light.fbx'
+export finished in 0.0227 sec.
+Export: Outside\SM_Frigate_Rigging_Bowsprit.fbx                 29428 tris  light 9226  (43 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Fore.fbx'
+export finished in 0.0559 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Fore_Light.fbx'
+export finished in 0.0185 sec.
+Export: Outside\SM_Frigate_Rigging_Fore.fbx                     44892 tris  light 7926  (44 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Main.fbx'
+export finished in 0.0593 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Main_Light.fbx'
+export finished in 0.0186 sec.
+Export: Outside\SM_Frigate_Rigging_Main.fbx                     47440 tris  light 8324  (44 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Mizzen.fbx'
+export finished in 0.0409 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rigging_Mizzen_Light.fbx'
+export finished in 0.0115 sec.
+Export: Outside\SM_Frigate_Rigging_Mizzen.fbx                   29280 tris  light 4490  (45 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rudder.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Rudder_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Rudder.fbx                            1460 tris  light 72  (45 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_RudderIrons.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_RudderIrons_Light.fbx'
+export finished in 0.0049 sec.
+Export: Outside\SM_Frigate_RudderIrons.fbx                       2376 tris  light 474  (45 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Clewed.fbx'
+export finished in 0.0226 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Clewed_Light.fbx'
+export finished in 0.0132 sec.
+Export: Outside\SM_Frigate_Running_Fore_Clewed.fbx              15852 tris  light 7568  (46 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Furled.fbx'
+export finished in 0.0201 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Furled_Light.fbx'
+export finished in 0.0115 sec.
+Export: Outside\SM_Frigate_Running_Fore_Furled.fbx              12340 tris  light 5944  (46 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Set.fbx'
+export finished in 0.0197 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Fore_Set_Light.fbx'
+export finished in 0.0118 sec.
+Export: Outside\SM_Frigate_Running_Fore_Set.fbx                 12780 tris  light 5986  (47 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Headsails_Set.fbx'
+export finished in 0.0038 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Headsails_Set_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Running_Headsails_Set.fbx              144 tris  light 76  (47 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Clewed.fbx'
+export finished in 0.0242 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Clewed_Light.fbx'
+export finished in 0.0136 sec.
+Export: Outside\SM_Frigate_Running_Main_Clewed.fbx              16500 tris  light 7840  (47 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Furled.fbx'
+export finished in 0.0188 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Furled_Light.fbx'
+export finished in 0.0114 sec.
+Export: Outside\SM_Frigate_Running_Main_Furled.fbx              12380 tris  light 5984  (48 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Set.fbx'
+export finished in 0.0198 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Main_Set_Light.fbx'
+export finished in 0.0121 sec.
+Export: Outside\SM_Frigate_Running_Main_Set.fbx                 12868 tris  light 6042  (48 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Clewed.fbx'
+export finished in 0.0182 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Clewed_Light.fbx'
+export finished in 0.0105 sec.
+Export: Outside\SM_Frigate_Running_Mizzen_Clewed.fbx            11472 tris  light 4944  (49 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Furled.fbx'
+export finished in 0.0163 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Furled_Light.fbx'
+export finished in 0.0098 sec.
+Export: Outside\SM_Frigate_Running_Mizzen_Furled.fbx             9124 tris  light 3944  (49 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Set.fbx'
+export finished in 0.0165 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Mizzen_Set_Light.fbx'
+export finished in 0.0097 sec.
+Export: Outside\SM_Frigate_Running_Mizzen_Set.fbx                9972 tris  light 4192  (50 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Clewed.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Clewed_Light.fbx'
+export finished in 0.0051 sec.
+Export: Outside\SM_Frigate_Running_Spanker_Clewed.fbx             960 tris  light 496  (50 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Furled.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Furled_Light.fbx'
+export finished in 0.0047 sec.
+Export: Outside\SM_Frigate_Running_Spanker_Furled.fbx             960 tris  light 496  (50 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Set.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spanker_Set_Light.fbx'
+export finished in 0.0046 sec.
+Export: Outside\SM_Frigate_Running_Spanker_Set.fbx               1176 tris  light 600  (51 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Clewed.fbx'
+export finished in 0.0040 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Clewed_Light.fbx'
+export finished in 0.0037 sec.
+Export: Outside\SM_Frigate_Running_Spritsail_Clewed.fbx           272 tris  light 120  (51 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Furled.fbx'
+export finished in 0.0046 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Furled_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Running_Spritsail_Furled.fbx           272 tris  light 120  (52 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Set.fbx'
+export finished in 0.0039 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Spritsail_Set_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_Running_Spritsail_Set.fbx              272 tris  light 120  (52 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Clewed.fbx'
+export finished in 0.0037 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Clewed_Light.fbx'
+export finished in 0.0036 sec.
+Export: Outside\SM_Frigate_Running_Staysails_Clewed.fbx            96 tris  light 48  (52 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Furled.fbx'
+export finished in 0.0039 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Furled_Light.fbx'
+export finished in 0.0037 sec.
+Export: Outside\SM_Frigate_Running_Staysails_Furled.fbx            96 tris  light 48  (53 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Set.fbx'
+export finished in 0.0041 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Running_Staysails_Set_Light.fbx'
+export finished in 0.0037 sec.
+Export: Outside\SM_Frigate_Running_Staysails_Set.fbx              228 tris  light 120  (53 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Clewed.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Clewed_Light.fbx'
+export finished in 0.0053 sec.
+Export: Outside\SM_Frigate_Sail_FlyingJib_Clewed.fbx              512 tris  light 512  (54 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Furled.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Furled_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Sail_FlyingJib_Furled.fbx              784 tris  light 784  (54 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Set.fbx'
+export finished in 0.0144 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_FlyingJib_Set_Light.fbx'
+export finished in 0.0106 sec.
+Export: Outside\SM_Frigate_Sail_FlyingJib_Set.fbx                5726 tris  light 3619  (54 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Clewed.fbx'
+export finished in 0.0205 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Clewed_Light.fbx'
+export finished in 0.0170 sec.
+Export: Outside\SM_Frigate_Sail_ForeCourse_Clewed.fbx            9704 tris  light 7333  (55 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Furled.fbx'
+export finished in 0.0143 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Furled_Light.fbx'
+export finished in 0.0122 sec.
+Export: Outside\SM_Frigate_Sail_ForeCourse_Furled.fbx            6688 tris  light 4346  (55 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Head.fbx'
+export finished in 0.0185 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Head_Light.fbx'
+export finished in 0.0091 sec.
+Export: Outside\SM_Frigate_Sail_ForeCourse_Head.fbx              9772 tris  light 2816  (56 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Set.fbx'
+export finished in 0.0172 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeCourse_Set_Light.fbx'
+export finished in 0.0129 sec.
+Export: Outside\SM_Frigate_Sail_ForeCourse_Set.fbx               7144 tris  light 4904  (56 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Clewed.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Clewed_Light.fbx'
+export finished in 0.0073 sec.
+Export: Outside\SM_Frigate_Sail_ForeRoyal_Clewed.fbx             2076 tris  light 1796  (56 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Furled.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Furled_Light.fbx'
+export finished in 0.0064 sec.
+Export: Outside\SM_Frigate_Sail_ForeRoyal_Furled.fbx             1352 tris  light 1352  (57 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Head.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Head_Light.fbx'
+export finished in 0.0060 sec.
+Export: Outside\SM_Frigate_Sail_ForeRoyal_Head.fbx               1892 tris  light 664  (57 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Set.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeRoyal_Set_Light.fbx'
+export finished in 0.0053 sec.
+Export: Outside\SM_Frigate_Sail_ForeRoyal_Set.fbx                1236 tris  light 504  (57 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Clewed.fbx'
+export finished in 0.0148 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Clewed_Light.fbx'
+export finished in 0.0127 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopgallant_Clewed.fbx        5708 tris  light 4928  (58 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Furled.fbx'
+export finished in 0.0077 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Furled_Light.fbx'
+export finished in 0.0081 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopgallant_Furled.fbx        2168 tris  light 2168  (58 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Head.fbx'
+export finished in 0.0088 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Head_Light.fbx'
+export finished in 0.0060 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopgallant_Head.fbx          3044 tris  light 1044  (59 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Set.fbx'
+export finished in 0.0109 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopgallant_Set_Light.fbx'
+export finished in 0.0084 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopgallant_Set.fbx           3600 tris  light 1557  (59 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Clewed.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Clewed_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopmastStaysail_Clewed.fbx      512 tris  light 512  (59 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Furled.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Furled_Light.fbx'
+export finished in 0.0060 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopmastStaysail_Furled.fbx     1040 tris  light 832  (60 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Set.fbx'
+export finished in 0.0105 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopmastStaysail_Set_Light.fbx'
+export finished in 0.0097 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopmastStaysail_Set.fbx      3601 tris  light 2785  (60 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Clewed.fbx'
+export finished in 0.0298 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Clewed_Light.fbx'
+export finished in 0.0206 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopsail_Clewed.fbx          15432 tris  light 9202  (61 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Furled.fbx'
+export finished in 0.0110 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Furled_Light.fbx'
+export finished in 0.0103 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopsail_Furled.fbx           3944 tris  light 3154  (61 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Head.fbx'
+export finished in 0.0139 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Head_Light.fbx'
+export finished in 0.0069 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopsail_Head.fbx             6524 tris  light 1810  (61 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Set.fbx'
+export finished in 0.0261 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_ForeTopsail_Set_Light.fbx'
+export finished in 0.0155 sec.
+Export: Outside\SM_Frigate_Sail_ForeTopsail_Set.fbx             10792 tris  light 6137  (62 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Clewed.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Clewed_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Sail_Jib_Clewed.fbx                    608 tris  light 608  (62 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Furled.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Furled_Light.fbx'
+export finished in 0.0065 sec.
+Export: Outside\SM_Frigate_Sail_Jib_Furled.fbx                   1160 tris  light 928  (63 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Set.fbx'
+export finished in 0.0137 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Jib_Set_Light.fbx'
+export finished in 0.0112 sec.
+Export: Outside\SM_Frigate_Sail_Jib_Set.fbx                      5287 tris  light 4135  (63 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Clewed.fbx'
+export finished in 0.0249 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Clewed_Light.fbx'
+export finished in 0.0215 sec.
+Export: Outside\SM_Frigate_Sail_MainCourse_Clewed.fbx           12056 tris  light 8987  (63 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Furled.fbx'
+export finished in 0.0165 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Furled_Light.fbx'
+export finished in 0.0147 sec.
+Export: Outside\SM_Frigate_Sail_MainCourse_Furled.fbx            7472 tris  light 5976  (64 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Head.fbx'
+export finished in 0.0205 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Head_Light.fbx'
+export finished in 0.0093 sec.
+Export: Outside\SM_Frigate_Sail_MainCourse_Head.fbx             10732 tris  light 3104  (64 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Set.fbx'
+export finished in 0.0183 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainCourse_Set_Light.fbx'
+export finished in 0.0148 sec.
+Export: Outside\SM_Frigate_Sail_MainCourse_Set.fbx               8536 tris  light 5864  (65 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Clewed.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Clewed_Light.fbx'
+export finished in 0.0077 sec.
+Export: Outside\SM_Frigate_Sail_MainRoyal_Clewed.fbx             2284 tris  light 1880  (65 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Furled.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Furled_Light.fbx'
+export finished in 0.0063 sec.
+Export: Outside\SM_Frigate_Sail_MainRoyal_Furled.fbx             1640 tris  light 1312  (65 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Head.fbx'
+export finished in 0.0076 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Head_Light.fbx'
+export finished in 0.0060 sec.
+Export: Outside\SM_Frigate_Sail_MainRoyal_Head.fbx               2276 tris  light 798  (66 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Set.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainRoyal_Set_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_Sail_MainRoyal_Set.fbx                1364 tris  light 552  (66 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Clewed.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Clewed_Light.fbx'
+export finished in 0.0051 sec.
+Export: Outside\SM_Frigate_Sail_MainStaysail_Clewed.fbx           544 tris  light 544  (67 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Furled.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Furled_Light.fbx'
+export finished in 0.0057 sec.
+Export: Outside\SM_Frigate_Sail_MainStaysail_Furled.fbx           880 tris  light 572  (67 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Set.fbx'
+export finished in 0.0118 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainStaysail_Set_Light.fbx'
+export finished in 0.0102 sec.
+Export: Outside\SM_Frigate_Sail_MainStaysail_Set.fbx             4095 tris  light 3255  (67 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Clewed.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Clewed_Light.fbx'
+export finished in 0.0051 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallantStaysail_Clewed.fbx      544 tris  light 544  (68 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Furled.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Furled_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallantStaysail_Furled.fbx      896 tris  light 716  (68 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Set.fbx'
+export finished in 0.0115 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallantStaysail_Set_Light.fbx'
+export finished in 0.0091 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallantStaysail_Set.fbx     4169 tris  light 2684  (68 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Clewed.fbx'
+export finished in 0.0155 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Clewed_Light.fbx'
+export finished in 0.0120 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallant_Clewed.fbx        6532 tris  light 3972  (69 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Furled.fbx'
+export finished in 0.0078 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Furled_Light.fbx'
+export finished in 0.0082 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallant_Furled.fbx        2368 tris  light 2368  (69 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Head.fbx'
+export finished in 0.0096 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Head_Light.fbx'
+export finished in 0.0105 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallant_Head.fbx          3292 tris  light 1114  (70 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Set.fbx'
+export finished in 0.0120 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopgallant_Set_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_Sail_MainTopgallant_Set.fbx           4084 tris  light 1816  (70 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Clewed.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Clewed_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Sail_MainTopmastStaysail_Clewed.fbx      640 tris  light 640  (70 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Furled.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Furled_Light.fbx'
+export finished in 0.0060 sec.
+Export: Outside\SM_Frigate_Sail_MainTopmastStaysail_Furled.fbx     1072 tris  light 856  (71 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Set.fbx'
+export finished in 0.0130 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopmastStaysail_Set_Light.fbx'
+export finished in 0.0102 sec.
+Export: Outside\SM_Frigate_Sail_MainTopmastStaysail_Set.fbx      4859 tris  light 3140  (71 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Clewed.fbx'
+export finished in 0.0319 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Clewed_Light.fbx'
+export finished in 0.0225 sec.
+Export: Outside\SM_Frigate_Sail_MainTopsail_Clewed.fbx          17040 tris  light 10155  (72 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Furled.fbx'
+export finished in 0.0113 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Furled_Light.fbx'
+export finished in 0.0106 sec.
+Export: Outside\SM_Frigate_Sail_MainTopsail_Furled.fbx           4640 tris  light 3712  (72 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Head.fbx'
+export finished in 0.0150 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Head_Light.fbx'
+export finished in 0.0088 sec.
+Export: Outside\SM_Frigate_Sail_MainTopsail_Head.fbx             7148 tris  light 2642  (72 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Set.fbx'
+export finished in 0.0272 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MainTopsail_Set_Light.fbx'
+export finished in 0.0202 sec.
+Export: Outside\SM_Frigate_Sail_MainTopsail_Set.fbx             11920 tris  light 8299  (73 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Clewed.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Clewed_Light.fbx'
+export finished in 0.0063 sec.
+Export: Outside\SM_Frigate_Sail_MizzenRoyal_Clewed.fbx           1660 tris  light 1116  (73 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Furled.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Furled_Light.fbx'
+export finished in 0.0065 sec.
+Export: Outside\SM_Frigate_Sail_MizzenRoyal_Furled.fbx           1336 tris  light 1336  (74 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Head.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Head_Light.fbx'
+export finished in 0.0053 sec.
+Export: Outside\SM_Frigate_Sail_MizzenRoyal_Head.fbx             1156 tris  light 392  (74 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Set.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenRoyal_Set_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_Sail_MizzenRoyal_Set.fbx               980 tris  light 419  (74 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Clewed.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Clewed_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_Sail_MizzenStaysail_Clewed.fbx         512 tris  light 512  (75 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Furled.fbx'
+export finished in 0.0066 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Furled_Light.fbx'
+export finished in 0.0364 sec.
+Export: Outside\SM_Frigate_Sail_MizzenStaysail_Furled.fbx         736 tris  light 588  (75 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Set.fbx'
+export finished in 0.0083 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenStaysail_Set_Light.fbx'
+export finished in 0.0074 sec.
+Export: Outside\SM_Frigate_Sail_MizzenStaysail_Set.fbx           2459 tris  light 1915  (75 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Clewed.fbx'
+export finished in 0.0117 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Clewed_Light.fbx'
+export finished in 0.0103 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopgallant_Clewed.fbx      4004 tris  light 2917  (76 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Furled.fbx'
+export finished in 0.0071 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Furled_Light.fbx'
+export finished in 0.0066 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopgallant_Furled.fbx      1664 tris  light 1330  (76 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Head.fbx'
+export finished in 0.0078 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Head_Light.fbx'
+export finished in 0.0061 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopgallant_Head.fbx        2308 tris  light 800  (77 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Set.fbx'
+export finished in 0.0089 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopgallant_Set_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopgallant_Set.fbx         2604 tris  light 2104  (77 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Clewed.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Clewed_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopmastStaysail_Clewed.fbx      512 tris  light 512  (77 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Furled.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Furled_Light.fbx'
+export finished in 0.0054 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopmastStaysail_Furled.fbx      728 tris  light 728  (78 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Set.fbx'
+export finished in 0.0079 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopmastStaysail_Set_Light.fbx'
+export finished in 0.0073 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopmastStaysail_Set.fbx     2180 tris  light 1704  (78 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Clewed.fbx'
+export finished in 0.0249 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Clewed_Light.fbx'
+export finished in 0.0164 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopsail_Clewed.fbx        11680 tris  light 6851  (79 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Furled.fbx'
+export finished in 0.0086 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Furled_Light.fbx'
+export finished in 0.0080 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopsail_Furled.fbx         2696 tris  light 2696  (79 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Head.fbx'
+export finished in 0.0103 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Head_Light.fbx'
+export finished in 0.0064 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopsail_Head.fbx           3948 tris  light 1412  (79 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Set.fbx'
+export finished in 0.0181 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_MizzenTopsail_Set_Light.fbx'
+export finished in 0.0145 sec.
+Export: Outside\SM_Frigate_Sail_MizzenTopsail_Set.fbx            8280 tris  light 5688  (80 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Clewed.fbx'
+export finished in 0.0077 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Clewed_Light.fbx'
+export finished in 0.0076 sec.
+Export: Outside\SM_Frigate_Sail_Spanker_Clewed.fbx               1888 tris  light 1888  (80 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Furled.fbx'
+export finished in 0.0099 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Furled_Light.fbx'
+export finished in 0.0101 sec.
+Export: Outside\SM_Frigate_Sail_Spanker_Furled.fbx               3408 tris  light 3408  (80 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Head.fbx'
+export finished in 0.0180 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Head_Light.fbx'
+export finished in 0.0083 sec.
+Export: Outside\SM_Frigate_Sail_Spanker_Head.fbx                 8800 tris  light 2436  (81 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Set.fbx'
+export finished in 0.0079 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Sail_Spanker_Set_Light.fbx'
+export finished in 0.0076 sec.
+Export: Outside\SM_Frigate_Sail_Spanker_Set.fbx                  2068 tris  light 1600  (81 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_ShankPainter.fbx'
+export finished in 0.0211 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_ShankPainter_Light.fbx'
+export finished in 0.0048 sec.
+Export: Outside\SM_Frigate_ShankPainter.fbx                     17656 tris  light 352  (82 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetAnchor.fbx'
+export finished in 0.0098 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetAnchor_Light.fbx'
+export finished in 0.0066 sec.
+Export: Outside\SM_Frigate_SheetAnchor.fbx                       4480 tris  light 1344  (82 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetBillboard.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetBillboard_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_SheetBillboard.fbx                     764 tris  light 76  (82 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetEyebolts.fbx'
+export finished in 0.0046 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetEyebolts_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_SheetEyebolts.fbx                      852 tris  light 254  (83 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetLashing.fbx'
+export finished in 0.0089 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetLashing_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_SheetLashing.fbx                      5840 tris  light 146  (83 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetPainter.fbx'
+export finished in 0.0131 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SheetPainter_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_SheetPainter.fbx                      9244 tris  light 230  (84 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Skin.fbx'
+export finished in 0.3594 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Skin_Light.fbx'
+export finished in 0.1998 sec.
+Export: Outside\SM_Frigate_Skin.fbx                            267740 tris  light 108674  (85 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Skylights.fbx'
+export finished in 0.0073 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Skylights_Light.fbx'
+export finished in 0.0055 sec.
+Export: Outside\SM_Frigate_Skylights.fbx                         2760 tris  light 932  (85 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpankerBoom.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpankerBoom_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_SpankerBoom.fbx                       1136 tris  light 166  (85 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpankerGaff.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpankerGaff_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_SpankerGaff.fbx                       1136 tris  light 128  (86 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SparDeck.fbx'
+export finished in 0.0324 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SparDeck_Light.fbx'
+export finished in 0.0333 sec.
+Export: Outside\SM_Frigate_SparDeck.fbx                         16189 tris  light 16189  (86 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SparSaddles.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SparSaddles_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_SparSaddles.fbx                       1804 tris  light 1172  (87 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpareSpars.fbx'
+export finished in 0.0092 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SpareSpars_Light.fbx'
+export finished in 0.0049 sec.
+Export: Outside\SM_Frigate_SpareSpars.fbx                        4336 tris  light 634  (87 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Stays.fbx'
+export finished in 0.0323 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Stays_Light.fbx'
+export finished in 0.0229 sec.
+Export: Outside\SM_Frigate_Stays.fbx                            23324 tris  light 10382  (88 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternCarving.fbx'
+export finished in 0.0876 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternCarving_Light.fbx'
+export finished in 0.0176 sec.
+Export: Outside\SM_Frigate_SternCarving.fbx                     58836 tris  light 5883  (88 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternFrame.fbx'
+export finished in 0.0287 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternFrame_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_SternFrame.fbx                       14940 tris  light 970  (88 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternGlass.fbx'
+export finished in 0.0068 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternGlass_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_SternGlass.fbx                        2048 tris  light 80  (89 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternPorts.fbx'
+export finished in 0.0116 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternPorts_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_SternPorts.fbx                        4816 tris  light 144  (89 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternSash.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_SternSash_Light.fbx'
+export finished in 0.0048 sec.
+Export: Outside\SM_Frigate_SternSash.fbx                         3036 tris  light 454  (90 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_StreamAnchor.fbx'
+export finished in 0.0078 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_StreamAnchor_Light.fbx'
+export finished in 0.0057 sec.
+Export: Outside\SM_Frigate_StreamAnchor.fbx                      3516 tris  light 702  (90 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Taffrail.fbx'
+export finished in 0.0104 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Taffrail_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_Taffrail.fbx                          3548 tris  light 70  (91 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TillerRope.fbx'
+export finished in 0.0077 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TillerRope_Light.fbx'
+export finished in 0.0050 sec.
+Export: Outside\SM_Frigate_TillerRope.fbx                        2768 tris  light 752  (91 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Fore.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Fore_Light.fbx'
+export finished in 0.0057 sec.
+Export: Outside\SM_Frigate_Top_Fore.fbx                          1452 tris  light 920  (91 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Main.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Main_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Top_Main.fbx                          1456 tris  light 930  (92 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Mizzen.fbx'
+export finished in 0.0054 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Top_Mizzen_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Top_Mizzen.fbx                        1324 tris  light 838  (92 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Fore.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Fore_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_Topgallant_Fore.fbx                    624 tris  light 134  (93 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Main.fbx'
+export finished in 0.0049 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Main_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_Topgallant_Main.fbx                    784 tris  light 142  (93 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Mizzen.fbx'
+export finished in 0.0048 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topgallant_Mizzen_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Topgallant_Mizzen.fbx                  624 tris  light 124  (93 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Fore.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Fore_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_Topmast_Fore.fbx                       784 tris  light 112  (94 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Main.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Main_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_Topmast_Main.fbx                      1136 tris  light 112  (94 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Mizzen.fbx'
+export finished in 0.0049 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Topmast_Mizzen_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_Topmast_Mizzen.fbx                     784 tris  light 106  (95 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TrailCarving.fbx'
+export finished in 0.0296 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TrailCarving_Light.fbx'
+export finished in 0.0075 sec.
+Export: Outside\SM_Frigate_TrailCarving.fbx                     19328 tris  light 1546  (95 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Trailboards.fbx'
+export finished in 0.0195 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Trailboards_Light.fbx'
+export finished in 0.0043 sec.
+Export: Outside\SM_Frigate_Trailboards.fbx                      10824 tris  light 216  (96 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Transom.fbx'
+export finished in 0.0115 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Transom_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Transom.fbx                           6380 tris  light 126  (96 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TransomTop.fbx'
+export finished in 0.0048 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_TransomTop_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_TransomTop.fbx                         672 tris  light 20  (96 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_WaistFrame.fbx'
+export finished in 0.0046 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_WaistFrame_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_WaistFrame.fbx                         732 tris  light 146  (97 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Waterways.fbx'
+export finished in 0.0191 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Waterways_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Waterways.fbx                        14380 tris  light 574  (97 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Wheel.fbx'
+export finished in 0.0091 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Wheel_Light.fbx'
+export finished in 0.0055 sec.
+Export: Outside\SM_Frigate_Wheel.fbx                             4488 tris  light 1138  (98 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_WheelStandards.fbx'
+export finished in 0.0045 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_WheelStandards_Light.fbx'
+export finished in 0.0052 sec.
+Export: Outside\SM_Frigate_WheelStandards.fbx                     304 tris  light 196  (98 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Crossjack.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Crossjack_Light.fbx'
+export finished in 0.0041 sec.
+Export: Outside\SM_Frigate_Yard_Crossjack.fbx                    1584 tris  light 210  (98 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Fore.fbx'
+export finished in 0.0099 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Fore_Light.fbx'
+export finished in 0.0063 sec.
+Export: Outside\SM_Frigate_Yard_Fore.fbx                         5040 tris  light 868  (99 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeRoyal.fbx'
+export finished in 0.0047 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeRoyal_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Yard_ForeRoyal.fbx                    1152 tris  light 148  (99 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeTopgallant.fbx'
+export finished in 0.0049 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeTopgallant_Light.fbx'
+export finished in 0.0042 sec.
+Export: Outside\SM_Frigate_Yard_ForeTopgallant.fbx               1152 tris  light 160  (100 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeTopsail.fbx'
+export finished in 0.0082 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_ForeTopsail_Light.fbx'
+export finished in 0.0056 sec.
+Export: Outside\SM_Frigate_Yard_ForeTopsail.fbx                  3824 tris  light 800  (100 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Main.fbx'
+export finished in 0.0098 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Main_Light.fbx'
+export finished in 0.0058 sec.
+Export: Outside\SM_Frigate_Yard_Main.fbx                         5040 tris  light 868  (101 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainRoyal.fbx'
+export finished in 0.0049 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainRoyal_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Yard_MainRoyal.fbx                    1152 tris  light 148  (101 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainTopgallant.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainTopgallant_Light.fbx'
+export finished in 0.0040 sec.
+Export: Outside\SM_Frigate_Yard_MainTopgallant.fbx               1152 tris  light 160  (101 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainTopsail.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MainTopsail_Light.fbx'
+export finished in 0.0059 sec.
+Export: Outside\SM_Frigate_Yard_MainTopsail.fbx                  3824 tris  light 1016  (102 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenRoyal.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenRoyal_Light.fbx'
+export finished in 0.0037 sec.
+Export: Outside\SM_Frigate_Yard_MizzenRoyal.fbx                   800 tris  light 136  (102 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenTopgallant.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenTopgallant_Light.fbx'
+export finished in 0.0038 sec.
+Export: Outside\SM_Frigate_Yard_MizzenTopgallant.fbx             1152 tris  light 148  (103 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenTopsail.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_MizzenTopsail_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_Yard_MizzenTopsail.fbx                1584 tris  light 198  (103 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Spritsail.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Outside\\SM_Frigate_Yard_Spritsail_Light.fbx'
+export finished in 0.0039 sec.
+Export: Outside\SM_Frigate_Yard_Spritsail.fbx                    1504 tris  light 204  (103 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_GunCapstan.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_GunCapstan_Light.fbx'
+export finished in 0.0053 sec.
+Export: Decks\SM_Frigate_GunCapstan.fbx                          1712 tris  light 756  (104 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_Tiller.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_Tiller_Light.fbx'
+export finished in 0.0050 sec.
+Export: Decks\SM_Frigate_Tiller.fbx                              1568 tris  light 392  (104 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerEye_S.fbx'
+export finished in 0.0048 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerEye_S_Light.fbx'
+export finished in 0.0043 sec.
+Export: Decks\SM_Frigate_TillerEye_S.fbx                          836 tris  light 62  (105 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerRun_S.fbx'
+export finished in 0.0037 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerRun_S_Light.fbx'
+export finished in 0.0040 sec.
+Export: Decks\SM_Frigate_TillerRun_S.fbx                           48 tris  light 16  (105 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerWrap_S.fbx'
+export finished in 0.0043 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerWrap_S_Light.fbx'
+export finished in 0.0040 sec.
+Export: Decks\SM_Frigate_TillerWrap_S.fbx                         288 tris  light 16  (105 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerEye_P.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerEye_P_Light.fbx'
+export finished in 0.0041 sec.
+Export: Decks\SM_Frigate_TillerEye_P.fbx                          836 tris  light 62  (106 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerRun_P.fbx'
+export finished in 0.0042 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerRun_P_Light.fbx'
+export finished in 0.0039 sec.
+Export: Decks\SM_Frigate_TillerRun_P.fbx                           48 tris  light 16  (106 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerWrap_P.fbx'
+export finished in 0.0043 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_TillerWrap_P_Light.fbx'
+export finished in 0.0043 sec.
+Export: Decks\SM_Frigate_TillerWrap_P.fbx                         288 tris  light 16  (107 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_CabinDoor_S.fbx'
+export finished in 0.0047 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_CabinDoor_S_Light.fbx'
+export finished in 0.0048 sec.
+Export: Decks\SM_Frigate_CabinDoor_S.fbx                          320 tris  light 112  (107 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_CabinDoor_P.fbx'
+export finished in 0.0044 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_CabinDoor_P_Light.fbx'
+export finished in 0.0046 sec.
+Export: Decks\SM_Frigate_CabinDoor_P.fbx                          320 tris  light 112  (108 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_HammockHook.fbx'
+export finished in 0.0042 sec.
+Export: Decks\SM_Frigate_HammockHook.fbx                          272 tris  (108 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_BerthHammock.fbx'
+export finished in 0.0086 sec.
+Export: Decks\SM_Frigate_BerthHammock.fbx                        2632 tris  (108 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_BerthMessTable.fbx'
+export finished in 0.0064 sec.
+Export: Decks\SM_Frigate_BerthMessTable.fbx                      1584 tris  (108 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_MessKid.fbx'
+export finished in 0.0057 sec.
+Export: Decks\SM_Frigate_MessKid.fbx                              928 tris  (108 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_MessBench.fbx'
+export finished in 0.0043 sec.
+Export: Decks\SM_Frigate_MessBench.fbx                             80 tris  (109 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_SeaChest.fbx'
+export finished in 0.0063 sec.
+Export: Decks\SM_Frigate_SeaChest.fbx                             508 tris  (109 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_BerthDeck.fbx'
+export finished in 0.1466 sec.
+Export: Decks\SM_Frigate_BerthDeck.fbx                         126604 tris  (109 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_GunDeck.fbx'
+export finished in 0.4790 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_GunDeck_Light.fbx'
+export finished in 0.2091 sec.
+Export: Decks\SM_Frigate_GunDeck.fbx                           405685 tris  light 122548  (111 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_Hold.fbx'
+export finished in 0.4047 sec.
+Export: Decks\SM_Frigate_Hold.fbx                              372048 tris  (112 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Decks\\SM_Frigate_Orlop.fbx'
+export finished in 0.2033 sec.
+Export: Decks\SM_Frigate_Orlop.fbx                             178612 tris  (112 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Barrel.fbx'
+export finished in 0.0103 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Barrel_Light.fbx'
+export finished in 0.0064 sec.
+Export: Guns\SM_Frigate_Carr32_Barrel.fbx                        5016 tris  light 804  (113 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Bed.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Bed_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Carr32_Bed.fbx                            676 tris  light 134  (113 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_GearRunOut.fbx'
+export finished in 0.0282 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_GearRunOut_Light.fbx'
+export finished in 0.0088 sec.
+Export: Guns\SM_Frigate_Carr32_P01_GearRunOut.fbx               18268 tris  light 1982  (114 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_Irons.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_P01_Irons.fbx                      784 tris  light 98  (114 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Slide.fbx'
+export finished in 0.0054 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_Slide_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Carr32_Slide.fbx                         1036 tris  light 310  (115 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_GearRunOut.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_GearRunOut_Light.fbx'
+export finished in 0.0082 sec.
+Export: Guns\SM_Frigate_Carr32_P02_GearRunOut.fbx               18268 tris  light 1566  (115 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_P02_Irons.fbx                      784 tris  light 116  (115 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_GearRunOut.fbx'
+export finished in 0.0268 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_GearRunOut_Light.fbx'
+export finished in 0.0084 sec.
+Export: Guns\SM_Frigate_Carr32_P03_GearRunOut.fbx               18268 tris  light 1588  (116 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_Irons.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_P03_Irons.fbx                      784 tris  light 156  (116 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_GearRunOut.fbx'
+export finished in 0.0285 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_GearRunOut_Light.fbx'
+export finished in 0.0080 sec.
+Export: Guns\SM_Frigate_Carr32_P04_GearRunOut.fbx               18268 tris  light 1584  (117 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_Irons.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_P04_Irons.fbx                      784 tris  light 98  (117 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_GearRunOut.fbx'
+export finished in 0.0276 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_GearRunOut_Light.fbx'
+export finished in 0.0090 sec.
+Export: Guns\SM_Frigate_Carr32_P05_GearRunOut.fbx               18268 tris  light 1974  (118 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Carr32_P05_Irons.fbx                      784 tris  light 116  (118 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_GearRunOut.fbx'
+export finished in 0.0275 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_GearRunOut_Light.fbx'
+export finished in 0.0089 sec.
+Export: Guns\SM_Frigate_Carr32_P06_GearRunOut.fbx               18268 tris  light 1530  (118 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_Irons.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_P06_Irons.fbx                      784 tris  light 116  (119 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_GearRunOut.fbx'
+export finished in 0.0272 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_GearRunOut_Light.fbx'
+export finished in 0.0086 sec.
+Export: Guns\SM_Frigate_Carr32_P07_GearRunOut.fbx               18236 tris  light 1962  (119 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_Irons.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_P07_Irons.fbx                      784 tris  light 98  (120 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_GearRunOut.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_GearRunOut_Light.fbx'
+export finished in 0.0085 sec.
+Export: Guns\SM_Frigate_Carr32_P08_GearRunOut.fbx               18252 tris  light 1972  (120 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_Irons_Light.fbx'
+export finished in 0.0042 sec.
+Export: Guns\SM_Frigate_Carr32_P08_Irons.fbx                      784 tris  light 98  (120 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_GearRunOut.fbx'
+export finished in 0.0279 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_GearRunOut_Light.fbx'
+export finished in 0.0090 sec.
+Export: Guns\SM_Frigate_Carr32_P09_GearRunOut.fbx               18268 tris  light 1974  (121 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_Irons.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Carr32_P09_Irons.fbx                      784 tris  light 116  (121 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_GearRunOut.fbx'
+export finished in 0.0276 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_GearRunOut_Light.fbx'
+export finished in 0.0087 sec.
+Export: Guns\SM_Frigate_Carr32_P10_GearRunOut.fbx               18268 tris  light 1982  (122 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_Irons.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Carr32_P10_Irons.fbx                      784 tris  light 116  (122 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_GearRunOut.fbx'
+export finished in 0.0279 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_GearRunOut_Light.fbx'
+export finished in 0.0082 sec.
+Export: Guns\SM_Frigate_Carr32_P11_GearRunOut.fbx               18300 tris  light 1550  (123 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_Irons.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_P11_Irons.fbx                      784 tris  light 116  (123 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_GearRunOut.fbx'
+export finished in 0.0273 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_GearRunOut_Light.fbx'
+export finished in 0.0085 sec.
+Export: Guns\SM_Frigate_Carr32_S01_GearRunOut.fbx               18268 tris  light 1620  (123 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_Irons.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_S01_Irons.fbx                      784 tris  light 116  (124 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_GearRunOut.fbx'
+export finished in 0.0269 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_GearRunOut_Light.fbx'
+export finished in 0.0087 sec.
+Export: Guns\SM_Frigate_Carr32_S02_GearRunOut.fbx               18268 tris  light 1982  (124 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_Irons.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_S02_Irons.fbx                      784 tris  light 98  (125 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_GearRunOut.fbx'
+export finished in 0.0266 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_GearRunOut_Light.fbx'
+export finished in 0.0082 sec.
+Export: Guns\SM_Frigate_Carr32_S03_GearRunOut.fbx               18268 tris  light 1628  (125 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_Irons.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Carr32_S03_Irons.fbx                      784 tris  light 156  (126 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_GearRunOut.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_GearRunOut_Light.fbx'
+export finished in 0.0084 sec.
+Export: Guns\SM_Frigate_Carr32_S04_GearRunOut.fbx               18268 tris  light 1538  (126 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_S04_Irons.fbx                      784 tris  light 98  (126 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_GearRunOut.fbx'
+export finished in 0.0273 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_GearRunOut_Light.fbx'
+export finished in 0.0087 sec.
+Export: Guns\SM_Frigate_Carr32_S05_GearRunOut.fbx               18268 tris  light 1974  (127 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_Irons_Light.fbx'
+export finished in 0.0042 sec.
+Export: Guns\SM_Frigate_Carr32_S05_Irons.fbx                      784 tris  light 116  (127 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_GearRunOut.fbx'
+export finished in 0.0275 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_GearRunOut_Light.fbx'
+export finished in 0.0082 sec.
+Export: Guns\SM_Frigate_Carr32_S06_GearRunOut.fbx               18268 tris  light 1610  (128 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_S06_Irons.fbx                      784 tris  light 98  (128 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_GearRunOut.fbx'
+export finished in 0.0273 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_GearRunOut_Light.fbx'
+export finished in 0.0087 sec.
+Export: Guns\SM_Frigate_Carr32_S07_GearRunOut.fbx               18236 tris  light 1962  (129 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Carr32_S07_Irons.fbx                      784 tris  light 116  (129 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_GearRunOut.fbx'
+export finished in 0.0281 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_GearRunOut_Light.fbx'
+export finished in 0.0082 sec.
+Export: Guns\SM_Frigate_Carr32_S08_GearRunOut.fbx               18252 tris  light 1586  (129 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_Irons.fbx'
+export finished in 0.0051 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_Irons_Light.fbx'
+export finished in 0.0042 sec.
+Export: Guns\SM_Frigate_Carr32_S08_Irons.fbx                      784 tris  light 98  (130 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_GearRunOut.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_GearRunOut_Light.fbx'
+export finished in 0.0081 sec.
+Export: Guns\SM_Frigate_Carr32_S09_GearRunOut.fbx               18268 tris  light 1544  (130 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_Irons.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_Irons_Light.fbx'
+export finished in 0.0042 sec.
+Export: Guns\SM_Frigate_Carr32_S09_Irons.fbx                      784 tris  light 116  (131 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_GearRunOut.fbx'
+export finished in 0.0279 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_GearRunOut_Light.fbx'
+export finished in 0.0083 sec.
+Export: Guns\SM_Frigate_Carr32_S10_GearRunOut.fbx               18268 tris  light 1628  (131 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_Irons.fbx'
+export finished in 0.0052 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Carr32_S10_Irons.fbx                      784 tris  light 116  (132 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_GearRunOut.fbx'
+export finished in 0.0271 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_GearRunOut_Light.fbx'
+export finished in 0.0088 sec.
+Export: Guns\SM_Frigate_Carr32_S11_GearRunOut.fbx               18300 tris  light 1964  (132 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Carr32_S11_Irons.fbx                      784 tris  light 156  (132 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Apron.fbx'
+export finished in 0.0144 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Apron_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Gun24_Apron.fbx                          8816 tris  light 70  (133 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Barrel.fbx'
+export finished in 0.0127 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Barrel_Light.fbx'
+export finished in 0.0067 sec.
+Export: Guns\SM_Frigate_Gun24_Barrel.fbx                         7808 tris  light 1026  (133 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Carriage.fbx'
+export finished in 0.0079 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Carriage_Light.fbx'
+export finished in 0.0057 sec.
+Export: Guns\SM_Frigate_Gun24_Carriage.fbx                       2992 tris  light 708  (134 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearHoused.fbx'
+export finished in 0.0483 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_P01_GearHoused.fbx                34324 tris  light 3340  (134 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_P01_Irons.fbx                      1372 tris  light 274  (135 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Tompion.fbx'
+export finished in 0.0053 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Tompion_Light.fbx'
+export finished in 0.0041 sec.
+Export: Guns\SM_Frigate_Gun24_Tompion.fbx                         528 tris  light 42  (135 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_TruckFore.fbx'
+export finished in 0.0043 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_TruckFore_Light.fbx'
+export finished in 0.0042 sec.
+Export: Guns\SM_Frigate_Gun24_TruckFore.fbx                       480 tris  light 72  (135 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_TruckHind.fbx'
+export finished in 0.0043 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_TruckHind_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_TruckHind.fbx                       480 tris  light 60  (136 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearHoused.fbx'
+export finished in 0.0479 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_P02_GearHoused.fbx                34356 tris  light 3328  (136 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_Irons.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_Irons_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Gun24_P02_Irons.fbx                      1372 tris  light 274  (137 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearHoused.fbx'
+export finished in 0.0473 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_P03_GearHoused.fbx                34356 tris  light 3318  (137 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_Irons_Light.fbx'
+export finished in 0.0044 sec.
+Export: Guns\SM_Frigate_Gun24_P03_Irons.fbx                      1372 tris  light 274  (138 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearHoused.fbx'
+export finished in 0.0465 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_P04_GearHoused.fbx                34356 tris  light 3322  (138 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_Irons_Light.fbx'
+export finished in 0.0048 sec.
+Export: Guns\SM_Frigate_Gun24_P04_Irons.fbx                      1372 tris  light 274  (138 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearHoused.fbx'
+export finished in 0.0462 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_P05_GearHoused.fbx                34356 tris  light 3328  (139 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_Irons.fbx'
+export finished in 0.0063 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_P05_Irons.fbx                      1372 tris  light 274  (139 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearHoused.fbx'
+export finished in 0.0465 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearHoused_Light.fbx'
+export finished in 0.0120 sec.
+Export: Guns\SM_Frigate_Gun24_P06_GearHoused.fbx                34340 tris  light 3324  (140 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_P06_Irons.fbx                      1372 tris  light 274  (140 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearHoused.fbx'
+export finished in 0.0469 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearHoused_Light.fbx'
+export finished in 0.0101 sec.
+Export: Guns\SM_Frigate_Gun24_P07_GearHoused.fbx                34324 tris  light 2702  (141 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_Irons.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Gun24_P07_Irons.fbx                      1372 tris  light 274  (141 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearHoused.fbx'
+export finished in 0.0467 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_P08_GearHoused.fbx                34324 tris  light 3336  (142 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_Irons.fbx'
+export finished in 0.0059 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_P08_Irons.fbx                      1372 tris  light 274  (142 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearHoused.fbx'
+export finished in 0.0458 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearHoused_Light.fbx'
+export finished in 0.0120 sec.
+Export: Guns\SM_Frigate_Gun24_P09_GearHoused.fbx                34324 tris  light 3336  (142 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_P09_Irons.fbx                      1372 tris  light 274  (143 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearHoused.fbx'
+export finished in 0.0473 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_P10_GearHoused.fbx                34324 tris  light 3336  (143 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_Irons_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Gun24_P10_Irons.fbx                      1372 tris  light 274  (144 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearHoused.fbx'
+export finished in 0.0459 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_P11_GearHoused.fbx                34340 tris  light 3328  (144 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Gun24_P11_Irons.fbx                      1372 tris  light 274  (145 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearHoused.fbx'
+export finished in 0.0479 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_P12_GearHoused.fbx                34356 tris  light 3328  (145 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_Irons_Light.fbx'
+export finished in 0.0043 sec.
+Export: Guns\SM_Frigate_Gun24_P12_Irons.fbx                      1372 tris  light 274  (145 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearHoused.fbx'
+export finished in 0.0462 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearHoused_Light.fbx'
+export finished in 0.0117 sec.
+Export: Guns\SM_Frigate_Gun24_P13_GearHoused.fbx                34372 tris  light 3356  (146 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_Irons.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_P13_Irons.fbx                      1372 tris  light 274  (146 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearHoused.fbx'
+export finished in 0.0474 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearHoused_Light.fbx'
+export finished in 0.0122 sec.
+Export: Guns\SM_Frigate_Gun24_P14_GearHoused.fbx                34372 tris  light 3284  (147 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_P14_Irons.fbx                      1372 tris  light 274  (147 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearHoused.fbx'
+export finished in 0.0474 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_S01_GearHoused.fbx                34324 tris  light 3340  (148 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_Irons.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Gun24_S01_Irons.fbx                      1372 tris  light 274  (148 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearHoused.fbx'
+export finished in 0.0461 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearHoused_Light.fbx'
+export finished in 0.0120 sec.
+Export: Guns\SM_Frigate_Gun24_S02_GearHoused.fbx                34356 tris  light 3328  (149 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_S02_Irons.fbx                      1372 tris  light 274  (149 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearHoused.fbx'
+export finished in 0.0459 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearHoused_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_S03_GearHoused.fbx                34356 tris  light 2992  (149 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_S03_Irons.fbx                      1372 tris  light 274  (150 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearHoused.fbx'
+export finished in 0.0474 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearHoused_Light.fbx'
+export finished in 0.0113 sec.
+Export: Guns\SM_Frigate_Gun24_S04_GearHoused.fbx                34356 tris  light 3322  (150 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_S04_Irons.fbx                      1372 tris  light 274  (151 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearHoused.fbx'
+export finished in 0.0483 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearHoused_Light.fbx'
+export finished in 0.0118 sec.
+Export: Guns\SM_Frigate_Gun24_S05_GearHoused.fbx                34356 tris  light 3328  (151 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_Irons.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_S05_Irons.fbx                      1372 tris  light 274  (152 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearHoused.fbx'
+export finished in 0.0478 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_S06_GearHoused.fbx                34340 tris  light 3324  (152 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_S06_Irons.fbx                      1372 tris  light 274  (152 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearHoused.fbx'
+export finished in 0.0467 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearHoused_Light.fbx'
+export finished in 0.0119 sec.
+Export: Guns\SM_Frigate_Gun24_S07_GearHoused.fbx                34324 tris  light 3034  (153 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_S07_Irons.fbx                      1372 tris  light 274  (153 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearHoused.fbx'
+export finished in 0.0486 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearHoused_Light.fbx'
+export finished in 0.0122 sec.
+Export: Guns\SM_Frigate_Gun24_S08_GearHoused.fbx                34324 tris  light 3336  (154 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_Irons.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Gun24_S08_Irons.fbx                      1372 tris  light 274  (154 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearHoused.fbx'
+export finished in 0.0466 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearHoused_Light.fbx'
+export finished in 0.0117 sec.
+Export: Guns\SM_Frigate_Gun24_S09_GearHoused.fbx                34324 tris  light 3288  (155 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_S09_Irons.fbx                      1372 tris  light 274  (155 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearHoused.fbx'
+export finished in 0.0457 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearHoused_Light.fbx'
+export finished in 0.0118 sec.
+Export: Guns\SM_Frigate_Gun24_S10_GearHoused.fbx                34324 tris  light 3336  (156 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_Irons.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_S10_Irons.fbx                      1372 tris  light 274  (156 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearHoused.fbx'
+export finished in 0.0462 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearHoused_Light.fbx'
+export finished in 0.0119 sec.
+Export: Guns\SM_Frigate_Gun24_S11_GearHoused.fbx                34340 tris  light 3328  (156 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_Irons.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_Irons_Light.fbx'
+export finished in 0.0048 sec.
+Export: Guns\SM_Frigate_Gun24_S11_Irons.fbx                      1372 tris  light 274  (157 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearHoused.fbx'
+export finished in 0.0458 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearHoused_Light.fbx'
+export finished in 0.0115 sec.
+Export: Guns\SM_Frigate_Gun24_S12_GearHoused.fbx                34356 tris  light 3328  (157 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_Irons.fbx'
+export finished in 0.0057 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_Irons_Light.fbx'
+export finished in 0.0045 sec.
+Export: Guns\SM_Frigate_Gun24_S12_Irons.fbx                      1372 tris  light 274  (158 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearHoused.fbx'
+export finished in 0.0471 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearHoused_Light.fbx'
+export finished in 0.0116 sec.
+Export: Guns\SM_Frigate_Gun24_S13_GearHoused.fbx                34372 tris  light 3356  (158 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_Irons.fbx'
+export finished in 0.0056 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_Irons_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Gun24_S13_Irons.fbx                      1372 tris  light 274  (159 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearHoused.fbx'
+export finished in 0.0462 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearHoused_Light.fbx'
+export finished in 0.0118 sec.
+Export: Guns\SM_Frigate_Gun24_S14_GearHoused.fbx                34372 tris  light 3284  (159 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_Irons.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_Irons_Light.fbx'
+export finished in 0.0046 sec.
+Export: Guns\SM_Frigate_Gun24_S14_Irons.fbx                      1372 tris  light 274  (160 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_01_P.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_01_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_01_P.fbx                             1460 tris  light 184  (160 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_01_S.fbx'
+export finished in 0.0063 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_01_S_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Lid_01_S.fbx                             1460 tris  light 184  (160 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_02_P.fbx'
+export finished in 0.0063 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_02_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_02_P.fbx                             1260 tris  light 162  (161 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_02_S.fbx'
+export finished in 0.0059 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_02_S_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Lid_02_S.fbx                             1260 tris  light 162  (161 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_03_P.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_03_P_Light.fbx'
+export finished in 0.0056 sec.
+Export: Guns\SM_Frigate_Lid_03_P.fbx                             1380 tris  light 180  (162 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_03_S.fbx'
+export finished in 0.0063 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_03_S_Light.fbx'
+export finished in 0.0051 sec.
+Export: Guns\SM_Frigate_Lid_03_S.fbx                             1380 tris  light 178  (162 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_04_P.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_04_P_Light.fbx'
+export finished in 0.0055 sec.
+Export: Guns\SM_Frigate_Lid_04_P.fbx                             1260 tris  light 162  (162 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_04_S.fbx'
+export finished in 0.0063 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_04_S_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Lid_04_S.fbx                             1260 tris  light 162  (163 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_05_P.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_05_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_05_P.fbx                             1340 tris  light 174  (163 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_05_S.fbx'
+export finished in 0.0068 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_05_S_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Lid_05_S.fbx                             1340 tris  light 174  (164 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_06_P.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_06_P_Light.fbx'
+export finished in 0.0048 sec.
+Export: Guns\SM_Frigate_Lid_06_P.fbx                             1300 tris  light 164  (164 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_06_S.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_06_S_Light.fbx'
+export finished in 0.0047 sec.
+Export: Guns\SM_Frigate_Lid_06_S.fbx                             1300 tris  light 164  (164 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_07_P.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_07_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_07_P.fbx                             1260 tris  light 160  (165 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_07_S.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_07_S_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_07_S.fbx                             1260 tris  light 160  (165 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_08_P.fbx'
+export finished in 0.0066 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_08_P_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Lid_08_P.fbx                             1300 tris  light 162  (166 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_08_S.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_08_S_Light.fbx'
+export finished in 0.0051 sec.
+Export: Guns\SM_Frigate_Lid_08_S.fbx                             1300 tris  light 162  (166 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_09_P.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_09_P_Light.fbx'
+export finished in 0.0053 sec.
+Export: Guns\SM_Frigate_Lid_09_P.fbx                             1260 tris  light 158  (166 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_09_S.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_09_S_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Lid_09_S.fbx                             1260 tris  light 158  (167 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_10_P.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_10_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_10_P.fbx                             1260 tris  light 160  (167 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_10_S.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_10_S_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_10_S.fbx                             1260 tris  light 160  (168 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_11_P.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_11_P_Light.fbx'
+export finished in 0.0052 sec.
+Export: Guns\SM_Frigate_Lid_11_P.fbx                             1300 tris  light 162  (168 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_11_S.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_11_S_Light.fbx'
+export finished in 0.0056 sec.
+Export: Guns\SM_Frigate_Lid_11_S.fbx                             1300 tris  light 160  (169 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_12_P.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_12_P_Light.fbx'
+export finished in 0.0052 sec.
+Export: Guns\SM_Frigate_Lid_12_P.fbx                             1380 tris  light 178  (169 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_12_S.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_12_S_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_12_S.fbx                             1380 tris  light 178  (169 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_13_P.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_13_P_Light.fbx'
+export finished in 0.0051 sec.
+Export: Guns\SM_Frigate_Lid_13_P.fbx                             1340 tris  light 168  (170 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_13_S.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_13_S_Light.fbx'
+export finished in 0.0048 sec.
+Export: Guns\SM_Frigate_Lid_13_S.fbx                             1340 tris  light 170  (170 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_14_P.fbx'
+export finished in 0.0061 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_14_P_Light.fbx'
+export finished in 0.0048 sec.
+Export: Guns\SM_Frigate_Lid_14_P.fbx                             1420 tris  light 182  (171 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_14_S.fbx'
+export finished in 0.0064 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_14_S_Light.fbx'
+export finished in 0.0055 sec.
+Export: Guns\SM_Frigate_Lid_14_S.fbx                             1420 tris  light 184  (171 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_15_P.fbx'
+export finished in 0.0066 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_15_P_Light.fbx'
+export finished in 0.0049 sec.
+Export: Guns\SM_Frigate_Lid_15_P.fbx                             1740 tris  light 182  (171 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_15_S.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Lid_15_S_Light.fbx'
+export finished in 0.0050 sec.
+Export: Guns\SM_Frigate_Lid_15_S.fbx                             1740 tris  light 182  (172 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_GearRecoil.fbx'
+export finished in 0.0277 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P01_GearRecoil_Light.fbx'
+export finished in 0.0072 sec.
+Export: Guns\SM_Frigate_Carr32_P01_GearRecoil.fbx               18540 tris  light 1352  (172 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_GearRecoil.fbx'
+export finished in 0.0272 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P02_GearRecoil_Light.fbx'
+export finished in 0.0087 sec.
+Export: Guns\SM_Frigate_Carr32_P02_GearRecoil.fbx               18540 tris  light 1710  (173 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_GearRecoil.fbx'
+export finished in 0.0266 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P03_GearRecoil_Light.fbx'
+export finished in 0.0073 sec.
+Export: Guns\SM_Frigate_Carr32_P03_GearRecoil.fbx               18540 tris  light 1362  (173 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_GearRecoil.fbx'
+export finished in 0.0271 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P04_GearRecoil_Light.fbx'
+export finished in 0.0074 sec.
+Export: Guns\SM_Frigate_Carr32_P04_GearRecoil.fbx               18540 tris  light 1412  (174 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_GearRecoil.fbx'
+export finished in 0.0276 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P05_GearRecoil_Light.fbx'
+export finished in 0.0084 sec.
+Export: Guns\SM_Frigate_Carr32_P05_GearRecoil.fbx               18540 tris  light 1710  (174 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_GearRecoil.fbx'
+export finished in 0.0276 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P06_GearRecoil_Light.fbx'
+export finished in 0.0074 sec.
+Export: Guns\SM_Frigate_Carr32_P06_GearRecoil.fbx               18500 tris  light 1328  (174 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_GearRecoil.fbx'
+export finished in 0.0270 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P07_GearRecoil_Light.fbx'
+export finished in 0.0074 sec.
+Export: Guns\SM_Frigate_Carr32_P07_GearRecoil.fbx               18460 tris  light 1412  (175 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_GearRecoil.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P08_GearRecoil_Light.fbx'
+export finished in 0.0079 sec.
+Export: Guns\SM_Frigate_Carr32_P08_GearRecoil.fbx               18460 tris  light 1320  (175 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_GearRecoil.fbx'
+export finished in 0.0275 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P09_GearRecoil_Light.fbx'
+export finished in 0.0071 sec.
+Export: Guns\SM_Frigate_Carr32_P09_GearRecoil.fbx               18500 tris  light 1316  (176 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_GearRecoil.fbx'
+export finished in 0.0271 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P10_GearRecoil_Light.fbx'
+export finished in 0.0074 sec.
+Export: Guns\SM_Frigate_Carr32_P10_GearRecoil.fbx               18540 tris  light 1412  (176 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_GearRecoil.fbx'
+export finished in 0.0269 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_P11_GearRecoil_Light.fbx'
+export finished in 0.0085 sec.
+Export: Guns\SM_Frigate_Carr32_P11_GearRecoil.fbx               18600 tris  light 1710  (177 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_GearRecoil.fbx'
+export finished in 0.0265 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S01_GearRecoil_Light.fbx'
+export finished in 0.0075 sec.
+Export: Guns\SM_Frigate_Carr32_S01_GearRecoil.fbx               18540 tris  light 1368  (177 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_GearRecoil.fbx'
+export finished in 0.0276 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S02_GearRecoil_Light.fbx'
+export finished in 0.0075 sec.
+Export: Guns\SM_Frigate_Carr32_S02_GearRecoil.fbx               18540 tris  light 1364  (177 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_GearRecoil.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S03_GearRecoil_Light.fbx'
+export finished in 0.0081 sec.
+Export: Guns\SM_Frigate_Carr32_S03_GearRecoil.fbx               18540 tris  light 1370  (178 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_GearRecoil.fbx'
+export finished in 0.0286 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S04_GearRecoil_Light.fbx'
+export finished in 0.0071 sec.
+Export: Guns\SM_Frigate_Carr32_S04_GearRecoil.fbx               18540 tris  light 1412  (178 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_GearRecoil.fbx'
+export finished in 0.0270 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S05_GearRecoil_Light.fbx'
+export finished in 0.0075 sec.
+Export: Guns\SM_Frigate_Carr32_S05_GearRecoil.fbx               18540 tris  light 1426  (179 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_GearRecoil.fbx'
+export finished in 0.0274 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S06_GearRecoil_Light.fbx'
+export finished in 0.0080 sec.
+Export: Guns\SM_Frigate_Carr32_S06_GearRecoil.fbx               18500 tris  light 1478  (179 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_GearRecoil.fbx'
+export finished in 0.0270 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S07_GearRecoil_Light.fbx'
+export finished in 0.0073 sec.
+Export: Guns\SM_Frigate_Carr32_S07_GearRecoil.fbx               18460 tris  light 1368  (180 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_GearRecoil.fbx'
+export finished in 0.0277 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S08_GearRecoil_Light.fbx'
+export finished in 0.0084 sec.
+Export: Guns\SM_Frigate_Carr32_S08_GearRecoil.fbx               18460 tris  light 1710  (180 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_GearRecoil.fbx'
+export finished in 0.0273 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S09_GearRecoil_Light.fbx'
+export finished in 0.0088 sec.
+Export: Guns\SM_Frigate_Carr32_S09_GearRecoil.fbx               18500 tris  light 1710  (181 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_GearRecoil.fbx'
+export finished in 0.0272 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S10_GearRecoil_Light.fbx'
+export finished in 0.0073 sec.
+Export: Guns\SM_Frigate_Carr32_S10_GearRecoil.fbx               18540 tris  light 1380  (181 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_GearRecoil.fbx'
+export finished in 0.0272 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Carr32_S11_GearRecoil_Light.fbx'
+export finished in 0.0075 sec.
+Export: Guns\SM_Frigate_Carr32_S11_GearRecoil.fbx               18600 tris  light 1342  (181 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearRunIn.fbx'
+export finished in 0.0400 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearRunIn_Light.fbx'
+export finished in 0.0102 sec.
+Export: Guns\SM_Frigate_Gun24_P01_GearRunIn.fbx                 27964 tris  light 3008  (182 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearRunOut.fbx'
+export finished in 0.0417 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P01_GearRunOut_Light.fbx'
+export finished in 0.0128 sec.
+Export: Guns\SM_Frigate_Gun24_P01_GearRunOut.fbx                29892 tris  light 3798  (182 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearRunIn.fbx'
+export finished in 0.0392 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearRunIn_Light.fbx'
+export finished in 0.0098 sec.
+Export: Guns\SM_Frigate_Gun24_P02_GearRunIn.fbx                 27996 tris  light 2630  (183 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearRunOut.fbx'
+export finished in 0.0412 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P02_GearRunOut_Light.fbx'
+export finished in 0.0126 sec.
+Export: Guns\SM_Frigate_Gun24_P02_GearRunOut.fbx                29956 tris  light 3714  (183 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearRunIn.fbx'
+export finished in 0.0388 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_P03_GearRunIn.fbx                 28068 tris  light 3032  (184 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearRunOut.fbx'
+export finished in 0.0410 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P03_GearRunOut_Light.fbx'
+export finished in 0.0137 sec.
+Export: Guns\SM_Frigate_Gun24_P03_GearRunOut.fbx                29988 tris  light 4164  (184 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearRunIn.fbx'
+export finished in 0.0385 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_P04_GearRunIn.fbx                 28084 tris  light 3032  (185 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearRunOut.fbx'
+export finished in 0.0411 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P04_GearRunOut_Light.fbx'
+export finished in 0.0136 sec.
+Export: Guns\SM_Frigate_Gun24_P04_GearRunOut.fbx                30020 tris  light 4444  (185 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearRunIn.fbx'
+export finished in 0.0405 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearRunIn_Light.fbx'
+export finished in 0.0110 sec.
+Export: Guns\SM_Frigate_Gun24_P05_GearRunIn.fbx                 28100 tris  light 3040  (186 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearRunOut.fbx'
+export finished in 0.0414 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P05_GearRunOut_Light.fbx'
+export finished in 0.0139 sec.
+Export: Guns\SM_Frigate_Gun24_P05_GearRunOut.fbx                30052 tris  light 4388  (186 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearRunIn.fbx'
+export finished in 0.0388 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearRunIn_Light.fbx'
+export finished in 0.0103 sec.
+Export: Guns\SM_Frigate_Gun24_P06_GearRunIn.fbx                 28100 tris  light 3040  (187 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearRunOut.fbx'
+export finished in 0.0409 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P06_GearRunOut_Light.fbx'
+export finished in 0.0142 sec.
+Export: Guns\SM_Frigate_Gun24_P06_GearRunOut.fbx                30052 tris  light 4448  (187 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearRunIn.fbx'
+export finished in 0.0398 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearRunIn_Light.fbx'
+export finished in 0.0105 sec.
+Export: Guns\SM_Frigate_Gun24_P07_GearRunIn.fbx                 28116 tris  light 3040  (187 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearRunOut.fbx'
+export finished in 0.0406 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P07_GearRunOut_Light.fbx'
+export finished in 0.0129 sec.
+Export: Guns\SM_Frigate_Gun24_P07_GearRunOut.fbx                30084 tris  light 3560  (188 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearRunIn.fbx'
+export finished in 0.0389 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearRunIn_Light.fbx'
+export finished in 0.0101 sec.
+Export: Guns\SM_Frigate_Gun24_P08_GearRunIn.fbx                 28116 tris  light 3048  (188 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearRunOut.fbx'
+export finished in 0.0411 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P08_GearRunOut_Light.fbx'
+export finished in 0.0138 sec.
+Export: Guns\SM_Frigate_Gun24_P08_GearRunOut.fbx                30084 tris  light 4452  (189 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearRunIn.fbx'
+export finished in 0.0386 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearRunIn_Light.fbx'
+export finished in 0.0102 sec.
+Export: Guns\SM_Frigate_Gun24_P09_GearRunIn.fbx                 28116 tris  light 3048  (189 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearRunOut.fbx'
+export finished in 0.0410 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P09_GearRunOut_Light.fbx'
+export finished in 0.0156 sec.
+Export: Guns\SM_Frigate_Gun24_P09_GearRunOut.fbx                30084 tris  light 5200  (190 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearRunIn.fbx'
+export finished in 0.0388 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearRunIn_Light.fbx'
+export finished in 0.0108 sec.
+Export: Guns\SM_Frigate_Gun24_P10_GearRunIn.fbx                 28116 tris  light 3048  (190 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearRunOut.fbx'
+export finished in 0.0411 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P10_GearRunOut_Light.fbx'
+export finished in 0.0144 sec.
+Export: Guns\SM_Frigate_Gun24_P10_GearRunOut.fbx                30084 tris  light 4452  (191 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearRunIn.fbx'
+export finished in 0.0398 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_P11_GearRunIn.fbx                 28100 tris  light 3040  (191 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearRunOut.fbx'
+export finished in 0.0414 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P11_GearRunOut_Light.fbx'
+export finished in 0.0140 sec.
+Export: Guns\SM_Frigate_Gun24_P11_GearRunOut.fbx                30052 tris  light 4388  (192 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearRunIn.fbx'
+export finished in 0.0395 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearRunIn_Light.fbx'
+export finished in 0.0101 sec.
+Export: Guns\SM_Frigate_Gun24_P12_GearRunIn.fbx                 28012 tris  light 2896  (192 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearRunOut.fbx'
+export finished in 0.0405 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P12_GearRunOut_Light.fbx'
+export finished in 0.0142 sec.
+Export: Guns\SM_Frigate_Gun24_P12_GearRunOut.fbx                29956 tris  light 4384  (192 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearRunIn.fbx'
+export finished in 0.0382 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_P13_GearRunIn.fbx                 27996 tris  light 3016  (193 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearRunOut.fbx'
+export finished in 0.0424 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P13_GearRunOut_Light.fbx'
+export finished in 0.0139 sec.
+Export: Guns\SM_Frigate_Gun24_P13_GearRunOut.fbx                29924 tris  light 4356  (193 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearRunIn.fbx'
+export finished in 0.0387 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearRunIn_Light.fbx'
+export finished in 0.0100 sec.
+Export: Guns\SM_Frigate_Gun24_P14_GearRunIn.fbx                 27876 tris  light 2814  (194 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearRunOut.fbx'
+export finished in 0.0403 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_P14_GearRunOut_Light.fbx'
+export finished in 0.0185 sec.
+Export: Guns\SM_Frigate_Gun24_P14_GearRunOut.fbx                29764 tris  light 6280  (194 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Quoin.fbx'
+export finished in 0.0040 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_Quoin_Light.fbx'
+export finished in 0.0040 sec.
+Export: Guns\SM_Frigate_Gun24_Quoin.fbx                            48 tris  light 18  (195 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearRunIn.fbx'
+export finished in 0.0395 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearRunIn_Light.fbx'
+export finished in 0.0105 sec.
+Export: Guns\SM_Frigate_Gun24_S01_GearRunIn.fbx                 27964 tris  light 3008  (195 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearRunOut.fbx'
+export finished in 0.0413 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S01_GearRunOut_Light.fbx'
+export finished in 0.0134 sec.
+Export: Guns\SM_Frigate_Gun24_S01_GearRunOut.fbx                29892 tris  light 3950  (196 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearRunIn.fbx'
+export finished in 0.0383 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearRunIn_Light.fbx'
+export finished in 0.0102 sec.
+Export: Guns\SM_Frigate_Gun24_S02_GearRunIn.fbx                 27996 tris  light 3016  (196 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearRunOut.fbx'
+export finished in 0.0408 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S02_GearRunOut_Light.fbx'
+export finished in 0.0139 sec.
+Export: Guns\SM_Frigate_Gun24_S02_GearRunOut.fbx                29956 tris  light 4456  (197 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearRunIn.fbx'
+export finished in 0.0390 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearRunIn_Light.fbx'
+export finished in 0.0105 sec.
+Export: Guns\SM_Frigate_Gun24_S03_GearRunIn.fbx                 28068 tris  light 3032  (197 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearRunOut.fbx'
+export finished in 0.0402 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S03_GearRunOut_Light.fbx'
+export finished in 0.0138 sec.
+Export: Guns\SM_Frigate_Gun24_S03_GearRunOut.fbx                29988 tris  light 4368  (197 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearRunIn.fbx'
+export finished in 0.0387 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_S04_GearRunIn.fbx                 28084 tris  light 3032  (198 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearRunOut.fbx'
+export finished in 0.0440 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S04_GearRunOut_Light.fbx'
+export finished in 0.0139 sec.
+Export: Guns\SM_Frigate_Gun24_S04_GearRunOut.fbx                30020 tris  light 4396  (198 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearRunIn.fbx'
+export finished in 0.0388 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_S05_GearRunIn.fbx                 28100 tris  light 3040  (199 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearRunOut.fbx'
+export finished in 0.0413 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S05_GearRunOut_Light.fbx'
+export finished in 0.0135 sec.
+Export: Guns\SM_Frigate_Gun24_S05_GearRunOut.fbx                30052 tris  light 4042  (199 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearRunIn.fbx'
+export finished in 0.0404 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearRunIn_Light.fbx'
+export finished in 0.0102 sec.
+Export: Guns\SM_Frigate_Gun24_S06_GearRunIn.fbx                 28100 tris  light 3040  (200 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearRunOut.fbx'
+export finished in 0.0436 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S06_GearRunOut_Light.fbx'
+export finished in 0.0135 sec.
+Export: Guns\SM_Frigate_Gun24_S06_GearRunOut.fbx                30052 tris  light 4028  (200 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearRunIn.fbx'
+export finished in 0.0383 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearRunIn_Light.fbx'
+export finished in 0.0106 sec.
+Export: Guns\SM_Frigate_Gun24_S07_GearRunIn.fbx                 28116 tris  light 2822  (201 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearRunOut.fbx'
+export finished in 0.0408 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S07_GearRunOut_Light.fbx'
+export finished in 0.0130 sec.
+Export: Guns\SM_Frigate_Gun24_S07_GearRunOut.fbx                30084 tris  light 3664  (201 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearRunIn.fbx'
+export finished in 0.0384 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearRunIn_Light.fbx'
+export finished in 0.0103 sec.
+Export: Guns\SM_Frigate_Gun24_S08_GearRunIn.fbx                 28116 tris  light 2896  (202 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearRunOut.fbx'
+export finished in 0.0414 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S08_GearRunOut_Light.fbx'
+export finished in 0.0134 sec.
+Export: Guns\SM_Frigate_Gun24_S08_GearRunOut.fbx                30084 tris  light 4056  (202 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearRunIn.fbx'
+export finished in 0.0394 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearRunIn_Light.fbx'
+export finished in 0.0104 sec.
+Export: Guns\SM_Frigate_Gun24_S09_GearRunIn.fbx                 28116 tris  light 3048  (203 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearRunOut.fbx'
+export finished in 0.0412 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S09_GearRunOut_Light.fbx'
+export finished in 0.0131 sec.
+Export: Guns\SM_Frigate_Gun24_S09_GearRunOut.fbx                30084 tris  light 3806  (203 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearRunIn.fbx'
+export finished in 0.0400 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearRunIn_Light.fbx'
+export finished in 0.0097 sec.
+Export: Guns\SM_Frigate_Gun24_S10_GearRunIn.fbx                 28116 tris  light 2782  (203 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearRunOut.fbx'
+export finished in 0.0416 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S10_GearRunOut_Light.fbx'
+export finished in 0.0142 sec.
+Export: Guns\SM_Frigate_Gun24_S10_GearRunOut.fbx                30084 tris  light 4404  (204 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearRunIn.fbx'
+export finished in 0.0405 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearRunIn_Light.fbx'
+export finished in 0.0101 sec.
+Export: Guns\SM_Frigate_Gun24_S11_GearRunIn.fbx                 28100 tris  light 2886  (204 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearRunOut.fbx'
+export finished in 0.0411 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S11_GearRunOut_Light.fbx'
+export finished in 0.0137 sec.
+Export: Guns\SM_Frigate_Gun24_S11_GearRunOut.fbx                30052 tris  light 4040  (205 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearRunIn.fbx'
+export finished in 0.0390 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearRunIn_Light.fbx'
+export finished in 0.0102 sec.
+Export: Guns\SM_Frigate_Gun24_S12_GearRunIn.fbx                 28012 tris  light 3016  (205 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearRunOut.fbx'
+export finished in 0.0416 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S12_GearRunOut_Light.fbx'
+export finished in 0.0143 sec.
+Export: Guns\SM_Frigate_Gun24_S12_GearRunOut.fbx                29956 tris  light 4360  (206 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearRunIn.fbx'
+export finished in 0.0392 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearRunIn_Light.fbx'
+export finished in 0.0105 sec.
+Export: Guns\SM_Frigate_Gun24_S13_GearRunIn.fbx                 27996 tris  light 3016  (206 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearRunOut.fbx'
+export finished in 0.0405 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S13_GearRunOut_Light.fbx'
+export finished in 0.0141 sec.
+Export: Guns\SM_Frigate_Gun24_S13_GearRunOut.fbx                29924 tris  light 4440  (207 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearRunIn.fbx'
+export finished in 0.0393 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearRunIn_Light.fbx'
+export finished in 0.0105 sec.
+Export: Guns\SM_Frigate_Gun24_S14_GearRunIn.fbx                 27876 tris  light 2984  (207 s)
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearRunOut.fbx'
+export finished in 0.0406 sec.
+
+FBX export starting... 'D:\\dev\\frigate\\out\\Guns\\SM_Frigate_Gun24_S14_GearRunOut_Light.fbx'
+export finished in 0.0140 sec.
+Export: Guns\SM_Frigate_Gun24_S14_GearRunOut.fbx                29764 tris  light 4166  (208 s)
+{
+ "files": 484,
+ "triangles_by_group": {
+  "Outside": 2720025,
+  "Decks": 1095217,
+  "Guns": 3520600
+ },
+ "twins": 1221,
+ "parts_without_twin": 0,
+ "dry": false
+}

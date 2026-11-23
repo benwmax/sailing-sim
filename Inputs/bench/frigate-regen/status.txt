@@ -1,0 +1,50 @@
+2026-11-23 13:59:22 F0 python 3.13.17 5.3.0; worktree 906c9034
+2026-11-23 15:10:59 build exit 0, 72 min
+2026-11-23 15:10:59 F1 build: frigate.blend True 110 MB; json anchors.json berth_deck.json berthdeck.json boats.json build.json deck.json gundeck.json guns.json orlop.json rig.json running.json sails.json
+2026-11-23 15:10:59   |    }
+2026-11-23 15:10:59   |   },
+2026-11-23 15:10:59   |   "triangles_below": 485580,
+2026-11-23 15:10:59   |   "budget_tris": 1000000,
+2026-11-23 15:10:59   |   "share_of_budget": 0.486,
+2026-11-23 15:10:59   |   "triangles_below_note": "the berth deck's parts, the hooks under its beams and the more of its two poses (the hammocks slung by night, the messes laid by day: one shows at a time): what the game loads when below"
+2026-11-23 15:10:59   |  }
+2026-11-23 15:10:59   | }
+2026-11-23 15:10:59 F2 pass 1 shards to run: 0,1,2,3,4,5,6,7
+2026-11-23 15:10:59   shard 0 started (pid 2392)
+2026-11-23 15:10:59   shard 1 started (pid 11340)
+2026-11-23 15:10:59   shard 2 started (pid 5772)
+2026-11-23 15:54:00   shard 1 exit 0, json True
+2026-11-23 15:54:00   shard 3 started (pid 8632)
+2026-11-23 16:01:22 F2 runner (3 at a time) stopped by me to go to 6 at a time; its running shards left untouched
+2026-11-23 16:01:29 F2b taking over step 2 with up to 6 at once; running 0,2,3; reports 1; free RAM 33.7 GB
+2026-11-23 16:01:29   shard 4 started (pid 21124, try 1); free RAM 33.6 GB
+2026-11-23 16:01:49   shard 5 started (pid 16620, try 1); free RAM 32.4 GB
+2026-11-23 16:02:10   shard 6 started (pid 33328, try 1); free RAM 29 GB
+2026-11-23 16:03:30   shard 1 report present (-10 min ago)
+2026-11-23 16:05:30   shard 2 report present (0 min ago)
+2026-11-23 16:05:31   shard 7 started (pid 28328, try 1); free RAM 34.2 GB
+2026-11-23 16:29:54   shard 0 report present (-1 min ago)
+2026-11-23 16:46:56   shard 7 report present (0 min ago)
+2026-11-23 16:48:56   shard 3 report present (0 min ago)
+2026-11-23 16:59:57   shard 5 report present (0 min ago)
+2026-11-23 16:59:57   shard 6 report present (-1 min ago)
+2026-11-23 17:00:57   shard 4 report present (-1 min ago)
+2026-11-23 17:00:57 F2 all 8 shard reports present
+2026-11-23 17:00:59 F0 python 3.13.17 5.3.0; worktree 906c9034
+2026-11-23 17:01:12 merge exit 0, 0 min
+2026-11-23 17:01:13 F3 merge: ok True; failing 0 
+2026-11-23 17:04:44 export exit 0, 4 min
+2026-11-23 17:04:44   | Export: Guns\SM_Frigate_Gun24_S14_GearRunOut.fbx                29764 tris  light 4166  (208 s)
+2026-11-23 17:04:44   | {
+2026-11-23 17:04:44   |  "files": 484,
+2026-11-23 17:04:44   |  "triangles_by_group": {
+2026-11-23 17:04:44   |   "Outside": 2720025,
+2026-11-23 17:04:44   |   "Decks": 1095217,
+2026-11-23 17:04:44   |   "Guns": 3520600
+2026-11-23 17:04:44   |  },
+2026-11-23 17:04:44   |  "twins": 1221,
+2026-11-23 17:04:44   |  "parts_without_twin": 0,
+2026-11-23 17:04:44   |  "dry": false
+2026-11-23 17:04:44   | }
+2026-11-23 17:04:44 F4 export: files 959 fbx, 252 MB; sockets True; materials True
+2026-11-23 17:04:44 FRIGATE DONE
