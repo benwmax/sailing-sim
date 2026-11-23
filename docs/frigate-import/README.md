@@ -31,9 +31,22 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
 
 ## What the game does with it
 
-- `ASailboatPawn::BindShipRig` / `BindShipFrames` (docs/ship-rig, docs/ship-frames) load the yards, sails, tiller, ropes,
-  wheel and doors from `Outside/` and `Decks/` by name and move them.
+- `ShipOutside.h` / `ShipOutsideVisuals.cpp`: `ASailboatPawn::BindShipOutside` reads her table
+  (`Content/TerrainData/Ships/Commonwealth.sockets.json`, `ShipOutside::ParseTable`: the `meshes` of group Outside in the
+  ship's frame, 244 parts) and loads them under BoatRoot in her frame: the heroes on High and Ultra, the light twins on Low
+  and Medium (`-SailingFrigateLight=0|1`). Once they are on her the rig and the frames bind again and find the yards and
+  sails among them (neither loads its own copy of a part the outside model owns: `ShipOutsideOwns`). The stand-in hull,
+  foils, spars and deck structure are not drawn when `bShipOutsideModel` (her table and `Outside/SM_Frigate_Skin` are in
+  the project); `-SailingClassicFrigate` keeps the stand-in for compared stills.
+- Her state shows the parts exported per state: the ship's is action while any gun is past loading on its way out or
+  back (lid lanyards open), else underway; each rig group's running rigging and blocks (`Running_<Group>_<Set|Clewed|
+  Furled>`, `Blocks_*`; `ShipOutside::GroupOf`, `GroupOfSail`) follow its sails: set while any is set, clewed while any
+  is, else furled. The sails themselves are the rig's to show (`docs/ship-rig`).
+- `BindShipRig` / `BindShipFrames` (docs/ship-rig, docs/ship-frames) move the yards, sails, tiller, ropes, wheel and doors;
+  the wheel and the capstan, on their own pivots, are loaded by the frames from `Outside/`.
 - `ShipWalkVisuals` streams `Decks/SM_Frigate_<GunDeck|BerthDeck|Orlop|Hold>` by the walk map's deck under the walker.
 - `ACannonBattery` places the `Guns/` meshes from the gun table.
-- The outside model itself (the hull and everything static in `Outside/`, by her state: underway, action, clewed,
-  anchored) is drawn by the wiring thread's next PR; until it lands she is drawn from her config.
+- Tests `SailingSim.ShipOutside.Table`, `.Groups` (plain) and `.Commonwealth` (her table once committed: 244 parts, every
+  one with its twin, the skin among them, the wheel not).
+- Not yet: the berth deck's placed copies (hammocks, messes, chests: `placed` owner ship), the lanterns (`lights`), the
+  twin by distance rather than tier, and the boat card and boat cycle guards.

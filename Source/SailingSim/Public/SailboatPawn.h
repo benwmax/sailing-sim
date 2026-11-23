@@ -66,6 +66,15 @@ struct FShipRigPart
 	uint8 Object = 0;         // 0 the spar, 1 the sail's head, 2 set, 3 clewed, 4 furled
 };
 
+/** A part of a ship's outside model (docs/frigate-import/, ShipOutsideVisuals.cpp), shown by her state. */
+struct FShipOutsidePart
+{
+	TWeakObjectPtr<UStaticMeshComponent> Mesh;
+	FString Name;             // the export's part name (the mesh is SM_<Folder>_<Name>)
+	FString Group;            // the rig group its showing follows (ShipOutside::GroupOf), "" for the ship's state
+	uint8 States = 15;        // ShipOutside state bits it shows in
+};
+
 /** A moving part of a ship's model (docs/ship-frames/, ShipModelVisuals.cpp): the tiller, a rope part, a door, the wheel. */
 struct FShipFramePart
 {
@@ -675,6 +684,9 @@ public:
 	/** A ship's moving parts (docs/ship-frames/): her table (null for a boat without one) and their pose now. */
 	const Sailing::FShipFramesData* GetShipFrames() const { return ShipFrames; }
 	const Sailing::FShipFramesPose& GetShipFramesPose() const { return ShipFramesPose; }
+	/** Whether this ship is drawn from her exported outside model (docs/frigate-import/), and how many of its parts are on her. */
+	bool DrawsShipOutsideModel() const { return bShipOutsideModel; }
+	int32 ShipOutsidePartsShown() const { return ShipOutsideMeshes.Num(); }
 private:
 	Sailing::FWalkMap WalkMap;
 	FString WalkMapName;                     // the ship the map is for
@@ -749,6 +761,22 @@ private:
 	void ClearShipFrames();
 	void BindShipFrames();
 	void UpdateShipFrames(float DeltaSeconds);
+	/** A ship's outside model (docs/frigate-import/, ShipOutsideVisuals.cpp): the parts of her export built in her frame,
+	 *  loaded under BoatRoot and shown by her state (bShipOutsideModel: her table and hull are in the project, so the
+	 *  stand-in hull, foils and spars are not drawn). The rig and the frames leave her parts to it (ShipOutsideOwns). */
+	bool bShipOutsideModel = false;
+	TArray<FShipOutsidePart> ShipOutsideParts;
+	TSet<FString> ShipOutsideNames;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> ShipOutsideMeshes;
+	TArray<FSoftObjectPath> ShipOutsidePending;
+	TSharedPtr<struct FStreamableHandle> ShipOutsideLoad;
+	bool bShipOutsideLoaded = false;
+	uint32 ShipOutsideStateShown = 0;
+	bool HasShipOutsideModel() const;
+	bool ShipOutsideOwns(const FString& PartName) const;
+	void ClearShipOutside();
+	void BindShipOutside();
+	void UpdateShipOutside(float DeltaSeconds);
 	/** Her guns (docs/cannon-fire/, the player's ship only): the battery on BoatRoot, whether each side was told to keep
 	 *  firing (the panel's cease fire), and its shots shaking the camera. */
 	UPROPERTY(Transient) TObjectPtr<ACannonBattery> ShipBattery;

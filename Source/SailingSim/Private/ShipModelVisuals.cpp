@@ -172,7 +172,7 @@ void ASailboatPawn::BindShipFrames()
 	{
 		const Sailing::FShipFrame& F = ShipFrames->Frames[K];
 		const FString Name = UTF8_TO_TCHAR(F.Name);
-		if (Found.Contains(Name)) continue;
+		if (Found.Contains(Name) || ShipOutsideOwns(Name)) continue;   // the outside model's part: found once it is loaded
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Name);
 		const FString Package = ShipRigGame::PartPackage(Folder, Asset, F.bBelow);
 		if (Package.IsEmpty()) continue;
@@ -318,7 +318,7 @@ void ASailboatPawn::BindShipRig()
 	// The rest from the export, where it is in the project.
 	for (const TPair<FString, FShipRigPart>& Pair : Wanted)
 	{
-		if (Found.Contains(Pair.Key)) continue;
+		if (Found.Contains(Pair.Key) || ShipOutsideOwns(Pair.Key)) continue;   // the outside model's part: found once it is loaded
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Pair.Key);
 		const FString Package = FString::Printf(TEXT("/Game/Boats/%s/Outside/%s"), *Folder, *Asset);
 		if (!FPackageName::DoesPackageExist(Package)) continue;
