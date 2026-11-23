@@ -131,6 +131,31 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 
 // Visual V1: the incident meter gives the photographers' exposures (sunny 16 = EV 15, overcast 12-13, sunset 7-9,
 // full moon about -3), and the camera keeps part of the gloom.
+/**
+ * docs/cloud-blocks/: the sky cache's panorama knots on screen. At playing views a knot is a few pixels and the dome's
+ * spline hides it; through the film tripod's 26 deg lens on 3840 px it is 13 px and the far clouds showed it as a grid of
+ * soft squares, so past 6 px the live clouds draw the whole sky (back under 5).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSkyCacheLensTest, "SailingSim.Visual.SkyCacheLens", VisualFlags)
+bool FVisualSkyCacheLensTest::RunTest(const FString&)
+{
+	const float High90 = SkyCacheKnotPixels(4096, 90.f, 2560), Ultra90 = SkyCacheKnotPixels(8192, 90.f, 3840);
+	const float Tripod = SkyCacheKnotPixels(8192, 26.f, 3840), Fov60 = SkyCacheKnotPixels(8192, 60.f, 3840);
+	AddInfo(FString::Printf(TEXT("Knot px: High 90 deg 2560 %.2f, Ultra 90 deg 3840 %.2f, 60 deg 3840 %.2f, tripod 26 deg 3840 %.2f"), High90, Ultra90, Fov60, Tripod));
+	TestTrue(TEXT("High's 4096 and Ultra's 8192 have the same knots (0.088 deg)"), FMath::IsNearlyEqual(SkyCacheKnotPixels(4096, 26.f, 3840), Tripod, 0.01f));
+	TestTrue(TEXT("Tripod 26 deg on 3840 px: a knot is 13 px (the crops' grid)"), FMath::IsNearlyEqual(Tripod, 13.0f, 0.1f));
+	TestFalse(TEXT("90 deg on 2560: the cache draws"), SkyCacheTooCoarse(High90, false, 6.f));
+	TestFalse(TEXT("90 deg on 3840: the cache draws"), SkyCacheTooCoarse(Ultra90, false, 6.f));
+	TestFalse(TEXT("The narrowest Settings FOV (60) on 3840: the cache draws"), SkyCacheTooCoarse(Fov60, false, 6.f));
+	TestTrue(TEXT("Tripod: the live clouds draw the whole sky"), SkyCacheTooCoarse(Tripod, false, 6.f));
+	TestTrue(TEXT("Inside the band it stays set aside"), SkyCacheTooCoarse(5.5f, true, 6.f));
+	TestFalse(TEXT("...and stays drawn"), SkyCacheTooCoarse(5.5f, false, 6.f));
+	TestFalse(TEXT("Under 5 px it comes back"), SkyCacheTooCoarse(4.9f, true, 6.f));
+	TestFalse(TEXT("0 turns the switch off"), SkyCacheTooCoarse(Tripod, false, 0.f));
+	TestEqual(TEXT("No view (nullrhi): 0 px"), SkyCacheKnotPixels(8192, 90.f, 0), 0.f);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualMeteredExposureTest, "SailingSim.Visual.MeteredExposure", VisualFlags)
 bool FVisualMeteredExposureTest::RunTest(const FString& Parameters)
 {

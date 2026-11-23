@@ -52,6 +52,23 @@ float CloudCapStepFloorM(ESailingQuality Quality)
 	return Quality == ESailingQuality::Ultra ? 150.f : 0.f;
 }
 
+float SkyCacheKnotPixels(int32 CacheWidth, float HFovDeg, int32 ViewWidthPx)
+{
+	if (CacheWidth <= 0 || HFovDeg <= 0.f || ViewWidthPx <= 0) return 0.f;
+	// M_SkyDome's knots: tsz /= 1 + saturate(tsz.x / 4096 - 1) above 3 deg (where a cumulus base 1.2 km up is nearer than
+	// about 23 km, the distances a narrow lens frames).
+	const float Knots = float(CacheWidth) / (1.f + FMath::Clamp(float(CacheWidth) / 4096.f - 1.f, 0.f, 1.f));
+	const float KnotDeg = 360.f / Knots;
+	const float PixelDeg = FMath::Min(HFovDeg, 170.f) / float(ViewWidthPx);
+	return KnotDeg / PixelDeg;
+}
+
+bool SkyCacheTooCoarse(float KnotPx, bool bNow, float MaxKnotPx)
+{
+	if (MaxKnotPx <= 0.f) return false;
+	return bNow ? KnotPx > MaxKnotPx - 1.f : KnotPx > MaxKnotPx;
+}
+
 TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 {
 	TArray<FQualityCVar> V;

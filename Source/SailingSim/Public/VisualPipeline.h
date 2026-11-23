@@ -54,6 +54,18 @@ SAILINGSIM_API void CloudTierSampleScales(ESailingQuality Quality, bool bFullSto
  *  grain averages out. Ultra 150 m (docs/cloud-shimmer); 0 (the material's default, off) elsewhere. */
 SAILINGSIM_API float CloudCapStepFloorM(ESailingQuality Quality);
 
+/** docs/cloud-blocks/: how many screen pixels one knot of the sky cache's panorama spans across, for a view HFovDeg wide
+ *  on ViewWidthPx pixels. The dome reads the panorama (CacheWidth texels round the horizon) through a cubic B-spline whose
+ *  knots are coarsened to 4096 round from 3 deg up on panoramas wider than that (M_SkyDome, docs/cache-march/), so a
+ *  knot is 360 / 4096 deg on both High's 4096 and Ultra's 8192: 2.5 px at 90 deg on 2560 px, 13 px through a 26 deg lens
+ *  on 3840. Each knot is one jittered march, so magnified it shows as a grid of soft squares. */
+SAILINGSIM_API float SkyCacheKnotPixels(int32 CacheWidth, float HFovDeg, int32 ViewWidthPx);
+
+/** docs/cloud-blocks/: the knot size past which the far clouds are drawn by the live march instead of the panorama
+ *  (kSkyCacheMaxKnotPx, 6 px), and back under 5 (a band, so a zoom held at the edge doesn't toggle it). bNow is whether
+ *  the cache is set aside now; MaxKnotPx <= 0 never sets it aside (measuring: -SailingSkyCacheMaxKnotPx=0). */
+SAILINGSIM_API bool SkyCacheTooCoarse(float KnotPx, bool bNow, float MaxKnotPx);
+
 /** Medium and High use the physical camera and the V1 look; Low keeps the Phase 8 exposure and post. */
 SAILINGSIM_API bool UsesPhysicalCamera(ESailingQuality Quality);
 
