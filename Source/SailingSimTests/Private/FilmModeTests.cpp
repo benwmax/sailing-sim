@@ -3,6 +3,7 @@
 #include "ReferenceCapture.h"
 #include "VisualPipeline.h"
 #include "HAL/FileManager.h"
+#include "Misc/App.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -68,6 +69,20 @@ bool FFilmFrameClockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("slow motion: still one a frame"), Slow.Stride, 1);
 	TestEqual(TEXT("slow motion: 480 frames for 2 game seconds"), Slow.Count, 480);
 	TestEqual(TEXT("no recording asked, none taken"), FFilmFrameClock::Make(1.0 / 60.0, 3.0, 0.0, 0.1).Count, 0);
+
+	// The game mode counts in frames under -benchmark (the PC's first run: -benchmark -fps=60 leaves UseFixedTimeStep false,
+	// so the timed loop ran and wrote 481), and under -UseFixedTimeStep; not in a normal run.
+	const bool bWasBenchmarking = FApp::IsBenchmarking(), bWasFixed = FApp::UseFixedTimeStep();
+	FApp::SetBenchmarking(false);
+	FApp::SetUseFixedTimeStep(false);
+	TestFalse(TEXT("a normal run is timed"), FilmUsesFrameClock());
+	FApp::SetBenchmarking(true);
+	TestTrue(TEXT("-benchmark counts frames"), FilmUsesFrameClock());
+	FApp::SetBenchmarking(false);
+	FApp::SetUseFixedTimeStep(true);
+	TestTrue(TEXT("-UseFixedTimeStep counts frames"), FilmUsesFrameClock());
+	FApp::SetBenchmarking(bWasBenchmarking);
+	FApp::SetUseFixedTimeStep(bWasFixed);
 	return true;
 }
 
@@ -92,10 +107,17 @@ bool FFilmSwitchesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the water's reflections at full resolution"), bWater);
 
 	// The tripod: distance, height and lens from -SailingTripod, defaults for what is left out.
-	const FFilmTripod T = FFilmTripod::Parse(TEXT("35,2.5,18"));
-	TestTrue(TEXT("tripod 35 m, 2.5 m up, 18 deg"), T.DistanceM == 35.0 && T.HeightM == 2.5 && T.HFovDeg == 18.0);
+	const FFilmTripod T = FFilmTripod::Parse(TEXT("35,2.5,18,0.3"));
+	TestTrue(TEXT("tripod 35 m, 2.5 m up, 18 deg, aimed at 0.3 of the masthead"), T.DistanceM == 35.0 && T.HeightM == 2.5 && T.HFovDeg == 18.0 && T.AimFraction == 0.3);
 	const FFilmTripod D = FFilmTripod::Parse(TEXT("60"));
-	TestTrue(TEXT("tripod defaults"), D.DistanceM == 60.0 && D.HeightM == 1.6 && D.HFovDeg == 20.0);
+	TestTrue(TEXT("tripod defaults"), D.DistanceM == 60.0 && D.HeightM == 1.6 && D.HFovDeg == 26.0 && D.AimFraction == 0.45);
+	{
+		// The default frame holds the whole J/22 (waterline to a 9.25 m masthead) at 40 m in 16:9.
+		const FFilmTripod Def;
+		const double VHalf = FMath::Atan(FMath::Tan(FMath::DegreesToRadians(0.5 * Def.HFovDeg)) * 9.0 / 16.0);
+		const double Aim = Def.AimFraction * 9.25, Reach = Def.DistanceM * FMath::Tan(VHalf);
+		TestTrue(FString::Printf(TEXT("default frame %.1f..%.1f m holds 0..9.25 m"), Aim - Reach, Aim + Reach), Aim - Reach < 0.0 && Aim + Reach > 9.25);
+	}
 	TestEqual(TEXT("Tripod by name"), ParseCapturePreset(TEXT("tripod")), ECapturePreset::Tripod);
 	TestEqual(TEXT("Path by name"), ParseCapturePreset(TEXT("Path")), ECapturePreset::Path);
 	TestFalse(TEXT("film cameras are not onboard"), CapturePresetInfo(ECapturePreset::Tripod).bOnboard || CapturePresetInfo(ECapturePreset::Path).bOnboard);

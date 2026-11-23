@@ -18,9 +18,14 @@
  *   -SailingCapture=Path -SailingShotFile=<path to a shot .json>
  *                                    a keyframed camera move (FFilmShot): orbit, dolly, crane, pan or a locked mount
  *
- * With a fixed step (-benchmark -fps=60), -SailingRecord=<s> -SailingRecordInterval=<s> are counted in frames
- * (FFilmFrameClock): exactly round(record / interval) frames, one every round(interval / step) frames.
+ * With a fixed step (-benchmark -fps=60, or -UseFixedTimeStep), -SailingRecord=<s> -SailingRecordInterval=<s> are counted
+ * in frames (FFilmFrameClock): exactly round(record / interval) frames, one every round(interval / step) frames.
  */
+
+/** Whether the engine steps a fixed time each frame: benchmarking (-benchmark, the step from -fps) or -UseFixedTimeStep.
+ *  The game mode counts the recording in frames then. (-benchmark alone leaves FApp::UseFixedTimeStep() false: PC run
+ *  on #817's first head wrote 481 frames.) */
+SAILINGSIM_API bool FilmUsesFrameClock();
 
 /** Frame-counted recording under a fixed time step. Frame 0 is the bench's first tick. */
 struct SAILINGSIM_API FFilmFrameClock
@@ -124,12 +129,15 @@ struct SAILINGSIM_API FFilmShot
 	FVector ToCm(const FVector& FramePos, const FFilmBoatPose& Boat) const;
 };
 
-/** The tripod's arguments: -SailingTripod=<distance m>,<height m>[,<hfov deg>]. Defaults 40 m, 1.6 m, 20 deg. */
+/** The tripod's arguments: -SailingTripod=<distance m>,<height m>[,<hfov deg>[,<aim fraction of the masthead>]].
+ *  Defaults 40 m, 1.6 m, 26 deg, 0.45: the whole J/22, waterline to masthead, in a 16:9 frame (at 20 deg and a third of
+ *  the masthead the PC's first run cut her masthead off). */
 struct SAILINGSIM_API FFilmTripod
 {
 	double DistanceM = 40.0;
 	double HeightM = 1.6;
-	double HFovDeg = 20.0;
+	double HFovDeg = 26.0;
+	double AimFraction = 0.45;
 	static FFilmTripod Parse(const FString& Arg);
 };
 

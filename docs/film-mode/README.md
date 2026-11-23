@@ -10,10 +10,10 @@ empty in Shipping, so record from a Development package. Code: `FilmMode.h`, `Re
 
 | Switch | What it does | Why (the capture test) |
 |---|---|---|
-| fixed step (`-benchmark -fps=60`) | `-SailingRecord=<s>` and `-SailingRecordInterval=<s>` are counted in frames (`FFilmFrameClock`): exactly round(record / interval) frames, one every round(interval / step) frames, numbered `frame_0000.png` on. The bench runs on until the last one is written. | The timed loop wrote 481 frames for 480. |
+| fixed step (`-benchmark -fps=60`, or `-UseFixedTimeStep`) | `-SailingRecord=<s>` and `-SailingRecordInterval=<s>` are counted in frames (`FFilmFrameClock`): exactly round(record / interval) frames, one every round(interval / step) frames, numbered `frame_0000.png` on. The bench runs on until the last one is written. | The timed loop wrote 481 frames for 480. |
 | `-SailingMotionBlur=<amount>` | Capture mode keeps that much motion blur (0.5 is a 180 degree shutter). `-SailingFilm` alone gives 0.5. Without either, capture mode stays at 0, as the reference stills need. | Capture mode set `MotionBlurAmount` to 0. |
 | `-SailingEV=<EV100>` | Locks the exposure outside capture mode too (the chase rig, any view). | It was read only in capture mode. |
-| `-SailingCapture=Tripod -SailingTripod=<distance m>,<height m>[,<hfov deg>]` | A tripod set up off the boat's bearing (`-SailingCaptureBearing`, or to leeward; `-SailingCaptureAbsolute` for a compass bearing). Once it is set up it stays put and pans to follow her live. Defaults are 40 m, 1.6 m and 20 deg. | ShoreTele is fixed at 200 m, 3 m up and 15 deg. |
+| `-SailingCapture=Tripod -SailingTripod=<distance m>,<height m>[,<hfov deg>[,<aim>]]` | A tripod set up off the boat's bearing (`-SailingCaptureBearing`, or to leeward; `-SailingCaptureAbsolute` for a compass bearing). Once it is set up it stays put and pans to follow her live, aimed at `aim` times her masthead height. Defaults are 40 m, 1.6 m, 26 deg and 0.45, which hold the whole J/22 from waterline to masthead in 16:9. | ShoreTele is fixed at 200 m, 3 m up and 15 deg. |
 | `-SailingCapture=Path -SailingShotFile=<file>` | A keyframed camera move (below). A relative path is read from `Saved/`. If the file doesn't load, the log says why and the chase camera films instead. | |
 | `-SailingFilm` | The offline quality boost: clouds traced at full resolution with up to 512 samples (`r.VolumetricRenderTarget.Mode 3`), the water's and Lumen's reflections at full resolution, a 200% TSR history, and on the capture camera Lumen reflection and final gather quality 2 with hit lighting. Costly, and meant only for frames written to disk. `-SailingCloudMode` and `-SailingCloudSamples` still override it. | Blocky cloud edges at 4K, and dithered stripes in the reflection under the boat. |
 
@@ -31,7 +31,7 @@ frames, so every run of a shot is the same). Before the first key the camera hol
   "fov": 35,
   "keys": [
     { "t": 0, "orbit": [-100, 22, 1.8] },
-    { "t": 6, "orbit": [-20, 16, 3.5], "fov": 28, "ease": "inout" }
+    { "t": 6, "orbit": [-20, 24, 3], "fov": 32, "ease": "inout" }
   ]
 }
 ```

@@ -5351,7 +5351,7 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		if (CapturePreset == ECapturePreset::Tripod)
 		{
 			// Film mode's tripod: set up at -SailingTripod's distance and height off her bearing, then (below) it only pans.
-			WorldCameraPoseAt(Origin, Heading, Bearing, float(FilmTripod.DistanceM), float(FilmTripod.HeightM), 0.33f,
+			WorldCameraPoseAt(Origin, Heading, Bearing, float(FilmTripod.DistanceM), float(FilmTripod.HeightM), float(FilmTripod.AimFraction),
 				float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
 		}
 		if (CapturePreset == ECapturePreset::ShoreTele || CapturePreset == ECapturePreset::Tripod)
@@ -5361,7 +5361,8 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = SailingFrame::ToMapCm(GetWorld(), Location); bShoreStandSet = true; }
 			if (bShoreStandSet)
 			{
-				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
+				const float AimFraction = CapturePreset == ECapturePreset::Tripod ? float(FilmTripod.AimFraction) : 0.33f;
+				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + AimFraction * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
 				Location = SailingFrame::FromMapCm(GetWorld(), ShoreStand);
 				Rotation = (Aim - Location).Rotation();
 			}

@@ -1269,7 +1269,7 @@ void ASailingGameMode::StartPlay()
 		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSlowMo="), SlowMo) && SlowMo > 0.f && GetWorldSettings()) GetWorldSettings()->SetTimeDilation(SlowMo);
 		// Film mode (FilmMode.h): under a fixed step every frame is the same game time, so the recording is counted in
 		// frames. Timed, the 1/60 s interval added up against the end landed a 481st frame (Inputs/reel-test/README.md).
-		if (FApp::UseFixedTimeStep())
+		if (FilmUsesFrameClock())
 		{
 			const double Dilation = GetWorldSettings() ? GetWorldSettings()->GetEffectiveTimeDilation() : 1.0;
 			FilmFrames = FFilmFrameClock::Make(FApp::GetFixedDeltaTime() * Dilation, BenchWarmup, RecordSeconds, RecordInterval);

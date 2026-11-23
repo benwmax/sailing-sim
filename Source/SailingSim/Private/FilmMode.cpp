@@ -3,6 +3,7 @@
 #include "SailingSim.h"
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
+#include "Misc/App.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Serialization/JsonReader.h"
@@ -279,7 +280,13 @@ FFilmTripod FFilmTripod::Parse(const FString& Arg)
 	if (P.Num() > 0 && !P[0].IsEmpty()) T.DistanceM = FMath::Max(1.0, FCString::Atod(*P[0]));
 	if (P.Num() > 1 && !P[1].IsEmpty()) T.HeightM = FCString::Atod(*P[1]);
 	if (P.Num() > 2 && !P[2].IsEmpty()) T.HFovDeg = FMath::Clamp(FCString::Atod(*P[2]), 1.0, 170.0);
+	if (P.Num() > 3 && !P[3].IsEmpty()) T.AimFraction = FMath::Clamp(FCString::Atod(*P[3]), 0.0, 1.5);
 	return T;
+}
+
+bool FilmUsesFrameClock()
+{
+	return FApp::IsBenchmarking() || FApp::UseFixedTimeStep();
 }
 
 float CaptureMotionBlurAmount(const TCHAR* CommandLine)
