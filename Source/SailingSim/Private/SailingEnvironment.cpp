@@ -111,7 +111,8 @@ namespace
 	constexpr float kSkyCacheFarM = 40000.f;
 	// docs/cloud-blocks/: past this many screen pixels a panorama knot (SkyCacheKnotPixels), the live clouds draw the
 	// whole sky (a narrow lens: under about 42 deg on 3840 px, 21 deg on 1920); back under one pixel less. Playing views
-	// (60-120 deg) are 2-5.6 px on screens up to 3840 px and at most 7.5 px on 5120, all under the band.
+	// (60-120 deg) are 1.4-5.6 px on screens up to 3840 px, under the band; on 5120 the narrowest (60 deg) is 7.5 px, in
+	// it, so there the cache comes back after a zoom only from 65 deg up (docs/cloud-blocks/).
 	constexpr float kSkyCacheMaxKnotPx = 8.f;
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow

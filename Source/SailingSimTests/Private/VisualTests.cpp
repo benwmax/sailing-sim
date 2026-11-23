@@ -133,16 +133,15 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
  * docs/cloud-blocks/: the sky cache's panorama knots on screen. At playing views a knot is a few pixels and the dome's
  * spline hides it; through the film tripod's 26 deg lens on 3840 px it is 13 px and the far clouds showed it as a grid of
  * soft squares, so past 8 px the live clouds draw the whole sky (back under 7). The band sits above every Settings FOV on
- * screens up to 5120 px, so a player who zooms in and back out always gets the cache back.
+ * screens up to 3840 px (the Mac's Retina 3456 too), so a player who zooms in and back out always gets the cache back.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FVisualSkyCacheLensTest, "SailingSim.Visual.SkyCacheLens", VisualFlags)
 bool FVisualSkyCacheLensTest::RunTest(const FString&)
 {
 	const float High90 = SkyCacheKnotPixels(4096, 90.f, 2560), Ultra90 = SkyCacheKnotPixels(8192, 90.f, 3840);
 	const float Tripod = SkyCacheKnotPixels(8192, 26.f, 3840), Fov60 = SkyCacheKnotPixels(8192, 60.f, 3840);
-	const float Fov60At5K = SkyCacheKnotPixels(8192, 60.f, 5120);
-	AddInfo(FString::Printf(TEXT("Knot px: High 90 deg 2560 %.2f, Ultra 90 deg 3840 %.2f, 60 deg 3840 %.2f, 60 deg 5120 %.2f, tripod 26 deg 3840 %.2f"),
-		High90, Ultra90, Fov60, Fov60At5K, Tripod));
+	AddInfo(FString::Printf(TEXT("Knot px: High 90 deg 2560 %.2f, Ultra 90 deg 3840 %.2f, 60 deg 3840 %.2f, tripod 26 deg 3840 %.2f"),
+		High90, Ultra90, Fov60, Tripod));
 	const float Max = 8.f;
 	TestTrue(TEXT("High's 4096 and Ultra's 8192 have the same knots (0.088 deg)"), FMath::IsNearlyEqual(SkyCacheKnotPixels(4096, 26.f, 3840), Tripod, 0.01f));
 	TestTrue(TEXT("Tripod 26 deg on 3840 px: a knot is 13 px (the crops' grid)"), FMath::IsNearlyEqual(Tripod, 13.0f, 0.1f));
@@ -150,7 +149,7 @@ bool FVisualSkyCacheLensTest::RunTest(const FString&)
 	TestFalse(TEXT("90 deg on 3840: the cache draws"), SkyCacheTooCoarse(Ultra90, false, Max));
 	TestFalse(TEXT("The narrowest Settings FOV (60) on 3840: the cache draws"), SkyCacheTooCoarse(Fov60, false, Max));
 	TestFalse(TEXT("...and comes back there after a zoom (under the band)"), SkyCacheTooCoarse(Fov60, true, Max));
-	TestFalse(TEXT("60 deg on 5120: comes back after a zoom too"), SkyCacheTooCoarse(Fov60At5K, true, Max));
+	TestFalse(TEXT("60 deg on the Mac's Retina 3456: comes back after a zoom too"), SkyCacheTooCoarse(SkyCacheKnotPixels(4096, 60.f, 3456), true, Max));
 	TestTrue(TEXT("Tripod: the live clouds draw the whole sky"), SkyCacheTooCoarse(Tripod, false, Max));
 	TestTrue(TEXT("Inside the band it stays set aside"), SkyCacheTooCoarse(7.5f, true, Max));
 	TestFalse(TEXT("...and stays drawn"), SkyCacheTooCoarse(7.5f, false, Max));

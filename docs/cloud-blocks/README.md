@@ -49,8 +49,10 @@ Where it switches on (knot px = 0.0879 x width / FOV):
 | Photo lens 10-110 | on under 21 deg | under 28 | under 38 | under 42 | under 56 |
 
 - Gate and bench views run the 90 deg chase or HelmEye at 70 deg: never on, no cost.
-- Playing views (the chase at any Settings FOV) stay under 7 px on screens up to 5120 wide, so after a zoom the cache always
-  comes back. Past 5120 (6K) a cockpit view at a narrow Settings FOV keeps the live sky.
+- Playing views (the chase at any Settings FOV) stay under 7 px on screens up to 3840 wide (the Mac's Retina 3456 too), so
+  after a zoom the cache always comes back. On 5120 the chase at a Settings FOV of 60-64 sits inside the band (7.0-7.5
+  px): after a zoom the live sky stays until the FOV is 65 or more, and the cockpit at a narrow Settings FOV (9.0 px at 50)
+  switches it on.
 - Where it is on, the far clouds cost what they did before the cache (+0.6 to 1.8 ms on the 4090 at Ultra,
   docs/ultra-cloud-tops/); film mode renders offline.
 - Coming back, the cache's first panorama is marched at the fast rate (1 s) and handed over in play: one visible change
