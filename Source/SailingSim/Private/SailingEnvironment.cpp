@@ -110,8 +110,9 @@ namespace
 	constexpr float kNightDeckFullAtKm = 3.f; // docs/night-clouds/: the distance below which a ray's samples thin, under a night deck
 	constexpr float kSkyCacheFarM = 40000.f;
 	// docs/cloud-blocks/: past this many screen pixels a panorama knot (SkyCacheKnotPixels), the live clouds draw the
-	// whole sky (a narrow lens: under about 56 deg on 3840 px, 28 deg on 1920). Playing views are 2-4 px.
-	constexpr float kSkyCacheMaxKnotPx = 6.f;
+	// whole sky (a narrow lens: under about 42 deg on 3840 px, 21 deg on 1920); back under one pixel less. Playing views
+	// (60-120 deg) are 2-5.6 px on screens up to 3840 px and at most 7.5 px on 5120, all under the band.
+	constexpr float kSkyCacheMaxKnotPx = 8.f;
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
 	// samples, read brighter than High's. (Measured at view scale 2; feedback #22 raised it to 3: docs/cloud-shimmer.)
@@ -1774,7 +1775,7 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	// docs/cloud-blocks/: nor through a narrow lens. The panorama's knots are 0.088 deg (a few pixels at a playing FOV);
 	// through the film tripod's 26 deg lens on 3840 px one spans 13 px, and each knot's own jittered march stood on the far
 	// clouds as a grid of soft squares in every cloud render-target mode. Past kSkyCacheMaxKnotPx the live march draws the
-	// whole sky, as under a storm; under 5 px again the cache comes back. Measuring: -SailingSkyCacheMaxKnotPx=<px> (0: never).
+	// whole sky, as under a storm; under 7 px again the cache comes back. Measuring: -SailingSkyCacheMaxKnotPx=<px> (0: never).
 	{
 		float FovDeg = 0.f;
 		if (const APlayerCameraManager* LensCam = UGameplayStatics::GetPlayerCameraManager(this, 0)) FovDeg = LensCam->GetFOVAngle();
@@ -1816,6 +1817,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	bCacheSuspended = bStorm;
 	if (bStorm)
 	{
+		// docs/cloud-blocks/: a panorama cut short here starts again from its first column (and the camera then) when the
+		// cache comes back: finished later from the old CacheCam, a photo fly-around kilometres off drew it from there.
+		CacheColumn = 0;
+		CacheColumnCarry = 0.f;
 		if (bCacheReady)
 		{
 			bCacheReady = false;

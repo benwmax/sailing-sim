@@ -62,7 +62,7 @@ SAILINGSIM_API float CloudCapStepFloorM(ESailingQuality Quality);
 SAILINGSIM_API float SkyCacheKnotPixels(int32 CacheWidth, float HFovDeg, int32 ViewWidthPx);
 
 /** docs/cloud-blocks/: the knot size past which the far clouds are drawn by the live march instead of the panorama
- *  (kSkyCacheMaxKnotPx, 6 px), and back under 5 (a band, so a zoom held at the edge doesn't toggle it). bNow is whether
+ *  (kSkyCacheMaxKnotPx, 8 px), and back under 7 (a band, so a zoom held at the edge doesn't toggle it). bNow is whether
  *  the cache is set aside now; MaxKnotPx <= 0 never sets it aside (measuring: -SailingSkyCacheMaxKnotPx=0). */
 SAILINGSIM_API bool SkyCacheTooCoarse(float KnotPx, bool bNow, float MaxKnotPx);
 
