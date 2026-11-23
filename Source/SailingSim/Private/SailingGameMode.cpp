@@ -894,6 +894,20 @@ void ASailingGameMode::ApplyQualitySettings()
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) Var->Set(CloudMode, ECVF_SetByCode);
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudSamples="), CloudSamples))
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"))) Var->Set(float(CloudSamples), ECVF_SetByCode);
+	// Film mode: what the clouds and reflections actually run at, read back (the PC's A/B of -SailingCloudMode=1 against
+	// film's 3 looked the same, and nothing in the log said which mode was live).
+	if (IsFilmMode() || CloudMode >= 0)
+	{
+		FString Live;
+		for (const TCHAR* Name : { TEXT("r.VolumetricRenderTarget"), TEXT("r.VolumetricRenderTarget.Mode"), TEXT("r.VolumetricRenderTarget.UpsamplingMode"),
+			TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor"), TEXT("r.Lumen.Reflections.DownsampleFactor"),
+			TEXT("r.TSR.History.ScreenPercentage"), TEXT("r.AntiAliasingMethod"), TEXT("r.ScreenPercentage") })
+		{
+			const IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name);
+			Live += FString::Printf(TEXT(" %s=%s"), Name, Var ? *Var->GetString() : TEXT("(none)"));
+		}
+		SAIL_LOG(Display, TEXT("Film quality:%s"), *Live);
+	}
 	// Measuring (Visual V1): -SailingAA=<0 none, 2 TAA, 4 TSR, 5 SMAA> and -SailingScreenPct=<percent> override the tier.
 	int32 AAOverride = -1, PctOverride = -1;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingAA="), AAOverride))
