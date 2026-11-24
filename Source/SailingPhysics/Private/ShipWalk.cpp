@@ -121,6 +121,12 @@ namespace Sailing
 		return nullptr;
 	}
 
+	double FWalkMap::HelmStandX(double SpotX, double WheelX)
+	{
+		const double Back = WheelX - HelmAbaftWheelAxle;
+		return SpotX > Back ? Back : SpotX;
+	}
+
 	bool FWalkMap::Parse(const uint8_t* Bytes, size_t Size, std::string* Error)
 	{
 		Decks.clear();
@@ -198,8 +204,9 @@ namespace Sailing
 				S.X = R.Get<double>();
 				S.Y = R.Get<double>();
 				S.YawDeg = R.Get<double>();
+				S.Z = FileVersion >= 3 ? R.Get<double>() : 0.0;
 				if (!R.bOk) return Fail("spot cut short");
-				if (S.Deck >= int(NumDecks) || !(std::abs(S.X) < 1e4) || !(std::abs(S.Y) < 1e4) || !(std::abs(S.YawDeg) <= 360.0)) return Fail("bad spot");
+				if (S.Deck >= int(NumDecks) || !(std::abs(S.X) < 1e4) || !(std::abs(S.Y) < 1e4) || !(std::abs(S.YawDeg) <= 360.0) || !(std::abs(S.Z) < 1e4)) return Fail("bad spot");
 			}
 		}
 		if (R.P != R.End) return Fail("trailing bytes");
@@ -250,7 +257,7 @@ namespace Sailing
 		{
 			Put<uint8_t>(Out, uint8_t(S.Deck));
 			PutText(Out, S.Name);
-			for (double V : { S.X, S.Y, S.YawDeg }) Put<double>(Out, V);
+			for (double V : { S.X, S.Y, S.YawDeg, S.Z }) Put<double>(Out, V);
 		}
 		return Out;
 	}

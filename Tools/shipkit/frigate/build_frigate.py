@@ -64,13 +64,17 @@ stanchions, the hatchways with their coamings, gratings and ladders (down onto t
 (its head on its own frame), the chain and brake pumps, the riding bitts, the galley's stove, the manger and the cable
 scuttles (the cables led in from the hawse holes over the manger and down the scuttles), the captain's great cabin aft
 (the bulkhead and its two doors, each on its own frame, the state rooms, the after wall with the stern windows opened
-through it and the transom cut for them, the window seat, the floor cloth and the furniture) and the horn lanterns (each
-a light in gundeck.json); and the sheet anchor, stowed outside abaft the starboard fore channel (anchors.py). After the
+through it and the transom cut for them, the window seat, the floor cloth and the furniture), the rudder's head up
+through the window seat and the iron tiller overhead in the great cabin (one object on its own frame, turning with the
+helm), the tiller ropes from the wheel's legs under the quarterdeck round their sheaves to the tiller's end (the parts that
+move with the helm each on its own frame, posed every degree) and the horn lanterns (each a light in gundeck.json); and
+the sheet anchor, stowed outside abaft the starboard fore channel (anchors.py). After the
 guns, their own gear (gungear.py): a tompion and an apron on each housed long gun (copies, in Guns_Housed), each gun's
 implements hung over it, its shot in a garland, each lid's lanyards (the rings on the lid, built into it; the bushes and
 cleats, LanyardFittings; the rope inside, LidLanyards; the lanyards outside lying down the shut lids, LidLanyards_Shut,
 or taut to the open ones, LidLanyards_Open, hidden). gundeck_room checks every part against the rest of the ship and
-each other, the meetings by design in gundeck_1797.json's meets.
+each other, the meetings by design in gundeck_1797.json's meets; tiller_swing turns the tiller and its ropes hard over
+each way against the rest and each other, door_helm the cabin's doors through their swings against them.
 Slice 13 (berthdeck.py, berthdeck_1797.json, the stores kit's stores.py) builds the berth deck under the gun deck, with
 it (the gun deck's ladders land on its planks and the cables go on down through its scuttles to the tiers): the planked
 deck 7 ft 2 in under the gun deck's, its waterways, the side's ceiling, the gun deck's beams, ledges and carlings over
@@ -96,8 +100,8 @@ sizes), <out>/running.json (each line's path and stations, each block's pose, in
 <out>/guns.json (each gun's frame and pose, its lid, the unique meshes and what moves on each), <out>/anchors.json (each
 anchor's size, the bowers' hang, the catheads, the hawse holes, the cables, the stoppers' holes and the painters' eyes)
 <out>/boats.json (each boat's frame, cradles and gripes, the gig's nest, the spare spars, the anchors' places, the
-gangways' room), <out>/gundeck.json (the gun deck's layout, the capstan's and the cabin doors' frames, the lanterns'
-lights, the gear's places and the lanyards' poses), <out>/berthdeck.json (the berth deck's layout, the lanterns'
+gangways' room), <out>/gundeck.json (the gun deck's layout, the capstan's, the cabin doors' and the tiller's frames, the
+tiller ropes' poses by the helm's angle, the lanterns' lights, the gear's places and the lanyards' poses), <out>/berthdeck.json (the berth deck's layout, the lanterns'
 lights and zones, the hammocks', hooks' and messes' copies) and <out>/berth_deck.json (the berth deck's hand-over to the
 orlop slice: its line, its own beams' stations, the openings and ladders down, what passes through it). Units are metres in Unreal's body frame (X forward, Y
 starboard, Z up), origin on the centreline at midships on the load waterline. The moulded hull stays in the .blend as
@@ -1242,7 +1246,8 @@ for ob in list(GUNDECK.values()) + [GEAR[n] for n in sorted(GEAR) if n not in ("
         + LANTERN_LIGHTS:
     SC.collection.objects.unlink(ob)
     GD_COL.objects.link(ob)
-CABIN_ONLY = ("AfterWall", "WindowReveals", "StateRooms", "WindowSeat", "FloorCloth", "CabinFurniture")
+CABIN_ONLY = ("AfterWall", "WindowReveals", "StateRooms", "WindowSeat", "FloorCloth", "CabinFurniture", "Tiller",
+              "TillerEye_S", "TillerEye_P", "TillerRun_S", "TillerRun_P", "TillerWrap_S", "TillerWrap_P")
 
 
 def below_zones():
@@ -1502,6 +1507,100 @@ def door_swings(step=5.0):
 
 
 DOOR_SWINGS = door_swings()
+
+
+def door_helm(step=5.0):
+    """each cabin door at every opening it swings through (as door_swings, step by step) against the parts that move with
+    the helm at every whole degree each way (HELM; gundeck.door_helm): the doors open aft into the cabin, under the
+    tiller's sweep and beside the ropes' runs: the least gap between any door and any of them, and where"""
+    doors = {}
+    for name, fr in GD.door_frames.items():
+        V, T = world_tris(GUNDECK[name])
+        o, R = GD.frames[name]
+        o, ax = np.asarray(o, float), np.asarray(R, float)[:, 2]
+        ps = []
+        for k in range(int(round(fr["open_deg"] / step)) + 1):
+            c, Rm = gundeck.turned(o, ax, fr["open_sign"] * k * step)
+            ps.append((k * step, (V - c) @ Rm.T + c))
+        doors[name] = (T, ps)
+    hard = int(round(GD.c["tiller"]["hard_over_deg"]))
+    return gundeck.door_helm(doors, HELM, [float(d) for d in range(-hard, hard + 1)])
+
+
+# the parts that move with the helm: the rudder's head and the tiller (one object, Tiller, on its own frame), the tiller
+# ropes' eyes on the tiller's end ring, the runs from the after sheaves to them and the rope round those sheaves
+# (gundeck.json frames and tiller_ropes poses: the game sets them every degree)
+HELM_PARTS = ("Tiller", "TillerEye_S", "TillerEye_P", "TillerRun_S", "TillerRun_P", "TillerWrap_S", "TillerWrap_P")
+
+
+def helm_bodies():
+    """{name: (triangles, posed)} for each part that moves with the helm, posed(deg) its vertices in the ship's frame
+    with the helm deg over (whole degrees; positive: the tiller to starboard): the tiller turned about the head's axis
+    (its frame's Z), the ropes' parts set on their frames for that degree (gundeck.json tiller_ropes poses), the runs
+    stretched along their own X"""
+    poses = {p["helm_deg"]: p for p in GD.info["tiller_ropes"]["poses"]}
+    out = {}
+    for n in HELM_PARTS:
+        V, T = world_tris(GUNDECK[n])
+        o, R = (np.asarray(v, float) for v in GD.frames[n])
+        if n == "Tiller":
+            def posed(deg, V=V, o=o, ax=R[:, 2]):
+                c, Rm = gundeck.turned(o, ax, deg)
+                return (V - c) @ Rm.T + c
+        else:
+            def posed(deg, L=(V - o) @ R, n=n):
+                p = poses[int(round(deg))][n]
+                return np.asarray(p["o"], float) + (L * [p.get("scale_x", 1.0), 1.0, 1.0]) @ np.asarray(p["R"], float).T
+        out[n] = (T, posed)
+    return out
+
+
+HELM = helm_bodies()
+
+
+def tiller_swing(step=1.0):
+    """the parts that move with the helm (HELM_PARTS) turned together from amidships to hard over each way, step by step,
+    against everything near their sweeps but the rudder's blade and its irons (the head stands on the blade's top: the
+    same timber, which the game leaves as built) and against each other (gundeck.swing_set): the last angle they all
+    turn to clear each way, what meets past that and the least gap kept on the way. Joined (one rope where they meet:
+    not checked against each other): each run with its eye, the fixed leads and its wrap, each wrap with the fixed
+    leads; of those, each wrap with the leads and its run and each run with its eye must keep meeting at every step (the
+    rope never comes apart: joins_most_apart_in). Close by design (checked for a touch only): the eyes with the tiller's
+    ring and each other, the runs and the wraps with the sheaves they lie in"""
+    n = int(round(GD.c["tiller"]["hard_over_deg"] / step))
+    steps = {"to_starboard": [k * step for k in range(n + 1)], "to_port": [-k * step for k in range(n + 1)]}
+    lo, hi = None, None
+    for degs in steps.values():
+        for d in degs:
+            for _, f in HELM.values():
+                P = f(d)
+                lo = P.min(0) if lo is None else np.minimum(lo, P.min(0))
+                hi = P.max(0) if hi is None else np.maximum(hi, P.max(0))
+    lo, hi = lo - 0.05, hi + 0.05
+    near = {}
+    for other in SC.objects:
+        if other.type != "MESH" or other.name in HELM or other.name in ("Rudder", "RudderIrons") or \
+                other.name in REFERENCE:
+            continue
+        Mw = np.array(other.matrix_world)
+        bb = np.array([tuple(c) for c in other.bound_box]) @ Mw[:3, :3].T + Mw[:3, 3]
+        if (bb.min(0) > hi).any() or (bb.max(0) < lo).any():
+            continue
+        Vo, To = world_tris(other)
+        if len(To):
+            near[other.name] = (Vo, To)
+    joined = [(f"TillerRun_{s}", f"TillerEye_{s}") for s in "SP"] + \
+        [(f"TillerRun_{s}", "TillerRopeLeads") for s in "SP"] + [(f"TillerWrap_{s}", "TillerRopeLeads") for s in "SP"] + \
+        [(f"TillerWrap_{s}", f"TillerRun_{s}") for s in "SP"]
+    close = [("TillerEye_S", "Tiller"), ("TillerEye_P", "Tiller"), ("TillerEye_S", "TillerEye_P")] + \
+        [(f"Tiller{k}_{s}", "TillerSheaves") for k in ("Run", "Wrap") for s in "SP"]
+    stay = [p for s in "SP" for p in ((f"TillerWrap_{s}", "TillerRopeLeads"), (f"TillerWrap_{s}", f"TillerRun_{s}"),
+                                       (f"TillerRun_{s}", f"TillerEye_{s}"))]
+    return gundeck.swing_set(HELM, steps, near, joined, close, stay=stay)
+
+
+TILLER_SWING = tiller_swing()
+DOOR_HELM = door_helm()
 
 
 def lid_light(along=0.004, across=0.001, perp=0.8, tilts=(15.0, 30.0, 45.0, 60.0)):
@@ -1856,7 +1955,8 @@ GEAR_TRIS = {n: stats["objects"][n]["triangles"] for n in GEAR}
 BELOW_TRIS = sum(GD_TRIS.values()) + sum(v for n, v in GEAR_TRIS.items() if not n.startswith("LidLanyards_")) + \
     GEAR_COPY_TOTAL
 stats["gundeck"] = dict(GD.info, gear=GG.info, lights=GD.lights, lid_open_deg=LID_OPEN, room=GUNDECK_ROOM,
-                        door_swings=DOOR_SWINGS, lid_light=LID_LIGHT,
+                        door_swings=DOOR_SWINGS, tiller_swing=TILLER_SWING, door_helm=DOOR_HELM,
+                        lid_light=LID_LIGHT,
                         folds={n: v["pairs"] for n, v in list(GUNDECK_FOLDS.items()) + list(GEAR_FOLDS.items())},
                         triangles=dict(GD_TRIS, **GEAR_TRIS), triangles_copies={"each": GEAR_COPY_TRIS,
                                                                                "total": GEAR_COPY_TOTAL},
@@ -2006,7 +2106,12 @@ GUNDECK_NOTE = (
     "the gun deck (docs/shipkit-12), in the ship's frame (metres): frames, the parts on frames of their own (the "
     "capstan's head GunCapstan, origin on its axis at the deck, z up, turning about it; the great cabin's doors "
     "CabinDoor_S and CabinDoor_P, origin on the hinge at the deck, x across the leaf toward the latch, z up, opening as "
-    "cabin_doors says); layout, where each fitting stands (x of its centre, its inside size); lights, the lanterns' "
+    "cabin_doors says; the rudder's head and the tiller, Tiller, origin on the head's axis in the tiller's middle plane, "
+    "z up the axis, x forward square to it, turning about z with the helm: a positive turn takes the tiller to "
+    "starboard, tiller.hard_over_deg each way; the tiller ropes' parts that move with it, TillerEye_S and _P, TillerRun_S "
+    "and _P and TillerWrap_S and _P, set for each whole degree of the helm from tiller_ropes.poses as tiller_ropes.moves "
+    "says, their frames here the helm amidships); layout, where each fitting stands (x of its centre, its inside "
+    "size); lights, the lanterns' "
     "lights (a point light in each lantern's body: its zone, colour, kelvin, lumens, radius and whether it casts "
     "shadows) within light_budget, light_zones_note and lumens_note saying how to light by zone and why so bright; "
     "below, what the game loads when below: the collection GunDeck (objects, its meshes; lights, the lanterns' lights), "
@@ -2179,6 +2284,18 @@ SHUT_DOORS = {n: v for n, v in DOOR_SWINGS.items() if v["clear_to_deg"] is None 
 if SHUT_DOORS:
     raise SystemExit("a cabin door can't swing open clear of the floor, the sill, its jambs and casing or the furniture, "
                      "or comes within 0.1 in of them (build.json gundeck.door_swings): " + json.dumps(SHUT_DOORS))
+TILLER_FOUL = {w: v for w, v in TILLER_SWING.items() if w.startswith("to_") and (v["clear_to_deg"] != v["to_deg"] or
+                                                                                v["least_gap_in"] < 0.5 or
+                                                                                v["joins_most_apart_in"] > 0.05)}
+if TILLER_FOUL:
+    raise SystemExit("the rudder's head, the tiller and its ropes can't swing hard over each way clear of the beams, the "
+                     "window seat, the after wall, the cabin's lantern, the sheaves and each other, or come within half "
+                     "an inch of them, or a tiller rope's parts come more than a twentieth of an inch apart "
+                     "(build.json gundeck.tiller_swing): " + json.dumps(TILLER_FOUL))
+if DOOR_HELM["touch"] or DOOR_HELM["least_gap_in"] < 0.5:
+    raise SystemExit("a cabin door meets the tiller or its ropes, or comes within half an inch of them, at some opening "
+                     "and angle of the helm (build.json gundeck.door_helm): " +
+                     json.dumps({k: DOOR_HELM[k] for k in ("least_gap_in", "least_gap_at", "touch")}))
 if LID_LIGHT["leaks"]:
     raise SystemExit("daylight shows round a shut port lid: rays from inside reach the slit round it (build.json "
                      "gundeck.lid_light): " + json.dumps(LID_LIGHT["leaking"]))

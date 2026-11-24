@@ -1,6 +1,8 @@
 // A ship's rig on the model (docs/ship-rig/): her yards brace and hoist, the spanker's boom and gaff swing, and each sail
 // shows set, clewed up or furled as the physics has them. The logic is Sailing::FShipRigPose (ShipRig.h); this file finds
-// the model's parts (or loads them), and puts each frame's pose on them.
+// the model's parts (or loads them), and puts each frame's pose on them. Her other moving parts (docs/ship-frames/: the
+// tiller and its ropes with the rudder, the wheel with them, the cabin doors for a walker) go the same way below, from
+// Sailing::FShipFramesPose (ShipFrames.h).
 #include "SailboatPawn.h"
 #include "SailingSim.h"
 #include "CannonBattery.h"
@@ -86,6 +88,181 @@ void ASailboatPawn::ClearShipRig()
 	ShipSailPlan = 0;
 }
 
+namespace ShipRigGame
+{
+	/** The package of an exported part, looked for in the folder its table says first, then the other: the gun deck's
+	 *  parts are exported with the decks below (Decks/), the rest with the outside model (Outside/). "" when neither has it. */
+	FString PartPackage(const FString& Folder, const FString& Asset, bool bBelow)
+	{
+		const TCHAR* Order[2] = { bBelow ? TEXT("Decks") : TEXT("Outside"), bBelow ? TEXT("Outside") : TEXT("Decks") };
+		for (const TCHAR* Sub : Order)
+		{
+			const FString Package = FString::Printf(TEXT("/Game/Boats/%s/%s/%s"), *Folder, Sub, *Asset);
+			if (FPackageName::DoesPackageExist(Package)) return Package;
+		}
+		return FString();
+	}
+
+	/** A frame as built (its origin and axes in the ship frame, metres) as a transform in BoatRoot's frame (cm). */
+	FTransform FrameRest(const Sailing::FShipFrame& F)
+	{
+		FMatrix M = FMatrix::Identity;   // row vectors: row I is the image of axis I
+		M.M[0][0] = F.X.X; M.M[0][1] = F.X.Y; M.M[0][2] = F.X.Z;
+		M.M[1][0] = F.Y.X; M.M[1][1] = F.Y.Y; M.M[1][2] = F.Y.Z;
+		M.M[2][0] = F.Z.X; M.M[2][1] = F.Z.Y; M.M[2][2] = F.Z.Z;
+		M.M[3][0] = F.Origin.X * Sailing::CmPerMeter;
+		M.M[3][1] = F.Origin.Y * Sailing::CmPerMeter;
+		M.M[3][2] = F.Origin.Z * Sailing::CmPerMeter;
+		return FTransform(M);
+	}
+}
+
+void ASailboatPawn::ClearShipFrames()
+{
+	for (UStaticMeshComponent* Mesh : ShipFrameOwnMeshes) if (Mesh) Mesh->DestroyComponent();
+	ShipFrameOwnMeshes.Reset();
+	for (const FShipFramePart& Part : ShipFrameParts)
+	{
+		if (UStaticMeshComponent* Mesh = Part.Mesh.Get())
+		{
+			Mesh->SetRelativeTransform(Part.Rest);
+			Mesh->SetVisibility(true);
+		}
+	}
+	ShipFrameParts.Reset();
+	ShipFramesPending.Reset();
+	ShipFramesPendingParts.Reset();
+	if (ShipFramesLoad.IsValid()) ShipFramesLoad->CancelHandle();
+	ShipFramesLoad.Reset();
+	ShipFrames = nullptr;
+}
+
+void ASailboatPawn::BindShipFrames()
+{
+	ClearShipFrames();
+	ShipFrames = Sailing::ShipFramesFor(Boat.GetConfig().Name);
+	if (!ShipFrames || !BoatRoot) return;
+	ShipFramesPose.Reset(*ShipFrames);
+	const FString Folder = ShipRigGame::ModelFolder(Boat.GetConfig().Name);
+
+	// The parts already on the boat (the outside model's, straight under BoatRoot in her frame)...
+	TSet<FString> Found;
+	TArray<USceneComponent*> RootParts;
+	BoatRoot->GetChildrenComponents(false, RootParts);
+	for (USceneComponent* Child : RootParts)
+	{
+		UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Child);
+		if (!Mesh || !Mesh->GetStaticMesh()) continue;
+		const FString Object = ShipRigGame::ObjectOfMesh(Mesh->GetStaticMesh()->GetName(), Folder);
+		const int32 Frame = Object.IsEmpty() ? -1 : ShipFrames->FrameNamed(TCHAR_TO_UTF8(*Object));
+		if (Frame < 0) continue;
+		FShipFramePart Part;
+		Part.Mesh = Mesh;
+		Part.Rest = Mesh->GetRelativeTransform();
+		Part.Applied = Part.Rest;
+		Part.Frame = Frame;
+		Part.bBelow = ShipFrames->Frames[Frame].bBelow;
+		Mesh->SetMobility(EComponentMobility::Movable);
+		ShipFrameParts.Add(Part);
+		Found.Add(Object);
+	}
+
+	// ...and the rest from the export, where it is in the project (each part alone at its own pivot in her frame).
+	int32 Outside = 0;   // the outside model's parts, found once it is loaded (BindShipOutside binds the frames again)
+	for (int32 K = 0; K < ShipFrames->NumFrames; ++K)
+	{
+		const Sailing::FShipFrame& F = ShipFrames->Frames[K];
+		const FString Name = UTF8_TO_TCHAR(F.Name);
+		if (Found.Contains(Name)) continue;
+		if (ShipOutsideOwns(Name)) { ++Outside; continue; }
+		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Name);
+		const FString Package = ShipRigGame::PartPackage(Folder, Asset, F.bBelow);
+		if (Package.IsEmpty()) continue;
+		FShipFramePart Part;
+		Part.Frame = K;
+		Part.bBelow = F.bBelow;
+		ShipFramesPending.Add(FSoftObjectPath(Package + TEXT(".") + Asset));
+		ShipFramesPendingParts.Add(Part);
+	}
+	if (ShipFramesPending.Num() > 0) ShipFramesLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(ShipFramesPending);
+	// (Quiet before the outside model has loaded: its parts are bound on the pass after the load.)
+	if (Outside == 0 || ShipFrameParts.Num() > 0)
+	{
+		SAIL_LOG(Log, TEXT("Ship frames %s: %d parts on the model, %d to load, %d with the outside model, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
+			ShipFrameParts.Num(), ShipFramesPending.Num(), Outside, ShipFrames->NumFrames - ShipFrameParts.Num() - ShipFramesPending.Num() - Outside);
+	}
+}
+
+void ASailboatPawn::UpdateShipFrames(float DeltaSeconds)
+{
+	if (!ShipFrames) return;
+	using namespace Sailing;
+
+	// The loaded parts, in her frame like the outside model's (BoatRoot, no offset), drawn and shadowed, no collision.
+	if (ShipFramesLoad.IsValid() && ShipFramesLoad->HasLoadCompleted())
+	{
+		for (int32 K = 0; K < ShipFramesPending.Num() && K < ShipFramesPendingParts.Num(); ++K)
+		{
+			UStaticMesh* Asset = Cast<UStaticMesh>(ShipFramesPending[K].ResolveObject());
+			if (!Asset)
+			{
+				SAIL_LOG(Warning, TEXT("Ship frame mesh %s did not load"), *ShipFramesPending[K].ToString());
+				continue;
+			}
+			UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(this);
+			Mesh->SetupAttachment(BoatRoot.Get());
+			Mesh->SetMobility(EComponentMobility::Movable);
+			Mesh->SetStaticMesh(Asset);
+			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Mesh->SetCanEverAffectNavigation(false);
+			Mesh->RegisterComponent();
+			ShipFrameOwnMeshes.Add(Mesh);
+			FShipFramePart Part = ShipFramesPendingParts[K];
+			Part.Mesh = Mesh;
+			// The export puts each moving part at its own pivot, its frame's origin and axes (like the gun-port lids), so it
+			// rests at its frame; one exported in the ship frame instead (its bounds about the frame's origin, not its own)
+			// rests at the identity, and a rope run's stretch along its own X is then only approximate.
+			const Sailing::FShipFrame& F = ShipFrames->Frames[Part.Frame];
+			const FVector Origin = FVector(F.Origin.X, F.Origin.Y, F.Origin.Z) * Sailing::CmPerMeter;
+			const FVector Centre = Asset->GetBoundingBox().GetCenter();
+			const bool bAtPivot = FVector::DistSquared(Centre, Origin) >= Centre.SizeSquared();
+			Part.Rest = bAtPivot ? ShipRigGame::FrameRest(F) : FTransform::Identity;
+			if (!bAtPivot) SAIL_LOG(Log, TEXT("Ship frame part %s is exported in the ship frame, not at its pivot"), UTF8_TO_TCHAR(F.Name));
+			Part.Applied = Part.Rest;
+			Mesh->SetRelativeTransform(Part.Rest);
+			ShipFrameParts.Add(Part);
+		}
+		ShipFramesPending.Reset();
+		ShipFramesPendingParts.Reset();
+		ShipFramesLoad.Reset();
+	}
+
+	// The helm from the physics' rudder; the doors for the walker's feet (nobody near them when nobody walks her decks).
+	const Vec3 Feet = Walker.GetFeet();
+	ShipFramesPose.Update(*ShipFrames, Boat.GetState().RudderAngle, bWalking ? &Feet : nullptr, DeltaSeconds);
+
+	// The gun deck's parts show with its mesh (the tiller under the great cabin's beams, its ropes, the doors): outside her
+	// nothing sees them, and they would float in her hull when the deck is not loaded.
+	const int32 Gun = WalkMap.DeckNamed("Gun");
+	const bool bGunDeck = Gun >= 0 && Gun < DeckMeshes.Num() && DeckMeshes[Gun] && DeckMeshes[Gun]->GetStaticMesh();
+
+	// Each part at its rest moved by its frame's motion, moved only when its transform changes (still parts keep their
+	// cached shadows).
+	for (FShipFramePart& Part : ShipFrameParts)
+	{
+		UStaticMeshComponent* Mesh = Part.Mesh.Get();
+		if (!Mesh) continue;
+		const bool bShow = !Part.bBelow || bGunDeck;
+		if (Mesh->IsVisible() != bShow) Mesh->SetVisibility(bShow);
+		if (!bShow) continue;
+		const FTransform Want = ShipRigGame::Posed(Part.Rest, ShipFramesPose.Motion(*ShipFrames, Part.Frame));
+		if (Want.GetTranslation().Equals(Part.Applied.GetTranslation(), 0.05) && Want.GetRotation().Equals(Part.Applied.GetRotation(), 1e-5)
+			&& Want.GetScale3D().Equals(Part.Applied.GetScale3D(), 1e-4)) continue;
+		Mesh->SetRelativeTransform(Want);
+		Part.Applied = Want;
+	}
+}
+
 void ASailboatPawn::BindShipRig()
 {
 	ClearShipRig();
@@ -145,9 +322,11 @@ void ASailboatPawn::BindShipRig()
 	}
 
 	// The rest from the export, where it is in the project.
+	int32 Outside = 0;   // the outside model's parts, found once it is loaded (BindShipOutside binds the rig again)
 	for (const TPair<FString, FShipRigPart>& Pair : Wanted)
 	{
 		if (Found.Contains(Pair.Key)) continue;
+		if (ShipOutsideOwns(Pair.Key)) { ++Outside; continue; }
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Pair.Key);
 		const FString Package = FString::Printf(TEXT("/Game/Boats/%s/Outside/%s"), *Folder, *Asset);
 		if (!FPackageName::DoesPackageExist(Package)) continue;
@@ -155,8 +334,12 @@ void ASailboatPawn::BindShipRig()
 		ShipRigPendingParts.Add(Pair.Value);
 	}
 	if (ShipRigPending.Num() > 0) ShipRigLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(ShipRigPending);
-	SAIL_LOG(Log, TEXT("Ship rig %s: %d parts on the model, %d to load, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
-		ShipRigParts.Num(), ShipRigPending.Num(), Wanted.Num() - ShipRigParts.Num() - ShipRigPending.Num());
+	// (Quiet before the outside model has loaded: its parts are bound on the pass after the load.)
+	if (Outside == 0 || ShipRigParts.Num() > 0)
+	{
+		SAIL_LOG(Log, TEXT("Ship rig %s: %d parts on the model, %d to load, %d with the outside model, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
+			ShipRigParts.Num(), ShipRigPending.Num(), Outside, Wanted.Num() - ShipRigParts.Num() - ShipRigPending.Num() - Outside);
+	}
 }
 
 void ASailboatPawn::UpdateShipRig(float DeltaSeconds)

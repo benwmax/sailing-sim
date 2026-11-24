@@ -389,6 +389,14 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   ambientCG scans (`Tools/fabrics/fetch_fabrics.sh` -> `Data/Fabrics/raw`, imported to `/Game/Crew/Fabric`): knit for
   the polo, polyester for the life jacket shell, woven cotton for the cap; normals fade past a few metres. Sampler types
   must match (`LINEAR_GRAYSCALE` for roughness) or the material falls back to the default checker.
+- Ground textures (shore plan Track A, `docs/envloop/ground/`): `scripts/import_ground.py` (own script, after
+  `make_materials.py`) imports the eight CC0 ground scans prepared by `Tools/envloop/ground/{fetch,prep}_ground.py` as three
+  `Texture2DArray`s and builds `M_Ground` from the committed `Tools/envloop/ground/M_Ground.hlsl` (regenerate with
+  `ground_hlsl.py` after changing `ground_material.py`; `test_ground.py` checks both). Chunks take it on Medium and up
+  (`ALakeTerrainActor::ChunkMaterial`; Low, the garrigue and `-SailingClassicGround` keep `M_Terrain`). `GroundDress.h`:
+  the Mown mask in UV0.x, the bank's 20-40 m sand-or-clay tone, `MPC_World.Season` (0 summer, 1 dormant),
+  `MPC_World.GroundDetail` (the second texture scale inside 35 m: Ultra only, `-SailingGroundDetail=0|1`). bench.json's
+  `gpu.lumen_passes` and the log's "Bench GPU Lumen passes" name the Lumen slice's passes.
 - Shore (Graphics G2): `Tools/terrain/build_shore_detail.py` bakes the USGS 3DEP 1 m lidar DEM (`fetch_rayhubbard.sh` puts the
   2.6 GB of tiles in `Data/RayHubbard/raw/lidar`) into `RayHubbard.detail`: 64 m tiles of 1 m heights along the shore
   (land within 150 m of the water, water within 30 m), zlib-packed. The lidar is hydro-flattened on the water, so the bed
@@ -616,6 +624,11 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   insignia is a made-up emblem. The hero's coiled tails are live rope (rig-line section 2) from `J22CoilData.inl`
   (`Tools/boats/make_coil_data.py` <- `Inputs/j22-hero/J22H_coils.json` <- `build_j22_hero.py`, `J22H_COILS_ONLY=1`);
   every rig line keeps 0.8 px on screen. Args `-SailingNoSailDetail`, `-SailingNoCoils`, `-SailingNoMinLineWidth`.
+  J-Class 15 (`docs/jclass-15/`): kinds 16 (cast bronze) and 17 (manila) take the slot's own detail pair, texture
+  parameters `OwnDetailN`/`OwnDetailM` set only on `MI_Boat_CastBronze`/`MI_Boat_Manila` (`BOAT_OWN_MAPS`), so no other boat
+  loads them; `M_SailCloth`'s `Cloth` 1 is cotton with `ClothN`/`ClothM` (the pawn sets them on Bluebonnet's sails only).
+  Kind 18 is a laid deck (`MI_Boat_LaidTeak`, static switch `LaidDeck`): `BOAT_CODE` ports `deck.py`'s `planking_terms` from
+  the deck's UV maps the export keeps (UV2 Planking, UV3 Margin, UV1.y DA); numbers `LaidA..E` from `BOAT_LAID`'s jsons.
 - Rope lay (rope realism 1, `docs/rope-lay/`): the player's boat's ropes are laid by `RopeLay.h` (plain: continuous lift,
   hull, circular-arc bends, rounded across a rope's lines by `FRigLine::EndBendCm`, 24 rings x 12 sides, braid U runs on from
   the clew); `scripts/rope-check.sh` and `SailingSim.Visual.RopeLay.*`. Each rope section keeps a fixed vertex count: every
@@ -720,6 +733,10 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   `PreviewConditions`; views by `M_GalleryWire`; forced LOD, Nanite fallback, twins; tier compare through the engine's
   screenshot, in memory). Stills: `-SailingGallery=<asset>`, `-SailingGalleryLight=`, `-SailingGalleryView=`,
   `-SailingGalleryDetail=`, `-SailingGalleryCompare=Low,Ultra`.
+- Frigate import (`docs/frigate-import/`): `scripts/import_frigate.py <export dir>` imports her export (meshes at their json paths
+  under `/Game/Boats/Frigate/{Outside,Decks,Guns}`, light twins as `SM_Frigate_<Part>_Light`, `MI_Frigate_*` over
+  `M_BoatSurface`, the json tables to `Content/TerrainData/Ships/Commonwealth.*.json`). `ShipOutside.h` loads the outside
+  parts by state (`-SailingClassicFrigate`, `-SailingFrigateLight=0|1`); `SailingSim.ShipOutside.*`.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.

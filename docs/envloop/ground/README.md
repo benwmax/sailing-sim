@@ -99,20 +99,80 @@ strata, slumps or roots (shape is Track C's, the strata can be a clay-face layer
 repeating at 3 m; the wood's floor on the 60 m hill showing as a dark patch with hard edges (partly the test scene's
 square wood). Before and after page: https://claude.ai/artifact/T9SCPjdAAP92REkYXzzRRz (renders are not in git: images go through LFS, which cloud sessions cannot push; the commands below rebuild them).
 
-## What integration needs (after Nov 21, through the sim thread)
+## Round 2 (Nov 18 2026): the reviewers' three complaints, in the maths
 
-- **Import.** On the PC or Mac: fetch and prep, then import three 8-slice `Texture2DArray`s (colour sRGB BC1, normal
-  BC5, RHA linear BC1; 2048 on Ultra, 1024 on High, 512 on Medium by LOD bias) and build `M_Ground` in its own script
-  file (not `make_materials.py`) from `ground_hlsl.py`'s string. `tangent_space_normal` off: the terrain's procedural
-  mesh has no tangents, so the node outputs a world normal. Low keeps `M_Terrain`.
-- **Terrain inputs (C++, `LakeTerrainActor::BuildChunk`).** A Mown mask in UV1.x (houses' and the club's footprints:
-  mown within about 25 m of a house, the club lawn); the bank's sand-or-clay tone from a 20-40 m noise instead of each
-  5 m grid cell's own random (the renders use that change; with 5 m squares the bank reads as a checkerboard of sand and
-  clay); `Season` in `MPC_World` from the game date.
+Changed in `ground_material.py` and the HLSL together (the renders are in `Artifacts/envloop/ground/r2`, rebuilt by the
+commands above with `--out .../r2`): every band's top (the swash, the bank's grass line) now also wanders with a 31 m
+noise, so no zone edge runs straight along the shore; the shingle patches thin out over a wide feather instead of ending
+on a contour (they read as flat grey decals), and the height blend brings the sand up between the last stones; a clay face
+steeper than about 30 degrees carries strata, bands 18 cm apart bent by the small noise, at 14%. The crack and gravel
+tiles' repeat at 3 m and the wood's square floor are the test scene's (a 1.5 m scan seen from 3 m, a square wood) and
+wait for the in-game stills.
+
+## In the game (integration PR, Nov 18 2026)
+
+Bean moved the slice to Dec 11 on Nov 17, so the game half lands before the Nov 27 freeze, in one pull request:
+
+- **Material.** `scripts/import_ground.py` (its own script, not `make_materials.py`) imports the eight prepared surfaces
+  as three 8-slice `Texture2DArray`s (`/Game/Materials/Ground/TA_Ground_{Albedo,Normal,RHA}`: colour sRGB BC1, normal
+  BC5, RHA linear; 2048 px, the tiers below through the World texture group's LOD bias) and builds `M_Ground` from the
+  committed `Tools/envloop/ground/M_Ground.hlsl` (`ground_hlsl.py`'s output; `test_ground.py` fails when it is stale).
+  `tangent_space_normal` is off: the terrain's procedural mesh has no tangents, so the node outputs a world normal.
+  `MPC_World.Season` is added by the same script.
+- **Terrain (C++).** `ALakeTerrainActor::ChunkMaterial` gives the chunks `M_Ground` on Medium and up on the lake's
+  dress; Low, the garrigue (Marseille's palette has its own decode) and `-SailingClassicGround` keep `M_Terrain`.
+  `BuildChunk` writes the Mown mask to UV0.x (`SailingGround::FMownSource`, `GroundDress.h`: mown within 26 m of a
+  full-detail house with a ragged 10 m edge, and the club's lawn 35 m round its buildings) and paints the bank's
+  sand-or-clay tone from `SailingGround::BankTone` (20-40 m stretches; scene.py's `smooth`) instead of each 5 m cell's
+  own random. `ASailingEnvironment` sets `Season` from the day of the year (`SeasonAmount`: dormant December to
+  mid-March, ramps through November and April). Test: `SailingSim.Visual.GroundDress`.
+- **Cost (the Mac's first world gate, Nov 18).** With 12 fetches on every pixel inside 150 m the High gate lost 9 fps on
+  coast-day and 4 on slip (both held at 45 on main). The material now reads by distance: inside 35 m both scales of
+  the two surfaces (12 fetches); to 75 m one scale each with their height, normal and roughness maps (6); to 150 m
+  colour only, the two mixed by weight (2); nothing past it; the bands cross-fade over 10 m. The normal and RHA arrays
+  are trilinear (anisotropic filtering on ground seen at a grazing angle ran its full tap count on every fetch; the colour
+  keeps it), and ray-traced hits (Lumen's hit lighting) and Lumen's surface-cache card captures (`LUMEN_CARD_CAPTURE`)
+  take the card colours: the second world gate (Nov 18) showed the cost mostly in Lumen (coast-day +2.4 ms, slip +1.6 ms,
+  the main pass +1.1 ms on coast-day), and the cards are what Lumen renders the material into. That gate did not move
+  (third run: Lumen still +2.3 ms, the main pass +1.3 ms), so the second, rotated scale inside 35 m is Ultra only
+  (`MPC_World.GroundDetail`, set by ASailingEnvironment; `-SailingGroundDetail=0|1` compares): High reads 6 fetches a
+  pixel near, and the bench now names the Lumen passes (`gpu.lumen_passes` in bench.json, "Bench GPU Lumen passes" in
+  the log) so the next gate says which Lumen pass moved. The numpy twin has the same bands (`shade(..., detail=)`).
+- **Lumen's cost was the bed under the water (round 4 gate, Nov 18).** With the same package and only the material
+  swapped (`-SailingClassicGround`), the Lumen passes that moved were screen-space: ScreenProbeGather +1.2 ms and
+  LumenReflections +1.2 ms on coast-day; card captures, scene lighting and card rasterising were equal. `M_Ground` had
+  treated everything below the waterline as wet (the mud's wet roughness, 0.25 to 0.45, and the scans' relief), so every
+  bed pixel seen through the water sat under Lumen's reflection roughness (0.4) and was traced. `M_Terrain` draws the
+  bed at 0.92 and flat; `M_Ground` now does the same (`under`): the wet gloss and the relief stop at the waterline.
+- **From the PC's Ultra stills (Nov 18, `Inputs/bench/ground-797/pc-0c1d9669/`).** Shingle patches on the club beach had
+  box-straight sides (value noise keeps its lattice in its features): the 3.1 m and 11 m patch noises now sit on
+  lattices turned 34 and -52 degrees off the map's axes. A pale column ran up the clay bank: the mowing stripes
+  multiplied the whole ground by the lawn's weight, so a half-weight lawn over soil striped the soil; they now need the
+  lawn to own the pixel. Wet limestone shingle sparkled in the sun: its wet roughness goes from 0.4 to 0.55. The
+  ruler-straight waterline in the 5 m stills is the 1 m mesh meeting the water plane (Track C's edge types and the
+  shore mesh, not the material).
 - **Far colour.** The card colours are measured albedos, darker and less yellow than today's vertex colours (today's
   lawn is a bright yellow-green, linear 0.36, 0.36, 0.16). Past 150 m `M_Ground` draws the card colours, so the far
   band changes too; `M_FarLand` (the far ring past the grid) should take the same table in Track I, or there is a step
   in colour at the ring.
-- **Checks still owed.** Shader compile (Mac and PC), frame time at the stations (plan share: Medium 1.5 ms, High 3.0
-  ms for the whole shore; this material reads 12 texels inside 150 m and none past it), the in-game stills at Track 0's
-  stations, and the colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
+- **Still owed (Mac and PC, through the sim thread).** Run `import_ground.py` and commit the assets (LFS); shader
+  compile on Metal and D3D; frame time at the shore stations (plan share: Medium 1.5 ms, High 3.0 ms for the whole
+  shore; this material reads 12 texels inside 150 m and none past it); the in-game stills at Track 0's stations; and the
+  colour check against Bean's grey-card ground photos (lawn, rough grass, clay, gravel).
+- **Lawn rectangles and the club-lawn step (PC Ultra stills of main 91c8c80d, Nov 19, `Inputs/bench/main-91c8c80d/lawn-step/`,
+  diagnostics in `Inputs/bench/pr813/`).** Lighter, yellower rectangles about 8 by 12 m, square to the map, lay on the
+  lawns, and a straight step crossed the club lawn in the beach view; both survived `viewmode unlit` and Lumen's diffuse
+  GI off and vanished with `-SailingClassicGround`, so they were in M_Ground's base colour. They were the shader's own
+  macro patterns: the straw patches (`dry`) are a smoothstep of value noise on a map-aligned 9 m lattice, and a value
+  noise bump is the shape of its lattice cell, so each patch was a rounded rectangle with sides along north and east;
+  the mowing stripes change direction at every 40 m block seam, and a seam square to the map ran as a straight edge
+  across the lawn. Now the straw noise runs on two turned lattices (p1 at 34 deg over 9 m and p3 at -52 deg over 6.3 m),
+  the stripe blocks sit on the turned p1 frame and the stripes fade out over the 3 m inside each seam (the headland pass).
+  The PC's stills at 1795eead (`Inputs/bench/pr813/pc-1795eead/`) showed the step and the rectangles gone, but one lone
+  high cell still read as a faint diamond (the turned square): the straw lattices are now bent by the 11 m and 31 m
+  noises by about 3 m, so no patch keeps a straight side. That diamond was fainter but still there at 556aa91a, in the
+  same place: it was not the straw at all but the lawn's thin, weedy patches (`lawn`, a smoothstep of value noise on
+  the 3.1 m p1 lattice, 3 m cells), which now run on that lattice bent by the 11 m, 31 m and 0.9 m noises.
+  Not the cause, but kept: the terrain mesh's canopy colour now interpolates the 20 m tree raster (`CanopyAtSmooth`,
+  `SailingSim.Lake.CanopySmooth`); the raster is flat 0.27 across those yards, so M_Ground's litter term was never on
+  there.

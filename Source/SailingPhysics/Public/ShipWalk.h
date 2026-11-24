@@ -55,18 +55,20 @@ namespace Sailing
 		double Length() const { return (Top - Foot).Length(); }
 	};
 
-	/** A named place to put a walker: "Helm" (where you stand at the wheel, facing forward). */
+	/** A named place: "Helm" (where a walker stands at the wheel, facing forward), "Lamp" (a cabin lamp's bulb, lit while
+	 *  its deck is shown: Bluebonnet's). */
 	struct SAILINGPHYSICS_API FWalkSpot
 	{
 		std::string Name;
 		int Deck = 0;
 		double X = 0.0, Y = 0.0, YawDeg = 0.0;   // ship frame; yaw 0 forward, + to starboard
+		double Z = 0.0;                           // ship frame (file version 3; 0 in older files)
 	};
 
 	struct SAILINGPHYSICS_API FWalkMap
 	{
 		static constexpr uint32_t Magic = 0x4B4C5753u;   // "SWLK" little-endian
-		static constexpr uint32_t Version = 2u;           // 2 added the spots (1 still reads, with none)
+		static constexpr uint32_t Version = 3u;           // 2 added the spots (1 still reads, with none), 3 their height
 		static constexpr double BodyRadius = 0.22;       // m: shoulders turned, a sailor's half width
 		static constexpr double MaxStep = 0.32;          // m: the most a foot steps up or down (a coaming, a sill)
 		static constexpr double MinHeadroom = 1.25;      // m: lower than this he would have to crawl
@@ -78,6 +80,16 @@ namespace Sailing
 		bool IsLoaded() const { return !Decks.empty(); }
 		int DeckNamed(const char* Name) const;
 		const FWalkSpot* SpotNamed(const char* Name) const;
+
+		/** A helmsman stands this far abaft a double wheel's axle (the midpoint between its wheels): half the 44 in between
+		 *  Commonwealth's wheels (0.56 m) and 1.1 m back from the after wheel's plane, where the whole wheel (66 in across,
+		 *  its top at 2 m) shows at hand height in the game's wide view. A walk file's "Helm" spot baked nearer than this
+		 *  (the first bake's 0.7 m put the eye inside the after wheel's rim; 1.05 m filled the frame with it) stands back
+		 *  to it: HelmStandX. */
+		static constexpr double HelmAbaftWheelAxle = 1.65;
+		/** Where the helmsman stands along the ship for a Helm spot at SpotX and a wheel whose axle midpoint is at WheelX
+		 *  (ship frame, +X forward): the spot itself, unless it is forward of HelmAbaftWheelAxle abaft the axle. */
+		static double HelmStandX(double SpotX, double WheelX);
 
 		/**
 		 * Reads a walk file's bytes (the format is written by walk.py; little-endian):

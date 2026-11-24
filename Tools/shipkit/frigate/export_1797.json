@@ -1,0 +1,85 @@
+{
+ "note": "Commonwealth's Unreal export (slice 17, export.py, docs/shipkit-17): what goes where. Every file is in the ship's frame (origin midships on the load waterline, X forward, Y starboard, Z up: the build's, which is Unreal's) unless said otherwise; sockets and frames in centimetres.",
+ "tag": "Frigate",
+ "root": "/Game/Boats/Frigate",
+ "groups": {
+  "Outside": "spar deck and up, the hull's outside, rig, sails, boats, anchors: one mesh per part, its light twin as LOD 1",
+  "Decks": "each deck below as one merged mesh, streamed by the deck the player is on; the gun deck also kept while she is near the camera, with its twins merged as its LOD 1",
+  "Guns": "the guns and port lids, apart from everything else, so the game moves them: shared meshes each in its own frame (guns.json 'meshes'), each gun's gear and irons in its port's frame, each lid in its hinge's frame"
+ },
+ "skip": [
+  "Hull"
+ ],
+ "note_skip": "the lofted hull (Clay_Hull) is the skin's reference, hidden",
+ "skip_collections": [
+  "Guns_RunIn",
+  "Guns_RunOut",
+  "Carronades_Recoil"
+ ],
+ "note_skip_collections": "the guns' other poses are the same shared meshes placed again: their places go in the sockets file (guns.poses), the game moves one set between them. Their gear meshes (GearRunIn, GearRunOut, GearRecoil) are exported with the rest of each gun's gear",
+ "decks": {
+  "GunDeck": {
+   "property": "gun",
+   "collections": [
+    "Deck_Gun",
+    "GunDeck"
+   ],
+   "json": "gundeck.json"
+  },
+  "BerthDeck": {
+   "property": "berth",
+   "collections": [
+    "Deck_Berth",
+    "BerthDeck",
+    "BerthDeck_Hammocks",
+    "BerthDeck_Messes"
+   ],
+   "json": "berthdeck.json",
+   "poses": [
+    "BerthDeck_Hammocks",
+    "BerthDeck_Messes"
+   ]
+  },
+  "Orlop": {
+   "property": "orlop",
+   "collections": [
+    "Deck_Orlop",
+    "Orlop"
+   ],
+   "json": "orlop.json"
+  },
+  "Hold": {
+   "property": "hold",
+   "collections": [
+    "Deck_Hold",
+    "Hold"
+   ],
+   "json": "orlop.json",
+   "note": "slice 14 writes one file for the orlop and the hold (docs/shipkit-14): read once, its lanterns are the orlop's"
+  }
+ },
+ "note_decks": "a part goes to a deck by its collection (the model thread's GunDeck, BerthDeck, Orlop, Hold) or a custom property 'deck'. Everything else is Outside. The gun deck has light twins (seen through the waist and ports); the decks under it do not. A deck's linked copies (the berth deck's hammocks, hooks and messes) are one mesh each in its own frame, every copy placed in the sockets file; a deck's pose collections ('poses': by night, by day) are merged apart as SM_Frigate_<Deck>_<Pose>; each deck's build file ('json') gives its turning parts' frames and its lanterns",
+ "gun_parts": [
+  "_Barrel",
+  "_Carriage",
+  "_Quoin",
+  "_TruckFore",
+  "_TruckHind",
+  "_Bed",
+  "_Slide",
+  "_Chocks",
+  "_Gear",
+  "_Irons",
+  "_Tompion",
+  "_Apron",
+  "Lid_"
+ ],
+ "note_gun_parts": "name pieces that put a part in Guns",
+ "ship_frame_parts": [
+  "LidLanyards_",
+  "Carr32_Chocks"
+ ],
+ "note_ship_frame_parts": "objects among the guns' collections that are one ship-frame mesh, not a gun's part: the port lids' lanyards for the lids shut (Guns_Housed) and open (Guns_RunIn and Guns_RunOut), and the carronades' chocks (one object for every port, guns.json meshes). Exported with the outside parts, in the ship's frame, with their states; placed by the ship, not the battery",
+ "outside_json": "deck.json",
+ "note_outside_json": "the spar deck's build file: its 'frames' are the turning parts on deck (the wheel, the capstan's drumhead), exported in their own frames and placed like the gun deck's"
+}

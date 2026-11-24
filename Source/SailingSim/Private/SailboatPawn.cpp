@@ -414,6 +414,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 	ModelTillerExt = nullptr;
 	ModelWheel = nullptr;
 	WheelPivot = nullptr;
+	KeelPivot = BladePivot = nullptr;
+	KeelTurnShown = 0.0;
 	WheelAxis = FVector::ForwardVector;
 	WheelRimRadiusCm = 0.f;
 	bTravelerHook = false;
@@ -451,10 +453,17 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	bModelTravelerBridge = Model.bTravelerBridge;
+	// A ship's outside model from her export (docs/frigate-import/, ShipOutsideVisuals.cpp): loaded under BoatRoot by
+	// BindShipOutside below; no stand-in hull, foils, spars or deck structure under it.
+	bShipOutsideModel = !Model.Hull && HasShipOutsideModel();
 	if (Model.Hull)
 	{
 		HullMesh->ClearAllMeshSections();
 		BuildModelVisuals(Model);
+	}
+	else if (bShipOutsideModel)
+	{
+		HullMesh->ClearAllMeshSections();
 	}
 	else
 	{
@@ -469,7 +478,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Keels, boards and rudders (a slender cat hull's own lift has no part to show).
 	for (const FFoilDef& F : C.Foils)
 	{
-		if (ModelHull) break; // the model has its own keel, rudder and tiller
+		if (ModelHull || bShipOutsideModel) break; // the model has its own keel, rudder and tiller
 		if (F.Role == EFoilRole::HullLateral) continue;
 		const double Span = F.Span(), Chord = F.Params.Chord, Thick = 0.06 * Chord + 0.015;
 		if (F.Role != EFoilRole::Rudder)
@@ -493,7 +502,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 
 	// Mast, boom, forestay.
-	if (!ModelHull)
+	if (!ModelHull && !bShipOutsideModel)
 	{
 	AddBoatPart(CylinderMesh, ToCm(C.MastX, 0.0, 0.5 * (DeckZ + C.MastheadZ)), FVector(C.MastDiameter, C.MastDiameter, C.MastheadZ - DeckZ) * CmPerMeter, Spar);
 	BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
@@ -520,7 +529,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 
 	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
 	const double Loa = C.LengthOverall;
-	switch (ModelHull ? EBoatType::Count : C.Type)
+	switch (ModelHull || bShipOutsideModel ? EBoatType::Count : C.Type)
 	{
 	case EBoatType::J22: case EBoatType::Catalina22: case EBoatType::Catalina30:
 	{
@@ -711,11 +720,32 @@ void ASailboatPawn::RebuildBoatVisuals()
 		// the showroom swaps boats on the same material).
 		Mid->SetScalarParameterValue(TEXT("Translucency"), C.Type == EBoatType::Sunfish ? 0.2f : 0.34f);
 	}
+	// J-Class 15 (docs/jclass-15): Bluebonnet's sails are cream Egyptian cotton (sails_bluebonnet.json), matt, with their own
+	// weave close up (M_SailCloth's Cloth 1 and T_JClass_Cotton, set only here, so no other boat's sails load the maps). Set
+	// every time: the showroom swaps boats on the same materials. Until the maps are imported she keeps the Dacron look.
+	const bool bCotton = C.Type == EBoatType::Bluebonnet;
+	UTexture* CottonN = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_N.T_JClass_Cotton_N"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	UTexture* CottonM = bCotton ? LoadObject<UTexture>(nullptr, TEXT("/Game/Boats/Detail/T_JClass_Cotton_M.T_JClass_Cotton_M"), nullptr, LOAD_NoWarn | LOAD_Quiet) : nullptr;
+	const bool bCottonMaps = CottonN && CottonM;
+	for (UProceduralMeshComponent* Sail : { MainSail.Get(), JibSail.Get() })
+	{
+		if (UMaterialInstanceDynamic* Mid = Sail ? Cast<UMaterialInstanceDynamic>(Sail->GetMaterial(0)) : nullptr)
+		{
+			Mid->SetScalarParameterValue(TEXT("Cloth"), bCottonMaps ? 1.f : 0.f);
+			Mid->SetScalarParameterValue(TEXT("Roughness"), bCotton ? 0.72f : 0.5f);   // (MI_Sail_Main's and MI_Sail_Jib's 0.5 for the rest)
+			if (bCottonMaps)
+			{
+				Mid->SetTextureParameterValue(TEXT("ClothN"), CottonN);
+				Mid->SetTextureParameterValue(TEXT("ClothM"), CottonM);
+			}
+		}
+	}
 	// Graphics G8 (round 8, the race start: "drab colors"): a club race fleet isn't all white Dacron. Keelboats sailing as
 	// traffic with a race wear profile, and a third of the rest, carry laminate sails: smoky grey, grey Mylar or tan aramid
 	// (light enough that the dark sail numbers still read). The player's boat keeps the club's Dacron.
 	FLinearColor SailColor = Lay.Layout == 4.f ? FLinearColor(0.035f, 0.036f, 0.04f) : FLinearColor(0.70f, 0.68f, 0.63f);
-	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7)
+	// (Not Bluebonnet: a 1937 J's sails are cotton, whatever her profile.)
+	if (bTrafficBoat && !bGhost && Lay.Layout == 0.f && C.Type != EBoatType::ILCA7 && !bCotton)
 	{
 		const uint32 H = (GetUniqueID() * 2654435761u) >> 8;
 		if (Livery.Profile == 1 || (H % 100u) < 33u)
@@ -724,6 +754,8 @@ void ASailboatPawn::RebuildBoatVisuals()
 			SailColor = Laminates[(H / 100u) % UE_ARRAY_COUNT(Laminates)];
 		}
 	}
+	// J-Class 15: her cotton's cream (sails_bluebonnet.json colour, sRGB 232 222 196, at the 0.77 the white Dacron is drawn at).
+	if (bCotton) SailColor = FLinearColor(0.621f, 0.562f, 0.426f);
 	// Boat skins: the skin's cloth colour. The class's white Dacron is drawn at 0.70 albedo, not the hex white's 0.9, so a
 	// skin's colour is scaled the same way (a skin's white is the cloth the boat already has).
 	if (bHasSkin && Skin.Sails.Cloth.IsSet())
@@ -760,6 +792,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
 	MainSail->ClearAllMeshSections();
+	if (bShipOutsideModel)   // her sails are the outside model's, shown by the rig's pose: no stand-in cloth beside them
+	{
+		MainSail->SetVisibility(false);
+		JibSail->SetVisibility(false);
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
+	}
 	SpinSail->ClearAllMeshSections();
 	SpinSail->SetVisibility(false);
 
@@ -790,7 +828,9 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
 	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
+	BindShipOutside();   // a ship's outside model from her export (docs/frigate-import/)
 	BindShipRig();   // a ship's yards and sails on the model (docs/ship-rig/)
+	BindShipFrames();   // her tiller, wheel, doors and capstans (docs/ship-frames/)
 }
 
 void ASailboatPawn::SetSkinPreview(const FBoatSkin& InSkin)
@@ -831,6 +871,8 @@ void ASailboatPawn::HoldForTests(double TwaDeg, double WindKnots)
 	bDemoTacks = false;
 	CrudeTackAt = -1.0;
 	DemoPilot.TargetTWADeg = TwaDeg;
+	DemoBaseTwa = TwaDeg;
+	bDemoGuard = false; // the tests hold their angle wherever the test world puts her
 	DemoPilot.MaxTiller = 0.8;
 	// The held states are the rig's own trim, as the polars sail them (docs/trimmer-hands/).
 	TrimAssist.Settings.bHands = false;
@@ -1013,6 +1055,11 @@ void ASailboatPawn::BeginPlay()
 		// is (it had been flipped again by the port start's sign: TWA -60 with HoldTWA -60 tacked onto starboard).
 		DemoPilot.TargetTWADeg = bDemoTacks ? 45.0 * DemoFirstSign : (HoldTwa < 0.f ? double(HoldTwa) : HoldTwa * DemoFirstSign);
 		DemoPilot.MaxTiller = 0.8;
+		DemoBaseTwa = DemoPilot.TargetTWADeg;
+		DemoGuard.Reset();
+		bDemoGuard = !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoDemoGuard"));
+		// A held angle frames the bench views and stills on their course: the lookout starts after their first minute.
+		DemoGuard.StartAfterSeconds = bDemoTacks ? 0.0 : 60.0;
 		// (the demo's chase angle off her bow; a mounted camera keeps its own aim: slice 4's stills ran with this added)
 		if (!ChaseCamera::IsMounted(StartView))
 		{
@@ -1315,7 +1362,27 @@ void ASailboatPawn::Tick(float DeltaSeconds)
 		if (bDemoTacks)
 		{
 			const int32 Leg = T < 9.0 ? 0 : 1 + int32((T - 9.0) / 12.0);
-			DemoPilot.TargetTWADeg = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+			DemoBaseTwa = 45.0 * DemoFirstSign * (Leg % 2 == 0 ? 1.0 : -1.0);
+		}
+		DemoPilot.TargetTWADeg = DemoBaseTwa;
+		// docs/demo-shoal-guard/ (sailing-feedback #31): left alone the demo beats until it meets the shore upwind and sits
+		// there aground; its lookout reads the chart ahead and bears away while the water upwind is shallow.
+		const ASailingGameMode* GuardGM = bDemoGuard ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		if (GuardGM && GuardGM->GetLake().IsLoaded())
+		{
+			DemoGuard.Terrain = &GuardGM->GetLake().Terrain;
+			DemoGuard.Obstacles = &GuardGM->GetLake().Obstacles;
+			DemoGuard.Draft = Boat.GetConfig().Draft;
+			DemoGuard.MastClearM = Boat.GetConfig().MastheadZ + 2.0;
+			const Vec3 O = Boat.OriginPosition();
+			double FromRad = 0.0, Factor = 1.0;
+			GetWind().ReadableAt(O.X, O.Y, T, FromRad, Factor);
+			DemoPilot.TargetTWADeg = DemoGuard.Update(T, O.X, O.Y, FromRad, Boat.GetTelemetry().BoatSpeed, DemoBaseTwa, bDemoTacks);
+			if (DemoGuard.Avoidances() != DemoGuardLogged)
+			{
+				DemoGuardLogged = DemoGuard.Avoidances();
+				UE_LOG(LogSailing, Log, TEXT("Demo: shallow water ahead at %.0f N %.0f E (t %.0f s), bearing away to TWA %.0f"), O.X, O.Y, T, DemoGuard.AvoidTwaDeg());
+			}
 		}
 		// The run guard: off dead downwind by the gusts' margin (docs/hobie-run/); -SailingNoRunGuard compares without it.
 		static SailingArgs::FCachedFlag NoRunGuardArg(TEXT("SailingNoRunGuard"));
@@ -1468,7 +1535,9 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform(true);
 	UpdateRigVisuals(DeltaSeconds);
+	UpdateShipOutside(DeltaSeconds);
 	UpdateShipRig(DeltaSeconds);
+	UpdateShipFrames(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }
 
 	if (Water)
@@ -1478,15 +1547,21 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 		Water->SetBoatForWake(FVector2D(O.X, O.Y), T.Heading, T.BoatSpeed, T.Heel);
 	}
 	{ SAILING_PERF_SCOPE(BoatSound); UpdateSound(DeltaSeconds); }
-	if (bCockpit && CanWalk() && !bTrafficBoat)
+	if (bCockpit && CanWalk() && !bTrafficBoat && (bWalking || HelmOnWalkMap()))
 	{
-		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her.
+		// A ship (docs/ship-walk/): her helm view is you at the wheel, and On deck walks you about her. A yacht's helm view
+		// is her own cockpit view (below), and On deck walks.
 		UpdateWalk(DeltaSeconds);
 		UpdateWalkCamera(DeltaSeconds);
 	}
 	else if (bCockpit) UpdateCockpitCamera(DeltaSeconds);
 	else if (IsMountedView()) UpdateMountedCamera(DeltaSeconds);
-	if (!bTrafficBoat && !bGhost) UpdateDeckStreaming();
+	if (!bTrafficBoat && !bGhost)
+	{
+		ApplyWalkAt();
+		UpdateDeckStreaming();
+		UpdateBelowAdapt(DeltaSeconds);
+	}
 	if (!bTrafficBoat && !bGhost) UpdateCameraBuffet(DeltaSeconds);
 	SAILING_PERF_SCOPE(BoatLearning); // the rest of the tick
 
@@ -2088,9 +2163,9 @@ void ASailboatPawn::ApplyMappingContexts()
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(MappingContext, 0);
 	if (bPhoto && PhotoContext) Subsystem->AddMappingContext(PhotoContext, PhotoContextPriority);
-	if (CanWalk() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
+	if (HasShipOrders() && !bPhoto && ShipContext) Subsystem->AddMappingContext(ShipContext, ShipContextPriority);
 	if (bWalking && !bPhoto && WalkContext) Subsystem->AddMappingContext(WalkContext, WalkContextPriority);
-	if (ShipOrders.IsOpen() && CanWalk() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
+	if (ShipOrders.IsOpen() && HasShipOrders() && !bPhoto && OrdersContext) Subsystem->AddMappingContext(OrdersContext, OrdersContextPriority);
 }
 
 void ASailboatPawn::RebuildMappings()
@@ -4082,6 +4157,24 @@ void ASailboatPawn::UpdateRigVisuals(float DeltaSeconds)
 		if (Axis.Equals(FVector::UpVector)) RudderPivots[K]->SetRelativeRotation(FRotator(0.f, -FMath::RadiansToDegrees(S.RudderAngle), 0.f));
 		else RudderPivots[K]->SetRelativeRotation(FQuat(Axis, -S.RudderAngle));
 	}
+	// Catalina 22 rebuild (docs/c22-13): the swing keel wound toward the physics' Board, the blade kicked up as the physics has it.
+	if (KeelPivot || BladePivot)
+	{
+		for (const FFoilDef& Foil : Boat.GetConfig().Foils)
+		{
+			if (KeelPivot && Foil.Swing.size() >= 2)
+			{
+				const double Target = KeelSwingTurn(Foil, Controls.Board, KeelPinM.X, KeelPinM.Y);
+				const double Step = KeelWindRate * FMath::Max(double(DeltaSeconds), 0.0);
+				KeelTurnShown = Target > KeelTurnShown ? FMath::Min(Target, KeelTurnShown + Step) : FMath::Max(Target, KeelTurnShown - Step);
+				KeelPivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(KeelTurnShown), 0.0, 0.0));   // (a negative pitch takes the foot aft)
+			}
+			if (BladePivot && Foil.KickUpAngle > 0.0)
+			{
+				BladePivot->SetRelativeRotation(FRotator(-FMath::RadiansToDegrees(BladeKickTurn(Foil, T.RudderKick)), 0.0, 0.0));
+			}
+		}
+	}
 	// J-Class 14: her wheel turns with the rudder about its shaft (WheelTurnFor: 1.5 turns to hard over, the top to starboard
 	// as the bow goes to starboard).
 	if (WheelPivot) WheelPivot->SetRelativeRotation(FQuat(WheelAxis, WheelTurnFor(S.RudderAngle, Boat.GetConfig().MaxRudderAngleDeg)));
@@ -4633,7 +4726,7 @@ void ASailboatPawn::OnButton(const FInputActionValue& Value, FName Action)
 		else if (SailingBindings::IsPhotoPanelAction(Action)) StepPhotoPanel(Action);
 		return;
 	}
-	if (CanWalk() && OnOrdersButton(Action)) return;
+	if (HasShipOrders() && OnOrdersButton(Action)) return;
 	if (bWalking && OnWalkButton(Action)) return;
 	if (bWatching)
 	{
@@ -4953,9 +5046,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		// Past the frigate until the frigate wiring draws her square rig and crew (IsSquareRigged).
-		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
-		while (IsSquareRigged(EBoatType(S->BoatType)));
+		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:
@@ -5085,11 +5176,50 @@ void ASailboatPawn::SetupCapture()
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingEV="), CaptureEV);
 	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
 
+	// Film mode (FilmMode.h): the tripod's stand and lens, or the shot file's move (a shot that doesn't load falls back to
+	// the chase camera, with the reason in the log, rather than filming nothing).
+	float HFov = Info.HFovDeg;
+	if (CapturePreset == ECapturePreset::Tripod)
+	{
+		FString TripodArg;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTripod="), TripodArg, false);
+		FilmTripod = FFilmTripod::Parse(TripodArg);
+		HFov = float(FilmTripod.HFovDeg);
+	}
+	if (CapturePreset == ECapturePreset::Path)
+	{
+		FString ShotPath, Error;
+		if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShotFile="), ShotPath, false)) Error = TEXT("no -SailingShotFile=<path>");
+		else
+		{
+			ShotPath = ShotPath.TrimQuotes();
+			if (FPaths::IsRelative(ShotPath)) ShotPath = FPaths::ProjectSavedDir() / ShotPath;   // (relative to Saved, beside Bench)
+			FilmShot.Load(ShotPath, Error);
+		}
+		if (!Error.IsEmpty() || FilmShot.Keys.Num() == 0)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Film shot: %s; filming from the chase camera instead"), *Error);
+			CapturePreset = ECapturePreset::Chase;
+			HFov = CapturePresetInfo(CapturePreset).HFovDeg;
+		}
+		else
+		{
+			HFov = float(FilmShot.Keys[0].HFovDeg);
+			UE_LOG(LogTemp, Display, TEXT("Film shot: %s, %d keys over %.2f s"), *ShotPath, FilmShot.Keys.Num(), FilmShot.Duration());
+		}
+	}
+
 	Camera->SetActive(false);
 	CaptureCamera->SetActive(true);
-	CaptureCamera->SetFieldOfView(Info.HFovDeg);
+	CaptureCamera->SetFieldOfView(HFov);
 	CaptureCamera->bConstrainAspectRatio = false;
-	if (Info.bOnboard)
+	if (CapturePreset == ECapturePreset::Path && FilmShot.Frame == EFilmFrame::Mount)
+	{
+		// A locked mount: rigid on the hull, heeling and pitching with her (placed every frame along the move).
+		CaptureCamera->SetUsingAbsoluteLocation(false);
+		CaptureCamera->SetUsingAbsoluteRotation(false);
+	}
+	else if (Info.bOnboard)
 	{
 		FVector Location;
 		FRotator Rotation;
@@ -5105,11 +5235,29 @@ void ASailboatPawn::SetupCapture()
 		CaptureCamera->SetUsingAbsoluteRotation(true);
 	}
 
-	// A still that can be compared: exposure locked, no motion blur, no depth of field.
+	// A still that can be compared: exposure locked, no motion blur, no depth of field. Film mode keeps motion blur
+	// (-SailingMotionBlur=<amount>, or a 180 degree shutter with -SailingFilm) and boosts the offline quality.
 	FPostProcessSettings& PP = CaptureCamera->PostProcessSettings;
 	CaptureCamera->PostProcessBlendWeight = 1.f;
+	CaptureBlur = CaptureMotionBlurAmount(SailingArgs::Dev());
 	PP.bOverride_MotionBlurAmount = true;
-	PP.MotionBlurAmount = 0.f;
+	PP.MotionBlurAmount = CaptureBlur;
+	if (CaptureBlur > 0.f)
+	{
+		PP.bOverride_MotionBlurMax = true;
+		PP.MotionBlurMax = 5.f;   // percent of the screen width: a fast pan past the boat smears as a film camera's would
+		if (IConsoleVariable* BlurQuality = IConsoleManager::Get().FindConsoleVariable(TEXT("r.MotionBlurQuality")); BlurQuality && BlurQuality->GetInt() < 4) BlurQuality->Set(4, ECVF_SetByCode);
+	}
+	if (IsFilmMode())
+	{
+		// Film mode's offline boost on this camera (the console variables are FilmQualityCVars, applied with the tier):
+		// Lumen's reflections and final gather at their highest, reflections lit at the hit (the tripod run's dithered
+		// stripes in the water's reflection: Inputs/reel-test/README.md).
+		PP.bOverride_LumenReflectionQuality = PP.bOverride_LumenFinalGatherQuality = PP.bOverride_LumenRayLightingMode = true;
+		PP.LumenReflectionQuality = 2.f;
+		PP.LumenFinalGatherQuality = 2.f;
+		PP.LumenRayLightingMode = ELumenRayLightingModeOverride::HitLighting;
+	}
 	if (!FMath::IsNaN(CaptureEV))
 	{
 		PP.bOverride_AutoExposureMinBrightness = PP.bOverride_AutoExposureMaxBrightness = PP.bOverride_AutoExposureBias = true;
@@ -5126,8 +5274,9 @@ void ASailboatPawn::SetupCapture()
 
 	const FString Dir = FPaths::ProjectSavedDir() / TEXT("Bench");
 	CaptureTelemetry.Open(Dir / (CaptureName + TEXT(".telemetry.csv")));
-	UE_LOG(LogTemp, Display, TEXT("Reference capture: %s, %.0f deg, %s"), Info.Name, Info.HFovDeg,
-		FMath::IsNaN(CaptureEV) ? TEXT("auto exposure frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV));
+	UE_LOG(LogTemp, Display, TEXT("Reference capture: %s, %.0f deg, %s, motion blur %.2f%s"), CapturePresetInfo(CapturePreset).Name, HFov,
+		FMath::IsNaN(CaptureEV) ? TEXT("auto exposure frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV), CaptureBlur,
+		IsFilmMode() ? TEXT(", film quality") : TEXT(""));
 }
 
 void ASailboatPawn::UpdateCapture(float DeltaSeconds)
@@ -5172,7 +5321,25 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 			}
 		}
 	}
-	if (!Info.bOnboard)
+	if (CapturePreset == ECapturePreset::Path)
+	{
+		// Film mode's keyframed move (FFilmShot), on the recording's own clock: shot time 0 is the first recorded frame,
+		// counted in frames under a fixed step (ASailingGameMode::GetFilmClock); without a bench, the capture's time.
+		const double Clock = GM ? GM->GetFilmClock() : NAN;
+		FFilmBoatPose Pose;
+		const Vec3 O = DrawnOrigin;   // where she is drawn (between her steps, #26), so the framing holds her steady
+		Pose.Origin = SailingFrame::ToWorld(GetWorld(), O.X, O.Y, 0.0);
+		Pose.Origin.Z = WaterSurfaceZ;
+		Pose.HeadingDeg = FMath::RadiansToDegrees(T.Heading) + DrawnRotationOffset().Yaw;
+		Pose.MastheadM = Boat.GetConfig().MastheadZ;
+		Pose.WorldAnchor = SailingFrame::FromMapCm(GetWorld(), StartLocation);   // (kept in the map frame: a re-centre moves the render frame)
+		Pose.WorldAnchor.Z = WaterSurfaceZ;
+		const FFilmCameraPose Cam = FilmShot.Evaluate(FMath::IsNaN(Clock) ? CaptureElapsed : Clock, Pose);
+		if (Cam.bRelativeToHull) CaptureCamera->SetRelativeLocationAndRotation(Cam.Location, Cam.Rotation);
+		else CaptureCamera->SetWorldLocationAndRotation(Cam.Location, Cam.Rotation);
+		if (!FMath::IsNearlyEqual(CaptureCamera->FieldOfView, float(Cam.HFovDeg))) CaptureCamera->SetFieldOfView(float(Cam.HFovDeg));
+	}
+	else if (!Info.bOnboard)
 	{
 		if (FMath::IsNaN(CaptureBearing) && CaptureElapsed > 0.2)
 		{
@@ -5194,14 +5361,21 @@ void ASailboatPawn::UpdateCapture(float DeltaSeconds)
 		FVector Location;
 		FRotator Rotation;
 		WorldCameraPose(CapturePreset, Origin, Heading, Bearing, float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
-		if (CapturePreset == ECapturePreset::ShoreTele)
+		if (CapturePreset == ECapturePreset::Tripod)
+		{
+			// Film mode's tripod: set up at -SailingTripod's distance and height off her bearing, then (below) it only pans.
+			WorldCameraPoseAt(Origin, Heading, Bearing, float(FilmTripod.DistanceM), float(FilmTripod.HeightM), float(FilmTripod.AimFraction),
+				float(Boat.GetConfig().MastheadZ), WaterSurfaceZ, Location, Rotation);
+		}
+		if (CapturePreset == ECapturePreset::ShoreTele || CapturePreset == ECapturePreset::Tripod)
 		{
 			// A tripod: it stays where it was set up and only pans.
 			// (Kept in the map frame: a re-centre moves the render frame under it.)
 			if (!bShoreStandSet && !FMath::IsNaN(CaptureBearing)) { ShoreStand = SailingFrame::ToMapCm(GetWorld(), Location); bShoreStandSet = true; }
 			if (bShoreStandSet)
 			{
-				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + 0.33f * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
+				const float AimFraction = CapturePreset == ECapturePreset::Tripod ? float(FilmTripod.AimFraction) : 0.33f;
+				const FVector Aim(Origin.X, Origin.Y, WaterSurfaceZ + AimFraction * float(Boat.GetConfig().MastheadZ) * CmPerMeter);
 				Location = SailingFrame::FromMapCm(GetWorld(), ShoreStand);
 				Rotation = (Aim - Location).Rotation();
 			}
@@ -5300,13 +5474,15 @@ void ASailboatPawn::WriteCaptureSettings() const
 		TEXT("  \"area\": \"%s\",\n  \"latitude\": %.4f,\n  \"longitude\": %.4f,\n  \"date\": \"%s\",\n  \"clock_hour\": %.2f,\n")
 		TEXT("  \"sun_elevation_deg\": %.1f,\n  \"sun_azimuth_deg\": %.1f,\n  \"sun_through_cloud\": %.2f,\n  \"meter_ev100\": %.2f,\n")
 		TEXT("  \"true_wind_kn\": %.1f,\n  \"true_wind_from_deg\": %.0f,\n  \"gust_intensity\": %.2f,\n")
-		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f\n}\n"),
-		Info.Name, Info.HFovDeg, Info.bBarrel ? TEXT("true") : TEXT("false"),
+		TEXT("  \"boat\": \"%hs\",\n  \"reef\": %d,\n  \"spinnaker\": %s,\n  \"crew_kg\": %.0f,\n  \"seconds_into_capture\": %.1f,\n")
+		TEXT("  \"motion_blur\": %.2f,\n  \"film_quality\": %s\n}\n"),
+		Info.Name, CaptureCamera->FieldOfView, Info.bBarrel ? TEXT("true") : TEXT("false"),
 		FMath::IsNaN(CaptureEV) ? TEXT("auto, frozen at 2.5 s") : *FString::Printf(TEXT("EV100 %.1f"), CaptureEV),
 		L.X / CmPerMeter, L.Y / CmPerMeter, L.Z / CmPerMeter, R.Pitch, R.Yaw, R.Roll, FMath::IsNaN(CaptureBearing) ? 0.f : CaptureBearing,
 		*Area, Latitude, Longitude, *Date, Hour, SunElevation, SunAzimuth, SunThroughCloud, MeterEV, // SunPosition works in degrees
 		T.TrueWindSpeed / kKnot, FMath::Fmod(FMath::RadiansToDegrees(T.Heading + T.TrueWindAngle) + 720.0, 360.0), Gust,
-		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed);
+		Boat.GetConfig().Name, Controls.Reef, Controls.bSpinnaker ? TEXT("true") : TEXT("false"), Boat.GetConfig().CrewMass, CaptureElapsed,
+		CaptureBlur, IsFilmMode() ? TEXT("true") : TEXT("false"));
 	FFileHelper::SaveStringToFile(Json, *(FPaths::ProjectSavedDir() / TEXT("Bench") / (CaptureName + TEXT(".camera.json"))));
 }
 

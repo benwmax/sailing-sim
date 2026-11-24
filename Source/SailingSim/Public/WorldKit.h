@@ -147,6 +147,24 @@ SAILINGSIM_API void HouseTiles(const FLakeData& Lake, TMap<FIntPoint, TArray<int
 /** The houses' walls, roofs, eaves and (full detail) windows, doors and chimneys (HouseKit.cpp). */
 SAILINGSIM_API void BuildHouseGeometry(const FLakeData& Lake, TConstArrayView<int32> Houses, FKitGeometry& Out);
 
+/** Shore Track C (docs/envloop/shore-edges): a stretch of kit shore edge along a developed lot's waterline, laid by
+ *  ALakeTerrainActor::PlaceShoreEdges from the SM_Edge_<Type>_<n> pieces (4 m each, x along the shore, +y toward the land,
+ *  z = 0 the pool). */
+struct FShoreEdgeRun
+{
+	TArray<FVector2D> Points;   // the wall's line, map metres: straight along the lot, a point every 4 m at most
+	FVector2D Water;            // which side the water is
+	FName Type;                 // bulkhead, limestone, timber (riprap stays in the house tile)
+	uint32 Seed = 0;
+	double Lift = 0.0;          // m above the pool the pieces stand, so the cap meets the lawn (HouseKit's LotWallLift)
+};
+/** The kit bank a developed lot gets by its seed, the region pack's rule: bulkhead, riprap, limestone, timber, or None (natural). */
+/** Whether a world gets the kit shore edges (an inland lake: the pack is north-texas-lake); a coast keeps the tile's bank. */
+SAILINGSIM_API bool ShoreEdgesOn(const FLakeData& Lake);
+SAILINGSIM_API FName LotBankType(uint32 HouseIndex);
+/** The lots whose bank is a kit piece, with their waterlines (HouseKit.cpp; the same line the tile's riprap follows). */
+SAILINGSIM_API void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out);
+
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
 SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,

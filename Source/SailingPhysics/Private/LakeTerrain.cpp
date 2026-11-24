@@ -334,6 +334,24 @@ namespace Sailing
 		return T.Density[size_t(R) * T.Cols + C] / 255.0 * 12.0;
 	}
 
+	double FLakeTerrain::CanopyAtSmooth(double X, double Y) const
+	{
+		if (!Trees || Trees->Rows == 0 || Trees->Cell <= 0.0 || !std::isfinite(X) || !std::isfinite(Y)) return 0.0;
+		const FTrees& T = *Trees;
+		// Cell (R, C) holds its density at its centre; between centres the four neighbours blend bilinearly.
+		const double FR = (X - T.OriginX) / T.Cell - 0.5, FC = (Y - T.OriginY) / T.Cell - 0.5;
+		if (FR < -1.0 || FC < -1.0 || FR > double(T.Rows) || FC > double(T.Cols)) return 0.0;
+		const int R0 = int(std::floor(FR)), C0 = int(std::floor(FC));
+		const double TR = FR - R0, TC = FC - C0;
+		auto D = [&](int R, int C)
+		{
+			if (R < 0 || C < 0 || R >= T.Rows || C >= T.Cols) return 0.0;
+			return T.Density[size_t(R) * T.Cols + C] / 255.0 * 12.0;
+		};
+		return (D(R0, C0) * (1.0 - TR) + D(R0 + 1, C0) * TR) * (1.0 - TC)
+			+ (D(R0, C0 + 1) * (1.0 - TR) + D(R0 + 1, C0 + 1) * TR) * TC;
+	}
+
 	double FLakeTerrain::FetchToward(double X, double Y, double FromRadians, double MaxDistance) const
 	{
 		if (Rows == 0 && !Heights && !Tiles) return MaxDistance;

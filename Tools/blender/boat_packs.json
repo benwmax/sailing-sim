@@ -3,5 +3,6 @@
   "PackCanoe": ["Topsides", "Bootstripe", "CoveStripe", "Antifouling"],
   "PackDeck": ["Deck", "NonSkid", "Teak", "Graphics", "Keel", "CabinWindow", "Rubrail", "Carbon"],
   "PackFit": ["Stainless", "Aluminium", "BlackPlastic", "Wood", "Rope", "PaintedAluminium", "Rubber", "CarbonMatte"],
-  "PackCanvas": ["SailCover", "SailCoverRed", "SailCoverGreen", "SailCoverTan", "Tarp", "Dacron", "FenderBlue", "CoolerLid"]
+  "PackCanvas": ["SailCover", "SailCoverRed", "SailCoverGreen", "SailCoverTan", "Tarp", "Dacron", "FenderBlue", "CoolerLid"],
+  "PackTrim": ["RedPlastic", "WhitePlastic", "Brass", "VarnishedTeak"]
 }

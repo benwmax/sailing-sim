@@ -146,6 +146,7 @@ namespace Sailing
 		struct FKickPoint { double Kick = 0.0, Area = 0.0, X = 0.0, Z = 0.0, TipX = 0.0, TipZ = 0.0; };
 		std::vector<FKickPoint> KickUp;
 		double KickDownSeconds = 2.0;
+		double KickUpAngle = 0.0;      // rad the blade turns about its bolt from Kick 0 to 1 (the table is even in it): for the model's blade
 
 		/** The swing keel's point at this Board and the rudder's at this Kick, interpolated (the end points past them). */
 		FSwingPoint SwingAt(double Board) const

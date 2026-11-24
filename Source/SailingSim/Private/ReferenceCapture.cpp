@@ -17,6 +17,9 @@ namespace
 		{ TEXT("Chase"), 50.f, false, false, NAN },
 		{ TEXT("Drone"), 80.f, false, false, NAN },
 		{ TEXT("ShoreTele"), 15.f, false, false, NAN },
+		// Film mode (FilmMode.h): the lens comes from -SailingTripod or the shot file.
+		{ TEXT("Tripod"), 20.f, false, false, NAN },
+		{ TEXT("Path"), 40.f, false, false, NAN },
 	};
 	static_assert(UE_ARRAY_COUNT(CapturePresets) == int32(ECapturePreset::Count), "one entry per preset");
 
@@ -80,6 +83,12 @@ void WorldCameraPose(ECapturePreset Preset, const FVector& BoatOrigin, float Hea
 	case ECapturePreset::ShoreTele: Range = 200.f; Height = 3.f; AimFraction = 0.33f; break;
 	default: break;
 	}
+	WorldCameraPoseAt(BoatOrigin, HeadingDeg, BearingDeg, Range, Height, AimFraction, MastheadMeters, WaterZ, OutLocation, OutRotation);
+}
+
+void WorldCameraPoseAt(const FVector& BoatOrigin, float HeadingDeg, float BearingDeg, float Range, float Height,
+	float AimFraction, float MastheadMeters, float WaterZ, FVector& OutLocation, FRotator& OutRotation)
+{
 	const float Bearing = FMath::DegreesToRadians(HeadingDeg + BearingDeg);
 	OutLocation = FVector(BoatOrigin.X + Range * CmPerMeter * FMath::Cos(Bearing), BoatOrigin.Y + Range * CmPerMeter * FMath::Sin(Bearing), WaterZ + Height * CmPerMeter);
 	const FVector Aim(BoatOrigin.X, BoatOrigin.Y, WaterZ + AimFraction * MastheadMeters * CmPerMeter);

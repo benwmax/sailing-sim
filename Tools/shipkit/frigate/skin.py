@@ -1328,17 +1328,39 @@ class Skin:
                 F.append((i, j, n + j, n + i))
             part.add(V, F, mat)
 
+    def rudder_post(self):
+        """the sternpost's aft face (px, x of z), straight above its last drawn point, and the rudder's gap before it"""
+        L = self.L
+        post = sorted(L.P["sternpost_aft_face_px"], key=lambda p: p[1])
+        pz, px = np.array([p[1] for p in post]), np.array([p[0] for p in post])
+        slope = (px[-1] - px[-2]) / (pz[-1] - pz[-2])
+        x_post = lambda z: float(np.interp(z, pz, px)) if z <= pz[-1] else float(px[-1] + slope * (z - pz[-1]))
+        return x_post, slope, pz[-1], 0.5 * L.ppf / 12.0
+
+    def rudder_axis(self):
+        """the line the rudder's head turns about (gundeck.py builds the head and the tiller on it): its pintles'
+        knuckles stand 1 px abaft the sternpost's aft face (rudder), which runs straight above its last drawn point, so
+        over the head the line is that face's, 1 px abaft it. Returns a point on it at the blade's top (m), its unit
+        direction (up), the blade's fore face's distance before it (m) and the knuckles' distances off it (m: the drawn
+        post bends below, so the lower pintles stand off this line; the game turns only the head's tiller)"""
+        L, pr, m = self.L, self.pr, self.m
+        x_post, slope, z_last, gap = self.rudder_post()
+        zt = 104.0
+        p0 = np.array([(x_post(zt) - 1.0 - L.mid_px) * m.sx, 0.0, zt * m.sy])
+        a = np.array([slope * m.sx, 0.0, m.sy])
+        a /= np.linalg.norm(a)
+        fore = (1.0 - gap) * m.sx * a[2]
+        off = [float(np.linalg.norm(np.cross(np.array([(x_post(z) - 1.0 - L.mid_px) * m.sx, 0.0, z * m.sy]) - p0, a)))
+               for z, _, _ in pr.rudder_straps]
+        return p0, a, fore, off
+
     def rudder(self, part, irons):
         """The rudder (as thick as the post at its fore edge, thinner aft; coppered to the wale's bottom) hung on the
         sternpost, up into the counter; its bronze straps, the hull's gudgeon arms, the pintles' knuckles and the band
         for the pendants."""
         L, pr, m = self.L, self.pr, self.m
         rs = self.sp["rudder"]
-        post = sorted(L.P["sternpost_aft_face_px"], key=lambda p: p[1])
-        pz, px = np.array([p[1] for p in post]), np.array([p[0] for p in post])
-        slope = (px[-1] - px[-2]) / (pz[-1] - pz[-2])
-        x_post = lambda z: float(np.interp(z, pz, px)) if z <= pz[-1] else float(px[-1] + slope * (z - pz[-1]))
-        gap = 0.5 * L.ppf / 12.0
+        x_post, slope, _, gap = self.rudder_post()
         hf = 0.5 * rs["fore_edge_siding_in"] * IN
         ha = 0.5 * rs["aft_edge_siding_in"] * IN
         zb, zt = pr.rudder_bottom, 104.0

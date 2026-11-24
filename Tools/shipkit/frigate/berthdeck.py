@@ -1655,7 +1655,7 @@ class BerthDeck(GunDeck):
             raise SystemExit("berthdeck: no carlings either side of the wardroom's table to hang its lantern from")
         yi = min(min(yp), -max(yq)) - cs_ / 2
         bs_, bm_ = (v * IN for v in glt["cabin_bar_in"])
-        zt = float(self.zsu(x_t)) - glt["cabin_bar_under_in"] * IN
+        zt = float(self.zsu(x_t)) - lt["wardroom_bar_under_in"] * IN
         vbox(bar_part, [x_t - bs_ / 2, -yi, zt - bm_], [x_t + bs_ / 2, yi, zt], "Oak")
         c, z_low = self.lantern(part, [x_t, 0.0, zt - bm_])
         light("Lantern_Wardroom", c, "wardroom", lw["radius_m"], lw["cast_shadows"])

@@ -16,6 +16,7 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UStaticMeshComponent;
 struct FLakeData;
+namespace SailingGround { struct FMownSource; }
 
 /**
  * Renders the baked lake: terrain in 640 m chunks that stream in at four levels of detail around the camera
@@ -70,6 +71,7 @@ private:
 		TArray<int32> Triangles;
 		TArray<FVector> Normals;
 		TArray<FLinearColor> Colors;
+		TArray<FVector2D> UV0;   // Track A: x = mown (SailingGround::FMownSource), read by M_Ground; nothing else is in the UVs
 	};
 	/**
 	 * World streaming (docs/world-streaming): a chunk is a square of one tile of the world's index (FWorldStreamer): 128
@@ -102,7 +104,12 @@ private:
 		int32 GridRow0 = 0, GridCol0 = 0;   // a whole grid's node indices of the chunk's corner
 		int32 TileRow0 = 0, TileCol0 = 0;   // the tile's node indices of the chunk's corner
 		bool bGarrigue = false;             // marseille-look: the land's Mediterranean dress (FLakeData::IsGarrigue)
+		std::shared_ptr<const SailingGround::FMownSource> Mown;   // Track A: where the ground is mown (null: nowhere)
 	};
+	/** Track A: the ground material for the chunks: M_Ground on Medium and up on the lake's dress, M_Terrain on Low, the
+	 *  garrigue and with -SailingClassicGround (or when M_Ground has not been built). */
+	UMaterialInterface* ChunkMaterial(const FLakeData& Lake) const;
+	std::shared_ptr<const SailingGround::FMownSource> MownSource;
 
 	const FLakeData* GetLake() const;
 	/** HideBelow: the bed deeper than this (m, map frame) is not meshed (it can't be seen through the water). */
@@ -118,6 +125,10 @@ private:
 	void PlaceTrees();
 	/** Graphics G2 (Medium and up): cattail and rush clumps in the shallows and at the water's edge. */
 	void PlaceReeds();
+	/** Shore Track C (docs/envloop/shore-edges, Medium and up): the kit shore edges, SM_Edge_<Type>_<n> pieces along the
+	 *  developed lots' waterlines (bulkhead, limestone, timber: HouseKit's ShoreEdgeRuns) and the natural shore's clay cut,
+	 *  gravel, mud flat and reed cove picked by slope and fetch (the region pack's rules); -SailingNoShoreEdges leaves them out. */
+	void PlaceShoreEdges();
 	/** Near-shore phase 2 (High and Ultra): shrubs, saplings, deadfall and snags under and around the lidar crowns along the water. */
 	void PlaceUnderstory();
 	bool PlaceHouseModels(const struct FLakeData& Lake);
@@ -158,11 +169,13 @@ private:
 	bool bTreesPlaced = false;
 
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> TerrainMaterial;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> GroundMaterial;   // Track A: M_Ground (scripts/import_ground.py)
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> ShapeMaterial;
 	UPROPERTY(Transient) TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> TreeMeshes;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeModels; // Visual V6: leaf-card trees near the camera
 	bool bLoggedInstances = false;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ReedModels; // Graphics G2: cattails, rushes
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> EdgeModels; // shore Track C: kit shore edge pieces
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> UnderstoryModels; // near-shore phase 2
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeFar;    // and their opaque crowns beyond
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> TreeMid;    // Graphics G6: opaque crowns that still cast shadows

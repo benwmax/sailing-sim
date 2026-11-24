@@ -38,7 +38,8 @@ if len(ARGS) < 2:
 BUILD, OUT = ARGS[0], ARGS[1]
 os.makedirs(OUT, exist_ok=True)
 G = json.load(open(os.path.join(HERE, "game_c22.json")))
-RUDDER = json.load(open(os.path.join(HERE, "keel_c22.json")))["rudder"]
+KC = json.load(open(os.path.join(HERE, "keel_c22.json")))
+RUDDER, KEEL = KC["rudder"], KC["keel"]
 TAG = "C22Hero"
 
 
@@ -201,6 +202,36 @@ def split_object(name, rule, mast_x):
     return out
 
 
+def split_by_material(name, rule):
+    """Splits `name` into <name>:<piece> (the faces of each piece's materials, game_c22.json split_material) and
+    <name>:head (the rest)."""
+    ob = bpy.data.objects[name]
+    show(ob)
+    names = [m.name.split(".")[0] if m else "" for m in ob.data.materials]
+    pieces = {k: v for k, v in rule.items() if k != "note"}
+    out = {}
+    for piece in list(pieces) + ["head"]:
+        mats = pieces.get(piece)
+        cp = ob.copy()
+        cp.data = ob.data.copy()
+        cp.name = f"{name}:{piece}"
+        bpy.context.scene.collection.objects.link(cp)
+        bm = bmesh.new()
+        bm.from_mesh(cp.data)
+        if mats is None:
+            drop = [f for f in bm.faces if names[f.material_index] in sum(pieces.values(), [])]
+        else:
+            drop = [f for f in bm.faces if names[f.material_index] not in mats]
+        bmesh.ops.delete(bm, geom=drop, context="FACES")
+        bm.to_mesh(cp.data)
+        bm.free()
+        if not cp.data.polygons:
+            raise SystemExit(f"{cp.name}: no faces (split_material {mats})")
+        out[piece] = cp
+    bpy.data.objects.remove(ob, do_unlink=True)
+    return out
+
+
 def box_uvs(me):
     """UV0 projected on the axis nearest each face's normal, in metres (build_fleet.py's: the boat library's tangent
     frame); the build's own UV sets go."""
@@ -276,6 +307,9 @@ def sockets(build):
     S["RudderStock"] = (f"SM_{TAG}_Rudder", Vector((px, 0.0, RUDDER["head"]["z"][1])))
     S["TillerEnd"] = (f"SM_{TAG}_Rudder", Vector((end[0], 0.0, end[1])))
     S["Gooseneck"] = (f"SM_{TAG}_Hull", Vector(build["origins"]["SM_Catalina22_Boom"]) / 100.0)
+    S["KeelPin"] = (f"SM_{TAG}_Hull", Vector((KEEL["pivot"][0], 0.0, KEEL["pivot"][1])))
+    bolt = RUDDER["head"]["bolt"]
+    S["RudderBolt"] = (f"SM_{TAG}_Rudder", Vector((px + bolt[0], 0.0, bolt[1])))
     missing = [f"{part}: {n}" for part, names in G["required_sockets"].items() if part != "note"
                for n in names if n not in S or S[n][0] != part]
     if missing:
@@ -293,11 +327,15 @@ def main():
     report = json.load(open(os.path.join(BUILD, "c22_report.json")))
     S = sockets(build)
     O = bpy.data.objects
-    pivots = {"MastStep": S["MastStep"][1], "Gooseneck": S["Gooseneck"][1], "RudderPivot": S["RudderPivot"][1]}
+    pivots = {n: S[n][1] for n in ("MastStep", "Gooseneck", "RudderPivot", "KeelPin", "RudderBolt")}
     paint_lines()
     for name, rule in G["split"].items():
         split_object(name, rule["mast"], float(pivots["MastStep"].x))
+    for name, rule in G.get("split_material", {}).items():
+        if name != "note":
+            split_by_material(name, rule)
     origins, tris, slots, done = {}, {}, {}, []
+    lowest = 0.0
     for name, part in G["parts"].items():
         if "objects_prefix" in part:
             names = sorted(o.name for o in O if o.type == "MESH" and o.name.startswith(part["objects_prefix"])
@@ -322,18 +360,21 @@ def main():
         tris[name] = tri_count(ob)
         if "max_tris" in part and tris[name] > part["max_tris"]:
             raise SystemExit(f"{name}: {tris[name]} triangles, over its {part['max_tris']} (not Nanite)")
+        if name in (f"SM_{TAG}_Hull", f"SM_{TAG}_Keel"):
+            bpy.context.view_layer.update()      # (join_part moved its origin: the draft from the keel down in place)
+            lowest = min(lowest, float(body_tris(ob)[0].reshape(-1, 3)[:, 2].min()))
         if name == f"SM_{TAG}_Hull":
             t, sl = body_tris(ob)
             canoe = t[np.array([s in ("Topsides", "Bootstripe", "CoveStripe", "Antifouling") for s in sl])]
             vol, mom = volume_below(canoe)
             cb = mom / vol          # (the body frame's Y flip turns the winding over: the sign goes with both sums)
             vol = abs(vol)
-            all_pts = t.reshape(-1, 3)
-            meas = {"loa": float(np.ptp(canoe[:, :, 0])), "beam": float(np.ptp(canoe[:, :, 1])), "draft": float(-all_pts[:, 2].min()),
+            meas = {"loa": float(np.ptp(canoe[:, :, 0])), "beam": float(np.ptp(canoe[:, :, 1])), "draft": 0.0,
                     "canoe_volume_m3": round(vol, 4), "cb": [round(float(v), 3) for v in cb]}
         origins[name] = pv
         slots[name] = export_part(ob, part.get("keep", ()))
         done.append(name)
+    meas["draft"] = -lowest
     socks = {n: (o, p) for n, (o, p) in S.items() if o in done}
     meta = {"sockets": {n: cm(p) for n, (o, p) in socks.items()},
             "owner": {n: o for n, (o, p) in socks.items()},

@@ -228,10 +228,8 @@ namespace SailCatalog
 			TArray<FBoat> Out;
 			for (int32 T = 0; T < int32(EBoatType::Count); ++T)
 			{
-				// The frigate (docs/frigate-physics/) is listed once the game draws and works her square rig: the frigate
-				// wiring turns kShipsListed on with her model, rig and orders panel.
-				constexpr bool kShipsListed = false;
-				if (IsSquareRigged(EBoatType(T)) && !kShipsListed) continue;
+				// The frigate (docs/frigate-physics/) is listed with the rest since her model, rig and orders panel came in
+				// (docs/frigate-import/, #819).
 				const FBoatConfig C = FBoatConfig::Make(EBoatType(T));
 				const FWords& W = Words(T);
 				FBoat B;
@@ -591,7 +589,7 @@ namespace SailCatalog
 	{
 		using Sailing::EBoatType;
 		// (Bluebonnet, the J-Class, joined the slice on Bean's word, Nov 17 2026: docs/jclass-14/; the frigate Commonwealth
-		// on his word the same day, listed once the game draws her: MakeBoats' kShipsListed.)
+		// on his word the same day, listed since #819 drew her.)
 		return !USailingSettings::SliceOnly() || Type == int32(EBoatType::J22) || Type == int32(EBoatType::Sunfish) || Type == int32(EBoatType::Catalina22)
 			|| Type == int32(EBoatType::Bluebonnet) || Type == int32(EBoatType::Commonwealth);
 	}

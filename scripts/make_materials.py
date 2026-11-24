@@ -270,8 +270,10 @@ float2 ldir = normalize(wMap.gb * 2.0 - 1.0 + float2(1e-4, 0.0));
 float slowMs = wMap.a * 20.0;
 float2 guv = p.xy / GustRect.z;
 float near = saturate(1.0 - dist / 1500.0);
-// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder; W2: along the local wind.
-float2 d = ldir;
+// Wind ripples: short capillary-gravity waves along the wind, stronger where it blows harder. Along the sea's mean wind
+// (sailing-feedback #30): u and v are metres from the map's origin, so a local direction that varies across the wind map's
+// texels multiplied its change by that distance into moire.
+float2 d = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 n = float2(-d.y, d.x);
 float u = dot(p.xy, d), v = dot(p.xy, n);
 float rip = saturate(rough - 0.12) * 0.075 * near;
@@ -1033,7 +1035,16 @@ col = lerp(col, col * 0.5, wet);
 float film = (1.0 - smoothstep(0.02, 0.10 + 0.04 * f, h)) * step(-0.05, h) * CA;
 col = lerp(col, col * float3(0.62, 0.74, 0.46), film * 0.8);
 col = lerp(col, col * float3(0.55, 0.6, 0.45), under);
-Rough = lerp(0.92, 0.32, wet * (1.0 - under));
+// Feedback #29 (the cream glow on shaded banks at the waterline, bridge and wooded stations): at 0.32 the whole wet band
+// was a near mirror, and a glossy face's sky reflection is not shadowed. Where the bank grass, a bush or the bridge
+// shades the band (Lumen doesn't see the grass), a bank face turned toward the bright sky round the sun still mirrored it:
+// a soft cream blob sitting on the waterline, brightest in the shade, gone under overcast or an hour later. Water stands
+// only on the near-flat swash and drains off a sloping face, which stays damp and dull: gloss now only where the
+// ground is within about 15 deg of level (N: the chunk's vertex normal, world space on the procedural mesh), and even
+// there a touch less than a puddle's.
+float flatK = smoothstep(0.88, 0.97, N.z);
+float wetRough = lerp(0.62, 0.38, flatK);
+Rough = lerp(0.92, wetRough, wet * (1.0 - under));
 // Realism audit 1023 item 8 (pc/far-shore): past the 250 m where LakeTerrainActor::PlaceReeds' bank grass and weed stop
 // drawing, a grassy bank met the water as a clean lawn. Here the same band, from the waterline to about a metre up, is
 // painted as the rank grass, sedge and dead stems it stands for: darker and more olive than mown grass, in ragged clumps a
@@ -1051,8 +1062,9 @@ col = lerp(col, weed, cover);
 Rough = lerp(Rough, 0.95, cover);
 return col;
 """
-    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
+    c = custom(mat, code, ["C", "CA", "P", "WaterZ", "Land", "Cam", "N"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -400, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
+    connect(node(mat, unreal.MaterialExpressionVertexNormalWS, -800, 650), "", c, "N")
     connect(vc, "", c, "C")
     connect(vc, "A", c, "CA")
     connect(pos, "", c, "P")
@@ -1193,6 +1205,17 @@ float wetAll = saturate(max(wet, deckWet * 0.8));
 float4 wear = CD0 >= 0.0 ? float4(CD0, CD1, CD2, CD3) : Wear;
 float3 col = (IsHull > 0.5 && CD4 >= 0.0) ? float3(CD4, CD5, CD6) : C.rgb;
 float zcm = LP.z;
+// Name on the hull (docs/skins, HullName.h): the skin's lettering as cut vinyl on the quarters of every boat but the hero
+// J/22 (M_J22HeroSurface has its own). NameTex's red is the letters' cover (white on black, drawn by the pawn); NameRect
+// its place in the hull's frame (cm: aft edge X, lower edge Z, length, height), laid by a side-on projection so it follows
+// the topsides' curve and reads bow end first on each side (from port the bow is to the left, so U runs aft). Only on
+// topsides facing outboard (a catamaran's outer sides) and within NameSpan.y of the centreline (a trimaran's main hull).
+// NameColour's alpha 0 (the default, and every boat without a name): nothing. Before the wear, which weathers it.
+float nameOut = step(0.0, LP.y * dot(N, LY)) * step(abs(LP.y), NameSpan.y);
+float2 nameUV = float2(LP.y < 0.0 ? NameRect.x + NameRect.z - LP.x : LP.x - NameRect.x, NameRect.y + NameRect.w - zcm) / max(NameRect.zw, 1.0);
+float nameIn = step(0.0, nameUV.x) * step(nameUV.x, 1.0) * step(0.0, nameUV.y) * step(nameUV.y, 1.0) * step(0.5, IsHull) * nameOut * NameColour.a;
+float nameCover = nameIn > 0.0 ? Texture2DSampleLevel(NameTex, NameTexSampler, saturate(nameUV), 0.0).r : 0.0;
+col = lerp(col, NameColour.rgb, saturate(nameCover) * nameIn);
 float gel = (1.0 - Metal) * saturate(Coat) * (1.0 - saturate(NonSkid)) * (1.0 - Grain);   // texture loop, wood: varnish isn't gelcoat (it chalked)
 float rough = R, coat = Coat;
 // E1 (docs/environment-1): the rest of the berthed boats' wear seed, per instance (custom data 12-15; -1 = none, as on
@@ -1284,7 +1307,21 @@ col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0
 rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
 float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
+// J-Class 15: a laid deck's planks are quarter-sawn, so their grain runs nearly straight, and each plank has its own (the
+// part's wandering figure ran across the seams and, foreshortened along the deck, drew chevrons: the Mac's 1e96e56d helm still).
+if (Surface > 17.5)
+{
+    float gwP = floor((abs(LUV2.y) - LaidA.w) / max(LaidA.x, 1e-3f)) + (LUV2.y > 0.0f ? 50.0f : 0.0f);
+    float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
+    gw = LP.y * 0.9 + 40.0 * gwH + 0.4 * sin(LP.x * 0.021 + 6.3 * gwH) + 0.15 * sin(LP.x * 0.083 + 3.0 * gwH);
+}
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
+// The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
+// Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 0.75 to 2 radians of phase a pixel (gone well before Nyquist's pi).
+// (A ray-traced hit or Lumen's card capture has no derivatives and keeps them; wood_port.py's swatches are sharp, so it has no term.)
+#if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
+ring = lerp(ring, 0.5, smoothstep(0.75, 2.0, 6.0 * fwidth(gw)));
+#endif
 float fleck = saturate(vn * 3.0 - 1.9);
 // Texture loop, wood: close up on High the varnish's detail map carries the fine grain, so this broad figure steps back
 // there (the grain then measures 3.4 mm across, as ash and sapele do: Tools/texloop/refs/wood.json).
@@ -1416,11 +1453,87 @@ float fair = sin(LP.x * 0.045 + sin(LP.z * 0.031 + LP.x * 0.007) * 2.2) + 0.5 * 
 grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // Boat fidelity 1 (docs/boat-fidelity-1): the shared library. Surface is the part's kind (0 none: crew, plastics, glass;
 // 1 gelcoat, 2 non-skid, 3 stainless, 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber,
-// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing, 15 smoked acrylic): first its weathering with ageK (anchored to the boat by the grime's noise), then,
+// 9 rope, 10 sailcloth, 11 canvas, 12 galvanised or plain steel, 13 black moulded plastic, 14 woven webbing, 15 smoked acrylic,
+// 16 sand-cast bronze, 17 three-strand manila (16 and 17 are the J-Class's: their maps are the slot's own TOwnN/TOwnM),
+// 18 a laid deck: bare teak (7) drawn as planks, seams, butts, king plank and covering boards from the deck's UVs, below)): first its weathering with ageK (anchored to the boat by the grime's noise), then,
 // close up on High and Ultra (MPC_Boat Detail), a tiling detail map box-projected in the boat's frame (U along the
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
 float woodFail = 0.0;   // texture loop, wood: the varnish's failed share here (the detail map darkens its pores)
+float bzVerd = 0.0, bzDark = 0.0, maFuzz = 0.0;   // J-Class: the bronze's verdigris and its recesses' patina, the manila's hairs (for their detail maps)
+// J-Class 15 (docs/jclass-15/): a laid deck (kind 18, MI_Boat_LaidTeak, the LaidDeck switch on). The deck isn't planked in
+// the mesh: like her Blender deck (Tools/shipkit/jclass/deck.py planking_terms, ported line for line; keep them in step) the
+// pattern comes from three UV maps the export keeps on these faces: UV2 Planking (U along the planks, Ys athwartships, m),
+// UV3 Margin (D: square to the sheer in plan; YM: |y| of the covering board's inner edge here, 99 where there is none),
+// UV1.y the Aft map's DA (forward of the after edge; UV1.x is the pack entry). Aft's s (how fast the board's edge crosses
+// the planks) is YM's slope along U, from the screen derivatives. LaidA (plank pitch, seam, plank length, half the king
+// plank), LaidB (covering board, after margin, nib, starboard's butt shift), LaidC (king plank's scarf, covering board's
+// scarf, scarf run), LaidD (the after margin's mitre a, b: a D - b DA), LaidE (the butts' stagger over four planks), all in
+// metres or plank lengths from deck_bluebonnet.json and her build. It weathers as bare teak (7) underneath.
+float ldSeam = 0.0, ldSeen = 0.0, ldTint = 1.0, ldTintK = 0.0, ldAvg = 0.0;
+float2 ldOfs = float2(0.0, 0.0);
+if (surf == 18)
+{
+    surf = 7;
+    float lU = LUV2.x, lYs = LUV2.y, lD = LUV3.x, lYM = LUV3.y, lDA = PUV.y;
+    float lw = LaidA.x, lsw = LaidA.y, lL = LaidA.z, lk = LaidA.w;
+    float lcb = LaidB.x, lcba = LaidB.y, lnib = LaidB.z, lshift = LaidB.w;
+    float lks = LaidC.x, lcs = LaidC.y, lrun = LaidC.z;
+    // A pixel's footprint in metres (aa): the seams' soft edge, and past three seams' widths they fade into the deck's
+    // average tone (as the Blender deck's fade_seams); a ray-traced hit or Lumen's card capture takes that average.
+    float lSL = 0.0f, laa = 1.0f;
+#if !RAYHITGROUPSHADER && !defined(LUMEN_CARD_CAPTURE)
+    float2 lgU = float2(ddx(lU), ddy(lU)), lgM = float2(ddx(lYM), ddy(lYM));
+    lSL = lYM < 50.0f ? abs(dot(lgM, lgU)) / max(dot(lgU, lgU), 1e-12f) : 0.0f;
+    laa = max(0.0012f, 0.75f * length(fwidth(float2(lU, lYs))));
+#endif
+    #define LD_NEAR(v_, s_) abs((v_) - round((v_) / (s_)) * (s_))
+    #define LD_LINE(d_) saturate((0.5f * lsw - (d_)) / laa + 0.5f)
+    float lY = abs(lYs);
+    float lstb = lYs > 0.0f ? 1.0f : 0.0f;
+    float lt = (lYM - lk) / lw, lj = floor(lt), lf = lt - lj;
+    float lE = max(lk + lw * (lj + (lf > lnib - 1e-6f ? lf : 0.0f)), lk);
+    float lside = lY > lE ? 1.0f : 0.0f;
+    float laft = lDA < lcba ? 1.0f : 0.0f;
+    float lmargin = max(lside, laft), lnotM = 1.0f - lmargin;
+    float lking = (lY < lk ? 1.0f : 0.0f) * lnotM;
+    float lplank = lnotM * (1.0f - lking);
+    float lnotAft = 1.0f - laft;
+    float lmit = lD * LaidD.x - lDA * LaidD.y;          // in the quarters: the covering board's side of the mitre or the margin's
+    float lboard = lside * (1.0f - laft * (lmit > 0.0f ? 1.0f : 0.0f));
+    float lafter = lmargin - lboard;
+    float ljp = floor((lY - lk) / lw);                 // the plank's index out from the king plank, and its butts' offset
+    float lmk = ljp - 4.0f * floor(ljp / 4.0f);
+    float loff = (lstb * lshift + (lmk < 0.5f ? LaidE.x : lmk < 1.5f ? LaidE.y : lmk < 2.5f ? LaidE.z : LaidE.w)) * lL;
+    float sLong = LD_LINE(LD_NEAR(lY - lk, lw)) * max(lplank, lking * (lY > lk - 0.5f * lsw ? 1.0f : 0.0f));
+    float sButt = LD_LINE(LD_NEAR(lU - loff, lL)) * lplank;
+    float lrk = lrun / (2.0f * lk);
+    float lqk = lU - lYs * lrk;
+    float sKing = LD_LINE(LD_NEAR(lqk, lks) / sqrt(1.0f + lrk * lrk)) * lking;
+    float sEdge = LD_LINE(abs(lY - lE)) * lnotAft;
+    float lin = (lY > lk + lj * lw ? 1.0f : 0.0f) * (lY < lk + (lj + lnib) * lw ? 1.0f : 0.0f);
+    float sNib = LD_LINE(abs(lf - lnib) * lw / (lSL + 1e-4f)) * lin * lnotAft * (lt > 0.0f ? 1.0f : 0.0f);
+    float sAft = LD_LINE(abs(lDA - lcba)) * (1.0f - lside);
+    float sMitre = LD_LINE(abs(lmit)) * lside * laft;
+    float lrc = lrun / lcb;
+    float lq = lU - lD * lrc + lstb * lshift * lcs;
+    float sScarf = LD_LINE(LD_NEAR(lq, lcs) / sqrt(1.0f + lrc * lrc)) * lside * lnotAft * (lD < lcb + lnib * lw + 0.005f ? 1.0f : 0.0f);
+    #undef LD_LINE
+    #undef LD_NEAR
+    ldSeam = max(max(max(sLong, sButt), max(sKing, sEdge)), max(max(sNib, sAft), max(sMitre, sScarf)));
+    // each piece's own slight tint (the planks by index and length, the boards by length, port and starboard apart),
+    // and its own place in the teak detail map, so neighbouring planks don't repeat its grain
+    float lseg = floor((lU - loff) / lL);
+    float lidx = lplank * ljp - 100.0f * lboard - 300.0f * lafter - 200.0f * lking + 500.0f * lstb * (1.0f - lking);
+    float lidy = lplank * lseg + lboard * floor(lq / lcs) + lking * floor(lqk / lks);
+    float lh = frac(sin(dot(float2(lidx, lidy), float2(12.9898f, 78.233f))) * 43758.5453f);
+    ldTint = 0.9f + 0.2f * lh;
+    ldOfs = float2(lh * 3.7f, frac(lh * 7.13f) * 0.5f);
+    ldTintK = 1.0f - smoothstep(lw, 3.0f * lw, laa);
+    float lfade = 1.0f - smoothstep(lsw, 3.0f * lsw, laa);
+    ldSeen = ldSeam * lfade;
+    ldAvg = (1.0f - lfade) * lsw / lw;                 // the seams' share of the deck, where they're too fine to draw
+}
 float metalOut = Metal;    // rust is no metal: what it covers loses its metallic response (texture loop, rust lane)
 // Texture loop, rust lane (Tools/texloop/cards/rust.json): rust on the hardware itself. A 0.5 cm value noise (two octaves,
 // 1.3 and 0.45 cm) breaks it into patches on parts too small for the grime's noise; the rust is the colour measured from
@@ -1666,6 +1779,43 @@ else if (surf == 12)    // galvanised or plain steel (anchor, keel bolts and nut
     rough = lerp(rough, 0.85, max(stRust, 0.5 * stHalo));
     metalOut *= saturate(1.0 - stRust - 0.4 * stHalo - 0.8 * stFleck);
     coat *= 1.0 - stRust;
+}
+else if (surf == 16)    // J-Class 15: sand-cast bronze (Bluebonnet's winches, blocks, cleats, portlights, binnacle; her slice 11 card,
+{                       // Tools/shipkit/jclass/weathering.py bronze). New it is a golden metal; the years brown its open faces to a
+                        // patina (a kept yacht's are polished bright again), the recesses keep theirs and darken (bzDark, drawn in
+                        // the detail map's pits close up), and verdigris gathers where water stands and dries, salt water's more.
+                        // Age unset: time is the livery's oxidation channel, the verdigris its fittings channel (the catalogue).
+    float bzT = saturate(timeK * 2.5);
+    float bzKept = 0.85 * saturate(care) * (age >= 0.0 ? saturate(age / 3.0) : 1.0f);   // a kept yacht's bronze is polished
+    float bzOpen = bzT * (1.0 - bzKept) * (0.7 + 0.3 * saturate(vn * 2.0 - 0.4));       // blotchy over a fitting
+    float3 bzPat = lerp(float3(0.117, 0.054, 0.021), float3(0.034, 0.021, 0.012), saturate(bzT * (0.3 + 0.8 * vn)));   // brown, then dark
+    col = lerp(col, bzPat, bzOpen);
+    metalOut = lerp(metalOut, 0.7, bzOpen);
+    rough = lerp(rough, 0.62, 0.8 * bzOpen);
+    bzDark = saturate(timeK + dirtK);
+    bzVerd = age >= 0.0 ? smoothstep(0.5, 0.9, dirtK) * (0.4 + 0.6 * salt) : saturate(2.0 * wear.w);
+    // past the detail map's reach the verdigris is a thin soft bloom on the open faces, thicker in the grime noise's lows
+    float bzBloom = bzVerd * 0.12 * saturate(1.4 - vn);
+    col = lerp(col, float3(0.117, 0.305, 0.216), bzBloom);
+    metalOut *= 1.0 - bzBloom;
+    rough = lerp(rough, 0.9, bzBloom);
+}
+else if (surf == 17)    // J-Class 15: three-strand manila (Bluebonnet's sheets, guys, tails and coils; weathering.py manila). New,
+{                       // straw-gold with a little sheen; the sun and the years grey it, dirt darkens it and raises its hairs
+                        // (maFuzz: they fill the lay's grooves, the rope reads paler and duller), a left rope mildews. Kept yachts
+                        // renew their running rigging every few seasons: the rope's own age, as kind 9's.
+    float mCr = saturate(care);
+    float mA = age >= 0.0 ? min(age, 1.5 / max(mCr, 0.05)) : 0.0;
+    float mT = age >= 0.0 ? saturate(0.25 * (1.0 - exp(-mA / 0.75)) + 0.75 * (1.0 - exp(-mA / 18.0))) : timeK;
+    float mD = age >= 0.0 ? saturate((1.0 - exp(-mA)) * (0.15 + 0.85 * (1.0 - mCr))) : dirtK;
+    float mGrey = saturate(0.6 * sqrt(mD) + 0.45 * mT);
+    maFuzz = saturate(0.8 * sqrt(mD) + 0.3 * mT);
+    col = lerp(col, float3(0.162, 0.138, 0.107), 0.85 * mGrey);
+    col = lerp(col, lerp(col, float3(0.430, 0.402, 0.332), 0.5), 0.35 * maFuzz);    // the hairs' pale halo
+    col = lerp(col, col * 0.6, saturate(mD * (0.2 + 0.9 * vn)));
+    float mMil = saturate((mD - 0.5) / 0.4) * smoothstep(0.5, 0.6, vn);
+    col = lerp(col, float3(0.018, 0.019, 0.014), 0.8 * mMil);
+    rough = lerp(rough, 0.95, maFuzz);
 }
 else if ((surf >= 9 && surf <= 11) || (surf == 14 && age < 0.0))     // sailcloth, canvas (rope is above; webbing with Age unset): dingy, and on a neglected boat specks of mildew
 {
@@ -1930,8 +2080,10 @@ col = lerp(col, float3(0.018, 0.022, 0.014), 0.85 * wbMil);
 float cav = 0.0;        // the detail's cavities: grime and standing water collect there
 if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 {
-    float fadeD = 1.0 - saturate((Depth - 150.0) / 450.0);
-    float2 tile = (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
+    // (J-Class 15: her own maps fade nearer, as her slice 11 card has them: bronze 0.8-3 m, manila 0.6-2.5 m.)
+    float fadeN = surf == 16 ? 80.0f : surf == 17 ? 60.0f : 150.0f, fadeF = surf == 16 ? 300.0f : surf == 17 ? 250.0f : 600.0f;
+    float fadeD = 1.0 - saturate((Depth - fadeN) / (fadeF - fadeN));
+    float2 tile = surf == 16 ? float2(0.1f, 0.1f) : surf == 17 ? float2(0.06f, 0.03f) : (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : surf == 14 ? float2(0.02, 0.02) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
@@ -1942,6 +2094,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     float3 lpm = LP / 100.0;
     bool upG = GrainUp > 0.5;
     float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = lpm.xy / tile;
+    if (Surface > 17.5) uv2 = (LUV2 + ldOfs) / tile;    // a laid deck: the teak's grain along each plank, from its own place
     float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ;
     float4 n0 = float4(0.5, 0.5, 1.0, 1.0), n1 = n0, n2 = n0, m0 = float4(0.5, 0.5, 0.5, 0.5), m1 = m0, m2 = m0;
     SamplerState DS = View.MaterialTextureBilinearWrapedSampler;
@@ -1955,6 +2108,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     else if (surf == 9) { BOAT_TRI(TBraidN, n0, n1, n2); }
     else if (surf == 10) { BOAT_TRI(TSailclothN, n0, n1, n2); }
     else if (surf == 11 || surf == 14) { BOAT_TRI(TCanvasN, n0, n1, n2); }   // webbing: the canvas weave at 2 cm (no new map)
+    else if (surf == 16 || surf == 17) { BOAT_TRI(TOwnN, n0, n1, n2); BOAT_TRI(TOwnM, m0, m1, m2); }   // the J-Class slot's own maps
     else { BOAT_TRI(TGelcoatN, n0, n1, n2); BOAT_TRI(TGelcoatM, m0, m1, m2); }
 #undef BOAT_TRI
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
@@ -2003,6 +2157,35 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     {
         rough = saturate(rough + fadeD * ((m.g - 0.5) * 0.15 + m.r * 0.15 * (0.3 + ageK)));
     }
+    else if (surf == 16)                 // cast bronze (T_JClass_CastBronze: R 0 in a pit, G roughness, B height): the sand's pits and
+    {                                    // casting pores keep their patina whatever the polish, dark with the years, and verdigris first
+        cav = (1.0 - m.r) * fadeD;
+        rough = saturate(rough + fadeD * (m.g - 0.5) * 0.2);
+        float pitP = cav * saturate(0.3 + bzDark);
+        col = lerp(col, lerp(float3(0.117, 0.054, 0.021), float3(0.034, 0.021, 0.012), bzDark), pitP);
+        float pitV = saturate(cav * 1.5) * bzVerd;
+        col = lerp(col, float3(0.117, 0.305, 0.216), pitV);
+        metalOut *= 1.0 - max(0.3 * pitP, pitV);
+        rough = lerp(rough, 0.9, pitV);
+    }
+    else if (surf == 17)                 // manila (T_JClass_Manila: R the fibres' tone, G hairs, B height): light and dark fibres along
+    {                                    // the strand, broken hairs catching the light within 2 m (more on an old rope), dirt in the lay
+        cav = (1.0 - m.b) * 0.6 * fadeD;
+        float lay = lerp(0.3, 0.1, maFuzz);
+        col *= lerp(1.0, 1.0 - 0.5 * lay + m.r * lay, fadeD);
+        float hair = m.g * (0.3 + 0.9 * maFuzz) * (1.0 - smoothstep(40.0, 200.0, Depth));
+        col = lerp(col, col * 1.25, saturate(hair));
+    }
+}
+// A laid deck (above): each piece's tint, then the black caulking in the seams (matt, where grime and water collect); far
+// off, where a seam is under a pixel, its share of the deck darkens the teak instead.
+if (Surface > 17.5)
+{
+    col *= lerp(1.0, ldTint, ldTintK);
+    col = lerp(col, LaidCaulk.rgb, ldAvg);
+    col = lerp(col, LaidCaulk.rgb, ldSeen);
+    rough = lerp(rough, 0.85, ldSeen);
+    cav = max(cav, 0.8 * ldSeen);
 }
 // Wet: standing water darkens the cavities first (non-skid grooves, checks, pores).
 col *= 1.0 - 0.3 * cav * wetAll;
@@ -2171,6 +2354,68 @@ BOAT_DETAIL_MAPS = (("TGelcoatN", "T_Detail_Gelcoat_N"), ("TGelcoatM", "T_Detail
                     ("TWoodN", "T_Detail_WoodVarnish_N"), ("TWoodM", "T_Detail_WoodVarnish_M"), ("TTeakN", "T_Detail_TeakWeathered_N"),
                     ("TTeakM", "T_Detail_TeakWeathered_M"), ("TRubberN", "T_Detail_Rubber_N"), ("TBraidN", "T_Detail_Braid_N"),
                     ("TSailclothN", "T_Detail_Sailcloth_N"), ("TCanvasN", "T_Detail_Canvas_N"))
+# J-Class 15: a slot's own detail pair (kinds 16 and 17), texture parameters the slot's instance sets (BOAT_OWN_MAPS), so
+# M_BoatSurface itself references only stand-ins and no other boat loads them (Medium's boat texture budget).
+BOAT_OWN_PINS = (("TOwnN", "OwnDetailN"), ("TOwnM", "OwnDetailM"))
+# Each J-Class slot's own maps (Inputs/jclass-detail, made by Tools/shipkit/jclass/textures.py; imported to /Game/Boats/Detail
+# by import_boat_detail.py).
+BOAT_OWN_MAPS = {"CastBronze": ("T_JClass_CastBronze_N", "T_JClass_CastBronze_M"), "Manila": ("T_JClass_Manila_N", "T_JClass_Manila_M")}
+# J-Class 15: a laid deck's numbers (BOAT_CODE kind 18; vector parameters, defaults Bluebonnet's). LaidA (plank pitch, seam,
+# plank length, half the king plank), LaidB (covering board, after margin, nib, starboard's butt shift in lengths), LaidC
+# (king plank's scarf, covering board's scarf, scarf run), LaidD (the after margin's mitre a, b), LaidE (the butts' stagger
+# over four planks, in lengths), LaidCaulk (the seams' colour, linear).
+BOAT_LAID_PARAMS = (("LaidA", (0.057, 0.006, 7.3, 0.165)), ("LaidB", (0.3, 0.28, 0.5, 0.125)), ("LaidC", (9.1, 6.1, 0.45, 0.0)),
+                    ("LaidD", (0.0, 0.0, 0.0, 0.0)), ("LaidE", (0.0, 0.5, 0.25, 0.75)), ("LaidCaulk", (0.007, 0.006, 0.005, 1.0)))
+# Each laid-deck slot: its deck's planking (the build's json) and the game json whose laid_deck.mitre the export checks
+# against the build (Tools/shipkit/jclass/export_game.py).
+BOAT_LAID = {"LaidTeak": ("Tools/shipkit/jclass/deck_bluebonnet.json", "Tools/shipkit/jclass/game_bluebonnet.json")}
+
+
+def srgb_to_linear(c):
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def laid_values(slot):
+    """A laid-deck slot's LaidA..LaidE and LaidCaulk, from its deck's json (deck.py's planking) and its game json's mitre."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    deck_json, game_json = BOAT_LAID[slot]
+    dk = json.load(open(os.path.join(root, deck_json)))
+    pl = dk["deck"]["planking"]
+    mitre = json.load(open(os.path.join(root, game_json)))["laid_deck"]["mitre"]
+    st = list(pl["butt_stagger"])
+    if len(st) != 4:
+        raise RuntimeError(f"{slot}: BOAT_CODE's laid deck takes a stagger over four planks, {deck_json} has {len(st)}")
+    caulk = [srgb_to_linear(v) for v in dk["colours"]["Caulking"]]
+    return {"LaidA": (pl["pitch"], pl["seam"], pl["plank_length"], pl["king_plank"] / 2),
+            "LaidB": (pl["covering_board"], pl["after_margin"], pl["nib"], pl["starboard_shift"]),
+            "LaidC": (pl["king_scarf"], pl["covering_scarf"], pl["scarf_run"], 0.0),
+            "LaidD": (mitre[0], mitre[1], 0.0, 0.0), "LaidE": tuple(st), "LaidCaulk": (*caulk, 1.0)}
+
+
+def masks_default():
+    """A tiny mid-grey masks texture (TC_Masks, linear): the stand-in for a masks texture parameter (the J-Class slots' own maps)."""
+    path = f"{BOAT_FOLDER}/T_MaskGrey"
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        return unreal.load_asset(path)
+    import os, struct, tempfile, zlib
+    raw = b"".join(b"\x00" + b"\x80\x80\x80" * 4 for _ in range(4))
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 4, 4, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+    file = os.path.join(tempfile.gettempdir(), "T_MaskGrey.png")
+    open(file, "wb").write(png)
+    task = unreal.AssetImportTask()
+    task.set_editor_property("filename", file)
+    task.set_editor_property("destination_path", BOAT_FOLDER)
+    task.set_editor_property("automated", True)
+    task.set_editor_property("save", False)
+    ASSETS.import_asset_tasks([task])
+    tex = unreal.load_asset(path)
+    tex.set_editor_property("srgb", False)
+    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+    unreal.EditorAssetLibrary.save_loaded_asset(tex)
+    return tex
 
 
 def build_boat_surface(name, bend, packed=False):
@@ -2233,6 +2478,13 @@ def build_boat_surface(name, bend, packed=False):
         fallback = not tex.get_path_name().startswith("/Game/") and not asset.endswith("_N")
         t.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if fallback else stype)
         detail_tex[pin] = t
+    # J-Class 15: the slot's own pair (kinds 16 and 17), stand-ins here; MI_Boat_<slot> sets them (BOAT_OWN_MAPS).
+    for i, (pin, pname) in enumerate(BOAT_OWN_PINS):
+        normal = pname.endswith("N")
+        t = node(mat, unreal.MaterialExpressionTextureObjectParameter, -2100, 200 + i * 90, parameter_name=pname,
+                 texture=unreal.load_asset("/Engine/EngineMaterials/DefaultNormal") if normal else masks_default(),
+                 sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if normal else unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
+        detail_tex[pin] = t
     F3, F1 = unreal.CustomMaterialOutputType.CMOT_FLOAT3, unreal.CustomMaterialOutputType.CMOT_FLOAT1
     # The surface's per-slot values: a material instance's parameters, or in a pack the face's entry.
     hull = scalar(mat, "IsHull", 0.0, -1400, 1550)
@@ -2249,7 +2501,9 @@ def build_boat_surface(name, bend, packed=False):
         ins.update({p: (sel, f"o{p}") for p in PACK_OUTS})
     c = custom(mat, BOAT_CODE, ["C", "R", "Metal", "Coat", "NonSkid", "Porosity", "Grain", "Age", "Care", "LP", "WP", "N", "LX", "LY", "WaterZ", "WetBand", "DeckWet",
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
-               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS],
+               + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
+               + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
+               + ["NameTex", "NameRect", "NameColour", "NameSpan"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
@@ -2261,6 +2515,24 @@ def build_boat_surface(name, bend, packed=False):
         connect(src, "", c, pin)
     for pin, t in detail_tex.items():
         connect(t, "", c, pin)
+    # J-Class 15: a laid deck (kind 18) reads UV1-3 (the deck's own maps, export_game.py) behind the LaidDeck static switch,
+    # so every other instance compiles without the extra interpolators; LaidA..LaidE and LaidCaulk are its numbers.
+    for i, (pin, index) in enumerate((("PUV", 1), ("LUV2", 2), ("LUV3", 3))):
+        sw = node(mat, unreal.MaterialExpressionStaticSwitchParameter, -1700, 2500 + 120 * i, parameter_name="LaidDeck", default_value=False)
+        connect(node(mat, unreal.MaterialExpressionTextureCoordinate, -1950, 2480 + 120 * i, coordinate_index=index), "", sw, "True")
+        connect(node(mat, unreal.MaterialExpressionConstant2Vector, -1950, 2540 + 120 * i), "", sw, "False")
+        connect(sw, "", c, pin)
+    for i, (pin, default) in enumerate(BOAT_LAID_PARAMS):
+        connect(vector(mat, pin, default, -1700, 2900 + 90 * i), "RGBA", c, pin)
+    # Name on the hull (docs/skins, HullName.h): the lettering's texture (the pawn's; the default is only there so the
+    # material compiles), its place, its colour (alpha 0: none) and the sides' reach. The material already samples 16
+    # textures, so the name takes the shared clamp sampler.
+    name_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -2100, 400, parameter_name="NameTex",
+                    texture=unreal.load_asset("/Engine/EngineResources/Black"), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+    name_tex.set_editor_property("sampler_source", unreal.SamplerSourceMode.SSM_CLAMP_WORLD_GROUP_SETTINGS)
+    connect(name_tex, "", c, "NameTex")
+    for i, (pin, default) in enumerate((("NameRect", (0, 0, 1, 1)), ("NameColour", (0, 0, 0, 0)), ("NameSpan", (0, 1.0e6, 0, 0)))):
+        connect(vector(mat, pin, default, -2100, 480 + 80 * i), "RGBA", c, pin)
     # Graphics G3: per-boat livery and wear (BoatLivery.h).
     connect(vector(mat, "Wear", (0, 0, 0, 0), -1400, 1450), "RGBA", c, "Wear")
     connect(scalar(mat, "WearScale", 1.0, -1400, 1530), "", c, "WearScale")   # #405: the wear noise's size per class
@@ -2381,6 +2653,15 @@ BOAT_LIBRARY = {
     "MarkVinyl": ("M_BoatSurface", (0.83, 0.11, 0.013), 0.40, 0.0, 0.30, 0.0, 0.05),
     "MarkScum": ("M_BoatSurface", (0.11, 0.075, 0.025), 0.62, 0.0, 0.0, 0.0, 0.30),
     "MOBVinyl": ("M_BoatSurface", (0.83, 0.55, 0.012), 0.42, 0.0, 0.25, 0.0, 0.05),
+    # J-Class 15 (docs/jclass-15): Bluebonnet's own, at her slice 11 build's new colours (Tools/shipkit/jclass): sand-cast bronze
+    # (finish_bluebonnet.json Bronze, sRGB 150 104 60), three-strand manila (standing_bluebonnet.json Rope, sRGB 196 168 118 held
+    # to the Rope001 scan as weathering.py does) and varnished teak brightwork (deck_bluebonnet.json Wood, sRGB 124 70 32).
+    "CastBronze": ("M_BoatSurface", (0.305, 0.138, 0.045), 0.38, 1.0, 0.0, 0.0, 0.0),
+    "Manila": ("M_BoatSurface", (0.519, 0.392, 0.235), 0.80, 0.0, 0.0, 0.0, 0.50),
+    "VarnishedTeak": ("M_BoatSurface", (0.202, 0.061, 0.0144), 0.20, 0.0, 1.0, 0.0, 0.15),
+    # J-Class 15: her laid deck (kind 18): bare teak at her build's colour (deck_bluebonnet.json Teak, sRGB 176 140 102),
+    # its planks, black seams, butts, king plank and nibbed covering boards drawn from the deck's own UVs (BOAT_LAID).
+    "LaidTeak": ("M_BoatSurface", (0.434, 0.262, 0.133), 0.62, 0.0, 0.0, 0.0, 0.5),
     # Catalina 22 slice 8 (docs/c22-9): her new finishes (L0, Tools/shipkit/catalina22/textures/textures_c22.json "finish"),
     # aged by BOAT_CODE's Age and Care. The moulded liner (an inside gelcoat, softer gloss), the vinyl headliner, the
     # varnished teak-and-holly sole and the joinery's teak laminate, the cushions' olive and the curtain's tan
@@ -2399,13 +2680,16 @@ BOAT_LIBRARY = {
 # 4 anodised aluminium, 5 painted aluminium, 6 varnished wood, 7 bare wood, 8 rubber, 9 rope, 10 sailcloth, 11 canvas,
 # 12 galvanised or plain steel, 13 black moulded plastic (texture loop: weathering only, no detail map), 14 woven webbing
 # (texture loop, webbing and rubber: the canvas weave at 2 cm), 15 smoked acrylic glazing (texture loop: weathering only,
-# no detail map); unlisted slots (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
+# no detail map), 16 sand-cast bronze and 17 three-strand manila (J-Class 15: their own maps, BOAT_OWN_MAPS), 18 a laid teak deck
+# (J-Class 15: bare teak drawn as planks from the deck's UVs, BOAT_LAID); unlisted slots
+# (crew, other plastics, crew glasses, antifouling) are 0: no detail map, no extra weathering.
 BOAT_SURFACE = {
     "Topsides": 1, "Deck": 1, "NonSkid": 2, "Bootstripe": 1, "CoveStripe": 1, "Graphics": 1, "Carbon": 1, "CarbonMast": 1,
     "Stainless": 3, "Aluminium": 4, "MastAluminium": 4, "PaintedAluminium": 5, "Wood": 6, "WoodMahogany": 6, "Teak": 7, "Rubrail": 8, "Rubber": 8, "BlackPlastic": 13,
     "CabinWindow": 15,
     "Rope": 9, "Dacron": 10, "Sailcloth": 10, "Webbing": 14,
     "SailCover": 11, "SailCoverRed": 11, "SailCoverGreen": 11, "SailCoverTan": 11, "Tarp": 11,
+    "CastBronze": 16, "Manila": 17, "VarnishedTeak": 6, "LaidTeak": 18,
     "Liner": 1, "Sole": 6, "Laminate": 6, "Cushion": 11, "Curtain": 11, "RubrailWhite": 8,   # Catalina 22 (docs/c22-9)
 }
 
@@ -2430,7 +2714,7 @@ def boat_slot_values(slot):
     """A library slot's material values: colour, then the scalars by parameter name."""
     parent, col, rough, metal, coat, nonskid, porosity = BOAT_LIBRARY[slot]
     return col, {"Roughness": rough, "Metallic": metal, "ClearCoat": coat, "NonSkid": nonskid, "Porosity": porosity,
-                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak", "Sole", "Laminate") else 0.0,
+                 "IsHull": 1.0 if slot == "Topsides" else 0.0, "Grain": 1.0 if slot in ("Wood", "WoodMahogany", "Teak", "VarnishedTeak", "LaidTeak", "Sole", "Laminate") else 0.0,
                  "Surface": float(BOAT_SURFACE.get(slot, 0))}
 
 
@@ -2453,6 +2737,19 @@ def build_boat_library():
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
         for pname, value in values.items():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        # J-Class 15: the slot's own detail maps (kinds 16 and 17)
+        for (_pin, pname), asset in zip(BOAT_OWN_PINS, BOAT_OWN_MAPS.get(slot, ())):
+            path = f"/Game/Boats/Detail/{asset}"
+            if unreal.EditorAssetLibrary.does_asset_exist(path):
+                MEL.set_material_instance_texture_parameter_value(mi, pname, unreal.load_asset(path))
+            else:
+                unreal.log_warning(f"MI_Boat_{slot}: no {path} yet (run import_boat_detail.py, then build_boat_library)")
+        # J-Class 15: a laid deck's switch and numbers (kind 18)
+        # (Set on those slots only: every other instance keeps the parent's permutation.)
+        if slot in BOAT_LAID:
+            MEL.set_material_instance_static_switch_parameter_value(mi, "LaidDeck", True)
+            for pname, value in laid_values(slot).items():
+                MEL.set_material_instance_vector_parameter_value(mi, pname, unreal.LinearColor(*value))
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
     packed = build_boat_surface("M_BoatPacked", False, packed=True)
@@ -2916,6 +3213,7 @@ if (Detail > 0.5 && Layout < 3.5)
     float patch = lerp(lerp(p00, p10, spm.x), lerp(p01, p11, spm.x), spm.y);
     float thC = 0.78 - 0.40 * ageC;   // patches over about a fifth of a new sail, a third at the default, two thirds of an old one
     float cover = smoothstep(thC - 0.12, thC + 0.12, patch) * (Age >= 0.0 ? saturate(sTime * 5.0) : 1.0f);   // none on a new sail
+    cover *= Cloth > 0.5 ? 0.0f : 1.0f;   // J-Class 15: cotton has no resin to break (its weave is the map's, below)
     float sAmp = 0.08 * (0.5 + ageC);   // the fold's peak slope (radians): 3.9 deg at the default age, 6 at an old sail's (0.11 still read embossed in a patch)
     float wd = 0.045;                    // the fold's half width in noise units: under a tenth of a cell (0.06 read as rounded bumps)
     float2 cg = float2(0.0, 0.0);
@@ -2947,11 +3245,25 @@ if (Detail > 0.5 && Layout < 3.5)
         cg += foldS * unitN;
         crinkle = max(crinkle, cover * fadeC * h);
     }
-    float weaveK = 1.0 - smoothstep(0.0002, 0.0004, pxC);
+    float weaveK = (1.0 - smoothstep(0.0002, 0.0004, pxC)) * (Cloth > 0.5 ? 0.0f : 1.0f);
     float2 wv = UV0 * (6.2831853 / 0.0006);
     cg += weaveK * 0.00002 * (6.2831853 / 0.0006) * float2(cos(wv.x) * sin(wv.y), sin(wv.x) * cos(wv.y));
     dhdu += cg.x;
     dhdv += cg.y;
+    // J-Class 15 (Cloth 1): Egyptian cotton duck (T_JClass_Cotton, a 40 mm tile of 26 warp by 20 weft threads a centimetre
+    // whose yarns thicken and thin: Tools/shipkit/jclass/textures.py), in UV0 metres, fading out from 1 to 4 m as her slice 11
+    // card has it (the mips average the weave first). M: R the gaps between the yarns (dirt sits there), G the yarn's tone.
+    float ckF = Cloth > 0.5 ? 1.0 - smoothstep(100.0f, 400.0f, Depth) : 0.0f;
+    if (ckF > 0.0)
+    {
+        SamplerState CS = View.MaterialTextureBilinearWrapedSampler;
+        float2 cuv = UV0 / 0.04;
+        float4 cn = Texture2DSample(ClothN, CS, cuv), cm = Texture2DSample(ClothM, CS, cuv);
+        dhdu -= (cn.x * 2.0 - 1.0) * 0.8 * ckF;
+        dhdv -= (cn.y * 2.0 - 1.0) * 0.8 * ckF;
+        col *= lerp(1.0, 0.97 + 0.06 * cm.g, ckF);
+        col *= 1.0 - ckF * cm.r * (0.06 + 0.25 * sDirt);
+    }
 }
 NormalTS = normalize(float3(-(dhdu + ndu), -(dhdv + ndv), 1.0));
 // The resin cracks along a fold: the line reads a shade darker and rougher than the sheen around it.
@@ -3011,6 +3323,13 @@ def build_sail_cloth():
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1400, 1100)
     rough = scalar(mat, "Roughness", 0.62, -400, 300)
     tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1200, 350, parameter_name="SailMarks", texture=sail_marks_texture())
+    # J-Class 15: the cloth (0 resinated Dacron, laminate, nylon; 1 cotton) and a cotton sail's own weave, texture parameters
+    # the pawn sets on Bluebonnet's sails only (T_JClass_Cotton_N/_M), so no other boat's sails load them.
+    cloth = scalar(mat, "Cloth", 0.0, -1600, 1500)
+    cloth_n = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 1500, parameter_name="ClothN",
+                   texture=unreal.load_asset("/Engine/EngineMaterials/DefaultNormal"), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+    cloth_m = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1800, 1650, parameter_name="ClothM",
+                   texture=masks_default(), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_MASKS)
     uv = [node(mat, unreal.MaterialExpressionTextureCoordinate, -1200, 500 + 100 * i, coordinate_index=i) for i in range(3)]
     # The face (+1 starboard): the cloth grid's winding (FSailCloth::Triangles) puts its front face to starboard on every class.
     face = node(mat, unreal.MaterialExpressionTwoSidedSign, -1400, 600)
@@ -3020,14 +3339,14 @@ def build_sail_cloth():
     camv = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1200)
     sundir = node(mat, unreal.MaterialExpressionSkyAtmosphereLightDirection, -1600, 1300)
     c = custom(mat, SAIL_CODE, ["C", "Battens", "Marks", "Height", "Tex", "UV0", "UV1", "UV2", "Layout", "BattenCount", "FullBattens", "SailNum", "SailDigits", "Face", "R", "Fade", "Detail", "Age", "Care", "Depth", "LeechLean", "PanelWidth", "Window",
-                                  "Translucency", "VN", "CamV", "SunDir", "WP"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
+                                  "Translucency", "VN", "CamV", "SunDir", "WP", "Cloth", "ClothN", "ClothM"], unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 100,
                extra_outputs=[("Transmit", unreal.CustomMaterialOutputType.CMOT_FLOAT3), ("NormalTS", unreal.CustomMaterialOutputType.CMOT_FLOAT3),
                               ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Metal", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for src, pin in ((color, "C"), (battens, "Battens"), (marks, "Marks"), (height, "Height"), (tex, "Tex"), (uv[0], "UV0"), (uv[1], "UV1"), (uv[2], "UV2"),
                      (layout, "Layout"), (bcount, "BattenCount"), (full, "FullBattens"), (sailnum, "SailNum"), (saildig, "SailDigits"), (face, "Face"), (fade, "Fade"),
                      (detail, "Detail"), (age, "Age"), (care, "Care"), (depth, "Depth"), (lean, "LeechLean"), (panelw, "PanelWidth"), (window, "Window"),
                      (transl, "Translucency"), (vn, "VN"), (camv, "CamV"), (sundir, "SunDir"),
-                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP")):
+                     (node(mat, unreal.MaterialExpressionWorldPosition, -1600, 1400), "WP"), (cloth, "Cloth"), (cloth_n, "ClothN"), (cloth_m, "ClothM")):
         connect(src, "RGBA" if src is color else "", c, pin)
     MEL.connect_material_property(c, "", unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(c, "Transmit", unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
@@ -3405,7 +3724,13 @@ float capBase = solved ? capSolved : 0.63 + 0.083 * exp(-(max(meanKn, 10.0) - 10
 // docs/calm-water/: a solved -1 is calm water (FWaveDetail::CapThreshold: nothing breaks); the clamp's 0.3 let the fine
 // ripples' folds through as a sprinkle of caps and the foam grid's blocks.
 float capThr = (solved && capBase < -0.5) ? -1.0 : clamp(capBase + (FoamThreshold - 0.6) + capSlope * log(max(capGain, 1e-4)), 0.3, 0.85);
-float2 wd = ldir; // W2: the foam streaks lie along the local wind
+// sailing-feedback #30 (docs/near-water-lapping/): the patterns' frame is the sea's mean wind, not the local wind. Every
+// pattern below is laid in world coordinates turned to this direction (dot(p.xy, wd)), and p is metres from the map's
+// origin, so a direction that changes from place to place multiplies its own change by the distance: the wind map's
+// 8-bit direction, bilinear across 12.5 m texels, swung the lace, the lapping and the caps' variation by radians per
+// metre a few hundred metres out (chevrons along a wall, a checker under a dock, sharper with AA off). The ripples turn
+// to the local wind safely (two fixed frames, blended: above); the foam streaks follow the sea's wind.
+float2 wd = normalize(WindP.xy + float2(1e-4, 0.0));
 float2 wn = float2(-wd.y, wd.x);
 // W8 (docs/water-8/whitecaps): what the camera sees is the cover the test measures. A mip of the chop's Jacobian averages
 // toward 1 (flat water), so thresholding it lost every cap from about 40 m out (a 2 m eye's pixel spans several chop
@@ -3437,7 +3762,7 @@ float patFade = smoothstep(0.08, 0.3, max(min(length(fdx), length(fdy)), max(len
 // it has faded to its means (patFade).
 // docs/storm-water/foam-cost/: the six taps cost 0.7-1.0 ms of water on the Mac's High, taken on every pixel near
 // enough to resolve the pattern, foam or not. The pattern only ever shapes foam, so it is taken at most once, where foam
-// is first drawn: FOAM_PAT, below (the caps, wake, trail, swash or a gale sea; the windrows).
+// is first drawn: FOAM_PAT, below (the caps, wake, trail or a gale sea; the windrows).
 float lace = FOAM_MEAN.x, foamStreak = FOAM_MEAN.y, cells = FOAM_MEAN.z;
 bool patDone = false;
 #define FX_H2(c_) frac(sin(float2(dot(fmod(c_, 289.0), float2(127.1, 311.7)), dot(fmod(c_, 289.0), float2(269.5, 183.3)))) * 43758.5453)
@@ -3503,7 +3828,23 @@ float2 wb3 = float2(0.6 * p.x + 0.8 * p.y, -0.8 * p.x + 0.6 * p.y) * 19.0 + floa
 float bubbles = saturate(WB_NOISE(wb1) * 1.15 - 0.075) * saturate(WB_NOISE(wb2) * 0.8 + WB_NOISE(wb3) * 0.5 - 0.15);
 float wakeBreak = saturate(wakeFoam * 2.0 - (1.0 - bubbles) * 1.1) * 0.85;
 // The shore's lapping line (lap, below).
-float swash = saturate(1.0 - sd / 0.35) * saturate(WindP.z / 4.0);
+// sailing-feedback #30 (docs/near-water-lapping/): only along the waterline itself. Shallower than 35 cm was the whole
+// test, so a flat shallow shelf (the bulkhead lot, the bank by the I-30 bridge) drew a lapping band metres wide; its lace
+// read as a herringbone along the wall and as blocky grey patches nearer the camera. The distance to the waterline is the
+// depth over its slope, from the shore map's own cells (central differences one cell either way: 512 cells, AWaterSurface's
+// kShoreRes; land is 0 deep), so the line is held within about a metre of where the depth reaches 0 (a dock's stamp, 0.6 m
+// deeper a metre out, keeps its half metre), and a shelf whose depth hardly changes draws none.
+float swash = 0.0;
+[branch] if (sd < 0.35)
+{
+    float se = 1.0 / 512.0;
+    float2 suv = float2(su.y, su.x);
+    float sgx = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(0.0, se), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(0.0, se), 0).r;
+    float sgy = ShoreMap.SampleLevel(ShoreMapSampler, suv + float2(se, 0.0), 0).r - ShoreMap.SampleLevel(ShoreMapSampler, suv - float2(se, 0.0), 0).r;
+    float sSlope = length(float2(sgx, sgy)) / (2.0 * ShoreRect.z * se);
+    float toLine = sd / max(sSlope, 0.02);
+    swash = saturate(1.0 - sd / 0.35) * (1.0 - smoothstep(0.4, 1.2, toLine)) * saturate(WindP.z / 4.0);
+}
 float persist = 0.0;
 float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 [branch] if (FoamGridRect.w > 0.0 && all(fg > 0.0) && all(fg < 1.0))
@@ -3515,7 +3856,7 @@ float2 fg = (p.xy - FoamGridRect.xy) / max(FoamGridRect.z, 1.0);
 // (The trail is drawn as 0.85 trail^1.2 at 0.45 of its pattern at least, so it reaches 1/255 from a trail of 0.022, and
 // trail <= persist: 0.004 there had kept the taps on wherever the foam grid had held foam at all.)
 [branch] if (patFade < 1.0 && (crest > FOAM_SEEN || 0.25 * residue > FOAM_SEEN || wakeBreak > FOAM_SEEN || persist > 0.022
-    || swash > FOAM_SEEN || meanKn > 24.0)) FOAM_PAT();
+    || meanKn > 24.0)) FOAM_PAT();
 float laceE = lerp(lace, 0.09, patFade);   // far: the near caps' mean whiteness (0.92), below
 float patternE = lerp(smoothstep(0.55, 0.95, foamStreak), 0.06, patFade);
 crest *= saturate(0.8 + 1.3 * laceE);
@@ -3523,7 +3864,10 @@ residue *= patternE * 0.25;
 float caps = max(crest, residue);
 // Lapping: a line of foam where the wavelets run up the shore, the riprap and the docks, coming and going with them
 // (swash, above).
-float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + lace * 2.5)) * (0.45 + 0.55 * lace);
+// sailing-feedback #30: broken by the wash's own bubble noise (WB_NOISE: soft value noise at 0.4 m, 0.14 m and 5 cm), not
+// the foam texture's lace. The lace's thin bubble films, multiplied in and also shifting the lapping's phase (which
+// multiplied their frequency), aliased a metre from the camera into a herringbone along a wall and a checker under a dock.
+float lap = swash * saturate(0.35 + 0.65 * sin(T * 1.7 + dot(p.xy, wd) * 1.3 + bubbles * 2.5)) * (0.45 + 0.55 * bubbles);
 // Heavy rain: splashes and mist grey the surface.
 // W4 (docs/water-4): how the foam is drawn, not how much there is (caps is the mask the tests and -SailingDebugFoam
 // measure; it is not touched here). Drawn straight as opacity over albedo 0.85, a cap at 0.3-0.5 cover read nearly as

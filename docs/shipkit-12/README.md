@@ -111,10 +111,12 @@ thickness. The holes with no cable in them are stopped with **hawse plugs**, oak
 ### The great cabin
 
 The captain's cabin under the quarterdeck, from the 1849 plan's bulkhead and state rooms (the 1797 cabin was the
-captain's, on this deck):
+captain's, on this deck). Since this slice the rudder's head comes up through the window seat and the iron tiller
+swings overhead, its ropes led from the wheel under the quarterdeck's beams (`docs/frigate-tiller`):
 
-* **The bulkhead** across the ship abaft the first guns, panelled both faces, with a door either side of the tiller
-  ropes' legs (each door its own object, hinged on its outboard post, opening aft into the cabin).
+* **The bulkhead** across the ship abaft the first guns, panelled both faces, with a door either side of the middle
+  line (each door its own object, hinged on its outboard post, opening aft into the cabin; 64 in high since the
+  tiller went overhead, so they swing clear under it).
 * **The after wall**: the stern's inside, raked with her stern, with the stern windows opened through it and each
   window's reveal lined with board. The transom's rows are cut round the windows, so daylight comes in through them.
   Between the state rooms it is panelled on its rake: a sill rail along the seat under the windows, a pilaster on a
@@ -126,7 +128,8 @@ captain's, on this deck):
   with its nosing rounded over, and the front framed with raised and fielded panels.
 * **The floor cloth**: painted canvas over the cabin's deck in black and white squares a foot across.
 * **The furniture**, mahogany: a table 72 by 40 in, six chairs and a sideboard against the bulkhead.
-* **The lead bushes** where the tiller ropes' legs pass down through the deck.
+* **The lead bushes** where the tiller ropes' legs passed down through the deck (gone since the tiller went overhead:
+  the legs now end in the quarterdeck's planks and lead on under its beams).
 
 ![The great cabin looking aft: the stern windows over the window seat, a state room's door either side, the lantern over the table and the floor cloth](baseline/cabin_aft.jpg)
 ![The great cabin looking forward: the bulkhead with its two doors, the table and its six chairs, the sideboard, the lantern over the table](baseline/cabin_fwd.jpg)

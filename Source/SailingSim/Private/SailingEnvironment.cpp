@@ -1,4 +1,5 @@
 #include "SailingEnvironment.h"
+#include "GroundDress.h"
 #include "SoundCaptions.h"
 #include "SailingAudio.h"
 #include "SailingFrame.h"
@@ -27,6 +28,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "VisualPipeline.h"
+#include "FilmMode.h"
 #include "SailingSettings.h"
 #include "Engine/SkyLight.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -34,6 +36,9 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "UnrealClient.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Kismet/KismetMaterialLibrary.h"
@@ -105,6 +110,11 @@ namespace
 	constexpr float kSkyCacheSplitM = 5000.f;
 	constexpr float kNightDeckFullAtKm = 3.f; // docs/night-clouds/: the distance below which a ray's samples thin, under a night deck
 	constexpr float kSkyCacheFarM = 40000.f;
+	// docs/cloud-blocks/: past this many screen pixels a panorama knot (SkyCacheKnotPixels), the live clouds draw the
+	// whole sky (a narrow lens: under about 42 deg on 3840 px, 21 deg on 1920); back under one pixel less. Playing views
+	// (60-120 deg) are 1.4-5.6 px on screens up to 3840 px, under the band; on 5120 the narrowest (60 deg) is 7.5 px, in
+	// it, so there the cache comes back after a zoom only from 65 deg up (docs/cloud-blocks/).
+	constexpr float kSkyCacheMaxKnotPx = 8.f;
 	// The two lighting terms' scales, matched to the live clouds' brightness at the seam (lake-towers, 17:00: the mean,
 	// 90th and 20th percentiles of the cloud pixels): Ultra's live clouds, with twice the view and four times the shadow
 	// samples, read brighter than High's. (Measured at view scale 2; feedback #22 raised it to 3: docs/cloud-shimmer.)
@@ -115,6 +125,9 @@ namespace
 	constexpr float kUltraCloudEdgeTop = 5.f;
 	// docs/exposure-band: the share of the exposure band the histogram may use on the dark side of the incident meter.
 	constexpr float kExposureBandDark = 0.2f;
+	/** Below decks (docs/ship-walk/): how far the exposure may open past the outside light's band, as an eye adapts to a
+	 *  cabin lit through its skylights and by its lamps (a daylit cabin is 5 to 8 stops under the deck in the sun). */
+	constexpr float kBelowDecksStops = 6.f;
 	constexpr float kUltraCloudBillow2 = 1.5f;   // the second billow octave's weight (0, off, elsewhere)
 }
 ASailingEnvironment::ASailingEnvironment()
@@ -547,6 +560,15 @@ void ASailingEnvironment::Tick(float DeltaSeconds)
 		// T1: the season on the trees, from the session's date (AutumnAmount, SpringAmount).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Autumn"), AutumnAmount(GM->GetDayOfYear()));
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Spring"), SpringAmount(GM->GetDayOfYear()));
+		// Track A: the grass's season on the ground (M_Ground: 0 summer green, 1 winter dormant).
+		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Season"), SailingGround::SeasonAmount(GM->GetDayOfYear()));
+		// M_Ground's second, rotated texture scale inside 35 m (12 fetches a pixel instead of 6): Ultra only, after the Mac's
+		// High world gate lost 8 fps on the shore views. -SailingGroundDetail=0|1 for compared stills.
+		{
+			float GroundDetail = USailingSettings::Get()->Quality == ESailingQuality::Ultra ? 1.f : 0.f;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingGroundDetail="), GroundDetail);
+			UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("GroundDetail"), GroundDetail);
+		}
 		// Street lamps, lit windows and vehicle lights come on through dusk (and under a storm's darkness).
 		UKismetMaterialLibrary::SetScalarParameterValue(this, WorldCollection, TEXT("Night"),
 			FMath::Max(NightAmount, FMath::Clamp(float(W.CloudDarkness) * 1.4f - 0.6f, 0.f, 0.6f)));
@@ -853,9 +875,19 @@ void ASailingEnvironment::UpdateSun(double Hour)
 					BandBright = FCString::Atof(*B);
 				}
 			}
-			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun;
+			const ASailboatPawn* Aboard = Cast<ASailboatPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+			const float Below = Aboard ? Aboard->GetBelowDecksAdapt() : 0.f;
+			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun - kBelowDecksStops * Below;
 			PP.AutoExposureMaxBrightness = float(EV) + Band * BandDark + 2.5f * IntoSun;
 			PP.AutoExposureBias = USailingSettings::Get()->BrightnessBias();   // Settings > Brightness
+			// Film mode (FilmMode.h): -SailingEV=<EV100> locks the exposure outside the capture mode too (the chase rig's
+			// shots match the tripod's). The capture camera's own lock still wins in the capture mode.
+			float FixedEV = 0.f;
+			if (FixedExposureArg(FixedEV))
+			{
+				PP.AutoExposureMinBrightness = PP.AutoExposureMaxBrightness = FixedEV;
+				PP.AutoExposureBias = 0.f;
+			}
 			DumpExposureSettings(float(EV), Band, IntoSun);
 		}
 	}
@@ -1058,6 +1090,13 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 			PostProcess->Settings.bOverride_AutoExposureBias = true;
 			// (No half-stop lift in clear air: docs/exposure-choice/.)
 			PostProcess->Settings.AutoExposureBias = -1.5f * float(W.CloudDarkness) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
+			float FixedEV = 0.f;
+			if (FixedExposureArg(FixedEV))   // -SailingEV (film mode), as on the physical camera's tiers
+			{
+				PostProcess->Settings.bOverride_AutoExposureMinBrightness = PostProcess->Settings.bOverride_AutoExposureMaxBrightness = true;
+				PostProcess->Settings.AutoExposureMinBrightness = PostProcess->Settings.AutoExposureMaxBrightness = FixedEV;
+				PostProcess->Settings.AutoExposureBias = 0.f;
+			}
 		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.
@@ -1750,7 +1789,32 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	// in a curved edge with clear-looking sky below it. The live march carries a deck to the horizon (as with
 	// -SailingNoSkyCache).
 	const bool bClosedDeck = W.Sky[ECloudLayer::Stratus].Coverage > 0.8;
-	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02) || bNightDeck || bClosedDeck;
+	// docs/cloud-blocks/: nor through a narrow lens. The panorama's knots are 0.088 deg (a few pixels at a playing FOV);
+	// through the film tripod's 26 deg lens on 3840 px one spans 13 px, and each knot's own jittered march stood on the far
+	// clouds as a grid of soft squares in every cloud render-target mode. Past kSkyCacheMaxKnotPx the live march draws the
+	// whole sky, as under a storm; under 7 px again the cache comes back. Measuring: -SailingSkyCacheMaxKnotPx=<px> (0: never).
+	{
+		float FovDeg = 0.f;
+		if (const APlayerCameraManager* LensCam = UGameplayStatics::GetPlayerCameraManager(this, 0)) FovDeg = LensCam->GetFOVAngle();
+		int32 ViewW = 0;
+		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) ViewW = GEngine->GameViewport->Viewport->GetSizeXY().X;
+		static float MaxKnotPx = kSkyCacheMaxKnotPx;
+		static SailingArgs::FOnce Parsed;
+		if (Parsed.Take())
+		{
+			MaxKnotPx = kSkyCacheMaxKnotPx;
+			FParse::Value(SailingArgs::Dev(), TEXT("SailingSkyCacheMaxKnotPx="), MaxKnotPx);
+		}
+		const float KnotPx = SkyCacheKnotPixels(CacheTargets[0] ? CacheTargets[0]->SizeX : 0, FovDeg, ViewW);
+		const bool bNarrow = SkyCacheTooCoarse(KnotPx, bCacheNarrowLens, MaxKnotPx);
+		if (bNarrow != bCacheNarrowLens)
+		{
+			SAIL_LOG(Display, TEXT("Sky cache: %s (a panorama knot spans %.1f px: %.1f deg across %d px)"),
+				bNarrow ? TEXT("set aside for a narrow lens, the live clouds draw the whole sky") : TEXT("back"), KnotPx, FovDeg, ViewW);
+			bCacheNarrowLens = bNarrow;
+		}
+	}
+	const bool bStorm = (W.Front.bActive && W.Sky[ECloudLayer::Storm].Coverage > 0.02) || bNightDeck || bClosedDeck || bCacheNarrowLens;
 	// docs/night-clouds/ (banding): under that deck the rays up through it keep their samples. UE thins a ray's samples in
 	// proportion below r.VolumetricCloud.DistanceToSampleMaxCount; at the live clouds' 15 km a ray up through a 0.7 km
 	// deck got 80 x 0.7 / 15, about 4, and the overcast came out in rings round the zenith. 3 km (Ultra's): about 19.
@@ -1770,6 +1834,10 @@ void ASailingEnvironment::UpdateSkyCache(const FVector& CameraPos, float DeltaSe
 	bCacheSuspended = bStorm;
 	if (bStorm)
 	{
+		// docs/cloud-blocks/: a panorama cut short here starts again from its first column (and the camera then) when the
+		// cache comes back: finished later from the old CacheCam, a photo fly-around kilometres off drew it from there.
+		CacheColumn = 0;
+		CacheColumnCarry = 0.f;
 		if (bCacheReady)
 		{
 			bCacheReady = false;

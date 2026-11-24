@@ -30,34 +30,68 @@
       "note": "The wheel (its rim and spokes, the hub and its shaft) about the hub's centre on the shaft's axis (wheel_hub: the build's 'Wheel' frame, deck_bluebonnet.json steering.wheel). The game turns it about the shaft (WheelHub to WheelAxis on the hull) with the rudder, the top to starboard as the bow goes to starboard (deck.py steering()), and the helm's hands take its rim (WheelRim gives the radius). Nanite (import_boats.py: imported because its origin is in the sockets json).",
       "pivot": "wheel_hub",
       "objects": ["Wheel"]
+    },
+    "SM_Bluebonnet_Below": {
+      "note": "Walking (docs/ship-walk/, J-Class walking): her cabins (slices 9 and 10), one mesh in the body frame, streamed in by the game only while you walk her deck and go below (the walk map's deck 'Below': ShipWalkVisuals.cpp's /Game/Boats/<Folder>/Decks/SM_<Folder>_Below). Its folder is Decks; import_boats.py imports what the sockets json lists under 'decks'. Nanite. The canvas, linen and upholstery fold into PackCanvas, the fittings' metals into PackFit and PackTrim.",
+      "pivot": [0.0, 0.0, 0.0],
+      "folder": "Decks",
+      "objects": ["Below.Structure", "Below.Ceiling", "Below.Joinery", "Below.Fittings", "Below.Canvas", "Aft.Structure",
+                  "Aft.Panelling", "Aft.Joinery", "Aft.Fittings", "Aft.Upholstery"]
     }
+  },
+  "entrances": {
+    "note": "Walking: her way below at sea (entrances.py), for the walk map and the hull part both. The crew's companionway's and the doghouse's doors are turned open by 'door_open_deg' about their outboard edges (aft and outboard, hooked back against the after face) and their slides run forward 'slide_forward' m. 'doors' and 'slide' are boxes in the body frame (m) the build's pieces must lie in (each its own loose part with at least 'min_vertices'), so a deck change that moves them stops the export. The forecastle and sail hatches stay shut: at sea the crew go below aft.",
+    "Companionway": {"object": "Companionway", "door_open_deg": 170.0, "slide_forward": 0.5,
+                     "doors": {"box": [[0.40, -0.36, 1.48], [0.48, 0.36, 1.78]], "min_vertices": 20},
+                     "slide": {"box": [[0.40, -0.43, 1.76], [0.97, 0.43, 1.86]], "min_vertices": 100}},
+    "Doghouse": {"object": "Doghouse", "door_open_deg": 170.0, "slide_forward": 0.7,
+                 "doors": {"box": [[-7.42, -0.32, 1.50], [-7.26, 0.32, 2.19]], "min_vertices": 20},
+                 "slide": {"box": [[-7.36, -0.35, 2.16], [-6.50, 0.35, 2.27]], "min_vertices": 100}}
   },
   "poses": {
     "SpinnakerPole": "stowed"
   },
   "materials": {
-    "note": "Each of the build's materials to a slot of the game's boat library (make_materials.py BOAT_LIBRARY: MI_Boat_<slot>); pack_slots folds the packed ones (Tools/blender/boat_packs.json). The paint takes the livery's colours (Inputs/g3/boat-catalogue.json, class bluebonnet): the lead keel is painted with the bottom, so it is Antifouling and the canoe slots close (PackCanoe: the volume the tests measure). Her spars are buff paint over the library's Aluminium entry (PaintSpars; the game paints her hull's entry too, for the stowed pole).",
+    "note": "Each of the build's materials to a slot of the game's boat library (make_materials.py BOAT_LIBRARY: MI_Boat_<slot>); pack_slots folds the packed ones (Tools/blender/boat_packs.json). The paint takes the livery's colours (Inputs/g3/boat-catalogue.json, class bluebonnet): the lead keel is painted with the bottom, so it is Antifouling and the canoe slots close (PackCanoe: the volume the tests measure). Her spars are buff paint over the library's Aluminium entry (PaintSpars; the game paints her hull's entry too, for the stowed pole). J-Class 15 (docs/jclass-15): her bronze, manila and varnished teak are her own library slots (CastBronze and Manila with her own detail maps from Inputs/jclass-detail, VarnishedTeak at her build's teak colour); CastBronze and Manila stay unpacked, VarnishedTeak goes into PackTrim with the lenses' RedPlastic and WhitePlastic and the gilt's Brass, which keeps her hull within the 8 slots (BluebonnetMesh). Her teak is LaidTeak (kind 18, unpacked): the export keeps the deck's Planking and Margin maps as UV2 and UV3 and the Aft map's DA in UV1.y on its faces, from which the material draws the planks, seams, butts, king plank and covering boards (laid_deck).",
     "Topsides": "Topsides",
     "CoveStripe": "CoveStripe",
     "Bootstripe": "Bootstripe",
     "Antifouling": "Antifouling",
     "Keel": "Antifouling",
-    "Teak": "Teak",
-    "Wood": "WoodMahogany",
+    "Teak": "LaidTeak",
+    "Wood": "VarnishedTeak",
     "CabinWindow": "CabinWindow",
     "DeckGlass": "CabinWindow",
     "LensGreen": "SailCoverGreen",
     "LensRed": "RedPlastic",
     "LensClear": "WhitePlastic",
     "Gilt": "Brass",
-    "Bronze": "Brass",
+    "Bronze": "CastBronze",
     "Galvanised": "Stainless",
     "Wire": "Stainless",
     "WireRope": "Stainless",
     "Iron": "BlackPlastic",
     "Black": "BlackPlastic",
-    "Rope": "Rope",
-    "Spar": "Aluminium"
+    "Rope": "Manila",
+    "Spar": "Aluminium",
+    "Mahogany": "WoodMahogany",
+    "Varnish": "VarnishedTeak",
+    "Pine": "Wood",
+    "WhitePaint": "WhitePlastic",
+    "Porcelain": "WhitePlastic",
+    "Bulb": "WhitePlastic",
+    "Brass": "Brass",
+    "Mirror": "Stainless",
+    "Zinc": "Stainless",
+    "Canvas": "Dacron",
+    "Linen": "Dacron",
+    "Upholstery": "FenderBlue",
+    "Carpet": "SailCoverRed",
+    "Leather": "SailCoverTan"
+  },
+  "laid_deck": {
+    "note": "J-Class 15 (docs/jclass-15): the after margin's mitre with the covering board (deck.py after_mitre: a D - b DA), as her build reports it (build.json deck.planking_mitre); make_materials.py sets it on MI_Boat_LaidTeak (LaidD) with deck_bluebonnet.json's planking, and the export stops if the build's differs.",
+    "mitre": [0.796334, 0.877556]
   },
   "left_out": {
     "Hull": "slice 1's moulded hull, hidden in the build: the fairness check's reference",
@@ -67,7 +101,7 @@
     "Runner.*.Set, Checkstay.*.Set": "the set states: the part carries both pairs let off",
     "Burgee.*, Ensign.Moored": "the game flies its own masthead fly",
     "Cowls.Moored, CowlCaps.<other suits>": "in harbour the cowls stand; at sea the caps (one copy, the genoa suit's) are on",
-    "Below.*, Aft.*": "below decks (slices 9 and 10): not in the game yet"
+    "Below.*, Aft.*": "not in the hull part: below decks (slices 9 and 10) is SM_Bluebonnet_Below, loaded only when you go below"
   },
   "sockets": {
     "note": "The points the game reads, by part (owner). 'at' is a fixed point; 'z_top' puts the height on the top of the named objects' vertices within 'r' (plan) of the point, plus 'dz'; 'z_bottom' on their bottom, plus 'dz'; 'rudder_axis_z' puts the point on the rudder's stock axis at that height (a number, or the top of an object); 'wheel_at' [along, up] puts it 'along' metres forward up the wheel's shaft from the hub and 'up' metres up the king spoke (the build's 'Wheel' frame). Each is checked to lie within 'within' of the named 'near' object's surface, so a change to the build that moves a fitting stops the export. No crew sockets: the game derives her crew's places from the physics' deck (CrewMotion.cpp).",

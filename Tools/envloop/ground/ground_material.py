@@ -50,6 +50,12 @@ BLEND_DEPTH = 0.18        # height blend: how far (in 0..1 height) one surface c
 MACRO_A, MACRO_B = 0.10, 0.07     # slow wash amplitudes at 9 m and 31 m
 TEXTURE_FAR_M = 150.0     # past this, card colours only (the near band's edge)
 NORMAL_FADE_M = (25.0, 80.0)
+# Cost bands (the Mac's world gate at 7307fe54: -9 fps on coast-day, -4 on slip at High with 12 fetches everywhere inside
+# 150 m): the second, rotated scale only inside BAND_A (the hero band, where a tile's repeat would show); the height
+# maps, normals and roughness (the RHA and normal arrays) only inside BAND_B; past it the two surfaces are colour only,
+# mixed by their weights. Fetches per pixel: 12 inside 35 m, 6 to 75 m, 2 to 150 m, none past it.
+BAND_A_M = (35.0, 45.0)
+BAND_B_M = (75.0, 85.0)
 
 
 def sat(x):
@@ -80,9 +86,14 @@ def weights(P, N, C, Near, WaterZ, Mown):
     x, y, z = P[..., 0], P[..., 1], P[..., 2]
     h = z - WaterZ                      # height over the water now
     slope = 1.0 - N[..., 2]
-    n1 = vnoise(x / 3.1, y / 3.1)
+    # The patch noises' lattices are turned off the map's axes (value noise keeps its grid in its features: at 5 m the
+    # PC's Ultra stills showed shingle patches with box-straight sides).
+    x1, y1 = 0.8253 * x - 0.5646 * y, 0.5646 * x + 0.8253 * y      # 34.4 deg
+    x3, y3 = 0.6216 * x + 0.7833 * y, -0.7833 * x + 0.6216 * y     # -51.6 deg
+    n1 = vnoise(x1 / 3.1, y1 / 3.1)
     n2 = vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0)
-    n3 = vnoise(x / 11.0 - 4.0, y / 11.0 + 9.0)
+    n3 = vnoise(x3 / 11.0 - 4.0, y3 / 11.0 + 9.0)
+    n4 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)    # round 2: a 31 m wander in every band's top, so no zone edge runs straight
     # Decode the vertex colour. Canopy: the upland tone runs (0.36,0.36,0.16) open to (0.16,0.22,0.08) under trees, so
     # red over green falls from 1 to 0.73. Sandy bank (0.50,0.42,0.30) against clay bank (0.42,0.30,0.20): green over red.
     rg = C[..., 0] / np.maximum(C[..., 1], 1e-3)
@@ -90,16 +101,16 @@ def weights(P, N, C, Near, WaterZ, Mown):
     sandy = sat((C[..., 1] / np.maximum(C[..., 0], 1e-3) - 0.74) / 0.10)
     w = np.zeros(P.shape[:-1] + (8,), np.float32)
     # Under water and the swash: mud. The swash top is ragged, 0.15 to 0.45 m.
-    swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1, h)) * np.maximum(Near, (h < 0.05))
+    swash = (1.0 - smoothstep(0.08, 0.30 + 0.12 * n1 + 0.08 * n3, h)) * np.maximum(Near, (h < 0.05))
     # Lake bed left dry under the pool (a drought gauge): cracked crust on the flats, from 0.15 m over the water.
     dry_bed = (smoothstep(-0.02, -0.12, z + 0.06 * n3) * smoothstep(0.08, 0.22 + 0.10 * n1, h)
                * (1.0 - smoothstep(0.10, 0.25, slope)))
     # The bank: within reach of open water and under 1.5 m; sand or clay by the vertex colour, with limestone shingle
     # in patches on the wave-washed band 0.1 to 0.7 m over the water.
-    top = 1.3 + 0.35 * n3 + 0.15 * n2              # where grass takes over: ragged, in tufts
+    top = 1.3 + 0.35 * n3 + 0.15 * n2 + 0.3 * n4   # where grass takes over: ragged, in tufts, wandering along the shore
     bank = Near * (1.0 - smoothstep(top - 0.35, top, h)) * (1.0 - dry_bed)
     shingle = (bank * smoothstep(0.05, 0.15, h) * (1.0 - smoothstep(0.5 + 0.15 * n1, 0.75, h))
-               * smoothstep(0.15, 0.45, 0.6 * n1 + 0.45 * n2 + 0.4 * n3))
+               * smoothstep(0.05, 0.6, 0.6 * n1 + 0.45 * n2 + 0.4 * n3))   # round 2: a wide feather, so stones thin out at a patch's edge instead of ending on a contour (they read as grey decals)
     # Bare slopes: the same 0.08 start as BuildChunk's slope tone, eroded faces are clay.
     bare = smoothstep(0.08, 0.24, slope + 0.04 * n2) * (1.0 - swash)
     w[..., S["mud"]] = swash
@@ -117,7 +128,9 @@ def weights(P, N, C, Near, WaterZ, Mown):
     # weedy patches (n1), a field a few short-grazed ones.
     # Under woods the floor is litter; under a yard tree the mown grass mostly carries on, thinning.
     litter = smoothstep(0.45, 0.95, canopy + 0.2 * n2) * (1.0 - 0.6 * sat(Mown))
-    lawn = (1.0 - litter) * sat(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, n1))
+    # The thin patches' 3.1 m lattice is bent by the 11 m, 31 m and 0.9 m noises (unbent, a lone high cell drew a 3 m diamond).
+    n_thin = vnoise(x1 / 3.1 + 0.3 * n3 + 0.12 * n2, y1 / 3.1 + 0.3 * n4 - 0.12 * n2)
+    lawn = (1.0 - litter) * sat(Mown) * (1.0 - 0.35 * smoothstep(0.45, 0.85, n_thin))
     w[..., S["litter"]] = rest * litter
     w[..., S["lawn"]] = rest * lawn
     w[..., S["rough"]] = rest * (1.0 - litter - lawn)
@@ -178,7 +191,7 @@ class TexBank:
         return a + (b - a) * fy
 
 
-def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
+def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam, detail=1.0):
     """P, N, C: (n,3); Near, Mown, footprint: (n,). footprint = metres per pixel at P (the GPU's derivatives).
     Returns base colour (n,3), roughness (n,), world normal (n,3), weights (n,8)."""
     w = weights(P, N, C, Near, WaterZ, Mown)
@@ -196,6 +209,8 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         order = np.argsort(-w[idx], axis=1)
         top = order[:, :2]
         x, y = P[idx, 0], P[idx, 1]
+        kA = detail * (1.0 - smoothstep(BAND_A_M[0], BAND_A_M[1], dist[idx]))   # detail 0 = the High tier: no second scale
+        kB = 1.0 - smoothstep(BAND_B_M[0], BAND_B_M[1], dist[idx])
         layers, heights = [], []
         for k in range(2):
             si = top[:, k]
@@ -211,7 +226,8 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
             # Join the two samples by height, steered by a slow noise so neither scale shows its own repeat.
             m = vnoise(x / 4.3 + 3.0 * si, y / 4.3 - 2.0 * si)
             j = smoothstep(-0.12, 0.12, (a[:, 6] - b[:, 6]) + 0.6 * m)[:, None]
-            layer = b + (a - b) * j
+            two = b + (a - b) * j
+            layer = a + (two - a) * kA[:, None]     # the rotated scale fades out over BAND_A (the GPU stops fetching it)
             layers.append(layer)
             heights.append(layer[:, 6])
         w1 = w[idx, top[:, 0]]
@@ -225,9 +241,14 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         tot = np.maximum(b1 + b2, 1e-6)
         b1, b2 = b1 / tot, b2 / tot
         share = w1 + w2                                 # the rest keep their card colour
+        # Past BAND_B the height maps are not read: the two surfaces mix by their weights.
+        wtot = np.maximum(share, 1e-6)
+        b1 = w1 / wtot + (b1 - w1 / wtot) * kB
+        b2 = w2 / wtot + (b2 - w2 / wtot) * kB
         t1, t2 = tint[top[:, 0]], tint[top[:, 1]]
         tex_col = layers[0][:, 0:3] * t1 * b1[:, None] + layers[1][:, 0:3] * t2 * b2[:, None]
-        tex_rough = layers[0][:, 5] * b1 + layers[1][:, 5] * b2
+        rough_card = ROUGH[top[:, 0]] * b1 + ROUGH[top[:, 1]] * b2
+        tex_rough = rough_card + (layers[0][:, 5] * b1 + layers[1][:, 5] * b2 - rough_card) * kB
         others = base[idx] - w1[:, None] * card[top[:, 0]] - w2[:, None] * card[top[:, 1]]
         far_k = smoothstep(TEXTURE_FAR_M * 0.8, TEXTURE_FAR_M, dist[idx])[:, None]
         mix_col = tex_col * share[:, None] + others
@@ -239,29 +260,56 @@ def shade(P, N, C, Near, WaterZ, Mown, Season, bank, footprint, cam):
         ao[idx] = 1.0 + ((layers[0][:, 7] * b1 + layers[1][:, 7] * b2) - 1.0) * share * nfade[:, 0]
     # Slow wash: brightness and, on grass, a drift toward straw, so a lawn is never one colour across 40 m.
     x, y = P[:, 0], P[:, 1]
-    m1 = vnoise(x / 9.0 + 5.2, y / 9.0 + 1.3)
-    m2 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)
+    # Two turned lattices (34 and -52 deg, the shader's p1 and p3): value noise on a map-aligned 9 m lattice drew its
+    # straw patches as 8 x 12 m rectangles square to the map on every lawn (PC Ultra stills, Nov 19 2026).
+    p1x, p1y = 0.8253 * x - 0.5646 * y, 0.5646 * x + 0.8253 * y
+    p3x, p3y = 0.6216 * x + 0.7833 * y, -0.7833 * x + 0.6216 * y
+    # Turned alone, a lone high cell still showed as a diamond: bend the lattices by the 11 m and 31 m noises (about 3 m).
+    n3 = vnoise(p3x / 11.0 - 4.0, p3y / 11.0 + 9.0)
+    n4 = vnoise(x / 31.0 - 7.7, y / 31.0 + 3.1)
+    wx, wy = 0.35 * n3, 0.35 * n4
+    m1 = (0.65 * vnoise(p1x / 9.0 + 5.2 + wx, p1y / 9.0 + 1.3 + wy)
+          + 0.5 * vnoise(p3x / 6.3 - 2.1 + wy, p3y / 6.3 + 4.7 - wx))
+    m2 = vnoise(p3x / 31.0 - 7.7, p3y / 31.0 + 3.1)
     base *= (1.0 + MACRO_A * m1 + MACRO_B * m2)[:, None]
+    # Round 2: a cut bank's clay face carries strata, bands about 18 cm apart bent by the small noise (the scan is one even
+    # texture; reviewers saw a face with no layers). Only on clay and only on the steep part.
+    slope = 1.0 - N[:, 2]
+    face = w[:, S["clay"]] * smoothstep(0.25, 0.5, slope)
+    strata = np.sin(P[:, 2] / 0.18 * 6.2831853 + 1.5 * vnoise(x / 0.9 + 17.0, y / 0.9 - 5.0) + 0.4 * vnoise((0.8253 * x - 0.5646 * y) / 3.1, (0.5646 * x + 0.8253 * y) / 3.1))
+    base *= (1.0 + 0.14 * strata * face)[:, None]
     grassy = w[:, S["lawn"]] + w[:, S["rough"]]
     straw = ALB_DORMANT[S["rough"]] / ALB_SUMMER[S["rough"]]
     dry = smoothstep(0.2, 0.9, 0.5 * m1 + 0.5 * m2 + 0.3) * 0.35 * (1.0 - np.asarray(Season))
     base *= 1.0 + (grassy * dry)[:, None] * (straw - 1.0)
     # Mowing stripes on the lawn (as today's M_Terrain: 2.5 m wide, each 40 m block mown its own way), only +-4%: the
     # light on bent blades, not paint.
-    bx, by = np.floor(x / 40.0), np.floor(y / 40.0)
+    # The blocks sit on the turned p1 frame (a seam square to the map ran as a straight step across the club lawn) and
+    # the stripes fade out over the 3 m inside each seam: the headland pass a mower makes round the edge.
+    bqx, bqy = p1x / 40.0, p1y / 40.0
+    bx, by = np.floor(bqx), np.floor(bqy)
+    edge_m = 20.0 - np.maximum(np.abs(bqx % 1.0 - 0.5), np.abs(bqy % 1.0 - 0.5)) * 40.0
     ang = 6.2831853 * hash2(bx + 0.13, by + 0.71)
     stripe = np.where(((x * np.cos(ang) + y * np.sin(ang)) / 5.0) % 1.0 < 0.5, -1.0, 1.0)
-    base *= (1.0 + 0.04 * stripe * w[:, S["lawn"]])[:, None]
+    # Only where the lawn owns the ground: a half-weight lawn over a bank showed the stripes as pale columns up the soil.
+    base *= (1.0 + 0.04 * stripe * smoothstep(0.55, 0.9, w[:, S["lawn"]]) * smoothstep(0.0, 3.0, edge_m))[:, None]
     # The wet band (as today's M_Terrain: up the swash about half a metre, ragged) and the algae film just over the line.
     h = P[:, 2] - WaterZ
-    n_ = vnoise(x / 3.1, y / 3.1)
+    n_ = vnoise((0.8253 * x - 0.5646 * y) / 3.1, (0.5646 * x + 0.8253 * y) / 3.1)   # = weights()' n1
     wet = (1.0 - smoothstep(0.05, 0.6 + 0.2 * n_, h)) * np.maximum(Near, h < 0.05)
     dark = w @ DARKEN
     base *= (1.0 - dark * wet)[:, None]
-    rough = rough + (w @ ROUGH_WET - rough) * wet
+    # #804's rule from M_Terrain: a wet bank seen at a grazing angle glowed white; only near-flat ground keeps the wet gloss.
+    rwet = w @ ROUGH_WET
+    rwet = np.maximum(rwet, 0.62 + (rwet - 0.62) * smoothstep(0.88, 0.97, N[:, 2]))
+    # The bed under the water is matte and flat, as M_Terrain's (wet gloss and relief there put every visible bed pixel
+    # under Lumen's reflection roughness: round 4 gate).
+    under = smoothstep(0.0, -0.35, h)
+    rough = rough + (rwet - rough) * (wet * (1.0 - under))
+    rough = rough + (0.92 - rough) * under
+    nrm_t = nrm_t * (1.0 - under)[:, None]
     film = (1.0 - smoothstep(0.02, 0.10, h)) * (h > -0.05) * np.maximum(Near, h < 0.05)
     base = base + (base * np.array([0.62, 0.74, 0.46]) - base) * (film * 0.8)[:, None]
-    under = smoothstep(0.0, -0.35, h)
     base = base + (base * np.array([0.55, 0.6, 0.45]) - base) * under[:, None]
     # Relief: the scans' tangent normals on the mesh normal (the terrain's tangent frame is world X/Y on the slope).
     Nw = perturb(N, nrm_t)

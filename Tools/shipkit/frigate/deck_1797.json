@@ -108,7 +108,7 @@
   "bar_hole_in": [4.5, 4.5, 14.0]
  },
  "wheel": {
-  "note": "a double wheel on a fore-and-aft axle abaft the mizzen, the tiller ropes wound on the barrel between the wheels and led down through the deck to the tiller below (estimate: the period's frigates; abaft the mizzen it stands over the tiller's end, about 25 ft forward of the rudder head). Its own frame: origin on the axle midway between the wheels, local X forward along the axle: a positive turn about X takes the top of the wheels to port (the ship's head to port)",
+  "note": "a double wheel on a fore-and-aft axle abaft the mizzen, the tiller rope wound on the barrel between the wheels, its two legs led down through iron plates in the deck at legs_x_m (the starboard leg abaft the port one) to the leading sheaves under it and on to the tiller's end overhead in the great cabin below (gundeck_1797.json tiller_ropes; estimate: the period's frigates; abaft the mizzen it stands just forward of the cabin's bulkhead, about 18 ft forward of the rudder head). The legs stand between the gun deck's overhead ledge and beam there, and the turns between them on the barrel are laid rope_turns to the span (at least a rope's thickness and a millimetre apart). Its own frame: origin on the axle midway between the wheels, local X forward along the axle: a positive turn about X takes the top of the wheels to port (the ship's head to port)",
   "x_m": -22.25,
   "axle_high_in": 45.0,
   "between_wheels_in": 44.0,
@@ -122,7 +122,8 @@
   "standard_in": [4.0, 3.0],
   "standard_spread_in": 30.0,
   "rope_turns": 7,
-  "tiller_rope_in": 3.0
+  "tiller_rope_in": 3.0,
+  "legs_x_m": [-22.33, -22.13]
  },
  "binnacle": {
   "note": "a wooden binnacle forward of the wheel: two compasses in the side compartments and a lamp between, glazed toward the wheel (estimate, period form)",

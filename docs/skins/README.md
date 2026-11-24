@@ -115,19 +115,29 @@ A skin's `"lettering": { "name": "Bluebonnet", "colour": "#1C2A44" }` letters th
 (`FBoatSkin::CleanHullName`: letters, digits, spaces and `. , ' & - /`, runs of spaces as one, at most 18); the colour
 is optional and falls to navy, or the gelcoat's white where the skin paints the hull dark (`HullNameColour`).
 
-- **Where.** On both quarters of the hero J/22, 7 cm capitals in the band between the boot stripe and the sheer, from
-  16 cm forward of the transom (`SailingHullName::Place`, `HullName.h`). Her transom carries the rudder and the
-  outboard bracket, so the quarters are where J/22s wear a name. A long name is made smaller to stay within 1.25 m.
-  The other boats have no place for one yet (the Paint tab shows the section only where there is one).
+- **Where.** On both quarters of every boat (`SailingHullName::Place`, `HullName.h`). The hero J/22's place is
+  measured on her: 7 cm capitals in the band between the boot stripe and the sheer, from 16 cm forward of the transom,
+  within 1.25 m (her transom carries the rudder and the outboard bracket, so the quarters are where J/22s wear a name).
+  Every other class (Nov 19 2026) takes that place scaled by her hull length from her physics hull: 16 cm (scaled)
+  forward of the stern, the band's middle at 58% of the freeboard there and at most 45% of it tall, so the capitals run
+  from about 2 in on the Sunfish to about 15 in on the J-Class. Only topsides facing outboard are lettered, so a
+  catamaran wears it on both hulls' outer sides; a hull drawn from her sections (Catalina 22, maxi, Bluebonnet) keeps the
+  band on her topside proper, above where the side turns under (85% of the half-breadth) and under the sheer, and on a
+  long counter (Bluebonnet's) moves forward, up to a fifth of her length, until there is room (the first stills had her
+  name half under water on the counter's curve). The usual colour is judged against the hull she wears (white on
+  Bluebonnet's navy); a trimaran only on her main hull (`MaxSideCm`, the material's
+  `NameSpan`). A long name is made smaller to stay within the place's length. The frigate has none: her name is carved
+  on her stern.
 - **How.** The pawn draws the name once per rebuild into a small render target with the menus' title face (Besley
-  Bold) through Slate (`SailingHullName::Draw`, `FWidgetRenderer`: the UMG module), white on black, and reads it back into a plain texture kept while the name is the same (a render target bound to the hull material sampled black in the game). `M_J22HeroSurface`
-  lays it on by a side-on projection in the hull's frame (`NameTex`, `NameRect`, `NameColour` in
+  Bold) through Slate (`SailingHullName::Draw`, `FWidgetRenderer`: the UMG module), white on black, and reads it back into a plain texture kept while the name is the same (a render target bound to the hull material sampled black in the game). `M_J22HeroSurface` (the hero J/22)
+  and `M_BoatSurface` on its topsides (`IsHull`; `BOAT_CODE` in `scripts/make_materials.py`, the name's texture on the
+  shared clamp sampler since the material already samples 16 textures) lay it on by a side-on projection in the hull's frame (`NameTex`, `NameRect`, `NameColour` in
   `scripts/import_j22_hero.py`'s `DETAIL_CODE`), so it follows the topsides' curve as cut vinyl does, reads bow end
   first on each side, and goes on before the wear, which weathers it with the gelcoat. No name: `NameColour`'s alpha
   stays 0 and nothing changes.
 - **The screen.** Paint tab, "Name on the hull": the name, eight vinyl colours, Usual colour, No name. A name alone
   is a look worth saving (`FSkinEditor::SavePlan`).
-- After a change to the material: `HERO_MATERIALS_ONLY=1` with `scripts/import_j22_hero.py`.
+- After a change to the material: `HERO_MATERIALS_ONLY=1` with `scripts/import_j22_hero.py` (the hero), `MATERIALS_ONLY=build_boat_library scripts/make-content.sh` (the rest).
 - Before skins are seen by other players online the name needs the text check and the "default looks only" switch
   the plan asks for; nothing here sends it anywhere.
 - Stills: `-SailingHullName="<name>"` letters a name whatever the skin says; `-SailingHullNameDraw=white` fills the rectangle (a check of the place).
