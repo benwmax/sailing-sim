@@ -1,0 +1,46 @@
+[2026.11.24-16.58.16:525][ 37]LogD3D12RHI: Error: GPU crash detected:
+	- Device 0 Removed: DXGI_ERROR_DEVICE_HUNG
+
+[2026.11.24-16.58.16:525][ 37]LogD3D12RHI: Error: Shader diagnostic messages and asserts:
+
+	Device: 0, Queue 3D:
+		No shader diagnostics found for this queue.
+
+	Device: 0, Queue Copy:
+		No shader diagnostics found for this queue.
+
+	Device: 0, Queue Compute:
+		No shader diagnostics found for this queue.
+
+[2026.11.24-16.58.16:527][ 37]LogRHI: Error: Active GPU breadcrumbs:
+
+	Device 0, Pipeline Graphics: (In: 0x8000303b, Out: 0x8000302c)
+		(ID: 0x80002f8e) [     Active]	Frame 34
+		(ID: 0x80002f96) [     Active]		SceneRender - ViewFamilies
+		(ID: 0x8000309f) [     Active]			RenderGraphExecute - /ViewFamilies
+		(ID: 0x80002fab) [     Active]				Scene
+		(ID: 0x80003028) [     Active]					ShadowDepths
+		(ID: 0x80003029) [   Finished]						BuildRenderingCommandsDeferred(Culling=On)
+		(ID: 0x8000302a) [   Finished]						FVirtualShadowMapArray::BuildPageAllocation
+		(ID: 0x8000302b) [   Finished]							InitializePhysicalPages
+		(ID: 0x8000302c) [     Active]						RenderVirtualShadowMaps(Nanite)
+		(ID: 0x8000302f) [     Active]							Nanite::DrawGeometry
+		(ID: 0x80003030) [     Active]								MainPass
+		(ID: 0x80003031) [     Active]									InstanceCulling
+		(ID: 0x80003032) [     Active]									NodeAndClusterCull
+		(ID: 0x80003033) [     Active]									PatchSplit
+		(ID: 0x80003034) [     Active]								BuildPreviousOccluderHZB(VSM)
+		(ID: 0x80003035) [     Active]								PostPass
+		(ID: 0x80003036) [     Active]									InstanceCulling
+		(ID: 0x80003037) [     Active]									NodeAndClusterCull
+		(ID: 0x80003038) [     Active]									PatchSplit
+		(ID: 0x80003039) [     Active]						RenderVirtualShadowMaps(Non-Nanite)
+		(ID: 0x8000303a) [     Active]							Batched
+		(ID: 0x8000303b) [     Active]								CullingPasses
+		(ID: 0x8000303c) [Not Started]						FVirtualShadowMapArray::PostProcessPages
+		(ID: 0x8000303e) [Not Started]					RenderDeferredLighting
+		(ID: 0x80003040) [Not Started]						DiffuseIndirectAndAO
+		(ID: 0x80003041) [Not Started]							LumenReflections
+		(ID: 0x80003042) [Not Started]						InitTranslucencyLightingVolumeTextures
+		(ID: 0x80003043) [Not Started]						Lights
+		(ID: 0x80003044) [Not Started]							DirectLighting
