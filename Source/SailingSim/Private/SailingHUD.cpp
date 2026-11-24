@@ -137,6 +137,8 @@ void ASailingHUD::BeginPlay()
 	if (!bLoadingSession && FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Screen))
 	{
 		// Screenshots of each screen: -SailingFrontEnd=World|Launch|Boat|Conditions|Mode|Pause|Settings|Controls|Credits|Loading.
+		// Splash: the opening splash alone, held at full opacity (OpenSplash above; docs/splash/README.md).
+		if (Screen == TEXT("Splash")) return;
 		if (Screen == TEXT("Briefing") || Screen == TEXT("Quiz"))
 		{
 			// Graphics G7 stills: the drill's briefing or its quiz a few seconds in (with -SailingDrill=<name>).
@@ -393,7 +395,7 @@ void ASailingHUD::OpenSplash()
 {
 	if (!SailSplash::Wanted() || !GEngine || !GEngine->GameViewport) return;
 	SailSplash::MarkShown();
-	Splash = SNew(SSailSplash).ShowNvidia(SailSplash::NvidiaPluginPresent())
+	Splash = SNew(SSailSplash).ShowNvidia(SailSplash::NvidiaPluginPresent()).Hold(SailSplash::IsStillRun())
 		.OnDone(FSimpleDelegate::CreateUObject(this, &ASailingHUD::CloseSplash));
 	GEngine->GameViewport->AddViewportWidgetContent(Splash.ToSharedRef(), 100);   // over the front end (50) and the HUD
 }

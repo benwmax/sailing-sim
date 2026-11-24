@@ -62,10 +62,19 @@ namespace SailSplash
 		return TEXT("Includes NVIDIA DLSS technology");
 	}
 
+	bool IsStillRun()
+	{
+		FString Screen;
+		return FParse::Value(SailingArgs::Dev(), TEXT("SailingFrontEnd="), Screen) && Screen == TEXT("Splash");
+	}
+
 	bool Wanted()
 	{
 		if (GShown) return false;
-		if (USailingSettings::IsMeasuring() || IsRunningCommandlet()) return false;
+		if (IsRunningCommandlet()) return false;
+		// The still hook: every still run passes -SailingBench (IsMeasuring), so this case is let through before it.
+		if (IsStillRun()) return true;
+		if (USailingSettings::IsMeasuring()) return false;
 		// Stills and scripted menu runs go straight to their screen.
 		FString Ignore;
 		if (FParse::Param(SailingArgs::Dev(), TEXT("SailingNoSplash"))
@@ -201,7 +210,8 @@ void SSailSplash::Construct(const FArguments& A)
 	Backdrop->SetRenderOpacity(1.f);
 	Content->SetRenderOpacity(0.f);
 
-	if (FSlateApplication::IsInitialized())
+	bHold = InArgs._Hold;
+	if (FSlateApplication::IsInitialized() && !bHold)
 	{
 		Skipper = MakeShared<FSplashSkipper>([this]() { Skip(); });
 		FSlateApplication::Get().RegisterInputPreProcessor(Skipper, 0);
@@ -222,6 +232,7 @@ void SSailSplash::Advance(float DeltaSeconds)
 {
 	if (bDone) return;
 	T += FMath::Clamp(double(DeltaSeconds), 0.0, 0.1);   // a hitch (a map loading behind it) must not eat the hold
+	if (bHold) T = FMath::Min(T, SailSplash::FadeInSeconds + 0.5 * SailSplash::HoldSeconds);   // a still: full opacity, water still moving
 	if (Content.IsValid()) Content->SetRenderOpacity(SailSplash::ContentAlpha(T, SkippedAt));
 	if (Backdrop.IsValid()) Backdrop->SetRenderOpacity(SailSplash::BackdropAlpha(T, SkippedAt));
 	if (SailSplash::IsFinished(T, SkippedAt))

@@ -33,6 +33,8 @@ namespace SailSplash
 	SAILINGSIM_API FString NvidiaAttribution();
 	/** Whether this launch shows the splash: the first time in the process, not in a measuring or scripted run. */
 	SAILINGSIM_API bool Wanted();
+	/** True for the still hook, -SailingFrontEnd=Splash: Wanted() allows it and the splash is held at full opacity. */
+	SAILINGSIM_API bool IsStillRun();
 	/** Marks this launch's splash as shown (the map reloads on cast-off and must not show it again). */
 	SAILINGSIM_API void MarkShown();
 }
@@ -43,6 +45,8 @@ public:
 	SLATE_BEGIN_ARGS(SSailSplash) {}
 		/** Show the NVIDIA DLSS block (a test can force it either way). */
 		SLATE_ARGUMENT(bool, ShowNvidia)
+		/** Stills (-SailingFrontEnd=Splash): stays at full opacity, ignores input, never finishes. */
+		SLATE_ARGUMENT(bool, Hold)
 		/** Called once, when the splash has faded out. */
 		SLATE_EVENT(FSimpleDelegate, OnDone)
 	SLATE_END_ARGS()
@@ -67,4 +71,5 @@ private:
 	double T = 0.0;
 	double SkippedAt = -1.0;
 	bool bDone = false;
+	bool bHold = false;
 };

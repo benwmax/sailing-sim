@@ -12,6 +12,10 @@ skips it; fade in and out.
   (a 0.25 s fade). It is added by `ASailingHUD::OpenSplash` above the front end, once per process (`SailSplash::Wanted`),
   so the cast-off map reload never shows it again. Off for measuring runs, `-SailingFrontEnd=`, `-SailingUIScript=` and
   `-SailingNoSplash`.
+- Still hook: `-SailingFrontEnd=Splash` shows the splash alone, held at full opacity (the water keeps moving, input is
+  ignored, it never finishes), and `SailSplash::Wanted()` lets that one case through although stills run with
+  `-SailingBench`. Example: `scripts/run-game.sh 8 -SailingFrontEnd=Splash -SailingShot=splash`; copy the shot to
+  `docs/splash/`. Any other `-SailingFrontEnd=` value or `-SailingUIScript=` still skips the splash.
 - The Credits screen's first notice is now Epic's wording from the EULA (section 7a) with the current year, and a DLSS
   attribution line follows it in a build with the plugin.
 - Tests: `SailingSim.UI.Splash.Timeline`, `SailingSim.UI.Splash.Widget`, and the updated `SailingSim.UI.Credits`.
