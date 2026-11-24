@@ -8,7 +8,7 @@ namespace ShipOutsideTestsLocal
 {
 	constexpr EAutomationTestFlags TestFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter;
 
-	const TCHAR* Sample = TEXT("") R"({
+	const TCHAR* Sample = TEXT("") R"json({
 	"root": "/Game/Boats/Frigate",
 	"meshes": {
 		"SM_Frigate_Skin": {"triangles": 267740, "slots": ["MI_Frigate_HullBlack"], "file": "Outside/SM_Frigate_Skin.fbx", "group": "Outside",
@@ -26,7 +26,7 @@ namespace ShipOutsideTestsLocal
 		"SM_Frigate_Gun24_Barrel": {"triangles": 3000, "slots": ["MI_Frigate_Iron"], "file": "Guns/SM_Frigate_Gun24_Barrel.fbx", "group": "Guns",
 			"asset": "/Game/Boats/Frigate/Guns/SM_Frigate_Gun24_Barrel", "part": "Gun24_Barrel", "states": null, "frame": "own (guns.json meshes)"}
 	}
-})";
+})json";
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipOutsideTableTest, "SailingSim.ShipOutside.Table", ShipOutsideTestsLocal::TestFlags)
