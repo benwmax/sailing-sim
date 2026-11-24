@@ -703,7 +703,10 @@ void ASailboatPawn::RebuildBoatVisuals()
 		const bool bEmblem = C.Type == EBoatType::J22 || C.Type == EBoatType::Sunfish;
 		// Boat skins: a skin can take the class mark off (the number stays).
 		const bool bMark = bEmblem && !(bHasSkin && Skin.Sails.bClassMark.IsSet() && !Skin.Sails.bClassMark.GetValue());
-		Mid->SetScalarParameterValue(TEXT("Marks"), bMark ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
+		// Film mode's lighting-only pass: no insignia or number (lighting only greys the cloth's colour, but the marks come
+		// through in its transmission: PC rehearsal on main 6630fe1e).
+		const bool bMarksShown = FilmViewMode() != EFilmViewMode::LightingOnly;
+		Mid->SetScalarParameterValue(TEXT("Marks"), !bMarksShown ? 0.f : bMark ? 1.f : (Digits.IsEmpty() ? 0.f : 2.f));
 		Mid->SetScalarParameterValue(TEXT("SailDigits"), float(Digits.Len()));
 		Mid->SetScalarParameterValue(TEXT("SailNum"), Digits.IsEmpty() ? 0.f : float(FCString::Atoi(*Digits)));
 		Mid->SetScalarParameterValue(TEXT("Battens"), Lay.Battens > 0.f ? 1.f : 0.f);
@@ -5175,6 +5178,9 @@ void ASailboatPawn::SetupCapture()
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingCaptureBearing="), CaptureBearing);
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingEV="), CaptureEV);
 	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
+
+	// Film mode's layer passes (-SailingViewMode=wireframe|lightingonly|unlit): the editor's view modes on this viewport.
+	if (GEngine) ApplyFilmViewMode(GEngine->GameViewport);
 
 	// Film mode (FilmMode.h): the tripod's stand and lens, or the shot file's move (a shot that doesn't load falls back to
 	// the chase camera, with the reason in the log, rather than filming nothing).

@@ -106,6 +106,15 @@ bool FFilmSwitchesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("clouds rebuilt over frames (mode 0: no stipple in the bases)"), bClouds);
 	TestTrue(TEXT("the water's reflections at full resolution"), bWater);
 
+	// The layer passes: -SailingViewMode names, any case; anything else (or none) is the game's own lit frame.
+	TestTrue(TEXT("wireframe"), ParseFilmViewMode(TEXT("wireframe")) == EFilmViewMode::Wireframe);
+	TestTrue(TEXT("Wireframe, any case"), ParseFilmViewMode(TEXT("Wireframe")) == EFilmViewMode::Wireframe);
+	TestTrue(TEXT("lightingonly"), ParseFilmViewMode(TEXT("lightingonly")) == EFilmViewMode::LightingOnly);
+	TestTrue(TEXT("unlit"), ParseFilmViewMode(TEXT("unlit")) == EFilmViewMode::Unlit);
+	TestTrue(TEXT("an unknown name stays lit"), ParseFilmViewMode(TEXT("shadercomplexity")) == EFilmViewMode::Lit);
+	TestTrue(TEXT("no switch: lit"), FilmViewMode() == EFilmViewMode::Lit);
+	TestFalse(TEXT("lit leaves the viewport alone"), ApplyFilmViewMode(nullptr));
+
 	// The tripod: distance, height and lens from -SailingTripod, defaults for what is left out.
 	const FFilmTripod T = FFilmTripod::Parse(TEXT("35,2.5,18,0.3"));
 	TestTrue(TEXT("tripod 35 m, 2.5 m up, 18 deg, aimed at 0.3 of the masthead"), T.DistanceM == 35.0 && T.HeightM == 2.5 && T.HFovDeg == 18.0 && T.AimFraction == 0.3);

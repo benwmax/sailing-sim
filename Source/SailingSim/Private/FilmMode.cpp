@@ -2,6 +2,10 @@
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "Dom/JsonObject.h"
+#include "Engine/GameViewportClient.h"
+#include "HAL/IConsoleManager.h"
+#include "RenderUtils.h"
+#include "ShowFlags.h"
 #include "Dom/JsonValue.h"
 #include "Misc/App.h"
 #include "Misc/FileHelper.h"
@@ -332,4 +336,54 @@ bool FixedExposureArg(float& OutEV100)
 	}
 	if (bHas) OutEV100 = Value;
 	return bHas;
+}
+
+EFilmViewMode ParseFilmViewMode(const FString& Name)
+{
+	const FString N = Name.TrimStartAndEnd().TrimQuotes();
+	if (N.Equals(TEXT("wireframe"), ESearchCase::IgnoreCase)) return EFilmViewMode::Wireframe;
+	if (N.Equals(TEXT("lightingonly"), ESearchCase::IgnoreCase) || N.Equals(TEXT("lighting"), ESearchCase::IgnoreCase)) return EFilmViewMode::LightingOnly;
+	if (N.Equals(TEXT("unlit"), ESearchCase::IgnoreCase)) return EFilmViewMode::Unlit;
+	return EFilmViewMode::Lit;
+}
+
+EFilmViewMode FilmViewMode()
+{
+	static uint32 Gen = MAX_uint32;
+	static EFilmViewMode Mode = EFilmViewMode::Lit;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		FString Name;
+		Mode = FParse::Value(SailingArgs::Dev(), TEXT("SailingViewMode="), Name) ? ParseFilmViewMode(Name) : EFilmViewMode::Lit;
+		if (!Name.IsEmpty() && Mode == EFilmViewMode::Lit && !Name.Equals(TEXT("lit"), ESearchCase::IgnoreCase))
+		{
+			SAIL_LOG(Warning, TEXT("Film: -SailingViewMode=%s is not wireframe, lightingonly, unlit or lit: lit"), *Name);
+		}
+	}
+	return Mode;
+}
+
+bool ApplyFilmViewMode(UGameViewportClient* Viewport)
+{
+	const EFilmViewMode Mode = FilmViewMode();
+	if (Mode == EFilmViewMode::Lit || !Viewport) return false;
+	// Debug view modes on for this run: the engine's proxies (the sails' and the water's procedural meshes among them)
+	// draw their wireframe only when AllowDebugViewmodes() says so, and the game viewport keeps such a mode lit otherwise.
+	if (IConsoleVariable* Force = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ForceDebugViewModes")))
+	{
+		Force->Set(1, ECVF_SetByCode);
+	}
+	else
+	{
+		SAIL_LOG(Warning, TEXT("Film: no r.ForceDebugViewModes in this build: the view mode may render lit"));
+	}
+	const EViewModeIndex Index = Mode == EFilmViewMode::Wireframe ? VMI_Wireframe
+		: Mode == EFilmViewMode::LightingOnly ? VMI_LightingOnly : VMI_Unlit;
+	Viewport->ViewModeIndex = Index;
+	ApplyViewMode(Index, true, Viewport->EngineShowFlags);
+	SAIL_LOG(Display, TEXT("Film view mode: %s (r.ForceDebugViewModes 1, debug view modes %s)"),
+		Mode == EFilmViewMode::Wireframe ? TEXT("wireframe") : Mode == EFilmViewMode::LightingOnly ? TEXT("lighting only") : TEXT("unlit"),
+		AllowDebugViewmodes() ? TEXT("allowed") : TEXT("still refused"));
+	return true;
 }

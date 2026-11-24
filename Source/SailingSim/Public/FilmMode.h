@@ -153,3 +153,26 @@ SAILINGSIM_API bool IsFilmMode();
 
 /** -SailingEV=<EV100> on this run's command line: false (and Out unchanged) without it. */
 SAILINGSIM_API bool FixedExposureArg(float& OutEV100);
+
+/** The layer passes of a shot (the portfolio's layer peel): -SailingViewMode=wireframe|lightingonly|unlit|lit. */
+enum class EFilmViewMode : uint8
+{
+	Lit,            // the game's own frames (no switch, or an unknown name)
+	Wireframe,
+	LightingOnly,
+	Unlit,
+};
+
+/** A -SailingViewMode name (any case); Lit for anything else. */
+SAILINGSIM_API EFilmViewMode ParseFilmViewMode(const FString& Name);
+/** -SailingViewMode on this run's command line (re-read on each bench-list swap). */
+SAILINGSIM_API EFilmViewMode FilmViewMode();
+
+/**
+ * Puts the game viewport in the -SailingViewMode pass (the editor's view modes, in a packaged game). A cooked game
+ * refuses debug view modes (AllowDebugViewmodes(): r.ForceDebugViewModes 0), so `viewmode wireframe` was logged as set
+ * and every frame still rendered lit, and the show flags alone left the sails, sky and clouds lit (PC rehearsal on main
+ * 6630fe1e, Inputs/portfolio/rehearsal-6630fe1e/notes.md). This forces them on for the run (r.ForceDebugViewModes 1,
+ * set by code) and applies the view mode's show flags. Returns false (and changes nothing) for Lit.
+ */
+SAILINGSIM_API bool ApplyFilmViewMode(class UGameViewportClient* Viewport);
