@@ -51,7 +51,7 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
 - After the merge (code only): she is on the Boat screen and in the pause menu's boat row (the `kShipsListed` guard and the
   boat cycle's skip are gone; in Career she stays locked until `career.json` opens her, Free Sail shows her); the rig's
   and frames' bind log is quiet until the outside model has loaded and counts its parts apart ("with the outside model");
-  the helmsman stands 1.05 m abaft the wheel's axle (`FWalkMap::HelmAbaftWheelAxle`: the walk bake's 0.7 m put his eye
+  the helmsman stands 1.65 m abaft the wheel's axle (`FWalkMap::HelmAbaftWheelAxle`: the walk bake's 0.7 m put his eye
   inside the after wheel; `walk.py`'s `HELM_BEHIND_WHEEL` should move with the next bake).
 - Not yet: the berth deck's placed copies (hammocks, messes, chests: `placed` owner ship), the lanterns (`lights`), the
   twin by distance rather than tier, and the boat card and boat cycle guards. The decks' planking (seams, butts, plugs,

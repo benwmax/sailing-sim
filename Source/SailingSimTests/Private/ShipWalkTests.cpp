@@ -96,8 +96,8 @@ bool FShipWalkHelmStandTest::RunTest(const FString& Parameters)
 	// Commonwealth's first bake: the spot 0.7 m abaft the axle at -22.25 stands back to 1.05 m abaft it.
 	TestEqual(TEXT("a spot inside the wheel stands back"), FWalkMap::HelmStandX(-22.95, -22.25), -22.25 - FWalkMap::HelmAbaftWheelAxle);
 	// A spot already clear of the wheel, or a tiller boat's spot forward of a wheel frame it does not have, is kept.
-	TestEqual(TEXT("a spot clear of the wheel is kept"), FWalkMap::HelmStandX(-23.6, -22.25), -23.6);
-	TestEqual(TEXT("the standoff is a stride, not a cabin"), FWalkMap::HelmAbaftWheelAxle > 0.9 && FWalkMap::HelmAbaftWheelAxle < 1.3, true);
+	TestEqual(TEXT("a spot clear of the wheel is kept"), FWalkMap::HelmStandX(-24.2, -22.25), -24.2);
+	TestEqual(TEXT("the standoff is a stride past the after wheel, not a cabin"), FWalkMap::HelmAbaftWheelAxle > 1.4 && FWalkMap::HelmAbaftWheelAxle < 2.0, true);
 	return true;
 }
 

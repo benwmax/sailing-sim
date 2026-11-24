@@ -82,10 +82,11 @@ namespace Sailing
 		const FWalkSpot* SpotNamed(const char* Name) const;
 
 		/** A helmsman stands this far abaft a double wheel's axle (the midpoint between its wheels): half the 44 in between
-		 *  Commonwealth's wheels (0.56 m) and half a metre back from the after wheel's plane, his arms bent to the spokes.
-		 *  A walk file's "Helm" spot baked nearer than this (the first bake's 0.7 m put the eye inside the after wheel's
-		 *  rim) stands back to it: HelmStandX. */
-		static constexpr double HelmAbaftWheelAxle = 1.05;
+		 *  Commonwealth's wheels (0.56 m) and 1.1 m back from the after wheel's plane, where the whole wheel (66 in across,
+		 *  its top at 2 m) shows at hand height in the game's wide view. A walk file's "Helm" spot baked nearer than this
+		 *  (the first bake's 0.7 m put the eye inside the after wheel's rim; 1.05 m filled the frame with it) stands back
+		 *  to it: HelmStandX. */
+		static constexpr double HelmAbaftWheelAxle = 1.65;
 		/** Where the helmsman stands along the ship for a Helm spot at SpotX and a wheel whose axle midpoint is at WheelX
 		 *  (ship frame, +X forward): the spot itself, unless it is forward of HelmAbaftWheelAxle abaft the axle. */
 		static double HelmStandX(double SpotX, double WheelX);
