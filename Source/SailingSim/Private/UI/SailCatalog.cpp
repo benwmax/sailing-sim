@@ -1,4 +1,5 @@
 #include "UI/SailCatalog.h"
+#include "UI/SailSplash.h"
 #include "SailSession.h"
 #include "SailSave.h"
 #include "BoatModel.h"
@@ -459,7 +460,11 @@ const TArray<SailCatalog::FRealDay>& SailCatalog::RealDays()
 
 namespace SailCatalog
 {
-	const TCHAR* const UnrealNotice = TEXT("Made with Unreal Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc.");
+	FString UnrealNotice()
+	{
+		return FString::Printf(TEXT("Ready About: Sailing uses Unreal® Engine. Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere. Unreal® Engine, Copyright 1998 – %d, Epic Games, Inc. All rights reserved."),
+			FDateTime::UtcNow().GetYear());
+	}
 
 	FString CreditsPath()
 	{
@@ -514,7 +519,7 @@ namespace SailCatalog
 	TArray<FCreditLine> ParseCredits(const FString& Markdown)
 	{
 		TArray<FCreditLine> Out;
-		Out.Add({ ECreditKind::Notice, UnrealNotice });
+		Out.Add({ ECreditKind::Notice, UnrealNotice() });
 		TArray<FString> Lines;
 		Markdown.ParseIntoArrayLines(Lines, false);
 		bool bOpen = false;   // the last line is a paragraph or bullet that the next indented or plain line continues
@@ -572,9 +577,15 @@ namespace SailCatalog
 	TArray<FCreditLine> Credits()
 	{
 		FString Text;
-		if (FFileHelper::LoadFileToString(Text, *CreditsPath())) return ParseCredits(Text);
+		if (FFileHelper::LoadFileToString(Text, *CreditsPath()))
+		{
+			TArray<FCreditLine> Parsed = ParseCredits(Text);
+			// NVIDIA's RTX SDKs licence (supplement 7.1b): attribute DLSS in the credits of a game that ships it.
+			if (SailSplash::NvidiaPluginPresent()) Parsed.Insert({ ECreditKind::Notice, SailSplash::NvidiaAttribution() + TEXT(".") }, 1);
+			return Parsed;
+		}
 		TArray<FCreditLine> Out;
-		Out.Add({ ECreditKind::Notice, UnrealNotice });
+		Out.Add({ ECreditKind::Notice, UnrealNotice() });
 		Out.Add({ ECreditKind::Paragraph, TEXT("CREDITS.md is missing from this build.") });
 		return Out;
 	}
