@@ -1,0 +1,43 @@
+2026-11-24 07:16:24 M0 worktree at 9291fbf6 (Merge pull request #819 from benwmax/claude/project-thread-xkunbh); origin/main 9291fbf6; merges since 906c9034: 9291fbf6c Merge pull request #819 from benwmax/claude/project-thread-xkunbh / 561e652cb Merge pull request #820 from benwmax/claude/project-thread-q73bv9 / cd2090dd4 Merge pull request #818 from benwmax/claude/project-thread-pjm0nn / e0a1125dc Merge pull request #817 from benwmax/claude/project-thread-q73bv9
+2026-11-24 07:19:27 M1 BUILD: Result: Succeeded; errors 0
+2026-11-24 09:54:09 M2 all tests (SailingSim): 460 tests, succeeded 426, failed 0, with warnings 34, not run 0; 155 min
+2026-11-24 09:54:09   Audio: 9 tests, failed 0
+2026-11-24 09:54:09   Career: 15 tests, failed 0
+2026-11-24 09:54:09   Coast: 21 tests, failed 0
+2026-11-24 09:54:09   Drills: 10 tests, failed 0
+2026-11-24 09:54:09   Feedback: 1 tests, failed 0
+2026-11-24 09:54:09   Fleet: 19 tests, failed 0
+2026-11-24 09:54:09   Geo: 5 tests, failed 0
+2026-11-24 09:54:09   Lake: 19 tests, failed 0
+2026-11-24 09:54:09   Physics: 96 tests, failed 0
+2026-11-24 09:54:09   Prologue: 5 tests, failed 0
+2026-11-24 09:54:09   Race: 2 tests, failed 0
+2026-11-24 09:54:09   Save: 7 tests, failed 0
+2026-11-24 09:54:09   Scene: 1 tests, failed 0
+2026-11-24 09:54:09   ShipFrames: 5 tests, failed 0
+2026-11-24 09:54:09   ShipOrders: 4 tests, failed 0
+2026-11-24 09:54:09   ShipOutside: 3 tests, failed 0
+2026-11-24 09:54:09   ShipRig: 3 tests, failed 0
+2026-11-24 09:54:09   ShipWalk: 7 tests, failed 0
+2026-11-24 09:54:09   Skin: 10 tests, failed 0
+2026-11-24 09:54:09   Slice: 3 tests, failed 0
+2026-11-24 09:54:09   Smoke: 36 tests, failed 0
+2026-11-24 09:54:09   Traffic: 8 tests, failed 0
+2026-11-24 09:54:09   UI: 44 tests, failed 0
+2026-11-24 09:54:09   Visual: 108 tests, failed 0
+2026-11-24 09:54:09   Water: 3 tests, failed 0
+2026-11-24 09:54:09   Weather: 8 tests, failed 0
+2026-11-24 09:54:09   World: 8 tests, failed 0
+2026-11-24 09:59:06 M3 Dev PACKAGE exit 0, exe True, 5 min; LogInit: Display: Success - 0 error(s), 1 warning(s)
+2026-11-24 09:59:07 Bean's Saved held
+2026-11-24 10:08:24 M4 16 views: 16 bench.json; mean 71.4 fps
+2026-11-24 10:08:50 M5 crew r1: 61.8 fps, p99 21.17, gpu 11.34, game 10.81, render 16.17
+2026-11-24 10:09:17 M5 crew r2: 60.4 fps, p99 21.28, gpu 11.33, game 11.07, render 16.53
+2026-11-24 10:09:43 M5 crew r3: 60.6 fps, p99 21.81, gpu 11.3, game 10.81, render 16.49
+2026-11-24 10:10:12 M6 frigate-wide png True; LogSailing: Ship outside Commonwealth: 244 parts to load (heroes) / LogSailing: Ship rig Commonwealth: 0 parts on the model, 0 to load, 87 not in the project / LogSailing: Ship frames Commonwealth: 0 parts on the model, 12 to load, 0 not in the project / LogSailing: Ship outside Commonwealth: 244 parts on the boat, 0 did not load / LogSailing: Ship rig Commonwealth: 87 parts on the model, 0 to load, 0 not in the project
+2026-11-24 10:10:40 M6 frigate-deck png True; LogSailing: Ship outside Commonwealth: 244 parts to load (heroes) / LogSailing: Ship rig Commonwealth: 0 parts on the model, 0 to load, 87 not in the project / LogSailing: Ship frames Commonwealth: 0 parts on the model, 12 to load, 0 not in the project / LogSailing: Ship outside Commonwealth: 244 parts on the boat, 0 did not load / LogSailing: Ship rig Commonwealth: 87 parts on the model, 0 to load, 0 not in the project
+2026-11-24 10:11:05 M6 frigate-gundeck png True; LogSailing: Ship outside Commonwealth: 244 parts to load (heroes) / LogSailing: Ship rig Commonwealth: 0 parts on the model, 0 to load, 87 not in the project / LogSailing: Ship frames Commonwealth: 0 parts on the model, 12 to load, 0 not in the project / LogSailing: Ship outside Commonwealth: 244 parts on the boat, 0 did not load / LogSailing: Ship rig Commonwealth: 87 parts on the model, 0 to load, 0 not in the project / LogSailing: -SailingWalkAt: walking on Gun at (-19.00, 0.00) facing 0
+2026-11-24 10:11:07 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-24 10:11:08 M9 crew link removed (the link only); crew files 541
+2026-11-24 10:11:10 M9 worktree removed: True
+2026-11-24 10:11:10 MAINFULL 9291fbf6 DONE
