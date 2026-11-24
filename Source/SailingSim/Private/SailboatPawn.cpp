@@ -766,6 +766,9 @@ void ASailboatPawn::RebuildBoatVisuals()
 		const FLinearColor Cloth = Skin.Sails.Cloth.GetValue();
 		SailColor = FLinearColor(Cloth.R * 0.77f, Cloth.G * 0.77f, Cloth.B * 0.77f);
 	}
+	// Film mode's lighting-only pass: neutral cloth (its colour comes through the transmission, which the show flag
+	// leaves alone).
+	if (FilmViewMode() == EFilmViewMode::LightingOnly) SailColor = FLinearColor(0.5f, 0.5f, 0.5f);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(MainSail->GetMaterial(0))) Mid->SetVectorParameterValue(TEXT("Color"), SailColor);
 	if (UMaterialInstanceDynamic* Mid = Cast<UMaterialInstanceDynamic>(JibSail->GetMaterial(0)))
 	{
@@ -5180,7 +5183,7 @@ void ASailboatPawn::SetupCapture()
 	if (!FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), CaptureName)) CaptureName = TEXT("capture");
 
 	// Film mode's layer passes (-SailingViewMode=wireframe|lightingonly|unlit): the editor's view modes on this viewport.
-	if (GEngine) ApplyFilmViewMode(GEngine->GameViewport);
+	if (GEngine) ApplyFilmViewMode(GEngine->GameViewport, GetWorld());
 
 	// Film mode (FilmMode.h): the tripod's stand and lens, or the shot file's move (a shot that doesn't load falls back to
 	// the chase camera, with the reason in the log, rather than filming nothing).

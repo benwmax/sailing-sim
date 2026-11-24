@@ -2,6 +2,7 @@
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "Dom/JsonObject.h"
+#include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "HAL/IConsoleManager.h"
 #include "RenderUtils.h"
@@ -364,26 +365,33 @@ EFilmViewMode FilmViewMode()
 	return Mode;
 }
 
-bool ApplyFilmViewMode(UGameViewportClient* Viewport)
+bool ApplyFilmViewMode(UGameViewportClient* Viewport, UWorld* World)
 {
 	const EFilmViewMode Mode = FilmViewMode();
 	if (Mode == EFilmViewMode::Lit || !Viewport) return false;
-	// Debug view modes on for this run: the engine's proxies (the sails' and the water's procedural meshes among them)
-	// draw their wireframe only when AllowDebugViewmodes() says so, and the game viewport keeps such a mode lit otherwise.
-	if (IConsoleVariable* Force = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ForceDebugViewModes")))
+	const TCHAR* Name = Mode == EFilmViewMode::Wireframe ? TEXT("wireframe") : Mode == EFilmViewMode::LightingOnly ? TEXT("lighting only") : TEXT("unlit");
+	// The engine's own test: debug view modes need their shaders in the cook (r.ForceDebugViewModes 1 in the config when
+	// cooking). Forcing them on at run time in a package cooked without them crashed on the first frame (a skeletal mesh's
+	// dynamic elements) and the launch-arg route failed to find FDebugViewModePS (PC on #828 at 89ec83ed).
+	if (AllowDebugViewmodes())
 	{
-		Force->Set(1, ECVF_SetByCode);
+		const EViewModeIndex Index = Mode == EFilmViewMode::Wireframe ? VMI_Wireframe
+			: Mode == EFilmViewMode::LightingOnly ? VMI_LightingOnly : VMI_Unlit;
+		Viewport->ViewModeIndex = Index;
+		ApplyViewMode(Index, true, Viewport->EngineShowFlags);
+		SAIL_LOG(Display, TEXT("Film view mode: %s (the engine's view mode)"), Name);
+		return true;
 	}
-	else
+	// Without them, lighting only still works through its show flag (the normal shaders: the hull, deck and water go
+	// grey; the sails' marks and colour are taken off by the pawn). Wireframe and unlit don't: the procedural and skinned
+	// meshes would stay lit.
+	if (Mode == EFilmViewMode::LightingOnly && World && GEngine)
 	{
-		SAIL_LOG(Warning, TEXT("Film: no r.ForceDebugViewModes in this build: the view mode may render lit"));
+		GEngine->Exec(World, TEXT("ShowFlag.LightingOnlyOverride 1"));
+		SAIL_LOG(Display, TEXT("Film view mode: lighting only (ShowFlag.LightingOnlyOverride: this package has no debug view modes)"));
+		return true;
 	}
-	const EViewModeIndex Index = Mode == EFilmViewMode::Wireframe ? VMI_Wireframe
-		: Mode == EFilmViewMode::LightingOnly ? VMI_LightingOnly : VMI_Unlit;
-	Viewport->ViewModeIndex = Index;
-	ApplyViewMode(Index, true, Viewport->EngineShowFlags);
-	SAIL_LOG(Display, TEXT("Film view mode: %s (r.ForceDebugViewModes 1, debug view modes %s)"),
-		Mode == EFilmViewMode::Wireframe ? TEXT("wireframe") : Mode == EFilmViewMode::LightingOnly ? TEXT("lighting only") : TEXT("unlit"),
-		AllowDebugViewmodes() ? TEXT("allowed") : TEXT("still refused"));
-	return true;
+	SAIL_LOG(Warning, TEXT("Film view mode: %s needs a package cooked with debug view modes (r.ForceDebugViewModes=1 in "
+		"the config when cooking); this one has none, so the frames stay lit"), Name);
+	return false;
 }

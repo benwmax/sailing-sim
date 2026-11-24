@@ -113,7 +113,7 @@ bool FFilmSwitchesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("unlit"), ParseFilmViewMode(TEXT("unlit")) == EFilmViewMode::Unlit);
 	TestTrue(TEXT("an unknown name stays lit"), ParseFilmViewMode(TEXT("shadercomplexity")) == EFilmViewMode::Lit);
 	TestTrue(TEXT("no switch: lit"), FilmViewMode() == EFilmViewMode::Lit);
-	TestFalse(TEXT("lit leaves the viewport alone"), ApplyFilmViewMode(nullptr));
+	TestFalse(TEXT("lit leaves the viewport alone"), ApplyFilmViewMode(nullptr, nullptr));
 
 	// The tripod: distance, height and lens from -SailingTripod, defaults for what is left out.
 	const FFilmTripod T = FFilmTripod::Parse(TEXT("35,2.5,18,0.3"));
