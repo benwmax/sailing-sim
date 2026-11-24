@@ -300,9 +300,10 @@ float CaptureMotionBlurAmount(const TCHAR* CommandLine)
 TArray<FQualityCVar> FilmQualityCVars()
 {
 	TArray<FQualityCVar> V;
-	// Clouds traced at full resolution (mode 3, the engine's cinematic mode): Ultra's half-resolution trace stair-stepped
-	// the cumulus edges at 4K (Inputs/reel-test/README.md, the worst flaw in the capture test). More samples to go with it.
-	V.Add({ TEXT("r.VolumetricRenderTarget.Mode"), 3.f });
+	// Clouds by mode 0 (a quarter-resolution trace rebuilt over frames) with more samples. Mode 3 (full resolution, the
+	// engine's cinematic mode) left dark stipple in the shaded cloud bases on the film tripod and mode 1 was worse; mode 0
+	// softened most of it at the same 1.19 s a frame (Inputs/bench/cloud-blocks/followup/, the PC on #818).
+	V.Add({ TEXT("r.VolumetricRenderTarget.Mode"), 0.f });
 	V.Add({ TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), 512.f });
 	// The water's reflections at full resolution (the tiers trace them at half and denoise): the combed, dithered stripes
 	// in the tripod run's reflection under the boat. Lumen's own reflections at full resolution too.

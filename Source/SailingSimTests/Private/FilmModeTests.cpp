@@ -99,11 +99,11 @@ bool FFilmSwitchesTest::RunTest(const FString& Parameters)
 	bool bClouds = false, bWater = false;
 	for (const FQualityCVar& C : FilmQualityCVars())
 	{
-		bClouds |= FCString::Strcmp(C.Name, TEXT("r.VolumetricRenderTarget.Mode")) == 0 && C.Value == 3.f;
+		bClouds |= FCString::Strcmp(C.Name, TEXT("r.VolumetricRenderTarget.Mode")) == 0 && C.Value == 0.f;
 		bWater |= FCString::Strcmp(C.Name, TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor")) == 0 && C.Value == 1.f;
 		TestNotNull(FString::Printf(TEXT("%s exists"), C.Name), IConsoleManager::Get().FindConsoleVariable(C.Name));
 	}
-	TestTrue(TEXT("clouds traced at full resolution"), bClouds);
+	TestTrue(TEXT("clouds rebuilt over frames (mode 0: no stipple in the bases)"), bClouds);
 	TestTrue(TEXT("the water's reflections at full resolution"), bWater);
 
 	// The tripod: distance, height and lens from -SailingTripod, defaults for what is left out.
