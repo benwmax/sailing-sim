@@ -144,8 +144,8 @@ struct SAILINGSIM_API FFilmTripod
 /** The capture's motion blur: 0 (the reference stills), or -SailingMotionBlur=<a>, or 0.5 with -SailingFilm. */
 SAILINGSIM_API float CaptureMotionBlurAmount(const TCHAR* CommandLine);
 
-/** The film quality boost's console variables (applied after the tier's, -SailingFilm only): the clouds traced at full
- *  resolution, the water's and Lumen's reflections at full resolution, a longer TSR history. */
+/** The film quality boost's console variables (applied after the tier's, -SailingFilm only): the clouds rebuilt over
+ *  frames with more samples (mode 0), the water's and Lumen's reflections at full resolution, a longer TSR history. */
 SAILINGSIM_API TArray<FQualityCVar> FilmQualityCVars();
 
 /** -SailingFilm on this run's command line (re-read on each bench-list swap). */
