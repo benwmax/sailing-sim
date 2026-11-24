@@ -110,6 +110,11 @@ TArray<FQualityCVar> QualityCVars(ESailingQuality Quality)
 	// Ray tracing is compiled in on demand; only High turns it on, for Lumen's hardware ray tracing.
 	V.Add({ TEXT("r.RayTracing.Enable"), bHigh ? 1.f : 0.f });
 	V.Add({ TEXT("r.Lumen.HardwareRayTracing"), bHigh ? 1.f : 0.f });
+	// Feedback #32: the engine keeps every loaded mesh's last LOD built for ray tracing whether or not the ray-tracing scene
+	// uses it ("always resident"). On Galveston that was 88.8 MiB, 86 of it unreferenced: 508 baked shore tiles, 1,202 house
+	// tiles, the bridges, the groom cards (Inputs/bench/rt-resident-32, the engine's DumpUnreferencedAlwaysResidentGeometries).
+	// With none always resident a mesh is built when the ray-tracing scene first references it and kept in the 400 MB pool.
+	V.Add({ TEXT("r.RayTracing.NumAlwaysResidentLODs"), 0.f });
 	// Visual V6: MegaLights on High shadows the night's street, dock and waterfront lights (ANightLightsActor) at a fixed
 	// cost; Medium lights them unshadowed.
 	V.Add({ TEXT("r.MegaLights.EnableForProject"), bHigh ? 1.f : 0.f });
