@@ -1,0 +1,10 @@
+2026-11-24 11:31:54 P- reusing my partial worktree D:\dev\ss-fix-wt\pr824
+2026-11-24 11:32:22 M0 worktree at fdaa4352 (Capture telemetry: no flush on the game thread (helm-eye hitch)); origin/main 9291fbf6; merges since 906c9034: fdaa43523 Capture telemetry: no flush on the game thread (helm-eye hitch) / 6630fe1eb Merge pull request #821 from benwmax/claude/project-thread-xkunbh / 9291fbf6c Merge pull request #819 from benwmax/claude/project-thread-xkunbh / 561e652cb Merge pull request #820 from benwmax/claude/project-thread-q73bv9 / cd2090dd4 Merge pull request #818 from benwmax/claude/project-thread-pjm0nn / e0a1125dc Merge pull request #817 from benwmax/claude/project-thread-q73bv9
+2026-11-24 11:35:07 M1 BUILD: Result: Succeeded; errors 0
+2026-11-24 11:35:43 M2 SailingSim.Smoke: 36 tests, succeeded 35, failed 0, with warnings 1, not run 0; 1 min
+2026-11-24 11:35:43   Smoke: 36 tests, failed 0
+2026-11-24 11:39:12 M3 Dev PACKAGE exit 0, exe True, 3 min; LogInit: Display: Success - 0 error(s), 1 warning(s)
+2026-11-24 11:41:38 M4 helm-eye x3: R helm-eye-r1: 48.7 fps, p99 30.1, max 230.08; frames over 30 ms: #3 t 1.274s 893.3ms (game 79.222, render 624.730, rhi 139.226, gpu 23.965) ; #0 t 0.400s 767.0 | R helm-eye-r2: 65.9 fps, p99 22.36, max 37.15; frames over 30 ms: #0 t 0.400s 784.2ms (game 0.000, render 1516.434, rhi 396.801, gpu 254.276) ; #1 t 0.773s 373. | R helm-eye-r3: 66.4 fps, p99 21.96, max 41.57; frames over 30 ms: #0 t 0.400s 739.2ms (game 0.000, render 1399.873, rhi 333.085, gpu 256.226) ; #1 t 0.770s 370.
+2026-11-24 11:41:39 M9 crew link removed (the link only); crew files 541
+2026-11-24 11:41:41 M9 worktree removed: True
+2026-11-24 11:41:41 PR824 fdaa4352 DONE
