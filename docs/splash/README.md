@@ -6,13 +6,13 @@ skips it; fade in and out.
 
 ## What this page's PR does (code only, no label needed)
 
-- `SSailSplash` (`Source/SailingSim/Private/UI/SailSplash.cpp`): black, then the name over slow wave lines with a faint
-  reflection, "Made with Unreal Engine" bottom left, and in a build that contains NVIDIA's DLSS plugin an NVIDIA DLSS
+- `SSailSplash` (`Source/SailingSim/Private/UI/SailSplash.cpp`): a dark backdrop, then the name and "Sailing" (no water
+  animation: Bean found the waves cheap, Nov 24), "Made with Unreal Engine" bottom left, and in a build that contains NVIDIA's DLSS plugin an NVIDIA DLSS
   block bottom right. It fades in over 0.6 s, holds 3 s, fades out over 0.6 s. Any key, click or pad button skips it
   (a 0.25 s fade). It is added by `ASailingHUD::OpenSplash` above the front end, once per process (`SailSplash::Wanted`),
   so the cast-off map reload never shows it again. Off for measuring runs, `-SailingFrontEnd=`, `-SailingUIScript=` and
   `-SailingNoSplash`.
-- Still hook: `-SailingFrontEnd=Splash` shows the splash alone, held at full opacity (the water keeps moving, input is
+- Still hook: `-SailingFrontEnd=Splash` shows the splash alone, held at full opacity (input is
   ignored, it never finishes), and `SailSplash::Wanted()` lets that one case through although stills run with
   `-SailingBench`. Example: `scripts/run-game.sh 8 -SailingFrontEnd=Splash -SailingShot=splash`; copy the shot to
   `docs/splash/`. Any other `-SailingFrontEnd=` value or `-SailingUIScript=` still skips the splash.

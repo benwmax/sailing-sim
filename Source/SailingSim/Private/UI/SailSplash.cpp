@@ -101,57 +101,6 @@ namespace SailSplash
 		TFunction<void()> SkipFn;
 	};
 
-namespace
-{
-	/** Slow wave lines across the lower third, and a faint broken reflection of the name: a hull on a calm lake. */
-	class SSplashWater : public SLeafWidget
-	{
-	public:
-		SLATE_BEGIN_ARGS(SSplashWater) {}
-			SLATE_ATTRIBUTE(double, Time)
-		SLATE_END_ARGS()
-
-		void Construct(const FArguments& A) { Time = A._Time; }
-		virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(10.0, 10.0); }
-		virtual int32 OnPaint(const FPaintArgs&, const FGeometry& G, const FSlateRect&, FSlateWindowElementList& Out, int32 Layer,
-			const FWidgetStyle& Style, bool) const override
-		{
-			const double T = Time.Get(0.0);
-			const FVector2f Size = G.GetLocalSize();
-			const float W = Size.X, H = Size.Y;
-			if (W < 8.f || H < 8.f) return Layer;
-			const float Horizon = H * 0.62f;
-			const FLinearColor Tint = Style.GetColorAndOpacityTint();
-			const FLinearColor Aqua = SailUI::Accent;
-			// The reflection: slices of the title's width that wobble sideways and fade with depth.
-			const int32 Slices = 14;
-			for (int32 S = 0; S < Slices; ++S)
-			{
-				const float Y = Horizon + H * (0.012f + S * 0.014f);
-				const float Alpha = 0.11f * (1.f - float(S) / Slices);
-				const float Off = FMath::Sin(float(T) * 0.9f + S * 0.8f) * W * 0.006f * (1.f + S * 0.2f) + (S % 3) * W * 0.01f;
-				const float Half = W * 0.25f * (0.9f - S * 0.02f);
-				TArray<FVector2f> Pts = { FVector2f(W * 0.5f - Half + Off, Y), FVector2f(W * 0.5f + Half + Off, Y) };
-				FSlateDrawElement::MakeLines(Out, Layer, G.ToPaintGeometry(), Pts, ESlateDrawEffect::None,
-					FLinearColor(0.75f, 0.9f, 0.91f, Alpha) * Tint, true, FMath::Max(1.f, H * 0.0035f));
-			}
-			for (int32 L = 0; L < 7; ++L)
-			{
-				const float Y0 = Horizon + H * (0.03f + L * 0.05f), Amp = H * (0.004f + L * 0.0016f);
-				const float K = 2.f * PI / (W * (0.22f - L * 0.012f)), Sp = 0.35f + L * 0.07f;
-				TArray<FVector2f> Pts;
-				for (float X = 0.f; X <= W; X += 10.f)
-					Pts.Add(FVector2f(X, Y0 + FMath::Sin(X * K + float(T) * Sp + L * 1.7f) * Amp + FMath::Sin(X * K * 2.3f - float(T) * Sp * 0.6f) * Amp * 0.4f));
-				FSlateDrawElement::MakeLines(Out, Layer + 1, G.ToPaintGeometry(), Pts, ESlateDrawEffect::None,
-					FLinearColor(Aqua.R, Aqua.G, Aqua.B, 0.07f + L * 0.018f) * Tint, true, FMath::Max(1.f, H * 0.0022f));
-			}
-			return Layer + 2;
-		}
-	private:
-		TAttribute<double> Time;
-	};
-}
-
 
 void SSailSplash::Construct(const FArguments& A)
 {
@@ -190,7 +139,6 @@ void SSailSplash::Construct(const FArguments& A)
 	}
 
 	Content = SNew(SOverlay)
-		+ SOverlay::Slot()[ SNew(SSplashWater).Time_Lambda([this]() { return T; }) ]
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 0.f, 120.f))
 		[
 			SNew(SVerticalBox)
@@ -232,7 +180,7 @@ void SSailSplash::Advance(float DeltaSeconds)
 {
 	if (bDone) return;
 	T += FMath::Clamp(double(DeltaSeconds), 0.0, 0.1);   // a hitch (a map loading behind it) must not eat the hold
-	if (bHold) T = FMath::Min(T, SailSplash::FadeInSeconds + 0.5 * SailSplash::HoldSeconds);   // a still: full opacity, water still moving
+	if (bHold) T = FMath::Min(T, SailSplash::FadeInSeconds + 0.5 * SailSplash::HoldSeconds);   // a still: full opacity
 	if (Content.IsValid()) Content->SetRenderOpacity(SailSplash::ContentAlpha(T, SkippedAt));
 	if (Backdrop.IsValid()) Backdrop->SetRenderOpacity(SailSplash::BackdropAlpha(T, SkippedAt));
 	if (SailSplash::IsFinished(T, SkippedAt))
