@@ -453,10 +453,17 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	const FBoatModelMeshes Model = ModelMeshesFor(Boat.GetConfig().Type);
 	bModelTravelerBridge = Model.bTravelerBridge;
+	// A ship's outside model from her export (docs/frigate-import/, ShipOutsideVisuals.cpp): loaded under BoatRoot by
+	// BindShipOutside below; no stand-in hull, foils, spars or deck structure under it.
+	bShipOutsideModel = !Model.Hull && HasShipOutsideModel();
 	if (Model.Hull)
 	{
 		HullMesh->ClearAllMeshSections();
 		BuildModelVisuals(Model);
+	}
+	else if (bShipOutsideModel)
+	{
+		HullMesh->ClearAllMeshSections();
 	}
 	else
 	{
@@ -471,7 +478,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	// Keels, boards and rudders (a slender cat hull's own lift has no part to show).
 	for (const FFoilDef& F : C.Foils)
 	{
-		if (ModelHull) break; // the model has its own keel, rudder and tiller
+		if (ModelHull || bShipOutsideModel) break; // the model has its own keel, rudder and tiller
 		if (F.Role == EFoilRole::HullLateral) continue;
 		const double Span = F.Span(), Chord = F.Params.Chord, Thick = 0.06 * Chord + 0.015;
 		if (F.Role != EFoilRole::Rudder)
@@ -495,7 +502,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 
 	// Mast, boom, forestay.
-	if (!ModelHull)
+	if (!ModelHull && !bShipOutsideModel)
 	{
 	AddBoatPart(CylinderMesh, ToCm(C.MastX, 0.0, 0.5 * (DeckZ + C.MastheadZ)), FVector(C.MastDiameter, C.MastDiameter, C.MastheadZ - DeckZ) * CmPerMeter, Spar);
 	BoomPivot->SetRelativeLocation(ToCm(C.MainLuffX, 0.0, C.BoomZ));
@@ -522,7 +529,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 
 	// Deck structure: a cabin on the keelboats; beams and trampolines on the cats; akas and nets on the trimaran.
 	const double Loa = C.LengthOverall;
-	switch (ModelHull ? EBoatType::Count : C.Type)
+	switch (ModelHull || bShipOutsideModel ? EBoatType::Count : C.Type)
 	{
 	case EBoatType::J22: case EBoatType::Catalina22: case EBoatType::Catalina30:
 	{
@@ -785,6 +792,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
 	MainSail->ClearAllMeshSections();
+	if (bShipOutsideModel)   // her sails are the outside model's, shown by the rig's pose: no stand-in cloth beside them
+	{
+		MainSail->SetVisibility(false);
+		JibSail->SetVisibility(false);
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
+	}
 	SpinSail->ClearAllMeshSections();
 	SpinSail->SetVisibility(false);
 
@@ -815,6 +828,7 @@ void ASailboatPawn::RebuildBoatVisuals()
 	}
 	SailingPerf::KeepDynamicMeshesOutOfRayTracing(this);
 	LoadWalkMap();   // a ship you can walk (docs/ship-walk/): her map, and her decks below as you go down
+	BindShipOutside();   // a ship's outside model from her export (docs/frigate-import/)
 	BindShipRig();   // a ship's yards and sails on the model (docs/ship-rig/)
 	BindShipFrames();   // her tiller, wheel, doors and capstans (docs/ship-frames/)
 }
@@ -1521,6 +1535,7 @@ void ASailboatPawn::TickAfterPhysics(float DeltaSeconds)
 	if (!bTrafficBoat && !bGhost) UpdateRun(DeltaSeconds);
 	ApplyStateToTransform(true);
 	UpdateRigVisuals(DeltaSeconds);
+	UpdateShipOutside(DeltaSeconds);
 	UpdateShipRig(DeltaSeconds);
 	UpdateShipFrames(DeltaSeconds);
 	if (IsCaptureMode() && !bTrafficBoat) { SAILING_PERF_SCOPE(BoatCapture); UpdateCapture(DeltaSeconds); }

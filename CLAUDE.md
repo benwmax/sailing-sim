@@ -733,6 +733,10 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   `PreviewConditions`; views by `M_GalleryWire`; forced LOD, Nanite fallback, twins; tier compare through the engine's
   screenshot, in memory). Stills: `-SailingGallery=<asset>`, `-SailingGalleryLight=`, `-SailingGalleryView=`,
   `-SailingGalleryDetail=`, `-SailingGalleryCompare=Low,Ultra`.
+- Frigate import (`docs/frigate-import/`): `scripts/import_frigate.py <export dir>` imports her export (meshes at their json paths
+  under `/Game/Boats/Frigate/{Outside,Decks,Guns}`, light twins as `SM_Frigate_<Part>_Light`, `MI_Frigate_*` over
+  `M_BoatSurface`, the json tables to `Content/TerrainData/Ships/Commonwealth.*.json`). `ShipOutside.h` loads the outside
+  parts by state (`-SailingClassicFrigate`, `-SailingFrigateLight=0|1`); `SailingSim.ShipOutside.*`.
 - Capsize state is by `Quat::Tilt()` (0..180), not heel: a turtled boat reads heel near 0.
 - Calibration knobs, if the polar drifts: residuary table and `AddedResistanceCoef` (hull), sail `InducedAspectRatio`,
   keel/rudder area and `Center`. Don't tune to make a single test pass; check `--scenarios` too.
