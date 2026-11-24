@@ -105,3 +105,65 @@ took effect with `-SailingFilm` on. I didn't do a run without `-SailingFilm` to 
 **Other notes:**
 - Haze softens the frame toward the far edges. One small cumulus shows at 6 km (try 1).
 - No sailor is visible, and the boat is too small to see at these heights.
+
+## C) P5 then-and-now still
+
+**Launch:**
+```
+-SailingWeather=AfternoonBreeze -SailingWind=13 -SailingWindFrom=182 -SailingHour=15 -SailingDemo -SailingTWA=-46
+-SailingHoldTWA=-46 "-SailingStartAt=630,-560,228" -SailingBenchWarmup=25
+```
+- The start is the "Off Rush Creek, open water" spot.
+- The warm-up is 25 s so she's up to speed.
+- One frame at 25 s, game clock 15:00 + 29 s.
+- HUD off, crew hidden.
+
+**Port tack: yes, but only with `-SailingDemo`.**
+- Without it (try 1) `-SailingHoldTWA` does nothing. Nobody sails her, and she sat head to wind at 1.8 kn with the sheets
+  at 0. That's probably why the earlier run-game didn't give a port tack.
+- `-SailingTWA` sets the start heading and overrides the heading in `-SailingStartAt`.
+- With `-SailingDemo -SailingHoldTWA=<negative>`, the autopilot holds port tack. `-SailingDemo` alone would tack.
+- All of tries 2 to 5 were on port tack: TWA negative, heeled to starboard, toward the camera.
+
+**Her state in the final frame (try 5) against the target:**
+
+| | Target | Final frame |
+|---|---|---|
+| Heading | 228 | 218.7 |
+| TWA / TWD | | -49.0 / 169.8 |
+| AWA | 32 | 25.6 |
+| Heel to starboard | 12 deg | 9.5 deg |
+| Speed | 5.6 kn | 5.52 kn |
+| True wind | 13 kn | 13.3 kn |
+
+- The wind's direction wanders by 10 deg or more over a run (AfternoonBreeze shifts and gusts), so heading and AWA move
+  by several degrees.
+- Try 3 (hold -52, wind from 180) gave heading 225.2, AWA 41.6, heel 9.6 and 5.9 kn. Hitting 228 and 32 together would
+  need a specific moment in a longer run, or a steadier wind.
+- Heel tops out about 10-11 deg in 13 kn (`max_heel_deg` 10.8), a little under the 12 the target asks for.
+
+**Camera, final** (`p5-then-now.json`): `{"frame":"boat","fov":70,"keys":[{"t":0,"pos":[0.0,2.6,0.2],"look":[7,-57,0]}]}`.
+That's about 1.4 m off her starboard topsides, 0.2 m above the still water and level with the shrouds just aft of the
+mast. It looks 7 deg up and 57 deg toward the bow.
+- Starting from the given `pos [-0.3,2.2,0.3]`, `look [12,-65,0]` (try 1), the hull filled almost the whole frame, so
+  I moved the camera out.
+- A 10-15 deg upward look put the sheer below the middle of the frame. I settled on 7 deg as a compromise.
+- `C-tries-1080p.jpg` shows tries 1 to 4.
+
+**Composition** (`C-p5-then-now-4k.png`, `C-p5-then-now-1080p.jpg`):
+- The topsides fill the middle, with the sheer and rub rail across the upper middle (about 40% down).
+- "TX 1288 ZX" is under the sheer, right of centre.
+- Jib and mast are top centre, and there's sky top right.
+- Water fills the bottom fifth.
+- The bow sits about 10% in from the right edge rather than running off it. Moving forward (try 4) lost the mast at the
+  left edge, so this framing needs another pass by eye against the Oct 18 still.
+
+**Hull and water (flag, not hidden):**
+- Along the lee side, the waterline is a straight, smeared, flat edge. A band of hull shows below it down to the bottom
+  of the frame.
+- Only a small bow wave curls up at the stem.
+- From this low camera, the water against the hull reads flat and cut, not wrapped round the hull. I suspect the
+  hull-clip water drop seen from just above the surface, plus motion blur 0.5 on a camera that doesn't heel with her.
+- Visible in tries 2 to 5. It needs a look before Saturday's take.
+
+**Crew:** no sailor is visible in any C frame (`-SailingShowCrew=0`).
