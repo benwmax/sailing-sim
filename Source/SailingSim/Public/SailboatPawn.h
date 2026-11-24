@@ -734,6 +734,13 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UPointLightComponent>> DeckLamps;
 	TArray<int32> DeckLampDecks;
 	void SetDeckLamps(int32 Deck, bool bOn);
+	/** A ship's placed copies below (ShipOutside::FDeckTable: the frigate's berth deck hammocks, hooks, messes and chests)
+	 *  by walk-map deck: their meshes, loaded with the deck's; one instanced mesh per part, shown with the deck. Her
+	 *  lanterns (FLantern) are lit by SetDeckLamps with the deck's lamps. */
+	TArray<TArray<FSoftObjectPath>> DeckCopyPaths;
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> DeckCopies;
+	TArray<int32> DeckCopyDecks;
+	void SetDeckCopies(int32 Deck, bool bOn);
 	float BelowAdapt = 0.f;
 	void UpdateBelowAdapt(float DeltaSeconds);
 	void UpdateWalk(float DeltaSeconds);

@@ -85,6 +85,111 @@ namespace ShipOutside
 		return Out.Num() > 0;
 	}
 
+	FString WalkDeckOf(const FString& ExportDeck)
+	{
+		FString Head = ExportDeck;
+		int32 Cut = INDEX_NONE;
+		if (Head.FindChar(TEXT('_'), Cut)) Head = Head.Left(Cut);
+		if (Head == TEXT("GunDeck")) return TEXT("Gun");
+		if (Head == TEXT("BerthDeck")) return TEXT("Berth");
+		if (Head == TEXT("Orlop") || Head == TEXT("Hold")) return Head;
+		return FString();
+	}
+
+	bool ParseDecks(const FString& Json, FDeckTable& Out, FString* Error)
+	{
+		Out.Copies.Reset();
+		Out.Lanterns.Reset();
+		TSharedPtr<FJsonObject> Root;
+		if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Json), Root) || !Root.IsValid())
+		{
+			if (Error) *Error = TEXT("not json");
+			return false;
+		}
+		const TSharedPtr<FJsonObject>* Meshes = nullptr;
+		if (!Root->TryGetObjectField(TEXT("meshes"), Meshes) || !Meshes || !Meshes->IsValid())
+		{
+			if (Error) *Error = TEXT("no meshes");
+			return false;
+		}
+		auto Vec = [](const TSharedPtr<FJsonObject>& O, const TCHAR* Field, int32 N, double* V)
+		{
+			const TArray<TSharedPtr<FJsonValue>>* A = nullptr;
+			if (!O->TryGetArrayField(Field, A) || !A || A->Num() != N) return false;
+			for (int32 K = 0; K < N; ++K) V[K] = (*A)[K]->AsNumber();
+			return true;
+		};
+		const TSharedPtr<FJsonObject>* Placed = nullptr;
+		if (Root->TryGetObjectField(TEXT("placed"), Placed) && Placed && Placed->IsValid())
+		{
+			for (const TPair<FString, TSharedPtr<FJsonValue>>& Pair : (*Placed)->Values)
+			{
+				const TSharedPtr<FJsonObject> P = Pair.Value.IsValid() ? Pair.Value->AsObject() : nullptr;
+				if (!P.IsValid()) continue;
+				FString Owner, Collection, MeshName;
+				P->TryGetStringField(TEXT("owner"), Owner);
+				P->TryGetStringField(TEXT("collection"), Collection);
+				if (Owner != TEXT("ship") || !P->TryGetStringField(TEXT("mesh"), MeshName)) continue;
+				const FString Deck = WalkDeckOf(Collection);
+				if (Deck.IsEmpty()) continue;
+				const TSharedPtr<FJsonObject>* M = nullptr;
+				FString Asset;
+				if (!(*Meshes)->TryGetObjectField(MeshName, M) || !M || !M->IsValid() || !(*M)->TryGetStringField(TEXT("asset"), Asset) || Asset.IsEmpty()) continue;
+				double L[3] = { 0, 0, 0 }, Q[4] = { 0, 0, 0, 1 }, S[3] = { 1, 1, 1 };
+				if (!Vec(P, TEXT("location_cm"), 3, L)) continue;
+				Vec(P, TEXT("rotation_xyzw"), 4, Q);
+				Vec(P, TEXT("scale"), 3, S);
+				FDeckCopy C;
+				if (!(*M)->TryGetStringField(TEXT("part"), C.Part) || C.Part.IsEmpty())
+				{
+					int32 Cut = INDEX_NONE;
+					C.Part = MeshName.FindLastChar(TEXT('_'), Cut) ? MeshName.Mid(Cut + 1) : MeshName;
+				}
+				C.Asset = Asset + TEXT(".") + MeshName;
+				C.Deck = Deck;
+				// (The export's frame is the game's: X forward, Y to starboard, Z up, cm; the quaternion copies across.)
+				C.Transform = FTransform(FQuat(Q[0], Q[1], Q[2], Q[3]).GetNormalized(), FVector(L[0], L[1], L[2]), FVector(S[0], S[1], S[2]));
+				Out.Copies.Add(MoveTemp(C));
+			}
+		}
+		const TArray<TSharedPtr<FJsonValue>>* Lights = nullptr;
+		if (Root->TryGetArrayField(TEXT("lights"), Lights) && Lights)
+		{
+			for (const TSharedPtr<FJsonValue>& V : *Lights)
+			{
+				const TSharedPtr<FJsonObject> O = V.IsValid() ? V->AsObject() : nullptr;
+				if (!O.IsValid()) continue;
+				FLantern Lt;
+				FString Deck;
+				O->TryGetStringField(TEXT("name"), Lt.Name);
+				O->TryGetStringField(TEXT("deck"), Deck);
+				Lt.Deck = WalkDeckOf(Deck);
+				double L[3] = { 0, 0, 0 }, Rgb[3] = { 1, 0.62, 0.3 }, Lumens = 180.0, Radius = 0.0;
+				if (Lt.Deck.IsEmpty() || !Vec(O, TEXT("location_cm"), 3, L)) continue;
+				Lt.LocationCm = FVector(L[0], L[1], L[2]);
+				if (Vec(O, TEXT("colour_rgb"), 3, Rgb)) Lt.Colour = FLinearColor(float(Rgb[0]), float(Rgb[1]), float(Rgb[2]));
+				if (O->TryGetNumberField(TEXT("lumens"), Lumens)) Lt.Lumens = float(Lumens);
+				if (O->TryGetNumberField(TEXT("radius_cm"), Radius)) Lt.RadiusCm = float(Radius);
+				O->TryGetBoolField(TEXT("cast_shadows"), Lt.bCastShadows);
+				Out.Lanterns.Add(MoveTemp(Lt));
+			}
+		}
+		return true;
+	}
+
+	const FDeckTable* DecksFor(const char* ConfigName)
+	{
+		static TMap<FString, FDeckTable> Tables;
+		const FString Name = UTF8_TO_TCHAR(ConfigName ? ConfigName : "");
+		if (FDeckTable* Known = Tables.Find(Name)) return Known;
+		FDeckTable& Table = Tables.Add(Name);
+		FString Text, Error;
+		const FString Path = TablePath(Name);
+		if (!FFileHelper::LoadFileToString(Text, *Path, FFileHelper::EHashOptions::None, FILEREAD_Silent)) return &Table;
+		if (!ParseDecks(Text, Table, &Error)) SAIL_LOG(Warning, TEXT("Ship deck table %s: %s"), *Path, *Error);
+		return &Table;
+	}
+
 	FString GroupOf(const FString& PartName)
 	{
 		// Running_<Group>_<Set|Clewed|Furled>, Blocks_<Group>_<Set|Clewed|Furled>

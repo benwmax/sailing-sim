@@ -4,11 +4,13 @@
 #include "SailboatPawn.h"
 #include "SailingSim.h"
 #include "CannonBattery.h"
+#include "ShipOutside.h"
 #include "SailingSettings.h"
 #include "SailingBindings.h"
 #include "BenchRunner.h"
 #include "UI/SailUIStyle.h"
 #include "Camera/CameraComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
@@ -87,6 +89,10 @@ void ASailboatPawn::ClearDeckMeshes()
 	for (UPointLightComponent* Lamp : DeckLamps) if (Lamp) Lamp->DestroyComponent();
 	DeckLamps.Reset();
 	DeckLampDecks.Reset();
+	for (UInstancedStaticMeshComponent* Copies : DeckCopies) if (Copies) Copies->DestroyComponent();
+	DeckCopies.Reset();
+	DeckCopyDecks.Reset();
+	DeckCopyPaths.Reset();
 	for (TSharedPtr<FStreamableHandle>& Load : DeckLoads) if (Load.IsValid()) Load->ReleaseHandle();
 	DeckMeshes.Reset();
 	DeckLoads.Reset();
@@ -128,6 +134,16 @@ void ASailboatPawn::LoadWalkMap()
 		WalkMapName = Name;
 		const int32 N = int32(WalkMap.Decks.size());
 		for (int32 K = 0; K < N; ++K) DeckMeshPaths.Add(ShipWalkGame::DeckMeshPath(Name, WalkMap.Decks[K].Name));
+		// Her placed copies' meshes by deck (the frigate's berth deck), loaded with the deck's mesh.
+		DeckCopyPaths.SetNum(N);
+		if (const ShipOutside::FDeckTable* Table = ShipOutside::DecksFor(Boat.GetConfig().Name))
+		{
+			for (const ShipOutside::FDeckCopy& C : Table->Copies)
+			{
+				const int32 K = WalkMap.DeckNamed(TCHAR_TO_UTF8(*C.Deck));
+				if (K >= 0 && K < N && !DeckMeshPaths[K].IsNull()) DeckCopyPaths[K].AddUnique(FSoftObjectPath(C.Asset));
+			}
+		}
 		DeckMeshes.SetNum(N);
 		DeckLoads.SetNum(N);
 		DeckUnwantedSince.Init(-1.0, N);
@@ -339,9 +355,14 @@ void ASailboatPawn::UpdateDeckStreaming()
 		{
 			DeckUnwantedSince[K] = -1.0;
 			if (DeckMeshes[K]) continue;
-			if (!DeckLoads[K].IsValid()) DeckLoads[K] = UAssetManager::GetStreamableManager().RequestAsyncLoad(DeckMeshPaths[K]);
+			if (!DeckLoads[K].IsValid())
+			{
+				TArray<FSoftObjectPath> Wanted = DeckCopyPaths.IsValidIndex(K) ? DeckCopyPaths[K] : TArray<FSoftObjectPath>();
+				Wanted.Insert(DeckMeshPaths[K], 0);
+				DeckLoads[K] = UAssetManager::GetStreamableManager().RequestAsyncLoad(Wanted);
+			}
 			if (!DeckLoads[K].IsValid() || !DeckLoads[K]->HasLoadCompleted()) continue;
-			UStaticMesh* Mesh = Cast<UStaticMesh>(DeckLoads[K]->GetLoadedAsset());
+			UStaticMesh* Mesh = Cast<UStaticMesh>(DeckMeshPaths[K].ResolveObject());
 			if (!Mesh)
 			{
 				SAIL_LOG(Warning, TEXT("Deck mesh %s did not load"), *DeckMeshPaths[K].ToString());
@@ -356,6 +377,7 @@ void ASailboatPawn::UpdateDeckStreaming()
 			Part->SetCanEverAffectNavigation(false);
 			Part->RegisterComponent();
 			DeckMeshes[K] = Part;
+			SetDeckCopies(K, true);
 			SetDeckLamps(K, true);
 		}
 		else if (DeckMeshes[K] || DeckLoads[K].IsValid())
@@ -365,6 +387,7 @@ void ASailboatPawn::UpdateDeckStreaming()
 			{
 				if (DeckMeshes[K]) DeckMeshes[K]->DestroyComponent();
 				DeckMeshes[K] = nullptr;
+				SetDeckCopies(K, false);
 				SetDeckLamps(K, false);
 				if (DeckLoads[K].IsValid()) DeckLoads[K]->ReleaseHandle();
 				DeckLoads[K].Reset();
@@ -404,6 +427,78 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		DeckLamps.Add(Lamp);
 		DeckLampDecks.Add(Deck);
 	}
+	// Her lanterns from the export (the frigate's `lights`: the gun deck's, the berth deck's, the sick bay's, the orlop's
+	// light room), in her frame at each flame with the export's colour, lumens, reach and shadowing.
+	const ShipOutside::FDeckTable* Table = ShipOutside::DecksFor(Boat.GetConfig().Name);
+	if (!Table || Deck < 0 || Deck >= int32(WalkMap.Decks.size())) return;
+	const FString DeckName = UTF8_TO_TCHAR(WalkMap.Decks[Deck].Name.c_str());
+	for (const ShipOutside::FLantern& Lt : Table->Lanterns)
+	{
+		if (Lt.Deck != DeckName) continue;
+		UPointLightComponent* Lamp = NewObject<UPointLightComponent>(this);
+		Lamp->SetupAttachment(BoatRoot.Get());
+		Lamp->SetRelativeLocation(Lt.LocationCm);
+		Lamp->SetMobility(EComponentMobility::Movable);
+		Lamp->IntensityUnits = ELightUnits::Lumens;
+		Lamp->Intensity = Lt.Lumens;
+		Lamp->bUseTemperature = false;
+		Lamp->SetLightColor(Lt.Colour);
+		Lamp->AttenuationRadius = Lt.RadiusCm > 0.f ? Lt.RadiusCm : ShipWalkGame::LampReachCm;
+		Lamp->SourceRadius = 2.f;
+		Lamp->SetCastShadows(Lt.bCastShadows);
+		Lamp->RegisterComponent();
+		DeckLamps.Add(Lamp);
+		DeckLampDecks.Add(Deck);
+	}
+}
+
+void ASailboatPawn::SetDeckCopies(int32 Deck, bool bOn)
+{
+	for (int32 I = DeckCopies.Num() - 1; I >= 0; --I)
+	{
+		if (DeckCopyDecks[I] != Deck) continue;
+		if (DeckCopies[I]) DeckCopies[I]->DestroyComponent();
+		DeckCopies.RemoveAt(I);
+		DeckCopyDecks.RemoveAt(I);
+	}
+	if (!bOn || !BoatRoot || Deck < 0 || Deck >= int32(WalkMap.Decks.size())) return;
+	const ShipOutside::FDeckTable* Table = ShipOutside::DecksFor(Boat.GetConfig().Name);
+	if (!Table) return;
+	// The deck's placed copies (the frigate's 406 on the berth deck: hooks, hammocks, messes, chests), one instanced mesh
+	// per part in her frame (BoatRoot, no offset), drawn and shadowed, no collision; the parts the frames move (the
+	// tiller and its ropes, the doors) are theirs (ShipFrames.h), not copies. Off the distance field: she moves every
+	// frame, and an instanced set on a moving actor re-sends its instances to that scene each time (docs/recentre-hitch/).
+	const FString DeckName = UTF8_TO_TCHAR(WalkMap.Decks[Deck].Name.c_str());
+	TMap<FString, UInstancedStaticMeshComponent*> ByPart;
+	int32 Placed = 0;
+	for (const ShipOutside::FDeckCopy& C : Table->Copies)
+	{
+		if (C.Deck != DeckName) continue;
+		bool bFramed = false;
+		for (int32 K = 0; ShipFrames && K < ShipFrames->NumFrames && !bFramed; ++K) bFramed = C.Part == UTF8_TO_TCHAR(ShipFrames->Frames[K].Name);
+		if (bFramed) continue;
+		UInstancedStaticMeshComponent* Copies = ByPart.FindRef(C.Part);
+		if (!Copies)
+		{
+			UStaticMesh* Mesh = Cast<UStaticMesh>(FSoftObjectPath(C.Asset).ResolveObject());
+			if (!Mesh) continue;   // not in the project, or not loaded with the deck
+			Copies = NewObject<UInstancedStaticMeshComponent>(this);
+			Copies->SetupAttachment(BoatRoot.Get());
+			Copies->SetStaticMesh(Mesh);
+			Copies->SetMobility(EComponentMobility::Movable);
+			Copies->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Copies->SetCanEverAffectNavigation(false);
+			Copies->bAffectDistanceFieldLighting = false;
+			Copies->SetUseConservativeBounds(true);
+			Copies->RegisterComponent();
+			ByPart.Add(C.Part, Copies);
+			DeckCopies.Add(Copies);
+			DeckCopyDecks.Add(Deck);
+		}
+		Copies->AddInstance(C.Transform, false);
+		++Placed;
+	}
+	if (Placed > 0) SAIL_LOG(Log, TEXT("Deck %s: %d placed copies of %d parts"), *DeckName, Placed, ByPart.Num());
 }
 
 void ASailboatPawn::UpdateBelowAdapt(float DeltaSeconds)

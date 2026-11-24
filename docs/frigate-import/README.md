@@ -53,7 +53,13 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
   and frames' bind log is quiet until the outside model has loaded and counts its parts apart ("with the outside model");
   the helmsman stands 1.65 m abaft the wheel's axle (`FWalkMap::HelmAbaftWheelAxle`: the walk bake's 0.7 m put his eye
   inside the after wheel; `walk.py`'s `HELM_BEHIND_WHEEL` should move with the next bake).
-- Not yet: the berth deck's placed copies (hammocks, messes, chests: `placed` owner ship), the lanterns (`lights`), the
+- Decks below (code only, after #821): `ShipOutside::ParseDecks` reads the export's `placed` copies owned by the ship in a
+  deck's collection (the berth deck's 236 hammock hooks, 112 hammocks, 24 mess benches, 12 tables, 12 kids, 10 sea chests;
+  the gun deck's framed parts are left to the frames) and its 29 `lights`; the pawn loads a deck's copy meshes with the
+  deck (`DeckCopyPaths`), draws them as one instanced mesh per part (`SetDeckCopies`, off the distance field) and lights
+  the deck's lanterns with the export's colour, lumens, reach and shadowing (`SetDeckLamps`), all gone when the deck
+  unloads. `SailingSim.ShipOutside.Decks`.
+- Not yet: the
   twin by distance rather than tier, and the boat card and boat cycle guards. The decks' planking (seams, butts, plugs,
   the nibbed margin) from the `Planking` and `Margin` UVs the export keeps, as Bluebonnet's laid deck (kind 18), and the
   sails' cloth texture: until then the importer gives those materials flat undressed colours (`COLOUR`), since the export's
