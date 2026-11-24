@@ -82,8 +82,12 @@ def build_materials(table):
         col = COLOUR.get(name) or m["base_colour_linear"]
         surface, metallic, grain = surface_for(name, m)
         MEL.set_material_instance_vector_parameter_value(mi, "Color", unreal.LinearColor(col[0], col[1], col[2], 1.0))
+        # GrainScale 3: her timbers are seen from 2 to 6 m, where a small boat's centimetre figure has faded. Age and Care
+        # (M_BoatSurface's weathering: paint chalking and wear, bare wood's checks, iron's rust in the pits) as a ship two
+        # years in commission and well kept; the export's own wear levels stay unused (the PC's Nov 24 textures report).
         values = {"Roughness": float(m.get("roughness", 0.6)), "Metallic": metallic, "ClearCoat": 0.0, "NonSkid": 0.0, "Porosity": 0.0,
-                  "IsHull": 1.0 if name in HULL_SLOTS else 0.0, "Grain": grain, "Surface": float(surface)}
+                  "IsHull": 1.0 if name in HULL_SLOTS else 0.0, "Grain": grain, "Surface": float(surface), "GrainScale": 3.0,
+                  "Age": 2.0, "Care": 0.8}
         for pname, value in values.items():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
         MEL.update_material_instance(mi)

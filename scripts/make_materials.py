@@ -1321,6 +1321,7 @@ if (Surface > 17.5)
     float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
     gw = LP.y * 0.9 + 40.0 * gwH + 0.4 * sin(LP.x * 0.021 + 6.3 * gwH) + 0.15 * sin(LP.x * 0.083 + 3.0 * gwH);
 }
+gw /= max(GrainScale, 0.1);   // Frigate: a ship's timbers read from further off, so her figure is coarser (GrainScale 3)
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 // The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
 // Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 0.75 to 2 radians of phase a pixel (gone well before Nyquist's pi).
@@ -2471,6 +2472,9 @@ def build_boat_surface(name, bend, packed=False):
     # camera distance, and the detail maps themselves (scripts/import_boat_detail.py; engine stand-ins before it has run).
     surface = scalar(mat, "Surface", 0.0, -1600, 750)
     grain_up = scalar(mat, "GrainUp", 1.0 if bend else 0.0, -1600, 850)
+    # Frigate: the figure's scale (1: a small boat's centimetre rings, gone past 2 m; her timbers are seen from 2 to 6 m,
+    # so import_frigate.py sets 3).
+    grain_scale = scalar(mat, "GrainScale", 1.0, -1600, 900)
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1600, 950)
     detail_tex = {}
     for i, (pin, asset) in enumerate(BOAT_DETAIL_MAPS):
@@ -2509,7 +2513,7 @@ def build_boat_surface(name, bend, packed=False):
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
                + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
-               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC"],
+               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC", "GrainScale"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Frigate: the grain's axis from the mesh's Grain colour attribute (white, the default without one, keeps the part's X).
@@ -2517,7 +2521,7 @@ def build_boat_surface(name, bend, packed=False):
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
     # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
     connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
-    for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
+    for src, pin in ((grain_up, "GrainUp"), (grain_scale, "GrainScale"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time"),
                      (params["Wash"], "Wash"), (params["WashSide"], "WashSide")):
         connect(src, "", c, pin)
