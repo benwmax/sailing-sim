@@ -204,7 +204,8 @@ void ASailboatPawn::UpdateShipOutside(float DeltaSeconds)
 	using namespace Sailing;
 	if (!bShipOutsideModel || ShipOutsideParts.Num() == 0) return;
 
-	// The parts, once loaded: in her frame (BoatRoot, no offset), static (the rig makes movable what it moves), drawn and
+	// The parts, once loaded: in her frame (BoatRoot, no offset), movable like everything on a boat that sails (a Static
+	// component refuses to attach to a movable parent: the PC's first stills had all 244 at the world origin), drawn and
 	// shadowed, no collision. Then the rig and the frames bind again, to find the yards and sails among them.
 	if (!bShipOutsideLoaded && ShipOutsideLoad.IsValid() && ShipOutsideLoad->HasLoadCompleted())
 	{
@@ -216,7 +217,7 @@ void ASailboatPawn::UpdateShipOutside(float DeltaSeconds)
 			UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(this);
 			Mesh->SetupAttachment(BoatRoot.Get());
 			Mesh->SetStaticMesh(Asset);
-			Mesh->SetMobility(EComponentMobility::Static);
+			Mesh->SetMobility(EComponentMobility::Movable);
 			Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Mesh->SetCanEverAffectNavigation(false);
 			Mesh->RegisterComponent();

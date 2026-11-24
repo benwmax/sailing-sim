@@ -792,6 +792,12 @@ void ASailboatPawn::RebuildBoatVisuals()
 	JibSail->SetVisibility(C.HasJib());
 	if (C.HasJib()) JibSail->ClearAllMeshSections();
 	MainSail->ClearAllMeshSections();
+	if (bShipOutsideModel)   // her sails are the outside model's, shown by the rig's pose: no stand-in cloth beside them
+	{
+		MainSail->SetVisibility(false);
+		JibSail->SetVisibility(false);
+		if (TelltaleRibbons) TelltaleRibbons->SetVisibility(false);
+	}
 	SpinSail->ClearAllMeshSections();
 	SpinSail->SetVisibility(false);
 

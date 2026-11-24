@@ -49,4 +49,8 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
 - Tests `SailingSim.ShipOutside.Table`, `.Groups` (plain) and `.Commonwealth` (her table once committed: 244 parts, every
   one with its twin, the skin among them, the wheel not).
 - Not yet: the berth deck's placed copies (hammocks, messes, chests: `placed` owner ship), the lanterns (`lights`), the
-  twin by distance rather than tier, and the boat card and boat cycle guards.
+  twin by distance rather than tier, and the boat card and boat cycle guards. The decks' planking (seams, butts, plugs,
+  the nibbed margin) from the `Planking` and `Margin` UVs the export keeps, as Bluebonnet's laid deck (kind 18), and the
+  sails' cloth texture: until then the importer gives those materials flat undressed colours (`COLOUR`), since the export's
+  base colour under Blender's pattern is a 0.8 grey. The wood's figure (`Grain`) is off on her timbers: it runs along the
+  part's X, and every part of hers sits in the ship's frame.
