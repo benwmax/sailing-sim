@@ -30,7 +30,7 @@ The gun-deck run logs only the Gun line. The berth-deck run logs all three as th
 | gun 4K, `ShowFlag.PointLights 0` | 51.0 | | 19.06 | 5.58 | | | | | |
 
 - **The gun deck at 1080p improves:** base 4.78 to 4.08 ms, 74.4 fps.
-  - It is still over the 5.1 ms figure? No, at 1080p it's under. Last night's comparable 1080p base was 3.14.
+  - That's under the 5.1 ms mark, though still above last night's 3.14 ms at 1080p.
   - Lit in that view: **15 lanterns, 1 shadowed** ("Ship decks Gun: 0 copies, 15 lanterns (1 shadowed)").
 - **The berth deck at 1080p is 65.0 fps.** The GPU is the same as 44733c87 (10.43 against 10.42). The game and render
   threads were 2 ms heavier in this run, and the warm-up run was also slow (59 fps), so part of it is the PC.
