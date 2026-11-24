@@ -10,6 +10,9 @@
 #   whole package when nothing it's made from has changed.
 #   -prereqs stages Engine\Extras\Redist\en-us\vc_redist.x64.exe: the bootstrap SailingSim.exe offers to run it on a PC
 #   without the Visual C++ 2015-2022 runtime (the game, crashpad and CrashReportClient link it dynamically).
+#   Development cooks carry the debug view-mode shaders (r.ForceDebugViewModes=1 in the cooker) for film mode's
+#   wireframe and lighting-only passes; launch the game with -DPCVars=r.ForceDebugViewModes=1 to use them. Shipping
+#   cooks stay without them (tested Nov 24 2026: inputs Inputs/portfolio/debugviewmodes-test/).
 # Never archive into Build\: that is Unreal's own platform folder.
 param(
 	[ValidateSet('Development', 'Shipping')][string]$Config = 'Development',
@@ -24,6 +27,7 @@ if ($Into -and (Test-Path $Archive)) { throw "$Archive exists: package into a ne
 $Cook = if ($Full) { '-cook' } else { '-cook -cookincremental' }
 $ArgLine = "BuildCookRun -project=`"$Project`" -noP4 -utf8output -unattended -platform=Win64 -clientconfig=$Config " +
 	"-build $Cook -stage -pak -iostore -package -archive -crashreporter -prereqs -archivedirectory=`"$Archive`""
+if ($Config -eq 'Development') { $ArgLine += ' -AdditionalCookerOptions="-DPCVars=r.ForceDebugViewModes=1"' }
 $Start = Get-Date
 $Code = Invoke-Tool $RunUAT $ArgLine (Join-Path $Artifacts 'package.log')
 if ($Code -eq 0) {
