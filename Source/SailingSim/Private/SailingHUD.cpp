@@ -7,6 +7,7 @@
 #include "SailSave.h"
 #include "UI/SailFrontEnd.h"
 #include "UI/SailLoading.h"
+#include "UI/SailSplash.h"
 #include "UI/SailHud.h"
 #include "UI/SailPhotoPanel.h"
 #include "Engine/GameViewportClient.h"
@@ -116,6 +117,7 @@ void ASailingHUD::BeginPlay()
 		GEngine->GameViewport->AddViewportWidgetContent(PhotoPanel.ToSharedRef(), 6);
 	}
 	if (!UsesFrontEnd() || !PlayerOwner) return;
+	OpenSplash();
 	USailSessionSubsystem* Session = USailSessionSubsystem::Get(this);
 	if (Session && Session->MenuResumeScreen >= 0 && !Session->bHasActive)
 	{
@@ -362,6 +364,7 @@ void ASailingHUD::EndPlay(const EEndPlayReason::Type Reason)
 	SlateHud.Reset();
 	if (PhotoPanel.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(PhotoPanel.ToSharedRef());
 	PhotoPanel.Reset();
+	CloseSplash();
 	Super::EndPlay(Reason);
 }
 
@@ -384,6 +387,21 @@ void ASailingHUD::RemoveWidgets()
 	using namespace SailingHUDLocal;
 	if (ShownWidget.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(ShownWidget.ToSharedRef());
 	ShownWidget.Reset();
+}
+
+void ASailingHUD::OpenSplash()
+{
+	if (!SailSplash::Wanted() || !GEngine || !GEngine->GameViewport) return;
+	SailSplash::MarkShown();
+	Splash = SNew(SSailSplash).ShowNvidia(SailSplash::NvidiaPluginPresent())
+		.OnDone(FSimpleDelegate::CreateUObject(this, &ASailingHUD::CloseSplash));
+	GEngine->GameViewport->AddViewportWidgetContent(Splash.ToSharedRef(), 100);   // over the front end (50) and the HUD
+}
+
+void ASailingHUD::CloseSplash()
+{
+	if (Splash.IsValid() && GEngine && GEngine->GameViewport) GEngine->GameViewport->RemoveViewportWidgetContent(Splash.ToSharedRef());
+	Splash.Reset();
 }
 
 void ASailingHUD::OpenFrontEnd(ESailScreen Screen)

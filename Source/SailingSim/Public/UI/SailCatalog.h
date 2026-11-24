@@ -131,7 +131,8 @@ namespace SailCatalog
 		ECreditKind Kind = ECreditKind::Paragraph;
 		FString Text;
 	};
-	SAILINGSIM_API extern const TCHAR* const UnrealNotice;
+	/** The two notices Epic's EULA (section 7a) wants in a product's credits, with this year in the copyright line. */
+	SAILINGSIM_API FString UnrealNotice();
 	SAILINGSIM_API FString CreditsPath();
 	SAILINGSIM_API TArray<FCreditLine> ParseCredits(const FString& Markdown);
 	/** CREDITS.md read now (a few kB), or the notice and a missing-file line. */

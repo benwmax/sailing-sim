@@ -16,6 +16,7 @@
 #include "SailCloth.h"
 #include "EasyAssists.h"
 #include "UI/SailLoading.h"
+#include "UI/SailSplash.h"
 #include "LakeData.h"
 #include "SailboatPawn.h"
 #include "InputAction.h"
@@ -182,7 +183,8 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 			Headings.Add(L.Text);
 	TestTrue(TEXT("CREDITS.md has its sections"), Headings.Num() >= 4);
 	TestTrue(TEXT("The Unreal notice comes first"), Credits.Num() > 1 && Credits[0].Kind == SailCatalog::ECreditKind::Notice
-		&& Credits[0].Text.Contains(TEXT("Made with Unreal Engine")) && Credits[0].Text.Contains(TEXT("trademark of Epic Games")));
+		&& Credits[0].Text.Contains(TEXT("Ready About: Sailing uses Unreal")) && Credits[0].Text.Contains(TEXT("trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere."))
+		&& Credits[0].Text.Contains(FString::Printf(TEXT("Copyright 1998 – %d, Epic Games, Inc. All rights reserved."), FDateTime::UtcNow().GetYear())));
 	bool bLarus = false, bMarkdown = false;
 	for (const SailCatalog::FCreditLine& L : Credits)
 	{
@@ -239,7 +241,7 @@ bool FSailingUICreditsTest::RunTest(const FString&)
 		TArray<FString> Texts;
 		CollectTexts(F, Texts);
 		auto Shows = [&Texts](const FString& S) { const FString U = S.ToUpper(); return Texts.ContainsByPredicate([&U](const FString& T) { return T.Contains(U); }); };
-		TestTrue(TEXT("The screen shows the Unreal notice"), Shows(SailCatalog::UnrealNotice));
+		TestTrue(TEXT("The screen shows the Unreal notice"), Shows(SailCatalog::UnrealNotice()));
 		for (const FString& H : Headings) TestTrue(FString::Printf(TEXT("The screen shows \"%s\""), *H), Shows(H));
 		F->Pop();
 		TestTrue(TEXT("Back returns to the title"), F->Current() == ESailScreen::Title);
@@ -1193,5 +1195,50 @@ bool FSailingUIPadGlyphsTest::RunTest(const FString&)
 	const TArray<SailUI::FPadGlyph> Triggers = SailUI::ParsePadGlyphs(TEXT("LT / RT"));
 	TestTrue(TEXT("'LT / RT' is two triggers"), Triggers.Num() == 2 && Triggers[0].Kind == EPadGlyph::Trigger && Triggers[1].Kind == EPadGlyph::Trigger);
 	TestTrue(TEXT("A bumper is wider than a face button"), SailUI::PadGlyphWidth(Pair.Num() ? Pair[0] : SailUI::FPadGlyph()) > 24.f);
+	return true;
+}
+
+// The opening splash (docs/splash/): its fade timeline, the skip, and what it shows.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUISplashTimelineTest, "SailingSim.UI.Splash.Timeline", UIFlags)
+bool FSailingUISplashTimelineTest::RunTest(const FString&)
+{
+	using namespace SailSplash;
+	TestEqual(TEXT("Starts black"), ContentAlpha(0.0), 0.f);
+	TestEqual(TEXT("Halfway through the fade in"), ContentAlpha(FadeInSeconds * 0.5), 0.5f);
+	TestEqual(TEXT("Holds"), ContentAlpha(FadeInSeconds + HoldSeconds * 0.5), 1.f);
+	TestEqual(TEXT("Halfway through the fade out"), ContentAlpha(FadeInSeconds + HoldSeconds + FadeOutSeconds * 0.5), 0.5f);
+	TestEqual(TEXT("Gone at the end"), ContentAlpha(TotalSeconds), 0.f);
+	TestFalse(TEXT("Not finished mid-hold"), IsFinished(2.0));
+	TestTrue(TEXT("Finished at the end"), IsFinished(TotalSeconds));
+	TestEqual(TEXT("The backdrop is solid through the hold"), BackdropAlpha(2.0), 1.f);
+	TestEqual(TEXT("A skip in the hold fades from full"), ContentAlpha(2.0 + SkipFadeSeconds * 0.5, 2.0), 0.5f);
+	TestEqual(TEXT("A skip during the fade in fades from what it had"), ContentAlpha(0.3 + SkipFadeSeconds * 0.5, 0.3), 0.25f);
+	TestFalse(TEXT("A skip is not finished at once"), IsFinished(2.1, 2.0));
+	TestTrue(TEXT("A skip finishes after its short fade"), IsFinished(2.0 + SkipFadeSeconds, 2.0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingUISplashWidgetTest, "SailingSim.UI.Splash.Widget", UIFlags)
+bool FSailingUISplashWidgetTest::RunTest(const FString&)
+{
+	if (!FSlateApplication::IsInitialized()) return true;
+	for (const bool bNvidia : { false, true })
+	{
+		bool bDone = false;
+		TSharedRef<SSailSplash> S = SNew(SSailSplash).ShowNvidia(bNvidia).OnDone(FSimpleDelegate::CreateLambda([&bDone]() { bDone = true; }));
+		TArray<FString> Texts;
+		CollectTexts(S, Texts);
+		auto Shows = [&Texts](const FString& W) { const FString U = W.ToUpper(); return Texts.ContainsByPredicate([&U](const FString& T) { return T.Contains(U); }); };
+		TestTrue(TEXT("Names the game"), Shows(TEXT("Ready About")));
+		TestTrue(TEXT("Credits Unreal"), Shows(TEXT("Made with Unreal Engine")));
+		TestEqual(FString::Printf(TEXT("NVIDIA block only when asked (%d)"), bNvidia), Shows(SailSplash::NvidiaAttribution()), bNvidia);
+		// A frame hitch (a map loading) counts at most 0.1 s, so the hold survives it.
+		S->Advance(5.f);
+		TestTrue(TEXT("A hitch does not eat the splash"), S->Elapsed() <= 0.1 + KINDA_SMALL_NUMBER && !S->IsDone());
+		S->Skip();
+		TestTrue(TEXT("Skipped"), S->IsSkipped());
+		for (int32 I = 0; I < 6 && !bDone; ++I) S->Advance(0.1f);
+		TestTrue(TEXT("A skip finishes and calls back"), bDone && S->IsDone());
+	}
 	return true;
 }

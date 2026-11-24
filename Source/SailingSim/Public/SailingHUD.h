@@ -39,6 +39,9 @@ public:
 	/** Graphics G4: the Slate front end (UI/SailFrontEnd.h) and loading screen (UI/SailLoading.h). Off for benchmarks,
 	 *  captures, screenshots and tests (they start straight into the scene, as before). */
 	bool UsesFrontEnd() const;
+	/** The opening splash, once per launch (SailSplash::Wanted). */
+	void OpenSplash();
+	void CloseSplash();
 	void OpenFrontEnd(ESailScreen Screen);
 	void CloseFrontEnd();
 	void OpenPause();
@@ -74,6 +77,7 @@ private:
 	TSharedPtr<class SSailFrontEnd> FrontEnd;
 	TSharedPtr<class SSailLoading> Loading;
 	TSharedPtr<class SWidget> ShownWidget;
+	TSharedPtr<class SSailSplash> Splash;   // the opening splash (docs/splash/), over everything for its few seconds
 	TSharedPtr<class SSailHud> SlateHud;   // the in-game HUD (Graphics G4): replaces the canvas instruments
 	TSharedPtr<class SSailPhotoPanel> PhotoPanel;   // photo mode's panel and frame guides (docs/photo-mode/pc/)
 	bool bPausedByMenu = false;
