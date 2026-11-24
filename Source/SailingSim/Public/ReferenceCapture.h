@@ -67,21 +67,27 @@ struct SAILINGSIM_API FCaptureTelemetryRow
 	static FCaptureTelemetryRow FromBoat(double Time, const Sailing::FBoatModel& Boat, const Sailing::FBoatControls& Controls, double WaveHeight);
 };
 
-/** Writes the telemetry CSV as it goes (a crash keeps everything up to the last frame). */
+/** Collects the telemetry CSV in memory and writes it once, at Close (the pawn's EndPlay, or the destructor). Nothing
+ *  touches the disk while the capture runs: a flush on the game thread every 120 rows stalled frames 30-140 ms
+ *  (docs: Inputs/bench/helm-eye-hitch on the inputs branch). A crash loses the rows. */
 class SAILINGSIM_API FCaptureTelemetry
 {
 public:
 	~FCaptureTelemetry() { Close(); }
 	bool Open(const FString& Path);
 	void Add(const FCaptureTelemetryRow& Row);
-	void Close();
-	bool IsOpen() const { return File.IsValid(); }
+	/** Writes the file (header and every row) and forgets it; false if the write failed. Safe to call twice. */
+	bool Close();
+	bool IsOpen() const { return !OutPath.IsEmpty(); }
 	int32 NumRows() const { return Count; }
 
 	static FString Header();
 	static FString Format(const FCaptureTelemetryRow& Row);
 
 private:
-	TUniquePtr<FArchive> File;
+	void Append(const FString& Line);
+
+	FString OutPath;
+	TArray<uint8> Pending;
 	int32 Count = 0;
 };

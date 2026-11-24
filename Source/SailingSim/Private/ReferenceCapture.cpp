@@ -1,5 +1,6 @@
 #include "ReferenceCapture.h"
 #include "HAL/FileManager.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "SailingSim.h"
 
@@ -143,27 +144,37 @@ bool FCaptureTelemetry::Open(const FString& Path)
 {
 	Close();
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
-	File.Reset(IFileManager::Get().CreateFileWriter(*Path));
-	if (!File) return false;
-	const FTCHARToUTF8 Line(*(Header() + TEXT("\n")));
-	File->Serialize(const_cast<ANSICHAR*>(Line.Get()), Line.Length());
+	// Create the file now so a bad path fails here, as it did when the rows were written as they came.
+	{
+		TUniquePtr<FArchive> Probe(IFileManager::Get().CreateFileWriter(*Path));
+		if (!Probe) return false;
+	}
+	OutPath = Path;
+	Pending.Reset();
+	Pending.Reserve(256 * 1024);
+	Append(Header());
 	Count = 0;
 	return true;
 }
 
-void FCaptureTelemetry::Add(const FCaptureTelemetryRow& Row)
+void FCaptureTelemetry::Append(const FString& Line)
 {
-	if (!File) return;
-	const FTCHARToUTF8 Line(*(Format(Row) + TEXT("\n")));
-	File->Serialize(const_cast<ANSICHAR*>(Line.Get()), Line.Length());
-	if (++Count % 120 == 0) File->Flush();
+	const FTCHARToUTF8 Utf8(*(Line + TEXT("\n")));
+	Pending.Append(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length());
 }
 
-void FCaptureTelemetry::Close()
+void FCaptureTelemetry::Add(const FCaptureTelemetryRow& Row)
 {
-	if (File)
-	{
-		File->Close();
-		File.Reset();
-	}
+	if (!IsOpen()) return;
+	Append(Format(Row));
+	++Count;
+}
+
+bool FCaptureTelemetry::Close()
+{
+	if (!IsOpen()) return true;
+	const bool bOk = FFileHelper::SaveArrayToFile(Pending, *OutPath);
+	OutPath.Reset();
+	Pending.Empty();
+	return bOk;
 }
