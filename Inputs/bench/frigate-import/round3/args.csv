@@ -1,0 +1,3 @@
+shot,command_line
+frigate-r3-wide,"Packaged\Windows-frigate-3946b08c\SailingSim.exe -SailingBench=10 -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingNoHud -SailingBoat=Comm -SailingWorld=Gulf -SailingLaunch=2 -SailingWind=12 -SailingShot=frigate-r3-wide -SailingCamDist=120 -SailingCamYaw=140 -SailingCamPitch=-8"
+frigate-r3-deck,"Packaged\Windows-frigate-3946b08c\SailingSim.exe -SailingBench=10 -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingNoHud -SailingBoat=Comm -SailingWorld=Gulf -SailingLaunch=2 -SailingWind=12 -SailingShot=frigate-r3-deck -SailingCamDist=60"

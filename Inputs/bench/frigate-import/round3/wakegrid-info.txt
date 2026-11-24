@@ -1,0 +1,8 @@
+SailingSim.Visual.WakeGrid [Info] 6 kn: largest wave 0.218 m, bow crest 0.019 m, 99% of the wake's energy inside 24 degrees
+SailingSim.Visual.WakeGrid [Info] Wake lane: 1.00 under her, 0.66 5 m astern, 0.29 20 m astern, 0.00 8 m aside
+SailingSim.Visual.WakeGrid [Info] Wake lane 5 m astern: 3.5 m wide (beam 2.4 m)
+SailingSim.Visual.WakeGrid [Info] Foam 2 m astern 1.00, 25 m astern 0.16, 6 m ahead of the bow 0.00
+SailingSim.Visual.WakeGrid [Info] 40 s after stopping: largest wave 0.0002 m
+SailingSim.Visual.WakeGrid [Info] 40 s after stopping: lane 0.007 at most
+SailingSim.Visual.WakeGridShip [Info] 9 kn: largest wave 0.60 m, foam beside her 0.05 (port) 0.05 (starboard), in her lane astern 0.49
+SailingSim.Visual.WakeGridShip [Info] 20 s after she stops: mean foam 0.0008

@@ -1,0 +1,5 @@
+LogSailing: Ship outside Commonwealth: 244 parts to load (heroes)
+LogSailing: Ship rig Commonwealth: 0 parts on the model, 0 to load, 87 not in the project
+LogSailing: Ship frames Commonwealth: 0 parts on the model, 12 to load, 0 not in the project
+LogSailing: Ship outside Commonwealth: 244 parts on the boat, 0 did not load
+LogSailing: Ship rig Commonwealth: 87 parts on the model, 0 to load, 0 not in the project
