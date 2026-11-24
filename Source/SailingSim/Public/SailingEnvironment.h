@@ -139,6 +139,7 @@ private:
 	bool bSkyCache = false;
 	bool bCacheReady = false;      // a whole panorama has been drawn: the live clouds may hand the far ones over
 	bool bCacheSuspended = false;  // a storm or deck: the live clouds draw the whole sky
+	bool bCacheNarrowLens = false; // docs/cloud-blocks/: a lens narrow enough that the panorama's knots show (SkyCacheTooCoarse)
 	int32 CacheBack = 0;           // the target being drawn
 	int32 CacheColumn = 0;         // the next column of the panorama to draw
 	double CacheSwapTime = -1e9;   // when the last panorama finished (the dome cross-fades for half a second)
