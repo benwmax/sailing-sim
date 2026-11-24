@@ -391,7 +391,8 @@ bool ApplyFilmViewMode(UGameViewportClient* Viewport, UWorld* World)
 		SAIL_LOG(Display, TEXT("Film view mode: lighting only (ShowFlag.LightingOnlyOverride: this package has no debug view modes)"));
 		return true;
 	}
-	SAIL_LOG(Warning, TEXT("Film view mode: %s needs a package cooked with debug view modes (r.ForceDebugViewModes=1 in "
-		"the config when cooking); this one has none, so the frames stay lit"), Name);
+	SAIL_LOG(Warning, TEXT("Film view mode: %s needs debug view modes: a Development package cooked with them "
+		"(package-win.ps1's Development cook arg -DPCVars=r.ForceDebugViewModes=1, #829) and the same on the launch line "
+		"(-DPCVars=r.ForceDebugViewModes=1); this run has none, so the frames stay lit"), Name);
 	return false;
 }
