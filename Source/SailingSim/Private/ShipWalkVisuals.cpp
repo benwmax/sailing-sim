@@ -36,9 +36,6 @@ namespace ShipWalkGame
 	constexpr float LampLumens = 250.f;
 	constexpr float LampKelvin = 2700.f;
 	constexpr float LampReachCm = 450.f;
-	/** A ship's lanterns (the frigate's 29) are lit only within this of the eye: lit all at once they cost 3.5 ms of
-	 *  base pass at 4K on Ultra (the PC's #823 check), and below decks a dozen are in sight at most. */
-	constexpr float LanternLitRangeCm = 1500.f;
 	/** Seconds for the eye to come to a cabin from the deck (and back). */
 	constexpr float BelowAdaptSeconds = 2.5f;
 	/** The share of her heel and pitch the eye leans with (a sailor's head stays nearly upright: the cockpit's third). */
@@ -92,7 +89,6 @@ void ASailboatPawn::ClearDeckMeshes()
 	for (UPointLightComponent* Lamp : DeckLamps) if (Lamp) Lamp->DestroyComponent();
 	DeckLamps.Reset();
 	DeckLampDecks.Reset();
-	DeckLampRanged.Reset();
 	for (UInstancedStaticMeshComponent* Copies : DeckCopies) if (Copies) Copies->DestroyComponent();
 	DeckCopies.Reset();
 	DeckCopyDecks.Reset();
@@ -399,7 +395,6 @@ void ASailboatPawn::UpdateDeckStreaming()
 			}
 		}
 	}
-	UpdateDeckLanterns();
 }
 
 void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
@@ -410,7 +405,6 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		if (DeckLamps[I]) DeckLamps[I]->DestroyComponent();
 		DeckLamps.RemoveAt(I);
 		DeckLampDecks.RemoveAt(I);
-		DeckLampRanged.RemoveAt(I);
 	}
 	if (!bOn || !BoatRoot) return;
 	// Her cabin lamps (Bluebonnet's brass lamps, lit as in the renders): in her frame at each bulb, shadowed so a lamp
@@ -432,16 +426,15 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		Lamp->RegisterComponent();
 		DeckLamps.Add(Lamp);
 		DeckLampDecks.Add(Deck);
-		DeckLampRanged.Add(false);
 	}
 	// Her lanterns from the export (the frigate's `lights`: the gun deck's, the berth deck's, the sick bay's, the orlop's
 	// light room), in her frame at each flame with the export's colour, lumens, reach and shadowing.
 	const ShipOutside::FDeckTable* Table = ShipOutside::DecksFor(Boat.GetConfig().Name);
 	if (!Table || Deck < 0 || Deck >= int32(WalkMap.Decks.size())) return;
-	// Lit within LanternLitRangeCm of the eye (UpdateDeckLanterns). Unshadowed on every tier: with the export's shadows the
-	// lanterns hung the PC's GPU at 4K on Ultra in the virtual shadow maps' culling (DXGI_ERROR_DEVICE_HUNG at the deck's
-	// load, both decks, twice: Inputs/bench/frigate-decks/0ec5fcb5/), and lit with MegaLights' traced shadows before that
-	// they cost 5 ms. Shadowed lanterns wait for a MegaLights-only path.
+	// Unshadowed on every tier and never scattering in fog: lit with the export's shadows through MegaLights they cost
+	// 5 ms at 4K on Ultra (Inputs/bench/frigate-decks/ab/). Created lit, and never toggled: a light registered hidden and
+	// shown, or shown and hidden, by a range gate each tick hung the PC's GPU at 4K in the virtual shadow maps' culling
+	// (DXGI_ERROR_DEVICE_HUNG at the deck's load, both decks, every run: Inputs/bench/frigate-decks/f2b9c3c5/).
 	const FString DeckName = UTF8_TO_TCHAR(WalkMap.Decks[Deck].Name.c_str());
 	int32 Lanterns = 0;
 	for (const ShipOutside::FLantern& Lt : Table->Lanterns)
@@ -459,29 +452,14 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		Lamp->SourceRadius = 2.f;
 		Lamp->SetCastShadows(false);
 		Lamp->VolumetricScatteringIntensity = 0.f;   // no fog scattering below decks: MegaLights shaded it per pixel, 1.2 ms at 4K
-		Lamp->SetVisibility(false);
 		Lamp->RegisterComponent();
 		DeckLamps.Add(Lamp);
 		DeckLampDecks.Add(Deck);
-		DeckLampRanged.Add(true);
 		++Lanterns;
 	}
 	int32 Copies = 0;
 	for (int32 I = 0; I < DeckCopies.Num(); ++I) if (DeckCopyDecks[I] == Deck && DeckCopies[I]) Copies += DeckCopies[I]->GetInstanceCount();
 	if (Lanterns > 0 || Copies > 0) SAIL_LOG(Log, TEXT("Ship decks %s: %d copies, %d lanterns (unshadowed)"), *DeckName, Copies, Lanterns);
-	UpdateDeckLanterns();
-}
-
-void ASailboatPawn::UpdateDeckLanterns()
-{
-	if (DeckLamps.Num() == 0 || !Camera) return;
-	const FVector Eye = Camera->GetComponentLocation();
-	for (int32 I = 0; I < DeckLamps.Num(); ++I)
-	{
-		if (!DeckLampRanged[I] || !DeckLamps[I]) continue;
-		const bool bLit = FVector::DistSquared(DeckLamps[I]->GetComponentLocation(), Eye) < FMath::Square(ShipWalkGame::LanternLitRangeCm);
-		if (DeckLamps[I]->IsVisible() != bLit) DeckLamps[I]->SetVisibility(bLit);
-	}
 }
 
 void ASailboatPawn::SetDeckCopies(int32 Deck, bool bOn)
