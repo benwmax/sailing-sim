@@ -1,0 +1,8 @@
+2026-11-24 10:41:53 Bean's Saved held
+2026-11-24 10:42:22 V warm: 71.9 fps, p99 17.7, gpu 8.68 (base 2.88, lumen 0.65, post 0.74, other 0.99), game 9.85, render 13.87; exec lines: 
+2026-11-24 10:43:00 V ab-baseline: 42 fps, p99 26.83, gpu 23.31 (base 10.35, lumen 2.35, post 2.42, other 1.55), game 12.31, render 23.77; exec lines: 
+2026-11-24 10:43:39 V ab-nopointlights: 54.3 fps, p99 21.71, gpu 17.91 (base 5.04, lumen 2.39, post 2.46, other 1.61), game 12.61, render 18.39; exec lines: ShowFlag.PointLights = "0"
+2026-11-24 10:44:17 V ab-noism: 43.2 fps, p99 25.46, gpu 22.69 (base 10.18, lumen 2.51, post 2.33, other 1.46), game 11.84, render 23.14; exec lines: ShowFlag.InstancedStaticMeshes = "0"
+2026-11-24 10:44:55 V ab-both: 56.5 fps, p99 20.14, gpu 17.25 (base 4.7, lumen 2.35, post 2.37, other 1.41), game 11.02, render 17.68; exec lines: ShowFlag.PointLights = "0" / ShowFlag.InstancedStaticMeshes = "0"
+2026-11-24 10:44:57 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-24 10:44:57 DECKSAB DONE
