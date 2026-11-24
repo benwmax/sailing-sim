@@ -150,7 +150,7 @@ void SSailSplash::Construct(const FArguments& A)
 	OnDone = A._OnDone;
 	const FLinearColor Quiet(0.72f, 0.80f, 0.82f, 1.f), Eyebrow(0.43f, 0.60f, 0.64f, 1.f);
 
-	auto Panel = [&](const FString& Label, TSharedRef<SWidget> Body)
+	auto MakePanel = [&](const FString& Label, TSharedRef<SWidget> Body)
 	{
 		return SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 4.f)[ SailUI::Text(Label.ToUpper(), EType::Small, Eyebrow) ]
@@ -160,7 +160,7 @@ void SSailSplash::Construct(const FArguments& A)
 	TSharedRef<SHorizontalBox> Credits = SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 		[
-			Panel(TEXT("Engine"), SailUI::Text(TEXT("Made with Unreal Engine"), EType::Body, Quiet))
+			MakePanel(TEXT("Engine"), SailUI::Text(TEXT("Made with Unreal Engine"), EType::Body, Quiet))
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ SNullWidget::NullWidget ];
 
@@ -174,7 +174,7 @@ void SSailSplash::Construct(const FArguments& A)
 				.Padding(FMargin(12.f, 8.f))[ SailUI::Text(TEXT("NVIDIA DLSS"), EType::Value, Fg) ]);
 		Credits->AddSlot().AutoWidth().VAlign(VAlign_Bottom)
 		[
-			Panel(TEXT("Upscaling"), SNew(SHorizontalBox)
+			MakePanel(TEXT("Upscaling"), SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ Block ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SailUI::Text(SailSplash::NvidiaAttribution(), EType::Body, Quiet) ])
 		];
