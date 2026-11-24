@@ -210,7 +210,7 @@ void SSailSplash::Construct(const FArguments& A)
 	Backdrop->SetRenderOpacity(1.f);
 	Content->SetRenderOpacity(0.f);
 
-	bHold = InArgs._Hold;
+	bHold = A._Hold;
 	if (FSlateApplication::IsInitialized() && !bHold)
 	{
 		Skipper = MakeShared<FSplashSkipper>([this]() { Skip(); });
