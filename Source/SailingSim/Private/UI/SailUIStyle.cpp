@@ -219,8 +219,8 @@ namespace SailUI
 		// the HUD's symbols, and the arrows that Atkinson takes from B612 (its sub-typeface loads only for those codepoints).
 		static bool bDone = false;
 		if (bDone || !FSlateApplication::IsInitialized()) return;
-		const TSharedPtr<FSlateRenderer> Renderer = FSlateApplication::Get().GetRenderer();
-		if (!Renderer.IsValid()) return;
+		FSlateRenderer* const Renderer = FSlateApplication::Get().GetRenderer();
+		if (!Renderer) return;
 		const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
 		const double Start = FPlatformTime::Seconds();
 		static const FString Sample = FString(TEXT("Aa Gg Qq 0123456789 .,:;!?%+-/()")) + TCHAR(0x00B0) + TCHAR(0x00B7) + TCHAR(0x2013)
