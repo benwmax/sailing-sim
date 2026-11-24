@@ -1,0 +1,11 @@
+2026-11-24 12:41:27 Bean's Saved held
+2026-11-24 12:42:02 F dev (Windows-pr825-bcb91c2b): t15 pid 23472 TCP listen 0.0.0.0:1985 ; t30 pid 23472 TCP listen 0.0.0.0:1985
+2026-11-24 12:42:39 F dev-notransport (Windows-pr825-bcb91c2b): t15 pid 3008 TCP listen 0.0.0.0:1985 ; t30 pid 3008 TCP listen 0.0.0.0:1985
+2026-11-24 12:42:39 F STOPPED: This command cannot be run due to the error: An error occurred trying to start process 'D:\dev\ss-fix\Packaged\Shipping-76a41ea4\SailingSim.exe' with working directory 'D:\dev\ss-inputs-821b'. The system cannot find the file specified.
+2026-11-24 12:42:41 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-24 12:42:41 FWPROBE DONE
+2026-11-24 12:44:04 Bean's Saved held
+2026-11-24 12:44:42 F dev-notracethreading (Windows-pr825-bcb91c2b): t15 pid 6792 TCP listen 0.0.0.0:1985 ; t30 pid 6792 TCP listen 0.0.0.0:1985
+2026-11-24 12:46:17 F shipping (Shipping-76a41ea4\Windows): 
+2026-11-24 12:46:19 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-24 12:46:19 FWPROBE DONE

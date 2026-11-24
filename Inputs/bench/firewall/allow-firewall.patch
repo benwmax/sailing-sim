@@ -1,0 +1,74 @@
+From bb0014a73a570676d38524219669bad90c1f89c9 Mon Sep 17 00:00:00 2001
+From: benwmax <ben@benjaminwmaxwell.com>
+Date: Tue, 24 Nov 2026 12:47:27 -0600
+Subject: [PATCH] scripts/windows: allow-firewall.ps1 adds one inbound rule for
+ a Dev package's game exe
+
+Development builds listen on TCP 1985 (TraceLog's control port); Shipping opens no ports.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ scripts/windows/allow-firewall.ps1 | 51 ++++++++++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
+ create mode 100644 scripts/windows/allow-firewall.ps1
+
+diff --git a/scripts/windows/allow-firewall.ps1 b/scripts/windows/allow-firewall.ps1
+new file mode 100644
+index 000000000..970fefff2
+--- /dev/null
++++ b/scripts/windows/allow-firewall.ps1
+@@ -0,0 +1,51 @@
++# Adds one inbound allow rule for a Development (or Test) package of the game, so Windows stops asking to let it through
++# the firewall. Development builds always listen on TCP 1985 (Unreal's trace control port, TraceLog's Control.cpp; there is
++# no command-line switch to turn it off in this engine build). Shipping builds open no ports and need no rule.
++#
++#   scripts\windows\allow-firewall.ps1 <exe or package folder> [-Profile Private] [-WhatIf]
++#
++# Pass the game exe (...\SailingSim\Binaries\Win64\SailingSim.exe: the one that listens) or the package folder (the script
++# finds that exe in it). Rule name: "ReadyAbout dev <package folder>". Skips if an enabled inbound allow rule already covers
++# the exe. Needs an elevated PowerShell. Windows has no wildcard program paths, so every new package folder needs its own rule.
++[CmdletBinding(SupportsShouldProcess = $true)]
++param(
++	[Parameter(Mandatory = $true, Position = 0)][string]$Path,
++	[ValidateSet('Private', 'Public', 'Domain', 'Any')][string]$Profile = 'Private'
++)
++$ErrorActionPreference = 'Stop'
++
++$Item = Get-Item -LiteralPath $Path
++if ($Item.PSIsContainer) {
++	$Exe = @(Get-ChildItem -LiteralPath $Item.FullName -Recurse -File -Filter 'SailingSim*.exe' |
++		Where-Object { $_.FullName -match '\\SailingSim\\Binaries\\Win64\\' } | Select-Object -ExpandProperty FullName)
++	if ($Exe.Count -ne 1) { throw "Expected one game exe under $($Item.FullName)\...\SailingSim\Binaries\Win64, found $($Exe.Count)" }
++	$Exe = $Exe[0]
++} else {
++	$Exe = $Item.FullName
++}
++if ($Exe -notmatch '\\SailingSim\\Binaries\\Win64\\SailingSim[^\\]*\.exe$') {
++	throw "$Exe is not the game exe (...\SailingSim\Binaries\Win64\SailingSim*.exe); the top-level SailingSim.exe is only a launcher"
++}
++if ($Exe -match '-Shipping\.exe$') { Write-Host "Skipped: $Exe is a Shipping build, which opens no ports."; return }
++
++# The package folder: the folder above SailingSim\Binaries\Win64 (and above Windows\ for Shipping-style layouts).
++$PkgDir = Split-Path (Split-Path (Split-Path (Split-Path $Exe -Parent) -Parent) -Parent) -Parent
++$Folder = Split-Path $PkgDir -Leaf
++if ($Folder -eq 'Windows') { $Folder = Split-Path (Split-Path $PkgDir -Parent) -Leaf }
++$Name = "ReadyAbout dev $Folder"
++
++$existing = @(Get-NetFirewallApplicationFilter -Program $Exe -ErrorAction SilentlyContinue | Get-NetFirewallRule |
++	Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Allow' -and $_.Enabled -eq 'True' })
++if ($existing.Count) {
++	Write-Host "Skipped: $Exe already has an inbound allow rule: $(($existing | ForEach-Object { "'$($_.DisplayName)' ($($_.Profile))" }) -join ', ')"
++	return
++}
++
++$admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
++if (-not $admin -and -not $WhatIfPreference) { throw 'Adding a firewall rule needs an elevated PowerShell (Run as administrator).' }
++
++if ($PSCmdlet.ShouldProcess($Exe, "New-NetFirewallRule '$Name' (Inbound, Allow, Profile $Profile)")) {
++	New-NetFirewallRule -DisplayName $Name -Description "Ready About Development build: Unreal trace control port. Added by scripts\windows\allow-firewall.ps1." `
++		-Direction Inbound -Action Allow -Program $Exe -Profile $Profile | Out-Null
++	Write-Host "Added '$Name' for $Exe (Profile $Profile)"
++}
+-- 
+2.56.1.windows.1
+
