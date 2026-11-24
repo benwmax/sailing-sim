@@ -1,0 +1,2 @@
+LogSailing: Display: Lake Lake Ray Hubbard: 3277x5434 terrain, 35 docks, 0 decks, 0 moored boats, 40 bridges, 11719 buildings, 35165 houses, 5 launch spots, 0 navaids, 0 tide stations
+world {"streamed":false,"tiles_resident":15,"tile_mb":0.0,"tile_loads":0,"tile_drops":0,"loader_longest_ms":0.000,"recentres":0,"recentre_longest_ms":0.00,"window_marches":0,"chunks":4420,"chunks_made":4420,"chunks_dropped":0,"far_dropped":0,"boat_n":13,"boat_e":-59}
