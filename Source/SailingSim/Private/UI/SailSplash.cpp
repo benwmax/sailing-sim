@@ -147,7 +147,7 @@ void SSailSplash::Construct(const FArguments& A)
 		]
 		+ SOverlay::Slot().VAlign(VAlign_Bottom).Padding(FMargin(64.f, 0.f, 64.f, 44.f))[ Credits ];
 
-	Backdrop = SNew(SBorder).BorderImage(SailUI::White()).BorderBackgroundColor(FLinearColor(0.02f, 0.05f, 0.08f, 1.f));
+	Backdrop = SNew(SBorder).BorderImage(SailUI::White()).BorderBackgroundColor(FLinearColor::FromSRGBColor(FColor(8, 19, 28)))   // the mockup's ink, #08131C (FLinearColor values are linear);
 
 	ChildSlot
 	[
