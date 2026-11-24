@@ -34,18 +34,19 @@ SHIPS = os.path.join(REPO, "Content", "TerrainData", "Ships")
 # 7 teak deck, 8 rubber, 9 rope, 10 sailcloth, 11 canvas cover, 13 black plastic, 14 webbing, 15 cabin window, 16 cast bronze.
 # (17 manila and 18 laid teak need their own maps, set only on MI_Boat_Manila and MI_Boat_LaidTeak: not used here.)
 # By the material's name, then the export's `kind`, then its `surface`; (surface code, metallic, grain). Grain draws the
-# wood's figure along the part's own X axis: her parts all sit in the ship's frame, so on a pillar or a beam it ran across
-# the timber in wavy bands (the PC's first gun-deck still); the decks keep it (their planks run fore and aft), the rest is 0
-# and the wood's detail maps carry the grain close up.
-BY_SURFACE = {"wood": (6, 0.0, 0.0), "deck": (7, 0.0, 1.0), "paint": (1, 0.0, 0.0), "iron": (5, 0.3, 0.0), "bright": (16, 1.0, 0.0),
-              "copper": (3, 1.0, 0.0), "rope": (9, 0.0, 0.0), "canvas": (10, 0.0, 0.0), "below_decks": (6, 0.0, 0.0), "unweathered": (1, 0.0, 0.0)}
+# wood's figure along each timber's own long axis, which the export paints into the meshes' Grain colour attribute
+# (export.py paint_grain; M_BoatSurface reads it): on a mesh without it the figure runs along the ship, as it did on the
+# first import, where a pillar or a beam showed it as wavy bands across the timber (the PC's first gun-deck still), so the
+# materials with Grain 1 want the export regenerated with the attribute (docs/frigate-import/).
+BY_SURFACE = {"wood": (6, 0.0, 1.0), "deck": (7, 0.0, 1.0), "paint": (1, 0.0, 0.0), "iron": (5, 0.3, 0.0), "bright": (16, 1.0, 0.0),
+              "copper": (3, 1.0, 0.0), "rope": (9, 0.0, 0.0), "canvas": (10, 0.0, 0.0), "below_decks": (6, 0.0, 1.0), "unweathered": (1, 0.0, 0.0)}
 BY_KIND = {"tarpaulin": (11, 0.0, 0.0), "canvas": (11, 0.0, 0.0), "sail": (10, 0.0, 0.0), "lead": (3, 1.0, 0.0), "gilt": (16, 1.0, 0.0),
            "bronze": (16, 1.0, 0.0), "blacked": (5, 0.3, 0.0), "iron": (5, 0.3, 0.0), "sheathing": (3, 1.0, 0.0)}
 BY_NAME = {"ClearGlass": (15, 0.0, 0.0), "Glass": (15, 0.0, 0.0), "Netting": (14, 0.0, 0.0), "FloorCloth": (11, 0.0, 0.0),
            "Interior": (1, 0.0, 0.0), "Shadow": (1, 0.0, 0.0), "CompassCard": (1, 0.0, 0.0), "Brick": (1, 0.0, 0.0),
            "Tin": (3, 1.0, 0.0), "Fleece": (11, 0.0, 0.0), "Horn": (1, 0.0, 0.0), "Powder": (1, 0.0, 0.0), "Pin": (5, 0.3, 0.0),
            "Sheave": (6, 0.0, 0.0), "Deadeye": (6, 0.0, 0.0), "Block": (6, 0.0, 0.0),
-           "GunDeckPlanks": (7, 0.0, 1.0), "BerthDeckPlanks": (7, 0.0, 1.0), "OrlopPlanks": (7, 0.0, 1.0), "Deck": (6, 0.0, 0.0)}
+           "GunDeckPlanks": (7, 0.0, 1.0), "BerthDeckPlanks": (7, 0.0, 1.0), "OrlopPlanks": (7, 0.0, 1.0), "Deck": (6, 0.0, 1.0)}
 # The materials Blender draws from a pattern over a 0.8 grey base (deck.planks_material, the floor cloth's squares, the
 # sails' cloth): the export's base colour is that grey, so the undressed colour comes from here until the game draws the
 # pattern itself (build_frigate.py DECK_PLANK holystoned pine, FloorCloth's light square; flax for the sails).

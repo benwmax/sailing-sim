@@ -1306,7 +1306,13 @@ col = lerp(col, nsDirt, saturate((0.3 + 0.45 * dirt) * nsBlot) * nsK);
 col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0.0f : 1.0f) * nsK);
 rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
-float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
+// Frigate: the grain's axis. Her timbers all sit in the ship's frame, so the export paints each one's long axis into the
+// mesh's Grain colour attribute (export.py paint_grain: R 0 says it is there, G 0 along the ship, 0.5 athwartships, 1 up);
+// a mesh without it (white) keeps the part's X, or up with GrainUp (masts). The figure here and the detail maps' U below
+// follow it (gAxis 0 x, 1 z, 2 y: g is LP turned so g.x runs along the timber).
+int gAxis = VC.r < 0.5 ? (VC.g < 0.25 ? 0 : (VC.g < 0.75 ? 2 : 1)) : (GrainUp > 0.5 ? 1 : 0);
+float3 g = gAxis == 0 ? LP.xyz : (gAxis == 1 ? LP.zxy : LP.yxz);
+float gw = g.y * 0.9 + g.z * 1.3 + 2.5 * sin(g.x * 0.021) + 1.2 * sin(g.x * 0.083 + g.y);
 // J-Class 15: a laid deck's planks are quarter-sawn, so their grain runs nearly straight, and each plank has its own (the
 // part's wandering figure ran across the seams and, foreshortened along the deck, drew chevrons: the Mac's 1e96e56d helm still).
 if (Surface > 17.5)
@@ -2092,10 +2098,10 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     float3 bw = pow(abs(float3(dot(n, LX), dot(n, LY), dot(n, LZ))), 4.0);
     bw /= bw.x + bw.y + bw.z + 1e-5;
     float3 lpm = LP / 100.0;
-    bool upG = GrainUp > 0.5;
-    float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = lpm.xy / tile;
+    bool upG = gAxis == 1, acrossG = gAxis == 2;   // the grain up the part (masts), or athwartships (the frigate's beams)
+    float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = (acrossG ? lpm.yx : lpm.xy) / tile;
     if (Surface > 17.5) uv2 = (LUV2 + ldOfs) / tile;    // a laid deck: the teak's grain along each plank, from its own place
-    float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ;
+    float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ, a2 = acrossG ? LY : LX, b2 = acrossG ? LX : LY;
     float4 n0 = float4(0.5, 0.5, 1.0, 1.0), n1 = n0, n2 = n0, m0 = float4(0.5, 0.5, 0.5, 0.5), m1 = m0, m2 = m0;
     SamplerState DS = View.MaterialTextureBilinearWrapedSampler;
 #define BOAT_TRI(T, o0, o1, o2) o0 = Texture2DSample(T, DS, uv0); o1 = Texture2DSample(T, DS, uv1); o2 = Texture2DSample(T, DS, uv2)
@@ -2113,7 +2119,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 #undef BOAT_TRI
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
     float2 d0 = (n0.xy * 2.0 - 1.0) * strength, d1 = (n1.xy * 2.0 - 1.0) * strength, d2 = (n2.xy * 2.0 - 1.0) * strength;
-    grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * LX + d2.y * LY);
+    grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * a2 + d2.y * b2);
     if (surf == 2)                       // non-skid (texture loop): dust packed in the grooves, grit, mildew; the years polish the tops
     {
         cav = (1.0 - m.r) * fadeD;
@@ -2503,9 +2509,11 @@ def build_boat_surface(name, bend, packed=False):
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
                + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
-               + ["NameTex", "NameRect", "NameColour", "NameSpan"],
+               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
+    # Frigate: the grain's axis from the mesh's Grain colour attribute (white, the default without one, keeps the part's X).
+    connect(node(mat, unreal.MaterialExpressionVertexColor, -1600, 1250), "", c, "VC")
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
     # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
     connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
