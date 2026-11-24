@@ -28,6 +28,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "VisualPipeline.h"
+#include "FilmMode.h"
 #include "SailingSettings.h"
 #include "Engine/SkyLight.h"
 #include "Components/SkyAtmosphereComponent.h"
@@ -871,6 +872,14 @@ void ASailingEnvironment::UpdateSun(double Hour)
 			PP.AutoExposureMinBrightness = float(EV) - Band * BandBright + 2.5f * IntoSun - kBelowDecksStops * Below;
 			PP.AutoExposureMaxBrightness = float(EV) + Band * BandDark + 2.5f * IntoSun;
 			PP.AutoExposureBias = USailingSettings::Get()->BrightnessBias();   // Settings > Brightness
+			// Film mode (FilmMode.h): -SailingEV=<EV100> locks the exposure outside the capture mode too (the chase rig's
+			// shots match the tripod's). The capture camera's own lock still wins in the capture mode.
+			float FixedEV = 0.f;
+			if (FixedExposureArg(FixedEV))
+			{
+				PP.AutoExposureMinBrightness = PP.AutoExposureMaxBrightness = FixedEV;
+				PP.AutoExposureBias = 0.f;
+			}
 			DumpExposureSettings(float(EV), Band, IntoSun);
 		}
 	}
@@ -1073,6 +1082,13 @@ void ASailingEnvironment::UpdateClouds(float DeltaSeconds)
 			PostProcess->Settings.bOverride_AutoExposureBias = true;
 			// (No half-stop lift in clear air: docs/exposure-choice/.)
 			PostProcess->Settings.AutoExposureBias = -1.5f * float(W.CloudDarkness) + USailingSettings::Get()->BrightnessBias();   // + Settings > Brightness
+			float FixedEV = 0.f;
+			if (FixedExposureArg(FixedEV))   // -SailingEV (film mode), as on the physical camera's tiers
+			{
+				PostProcess->Settings.bOverride_AutoExposureMinBrightness = PostProcess->Settings.bOverride_AutoExposureMaxBrightness = true;
+				PostProcess->Settings.AutoExposureMinBrightness = PostProcess->Settings.AutoExposureMaxBrightness = FixedEV;
+				PostProcess->Settings.AutoExposureBias = 0.f;
+			}
 		}
 		// Under the deck the light is grey, not blue: the sky's blue comes from above the cloud and never reaches the
 		// lake (Phase 8 blind test: the storm frames read as a clear dusk). Fair-weather days are untouched.

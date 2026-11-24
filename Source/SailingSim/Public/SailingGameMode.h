@@ -14,6 +14,7 @@
 #include "LakeData.h"
 #include "Chart.h"
 #include "WorldStreaming.h"
+#include "FilmMode.h"
 #include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
@@ -23,6 +24,7 @@
  *   -SailingWeather=<CalmMorning|AfternoonBreeze|Overcast|Rain|Thunderstorm|RandomDay|Mistral>  -SailingHour=<h>
  *   -SailingWind=<knots> (scale the preset to this base wind)  -SailingWeatherTime=<s> (start partway in)
  *   -SailingSeed=<n>  -SailingBench=<s>  -SailingRecord=<s>  -SailingRecordInterval=<s>  -SailingShot=<name>
+ *   (under a fixed step, -benchmark -fps=60, the recording is counted in frames: FilmMode.h)
  */
 UCLASS()
 class SAILINGSIM_API ASailingGameMode : public AGameModeBase
@@ -135,6 +137,9 @@ public:
 	void ApplyWeatherSettings(TOptional<double> KeepWeatherStartTime = TOptional<double>());
 	/** Applies the quality tier from settings to engine scalability and the water mesh. */
 	void ApplyQualitySettings();
+	/** Film mode (FilmMode.h): seconds from the first recorded frame of a bench run (negative in the warm-up), counted in
+	 *  frames under a fixed step (-benchmark -fps=60); NAN when no bench runs. The same value for every actor in a frame. */
+	double GetFilmClock() const;
 	/** Kept for the difficulty toggle: gusts are softer on easy. The weather keeps its clock (a storm's front stays where it
 	 *  was: #623 follow-up). */
 	void ApplyDifficultyToWind() { ApplyWeatherSettings(WeatherStartTime); }
@@ -321,6 +326,11 @@ private:
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;
 	int32 FrameIndex = 0;
+	// Film mode: under a fixed step the recording is counted in frames (FFilmFrameClock), from the bench's first tick.
+	bool bFrameClock = false;
+	FFilmFrameClock FilmFrames;
+	int64 BenchFrameBase = -1;     // GFrameCounter at the bench's first tick
+	float ShotRequestedAt = 0.f;   // Elapsed when the end screenshot was asked for
 	float Elapsed = 0.f;
 	bool bScreenshotRequested = false;
 	bool bBenchDone = false;

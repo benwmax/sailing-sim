@@ -31,6 +31,7 @@
 #include "Misc/FileHelper.h"
 #include "GpuSlices.h"
 #include "VisualPipeline.h"
+#include "FilmMode.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Scalability.h"
@@ -879,12 +880,34 @@ void ASailingGameMode::ApplyQualitySettings()
 	{
 		IConsoleManager::Get().FindConsoleVariable(TEXT("r.MotionBlurQuality"))->Set(S->MotionBlur == 0 ? 0 : 4, ECVF_SetByCode);
 	}
+	// Film mode (FilmMode.h): the offline quality boost over the tier (the measuring switches below still win).
+	if (IsFilmMode())
+	{
+		for (const FQualityCVar& C : FilmQualityCVars())
+		{
+			if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(C.Name); Var && Var->GetFloat() != C.Value) Var->Set(C.Value, ECVF_SetByCode);
+		}
+	}
 	// Measuring (Graphics G1): -SailingCloudMode=<r.VolumetricRenderTarget.Mode> -SailingCloudSamples=<view ray max>.
 	int32 CloudMode = -1, CloudSamples = 0;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudMode="), CloudMode))
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricRenderTarget.Mode"))) Var->Set(CloudMode, ECVF_SetByCode);
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingCloudSamples="), CloudSamples))
 		if (IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"))) Var->Set(float(CloudSamples), ECVF_SetByCode);
+	// Film mode: what the clouds and reflections actually run at, read back (the PC's A/B of -SailingCloudMode=1 against
+	// film's 3 looked the same, and nothing in the log said which mode was live).
+	if (IsFilmMode() || CloudMode >= 0)
+	{
+		FString Live;
+		for (const TCHAR* Name : { TEXT("r.VolumetricRenderTarget"), TEXT("r.VolumetricRenderTarget.Mode"), TEXT("r.VolumetricRenderTarget.UpsamplingMode"),
+			TEXT("r.VolumetricCloud.ViewRaySampleMaxCount"), TEXT("r.Water.SingleLayer.Reflection.DownsampleFactor"), TEXT("r.Lumen.Reflections.DownsampleFactor"),
+			TEXT("r.TSR.History.ScreenPercentage"), TEXT("r.AntiAliasingMethod"), TEXT("r.ScreenPercentage") })
+		{
+			const IConsoleVariable* Var = IConsoleManager::Get().FindConsoleVariable(Name);
+			Live += FString::Printf(TEXT(" %s=%s"), Name, Var ? *Var->GetString() : TEXT("(none)"));
+		}
+		SAIL_LOG(Display, TEXT("Film quality:%s"), *Live);
+	}
 	// Measuring (Visual V1): -SailingAA=<0 none, 2 TAA, 4 TSR, 5 SMAA> and -SailingScreenPct=<percent> override the tier.
 	int32 AAOverride = -1, PctOverride = -1;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingAA="), AAOverride))
@@ -1258,6 +1281,16 @@ void ASailingGameMode::StartPlay()
 		// screenshots, slow on the Mac (about 0.8 s each), land a short game time apart (docs/far-cap-sprites: popping).
 		float SlowMo = 1.f;
 		if (FParse::Value(SailingArgs::Dev(), TEXT("SailingSlowMo="), SlowMo) && SlowMo > 0.f && GetWorldSettings()) GetWorldSettings()->SetTimeDilation(SlowMo);
+		// Film mode (FilmMode.h): under a fixed step every frame is the same game time, so the recording is counted in
+		// frames. Timed, the 1/60 s interval added up against the end landed a 481st frame (Inputs/reel-test/README.md).
+		if (FilmUsesFrameClock())
+		{
+			const double Dilation = GetWorldSettings() ? GetWorldSettings()->GetEffectiveTimeDilation() : 1.0;
+			FilmFrames = FFilmFrameClock::Make(FApp::GetFixedDeltaTime() * Dilation, BenchWarmup, RecordSeconds, RecordInterval);
+			bFrameClock = true;
+			SAIL_LOG(Display, TEXT("SailingRecord: fixed step %.5f s, %d frames from frame %d, one every %d"), FilmFrames.FrameSeconds,
+				FilmFrames.Count, FilmFrames.WarmupFrames, FilmFrames.Stride);
+		}
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingShot="), ShotName);
 		NextFrameTime = BenchWarmup;
 		// Soaks: -SailingExecAt=<s>:<cmd>[;<s>:<cmd>...] runs console commands at those seconds of the bench clock, '+' for
@@ -1318,6 +1351,15 @@ void ASailingGameMode::UpdateResolutionGovernor(float DeltaSeconds)
 	}
 }
 
+double ASailingGameMode::GetFilmClock() const
+{
+	if (BenchSeconds <= 0.f) return NAN;
+	if (!bFrameClock) return double(Elapsed) - double(BenchWarmup);
+	// (A pawn ticking before the game mode in the bench's first frame sees frame 0, as the game mode will.)
+	const int64 Frame = BenchFrameBase < 0 ? 0 : int64(GFrameCounter) - BenchFrameBase;
+	return FilmFrames.ClockAt(Frame);
+}
+
 float ASailingGameMode::GetRenderScale() const
 {
 	return IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"))->GetFloat();
@@ -1349,6 +1391,8 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	}
 #endif
 	Elapsed += DeltaSeconds;
+	if (BenchFrameBase < 0) BenchFrameBase = int64(GFrameCounter);
+	const int64 BenchFrame = int64(GFrameCounter) - BenchFrameBase;
 	if (bBenchTrace)
 	{
 		TraceTimes.Add({ Elapsed, float(FApp::GetDeltaTime() * 1000.0), float(FPlatformTime::ToMilliseconds(GGameThreadTime)),
@@ -1409,7 +1453,17 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		}
 	}
 
-	if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmup + RecordSeconds)
+	if (bFrameClock)
+	{
+		const int32 Index = FilmFrames.CaptureIndexAt(BenchFrame);
+		if (Index >= 0)
+		{
+			const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), Index));
+			FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
+			FrameIndex = Index + 1;
+		}
+	}
+	else if (RecordSeconds > 0.f && Elapsed >= NextFrameTime && Elapsed < BenchWarmup + RecordSeconds)
 	{
 		const FString FramePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/rec/frame_%04d.png"), FrameIndex++));
 		FScreenshotRequest::RequestScreenshot(FramePath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
@@ -1448,14 +1502,18 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	// window its frame (a render flush and a synchronous PNG compress, about 280 ms) set every view's max_ms and could
 	// lift p99 on short runs (the PC's stream-run trace, Oct 20).
 	const float End = BenchWarmup + BenchSeconds;
-	if (!bScreenshotRequested && Elapsed > End)
+	// A frame-counted recording runs to its last frame even past the bench's end (its own screenshot waits for it).
+	const bool bRecordPending = bFrameClock && FilmFrames.Count > 0 && BenchFrame <= FilmFrames.LastFrame();
+	if (!bScreenshotRequested && Elapsed > End && !bRecordPending)
 	{
 		const FString ShotPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.png"), *ShotName));
 		FScreenshotRequest::RequestScreenshot(ShotPath, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 		bScreenshotRequested = true;
+		ShotRequestedAt = Elapsed;
 	}
-	if (Elapsed > End + 1.f)
+	if (bScreenshotRequested && Elapsed > FMath::Max(End, ShotRequestedAt) + 1.f)
 	{
+		if (bFrameClock && FilmFrames.Count > 0) SAIL_LOG(Display, TEXT("SailingRecord: %d of %d frames recorded"), FrameIndex, FilmFrames.Count);
 		FinishGpuSlices();
 		FinishBenchmark();
 	}
