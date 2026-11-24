@@ -1,0 +1,15 @@
+2026-11-23 21:05:55 Bean's Saved held
+2026-11-23 21:06:24 V warm: 79.7 fps, p99 17.7, max 19.18, gpu 7.58, game 9.45, render 12.48; 29 s
+2026-11-23 21:07:02 V comm-wide-1080p: 78 fps, p99 16.99, max 21.41, gpu 8.02, game 9.78, render 12.72; 38 s
+2026-11-23 21:07:40 V comm-deck-1080p: 75.9 fps, p99 17.44, max 21.09, gpu 8.13, game 9.44, render 13.11; 38 s
+2026-11-23 21:08:18 V comm-gundeck-1080p: 76.4 fps, p99 18.73, max 21.22, gpu 8.64, game 10.1, render 12.96; 38 s
+2026-11-23 21:08:56 V j22-wide-1080p: 69.2 fps, p99 19.82, max 23.63, gpu 7.9, game 11.27, render 14.42; 38 s
+2026-11-23 21:09:34 V j22-deck-1080p: 69.9 fps, p99 19.65, max 23.13, gpu 7.84, game 11.84, render 14.23; 38 s
+2026-11-23 21:10:12 V comm-wide-4k: 55.8 fps, p99 21.65, max 23.27, gpu 17.41, game 12.03, render 17.89; 38 s
+2026-11-23 21:10:51 V comm-deck-4k: 56.5 fps, p99 21.2, max 22.49, gpu 17.22, game 11.95, render 17.69; 38 s
+2026-11-23 21:11:29 V comm-gundeck-4k: 54 fps, p99 21.61, max 24.24, gpu 18.05, game 12.05, render 18.5; 38 s
+2026-11-23 21:12:07 V j22-wide-4k: 56.7 fps, p99 21.59, max 23.25, gpu 17.11, game 12.37, render 17.61; 38 s
+2026-11-23 21:12:45 V j22-deck-4k: 58.6 fps, p99 20.68, max 22.62, gpu 16.59, game 10.97, render 17.06; 38 s
+2026-11-23 21:20:32 16 views: 16 bench.json; csv True
+2026-11-23 21:20:34 Bean's Saved restored: profile 7B5CA7BE (want 7B5CA7BE), hold folder left False
+2026-11-23 21:20:34 FRIGPERF DONE
