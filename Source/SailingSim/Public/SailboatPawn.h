@@ -733,7 +733,9 @@ private:
 	/** The cabin lamps (walk map "Lamp" spots) of each shown deck: lit with its mesh, gone with it. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UPointLightComponent>> DeckLamps;
 	TArray<int32> DeckLampDecks;
+	TArray<bool> DeckLampRanged;   // a lantern (ShipOutside::FLantern): lit only within LanternLitRangeCm of the eye
 	void SetDeckLamps(int32 Deck, bool bOn);
+	void UpdateDeckLanterns();
 	/** A ship's placed copies below (ShipOutside::FDeckTable: the frigate's berth deck hammocks, hooks, messes and chests)
 	 *  by walk-map deck: their meshes, loaded with the deck's; one instanced mesh per part, shown with the deck. Her
 	 *  lanterns (FLantern) are lit by SetDeckLamps with the deck's lamps. */
