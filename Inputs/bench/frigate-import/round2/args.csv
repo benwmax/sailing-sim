@@ -1,0 +1,4 @@
+shot,command_line
+frigate-r2-deck,"Packaged\Windows-frigate-a5670d9b\SailingSim.exe -SailingBench=10 -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingNoHud -SailingBoat=Comm -SailingWorld=Gulf -SailingLaunch=2 -SailingWind=12 -SailingShot=frigate-r2-deck -SailingCamDist=60"
+frigate-r2-gundeck,"Packaged\Windows-frigate-a5670d9b\SailingSim.exe -SailingBench=10 -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingNoHud -SailingBoat=Comm -SailingWorld=Gulf -SailingLaunch=2 -SailingWind=12 -SailingShot=frigate-r2-gundeck -SailingWalkAt=Gun,-19,0,0"
+frigate-r2-wide,"Packaged\Windows-frigate-a5670d9b\SailingSim.exe -SailingBench=10 -windowed -ResX=1920 -ResY=1080 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingNoHud -SailingBoat=Comm -SailingWorld=Gulf -SailingLaunch=2 -SailingWind=12 -SailingShot=frigate-r2-wide -SailingCamDist=120 -SailingCamYaw=140 -SailingCamPitch=-8"
