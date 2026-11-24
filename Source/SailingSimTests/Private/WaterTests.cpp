@@ -1269,3 +1269,73 @@ bool FWaterRingOverlapTest::RunTest(const FString&)
 	}
 	return true;
 }
+
+/**
+ * The wake grid under a ship (docs/frigate-import/): the frigate Commonwealth (52 m on the waterline, 5.9 m of canoe) at
+ * 9 kn foams along her bow wave and in her lane astern, not over the sea beside her. Her draft pressed a 4 m head on the
+ * grid: the surface beside her sat past the solver's height clamp and counted as moving every step, a flat white sheet
+ * wider than her beam (the PC's first stills). Also checks a stopped ship settles.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWakeGridShipTest, "SailingSim.Visual.WakeGridShip", WaterFlags)
+bool FWaterWakeGridShipTest::RunTest(const FString&)
+{
+	const FBoatConfig Config = FBoatConfig::Make(EBoatType::Commonwealth);
+	const FBoatModel Model(Config);
+	FWakeGrid Grid;
+	Grid.Init(256, 0.5f);   // 128 m around her, as the game's Ultra grid covers
+	const float Speed = 4.6f;
+	FWakeGrid::FHull Hull;
+	Hull.Shape = &Config.Hulls[0];
+	Hull.CanoeDepth = float(Model.HullDepth());
+	Hull.Speed = Speed;
+	Hull.Heel = FMath::DegreesToRadians(-6.f);   // heeled to starboard, as she sails on the port tack
+	Hull.Position = FVector2D(0.0, 0.0);
+	TArray<FWakeGrid::FHull> Hulls = { Hull };
+	const float Dt = 1.f / 60.f;
+	for (int32 I = 0; I < 25 * 60; ++I)
+	{
+		Hulls[0].Position.X += Speed * Dt;
+		Grid.Follow(Hulls[0].Position);
+		Grid.Step(Dt, Hulls);
+	}
+	const int32 N = Grid.Size();
+	const TArray<float>& H = Grid.Heights();
+	const TArray<float>& Foam = Grid.Foam();
+	SavePgm(Foam, N, 120.f, TEXT("wake_ship_foam.pgm"));
+	const Sailing::FHullShape& S = Config.Hulls[0];
+	// The sea beside her: 4 to 14 m outboard of her deck edge along her length, each side; her lane: within her beam, 5 to 40 m astern.
+	double BesideSum[2] = { 0.0, 0.0 }, BesideN[2] = { 0.0, 0.0 }, LaneSum = 0.0, LaneN = 0.0;
+	float MaxH = 0.f;
+	for (int32 R = 0; R < N; ++R)
+	{
+		for (int32 C = 0; C < N; ++C)
+		{
+			const FVector2D P = Grid.Origin() + FVector2D((R + 0.5) * Grid.CellSize(), (C + 0.5) * Grid.CellSize()) - Hulls[0].Position;
+			MaxH = FMath::Max(MaxH, FMath::Abs(H[R * N + C]));
+			const float F = Foam[R * N + C];
+			if (P.X > S.SternX && P.X < S.BowX)
+			{
+				const double Out = FMath::Abs(P.Y) - S.DeckHalfBeam(P.X);
+				if (Out > 4.0 && Out < 14.0) { const int32 Side = P.Y > 0.0 ? 1 : 0; BesideSum[Side] += F; BesideN[Side] += 1.0; }
+			}
+			else if (P.X < S.SternX - 5.0 && P.X > S.SternX - 40.0 && FMath::Abs(P.Y) < S.MaxHalfBeam) { LaneSum += F; LaneN += 1.0; }
+		}
+	}
+	const double BesidePort = BesideN[0] > 0.0 ? BesideSum[0] / BesideN[0] : 0.0, BesideStbd = BesideN[1] > 0.0 ? BesideSum[1] / BesideN[1] : 0.0;
+	const double Lane = LaneN > 0.0 ? LaneSum / LaneN : 0.0;
+	AddInfo(FString::Printf(TEXT("9 kn: largest wave %.2f m, foam beside her %.2f (port) %.2f (starboard), in her lane astern %.2f"), MaxH, BesidePort, BesideStbd, Lane));
+	TestTrue(TEXT("The sea beside her is not a white sheet (port)"), BesidePort < 0.15);
+	TestTrue(TEXT("The sea beside her is not a white sheet (starboard, her low side)"), BesideStbd < 0.15);
+	TestTrue(TEXT("Her lane astern is broken white"), Lane > 0.05);
+	TestTrue(TEXT("Her waves stay within the clamp"), MaxH <= 0.6f + 1e-4f);
+
+	// Stopped: the grid settles instead of ringing on under a 2,100 t hull.
+	Hulls[0].Speed = 0.f;
+	for (int32 I = 0; I < 20 * 60; ++I) Grid.Step(Dt, Hulls);
+	double FoamNow = 0.0;
+	for (float F : Grid.Foam()) FoamNow += F;
+	FoamNow /= double(N) * N;
+	AddInfo(FString::Printf(TEXT("20 s after she stops: mean foam %.4f"), FoamNow));
+	TestTrue(TEXT("The foam is gone once she stops"), FoamNow < 0.01);
+	return true;
+}

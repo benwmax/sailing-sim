@@ -54,3 +54,6 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
   sails' cloth texture: until then the importer gives those materials flat undressed colours (`COLOUR`), since the export's
   base colour under Blender's pattern is a 0.8 grey. The wood's figure (`Grain`) is off on her timbers: it runs along the
   part's X, and every part of hers sits in the ship's frame.
+- The wake grid (`WakeGrid.cpp`) counts at most 2.3 m of a hull's draft as pressure on the surface (Bluebonnet's canoe,
+  the deepest it was tuned on) and foams only where the kept surface moves: her 5.9 m pressed a 4 m head that held the
+  sea beside her past the height clamp, a flat white sheet wider than her beam. `SailingSim.Visual.WakeGridShip`.

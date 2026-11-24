@@ -6,6 +6,10 @@ namespace
 	constexpr float kAlpha = 0.25f;    // damping (1/s)
 	constexpr float kStep = 1.f / 30.f;
 	constexpr float kPressure = 0.7f;  // the hull as a pressure on the surface: share of its draft at each cell (rho g d)
+	// The deepest draft the pressure counts (m): Bluebonnet's 2.28 m canoe is the deepest hull the solver was tuned on.
+	// The frigate's 5.9 m pressed a 4 m head on the grid: the surface beside her sat past the height clamp and foamed
+	// every step, a flat white sheet wider than her beam (docs/frigate-import/).
+	constexpr float kMaxDepth = 2.3f;
 	constexpr int32 kSponge = 8;       // cells of absorbing border
 
 	/** In-place radix-2 complex FFT of one line (Sign +1 inverse sense, -1 forward; unnormalized). */
@@ -112,7 +116,7 @@ float FWakeGrid::DisplacedDepth(const FHull& Hull, const FVector2D& P) const
 	const float Yc = Y - float(S.CenterY);
 	if (FMath::Abs(Yc) > HalfBeam) return 0.f;
 	const float Bottom = float(S.BottomZ(X, Yc, Hull.CanoeDepth));
-	return FMath::Max(0.f, -Bottom - Yc * FMath::Sin(Hull.Heel) + Hull.Sink);
+	return FMath::Clamp(-Bottom - Yc * FMath::Sin(Hull.Heel) + Hull.Sink, 0.f, kMaxDepth);
 }
 
 float FWakeGrid::SideRatio(const FHull& Hull, const FVector2D& P) const
@@ -253,7 +257,9 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			// Realism audit 8 (docs/wake-at-speed/): from 0.25 m/s, not 0.35, and lasting 4 s, not 2.5. At 6-7 kn (a J/22
 			// near her hull speed) the bow wave's crest broke white only in patches and the transom's lane was gone within
 			// a length; in light air (3 kn and under) the surface still moves too slowly to foam.
-			const float Rate = FMath::Abs(Next - Old) / Dt;
+			// The surface's motion as it is kept (a cell pinned at the height clamp isn't moving, so it doesn't foam).
+			const float Kept = FMath::Clamp(Next, -0.6f, 0.6f);
+			const float Rate = FMath::Abs(Kept - Old) / Dt;
 			constexpr float kFoamRate = 0.25f, kFoamLife = 4.f;
 			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
 			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
@@ -268,7 +274,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 				Foam = FMath::Max(Foam, 0.7f * FMath::Min(PrevStirMid[I], NearStir[I]));
 			}
 			FoamField[I] = Foam;
-			H[I] = FMath::Clamp(Next, -0.6f, 0.6f);
+			H[I] = Kept;
 			Velocity[I] = Vel;
 		}
 	});
