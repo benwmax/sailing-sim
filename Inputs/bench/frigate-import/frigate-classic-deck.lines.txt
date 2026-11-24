@@ -1,0 +1,2 @@
+LogSailing: Ship rig Commonwealth: 0 parts on the model, 87 to load, 0 not in the project
+LogSailing: Ship frames Commonwealth: 0 parts on the model, 12 to load, 0 not in the project
