@@ -457,6 +457,7 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		Lamp->AttenuationRadius = Lt.RadiusCm > 0.f ? Lt.RadiusCm : ShipWalkGame::LampReachCm;
 		Lamp->SourceRadius = 2.f;
 		Lamp->SetCastShadows(Lt.bCastShadows && bShadowTier);
+		Lamp->VolumetricScatteringIntensity = 0.f;   // no fog scattering below decks: MegaLights shaded it per pixel, 1.2 ms at 4K
 		Lamp->SetVisibility(false);
 		Lamp->RegisterComponent();
 		DeckLamps.Add(Lamp);
