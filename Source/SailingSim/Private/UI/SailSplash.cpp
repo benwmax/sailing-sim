@@ -139,7 +139,7 @@ void SSailSplash::Construct(const FArguments& A)
 	}
 
 	Content = SNew(SOverlay)
-		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center).Padding(FMargin(0.f, 0.f, 0.f, 120.f))
+		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)   // centred on the full screen height, the credits row not counted
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ SNew(STextBlock).Text(FText::FromString(TEXT("READY ABOUT"))).Font(SailUI::Font(EType::Logo)).ColorAndOpacity(Fg) ]
