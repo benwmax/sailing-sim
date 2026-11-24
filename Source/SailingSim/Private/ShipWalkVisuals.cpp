@@ -438,11 +438,12 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 	// light room), in her frame at each flame with the export's colour, lumens, reach and shadowing.
 	const ShipOutside::FDeckTable* Table = ShipOutside::DecksFor(Boat.GetConfig().Name);
 	if (!Table || Deck < 0 || Deck >= int32(WalkMap.Decks.size())) return;
-	// Lit within LanternLitRangeCm of the eye (UpdateDeckLanterns); shadowed as the export says on High and Ultra only.
+	// Lit within LanternLitRangeCm of the eye (UpdateDeckLanterns). Unshadowed on every tier: with the export's shadows the
+	// lanterns hung the PC's GPU at 4K on Ultra in the virtual shadow maps' culling (DXGI_ERROR_DEVICE_HUNG at the deck's
+	// load, both decks, twice: Inputs/bench/frigate-decks/0ec5fcb5/), and lit with MegaLights' traced shadows before that
+	// they cost 5 ms. Shadowed lanterns wait for a MegaLights-only path.
 	const FString DeckName = UTF8_TO_TCHAR(WalkMap.Decks[Deck].Name.c_str());
-	const ESailingQuality Quality = USailingSettings::Get()->Quality;
-	const bool bShadowTier = Quality == ESailingQuality::High || Quality == ESailingQuality::Ultra;
-	int32 Lanterns = 0, Shadowed = 0;
+	int32 Lanterns = 0;
 	for (const ShipOutside::FLantern& Lt : Table->Lanterns)
 	{
 		if (Lt.Deck != DeckName) continue;
@@ -456,7 +457,7 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		Lamp->SetLightColor(Lt.Colour);
 		Lamp->AttenuationRadius = Lt.RadiusCm > 0.f ? Lt.RadiusCm : ShipWalkGame::LampReachCm;
 		Lamp->SourceRadius = 2.f;
-		Lamp->SetCastShadows(Lt.bCastShadows && bShadowTier);
+		Lamp->SetCastShadows(false);
 		Lamp->VolumetricScatteringIntensity = 0.f;   // no fog scattering below decks: MegaLights shaded it per pixel, 1.2 ms at 4K
 		Lamp->SetVisibility(false);
 		Lamp->RegisterComponent();
@@ -464,11 +465,10 @@ void ASailboatPawn::SetDeckLamps(int32 Deck, bool bOn)
 		DeckLampDecks.Add(Deck);
 		DeckLampRanged.Add(true);
 		++Lanterns;
-		if (Lt.bCastShadows && bShadowTier) ++Shadowed;
 	}
 	int32 Copies = 0;
 	for (int32 I = 0; I < DeckCopies.Num(); ++I) if (DeckCopyDecks[I] == Deck && DeckCopies[I]) Copies += DeckCopies[I]->GetInstanceCount();
-	if (Lanterns > 0 || Copies > 0) SAIL_LOG(Log, TEXT("Ship decks %s: %d copies, %d lanterns (%d shadowed)"), *DeckName, Copies, Lanterns, Shadowed);
+	if (Lanterns > 0 || Copies > 0) SAIL_LOG(Log, TEXT("Ship decks %s: %d copies, %d lanterns (unshadowed)"), *DeckName, Copies, Lanterns);
 	UpdateDeckLanterns();
 }
 
