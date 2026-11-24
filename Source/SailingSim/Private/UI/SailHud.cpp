@@ -717,6 +717,7 @@ void SSailHud::Construct(const FArguments& A)
 	using namespace SailHudImpl;
 	Player = A._Player;
 	RegisterInputTracker();
+	SailUI::PreloadFonts();   // before the first card shows mid-session (an 84 ms first-use load)
 	// Stills of each HUD mode (docs/trim-panel/): -SailingHudMode=0 Full (UI Helpful), 1 Minimal (UI Natural), 2 Off.
 	if (int32 Forced = 0; FParse::Value(FCommandLine::Get(), TEXT("-SailingHudMode="), Forced)) Mode = FMath::Clamp(Forced, 0, 2);
 	UTexture2D* Tex = SailUI::KeptTexture(SailCatalog::MiniMap(USailingSettings::Get()->World).Texture);

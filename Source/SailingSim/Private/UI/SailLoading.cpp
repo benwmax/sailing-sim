@@ -79,6 +79,7 @@ void SSailLoading::Construct(const FArguments& A)
 	using namespace SailUI;
 	World = A._World;
 	OnStart = A._OnStart;
+	SailUI::PreloadFonts();   // while the loading screen is up, not on the water
 	// Settings > Gameplay > Start automatically when loaded.
 	if (USailingSettings::Get()->bAutoStart)
 	{

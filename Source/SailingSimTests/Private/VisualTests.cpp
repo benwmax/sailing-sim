@@ -62,6 +62,7 @@ bool FVisualTierSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Low: no ray tracing"), CVarOf(Low, TEXT("r.RayTracing.Enable")), 0.f);
 	TestEqual(TEXT("Medium: Lumen in software"), CVarOf(Med, TEXT("r.Lumen.HardwareRayTracing")), 0.f);
 	TestEqual(TEXT("High: Lumen with hardware ray tracing"), CVarOf(High, TEXT("r.Lumen.HardwareRayTracing")) + CVarOf(High, TEXT("r.RayTracing.Enable")), 2.f);
+	TestEqual(TEXT("No ray-tracing geometry kept built unreferenced (feedback #32)"), CVarOf(High, TEXT("r.RayTracing.NumAlwaysResidentLODs")), 0.f);
 	TestEqual(TEXT("Low keeps the Phase 8 anti-aliasing (no override)"), CVarOf(Low, TEXT("r.AntiAliasingMethod")), -1.f);
 	TestEqual(TEXT("Low keeps the Phase 8 resolution (no override)"), CVarOf(Low, TEXT("r.ScreenPercentage")), -1.f);
 	TestTrue(TEXT("Medium renders below native and upscales"), CVarOf(Med, TEXT("r.ScreenPercentage")) >= 50.f && CVarOf(Med, TEXT("r.ScreenPercentage")) < 100.f);
