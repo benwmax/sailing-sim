@@ -89,6 +89,18 @@ namespace
 	}
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipWalkHelmStandTest, "SailingSim.ShipWalk.HelmStand", ShipWalkFlags)
+bool FShipWalkHelmStandTest::RunTest(const FString& Parameters)
+{
+	using Sailing::FWalkMap;
+	// Commonwealth's first bake: the spot 0.7 m abaft the axle at -22.25 stands back to 1.05 m abaft it.
+	TestEqual(TEXT("a spot inside the wheel stands back"), FWalkMap::HelmStandX(-22.95, -22.25), -22.25 - FWalkMap::HelmAbaftWheelAxle);
+	// A spot already clear of the wheel, or a tiller boat's spot forward of a wheel frame it does not have, is kept.
+	TestEqual(TEXT("a spot clear of the wheel is kept"), FWalkMap::HelmStandX(-24.2, -22.25), -24.2);
+	TestEqual(TEXT("the standoff is a stride past the after wheel, not a cabin"), FWalkMap::HelmAbaftWheelAxle > 1.4 && FWalkMap::HelmAbaftWheelAxle < 2.0, true);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipWalkFileTest, "SailingSim.ShipWalk.File", ShipWalkFlags)
 bool FShipWalkFileTest::RunTest(const FString& Parameters)
 {

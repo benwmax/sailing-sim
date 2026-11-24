@@ -151,6 +151,18 @@ void ASailboatPawn::PlaceWalkerAtHelm()
 	if (!CanWalk()) return;
 	if (const Sailing::FWalkSpot* Helm = WalkMap.SpotNamed("Helm"))
 	{
+		// Abaft the wheel where the ship has one (FWalkMap::HelmAbaftWheelAxle): Commonwealth's first walk bake stood the
+		// helmsman 0.7 m abaft the axle, with his eye inside the after wheel. The baked spot where that cell is no floor.
+		double X = Helm->X;
+		if (ShipFrames)
+		{
+			for (int32 K = 0; K < ShipFrames->NumFrames; ++K)
+			{
+				const Sailing::FShipFrame& F = ShipFrames->Frames[K];
+				if (F.Kind == Sailing::EShipFrameKind::Wheel) { X = Sailing::FWalkMap::HelmStandX(Helm->X, F.Origin.X); break; }
+			}
+		}
+		if (X != Helm->X && Walker.Reset(WalkMap, Helm->Deck, X, Helm->Y, Helm->YawDeg)) return;
 		if (Walker.Reset(WalkMap, Helm->Deck, Helm->X, Helm->Y, Helm->YawDeg)) return;
 	}
 	// A map without the spot: on the top deck a fifth of her length forward of her stern, facing forward.
