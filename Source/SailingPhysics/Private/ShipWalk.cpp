@@ -121,6 +121,12 @@ namespace Sailing
 		return nullptr;
 	}
 
+	double FWalkMap::HelmStandX(double SpotX, double WheelX)
+	{
+		const double Back = WheelX - HelmAbaftWheelAxle;
+		return SpotX > Back ? Back : SpotX;
+	}
+
 	bool FWalkMap::Parse(const uint8_t* Bytes, size_t Size, std::string* Error)
 	{
 		Decks.clear();

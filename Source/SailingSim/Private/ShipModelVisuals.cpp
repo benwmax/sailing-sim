@@ -168,11 +168,13 @@ void ASailboatPawn::BindShipFrames()
 	}
 
 	// ...and the rest from the export, where it is in the project (each part alone at its own pivot in her frame).
+	int32 Outside = 0;   // the outside model's parts, found once it is loaded (BindShipOutside binds the frames again)
 	for (int32 K = 0; K < ShipFrames->NumFrames; ++K)
 	{
 		const Sailing::FShipFrame& F = ShipFrames->Frames[K];
 		const FString Name = UTF8_TO_TCHAR(F.Name);
-		if (Found.Contains(Name) || ShipOutsideOwns(Name)) continue;   // the outside model's part: found once it is loaded
+		if (Found.Contains(Name)) continue;
+		if (ShipOutsideOwns(Name)) { ++Outside; continue; }
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Name);
 		const FString Package = ShipRigGame::PartPackage(Folder, Asset, F.bBelow);
 		if (Package.IsEmpty()) continue;
@@ -183,8 +185,12 @@ void ASailboatPawn::BindShipFrames()
 		ShipFramesPendingParts.Add(Part);
 	}
 	if (ShipFramesPending.Num() > 0) ShipFramesLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(ShipFramesPending);
-	SAIL_LOG(Log, TEXT("Ship frames %s: %d parts on the model, %d to load, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
-		ShipFrameParts.Num(), ShipFramesPending.Num(), ShipFrames->NumFrames - ShipFrameParts.Num() - ShipFramesPending.Num());
+	// (Quiet before the outside model has loaded: its parts are bound on the pass after the load.)
+	if (Outside == 0 || ShipFrameParts.Num() > 0)
+	{
+		SAIL_LOG(Log, TEXT("Ship frames %s: %d parts on the model, %d to load, %d with the outside model, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
+			ShipFrameParts.Num(), ShipFramesPending.Num(), Outside, ShipFrames->NumFrames - ShipFrameParts.Num() - ShipFramesPending.Num() - Outside);
+	}
 }
 
 void ASailboatPawn::UpdateShipFrames(float DeltaSeconds)
@@ -316,9 +322,11 @@ void ASailboatPawn::BindShipRig()
 	}
 
 	// The rest from the export, where it is in the project.
+	int32 Outside = 0;   // the outside model's parts, found once it is loaded (BindShipOutside binds the rig again)
 	for (const TPair<FString, FShipRigPart>& Pair : Wanted)
 	{
-		if (Found.Contains(Pair.Key) || ShipOutsideOwns(Pair.Key)) continue;   // the outside model's part: found once it is loaded
+		if (Found.Contains(Pair.Key)) continue;
+		if (ShipOutsideOwns(Pair.Key)) { ++Outside; continue; }
 		const FString Asset = FString::Printf(TEXT("SM_%s_%s"), *Folder, *Pair.Key);
 		const FString Package = FString::Printf(TEXT("/Game/Boats/%s/Outside/%s"), *Folder, *Asset);
 		if (!FPackageName::DoesPackageExist(Package)) continue;
@@ -326,8 +334,12 @@ void ASailboatPawn::BindShipRig()
 		ShipRigPendingParts.Add(Pair.Value);
 	}
 	if (ShipRigPending.Num() > 0) ShipRigLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(ShipRigPending);
-	SAIL_LOG(Log, TEXT("Ship rig %s: %d parts on the model, %d to load, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
-		ShipRigParts.Num(), ShipRigPending.Num(), Wanted.Num() - ShipRigParts.Num() - ShipRigPending.Num());
+	// (Quiet before the outside model has loaded: its parts are bound on the pass after the load.)
+	if (Outside == 0 || ShipRigParts.Num() > 0)
+	{
+		SAIL_LOG(Log, TEXT("Ship rig %s: %d parts on the model, %d to load, %d with the outside model, %d not in the project"), UTF8_TO_TCHAR(Boat.GetConfig().Name),
+			ShipRigParts.Num(), ShipRigPending.Num(), Outside, Wanted.Num() - ShipRigParts.Num() - ShipRigPending.Num() - Outside);
+	}
 }
 
 void ASailboatPawn::UpdateShipRig(float DeltaSeconds)

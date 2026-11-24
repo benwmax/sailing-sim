@@ -5046,9 +5046,7 @@ void ASailboatPawn::ChangeMenuValue(int32 Direction)
 		S->Save();
 		break;
 	case RowBoat:
-		// Past the frigate until the frigate wiring draws her square rig and crew (IsSquareRigged).
-		do S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
-		while (IsSquareRigged(EBoatType(S->BoatType)));
+		S->BoatType = (S->BoatType + int32(EBoatType::Count) + Direction) % int32(EBoatType::Count);
 		SetBoat(S->BoatType);
 		break;
 	case RowDrill:

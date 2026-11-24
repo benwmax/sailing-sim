@@ -81,6 +81,15 @@ namespace Sailing
 		int DeckNamed(const char* Name) const;
 		const FWalkSpot* SpotNamed(const char* Name) const;
 
+		/** A helmsman stands this far abaft a double wheel's axle (the midpoint between its wheels): half the 44 in between
+		 *  Commonwealth's wheels (0.56 m) and half a metre back from the after wheel's plane, his arms bent to the spokes.
+		 *  A walk file's "Helm" spot baked nearer than this (the first bake's 0.7 m put the eye inside the after wheel's
+		 *  rim) stands back to it: HelmStandX. */
+		static constexpr double HelmAbaftWheelAxle = 1.05;
+		/** Where the helmsman stands along the ship for a Helm spot at SpotX and a wheel whose axle midpoint is at WheelX
+		 *  (ship frame, +X forward): the spot itself, unless it is forward of HelmAbaftWheelAxle abaft the axle. */
+		static double HelmStandX(double SpotX, double WheelX);
+
 		/**
 		 * Reads a walk file's bytes (the format is written by walk.py; little-endian):
 		 *   u32 magic "SWLK", u32 version, u32 decks, u32 links

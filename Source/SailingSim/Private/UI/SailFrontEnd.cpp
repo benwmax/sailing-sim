@@ -1209,8 +1209,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildBoat()
 	BoatCardTypes.Reset();
 	const TArray<SailCatalog::FBoat>& Fleet = SailCatalog::Boats();
 	float MaxLen = 1.f, MaxBeam = 1.f, MaxKg = 1.f, MaxKn = 1.f;
-	// (The bars are scaled to the club fleet: the maxi and Bluebonnet, three to five times the next boat's weight, fill theirs.)
-	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi) && B.Type != int32(Sailing::EBoatType::Bluebonnet)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
+	// (The bars are scaled to the club fleet: the maxi, Bluebonnet and the frigate, three to a hundred times the next boat's
+	// weight, fill theirs.)
+	for (const SailCatalog::FBoat& B : Fleet) if (B.Type != int32(Sailing::EBoatType::Maxi) && B.Type != int32(Sailing::EBoatType::Bluebonnet) && B.Type != int32(Sailing::EBoatType::Commonwealth)) { MaxLen = FMath::Max(MaxLen, B.LengthM); MaxBeam = FMath::Max(MaxBeam, B.BeamM); MaxKg = FMath::Max(MaxKg, B.WeightKg); MaxKn = FMath::Max(MaxKn, B.CloseHauledKn); }
 	auto Cur = [this]() -> const SailCatalog::FBoat& { return SailCatalog::Boat(FocusedBoat); };
 	auto Attr = [Cur](TFunction<FString(const SailCatalog::FBoat&)> F) { return TAttribute<FText>::CreateLambda([Cur, F]() { return FText::FromString(F(Cur())); }); };
 	// A career lock first; then a keel too deep for the chosen launch spot (docs/jclass-14/: Bluebonnet's 4.5 m).
