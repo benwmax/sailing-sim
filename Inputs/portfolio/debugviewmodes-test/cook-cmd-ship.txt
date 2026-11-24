@@ -1,0 +1,1 @@
+Running: C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe "D:\dev\ss-fix-wt\dvm\SailingSim.uproject" -run=Cook  -TargetPlatform=Windows  -unversioned -iterate -fileopenlog -abslog="C:\Program Files\Epic Games\UE_5.8\Engine\Programs\AutomationTool\Saved\Cook-2026.11.24-15.17.05.txt" -stdout -CrashForUAT -unattended -NoLogTimes

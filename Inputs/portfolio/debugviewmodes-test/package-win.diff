@@ -1,0 +1,13 @@
+diff --git a/scripts/windows/package-win.ps1 b/scripts/windows/package-win.ps1
+index 0c54c084e..c0575ae98 100644
+--- a/scripts/windows/package-win.ps1
++++ b/scripts/windows/package-win.ps1
+@@ -24,6 +24,8 @@ if ($Into -and (Test-Path $Archive)) { throw "$Archive exists: package into a ne
+ $Cook = if ($Full) { '-cook' } else { '-cook -cookincremental' }
+ $ArgLine = "BuildCookRun -project=`"$Project`" -noP4 -utf8output -unattended -platform=Win64 -clientconfig=$Config " +
+ 	"-build $Cook -stage -pak -iostore -package -archive -crashreporter -prereqs -archivedirectory=`"$Archive`""
++# LOCAL TEST (Nov 24, unpushed): Development cooks carry the debug view-mode shaders; Shipping stays clean.
++if ($Config -eq 'Development') { $ArgLine += ' -AdditionalCookerOptions="-DPCVars=r.ForceDebugViewModes=1"' }
+ $Start = Get-Date
+ $Code = Invoke-Tool $RunUAT $ArgLine (Join-Path $Artifacts 'package.log')
+ if ($Code -eq 0) {
