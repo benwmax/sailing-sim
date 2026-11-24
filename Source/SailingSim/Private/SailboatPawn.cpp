@@ -906,7 +906,14 @@ void ASailboatPawn::EndPlay(const EEndPlayReason::Type Reason)
 	{
 		SailCareer::RecordSession(Boat.GetState().Time, Logbook.GetEntries().Num(), LogNm);
 	}
+	FinishCaptureTelemetry();
 	Super::EndPlay(Reason);
+}
+
+void ASailboatPawn::FinishCaptureTelemetry()
+{
+	// The capture's telemetry is held in memory through the run (no disk on the game thread): write it now.
+	if (CaptureTelemetry.IsOpen() && !CaptureTelemetry.Close()) SAIL_LOG(Warning, TEXT("Capture: the telemetry CSV could not be written"));
 }
 
 void ASailboatPawn::BeginPlay()

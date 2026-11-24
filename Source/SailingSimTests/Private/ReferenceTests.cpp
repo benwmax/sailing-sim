@@ -104,6 +104,20 @@ bool FReferenceCaptureTest::RunTest(const FString& Parameters)
 	TArray<FString> Lines;
 	FFileHelper::LoadFileToStringArray(Lines, *Path);
 	TestEqual(TEXT("Header plus three rows on disk"), Lines.Num(), 4);
+	// The helm-eye hitch: nothing is written while the capture runs (a flush every 120 rows stalled the game thread),
+	// and Close writes every row.
+	{
+		FCaptureTelemetry Csv;
+		TestTrue(TEXT("Telemetry file reopens"), Csv.Open(Path));
+		for (int32 I = 0; I < 500; ++I) Csv.Add(Row);
+		TestEqual(TEXT("No bytes on disk mid-run"), IFileManager::Get().FileSize(*Path), int64(0));
+		TestTrue(TEXT("Close writes the file"), Csv.Close());
+		TestFalse(TEXT("Closed"), Csv.IsOpen());
+		TestTrue(TEXT("A second Close is harmless"), Csv.Close());
+	}
+	Lines.Reset();
+	FFileHelper::LoadFileToStringArray(Lines, *Path);
+	TestEqual(TEXT("Header plus 500 rows on disk after Close"), Lines.Num(), 501);
 	IFileManager::Get().Delete(*Path);
 	return true;
 }

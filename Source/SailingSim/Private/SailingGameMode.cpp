@@ -1635,6 +1635,12 @@ void ASailingGameMode::FinishBenchmark()
 		FFileHelper::SaveStringToFile(Csv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.frames.csv"), *ShotName)));
 	}
 
+	// The capture's telemetry CSV is written once, now that the measured frames are over.
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (ASailboatPawn* Player = Cast<ASailboatPawn>(PC->GetPawn())) Player->FinishCaptureTelemetry();
+	}
+
 	// Bench-fast: in a bench list the runner saves the view's result and loads the next view.
 	if (USailingBenchRunner* Runner = USailingBenchRunner::Get(this))
 	{

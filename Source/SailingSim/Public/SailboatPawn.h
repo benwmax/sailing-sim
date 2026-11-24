@@ -340,6 +340,8 @@ public:
 
 	/** Reference capture (-SailingCapture=<preset>): a reference camera, locked exposure, no HUD, telemetry CSV. */
 	bool IsCaptureMode() const { return CapturePreset != ECapturePreset::None; }
+	/** Writes the capture's telemetry CSV (held in memory through the run); the bench calls it before it quits. */
+	void FinishCaptureTelemetry();
 	/** Bean's playtest: the keys every mapping context gets beside the rebindable rows (Esc opens the pause menu). */
 	static void MapFixedKeys(class UInputMappingContext* Context, const TMap<FName, TObjectPtr<class UInputAction>>& InActions);
 	/** The input actions for a list of bindings (Look is 2D, buttons are booleans, the rest axes). */
