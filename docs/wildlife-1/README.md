@@ -46,6 +46,10 @@ thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in 
   `WILDLIFE_DEBUG=1` prints each bird found under the ground.
 - `scripts/make-birds.sh` (Mac, after `build.sh` and `make-content.sh`): Blender builds the bodies, the editor builds
   `M_BirdFar` and `M_BirdMid` and imports the bodies to `/Game/Wildlife/Birds` (`scripts/import_birds.py`).
+  `BLENDER=<a python with the bpy module>` works in place of Blender. On the PC the same two steps run by hand:
+  `blender -b --factory-startup -noaudio -P Tools/blender/build_birds.py -- <out>` (or `python build_birds.py <out>`
+  with bpy), then `UnrealEditor-Cmd.exe <SailingSim.uproject> -run=pythonscript -script="scripts/import_birds.py <out>"
+  -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`.
 - Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density.
 

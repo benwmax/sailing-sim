@@ -21,7 +21,13 @@ import bpy  # (first: the bpy module provides bmesh and mathutils)
 import bmesh  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
-OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else os.path.join(os.getcwd(), "birds")
+# Blender passes the script's args after "--"; a python with the bpy module passes them straight.
+if "--" in sys.argv:
+    OUT = sys.argv[sys.argv.index("--") + 1]
+elif len(sys.argv) > 1:
+    OUT = sys.argv[1]
+else:
+    OUT = os.path.join(os.getcwd(), "birds")
 
 # Per style, in units of the span (1 m): length (bill tip to tail tip), girth (body radius), neck (head ahead of the
 # breast), bill, tail length and width at its end, fork depth, wing root / wrist / tip chords, wrist out along the half
