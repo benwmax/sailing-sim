@@ -1353,6 +1353,23 @@ void AWaterSurface::UpdateHullClip()
 	}
 }
 
+float AWaterSurface::DrawnWakeHeightAt(double MapX, double MapY) const
+{
+	const TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> Px = WakeFoamPixels;
+	const int32 N = WakeFoamN;
+	if (!Px.IsValid() || N < 2 || WakeFoamCell <= 0.f || Px->Num() < 4 * N * N) return 0.f;
+	// As M_WaterV4's V4_WPO samples it: rows north (X), columns east (Y), texel centres half a cell in.
+	const double Lx = (MapX - WakeFoamOrigin.X) / WakeFoamCell - 0.5, Ly = (MapY - WakeFoamOrigin.Y) / WakeFoamCell - 0.5;
+	if (Lx <= -0.5 || Ly <= -0.5 || Lx >= N - 0.5 || Ly >= N - 0.5) return 0.f;
+	const int32 R0 = FMath::Clamp(FMath::FloorToInt(Lx), 0, N - 1), C0 = FMath::Clamp(FMath::FloorToInt(Ly), 0, N - 1);
+	const int32 R1 = FMath::Min(R0 + 1, N - 1), C1 = FMath::Min(C0 + 1, N - 1);
+	const float Tx = float(FMath::Clamp(Lx - R0, 0.0, 1.0)), Ty = float(FMath::Clamp(Ly - C0, 0.0, 1.0));
+	const TArray<float>& P = *Px;
+	const float A = FMath::Lerp(P[4 * (R0 * N + C0)], P[4 * (R0 * N + C1)], Ty);
+	const float B = FMath::Lerp(P[4 * (R1 * N + C0)], P[4 * (R1 * N + C1)], Ty);
+	return FMath::Lerp(A, B, Tx);
+}
+
 void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 {
 	if (!Wake.IsValid() || !WakeGridMap || !WaterMaterial) return;
@@ -1999,12 +2016,26 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		{
 			const float Rate = Dense * float(Speed - 2.0) * 14.f * Scale;
 			const int32 Peel = FMath::Min(int32(Rate * Dt + SprayRng.FRand()), FMath::RoundToInt(6.f * Dense));
+			// Bow wave 2 (docs/bow-wave/): the sheets peel from the curl's lip as the pawn drew it (where its crest stands, the
+			// formula's or the wake grid's, on the water as drawn), picked by the crest's share; without a curl (Low, far AI
+			// boats) from the deck edge on the bare waves, as before.
+			const TArray<FVector4>& BowLip = It->GetBowLip();
+			double LipSum = 0.0;
+			for (const FVector4& L : BowLip) LipSum += L.W;
 			for (int32 I = 0; I < Peel; ++I)
 			{
-				const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
+				float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
 				const double X = Hull.BowX * SprayRng.FRandRange(0.55f, 0.8f);
 				const Vec3 W = M.BodyToWorld(Vec3(X, Hull.CenterY + S * 0.9 * Hull.DeckHalfBeam(X), 0.0));
-				const FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				if (LipSum > 0.05)
+				{
+					double Pick = double(SprayRng.FRand()) * LipSum;
+					int32 K = 0;
+					for (; K + 1 < BowLip.Num() && Pick > BowLip[K].W; ++K) Pick -= BowLip[K].W;
+					P = FVector(BowLip[K].X, BowLip[K].Y, BowLip[K].Z + 0.02);
+					S = FVector::DotProduct(FVector(P.X - Bow.X, P.Y - Bow.Y, 0.0), Side) < 0.0 ? -1.f : 1.f;
+				}
 				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.85f + Side * S * float(Speed) * SprayRng.FRandRange(0.15f, 0.3f)
 					+ FVector(0, 0, SprayRng.FRandRange(0.3f, 0.9f) * FMath::Sqrt(float(Speed) / 3.f));
 				Emit(P, V, SprayRng.FRandRange(0.15f, 0.35f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.25f, 0.45f));

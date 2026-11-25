@@ -62,6 +62,7 @@ private:
 	TArray<float> Stir, PrevStir;             // per cell, this step and the last: how hard a hull over it stirs the water (0..1, her speed)
 	TArray<float> StirMid, PrevStirMid;       // as Stir, fading to 0 toward her sides: where her bubble trail starts
 	TArray<float> NearStir;                   // per cell, this step: the fastest hull within reach of it (0..1, as Stir)
+	TArray<float> NearFroude;                 // per cell, this step: the highest length Froude number of a hull within reach
 	TArray<float> Omega;                      // per mode, rad/s (deep water)
 	TArray<std::complex<float>> Spectrum;     // scratch
 	float Accumulator = 0.f;

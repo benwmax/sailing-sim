@@ -141,6 +141,10 @@ public:
 	virtual void PawnClientRestart() override;
 
 	const Sailing::FBoatModel& GetBoatModel() const { return Boat; }
+	/** Bow wave 2 (docs/bow-wave/): the bow wave's lip along each side as UpdateBowWave last drew it, map metres (X, Y, top
+	 *  of the sheet) and W the crest's share there (0..1, faded at its ends); empty when no curl is drawn. UpdateSpray peels
+	 *  the bow's sheets from it. */
+	const TArray<FVector4>& GetBowLip() const { return BowLip; }
 	/** Where she is drawn (map frame): her physics pose, or for the player's boat the pose between her last two steps at
 	 *  the world's render time (feedback #26). The water's hull clip follows this, not the physics, so the two agree. */
 	const Sailing::Vec3& GetDrawnOrigin() const { return DrawnOrigin; }
@@ -957,6 +961,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> RigLines;
 	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> Drips;   // rain deck: falling drips (M_Spray quads)
 	UPROPERTY(Transient) TObjectPtr<UProceduralMeshComponent> BowWave;   // spray hull: the bow wave's curl (world space)
+	TArray<FVector4> BowLip;                                             // bow wave 2: its lip (GetBowLip)
 	FVector JibClewCm = FVector::ZeroVector;  // body frame, from the jib mesh
 	/** Feedback #25: the spinnaker's pole, corners and gear as last drawn (SpinnakerRigCm; bValid only while a poled spinnaker is up). */
 	FSpinnakerRig SpinRig;
