@@ -1,0 +1,37 @@
+{
+ "boat": "Lagoon42",
+ "build": "Tools/shipkit/lagoon42/build_lagoon42.py",
+ "build_args": "blender -b --factory-startup -P build_lagoon42.py -- <out dir>: reads <out>/lagoon42.blend",
+ "hull_object": "L42_Hull",
+ "report": "lagoon42_report.json",
+ "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows), and a flat lid at the sheer (L42_DeckPlaceholder, section 'placeholder', not budgeted) that slice 3's deck replaces; later slices add their parts here (bridgedeck, coachroof, cockpit, keels, rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "sections": {
+  "hull": {
+   "objects": [
+    "L42_Hull",
+    "L42_HullWindows"
+   ],
+   "owns": [
+    "build_hull",
+    "build_windows"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": []
+  },
+  "placeholder": {
+   "objects": [
+    "L42_DeckPlaceholder"
+   ],
+   "owns": [
+    "build_deck_placeholder"
+   ],
+   "borders": [
+    "hull"
+   ]
+  }
+ },
+ "joins": [],
+ "joins_note": "Slice 1 has nothing to join: slice 2's bridge deck meets the hulls' inboard topsides, slice 3's deck their sheer."
+}

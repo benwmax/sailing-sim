@@ -76,7 +76,7 @@
   "boom_z_m": 3.2,
   "bowsprit_m": 0.43,
   "load_sink_m": 0.148,
-  "load_sink_note": "How much deeper the game's boat floats than the light boat: 3.4 t (load 3,080 kg and crew 320 kg) in the physics' 1,000 kg/m^3 water over her two hulls' waterplane, 24.3 m^2 at the game's waterline and 21.5 m^2 15 cm lower (measured on today's hulls, docs/lagoon42-1). Lagoon's draft and air draft are the light boat's, so the check takes the keels' depth less this sink and the masthead's height plus it."
+  "load_sink_note": "How much deeper the game's boat floats than the light boat: 3.4 t (load 3,080 kg and crew 320 kg) in the physics' 1,000 kg/m^3 water over her two hulls' waterplane, 24.3 m^2 at the game's waterline and 21.5 m^2 15 cm lower (measured on today's hulls, docs/lagoon42-1; the rebuild's hulls have their own, in the build report: 0.117 m over 30.3 m^2, docs/lagoon42-2). Lagoon's draft and air draft are the light boat's, so the check takes the keels' depth less this sink and the masthead's height plus it."
  },
  "budget_triangles": {
   "note": "Triangles as built, per section of the shape loop (Tools/shapeloop/sections_lagoon42.json and its successors): measure.py counts every copy, so both hulls, keels and rudders count twice. The detailed boat's cap is 3 million (Bean, Nov 9 2026). The light copy for AI boats and the far view is about a quarter of the detailed boat (slice 11).",
@@ -106,8 +106,8 @@
   "length_hull_m": "shape",
   "length_waterline_m": "shape",
   "beam_m": "shape",
-  "draft_m": "shape: the keels' lowest point less game.load_sink_m",
-  "air_draft_m": "sockets: the masthead (Masthead, or today's MastheadAft) plus game.load_sink_m",
+  "draft_m": "shape: the keels' lowest point less the load's sink (the build report's load_sink_m from slice 1 on, else game.load_sink_m)",
+  "air_draft_m": "sockets: the masthead (Masthead, or today's MastheadAft) plus the same sink",
   "weight_kg": "shape: the canoe bodies' volume under z = 0 times 1,000 kg/m^3, less game.load_kg and game.crew_kg",
   "main_area_m2": "build: the sails' report (lagoon42_report.json main_area_m2, slice 7)",
   "jib_area_m2": "build: the sails' report (lagoon42_report.json jib_area_m2, slice 7)"

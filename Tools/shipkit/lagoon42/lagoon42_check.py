@@ -14,9 +14,11 @@ How each is measured (the Hobie 16's check, hobie16_check.py, for a cruising cat
   hull length, beam       the hull object's bounds (stats.json 'hull'): both hulls in one object, so the beam is
                           outside to outside, as published; the bowsprit is not part of the hull object
   waterline length        measure.py's cut of the hulls at the game's waterline (z = 0), stem to stern ('lwl')
-  draft                   the keels' lowest point less the card's game.load_sink_m: the model floats at the game's
-                          waterline with her stores and crew aboard, and Lagoon's 1.26 m is the light boat's
-  air draft               the masthead socket's height (Masthead, or today's MastheadAft) plus game.load_sink_m
+  draft                   the keels' lowest point less the load's sink: the model floats at the game's waterline
+                          with her stores and crew aboard, and Lagoon's 1.26 m is the light boat's. The sink is the
+                          build report's load_sink_m (the rebuild's own hulls, slice 1 on) or else the card's
+                          game.load_sink_m (today's hulls)
+  air draft               the masthead socket's height (Masthead, or today's MastheadAft) plus the same sink
   weight                  the two canoe bodies' volume under z = 0 (the build's report) times 1,000 kg/m^3, less the
                           load and crew the game floats her with (game.load_kg, game.crew_kg): the physics floats every
                           boat in water of 1,000 kg/m^3 (kWaterDensity), and Lagoon's 12.1 t is the light boat
@@ -35,7 +37,8 @@ USAGE = "usage: python3 -I lagoon42_check.py <stats.json> [<sockets.json>] [--sl
 def measure(stats, sockets, card):
     m = {}
     game = card["game"]
-    sink = game.get("load_sink_m") or 0.0
+    phys = stats.get("physics") or {}
+    sink = phys.get("load_sink_m") or game.get("load_sink_m") or 0.0     # the rebuild's own hulls' sink, else today's
     hull = stats.get("hull") or {}
     if hull:
         m["length_hull_m"] = hull.get("loa")
@@ -45,7 +48,6 @@ def measure(stats, sockets, card):
     keels = [o for o in stats.get("objects", {}).values() if o.get("section") == "keels"]
     if keels:
         m["draft_m"] = -min(o["min"][2] for o in keels) - sink
-    phys = stats.get("physics") or {}
     if phys.get("canoe_volume_m3"):
         m["weight_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3 - game["load_kg"] - game["crew_kg"]
     for k in ("main_area_m2", "jib_area_m2"):

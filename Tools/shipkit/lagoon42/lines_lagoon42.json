@@ -1,0 +1,234 @@
+{
+ "about": "The Lagoon 42's hull lines for her rebuild (docs/lagoon42-2): one hull, drawn to the size card (specs_lagoon42.json) and the look of the 2016 boat in the one open-licence photo (refs.json), mirrored about each hull's own centreline (cruising-cat hulls are symmetric, unlike the Hobie's). Nothing is traced from a drawing. hull_lagoon42.py turns these curves into the shell. Units: metres. Frame: the game's body frame (X forward, Y starboard, Z up), origin on the centreline amidships, Z 0 on the game's waterline (her 15.5 t, 0.117 m below the light boat's on these hulls (0.148 on today's)), so today's sockets and physics still line up: the stem and transom stay where today's model has them (x 6.40 and -6.39) and each hull's centreline 2.9 m off the boat's. Shapes and places were read by eye (Bean, Nov 25: 'look, never copy') from Lagoon's own profile sketch and photos of the boat and the one CC BY photo: nothing traced, saved or measured off a drawing's pixels into a file.",
+ "ends": {
+  "stem_x": 6.4,
+  "transom_x": -6.39,
+  "hull_center_y": 2.9,
+  "note": "The hull length (12.79 m) is Lagoon's. The bowsprit (0.43 m, overall 13.22) is slice 2's."
+ },
+ "stem": {
+  "head_z": 1.66,
+  "rake": 0.0,
+  "forefoot_z": -0.12,
+  "forefoot_power": 2.2,
+  "bottom_power": 2.0,
+  "note": "A plumb stem (Lagoon's profile sketch shows it straight up and down), from the deck down to forefoot_z under the water, where the forefoot turns into the bottom. From the lowest point to there the profile is a superellipse quarter, flat at the lowest point and vertical at the stem: bottom_power sets how long the bottom stays flat before it lifts (2 or more, so the keel line has no point at the lowest station), forefoot_power how round the forefoot's turn is."
+ },
+ "bottom": {
+  "lowest_x": -0.8,
+  "run_power": 2.0,
+  "canoe_depth": 0.62,
+  "note": "The canoe body's lowest point (its depth solved by hull_lagoon42.solve_depth so that both hulls and the appendages displace the game's 15.5 m^3; canoe_depth is only the first guess). Aft of it the keel line is a power curve, -d + (d + zt) u^run_power, flat at the lowest point and rising in one bend to the transom (run_power 2 or more: a smaller power puts a point at the lowest station), with the transom's foot zt solved so the waterline ends at waterline.aft_x. Forward it is stem.bottom_power's superellipse to the forefoot. appendage_volume_m3 holds the two keels and two rudders (0.25 and 0.03 m^3 each, a guess) until slice 5 builds them and measures their own. With the lowest point 0.8 m aft of amidships and the full sterns, her centre of buoyancy is where the physics has it (x -0.2): a cruising cat carries her engines, tanks and tender aft.",
+  "appendage_volume_m3": 0.56
+ },
+ "waterline": {
+  "aft_x": -6.12,
+  "note": "Where the run crosses the game's waterline: with the plumb stem at x 6.40, 12.52 m, the card's 12.5. The transom's foot is solved from it (bottom)."
+ },
+ "sheer": {
+  "points": [
+   [
+    -6.39,
+    1.55
+   ],
+   [
+    -4.0,
+    1.55
+   ],
+   [
+    0.0,
+    1.56
+   ],
+   [
+    3.0,
+    1.58
+   ],
+   [
+    5.0,
+    1.62
+   ],
+   [
+    6.4,
+    1.66
+   ]
+  ],
+  "note": "The deck edge over the game's waterline: 1.56 m amidships (1.68 over the light boat's waterline; Lagoon's profile sketch reads about 1.5 m from the deck to the boot top), nearly flat, rising about 10 cm to the bow. Aft the shell's top follows the sugar scoop instead (scoop below)."
+ },
+ "plan": {
+  "points": [
+   [
+    -6.39,
+    0.84
+   ],
+   [
+    -5.0,
+    0.91
+   ],
+   [
+    -2.5,
+    0.94
+   ],
+   [
+    0.0,
+    0.94
+   ],
+   [
+    1.0,
+    0.94
+   ]
+  ],
+  "bow": {
+   "from_x": 1.0,
+   "power": 2.54,
+   "round": 2.5
+  },
+  "note": "The hull's half-breadth at the sheer, from its own centreline: 0.94 m at most, so the boat is 2 x (2.9 + 0.94) = 7.68 m wide (Lagoon's beam). Full aft for the cabins and the scoops. Forward of bow.from_x the deck's edge is a superellipse, w (1 - u^power)^(1/round) (u 0 at from_x, 1 at the stem): it keeps its width well forward and rounds into a blunt nose at the plumb stem, as the CC BY drone photo shows her bows (refs.json), with the topsides flaring out over the fine entry below the knuckle. (A spline through points that steep put hollows in the deck's edge.)"
+ },
+ "chine": {
+  "points": [
+   [
+    -6.39,
+    0.24
+   ],
+   [
+    -3.0,
+    0.26
+   ],
+   [
+    0.0,
+    0.28
+   ],
+   [
+    3.0,
+    0.34
+   ],
+   [
+    5.0,
+    0.46
+   ],
+   [
+    6.4,
+    0.62
+   ]
+  ],
+  "half_breadth": [
+   [
+    -6.39,
+    0.74
+   ],
+   [
+    -4.0,
+    0.76
+   ],
+   [
+    -1.0,
+    0.76
+   ],
+   [
+    2.0,
+    0.72
+   ],
+   [
+    4.0,
+    0.58
+   ],
+   [
+    5.5,
+    0.34
+   ],
+   [
+    6.4,
+    0.02
+   ]
+  ],
+  "note": "A soft knuckle low on the topsides (the line just above the boot top in Lagoon's photos): below it the canoe body (a round bilge from the keel), above it flat topsides flaring a little out to the sheer. Height over the game's waterline and half-breadth from the hull's centreline."
+ },
+ "section": {
+  "bilge_power": {
+   "mid": 2.4,
+   "stern": 3.2,
+   "bow": 1.25
+  },
+  "flare_power": {
+   "mid": 1.8,
+   "stern": 2.2,
+   "bow": 1.3
+  },
+  "topsides_bulge": 0.04,
+  "deadrise_deg": 8.0,
+  "mid_x": [
+   -2.0,
+   1.0
+  ],
+  "note": "The canoe body under the knuckle is a superellipse from the keel to the knuckle (bilge_power: higher is a firmer bilge; flare_power shapes how fast it widens off the keel), easing (smootherstep) to fuller sections aft and a V forward. topsides_bulge: the topsides' outward bow between the knuckle and the sheer (metres at mid-height). A little deadrise lifts the bottom off the centreline."
+ },
+ "scoop": {
+  "platform_z": 0.4,
+  "steps_z": [
+   0.72,
+   1.05
+  ],
+  "platform_length": 0.42,
+  "step_length": 0.36,
+  "skirt": [
+   [
+    -6.39,
+    0.31
+   ],
+   [
+    -5.56,
+    1.55
+   ]
+  ],
+  "note": "The sugar scoop, from Lagoon's photo of the sterns and its 'just two steps separate the swim platform and the cockpit': a swim platform 0.40 m over the game's waterline (0.52 over the light boat's), then two steps up to the cockpit's level (about 1.05). Here the shell's inboard top climbs from the last step to the sheer in one riser; slice 4 builds the cockpit sole the steps really lead to. The outboard topsides rise aft as a skirt, a straight line from the platform's corner to the deck (skirt: [x, z] at each end; the profile sketch's raked stern line), so the steps sit inside a wall on the outboard side and open to the cockpit inboard."
+ },
+ "windows": {
+  "panes": [
+   {
+    "x": [
+     3.82,
+     4.26
+    ],
+    "z": [
+     0.86,
+     1.06
+    ],
+    "corner": 0.05
+   },
+   {
+    "x": [
+     2.14,
+     3.34
+    ],
+    "z": [
+     0.79,
+     1.13
+    ],
+    "corner": 0.07
+   },
+   {
+    "x": [
+     -2.96,
+     -1.76
+    ],
+    "z": [
+     0.79,
+     1.13
+    ],
+    "corner": 0.07
+   },
+   {
+    "x": [
+     -3.84,
+     -3.4
+    ],
+    "z": [
+     0.86,
+     1.06
+    ],
+    "corner": 0.05
+   }
+  ],
+  "note": "Hull windows on the outboard topsides, flush dark panes, as Lagoon's profile sketch and photos show them: a long one (1.2 m) and a small one (0.44 m) toward each end of the hull, all at one height (centres about 0.96 m over the game's waterline). None inboard is shown in the photos looked at."
+ }
+}
