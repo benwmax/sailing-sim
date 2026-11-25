@@ -1,0 +1,147 @@
+{
+ "about": "The Hobie 16's size card (docs/hobie16-1): the targets every slice of her rebuild is checked against by hobie16_check.py. Bean asked for the catamaran's rebuild on Nov 25 2026, by the process the Catalina 22 and the frigate went through. The boat is the current-production Hobie 16 beach catamaran (the game's Hobie16 in Fleet.cpp): two asymmetric hulls with no boards, two aluminium beams and a trampoline, a rotating mast, a fully battened main and jib, kick-up rudders and a double trapeze. Sizes are the published ones; where sources differ, 'sources' lists them and 'recheck' says what decides. Feet and inches are the class's units; metres are what the checks use. Post-slice work: nothing here changes the game before the Dec 11 2026 release.",
+ "boat": {
+  "class": "Hobie 16",
+  "version": "current production (no spinnaker)",
+  "years": "1970 to today; the rig and hardware have been updated over the years but the hulls are the original moulds' shape",
+  "designer": "Hobie Alter",
+  "hulls": "two asymmetric 'banana' hulls with marked rocker, the inner face flatter than the outer so the hulls themselves give the lift a board would: no daggerboards",
+  "platform": "front and rear aluminium beams (crossbars) on cast corner housings, trampoline laced between beams and hull rails, mast step ball on the front beam",
+  "rig": "rotating aluminium wing-section mast, shrouds to chainplates on the hulls with adjusters, forestay on a bridle to the two bows, double trapeze",
+  "sails": "fully battened main with a boom, loose-footed; battened jib; sail plan in the game's rainbow livery (Inputs/g3/boat-catalogue.json)",
+  "rudders": "two kick-up rudders on cast aluminium heads on the transoms, tiller arms joined by a crossbar, one tiller extension",
+  "spinnaker": "the optional 17.5 m^2 spinnaker kit is left out (the game sails her without it); Bean can ask for it"
+ },
+ "targets": {
+  "length_hull_m": 5.04,
+  "length_waterline_m": 4.64,
+  "beam_m": 2.41,
+  "draft_hull_m": 0.254,
+  "weight_kg": 145,
+  "mast_length_m": 8.07,
+  "main_area_m2": 13.77,
+  "jib_area_m2": 5.12,
+  "height_bow_m": 0.597,
+  "height_stern_m": 0.61,
+  "tolerance": 0.03
+ },
+ "in_feet": {
+  "length_hull": "16 ft 7 in",
+  "length_waterline": "15 ft 2 in",
+  "beam": "7 ft 11 in",
+  "draft": "10 in with the rudders up",
+  "weight": "320 lb rigged",
+  "mast": "26 ft 6 in",
+  "sail_area": "main 148.2 sq ft, jib 55.1 sq ft: 203 sq ft upwind (the spinnaker adds 188)",
+  "crew": "1 to 4; the game sails her with two (150 kg)",
+  "heights": "23.5 in floor to bow, 24 in floor to stern (the hulls standing on a flat floor)"
+ },
+ "sources": {
+  "note": "Read on Nov 25 2026: Hobie's own spec page and the class's rule book and the maker's parts guide through the desktop app's browser (the cloud's network blocks those sites), the rest through web search results. Each is a published fact; nothing is copied from a drawing.",
+  "length_hull": "Hobie's US spec sheet 16 ft 7 in (5.04 m); a European Hobie page says 5.11 m / 16 ft 9 in. 5.04 kept: it is what the game's physics and the G3 catalogue carry.",
+  "length_waterline": "15 ft 2 in (4.64 m) from a third-party data site only; the physics' 4.62 m was fitted to it. Recheck against a broadside (slice 1).",
+  "beam": "7 ft 11 in (2.41 m) on every page seen",
+  "weight": "320 lb (145 kg) rigged, Hobie's sheet; the physics' HullRigMass is 145 kg",
+  "draft": "Hobie's sheet: 10 in (0.25 m) with the rudders up, which is the hulls' draft",
+  "mast": "26 ft 6 in (8.07 m) on Hobie's sheet and the encyclopedia entry (8.08 m); one European page 7.92 m / 26 ft",
+  "sails": "main 13.77 m^2 (148.2 sq ft), jib 5.12 m^2 (55.1 sq ft), spinnaker 17.5 m^2 (188 sq ft); one European listing has a smaller youth rig (10.5 and 3.7 m^2), not used",
+  "pages": [
+   "https://hobie.com/sail/hobie-16/",
+   "https://en.wikipedia.org/wiki/Hobie_16",
+   "https://www.boat-specs.com/sailing/sailboats/hobie-cat/hobie-cat-16-classic",
+   "https://multihulls-world.com/technical-specifications/hobie-cat-16",
+   "https://hobieclass.com/wp-content/uploads/2026/02/R_Book_01032026.pdf",
+   "https://media.hobie.com/digital_assets/USA_H16_Parts_Guide_.pdf"
+  ],
+  "heights": "Hobie's spec page (opened Nov 25 2026): height from floor to bow 23.5 in (59.69 cm), floor to stern 24 in (60.96 cm): a hull standing on its keel on a flat floor, top of the deck at each end. These are the hulls' depth plus their rocker at the ends, and the main check that the hulls aren't too tall.",
+  "sail_area_total": "Hobie's page: total sail area 218 sq ft / 20 m^2; main 148.2 + jib 55.1 = 203 sq ft, so the page's total counts something more (roach, or the jib's overlap); the sail slices use the per-sail figures."
+ },
+ "recheck": [
+  "Waterline length, rocker and sheer, and the hulls' asymmetry (the inner face against the outer): from Bean's photos, or CC0/CC BY broadsides and bow views (slice 1).",
+  "Beam positions along the hulls, the beams' height over the water, the trampoline's outline: from a photo from above (slice 2).",
+  "Rudder blade length and rake, draft with the rudders down: from a photo of a Hobie on the beach or a trailer (slice 3).",
+  "Mast step height and the bridle's junction height: from a bow view (slice 4)."
+ ],
+ "game": {
+  "note": "What today's game boat is (Fleet.cpp Hobie16(), BoatExport's hobie16 json, build_fleet.py 'Hobie16'): two formula hulls 0.935 m either side of the centreline. Slice 9 replaces them with the new hulls' sections; until then the new model must keep the sockets the game draws its rig and crew from (slice 8 writes the new file).",
+  "hull_rig_kg": 145,
+  "crew_kg": 150,
+  "crew_count": 2,
+  "hull_center_y_m": 0.935,
+  "front_beam_x_m": 0.55,
+  "rear_beam_x_m": -1.75,
+  "mast_x_m": 0.55,
+  "masthead_z_m": 8.5,
+  "mast_diameter_m": 0.09,
+  "canoe_depth_m": 0.303,
+  "design_volume_m3": 0.295,
+  "crew_sink_m": 0.087,
+  "crew_sink_note": "How much deeper the model floats than the empty boat: the game's 150 kg crew over her two hulls' waterplane (2.05 m^2 at the game's waterline, 1.76 m^2 4 cm lower: measured on today's hulls, docs/hobie16-1). Published drafts are the empty boat's, so hobie16_check.py takes this off the model's draft. The narrow hulls sink 9 cm under two crew, three times the C22's 2.8 cm."
+ },
+ "budget_triangles": {
+  "note": "Triangles as built, per section of the shape loop (Tools/shapeloop/sections_hobie16.json and its successors): measure.py counts every copy, so the two hulls count twice. The detailed boat's cap is 3 million (Bean, Nov 9 2026); she has no cabin, so the outside budget is well under it. hobie16_check.py --slice N checks each section whose slice is N or earlier.",
+  "today_total": 84690,
+  "sections": {
+   "hull": {
+    "slice": 1,
+    "max": 200000
+   },
+   "platform": {
+    "slice": 2,
+    "max": 150000
+   },
+   "rudder": {
+    "slice": 3,
+    "max": 80000
+   },
+   "rig": {
+    "slice": 4,
+    "max": 120000
+   },
+   "sails": {
+    "slice": 5,
+    "max": 120000
+   },
+   "fittings": {
+    "slice": 6,
+    "max": 200000
+   }
+  },
+  "outside_total": 870000,
+  "light_copy": 220000
+ },
+ "budget_textures": {
+  "high_mb": 3.0,
+  "medium_mb": 0.0,
+  "note": "Her own detail maps on High (slice 7: gelcoat crazing at the beam housings, trampoline weave, sail panels); Medium uses the shared boat library only."
+ },
+ "measured_by": {
+  "note": "How hobie16_check.py gets each target. 'shape': from measure.py's stats; 'sockets': from the build's sockets file; 'later': not measured by the tool yet (the slice named adds it); 'build': checked by that slice's own build report.",
+  "length_hull_m": "shape",
+  "length_waterline_m": "shape",
+  "beam_m": "shape",
+  "draft_hull_m": "shape",
+  "weight_kg": "shape",
+  "mast_length_m": "later: the rebuild's sockets MastBase to Masthead (slice 4)",
+  "main_area_m2": "build: the sails' report (hobie16_report.json main_area_m2, slice 5)",
+  "jib_area_m2": "build: the sails' report (hobie16_report.json jib_area_m2, slice 5)",
+  "height_bow_m": "shape: the hull's deck at its bow station above its lowest point (the keel on a flat floor)",
+  "height_stern_m": "shape: the hull's deck at its stern station above its lowest point"
+ },
+ "class_facts": {
+  "note": "Facts from the IHCA rule book (2025-2028, rev. Mar 1 2026, Hobie 16 class rules pp. 19-21) and Hobie's US parts guide for the Hobie 14/16 (opened Nov 25 2026 in the desktop app's browser). Lists of parts and numbers only; the guide's drawings are not copied. They tell each slice what assemblies she has and where they sit.",
+  "rudders": "two kick-up rudders: an adjustable upper casting (port and starboard) on the transom gudgeons, an adjustable lower casting holding the blade with a cam, pin, spring-loaded plunger and adjuster screw (since 1983); blade max 25.8 mm thick, tapering over 610 mm to 12.7 mm thick 51 mm from the tip; tiller arms joined by a straight 'Miracle' crossbar with end connectors; one fibreglass tiller extension, 84 in (2.13 m) with a hinge",
+  "front_crossbar": "black extrusion with the mast step and an integrated jib track on top; three mast pivot bearings; left and right front corner castings on pylons into the hulls; jib traveller control (cleat, guide, fairlead); a dolphin striker (post and rod) under it, required by the class (rule 6.4)",
+  "rear_crossbar": "black extrusion with the integrated main traveller track (deep track) and a car access plate; traveller car with lower roller unit; swivel cam cleat on a pad; padeye; left and right rear corner castings on pylons",
+  "trampoline": "laced between the crossbars and two black sidebars (one per hull's inner side) with a centre lacing line (20 ft, 32 ft on double-grommeted trampolines) and two rear lacing lines; shroud chainplates on the sidebars",
+  "jib_sheeting": "jib sheet cars with swivel cleats running on the FRONT crossbar's track (rule 2.3: cars move in the track, cleats or stops stay on the front crossbar). Today's model leads the jib sheets to sockets near the rear beam (JibLead_S/P at x -0.85): slice 6 moves them.",
+  "mainsheet": "6:1 blocks between the rear crossbar's traveller car and the boom's block hanger at the clew; 35 ft line; Cam-Matic jaws on the lower block",
+  "mast": "black aluminium mast (current 'comptip' head), luff track, halyard hooks and stop sleeve, downhaul/halyard cleats at the base, cheek block; mast base casting with rotation stops; the mast must stay free to rotate (rule 4.6)",
+  "boom": "black boom with front and rear end caps, block hanger, stainless V-jam cleat (outhaul), gooseneck with a downhaul ring; downhaul up to 6:1",
+  "standing_rigging": "two shrouds with 7-hole stay adjusters to the chainplates; the forestay on a bridle (bridle wires pin to pin at least 44 in / 1.118 m, rule 5.1) from the two bow tangs, with an upper forestay pigtail and a 10-hole stay adjuster; two trapeze wires a side (rule 9), handles, shock cord",
+  "main_battens": "eight full-length battens, top to bottom #8 41 in, #7 59 1/8, #6 72 1/8, #5 82 3/8, #4 90 3/4, #3 97 3/8, #2 103 7/8, #1 107 7/8 in (1.04 to 2.74 m); the game's M_SailCloth draws the main with this count from slice 5",
+  "jib_battens": "four battens, #4 28 in, #3 43 3/4, #2 56, #1 67 in (0.71 to 1.70 m)",
+  "hulls": "left and right moulded hulls (fibreglass and foam sandwich) with anti-skid deck on the outside; bow tang, anchor bar and pin, vent tube with a foam plug, drain plug and housing near the stern, cast gudgeons on the transoms",
+  "weights": "minimum boat weight 320 lb (145.15 kg) completely assembled; minimum crew 285 lb (129.3 kg) combined"
+ }
+}

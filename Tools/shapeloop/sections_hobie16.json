@@ -1,0 +1,51 @@
+{
+ "boat": "Hobie16",
+ "build": "Tools/blender/build_fleet.py",
+ "build_args": "FLEET_SHAPE_BLEND=1, then <hobie16.json from Tools/BoatExport> Hobie16 <out dir>: reads <out>/Hobie16_shape.blend",
+ "hull_object": "Hobie16_Hull",
+ "report": "Hobie16_shape_report.json",
+ "note": "Today's Hobie 16 (the shared fleet template, docs/hobie16-1): the 'before' every slice of the rebuild is compared against. build_fleet.py builds both hull shells and their decks into Hobie16_Hull and the platform (beams, corner housings, trampoline, bridles) with the kit hardware into Hobie16_Fittings; the rudders, mast and boom are their own objects as in the game. Today's model doesn't split the platform from the hardware, so 'fittings' holds both until slice 2's build names the platform. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other' (the rig).",
+ "sections": {
+  "hull": {
+   "objects": [
+    "Hobie16_Hull"
+   ],
+   "owns": [
+    "Hull",
+    "shell",
+    "deck"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": [
+    "fittings"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "SM_Hobie16_Rudder"
+   ],
+   "owns": [
+    "build_rudder"
+   ],
+   "borders": []
+  },
+  "fittings": {
+   "objects": [
+    "Hobie16_Fittings"
+   ],
+   "owns": [
+    "hobie_detail",
+    "beams",
+    "trampoline",
+    "bridles"
+   ],
+   "borders": [
+    "hull"
+   ]
+  }
+ },
+ "joins": [],
+ "joins_note": "No joins checked for today's model; slice 1 lists the new hulls' joins (hull to deck flange), slice 2 the beams to the hulls' housings."
+}
