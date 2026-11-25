@@ -31,8 +31,7 @@ overhead. No run had a GPU crash or device-removed line.
 - **No light leaking down** from the gun deck's lanterns: the overhead is lit only by the berth deck's own lanterns.
   The bright patch top right in `berth-90` is a berth lantern lighting the beam beside it.
 
-**Berth fps:** 42-43 at 4K. That's below last round's 44733c87 berth at 41.0 being bettered only slightly, and under the
-45 fps 4K line.
+**Berth fps:** 42-43 at 4K. That's a little better than 44733c87's 41.0 there, but still under the 45 fps 4K line.
 - The GPU frame is about 23 ms. Base pass is 10 ms, with about 1 ms of it from the gun deck now drawn overhead.
 
 **Log:**
