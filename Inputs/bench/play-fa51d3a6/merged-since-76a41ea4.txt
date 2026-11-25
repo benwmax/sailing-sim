@@ -1,0 +1,12 @@
+fa51d3a6c Merge pull request #833 from benwmax/claude/project-thread-zf14z0
+adb0e90ea Merge pull request #824 from benwmax/claude/project-thread-8onn2s
+18ab53d7c Merge pull request #829 from benwmax/claude/dev-debug-viewmodes
+f61daaf74 Merge pull request #822 from benwmax/claude/project-thread-lao2dc
+bb02a8b49 Merge pull request #825 from benwmax/claude/project-thread-18f1pj
+165f186ad Merge branch 'main' of https://github.com/benwmax/sailing-sim into claude/project-thread-18f1pj
+6630fe1eb Merge pull request #821 from benwmax/claude/project-thread-xkunbh
+9291fbf6c Merge pull request #819 from benwmax/claude/project-thread-xkunbh
+561e652cb Merge pull request #820 from benwmax/claude/project-thread-q73bv9
+cd2090dd4 Merge pull request #818 from benwmax/claude/project-thread-pjm0nn
+e0a1125dc Merge pull request #817 from benwmax/claude/project-thread-q73bv9
+906c90348 Merge pull request #810 from benwmax/claude/project-thread-vgcj4i
