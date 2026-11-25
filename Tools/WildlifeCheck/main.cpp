@@ -267,7 +267,18 @@ int main(int Argc, char** Argv)
 					if (St.Far > Budget.Far || St.Mid > Budget.Mid || St.Near > Budget.Near) R.bBudgetOk = false;
 					for (const FBirdDraw& D : Flocks.Draw())
 					{
-						if (!std::isfinite(D.North) || !std::isfinite(D.East) || !std::isfinite(D.Up)) ++R.NotFinite;
+						// (Every field the actor turns into an instance: one NaN transform makes the whole component's bounds NaN.)
+						const float Fields[] = {float(D.North), float(D.East), float(D.Up), D.HeadingRad, D.PitchRad, D.BankRad, D.WingPhase, D.WingAmp,
+							D.Fold, D.Fade, D.SizeM, D.DistanceM};
+						bool bFinite = true;
+						for (float V : Fields) bFinite &= std::isfinite(V);
+						if (!bFinite)
+						{
+							if (std::getenv("WILDLIFE_DEBUG") && R.NotFinite < 8)
+								std::printf("    not finite: %s state %d at %.1f,%.1f,%.1f heading %f pitch %f bank %f phase %f size %f\n", BirdStyleName(D.Style), int(D.State),
+									D.North, D.East, D.Up, D.HeadingRad, D.PitchRad, D.BankRad, D.WingPhase, D.SizeM);
+							++R.NotFinite;
+						}
 						const bool bAir = D.State != EBirdState::OnWater && D.State != EBirdState::Standing && D.State != EBirdState::Diving &&
 							D.State != EBirdState::Landing && D.State != EBirdState::TakingOff;
 						if (bAir && D.Up < Terrain.HeightAt(D.North, D.East) - 1.0)

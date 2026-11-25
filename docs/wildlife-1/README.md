@@ -40,8 +40,9 @@ the flocks fly past within 50 to 150 m of your boat (the games players praise fo
   - plumage per species: `Sailing::BirdLookFor` (back, underside, wingtips; field-guide tones).
 
 Budgets (far / mid / near): Low 100 / 20 / 4 (all quads), Medium 200 / 40 / 6, High 300 / 60 / 12, Ultra 500 / 100 / 20.
-Instanced, unshadowed, out of the distance-field, Lumen and ray-tracing scenes. Plan budget 0.5 ms GPU and 0.3 ms game
-thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in `scripts/wildlife-check.sh`.
+Instanced (components at an identity transform, every instance placed in the render's world each frame, as the spray
+and drip pools do), unshadowed, out of the distance-field, Lumen and ray-tracing scenes. Plan budget 0.5 ms GPU and
+0.3 ms game thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in `scripts/wildlife-check.sh`.
 
 ## Running it
 
@@ -57,7 +58,12 @@ thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in 
   -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`.
 - Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;
-  `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still.
+  `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still, and pins three
+  quads (30, 60, 120 m ahead, 3 deg up) and three bodies (40, 80, 160 m, just over the horizon) in the view whatever the
+  flocks do; `-SailingDebugBirdsPlain` draws every bird with the engine's default material (grey squares and bodies
+  wherever the instances are), to tell the drawing from `M_BirdFar` and `M_BirdMid`. With either, a `Wildlife debug:`
+  line every 10 s gives the camera, each component's instances, bounds, mesh size and material, and the pinned quad's
+  place and size as the engine holds them.
 - The log's `Wildlife:` line every 10 s gives the birds drawn in view and the nearest one on screen (species, distance,
   compass bearing and elevation from the camera): aim a still with `-SailingCamYaw`/`-SailingCamPitch` from it.
 

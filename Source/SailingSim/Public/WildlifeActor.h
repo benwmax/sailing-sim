@@ -19,7 +19,8 @@ class UStaticMesh;
  * (SM_Bird_<Style>, Tools/blender/build_birds.py) whose wings M_BirdMid flaps. Until those meshes are imported every bird
  * is a quad. Everything is instanced, unshadowed and out of the distance-field and Lumen scenes.
  * -SailingNoWildlife leaves it out; -SailingWildlifeScale=<f> scales every bird's density (1 the tables');
- * -SailingDebugBirds[=<k>] draws every bird k times its size (10) and whole, to find them in a still.
+ * -SailingDebugBirds[=<k>] draws every bird k times its size (10) and whole, and pins three quads and three bodies in the
+ * view, to find them in a still; -SailingDebugBirdsPlain draws them all with the engine's default material.
  */
 UCLASS()
 class SAILINGSIM_API AWildlifeActor : public AActor
@@ -73,6 +74,8 @@ private:
 	void GatherObservers(const FVector& CameraMapCm, Sailing::FBirdObservers& Out, double Dt);
 	Sailing::FWildlifeConditions Conditions(const FVector& CameraMapCm) const;
 	void DrawBirds(const FVector& CameraMapCm);
+	/** -SailingDebugBirds / -SailingDebugBirdsPlain: the components and a pinned bird as the engine holds them, for the log. */
+	FString DebugState(const FVector& CameraMapCm) const;
 
 	UPROPERTY(Transient) TObjectPtr<UStaticMesh> QuadMesh;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInterface> FarMaterial;
@@ -97,5 +100,8 @@ private:
 	int32 DrawnQuads = 0, DrawnBodies = 0, DrawnInView = 0;
 	FString NearestInView;                   // the nearest drawn bird on screen, for the log line
 	double DebugSize = 0.0;                  // -SailingDebugBirds: every bird this many times its size (0 off)
+	int32 Markers = 0;                       // -SailingDebugBirds: birds pinned in the view (the pools' last slots)
+	int32 MarkerQuad = -1;                   // the nearest pinned quad's instance (-1 none)
+	bool bPlainDebug = false;                // -SailingDebugBirdsPlain: the engine's default material on every bird
 	double NextLog = 0.0;
 };

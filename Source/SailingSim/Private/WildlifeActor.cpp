@@ -13,6 +13,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/Material.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/FileHelper.h"
@@ -94,6 +95,12 @@ UInstancedStaticMeshComponent* AWildlifeActor::MakeIsm(const TCHAR* Name, UStati
 	Ism->SetStaticMesh(Mesh);
 	if (Material) Ism->SetMaterial(0, Material);
 	Ism->SetMobility(EComponentMobility::Movable);
+	// The pools' pattern (spray, drips, the bow wave, the cannon smoke, the bridges' vehicles): the component stays at an
+	// identity transform in the render's world and every instance is placed in world space, each frame. (The first build
+	// kept the instances in the actor's map frame and nothing drew, even ten times the size: docs/wildlife-1.)
+	Ism->SetUsingAbsoluteLocation(true);
+	Ism->SetUsingAbsoluteRotation(true);
+	Ism->SetUsingAbsoluteScale(true);
 	Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Ism->SetCastShadow(false);
 	Ism->SetCanEverAffectNavigation(false);
@@ -104,11 +111,13 @@ UInstancedStaticMeshComponent* AWildlifeActor::MakeIsm(const TCHAR* Name, UStati
 	Ism->bVisibleInRayTracing = false;
 	Ism->NumCustomDataFloats = Floats;
 	Ism->RegisterComponent();
-	// Hidden instances wait at the actor (the map's origin) at zero scale; Tick parks them at the camera (docs/rain-deck:
-	// parked far away they stretched the bounds under the lake and nothing drew).
+	// Hidden instances wait at the camera at zero scale, and Tick parks them there again (docs/rain-deck: parked far away
+	// they stretched the bounds under the lake and nothing drew).
+	FVector Here = GetActorLocation();
+	if (const APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0)) Here = Cam->GetCameraLocation();
 	TArray<FTransform> Hidden;
-	Hidden.Init(FTransform(FQuat::Identity, FVector::ZeroVector, FVector::ZeroVector), Count);
-	Ism->AddInstances(Hidden, false, false);
+	Hidden.Init(FTransform(FQuat::Identity, Here, FVector::ZeroVector), Count);
+	Ism->AddInstances(Hidden, false, true);
 	return Ism;
 }
 
@@ -137,12 +146,19 @@ void AWildlifeActor::BeginPlay()
 	Flocks.SetBudget(Budget);
 	float Scale = 1.f;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWildlifeScale="), Scale)) Flocks.SetDensityScale(FMath::Max(0.0, double(Scale)));
-	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugBirds")))
+	float DebugK = 10.f;
+	// (FParse::Param takes the bare flag only: -SailingDebugBirds=4 is read by the Value.)
+	const bool bDebugValue = FParse::Value(SailingArgs::Dev(), TEXT("SailingDebugBirds="), DebugK);
+	if (bDebugValue || FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugBirds")))
 	{
-		float K = 10.f;
-		FParse::Value(SailingArgs::Dev(), TEXT("SailingDebugBirds="), K);
-		DebugSize = FMath::Max(1.0, double(K));
+		DebugSize = FMath::Max(1.0, double(DebugK));
+		// And a few birds pinned in the view (30 to 160 m ahead): if those don't show, the drawing is at fault, not the
+		// flocks or the aim.
+		Markers = 3;
 	}
+	// -SailingDebugBirdsPlain: every bird drawn with the engine's default material (no silhouette, no per-instance data, no
+	// dither): a grey square or body wherever an instance is, to tell the drawing from the bird materials.
+	bPlainDebug = FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugBirdsPlain"));
 	for (const Sailing::FWildBird& B : Table.Birds) Looks.Add(Sailing::BirdLookFor(B.Id, B.Style));
 
 	// The harbours the tables' marina, docks and boats habitats mean: 100 m cells round every dock, deck, moored boat and the
@@ -166,6 +182,11 @@ void AWildlifeActor::BeginPlay()
 	QuadMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	FarMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Wildlife/Birds/M_BirdFar.M_BirdFar"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	MidMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Wildlife/Birds/M_BirdMid.M_BirdMid"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (bPlainDebug)
+	{
+		FarMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+		if (MidMaterial) MidMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+	}
 	if (!FarMaterial || !QuadMesh)
 	{
 		SAIL_LOG(Warning, TEXT("Wildlife: M_BirdFar is not built yet (scripts/make-birds.sh): no birds drawn"));
@@ -185,18 +206,19 @@ void AWildlifeActor::BeginPlay()
 		const FString Name = FString::Printf(TEXT("SM_Bird_%s"), StyleMeshName(Sailing::EBirdStyle(S)));
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("%s/%s.%s"), WildlifeActorLocal::kBirdFolder, *Name, *Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
 		if (!Mesh) { ++Missing; continue; }
-		StylePool[S] = Bodies;
-		StyleIsms[S] = MakeIsm(*Name, Mesh, MidMaterial, Bodies, MidFloats);
+		StylePool[S] = Bodies + Markers;
+		StyleIsms[S] = MakeIsm(*Name, Mesh, MidMaterial, Bodies + Markers, MidFloats);
 	}
 	// Every bird can end up a quad: past the bodies' budget, too small on screen for a body, or with no body for its style.
-	FarPool = Budget.Far + Bodies;
+	FarPool = Budget.Far + Bodies + Markers;
 	FarIsm = MakeIsm(TEXT("BirdQuads"), QuadMesh, FarMaterial, FarPool, FarFloats);
 
 	FVector Cam = FVector::ZeroVector;
 	FLaunchSpot Spot;
 	if (GM->GetLaunchSpot(Spot)) Cam = FVector(Spot.X * 100.0, Spot.Y * 100.0, 200.0);
 	StartMapBuild(Cam.X / 100.0, Cam.Y / 100.0, true);
-	const FString DebugNote = DebugSize > 0.0 ? FString::Printf(TEXT(", debug: every bird %.0fx its size"), DebugSize) : FString();
+	FString DebugNote = DebugSize > 0.0 ? FString::Printf(TEXT(", debug: every bird %.0fx its size and %d pinned in view"), DebugSize, Markers) : FString();
+	if (bPlainDebug) DebugNote += TEXT(", debug: the engine's default material");
 	SAIL_LOG(Display, TEXT("Wildlife: %s, %d birds in the table, tier %d budget far %d mid %d near %d, %d styles without a body mesh, %d harbour cells%s"),
 		*Lake.FileName, int32(Table.Birds.size()), Tier, Budget.Far, Budget.Mid, Budget.Near, Missing, HarbourCells.Num(), *DebugNote);
 }
@@ -385,7 +407,8 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 	}
 	const double Fov = FMath::DegreesToRadians(Cam ? double(Cam->GetFOVAngle()) : 90.0);
 	const double PixelAngle = 2.0 * FMath::Tan(0.5 * Fov) / Width;
-	// The instances live in the actor's space, the map frame (it sits at SailingFrame::MapAnchor): the camera's map place.
+	// Built in the map frame (cm), put in the render's world just before they are sent (SailingFrame::ToWorldTransforms).
+	// Unused instances wait at the camera at zero scale.
 	const FTransform Parked(FQuat::Identity, CameraMapCm, FVector::ZeroVector);
 	TArray<FTransform> FarXf;
 	FarXf.Init(Parked, FarPool);
@@ -407,7 +430,7 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		const double SizeM = D.SizeM * SizeScale;
 		const int32 S = int32(D.Style);
 		// A body: within the near and mid budgets, with a mesh for its style, and big enough on screen for its wings to show.
-		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S] &&
+		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S] - Markers &&
 			SizeM >= BodyMinPixels * PixelAngle * FMath::Max(double(D.DistanceM), 1.0);
 		if (D.bInView)
 		{
@@ -434,7 +457,7 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 			StyleIsms[S]->SetCustomData(K, MakeArrayView(Body, MidFloats), false);
 			continue;
 		}
-		if (Quads >= FarPool) continue;
+		if (Quads >= FarPool - Markers) continue;
 		double SpanScale = 1.0, Cover = 1.0, Widen = 1.0;
 		FarXf[Quads] = FarQuad(At, CameraMapCm, D.HeadingRad, D.BankRad, SizeM, PixelAngle, SpanScale, Cover, &Widen);
 		if (DebugSize > 0.0) Cover = 1.0;
@@ -456,15 +479,73 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		FarIsm->SetCustomData(Quads, MakeArrayView(Data, FarFloats), false);
 		++Quads;
 	}
-	FarIsm->BatchUpdateInstancesTransforms(0, FarXf, false, true, true);
 	DrawnQuads = Quads;
 	DrawnBodies = 0;
+	for (int32 S = 0; S < StyleIsms.Num(); ++S) DrawnBodies += BodyCount[S];
+
+	// -SailingDebugBirds: a few birds pinned in the view whatever the flocks do, dark backs and pale undersides, each about
+	// 3.5 deg across: quads 30, 60 and 120 m ahead 3 deg over the horizon (12 deg apart), a body each 40, 80 and 160 m
+	// ahead just over it (above the camera's height, so over the water).
+	MarkerQuad = -1;
+	if (Markers > 0 && Cam)
+	{
+		const FRotator View = Cam->GetCameraRotation();
+		const int32 BodyStyle = StyleIsms.IndexOfByPredicate([](const TObjectPtr<UInstancedStaticMeshComponent>& C) { return C != nullptr; });
+		for (int32 K = 0; K < Markers; ++K)
+		{
+			const double Ahead = 30.0 * double(1 << K);
+			const FVector QuadDir = FRotator(3.0, View.Yaw + 12.0 * (K - 1), 0.0).Vector();
+			const FVector QuadAt = CameraMapCm + QuadDir * Ahead * 100.0;
+			double SpanScale = 1.0, Cover = 1.0, Widen = 1.0;
+			const int32 Q = FarPool - Markers + K;
+			FarXf[Q] = FarQuad(QuadAt, CameraMapCm, FMath::DegreesToRadians(View.Yaw), 0.0, 0.06 * Ahead, PixelAngle, SpanScale, Cover, &Widen);
+			const float Marker[FarFloats] = { 0.f, 0.f, 0.f, 1.f, 0.5f, 0.05f, 0.05f, 0.05f, 0.f, 0.12f, 0.35f, float(SpanScale), float(Widen) };
+			FarIsm->SetCustomData(Q, MakeArrayView(Marker, FarFloats), false);
+			if (K == 0) MarkerQuad = Q;
+			if (BodyStyle == INDEX_NONE) continue;
+			const double BodyAhead = 40.0 * double(1 << K);
+			const FVector BodyAt = CameraMapCm + FRotator(0.5, View.Yaw + 12.0 * K - 6.0, 0.0).Vector() * BodyAhead * 100.0;
+			const int32 B = StylePool[BodyStyle] - Markers + K;
+			BodyXf[BodyStyle][B] = BodyTransform(BodyAt, FMath::DegreesToRadians(View.Yaw + 30.0), 0.0, 0.2, 0.06 * BodyAhead);
+			const float Look[MidFloats] = { 0.25f, 1.f, 0.f, 1.f, 0.05f, 0.05f, 0.05f, 0.85f, 0.85f, 0.85f, 0.f };
+			StyleIsms[BodyStyle]->SetCustomData(B, MakeArrayView(Look, MidFloats), false);
+		}
+	}
+
+	// Into the render's world (its origin follows the boat on a streamed world), and sent.
+	FarIsm->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), FarXf), true, true, true);
 	for (int32 S = 0; S < StyleIsms.Num(); ++S)
 	{
-		if (!StyleIsms[S]) continue;
-		StyleIsms[S]->BatchUpdateInstancesTransforms(0, BodyXf[S], false, true, true);
-		DrawnBodies += BodyCount[S];
+		if (StyleIsms[S]) StyleIsms[S]->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), BodyXf[S]), true, true, true);
 	}
+}
+
+FString AWildlifeActor::DebugState(const FVector& CameraMapCm) const
+{
+	// Where the components and a pinned bird are, as the engine holds them (map metres), and what they draw with.
+	auto InMap = [this](const FVector& WorldCm) { const FVector P = SailingFrame::ToMapCm(GetWorld(), WorldCm) / 100.0; return FString::Printf(TEXT("%.0f, %.0f, %.1f"), P.X, P.Y, P.Z); };
+	auto Describe = [&InMap](const UInstancedStaticMeshComponent* C)
+	{
+		if (!C) return FString(TEXT("none"));
+		const UMaterialInterface* M = C->GetMaterial(0);
+		// (The mesh's own half size, cm: a body is built 100 cm across, so about 50 x 50 x 10.)
+		const FVector Mesh = C->GetStaticMesh() ? FVector(C->GetStaticMesh()->GetBounds().BoxExtent) : FVector::ZeroVector;
+		return FString::Printf(TEXT("%s: %d instances, %s%s, bounds at %s m half %.0f x %.0f x %.0f m, mesh half %.1f x %.1f x %.1f cm, %s"), *C->GetName(),
+			C->GetInstanceCount(), C->IsRegistered() ? TEXT("registered") : TEXT("NOT registered"), C->IsVisible() ? TEXT(" visible") : TEXT(" HIDDEN"),
+			*InMap(C->Bounds.Origin), C->Bounds.BoxExtent.X / 100.0, C->Bounds.BoxExtent.Y / 100.0, C->Bounds.BoxExtent.Z / 100.0, Mesh.X, Mesh.Y, Mesh.Z,
+			M ? *M->GetName() : TEXT("no material"));
+	};
+	FString Out = FString::Printf(TEXT("camera at %s m; %s"), *InMap(SailingFrame::FromMapCm(GetWorld(), CameraMapCm)), *Describe(FarIsm));
+	FTransform Xf;
+	if (FarIsm && MarkerQuad >= 0 && FarIsm->GetInstanceTransform(MarkerQuad, Xf, true))
+	{
+		Out += FString::Printf(TEXT("; pinned quad at %s m scale %.2f x %.2f"), *InMap(Xf.GetLocation()), Xf.GetScale3D().X, Xf.GetScale3D().Y);
+	}
+	for (const TObjectPtr<UInstancedStaticMeshComponent>& C : StyleIsms)
+	{
+		if (C) { Out += TEXT("; ") + Describe(C); break; }
+	}
+	return Out;
 }
 
 void AWildlifeActor::Tick(float DeltaSeconds)
@@ -511,5 +592,6 @@ void AWildlifeActor::Tick(float DeltaSeconds)
 		UE_LOG(LogSailing, Log, TEXT("Wildlife: %d flocks, %d birds (%d resting), drawn %d quads %d bodies, %d in view (nearest %s), %d flushes, update %.3f ms"),
 			St.Flocks, St.Birds, St.Resting, DrawnQuads, DrawnBodies, DrawnInView, NearestInView.IsEmpty() ? TEXT("none") : *NearestInView,
 			St.Flushes, UpdateMs);
+		if (DebugSize > 0.0 || bPlainDebug) UE_LOG(LogSailing, Log, TEXT("Wildlife debug: %s"), *DebugState(CameraMap));
 	}
 }
