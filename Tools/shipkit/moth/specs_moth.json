@@ -27,7 +27,7 @@
   "elevator_area_m2": 0.065,
   "main_strut_below_hull_m": 1.05,
   "rudder_below_hull_m": 1.05,
-  "wand_length_m": 1.1,
+  "wand_length_m": 1.02,
   "gantry_aft_of_transom_m": 0.45,
   "tolerance": 0.03
  },
@@ -88,7 +88,7 @@
   "elevator_area_m2": "later, slice 3: the elevator's planform area, from the build report",
   "main_strut_below_hull_m": "later, slice 3: the strut's foot below the hull's lowest point",
   "rudder_below_hull_m": "later, slice 3: the rudder's foot below the hull's lowest point",
-  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight",
+  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight Milestone A cut it to 1.02: the camera-matched flying photo shows the wand hanging nearly upright at flying height, so the stick is about as long as the pivot-to-water drop (it is drawn 10 degrees forward of vertical, staying on the forward side the shock cord holds it to).",
   "gantry_aft_of_transom_m": "later, slice 3: sockets RudderPivot's x behind the hull's aft end"
  },
  "game": {

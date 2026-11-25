@@ -5,12 +5,12 @@
   "transom_x": -1.6775
  },
  "keel": {
-  "note": "The keel line, as height above its lowest point: almost straight (a moth's hull only matters at rest and at take-off), a short, tight forefoot into a plumb stem (the afloat photo shows a tall, nearly upright bow), a little rise to the transom. Points are (x, z).",
-  "points": [[-1.6775, 0.06], [-1.2, 0.025], [-0.6, 0.004], [-0.15, 0.0], [0.4, 0.004], [0.9, 0.014], [1.25, 0.036], [1.5, 0.075], [1.62, 0.13], [1.6775, 0.2]]
+  "note": "The keel line, as height above its lowest point: almost straight (a moth's hull only matters at rest and at take-off), a plumb stem carried nearly to the keel with only a small forefoot radius (the afloat photo shows a tall, nearly upright bow; Milestone A cut the forefoot from 0.2 m to 0.11 m and the transom's rise from 0.06 to 0.035, after all three reviewers read the bow as rounded), a little rise to the transom. Points are (x, z).",
+  "points": [[-1.6775, 0.035], [-1.2, 0.014], [-0.6, 0.003], [-0.15, 0.0], [0.4, 0.002], [0.9, 0.006], [1.25, 0.014], [1.5, 0.028], [1.62, 0.048], [1.66, 0.07], [1.6775, 0.11]]
  },
  "sheer": {
   "note": "The deck edge's height above the keel's lowest point (x, z): highest near the bow (she noses into waves when low-riding), lower toward the transom so the sailor can sit back.",
-  "points": [[-1.6775, 0.4], [-1.0, 0.42], [-0.2, 0.435], [0.6, 0.445], [1.2, 0.455], [1.6775, 0.465]]
+  "points": [[-1.6775, 0.4], [-1.0, 0.42], [-0.2, 0.435], [0.6, 0.44], [1.2, 0.443], [1.6775, 0.452]]
  },
  "plan": {
   "note": "Half-breadth at the deck edge (x, y): widest a little aft of the middle, a fine bow, a broad transom for the gantry's feet.",

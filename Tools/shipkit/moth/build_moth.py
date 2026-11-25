@@ -231,6 +231,8 @@ def build_rig():
     obs = []
     bm = bmesh.new()
     add_loft(bm, RG.mast_rings())
+    for name, (a, c) in RG.spreaders().items():
+        add_tube(bm, [tuple(a), tuple(c)], RG.R["spreaders"]["d_m"], 8, RG.R["spreaders"]["d_m"] * 0.7)
     obs.append(finish(bm, "MOTH_Mast", "Carbon"))
     bm = bmesh.new()
     goose, end = RG.boom_line()
@@ -238,8 +240,8 @@ def build_rig():
     add_tube(bm, [tuple(goose), tuple(end)], b["d_m"], 12, b["d_end_m"])
     obs.append(finish(bm, "MOTH_Boom", "Carbon"))
     bm = bmesh.new()
-    for name, (a, c) in RG.wires().items():
-        add_tube(bm, [tuple(a), tuple(c)], RG.R["rigging"]["wire_d_m"], 6)
+    for name, pts in RG.wires().items():
+        add_tube(bm, [tuple(p) for p in pts], RG.R["rigging"]["wire_d_m"], 6)
     obs.append(finish(bm, "MOTH_Rigging", "Wire"))
     bm = bmesh.new()
     rows = RG.sail_grid(roach)

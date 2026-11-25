@@ -174,8 +174,23 @@ def battens(roach, n=None):
     return out
 
 
+def spreaders():
+    """The spreaders: {side name: (root on the mast, tip)}. A pair of short struts swept aft, the shrouds passing over
+    their tips (Milestone A: every flying photo shows them, about halfway up)."""
+    m, sp = R["mast"], R["spreaders"]
+    base, d = mast_axis()
+    root = mast_point(sp["height_m"])
+    a = math.radians(sp["sweep_deg"])
+    aft = np.array([-d[2], 0.0, d[0]])           # perpendicular to the mast, pointing aft
+    out = {}
+    for side, nm in ((1, "L"), (-1, "R")):
+        tip = root + (np.array([0.0, side, 0.0]) * math.cos(a) + aft * math.sin(a)) * sp["length_m"]
+        out["Spreader" + nm] = (root, tip)
+    return out
+
+
 def wires():
-    """Shrouds and forestay: {name: (a, b)}."""
+    """Shrouds and forestay: {name: [points]} (the shrouds from the hounds over the spreader tips to the wings)."""
     import wings_moth as WG
     H = _h()
     m, rg = R["mast"], R["rigging"]
@@ -186,9 +201,9 @@ def wires():
     out = {}
     for side, nm in ((1, "L"), (-1, "R")):
         base = np.array([fx, side * y, WG.z_at(fx, y) + 0.016])
-        out["Shroud" + nm] = (hounds, base)
+        out["Shroud" + nm] = [hounds, spreaders()["Spreader" + nm][1], base]
     fs = np.array([rg["forestay_tack_x"], 0.0, H.sheer_z(rg["forestay_tack_x"]) + H.SEC["deck_crown_m"]])
-    out["Forestay"] = (hounds, fs)
+    out["Forestay"] = [hounds, fs]
     return out
 
 
@@ -200,5 +215,6 @@ def sockets(roach):
     cm = lambda p: [round(float(p[0]) * 100, 2), round(-float(p[1]) * 100, 2), round(float(p[2]) * 100, 2)]  # noqa: E731
     return {"MastBase": cm(mast_point(0.0)), "Masthead": cm(mast_point(m["length_m"])),
             "Hounds": cm(mast_point(m["length_m"] - m["hounds_from_top_m"])),
-            "ShroudBase_L": cm(w["ShroudL"][1]), "ShroudBase_R": cm(w["ShroudR"][1]), "ForestayTack": cm(w["Forestay"][1]),
+            "ShroudBase_L": cm(w["ShroudL"][-1]), "ShroudBase_R": cm(w["ShroudR"][-1]), "ForestayTack": cm(w["Forestay"][-1]),
+            "SpreaderTip_L": cm(spreaders()["SpreaderL"][1]), "SpreaderTip_R": cm(spreaders()["SpreaderR"][1]),
             "Gooseneck": cm(goose), "BoomEnd": cm(bend), "Tack": cm(tack), "Head": cm(head), "Clew": cm(clew)}

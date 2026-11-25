@@ -1,9 +1,9 @@
 {
  "about": "The moth's hiking wings (docs/moth-3): two racks of carbon tube out to the class's 2.25 m beam (rule 6.2: the racks count), each a frame of a front bar, a rear bar and an outer rail laced with a tight mesh deck the sailor sits and hikes on. Game frame for x (forward from the hull's middle, metres), y outboard from the centreline; z is the hull's deck edge at the root, rising by the dihedral toward the tip. Shape read by eye from the PD/CC BY photos (refs.json: the flying bow-quarter and windward-heel shots show a swept, roughly trapezoid frame with a dark mesh deck): nothing traced.",
  "beam_m": 2.25,
- "root": {"front_x": 0.15, "rear_x": -1.15, "note": "where the bars meet the hull's deck edge: the front bar just aft of the mast step (slice 4, x about 0.3), the rear bar 0.5 m short of the transom so the sailor can step aft past it"},
- "tip": {"front_x": -0.08, "rear_x": -1.0, "corner_r_m": 0.12, "note": "the outer rail's ends; the corners rounded so the sailor's legs slide over them in a tack"},
- "dihedral_deg": 5.0,
+ "root": {"front_x": 0.58, "rear_x": -1.5, "note": "where the bars meet the hull's deck edge: the front bar just aft of the mast step (x 0.70), the rear bar near the transom. Milestone A lengthened the wings from 1.3 m at the root (0.15 to -1.15): every photo shows them running from the mast nearly to the transom"},
+ "tip": {"front_x": 0.22, "rear_x": -1.38, "corner_r_m": 0.12, "note": "the outer rail's ends; the corners rounded so the sailor's legs slide over them in a tack"},
+ "dihedral_deg": 14.0, "dihedral_note": "Milestone A raised it from 5 degrees: the photos show the wings rising outboard, their tips about 0.2-0.3 m over the deck edge",
  "tube": {"bar_d_m": 0.032, "rail_d_m": 0.028, "inner_d_m": 0.026, "sides": 12},
  "mesh": {"sag_m": 0.012, "inset_m": 0.022, "note": "the deck: a tight mesh laced inside the frame, sagging a little in the middle"},
  "shroud_y_m": 0.75,

@@ -82,6 +82,7 @@ def measure(stats, sockets):
             if sect(name):
                 m[key] = bottom - min(o["min"][2] for o in sect(name))
         aft = min(o["min"][0] for o in hulls)
+        fwd = max(o["max"][0] for o in hulls)
     wings = sect("wings")
     if wings:
         m["beam_m"] = extent(wings + hulls, 1)
@@ -105,6 +106,14 @@ def measure(stats, sockets):
             m["wand_length_m"] = dist("WandPivot", "WandTip")
         if "RudderPivot" in s and hulls:
             m["gantry_aft_of_transom_m"] = aft - s["RudderPivot"][0] / 100.0
+        if hulls:
+            # class rule 6.1.5: a fitting reaching more than 0.5 m past the hull counts toward its length. Forward the
+            # wand reaches furthest (its pivot or its tip, whichever is ahead); aft, the rudder's gantry.
+            past = [s[k][0] / 100.0 - fwd for k in ("WandPivot", "WandTip") if k in s]
+            if "RudderPivot" in s:
+                past.append(aft - s["RudderPivot"][0] / 100.0)
+            if past:
+                m["fittings_past_hull_m"] = max(past)
     return m
 
 
@@ -192,6 +201,10 @@ def main():
         rows.append((key, target, v, err, "ok" if ok else "FAIL"))
         if not ok:
             fails.append(key)
+    for k in ("fittings_past_hull_m",):     # class limits with no target of their own: shown against the limit
+        if got.get(k) is not None:
+            lim = card["limits"][k]
+            rows.append((k, lim, got[k], None, "ok (limit)" if got[k] <= lim + 1e-9 else "OVER the class rule"))
     for k, v, l in check_limits(got, card["limits"]):
         fails.append(f"{k} over the class rule ({v:.3f} > {l})")
     budgets = section_budgets(stats, card, upto)
