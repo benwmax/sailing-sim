@@ -1,0 +1,9 @@
+[2026.11.25-18.01.36:637][  0]LogOutputDevice: Error: Ensure condition failed: !IsComponentPSOPrecachingEnabled() || bPSOPrecacheCalled  [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Engine\Private\
+[2026.11.25-18.02.01:485][963]LogSailing: Display: UI script: Left -> SSailChoice [SailGraphicsRows.cpp(22)] 'Quality' (handled)
+[2026.11.25-18.02.08:115][440]LogSailing: Display: Tide followers: 2648 components in or out of the distance fields
+[2026.11.25-18.02.08:115][440]LogSailing: Display: UI script: Left -> SSailChoice [SailGraphicsRows.cpp(22)] 'Quality' (handled)
+[2026.11.25-18.02.08:374][441]LogOutputDevice: Error: Ensure condition failed: OriginX <= OriginMax && OriginY <= OriginMax && OriginZ <= OriginMax  [File:D:\build\++UE5\Sync\Engine\Source\Runtime\Cor
+[2026.11.25-18.02.18:775][216]LogSailing: Display: Tide followers: 2648 components in or out of the distance fields
+[2026.11.25-18.02.18:775][216]LogSailing: Display: UI script: Right -> SSailChoice [SailGraphicsRows.cpp(22)] 'Quality' (handled)
+[2026.11.25-18.02.25:518][669]LogSailing: Display: UI script: Right -> SSailChoice [SailGraphicsRows.cpp(22)] 'Quality' (handled)
+[2026.11.25-18.04.22:501][488]LogSailing: Display: SailingBench result: {"frames":8360,"seconds":156.14,"avg_fps":53.5,"avg_ms":18.68,"p99_ms":23.65,"max_ms":2047.57,"rhi":"D3D12","resolution":"3840x2
