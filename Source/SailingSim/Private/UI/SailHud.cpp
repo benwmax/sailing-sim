@@ -26,6 +26,7 @@
 #include "TrafficManager.h"
 #include "SoundCaptions.h"
 #include "SailCloth.h"
+#include "FilmMode.h"
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/SlateRenderer.h"
@@ -762,7 +763,7 @@ void SSailHud::Construct(const FArguments& A)
 		SNew(SOverlay).Visibility_Lambda([this]()
 		{
 			const ASailboatPawn* P = Pawn();
-			const bool bHide = !P || P->IsCaptureMode() || P->IsPhotoMode() || P->IsWatching() || P->IsChartOpen() || P->IsLogOpen() || P->IsKeysOpen()
+			const bool bHide = !P || CaptureHidesHud(P->IsCaptureMode(), CaptureShowsHud()) || P->IsPhotoMode() || P->IsWatching() || P->IsChartOpen() || P->IsLogOpen() || P->IsKeysOpen()
 				|| P->IsMenuOpen() || P->IsControlsCardOpen() || P->IsHeldByUI() || !USailingSettings::Get()->bShowHud;
 			const ASailingHUD* Hud = Player.IsValid() ? Cast<ASailingHUD>(Player->GetHUD()) : nullptr;
 			if (Hud && Hud->IsFrontEndOpen()) return EVisibility::Collapsed;   // pause and the menus cover the screen

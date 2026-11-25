@@ -17,6 +17,9 @@
  *                                    -SailingCaptureBearing, -SailingCaptureAbsolute), panning to follow her live
  *   -SailingCapture=Path -SailingShotFile=<path to a shot .json>
  *                                    a keyframed camera move (FFilmShot): orbit, dolly, crane, pan or a locked mount
+ *   -SailingCaptureHud               capture and film takes keep the HUD in the chosen UI mode (-SailingUiMode=helpful|
+ *                                    natural|off or -SailingHudMode=0|1|2, else the saved setting) instead of the picture
+ *                                    alone, for shots that show the instruments (the reel's helm-eye R06)
  *
  * With a fixed step (-benchmark -fps=60, or -UseFixedTimeStep), -SailingRecord=<s> -SailingRecordInterval=<s> are counted
  * in frames (FFilmFrameClock): exactly round(record / interval) frames, one every round(interval / step) frames.
@@ -147,6 +150,16 @@ SAILINGSIM_API float CaptureMotionBlurAmount(const TCHAR* CommandLine);
 /** The film quality boost's console variables (applied after the tier's, -SailingFilm only): the clouds rebuilt over
  *  frames with more samples (mode 0), the water's and Lumen's reflections at full resolution, a longer TSR history. */
 SAILINGSIM_API TArray<FQualityCVar> FilmQualityCVars();
+
+/** -SailingCaptureHud on this command line: the capture mode keeps the HUD (off by default: the picture alone). */
+SAILINGSIM_API bool CaptureShowsHud(const TCHAR* CommandLine);
+/** -SailingCaptureHud on this run's command line (re-read on each bench-list swap). */
+SAILINGSIM_API bool CaptureShowsHud();
+/** Whether the HUD hides for the capture mode: in capture mode, unless the run asked for the HUD. */
+SAILINGSIM_API bool CaptureHidesHud(bool bCaptureMode, bool bCaptureHud);
+/** The HUD mode (SSailHud::Mode: 0 Helpful, 1 Natural, 2 Off) a run starts in: the chosen UI mode, but a measuring run
+ *  keeps the full HUD (0) unless it asked for the capture HUD, which takes the chosen mode as a player would see it. */
+SAILINGSIM_API int32 StartingHudMode(bool bMeasuring, bool bCaptureHud, int32 ChosenMode);
 
 /** -SailingFilm on this run's command line (re-read on each bench-list swap). */
 SAILINGSIM_API bool IsFilmMode();
