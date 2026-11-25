@@ -69,7 +69,22 @@
     "build_sails"
    ],
    "borders": [
-    "rig"
+    "rig",
+    "fittings"
+   ]
+  },
+  "fittings": {
+   "objects": [
+    "H16Hw_"
+   ],
+   "owns": [
+    "hardware_hobie16",
+    "build_hardware"
+   ],
+   "borders": [
+    "platform",
+    "rig",
+    "sails"
    ]
   }
  },

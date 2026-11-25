@@ -35,6 +35,7 @@ import platform_hobie16 as PL  # noqa: E402
 import rudder_hobie16 as RU  # noqa: E402
 import rig_hobie16 as RG  # noqa: E402
 import sails_hobie16 as SL  # noqa: E402
+import hardware_hobie16 as HWR  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -49,7 +50,9 @@ SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Bar": (0.035,
             # the sails' preview: the catalogue's sunrise stripes (Inputs/g3/boat-catalogue.json, hobie16 main #E6332A,
             # #F28C28, #F7D23A) and white; in the game the livery's material colours the four slots
             "SailA": (0.79, 0.033, 0.023), "SailB": (0.89, 0.26, 0.021), "SailC": (0.93, 0.64, 0.042),
-            "SailD": (0.92, 0.92, 0.9), "SailJib": (0.92, 0.92, 0.9), "Batten": (0.85, 0.85, 0.83)}
+            "SailD": (0.92, 0.92, 0.9), "SailJib": (0.92, 0.92, 0.9), "Batten": (0.85, 0.85, 0.83),
+            # slice 6: the blocks' and cleats' moulded bodies, their sheaves
+            "Block": (0.03, 0.03, 0.035), "Sheave": (0.45, 0.46, 0.47)}
 
 
 def clear_scene():
@@ -172,7 +175,15 @@ def build_sails(rig_solved):
     parts, Sv = SL.build(Sv)
     names = {"Main": "H16Sail_Main", "Jib": "H16Sail_Jib", "Boom": "H16Boom"}
     return [part_object(p, names[p.name], tuple(Sv["main"]["tack"]) if p.name == "Boom" else (0.0, 0.0, 0.0))
-            for p in parts], SL.report(Sv)
+            for p in parts], SL.report(Sv), Sv
+
+
+def build_hardware(Sv):
+    """Slice 6: the running rigging and deck hardware (hardware_hobie16.py): H16Hw_Mainsheet (the traveller car and
+    line, the 6:1's blocks and parts), H16Hw_JibSheet (the jib cars, cleats and sheet) and H16Hw_Lines (downhauls,
+    outhaul, halyards' tails, the mast base's cleats), on the sails as slice 5 sheets them."""
+    parts, K = HWR.build(Sv)
+    return [part_object(p, "H16Hw_" + p.name) for p in parts], HWR.report(K, Sv)
 
 
 def build_platform(hounds=None):
@@ -206,7 +217,8 @@ def main():
     platform, plat = build_platform((rig_solved["hounds"][0], rig_solved["hounds"][2]))
     rudders, rud = build_rudders()
     rig, rg = build_rig(rig_solved)
-    sails, sl = build_sails(rig_solved)
+    sails, sl, Sv = build_sails(rig_solved)
+    hardware, hw = build_hardware(Sv)
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)
@@ -240,9 +252,12 @@ def main():
                       "sails (slice 5): main_area_m2 and jib_area_m2 (each sail's planform in its own plane, what the "
                       "check weighs against Hobie's areas), and per sail the battens' power and heights up the luff, "
                       "the corners, the centre of effort, the straight leech and the plain triangle; the boom's end, "
-                      "its angle and height over the rear crossbar, and the jib's clew against the front crossbar.",
+                      "its angle and height over the rear crossbar, and the jib's clew against the front crossbar. "
+                      "hardware (slice 6): the mainsheet's blocks (their gap, the sheet's lean from vertical, the line in "
+                      "use), where the boom's block hanger is solved to (against the traveller car and the clew), the "
+                      "jib car and the jib sheet's length and lead angle.",
               "platform": plat, "rudders": rud, "rig": rg,
-              "main_area_m2": sl["main"]["area_m2"], "jib_area_m2": sl["jib"]["area_m2"], "sails": sl}
+              "main_area_m2": sl["main"]["area_m2"], "jib_area_m2": sl["jib"]["area_m2"], "sails": sl, "hardware": hw}
     json.dump(report, open(os.path.join(OUT, "hobie16_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
@@ -250,9 +265,10 @@ def main():
     rtris = sum(len(p.vertices) - 2 for o in rudders for p in o.data.polygons)
     gtris = sum(len(p.vertices) - 2 for o in rig for p in o.data.polygons)
     stris = sum(len(p.vertices) - 2 for o in sails for p in o.data.polygons)
+    wtris = sum(len(p.vertices) - 2 for o in hardware for p in o.data.polygons)
     print(f"H16: keel depth {depth:.4f} m, volume {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f} "
           f"(CG {cg_x:+.3f}), LWL {h['lwl']:.3f} m, hull triangles {tris}, platform triangles {ptris}, rudder triangles {rtris}, rig triangles {gtris}, rake {rg['rake_deg']} deg, "
-          f"sail triangles {stris}, main {sl['main']['area_m2']} m^2, jib {sl['jib']['area_m2']} m^2")
+          f"sail triangles {stris}, hardware triangles {wtris}, main {sl['main']['area_m2']} m^2, jib {sl['jib']['area_m2']} m^2")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "hobie16.blend"))
 
 

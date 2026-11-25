@@ -1,0 +1,65 @@
+{
+ "about": "The Hobie 16's running rigging and deck hardware (docs/hobie16-7, slice 6): the mainsheet's 6:1 between the traveller car on the rear crossbar and the boom's block hanger, the traveller line, the jib cars on the front crossbar's track and the jib sheet, the jib's and main's downhauls, the outhaul, the halyards' tails and the mast base's cleats. hardware_hobie16.py draws them on slices 2-5's platform, rig and sails, sheeted for upwind on starboard tack. Blender's frame (X forward, Y to port, Z up), metres, the design waterline with the crew aboard at z 0. Assemblies and counts from Hobie's parts guide and the class rules (specs_hobie16.json class_facts); sizes from common dinghy hardware of the kind (no brand's model is copied).",
+ "mainsheet": {
+  "purchase": 6,
+  "rope_radius_m": 0.005,
+  "line_length_m": 10.67,
+  "note": "6:1 blocks between the rear crossbar's traveller car and the boom's block hanger, on a 35 ft line (class_facts.mainsheet). 10 mm rope.",
+  "hanger_lead_aft_deg": 10.0,
+  "note_hanger": "Where the block hanger sits on the boom is solved, not set: the sheet leans 10 deg aft of square from the traveller car to it. One owner's trampoline, 89.5 in between the crossbars' insides (Hobie's forum), puts the crossbars where slices 2-5 have them (2.23 m here), and a 9 ft foot from a gooseneck on the mast then reaches 0.6 m past the rear crossbar. Sheeted hard, H16 crews pull the 6:1 two-blocked (the blocks touching), which can only happen with the hanger nearly over the car: hung at the clew, the sheet would lean 71 deg off square and the blocks could never meet. So the hanger is a bail under the boom some way forward of its end, and the clew's outhaul runs on to the end cap.",
+  "sheaves": 3,
+  "lower_sheave_radius_m": 0.0285,
+  "upper_sheave_radius_m": 0.02,
+  "note_sheaves": "The standard system was a 57 mm triple with a ratchet below and a 40 mm triple above (the Hobie class association's page on the H16 mainsheet; since 2022 a block made for the boat replaces them). The model's blocks are generic shapes of those sizes, no maker's design.",
+  "sheave_width_m": 0.012,
+  "bail_m": 0.02,
+  "note_blocks": "Both blocks are triples (6:1): three grooved sheaves side by side on an athwartships axle, cheek plates between and outside them, a strap, swivel and shackle to the fitting each hangs from. The upper one has a becket for the sheet's dead end and hooks through a bail riveted under the boom; the lower one, on the traveller car's swivel post (through an eye on its top), carries a cam cleat on an arm forward. The six parts leave each sheave fore and aft.",
+  "swivel_m": 0.035,
+  "tail_m": 1.6,
+  "note_tail": "The tail leaves the lower block's jaws forward and lies along the trampoline toward the helm's hand.",
+  "eye_m": 0.01
+ },
+ "traveller": {
+  "car": [
+   0.06,
+   0.12,
+   0.03
+  ],
+  "car_y_m": 0.0,
+  "line_radius_m": 0.003,
+  "line_to_y_m": 0.75,
+  "note": "The car rides the rear crossbar's deep track, centred under the boom for upwind; its control line runs both ways along the crossbar's top to cleats near the corners (class_facts.rear_crossbar)."
+ },
+ "jib_sheet": {
+  "car_y_m": 0.42,
+  "car": [
+   0.05,
+   0.07,
+   0.025
+  ],
+  "rope_radius_m": 0.004,
+  "lazy_sag_m": 0.18,
+  "tail_aft_m": 0.35,
+  "note": "Rule 2.3: the jib cars run in the FRONT crossbar's track, locked by a spring plunger. The sheet is 2:1 a side and one line: an owner on Hobie's forum gives its path as from the becket on the jib car up to the block on the jib, back to the car and through its swivel cleat; the other side the same. So the clew carries a double block, each car a becket and a ratchet block with a cam over it, and the tail runs across the trampoline between the cars. The working (port) side is tight, the lazy (starboard) side slack. 8 mm rope; owners give the sheet as about 32 ft. The cars sit a little outboard of the clew (0.32 m to port) so the sheet pulls down and out.",
+  "purchase": 2,
+  "clew_sheave_radius_m": 0.015,
+  "car_sheave_radius_m": 0.02,
+  "sheave_width_m": 0.009,
+  "tail_on_tramp_aft_m": 0.13
+ },
+ "downhauls": {
+  "jib_parts": 2,
+  "main_parts": 2,
+  "rope_radius_m": 0.003,
+  "note": "The jib's tack downhaul to the bridle plate, and the main's downhaul (cunningham) from the gooseneck's ring to its cleat on the mast base (class_facts.boom: up to 6:1; drawn as its two visible parts)."
+ },
+ "outhaul": {
+  "rope_radius_m": 0.003,
+  "note": "From the clew along the boom to the V-jam cleat near its end (class_facts.boom)."
+ },
+ "halyards": {
+  "rope_radius_m": 0.0025,
+  "cleat_along_m": 0.32,
+  "note": "Both sails hang on hooks (the main's at the masthead, the jib's at the hounds), so the halyards are slack once hooked: each tail runs down the mast's side to its cleat on the mast base (class_facts.mast). The jib's head ties to a short wire from the hounds."
+ }
+}
