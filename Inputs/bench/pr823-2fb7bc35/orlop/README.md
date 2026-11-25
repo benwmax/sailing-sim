@@ -34,3 +34,17 @@ The Gun line again appears only at frame 2, on the upper deck before the walk.
 | orlop | 42.5 / 40.1 |
 
 There was no DXGI hang or GPU crash in any run. Bean's Saved was held aside and restored (7B5CA7BE).
+
+## Orlop,-8,1,180 (facing aft, away from the ladderway)
+
+- **41.8 fps** at 4K, p99 27.8 ms, max 29.4 ms, GPU 23.47 ms (base 9.67, Lumen 2.92).
+- **Log:** "-SailingWalkAt: walking on Orlop at (-8.00, 1.00) facing 180", then "Ship decks Orlop: 0 copies, 2 lanterns
+  (unshadowed)" and the Berth line. There was **no "nowhere to stand" warning**.
+- **Feet Z isn't logged.** The game writes no height for the walker, so I can't confirm the -1.95 m from the log.
+- **In view, he's on the orlop:**
+  - No hammocks or mess benches.
+  - A low panelled bulkhead with a doorway, and a pillar on its step on the right.
+  - A grating on the floor beyond the door, and a low-beamed space aft with chairs, a table and the orlop lantern.
+  - So the earlier ladder-foot still facing forward was looking up the ladderway into the berth deck.
+- **Flag:** the floor planking shows a strong zigzag moiré across the lower third of the frame (`orlop-ladder-m8-aft.png`).
+  It also shows faintly in the -12,0,180 still. It's a texture or mip problem on the orlop deck's planks at 4K.
