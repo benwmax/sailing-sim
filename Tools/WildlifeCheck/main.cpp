@@ -304,7 +304,7 @@ int main(int Argc, char** Argv)
 				const bool bCountOk = std::fabs(R.MeanFlocks - R.Expected) <= std::max(1.5, 0.4 * R.Expected);
 				const bool bOk = bCountOk && R.bBudgetOk && R.Underground == 0 && R.NotFinite == 0;
 				if (!bOk) ++Failures;
-				std::printf("  %-38.38s m%02d sun %4.0f  flocks %5.1f (expect %5.1f)  birds %5.0f  drawn far %5.1f/%-3d mid %4.1f/%-3d near %3.1f/%-2d"
+				std::printf("  %-38.38s m%02d sun %4.0f  flocks %5.1f (expect %5.1f)  birds %5.0f  drawn quads %5.1f/%-3d bodies mid %4.1f/%-3d near %3.1f/%-2d"
 					"  flushes %3d  update %.3f ms (p99 %.2f, max %.2f)  map %.0f ms x%d%s%s%s%s\n",
 					Spot.Name.c_str(), Month, C.SunElevationDeg, R.MeanFlocks, R.Expected, R.MeanBirds, R.MeanFar, R.MaxFar, R.MeanMid, R.MaxMid,
 					R.MeanNear, R.MaxNear, R.Flushes, R.MeanMs, R.P99Ms, R.MaxMs, R.MapMs, R.MapBuilds,

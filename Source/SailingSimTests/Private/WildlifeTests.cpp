@@ -203,11 +203,14 @@ bool FSailingWildlifeCountsTest::RunTest(const FString&)
 			TestTrue(FString::Printf(TEXT("tier %d: %s keeps its count (%.1f flocks, expected %.1f)"), Tier,
 				UTF8_TO_TCHAR(Flocks.TableBird(B).Id.c_str()), H, W), FMath::Abs(H - W) <= FMath::Max(1.5, 0.4 * W));
 		}
-		if (Tier == 0)
 		{
-			int32 Inside = 0;
-			for (const FBirdDraw& D : Flocks.Draw()) Inside += D.DistanceM < FBirdFlocks::MidM;
-			TestTrue(TEXT("Low draws at most its few birds inside the far band"), Inside <= Budget.Mid + Budget.Near);
+			// bodies only inside 400 m and within their budgets; every other bird drawn is a quad within Far
+			int32 Bodies = 0, FarBodies = 0;
+			for (const FBirdDraw& D : Flocks.Draw()) { Bodies += D.bBody; FarBodies += D.bBody && D.DistanceM >= FBirdFlocks::MidM; }
+			TestTrue(FString::Printf(TEXT("tier %d: bodies within their budgets"), Tier), Bodies <= Budget.Mid + Budget.Near);
+			TestEqual(FString::Printf(TEXT("tier %d: no body past 400 m"), Tier), FarBodies, 0);
+			TestTrue(FString::Printf(TEXT("tier %d: everything drawn within the budget"), Tier),
+				int32(Flocks.Draw().size()) <= Budget.Far + Budget.Mid + Budget.Near);
 		}
 		// nothing when it's out of season or night
 		FWildlifeConditions Night = C;
@@ -324,6 +327,73 @@ bool FSailingWildlifeRepeatableTest::RunTest(const FString&)
 		bSame &= A.Draw()[I].North == B.Draw()[I].North && A.Draw()[I].East == B.Draw()[I].East && A.Draw()[I].Up == B.Draw()[I].Up;
 	TestTrue(TEXT("in the same places"), bSame);
 	TestTrue(TEXT("some birds about"), A.Draw().size() > 0);
+	return true;
+}
+
+// With the camera's view, the birds on screen take the budget first; a near flock past the bodies' budget is drawn on as
+// quads, not cut off.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWildlifeViewTest, "SailingSim.Wildlife.View", WildlifeTestsLocal::Flags)
+bool FSailingWildlifeViewTest::RunTest(const FString&)
+{
+	using namespace WildlifeTestsLocal;
+	FWildlifeTable T;
+	if (!LoadTable(TableJson({ Bird(TEXT("gull"), TEXT("flap_hang"), TEXT("\"open_water\""), 6, 30),
+		Bird(TEXT("coot"), TEXT("raft"), TEXT("\"open_water\""), 20, 80) }), T, *this)) return false;
+	FWildlifeHabitatMap Map;
+	Map.Build(RoundLake(), 0.0, 0.0);
+	FBirdBudget Small;
+	Small.Far = 40; Small.Mid = 6; Small.Near = 2;
+	FBirdFlocks Blind, Seeing;
+	Blind.Reset(T, 21);
+	Seeing.Reset(T, 21);
+	Blind.SetBudget(Small);
+	Seeing.SetBudget(Small);
+	Blind.SetDensityScale(4.0);
+	Seeing.SetDensityScale(4.0);
+	const FWildlifeConditions C = Noon(1);
+	FBirdObservers Plain = At(0.0, 0.0);
+	FBirdObservers View = Plain;
+	View.bHasView = true;                       // looking east and level, a cone 35 deg round
+	View.ViewNorth = 0.0; View.ViewEast = 1.0; View.ViewUp = 0.0;
+	View.ViewCosHalf = 0.8191520443;            // cos 35 deg
+	auto InCone = [&](const FBirdDraw& D)
+	{
+		const double DN = D.North - View.CamNorth, DE = D.East - View.CamEast, DU = D.Up - View.CamUp;
+		const double L = FMath::Sqrt(DN * DN + DE * DE + DU * DU);
+		return L < 1e-3 || DN * View.ViewNorth + DE * View.ViewEast + DU * View.ViewUp >= View.ViewCosHalf * L;
+	};
+	int32 BlindInView = 0, SeeingInView = 0;
+	int32 Frames = 0, Fewer = 0, Overflow = 0, OverflowEarly = 0, Mislabelled = 0;
+	for (int32 K = 0; K < 30 * 60 * 3; ++K)
+	{
+		Blind.Update(1.0 / 30.0, C, Plain, Map);
+		Seeing.Update(1.0 / 30.0, C, View, Map);
+		if (K % 15) continue;
+		++Frames;
+		int32 B = 0, S = 0, Flagged = 0;
+		for (const FBirdDraw& D : Blind.Draw()) B += InCone(D);
+		for (const FBirdDraw& D : Seeing.Draw())
+		{
+			S += InCone(D);
+			Flagged += D.bInView;
+			Mislabelled += D.bInView != InCone(D);
+			if (!D.bBody && D.DistanceM < FBirdFlocks::MidM)
+			{
+				++Overflow;
+				OverflowEarly += Seeing.Stats().Mid < Small.Mid;   // a quad inside 400 m only once the mid bodies are spent
+			}
+		}
+		BlindInView += B;
+		SeeingInView += S;
+		Fewer += S < B;
+		TestEqual(TEXT("the stats count the birds in view"), Seeing.Stats().InView, Flagged);
+	}
+	TestEqual(TEXT("each bird's in-view flag is its place in the cone"), Mislabelled, 0);
+	TestEqual(TEXT("never fewer birds on screen with the view than without"), Fewer, 0);
+	TestTrue(FString::Printf(TEXT("more birds on screen with the view (%d against %d over %d frames)"), SeeingInView, BlindInView, Frames),
+		SeeingInView > BlindInView + Frames);
+	TestTrue(TEXT("a flock close by past the bodies' budget is drawn on as quads"), Overflow > 0);
+	TestEqual(TEXT("and only once the mid bodies are spent"), OverflowEarly, 0);
 	return true;
 }
 

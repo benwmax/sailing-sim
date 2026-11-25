@@ -19,17 +19,22 @@ the flocks fly past within 50 to 150 m of your boat (the games players praise fo
 - `Sailing::FBirdFlocks` (`Wildlife.h`, plain C++ on the sim clock): spawns and retires flocks so each bird's count in
   view follows the table (the expected number from its habitat's area inside 2 km, the month, the hour and the
   weather, steered by how long its flocks stay), steps leaders and members (each bird follows the path of the one ahead
-  in lines and vees), flushes resting flocks, and returns what to draw, nearest first, within the tier's budget.
+  in lines and vees), flushes resting flocks, and returns what to draw within the tier's budget: birds in the camera's
+  view first (out of view a bird ranks as if four times farther), then nearest first. The nearest inside 400 m get the
+  bodies' budget; every other bird, a big flock's overflow close by included, is a quad within the far budget.
 - `Sailing::FWildlifeHabitatMap`: 50 m cells over 8 km round the camera, classed from the terrain into open water,
   channel, offshore, far offshore, shallows, shore, harbour and cliffs, with each cell's highest ground or tree top
   (a 5 x 5 grid over the cell plus half its steepest step: Marseille's cliffs climb 30 m between corners).
 - `AWildlifeActor` (game): builds the map on a worker when the camera is 1.5 km from its centre (or the tide moves
   0.3 m), feeds the flocks the month, local hour, sun, rain and wind at the camera and every boat (sailboats and power
   vessels flush birds), and draws them:
-  - far birds (400 m to 2 km): the engine's 1 m plane turned to the camera, x along the span as the camera sees it,
-    `M_BirdFar` drawing the silhouette (body, wings bent at the wrist, the style's dihedral and crank, the wingbeat).
-    A bird under two pixels keeps a two-pixel quad and thins its dithered cover by the same share.
-  - mid and near birds (under 400 m): `SM_Bird_<Style>`, 136 to 152 triangles (`Tools/blender/build_birds.py`),
+  - quads (far birds, and any bird under 12 pixels across): the engine's 1 m plane turned to the camera, x along the
+    span as the camera sees it, `M_BirdFar` drawing the silhouette (body, wings bent at the wrist, the style's dihedral
+    and crank, the wingbeat), every stroke held half a pixel fatter so a far gull's wing doesn't average away. A bird
+    under two pixels keeps a two-pixel quad (both ways: a bird crossing the view is drawn in the middle of a widened
+    quad) and thins its dithered cover by the same share.
+  - bodies (birds inside 400 m within the bodies' budget and 12 pixels or more across): `SM_Bird_<Style>`, 136 to 152
+    triangles (`Tools/blender/build_birds.py`),
     `M_BirdMid` beating the wings about the shoulder in the vertex shader, folding them along the back when resting,
     swinging a heron's legs down to stand. Until the bodies are imported every bird is a quad.
   - plumage per species: `Sailing::BirdLookFor` (back, underside, wingtips; field-guide tones).
@@ -50,8 +55,11 @@ thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in 
   `blender -b --factory-startup -noaudio -P Tools/blender/build_birds.py -- <out>` (or `python build_birds.py <out>`
   with bpy), then `UnrealEditor-Cmd.exe <SailingSim.uproject> -run=pythonscript -script="scripts/import_birds.py <out>"
   -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`.
-- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.Sprites`.
-- Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density.
+- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Sprites`.
+- Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;
+  `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still.
+- The log's `Wildlife:` line every 10 s gives the birds drawn in view and the nearest one on screen (species, distance,
+  compass bearing and elevation from the camera): aim a still with `-SailingCamYaw`/`-SailingCamPitch` from it.
 
 ## Open
 

@@ -10,7 +10,8 @@ namespace WildlifeSpriteTestsLocal
 }
 
 // The quad faces the camera with its y up the screen; its width is the span as seen (full head-on, a quarter side-on);
-// a bird under two pixels keeps a two-pixel quad and thins its cover by the same share; a body points where it flies.
+// a bird under two pixels keeps a two-pixel quad (both ways) and thins its cover by the same share; a body points where
+// it flies.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWildlifeSpritesTest, "SailingSim.Wildlife.Sprites", WildlifeSpriteTestsLocal::Flags)
 bool FSailingWildlifeSpritesTest::RunTest(const FString&)
 {
@@ -27,13 +28,18 @@ bool FSailingWildlifeSpritesTest::RunTest(const FString&)
 		TestEqual(TEXT("head-on, the whole span is seen"), Seen, 1.0, 1e-3);
 		TestEqual(TEXT("big enough at 500 m: full cover"), Cover, 1.0, 1e-9);
 		TestEqual(TEXT("drawn its own span"), Q.GetScale3D().Y, 1.2, 1e-6);
+		TestEqual(TEXT("and as wide"), Q.GetScale3D().X, 1.2, 1e-6);
 	}
 	// The same gull flying east, across the view: its wings point at the camera, a quarter of the width.
 	{
 		const FVector Bird(50000.0, 0.0, 2000.0);
-		double Seen = 0.0, Cover = 0.0;
-		const FTransform Q = AWildlifeActor::FarQuad(Bird, Camera, 0.5 * PI, 0.0, 1.2, PixelAngle, Seen, Cover);
+		double Seen = 0.0, Cover = 0.0, Widen = 0.0;
+		const FTransform Q = AWildlifeActor::FarQuad(Bird, Camera, 0.5 * PI, 0.0, 1.2, PixelAngle, Seen, Cover, &Widen);
 		TestEqual(TEXT("side-on, a quarter of the span"), Seen, 0.25, 1e-3);
+		// a quarter of 1.2 m at 500 m is 0.6 px: the quad is held two pixels wide and the bird drawn in its middle
+		const double Two = AWildlifeActor::MinPixels * PixelAngle * FVector::Dist(Bird, Camera) / 100.0;
+		TestEqual(TEXT("side-on, held two pixels wide"), Q.GetScale3D().X, Two, 1e-6);
+		TestEqual(TEXT("and widened by as much"), Widen, Two / (0.25 * 1.2), 1e-3);
 		TestTrue(TEXT("side-on, still faces the camera"), FVector::DotProduct(Q.GetUnitAxis(EAxis::Z), (Camera - Bird).GetSafeNormal()) > 0.999);
 		TestTrue(TEXT("side-on, y still up"), Q.GetUnitAxis(EAxis::Y).Z > 0.9);
 	}

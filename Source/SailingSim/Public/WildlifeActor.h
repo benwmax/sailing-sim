@@ -18,7 +18,8 @@ class UStaticMesh;
  * silhouette and wingbeat M_BirdFar draws from per-instance data, mid and near birds as low bodies per flight style
  * (SM_Bird_<Style>, Tools/blender/build_birds.py) whose wings M_BirdMid flaps. Until those meshes are imported every bird
  * is a quad. Everything is instanced, unshadowed and out of the distance-field and Lumen scenes.
- * -SailingNoWildlife leaves it out; -SailingWildlifeScale=<f> scales every bird's density (1 the tables').
+ * -SailingNoWildlife leaves it out; -SailingWildlifeScale=<f> scales every bird's density (1 the tables');
+ * -SailingDebugBirds[=<k>] draws every bird k times its size (10) and whole, to find them in a still.
  */
 UCLASS()
 class SAILINGSIM_API AWildlifeActor : public AActor
@@ -32,8 +33,13 @@ public:
 	static constexpr double RebuildM = 1500.0;
 	/** A far bird is never drawn under this many pixels across: smaller, its quad keeps this size and its cover thins. */
 	static constexpr double MinPixels = 2.0;
+	/** A body only for a bird at least this many pixels across: smaller, its wings are thinner than a pixel and the quad's
+	 *  silhouette (held a pixel thick) reads better. */
+	static constexpr double BodyMinPixels = 12.0;
+	/** The view cone's margin past the screen's corners (deg): birds just off screen are drawn first too. */
+	static constexpr double ViewMarginDeg = 8.0;
 	/** Per-instance floats of the quads (M_BirdFar) and the bodies (M_BirdMid); keep in step with scripts/import_birds.py. */
-	static constexpr int32 FarFloats = 12;
+	static constexpr int32 FarFloats = 13;
 	static constexpr int32 MidFloats = 11;
 
 	AWildlifeActor();
@@ -49,11 +55,12 @@ public:
 	/**
 	 * A far bird's quad (the engine's 1 m plane, +Z its face): turned to the camera with its x along the bird's span as the
 	 * camera sees it (the wings foreshortened: OutSpanScale, 0.25..1) and its y up the screen. Sized at least MinPixels
-	 * (PixelAngle: radians a pixel); OutCover is the share of the bird's own size that leaves (1 when it is big enough).
+	 * (PixelAngle: radians a pixel) both ways; OutCover is the share of the bird's own size that leaves (1 when it is big
+	 * enough), OutWiden how much wider than the foreshortened span the quad is held (1 unless that is under MinPixels).
 	 * Shared with SailingSim.Wildlife.Sprites.
 	 */
 	static FTransform FarQuad(const FVector& BirdCm, const FVector& CameraCm, double HeadingRad, double BankRad, double SpanM,
-		double PixelAngle, double& OutSpanScale, double& OutCover);
+		double PixelAngle, double& OutSpanScale, double& OutCover, double* OutWiden = nullptr);
 	/** A body's transform: its mesh is built along +X (forward), wings on Y, span 1 m (build_birds.py). */
 	static FTransform BodyTransform(const FVector& BirdCm, double HeadingRad, double PitchRad, double BankRad, double SpanM);
 	/** The flight style's mesh name (SM_Bird_<Name>). */
@@ -87,6 +94,8 @@ private:
 	int32 Tier = 2;
 	int32 FarPool = 0;
 	TArray<int32> StylePool;
-	int32 DrawnQuads = 0, DrawnBodies = 0;
+	int32 DrawnQuads = 0, DrawnBodies = 0, DrawnInView = 0;
+	FString NearestInView;                   // the nearest drawn bird on screen, for the log line
+	double DebugSize = 0.0;                  // -SailingDebugBirds: every bird this many times its size (0 off)
 	double NextLog = 0.0;
 };

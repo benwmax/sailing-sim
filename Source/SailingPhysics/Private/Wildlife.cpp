@@ -798,7 +798,9 @@ namespace Sailing
 			}
 		}
 
-		for (FFlock& F : Flocks) StepFlock(F, Dt, C, Obs, Map);
+		// (Held time steps nothing: a zero step would put every bird back in its slot.)
+		++Frame;
+		if (Dt > 0.0) for (FFlock& F : Flocks) StepFlock(F, Dt, C, Obs, Map);
 
 		// Retire flocks that left, faded out, or that the camera left behind.
 		const size_t Before = Flocks.size();
@@ -841,16 +843,23 @@ namespace Sailing
 		const FBirdStyleParams& P = BirdStyleParams(B.Style);
 		const double Flush = B.FlushM > 0.0 ? B.FlushM : P.FlushM;
 		const FBirdObservers::FBoat* Near = nullptr;
-		double Best = 1e18;
+		double Best = 1e36;   // squared
+		// (every resting flock, every frame, against every boat: squares, and a boat clear of the flock's reach skipped)
+		double Reach = 0.0;
+		for (const FMember& M : F.Members) Reach = std::max(Reach, (M.N - F.N) * (M.N - F.N) + (M.E - F.E) * (M.E - F.E));
+		Reach = std::sqrt(Reach);
 		for (const FBirdObservers::FBoat& Boat : Obs.Boats)
 		{
+			const double CN = F.N - Boat.North, CE = F.E - Boat.East;
+			if (!bForce && std::sqrt(CN * CN + CE * CE) > Reach + Flush) continue;
 			for (const FMember& M : F.Members)
 			{
-				const double D = std::hypot(M.N - Boat.North, M.E - Boat.East);
-				if (D < Best) { Best = D; Near = &Boat; }
+				const double DN = M.N - Boat.North, DE = M.E - Boat.East;
+				const double D2 = DN * DN + DE * DE;
+				if (D2 < Best) { Best = D2; Near = &Boat; }
 			}
 		}
-		if (!Near || (!bForce && Best > Flush)) return false;
+		if (!Near || (!bForce && Best > Flush * Flush)) return false;
 		// They lift a few at a time, nearest first, and fly away from the bow.
 		F.bFlushed = true;
 		F.bResting = false;
@@ -1012,25 +1021,43 @@ namespace Sailing
 		const FBirdStyleParams& P = BirdStyleParams(B.Style);
 		const double Cycle = P.FlapSeconds + P.GlideSeconds;
 		const double Span = B.SizeM;
-		// Where the track was a given distance behind the leader (the newest point is the leader's last).
+		// Where the track was a given distance behind the leader (the newest point is the leader's last). The arc length to
+		// each point back is measured once a flock (PathCum[J]: to the J-th point back, 0 the leader), then each bird finds
+		// its segment by bisection: walking the track per bird was most of the update in big flocks.
+		const size_t NP = F.Path.size();
+		bool bTrack = false;
+		for (const FMember& M : F.Members) bTrack |= !F.bResting && !F.bCircling && M.State != EBirdState::OnWater;
+		if (bTrack)
+		{
+			PathCum.resize(NP + 1);
+			PathCum[0] = 0.0;
+			double PN = F.N, PE = F.E;
+			for (size_t J = 0; J < NP; ++J)
+			{
+				const FPathPoint& Pt = F.Path[NP - 1 - J];
+				const double SN = PN - Pt.N, SE = PE - Pt.E;
+				PathCum[J + 1] = PathCum[J] + std::sqrt(SN * SN + SE * SE);
+				PN = Pt.N; PE = Pt.E;
+			}
+		}
 		auto Back = [&](double Dist, double& N, double& E, double& Up, double& H)
 		{
-			N = F.N; E = F.E; Up = F.Up; H = F.Heading;
-			double Left = Dist;
-			double PN = F.N, PE = F.E, PU = F.Up;
-			for (size_t K = F.Path.size(); K-- > 0;)
+			// the first segment (from the point J-1 back to J) reaching Dist, skipping zero-length ones
+			size_t J = size_t(std::lower_bound(PathCum.begin() + 1, PathCum.begin() + std::ptrdiff_t(NP + 1), Dist) - PathCum.begin());
+			while (J <= NP && PathCum[J] - PathCum[J - 1] <= 1e-6) ++J;
+			if (J <= NP)
 			{
-				const FPathPoint& Pt = F.Path[K];
-				const double Seg = std::hypot(PN - Pt.N, PE - Pt.E);
-				if (Seg >= Left && Seg > 1e-6)
-				{
-					const double T = Left / Seg;
-					N = PN + (Pt.N - PN) * T; E = PE + (Pt.E - PE) * T; Up = PU + (Pt.Up - PU) * T; H = Pt.Heading;
-					return;
-				}
-				Left -= Seg;
-				PN = Pt.N; PE = Pt.E; PU = Pt.Up; H = Pt.Heading;
+				const FPathPoint& Pt = F.Path[NP - J];
+				const double PN = J == 1 ? F.N : F.Path[NP - J + 1].N, PE = J == 1 ? F.E : F.Path[NP - J + 1].E;
+				const double PU = J == 1 ? F.Up : F.Path[NP - J + 1].Up;
+				const double T = (Dist - PathCum[J - 1]) / (PathCum[J] - PathCum[J - 1]);
+				N = PN + (Pt.N - PN) * T; E = PE + (Pt.E - PE) * T; Up = PU + (Pt.Up - PU) * T; H = Pt.Heading;
+				return;
 			}
+			// past the track's end: straight on back from its oldest point
+			const double Left = Dist - PathCum[NP];
+			const double PN = NP ? F.Path[0].N : F.N, PE = NP ? F.Path[0].E : F.E, PU = NP ? F.Path[0].Up : F.Up;
+			H = NP ? F.Path[0].Heading : F.Heading;
 			N = PN - Left * std::cos(H); E = PE - Left * std::sin(H); Up = PU;
 		};
 		bool bAllLanded = F.bLanding;
@@ -1150,14 +1177,16 @@ namespace Sailing
 			}
 
 			// fly to the slot: close in quickly, follow tightly once there
-			const double Gap = std::hypot(TN - M.N, TE - M.E);
+			const double GN = TN - M.N, GE = TE - M.E;
+			const double Gap = std::sqrt(GN * GN + GE * GE);
 			const double Rate = Gap > 5.0 ? 1.2 : 6.0;
 			M.N += (TN - M.N) * std::min(1.0, Rate * Dt);
 			M.E += (TE - M.E) * std::min(1.0, Rate * Dt);
 			M.Up += (TU - M.Up) * std::min(1.0, 2.0 * Dt);
 			if (Dt > 0.0)
 			{
-				const double Moved = std::hypot(M.N - OldN, M.E - OldE);
+				const double MN = M.N - OldN, ME = M.E - OldE;
+				const double Moved = std::sqrt(MN * MN + ME * ME);
 				M.Heading = Moved > 0.01 ? std::atan2(M.E - OldE, M.N - OldN) : TH;
 			}
 			else M.N = TN, M.E = TE, M.Up = TU, M.Heading = TH;
@@ -1248,7 +1277,14 @@ namespace Sailing
 		}
 		if (F.bFollowBoat && (F.Life < 30.0 || !Player)) F.bFollowBoat = false;
 		StepLeader(F, Dt, C, Obs, Map);
-		StepMembers(F, Dt, Map);
+		// Most birds in the 2 km band are past the drawing budget: a flock with none drawn last frame steps its birds every
+		// fourth frame (on the time gone since), a drawn one every frame.
+		F.MemberDt += Dt;
+		if (F.bDrawn || F.bLanding || ((Frame + F.Seed) & 3u) == 0)
+		{
+			StepMembers(F, F.MemberDt, Map);
+			F.MemberDt = 0.0;
+		}
 	}
 
 	void FBirdFlocks::BuildDraw(const FBirdObservers& Obs)
@@ -1256,8 +1292,13 @@ namespace Sailing
 		Drawn.clear();
 		St.Flocks = int(Flocks.size());
 		St.Birds = St.Airborne = St.Resting = 0;
-		for (const FFlock& F : Flocks)
+		std::vector<FBirdDraw>& All = Candidates;
+		All.clear();
+		CandidateFlock.clear();
+		for (size_t FI = 0; FI < Flocks.size(); ++FI)
 		{
+			FFlock& F = Flocks[FI];
+			F.bDrawn = false;
 			const FWildBird& B = Table.Birds[size_t(F.Bird)];
 			const FBirdStyleParams& P = BirdStyleParams(B.Style);
 			for (const FMember& M : F.Members)
@@ -1266,6 +1307,9 @@ namespace Sailing
 				const bool bDown = M.State == EBirdState::OnWater || M.State == EBirdState::Standing ||
 					(M.State == EBirdState::TakingOff && M.StateT < M.TakeOffDelay);
 				bDown ? ++St.Resting : ++St.Airborne;
+				const double DN = M.N - Obs.CamNorth, DE = M.E - Obs.CamEast, DU = M.Up - Obs.CamUp;
+				const double Dist = std::sqrt(DN * DN + DE * DE + DU * DU);
+				if (Dist > FarM || F.Fade <= 0.0) continue;
 				FBirdDraw D;
 				D.North = M.N; D.East = M.E; D.Up = M.Up;
 				D.HeadingRad = float(M.Heading);
@@ -1282,24 +1326,34 @@ namespace Sailing
 				D.Bird = uint16_t(F.Bird);
 				D.Style = B.Style;
 				D.State = bDown ? (B.Style == EBirdStyle::Wading ? EBirdState::Standing : EBirdState::OnWater) : M.State;
-				const double DN = M.N - Obs.CamNorth, DE = M.E - Obs.CamEast, DU = M.Up - Obs.CamUp;
-				D.DistanceM = float(std::sqrt(DN * DN + DE * DE + DU * DU));
-				if (D.DistanceM > FarM || D.Fade <= 0.0f) continue;
-				Drawn.push_back(D);
+				D.DistanceM = float(Dist);
+				D.bInView = !Obs.bHasView || Dist < 1e-3 ||
+					(DN * Obs.ViewNorth + DE * Obs.ViewEast + DU * Obs.ViewUp) >= Obs.ViewCosHalf * Dist;
+				All.push_back(D);
+				CandidateFlock.push_back(uint32_t(FI));
 			}
 		}
-		std::sort(Drawn.begin(), Drawn.end(), [](const FBirdDraw& A, const FBirdDraw& Bd) { return A.DistanceM < Bd.DistanceM; });
-		// Each band keeps its nearest birds within the tier's budget.
-		std::vector<FBirdDraw> Kept;
-		Kept.reserve(Drawn.size());
-		int NNear = 0, NMid = 0, NFar = 0;
-		for (const FBirdDraw& D : Drawn)
+		// In view first, then nearest first: out of view a bird ranks as if ViewOutsideWeight times farther (it still gets
+		// drawn when there is budget to spare, so turning the camera finds birds already there).
+		DrawRank.clear();
+		DrawRank.reserve(All.size());
+		for (size_t K = 0; K < All.size(); ++K)
+			DrawRank.push_back({All[K].DistanceM * (All[K].bInView ? 1.0f : float(ViewOutsideWeight)), uint32_t(K)});
+		std::sort(DrawRank.begin(), DrawRank.end());
+		// Bodies to the nearest within the near and mid budgets (a near bird past Near takes a mid body); every other bird a
+		// quad within Far, so a big flock close by is drawn whole rather than cut at the bodies' budget.
+		int NNear = 0, NMid = 0, NFar = 0, NView = 0;
+		for (const std::pair<float, uint32_t>& R : DrawRank)
 		{
-			if (D.DistanceM < NearM) { if (NNear < Budget.Near) { Kept.push_back(D); ++NNear; } }
-			else if (D.DistanceM < MidM) { if (NMid < Budget.Mid) { Kept.push_back(D); ++NMid; } }
-			else if (NFar < Budget.Far) { Kept.push_back(D); ++NFar; }
+			FBirdDraw& D = All[R.second];
+			if (D.DistanceM < NearM && NNear < Budget.Near) { D.bBody = true; ++NNear; }
+			else if (D.DistanceM < MidM && NMid < Budget.Mid) { D.bBody = true; ++NMid; }
+			else if (NFar < Budget.Far) { D.bBody = false; ++NFar; }
+			else continue;
+			NView += D.bInView ? 1 : 0;
+			Flocks[CandidateFlock[R.second]].bDrawn = true;
+			Drawn.push_back(D);
 		}
-		St.Near = NNear; St.Mid = NMid; St.Far = NFar;
-		Drawn.swap(Kept);
+		St.Near = NNear; St.Mid = NMid; St.Far = NFar; St.InView = NView;
 	}
 }

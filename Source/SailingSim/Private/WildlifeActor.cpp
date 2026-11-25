@@ -137,6 +137,12 @@ void AWildlifeActor::BeginPlay()
 	Flocks.SetBudget(Budget);
 	float Scale = 1.f;
 	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingWildlifeScale="), Scale)) Flocks.SetDensityScale(FMath::Max(0.0, double(Scale)));
+	if (FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugBirds")))
+	{
+		float K = 10.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingDebugBirds="), K);
+		DebugSize = FMath::Max(1.0, double(K));
+	}
 	for (const Sailing::FWildBird& B : Table.Birds) Looks.Add(Sailing::BirdLookFor(B.Id, B.Style));
 
 	// The harbours the tables' marina, docks and boats habitats mean: 100 m cells round every dock, deck, moored boat and the
@@ -182,15 +188,17 @@ void AWildlifeActor::BeginPlay()
 		StylePool[S] = Bodies;
 		StyleIsms[S] = MakeIsm(*Name, Mesh, MidMaterial, Bodies, MidFloats);
 	}
-	FarPool = Budget.Far + (Missing > 0 || !MidMaterial || !bBodies ? Bodies : 0);
+	// Every bird can end up a quad: past the bodies' budget, too small on screen for a body, or with no body for its style.
+	FarPool = Budget.Far + Bodies;
 	FarIsm = MakeIsm(TEXT("BirdQuads"), QuadMesh, FarMaterial, FarPool, FarFloats);
 
 	FVector Cam = FVector::ZeroVector;
 	FLaunchSpot Spot;
 	if (GM->GetLaunchSpot(Spot)) Cam = FVector(Spot.X * 100.0, Spot.Y * 100.0, 200.0);
 	StartMapBuild(Cam.X / 100.0, Cam.Y / 100.0, true);
-	SAIL_LOG(Display, TEXT("Wildlife: %s, %d birds in the table, tier %d budget far %d mid %d near %d, %d styles without a body mesh, %d harbour cells"),
-		*Lake.FileName, int32(Table.Birds.size()), Tier, Budget.Far, Budget.Mid, Budget.Near, Missing, HarbourCells.Num());
+	const FString DebugNote = DebugSize > 0.0 ? FString::Printf(TEXT(", debug: every bird %.0fx its size"), DebugSize) : FString();
+	SAIL_LOG(Display, TEXT("Wildlife: %s, %d birds in the table, tier %d budget far %d mid %d near %d, %d styles without a body mesh, %d harbour cells%s"),
+		*Lake.FileName, int32(Table.Birds.size()), Tier, Budget.Far, Budget.Mid, Budget.Near, Missing, HarbourCells.Num(), *DebugNote);
 }
 
 void AWildlifeActor::EndPlay(const EEndPlayReason::Type Reason)
@@ -297,10 +305,30 @@ void AWildlifeActor::GatherObservers(const FVector& CameraMapCm, Sailing::FBirdO
 		Out.Boats.push_back(B);
 	}
 	for (auto It = LastVessel.CreateIterator(); It; ++It) if (!It.Key().IsValid()) It.RemoveCurrent();
+
+	// The view: birds on screen (and just off it) take the drawing budget first.
+	if (const APlayerCameraManager* Cam = UGameplayStatics::GetPlayerCameraManager(this, 0))
+	{
+		const FVector F = Cam->GetCameraRotation().Vector();   // the map frame's axes are Unreal's (north x, east y, up z)
+		double Aspect = 16.0 / 9.0;
+		if (GEngine && GEngine->GameViewport)
+		{
+			FVector2D Size;
+			GEngine->GameViewport->GetViewportSize(Size);
+			if (Size.X > 16.0 && Size.Y > 16.0) Aspect = Size.X / Size.Y;
+		}
+		const double TanH = FMath::Tan(0.5 * FMath::DegreesToRadians(double(Cam->GetFOVAngle())));
+		const double Corner = FMath::Atan(TanH * FMath::Sqrt(1.0 + 1.0 / (Aspect * Aspect))) + FMath::DegreesToRadians(ViewMarginDeg);
+		Out.bHasView = true;
+		Out.ViewNorth = F.X;
+		Out.ViewEast = F.Y;
+		Out.ViewUp = F.Z;
+		Out.ViewCosHalf = FMath::Cos(FMath::Min(Corner, 0.5 * UE_DOUBLE_PI - 0.01));
+	}
 }
 
 FTransform AWildlifeActor::FarQuad(const FVector& BirdCm, const FVector& CameraCm, double HeadingRad, double BankRad, double SpanM,
-	double PixelAngle, double& OutSpanScale, double& OutCover)
+	double PixelAngle, double& OutSpanScale, double& OutCover, double* OutWiden)
 {
 	// Toward the camera (the quad's face, local +Z); the bird's right wing (heading north = 0 clockwise, banked).
 	const FVector N = (CameraCm - BirdCm).GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
@@ -329,8 +357,12 @@ FTransform AWildlifeActor::FarQuad(const FVector& BirdCm, const FVector& CameraC
 	const double MinSpan = MinPixels * PixelAngle * Dist;
 	const double Drawn = FMath::Max(SpanM, MinSpan);
 	OutCover = Drawn > 0.0 ? FMath::Clamp(SpanM / Drawn, 0.0, 1.0) : 0.0;
+	// Across the screen the quad is held at MinPixels too (a bird crossing the view, wings end-on, was under a pixel wide):
+	// M_BirdFar draws the bird in its middle 1 / Widen.
+	const double Width = FMath::Max(Drawn * OutSpanScale, MinSpan);
+	if (OutWiden) *OutWiden = Width / FMath::Max(Drawn * OutSpanScale, 1e-6);
 	const FQuat Q = FMatrix(X, Y, N, FVector::ZeroVector).ToQuat();
-	return FTransform(Q, BirdCm, FVector(Drawn * OutSpanScale, Drawn, 1.0));
+	return FTransform(Q, BirdCm, FVector(Width, Drawn, 1.0));
 }
 
 FTransform AWildlifeActor::BodyTransform(const FVector& BirdCm, double HeadingRad, double PitchRad, double BankRad, double SpanM)
@@ -365,17 +397,33 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 	int32 Quads = 0;
 	float Data[FarFloats];
 	float Body[MidFloats];
+	DrawnInView = 0;
+	NearestInView.Reset();
+	const double SizeScale = DebugSize > 0.0 ? DebugSize : 1.0;
 	for (const Sailing::FBirdDraw& D : Draw)
 	{
 		const Sailing::FBirdLook& L = Looks.IsValidIndex(D.Bird) ? Looks[D.Bird] : Sailing::FBirdLook();
 		const FVector At(D.North * 100.0, D.East * 100.0, D.Up * 100.0);
-		const bool bFar = D.DistanceM >= Sailing::FBirdFlocks::MidM;
+		const double SizeM = D.SizeM * SizeScale;
 		const int32 S = int32(D.Style);
-		const bool bBody = !bFar && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S];
+		// A body: within the near and mid budgets, with a mesh for its style, and big enough on screen for its wings to show.
+		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S] &&
+			SizeM >= BodyMinPixels * PixelAngle * FMath::Max(double(D.DistanceM), 1.0);
+		if (D.bInView)
+		{
+			// (Draw is in view first, nearest first: the first one on screen is the nearest.)
+			if (DrawnInView++ == 0 && Table.Birds.size() > size_t(D.Bird))
+			{
+				const FVector Rel = At - CameraMapCm;
+				NearestInView = FString::Printf(TEXT("%s %.0f m bearing %.0f elevation %.1f deg"), UTF8_TO_TCHAR(Table.Birds[D.Bird].Id.c_str()),
+					D.DistanceM, FMath::Fmod(FMath::RadiansToDegrees(FMath::Atan2(Rel.Y, Rel.X)) + 360.0, 360.0),
+					FMath::RadiansToDegrees(FMath::Atan2(Rel.Z, Rel.Size2D())));
+			}
+		}
 		if (bBody)
 		{
 			const int32 K = BodyCount[S]++;
-			BodyXf[S][K] = BodyTransform(At, D.HeadingRad, D.PitchRad, D.BankRad, D.SizeM);
+			BodyXf[S][K] = BodyTransform(At, D.HeadingRad, D.PitchRad, D.BankRad, SizeM);
 			Body[0] = D.WingPhase;
 			Body[1] = D.WingAmp;
 			Body[2] = D.Fold;
@@ -387,8 +435,9 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 			continue;
 		}
 		if (Quads >= FarPool) continue;
-		double SpanScale = 1.0, Cover = 1.0;
-		FarXf[Quads] = FarQuad(At, CameraMapCm, D.HeadingRad, D.BankRad, D.SizeM, PixelAngle, SpanScale, Cover);
+		double SpanScale = 1.0, Cover = 1.0, Widen = 1.0;
+		FarXf[Quads] = FarQuad(At, CameraMapCm, D.HeadingRad, D.BankRad, SizeM, PixelAngle, SpanScale, Cover, &Widen);
+		if (DebugSize > 0.0) Cover = 1.0;
 		// The side the camera sees: from below the underside, from above the back.
 		const float Below = float(FMath::Clamp(0.5 + (D.Up - CameraMapCm.Z / 100.0) / FMath::Max(double(D.DistanceM) * 0.1, 1.0), 0.0, 1.0));
 		float Dihedral = 0.f, Crank = 0.f;
@@ -403,6 +452,7 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		Data[9] = Dihedral;
 		Data[10] = Crank;
 		Data[11] = float(SpanScale);
+		Data[12] = float(Widen);
 		FarIsm->SetCustomData(Quads, MakeArrayView(Data, FarFloats), false);
 		++Quads;
 	}
@@ -458,7 +508,8 @@ void AWildlifeActor::Tick(float DeltaSeconds)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 10.0;
 		const Sailing::FBirdFlocks::FStats& St = Flocks.Stats();
-		UE_LOG(LogSailing, Log, TEXT("Wildlife: %d flocks, %d birds (%d resting), drawn %d quads %d bodies, %d flushes, update %.3f ms"),
-			St.Flocks, St.Birds, St.Resting, DrawnQuads, DrawnBodies, St.Flushes, UpdateMs);
+		UE_LOG(LogSailing, Log, TEXT("Wildlife: %d flocks, %d birds (%d resting), drawn %d quads %d bodies, %d in view (nearest %s), %d flushes, update %.3f ms"),
+			St.Flocks, St.Birds, St.Resting, DrawnQuads, DrawnBodies, DrawnInView, NearestInView.IsEmpty() ? TEXT("none") : *NearestInView,
+			St.Flushes, UpdateMs);
 	}
 }

@@ -178,9 +178,9 @@ namespace Sailing
 	/** Per tier: how many birds are drawn in each band (the plan's performance table). */
 	struct FBirdBudget
 	{
-		int Far = 300;               // 400 m to 2 km: camera-facing quads
-		int Mid = 60;                // 60 to 400 m: low bodies with wing flaps in the material
-		int Near = 12;               // under 60 m: drawn as mid birds until Phase 2's animated near birds
+		int Far = 300;               // camera-facing quads: 400 m to 2 km, and the nearer birds past the bodies' budget
+		int Mid = 60;                // bodies 60 to 400 m: low meshes with wing flaps in the material (and near birds past Near)
+		int Near = 12;               // bodies under 60 m: drawn as mid birds until Phase 2's animated near birds
 	};
 	SAILINGPHYSICS_API FBirdBudget BirdBudgetForTier(int Tier);   // 0 Low .. 3 Ultra
 
@@ -212,6 +212,8 @@ namespace Sailing
 		EBirdStyle Style = EBirdStyle::FlapHang;
 		EBirdState State = EBirdState::Flying;
 		float DistanceM = 0.0f;      // from the camera
+		bool bBody = false;          // within the near or mid budget (a body); else a camera-facing quad
+		bool bInView = true;         // inside the camera's view cone (always, without a view)
 	};
 
 	/** A plunge or a landing on the water, for splashes (Phase 2 draws them). */
@@ -221,6 +223,11 @@ namespace Sailing
 	struct FBirdObservers
 	{
 		double CamNorth = 0.0, CamEast = 0.0, CamUp = 2.0;
+		/** The camera's view, optional: birds inside it take the budget first (the rest only rank as if ViewOutsideWeight
+		 *  times farther), so the drawn birds are the ones on screen. View is a unit vector (north, east, up); ViewCosHalf the
+		 *  cosine of a cone round the screen's corners. */
+		bool bHasView = false;
+		double ViewNorth = 1.0, ViewEast = 0.0, ViewUp = 0.0, ViewCosHalf = 0.0;
 		struct FBoat { double North = 0.0, East = 0.0, HeadingRad = 0.0, SpeedMs = 0.0; bool bPlayer = false; };
 		std::vector<FBoat> Boats;
 	};
@@ -232,6 +239,7 @@ namespace Sailing
 		static constexpr double MidM = 400.0;    // far band from here out
 		static constexpr double NearM = 60.0;    // mid band from here out
 		static constexpr double SpawnMinM = 1200.0; // after the first fill new flocks appear only this far out (tiny on screen)
+		static constexpr double ViewOutsideWeight = 4.0; // out of view a bird ranks as if this many times farther
 
 		/** Takes the table's birds; Seed makes a run repeatable. */
 		void Reset(const FWildlifeTable& Table, uint64_t Seed);
@@ -242,7 +250,8 @@ namespace Sailing
 		/** Steps the flocks by Dt seconds of sim time; Map must cover the camera (rebuild it when the camera nears its edge). */
 		void Update(double Dt, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map);
 
-		/** The birds to draw this frame, nearest first, within the budget. */
+		/** The birds to draw this frame within the budget: in view first, then nearest first. Each near or mid bird within its
+		 *  band's budget is a body (bBody); the rest, nearer birds past those budgets included, are quads within Far. */
 		const std::vector<FBirdDraw>& Draw() const { return Drawn; }
 		/** Splashes since the last Update. */
 		const std::vector<FBirdSplash>& Splashes() const { return NewSplashes; }
@@ -256,7 +265,9 @@ namespace Sailing
 
 		struct FStats
 		{
-			int Flocks = 0, Birds = 0, Airborne = 0, Resting = 0, Far = 0, Mid = 0, Near = 0, Flushes = 0, Spawned = 0, Retired = 0;
+			int Flocks = 0, Birds = 0, Airborne = 0, Resting = 0, Flushes = 0, Spawned = 0, Retired = 0;
+			int Far = 0, Mid = 0, Near = 0;   // drawn: quads, and bodies by the budget they used
+			int InView = 0;                   // drawn birds inside the view (all of them without one)
 		};
 		const FStats& Stats() const { return St; }
 		int FlockCountOf(int BirdIndex) const;
@@ -302,6 +313,8 @@ namespace Sailing
 			std::vector<FMember> Members;
 			std::vector<FPathPoint> Path;        // the leader's track, newest last, every PathStep seconds
 			double PathT = 0.0;
+			double MemberDt = 0.0;               // seconds its birds have not been stepped (an undrawn flock's are every 4th frame)
+			bool bDrawn = true;                  // any of its birds drawn last frame
 		};
 
 		FWildlifeTable Table;
@@ -315,9 +328,14 @@ namespace Sailing
 		std::vector<FBirdSplash> NewSplashes;
 		std::vector<double> Expected;     // per table bird, refreshed every few seconds
 		std::vector<double> Stay;         // per table bird, the mean seconds a flock of it has counted (births = expected / stay)
+		std::vector<double> PathCum;      // StepMembers' scratch: arc length back along a leader's track to each point
+		std::vector<std::pair<float, uint32_t>> DrawRank; // BuildDraw's scratch: rank key and index
+		std::vector<FBirdDraw> Candidates;            // BuildDraw's scratch: every bird inside the far band
+		std::vector<uint32_t> CandidateFlock;         // and its flock
 		double ExpectedT = 1e9;
 		bool bFilled = false;
 		double LastCamN = 0.0, LastCamE = 0.0;
+		uint64_t Frame = 0;
 		FStats St;
 
 		void RefreshExpected(const FWildlifeConditions& C, const FWildlifeHabitatMap& Map, const FBirdObservers& Obs);

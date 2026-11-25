@@ -7,7 +7,8 @@ scripts/make-birds.sh after scripts/make-content.sh; it imports the bodies Tools
              Masked, the cover dithered (temporal AA resolves it). Per-instance data (AWildlifeActor::FarFloats = 12):
              0 wing phase (0..1), 1 wing amplitude (0 glide .. 1 full beat), 2 fold (0 open .. 1 folded), 3 cover (fade x
              the share of a sub-MinPixels bird), 4 wingtip darkness, 5-7 colour (linear, the side the camera sees),
-             8 below (1 the camera sees the underside), 9 dihedral (rad), 10 crank (rad, the gull's M), 11 span seen (0.25..1).
+             8 below (1 the camera sees the underside), 9 dihedral (rad), 10 crank (rad, the gull's M), 11 span seen (0.25..1),
+             12 widen (the quad held wider than the seen span, at two pixels: the bird sits in its middle 1 / widen).
   M_BirdMid  mid and near birds (under 400 m): SM_Bird_<Style>, wings beating about the shoulder and folding along the
              back in the vertex shader, a wader's legs swinging down to stand. Per-instance data (MidFloats = 11): 0 phase,
              1 amplitude, 2 fold, 3 fade, 4-6 upper colour, 7-9 under colour, 10 wingtip darkness. Mesh attributes as
@@ -96,9 +97,10 @@ FAR_CODE = r"""
 // docs/wildlife-1: a far bird on the engine's 1 m plane, turned to the camera by AWildlifeActor::FarQuad (x along the
 // span as seen, y up). A small body and two wings bent at the wrist, held at the style's dihedral and crank, beating
 // about the shoulder, drawn in by Fold; tips darkened by Tips. Returns the coverage (Cover: fades and the share of a bird
-// under two pixels); Col the colour.
+// under two pixels); Col the colour. Every stroke is held half a pixel fatter (a far gull's wing is thinner than a pixel:
+// drawn true it averaged away to nothing on screen), and a quad held wider than the bird (Widen) draws it in its middle.
 float2 p = Local.xy / 50.0;
-p.x = abs(p.x);
+p.x = abs(p.x) * max(Widen, 1.0);
 float beat = Amp * 0.8 * sin(6.2831853 * Phase);
 float a = Dihedral + beat;
 float h = 0.97 * (1.0 - 0.65 * Fold);
@@ -115,7 +117,8 @@ float d2 = length(pb - bb * u2) - lerp(0.085, 0.02, u2);
 // (The body is foreshortened with the span: unsquash it so it stays a body, not a needle, seen end-on.)
 float2 e = float2(p.x * max(Seen, 0.25), p.y) / float2(0.12, 0.08);
 float db = (length(e) - 1.0) * 0.08;
-float d = min(min(d1, d2), db);
+float px = max(length(fwidth(p)), 1e-4);
+float d = min(min(d1, d2), db) - 0.5 * px;
 float aa = max(fwidth(d), 0.02);
 float cov = saturate(0.5 - d / aa);
 float tip = d2 < min(d1, db) ? smoothstep(0.45, 0.8, u2) : 0.0;
@@ -137,7 +140,7 @@ def build_far():
     mat.set_editor_property("tangent_space_normal", False)
     ins = {"Local": node(mat, unreal.MaterialExpressionLocalPosition, -1200, -100)}
     ins.update(instance_data(mat, ("Phase", "Amp", "Fold", "Cover", "Tips", "C0", "C1", "C2"), -1200, 0))
-    ins.update(instance_data(mat, ("Dihedral", "Crank", "Seen"), -1200, 600, first=9))
+    ins.update(instance_data(mat, ("Dihedral", "Crank", "Seen", "Widen"), -1200, 600, first=9))
     c = wire(mat, FAR_CODE, ins, F1, -700, 200, extra_outputs=(("Col", F3),))
     n = wire(mat, FAR_NORMAL, {"Below": node(mat, unreal.MaterialExpressionPerInstanceCustomData, -1000, 900, data_index=8),
                                "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -1000, 980)}, F3, -700, 800)
