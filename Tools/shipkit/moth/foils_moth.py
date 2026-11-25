@@ -15,6 +15,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 F = json.load(open(os.path.join(HERE, "foils_moth.json")))
 N_PROFILE = 24          # points a side of each section
+TIP = F.get("tips", {"frac": 0.04, "min": 0.2, "rake": 0.0})
 
 
 def _h():
@@ -47,24 +48,41 @@ def vertical_foil(x_qc, chord, t, z_top, z_bot, n_span=16, y=0.0):
     return rings
 
 
-def horizontal_foil(x_qc, z, span, c_root, c_tip, t_root, t_tip, n_span=24, u0=0.0, u1=1.0, span_frac=1.0):
+def tip_chord(a, c_root, c_tip):
+    """(chord, how far the leading edge has come back) at a = |y| / half-span: straight taper, then over the last
+    TIP["frac"] of the half-span an elliptical tip whose leading edge sweeps back (rake 1: the trailing edge stays
+    straight)."""
+    c = c_root + (c_tip - c_root) * a
+    f = TIP["frac"]
+    if a <= 1 - f:
+        return c, 0.0
+    k = min((a - (1 - f)) / f, 1.0)
+    c1 = c * math.sqrt(max(1 - k * k, TIP["min"] ** 2))
+    return c1, (c - c1) * TIP["rake"]
+
+
+def horizontal_foil(x_qc, z, span, c_root, c_tip, t_root, t_tip, n_span=24, u0=0.0, u1=1.0, span_frac=1.0, cut=None):
     """A horizontal wing centred on y = 0: rings across the span (y from -span/2 to +span/2), chord along -x with a
     straight quarter-chord line, thickness along z. u0..u1 keeps only that slice of the chord (the flap is 0.7..1),
-    span_frac only the middle of the span. Tips rounded by easing the chord over the last 4%."""
+    span_frac only the middle of the span; cut = (u, span_frac) stops the chord at u inside that middle part (where the
+    flap sits, so its hinge line shows as a gap). Tips by tip_chord()."""
     rings = []
     half = span / 2 * span_frac
-    for s in np.linspace(-1.0, 1.0, n_span):
-        y = s * half
+    ys = list(np.linspace(-1.0, 1.0, n_span) * half)
+    if cut:
+        e = span / 2 * cut[1]
+        ys = sorted([y for y in ys if abs(abs(y) - e) > 0.004] + [-e - 0.001, -e + 0.001, e - 0.001, e + 0.001])
+    for y in ys:
+        y = float(y)
         a = abs(y) / (span / 2)
-        c = c_root + (c_tip - c_root) * a
+        c, back = tip_chord(a, c_root, c_tip)
         t = t_root + (t_tip - t_root) * a
-        if a > 0.96:
-            c *= math.sqrt(max(1 - ((a - 0.96) / 0.04) ** 2, 0.04))
-        le = x_qc + 0.25 * c
+        le = x_qc + 0.25 * (c_root + (c_tip - c_root) * a) - back
+        hi = u1 if not (cut and abs(y) < span / 2 * cut[1]) else min(u1, cut[0])
         sec = naca(t)
         ring = []
         for u, v in sec:
-            uu = u0 + (u1 - u0) * u
+            uu = u0 + (hi - u0) * u
             vv = np.interp(uu, [p[0] for p in sec[:N_PROFILE]][::-1], [p[1] for p in sec[:N_PROFILE]][::-1])
             sign = 1 if v >= 0 else -1
             ring.append((le - uu * c, float(y), z + sign * abs(vv) * c))
@@ -88,14 +106,17 @@ def geometry():
     z_top = H.sheer_z(s["x_quarter_chord"]) + s["top_above_deck_m"]
     parts["MOTH_Strut"] = ("loft", vertical_foil(s["x_quarter_chord"], s["chord_m"], s["thickness"], z_top, z_foot + 0.01))
     zf = z_foot
+    gap = m.get("hinge_gap_frac", 0.0)
+    cut = (1.0 - m["flap_chord_frac"] - gap / 2, m["flap_span_frac"]) if gap else None
     parts["MOTH_MainFoil"] = ("loft", horizontal_foil(s["x_quarter_chord"], zf, m["span_m"], m["root_chord_m"],
                                                       m["tip_chord_m"], m["thickness_root"], m["thickness_tip"],
-                                                      u1=1.0 - 0.0))
-    # the flap is the aft 30% of the middle 82% of the span: drawn as its own part over the same surface, slightly
-    # proud so it reads as a separate piece (the foil under it stays whole: the game hides nothing)
-    fl = horizontal_foil(s["x_quarter_chord"], zf, m["span_m"], m["root_chord_m"] * 1.004, m["tip_chord_m"] * 1.004,
-                         m["thickness_root"] * 1.06, m["thickness_tip"] * 1.06, n_span=18,
-                         u0=1.0 - m["flap_chord_frac"], u1=1.0, span_frac=m["flap_span_frac"])
+                                                      cut=cut))
+    # the flap: the aft 30% of the middle 82% of the span, its own part behind a hinge gap (docs/moth-9; before it
+    # was drawn over the whole foil, slightly proud)
+    grow = 1.0 if gap else 1.004
+    fl = horizontal_foil(s["x_quarter_chord"], zf, m["span_m"], m["root_chord_m"] * grow, m["tip_chord_m"] * grow,
+                         m["thickness_root"] * (1.0 if gap else 1.06), m["thickness_tip"] * (1.0 if gap else 1.06),
+                         n_span=18, u0=1.0 - m["flap_chord_frac"] + gap / 2, u1=1.0, span_frac=m["flap_span_frac"])
     parts["MOTH_Flap"] = ("loft", fl)
     p = F["pod"]
     parts["MOTH_Pod"] = ("pod", (s["x_quarter_chord"] + p["fwd_of_quarter_chord_m"] - p["length_m"] / 2, 0.0, zf),
@@ -118,7 +139,7 @@ def geometry():
     z_rfoot = bottom - r["below_hull_m"]
     parts["MOTH_Rudder"] = ("loft", vertical_foil(x_r, r["chord_m"], r["thickness"], z_g + r["head_above_gantry_m"],
                                                   z_rfoot + 0.008))
-    parts["MOTH_RudderHead"] = ("pod", (x_r - 0.03, 0.0, z_g + 0.01), 0.12, 0.05)
+    # MOTH_RudderHead (the gantry's end block and gudgeons) is drawn by detail_moth.py (docs/moth-9)
     parts["MOTH_Elevator"] = ("loft", horizontal_foil(x_r, z_rfoot, e["span_m"], e["root_chord_m"], e["tip_chord_m"],
                                                       e["thickness_root"], e["thickness_tip"], n_span=20))
     # the wand on its bow fitting, in the flying pose
@@ -137,8 +158,17 @@ def geometry():
     pl, pw = w["paddle_m"]
     d = np.array([math.sin(ang), 0.0, -math.cos(ang)])
     a = np.array(tip) - d * pl
-    parts["MOTH_WandPaddle"] = ("plate", [tuple(a + np.array([0, pw / 2, 0])), tuple(np.array(tip) + np.array([0, pw / 2, 0])),
-                                          tuple(np.array(tip) - np.array([0, pw / 2, 0])), tuple(a - np.array([0, pw / 2, 0]))])
+    # the paddle: a small blade with its lower corners rounded (docs/moth-9), in the plane of the wand and y
+    rc = min(pw / 2, pl / 3) * 0.9
+    outline = [a + np.array([0, pw / 2, 0])]
+    for side, ang0 in ((1, 0.0), (-1, math.pi / 2)):
+        cen = np.array(tip) - d * rc + np.array([0, side * (pw / 2 - rc), 0])
+        for k in range(7):
+            t = ang0 + (math.pi / 2) * k / 6
+            outline.append(cen + d * rc * (math.sin(t) if side == 1 else math.cos(t - math.pi / 2)) +
+                           np.array([0, rc * (math.cos(t) if side == 1 else -math.sin(t - math.pi / 2)), 0]))
+    outline.append(a - np.array([0, pw / 2, 0]))
+    parts["MOTH_WandPaddle"] = ("plate", [tuple(map(float, q)) for q in outline])
     info.update({"z_main_foil": zf, "z_elevator": z_rfoot, "x_rudder": x_r, "z_gantry": z_g, "wand_pivot": (x_piv, 0, z_piv),
                  "wand_tip": tip, "wand_angle_deg": math.degrees(ang), "flying_water_z": water, "strut_top": z_top,
                  "hull_bottom": bottom})
@@ -149,8 +179,7 @@ def areas():
     """Planform areas (m^2): the main foil (flap included) and the elevator, integrated over the drawn chords."""
     def wing(span, c0, c1):
         ys = np.linspace(0, 1, 401)
-        c = c0 + (c1 - c0) * ys
-        c = np.where(ys > 0.96, c * np.sqrt(np.clip(1 - ((ys - 0.96) / 0.04) ** 2, 0.04, 1)), c)
+        c = np.array([tip_chord(float(a), c0, c1)[0] for a in ys])
         return float(np.trapezoid(c, ys) * span)
     m, e = F["main_foil"], F["elevator"]
     return {"main_foil_area_m2": wing(m["span_m"], m["root_chord_m"], m["tip_chord_m"]),

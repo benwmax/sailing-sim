@@ -27,7 +27,7 @@
   "elevator_area_m2": 0.065,
   "main_strut_below_hull_m": 1.05,
   "rudder_below_hull_m": 1.05,
-  "wand_length_m": 0.88,
+  "wand_length_m": 0.93,
   "gantry_aft_of_transom_m": 0.5,
   "tolerance": 0.03
  },
@@ -88,7 +88,7 @@
   "elevator_area_m2": "later, slice 3: the elevator's planform area, from the build report",
   "main_strut_below_hull_m": "later, slice 3: the strut's foot below the hull's lowest point",
   "rudder_below_hull_m": "later, slice 3: the rudder's foot below the hull's lowest point",
-  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight Milestone A cut it to 1.02: the camera-matched flying photo shows the wand hanging nearly upright at flying height, so the stick is about as long as the pivot-to-water drop (it is drawn 10 degrees forward of vertical, staying on the forward side the shock cord holds it to).. Milestone B: 1.02 to 0.88, drawn trailing about 6 degrees aft: the camera-matched flying photo shows the paddle about 0.07 m behind the pivot, the wand nearly upright at flying height, and the lower bow (0.40 m deep) brought the pivot down to 0.87 m over the flying waterline",
+  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight Milestone A cut it to 1.02: the camera-matched flying photo shows the wand hanging nearly upright at flying height, so the stick is about as long as the pivot-to-water drop (it is drawn 10 degrees forward of vertical, staying on the forward side the shock cord holds it to).. Milestone B: 1.02 to 0.88, drawn trailing about 6 degrees aft: the camera-matched flying photo shows the paddle about 0.07 m behind the pivot, the wand nearly upright at flying height, and the lower bow (0.40 m deep) brought the pivot down to 0.87 m over the flying waterline. The detail pass (docs/moth-9): 0.93, from a fitting 0.16 m ahead of the stem, trailing about 19 degrees (the solved photo's paddle 6 px from the model's, 18 before)",
   "gantry_aft_of_transom_m": "later, slice 3: sockets RudderPivot's x behind the hull's aft end. Milestone B raised the card's 0.45 to 0.5: all six reviewers read the gantry as short beside the afloat photo (about 17% of the hull's length behind the transom, 0.57 m); 0.5 is rule 6.1.5's allowance"
  },
  "game": {

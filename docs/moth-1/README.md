@@ -57,7 +57,7 @@ budgets per slice and what the game will float her with.
 | Main foil span / area | 1.1 m / 0.12 m² | typical "big foil"; Milestone B widened it from 1.0 m and slimmed the chords |
 | Elevator span / area | 0.80 m / 0.064 m² | typical; Milestone B widened it from 0.72 m |
 | Strut and rudder below the hull | 1.05 m | enough to fly 0.5 m clear with the foil 0.55 m under |
-| Wand / gantry | 0.88 / 0.50 m | typical; Milestone B: the wand trails aft from a fitting 0.10 m ahead of the stem, the gantry at the rule's 0.5 m |
+| Wand / gantry | 0.93 / 0.50 m | typical; the detail pass (`docs/moth-9`): the wand trails about 19° from a fitting 0.16 m ahead of the stem; the gantry at the rule's 0.5 m |
 | Sailor | 80 kg | the class's 70-100 kg; at rest the hull floats 115 kg (0.115 m³) |
 
 ## The size check

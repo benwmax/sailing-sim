@@ -26,6 +26,7 @@ import wings_moth as WG  # noqa: E402
 import foils_moth as FO  # noqa: E402
 import rig_moth as RG  # noqa: E402
 import hardware_moth as HW  # noqa: E402
+import detail_moth as DT  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -135,6 +136,61 @@ def add_tube(bm, pts, d, sides, d_end=None):
             bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
     bm.faces.new(list(reversed(rings[0])))
     bm.faces.new(rings[-1])
+
+
+def add_box(bm, centre, ax, size, bevel):
+    """A box on the unit axes ax (rows), its edges rounded by bevel (two segments)."""
+    tmp = bmesh.new()
+    bmesh.ops.create_cube(tmp, size=1.0)
+    for v in tmp.verts:                          # to size first, so the bevel is round, not stretched
+        v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2]))
+    if bevel > 0:
+        bmesh.ops.bevel(tmp, geom=tmp.edges[:], offset=min(bevel, 0.45 * min(size)), segments=2, profile=0.5,
+                        affect="EDGES")
+    ex, ey, ez = (Vector(a) for a in ax)
+    for v in tmp.verts:
+        x, y, z = v.co
+        v.co = Vector(centre) + ex * x + ey * y + ez * z
+    me = bpy.data.meshes.new("_tmp")
+    tmp.to_mesh(me)
+    tmp.free()
+    bm.from_mesh(me)
+    bpy.data.meshes.remove(me)
+
+
+def add_ring(bm, centre, axis, R, r, n=18, m=6):
+    """A torus round axis through centre: R to the tube's centre, r the tube's radius."""
+    a = Vector(axis).normalized()
+    u = a.orthogonal().normalized()
+    w = a.cross(u)
+    rings = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        c = Vector(centre) + (u * math.cos(t) + w * math.sin(t)) * R
+        out = (c - Vector(centre)).normalized()
+        rings.append([bm.verts.new(c + (out * math.cos(2 * math.pi * j / m) + a * math.sin(2 * math.pi * j / m)) * r)
+                      for j in range(m)])
+    for i in range(n):
+        p, q = rings[i], rings[(i + 1) % n]
+        for j in range(m):
+            bm.faces.new((p[j], q[j], q[(j + 1) % m], p[(j + 1) % m]))
+
+
+def add_spec(bm, spec, sides=12):
+    """One part from a geometry module: tube, pod, box or ring (detail_moth.py's spec)."""
+    kind = spec[0]
+    if kind == "tube":
+        add_tube(bm, [tuple(p) for p in spec[1]], spec[2], sides, spec[3])
+    elif kind == "pod":
+        add_pod(bm, tuple(spec[1]), spec[2], spec[3], n=12, sides=12)
+    elif kind == "box":
+        add_box(bm, spec[1], spec[2], spec[3], spec[4])
+    elif kind == "ring":
+        add_ring(bm, spec[1], spec[2], spec[3], spec[4])
+    elif kind == "loft":
+        add_loft(bm, spec[1])
+    else:
+        raise ValueError(kind)
 
 
 def finish(bm, name, slot):
@@ -275,12 +331,41 @@ def build_hardware():
     for name, specs in parts.items():
         bm = bmesh.new()
         for spec in specs:
-            if spec[0] == "tube":
-                add_tube(bm, [tuple(p) for p in spec[1]], spec[2], 8 if name == "MOTH_Lines" else 12, spec[3])
-            elif spec[0] == "pod":
-                add_pod(bm, tuple(spec[1]), spec[2], spec[3], n=12, sides=12)
+            add_spec(bm, spec, 8 if name == "MOTH_Lines" else 12)
         obs.append(finish(bm, name, slot[name]))
     return obs
+
+
+def build_detail():
+    """The close-range details (docs/moth-9): parts for an object that exists join it (and move with it in the
+    game), the rest are new objects with detail_moth.json's slots."""
+    out = []
+    for name, specs in DT.geometry().items():
+        ob = bpy.data.objects.get(name)
+        bm = bmesh.new()
+        sides = 6 if name in ("MOTH_Lacing", "MOTH_Lines", "MOTH_Rigging") else 12
+        if name == "MOTH_Lacing":
+            sides = DT.D["lacing"]["sides"]
+        for spec in specs:
+            add_spec(bm, spec, sides)
+        if ob is None:
+            ob = finish(bm, name, DT.D["objects"][name])
+        else:
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            box_uvs(bm)
+            old = bmesh.new()
+            old.from_mesh(ob.data)
+            me = bpy.data.meshes.new("_add")
+            bm.to_mesh(me)
+            bm.free()
+            old.from_mesh(me)
+            bpy.data.meshes.remove(me)
+            old.to_mesh(ob.data)
+            old.free()
+            for p in ob.data.polygons:
+                p.use_smooth = len(p.vertices) == 4
+        out.append(ob)
+    return out
 
 
 def mesh_volume_below(ob, z=0.0):
@@ -304,6 +389,7 @@ def main():
     foils, finfo = build_foils()
     rig, rinfo = build_rig()
     hw = build_hardware()
+    dt = build_detail()
     g = H.CARD["game"]
     report = dict(rep)
     report.update({

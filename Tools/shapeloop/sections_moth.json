@@ -4,7 +4,7 @@
  "build_args": "<out dir>: writes <out>/moth.blend",
  "hull_object": "MOTH_Hull",
  "report": "moth_report.json",
- "note": "The hydrofoil moth (docs/moth-2 on), a new boat. Slice 1 builds the hull only; slice 2 adds the wings, slice 3 the foils, gantry and wand, slice 4 the rig, slice 5 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The hydrofoil moth (docs/moth-2 on), a new boat. Slice 1 builds the hull only; slice 2 adds the wings, slice 3 the foils, gantry and wand, slice 4 the rig, slice 5 the hardware; the detail pass (docs/moth-9) adds the wand's fitting, the lacing, the blocks and the rig's fittings. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -30,10 +30,12 @@
   },
   "wingdeck": {
    "objects": [
-    "MOTH_WingDeck"
+    "MOTH_WingDeck",
+    "MOTH_Lacing"
    ],
    "owns": [
-    "wings_moth.deck"
+    "wings_moth.deck",
+    "detail_moth.lacing"
    ],
    "borders": [
     "wings"
@@ -107,10 +109,12 @@
    "objects": [
     "MOTH_Wand",
     "MOTH_WandPaddle",
-    "MOTH_BowFitting"
+    "MOTH_BowFitting",
+    "MOTH_WandFitting"
    ],
    "owns": [
-    "foils_moth.wand"
+    "foils_moth.wand",
+    "detail_moth.wand"
    ],
    "borders": [
     "hull"
@@ -120,12 +124,14 @@
    "objects": [
     "MOTH_Mast",
     "MOTH_Boom",
-    "MOTH_Rigging"
+    "MOTH_Rigging",
+    "MOTH_RigFittings"
    ],
    "owns": [
     "rig_moth.mast",
     "rig_moth.boom",
-    "rig_moth.wires"
+    "rig_moth.wires",
+    "detail_moth.rig"
    ],
    "borders": [
     "hull",
@@ -135,10 +141,12 @@
   "sail": {
    "objects": [
     "MOTH_Sail",
-    "MOTH_Battens"
+    "MOTH_Battens",
+    "MOTH_LuffSleeve"
    ],
    "owns": [
-    "rig_moth.sail"
+    "rig_moth.sail",
+    "detail_moth.luff_sleeve"
    ],
    "borders": [
     "rig"
@@ -149,10 +157,12 @@
     "MOTH_Tiller",
     "MOTH_TillerExtension",
     "MOTH_TwistGrip",
-    "MOTH_Fittings"
+    "MOTH_Fittings",
+    "MOTH_Blocks"
    ],
    "owns": [
-    "hardware_moth"
+    "hardware_moth",
+    "detail_moth.blocks"
    ],
    "borders": [
     "hull",

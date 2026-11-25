@@ -21,6 +21,11 @@ def _mods():
     return H, F, RG
 
 
+def _detail():
+    import detail_moth as DT
+    return DT
+
+
 def deck_z(x):
     H, _, _ = _mods()
     return H.sheer_z(min(max(x, H.TRANSOM_X), H.STEM_X)) + H.SEC["deck_crown_m"]
@@ -44,11 +49,30 @@ def geometry():
     parts, pts = {}, {}
     head, joint, end = tiller_line()
     t, e = K["tiller"], K["extension"]
-    parts["MOTH_Tiller"] = [("tube", [head, joint], t["d_m"], t["d_m"] * 0.85), ("pod", joint - np.array([0.03, 0, 0]), 0.06, 0.03)]
+    DK = _detail().D
+    tdir = (joint - head) / np.linalg.norm(joint - head)
+    j = DK["joint"]
+    # the tiller, its clamp on the rudder's stock, and the rubber universal joint at its end (docs/moth-9)
+    parts["MOTH_Tiller"] = [("tube", [head, joint - tdir * j["length_m"] * 0.5], t["d_m"], t["d_m"] * 0.85),
+                            ("tube", [head - tdir * 0.035, head + tdir * 0.03], t["d_m"] + 0.012, t["d_m"] + 0.01)]
     u = (end - joint) / np.linalg.norm(end - joint)
+    ujd = joint - tdir * j["length_m"] * 0.5
+    parts["MOTH_Tiller"] += [("tube", [ujd, joint, joint + u * j["length_m"] * 0.5], j["d_m"], j["d_m"])]
+    for f in (0.2, 0.5, 0.8):
+        q = ujd + (joint + u * j["length_m"] * 0.5 - ujd) * f
+        parts["MOTH_Tiller"].append(("ring", q, (joint - ujd) if f < 0.5 else u, j["d_m"] / 2, 0.0025))
     grip0 = end - u * e["grip_m"]
     parts["MOTH_TillerExtension"] = [("tube", [joint, grip0], e["d_m"], e["d_end_m"])]
-    parts["MOTH_TwistGrip"] = [("tube", [grip0, end], e["grip_d_m"], e["grip_d_m"] * 0.95)]
+    g = DK["grip"]
+    grip = [("tube", [grip0, end], e["grip_d_m"], e["grip_d_m"] * 0.95),
+            ("pod", None, None, None)]                                          # the end cap, set below
+    for i in range(g["ribs"]):
+        q = grip0 + (end - grip0) * (0.12 + 0.76 * i / max(g["ribs"] - 1, 1))
+        grip.append(("ring", q, u, e["grip_d_m"] / 2 * 0.98, g["rib_r_m"]))
+    grip[1] = ("tube", [end - u * 0.004, end + u * g["cap_m"] * 0.7, end + u * g["cap_m"]], e["grip_d_m"] * 1.05,
+               e["grip_d_m"] * 0.88)                                              # a rubber end, rounded by the ring
+    grip.append(("ring", end + u * g["cap_m"] * 0.97, u, e["grip_d_m"] * 0.3, e["grip_d_m"] * 0.16))
+    parts["MOTH_TwistGrip"] = grip
     # the boom's points
     goose, bend = RG.boom_line()
     ms = K["mainsheet"]
@@ -60,9 +84,7 @@ def geometry():
              ("tube", [bblock - np.array([0, 0.012, 0]), dblock - np.array([0, 0.012, 0])], ms["d_m"], None),
              ("tube", [dblock + np.array([0.02, 0, 0.0]), ratchet - np.array([0.03, 0, 0])], ms["d_m"], None),
              ("tube", [ratchet + np.array([0.0, 0.0, 0.0]), ratchet + np.array([0.12, 0.10, 0.01]), ratchet + np.array([0.25, 0.26, 0.0])], ms["d_m"], None)]
-    fittings = [("pod", bblock - np.array([ms["block_d_m"] / 2, 0, 0]), ms["block_d_m"], ms["block_d_m"] * 0.9),
-                ("pod", dblock - np.array([ms["block_d_m"] / 2, 0, 0]), ms["block_d_m"], ms["block_d_m"] * 0.9),
-                ("pod", ratchet - np.array([0.03, 0, 0]), 0.06, 0.05)]
+    fittings = []                       # the blocks are drawn in detail_moth.py (MOTH_Blocks)
     # the vang: mast foot to the boom
     v = K["vang"]
     mb = RG.mast_point(0.0)
@@ -72,7 +94,6 @@ def geometry():
     for dy in (0.02, -0.02):
         lines.append(("tube", [vfoot + np.array([0, dy, 0]), vmid + np.array([0, dy, 0])], v["d_m"], None))
         lines.append(("tube", [vmid + np.array([0, dy, 0]), vboom + np.array([0, dy, 0])], v["d_m"], None))
-    fittings += [("pod", vmid - np.array([0.018, 0, 0]), 0.036, 0.03), ("pod", vfoot - np.array([0.02, 0, 0]), 0.04, 0.035)]
     if v.get("ram_d_m"):
         # the vang's strut beside the cascade, mast foot to boom (Milestone B)
         fittings.append(("tube", [vfoot + np.array([0.0, 0.0, 0.01]), vboom], v["ram_d_m"], v["ram_d_m"] * 0.8))
@@ -96,18 +117,17 @@ def geometry():
     _, info = F.geometry()
     piv = np.array(info["wand_pivot"])
     sx = F.F["strut"]["x_quarter_chord"]
-    shead = np.array([sx + 0.03, 0.0, deck_z(sx) + 0.03])
-    rod = [piv + np.array([-0.02, 0, -0.01])]
+    hc, hs = _detail().strut_housing()
+    shead = hc + np.array([hs[0] / 2, 0.0, 0.0])                       # into the bellcrank's housing (docs/moth-9)
+    rod = [_detail().lever_end()]
     for x in np.linspace(piv[0] - 0.15, sx + 0.12, 8):
         rod.append(np.array([x, 0.0, deck_z(x) + 0.022]))
     rod.append(shead)
     fittings.append(("tube", rod, K["pushrod"]["d_m"], None))
-    fittings.append(("pod", shead - np.array([0.06, 0, 0]), 0.12, 0.045))             # the bellcrank housing and gearing arm
-    fittings.append(("pod", piv - np.array([0.05, 0, 0.0]), 0.07, 0.035))             # the ride-height knob on the fitting
     parts["MOTH_Fittings"] = fittings
     parts["MOTH_Lines"] = lines
     pts.update({"TillerJoint": joint, "TwistGrip": end, "MainsheetBoom": bblock, "MainsheetDeck": dblock,
-                "MainsheetRatchet": ratchet, "VangBoom": vboom, "VangDeck": vfoot, "Cunningham": cfoot,
+                "MainsheetRatchet": ratchet, "VangBoom": vboom, "VangMid": vmid, "VangDeck": vfoot, "Cunningham": cfoot,
                 "PushrodStrut": shead})
     return parts, pts
 
@@ -115,4 +135,4 @@ def geometry():
 def sockets():
     _, pts = geometry()
     cm = lambda p: [round(float(p[0]) * 100, 2), round(-float(p[1]) * 100, 2), round(float(p[2]) * 100, 2)]  # noqa: E731
-    return {k: cm(v) for k, v in pts.items()}
+    return {k: cm(v) for k, v in pts.items() if k != "VangMid"}         # VangMid only places the vang's block
