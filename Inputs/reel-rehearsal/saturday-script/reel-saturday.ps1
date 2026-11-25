@@ -3,6 +3,7 @@
 # (Inputs/reel-rehearsal/dryrun-83aa7652/notes.md): R01 at 7.4, R05 warm-up 11.5, R06 helpful HUD, P3 TWA 90; R13 left out (jib stowed at the dock).
 # Frames to D:\dev\reel\dryrun\<shot>. Shot files from Inputs/reel-rehearsal/shots (inputs 88f5917e). Results in Artifacts\bench\dryrun-83aa7652\.
 param([Parameter(Mandatory)][string]$Package, [string[]]$Only, [ValidateSet('4k', '1080p')][string]$Res = '4k', [switch]$ViewModeArg)
+while (Test-Path 'D:\dev\ss-fix\Artifacts\bench\HOLD-REHEARSAL') { Start-Sleep 30 }   # a gate: other work first (Nov 25, PR #836)
 $B = 'D:\dev\ss-fix\Artifacts\bench'; $r = "$B\rec.ps1"; $Out = "$B\saturday-$Package"; New-Item -ItemType Directory -Force $Out | Out-Null
 function Note([string]$t) { Add-Content "$Out\status.txt" ("{0:yyyy-MM-dd HH:mm:ss} {1}" -f (Get-Date), $t) }
 $shots = @{}
@@ -10,6 +11,8 @@ foreach ($f in Get-ChildItem 'D:\dev\ss-inputs-821b\Inputs\reel-rehearsal\shots'
 if (-not $shots.Count) { foreach ($n in (git -C D:\dev\ss-inputs-821b ls-tree --name-only origin/inputs Inputs/reel-rehearsal/shots/)) { $shots[[IO.Path]::GetFileNameWithoutExtension($n)] = (git -C D:\dev\ss-inputs-821b show "origin/inputs:$n") -join '' } }
 $P = $Package; $RD = "saturday-$Package"; $rx = if ($Res -eq '4k') { 3840 } else { 1920 }; $ry = if ($Res -eq '4k') { 2160 } else { 1080 }
 $lake = '-SailingWorld=Lake'
+# R08b's hold on the score and certificate: the UI script's Wait is 2.6 s of real time and a recorded frame takes ~0.35 s at 1080p, ~1.1 s at 4K (rehearsal d8f2a3dc), so 26 Waits give ~6.5 s of take at 1080p and 75 at 4K.
+$hold = 'Wait,' * $(if ($Res -eq '4k') { 75 } else { 26 })
 $jobs = [ordered]@{
 	'P1-final'       = @{ shot = 'p1-layer-peel-orbit'; rec = 12; extra = "$lake -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingHour=16 -SailingDemo -SailingTWA=60 -SailingHoldTWA=60" }
 	'P1-lightingonly' = @{ shot = 'p1-layer-peel-orbit'; rec = 12; extra = "$lake -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingHour=16 -SailingDemo -SailingTWA=60 -SailingHoldTWA=60 -DPCVars=r.ForceDebugViewModes=1 $(if ($ViewModeArg) { '-SailingViewMode=lightingonly' } else { '"-ExecCmds=viewmode lightingonly"' })" }
@@ -31,7 +34,7 @@ $jobs = [ordered]@{
 	'H02-reach'      = @{ shot = 'h02-j22-reach-track'; rec = 6; extra = "$lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=14 -SailingDemo -SailingTWA=90 -SailingHoldTWA=90" }
 	'R03-briefing'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingDrill=LeavetheDock -SailingFrontEnd=Briefing -SailingHour=14" }
 	'R08-career'     = @{ seedcopy = $true; nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`"" }
-	'R08b-checkride' = @{ seedcopyready = $true; cleanlog = $true; nopath = $true; rec = 32; interval = '0.0333333'; hud = $true; timeout = 900; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`" `"-SailingUIScript=Wait,Wait,Wait,WaitFor:Career,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Enter,WaitFor:Quiz,Wait,Answer:all,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Escape,Wait,WaitFor:Career,Escape,Wait,WaitFor:Title,Down,Down,Enter,Wait,Wait,Wait`"" }
+	'R08b-checkride' = @{ seedcopyready = $true; cleanlog = $true; nopath = $true; rec = 32; interval = '0.0333333'; hud = $true; timeout = $(if ($Res -eq '4k') { 2400 } else { 900 }); extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`" `"-SailingUIScript=Wait,Wait,Wait,WaitFor:Career,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Enter,WaitFor:Quiz,Wait,Answer:all,$($hold)Escape,Wait,WaitFor:Career,Escape,Wait,WaitFor:Title,Down,Down,Enter,Wait,Wait,Wait`"" }
 	'R23-worldmap'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=World -SailingHour=14" }
 }
 foreach ($name in $jobs.Keys) {
@@ -44,7 +47,7 @@ foreach ($name in $jobs.Keys) {
 	if ($j.seedcopy) { Copy-Item "$B\seed\profile-daysailor-certified.json" "$B\seed\run-profile.json" -Force }   # a throwaway copy each run, never Bean's profile
 	if ($j.extra -notmatch 'ForceDebugViewModes') { $j.extra += ' -DPCVars=r.ForceDebugViewModes=1' }   # every take (coordinator, Nov 25)
 	$args2 = @{ Name = $name; ShotFile = $shotName; ShotJson = $json; Record = $j.rec; Extra = $j.extra; PkgName = $P; ReelDir = $RD; ResX = $rx; ResY = $ry; Bench = 3 }
-	if ($j.nopath) { $args2.NoPath = $true }; if ($j.hud) { $args2.Hud = $true }; if ($j.interval) { $args2.Interval = $j.interval }; if ($j.timeout) { $args2.Timeout = $j.timeout }; if ($j.warm) { $args2.Warmup = $j.warm }; if ($j.seed) { $args2.SeedProfile = $j.seed }
+	if ($j.nopath) { $args2.NoPath = $true }; if ($j.hud) { $args2.Hud = $true }; if ($j.interval) { $args2.Interval = $j.interval }; if ($j.timeout) { $args2.Timeout = $j.timeout } elseif ($Res -eq '4k') { $args2.Timeout = 3600 }   # 4K: ~1.2 s a recorded frame (rehearsal d8f2a3dc), so 600 s cut P1 short; if ($j.warm) { $args2.Warmup = $j.warm }; if ($j.seed) { $args2.SeedProfile = $j.seed }
 	# A clean logbook (coordinator, Nov 25): the package's own Saved\Logbook held aside, the four seeded Lake Ray Hubbard sails in its place, put back after.
 	$pkgLog = "D:\dev\ss-fix\Packaged\$P\SailingSim\Saved\Logbook"; $logHold = $null
 	if ($j.cleanlog) { if (Test-Path $pkgLog) { $logHold = "$pkgLog.reel-hold-$(Get-Date -Format HHmmss)"; Rename-Item $pkgLog (Split-Path $logHold -Leaf) }; New-Item -ItemType Directory -Force $pkgLog | Out-Null; Copy-Item "$B\seed\logbook-clean\*.json" $pkgLog }
