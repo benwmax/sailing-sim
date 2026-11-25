@@ -490,6 +490,8 @@ void ASailingGameMode::UpdateTide()
 		bHasNextTide = Lake.Tides.NextExtreme(X, Y, GetUnixTime(), NextTide);
 	}
 	Lake.Terrain.SetLevelBelowPool(-TideHeight);
+	TideStepHeld = bTideStepHeld ? TideStepWithDeadBand(TideStepHeld, TideHeight) : TideStepped(TideHeight);
+	bTideStepHeld = true;
 	if (!TerrainActor.IsValid())
 	{
 		for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It) TerrainActor = *It;
@@ -498,7 +500,7 @@ void ASailingGameMode::UpdateTide()
 	{
 		// In 2 cm steps, like the rest of the world kit: moving the actor re-uploads every instance under it (the shore's
 		// reeds, houses and docks, some 300,000 on Galveston Bay), and doing that each frame cost the render thread 20 ms.
-		const FVector At = SailingFrame::MapAnchor(GetWorld(), -TideStepped(TideHeight));   // the map's origin, in the render frame
+		const FVector At = SailingFrame::MapAnchor(GetWorld(), -TideStepHeld);   // the map's origin, in the render frame
 		if (!TerrainActor->GetActorLocation().Equals(At, 0.1))
 		{
 			TerrainActor->SetActorLocation(At);

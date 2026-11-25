@@ -30,6 +30,11 @@ frame. With them out of the distance fields the step still cost 210-240 ms: `Sce
    doesn't spend the budget once per tile. `-SailingTideDF=1` keeps every follower in the distance fields (the old
    behaviour); `=2` takes out only the crowns on Ultra.
 
+3. **A dead band on the step** (`ASailingGameMode::TideStepWithDeadBand`). The 45 min natural-tide soak on the PC found the
+   tide sitting on a step boundary flipping the followers back and forth for a few frames (each flip a 70-90 ms frame): the
+   step now changes only once the tide is 2 mm past the half-way mark (1.2 cm from the step it stands on), so the followers
+   are at most 1.2 cm off the water's exact level, and a big jump still lands on its own step.
+
 ## Numbers (PC, RTX 4090, 4K Ultra, Galveston, 2 min runs with `-SailingTideStepEvery=20`)
 
 `-SailingTideStepEvery=<s>` forces a 2 cm step every `<s>` s, so the hitch can be measured without a 2 h soak; every step logs
@@ -42,7 +47,8 @@ frame. With them out of the distance fields the step still cost 210-240 ms: `Sce
 | Batching only (`-SailingTideDF=1`) | 55-58 | 539,070 |
 | **Both (this change)** | **52-56** | 11,198 |
 
-The frames between steps take 19-20 ms of render thread. Dusk stills of the Kemah shore and docks on Ultra show no difference
+The frames between steps take 19-20 ms of render thread. On d5be42d (`Inputs/bench/pr836/`): Medium's steps fall from 271-374 ms to
+45-52 ms; a 45 min natural-tide Ultra soak ran at 53 fps with its worst tide frame 88 ms, at a boundary flip (fixed by 3). Dusk stills of the Kemah shore and docks on Ultra show no difference
 from 83aa7652 (`Inputs/bench/tide-df-fix/compare-dusk-*.jpg`). Medium was not measured: there only the batching applies.
 
 Tests: `SailingSim.Coast.TideStep` (the stepped offset, the forced steps), `SailingSim.Coast.TideStepBatched` (the spread, a

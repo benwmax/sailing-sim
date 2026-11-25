@@ -731,6 +731,30 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 		Last = Now;
 	}
 	TestEqual(TEXT("A step every 10 s for a minute"), Forced, 5);
+	// The dead band: a tide wobbling about the boundary between two steps (here 0.31 m, +-1 mm as the boat moves) moves the
+	// followers once, not on every wobble; past the band they step, and a big jump (a new date) lands on its step at once.
+	double Held = 0.30;
+	int32 Flips = 0;
+	for (int32 I = 0; I < 200; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepWithDeadBand(Held, 0.31 + ((I % 2) ? 0.001 : -0.001));
+		if (Now != Held) ++Flips;
+		Held = Now;
+	}
+	TestEqual(TEXT("A tide on the boundary: no flips"), Flips, 0);
+	TestEqual(TEXT("2 mm past the half-way mark: the next step"), ASailingGameMode::TideStepWithDeadBand(0.30, 0.3125), 0.32, 1e-9);
+	TestEqual(TEXT("Falling past it: the step below"), ASailingGameMode::TideStepWithDeadBand(0.30, 0.2875), 0.28, 1e-9);
+	TestEqual(TEXT("A jump lands on its own step"), ASailingGameMode::TideStepWithDeadBand(0.30, -0.411), -0.42, 1e-9);
+	int32 Slow = 0;
+	Held = 0.0;
+	for (int32 I = 1; I <= 1000; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepWithDeadBand(Held, 0.1 * I / 1000.0);
+		if (Now != Held) ++Slow;
+		Held = Now;
+	}
+	TestEqual(TEXT("10 cm of slow tide is still five steps"), Slow, 5);
+	TestEqual(TEXT("... ending on the step"), Held, 0.10, 1e-9);
 	return true;
 }
 
