@@ -1,0 +1,227 @@
+diff --git a/Source/SailingSim/Private/BridgesActor.cpp b/Source/SailingSim/Private/BridgesActor.cpp
+index 026248111..f7743ab71 100644
+--- a/Source/SailingSim/Private/BridgesActor.cpp
++++ b/Source/SailingSim/Private/BridgesActor.cpp
+@@ -209,6 +209,7 @@ void ABridgesActor::BuildTraffic()
+ 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+ 		C->SetCullDistances(0, 4000 * 100);
+ 		C->NumCustomDataFloats = 3;
++		MarkTideFollower(C, GetWorld());   // docs/tide-df: the traffic moves every frame on a moving actor
+ 		C->RegisterComponent();
+ 		TArray<FTransform> X;
+ 		X.Init(FTransform::Identity, KindVehicles[K].Num());
+diff --git a/Source/SailingSim/Private/LakeTerrainActor.cpp b/Source/SailingSim/Private/LakeTerrainActor.cpp
+index 0a75e5636..f49c03d4c 100644
+--- a/Source/SailingSim/Private/LakeTerrainActor.cpp
++++ b/Source/SailingSim/Private/LakeTerrainActor.cpp
+@@ -515,6 +515,9 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
+ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
+ {
+ 	FollowActor();
++	// docs/tide-df: on a coast the kept components (the crowns' tiles and proxies, the houses, the kit tiles) move with every
++	// 2 cm tide step; where the distance fields don't show they stay out of them (callers register after this).
++	MarkTideFollower(Cast<UPrimitiveComponent>(Component), GetWorld());
+ 	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
+ 	// The crown tiles turn over as the trees regroup (their clones are destroyed): on a lake nothing else walks the list,
+ 	// so drop the dead entries whenever it has doubled since the last time.
+@@ -524,22 +527,56 @@ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
+ 		KeptPruneAt = FMath::Max(64, 2 * Kept.Num());
+ 	}
+ 	Kept.Add(Component);
++	KeptAtEach.Add(KeptAt);   // placed at the actor's transform now, which FollowActor just made KeptAt
+ }
+ 
+ void ALakeTerrainActor::PruneKept()
+ {
+-	Kept.RemoveAllSwap([](const TWeakObjectPtr<USceneComponent>& C) { return !C.IsValid(); }, EAllowShrinking::No);
++	check(KeptAtEach.Num() == Kept.Num());
++	for (int32 I = Kept.Num() - 1; I >= 0; --I)
++	{
++		if (Kept[I].IsValid()) continue;
++		Kept.RemoveAtSwap(I, 1, EAllowShrinking::No);
++		KeptAtEach.RemoveAtSwap(I, 1, EAllowShrinking::No);
++	}
+ }
+ 
+ void ALakeTerrainActor::FollowActor()
+ {
+ 	const FVector At = GetActorLocation();
+-	if (At.Equals(KeptAt, 0.01)) return;
+-	const FVector Delta = At - KeptAt;
+-	KeptAt = At;
+-	// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
+-	PruneKept();
+-	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(Delta, false);
++	if (!At.Equals(KeptAt, 0.01))
++	{
++		KeptAt = At;
++		bKeptLagging = true;
++		PruneKept();
++	}
++	if (!bKeptLagging) return;
++	// docs/tide-df: the step is spread over frames, a budget of instances a frame (the crown tiles hold most of them); a
++	// component that alone is over the budget still moves whole. A few frames of 2 cm between the parts don't show.
++	static int32 Budget = -1;
++	static uint32 BudgetGen = MAX_uint32;
++	if (BudgetGen != SailingArgs::Generation())
++	{
++		BudgetGen = SailingArgs::Generation();
++		Budget = 20000;
++		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideBatch="), Budget);
++	}
++	int64 Spent = 0;
++	bool bAll = true;
++	for (int32 I = 0; I < Kept.Num(); ++I)
++	{
++		if (KeptAtEach[I].Equals(KeptAt, 0.01)) continue;
++		USceneComponent* C = Kept[I].Get();
++		if (!C) continue;
++		const UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(C);
++		const int64 Cost = Ism ? FMath::Max(1, Ism->GetInstanceCount()) : 1;
++		if (Budget > 0 && Spent > 0 && Spent + Cost > Budget) { bAll = false; break; }
++		// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
++		C->ApplyWorldOffset(KeptAt - KeptAtEach[I], false);
++		KeptAtEach[I] = KeptAt;
++		Spent += Cost;
++	}
++	if (bAll) bKeptLagging = false;
+ }
+ 
+ void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
+@@ -547,6 +584,7 @@ void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShi
+ 	Super::ApplyWorldOffset(InOffset, bWorldShift);   // the root and what is attached to it
+ 	PruneKept();
+ 	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(InOffset, bWorldShift);
++	for (FVector& A : KeptAtEach) A += InOffset;   // a lagging component keeps its lag
+ 	KeptAt += InOffset;
+ }
+ 
+diff --git a/Source/SailingSim/Private/LandmarksActor.cpp b/Source/SailingSim/Private/LandmarksActor.cpp
+index 40f15c236..eceb834c7 100644
+--- a/Source/SailingSim/Private/LandmarksActor.cpp
++++ b/Source/SailingSim/Private/LandmarksActor.cpp
+@@ -86,6 +86,7 @@ void ALandmarksActor::BeginPlay()
+ 			Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+ 			Ism->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+ 			Ism->SetCullDistances(0, 30000 * 100);
++			MarkTideFollower(Ism, GetWorld());   // docs/tide-df
+ 			Ism->RegisterComponent();
+ 		}
+ 		// Platforms stand in the water (the datum is the water's chart datum on a coast); the rest stand on the ground.
+diff --git a/Source/SailingSim/Private/NavaidsActor.cpp b/Source/SailingSim/Private/NavaidsActor.cpp
+index b396dc6e6..54e99db6f 100644
+--- a/Source/SailingSim/Private/NavaidsActor.cpp
++++ b/Source/SailingSim/Private/NavaidsActor.cpp
+@@ -1,4 +1,5 @@
+ #include "NavaidsActor.h"
++#include "WorldKit.h"
+ #include "SailingFrame.h"
+ #include "FarLightsActor.h"
+ #include "BenchRunner.h"
+@@ -53,6 +54,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::MakeIsm(UStaticMesh* Mesh, const F
+ 	Mid->SetVectorParameterValue(TEXT("Color"), Color);
+ 	if (bEmissive) Mid->SetScalarParameterValue(TEXT("Intensity"), 250.f);
+ 	Ism->SetMaterial(0, Mid);
++	MarkTideFollower(Ism, GetWorld());   // docs/tide-df: the marks follow the tide (fixed) or the waves (floating)
+ 	Ism->RegisterComponent();
+ 	Meshes.Add(Ism);
+ 	return Ism;
+@@ -70,6 +72,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::ModelIsm(const TCHAR* Name, bool b
+ 	Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+ 	Ism->SetCullDistances(0, 600000);
+ 	Ism->NumCustomDataFloats = 3;
++	MarkTideFollower(Ism, GetWorld());   // docs/tide-df
+ 	Ism->RegisterComponent();
+ 	Meshes.Add(Ism);
+ 	Models.Add(Key, Ism);
+diff --git a/Source/SailingSim/Private/WorldKit.cpp b/Source/SailingSim/Private/WorldKit.cpp
+index 3877d006d..dfadca37b 100644
+--- a/Source/SailingSim/Private/WorldKit.cpp
++++ b/Source/SailingSim/Private/WorldKit.cpp
+@@ -5,6 +5,10 @@
+ #include "MarinaActor.h"
+ #include "FarRing.h"
+ #include "LakeTerrainActor.h"
++#include "SailingGameMode.h"
++#include "SailingSettings.h"
++#include "BenchRunner.h"
++#include "Components/InstancedStaticMeshComponent.h"
+ #include "Engine/StaticMesh.h"
+ #include "Components/StaticMeshComponent.h"
+ #include "GameFramework/Actor.h"
+@@ -252,6 +256,30 @@ FString FKitGeometry::TileAssetName(const FString& Prefix, const FIntPoint& Tile
+ 	return FString::Printf(TEXT("SM_%s_%s_%s"), *Prefix, *Num(Tile.X), *Num(Tile.Y));
+ }
+ 
++bool TideFollowersSkipDistanceFields(const UWorld* World, bool bCrown)
++{
++	const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr;
++	if (!GM || !GM->GetLake().IsLoaded() || GM->GetLake().Tides.HeightStations.size() == 0) return false;   // no tide, no steps
++	// -SailingTideDF=1 keeps every follower in the distance fields (as before); =2 takes out only the crowns, on Ultra, where
++	// they are in ray tracing (measuring).
++	int32 Keep = 0;
++	FParse::Value(SailingArgs::Dev(), TEXT("SailingTideDF="), Keep);
++	if (Keep == 2) return bCrown && USailingSettings::Get()->Quality == ESailingQuality::Ultra;
++	return Keep == 0 && USailingSettings::Get()->Quality >= ESailingQuality::High;
++}
++
++void MarkTideFollower(UPrimitiveComponent* Component, const UWorld* World)
++{
++	if (!Component) return;
++	// The crowns (their tiles and lighting proxies) are the terrain's tree meshes.
++	const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Component);
++	const bool bCrown = Mesh && Mesh->GetStaticMesh() && Mesh->GetStaticMesh()->GetPathName().StartsWith(TEXT("/Game/World/Trees/"));
++	if (!TideFollowersSkipDistanceFields(World, bCrown)) return;
++	Component->bAffectDistanceFieldLighting = false;
++	Component->SetCanEverAffectNavigation(false);
++	if (UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Component)) Ism->SetUseConservativeBounds(true);
++}
++
+ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
+ 	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out, EComponentMobility::Type Mobility)
+ {
+@@ -269,6 +297,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
+ 		{
+ 			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
+ 			C->SetMobility(Mobility);
++			if (Mobility != EComponentMobility::Static || Keeper) MarkTideFollower(C, Owner->GetWorld());   // docs/tide-df
+ 			Place(C);
+ 			C->SetStaticMesh(Mesh);
+ 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+diff --git a/Source/SailingSim/Public/LakeTerrainActor.h b/Source/SailingSim/Public/LakeTerrainActor.h
+index 259b3c3c9..f0d8688cd 100644
+--- a/Source/SailingSim/Public/LakeTerrainActor.h
++++ b/Source/SailingSim/Public/LakeTerrainActor.h
+@@ -63,6 +63,11 @@ public:
+ private:
+ 	TArray<TWeakObjectPtr<USceneComponent>> Kept;
+ 	FVector KeptAt = FVector::ZeroVector;
++	/** docs/tide-df: where each kept component stands (the actor's location it matches). A tide step moves them over a few
++	 *  frames, a budget of instances a frame (-SailingTideBatch=<n>, 0 all at once): moving the crown tiles' half a million
++	 *  instances in one frame cost the renderer's scene culling 140 ms. */
++	TArray<FVector> KeptAtEach;
++	bool bKeptLagging = false;
+ 	int32 KeptPruneAt = 64;
+ 	void PruneKept();
+ 	struct FChunkMesh
+diff --git a/Source/SailingSim/Public/WorldKit.h b/Source/SailingSim/Public/WorldKit.h
+index 1ec292c17..c4ac9f06a 100644
+--- a/Source/SailingSim/Public/WorldKit.h
++++ b/Source/SailingSim/Public/WorldKit.h
+@@ -165,6 +165,16 @@ SAILINGSIM_API FName LotBankType(uint32 HouseIndex);
+ /** The lots whose bank is a kit piece, with their waterlines (HouseKit.cpp; the same line the tile's riprap follows). */
+ SAILINGSIM_API void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out);
+ 
++/** docs/tide-df (prototype): on a coast the world kit follows the tide in 2 cm steps (the terrain's kept components, the
++ *  bridges, landmarks and navaids). Each step moved every one of their distance-field instances at once and
++ *  PrepareDistanceFieldScene took 380-520 ms of render thread (Inputs/bench/soak-83aa7652-galveston). On High and Ultra
++ *  Lumen traces in hardware and nothing on shore samples the mesh distance fields (the boat's corner grime reads the global
++ *  field within 8 m of her), so there the followers stay out of the distance fields. Medium (software Lumen) and the lake
++ *  keep them. -SailingTideDF=1 keeps them everywhere, to compare. */
++SAILINGSIM_API bool TideFollowersSkipDistanceFields(const UWorld* World, bool bCrown = false);
++/** For a component of a tide follower, before RegisterComponent: out of the distance fields (TideFollowersSkipDistanceFields),
++ *  conservative instance bounds and no navigation (docs/recentre-hitch). */
++SAILINGSIM_API void MarkTideFollower(UPrimitiveComponent* Component, const UWorld* World);
+ /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
+  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
+ SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,

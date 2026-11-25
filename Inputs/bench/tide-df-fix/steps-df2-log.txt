@@ -1,0 +1,8 @@
+[2026.11.25-17.04.52:641][  1]LogSailing: Display: Tide step: the followers stand at -36 cm (frame 1)
+[2026.11.25-17.05.00:401][328]LogSailing: Display: Distance-field instances: 15711: LakeTerrainActor/movable ISM 4097 in 1; CoastMarinasActor/ISM 3182 in 32; WaterSurface/movable ISM 3000 in 1; NavaidsActor/movable ISM 1598 in 15; LakeTerrainActor/mesh 1202 in 1202; LakeTerrainActor/ISM 865 in 2; PowerVesselActor/movable ISM 801 in 3; BridgesActor/movable mesh 634 in 634; LandmarksActor/movable ISM 186 in 7; SailboatPawn/movable mesh 92 in 92; PowerVesselActor/movable mesh 52 in 52; SailingEnvironment/movable mesh 2 in 2;
+[2026.11.25-17.05.12:394][928]LogSailing: Display: Tide step: the followers stand at -38 cm (frame 928)
+[2026.11.25-17.05.32:402][940]LogSailing: Display: Tide step: the followers stand at -36 cm (frame 1940)
+[2026.11.25-17.05.52:399][975]LogSailing: Display: Tide step: the followers stand at -38 cm (frame 2975)
+[2026.11.25-17.06.12:400][998]LogSailing: Display: Tide step: the followers stand at -36 cm (frame 3998)
+[2026.11.25-17.06.32:408][  0]LogSailing: Display: Tide step: the followers stand at -38 cm (frame 5000)
+[2026.11.25-17.06.52:398][ 22]LogSailing: Display: Tide step: the followers stand at -36 cm (frame 6022)
