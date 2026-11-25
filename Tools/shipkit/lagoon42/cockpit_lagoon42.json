@@ -6,7 +6,10 @@
   "note": "The cockpit's floor between the hulls, level with the sugar scoops' top step and the landings (lines_lagoon42.json scoop.landing_to_x) and with the saloon's floor: 'just two steps' up from the swim platform (Lagoon). From the bridge deck's aft face (bridgedeck_lagoon42.json underside.aft_x) to fwd_x, 5 cm under the saloon's aft bulkhead. Teak. The hulls' inboard topsides rise 0.5 m from it to the side decks."
  },
  "aft_bench": {
-  "x": [-5.25, -4.82],
+  "x": [
+   -5.25,
+   -4.82
+  ],
   "top_z": 1.5,
   "round": 0.04,
   "note": "A bench across the stern between the hulls, its back to the water, as the deck plan draws it; the roof's posts stand in it. The way in from each landing is forward of it, 0.67 m wide."
@@ -19,15 +22,41 @@
  },
  "settee": {
   "boxes": [
-   {"x": [-4.15, -1.8], "y": [1.3, "hull"], "top_z": 1.45},
-   {"x": [-2.42, -1.8], "y": [0.46, 1.3], "top_z": 1.45}
+   {
+    "x": [
+     -4.15,
+     -1.8
+    ],
+    "y": [
+     1.3,
+     "hull"
+    ],
+    "top_z": 1.45
+   },
+   {
+    "x": [
+     -2.42,
+     -1.8
+    ],
+    "y": [
+     0.46,
+     1.3
+    ],
+    "top_z": 1.45
+   }
   ],
   "round": 0.05,
   "note": "The L-shaped settee to starboard: along the hull's side of the cockpit to the saloon's bulkhead, and back inboard along the bulkhead. 'hull' runs a box out into the hull's inboard topside."
  },
  "table": {
-  "x": [-3.95, -2.45],
-  "y": [0.45, 1.2],
+  "x": [
+   -3.95,
+   -2.45
+  ],
+  "y": [
+   0.45,
+   1.2
+  ],
   "top_z": 1.77,
   "thickness": 0.04,
   "round": 0.1,
@@ -35,24 +64,171 @@
   "note": "The cockpit table inside the settee's L, its top 0.72 m over the sole, on two round legs."
  },
  "lounge": {
-  "x": [-4.15, -2.95],
-  "y": ["hull", -1.0],
+  "x": [
+   -4.15,
+   -2.95
+  ],
+  "y": [
+   "hull",
+   -1.0
+  ],
   "top_z": 1.45,
   "round": 0.05,
   "note": "The bench along the port side of the cockpit, aft of the helm's steps."
  },
  "helm": {
-  "deck": {"x": [-2.9, -1.75], "y": [-2.85, -1.44], "top_z": 2.0},
-  "steps": {"x": [-2.9, -2.3], "y": [-1.44, -0.66], "n": 3},
-  "seat": {"x": [-2.6, -2.2], "y": [-2.75, -2.05], "top_z": 2.42, "back_x": 0.08, "back_top_z": 2.8},
-  "console": {"x": [-1.98, -1.75], "y": [-2.7, -2.1], "top_z": 2.55},
-  "wheel": {"centre": [-2.03, -2.4, 2.55], "diameter": 0.7, "tube": 0.018, "spokes": 5},
+  "deck": {
+   "x": [
+    -2.9,
+    -1.75
+   ],
+   "y": [
+    -2.85,
+    -1.44
+   ],
+   "top_z": 2.0
+  },
+  "steps": {
+   "x": [
+    -2.9,
+    -2.3
+   ],
+   "y": [
+    -1.44,
+    -0.66
+   ],
+   "n": 3
+  },
+  "seat": {
+   "x": [
+    -2.6,
+    -2.2
+   ],
+   "y": [
+    -2.75,
+    -2.05
+   ],
+   "top_z": 2.42,
+   "back_x": 0.08,
+   "back_top_z": 2.8
+  },
+  "console": {
+   "x": [
+    -1.98,
+    -1.75
+   ],
+   "y": [
+    -2.7,
+    -2.1
+   ],
+   "face_top": [
+    -1.9,
+    2.68
+   ],
+   "face_bottom_z": 2.42,
+   "round": 0.03,
+   "note": "On the bulkhead: upright aft face up to face_bottom_z, then an instrument face sloping forward to face_top [x, z], a flat top to the bulkhead. The top stays 9 cm under the roof's underside there."
+  },
+  "wheel": {
+   "centre": [
+    -2.03,
+    -2.4,
+    2.5
+   ],
+   "diameter": 0.7,
+   "tube": 0.018,
+   "spokes": 5
+  },
   "round": 0.04,
-  "note": "The raised helm station at the saloon's port aft corner, where Lagoon's deck plan has the helm seat and steps and its stern photo shows the wheel high under the hard top (today's model has it to starboard: the crew's helm position follows it in slice 12). A deck 0.95 m over the sole (0.45 over the side deck) against the bulkhead, three steps up to it from the cockpit, a seat facing forward, and a console on the bulkhead carrying the wheel. Seated, the helmsman's eye is about 3.2 m up, at the roof's top: the head comes up through the roof's helm opening (saloon_lagoon42.json roof.helm_opening) to look forward over it."
+  "note": "The raised helm station at the saloon's port aft corner, where Lagoon's deck plan has the helm seat and steps and its stern photo shows the wheel high under the hard top (today's model has it to starboard: the crew's helm position follows it in slice 12). A deck 0.95 m over the sole (0.45 over the side deck) against the bulkhead, three steps up to it from the cockpit, a seat facing forward, and a console on the bulkhead carrying the wheel, the plotter, the displays, a compass and the two throttles; guard rails round the deck's open edges. Seated, the helmsman's eye is about 3.2 m up, at the roof's top: the head comes up through the roof's helm opening (saloon_lagoon42.json roof.helm_opening) to look forward over it.",
+  "instruments": {
+   "plotter": {
+    "z": 2.585,
+    "size": [
+     0.24,
+     0.14
+    ]
+   },
+   "displays": {
+    "z": 2.2,
+    "y": [
+     -2.58,
+     -2.22
+    ],
+    "size": 0.1
+   },
+   "bezel": [
+    0.012,
+    0.008
+   ],
+   "compass": {
+    "x": -1.82,
+    "diameter": 0.12,
+    "height": 0.055
+   },
+   "note": "A chart plotter on the sloping face above the wheel's hub, two instrument displays on the upright face below it (both seen through the spokes), each a black bezel bezel[1] thick with its dark screen bezel[0] in; a flush compass on the console's top."
+  },
+  "throttles": {
+   "box": {
+    "x": [
+     -1.96,
+     -1.8
+    ],
+    "y": [
+     -2.84,
+     -2.7
+    ],
+    "z": [
+     2.22,
+     2.4
+    ]
+   },
+   "pivot_x": -1.88,
+   "y": [
+    -2.745,
+    -2.8
+   ],
+   "lever": 0.17,
+   "rake_deg": 25,
+   "knob_diameter": 0.036,
+   "note": "The two engines' throttle and gear levers on a black control box on the console's outboard side, to the helmsman's left: one lever an engine, raked aft in neutral, stainless with black knobs."
+  },
+  "rail": {
+   "tube": 0.025,
+   "height": 0.65,
+   "mid_height": 0.33,
+   "runs": [
+    [
+     [
+      -2.87,
+      -1.48
+     ],
+     [
+      -2.87,
+      -2.82
+     ]
+    ],
+    [
+     [
+      -2.27,
+      -1.48
+     ],
+     [
+      -1.79,
+      -1.48
+     ]
+    ]
+   ],
+   "post_spacing": 0.75,
+   "note": "Stainless guard rails where the helm's deck drops away: along its aft edge (to the lounge and the side deck) and its inboard edge forward of the steps (to the cockpit), each with a top and a middle rail; the steps come up between them, and the posts at the steps' top are the hand holds."
+  }
  },
  "riser_windows": {
   "half_width": 0.45,
-  "z": [1.17, 1.37],
+  "z": [
+   1.17,
+   1.37
+  ],
   "corner": 0.06,
   "note": "A dark aft-facing window in each landing's riser (the aft cabin's), as Lagoon's stern photo shows it."
  }

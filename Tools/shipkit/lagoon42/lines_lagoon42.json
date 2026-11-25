@@ -18,8 +18,8 @@
   "lowest_x": -0.8,
   "run_power": 2.0,
   "canoe_depth": 0.62,
-  "note": "The canoe body's lowest point (its depth solved by hull_lagoon42.solve_depth so that both hulls and the appendages displace the game's 15.5 m^3; canoe_depth is only the first guess). Aft of it the keel line is a power curve, -d + (d + zt) u^run_power, flat at the lowest point and rising in one bend to the transom (run_power 2 or more: a smaller power puts a point at the lowest station), with the transom's foot zt solved so the waterline ends at waterline.aft_x. Forward it is stem.bottom_power's superellipse to the forefoot. appendage_volume_m3 holds the two keels and two rudders (0.25 and 0.03 m^3 each, a guess) until slice 5 builds them and measures their own. With the lowest point 0.8 m aft of amidships and the full sterns, her centre of buoyancy is where the physics has it (x -0.2): a cruising cat carries her engines, tanks and tender aft.",
-  "appendage_volume_m3": 0.56
+  "note": "The canoe body's lowest point (its depth solved by hull_lagoon42.solve_depth so that both hulls and the appendages displace the game's 15.5 m^3; canoe_depth is only the first guess). Aft of it the keel line is a power curve, -d + (d + zt) u^run_power, flat at the lowest point and rising in one bend to the transom (run_power 2 or more: a smaller power puts a point at the lowest station), with the transom's foot zt solved so the waterline ends at waterline.aft_x. Forward it is stem.bottom_power's superellipse to the forefoot. appendage_volume_m3 is what the two keels, rudders and saildrives displace under the hulls' bottoms as slice 5 builds them (appendages_lagoon42.numbers(), solved together with the canoe depth: the keels 0.32 m^3 each; slice 1 had guessed 0.56 in all). With the lowest point 0.8 m aft of amidships and the full sterns, her centre of buoyancy is where the physics has it (x -0.2): a cruising cat carries her engines, tanks and tender aft.",
+  "appendage_volume_m3": 0.747
  },
  "waterline": {
   "aft_x": -6.12,

@@ -17,7 +17,11 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   drone           from the CC BY drone photo's solved camera (match_two_canoes.camera.json, 4:3): to lay over the photo
   cockpit         from astern and over her starboard quarter, under the roof's aft edge: the cockpit (slice 4 on)
   helm            from the cockpit's starboard side, at a standing eye: the raised helm to port and its roof opening
+  helm_close      close on the helm console from beside the seat: the wheel, plotter, displays, compass and throttles
   plan            from overhead, orthographic, without the roof: the cockpit's plan against Lagoon's (port at the top)
+  keel_profile    her starboard side below the water, orthographic, without the sea: the keel, saildrive and rudder
+  saildrive       close on the starboard saildrive from outboard, aft and below: the leg, pod, anode and propeller
+  rudder          close on the starboard rudder from outboard, aft and below: the blade, its tip and the stock's gap
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
 import json
@@ -39,7 +43,9 @@ sc = bpy.context.scene
 LOOKS = {"Topsides": ((0.86, 0.86, 0.84), 0.35), "Antifouling": ((0.05, 0.055, 0.07), 0.6),
          "CabinWindow": ((0.02, 0.025, 0.03), 0.08), "Teak": ((0.45, 0.30, 0.17), 0.7),
          "Trampoline": ((0.05, 0.05, 0.055), 0.8), "Spar": ((0.6, 0.61, 0.63), 0.3),
-         "Cushion": ((0.62, 0.6, 0.56), 0.9)}
+         "Cushion": ((0.62, 0.6, 0.56), 0.9), "Keel": ((0.13, 0.135, 0.15), 0.7), "Stainless": ((0.7, 0.71, 0.73), 0.2),
+         "Aluminium": ((0.55, 0.56, 0.57), 0.5), "Rubber": ((0.015, 0.015, 0.018), 0.9),
+         "CastBronze": ((0.6, 0.4, 0.2), 0.3)}
 for m in bpy.data.materials:
     if m.name not in LOOKS:
         continue
@@ -134,7 +140,11 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "bridge_under": ((9.0, -1.2, 0.35), (-2.0, 0.0, 0.9), 30, True),
     "cockpit": ((-11.0, -3.2, 4.0), (-3.0, 0.2, 1.6), 30, True),
     "helm": ((-4.7, -1.3, 2.75), (-2.1, 2.3, 2.35), 22, True),
+    "helm_close": ((-2.75, 1.45, 3.0), (-1.85, 2.45, 2.42), 26, True),
     "plan": ((-1.5, 0.0, 30.0), (-1.5, 0.0, 0.0), ("ortho", 12.0), True),
+    "keel_profile": ((-1.0, -40.0, -0.7), (-1.0, 0.0, -0.7), ("ortho", 11.5), False),
+    "saildrive": ((-4.55, -4.35, -1.45), (-3.25, -2.9, -0.95), 45, False),
+    "rudder": ((-7.1, -4.6, -1.25), (-5.45, -2.9, -0.7), 40, False),
 }
 HIDE = {"plan": ["L42_Roof"]}   # a view's objects left out of its render
 VIEWS["drone"] = (None, None, None, True)

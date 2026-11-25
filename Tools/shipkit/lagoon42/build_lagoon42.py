@@ -20,6 +20,10 @@ posts, the settee and table, the lounge, the raised helm with its steps, seat, c
 windows), brings the bridge deck's aft face and the saloon's aft bulkhead down to the sole (the lid stays only inside
 the saloon), glazes the sliding door from the sole up and cuts the helm's opening through the roof.
 
+Slice 5 (docs/lagoon42-6) hangs the keels (L42_Keels, with their sacrificial shoes), the saildrives (L42_Saildrives:
+legs, pods, anodes, intakes) and the propellers (L42_Prop_S, L42_Prop_P, origins on their axes) under the hulls from
+appendages_lagoon42.py, and the rudders (L42_Rudder_S, L42_Rudder_P: one mesh, origins at the stocks' pivots).
+
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
 of buoyancy beside the game's) and <out>/hydrostatics.json.
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
@@ -40,6 +44,7 @@ import hull_lagoon42 as H  # noqa: E402
 import bridgedeck_lagoon42 as B  # noqa: E402
 import saloon_lagoon42 as S  # noqa: E402
 import cockpit_lagoon42 as C  # noqa: E402
+import appendages_lagoon42 as A  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -50,7 +55,8 @@ UV_M = 1.0
 BOTTOM_Z = 0.05                        # the antifouling's top over the game's waterline
 SLOT_RGB = {"Topsides": (0.92, 0.92, 0.9), "Antifouling": (0.16, 0.17, 0.2), "CabinWindow": (0.06, 0.07, 0.08),
             "Teak": (0.55, 0.38, 0.22), "Trampoline": (0.1, 0.1, 0.11), "Spar": (0.55, 0.56, 0.58),
-            "Cushion": (0.78, 0.76, 0.72)}
+            "Cushion": (0.78, 0.76, 0.72), "Keel": (0.24, 0.25, 0.28), "Stainless": (0.72, 0.73, 0.75),
+            "Aluminium": (0.62, 0.63, 0.64), "Rubber": (0.04, 0.04, 0.045), "CastBronze": (0.66, 0.48, 0.26)}
 
 
 def clear_scene():
@@ -415,10 +421,83 @@ def add_torus(bm, centre, axis, R, r, n=48, m=10):
     return faces
 
 
+def solid(bm, rings, mat=0, mats=None, smooth=True, origin=(0.0, 0.0, 0.0)):
+    """A closed solid from rings of game-frame points (every ring the same length), capped at both ends, its normals
+    out; points are taken relative to origin (game frame). Returns its faces."""
+    o = bl(*origin)
+    vr = [[bm.verts.new(tuple(c - oc for c, oc in zip(bl(*p), o))) for p in rg] for rg in rings]
+    faces = []
+    for k, (a, b) in enumerate(zip(vr[:-1], vr[1:])):
+        n = len(a)
+        for i in range(n):
+            f = bm.faces.new((a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]))
+            f.material_index = mats(k) if mats else mat
+            f.smooth = smooth
+            faces.append(f)
+    for cap in (vr[0][::-1], vr[-1]):
+        f = bm.faces.new(cap)
+        f.material_index = mat if not mats else mats(0 if cap is vr[0] else len(vr) - 2)
+        faces.append(f)
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces
+
+
+def build_appendages():
+    """The keels, saildrives and propellers under the hulls, and the rudders (each its own object at its pivot)."""
+    kr, shoe = A.keel_rings()
+    bm = bmesh.new()
+    for rings in (kr, A.mirror(kr)):
+        solid(bm, rings, mats=lambda k: 1 if k >= shoe else 0)
+    to_object("L42_Keels", bm, ["Antifouling", "Keel"])
+
+    bm = bmesh.new()
+    for mir in (False, True):
+        f = A.mirror if mir else (lambda r: r)
+        solid(bm, f(A.leg_rings()))
+        solid(bm, f(A.pod_rings()))
+        solid(bm, f(A.anode_rings()), mat=1, smooth=False)
+        for q in A.intake_slots():
+            qq = f([q])[0]
+            face = bm.faces.new([bm.verts.new(bl(*p)) for p in qq])
+            face.material_index = 2
+            x, y, z = qq[0]
+            face_out(bm, [face], (x, y, z), (0, 1 if y > (H.HULL_Y if not mir else -H.HULL_Y) else -1, 0))
+    to_object("L42_Saildrives", bm, ["Antifouling", "Aluminium", "Rubber"])
+
+    ax = A.prop_axis()
+    for tag, mir in (("S", False), ("P", True)):
+        f = A.mirror if mir else (lambda r: r)
+        origin = f([[ax]])[0][0]
+        bm = bmesh.new()
+        solid(bm, f(A.hub_rings()), origin=origin)
+        for k in range(A.SD["prop"]["blades"]):
+            solid(bm, f(A.blade_rings(k)), origin=origin)
+        ob = to_object("L42_Prop_" + tag, bm, ["CastBronze"])
+        ob.location = bl(*origin)
+
+    piv = A.rudder_pivot()
+    bm = bmesh.new()
+    solid(bm, A.rudder_rings(), origin=piv)
+    a, b, r = A.rudder_stock()
+    for fc in add_cylinder(bm, a, b, r):
+        fc.material_index = 1
+    stock_faces = [fc for fc in bm.faces if fc.material_index == 1]
+    sv = {v for fc in stock_faces for v in fc.verts}      # add_cylinder placed them in the game frame
+    o = Vector(bl(*piv))
+    for v in sv:
+        v.co -= o
+    me_ob = to_object("L42_Rudder_S", bm, ["Antifouling", "Stainless"])
+    me_ob.location = bl(*piv)
+    port = bpy.data.objects.new("L42_Rudder_P", me_ob.data)
+    bpy.context.scene.collection.objects.link(port)
+    port.location = bl(*A.rudder_pivot(-H.HULL_Y))
+    return me_ob, port
+
+
 def build_cockpit():
     """The cockpit (L42_Cockpit): the teak sole, every part of cockpit_lagoon42.parts() and the dark windows in the
     landings' risers."""
-    mats = ["Topsides", "Teak", "Cushion", "Spar", "CabinWindow"]
+    mats = ["Topsides", "Teak", "Cushion", "Stainless", "CabinWindow", "Rubber"]
     mi = {m: i for i, m in enumerate(mats)}
     bm = bmesh.new()
     sole = grid_faces(bm, C.sole_rows())
@@ -462,6 +541,12 @@ def build_cockpit():
         elif k == "torus":
             for f in add_torus(bm, p["centre"], p["axis"], p["R"], p["r"]):
                 f.material_index = mi[p["mat"]]
+        elif k == "rings":
+            solid(bm, p["rings"], mat=mi[p["mat"]], smooth=p["smooth"])
+        elif k == "pane":
+            f = bm.faces.new([bm.verts.new(bl(*q)) for q in p["corners"]])
+            face_out(bm, [f], p["corners"][0], p["facing"])
+            f.material_index = mi[p["mat"]]
     for poly in C.riser_windows():
         f = bm.faces.new([bm.verts.new(bl(*q)) for q in poly])
         face_out(bm, [f], poly[0], (-1, 0, 0))
@@ -520,12 +605,15 @@ def main():
     build_saloon()
     build_roof()
     build_cockpit()
+    build_appendages()
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
     app = H.BOT["appendage_volume_m3"]
     g = H.CARD["game"]
     sink = light_sink(hull, g["design_volume_m3"] - (g["load_kg"] + g["crew_kg"]) / 1000.0)
+    appn = A.numbers()
+    ax = A.prop_axis()
     report = {"canoe_volume_m3": round(mesh_v + app, 4), "hull_volume_m3": round(mesh_v, 4),
               "design_hull_volume_m3": round(h["volume_m3"], 4), "appendage_volume_m3": app,
               "physics_volume_m3": g["design_volume_m3"], "cb_x": round(h["cb"][0], 3), "cb_z": round(h["cb"][2], 3),
@@ -538,15 +626,22 @@ def main():
               "mast_foot_measured": S.SD["measured"]["mast_foot"],
               "cockpit_sole_z_m": C.SOLE_Z, "cockpit_headroom_m": round(S.ceiling_z(0.0) - C.SOLE_Z, 3),
               "helm_side": "port", "helm_eye_m": [round(v, 3) for v in C.helm_eye()],
+              "keel_bottom_z_m": round(A.TIP_Z, 3), "keel_area_m2": round(appn["keel"]["area"], 3),
+              "keel_centroid_x_m": round(appn["keel"]["centroid_x"], 3), "rudder_area_m2": round(appn["rudder"]["area"], 3),
+              "rudder_pivots_m": [[round(c, 3) for c in A.rudder_pivot(cy)] for cy in (-H.HULL_Y, H.HULL_Y)],
+              "prop_axes_m": [[round(c, 3) for c in (ax[0], cy, ax[2])] for cy in (-H.HULL_Y, H.HULL_Y)],
+              "appendage_volume_built_m3": round(appn["total_volume"], 4),
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
-                      "waterline (hull_volume_m3) plus the appendages' allowance (two keels and two rudders, a guess "
-                      "until slice 5 builds them). design_hull_volume_m3 is the drawing's own integral "
+                      "waterline (hull_volume_m3) plus the appendages' (appendage_volume_m3: the keels, rudders and "
+                      "saildrives under the hulls' bottoms as slice 5 builds them, appendage_volume_built_m3, solved "
+                      "with the canoe depth). design_hull_volume_m3 is the drawing's own integral "
                       "(hull_lagoon42.hydrostatics), which solve_depth sets to the target. load_sink_m: how far the "
                       "game's stores and crew (3.4 t) sink these hulls below the light boat's waterline, from the mesh "
                       "(today's hulls: 0.148, the card's game.load_sink_m); lagoon42_check.py measures the draft and "
                       "air draft from it when it is here. helm_eye_m: the seated helmsman's eye at "
                       "the raised helm, to port as on the real boat (today's model, and the crew's helm position in "
-                      "CrewMotion, have it to starboard until slice 12)."}
+                      "CrewMotion, have it to starboard until slice 12). rudder_pivots_m (port, starboard) are the "
+                      "rudders' origins, the game's RudderPivot sockets; prop_axes_m the propellers' (slice 13)."}
     json.dump(report, open(os.path.join(OUT, "lagoon42_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
