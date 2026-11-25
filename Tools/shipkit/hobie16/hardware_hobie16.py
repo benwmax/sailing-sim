@@ -314,7 +314,9 @@ def hiking_straps(part, K):
         # up the crossbar's front face to the lashing, under its turns
         z_low = PL.tramp_top(L, x_end, y1) + th / 2 + 0.002
         pts += [np.array([face_x + 0.02, y1, z_low - 0.004]), np.array([face_x, y1, L["zr"] - 0.01]), bar_front]
-        PL.sweep(part, smooth(pts, 2), prof, "Strap", up=(0.0, 0.0, 1.0))
+        # (the frames' up leans a little forward: where the strap rises square up the bar's face its tangent is the
+        # vertical, and a frame from a vertical up there had no side: the starboard strap's rise was 128 NaN vertices)
+        PL.sweep(part, smooth(pts, 2), prof, "Strap", up=(0.25, 0.0, 1.0))
         # the front loop: the strap's end folded back and stitched (a short second layer), lashed through two grommets
         fx = pts[0]
         d = unit(pts[2] - pts[0])
@@ -511,6 +513,8 @@ def build(Sv=None):
                 rope(js, sagged(s0, mp, JS["lazy_sag_m"] * 0.15, 7)[:-1] + sagged(mp, s1, JS["lazy_sag_m"] * 0.35, 7),
                      rj, "SheetJib")
         tails[side] = (j_ex, j_t)
+        K.setdefault("jib_lead", {})[side] = bc             # (the game's JibLead and JibWinch sockets: build_hobie16)
+        K.setdefault("jib_cam", {})[side] = j_ex
     # the tail across the trampoline: out of each cam's fairlead, falling onto the trampoline aft of the front
     # crossbar, a loose bight between the cars
     (a, da), (b, db) = tails[1], tails[-1]

@@ -84,9 +84,14 @@ def sweep(part, path, prof, slot, up=(0.0, 0.0, 1.0), caps=True):
         for j in range(m):
             k = (j + 1) % m
             part.face((a + j, a + k, b + k, b + j), slot)
-    if caps:
-        part.face([rings[0] + j for j in range(m)][::-1], slot, flat=True)
-        part.face([rings[-1] + j for j in range(m)], slot, flat=True)
+    if caps:                 # each end a fan from the path's point (slice 8: the light copy's tool knows a rope, a wire
+        # or a rod as a tube by its fans, Tools/shipkit/jclass/light.py find_tubes, and builds it again round its
+        # centreline; capped with one polygon it was collapsed as a solid, a wire seen edge on going thin)
+        for r0, end, back in ((rings[0], path[0], True), (rings[-1], path[-1], False)):
+            c = part.add_verts([end])
+            for j in range(m):
+                tri = [c, r0 + j, r0 + (j + 1) % m]
+                part.face(tri[::-1] if back else tri, slot, flat=True)
     return rings
 
 

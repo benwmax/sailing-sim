@@ -1,0 +1,56 @@
+{
+ "1": {
+  "pair1": {
+   "view": "light_50_abeam",
+   "hero": "A"
+  },
+  "pair2": {
+   "view": "light_50_bow",
+   "hero": "B"
+  },
+  "pair3": {
+   "view": "light_100_abeam",
+   "hero": "A"
+  },
+  "pair4": {
+   "view": "light_100_bow",
+   "hero": "B"
+  }
+ },
+ "2": {
+  "pair1": {
+   "view": "light_50_abeam",
+   "hero": "A"
+  },
+  "pair2": {
+   "view": "light_50_bow",
+   "hero": "B"
+  },
+  "pair3": {
+   "view": "light_100_abeam",
+   "hero": "B"
+  },
+  "pair4": {
+   "view": "light_100_bow",
+   "hero": "B"
+  }
+ },
+ "3": {
+  "pair1": {
+   "view": "light_50_abeam",
+   "hero": "B"
+  },
+  "pair2": {
+   "view": "light_50_bow",
+   "hero": "B"
+  },
+  "pair3": {
+   "view": "light_100_abeam",
+   "hero": "A"
+  },
+  "pair4": {
+   "view": "light_100_bow",
+   "hero": "B"
+  }
+ }
+}

@@ -36,6 +36,7 @@ import rudder_hobie16 as RU  # noqa: E402
 import rig_hobie16 as RG  # noqa: E402
 import sails_hobie16 as SL  # noqa: E402
 import hardware_hobie16 as HWR  # noqa: E402
+import sockets_hobie16 as SK  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -203,7 +204,20 @@ def build_hardware(Sv):
     line, the 6:1's blocks and parts), H16Hw_JibSheet (the jib cars, cleats and sheet) and H16Hw_Lines (downhauls,
     outhaul, halyards' tails, the mast base's cleats), on the sails as slice 5 sheets them."""
     parts, K = HWR.build(Sv)
-    return [part_object(p, "H16Hw_" + p.name) for p in parts], HWR.report(K, Sv)
+    return [part_object(p, "H16Hw_" + p.name) for p in parts], HWR.report(K, Sv), K
+
+
+def write_sockets(Sv, K):
+    """Slice 8: the game's sockets (sockets_hobie16.py) added to slice 4's in <out>/hobie16_sockets.json."""
+    path = os.path.join(OUT, "hobie16_sockets.json")
+    socks = json.load(open(path))
+    g = SK.game_sockets(Sv["rig"], Sv, K)
+    socks["sockets"].update(g.pop("sockets"))
+    socks.update(g)
+    socks["note"] = ("Slice 4's rig sockets and slice 8's game sockets (rig_hobie16.sockets, sockets_hobie16.py): "
+                     "Unreal's frame, X forward, Y to starboard, Z up, cm, the body frame; each one's part in 'owner', "
+                     "the build object it sits on in 'near' (sockets_check_hobie16.py), where it comes from in 'from'.")
+    json.dump(socks, open(path, "w"), indent=1)
 
 
 def build_platform(hounds=None):
@@ -238,7 +252,8 @@ def main():
     rudders, rud = build_rudders()
     rig, rg = build_rig(rig_solved)
     sails, sl, Sv = build_sails(rig_solved)
-    hardware, hw = build_hardware(Sv)
+    hardware, hw, K = build_hardware(Sv)
+    write_sockets(Sv, K)
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)

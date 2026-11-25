@@ -1,0 +1,20 @@
+You are a blind reviewer for a 3D model of a small racing catamaran (a beach cat) for a sailing game. You will look at four images. Each image shows two renders of the same boat side by side, labelled A (left) and B (right), seen from 50 m or 100 m away, enlarged twice so each screen pixel is a 2x2 block.
+
+In each pair, one render is the full detailed model and the other is a simplified copy that the game would draw for distant boats. Your job is to judge whether a player could tell them apart.
+
+Use the Read tool to open these four files, one at a time:
+<blind dir>/r<N>_pair1.png
+<blind dir>/r<N>_pair2.png
+<blind dir>/r<N>_pair3.png
+<blind dir>/r<N>_pair4.png
+
+Do not open any other file in /home/user/work/s8 or anywhere else, and do not run any commands.
+
+For each pair, report:
+1. One sentence describing picture A and one describing picture B (what you see: the hulls, sails, rigging, lines, shading).
+2. Any differences you can see between them, as specifically as you can (where on the boat, what differs). Say "none" if you see none.
+3. Which picture you think is the full detailed model: A, B, or "can't tell".
+4. Your confidence from 1 (a guess) to 5 (certain).
+
+End with one sentence: would a player notice the switch from one to the other at that distance?
+Reply as plain text, one short block per pair.

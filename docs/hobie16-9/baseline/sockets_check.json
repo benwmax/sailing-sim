@@ -1,0 +1,222 @@
+{
+ "sockets": [
+  {
+   "socket": "MastBase",
+   "part": "SM_Hobie16_Mast",
+   "object": "H16Mast",
+   "distance_m": 0.0,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Masthead",
+   "part": "SM_Hobie16_Mast",
+   "object": "H16Mast",
+   "distance_m": 0.0,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Hounds",
+   "part": "SM_Hobie16_Mast",
+   "object": "H16Mast",
+   "distance_m": 0.0355,
+   "within_m": 0.05,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "ForestayTack",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Platform_Bridle",
+   "distance_m": 0.0025,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "ChainplateUpper_P",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Rig_Stays",
+   "distance_m": 0.0,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "ChainplateUpper_S",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Rig_Stays",
+   "distance_m": 0.0,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "MastStep",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Platform_Frame",
+   "distance_m": 0.0,
+   "within_m": 0.01,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "RudderPivot",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Rudder_P",
+   "distance_m": 0.0038,
+   "within_m": 0.06,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "RudderPivot_1",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Rudder_S",
+   "distance_m": 0.0038,
+   "within_m": 0.06,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "JibLead_P",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_JibSheet",
+   "distance_m": 0.0035,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "JibWinch_P",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_JibSheet",
+   "distance_m": 0.0,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "JibLead_S",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_JibSheet",
+   "distance_m": 0.0035,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "JibWinch_S",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_JibSheet",
+   "distance_m": 0.0,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "LazySheetVia",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Mast",
+   "distance_m": 0.0042,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Traveler_C",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_Mainsheet",
+   "distance_m": 0.0013,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Traveler_S",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Platform_Frame",
+   "distance_m": 0.05,
+   "within_m": 0.12,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Gooseneck",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Boom",
+   "distance_m": 0.0075,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "FootBrace_P",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_Straps",
+   "distance_m": 0.0026,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "FootBrace_S",
+   "part": "SM_Hobie16_Hull",
+   "object": "H16Hw_Straps",
+   "distance_m": 0.0026,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "MastheadAft",
+   "part": "SM_Hobie16_Mast",
+   "object": "H16Mast",
+   "distance_m": 0.0025,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Boom_Mainsheet",
+   "part": "SM_Hobie16_Boom",
+   "object": "H16Hw_Mainsheet",
+   "distance_m": 0.0053,
+   "within_m": 0.02,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "Boom_Clew",
+   "part": "SM_Hobie16_Boom",
+   "object": "H16Sail_Main",
+   "distance_m": 0.0008,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "RudderStock",
+   "part": "SM_Hobie16_Rudder",
+   "object": "H16Rudder_P",
+   "distance_m": 0.0018,
+   "within_m": 0.03,
+   "in_part": true,
+   "pass": true
+  },
+  {
+   "socket": "RudderBolt",
+   "part": "SM_Hobie16_Rudder",
+   "object": "H16Rudder_P",
+   "distance_m": 0.0076,
+   "within_m": 0.01,
+   "in_part": true,
+   "pass": true
+  }
+ ],
+ "fails": [],
+ "pass": true
+}
