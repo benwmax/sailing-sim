@@ -141,18 +141,46 @@
    "borders": [
     "rig"
    ]
+  },
+  "hardware": {
+   "objects": [
+    "MOTH_Tiller",
+    "MOTH_TillerExtension",
+    "MOTH_TwistGrip",
+    "MOTH_Fittings"
+   ],
+   "owns": [
+    "hardware_moth"
+   ],
+   "borders": [
+    "hull",
+    "gantry",
+    "rig"
+   ]
+  },
+  "lines": {
+   "objects": [
+    "MOTH_Lines"
+   ],
+   "owns": [
+    "hardware_moth.lines"
+   ],
+   "borders": [
+    "rig",
+    "hardware"
+   ]
   }
  },
  "joins": [
   {
    "a": "wings",
    "b": "hull",
-   "where": "the inner rails on the hull's deck edge, x -1.15 to 0.15"
+   "where": "the inner rails on the hull's deck edge, x -1.5 to 0.58"
   },
   {
    "a": "strut",
    "b": "hull",
-   "where": "the strut's case through the hull at x 0.30"
+   "where": "the strut's case through the hull at x 0.10"
   },
   {
    "a": "gantry",
@@ -163,6 +191,16 @@
    "a": "wand",
    "b": "hull",
    "where": "the bow fitting on the deck at the stem"
+  },
+  {
+   "a": "hardware",
+   "b": "gantry",
+   "where": "the tiller on the rudder's head"
+  },
+  {
+   "a": "hardware",
+   "b": "wand",
+   "where": "the pushrod from the wand's pivot along the deck to the strut's head"
   }
  ],
  "joins_note": "Slice 2: the wings' inner rails sit on the deck edge; slice 3 adds the gantry's feet on the transom and the strut's case."

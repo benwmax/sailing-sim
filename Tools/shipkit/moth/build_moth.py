@@ -25,6 +25,7 @@ import hull_moth as H  # noqa: E402
 import wings_moth as WG  # noqa: E402
 import foils_moth as FO  # noqa: E402
 import rig_moth as RG  # noqa: E402
+import hardware_moth as HW  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -35,7 +36,8 @@ N_STATIONS, N_SIDE = 180, 40          # stations along the hull; points up one s
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
 SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Carbon": (0.06, 0.06, 0.065),
             "Mesh": (0.12, 0.12, 0.13), "Foil": (0.1, 0.1, 0.11), "Alloy": (0.7, 0.7, 0.72),
-            "Sail": (0.85, 0.87, 0.9), "Batten": (0.2, 0.2, 0.22), "Wire": (0.6, 0.6, 0.62)}
+            "Sail": (0.85, 0.87, 0.9), "Batten": (0.2, 0.2, 0.22), "Wire": (0.6, 0.6, 0.62),
+            "Grip": (0.15, 0.15, 0.16), "Rope": (0.8, 0.35, 0.1)}
 
 
 def clear_scene():
@@ -263,6 +265,23 @@ def build_rig():
     return obs, info
 
 
+def build_hardware():
+    """The tiller, its extension and twist grip (one object each: the game turns them), the fittings and the lines."""
+    parts, _ = HW.geometry()
+    slot = {"MOTH_Tiller": "Carbon", "MOTH_TillerExtension": "Carbon", "MOTH_TwistGrip": "Grip", "MOTH_Fittings": "Alloy",
+            "MOTH_Lines": "Rope"}
+    obs = []
+    for name, specs in parts.items():
+        bm = bmesh.new()
+        for spec in specs:
+            if spec[0] == "tube":
+                add_tube(bm, [tuple(p) for p in spec[1]], spec[2], 8 if name == "MOTH_Lines" else 12, spec[3])
+            elif spec[0] == "pod":
+                add_pod(bm, tuple(spec[1]), spec[2], spec[3], n=12, sides=12)
+        obs.append(finish(bm, name, slot[name]))
+    return obs
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -283,6 +302,7 @@ def main():
     frame, deck = build_wings()
     foils, finfo = build_foils()
     rig, rinfo = build_rig()
+    hw = build_hardware()
     g = H.CARD["game"]
     report = dict(rep)
     report.update({
@@ -302,7 +322,7 @@ def main():
     report.update({"sail_area_m2": round(rinfo["sail_area_m2"], 4), "luff_length_m": round(rinfo["luff_length_m"], 4),
                    "roach": round(rinfo["roach"], 4)})
     json.dump({"boat": "Moth (Lacewing 11)", "frame": "Unreal: x forward, y starboard, z up, cm; z 0 the design "
-               "waterline at rest", "sockets": {**FO.sockets(finfo), **rinfo["sockets"]}},
+               "waterline at rest", "sockets": {**FO.sockets(finfo), **rinfo["sockets"], **HW.sockets()}},
               open(os.path.join(OUT, "Moth_sockets.json"), "w"), indent=1)
     json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
@@ -312,6 +332,8 @@ def main():
     rt = sum(len(p.vertices) - 2 for o in rig for p in o.data.polygons)
     print(f"MOTH rig: sail {rinfo['sail_area_m2']:.3f} m^2 (roach {rinfo['roach']:.3f}), luff {rinfo['luff_length_m']:.3f} m, "
           f"triangles {rt}")
+    ht = sum(len(p.vertices) - 2 for o in hw for p in o.data.polygons)
+    print(f"MOTH hardware: {', '.join(o.name for o in hw)}, triangles {ht}")
     ft = sum(len(p.vertices) - 2 for o in foils for p in o.data.polygons)
     a = FO.areas()
     print(f"MOTH foils: main {a['main_foil_area_m2']:.4f} m^2 (flap {a['flap_area_m2']:.4f}), elevator "

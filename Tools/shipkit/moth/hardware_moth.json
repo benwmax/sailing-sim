@@ -1,0 +1,10 @@
+{
+ "about": "The moth's hardware and lines (docs/moth-7): what the sailor steers and trims with, and the linkage that makes the wand work the flap. Game frame for x and z (forward from the hull's middle, up from the design waterline), y to port as Blender's, metres. Invented fittings in generic shapes: no maker's parts or names.",
+ "tiller": {"length_m": 0.55, "d_m": 0.026, "rise_deg": 6.0, "note": "a short carbon tiller from the rudder's head forward over the transom; the extension's universal joint at its end"},
+ "extension": {"length_m": 1.65, "d_m": 0.02, "d_end_m": 0.017, "rise_deg": 18.0, "out_deg": 0.0, "grip_m": 0.2, "grip_d_m": 0.032, "note": "the tiller extension, drawn straight forward along the centreline and rising; the twist grip at its end turns a cable down the rudder that sets the elevator's angle (fore-and-aft trim) on top of the steering (MOTH_TwistGrip, socket TwistGrip)"},
+ "mainsheet": {"boom_frac": 0.62, "deck_block_x": -1.4, "ratchet_x": 0.35, "d_m": 0.006, "block_d_m": 0.04, "note": "the mainsheet: from a block under the boom about 60% of the way out, down to a block on the aft deck, then forward along the deck to a ratchet block by the wings' front bar, where the sailor holds the tail. Drawn two-part between the boom and the deck"},
+ "vang": {"boom_from_goose_m": 0.55, "deck_fwd_of_mast_m": -0.12, "d_m": 0.005, "note": "the vang (kicker): a cascade of rope and two small blocks from the mast's foot to the boom, led aft to the sailor"},
+ "cunningham": {"d_m": 0.004, "note": "a short line from the sail's tack cringle down to a block at the mast's foot, led aft to the sailor beside the vang"},
+ "pushrod": {"d_m": 0.012, "note": "the wand's pushrod: from the wand's pivot along the deck to the main strut's head, where a bellcrank turns it into the rod down the strut to the flap (inside the strut, not drawn); the ride-height adjuster is a knob on the bow fitting, the gearing adjuster a slotted arm at the strut's head"},
+ "ram": {"h_m": 0.05, "d_m": 0.07, "note": "the mast's step: a short collar on the deck"}
+}

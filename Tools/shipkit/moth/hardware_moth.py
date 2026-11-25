@@ -1,0 +1,110 @@
+"""The moth's hardware and lines from hardware_moth.json: pure geometry, no Blender (docs/moth-7).
+
+Frame: Blender's (x forward, y to PORT, z up, metres, z = 0 the design waterline at rest); hull_moth.STATE must be
+solved first. parts() returns {name: [("tube", points, d, d_end) | ("pod", start, length, d) | ("box", centre, size)]}
+for build_moth.py, sockets() the attach points the game needs (Unreal frame, cm).
+"""
+import json
+import math
+import os
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+K = json.load(open(os.path.join(HERE, "hardware_moth.json")))
+
+
+def _mods():
+    import hull_moth as H
+    import foils_moth as F
+    import rig_moth as RG
+    return H, F, RG
+
+
+def deck_z(x):
+    H, _, _ = _mods()
+    return H.sheer_z(min(max(x, H.TRANSOM_X), H.STEM_X)) + H.SEC["deck_crown_m"]
+
+
+def tiller_line():
+    """(rudder head, universal joint, grip end) of the tiller and its extension."""
+    _, F, _ = _mods()
+    _, info = F.geometry()
+    t, e = K["tiller"], K["extension"]
+    head = np.array([info["x_rudder"], 0.0, info["z_gantry"] + F.F["rudder"]["head_above_gantry_m"]])
+    a = math.radians(t["rise_deg"])
+    joint = head + np.array([math.cos(a), 0.0, math.sin(a)]) * t["length_m"]
+    b, o = math.radians(e["rise_deg"]), math.radians(e["out_deg"])
+    end = joint + np.array([math.cos(b) * math.cos(o), math.cos(b) * math.sin(o), math.sin(b)]) * e["length_m"]
+    return head, joint, end
+
+
+def geometry():
+    H, F, RG = _mods()
+    parts, pts = {}, {}
+    head, joint, end = tiller_line()
+    t, e = K["tiller"], K["extension"]
+    parts["MOTH_Tiller"] = [("tube", [head, joint], t["d_m"], t["d_m"] * 0.85), ("pod", joint - np.array([0.03, 0, 0]), 0.06, 0.03)]
+    u = (end - joint) / np.linalg.norm(end - joint)
+    grip0 = end - u * e["grip_m"]
+    parts["MOTH_TillerExtension"] = [("tube", [joint, grip0], e["d_m"], e["d_end_m"])]
+    parts["MOTH_TwistGrip"] = [("tube", [grip0, end], e["grip_d_m"], e["grip_d_m"] * 0.95)]
+    # the boom's points
+    goose, bend = RG.boom_line()
+    ms = K["mainsheet"]
+    bpt = goose + (bend - goose) * ms["boom_frac"]
+    bblock = bpt - np.array([0, 0, 0.05])
+    dblock = np.array([ms["deck_block_x"], 0.0, deck_z(ms["deck_block_x"]) + 0.04])
+    ratchet = np.array([ms["ratchet_x"], 0.0, deck_z(ms["ratchet_x"]) + 0.045])
+    lines = [("tube", [bblock + np.array([0, 0.012, 0]), dblock + np.array([0, 0.012, 0])], ms["d_m"], None),
+             ("tube", [bblock - np.array([0, 0.012, 0]), dblock - np.array([0, 0.012, 0])], ms["d_m"], None),
+             ("tube", [dblock + np.array([0.02, 0, 0.0]), ratchet - np.array([0.03, 0, 0])], ms["d_m"], None),
+             ("tube", [ratchet + np.array([0.0, 0.0, 0.0]), ratchet + np.array([0.12, 0.10, 0.01]), ratchet + np.array([0.25, 0.26, 0.0])], ms["d_m"], None)]
+    fittings = [("pod", bblock - np.array([ms["block_d_m"] / 2, 0, 0]), ms["block_d_m"], ms["block_d_m"] * 0.9),
+                ("pod", dblock - np.array([ms["block_d_m"] / 2, 0, 0]), ms["block_d_m"], ms["block_d_m"] * 0.9),
+                ("pod", ratchet - np.array([0.03, 0, 0]), 0.06, 0.05)]
+    # the vang: mast foot to the boom
+    v = K["vang"]
+    mb = RG.mast_point(0.0)
+    vfoot = np.array([mb[0] + v["deck_fwd_of_mast_m"], 0.0, deck_z(mb[0] + v["deck_fwd_of_mast_m"]) + 0.03])
+    vboom = goose + (bend - goose) / np.linalg.norm(bend - goose) * v["boom_from_goose_m"] - np.array([0, 0, 0.03])
+    vmid = vfoot + (vboom - vfoot) * 0.55
+    for dy in (0.008, -0.008):
+        lines.append(("tube", [vfoot + np.array([0, dy, 0]), vmid + np.array([0, dy, 0])], v["d_m"], None))
+        lines.append(("tube", [vmid + np.array([0, dy, 0]), vboom + np.array([0, dy, 0])], v["d_m"], None))
+    fittings += [("pod", vmid - np.array([0.018, 0, 0]), 0.036, 0.03), ("pod", vfoot - np.array([0.02, 0, 0]), 0.04, 0.035)]
+    # the cunningham: tack to the mast foot, then both control tails aft along the deck to the sailor
+    _, tack, _, _ = RG.sail_outline(RG.solve_roach())
+    cfoot = np.array([mb[0] + 0.05, 0.0, deck_z(mb[0] + 0.05) + 0.02])
+    lines.append(("tube", [tack + np.array([-0.01, 0, 0]), cfoot], K["cunningham"]["d_m"], None))
+    for dy, src in ((0.02, cfoot), (-0.02, vfoot)):
+        lines.append(("tube", [src, np.array([mb[0] - 0.25, dy, deck_z(mb[0] - 0.25) + 0.008]),
+                               np.array([ms["ratchet_x"] - 0.15, dy * 3, deck_z(ms["ratchet_x"] - 0.15) + 0.008])],
+                      K["cunningham"]["d_m"], None))
+    # the mast's step collar
+    r = K["ram"]
+    fittings.append(("tube", [mb - np.array([0, 0, 0.01]), mb + np.array([0, 0, r["h_m"]])], r["d_m"], r["d_m"] * 0.9))
+    # the wand's pushrod along the deck to the strut head, and the adjusters
+    _, info = F.geometry()
+    piv = np.array(info["wand_pivot"])
+    sx = F.F["strut"]["x_quarter_chord"]
+    shead = np.array([sx + 0.03, 0.0, deck_z(sx) + 0.03])
+    rod = [piv + np.array([-0.02, 0, -0.01])]
+    for x in np.linspace(piv[0] - 0.15, sx + 0.12, 8):
+        rod.append(np.array([x, 0.0, deck_z(x) + 0.022]))
+    rod.append(shead)
+    fittings.append(("tube", rod, K["pushrod"]["d_m"], None))
+    fittings.append(("pod", shead - np.array([0.06, 0, 0]), 0.12, 0.045))             # the bellcrank housing and gearing arm
+    fittings.append(("pod", piv - np.array([0.05, 0, 0.0]), 0.07, 0.035))             # the ride-height knob on the fitting
+    parts["MOTH_Fittings"] = fittings
+    parts["MOTH_Lines"] = lines
+    pts.update({"TillerJoint": joint, "TwistGrip": end, "MainsheetBoom": bblock, "MainsheetDeck": dblock,
+                "MainsheetRatchet": ratchet, "VangBoom": vboom, "VangDeck": vfoot, "Cunningham": cfoot,
+                "PushrodStrut": shead})
+    return parts, pts
+
+
+def sockets():
+    _, pts = geometry()
+    cm = lambda p: [round(float(p[0]) * 100, 2), round(-float(p[1]) * 100, 2), round(float(p[2]) * 100, 2)]  # noqa: E731
+    return {k: cm(v) for k, v in pts.items()}
