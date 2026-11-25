@@ -1321,6 +1321,15 @@ if (Surface > 17.5)
     float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
     gw = LP.y * 0.9 + 40.0 * gwH + 0.4 * sin(LP.x * 0.021 + 6.3 * gwH) + 0.15 * sin(LP.x * 0.083 + 3.0 * gwH);
 }
+else if (abs(Surface - 7.0) < 0.5 && VC.r < 0.5)
+{
+    // Frigate decks (teak with the Grain attribute): each plank its own near-straight grain, as the laid deck above, by its
+    // place across the deck (10 in planks), so one figure doesn't run across the seams and foreshorten into chevrons
+    // (the PC's orlop stills at 2fb7bc35: a zigzag moire over the whole floor at 4K).
+    float gwP = floor(g.y / 25.4);
+    float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
+    gw = g.y * 0.9 + 40.0 * gwH + 0.4 * sin(g.x * 0.021 + 6.3 * gwH) + 0.15 * sin(g.x * 0.083 + 3.0 * gwH);
+}
 gw /= max(GrainScale, 0.1);   // Frigate: a ship's timbers read from further off, so her figure is coarser (GrainScale 3)
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 // The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
