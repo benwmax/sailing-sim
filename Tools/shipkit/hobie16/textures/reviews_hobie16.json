@@ -1,0 +1,1840 @@
+{
+ "method": "Three fresh reviewers a round, each given only the seven blind sheets (docs/hobie16-8/blind/<sheet>.jpg) and the cards' level descriptions, described each panel A to E first (so the letters are tied to what they saw), then put each sheet's letters in level order (each level once) and named the least convincing thing on each sheet. Rule (wear_check_hobie16.py): a reviewer passes a sheet with all five right or one swap of neighbouring levels; a sheet passes when at least three reviewers do. Each round's reviewers are new; the rounds' renders differ (the fixes between them are in docs/hobie16-8). From round 2 they also compared the round's renders with round 1's at six years half kept and twenty years neglected (A or B, left and right shuffled per sheet; from round 4 shuffled per reviewer too, since rounds 2 and 3 showed a pull toward B): 'ab' holds each round's keys, winners and tallies.",
+ "round": 5,
+ "reviewers": {
+  "r1": {
+   "ladder": {
+    "topsides": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L3",
+     "D": "L4",
+     "E": "L2"
+    },
+    "keel": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L1"
+    },
+    "deck": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "tramp": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "corner": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "mast": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L2",
+     "D": "L1",
+     "E": "L4"
+    },
+    "rudder": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L1",
+     "E": "L2"
+    }
+   },
+   "least_real": {
+    "topsides": "The wear is only soft horizontal colour bands smeared along the whole length, with no scratches, spatter or local detail, so it reads like a gradient rather than chalked gelcoat.",
+    "keel": "The worn keel band starts at a hard vertical line partway along the hull, like a texture-panel edge, instead of following where she sits on the sand.",
+    "deck": "The lacing and control lines stay bright, clean white even on the 20-year neglected boat.",
+    "tramp": "The trampoline is a smooth flat sheet with no visible weave at any age, so the fading and mildew sit on a surface that doesn't read as woven mesh.",
+    "corner": "The white oxide is a uniform salt-and-pepper sandpaper speckle over the whole crossbar, not concentrated at scratches and edges.",
+    "mast": "The cast mast-step ball and the fittings stay bright and glossy at every age, even the 20-year neglected one.",
+    "rudder": "The big rudder castings and gudgeons stay the same clean pale grey at every age, including the 20-year neglected one."
+   },
+   "ab": {
+    "topsides": "B",
+    "keel": "A",
+    "deck": "B",
+    "tramp": "B",
+    "corner": "B",
+    "mast": "B",
+    "rudder": "B"
+   },
+   "ab_why": {
+    "topsides": "B's grime gathered low along the waterline reads more like beach dirt than A's uniform soft streaks, though B's blotches are too blurry.",
+    "keel": "A puts the scuffing and tan streaks along the keel bottom where she drags on sand, while B's all-over camouflage mottle on the upper hull looks like a noise texture.",
+    "deck": "B's uneven grey runs on the hulls and patchy crossbars look more like real weathering than A's uniform cream with even speckle, though the difference is small.",
+    "tramp": "B's mildew gathered toward the edges and its grimy mottled mast sell twenty years of neglect better than A's faint, even greenish patches.",
+    "corner": "B's patchy, blotchy loss of anodising on the crossbar is closer to real weathered aluminium than A's uniform sandpaper speckle.",
+    "mast": "B's mottled, uneven spar fading and mildewed trampoline look like real exposure, while A's look like a clean, flat recolour.",
+    "rudder": "B's greyer, chalkier hull with a tan waterline band looks more consistently aged than A's clean hull with a single brown streak."
+   }
+  },
+  "r2": {
+   "ladder": {
+    "topsides": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L3",
+     "D": "L4",
+     "E": "L2"
+    },
+    "keel": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L1"
+    },
+    "deck": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "tramp": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "corner": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "mast": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L2",
+     "D": "L1",
+     "E": "L4"
+    },
+    "rudder": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L1",
+     "E": "L2"
+    }
+   },
+   "least_real": {
+    "topsides": "Wear shows only as tint and soft horizontal streaks with no visible scratches, chalk grain or scrapes, so L0 and L1 look identical.",
+    "keel": "The mottle on the overhead hull's underside reads as cloudy procedural noise rather than chalk or sand scratches.",
+    "deck": "A and B are nearly pixel-identical, so the first season's dust and softer gloss don't register at this distance.",
+    "tramp": "The L3 'newer trampoline' is as faded grey as the six-year one instead of looking freshly replaced.",
+    "corner": "The L4 mildew along the crossbar edge is saturated grass-like green streaks rather than a dull film.",
+    "mast": "The L4 mast is a uniform pale grey that reads as paint, not patchy oxidised anodising with white powder.",
+    "rudder": "The scuff texture on the blade tips is a fine regular noise that looks tiled rather than like real scrape marks."
+   },
+   "ab": {
+    "topsides": "B",
+    "keel": "B",
+    "deck": "same",
+    "tramp": "A",
+    "corner": "B",
+    "mast": "A",
+    "rudder": "B"
+   },
+   "ab_why": {
+    "topsides": "B's chalk grades smoothly and plausibly, while A's floating dark blotches and high tan stripe look painted on.",
+    "keel": "B's keel patches read as wear through to laminate and the ages differ, while A barely changes over 14 extra years.",
+    "deck": "The differences are too small to separate at this framing.",
+    "tramp": "A's mildew and edge dirt are more readable and believable, though the camouflage blotches on its mast are odd.",
+    "corner": "B's speckled white powder on the anodising and its edge mildew match neglected aluminium and old webbing better.",
+    "mast": "A's patchy oxide and mildew where water sits look like real weathering, while B reads as flat repaint.",
+    "rudder": "B's scuffed blade tip and dirty waterline show more convincing wear for both ages."
+   }
+  },
+  "r3": {
+   "ladder": {
+    "topsides": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L3",
+     "D": "L4",
+     "E": "L2"
+    },
+    "keel": {
+     "A": "L2",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L1"
+    },
+    "deck": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "tramp": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L4",
+     "D": "L0",
+     "E": "L3"
+    },
+    "corner": {
+     "A": "L2",
+     "B": "L3",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "mast": {
+     "A": "L0",
+     "B": "L3",
+     "C": "L2",
+     "D": "L1",
+     "E": "L4"
+    },
+    "rudder": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L1",
+     "E": "L2"
+    }
+   },
+   "least_real": {
+    "topsides": "The wear is only soft horizontal smears of colour with no crazing, scratches or chalk texture, so the older panels look like a blurred gradient rather than worn gelcoat.",
+    "keel": "The dark speckle across the hull bottoms in A and C looks like a tiled noise texture, not sand scratches or chalk.",
+    "deck": "C's hulls are an even yellow-cream with no chalk, streaks or grime gradient, so the neglected boat looks tinted rather than dirty.",
+    "tramp": "C's mildew is evenly spread camouflage-like blotches over the whole tramp, with no frayed edges and no build-up at seams or where water pools.",
+    "corner": "C's bright green streaks beside the crossbar look like painted blades of grass rather than mildew in the weave.",
+    "mast": "E's mast and boom carry large soft pale camouflage patches instead of fine white oxide powder at scratches and edges.",
+    "rudder": "The coarse grain at the rudder blade tips (B, E) looks like a noise overlay rather than sand abrasion, and the castings show no oxide even at L4."
+   },
+   "ab": {
+    "topsides": "B",
+    "keel": "A",
+    "deck": "A",
+    "tramp": "A",
+    "corner": "A",
+    "mast": "A",
+    "rudder": "A"
+   },
+   "ab_why": {
+    "topsides": "A's two dark cloud-like stains look like render smudges and repeat at both ages, while B reads as chalk and film that worsens with age.",
+    "keel": "A's scraped grey band along the keel reads as beach wear, while B's soft dark clouds look like unexplained stains.",
+    "deck": "A's neglected tramp shows visible mildew so the two ages separate more clearly, though B's hull grime is also plausible.",
+    "tramp": "A's mildew collecting toward the edges reads as twenty neglected years, though its blotchy mast pattern is unconvincing.",
+    "corner": "A's fine speckle on the crossbar looks like real oxidised anodising, while B's big blotches look like camouflage, even though A's green streaks look like grass.",
+    "mast": "A's 20-year boat clearly reads as neglected with mildew and dull spars, while B's two ages look almost the same.",
+    "rudder": "A's tan line and scuffed bottom edge are recognisable beach-boat wear, while B's extra age reads mostly as darker lighting."
+   }
+  }
+ },
+ "earlier": {
+  "round_1": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The 'streaks under the pylons' are the same two soft round grey blobs repeated at the same spacing in every worn panel, reading as a stamped decal rather than streaks running down the topsides.",
+     "keel": "The keel scrape is a blurry dark cloud on the side of the hull bottom rather than linear wear along the keel line, and no keel strip or grey laminate is visible at any level.",
+     "deck": "The L3 'newer trampoline' is as faded grey as the L2 one, so the replacement doesn't show.",
+     "tramp": "The green mildew is large soft camouflage blotches in the open middle of the trampoline rather than at seams, edges and under the straps, and no edge fraying is visible.",
+     "corner": "The crossbar wear is a marble or camouflage mottle rather than scratches with white oxide in them, and it looks nearly the same pattern at L2 and L4.",
+     "mast": "The spars barely age except for getting uniformly lighter grey, with no visible white powder or oxide at scratches at L4 and only a faint bronze shift at L3.",
+     "rudder": "The dark diagonal scuff on the rudder blade tip is already about as strong at the one-season level as at the neglected one, while the cast rudder fittings look identical at every level."
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The black streaks under the pylons are soft, out-of-focus grey blobs along the bottom edge that look like shadows rather than vertical run-down streaks, and they already show at L1.",
+     "keel": "The scraped keel is soft cloudy grey patches, not straight scrapes along the keel line, and nowhere looks worn through to laminate.",
+     "deck": "The L4 hulls go evenly beige-yellow like a colour filter, when heavy chalking should look whiter, flat and patchy.",
+     "tramp": "The mildew is a few large soft green clouds, and the edges and lacing show no fraying at all.",
+     "corner": "The oxide is one even mottled noise over the whole tube, instead of gathering at scratches, edges and contact points.",
+     "mast": "The spars hardly change across the levels and the L3 bronze fade is barely visible; almost all the difference comes from the trampoline and straps.",
+     "rudder": "The wear at the blade tip is a wavy marbled pattern that looks like water caustics, not the scrapes and scuffs a blade gets from beaching."
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The 'black streaks' are soft round dark blobs along the waterline rather than streaks running down from the pylons, and the tan line is a perfectly even horizontal stripe.",
+     "keel": "Keel wear is a dark diffuse smudge cloud instead of grey laminate showing through with sand scratches running along the keel.",
+     "deck": "Levels differ almost only by an overall colour tint: no chalky texture, no streaks under the pylons, no local wear along the walks.",
+     "tramp": "The mildew is large soft green clouds over the middle while the edges show no fraying and the weave never shows through the bleaching.",
+     "corner": "The crossbar's oxide is uniform noisy speckle along the whole tube rather than at scratches and edges, and the corner casting reads as dark moulded plastic rather than bare cast aluminium.",
+     "mast": "The spars age only by turning lighter and flatter grey, with no visible bronze shift, scratches or white oxide powder, and the mast-base casting stays bright even at L4.",
+     "rudder": "The blade-tip wear is a wavy grey pattern that looks like reflected ripples or caustics rather than abrasion from beaching."
+    }
+   }
+  },
+  "round_2": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The neglected hull's waterline grime is a row of hard-edged rectangular grey-green tiles rather than a soft scum line.",
+     "keel": "Thin brown lines run along the hulls like painted pinstripes instead of a tan waterline or scratches.",
+     "deck": "The neglected hulls are an even cream-beige like paint, not chalky white with dirt gathered in corners.",
+     "tramp": "The 30-year boat's supposedly newer trampoline is almost as faded and grey as the 6-year one.",
+     "corner": "The neglected trampoline's frayed edge is a bright streaky white fringe that looks like a noise overlay, not loose threads.",
+     "mast": "The neglected spars are a smooth even grey with no white powder or pitting, so they read as grey paint.",
+     "rudder": "The grey rudder castings and stocks look identical from new to 20 years neglected."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "B",
+     "deck": "same",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "B's soft chine stains look organic, where A's 20-year waterline band is plainly tiled, though B's two ages differ little.",
+     "keel": "B's fine sand scratches and grey worn strip match a beach-dragged keel, while A's dark blotches read as dirt stains.",
+     "deck": "The two are practically indistinguishable at both ages.",
+     "tramp": "B's green-grey mildew blotches give the neglected trampoline the uneven bleaching it should have, while A's is evenly faded.",
+     "corner": "B's pitted, oxide-scabbed spar and rubbed casting edges are convincing, and it avoids A's fake white fringe.",
+     "mast": "B's spars carry scratches and oxide speckle like aged anodising, while A's are smooth and look painted.",
+     "rudder": "B's worn grey blade tip is believable, while A's pale wavy streaks look like contour-line artefacts."
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "D's waterline grime is a row of rectangular blocks with hard vertical seams, reading as tiled texture rather than organic scum.",
+     "keel": "C's tan line is a crisp, even-width brown pinstripe at a constant height, which looks painted rather than like a stain that varies with trim.",
+     "deck": "C's hulls are an even beige, like a differently coloured gelcoat rather than chalk with a grubby film.",
+     "tramp": "C's mildew is an even green-grey wash with soft cloudy blotches, and the edges have no fraying or bleached sun side.",
+     "corner": "C's frayed edge is a bright band of uniform white hair-like streaks that looks like a stamped texture, not torn, unravelling mesh.",
+     "mast": "E's neglected spars are a warm brown much like the 30-year bronze rather than oxidised grey with white powder.",
+     "rudder": "The cast rudder heads and gudgeons stay the same clean light grey in all five panels, with no oxide or grime even at L4."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "B",
+     "deck": "B",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "B's waterline grime is irregular and organic, while A's 20-year grime breaks into tiled rectangles.",
+     "keel": "B's directional sand scratches and grey band where the hull drags up the beach read as real beaching wear; A's patches look like dirt smudges.",
+     "deck": "B's dull grey anodising and chalky white gelcoat match ageing better than A's uniformly brown-and-cream tint.",
+     "tramp": "B's patchy, uneven mildew and dirt look more like a neglected tramp than A's uniform green-grey wash.",
+     "corner": "B's mottled oxide and subdued fray look like corroded anodising and old mesh; A's pale flecks look like paint chips and its fray like a decal.",
+     "mast": "B adds scratches and scuffs on the handled crossbar edges, though both spars are too uniformly brown (narrow call).",
+     "rudder": "B's wear sits at the blade tip and edge, where beaching hurts a rudder; A's wavy bands near the tip look like a procedural artefact."
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "D's waterline grime band is made of soft rectangular blocks with vertical seams, reading as a tiled texture rather than dirt.",
+     "keel": "The tan line in C (and A) is several thin brown pinstripes along the hull, like marble veining, not one diffuse tide line.",
+     "deck": "C's hulls are a uniform cream tint all over instead of chalk with grime gathered where people walk and handle the boat.",
+     "tramp": "C's green mildew is a soft cloudy tint over the whole panel with no spotty colonies in the seams or edges and no fraying.",
+     "corner": "C's frayed trampoline edge is bright white streaks smeared along the fabric like brushed paint, not loose threads at the hem.",
+     "mast": "E's spars are a smooth uniform taupe, like weathered wood, with no visible white powdery oxide or scratches.",
+     "rudder": "B's tan line is a thin brown pencil line drawn high across the hull rather than a diffuse stain band at the waterline."
+    },
+    "ab": {
+     "topsides": "A",
+     "keel": "A",
+     "deck": "B",
+     "tramp": "A",
+     "corner": "A",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "A's chalk is even and plausible, while B's dark oval smudges float on the hull like blots (A's 20-year band does show block seams).",
+     "keel": "A puts the scraped grey wear on the keel bottom where the beach hits it, while B's wavy wood-grain streaks across the whole hull read as a texture artefact.",
+     "deck": "B shows oxide scuffs along the crossbar edges where wear really happens; otherwise the two are nearly the same.",
+     "tramp": "A's soft discolouration reads as aged fabric, while B's hard-edged cellular mildew patches look procedural.",
+     "corner": "A's white oxide flecks match corrosion at the scratches, while B's all-over grey mottling on the rail looks like camouflage paint.",
+     "mast": "Only slightly B: the scuffed edge wear on its crossbar puts the scratches somewhere believable; the two are nearly the same.",
+     "rudder": "B's wear sits along the hull bottom and blade tip where a beach boat is scraped, while A's wavy smears on the blade look like an artefact."
+    }
+   }
+  },
+  "round_3": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The neglected hull is only a soft grey-beige wash with blurry horizontal bands (no chalk texture, grime streaks or scrapes), so it reads as dimmer lighting, and the new and first-season panels are nearly identical.",
+     "keel": "The tan staining is long thin parallel pinstripes along the hull, like painted lines rather than waterline staining or keel wear.",
+     "deck": "The new and first-season panels show no visible difference, and the 20-year trampoline reads only as lighter grey with no visible mildew, fraying or dirty walks.",
+     "tramp": "The 20-year trampoline is an evenly bleached flat grey-brown with no visible green mildew, no wear along the walks and no frayed edges.",
+     "corner": "The bare cast aluminium corner casting looks like dark grey plastic at every age, never bright metal and never visibly oxidised.",
+     "mast": "The 30-year spars are an even chocolate brown like paint rather than sun-faded anodising, with no sun/shade difference and no visible scratches.",
+     "rudder": "The rudder blade and cast rudder head hardly change across the five levels; only the hull tone moves."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "B",
+     "deck": "A",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "A's dark blotches look like stains from a rendering error and its two ages barely differ, while B grows grubbier toward the keel and with age.",
+     "keel": "B's fine sandy scratch texture reads like real beach wear, while A's regular tan pinstripes and smudges look painted on.",
+     "deck": "By a small margin: A keeps the six-year and neglected anodising dull grey as the brief describes, while B's browner frame looks like the 30-year bronze fade.",
+     "tramp": "B's 20-year trampoline shows distinct blotchy mildew patches like a neglected beach-cat trampoline, while A's is only a faint even mottle.",
+     "corner": "By a small margin: B's worn casting and yellowing 20-year hull look more aged than A's uniform sandpaper grit, though B's frame blotches look a bit like camouflage.",
+     "mast": "By a small margin: B's grainy, speckled spar surface suggests oxidised anodising better than A's smooth tube.",
+     "rudder": "B's rudder tips are scraped and worn as a beach-launched cat's would be, while A's blades stay like new at both ages."
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The grime on the older hulls is soft full-length horizontal blur bands, like a smeared gradient, not streaks or a film that follows fittings and the waterline.",
+     "keel": "The lower-hull wear stops at a hard vertical seam, and the underside scratches look like rippled water caustics spread evenly instead of concentrated along the keel line.",
+     "deck": "The twenty-year neglected hulls are just evenly tinted cream and clean, with no chalk, grubby film or worn keels.",
+     "tramp": "The neglected tramp's mildew is an even cloudy green-brown blur rather than spots gathered at seams and edges, and no fraying shows.",
+     "corner": "The crossbar's white oxide is an even sandpaper speckle over the whole tube rather than powder at scratches and contact points.",
+     "mast": "The cast mast-step ball and fittings stay clean and bright grey even on the neglected boat.",
+     "rudder": "The cast aluminium rudder head looks like the same clean matte grey plastic at every age."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "A",
+     "deck": "A",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "B's grime band builds believably with age, while A's dark blotches look stamped on and A barely changes between six and twenty years.",
+     "keel": "A puts the scraping where a beached cat touches the sand, while B's even caustic-like ripples over the whole underside don't read as wear.",
+     "deck": "A's six-year spars are dull grey as half-kept anodising should be (B's look bronze, a thirty-year trait), and A's neglected tramp shows real staining.",
+     "tramp": "B's neglected tramp shows distinct mildew patches, where A's is only an even fade.",
+     "corner": "B's patchy white oxide and worn end cap look like real corroded anodising and handled castings, where A's uniform speckle looks like noise.",
+     "mast": "B's spars show the speckled white powder of failed anodising, while A's stay smooth clean grey.",
+     "rudder": "B shows scraped blade tips, a grey worn keel and a waterline that grows with age, while A barely ages."
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "The wear is only soft horizontal colour banding, with no grain, scratch or chalk texture, so the older hulls read as tinted plastic rather than weathered gelcoat.",
+     "keel": "The keel wear is a flat, uniform grey band with a hard vertical edge at its forward end instead of fading along the keel line as beach scraping does.",
+     "deck": "C's neglected trampoline is an evenly faded sheet with no dirt along the walks, mildew or frayed edges.",
+     "tramp": "In C the green cast is an even wash over the whole sheet and straps, not concentrated along the walking paths, and the edges are not frayed.",
+     "corner": "The moulded corner casting and the bright white lacing stay clean and unchanged even on the neglected C.",
+     "mast": "On the neglected E, the mast-step casting stays bright silver and the control lines stay clean white, with no grime or oxide.",
+     "rudder": "The cast rudder head looks like smooth matte grey plastic, unchanged at every age, with no grime or oxide even on B."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "B",
+     "deck": "A",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "same",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "A's dark ovals along the bottom look like repeated stamps, while B's even chalk and grime reads like real oxidised gelcoat and gets clearly worse with age.",
+     "keel": "B's fine streaky scuffing reads as sand scratches, while A's crisp brown lines look painted on; neither keel looks worn through to grey laminate at 20 years.",
+     "deck": "A's grey bars fit dull and oxidised anodising, while B's brown reads more like a well-kept boat faded to bronze; the difference is small.",
+     "tramp": "B's patchy green mildew is how real trampolines go, though neither shows fraying or wear along the walks.",
+     "corner": "B's localised white oxide and worn cap rim look like real anodised aluminium on a beach boat, while A's uniform grain looks applied all over.",
+     "mast": "The differences are marginal, and neither shows white oxide at scratches or a grimy mast-step casting.",
+     "rudder": "B's scraped blade tip and scratched hull bottom are where a beach-launched boat wears, while A's clean blade does not look 6 or 20 years old."
+    }
+   }
+  },
+  "round_4": {
+   "r1": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "L0 and L1 are nearly indistinguishable and the worn levels are just uniformly greyer hulls with stretched horizontal smears, with no real chalk texture or tan line.",
+     "keel": "The scratches are a blotchy noise over the whole underside, like caustics, rather than fore-aft sand scratches concentrated on the keel line.",
+     "deck": "The neglected hulls turn an even cream-yellow with no chalk or grime streaks, so they read as a different gelcoat colour rather than neglect.",
+     "tramp": "The L4 mildew is evenly spread camouflage-like blotches across the panel instead of gathering at edges, seams and shade, and no fraying shows.",
+     "corner": "The rods get a speckled granite or galvanised look while the corner casting stays a clean plastic-like dark grey even at L4.",
+     "mast": "The L4 spars are soft camouflage mottling that looks like stone or concrete, not grey anodising with white powder at scratches.",
+     "rudder": "The worn castings look like speckled granite rather than grimy, pitted, oxidised cast aluminium."
+    },
+    "ab": {
+     "topsides": "A",
+     "keel": "B",
+     "deck": "same",
+     "tramp": "B",
+     "corner": "B",
+     "mast": "A",
+     "rudder": "A"
+    },
+    "ab_why": {
+     "topsides": "B's dark smoky blobs along the bottom look like soot or artefacts, while A reads as plausibly weathered gelcoat.",
+     "keel": "B puts the scraped grey wear along the keel bottoms where beaching actually wears through, not as noise over the whole hull.",
+     "deck": "At this distance the two versions cannot be told apart.",
+     "tramp": "B shows oxide on the spars and mildew gathering toward the edges, as on a real neglected tramp.",
+     "corner": "A's 20-year row barely differs from its 6-year row, while B shows the white powder and mildew of neglect.",
+     "mast": "A's neglected row has a grimy oxidised casting and mildew where water sits, which B lacks.",
+     "rudder": "B's castings look like granite even at six years, while A's are plausible though too clean when neglected."
+    }
+   },
+   "r2": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "Wear is wide blurred horizontal bands like a stretched gradient with no chalk texture, and A-C are nearly indistinguishable with no visible tan line.",
+     "keel": "The grey worn keel starts at a hard vertical edge like a texture region boundary instead of wearing in along the keel line.",
+     "deck": "The neglected hulls (C) are an even beige tint all over rather than chalk and grime collected where dirt gathers.",
+     "tramp": "C's mildew is evenly scattered round spots over the whole sheet, including the walked middle, and the frayed edges don't read.",
+     "corner": "The oxidised crossbars and rods (A, C) look like coarse granite or galvanised speckle, not worn anodising with white powder.",
+     "mast": "In the L3 panel (B) the trampoline and straps are as faded as the spars, though that age should have a newer trampoline.",
+     "rudder": "B's castings and crossbar look like grey stone or concrete, far too coarse for oxidised cast aluminium."
+    },
+    "ab": {
+     "topsides": "B",
+     "keel": "B",
+     "deck": "A",
+     "tramp": "A",
+     "corner": "B",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "A's dark waterline blobs read as painted smudges and its two ages look the same, while B at least gets grimier with age.",
+     "keel": "B's scratches along the keel look like beach wear; A's brown pinstripes and dark blotches look like noise.",
+     "deck": "A's 20 year deck reads as clearly more neglected, while B barely changes between the ages (a slight preference).",
+     "tramp": "A's mildew collects toward the edges and frame and the mast shows oxide; B's large soft patches look painted on.",
+     "corner": "B's oxide wear follows where hands and rubbing would reach, while A puts uniform stone speckle even on the 6 year boat.",
+     "mast": "B shows the anodising breaking down and grime and mildew building up with age; A stays clean and uniform.",
+     "rudder": "A's granite-textured castings look nothing like cast aluminium; B's smooth grey wear is believable, though its 20 year castings could be grimier."
+    }
+   },
+   "r3": {
+    "ladder": {
+     "topsides": {
+      "A": "L0",
+      "B": "L1",
+      "C": "L3",
+      "D": "L4",
+      "E": "L2"
+     },
+     "keel": {
+      "A": "L2",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L1"
+     },
+     "deck": {
+      "A": "L1",
+      "B": "L0",
+      "C": "L4",
+      "D": "L3",
+      "E": "L2"
+     },
+     "tramp": {
+      "A": "L2",
+      "B": "L1",
+      "C": "L4",
+      "D": "L0",
+      "E": "L3"
+     },
+     "corner": {
+      "A": "L2",
+      "B": "L3",
+      "C": "L4",
+      "D": "L0",
+      "E": "L1"
+     },
+     "mast": {
+      "A": "L0",
+      "B": "L3",
+      "C": "L2",
+      "D": "L1",
+      "E": "L4"
+     },
+     "rudder": {
+      "A": "L0",
+      "B": "L4",
+      "C": "L3",
+      "D": "L1",
+      "E": "L2"
+     }
+    },
+    "least_real": {
+     "topsides": "All the wear is soft blurred horizontal banding with no scratches, chalk texture or tan line, so the levels read as lighting changes rather than surface wear (A and B are practically identical).",
+     "keel": "The keel's worn band is a flat grey panel with a hard vertical start, even on the new boat, so it reads as a painted stripe rather than abrasion fading up from the keel line.",
+     "deck": "The neglected hulls are an even cream-yellow like dyed plastic rather than heavy white chalk with a grubby film.",
+     "tramp": "The L4 mildew is evenly scattered camouflage blotches across the whole trampoline with no frayed edges, instead of growth gathered in the damp edges and seams.",
+     "corner": "The L4 crossbar and tie rod are coarse granite speckle that looks like stone or concrete rather than grey, powdery old anodising.",
+     "mast": "The L3 spars are an even chocolate-brown like paint rather than black faded patchily toward bronze with silver scratches.",
+     "rudder": "The L4 rudder castings look like crumbling rock with a bumpy outline rather than grimy, oxidised cast aluminium."
+    },
+    "ab": {
+     "topsides": "A",
+     "keel": "A",
+     "deck": "same",
+     "tramp": "B",
+     "corner": "A",
+     "mast": "B",
+     "rudder": "B"
+    },
+    "ab_why": {
+     "topsides": "B's dark cloud-like blobs at the waterline look like smudged shadows rather than grime, and they are the same at 6 and 20 years.",
+     "keel": "B's dark sooty patches along the keel read as smoke rather than worn gelcoat or laminate, although A barely changes with age.",
+     "deck": "At this distance the two are almost indistinguishable at both ages.",
+     "tramp": "B's neglected trampoline has mildew where damp collects at the edges, although its blotchy spar at 6 years is overdone.",
+     "corner": "A's oxide spotting reads as anodising breaking down, while B's tie rod and crossbar look like stone.",
+     "mast": "B shows a believable step from six years to twenty years of neglect (powder at the base, mildew, grimy castings), while A hardly ages.",
+     "rudder": "A's castings are rock-like and far too far gone for a half-kept 6-year boat, while B's grey-to-grimy progression is believable."
+    }
+   }
+  }
+ },
+ "ab": {
+  "round_2": {
+   "against": "round1",
+   "keys": {
+    "r1": {
+     "topsides": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "deck": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round2"
+     }
+    },
+    "r2": {
+     "topsides": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "deck": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round2"
+     }
+    },
+    "r3": {
+     "topsides": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "deck": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round2",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round2"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round2"
+     }
+    }
+   },
+   "winners": {
+    "topsides": [
+     "round1",
+     "round1",
+     "round2"
+    ],
+    "keel": [
+     "round2",
+     "round2",
+     "round1"
+    ],
+    "deck": [
+     "same",
+     "round1",
+     "round1"
+    ],
+    "tramp": [
+     "round1",
+     "round1",
+     "round2"
+    ],
+    "corner": [
+     "round1",
+     "round1",
+     "round2"
+    ],
+    "mast": [
+     "round2",
+     "round2",
+     "round2"
+    ],
+    "rudder": [
+     "round2",
+     "round2",
+     "round2"
+    ]
+   },
+   "tally": {
+    "topsides": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    },
+    "keel": {
+     "new": 2,
+     "round1": 1,
+     "same": 0
+    },
+    "deck": {
+     "new": 0,
+     "round1": 2,
+     "same": 1
+    },
+    "tramp": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    },
+    "corner": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    },
+    "mast": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "rudder": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    }
+   }
+  },
+  "round_3": {
+   "against": "round1",
+   "keys": {
+    "r1": {
+     "topsides": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "tramp": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "rudder": {
+      "A": "round3",
+      "B": "round1"
+     }
+    },
+    "r2": {
+     "topsides": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "tramp": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "rudder": {
+      "A": "round3",
+      "B": "round1"
+     }
+    },
+    "r3": {
+     "topsides": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "tramp": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round3",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round3"
+     },
+     "rudder": {
+      "A": "round3",
+      "B": "round1"
+     }
+    }
+   },
+   "winners": {
+    "topsides": [
+     "round3",
+     "round3",
+     "round3"
+    ],
+    "keel": [
+     "round3",
+     "round1",
+     "round3"
+    ],
+    "deck": [
+     "round1",
+     "round1",
+     "round1"
+    ],
+    "tramp": [
+     "round1",
+     "round1",
+     "round1"
+    ],
+    "corner": [
+     "round1",
+     "round1",
+     "round1"
+    ],
+    "mast": [
+     "round3",
+     "round3",
+     "same"
+    ],
+    "rudder": [
+     "round1",
+     "round1",
+     "round1"
+    ]
+   },
+   "tally": {
+    "topsides": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "keel": {
+     "new": 2,
+     "round1": 1,
+     "same": 0
+    },
+    "deck": {
+     "new": 0,
+     "round1": 3,
+     "same": 0
+    },
+    "tramp": {
+     "new": 0,
+     "round1": 3,
+     "same": 0
+    },
+    "corner": {
+     "new": 0,
+     "round1": 3,
+     "same": 0
+    },
+    "mast": {
+     "new": 2,
+     "round1": 0,
+     "same": 1
+    },
+    "rudder": {
+     "new": 0,
+     "round1": 3,
+     "same": 0
+    }
+   }
+  },
+  "round_4": {
+   "against": "round1",
+   "keys": {
+    "r1": {
+     "topsides": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "tramp": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "corner": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "mast": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round4"
+     }
+    },
+    "r2": {
+     "topsides": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "deck": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "rudder": {
+      "A": "round4",
+      "B": "round1"
+     }
+    },
+    "r3": {
+     "topsides": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round4",
+      "B": "round1"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "tramp": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "corner": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round4"
+     },
+     "rudder": {
+      "A": "round4",
+      "B": "round1"
+     }
+    }
+   },
+   "winners": {
+    "topsides": [
+     "round4",
+     "round4",
+     "round4"
+    ],
+    "keel": [
+     "round1",
+     "round4",
+     "round4"
+    ],
+    "deck": [
+     "same",
+     "round4",
+     "same"
+    ],
+    "tramp": [
+     "round4",
+     "round4",
+     "round4"
+    ],
+    "corner": [
+     "round4",
+     "round1",
+     "round1"
+    ],
+    "mast": [
+     "round4",
+     "round4",
+     "round4"
+    ],
+    "rudder": [
+     "round1",
+     "round1",
+     "round1"
+    ]
+   },
+   "tally": {
+    "topsides": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "keel": {
+     "new": 2,
+     "round1": 1,
+     "same": 0
+    },
+    "deck": {
+     "new": 1,
+     "round1": 0,
+     "same": 2
+    },
+    "tramp": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "corner": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    },
+    "mast": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "rudder": {
+     "new": 0,
+     "round1": 3,
+     "same": 0
+    }
+   }
+  },
+  "round_5": {
+   "against": "round1",
+   "keys": {
+    "r1": {
+     "topsides": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "keel": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "deck": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "corner": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round5"
+     }
+    },
+    "r2": {
+     "topsides": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "keel": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "deck": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "tramp": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "mast": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "rudder": {
+      "A": "round5",
+      "B": "round1"
+     }
+    },
+    "r3": {
+     "topsides": {
+      "A": "round1",
+      "B": "round5"
+     },
+     "keel": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "deck": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "tramp": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "corner": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "mast": {
+      "A": "round5",
+      "B": "round1"
+     },
+     "rudder": {
+      "A": "round1",
+      "B": "round5"
+     }
+    }
+   },
+   "winners": {
+    "topsides": [
+     "round1",
+     "round5",
+     "round5"
+    ],
+    "keel": [
+     "round1",
+     "round1",
+     "round5"
+    ],
+    "deck": [
+     "round1",
+     "same",
+     "round5"
+    ],
+    "tramp": [
+     "round5",
+     "round5",
+     "round5"
+    ],
+    "corner": [
+     "round1",
+     "round5",
+     "round5"
+    ],
+    "mast": [
+     "round5",
+     "round5",
+     "round5"
+    ],
+    "rudder": [
+     "round5",
+     "round1",
+     "round1"
+    ]
+   },
+   "tally": {
+    "topsides": {
+     "new": 2,
+     "round1": 1,
+     "same": 0
+    },
+    "keel": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    },
+    "deck": {
+     "new": 1,
+     "round1": 1,
+     "same": 1
+    },
+    "tramp": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "corner": {
+     "new": 2,
+     "round1": 1,
+     "same": 0
+    },
+    "mast": {
+     "new": 3,
+     "round1": 0,
+     "same": 0
+    },
+    "rudder": {
+     "new": 1,
+     "round1": 2,
+     "same": 0
+    }
+   }
+  }
+ }
+}

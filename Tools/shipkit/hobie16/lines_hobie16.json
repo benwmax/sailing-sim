@@ -1,0 +1,97 @@
+{
+ "about": "The Hobie 16's hull lines for hull_hobie16.py (docs/hobie16-2). One hull, drawn in its own frame: x forward from amidships, y outboard from the hull's centreline, z up from the game's design waterline (two crew aboard). build_hobie16.py places a copy at each of the game's hull centres (0.935 m either side) and mirrors the port one, so each hull's outboard face is the fuller one. Heights are drawn from the keel's lowest point, so the card's floor-to-bow and floor-to-stern heights are drawn in, and solve_depth() finds how deep that lowest point sits for the game's 295 kg. Sizes come from specs_hobie16.json; shapes are read from the licence-checked photos in refs.json (never traced) and are each a guess the blind rounds and Bean's photos refine.",
+ "ends": {
+  "stem_x": 2.52,
+  "transom_x": -2.52
+ },
+ "keel": {
+  "lowest_x": -0.8,
+  "forefoot_power": 2.5,
+  "stem_power": 3.5,
+  "run_power": 2.5,
+  "transom_foot_above_lowest_m": 0.34,
+  "note": "The banana rocker: from its lowest point, 0.8 m aft of amidships, the keel rises forward as 1 - (1 - u^forefoot_power)^(1/stem_power) to the stem's head (u from the lowest point to the stem): a continuous curve along her length that turns up tightly at the forefoot into a nearly upright stem; aft it rises as u^run_power to the transom's foot, at the water with her crew aboard. The lowest point and the fuller stern put her centre of buoyancy under the boat's and crew's centre of gravity (x -0.36 m in the game), so she floats level."
+ },
+ "top": {
+  "points": [
+   [
+    -2.52,
+    0.61
+   ],
+   [
+    -1.6,
+    0.53
+   ],
+   [
+    -0.5,
+    0.49
+   ],
+   [
+    0.6,
+    0.495
+   ],
+   [
+    1.6,
+    0.535
+   ],
+   [
+    2.52,
+    0.597
+   ]
+  ],
+  "note": "The deck's top on the hull's centreline over the keel's lowest point (m): the card's 0.610 at the stern and 0.597 at the bow (Hobie's floor-to-deck heights), and 0.49 amidships. The CC0 broadside under sail (Hobie 16 catamaran sailboat 1857, read on its pixels, Nov 25) shows the deck rising about 0.11 m from amidships to each end once her trim by the stern is taken out, and 0.19 m of hull over the water amidships with one sailor aboard: a banana deck over a banana keel."
+ },
+ "plan": {
+  "points": [
+   [
+    -2.52,
+    0.155
+   ],
+   [
+    -2.0,
+    0.225
+   ],
+   [
+    -1.2,
+    0.265
+   ],
+   [
+    -0.6,
+    0.27
+   ],
+   [
+    0.2,
+    0.255
+   ],
+   [
+    1.1,
+    0.195
+   ],
+   [
+    1.8,
+    0.115
+   ],
+   [
+    2.25,
+    0.05
+   ],
+   [
+    2.52,
+    0.0
+   ]
+  ],
+  "note": "The hull's greatest half-breadth (m) at each station on the outboard face (the inboard face's is drawn from it: section.inboard_flat): 0.54 m across at its widest, 0.6 m aft of amidships, as today's hull (the card's 2.41 m beam over the game's hull centres 1.87 m apart); a fine entry, and a transom about 0.28 m across, so her buoyancy sits under the crew's weight aft."
+ },
+ "section": {
+  "deck_crown_m": 0.045,
+  "deck_power": 2.6,
+  "max_beam_below_top_m": 0.085,
+  "bottom_power_y": 0.5,
+  "bottom_power_z": 1.25,
+  "bow_bottom_power_y": 0.45,
+  "stern_bottom_power_y": 0.65,
+  "inboard_flat": 0.5,
+  "note": "Each section is two superellipse quarters a face: above the greatest breadth a crowned deck rolling into the topsides (deck_power), below it the hull's deep V (bottom_power_y over the breadth, bottom_power_z over the depth: 1 and 1 is a straight V from the keel to the greatest breadth; under 1 across the breadth the V narrows at the keel and its sides flare out above the water; over 1 in depth the topsides come up to the greatest breadth upright, so they roll into the deck with no knuckle; 2 and 2 is an ellipse). That deep, narrow V is what holds a Hobie to windward without boards, and it's what floats 145 kg at the card's 10 in. Finer toward the stem, fuller toward the transom. The inboard face is drawn to a narrower breadth, the outboard face's half-breadth pulled toward the straight line from the stem to the transom's inboard corner by inboard_flat (0 keeps the outboard's, 1 makes it straight in plan), and with its bottom power times inboard_power, so below the greatest breadth it stands flatter and more upright than the outboard face: the asymmetric hull.",
+  "inboard_power": 1.7
+ }
+}

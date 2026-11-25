@@ -1,0 +1,2434 @@
+{
+ "tolerance_mm": 15.04,
+ "screen": {
+  "width_px": 3840,
+  "aspect": 1.7778,
+  "fov_deg": 60.0,
+  "fov_max_deg": 120.0,
+  "note_fov_max": "the widest Field of view setting. Unreal switches a part by its whole bounding sphere's screen size, measured from the sphere's centre, which shrinks as the field of view widens: so each part's switch (light.json's ue_screen_size) is set where its twin's error is within a pixel at the sphere's nearest point (a radius nearer than its centre) in the widest view, and so in every view"
+ },
+ "from_m": 50.0,
+ "pixels": 1.0,
+ "parts": {
+  "H16Boom": {
+   "hero_triangles": 104,
+   "pieces": 3,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 104,
+    "light_triangles": 40,
+    "ratio": 0.4,
+    "share_reached": 0.3846,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 5.57,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 44.09,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 105.81
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 26.06,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.5,
+      "error_mm": 2.95,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.3,
+      "error_mm": 25.35,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.4,
+      "error_mm": 5.57,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 40,
+   "share": 0.3846,
+   "measure": {
+    "hero_to_light_max_mm": 5.57,
+    "hero_to_light_p99_mm": 5.26,
+    "light_to_hero_max_mm": 5.51,
+    "light_to_hero_p99_mm": 5.24,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 5.57,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 5.57
+   },
+   "shading": {
+    "mean_deg": 8.74,
+    "p95_deg": 15.9,
+    "share_over_10_deg": 0.4605
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.482,
+   "centre_m": [
+    -1.038,
+    0.0,
+    0.819
+   ],
+   "ue_screen_size": 0.1987,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Hw_JibSheet": {
+   "hero_triangles": 8792,
+   "pieces": 57,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 5808,
+    "light_triangles": 144,
+    "ratio": 0.025,
+    "share_reached": 0.0248,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 14.56,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 6.58,
+      "open_m": 0.039,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 23.63,
+      "open_m": 0.039,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.03,
+      "error_mm": 12.96,
+      "open_m": 0.039,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.02,
+      "error_mm": 17.55,
+      "open_m": 0.039,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.025,
+      "error_mm": 14.56,
+      "open_m": 0.039,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.039,
+    "hero_open_m": 0.037
+   },
+   "tubes": {
+    "count": 10,
+    "sides": {
+     "4": 10
+    },
+    "hero_triangles": 2984,
+    "light_triangles": 392,
+    "error_mm": 8.16,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 536,
+   "share": 0.061,
+   "measure": {
+    "hero_to_light_max_mm": 14.56,
+    "hero_to_light_p99_mm": 9.19,
+    "light_to_hero_max_mm": 12.22,
+    "light_to_hero_p99_mm": 5.44,
+    "paint_line_max_mm": 5.79,
+    "wrong_material_area_share": 0.155739,
+    "error_mm": 14.56,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 14.56
+   },
+   "shading": {
+    "mean_deg": 27.96,
+    "p95_deg": 108.4,
+    "share_over_10_deg": 0.5537
+   },
+   "open_edges": {
+    "hero": 16,
+    "light": 6,
+    "hero_m": 0.037,
+    "light_m": 0.039,
+    "light_off_own_mm": 2.52
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 0.527,
+   "centre_m": [
+    0.358,
+    0.0,
+    0.507
+   ],
+   "ue_screen_size": 0.0324,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Hw_Lines": {
+   "hero_triangles": 16212,
+   "pieces": 84,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 7732,
+    "light_triangles": 308,
+    "ratio": 0.04,
+    "share_reached": 0.0398,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 10.37,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 6.91,
+      "open_m": 0.217,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 139.34,
+      "open_m": 0.113,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.03,
+      "error_mm": 145.45,
+      "open_m": 0.191,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.04,
+      "error_mm": 10.37,
+      "open_m": 0.237,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.237,
+    "hero_open_m": 0.22
+   },
+   "tubes": {
+    "count": 27,
+    "sides": {
+     "4": 27
+    },
+    "hero_triangles": 8480,
+    "light_triangles": 936,
+    "error_mm": 12.41,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 1244,
+   "share": 0.0767,
+   "measure": {
+    "hero_to_light_max_mm": 9.99,
+    "hero_to_light_p99_mm": 5.97,
+    "light_to_hero_max_mm": 7.13,
+    "light_to_hero_p99_mm": 5.56,
+    "paint_line_max_mm": 5.23,
+    "wrong_material_area_share": 0.052118,
+    "error_mm": 9.99,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 9.99
+   },
+   "shading": {
+    "mean_deg": 29.92,
+    "p95_deg": 98.7,
+    "share_over_10_deg": 0.6428
+   },
+   "open_edges": {
+    "hero": 112,
+    "light": 42,
+    "hero_m": 0.22,
+    "light_m": 0.237,
+    "light_off_own_mm": 5.39
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 4.114,
+   "centre_m": [
+    -0.223,
+    0.0,
+    4.241
+   ],
+   "ue_screen_size": 0.278,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Hw_Mainsheet": {
+   "hero_triangles": 15592,
+   "pieces": 83,
+   "specks": {
+    "count": 4,
+    "triangles": 144,
+    "largest_mm": 10.0
+   },
+   "solids": {
+    "hero_triangles": 7644,
+    "light_triangles": 496,
+    "ratio": 0.065,
+    "share_reached": 0.0649,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 11.55,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 11.55,
+      "open_m": 0.035,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 29.31,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.03,
+      "error_mm": 19.47,
+      "open_m": 0.04,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.04,
+      "error_mm": 19.47,
+      "open_m": 0.04,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.05,
+      "error_mm": 19.47,
+      "open_m": 0.04,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.035,
+    "hero_open_m": 0.039
+   },
+   "tubes": {
+    "count": 22,
+    "sides": {
+     "4": 22
+    },
+    "hero_triangles": 7804,
+    "light_triangles": 1096,
+    "error_mm": 8.54,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 8,
+     "turned_widest_mm": 4.14,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 24,
+    "refused": 0
+   },
+   "light_triangles": 1592,
+   "share": 0.1021,
+   "measure": {
+    "hero_to_light_max_mm": 11.55,
+    "hero_to_light_p99_mm": 6.16,
+    "light_to_hero_max_mm": 8.0,
+    "light_to_hero_p99_mm": 4.6,
+    "paint_line_max_mm": 5.47,
+    "wrong_material_area_share": 0.125164,
+    "error_mm": 11.55,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 4.14,
+    "settings_largest_error": {},
+    "switch_error_mm": 11.55
+   },
+   "shading": {
+    "mean_deg": 24.48,
+    "p95_deg": 111.5,
+    "share_over_10_deg": 0.4907
+   },
+   "open_edges": {
+    "hero": 16,
+    "light": 6,
+    "hero_m": 0.039,
+    "light_m": 0.035,
+    "light_off_own_mm": 1.26
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.072,
+   "centre_m": [
+    -1.113,
+    0.0,
+    0.53
+   ],
+   "ue_screen_size": 0.0793,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Hw_Straps": {
+   "hero_triangles": 11360,
+   "pieces": 18,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 8288,
+    "light_triangles": 124,
+    "ratio": 0.015,
+    "share_reached": 0.015,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 9.32,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 2.33,
+      "open_m": 0.086,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 9.32,
+      "open_m": 0.158,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.008,
+      "error_mm": 41.14,
+      "open_m": 0.029,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.01,
+      "error_mm": 35.49,
+      "open_m": 0.029,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.0125,
+      "error_mm": 35.49,
+      "open_m": 0.029,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.158,
+    "hero_open_m": 0.088
+   },
+   "tubes": {
+    "count": 10,
+    "sides": {
+     "4": 10
+    },
+    "hero_triangles": 3072,
+    "light_triangles": 496,
+    "error_mm": 5.14,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 620,
+   "share": 0.0546,
+   "measure": {
+    "hero_to_light_max_mm": 8.27,
+    "hero_to_light_p99_mm": 5.91,
+    "light_to_hero_max_mm": 5.88,
+    "light_to_hero_p99_mm": 4.29,
+    "paint_line_max_mm": 3.89,
+    "wrong_material_area_share": 0.00672,
+    "error_mm": 8.27,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 8.27
+   },
+   "shading": {
+    "mean_deg": 24.56,
+    "p95_deg": 53.4,
+    "share_over_10_deg": 0.7979
+   },
+   "open_edges": {
+    "hero": 64,
+    "light": 22,
+    "hero_m": 0.088,
+    "light_m": 0.158,
+    "light_off_own_mm": 8.06
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.053,
+   "centre_m": [
+    -0.949,
+    0.0,
+    0.324
+   ],
+   "ue_screen_size": 0.1057,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Mast": {
+   "hero_triangles": 1536,
+   "pieces": 11,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 1376,
+    "light_triangles": 136,
+    "ratio": 0.1,
+    "share_reached": 0.0988,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 12.72,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 20.52,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 7.42,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 12.72,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 17.11,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 12.72,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "tubes": {
+    "count": 1,
+    "sides": {
+     "4": 1
+    },
+    "hero_triangles": 160,
+    "light_triangles": 24,
+    "error_mm": 8.56,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 160,
+   "share": 0.1042,
+   "measure": {
+    "hero_to_light_max_mm": 12.72,
+    "hero_to_light_p99_mm": 6.52,
+    "light_to_hero_max_mm": 8.89,
+    "light_to_hero_p99_mm": 5.92,
+    "paint_line_max_mm": 5.49,
+    "wrong_material_area_share": 0.011938,
+    "error_mm": 12.72,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 12.72
+   },
+   "shading": {
+    "mean_deg": 15.69,
+    "p95_deg": 49.1,
+    "share_over_10_deg": 0.3178
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 4.042,
+   "centre_m": [
+    -0.299,
+    0.0,
+    4.36
+   ],
+   "ue_screen_size": 0.2287,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Platform_Boss": {
+   "hero_triangles": 1008,
+   "pieces": 4,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 1008,
+    "light_triangles": 50,
+    "ratio": 0.05,
+    "share_reached": 0.0496,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 13.53,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 13.53,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 60.34,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 104.86
+     },
+     {
+      "ratio": 0.03,
+      "error_mm": 29.9,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.04,
+      "error_mm": 23.29,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.05,
+      "error_mm": 13.53,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 50,
+   "share": 0.0496,
+   "measure": {
+    "hero_to_light_max_mm": 13.53,
+    "hero_to_light_p99_mm": 11.26,
+    "light_to_hero_max_mm": 11.59,
+    "light_to_hero_p99_mm": 11.03,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 13.53,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 13.53
+   },
+   "shading": {
+    "mean_deg": 13.99,
+    "p95_deg": 47.0,
+    "share_over_10_deg": 0.5526
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.588,
+   "centre_m": [
+    -0.6,
+    0.0,
+    0.202
+   ],
+   "ue_screen_size": 0.0982,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Platform_Bridle": {
+   "hero_triangles": 104,
+   "pieces": 7,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 104,
+    "light_triangles": 104,
+    "ratio": 1.0,
+    "share_reached": 1.0,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 0.84,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 1.0,
+      "error_mm": 0.84,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 104,
+   "share": 1.0,
+   "measure": {
+    "hero_to_light_max_mm": 0.84,
+    "hero_to_light_p99_mm": 0.72,
+    "light_to_hero_max_mm": 0.84,
+    "light_to_hero_p99_mm": 0.72,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 0.84,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 0.84
+   },
+   "shading": {
+    "mean_deg": 0.72,
+    "p95_deg": 0.0,
+    "share_over_10_deg": 0.0399
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.019,
+   "centre_m": [
+    2.236,
+    0.0,
+    0.591
+   ],
+   "ue_screen_size": 0.5362,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Platform_Frame": {
+   "hero_triangles": 4286,
+   "pieces": 25,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 4222,
+    "light_triangles": 526,
+    "ratio": 0.125,
+    "share_reached": 0.1246,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 11.1,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 84,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 108,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 49.51,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 118.33
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 2.6,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 11.1,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 43.75,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 83.02
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 17.67,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "tubes": {
+    "count": 2,
+    "sides": {
+     "4": 2
+    },
+    "hero_triangles": 64,
+    "light_triangles": 32,
+    "error_mm": 3.41,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 558,
+   "share": 0.1302,
+   "measure": {
+    "hero_to_light_max_mm": 11.1,
+    "hero_to_light_p99_mm": 9.83,
+    "light_to_hero_max_mm": 9.24,
+    "light_to_hero_p99_mm": 5.41,
+    "paint_line_max_mm": 6.02,
+    "wrong_material_area_share": 0.070755,
+    "error_mm": 11.1,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 11.1
+   },
+   "shading": {
+    "mean_deg": 12.48,
+    "p95_deg": 24.7,
+    "share_over_10_deg": 0.5569
+   },
+   "open_edges": {
+    "hero": 56,
+    "light": 56,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.556,
+   "centre_m": [
+    -0.6,
+    0.0,
+    0.227
+   ],
+   "ue_screen_size": 0.1152,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Platform_Tramp": {
+   "hero_triangles": 5316,
+   "pieces": 5,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 4344,
+    "light_triangles": 26,
+    "ratio": 0.006,
+    "share_reached": 0.006,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 4.74,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 0.54,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.015,
+      "error_mm": 3.71,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.008,
+      "error_mm": 4.15,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.004,
+      "error_mm": 32.56,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.006,
+      "error_mm": 4.74,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "tubes": {
+    "count": 3,
+    "sides": {
+     "4": 3
+    },
+    "hero_triangles": 972,
+    "light_triangles": 648,
+    "error_mm": 3.65,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [
+     "UVMap.v"
+    ],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 674,
+   "share": 0.1268,
+   "measure": {
+    "hero_to_light_max_mm": 4.6,
+    "hero_to_light_p99_mm": 4.16,
+    "light_to_hero_max_mm": 3.65,
+    "light_to_hero_p99_mm": 2.0,
+    "paint_line_max_mm": 3.65,
+    "wrong_material_area_share": 0.000277,
+    "error_mm": 4.6,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 4.6
+   },
+   "shading": {
+    "mean_deg": 32.31,
+    "p95_deg": 46.2,
+    "share_over_10_deg": 0.9797
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.432,
+   "centre_m": [
+    -0.602,
+    0.0,
+    0.303
+   ],
+   "ue_screen_size": 0.225,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Rig_Stays": {
+   "hero_triangles": 240,
+   "pieces": 8,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 168,
+    "light_triangles": 16,
+    "ratio": 0.1,
+    "share_reached": 0.0952,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 10.94,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 19.47,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 3.99,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 3.99,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 19.47,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 10.94,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "tubes": {
+    "count": 3,
+    "sides": {
+     "4": 3
+    },
+    "hero_triangles": 72,
+    "light_triangles": 48,
+    "error_mm": 1.87,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 64,
+   "share": 0.2667,
+   "measure": {
+    "hero_to_light_max_mm": 8.67,
+    "hero_to_light_p99_mm": 1.56,
+    "light_to_hero_max_mm": 2.67,
+    "light_to_hero_p99_mm": 1.08,
+    "paint_line_max_mm": 0.61,
+    "wrong_material_area_share": 1.1e-05,
+    "error_mm": 8.67,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 8.67
+   },
+   "shading": {
+    "mean_deg": 11.74,
+    "p95_deg": 36.6,
+    "share_over_10_deg": 0.4311
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 3.148,
+   "centre_m": [
+    0.745,
+    0.0,
+    3.023
+   ],
+   "ue_screen_size": 0.2533,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Rig_Trapeze": {
+   "hero_triangles": 928,
+   "pieces": 16,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 576,
+    "light_triangles": 114,
+    "ratio": 0.2,
+    "share_reached": 0.1979,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 9.74,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 24.82,
+      "open_m": 0.219,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 9.46,
+      "open_m": 0.221,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 24.82,
+      "open_m": 0.219,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.15,
+      "error_mm": 22.16,
+      "open_m": 0.216,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.2,
+      "error_mm": 9.74,
+      "open_m": 0.227,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.227,
+    "hero_open_m": 0.24
+   },
+   "tubes": {
+    "count": 12,
+    "sides": {
+     "4": 12
+    },
+    "hero_triangles": 352,
+    "light_triangles": 192,
+    "error_mm": 3.35,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 306,
+   "share": 0.3297,
+   "measure": {
+    "hero_to_light_max_mm": 8.25,
+    "hero_to_light_p99_mm": 2.73,
+    "light_to_hero_max_mm": 9.74,
+    "light_to_hero_p99_mm": 0.88,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 9.74,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 9.74
+   },
+   "shading": {
+    "mean_deg": 12.74,
+    "p95_deg": 45.5,
+    "share_over_10_deg": 0.3964
+   },
+   "open_edges": {
+    "hero": 48,
+    "light": 24,
+    "hero_m": 0.24,
+    "light_m": 0.227,
+    "light_off_own_mm": 4.31
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 2.966,
+   "centre_m": [
+    -0.043,
+    0.0,
+    3.097
+   ],
+   "ue_screen_size": 0.2212,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Rudder_Gudgeons": {
+   "hero_triangles": 336,
+   "pieces": 12,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 336,
+    "light_triangles": 42,
+    "ratio": 0.125,
+    "share_reached": 0.125,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 12.81,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 23.91,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 7.43,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 12.81,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 23.91,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 23.91,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 42,
+   "share": 0.125,
+   "measure": {
+    "hero_to_light_max_mm": 12.81,
+    "hero_to_light_p99_mm": 12.16,
+    "light_to_hero_max_mm": 8.0,
+    "light_to_hero_p99_mm": 7.39,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 12.81,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 12.81
+   },
+   "shading": {
+    "mean_deg": 6.89,
+    "p95_deg": 66.0,
+    "share_over_10_deg": 0.2021
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 0.968,
+   "centre_m": [
+    -2.551,
+    0.0,
+    0.147
+   ],
+   "ue_screen_size": 0.0655,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Rudder_P": {
+   "hero_triangles": 2320,
+   "pieces": 6,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 2320,
+    "light_triangles": 2320,
+    "ratio": 1.0,
+    "share_reached": 1.0,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 0.06,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 1.0,
+      "error_mm": 0.06,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 2320,
+   "share": 1.0,
+   "measure": {
+    "hero_to_light_max_mm": 0.06,
+    "hero_to_light_p99_mm": 0.01,
+    "light_to_hero_max_mm": 0.06,
+    "light_to_hero_p99_mm": 0.01,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 0.06,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 0.06
+   },
+   "shading": {
+    "mean_deg": 0.0,
+    "p95_deg": 0.0,
+    "share_over_10_deg": 0.0
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 0.648,
+   "centre_m": [
+    -2.425,
+    0.921,
+    -0.199
+   ],
+   "ue_screen_size": 0.8764,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Rudder_S": {
+   "hero_triangles": 2320,
+   "pieces": 6,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 2320,
+    "light_triangles": 2320,
+    "ratio": 1.0,
+    "share_reached": 1.0,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 0.06,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 1.0,
+      "error_mm": 0.06,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "light_triangles": 2320,
+   "share": 1.0,
+   "measure": {
+    "hero_to_light_max_mm": 0.06,
+    "hero_to_light_p99_mm": 0.01,
+    "light_to_hero_max_mm": 0.06,
+    "light_to_hero_p99_mm": 0.01,
+    "paint_line_max_mm": 0.0,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 0.06,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 0.06
+   },
+   "shading": {
+    "mean_deg": 0.0,
+    "p95_deg": 0.0,
+    "share_over_10_deg": 0.0
+   },
+   "open_edges": {
+    "hero": 0,
+    "light": 0,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 0.648,
+   "centre_m": [
+    -2.425,
+    -0.921,
+    -0.199
+   ],
+   "ue_screen_size": 0.8764,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Sail_Jib": {
+   "hero_triangles": 2052,
+   "pieces": 6,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 2052,
+    "light_triangles": 204,
+    "ratio": 0.1,
+    "share_reached": 0.0994,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 6.48,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 1,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 14.1,
+      "open_m": 23.172,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 1.98,
+      "open_m": 23.168,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 4.83,
+      "open_m": 23.169,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 14.1,
+      "open_m": 23.171,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 6.48,
+      "open_m": 23.17,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 23.17,
+    "hero_open_m": 23.168
+   },
+   "light_triangles": 204,
+   "share": 0.0994,
+   "measure": {
+    "hero_to_light_max_mm": 6.48,
+    "hero_to_light_p99_mm": 3.49,
+    "light_to_hero_max_mm": 6.07,
+    "light_to_hero_p99_mm": 3.02,
+    "paint_line_max_mm": 4.26,
+    "wrong_material_area_share": 0.009533,
+    "error_mm": 6.48,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 6.48
+   },
+   "shading": {
+    "mean_deg": 1.23,
+    "p95_deg": 1.8,
+    "share_over_10_deg": 0.0174
+   },
+   "open_edges": {
+    "hero": 120,
+    "light": 42,
+    "hero_m": 23.168,
+    "light_m": 23.17,
+    "light_off_own_mm": 6.07
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 2.63,
+   "centre_m": [
+    0.723,
+    0.173,
+    3.107
+   ],
+   "ue_screen_size": 0.2751,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Sail_Main": {
+   "hero_triangles": 3972,
+   "pieces": 10,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 3972,
+    "light_triangles": 2185,
+    "ratio": 0.5,
+    "share_reached": 0.5501,
+    "seams_cut": 240,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 200,
+     "joined": 235,
+     "furthest_mm": 11.4,
+     "passes": 3
+    },
+    "error_mm": 1.3,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 1,
+     "turned_widest_mm": 1.12,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 3,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 22.84,
+      "open_m": 31.548,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 3.17,
+      "open_m": 43.4,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 10.01
+     },
+     {
+      "ratio": 0.5,
+      "error_mm": 1.3,
+      "open_m": 35.647,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 1.12
+     },
+     {
+      "ratio": 0.3,
+      "error_mm": 2.76,
+      "open_m": 41.597,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.4,
+      "error_mm": 2.67,
+      "open_m": 37.896,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 35.647,
+    "hero_open_m": 35.647
+   },
+   "light_triangles": 2185,
+   "share": 0.5501,
+   "measure": {
+    "hero_to_light_max_mm": 1.3,
+    "hero_to_light_p99_mm": 0.64,
+    "light_to_hero_max_mm": 1.15,
+    "light_to_hero_p99_mm": 0.67,
+    "paint_line_max_mm": 0.47,
+    "wrong_material_area_share": 0.006837,
+    "error_mm": 1.3,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 1.12,
+    "settings_largest_error": {},
+    "switch_error_mm": 1.3
+   },
+   "shading": {
+    "mean_deg": 0.41,
+    "p95_deg": 0.3,
+    "share_over_10_deg": 0.0154
+   },
+   "open_edges": {
+    "hero": 168,
+    "light": 113,
+    "hero_m": 35.647,
+    "light_m": 35.647,
+    "light_off_own_mm": 1.87
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 3.848,
+   "centre_m": [
+    -1.082,
+    0.145,
+    4.446
+   ],
+   "ue_screen_size": 0.7467,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16Tiller_Crossbar": {
+   "hero_triangles": 316,
+   "pieces": 6,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 180,
+    "light_triangles": 180,
+    "ratio": 1.0,
+    "share_reached": 1.0,
+    "seams_cut": 0,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 0,
+     "joined": 0,
+     "furthest_mm": 0.0,
+     "passes": 1
+    },
+    "error_mm": 0.0,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 56,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 27.22,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 27.22,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.5,
+      "error_mm": 27.22,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.8,
+      "error_mm": 27.22,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 1.0,
+      "error_mm": 0.0,
+      "open_m": 0.0,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.0,
+    "hero_open_m": 0.0
+   },
+   "tubes": {
+    "count": 3,
+    "sides": {
+     "4": 3
+    },
+    "hero_triangles": 136,
+    "light_triangles": 48,
+    "error_mm": 11.33,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_wraps": [],
+    "uv_corners_fallen_back": 0,
+    "refused": 0
+   },
+   "light_triangles": 228,
+   "share": 0.7215,
+   "measure": {
+    "hero_to_light_max_mm": 6.82,
+    "hero_to_light_p99_mm": 6.12,
+    "light_to_hero_max_mm": 8.25,
+    "light_to_hero_p99_mm": 6.6,
+    "paint_line_max_mm": 12.37,
+    "wrong_material_area_share": 0.045825,
+    "error_mm": 12.37,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 12.37
+   },
+   "shading": {
+    "mean_deg": 10.86,
+    "p95_deg": 43.2,
+    "share_over_10_deg": 0.2541
+   },
+   "open_edges": {
+    "hero": 56,
+    "light": 56,
+    "hero_m": 0.0,
+    "light_m": 0.0,
+    "light_off_own_mm": 0.0
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 1.416,
+   "centre_m": [
+    -1.03,
+    0.0,
+    0.619
+   ],
+   "ue_screen_size": 0.096,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  },
+  "H16_Hull": {
+   "hero_triangles": 89146,
+   "pieces": 2,
+   "specks": {
+    "count": 0,
+    "triangles": 0,
+    "largest_mm": 0.0
+   },
+   "solids": {
+    "hero_triangles": 89146,
+    "light_triangles": 11546,
+    "ratio": 0.125,
+    "share_reached": 0.1295,
+    "seams_cut": 928,
+    "uv_seams_cut": 0,
+    "uv_wraps": [],
+    "seams": {
+     "sewn": 403,
+     "joined": 330,
+     "furthest_mm": 0.19,
+     "passes": 2
+    },
+    "error_mm": 4.75,
+    "paint_slide": {
+     "max_mm": 0.0,
+     "p99_mm": 0.0,
+     "measured": 0.0,
+     "turned_faces": 0,
+     "turned_widest_mm": 0.0,
+     "settings_largest_error": {}
+    },
+    "uv_corners_fallen_back": 0,
+    "tried": [
+     {
+      "ratio": 0.065,
+      "error_mm": 7.91,
+      "open_m": 0.318,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.19
+     },
+     {
+      "ratio": 0.25,
+      "error_mm": 2.68,
+      "open_m": 0.318,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.125,
+      "error_mm": 4.75,
+      "open_m": 0.318,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     },
+     {
+      "ratio": 0.08,
+      "error_mm": 7.91,
+      "open_m": 0.318,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.15
+     },
+     {
+      "ratio": 0.1,
+      "error_mm": 5.34,
+      "open_m": 0.318,
+      "paint_slide_mm": 0.0,
+      "paint_slide_p99_mm": 0.0,
+      "turned_widest_mm": 0.0
+     }
+    ],
+    "open_m": 0.318,
+    "hero_open_m": 0.318
+   },
+   "light_triangles": 11546,
+   "share": 0.1295,
+   "measure": {
+    "hero_to_light_max_mm": 4.75,
+    "hero_to_light_p99_mm": 0.19,
+    "light_to_hero_max_mm": 0.29,
+    "light_to_hero_p99_mm": 0.15,
+    "paint_line_max_mm": 0.11,
+    "wrong_material_area_share": 0.0,
+    "error_mm": 4.75,
+    "ok": true,
+    "paint_slide_mm": 0.0,
+    "paint_slide_p99_mm": 0.0,
+    "turned_widest_mm": 0.0,
+    "settings_largest_error": {},
+    "switch_error_mm": 4.75
+   },
+   "shading": {
+    "mean_deg": 0.51,
+    "p95_deg": 0.5,
+    "share_over_10_deg": 0.0098
+   },
+   "open_edges": {
+    "hero": 2,
+    "light": 2,
+    "hero_m": 0.318,
+    "light_m": 0.318,
+    "light_off_own_mm": 0.61
+   },
+   "frame_same": true,
+   "uv_maps": true,
+   "slots": true,
+   "bounding_radius_m": 2.757,
+   "centre_m": [
+    0.0,
+    0.0,
+    -0.026
+   ],
+   "ue_screen_size": 0.3528,
+   "ok": true,
+   "suits": [
+    "Up"
+   ]
+  }
+ },
+ "suits": {
+  "Up": {
+   "hero_triangles": 165940,
+   "light_triangles": 24793,
+   "share": 0.1494
+  }
+ },
+ "largest_share": 0.1494,
+ "budget_share": 0.25,
+ "worst_error_mm": 14.56,
+ "worst_part": "H16Hw_JibSheet",
+ "worst_paint_slide_mm": 0.0,
+ "worst_paint_slide_p99_mm": 0.0,
+ "twins": 19,
+ "parts_outside": 19,
+ "worst_switch_error_mm": 14.56,
+ "one_pixel_from_m": {
+  "4K at 60 deg": 48.4,
+  "4K at 90 deg": 28.0,
+  "1080p at 90 deg": 14.0
+ },
+ "failing": [],
+ "ok": true
+}

@@ -1,0 +1,307 @@
+{
+ "note": "Slice 4's rig sockets and slice 8's game sockets (rig_hobie16.sockets, sockets_hobie16.py): Unreal's frame, X forward, Y to starboard, Z up, cm, the body frame; each one's part in 'owner', the build object it sits on in 'near' (sockets_check_hobie16.py), where it comes from in 'from'.",
+ "sockets": {
+  "MastBase": [
+   55.0,
+   -0.0,
+   40.89
+  ],
+  "Masthead": [
+   -107.05,
+   -0.0,
+   831.46
+  ],
+  "Hounds": [
+   -57.46,
+   -0.0,
+   589.54
+  ],
+  "ForestayTack": [
+   206.05,
+   -0.0,
+   88.4
+  ],
+  "ChainplateUpper_P": [
+   38.0,
+   -116.47,
+   20.43
+  ],
+  "ChainplateUpper_S": [
+   38.0,
+   116.47,
+   20.43
+  ],
+  "MastStep": [
+   55.0,
+   -0.0,
+   40.89
+  ],
+  "RudderPivot": [
+   -257.0,
+   -93.5,
+   0.0
+  ],
+  "RudderPivot_1": [
+   -257.0,
+   93.5,
+   0.0
+  ],
+  "JibLead_P": [
+   53.8,
+   -42.0,
+   41.83
+  ],
+  "JibWinch_P": [
+   51.44,
+   -35.25,
+   46.07
+  ],
+  "JibLead_S": [
+   53.8,
+   42.0,
+   41.83
+  ],
+  "JibWinch_S": [
+   51.44,
+   35.25,
+   46.07
+  ],
+  "LazySheetVia": [
+   42.84,
+   -0.0,
+   50.91
+  ],
+  "Traveler_C": [
+   -175.0,
+   -0.0,
+   42.79
+  ],
+  "Traveler_S": [
+   -175.0,
+   74.5,
+   42.79
+  ],
+  "Gooseneck": [
+   35.16,
+   -0.0,
+   87.87
+  ],
+  "FootBrace_P": [
+   -93.35,
+   -34.5,
+   31.42
+  ],
+  "FootBrace_S": [
+   -93.35,
+   34.5,
+   31.42
+  ],
+  "MastheadAft": [
+   -114.23,
+   -0.0,
+   826.86
+  ],
+  "Boom_Mainsheet": [
+   -179.64,
+   -0.0,
+   66.29
+  ],
+  "Boom_Clew": [
+   -238.81,
+   -0.0,
+   84.29
+  ],
+  "RudderStock": [
+   -257.0,
+   -93.5,
+   34.95
+  ],
+  "RudderBolt": [
+   -259.0,
+   -93.5,
+   3.95
+  ]
+ },
+ "owner": {
+  "MastStep": "SM_Hobie16_Hull",
+  "ForestayTack": "SM_Hobie16_Hull",
+  "ChainplateUpper_P": "SM_Hobie16_Hull",
+  "ChainplateUpper_S": "SM_Hobie16_Hull",
+  "RudderPivot": "SM_Hobie16_Hull",
+  "RudderPivot_1": "SM_Hobie16_Hull",
+  "JibLead_P": "SM_Hobie16_Hull",
+  "JibWinch_P": "SM_Hobie16_Hull",
+  "JibLead_S": "SM_Hobie16_Hull",
+  "JibWinch_S": "SM_Hobie16_Hull",
+  "LazySheetVia": "SM_Hobie16_Hull",
+  "Traveler_C": "SM_Hobie16_Hull",
+  "Traveler_S": "SM_Hobie16_Hull",
+  "Gooseneck": "SM_Hobie16_Hull",
+  "FootBrace_P": "SM_Hobie16_Hull",
+  "FootBrace_S": "SM_Hobie16_Hull",
+  "Hounds": "SM_Hobie16_Mast",
+  "Masthead": "SM_Hobie16_Mast",
+  "MastheadAft": "SM_Hobie16_Mast",
+  "MastBase": "SM_Hobie16_Mast",
+  "Boom_Mainsheet": "SM_Hobie16_Boom",
+  "Boom_Clew": "SM_Hobie16_Boom",
+  "RudderStock": "SM_Hobie16_Rudder",
+  "RudderBolt": "SM_Hobie16_Rudder"
+ },
+ "near": {
+  "MastStep": {
+   "object": "H16Platform_Frame",
+   "within_m": 0.01
+  },
+  "ForestayTack": {
+   "object": "H16Platform_Bridle",
+   "within_m": 0.03
+  },
+  "ChainplateUpper_P": {
+   "object": "H16Rig_Stays",
+   "within_m": 0.03
+  },
+  "ChainplateUpper_S": {
+   "object": "H16Rig_Stays",
+   "within_m": 0.03
+  },
+  "RudderPivot": {
+   "object": "H16Rudder_P",
+   "within_m": 0.06
+  },
+  "RudderPivot_1": {
+   "object": "H16Rudder_S",
+   "within_m": 0.06
+  },
+  "JibLead_P": {
+   "object": "H16Hw_JibSheet",
+   "within_m": 0.02
+  },
+  "JibWinch_P": {
+   "object": "H16Hw_JibSheet",
+   "within_m": 0.02
+  },
+  "JibLead_S": {
+   "object": "H16Hw_JibSheet",
+   "within_m": 0.02
+  },
+  "JibWinch_S": {
+   "object": "H16Hw_JibSheet",
+   "within_m": 0.02
+  },
+  "LazySheetVia": {
+   "object": "H16Mast",
+   "within_m": 0.02
+  },
+  "Traveler_C": {
+   "object": "H16Hw_Mainsheet",
+   "within_m": 0.02
+  },
+  "Traveler_S": {
+   "object": "H16Platform_Frame",
+   "within_m": 0.12
+  },
+  "Gooseneck": {
+   "object": "H16Boom",
+   "within_m": 0.02
+  },
+  "FootBrace_P": {
+   "object": "H16Hw_Straps",
+   "within_m": 0.03
+  },
+  "FootBrace_S": {
+   "object": "H16Hw_Straps",
+   "within_m": 0.03
+  },
+  "Hounds": {
+   "object": "H16Mast",
+   "within_m": 0.05
+  },
+  "Masthead": {
+   "object": "H16Mast",
+   "within_m": 0.03
+  },
+  "MastheadAft": {
+   "object": "H16Mast",
+   "within_m": 0.03
+  },
+  "MastBase": {
+   "object": "H16Mast",
+   "within_m": 0.03
+  },
+  "Boom_Mainsheet": {
+   "object": "H16Hw_Mainsheet",
+   "within_m": 0.02
+  },
+  "Boom_Clew": {
+   "object": "H16Sail_Main",
+   "within_m": 0.03
+  },
+  "RudderStock": {
+   "object": "H16Rudder_P",
+   "within_m": 0.03
+  },
+  "RudderBolt": {
+   "object": "H16Rudder_P",
+   "within_m": 0.01
+  }
+ },
+ "from": {
+  "MastStep": "the mast's heel on the step's ball (rig_hobie16: the mast part's origin, about which it rotates)",
+  "ForestayTack": "the bridle plate on the forestay's line, where the forestay and both bridle wires meet (rig_hobie16)",
+  "ChainplateUpper_P": "the shroud's pin in its chainplate at the hull's deck edge (rig_hobie16.chainplate); she has no lowers and no spreaders, so there is no ChainplateLower or SpreaderTip (the game then draws one shroud a side)",
+  "ChainplateUpper_S": "the shroud's pin in its chainplate at the hull's deck edge (rig_hobie16.chainplate); she has no lowers and no spreaders, so there is no ChainplateLower or SpreaderTip (the game then draws one shroud a side)",
+  "RudderPivot": "the port rudder's pintles' axis at the design waterline (rudder_hobie16.layout: the part's origin, about which the game turns it; the first is the port one, as on the fleet's model)",
+  "RudderPivot_1": "the starboard rudder's pintles' axis at the design waterline (rudder_hobie16.layout: the part's origin, about which the game turns it; the first is the port one, as on the fleet's model)",
+  "JibLead_P": "the jib car's ratchet block's sheave on the front crossbar's track, where the sheet comes down from the clew (hardware_hobie16: the 2:1's lower sheave)",
+  "JibWinch_P": "the fairlead of the cam over that block, where the tail leaves for the crew's hand: no winch, as the J/22's JibWinch is its cam's fairlead (the game wraps no drum on a boat without sheet winches)",
+  "JibLead_S": "the jib car's ratchet block's sheave on the front crossbar's track, where the sheet comes down from the clew (hardware_hobie16: the 2:1's lower sheave)",
+  "JibWinch_S": "the fairlead of the cam over that block, where the tail leaves for the crew's hand: no winch, as the J/22's JibWinch is its cam's fairlead (the game wraps no drum on a boat without sheet winches)",
+  "LazySheetVia": "where the lazy sheet bears on the mast's aft face on its way from the clew to the other car (hardware_hobie16: lazy_on_mast_above_heel_m over the heel); the game slides it aft to the clew's station when the clew is aft of it, as hers is",
+  "Traveler_C": "the top of the eye on the traveller car's swivel post, the car centred: the mainsheet's lower block hangs from it (hardware_hobie16)",
+  "Traveler_S": "the same eye with the car run out to starboard against its stop on the rear crossbar (stop_y_m less the stop's and the car's half widths): the end of the car's travel",
+  "Gooseneck": "the boom's pivot at the main's tack (sails_hobie16: the boom part's origin). The game hangs the boom on the physics' gooseneck (MainLuffX, BoomZ); slice 10's test holds the two together",
+  "FootBrace_P": "the middle of the hiking strap on that side, on its top: where a crew member sitting out hooks a foot (the game's crew read FootBrace_S/P where a model has it; not required, since the fleet's has none)",
+  "FootBrace_S": "the middle of the hiking strap on that side, on its top: where a crew member sitting out hooks a foot (the game's crew read FootBrace_S/P where a model has it; not required, since the fleet's has none)",
+  "Hounds": "the hounds on the mast's axis inside its cast band (rig_hobie16), the point slice 4 solved the wires' pin-to-pin lengths to: the game draws the forestay, both shrouds and the trapeze wires to it, so their last few centimetres run inside the mast, past the built tangs, where they don't show",
+  "Masthead": "the mast's top on its axis (the check's mast length)",
+  "MastheadAft": "the masthead's aft face: she has no backstay, so the game draws nothing from it, but the fleet's set has it",
+  "MastBase": "the mast's heel (the check's mast length; no vang reads it: she has none)",
+  "Boom_Mainsheet": "the mainsheet's upper block's sheaves under the boom (hardware_hobie16: hung from its bail), where the game's mainsheet starts",
+  "Boom_Clew": "the main's clew at the boom's end (sails_hobie16)",
+  "RudderStock": "the rudder head's top on its pivot line (rudder_hobie16.layout)",
+  "RudderBolt": "the kick-up pin through the castings, about which the blade swings up (rudder_hobie16)"
+ },
+ "required": {
+  "SM_Hobie16_Hull": [
+   "MastStep",
+   "RudderPivot",
+   "RudderPivot_1",
+   "ForestayTack",
+   "ChainplateUpper_S",
+   "ChainplateUpper_P",
+   "JibLead_S",
+   "JibLead_P",
+   "JibWinch_S",
+   "JibWinch_P",
+   "LazySheetVia",
+   "Traveler_C",
+   "Traveler_S"
+  ],
+  "SM_Hobie16_Mast": [
+   "Hounds",
+   "MastheadAft"
+  ],
+  "SM_Hobie16_Boom": [
+   "Boom_Mainsheet",
+   "Boom_Clew"
+  ],
+  "SM_Hobie16_Rudder": []
+ },
+ "not_written": {
+  "TillerEnd": "the game holds a tiller extension from the rudder's TillerEnd; hers hangs from the middle of the tiller crossbar, which joins both rudders and is built on the hull (H16Tiller_Crossbar, with the extension laid along it), as the fleet's model does: slice 10 decides how the game draws it",
+  "ChainplateLower_S/P, LowerTang, SpreaderTip_S/P": "no lowers and no spreaders",
+  "BackstayPlate": "no backstay",
+  "Boom_Vang": "no vang"
+ }
+}

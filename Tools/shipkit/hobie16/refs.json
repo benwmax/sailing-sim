@@ -1,0 +1,166 @@
+{
+ "about": "Reference pack for the Hobie 16's rebuild (docs/hobie16-1). Photos of real Hobie 16s for looking and measuring proportions only: nothing is traced into the model and no photo enters the repo. Public domain, CC0 or plain CC BY only (no NC, ND or SA), as for the C22, the J-Class and the frigate. Download with python3 -I Tools/shipkit/fetch_refs.py Tools/shipkit/hobie16/refs.json Data/Reference/raw/boats/Hobie16 (git-ignored; fetch_refs.py reads each file's licence on Commons first and refuses anything else). Bean's own photos of Hobie 16s at Rush Creek, on a beach or on a trailer go in the same folder and are the main reference from slice 1 on. The two pictures in the project folder (hobie-hero.jpg, hobie-deck.jpg) are screenshots of today's game model, not of a real boat: they are 'before' views only.",
+ "status": "Nov 25 2026: the cloud's own requests to Wikimedia Commons got 'too many requests' (HTTP 429), so the category was read through the desktop app's browser instead: 71 files in Category:Hobie 16, of which these are public domain, CC0 or plain CC BY and show the boat usefully. Licences and authors were read from Commons' own metadata. fetch_refs.py downloads them from any machine Commons answers.",
+ "drawings": [
+  {
+   "file": "Hobie 16 catamaran sailboat 1857.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_sailboat_1857.jpg",
+   "kind": "photo_broadside_sailing",
+   "use": "slice 1: the hull's freeboard, deck line and bow profile under sail, nearly square on. Measured on its pixels (1280 px copy, Nov 25 in docs/hobie16-2): hull 888 px long (176 px/m); 0.19 m of hull over the water amidships with one sailor aboard, the deck rising about 0.19 m to the bow and 0.03 m to the stern as she trims by the stern (about 0.11 m to each end once the trim is taken out); a nearly upright stem with about 0.1 m of overhang",
+   "size_px": [
+    1704,
+    2272
+   ],
+   "licence": "CC0",
+   "credit": "Ahunt",
+   "date": "2019-07-19",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran on trailer.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_on_trailer.jpg",
+   "kind": "photo_bow_quarter_trailer",
+   "use": "slices 1-2: from the stern quarter on a trailer, out of the water: the transoms, the hulls' rocker and the trampoline frame (looked at in slice 1: a heart-shaped transom over a V, nearly upright topsides)",
+   "size_px": [
+    1024,
+    768
+   ],
+   "licence": "CC BY 3.0",
+   "credit": "Daniel Christensen",
+   "date": "2009-09-28",
+   "commercial": true
+  },
+  {
+   "file": "A Hobie Cat rest a day after the passing of its creator Hibart Hobie Alter.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:A_Hobie_Cat_rest_a_day_after_the_passing_of_its_creator_Hibart_Hobie_Alter.jpg",
+   "kind": "photo_bow_on_moored",
+   "use": "slices 1-2: on a mooring lift, from the quarter (not bow-on, as slice 0 listed it): the hulls' rocker and deck roll, the front beam and its pylons, the mast and bridle Slice 2 (docs/hobie16-3), read by eye: the frame (both crossbars and both sidebars) is a raised rectangle on four corner castings, a tube's underside roughly 0.1 m over the deck; the crossbars run a hand's width outboard of the castings; the dolphin striker's post under the front crossbar's middle.",
+   "size_px": [
+    1488,
+    2466
+   ],
+   "licence": "CC0",
+   "credit": "Don Ramey Logan",
+   "date": "2014-03-30",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran sailboat 2660.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_sailboat_2660.jpg",
+   "kind": "photo_quarter_sailing",
+   "use": "slices 3-6: rudders, tiller crossbar, the crew on the trampoline, the jib's sheeting and battens",
+   "size_px": [
+    1549,
+    2057
+   ],
+   "licence": "CC0",
+   "credit": "Ahunt",
+   "date": "2019-09-08",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran sailboat 7523.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_sailboat_7523.jpg",
+   "kind": "photo_sailing",
+   "use": "slices 4-5: rig and sail plan, mast rake",
+   "size_px": [
+    1105,
+    1471
+   ],
+   "licence": "CC0",
+   "credit": "Ahunt",
+   "date": "2022-06-26",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran sailboat 5768.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_sailboat_5768.jpg",
+   "kind": "photo_sailing",
+   "use": "slices 4-5: rig and sail plan, mast rotation",
+   "size_px": [
+    1330,
+    1843
+   ],
+   "licence": "CC0",
+   "credit": "Ahunt",
+   "date": "2024-09-20",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran on beach.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_on_beach.jpg",
+   "kind": "photo_beached_broadside",
+   "use": "slices 1, 3: a hull's profile on the sand (rocker), rudders kicked up, the mast and shrouds",
+   "size_px": [
+    600,
+    800
+   ],
+   "licence": "CC BY 3.0",
+   "credit": "Syed Atif Nazir",
+   "date": "2007-08-11",
+   "commercial": true
+  },
+  {
+   "file": "Hobie 16 catamaran on the Dutch coast 3047.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_on_the_Dutch_coast_3047.jpg",
+   "kind": "photo_beach_row",
+   "use": "slices 2, 7: several boats on a beach from the side: beams, trampolines, wear Slice 2 (docs/hobie16-3), the nearest boat nearly broadside, read on a 2x crop: broad white pylons moulded in the decks about 5 cm tall under chunky black corner castings; the sidebar's top about 0.14 m over the deck; the mast's foot about 62% of her length from the transom (the game's 0.55 m is 61%); the rear casting about 1.0 m from the transom (rough: the tiller and its crossbar overlap it; the game's rear beam is 0.77 m from it).",
+   "size_px": [
+    3264,
+    2448
+   ],
+   "licence": "Public domain",
+   "credit": "Dohduhdah",
+   "date": "",
+   "commercial": true
+  },
+  {
+   "file": "Le Lac Et Le Bateau (120813379).jpeg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Le_Lac_Et_Le_Bateau_(120813379).jpeg",
+   "kind": "photo_sailing_lake",
+   "use": "slices 5, 7: sails at a distance (the light copy's views)",
+   "size_px": [
+    2048,
+    1536
+   ],
+   "licence": "CC0",
+   "credit": "José Martinho",
+   "date": "",
+   "commercial": true
+  },
+  {
+   "file": "Regatta S Feelings Take Over (132977039).jpeg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Regatta_S_Feelings_Take_Over_(132977039).jpeg",
+   "kind": "photo_regatta",
+   "use": "slices 5, 7, 8: a fleet at a distance",
+   "size_px": [
+    2048,
+    1499
+   ],
+   "licence": "CC0",
+   "credit": "José Martinho",
+   "date": "",
+   "commercial": true
+  }
+ ],
+ "to_check": [
+  {
+   "where": "https://commons.wikimedia.org/wiki/Category:Hobie_Cat",
+   "note": "The maker's category: more Hobie 16s are filed there only. Same licence rule."
+  }
+ ],
+ "excluded": [
+  {
+   "what": "Any Hobie 16 model sold on Fab, CGTrader or TurboSquid",
+   "why": "Brand-named editorial models (the bought-yacht test's rule) and $0 for this rebuild: nothing is bought."
+  },
+  {
+   "what": "The Glénans raid photos, 'Hobie Cat 16.jpg', 'Hobie Cat 16 - Iskar reservoir.jpg' and the other CC BY-SA files in the category",
+   "why": "share-alike, which the shipkit doesn't take"
+  },
+  {
+   "what": "Hobie's assembly manual (H16_Manual.pdf) and parts guide drawings",
+   "why": "the maker's copyright: their facts (part lists, counts, lengths) are in specs_hobie16.json's class_facts, nothing is traced"
+  }
+ ]
+}

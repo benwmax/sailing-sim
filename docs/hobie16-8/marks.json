@@ -1,0 +1,34 @@
+{
+ "number": "1288",
+ "font": "DejaVuSans-Bold.ttf",
+ "scheme": "Zephyr-style blues (popular; exact colours unconfirmed)",
+ "head_height_m": 7.189,
+ "number_cell_height_m": 0.863,
+ "digit_height_m": 0.458,
+ "rule_digit_height_m": 0.254,
+ "number_width_m_at_its_rows": 0.963,
+ "number_rows_stbd_port": [
+  [
+   0.62,
+   0.74
+  ],
+  [
+   0.48,
+   0.6
+  ]
+ ],
+ "insignia_box_uv1": [
+  [
+   0.3,
+   0.79
+  ],
+  [
+   0.76,
+   0.88
+  ]
+ ],
+ "insignia_width_m": 0.578,
+ "insignia_height_m": 0.647,
+ "insignia_inside_sail": true,
+ "note": "UV1.x is each row's share from luff to leech (FSailCloth's UVNormal), so every box stays on the cloth; the boxes are M_SailCloth's, the same for every class"
+}

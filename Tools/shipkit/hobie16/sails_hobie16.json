@@ -1,0 +1,75 @@
+{
+ "about": "The Hobie 16's sails and boom (docs/hobie16-6, slice 5): the fully battened main on the mast's luff track and the boom, and the battened jib on the forestay, sheeted for sailing upwind on starboard tack (both sails to port). sails_hobie16.py draws them on rig_hobie16's mast and stays. Blender's frame (X forward, Y to port, Z up), metres, the design waterline with the crew aboard at z 0. Areas from Hobie's spec sheet (specs_hobie16.json targets main_area_m2, jib_area_m2); the battens' lengths from Hobie's parts guide (class_facts.main_battens, jib_battens); the edges from owners' figures (below). The boom's angle is set by the mainsheet over the rear crossbar; the jib's foot is solved from its edges. Each batten is drawn as long as the sail's chord there less its pocket's ends, so the battens shape the planform and the batten heights are solved to give Hobie's areas.",
+ "main": {
+  "luff_m": 7.32,
+  "foot_m": 2.74,
+  "leech_m": 7.671,
+  "note_edges": "Luff 24 ft, foot 9 ft, leech 25 ft 2 in (the head's aft corner to the clew) from the Good Old Boat sail data and an owner on Hobie's forum; their triangle is about 10.3 m^2 and Hobie's 13.77 m^2 is the triangle with the full-batten roach. The leech is reported, not used: taken as a taut straight edge on the raked straight mast, it would drop the boom 10 deg and put its end 5 cm over the rear crossbar, with no room for the mainsheet's blocks. The real luff is cut with a curve to the mast's bend (the comptip bends aft when sheeted), which brings the head aft and lets the boom stand higher. Owners say the sails vary a little boat to boat.",
+  "tack_along_mast_m": 0.5,
+  "note_tack": "The tack's height up the mast from the heel: the boom's gooseneck just over the class's black band (16.63 in, 0.42 m, from the extrusion's foot).",
+  "battens_m": [
+   2.74,
+   2.638,
+   2.473,
+   2.305,
+   2.092,
+   1.832,
+   1.502,
+   1.041
+  ],
+  "note_battens": "Top to bottom in the parts guide: #8 41 in, #7 59 1/8, #6 72 1/8, #5 82 3/8, #4 90 3/4, #3 97 3/8, #2 103 7/8, #1 107 7/8 in. Listed here bottom (#1) to top (#8). Their heights are solved: with these lengths and Hobie's 13.77 m^2 they come closer together toward the boom (about 0.6 m apart low, 1.1 m near the head). Spaced evenly, as round 1's reviewers expected, the same battens would make the main about 15 m^2, 9% over Hobie's figure: Bean's photos decide.",
+  "pocket_ends_m": 0.04,
+  "head_chord_m": 0.22,
+  "camber": 0.1,
+  "camber_top": 0.06,
+  "camber_at": 0.42,
+  "camber_at_top": 0.48,
+  "tilt_foot_deg": 3.0,
+  "tilt_top_deg": 8.0,
+  "twist_deg": 10.0,
+  "note_shape": "Sheeted for upwind in a breeze: camber 10% of the chord low to 6% at the head, deepest 42% back low and 48% at the head, the camber line leaving the leech flatter than a parabola; the head twisted off 10 deg more than the foot to leeward. The battens rise toward the leech, about square to it: 3 deg up from the foot's line low, 8 deg at the top. The leech is faired through the battens' ends and the head's aft corner (a monotone curve), not straight runs with a shoulder at the top batten. Round 1's reviewers saw a flat, untwisted sail with a square shoulder; round 2's chose the faired, twisted one in every broadside view (sails_hobie16.json history in docs/hobie16-6).",
+  "slot_cycle": [
+   "SailA",
+   "SailB",
+   "SailC",
+   "SailD"
+  ],
+  "note_livery": "The panels between the battens in turn take the four sail slots: the game's G3 liveries (Inputs/g3/boat-catalogue.json, the main's striped schemes) colour them; the review renders are clay.",
+  "note_pockets": "pocket_ends_m: the chord at a batten is the batten plus this much (the pocket's cap at the luff and its sewn end at the leech). 0.04 m: at 0.08 the bottom batten stood out past the clew as a hook (round 2), and the battens bunched more toward the boom."
+ },
+ "jib": {
+  "luff_m": 4.88,
+  "foot_m": 1.75,
+  "leech_m": 4.801,
+  "note_edges": "Luff 16 ft, foot 5 ft 9 in, leech 15 ft 9 in (Good Old Boat sail data, the same three on Hobie's forum and Sailboat Owners); their triangle is 4.2 m^2 and Hobie's 5.12 m^2 adds the battened roach.",
+  "tack_over_plate_m": 0.32,
+  "note_tack": "The jib's tack is tied this far up the forestay from the bridle plate (its downhaul); the head then sits under the hounds.",
+  "battens_m": [
+   1.702,
+   1.422,
+   1.111,
+   0.711
+  ],
+  "note_battens": "Parts guide, top to bottom #4 28 in, #3 43 3/4, #2 56, #1 67 in; listed bottom to top.",
+  "pocket_ends_m": 0.03,
+  "head_chord_m": 0.06,
+  "camber": 0.1,
+  "camber_top": 0.08,
+  "camber_at": 0.38,
+  "camber_at_top": 0.42,
+  "tilt_foot_deg": 7.0,
+  "tilt_top_deg": 8.0,
+  "twist_deg": 8.0,
+  "note_shape": "Camber 10% low to 8% at the head, deepest 38% back low and 42% at the head; 8 deg of twist; the battens 7-8 deg up from the foot's line, so they stand about square to the leech (the foot itself slopes down aft from the tack); the leech faired as the main's.",
+  "clew_y_m": 0.32,
+  "note_clew": "Sheeted to port for starboard tack: the jib sheets lead to cars on the front crossbar's track (class rule 2.3), so the clew stands to port of the mast (0.32 m) and aft of the front crossbar. Its height is SOLVED from the luff, foot and leech (the leech taut when sheeted in): the forestay is a nearly straight wire, so the jib's triangle holds as cut.",
+  "slot": "SailJib"
+ },
+ "boom": {
+  "clew_over_rear_bar_m": 0.48,
+  "end_cap_m": 0.1,
+  "width_m": 0.07,
+  "height_m": 0.085,
+  "note": "A black extrusion from the gooseneck at the tack to the clew's end cap, a little longer than the foot. Sheeted in, its end stands this far over the rear crossbar's top with the 6:1 mainsheet's blocks between them (class_facts.mainsheet; two-blocked they take about 0.3 m), so the boom droops gently aft rather than standing square to the raked mast."
+ }
+}

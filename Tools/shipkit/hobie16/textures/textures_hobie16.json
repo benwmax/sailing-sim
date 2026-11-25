@@ -1,0 +1,405 @@
+{
+  "about": "The Hobie 16's surfaces and their wear (docs/hobie16-8, slice 7 of her rebuild): one card per surface, the build's material slots each card covers (build_hobie16.SLOT_RGB, every mesh's material named by its slot), what each of the texture loop's five levels looks like on her, and her new finish. She is a current Hobie 16, dry-sailed from the beach at Rush Creek on Lake Ray Hubbard: kept rigged on her dolly or trailer on the club's beach under the hot Texas sun, launched and beached each sail, never moored, so no bottom paint, no slime and no lake mustache, but sun, beach sand and the dolly's scrapes. weathering_hobie16.py reads this; wear_check_hobie16.py checks against it.",
+  "water": {
+    "rate": 0.33,
+    "note": "Fresh water: rust and tea staining at about a third of the salt-water rate (docs/texture-loop, metal). Dry-sailed, she spends hours in the water, not months: the lake's clay leaves a faint tan line where she floats (z 0 with her crew aboard) that washes off a kept boat, and no slime grows."
+  },
+  "levels": {
+    "L0": "launched new: glossy white hulls, a deep black trampoline, black anodised spars and crossbars, bright castings and stainless, crisp blocks",
+    "L1": "her first season on the beach: the gelcoat's gloss a touch softer, sand scratches along the keels, a faint tan line where she floats, dust on the trampoline",
+    "L2": "six years a club boat, half kept: chalky hulls and decks, the keels scraped grey, the trampoline faded grey and dirty along the walks, the spars' anodising dull with white oxide at the scratches",
+    "L3": "thirty years old and well kept: polished but faintly yellow gelcoat, spider cracks round the pylons, old scrapes polished out, a newer trampoline, the spars' black faded toward bronze and scratched",
+    "L4": "twenty years left on the beach: heavy chalk and a grubby film, the keels worn through to the grey laminate, a trampoline bleached grey-brown with green mildew and frayed lacing edges, the anodising gone to grey with white powder, the castings grimy with oxide"
+  },
+  "surfaces": {
+    "gelcoat": {
+      "kinds": {
+        "topsides": [
+          "Hull"
+        ],
+        "deck": [
+          "Deck"
+        ],
+        "blade": [
+          "Blade"
+        ]
+      },
+      "maps": [
+        "Gelcoat"
+      ],
+      "closest_m": 0.6,
+      "pattern_mm": {
+        "orange_peel": [
+          2,
+          8
+        ]
+      },
+      "look": "White polyester gelcoat. The sun oxidises it (chalk, the decks first), it yellows a little with the decades, it crazes in spider cracks where the moulding flexes (round the pylons under the corner castings, the bow tangs, the chainplates), and black streaks run down from every fitting. Beached and dollied each sail, the keels and forefoot take sand scratches that become grey scrapes and, neglected, wear through to the grey laminate. A faint tan line marks where she floats. The rudder blades are the same white gelcoat, scuffed at their tips.",
+      "levels": {
+        "L0": "mirror gloss, pure white",
+        "L1": "gloss a touch softer, fine sand scratches along the keels, a faint tan line where she floats",
+        "L2": "chalky and flat, black streaks under the pylons and tangs, the keels scraped grey, the waterline line tan",
+        "L3": "polished but not new: faintly yellow, spider cracks round the pylons, the keels' old scrapes under fresh keel strips",
+        "L4": "heavy chalk, black streaks everywhere, the keels worn through to grey laminate, crazing and mildew on the decks"
+      }
+    },
+    "tramp": {
+      "kinds": {
+        "tramp": [
+          "Tramp"
+        ]
+      },
+      "maps": [
+        "Tramp"
+      ],
+      "closest_m": 0.4,
+      "pattern_mm": {
+        "weave": [
+          0.8,
+          1.6
+        ]
+      },
+      "look": "The trampoline: black PVC-coated polyester cloth, tightly woven. The sun fades it from black toward a dusty grey-brown and chalks the coating; feet, sand and sunscreen darken the walks across it and along the hulls; neglected, green-grey mildew grows where water lies in its sag and the edges fray at the lacing. A kept boat gets a new trampoline every eight years or so.",
+      "levels": {
+        "L0": "deep black, a faint sheen on the weave",
+        "L1": "a film of dust and sand, footprints along the walks",
+        "L2": "faded to a dull charcoal, chalky, dirt worn into the walks",
+        "L3": "a newer trampoline: black, a little dusty",
+        "L4": "bleached grey-brown, mildew green-grey in its low middle, edges frayed at the lacing"
+      }
+    },
+    "anodised": {
+      "kinds": {
+        "black": [
+          "Bar",
+          "Mast",
+          "Extension"
+        ]
+      },
+      "maps": [
+        "Metal"
+      ],
+      "closest_m": 0.4,
+      "pattern_mm": {
+        "brushing": [
+          0.1,
+          0.5
+        ]
+      },
+      "look": "Black anodised aluminium: the crossbars, sidebars, mast, boom and tiller extension. The dye fades in the sun from black toward a dull grey-bronze, the surface dulls and chalks, scratches where lines and hands rub show bright metal, and the bare metal blooms white oxide powder, worst at the scratches, the ends and the joints.",
+      "levels": {
+        "L0": "deep satin black",
+        "L1": "a little dust, the first fine scratches where the lines rub",
+        "L2": "dull charcoal, scratched, white oxide in the scratches and at the ends",
+        "L3": "faded toward bronze but clean, scratched",
+        "L4": "grey and chalky, white powder bloom over the scratches and ends, grime"
+      }
+    },
+    "metal": {
+      "kinds": {
+        "stainless": [
+          "Wire"
+        ],
+        "aluminium": [
+          "Cast",
+          "Arm"
+        ]
+      },
+      "maps": [
+        "Metal"
+      ],
+      "closest_m": 0.4,
+      "pattern_mm": {
+        "brushing": [
+          0.1,
+          0.5
+        ]
+      },
+      "look": "The stainless wires and fittings dull and, only when neglected, tea-stain and rust-spot (slowly, in fresh water). The cast aluminium corner castings, gudgeons, rudder heads and fittings dull, grime and bloom white oxide.",
+      "levels": {
+        "L0": "bright stainless, clean castings",
+        "L1": "a little dull",
+        "L2": "dull stainless, the castings grimed with oxide in their corners",
+        "L3": "clean, dull",
+        "L4": "tea stains and rust spots on the stainless, white oxide bloom and grime on the castings"
+      }
+    },
+    "plastic": {
+      "kinds": {
+        "black": [
+          "Block",
+          "Corner",
+          "Handle",
+          "Cord"
+        ],
+        "grey": [
+          "Sheave"
+        ]
+      },
+      "maps": [],
+      "closest_m": 0.3,
+      "pattern_mm": {},
+      "look": "The blocks' and cleats' moulded bodies, the corner caps, the trapeze handles and shock cord, the sheaves. Black plastic blooms a chalky grey in the sun; dust cakes in it.",
+      "levels": {
+        "L0": "crisp black and grey",
+        "L1": "the same, dusty",
+        "L2": "a grey bloom on the tops, dust",
+        "L3": "a little bloom",
+        "L4": "chalky grey, dust caked in the bloom"
+      }
+    },
+    "canvas": {
+      "kinds": {
+        "strap": [
+          "Strap"
+        ]
+      },
+      "maps": [
+        "Canvas"
+      ],
+      "closest_m": 0.4,
+      "pattern_mm": {
+        "weave": [
+          0.5,
+          1.5
+        ]
+      },
+      "look": "The hiking straps: navy polyester over padding. Faded on top, dirty where feet go, mildewed and stiff when neglected. Renewed every five years or so on a kept boat.",
+      "levels": {
+        "L0": "deep navy",
+        "L1": "a little dust",
+        "L2": "faded, dirty along their middles",
+        "L3": "newer straps, a little faded",
+        "L4": "bleached, mildewed, rotting"
+      }
+    }
+  },
+  "unweathered": {
+    "SailA": "the sails age in M_SailCloth's own Age and Care (boat fidelity 4), not here",
+    "SailB": "the sails age in M_SailCloth",
+    "SailC": "the sails age in M_SailCloth",
+    "SailD": "the sails age in M_SailCloth",
+    "SailJib": "the sails age in M_SailCloth",
+    "Batten": "the battens' pockets go with the sails (M_SailCloth's pocket ends)",
+    "SheetMain": "running rigging: the game draws lines with the rope materials (M_RigRope, the rope colourways) and their own wear",
+    "SheetJib": "running rigging: the rope materials",
+    "Control": "running rigging: the rope materials",
+    "Line": "the halyards' tails and the trampoline's lacing: rope, the rope materials' own wear"
+  },
+  "finish": {
+    "about": "Each slot's new finish (L0) for the renders, linear RGB with roughness, metallic and clear coat; slots the game's shared library has (scripts/make_materials.py BOAT_LIBRARY) take its values. 'game' names the library entry; 'new' marks an entry the game needs (docs/hobie16-8: the game's side).",
+    "Hull": {
+      "rgb": [
+        0.8,
+        0.8,
+        0.77
+      ],
+      "rough": 0.22,
+      "coat": 0.6,
+      "game": "Topsides"
+    },
+    "Deck": {
+      "rgb": [
+        0.8,
+        0.8,
+        0.76
+      ],
+      "rough": 0.28,
+      "coat": 0.5,
+      "game": "Deck"
+    },
+    "Blade": {
+      "rgb": [
+        0.8,
+        0.8,
+        0.77
+      ],
+      "rough": 0.25,
+      "coat": 0.5,
+      "game": "Topsides"
+    },
+    "Tramp": {
+      "rgb": [
+        0.028,
+        0.028,
+        0.03
+      ],
+      "rough": 0.62,
+      "game": "Trampoline",
+      "new": true
+    },
+    "Bar": {
+      "rgb": [
+        0.022,
+        0.022,
+        0.024
+      ],
+      "rough": 0.38,
+      "metal": 0.6,
+      "game": "AnodisedBlack",
+      "new": true
+    },
+    "Mast": {
+      "rgb": [
+        0.022,
+        0.022,
+        0.024
+      ],
+      "rough": 0.38,
+      "metal": 0.6,
+      "game": "AnodisedBlack",
+      "new": true
+    },
+    "Extension": {
+      "rgb": [
+        0.022,
+        0.022,
+        0.024
+      ],
+      "rough": 0.42,
+      "metal": 0.6,
+      "game": "AnodisedBlack",
+      "new": true
+    },
+    "Wire": {
+      "rgb": [
+        0.62,
+        0.62,
+        0.63
+      ],
+      "rough": 0.3,
+      "metal": 1.0,
+      "game": "Stainless"
+    },
+    "Cast": {
+      "rgb": [
+        0.62,
+        0.63,
+        0.64
+      ],
+      "rough": 0.42,
+      "metal": 1.0,
+      "game": "CastAluminium",
+      "new": true
+    },
+    "Arm": {
+      "rgb": [
+        0.66,
+        0.67,
+        0.68
+      ],
+      "rough": 0.36,
+      "metal": 1.0,
+      "game": "CastAluminium",
+      "new": true
+    },
+    "Block": {
+      "rgb": [
+        0.018,
+        0.018,
+        0.02
+      ],
+      "rough": 0.45,
+      "game": "BlackPlastic"
+    },
+    "Corner": {
+      "rgb": [
+        0.018,
+        0.018,
+        0.02
+      ],
+      "rough": 0.5,
+      "game": "BlackPlastic"
+    },
+    "Handle": {
+      "rgb": [
+        0.025,
+        0.025,
+        0.026
+      ],
+      "rough": 0.7,
+      "game": "Rubber"
+    },
+    "Cord": {
+      "rgb": [
+        0.03,
+        0.03,
+        0.032
+      ],
+      "rough": 0.8,
+      "game": "Webbing"
+    },
+    "Sheave": {
+      "rgb": [
+        0.3,
+        0.31,
+        0.32
+      ],
+      "rough": 0.4,
+      "game": "BlackPlastic"
+    },
+    "Strap": {
+      "rgb": [
+        0.02,
+        0.05,
+        0.14
+      ],
+      "rough": 0.8,
+      "game": "SailCover"
+    }
+  },
+  "maps": {
+    "own": {
+      "Tramp": {
+        "tile_mm": [
+          30,
+          30
+        ],
+        "px": [
+          512,
+          512
+        ],
+        "pattern_mm": {
+          "weave": [
+            0.8,
+            1.6
+          ]
+        },
+        "fade_m": [
+          0.6,
+          2.5
+        ],
+        "note": "the trampoline's PVC-coated polyester: a tight basket weave of flat coated yarns about 1.2 mm apart, the coating filling the gaps; mask: R cavity (the gaps), G roughness, B height"
+      }
+    },
+    "shared": {
+      "Gelcoat": {},
+      "Metal": {},
+      "Canvas": {
+        "normal_only": true
+      }
+    }
+  },
+  "budget": {
+    "high_mb": 1.0,
+    "medium_mb": 0.0,
+    "note": "her own map only (the shared library is already resident for the J/22): BC5 normal + BC1 mask with mips. Medium draws no detail maps, as the boats' Medium material does."
+  },
+  "closest_px_per_mm": 4.0,
+  "sails": {
+    "about": "The sails age and are marked in the game's M_SailCloth, not in these cards' Blender looks. The rebuild's cloth carries its three maps (sails_hobie16.cloth_uvs: UV0 metres, UV1 each row's share from luff to leech and the height's share, UV2 metres to the leech), as FSailCloth's own sails do; render_marks_hobie16.py previews the marks from them.",
+    "layout": 2,
+    "layout_note": "M_SailCloth's Layout 2: the Hobie's wide coloured panels between white ones; the rebuild's four slots SailA-D take the G3 catalogue's stripe colours in turn (Inputs/g3/boat-catalogue.json, hobie16 sails)",
+    "cloth": "Dacron, about 6 oz (the catalogue)",
+    "marks": 1,
+    "marks_note": "insignia and number on the main only: the insignia is the game's made-up emblem (scripts/make_sail_marks.py), never the maker's logo the catalogue's insignia line describes; the number reads right from each side, starboard's set uppermost (the class rule)",
+    "number": "the player's 1288 (BoatLivery.cpp PlayerSailNumber: the Hobie's range 1 to 120000 holds it)"
+  },
+  "ropes": {
+    "about": "Each line slot's colourway in Inputs/rope/colourways.json (the game's T_RopeColourways column, BoatModelVisuals.cpp RopeLook) for the import slice. Chosen as a typical beach cat's set, not from a photo of a particular boat; the rope materials carry their own wear.",
+    "SheetMain": "blue_white_mix",
+    "SheetJib": "red_white_fleck",
+    "Control": "black_white_fleck",
+    "Line": "white_blue_fleck"
+  }
+}

@@ -1,0 +1,65 @@
+{
+ "about": "The Hobie 16's rudders and steering (docs/hobie16-4, slice 3): two kick-up rudders hung on gudgeons on the transoms, each an upper casting with its tiller arm and a lower casting holding the blade, the tiller crossbar joining the two arms and the tiller extension. rudder_hobie16.py draws them. Blender's frame (X forward, Y to port, Z up), metres, the design waterline with the crew aboard at z 0. The parts come from the class rules and Hobie's parts list (specs_hobie16.json class_facts.rudders); sizes from the class rule and forum figures named in each note.",
+ "axis": {
+  "x": -2.57,
+  "note_x": "The rudders' pivot line, 5 cm aft of the transom: the game's RudderPivot sockets (x -2.57).",
+  "on_transom_centre": true,
+  "note_y": "Each rudder hangs on the middle of its hull's transom (y 0.935), where the transom is 0.27 m tall and takes both gudgeons. The game's physics and sockets have the rudders at y 1.0 (6.5 cm further out, where slice 1's transom is only 0.16 m tall); one owner on Hobie's forum measured 83 1/2 in (2.12 m) between the rudders of a 1983 boat. Slice 9 moves the physics' rudders to the drawing's."
+ },
+ "gudgeons": {
+  "below_deck_m": 0.045,
+  "above_foot_m": 0.05,
+  "plate_m": [
+   0.008,
+   0.05,
+   0.07
+  ],
+  "eye_radius_m": 0.014,
+  "note": "Two cast gudgeons on each transom, one under the deck and one near the transom's foot; the upper casting's pintles drop into them."
+ },
+ "upper_casting": {
+  "half_length_m": 0.06,
+  "half_width_m": 0.036,
+  "top_over_deck_m": 0.07,
+  "bottom_under_gudgeon_m": 0.03,
+  "note": "The cast head the rudder turns in: it hangs on the gudgeons and carries the tiller arm at its top and the lower casting's pivot pin at its foot. Round 2's reviewers saw it as a thin post; it is 12 x 7 cm and stands 7 cm over the deck."
+ },
+ "lower_casting": {
+  "height_m": 0.13,
+  "half_length_m": 0.075,
+  "half_width_m": 0.03,
+  "note": "The casting that holds the blade's head between its cheeks and kicks up about a pin through the upper casting (the cam keeps it down while sailing). Drawn lofted from the upper casting's foot down round the blade's head, so the two read as one cast head (round 1's reviewers saw two boxes with a gap)."
+ },
+ "blade": {
+  "tip_z": -0.749,
+  "note_tip": "The blade reaches 0.661 m below its casting's foot (z -0.088): the class rule's taper, 610 mm to a point 51 mm from the tip, starts where the blade leaves the casting. That puts the tip at z -0.749 with the crew aboard and 0.672 m under the empty boat's waterline. Sources differ: boat-specs.com gives 0.6 m (2 ft) full draft, round 1's reviewers remembered about 2.5 ft, Hobie publishes only the 10 in with the rudders up. The game's physics rudder reaches -0.55; slice 9 brings it to the drawing.",
+  "top_z": 0.02,
+  "chord_top_m": 0.24,
+  "chord_tip_m": 0.14,
+  "rake_deg": 2.0,
+  "balance": 0.16,
+  "thickness_top_m": 0.0258,
+  "thickness_tip_m": 0.0127,
+  "taper_length_m": 0.61,
+  "tip_round_m": 0.13,
+  "note": "Class rule (rudders): at most 25.8 mm thick, tapering over 610 mm to 12.7 mm thick 51 mm from the tip. Hobie's forum quotes a chord of about 9 3/4 in (0.248 m) at most, at the head. The leading edge runs straight down, nearly plumb (2 deg aft: round 2's reviewers saw 5 deg as too much); the chord narrows to 0.14 m and the trailing edge sweeps forward into a long elliptical tip anchored 10% of the chord behind the leading edge (round 1's reviewers: a tapered blade, not a parallel paddle). balance is the share of the chord forward of the pivot line; the section is a symmetric NACA four-digit profile at the class thickness.",
+  "tip_anchor": 0.1
+ },
+ "tiller_arm": {
+  "radius_m": 0.012,
+  "note": "An aluminium tube from each upper casting forward and inboard to the tiller crossbar's end."
+ },
+ "tiller_crossbar": {
+  "x": -2.06,
+  "length_m": 1.76,
+  "radius_m": 0.016,
+  "over_deck_m": 0.1,
+  "note": "The crossbar joining the two tiller arms just aft of the rear crossbar (it slides across the boat as she steers). Hobie's forum: 76 in (1.93 m) is the usual adjustable H16 bar, on a boat whose rudders were 83 1/2 in (2.12 m) apart, so the arms angle inboard. This drawing's rudders are 1.87 m apart (on its transoms' middles); round 1's reviewers wanted the arms angled inboard and round 2's thought 0.19 m in all too much, so the bar is 1.76 m (5.5 cm in a side). Where the transoms and rudders really sit is open for Bean's photos (specs recheck)."
+ },
+ "tiller_extension": {
+  "length_m": 2.13,
+  "radius_m": 0.012,
+  "rise_deg": 15.0,
+  "note": "One fibreglass extension, 84 in (2.13 m), on a universal joint at the crossbar's middle (Hobie's parts guide, class_facts.rudders). All six reviewers thought it long (they remembered 1.2-1.8 m); the parts guide's length stands until Bean's photos. Drawn pointing forward up over the rear crossbar; the game's helm holds it from slice 9."
+ }
+}

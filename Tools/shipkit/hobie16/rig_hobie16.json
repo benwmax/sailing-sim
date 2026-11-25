@@ -1,0 +1,54 @@
+{
+ "about": "The Hobie 16's mast and standing rig (docs/hobie16-5, slice 4): the rotating mast on the step's ball, its base casting, the hounds fitting and the masthead; the forestay to the bridle plate, the two shrouds to chainplates at the hulls' deck edges, and the four trapeze wires with their rings, handles and shock cords. rig_hobie16.py draws them. Blender's frame (X forward, Y to port, Z up), metres, the design waterline with the crew aboard at z 0. The parts come from Hobie's parts guide (specs_hobie16.json class_facts.mast and standing_rigging); the wire lengths from Hobie's wire guide as owners quote it on Hobie's forum. The H16 has no spreaders and no diamond wires: the parts guide's mast lists none.",
+ "mast": {
+  "length_m": 8.07,
+  "note_length": "26 ft 6 in from the heel to the head (Hobie's spec sheet; specs_hobie16.json targets.mast_length_m). The heel is the base casting's seat on the step's ball: the sockets MastBase and Masthead span it, and the check measures it.",
+  "chord_m": 0.14,
+  "width_m": 0.075,
+  "note_section": "A wing section 0.14 x 0.075 m, its luff track at the trailing edge. Sources are thin: one owner's rough 4 1/2 x 3 in on Hobie's forum (measured without taking off the head or the base plug) is the only published figure, and the game's physics has a 0.09 m round mast. Round 1's three reviewers all saw 0.115 m of chord as a round tube and asked for a teardrop 15-16.5 cm long by 7-8 cm wide, so the chord went to 0.14 and the width kept the owner's 3 in. Drawn as a fat symmetric NACA four-digit section. To check on Bean's photos or tape.",
+  "axis_from_le": 0.35,
+  "note_axis": "The step's ball sits under the section's front third (the share of the chord ahead of the mast's turning axis).",
+  "track_radius_m": 0.009,
+  "tip_from_m": 7.0,
+  "tip_scale": 0.78,
+  "note_tip": "The current mast's 'comptip' head (parts guide): a composite top section that bends more. Drawn as the section narrowing over the top 1.07 m; its real length and taper are not published.",
+  "base_height_m": 0.07,
+  "base_scale": 1.18,
+  "head_height_m": 0.11,
+  "colour": "black anodised (class_facts.mast)"
+ },
+ "wires": {
+  "forestay_m": 5.334,
+  "pigtail_m": 0.248,
+  "forestay_adjuster_m": 0.08,
+  "shroud_m": 5.747,
+  "shroud_adjuster_m": 0.14,
+  "trapeze_m": 5.061,
+  "note": "Pin to pin, where the clevis pins rest in the thimbles: forestay 17 ft 6 in with the current 'Aussie' pigtail of 9 3/4 in (2009 on; older boats 6 in), shrouds 18 ft 10 1/4 in finished (dealer spec 2009; 18 ft 11 in in Hobie's wire guide as quoted), trapeze wires 16 ft 7 1/4 in finished with stops and handles. The adjusters are the 10-hole forestay stay adjuster at its middle hole (0.08 m) and the 7-hole shroud adjuster with 0.14 m from its pin to the chainplate's: set so owners' halyard rake measure lands mid-range (rig_hobie16.json chainplate.note; round 2's reviewers asked for less than 12.9 deg). The mast's rake and the hounds' height are SOLVED from these lengths (rig_hobie16.solve): the forestay holds the hounds forward, the shrouds hold them down and aft, and the bridle plate rides where its two wires line up with the forestay.",
+  "forestay_radius_m": 0.0024,
+  "shroud_radius_m": 0.002,
+  "trapeze_radius_m": 0.0016
+ },
+ "chainplate": {
+  "x": 0.38,
+  "out_share": 0.93,
+  "over_deck_m": 0.08,
+  "note": "Each shroud's chainplate is a strap standing up out of the hull's outboard side at the deck edge, just aft of the front crossbar's pylon, its pin 8 cm over the deck there. The parts guide lists the shroud chainplates beside the sidebars, and round 1 drew them on the sidebars' outboard faces (0.93 m out); all three reviewers put them on the hulls' outer sheer, as today's model has them (1.17 m out). The wires and owners' rake measure decide it. Owners measure rake with the main halyard: taken from the masthead to the top of the bow tang's bolt and swung to the transom, it marks 6 to 16 in below the transom's bottom edge, and 'about 16 in, the third hole from the bottom' is the usual start (Hobie's forum). With the chainplates on the sidebars, Hobie's shroud length rakes the mast only 7.7 deg and the halyard marks 0 in, outside that range; at the deck edge it marks about 16 in (rig_hobie16.report halyard_rake_in). Moving the chainplate 0.1 m along the hull changes the rake by about 0.5 deg; raising its pin 2 cm, about 0.6 deg."
+ },
+ "hounds": {
+  "band_height_m": 0.07,
+  "tang_out_m": 0.045,
+  "note": "One cast fitting round the mast where the forestay, both shrouds and all four trapeze wires pin on (the H16 has a single set of hounds, about 70% up the mast: solved, not set)."
+ },
+ "trapeze": {
+  "ring_y_m": 0.95,
+  "ring_x_m": [
+   0.45,
+   0.2
+  ],
+  "ring_radius_m": 0.032,
+  "handle_above_ring_m": 0.32,
+  "handle_length_m": 0.13,
+  "note": "Two wires a side (class rule 9), one for each crew, both from the hounds. Unused, each hangs with its ring held by a shock cord to the hull's deck edge, forward beside the shroud, the forward wire's ring for the crew and the aft one's for the helm. Where the rings hang is drawn, not measured; reviewers in both rounds wanted them 0.9-1.0 m over the trampoline, and the wire's length allows about 0.7 m where they hang."
+ }
+}

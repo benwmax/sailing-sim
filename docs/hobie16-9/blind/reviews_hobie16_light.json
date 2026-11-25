@@ -1,0 +1,432 @@
+{
+ "method": "Three fresh reviewers, each shown four pairs (50 m and 100 m, abeam and 40 degrees off the bow) at the 4K screen's own pixels shown twice size, the detailed boat and the light copy left or right at random per reviewer and pair (key in each row). Asked to describe each picture, the differences they see, which is the detailed model (or can't tell) and their confidence 1 to 5. Nothing about the boat or the copy was given beyond that one is simplified.",
+ "round_1": {
+  "light_json": "pass 3: hulls 0.33 px, blades and jib 0.5 px",
+  "rows": [
+   {
+    "reviewer": 1,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "A",
+    "answer": "A",
+    "confidence": 2,
+    "differences_seen": "the light one's rudder blade more stepped along its lower and trailing edge; its lower hull line and bow shading a touch more angular",
+    "right": true,
+    "forced_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "a sharper shading break where the near bow overlaps the far hull in A",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "a darker band on the far hull in A",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "A",
+    "answer": "A",
+    "confidence": 1,
+    "differences_seen": "B's rudder blade a touch more faceted along its lower edge; A's hull bottom near the bow a hair smoother",
+    "right": true,
+    "forced_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "a slightly stronger dark band on the far hull in A",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "the near bow's edge a touch crisper in A, at the level of a guess",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   }
+  ],
+  "tally": {
+   "cant_tell": 10,
+   "picked": 2,
+   "picked_right": 2,
+   "forced_picks": 4,
+   "forced_right": 0,
+   "would_a_player_notice": "no (all three)"
+  }
+ },
+ "round_2": {
+  "light_json": "pass 4: the rudder blades kept whole",
+  "rows": [
+   {
+    "reviewer": 1,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "B's lower hull near the stern and rudder outline maybe a little coarser, unsure",
+    "right": null,
+    "forced_right": true
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "A",
+    "confidence": 3,
+    "differences_seen": "the bridle wire from the far bow to the jib tack clearly drawn in A, faint or broken in B",
+    "right": false,
+    "forced_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "A",
+    "answer": "B",
+    "confidence": 2,
+    "differences_seen": "the far bridle wire more visible in B",
+    "right": false,
+    "forced_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "a faint crease at A's bow where the deck meets the hull",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "A",
+    "answer": "A",
+    "confidence": 2,
+    "differences_seen": "the bridle wire darker in B; a small yellow fitting at A's jib tack, a dark dot at B's",
+    "right": true,
+    "forced_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "B's bridle maybe slightly darker",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell (forced A)",
+    "confidence": 1,
+    "differences_seen": "the forestay line a little fainter in B with a yellowish tint at the tack",
+    "right": null,
+    "forced_right": false
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "A",
+    "confidence": 2,
+    "differences_seen": "the line from the bow to the jib's corner clearly drawn in A, fainter in B",
+    "right": false,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "forced_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "A",
+    "answer": "can't tell (forced B)",
+    "confidence": 1,
+    "differences_seen": "the bow-to-tack line slightly more visible in B",
+    "right": null,
+    "forced_right": false
+   }
+  ],
+  "tally": {
+   "cant_tell": 8,
+   "picked": 4,
+   "picked_right": 1,
+   "forced_picks": 4,
+   "forced_right": 1,
+   "would_a_player_notice": "no (all three)"
+  },
+  "finding": "all four picks named the bridle wire from the bows to the forestay, and in all four the light copy's drew darker or clearer than the detailed one's (three of the four took it for the detailed one): the bridle is kept whole from pass 5"
+ },
+ "round_3": {
+  "light_json": "pass 5: rudders and bridle kept whole",
+  "rows": [
+   {
+    "reviewer": 1,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "B",
+    "answer": "B",
+    "confidence": 2,
+    "differences_seen": "a crisper, slightly darker line along the near hull's bow where it crosses the far hull in B",
+    "right": true,
+    "lean_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 1,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "B",
+    "confidence": 2,
+    "differences_seen": "the same crisper bow edge over the far hull in B, fainter",
+    "right": true,
+    "lean_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "maybe a hair in how sharp the forestay reads, not sure it is real",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 2,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair1",
+    "view": "light_50_abeam",
+    "detailed_was": "A",
+    "answer": "can't tell (weak lean A)",
+    "confidence": 1,
+    "differences_seen": "shroud lines over the lower jib maybe a touch fainter in B, the hull's underside gradient maybe less smooth in B; called noise",
+    "right": null,
+    "lean_right": true
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair2",
+    "view": "light_50_bow",
+    "detailed_was": "A",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "the near hull's lower outline maybe slightly crisper or more angular in B",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair3",
+    "view": "light_100_abeam",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   },
+   {
+    "reviewer": 3,
+    "pair": "pair4",
+    "view": "light_100_bow",
+    "detailed_was": "B",
+    "answer": "can't tell",
+    "confidence": 1,
+    "differences_seen": "none",
+    "right": null,
+    "lean_right": null
+   }
+  ],
+  "tally": "10 of 12 can't tell; 2 picks, both right, confidence 2 (reviewer 1's angled views: the near hull's bow edge over the far hull); 1 weak lean, right. The same edge was named on the light copy in round 1 (reviewer 1, forced, wrong) and in round 3 (reviewer 3, pair 2, B was the light copy), so it reads both ways. All three: a player would not notice."
+ }
+}

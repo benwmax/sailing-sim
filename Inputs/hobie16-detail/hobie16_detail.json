@@ -1,0 +1,32 @@
+{
+ "_about": "The Hobie 16's own detail map (docs/hobie16-8, Tools/shipkit/hobie16/textures/textures_hobie16.py); it tiles at tile_m (x, y) metres; normals OpenGL. Medium draws none of them.",
+ "Tramp": {
+  "tile_m": [
+   0.03,
+   0.03
+  ],
+  "px": [
+   512,
+   512
+  ],
+  "px_per_mm": 17.07,
+  "fade_m": [
+   0.6,
+   2.5
+  ],
+  "tiling_N": 0.406,
+  "tiling_M": 0.385,
+  "repeat_N": 0.0,
+  "repeat_M": 0.001,
+  "size": {
+   "weave": {
+    "mm": 1.2,
+    "asked_mm": [
+     0.8,
+     1.6
+    ],
+    "pass": true
+   }
+  }
+ }
+}
