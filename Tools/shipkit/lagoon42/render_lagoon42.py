@@ -14,8 +14,10 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   under           from below and aft of her starboard quarter, without the sea: the canoe bodies
   foredeck        from above and ahead of her starboard bow: the trampolines, crossbeam, centre beam and bowsprit
   bridge_under    from ahead, just over the water between the bows: the bridge deck's nose and underside
+  drone           from the CC BY drone photo's solved camera (match_two_canoes.camera.json, 4:3): to lay over the photo
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
+import json
 import math
 import os
 import sys
@@ -127,13 +129,24 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "foredeck": ((11.0, -4.5, 6.5), (3.5, 0.0, 1.0), 32, True),
     "bridge_under": ((9.0, -1.2, 0.35), (-2.0, 0.0, 0.9), 30, True),
 }
+VIEWS["drone"] = (None, None, None, True)
 for name, (loc, tgt, lens, show_sea) in VIEWS.items():
     if ONLY and name not in ONLY:
         continue
     sea.hide_render = not show_sea
-    if isinstance(lens, tuple):
+    sc.render.resolution_y = int(RES * 0.6)
+    if name == "drone":
+        c = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "match_two_canoes.camera.json")))
+        cam.location = c["location"]
+        cam.rotation_mode = "QUATERNION"
+        cam.rotation_quaternion = c["rotation_quaternion"]
+        cam_d.type, cam_d.lens, cam_d.sensor_fit, cam_d.sensor_width = "PERSP", c["lens_mm"], "HORIZONTAL", 36.0
+        sc.render.resolution_y = int(RES * c["resolution"][1] / c["resolution"][0])
+    elif isinstance(lens, tuple):
+        cam.rotation_mode = "XYZ"
         look(loc, tgt, ortho=lens[1])
     else:
+        cam.rotation_mode = "XYZ"
         look(loc, tgt, lens=lens)
     sc.render.filepath = os.path.join(OUT, name + ".png")
     bpy.ops.render.render(write_still=True)

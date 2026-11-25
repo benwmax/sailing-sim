@@ -1,0 +1,55 @@
+{
+ "location": [
+  12.554785546496433,
+  -13.992286012366845,
+  6.7974950937608725
+ ],
+ "rotation_quaternion": [
+  0.6531271701832974,
+  0.7041365258412617,
+  0.18553130903228746,
+  0.20783355338665183
+ ],
+ "lens_mm": 18.58387977544533,
+ "sensor_width_mm": 36.0,
+ "resolution": [
+  1024,
+  768
+ ],
+ "flatness": 0.112,
+ "photo": "33304719078_d3f4f2ce2f_b.jpg",
+ "residual_px": {
+  "StbStemHead": 12.6,
+  "StbStemWL": 9.0,
+  "PortStemHead": 5.8,
+  "PortStemWL": 5.1,
+  "FwdLongAftTop": 1.5,
+  "FwdLongFwdTop": 6.9,
+  "FwdLongFwdBot": 1.6,
+  "FwdLongAftBot": 3.6,
+  "FwdSmall": 5.4,
+  "AftLongAftTop": 0.2,
+  "AftLongFwdTop": 2.9,
+  "AftLongFwdBot": 1.9,
+  "AftLongAftBot": 2.2,
+  "AftSmall": 2.1,
+  "SternTop": 3.3
+ },
+ "rms_px": 5.33,
+ "checks_px": {
+  "PlatformCorner": {
+   "error_px": 11.9,
+   "model_px": [
+    202,
+    587
+   ]
+  },
+  "BowspritTip": {
+   "error_px": 4.0,
+   "model_px": [
+    597,
+    616
+   ]
+  }
+ }
+}

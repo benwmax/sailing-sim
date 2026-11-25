@@ -10,7 +10,7 @@ and sheet.jpg, a 3 x 3 contact sheet with labels: plain-git JPEGs well under doc
 With --slice (slice 1 on): <before dir> and <after dir> are render_set.py's output for today's hull and the slice's
 build (the same fixed views, so they line up), <views dir> is render_lagoon42.py's. Writes the nine-view sheet.jpg
 from <after dir>, before_after.jpg (four of the fixed views, today's on the left) and views.jpg (the coloured views
-that <views dir> holds).
+that <views dir> holds; from slice 3 the drone photo's camera first, cropped to the boat).
 """
 import os
 import sys
@@ -51,15 +51,24 @@ def main(hull_dir, rig_dir, out):
     sheet.save(os.path.join(out, "sheet.jpg"), quality=80)
 
 
+CROPS = {"drone": (0.15, 0.55, 0.70, 0.98)}   # the photo's frame is mostly sea: the boat's part of it (fractions)
+
+
 def labelled_grid(cells, cols, w, h, out, quality=80):
-    """cells: [(png path, label)] pasted left to right, top to bottom, each w x h with its label under it."""
+    """cells: [(png path, label)] pasted left to right, top to bottom, each w x h with its label under it (a view
+    named in CROPS cropped first)."""
     lab = 30
     rows = (len(cells) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * w, rows * (h + lab)), "white")
     dr = ImageDraw.Draw(sheet)
     f = font(20)
     for i, (src, text) in enumerate(cells):
-        im = Image.open(src).convert("RGB").resize((w, h))
+        im = Image.open(src).convert("RGB")
+        crop = CROPS.get(os.path.splitext(os.path.basename(src))[0])
+        if crop:
+            im = im.crop((round(crop[0] * im.width), round(crop[1] * im.height), round(crop[2] * im.width),
+                          round(crop[3] * im.height)))
+        im = im.resize((w, h))
         x, y = (i % cols) * w, (i // cols) * (h + lab)
         sheet.paste(im, (x, y))
         dr.text((x + 8, y + h + 4), text, fill="black", font=f)
@@ -75,9 +84,11 @@ def slice_docs(before, after, views, out):
         cells += [(os.path.join(before, v + ".png"), "today: " + v.replace("_", " ")),
                   (os.path.join(after, v + ".png"), "rebuild: " + v.replace("_", " "))]
     labelled_grid(cells, 2, 600, 300, os.path.join(out, "before_after.jpg"))
-    names = ["bow_quarter", "stern_quarter", "foredeck", "bridge_under", "profile", "head_on", "bow_close", "under"]
+    names = ["drone", "bow_quarter", "stern_quarter", "foredeck", "bridge_under", "profile", "head_on", "bow_close",
+             "under"]
     names = [n for n in names if os.path.exists(os.path.join(views, n + ".png"))]
-    labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in names], 2, 600, 360,
+    labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in names],
+                  3 if len(names) % 3 == 0 else 2, 600, 360,
                   os.path.join(out, "views.jpg"))
 
 

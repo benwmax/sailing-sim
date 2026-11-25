@@ -1,0 +1,46 @@
+{
+ "about": "The Lagoon 42's decks, saloon and roof (docs/lagoon42-4): each hull's deck with its camber, toe rail and hatches; the saloon's walls with the dark band of front and side windows; the roof over the saloon and the cockpit (coachroof and hard top in one moulding, its thick rounded edge overhanging the windows). Measured from the CC BY drone photo through its solved camera (match_two_canoes.json: 15 points on the hulls picked by eye, 5.3 px rms) and read by eye from Lagoon's own photos (Bean, Nov 25: 'look, never copy'): nothing traced. Units: metres. Frame: the game's (X forward, Y starboard, Z up), Z 0 on the game's waterline, as lines_lagoon42.json. saloon_lagoon42.py turns these numbers into surfaces.",
+ "measured": {
+  "mast_foot": [-0.42, 0.0, 3.26],
+  "note": "From the drone photo's solved camera. The mast's foot, back-projected onto the centreline, is at x -0.42 (today's game mast is at -0.4) on the roof 3.26 m over the game's waterline (3.25 to 3.28 for any lens from 16 to 21 mm), where today's coachroof is 2.97. The dark window band, laid over the photo through the same camera, fits front windows from about y -1.9 to 1.9 at x 1.95 to 2.15, 1.78 to 2.55 m up, whose corners turn aft into side windows reaching about x -0.8. The roof's starboard-aft corner back-projects to about x -5.15 on the roof's height. The trampolines' aft edge meets the hulls about x 3.3 (slice 2 had 4.1): bridgedeck_lagoon42.json's nose moves aft with it."
+ },
+ "saloon": {
+  "front_x": 2.15,
+  "corner": [1.95, 1.9],
+  "corner_round": 0.35,
+  "side_window_aft": [-0.8, 2.75],
+  "aft": [-1.9, 2.8],
+  "plinth_z": 1.78,
+  "window_top_z": 2.55,
+  "rake_front": 0.08,
+  "tumblehome": 0.05,
+  "door_half_width": 1.9,
+  "note": "The saloon in plan (starboard half; the port half mirrors it): the front windows bow forward from the corners to front_x on the centreline; each corner (rounded) turns into a side wall that runs aft and outboard to side_window_aft, where the side windows end, and on to the aft bulkhead at aft. Below plinth_z the walls are white (they stand on the foredeck and the hulls' decks); between it and window_top_z they are dark glass along the front and the side windows and, on the aft bulkhead, across the sliding door's width (door_half_width either side of the centreline). Above the glass the walls run up into the roof. The front leans aft rake_front at the top, the sides lean in tumblehome."
+ },
+ "roof": {
+  "top_z": 3.26,
+  "crown": 0.04,
+  "edge_z": 2.95,
+  "under_z": 2.58,
+  "front_x": 2.6,
+  "bow": 0.25,
+  "aft_x": -5.15,
+  "half_width": 2.95,
+  "corner_front": 0.8,
+  "corner_aft": 0.6,
+  "top_inset": 0.25,
+  "under_inset": 0.35,
+  "note": "One moulding over the saloon and the cockpit (the coachroof and the hard top; slice 4 builds the cockpit and what holds the hard top up aft, slice 6 the mast on it). In plan a rounded rectangle, its front bowed forward by bow at the centreline. Its edge is thick and rounded: from the flat top (top_z on the centreline, crown lower at the sides) top_inset in from the edge, round out to the outermost line at edge_z, and back under to the flat underside (under_z) under_inset in. The front overhangs the windows by about 0.45 m."
+ },
+ "deck": {
+  "camber": 0.03,
+  "toe_rail": {"height": 0.035, "width": 0.03, "from_x": -5.25, "to_x": 6.05},
+  "hatches": [
+   {"x": 4.55, "size": [0.42, 0.42]},
+   {"x": 3.05, "size": [0.5, 0.5]},
+   {"x": -3.7, "size": [0.45, 0.45]}
+  ],
+  "hatch_height": 0.025,
+  "note": "Each hull's deck from the last step of the sugar scoop to the stem, between its inboard and outboard sheer, crowned camber over the hull's centre. A toe rail along the outboard edge. Hatches over the cabins on each hull's centreline (two forward, one aft, as the drone photo shows forward), flush dark acrylic in a low frame."
+ }
+}

@@ -1,15 +1,19 @@
-"""The Lagoon 42's rebuild in Blender (docs/lagoon42-2 on): the hulls (slice 1) and the bridge deck (slice 2).
+"""The Lagoon 42's rebuild in Blender (docs/lagoon42-2 on): the hulls (slice 1), the bridge deck (slice 2), the decks,
+saloon and roof (slice 3).
 
     blender -b --factory-startup -P build_lagoon42.py -- <out dir>
 
 Builds both hull shells from hull_lagoon42.py (lines_lagoon42.json, the canoe depth solved for the game's 15.5 t),
 each one shell from its inboard top round the keel to its outboard top: the sugar scoop's treads and risers close it
 aft (L42_Hull, with the swim platforms and steps), the outboard windows are flush dark panes (L42_HullWindows). The
-shell is cut along the boot top's line BOTTOM_Z: Topsides above, Antifouling below. L42_DeckPlaceholder is a flat lid
-at the sheer until slice 3 builds the deck.
+shell is cut along the boot top's line BOTTOM_Z: Topsides above, Antifouling below.
 
 Slice 2 (docs/lagoon42-3) adds the bridge deck, its placeholder lid, the crossbeam with the centre beam, the bowsprit
 and the trampolines from bridgedeck_lagoon42.py.
+
+Slice 3 (docs/lagoon42-4) replaces the deck's lid with each hull's deck, toe rail and hatches (L42_Deck, L42_Hatches)
+and adds the saloon's walls with their windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof) from
+saloon_lagoon42.py.
 
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
 of buoyancy beside the game's) and <out>/hydrostatics.json.
@@ -29,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_lagoon42 as H  # noqa: E402
 import bridgedeck_lagoon42 as B  # noqa: E402
+import saloon_lagoon42 as S  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -155,19 +160,6 @@ def build_windows(bm, cy, out_sign):
                 bm.faces.new((a[k], b[k], b[k + 1], a[k + 1]))
 
 
-def build_deck_placeholder(bm, cy):
-    """A flat lid at the sheer from the scoop's last riser to the stem, so the renders read as hulls and not open
-    boxes. Slice 3 builds the real deck (camber, toe rail, hatches) in its place."""
-    xs = [x for x in H.stations(N_STATIONS) if x >= H.SCOOP_END + 0.0005]
-    rows = []
-    for x in xs:
-        y = 0.0 if x == xs[-1] else H.half_beam(x)
-        z = H.sheer_z(x)
-        rows.append((bm.verts.new(bl(x, cy - y, z)), bm.verts.new(bl(x, cy + y, z))))
-    for a, b in zip(rows[:-1], rows[1:]):
-        bm.faces.new((a[0], a[1], b[1], b[0]))
-
-
 def grid_faces(bm, rows, flip=False):
     """Quads between consecutive rows of game-frame points (every row the same length); returns the faces."""
     vrows = [[bm.verts.new(bl(*p)) for p in row] for row in rows]
@@ -257,6 +249,72 @@ def build_bridgedeck():
     to_object("L42_Trampolines", bm, ["Trampoline"])
 
 
+def loop_faces(bm, rings, mats=None):
+    """Quads between consecutive closed rings of game-frame points (every ring the same length); mats(k, i) gives a
+    face's material index (k the ring, i the column). Returns the vertex rings and the faces."""
+    vr = [[bm.verts.new(bl(*p)) for p in ring] for ring in rings]
+    faces = []
+    for k, (a, b) in enumerate(zip(vr[:-1], vr[1:])):
+        n = len(a)
+        for i in range(n):
+            f = bm.faces.new((a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]))
+            if mats:
+                f.material_index = mats(k, i)
+            faces.append(f)
+    return vr, faces
+
+
+def build_deck():
+    """Each hull's deck (crowned between its sheers) with the toe rail on its outboard edge (L42_Deck), and the hatches
+    (L42_Hatches: a low white frame, dark acrylic on top)."""
+    bm = bmesh.new()
+    for cy, out_sign in ((H.HULL_Y, 1), (-H.HULL_Y, -1)):
+        fs = grid_faces(bm, S.deck_rows(cy))
+        face_out(bm, fs, (0.0, cy, 1.6), (0, 0, 1))
+        fs = grid_faces(bm, S.toe_rail_rows(cy, out_sign))
+        face_out(bm, fs, (0.0, cy + out_sign * (H.half_beam(0.0) - 0.015), 1.6), (0, 0, 1))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
+    to_object("L42_Deck", bm, ["Topsides"])
+
+    bm = bmesh.new()
+    for cy in (H.HULL_Y, -H.HULL_Y):
+        for x0, x1, y0, y1, z0, z1 in S.hatches(cy):
+            v = [bm.verts.new(bl(x, y, z)) for z in (z0, z1) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+            top = bm.faces.new(v[4:])
+            top.material_index = 1
+            for i in range(4):
+                bm.faces.new((v[i], v[(i + 1) % 4], v[4 + (i + 1) % 4], v[4 + i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    to_object("L42_Hatches", bm, ["Topsides", "CabinWindow"])
+
+
+def build_saloon():
+    """The saloon's walls round its plan, from under the decks up into the roof: white below the plinth and above the
+    windows, dark glass between along the front, the side windows and the aft door (L42_Saloon)."""
+    rows, glazed = S.wall_rows()
+    bm = bmesh.new()
+    _, faces = loop_faces(bm, rows, lambda k, i: 1 if k == 1 and glazed[i] else 0)
+    face_out(bm, faces, (S.SAL["front_x"], 0.0, 2.1), (1, 0, 0))
+    for f in bm.faces:
+        f.smooth = True
+    to_object("L42_Saloon", bm, ["Topsides", "CabinWindow"])
+
+
+def build_roof():
+    """The roof over the saloon and the cockpit: rings from the top's centre over its rounded edge to the underside's
+    centre, each closed at the middle (L42_Roof)."""
+    rings = S.roof_rings()
+    bm = bmesh.new()
+    vr, faces = loop_faces(bm, rings)
+    faces.append(bm.faces.new(vr[0][::-1]))
+    faces.append(bm.faces.new(vr[-1]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    face_out(bm, faces, (0.0, 0.0, S.ROOF["top_z"]), (0, 0, 1))
+    for f in bm.faces:
+        f.smooth = len(f.verts) == 4
+    to_object("L42_Roof", bm, ["Topsides"])
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -303,12 +361,10 @@ def main():
     for cy, out_sign in ((H.HULL_Y, 1), (-H.HULL_Y, -1)):
         build_windows(wm, cy, out_sign)
     to_object("L42_HullWindows", wm, ["CabinWindow"])
-    dm = bmesh.new()
-    for cy in (H.HULL_Y, -H.HULL_Y):
-        build_deck_placeholder(dm, cy)
-    bmesh.ops.remove_doubles(dm, verts=dm.verts[:], dist=1e-6)
-    to_object("L42_DeckPlaceholder", dm, ["Topsides"])
+    build_deck()
     build_bridgedeck()
+    build_saloon()
+    build_roof()
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
@@ -323,6 +379,8 @@ def main():
               "waterplane_m2": round(H.waterplane(), 2), "waterplane_15cm_down_m2": round(H.waterplane(-0.15), 2),
               "load_sink_m": round(sink, 4), "canoe_depth_light_m": round(depth - sink, 4),
               "bridgedeck_clearance_m": B.US["z"], "bridgedeck_clearance_light_m": round(B.US["z"] + sink, 4),
+              "roof_top_z_m": S.ROOF["top_z"], "roof_top_light_m": round(S.ROOF["top_z"] + sink, 4),
+              "mast_foot_measured": S.SD["measured"]["mast_foot"],
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
                       "waterline (hull_volume_m3) plus the appendages' allowance (two keels and two rudders, a guess "
                       "until slice 5 builds them). design_hull_volume_m3 is the drawing's own integral "

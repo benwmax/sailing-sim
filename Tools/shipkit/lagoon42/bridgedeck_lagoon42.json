@@ -7,16 +7,16 @@
   "note": "The bridge deck's underside, flat at the game's 0.85 m over the water (0.97 m over the light boat's: the clearance waves have to reach before they slam it), from the top of the sugar scoops' steps (aft_x, where slice 4's cockpit sole begins) to the nose. It turns up into each hull's inboard topsides through a fillet of this radius."
  },
  "nose": {
-  "bottom_x": 3.7,
-  "top_x": 4.25,
+  "bottom_x": 2.9,
+  "top_x": 3.45,
   "top_z_below_sheer": 0.04,
   "bow": 0.14,
-  "note": "The bridge deck's rounded front under the foredeck: in profile a quarter ellipse from the underside at bottom_x (on the centreline) forward and up to the deck's front edge at top_x, a little under the sheer; in plan it bows forward, its ends bow less aft at the hulls. The trampolines' aft edge is laced to it. Placed by eye from the drone photo: the trampolines run from about 4.1 m forward of amidships at the hulls to the crossbeam, a little shorter than the gap between the hulls is wide."
+  "note": "The bridge deck's rounded front under the foredeck: in profile a quarter ellipse from the underside at bottom_x (on the centreline) forward and up to the deck's front edge at top_x, a little under the sheer; in plan it bows forward, its ends bow less aft at the hulls. The trampolines' aft edge is laced to it. Slice 2 placed it by eye from the drone photo at 4.25; slice 3's camera solve of the same photo (saloon_lagoon42.json 'measured') puts the trampolines' aft edge about x 3.3 at the hulls, so it moved 0.8 m aft, and the trampolines run 2.6 m to the crossbeam."
  },
  "foredeck": {
-  "aft_x": 2.8,
+  "aft_x": 1.95,
   "camber": 0.03,
-  "note": "The deck between the hulls from the nose aft to the saloon's front (the card's saloon_x), at the hulls' sheer with a little camber. Aft of it slice 3's saloon and slice 4's cockpit stand; until then a flat lid at the sheer covers the bridge deck there (placeholder)."
+  "note": "The deck between the hulls from the nose aft to the saloon's front corners (saloon_lagoon42.json; the card's saloon_x, 2.8 in today's model), at the hulls' sheer with a little camber. Aft of it the saloon (slice 3) and slice 4's cockpit stand; until slice 4 a flat lid at the sheer covers the bridge deck there (placeholder)."
  },
  "crossbeam": {
   "x": 6.05,
