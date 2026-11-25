@@ -80,6 +80,20 @@ def frame(side):
     mid = out[len(out) // 2]
     tubes["Brace"] = [(rf - 0.05, side * root_y(rf - 0.05), z_at(rf - 0.05, root_y(rf - 0.05)) - 0.02),
                       (mid[0], side * mid[1] * 0.98, z_at(mid[0], mid[1] * 0.98) - 0.02)]
+    # diagonal braces under the front and rear bars, from halfway down the hull's side (Milestone B)
+    st = W.get("strut")
+    if st:
+        tip = tip_y()
+        tf, tr = W["tip"]["front_x"], W["tip"]["rear_x"]
+        under = (W["tube"]["bar_d_m"] + st["d_m"]) / 2 * 0.8          # the brace's end tucked up under the bar
+        for name, xr, xt, xb in (("StrutFront", rf, tf, rf - 0.06), ("StrutRear", rr, tr, rr + 0.06)):
+            zk, zs = H.keel_z(xb), H.sheer_z(xb)
+            zf = zk + (zs - zk) * st["from_depth_frac"]
+            yf = max(H.PLAN(xb), 0.0) * 0.97
+            f = st["to_span_frac"]
+            xe = xr + (xt - xr) * f                  # the bar is swept: follow it out, or the brace's end stands in the air
+            yb = root_y(xr) + (tip - root_y(xr)) * f
+            tubes[name] = [(xb, side * yf, zf), (xe, side * yb, z_at(xe, yb) - under)]
     return tubes
 
 

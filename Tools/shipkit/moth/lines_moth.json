@@ -5,24 +5,24 @@
   "transom_x": -1.6775
  },
  "keel": {
-  "note": "The keel line, as height above its lowest point: almost straight (a moth's hull only matters at rest and at take-off), a plumb stem carried nearly to the keel with only a small forefoot radius (the afloat photo shows a tall, nearly upright bow; Milestone A cut the forefoot from 0.2 m to 0.11 m and the transom's rise from 0.06 to 0.035, after all three reviewers read the bow as rounded), a little rise to the transom. Points are (x, z).",
-  "points": [[-1.6775, 0.035], [-1.2, 0.014], [-0.6, 0.003], [-0.15, 0.0], [0.4, 0.002], [0.9, 0.006], [1.25, 0.014], [1.5, 0.028], [1.62, 0.048], [1.66, 0.07], [1.6775, 0.11]]
+  "note": "The keel line, as height above its lowest point: almost straight (a moth's hull only matters at rest and at take-off), a plumb stem carried nearly to the keel with only a small forefoot radius (the afloat photo shows a tall, nearly upright bow; Milestone A cut the forefoot from 0.2 m to 0.11 m and the transom's rise from 0.06 to 0.035, after all three reviewers read the bow as rounded), a little rise to the transom. Points are (x, z). Milestone B raised the transom's rise again, 0.035 to 0.07 (with the lower aft sheer: every reviewer read the aft hull as too deep).",
+  "points": [[-1.6775, 0.07], [-1.2, 0.03], [-0.6, 0.008], [-0.15, 0.0], [0.4, 0.002], [0.9, 0.006], [1.25, 0.014], [1.5, 0.028], [1.62, 0.048], [1.66, 0.07], [1.6775, 0.11]]
  },
  "sheer": {
-  "note": "The deck edge's height above the keel's lowest point (x, z): highest near the bow (she noses into waves when low-riding), lower toward the transom so the sailor can sit back.",
-  "points": [[-1.6775, 0.4], [-1.0, 0.42], [-0.2, 0.435], [0.6, 0.44], [1.2, 0.443], [1.6775, 0.452]]
+  "note": "The deck edge's height above the keel's lowest point (x, z): highest near the bow (she noses into waves when low-riding), lower toward the transom so the sailor can sit back. Milestone B lowered it all along, most aft (bow 0.452 to 0.405, x -0.2 0.435 to 0.355, transom 0.40 to 0.27): six of six reviewers over two rounds read the hull as 25-60% too deep, most of it aft, and the hull's outline laid over the camera-matched flying photo showed the real hull about 0.37 m deep at the bow and 0.2 m at the transom. Round 3 read the sheer as flat where the photos' deck sweeps up to the bow; lowering the deck at the mast to show it moved the mast's foot 10 px off the camera-matched photo (from 6), so the sheer stays and the raised look comes from the fairing at the mast's foot (hardware_moth.json).",
+  "points": [[-1.6775, 0.27], [-1.0, 0.31], [-0.2, 0.355], [0.6, 0.385], [1.2, 0.397], [1.6775, 0.405]]
  },
  "plan": {
-  "note": "Half-breadth at the deck edge (x, y): widest a little aft of the middle, a fine bow, a broad transom for the gantry's feet.",
-  "points": [[-1.6775, 0.135], [-1.1, 0.172], [-0.4, 0.19], [0.2, 0.185], [0.8, 0.155], [1.25, 0.105], [1.5, 0.06], [1.6775, 0.004]]
+  "note": "Half-breadth at the deck edge (x, y): widest a little aft of the middle, a fine bow, a broad transom for the gantry's feet. Milestone B widened the aft quarter a little (transom 0.135 to 0.15 a side) to float the shallower stern.",
+  "points": [[-1.6775, 0.15], [-1.1, 0.178], [-0.4, 0.19], [0.2, 0.185], [0.8, 0.155], [1.25, 0.105], [1.5, 0.06], [1.6775, 0.004]]
  },
  "section": {
-  "note": "Each section is a V that rounds into upright topsides: half-breadth at height t (0 keel, 1 deck edge) is plan(x) * t^power, the power smaller (fuller, rounder) aft and larger (sharper V) forward. deadrise_flat rounds the keel over its lowest few cm; deck_crown is how high the deck's middle stands over its edges; edge_round the deck edge's radius.",
-  "power_aft": 0.32,
-  "power_mid": 0.4,
-  "power_bow": 0.62,
-  "keel_round_m": 0.012,
+  "note": "Each section is a V that rounds into upright topsides: half-breadth at height t (0 keel, 1 deck edge) is plan(x) * t^power, the power smaller (fuller, rounder) aft and larger (sharper V) forward. deadrise_flat rounds the keel over its lowest few cm; deck_crown is how high the deck's middle stands over its edges; edge_round the deck edge's radius. Milestone B made the sections fuller and the bilge harder (powers 0.32/0.40/0.62 to 0.16/0.22/0.45, keel round 12 to 8 mm, deck edge round 18 to 10 mm): reviewers read the bottom corners as soft, the real hulls as slab-sided with crisp chines, and fuller sections float her shallower so the lower deck keeps its freeboard (three reviewers in round 3 still saw her float about half as high as the afloat photo).",
+  "power_aft": 0.16,
+  "power_mid": 0.22,
+  "power_bow": 0.45,
+  "keel_round_m": 0.008,
   "deck_crown_m": 0.02,
-  "edge_round_m": 0.018
+  "edge_round_m": 0.01
  }
 }

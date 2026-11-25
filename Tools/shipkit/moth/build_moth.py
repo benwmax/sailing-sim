@@ -202,7 +202,8 @@ def build_foils():
     """The main strut and T-foil with its flap and pod, the gantry, rudder and elevator, the wand and its fitting:
     one object each (the game moves the flap, elevator and wand on their own)."""
     parts, info = FO.geometry()
-    slot = {"MOTH_GantryL": "Carbon", "MOTH_GantryR": "Carbon", "MOTH_Wand": "Carbon", "MOTH_BowFitting": "Carbon",
+    slot = {"MOTH_GantryL": "Carbon", "MOTH_GantryR": "Carbon", "MOTH_GantryLLow": "Carbon", "MOTH_GantryRLow": "Carbon",
+            "MOTH_Wand": "Carbon", "MOTH_BowFitting": "Carbon",
             "MOTH_RudderHead": "Alloy", "MOTH_WandPaddle": "Foil"}
     obs = []
     for name, spec in parts.items():

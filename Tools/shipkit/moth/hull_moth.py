@@ -24,7 +24,9 @@ STEM_X = LINES["ends"]["stem_x"]
 TRANSOM_X = LINES["ends"]["transom_x"]
 SEC = LINES["section"]
 WATER_KG_M3 = 1000.0
-SAILOR_X = -0.55          # the sailor's centre of gravity at rest, sitting by the wing bars' front edge (game frame)
+SAILOR_X = -0.3           # the sailor's centre of gravity at rest, sitting in the middle of the wing (front bar at x 0.58
+                          # since Milestone A; it was -0.55, by the old wings' front bar): the afloat photo shows her nearly level,
+                          # her bow's freeboard about twice the transom's
 BOAT_CG_X = 0.05          # the boat's own (hull, foils, rig): the main foil and mast just ahead of the middle
 
 

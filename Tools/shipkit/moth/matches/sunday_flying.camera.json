@@ -1,14 +1,14 @@
 {
  "location": [
-  46.19000804381058,
-  26.950868203949835,
-  4.339878646688442
+  46.286163733550794,
+  25.89104351556655,
+  2.7727355260198467
  ],
  "rotation_quaternion": [
-  0.32237739454416475,
-  0.36271486959829013,
-  0.5891404067961687,
-  0.646083833522598
+  0.32300627526188413,
+  0.37407503500564476,
+  0.5940924308646733,
+  0.6346565984186037
  ],
  "lens_mm": 200.0,
  "sensor_width_mm": 36.0,
@@ -16,38 +16,38 @@
   1280,
   853
  ],
- "flatness": 0.212,
+ "flatness": 0.214,
  "photo": "Sunday Flying!.jpg (1280 px Commons thumbnail)",
  "residual_px": {
-  "WandPivot": 9.4,
-  "MastBase": 4.5,
-  "Masthead": 1.1,
-  "StrutAtHull": 9.7,
-  "RudderPivot": 12.1,
-  "TransomBottom": 7.4,
-  "WingFrontTip": 2.3
+  "WandPivot": 7.9,
+  "MastBase": 6.4,
+  "Masthead": 0.8,
+  "StrutAtHull": 4.3,
+  "RudderPivot": 1.9,
+  "TransomBottom": 5.3,
+  "WingFrontTip": 3.7
  },
- "rms_px": 7.65,
+ "rms_px": 4.92,
  "checks_px": {
   "StrutAtFlyingWater": {
-   "error_px": 6.9,
+   "error_px": 9.8,
    "model_px": [
-    798,
-    805
+    800,
+    797
    ]
   },
   "RudderAtFlyingWater": {
-   "error_px": 11.5,
+   "error_px": 12.5,
    "model_px": [
-    944,
-    795
+    945,
+    794
    ]
   },
   "WandTipModel": {
-   "error_px": 38.5,
+   "error_px": 18.1,
    "model_px": [
-    670,
-    813
+    691,
+    800
    ]
   }
  }

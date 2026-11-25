@@ -110,6 +110,11 @@ def geometry():
         knee = (x_tr - 0.04, side * (feet_y - 0.02), H.sheer_z(x_tr))
         head = (x_r + 0.035, side * 0.022, z_g)
         parts[name] = ("tube", tube([foot, knee, head]), g["tube_d_m"], g["tube_d_m"] * 0.8)
+        if g.get("lower_tubes"):
+            # the truss's lower member: from the transom's lower corner up to the rudder head (Milestone B)
+            lo = (x_tr + 0.01, side * H.PLAN(x_tr) * 0.55, H.keel_z(x_tr) + 0.07)
+            parts[name + "Low"] = ("tube", tube([lo, (x_r + 0.04, side * 0.024, z_g - 0.03)]), g["tube_d_m"] * 0.85,
+                                   g["tube_d_m"] * 0.7)
     z_rfoot = bottom - r["below_hull_m"]
     parts["MOTH_Rudder"] = ("loft", vertical_foil(x_r, r["chord_m"], r["thickness"], z_g + r["head_above_gantry_m"],
                                                   z_rfoot + 0.008))
@@ -125,6 +130,8 @@ def geometry():
     drop = z_piv - water
     L = w["length_m"]
     ang = math.acos(min(1.0, drop / L))          # from straight down, the tip forward
+    if w.get("trail") == "aft":
+        ang = -ang                               # the paddle trails behind the pivot (Milestone B)
     tip = (x_piv + L * math.sin(ang), 0.0, z_piv - L * math.cos(ang))
     parts["MOTH_Wand"] = ("tube", tube([(x_piv, 0.0, z_piv), tip]), w["diameter_root_m"], w["diameter_tip_m"])
     pl, pw = w["paddle_m"]

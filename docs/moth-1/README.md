@@ -50,14 +50,14 @@ budgets per slice and what the game will float her with.
 | --- | ---: | --- |
 | Hull length | 3.355 m | the rule's limit: every moth is built to it |
 | Beam over the wings | 2.25 m | the rule's limit |
-| Hull beam / depth | 0.38 / 0.45 m | slice 1 (`docs/moth-2`): the depth raised from 0.36 after the afloat photo |
+| Hull beam / depth | 0.38 / 0.40 m | slice 1 (`docs/moth-2`): the depth raised from 0.36 after the afloat photo; Milestone B (`docs/moth-8`) lowered it to 0.40 by the camera-matched outline |
 | Rigged weight | 35 kg | the class site's 30-45 kg for foilers |
 | Mast / luff | 5.1 / 5.04 m | a sailmaker's tuning guide (today's standard mast); the luff cut from 5.1 in slice 4 to fit under the masthead |
 | Sail area | 8.25 m² | the rule's limit |
-| Main foil span / area | 1.0 m / 0.12 m² | typical "big foil"; slice 3 checks by photo |
-| Elevator span / area | 0.72 m / 0.065 m² | typical; slice 3 |
+| Main foil span / area | 1.1 m / 0.12 m² | typical "big foil"; Milestone B widened it from 1.0 m and slimmed the chords |
+| Elevator span / area | 0.80 m / 0.064 m² | typical; Milestone B widened it from 0.72 m |
 | Strut and rudder below the hull | 1.05 m | enough to fly 0.5 m clear with the foil 0.55 m under |
-| Wand / gantry | 0.95 / 0.45 m | typical; slice 3 |
+| Wand / gantry | 0.88 / 0.50 m | typical; Milestone B: the wand trails aft from a fitting 0.10 m ahead of the stem, the gantry at the rule's 0.5 m |
 | Sailor | 80 kg | the class's 70-100 kg; at rest the hull floats 115 kg (0.115 m³) |
 
 ## The size check

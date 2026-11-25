@@ -69,10 +69,13 @@ def geometry():
     vfoot = np.array([mb[0] + v["deck_fwd_of_mast_m"], 0.0, deck_z(mb[0] + v["deck_fwd_of_mast_m"]) + 0.03])
     vboom = goose + (bend - goose) / np.linalg.norm(bend - goose) * v["boom_from_goose_m"] - np.array([0, 0, 0.03])
     vmid = vfoot + (vboom - vfoot) * 0.55
-    for dy in (0.008, -0.008):
+    for dy in (0.02, -0.02):
         lines.append(("tube", [vfoot + np.array([0, dy, 0]), vmid + np.array([0, dy, 0])], v["d_m"], None))
         lines.append(("tube", [vmid + np.array([0, dy, 0]), vboom + np.array([0, dy, 0])], v["d_m"], None))
     fittings += [("pod", vmid - np.array([0.018, 0, 0]), 0.036, 0.03), ("pod", vfoot - np.array([0.02, 0, 0]), 0.04, 0.035)]
+    if v.get("ram_d_m"):
+        # the vang's strut beside the cascade, mast foot to boom (Milestone B)
+        fittings.append(("tube", [vfoot + np.array([0.0, 0.0, 0.01]), vboom], v["ram_d_m"], v["ram_d_m"] * 0.8))
     # the cunningham: tack to the mast foot, then both control tails aft along the deck to the sailor
     _, tack, _, _ = RG.sail_outline(RG.solve_roach())
     cfoot = np.array([mb[0] + 0.05, 0.0, deck_z(mb[0] + 0.05) + 0.02])
@@ -81,6 +84,11 @@ def geometry():
         lines.append(("tube", [src, np.array([mb[0] - 0.25, dy, deck_z(mb[0] - 0.25) + 0.008]),
                                np.array([ms["ratchet_x"] - 0.15, dy * 3, deck_z(ms["ratchet_x"] - 0.15) + 0.008])],
                       K["cunningham"]["d_m"], None))
+    # the fairing on the foredeck round the mast's foot (Milestone B)
+    fa = K.get("fairing")
+    if fa:
+        fittings.append(("pod", np.array([fa["aft_x"], 0.0, deck_z(0.5 * (fa["aft_x"] + fa["fwd_x"])) + fa["d_m"] / 2 - fa["sink_m"]]),
+                         fa["fwd_x"] - fa["aft_x"], fa["d_m"]))
     # the mast's step collar
     r = K["ram"]
     fittings.append(("tube", [mb - np.array([0, 0, 0.01]), mb + np.array([0, 0, r["h_m"]])], r["d_m"], r["d_m"] * 0.9))

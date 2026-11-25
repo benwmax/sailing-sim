@@ -68,6 +68,8 @@
    "objects": [
     "MOTH_GantryL",
     "MOTH_GantryR",
+    "MOTH_GantryLLow",
+    "MOTH_GantryRLow",
     "MOTH_RudderHead"
    ],
    "owns": [
