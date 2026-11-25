@@ -93,7 +93,10 @@
   "radar_height": 0.22,
   "deck_light_z": 10.7,
   "jib_sheet_z": 6.5,
-  "note": "On the mast's front face: the radar dome on a platform with a strut under it at the spreaders' height (the drone photo shows the dome beside the spreaders and the strut below them), a deck and steaming light under it, and the self-tacking jib's sheet box at jib_sheet_z (the sheet comes up from its car on the track and down inside the mast)."
+  "lazy_jack_z": 9.8,
+  "lazy_jack_cleat_z": 4.25,
+  "lazy_jack_rope": 0.008,
+  "note": "On the mast's front face: the radar dome on a platform with a strut under it at the spreaders' height (the drone photo shows the dome beside the spreaders and the strut below them), a deck and steaming light under it, and the self-tacking jib's sheet box at jib_sheet_z (the sheet comes up from its car on the track and down inside the mast). On the mast's sides: the lazy jacks' blocks at lazy_jack_z and their cleats at lazy_jack_cleat_z (slice 7: sails_lagoon42.json says how the jacks are rigged)."
  },
  "boom": {
   "pin": [
@@ -105,7 +108,8 @@
   "width": 0.13,
   "clew_x": -6.25,
   "mainsheet_x": -4.8,
-  "note": "The gooseneck's pin (x, z): 1.29 m over the roof, where the drone photo's lazy bag sits (its bottom at the mast 4.64, its top 5.42; the broadside photo looked at by eye gives 1.2 to 1.3 m). The boom (a rounded box height x width) runs aft to end_x, past the roof's aft edge (x -5.15); the outhaul's car is at the physics' clew. The mainsheet's upper block hangs at mainsheet_x, over the traveller."
+  "reef_exits_x": [-5.85, -5.1],
+  "note": "The gooseneck's pin (x, z): 1.29 m over the roof, where the drone photo's lazy bag sits (its bottom at the mast 4.64, its top 5.42; the broadside photo looked at by eye gives 1.2 to 1.3 m). The boom (a rounded box height x width) runs aft to end_x, past the roof's aft edge (x -5.15); the outhaul's car is at the physics' clew. The mainsheet's upper block hangs at mainsheet_x, over the traveller. The first two reefs' leech lines come out of the boom's top through sheave boxes at reef_exits_x, a little aft of where their cringles come down, and dead-end on padeyes beside them (slice 7: inside the lazy bag)."
  },
  "traveller": {
   "x": -4.8,

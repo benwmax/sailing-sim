@@ -31,6 +31,15 @@ rigging's wire (L42_Wires), its fittings and the running rigging's hardware (L42
 (Tools/boatkit/bk_parts.py) on the axes and scale rig_lagoon42 gives them; their sockets are checked against where it
 expects them.
 
+Slice 7 (docs/lagoon42-8) bends on the sails from sails_lagoon42.py: the mainsail in four states (L42_Sail_Main_Set,
+_Reach, _Run, _Reefed, their boom's angle in the property boom_deg) with the luff's hardware they share
+(L42_Sail_Main_Luff), the lazy bag zipped over the flaked main and open (L42_LazyBag_Zipped, _Open, origins at the
+gooseneck's pin: they swing with the boom), the self-tacking jib set and furled (L42_Sail_Jib_Set, _Furled) and the
+Code 0 set and furled (L42_Sail_Code0_Set, _Furled). The sails' cloth carries the game's sail UVs (UVMap: metres in the
+flat sail; UV1: the same over its foot and luff; UV2: metres from the leech and in from its straight line, as
+SailCloth.h reads them). All are hidden but the boat at her mooring (sails_lagoon42.SHOWN); the mainsheet's four parts
+are their own object (L42_Mainsheet), hidden when a main is hoisted (which draws its own at its boom's angle).
+
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
 of buoyancy beside the game's), <out>/hydrostatics.json and, from slice 6, <out>/Lagoon42_sockets.json (the rig's
 sockets in the game's frame and centimetres, for the size check's air draft and slice 13).
@@ -54,6 +63,7 @@ import saloon_lagoon42 as S  # noqa: E402
 import cockpit_lagoon42 as C  # noqa: E402
 import appendages_lagoon42 as A  # noqa: E402
 import rig_lagoon42 as R  # noqa: E402
+import sails_lagoon42 as SL  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -68,7 +78,9 @@ SLOT_RGB = {"Topsides": (0.92, 0.92, 0.9), "Antifouling": (0.16, 0.17, 0.2), "Ca
             "Aluminium": (0.62, 0.63, 0.64), "Rubber": (0.04, 0.04, 0.045), "CastBronze": (0.66, 0.48, 0.26),
             "PaintedAluminium": (0.86, 0.86, 0.84), "WhitePlastic": (0.85, 0.84, 0.8), "BlackPlastic": (0.03, 0.03, 0.035),
             "CarbonMatte": (0.05, 0.05, 0.055), "Graphics": (0.45, 0.015, 0.02), "RedPlastic": (0.7, 0.05, 0.04),
-            "Rope": (0.78, 0.79, 0.8)}
+            "Rope": (0.78, 0.79, 0.8), "ClothMain": (0.93, 0.92, 0.88), "ClothJib": (0.93, 0.92, 0.88),
+            "ClothCode0": (0.9, 0.9, 0.87), "SailTape": (0.86, 0.85, 0.81), "SailPatch": (0.88, 0.87, 0.83),
+            "SailUV": (0.13, 0.16, 0.24), "SailBag": (0.13, 0.16, 0.24), "Webbing": (0.1, 0.1, 0.11)}
 
 
 def clear_scene():
@@ -507,7 +519,7 @@ def build_appendages():
 
 
 RIG_OBJECTS = {"mast": "L42_Mast", "boom": "L42_Boom", "wires": "L42_Wires", "fittings": "L42_RigFittings",
-               "running": "L42_Running"}
+               "running": "L42_Running", "mainsheet": "L42_Mainsheet"}
 
 
 class Part:
@@ -516,6 +528,7 @@ class Part:
     def __init__(self):
         self.bm = bmesh.new()
         self.mats = []
+        self.cloth_uv = {}          # a sail's cloth vertex: its (UVMap, UV1, UV2) coordinates
 
     def slot(self, name):
         if name not in self.mats:
@@ -582,6 +595,66 @@ def kit_merge(acc, p):
     return socks
 
 
+def mesh_part(acc, p, who="rig"):
+    """One part (rig_lagoon42's kinds: rings, cyl, torus, box, kit; sails_lagoon42's cloth and layer) into acc.
+    Returns a kit part's worst socket miss (m), else 0."""
+    k = p["kind"]
+    worst = 0.0
+    if k == "rings":
+        solid(acc.bm, p["rings"], mat=acc.slot(p["mat"]), smooth=p["smooth"])
+    elif k == "cyl":
+        for f in add_cylinder(acc.bm, p["a"], p["b"], p["radius"], p.get("segments", 16)):
+            f.material_index = acc.slot(p["mat"])
+    elif k == "torus":
+        for f in add_torus(acc.bm, p["centre"], p["axis"], p["R"], p["r"], p.get("n", 48), p.get("m", 10)):
+            f.material_index = acc.slot(p["mat"])
+    elif k == "box":
+        faces, rounded = add_box(acc.bm, p["lo"], p["hi"], p["round"])
+        for f in faces:
+            f.material_index = acc.slot(p["mat"])
+            f.smooth = False
+        for f in rounded:
+            f.smooth = True
+    elif k == "kit":
+        got = kit_merge(acc, p)
+        for name, want in p["expect"].items():
+            miss = math.dist(got[name], want) if name in got else float("inf")
+            worst = max(worst, miss)
+            if miss > 0.002:
+                print(f"{who}: kit {p['name']} socket {name} at {got.get(name)}, expected {want}")
+    elif k == "cloth":
+        # a sail's cloth: quads over its grid, wound so the area-weighted mean normal faces 'face'; its vertices keep
+        # the sheet's three UV pairs
+        G, UV = p["G"], p["UV"]
+        vs = [[acc.bm.verts.new(bl(*G[i][j])) for j in range(len(G[0]))] for i in range(len(G))]
+        for i in range(len(G)):
+            for j in range(len(G[0])):
+                u = UV[i][j]
+                acc.cloth_uv[vs[i][j]] = ((u[0], u[1]), (u[2], u[3]), (u[4], u[5]))
+        faces = []
+        for i in range(len(G) - 1):
+            for j in range(len(G[0]) - 1):
+                faces.append(acc.bm.faces.new((vs[i][j], vs[i + 1][j], vs[i + 1][j + 1], vs[i][j + 1])))
+        mean = Vector()
+        for f in faces:
+            f.normal_update()
+            mean += f.normal * f.calc_area()
+            f.material_index = acc.slot(p["mat"])
+            f.smooth = True
+        if mean.dot(Vector(bl(*p["face"]))) < 0:
+            bmesh.ops.reverse_faces(acc.bm, faces=faces)
+    elif k == "layer":
+        # a sewn-on layer or patch: one-sided, faced toward 'face' where it is nearest 'probe'
+        faces = grid_faces(acc.bm, p["rows"])
+        face_out(acc.bm, faces, p["probe"], p["face"])
+        for f in faces:
+            f.material_index = acc.slot(p["mat"])
+            f.smooth = True
+    else:
+        raise ValueError(f"{who}: unknown part kind {k}")
+    return worst
+
+
 def build_rig():
     """The mast, boom, wires, the rig's fittings and its lines (rig_lagoon42.parts()), each object at its origin (the
     mast at its step, the boom at the gooseneck's pin). Checks every kit part's sockets where rig_lagoon42 expects
@@ -589,30 +662,7 @@ def build_rig():
     accs = {k: Part() for k in RIG_OBJECTS}
     worst = 0.0
     for p in R.parts():
-        acc = accs[p["obj"]]
-        k = p["kind"]
-        if k == "rings":
-            solid(acc.bm, p["rings"], mat=acc.slot(p["mat"]), smooth=p["smooth"])
-        elif k == "cyl":
-            for f in add_cylinder(acc.bm, p["a"], p["b"], p["radius"], p.get("segments", 16)):
-                f.material_index = acc.slot(p["mat"])
-        elif k == "torus":
-            for f in add_torus(acc.bm, p["centre"], p["axis"], p["R"], p["r"], p.get("n", 48), p.get("m", 10)):
-                f.material_index = acc.slot(p["mat"])
-        elif k == "box":
-            faces, rounded = add_box(acc.bm, p["lo"], p["hi"], p["round"])
-            for f in faces:
-                f.material_index = acc.slot(p["mat"])
-                f.smooth = False
-            for f in rounded:
-                f.smooth = True
-        elif k == "kit":
-            got = kit_merge(acc, p)
-            for name, want in p["expect"].items():
-                miss = math.dist(got[name], want) if name in got else float("inf")
-                worst = max(worst, miss)
-                if miss > 0.002:
-                    print(f"rig: kit {p['name']} socket {name} at {got.get(name)}, expected {want}")
+        worst = max(worst, mesh_part(accs[p["obj"]], p))
     _, origins = R.sockets()
     obj_origin = {"mast": origins["SM_Lagoon42_Mast"], "boom": origins["SM_Lagoon42_Boom"]}
     for key, acc in accs.items():
@@ -622,6 +672,64 @@ def build_rig():
         ob = to_object(RIG_OBJECTS[key], acc.bm, acc.mats)
         ob.location = o
     return worst
+
+
+def sail_object(name, acc):
+    """A sail object from its Part: box UVs in UVMap and zeros in UV1 and UV2 on its trims and fittings, the sheets'
+    own three UV pairs on their cloth."""
+    bm = acc.bm
+    layers = [bm.loops.layers.uv.new(n) for n in ("UVMap", "UV1", "UV2")]
+    for f in bm.faces:
+        f.normal_update()
+        cloth = all(v in acc.cloth_uv for v in f.verts)
+        ax = max(range(3), key=lambda i: abs(f.normal[i]))
+        a, b = [(1, 2), (0, 2), (0, 1)][ax]
+        for lp in f.loops:
+            if cloth:
+                for lay, uv in zip(layers, acc.cloth_uv[lp.vert]):
+                    lp[lay].uv = uv
+            else:
+                lp[layers[0]].uv = (lp.vert.co[a] / UV_M, lp.vert.co[b] / UV_M)
+                lp[layers[1]].uv = (0.0, 0.0)
+                lp[layers[2]].uv = (0.0, 0.0)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    for m in acc.mats:
+        me.materials.append(material(m))
+    return ob
+
+
+def build_sails():
+    """Every sail object of sails_lagoon42.objects() at its origin (the bags' at the gooseneck's pin), its boom's angle in
+    the property boom_deg, hidden unless the boat at her mooring shows it (SHOWN); the stowed mainsheet stays shown.
+    Returns ({name: triangles}, the sails' numbers for the report, the worst kit socket miss)."""
+    objs, sheets = SL.objects()
+    worst = 0.0
+    tris = {}
+    for name, o in objs.items():
+        acc = Part()
+        for p in o["parts"]:
+            worst = max(worst, mesh_part(acc, p, who=name))
+        org = Vector(bl(*o["origin"]))
+        for v in acc.bm.verts:
+            v.co -= org
+        ob = sail_object(name, acc)
+        ob.location = org
+        if o["boom_deg"] is not None:
+            ob["boom_deg"] = o["boom_deg"]
+        ob["shown"] = name in SL.SHOWN
+        ob.hide_render = name not in SL.SHOWN
+        ob.hide_viewport = name not in SL.SHOWN
+        tris[name] = sum(len(pl.vertices) - 2 for pl in ob.data.polygons)
+    bpy.context.scene["l42_sail_states"] = json.dumps({k: list(v) for k, v in SL.STATES.items()})
+    bpy.context.scene["l42_state_boom_deg"] = json.dumps({k: SL.state_boom_deg(k) for k in SL.STATES})
+    nums = {"main_area_m2": round(sheets["MainSet"].area(), 3), "jib_area_m2": round(sheets["JibSet"].area(), 3),
+            "code0_area_m2": round(sheets["Code0Set"].area(), 3), "main_head_m": round(SL.HB, 3),
+            "sail_triangles": tris, "sail_triangles_total": sum(tris.values())}
+    return tris, nums, worst
 
 
 def write_sockets(path):
@@ -750,6 +858,7 @@ def main():
     build_appendages()
     kit_miss = build_rig()
     write_sockets(os.path.join(OUT, "Lagoon42_sockets.json"))
+    sail_tris, sail_nums, sail_miss = build_sails()
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
@@ -778,6 +887,7 @@ def main():
               "rig": {k: (round(v, 3) if isinstance(v, float) else v if isinstance(v, str) else [round(c, 3) for c in v])
                       for k, v in R.numbers().items()},
               "rig_kit_socket_miss_m": round(kit_miss, 4),
+              **sail_nums, "sail_kit_socket_miss_m": round(sail_miss, 4),
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
                       "waterline (hull_volume_m3) plus the appendages' (appendage_volume_m3: the keels, rudders and "
                       "saildrives under the hulls' bottoms as slice 5 builds them, appendage_volume_built_m3, solved "
@@ -788,12 +898,16 @@ def main():
                       "air draft from it when it is here. helm_eye_m: the seated helmsman's eye at "
                       "the raised helm, to port as on the real boat (today's model, and the crew's helm position in "
                       "CrewMotion, have it to starboard until slice 12). rudder_pivots_m (port, starboard) are the "
-                      "rudders' origins, the game's RudderPivot sockets; prop_axes_m the propellers' (slice 13)."}
+                      "rudders' origins, the game's RudderPivot sockets; prop_axes_m the propellers' (slice 13). "
+                      "main_area_m2, jib_area_m2 and code0_area_m2 are the set sails' cloth areas (sails_lagoon42.py: "
+                      "the size check reads the first two); sail_triangles each sail object's, every state counted."}
     json.dump(report, open(os.path.join(OUT, "lagoon42_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     print(f"Lagoon 42: canoe depth {depth:.4f} m, hulls {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f}, "
           f"LWL {h['lwl']:.3f} m, one hull's BWL {h['beam_wl_one_hull']:.3f} m, load sink {sink:.3f} m, hull triangles {tris}")
+    print(f"sails: main {sail_nums['main_area_m2']} m^2, jib {sail_nums['jib_area_m2']}, Code 0 {sail_nums['code0_area_m2']}; "
+          f"{sail_nums['sail_triangles_total']:,} triangles in {len(sail_tris)} objects; kit sockets off by {sail_miss * 1000:.1f} mm")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "lagoon42.blend"))
 
 

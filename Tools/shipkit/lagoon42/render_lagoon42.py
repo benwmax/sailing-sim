@@ -31,6 +31,24 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   helm_winches    from aft and to starboard of the helm: the clutches and both winches with their sheets
   furler          close on the forestay's tack from ahead and to starboard: the tang, toggle, drum and swivel
   traveller       from aft and to starboard, above the roof's aft end: the traveller, the mainsheet's blocks, the boom end
+Slice 7's (docs/lagoon42-8) each show a sail state (the build's scene property l42_sail_states: Moored, the default, the
+bag zipped and the jib furled; Beat, Reach, Run and Reefed with the main hoisted), the boom and the bags swung to its
+main's angle and the boom-amidships mainsheet hidden under a hoisted main:
+  sails_beat      Beat from off her starboard bow: the main, its open bag and lazy jacks, the self-tacking jib
+  sails_profile   Beat, her starboard side, orthographic and tall: the sail plan
+  sails_lee       Beat from off her port quarter: the sails' lee faces, their camber, the lee jacks on the main
+  sails_reach     Reach from off her port bow: the eased main and the Code 0, the jib furled
+  sails_run       Run from off her starboard quarter: the main squared off on the lee shrouds, both headsails furled
+  sails_reefed    Reefed from off her starboard quarter: the first reef in, its bunt in the bag
+  main_head       Beat, close on the square head: the headboard, its car and the halyard, the top battens
+  main_luff       Beat, close on the luff at the third batten: its car on the track, the slides, the pocket's end
+  main_tack       Beat, close on the tack: the gooseneck, the reef cringles, the open bag's front
+  jib_clew        Beat, close on the jib's clew: the UV strip, the sheet round the car's block and up to the mast
+  jib_furled      Moored, close on the furled jib: the roll, its UV strip, the clew's ring and the car amidships
+  lazy_bag        Moored, from aft and to starboard above the roof: the bag zipped over the flaked main, the jacks
+  bag_open        Reefed, from aft above the roof: the open bag with the reef's bunt in it
+  code0_tack      Reach, close on the bowsprit's end: the Code 0's drum, its line, the tack and the anti-torsion cable
+The older views show the boat at her mooring.
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
 import json
@@ -57,7 +75,11 @@ LOOKS = {"Topsides": ((0.86, 0.86, 0.84), 0.35), "Antifouling": ((0.05, 0.055, 0
          "CastBronze": ((0.6, 0.4, 0.2), 0.3), "PaintedAluminium": ((0.85, 0.85, 0.84), 0.3),
          "WhitePlastic": ((0.88, 0.88, 0.86), 0.4), "BlackPlastic": ((0.03, 0.03, 0.035), 0.5),
          "CarbonMatte": ((0.04, 0.04, 0.045), 0.6), "Rope": ((0.78, 0.76, 0.70), 0.8),
-         "RedPlastic": ((0.6, 0.05, 0.04), 0.4), "Graphics": ((0.1, 0.1, 0.12), 0.4)}
+         "RedPlastic": ((0.6, 0.05, 0.04), 0.4), "Graphics": ((0.1, 0.1, 0.12), 0.4),
+         "ClothMain": ((0.86, 0.85, 0.81), 0.65), "ClothJib": ((0.86, 0.85, 0.81), 0.65),
+         "ClothCode0": ((0.78, 0.79, 0.78), 0.45), "SailTape": ((0.74, 0.73, 0.69), 0.75),
+         "SailPatch": ((0.82, 0.81, 0.77), 0.6), "SailUV": ((0.035, 0.05, 0.1), 0.8),
+         "SailBag": ((0.035, 0.05, 0.1), 0.85), "Webbing": ((0.04, 0.04, 0.045), 0.85)}
 for m in bpy.data.materials:
     if m.name not in LOOKS:
         continue
@@ -167,16 +189,53 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "furler": ((7.7, -1.5, 2.5), (6.05, 0.0, 1.75), 40, True),
     "traveller": ((-6.9, -1.9, 5.2), (-4.8, 0.0, 3.8), 30, True),
 }
-ASPECT = {"rig_profile": 1.3, "rig_quarter": 1.0}   # a view's height over its width (else 0.6)
+VIEWS.update({   # slice 7's sail views
+    "sails_beat": ((17.5, -13.5, 8.5), (-0.6, 0.0, 9.6), 30, True),
+    "sails_profile": ((-0.3, -60.0, 10.8), (-0.3, 0.0, 10.8), ("ortho", 22.5), True),
+    "sails_lee": ((-17.0, 15.0, 8.0), (-0.3, 1.5, 9.0), 30, True),
+    "sails_reach": ((20.0, 17.0, 7.0), (0.3, 2.0, 8.5), 28, True),
+    "sails_run": ((-21.0, -11.0, 9.5), (-1.5, 1.6, 9.6), 30, True),
+    "sails_reefed": ((-18.0, -13.0, 8.0), (-1.4, 0.4, 8.4), 32, True),
+    "main_head": ((-3.8, -3.6, 21.4), (-1.35, 0.25, 19.85), 35, True),
+    "main_luff": ((-1.7, -2.1, 13.3), (-0.62, 0.05, 12.9), 32, True),
+    "main_tack": ((-2.0, -2.4, 6.2), (-0.85, 0.15, 5.0), 30, True),
+    "jib_clew": ((-1.4, 3.4, 5.5), (0.75, 1.1, 4.3), 35, True),
+    "jib_furled": ((7.6, -3.1, 6.6), (4.3, 0.0, 5.0), 32, True),
+    "lazy_bag": ((-8.6, -3.3, 7.3), (-3.3, 0.0, 5.0), 30, True),
+    "bag_open": ((-8.2, -2.6, 7.8), (-3.4, 0.35, 5.0), 30, True),
+    "code0_tack": ((8.7, -1.7, 2.7), (6.7, 0.0, 1.9), 40, True),
+})
+STATE = {"sails_beat": "Beat", "sails_profile": "Beat", "sails_lee": "Beat", "sails_reach": "Reach", "sails_run": "Run",
+         "sails_reefed": "Reefed", "main_head": "Beat", "main_luff": "Beat", "main_tack": "Beat", "jib_clew": "Beat",
+         "jib_furled": "Moored", "lazy_bag": "Moored", "bag_open": "Reefed", "code0_tack": "Reach"}
+ASPECT = {"rig_profile": 1.3, "rig_quarter": 1.0, "sails_profile": 1.3, "sails_beat": 0.9, "sails_lee": 0.9,
+          "sails_reach": 0.9, "sails_run": 0.9, "sails_reefed": 0.9}   # a view's height over its width (else 0.6)
 HIDE = {"plan": ["L42_Roof"]}   # a view's objects left out of its render
+SAIL_STATES = json.loads(sc.get("l42_sail_states", "{}"))
+STATE_BOOM = json.loads(sc.get("l42_state_boom_deg", "{}"))
+SWUNG = [o for o in sc.objects if o.name == "L42_Boom" or o.name.startswith("L42_LazyBag_")]   # origins at the pin
+
+
+def is_sail(o):
+    return o.name.startswith("L42_Sail_") or o.name.startswith("L42_LazyBag_")
+
+
 VIEWS["drone"] = (None, None, None, True)
 for name, (loc, tgt, lens, show_sea) in VIEWS.items():
     if ONLY and name not in ONLY:
         continue
     sea.hide_render = not show_sea
+    state = STATE.get(name, "Moored")
+    shown = set(SAIL_STATES.get(state, ()))
+    main_up = any(n.startswith("L42_Sail_Main_") for n in shown)
     for o in sc.objects:
         if o.type == "MESH" and o is not sea:
-            o.hide_render = o.name in HIDE.get(name, ())
+            if is_sail(o):
+                o.hide_render = o.name not in shown if SAIL_STATES else not o.get("shown", False)
+            else:
+                o.hide_render = o.name in HIDE.get(name, ()) or (o.name == "L42_Mainsheet" and main_up)
+    for o in SWUNG:
+        o.rotation_euler = (0.0, 0.0, -math.radians(STATE_BOOM.get(state, 0.0)))
     sc.render.resolution_y = int(RES * ASPECT.get(name, 0.6))
     if name == "drone":
         c = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "match_two_canoes.camera.json")))

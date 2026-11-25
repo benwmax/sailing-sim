@@ -11,8 +11,9 @@ With --slice (slice 1 on): <before dir> and <after dir> are render_set.py's outp
 build (the same fixed views, so they line up), <views dir> is render_lagoon42.py's. Writes the nine-view sheet.jpg
 from <after dir>, before_after.jpg (four of the fixed views, today's on the left) and views.jpg (the coloured views
 that <views dir> holds; from slice 3 the drone photo's camera cropped to the boat, from slice 4 the cockpit's views
-first, from slice 5 the appendages', from slice 6 the rig's close views), and from slice 6 rig.jpg (the rig's whole
-views, rig_profile and rig_quarter, side by side at their own height).
+first, from slice 5 the appendages', from slice 6 the rig's close views, from slice 7 the sails'), from slice 6 rig.jpg
+(the rig's whole views, rig_profile and rig_quarter, side by side at their own height) and from slice 7 sails.jpg (the
+sail states' whole views, SAILS).
 """
 import os
 import sys
@@ -55,6 +56,7 @@ def main(hull_dir, rig_dir, out):
 
 CROPS = {"drone": (0.15, 0.55, 0.70, 0.98)}   # the photo's frame is mostly sea: the boat's part of it (fractions)
 TALL = ["rig_profile", "rig_quarter"]          # the rig's whole views, taller than the others: rig.jpg (slice 6 on)
+SAILS = ["sails_beat", "sails_lee", "sails_profile", "sails_reach", "sails_run", "sails_reefed"]   # sails.jpg (slice 7)
 
 
 def labelled_grid(cells, cols, w, h, out, quality=80):
@@ -94,7 +96,12 @@ def slice_docs(before, after, views, out):
     if tall:
         labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in tall], len(tall), 600, 780,
                       os.path.join(out, "rig.jpg"))
-    names = ["masthead", "spreaders", "gooseneck", "mast_base", "helm_winches", "furler", "traveller", "keel_profile",
+    sails = [n for n in SAILS if os.path.exists(os.path.join(views, n + ".png"))]
+    if sails:
+        labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in sails], 3, 600, 540,
+                      os.path.join(out, "sails.jpg"))
+    names = ["main_head", "main_luff", "main_tack", "jib_clew", "jib_furled", "lazy_bag", "bag_open", "code0_tack",
+             "masthead", "spreaders", "gooseneck", "mast_base", "helm_winches", "furler", "traveller", "keel_profile",
              "saildrive", "rudder", "helm_close", "cockpit", "helm", "plan", "drone", "bow_quarter", "stern_quarter",
              "foredeck", "bridge_under", "profile", "head_on", "bow_close", "under"]
     names = [n for n in names if os.path.exists(os.path.join(views, n + ".png"))]

@@ -1,0 +1,80 @@
+{
+ "about": "The Lagoon 42's sails, her rebuild's slice 7 (docs/lagoon42-8): the square-top mainsail on the mast's track with its lazy bag and lazy jacks, the self-tacking jib on the furler's foil and the Code 0 on the bowsprit. sails_lagoon42.py turns these numbers into cloth grids, trims and fittings and checks them; build_lagoon42.py meshes them. Units: metres. Frame: the game's (X forward, Y starboard, Z up), Z 0 on the game's waterline. The sails are cut to slice 6's rig (rig_lagoon42), and their areas are held to Lagoon's published ones, which the physics also uses (Fleet.cpp Lagoon42(): main 59 m^2, jib 35 m^2, Code 0 78 m^2), within 3%. Every set sail is drawn on starboard tack: the wind from starboard, the boom and the sails to port. Port tack is the mirror. Lagoon's own photos were looked at by eye only (Bean, Nov 25: 'look, never copy'). Shapes the photos don't settle are a cruising cat's usual ones and are marked as guesses in docs/lagoon42-8.",
+ "cloth": {
+  "dacron_mm": 0.4,
+  "laminate_mm": 0.25,
+  "bulk_flaked": 6.0,
+  "bulk_rolled": 5.0,
+  "note": "The working sails are heavy cruising Dacron (about 9 oz, 0.4 mm), the Code 0 a cruising laminate (about 0.25 mm). 'bulk' is how much a folded or rolled sail's volume exceeds its cloth's: it sizes the flaked main's stack and the furled rolls. A rolled sail is looser than it sounds: a 35 m^2 jib rolls to about 10 cm across at its fattest."
+ },
+ "mainsail": {
+  "luff_off_track": 0.03,
+  "foot_over_boom": 0.04,
+  "head_z": 20.2,
+  "roach": 0.3,
+  "area": 59.0,
+  "battens": [0.206, 0.368, 0.529, 0.703, 0.865, 0.968],
+  "batten_pocket_w": 0.06,
+  "reefs": [0.82, 0.66, 0.5],
+  "reef_lines": 2,
+  "slide_spacing": 0.5,
+  "luff_bend": 0.2,
+  "states": {
+   "Set": {"boom_deg": 5.0, "twist_deg": 11.0, "depth": [[0.0, 0.0], [0.05, 0.03], [0.15, 0.08], [0.35, 0.1], [0.65, 0.095], [0.9, 0.08], [1.0, 0.06]], "draft_at": [[0.0, 0.46], [1.0, 0.42]]},
+   "Reach": {"boom_deg": 25.0, "twist_deg": 15.0, "depth": [[0.0, 0.0], [0.05, 0.032], [0.15, 0.09], [0.35, 0.115], [0.65, 0.11], [0.9, 0.09], [1.0, 0.065]], "draft_at": [[0.0, 0.47], [1.0, 0.44]]},
+   "Run": {"boom_deg": 60.0, "twist_deg": 14.0, "depth": [[0.0, 0.0], [0.05, 0.035], [0.15, 0.095], [0.35, 0.125], [0.65, 0.12], [0.9, 0.1], [1.0, 0.07]], "draft_at": [[0.0, 0.48], [1.0, 0.46]]},
+   "Reefed": {"boom_deg": 6.0, "twist_deg": 11.0, "reef": 1, "depth": [[0.0, 0.0], [0.05, 0.03], [0.15, 0.075], [0.35, 0.095], [0.65, 0.09], [0.9, 0.075], [1.0, 0.055]], "draft_at": [[0.0, 0.46], [1.0, 0.42]]}
+  },
+  "note": "The square-top main (Lagoon's option, the one the physics sails: 59 m^2). Its luff runs luff_off_track aft of the mast's track on slides and batten cars, from its tack foot_over_boom over the boom's top to its head at head_z (the physics' main head, where slice 6's halyard ends). Its foot is loose: only the tack and the clew, on the outhaul's car, hold it, so it lies in the lazy bag. The head's width is solved for the area (about 1.6 m; the physics' head chord is 1.8) with roach, the leech's bulge past the straight line from the clew to the head's aft corner, held by full battens at the 'battens' shares of the luff, the top one under the head. Three reefs at the physics' ReefLuffFraction (the luff left when reefed): a cringle at the luff and at the leech for each, and reef lines rove through the first reef_lines leech cringles (slice 6 led two to the helm); the third reef is rigged when it is needed. Set: close-hauled, the boom 5 deg to port; Reach: eased to 25 deg under the Code 0; Run: squared off to 60 deg, lying on the lee cap and spreader (slice 6's boom stop is the cap at 67, the physics' mainsheet stops it at 65); Reefed: the first reef tied in, its bunt in the bag. 'depth' is the camber as a share of each row's chord up the sail; none at the loose foot, which the outhaul pulls straight between the tack and the clew, and little up to the bag's lip, so the bottom of the sail stays inside the bag."
+ },
+ "jib": {
+  "luff_aft_of_stay": 0.016,
+  "tack_above_eye": 0.04,
+  "head_below_eye": 0.035,
+  "clew": [-1.1, 4.4],
+  "car_y": -1.2,
+  "area": 35.0,
+  "foot_round": 0.025,
+  "leech_roach": 0.0,
+  "twist_deg": 10.0,
+  "depth": [[0.0, 0.08], [0.25, 0.11], [0.6, 0.115], [0.9, 0.09], [1.0, 0.05]],
+  "draft_at": [[0.0, 0.42], [1.0, 0.38]],
+  "uv_strip": {"leech": 0.32, "foot": 0.28, "offset": 0.0025},
+  "note": "The self-tacking jib (Lagoon's 35 m^2) on the furler's foil: its luff tape in the foil's groove (luff_aft_of_stay behind the stay's axis), its tack strapped to the tack swivel's eye and its head to the top swivel's. Its clew [y, z] is set over its car on the track (car_y: the game's JibLead_P), well above the roof's front edge, and its x is solved for the area. Its sheet runs from the clew down to a swivel block on the car, then up and aft into the mast's box at 6.5 m (slice 6). No battens: it rolls round the foil, so its leech is straight. The UV strip is a sacrificial cover sewn on the leech and the foot (widths in metres), on the face that ends outermost when it is rolled, so the furled roll shows only the strip. Furled: rolled round the foil, the clew on the roll's outside where the clew's line meets the luff, the sheet from there to the car, which is on the track's middle."
+ },
+ "code0": {
+  "drum": {"diameter": 0.17, "height": 0.1, "over_tip": 0.055, "in_from_tip": 0.1},
+  "tack_over_drum": 0.06,
+  "head_below_box": 0.3,
+  "head_out": 0.11,
+  "clew": [-3.85, 2.95],
+  "area": 78.0,
+  "foot_round": 0.05,
+  "leech_roach": 0.09,
+  "luff_sag": [0.24, 0.12],
+  "twist_deg": 18.0,
+  "depth": [[0.0, 0.1], [0.25, 0.15], [0.6, 0.155], [0.9, 0.12], [1.0, 0.06]],
+  "draft_at": [[0.0, 0.4], [1.0, 0.38]],
+  "uv_strip": {"leech": 0.35, "foot": 0.3, "offset": 0.0025},
+  "cable_d": 0.012,
+  "quarter_block": [-5.3, -3.55],
+  "note": "The Code 0 (the physics' 78 m^2 asymmetric, Lagoon's option) on a furler of its own: the tack on a continuous-line furler's drum on the bowsprit's end fitting (its axis in_from_tip aft of the spar's end, so the drum stays inside the boat's 13.22 m overall, over_tip above the spar's top, the tack tack_over_drum above the drum), the head on a top swivel hung head_below_box under its halyard's box on the mast's front (19.6 m) and swung head_out forward of the mast. Its luff carries an anti-torsion cable (cable_d) and sags under load (luff_sag: [to leeward, aft] at its middle). Set on a reach on starboard tack under the eased main: the clew [y, z] out past the port hull's sheer and its x solved for the area, its leech with a big roach (leech_roach: a share of the leech's length), as a Code 0's is cut, so its middle girth is near three quarters of its foot. The sheet runs aft to a block on the port quarter (quarter_block, x and y on the hull's deck); slice 8 leads it on to a winch. Furled: rolled round its cable, still hoisted."
+ },
+ "lazy_bag": {
+  "x": [-0.7, -6.05],
+  "zipped": {"height": [0.76, 0.38], "half_width": [0.3, 0.2]},
+  "open": {"height": [0.72, 0.44], "half_width": [0.4, 0.3], "droop": 0.05},
+  "wrap": 0.035,
+  "thick": 0.004,
+  "jack_points": [-1.35, -3.15, -4.95],
+  "note": "The lazy bag on the boom: a cloth trough laced along the boom's sides, wrap below its top, from just aft of the gooseneck to x[1], short of the clew so the clew and the outhaul stay outside it. Zipped: closed over the flaked main, the drone photo's size at the mast (its top at 5.42 m, 0.76 over the boom's top), tapering aft (height over the boom's top and half width at its widest, at the mast and at its aft end); the zip along the top. Open: its sides up on the lazy jacks, their top edges flared to half_width and drooping between the jacks' points, the zip's halves along them; the main hoisted out of it, or its reefed bunt lying in it. Lazy bags are often a dark navy or grey: its colour waits for the textures (slice 10)."
+ },
+ "lazy_jacks": {
+  "mast_z": 9.8,
+  "cleat_z": 4.25,
+  "rope": 0.008,
+  "ring_A": 0.45,
+  "ring_B": 0.4,
+  "note": "Each side a line from a block on the mast's side at mast_z down to a ring, which splits it into a leg to the bag's forward point and a second line to a ring that splits again to the middle and aft points (jack_points): three points a side, as most cruising cats rig them (a guess: Bean's photos decide). ring_A and ring_B are where each ring hangs, the share of the way from the points it serves up to the line above it. The line's tail runs from the block down the mast's side to a cleat at cleat_z. With the main set, the lee jacks bow round the sail's lee side (they lie on it)."
+ }
+}

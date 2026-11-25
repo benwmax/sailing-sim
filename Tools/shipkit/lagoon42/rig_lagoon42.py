@@ -25,7 +25,9 @@ The objects (build_lagoon42.py meshes each as L42_<Obj>):
             block, the clutch banks and winches
   running   the lines: halyards, topping lift and sheets from the mast's exits round their turning blocks, across the
             roof through the clutches, the working ones round their winches and off the self-tailers; the mainsheet's
-            tackle and tail, the traveller's control lines
+            tail, the traveller's control lines
+  mainsheet the mainsheet's four parts between its fiddles, the boom amidships (L42_Mainsheet, slice 7): a hoisted main's
+            object draws them again at its boom's angle (sails_lagoon42.py), and this one is hidden with it
 sockets() gives the game's sockets (name: (point, owner)) for the sockets file build_lagoon42.py writes.
 
 Frame: the game's body frame (X forward, Y starboard, Z up, metres), origin amidships on the game's waterline.
@@ -559,7 +561,14 @@ def forestay_parts():
     P.append({"kind": "cyl", "a": tg, "b": sl, "radius": WR["forestay"] * 1.7, "mat": "Stainless", "segments": 12,
               "obj": "wires"})
     P.append(rope([f1, sl], WR["forestay"] / 2, mat="Stainless", obj="wires", sides=8))
-    return P, head_eye, hal_eye
+    return P, head_eye, hal_eye, eye
+
+
+def forestay_eyes():
+    """The furler's eyes a jib hooks to (game frame): its head's (under the top swivel), the halyard's (over it) and
+    its tack's (on the tack swivel, aft)."""
+    _, head_eye, hal_eye, tack_eye = forestay_parts()
+    return head_eye, hal_eye, tack_eye
 
 
 def hounds_tang():
@@ -809,7 +818,32 @@ def boom_parts():
               "mat": "Stainless", "segments": 10, "obj": "boom"})
     top = kit("Fiddle40", (mx, 0.0, eye[2]), (1, 0, 0), (0, 0, 1), light=0.25, obj="boom", size="57")
     P.append(top)
+    P += reef_exit_parts()
     return P, top
+
+
+def reef_exits():
+    """[(sheave's line point, dead end's eye)] on the boom's top for the reef lines (game frame, boom at 0): the line
+    comes out of its box on the port half of the top and dead-ends on a padeye on the starboard half."""
+    zt = PIN_Z + BO["height"] / 2
+    return [((x, -0.025, zt + 0.012), (x + 0.04, 0.03, zt + 0.014)) for x in BO["reef_exits_x"]]
+
+
+def reef_exit_parts():
+    P = []
+    zt = PIN_Z + BO["height"] / 2
+    for (sx, sy, _), (ex, ey, ez) in reef_exits():
+        P.append({"kind": "box", "lo": (sx - 0.05, sy - 0.013, zt - 0.004), "hi": (sx + 0.05, sy + 0.013, zt + 0.004),
+                  "round": 0.003, "mat": "Stainless", "obj": "boom"})
+        P.append({"kind": "box", "lo": (sx - 0.032, sy - 0.006, zt - 0.002), "hi": (sx + 0.032, sy + 0.006, zt + 0.0045),
+                  "round": 0.002, "mat": "BlackPlastic", "obj": "boom"})
+        P.append({"kind": "cyl", "a": (sx, sy - 0.004, zt + 0.004), "b": (sx, sy + 0.004, zt + 0.004), "radius": 0.022,
+                  "mat": "BlackPlastic", "segments": 20, "obj": "boom"})
+        P.append({"kind": "box", "lo": (ex - 0.022, ey - 0.012, zt - 0.002), "hi": (ex + 0.022, ey + 0.012, zt + 0.004),
+                  "round": 0.004, "mat": "Stainless", "obj": "boom"})
+        P.append({"kind": "torus", "centre": (ex, ey, zt + 0.014), "axis": (0, 1, 0), "R": 0.009, "r": 0.003,
+                  "mat": "Stainless", "n": 14, "m": 6, "obj": "boom"})
+    return P
 
 
 def boom_clew():
@@ -1038,13 +1072,10 @@ def traveller_parts():
     P.append(low)
     _, top = boom_parts()
     k = KIT_SIZE[("Fiddle40", "57")]
-    R, r2 = 0.02 * k, 0.013 * k
+    R = 0.02 * k
     rm = HL["rope"]["sheet"] / 2
-    ta, ta2 = top["expect"]["Axle"], top["expect"]["Axle2"]
-    la, la2 = low["expect"]["Axle"], low["expect"]["Axle2"]
-    parts4 = [(ta2, la2, -r2), (ta2, la2, r2), (ta, la, -R), (ta, la, R)]
-    for a, b, off in parts4:
-        P.append(rope([add(a, (off, 0, 0)), add(b, (off, 0, 0))], rm, obj="running"))
+    la = low["expect"]["Axle"]
+    P += mainsheet_tackle(low, top)
     # the tail off the lower fiddle's big sheave, along the track to the port end's control box
     box_in = (x, -(L / 2 - 0.09), zr + 0.05)
     box_fwd = (x + 0.065, -(L / 2 - 0.045), zr + 0.045)
@@ -1078,33 +1109,100 @@ def traveller_parts():
     return P, trav, low, top
 
 
+def mainsheet_tackle(low, top, beta=0.0, obj="mainsheet"):
+    """The mainsheet's four parts from the lower fiddle (low, on the traveller's car amidships) to the upper (top, under
+    the boom), the boom swung beta (radians) to port about the gooseneck's pin. The boom amidships's are their own
+    object (L42_Mainsheet); sails_lagoon42.py draws them with each hoisted main's boom, the car left amidships and the
+    sheet eased (slice 7)."""
+    k = KIT_SIZE[("Fiddle40", "57")]
+    R_, r2 = 0.02 * k, 0.013 * k
+    rm = HL["rope"]["sheet"] / 2
+    cb, sb = math.cos(beta), math.sin(beta)
+
+    def sw(p):
+        dx, dy = p[0] - PIN_X, p[1]
+        return (PIN_X + dx * cb - dy * sb, dx * sb + dy * cb, p[2])
+    ta, ta2 = top["expect"]["Axle"], top["expect"]["Axle2"]
+    la, la2 = low["expect"]["Axle"], low["expect"]["Axle2"]
+    return [rope([sw(add(a, (off, 0, 0))), add(b, (off, 0, 0))], rm, obj=obj)
+            for a, b, off in ((ta2, la2, -r2), (ta2, la2, r2), (ta, la, -R_), (ta, la, R_))]
+
+
 def mast_lines_up():
-    """The halyards' and sheet's runs outside the mast at the top and the jib sheet from its car up to the mast's box:
-    the main halyard from its crane sheave to the main's head, the topping lift to the boom's end (on the boom: the
-    game swings them together), the jib halyard to the top swivel."""
+    """The halyards' runs outside the mast at the top: the topping lift to the boom's end (on the boom: the game swings
+    them together) and the jib halyard to the top swivel. The main halyard's run to the main's head, the jib's car and
+    its sheet up to the mast's box change with the sails' states: sails_lagoon42.py draws them with each state (slice 7)."""
     P = []
-    hp, head_eye, hal_eye = forestay_parts()
+    _, _, hal_eye, _ = forestay_parts()
     _, sheaves = masthead_parts()
     s_main, s_lift = sheaves
     rr = HL["rope"]
-    head = (aft_x() - MS["track"]["depth"] - 0.03, 0.0, 20.2)
-    P.append(rope([add(s_main, (-0.046 - rr["halyard"] / 2, 0, 0)), add(head, (0, 0, 0.04))], rr["halyard"] / 2))
-    P.append({"kind": "torus", "centre": head, "axis": (0, 1, 0), "R": 0.016, "r": 0.005, "mat": "Stainless", "n": 16,
-              "m": 6, "obj": "running"})
     a = add(s_lift, (-0.046 - 0.005, 0, 0))
     b = (BO["end_x"] + 0.05, 0.0, PIN_Z + BO["height"] / 2 + 0.032)
     sag = [add(lerp(a, b, f), (0, 0, -0.18 * 4 * f * (1 - f))) for f in (k / 16 for k in range(17))]
     P.append(rope(sag, 0.004, obj="boom", sides=6))
     jx = (front_x(MH["jib_halyard_z"]) + 0.006, 0.0, MH["jib_halyard_z"] - 0.03)
     P.append(rope([jx, add(hal_eye, (0.0, 0.0, 0.012))], rr["halyard"] / 2))
-    # the jib sheet: from the car's sheave aft and up into its box on the mast's front
-    car, sc, along, R = jib_car(0.0)
-    zb = FM["jib_sheet_z"]
-    P += sheave_box(0.0, zb, 0.12, 0.045)
-    box = (front_x(zb) + 0.006, 0.0, zb - 0.035)
-    t = (sc[0] - R * 0.35, 0.0, sc[2] + R * 0.94)
-    P.append(rope([box, t], rr["sheet"] / 2))
+    P += sheave_box(0.0, FM["jib_sheet_z"], 0.12, 0.045)
     return P
+
+
+def main_halyard_from():
+    """Where the main halyard leaves its masthead sheave, down the mast's aft face (game frame)."""
+    _, sheaves = masthead_parts()
+    return add(sheaves[0], (-0.046 - HL["rope"]["halyard"] / 2, 0, 0))
+
+
+def jib_sheet_box():
+    """Where the jib sheet goes into its box on the mast's front (the game's JibSheetMast)."""
+    zb = FM["jib_sheet_z"]
+    return (front_x(zb) + 0.006, 0.0, zb - 0.035)
+
+
+def lazy_jack_parts():
+    """The lazy jacks' fittings on the mast: each side a plate and eye with a block hanging from it at lazy_jack_z, and
+    the line's tail from the block's sheave down the mast's side to a horn cleat at lazy_jack_cleat_z, made fast with
+    figure-eight turns. Returns (parts, {side: the point where the jack leaves its sheave aft, toward the bag})."""
+    P = []
+    out = {}
+    z, zc = FM["lazy_jack_z"], FM["lazy_jack_cleat_z"]
+    r = FM["lazy_jack_rope"] / 2
+    for s in (1, -1):
+        t = s * (math.pi / 2 + 0.35)                         # on the mast's side, a little aft of its widest
+        n = mast_normal(t, z)
+        fwd = unit(cross(n, (0, 0, s * 1.0)))                  # along the mast's face, forward
+        if fwd[0] < 0:
+            fwd = mul(fwd, -1.0)
+        P.append(plate_on_mast(t, z + 0.03, 0.03, 0.08, 0.004))
+        eye = add(mast_point(t, z + 0.02), mul(n, 0.018))
+        P.append({"kind": "torus", "centre": eye, "axis": fwd, "R": 0.011, "r": 0.0032, "mat": "Stainless", "n": 14,
+                  "m": 6, "obj": "mast"})
+        blk = kit("Block40", add(eye, (0, 0, -0.011)), fwd, (0, 0, 1), light=0.25, obj="mast")
+        P.append(blk)
+        ax = blk["expect"]["Axle"]
+        R_ = 0.02 + r
+        out[s] = add(ax, mul(fwd, -R_))
+        # the horn cleat on the mast's side, its line made fast
+        c = mast_point(t, zc)
+        cn = mast_normal(t, zc)
+        P.append(plate_on_mast(t, zc, 0.034, 0.13, 0.006, "Aluminium"))
+        stem = add(c, mul(cn, 0.006))
+        horn = add(c, mul(cn, 0.028))
+        P.append({"kind": "cyl", "a": stem, "b": horn, "radius": 0.009, "mat": "Aluminium", "segments": 10, "obj": "mast"})
+        P.append({"kind": "rings", "obj": "mast", "mat": "Aluminium", "smooth": True,
+                  "rings": tube([add(horn, (0, 0, -0.075)), add(horn, (0, 0, -0.03)), add(horn, (0, 0, 0.03)),
+                                 add(horn, (0, 0, 0.075))], 0.007, 10)})
+        over = arc_pts(ax, mul(fwd, -1.0), (0, 0, 1), R_, 0.0, math.pi, 8)      # over the sheave, aft to forward
+        down = add(over[-1], (0, 0, -0.05))
+        side = unit(cross(cn, (0, 0, 1)))
+        fig = [add(horn, add(mul(cn, 0.013 + 0.004 * math.sin(2 * a)), add(mul(side, 0.017 * math.sin(a)),
+                                                                           (0, 0, 0.055 * math.cos(a)))))
+               for a in (math.pi / 2 + TAU * k / 20 for k in range(41))]
+        lead = add(horn, add(mul(cn, 0.013), (0, 0, 0.09)))
+        tail = [add(fig[-1], add(mul(cn, 0.01), (0, 0, -0.03))), add(horn, add(mul(cn, 0.03), (0, 0, -0.14))),
+                add(horn, add(mul(cn, 0.045), (0, 0, -0.42)))]
+        P.append(rope(over + [down, lead] + fig + tail, r, obj="running", sides=6))
+    return P, out
 
 
 def parts():
@@ -1119,10 +1217,9 @@ def parts():
     P += radar_and_lights()
     P += gooseneck_parts()
     P += standing_rigging()
-    fp, _, _ = forestay_parts()
+    fp, _, _, _ = forestay_parts()
     P += fp
-    car, _, _, _ = jib_car(0.0)
-    P += car + jib_track_parts()
+    P += jib_track_parts()
     bp, _ = boom_parts()
     P += bp
     lp, _ = lines_and_blocks()
@@ -1130,6 +1227,7 @@ def parts():
     tp, _, _, _ = traveller_parts()
     P += tp
     P += mast_lines_up()
+    P += lazy_jack_parts()[0]
     return P
 
 
