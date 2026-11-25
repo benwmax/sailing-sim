@@ -314,6 +314,8 @@ void AWaterSurface::BeginPlay()
 	}
 	GustMap = MakeWrapMap(NearWind.Res);
 	WindFarMap = MakeWrapMap(FarWind.Res);
+	GustPrevMap = MakeWrapMap(NearWind.Res);
+	WindFarPrevMap = MakeWrapMap(FarWind.Res);
 	WakeMap = MakeMap(kWakeRes);
 	WakePixels.SetNumZeroed(kWakeRes * kWakeRes * 4);
 	CreateWaterMaterial();
@@ -382,6 +384,8 @@ void AWaterSurface::CreateWaterMaterial()
 	WaterMaterial->SetScalarParameterValue(TEXT("DebugFoam"), DebugFoam);
 	WaterMaterial->SetTextureParameterValue(TEXT("GustMap"), GustMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WindFar"), WindFarMap);
+	WaterMaterial->SetTextureParameterValue(TEXT("GustPrev"), GustPrevMap);
+	WaterMaterial->SetTextureParameterValue(TEXT("WindFarPrev"), WindFarPrevMap);
 	WaterMaterial->SetTextureParameterValue(TEXT("WakeMap"), WakeMap);
 	if (OceanMaps.Num() == 2)
 	{
@@ -2411,9 +2415,22 @@ void AWaterSurface::UpdateMaterial()
 	WaterMaterial->SetScalarParameterValue(TEXT("WaveTime"), float(GetRenderTime()));
 	// W2: the near and far wind maps (centre, size; both wrap-around, sampled at world position / size) and the
 	// windrows' slow downwind direction.
-	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.Center.X, NearWind.Center.Y, NearWind.SizeM, 1.f));
-	WaterMaterial->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
-	WaterMaterial->SetVectorParameterValue(TEXT("WindSlow"), FLinearColor(WindrowDir.X, WindrowDir.Y, 0.f, 0.f));
+	// docs/lake-streaks/: the centres of the passes the water shows (the edge fades), how far it has blended from each map's
+	// previous pass to its newest (x near, y far), and the slicks' and windrows' two fixed frames with their cross-fade.
+	const double RenderNow = GetRenderTime();
+	WaterMaterial->SetVectorParameterValue(TEXT("GustRect"), FLinearColor(NearWind.ShownCenter.X, NearWind.ShownCenter.Y, NearWind.SizeM, 1.f));
+	WaterMaterial->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.ShownCenter.X, FarWind.ShownCenter.Y, FarWind.SizeM, 1.f));
+	WaterMaterial->SetVectorParameterValue(TEXT("WindBlend"), FLinearColor(NearWind.BlendAt(RenderNow), FarWind.BlendAt(RenderNow), 0.f, 0.f));
+	WaterMaterial->SetVectorParameterValue(TEXT("WindSlow"), FLinearColor(RowFrameA.X, RowFrameA.Y, RowFrameB.X, RowFrameB.Y));
+	{
+		// The windrows drift downwind with the surface water (a couple of percent of the wind), smoothly on the render clock.
+		const double Dt = LastRowRender < 0.0 ? 0.0 : FMath::Clamp(RenderNow - LastRowRender, 0.0, 0.5);
+		LastRowRender = RenderNow;
+		const double MeanMs = Waves->GetParams().AirWindKnots() * kKnot;
+		RowDrift = FMath::Fmod(RowDrift + Dt * 0.02 * MeanMs, 100000.0);
+		static SailingArgs::FCachedFlag NoWindrowsArg(TEXT("SailingNoWindrows"));
+		WaterMaterial->SetVectorParameterValue(TEXT("WindRowFade"), FLinearColor(RowFadeAt(RenderNow), float(RowDrift), NoWindrowsArg.Get() ? 1.f : 0.f, 0.f));
+	}
 	for (const TPair<TObjectPtr<UMaterialInterface>, TObjectPtr<UMaterialInstanceDynamic>>& Tree : TreeWindMids)
 	{
 		if (Tree.Value) Tree.Value->SetVectorParameterValue(TEXT("WindFarRect"), FLinearColor(FarWind.Center.X, FarWind.Center.Y, FarWind.SizeM, 1.f));
@@ -2489,6 +2506,18 @@ void AWaterSurface::UpdateGustMap()
 		WindrowDir = Blend.IsNearlyZero() ? Down : Blend.GetSafeNormal();
 	}
 	LastWindrowTime = T;
+	// docs/lake-streaks/: the slicks and windrows follow WindrowDir by cross-fading between two fixed frames, never by
+	// turning one (which swung the whole pattern round the map origin, in 10 Hz steps).
+	if (!bRowFramesSet)
+	{
+		RowFrameA = RowFrameB = WindrowDir;
+		RowFadeStart = -1e9;
+		bRowFramesSet = true;
+	}
+	else
+	{
+		StepRowFrames(RowFrameA, RowFrameB, RowFadeStart, WindrowDir, GetRenderTime());
+	}
 	WindMapCpuSeconds += FPlatformTime::Seconds() - Start;
 
 	// -SailingDumpGust: write the near map's roughness around the boat once as a PGM image, to check what the water shows.
@@ -2617,7 +2646,48 @@ void AWaterSurface::UpdateWindLevel(FWindLevel& Level, bool bNear, double T)
 			Px[3] = uint8(FMath::Clamp(FMath::RoundToInt(X.Slow / 20.f * 255.f), 0, 255));
 		}
 	});
-	Upload(bNear ? GustMap.Get() : WindFarMap.Get(), Level.Pixels, Res);
+	// docs/lake-streaks/: the water is handed whole passes, not strips. When a pass completes (the strip index has come
+	// round, or the map was refilled at once), the pass it showed becomes the previous one and this pass the newest; the
+	// material blends from one to the other over the time a pass takes (WindBlend), so nothing ticks.
+	// -SailingClassicWindMap draws each strip as it is written, as before.
+	UTexture2D* NextTex = bNear ? GustMap.Get() : WindFarMap.Get();
+	UTexture2D* PrevTex = bNear ? GustPrevMap.Get() : WindFarPrevMap.Get();
+	static SailingArgs::FCachedFlag ClassicWindMapArg(TEXT("SailingClassicWindMap"));
+	if (ClassicWindMapArg.Get())
+	{
+		Upload(NextTex, Level.Pixels, Res);
+		Level.ShownCenter = Center;
+		Level.bKeyed = false;
+		return;
+	}
+	if (bAll || Level.NextStrip == 0 || !Level.bKeyed)
+	{
+		const double Now = GetRenderTime();
+		const bool bRestart = bAll || !Level.bKeyed;
+		Upload(PrevTex, bRestart ? Level.Pixels : Level.Shown, Res);
+		Level.Shown = Level.Pixels;
+		Upload(NextTex, Level.Shown, Res);
+		Level.KeyPeriod = bRestart ? 0.1 * Level.Strips : FMath::Clamp(Now - Level.KeyTime, 0.05, 5.0);
+		Level.KeyTime = bRestart ? Now - Level.KeyPeriod : Now; // a restart shows the new pass at once
+		Level.ShownCenter = Center;
+		Level.bKeyed = true;
+	}
+}
+
+float AWaterSurface::RowFadeAt(double Now) const
+{
+	return float(FMath::Clamp((Now - RowFadeStart) / kRowFadeSeconds, 0.0, 1.0));
+}
+
+bool AWaterSurface::StepRowFrames(FVector2D& A, FVector2D& B, double& FadeStart, const FVector2D& Dir, double Now)
+{
+	if (Now - FadeStart < kRowFadeSeconds) return false; // one cross-fade at a time
+	const double Turn = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector2D::DotProduct(B.GetSafeNormal(), Dir.GetSafeNormal()), -1.0, 1.0)));
+	if (Turn < kRowTurnDegrees) return false;
+	A = B;
+	B = Dir.GetSafeNormal();
+	FadeStart = Now;
+	return true;
 }
 
 void AWaterSurface::UpdateWakeMap(float DeltaSeconds)
