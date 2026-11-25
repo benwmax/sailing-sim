@@ -1,0 +1,117 @@
+{
+ "about": "Slice 6 (docs/moth-10): the moth's textures and wear, by the texture loop (docs/texture-loop) as the J-Class's slice 11 (docs/jclass-11). One card per surface the plan names (carbon, the wings' mesh, the clear film sail) and the rest of her (the hull's and foils' paint, the alloy fittings, the Dyneema lines and shrouds, the grip): which of her materials it covers (by kind), the closest a camera comes, the pattern's real size, the detail maps it draws (her own, made by textures.py, or the boats' shared library), and what each of the loop's five wear levels (Tools/texloop/levels.json) looks like on her. How much of each wear term a level gets is weathering_moth.py's (amounts), from the loop's time and dirt numbers (Tools/texloop/wear.py).",
+ "water": "Lake Ray Hubbard: fresh water (no salt crust, the lake's third of the salt-water corrosion rate), and she lives ashore on her trolley between sails, so no weed or barnacles: the foils and the hull's bottom only take a scum line where she was left in",
+ "levels": {"L0": "new from the builder: deep glossy clear coat over the twill, white hull paint, satin grey foils, black wing mesh, a crystal-clear film sail, bright braid, satin silver anodising, a black grip", "L1": "her first season: hairline scratches in the clear coat where the boom, the wand and hands touch, trolley scuffs on the hull's bottom, a little dust in the mesh, the first crease lines in the film at the battens, the braid's cover a touch fuzzy", "L2": "six years a club boat, half kept: the clear coat dull and hazed with fine scratches all over and amber on the sun side, scuffs and tape residue on the hull, white filler on the foils' leading-edge dings, the mesh faded charcoal and dusty, the film milky and crinkled, grey fuzzy lines, the anodising dull and scratched to bright metal on its edges, the grip worn shiny", "L3": "an early foiler kept thirty years: refinished, polished and with a new sail and lines, but the clear coat gone amber and the white paint faded cream, the anodising faded, the old filler repairs showing through the foils' paint", "L4": "twenty years in a yard: the clear coat chalked white and flaking so the weave shows grey and fuzzy, chalky hull paint with black streaks from the fittings, the foils' paint chipped to filler and primer, the mesh grey-brown and mildewed, the film yellow-brown with black mildew specks and white creases, grey-green lines, white powder on the alloy, the grip chalky and cracked"},
+ "surfaces": {
+  "carbon": {
+   "title": "Carbon",
+   "what": "3K twill under a clear coat on every tube and spar (the wings' frame, the gantry, mast, boom, tiller and its extension, the wand, the bowsprit), and the sail's battens",
+   "kinds": {"tube": ["Carbon"], "batten": ["Batten"]},
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "the tiller extension in the sailor's hand and the wing bar under the helm camera",
+   "pattern_mm": {"tow": 2.03, "twill_repeat": 8.13, "scratch": [5, 60], "chalk_patch": [20, 200]},
+   "maps": ["CarbonTwill"],
+   "levels": {"L0": "a deep glossy clear coat, the twill's tows lit or dark by which way they run", "L1": "hairline scratches where hands, the boom and the wand touch; the gloss otherwise new", "L2": "the coat dull and hazed, fine scratches all over and polished where hands go, an amber cast on the faces the sun sees", "L3": "refinished glossy, but the coat gone amber with the years", "L4": "the coat chalked white and flaking in patches, the weave grey and fuzzy where it is gone, grime in the scratches"},
+   "refs": [{"id": "Fabric004", "site": "ambientcg", "level": "L0", "for": "colour", "note": "carbon fibre twill (CC0): the new weave's colour"}]
+  },
+  "paint": {
+   "title": "Hull and foil paint",
+   "what": "The hull's white paint (topsides, bottom and transom) and its deck's paint and non-skid patches; the foils' and struts' satin grey paint (main strut and foil, flap, rudder, elevator, the junction's pod, the wand's paddle)",
+   "kinds": {"hull": ["Hull"], "deck": ["Deck"], "foil": ["Foil"]},
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "the bow and the wand's fitting from the dock; the main foil from a camera at the water",
+   "pattern_mm": {"orange_peel": [1, 3], "scuff": [10, 80], "ding": [3, 15], "filler_patch": [10, 60], "tape": [25, 50]},
+   "maps": ["Gelcoat", "NonSkid"],
+   "levels": {"L0": "white hull paint with a wet gloss, crisp non-skid, satin grey foils", "L1": "trolley scuffs along the bottom and the chines, a faint scum line where she sat in, the deck's grip dusty", "L2": "the paint dull and chalky, grey scuffs at the bow and along the bottom, tape residue round the foil case, black marks from fittings; the foils' leading edges dinged and filled with white filler, scratches along the span", "L3": "polished, but the white faded cream; the foils' old filler repairs showing through their paint", "L4": "heavily chalked paint with black streaks running from every fitting and a green-brown scum line; the foils chipped to filler and grey primer, their paint chalky"},
+   "refs": []
+  },
+  "mesh": {
+   "title": "Wing mesh",
+   "what": "The wings' open mesh, PVC-coated polyester strands in a plain weave, laced to the frame",
+   "kinds": {"mesh": ["Mesh"]},
+   "closest_camera_m": 0.5,
+   "closest_camera_note": "the wing under the sailor's knees in the helm camera",
+   "pattern_mm": {"pitch": 2.5, "strand": 1.0, "dust_patch": [30, 300]},
+   "maps": ["WingMesh"],
+   "levels": {"L0": "black and evenly sheened, light through every gap", "L1": "a little dust caught in the weave near the hull", "L2": "faded to charcoal grey, dusty, worn shiny where the knees go", "L3": "mesh a few seasons old (a kept boat re-meshes every six or so): a little faded", "L4": "grey-brown and stiff, dusty, black mildew in patches"},
+   "refs": []
+  },
+  "sail": {
+   "title": "Clear film sail",
+   "what": "The main's laminate (clear film over a polyester scrim) and its luff sleeve",
+   "kinds": {"film": ["Sail"]},
+   "closest_camera_m": 0.8,
+   "closest_camera_note": "the foot and clew from the helm camera",
+   "pattern_mm": {"diagonal": 25, "along": 12.5, "thread": 0.5, "crease": [30, 300], "mildew_spot": [1, 5]},
+   "maps": ["Scrim"],
+   "levels": {"L0": "crystal clear, the scrim's threads a faint grid", "L1": "the first fine crease lines near the battens", "L2": "milky and crinkled, a faint yellow", "L3": "a kept boat's sail is renewed every few seasons: clear, with a few soft creases", "L4": "yellow-brown, milky with white creases, black mildew specks between the layers"},
+   "refs": []
+  },
+  "rope": {
+   "title": "Dyneema lines and shrouds",
+   "what": "Her braided lines (mainsheet, vang, cunningham, the shock cord, the lacing) and the uncovered Dyneema shrouds and forestay",
+   "kinds": {"line": ["Rope"], "shroud": ["Wire"]},
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "the mainsheet in the sailor's hand",
+   "pattern_mm": {"braid_pitch": [2, 4], "fuzz": [1, 3]},
+   "maps": ["Braid"],
+   "levels": {"L0": "bright orange lines and pale grey shrouds, a tight shiny braid", "L1": "the cover a touch fuzzy where it runs through blocks", "L2": "faded and grey with grime, fuzzy", "L3": "lines a season or two old on an old boat: a little faded", "L4": "grey-green, stiff and fuzzy, mildew specks"},
+   "refs": []
+  },
+  "alloy": {
+   "title": "Alloy fittings",
+   "what": "The anodised alloy fittings: the wand's head, the bellcrank's housing, the rudder's head, the blocks, the rig's fittings",
+   "kinds": {"anodised": ["Alloy"]},
+   "closest_camera_m": 0.4,
+   "closest_camera_note": "the wand's head and the mainsheet's ratchet",
+   "pattern_mm": {"brushing": [0.05, 0.3], "scratch": [3, 30], "oxide_spot": [1, 8]},
+   "maps": ["Metal"],
+   "levels": {"L0": "satin silver anodising", "L1": "the first scratches on the edges", "L2": "dull and faded, edges scratched to bright metal", "L3": "polished but the anodising faded", "L4": "dull grey with white aluminium oxide in the crevices and round the screws"},
+   "refs": []
+  },
+  "grip": {
+   "title": "Twist grip",
+   "what": "The rubber twist grip on the tiller extension and its universal joint",
+   "kinds": {"rubber": ["Grip"]},
+   "closest_camera_m": 0.3,
+   "closest_camera_note": "the helm camera looks at it in the hand",
+   "pattern_mm": {"rib": 2.2, "wear_band": [20, 80]},
+   "maps": ["Rubber"],
+   "levels": {"L0": "matt black rubber", "L1": "a faint shine where the hand holds it", "L2": "worn shiny and grey with grime in the ribs", "L3": "a grip a couple of seasons old, a faint shine", "L4": "chalky grey, cracked, grime in the ribs"},
+   "refs": []
+  }
+ },
+ "unweathered": {},
+ "maps": {
+  "about": "Her own maps are made by textures.py into Inputs/moth-detail (plain git, as Inputs/jclass-detail); the shared ones are the boats' library (Inputs/boat-detail), already in the game's memory for the J/22, so they cost her nothing more. Every map is sampled at its real size (tile_mm): the carbon round each tube by its own Tube UV (along the tube and round it), the rest box-projected in each part's frame, and the fine detail fades out between fade_m metres from the camera.",
+  "own": {
+   "CarbonTwill": {"tile_mm": [16.24, 16.24], "px": 1024, "tows": 8, "tow_pitch_mm": 2.03, "twill_repeat_mm": 8.12, "normal_strength": 1.0, "fade_m": [0.8, 3.0], "note": "3K tows of 12.5 to the inch (2.03 mm), a 2x2 twill repeating every four"},
+   "WingMesh": {"tile_mm": [15.0, 15.0], "px": 512, "strands": 6, "strand_mm": 1.0, "pitch_mm": 2.5, "normal_strength": 1.0, "fade_m": [0.8, 3.0], "note": "an open PVC-coated polyester mesh, 1.0 mm strands on a 2.5 mm pitch (a third open: round 1's reviewers read the 1.6 mm pitch as a solid tarp)"},
+   "Scrim": {"tile_mm": [50.0, 50.0], "px": 512, "thread_mm": 0.5, "diagonal_mm": 25.0, "along_mm": 12.5, "normal_strength": 0.6, "fade_m": [1.5, 5.0], "note": "an X-ply style scrim: diagonals both ways 25 mm apart, a thread along the length 12.5 mm apart"}
+  },
+  "shared": {
+   "Gelcoat": {"tile_mm": [250, 250], "use": "the hull's and foils' paint: orange peel and buffing marks"},
+   "NonSkid": {"tile_mm": [100, 100], "use": "the deck's grip"},
+   "Metal": {"tile_mm": [100, 100], "use": "the anodised fittings' brushing and pits"},
+   "Braid": {"tile_mm": [20, 20], "use": "the lines' and shrouds' braid"},
+   "Rubber": {"tile_mm": [80, 80], "use": "the grip's moulded rubber"}
+  }
+ },
+ "budget": {"about": "Texture memory: her own maps only, the shared library being resident for the J/22 already. Block-compressed with mips: BC5 normals (1 byte a pixel) and BC1 masks (half a byte), times 4/3 for the mips, at full size on High and Ultra; Medium draws no detail maps on her (the colour and roughness math only, as the boats' Medium material). Cap: 4 MB on High and Ultra, 0 on Medium.", "high_mb": 4.0, "medium_mb": 0.0},
+ "closest_px_per_mm": 4.0,
+ "views": {
+  "about": "The wear views, each [camera, target, lens mm] in Blender's frame (x forward, y to port, z up, metres), rendered at every level lit, as albedo and once as material ids; a surface's ladder is its crop of the view that shows it best (ladder).",
+  "shots": {
+   "bow": [[2.05, -0.62, 0.48], [1.62, 0.0, 0.2], 40],
+   "wing": [[-0.39, -0.58, 0.75], [-0.55, -0.85, 0.42], 38],
+   "gantry": [[-2.3, -0.55, 0.45], [-1.95, 0.0, 0.2], 40],
+   "foil": [[0.7, -0.75, -0.95], [0.1, 0.15, -1.225], 32],
+   "sail": [[-0.75, -1.25, 1.0], [-1.45, 0.0, 0.85], 38],
+   "grip": [[-0.05, 0.35, 1.05], [-0.4, 0.85, 0.7], 45],
+   "step": [[1.2, -0.7, 0.8], [0.62, 0.0, 0.35], 38],
+   "sheet": [[-0.6, -0.95, 0.95], [-1.1, 0.0, 0.3], 35],
+   "shroud": [[0.85, 0.25, 0.75], [0.36, 0.72, 0.37], 45]
+  },
+  "ladder": {"carbon": ["gantry", [0.0, 0.0, 1.0, 1.0]], "paint": ["bow", [0.0, 0.0, 1.0, 1.0]], "mesh": ["wing", [0.0, 0.0, 1.0, 1.0]], "sail": ["sail", [0.0, 0.0, 1.0, 1.0]], "rope": ["sheet", [0.0, 0.0, 1.0, 1.0]], "alloy": ["step", [0.0, 0.0, 1.0, 1.0]], "grip": ["grip", [0.0, 0.0, 1.0, 1.0]], "paint.foil": ["foil", [0.0, 0.0, 1.0, 1.0]]}
+ }
+}

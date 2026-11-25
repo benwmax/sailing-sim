@@ -4,7 +4,9 @@
 
 Builds the hull from hull_moth.py (lines_moth.json; the waterline solved so she floats the game's 115 kg, boat and
 sailor, at rest): one closed shell, MOTH_Hull, its deck (above the deck edge's roll: the non-skid in slice 6) and its
-sides as two material slots, the transom a flat face. The wings, foils and rig come in slices 2 to 4.
+sides as two material slots, the transom a flat face. The wings, foils and rig come in slices 2 to 4, the hardware in
+5, the close-range details in docs/moth-9; slice 6 (docs/moth-10) dresses every material (weathering_moth.py: its look,
+detail maps and wear terms at L0; weathering_moth.apply_level sets another level).
 
 Writes <out>/moth.blend, <out>/moth_report.json (the mesh's volume under the design waterline, which the check weighs,
 the centre of buoyancy beside the game's centre of gravity, and how she floats without her sailor) and
@@ -27,6 +29,7 @@ import foils_moth as FO  # noqa: E402
 import rig_moth as RG  # noqa: E402
 import hardware_moth as HW  # noqa: E402
 import detail_moth as DT  # noqa: E402
+import weathering_moth as WE  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -52,8 +55,16 @@ def material(name):
     return m
 
 
+def uv_layers(bm):
+    """UV0 'UVMap' (the box projection the game's tangent frame takes) and 'Tube' (a tube's own: U metres along it, V
+    metres round it, so the carbon's twill and the braid follow it; zero on every other part), in that order."""
+    uv = bm.loops.layers.uv.get("UVMap") or bm.loops.layers.uv.new("UVMap")
+    tube = bm.loops.layers.uv.get("Tube") or bm.loops.layers.uv.new("Tube")
+    return uv, tube
+
+
 def box_uvs(bm):
-    uv = bm.loops.layers.uv.new("UVMap")
+    uv, _ = uv_layers(bm)
     for f in bm.faces:
         f.normal_update()
         ax = max(range(3), key=lambda i: abs(f.normal[i]))
@@ -131,9 +142,16 @@ def add_tube(bm, pts, d, sides, d_end=None):
         bnorm = tang[i].cross(n)
         rings.append([bm.verts.new(p + r * (math.cos(2 * math.pi * k / sides) * n + math.sin(2 * math.pi * k / sides) * bnorm))
                       for k in range(sides)])
-    for a, b in zip(rings[:-1], rings[1:]):
+    _, tl = uv_layers(bm)
+    s = [0.0]
+    for p, q in zip(pts[:-1], pts[1:]):
+        s.append(s[-1] + (q - p).length)
+    circ = math.pi * (d + d_end) / 2
+    for i, (a, b) in enumerate(zip(rings[:-1], rings[1:])):
         for k in range(sides):
-            bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
+            f = bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
+            for lp, (si, kk) in zip(f.loops, ((i, k), (i, k + 1), (i + 1, k + 1), (i + 1, k))):
+                lp[tl].uv = (s[si], circ * kk / sides)
     bm.faces.new(list(reversed(rings[0])))
     bm.faces.new(rings[-1])
 
@@ -224,8 +242,10 @@ def build_wings():
             for j in range(len(a) - 1):
                 bm.faces.new((a[j], a[j + 1], b[j + 1], b[j]))
     deck = finish(bm, "MOTH_WingDeck", "Mesh")
-    mod = deck.modifiers.new("Thickness", "SOLIDIFY")       # a 4 mm sheet, so it renders from both sides
-    mod.thickness = 0.004
+    # a sheet as thick as the mesh (0.8 mm), so it renders from both sides; at 4 mm its two faces' weaves sat half a
+    # pitch apart seen through the wing's tilt and closed each other's gaps (round 2's reviewers: a solid tarp)
+    mod = deck.modifiers.new("Thickness", "SOLIDIFY")
+    mod.thickness = 0.0008
     mod.offset = 0.0
     return frame, deck
 
@@ -390,6 +410,11 @@ def main():
     rig, rinfo = build_rig()
     hw = build_hardware()
     dt = build_detail()
+    mats = sorted({m.name for o in bpy.data.objects if o.type == "MESH" for m in o.data.materials})
+    missing, extra = WE.coverage(mats)
+    if missing or extra:
+        raise SystemExit(f"textures_moth.json: no card for {missing}, cards for materials not built {extra}")
+    WE.dress()                           # slice 6: every material's look, detail maps and wear terms, at L0
     g = H.CARD["game"]
     report = dict(rep)
     report.update({
@@ -404,6 +429,7 @@ def main():
                 "0.4-0.5 m clear."})
     json.dump(rep, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     report["wing_plan_area_m2"] = round(WG.plan_area(), 4)
+    report["textures"] = WE.report(mats)
     report.update({k: round(v, 4) for k, v in FO.areas().items()})
     report["foils"] = {k: (round(v, 4) if isinstance(v, float) else [round(c, 4) for c in v]) for k, v in finfo.items()}
     report.update({"sail_area_m2": round(rinfo["sail_area_m2"], 4), "luff_length_m": round(rinfo["luff_length_m"], 4),

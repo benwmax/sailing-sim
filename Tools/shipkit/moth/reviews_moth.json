@@ -1,0 +1,1483 @@
+{
+ "about": "Blind wear reviewers (docs/moth-10): three fresh reviewers a round, each sheet's five levels shuffled anew; 'reviewers' is the final round (7, sheets in docs/moth-10/blind), scored by wear_check.py. Earlier rounds are kept for the record.",
+ "round": 7,
+ "reviewers": {
+  "r7-1": {
+   "ladder": {
+    "alloy": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L0",
+     "D": "L1",
+     "E": "L3"
+    },
+    "carbon": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L3",
+     "D": "L1",
+     "E": "L4"
+    },
+    "grip": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L2",
+     "E": "L3"
+    },
+    "mesh": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L3",
+     "D": "L0",
+     "E": "L4"
+    },
+    "paint": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "paint.foil": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L1",
+     "E": "L2"
+    },
+    "rope": {
+     "A": "L3",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "sail": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L3",
+     "E": "L2"
+    }
+   },
+   "material_ok": {},
+   "least_real": {
+    "alloy": "an even speckle over the track and step",
+    "carbon": "large grey-white blotches like marbled paper or a wrap",
+    "grip": "a flat grey cap with a hard edge; cracks painted on",
+    "mesh": "never looks open; L4 mildew a uniform fine speckle",
+    "paint": "scum a soft smear; streaks short blurry dashes",
+    "paint_foil": "evenly spaced light dashes along the edges; L3 filler hard to see",
+    "rope": "only a colour fade; the oldest clean beige",
+    "sail": "L4 an even tan like canvas; the scrim too large and regular"
+   }
+  },
+  "r7-2": {
+   "ladder": {
+    "alloy": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L3",
+     "D": "L0",
+     "E": "L1"
+    },
+    "carbon": {
+     "A": "L1",
+     "B": "L2",
+     "C": "L3",
+     "D": "L0",
+     "E": "L4"
+    },
+    "grip": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L2",
+     "E": "L3"
+    },
+    "mesh": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L3",
+     "D": "L0",
+     "E": "L4"
+    },
+    "paint": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "paint.foil": {
+     "A": "L1",
+     "B": "L4",
+     "C": "L3",
+     "D": "L0",
+     "E": "L2"
+    },
+    "rope": {
+     "A": "L3",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "sail": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L3",
+     "E": "L2"
+    }
+   },
+   "material_ok": {},
+   "least_real": {
+    "alloy": "dark blotchy mottling over the step and track; no white powder in the crevices",
+    "carbon": "pale lumpy chips on top of the tubes; the weave evenly light grey",
+    "grip": "chalk and cracks stop sharply at the end cap; reads as hard plastic",
+    "mesh": "never black or see-through; L4 mildew evenly scattered specks",
+    "paint": "streaks short smeared dashes; scum a blurred band",
+    "paint_foil": "chips as evenly spaced white dashes along the span",
+    "rope": "smooth tubes; ageing only a shift to beige-grey",
+    "sail": "L4 a flat opaque mustard sheet with scratch-like marks"
+   }
+  },
+  "r7-3": {
+   "ladder": {
+    "alloy": {
+     "A": "L4",
+     "B": "L2",
+     "C": "L0",
+     "D": "L1",
+     "E": "L3"
+    },
+    "carbon": {
+     "A": "L0",
+     "B": "L2",
+     "C": "L3",
+     "D": "L1",
+     "E": "L4"
+    },
+    "grip": {
+     "A": "L1",
+     "B": "L0",
+     "C": "L4",
+     "D": "L2",
+     "E": "L3"
+    },
+    "mesh": {
+     "A": "L2",
+     "B": "L1",
+     "C": "L3",
+     "D": "L0",
+     "E": "L4"
+    },
+    "paint": {
+     "A": "L0",
+     "B": "L1",
+     "C": "L4",
+     "D": "L3",
+     "E": "L2"
+    },
+    "paint.foil": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L3",
+     "D": "L1",
+     "E": "L2"
+    },
+    "rope": {
+     "A": "L3",
+     "B": "L2",
+     "C": "L4",
+     "D": "L0",
+     "E": "L1"
+    },
+    "sail": {
+     "A": "L0",
+     "B": "L4",
+     "C": "L1",
+     "D": "L3",
+     "E": "L2"
+    }
+   },
+   "material_ok": {},
+   "least_real": {
+    "alloy": "a uniform dark blotch over the base and track like cast iron; no white powder in crevices",
+    "carbon": "an even beige camouflage mottle with the weave crisp beneath",
+    "grip": "cracks drawn only on the end cap; no grime in the ribs",
+    "mesh": "never open black strands with light through; L4 mildew a uniform speckle",
+    "paint": "short isolated vertical smudges mid-panel",
+    "paint_foil": "evenly spaced white dashes along the edges",
+    "rope": "only a colour fade; no braid or fuzz",
+    "sail": "the scrim a strong regular diamond tile; L4 flat khaki with scratches"
+   }
+  }
+ },
+ "earlier": {
+  "round1": {
+   "about": "The blind ladder's answers (docs/moth-10): fresh reviewers, the sheets' crops shuffled under A to E; wear_check.py reads 'reviewers' (the latest round) against blind/key.json. material_ok is mine, from what each reviewer said the sheet showed before reading the descriptions: false only if they named a different material.",
+   "round": 1,
+   "reviewers": {
+    "r1-1": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L1"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      }
+     },
+     "material_seen": {
+      "alloy": "satin silver anodised aluminium fittings and tubes on a white deck; reads as real alloy except E, where the oxide looks like glittery granite",
+      "carbon": "glossy dark gunmetal carbon tubes with a faint twill; reads as carbon or painted metal tube, and the aged amber ones read like brown plastic",
+      "grip": "matt black ribbed rubber grip on a tube; reads as rubber, but D looks like grey concrete or plaster",
+      "mesh": "dark smooth trampoline sheet with laced edge; reads like a vinyl tarp, not an open woven mesh (no strands or gaps visible)",
+      "paint": "glossy white painted hull topside and bottom; reads as white gelcoat or paint, but A and B look like a lichen-patterned stone texture",
+      "paint.foil": "satin dark grey painted foil and strut; reads as painted foil, except A, which looks like rusty steel",
+      "rope": "thin orange control lines over a white deck and dark mesh; reads as plain cord or wire at this scale, braid not resolvable",
+      "sail": "clear laminate sail film with a fine scrim grid; reads as clear film when new, and like yellow crumpled cellophane or parchment when aged"
+     },
+     "least_real": {
+      "alloy": "In E the white oxide is a high-contrast black-and-white glitter speckle covering every surface (tubes, base plate, track) like granite, instead of white powder gathered in crevices and round screws.",
+      "carbon": "B's chalked coat is a uniform grey-white camouflage blotching (even on the moulded clamp block), and the amber of A and D tints the tubes a pinkish brown like plastic, not yellowed clear coat over a visible weave.",
+      "grip": "D's chalky grip is a flat light grey with uniform fine speckle, reading as concrete or plaster, and the cracks are not visible.",
+      "mesh": "At every level the mesh is a smooth, blurry, opaque sheet with no visible strands or light through gaps, and E's mildew is an even leopard-spot speckle over the whole surface like terrazzo rather than patches.",
+      "paint": "The chalking in A and B is a mottled grey-green lichen pattern tiled evenly across the whole topside, with ruler-straight full-height dark stripes, rather than chalky fade with streaks that start at fittings.",
+      "paint.foil": "A's foil is turned an orange-brown rust colour all over, like corroded steel, instead of chalky grey paint chipped to white filler and grey primer.",
+      "rope": "The lines are too thin and smooth to show braid or fuzz, so their age shows only as a colour shift, and in C they turn a flat grey that is barely visible against the dirty mesh.",
+      "sail": "The white creases are random worm-like squiggles, like veins or marbling, rather than straight or angular fold lines, and C's mildew is large soft dark blotches rather than fine specks."
+     },
+     "material_ok": {
+      "alloy": true,
+      "carbon": true,
+      "grip": true,
+      "mesh": true,
+      "paint": true,
+      "paint.foil": true,
+      "rope": true,
+      "sail": true
+     }
+    },
+    "r1-2": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L1",
+       "D": "L3",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L4",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      }
+     },
+     "material_seen": {
+      "alloy": "silver anodised alloy fittings and stanchion base on a white deck, with carbon tubes and a clear sail; it reads as real alloy up to the most worn crop, where the fittings turn into grey-white speckled granite or glitter",
+      "carbon": "dark glossy carbon tubes (wing frame and gantry) going brown or tan with age; real carbon when new, but the aged ones look like brown-painted or wooden poles, and the worst fitting looks like a lump of grey stone",
+      "grip": "black ribbed rubber twist grip on a tube; convincing as rubber, and the oldest version reads as dusty grey plastic",
+      "mesh": "dark woven trampoline mesh laced to a frame; at this distance it reads as smooth blotchy grey fabric or vinyl, not an open weave, and the oldest is a speckled tan fabric like camouflage",
+      "paint": "white painted hull side and transom with alloy fittings; the new and polished crops read as real gloss paint, while the aged ones read as grey marble or wallpaper-like vertical streaks and the most worn fittings as granite",
+      "paint.foil": "satin dark grey painted foil strut and wing; real paint when new, and the most worn one looks like rusty brown steel more than chalky paint",
+      "rope": "orange braided control lines and grey shrouds over a white deck, mesh and sail; convincing when new, while the old lines turn a flat grey-green and the mesh turns a sandy speckled carpet",
+      "sail": "clear laminate sail with a scrim grid, going yellow and milky; reads as clear film when new, and the aged crops look like beige paper with white squiggles (like veined marble) more than creased film"
+     },
+     "least_real": {
+      "alloy": "In E the white aluminium oxide is a coarse, even salt-and-pepper speckle over whole fittings and the track, so they look like granite or glitter rather than crusty oxide in the crevices and round the screws.",
+      "carbon": "In B the chalked, flaking coat is the same granite-like speckle over the alloy fitting and a flat tan wash over the tubes, so the carbon reads as painted wood or stone with no weave showing through.",
+      "grip": "In D the grime and cracking are a uniform pale dusty tint that also turns the lacing and sail beige, so the grip looks dusted with flour rather than grime packed into the ribs and cracks in the rubber.",
+      "mesh": "The mesh never shows open gaps or a woven strand texture, and in E the mildew is an even all-over speckle on a tan sheet, like camouflage cloth rather than patchy black mildew on PVC strands.",
+      "paint": "In A and B the black streaks are dense, evenly spaced vertical stripes over a grey marble-like mottle across the whole topside, not runs starting at the fittings, so it reads as a texture tile rather than weathered paint.",
+      "paint.foil": "A's strut and foil are an orange-brown rust colour, which painted composite foils never take on, so they look like corroded steel rather than chalked grey paint chipped to filler and primer.",
+      "rope": "In C the lines lose their orange entirely and go a flat dark grey-green, and the mesh under them becomes a uniform speckled sand carpet, so the aging looks like a colour filter on the whole scene rather than worn braid.",
+      "sail": "In A to C the white creases are thin, random, curly squiggles evenly scattered like marble veins, where real laminate creases are straighter crease lines concentrated near the battens and the luff."
+     },
+     "material_ok": {
+      "alloy": true,
+      "carbon": true,
+      "grip": true,
+      "mesh": true,
+      "paint": true,
+      "paint.foil": true,
+      "rope": true,
+      "sail": true
+     }
+    },
+    "r1-3": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L1",
+       "D": "L3",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L4",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      }
+     },
+     "material_seen": {
+      "alloy": "satin silver metal fittings on a white hull; reads as anodised alloy when new, but the most worn ones look like speckled granite, not metal",
+      "carbon": "dark grey to brown satin tubes; read as painted or plastic tubes more than carbon twill (the weave barely shows)",
+      "grip": "ribbed matt black rubber grip on a tube; reads as real rubber",
+      "mesh": "black to grey-brown trampoline fabric; reads as a solid tarp or felt sheet, not an open mesh you can see through",
+      "paint": "white painted hull side; reads as gloss paint when new, as streaked plaster or marble when old",
+      "paint.foil": "satin grey painted foil and strut; reads as paint, except one crop that looks like rusty steel",
+      "rope": "thin orange control lines and dark shrouds over a white deck; too thin to show a braid, they read as coloured wire",
+      "sail": "translucent film sail with a diamond scrim; reads as laminate when new, as veined marble or paper when old"
+     },
+     "least_real": {
+      "alloy": "In E the white oxide covers every fitting as an even black-and-white glitter, like granite or terrazzo, when it should only collect in crevices and round the screws.",
+      "carbon": "In B the tubes go a flat brownish grey, like wood, with no chalky flaking and no fuzzy weave showing, and the end fitting has the same granite speckle.",
+      "grip": "In D the chalky grip is a flat, even grey like felt or concrete, with no visible cracks, and the grime is not picked out in the ribs.",
+      "mesh": "None of the crops shows gaps in the weave, so the mesh reads as a solid tarp, and E's mildew is a uniform printed speckle over the whole panel instead of patches.",
+      "paint": "In B the black streaks are evenly spaced vertical smears across the whole topside, not runs from the fittings, and the fittings above have turned to speckled granite.",
+      "paint.foil": "In A the grey foil has gone a rusty orange-brown, which looks like corroded steel rather than faded or polished paint.",
+      "rope": "In C the lines just fade into thin uniform grey threads with no visible fuzz or stiffness, and the eye goes to the mildew-speckled mesh instead.",
+      "sail": "In C the white creases are wormy, branching squiggles like marble veins rather than straight fold lines in film, laid over a uniformly mottled yellow."
+     },
+     "material_ok": {
+      "alloy": true,
+      "carbon": true,
+      "grip": true,
+      "mesh": true,
+      "paint": true,
+      "paint.foil": true,
+      "rope": true,
+      "sail": true
+     }
+    }
+   }
+  },
+  "round2": {
+   "note": "round 2 (sheets5): each reviewer's ladder matched the key on every sheet; one ordered several sheets by the orange line and sail in the crops, so round 3 ages only the sheet's own material",
+   "reviewers": {
+    "r2-1": {
+     "ladder": {
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L1"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint_foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "material_ok": {
+      "mesh": false
+     },
+     "least_real": {
+      "mesh": "no light through an open weave: a solid sheet",
+      "paint": "camouflage blotch band on the topsides; no streaks from fittings",
+      "paint_foil": "filler as evenly spaced white dashes",
+      "sail": "big sharp black mildew specks like confetti",
+      "grip": "cracks as drawn-on black squiggles",
+      "carbon": "chalk as flat beige blotches",
+      "alloy": "the alloy hardly ages; no oxide",
+      "rope": "worn line a dark dotted string"
+     }
+    },
+    "r2-2": {
+     "ladder": {
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L1"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint_foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "material_ok": {
+      "mesh": false
+     },
+     "least_real": {
+      "mesh": "no light through the gaps: solid vinyl",
+      "paint": "camouflage blotch texture and a blurred dark band",
+      "paint_foil": "filler as a stencilled dashed line",
+      "sail": "hard black flecks like thresholded noise",
+      "grip": "cracks like marker pen",
+      "carbon": "pale camouflage patches over every tube",
+      "alloy": "no bright edges, no white oxide",
+      "rope": "no fuzz; grime on the net and sail does the work"
+     }
+    },
+    "r2-3": {
+     "ladder": {
+      "carbon": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L1"
+      },
+      "paint": {
+       "A": "L2",
+       "B": "L4",
+       "C": "L3",
+       "D": "L1",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      },
+      "rope": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L4"
+      },
+      "grip": {
+       "A": "L2",
+       "B": "L1",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint_foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      }
+     },
+     "material_ok": {},
+     "least_real": {
+      "mesh": "tan-brown camo mildew; the weave disappears",
+      "paint": "lace or doily blotch pattern on the topsides",
+      "paint_foil": "filler as road markings",
+      "sail": "dense black specks like spray paint",
+      "grip": "thick black squiggles",
+      "carbon": "a printed tan weave",
+      "alloy": "no white oxide even at the worst level",
+      "rope": "worn line dark brown, no braid or fuzz"
+     },
+     "how": "placed middle levels by the orange line's saturation across sheets"
+    }
+   }
+  },
+  "round3": {
+   "reviewers": {
+    "r3-1": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L2",
+       "D": "L4",
+       "E": "L0"
+      },
+      "carbon": {
+       "A": "L4",
+       "B": "L3",
+       "C": "L1",
+       "D": "L2",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L4",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "rope": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      }
+     }
+    },
+    "r3-2": {
+     "ladder": {
+      "alloy": {
+       "A": "L3",
+       "B": "L0",
+       "C": "L2",
+       "D": "L4",
+       "E": "L1"
+      },
+      "carbon": {
+       "A": "L4",
+       "B": "L3",
+       "C": "L1",
+       "D": "L2",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L4",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "rope": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      }
+     }
+    },
+    "r3-3": {
+     "ladder": {
+      "alloy": {
+       "A": "L0",
+       "B": "L3",
+       "C": "L2",
+       "D": "L4",
+       "E": "L1"
+      },
+      "carbon": {
+       "A": "L4",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L1"
+      },
+      "grip": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L4",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L1",
+       "E": "L4"
+      },
+      "rope": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      }
+     }
+    }
+   },
+   "note": "alloy failed (a three-way mix-up and a L1/L3 swap)"
+  },
+  "round4": {
+   "reviewers": {
+    "r4-1": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "carbon": {
+       "A": "L3",
+       "B": "L2",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "grip": {
+       "A": "L3",
+       "B": "L4",
+       "C": "L0",
+       "D": "L1",
+       "E": "L2"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "paint": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L0",
+       "C": "L2",
+       "D": "L3",
+       "E": "L1"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L0",
+       "C": "L4",
+       "D": "L2",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L4",
+       "E": "L2"
+      }
+     },
+     "least_real": {
+      "alloy": "dark grimy mottle over step and track; no white oxide",
+      "carbon": "flat grey with hard dark-outlined flake patches like stone spatter",
+      "grip": "sandpaper or foam speckle, worst on the end cap",
+      "mesh": "noise blotches over a flat tan tint",
+      "paint": "streaks as short vertical cuts at the sheer; scum line grey",
+      "paint_foil": "filler as dashed lines along both edges, no primer",
+      "rope": "fade only, no braid or fuzz; mildewed line tan not grey-green",
+      "sail": "the same creases at every level; old sails opaque tan"
+     }
+    },
+    "r4-2": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "carbon": {
+       "A": "L3",
+       "B": "L2",
+       "C": "L4",
+       "D": "L0",
+       "E": "L1"
+      },
+      "grip": {
+       "A": "L3",
+       "B": "L4",
+       "C": "L0",
+       "D": "L1",
+       "E": "L2"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "paint": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L0",
+       "C": "L2",
+       "D": "L3",
+       "E": "L1"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L0",
+       "C": "L4",
+       "D": "L2",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L4",
+       "E": "L2"
+      }
+     },
+     "least_real": {
+      "alloy": "a uniform dark mottled smear; no white oxide in crevices, no bright edges",
+      "carbon": "pale grey wash with dark pockmarks like speckled stone",
+      "grip": "sandpaper or foam grain, no cracks",
+      "mesh": "evenly scattered cloud-noise blotches",
+      "paint": "short disconnected vertical hairlines mid-hull; no scum line",
+      "paint_foil": "chips as uniform white dashes along edge and span",
+      "rope": "only a loss of saturation",
+      "sail": "L3 already beige; L4 an opaque flat fill; creases painted on"
+     }
+    },
+    "r4-3": {
+     "ladder": {
+      "alloy": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "carbon": {
+       "A": "L3",
+       "B": "L2",
+       "C": "L4",
+       "D": "L1",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L3",
+       "B": "L4",
+       "C": "L0",
+       "D": "L1",
+       "E": "L2"
+      },
+      "mesh": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "paint": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L0",
+       "C": "L2",
+       "D": "L3",
+       "E": "L1"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L0",
+       "C": "L4",
+       "D": "L2",
+       "E": "L1"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L0",
+       "D": "L4",
+       "E": "L2"
+      }
+     },
+     "least_real": {
+      "alloy": "an even grime mottle over the plate and track; no oxide localised in crevices",
+      "carbon": "white flecks like paint splatter; no chalky haze or fuzzy weave",
+      "grip": "sandpaper or felt grain on the cap, no cracks",
+      "mesh": "cloud-camo blotches over the whole panel",
+      "paint": "streaks as crisp pen lines that stop abruptly; no scum line",
+      "paint_foil": "the whole foil flat primer grey; filler dashes along every edge",
+      "rope": "a clean beige rope of another colour",
+      "sail": "opaque tan canvas-like sheet; creases like scratches"
+     }
+    }
+   },
+   "note": "alloy failed: two swapped new and kept (L0/L3)"
+  },
+  "round5": {
+   "reviewers": {
+    "r5-1": {
+     "ladder": {
+      "alloy": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "carbon": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      }
+     },
+     "least_real": {
+      "alloy": "an even sandy speckle over every surface, not deposits in crevices",
+      "carbon": "pale grey with even blotches and no weave, like galvanised pipe",
+      "grip": "all the wear on the end cap as a pale stone-like patch; ribs clean",
+      "mesh": "opaque, no light through the gaps: reads as fine fabric",
+      "paint": "streaks as thin hairline creases near the sheer",
+      "paint_foil": "edge chips as a dotted line of white dashes",
+      "rope": "no braid or fuzz; the oldest fades to beige",
+      "sail": "a uniform sepia over the whole sail like canvas or paper"
+     }
+    },
+    "r5-2": {
+     "ladder": {
+      "alloy": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "carbon": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      }
+     },
+     "least_real": {
+      "alloy": "one even granite-like speckle over step and track",
+      "carbon": "light grey with blotchy flecks along its whole length, like concrete or galvanised pipe",
+      "grip": "only the end cap ages; the ribbed body stays black",
+      "mesh": "no light through the weave: tight canvas or screen cloth, not open trampoline mesh",
+      "paint": "dark vertical lines like creases in fabric or paper",
+      "paint_foil": "white chips in a dotted row along the span",
+      "rope": "E a clean beige natural-fibre line",
+      "sail": "E opaque tan like cardboard or vinyl"
+     },
+     "material_ok": {
+      "mesh": false
+     }
+    },
+    "r5-3": {
+     "ladder": {
+      "alloy": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L0",
+       "D": "L1",
+       "E": "L3"
+      },
+      "carbon": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L2",
+       "D": "L3",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "mesh": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L1",
+       "D": "L3",
+       "E": "L4"
+      },
+      "paint": {
+       "A": "L4",
+       "B": "L2",
+       "C": "L1",
+       "D": "L0",
+       "E": "L3"
+      },
+      "paint.foil": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L0",
+       "D": "L3",
+       "E": "L2"
+      },
+      "rope": {
+       "A": "L3",
+       "B": "L1",
+       "C": "L2",
+       "D": "L0",
+       "E": "L4"
+      },
+      "sail": {
+       "A": "L2",
+       "B": "L3",
+       "C": "L0",
+       "D": "L1",
+       "E": "L4"
+      }
+     },
+     "least_real": {
+      "alloy": "an even grey speckle over the step and track, not white bloom in crevices",
+      "carbon": "a flat pale-grey wash with dark blots, the weave gone: painted steel",
+      "grip": "wear only as a shine and cracks on the end cap, not the ribs",
+      "mesh": "mildew as an even scatter of soft dark blotches",
+      "paint": "streaks as short vertical gashes under the sheer; scum a soft smear",
+      "paint_foil": "filler and chips as a regular white dash pattern",
+      "rope": "only a hue shift; the oldest beige-pink",
+      "sail": "L4 too saturated and opaque, like tan canvas"
+     }
+    }
+   },
+   "note": "every sheet ordered; r5-2 read the wing mesh as canvas or screen cloth"
+  },
+  "round6": {
+   "reviewers": {
+    "r6-2": {
+     "ladder": {
+      "alloy": {
+       "A": "L3",
+       "B": "L2",
+       "C": "L1",
+       "D": "L4",
+       "E": "L0"
+      },
+      "carbon": {
+       "A": "L1",
+       "B": "L3",
+       "C": "L2",
+       "D": "L4",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L4",
+       "B": "L3",
+       "C": "L1",
+       "D": "L2",
+       "E": "L0"
+      },
+      "mesh": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      },
+      "paint": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "paint.foil": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "rope": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L4",
+       "D": "L3",
+       "E": "L0"
+      }
+     },
+     "least_real": {
+      "alloy": "the oxide an even fine noise over the whole step and track",
+      "carbon": "every tube evenly silver-grey with a crisp printed-looking twill",
+      "grip": "the wear stops at the end cap's edge; crack lines drawn on",
+      "mesh": "uniform speckle like gravel; no mildew patches",
+      "paint": "short equal brush-stroke streaks; a blurred green band along a straight line",
+      "paint_foil": "chips in tidy dashed lines; the strut flat light grey",
+      "rope": "only a flat hue shift to pink-beige",
+      "sail": "L4 opaque tan like paper; creases like scratches"
+     }
+    },
+    "r6-3": {
+     "ladder": {
+      "alloy": {
+       "A": "L0",
+       "B": "L2",
+       "C": "L3",
+       "D": "L4",
+       "E": "L1"
+      },
+      "carbon": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L3",
+       "D": "L4",
+       "E": "L0"
+      },
+      "grip": {
+       "A": "L4",
+       "B": "L3",
+       "C": "L0",
+       "D": "L2",
+       "E": "L1"
+      },
+      "mesh": {
+       "A": "L4",
+       "B": "L1",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      },
+      "paint": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L0",
+       "E": "L2"
+      },
+      "paint.foil": {
+       "A": "L0",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L1"
+      },
+      "rope": {
+       "A": "L1",
+       "B": "L4",
+       "C": "L3",
+       "D": "L2",
+       "E": "L0"
+      },
+      "sail": {
+       "A": "L1",
+       "B": "L2",
+       "C": "L4",
+       "D": "L3",
+       "E": "L0"
+      }
+     },
+     "least_real": {
+      "alloy": "a uniform fine grey speckle over the step and track, like galvanising",
+      "carbon": "a twill print too large and contrasty, with even grey blotches",
+      "grip": "the cracked wear a flat grey patch on the end cap only",
+      "mesh": "never reads as open mesh (moire); mildew an even pepper of dots",
+      "paint": "scum a soft even band ruled along the chine; streaks short smudges",
+      "paint_foil": "chips as bright white dashes in straight rows",
+      "rope": "only a hue change to flat grey-tan",
+      "sail": "an even flat tint with crisp white scratches; the scrim sharp at every level"
+     }
+    }
+   },
+   "note": "alloy failed: two swapped L1/L3 (r6-1 answered as r6-2 on the alloy)"
+  }
+ }
+}
