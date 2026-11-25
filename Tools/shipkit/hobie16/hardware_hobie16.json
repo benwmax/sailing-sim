@@ -33,7 +33,8 @@
   "line_radius_m": 0.0035,
   "line_to_y_m": 0.75,
   "note": "The car rides the rear crossbar's deep track, centred under the boom for upwind, with end stops near the corner castings. Owners on Hobie's forum describe the control line through rollers on the car to a cleat and fairlead on the crossbar, with a stopper knot so the car can't slam into the casting; the arrangement varies by year. Drawn: a 7 mm line from each end of the car along the crossbar's top to a cam cleat near each corner, a figure-eight stopper inboard of it, the tail lying forward on the trampoline (class_facts.rear_crossbar).",
-  "stop_y_m": 0.82
+  "stop_y_m": 0.82,
+  "cleat_riser_m": 0.022
  },
  "jib_sheet": {
   "car_y_m": 0.42,
@@ -50,7 +51,8 @@
   "clew_sheave_radius_m": 0.015,
   "car_sheave_radius_m": 0.02,
   "sheave_width_m": 0.009,
-  "tail_on_tramp_aft_m": 0.13
+  "tail_on_tramp_aft_m": 0.13,
+  "lazy_on_mast_above_heel_m": 0.12
  },
  "downhauls": {
   "jib_parts": 2,
@@ -60,12 +62,14 @@
   "sheave_radius_m": 0.012,
   "sheave_width_m": 0.006,
   "ring_below_tack_m": 0.03,
-  "foot_eye_up_m": 0.12
+  "foot_eye_up_m": 0.12,
+  "standoff_m": 0.022
  },
  "outhaul": {
   "rope_radius_m": 0.003,
-  "note": "From a ring at the clew aft round a sheave in the boom's end cap, forward along the boom's port side to a cam cleat 0.45 m from the end, the tail hanging in a bight (class_facts.boom: the outhaul cleats on the boom).",
-  "cleat_from_end_m": 0.45
+  "note": "From a ring at the clew aft to the boom's end cap, round a sheave on an upright pin there, forward along the boom's port side through two fairleads to a cam cleat 0.45 m from the end, the tail hanging free with a stopper (class_facts.boom: the outhaul cleats on the boom). Owners also run it inside the boom; not settled.",
+  "cleat_from_end_m": 0.45,
+  "standoff_m": 0.012
  },
  "halyards": {
   "rope_radius_m": 0.0025,

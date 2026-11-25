@@ -129,9 +129,9 @@ def cam_cleat(part, centre, normal, along, length=0.075, slot="Block"):
     c = np.asarray(centre, float)
     plate(part, c + 0.004 * n, n, t, 0.042, length, 0.008, 0.01, slot)
     teeth = []
-    for k in range(25):
-        a = -0.9 * math.pi + 1.8 * math.pi * k / 24
-        rr = 0.011 if k % 2 == 0 else 0.0085
+    for k in range(33):
+        a = -0.9 * math.pi + 1.8 * math.pi * k / 32
+        rr = 0.0108 if k % 2 == 0 else 0.0097
         teeth.append((rr * math.cos(a), rr * math.sin(a)))
     teeth = np.array(teeth + [(-0.004, -0.003), (-0.004, 0.003)])
     for side in (1, -1):
@@ -254,15 +254,24 @@ def knot(part, at, along, r, slot):
 
 
 def coil_hanging(part, top, out, r, loops, size, slot):
-    """A rope's tail coiled and hung from a cleat: `loops` long loops below `top`, splayed a little toward `out`."""
+    """A rope's tail coiled and hung from a cleat: `loops` loops of uneven length hanging under their own weight from a
+    neck under `top` (teardrops, narrow at the neck), a turn of the tail round the neck as the hitch."""
     top, out = np.asarray(top, float), unit(out)
     side = unit(np.cross(Z, out))
+    neck = top - 0.02 * Z + 0.012 * out
     for k in range(loops):
-        spread = (k - (loops - 1) / 2) * 2.4 * r
-        pts = [top + spread * side + out * (0.02 + 0.004 * k)
-               + size * (0.45 * math.sin(th) * side - (1 - math.cos(th)) * 0.5 * Z) + 0.006 * k * out * math.sin(th / 2)
-               for th in np.linspace(0, 2 * math.pi, 22)]
+        ln = size * (0.86 + 0.14 * k + 0.05 * math.sin(2.3 * k))
+        wd = ln * (0.3 + 0.04 * math.cos(1.7 * k))
+        lean = (k - (loops - 1) / 2) * 0.12
+        pts = []
+        for th in np.linspace(0, 2 * math.pi, 40):
+            drop = ln * (1 - math.cos(th)) / 2
+            across = wd * math.sin(th) * math.sqrt(max((1 - math.cos(th)) / 2, 0.0))
+            pts.append(neck + across * side + (lean * drop + (k - (loops - 1) / 2) * 1.8 * r) * out - drop * Z
+                       + 0.004 * math.sin(3 * th + k) * out)
         PL.sweep(part, pts, PL.circle(r, 8), slot, up=tuple(out))
+    loop(part, neck - 0.006 * Z, Z, 0.006 + loops * r, r, slot, n=12)
+    rope(part, [top, neck + 0.006 * out], r, slot)
 
 
 def coil_flat(part, centre, r, loops, radius, slot, L):
@@ -346,13 +355,17 @@ def build(Sv=None):
     for side in (1, -1):
         stop = np.array([K["car"][0], side * TR["stop_y_m"], K["bar_top"] + 0.012])
         PL.box(ms, stop, (0.03, 0.03, 0.024), "Block")
-        cl = np.array([K["car"][0] + 0.012, side * TR["line_to_y_m"], K["bar_top"]])
+        riser = TR["cleat_riser_m"]
+        base = np.array([K["car"][0] + 0.012, side * TR["line_to_y_m"], K["bar_top"]])
+        PL.sweep(ms, [base, base + riser * Z], PL.rrect(0.05, 0.07, 0.012, 3), "Block", up=(0.0, 1.0, 0.0))
+        cl = base + riser * Z
         out = cam_cleat(ms, cl, Z, side * Y, length=0.065)
-        a = K["car"] + np.array([0.0, side * (TR["car"][1] / 2 + 0.004), 0.004])
-        lift = K["bar_top"] + tr + 0.016
-        into = cl + np.array([0.0, -side * 0.032, 0.0]) + 0.012 * Z
-        rope(ms, [a, a + side * 0.03 * Y + np.array([0.0, 0.0, lift - a[2]]) * 0.6, into - side * 0.1 * Y, into, out],
-             tr, "Control")
+        eye_c = K["car"] + np.array([0.0, side * (TR["car"][1] / 2 + 0.006), 0.002])
+        loop(ms, eye_c, X, 0.007, 0.0025, "Cast", arc=(0.0, math.pi), n=10)
+        a = eye_c + side * 0.004 * Y + 0.004 * Z
+        into = cl + np.array([0.0, -side * 0.032, 0.0]) + 0.014 * Z
+        rope(ms, smooth([a, a + side * 0.03 * Y + 0.004 * Z, (a + into) / 2 - 0.006 * Z, into - side * 0.04 * Y, into,
+                         out], 2), tr, "Control")
         knot(ms, into - side * 0.05 * Y, Y, tr, "Control")
         tail = [out, out + side * 0.04 * Y - 0.004 * Z,
                 np.array([K["car"][0] + 0.12, side * (TR["line_to_y_m"] + 0.05), K["bar_top"] - 0.01]),
@@ -444,7 +457,7 @@ def build(Sv=None):
             # the lazy side runs from the starboard car to the clew behind the mast, so it bears on the mast's aft
             # face and hangs slack either side of it
             for k, (s0, s1) in enumerate((p1, p2)):
-                h = (s0[2] + s1[2]) / 2 - 0.08
+                h = max((s0[2] + s1[2]) / 2 - 0.08, S["heel"][2] + JS["lazy_on_mast_above_heel_m"])
                 mp = mast_aft(S, h) + (k - 0.5) * 0.012 * Y
                 rope(js, sagged(s0, mp, JS["lazy_sag_m"] * 0.15, 7)[:-1] + sagged(mp, s1, JS["lazy_sag_m"] * 0.35, 7),
                      rj, "SheetJib")
@@ -478,10 +491,13 @@ def build(Sv=None):
     tack = Sv["main"]["tack"]
     G = RG.G["mast"]
     Rd, wd = DH["sheave_radius_m"], DH["sheave_width_m"]
-    ring = tack - DH["ring_below_tack_m"] * t
-    loop(ln, ring, s, 0.009, 0.003, "Cast", n=12)
-    foot_eye = mast_aft(S, S["heel"][2] + DH["foot_eye_up_m"]) - 0.004 * u
-    loop(ln, foot_eye, s, 0.009, 0.003, "Cast", n=12)
+    # both stand off the mast's aft face on tangs, so the blocks hang clear of it
+    so = DH["standoff_m"]
+    ring = tack - DH["ring_below_tack_m"] * t - so * u
+    foot_eye = mast_aft(S, S["heel"][2] + DH["foot_eye_up_m"]) - (0.004 + so) * u
+    for e in (ring, foot_eye):
+        loop(ln, e, s, 0.009, 0.003, "Cast", n=12)
+        plate(ln, e + (so / 2 + 0.006) * u, s, u, 0.012, so + 0.008, 0.004, 0.003, "Cast")
     dl = unit(ring - foot_eye)
     dh_up = ring - (0.009 - 0.004 + sh) * dl - head_reach(Rd) * dl
     dh_lo = foot_eye + (0.009 - 0.004 + sh) * dl + head_reach(Rd) * dl
@@ -493,15 +509,14 @@ def build(Sv=None):
         off = (-dspan / 2 + 0.003 + wd / 2 + k * (wd + 0.003)) * s
         for fa in (1, -1):
             rope(ln, [dh_lo + off + fa * Rd * 0.84 * d_fwd, dh_up + off + fa * Rd * 0.84 * d_fwd], r, "Control")
-    dtail = [d_ex, d_ex + 0.04 * d_t, d_ex + 0.08 * d_t - 0.12 * Z]
-    x = dtail[-1][0] - 0.1
-    dtail.append(np.array([x, 0.05, PL.tramp_top(L, x, 0.05) + r]))
-    x -= 0.2
-    dtail.append(np.array([x, 0.12, PL.tramp_top(L, x, 0.12) + r]))
-    rope(ln, [dtail[0]] + smooth(dtail[1:], 2), r, "Control")
+    dtail = [d_ex, d_ex + 0.04 * d_t, d_ex + 0.07 * d_t - 0.08 * Z]
+    for dx, y in ((0.12, 0.03), (0.3, 0.08), (0.5, 0.06)):
+        x = d_ex[0] - dx
+        dtail.append(np.array([x, y, PL.tramp_top(L, x, y) + r]))
+    rope(ln, smooth(dtail, 3), r, "Control")
 
-    # ---- the outhaul: from the clew's ring aft round a sheave in the boom's end cap, forward along the boom's port
-    # side to a cam cleat on it, the tail hanging in a bight
+    # ---- the outhaul: from the clew's ring aft to the boom's end cap, round a sheave turning on an upright pin in the
+    # cap, forward along the boom's port side through two fairleads to a cam cleat on it, the tail hanging free
     clew = K["mclew"]
     d = Sv["main"]["foot_dir"]
     OH = HW["outhaul"]
@@ -509,15 +524,28 @@ def build(Sv=None):
     B = SL.SA["boom"]
     a_end = SL.SA["main"]["foot_m"] + B["end_cap_m"]
     boom_c = lambda a_: Sv["main"]["tack"] + a_ * d - 0.05 * Z
-    sv = boom_c(a_end - 0.02) + (B["height_m"] / 2 - 0.004) * Z
-    sheave(ln, sv, Y, 0.012, 0.008)
+    stand = B["width_m"] / 2 + OH["standoff_m"]           # the line's distance off the boom's centre plane
+    Rs = stand / 2
+    up_d = unit(np.cross(Y, d))                            # the boom's own up
+    sv = boom_c(a_end - 0.005) + Rs * Y + (B["height_m"] / 2 - 0.012) * up_d
+    sheave(ln, sv, up_d, Rs - ro, 0.01)
+    cylinder(ln, sv - 0.012 * up_d, sv + 0.012 * up_d, 0.003, "Cast", n=10)
     loop(ln, clew - 0.008 * Z, Y, 0.009, 0.003, "Cast", n=12)
-    side_y = (B["width_m"] / 2 + ro + 0.002) * Y
+    z_line = (B["height_m"] / 2 - 0.012) * up_d
+    path = [clew - 0.016 * Z, boom_c(a_end - 0.12) + z_line + 0.004 * up_d]
+    for th in np.linspace(math.pi / 2, -math.pi / 2, 9):          # round the sheave's aft side, centreline to port
+        path.append(sv + Rs * (math.cos(th) * d - math.sin(th) * Y))
     cleat_c = boom_c(a_end - OH["cleat_from_end_m"]) + (B["width_m"] / 2) * Y
+    for a_f in (a_end - 0.12, a_end - 0.28):
+        f = boom_c(a_f) + z_line + (B["width_m"] / 2) * Y
+        loop(ln, f + (stand - B["width_m"] / 2) * Y, d, 0.006, 0.002, "Cast", n=10)
+        path.append(boom_c(a_f) + z_line + stand * Y)
     o_ex = cam_cleat(ln, cleat_c, Y, -d, length=0.06)
-    rope(ln, [clew - 0.014 * Z, sv + 0.012 * Z - 0.012 * d, sv + 0.012 * d + 0.004 * Z, sv + 0.016 * d - 0.012 * Z,
-              boom_c(a_end - 0.06) + side_y, cleat_c + 0.03 * d + 0.012 * Y + 0.008 * Y], ro, "Control")
-    rope(ln, sagged(o_ex, o_ex - 0.16 * d - 0.01 * Z, 0.06, 15), ro, "Control")
+    path.append(cleat_c + 0.045 * d + 0.012 * Y + 0.004 * up_d)
+    rope(ln, smooth(path, 2), ro, "Control")
+    tail = smooth([o_ex, o_ex - 0.05 * d, o_ex - 0.09 * d - 0.06 * Z, o_ex - 0.1 * d - 0.2 * Z], 2)
+    rope(ln, tail, ro, "Control")
+    knot(ln, tail[-1] + 0.01 * Z, Z, ro, "Control")
 
     # ---- the halyards: the jib's head on a short wire from the hounds; both tails down the mast's sides to the cam
     # cleats on its foot, each tail coiled and hung from its cleat
