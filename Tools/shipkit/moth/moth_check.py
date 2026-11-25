@@ -23,7 +23,9 @@ How each is measured:
   foils                   each foil object's span (its y extent) and the build report's planform areas
   strut, rudder depth     the object's lowest point below the hull's lowest point
   mast, luff, wand        sockets MastBase-Masthead, the report's luff, sockets WandPivot-WandTip
-  rigged weight           the build report's parts mass (slice 7)
+  rest displacement       the hull mesh's volume under the design waterline x 1,000 kg/m^3 (the report's
+                          canoe_volume_m3): she must float her 115 kg of boat and sailor at rest
+  rigged weight           the build report's parts_mass_kg (slice 7)
 Plain Python: no Blender needed.
 """
 import json
@@ -87,9 +89,11 @@ def measure(stats, sockets):
         if sect(name):
             m[key] = extent(sect(name), 1)
     phys = stats.get("physics") or {}
-    for k in ("main_foil_area_m2", "elevator_area_m2", "sail_area_m2", "luff_length_m", "rigged_weight_kg"):
+    for k in ("main_foil_area_m2", "elevator_area_m2", "sail_area_m2", "luff_length_m", "parts_mass_kg"):
         if phys.get(k):
-            m[k] = phys[k]
+            m["rigged_weight_kg" if k == "parts_mass_kg" else k] = phys[k]
+    if phys.get("canoe_volume_m3"):
+        m["rest_displacement_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3
     if sockets:
         s = sockets.get("sockets", {})
 

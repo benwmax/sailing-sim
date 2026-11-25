@@ -1,0 +1,28 @@
+{
+ "about": "The moth's hull lines (docs/moth-2): a few curves along her length that hull_moth.py turns into sections. Frame: x forward from the hull's middle (stem +1.6775, transom -1.6775: the class's 3,355 mm), y to one side from the centreline, z up from the keel's lowest point; hull_moth.py moves z to the design waterline once it has solved where she floats. Shape read by eye from the CC BY / PD photos in refs.json (the flying broadside, the boat on her side, the two on trolleys): nothing traced. An invented hull inside the class rules, not any builder's.",
+ "ends": {
+  "stem_x": 1.6775,
+  "transom_x": -1.6775
+ },
+ "keel": {
+  "note": "The keel line, as height above its lowest point: almost straight (a moth's hull only matters at rest and at take-off), a short, tight forefoot into a plumb stem (the afloat photo shows a tall, nearly upright bow), a little rise to the transom. Points are (x, z).",
+  "points": [[-1.6775, 0.06], [-1.2, 0.025], [-0.6, 0.004], [-0.15, 0.0], [0.4, 0.004], [0.9, 0.014], [1.25, 0.036], [1.5, 0.075], [1.62, 0.13], [1.6775, 0.2]]
+ },
+ "sheer": {
+  "note": "The deck edge's height above the keel's lowest point (x, z): highest near the bow (she noses into waves when low-riding), lower toward the transom so the sailor can sit back.",
+  "points": [[-1.6775, 0.4], [-1.0, 0.42], [-0.2, 0.435], [0.6, 0.445], [1.2, 0.455], [1.6775, 0.465]]
+ },
+ "plan": {
+  "note": "Half-breadth at the deck edge (x, y): widest a little aft of the middle, a fine bow, a broad transom for the gantry's feet.",
+  "points": [[-1.6775, 0.135], [-1.1, 0.172], [-0.4, 0.19], [0.2, 0.185], [0.8, 0.155], [1.25, 0.105], [1.5, 0.06], [1.6775, 0.004]]
+ },
+ "section": {
+  "note": "Each section is a V that rounds into upright topsides: half-breadth at height t (0 keel, 1 deck edge) is plan(x) * t^power, the power smaller (fuller, rounder) aft and larger (sharper V) forward. deadrise_flat rounds the keel over its lowest few cm; deck_crown is how high the deck's middle stands over its edges; edge_round the deck edge's radius.",
+  "power_aft": 0.32,
+  "power_mid": 0.4,
+  "power_bow": 0.62,
+  "keel_round_m": 0.012,
+  "deck_crown_m": 0.02,
+  "edge_round_m": 0.018
+ }
+}

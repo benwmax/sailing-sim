@@ -50,7 +50,7 @@ budgets per slice and what the game will float her with.
 | --- | ---: | --- |
 | Hull length | 3.355 m | the rule's limit: every moth is built to it |
 | Beam over the wings | 2.25 m | the rule's limit |
-| Hull beam / depth | 0.38 / 0.36 m | typical; slice 1 measures them on the trolley broadside |
+| Hull beam / depth | 0.38 / 0.45 m | slice 1 (`docs/moth-2`): the depth raised from 0.36 after the afloat photo |
 | Rigged weight | 35 kg | the class site's 30-45 kg for foilers |
 | Mast / luff | 5.1 / 5.1 m | a sailmaker's tuning guide (today's standard mast) |
 | Sail area | 8.25 m² | the rule's limit |

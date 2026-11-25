@@ -1,0 +1,13 @@
+{
+ "boat": "Moth (Lacewing 11)",
+ "build": "Tools/shipkit/moth/build_moth.py",
+ "build_args": "<out dir>: writes <out>/moth.blend",
+ "hull_object": "MOTH_Hull",
+ "report": "moth_report.json",
+ "note": "The hydrofoil moth (docs/moth-2 on), a new boat. Slice 1 builds the hull only; slice 2 adds the wings, slice 3 the foils, gantry and wand, slice 4 the rig, slice 5 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "sections": {
+  "hull": {"objects": ["MOTH_Hull"], "owns": ["hull_moth", "build_hull"], "borders": []}
+ },
+ "joins": [],
+ "joins_note": "No joins yet: slice 2 lists the wing bars' feet on the hull."
+}
