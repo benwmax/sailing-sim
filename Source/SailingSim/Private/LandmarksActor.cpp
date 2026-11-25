@@ -103,7 +103,7 @@ void ALandmarksActor::Tick(float DeltaSeconds)
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	if (bTidal)
 	{
-		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
+		const double Z = GM->GetTideFollowZ();
 		if (!GetActorLocation().Equals(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z), 0.1)) SetActorLocation(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z));
 	}
 	// Far landmarks sink with the earth's curvature (a tower's foot goes below the horizon before its top): placed again

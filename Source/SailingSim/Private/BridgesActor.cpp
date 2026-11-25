@@ -228,7 +228,7 @@ void ABridgesActor::Tick(float DeltaSeconds)
 	{
 		// Follow the terrain's tide offset in 2 cm steps (moving them every frame would keep invalidating their shadows).
 		const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
-		const double Z = FMath::RoundToDouble(-GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter;
+		const double Z = GM->GetTideFollowZ();
 		if (!GetActorLocation().Equals(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z), 0.1)) SetActorLocation(SailingFrame::MapAnchor(GetWorld()) + FVector(0.0, 0.0, Z));
 	}
 	if (VehicleMeshes.Num() == 0) return;

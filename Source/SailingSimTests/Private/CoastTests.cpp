@@ -13,6 +13,7 @@
 #include "Tides.h"
 #include "SailingEnvironment.h"
 #include "LakeTerrainActor.h"
+#include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -692,6 +693,43 @@ bool FSailingCoastKeptStaticFollowsTideTest::RunTest(const FString&)
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+
+// The tide's followers (terrain, bridges, landmarks, fixed navaids) stand at one stepped offset (ASailingGameMode::
+// GetTideFollowZ), and -SailingTideStepEvery=<s> forces a 2 cm step every <s> seconds so the step's render-thread hitch
+// can be measured in a minute instead of a 2 h Galveston soak (docs/tide-hitch).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastTideStepTest, "SailingSim.Coast.TideStep", Flags)
+bool FSailingCoastTideStepTest::RunTest(const FString&)
+{
+	TestEqual(TEXT("0.309 m steps to 0.30"), ASailingGameMode::TideStepped(0.309), 0.30, 1e-9);
+	TestEqual(TEXT("0.311 m steps to 0.32"), ASailingGameMode::TideStepped(0.311), 0.32, 1e-9);
+	TestEqual(TEXT("-0.25 m steps to -0.26 (away from zero, as before)"), ASailingGameMode::TideStepped(-0.251), -0.26, 1e-9);
+	// A slow tide moves the followers once per 2 cm, never back and forth.
+	int32 Steps = 0;
+	double Last = ASailingGameMode::TideStepped(0.0);
+	for (int32 I = 1; I <= 1000; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepped(0.1 * I / 1000.0);   // 10 cm in 1,000 ticks
+		if (Now != Last) ++Steps;
+		Last = Now;
+	}
+	TestEqual(TEXT("10 cm of tide is five steps"), Steps, 5);
+	TestEqual(TEXT("No argument: nothing forced"), ASailingGameMode::ForcedTideStep(37.0, 0.0), 0.0, 1e-12);
+	TestEqual(TEXT("First period: nothing"), ASailingGameMode::ForcedTideStep(5.0, 10.0), 0.0, 1e-12);
+	TestEqual(TEXT("Second period: one step up"), ASailingGameMode::ForcedTideStep(15.0, 10.0), 0.02, 1e-12);
+	TestEqual(TEXT("Third: back"), ASailingGameMode::ForcedTideStep(25.0, 10.0), 0.0, 1e-12);
+	// Forced on top of a tide sitting mid-step, it still moves the followers once each period.
+	int32 Forced = 0;
+	Last = ASailingGameMode::TideStepped(0.305);
+	for (double T = 0.0; T < 60.0; T += 0.25)
+	{
+		const double Now = ASailingGameMode::TideStepped(0.305 + ASailingGameMode::ForcedTideStep(T, 10.0));
+		if (Now != Last) ++Forced;
+		Last = Now;
+	}
+	TestEqual(TEXT("A step every 10 s for a minute"), Forced, 5);
 	return true;
 }
 

@@ -65,6 +65,15 @@ public:
 	double GetLocalHour() const;
 	/** Water level above chart datum at the boat (m); 0 on the lake. */
 	double GetTideHeight() const { return TideHeight; }
+	/** The offset (cm, up) the tide's followers stand at: -tide in 2 cm steps (the terrain, bridges, landmarks and fixed
+	 *  navaids all read this one value, so they step in the same frame). Moving them every frame would keep invalidating
+	 *  their shadows and resending their instances to the distance-field scene. */
+	double GetTideFollowZ() const { return -TideStepped(TideHeight) * 100.0; }   // cm per m
+	/** A tide height (m) in the followers' 2 cm steps. */
+	static double TideStepped(double TideM) { return FMath::RoundToDouble(TideM / 0.02) * 0.02; }
+	/** -SailingTideStepEvery=<s> (measuring the tide step's hitch without a 2 h soak): the extra height (m) that forces a
+	 *  2 cm step every <s> seconds of play, 0 and 0.02 in turn; 0 without the argument (Every <= 0). */
+	static double ForcedTideStep(double Seconds, double Every) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? 0.02 : 0.0; }
 	/** Tidal current at a point (m/s, map frame). */
 	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 

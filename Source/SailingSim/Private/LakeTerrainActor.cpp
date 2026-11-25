@@ -573,6 +573,27 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		int32 K = 0;
 		for (const TPair<FString, int64>& P : By) { if (K++ >= 16) break; Top += FString::Printf(TEXT(" %s %lld;"), *P.Key, P.Value); }
 		SAIL_LOG(Display, TEXT("World instances: %lld:%s"), Total, *Top);
+		// And what is in the distance-field scene, by owner (components, instances): every tide step and re-centre resends
+		// what moves of it (docs/recentre-hitch, docs/tide-hitch).
+		TMap<FString, TPair<int64, int64>> InDF;
+		int64 DFTotal = 0;
+		for (TObjectIterator<UStaticMeshComponent> It; It; ++It)
+		{
+			if (It->GetWorld() != GetWorld() || !It->IsRegistered() || !It->bAffectDistanceFieldLighting || !It->GetStaticMesh()) continue;
+			const UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(*It);
+			const int64 N = Ism ? Ism->GetInstanceCount() : 1;
+			if (N == 0) continue;
+			const FString Key = FString::Printf(TEXT("%s/%s"), It->GetOwner() ? *It->GetOwner()->GetClass()->GetName() : TEXT("-"),
+				Ism ? (It->Mobility == EComponentMobility::Movable ? TEXT("movable ISM") : TEXT("ISM")) : (It->Mobility == EComponentMobility::Movable ? TEXT("movable mesh") : TEXT("mesh")));
+			TPair<int64, int64>& V = InDF.FindOrAdd(Key, TPair<int64, int64>(0, 0));
+			V.Key += 1;
+			V.Value += N;
+			DFTotal += N;
+		}
+		InDF.ValueSort([](const TPair<int64, int64>& A, const TPair<int64, int64>& B) { return A.Value > B.Value; });
+		FString DFTop;
+		for (const TPair<FString, TPair<int64, int64>>& P : InDF) DFTop += FString::Printf(TEXT(" %s %lld in %lld;"), *P.Key, P.Value.Value, P.Value.Key);
+		SAIL_LOG(Display, TEXT("Distance-field instances: %lld:%s"), DFTotal, *DFTop);
 	}
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;
