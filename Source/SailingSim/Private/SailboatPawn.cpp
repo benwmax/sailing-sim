@@ -3333,7 +3333,7 @@ void ASailboatPawn::UpdateLogbook(float DeltaSeconds)
 		bLogStarted = true;
 		FLaunchSpot Spot;
 		const FString From = GM->GetLaunchSpot(Spot) ? Spot.Name : FString(TEXT("open water"));
-		Logbook.Begin(ASailingGameMode::WorldDisplayName(USailingSettings::Get()->World), UTF8_TO_TCHAR(Boat.GetConfig().Name), GM->GetUnixTime(), FString());
+		Logbook.Begin(ASailingGameMode::WorldDisplayName(USailingSettings::Get()->World), UTF8_TO_TCHAR(Boat.GetConfig().Name), GM->GetUnixTime(), GM->GetUtcOffsetHours());
 		Logbook.Add(MakeLogEntry(TEXT("Event"), FString::Printf(TEXT("Underway from %s in the %hs; %s"), *From, Boat.GetConfig().Name,
 			*FString(WeatherPresetName(GM->GetWeather().GetPreset())).ToLower())));
 		// Watches on the half hour of the local clock.

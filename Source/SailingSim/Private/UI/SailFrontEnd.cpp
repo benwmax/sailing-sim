@@ -2339,18 +2339,9 @@ SSailFrontEnd::FEntry SSailFrontEnd::BuildLogbook()
 	TSharedRef<SVerticalBox> Sails = SNew(SVerticalBox);
 	for (int32 I = 0; I < Shown; ++I)
 	{
-		// "2026-11-14 1502 Ray Hubbard.json" reads "14 Nov 2026, 15:02" and the water.
-		const FString Name = FPaths::GetBaseFilename(Files[I]);
-		// The file name's water has underscores for everything but letters and digits: "Lake_Ray_Hubbard__Rush_Creek_YC_"
-		// reads "Lake Ray Hubbard, Rush Creek YC".
-		FString When = Name.Left(15), Where = Name.Mid(16).Replace(TEXT("__"), TEXT(", ")).Replace(TEXT("_"), TEXT(" ")).TrimStartAndEnd();
-		Where.RemoveFromEnd(TEXT(","));
-		FDateTime Date;
-		if (Name.Len() >= 15 && FDateTime::Parse(Name.Left(10) + TEXT(" ") + Name.Mid(11, 2) + TEXT(":") + Name.Mid(13, 2) + TEXT(":00"), Date))
-		{
-			static const TCHAR* Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
-			When = FString::Printf(TEXT("%d %s %d, %02d:%02d"), Date.GetDay(), Months[FMath::Clamp(Date.GetMonth() - 1, 0, 11)], Date.GetYear(), Date.GetHour(), Date.GetMinute());
-		}
+		// "2026-11-14 1502 Ray Hubbard.json" reads "14 Nov 2026, 15:02" (the world's local clock) and the water.
+		FString When, Where;
+		FLogbook::ListLabel(FPaths::GetBaseFilename(Files[I]), When, Where);
 		Sails->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)
 		[
 			SNew(SVerticalBox)
