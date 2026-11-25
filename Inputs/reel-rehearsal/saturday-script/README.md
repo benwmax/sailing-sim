@@ -39,3 +39,30 @@ reel-saturday.ps1 -Package Windows-<freeze sha> [-Res 4k|1080p] [-Only 'P2-storm
 
 The R13, R22 and R08 tests ran at 1080p on Windows-83aa7652. Bean's Saved was held aside and restored (7B5CA7BE) for
 each.
+
+## R08b: the live checkride (added Nov 25, tested at 1080p)
+
+**The throwaway profile:** `test-profile-daysailor-ready.json`, every Day Sailor lesson at silver with its quiz passed and
+no checkride yet. It's copied fresh to `Artifacts\bench\seed\run-profile.json` each run and named with `-SailingSave`.
+
+**The `-SailingUIScript`:**
+1. `WaitFor:Career`, then 12 x `Tab`, then `Enter`. The Tab order is the four tier cards, the six lessons, then "Take the
+   written checkride". Arrow keys stay on the tier cards.
+2. `WaitFor:Quiz`, then **`Answer:all`**: the dev step that clicks each question's correct option in turn. It needs a
+   Development build or developer tools.
+3. A hold on the score and certificate.
+4. `Escape` twice to the title, then `Down`, `Down`, `Enter` to the Logbook.
+
+**Test** (`R08b-1-career`, `-2-score-certificate`, `-3-logbook` JPGs):
+- **"answer all: ok, 12 answered"**, and the frames show **"12 of 12 right"** with the **Day Sailor certificate**
+  document ("Awarded 25 November 2026", "Day Sailor certificate earned. Open now: Club Racer").
+- The Logbook follows, with the entry **"Quiz after Day Sailor checkride: 12 of 12"** and the Certificates count at 1.
+
+**Timing:** in the test the score and certificate held for only about 3 s of the 32 s take, because the UI script runs on
+real time while the recording counts game frames, which run faster than real time in menus. I've lengthened the hold to
+10 x `Wait`. That change isn't re-tested yet.
+
+**Logbook clutter:** the Logbook's list shows this PC's earlier test sails, from the Development package's own
+`Saved\Logbook`, not Bean's. A clean Saturday package, or emptying that folder first, gives a cleaner list.
+
+R08, the Career screen with "Certified", stays as the fallback. Bean's Saved was held aside and restored (7B5CA7BE).

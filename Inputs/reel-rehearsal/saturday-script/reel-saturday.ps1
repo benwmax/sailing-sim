@@ -31,6 +31,7 @@ $jobs = [ordered]@{
 	'H02-reach'      = @{ shot = 'h02-j22-reach-track'; rec = 6; extra = "$lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=14 -SailingDemo -SailingTWA=90 -SailingHoldTWA=90" }
 	'R03-briefing'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingDrill=LeavetheDock -SailingFrontEnd=Briefing -SailingHour=14" }
 	'R08-career'     = @{ seedcopy = $true; nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`"" }
+	'R08b-checkride' = @{ seedcopyready = $true; nopath = $true; rec = 32; interval = '0.0333333'; hud = $true; timeout = 900; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`" `"-SailingUIScript=Wait,Wait,Wait,WaitFor:Career,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Enter,WaitFor:Quiz,Wait,Answer:all,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Escape,Wait,WaitFor:Career,Escape,Wait,WaitFor:Title,Down,Down,Enter,Wait,Wait,Wait`"" }
 	'R23-worldmap'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=World -SailingHour=14" }
 }
 foreach ($name in $jobs.Keys) {
@@ -39,6 +40,7 @@ foreach ($name in $jobs.Keys) {
 	$shotName = if ($j.shot) { $j.shot } else { $name }
 	$json = if ($j.shot) { $shots[$j.shot] } else { '{"frame":"boat","keys":[{"t":0,"orbit":[-120,20,2]}]}' }
 	if (-not $json) { Note "$name SKIPPED: no shot file $($j.shot)"; continue }
+	if ($j.seedcopyready) { Copy-Item "$B\seed\profile-daysailor-ready.json" "$B\seed\run-profile.json" -Force }   # every lesson at silver, the checkride not yet taken (throwaway)
 	if ($j.seedcopy) { Copy-Item "$B\seed\profile-daysailor-certified.json" "$B\seed\run-profile.json" -Force }   # a throwaway copy each run, never Bean's profile
 	if ($j.extra -notmatch 'ForceDebugViewModes') { $j.extra += ' -DPCVars=r.ForceDebugViewModes=1' }   # every take (coordinator, Nov 25)
 	$args2 = @{ Name = $name; ShotFile = $shotName; ShotJson = $json; Record = $j.rec; Extra = $j.extra; PkgName = $P; ReelDir = $RD; ResX = $rx; ResY = $ry; Bench = 3 }
