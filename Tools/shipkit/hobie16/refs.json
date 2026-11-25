@@ -6,7 +6,7 @@
    "file": "Hobie 16 catamaran sailboat 1857.jpg",
    "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_sailboat_1857.jpg",
    "kind": "photo_broadside_sailing",
-   "use": "slice 1: the hull's freeboard, sheer and bow profile under sail, nearly square on (read roughly on Nov 25: freeboard about 0.26 m amidships and 0.27 m at the bow, against the model's 0.45; slice 1 solves the camera)",
+   "use": "slice 1: the hull's freeboard, deck line and bow profile under sail, nearly square on. Measured on its pixels (1280 px copy, Nov 25 in docs/hobie16-2): hull 888 px long (176 px/m); 0.19 m of hull over the water amidships with one sailor aboard, the deck rising about 0.19 m to the bow and 0.03 m to the stern as she trims by the stern (about 0.11 m to each end once the trim is taken out); a nearly upright stem with about 0.1 m of overhang",
    "size_px": [
     1704,
     2272
@@ -20,7 +20,7 @@
    "file": "Hobie 16 catamaran on trailer.jpg",
    "commons": "https://commons.wikimedia.org/wiki/File:Hobie_16_catamaran_on_trailer.jpg",
    "kind": "photo_bow_quarter_trailer",
-   "use": "slices 1-2: the hulls' sections and deck crown from forward, the bows' shape, the trampoline frame and the front beam on its castings, out of the water",
+   "use": "slices 1-2: from the stern quarter on a trailer, out of the water: the transoms, the hulls' rocker and the trampoline frame (looked at in slice 1: a heart-shaped transom over a V, nearly upright topsides)",
    "size_px": [
     1024,
     768
@@ -34,7 +34,7 @@
    "file": "A Hobie Cat rest a day after the passing of its creator Hibart Hobie Alter.jpg",
    "commons": "https://commons.wikimedia.org/wiki/File:A_Hobie_Cat_rest_a_day_after_the_passing_of_its_creator_Hibart_Hobie_Alter.jpg",
    "kind": "photo_bow_on_moored",
-   "use": "slices 1-2: bow-on, both hulls' sections and their spacing, the front beam's height, the mast and bridle (check it is a 16 by the beam layout before measuring)",
+   "use": "slices 1-2: on a mooring lift, from the quarter (not bow-on, as slice 0 listed it): the hulls' rocker and deck roll, the front beam and its pylons, the mast and bridle",
    "size_px": [
     1488,
     2466

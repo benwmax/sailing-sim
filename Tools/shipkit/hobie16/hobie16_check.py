@@ -13,10 +13,11 @@ says where each target comes from: the shape, the sockets, a later slice ("not y
 How each is measured (the C22's check, catalina22/c22_check.py, for two hulls):
   length of hull, beam    the hull object's bounds (stats.json 'hull'): both hulls in one object, so the beam is
                           outside to outside, as published
-  waterline length        measure.py's cut of the hulls at the design waterline (z = 0), stem to stern ('lwl')
-  hulls' draft            the hull object's lowest point less the crew's sink (the card's game.crew_sink_m): the model
-                          floats at the game's waterline with its two crew aboard, and the published 10 in is the empty
-                          boat's (with the rudders up)
+  waterline length        the build report's lwl_empty_m (the rebuild: at the empty boat's waterline, like the draft),
+                          else measure.py's cut of the hulls at the design waterline (z = 0), stem to stern ('lwl')
+  hulls' draft            the hull object's lowest point less the crew's sink: the model floats at the game's waterline
+                          with its two crew aboard, and the published 10 in is the empty boat's (rudders up). The sink
+                          is the build report's crew_sink_m (the rebuild's own hulls), else the card's game.crew_sink_m
   heights from the floor  the deck at the bow (stern) station above the hulls' lowest point: Hobie's 'height from floor
                           to bow (stern)', the hull standing on its keel. Today's hulls are far taller than the real ones
   weight                  the two canoe bodies' volume under z = 0 (the build's report) times 1,000 kg/m^3, less the
@@ -43,7 +44,13 @@ def measure(stats, sockets, card):
         m["beam_m"] = hull.get("beam")
         if hull.get("lwl"):
             m["length_waterline_m"] = hull["lwl"]
-    sink = card["game"].get("crew_sink_m") or 0.0
+    # the card's draft is the empty boat's (game.draft_condition, docs/hobie16-2): the model floats at the game's
+    # waterline with her crew aboard, so their sink comes off; the rebuild's report measures it on her own hulls
+    phys = stats.get("physics") or {}
+    empty = card["game"].get("draft_condition", "empty") == "empty"
+    sink = (phys.get("crew_sink_m") or card["game"].get("crew_sink_m") or 0.0) if empty else 0.0
+    if empty and phys.get("lwl_empty_m"):
+        m["length_waterline_m"] = phys["lwl_empty_m"]
     hulls = [o for o in stats.get("objects", {}).values() if o.get("section") == "hull"]
     if hulls:
         m["draft_hull_m"] = -min(o["min"][2] for o in hulls) - sink
@@ -54,7 +61,6 @@ def measure(stats, sockets, card):
             m["height_bow_m"] = st[-1]["sheer_z"] - min(keels)
         if st[0].get("sheer_z") is not None:
             m["height_stern_m"] = st[0]["sheer_z"] - min(keels)
-    phys = stats.get("physics") or {}
     if phys.get("canoe_volume_m3"):
         m["weight_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3 - card["game"]["crew_kg"]
     for k in ("main_area_m2", "jib_area_m2"):
