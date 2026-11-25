@@ -76,5 +76,14 @@
   "cleat_along_m": 0.32,
   "note": "Both sails hang on hooks (the main's at the masthead, the jib's at the hounds), so the halyards are slack once hooked: each tail runs down the mast's side to its cam cleat on the mast's foot and is coiled and hung there (class_facts.mast). The jib's head ties to a short wire from the hounds.",
   "coil_m": 0.18
+ },
+ "hiking_straps": {
+  "width_m": 0.05,
+  "thick_m": 0.012,
+  "front_x_m": -0.15,
+  "front_y_m": 0.07,
+  "rear_y_m": 0.62,
+  "lift_m": 0.012,
+  "note": "One padded strap a side for the helm's and crew's feet. Owners on the beach-cat forums describe them sewn or tied to the trampoline at the front, near the centre lacing, and tied round the rear crossbar at the back, so they run diagonally from near the middle of the boat back toward each aft corner (an owner of a Tornado gives the same layout; Hobie's own parts list has the straps but no sizes). Drawn 50 mm wide and 12 mm thick, lying slack on the trampoline, a loop at each end lashed with 4 mm line: at the front through two grommets beside the centre lacing, at the back round the rear crossbar inboard of the traveller's cleats. Not settled: a photo from above decides."
  }
 }

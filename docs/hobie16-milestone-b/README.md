@@ -8,7 +8,7 @@ Since Milestone A, slice 6 (`docs/hobie16-7`) added the hardware and lines:
 
 - the mainsheet's 6:1 and the traveller;
 - the jib cars and the 2:1 jib sheet;
-- the downhauls, the outhaul and the halyards' tails.
+- the downhauls, the outhaul, the halyards' tails and the hiking straps.
 
 The sails and lines wear a preview colouring. In the game the livery and the rope colourways colour them.
 
@@ -28,9 +28,9 @@ The sails and lines wear a preview colouring. In the game the livery and the rop
 | Main | 13.770 m² | 13.77 m² | Hobie |
 | Jib | 5.120 m² | 5.12 m² | Hobie |
 | Floor to bow, floor to stern | 0.595 m, 0.608 m | 0.597 m, 0.610 m | Hobie |
-| Triangles, whole boat | 153,828 | 870,000 budget | |
+| Triangles, whole boat | 165,132 | 870,000 budget | |
 
-The hardware is 40,088 of those triangles. Every slice's final blind round chose the rebuild; slice 6's chose the
+The hardware is 51,392 of those triangles. Every slice's final blind round chose the rebuild; slice 6's chose the
 final hardware in 16 of 18 close-ups.
 
 ## What photos of a real Hobie 16 would settle
@@ -42,7 +42,8 @@ transoms). Slice 6 adds:
    forward of the clew), and whether the mainsheet's lower block has a stand-up spring.
 2. **The rear crossbar from above:** the traveller line's path and its cleats. It varies by year.
 3. **The boom's end:** whether the outhaul runs outside the boom to a cleat, as drawn, or inside it.
-4. **A tape on the platform:** owners give the trampoline as 89.5 in between the crossbars (the model has 87.8 in)
+4. **The trampoline from above:** where the hiking straps run and how they are tied.
+5. **A tape on the platform:** owners give the trampoline as 89.5 in between the crossbars (the model has 87.8 in)
    and the rudder pins 84 in apart (73.6 in here).
 
 As with Milestone A, the plan is to keep going without the photos: slice 7 (textures) doesn't depend on them.

@@ -6,7 +6,8 @@ Milestone A in `docs/hobie16-milestone-a`):
 - the mainsheet's 6:1 between the traveller car on the rear crossbar and the boom;
 - the traveller car, its line, stops and cleats;
 - the jib cars on the front crossbar and the 2:1 jib sheet;
-- the jib's and main's downhauls, the outhaul, and the halyards' tails on the mast's foot.
+- the jib's and main's downhauls, the outhaul, and the halyards' tails on the mast's foot;
+- the hiking straps.
 
 Bean asked for the detail to be modelled well, so every block, cleat, shackle and car is a real shape (sheaves, cheek
 plates, teeth, pins), checked in close-ups by two rounds of blind reviewers. Everything is sheeted for sailing upwind
@@ -97,6 +98,10 @@ them (`Inputs/rope/colourways.json`).
 - **Outhaul:** from a ring at the clew aft round a sheave on an upright pin in the end cap, then forward along the
   boom's port side through two fairleads to a cam cleat 0.45 m from the end. Its tail hangs free with a stopper.
   Owners also run it inside the boom; that is not settled.
+- **Hiking straps:** one padded strap a side, 50 mm wide, lying slack on the trampoline from beside the centre
+  lacing back toward each aft corner. Each front end is lashed through two grommets, and each back end tucks under
+  three turns of line round the rear crossbar, inboard of the traveller's cleats. Owners on the beach-cat forums
+  describe them sewn or tied this way; Hobie's parts list gives no sizes, so a photo from above decides.
 - **Halyards:** both sails hang on hooks, so the halyards are slack once hooked. Each tail runs down the mast's side to
   its cam cleat on the mast's foot, where it is coiled and hung. The jib's head ties to a short wire from the hounds.
 
@@ -108,11 +113,12 @@ them (`Inputs/rope/colourways.json`).
 - **`H16Hw_Mainsheet`:** the traveller car and line, and the 6:1's blocks and parts.
 - **`H16Hw_JibSheet`:** the jib cars, their cleats and the sheet.
 - **`H16Hw_Lines`:** the downhauls, outhaul, halyards' tails and the mast base's cleats.
+- **`H16Hw_Straps`:** the hiking straps and their lashings.
 
-The parts take the material slots Block, Sheave, Cast, SheetMain, SheetJib, Control and Line, so slice 7's textures
+The parts take the material slots Block, Sheave, Cast, SheetMain, SheetJib, Control, Line and Strap, so slice 7's textures
 and the game's rope colourways can colour each kind of part.
 
-The hardware is 40,088 triangles, against its budget of 200,000. The whole boat is now 153,828.
+The hardware is 51,392 triangles, against its budget of 200,000. The whole boat is now 165,132.
 
 ![The first build (left) and the final one (right), in clay](before_after.jpg)
 
@@ -194,6 +200,8 @@ What the reviewers still see differently, for the rounds with Bean's photos:
 - **The boom's block.** One reviewer, not sure, thought it sat too far forward. The 10° lean puts it there; a photo
   of a sheeted boat decides.
 - **The traveller and outhaul.** Both vary by year. A photo of one boat's rear crossbar and boom end decides.
+- **The hiking straps** were added after round 2, when I checked the plan's list for slice 6. No reviewer has
+  seen them yet.
 
 ## What owners' figures say about the platform
 

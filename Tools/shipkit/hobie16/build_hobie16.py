@@ -55,7 +55,8 @@ SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Bar": (0.035,
             "Block": (0.03, 0.03, 0.035), "Sheave": (0.45, 0.46, 0.47),
             # the lines' preview colours (slice 7's rope textures replace them): mainsheet blue fleck, jib sheet red,
             # control lines gold; the halyards' tails keep "Line"
-            "SheetMain": (0.1, 0.16, 0.42), "SheetJib": (0.62, 0.06, 0.05), "Control": (0.8, 0.6, 0.1)}
+            "SheetMain": (0.1, 0.16, 0.42), "SheetJib": (0.62, 0.06, 0.05), "Control": (0.8, 0.6, 0.1),
+            "Strap": (0.05, 0.09, 0.24)}
 
 
 def clear_scene():

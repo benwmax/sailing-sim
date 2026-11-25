@@ -9,6 +9,7 @@ sails. build() returns platform_hobie16.Part meshes in Blender's frame, X forwar
   Mainsheet   the traveller car, both mainsheet blocks, the six parts and tail, the traveller line
   JibSheet    the jib cars and their cleats, the working and lazy sheets and the tail between the cars
   Lines       the downhauls' tackles, the outhaul, the halyards' tails (coiled on the mast base's cleats)
+  Straps      the hiking straps, each lashed to the centre lacing at the front and round the rear crossbar at the back
 """
 import json
 import math
@@ -289,6 +290,53 @@ def coil_flat(part, centre, r, loops, radius, slot, L):
     return pts[0]
 
 
+def hiking_straps(part, K):
+    """One padded strap a side, slack on the trampoline from beside the centre lacing back to the rear crossbar, a loop
+    at each end lashed with thin line: through two grommets at the front, three turns round the crossbar at the back."""
+    HS, L = HW["hiking_straps"], K["L"]
+    w, th, lift = HS["width_m"], HS["thick_m"], HS["lift_m"]
+    rc = PL.P["rear_crossbar"]
+    prof = PL.rrect(w, th, th * 0.45, 3)
+    lr = 0.002
+    for side in (1, -1):
+        y0, y1 = side * HS["front_y_m"], side * HS["rear_y_m"]
+        x0 = HS["front_x_m"]
+        # the bar's front face, where the loop wraps: just under its top, at its forward side
+        face_x = L["rx"] + rc["width_m"] / 2 + th / 2 + 0.001
+        bar_front = np.array([face_x, y1, K["bar_top"] - 0.016])
+        x_end = face_x + 0.06
+        pts = []
+        for k, t in enumerate(np.linspace(0, 1, 26)):
+            x, y = x0 + (x_end - x0) * t, y0 + (y1 - y0) * t
+            # slack: lying on the trampoline with two soft humps where it last took a foot
+            hump = 0.018 * max(math.sin(math.pi * (t * 3.0 - 0.4)), 0.0) if 0.15 < t < 0.85 else 0.0
+            pts.append(np.array([x, y, PL.tramp_top(L, x, y) + th / 2 + 0.002 + lift * 0.3 + hump]))
+        # up the crossbar's front face to the lashing, under its turns
+        z_low = PL.tramp_top(L, x_end, y1) + th / 2 + 0.002
+        pts += [np.array([face_x + 0.02, y1, z_low - 0.004]), np.array([face_x, y1, L["zr"] - 0.01]), bar_front]
+        PL.sweep(part, smooth(pts, 2), prof, "Strap", up=(0.0, 0.0, 1.0))
+        # the front loop: the strap's end folded back and stitched (a short second layer), lashed through two grommets
+        fx = pts[0]
+        d = unit(pts[2] - pts[0])
+        PL.sweep(part, [fx + 0.004 * Z, fx + 0.06 * d + 0.004 * Z], PL.rrect(w * 0.98, th * 0.6, th * 0.25, 2), "Strap",
+                 up=(0.0, 0.0, 1.0))
+        across = unit(np.cross(Z, d))
+        for g in (1, -1):
+            gp = fx - 0.025 * d + g * 0.025 * across
+            gp[2] = PL.tramp_top(L, gp[0], gp[1])
+            loop(part, gp + 0.001 * Z, Z, 0.006, 0.0018, "Cast", n=12)
+            rope(part, smooth([gp + 0.004 * Z, gp + 0.01 * Z + 0.01 * d, fx + 0.008 * Z + g * 0.012 * across,
+                               fx + 0.012 * Z + 0.02 * d], 2), lr, "Control", n=6)
+        # the rear lashing: three turns of line round the crossbar through the strap's end loop
+        for k in range(3):
+            yk = y1 + (k - 1) * 0.012
+            # round the bar and the strap's end on its front face (the bar's profile widened forward by the strap)
+            pr = PL.rrect(rc["width_m"] + 2 * lr + 0.003, rc["height_m"] + 2 * lr + 0.003, rc["radius_m"] + lr, 3)
+            ring = [np.array([L["rx"] + q[0] + (th + 0.002 if q[0] > 0 and abs(q[1]) < rc["height_m"] / 2 - 0.008 else 0.0),
+                              yk + 0.004 * j / len(pr), L["zr"] + q[1]]) for j, q in enumerate(pr)]
+            rope(part, smooth(ring, 1), lr, "Control", n=6)
+
+
 def mast_aft(S, z):
     """The point on the mast's aft face at height z (on its centre plane), a rope's width off it."""
     t, s, u = RG.frame(S["rake"])
@@ -342,7 +390,8 @@ def build(Sv=None):
     K = layout(Sv)
     MS, TR, JS, DH = HW["mainsheet"], HW["traveller"], HW["jib_sheet"], HW["downhauls"]
     L, S = K["L"], K["S"]
-    ms, js, ln = Part("Mainsheet"), Part("JibSheet"), Part("Lines")
+    ms, js, ln, st = Part("Mainsheet"), Part("JibSheet"), Part("Lines"), Part("Straps")
+    hiking_straps(st, K)
     X = np.array([1.0, 0.0, 0.0])
 
     # ---- the traveller: the car in the rear crossbar's track with its swivel post and eye; end stops on the track;
@@ -562,7 +611,7 @@ def build(Sv=None):
         path = [S["heel"] + a_ * t + side * w(a_) * s + 0.01 * u for a_ in np.linspace(top_a, HL["cleat_along_m"] + 0.08, 10)]
         rope(ln, path + [h_ex + 0.03 * t], hr)
         coil_hanging(ln, h_ex - 0.004 * t, side * s, hr, 3, HL["coil_m"], "Line")
-    return [ms, js, ln], K
+    return [ms, js, ln, st], K
 
 
 def report(K, Sv):
