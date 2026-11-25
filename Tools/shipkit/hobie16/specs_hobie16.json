@@ -58,7 +58,7 @@
  },
  "recheck": [
   "Waterline length, rocker and deck line, and the hulls' asymmetry (the inboard face against the outboard): slice 1 drew them from the CC0 broadside's pixels and the card (docs/hobie16-2); Bean's photos of a Hobie on a trailer or the sand, bow-on and broadside, are the check still to come, above all for the sections below the water.",
-  "Beam positions along the hulls, the beams' height over the water, the trampoline's outline: from a photo from above (slice 2).",
+  "Beam positions along the hulls, the beams' height over the water, the trampoline's outline: slice 2 kept the game's beam positions (0.55 and -1.75) and set the frame's height from two photos by eye (docs/hobie16-3). Reviewers remembered the rear crossbar 0.4-0.6 m from the transoms, a side photo puts it about 1.0 m; a photo from straight above or Bean's tape measure decides (it moves the traveller and the crew in the physics, slice 9).",
   "Rudder blade length and rake, draft with the rudders down: from a photo of a Hobie on the beach or a trailer (slice 3).",
   "Mast step height and the bridle's junction height: from a bow view (slice 4)."
  ],
@@ -145,5 +145,13 @@
   "jib_battens": "four battens, #4 28 in, #3 43 3/4, #2 56, #1 67 in (0.71 to 1.70 m)",
   "hulls": "left and right moulded hulls (fibreglass and foam sandwich) with anti-skid deck on the outside; bow tang, anchor bar and pin, vent tube with a foam plug, drain plug and housing near the stern, cast gudgeons on the transoms",
   "weights": "minimum boat weight 320 lb (145.15 kg) completely assembled; minimum crew 285 lb (129.3 kg) combined"
+ },
+ "class_rules": {
+  "note": "Class rules the build must keep, checked by hobie16_check.py from slice 2 on from the build report's 'platform' block (IHCA rule book 2025-2028, Hobie 16 class rules: numbers only).",
+  "bridle_min_m": 1.118,
+  "bridle_note": "Rule 5.1: the bridle wires at least 44 in (1.118 m) pin to pin. The report's bridle_wire_m is the built wire from the tang's pin to the bridle plate's hole.",
+  "dolphin_striker": true,
+  "dolphin_striker_note": "Rule 6.4: a dolphin striker under the front crossbar is required. The check asks that its foot stand under the crossbar's underside.",
+  "slice": 2
  }
 }

@@ -1,11 +1,12 @@
-"""The Hobie 16's rebuild in Blender (docs/hobie16-2 on): slice 1, the twin hulls.
+"""The Hobie 16's rebuild in Blender (docs/hobie16-2 on): slice 1, the twin hulls; slice 2, the platform.
 
     blender -b --factory-startup -P build_hobie16.py -- <out dir>
 
 Builds both hulls from hull_hobie16.py (lines_hobie16.json, the keel's depth solved for the game's 295 kg of boat and
 crew): one closed shell a hull, its deck (above the greatest breadth: the non-skid in slice 7) and its sides as two
 material slots, the transom a flat face. They're one object, H16_Hull, so the shape loop measures her overall beam.
-The platform, rudders and rig come in slices 2 to 5; until then the renders show the hulls alone.
+Slice 2 adds the platform from platform_hobie16.py (docs/hobie16-3) as H16Platform_Frame, _Boss, _Tramp and _Bridle;
+the rudders and rig come in slices 3 to 5.
 
 Writes <out>/hobie16.blend, <out>/hobie16_report.json (the mesh's volume under the design waterline, which
 hobie16_check.py weighs, with the centre of buoyancy beside the game's centre of gravity, and how far she rises without
@@ -24,6 +25,7 @@ import bmesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_hobie16 as H  # noqa: E402
+import platform_hobie16 as PL  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -31,7 +33,8 @@ os.makedirs(OUT, exist_ok=True)
 
 N_STATIONS, N_QUARTER = 200, 28       # stations along each hull; points a quarter of the section (4 quarters a ring)
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
-SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88)}
+SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Bar": (0.035, 0.035, 0.04),
+            "Cast": (0.6, 0.61, 0.62), "Corner": (0.06, 0.06, 0.065), "Tramp": (0.05, 0.05, 0.055), "Wire": (0.75, 0.76, 0.78), "Line": (0.85, 0.85, 0.82)}
 
 
 def clear_scene():
@@ -103,6 +106,32 @@ def build_hulls():
     return ob
 
 
+def build_platform():
+    """Slice 2: the platform's parts (platform_hobie16.py) as objects H16Platform_<Part>, one material slot a kind."""
+    parts, lay = PL.build()
+    obs = []
+    for p in parts:
+        me = bpy.data.meshes.new("H16Platform_" + p.name)
+        me.from_pydata(p.v, [], p.f)
+        names = list(dict.fromkeys(p.slot))
+        for n in names:
+            me.materials.append(material(n))
+        for poly, sl, fl in zip(me.polygons, p.slot, p.flat):
+            poly.material_index = names.index(sl)
+            poly.use_smooth = not fl
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        box_uvs(bm)
+        bm.to_mesh(me)
+        bm.free()
+        me.update()
+        ob = bpy.data.objects.new("H16Platform_" + p.name, me)
+        bpy.context.scene.collection.objects.link(ob)
+        obs.append(ob)
+    return obs, PL.report(lay)
+
+
 def mesh_volume_below(ob, z=0.0):
     """The mesh's own volume under the design waterline: cut at z, cap the waterplanes, measure (what the check weighs,
     so a coarse mesh can't hide behind the drawing's integral)."""
@@ -120,6 +149,7 @@ def main():
     clear_scene()
     depth = H.solve_depth()
     hull = build_hulls()
+    platform, plat = build_platform()
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)
@@ -138,12 +168,17 @@ def main():
                       "crew's at -0.7): she floats level when cb_x is under it. crew_sink_m is how much higher she "
                       "floats without her crew, draft_empty_m and lwl_empty_m her draft and waterline length then (what "
                       "the card's 10 in and 15 ft 2 in are), lwl_m her waterline length with her crew aboard. "
-                      "freeboard_mid_m is the deck's top over the water at the keel's lowest point, crew aboard."}
+                      "freeboard_mid_m is the deck's top over the water at the keel's lowest point, crew aboard. "
+                      "platform (slice 2): heights in metres over the game's waterline with the crew aboard "
+                      "(tramp_lowest_z_empty: the empty boat's), the trampoline's size inside the frame, the bridle's "
+                      "built wire length (class minimum 1.118 m) and plate, and the mast step ball's top.",
+              "platform": plat}
     json.dump(report, open(os.path.join(OUT, "hobie16_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
+    ptris = sum(len(p.vertices) - 2 for o in platform for p in o.data.polygons)
     print(f"H16: keel depth {depth:.4f} m, volume {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f} "
-          f"(CG {cg_x:+.3f}), LWL {h['lwl']:.3f} m, hull triangles {tris}")
+          f"(CG {cg_x:+.3f}), LWL {h['lwl']:.3f} m, hull triangles {tris}, platform triangles {ptris}")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "hobie16.blend"))
 
 

@@ -25,6 +25,8 @@ How each is measured (the C22's check, catalina22/c22_check.py, for two hulls):
                           1,000 kg/m^3 (kWaterDensity) and its design volume is the boat's mass with her crew
   mast length             sockets MastBase (the mast's heel on the step) to Masthead (slice 4 adds Masthead)
   sail areas              the sails' build report (main_area_m2, jib_area_m2, slice 5)
+  class rules             from slice 2, the build report's platform block against the card's class_rules: the
+                          bridle wires' length (rule 5.1) and a dolphin striker under the front crossbar (rule 6.4)
 Plain Python: no Blender needed.
 """
 import json
@@ -86,6 +88,22 @@ def section_budgets(stats, card, upto):
     return out
 
 
+def class_rules(stats, card, upto):
+    """[(rule, model, need, ok)] for the class rules the build has reached (card class_rules, from slice 2)."""
+    r = card.get("class_rules") or {}
+    plat = (stats.get("physics") or {}).get("platform") or {}
+    if upto < r.get("slice", 99) or not plat:
+        return []
+    out = []
+    w = plat.get("bridle_wire_m")
+    out.append(("bridle wire, pin to pin (5.1)", w, f">= {r['bridle_min_m']:.3f} m", w is not None and w >= r["bridle_min_m"]))
+    if r.get("dolphin_striker"):
+        foot, under = plat.get("dolphin_striker_foot_z"), plat.get("front_crossbar_under_z")
+        depth = (under - foot) if foot is not None and under is not None else None
+        out.append(("dolphin striker's depth (6.4)", depth, "> 0 m", depth is not None and depth > 0))
+    return out
+
+
 def main():
     args = sys.argv[1:]
     out_json, upto = None, 0
@@ -126,6 +144,8 @@ def main():
             fails.append(key)
     budgets = section_budgets(stats, card, upto)
     fails += [f"triangles ({n})" for n, _, _, ok in budgets if not ok]
+    rules = class_rules(stats, card, upto)
+    fails += [f"class rule ({n})" for n, _, _, ok in rules if not ok]
     print(f"Hobie 16 size check ({card['boat']['version']}), tolerance {tol:.0%}")
     print(f"{'measure':26s} {'target':>9s} {'model':>9s} {'off':>7s}  result")
     for key, target, v, err, res in rows:
@@ -137,9 +157,13 @@ def main():
         print(f"triangles {tris:,} in all")
     for name, t, mx, ok in budgets:
         print(f"  {name:10s} {t:>9,} of {mx:,}  {'ok' if ok else 'FAIL'}")
+    for name, v, need, ok in rules:
+        vs = f"{v:.3f} m" if v is not None else "missing"
+        print(f"class rule: {name:30s} {vs:>9s}  {need:>11s}  {'ok' if ok else 'FAIL'}")
     if out_json:
         json.dump({"measured": got, "rows": [dict(zip(("measure", "target", "model", "off", "result"), r)) for r in rows],
                    "triangles": tris, "budgets": [dict(zip(("section", "triangles", "max", "ok"), b)) for b in budgets],
+                   "class_rules": [dict(zip(("rule", "model", "need", "ok"), x)) for x in rules],
                    "fails": fails}, open(out_json, "w"), indent=1)
     if fails:
         print("FAIL:", ", ".join(fails))

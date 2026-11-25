@@ -1,0 +1,84 @@
+{
+ "about": "The Hobie 16's platform (docs/hobie16-3, slice 2): the frame of two crossbars and two sidebars on four corner castings, the trampoline laced inside it, the dolphin striker under the front crossbar, the bow tangs and the forestay's bridle. platform_hobie16.py draws it on hull_hobie16's hulls. Sizes in metres, Blender's frame (X forward, Z up); y is measured from each hull's centre, positive inboard. The parts and their order come from the class rules and Hobie's parts list (specs_hobie16.json class_facts); the heights from the CC0 photo of a Hobie 16 on a mooring lift (refs.json), read by eye.",
+ "frame": {
+  "front_x": 0.55,
+  "rear_x": -1.75,
+  "note_x": "The game's beams (Fleet.cpp, specs game.front_beam_x_m and rear_beam_x_m): the front crossbar carries the mast step, so its x is the mast's, 0.55. Kept so the physics' mast and traveller don't move; a photo from above can move them in slice 9.",
+  "casting_inboard_m": 0.03,
+  "note_casting": "Each corner casting stands on the hull's deck just inboard of its centreline (the photo: the castings sit over the middle of the deck, the crossbars' ends a hand's width past them).",
+  "standoff_m": 0.075,
+  "note_standoff": "The frame's tubes stand clear of the deck on the corner castings: 7.5 cm from the deck to a tube's underside, so the sidebars' tops are 0.144 m over the deck. The public-domain beach photo (Hobie 16 catamaran on the Dutch coast 3047, a current boat nearly broadside) shows a broad moulded pylon about 5 cm tall under a chunky black casting and the sidebar's top about 0.14 m over the deck. Round 1 had 12 cm on thin posts and reviewers saw stalks; round 2 had 9 cm and all three still read the castings as a little tall. It is what lifts the trampoline over the decks and the waves.",
+  "overhang_m": 0.07,
+  "note_overhang": "How far each crossbar runs outboard of its castings' centres."
+ },
+ "front_crossbar": {
+  "width_m": 0.072,
+  "height_m": 0.088,
+  "radius_m": 0.026,
+  "track_width_m": 0.018,
+  "track_height_m": 0.012,
+  "track_aft_m": 0.012,
+  "note": "A black extrusion a little deeper than wide, its corners well rounded, with the jib track along its top toward the aft face (class_facts.front_crossbar; the jib cars run on it from slice 6)."
+ },
+ "rear_crossbar": {
+  "width_m": 0.066,
+  "height_m": 0.078,
+  "radius_m": 0.026,
+  "track_width_m": 0.026,
+  "track_height_m": 0.017,
+  "note": "A black extrusion with the main traveller's deep track along its top (class_facts.rear_crossbar)."
+ },
+ "sidebar": {
+  "width_m": 0.034,
+  "height_m": 0.05,
+  "radius_m": 0.012,
+  "groove_m": 0.008,
+  "note": "A black extrusion between the front and rear castings on each hull, its inboard face grooved for the trampoline's bolt rope (class_facts.trampoline)."
+ },
+ "casting": {
+  "pylon_half_length_m": 0.13,
+  "pylon_half_width_m": 0.065,
+  "pylon_height_m": 0.045,
+  "body_half_length_m": 0.09,
+  "body_half_width_m": 0.047,
+  "over_top_m": 0.008,
+  "sleeve_length_m": 0.11,
+  "sleeve_wall_m": 0.006,
+  "plan_power": 4.0,
+  "note": "Each corner: a broad pylon moulded in the deck (hull colour, rounded-square in plan, 0.26 m long and 0.13 m wide at its foot, about 4.5 cm tall, its foot 4 mm under the crowned deck all round: the seam check's join), and on it a chunky corner casting that takes the crossbar's end and the sidebar's end in two short sleeves. The beach photo shows both; plan_power is the rounded squares' superellipse power."
+ },
+ "trampoline": {
+  "sag_m": 0.018,
+  "thickness_m": 0.004,
+  "centre_gap_m": 0.024,
+  "rear_gap_m": 0.05,
+  "lacing_pitch_m": 0.1,
+  "rear_lacing_pitch_m": 0.09,
+  "lacing_radius_m": 0.0028,
+  "note": "Two halves laced together on the centreline (the class's centre lacing line), their sides in the sidebars' grooves, the front edge in the front crossbar and the rear edge laced round the rear crossbar by two lacing lines. Tight, it sags a couple of centimetres in the middle."
+ },
+ "dolphin_striker": {
+  "depth_m": 0.18,
+  "post_radius_m": 0.015,
+  "rod_radius_m": 0.004,
+  "note": "A post under the front crossbar's middle and a rod from its foot to each front casting, which takes the forestay's and the mast's load (class rule 6.4: required). Reviewers put it anywhere from 0.15 to 0.3 m deep; 0.18 keeps its foot 6 cm over the water with the crew aboard (0.22 left it 2 cm over once the frame came down in round 3)."
+ },
+ "bridle": {
+  "tang_x": 2.38,
+  "wire_length_m": 1.16,
+  "junction_over_frame_m": 0.3,
+  "wire_radius_m": 0.0024,
+  "note": "A tang on each bow's deck and a wire from each to the bridle plate the forestay ties to. The class's minimum is 44 in (1.118 m) pin to pin (rule 5.1); the build solves the plate's x for this length at this height over the front crossbar, and the report gives the length it built."
+ },
+ "mast_step": {
+  "pedestal_radius_m": 0.03,
+  "pedestal_height_m": 0.03,
+  "ball_radius_m": 0.024,
+  "plate_m": [
+   0.15,
+   0.09,
+   0.015
+  ],
+  "note": "The mast step: a plate on the front crossbar's middle, a raised round pedestal and the ball on it, about 6 cm in all (the mast's base casting sits on the ball from slice 4)."
+ }
+}
