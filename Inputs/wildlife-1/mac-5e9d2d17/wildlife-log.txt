@@ -1,0 +1,10 @@
+birds-lake: LogSailing: Display: Wildlife: habitat map at 6, -38 in 9 ms
+birds-lake: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+birds-lake: LogSailing: Wildlife: 129 flocks, 2635 birds (777 resting), drawn 300 quads 48 bodies, 0 flushes, update 0.599 ms
+birds-lake: LogSailing: Wildlife: 132 flocks, 2700 birds (782 resting), drawn 300 quads 54 bodies, 0 flushes, update 0.328 ms
+birds-lake: LogSailing: Wildlife: 136 flocks, 2770 birds (777 resting), drawn 300 quads 57 bodies, 0 flushes, update 0.364 ms
+birds-marseille: LogSailing: Display: Wildlife: habitat map at -130, 610 in 7 ms
+birds-marseille: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+birds-marseille: LogSailing: Wildlife: 16 flocks, 158 birds (85 resting), drawn 116 quads 42 bodies, 0 flushes, update 0.156 ms
+birds-marseille: LogSailing: Wildlife: 16 flocks, 158 birds (85 resting), drawn 116 quads 42 bodies, 0 flushes, update 0.030 ms
+birds-marseille: LogSailing: Wildlife: 17 flocks, 168 birds (95 resting), drawn 122 quads 42 bodies, 0 flushes, update 0.023 ms
