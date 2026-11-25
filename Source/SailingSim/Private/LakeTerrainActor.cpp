@@ -75,6 +75,9 @@ namespace
 	// Graphics G2: chunks this close (m, to their nearest edge) with lidar detail are meshed at 1 m.
 	constexpr double kFineTerrainM = 300.0;
 	constexpr int32 kMaxUploadsPerFrame = 3;
+	// With the camera past FarRing::AltitudeFreeM (docs/terrain-altitude): the chunks are at their coarsest step there.
+	constexpr int32 kMaxBuildsInFlightAloft = 32;
+	constexpr int32 kMaxUploadsPerFrameAloft = 32;
 
 	uint32 Hash(uint32 X)
 	{
@@ -579,6 +582,22 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	// World streaming: the camera in the map frame (the render origin moves; the world's data does not).
 	const FVector2D CamMap = SailingFrame::ToMap(GetWorld(), Cam);
 	const double CamX = CamMap.X, CamY = CamMap.Y;
+	// From altitude (docs/terrain-altitude): the camera's height above the datum past FarRing::AltitudeFreeM counts toward
+	// the chunks' detail and cull distance. From a boat (and anything under 300 m up) nothing changes.
+	const double CamZM = SailingFrame::ToMapCm(GetWorld(), Cam).Z / CmPerMeter;
+	const bool bAloft = FarRing::AltitudePastFreeM(CamZM) > 0.0;
+	// Aloft every chunk in the frame wants the coarsest step (a few hundred vertices), and a still from 16 km needs the
+	// whole grid's 4,000 of them: build and upload them many at a time (from a boat the limits stay 4 and 3).
+	const int32 MaxBuildsInFlight = bAloft ? kMaxBuildsInFlightAloft : kMaxBuildsInFlight;
+	const int32 MaxUploadsPerFrame = bAloft ? kMaxUploadsPerFrameAloft : kMaxUploadsPerFrame;
+	{
+		const float WantCullCm = float(FMath::CeilToDouble(FarRing::ChunkCullM(CamZM) / 500.0) * 500.0 * CmPerMeter);
+		if (WantCullCm != ChunkCullCm)
+		{
+			ChunkCullCm = WantCullCm;
+			for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks) if (P.Value->Mesh) P.Value->Mesh->SetCullDistance(ChunkCullCm);
+		}
+	}
 	{ SAILING_PERF_SCOPE(Trees); UpdateTreeTiles(CamMap); UpdateModelTrees(CamMap); }
 	UpdateFarRing(CamMap);   // inside the Terrain slice
 
@@ -590,7 +609,7 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	{
 		LodCamera = CamMap;
 		LodTime = Now;
-		const int32 Unmade = UpdateChunkSet(*Lake, CamX, CamY);
+		const int32 Unmade = UpdateChunkSet(*Lake, CamX, CamY, bAloft);
 		// Wanted level of detail by distance to the camera; queue the closest chunks first.
 		TArray<FChunk*> Order;
 		Pending = Unmade;
@@ -601,16 +620,20 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 			const double Size = Ch.Cells * Ch.Cell;
 			const double CX = Ch.OriginX + 0.5 * Size, CY = Ch.OriginY + 0.5 * Size;
 			const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(CX, CY), CamMap) - 0.5 * Size);
+			// The detail goes by the distance with the camera's height past 300 m (the hand-over below stays across the map,
+			// as M_FarLand's burial is).
+			const double VD = FarRing::ChunkViewDistance(D, CamZM);
+			Ch.ViewD = VD;
 			// Wide World Rendering PR 1: past the cap (the far ring's inner edge, or 20 km) a chunk is out of the scene
 			// altogether, not only culled (world streaming: past it by a margin, dropped).
 			const bool bDrawn = FarRing::NearChunkDrawn(D, NearCapM);
 			if (Ch.Mesh->GetVisibleFlag() != bDrawn) Ch.Mesh->SetVisibility(bDrawn);
 			if (!bDrawn) { InFlight += Ch.bBuilding; continue; }
 			// Steps of the 5 and 10 m grids by distance; a coarse tile (50 m offshore) is meshed at its own spacing.
-			Ch.Wanted = Ch.Cell >= 20.0 ? 1 : (D < 900.0 ? 1 : (D < 2200.0 ? 2 : (D < 5000.0 ? 4 : 8)));
+			Ch.Wanted = Ch.Cell >= 20.0 ? 1 : (VD < 900.0 ? 1 : (VD < 2200.0 ? 2 : (VD < 5000.0 ? 4 : 8)));
 			// Graphics G2: the 1 m lidar mesh on the shore near the camera (Step 0), where the chunk has detail tiles.
-			if (D < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
-			Ch.bShadow = D < 2200.0;
+			if (VD < kFineTerrainM && Ch.bHasDetail) Ch.Wanted = 0;
+			Ch.bShadow = VD < 2200.0;
 			if (Ch.bBuilding) ++InFlight;
 			if (Ch.Lod != Ch.Wanted && !Ch.bBuilding) { Order.Add(&Ch); ++Pending; }
 		}
@@ -619,12 +642,17 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 			// Unbuilt chunks first (so the whole lake appears quickly at low detail), then nearest.
 			const bool BuiltA = A.Lod >= 0, BuiltB = B.Lod >= 0;
 			if (BuiltA != BuiltB) return !BuiltA;
-			return A.Wanted < B.Wanted;
+			// Then finest first, and nearest first within a step: without the distance the chunks of one step came in the
+			// map's order, so a half-built far ring of them was a checkerboard of holes (docs/terrain-altitude).
+			if (A.Wanted != B.Wanted) return A.Wanted < B.Wanted;
+			return A.ViewD < B.ViewD;
 		});
 		for (FChunk* ChP : Order)
 		{
-			if (InFlight >= kMaxBuildsInFlight) break;
+			if (InFlight >= MaxBuildsInFlight) break;
 			FChunk& Ch = *ChP;
+			// Aloft the extra builds are for the coarse steps only: a 1 m shore chunk is 16 MB while it builds.
+			if (Ch.Wanted < 4 && InFlight >= kMaxBuildsInFlight) continue;
 			FChunkSource Src;
 			Src.Terrain = Lake->Terrain;   // a copy: shares the heights, keeps the tiles it saw
 			Src.bGarrigue = Lake->IsGarrigue();
@@ -664,12 +692,16 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 	if (Building == 0) return;
 
 	// Upload finished chunks, a few per frame.
-	int32 Uploads = 0;
+	int32 Uploads = 0, FineUploads = 0;
 	for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks)
 	{
 		FChunk& Ch = *P.Value;
 		if (!Ch.bBuilding || !Ch.Future.IsReady()) continue;
-		if (Uploads++ >= kMaxUploadsPerFrame) break;
+		// Aloft the extra uploads are for the coarse steps only (Lod is -2 - the step while it builds).
+		const bool bFine = -2 - Ch.Lod < 4;
+		if (bFine && FineUploads >= kMaxUploadsPerFrame) continue;
+		if (Uploads++ >= MaxUploadsPerFrame) break;
+		FineUploads += bFine;
 		// Consume moves the mesh out and frees the future's state: Get() copied it, and the future kept its own copy
 		// until the chunk was rebuilt (a second 16 MB for a 1 m shore chunk; docs/budget/mac-soak-parked-2026-10-17.md).
 		FChunkMesh M = Ch.Future.Consume();
@@ -690,7 +722,7 @@ const FWorldStreamer* ALakeTerrainActor::GetStreamer() const
 	return GM && GM->GetStreamer().IsStarted() ? &GM->GetStreamer() : nullptr;
 }
 
-int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY)
+int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY, bool bAloft)
 {
 	const FWorldStreamer* St = GetStreamer();
 	if (!St) return 0;
@@ -705,7 +737,9 @@ int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, doub
 	const double MakeM = NearCapM + 1900.0, DropM = NearCapM + 4000.0;
 	const FLakeTerrain& T = Lake.Terrain;
 	int32 Made = 0, Unmade = 0;
-	constexpr int32 kMaxMadePerLook = 24;   // components registered a look (a few hundred at the start, over a few frames)
+	// Components registered a look (a few hundred at the start, over a few frames); from altitude, where the whole grid is
+	// in the frame at once, more (docs/terrain-altitude).
+	const int32 MaxMadePerLook = bAloft ? 96 : 24;
 	for (int32 K = 0; K < int32(Index.GetTiles().size()); ++K)
 	{
 		const Sailing::FTileEntry& E = Index.GetTiles()[K];
@@ -724,7 +758,7 @@ int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, doub
 				if (!St->IsStreamed() && (OX >= T.GetOriginX() + (T.GetRows() - 1) * E.Cell - 0.5 * E.Cell || OY >= T.GetOriginY() + (T.GetCols() - 1) * E.Cell - 0.5 * E.Cell)) continue;
 				const double Size = Cells * E.Cell;
 				const double D = FMath::Max(0.0, FVector2D::Distance(FVector2D(OX + 0.5 * Size, OY + 0.5 * Size), FVector2D(CamX, CamY)) - 0.5 * Size);
-				if (D > MakeM || Made >= kMaxMadePerLook) { if (D <= MakeM) ++Unmade; continue; }
+				if (D > MakeM || Made >= MaxMadePerLook) { if (D <= MakeM) ++Unmade; continue; }
 				TUniquePtr<FChunk> Ch = MakeUnique<FChunk>();
 				Ch->Tile = K;
 				Ch->Row = Key.X;
@@ -740,7 +774,8 @@ int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, doub
 				Mesh->bUseAsyncCooking = true;
 				Mesh->RegisterComponent();
 				Mesh->SetMaterial(0, ChunkMaterial(Lake));
-				Mesh->SetCullDistance(20000.f * 100.f); // past 20 km the land is a sliver on the horizon, under the haze
+				// Past 20 km the land is a sliver on the horizon, under the haze; from altitude, farther (ChunkCullCm).
+				Mesh->SetCullDistance(ChunkCullCm);
 				Ch->Mesh = Mesh;
 				Chunks.Add(Key, MoveTemp(Ch));
 				++Made;
@@ -768,7 +803,7 @@ int32 ALakeTerrainActor::UpdateChunkSet(const FLakeData& Lake, double CamX, doub
 	{
 		UE_LOG(LogSailing, Verbose, TEXT("Terrain chunks: %d made, %d dropped, %d now"), Made, Drop.Num(), Chunks.Num());
 	}
-	if (Made >= kMaxMadePerLook) ChunkGeneration = 0;   // more to make: look again next time
+	if (Made >= MaxMadePerLook) ChunkGeneration = 0;   // more to make: look again next time
 	return Unmade;
 }
 

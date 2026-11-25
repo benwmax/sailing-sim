@@ -184,4 +184,33 @@ bool FSailingFarRingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The near terrain from altitude (docs/terrain-altitude): from a boat (and up to 300 m) the chunks' detail and cull distance
+ * are exactly what they were; from 16 km up every chunk in a top-down frame is at the coarsest step (no 1 m shore mesh under
+ * the camera), and the cull distance keeps chunk centres out to about 20 km across the map (it kept 12 km).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingTerrainAltitudeTest, "SailingSim.World.TerrainAltitude", FarFlags)
+bool FSailingTerrainAltitudeTest::RunTest(const FString& Parameters)
+{
+	// From a boat, a chase camera, a drone or photo mode under 300 m: unchanged.
+	for (const double Z : { -2.0, 0.0, 1.8, 12.0, 150.0, FarRing::AltitudeFreeM })
+	{
+		TestEqual(FString::Printf(TEXT("cull distance at %.0f m up"), Z), FarRing::ChunkCullM(Z), FarRing::NearCullM);
+		for (const double D : { 0.0, 299.0, 899.0, 2199.0, 4999.0, 12000.0 })
+			TestEqual(FString::Printf(TEXT("detail distance %.0f m at %.0f m up"), D, Z), FarRing::ChunkViewDistance(D, Z), D);
+	}
+	// Continuous past it (no jump in detail as a camera climbs through 300 m).
+	TestTrue(TEXT("continuous just past 300 m"), FMath::Abs(FarRing::ChunkViewDistance(800.0, FarRing::AltitudeFreeM + 0.01) - 800.0) < 1e-3);
+	// The rehearsal's top-down still: 16 km up, a 22.4 x 12.6 km frame (half diagonal 12.85 km).
+	const double Z = 16000.0;
+	TestTrue(TEXT("16 km up: the chunk under the camera is past the coarsest step's 5 km"), FarRing::ChunkViewDistance(0.0, Z) >= 5000.0);
+	const double Cull = FarRing::ChunkCullM(Z);
+	const double Across = FMath::Sqrt(Cull * Cull - Z * Z);
+	TestTrue(FString::Printf(TEXT("16 km up: chunk centres drawn to %.1f km across the map (frame corner 12.9 km)"), Across / 1000.0), Across > 19000.0);
+	TestTrue(TEXT("24 km up: still past 19 km across"), FMath::Sqrt(FMath::Square(FarRing::ChunkCullM(24000.0)) - FMath::Square(24000.0)) > 19000.0);
+	// The old cull distance alone kept 12 km across from 16 km up and nothing from 24 km.
+	TestTrue(TEXT("the old 20 km cull from 16 km up kept 12 km across"), FMath::Abs(FMath::Sqrt(FarRing::NearCullM * FarRing::NearCullM - Z * Z) - 12000.0) < 1.0);
+	return true;
+}
+
 #endif

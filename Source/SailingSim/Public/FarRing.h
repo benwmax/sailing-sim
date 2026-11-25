@@ -70,6 +70,31 @@ namespace FarRing
 	SAILINGSIM_API bool TileVisible(const FFarRingData& Ring, const FFarRingTile& Tile, const FVector2D& Cam);
 	/** Whether a near chunk is drawn (its nearest edge within InnerM; with no ring, CapM = the old 20 km). */
 	inline bool NearChunkDrawn(double NearestEdgeM, double CapM) { return NearestEdgeM < CapM; }
+
+	/**
+	 * The near terrain seen from altitude (docs/terrain-altitude): the chunks' detail and cull distance went by the camera's
+	 * distance across the map only, which is right from a boat but not from kilometres up (a top-down still from 16 km wanted
+	 * the 1 m shore mesh under the camera, and the 20 km cull distance, measured in 3D, cut the land off a few km out).
+	 * Below AltitudeFreeM above the datum nothing changes; above it the height past AltitudeFreeM counts as distance.
+	 */
+	constexpr double AltitudeFreeM = 300.0;
+	/** The near chunks' cull distance (m, 3D from the camera to a chunk's centre) with no camera height counted. */
+	constexpr double NearCullM = 20000.0;
+	/** How much of the camera's height (m above the datum) counts as distance: 0 below AltitudeFreeM. */
+	inline double AltitudePastFreeM(double CameraZM) { return FMath::Max(0.0, CameraZM - AltitudeFreeM); }
+	/** The distance a chunk's detail (and shadows) go by: its nearest edge across the map, with the height past AltitudeFreeM. */
+	inline double ChunkViewDistance(double NearestEdgeM, double CameraZM)
+	{
+		const double H = AltitudePastFreeM(CameraZM);
+		return H > 0.0 ? FMath::Sqrt(NearestEdgeM * NearestEdgeM + H * H) : NearestEdgeM;
+	}
+	/** The chunks' cull distance for a camera this high: NearCullM at the water, and from altitude enough to keep about
+	 *  NearCullM across the map (a camera 16 km up keeps chunk centres to 19.7 km out, where NearCullM alone kept 12 km). */
+	inline double ChunkCullM(double CameraZM)
+	{
+		const double H = AltitudePastFreeM(CameraZM);
+		return FMath::Sqrt(NearCullM * NearCullM + H * H);
+	}
 	/** -SailingNoFarRing turns the ring off (the near terrain then draws to 20 km as before). */
 	SAILINGSIM_API bool Enabled();
 }

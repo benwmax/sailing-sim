@@ -90,6 +90,7 @@ private:
 		bool bBuilding = false;
 		bool bHasDetail = false;  // the lidar shore detail covers part of it
 		bool bShadow = false;     // the step being built casts shadows (within about 2 km)
+		double ViewD = 0.0;       // m: the distance its detail went by at the last look (FarRing::ChunkViewDistance)
 		TObjectPtr<UProceduralMeshComponent> Mesh;
 		TFuture<FChunkMesh> Future;
 	};
@@ -116,7 +117,7 @@ private:
 	static FChunkMesh BuildChunk(const FChunkSource& Source, int32 Step, double HideBelow);
 	/** Makes, keeps and drops chunks by distance and their tiles' residency (world streaming); returns how many it still
 	 *  has to make (a few a look). */
-	int32 UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY);
+	int32 UpdateChunkSet(const FLakeData& Lake, double CamX, double CamY, bool bAloft);
 	const class FWorldStreamer* GetStreamer() const;
 	/** Chunk cells per side for a spacing. */
 	static int32 ChunkCellsFor(double Cell) { return Cell >= 9.99 ? 128 : 64; }
@@ -138,6 +139,9 @@ private:
 	TMap<FIntPoint, TUniquePtr<FChunk>> Chunks;   // by chunk row and column
 	uint32 ChunkGeneration = 0;   // the streamer's generation the chunk set was last made for
 	FVector2D ChunkCamera = FVector2D(1e12, 1e12);
+	/** The chunks' cull distance (cm) now: FarRing::ChunkCullM for the camera's height, in 500 m steps (set on every chunk
+	 *  when it changes, so a camera climbing or coming down touches them only now and then). */
+	float ChunkCullCm = float(FarRing::NearCullM * 100.0);
 	int32 ChunksMade = 0, ChunksDropped = 0;
 public:
 	/** World streaming: the chunks there are now, made and dropped so far. */
