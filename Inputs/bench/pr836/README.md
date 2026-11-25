@@ -51,3 +51,42 @@ the game, not OS input. It ran on a throwaway profile. The shots are `q0-ultra`,
 - The switch frames cost up to 2.0 s, as a tier change always does.
 
 Bean's Saved was held aside and restored for every run (7B5CA7BE).
+
+## Update (evening): Ultra pairs, and the 45-min natural-tide soak
+
+### Ultra, back to back on the d5be42d package (forced steps every 20 s)
+
+| Run | Each step's peak render ms | Frames > 50 ms | fps | Before the first step: game / render ms |
+|---|---|---|---|---|
+| PR as is, run 1 | 60 / 52 / 51 / 48 / 50 / 55 | 5 | 51.4 | 13.3 / 19.8 |
+| `-SailingTideDF=1` (batching only), run 1 | 59 / 61 / 56 / 61 / 59 / 62 | 8 | 51.1 | 13.5 / 19.9 |
+| PR as is, run 2 | 50 / 52 / 51 / 55 / 49 / 54 | 6 | 52.0 | 14.1 / 20.0 |
+| `-SailingTideDF=1`, run 2 | 59 / 65 / 61 / 64 / 55 / 57 | 8 | 50.6 | 14.2 / 20.0 |
+
+- **The slow Ultra run above was PC noise.** All four runs are clean, with game 13-14 ms before any step.
+- With the PR, **steps are 48-60 ms**. With batching alone they are 55-65 ms, so taking the followers out of the DF
+  saves about 7 ms a step.
+
+### 45 min, Galveston, natural tide, 4K Ultra
+
+**Setup:** the soak's route (Bolivar Roads, the demo, clock 15:00), trace window 30-40 min.
+
+**Result:** **exit 0, 53.1 fps, p99 23.2 ms.** Crash folders: the usual frame-0 ensure only.
+- **No 380-520 ms stalls.** The longest render-thread frame was 88 ms (34.4 min). Only 4 frames went over 60 ms after
+  the load:
+  - 98 ms at 29.9 min: the trace starting, our own;
+  - 84 ms at 34.4 min and 71 / 77 ms at 37.2 min: tide steps (below);
+  - 1085 ms at 45.1 min: the bench writing its results at exit.
+- **New finding: the tide step flaps** (`soak45-tide-steps.txt`).
+  - **Where:** at 34 and 37 min the followers went -40, -38, -40, -38 cm within 1-3 frames. For example frames
+    110006/110007/110009, and 119069/119070/119073.
+  - **Why:** `TideHeight` is read at the boat's position, so as she sails it can sit on a 2 cm rounding boundary and
+    round back and forth.
+  - **Cost:** each flip starts the batched move again. With the PR that costs 70-90 ms frames instead of a single 55 ms
+    one. Before the PR, each flip would have been a full stall.
+  - **Suggested fix:** hysteresis in the follow step. Keep the shown step until the tide is more than about 1.5 cm from
+    it (a dead band), or step only once the rounded value has held for about a second. That is the remaining source of
+    tide hitches.
+- **Memory:** flat to 30 min (working set 3.71-3.77 GB). From 30 min, when the trace window opened, it rose about
+  400 MB (working set 4.18-4.20 GB, private 15.3 GB at 40 min). That's probably the trace's buffers. A soak without
+  the trace would confirm it.
