@@ -1,0 +1,763 @@
+{
+ "ladder": {
+  "carbon.tube": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.7,
+    "L2": 17.4,
+    "L3": 2.9,
+    "L4": 34.8
+   },
+   "kept_vs_neglected": 32.4,
+   "pixels": 173473,
+   "materials": {
+    "Carbon": {
+     "lab": {
+      "L0": [
+       7.8,
+       0.6,
+       -1.6
+      ],
+      "L1": [
+       8.5,
+       0.6,
+       -1.4
+      ],
+      "L2": [
+       25.1,
+       -0.0,
+       0.6
+      ],
+      "L3": [
+       10.1,
+       0.7,
+       0.2
+      ],
+      "L4": [
+       42.5,
+       -0.4,
+       1.6
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.7,
+      "L2": 17.4,
+      "L3": 2.9,
+      "L4": 34.8
+     },
+     "kept_vs_neglected": 32.4,
+     "pixels": 173473
+    }
+   },
+   "pass": true
+  },
+  "carbon.batten": {
+   "pass": true,
+   "status": "inside the sail's pockets, behind the film in every view; its terms and dresser are the tubes' (carbon.tube), measured there"
+  },
+  "paint.hull": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.3,
+    "L2": 6.8,
+    "L3": 7.6,
+    "L4": 10.7
+   },
+   "kept_vs_neglected": 6.4,
+   "pixels": 143105,
+   "materials": {
+    "Hull": {
+     "lab": {
+      "L0": [
+       94.0,
+       -0.9,
+       2.4
+      ],
+      "L1": [
+       92.9,
+       -1.0,
+       3.2
+      ],
+      "L2": [
+       87.9,
+       -1.1,
+       5.5
+      ],
+      "L3": [
+       89.5,
+       -1.3,
+       8.6
+      ],
+      "L4": [
+       83.8,
+       -1.1,
+       5.6
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.3,
+      "L2": 6.8,
+      "L3": 7.6,
+      "L4": 10.7
+     },
+     "kept_vs_neglected": 6.4,
+     "pixels": 143105
+    }
+   },
+   "pass": true
+  },
+  "paint.deck": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.9,
+    "L2": 9.7,
+    "L3": 5.9,
+    "L4": 12.0
+   },
+   "kept_vs_neglected": 8.5,
+   "pixels": 139103,
+   "materials": {
+    "Deck": {
+     "lab": {
+      "L0": [
+       91.8,
+       -1.0,
+       2.7
+      ],
+      "L1": [
+       89.1,
+       -0.9,
+       3.6
+      ],
+      "L2": [
+       82.7,
+       -1.0,
+       6.0
+      ],
+      "L3": [
+       88.9,
+       -1.3,
+       7.7
+      ],
+      "L4": [
+       80.5,
+       -1.0,
+       6.7
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.9,
+      "L2": 9.7,
+      "L3": 5.9,
+      "L4": 12.0
+     },
+     "kept_vs_neglected": 8.5,
+     "pixels": 139103
+    }
+   },
+   "pass": true
+  },
+  "paint.foil": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 1.7,
+    "L2": 10.4,
+    "L3": 5.8,
+    "L4": 17.4
+   },
+   "kept_vs_neglected": 11.6,
+   "pixels": 68552,
+   "materials": {
+    "Foil": {
+     "lab": {
+      "L0": [
+       18.5,
+       0.3,
+       -2.1
+      ],
+      "L1": [
+       20.2,
+       0.2,
+       -1.8
+      ],
+      "L2": [
+       28.7,
+       -0.2,
+       -0.3
+      ],
+      "L3": [
+       24.2,
+       0.1,
+       -1.1
+      ],
+      "L4": [
+       35.5,
+       -0.8,
+       1.4
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 1.7,
+      "L2": 10.4,
+      "L3": 5.8,
+      "L4": 17.4
+     },
+     "kept_vs_neglected": 11.6,
+     "pixels": 68552
+    }
+   },
+   "pass": true
+  },
+  "mesh.mesh": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 12.4,
+    "L2": 28.0,
+    "L3": 23.6,
+    "L4": 33.6
+   },
+   "kept_vs_neglected": 10.2,
+   "pixels": 814784,
+   "materials": {
+    "Mesh": {
+     "lab": {
+      "L0": [
+       5.2,
+       0.2,
+       -0.5
+      ],
+      "L1": [
+       17.1,
+       0.1,
+       2.5
+      ],
+      "L2": [
+       32.6,
+       0.2,
+       5.0
+      ],
+      "L3": [
+       28.3,
+       0.1,
+       3.7
+      ],
+      "L4": [
+       37.9,
+       0.5,
+       7.1
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 12.4,
+      "L2": 28.0,
+      "L3": 23.6,
+      "L4": 33.6
+     },
+     "kept_vs_neglected": 10.2,
+     "pixels": 814784
+    }
+   },
+   "pass": true
+  },
+  "sail.film": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 0.6,
+    "L2": 7.7,
+    "L3": 3.3,
+    "L4": 18.0
+   },
+   "kept_vs_neglected": 14.9,
+   "pixels": 486536,
+   "materials": {
+    "Sail": {
+     "lab": {
+      "L0": [
+       95.3,
+       -0.3,
+       0.9
+      ],
+      "L1": [
+       95.2,
+       -0.4,
+       1.4
+      ],
+      "L2": [
+       90.9,
+       -0.8,
+       7.2
+      ],
+      "L3": [
+       93.9,
+       -0.6,
+       3.9
+      ],
+      "L4": [
+       83.9,
+       -1.1,
+       14.8
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 0.6,
+      "L2": 7.7,
+      "L3": 3.3,
+      "L4": 18.0
+     },
+     "kept_vs_neglected": 14.9,
+     "pixels": 486536
+    }
+   },
+   "pass": true
+  },
+  "rope.line": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 23.9,
+    "L2": 51.2,
+    "L3": 38.3,
+    "L4": 58.1
+   },
+   "kept_vs_neglected": 21.2,
+   "pixels": 4232,
+   "materials": {
+    "Rope": {
+     "lab": {
+      "L0": [
+       56.2,
+       46.2,
+       58.4
+      ],
+      "L1": [
+       61.1,
+       33.8,
+       38.5
+      ],
+      "L2": [
+       65.9,
+       12.4,
+       21.1
+      ],
+      "L3": [
+       64.7,
+       23.3,
+       28.8
+      ],
+      "L4": [
+       62.5,
+       5.9,
+       17.0
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 23.9,
+      "L2": 51.2,
+      "L3": 38.3,
+      "L4": 58.1
+     },
+     "kept_vs_neglected": 21.2,
+     "pixels": 4232
+    }
+   },
+   "pass": true
+  },
+  "rope.shroud": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.7,
+    "L2": 4.3,
+    "L3": 4.2,
+    "L4": 9.0
+   },
+   "kept_vs_neglected": 10.6,
+   "pixels": 422,
+   "materials": {
+    "Wire": {
+     "lab": {
+      "L0": [
+       66.4,
+       -0.4,
+       1.0
+      ],
+      "L1": [
+       68.6,
+       -0.1,
+       2.6
+      ],
+      "L2": [
+       66.3,
+       0.1,
+       5.3
+      ],
+      "L3": [
+       69.4,
+       0.1,
+       3.9
+      ],
+      "L4": [
+       59.1,
+       -0.5,
+       6.2
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.7,
+      "L2": 4.3,
+      "L3": 4.2,
+      "L4": 9.0
+     },
+     "kept_vs_neglected": 10.6,
+     "pixels": 422
+    }
+   },
+   "pass": true
+  },
+  "alloy.anodised": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.8,
+    "L2": 9.7,
+    "L3": 7.3,
+    "L4": 16.6
+   },
+   "kept_vs_neglected": 9.3,
+   "pixels": 37162,
+   "materials": {
+    "Alloy": {
+     "lab": {
+      "L0": [
+       79.2,
+       0.4,
+       -3.2
+      ],
+      "L1": [
+       76.5,
+       0.4,
+       -2.7
+      ],
+      "L2": [
+       69.7,
+       0.2,
+       -1.2
+      ],
+      "L3": [
+       72.2,
+       0.1,
+       -1.2
+      ],
+      "L4": [
+       63.0,
+       -0.1,
+       0.3
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.8,
+      "L2": 9.7,
+      "L3": 7.3,
+      "L4": 16.6
+     },
+     "kept_vs_neglected": 9.3,
+     "pixels": 37162
+    }
+   },
+   "pass": true
+  },
+  "grip.rubber": {
+   "from_new": {
+    "L0": 0.0,
+    "L1": 2.0,
+    "L2": 10.5,
+    "L3": 6.0,
+    "L4": 14.7
+   },
+   "kept_vs_neglected": 8.7,
+   "pixels": 8831,
+   "materials": {
+    "Grip": {
+     "lab": {
+      "L0": [
+       7.3,
+       0.3,
+       -0.7
+      ],
+      "L1": [
+       9.3,
+       0.2,
+       -0.2
+      ],
+      "L2": [
+       17.5,
+       -0.0,
+       1.5
+      ],
+      "L3": [
+       13.2,
+       0.0,
+       0.6
+      ],
+      "L4": [
+       21.7,
+       -0.1,
+       1.9
+      ]
+     },
+     "from_new": {
+      "L0": 0.0,
+      "L1": 2.0,
+      "L2": 10.5,
+      "L3": 6.0,
+      "L4": 14.7
+     },
+     "kept_vs_neglected": 8.7,
+     "pixels": 8831
+    }
+   },
+   "pass": true
+  }
+ },
+ "colour": [
+  {
+   "surface": "carbon",
+   "ref": "Fabric004",
+   "level": "L0",
+   "target": [
+    19.58,
+    1.01,
+    -2.03
+   ],
+   "ours": [
+    7.84,
+    0.62,
+    -1.64
+   ],
+   "d_ab": 0.6,
+   "d_L": -11.7,
+   "pass_": true
+  }
+ ],
+ "maps": {
+  "CarbonTwill": {
+   "same_as_generator": true,
+   "px": [
+    1024,
+    1024
+   ],
+   "px_per_mm": 63.05,
+   "tiling_N": 0.074,
+   "tiling_M": 1.0,
+   "size": {
+    "twill_repeat_x": {
+     "map_mm": 8.12,
+     "card_mm": 8.12,
+     "off": 0.0
+    },
+    "twill_repeat_y": {
+     "map_mm": 8.12,
+     "card_mm": 8.12,
+     "off": 0.0
+    },
+    "tow_pitch": {
+     "map_mm": 2.03,
+     "card_mm": 2.03,
+     "off": 0.0
+    }
+   },
+   "mb_high": 2.0,
+   "pass_": true
+  },
+  "WingMesh": {
+   "same_as_generator": true,
+   "px": [
+    512,
+    512
+   ],
+   "px_per_mm": 34.13,
+   "tiling_N": 0.19,
+   "tiling_M": 0.446,
+   "size": {
+    "pitch_mm": {
+     "map_mm": 2.5,
+     "card_mm": 2.5,
+     "off": 0.0
+    }
+   },
+   "mb_high": 0.5,
+   "pass_": true
+  },
+  "Scrim": {
+   "same_as_generator": true,
+   "px": [
+    512,
+    512
+   ],
+   "px_per_mm": 10.24,
+   "tiling_N": 0.962,
+   "tiling_M": 0.205,
+   "size": {
+    "along_mm": {
+     "map_mm": 12.5,
+     "card_mm": 12.5,
+     "off": 0.0
+    },
+    "diagonal_mm": {
+     "map_mm": 25.0,
+     "card_mm": 25.0,
+     "off": 0.0
+    }
+   },
+   "mb_high": 0.5,
+   "pass_": true
+  }
+ },
+ "budget": {
+  "high_mb": 3.0,
+  "cap_mb": 4.0,
+  "medium_mb": 0.0,
+  "medium_cap_mb": 0.0,
+  "pass_": true
+ },
+ "blind": {
+  "status": "reviewed",
+  "verdicts": {
+   "carbon": {
+    "r7-1": "all five",
+    "r7-2": "one neighbouring swap",
+    "r7-3": "all five"
+   },
+   "paint": {
+    "r7-1": "all five",
+    "r7-2": "all five",
+    "r7-3": "all five"
+   },
+   "mesh": {
+    "r7-1": "all five",
+    "r7-2": "all five",
+    "r7-3": "all five"
+   },
+   "sail": {
+    "r7-1": "all five",
+    "r7-2": "all five",
+    "r7-3": "all five"
+   },
+   "rope": {
+    "r7-1": "all five",
+    "r7-2": "all five",
+    "r7-3": "all five"
+   },
+   "alloy": {
+    "r7-1": "one neighbouring swap",
+    "r7-2": "1 right",
+    "r7-3": "one neighbouring swap"
+   },
+   "grip": {
+    "r7-1": "all five",
+    "r7-2": "all five",
+    "r7-3": "all five"
+   },
+   "paint.foil": {
+    "r7-1": "one neighbouring swap",
+    "r7-2": "all five",
+    "r7-3": "one neighbouring swap"
+   }
+  },
+  "wrong_material": {},
+  "pass": {
+   "carbon": true,
+   "paint": true,
+   "mesh": true,
+   "sail": true,
+   "rope": true,
+   "alloy": false,
+   "grip": true,
+   "paint.foil": true
+  }
+ },
+ "ab": "none: her first textured round, so there is no earlier textured version to hold it against",
+ "seen_in": {
+  "Alloy": [
+   "bow",
+   "gantry",
+   "sail",
+   "sheet",
+   "shroud",
+   "step"
+  ],
+  "Carbon": [
+   "bow",
+   "gantry",
+   "grip",
+   "sail",
+   "sheet",
+   "shroud",
+   "step",
+   "wing"
+  ],
+  "Deck": [
+   "bow",
+   "gantry",
+   "sail",
+   "sheet",
+   "step"
+  ],
+  "Foil": [
+   "bow",
+   "foil",
+   "gantry",
+   "sail",
+   "sheet",
+   "step"
+  ],
+  "Hull": [
+   "bow",
+   "gantry",
+   "sheet",
+   "step"
+  ],
+  "Mesh": [
+   "bow",
+   "gantry",
+   "grip",
+   "sail",
+   "sheet",
+   "shroud",
+   "step",
+   "wing"
+  ],
+  "Rope": [
+   "bow",
+   "sail",
+   "sheet",
+   "shroud",
+   "step",
+   "wing"
+  ],
+  "Sail": [
+   "gantry",
+   "sail",
+   "sheet",
+   "step"
+  ],
+  "Grip": [
+   "grip"
+  ],
+  "Wire": [
+   "shroud"
+  ]
+ },
+ "not_in_any_view": [
+  "Batten"
+ ],
+ "fails": [
+  "blind alloy (reviewed)"
+ ]
+}

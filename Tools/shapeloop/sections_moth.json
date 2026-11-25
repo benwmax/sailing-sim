@@ -1,0 +1,219 @@
+{
+ "boat": "Moth (Lacewing 11)",
+ "build": "Tools/shipkit/moth/build_moth.py",
+ "build_args": "<out dir>: writes <out>/moth.blend",
+ "hull_object": "MOTH_Hull",
+ "report": "moth_report.json",
+ "note": "The hydrofoil moth (docs/moth-2 on), a new boat. Slice 1 builds the hull only; slice 2 adds the wings, slice 3 the foils, gantry and wand, slice 4 the rig, slice 5 the hardware; the detail pass (docs/moth-9) adds the wand's fitting, the lacing, the blocks and the rig's fittings. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "sections": {
+  "hull": {
+   "objects": [
+    "MOTH_Hull"
+   ],
+   "owns": [
+    "hull_moth",
+    "build_hull"
+   ],
+   "borders": []
+  },
+  "wings": {
+   "objects": [
+    "MOTH_WingFrame"
+   ],
+   "owns": [
+    "wings_moth",
+    "build_wings"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "wingdeck": {
+   "objects": [
+    "MOTH_WingDeck",
+    "MOTH_Lacing"
+   ],
+   "owns": [
+    "wings_moth.deck",
+    "detail_moth.lacing"
+   ],
+   "borders": [
+    "wings"
+   ]
+  },
+  "strut": {
+   "objects": [
+    "MOTH_Strut"
+   ],
+   "owns": [
+    "foils_moth.strut"
+   ],
+   "borders": [
+    "hull",
+    "foil"
+   ]
+  },
+  "foil": {
+   "objects": [
+    "MOTH_MainFoil",
+    "MOTH_Flap",
+    "MOTH_Pod"
+   ],
+   "owns": [
+    "foils_moth.main_foil"
+   ],
+   "borders": [
+    "strut"
+   ]
+  },
+  "gantry": {
+   "objects": [
+    "MOTH_GantryL",
+    "MOTH_GantryR",
+    "MOTH_GantryLLow",
+    "MOTH_GantryRLow",
+    "MOTH_RudderHead"
+   ],
+   "owns": [
+    "foils_moth.gantry"
+   ],
+   "borders": [
+    "hull",
+    "rudder"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "MOTH_Rudder"
+   ],
+   "owns": [
+    "foils_moth.rudder"
+   ],
+   "borders": [
+    "gantry",
+    "elevator"
+   ]
+  },
+  "elevator": {
+   "objects": [
+    "MOTH_Elevator"
+   ],
+   "owns": [
+    "foils_moth.elevator"
+   ],
+   "borders": [
+    "rudder"
+   ]
+  },
+  "wand": {
+   "objects": [
+    "MOTH_Wand",
+    "MOTH_WandPaddle",
+    "MOTH_BowFitting",
+    "MOTH_WandFitting"
+   ],
+   "owns": [
+    "foils_moth.wand",
+    "detail_moth.wand"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rig": {
+   "objects": [
+    "MOTH_Mast",
+    "MOTH_Boom",
+    "MOTH_Rigging",
+    "MOTH_RigFittings"
+   ],
+   "owns": [
+    "rig_moth.mast",
+    "rig_moth.boom",
+    "rig_moth.wires",
+    "detail_moth.rig"
+   ],
+   "borders": [
+    "hull",
+    "wings"
+   ]
+  },
+  "sail": {
+   "objects": [
+    "MOTH_Sail",
+    "MOTH_Battens",
+    "MOTH_LuffSleeve"
+   ],
+   "owns": [
+    "rig_moth.sail",
+    "detail_moth.luff_sleeve"
+   ],
+   "borders": [
+    "rig"
+   ]
+  },
+  "hardware": {
+   "objects": [
+    "MOTH_Tiller",
+    "MOTH_TillerExtension",
+    "MOTH_TwistGrip",
+    "MOTH_Fittings",
+    "MOTH_Blocks"
+   ],
+   "owns": [
+    "hardware_moth",
+    "detail_moth.blocks"
+   ],
+   "borders": [
+    "hull",
+    "gantry",
+    "rig"
+   ]
+  },
+  "lines": {
+   "objects": [
+    "MOTH_Lines"
+   ],
+   "owns": [
+    "hardware_moth.lines"
+   ],
+   "borders": [
+    "rig",
+    "hardware"
+   ]
+  }
+ },
+ "joins": [
+  {
+   "a": "wings",
+   "b": "hull",
+   "where": "the inner rails on the hull's deck edge, x -1.5 to 0.58"
+  },
+  {
+   "a": "strut",
+   "b": "hull",
+   "where": "the strut's case through the hull at x 0.10"
+  },
+  {
+   "a": "gantry",
+   "b": "hull",
+   "where": "the gantry's feet on the transom's corners"
+  },
+  {
+   "a": "wand",
+   "b": "hull",
+   "where": "the bow fitting on the deck at the stem"
+  },
+  {
+   "a": "hardware",
+   "b": "gantry",
+   "where": "the tiller on the rudder's head"
+  },
+  {
+   "a": "hardware",
+   "b": "wand",
+   "where": "the pushrod from the wand's pivot along the deck to the strut's head"
+  }
+ ],
+ "joins_note": "Slice 2: the wings' inner rails sit on the deck edge; slice 3 adds the gantry's feet on the transom and the strut's case."
+}

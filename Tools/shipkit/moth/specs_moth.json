@@ -1,0 +1,117 @@
+{
+ "about": "The hydrofoil moth's size card (docs/moth-1): the targets every slice of her build is checked against by moth_check.py. Bean asked for her on Nov 25 2026 as the first of the post-slice fun boats, built by the process the Catalina 22, the frigate, the Lagoon 42 and the Hobie 16 went through. She is a NEW boat (the game has no EBoatType for her yet), so there is no 'before' model: slice 0 is the card, the references, the check and the physics spec (docs/moth-1/physics.md). The real class is the International Moth, a development class: its rules set only a few limits (hull length, beam, sail area, mast and luff) and every builder's boat differs inside them. The game's boat is an invented design inside those limits, with an invented class name and no real builder's name or logo. Post-slice work: nothing here changes the game before the Dec 11 2026 release.",
+ "boat": {
+  "class": "Lacewing 11 (invented: the game's name for a foiling moth; Bean may rename her)",
+  "real_class": "International Moth (IMCA), foiling fleet",
+  "version": "a generic modern foiling moth inside the 2017 class rules: none of the real builders' boats (their names and logos stay out of the game)",
+  "hull": "one very narrow, deep-V skiff hull with a sharp, slightly wave-piercing bow and a flat deck; the hull only floats her at rest and in light air ('low-riding'): she sails clear of the water on her foils from about 7 knots",
+  "racks": "two hiking wings (racks) out to the 2.25 m beam: carbon tube frames with a tight cloth or mesh deck, the sailor sits and hikes from them; no trapeze (class rule 11.1)",
+  "foils": "a main T-foil under the hull (a vertical strut, the daggerboard, with a horizontal wing at its foot carrying a trailing-edge flap) and a T-foil rudder (a vertical rudder blade with a horizontal elevator at its foot) hung on a gantry behind the transom",
+  "ride_height": "a wand: a stick hinged at the bow that trails on the water; as she rises it swings back, and through a pushrod and bellcrank down the strut it raises the main foil's flap so the foil lifts less. The gearing between wand and flap and the wand's length are set ashore; a twist grip on the tiller extension sets the elevator's angle (fore-and-aft trim)",
+  "rig": "one fully battened film sail, a deck-sweeper (its foot runs down to the deck to seal the gap); carbon mast in two pieces, shrouds to the wing bars and a forestay; boom, vang and cunningham led to the sailor; no jib, no spinnaker",
+  "crew": "one sailor (class rule 10.1); the game sails her with 80 kg"
+ },
+ "targets": {
+  "length_hull_m": 3.355,
+  "beam_m": 2.25,
+  "hull_beam_m": 0.38,
+  "hull_depth_m": 0.4,
+  "rest_displacement_kg": 115.0,
+  "rigged_weight_kg": 35.0,
+  "mast_length_m": 5.1,
+  "luff_length_m": 5.04,
+  "sail_area_m2": 8.25,
+  "main_foil_span_m": 1.1,
+  "main_foil_area_m2": 0.12,
+  "elevator_span_m": 0.8,
+  "elevator_area_m2": 0.065,
+  "main_strut_below_hull_m": 1.05,
+  "rudder_below_hull_m": 1.05,
+  "wand_length_m": 0.93,
+  "gantry_aft_of_transom_m": 0.5,
+  "tolerance": 0.03
+ },
+ "limits": {
+  "note": "The class rules' hard limits (International Moth Class Rules 2017: rules 6.1, 6.2, 8.1, 9.1, 9.2, 10.1, 11). The model may be under, never over: moth_check.py fails any measure past its limit whatever the target's tolerance.",
+  "length_hull_m": 3.355,
+  "beam_m": 2.25,
+  "mast_length_m": 6.25,
+  "luff_length_m": 5.185,
+  "sail_area_m2": 8.25,
+  "fittings_past_hull_m": 0.5,
+  "crew": 1
+ },
+ "in_feet": {
+  "length_hull": "11 ft (3,355 mm: the class began as the Inverloch Eleven Footer)",
+  "beam": "7 ft 4.6 in (2,250 mm) over the wings",
+  "sail_area": "88.8 sq ft (8.25 m^2), mast area in the top 5,185 mm included",
+  "mast": "16 ft 9 in (5.1 m) as sailed today; the rule allows 20 ft 6 in (6.25 m)",
+  "weight": "about 77 lb rigged (the class site's range for foilers is 30-45 kg; hull alone 10-30 kg)",
+  "crew": "one, 70-100 kg (the class site's 'optimum skipper weight'); the game's sailor 80 kg (176 lb)"
+ },
+ "sources": {
+  "note": "Read Nov 25 2026. The class rules and the class site are published limits and ranges; the foil, wand and gantry sizes are typical figures for today's boats from a sailmaker's tuning guide and public discussion, rechecked by photo in slices 1 and 3. Nothing is copied from a drawing; no builder's design is reproduced.",
+  "rules": "International Moth Class Rules 2017 (as published by the RYA/French federation's measurer library): 6.1 hull length excluding removable rudder and stem fittings <= 3,355 mm; 6.1.5 fittings more than 500 mm past the hull count toward its length; 6.2 overall beam <= 2,250 mm; 6.3.2 no hollow over 75 mm below the static waterplane within 2,700 mm of the aft perpendicular; 6.3.3 every foil but the rudder's leaves the hull from below the static waterplane; 7.1 two buoyancy tanks floating her own weight plus 75 kg; 8.1 mast spars <= 6,250 mm; 8.2 boom and the mast below its top 5,185 mm pass a 90 mm ring; 9.1 one sail, rig area <= 8.25 m^2 including the mast's top 5,185 mm; 9.2 sail <= 5,185 mm from the throat; 10.1 one person; 11.1 no moving seats or trapezes; 11.2 no multihulls; 12.2 no stored-power remote controls (springs and shockcord allowed).",
+  "class_site": "moth-sailing.org 'General Moth Class Information': LOA 4.355 m (the hull's 3.355 plus the 0.5 m fittings allowance at each end), beam 2.250, max luff 5.185, max mast 6.250, hull weight unrestricted (10-30 kg), rigged weight foiling 30-45 kg, sail area 8.25, optimum skipper 70-100 kg; multihulls, trapezes, moving seats and sailboards prohibited.",
+  "wikipedia": "en.wikipedia.org/wiki/Moth_(dinghy): its infobox gives LOA 4.355 and 'LWL 3.355', which mixes the class site's LOA with the hull limit; not used.",
+  "tuning_guide": "North Sails' International Moth speed guide (Rob Greenhalgh): mast length now 5,100 mm (down from 5,270-5,300), shroud base 1,500 mm, back of mast to clew ring 2,340 mm, a big and a small main foil chosen ashore, wand gearing set for the waves, upwind boat speed 15-20 knots, the boat flown heeled to windward, deck-sweeper sails.",
+  "foils": "Main foil spans of about 0.95-1.05 m and areas of 0.11-0.14 m^2 (1.19-1.51 sq ft in public designers' discussion; a 0.988 m span T-foil was tank-tested at Strathclyde: Day et al., CSYS 2019). The elevator about 0.7 m span. Struts long enough to fly the hull 0.5-0.7 m clear with the foil still about 0.3 m under: about 1.0-1.1 m below the hull bottom. Typical, not a rule: rechecked by photo in slice 3.",
+  "speeds": "Takes off at about 6-8 knots of boat speed in 7-9 knots of wind; upwind 15-20 knots foiling; downwind 25-30 knots; the class's GPS records are about 36 knots. Public figures, to be pinned down for the Mac's reference polar (physics.md).",
+  "pages": [
+   "https://www.moth-sailing.org/blank-7",
+   "https://arbitrage.ffvoile.fr/media/nzgn0lwj/moth-gbr-2017.pdf",
+   "https://www.northsails.com/sailing/en/resources/north-sails-international-moth-speed-guide",
+   "https://en.wikipedia.org/wiki/Moth_(dinghy)",
+   "https://eprints.soton.ac.uk/63963/1/Findlay_Turnock_Moth_VPP.pdf",
+   "https://strathprints.strath.ac.uk/67655/1/Day_etal_CSYS2019_Experimental_measurement_and_simplified_prediction_of_T_foil.pdf"
+  ]
+ },
+ "recheck": [
+  "Hull beam, depth and deck shape, the bow's rake and the transom: from the broadside on the beach trolley (Traunsee 2024) and the flying broadsides (slice 1).",
+  "Wing outline (where the wing bars meet the hull, the wings' fore-and-aft extent, flat or raised): from the photo of a boat laid on its side and the flying shots from astern (slice 2).",
+  "Strut and rudder lengths, gantry length and height, wand length and its pivot: from the boat on its side and the flying broadsides (slice 3).",
+  "Mast step position, boom height over the deck, the deck-sweeper's foot: from the broadsides (slice 4)."
+ ],
+ "measured_by": {
+  "length_hull_m": "shape: the hull object's bounds, stem to transom (rudder gantry and bow fittings are other objects)",
+  "beam_m": "shape: the wings' bounds, tip to tip",
+  "hull_beam_m": "shape: the hull object's widest section",
+  "hull_depth_m": "shape: deck (its crown) to keel at the deepest station. Slice 1 raised the card's 0.36 to 0.45: the CC BY photo of her afloat before take-off (Moth-dinghy (1).jpg) shows tall, nearly straight topsides standing 0.3-0.4 m out of the water with the sailor at the mast, which a 0.36 m hull carrying 115 kg can't do. Milestone B cut it to 0.40, most of the cut aft (transom about 0.2 m): six of six blind reviewers over two rounds read the hull as 25-60% too deep, and its outline laid over the camera-matched flying photo put the real hull at about 0.37 m deep at the bow and 0.2 m at the transom; fuller sections, a slightly wider stern and the resting sailor in the middle of the wing keep her freeboard (bow 0.20, transom 0.10)",
+  "rest_displacement_kg": "build: the hull mesh's volume under the design waterline times 1,000 kg/m^3 (moth_report.json canoe_volume_m3): the boat and her sailor at rest, 35 + 80 kg",
+  "rigged_weight_kg": "later, slice 7: the parts' mass from the build report (volumes times material density), slice 7",
+  "mast_length_m": "later, slice 4: sockets MastBase to Masthead",
+  "luff_length_m": "the sail's tack to head, from the build report. Slice 4 cut the card's 5.1 to 5.04: the luff sleeve starts 4 cm above the deck (the deck-sweeper's tack) and stops 2 cm under the masthead's cap, so a 5.1 m mast stepped on the deck carries 5.04 m of luff",
+  "sail_area_m2": "later, slice 4: the sail's area plus the mast's top 5,185 mm, from the build report",
+  "main_foil_span_m": "later, slice 3: the main foil object's span. Milestone B: 1.0 to 1.1 m with slimmer chords and about the same area (a higher aspect ratio): reviewers read the foils as broad plates beside the photos' slender blades",
+  "main_foil_area_m2": "later, slice 3: the main foil's planform area, from the build report",
+  "elevator_span_m": "later, slice 3: the elevator object's span. Milestone B: 0.72 to 0.8 m with slimmer chords and about the same area (a higher aspect ratio): reviewers read the foils as broad plates beside the photos' slender blades",
+  "elevator_area_m2": "later, slice 3: the elevator's planform area, from the build report",
+  "main_strut_below_hull_m": "later, slice 3: the strut's foot below the hull's lowest point",
+  "rudder_below_hull_m": "later, slice 3: the rudder's foot below the hull's lowest point",
+  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight Milestone A cut it to 1.02: the camera-matched flying photo shows the wand hanging nearly upright at flying height, so the stick is about as long as the pivot-to-water drop (it is drawn 10 degrees forward of vertical, staying on the forward side the shock cord holds it to).. Milestone B: 1.02 to 0.88, drawn trailing about 6 degrees aft: the camera-matched flying photo shows the paddle about 0.07 m behind the pivot, the wand nearly upright at flying height, and the lower bow (0.40 m deep) brought the pivot down to 0.87 m over the flying waterline. The detail pass (docs/moth-9): 0.93, from a fitting 0.16 m ahead of the stem, trailing about 19 degrees (the solved photo's paddle 6 px from the model's, 18 before)",
+  "gantry_aft_of_transom_m": "later, slice 3: sockets RudderPivot's x behind the hull's aft end. Milestone B raised the card's 0.45 to 0.5: all six reviewers read the gantry as short beside the afloat photo (about 17% of the hull's length behind the transom, 0.57 m); 0.5 is rule 6.1.5's allowance"
+ },
+ "game": {
+  "note": "What the game will float her with (Fleet.cpp gets a new EBoatType in the Mac's physics slice; numbers here are the plan until then). The physics floats every boat in fresh water of 1,000 kg/m^3; at rest the hull alone carries her and her sailor, so the hull's canoe volume is (rigged + crew) / 1,000.",
+  "crew_kg": 80.0,
+  "crew_count": 1,
+  "total_kg": 115.0,
+  "design_volume_m3": 0.115,
+  "flying_height_m": 0.45,
+  "flying_height_note": "Hull bottom above the mean water when flying at a normal wand setting. Read roughly on Nov 25 from the flying quarter view (Sunday Flying!.jpg): the gap under the hull is about the hull's own depth at the bow, so 0.4-0.5 m; slice 1 measures it properly once the hull's size fixes the scale. Struts of 1.05 m then leave the main foil about 0.55 m under, more than four chords: deep enough to keep nearly all its lift (physics.md)."
+ },
+ "budget_triangles": {
+  "note": "Total outside about 0.45M, well under the 3M boat cap ([[boat-triangle-cap-high]]): a tiny boat seen close, so the foils, wand linkage, tiller and sail battens get the triangles. No cabin, no interior. The light copy (slice 7) about 60k.",
+  "total": 450000,
+  "sections": {
+   "hull": {"slice": 1, "max": 90000},
+   "wings": {"slice": 2, "max": 70000, "with": ["wingdeck"]},
+   "foil": {"slice": 3, "max": 80000, "with": ["strut", "elevator", "rudder", "gantry", "wand"]},
+   "rig": {"slice": 4, "max": 90000, "with": ["sail", "boom"]},
+   "hardware": {"slice": 5, "max": 120000, "with": ["lines"]}
+  }
+ },
+ "textures": {
+  "note": "Slice 6. The game's shared boat surfaces where they fit: carbon (raw weave and painted), the wings' cloth or mesh, the sail's clear film with black reinforcement, stainless and alloy fittings, rope. The hull colour and the invented class's insignia come from the livery catalogue (Inputs/g3/boat-catalogue.json) when she joins it."
+ }
+}

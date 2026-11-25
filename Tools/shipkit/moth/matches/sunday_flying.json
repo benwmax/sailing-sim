@@ -1,0 +1,61 @@
+{
+ "about": "Milestone A (docs/moth-6): picked pixels on the Commons thumbnail (1280 px wide) of 'Sunday Flying!.jpg' (Mark Robinson, CC BY 2.0; the photo shows a person, so only these numbers are in the repo). xyz are the model's points in Blender metres (x forward, y port, z up, z 0 the design waterline), written from the model after the Milestone B fixes (the lower aft hull floats her a little differently, so the design waterline moved). Points marked solve false are checks read off the solved camera: where the struts and the wand's tip meet the water. A 200 mm (35 mm equivalent) lens: a long telephoto; with the focal length free the solve wanders, and 100 to 500 mm all give the same residuals.",
+ "photo": "Sunday Flying!.jpg (1280 px Commons thumbnail)",
+ "size": [1280, 853],
+ "points": [
+  {
+   "name": "WandPivot",
+   "xyz": [1.8375, 0.0, 0.2525],
+   "px": [699, 687]
+  },
+  {
+   "name": "MastBase",
+   "xyz": [0.7, 0.0, 0.2297],
+   "px": [768, 677]
+  },
+  {
+   "name": "Masthead",
+   "xyz": [-0.3603, 0.0, 5.2182],
+   "px": [900.5, 21]
+  },
+  {
+   "name": "StrutAtHull",
+   "xyz": [0.1, 0.0, -0.1748],
+   "px": [805, 733]
+  },
+  {
+   "name": "RudderPivot",
+   "xyz": [-2.1775, 0.0, 0.1436],
+   "px": [953, 697]
+  },
+  {
+   "name": "TransomBottom",
+   "xyz": [-1.6775, 0.0, -0.0964],
+   "px": [923, 731]
+  },
+  {
+   "name": "WingFrontTip",
+   "xyz": [0.17, -1.111, 0.4429],
+   "px": [680, 636]
+  },
+  {
+   "name": "StrutAtFlyingWater",
+   "xyz": [0.1, 0.0, -0.6248],
+   "px": [791.7, 803],
+   "solve": false
+  },
+  {
+   "name": "RudderAtFlyingWater",
+   "xyz": [-2.1775, 0.0, -0.6248],
+   "px": [935, 802],
+   "solve": false
+  },
+  {
+   "name": "WandTipModel",
+   "xyz": [1.529, 0.0, -0.6248],
+   "px": [708, 805],
+   "solve": false
+  }
+ ],
+ "lens_35mm_equiv": 200
+}

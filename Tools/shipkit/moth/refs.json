@@ -1,0 +1,192 @@
+{
+ "about": "Reference pack for the hydrofoil moth (docs/moth-1). Photos of real foiling moths for looking and measuring proportions only: nothing is traced into the model, no photo enters the repo, and no builder's name, logo or sail graphics are copied (several photos show them; the game's boat is an invented design with an invented class name). Public domain, CC0 or plain CC BY only (no NC, ND or SA), as for the C22, the J-Class, the frigate and the Hobie 16. Download with python3 -I Tools/shipkit/fetch_refs.py Tools/shipkit/moth/refs.json Data/Reference/raw/boats/Moth (git-ignored; fetch_refs.py reads each file's licence on Commons first and refuses anything else).",
+ "status": "Nov 25 2026: Commons' Category:Moth (dinghy) holds 39 files, read through the desktop app's browser (licences and authors from Commons' own metadata). 13 are CC BY-SA (left out, among them the only view from below, 'Moth unten Kiel2008.jpg'), one is an svg emblem, several are distant or show the 1987 low-riding boat. These are the usable ones. 'viewed_nov25' marks the ones looked at in slice 0 (the cloud's downloads got rate-limited after eight).",
+ "drawings": [
+  {
+   "file": "Sunday Flying!.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Sunday_Flying!.jpg",
+   "kind": "photo_broadside_flying",
+   "use": "slices 1, 3, 4: THE flying broadside, nearly square on: ride height (hull bottom over the water), main strut and rudder lengths, the gantry, the wand trailing from the bow, mast and boom height. Read on Nov 25: the hull flies about a strut's half-length clear",
+   "size_px": [
+    2746,
+    1831
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2008-11-16",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth-dinghy.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-dinghy.jpg",
+   "kind": "photo_ashore_on_side",
+   "use": "slices 2-3: a boat laid on its side on the bank, foils in the air: the main strut and T-foil, the rudder on its gantry with its elevator, the wand and its pivot at the bow, the wing bars and the hull's underside",
+   "size_px": [
+    4169,
+    2779
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2010-02-13",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth-dinghy (1).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-dinghy_(1).jpg",
+   "kind": "photo_lowriding",
+   "use": "slice 1: the hull afloat with her sailor before take-off: the static waterline, freeboard and how low the narrow hull floats; the wings' height over the water",
+   "size_px": [
+    2205,
+    3308
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2010-02-13",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth-dinghy (3).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-dinghy_(3).jpg",
+   "kind": "photo_takeoff",
+   "use": "slices 3-4 and the physics: lifting off, the hull just clearing the water, the rig tipped to windward",
+   "size_px": [
+    2638,
+    1759
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2008-11-16",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth-dinghy (4).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-dinghy_(4).jpg",
+   "kind": "photo_flying_heeled",
+   "use": "physics: flying heeled to windward, the sailor hiked off the wing, a moment before a crash (the photographer's caption); the strut and rudder in the water at speed",
+   "size_px": [
+    2205,
+    1470
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2010-05-03",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth-dinghy (2).jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-dinghy_(2).jpg",
+   "kind": "photo_flying",
+   "use": "slice 3: flying ('And flying!', not yet viewed)",
+   "size_px": [
+    1853,
+    1227
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Mark Robinson",
+   "date": "2010-02-13",
+   "commercial": true,
+   "viewed_nov25": false
+  },
+  {
+   "file": "International Moth Class Rindbach Ebensee am Traunsee 20240921a.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:International_Moth_Class_Rindbach_Ebensee_am_Traunsee_20240921a.jpg",
+   "kind": "photo_ashore_trolley",
+   "use": "slices 1, 4: two current boats ashore on trolleys, broadside: the hull's profile and deck, the deck-sweeper sail's foot, the wings from the side, a person for scale",
+   "size_px": [
+    3220,
+    2268
+   ],
+   "licence": "CC BY 4.0",
+   "credit": "Tigerente",
+   "date": "2024-09-21",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Bladerider-8.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Bladerider-8.jpg",
+   "kind": "photo_bow_quarter_flying",
+   "use": "slices 2-4: flying from the bow quarter: the wings' outline, both foils in the water, the boom and battens. Carries a builder's logos and sail graphics: look only, never copied",
+   "size_px": [
+    378,
+    567
+   ],
+   "licence": "CC BY 3.0",
+   "credit": "Virginia Veal",
+   "date": "",
+   "commercial": true,
+   "viewed_nov25": true
+  },
+  {
+   "file": "Moth IMCA Noirmoutier 2007.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth_IMCA_Noirmoutier_2007.jpg",
+   "kind": "photo_flying",
+   "use": "slice 3: flying on her foils (not yet viewed; small)",
+   "size_px": [
+    567,
+    425
+   ],
+   "licence": "Public domain",
+   "credit": "Louis Pillon",
+   "date": "2007-07-13",
+   "commercial": true,
+   "viewed_nov25": false
+  },
+  {
+   "file": "Moth-sailing.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth-sailing.jpg",
+   "kind": "photo_sailing",
+   "use": "slices 1-4 (not yet viewed)",
+   "size_px": [
+    682,
+    1024
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Carter Kramer",
+   "date": "2010-10-09",
+   "commercial": true,
+   "viewed_nov25": false
+  },
+  {
+   "file": "Moth (dinghy) Swan River, Perth April 2018.jpg",
+   "commons": "https://commons.wikimedia.org/wiki/File:Moth_(dinghy)_Swan_River,_Perth_April_2018.jpg",
+   "kind": "photo_sailing",
+   "use": "slice 1-4 (not yet viewed)",
+   "size_px": [
+    647,
+    514
+   ],
+   "licence": "CC BY 2.5 au",
+   "credit": "JarrahTree",
+   "date": "2018-04-14",
+   "commercial": true,
+   "viewed_nov25": false
+  }
+ ],
+ "left_out": {
+  "cc_by_sa": [
+   "Moth Kiel2008.jpg",
+   "Moth unten Kiel2008.jpg",
+   "Exocet International Moth 1.jpg",
+   "Frizz Moth.jpg",
+   "Womble III.jpg",
+   "Skippy II.jpg",
+   "Moth Frithjof Schwerdt.jpg",
+   "Moth Racing on the Solent - geograph.org.uk - 4589539.jpg",
+   "Moth Racing on the Solent - geograph.org.uk - 4589544.jpg",
+   "MzAB THW 85386 Ploen.jpg"
+  ],
+  "not_useful": [
+   "Moth red.svg (an emblem)",
+   "FesteOhren.jpg (CC0, a 1987 low-riding moth: no foils)",
+   "Moth sailboats hydrofoiling (115857863).jpg (silhouettes at sunset)",
+   "2008-11-16 DinghyMothInternational.jpg and 2010-02-13 HydrofoilDinghy.jpg (crops of the photos above)",
+   "the other Swan River pictures (the moth small in a wide view)"
+  ]
+ }
+}
