@@ -113,6 +113,34 @@
    "borders": [
     "hull"
    ]
+  },
+  "rig": {
+   "objects": [
+    "MOTH_Mast",
+    "MOTH_Boom",
+    "MOTH_Rigging"
+   ],
+   "owns": [
+    "rig_moth.mast",
+    "rig_moth.boom",
+    "rig_moth.wires"
+   ],
+   "borders": [
+    "hull",
+    "wings"
+   ]
+  },
+  "sail": {
+   "objects": [
+    "MOTH_Sail",
+    "MOTH_Battens"
+   ],
+   "owns": [
+    "rig_moth.sail"
+   ],
+   "borders": [
+    "rig"
+   ]
   }
  },
  "joins": [

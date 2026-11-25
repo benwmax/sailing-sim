@@ -24,6 +24,7 @@ sys.path.insert(0, HERE)
 import hull_moth as H  # noqa: E402
 import wings_moth as WG  # noqa: E402
 import foils_moth as FO  # noqa: E402
+import rig_moth as RG  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -33,7 +34,8 @@ os.makedirs(OUT, exist_ok=True)
 N_STATIONS, N_SIDE = 180, 40          # stations along the hull; points up one side (plus the deck edge and deck)
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
 SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Carbon": (0.06, 0.06, 0.065),
-            "Mesh": (0.12, 0.12, 0.13), "Foil": (0.1, 0.1, 0.11), "Alloy": (0.7, 0.7, 0.72)}
+            "Mesh": (0.12, 0.12, 0.13), "Foil": (0.1, 0.1, 0.11), "Alloy": (0.7, 0.7, 0.72),
+            "Sail": (0.85, 0.87, 0.9), "Batten": (0.2, 0.2, 0.22), "Wire": (0.6, 0.6, 0.62)}
 
 
 def clear_scene():
@@ -223,6 +225,42 @@ def build_foils():
     return obs, info
 
 
+def build_rig():
+    """The mast, boom, shrouds and forestay, the sail (roach solved for the card's area) and its battens."""
+    roach = RG.solve_roach()
+    obs = []
+    bm = bmesh.new()
+    add_loft(bm, RG.mast_rings())
+    obs.append(finish(bm, "MOTH_Mast", "Carbon"))
+    bm = bmesh.new()
+    goose, end = RG.boom_line()
+    b = RG.R["boom"]
+    add_tube(bm, [tuple(goose), tuple(end)], b["d_m"], 12, b["d_end_m"])
+    obs.append(finish(bm, "MOTH_Boom", "Carbon"))
+    bm = bmesh.new()
+    for name, (a, c) in RG.wires().items():
+        add_tube(bm, [tuple(a), tuple(c)], RG.R["rigging"]["wire_d_m"], 6)
+    obs.append(finish(bm, "MOTH_Rigging", "Wire"))
+    bm = bmesh.new()
+    rows = RG.sail_grid(roach)
+    vs = [[bm.verts.new(p) for p in row] for row in rows]
+    for r0, r1 in zip(vs[:-1], vs[1:]):
+        for j in range(len(r0) - 1):
+            bm.faces.new((r0[j], r1[j], r1[j + 1], r0[j + 1]))
+    sail = finish(bm, "MOTH_Sail", "Sail")
+    mod = sail.modifiers.new("Thickness", "SOLIDIFY")
+    mod.thickness = 0.002
+    obs.append(sail)
+    bm = bmesh.new()
+    for line in RG.battens(roach):
+        add_tube(bm, line, 0.008, 6)
+    obs.append(finish(bm, "MOTH_Battens", "Batten"))
+    pts, tack, head, clew = RG.sail_outline(roach)
+    info = {"roach": roach, "sail_area_m2": RG.area(pts), "luff_length_m": float(((head - tack) ** 2).sum() ** 0.5),
+            "sockets": RG.sockets(roach)}
+    return obs, info
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -242,6 +280,7 @@ def main():
     mesh_v = mesh_volume_below(hull)
     frame, deck = build_wings()
     foils, finfo = build_foils()
+    rig, rinfo = build_rig()
     g = H.CARD["game"]
     report = dict(rep)
     report.update({
@@ -254,18 +293,23 @@ def main():
                 "the wing bars at rest). empty_rise_m is how far she rises without him: her static waterplane for "
                 "class rule 6.3 (the main foil must leave the hull below it). Flying, none of this matters: the hull is "
                 "0.4-0.5 m clear."})
-    json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     json.dump(rep, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     report["wing_plan_area_m2"] = round(WG.plan_area(), 4)
     report.update({k: round(v, 4) for k, v in FO.areas().items()})
     report["foils"] = {k: (round(v, 4) if isinstance(v, float) else [round(c, 4) for c in v]) for k, v in finfo.items()}
+    report.update({"sail_area_m2": round(rinfo["sail_area_m2"], 4), "luff_length_m": round(rinfo["luff_length_m"], 4),
+                   "roach": round(rinfo["roach"], 4)})
     json.dump({"boat": "Moth (Lacewing 11)", "frame": "Unreal: x forward, y starboard, z up, cm; z 0 the design "
-               "waterline at rest", "sockets": FO.sockets(finfo)}, open(os.path.join(OUT, "Moth_sockets.json"), "w"), indent=1)
+               "waterline at rest", "sockets": {**FO.sockets(finfo), **rinfo["sockets"]}},
+              open(os.path.join(OUT, "Moth_sockets.json"), "w"), indent=1)
     json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     wt = sum(len(p.vertices) - 2 for o in (frame, deck) for p in o.data.polygons)
     print(f"MOTH wings: beam {2 * max(abs(v.co.y) for v in frame.data.vertices):.4f} m, plan area a side "
           f"{WG.plan_area():.3f} m^2, triangles {wt} (deck before its thickness)")
+    rt = sum(len(p.vertices) - 2 for o in rig for p in o.data.polygons)
+    print(f"MOTH rig: sail {rinfo['sail_area_m2']:.3f} m^2 (roach {rinfo['roach']:.3f}), luff {rinfo['luff_length_m']:.3f} m, "
+          f"triangles {rt}")
     ft = sum(len(p.vertices) - 2 for o in foils for p in o.data.polygons)
     a = FO.areas()
     print(f"MOTH foils: main {a['main_foil_area_m2']:.4f} m^2 (flap {a['flap_area_m2']:.4f}), elevator "

@@ -52,7 +52,7 @@ budgets per slice and what the game will float her with.
 | Beam over the wings | 2.25 m | the rule's limit |
 | Hull beam / depth | 0.38 / 0.45 m | slice 1 (`docs/moth-2`): the depth raised from 0.36 after the afloat photo |
 | Rigged weight | 35 kg | the class site's 30-45 kg for foilers |
-| Mast / luff | 5.1 / 5.1 m | a sailmaker's tuning guide (today's standard mast) |
+| Mast / luff | 5.1 / 5.04 m | a sailmaker's tuning guide (today's standard mast); the luff cut from 5.1 in slice 4 to fit under the masthead |
 | Sail area | 8.25 m² | the rule's limit |
 | Main foil span / area | 1.0 m / 0.12 m² | typical "big foil"; slice 3 checks by photo |
 | Elevator span / area | 0.72 m / 0.065 m² | typical; slice 3 |
@@ -70,7 +70,7 @@ the hull, the wand and gantry from sockets, and areas and weight from the build 
 
 ```
 length_hull_m 3.355 (limit 3.355) ok · beam_m 2.250 (limit 2.250) ok · mast 5.100 (limit 6.250) ok
-luff 5.100 (limit 5.185) ok · sail 8.250 (limit 8.250) ok · design volume 0.115 m^3
+luff 5.040 (limit 5.185) ok · sail 8.250 (limit 8.250) ok · design volume 0.115 m^3
 take-off at 7-8 knots needs CL 1.23-0.94 on the main foil; at 20 knots 0.15
 pass
 ```
