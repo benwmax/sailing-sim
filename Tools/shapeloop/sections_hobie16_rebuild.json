@@ -4,7 +4,7 @@
  "build_args": "<out dir>: writes <out>/hobie16.blend",
  "hull_object": "H16_Hull",
  "report": "hobie16_report.json",
- "note": "The Hobie 16's rebuild (docs/hobie16-2 on). Slice 1 builds the two hulls, as one object so the loop measures her overall beam; slice 2 adds the platform (H16Platform_ objects), slice 3 the rudders (H16Rudder_ and H16Tiller_ objects), slice 4 the mast and standing rig (H16Mast, H16Rig_ objects), slice 5 the sails, slice 6 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The Hobie 16's rebuild (docs/hobie16-2 on). Slice 1 builds the two hulls, as one object so the loop measures her overall beam; slice 2 adds the platform (H16Platform_ objects), slice 3 the rudders (H16Rudder_ and H16Tiller_ objects), slice 4 the mast and standing rig (H16Mast, H16Rig_ objects), slice 5 the sails and boom (H16Sail_ objects, H16Boom), slice 6 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -55,7 +55,21 @@
     "build_rig"
    ],
    "borders": [
-    "platform"
+    "platform",
+    "sails"
+   ]
+  },
+  "sails": {
+   "objects": [
+    "H16Sail_",
+    "H16Boom"
+   ],
+   "owns": [
+    "sails_hobie16",
+    "build_sails"
+   ],
+   "borders": [
+    "rig"
    ]
   }
  },
