@@ -58,6 +58,12 @@
       }
     },
     "checkrides": {},
-    "certificates": {}
+    "certificates": {},
+    "logbook": {
+      "sessions": 4,
+      "entries": 36,
+      "nauticalMiles": 29.900000000000002
+    },
+    "hoursSailed": 8.0
   }
 }

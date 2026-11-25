@@ -31,7 +31,7 @@ $jobs = [ordered]@{
 	'H02-reach'      = @{ shot = 'h02-j22-reach-track'; rec = 6; extra = "$lake -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=10 -SailingHour=14 -SailingDemo -SailingTWA=90 -SailingHoldTWA=90" }
 	'R03-briefing'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingDrill=LeavetheDock -SailingFrontEnd=Briefing -SailingHour=14" }
 	'R08-career'     = @{ seedcopy = $true; nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`"" }
-	'R08b-checkride' = @{ seedcopyready = $true; nopath = $true; rec = 32; interval = '0.0333333'; hud = $true; timeout = 900; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`" `"-SailingUIScript=Wait,Wait,Wait,WaitFor:Career,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Enter,WaitFor:Quiz,Wait,Answer:all,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Escape,Wait,WaitFor:Career,Escape,Wait,WaitFor:Title,Down,Down,Enter,Wait,Wait,Wait`"" }
+	'R08b-checkride' = @{ seedcopyready = $true; cleanlog = $true; nopath = $true; rec = 32; interval = '0.0333333'; hud = $true; timeout = 900; extra = "$lake -SailingFrontEnd=Career -SailingHour=14 `"-SailingSave=D:\dev\ss-fix\Artifacts\bench\seed\run-profile.json`" `"-SailingUIScript=Wait,Wait,Wait,WaitFor:Career,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Tab,Enter,WaitFor:Quiz,Wait,Answer:all,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Wait,Escape,Wait,WaitFor:Career,Escape,Wait,WaitFor:Title,Down,Down,Enter,Wait,Wait,Wait`"" }
 	'R23-worldmap'   = @{ nopath = $true; rec = 8; interval = '0.0333333'; hud = $true; extra = "$lake -SailingFrontEnd=World -SailingHour=14" }
 }
 foreach ($name in $jobs.Keys) {
@@ -45,7 +45,10 @@ foreach ($name in $jobs.Keys) {
 	if ($j.extra -notmatch 'ForceDebugViewModes') { $j.extra += ' -DPCVars=r.ForceDebugViewModes=1' }   # every take (coordinator, Nov 25)
 	$args2 = @{ Name = $name; ShotFile = $shotName; ShotJson = $json; Record = $j.rec; Extra = $j.extra; PkgName = $P; ReelDir = $RD; ResX = $rx; ResY = $ry; Bench = 3 }
 	if ($j.nopath) { $args2.NoPath = $true }; if ($j.hud) { $args2.Hud = $true }; if ($j.interval) { $args2.Interval = $j.interval }; if ($j.timeout) { $args2.Timeout = $j.timeout }; if ($j.warm) { $args2.Warmup = $j.warm }; if ($j.seed) { $args2.SeedProfile = $j.seed }
-	try { $runOut = & $r @args2; Note "$name : $($runOut -join ' | ')" } catch { Note "$name FAILED: $_" }
+	# A clean logbook (coordinator, Nov 25): the package's own Saved\Logbook held aside, the four seeded Lake Ray Hubbard sails in its place, put back after.
+	$pkgLog = "D:\dev\ss-fix\Packaged\$P\SailingSim\Saved\Logbook"; $logHold = $null
+	if ($j.cleanlog) { if (Test-Path $pkgLog) { $logHold = "$pkgLog.reel-hold-$(Get-Date -Format HHmmss)"; Rename-Item $pkgLog (Split-Path $logHold -Leaf) }; New-Item -ItemType Directory -Force $pkgLog | Out-Null; Copy-Item "$B\seed\logbook-clean\*.json" $pkgLog }
+	try { $runOut = & $r @args2; Note "$name : $($runOut -join ' | ')" } catch { Note "$name FAILED: $_" } finally { if ($j.cleanlog) { $keep = "D:\dev\reel\$RD\$name-logbook"; if (Test-Path $keep) { Remove-Item $keep -Recurse -Force }; Move-Item $pkgLog $keep; if ($logHold) { Rename-Item $logHold 'Logbook' }; Note "$name logbook: seeded book kept at $keep, package logbook restored $(Test-Path $pkgLog)" } }
 	if ($name -eq 'P2-storm') {
 		# P2: the full take as an mp4; the 300-frame WebP scrub from 70 s to 295 s of the take (frames 93..392 at 0.75 s), so the front (~205 s) is ~60% in.
 		$fd = "D:\dev\reel\$RD\P2-storm\rec"

@@ -58,11 +58,17 @@ no checkride yet. It's copied fresh to `Artifacts\bench\seed\run-profile.json` e
   document ("Awarded 25 November 2026", "Day Sailor certificate earned. Open now: Club Racer").
 - The Logbook follows, with the entry **"Quiz after Day Sailor checkride: 12 of 12"** and the Certificates count at 1.
 
-**Timing:** in the test the score and certificate held for only about 3 s of the 32 s take, because the UI script runs on
-real time while the recording counts game frames, which run faster than real time in menus. I've lengthened the hold to
-10 x `Wait`. That change isn't re-tested yet.
+**Timing (re-tested Nov 25):**
+- **Why the hold was short:** the UI script's `Wait` is real time (2.6 s each). Each recorded frame takes about 0.35 s of real time to render and write. So 10 Waits held the score for only 80 frames, 2.7 s of the take.
+- **Fix:** the hold is now **26 x `Wait`**. In the re-test the score and certificate are on screen from about frame 60 to 255, **about 6.5 s** of the 32 s take. Then Career, the title and the Logbook follow; the Logbook holds to the end.
 
-**Logbook clutter:** the Logbook's list shows this PC's earlier test sails, from the Development package's own
-`Saved\Logbook`, not Bean's. A clean Saturday package, or emptying that folder first, gives a cleaner list.
+**Clean logbook (added Nov 25):** `reel-saturday.ps1` sets the package's own `Saved\Logbook` aside for R08b and puts the four sails in `test-logbook-clean/` in its place. After the take it moves the take's book to `D:\dev\reel\<reel dir>\R08b-checkride-logbook` and puts the package's book back.
+- **The four sails:** short J/22 day sails from Rush Creek on Lake Ray Hubbard, on 7, 12, 16 and 21 Nov. Each is 1.5 to 2.5 h, in 8-11 kn, with watch entries and a lesson remark or two. There are no test names.
+- **The profile's totals:** `test-profile-daysailor-ready.json` now carries matching totals, 4 sessions, 29.9 nm and 8.0 h.
+- **Re-test (`R08b-3-logbook-1080p.jpg`):**
+  - "In all" reads 29.9 miles, 8.0 hours, 5 sails, 6 medals, 1 certificate.
+  - The list is the checkride sail on top ("25 Nov 2026, 20:00"), then the four seeded sails.
+  - The page shows the session's "Quiz after Day Sailor checkride: 12 of 12".
+- **Known wart, not changed:** the list shows each file's name, and the game names the file in UTC. The checkride sail at 14:00 on the game clock reads "20:00". The seeded files follow the same rule, so the list is consistent.
 
-R08, the Career screen with "Certified", stays as the fallback. Bean's Saved was held aside and restored (7B5CA7BE).
+R08, the Career screen with "Certified", stays as the fallback. Bean's Saved was held aside and restored (7B5CA7BE) for every run.
