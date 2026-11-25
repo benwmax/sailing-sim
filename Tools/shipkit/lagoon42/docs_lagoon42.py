@@ -11,7 +11,8 @@ With --slice (slice 1 on): <before dir> and <after dir> are render_set.py's outp
 build (the same fixed views, so they line up), <views dir> is render_lagoon42.py's. Writes the nine-view sheet.jpg
 from <after dir>, before_after.jpg (four of the fixed views, today's on the left) and views.jpg (the coloured views
 that <views dir> holds; from slice 3 the drone photo's camera cropped to the boat, from slice 4 the cockpit's views
-first, from slice 5 the appendages').
+first, from slice 5 the appendages', from slice 6 the rig's close views), and from slice 6 rig.jpg (the rig's whole
+views, rig_profile and rig_quarter, side by side at their own height).
 """
 import os
 import sys
@@ -53,11 +54,12 @@ def main(hull_dir, rig_dir, out):
 
 
 CROPS = {"drone": (0.15, 0.55, 0.70, 0.98)}   # the photo's frame is mostly sea: the boat's part of it (fractions)
+TALL = ["rig_profile", "rig_quarter"]          # the rig's whole views, taller than the others: rig.jpg (slice 6 on)
 
 
 def labelled_grid(cells, cols, w, h, out, quality=80):
     """cells: [(png path, label)] pasted left to right, top to bottom, each w x h with its label under it (a view
-    named in CROPS cropped first)."""
+    named in CROPS cropped first; one whose shape is not the cell's is fitted inside it, centred on white)."""
     lab = 30
     rows = (len(cells) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * w, rows * (h + lab)), "white")
@@ -69,9 +71,12 @@ def labelled_grid(cells, cols, w, h, out, quality=80):
         if crop:
             im = im.crop((round(crop[0] * im.width), round(crop[1] * im.height), round(crop[2] * im.width),
                           round(crop[3] * im.height)))
-        im = im.resize((w, h))
         x, y = (i % cols) * w, (i // cols) * (h + lab)
-        sheet.paste(im, (x, y))
+        if abs(im.width * h / (im.height * w) - 1.0) > 0.02:
+            im.thumbnail((w, h))
+            sheet.paste(im, (x + (w - im.width) // 2, y + (h - im.height) // 2))
+        else:
+            sheet.paste(im.resize((w, h)), (x, y))
         dr.text((x + 8, y + h + 4), text, fill="black", font=f)
     sheet.save(out, quality=quality)
 
@@ -85,8 +90,13 @@ def slice_docs(before, after, views, out):
         cells += [(os.path.join(before, v + ".png"), "today: " + v.replace("_", " ")),
                   (os.path.join(after, v + ".png"), "rebuild: " + v.replace("_", " "))]
     labelled_grid(cells, 2, 600, 300, os.path.join(out, "before_after.jpg"))
-    names = ["keel_profile", "saildrive", "rudder", "helm_close", "cockpit", "helm", "plan", "drone", "bow_quarter", "stern_quarter", "foredeck", "bridge_under", "profile",
-             "head_on", "bow_close", "under"]
+    tall = [n for n in TALL if os.path.exists(os.path.join(views, n + ".png"))]
+    if tall:
+        labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in tall], len(tall), 600, 780,
+                      os.path.join(out, "rig.jpg"))
+    names = ["masthead", "spreaders", "gooseneck", "mast_base", "helm_winches", "furler", "traveller", "keel_profile",
+             "saildrive", "rudder", "helm_close", "cockpit", "helm", "plan", "drone", "bow_quarter", "stern_quarter",
+             "foredeck", "bridge_under", "profile", "head_on", "bow_close", "under"]
     names = [n for n in names if os.path.exists(os.path.join(views, n + ".png"))]
     labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in names],
                   3 if len(names) % 3 == 0 else 2, 600, 360,

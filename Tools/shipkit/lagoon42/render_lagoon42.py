@@ -22,6 +22,15 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   keel_profile    her starboard side below the water, orthographic, without the sea: the keel, saildrive and rudder
   saildrive       close on the starboard saildrive from outboard, aft and below: the leg, pod, anode and propeller
   rudder          close on the starboard rudder from outboard, aft and below: the blade, its tip and the stock's gap
+  rig_profile     her starboard side, orthographic and tall: the mast, spreaders, shrouds, forestay and boom (slice 6 on)
+  rig_quarter     from off her starboard bow, well up: the whole rig over the boat
+  masthead        close on the masthead from ahead and to starboard: the cap, crane, light, whip and wind instrument
+  spreaders       close on the starboard spreader from ahead: its root, tip, end cap, the radar dome and the lights
+  gooseneck       close on the gooseneck from aft and to starboard: the boom's fork and pin, the reef horns, the exits
+  mast_base       from beside the mast, to starboard: the turning blocks and the lines across the roof to the helm
+  helm_winches    from aft and to starboard of the helm: the clutches and both winches with their sheets
+  furler          close on the forestay's tack from ahead and to starboard: the tang, toggle, drum and swivel
+  traveller       from aft and to starboard, above the roof's aft end: the traveller, the mainsheet's blocks, the boom end
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
 import json
@@ -45,7 +54,10 @@ LOOKS = {"Topsides": ((0.86, 0.86, 0.84), 0.35), "Antifouling": ((0.05, 0.055, 0
          "Trampoline": ((0.05, 0.05, 0.055), 0.8), "Spar": ((0.6, 0.61, 0.63), 0.3),
          "Cushion": ((0.62, 0.6, 0.56), 0.9), "Keel": ((0.13, 0.135, 0.15), 0.7), "Stainless": ((0.7, 0.71, 0.73), 0.2),
          "Aluminium": ((0.55, 0.56, 0.57), 0.5), "Rubber": ((0.015, 0.015, 0.018), 0.9),
-         "CastBronze": ((0.6, 0.4, 0.2), 0.3)}
+         "CastBronze": ((0.6, 0.4, 0.2), 0.3), "PaintedAluminium": ((0.85, 0.85, 0.84), 0.3),
+         "WhitePlastic": ((0.88, 0.88, 0.86), 0.4), "BlackPlastic": ((0.03, 0.03, 0.035), 0.5),
+         "CarbonMatte": ((0.04, 0.04, 0.045), 0.6), "Rope": ((0.78, 0.76, 0.70), 0.8),
+         "RedPlastic": ((0.6, 0.05, 0.04), 0.4), "Graphics": ((0.1, 0.1, 0.12), 0.4)}
 for m in bpy.data.materials:
     if m.name not in LOOKS:
         continue
@@ -145,7 +157,17 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "keel_profile": ((-1.0, -40.0, -0.7), (-1.0, 0.0, -0.7), ("ortho", 11.5), False),
     "saildrive": ((-4.55, -4.35, -1.45), (-3.25, -2.9, -0.95), 45, False),
     "rudder": ((-7.1, -4.6, -1.25), (-5.45, -2.9, -0.7), 40, False),
+    "rig_profile": ((-0.3, -60.0, 10.8), (-0.3, 0.0, 10.8), ("ortho", 22.5), True),
+    "rig_quarter": ((16.5, -13.0, 12.0), (-0.6, 0.0, 9.5), 30, True),
+    "masthead": ((1.6, -2.1, 21.0), (-0.47, 0.0, 20.45), 40, True),
+    "spreaders": ((2.4, -4.4, 12.3), (-0.75, -0.95, 11.3), 30, True),
+    "gooseneck": ((-1.6, -1.0, 5.2), (-0.6, 0.0, 4.5), 45, True),
+    "mast_base": ((-0.5, -2.3, 6.6), (-1.25, 0.75, 3.3), 26, True),
+    "helm_winches": ((-3.7, 0.15, 4.5), (-2.3, 1.45, 3.3), 28, True),
+    "furler": ((7.7, -1.5, 2.5), (6.05, 0.0, 1.75), 40, True),
+    "traveller": ((-6.9, -1.9, 5.2), (-4.8, 0.0, 3.8), 30, True),
 }
+ASPECT = {"rig_profile": 1.3, "rig_quarter": 1.0}   # a view's height over its width (else 0.6)
 HIDE = {"plan": ["L42_Roof"]}   # a view's objects left out of its render
 VIEWS["drone"] = (None, None, None, True)
 for name, (loc, tgt, lens, show_sea) in VIEWS.items():
@@ -155,7 +177,7 @@ for name, (loc, tgt, lens, show_sea) in VIEWS.items():
     for o in sc.objects:
         if o.type == "MESH" and o is not sea:
             o.hide_render = o.name in HIDE.get(name, ())
-    sc.render.resolution_y = int(RES * 0.6)
+    sc.render.resolution_y = int(RES * ASPECT.get(name, 0.6))
     if name == "drone":
         c = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "match_two_canoes.camera.json")))
         cam.location = c["location"]

@@ -4,7 +4,7 @@
  "build_args": "blender -b --factory-startup -P build_lagoon42.py -- <out dir>: reads <out>/lagoon42.blend",
  "hull_object": "L42_Hull",
  "report": "lagoon42_report.json",
- "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows); slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, section 'placeholder', not budgeted; from slice 4 only inside the saloon, until slice 9 builds its floor); slice 3 (docs/lagoon42-4) each hull's deck with its toe rail (L42_Deck) and hatches (L42_Hatches), the saloon's walls and windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof), section 'coachroof'; slice 4 (docs/lagoon42-5) the cockpit (L42_Cockpit: sole, benches, table, posts, raised helm), section 'cockpit'; slice 5 (docs/lagoon42-6) the keels, saildrives and propellers (L42_Keels, L42_Saildrives, L42_Prop_S/P), section 'keels', and the rudders (L42_Rudder_S/P, one mesh at each stock's pivot), section 'rudder'. Later slices add their parts here (rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows); slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, section 'placeholder', not budgeted; from slice 4 only inside the saloon, until slice 9 builds its floor); slice 3 (docs/lagoon42-4) each hull's deck with its toe rail (L42_Deck) and hatches (L42_Hatches), the saloon's walls and windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof), section 'coachroof'; slice 4 (docs/lagoon42-5) the cockpit (L42_Cockpit: sole, benches, table, posts, raised helm), section 'cockpit'; slice 5 (docs/lagoon42-6) the keels, saildrives and propellers (L42_Keels, L42_Saildrives, L42_Prop_S/P), section 'keels', and the rudders (L42_Rudder_S/P, one mesh at each stock's pivot), section 'rudder'; slice 6 (docs/lagoon42-7) the mast (L42_Mast, origin at its heel), the boom (L42_Boom, origin at the gooseneck's pin), the standing rigging's wire (L42_Wires), its fittings and the running rigging's hardware (L42_RigFittings) and the lines (L42_Running), section 'rig'. Later slices add their parts here (sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -120,6 +120,41 @@
     "rudder_stock"
    ],
    "borders": [
+    "hull"
+   ]
+  },
+  "rig": {
+   "objects": [
+    "L42_Mast",
+    "L42_Boom",
+    "L42_Wires",
+    "L42_RigFittings",
+    "L42_Running"
+   ],
+   "owns": [
+    "build_rig",
+    "kit_merge",
+    "write_sockets",
+    "mast_rings",
+    "track_rings",
+    "spreader_parts",
+    "standing_rigging",
+    "forestay_parts",
+    "masthead_parts",
+    "code0_and_jib_boxes",
+    "radar_and_lights",
+    "gooseneck_parts",
+    "boom_parts",
+    "jib_track_parts",
+    "jib_car",
+    "lines_and_blocks",
+    "traveller_parts",
+    "mast_lines_up",
+    "winch_wraps"
+   ],
+   "borders": [
+    "coachroof",
+    "bridgedeck",
     "hull"
    ]
   }

@@ -1,5 +1,5 @@
 """The Lagoon 42's rebuild in Blender (docs/lagoon42-2 on): the hulls (slice 1), the bridge deck (slice 2), the decks,
-saloon and roof (slice 3).
+saloon and roof (slice 3), the cockpit (slice 4), the appendages (slice 5) and the rig (slice 6).
 
     blender -b --factory-startup -P build_lagoon42.py -- <out dir>
 
@@ -24,8 +24,16 @@ Slice 5 (docs/lagoon42-6) hangs the keels (L42_Keels, with their sacrificial sho
 legs, pods, anodes, intakes) and the propellers (L42_Prop_S, L42_Prop_P, origins on their axes) under the hulls from
 appendages_lagoon42.py, and the rudders (L42_Rudder_S, L42_Rudder_P: one mesh, origins at the stocks' pivots).
 
+Slice 6 (docs/lagoon42-7) stands the rig on the roof from rig_lagoon42.py: the mast (L42_Mast, origin at its heel, with
+its track, spreaders, masthead and the fittings on it), the boom (L42_Boom, origin at the gooseneck's pin), the standing
+rigging's wire (L42_Wires), its fittings and the running rigging's hardware (L42_RigFittings) and the lines
+(L42_Running). Blocks, winches, clutches, the traveller, chainplates and turnbuckles are the boat kit's parts
+(Tools/boatkit/bk_parts.py) on the axes and scale rig_lagoon42 gives them; their sockets are checked against where it
+expects them.
+
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
-of buoyancy beside the game's) and <out>/hydrostatics.json.
+of buoyancy beside the game's), <out>/hydrostatics.json and, from slice 6, <out>/Lagoon42_sockets.json (the rig's
+sockets in the game's frame and centimetres, for the size check's air draft and slice 13).
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
 the shape loop's tools read it like the fleet's .blend.
 """
@@ -36,7 +44,7 @@ import sys
 
 import bpy
 import bmesh
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -45,6 +53,7 @@ import bridgedeck_lagoon42 as B  # noqa: E402
 import saloon_lagoon42 as S  # noqa: E402
 import cockpit_lagoon42 as C  # noqa: E402
 import appendages_lagoon42 as A  # noqa: E402
+import rig_lagoon42 as R  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -56,7 +65,10 @@ BOTTOM_Z = 0.05                        # the antifouling's top over the game's w
 SLOT_RGB = {"Topsides": (0.92, 0.92, 0.9), "Antifouling": (0.16, 0.17, 0.2), "CabinWindow": (0.06, 0.07, 0.08),
             "Teak": (0.55, 0.38, 0.22), "Trampoline": (0.1, 0.1, 0.11), "Spar": (0.55, 0.56, 0.58),
             "Cushion": (0.78, 0.76, 0.72), "Keel": (0.24, 0.25, 0.28), "Stainless": (0.72, 0.73, 0.75),
-            "Aluminium": (0.62, 0.63, 0.64), "Rubber": (0.04, 0.04, 0.045), "CastBronze": (0.66, 0.48, 0.26)}
+            "Aluminium": (0.62, 0.63, 0.64), "Rubber": (0.04, 0.04, 0.045), "CastBronze": (0.66, 0.48, 0.26),
+            "PaintedAluminium": (0.86, 0.86, 0.84), "WhitePlastic": (0.85, 0.84, 0.8), "BlackPlastic": (0.03, 0.03, 0.035),
+            "CarbonMatte": (0.05, 0.05, 0.055), "Graphics": (0.45, 0.015, 0.02), "RedPlastic": (0.7, 0.05, 0.04),
+            "Rope": (0.78, 0.79, 0.8)}
 
 
 def clear_scene():
@@ -494,6 +506,136 @@ def build_appendages():
     return me_ob, port
 
 
+RIG_OBJECTS = {"mast": "L42_Mast", "boom": "L42_Boom", "wires": "L42_Wires", "fittings": "L42_RigFittings",
+               "running": "L42_Running"}
+
+
+class Part:
+    """One rig object's bmesh and its material slots, by name."""
+
+    def __init__(self):
+        self.bm = bmesh.new()
+        self.mats = []
+
+    def slot(self, name):
+        if name not in self.mats:
+            self.mats.append(name)
+        return self.mats.index(name)
+
+
+def kit_merge(acc, p):
+    """One of the boat kit's parts (rig_lagoon42.kit) merged into acc: built by bk_parts, collapsed if light, put on
+    its axes (game frame, mirrored into Blender's) and scale. Returns its sockets in the game frame."""
+    if R.KIT_DIR not in sys.path:
+        sys.path.insert(0, R.KIT_DIR)
+    import bk_parts as KP  # noqa: E402
+    import bk_geom as KG  # noqa: E402
+    ob = KP.build(p["name"], **p["kw"])
+    if p["light"]:
+        d = ob.modifiers.new("light", "DECIMATE")
+        d.decimate_type = "COLLAPSE"
+        d.ratio = p["light"]
+        d.use_collapse_triangulate = True
+        KG.apply(ob)
+    S_ = lambda v: Vector((v[0], -v[1], v[2]))
+    k = p["scale"]
+    cols = [S_(p["ax"]) * k, S_(p["ay"]) * k, S_(p["az"]) * k]
+    rot = Matrix([[cols[c][r] for c in range(3)] for r in range(3)]).to_4x4()
+    xf = Matrix.Translation(S_(p["origin"])) @ rot
+    socks = {}
+    for ch in list(ob.children):
+        if ch.name.startswith("SOCKET_"):
+            q = xf @ (ob.matrix_world @ ch.location)
+            socks[ch.name[7:].split(".")[0]] = (q.x, -q.y, q.z)
+        bpy.data.objects.remove(ch)
+    me = ob.data
+    me.transform(ob.matrix_world)
+    me.transform(xf)
+    while me.uv_layers:
+        me.uv_layers.remove(me.uv_layers[0])
+    tmp = bmesh.new()
+    tmp.from_mesh(me)
+    bmesh.ops.dissolve_degenerate(tmp, dist=1e-6, edges=tmp.edges[:])
+    tmp.to_mesh(me)
+    tmp.free()
+    # Appended by hand: bmesh.from_mesh into a bmesh that already holds faces renumbered some of the new faces'
+    # materials. Faces keep their slot (by material name), smoothing and the kit's sharp edges.
+    names = [mt.name.split(".")[0] for mt in me.materials] or ["Stainless"]
+    slots = [acc.slot(n) for n in names]
+    sharp_attr = me.attributes.get("sharp_edge")
+    sharp = {tuple(sorted(e.vertices)) for e, a in zip(me.edges, sharp_attr.data) if a.value} if sharp_attr else set()
+    vs = [acc.bm.verts.new(v.co) for v in me.vertices]
+    index = {v: i for i, v in enumerate(vs)}
+    for poly in me.polygons:
+        try:
+            f = acc.bm.faces.new([vs[i] for i in poly.vertices])
+        except ValueError:
+            continue
+        f.material_index = slots[min(poly.material_index, len(slots) - 1)]
+        f.smooth = poly.use_smooth
+        if sharp:
+            for e in f.edges:
+                if tuple(sorted(index[v] for v in e.verts)) in sharp:
+                    e.smooth = False
+    bpy.data.objects.remove(ob)
+    bpy.data.meshes.remove(me)
+    return socks
+
+
+def build_rig():
+    """The mast, boom, wires, the rig's fittings and its lines (rig_lagoon42.parts()), each object at its origin (the
+    mast at its step, the boom at the gooseneck's pin). Checks every kit part's sockets where rig_lagoon42 expects
+    them; returns the worst miss (m)."""
+    accs = {k: Part() for k in RIG_OBJECTS}
+    worst = 0.0
+    for p in R.parts():
+        acc = accs[p["obj"]]
+        k = p["kind"]
+        if k == "rings":
+            solid(acc.bm, p["rings"], mat=acc.slot(p["mat"]), smooth=p["smooth"])
+        elif k == "cyl":
+            for f in add_cylinder(acc.bm, p["a"], p["b"], p["radius"], p.get("segments", 16)):
+                f.material_index = acc.slot(p["mat"])
+        elif k == "torus":
+            for f in add_torus(acc.bm, p["centre"], p["axis"], p["R"], p["r"], p.get("n", 48), p.get("m", 10)):
+                f.material_index = acc.slot(p["mat"])
+        elif k == "box":
+            faces, rounded = add_box(acc.bm, p["lo"], p["hi"], p["round"])
+            for f in faces:
+                f.material_index = acc.slot(p["mat"])
+                f.smooth = False
+            for f in rounded:
+                f.smooth = True
+        elif k == "kit":
+            got = kit_merge(acc, p)
+            for name, want in p["expect"].items():
+                miss = math.dist(got[name], want) if name in got else float("inf")
+                worst = max(worst, miss)
+                if miss > 0.002:
+                    print(f"rig: kit {p['name']} socket {name} at {got.get(name)}, expected {want}")
+    _, origins = R.sockets()
+    obj_origin = {"mast": origins["SM_Lagoon42_Mast"], "boom": origins["SM_Lagoon42_Boom"]}
+    for key, acc in accs.items():
+        o = Vector(bl(*obj_origin.get(key, (0.0, 0.0, 0.0))))
+        for v in acc.bm.verts:
+            v.co -= o
+        ob = to_object(RIG_OBJECTS[key], acc.bm, acc.mats)
+        ob.location = o
+    return worst
+
+
+def write_sockets(path):
+    """The rig's sockets in the game's sockets file shape (Unreal frame: X forward, Y starboard, Z up, centimetres)."""
+    so, origins = R.sockets()
+    cm = lambda p: [round(c * 100.0, 2) for c in p]
+    json.dump({"sockets": {k: cm(p) for k, (p, _) in sorted(so.items())},
+               "owner": {k: o for k, (_, o) in sorted(so.items())},
+               "origins": {k: cm(p) for k, p in origins.items()},
+               "note": "Written by build_lagoon42.py from rig_lagoon42.sockets() (docs/lagoon42-7): the rebuild's sockets "
+                       "for the size check's air draft and for slice 13, which imports her into the game."},
+              open(path, "w"), indent=1)
+
+
 def build_cockpit():
     """The cockpit (L42_Cockpit): the teak sole, every part of cockpit_lagoon42.parts() and the dark windows in the
     landings' risers."""
@@ -606,6 +748,8 @@ def main():
     build_roof()
     build_cockpit()
     build_appendages()
+    kit_miss = build_rig()
+    write_sockets(os.path.join(OUT, "Lagoon42_sockets.json"))
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
@@ -631,6 +775,9 @@ def main():
               "rudder_pivots_m": [[round(c, 3) for c in A.rudder_pivot(cy)] for cy in (-H.HULL_Y, H.HULL_Y)],
               "prop_axes_m": [[round(c, 3) for c in (ax[0], cy, ax[2])] for cy in (-H.HULL_Y, H.HULL_Y)],
               "appendage_volume_built_m3": round(appn["total_volume"], 4),
+              "rig": {k: (round(v, 3) if isinstance(v, float) else v if isinstance(v, str) else [round(c, 3) for c in v])
+                      for k, v in R.numbers().items()},
+              "rig_kit_socket_miss_m": round(kit_miss, 4),
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
                       "waterline (hull_volume_m3) plus the appendages' (appendage_volume_m3: the keels, rudders and "
                       "saildrives under the hulls' bottoms as slice 5 builds them, appendage_volume_built_m3, solved "
