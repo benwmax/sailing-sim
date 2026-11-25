@@ -63,6 +63,12 @@ The pink-noise filter coefficients follow Paul Kellet's widely published public-
   in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217.
 - Ocean waves: Tessendorf (2001) "Simulating Ocean Water"; JONSWAP spectrum (Hasselmann et al. 1973); added
   resistance in waves after Gerritsma and Beukelman (1972). Methods only; no code reproduced.
+- Wildlife seasons, places and group sizes (Content/TerrainData/*.wildlife.json): GBIF.org occurrence records licensed
+  CC0 1.0 or CC BY 4.0 (https://creativecommons.org/licenses/by/4.0), queried for each world's area, eBird records left
+  out, and Birda left out (its licence is unclear). Each table lists the datasets it draws on with their licences
+  (mostly iNaturalist research-grade observations, the Great Backyard Bird Count and the Fishes of Texas database for
+  Texas, and the SILENE-FAUNE-PACA, CEN PACA, LPO PACA and Calanques National Park datasets for Marseille), credited
+  here as "GBIF.org occurrence data, the datasets listed in each wildlife table". The tables are summaries (monthly weights, group sizes, coarse places), not the records.
 
 - Marseille (the Vieux-Port, Frioul, Pointe Rouge, the Calanques to Cassis): coastline, harbours,
   quays, pontoons, breakwaters, seamarks, landmarks, land use and buildings © OpenStreetMap contributors (ODbL, as
