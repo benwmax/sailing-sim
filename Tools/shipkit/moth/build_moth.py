@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_moth as H  # noqa: E402
 import wings_moth as WG  # noqa: E402
+import foils_moth as FO  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
@@ -32,7 +33,7 @@ os.makedirs(OUT, exist_ok=True)
 N_STATIONS, N_SIDE = 180, 40          # stations along the hull; points up one side (plus the deck edge and deck)
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
 SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Carbon": (0.06, 0.06, 0.065),
-            "Mesh": (0.12, 0.12, 0.13)}
+            "Mesh": (0.12, 0.12, 0.13), "Foil": (0.1, 0.1, 0.11), "Alloy": (0.7, 0.7, 0.72)}
 
 
 def clear_scene():
@@ -110,15 +111,17 @@ def resample(pts, step=0.02):
     return out
 
 
-def add_tube(bm, pts, d, sides):
-    """A round tube of diameter d along the polyline pts (parallel-transported rings, both ends capped)."""
+def add_tube(bm, pts, d, sides, d_end=None):
+    """A round tube of diameter d (tapering to d_end) along the polyline pts (parallel-transported rings, both ends
+    capped)."""
     pts = resample(pts)
-    r = d / 2
+    d_end = d if d_end is None else d_end
     tang = [(pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized() for i in range(len(pts))]
     up = Vector((0, 0, 1)) if abs(tang[0].z) < 0.9 else Vector((1, 0, 0))
     n = (up - tang[0] * up.dot(tang[0])).normalized()
     rings = []
     for i, p in enumerate(pts):
+        r = (d + (d_end - d) * i / max(len(pts) - 1, 1)) / 2
         n = (n - tang[i] * n.dot(tang[i])).normalized()
         bnorm = tang[i].cross(n)
         rings.append([bm.verts.new(p + r * (math.cos(2 * math.pi * k / sides) * n + math.sin(2 * math.pi * k / sides) * bnorm))
@@ -167,6 +170,59 @@ def build_wings():
     return frame, deck
 
 
+def add_loft(bm, rings):
+    """A closed body through rings of equal length (each ring a closed loop), both ends capped."""
+    vs = [[bm.verts.new(p) for p in ring] for ring in rings]
+    m = len(vs[0])
+    for a, b in zip(vs[:-1], vs[1:]):
+        for j in range(m):
+            k = (j + 1) % m
+            bm.faces.new((a[j], a[k], b[k], b[j]))
+    bm.faces.new(vs[0])
+    bm.faces.new(list(reversed(vs[-1])))
+
+
+def add_pod(bm, start, length, d, n=20, sides=16):
+    """A slim body of revolution along x from start (its tail) forward: a torpedo (blunt nose, fine tail)."""
+    rings = []
+    for i in range(n + 1):
+        u = i / n
+        r = d / 2 * math.sqrt(max(0.0, math.sin(math.pi * u ** 0.8))) if 0 < i < n else 0.0004
+        x = start[0] + length * u
+        rings.append([(x, start[1] + r * math.cos(2 * math.pi * k / sides), start[2] + r * math.sin(2 * math.pi * k / sides))
+                      for k in range(sides)])
+    add_loft(bm, rings)
+
+
+def build_foils():
+    """The main strut and T-foil with its flap and pod, the gantry, rudder and elevator, the wand and its fitting:
+    one object each (the game moves the flap, elevator and wand on their own)."""
+    parts, info = FO.geometry()
+    slot = {"MOTH_GantryL": "Carbon", "MOTH_GantryR": "Carbon", "MOTH_Wand": "Carbon", "MOTH_BowFitting": "Carbon",
+            "MOTH_RudderHead": "Alloy", "MOTH_WandPaddle": "Foil"}
+    obs = []
+    for name, spec in parts.items():
+        bm = bmesh.new()
+        kind = spec[0]
+        if kind == "loft":
+            add_loft(bm, spec[1])
+        elif kind == "tube":
+            add_tube(bm, spec[1], spec[2], 10, spec[3])
+        elif kind == "pod":
+            add_pod(bm, spec[1], spec[2], spec[3])
+        elif kind == "plate":
+            bm.faces.new([bm.verts.new(p) for p in spec[1]])
+        ob = finish(bm, name, slot.get(name, "Foil"))
+        if kind == "plate":
+            mod = ob.modifiers.new("Thickness", "SOLIDIFY")
+            mod.thickness = 0.003
+        if kind == "loft":
+            for p in ob.data.polygons:
+                p.use_smooth = len(p.vertices) == 4
+        obs.append(ob)
+    return obs, info
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -185,6 +241,7 @@ def main():
     hull = build_hull()
     mesh_v = mesh_volume_below(hull)
     frame, deck = build_wings()
+    foils, finfo = build_foils()
     g = H.CARD["game"]
     report = dict(rep)
     report.update({
@@ -200,11 +257,19 @@ def main():
     json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     json.dump(rep, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     report["wing_plan_area_m2"] = round(WG.plan_area(), 4)
+    report.update({k: round(v, 4) for k, v in FO.areas().items()})
+    report["foils"] = {k: (round(v, 4) if isinstance(v, float) else [round(c, 4) for c in v]) for k, v in finfo.items()}
+    json.dump({"boat": "Moth (Lacewing 11)", "frame": "Unreal: x forward, y starboard, z up, cm; z 0 the design "
+               "waterline at rest", "sockets": FO.sockets(finfo)}, open(os.path.join(OUT, "Moth_sockets.json"), "w"), indent=1)
     json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     wt = sum(len(p.vertices) - 2 for o in (frame, deck) for p in o.data.polygons)
     print(f"MOTH wings: beam {2 * max(abs(v.co.y) for v in frame.data.vertices):.4f} m, plan area a side "
           f"{WG.plan_area():.3f} m^2, triangles {wt} (deck before its thickness)")
+    ft = sum(len(p.vertices) - 2 for o in foils for p in o.data.polygons)
+    a = FO.areas()
+    print(f"MOTH foils: main {a['main_foil_area_m2']:.4f} m^2 (flap {a['flap_area_m2']:.4f}), elevator "
+          f"{a['elevator_area_m2']:.4f} m^2, wand at {finfo['wand_angle_deg']:.1f} deg from vertical, triangles {ft}")
     print(f"MOTH: waterline {rep['waterline_over_keel_m']:.4f} m over the keel, volume {rep['volume_m3']:.4f} "
           f"(mesh {mesh_v:.4f}), CB x {rep['cb_x']:+.3f} (CG {rep['cg_x']:+.3f}), trim {rep['trim_deg']:+.2f} deg, "
           f"LWL {rep['lwl_m']:.3f}, hull triangles {tris}")

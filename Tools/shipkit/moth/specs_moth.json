@@ -27,7 +27,7 @@
   "elevator_area_m2": 0.065,
   "main_strut_below_hull_m": 1.05,
   "rudder_below_hull_m": 1.05,
-  "wand_length_m": 0.95,
+  "wand_length_m": 1.1,
   "gantry_aft_of_transom_m": 0.45,
   "tolerance": 0.03
  },
@@ -88,7 +88,7 @@
   "elevator_area_m2": "later, slice 3: the elevator's planform area, from the build report",
   "main_strut_below_hull_m": "later, slice 3: the strut's foot below the hull's lowest point",
   "rudder_below_hull_m": "later, slice 3: the rudder's foot below the hull's lowest point",
-  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip",
+  "wand_length_m": "later, slice 3: sockets WandPivot to WandTip. Slice 3 raised the card's 0.95 to 1.1: from a pivot on the bow fitting (0.33 m over the design waterline) the paddle must reach the water 0.45 m under the hull's lowest point, a 1.0 m drop, and a wand trails about 25 degrees forward of vertical in flight",
   "gantry_aft_of_transom_m": "later, slice 3: sockets RudderPivot's x behind the hull's aft end"
  },
  "game": {
@@ -97,7 +97,7 @@
   "crew_count": 1,
   "total_kg": 115.0,
   "design_volume_m3": 0.115,
-  "flying_height_m": 0.5,
+  "flying_height_m": 0.45,
   "flying_height_note": "Hull bottom above the mean water when flying at a normal wand setting. Read roughly on Nov 25 from the flying quarter view (Sunday Flying!.jpg): the gap under the hull is about the hull's own depth at the bow, so 0.4-0.5 m; slice 1 measures it properly once the hull's size fixes the scale. Struts of 1.05 m then leave the main foil about 0.55 m under, more than four chords: deep enough to keep nearly all its lift (physics.md)."
  },
  "budget_triangles": {
@@ -106,7 +106,7 @@
   "sections": {
    "hull": {"slice": 1, "max": 90000},
    "wings": {"slice": 2, "max": 70000, "with": ["wingdeck"]},
-   "foils": {"slice": 3, "max": 80000, "with": ["strut", "elevator", "rudder", "gantry", "wand"]},
+   "foil": {"slice": 3, "max": 80000, "with": ["strut", "elevator", "rudder", "gantry", "wand"]},
    "rig": {"slice": 4, "max": 90000, "with": ["sail", "boom"]},
    "hardware": {"slice": 5, "max": 120000, "with": ["lines"]}
   }

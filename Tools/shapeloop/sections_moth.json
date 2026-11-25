@@ -38,6 +38,81 @@
    "borders": [
     "wings"
    ]
+  },
+  "strut": {
+   "objects": [
+    "MOTH_Strut"
+   ],
+   "owns": [
+    "foils_moth.strut"
+   ],
+   "borders": [
+    "hull",
+    "foil"
+   ]
+  },
+  "foil": {
+   "objects": [
+    "MOTH_MainFoil",
+    "MOTH_Flap",
+    "MOTH_Pod"
+   ],
+   "owns": [
+    "foils_moth.main_foil"
+   ],
+   "borders": [
+    "strut"
+   ]
+  },
+  "gantry": {
+   "objects": [
+    "MOTH_GantryL",
+    "MOTH_GantryR",
+    "MOTH_RudderHead"
+   ],
+   "owns": [
+    "foils_moth.gantry"
+   ],
+   "borders": [
+    "hull",
+    "rudder"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "MOTH_Rudder"
+   ],
+   "owns": [
+    "foils_moth.rudder"
+   ],
+   "borders": [
+    "gantry",
+    "elevator"
+   ]
+  },
+  "elevator": {
+   "objects": [
+    "MOTH_Elevator"
+   ],
+   "owns": [
+    "foils_moth.elevator"
+   ],
+   "borders": [
+    "rudder"
+   ]
+  },
+  "wand": {
+   "objects": [
+    "MOTH_Wand",
+    "MOTH_WandPaddle",
+    "MOTH_BowFitting"
+   ],
+   "owns": [
+    "foils_moth.wand"
+   ],
+   "borders": [
+    "hull"
+   ]
   }
  },
  "joins": [
@@ -45,6 +120,21 @@
    "a": "wings",
    "b": "hull",
    "where": "the inner rails on the hull's deck edge, x -1.15 to 0.15"
+  },
+  {
+   "a": "strut",
+   "b": "hull",
+   "where": "the strut's case through the hull at x 0.30"
+  },
+  {
+   "a": "gantry",
+   "b": "hull",
+   "where": "the gantry's feet on the transom's corners"
+  },
+  {
+   "a": "wand",
+   "b": "hull",
+   "where": "the bow fitting on the deck at the stem"
   }
  ],
  "joins_note": "Slice 2: the wings' inner rails sit on the deck edge; slice 3 adds the gantry's feet on the transom and the strut's case."
