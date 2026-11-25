@@ -10,6 +10,9 @@
 #include "BenchRunner.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "UObject/UObjectIterator.h"
+#include "HAL/IConsoleManager.h"
+#include "RHI.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInterface.h"
@@ -256,28 +259,65 @@ FString FKitGeometry::TileAssetName(const FString& Prefix, const FIntPoint& Tile
 	return FString::Printf(TEXT("SM_%s_%s_%s"), *Prefix, *Num(Tile.X), *Num(Tile.Y));
 }
 
+namespace
+{
+	// Components of a tide follower that would be in the distance fields of their own accord (MarkTideFollower), so a
+	// quality change can put them back or take them out again (RefreshTideFollowers).
+	const FName TideFollowerDFTag(TEXT("SailingTideFollowerDF"));
+
+	bool IsCrownMesh(const UPrimitiveComponent* Component)
+	{
+		const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Component);
+		return Mesh && Mesh->GetStaticMesh() && Mesh->GetStaticMesh()->GetPathName().StartsWith(TEXT("/Game/World/Trees/"));
+	}
+
+	bool IsTidalWorld(const UWorld* World)
+	{
+		const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr;
+		return GM && GM->GetLake().IsLoaded() && GM->GetLake().Tides.HeightStations.size() > 0;
+	}
+}
+
 bool TideFollowersSkipDistanceFields(const UWorld* World, bool bCrown)
 {
-	const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr;
-	if (!GM || !GM->GetLake().IsLoaded() || GM->GetLake().Tides.HeightStations.size() == 0) return false;   // no tide, no steps
+	if (!IsTidalWorld(World)) return false;   // no tide, no steps
+	// Only where Lumen traces in hardware (the live console variables: the tier, the RHI's support and -SailingLumenHW all
+	// end up there, set by ApplyQualitySettings before any world actor builds). Software Lumen (Medium, or High without
+	// hardware ray tracing) reads the mesh distance fields.
+	const IConsoleVariable* RT = IConsoleManager::Get().FindConsoleVariable(TEXT("r.RayTracing.Enable"));
+	const IConsoleVariable* HW = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Lumen.HardwareRayTracing"));
+	const bool bHardwareLumen = GRHISupportsRayTracing && RT && RT->GetInt() > 0 && HW && HW->GetInt() > 0;
 	// -SailingTideDF=1 keeps every follower in the distance fields (as before); =2 takes out only the crowns, on Ultra, where
 	// they are in ray tracing (measuring).
 	int32 Keep = 0;
 	FParse::Value(SailingArgs::Dev(), TEXT("SailingTideDF="), Keep);
-	if (Keep == 2) return bCrown && USailingSettings::Get()->Quality == ESailingQuality::Ultra;
-	return Keep == 0 && USailingSettings::Get()->Quality >= ESailingQuality::High;
+	if (Keep == 2) return bCrown && bHardwareLumen && USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+	return Keep == 0 && bHardwareLumen;
 }
 
 void MarkTideFollower(UPrimitiveComponent* Component, const UWorld* World)
 {
-	if (!Component) return;
-	// The crowns (their tiles and lighting proxies) are the terrain's tree meshes.
-	const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Component);
-	const bool bCrown = Mesh && Mesh->GetStaticMesh() && Mesh->GetStaticMesh()->GetPathName().StartsWith(TEXT("/Game/World/Trees/"));
-	if (!TideFollowersSkipDistanceFields(World, bCrown)) return;
-	Component->bAffectDistanceFieldLighting = false;
+	if (!Component || !IsTidalWorld(World)) return;
 	Component->SetCanEverAffectNavigation(false);
 	if (UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Component)) Ism->SetUseConservativeBounds(true);
+	if (Component->bAffectDistanceFieldLighting) Component->ComponentTags.AddUnique(TideFollowerDFTag);
+	if (Component->ComponentTags.Contains(TideFollowerDFTag)) Component->bAffectDistanceFieldLighting = !TideFollowersSkipDistanceFields(World, IsCrownMesh(Component));
+}
+
+int32 RefreshTideFollowers(const UWorld* World)
+{
+	if (!IsTidalWorld(World)) return 0;
+	int32 Changed = 0;
+	for (TObjectIterator<UPrimitiveComponent> It; It; ++It)
+	{
+		if (It->GetWorld() != World || !It->ComponentTags.Contains(TideFollowerDFTag)) continue;
+		const bool bWant = !TideFollowersSkipDistanceFields(World, IsCrownMesh(*It));
+		if (It->bAffectDistanceFieldLighting == bWant) continue;
+		It->bAffectDistanceFieldLighting = bWant;
+		if (It->IsRegistered()) It->MarkRenderStateDirty();
+		++Changed;
+	}
+	return Changed;
 }
 
 int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,

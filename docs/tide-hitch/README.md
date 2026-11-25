@@ -19,16 +19,21 @@ frame. With them out of the distance fields the step still cost 210-240 ms: `Sce
    (`KeptAtEach`), so a world re-centre during the spread shifts everything and keeps each lag. The crowns take about 27 frames,
    half a second, and for that time some trees sit up to 2 cm off the ground they stand on, which doesn't show. A component
    bigger than the budget still moves whole.
-2. **The followers leave the distance fields on High and Ultra** (`MarkTideFollower`, `TideFollowersSkipDistanceFields` in
-   `WorldKit`). On a tidal world those tiers' hardware Lumen traces the ray-tracing scene, so there the kept components, the kit
-   tiles, the bridge traffic, landmarks and navaids get `bAffectDistanceFieldLighting = false`, conservative instance bounds and
-   no navigation (the `docs/recentre-hitch/` settings). Medium (software Lumen) and the lake keep their distance fields.
-   `-SailingTideDF=1` keeps every follower in them (the old behaviour); `=2` takes out only the crowns on Ultra.
+2. **The followers leave the distance fields under hardware Lumen** (`MarkTideFollower`, `TideFollowersSkipDistanceFields` in
+   `WorldKit`). On a tidal world where Lumen traces in hardware (the live `r.RayTracing.Enable` and `r.Lumen.HardwareRayTracing`:
+   High and Ultra on an RHI with ray tracing), the kept components, the kit tiles, the bridge traffic, landmarks and navaids get
+   `bAffectDistanceFieldLighting = false`; everywhere on a coast they get conservative instance bounds and no navigation (the
+   `docs/recentre-hitch/` settings). Software Lumen (Medium, or High without ray tracing) and the lake keep their distance
+   fields. The followers that were in them are tagged, and `ASailingGameMode::ApplyQualitySettings` puts them back in or takes
+   them out on a live quality change (`RefreshTideFollowers`; a one-off hitch at the change). `KeepWithActor` only notes a step
+   (`NoteActorMove`); the batched move is the tick's, so a regroup that keeps many new crown tiles in the frame of a step
+   doesn't spend the budget once per tile. `-SailingTideDF=1` keeps every follower in the distance fields (the old
+   behaviour); `=2` takes out only the crowns on Ultra.
 
 ## Numbers (PC, RTX 4090, 4K Ultra, Galveston, 2 min runs with `-SailingTideStepEvery=20`)
 
 `-SailingTideStepEvery=<s>` forces a 2 cm step every `<s>` s, so the hitch can be measured without a 2 h soak; every step logs
-`Tide step: the followers stand at N cm`. Peak render-thread ms in each step's window (`Inputs/bench/tide-df-fix/`):
+`Tide step: the followers stand at N cm`. The forced 2 cm also raises the water and the physics level (measuring only). Peak render-thread ms in each step's window (`Inputs/bench/tide-df-fix/`):
 
 | Build | Peak render ms per step | DF instances |
 | --- | --- | --- |
@@ -40,5 +45,9 @@ frame. With them out of the distance fields the step still cost 210-240 ms: `Sce
 The frames between steps take 19-20 ms of render thread. Dusk stills of the Kemah shore and docks on Ultra show no difference
 from 83aa7652 (`Inputs/bench/tide-df-fix/compare-dusk-*.jpg`). Medium was not measured: there only the batching applies.
 
-Tests: `SailingSim.Coast.TideStep` (the stepped offset, the forced steps), `SailingSim.Coast.TideStepBatched` (the spread,
-and a re-centre in the middle of it), `SailingSim.Coast.KeptStaticFollowsTide`.
+Tests: `SailingSim.Coast.TideStep` (the stepped offset, the forced steps), `SailingSim.Coast.TideStepBatched` (the spread, a
+part kept mid-step, a re-centre and a second step in the middle of it), `SailingSim.Coast.KeptStaticFollowsTide`.
+
+Known, not changed here: instances added to a crown tile in world space while it lags behind a step (a regroup in that half
+second) end up 2 cm off until the next step, and those world-space adds take map heights without the tide offset at all, so after
+regroups a coast's trees can stand up to the tide's range apart. That predates this change.

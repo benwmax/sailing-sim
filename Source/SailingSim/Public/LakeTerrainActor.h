@@ -68,6 +68,8 @@ private:
 	 *  instances in one frame cost the renderer's scene culling 140 ms. */
 	TArray<FVector> KeptAtEach;
 	bool bKeptLagging = false;
+	/** Takes a new actor location as the kept components' target (they then lag until FollowActor has moved them). */
+	void NoteActorMove();
 	int32 KeptPruneAt = 64;
 	void PruneKept();
 	struct FChunkMesh

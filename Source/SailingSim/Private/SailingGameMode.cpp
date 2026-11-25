@@ -3,6 +3,7 @@
 #include "SailingFrame.h"
 #include "EasyAssists.h"
 #include "BenchRunner.h"
+#include "WorldKit.h"
 #include "CrashReports.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
@@ -983,6 +984,8 @@ void ASailingGameMode::ApplyQualitySettings()
 		const ESailingQuality TreeTier = Row(S->FoliageQuality) >= 0 ? ESailingQuality(Row(S->FoliageQuality)) : Quality;
 		It->SetTreeFraction(TreeTier == ESailingQuality::Low ? 0.35f : (TreeTier == ESailingQuality::Medium ? 0.7f : 1.f));
 	}
+	// docs/tide-hitch: a coast's tide followers are out of the distance fields only under hardware Lumen.
+	if (const int32 Changed = RefreshTideFollowers(GetWorld())) SAIL_LOG(Display, TEXT("Tide followers: %d components in or out of the distance fields"), Changed);
 }
 
 double ASailingGameMode::BlowSeaLift()

@@ -706,7 +706,7 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 {
 	TestEqual(TEXT("0.309 m steps to 0.30"), ASailingGameMode::TideStepped(0.309), 0.30, 1e-9);
 	TestEqual(TEXT("0.311 m steps to 0.32"), ASailingGameMode::TideStepped(0.311), 0.32, 1e-9);
-	TestEqual(TEXT("-0.25 m steps to -0.26 (away from zero, as before)"), ASailingGameMode::TideStepped(-0.251), -0.26, 1e-9);
+	TestEqual(TEXT("-0.251 m steps to -0.26"), ASailingGameMode::TideStepped(-0.251), -0.26, 1e-9);
 	// A slow tide moves the followers once per 2 cm, never back and forth.
 	int32 Steps = 0;
 	double Last = ASailingGameMode::TideStepped(0.0);
@@ -775,13 +775,28 @@ bool FSailingCoastTideStepBatchedTest::RunTest(const FString&)
 		TestEqual(TEXT("First frame: one tile (15,000 of the 20,000 budget)"), AtZ(68.0), 1);
 		Terrain->FollowActor();
 		TestEqual(TEXT("Second frame: two"), AtZ(68.0), 2);
+		// A part kept mid-step (a regroup's new crown tile) is placed on the step and moves nothing else in that call.
+		UStaticMeshComponent* Late = NewObject<UStaticMeshComponent>(Terrain);
+		Late->SetMobility(EComponentMobility::Static);
+		Late->SetRelativeLocation(FVector(0.0, 9000.0, 100.0));
+		Terrain->KeepWithActor(Late);
+		Late->RegisterComponent();
+		Parts.Add(Late);
+		TestEqual(TEXT("Kept mid-step: on the step at once, the others still waiting"), AtZ(68.0), 3);
 		// A re-centre mid-step: everything shifts at once, the parts still behind stay 2 cm behind.
 		Terrain->ApplyWorldOffset(FVector(-1920000.0, 0.0, 0.0), true);
 		TestEqual(TEXT("The shift moves every part"), Parts[0]->GetComponentLocation().X, -1920000.0, 0.01);
 		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
-		TestEqual(TEXT("A few frames later every part is on the step"), AtZ(68.0), 4);
+		TestEqual(TEXT("A few frames later every part is on the step"), AtZ(68.0), 5);
 		TestEqual(TEXT("... and in its place after the shift"), Parts[2]->GetComponentLocation().X, 2000.0 - 1920000.0, 0.01);
 		TestEqual(TEXT("... the plain mesh too"), Mesh->GetComponentLocation().Y, 5000.0, 0.01);
+		TestEqual(TEXT("... and the late one, moved once only"), Late->GetComponentLocation().Y, 9000.0, 0.01);
+		// Two steps in quick succession: the second arrives while the first is spreading.
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));
+		Terrain->FollowActor();
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));
+		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
+		TestEqual(TEXT("Two quick steps: every part ends 4 cm down, none moved twice by one step"), AtZ(64.0), 5);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

@@ -514,7 +514,9 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 
 void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 {
-	FollowActor();
+	// Only note a step here: the batched move is the tick's (a regroup that keeps many new crown tiles in one frame would
+	// otherwise spend the frame's budget once per tile and move the whole step at once).
+	NoteActorMove();
 	// docs/tide-hitch: on a coast the kept components (the crowns' tiles and proxies, the houses, the kit tiles) move with every
 	// 2 cm tide step; where the distance fields don't show they stay out of them (callers register after this).
 	MarkTideFollower(Cast<UPrimitiveComponent>(Component), GetWorld());
@@ -541,15 +543,18 @@ void ALakeTerrainActor::PruneKept()
 	}
 }
 
-void ALakeTerrainActor::FollowActor()
+void ALakeTerrainActor::NoteActorMove()
 {
 	const FVector At = GetActorLocation();
-	if (!At.Equals(KeptAt, 0.01))
-	{
-		KeptAt = At;
-		bKeptLagging = true;
-		PruneKept();
-	}
+	if (At.Equals(KeptAt, 0.01)) return;
+	KeptAt = At;
+	bKeptLagging = true;
+	PruneKept();
+}
+
+void ALakeTerrainActor::FollowActor()
+{
+	NoteActorMove();
 	if (!bKeptLagging) return;
 	// docs/tide-hitch: the step is spread over frames, a budget of instances a frame (the crown tiles hold most of them); a
 	// component that alone is over the budget still moves whole. A few frames of 2 cm between the parts don't show.
