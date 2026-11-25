@@ -16,6 +16,14 @@ empty in Shipping, so record from a Development package. Code: `FilmMode.h`, `Re
 | `-SailingCapture=Tripod -SailingTripod=<distance m>,<height m>[,<hfov deg>[,<aim>]]` | A tripod set up off the boat's bearing (`-SailingCaptureBearing`, or to leeward; `-SailingCaptureAbsolute` for a compass bearing). Once it is set up it stays put and pans to follow her live, aimed at `aim` times her masthead height. Defaults are 40 m, 1.6 m, 26 deg and 0.45, which hold the whole J/22 from waterline to masthead in 16:9. | ShoreTele is fixed at 200 m, 3 m up and 15 deg. |
 | `-SailingCapture=Path -SailingShotFile=<file>` | A keyframed camera move (below). A relative path is read from `Saved/`. If the file doesn't load, the log says why and the chase camera films instead. | |
 | `-SailingFilm` | The offline quality boost: clouds traced with up to 512 samples and rebuilt over frames (`r.VolumetricRenderTarget.Mode 0`: the full-resolution mode 3 left dark stipple in the shaded cloud bases, PC on #818), the water's and Lumen's reflections at full resolution, a 200% TSR history, and on the capture camera Lumen reflection and final gather quality 2 with hit lighting. Costly, and meant only for frames written to disk. `-SailingCloudMode` and `-SailingCloudSamples` still override it. | Blocky cloud edges at 4K, and dithered stripes in the reflection under the boat. |
+| `-SailingViewMode=wireframe\|lightingonly\|unlit` | A layer pass of the shot. With debug view modes, the engine's own view mode: that needs a Development package cooked with them (`package-win.ps1` passes `-DPCVars=r.ForceDebugViewModes=1` to the Development cook, #829) **and** `-DPCVars=r.ForceDebugViewModes=1` on the launch line (the game reads it at start-up). In wireframe the sail cloth isn't drawn and the sky goes black (PC test cook, `Inputs/portfolio/debugviewmodes-test/`). Without them, lighting only falls back to `ShowFlag.LightingOnlyOverride`, with the sails' insignia, number and colour taken off; wireframe and unlit log why not and stay lit. The cvar is never forced at run time: in a package cooked without the shaders that crashed on the first frame (PC on #828). The log says `Film view mode: ...`. | A cooked game refused `viewmode wireframe` (logged as set, every frame lit). |
+
+`-SailingExecAt=<s>:<cmd>` now runs its commands through the player's console, so viewport commands (`viewmode`, `show`)
+reach the viewport.
+
+For a camera just above the water beside the hull, try `-SailingNoHullClip`: the water's drop inside the hull is worked
+out per vertex, half a metre apart near the camera, so from 20 cm up the lee waterline showed a strip of hull below it.
+The hull hides the water inside it from outside (it also turns off the waterline foam).
 
 `camera.json` now records the real lens, `motion_blur` and `film_quality`.
 

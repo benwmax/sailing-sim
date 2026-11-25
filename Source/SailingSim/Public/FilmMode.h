@@ -153,3 +153,26 @@ SAILINGSIM_API bool IsFilmMode();
 
 /** -SailingEV=<EV100> on this run's command line: false (and Out unchanged) without it. */
 SAILINGSIM_API bool FixedExposureArg(float& OutEV100);
+
+/** The layer passes of a shot (the portfolio's layer peel): -SailingViewMode=wireframe|lightingonly|unlit|lit. */
+enum class EFilmViewMode : uint8
+{
+	Lit,            // the game's own frames (no switch, or an unknown name)
+	Wireframe,
+	LightingOnly,
+	Unlit,
+};
+
+/** A -SailingViewMode name (any case); Lit for anything else. */
+SAILINGSIM_API EFilmViewMode ParseFilmViewMode(const FString& Name);
+/** -SailingViewMode on this run's command line (re-read on each bench-list swap). */
+SAILINGSIM_API EFilmViewMode FilmViewMode();
+
+/**
+ * Puts the game viewport in the -SailingViewMode pass. A cooked game has debug view modes only when it was cooked with
+ * r.ForceDebugViewModes=1 (AllowDebugViewmodes()): then the engine's own view mode is used. Without them, lighting only
+ * falls back to ShowFlag.LightingOnlyOverride (the normal shaders), and wireframe and unlit log why they can't and stay
+ * lit. Forcing the cvar at run time in a package cooked without the shaders crashed on the first frame (PC on #828 at
+ * 89ec83ed), so it is never forced here. Returns whether a pass was applied.
+ */
+SAILINGSIM_API bool ApplyFilmViewMode(class UGameViewportClient* Viewport, class UWorld* World);

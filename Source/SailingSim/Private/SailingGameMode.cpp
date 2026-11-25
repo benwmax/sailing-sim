@@ -20,6 +20,7 @@
 #include "RenderingThread.h"
 #include "HAL/PlatformApplicationMisc.h"
 #include "Engine/GameViewportClient.h"
+#include "GameFramework/PlayerController.h"
 #include "Widgets/SWindow.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -1486,7 +1487,11 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 	while (NextExecAt < ExecAt.Num() && Elapsed >= ExecAt[NextExecAt].Key)
 	{
 		SAIL_LOG(Display, TEXT("SailingBench: at %.0f s: %s"), Elapsed, *ExecAt[NextExecAt].Value);
-		GEngine->Exec(GetWorld(), *ExecAt[NextExecAt].Value);
+		// Through the player's console, as typed: it reaches the game viewport's own commands too (`viewmode`, `show`), which
+		// GEngine->Exec never did (PC rehearsal on main 6630fe1e: "viewmode wireframe" at a time changed nothing).
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		if (PC && PC->Player) PC->ConsoleCommand(ExecAt[NextExecAt].Value, false);
+		else GEngine->Exec(GetWorld(), *ExecAt[NextExecAt].Value);
 		++NextExecAt;
 	}
 

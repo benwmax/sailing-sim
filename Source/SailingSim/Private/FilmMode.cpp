@@ -2,6 +2,11 @@
 #include "BenchRunner.h"
 #include "SailingSim.h"
 #include "Dom/JsonObject.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "HAL/IConsoleManager.h"
+#include "RenderUtils.h"
+#include "ShowFlags.h"
 #include "Dom/JsonValue.h"
 #include "Misc/App.h"
 #include "Misc/FileHelper.h"
@@ -332,4 +337,62 @@ bool FixedExposureArg(float& OutEV100)
 	}
 	if (bHas) OutEV100 = Value;
 	return bHas;
+}
+
+EFilmViewMode ParseFilmViewMode(const FString& Name)
+{
+	const FString N = Name.TrimStartAndEnd().TrimQuotes();
+	if (N.Equals(TEXT("wireframe"), ESearchCase::IgnoreCase)) return EFilmViewMode::Wireframe;
+	if (N.Equals(TEXT("lightingonly"), ESearchCase::IgnoreCase) || N.Equals(TEXT("lighting"), ESearchCase::IgnoreCase)) return EFilmViewMode::LightingOnly;
+	if (N.Equals(TEXT("unlit"), ESearchCase::IgnoreCase)) return EFilmViewMode::Unlit;
+	return EFilmViewMode::Lit;
+}
+
+EFilmViewMode FilmViewMode()
+{
+	static uint32 Gen = MAX_uint32;
+	static EFilmViewMode Mode = EFilmViewMode::Lit;
+	if (Gen != SailingArgs::Generation())
+	{
+		Gen = SailingArgs::Generation();
+		FString Name;
+		Mode = FParse::Value(SailingArgs::Dev(), TEXT("SailingViewMode="), Name) ? ParseFilmViewMode(Name) : EFilmViewMode::Lit;
+		if (!Name.IsEmpty() && Mode == EFilmViewMode::Lit && !Name.Equals(TEXT("lit"), ESearchCase::IgnoreCase))
+		{
+			SAIL_LOG(Warning, TEXT("Film: -SailingViewMode=%s is not wireframe, lightingonly, unlit or lit: lit"), *Name);
+		}
+	}
+	return Mode;
+}
+
+bool ApplyFilmViewMode(UGameViewportClient* Viewport, UWorld* World)
+{
+	const EFilmViewMode Mode = FilmViewMode();
+	if (Mode == EFilmViewMode::Lit || !Viewport) return false;
+	const TCHAR* Name = Mode == EFilmViewMode::Wireframe ? TEXT("wireframe") : Mode == EFilmViewMode::LightingOnly ? TEXT("lighting only") : TEXT("unlit");
+	// The engine's own test: debug view modes need their shaders in the cook (r.ForceDebugViewModes 1 in the config when
+	// cooking). Forcing them on at run time in a package cooked without them crashed on the first frame (a skeletal mesh's
+	// dynamic elements) and the launch-arg route failed to find FDebugViewModePS (PC on #828 at 89ec83ed).
+	if (AllowDebugViewmodes())
+	{
+		const EViewModeIndex Index = Mode == EFilmViewMode::Wireframe ? VMI_Wireframe
+			: Mode == EFilmViewMode::LightingOnly ? VMI_LightingOnly : VMI_Unlit;
+		Viewport->ViewModeIndex = Index;
+		ApplyViewMode(Index, true, Viewport->EngineShowFlags);
+		SAIL_LOG(Display, TEXT("Film view mode: %s (the engine's view mode)"), Name);
+		return true;
+	}
+	// Without them, lighting only still works through its show flag (the normal shaders: the hull, deck and water go
+	// grey; the sails' marks and colour are taken off by the pawn). Wireframe and unlit don't: the procedural and skinned
+	// meshes would stay lit.
+	if (Mode == EFilmViewMode::LightingOnly && World && GEngine)
+	{
+		GEngine->Exec(World, TEXT("ShowFlag.LightingOnlyOverride 1"));
+		SAIL_LOG(Display, TEXT("Film view mode: lighting only (ShowFlag.LightingOnlyOverride: this package has no debug view modes)"));
+		return true;
+	}
+	SAIL_LOG(Warning, TEXT("Film view mode: %s needs debug view modes: a Development package cooked with them "
+		"(package-win.ps1's Development cook arg -DPCVars=r.ForceDebugViewModes=1, #829) and the same on the launch line "
+		"(-DPCVars=r.ForceDebugViewModes=1); this run has none, so the frames stay lit"), Name);
+	return false;
 }
