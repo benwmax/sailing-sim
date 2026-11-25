@@ -1,0 +1,41 @@
+{
+ "about": "The Lagoon 42's keels, rudders and saildrives (docs/lagoon42-6): under each hull a long, low fixed keel to Lagoon's 1.26 m draft, a spade rudder aft, and a saildrive leg with its pod, anode and three-blade propeller between them. Lagoon publishes only the draft; the rest is from the game's physics (FBoatConfig's foils and engines in Fleet.cpp: keel area 2.2 m^2 and chord 3.4 m about x 0.3, rudder area 0.5 m^2 and chord 0.55 m at x -5.4, propellers 0.43 m across at x -3.3) and from what a cruising cat's appendages look like, looked at by eye in Lagoon's and charter photos (Bean, Nov 25: 'look, never copy'). Units: metres. Frame: the game's (X forward, Y starboard, Z up), Z 0 on the game's waterline; every part is drawn for the starboard hull and mirrored to port. appendages_lagoon42.py turns these numbers into solids.",
+ "light_waterline_z": -0.117,
+ "keel": {
+  "root_x": [-2.0, 2.6],
+  "tip_x": [-1.75, 1.15],
+  "draft": 1.26,
+  "top_z": -0.7,
+  "toe_radius": 0.5,
+  "heel_radius": 0.08,
+  "thickness": [0.26, 0.21],
+  "bottom_radius": 0.05,
+  "root_fillet": 0.07,
+  "shoe_height": 0.06,
+  "note": "A fixed keel under each hull's centreline. Its root runs along the canoe's keel line from root_x[0] to root_x[1] (where the leading and trailing edges meet the hull) and its flat bottom is light_waterline_z - draft, the draft from the light boat's waterline (Lagoon's table gives it beside the light displacement without saying which load: this reads it as the light boat's, as slice 0 did). The leading edge rakes down and aft from the root to tip_x[1], rounding into the bottom through toe_radius; the trailing edge is nearly upright, rounding through heel_radius. Sections are NACA 4-digit, thickness[0] across at the root and thickness[1] at the bottom (absolute, not a ratio: the root's chord is twice the tip's), the bottom's edges rounded bottom_radius, the root faired into the hull through a fillet root_fillet across. The bottom shoe_height is the sacrificial shoe, its own slot. Above the keel line the solid runs on up to top_z inside the hull."
+ },
+ "rudder": {
+  "stock_x": -5.35,
+  "gap": 0.012,
+  "tip_z": -1.12,
+  "le_offset": [0.13, 0.08],
+  "chord": [0.64, 0.44],
+  "thickness_ratio": 0.12,
+  "corner_radius": [0.06, 0.2],
+  "stock_diameter": 0.06,
+  "note": "A spade rudder on an upright stock at stock_x (the physics' centre of pressure, x -5.4, is 5 cm aft of it: RudderStockToCP). The blade's top follows the hull's bottom gap under it, its tip at tip_z (0.26 m above the keel's bottom, so the keels take a grounding first). The leading edge stands le_offset ahead of the stock at the top and at the tip (balanced about 20%), the chord narrows from chord[0] to chord[1], NACA 00 sections of thickness_ratio; the bottom corners round through corner_radius (leading, trailing). The stock (stainless) runs from inside the blade up into the hull. Each rudder is its own object with its origin at the stock's top (the game's RudderPivot socket), one mesh for both."
+ },
+ "saildrive": {
+  "le_x": -2.95,
+  "chord": 0.42,
+  "thickness": 0.12,
+  "rake": 0.05,
+  "depth": 0.4,
+  "root_fillet": 0.03,
+  "pod": {"nose_x": -2.86, "radius": 0.095, "taper_x": [-3.3, -3.44], "tail_radius": 0.062},
+  "anode": {"x": [-3.355, -3.405], "radius": 0.104},
+  "intake": {"z_over_axis": [0.15, 0.24], "x_from_le": [0.06, 0.16], "slots": 5},
+  "prop": {"x": -3.5, "diameter": 0.43, "pitch": 0.33, "blades": 3, "hub_radius": 0.058, "hub_x": [0.06, -0.07], "cone_x": -0.14, "max_chord": 0.13, "thickness": 0.016, "skew": 0.035},
+  "note": "A saildrive under each hull at the physics' engine (x -3.3): a streamlined leg chord across and thickness thick, raked aft by rake over its height, from inside the hull to a pod whose axis is depth under the hull's keel line, faired into the hull by a fillet (the drive's rubber diaphragm). The pod runs from nose_x, radius across, tapering to the propeller's hub; a zinc anode ring stands proud in front of the propeller, and the cooling water intake is a row of slots on each side of the leg above the pod. The propeller (its own object, origin on the axis): three fixed bronze blades, diameter and pitch, on a hub with a cone aft; the port one turns the other way (the physics' counter-rotating pair), so its blades mirror the starboard's."
+ }
+}

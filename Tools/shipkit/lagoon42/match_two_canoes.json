@@ -1,0 +1,219 @@
+{
+ "about": "The drone photo's camera solve for the Lagoon 42 rebuild (slice 3, docs/lagoon42-4): numbers only, the photo is not in the repo. Photo: refs.json's CC BY 2.0 drone shot 'Two Canoes - 2019 42ft LAGOON 42 Catamaran Yacht' by Craig Doring, Bahamas Catamaran Charters (https://www.flickr.com/photos/bahamascatamaran/33304719078/), its 1024x768 'large' size. Each point is a place on the slice 1 and 2 model (xyz in Blender's frame: X forward, Y PORT, Z up, metres over the game's waterline) and the pixel where it shows in the photo, picked by eye on 4x and 6x crops in the desktop app's browser. The stem heads are the rounded bows' tops and their waterline points assume the photo's boat floats 7 cm higher than the game's 15.5 t (a charter load, between light and the game's); the stems are the least sure picks (9 to 13 px off). Points with 'solve': false are checks.",
+ "solve": "python3 Tools/boatkit/photomatch/solve_camera.py Tools/shipkit/lagoon42/match_two_canoes.json Tools/shipkit/lagoon42/match_two_canoes.json (every point carries its own xyz: the empty 'sockets' here stands in for a sockets file). Writes match_two_canoes.camera.json.",
+ "result": "5.3 px rms over 15 points, lens 18.6 mm (36 mm film), the camera 12.6 m forward of amidships, 14.0 m to starboard and 6.8 m up. The lens is loosely held: 16 to 21 mm fit nearly as well (5.9 and 5.6 px), the camera sliding along its line of sight, but the heights read off the roof change by under 3 cm.",
+ "sockets": {},
+ "photo": "33304719078_d3f4f2ce2f_b.jpg",
+ "size": [
+  1024,
+  768
+ ],
+ "points": [
+  {
+   "name": "StbStemHead",
+   "xyz": [
+    6.37,
+    -2.82,
+    1.66
+   ],
+   "px": [
+    535.8,
+    648.5
+   ]
+  },
+  {
+   "name": "StbStemWL",
+   "xyz": [
+    6.4,
+    -2.88,
+    -0.07
+   ],
+   "px": [
+    533.4,
+    707.0
+   ]
+  },
+  {
+   "name": "PortStemHead",
+   "xyz": [
+    6.37,
+    2.98,
+    1.66
+   ],
+   "px": [
+    621.4,
+    584.8
+   ]
+  },
+  {
+   "name": "PortStemWL",
+   "xyz": [
+    6.4,
+    2.92,
+    -0.07
+   ],
+   "px": [
+    618.6,
+    629.0
+   ]
+  },
+  {
+   "name": "FwdLongAftTop",
+   "xyz": [
+    2.14,
+    -3.792,
+    1.13
+   ],
+   "px": [
+    371.0,
+    626.8
+   ]
+  },
+  {
+   "name": "FwdLongFwdTop",
+   "xyz": [
+    3.34,
+    -3.735,
+    1.13
+   ],
+   "px": [
+    407.8,
+    631.0
+   ]
+  },
+  {
+   "name": "FwdLongFwdBot",
+   "xyz": [
+    3.34,
+    -3.663,
+    0.79
+   ],
+   "px": [
+    407.5,
+    650.8
+   ]
+  },
+  {
+   "name": "FwdLongAftBot",
+   "xyz": [
+    2.14,
+    -3.734,
+    0.79
+   ],
+   "px": [
+    370.4,
+    641.2
+   ]
+  },
+  {
+   "name": "FwdSmall",
+   "xyz": [
+    4.04,
+    -3.644,
+    0.96
+   ],
+   "px": [
+    426.4,
+    649.2
+   ]
+  },
+  {
+   "name": "AftLongAftTop",
+   "xyz": [
+    -2.96,
+    -3.816,
+    1.13
+   ],
+   "px": [
+    257.0,
+    584.8
+   ]
+  },
+  {
+   "name": "AftLongFwdTop",
+   "xyz": [
+    -1.76,
+    -3.815,
+    1.13
+   ],
+   "px": [
+    280.6,
+    590.6
+   ]
+  },
+  {
+   "name": "AftLongFwdBot",
+   "xyz": [
+    -1.76,
+    -3.772,
+    0.79
+   ],
+   "px": [
+    280.0,
+    606.2
+   ]
+  },
+  {
+   "name": "AftLongAftBot",
+   "xyz": [
+    -2.96,
+    -3.773,
+    0.79
+   ],
+   "px": [
+    256.6,
+    597.6
+   ]
+  },
+  {
+   "name": "AftSmall",
+   "xyz": [
+    -3.62,
+    -3.797,
+    0.96
+   ],
+   "px": [
+    247.0,
+    584.8
+   ]
+  },
+  {
+   "name": "SternTop",
+   "xyz": [
+    -5.56,
+    -3.785,
+    1.55
+   ],
+   "px": [
+    216.0,
+    558.6
+   ]
+  },
+  {
+   "name": "PlatformCorner",
+   "xyz": [
+    -6.39,
+    -3.652,
+    0.31
+   ],
+   "px": [
+    212.8,
+    581.6
+   ],
+   "solve": false
+  },
+  {
+   "name": "BowspritTip",
+   "xyz": [
+    6.83,
+    -0.0,
+    1.45
+   ],
+   "px": [
+    601.0,
+    613.6
+   ],
+   "solve": false
+  }
+ ]
+}

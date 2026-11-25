@@ -1,0 +1,117 @@
+{
+ "about": "The Lagoon 42's size card (docs/lagoon42-1): the targets every slice of her rebuild is checked against by lagoon42_check.py. Bean asked for the big catamaran's rebuild on Nov 25 2026 ('i want the bigger boat'), by the process the Catalina 22, the frigate and the Hobie 16 go through. Post-slice work: drafts only until after the Dec 11 release.",
+ "boat": {
+  "class": "Lagoon 42",
+  "version": "the 2016-2024 model (VPLP Design hulls and rig, Patrick le Quement exterior styling, Nauta Design interior); Lagoon's site now calls it the previous model, replaced by the '42 Millennium'. The game keeps the 2016 boat, which is what her physics, polar and fleet slot were made from.",
+  "years": "2016 to 2024",
+  "hulls": "two hulls with near-plumb stems, a chine along the topsides, long hull windows; sugar-scoop sterns with steps down to the swim platforms",
+  "platform": "a bridge deck between the hulls carrying the saloon; forward of it a cockpit-free foredeck with two trampolines on a forward crossbeam, a short bowsprit (0.43 m: hull 12.79 m, overall 13.22 m) for the Code 0",
+  "deck": "a coachroof over the saloon with near-vertical forward windows, the mast stepped on it well aft (her rig is set aft compared with the Lagoon 400 she replaced), a composite hard top (bimini) over the cockpit joined to the coachroof",
+  "helm": "a raised helm station on the starboard side at the saloon's aft bulkhead, under the hard top, with a step up from the cockpit and access to the roof",
+  "rig": "aluminium mast stepped on the coachroof, two spreader pairs, swept shrouds to chainplates on the hulls, forestay to the forward crossbeam; mainsheet to a traveller on the hard top",
+  "sails": "square-top main 59 m^2 (the option the game sails; the standard high-roach main is 55 m^2), self-tacking jib 35 m^2 on a track across the coachroof's front, Code 0 78 m^2 on the bowsprit (the game's asymmetric)",
+  "appendages": "a fixed shallow keel under each hull, two spade rudders, twin diesels on saildrives",
+  "interior": "three or four cabins in the hulls, the saloon and galley on the bridge deck (slice 9: the saloon you can walk into)"
+ },
+ "targets": {
+  "length_hull_m": 12.79,
+  "length_overall_m": 13.22,
+  "length_waterline_m": 12.5,
+  "beam_m": 7.68,
+  "draft_m": 1.26,
+  "air_draft_m": 20.6,
+  "weight_kg": 12100,
+  "main_area_m2": 59.0,
+  "jib_area_m2": 35.0,
+  "tolerance": 0.03
+ },
+ "in_feet": {
+  "length_hull": "42 ft (12.79 m)",
+  "length_overall": "43 ft 4 in (13.22 m), with the bowsprit",
+  "beam": "25 ft 2 in",
+  "draft": "4 ft 2 in",
+  "air_draft": "67 ft 7 in",
+  "weight": "26,681 lb light (EEC)",
+  "sail_area": "upwind 94 m^2 / 1,011 sq ft (square-top main 59 + self-tacking jib 35); high-roach main 55 m^2 / 592 sq ft; Code 0 78 m^2 / 839 sq ft",
+  "engines": "2 x 57 hp (standard)",
+  "tanks": "water 300 l / 79 US gal, fuel 570 l / 151 US gal",
+  "berths": "6 to 12",
+  "ce": "A 12 / B 14 / C 20 / D 30 people"
+ },
+ "sources": {
+  "note": "Read on Nov 25 2026 on Lagoon's own page for the boat (https://www.catamarans-lagoon.com/boats/lagoon-42, the 'Specifications' table) through the desktop app's browser: the cloud's network cannot reach Lagoon's site, Wikipedia or the spec databases. Numbers only; nothing from the page (text, photos, drawings) is copied into the game or the repo.",
+  "length_hull": "Lagoon: hull length 12.79 m / 42 ft. The physics already carries 12.79 (Fleet.cpp Lagoon42: BowX 6.40, SternX -6.39).",
+  "length_overall": "Lagoon: 13.22 m / 43 ft 4 in, which is the hulls plus the bowsprit (0.43 m). Some dealer sheets list 12.80 m overall for the hulls alone.",
+  "length_waterline": "Not on Lagoon's page. 12.5 m is what the physics was fitted to (third-party listings); slice 1 rechecks it against a broadside.",
+  "beam": "Lagoon: 7.68 m / 25 ft 2 in (some dealer sheets 7.70 m)",
+  "draft": "Lagoon: water draft 1.26 m / 4 ft 2 in. Read here as the light boat's draft, like the air draft and the light displacement beside it (see game.load_sink_m); slice 5 rechecks if a loaded figure turns up.",
+  "air_draft": "Lagoon: 20.6 m / 67 ft 7 in above the waterline, light (a dealer sheet says 20.65 m from the DWL)",
+  "weight": "Lagoon: light displacement (EEC) 12.1 t / 26,681 lb",
+  "sails": "Lagoon: square-top mainsail (option) 59 m^2, high-roach mainsail 55 m^2, self-tacking jib 35 m^2, Code 0 (option) 78 m^2, upwind 94 m^2",
+  "pages": [
+   "https://www.catamarans-lagoon.com/boats/lagoon-42"
+  ]
+ },
+ "recheck": [
+  "Waterline length, the stems' rake, the sheer and the chine line, the hull windows' size and place: from a broadside photo (slice 1).",
+  "Bridge-deck clearance over the water, the bridge deck's forward and aft ends, the crossbeam's place and height: from a bow-on and a quarter photo (slice 2).",
+  "Coachroof height and window shapes, the mast step's place along the roof: from a broadside (slices 3 and 6).",
+  "Hard top height and overhang, the helm station's height: from a stern-quarter photo (slice 4).",
+  "Keel and rudder shapes: from a haul-out photo (slice 5)."
+ ],
+ "game": {
+  "note": "What today's game boat is (Fleet.cpp Lagoon42(), BoatExport's lagoon42 json, build_fleet.py 'Lagoon42' and lagoon_detail): two formula hulls 2.9 m either side of the centreline, a box bridge deck, a walled saloon with a cambered roof, a soft bimini and the October fidelity pass's hardware. She floats at 15.5 t (the 12.1 t light boat, 3.08 t of water, fuel, tender and stores, and four crew of 80 kg), so her waterline is load_sink_m deeper than the light boat's that Lagoon's draft and air draft are measured from.",
+  "hull_rig_kg": 15180,
+  "load_kg": 3080,
+  "crew_kg": 320,
+  "crew_count": 4,
+  "design_volume_m3": 15.5,
+  "hull_center_y_m": 2.9,
+  "sheer_z_m": 1.55,
+  "bridgedeck_x_m": [-4.6, 4.3],
+  "bridgedeck_underside_z_m": 0.85,
+  "saloon_x_m": [-2.4, 2.8],
+  "coachroof_z_m": 2.97,
+  "mast_x_m": -0.4,
+  "masthead_z_m": 20.6,
+  "boom_z_m": 3.2,
+  "bowsprit_m": 0.43,
+  "load_sink_m": 0.148,
+  "load_sink_note": "How much deeper the game's boat floats than the light boat: 3.4 t (load 3,080 kg and crew 320 kg) in the physics' 1,000 kg/m^3 water over her two hulls' waterplane, 24.3 m^2 at the game's waterline and 21.5 m^2 15 cm lower (measured on today's hulls, docs/lagoon42-1; the rebuild's hulls have their own, in the build report: 0.117 m over 30.3 m^2, docs/lagoon42-2). Lagoon's draft and air draft are the light boat's, so the check takes the keels' depth less this sink and the masthead's height plus it."
+ },
+ "budget_triangles": {
+  "note": "Triangles as built, per section of the shape loop (Tools/shapeloop/sections_lagoon42.json and its successors): measure.py counts every copy, so both hulls, keels and rudders count twice. The detailed boat's cap is 3 million (Bean, Nov 9 2026). The light copy for AI boats and the far view is about a quarter of the detailed boat (slice 11).",
+  "today_total": 356612,
+  "sections": {
+   "hull": {"slice": 1, "max": 350000},
+   "bridgedeck": {"slice": 2, "max": 250000},
+   "coachroof": {"slice": 3, "max": 300000},
+   "cockpit": {"slice": 4, "max": 300000},
+   "keels": {"slice": 5, "max": 80000, "with": ["rudder"]},
+   "rig": {"slice": 6, "max": 150000},
+   "sails": {"slice": 7, "max": 150000},
+   "fittings": {"slice": 8, "max": 450000},
+   "saloon": {"slice": 9, "max": 800000}
+  },
+  "outside_total": 2030000,
+  "inside_total": 800000,
+  "light_copy": 700000
+ },
+ "budget_textures": {
+  "high_mb": 6.0,
+  "medium_mb": 0.0,
+  "note": "Her own detail maps on High (slice 10: gelcoat and the hull windows' tint, the trampolines' mesh, the hard top's underside, the saloon's upholstery and joinery); Medium uses the shared boat library only."
+ },
+ "measured_by": {
+  "note": "How lagoon42_check.py gets each target. 'shape': from measure.py's stats; 'sockets': from the build's sockets file; 'later': not measured by the tool yet (the slice named adds it); 'build': checked by that slice's own build report.",
+  "length_hull_m": "shape",
+  "length_overall_m": "shape: from the transom to the foremost point of anything built (the bowsprit's tip, slice 2 on); not measured while nothing reaches past the stems",
+  "length_waterline_m": "shape",
+  "beam_m": "shape",
+  "draft_m": "shape: the keels' lowest point less the load's sink (the build report's load_sink_m from slice 1 on, else game.load_sink_m)",
+  "air_draft_m": "sockets: the masthead (Masthead, or today's MastheadAft) plus the same sink",
+  "weight_kg": "shape: the canoe bodies' volume under z = 0 times 1,000 kg/m^3, less game.load_kg and game.crew_kg",
+  "main_area_m2": "build: the sails' report (lagoon42_report.json main_area_m2, slice 7)",
+  "jib_area_m2": "build: the sails' report (lagoon42_report.json jib_area_m2, slice 7)"
+ }
+}

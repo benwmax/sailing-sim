@@ -1,0 +1,207 @@
+{
+ "boat": "Lagoon42",
+ "build": "Tools/shipkit/lagoon42/build_lagoon42.py",
+ "build_args": "blender -b --factory-startup -P build_lagoon42.py -- <out dir>: reads <out>/lagoon42.blend",
+ "hull_object": "L42_Hull",
+ "report": "lagoon42_report.json",
+ "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows); slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, section 'placeholder', not budgeted; from slice 4 only inside the saloon, until slice 9 builds its floor); slice 3 (docs/lagoon42-4) each hull's deck with its toe rail (L42_Deck) and hatches (L42_Hatches), the saloon's walls and windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof), section 'coachroof'; slice 4 (docs/lagoon42-5) the cockpit (L42_Cockpit: sole, benches, table, posts, raised helm), section 'cockpit'; slice 5 (docs/lagoon42-6) the keels, saildrives and propellers (L42_Keels, L42_Saildrives, L42_Prop_S/P), section 'keels', and the rudders (L42_Rudder_S/P, one mesh at each stock's pivot), section 'rudder'; slice 6 (docs/lagoon42-7) the mast (L42_Mast, origin at its heel), the boom (L42_Boom, origin at the gooseneck's pin), the standing rigging's wire (L42_Wires), its fittings and the running rigging's hardware (L42_RigFittings) and the lines (L42_Running), section 'rig' (with, from slice 7, the mainsheet's four parts, L42_Mainsheet); slice 7 (docs/lagoon42-8) the sails in every state, the lazy bag open and zipped (L42_Sail_*, L42_LazyBag_*: all built, so all counted), section 'sails'. Later slices add their parts here (fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "sections": {
+  "hull": {
+   "objects": [
+    "L42_Hull",
+    "L42_HullWindows"
+   ],
+   "owns": [
+    "build_hull",
+    "build_windows"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": []
+  },
+  "placeholder": {
+   "objects": [
+    "L42_BridgeLidPlaceholder"
+   ],
+   "owns": [
+    "lid_rows"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "bridgedeck": {
+   "objects": [
+    "L42_Bridgedeck",
+    "L42_Crossbeam",
+    "L42_Bowsprit",
+    "L42_Trampolines"
+   ],
+   "owns": [
+    "build_bridgedeck",
+    "bridgedeck_rows",
+    "aft_face",
+    "trampoline_grid",
+    "sweep"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "coachroof": {
+   "objects": [
+    "L42_Deck",
+    "L42_Hatches",
+    "L42_Saloon",
+    "L42_Roof"
+   ],
+   "owns": [
+    "build_deck",
+    "build_saloon",
+    "build_roof",
+    "deck_rows",
+    "toe_rail_rows",
+    "wall_rows",
+    "roof_rings"
+   ],
+   "borders": [
+    "hull",
+    "bridgedeck"
+   ]
+  },
+  "cockpit": {
+   "objects": [
+    "L42_Cockpit"
+   ],
+   "owns": [
+    "build_cockpit",
+    "sole_rows",
+    "parts",
+    "riser_windows",
+    "add_box",
+    "add_slab",
+    "add_cylinder",
+    "add_torus"
+   ],
+   "borders": [
+    "hull",
+    "bridgedeck",
+    "coachroof"
+   ]
+  },
+  "keels": {
+   "objects": [
+    "L42_Keels",
+    "L42_Saildrives",
+    "L42_Prop_"
+   ],
+   "owns": [
+    "build_appendages",
+    "keel_rings",
+    "leg_rings",
+    "pod_rings",
+    "anode_rings",
+    "intake_slots",
+    "hub_rings",
+    "blade_rings",
+    "solid"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "L42_Rudder_"
+   ],
+   "owns": [
+    "rudder_rings",
+    "rudder_stock"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rig": {
+   "objects": [
+    "L42_Mast",
+    "L42_Boom",
+    "L42_Wires",
+    "L42_RigFittings",
+    "L42_Running",
+    "L42_Mainsheet"
+   ],
+   "owns": [
+    "build_rig",
+    "kit_merge",
+    "write_sockets",
+    "mast_rings",
+    "track_rings",
+    "spreader_parts",
+    "standing_rigging",
+    "forestay_parts",
+    "masthead_parts",
+    "code0_and_jib_boxes",
+    "radar_and_lights",
+    "gooseneck_parts",
+    "boom_parts",
+    "jib_track_parts",
+    "jib_car",
+    "lines_and_blocks",
+    "traveller_parts",
+    "mast_lines_up",
+    "winch_wraps",
+    "mainsheet_tackle",
+    "lazy_jack_parts",
+    "reef_exit_parts",
+    "main_halyard_from",
+    "jib_sheet_box"
+   ],
+   "borders": [
+    "coachroof",
+    "bridgedeck",
+    "hull"
+   ]
+  },
+  "sails": {
+   "objects": [
+    "L42_Sail_",
+    "L42_LazyBag_"
+   ],
+   "owns": [
+    "build_sails",
+    "sail_object",
+    "mesh_part",
+    "set_sheets",
+    "main_sheet",
+    "headsail_sheet",
+    "jib_sheet",
+    "code0_sheet",
+    "roll",
+    "roll_parts",
+    "main_state_parts",
+    "main_trim",
+    "batten_parts",
+    "jack_lines",
+    "slide_stack",
+    "zipped_bag_parts",
+    "open_bag_parts",
+    "jib_set_parts",
+    "jib_furled_parts",
+    "code0_set_parts",
+    "code0_furled_parts",
+    "code0_fittings",
+    "quarter_block_parts",
+    "objects"
+   ],
+   "borders": [
+    "rig",
+    "coachroof",
+    "bridgedeck"
+   ]
+  }
+ },
+ "joins": [],
+ "joins_note": "The bridge deck, the crossbeam and the trampolines end on the hulls' inboard topsides (bridgedeck_lagoon42.span), the bridge deck's foredeck and lid and the hulls' decks on the sheer; the saloon's walls start under the decks (or the cockpit's sole) and end inside the roof; the cockpit's sole meets the hulls' inboard topsides at its height and the scoops' landings, what stands against the hulls or the saloon runs into them, the roof's posts run into the roof; the keels and saildrive legs run up inside the hulls from their root fillets, the rudders' tops follow the hulls' bottoms 12 mm under them: no joins are checked by a tool yet. The sails' luffs run in the mast's track and the jib's in the foil's groove (sails_lagoon42.py checks their gaps to the rig), the main's foot lies in the bag on the boom."
+}

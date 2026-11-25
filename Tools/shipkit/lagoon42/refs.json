@@ -1,0 +1,31 @@
+{
+ "about": "Reference pack for the Lagoon 42's rebuild (docs/lagoon42-1). Photos of real Lagoon 42s (the 2016-2024 model) for looking and measuring proportions only: nothing is traced into the model and no photo enters the repo. Public domain, CC0 or plain CC BY only (no NC, ND or SA), as for the C22, the J-Class, the frigate and the Hobie 16. Saved by hand to the git-ignored Data/Reference/raw/boats/Lagoon42 (fetch_refs.py reads Wikimedia Commons only, and Commons has none of this boat). Bean's own photos of a Lagoon 42 (a boat show, a charter base, a broker's dock) go in the same folder. The two pictures in the project folder (lagoon-hero.jpg, lagoon-deck.jpg) are screenshots of today's game model, not of a real boat: they are 'before' views only.",
+ "status": "Nov 25 2026, read through the desktop app's browser (the cloud's network cannot reach Commons, Flickr or Openverse). Wikimedia Commons has no Lagoon 42 category and no file of one: Category:Lagoon catamarans holds the 380, 400, 450 F, 500, 51, 55, 560, 60, 620 and the big power cats, two files or fewer each, none of the 42's generation. Openverse (Flickr, Commons and others) and Flickr's own search with the CC BY, CC0 and public-domain filters return one photo of a Lagoon 42; the same owner's four other Lagoon 42 photos are all rights reserved. Lagoon's own photos, drawings and virtual tour and the charter and broker listings are copyrighted: whether to look at them (never traced or stored) is Bean's call (docs/lagoon42-1).",
+ "drawings": [
+  {
+   "file": "Two Canoes - 2019 42ft LAGOON 42 Catamaran Yacht.jpg",
+   "flickr": "https://www.flickr.com/photos/bahamascatamaran/33304719078/",
+   "kind": "photo_drone_bow_quarter_anchored",
+   "use": "slices 1-4: a 2019 boat at anchor from a drone off her bow quarter, well above deck height: the stems and topsides with the hull windows, the forward lounge well between the trampolines, the coachroof's dark band of front windows, the hard top with the boom and sail cover on it, the mast stepped well aft on the roof, the tender on its davits; the rig's lower half for slice 6",
+   "size_px": [
+    1280,
+    960
+   ],
+   "licence": "CC BY 2.0",
+   "credit": "Craig Doring, Bahamas Catamaran Charters (Flickr)",
+   "date": "2019-02-22",
+   "commercial": true,
+   "licence_checked": "the photo page's licence link, Nov 25 2026"
+  }
+ ],
+ "not_used": [
+  {
+   "what": "four more Lagoon 42 photos by the same owner (dinner, grilling, 'Bliss', the 2019 Annapolis show)",
+   "why": "all rights reserved"
+  },
+  {
+   "what": "'lagoon42' by Kathleen469 (Flickr, CC BY 2.0, 2012)",
+   "why": "taken in 2012, four years before this model: an older Lagoon"
+  }
+ ]
+}

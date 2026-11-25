@@ -7,7 +7,8 @@ Renders the same views every round, so before and after line up pixel for pixel:
   shade_profile, shade_plan, shade_34, shade_cockpit, shade_bow34, shade_stern34   grey clay under a soft sky
   zebra_34, zebra_profile, zebra_bow34          stripes reflected in the hull and deck: a fair surface shows smooth
                                                 bands, a bump or flat bends or breaks them
-Only the boat's shape sections are drawn (rig, sails, ropes, hardware and the interior are hidden) unless --with-other.
+Only the boat's shape sections are drawn (rig, sails, ropes, hardware and the interior are hidden) unless --with-other;
+an object the build marks shown = False (one of a sail's other states) is never drawn.
 Orthographic views frame everything drawn (sil_scale.json records metres per pixel for the outline check);
 the perspective views sit on the hull's bounds. Cycles on the CPU with a
 material override (no GPU needed), no textures. Needs Blender's Python (pip bpy).
@@ -34,7 +35,8 @@ HULL = bpy.data.objects[SEC.get("hull_object", "Hull")]
 
 for o in list(SC.objects):
     if o.type in ("MESH", "CURVE", "FONT"):
-        hide = C.section_of(o.name, SEC) == "other" and not OTHER
+        # a state the build left hidden (custom property shown = False: a sail's other states) stays hidden
+        hide = (C.section_of(o.name, SEC) == "other" and not OTHER) or o.get("shown", True) is False
         o.hide_render = hide
         o.hide_viewport = hide
     else:                    # cameras, lights, and empties that might instance geometry

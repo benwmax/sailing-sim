@@ -1,0 +1,65 @@
+{
+ "boat": "Lagoon42",
+ "build": "Tools/blender/build_fleet.py",
+ "build_args": "FLEET_SHAPE_BLEND=1, then <lagoon42.json from Tools/BoatExport> Lagoon42 <out dir>: reads <out>/Lagoon42_shape.blend",
+ "hull_object": "Lagoon42_Hull",
+ "report": "Lagoon42_shape_report.json",
+ "note": "Today's Lagoon 42 (the shared fleet template, docs/lagoon42-1): the 'before' every slice of her rebuild is compared against. build_fleet.py builds both hull shells and their decks into Lagoon42_Hull, the two mini-keels into Lagoon42_Board, and the bridge deck, saloon, bimini, crossbeam, nets, helm station, davits, tender and the kit hardware into one object, Lagoon42_Fittings, so 'fittings' holds all of them until slice 2's build names the bridge deck.",
+ "sections": {
+  "hull": {
+   "objects": [
+    "Lagoon42_Hull"
+   ],
+   "owns": [
+    "Hull",
+    "shell",
+    "deck"
+   ],
+   "shared": [
+    "Hull"
+   ],
+   "borders": [
+    "fittings",
+    "keels"
+   ]
+  },
+  "keels": {
+   "objects": [
+    "Lagoon42_Board"
+   ],
+   "owns": [
+    "board"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "rudder": {
+   "objects": [
+    "SM_Lagoon42_Rudder"
+   ],
+   "owns": [
+    "build_rudder"
+   ],
+   "borders": []
+  },
+  "fittings": {
+   "objects": [
+    "Lagoon42_Fittings"
+   ],
+   "owns": [
+    "lagoon_detail",
+    "bridgedeck",
+    "saloon",
+    "bimini",
+    "crossbeam",
+    "trampoline"
+   ],
+   "borders": [
+    "hull"
+   ]
+  }
+ },
+ "joins": [],
+ "joins_note": "No joins checked for today's model; slice 1 lists the new hulls' joins (hull to deck flange), slice 2 the bridge deck to the hulls' inner topsides."
+}

@@ -1,0 +1,152 @@
+{
+ "about": "The Lagoon 42's mast, boom, standing rigging and running rigging's paths (docs/lagoon42-7). Read from the CC BY drone photo through its camera, solved again with the sea's horizon (rig_photo_lagoon42.py reads the hounds, the spreaders and the boom's height through it; the self-tacking track and the chainplates were placed by eye on the photo, and the script prints where they land in it), from Lagoon's air draft (20.6 m) and from the game's physics (Fleet.cpp Lagoon42(): mast at x -0.4, masthead 20.6, jib head 17.8, Code 0 head 19.5, main head 20.2, clew x -6.25, traveller range 12 deg); Lagoon's own photos were looked at by eye only (Bean, Nov 25: 'look, never copy'). Units: metres. Frame: the game's (X forward, Y starboard, Z up), Z 0 on the game's waterline; the light boat floats light_waterline_z higher. rig_lagoon42.py turns these numbers into parts.",
+ "light_waterline_z": -0.117,
+ "mast": {
+  "x": -0.42,
+  "step_height": 0.035,
+  "air_draft": 20.6,
+  "chord": 0.28,
+  "width": 0.16,
+  "power": 0.8,
+  "top_chord": 0.19,
+  "top_width": 0.13,
+  "track": {
+   "width": 0.034,
+   "depth": 0.024,
+   "z": [
+    4.78,
+    20.3
+   ]
+  },
+  "paint": "PaintedAluminium",
+  "note": "A deck-stepped aluminium mast on the roof's centreline at x (the drone photo's foot; the physics has -0.4), its heel step_height over the roof on a cast step. Its truck (the masthead cap's top) is air_draft over the light boat's waterline: the light and instruments stand above it (whether Lagoon's 20.6 m counts them is not published; the fix is one number). The section is a superellipse of power `power` (under 1 boxier than an ellipse), chord x width, the same to the hounds, then tapering to top_chord x top_width at the truck with its aft face straight, so the main's track runs straight. The track for the main's batten cars (a T-section) runs up the aft face from above the gooseneck's stack to under the masthead. Painted white, as the drone photo shows it."
+ },
+ "hounds_z": 18.1,
+ "spreaders": {
+  "root_z": 11.3,
+  "tip_z": 11.4,
+  "tip_aft": 0.69,
+  "tip_out": 1.94,
+  "chord": [
+   0.13,
+   0.085
+  ],
+  "thickness": [
+   0.04,
+   0.026
+  ],
+  "note": "One pair of swept spreaders (the drone photo: at 11.3 m at the mast, the tips 1.94 m out and 0.69 m aft of the mast's centre, so swept 19.5 deg, and tip_z up, which the photo gives to about 0.2 m: each tip alone reads 11.19 and 11.63). Each is an aerofoil, chord and thickness from the root to the tip, in a cast root socket on the mast's side, with an end cap clamping the cap and a white boot over it. A spreader that bisected the angle the cap makes over its tip would rise about 12 deg (rig_lagoon42.spreader_tip reports it); the photo's are within 6 deg of level, so the tip's clamp holds the difference, as on many rigs."
+ },
+ "lower_tang_z": 11.15,
+ "chainplates": {
+  "cap": [
+   -2.25,
+   3.72
+  ],
+  "lower": [
+   -1.05,
+   3.6
+  ],
+  "note": "On each hull's outboard deck (the drone photo: the caps' wire meets the deck about x -2.3 at the hull's outer edge, the lowers' about x -1.05, each to within about 0.3 m): stainless straps through the deck, the kit's Chainplate, twice its size for 10 mm wire."
+ },
+ "wire": {
+  "cap": 0.01,
+  "lower": 0.008,
+  "forestay": 0.01
+ },
+ "forestay": {
+  "tack_z": 1.51,
+  "tang": 0.08,
+  "toggle": 0.07,
+  "drum": {
+   "diameter": 0.24,
+   "height": 0.14,
+   "flange": 0.26,
+   "lift": 0.03
+  },
+  "swivel_z": 1.8,
+  "foil": [
+   0.034,
+   0.022
+  ],
+  "top_swivel": {
+   "head_z": 17.8,
+   "length": 0.22,
+   "diameter": 0.06
+  },
+  "foil_top_z": 17.98,
+  "note": "From a tang on the crossbeam's middle (its top at tack_z; slice 2 moved the beam to x 6.05) to the hounds: the tang, a toggle, the furler's drum (diameter across, height tall between flanges, lifted on its bearing) and its tack swivel, then the foil (an aerofoil chord x thickness round the wire) to under the top swivel, whose lower eye takes the jib's head at the physics' 17.8 m, and the bare wire to its toggle on the mast's tang at the hounds."
+ },
+ "masthead": {
+  "crane_aft": 0.26,
+  "crane_width": 0.07,
+  "crane_height": 0.1,
+  "code0_z": 19.6,
+  "jib_halyard_z": 17.98,
+  "antenna": 0.9,
+  "wind_pole": 0.75,
+  "note": "A cast cap on the truck with a crane aft for the main halyard's and topping lift's sheaves; the Code 0's halyard comes out of a sheave box with a small crane on the front face at code0_z (its head, 19.5 m in the physics, hangs under it); the jib's halyard out of a box under the forestay's tang. On the cap: an all-round white light, a VHF whip (antenna long), the wind instrument on a pole raked up forward (wind_pole long) and a wind indicator."
+ },
+ "fittings_on_mast": {
+  "radar_z": 11.3,
+  "radar_diameter": 0.5,
+  "radar_height": 0.22,
+  "deck_light_z": 10.7,
+  "jib_sheet_z": 6.5,
+  "lazy_jack_z": 9.8,
+  "lazy_jack_cleat_z": 4.25,
+  "lazy_jack_rope": 0.008,
+  "note": "On the mast's front face: the radar dome on a platform with a strut under it at the spreaders' height (the drone photo shows the dome beside the spreaders and the strut below them), a deck and steaming light under it, and the self-tacking jib's sheet box at jib_sheet_z (the sheet comes up from its car on the track and down inside the mast). On the mast's sides: the lazy jacks' blocks at lazy_jack_z and their cleats at lazy_jack_cleat_z (slice 7: sails_lagoon42.json says how the jacks are rigged)."
+ },
+ "boom": {
+  "pin": [
+   -0.615,
+   4.55
+  ],
+  "end_x": -6.4,
+  "height": 0.22,
+  "width": 0.13,
+  "clew_x": -6.25,
+  "mainsheet_x": -4.8,
+  "reef_exits_x": [-5.85, -5.1],
+  "note": "The gooseneck's pin (x, z): 1.29 m over the roof, where the drone photo's lazy bag sits (its bottom at the mast 4.64, its top 5.42; the broadside photo looked at by eye gives 1.2 to 1.3 m). The boom (a rounded box height x width) runs aft to end_x, past the roof's aft edge (x -5.15); the outhaul's car is at the physics' clew. The mainsheet's upper block hangs at mainsheet_x, over the traveller. The first two reefs' leech lines come out of the boom's top through sheave boxes at reef_exits_x, a little aft of where their cringles come down, and dead-end on padeyes beside them (slice 7: inside the lazy bag)."
+ },
+ "traveller": {
+  "x": -4.8,
+  "length": 4.4,
+  "note": "The mainsheet's track across the roof's aft end, on its flat top (the kit's TravellerHeavy: track, ball-bearing car, end controls). Its car carries the mainsheet's lower fiddle block; the sheet's tail and the car's two control lines turn forward out of the port end's control box to their clutches by the helm."
+ },
+ "jib_track": {
+  "radius": 5.56,
+  "half_span": 1.9,
+  "width": 0.045,
+  "height": 0.022,
+  "lead_y": 1.2,
+  "note": "The self-tacking jib's track on the roof forward of the mast: an arc about the forestay's tack (x 6.05), so its middle is at x 0.49 and its ends, half_span to either side, about x 0.83 (the drone photo shows the track and its ends curving forward). The car is drawn on the centreline; the game's JibLead_S/P are where it sits lead_y to either side."
+ },
+ "helm_lines": {
+  "base_row": {
+   "distance": 0.35,
+   "heading_to": "winch",
+   "spacing": 0.075
+  },
+  "bank_from_row": 1.15,
+  "winch_fwd": [
+   -2.05,
+   -1.7
+  ],
+  "winch_aft": [
+   -2.62,
+   -1.7
+  ],
+  "winch_size": "50",
+  "aft_bank_x": -3.45,
+  "rope": {
+   "halyard": 0.012,
+   "sheet": 0.014,
+   "control": 0.01,
+   "reef": 0.012
+  },
+  "note": "Every line leads to the raised helm to port. The halyards (main, jib, Code 0), the topping lift, the jib sheet and, from the boom's forward end, the two reef lines and the outhaul come down the mast to a row of turning blocks aft of it and run straight across the roof to a bank of eight clutches and the forward winch (winch_fwd), on the roof just inboard of the helm's opening, at the helmsman's right hand. The mainsheet's tail and the traveller's control lines come forward from the traveller's port end through a bank of three clutches (aft_bank_x) to the aft winch (winch_aft). The jib sheet is drawn on the forward winch and the mainsheet on the aft one, three turns each and off their self-tailers; the other lines stop in their clutches. Winches are the kit's Winch70 at size 50, clutches its ClutchBank."
+ }
+}
