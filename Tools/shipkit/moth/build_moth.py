@@ -12,6 +12,7 @@ the centre of buoyancy beside the game's centre of gravity, and how she floats w
 hull is symmetric, so only later parts care), z = 0 the design waterline at rest with her sailor aboard.
 """
 import json
+import math
 import os
 import sys
 
@@ -21,6 +22,8 @@ import bmesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_moth as H  # noqa: E402
+import wings_moth as WG  # noqa: E402
+from mathutils import Vector  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -28,7 +31,8 @@ os.makedirs(OUT, exist_ok=True)
 
 N_STATIONS, N_SIDE = 180, 40          # stations along the hull; points up one side (plus the deck edge and deck)
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
-SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88)}
+SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Carbon": (0.06, 0.06, 0.065),
+            "Mesh": (0.12, 0.12, 0.13)}
 
 
 def clear_scene():
@@ -96,6 +100,73 @@ def build_hull():
     return ob
 
 
+def resample(pts, step=0.02):
+    """A polyline resampled at about `step` metres, its corners kept."""
+    out = [Vector(pts[0])]
+    for a, b in zip(pts[:-1], pts[1:]):
+        a, b = Vector(a), Vector(b)
+        n = max(1, int((b - a).length / step))
+        out += [a.lerp(b, k / n) for k in range(1, n + 1)]
+    return out
+
+
+def add_tube(bm, pts, d, sides):
+    """A round tube of diameter d along the polyline pts (parallel-transported rings, both ends capped)."""
+    pts = resample(pts)
+    r = d / 2
+    tang = [(pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized() for i in range(len(pts))]
+    up = Vector((0, 0, 1)) if abs(tang[0].z) < 0.9 else Vector((1, 0, 0))
+    n = (up - tang[0] * up.dot(tang[0])).normalized()
+    rings = []
+    for i, p in enumerate(pts):
+        n = (n - tang[i] * n.dot(tang[i])).normalized()
+        bnorm = tang[i].cross(n)
+        rings.append([bm.verts.new(p + r * (math.cos(2 * math.pi * k / sides) * n + math.sin(2 * math.pi * k / sides) * bnorm))
+                      for k in range(sides)])
+    for a, b in zip(rings[:-1], rings[1:]):
+        for k in range(sides):
+            bm.faces.new((a[k], a[(k + 1) % sides], b[(k + 1) % sides], b[k]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+
+
+def finish(bm, name, slot):
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    box_uvs(bm)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    me.materials.append(material(slot))
+    for p in me.polygons:
+        p.use_smooth = len(p.vertices) == 4
+    return ob
+
+
+def build_wings():
+    """Both wings: MOTH_WingFrame (every tube, carbon) and MOTH_WingDeck (the mesh, one thin sheet a side)."""
+    t = WG.W["tube"]
+    bm = bmesh.new()
+    for side in (1, -1):
+        for name, pts in WG.frame(side).items():
+            d = t["rail_d_m"] if name == "Rail" else t["inner_d_m"] if name == "Inner" else t["bar_d_m"] * 0.7
+            add_tube(bm, pts, d, t["sides"])
+    frame = finish(bm, "MOTH_WingFrame", "Carbon")
+    bm = bmesh.new()
+    for side in (1, -1):
+        rows, _ = WG.deck(side)
+        vs = [[bm.verts.new(p) for p in row] for row in rows]
+        for a, b in zip(vs[:-1], vs[1:]):
+            for j in range(len(a) - 1):
+                bm.faces.new((a[j], a[j + 1], b[j + 1], b[j]))
+    deck = finish(bm, "MOTH_WingDeck", "Mesh")
+    mod = deck.modifiers.new("Thickness", "SOLIDIFY")       # a 4 mm sheet, so it renders from both sides
+    mod.thickness = 0.004
+    mod.offset = 0.0
+    return frame, deck
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -113,6 +184,7 @@ def main():
     rep = H.report()                     # solves the waterline first: the mesh is built in the design frame
     hull = build_hull()
     mesh_v = mesh_volume_below(hull)
+    frame, deck = build_wings()
     g = H.CARD["game"]
     report = dict(rep)
     report.update({
@@ -127,7 +199,12 @@ def main():
                 "0.4-0.5 m clear."})
     json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     json.dump(rep, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
+    report["wing_plan_area_m2"] = round(WG.plan_area(), 4)
+    json.dump(report, open(os.path.join(OUT, "moth_report.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
+    wt = sum(len(p.vertices) - 2 for o in (frame, deck) for p in o.data.polygons)
+    print(f"MOTH wings: beam {2 * max(abs(v.co.y) for v in frame.data.vertices):.4f} m, plan area a side "
+          f"{WG.plan_area():.3f} m^2, triangles {wt} (deck before its thickness)")
     print(f"MOTH: waterline {rep['waterline_over_keel_m']:.4f} m over the keel, volume {rep['volume_m3']:.4f} "
           f"(mesh {mesh_v:.4f}), CB x {rep['cb_x']:+.3f} (CG {rep['cg_x']:+.3f}), trim {rep['trim_deg']:+.2f} deg, "
           f"LWL {rep['lwl_m']:.3f}, hull triangles {tris}")

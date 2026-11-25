@@ -6,8 +6,46 @@
  "report": "moth_report.json",
  "note": "The hydrofoil moth (docs/moth-2 on), a new boat. Slice 1 builds the hull only; slice 2 adds the wings, slice 3 the foils, gantry and wand, slice 4 the rig, slice 5 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
-  "hull": {"objects": ["MOTH_Hull"], "owns": ["hull_moth", "build_hull"], "borders": []}
+  "hull": {
+   "objects": [
+    "MOTH_Hull"
+   ],
+   "owns": [
+    "hull_moth",
+    "build_hull"
+   ],
+   "borders": []
+  },
+  "wings": {
+   "objects": [
+    "MOTH_WingFrame"
+   ],
+   "owns": [
+    "wings_moth",
+    "build_wings"
+   ],
+   "borders": [
+    "hull"
+   ]
+  },
+  "wingdeck": {
+   "objects": [
+    "MOTH_WingDeck"
+   ],
+   "owns": [
+    "wings_moth.deck"
+   ],
+   "borders": [
+    "wings"
+   ]
+  }
  },
- "joins": [],
- "joins_note": "No joins yet: slice 2 lists the wing bars' feet on the hull."
+ "joins": [
+  {
+   "a": "wings",
+   "b": "hull",
+   "where": "the inner rails on the hull's deck edge, x -1.15 to 0.15"
+  }
+ ],
+ "joins_note": "Slice 2: the wings' inner rails sit on the deck edge; slice 3 adds the gantry's feet on the transom and the strut's case."
 }
